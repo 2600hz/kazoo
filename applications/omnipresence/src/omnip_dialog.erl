@@ -40,7 +40,6 @@
 start_link() ->
     gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
 
-
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -231,7 +230,6 @@ maybe_handle_presence_state(JObj, ?PRESENCE_RINGING=State) ->
 maybe_handle_presence_state(JObj, State) ->
     handle_update(JObj, State, 0).
 
-
 -spec handle_update(wh_json:object(), ne_binary()) -> any().
 handle_update(JObj, ?PRESENCE_HANGUP) ->
     handle_update(JObj, ?PRESENCE_HANGUP, 10);
@@ -279,7 +277,8 @@ handle_update(JObj, State, Expires) ->
                           ,{<<"user">>, FromUsername}
                           ,{<<"realm">>, FromRealm}
                           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                         ])};
+                         ])
+                };
             'false' ->
                 {To, props:filter_undefined(
                        [{<<"From">>, <<"sip:", To/binary>>}
@@ -303,7 +302,8 @@ handle_update(JObj, State, Expires) ->
                         ,{<<"user">>, ToUsername}
                         ,{<<"realm">>, ToRealm}
                         | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                       ])}
+                       ])
+                }
         end,
     maybe_send_update(User, Props).
 
@@ -329,14 +329,17 @@ send_update(<<"amqp">>, _User, Props, Subscriptions) ->
     {'ok', Worker} = wh_amqp_worker:checkout_worker(),
     [wh_amqp_worker:cast(Props
                          ,fun(P) -> wapi_omnipresence:publish_update(S, P) end
-                         , Worker) || S <- Stalkers],
+                         , Worker
+                        )
+     || S <- Stalkers
+    ],
     wh_amqp_worker:checkin_worker(Worker);
 send_update(<<"sip">>, User, Props, Subscriptions) ->
     Body = build_body(User, Props),
     Options = [{'body', Body}
                ,{'content_type', <<"application/dialog-info+xml">>}
                ,{'subscription_state', 'active'}
-               ],
+              ],
     [nksip_uac:notify(SubscriptionId
                       ,[{'contact', Contact}
                         ,{'route', [Proxy]}
@@ -357,7 +360,7 @@ get_user_channels(User) ->
                ,{<<"Realm">>, Realm}
                ,{<<"Active-Only">>, 'false'}
                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
+              ],
     case whapps_util:amqp_pool_request(Payload
                                        ,fun wapi_call:publish_query_user_channels_req/1
                                        ,fun wapi_call:query_user_channels_resp_v/1
@@ -443,6 +446,6 @@ reset_blf(User) ->
 reset_user_blf(User) ->
     case omnip_subscriptions:find_user_subscriptions(?DIALOG_EVENT, User) of
         {'ok', Subs} ->
-            [ reset_blf(SubUser) || #omnip_subscription{user=SubUser} <- Subs];
+            [reset_blf(SubUser) || #omnip_subscription{user=SubUser} <- Subs];
         _ -> 'ok'
     end.

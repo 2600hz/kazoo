@@ -10,7 +10,6 @@
 
 -behaviour(gen_listener).
 
-
 -export([start_link/1, start_link/2]).
 
 -export([init/1
@@ -36,18 +35,19 @@
                                   ,{'restrict_to', ['route']}
                                  ]
                          }
-                         ,{'self', []}                  
+                         ,{'self', []}
                         ]).
--define(RESPONDERS, [
-                     {{?MODULE, 'handle_message_route'}, [{<<"message">>, <<"route">>}]}
+-define(RESPONDERS, [{{?MODULE, 'handle_message_route'}
+                      ,[{<<"message">>, <<"route">>}]
+                     }
                     ]).
 
 -define(QUEUE_NAME(N), <<"ecallmgr_fs_msg_", N/binary>>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
--include("ecallmgr.hrl").
 -include_lib("nksip/include/nksip.hrl").
+-include("ecallmgr.hrl").
 
 %%%===================================================================
 %%% API
@@ -223,7 +223,7 @@ build_message_headers(JObj, Endpoint) ->
 
     FromURI = get_uri(wh_json:get_value(<<"From-URI">>, CCVs)),
     Realm = wh_json:get_value(<<"Account-Realm">>, CCVs),
-        
+
     FromFull = case {ToRealm, FromURI} of
                    {'undefined', 'undefined'} ->
                        <<"sip:", CIDNumber/binary, "@", Realm/binary>>;
@@ -240,8 +240,8 @@ build_message_headers(JObj, Endpoint) ->
                 ,{"from", wh_util:to_list(CIDNumber)}
                 ,{"from_full", wh_util:to_list(FromFull)}
                 ,{"content-length", wh_util:to_list(size(Body))}
-                ,{"type", "text/plain"}               
-                ,{"body", Body}               
+                ,{"type", "text/plain"}
+                ,{"body", Body}
                 ,{"Call-ID", wh_util:to_list(CallId)}
                 ,{"Unique-ID", wh_util:to_list(CallId)}
                 ,{"Server-ID", wh_util:to_list(ServerId)}

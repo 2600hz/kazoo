@@ -28,7 +28,8 @@ handle(Data, Call1) ->
            build_offnet_request(Data, Call)
            ,fun wapi_offnet_resource:publish_req/1
            ,fun wapi_offnet_resource:resp_v/1
-           ,30000)
+           ,30000
+          )
     of
         {'ok', Res} ->
             handle_result(Res, Call);
@@ -43,28 +44,31 @@ handle_result(JObj, Call) ->
     Code = wh_json:get_value(<<"Response-Code">>, JObj),
     Response = wh_json:get_value(<<"Resource-Response">>, JObj),
     handle_result(Message, Code, Response, JObj, Call).
-    
+
 -spec handle_result(binary(), binary()
-                   , wh_json:object(), wh_json:object(), 
-                    whapps_call:call()) -> 'ok'.
+                    ,wh_json:object(), wh_json:object()
+                    ,whapps_call:call()
+                   ) -> 'ok'.
 handle_result(_Message, <<"sip:200">>, Response, _JObj, Call1) ->
     Status = doodle_util:sms_status(Response),
-    Call = doodle_util:set_flow_status(Status, Call1),    
-    case Status of
-        <<"pending">> -> doodle_exe:stop(Call);
-        _ -> lager:info("completed successful message to the device"),
-             doodle_exe:continue(Call)
-    end;
+    Call = doodle_util:set_flow_status(Status, Call1),
+    handle_result_status(Call, Status);
 handle_result(Message, Code, _Response, _JObj, Call) ->
     handle_bridge_failure(Message, Code, Call).
-    
+
+-spec handle_result_status(whapps_call:call(), ne_binary()) -> 'ok'.
+handle_result_status(Call, <<"pending">>) ->
+    doodle_exe:stop(Call);
+handle_result_status(Call, _Status) ->
+    lager:info("completed successful message to the device"),
+    doodle_exe:continue(Call).
 
 -spec handle_bridge_failure(api_binary(), api_binary(), whapps_call:call()) -> 'ok'.
 handle_bridge_failure(Cause, Code, Call) ->
     lager:info("offnet request error, attempting to find failure branch for ~s:~s", [Code, Cause]),
     case doodle_util:handle_bridge_failure(Cause, Code, Call) of
-        'ok' -> lager:debug("found bridge failure child"),
-                'ok';
+        'ok' ->
+            lager:debug("found bridge failure child");
         'not_found' ->
             doodle_exe:stop(doodle_util:set_flow_error(<<"error">>, Cause, Call))
     end.
@@ -76,29 +80,30 @@ handle_bridge_failure(Cause, Code, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec build_offnet_request(wh_json:object(), whapps_call:call()) -> wh_proplist().
-build_offnet_request(Data, Call) ->   
-    props:filter_undefined([{<<"Resource-Type">>, <<"sms">>}
-                            ,{<<"Application-Name">>, <<"sms">>}
-                            ,{<<"Outbound-Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
-                            ,{<<"Outbound-Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
-                            ,{<<"Msg-ID">>, wh_util:rand_hex_binary(16)}
-                            ,{<<"Call-ID">>, doodle_exe:callid(Call)}
-                            ,{<<"Presence-ID">>, cf_attributes:presence_id(Call)}
-                            ,{<<"Account-ID">>, whapps_call:account_id(Call)}
-                            ,{<<"Account-Realm">>, whapps_call:from_realm(Call)}
-                            ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, Data)}
-                            ,{<<"Format-From-URI">>, wh_json:is_true(<<"format_from_uri">>, Data)}
-                            ,{<<"Hunt-Account-ID">>, get_hunt_account_id(Data, Call)}
-                            ,{<<"Flags">>, get_flags(Data, Call)}
-                            ,{<<"Custom-SIP-Headers">>, get_sip_headers(Data, Call)}
-                            ,{<<"To-DID">>, get_to_did(Data, Call)}
-                            ,{<<"From-URI-Realm">>, get_from_uri_realm(Data, Call)}
-                            ,{<<"Bypass-E164">>, get_bypass_e164(Data)}
-                            ,{<<"Inception">>, get_inception(Call)}
-                            ,{<<"Message-ID">>, whapps_call:kvs_fetch(<<"Message-ID">>, Call)}
-                            ,{<<"Body">>, whapps_call:kvs_fetch(<<"Body">>, Call)}
-                            | wh_api:default_headers(doodle_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)
-                           ]).
+build_offnet_request(Data, Call) ->
+    props:filter_undefined(
+      [{<<"Resource-Type">>, <<"sms">>}
+       ,{<<"Application-Name">>, <<"sms">>}
+       ,{<<"Outbound-Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
+       ,{<<"Outbound-Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
+       ,{<<"Msg-ID">>, wh_util:rand_hex_binary(16)}
+       ,{<<"Call-ID">>, doodle_exe:callid(Call)}
+       ,{<<"Presence-ID">>, cf_attributes:presence_id(Call)}
+       ,{<<"Account-ID">>, whapps_call:account_id(Call)}
+       ,{<<"Account-Realm">>, whapps_call:from_realm(Call)}
+       ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, Data)}
+       ,{<<"Format-From-URI">>, wh_json:is_true(<<"format_from_uri">>, Data)}
+       ,{<<"Hunt-Account-ID">>, get_hunt_account_id(Data, Call)}
+       ,{<<"Flags">>, get_flags(Data, Call)}
+       ,{<<"Custom-SIP-Headers">>, get_sip_headers(Data, Call)}
+       ,{<<"To-DID">>, get_to_did(Data, Call)}
+       ,{<<"From-URI-Realm">>, get_from_uri_realm(Data, Call)}
+       ,{<<"Bypass-E164">>, get_bypass_e164(Data)}
+       ,{<<"Inception">>, get_inception(Call)}
+       ,{<<"Message-ID">>, whapps_call:kvs_fetch(<<"Message-ID">>, Call)}
+       ,{<<"Body">>, whapps_call:kvs_fetch(<<"Body">>, Call)}
+       | wh_api:default_headers(doodle_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)
+      ]).
 
 -spec get_bypass_e164(wh_json:object()) -> boolean().
 get_bypass_e164(Data) ->
@@ -201,7 +206,7 @@ get_endpoint_flags(_, Call, Flags) ->
         {'ok', JObj} ->
             case wh_json:get_value(<<"outbound_flags">>, JObj) of
                 'undefined' -> Flags;
-                 EndpointFlags -> EndpointFlags ++ Flags
+                EndpointFlags -> EndpointFlags ++ Flags
             end
     end.
 
@@ -265,4 +270,3 @@ is_flag_exported(Flag, [_|Funs]) -> is_flag_exported(Flag, Funs).
 -spec get_inception(whapps_call:call()) -> api_binary().
 get_inception(Call) ->
     wh_json:get_value(<<"Inception">>, whapps_call:custom_channel_vars(Call)).
-

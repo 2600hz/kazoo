@@ -34,9 +34,9 @@
                }).
 -type state() :: #state{}.
 
--define(RESPONDERS, [ {{?MODULE, 'handle_message_delivery'}
-                       ,[{<<"message">>, <<"delivery">>}]
-                      }
+-define(RESPONDERS, [{{?MODULE, 'handle_message_delivery'}
+                      ,[{<<"message">>, <<"delivery">>}]
+                     }
                     ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
@@ -281,7 +281,8 @@ maybe_endpoint_format_from(Endpoint, CIDNum, DefaultRealm) ->
                               ,wh_json:delete_keys([<<"Format-From-URI">>
                                                     ,<<"From-URI-Realm">>
                                                    ], CCVs)
-                              ,Endpoint)
+                              ,Endpoint
+                             )
     end.
 
 -spec endpoint_format_from(wh_json:object(), ne_binary(), api_binary()) -> wh_json:object().
@@ -294,7 +295,8 @@ endpoint_format_from(Endpoint, CIDNum, DefaultRealm) ->
                               ,wh_json:delete_keys([<<"Format-From-URI">>
                                                     ,<<"From-URI-Realm">>
                                                    ], CCVs)
-                              ,Endpoint);
+                              ,Endpoint
+                             );
         'true' ->
             FromURI = <<"sip:", CIDNum/binary, "@", Realm/binary>>,
             lager:debug("setting resource ~s from-uri to ~s"
@@ -306,7 +308,8 @@ endpoint_format_from(Endpoint, CIDNum, DefaultRealm) ->
                               ,wh_json:delete_keys([<<"Format-From-URI">>
                                                     ,<<"From-URI-Realm">>
                                                    ], UpdatedCCVs)
-                              ,Endpoint)
+                              ,Endpoint
+                             )
     end.
 
 -spec bridge_caller_id(wh_json:objects(), wh_json:object()) ->
@@ -324,7 +327,9 @@ bridge_emergency_caller_id(JObj) ->
     {maybe_emergency_cid_number(JObj)
      ,wh_json:get_first_defined([<<"Emergency-Caller-ID-Name">>
                                  ,<<"Outbound-Caller-ID-Name">>
-                                ], JObj)
+                                ]
+                                ,JObj
+                               )
     }.
 
 -spec bridge_caller_id(wh_json:object()) ->
@@ -332,10 +337,14 @@ bridge_emergency_caller_id(JObj) ->
 bridge_caller_id(JObj) ->
     {wh_json:get_first_defined([<<"Outbound-Caller-ID-Number">>
                                 ,<<"Emergency-Caller-ID-Number">>
-                               ], JObj)
+                               ]
+                               ,JObj
+                              )
      ,wh_json:get_first_defined([<<"Outbound-Caller-ID-Name">>
                                  ,<<"Emergency-Caller-ID-Name">>
-                                ], JObj)
+                                ]
+                                ,JObj
+                               )
     }.
 
 -spec bridge_from_uri(api_binary(), wh_json:object()) ->
@@ -343,7 +352,9 @@ bridge_caller_id(JObj) ->
 bridge_from_uri(CIDNum, JObj) ->
     Realm = wh_json:get_first_defined([<<"From-URI-Realm">>
                                        ,<<"Account-Realm">>
-                                      ], JObj),
+                                      ]
+                                      ,JObj
+                                     ),
     case (whapps_config:get_is_true(?APP_NAME, <<"format_from_uri">>, 'false')
           orelse wh_json:is_true(<<"Format-From-URI">>, JObj)
          )

@@ -185,7 +185,9 @@ mwi_query(JObj) ->
         _Else -> 'ok'
     end.
 
--spec mwi_resp(ne_binary(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+-spec mwi_resp(api_binary(), api_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+mwi_resp('undefined', _Realm, _AccountDb, _JObj) -> 'ok';
+mwi_resp(_Username, 'undefined', _AccountDb, _JObj) -> 'ok';
 mwi_resp(Username, Realm, AccountDb, JObj) ->
     case owner_ids_by_sip_username(AccountDb, Username) of
         {'ok', [OwnerId]} ->
@@ -401,7 +403,9 @@ owner_ids_by_sip_username(AccountDb, Username) ->
             get_owner_ids_by_sip_username(AccountDb, Username)
     end.
 
--spec get_owner_ids_by_sip_username(ne_binary(), ne_binary()) -> {'ok', ne_binaries()} | {'error', _}.
+-spec get_owner_ids_by_sip_username(ne_binary(), ne_binary()) ->
+                                           {'ok', ne_binaries()} |
+                                           {'error', _}.
 get_owner_ids_by_sip_username(AccountDb, Username) ->
     ViewOptions = [{'key', Username}],
     case couch_mgr:get_results(AccountDb, <<"cf_attributes/sip_username">>, ViewOptions) of
@@ -460,7 +464,8 @@ get_endpoint_id_by_sip_username(AccountDb, Username) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_operator_callflow(ne_binary()) -> wh_jobj_return().
+-spec get_operator_callflow(ne_binary()) -> {'ok', wh_json:object()} |
+                                            couch_mgr:couchbeam_error().
 get_operator_callflow(Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     Options = [{'key', ?OPERATOR_KEY}, 'include_docs'],

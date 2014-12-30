@@ -17,13 +17,17 @@ handle_req(JObj, Props, Deliver) ->
     Srv = props:get_value('server', Props),
     case wapi_sms:inbound_v(JObj) of
         'true' ->
-            case maybe_relay_request(JObj) of
-                'ack' -> gen_listener:ack(Srv, Deliver);
-                'nack' -> gen_listener:nack(Srv, Deliver)
-            end;
+            handle_inbound_sms(JObj, Srv, Deliver);
         'false' ->
             lager:debug("error validating inbound message : ~p", [JObj]),
-             gen_listener:ack(Srv, Deliver)
+            gen_listener:ack(Srv, Deliver)
+    end.
+
+-spec handle_inbound_sms(wh_json:object(), pid(), basic_deliver()) -> 'ok'.
+handle_inbound_sms(JObj, Srv, Deliver) ->
+    case maybe_relay_request(JObj) of
+        'ack' -> gen_listener:ack(Srv, Deliver);
+        'nack' -> gen_listener:nack(Srv, Deliver)
     end.
 
 -spec maybe_relay_request(wh_json:object()) -> 'ack' | 'nack'.
@@ -96,11 +100,13 @@ set_account_id(_Inception, NumberProps, JObj) ->
     AccountId = wh_number_properties:account_id(NumberProps),
     AccountRealm = wh_util:get_account_realm(AccountId),
     wh_json:set_values(
-                props:filter_undefined(
-                  [{?CCV(<<"Account-ID">>), AccountId}
-                   ,{?CCV(<<"Account-Realm">>), AccountRealm}
-                   ,{?CCV(<<"Authorizing-Type">>), <<"resource">>}                 
-                  ]), JObj).
+      props:filter_undefined(
+        [{?CCV(<<"Account-ID">>), AccountId}
+         ,{?CCV(<<"Account-Realm">>), AccountRealm}
+         ,{?CCV(<<"Authorizing-Type">>), <<"resource">>}
+        ])
+      ,JObj
+     ).
 
 -spec set_inception(ne_binary(), wh_proplist(), wh_json:object()) ->
                            wh_json:object().
@@ -123,7 +129,10 @@ set_mdn(<<"on-net">>, NumberProps, JObj) ->
                  ,{?CCV(<<"Owner-ID">>), OwnerId}
                 ])
               ,wh_json:delete_keys([?CCV(<<"Authorizing-Type">>)
-                                    ,?CCV(<<"Authorizing-ID">>)], JObj)
+                                    ,?CCV(<<"Authorizing-ID">>)
+                                   ]
+                                   ,JObj
+                                  )
              );
         {'error', _} -> JObj
     end;
@@ -135,7 +144,9 @@ set_static(_Inception, _, JObj) ->
     wh_json:set_values([{<<"Resource-Type">>, <<"sms">>}
                         ,{<<"Call-Direction">>, <<"inbound">>}
                         ,{?CCV(<<"Channel-Authorized">>), 'true'}
-                       ], JObj).
+                       ]
+                       ,JObj
+                      ).
 
 -spec delete_headers(ne_binary(), wh_proplist(), wh_json:object()) ->
                             wh_json:object().

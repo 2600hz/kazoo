@@ -23,10 +23,10 @@
 
 -define(CF_MOBILE_CONFIG_CAT, <<(?CF_CONFIG_CAT)/binary, ".mobile">>).
 -define(DEFAULT_MOBILE_FORMATER, <<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$">>).
--define(DEFAULT_MOBILE_PREFIX, <<"">>).
--define(DEFAULT_MOBILE_SUFFIX, <<"">>).
+-define(DEFAULT_MOBILE_PREFIX, <<>>).
+-define(DEFAULT_MOBILE_SUFFIX, <<>>).
 -define(DEFAULT_MOBILE_REALM, <<"mobile.k.zswitch.net">>).
--define(DEFAULT_MOBILE_PATH, <<"">>).
+-define(DEFAULT_MOBILE_PATH, <<>>).
 -define(DEFAULT_MOBILE_CODECS, [<<"PCMU">>]).
 
 -define(RESOURCE_TYPE_SMS, <<"sms">>).
@@ -34,8 +34,9 @@
 -define(RESOURCE_TYPE_VIDEO, <<"video">>).
 
 -define(DEFAULT_MOBILE_SMS_INTERFACE, <<"amqp">>).
--define(DEFAULT_MOBILE_SMS_OPTIONS, wh_json:from_list( [{<<"Route-ID">>, <<"sprint">>}
-                                                        ,{<<"System-ID">>, wh_util:node_name()}]) ).
+-define(DEFAULT_MOBILE_SMS_OPTIONS, wh_json:from_list([{<<"Route-ID">>, <<"sprint">>}
+                                                       ,{<<"System-ID">>, wh_util:node_name()}
+                                                      ])).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -62,7 +63,9 @@ get(EndpointId, AccountDb) when is_binary(AccountDb) ->
 get(EndpointId, Call) ->
     get(EndpointId, whapps_call:account_db(Call)).
 
--spec maybe_fetch_endpoint(ne_binary(), ne_binary()) -> wh_jobj_return().
+-spec maybe_fetch_endpoint(ne_binary(), ne_binary()) ->
+                                  {'ok', wh_json:object()} |
+                                  couch_mgr:couchbeam_error().
 maybe_fetch_endpoint(EndpointId, AccountDb) ->
     case couch_mgr:open_doc(AccountDb, EndpointId) of
         {'ok', JObj} ->
@@ -72,7 +75,9 @@ maybe_fetch_endpoint(EndpointId, AccountDb) ->
             E
     end.
 
--spec maybe_have_endpoint(wh_json:object(), ne_binary(), ne_binary()) ->  wh_jobj_return().
+-spec maybe_have_endpoint(wh_json:object(), ne_binary(), ne_binary()) ->
+                                 {'ok', wh_json:object()} |
+                                 {'error', 'not_device_nor_user'}.
 maybe_have_endpoint(JObj, EndpointId, AccountDb) ->
     case wh_json:get_value(<<"pvt_type">>, JObj) of
         <<"device">> = EndpointType ->
@@ -941,7 +946,6 @@ create_mobile_audio_endpoint(Endpoint, Properties, Call) ->
             wh_json:from_list(props:filter_undefined(Prop))
     end.
 
-
 -spec maybe_build_mobile_route(wh_json:object()) -> ne_binary() | {'error', 'mdn_missing'}.
 maybe_build_mobile_route(Endpoint) ->
     case wh_json:get_ne_value([<<"mobile">>, <<"mdn">>], Endpoint) of
@@ -965,10 +969,12 @@ build_mobile_route(MDN) ->
             Realm = whapps_config:get_binary(?CF_MOBILE_CONFIG_CAT, <<"realm">>, ?DEFAULT_MOBILE_REALM),
             Route = <<"sip:"
                       ,Prefix/binary, Root/binary, Suffix/binary
-                      ,"@", Realm/binary>>,
+                      ,"@", Realm/binary
+                    >>,
             maybe_add_mobile_path(Route)
     end.
 
+-spec maybe_add_mobile_path(ne_binary()) -> ne_binary().
 maybe_add_mobile_path(Route) ->
     Path = whapps_config:get_binary(?CF_MOBILE_CONFIG_CAT, <<"path">>, ?DEFAULT_MOBILE_PATH),
     case wh_util:is_empty(Path) of

@@ -36,7 +36,9 @@
                                         ,{<<"x-max-length">>, 'infinity'}
                                        ]}
                        ]).
--define(CONSUME_OPTIONS, [{'exclusive', 'false'}, {'no_ack', 'false'}]).
+-define(CONSUME_OPTIONS, [{'exclusive', 'false'}
+                          ,{'no_ack', 'false'}
+                         ]).
 
 %%%===================================================================
 %%% API
@@ -50,14 +52,16 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link({'local', ?MODULE}, ?MODULE, [
-                                      {'bindings', ?BINDINGS}
-                                      ,{'responders', ?RESPONDERS}
-                                      ,{'queue_name', ?QUEUE_NAME}       % optional to include
-                                      ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
-                                      ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
-                                      %%,{basic_qos, 1}                % only needed if prefetch controls
-                                     ], []).
+    gen_listener:start_link({'local', ?MODULE}
+                            ,?MODULE
+                            ,[{'bindings', ?BINDINGS}
+                              ,{'responders', ?RESPONDERS}
+                              ,{'queue_name', ?QUEUE_NAME}       % optional to include
+                              ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
+                              ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
+                             ]
+                            ,[]
+                           ).
 
 %%%===================================================================
 %%% gen_server callbacks

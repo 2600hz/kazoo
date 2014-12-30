@@ -14,8 +14,10 @@
 
 -include("doodle.hrl").
 
-
--define(ORIGIN_BINDINGS, [ [{'db', ?WH_SIP_DB }, {'type', <<"device">>}] ]).
+-define(ORIGIN_BINDINGS, [ [{'db', ?WH_SIP_DB }
+                            ,{'type', <<"device">>}
+                           ]
+                         ]).
 -define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
 
 -define(CHILDREN, [?CACHE_ARGS(?DOODLE_CACHE, ?CACHE_PROPS)
@@ -25,7 +27,6 @@
                    ,?SUPER('doodle_event_handler_sup')
                    ,?SUPER('doodle_exe_sup')
                   ]).
-
 
 %% ===================================================================
 %% API functions

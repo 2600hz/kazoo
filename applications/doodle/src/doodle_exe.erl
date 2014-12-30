@@ -72,7 +72,10 @@
 -spec start_link(whapps_call:call()) -> startlink_ret().
 start_link(Call) ->
     CallId = whapps_call:call_id(Call),
-    Bindings = [{'sms', [{'message_id', CallId}, {'restrict_to', ['delivery']}]}
+    Bindings = [{'sms', [{'message_id', CallId}
+                         ,{'restrict_to', ['delivery']}
+                        ]
+                }
                 ,{'self', []}
                ],
     gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}

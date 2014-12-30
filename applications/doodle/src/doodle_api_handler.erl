@@ -14,7 +14,7 @@
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
-    'true' = wapi_conf:doc_update_v(JObj),    
+    'true' = wapi_conf:doc_update_v(JObj),
     Id = wh_json:get_value(<<"ID">>, JObj),
     Db = wh_json:get_value(<<"Database">>, JObj),
     {'ok', Doc} = couch_mgr:open_doc(Db, Id),
