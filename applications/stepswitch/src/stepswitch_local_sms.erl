@@ -11,7 +11,7 @@
 
 -include("stepswitch.hrl").
 
--spec local_message_handling(wh_proplist(), wh_json:object() ) -> 'ok'.
+-spec local_message_handling(wh_proplist(), wh_json:object()) -> 'ok'.
 local_message_handling(Props, JObj) ->
     FetchId = wh_util:rand_hex_binary(16),
     CallId = wh_util:rand_hex_binary(16),
@@ -30,8 +30,7 @@ local_message_handling(Props, JObj) ->
             Delivery = delivery_from_req(JObj, <<"Success">>, <<"200">>, 'undefined'),
             send_sms_response(sms_success(Delivery, JObj), ServerID),
             send_route_win(FetchId, CallId, JObjResp)
-    end,
-    'ok'.
+    end.
 
 -spec sms_error(wh_json:object(), wh_json:object()) -> wh_proplist().
 sms_error(JObj, Request) ->
@@ -56,7 +55,7 @@ sms_success(JObj, Request) ->
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec send_sms_response(wh_json:object() | wh_proplist(), ne_binary()) -> 'ok'. 
+-spec send_sms_response(wh_json:object() | wh_proplist(), ne_binary()) -> 'ok'.
 send_sms_response(JObj, ServerID) ->
     wh_amqp_worker:cast(JObj, fun(A) -> wapi_offnet_resource:publish_resp(ServerID, A) end).
 
@@ -80,16 +79,16 @@ delivery_from_req(JObj, Status, DeliveryCode, DeliveryFailure) ->
             ,<<"App-Name">>
             ,<<"App-Version">>
             ,<<"Node">>
-           ],    
-    Props = props:filter_empty(props:filter_undefined(
-        [{<<"Delivery-Result-Code">>, DeliveryCode }
-         ,{<<"Delivery-Failure">>, DeliveryFailure}
-         ,{<<"Status">>, Status}
-             | wh_api:default_headers(<<"message">>, <<"delivery">>, ?APP_NAME, ?APP_VERSION)
-        ])),
+           ],
+    Props = props:filter_empty(
+              [{<<"Delivery-Result-Code">>, DeliveryCode }
+               ,{<<"Delivery-Failure">>, DeliveryFailure}
+               ,{<<"Status">>, Status}
+               | wh_api:default_headers(<<"message">>, <<"delivery">>, ?APP_NAME, ?APP_VERSION)
+              ]),
     wh_json:set_values(Props, wh_json:delete_keys(Keys, JObj)).
 
--spec route_req(ne_binary(), ne_binary(), wh_proplist(), wh_json:object() ) -> wh_proplist().
+-spec route_req(ne_binary(), ne_binary(), wh_proplist(), wh_json:object()) -> wh_proplist().
 route_req(CallId, FetchId, Props, JObj) ->
     TargetAccountId = wh_number_properties:account_id(Props),
     TargetAccountRealm = wh_util:get_account_realm(TargetAccountId),
@@ -98,29 +97,43 @@ route_req(CallId, FetchId, Props, JObj) ->
     To = <<ToDID/binary, "@", TargetAccountRealm/binary>>,
     FromNumber = wh_json:get_first_defined([<<"Caller-ID-Number">>
                                             ,<<"Outbound-Caller-ID-Number">>
-                                           ], JObj, <<"0000000000">>),
-    From = <<FromNumber/binary, "@", RequestAccountRealm/binary>>,        
+                                           ]
+                                           ,JObj
+                                           ,<<"0000000000">>
+                                          ),
+    From = <<FromNumber/binary, "@", RequestAccountRealm/binary>>,
     [{<<"Msg-ID">>, FetchId}
      ,{<<"Call-ID">>, CallId}
      ,{<<"Message-ID">>, wh_json:get_value(<<"Message-ID">>, JObj)}
      ,{<<"Caller-ID-Name">>, wh_json:get_first_defined([<<"Caller-ID-Name">>
                                                         ,<<"Outbound-Caller-ID-Name">>
-                                                       ], JObj, <<"0000000000">>)}
+                                                       ]
+                                                       ,JObj
+                                                       ,<<"0000000000">>
+                                                      )
+      }
      ,{<<"Caller-ID-Number">>, wh_json:get_first_defined([<<"Caller-ID-Number">>
                                                           ,<<"Outbound-Caller-ID-Number">>
-                                                         ], JObj, <<"0000000000">>)}
+                                                         ]
+                                                         ,JObj
+                                                         ,<<"0000000000">>
+                                                        )
+      }
      ,{<<"To">>, To}
      ,{<<"From">>, From}
      ,{<<"Request">>, To}
      ,{<<"Body">>, wh_json:get_value(<<"Body">>, JObj)}
-     ,{<<"Custom-Channel-Vars">>, 
+     ,{<<"Custom-Channel-Vars">>,
        wh_json:from_list(
          props:filter_undefined(
            [{<<"Fetch-ID">>, FetchId}
             ,{<<"Account-ID">>, TargetAccountId}
             ,{<<"Account-Realm">>, TargetAccountRealm}
             ,{<<"Inception">>, From}
-           ]))}
+           ]
+          )
+        )
+      }
      ,{<<"Resource-Type">>, <<"sms">>}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
