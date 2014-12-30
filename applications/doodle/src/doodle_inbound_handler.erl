@@ -99,7 +99,7 @@ set_account_id(_Inception, NumberProps, JObj) ->
                 props:filter_undefined(
                   [{?CCV(<<"Account-ID">>), AccountId}
                    ,{?CCV(<<"Account-Realm">>), AccountRealm}
-                   ,{?CCV(<<"Authorizing-Type">>), <<"resource">>}                 
+                   ,{?CCV(<<"Authorizing-Type">>), <<"resource">>}
                   ]), JObj).
 
 -spec set_inception(ne_binary(), wh_proplist(), wh_json:object()) ->
