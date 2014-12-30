@@ -269,7 +269,6 @@ format_account_mod_id(AccountId, Year, Month) ->
 -spec format_account_db(ne_binaries() | api_binary() | wh_json:object()) -> api_binary().
 format_account_db(AccountId) -> format_account_id(AccountId, 'encoded').
 
-
 -spec pad_month(wh_month() | ne_binary()) -> ne_binary().
 pad_month(<<_/binary>> = Month) ->
     pad_month(to_integer(Month));
