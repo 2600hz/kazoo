@@ -238,7 +238,7 @@ replay_sms_flow(AccountId, <<_:7/binary, CallId/binary>> = DocId, Rev, JObj) ->
     Routines = [{fun whapps_call:set_call_id/2, CallId}
                 ,fun(C) -> set_sms_revision(Rev, C) end
                 ,fun(C) -> set_flow_status(<<"resumed">>, C) end
-                ,fun save_sms/2
+                ,fun save_sms/1
                ],
 
     Call = whapps_call:exec(Routines, whapps_call:from_json(JObj)),
