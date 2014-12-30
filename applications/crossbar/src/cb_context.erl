@@ -888,7 +888,7 @@ build_system_error(_, 500, Identifier, Message, Data, Context) ->
     Context#cb_context{resp_status='error'
                        ,resp_error_code=500
                        ,resp_data=UpdatedData
-                       ,resp_error_msg = <<"enable to comply">>
+                       ,resp_error_msg = <<"unable to comply">>
                       };
 build_system_error(_, Code, Identifier, Message, Data, Context) ->
     UpdatedData = build_error_data(Identifier, Message, Data, Context),
