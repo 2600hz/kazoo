@@ -124,15 +124,22 @@ validate_resource(Context, UserId, _) -> validate_user_id(UserId, Context).
 validate_resource(Context, UserId, _, _) -> validate_user_id(UserId, Context).
 
 -spec validate_user_id(api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_user_id(api_binary(), cb_context:context(), wh_json:object()) -> cb_context:context().
 validate_user_id(UserId, Context) ->
     case couch_mgr:open_cache_doc(cb_context:account_db(Context), UserId) of
-        {'ok', Doc} ->
-            case wh_json:is_true(<<"pvt_deleted">>, Doc) of
-                'true' -> cb_context:add_system_error('bad_identifier', [{'details', UserId}],  Context);
-                'false'-> cb_context:set_user_id(Context, UserId)
-            end; 
-       {'error', 'not_found'} -> cb_context:add_system_error('bad_identifier', [{'details', UserId}],  Context);
-       {'error', _R} -> crossbar_util:response_db_fatal(Context)
+        {'ok', Doc} -> validate_user_id(UserId, Context, Doc);
+        {'error', 'not_found'} -> cb_context:add_system_error('bad_identifier', [{'details', UserId}],  Context);
+        {'error', _R} -> crossbar_util:response_db_fatal(Context)
+    end.
+
+validate_user_id(UserId, Context, Doc) ->
+    case wh_json:is_true(<<"pvt_deleted">>, Doc) of
+        'true' -> cb_context:add_system_error('bad_identifier', [{'details', UserId}],  Context);
+        'false'->
+            cb_context:setters(Context
+                               ,[{fun cb_context:set_user_id/2, UserId}
+                                 ,{fun cb_context:set_resp_status/2, 'success'}
+                                ])
     end.
 
 %%--------------------------------------------------------------------
@@ -349,7 +356,44 @@ prepare_username(UserId, Context) ->
         'undefined' -> check_user_schema(UserId, Context);
         Username ->
             JObj1 = wh_json:set_value(<<"username">>, wh_util:to_lower_binary(Username), JObj),
-            check_user_schema(UserId, cb_context:set_req_data(Context, JObj1))
+            check_user_name(UserId, cb_context:set_req_data(Context, JObj1))
+    end.
+
+-spec check_user_name(api_binary(), cb_context:context()) -> cb_context:context().
+check_user_name(UserId, Context) ->
+    JObj = cb_context:req_data(Context),
+    UserName = wh_json:get_ne_value(<<"username">>, JObj),
+    AccountDb = cb_context:account_db(Context),
+    case is_username_unique(AccountDb, UserId, UserName) of
+        'true' ->
+            lager:debug("username ~p is unique", [UserName]),
+            check_emergency_caller_id(UserId, Context);
+        'false' ->
+            Context1 =
+                cb_context:add_validation_error(
+                    [<<"username">>]
+                    ,<<"unique">>
+                    ,<<"Username already in use">>
+                    ,Context
+                ),
+            lager:error("username ~p is already used", [UserName]),
+            check_emergency_caller_id(UserId, Context1)
+    end.
+
+-spec check_emergency_caller_id(api_binary(), cb_context:context()) -> cb_context:context().
+check_emergency_caller_id(UserId, Context) ->
+    Context1 = crossbar_util:format_emergency_caller_id_number(Context),
+    check_user_schema(UserId, Context1).
+
+-spec is_username_unique(api_binary(), api_binary(), ne_binary()) -> boolean().
+is_username_unique(AccountDb, UserId, UserName) ->
+    ViewOptions = [{'key', UserName}],
+    case couch_mgr:get_results(AccountDb, ?LIST_BY_USERNAME, ViewOptions) of
+        {'ok', []} -> 'true';
+        {'ok', [JObj|_]} -> wh_json:get_value(<<"id">>, JObj) =:= UserId;
+        _Else ->
+            lager:error("error ~p checking view ~p in ~p", [_Else, ?LIST_BY_USERNAME, AccountDb]),
+            'false'
     end.
 
 -spec check_user_schema(api_binary(), cb_context:context()) -> cb_context:context().
