@@ -19,7 +19,7 @@ handle_req(JObj, Props, Deliver) ->
         'true' ->
             case maybe_relay_request(JObj) of
                 'ack' -> gen_listener:ack(Srv, Deliver);
-                'nack' -> gen_listener:ack(Srv, Deliver)
+                'nack' -> gen_listener:nack(Srv, Deliver)
             end;
         'false' ->
             lager:debug("error validating inbound message : ~p", [JObj]),
@@ -95,9 +95,13 @@ send_route_win(FetchId, CallId, JObj) ->
 set_account_id(_Inception, NumberProps, JObj) ->
     AccountId = wh_number_properties:account_id(NumberProps),
     AccountRealm = wh_util:get_account_realm(AccountId),
-    wh_json:set_values([{?CCV(<<"Account-ID">>), AccountId}
-                        ,{?CCV(<<"Account-Realm">>), AccountRealm}
-                       ], JObj).
+    wh_json:set_values(
+                props:filter_undefined(
+                  [{?CCV(<<"Account-ID">>), AccountId}
+                   ,{?CCV(<<"Account-Realm">>), AccountRealm}
+                   ,{?CCV(<<"Authorizing-Type">>), <<"resource">>}                 
+                   ,{?CCV(<<"Authorizing-ID">>), wh_json:get_value(<<"Route-ID">>, JObj)}
+                  ]), JObj).
 
 -spec set_inception(ne_binary(), wh_proplist(), wh_json:object()) ->
                            wh_json:object().
@@ -119,7 +123,8 @@ set_mdn(<<"on-net">>, NumberProps, JObj) ->
                  ,{?CCV(<<"Authorizing-ID">>), Id}
                  ,{?CCV(<<"Owner-ID">>), OwnerId}
                 ])
-              ,JObj
+              ,wh_json:delete_keys([?CCV(<<"Authorizing-Type">>)
+                                    ,?CCV(<<"Authorizing-ID">>)], JObj)
              );
         {'error', _} -> JObj
     end;

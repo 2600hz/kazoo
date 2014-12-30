@@ -329,19 +329,19 @@ set_callee_id(EndpointId, Call) ->
               ]),
     whapps_call:set_custom_channel_vars(Props, Call).
 
--spec get_inbound_field(ne_binary()) -> ne_binary().
+-spec get_inbound_field(ne_binary()) -> ne_binaries().
 get_inbound_field(Inception) ->
     case Inception of
-        <<"on-net">> -> <<"Caller-ID-Number">>;
-        <<"off-net">> -> <<"Callee-ID-Number">>;
+        <<"on-net">> -> [<<"Caller-ID-Number">>, <<"From">>];
+        <<"off-net">> -> [<<"Callee-ID-Number">>, <<"To">>];
         _ -> get_inbound_field(?DEFAULT_INCEPTION)
     end.
 
 -spec get_inbound_destination(wh_json:object()) -> {ne_binary(), ne_binary()}.
 get_inbound_destination(JObj) ->
     Inception = wh_json:get_value(<<"Route-Type">>, JObj, ?DEFAULT_INCEPTION),
-    NumberField = get_inbound_field(Inception),
-    Number = wh_json:get_value(NumberField, JObj),
+    Keys = get_inbound_field(Inception),
+    Number = wh_json:get_first_defined(Keys, JObj),
     {wnm_util:to_e164(Number), Inception}.
 
 %%--------------------------------------------------------------------
@@ -357,7 +357,7 @@ lookup_number(Number) ->
     Num = wnm_util:normalize_number(Number),
     case wh_cache:fetch_local(?DOODLE_CACHE, cache_key_number(Num)) of
         {'ok', {AccountId, Props}} ->
-            lager:debug("found number properties in doodle cache : Account is ~s", [AccountId]),
+            lager:debug("cached number ~s is associated with account ~s", [Num, AccountId]),
             {'ok', AccountId, Props};
         {'error', 'not_found'} -> fetch_number(Num)
     end.
@@ -388,7 +388,7 @@ lookup_mdn(Number) ->
     Num = wnm_util:normalize_number(Number),
     case wh_cache:fetch_local(?DOODLE_CACHE, cache_key_mdn(Num)) of
         {'ok', Id, OwnerId} ->
-            lager:debug("found mdn doc in doodle cache"),
+            lager:debug("cached number ~s is associated with ~s/~s", [Num, OwnerId, Id]),
             {'ok', Id, OwnerId};
         {'error', 'not_found'} -> fetch_mdn(Num)
     end.
