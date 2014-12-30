@@ -100,7 +100,6 @@ set_account_id(_Inception, NumberProps, JObj) ->
                   [{?CCV(<<"Account-ID">>), AccountId}
                    ,{?CCV(<<"Account-Realm">>), AccountRealm}
                    ,{?CCV(<<"Authorizing-Type">>), <<"resource">>}                 
-                   ,{?CCV(<<"Authorizing-ID">>), wh_json:get_value(<<"Route-ID">>, JObj)}
                   ]), JObj).
 
 -spec set_inception(ne_binary(), wh_proplist(), wh_json:object()) ->
