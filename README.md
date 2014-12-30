@@ -155,6 +155,8 @@ If you have a non-US deployment, please consider sharing your system configurati
 * unzip
 * expat-devel
 * zlib-devel
+* openssl-devel
+* libxml-devel
 * make
 * nc
 
