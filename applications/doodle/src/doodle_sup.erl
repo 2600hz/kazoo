@@ -14,22 +14,9 @@
 
 -include("doodle.hrl").
 
-%% Helper macro for declaring children of supervisor
 
--define(POOL(N),  {N, {'poolboy', 'start_link', [[{'name', {'local', N}}
-                                                  ,{'worker_module', 'doodle_worker'}
-                                                  ,{'size', whapps_config:get_integer(?CONFIG_CAT, <<"workers">>, 5)}
-                                                  ,{'max_overflow', 0}
-                                                 ]]}
-                   ,'permanent', 5000, 'worker', ['poolboy']}).
-
-
--define(ORIGIN_BINDINGS, [
-                          [{'db', ?WH_SIP_DB }, {'type', <<"device">>}]
-                         ]).
--define(CACHE_PROPS, [
-                      {'origin_bindings', ?ORIGIN_BINDINGS}
-                     ]).
+-define(ORIGIN_BINDINGS, [ [{'db', ?WH_SIP_DB }, {'type', <<"device">>}] ]).
+-define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
 
 -define(CHILDREN, [?CACHE_ARGS(?DOODLE_CACHE, ?CACHE_PROPS)
                    ,?WORKER('doodle_listener')
