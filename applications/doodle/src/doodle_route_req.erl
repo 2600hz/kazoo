@@ -117,7 +117,6 @@ cache_call(Flow, NoMatch, ControllerQ, Call, JObj) ->
                    ,{'cf_capture_group', wh_json:get_ne_value(<<"capture_group">>, Flow)}
                    ,{'cf_no_match', NoMatch}
                    ,{'cf_metaflow', wh_json:get_value(<<"metaflows">>, Flow)}
-                   ,{'cf_metaflow', wh_json:get_value(<<"metaflows">>, Flow)}
                    ,{'flow_status', <<"queued">>}
                   ]
                 }
