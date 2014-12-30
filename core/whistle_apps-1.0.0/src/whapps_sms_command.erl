@@ -26,7 +26,7 @@
 -define(DEFAULT_MESSAGE_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"message_timeout">>, 60000)).
 -define(DEFAULT_APPLICATION_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"application_timeout">>, 500000)).
 -define(DEFAULT_STRATEGY, <<"single">>).
-  
+
 -spec default_collect_timeout() -> pos_integer().
 default_collect_timeout() ->
     ?DEFAULT_COLLECT_TIMEOUT.
@@ -39,9 +39,8 @@ default_message_timeout() ->
 default_application_timeout() ->
     ?DEFAULT_APPLICATION_TIMEOUT.
 
--type whapps_api_sms_return() :: {'error', 'timeout' | wh_json:object() }
-                                   | {'fail', wh_json:object()}
-                                   | {'ok', wh_json:object()}.
+-type whapps_api_sms_return() :: {'error', 'timeout' | wh_json:object()} |
+                                 {'ok', wh_json:object()}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -81,7 +80,7 @@ send(<<"single">>, API, [Endpoint | Others]) ->
     send(<<"single">>, API, Others);
 send(Strategy, _API, _Endpoints) ->
     lager:debug("Strategy ~s not implemented", [Strategy]).
-    
+
 
 send_and_wait(<<"single">>, _API, [], _Timeout, Count) when Count =:= 0 ->
     {'error', <<"no endpoints available">>};
@@ -102,14 +101,14 @@ send_and_wait(<<"single">>, API, [Endpoint| Others], Timeout, Count) ->
 send_and_wait(Strategy, _API, _Endpoints, _Timeout, _Count) ->
     lager:debug("Strategy ~s not implemented", [Strategy]).
 
-send_and_wait(<<"sip">>, API, Endpoint, Timeout) ->    
+send_and_wait(<<"sip">>, API, Endpoint, Timeout) ->
     Options = wh_json:to_proplist(wh_json:get_value(<<"Endpoint-Options">>, Endpoint, [])),
     Payload = props:set_values( [{<<"Endpoints">>, [Endpoint]} | Options], API),
     CallId = props:get_value(<<"Call-ID">>, Payload),
     lager:debug("sending sms and waiting for response ~s", [CallId]),
     whapps_util:amqp_pool_send(Payload, fun wapi_sms:publish_message/1),
     wait_for_correlated_message(CallId, <<"delivery">>, <<"message">>, Timeout);
-send_and_wait(<<"amqp">>, API, Endpoint, _Timeout) ->    
+send_and_wait(<<"amqp">>, API, Endpoint, _Timeout) ->
     CallId = props:get_value(<<"Call-ID">>, API),
     Options = wh_json:to_proplist(wh_json:get_value(<<"Endpoint-Options">>, Endpoint, [])),
     Props = wh_json:to_proplist(Endpoint) ++ Options,
@@ -117,7 +116,7 @@ send_and_wait(<<"amqp">>, API, Endpoint, _Timeout) ->
     lager:debug("sending sms and waiting for response ~s", [CallId]),
     whapps_util:amqp_pool_send(Payload, fun wapi_sms:publish_outbound/1),
     %% Message delivered
-    DeliveryProps = [{<<"Delivery-Result-Code">>, <<"sip:200">> }    
+    DeliveryProps = [{<<"Delivery-Result-Code">>, <<"sip:200">> }
                      ,{<<"Status">>, <<"Success">>}
                      ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, API) }
                      ,{<<"Call-ID">>, CallId }
@@ -158,7 +157,7 @@ create_sms_endpoints([Endpoint | Others], Endpoints) ->
         'undefined' -> create_sms_endpoints(Others, Endpoints);
         NewEndpoint -> create_sms_endpoints(Others, [NewEndpoint | Endpoints])
     end.
-    
+
 -spec create_sms_endpoint(wh_json:object(), binary()) -> api_object().
 create_sms_endpoint(Endpoint, <<"amqp">>) -> Endpoint;
 create_sms_endpoint(Endpoint, <<"sip">>) ->
@@ -174,7 +173,8 @@ create_sms_endpoint(Endpoint, <<"sip">>) ->
         {'error', _E} -> 'undefined'
     end.
 
--spec lookup_reg(ne_binary(), ne_binary()) -> wh_json:objects().
+-spec lookup_reg(ne_binary(), ne_binary()) -> {'error', _} |
+                                              {'ok', ne_binary()}.
 lookup_reg(Username, Realm) ->
     Req = [{<<"Realm">>, Realm}
            ,{<<"Username">>, Username}

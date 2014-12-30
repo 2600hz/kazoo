@@ -268,7 +268,7 @@ sms_status(_, _) -> <<"pending">>.
 %% certain actions, like cf_sms_offnet and cf_sms_resources
 %% @end
 %%--------------------------------------------------------------------
--spec handle_bridge_failure({'fail', wh_json:object()} | api_binary(), whapps_call:call()) ->
+-spec handle_bridge_failure({'fail' | 'error', wh_json:object() | atom()} | api_binary(), whapps_call:call()) ->
                                    'ok' | 'not_found'.
 handle_bridge_failure({'fail', Reason}, Call) ->
     {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
