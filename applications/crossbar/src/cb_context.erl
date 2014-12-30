@@ -804,11 +804,11 @@ add_system_error('too_many_requests', Context) ->
 add_system_error('no_credit', Context) ->
     crossbar_util:response('error', <<"not enough credit to perform action">>, 402, Context);
 add_system_error('unspecified_fault', Context) ->
-    crossbar_util:response('fatal', <<"unspecified fault">>, Context);
+    build_system_error(500, 'unspecified_fault', <<"unspecified fault">>, Context);
 add_system_error('account_cant_create_tree', Context) ->
-    crossbar_util:response('fatal', <<"account creation fault">>, Context);
+    build_system_error(500, 'account_cant_create_tree', <<"account creation fault">>, Context);
 add_system_error('account_has_descendants', Context) ->
-    crossbar_util:response('fatal', <<"account has descendants">>, Context);
+    build_system_error(500, 'account_has_descendants', <<"account has descendants">>, Context);
 add_system_error('faulty_request', Context) ->
     crossbar_util:response_faulty_request(Context);
 
@@ -856,6 +856,66 @@ add_system_error('timeout', Props, Context) ->
     crossbar_util:response('error', <<"timeout">>, 500, props:get_value('details', Props), Context);
 add_system_error(Error, _, Context) ->
     add_system_error(Error, Context).
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec build_system_error(integer(), atom(), ne_binary(), cb_context:context()) -> cb_context:context().
+-spec build_system_error(integer(), atom(), ne_binary(), wh_json:object() | wh_proplist(), cb_context:context()) -> cb_context:context().
+-spec build_system_error(ne_binary(), integer(), atom(), ne_binary(), wh_json:object(), cb_context:context()) -> cb_context:context().
+build_system_error(Code, Identifier, Message, Context) ->
+    build_system_error(Code, Identifier, Message, wh_json:new(), Context).
+
+build_system_error(Code, Identifier, Message, Data, Context) when is_list(Data) ->
+    ApiVersion = cb_context:api_version(Context),
+    build_system_error(ApiVersion, Code, Identifier, Message, wh_json:from_list(Data), Context);
+build_system_error(Code, Identifier, Message, Data, Context) ->
+    ApiVersion = cb_context:api_version(Context),
+    build_system_error(ApiVersion, Code, Identifier, Message, Data, Context).
+
+build_system_error(?VERSION_1, Code, _, Message, Data, Context) ->
+    Context#cb_context{resp_status='error'
+                       ,resp_error_code=Code
+                       ,resp_data=Data
+                       ,resp_error_msg=Message
+                      };
+build_system_error(_, 500, Identifier, Message, Data, Context) ->
+    UpdatedData = build_error_data(Identifier, Message, Data, Context),
+    Context#cb_context{resp_status='error'
+                       ,resp_error_code=500
+                       ,resp_data=UpdatedData
+                       ,resp_error_msg = <<"enable to comply">>
+                      };
+build_system_error(_, Code, Identifier, Message, Data, Context) ->
+    UpdatedData = build_error_data(Identifier, Message, Data, Context),
+    Context#cb_context{resp_status='error'
+                       ,resp_error_code=Code
+                       ,resp_data=UpdatedData
+                       ,resp_error_msg=Message
+                      }.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec build_error_data(atom(), ne_binary(), wh_json:object(), cb_context:context()) -> wh_json:object().
+build_error_data(Identifier, Message, Data, _Context) ->
+    SubData =
+        wh_json:from_list(
+            props:filter_undefined([
+                {<<"message">>, Message}
+                ,{<<"target">>, wh_json:get_value(<<"target">>, Data)}
+            ])
+        ),
+    wh_json:from_list([
+        {wh_util:to_binary(Identifier), SubData}
+    ]).
 
 %%--------------------------------------------------------------------
 %% @public
