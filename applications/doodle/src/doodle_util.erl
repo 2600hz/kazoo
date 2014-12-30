@@ -90,10 +90,10 @@ save_sms(JObj, 'undefined', Call) ->
     {Year, Month, _} = erlang:date(),
     SmsDocId = wh_util:to_binary(
                  io_lib:format("~B~s-~s",
-                           [Year
-                            ,wh_util:pad_month(Month)
-                            , whapps_call:call_id(Call)
-                           ])),
+                               [Year
+                                ,wh_util:pad_month(Month)
+                                , whapps_call:call_id(Call)
+                               ])),
     UpdatedCall = whapps_call:kvs_store('sms_docid', SmsDocId, Call),
     Doc = wh_json:set_value(<<"pvt_created">>, wh_util:current_tstamp(), wh_json:new()),
     save_sms(JObj, SmsDocId, Doc, UpdatedCall);

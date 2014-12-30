@@ -26,8 +26,10 @@
 
 
 -define(BINDINGS, [{'sms', [{'restrict_to', ['delivery','resume']}]}
-                   ,{'registration',[{'restrict_to', ['reg_success']}]}
-                   ,{'conf',[{'action', 'created'}, {'doc_type', <<"sms">>}]}
+                   ,{'registration', [{'restrict_to', ['reg_success']}]}
+                   ,{'conf',[{'action', 'created'}
+                             ,{'doc_type', <<"sms">>}
+                            ]}
                    ,{'self', []}
                   ]).
 -define(RESPONDERS, [{'doodle_delivery_handler', [{<<"message">>, <<"delivery">>}]}
@@ -50,14 +52,16 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link({'local', ?MODULE}, ?MODULE, [
-                                      {'bindings', ?BINDINGS}
-                                      ,{'responders', ?RESPONDERS}
-                                      ,{'queue_name', ?QUEUE_NAME}       % optional to include
-                                      ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
-                                      ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
-                                      %%,{basic_qos, 1}                % only needed if prefetch controls
-                                     ], []).
+    gen_listener:start_link({'local', ?MODULE}
+                            ,?MODULE
+                            ,[{'bindings', ?BINDINGS}
+                              ,{'responders', ?RESPONDERS}
+                              ,{'queue_name', ?QUEUE_NAME}       % optional to include
+                              ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
+                              ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
+                             ]
+                            ,[]
+                           ).
 
 %%%===================================================================
 %%% gen_server callbacks

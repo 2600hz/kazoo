@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2014, 2600Hz
 %%% @doc
 %%% Handlers for various AMQP payloads
 %%% @end
 %%% @contributors
-%%%   James Aimonetti
+%%%   Luis Azedo
 %%%-------------------------------------------------------------------
 -module(doodle_notify_handler).
 
