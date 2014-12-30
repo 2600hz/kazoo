@@ -4,7 +4,7 @@
 %%%
 %%% @end
 %%% @contributors
-%%%   Karl Anderson
+%%%   Luis Azedo
 %%%-------------------------------------------------------------------
 -module(cf_sms_user).
 
@@ -36,7 +36,7 @@ handle(Data, Call1) ->
             doodle_exe:continue(doodle_util:set_flow_status(<<"pending">>, Call));
         {'ok', JObj} ->
             handle_result(JObj, Call);
-        {'error', _R}=Reason -> 
+        {'error', _R}=Reason ->
             lager:info("error bridging to user: ~p", [_R]),
             maybe_handle_bridge_failure(Reason, Call)
     end.
@@ -45,11 +45,14 @@ handle(Data, Call1) ->
 handle_result(JObj, Call1) ->
     Status = doodle_util:sms_status(JObj),
     Call = doodle_util:set_flow_status(Status, Call1),
-    case Status of
-        <<"pending">> -> doodle_exe:stop(Call);
-        _ -> lager:info("completed successful message to the user"),
-             doodle_exe:continue(Call)
-    end.
+    handle_result_status(Call, Status).
+
+-spec handle_result_status(whapps_call:call(), ne_binary()) -> 'ok'.
+handle_result_status(Call, <<"pending">>) ->
+    doodle_exe:stop(Call);
+handle_result_status(Call, _Status) ->
+    lager:info("completed successful message to the user"),
+    doodle_exe:continue(Call).
 
 -spec maybe_handle_bridge_failure(_, whapps_call:call()) -> 'ok'.
 maybe_handle_bridge_failure(Reason, Call) ->
@@ -77,4 +80,7 @@ get_endpoints(UserId, Data, Call) ->
                             {'ok', Endpoint} -> Endpoint ++ Acc;
                             {'error', _E} -> Acc
                         end
-                end, [], cf_attributes:owned_by(UserId, <<"device">>, Call)).
+                end
+                ,[]
+                ,cf_attributes:owned_by(UserId, <<"device">>, Call)
+               ).
