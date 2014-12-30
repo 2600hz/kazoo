@@ -30,15 +30,17 @@ handle(Data, Call1) ->
     end.
 
 -spec handle_result(wh_json:object(), whapps_call:call()) -> 'ok'.
-handle_result(JObj, Call1) ->
+handle_result(JObj, Call) ->
     Status = doodle_util:sms_status(JObj),
-    Call = doodle_util:set_flow_status(Status, Call1),
-    case Status of
-        <<"pending">> -> doodle_exe:stop(Call);
-        _ -> lager:info("completed successful message to the device"),
-             doodle_exe:continue(Call)
-    end.
+    Call1 = doodle_util:set_flow_status(Status, Call),
+    handle_result_status(Call1, Status).
 
+-spec handle_result_status(whapps_call:call(), ne_binary()) -> 'ok'.
+handle_result_status(Call, <<"pending">>) ->
+    doodle_exe:stop(Call);
+handle_result_status(Call, _Status) ->
+    lager:info("completed successful message to the device"),
+    doodle_exe:continue(Call).
 
 -spec maybe_handle_bridge_failure({'error', _}, whapps_call:call()) -> 'ok'.
 maybe_handle_bridge_failure(Reason, Call) ->
