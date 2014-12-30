@@ -69,8 +69,13 @@ migrate_private_media(Account) ->
 
 maybe_migrate_private_media(AccountDb, JObj) ->
     DocId = wh_json:get_value(<<"id">>, JObj),
-    {'ok', Doc } = couch_mgr:open_doc(AccountDb, DocId),
-    migrate_private_media(AccountDb, Doc, wh_json:get_value(<<"media_type">>, Doc)).
+    case couch_mgr:open_doc(AccountDb, DocId) of 
+        {'ok', Doc } -> 
+            MediaType = wh_json:get_value(<<"media_type">>, Doc),
+            migrate_private_media(AccountDb, Doc, MediaType);
+        {'error', Error} ->
+            io:format("document ~s not found in database ~s : ~p~n", [DocId, AccountDb, Error])
+    end.
 
 migrate_private_media(AccountDb, Doc, <<"tiff">>) ->
     _ = couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"pvt_type">>, <<"fax">>, Doc)),
