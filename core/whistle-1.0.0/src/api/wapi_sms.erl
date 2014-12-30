@@ -373,7 +373,8 @@ publish_message(Req, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?SMS_REQ_VALUES, fun message/1),
     CallId = props:get_value(<<"Call-ID">>, Req),
     RouteId = props:get_value(<<"Route-ID">>, Req, <<"*">>),
-    amqp_util:basic_publish(?SMS_EXCHANGE, ?SMS_ROUTING_KEY(RouteId, CallId), Payload, ContentType).
+    Exchange = props:get_value(<<"Exchange-ID">>, Req, ?SMS_EXCHANGE),
+    amqp_util:basic_publish(Exchange, ?SMS_ROUTING_KEY(RouteId, CallId), Payload, ContentType).
 
 -spec publish_inbound(api_terms()) -> 'ok'.
 -spec publish_inbound(api_terms(), binary()) -> 'ok'.
@@ -384,7 +385,8 @@ publish_inbound(Req, ContentType) ->
     MessageId = props:get_value(<<"Message-ID">>, Req),
     SystemId = props:get_value(<<"System-ID">>, Req),
     RouteId = props:get_value(<<"Route-ID">>, Req, <<"*">>),
-    amqp_util:basic_publish(?SMS_EXCHANGE, ?INBOUND_ROUTING_KEY(SystemId, RouteId, MessageId), Payload, ContentType).
+    Exchange = props:get_value(<<"Exchange-ID">>, Req, ?SMS_EXCHANGE),
+    amqp_util:basic_publish(Exchange, ?INBOUND_ROUTING_KEY(SystemId, RouteId, MessageId), Payload, ContentType).
 
 -spec publish_outbound(api_terms()) -> 'ok'.
 -spec publish_outbound(api_terms(), binary()) -> 'ok'.
@@ -395,7 +397,8 @@ publish_outbound(Req, ContentType) ->
     MessageId = props:get_value(<<"Message-ID">>, Req),
     SystemId = props:get_value(<<"System-ID">>, Req),
     RouteId = props:get_value(<<"Route-ID">>, Req, <<"*">>),
-    amqp_util:basic_publish(?SMS_EXCHANGE, ?OUTBOUND_ROUTING_KEY(SystemId, RouteId, MessageId), Payload, ContentType).
+    Exchange = props:get_value(<<"Exchange-ID">>, Req, ?SMS_EXCHANGE),
+    amqp_util:basic_publish(Exchange, ?OUTBOUND_ROUTING_KEY(SystemId, RouteId, MessageId), Payload, ContentType).
 
 -spec publish_delivery(api_terms()) -> 'ok'.
 -spec publish_delivery(api_terms(), binary()) -> 'ok'.
@@ -404,7 +407,8 @@ publish_delivery(JObj) ->
 publish_delivery(Req, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?DELIVERY_REQ_VALUES, fun delivery/1),
     CallId = props:get_value(<<"Call-ID">>, Req),
-    amqp_util:basic_publish(?SMS_EXCHANGE, ?DELIVERY_ROUTING_KEY(CallId), Payload, ContentType).
+    Exchange = props:get_value(<<"Exchange-ID">>, Req, ?SMS_EXCHANGE),
+    amqp_util:basic_publish(Exchange, ?DELIVERY_ROUTING_KEY(CallId), Payload, ContentType).
 
 -spec publish_targeted_delivery(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_targeted_delivery(ne_binary(), api_terms(), binary()) -> 'ok'.
@@ -426,4 +430,5 @@ publish_resume(JObj) ->
 publish_resume(Req, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?RESUME_REQ_VALUES, fun resume/1),
     CallId = props:get_value(<<"Call-ID">>, Req),
-    amqp_util:basic_publish(?SMS_EXCHANGE, ?RESUME_ROUTING_KEY(CallId), Payload, ContentType).
+    Exchange = props:get_value(<<"Exchange-ID">>, Req, ?SMS_EXCHANGE),
+    amqp_util:basic_publish(Exchange, ?RESUME_ROUTING_KEY(CallId), Payload, ContentType).
