@@ -305,10 +305,10 @@ cast(Req, PubFun, Pool) when is_atom(Pool) ->
         {'error', _}=E -> E;
         Worker -> 
             Resp = cast(Req, PubFun, Worker),
-            checkin_worker(Worker),
+            checkin_worker(Worker, Pool),
             Resp
     end;
-cast(Req, PubFun, Worker) ->
+cast(Req, PubFun, Worker) when is_pid(Worker) ->
     Prop = maybe_convert_to_proplist(Req),
     try gen_listener:call(Worker, {'publish', Prop, PubFun}) of
         Reply -> Reply
