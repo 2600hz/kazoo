@@ -268,21 +268,22 @@ sms_status(_, _) -> <<"pending">>.
 %% certain actions, like cf_sms_offnet and cf_sms_resources
 %% @end
 %%--------------------------------------------------------------------
--spec handle_bridge_failure({'fail', wh_json:object()} | api_binary(), whapps_call:call()) ->
+-spec handle_bridge_failure({'fail' | 'error', wh_json:object() | atom()} | api_binary(), whapps_call:call()) ->
                                    'ok' | 'not_found'.
 handle_bridge_failure({'fail', Reason}, Call) ->
     {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
     handle_bridge_failure(Cause, Code, Call);
 handle_bridge_failure('undefined', _) ->
     'not_found';
-handle_bridge_failure(Failure, Call) ->
+handle_bridge_failure(<<_/binary>> = Failure, Call) ->
     case doodle_exe:attempt(Failure, Call) of
         {'attempt_resp', 'ok'} ->
             lager:info("found child branch to handle failure: ~s", [Failure]),
             'ok';
         {'attempt_resp', _} ->
             'not_found'
-    end.
+    end;
+handle_bridge_failure(_, _Call) -> 'not_found'.
 
 -spec handle_bridge_failure(api_binary(), api_binary(), whapps_call:call()) ->
                                    'ok' | 'not_found'.

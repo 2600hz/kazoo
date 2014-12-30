@@ -199,7 +199,7 @@ get_all_branch_keys(Call) ->
 -spec attempt(whapps_call:call() | pid()) ->
                      {'attempt_resp', 'ok'} |
                      {'attempt_resp', {'error', term()}}.
--spec attempt(ne_binary(), whapps_call:call() | pid()) ->
+-spec attempt(wh_json:key(), whapps_call:call() | pid()) ->
                      {'attempt_resp', 'ok'} |
                      {'attempt_resp', {'error', term()}}.
 attempt(Srv) -> attempt(<<"_">>, Srv).

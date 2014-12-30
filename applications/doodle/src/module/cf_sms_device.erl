@@ -40,7 +40,7 @@ handle_result(JObj, Call1) ->
     end.
 
 
--spec maybe_handle_bridge_failure(_, whapps_call:call()) -> 'ok'.
+-spec maybe_handle_bridge_failure({'error', _}, whapps_call:call()) -> 'ok'.
 maybe_handle_bridge_failure(Reason, Call) ->
     case doodle_util:handle_bridge_failure(Reason, Call) of
         'not_found' ->
