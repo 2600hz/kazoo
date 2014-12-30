@@ -162,15 +162,22 @@ validate_resource(Context, UserId, _) -> validate_user_id(UserId, Context).
 validate_resource(Context, UserId, _, _) -> validate_user_id(UserId, Context).
 
 -spec validate_user_id(api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_user_id(api_binary(), cb_context:context(), wh_json:object()) -> cb_context:context().
 validate_user_id(UserId, Context) ->
     case couch_mgr:open_cache_doc(cb_context:account_db(Context), UserId) of
-        {'ok', Doc} ->
-            case wh_json:is_true(<<"pvt_deleted">>, Doc) of
-                'true' -> cb_context:add_system_error('bad_identifier', [{'details', UserId}],  Context);
-                'false'-> cb_context:set_user_id(Context, UserId)
-            end; 
+        {'ok', Doc} -> validate_user_id(UserId, Context, Doc);
        {'error', 'not_found'} -> cb_context:add_system_error('bad_identifier', [{'details', UserId}],  Context);
        {'error', _R} -> crossbar_util:response_db_fatal(Context)
+    end.
+
+validate_user_id(UserId, Context, Doc) ->
+    case wh_json:is_true(<<"pvt_deleted">>, Doc) of
+        'true' -> cb_context:add_system_error('bad_identifier', [{'details', UserId}],  Context);
+        'false'->
+            cb_context:setters(Context
+                               ,[{fun cb_context:set_user_id/2, UserId}
+                                 ,{fun cb_context:set_resp_status/2, 'success'}
+                                ])
     end.
 
 %%--------------------------------------------------------------------
@@ -354,7 +361,7 @@ check_emergency_caller_id(UserId, Context) ->
     Context1 = crossbar_util:format_emergency_caller_id_number(Context),
     check_user_schema(UserId, Context1).
 
--spec is_username_unique(api_binary(), ne_binary(), ne_binary()) -> boolean().
+-spec is_username_unique(api_binary(), api_binary(), ne_binary()) -> boolean().
 is_username_unique(AccountDb, UserId, UserName) ->
     ViewOptions = [{'key', UserName}],
     case couch_mgr:get_results(AccountDb, ?LIST_BY_USERNAME, ViewOptions) of
