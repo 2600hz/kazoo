@@ -1529,7 +1529,6 @@ store_recording(AttachmentName, DocId, Call) ->
 
 store_recording(AttachmentName, DocId, Call, _Box, 'undefined') ->
     store_recording(AttachmentName, DocId, Call);
-
 store_recording(AttachmentName, DocId, Call, #mailbox{owner_id=OwnerId}, StorageUrl) ->
     Url = get_media_url(AttachmentName, DocId, Call, OwnerId, StorageUrl),
     lager:debug("storing recording ~s at ~s", [AttachmentName, Url]),
@@ -1545,12 +1544,12 @@ store_recording(AttachmentName, DocId, Call, #mailbox{owner_id=OwnerId}, Storage
         {'error', _} -> 'false'
     end.
 
--spec get_media_url(ne_binary(), ne_binary(), whapps_call:call(), ne_binary(), ne_binary()) -> ne_binary().
+-spec get_media_url(ne_binary(), ne_binary(), whapps_call:call(), api_binary(), ne_binary()) -> ne_binary().
 get_media_url(AttachmentName, DocId, Call, OwnerId, StorageUrl) ->
     AccountId = whapps_call:account_id(Call),
     <<StorageUrl/binary
       ,"/", AccountId/binary
-      ,"/", OwnerId/binary
+      ,"/", (wh_util:to_binary(OwnerId))/binary
       ,"/", DocId/binary
       ,"/", AttachmentName/binary
     >>.
