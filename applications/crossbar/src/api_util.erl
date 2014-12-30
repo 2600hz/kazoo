@@ -809,9 +809,13 @@ validate(Context, ReqNouns) ->
             Context2 = validate_data(Context1, ReqNouns),
             case succeeded(Context2) of
                 'true' -> process_billing(Context2);
-                'false' -> Context2
+                'false' ->
+                    lager:debug("validating data failed"),
+                    Context2
             end;
-        'false' -> Context1
+        'false' ->
+            lager:debug("validating resources failed"),
+            Context1
     end.
 
 -spec validate_data(cb_context:context(), list()) -> cb_context:context().
@@ -823,14 +827,16 @@ validate_data(Context, [{Mod, Params}|_]) ->
 -spec validate_resources(cb_context:context(), list()) -> cb_context:context().
 validate_resources(Context, ReqNouns) ->
     cb_context:import_errors(
-        lists:foldr(fun({Mod, Params}, ContextAcc) ->
-            Event = api_util:create_event_name(Context, <<"validate_resource.", Mod/binary>>),
-            Payload = [ContextAcc | Params],
-            crossbar_bindings:fold(Event, Payload)
-        end
-        ,Context
-        ,ReqNouns
-    )).
+      lists:foldr(fun validate_resources_fold/2
+                  ,cb_context:set_resp_status(Context, 'success')
+                  ,ReqNouns
+                 )).
+
+-spec validate_resources_fold(req_noun(), cb_context:context()) -> cb_context:context().
+validate_resources_fold({Mod, Params}, ContextAcc) ->
+    Event = api_util:create_event_name(ContextAcc, <<"validate_resource.", Mod/binary>>),
+    Payload = [ContextAcc | Params],
+    crossbar_bindings:fold(Event, Payload).
 
 %%--------------------------------------------------------------------
 %% @private
