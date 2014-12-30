@@ -382,8 +382,8 @@ is_account_expired(Account) ->
             Now = wh_util:current_tstamp(),
             Trial = wh_json:get_integer_value(<<"pvt_trial_expires">>, Doc, Now+1),
             Trial < Now;
-        {'error', R} ->
-            lager:debug("failed to check if expired token auth, ~p", [R]),
+        {'error', _R} ->
+            lager:debug("failed to check if expired token auth, ~p", [_R]),
             'false'
     end.
 
@@ -405,8 +405,8 @@ get_account_realm('undefined', _) -> 'undefined';
 get_account_realm(Db, AccountId) ->
     case couch_mgr:open_cache_doc(Db, AccountId) of
         {'ok', JObj} -> wh_json:get_ne_value(<<"realm">>, JObj);
-        {'error', R} ->
-            lager:debug("error while looking up account realm in ~s: ~p", [AccountId, R]),
+        {'error', _R} ->
+            lager:debug("error while looking up account realm in ~s: ~p", [AccountId, _R]),
             'undefined'
     end.
 
