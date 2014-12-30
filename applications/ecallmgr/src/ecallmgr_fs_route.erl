@@ -392,12 +392,10 @@ route_req_ccvs(FetchId, Props) ->
 %% TODO
 %% check content-type and decode properly
 %% some sip clients send text/html with entities encoded
+%% some other use application/vnd.3gpp.sms
 -spec get_body(wh_proplist()) -> api_binary().
 get_body(Props) ->
-    case props:get_value(<<"body">>, Props) of
-        'undefined' -> 'undefined';
-        Body -> Body
-    end.
+    props:get_value(<<"body">>, Props).
 
 -spec get_redirected(wh_proplist()) ->
                             {api_binary(), api_binary()}.
