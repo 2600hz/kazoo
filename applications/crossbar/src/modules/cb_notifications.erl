@@ -129,7 +129,7 @@ resource_exists(_Id, ?PREVIEW) -> 'true'.
 -spec content_types_provided(cb_context:context(), path_token(), http_method()) ->
                                     cb_context:context().
 content_types_provided(Context, Id) ->
-    content_types_provided(Context, db_id(Id), cb_context:req_verb(Context)).
+    content_types_provided(Context, kz_notification:db_id(Id), cb_context:req_verb(Context)).
 
 content_types_provided(Context, Id, ?HTTP_GET) ->
     Context1 = read(Context, Id),
@@ -209,10 +209,10 @@ validate(Context) ->
     validate_notifications(Context, cb_context:req_verb(Context)).
 
 validate(Context, Id) ->
-    validate_notification(Context, db_id(Id), cb_context:req_verb(Context)).
+    validate_notification(Context, kz_notification:db_id(Id), cb_context:req_verb(Context)).
 
 validate(Context, Id, ?PREVIEW) ->
-    update(Context, db_id(Id)).
+    update_notification(Context, kz_notification:db_id(Id)).
 
 -spec validate_notifications(cb_context:context(), http_method()) ->
                                     cb_context:context().
@@ -257,8 +257,8 @@ post(Context, Id) ->
     case cb_context:req_files(Context) of
         [] -> do_post(Context);
         [{_FileName, FileJObj}] ->
-            lager:debug("POST is for an attachment on ~s(~s)", [Id, db_id(Id)]),
-            update_template(Context, db_id(Id), FileJObj)
+            lager:debug("POST is for an attachment on ~s(~s)", [Id, kz_notification:db_id(Id)]),
+            update_template(Context, kz_notification:db_id(Id), FileJObj)
     end.
 
 -spec do_post(cb_context:context()) -> cb_context:context().
@@ -380,7 +380,7 @@ maybe_delete_template(Context, Id, ContentType, TemplateJObj) ->
             cb_context:add_system_error('bad_identifier', [{'details', ContentType}],  Context);
         _Attachment ->
             lager:debug("attempting to delete attachment ~s", [AttachmentName]),
-            crossbar_doc:delete_attachment(db_id(Id), AttachmentName, Context)
+            crossbar_doc:delete_attachment(kz_notification:db_id(Id), AttachmentName, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -494,13 +494,23 @@ read_account(Context, Id, LoadFrom) ->
           ,cb_context:resp_status(Context1)
          }
     of
-        {404, 'error'} when LoadFrom =:= 'system' -> read_system(Context, Id);
+        {404, 'error'} when LoadFrom =:= 'system' ->
+            read_system_for_account(Context, Id);
         {_Code, 'success'} ->
             lager:debug("loaded from account"),
             cb_context:set_resp_data(Context1
                                      ,note_account_override(cb_context:resp_data(Context1))
                                     );
         {_Code, _Status} -> Context1
+    end.
+
+-spec read_system_for_account(cb_context:context(), path_token()) -> cb_context:context().
+read_system_for_account(Context, Id) ->
+    Context1 = read_system(Context, Id),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            cb_context:set_account_db(Context1, cb_context:account_db(Context));
+        _Status -> Context1
     end.
 
 -spec note_account_override(wh_json:object()) -> wh_json:object().
@@ -536,11 +546,18 @@ read_template(Context, Id, Accept) ->
 
             cb_context:add_resp_headers(
               crossbar_doc:load_attachment(Id, AttachmentName, Context)
-              ,[{<<"Content-Disposition">>, [<<"attachment; filename=">>, resp_id(Id), $., cb_modules_util:content_type_to_extension(Accept)]}
+              ,[{<<"Content-Disposition">>, attachment_filename(Id, Accept)}
                 ,{<<"Content-Type">>, wh_json:get_value(<<"content_type">>, Meta)}
                 ,{<<"Content-Length">>, wh_json:get_value(<<"length">>, Meta)}
                ])
     end.
+
+-spec attachment_filename(ne_binary(), ne_binary()) -> iolist().
+attachment_filename(Id, Accept) ->
+    [<<"attachment; filename=">>
+     ,kz_notification:resp_id(Id)
+     ,$., cb_modules_util:content_type_to_extension(Accept)
+    ].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -552,14 +569,14 @@ read_template(Context, Id, Accept) ->
 -spec maybe_update(cb_context:context(), ne_binary()) -> cb_context:context().
 maybe_update(Context, Id) ->
     case cb_context:req_files(Context) of
-        [] -> update(Context, Id);
+        [] -> update_notification(Context, Id);
         [{_FileName, FileJObj}] ->
             lager:debug("recv template upload of ~s: ~p", [_FileName, FileJObj]),
             read(Context, Id)
     end.
 
--spec update(cb_context:context(), ne_binary()) -> cb_context:context().
-update(Context, Id) ->
+-spec update_notification(cb_context:context(), ne_binary()) -> cb_context:context().
+update_notification(Context, Id) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
     cb_context:validate_request_data(<<"notifications">>, Context, OnSuccess).
 
@@ -701,7 +718,7 @@ master_notification_doc(DocId) ->
 on_successful_validation('undefined', Context) ->
     ReqTemplate = clean_req_doc(cb_context:doc(Context)),
 
-    DocId = db_id(wh_json:get_value(<<"id">>, ReqTemplate)),
+    DocId = kz_notification:db_id(ReqTemplate),
 
     case master_notification_doc(DocId) of
         {'ok', _JObj} ->
@@ -752,7 +769,7 @@ handle_missing_master_notification(Context, DocId, ReqTemplate) ->
             lager:debug("doc ~s does not exist in the master account, not letting ~s create it"
                         ,[DocId, _AccountId]
                        ),
-            crossbar_util:response_bad_identifier(resp_id(DocId), Context)
+            crossbar_util:response_bad_identifier(kz_notification:resp_id(DocId), Context)
     end.
 
 -spec create_new_notification(cb_context:context(), ne_binary(), wh_json:object(), ne_binary()) ->
@@ -777,23 +794,19 @@ clean_req_doc(Doc) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec db_id(ne_binary()) -> ne_binary().
-db_id(<<"notification.", _/binary>> = Id) -> Id;
-db_id(Id) -> <<"notification.", Id/binary>>.
-
--spec resp_id(ne_binary()) -> ne_binary().
-resp_id(<<"notification.", Id/binary>>) -> Id;
-resp_id(Id) -> Id.
-
 -spec leak_doc_id(cb_context:context()) -> cb_context:context().
 leak_doc_id(Context) ->
     RespData = cb_context:resp_data(Context),
-    DocId = wh_json:get_first_defined([<<"_id">>, <<"id">>], RespData),
-    cb_context:set_resp_data(Context, wh_json:set_value(<<"id">>, resp_id(DocId), RespData)).
+    cb_context:set_resp_data(Context
+                             ,wh_json:set_value(<<"id">>
+                                                ,kz_notification:resp_id(RespData)
+                                                ,RespData
+                                               )
+                            ).
 
 -spec leak_attachments(cb_context:context()) -> cb_context:context().
 leak_attachments(Context) ->
-    Attachments = wh_json:get_value(<<"_attachments">>, cb_context:fetch(Context, 'db_doc'), wh_json:new()),
+    Attachments = wh_doc:attachments(cb_context:fetch(Context, 'db_doc'), wh_json:new()),
     Templates = wh_json:foldl(fun leak_attachments_fold/3, wh_json:new(), Attachments),
     cb_context:set_resp_data(Context
                              ,wh_json:set_value(<<"templates">>, Templates, cb_context:resp_data(Context))
