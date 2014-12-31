@@ -800,9 +800,9 @@ find_schema(<<_/binary>> = Schema) ->
 %%--------------------------------------------------------------------
 -spec add_system_error(atom() | binary(), context()) -> context().
 add_system_error('too_many_requests', Context) ->
-    crossbar_util:response('fatal', <<"too many requests">>, 429, Context);
+    build_system_error(429, 'too_many_requests', <<"too many requests">>, Context);
 add_system_error('no_credit', Context) ->
-    crossbar_util:response('error', <<"not enough credit to perform action">>, 402, Context);
+    build_system_error(402, 'no_credit', <<"not enough credit to perform action">>, Context);
 add_system_error('unspecified_fault', Context) ->
     build_system_error(500, 'unspecified_fault', <<"unspecified fault">>, Context);
 add_system_error('account_cant_create_tree', Context) ->
@@ -810,52 +810,70 @@ add_system_error('account_cant_create_tree', Context) ->
 add_system_error('account_has_descendants', Context) ->
     build_system_error(500, 'account_has_descendants', <<"account has descendants">>, Context);
 add_system_error('faulty_request', Context) ->
-    crossbar_util:response_faulty_request(Context);
+    build_system_error(404, 'faulty_request', <<"faulty request">>, Context);
 
 add_system_error('bad_identifier', Context) ->
-    crossbar_util:response_bad_identifier(<<"unknown">>, Context);
+    build_system_error(404, 'bad_identifier', <<"bad identifier">>, Context);
 
 add_system_error('forbidden', Context) ->
-    crossbar_util:response('error', <<"forbidden">>, 403, Context);
+    build_system_error(403, 'forbidden', <<"forbidden">>, Context);
 add_system_error('invalid_credentials', Context) ->
-    crossbar_util:response('error', <<"invalid credentials">>, 401, Context);
+    build_system_error(401, 'invalid_credentials', <<"invalid credentials">>, Context);
 
 add_system_error('datastore_missing', Context) ->
-    crossbar_util:response_db_missing(Context);
+    build_system_error(503, 'datastore_missing', <<"data collection missing: database not found">>, Context);
 add_system_error('datastore_missing_view', Context) ->
-    crossbar_util:response_missing_view(Context);
+    build_system_error(503, 'datastore_missing_view', <<"datastore missing view">>, Context);
 add_system_error('datastore_conflict', Context) ->
-    crossbar_util:response_conflicting_docs(Context);
+    build_system_error(409, 'datastore_conflict', <<"conflicting documents">>, Context);
 add_system_error('datastore_unreachable', Context) ->
-    crossbar_util:response_datastore_timeout(Context);
+    build_system_error(503, 'datastore_unreachable', <<"datastore timeout">>, Context);
 add_system_error('datastore_fault', Context) ->
-    crossbar_util:response_db_fatal(Context);
+    build_system_error(503, 'datastore_fault', <<"datastore fatal error">>, Context);
 add_system_error('empty_tree_accounts_exist', Context) ->
-    crossbar_util:response('error', <<"unable to create account tree">>, 400, Context);
+    build_system_error(400, 'empty_tree_accounts_exist', <<"unable to create account tree">>, Context);
 
 add_system_error('parse_error', Context) ->
-    crossbar_util:response('error', <<"failed to parse request body">>, 400, Context);
+    build_system_error(400, 'parse_error', <<"failed to parse request body">>, Context);
 add_system_error('invalid_method', Context) ->
-    crossbar_util:response('error', <<"method not allowed">>, 405, Context);
+    build_system_error(405, 'invalid_method', <<"method not allowed">>, Context);
 add_system_error('not_found', Context) ->
-    crossbar_util:response('error', <<"not found">>, 404, Context);
+    build_system_error(404, 'not_found', <<"not found">>, Context);
 add_system_error(Error, Context) ->
-    crossbar_util:response('error', Error, Context).
+    build_system_error(500, Error, wh_util:to_binary(Error), Context).
 
 add_system_error('bad_identifier', Props, Context) ->
-    Identifier = props:get_value('details', Props),
-    crossbar_util:response_bad_identifier(Identifier, Context);
+    Data =
+        wh_json:from_list([
+            {<<"target">>, props:get_value('details', Props)}
+        ]),
+    build_system_error(404, 'bad_identifier', <<"bad identifier">>, Data, Context);
 add_system_error('invalid_bulk_type', Props, Context) ->
     Type = props:get_value('type', Props),
+    Data =
+        wh_json:from_list([
+            {<<"target">>, Type}
+        ]),
     Reason = <<"bulk operations do not support documents of type ", (wh_util:to_binary(Type))/binary>>,
-    crossbar_util:response('error', <<"invalid bulk type">>, 400, Reason, Context);
+    build_system_error(400, 'invalid_bulk_type', Reason, Data, Context);
 add_system_error('forbidden', Props, Context) ->
-    Reason = props:get_value('details', Props),
-    crossbar_util:response('error', <<"forbidden">>, 403, Reason, Context);
+    Data =
+        wh_json:from_list([
+            {<<"target">>, props:get_value('details', Props)}
+        ]),
+    build_system_error(403, 'forbidden', <<"forbidden">>, Data, Context);
 add_system_error('timeout', Props, Context) ->
-    crossbar_util:response('error', <<"timeout">>, 500, props:get_value('details', Props), Context);
-add_system_error(Error, _, Context) ->
-    add_system_error(Error, Context).
+    Data =
+        wh_json:from_list([
+            {<<"target">>, props:get_value('details', Props)}
+        ]),
+    build_system_error(500, 'timeout', <<"timeout">>, Data, Context);
+add_system_error(Error, Props, Context) ->
+    Data =
+        wh_json:from_list([
+            {<<"target">>, props:get_value('details', Props)}
+        ]),
+    build_system_error(500, Error, wh_util:to_binary(Error), Data, Context).
 
 
 %%--------------------------------------------------------------------
