@@ -9,7 +9,7 @@
 -module(teletype_util).
 
 -export([template_doc_id/1
-         ,init_template/4
+         ,init_template/2
          ,fetch_template_meta/2
          ,fetch_templates/1, fetch_templates/2
          ,send_email/5, send_email/6
@@ -20,6 +20,9 @@
          ,find_account_admin_email/1
          ,find_account_id/1
          ,is_notice_enabled/3
+
+         ,default_from_address/1
+         ,default_reply_to/1
         ]).
 
 -include("teletype.hrl").
@@ -327,17 +330,31 @@ default_support_email(JObj, ConfigCat) ->
                           ,<<"support_email">>, <<"default_support_email">>, <<"support@2600hz.com">>
                          ).
 
+-spec default_from_address(ne_binary()) -> ne_binary().
 -spec default_from_address(wh_json:object(), ne_binary()) -> ne_binary().
+default_from_address(ConfigCat) ->
+    default_from_address(wh_json:new(), ConfigCat).
 default_from_address(JObj, ConfigCat) ->
     default_service_value(JObj, ConfigCat
                           ,<<"send_from">>, <<"default_from">>
                           ,list_to_binary([<<"no_reply@">>, net_adm:localhost()])
                          ).
 
+-spec default_reply_to(ne_binary()) -> api_binary().
+-spec default_reply_to(wh_json:object(), ne_binary()) -> api_binary().
+default_reply_to(ConfigCat) ->
+    default_reply_to(wh_json:new(), ConfigCat).
+default_reply_to(JObj, ConfigCat) ->
+    default_service_value(JObj, ConfigCat
+                          ,<<"reply_to">>, <<"default_reply_to">>
+                          ,'undefined'
+                         ).
+
 -spec default_charset(wh_json:object(), ne_binary()) -> binary().
 default_charset(JObj, ConfigCat) ->
     default_service_value(JObj, ConfigCat
-                          ,<<"template_charset">>, <<"default_template_charset">>, <<>>
+                          ,<<"template_charset">>, <<"default_template_charset">>
+                          ,<<>>
                          ).
 
 -spec default_service_value(wh_json:object(), ne_binary(), wh_json:key(), wh_json:key(), wh_json:json_term()) ->
@@ -365,59 +382,213 @@ render(TemplateId, Template, Macros) ->
 template_doc_id(<<"notification.", _/binary>> = ID) -> ID;
 template_doc_id(<<_/binary>> = ID) -> <<"notification.", ID/binary>>.
 
--spec init_template(ne_binary(), wh_json:object(), binary(), binary()) -> 'ok'.
-init_template(Id, Macros, Text, HTML) ->
+-spec init_template(ne_binary(), init_params()) -> 'ok'.
+init_template(Id, Params) ->
     DocId = template_doc_id(Id),
     {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
 
-    Attachments = [{<<"text/plain">>, Text}
-                   ,{<<"text/html">>, HTML}
-                  ],
-
     lager:debug("looking for ~s", [DocId]),
     case couch_mgr:open_doc(MasterAccountDb, DocId) of
-        {'ok', TemplateJObj} ->
-            maybe_update_template(TemplateJObj, Macros, Attachments);
-        {'error', 'not_found'} -> create_template(MasterAccountDb, DocId, Macros, Attachments);
+        {'ok', TemplateJObj} -> maybe_update_template(MasterAccountDb, TemplateJObj, Params);
+        {'error', 'not_found'} -> create_template(MasterAccountDb, DocId, Params);
         {'error', _E} -> lager:warning("failed to find template ~s", [DocId])
     end.
 
--spec create_template(ne_binary(), ne_binary(), wh_json:object(), wh_proplist()) ->
-                             'ok' |
+-spec create_template(ne_binary(), ne_binary(), init_params()) ->
+                             {'ok', wh_json:object()} |
                              couch_mgr:couchbeam_error().
-create_template(MasterAccountDb, DocId, Macros, Attachments) ->
+create_template(MasterAccountDb, DocId, Params) ->
     {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
-
     lager:debug("attempting to create template ~s", [DocId]),
-    Doc = wh_doc:update_pvt_parameters(
-            wh_json:from_list(
-              [{<<"_id">>, DocId}
-               ,{<<"macros">>, Macros}
-              ])
-            ,MasterAccountDb
-            ,[{'account_db', MasterAccountDb}
-              ,{'account_id', MasterAccountId}
-              ,{'type', ?PVT_TYPE}
-             ]),
-    case couch_mgr:save_doc(MasterAccountDb, Doc) of
-        {'ok', _UpdatedDoc} ->
-            lager:debug("created template ~s", [DocId]),
-            create_template_attachments(DocId, Attachments);
+    TemplateJObj =
+        wh_doc:update_pvt_parameters(
+          wh_json:from_list([{<<"_id">>, DocId}])
+          ,MasterAccountDb
+          ,[{'account_db', MasterAccountDb}
+            ,{'account_id', MasterAccountId}
+            ,{'type', ?PVT_TYPE}
+           ]),
+
+    {'ok', UpdatedTemplateJObj} = save_template(MasterAccountDb, TemplateJObj),
+    case update_template(MasterAccountDb, UpdatedTemplateJObj, Params) of
+        {'ok', _} -> lager:debug("template created");
+        {'error', _E} -> lager:debug("failed template update: ~p", [_E])
+    end.
+
+-spec maybe_update_template(ne_binary(), wh_json:object(), init_params()) -> 'ok'.
+maybe_update_template(MasterAccountDb, TemplateJObj, Params) ->
+    case wh_json:is_true(<<"pvt_deleted">>, TemplateJObj) of
+        'true' -> lager:debug("template is currently soft-deleted");
+        'false' ->
+            case update_template(MasterAccountDb, TemplateJObj, Params) of
+                {'ok', _} -> lager:debug("template updated");
+                {'error', _E} -> lager:debug("failed to update template: ~p", [_E])
+            end
+    end.
+
+-spec update_template(ne_binary(), wh_json:object(), init_params()) ->
+                             {'ok', wh_json:object()} | {'error', _}.
+update_template(MasterAccountDb, TemplateJObj, Params) ->
+    case update_template_from_params(MasterAccountDb, TemplateJObj, Params) of
+        {'false', _} -> lager:debug("no updates to template");
+        {'true', UpdatedTemplateJObj} ->
+            lager:debug("template has updates to save"),
+            save_template(MasterAccountDb, UpdatedTemplateJObj)
+    end.
+
+-spec save_template(ne_binary(), wh_json:object()) ->
+                           {'ok', wh_json:object()} |
+                           {'error', _}.
+save_template(MasterAccountDb, TemplateJObj) ->
+    SaveJObj = wh_doc:update_pvt_parameters(TemplateJObj, MasterAccountDb),
+    case couch_mgr:save_doc(MasterAccountDb, SaveJObj) of
+        {'ok', _JObj}=OK ->
+            lager:debug("saved updated template to ~s", [MasterAccountDb]),
+            OK;
         {'error', _E}=E ->
-            lager:debug("failed to create template ~s: ~p", [DocId, _E]),
+            lager:debug("failed to save template to ~s: ~p", [MasterAccountDb, _E]),
             E
     end.
 
--spec create_template_attachments(ne_binary(), wh_proplist()) -> 'ok'.
-create_template_attachments(_DocId, []) -> 'ok';
-create_template_attachments(DocId, [{_ContentType, <<>>} | As]) ->
-    create_template_attachments(DocId, As);
-create_template_attachments(DocId, [{ContentType, Contents} | As]) ->
-    AName = template_attachment_name(ContentType),
+-type update_template_acc() :: {boolean(), wh_json:object()}.
 
-    save_attachment(DocId, AName, ContentType, Contents)
-        andalso lager:debug("saved attachment ~s for ~s", [AName, DocId]),
-    create_template_attachments(DocId, As).
+-spec update_template_from_params(ne_binary(), wh_json:object(), init_params()) ->
+                                         update_template_acc().
+update_template_from_params(MasterAccountDb, TemplateJObj, Params) ->
+    lists:foldl(fun(Param, Acc) ->
+                        update_template_from_param(Param, Acc, MasterAccountDb)
+                end
+                ,{'false', TemplateJObj}
+                ,Params
+               ).
+
+-spec update_template_from_param(init_param(), update_template_acc(), ne_binary()) ->
+                                        update_template_acc().
+update_template_from_param({'macros', Macros}, Acc, _MasterAccountDb) ->
+    update_template_macros(Macros, Acc);
+update_template_from_param({'text', Text}, Acc, MasterAccountDb) ->
+    update_template_text_attachment(Text, Acc, MasterAccountDb);
+update_template_from_param({'html', HTML}, Acc, MasterAccountDb) ->
+    update_template_html_attachment(HTML, Acc, MasterAccountDb);
+update_template_from_param({'subject', Subject}, Acc, _MasterAccountDb) ->
+    update_template_subject(Subject, Acc);
+update_template_from_param({'category', Category}, Acc, _MasterAccountDb) ->
+    update_template_category(Category, Acc);
+update_template_from_param({'friendly_name', Name}, Acc, _MasterAccountDb) ->
+    update_template_name(Name, Acc);
+update_template_from_param({'to', To}, Acc, _MasterAccountDb) ->
+    update_template_to(To, Acc);
+update_template_from_param({'cc', CC}, Acc, _MasterAccountDb) ->
+    update_template_cc(CC, Acc);
+update_template_from_param({'bcc', BCC}, Acc, _MasterAccountDb) ->
+    update_template_bcc(BCC, Acc);
+update_template_from_param({'from', From}, Acc, _MasterAccountDb) ->
+    update_template_from(From, Acc);
+update_template_from_param({'reply_to', ReplyTo}, Acc, _MasterAccountDb) ->
+    update_template_reply_to(ReplyTo, Acc).
+
+-spec update_template_category(ne_binary(), update_template_acc()) ->
+                                      update_template_acc().
+update_template_category(Category, Acc) ->
+    update_template_field(Category, Acc, fun kz_notification:category/1, fun kz_notification:set_category/2).
+
+-spec update_template_name(ne_binary(), update_template_acc()) ->
+                                  update_template_acc().
+update_template_name(Name, Acc) ->
+    update_template_field(Name, Acc, fun kz_notification:name/1, fun kz_notification:set_name/2).
+
+-spec update_template_from(ne_binary(), update_template_acc()) ->
+                                  update_template_acc().
+update_template_from(From, Acc) ->
+    update_template_field(From, Acc, fun kz_notification:from/1, fun kz_notification:set_from/2).
+
+-spec update_template_reply_to(ne_binary(), update_template_acc()) ->
+                                  update_template_acc().
+update_template_reply_to(ReplyTo, Acc) ->
+    update_template_field(ReplyTo, Acc, fun kz_notification:reply_to/1, fun kz_notification:set_reply_to/2).
+
+-spec update_template_to(wh_json:object(), update_template_acc()) ->
+                                update_template_acc().
+update_template_to(To, Acc) ->
+    update_template_field(To, Acc, fun kz_notification:to/1, fun kz_notification:set_to/2).
+
+-spec update_template_cc(wh_json:object(), update_template_acc()) ->
+                                update_template_acc().
+update_template_cc(CC, Acc) ->
+    update_template_field(CC, Acc, fun kz_notification:cc/1, fun kz_notification:set_cc/2).
+
+-spec update_template_bcc(wh_json:object(), update_template_acc()) ->
+                                update_template_acc().
+update_template_bcc(Bcc, Acc) ->
+    update_template_field(Bcc, Acc, fun kz_notification:bcc/1, fun kz_notification:set_bcc/2).
+
+-spec update_template_field(api_object() | ne_binary(), update_template_acc(), fun(), fun()) ->
+                                   update_template_acc().
+update_template_field('undefined', Acc, _GetFun, _SetFun) -> Acc;
+update_template_field(Value, {_IsUpdated, TemplateJObj}=Acc, GetFun, SetFun) ->
+    case GetFun(TemplateJObj) of
+        'undefined' ->
+            lager:debug("updating field to ~p: ~p", [Value, GetFun]),
+            {'true', SetFun(TemplateJObj, Value)};
+        _V -> Acc
+    end.
+
+-spec update_template_subject(ne_binary(), update_template_acc()) ->
+                                     update_template_acc().
+update_template_subject(Subject, Acc) ->
+    update_template_field(Subject, Acc, fun kz_notification:subject/1, fun kz_notification:set_subject/2).
+
+-spec update_template_html_attachment(binary(), update_template_acc(), ne_binary()) ->
+                                             update_template_acc().
+update_template_html_attachment(HTML, Acc, MasterAccountDb) ->
+    update_template_attachment(HTML, Acc, MasterAccountDb, ?TEXT_HTML).
+
+-spec update_template_text_attachment(binary(), update_template_acc(), ne_binary()) ->
+                                             update_template_acc().
+update_template_text_attachment(Text, Acc, MasterAccountDb) ->
+    update_template_attachment(Text, Acc, MasterAccountDb, ?TEXT_PLAIN).
+
+-spec update_template_attachment(binary(), update_template_acc(), ne_binary(), ne_binary()) ->
+                                             update_template_acc().
+update_template_attachment(Contents, {_IsUpdated, TemplateJObj}=Acc, MasterAccountDb, ContentType) ->
+    AttachmentName = template_attachment_name(ContentType),
+    Id = wh_json:get_first_defined([<<"_id">>, <<"id">>], TemplateJObj),
+
+    case does_attachment_exist(MasterAccountDb, Id, AttachmentName) of
+        'true' -> Acc;
+        'false' -> update_template_attachment(Contents, Acc, MasterAccountDb, ContentType, Id, AttachmentName)
+    end.
+
+-spec update_template_attachment(binary(), update_template_acc(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) ->
+                                        update_template_acc().
+update_template_attachment(Contents, {_IsUpdated, TemplateJObj}=Acc
+                           ,MasterAccountDb, ContentType, Id, AName
+                          ) ->
+    lager:debug("attachment ~s doesn't exist for ~s", [AName, Id]),
+    case save_attachment(MasterAccountDb, Id, AName, ContentType, Contents) of
+        {'ok', AttachmentJObj} -> {'true'
+                                   ,wh_json:set_value(<<"_rev">>
+                                                      ,wh_json:get_value(<<"rev">>, AttachmentJObj)
+                                                      ,TemplateJObj
+                                                     )
+                                  };
+        {'error', _E} -> Acc
+    end.
+
+-spec update_template_macros(wh_json:object(), update_template_acc()) ->
+                                    update_template_acc().
+update_template_macros(Macros, Acc) ->
+    wh_json:foldl(fun update_template_macro/3, Acc, Macros).
+
+-spec update_template_macro(wh_json:key(), wh_json:json_term(), update_template_acc()) ->
+                                   update_template_acc().
+update_template_macro(MacroKey, MacroValue, {_IsUpdated, TemplateJObj}=Acc) ->
+    case kz_notification:macro(TemplateJObj, MacroKey) of
+        'undefined' ->
+            lager:debug("adding macro ~s to template", [MacroKey]),
+            {'true', kz_notification:set_macro(TemplateJObj, MacroKey, MacroValue)};
+        _Value -> Acc
+    end.
 
 -spec template_attachment_name(ne_binary()) -> ne_binary().
 template_attachment_name(ContentType) ->
@@ -437,75 +608,10 @@ does_attachment_exist(MasterAccountDb, DocId, AName) ->
 does_attachment_exist(JObj, AName) ->
     wh_doc:attachment(JObj, cow_qs:urldecode(AName)) =/= 'undefined'.
 
--spec maybe_update_template(wh_json:object(), wh_json:object(), wh_proplist()) ->
-                                   'ok' | couch_mgr:couchbeam_error().
-maybe_update_template(TemplateJObj, Macros, Attachments) ->
-    case wh_json:is_true(<<"pvt_deleted">>, TemplateJObj) of
-        'true' ->
-            lager:debug("template is soft-deleted");
-        'false' ->
-            update_template(TemplateJObj, Macros, Attachments)
-    end.
-
--spec update_template(wh_json:object(), wh_json:object(), wh_proplist()) ->
-                             'ok' | couch_mgr:couchbeam_error().
-update_template(TemplateJObj, MacroJObj, Attachments) ->
-    {HasUpdates, JObj} =
-        wh_json:foldl(fun maybe_update_template_fold/3
-                      ,{'false', TemplateJObj}
-                      ,MacroJObj
-                     ),
-    maybe_update_template_with_changes(JObj, HasUpdates, Attachments).
-
--spec maybe_update_template_with_changes(wh_json:object(), boolean(), wh_proplist()) ->
-                                                'ok' | couch_mgr:couchbeam_error().
-maybe_update_template_with_changes(JObj, 'false', Attachments) ->
-    lager:debug("no updates to the macros found"),
-    maybe_update_attachments(JObj, Attachments);
-maybe_update_template_with_changes(JObj, 'true', Attachments) ->
-    lager:debug("updating to ~p", [JObj]),
-    {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
-    case couch_mgr:save_doc(MasterAccountDb, JObj) of
-        {'ok', UpdatedJObj} ->
-            lager:debug("updated template with latest macros"),
-            maybe_update_attachments(UpdatedJObj, Attachments);
-        {'error', _E}=E -> E
-    end.
-
--type utf_acc() :: {boolean(), wh_json:object()}.
--spec maybe_update_template_fold(wh_json:key(), wh_json:json_term(), utf_acc()) ->
-                                        utf_acc().
-maybe_update_template_fold(MacroKey, MacroValue, {_HU, JObj}=Acc) ->
-    case wh_json:get_value([<<"macros">>, MacroKey], JObj) of
-        'undefined' ->
-            lager:debug("adding macro ~s to template", [MacroKey]),
-            {'true', wh_json:set_value([<<"macros">>, MacroKey], MacroValue, JObj)};
-        _Value -> Acc
-    end.
-
--spec maybe_update_attachments(wh_json:object(), wh_proplist()) -> 'ok'.
-maybe_update_attachments(_JObj, []) ->
-    lager:debug("finished checking attachments");
-maybe_update_attachments(JObj, [{_ContentType, <<>>} | As]) ->
-    maybe_update_attachments(JObj, As);
-maybe_update_attachments(JObj, [{ContentType, Contents}|As]) ->
-    AName = template_attachment_name(ContentType),
-
-    case does_attachment_exist(JObj, AName) of
-        'true' ->
-            maybe_update_attachments(JObj, As);
-        'false' ->
-            DocId = wh_json:get_first_defined([<<"id">>,<<"_id">>], JObj),
-            save_attachment(DocId, AName, ContentType, Contents)
-                andalso lager:debug("saved attachment ~s", [AName]),
-
-            maybe_update_attachments(JObj, As)
-    end.
-
--spec save_attachment(ne_binary(), ne_binary(), ne_binary(), binary()) -> boolean().
-save_attachment(DocId, AName, ContentType, Contents) ->
-    {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
-
+-spec save_attachment(ne_binary(), ne_binary(), ne_binary(), ne_binary(), binary()) ->
+                             {'ok', wh_json:object()} |
+                             {'error', _}.
+save_attachment(MasterAccountDb, DocId, AName, ContentType, Contents) ->
     case couch_mgr:put_attachment(MasterAccountDb
                                   ,DocId
                                   ,AName
@@ -513,21 +619,21 @@ save_attachment(DocId, AName, ContentType, Contents) ->
                                   ,[{'content_type', wh_util:to_list(ContentType)}]
                                  )
     of
-        {'ok', _UpdatedJObj} ->
+        {'ok', _UpdatedJObj}=OK ->
             lager:debug("added attachment ~s to ~s", [AName, DocId]),
-            'true';
-        {'error', 'conflict'} ->
+            OK;
+        {'error', 'conflict'}=E ->
             case does_attachment_exist(MasterAccountDb, DocId, AName) of
                 'true' ->
                     lager:debug("added attachment ~s to ~s", [AName, DocId]),
-                    'true';
+                    couch_mgr:open_doc(MasterAccountDb, DocId);
                 'false' ->
                     lager:debug("failed to add attachment ~s to ~s", [AName, DocId]),
-                    'false'
+                    E
             end;
-        {'error', _E} ->
+        {'error', _E}=E ->
             lager:debug("failed to add attachment ~s to ~s: ~p", [AName, DocId, _E]),
-            'false'
+            E
     end.
 
 -spec fetch_template_meta(ne_binary(), api_binary()) ->
