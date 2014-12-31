@@ -190,8 +190,10 @@ lookup_reg(Username, Realm) ->
             lager:debug("error getting registration: ~p", [_E]),
             E;
         {_, JObjs} ->
-            [FirstNode | _Others] = [Node || Node <- extract_device_registrations(JObjs)],
-            {'ok', FirstNode}
+            case [Node || Node <- extract_device_registrations(JObjs)] of
+                [] -> {'error', 'not_registered'};
+                [FirstNode | _Others] -> {'ok', FirstNode}
+            end
     end.
 
 -spec extract_device_registrations(wh_json:objects()) -> ne_binaries().
