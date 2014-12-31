@@ -347,11 +347,11 @@ delete(Context, Id) ->
 
 -spec maybe_delete(cb_context:context(), path_token(), media_values()) ->
                           cb_context:context().
-maybe_delete(Context, Id, [{{<<"application">>, <<"json">>, _},_,_}]) ->
+maybe_delete(Context, Id, [?MEDIA_VALUE(<<"application">>, <<"json">>, _, _, _)]) ->
     delete_doc(Context, Id);
-maybe_delete(Context, Id, [{{<<"application">>, <<"x-json">>, _},_,_}]) ->
+maybe_delete(Context, Id, [?MEDIA_VALUE(<<"application">>, <<"x-json">>, _, _, _)]) ->
     delete_doc(Context, Id);
-maybe_delete(Context, Id, [{{Type, SubType, _},_,_}]) ->
+maybe_delete(Context, Id, [?MEDIA_VALUE(Type, SubType, _, _, _)]) ->
     maybe_delete_template(Context, Id, <<Type/binary, "/", SubType/binary>>);
 maybe_delete(Context, Id, []) ->
     lager:debug("no content-type headers, using json"),
@@ -400,10 +400,6 @@ create(Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
-
--type media_value() :: {{ne_binary(), ne_binary(), list()}, non_neg_integer(),list()}.
--type media_values() :: [media_value(),...] | [].
-
 -spec accept_values(cb_context:context()) -> media_values().
 accept_values(Context) ->
     AcceptValue = cb_context:req_header(Context, <<"accept">>),
@@ -418,14 +414,14 @@ media_values(Media) ->
 
 media_values('undefined', 'undefined') ->
     lager:debug("no accept headers, assuming JSON"),
-    [{{<<"application">>, <<"json">>, []},1000,[]}];
+    ?MEDIA_VALUE(<<"application">>, <<"json">>);
 media_values(AcceptValue, 'undefined') ->
-    case cowboy_http:nonempty_list(AcceptValue, fun cowboy_http:media_range/2) of
+    case cb_modules_util:parse_media_type(AcceptValue) of
         {'error', 'badarg'} -> media_values('undefined', 'undefined');
         AcceptValues -> lists:reverse(lists:keysort(2, AcceptValues))
     end;
 media_values(AcceptValue, Tunneled) ->
-    case cowboy_http:nonempty_list(Tunneled, fun cowboy_http:media_range/2) of
+    case cb_modules_util:parse_media_type(Tunneled) of
         {'error', 'badarg'} -> media_values(AcceptValue, 'undefined');
         TunneledValues ->
             lager:debug("using tunneled accept value ~s", [Tunneled]),
@@ -442,14 +438,14 @@ maybe_read(Context, Id) ->
     Acceptable = acceptable_content_types(Context),
     maybe_read(Context, Id, Acceptable, accept_values(Context)).
 
-maybe_read(Context, Id, _Acceptable, [{{<<"application">>, <<"json">>, _},_,_}|_Accepts]) ->
+maybe_read(Context, Id, _Acceptable, [?MEDIA_VALUE(<<"application">>, <<"json">>, _, _, _)|_Accepts]) ->
     read(Context, Id);
-maybe_read(Context, Id, _Acceptable, [{{<<"application">>, <<"x-json">>, _},_,_}|_Accepts]) ->
+maybe_read(Context, Id, _Acceptable, [?MEDIA_VALUE(<<"application">>, <<"x-json">>, _, _, _)|_Accepts]) ->
     read(Context, Id);
-maybe_read(Context, Id, _Acceptable, [{{<<"*">>, <<"*">>, _},_,_}|_Accepts]) ->
+maybe_read(Context, Id, _Acceptable, [?MEDIA_VALUE(<<"*">>, <<"*">>, _, _, _)|_Accepts]) ->
     lager:debug("catch-all accept header, using json"),
     read(Context, Id);
-maybe_read(Context, Id, Acceptable, [{{Type, SubType, _},_,_}|Accepts]) ->
+maybe_read(Context, Id, Acceptable, [?MEDIA_VALUE(Type, SubType, _, _, _)|Accepts]) ->
     case is_acceptable_accept(Acceptable, Type, SubType) of
         'false' ->
             lager:debug("unknown accept header: ~s/~s", [Type, SubType]),

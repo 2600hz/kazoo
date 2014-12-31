@@ -23,6 +23,15 @@
 %% {Type, SubType, Options}
 -type content_type() :: {ne_binary(), ne_binary(), wh_proplist()} | ne_binary().
 
+-type media_value() :: {{ne_binary(), ne_binary(), list()}, non_neg_integer(), list()}.
+-type media_values() :: [media_value(),...] | [].
+
+-define(MEDIA_VALUE(Type, SubType, Weight, Options, Extensions)
+        ,{{Type, SubType, Options}, Weight, Extensions}
+       ).
+-define(MEDIA_VALUE(Type, SubType, Weight), ?MEDIA_VALUE(Type, SubType, Weight, [], [])).
+-define(MEDIA_VALUE(Type, SubType), ?MEDIA_VALUE(Type, SubType, 1000, [], [])).
+
 -type crossbar_content_handler() :: {atom(), [{ne_binary(), ne_binary()} | ne_binary(),...]}.
 -type crossbar_content_handlers() :: [crossbar_content_handler(),...] | [].
 

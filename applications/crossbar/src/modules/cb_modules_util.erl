@@ -16,6 +16,7 @@
 
          ,attachment_name/2
          ,content_type_to_extension/1
+         ,parse_media_type/1
 
          ,bucket_name/1
          ,token_cost/1, token_cost/2
@@ -402,6 +403,12 @@ content_type_to_extension(<<"image/png">>) -> <<"png">>;
 content_type_to_extension(<<"image/gif">>) -> <<"gif">>;
 content_type_to_extension(<<"text/html">>) -> <<"html">>;
 content_type_to_extension(<<"text/plain">>) -> <<"txt">>.
+
+-spec parse_media_type(ne_binary()) ->
+                              {'error', 'badarg'} |
+                              media_values().
+parse_media_type(MediaType) ->
+    cowboy_http:nonempty_list(MediaType, fun cowboy_http:media_range/2).
 
 -spec bucket_name(cb_context:context()) -> ne_binary().
 -spec bucket_name(api_binary(), api_binary()) -> ne_binary().
