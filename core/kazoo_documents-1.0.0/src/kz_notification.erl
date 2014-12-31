@@ -22,6 +22,9 @@
          ,reply_to/1, set_reply_to/2
 
          ,id/1, db_id/1, resp_id/1
+
+         ,set_base_properties/1, set_base_properties/2
+         ,pvt_type/0, pvt_type/1
         ]).
 
 -include("kz_documents.hrl").
@@ -37,6 +40,7 @@
 -define(REPLY_TO, <<"reply_to">>).
 -define(EMAIL_ADDRESSES, <<"email_addresses">>).
 -define(EMAIL_TYPE, <<"type">>).
+-define(PVT_TYPE, <<"notification">>).
 
 -spec id(wh_json:object()) -> api_binary().
 id(JObj) ->
@@ -168,3 +172,18 @@ reply_to(JObj) ->
 -spec set_reply_to(wh_json:object(), ne_binary()) -> wh_json:object().
 set_reply_to(JObj, ReplyTo) ->
     wh_json:set_value(?REPLY_TO, ReplyTo, JObj).
+
+-spec set_base_properties(wh_json:object()) -> wh_json:object().
+-spec set_base_properties(wh_json:object(), api_binary()) -> wh_json:object().
+set_base_properties(JObj) ->
+    set_base_properties(JObj, id(JObj)).
+
+set_base_properties(JObj, Id) ->
+    wh_json:set_values([{<<"pvt_type">>, ?PVT_TYPE}
+                        ,{<<"_id">>, db_id(Id)}
+                       ], JObj).
+
+-spec pvt_type() -> ne_binary().
+-spec pvt_type(wh_json:object()) -> ne_binary().
+pvt_type() -> ?PVT_TYPE.
+pvt_type(JObj) -> wh_json:get_value(<<"pvt_type">>, JObj, ?PVT_TYPE).

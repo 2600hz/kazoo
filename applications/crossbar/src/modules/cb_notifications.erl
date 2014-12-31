@@ -30,7 +30,6 @@
 -define(PREVIEW, <<"preview">>).
 
 -define(MACROS, <<"macros">>).
--define(PVT_TYPE, <<"notification">>).
 
 %%%===================================================================
 %%% API
@@ -510,14 +509,21 @@ read_system_for_account(Context, Id) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             Context2 = cb_context:set_account_db(Context1, cb_context:account_db(Context)),
-            lager:debug("saving template ~s from master to account ~s", [Id, cb_context:account_db(Context)]),
-            crossbar_doc:save(
-              cb_context:set_doc(Context2
-                                 ,wh_json:delete_key([<<"_rev">>], cb_context:doc(Context2))
-                                )
-             );
+            migrate_template_to_account(Context2, Id);
         _Status -> Context1
     end.
+
+-spec migrate_template_to_account(cb_context:context(), path_token()) -> cb_context:context().
+migrate_template_to_account(Context, Id) ->
+    lager:debug("saving template ~s from master to account ~s", [Id, cb_context:account_id(Context)]),
+    crossbar_doc:save(
+      cb_context:set_doc(Context
+                         ,kz_notification:set_base_properties(
+                            wh_json:public_fields(cb_context:doc(Context))
+                            ,Id
+                           )
+                        )
+     ).
 
 -spec note_account_override(wh_json:object()) -> wh_json:object().
 note_account_override(JObj) ->
@@ -652,7 +658,7 @@ cache_available(Context) ->
     wh_cache:store_local(?CROSSBAR_CACHE
                          ,{?MODULE, 'available'}
                          ,cb_context:doc(Context)
-                         ,[{'origin', [{'db', cb_context:account_db(Context), ?PVT_TYPE}]}]
+                         ,[{'origin', [{'db', cb_context:account_db(Context), kz_notification:pvt_type()}]}]
                         ).
 
 -spec fetch_available() -> {'ok', wh_json:objects()} |
@@ -720,9 +726,7 @@ on_successful_validation('undefined', Context) ->
 
     case master_notification_doc(DocId) of
         {'ok', _JObj} ->
-            Doc = wh_json:set_values([{<<"pvt_type">>, ?PVT_TYPE}
-                                      ,{<<"_id">>, DocId}
-                                     ], ReqTemplate),
+            Doc = kz_notification:set_base_properties(ReqTemplate, DocId),
             cb_context:set_doc(Context, Doc);
         {'error', 'not_found'} ->
             handle_missing_master_notification(Context, DocId, ReqTemplate);
@@ -774,9 +778,7 @@ handle_missing_master_notification(Context, DocId, ReqTemplate) ->
                                      cb_context:context().
 create_new_notification(Context, DocId, ReqTemplate, AccountId) ->
     lager:debug("this will create a new template in the master account"),
-    Doc = wh_json:set_values([{<<"pvt_type">>, ?PVT_TYPE}
-                              ,{<<"_id">>, DocId}
-                             ], ReqTemplate),
+    Doc = kz_notification:set_base_properties(ReqTemplate, DocId),
     cb_context:setters(Context
                        ,[{fun cb_context:set_doc/2, Doc}
                          ,{fun cb_context:set_account_db/2, wh_util:format_account_id(AccountId, 'encoded')}
