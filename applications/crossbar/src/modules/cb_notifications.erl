@@ -509,7 +509,13 @@ read_system_for_account(Context, Id) ->
     Context1 = read_system(Context, Id),
     case cb_context:resp_status(Context1) of
         'success' ->
-            cb_context:set_account_db(Context1, cb_context:account_db(Context));
+            Context2 = cb_context:set_account_db(Context1, cb_context:account_db(Context)),
+            lager:debug("saving template ~s from master to account ~s", [Id, cb_context:account_db(Context)]),
+            crossbar_doc:save(
+              cb_context:set_doc(Context2
+                                 ,wh_json:delete_key([<<"_rev">>], cb_context:doc(Context2))
+                                )
+             );
         _Status -> Context1
     end.
 
@@ -588,21 +594,13 @@ update_template(Context, Id, FileJObj) ->
     lager:debug("file content type for ~s: ~s", [Id, CT]),
     Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]}],
 
-    Context1 =
-        case cb_context:account_db(Context) of
-            'undefined' ->
-                {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
-                cb_context:set_account_db(Context, MasterAccountDb);
-            _AccountDb -> Context
-        end,
-
     AttachmentName = attachment_name_by_content_type(CT),
 
     crossbar_doc:save_attachment(
       Id
       ,AttachmentName
       ,Contents
-      ,Context1
+      ,Context
       ,Opts
      ).
 
