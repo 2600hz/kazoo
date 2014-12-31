@@ -20,6 +20,8 @@
 
          ,from/1, set_from/2
          ,reply_to/1, set_reply_to/2
+
+         ,id/1, db_id/1, resp_id/1
         ]).
 
 -include("kz_documents.hrl").
@@ -35,6 +37,33 @@
 -define(REPLY_TO, <<"reply_to">>).
 -define(EMAIL_ADDRESSES, <<"email_addresses">>).
 -define(EMAIL_TYPE, <<"type">>).
+
+-spec id(wh_json:object()) -> api_binary().
+id(JObj) ->
+    wh_json:get_first_defined([<<"_id">>, <<"id">>], JObj).
+
+-spec db_id(wh_json:object() | ne_binary()) -> api_binary().
+db_id(<<_/binary>> = Id) ->
+    maybe_add_prefix(Id);
+db_id(JObj) ->
+    maybe_add_prefix(id(JObj)).
+
+-spec resp_id(wh_json:object() | ne_binary()) -> api_binary().
+resp_id(<<_/binary>> = Id) ->
+    maybe_rm_prefix(Id);
+resp_id(JObj) ->
+    maybe_rm_prefix(id(JObj)).
+
+-define(ID_PREFIX, "notification.").
+-spec maybe_add_prefix(api_binary()) -> api_binary().
+maybe_add_prefix('undefined') -> 'undefined';
+maybe_add_prefix(<<?ID_PREFIX, _/binary>> = Id) -> Id;
+maybe_add_prefix(Id) -> <<?ID_PREFIX, Id/binary>>.
+
+-spec maybe_rm_prefix(api_binary()) -> api_binary().
+maybe_rm_prefix('undefined') -> 'undefined';
+maybe_rm_prefix(<<?ID_PREFIX, Id/binary>>) -> Id;
+maybe_rm_prefix(Id) -> Id.
 
 -spec macros(wh_json:object()) -> api_object().
 macros(JObj) ->
