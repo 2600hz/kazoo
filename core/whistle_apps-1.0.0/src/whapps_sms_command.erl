@@ -190,7 +190,7 @@ lookup_reg(Username, Realm) ->
             lager:debug("error getting registration: ~p", [_E]),
             E;
         {_, JObjs} ->
-            case [Node || Node <- extract_device_registrations(JObjs)] of
+            case extract_device_registrations(JObjs) of
                 [] -> {'error', 'not_registered'};
                 [FirstNode | _Others] -> {'ok', FirstNode}
             end
