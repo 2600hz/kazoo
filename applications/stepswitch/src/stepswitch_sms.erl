@@ -30,7 +30,8 @@
                 ,control_queue :: api_binary()
                 ,response_queue :: api_binary()
                 ,queue :: api_binary()
-                ,timeout :: reference()
+                ,message = [] :: wh_proplist()
+                ,messages = queue:new() :: queue()
                }).
 -type state() :: #state{}.
 
@@ -92,7 +93,6 @@ init([Endpoints, JObj]) ->
                           ,request_handler=self()
                           ,control_queue=ControlQ
                           ,response_queue=wh_json:get_ne_value(<<"Server-ID">>, JObj)
-                          ,timeout=erlang:send_after(60000, self(), 'sms_timeout')
                          }}
     end.
 
@@ -129,9 +129,7 @@ handle_cast({'wh_amqp_channel', _}, State) ->
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
     {'noreply', State#state{queue=Q}};
 handle_cast({'gen_listener', {'is_consuming', 'true'}}, State) ->
-    'ok' = wapi_sms:publish_message(build_sms(State)),
-    lager:debug("sent sms command"),
-    {'noreply', State};
+    {'noreply', build_sms(State)};
 handle_cast({'sms_result', _Props}, #state{response_queue='undefined'}=State) ->
     {'stop', 'normal', State};
 handle_cast({'sms_result', Props}, #state{response_queue=ResponseQ}=State) ->
@@ -146,6 +144,19 @@ handle_cast({'sms_failure', JObj}, #state{resource_req=Request}=State) ->
 handle_cast({'sms_error', JObj}, #state{resource_req=Request}=State) ->
     gen_listener:cast(self(), {'sms_result', sms_error(JObj, Request)}),
     {'noreply', State};
+handle_cast('next_message', #state{message=API
+                                   ,messages=Queue
+                                   ,resource_req=JObj
+                                   ,response_queue=ResponseQ
+                                  }=State) ->
+    case queue:out(Queue) of
+        {'empty', _} ->
+            wapi_offnet_resource:publish_resp(ResponseQ, sms_timeout(JObj)),
+            {'stop', 'normal', State};
+        {{'value', Endpoint}, NewQ} ->
+            send(Endpoint, API),
+            {'noreply', State#state{messages=NewQ}}
+    end;
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p~n", [_Msg]),
     {'noreply', State}.
@@ -160,13 +171,9 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info('sms_timeout', #state{timeout='undefined'}=State) ->
+handle_info('sms_timeout', State) ->
+    gen_listener:cast(self(), 'next_message'),
     {'noreply', State};
-handle_info('sms_timeout', #state{response_queue=ResponseQ
-                                     ,resource_req=JObj
-                                    }=State) ->
-    wapi_offnet_resource:publish_resp(ResponseQ, sms_timeout(JObj)),
-    {'stop', 'normal', State#state{timeout='undefined'}};
 handle_info(_Info, State) ->
     lager:debug("unhandled info: ~p", [_Info]),
     {'noreply', State}.
@@ -221,13 +228,50 @@ handle_message_delivery(JObj, Props) ->
         'false' -> gen_listener:cast(Server, {'sms_success', JObj})
     end.
 
+
+
+
+send(Endpoint, API) ->
+    CallId = props:get_value(<<"Call-ID">>, API),
+    Type = wh_json:get_value(<<"Endpoint-Type">>, Endpoint, <<"sip">>),
+    send(Type, Endpoint, API).
+
+send(<<"sip">>, Endpoint, API) ->
+    Options = wh_json:to_proplist(wh_json:get_value(<<"Endpoint-Options">>, Endpoint, [])),
+    Payload = props:set_values( [{<<"Endpoints">>, [Endpoint]} | Options], API),
+    CallId = props:get_value(<<"Call-ID">>, Payload),
+    lager:debug("sending sms and waiting for response ~s", [CallId]),
+    whapps_util:amqp_pool_send(Payload, fun wapi_sms:publish_message/1),
+    erlang:send_after(60000, self(), 'sms_timeout');
+send(<<"amqp">>, Endpoint, API) ->
+    CallId = props:get_value(<<"Call-ID">>, API),
+    Options = wh_json:to_proplist(wh_json:get_value(<<"Endpoint-Options">>, Endpoint, [])),
+    Props = wh_json:to_proplist(Endpoint) ++ Options,
+    Payload = props:set_values( Props, API),
+    lager:debug("sending sms and waiting for response ~s", [CallId]),
+    whapps_util:amqp_pool_send(Payload, fun wapi_sms:publish_outbound/1),
+    %% Message delivered
+    DeliveryProps = [{<<"Delivery-Result-Code">>, <<"sip:200">> }
+                     ,{<<"Status">>, <<"Success">>}
+                     ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, API) }
+                     ,{<<"Call-ID">>, CallId }
+                    | wh_api:default_headers(<<"message">>, <<"delivery">>, ?APP_NAME, ?APP_VERSION)
+                     ],
+    gen_listener:cast(self(), {'sms_success', wh_json:set_values(DeliveryProps, wh_json:new())}).
+
 -spec build_sms(state()) -> wh_proplist().
 build_sms(#state{endpoints=Endpoints
                  ,resource_req=JObj
                  ,queue=Q
-                }) ->
+                }=State) ->
     {CIDNum, CIDName} = bridge_caller_id(Endpoints, JObj),
-    lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
+    gen_listener:cast(self(), 'next_message'),
+    State#state{messages=queue:from_list(maybe_endpoints_format_from(Endpoints, CIDNum, JObj))
+                ,message=build_sms_base({CIDNum, CIDName}, JObj, Q)
+               }.
+        
+
+build_sms_base({CIDNum, CIDName}, JObj, Q) ->
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     AccountRealm = wh_json:get_value(<<"Account-Realm">>, JObj),
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
@@ -246,7 +290,6 @@ build_sms(#state{endpoints=Endpoints
        ,{<<"Outbound-Caller-ID-Name">>, CIDName}
        ,{<<"Caller-ID-Number">>, CIDNum}
        ,{<<"Caller-ID-Name">>, CIDName}
-       ,{<<"Endpoints">>, maybe_endpoints_format_from(Endpoints, CIDNum, JObj) }
        ,{<<"Presence-ID">>, wh_json:get_value(<<"Presence-ID">>, JObj)}
        ,{<<"Custom-Channel-Vars">>, wh_json:set_values(CCVUpdates, CCVs)}
        ,{<<"Custom-SIP-Headers">>, get_sip_headers(JObj)}
@@ -255,6 +298,7 @@ build_sms(#state{endpoints=Endpoints
        ,{<<"Outbound-Callee-ID-Name">>, wh_json:get_value(<<"Outbound-Callee-ID-Name">>, JObj)}
        ,{<<"Message-ID">>, wh_json:get_value(<<"Message-ID">>, JObj)}
        ,{<<"Body">>, wh_json:get_value(<<"Body">>, JObj)}
+       ,{<<"Route-ID">>, wh_json:get_value(<<"Route-ID">>, JObj)}
        | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
       ]).
 

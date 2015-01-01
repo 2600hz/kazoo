@@ -824,6 +824,19 @@ endpoint_options(JObj, <<"skype">>) ->
         [{<<"Skype-Interface">>, wh_json:get_value(<<"interface">>, JObj)}
          ,{<<"Skype-RR">>, wh_json:is_true(<<"skype_rr">>, JObj, true)}
         ]));
+endpoint_options(JObj, <<"amqp">>) ->
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"AMQP-Broker">>, wh_json:get_value(<<"server">>, JObj)}
+         ,{<<"Exchange-ID">>, wh_json:get_value(<<"amqp_exchange">>, JObj)}
+         ,{<<"Route-ID">>, wh_json:get_value(<<"route_id">>, JObj)}
+         ,{<<"System-ID">>, wh_json:get_value(<<"system_id">>, JObj)}
+        ]));
+endpoint_options(JObj, <<"sip">>) ->
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"Route-ID">>, wh_json:get_value(<<"route_id">>, JObj)}
+        ]));
 endpoint_options(_, _) -> wh_json:new().
 
 %%--------------------------------------------------------------------
