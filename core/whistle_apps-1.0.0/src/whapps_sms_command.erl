@@ -204,14 +204,15 @@ extract_device_registrations(JObjs) ->
 extract_device_registrations([], Set) -> Set;
 extract_device_registrations([JObj|JObjs], Set) ->
     Fields = wh_json:get_value(<<"Fields">>, JObj, []),
-    S = lists:foldl(fun(J, S) ->
-                            case wh_json:get_ne_value(<<"Registrar-Node">>, J) of
-                                'undefined' -> S;
-                                AuthId -> sets:add_element(AuthId, S)
-                            end
-                    end, Set, Fields),
+    S = lists:foldl(fun extract_device_registrar_fold/2, Set, Fields),
     extract_device_registrations(JObjs, S).
 
+-spec extract_device_registrar_fold(wh_json:object(), set()) -> set().
+extract_device_registrar_fold(JObj, Set) ->
+    case wh_json:get_ne_value(<<"Registrar-Node">>, JObj) of
+        'undefined' -> Set;
+        AuthId -> sets:add_element(AuthId, Set)
+    end.
 
 -spec get_correlated_msg_type(wh_json:object()) ->
                                      {api_binary(), api_binary(), api_binary()}.
