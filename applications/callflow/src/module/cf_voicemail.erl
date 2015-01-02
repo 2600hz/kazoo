@@ -1512,15 +1512,7 @@ store_recording(AttachmentName, DocId, Call) ->
     AccountDb = whapps_call:account_db(Call),
     case couch_mgr:open_doc(AccountDb, DocId) of
         {'ok', JObj} ->
-            MinLength =
-                case whapps_account_config:get(whapps_call:account_id(Call)
-                                               ,?CF_CONFIG_CAT
-                                               ,[<<"voicemail">>, <<"min_message_size">>]
-                                              )
-                of
-                    'undefined' -> ?MAILBOX_DEFAULT_MSG_MIN_LENGTH;
-                    MML -> wh_util:to_integer(MML)
-                end,
+            MinLength = min_recording_length(Call),
             AttachmentLength = wh_json:get_integer_value([<<"_attachments">>, AttachmentName, <<"length">>], JObj, 0),
             lager:info("attachment length is ~B and must be larger than ~B to be stored", [AttachmentLength, MinLength]),
             AttachmentLength > MinLength;
@@ -1553,6 +1545,17 @@ get_media_url(AttachmentName, DocId, Call, OwnerId, StorageUrl) ->
       ,"/", DocId/binary
       ,"/", AttachmentName/binary
     >>.
+
+-spec min_recording_length(whapps_call:call()) -> integer().
+min_recording_length(Call) ->
+    case whapps_account_config:get(whapps_call:account_id(Call)
+                                   ,?CF_CONFIG_CAT
+                                   ,[<<"voicemail">>, <<"min_message_size">>]
+                                  )
+    of
+        'undefined' -> ?MAILBOX_DEFAULT_MSG_MIN_LENGTH;
+        MML -> wh_util:to_integer(MML)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1615,17 +1618,18 @@ message_media_doc(Db, #mailbox{mailbox_number=BoxNum
                                   ])
            end,
 
-    Props = props:filter_undefined([{<<"name">>, Name}
-             ,{<<"description">>, <<"voicemail message media">>}
-             ,{<<"source_type">>, <<"voicemail">>}
-             ,{<<"source_id">>, Id}
-             ,{<<"media_source">>, <<"recording">>}
-             ,{<<"media_type">>, ?DEFAULT_VM_EXTENSION}
-             ,{<<"media_filename">>, AttachmentName}
-             ,{<<"streamable">>, 'true'}
-             ,{<<"utc_seconds">>, UtcSeconds}
-             ,{<<"external_media_url">>, ?MAILBOX_DEFAULT_STORAGE}
-            ]),
+    Props = props:filter_undefined(
+              [{<<"name">>, Name}
+               ,{<<"description">>, <<"voicemail message media">>}
+               ,{<<"source_type">>, <<"voicemail">>}
+               ,{<<"source_id">>, Id}
+               ,{<<"media_source">>, <<"recording">>}
+               ,{<<"media_type">>, ?DEFAULT_VM_EXTENSION}
+               ,{<<"media_filename">>, AttachmentName}
+               ,{<<"streamable">>, 'true'}
+               ,{<<"utc_seconds">>, UtcSeconds}
+               ,{<<"external_media_url">>, ?MAILBOX_DEFAULT_STORAGE}
+              ]),
     Doc = wh_doc:update_pvt_parameters(wh_json:from_list(Props), Db, [{'type', <<"private_media">>}]),
     {'ok', JObj} = couch_mgr:save_doc(Db, Doc),
     wh_json:get_value(<<"_id">>, JObj).
