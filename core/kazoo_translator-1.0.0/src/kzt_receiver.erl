@@ -346,10 +346,6 @@ wait_for_offnet_events(#dial_req{call_timeout=CallTimeout
                                  ,call_time_limit=CallTimeLimit
                                 }=OffnetReq) ->
     RecvTimeout = which_time(CallTimeout, CallTimeLimit),
-    lager:debug("which of to: ~p and tl: ~p: ~p"
-                ,[CallTimeout, CallTimeLimit, RecvTimeout]
-               ),
-
     case whapps_call_command:receive_event(RecvTimeout) of
         {'ok', JObj} -> process_offnet_event(OffnetReq, JObj);
         {'error', 'timeout'} -> handle_offnet_timeout(OffnetReq)
@@ -638,9 +634,6 @@ update_offnet_timers(#dial_req{call_timeout='undefined'
                                ,start=Start
                               }=OffnetReq) ->
     Left = wh_util:decr_timeout(CallTimeLimit, Start),
-    lager:debug("no call timeout, decr time limit from ~p to ~p"
-                ,[CallTimeLimit, Left]
-               ),
     OffnetReq#dial_req{call_time_limit=Left
                        ,start=os:timestamp()
                       };
@@ -650,9 +643,6 @@ update_offnet_timers(#dial_req{call_timeout=CallTimeout
                                ,start=Start
                               }=OffnetReq) ->
     Left = wh_util:decr_timeout(CallTimeout, Start),
-    lager:debug("decr call timeout from ~p to ~p"
-                ,[CallTimeout, Left]
-               ),
     OffnetReq#dial_req{call_timeout=Left
                        ,start=os:timestamp()
                       }.

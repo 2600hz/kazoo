@@ -67,6 +67,5 @@ wait_for_pivot(Data, Call) ->
                     wait_for_pivot(Data, Call)
             end;
         {'error', 'timeout'} ->
-            lager:warning("no events received timeout"),
             wait_for_pivot(Data, Call)
     end.
