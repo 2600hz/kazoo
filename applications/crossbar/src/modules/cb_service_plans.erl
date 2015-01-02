@@ -101,31 +101,31 @@ resource_exists(_, _) -> 'true'.
 
 validate(Context) ->
     crossbar_doc:load_view(
-        ?CB_LIST
-        ,[]
-        ,Context
-        ,fun normalize_view_results/2
-    ).
+      ?CB_LIST
+      ,[]
+      ,Context
+      ,fun normalize_view_results/2
+     ).
 
 validate(Context, ?CURRENT) ->
     cb_context:setters(
-        Context
-       ,[{fun cb_context:set_resp_status/2, 'success'}
-         ,{fun cb_context:set_resp_data/2
-           ,wh_services:public_json(cb_context:account_id(Context))
-          }
-        ]
-    );
+      Context
+      ,[{fun cb_context:set_resp_status/2, 'success'}
+        ,{fun cb_context:set_resp_data/2
+          ,wh_services:public_json(cb_context:account_id(Context))
+         }
+       ]
+     );
 validate(Context, ?AVAILABLE) ->
     AccountId = cb_context:account_id(Context),
     ResellerId = wh_services:find_reseller_id(AccountId),
     ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
     crossbar_doc:load_view(
-        ?CB_LIST
-        ,[]
-        ,cb_context:set_account_db(Context, ResellerDb)
-        ,fun normalize_view_results/2
-    );
+      ?CB_LIST
+      ,[]
+      ,cb_context:set_account_db(Context, ResellerDb)
+      ,fun normalize_view_results/2
+     );
 validate(Context, ?SYNCHRONIZATION) ->
     case is_reseller(Context) of
         {'ok', _} -> cb_context:set_resp_status(Context, 'success');
@@ -138,7 +138,6 @@ validate(Context, ?RECONCILIATION) ->
     end;
 validate(Context, PlanId) ->
     validate_service_plan(Context, PlanId, cb_context:req_verb(Context)).
-
 
 validate(Context, ?AVAILABLE, PlanId) ->
     AccountId = cb_context:account_id(Context),
@@ -214,18 +213,14 @@ apply_fun(F, S) -> F(S).
 -spec content_types_provided(cb_context:context()) -> cb_context:context().
 -spec content_types_provided(cb_context:context(), ne_binary()) -> cb_context:context().
 content_types_provided(Context) ->
-    CTPs = [{'to_json', [{<<"application">>, <<"json">>}]}
-            ,{'to_csv', [{<<"application">>, <<"octet-stream">>}
-                         ,{<<"text">>, <<"csv">>}
-                        ]}
+    CTPs = [{'to_json', ?JSON_CONTENT_TYPES}
+            ,{'to_csv', ?CSV_CONTENT_TYPES}
            ],
     cb_context:add_content_types_provided(Context, CTPs).
 
 content_types_provided(Context, ?CURRENT) ->
-    CTPs = [{'to_json', [{<<"application">>, <<"json">>}]}
-            ,{'to_csv', [{<<"application">>, <<"octet-stream">>}
-                         ,{<<"text">>, <<"csv">>}
-                        ]}
+    CTPs = [{'to_json', ?JSON_CONTENT_TYPES}
+            ,{'to_csv', ?CSV_CONTENT_TYPES}
            ],
     cb_context:add_content_types_provided(Context, CTPs).
 
@@ -235,7 +230,8 @@ content_types_provided(Context, ?CURRENT) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec normalize_view_results(wh_json:object(), wh_json:objects()) ->
+                                    wh_json:objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
