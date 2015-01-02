@@ -10,7 +10,7 @@
 %% ===================================================================
 %% Application callbacks
 %% ===================================================================
--spec start(term(), term()) -> startlink_ret().
+-spec start(term(), term()) -> startapp_ret().
 start(_StartType, _StartArgs) ->
     kazoo_translator_sup:start_link().
 
