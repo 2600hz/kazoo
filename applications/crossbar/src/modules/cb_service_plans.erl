@@ -38,14 +38,16 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    cb_modules_util:bind(?MODULE
-                         ,[{<<"*.allowed_methods.service_plans">>, 'allowed_methods'}
-                           ,{<<"*.resource_exists.service_plans">>, 'resource_exists'}
-                           ,{<<"*.content_types_provided.service_plans">>, 'content_types_provided'}
-                           ,{<<"*.validate.service_plans">>, 'validate'}
-                           ,{<<"*.execute.post.service_plans">>, 'post'}
-                           ,{<<"*.execute.delete.service_plans">>, 'delete'}
-                          ]).
+    cb_modules_util:bind(
+        ?MODULE
+        ,[{<<"*.allowed_methods.service_plans">>, 'allowed_methods'}
+          ,{<<"*.resource_exists.service_plans">>, 'resource_exists'}
+          ,{<<"*.content_types_provided.service_plans">>, 'content_types_provided'}
+          ,{<<"*.validate.service_plans">>, 'validate'}
+          ,{<<"*.execute.post.service_plans">>, 'post'}
+          ,{<<"*.execute.delete.service_plans">>, 'delete'}
+         ]
+    ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -58,6 +60,12 @@ init() ->
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET].
+allowed_methods(?SYNCHRONIZATION) ->
+    [?HTTP_POST];
+allowed_methods(?RECONCILIATION) ->
+    [?HTTP_POST];
+allowed_methods(?CURRENT) ->
+    [?HTTP_GET];
 allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 allowed_methods(?AVAILABLE, _) ->
@@ -92,57 +100,39 @@ resource_exists(_, _) -> 'true'.
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 
 validate(Context) ->
-    AccountId = cb_context:account_id(Context),
-
-    ResellerId = case wh_services:is_reseller(AccountId)
-                     andalso AccountId =:= cb_context:auth_account_id(Context)
-                 of
-                     'true' -> AccountId;
-                     'false' -> wh_services:find_reseller_id(AccountId)
-                 end,
-    ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
-
-    crossbar_doc:load_view(?CB_LIST
-                           ,[]
-                           ,cb_context:set_account_db(Context, ResellerDb)
-                           ,fun normalize_view_results/2
-                          ).
+    crossbar_doc:load_view(
+        ?CB_LIST
+        ,[]
+        ,Context
+        ,fun normalize_view_results/2
+    ).
 
 validate(Context, ?CURRENT) ->
-    case cb_context:req_verb(Context) of
-        ?HTTP_GET ->
-            cb_context:setters(Context
-                               ,[{fun cb_context:set_resp_status/2, 'success'}
-                                 ,{fun cb_context:set_resp_data/2
-                                   ,wh_services:public_json(cb_context:account_id(Context))
-                                  }
-                                ]);
-        _Verb ->
-            cb_context:add_system_error('bad_identifier', Context)
-    end;
+    cb_context:setters(
+        Context
+       ,[{fun cb_context:set_resp_status/2, 'success'}
+         ,{fun cb_context:set_resp_data/2
+           ,wh_services:public_json(cb_context:account_id(Context))
+          }
+        ]
+    );
 validate(Context, ?AVAILABLE) ->
-    case cb_context:req_verb(Context) of
-        ?HTTP_GET ->
-            crossbar_doc:load_view(
-                ?CB_LIST
-                ,[]
-                ,Context
-                ,fun normalize_view_results/2
-            );
-        _Verb ->
-            cb_context:add_system_error('bad_identifier', Context)
-    end;
+    AccountId = cb_context:account_id(Context),
+    ResellerId = wh_services:find_reseller_id(AccountId),
+    ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
+    crossbar_doc:load_view(
+        ?CB_LIST
+        ,[]
+        ,cb_context:set_account_db(Context, ResellerDb)
+        ,fun normalize_view_results/2
+    );
 validate(Context, ?SYNCHRONIZATION) ->
-    case cb_context:req_verb(Context) =:= ?HTTP_POST
-        andalso is_reseller(Context)
-    of
+    case is_reseller(Context) of
         {'ok', _} -> cb_context:set_resp_status(Context, 'success');
         'false' -> cb_context:add_system_error('forbidden', Context)
     end;
 validate(Context, ?RECONCILIATION) ->
-    case cb_context:req_verb(Context) =:= ?HTTP_POST
-        andalso is_reseller(Context)
-    of
+    case is_reseller(Context) of
         {'ok', _} -> cb_context:set_resp_status(Context, 'success');
         'false' -> cb_context:add_system_error('forbidden', Context)
     end;
@@ -151,19 +141,14 @@ validate(Context, PlanId) ->
 
 
 validate(Context, ?AVAILABLE, PlanId) ->
-    case cb_context:req_verb(Context) of
-        ?HTTP_GET ->
-            crossbar_doc:load(PlanId, Context);
-        _Verb ->
-            cb_context:add_system_error('bad_identifier', Context)
-    end.
-
--spec validate_service_plan(cb_context:context(), path_token(), http_method()) -> cb_context:context().
-validate_service_plan(Context, PlanId, ?HTTP_GET) ->
     AccountId = cb_context:account_id(Context),
     ResellerId = wh_services:find_reseller_id(AccountId),
     ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
-    crossbar_doc:load(PlanId, cb_context:set_account_db(Context, ResellerDb));
+    crossbar_doc:load(PlanId, cb_context:set_account_db(Context, ResellerDb)).
+
+-spec validate_service_plan(cb_context:context(), path_token(), http_method()) -> cb_context:context().
+validate_service_plan(Context, PlanId, ?HTTP_GET) ->
+    crossbar_doc:load(PlanId, Context);
 validate_service_plan(Context, PlanId, ?HTTP_POST) ->
     maybe_allow_change(Context, PlanId);
 validate_service_plan(Context, PlanId, ?HTTP_DELETE) ->
