@@ -232,7 +232,6 @@ handle_message_delivery(JObj, Props) ->
 
 
 send(Endpoint, API) ->
-    CallId = props:get_value(<<"Call-ID">>, API),
     Type = wh_json:get_value(<<"Endpoint-Type">>, Endpoint, <<"sip">>),
     send(Type, Endpoint, API).
 
@@ -248,7 +247,7 @@ send(<<"amqp">>, Endpoint, API) ->
     Options = wh_json:to_proplist(wh_json:get_value(<<"Endpoint-Options">>, Endpoint, [])),
     Props = wh_json:to_proplist(Endpoint) ++ Options,
     Payload = props:set_values( Props, API),
-    lager:debug("sending sms and waiting for response ~s", [CallId]),
+    lager:debug("sending sms and not waiting for response ~s", [CallId]),
     whapps_util:amqp_pool_send(Payload, fun wapi_sms:publish_outbound/1),
     %% Message delivered
     DeliveryProps = [{<<"Delivery-Result-Code">>, <<"sip:200">> }
