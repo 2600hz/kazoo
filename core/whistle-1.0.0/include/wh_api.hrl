@@ -6,7 +6,7 @@
 -endif.
 
 -type api_formatter_return() :: {'ok', iolist()} | {'error', string()}.
--type api_headers() :: [ne_binary(),...] | [].
+-type api_headers() :: ne_binaries().
 
 %%% *_HEADERS defines a list of Keys that must exist in every message of type *
 %%% (substitute AUTHN_REQ, AUTHN_RESP, etc, for *) to be considered valid.
@@ -46,13 +46,13 @@
 %% Default Headers
 %% All messages MUST include the DEFAULT_HEADERS list.
 -define(DEFAULT_HEADERS, [<<"Event-Category">>, <<"Event-Name">>
-                              ,<<"App-Name">>, <<"App-Version">>
-                              ,<<"Msg-ID">>
+                          ,<<"App-Name">>, <<"App-Version">>
+                          ,<<"Msg-ID">>
                          ]).
 -define(OPTIONAL_DEFAULT_HEADERS, [<<"Raw-Headers">>, <<"Destination-Server">>
-                                       ,<<"Geo-Location">>, <<"Access-Group">>
-                                       ,<<"Tenant-ID">>, <<"Node">>, <<"Server-ID">>
-                                       ,<<"Defer-Response">>
+                                   ,<<"Geo-Location">>, <<"Access-Group">>
+                                   ,<<"Tenant-ID">>, <<"Node">>, <<"Server-ID">>
+                                   ,<<"Defer-Response">>
                                   ]).
 -define(DEFAULT_VALUES, [{<<"Node">>, wh_util:to_binary(node())}
                          ,{<<"Msg-ID">>, wh_util:rand_hex_binary(16)}
@@ -76,5 +76,5 @@
 -define(ERROR_RESP_VALUES, [{<<"Event-Category">>, <<"error">>}]).
 -define(ERROR_RESP_TYPES, []).
 
--define(WH_API_HEADERS, true).
+-define(WH_API_HEADERS, 'true').
 -endif.
