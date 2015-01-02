@@ -799,6 +799,7 @@ find_schema(<<_/binary>> = Schema) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec add_system_error(atom() | binary(), context()) -> context().
+-spec add_system_error(atom() | binary(), wh_proplist(), context()) -> context().
 add_system_error('too_many_requests', Context) ->
     build_system_error(429, 'too_many_requests', <<"too many requests">>, Context);
 add_system_error('no_credit', Context) ->
@@ -875,22 +876,21 @@ add_system_error(Error, Props, Context) ->
         ]),
     build_system_error(500, Error, wh_util:to_binary(Error), Data, Context).
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec build_system_error(integer(), atom(), ne_binary(), cb_context:context()) -> cb_context:context().
--spec build_system_error(integer(), atom(), ne_binary(), wh_json:object() | wh_proplist(), cb_context:context()) -> cb_context:context().
--spec build_system_error(ne_binary(), integer(), atom(), ne_binary(), wh_json:object(), cb_context:context()) -> cb_context:context().
+-spec build_system_error(integer(), atom(), ne_binary(), cb_context:context()) ->
+                                cb_context:context().
+-spec build_system_error(integer(), atom(), ne_binary(), wh_json:object(), cb_context:context()) ->
+                                cb_context:context().
+-spec build_system_error(ne_binary(), integer(), atom(), ne_binary(), wh_json:object(), cb_context:context()) ->
+                                cb_context:context().
 build_system_error(Code, Identifier, Message, Context) ->
     build_system_error(Code, Identifier, Message, wh_json:new(), Context).
 
-build_system_error(Code, Identifier, Message, Data, Context) when is_list(Data) ->
-    ApiVersion = cb_context:api_version(Context),
-    build_system_error(ApiVersion, Code, Identifier, Message, wh_json:from_list(Data), Context);
 build_system_error(Code, Identifier, Message, Data, Context) ->
     ApiVersion = cb_context:api_version(Context),
     build_system_error(ApiVersion, Code, Identifier, Message, Data, Context).
