@@ -232,10 +232,10 @@ connected(#wh_amqp_connection{exchanges_initialized='false'}=Connection) ->
 connected(#wh_amqp_connection{available='false'}=Connection) ->
     _ = wh_amqp_connections:available(self()),
     connected(Connection#wh_amqp_connection{available='true'});
-connected(#wh_amqp_connection{prechannels_initalized='false'}=Connection) ->
-    case initalize_prechannels(Connection) of
-        #wh_amqp_connection{prechannels_initalized='false'}=Error -> Error;
-        #wh_amqp_connection{prechannels_initalized='true'}=Success ->
+connected(#wh_amqp_connection{prechannels_initialized='false'}=Connection) ->
+    case initialize_prechannels(Connection) of
+        #wh_amqp_connection{prechannels_initialized='false'}=Error -> Error;
+        #wh_amqp_connection{prechannels_initialized='true'}=Success ->
             connected(Success)
     end;
 connected(#wh_amqp_connection{broker=_Broker}=Connection) ->
@@ -275,8 +275,8 @@ disconnected(#wh_amqp_connection{connection=Pid}=Connection, Timeout)
   when is_pid(Pid) ->
     _ = (catch amqp_connection:close(Pid, 5000)),
     disconnected(Connection#wh_amqp_connection{connection='undefined'}, Timeout);
-disconnected(#wh_amqp_connection{prechannels_initalized='true'}=Connection, Timeout) ->
-    disconnected(Connection#wh_amqp_connection{prechannels_initalized='false'}, Timeout);
+disconnected(#wh_amqp_connection{prechannels_initialized='true'}=Connection, Timeout) ->
+    disconnected(Connection#wh_amqp_connection{prechannels_initialized='false'}, Timeout);
 disconnected(#wh_amqp_connection{exchanges_initialized='true'}=Connection, Timeout) ->
     disconnected(Connection#wh_amqp_connection{exchanges_initialized='false'}, Timeout);
 disconnected(#wh_amqp_connection{}=Connection, Timeout) ->
@@ -360,20 +360,20 @@ create_control_channel(#wh_amqp_connection{broker=Broker}=Connection) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec initalize_prechannels(wh_amqp_connection()) -> wh_amqp_connection().
-initalize_prechannels(#wh_amqp_connection{}=Connection) ->
-    initalize_prechannels(Connection, 10).
+-spec initialize_prechannels(wh_amqp_connection()) -> wh_amqp_connection().
+initialize_prechannels(#wh_amqp_connection{}=Connection) ->
+    initialize_prechannels(Connection, 10).
 
--spec initalize_prechannels(wh_amqp_connection(), non_neg_integer()) -> wh_amqp_connection().
-initalize_prechannels(#wh_amqp_connection{}=Connection, 0) ->
-    Connection#wh_amqp_connection{prechannels_initalized='true'};
-initalize_prechannels(#wh_amqp_connection{}=Connection, Count) ->
+-spec initialize_prechannels(wh_amqp_connection(), non_neg_integer()) -> wh_amqp_connection().
+initialize_prechannels(#wh_amqp_connection{}=Connection, 0) ->
+    Connection#wh_amqp_connection{prechannels_initialized='true'};
+initialize_prechannels(#wh_amqp_connection{}=Connection, Count) ->
     case establish_prechannel(Connection) of
         #wh_amqp_connection{connection=Pid}=Success
             when is_pid(Pid) ->
-            initalize_prechannels(Success, Count - 1);
+            initialize_prechannels(Success, Count - 1);
         #wh_amqp_connection{}=Error ->
-            Error#wh_amqp_connection{prechannels_initalized='false'}
+            Error#wh_amqp_connection{prechannels_initialized='false'}
     end.
 
 -spec establish_prechannel(wh_amqp_connection()) -> wh_amqp_connection().

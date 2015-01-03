@@ -193,7 +193,7 @@
                              ,reconnect_ref :: api_reference() | '_'
                              ,available = 'false' :: boolean()
                              ,exchanges_initialized = 'false' :: boolean() | '_'
-                             ,prechannels_initalized = 'false' :: boolean() | '_'
+                             ,prechannels_initialized = 'false' :: boolean() | '_'
                              ,started = os:timestamp() :: wh_now() | '_'
                              ,tags = [] :: list()
                              ,hidden = 'false' :: boolean()
