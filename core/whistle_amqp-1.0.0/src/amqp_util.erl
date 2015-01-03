@@ -109,6 +109,7 @@
 -export([basic_cancel/0]).
 -export([queue_delete/1, queue_delete/2]).
 -export([new_exchange/2, new_exchange/3]).
+-export([declare_exchange/2, declare_exchange/3]).
 
 -export([access_request/0, access_request/1, basic_ack/1, basic_nack/1, basic_qos/1]).
 
@@ -465,6 +466,22 @@ new_exchange(Exchange, Type, Options) ->
       ,arguments = ?P_GET('arguments', Options, [])
      },
     wh_amqp_channel:command(ED).
+
+-spec declare_exchange(ne_binary(), ne_binary()) -> 'ok'.
+-spec declare_exchange(ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
+declare_exchange(Exchange, Type) ->
+    declare_exchange(Exchange, Type, []).
+declare_exchange(Exchange, Type, Options) ->
+    #'exchange.declare'{
+      exchange = Exchange
+      ,type = Type
+      ,passive = ?P_GET('passive', Options, 'false')
+      ,durable = ?P_GET('durable', Options, 'false')
+      ,auto_delete = ?P_GET('auto_delete', Options, 'false')
+      ,internal = ?P_GET('internal', Options, 'false')
+      ,nowait = ?P_GET('nowait', Options, 'false')
+      ,arguments = ?P_GET('arguments', Options, [])
+     }.
 
 %%------------------------------------------------------------------------------
 %% @public
