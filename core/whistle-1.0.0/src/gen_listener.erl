@@ -990,8 +990,13 @@ federated_queue_name(Params) ->
 -spec handle_amqp_channel_available(state()) -> state().
 handle_amqp_channel_available(#state{params=Params}=State) ->
     lager:debug("channel started, let's connect"),
-    {'ok', Q} = start_amqp(Params),
 
+    Channel = wh_amqp_assignments:get_channel(),
+    _ = [wh_amqp_channel:command(Channel, Exchange)
+            || Exchange <- props:get_value('declare_exchanges', Params, [])],
+    
+    {'ok', Q} = start_amqp(Params),
+    
     State1 = start_initial_bindings(State#state{queue=Q}, Params),
 
     _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), '$is_gen_listener_consuming'),
