@@ -34,8 +34,13 @@
 -define(RESOURCE_TYPE_VIDEO, <<"video">>).
 
 -define(DEFAULT_MOBILE_SMS_INTERFACE, <<"amqp">>).
+-define(DEFAULT_MOBILE_SMS_BROKER, <<"amqp://user:pass@amqp.server.com:5672/vhost">>).
+-define(DEFAULT_MOBILE_SMS_EXCHANGE, wh_util:rand_hex_binary(16)).
+-define(DEFAULT_MOBILE_SMS_EXCHANGE_TYPE, <<"topic">>).
 -define(DEFAULT_MOBILE_SMS_OPTIONS, wh_json:from_list([{<<"Route-ID">>, <<"sprint">>}
                                                        ,{<<"System-ID">>, wh_util:node_name()}
+                                                       ,{<<"Exchange-ID">>, ?DEFAULT_MOBILE_SMS_EXCHANGE}
+                                                       ,{<<"Exchange-Type">>, ?DEFAULT_MOBILE_SMS_EXCHANGE_TYPE}
                                                       ])).
 
 %%--------------------------------------------------------------------
@@ -1268,7 +1273,10 @@ maybe_build_mobile_sms_route(Endpoint) ->
 -spec build_mobile_sms_route(ne_binary()) -> {ne_binary(), ne_binary(), api_object()}
                                              | {'error', 'invalid_mdn'}.
 build_mobile_sms_route(MDN) ->
-    Route = build_mobile_route(MDN),
     Type = whapps_config:get(?CF_MOBILE_CONFIG_CAT, <<"sms_interface">>, ?DEFAULT_MOBILE_SMS_INTERFACE),
+    Route = case Type of
+                <<"amqp">> -> whapps_config:get(?CF_MOBILE_CONFIG_CAT, <<"sms_broker">>, ?DEFAULT_MOBILE_SMS_BROKER);
+                <<"sip">> -> build_mobile_route(MDN)
+            end,                              
     Options = whapps_config:get(?CF_MOBILE_CONFIG_CAT, <<"sms_route_options">>, ?DEFAULT_MOBILE_SMS_OPTIONS),
     {Type, Route, Options}.
