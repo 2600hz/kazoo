@@ -43,6 +43,8 @@
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
+-define(ATOM(X), wh_util:to_atom(X, 'true')).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -230,11 +232,12 @@ handle_message_delivery(JObj, Props) ->
 
 
 
-
+-spec send(wh_json:object(), wh_proplist()) -> no_return().
 send(Endpoint, API) ->
     Type = wh_json:get_value(<<"Endpoint-Type">>, Endpoint, <<"sip">>),
     send(Type, Endpoint, API).
 
+-spec send(binary(), wh_json:object(), wh_proplist()) -> no_return().
 send(<<"sip">>, Endpoint, API) ->
     Options = wh_json:to_proplist(wh_json:get_value(<<"Endpoint-Options">>, Endpoint, [])),
     Payload = props:set_values( [{<<"Endpoints">>, [Endpoint]} | Options], API),
@@ -247,8 +250,12 @@ send(<<"amqp">>, Endpoint, API) ->
     Options = wh_json:to_proplist(wh_json:get_value(<<"Endpoint-Options">>, Endpoint, [])),
     Props = wh_json:to_proplist(Endpoint) ++ Options,
     Payload = props:set_values( Props, API),
+    Broker = wh_json:get_value([<<"Endpoint-Options">>, <<"AMQP-Broker">>], Endpoint),
+    Exchange = wh_json:get_value([<<"Endpoint-Options">>, <<"Exchange-ID">>], Endpoint),
+    ExchangeType = wh_json:get_value([<<"Endpoint-Options">>, <<"Exchange-Type">>], Endpoint, <<"topic">>),
+    maybe_add_broker(Broker, Exchange, ExchangeType),
     lager:debug("sending sms and not waiting for response ~s", [CallId]),
-    whapps_util:amqp_pool_send(Payload, fun wapi_sms:publish_outbound/1),
+    Res = wh_amqp_worker:cast(Payload, fun wapi_sms:publish_outbound/1, ?ATOM(Exchange)),
     %% Message delivered
     DeliveryProps = [{<<"Delivery-Result-Code">>, <<"sip:200">> }
                      ,{<<"Status">>, <<"Success">>}
@@ -258,6 +265,35 @@ send(<<"amqp">>, Endpoint, API) ->
                      ],
     gen_listener:cast(self(), {'sms_success', wh_json:set_values(DeliveryProps, wh_json:new())}).
 
+-spec maybe_add_broker(binary(), binary(), binary()) -> 'ok'.
+maybe_add_broker(Broker, Exchange, ExchangeType) ->
+    maybe_add_broker(Broker, Exchange, ExchangeType, wh_amqp_sup:pool_pid(?ATOM(Exchange)) =/= 'undefined').
+    
+    
+-spec maybe_add_broker(binary(), binary(), binary(), boolean()) -> 'ok'.
+maybe_add_broker(_Broker, _Exchange, _ExchangeType, 'true') -> 'ok';
+maybe_add_broker(Broker, Exchange, ExchangeType, 'false') ->
+    Connection = wh_amqp_connections:add(Broker, Exchange, [<<"hidden">>, Exchange]),    
+    Exchanges = [new_exchange(Exchange, ExchangeType)],
+    wh_amqp_sup:add_amqp_pool(?ATOM(Exchange), Broker, 5, 5, [], Exchanges),
+    'ok'.
+
+-spec new_exchange(binary(), binary()) -> wh_amqp_exchange().
+new_exchange(Exchange, Type) ->
+    new_exchange(Exchange, Type, []).
+
+-spec new_exchange(binary(), binary(), wh_proplist()) -> wh_amqp_exchange().
+new_exchange(Exchange, Type, Options) ->
+    #'exchange.declare'{
+      exchange = Exchange
+      ,type = Type
+      ,passive = props:get_value('passive', Options, 'true')
+      ,durable = props:get_value('durable', Options, 'true')
+      ,internal = props:get_value('internal', Options, 'false')
+      ,nowait = props:get_value('nowait', Options, 'false')
+      ,arguments = props:get_value('arguments', Options, [])
+     }.
+      
 -spec build_sms(state()) -> wh_proplist().
 build_sms(#state{endpoints=Endpoints
                  ,resource_req=JObj
@@ -269,7 +305,7 @@ build_sms(#state{endpoints=Endpoints
                 ,message=build_sms_base({CIDNum, CIDName}, JObj, Q)
                }.
         
-
+-spec build_sms_base({binary(), binary()}, wh_json:object(), binary()) -> wh_proplist().
 build_sms_base({CIDNum, CIDName}, JObj, Q) ->
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     AccountRealm = wh_json:get_value(<<"Account-Realm">>, JObj),

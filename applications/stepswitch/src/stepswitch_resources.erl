@@ -825,10 +825,15 @@ endpoint_options(JObj, <<"skype">>) ->
          ,{<<"Skype-RR">>, wh_json:is_true(<<"skype_rr">>, JObj, true)}
         ]));
 endpoint_options(JObj, <<"amqp">>) ->
+    Server = wh_json:get_value(<<"server">>, JObj),
+    User = wh_json:get_value(<<"username">>, JObj),
+    Password = wh_json:get_value(<<"password">>, JObj),
+    Broker = <<"amqp://", User/binary, ":", Password/binary, "@", Server/binary>>,
     wh_json:from_list(
       props:filter_undefined(
-        [{<<"AMQP-Broker">>, wh_json:get_value(<<"server">>, JObj)}
+        [{<<"AMQP-Broker">>, Broker}
          ,{<<"Exchange-ID">>, wh_json:get_value(<<"amqp_exchange">>, JObj)}
+         ,{<<"Exchange-Type">>, wh_json:get_value(<<"amqp_exchange_type">>, JObj)}
          ,{<<"Route-ID">>, wh_json:get_value(<<"route_id">>, JObj)}
          ,{<<"System-ID">>, wh_json:get_value(<<"system_id">>, JObj)}
         ]));
@@ -837,8 +842,8 @@ endpoint_options(JObj, <<"sip">>) ->
       props:filter_undefined(
         [{<<"Route-ID">>, wh_json:get_value(<<"route_id">>, JObj)}
         ]));
-endpoint_options(_, _) -> wh_json:new().
-
+endpoint_options(_, _) -> wh_json:new().    
+    
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
