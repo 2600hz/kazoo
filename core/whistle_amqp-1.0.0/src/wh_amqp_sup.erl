@@ -109,7 +109,6 @@ add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, Bindings, Exchanges) ->
 
 -spec pool_pid(atom() | binary()) -> 'undefined' | pid().
 pool_pid(Pool) ->
-    lager:debug("POOL PID ~p", [supervisor:which_children(?MODULE)]),
     case [ Pid || {Id,Pid,_,_} <- supervisor:which_children(?MODULE), Id =:= ?ATOM(Pool)] of
         [] -> 'undefined';
         [P | _] -> P
