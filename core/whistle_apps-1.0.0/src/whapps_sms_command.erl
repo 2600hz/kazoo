@@ -27,6 +27,8 @@
 -define(DEFAULT_APPLICATION_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"application_timeout">>, 500000)).
 -define(DEFAULT_STRATEGY, <<"single">>).
 
+-define(ATOM(X), wh_util:to_atom(X, 'true')).
+
 -spec default_collect_timeout() -> pos_integer().
 default_collect_timeout() ->
     ?DEFAULT_COLLECT_TIMEOUT.
@@ -112,9 +114,13 @@ send_and_wait(<<"amqp">>, API, Endpoint, _Timeout) ->
     CallId = props:get_value(<<"Call-ID">>, API),
     Options = wh_json:to_proplist(wh_json:get_value(<<"Endpoint-Options">>, Endpoint, [])),
     Props = wh_json:to_proplist(Endpoint) ++ Options,
+    Broker = wh_json:get_value(<<"Route">>, Endpoint),
+    Exchange = wh_json:get_value([<<"Endpoint-Options">>, <<"Exchange-ID">>], Endpoint),
+    ExchangeType = wh_json:get_value([<<"Endpoint-Options">>, <<"Exchange-Type">>], Endpoint, <<"topic">>),
+    maybe_add_broker(Broker, Exchange, ExchangeType),
+    lager:debug("sending sms and not waiting for response ~s", [CallId]),
     Payload = props:set_values( Props, API),
-    lager:debug("sending sms and waiting for response ~s", [CallId]),
-    whapps_util:amqp_pool_send(Payload, fun wapi_sms:publish_outbound/1),
+    wh_amqp_worker:cast(Payload, fun wapi_sms:publish_outbound/1, ?ATOM(Exchange)),        
     %% Message delivered
     DeliveryProps = [{<<"Delivery-Result-Code">>, <<"sip:200">> }
                      ,{<<"Status">>, <<"Success">>}
@@ -123,6 +129,19 @@ send_and_wait(<<"amqp">>, API, Endpoint, _Timeout) ->
                     | wh_api:default_headers(<<"message">>, <<"delivery">>, ?APP_NAME, ?APP_VERSION)
                      ],
     {'ok', wh_json:set_values(DeliveryProps, wh_json:new())}.
+
+-spec maybe_add_broker(binary(), binary(), binary()) -> 'ok'.
+maybe_add_broker(Broker, Exchange, ExchangeType) ->
+    maybe_add_broker(Broker, Exchange, ExchangeType, wh_amqp_sup:pool_pid(?ATOM(Exchange)) =/= 'undefined').
+    
+    
+-spec maybe_add_broker(binary(), binary(), binary(), boolean()) -> 'ok'.
+maybe_add_broker(_Broker, _Exchange, _ExchangeType, 'true') -> 'ok';
+maybe_add_broker(Broker, Exchange, ExchangeType, 'false') ->
+    wh_amqp_connections:add(Broker, Exchange, [<<"hidden">>, Exchange]),    
+    Exchanges = [amqp_util:declare_exchange(Exchange, ExchangeType, [{'passive', 'true'}])],
+    wh_amqp_sup:add_amqp_pool(?ATOM(Exchange), Broker, 5, 5, [], Exchanges),
+    'ok'.
 
 -spec create_sms(whapps_call:call()) -> wh_proplist().
 create_sms(Call) ->
