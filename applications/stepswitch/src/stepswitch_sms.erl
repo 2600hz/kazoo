@@ -255,7 +255,7 @@ send(<<"amqp">>, Endpoint, API) ->
     ExchangeType = wh_json:get_value([<<"Endpoint-Options">>, <<"Exchange-Type">>], Endpoint, <<"topic">>),
     maybe_add_broker(Broker, Exchange, ExchangeType),
     lager:debug("sending sms and not waiting for response ~s", [CallId]),
-    Res = wh_amqp_worker:cast(Payload, fun wapi_sms:publish_outbound/1, ?ATOM(Exchange)),
+    wh_amqp_worker:cast(Payload, fun wapi_sms:publish_outbound/1, ?ATOM(Exchange)),
     %% Message delivered
     DeliveryProps = [{<<"Delivery-Result-Code">>, <<"sip:200">> }
                      ,{<<"Status">>, <<"Success">>}
@@ -273,26 +273,10 @@ maybe_add_broker(Broker, Exchange, ExchangeType) ->
 -spec maybe_add_broker(binary(), binary(), binary(), boolean()) -> 'ok'.
 maybe_add_broker(_Broker, _Exchange, _ExchangeType, 'true') -> 'ok';
 maybe_add_broker(Broker, Exchange, ExchangeType, 'false') ->
-    Connection = wh_amqp_connections:add(Broker, Exchange, [<<"hidden">>, Exchange]),    
-    Exchanges = [new_exchange(Exchange, ExchangeType)],
+    wh_amqp_connections:add(Broker, Exchange, [<<"hidden">>, Exchange]),    
+    Exchanges = [amqp_util:declare_exchange(Exchange, ExchangeType, [{'passive', 'true'}])],
     wh_amqp_sup:add_amqp_pool(?ATOM(Exchange), Broker, 5, 5, [], Exchanges),
     'ok'.
-
--spec new_exchange(binary(), binary()) -> wh_amqp_exchange().
-new_exchange(Exchange, Type) ->
-    new_exchange(Exchange, Type, []).
-
--spec new_exchange(binary(), binary(), wh_proplist()) -> wh_amqp_exchange().
-new_exchange(Exchange, Type, Options) ->
-    #'exchange.declare'{
-      exchange = Exchange
-      ,type = Type
-      ,passive = props:get_value('passive', Options, 'true')
-      ,durable = props:get_value('durable', Options, 'true')
-      ,internal = props:get_value('internal', Options, 'false')
-      ,nowait = props:get_value('nowait', Options, 'false')
-      ,arguments = props:get_value('arguments', Options, [])
-     }.
       
 -spec build_sms(state()) -> wh_proplist().
 build_sms(#state{endpoints=Endpoints
