@@ -223,10 +223,10 @@ connected(#wh_amqp_connection{channel='undefined'}=Connection) ->
           when is_pid(Pid)-> connected(Success);
         #wh_amqp_connection{}=Error -> Error
     end;
-connected(#wh_amqp_connection{exchanges_initalized='false'}=Connection) ->
+connected(#wh_amqp_connection{exchanges_initialized='false'}=Connection) ->
     case declare_exchanges(Connection) of
-        #wh_amqp_connection{exchanges_initalized='false'}=Error -> Error;
-        #wh_amqp_connection{exchanges_initalized='true'}=Success ->
+        #wh_amqp_connection{exchanges_initialized='false'}=Error -> Error;
+        #wh_amqp_connection{exchanges_initialized='true'}=Success ->
             connected(Success)
     end;
 connected(#wh_amqp_connection{available='false'}=Connection) ->
@@ -277,8 +277,8 @@ disconnected(#wh_amqp_connection{connection=Pid}=Connection, Timeout)
     disconnected(Connection#wh_amqp_connection{connection='undefined'}, Timeout);
 disconnected(#wh_amqp_connection{prechannels_initalized='true'}=Connection, Timeout) ->
     disconnected(Connection#wh_amqp_connection{prechannels_initalized='false'}, Timeout);
-disconnected(#wh_amqp_connection{exchanges_initalized='true'}=Connection, Timeout) ->
-    disconnected(Connection#wh_amqp_connection{exchanges_initalized='false'}, Timeout);
+disconnected(#wh_amqp_connection{exchanges_initialized='true'}=Connection, Timeout) ->
+    disconnected(Connection#wh_amqp_connection{exchanges_initialized='false'}, Timeout);
 disconnected(#wh_amqp_connection{}=Connection, Timeout) ->
     NextTimeout = next_timeout(Timeout),
     Ref = erlang:send_after(Timeout, self(), {'connect', NextTimeout}),
@@ -424,12 +424,17 @@ open_channel(#wh_amqp_connection{connection=Pid}) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec declare_exchanges(wh_amqp_connection()) -> wh_amqp_connection().
-declare_exchanges(#wh_amqp_connection{}=Connection) ->
-    declare_exchanges(Connection, wh_amqp_history:list_exchanges()).
+declare_exchanges(#wh_amqp_connection{tags=Tags}=Connection) ->
+    maybe_add_all_exchanges(Connection, lists:member(?AMQP_HIDDEN_TAG, Tags)).
+
+maybe_add_all_exchanges(Connection, 'false') ->
+    declare_exchanges(Connection, wh_amqp_history:list_exchanges());
+maybe_add_all_exchanges(Connection, 'true') ->
+    Connection#wh_amqp_connection{exchanges_initialized='true'}.
 
 -spec declare_exchanges(wh_amqp_connection(), wh_amqp_exchanges()) -> wh_amqp_connection().
 declare_exchanges(#wh_amqp_connection{}=Connection, []) ->
-    Connection#wh_amqp_connection{exchanges_initalized='true'};
+    Connection#wh_amqp_connection{exchanges_initialized='true'};
 declare_exchanges(#wh_amqp_connection{channel=Channel
                                       ,broker=_Broker}=Connection
                   ,[Exchange|Exchanges])
@@ -466,4 +471,4 @@ declare_exchanges(#wh_amqp_connection{channel=Channel
                               ,[Exchange|Exchanges])
     end;
 declare_exchanges(#wh_amqp_connection{}=Connection, _) ->
-    disconnected(Connection#wh_amqp_connection{exchanges_initalized='false'}).
+    disconnected(Connection#wh_amqp_connection{exchanges_initialized='false'}).
