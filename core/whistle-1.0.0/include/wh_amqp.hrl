@@ -141,6 +141,7 @@
                            #'basic.ack'{} | #'basic.nack'{} |
                            #'basic.qos'{} |
                            #'exchange.declare'{} |
+                           #'confirm.select'{} |
                            '_' | 'undefined'.
 -type wh_amqp_commands() :: [wh_amqp_command(),...] | [].
 
@@ -154,6 +155,7 @@
                              #'exchange.declare_ok'{} | #'queue.delete_ok'{} |
                              #'queue.declare_ok'{} | #'queue.unbind_ok'{} |
                              #'queue.bind_ok'{} | #'basic.consume_ok'{} |
+                             #'confirm.select_ok'{} |
                              #'basic.cancel_ok'{}.
 -type command_ret() :: 'ok' |
                        {'ok', ne_binary() | wh_command_ret_ok()} |
@@ -190,7 +192,7 @@
                              ,channel_ref :: api_reference() | '$1' | '_'
                              ,reconnect_ref :: api_reference() | '_'
                              ,available = 'false' :: boolean()
-                             ,exchanges_initalized = 'false' :: boolean() | '_'
+                             ,exchanges_initialized = 'false' :: boolean() | '_'
                              ,prechannels_initalized = 'false' :: boolean() | '_'
                              ,started = os:timestamp() :: wh_now() | '_'
                              ,tags = [] :: list()
