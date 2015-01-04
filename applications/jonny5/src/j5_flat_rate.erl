@@ -61,7 +61,7 @@ reconcile_cdr(_, _) -> 'ok'.
 eligible_for_flat_rate(Request) ->
     Direction = j5_request:call_direction(Request),
     % sample flat_rate_whitelist_inbound ".*"
-    % sample flat_rate_whitelist_outbound "^\\+?1(800|888|877|866|855|844)\\d{7}$"
+    % sample flat_rate_whitelist_inbound "^\\+?1(800|888|877|866|855|844)\\d{7}$"
     % For backward compatibility if there is no config setting with the direction it will try without the direction in the param name.
     % If not using the direction in the param name the white and black lists apply to both inbound and outbound. 
     % If that is not set it will default to the macro defined defaults that also apply to both inbound and outbound.
