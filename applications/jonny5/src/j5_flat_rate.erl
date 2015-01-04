@@ -60,49 +60,49 @@ reconcile_cdr(_, _) -> 'ok'.
 -spec eligible_for_flat_rate(j5_request:request()) -> boolean().
 eligible_for_flat_rate(Request) ->
     Direction = j5_request:call_direction(Request),
-	% sample flat_rate_whitelist_inbound ".*"
-	% sample flat_rate_blacklist_outbound "^\\+?1(800|888|877|866|855|844)\\d{7}$"
-	% For backward compatibility if there is no config setting with the direction it will try without the direction in the param name.
-	% If not using the direction in the param name the white and black lists apply to both inbound and outbound. 
-	% If that is not set it will default to the macro defined defaults that also apply to both inbound and outbound.
-	TrunkWhitelist = get_white_black_lists(<<"fllat_rate">>, <<"whitelist">>, Direction, ?DEFAULT_WHITELIST),
-	TrunkBlacklist = get_white_black_lists(<<"fllat_rate">>, <<"blacklist">>, Direction, ?DEFAULT_BLACKLIST),
+    % sample flat_rate_whitelist_inbound ".*"
+    % sample flat_rate_whitelist_outbound "^\\+?1(800|888|877|866|855|844)\\d{7}$"
+    % For backward compatibility if there is no config setting with the direction it will try without the direction in the param name.
+    % If not using the direction in the param name the white and black lists apply to both inbound and outbound. 
+    % If that is not set it will default to the macro defined defaults that also apply to both inbound and outbound.
+    TrunkWhitelist = get_white_black_lists(<<"fllat_rate">>, <<"whitelist">>, Direction, ?DEFAULT_WHITELIST),
+    TrunkBlacklist = get_white_black_lists(<<"fllat_rate">>, <<"blacklist">>, Direction, ?DEFAULT_BLACKLIST),
     Number = wnm_util:to_e164(j5_request:number(Request)),
     lager:debug("Checking if number, ~s, matches to ~s white and black lists.", [Number, Direction]),
     lager:debug("whitelist: /~s/.", [TrunkWhitelist]),
     lager:debug("blacklist: /~s/.", [TrunkBlacklist]),
     case catch wh_util:is_empty(TrunkWhitelist) orelse re:run(Number, TrunkWhitelist) =/= 'nomatch' of
-	'true' -> 
-		lager:debug("Matched trunk whitelist or empty whitelist.", []),
-		case catch (wh_util:is_empty(TrunkBlacklist) orelse re:run(Number, TrunkBlacklist) =:= 'nomatch') of
-			'true' -> 
-				lager:debug("Did NOT match trunk blacklist or empty blacklist.", []),
-				'true';
-			'false' ->
-				lager:debug("Matched trunk blacklist.", []),
-				'false';
-			Err ->
-			    _Allow = ?TRUNK_ELIGIBLE_ON_REGEX_ERROR,
-			    lager:debug("Error in ~s blacklist. trunk eligible anyway: ~p, bad regex: /~s/ error: ~p", [Direction, _Allow, TrunkBlacklist, Err]),
-			    _Allow
-		end;
-	'false' ->
-		lager:debug("Did NOT match trunk whitelist.", []),
-		'false';
-	Err ->
-	    _Allow = ?TRUNK_ELIGIBLE_ON_REGEX_ERROR,
+    'true' -> 
+        lager:debug("Matched trunk whitelist or empty whitelist.", []),
+        case catch (wh_util:is_empty(TrunkBlacklist) orelse re:run(Number, TrunkBlacklist) =:= 'nomatch') of
+            'true' -> 
+                lager:debug("Did NOT match trunk blacklist or empty blacklist.", []),
+                'true';
+            'false' ->
+                lager:debug("Matched trunk blacklist.", []),
+                'false';
+            Err ->
+                _Allow = ?TRUNK_ELIGIBLE_ON_REGEX_ERROR,
+                lager:debug("Error in ~s blacklist. trunk eligible anyway: ~p, bad regex: /~s/ error: ~p", [Direction, _Allow, TrunkBlacklist, Err]),
+                _Allow
+        end;
+    'false' ->
+        lager:debug("Did NOT match trunk whitelist.", []),
+        'false';
+    Err ->
+        _Allow = ?TRUNK_ELIGIBLE_ON_REGEX_ERROR,
         lager:debug("Error in ~s whitelist. trunk eligible anyway: ~p, bad regex /~s/ error: ~p", [Direction, _Allow, TrunkWhitelist, Err]),
         _Allow
     end.
 
 -spec get_white_black_lists(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 get_white_black_lists(<<"fllat_rate">>=List_Type, Color, Direction, Default) ->
-	case  whapps_config:get(<<"jonny5">>, <<List_Type/binary, "_", Direction/binary, "_", Color/binary>>) of
-		'undefined' ->
-			whapps_config:get(<<"jonny5">>, <<List_Type/binary, "_", Color/binary>>, Default)
-		_Result ->
-			_Result
-	end.
+    case  whapps_config:get(<<"jonny5">>, <<List_Type/binary, "_", Direction/binary, "_", Color/binary>>) of
+        'undefined' ->
+            whapps_config:get(<<"jonny5">>, <<List_Type/binary, "_", Color/binary>>, Default);
+        _Result ->
+            _Result
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
