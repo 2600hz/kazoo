@@ -535,15 +535,18 @@ bridge_failure(JObj, Request) ->
 get_sip_headers(JObj) ->
     case get_diversions(JObj) of
         'undefined' ->
-            wh_json:delete_key(<<"Diversion">>
-                               ,wh_json:get_value(<<"Custom-SIP-Headers">>, JObj, wh_json:new())
-                              );
+            maybe_remove_diversion(wh_json:get_value(<<"Custom-SIP-Headers">>, JObj));
         Diversion ->
             wh_json:set_value(<<"Diversion">>
                               ,Diversion
                               ,wh_json:get_value(<<"Custom-SIP-Headers">>, JObj, wh_json:new())
                              )
     end.
+
+-spec maybe_remove_diversion(api_object()) -> api_object().
+maybe_remove_diversion('undefined') -> 'undefined';
+maybe_remove_diversion(JObj) ->
+    wh_json:delete_key(<<"Diversion">>, JObj).
 
 -spec get_diversions(wh_json:object()) -> api_object().
 get_diversions(JObj) ->
