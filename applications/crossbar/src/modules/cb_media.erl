@@ -740,7 +740,15 @@ prompt_start_key(Context, PromptId) ->
 
 -spec normalize_prompt_results(wh_json:object(), ne_binaries()) -> ne_binaries().
 normalize_prompt_results(JObj, Acc) ->
-    [wh_json:get_value(<<"id">>, JObj) | Acc].
+    Attachments =
+        case wh_json:get_ne_value([<<"doc">>, <<"_attachments">>], JObj) of
+            'undefined' -> 'false';
+            _Value -> 'true'
+        end,
+    [wh_json:from_list([
+        {<<"id">>, wh_json:get_value(<<"id">>, JObj)}
+        ,{<<"attachments">>, Attachments}
+     ]) | Acc].
 
 -spec fix_prompt_start_keys(cb_context:context()) -> cb_context:context().
 fix_prompt_start_keys(Context) ->
