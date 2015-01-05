@@ -33,10 +33,14 @@
 -define(TEXT_HTML, <<"text/html">>).
 
 -define(CONFIGURED_EMAILS(Type, Addresses)
-        ,wh_json:from_list([{<<"type">>, Type}
-                            ,{<<"email_addresses">>, Addresses}
-                           ])
+        ,wh_json:from_list(
+           props:filter_undefined(
+             [{<<"type">>, Type}
+              ,{<<"email_addresses">>, Addresses}
+             ])
+          )
        ).
+-define(CONFIGURED_EMAILS(Type), wh_json:from_list([{<<"type">>, Type}])).
 
 
 -define(TELETYPE_HRL, 'true').

@@ -98,7 +98,7 @@
 -define(TEMPLATE_CATEGORY, <<"voicemail">>).
 -define(TEMPLATE_NAME, <<"Voicemail To Email">>).
 
--define(TEMPLATE_TO, ?CONFIGURED_EMAILS(<<"original">>, [])).
+-define(TEMPLATE_TO, ?CONFIGURED_EMAILS(<<"original">>)).
 -define(TEMPLATE_FROM, teletype_util:default_from_address(?MOD_CONFIG_CAT)).
 -define(TEMPLATE_CC, ?CONFIGURED_EMAILS(<<"specified">>, [])).
 -define(TEMPLATE_BCC, ?CONFIGURED_EMAILS(<<"specificed">>, [])).
