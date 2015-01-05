@@ -30,10 +30,11 @@
 -define(DOODLE_INBOUND_EXCHANGE, whapps_config:get_ne_binary(?CONFIG_CAT, <<"inbound_exchange">>, ?DEFAULT_EXCHANGE)).
 -define(DOODLE_INBOUND_EXCHANGE_TYPE, whapps_config:get_ne_binary(?CONFIG_CAT, <<"inbound_exchange_type">>, ?DEFAULT_EXCHANGE_TYPE)).
 -define(DOODLE_INBOUND_EXCHANGE_OPTIONS,  whapps_config:get(?CONFIG_CAT, <<"inbound_exchange_options">>, ?DEFAULT_EXCHANGE_OPTIONS)).
-        
+
 
 -define(BINDINGS(Ex), [{'sms', [{'exchange', Ex}
-                                ,{'restrict_to', ['inbound']}]}
+                                ,{'restrict_to', ['inbound']}
+                               ]}
                        ,{'self', []}
                       ]).
 -define(RESPONDERS, [{'doodle_inbound_handler',[{<<"message">>, <<"inbound">>}]}]).
