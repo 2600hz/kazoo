@@ -467,8 +467,8 @@ new_exchange(Exchange, Type, Options) ->
      },
     wh_amqp_channel:command(ED).
 
--spec declare_exchange(ne_binary(), ne_binary()) -> 'ok'.
--spec declare_exchange(ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
+-spec declare_exchange(ne_binary(), ne_binary()) -> wh_amqp_exchange().
+-spec declare_exchange(ne_binary(), ne_binary(), wh_proplist()) -> wh_amqp_exchange().
 declare_exchange(Exchange, Type) ->
     declare_exchange(Exchange, Type, []).
 declare_exchange(Exchange, Type, Options) ->
