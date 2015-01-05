@@ -258,7 +258,17 @@ handle_query_channels(JObj, _Props) ->
     Fields = wh_json:get_value(<<"Fields">>, JObj, []),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
 
-    Resp = [{<<"Channels">>, query_channels(Fields, CallId)}
+    maybe_send_query_channels_resp(JObj, query_channels(Fields, CallId)).
+
+-spec maybe_send_query_channels_resp(wh_json:object(), wh_json:objects()) -> 'ok'.
+-spec maybe_send_query_channels_resp(wh_json:object(), wh_json:objects(), boolean()) -> 'ok'.
+maybe_send_query_channels_resp(JObj, Channels) ->
+    maybe_send_query_channels_resp(JObj, Channels, wh_json:is_true(<<"Active-Only">>, JObj, 'false')).
+
+maybe_send_query_channels_resp(_JObj, [], 'true') ->
+    lager:debug("not sending query_channels resp due to active-only=true");
+maybe_send_query_channels_resp(JObj, Channels, 'false') ->
+    Resp = [{<<"Channels">>, Channels}
             ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],

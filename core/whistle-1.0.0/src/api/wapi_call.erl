@@ -184,11 +184,13 @@
 
 %% Query Channels Req
 -define(QUERY_CHANNELS_REQ_HEADERS, []).
--define(OPTIONAL_QUERY_CHANNELS_REQ_HEADERS, [<<"Fields">>, <<"Call-ID">>]).
+-define(OPTIONAL_QUERY_CHANNELS_REQ_HEADERS, [<<"Fields">>, <<"Call-ID">>
+                                              ,<<"Active-Only">>
+                                             ]).
 -define(QUERY_CHANNELS_REQ_VALUES, [{<<"Event-Category">>, <<"call_event">>}
                                     ,{<<"Event-Name">>, <<"query_channels_req">>}
                                    ]).
--define(QUERY_CHANNELS_REQ_TYPES, []).
+-define(QUERY_CHANNELS_REQ_TYPES, [{<<"Active-Only">>, fun wh_util:is_boolean/1}]).
 
 %% Query Channels Resp
 -define(QUERY_CHANNELS_RESP_HEADERS, [<<"Channels">>]).

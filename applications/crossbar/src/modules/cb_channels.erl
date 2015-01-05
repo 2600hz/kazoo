@@ -134,21 +134,24 @@ post(Context, _) ->
 read(Context, CallId) ->
     Req = [{<<"Call-ID">>, CallId}
            ,{<<"Fields">>, <<"all">>}
+           ,{<<"Active-Only">>, 'true'}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case wh_amqp_worker:call(Req
-                             ,fun wapi_call:publish_query_channels_req/1
-                             ,fun wapi_call:query_channels_resp_v/1
-                            )
+    case wh_amqp_worker:call_collect(Req
+                                     ,fun wapi_call:publish_query_channels_req/1
+                                     ,{'ecallmgr', fun wapi_call:query_channels_resp_v/1}
+                                    )
     of
-        {'ok', StatusJObj} ->
-            Channel = wh_json:get_value([<<"Channels">>, CallId], StatusJObj),
-            case wh_json:get_value(<<"Account-ID">>, Channel) =:= cb_context:account_id(Context) of
-                'true' ->
-                    crossbar_util:response(normalize_channel(Channel), Context);
-                'false' ->
+        {'ok', []} ->
+            lager:debug("no channel resp for ~s", [CallId]),
+            crossbar_util:response_bad_identifier(CallId, Context);
+        {'ok', StatusJObjs} ->
+            case find_channel(cb_context:account_id(Context), CallId, StatusJObjs) of
+                'undefined' ->
                     lager:warning("trying to get info about a channel ~s not in the account ~s", [CallId, cb_context:account_id(Context)]),
-                    crossbar_util:response_bad_identifier(CallId, Context)
+                    crossbar_util:response_bad_identifier(CallId, Context);
+                Channel ->
+                    crossbar_util:response(normalize_channel(Channel), Context)
             end;
         {'returned', JObj} ->
             lager:debug("return: ~p", [JObj]),
@@ -159,6 +162,15 @@ read(Context, CallId) ->
         {'error', _E} ->
             lager:debug("error: ~p", [_E]),
             crossbar_util:response_datastore_timeout(Context)
+    end.
+
+-spec find_channel(ne_binary(), ne_binary(), wh_json:objects()) -> api_object().
+find_channel(_AccountId, _CallId, []) -> 'undefined';
+find_channel(AccountId, CallId, [StatusJObj|JObjs]) ->
+    Channel = wh_json:get_value([<<"Channels">>, CallId], StatusJObj),
+    case wh_json:get_value(<<"Account-ID">>, Channel) of
+        AccountId -> Channel;
+        _AccountId -> find_channel(AccountId, CallId, JObjs)
     end.
 
 %%--------------------------------------------------------------------
