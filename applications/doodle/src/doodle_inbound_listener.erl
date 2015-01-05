@@ -65,7 +65,7 @@ start_link() ->
     Exchange = ?DOODLE_INBOUND_EXCHANGE,
     Type = ?DOODLE_INBOUND_EXCHANGE_TYPE,
     Options = ?DOODLE_INBOUND_EXCHANGE_OPTIONS,
-    ED = amqp_util:declare_exchange(Exchange, Type, Options),
+    Exchanges = [{Exchange, Type, Options}],
     gen_listener:start_link({'local', ?MODULE}
                             ,?MODULE
                             ,[{'bindings', ?BINDINGS(Exchange)}
@@ -73,7 +73,7 @@ start_link() ->
                               ,{'queue_name', ?QUEUE_NAME}       % optional to include
                               ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
                               ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
-                              ,{'declare_exchanges', [ED]}
+                              ,{'declare_exchanges', Exchanges}
                              ]
                             ,[]
                            ).

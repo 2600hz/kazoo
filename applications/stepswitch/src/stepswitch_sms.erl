@@ -273,8 +273,8 @@ maybe_add_broker(Broker, Exchange, ExchangeType) ->
 -spec maybe_add_broker(binary(), binary(), binary(), boolean()) -> 'ok'.
 maybe_add_broker(_Broker, _Exchange, _ExchangeType, 'true') -> 'ok';
 maybe_add_broker(Broker, Exchange, ExchangeType, 'false') ->
-    wh_amqp_connections:add(Broker, Exchange, [<<"hidden">>, Exchange]),    
-    Exchanges = [amqp_util:declare_exchange(Exchange, ExchangeType, [{'passive', 'true'}])],
+    wh_amqp_connections:add(Broker, Exchange, [<<"hidden">>, Exchange]),
+    Exchanges = [{Exchange, ExchangeType, [{'passive', 'true'}]}],
     wh_amqp_sup:add_amqp_pool(?ATOM(Exchange), Broker, 5, 5, [], Exchanges),
     'ok'.
       
