@@ -78,6 +78,7 @@
                                       }).
 -define(META_BINDINGS(CallId), {'metaflow', [{'callid', CallId}
                                              ,{'action', <<"*">>}
+                                             ,'federate'
                                             ]
                                }).
 -define(KONAMI_BINDINGS(CallId), {'konami', [{'callid', CallId}
@@ -219,7 +220,7 @@ handle_metaflow_req(JObj, _Props) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     Evt = wh_json:from_list(
             [{<<"module">>, wh_json:get_value(<<"Action">>, JObj)}
-             ,{<<"data">>, wh_json:set_value(<<"dtmf_leg">>, CallId, wh_json:get_value(<<"Data">>, JObj))}
+             ,{<<"data">>, wh_json:set_value(<<"dtmf_leg">>, CallId, wh_json:get_value(<<"Data">>, JObj, wh_json:new()))}
             ]),
     relay_to_fsm(CallId, <<"metaflow_exe">>, Evt).
 
