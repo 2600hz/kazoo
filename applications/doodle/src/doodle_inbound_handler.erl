@@ -32,8 +32,6 @@ handle_inbound_sms(JObj, Srv, Deliver) ->
 
 -spec maybe_relay_request(wh_json:object()) -> 'ack' | 'nack'.
 maybe_relay_request(JObj) ->
-    FetchId = wh_util:rand_hex_binary(16),
-    CallId =  wh_util:rand_hex_binary(16),
     {Number, Inception} = doodle_util:get_inbound_destination(JObj),
     case doodle_util:lookup_number(Number) of
         {'error', _R} ->
@@ -49,6 +47,10 @@ maybe_relay_request(JObj) ->
                        ],
             Fun = fun(F, J) -> F(Inception, NumberProps, J) end,
             JObjReq = lists:foldl(Fun, JObj, Routines),
+
+            FetchId = wh_util:rand_hex_binary(16),
+            CallId =  wh_util:rand_hex_binary(16),
+
             process_sms_req(FetchId, CallId, JObjReq)
     end.
 
@@ -151,14 +153,7 @@ set_static(_Inception, _, JObj) ->
 -spec delete_headers(ne_binary(), wh_proplist(), wh_json:object()) ->
                             wh_json:object().
 delete_headers(_, _, JObj) ->
-    Keys = [<<"Server-ID">>
-            ,<<"App-Name">>
-            ,<<"App-Version">>
-            ,<<"Event-Category">>
-            ,<<"Event-Name">>
-            ,<<"Node">>
-           ],
-    wh_json:delete_keys(Keys, JObj).
+    wh_api:remove_defaults(JObj).
 
 -spec set_realm(ne_binary(), wh_proplist(), wh_json:object()) ->
                        wh_json:object().
