@@ -137,12 +137,18 @@
 -type responder_callback_mappings() :: [responder_callback_mapping(),...] | [].
 -type responder_start_params() :: [{responder_callback_mod(), responder_callback_mappings()},...].
 
+%% ExchangeName, ExchangeType[, ExchangeOptions]
+-type declare_exchange() :: {ne_binary(), ne_binary()} |
+                            {ne_binary(), ne_binary(), wh_proplist()}.
+-type declare_exchanges() :: [declare_exchange(),...] | [].
+
 -type start_params() :: [{'responders', responder_start_params()} |
                          {'bindings', bindings()} |
                          {'queue_name', binary()} |
                          {'queue_options', wh_proplist()} |
                          {'consume_options', wh_proplist()} |
-                         {'basic_qos', non_neg_integer()}
+                         {'basic_qos', non_neg_integer()} |
+                         {'declare_exchanges', declare_exchanges()}
                         ].
 
 -export_type([handle_event_return/0
@@ -992,7 +998,7 @@ handle_amqp_channel_available(#state{params=Params}=State) ->
     lager:debug("channel started, let's connect"),
     maybe_declare_exchanges(props:get_value('declare_exchanges', Params, [])),
     {'ok', Q} = start_amqp(Params),
-    
+
     State1 = start_initial_bindings(State#state{queue=Q}, Params),
 
     _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), '$is_gen_listener_consuming'),
@@ -1013,7 +1019,7 @@ maybe_declare_exchanges(Channel, [Exchange | Exchanges]) ->
         {Ex, Type, Opts} -> declare_exchange(Channel, amqp_util:declare_exchange(Ex, Type, Opts));
         {Ex, Type} -> declare_exchange(Channel, amqp_util:declare_exchange(Ex, Type))
     end,
-    maybe_declare_exchanges(Channel, Exchanges).   
+    maybe_declare_exchanges(Channel, Exchanges).
 
 -spec declare_exchange(wh_amqp_assignment(), wh_amqp_exchange()) -> command_ret().
 declare_exchange(Channel, Exchange) ->
