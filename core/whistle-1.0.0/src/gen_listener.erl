@@ -990,11 +990,7 @@ federated_queue_name(Params) ->
 -spec handle_amqp_channel_available(state()) -> state().
 handle_amqp_channel_available(#state{params=Params}=State) ->
     lager:debug("channel started, let's connect"),
-
-    Channel = wh_amqp_assignments:get_channel(),
-    _ = [wh_amqp_channel:command(Channel, Exchange)
-            || Exchange <- props:get_value('declare_exchanges', Params, [])],
-    
+    maybe_declare_exchanges(props:get_value('declare_exchanges', Params, [])),
     {'ok', Q} = start_amqp(Params),
     
     State1 = start_initial_bindings(State#state{queue=Q}, Params),
@@ -1004,6 +1000,24 @@ handle_amqp_channel_available(#state{params=Params}=State) ->
     gen_server:cast(self(), {'gen_listener', {'created_queue', Q}}),
 
     State1#state{is_consuming='false'}.
+
+-spec maybe_declare_exchanges(wh_proplist()) -> 'ok'.
+maybe_declare_exchanges([]) -> 'ok';
+maybe_declare_exchanges(Exchanges) ->
+    maybe_declare_exchanges(wh_amqp_assignments:get_channel(), Exchanges).
+
+-spec maybe_declare_exchanges(wh_amqp_assignment(), wh_proplist()) -> 'ok'.
+maybe_declare_exchanges(_Channel, []) -> 'ok';
+maybe_declare_exchanges(Channel, [Exchange | Exchanges]) ->
+    case Exchange of
+        {Ex, Type, Opts} -> declare_exchange(Channel, amqp_util:declare_exchange(Ex, Type, Opts));
+        {Ex, Type} -> declare_exchange(Channel, amqp_util:declare_exchange(Ex, Type))
+    end,
+    maybe_declare_exchanges(Channel, Exchanges).   
+
+-spec declare_exchange(wh_amqp_assignment(), wh_amqp_exchange()) -> command_ret().
+declare_exchange(Channel, Exchange) ->
+    wh_amqp_channel:command(Channel, Exchange).
 
 -spec start_initial_bindings(state(), wh_proplist()) -> state().
 start_initial_bindings(State, Params) ->
