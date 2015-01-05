@@ -98,6 +98,7 @@ The *transfer* module requires being used with Metaflow "patterns". In the examp
 ##### Configuration
 * `takeback_dtmf`: the DTMF sequence the transferor can press to reattach to the transferee leg, canceling the transfer
 * `moh`: a media_id from the account's media holdings, to play to the transferee instead of the default system music-on-hold
+* `ringback`: the tone stream to play to the transferor when the target call leg is being setup. See the [FreeSWITCH TGML](http://wiki.freeswitch.org/wiki/TGML) for samples. Otherwise the `default_ringback` in the `system_config/ecallmgr` doc will be used (if set).
 
 ### API Transfer
 

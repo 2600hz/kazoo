@@ -6,6 +6,7 @@
 %%%   "takeback_dtmf":"2" // Transferor can cancel the transfer request
 %%%   ,"moh":"media_id" // custom music on hold
 %%%   ,"target":"1000" // extension/DID to transfer to
+%%%   ,"ringback":"%(2000,4000,440,480)" // ringback to play to transferor
 %%% }
 %%% @end
 %%% @contributors
@@ -43,6 +44,7 @@
                 ,target_call = whapps_call:new() :: whapps_call:call() | 'undefined'
                 ,takeback_dtmf :: ne_binary()
                 ,transferor_dtmf = <<>> :: binary()
+                ,ringback :: api_binary()
                }).
 -type state() :: #state{}.
 
@@ -53,6 +55,8 @@
 -define(DEFAULT_TARGET_TIMEOUT
         ,whapps_config:get_integer(?CONFIG_CAT, [<<"transfer">>, <<"default_target_timeout_ms">>], 20000)
        ).
+
+-define(DEFAULT_RINGBACK, whapps_config:get(<<"ecallmgr">>, <<"default_ringback">>)).
 
 -define(TRANSFEROR_CALL_EVENTS, [<<"CHANNEL_BRIDGE">>
                                  ,<<"DTMF">>
@@ -110,6 +114,7 @@ handle(Data, Call) ->
                                    ,target=Target
                                    ,call=Call
                                    ,takeback_dtmf=wh_json:get_value(<<"takeback_dtmf">>, Data, ?DEFAULT_TAKEBACK_DTMF)
+                                   ,ringback=to_tonestream(wh_json:get_value(<<"ringback">>, Data, ?DEFAULT_RINGBACK))
                                   }
                           )
     of
@@ -245,9 +250,14 @@ attended_wait(?EVENT(CallId, <<"CHANNEL_BRIDGE">>, _Evt)
     end,
     {'next_state', 'attended_wait', State};
 attended_wait(?EVENT(Target, <<"CHANNEL_CREATE">>, _Evt)
-              ,#state{target=Target}=State
+              ,#state{target=Target
+                      ,transferor=Transferor
+                      ,ringback=Ringback
+                      ,call=Call
+                     }=State
              ) ->
     lager:info("transfer target ~s channel created", [Target]),
+    maybe_start_transferor_ringback(Call, Transferor, Ringback),
     {'next_state', 'attended_wait', State};
 attended_wait(?EVENT(Target, <<"originate_resp">>, _Evt), State) ->
     lager:info("originate has responded for target ~s", [Target]),
@@ -706,12 +716,13 @@ originate_to_extension(Extension, TransferorLeg, Call) ->
 
     CallerIdNumber = caller_id_number(Call, TransferorLeg),
 
-    CCVs = [{<<"Account-ID">>, whapps_call:account_id(Call)}
-            ,{<<"Authorizing-ID">>, whapps_call:account_id(Call)}
-            ,{<<"Channel-Authorized">>, 'true'}
-            ,{<<"From-URI">>, <<CallerIdNumber/binary, "@", (whapps_call:account_realm(Call))/binary>>}
-            ,{<<"Ignore-Early-Media">>, 'true'}
-           ],
+    CCVs = props:filter_undefined(
+             [{<<"Account-ID">>, whapps_call:account_id(Call)}
+              ,{<<"Authorizing-ID">>, whapps_call:account_id(Call)}
+              ,{<<"Channel-Authorized">>, 'true'}
+              ,{<<"From-URI">>, <<CallerIdNumber/binary, "@", (whapps_call:account_realm(Call))/binary>>}
+              ,{<<"Ignore-Early-Media">>, 'true'}
+             ]),
 
     TargetCallId = create_call_id(),
 
@@ -1021,3 +1032,15 @@ hangup_target(Call, [B|Bs]) ->
 -spec delete_all(ne_binary(), ne_binaries()) -> ne_binaries().
 delete_all(K, L) ->
     [V || V <- L, V =/= K].
+
+-spec to_tonestream(api_binary()) -> api_binary().
+to_tonestream('undefined') -> 'undefined';
+to_tonestream(<<"tone_stream://", _/binary>> = TS) -> <<TS/binary, ";loops=-1">>;
+to_tonestream(Ringback) -> <<"tone_stream://", Ringback/binary, ";loops=-1">>.
+
+-spec maybe_start_transferor_ringback(whapps_call:call(), ne_binary(), api_binary()) -> 'ok'.
+maybe_start_transferor_ringback(_Call, _Transferor, 'undefined') -> 'ok';
+maybe_start_transferor_ringback(Call, Transferor, Ringback) ->
+    Command = whapps_call_command:play_command(Ringback, Transferor),
+    lager:debug("playing ringback on ~s to ~s", [Transferor, Ringback]),
+    whapps_call_command:send_command(wh_json:set_values([{<<"Insert-At">>, <<"now">>}], Command), Call).

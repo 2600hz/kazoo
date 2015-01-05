@@ -1106,11 +1106,11 @@ b_prompt(Prompt, Lang, Call) ->
 -spec play(ne_binary(), api_binaries(), api_binary(), whapps_call:call()) ->
                   ne_binary().
 
--spec play_command(ne_binary(), whapps_call:call()) ->
+-spec play_command(ne_binary(), whapps_call:call() | ne_binary()) ->
                           wh_json:object().
--spec play_command(ne_binary(), api_binaries(), whapps_call:call()) ->
+-spec play_command(ne_binary(), api_binaries(), whapps_call:call() | ne_binary()) ->
                           wh_json:object().
--spec play_command(ne_binary(), api_binaries(), api_binary(), whapps_call:call()) ->
+-spec play_command(ne_binary(), api_binaries(), api_binary(), whapps_call:call() | ne_binary()) ->
                           wh_json:object().
 
 -spec b_play(ne_binary(), whapps_call:call()) ->
@@ -1124,15 +1124,17 @@ play_command(Media, Call) ->
     play_command(Media, ?ANY_DIGIT, Call).
 play_command(Media, Terminators, Call) ->
     play_command(Media, Terminators, 'undefined', Call).
-play_command(Media, Terminators, Leg, Call) ->
+play_command(Media, Terminators, Leg, <<_/binary>> = CallId) ->
     wh_json:from_list(
       props:filter_undefined(
         [{<<"Application-Name">>, <<"play">>}
          ,{<<"Media-Name">>, Media}
          ,{<<"Terminators">>, play_terminators(Terminators)}
          ,{<<"Leg">>, play_leg(Leg)}
-         ,{<<"Call-ID">>, whapps_call:call_id(Call)}
-        ])).
+         ,{<<"Call-ID">>, CallId}
+        ]));
+play_command(Media, Terminators, Leg, Call) ->
+    play_command(Media, Terminators, Leg, whapps_call:call_id(Call)).
 
 -spec play_terminators(api_binaries()) -> ne_binaries().
 play_terminators('undefined') -> ?ANY_DIGIT;
