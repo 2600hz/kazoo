@@ -128,7 +128,7 @@ maybe_broker(Args) ->
 maybe_queuename(Args) ->
     case props:get_value('amqp_queuename_start', Args) of
         'undefined' -> ?QUEUE_NAME;
-        QueueStart -> <<(wh_util:to_binary(QueueStart))/binary, "_", (wh_util:rand_hex_binary(16))/binary>> 
+        QueueStart -> <<(wh_util:to_binary(QueueStart))/binary, "_", (wh_util:rand_hex_binary(4))/binary>> 
     end.
 
 -spec maybe_bindings(wh_proplist()) -> wh_proplist().
