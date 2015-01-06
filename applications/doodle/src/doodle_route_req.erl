@@ -90,7 +90,7 @@ bucket_name_from_call(Call, Flow) ->
 
 -spec bucket_cost(wh_json:object()) -> pos_integer().
 bucket_cost(Flow) ->
-    Min = whapps_config:get_integer(?CONFIG_CAT, <<"min_bucket_cost">>, 5),
+    Min = whapps_config:get_integer(?CONFIG_CAT, <<"min_bucket_cost">>, 1),
     case wh_json:get_integer_value(<<"pvt_bucket_cost">>, Flow) of
         'undefined' -> Min;
         N when N < Min -> Min;
