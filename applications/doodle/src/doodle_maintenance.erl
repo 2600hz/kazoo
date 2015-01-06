@@ -77,14 +77,13 @@ replay_queue_sms(AccountId, JObjs) ->
           <<Year:4/binary, Month:2/binary, "-", _/binary>> = DocId,
           AccountDb = kazoo_modb:get_modb(AccountId, Year, Month),
           spawn('doodle_api_handler', 'handle_api_sms', [AccountDb, DocId]),
-          timer:sleep(250)
-      end || JObj <- JObjs
-    ],
+          timer:sleep(200)
+      end || JObj <- JObjs],
     'ok'.
 
 -spec check_pending_sms_for_offnet_delivery(ne_binary()) -> any().
 check_pending_sms_for_offnet_delivery(AccountId) ->
-    ViewOptions = [{'limit', 25}],
+    ViewOptions = [{'limit', 100}],
     case kazoo_modb:get_results(AccountId, <<"sms/deliver_to_offnet">>, ViewOptions) of
         {'ok', []} -> 'ok';
         {'ok', JObjs} -> replay_sms(AccountId, JObjs);
@@ -95,9 +94,10 @@ check_pending_sms_for_offnet_delivery(AccountId) ->
 -spec replay_sms(ne_binary(), wh_json:objects()) -> 'ok'.
 replay_sms(AccountId, JObjs) ->
     lager:debug("starting sms offnet delivery for account ~s", [AccountId]),
-    [doodle_util:replay_sms(AccountId, wh_json:get_value(<<"id">>, JObj))
-     || JObj <- JObjs
-    ],
+    [begin
+         doodle_util:replay_sms(AccountId, wh_json:get_value(<<"id">>, JObj)),
+         timer:sleep(200)
+     end  || JObj <- JObjs],
     'ok'.
 
 -define(DEFAULT_ROUTEID, whapps_config:get_ne_binary(?CONFIG_CAT, <<"default_test_route_id">>, <<"syneverse">>)).
