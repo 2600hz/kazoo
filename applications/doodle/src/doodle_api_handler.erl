@@ -20,6 +20,7 @@ handle_req(JObj, _Props) ->
     Db = wh_json:get_value(<<"Database">>, JObj),
     handle_api_sms(Db, Id).
 
+-spec handle_api_sms(binary(), binary()) -> 'ok'.
 handle_api_sms(Db, Id) ->
     {'ok', Doc} = couch_mgr:open_doc(Db, Id),
     Status = wh_json:get_value(<<"pvt_status">>, Doc),
