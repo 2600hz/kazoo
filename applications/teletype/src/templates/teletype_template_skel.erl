@@ -14,35 +14,44 @@
 
 -include("../teletype.hrl").
 
--define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".voicemail_to_email">>).
+-define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".skel">>).
 
 -define(TEMPLATE_ID, <<"skel">>).
--define(TEMPLATE_MACROS, wh_json:from_list([{<<"user.first_name">>
-                                             ,wh_json:from_list([{<<"i18n_label">>, <<"first_name">>}
-                                                                 ,{<<"friendly_name">>, <<"First Name">>}
-                                                                 ,{<<"description">>, <<"First name of the owner of the voicemail box">>}
-                                                                ])
-                                            }
-                                            ,{<<"user.last_name">>
-                                              ,wh_json:from_list([{<<"i18n_label">>, <<"first_name">>}
-                                                                  ,{<<"friendly_name">>, <<"First Name">>}
-                                                                  ,{<<"description">>, <<"First name of the owner of the voicemail box">>}
-                                                                 ])
-                                             }
-                                            ,{<<"user.email">>
-                                              ,wh_json:from_list([{<<"i18n_label">>, <<"email">>}
-                                                                  ,{<<"friendly_name">>, <<"Email">>}
-                                                                  ,{<<"description">>, <<"Email of the user">>}
-                                                                 ])
-                                             }
-                                           ])).
+-define(TEMPLATE_MACROS
+        ,wh_json:from_list(
+           [?MACRO_VALUE(<<"user.first_name">>, <<"first_name">>, <<"First Name">>, <<"First Name">>)
+            ,?MACRO_VALUE(<<"user.last_name">>, <<"last_name">>, <<"Last Name">>, <<"Last Name">>)
+           ])
+       ).
+
 -define(TEMPLATE_TEXT, <<"Hi {{user.first_name}} {{user.last_name}}.\n\nThis is the skeleton template\n">>).
 -define(TEMPLATE_HTML, <<"<p>Hi {{user.first_name}} {{user.last_name}}.</p><p>This is the skeleton template</p>\n">>).
+-define(TEMPLATE_SUBJECT, <<"Skeleton Template">>).
+-define(TEMPLATE_CATEGORY, <<"skel">>).
+-define(TEMPLATE_NAME, <<"Skeleton">>).
+
+-define(TEMPLATE_TO, ?CONFIGURED_EMAILS(<<"original">>)).
+-define(TEMPLATE_FROM, teletype_util:default_from_address(?MOD_CONFIG_CAT)).
+-define(TEMPLATE_CC, ?CONFIGURED_EMAILS(<<"specified">>, [])).
+-define(TEMPLATE_BCC, ?CONFIGURED_EMAILS(<<"specificed">>, [])).
+-define(TEMPLATE_REPLY_TO, teletype_util:default_reply_to(?MOD_CONFIG_CAT)).
 
 -spec init() -> 'ok'.
 init() ->
     wh_util:put_callid(?MODULE),
-    teletype_util:init_template(?TEMPLATE_ID, ?TEMPLATE_MACROS, ?TEMPLATE_TEXT, ?TEMPLATE_HTML).
+
+    teletype_util:init_template(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
+                                               ,{'text', ?TEMPLATE_TEXT}
+                                               ,{'html', ?TEMPLATE_HTML}
+                                               ,{'subject', ?TEMPLATE_SUBJECT}
+                                               ,{'category', ?TEMPLATE_CATEGORY}
+                                               ,{'friendly_name', ?TEMPLATE_NAME}
+                                               ,{'to', ?TEMPLATE_TO}
+                                               ,{'from', ?TEMPLATE_FROM}
+                                               ,{'cc', ?TEMPLATE_CC}
+                                               ,{'bcc', ?TEMPLATE_BCC}
+                                               ,{'reply_to', ?TEMPLATE_REPLY_TO}
+                                              ]).
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->

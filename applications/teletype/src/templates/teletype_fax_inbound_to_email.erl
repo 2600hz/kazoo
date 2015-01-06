@@ -39,11 +39,31 @@
 -define(TEMPLATE_TEXT, <<"New Fax ({{fax.total_pages}} Pages)\n\nCaller ID: {{caller_id.number}}\nCaller Name: {{caller_id.name}}\n\nCalled To: {{to.user}}   (Originally dialed number)\nCalled On: {{date_called.local|date:\"l, F j, Y \\a\\t H:i\"}}\n\n\nFor help or questions about receiving faxes, please contact support at {{service.support_number}} or email {{service.support_email}}.">>).
 -define(TEMPLATE_HTML, <<"<html><body><h3>New Fax ({{fax.total_pages}} Pages)</h3><table><tr><td>Caller ID</td><td>{{caller_id.name}} ({{caller_id.number}})</td></tr><tr><td>Callee ID</td><td>{{to.user}} (originally dialed number)</td></tr><tr><td>Call received</td><td>{{date_called.local|date:\"l, F j, Y \\a\\t H:i\"}}</td></tr></table><p>For help or questions about receiving faxes, please contact {{service.support_number}} or email <a href=\"mailto:{{service.support_email}}\">Support</a></p><p style=\"font-size: 9px;color:#C0C0C0\">{{fax.call_id}}</p></body></html>">>).
 -define(TEMPLATE_SUBJECT, <<"New fax from {{caller_id.name}} ({{caller_id.number}})">>).
+-define(TEMPLATE_CATEGORY, <<"fax">>).
+-define(TEMPLATE_NAME, <<"Inbound Fax to Email">>).
+
+-define(TEMPLATE_TO, ?CONFIGURED_EMAILS(<<"original">>)).
+-define(TEMPLATE_FROM, teletype_util:default_from_address(?MOD_CONFIG_CAT)).
+-define(TEMPLATE_CC, ?CONFIGURED_EMAILS(<<"specified">>, [])).
+-define(TEMPLATE_BCC, ?CONFIGURED_EMAILS(<<"specified">>, [])).
+-define(TEMPLATE_REPLY_TO, teletype_util:default_reply_to(?MOD_CONFIG_CAT)).
 
 -spec init() -> 'ok'.
 init() ->
     wh_util:put_callid(?MODULE),
-    teletype_util:init_template(?TEMPLATE_ID, ?TEMPLATE_MACROS, ?TEMPLATE_TEXT, ?TEMPLATE_HTML).
+
+    teletype_util:init_template(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
+                                               ,{'text', ?TEMPLATE_TEXT}
+                                               ,{'html', ?TEMPLATE_HTML}
+                                               ,{'subject', ?TEMPLATE_SUBJECT}
+                                               ,{'category', ?TEMPLATE_CATEGORY}
+                                               ,{'friendly_name', ?TEMPLATE_NAME}
+                                               ,{'to', ?TEMPLATE_TO}
+                                               ,{'from', ?TEMPLATE_FROM}
+                                               ,{'cc', ?TEMPLATE_CC}
+                                               ,{'bcc', ?TEMPLATE_BCC}
+                                               ,{'reply_to', ?TEMPLATE_REPLY_TO}
+                                              ]).
 
 -spec handle_inbound_fax(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_inbound_fax(JObj, _Props) ->
