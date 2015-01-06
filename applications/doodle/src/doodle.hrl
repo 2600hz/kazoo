@@ -8,7 +8,7 @@
 
 -define(APP_NAME, <<"doodle">>).
 -define(APP_VERSION, <<"0.0.1">> ).
--define(CONFIG_CAT, <<"sms">>).
+-define(CONFIG_CAT, <<"doodle">>).
 
 -define(DOODLE_CACHE, 'doodle_cache').
 
