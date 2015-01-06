@@ -164,7 +164,7 @@ call(Req, PubFun, VFun, Timeout, Worker) ->
 -spec next_worker() -> pid() | {'error', any()}.
 next_worker() ->
     next_worker(wh_amqp_sup:pool_name()).
-    
+
 -spec next_worker(atom()) -> pid() | {'error', any()}.
 next_worker(Pool) ->
     try poolboy:checkout(Pool, 'false', default_timeout()) of
@@ -351,13 +351,15 @@ handle_resp(JObj, Props) ->
 
 -spec send_request(ne_binary(), ne_binary(), publish_fun(), wh_proplist()) ->
                           'ok' | {'error', _}.
-send_request(CallID, Self, PublishFun, ReqProp) when is_function(PublishFun, 1) ->
+send_request(CallID, Self, PublishFun, ReqProps)
+  when is_function(PublishFun, 1) ->
     put('callid', CallID),
-    Prop = [{<<"Server-ID">>, Self}
-            ,{<<"Call-ID">>, CallID}
-            | ReqProp
-           ],
-    try PublishFun(Prop) of
+    MyProps = [{<<"Server-ID">>, Self}
+               ,{<<"Call-ID">>, CallID}
+              ],
+    Props = props:insert_values(MyProps, props:filter_undefined(ReqProps)),
+
+    try PublishFun(Props) of
         'ok' -> 'ok'
     catch
         _:E -> {'error', E}
@@ -495,6 +497,7 @@ handle_call({'publish', ReqProp, PublishFun}, _From, State) ->
                 ST = erlang:get_stacktrace(),
                 lager:debug("function clause error when publishing:"),
                 wh_util:log_stacktrace(ST),
+                lager:debug("pub fun: ~p", [PublishFun]),
                 {'error', 'function_clause'};
             _E:R ->
                 lager:debug("failed to publish request: ~s:~p", [_E, R]),

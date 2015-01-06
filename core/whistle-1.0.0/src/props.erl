@@ -24,7 +24,7 @@
          ,get_all_values/2, get_values/2
          ,set_values/2
          ,set_value/3
-         ,insert_value/3
+         ,insert_value/2, insert_value/3, insert_values/2
          ,unique/1
          ,filter/2
          ,filter_empty/1
@@ -49,13 +49,24 @@ set_values([{K, V}|KVs], Props) ->
 set_value(K, V, Props) ->
     [{K, V} | [KV || {Key, _}=KV <- Props, K =/= Key]].
 
+-spec insert_value({wh_proplist_key(), wh_proplist_value()}, wh_proplist()) ->
+                          wh_proplist().
 -spec insert_value(wh_proplist_key(), wh_proplist_value(), wh_proplist()) ->
                        wh_proplist().
+insert_value({K, V}, Props) ->
+    insert_value(K, V, Props);
+insert_value(K, Props) ->
+    insert_value(K, 'true', Props).
+
 insert_value(K, V, Props) ->
     case get_value(K, Props) of
         'undefined' -> [{K, V} | Props];
         _Value -> Props
     end.
+
+-spec insert_values(wh_proplist(), wh_proplist()) -> wh_proplist().
+insert_values(KVs, Props) ->
+    lists:foldl(fun insert_value/2, Props, KVs).
 
 -type filter_fun() :: fun(({wh_proplist_key(), wh_proplist_value()}) -> boolean()).
 -spec filter(filter_fun(), wh_proplist()) -> wh_proplist();
@@ -289,6 +300,20 @@ encode_kv(Prefix, K, [V|Vs], Sep, Acc) ->
     encode_kv(Prefix, K, Vs, Sep, [ <<"&">>, encode_kv(Prefix, K, Sep, mochiweb_util:quote_plus(V)) | Acc]);
 encode_kv(_, _, [], _, Acc) -> lists:reverse(Acc).
 
+
+-spec to_log(wh_proplist()) -> 'ok'.
+to_log(Props) ->
+	to_log(Props,<<"Props">>).
+
+-spec to_log(wh_proplist(), ne_binary()) -> 'ok'.
+to_log(Props, Header) ->
+  Keys = props:get_keys(Props),
+  K = wh_util:rand_hex_binary(4),
+  lager:debug(<<"===== Start ", Header/binary , " - ", K/binary, " ====">>),
+  lists:foreach(fun(A) -> lager:info("~s - ~p = ~p",[K,A,props:get_value(A,Props)]) end,Keys),
+  lager:debug(<<"===== End ", Header/binary, " - ", K/binary, " ====">>),
+  'ok'.
+
 -include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).
 
@@ -340,17 +365,25 @@ to_querystring_test() ->
                           ?assertEqual(QS, QS1)
                   end, Tests).
 
+insert_value_test() ->
+    P = [{a, 1}, {b, 2}],
+    P1 = insert_value(a, 2, P),
+    P2 = insert_value({b, 3}, P),
+    P3 = insert_value(c, 3, P),
+    P4 = insert_value(d, P),
+    ?assertEqual(1, get_value(a, P1)),
+    ?assertEqual(2, get_value(b, P2)),
+    ?assertEqual(3, get_value(c, P3)),
+    ?assertEqual('true', get_value(d, P4)).
+
+insert_values_test() ->
+    P = [{a, 1}, {b, 2}],
+    KVs = [{a, 2}, {b, 3}, {c, 3}, d],
+    P1 = insert_values(KVs, P),
+
+    ?assertEqual(1, get_value(a, P1)),
+    ?assertEqual(2, get_value(b, P1)),
+    ?assertEqual(3, get_value(c, P1)),
+    ?assertEqual('true', get_value(d, P1)).
+
 -endif.
-
--spec to_log(wh_proplist()) -> 'ok'.
-to_log(Props) ->
-	to_log(Props,<<"Props">>).
-
--spec to_log(wh_proplist(), ne_binary()) -> 'ok'.
-to_log(Props, Header) ->
-  Keys = props:get_keys(Props),
-  K = wh_util:rand_hex_binary(4),
-  lager:debug(<<"===== Start ", Header/binary , " - ", K/binary, " ====">>),
-  lists:foreach(fun(A) -> lager:info("~s - ~p = ~p",[K,A,props:get_value(A,Props)]) end,Keys),
-  lager:debug(<<"===== End ", Header/binary, " - ", K/binary, " ====">>),
-  'ok'.

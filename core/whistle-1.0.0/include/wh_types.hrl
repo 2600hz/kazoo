@@ -137,6 +137,7 @@
 %% Recreate the non-exported types defined in the erlang gen_server source
 -type startlink_err() :: {'already_started', pid()} | 'shutdown' | term().
 -type startlink_ret() :: {'ok', pid()} | 'ignore' | {'error', startlink_err()}.
+-type startapp_ret() :: {'ok', pid()} | {'ok', pid(), term()} | {'error', startlink_err()}.
 
 -type call_from() :: pid_ref().
 -type gen_server_timeout() :: 'hibernate' | non_neg_integer().
