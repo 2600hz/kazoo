@@ -152,7 +152,6 @@
                              ,{<<"Route-Type">>, [<<"on-net">>, <<"off-net">>]}
                             ]).
 -define(INBOUND_ROUTING_KEY(SystemId, RouteId, CallId), <<"message.inbound."
-                                                          ,(amqp_util:encode(?LOWER(SystemId)))/binary, "."
                                                           ,(amqp_util:encode(?LOWER(RouteId)))/binary, "."
                                                           ,(amqp_util:encode(CallId))/binary
                                                         >>).
@@ -191,7 +190,6 @@
                               ,{<<"Route-Type">>, [<<"on-net">>, <<"off-net">>]}
                              ]).
 -define(OUTBOUND_ROUTING_KEY(SystemId, RouteId, CallId), <<"message.outbound."
-                                                           ,(amqp_util:encode(?LOWER(SystemId)))/binary, "."
                                                            ,(amqp_util:encode(?LOWER(RouteId)))/binary, "."
                                                            ,(amqp_util:encode(CallId))/binary
                                                          >>).
