@@ -162,9 +162,42 @@ from_data(DataJObj) ->
 to_data(DataJObj) ->
     ToE164 = wh_json:get_value(<<"to_user">>, DataJObj),
     props:filter_undefined(
-      [{<<"to_user">>, wnm_util:pretty_print(ToE164)}
-       ,{<<"to_realm">>, wh_json:get_value(<<"to_realm">>, DataJObj)}
+      [{<<"user">>, wnm_util:pretty_print(ToE164)}
+       ,{<<"realm">>, wh_json:get_value(<<"to_realm">>, DataJObj)}
+       ,{<<"email_addresses">>, to_email_addresses(DataJObj)}
       ]).
+
+to_email_addresses(DataJObj) ->
+    to_email_addresses(DataJObj
+                       ,wh_json:get_first_defined([[<<"to">>, <<"email_addresses">>]
+                                                   ,[<<"owner">>, <<"email">>]
+                                                   ,[<<"owner">>, <<"username">>]
+                                                  ]
+                                                  ,DataJObj
+                                                 )
+                      ).
+
+to_email_addresses(_DataJObj, <<_/binary>> = Email) ->
+    [Email];
+to_email_addresses(_DataJObj, [_|_] = Emails) ->
+    Emails;
+to_email_addresses(DataJObj, _) ->
+    case teletype_util:find_account_rep_email(wh_json:get_value(<<"account">>, DataJObj)) of
+        'undefined' ->
+            lager:debug("failed to find account rep email, using defaults"),
+            default_to_addresses();
+        Emails ->
+            lager:debug("using ~p for To", [Emails]),
+            Emails
+    end.
+
+-spec default_to_addresses() -> api_binaries().
+default_to_addresses() ->
+    case whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>) of
+        'undefined' -> 'undefined';
+        <<_/binary>> = Email -> [Email];
+        [_|_]=Emails -> Emails
+    end.
 
 -spec build_fax_template_data(wh_json:object()) -> wh_proplist().
 build_fax_template_data(DataJObj) ->
