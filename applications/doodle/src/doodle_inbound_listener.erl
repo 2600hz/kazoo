@@ -25,8 +25,10 @@
 
 -define(DEFAULT_EXCHANGE, <<"sms">>).
 -define(DEFAULT_EXCHANGE_TYPE, <<"topic">>).
--define(DEFAULT_EXCHANGE_OPTIONS, []).
+-define(DEFAULT_EXCHANGE_OPTIONS, [{'passive', 'true'}]).
+-define(DEFAULT_BROKER, <<"amqp://test:test@rabbit-01.90e9.com:5672/babble">>).
 
+-define(DOODLE_INBOUND_BROKER, whapps_config:get_ne_binary(?CONFIG_CAT, <<"inbound_broker">>, ?DEFAULT_BROKER)).
 -define(DOODLE_INBOUND_EXCHANGE, whapps_config:get_ne_binary(?CONFIG_CAT, <<"inbound_exchange">>, ?DEFAULT_EXCHANGE)).
 -define(DOODLE_INBOUND_EXCHANGE_TYPE, whapps_config:get_ne_binary(?CONFIG_CAT, <<"inbound_exchange_type">>, ?DEFAULT_EXCHANGE_TYPE)).
 -define(DOODLE_INBOUND_EXCHANGE_OPTIONS,  whapps_config:get(?CONFIG_CAT, <<"inbound_exchange_options">>, ?DEFAULT_EXCHANGE_OPTIONS)).
@@ -63,9 +65,10 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
+    Broker = ?DOODLE_INBOUND_BROKER,
     Exchange = ?DOODLE_INBOUND_EXCHANGE,
     Type = ?DOODLE_INBOUND_EXCHANGE_TYPE,
-    Options = ?DOODLE_INBOUND_EXCHANGE_OPTIONS,
+    Options = [{'passive', 'true'}],
     Exchanges = [{Exchange, Type, Options}],
     gen_listener:start_link({'local', ?MODULE}
                             ,?MODULE
@@ -75,6 +78,7 @@ start_link() ->
                               ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
                               ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
                               ,{'declare_exchanges', Exchanges}
+                              ,{'broker', Broker}
                              ]
                             ,[]
                            ).
