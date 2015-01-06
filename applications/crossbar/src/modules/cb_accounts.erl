@@ -45,6 +45,7 @@
 -define(SIBLINGS, <<"siblings">>).
 -define(API_KEY, <<"api_key">>).
 -define(TREE, <<"tree">>).
+-define(PARENTS, <<"parents">>).
 
 -define(REMOVE_SPACES, [<<"realm">>]).
 -define(MOVE, <<"move">>).
@@ -97,6 +98,7 @@ allowed_methods(_, Path) ->
               ,?SIBLINGS
               ,?API_KEY
               ,?TREE
+              ,?PARENTS
              ],
     case lists:member(Path, Paths) of
         'true' -> [?HTTP_GET];
@@ -123,6 +125,7 @@ resource_exists(_, Path) ->
               ,?API_KEY
               ,?MOVE
               ,?TREE
+              ,?PARENTS
              ],
     lists:member(Path, Paths).
 
@@ -191,6 +194,8 @@ validate_account_path(Context, AccountId, ?DESCENDANTS, ?HTTP_GET) ->
     load_descendants(AccountId, prepare_context('undefined', Context));
 validate_account_path(Context, AccountId, ?SIBLINGS, ?HTTP_GET) ->
     load_siblings(AccountId, prepare_context('undefined', Context));
+validate_account_path(Context, AccountId, ?PARENTS, ?HTTP_GET) ->
+    load_parents(AccountId, prepare_context('undefined', Context));
 validate_account_path(Context, AccountId, ?API_KEY, ?HTTP_GET) ->
     Context1 = crossbar_doc:load(AccountId, prepare_context('undefined', Context)),
     case cb_context:resp_status(Context1) of
@@ -838,6 +843,8 @@ load_account_tree(Context) ->
         {'ok', JObjs} -> format_account_tree_results(Context, JObjs)
     end.
 
+
+
 -spec get_authorized_account_tree(cb_context:context()) -> ne_binaries().
 get_authorized_account_tree(Context) ->
     Doc = cb_context:doc(Context),
@@ -858,6 +865,88 @@ format_account_tree_results(Context, JObjs) ->
           ,{<<"name">>, wh_json:get_value([<<"doc">>, <<"name">>], JObj)}
          ]) || JObj <- JObjs],
     cb_context:set_resp_data(Context, RespData).
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec load_parents(ne_binary(), cb_context:context()) -> cb_context:context().
+load_parents(AccountId, Context) ->
+    Context1 = crossbar_doc:load_view(?AGG_VIEW_SUMMARY
+                                      ,[]
+                                      ,cb_context:set_account_db(Context, ?WH_ACCOUNTS_DB)
+                                     ),
+    case cb_context:resp_status(Context1) of
+        'success' -> load_parent_tree(AccountId, Context1);
+        _Status -> Context1
+    end.
+
+-spec load_parent_tree(ne_binary(), cb_context:context()) -> cb_context:context().
+load_parent_tree(AccountId, Context) ->
+    RespData = cb_context:resp_data(Context),
+    Tree = extract_tree(AccountId, RespData),
+    Parents = find_accounts_from_tree(Tree, RespData, Context),
+    RespEnv =
+        wh_json:set_value(
+          <<"page_size">>
+          ,erlang:length(Parents)
+          ,cb_context:resp_envelope(Context)
+         ),
+    cb_context:setters(
+      Context
+      ,[{fun cb_context:set_resp_data/2, Parents}
+        ,{fun cb_context:set_resp_envelope/2, RespEnv}
+       ]
+     ).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec extract_tree(ne_binary(), wh_json:objects()) -> ne_binaries().
+extract_tree(AccountId, JObjs) ->
+    JObj = wh_json:find_value(<<"id">>, AccountId, JObjs),
+    [_, Tree] = wh_json:get_value(<<"key">>, JObj),
+    lists:delete(AccountId, Tree).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec find_accounts_from_tree(ne_binaries(), wh_json:objects(), cb_context:context()) -> wh_json:objects().
+-spec find_accounts_from_tree(ne_binaries(), wh_json:objects(), ne_binary(), wh_json:objects()) -> wh_json:objects().
+find_accounts_from_tree(Tree, JObjs, Context) ->
+    find_accounts_from_tree(
+        lists:reverse(Tree)
+        ,JObjs
+        ,cb_context:auth_account_id(Context)
+        ,[]
+     ).
+
+find_accounts_from_tree([], _, _, Acc) -> Acc;
+find_accounts_from_tree([AuthAccountId|_], JObjs, AuthAccountId, Acc) ->
+    JObj = wh_json:find_value(<<"id">>, AuthAccountId, JObjs),
+    Value = wh_json:get_value(<<"value">>, JObj),
+    [account_from_tree(Value)|Acc];
+find_accounts_from_tree([AccountId|Tree], JObjs, AuthAccountId, Acc) ->
+    JObj = wh_json:find_value(<<"id">>, AccountId, JObjs),
+    Value = wh_json:get_value(<<"value">>, JObj),
+    find_accounts_from_tree(
+      Tree
+      ,JObjs
+      ,AuthAccountId
+      ,[account_from_tree(Value)|Acc]
+     ).
+
+-spec account_from_tree(wh_json:object()) -> wh_json:object().
+account_from_tree(JObj) ->
+    wh_json:from_list([{<<"id">>, wh_json:get_value(<<"id">>, JObj)}
+                       ,{<<"name">>, wh_json:get_value(<<"name">>, JObj)}
+                      ]).
 
 %%--------------------------------------------------------------------
 %% @private
