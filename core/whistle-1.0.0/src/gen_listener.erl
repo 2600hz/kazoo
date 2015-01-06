@@ -1044,14 +1044,27 @@ channel_requisition(Params) ->
         'undefined' ->
             case props:get_value('broker', Params) of
                 'undefined' -> wh_amqp_channel:requisition();
-                Broker -> wh_amqp_channel:requisition(Broker)
+                Broker -> maybe_add_broker_connection(Broker)                           
             end;
         Tag ->
             case wh_amqp_connections:broker_with_tag(Tag) of
                 'undefined' -> wh_amqp_channel:requisition();
-                Broker -> wh_amqp_channel:requisition(Broker)
+                Broker -> maybe_add_broker_connection(Broker)
             end
     end.
+
+-spec maybe_add_broker_connection(binary()) -> boolean().
+-spec maybe_add_broker_connection(binary(), non_neg_integer()) -> boolean().
+maybe_add_broker_connection(Broker) ->
+    Count = wh_amqp_connections:broker_available_connections(Broker),
+    maybe_add_broker_connection(Broker, Count).
+    
+maybe_add_broker_connection(Broker, Count) when Count =:= 0 ->
+    wh_amqp_connections:add(Broker, wh_util:rand_hex_binary(6), [<<"hidden">>]),
+    wh_amqp_channel:requisition(Broker);
+maybe_add_broker_connection(Broker, _Count) ->
+    wh_amqp_channel:requisition(Broker).
+    
 
 -spec start_listener(pid(), wh_proplist()) -> 'ok'.
 start_listener(Srv, Params) ->
