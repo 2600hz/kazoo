@@ -874,17 +874,27 @@ format_account_tree_results(Context, JObjs) ->
 %%--------------------------------------------------------------------
 -spec load_parents(ne_binary(), cb_context:context()) -> cb_context:context().
 load_parents(AccountId, Context) ->
-    case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_SUMMARY, []) of
-        {'error', _R} -> crossbar_util:response_db_fatal(Context);
-        {'ok', JObjs} ->
-            Tree = extract_tree(AccountId, JObjs),
-            Accounts = find_accounts_from_tree(Tree, JObjs, Context),
+    Context1 = cb_context:set_account_db(Context, ?WH_ACCOUNTS_DB),
+    Context2 = crossbar_doc:load_view(?AGG_VIEW_SUMMARY, [], Context1),
+    case cb_context:resp_status(Context2) of
+        'success' ->
+            RespData = cb_context:resp_data(Context2),
+            Tree = extract_tree(AccountId, RespData),
+            Parents = find_accounts_from_tree(Tree, RespData, Context),
+            RespEnv =
+                wh_json:set_value(
+                    <<"page_size">>
+                    ,erlang:length(Parents)
+                    ,cb_context:resp_envelope(Context2)
+                ),
             cb_context:setters(
-                Context
-               ,[{fun cb_context:set_resp_data/2, Accounts}
-                 ,{fun cb_context:set_resp_status/2, 'success'}
-                ]
-            )
+                Context2
+                ,[{fun cb_context:set_resp_data/2, Parents}
+                  ,{fun cb_context:set_resp_envelope/2, RespEnv}
+                 ]
+            );
+        _Status ->
+            cb_context:add_system_error('datastore_fault', Context)
     end.
 
 %%--------------------------------------------------------------------
