@@ -18,6 +18,8 @@
 %%%   {queue_options, [{key, value}]} -> optional, if the queue requires different params
 %%%   {consume_options, [{key, value}]} -> optional, if the consumption requires special params
 %%%   {basic_qos, integer()} -> optional, if QoS is being set on this queue
+%%%   {broker | broker_tag, ne_binary()} -> optional, for binding to specific brokers
+%%%   {declare_exchanges, declare_exchanges()} -> optional, for declaring dynamic exchanges used only in this connection
 %%% ]
 %%% @end
 %%% @contributors
@@ -148,6 +150,7 @@
                          {'queue_options', wh_proplist()} |
                          {'consume_options', wh_proplist()} |
                          {'basic_qos', non_neg_integer()} |
+                         {'broker' | 'broker_tag', ne_binary()} |
                          {'declare_exchanges', declare_exchanges()}
                         ].
 
