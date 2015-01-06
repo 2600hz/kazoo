@@ -9,6 +9,7 @@
 -module(doodle_api_handler).
 
 -export([handle_req/2]).
+-export([handle_api_sms/2]).
 
 -include("doodle.hrl").
 
@@ -17,6 +18,9 @@ handle_req(JObj, _Props) ->
     'true' = wapi_conf:doc_update_v(JObj),
     Id = wh_json:get_value(<<"ID">>, JObj),
     Db = wh_json:get_value(<<"Database">>, JObj),
+    handle_api_sms(Db, Id).
+
+handle_api_sms(Db, Id) ->
     {'ok', Doc} = couch_mgr:open_doc(Db, Id),
     Status = wh_json:get_value(<<"pvt_status">>, Doc),
     Origin = wh_json:get_value(<<"pvt_origin">>, Doc),

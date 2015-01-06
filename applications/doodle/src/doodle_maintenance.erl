@@ -56,7 +56,35 @@ start_check_sms_by_account(AccountId, _JObj) ->
 
 -spec check_pending_sms_for_outbound_delivery(ne_binary()) -> any().
 check_pending_sms_for_outbound_delivery(AccountId) ->
-    ViewOptions = [],
+    spawn(fun() -> check_pending_sms_for_offnet_delivery(AccountId) end),
+    spawn(fun() -> check_queued_sms(AccountId) end).
+
+-spec check_queued_sms(ne_binary()) -> any().
+check_queued_sms(AccountId) ->
+    ViewOptions = [{'limit', 100}],
+    case kazoo_modb:get_results(AccountId, <<"sms/queued">>, ViewOptions) of
+        {'ok', []} -> 'ok';
+        {'ok', JObjs} -> replay_queue_sms(AccountId, JObjs);
+        {'error', _R} ->
+            lager:debug("unable to get queued sms list in account ~s : ~p", [AccountId, _R])
+    end.
+
+-spec replay_queue_sms(ne_binary(), wh_json:objects()) -> 'ok'.
+replay_queue_sms(AccountId, JObjs) ->
+    lager:debug("starting queued sms for account ~s", [AccountId]),
+    [ begin
+          DocId = wh_json:get_value(<<"id">>, JObj),
+          <<Year:4/binary, Month:2/binary, "-", _/binary>> = DocId,
+          AccountDb = kazoo_modb:get_modb(AccountId, Year, Month),
+          spawn('doodle_api_handler', 'handle_api_sms', [AccountDb, DocId]),
+          timer:sleep(250)
+      end || JObj <- JObjs
+    ],
+    'ok'.
+
+-spec check_pending_sms_for_offnet_delivery(ne_binary()) -> any().
+check_pending_sms_for_offnet_delivery(AccountId) ->
+    ViewOptions = [{'limit', 25}],
     case kazoo_modb:get_results(AccountId, <<"sms/deliver_to_offnet">>, ViewOptions) of
         {'ok', []} -> 'ok';
         {'ok', JObjs} -> replay_sms(AccountId, JObjs);
