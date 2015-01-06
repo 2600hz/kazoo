@@ -116,7 +116,6 @@ req_value(#cb_context{req_data=ReqData, query_json=QS}, Key, Default) ->
 
 account_id(#cb_context{account_id=AcctId}) -> AcctId.
 user_id(#cb_context{user_id=UserId}) -> UserId.
-reseller_id(#cb_context{reseller_id=AcctId}) -> AcctId.
 account_db(#cb_context{db_name=AcctDb}) -> AcctDb.
 
 account_modb(Context) ->
@@ -230,7 +229,6 @@ setters_fold({F, K, V}, C) -> F(C, K, V).
 
 set_account_id(#cb_context{}=Context, AcctId) -> Context#cb_context{account_id=AcctId}.
 set_user_id(#cb_context{}=Context, UserId) -> Context#cb_context{user_id=UserId}.
-set_reseller_id(#cb_context{}=Context, AcctId) -> Context#cb_context{reseller_id=AcctId}.
 set_account_db(#cb_context{}=Context, AcctDb) -> Context#cb_context{db_name=AcctDb}.
 set_account_modb(#cb_context{}=Context, Year, Month) ->
     Context#cb_context{db_name=kazoo_modb:get_modb(account_id(Context), Year, Month)}.

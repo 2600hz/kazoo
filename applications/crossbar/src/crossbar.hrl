@@ -109,7 +109,6 @@
           ,query_json = wh_json:new() :: wh_json:object()
           ,account_id :: api_binary()
           ,user_id :: api_binary()   % Will be loaded in validate stage for endpoints such as /accounts/{acct-id}/users/{user-id}/*
-          ,reseller_id :: api_binary()
           ,db_name :: api_binary() | ne_binaries()
           ,doc :: api_object() | wh_json:objects()
           ,resp_expires = {{1999,1,1},{0,0,0}} :: wh_datetime()
