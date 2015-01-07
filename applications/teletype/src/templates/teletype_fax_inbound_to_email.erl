@@ -9,7 +9,7 @@
 -module(teletype_fax_inbound_to_email).
 
 -export([init/0
-         ,handle_inbound_fax/2
+         ,handle_fax_inbound/2
         ]).
 
 -include("../teletype.hrl").
@@ -65,20 +65,52 @@ init() ->
                                                ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                               ]).
 
--spec handle_inbound_fax(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_inbound_fax(JObj, _Props) ->
+-spec get_fax_doc(wh_json:object()) -> wh_json:object().
+get_fax_doc(DataJObj) ->
+    AccountId = teletype_util:find_account_id(DataJObj),
+    FaxId = wh_json:get_value(<<"fax_id">>, DataJObj),
+    case kazoo_modb:open_doc(AccountId, FaxId) of
+        {'ok', FaxJObj} -> FaxJObj;
+        {'error', _E} ->
+            lager:debug("failed to find fax ~s: ~p", [FaxId, _E]),
+            maybe_send_failure(DataJObj, <<"Fax-ID was invalid">>)
+    end.
+
+-spec maybe_send_failure(wh_json:object(), ne_binary()) -> wh_json:object().
+maybe_send_failure(DataJObj, Msg) ->
+    case wh_json:is_true(<<"preview">>, DataJObj) of
+        'true' ->
+            lager:debug("not sending failure as this is a preview"),
+            wh_json:new();
+        'false' ->
+            teletype_util:send_update(DataJObj, <<"failed">>, Msg),
+            throw({'error', 'no_fax_id'})
+    end.
+
+-spec handle_fax_inbound(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_fax_inbound(JObj, _Props) ->
     'true' = wapi_notifications:fax_inbound_v(JObj),
     wh_util:put_callid(JObj),
 
+    lager:debug("processing fax inbound to email"),
+
     %% Gather data for template
-    DataJObj = wh_json:normalize(wh_api:remove_defaults(JObj)),
+    DataJObj =
+        wh_json:set_values([{<<"server_id">>, wh_json:get_value(<<"Server-ID">>, JObj)}
+                            ,{<<"msg_id">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                           ]
+                           ,wh_json:normalize(
+                              wh_api:remove_defaults(JObj)
+                             )
+                          ),
 
-    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
-    FaxId = wh_json:get_value(<<"fax_id">>, DataJObj),
-    {'ok', FaxJObj} = kazoo_modb:open_doc(AccountId, FaxId),
+    FaxJObj = get_fax_doc(DataJObj),
 
+    AccountId = teletype_util:find_account_id(DataJObj),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+
+    lager:debug("opened account doc ~s", [AccountId]),
 
     Macros = build_template_data(
                wh_json:set_values([{<<"account">>, wh_doc:public_fields(AccountJObj)}
@@ -86,21 +118,26 @@ handle_inbound_fax(JObj, _Props) ->
                                   ]
                                   ,DataJObj
                                  )),
+    lager:debug("loaded macros"),
 
     %% Load templates
     Templates = teletype_util:fetch_templates(?TEMPLATE_ID, DataJObj),
+    lager:debug("loaded templates"),
 
     %% Populate templates
     RenderedTemplates = [{ContentType, teletype_util:render(?TEMPLATE_ID, Template, Macros)}
                          || {ContentType, Template} <- Templates
                         ],
+    lager:debug("rendered templates"),
 
     {'ok', TemplateMetaJObj} = teletype_util:fetch_template_meta(?TEMPLATE_ID, wh_json:get_value(<<"Account-ID">>, JObj)),
+    lager:debug("built template metadata"),
 
     Subject = teletype_util:render_subject(
                 wh_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
                 ,Macros
                ),
+    lager:debug("rendered subject: ~s", [Subject]),
 
     %% Send email
     teletype_util:send_email(?TEMPLATE_ID
