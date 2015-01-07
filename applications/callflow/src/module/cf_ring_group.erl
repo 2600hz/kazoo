@@ -142,13 +142,12 @@ maybe_order_group_members(Member, JObj, Data) ->
             order_group_members(Member, JObj);
         _ ->
             Endpoints = wh_json:get_ne_value(<<"endpoints">>, JObj, wh_json:new()),
-            lists:foldl(
-                fun(Key, Acc) ->
-                    Endpoint = wh_json:get_ne_value(Key, Endpoints, wh_json:new()),
+            wh_json:foldl(
+                fun(Key, Endpoint, Acc) ->
                     [create_group_member(Key, Endpoint, Member) | Acc]
                 end
                 ,[]
-                ,wh_json:get_keys(Endpoints)
+                ,Endpoints
             )
     end.
 
@@ -156,19 +155,18 @@ maybe_order_group_members(Member, JObj, Data) ->
 order_group_members(Member, JObj) ->
     Endpoints = wh_json:get_ne_value(<<"endpoints">>, JObj, wh_json:new()),
     GroupMembers =
-        lists:foldl(
-            fun(Key, Acc) ->
-                case wh_json:get_value([Key, <<"weight">>], Endpoints) of
-                    'undefined' -> Acc;
-                    Weight ->
-                        Endpoint = wh_json:get_ne_value(Key, Endpoints, wh_json:new()),
-                        GroupMember = create_group_member(Key, Endpoint, Member),
-                        orddict:store(Weight, GroupMember, Acc)
+        wh_json:foldl(
+                fun(Key, Endpoint, Acc) ->
+                    case wh_json:get_value(<<"weight">>, Endpoint) of
+                        'undefined' -> Acc;
+                        Weight ->
+                            GroupMember = create_group_member(Key, Endpoint, Member),
+                            orddict:store(Weight, GroupMember, Acc)
+                    end
                 end
-            end
-            ,orddict:new()
-            ,wh_json:get_keys(Endpoints)
-        ),
+                ,orddict:new()
+                ,Endpoints
+            ),
     [V || {_, V} <- orddict:to_list(GroupMembers)].
 
 -spec create_group_member(ne_binary(), wh_json:object(), wh_json:object()) -> wh_json:object().
