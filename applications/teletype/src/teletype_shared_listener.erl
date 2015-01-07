@@ -32,6 +32,8 @@
                      ,{{'teletype_fax_inbound_to_email', 'handle_fax_inbound'}
                        ,[{<<"notification">>, <<"inbound_fax">>}]
                       }
+
+                     ,{'teletype_template_skel', [{<<"notification">>, <<"skel">>}]}
                     ]).
 %% -define(RESPONDERS, []}
 
@@ -49,7 +51,7 @@
 %%                      ,{'teletype_transaction', [{<<"notification">>, <<"transaction">>}]}
 %%                      ,{'teletype_system_alert', [{<<"notification">>, <<"system_alert">>}]}
 %%                      ,{'teletype_topup', [{<<"notification">>, <<"topup">>}]}
-%%                      ,{'teletype_template_skel', [{<<"notification">>, <<"skel">>}]}
+
 %%                     ]).
 
 -define(RESTRICT_TO, ['new_voicemail'
@@ -68,7 +70,7 @@
                       %% ,'low_balance'
                       %% ,'transaction'
                       %% ,'system_alerts'
-                      %% ,'skel'
+                      ,'skel'
                      ]).
 
 -define(BINDINGS, [{'notifications', [{'restrict_to', ?RESTRICT_TO}]}
