@@ -421,13 +421,14 @@ maybe_update_template(MasterAccountDb, TemplateJObj, Params) ->
         'true' -> lager:debug("template is currently soft-deleted");
         'false' ->
             case update_template(MasterAccountDb, TemplateJObj, Params) of
-                {'ok', _} -> lager:debug("template updated");
+                {'ok', _OK} -> lager:debug("template updated successfully");
                 {'error', _E} -> lager:debug("failed to update template: ~p", [_E])
             end
     end.
 
 -spec update_template(ne_binary(), wh_json:object(), init_params()) ->
-                             {'ok', wh_json:object()} | {'error', _}.
+                             {'ok', wh_json:object()} |
+                             {'error', _}.
 update_template(MasterAccountDb, TemplateJObj, Params) ->
     case update_template_from_params(MasterAccountDb, TemplateJObj, Params) of
         {'false', _} -> lager:debug("no updates to template");
@@ -441,6 +442,7 @@ update_template(MasterAccountDb, TemplateJObj, Params) ->
                            {'error', _}.
 save_template(MasterAccountDb, TemplateJObj) ->
     SaveJObj = wh_doc:update_pvt_parameters(TemplateJObj, MasterAccountDb),
+
     case couch_mgr:save_doc(MasterAccountDb, SaveJObj) of
         {'ok', _JObj}=OK ->
             lager:debug("saved updated template to ~s", [MasterAccountDb]),
@@ -549,30 +551,31 @@ update_template_text_attachment(Text, Acc, MasterAccountDb) ->
     update_template_attachment(Text, Acc, MasterAccountDb, ?TEXT_PLAIN).
 
 -spec update_template_attachment(binary(), update_template_acc(), ne_binary(), ne_binary()) ->
-                                             update_template_acc().
+                                        update_template_acc().
 update_template_attachment(Contents, {_IsUpdated, TemplateJObj}=Acc, MasterAccountDb, ContentType) ->
     AttachmentName = template_attachment_name(ContentType),
     Id = wh_json:get_first_defined([<<"_id">>, <<"id">>], TemplateJObj),
 
     case does_attachment_exist(MasterAccountDb, Id, AttachmentName) of
         'true' -> Acc;
-        'false' -> update_template_attachment(Contents, Acc, MasterAccountDb, ContentType, Id, AttachmentName)
+        'false' ->
+            update_template_attachment(Contents, Acc, MasterAccountDb, ContentType, Id, AttachmentName)
     end.
 
 -spec update_template_attachment(binary(), update_template_acc(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) ->
                                         update_template_acc().
-update_template_attachment(Contents, {_IsUpdated, TemplateJObj}=Acc
+update_template_attachment(Contents, {IsUpdated, _TemplateJObj}=Acc
                            ,MasterAccountDb, ContentType, Id, AName
                           ) ->
     lager:debug("attachment ~s doesn't exist for ~s", [AName, Id]),
     case save_attachment(MasterAccountDb, Id, AName, ContentType, Contents) of
-        {'ok', AttachmentJObj} -> {'true'
-                                   ,wh_json:set_value(<<"_rev">>
-                                                      ,wh_json:get_value(<<"rev">>, AttachmentJObj)
-                                                      ,TemplateJObj
-                                                     )
-                                  };
-        {'error', _E} -> Acc
+        {'ok', AttachmentJObj} ->
+            lager:debug("saved attachment: ~p", [AttachmentJObj]),
+            {'ok', UpdatedJObj} = couch_mgr:open_doc(MasterAccountDb, Id),
+            {IsUpdated, UpdatedJObj};
+        {'error', _E} ->
+            lager:debug("failed to save attachment ~s: ~p", [AName, _E]),
+            Acc
     end.
 
 -spec update_template_macros(wh_json:object(), update_template_acc()) ->
@@ -748,7 +751,7 @@ fetch_template(TemplateId, AccountDb, {AName, Properties}) ->
 send_update(DataJObj, Status) ->
     send_update(DataJObj, Status, 'undefined').
 send_update(DataJObj, Status, Message) ->
-    send_update(wh_json:get_value(<<"server_id">>, DataJObj)
+    send_update(wh_json:get_first_defined([<<"server_id">>, <<"Server-ID">>], DataJObj)
                 ,wh_json:get_value(<<"msg_id">>, DataJObj)
                 ,Status
                 ,Message

@@ -55,6 +55,7 @@
 -define(RESTRICT_TO, ['new_voicemail'
                       ,'voicemail_full'
                       ,'inbound_fax'
+
                       %% ,'inbound_fax_error'
                       %% ,'outbound_fax'
                       %% ,'outbound_fax_error'
@@ -159,6 +160,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
+    lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
