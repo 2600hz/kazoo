@@ -53,6 +53,7 @@
          ,find_user_endpoints/3
          ,find_group_endpoints/2
          ,check_value_of_fields/4
+         ,get_timezone/2, account_timezone/1
         ]).
 
 -export([wait_for_noop/2]).
@@ -901,6 +902,26 @@ process_event(Call, NoopId, JObj) ->
             wait_for_noop(whapps_call:add_to_dtmf_collection(DTMF, Call), NoopId);
         _Ignore ->
             wait_for_noop(Call, NoopId)
+    end.
+
+-define(DEFAULT_TIMEZONE, <<"America/Los_Angeles">>).
+
+-spec get_timezone(wh_json:object(), whapps_call:call()) -> ne_binary().
+get_timezone(JObj, Call) ->
+    case wh_json:get_value(<<"timezone">>, JObj) of
+        'undefined' -> cf_util:account_timezone(Call);
+        TZ -> TZ
+    end.
+
+-spec account_timezone(whapps_call:call()) -> ne_binary().
+account_timezone(Call) ->
+    case couch_mgr:open_cache_doc(whapps_call:account_db(Call)
+                                  ,whapps_call:account_id(Call)
+                                 )
+    of
+        {'ok', JObj} -> wh_json:get_value(<<"timezone">>, JObj, ?DEFAULT_TIMEZONE);
+        {'error', _E} ->
+            whapps_config:get(<<"accounts">>, <<"timezone">>, ?DEFAULT_TIMEZONE)
     end.
 
 -ifdef(TEST).

@@ -103,7 +103,7 @@
           ,unavailable_media_id :: api_binary()
           ,name_media_id :: api_binary()
           ,pin = <<>> :: binary()
-          ,timezone = <<"America/Los_Angeles">> :: binary()
+          ,timezone :: ne_binary()
           ,max_login_attempts = 3 :: non_neg_integer()
           ,require_pin = 'false' :: boolean()
           ,check_if_owner = 'true' :: boolean()
@@ -1268,8 +1268,7 @@ get_mailbox_profile(Data, Call) ->
                          wh_json:is_true(<<"skip_greeting">>, JObj, Default#mailbox.skip_greeting)
                      ,pin =
                          wh_json:get_binary_value(<<"pin">>, JObj, <<>>)
-                     ,timezone =
-                         wh_json:get_value(<<"timezone">>, JObj, Default#mailbox.timezone)
+                     ,timezone = cf_util:get_timezone(JObj, Call)
                      ,mailbox_number =
                          wh_json:get_binary_value(<<"mailbox">>, JObj, whapps_call:request_user(Call))
                      ,require_pin =
