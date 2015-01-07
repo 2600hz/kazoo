@@ -425,12 +425,14 @@ maybe_update_template(MasterAccountDb, TemplateJObj, Params) ->
         'true' -> lager:debug("template is currently soft-deleted");
         'false' ->
             case update_template(MasterAccountDb, TemplateJObj, Params) of
+                'ok' -> 'ok';
                 {'ok', _OK} -> lager:debug("template updated successfully");
                 {'error', _E} -> lager:debug("failed to update template: ~p", [_E])
             end
     end.
 
 -spec update_template(ne_binary(), wh_json:object(), init_params()) ->
+                             'ok' |
                              {'ok', wh_json:object()} |
                              {'error', _}.
 update_template(MasterAccountDb, TemplateJObj, Params) ->
