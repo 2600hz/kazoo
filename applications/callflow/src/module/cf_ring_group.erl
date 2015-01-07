@@ -27,8 +27,7 @@ handle(Data, Call) ->
         [] ->
             lager:notice("ring group has no endpoints, moving to next callflow element"),
             cf_exe:continue(Call);
-        Endpoints ->
-          attempt_endpoints(Endpoints, Data, Call)
+        Endpoints -> attempt_endpoints(Endpoints, Data, Call)
     end.
 
 -spec attempt_endpoints(wh_json:objects(), wh_json:object(), whapps_call:call()) -> 'ok'.
@@ -55,34 +54,44 @@ attempt_endpoints(Endpoints, Data, Call) ->
 
 -spec get_endpoints(wh_json:object(), whapps_call:call()) -> wh_json:objects().
 get_endpoints(Data, Call) ->
+    Builders = start_builders(Data, Call),
+    receive_endpoints(Builders).
+
+-spec receive_endpoints(pids()) -> wh_json:objects().
+receive_endpoints(Builders) ->
+    lists:foldl(fun receive_endpoint_fold/2, [], Builders).
+
+-spec receive_endpoint_fold(pid(), wh_json:objects()) -> wh_json:objects().
+receive_endpoint_fold(Pid, Acc) ->
+    receive
+        {Pid, {'ok', EP}} when is_list(EP) -> EP ++ Acc;
+        {Pid, {'ok', EP}} -> [EP | Acc];
+        {Pid, _} -> Acc
+    end.
+
+-spec start_builders(wh_json:object(), whapps_call:call()) -> pids().
+start_builders(Data, Call) ->
+    [start_builder(EndpointId, Member, Call)
+     || {EndpointId, Member} <- resolve_endpoint_ids(Data, Call)
+    ].
+
+-spec start_builder(ne_binary(), wh_json:object(), whapps_call:call()) -> pid().
+start_builder(EndpointId, Member, Call) ->
     S = self(),
-    Builders =
-        [spawn(
-            fun() ->
+    spawn(
+      fun() ->
               put('callid', whapps_call:call_id(Call)),
               S ! {self(), catch cf_endpoint:build(EndpointId, Member, Call)}
-            end
-         ) || {EndpointId, Member} <- resolve_endpoint_ids(Data, Call)
-        ],
-    lists:foldl(
-        fun(Pid, Acc) ->
-            receive
-                {Pid, {'ok', EP}} when is_list(EP) -> EP ++ Acc;
-                {Pid, {'ok', EP}} -> [EP | Acc];
-                {Pid, _} -> Acc
-            end
-        end
-        ,[]
-        ,Builders
-    ).
+      end
+     ).
 
 -spec resolve_endpoint_ids(wh_json:object(), whapps_call:call()) -> wh_proplist().
 resolve_endpoint_ids(Data, Call) ->
     Members = wh_json:get_value(<<"endpoints">>, Data, []),
     [{Id, wh_json:set_value(<<"source">>, ?MODULE, Member)}
-     || {Type, Id, Member} <- resolve_endpoint_ids(Members, [], Data, Call)
-            ,Type =:= <<"device">>
-            ,Id =/= whapps_call:authorizing_id(Call)
+     || {Type, Id, Member} <- resolve_endpoint_ids(Members, [], Data, Call),
+        Type =:= <<"device">>,
+        Id =/= whapps_call:authorizing_id(Call)
     ].
 
 -type endpoint_intermediate() :: {ne_binary(), ne_binary(), api_object()}.
@@ -107,22 +116,26 @@ resolve_endpoint_ids([Member|Members], EndpointIds, Data, Call) ->
             resolve_endpoint_ids(Members, [{Type, Id, 'undefined'}|Ids], Data, Call);
         <<"user">> ->
             lager:info("member ~s is a user, get all the user's endpoints", [Id]),
-            Ids =
-                lists:foldr(
-                    fun(EndpointId, Acc) ->
-                        case lists:keymember(EndpointId, 2, Acc) of
-                            'true' -> Acc;
-                            'false' ->
-                                [{<<"device">>, EndpointId, Member} | Acc]
-                        end
-                    end
-                    ,[{Type, Id, 'undefined'} | EndpointIds]
-                    ,cf_attributes:owned_by(Id, <<"device">>, Call)
-                ),
+            Ids = get_user_endpoint_ids(Member, EndpointIds, Id, Call),
             resolve_endpoint_ids(Members, Ids, Data, Call);
         <<"device">> ->
             resolve_endpoint_ids(Members, [{Type, Id, Member}|EndpointIds], Data, Call)
     end.
+
+-spec get_user_endpoint_ids(wh_json:object(), endpoint_intermediates(), ne_binary(), whapps_call:call()) ->
+                                   endpoint_intermediates().
+get_user_endpoint_ids(Member, EndpointIds, Id, Call) ->
+    lists:foldr(
+      fun(EndpointId, Acc) ->
+              case lists:keymember(EndpointId, 2, Acc) of
+                  'true' -> Acc;
+                  'false' ->
+                      [{<<"device">>, EndpointId, Member} | Acc]
+              end
+      end
+      ,[{<<"user">>, Id, 'undefined'} | EndpointIds]
+      ,cf_attributes:owned_by(Id, <<"device">>, Call)
+     ).
 
 -spec get_group_members(wh_json:object(), ne_binary(), wh_json:object(), whapps_call:call()) -> wh_json:objects().
 get_group_members(Member, Id, Data, Call) ->
@@ -141,41 +154,48 @@ maybe_order_group_members(Member, JObj, Data) ->
         <<"single">> ->
             order_group_members(Member, JObj);
         _ ->
-            Endpoints = wh_json:get_ne_value(<<"endpoints">>, JObj, wh_json:new()),
-            wh_json:foldl(
-                fun(Key, Endpoint, Acc) ->
-                    [create_group_member(Key, Endpoint, Member) | Acc]
-                end
-                ,[]
-                ,Endpoints
-            )
+            unordered_group_members(Member, JObj)
     end.
+
+-spec unordered_group_members(wh_json:object(), wh_json:object()) -> wh_json:objects().
+unordered_group_members(Member, JObj) ->
+    Endpoints = wh_json:get_ne_value(<<"endpoints">>, JObj, wh_json:new()),
+    wh_json:foldl(
+      fun(Key, Endpoint, Acc) ->
+              [create_group_member(Key, Endpoint, Member) | Acc]
+      end
+      ,[]
+      ,Endpoints
+     ).
 
 -spec order_group_members(wh_json:object(), wh_json:object()) -> wh_json:objects().
 order_group_members(Member, JObj) ->
     Endpoints = wh_json:get_ne_value(<<"endpoints">>, JObj, wh_json:new()),
     GroupMembers =
         wh_json:foldl(
-                fun(Key, Endpoint, Acc) ->
-                    case wh_json:get_value(<<"weight">>, Endpoint) of
-                        'undefined' -> Acc;
-                        Weight ->
-                            GroupMember = create_group_member(Key, Endpoint, Member),
-                            orddict:store(Weight, GroupMember, Acc)
-                    end
-                end
-                ,orddict:new()
-                ,Endpoints
-            ),
+          fun(Key, Endpoint, Acc) ->
+                  case wh_json:get_value(<<"weight">>, Endpoint) of
+                      'undefined' ->
+                          lager:debug("endpoint ~s has no weight, removing from ordered group", [Key]),
+                          Acc;
+                      Weight ->
+                          GroupMember = create_group_member(Key, Endpoint, Member),
+                          orddict:store(Weight, GroupMember, Acc)
+                  end
+          end
+          ,orddict:new()
+          ,Endpoints
+         ),
     [V || {_, V} <- orddict:to_list(GroupMembers)].
 
 -spec create_group_member(ne_binary(), wh_json:object(), wh_json:object()) -> wh_json:object().
 create_group_member(Key, Endpoint, Member) ->
     DefaultDelay = wh_json:get_value(<<"delay">>, Member),
     DefaultTimeout = wh_json:get_value(<<"timeout">>, Member),
-    wh_json:set_values([
-        {<<"endpoint_type">>, wh_json:get_value(<<"type">>, Endpoint)}
-         ,{<<"id">>, Key}
-         ,{<<"delay">>, wh_json:get_value(<<"delay">>, Endpoint, DefaultDelay)}
-         ,{<<"timeout">>, wh_json:get_value(<<"timeout">>, Endpoint, DefaultTimeout)}
-    ], Member).
+    wh_json:set_values([{<<"endpoint_type">>, wh_json:get_value(<<"type">>, Endpoint)}
+                        ,{<<"id">>, Key}
+                        ,{<<"delay">>, wh_json:get_value(<<"delay">>, Endpoint, DefaultDelay)}
+                        ,{<<"timeout">>, wh_json:get_value(<<"timeout">>, Endpoint, DefaultTimeout)}
+                       ]
+                       ,Member
+                      ).

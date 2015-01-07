@@ -314,8 +314,8 @@ to_log(Props, Header) ->
   lager:debug(<<"===== End ", Header/binary, " - ", K/binary, " ====">>),
   'ok'.
 
--include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
 
 filter_test() ->
     Fun = fun({_, V}) -> V < 5 end,
