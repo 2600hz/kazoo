@@ -12,10 +12,11 @@
          ,init_template/2
          ,fetch_template_meta/2
          ,fetch_templates/1, fetch_templates/2
-         ,send_email/5, send_email/6
+         ,send_email/4, send_email/5
          ,render_subject/2, render/3
          ,service_params/2, service_params/3
          ,send_update/2, send_update/3
+         ,find_addresses/3
          ,find_account_rep_email/1
          ,find_account_admin_email/1
          ,find_account_id/1
@@ -27,46 +28,36 @@
 
 -include("teletype.hrl").
 
--spec send_email(ne_binary(), wh_json:object(), wh_proplist(), ne_binary(), wh_proplist()) ->
-                        'ok' |
-                        {'error', _}.
--spec send_email(ne_binary(), wh_json:object(), wh_proplist(), ne_binary(), wh_proplist(), attachments()) ->
-                        'ok' |
-                        {'error', _}.
-send_email(TemplateId, DataJObj, ServiceData, Subject, RenderedTemplates) ->
-    send_email(TemplateId, DataJObj, ServiceData, Subject, RenderedTemplates, []).
-send_email(TemplateId, DataJObj, ServiceData, Subject, RenderedTemplates, Attachments) ->
-    {'ok', TemplateJObj} = fetch_template_meta(TemplateId, find_account_id(DataJObj)),
-
-    L = [DataJObj, TemplateJObj],
-
-    To = wh_json:find([<<"to">>, <<"email_addresses">>], L),
-    Cc = wh_json:find([<<"cc">>, <<"email_addresses">>], L),
-    Bcc = wh_json:find([<<"bcc">>, <<"email_addresses">>], L),
-
-    From = wh_json:find(<<"from">>, [wh_json:from_list(ServiceData) | L]),
-    ReplyTo = wh_json:find(<<"reply_to">>, [wh_json:from_list(ServiceData) | L]),
-
-    Body = email_body(RenderedTemplates, ServiceData),
+-spec send_email(wh_proplist(), ne_binary(), wh_json:object(), wh_proplist()) ->
+                        'ok' | {'error', _}.
+-spec send_email(wh_proplist(), ne_binary(), wh_json:object(), wh_proplist(), attachments()) ->
+                        'ok' | {'error', _}.
+send_email(Emails, Subject, ServiceData, RenderedTemplates) ->
+    send_email(Emails, Subject, ServiceData, RenderedTemplates, []).
+send_email(Emails, Subject, ServiceData, RenderedTemplates, Attachments) ->
+    lager:debug("emails: ~p", [Emails]),
+    To = props:get_value(<<"to">>, Emails),
+    From = props:get_value(<<"from">>, Emails),
 
     Email = {<<"multipart">>
              ,<<"mixed">>
              ,email_parameters(
                 [{<<"To">>, To}
-                 ,{<<"Cc">>, Cc}
-                 ,{<<"Bcc">>, Bcc}
+                 ,{<<"Cc">>, wh_json:get_value(<<"cc">>, Emails)}
+                 ,{<<"Bcc">>, wh_json:get_value(<<"bcc">>, Emails)}
                 ]
                 ,[{<<"From">>, From}
-                  ,{<<"Reply-To">>, ReplyTo}
+                  ,{<<"Reply-To">>, wh_json:get_value(<<"reply_to">>, Emails)}
                   ,{<<"Subject">>, Subject}
-                  ,{<<"X-Call-ID">>, wh_json:get_value(<<"call_id">>, DataJObj)}
                  ]
                )
              ,service_content_type_params(ServiceData)
-             ,[Body | add_attachments(Attachments)]
+             ,[email_body(RenderedTemplates, ServiceData)
+               | add_attachments(Attachments)
+              ]
             },
 
-    relay_email(To, From, Email, Bcc).
+    relay_email(To, From, Email).
 
 -spec email_body(wh_proplist(), wh_proplist()) -> mimemail:mimetuple().
 email_body(RenderedTemplates, ServiceData) ->
@@ -82,19 +73,28 @@ email_parameters([], Params) ->
     lists:reverse(props:filter_empty(Params));
 email_parameters([{_Key, 'undefined'}|T], Params) ->
     email_parameters(T, Params);
-email_parameters([{Key, Vs}|T], Params) ->
-    email_parameters(T, [{Key, V} || V <- Vs] ++ Params).
+email_parameters([{Key, Vs}|T], Params) when is_list(Vs) ->
+    email_parameters(T, [{Key, V} || V <- Vs] ++ Params);
+email_parameters([{Key, V}|T], Params) ->
+    email_parameters(T, [{Key, V} | Params]).
 
--spec relay_email(ne_binaries(), ne_binary(), mimemail:mimetuple(), ne_binaries()) ->
-                         'ok' |
-                         {'error', _}.
-relay_email(To, From, Email, Bcc) ->
+-spec relay_email(api_binaries(), ne_binary(), mimemail:mimetuple()) ->
+                         'ok' | {'error', _}.
+relay_email(To, From, {_Type
+                       ,_SubType
+                       ,Addresses
+                       ,_ContentTypeParams
+                       ,_Body
+                      }=Email) ->
     try mimemail:encode(Email) of
         Encoded ->
             RelayResult = relay_encoded_email(To, From, Encoded),
-            maybe_relay_to_bcc(From, Encoded, Bcc),
+            maybe_relay_to_bcc(From, Encoded, props:get_value(<<"Bcc">>, Addresses)),
             RelayResult
     catch
+        'error':'missing_from' ->
+            lager:warning("no From address: ~s: ~p", [From, Addresses]),
+            throw({'error', 'missing_from'});
         _E:_R ->
             ST = erlang:get_stacktrace(),
             lager:debug("failed to encode email: ~s: ~p", [_E, _R]),
@@ -103,8 +103,7 @@ relay_email(To, From, Email, Bcc) ->
     end.
 
 -spec maybe_relay_to_bcc(ne_binary(), ne_binary(), api_binaries()) ->
-                                'ok' |
-                                {'error', _}.
+                                'ok' | {'error', _}.
 maybe_relay_to_bcc(_From, _Encoded, 'undefined') -> 'ok';
 maybe_relay_to_bcc(_From, _Encoded, []) -> 'ok';
 maybe_relay_to_bcc(From, Encoded, Bcc) ->
@@ -114,28 +113,27 @@ maybe_relay_to_bcc(From, Encoded, Bcc) ->
     end.
 
 -spec relay_to_bcc(ne_binary(), ne_binary(), ne_binaries()) ->
-                          'ok' |
-                          {'error', _}.
+                          'ok' | {'error', _}.
 relay_to_bcc(From, Encoded, Bcc) ->
     lists:foldl(fun(To, _Acc) ->
                         relay_encoded_email(To, From, Encoded)
                 end, 'ok', Bcc).
 
--spec relay_encoded_email(ne_binaries(), ne_binary(), ne_binary()) ->
-                                 'ok' |
-                                 {'error', _}.
+-spec relay_encoded_email(api_binaries(), ne_binary(), ne_binary()) ->
+                                 'ok' | {'error', _}.
+relay_encoded_email('undefined', _From, _Encoded) ->
+    lager:debug("failed to send email as the TO address(es) are missing"),
+    {'error', 'invalid_to_addresses'};
+relay_encoded_email([], _From, _Encoded) ->
+    lager:debug("failed to send email as the TO addresses list is empty"),
+    {'error', 'no_to_addresses'};
 relay_encoded_email(To, From, Encoded) ->
-    ReqId = get('callid'),
     Self = self(),
 
     lager:debug("relaying from ~s to ~p", [From, To]),
     gen_smtp_client:send({From, To, Encoded}
                          ,smtp_options()
-                         ,fun(X) ->
-                                  put('callid', ReqId),
-                                  lager:debug("email relay responded: ~p, send to ~p", [X, Self]),
-                                  Self ! {'relay_response', X}
-                          end
+                         ,fun(X) -> Self ! {'relay_response', X} end
                         ),
     %% The callback will receive either `{ok, Receipt}' where Receipt is the SMTP server's receipt
     %% identifier,  `{error, Type, Message}' or `{exit, ExitReason}', as the single argument.
@@ -145,12 +143,18 @@ relay_encoded_email(To, From, Encoded) ->
             lager:debug("error relyaing message: ~p: ~p", [_Type, Message]),
             {'error', Message};
         {'relay_response', {'exit', Reason}} ->
-            lager:debug("exit relaying message: ~p", [Reason]),
+            lager:debug("failed to send email:"),
+            log_email_send_error(Reason),
             {'error', Reason}
     after 10000 ->
             lager:debug("timed out waiting for relay response"),
             {'error', 'timeout'}
     end.
+
+log_email_send_error({'function_clause', Stacktrace}) ->
+    wh_util:log_stacktrace(Stacktrace);
+log_email_send_error(Reason) ->
+    lager:debug("exit relaying message: ~p", [Reason]).
 
 -spec smtp_options() -> wh_proplist().
 smtp_options() ->
@@ -711,6 +715,7 @@ fetch_templates(TemplateId, AccountDb, Attachments) ->
 find_account_id(JObj) ->
     wh_json:get_first_defined([<<"account_id">>
                                ,[<<"account">>, <<"_id">>]
+                               ,<<"pvt_account_id">>
                               ]
                               ,JObj
                              ).
@@ -879,3 +884,58 @@ is_notice_enabled(AccountJObj, ApiJObj, NoticeKey) ->
 -spec is_notice_enabled_default(ne_binary()) -> boolean().
 is_notice_enabled_default(Key) ->
     whapps_config:get_is_true(?MOD_CONFIG_CAT(Key), <<"default_enabled">>, 'false').
+
+-spec find_addresses(wh_json:object(), wh_json:object(), ne_binary()) ->
+                            wh_proplist().
+-spec find_addresses(wh_json:object(), wh_json:object(), ne_binary(), wh_json:keys(), wh_proplist()) ->
+                            wh_proplist().
+find_addresses(DataJObj, TemplateMetaJObj, ConfigCat) ->
+    AddressKeys = [<<"to">>, <<"cc">>, <<"bcc">>, <<"from">>, <<"reply_to">>],
+    find_addresses(DataJObj, TemplateMetaJObj, ConfigCat, AddressKeys, []).
+
+find_addresses(_DataJObj, _TemplateJObj, _ConfigCat, [], Acc) -> Acc;
+find_addresses(DataJObj, TemplateMetaJObj, ConfigCat, [Key|Keys], Acc) ->
+    find_addresses(DataJObj, TemplateMetaJObj, ConfigCat
+                   ,Keys
+                   ,[find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key)|Acc]
+                  ).
+
+-spec find_address(wh_json:object(), wh_json:object(), ne_binary(), wh_json:key()) ->
+                          {wh_json:key(), api_binaries()}.
+-spec find_address(wh_json:object(), wh_json:object(), ne_binary(), wh_json:key(), api_binary()) ->
+                          {wh_json:key(), api_binaries()}.
+find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key) ->
+    find_address(DataJObj, TemplateMetaJObj, ConfigCat
+                 ,Key, wh_json:get_value([Key, <<"type">>], TemplateMetaJObj)
+                ).
+
+find_address(_DataJObj, TemplateMetaJObj, _ConfigCat, Key, 'undefined') ->
+    lager:debug("email type for '~s' not defined in template, checking just the key", [Key]),
+    {Key, wh_json:get_ne_value(Key, TemplateMetaJObj)};
+find_address(_DataJObj, TemplateMetaJObj, _ConfigCat, Key, ?EMAIL_SPECIFIED) ->
+    lager:debug("checking template for '~s' email addresses", [Key]),
+    {Key, wh_json:get_ne_value([Key, <<"email_addresses">>], TemplateMetaJObj)};
+find_address(DataJObj, _TemplateMetaJObj, _ConfigCat, Key, ?EMAIL_ORIGINAL) ->
+    lager:debug("checking data for '~s' email address(es)", [Key]),
+    {Key, wh_json:get_value(Key, DataJObj)};
+find_address(DataJObj, _TemplateMetaJObj, ConfigCat, Key, ?EMAIL_ADMINS) ->
+    lager:debug("looking for admin emails for '~s'", [Key]),
+    {Key, find_admin_emails(DataJObj, ConfigCat, Key)}.
+
+-spec find_admin_emails(wh_json:object(), ne_binary(), wh_json:key()) -> api_binaries().
+find_admin_emails(DataJObj, ConfigCat, Key) ->
+    case teletype_util:find_account_rep_email(
+           teletype_util:find_account_id(DataJObj)
+          )
+    of
+        'undefined' -> find_default(ConfigCat, Key);
+        Emails -> Emails
+    end.
+
+-spec find_default(ne_binary(), wh_json:key()) -> api_binaries().
+find_default(ConfigCat, Key) ->
+    case whapps_config:get(ConfigCat, <<"default_", Key/binary>>) of
+        'undefined' -> 'undefined';
+        <<_/binary>> = Email -> [Email];
+        Emails -> Emails
+    end.
