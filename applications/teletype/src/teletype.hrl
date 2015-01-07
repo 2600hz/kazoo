@@ -79,6 +79,15 @@
           ,?MACRO_VALUE(<<"to.realm">>, <<"to_realm">>, <<"To Realm">>, <<"SIP To Realm">>)
          ]).
 
+-define(SERVICE_MACROS
+        ,[?MACRO_VALUE(<<"service.url">>, <<"service_url">>, <<"Service Provider URL">>, <<"Service Provider URL">>)
+          ,?MACRO_VALUE(<<"service.name">>, <<"service_name">>, <<"Service Provider Name">>, <<"Service Provider Name">>)
+          ,?MACRO_VALUE(<<"service.provider">>, <<"service_provider">>, <<"Service Provider">>, <<"Service Provider">>)
+          ,?MACRO_VALUE(<<"service.support_number">>, <<"service_support_number">>, <<"Support Number">>, <<"Support Number">>)
+          ,?MACRO_VALUE(<<"service.support_email">>, <<"service_support_email">>, <<"Support Email">>, <<"Support Email">>)
+          ,?MACRO_VALUE(<<"service.from">>, <<"service_from">>, <<"Service Provider Email">>, <<"Service Provider's Email">>)
+         ]).
+
 -define(DEFAULT_CALL_MACROS
         ,?CALLER_ID_MACROS
         ++ ?CALLEE_ID_MACROS
