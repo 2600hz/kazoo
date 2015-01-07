@@ -25,6 +25,7 @@
          ,partial_wait/2, partial_wait/3
          ,attended_answer/2, attended_answer/3
          ,finished/2, finished/3
+         ,takeback/2, takeback/3
 
          ,init/1
          ,handle_event/3
@@ -90,7 +91,7 @@ handle(Data, Call) ->
     add_transferee_bindings(TransfereeLeg),
 
     lager:info("unbridge and put transferee ~s into hold", [TransfereeLeg]),
-    whapps_call_command:unbridge(Call),
+    unbridge(Call),
 
     MOH = wh_media_util:media_path(find_moh(Data, Call), Call),
     lager:info("putting transferee ~s on hold with MOH ~s", [TransfereeLeg, MOH]),
@@ -666,6 +667,61 @@ finished(_Msg, State) ->
 finished(_Req, _From, State) ->
     {'next_state', 'finished', State}.
 
+takeback(?EVENT(Transferor, <<"CHANNEL_BRIDGE">>, Evt)
+         ,#state{transferor=Transferor
+                 ,target=Target
+                 ,target_b_legs=Bs
+                 ,target_call=TargetCall
+                }=State
+        ) ->
+    lager:debug("transferor ~s bridged to ~s, tearing down target ~s"
+                ,[Transferor
+                  ,wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt)
+                  ,Target
+                 ]),
+    hangup_target(TargetCall, Bs),
+    {'stop', 'normal', State};
+takeback(?EVENT(Transferee, <<"CHANNEL_BRIDGE">>, Evt)
+         ,#state{transferee=Transferee
+                 ,target=Target
+                 ,target_b_legs=Bs
+                 ,target_call=TargetCall
+                }=State
+        ) ->
+    lager:debug("transferee ~s bridged to ~s, tearing down target ~s"
+                ,[Transferee
+                  ,wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt)
+                  ,Target
+                 ]),
+    hangup_target(TargetCall, Bs),
+    {'stop', 'normal', State};
+takeback(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
+         ,#state{target=Target}=State
+        ) ->
+    lager:debug("target ~s has ended", [Target]),
+    {'stop', 'normal', State};
+takeback(?EVENT(Transferor, <<"CHANNEL_DESTROY">>, _Evt)
+         ,#state{transferor=Transferor}=State
+        ) ->
+    lager:debug("transferor ~s has ended", [Transferor]),
+    {'stop', 'normal', State};
+takeback(?EVENT(Transferee, <<"CHANNEL_DESTROY">>, _Evt)
+         ,#state{transferee=Transferee}=State
+        ) ->
+    lager:debug("transferee ~s has ended", [Transferee]),
+    {'stop', 'normal', State};
+takeback(?EVENT(_CallId, _EventName, _Evt)
+         ,State
+        ) ->
+    lager:debug("unhandled event for ~s: ~s", [_CallId, _EventName]),
+    {'next_state', 'takeback', State};
+takeback(_Msg, State) ->
+    lager:debug("unhandled message ~p", [_Msg]),
+    {'next_state', 'takeback', State}.
+
+takeback(_Req, _From, State) ->
+    {'next_state', 'takeback', State}.
+
 handle_event(_Event, StateName, State) ->
     lager:info("unhandled event in ~s: ~p", [StateName, _Event]),
     {'next_state', StateName, State}.
@@ -824,6 +880,10 @@ connect_to_transferee(Call) ->
              ,{<<"Park-After-Pickup">>, 'false'}
             ],
     konami_util:listen_on_other_leg(Call, ?TARGET_CALL_EVENTS),
+    lager:debug("reconnecting transferor/ee: ~s and ~s"
+                ,[whapps_call:call_id(Call)
+                  ,whapps_call:other_leg_call_id(Call)
+                 ]),
     connect(Flags, Call).
 
 -spec connect(wh_proplist(), whapps_call:call()) -> 'ok'.
@@ -840,10 +900,9 @@ connect(Flags, Call) ->
                                     {'next_state', NextState, state()}.
 handle_transferor_dtmf(Evt, NextState
                        ,#state{call=Call
-                               ,target_call=TargetCall
-                               ,target_b_legs=Bs
                                ,takeback_dtmf=TakebackDTMF
                                ,transferor_dtmf=DTMFs
+                               ,transferor=Transferor
                               }=State
                       ) ->
     Digit = wh_json:get_value(<<"DTMF-Digit">>, Evt),
@@ -854,12 +913,28 @@ handle_transferor_dtmf(Evt, NextState
     case wh_util:suffix_binary(TakebackDTMF, Collected) of
         'true' ->
             lager:info("takeback dtmf sequence (~s) engaged!", [TakebackDTMF]),
+
+            lager:debug("first, unbridge transferor if bridged"),
+            unbridge(Call, Transferor),
+
+            lager:debug("then connect to transferee"),
             connect_to_transferee(Call),
-            hangup_target(TargetCall, Bs),
-            {'stop', 'normal', State};
+            {'next_state', 'takeback', State};
         'false' ->
             {'next_state', NextState, State#state{transferor_dtmf=Collected}}
     end.
+
+-spec unbridge(whapps_call:call()) -> 'ok'.
+-spec unbridge(whapps_call:call(), ne_binary()) -> 'ok'.
+unbridge(Call) ->
+    unbridge(Call, whapps_call:call_id(Call)).
+unbridge(Call, CallId) ->
+    Command = [{<<"Application-Name">>, <<"unbridge">>}
+               ,{<<"Insert-At">>, <<"now">>}
+               ,{<<"Leg">>, <<"Both">>}
+               ,{<<"Call-ID">>, CallId}
+              ],
+    whapps_call_command:send_command(Command, Call).
 
 -spec pattern_builder(wh_json:object()) -> wh_json:object().
 pattern_builder(DefaultJObj) ->

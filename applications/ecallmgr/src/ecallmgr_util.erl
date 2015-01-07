@@ -14,7 +14,7 @@
 -export([send_cmd/4]).
 -export([get_fs_kv/3]).
 -export([set/3]).
--export([export/3]).
+-export([export/3, bridge_export/3]).
 -export([get_expires/1]).
 -export([get_interface_properties/1, get_interface_properties/2]).
 -export([get_sip_to/1, get_sip_from/1, get_sip_request/1, get_orig_ip/1]).
@@ -437,6 +437,21 @@ export(Node, UUID, [{<<"Auto-Answer", _/binary>> = K, V} | Props]) ->
 export(Node, UUID, Props) ->
     Exports = [get_fs_key_and_value(Key, Val, UUID) || {Key, Val} <- Props],
     ecallmgr_fs_command:export(Node, UUID, props:filter(Exports, 'skip')).
+
+-spec bridge_export(atom(), ne_binary(), wh_proplist()) ->
+                    ecallmgr_util:send_cmd_ret().
+bridge_export(_, _, []) -> 'ok';
+bridge_export(Node, UUID, [{<<"Auto-Answer", _/binary>> = K, V} | Props]) ->
+    BridgeExports = [get_fs_key_and_value(Key, Val, UUID)
+                     || {Key, Val} <- Props
+                    ],
+    ecallmgr_fs_command:bridge_export(Node, UUID, [{<<"alert_info">>, <<"intercom">>}
+                                                   ,get_fs_key_and_value(K, V, UUID)
+                                                   | props:filter(BridgeExports, 'skip')
+                                                  ]);
+bridge_export(Node, UUID, Props) ->
+    BridgeExports = [get_fs_key_and_value(Key, Val, UUID) || {Key, Val} <- Props],
+    ecallmgr_fs_command:bridge_export(Node, UUID, props:filter(BridgeExports, 'skip')).
 
 %%--------------------------------------------------------------------
 %% @public
