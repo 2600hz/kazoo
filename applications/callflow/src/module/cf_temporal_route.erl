@@ -73,13 +73,11 @@
 -type rule() :: #rule{}.
 -type rules() :: [rule(),...] | [].
 
--define(TEMPORAL_DEFAULT_TIMEZONE, <<"America/Los_Angeles">>).
-
 -record(temporal, {local_sec = 0 :: non_neg_integer()
                    ,local_date = {2011, 1, 1} :: wh_date()
                    ,local_time = {0, 0, 0} :: wh_time()
                    ,routes = [] :: wh_json:keys()
-                   ,timezone = ?TEMPORAL_DEFAULT_TIMEZONE :: ne_binary()
+                   ,timezone :: api_binary()
                    ,prompts = #prompts{} :: prompts()
                    ,keys = #keys{} :: keys()
                    ,interdigit_timeout = whapps_call_command:default_interdigit_timeout() :: pos_integer()
@@ -290,7 +288,7 @@ get_temporal_route(JObj, Call) ->
         end,
     load_current_time(#temporal{routes = Routes
                                 ,rule_set = IsRuleSet
-                                ,timezone = wh_json:get_value(<<"timezone">>, JObj, ?TEMPORAL_DEFAULT_TIMEZONE)
+                                ,timezone = cf_util:get_timezone(JObj, Call)
                                 ,interdigit_timeout =
                                     wh_json:get_integer_value(<<"interdigit_timeout">>
                                                               ,JObj
