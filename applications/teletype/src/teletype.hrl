@@ -32,6 +32,10 @@
 -define(TEXT_PLAIN, <<"text/plain">>).
 -define(TEXT_HTML, <<"text/html">>).
 
+-define(EMAIL_SPECIFIED, <<"specified">>).
+-define(EMAIL_ORIGINAL, <<"original">>).
+-define(EMAIL_ADMINS, <<"admins">>).
+
 -define(CONFIGURED_EMAILS(Type, Addresses)
         ,wh_json:from_list(
            props:filter_undefined(
