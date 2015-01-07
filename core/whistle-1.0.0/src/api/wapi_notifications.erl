@@ -62,6 +62,7 @@
         ]).
 
 -include_lib("whistle/include/wh_api.hrl").
+-include_lib("whistle/include/wh_log.hrl").
 
 %% supports preview mode
 -define(DEFAULT_OPTIONAL_HEADERS, [<<"To">>, <<"Cc">>, <<"Bcc">>
@@ -350,7 +351,7 @@ headers(<<"voicemail">>) ->
     ?VOICEMAIL_HEADERS ++ ?OPTIONAL_VOICEMAIL_HEADERS;
 headers(<<"voicemail_full">>) ->
     ?VOICEMAIL_FULL_HEADERS ++ ?OPTIONAL_VOICEMAIL_FULL_HEADERS;
-headers(<<"fax_inbound">>) ->
+headers(<<"fax_inbound_to_email">>) ->
     ?FAX_INBOUND_HEADERS ++ ?OPTIONAL_FAX_INBOUND_HEADERS;
 headers(<<"skel">>) ->
     ?SKEL_HEADERS ++ ?OPTIONAL_SKEL_HEADERS;
