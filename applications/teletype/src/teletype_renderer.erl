@@ -73,9 +73,17 @@ init(_) ->
     {'ok', Module}.
 
 handle_call({'render', _TemplateId, Template, TemplateData}, _From, TemplateModule) ->
-    lager:debug("trying to compile template for ~p", [_From]),
-    try erlydtl:compile_template(Template, TemplateModule, [{'out_dir', 'false'}]) of
+    lager:debug("trying to compile template ~s as ~s for ~p", [_TemplateId, TemplateModule, _From]),
+    try erlydtl:compile_template(Template
+                                 ,TemplateModule
+                                 ,[{'out_dir', 'false'}]
+                                )
+    of
         {'ok', TemplateModule} ->
+            Resp = render_template(TemplateModule, TemplateData),
+            lager:debug("rendered as ~p", [Resp]),
+            {'reply', Resp, TemplateModule};
+        {'ok', TemplateModule, []} ->
             Resp = render_template(TemplateModule, TemplateData),
             lager:debug("rendered as ~p", [Resp]),
             {'reply', Resp, TemplateModule};
@@ -122,6 +130,11 @@ render_template(TemplateModule, TemplateData) ->
             lager:debug("failed to render template: ~p", [_E]),
             E
     catch
+        'error':'undef' ->
+            ST = erlang:get_stacktrace(),
+            lager:debug("something in the template ~s is undefined", [TemplateModule]),
+            wh_util:log_stacktrace(ST),
+            {'error', 'undefined'};
         _E:R ->
             lager:debug("crashed rendering template ~s: ~s: ~p", [TemplateModule, _E, R]),
             {'error', R}
