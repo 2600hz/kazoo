@@ -36,6 +36,7 @@
         ]).
 
 -include("ecallmgr.hrl").
+-include_lib("nksip/include/nksip.hrl").
 
 -define(RESPONDERS, [{{?MODULE, 'reg_query'}
                       ,[{<<"directory">>, <<"reg_query">>}]
@@ -319,10 +320,9 @@ handle_reg_success(Node, Props) ->
 
 -spec get_fs_contact(wh_proplist()) -> ne_binary().
 get_fs_contact(Props) ->
-    FromUser = props:get_first_defined([<<"From-User">>, <<"from-user">>], Props),
-    NetworkIP = props:get_first_defined([<<"Network-IP">>, <<"network-ip">>], Props),
-    NetworkPort = props:get_first_defined([<<"Network-Port">>, <<"network-port">>], Props),
-    <<"<sip:", FromUser/binary, "@", NetworkIP/binary, ":", NetworkPort/binary, ">">>.
+    Contact = props:get_first_defined([<<"Contact">>, <<"contact">>], Props),
+    [User, AfterAt] = binary:split(Contact, <<"@">>), % only one @ allowed
+    <<User/binary, "@", (wh_util:to_binary(mochiweb_util:unquote(AfterAt)))/binary>>.
 
 %%%===================================================================
 %%% gen_listener callbacks
