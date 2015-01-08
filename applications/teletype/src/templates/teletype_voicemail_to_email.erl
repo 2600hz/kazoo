@@ -10,7 +10,6 @@
 
 -export([init/0
          ,handle_new_voicemail/2
-         ,test/2
         ]).
 
 -include("../teletype.hrl").
@@ -44,36 +43,6 @@
 -define(TEMPLATE_BCC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
 -define(TEMPLATE_REPLY_TO, teletype_util:default_reply_to(?MOD_CONFIG_CAT)).
 
-test(AccountId, VoicemailBoxId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    {'ok', VMBox} = couch_mgr:open_cache_doc(AccountDb
-                                             ,VoicemailBoxId
-                                            ),
-
-    MediaId = wh_json:get_value([<<"messages">>, 1, <<"media_id">>], VMBox),
-    Length = wh_json:get_value([<<"messages">>, 1, <<"length">>], VMBox),
-    CallId = wh_json:get_value([<<"messages">>, 1, <<"call_id">>], VMBox),
-
-    Prop = [{<<"From-User">>, <<"TestFromUser">>}
-            ,{<<"From-Realm">>, <<"TestFromRealm">>}
-            ,{<<"To-User">>, <<"TestToUser">>}
-            ,{<<"To-Realm">>, <<"TestToRealm">>}
-            ,{<<"Account-DB">>, AccountDb}
-            ,{<<"Account-ID">>, AccountId}
-            ,{<<"Voicemail-Box">>, VoicemailBoxId}
-            ,{<<"Voicemail-Name">>, MediaId}
-            ,{<<"Caller-ID-Number">>, <<"CallerIdNumber">>}
-            ,{<<"Caller-ID-Name">>, <<"CallerIdName">>}
-            ,{<<"Voicemail-Timestamp">>, wh_util:current_tstamp()}
-            ,{<<"Voicemail-Length">>, Length}
-            ,{<<"Call-ID">>, CallId}
-            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-           ],
-    whapps_util:amqp_pool_collect(Prop
-                                  ,fun wapi_notifications:publish_voicemail/1
-                                  ,5000
-                                 ).
-
 -spec init() -> 'ok'.
 init() ->
     wh_util:put_callid(?MODULE),
@@ -97,7 +66,7 @@ handle_new_voicemail(JObj, _Props) ->
     wh_util:put_callid(JObj),
 
     %% Gather data for template
-    DataJObj = wh_json:normalize(wh_api:remove_defaults(JObj)),
+    DataJObj = wh_json:normalize(JObj),
 
     AccountDb = wh_json:get_value(<<"account_db">>, DataJObj),
 

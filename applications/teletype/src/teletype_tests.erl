@@ -1,0 +1,127 @@
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2015, 2600Hz
+%%% @doc
+%%% Send test API notifications
+%%% @end
+%%% @contributors
+%%%   James Aimonetti
+%%%-------------------------------------------------------------------
+-module(teletype_tests).
+
+-export([voicemail_to_email/1, voicemail_to_email/2
+         ,voicemail_full/1, voicemail_full/2
+         ,skel/1, skel/2
+        ]).
+
+-include("teletype.hrl").
+
+voicemail_to_email(AccountId) ->
+    case find_vmboxes(AccountId) of
+        [] -> lager:debug("no voicemail boxes in account ~s", [AccountId]);
+        VMBoxes -> find_vmbox_with_messages(AccountId, VMBoxes)
+    end.
+
+find_vmboxes(AccountId) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:get_results(AccountDb, <<"vmboxes/crossbar_listing">>, ['include_docs']) of
+        {'ok', VMBoxes} -> VMBoxes;
+        {'error', _E} ->
+            lager:debug("failed to query ~s for vm boxes: ~p", [AccountId, _E]),
+            []
+    end.
+
+find_vmbox_with_messages(_AccountId, []) ->
+    lager:debug("no vmboxes had messages in ~p", [_AccountId]);
+find_vmbox_with_messages(AccountId, [Box|Boxes]) ->
+    case wh_json:get_value([<<"doc">>, <<"messages">>], Box) of
+        [] -> find_vmbox_with_messages(AccountId, Boxes);
+        _Ms -> voicemail_to_email(AccountId, wh_json:get_value(<<"doc">>, Box))
+    end.
+
+voicemail_to_email(AccountId, <<_/binary>> = VoicemailBoxId) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    {'ok', VMBox} = couch_mgr:open_cache_doc(AccountDb
+                                             ,VoicemailBoxId
+                                            ),
+    voicemail_to_email(AccountId, VMBox);
+voicemail_to_email(AccountId, VMBox) ->
+    MediaId = wh_json:get_value([<<"messages">>, 1, <<"media_id">>], VMBox),
+    Length = wh_json:get_value([<<"messages">>, 1, <<"length">>], VMBox),
+    CallId = wh_json:get_value([<<"messages">>, 1, <<"call_id">>], VMBox),
+
+    Prop = [{<<"From-User">>, <<"TestFromUser">>}
+            ,{<<"From-Realm">>, <<"TestFromRealm">>}
+            ,{<<"To-User">>, <<"TestToUser">>}
+            ,{<<"To-Realm">>, <<"TestToRealm">>}
+            ,{<<"Account-DB">>, wh_util:format_account_id(AccountId, 'encoded')}
+            ,{<<"Account-ID">>, AccountId}
+            ,{<<"Voicemail-Box">>, wh_json:get_first_defined([<<"_id">>, <<"id">>], VMBox)}
+            ,{<<"Voicemail-Name">>, MediaId}
+            ,{<<"Caller-ID-Number">>, <<"CallerIdNumber">>}
+            ,{<<"Caller-ID-Name">>, <<"CallerIdName">>}
+            ,{<<"Voicemail-Timestamp">>, wh_util:current_tstamp()}
+            ,{<<"Voicemail-Length">>, Length}
+            ,{<<"Call-ID">>, CallId}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    whapps_util:amqp_pool_collect(Prop
+                                  ,fun wapi_notifications:publish_voicemail/1
+                                  ,5000
+                                 ).
+skel(AccountId) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:get_results(AccountDb, <<"users/crossbar_listing">>, ['include_docs']) of
+        {'ok', Users} -> find_user_for_skel(AccountId, Users);
+        {'error', _E} -> lager:debug("failed to find users for ~s: ~p", [AccountId, _E])
+    end.
+
+find_user_for_skel(_AccountId, []) ->
+    lager:debug("no users found for ~s", [_AccountId]);
+find_user_for_skel(AccountId, [User|Users]) ->
+    case wh_json:get_first_defined([[<<"doc">>, <<"email">>]
+                                    ,[<<"doc">>, <<"username">>]
+                                   ]
+                                   ,User
+                                  )
+    of
+        'undefined' -> find_user_for_skel(AccountId, Users);
+        PotentialEmail -> find_user_for_skel(AccountId, User, Users, PotentialEmail)
+    end.
+
+find_user_for_skel(AccountId, User, Users, PotentialEmail) ->
+    case binary:split(PotentialEmail, <<"@">>) of
+        [_U, _D] -> skel(AccountId, wh_json:get_value(<<"id">>, User));
+        _ -> find_user_for_skel(AccountId, Users)
+    end.
+
+skel(AccountId, <<_/binary>> = UserId) ->
+    Req = [{<<"Account-ID">>, AccountId}
+           ,{<<"User-ID">>, UserId}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    wh_amqp_worker:cast(Req, fun wapi_notifications:publish_skel/1).
+
+voicemail_full(AccountId) ->
+    case find_vmboxes(AccountId) of
+        [] -> lager:debug("there are no voicemail boxes in ~s", [AccountId]);
+        [Box|_] -> voicemail_full(AccountId, wh_json:get_value(<<"doc">>, Box))
+    end.
+
+voicemail_full(AccountId, <<_/binary>> = BoxId) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    {'ok', Box} = couch_mgr:open_cache_doc(AccountDb, BoxId),
+    voicemail_full(AccountId, Box);
+voicemail_full(AccountId, Box) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    Props = [{<<"Account-DB">>, AccountDb}
+             ,{<<"Account-ID">>, AccountId}
+             ,{<<"Voicemail-Box">>, wh_json:get_value(<<"_id">>, Box)}
+             ,{<<"Voicemail-Number">>, wh_json:get_value(<<"mailbox">>, Box)}
+             ,{<<"Max-Message-Count">>, 1}
+             ,{<<"Message-Count">>, 2}
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ],
+    wh_amqp_worker:call_collect(Props
+                                ,fun wapi_notifications:publish_voicemail_full/1
+                                ,5000
+                               ).

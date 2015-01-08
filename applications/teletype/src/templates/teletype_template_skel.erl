@@ -10,7 +10,6 @@
 
 -export([init/0
          ,handle_req/2
-         ,test/2
         ]).
 
 -include("../teletype.hrl").
@@ -37,13 +36,6 @@
 -define(TEMPLATE_CC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
 -define(TEMPLATE_BCC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
 -define(TEMPLATE_REPLY_TO, teletype_util:default_reply_to(?MOD_CONFIG_CAT)).
-
-test(AccountId, UserId) ->
-    Req = [{<<"Account-ID">>, AccountId}
-           ,{<<"User-ID">>, UserId}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    wh_amqp_worker:cast(Req, fun wapi_notifications:publish_skel/1).
 
 -spec init() -> 'ok'.
 init() ->
