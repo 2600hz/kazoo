@@ -128,21 +128,21 @@ maybe_broker(Args) ->
 maybe_queuename(Args) ->
     case props:get_value('amqp_queuename_start', Args) of
         'undefined' -> ?QUEUE_NAME;
-        QueueStart -> <<(wh_util:to_binary(QueueStart))/binary, "_", (wh_util:rand_hex_binary(4))/binary>> 
+        QueueStart -> <<(wh_util:to_binary(QueueStart))/binary, "_", (wh_util:rand_hex_binary(4))/binary>>
     end.
 
 -spec maybe_bindings(wh_proplist()) -> wh_proplist().
 maybe_bindings(Args) ->
     case props:get_value('amqp_bindings', Args) of
         'undefined' -> ?BINDINGS;
-        Bindings -> Bindings 
+        Bindings -> Bindings
     end.
 
 -spec maybe_exchanges(wh_proplist()) -> wh_proplist().
 maybe_exchanges(Args) ->
     case props:get_value('amqp_exchanges', Args) of
         'undefined' -> [];
-        Exchanges -> [{'declare_exchanges', Exchanges}] 
+        Exchanges -> [{'declare_exchanges', Exchanges}]
     end.
 
 -spec default_timeout() -> 2000.
@@ -325,7 +325,7 @@ cast(Req, PubFun) ->
 cast(Req, PubFun, Pool) when is_atom(Pool) ->
     case next_worker(Pool) of
         {'error', _}=E -> E;
-        Worker -> 
+        Worker ->
             Resp = cast(Req, PubFun, Worker),
             checkin_worker(Worker, Pool),
             Resp
@@ -374,19 +374,26 @@ handle_resp(JObj, Props) ->
 
 -spec send_request(ne_binary(), ne_binary(), publish_fun(), wh_proplist()) ->
                           'ok' | {'error', _}.
-send_request(CallID, Self, PublishFun, ReqProps)
+send_request(CallId, Self, PublishFun, ReqProps)
   when is_function(PublishFun, 1) ->
-    put('callid', CallID),
-    MyProps = [{<<"Server-ID">>, Self}
-               ,{<<"Call-ID">>, CallID}
-              ],
-    Props = props:insert_values(MyProps, props:filter_undefined(ReqProps)),
-
+    put('callid', CallId),
+    Props = props:insert_values(
+              [{<<"Server-ID">>, Self}
+              ,{<<"Call-ID">>, CallId}
+              ]
+              ,props:filter(fun request_proplist_filter/1, ReqProps)
+             ),
     try PublishFun(Props) of
         'ok' -> 'ok'
     catch
         _:E -> {'error', E}
     end.
+
+-spec request_proplist_filter({wh_proplist_key(), wh_proplist_value()}) -> boolean().
+request_proplist_filter({<<"Server-ID">>, Value}) ->
+    not wh_util:is_empty(Value);
+request_proplist_filter({_, 'undefined'}) -> 'false';
+request_proplist_filter(_) -> 'true'.
 
 %%%===================================================================
 %%% gen_server callbacks
