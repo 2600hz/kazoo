@@ -80,28 +80,44 @@ handle_call({'render', _TemplateId, Template, TemplateData}, _From, TemplateModu
                                 )
     of
         {'ok', TemplateModule} ->
-            Resp = render_template(TemplateModule, TemplateData),
-            lager:debug("rendered as ~p", [Resp]),
-            {'reply', Resp, TemplateModule};
+            {'reply'
+             ,render_template(TemplateModule, TemplateData)
+             ,TemplateModule
+             ,'hibernate'
+            };
         {'ok', TemplateModule, []} ->
-            Resp = render_template(TemplateModule, TemplateData),
-            lager:debug("rendered as ~p", [Resp]),
-            {'reply', Resp, TemplateModule};
+            {'reply'
+             ,render_template(TemplateModule, TemplateData)
+             ,TemplateModule
+             ,'hibernate'
+            };
         {'ok', TemplateModule, Warnings} ->
             lager:debug("compiling template produced warnings: ~p", [Warnings]),
             lager:debug("template: ~s", [Template]),
-            Resp = render_template(TemplateModule, TemplateData),
-            {'reply', Resp, TemplateModule};
+
+            {'reply'
+             ,render_template(TemplateModule, TemplateData)
+             ,TemplateModule
+             ,'hibernate'
+            };
         {'error', Errors, Warnings} ->
             lager:debug("failed to compile template"),
             lager:debug("errors: ~p", [Errors]),
             lager:debug("warnings: ~p", [Warnings]),
             lager:debug("template: ~s", [Template]),
-            {'reply', {'error', 'failed_to_compile'}, TemplateModule}
+            {'reply'
+             ,{'error', 'failed_to_compile'}
+             ,TemplateModule
+             ,'hibernate'
+            }
     catch
         _E:_R ->
             lager:debug("exception compiling template: ~s: ~p", [_E, _R]),
-            {'reply', {'error', 'failed_to_compile'}, TemplateModule}
+            {'reply'
+             ,{'error', 'failed_to_compile'}
+             ,TemplateModule
+             ,'hibernate'
+            }
     end;
 handle_call(_Req, _From, TemplateModule) ->
     {'noreply', TemplateModule}.
