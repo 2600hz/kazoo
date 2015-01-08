@@ -124,6 +124,7 @@
          ,federators = [] :: federator_listeners()
          ,self = self() :: pid()
          ,consumer_key = wh_amqp_channel:consumer_pid()
+         ,consumer_tags = [] :: binaries()
          }).
 
 -type state() :: #state{}.
@@ -512,6 +513,22 @@ handle_cast({'start_listener', Params}, #state{queue='undefined'
 handle_cast({'start_listener', _Params}, State) ->
     lager:debug("gen listener asked to start listener but it is already initialized"),
     {'noreply', State};
+
+handle_cast({'pause_consumers'}, #state{is_consuming='true', consumer_tags=Tags}=State) ->
+    [amqp_util:basic_cancel(Tag) || Tag <- Tags],
+    {'noreply', State};
+
+handle_cast({'resume_consumers'}, #state{queue='undefined'}=State) ->
+    {'noreply', State};
+handle_cast({'resume_consumers'}, #state{is_consuming='false'
+                                         ,params=Params
+                                         ,queue=Q
+                                         ,other_queues=OtherQueues}=State) ->
+    start_consumer(Q, props:get_value('consume_options', Params)),
+    [start_consumer(Q1, props:get_value('consume_options', P)) 
+                   || {Q1, {_, P}} <- OtherQueues],
+    {'noreply', State};
+
 handle_cast(Message, State) ->
     handle_module_cast(Message, State).
 
@@ -545,13 +562,13 @@ handle_info({#'basic.return'{}=BR, #amqp_msg{props=#'P_basic'{content_type=CT}
 handle_info(#'basic.consume_ok'{consumer_tag=CTag}, #state{queue='undefined'}=State) ->
     lager:debug("received consume ok (~s) for abandoned queue", [CTag]),
     {'noreply', State};
-handle_info(#'basic.consume_ok'{}, State) ->
+handle_info(#'basic.consume_ok'{consumer_tag=CTag}, #state{consumer_tags=CTags}=State) ->
     gen_server:cast(self(), {'gen_listener', {'is_consuming', 'true'}}),
-    {'noreply', State#state{is_consuming='true'}};
-handle_info(#'basic.cancel_ok'{consumer_tag=CTag}, State) ->
+    {'noreply', State#state{is_consuming='true', consumer_tags=[CTag | CTags]}};
+handle_info(#'basic.cancel_ok'{consumer_tag=CTag}, #state{consumer_tags=CTags}=State) ->
     lager:debug("recv a basic.cancel_ok for tag ~s", [CTag]),
     gen_server:cast(self(), {'gen_listener', {'is_consuming', 'false'}}),
-    {'noreply', State#state{is_consuming='false'}};
+    {'noreply', State#state{is_consuming='false', consumer_tags=lists:delete(CTag, CTags)}};
 handle_info('$is_gen_listener_consuming'
             ,#state{is_consuming='false'
                     ,bindings=ExistingBindings
