@@ -20,19 +20,12 @@
          ,reg_query/2
          ,reg_flush/2
          ,handle_reg_success/2
+         ,summary/0, summary/1
+         ,details/0, details/1, details/2
+         ,flush/0, flush/1, flush/2
+         ,count/0
         ]).
--export([summary/0
-         ,summary/1
-        ]).
--export([details/0
-         ,details/1
-         ,details/2
-        ]).
--export([flush/0
-         ,flush/1
-         ,flush/2
-        ]).
--export([count/0]).
+
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -43,6 +36,7 @@
         ]).
 
 -include("ecallmgr.hrl").
+-include_lib("nksip/include/nksip.hrl").
 
 -define(RESPONDERS, [{{?MODULE, 'reg_query'}
                       ,[{<<"directory">>, <<"reg_query">>}]
@@ -116,12 +110,16 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link({'local', ?MODULE}, ?MODULE, [{'responders', ?RESPONDERS}
-                                                          ,{'bindings', ?BINDINGS}
-                                                          ,{'queue_name', ?REG_QUEUE_NAME}
-                                                          ,{'queue_options', ?REG_QUEUE_OPTIONS}
-                                                          ,{'consume_options', ?REG_CONSUME_OPTIONS}
-                                                         ], []).
+    gen_listener:start_link({'local', ?MODULE}
+                            ,?MODULE
+                            ,[{'responders', ?RESPONDERS}
+                              ,{'bindings', ?BINDINGS}
+                              ,{'queue_name', ?REG_QUEUE_NAME}
+                              ,{'queue_options', ?REG_QUEUE_OPTIONS}
+                              ,{'consume_options', ?REG_CONSUME_OPTIONS}
+                             ]
+                            ,[]
+                           ).
 
 -spec reg_success(wh_json:object(), wh_proplist()) -> 'ok'.
 reg_success(JObj, _Props) ->
@@ -162,7 +160,8 @@ lookup_contact(Realm, Username) ->
             case get_registration(Realm, Username) of
                 #registration{contact=Contact} ->
                     lager:info("found user ~s@~s contact ~s"
-                               ,[Username, Realm, Contact]),
+                               ,[Username, Realm, Contact]
+                              ),
                     {'ok', Contact};
                 'undefined' -> fetch_contact(Username, Realm)
             end
@@ -178,7 +177,8 @@ lookup_original_contact(Realm, Username) ->
             case get_registration(Realm, Username) of
                 #registration{original_contact=Contact} ->
                     lager:info("found user ~s@~s original contact ~s"
-                               ,[Username, Realm, Contact]),
+                               ,[Username, Realm, Contact]
+                              ),
                     {'ok', Contact};
                 'undefined' -> fetch_original_contact(Username, Realm)
             end
@@ -217,9 +217,12 @@ summary(Realm) ->
     R = wh_util:to_lower_binary(Realm),
     MatchSpec = [{#registration{realm = '$1'
                                 ,account_realm = '$2'
-                                ,_ = '_'}
-                  ,[{'orelse', {'=:=', '$1', {'const', R}}
-                     ,{'=:=', '$2', {'const', R}}}
+                                ,_ = '_'
+                               }
+                  ,[{'orelse'
+                     ,{'=:=', '$1', {'const', R}}
+                     ,{'=:=', '$2', {'const', R}}
+                    }
                    ]
                   ,['$_']
                  }],
@@ -239,13 +242,16 @@ details(User) when not is_binary(User) ->
 details(User) ->
     case binary:split(User, <<"@">>) of
         [Username, Realm] -> details(Username, Realm);
-         _Else ->
+        _Else ->
             Realm = wh_util:to_lower_binary(User),
             MatchSpec = [{#registration{realm = '$1'
                                         ,account_realm = '$2'
-                                        ,_ = '_'}
-                          ,[{'orelse', {'=:=', '$1', {'const', Realm}}
-                             ,{'=:=', '$2', {'const', Realm}}}
+                                        ,_ = '_'
+                                       }
+                          ,[{'orelse'
+                             ,{'=:=', '$1', {'const', Realm}}
+                             ,{'=:=', '$2', {'const', Realm}}
+                            }
                            ]
                           ,['$_']
                          }],
@@ -295,8 +301,8 @@ count() -> ets:info(?MODULE, 'size').
 handle_reg_success(Node, Props) ->
     put('callid', props:get_first_defined([<<"Call-ID">>, <<"call-id">>], Props, 'reg_success')),
     Req = lists:foldl(fun(<<"Contact">>=K, Acc) ->
-                             [{K, get_fs_contact(Props)} | Acc];
-                          (K, Acc) ->
+                              [{K, get_fs_contact(Props)} | Acc];
+                         (K, Acc) ->
                               case props:get_first_defined([wh_util:to_lower_binary(K), K], Props) of
                                   'undefined' -> Acc;
                                   V -> [{K, V} | Acc]
@@ -719,7 +725,10 @@ create_registration(JObj) ->
                      ,contact=fix_contact(OriginalContact)
                      ,original_contact=OriginalContact
                      ,last_registration=wh_util:current_tstamp()
-                     ,registrar_node=wh_json:get_value(<<"Node">>, JObj)
+                     ,registrar_node=wh_json:get_first_defined([<<"Registrar-Node">>
+                                                                ,<<"FreeSWITCH-Nodename">>
+                                                                ,<<"Node">>
+                                                               ], JObj)
                      ,registrar_hostname=wh_json:get_value(<<"Hostname">>, JObj)
                     }.
 
@@ -728,7 +737,8 @@ fix_contact(Contact) ->
     binary:replace(Contact
                    ,[<<"<">>, <<">">>]
                    ,<<>>
-                   ,['global']).
+                   ,['global']
+                  ).
 
 -spec existing_or_new_registration(ne_binary(), ne_binary()) -> registration().
 existing_or_new_registration(Username, Realm) ->
@@ -768,6 +778,8 @@ registration_notify(#registration{previous_contact=PrevContact
     wapi_presence:publish_register_overwrite(Props).
 
 -spec maybe_initial_registration(registration()) -> 'ok'.
+maybe_initial_registration(#registration{account_id='undefined'}=Reg) ->
+    initial_registration(Reg);
 maybe_initial_registration(#registration{initial='false'}) -> 'ok';
 maybe_initial_registration(#registration{initial='true'}=Reg) ->
     initial_registration(Reg).
@@ -929,6 +941,8 @@ to_props(Reg) ->
      ,{<<"Authorizing-Type">>, Reg#registration.authorizing_type}
      ,{<<"Suppress-Unregister-Notify">>, Reg#registration.suppress_unregister}
      ,{<<"Owner-ID">>, Reg#registration.owner_id}
+     ,{<<"Registrar-Node">>, Reg#registration.registrar_node}
+     ,{<<"Registrar-Hostname">>, Reg#registration.registrar_hostname}
     ].
 
 -spec filter(wh_json:keys(), wh_json:object()) -> wh_json:object().

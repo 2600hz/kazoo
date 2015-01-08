@@ -340,10 +340,10 @@ start_message_handling(_Node, _FetchId, CallId, JObj) ->
            ,{<<"Call-ID">>, CallId}
            ,{<<"Control-Queue">>, <<"chatplan_ignored">>}
            ,{<<"Custom-Channel-Vars">>, CCVs}
-           | wh_api:default_headers(ServerQ, <<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)
+           | wh_api:default_headers(<<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("sending route_win to ~s", [ServerQ]),
-    wapi_route:publish_win(ServerQ, Win).
+    wh_amqp_worker:cast(Win, fun(Payload)-> wapi_route:publish_win(ServerQ, Payload) end).
 
 -spec route_req(ne_binary(), ne_binary(), wh_proplist(), atom()) -> wh_proplist().
 route_req(CallId, FetchId, Props, Node) ->
@@ -365,7 +365,7 @@ route_req(CallId, FetchId, Props, Node) ->
      ,{<<"To">>, ecallmgr_util:get_sip_to(Props)}
      ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
      ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
-     ,{<<"Body">>, props:get_value(<<"body">>, Props)}
+     ,{<<"Body">>, get_body(Props) }
      ,{<<"SIP-Request-Host">>, props:get_value(<<"variable_sip_req_host">>, Props)}
      ,{<<"Switch-Nodename">>, wh_util:to_binary(Node)}
      ,{<<"Switch-Hostname">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
@@ -388,6 +388,14 @@ route_req_ccvs(FetchId, Props) ->
        | ecallmgr_util:custom_channel_vars(Props)
       ]
      ).
+
+%% TODO
+%% check content-type and decode properly
+%% some sip clients send text/html with entities encoded
+%% some other use application/vnd.3gpp.sms
+-spec get_body(wh_proplist()) -> api_binary().
+get_body(Props) ->
+    props:get_value(<<"body">>, Props).
 
 -spec get_redirected(wh_proplist()) ->
                             {api_binary(), api_binary()}.

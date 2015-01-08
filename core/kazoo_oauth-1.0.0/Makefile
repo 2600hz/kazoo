@@ -1,14 +1,12 @@
 PROJECT = kazoo_oauth
 ROOT = ../..
-DIALYZER = dialyzer
 
 EBINS = $(shell find $(ROOT)/core -maxdepth 2 -name ebin -print) $(shell find $(ROOT)/deps -maxdepth 2 -name ebin -print)
 PA = $(foreach EBIN,$(EBINS),-pa $(EBIN))
 
- ERLC_OPTS = -Werror +debug_info +warn_export_all -I$(ROOT)/core -I$(ROOT)/deps $(PA)
-         # +bin_opt_info
+ERLC_OPTS = -Werror +debug_info +warn_export_all -I$(ROOT)/core -I$(ROOT)/deps $(PA)
 
-DIRS = .
+ERL_LIBS = $(subst $(eval) ,:,$(wildcard $(ROOT)/deps/rabbitmq_client-*/deps))
 
 .PHONY: all compile clean
 
@@ -24,7 +22,7 @@ compile: ebin/$(PROJECT).app
 
 ebin/$(PROJECT).app: src/*.erl
 	@mkdir -p ebin/
-	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $(PA) $?
+	ERL_LIBS=$(ERL_LIBS) erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $(PA) $?
 
 compile-test: test/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
@@ -46,9 +44,3 @@ test: clean compile-test eunit
 eunit: compile-test
 	erl -noshell $(PA) \
 	-pa test -eval "eunit:test([$(MODULES)], [verbose])" -s init stop
-
-dialyze: 
-	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) \
-		--statistics \
-                $(PA) --plt $(ROOT)/.platform_dialyzer.plt \
-		-Werror_handling -Wrace_conditions -Wunmatched_returns # -Wunderspecs

@@ -108,12 +108,13 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link(Args) ->
-    gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS}
+    gen_listener:start_link(?MODULE, [{'bindings', maybe_bindings(Args)}
                                       ,{'responders', ?RESPONDERS}
-                                      ,{'queue_name', ?QUEUE_NAME}
+                                      ,{'queue_name', maybe_queuename(Args)}
                                       ,{'queue_options', ?QUEUE_OPTIONS}
                                       ,{'consume_options', ?CONSUME_OPTIONS}
                                       | maybe_broker(Args)
+                                         ++ maybe_exchanges(Args)
                                      ], [Args]).
 
 -spec maybe_broker(wh_proplist()) -> wh_proplist().
@@ -121,6 +122,27 @@ maybe_broker(Args) ->
     case props:get_value('amqp_broker', Args) of
         'undefined' -> [];
         Broker -> [{'broker', Broker}]
+    end.
+
+-spec maybe_queuename(wh_proplist()) -> wh_proplist().
+maybe_queuename(Args) ->
+    case props:get_value('amqp_queuename_start', Args) of
+        'undefined' -> ?QUEUE_NAME;
+        QueueStart -> <<(wh_util:to_binary(QueueStart))/binary, "_", (wh_util:rand_hex_binary(4))/binary>> 
+    end.
+
+-spec maybe_bindings(wh_proplist()) -> wh_proplist().
+maybe_bindings(Args) ->
+    case props:get_value('amqp_bindings', Args) of
+        'undefined' -> ?BINDINGS;
+        Bindings -> Bindings 
+    end.
+
+-spec maybe_exchanges(wh_proplist()) -> wh_proplist().
+maybe_exchanges(Args) ->
+    case props:get_value('amqp_exchanges', Args) of
+        'undefined' -> [];
+        Exchanges -> [{'declare_exchanges', Exchanges}] 
     end.
 
 -spec default_timeout() -> 2000.
@@ -303,9 +325,12 @@ cast(Req, PubFun) ->
 cast(Req, PubFun, Pool) when is_atom(Pool) ->
     case next_worker(Pool) of
         {'error', _}=E -> E;
-        Worker -> cast(Req, PubFun, Worker)
+        Worker -> 
+            Resp = cast(Req, PubFun, Worker),
+            checkin_worker(Worker, Pool),
+            Resp
     end;
-cast(Req, PubFun, Worker) ->
+cast(Req, PubFun, Worker) when is_pid(Worker) ->
     Prop = maybe_convert_to_proplist(Req),
     try gen_listener:call(Worker, {'publish', Prop, PubFun}) of
         Reply -> Reply
@@ -313,8 +338,6 @@ cast(Req, PubFun, Worker) ->
         _E:R ->
             lager:debug("request failed: ~s: ~p", [_E, R]),
             {'error', R}
-    after
-        checkin_worker(Worker)
     end.
 
 -spec collect_until_timeout() -> collect_until_fun().

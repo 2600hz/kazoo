@@ -76,6 +76,7 @@ requisition() -> requisition(consumer_pid()).
 requisition(Consumer) when is_pid(Consumer) ->
     requisition(Consumer, consumer_broker());
 requisition(Broker) ->
+    put('$wh_amqp_consumer_broker', Broker),
     requisition(consumer_pid(), Broker).
 
 -spec requisition(pid(), api_binary()) -> boolean().
@@ -255,6 +256,16 @@ handle_command_result(#'queue.delete_ok'{}
     lager:debug("deleted queue ~s via channel ~p", [Q, Channel]),
     _ = wh_amqp_history:add_command(Assignment, Command),
     'ok';
+handle_command_result(#'exchange.declare_ok'{}=Ok
+                      ,#'exchange.declare'{passive='true',exchange=Ex}
+                      ,#wh_amqp_assignment{channel=Channel}) ->
+    lager:debug("passive declared exchange ~s via channel ~p", [Ex, Channel]),
+    {'ok', Ok};
+handle_command_result(#'exchange.declare_ok'{}=Ok
+                      ,#'exchange.declare'{exchange=Ex}
+                      ,#wh_amqp_assignment{channel=Channel}) ->
+    lager:debug("declared exchanged ~s via channel ~p", [Ex, Channel]),
+    {'ok', Ok};
 handle_command_result(#'queue.declare_ok'{queue=Q}=Ok
                       ,#'queue.declare'{passive='true'}
                       ,#wh_amqp_assignment{channel=Channel}) ->
@@ -296,6 +307,12 @@ handle_command_result(#'basic.cancel_ok'{consumer_tag=CTag}
                       ,#'basic.cancel'{}=Command
                       ,#wh_amqp_assignment{channel=Channel}=Assignment) ->
     lager:debug("canceled consumer ~s via channel ~p", [CTag, Channel]),
+    _ = wh_amqp_history:add_command(Assignment, Command),
+    'ok';
+handle_command_result(#'confirm.select_ok'{}
+                      ,Command
+                      ,#wh_amqp_assignment{channel=Channel}=Assignment) ->
+    lager:debug("publisher confirms activated on channel ~p", [Channel]),
     _ = wh_amqp_history:add_command(Assignment, Command),
     'ok';
 handle_command_result('ok', Command, #wh_amqp_assignment{channel=Channel}=Assignment) ->

@@ -99,7 +99,7 @@ validate(Context, Id) ->
 
 -spec validate_request(cb_context:context(), http_method()) -> cb_context:context().
 validate_request(Context, ?HTTP_GET) ->
-    summary(Context);    
+    summary(Context);
 validate_request(Context, ?HTTP_PUT) ->
     create(Context).
 
@@ -165,51 +165,53 @@ on_successful_validation(Context) ->
     JObj = cb_context:doc(Context),
     AccountId = cb_context:account_id(Context),
     AccountDb = cb_context:account_modb(Context),
+    kazoo_modb:create(AccountDb),
     ResellerId = cb_context:reseller_id(Context),
     Realm = wh_util:get_account_realm(AccountId),
-    
-    {AuthorizationType, Authorization, OwnerId} = 
-        case { cb_context:user_id(Context), cb_context:auth_user_id(Context) } 
-        of
+
+    {AuthorizationType, Authorization, OwnerId} =
+        case {cb_context:user_id(Context), cb_context:auth_user_id(Context)} of
             {'undefined', 'undefined'} ->
-                {<<"api">>, cb_context:auth_token(Context), 'undefined'};
+                {<<"account">>, AccountId, 'undefined'};
             {UserId, 'undefined'} ->
                 {<<"user">>, UserId, UserId};
             {'undefined', UserAuth} ->
                 {<<"user">>, UserAuth, UserAuth}
         end,
-    
+
     ToUser = wh_json:get_value(<<"to">>, JObj),
     To = <<ToUser/binary, "@", Realm/binary>>,
-    
+
     FromUser = wh_json:get_value(<<"from">>, JObj, get_default_caller_id(Context, OwnerId)),
     From = <<FromUser/binary, "@", Realm/binary>>,
-    
+
     SmsDocId = create_sms_doc_id(),
 
     cb_context:set_doc(cb_context:set_account_db(Context, AccountDb)
                        ,wh_json:set_values(
-                         props:filter_undefined(
-                           [{<<"pvt_type">>, <<"sms">>}
-                            ,{<<"pvt_status">>, <<"queued">>}
-                            ,{<<"pvt_account_id">>, AccountId}
-                            ,{<<"pvt_account_db">>, AccountDb}
-                            ,{<<"pvt_reseller_id">>, ResellerId}
-                            ,{<<"pvt_owner_id">>, OwnerId}
-                            ,{<<"pvt_authorization_type">>, AuthorizationType}
-                            ,{<<"pvt_authorization">>, Authorization}
-                            ,{<<"pvt_origin">>, <<"api">>}
-                            ,{<<"request">>, To}
-                            ,{<<"request_user">>, ToUser}
-                            ,{<<"request_realm">>, Realm}
-                            ,{<<"to">>, To}
-                            ,{<<"to_user">>, ToUser}
-                            ,{<<"to_realm">>, Realm}
-                            ,{<<"from">>, From}
-                            ,{<<"from_user">>, FromUser}
-                            ,{<<"from_realm">>, Realm}
-                            ,{<<"_id">>, SmsDocId}
-                           ]) ,JObj)).
+                          props:filter_undefined(
+                            [{<<"pvt_type">>, <<"sms">>}
+                             ,{<<"pvt_status">>, <<"queued">>}
+                             ,{<<"pvt_account_id">>, AccountId}
+                             ,{<<"pvt_account_db">>, AccountDb}
+                             ,{<<"pvt_reseller_id">>, ResellerId}
+                             ,{<<"pvt_owner_id">>, OwnerId}
+                             ,{<<"pvt_authorization_type">>, AuthorizationType}
+                             ,{<<"pvt_authorization">>, Authorization}
+                             ,{<<"pvt_origin">>, <<"api">>}
+                             ,{<<"request">>, To}
+                             ,{<<"request_user">>, ToUser}
+                             ,{<<"request_realm">>, Realm}
+                             ,{<<"to">>, To}
+                             ,{<<"to_user">>, ToUser}
+                             ,{<<"to_realm">>, Realm}
+                             ,{<<"from">>, From}
+                             ,{<<"from_user">>, FromUser}
+                             ,{<<"from_realm">>, Realm}
+                             ,{<<"_id">>, SmsDocId}
+                            ])
+                          ,JObj
+                         )).
 
 -define(CALLER_ID_INTERNAL, [<<"caller_id">>, <<"internal">>, <<"number">>]).
 -define(CALLER_ID_EXTERNAL, [<<"caller_id">>, <<"external">>, <<"number">>]).
@@ -220,7 +222,6 @@ get_default_caller_id(Context, 'undefined') ->
     AccountDb = cb_context:account_db(Context),
     {'ok', JObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
     wh_json:get_first_defined([?CALLER_ID_INTERNAL, ?CALLER_ID_EXTERNAL], JObj, <<"anonymous">>);
-    
 get_default_caller_id(Context, OwnerId) ->
     AccountId = cb_context:account_id(Context),
     AccountDb = cb_context:account_db(Context),
@@ -228,17 +229,18 @@ get_default_caller_id(Context, OwnerId) ->
     {'ok', JObj2} = couch_mgr:open_cache_doc(AccountDb, OwnerId),
     wh_json:get_first_defined([?CALLER_ID_INTERNAL, ?CALLER_ID_EXTERNAL]
                               ,wh_json:merge_recursive(JObj1, JObj2)
-                             ,<<"anonymous">>).
+                              ,<<"anonymous">>
+                             ).
 
--spec create_sms_doc_id() -> binary().
+-spec create_sms_doc_id() -> ne_binary().
 create_sms_doc_id() ->
-    {Year, Month, _} = erlang:date(),    
+    {Year, Month, _} = erlang:date(),
     wh_util:to_binary(
       io_lib:format("~B~s-~s",[Year
                                ,wh_util:pad_month(Month)
                                ,wh_util:rand_hex_binary(16)
                               ])).
-  
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -251,7 +253,7 @@ summary(Context) ->
     {View, PreFilter, PostFilter} = get_view_and_filter(Context),
     case get_view_options(Context, PreFilter, PostFilter) of
         {'ok', ViewOptions} ->
-            crossbar_doc:load_view(View, ViewOptions, Context,fun normalize_view_results/2);
+            crossbar_doc:load_view(View, ViewOptions, Context, fun normalize_view_results/2);
         Ctx -> Ctx
     end.
 
@@ -266,7 +268,7 @@ normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
 -spec get_view_and_filter(cb_context:context()) ->
-          {ne_binary(), api_binaries(), api_binaries()}.
+                                 {ne_binary(), api_binaries(), api_binaries()}.
 get_view_and_filter(Context) ->
     case {cb_context:device_id(Context), cb_context:user_id(Context)} of
         {'undefined', 'undefined'} -> {?CB_LIST_ALL, 'undefined', [wh_json:new()]};
@@ -276,9 +278,8 @@ get_view_and_filter(Context) ->
     end.
 
 -spec get_view_options(cb_context:context(), api_binaries(), api_binaries()) ->
-                                       {'ok', wh_proplist()} |
-                                       cb_context:context().
-
+                              {'ok', wh_proplist()} |
+                              cb_context:context().
 get_view_options(Context, 'undefined', SuffixKey) ->
     get_view_options(Context, [], SuffixKey);
 get_view_options(Context, PrefixKey, 'undefined') ->
@@ -295,11 +296,11 @@ get_view_options(Context, PrefixKey, SuffixKey) ->
                             | get_modbs(Context, CreatedFrom, CreatedTo)
                            ]};
                 'false' ->
-                     {'ok', [{'startkey', [Key || Key <- PrefixKey ++ [CreatedFrom] ++ SuffixKey] }
-                             ,{'endkey', [Key || Key <- PrefixKey  ++ [CreatedTo]   ++ SuffixKey] }
+                    {'ok', [{'startkey', [Key || Key <- PrefixKey ++ [CreatedFrom | SuffixKey]]}
+                            ,{'endkey', [Key || Key <- PrefixKey ++ [CreatedTo | SuffixKey]]}
                             ,{'limit', pagination_page_size(Context)}
-                             | get_modbs(Context, CreatedFrom, CreatedTo)
-                            ]}
+                            | get_modbs(Context, CreatedFrom, CreatedTo)
+                           ]}
             end;
         Context1 -> Context1
     end.
@@ -310,14 +311,17 @@ get_modbs(Context, From, To) ->
     {{FromYear, FromMonth, _}, _} = calendar:gregorian_seconds_to_datetime(From),
     {{ToYear, ToMonth, _}, _} = calendar:gregorian_seconds_to_datetime(To),
     Range = crossbar_util:generate_year_month_sequence({FromYear, FromMonth}, {ToYear, ToMonth}, []),
-    [{'databases', [ wh_util:format_account_mod_id(AccountId, Year, Month) || {Year, Month} <- Range]}].
+    [{'databases', [wh_util:format_account_mod_id(AccountId, Year, Month)
+                    || {Year, Month} <- Range
+                   ]
+     }].
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec pagination_page_size(cb_context:context()) ->pos_integer().
+-spec pagination_page_size(cb_context:context()) -> pos_integer().
 pagination_page_size(Context) ->
     case crossbar_doc:pagination_page_size(Context) of
         'undefined' -> 'undefined';

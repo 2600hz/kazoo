@@ -6,11 +6,9 @@
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 -include_lib("whistle_apps/src/whapps_call_command_types.hrl").
 
--include_lib("nksip/include/nksip.hrl").
-
 -define(APP_NAME, <<"doodle">>).
 -define(APP_VERSION, <<"0.0.1">> ).
--define(CONFIG_CAT, <<"sms">>).
+-define(CONFIG_CAT, <<"doodle">>).
 
 -define(DOODLE_CACHE, 'doodle_cache').
 

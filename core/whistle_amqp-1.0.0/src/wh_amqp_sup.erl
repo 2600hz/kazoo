@@ -12,6 +12,8 @@
 -export([start_link/0
          ,stop_bootstrap/0
          ,pool_name/0
+         ,add_amqp_pool/4, add_amqp_pool/5, add_amqp_pool/6
+         ,pool_pid/1
         ]).
 
 -export([init/1]).
@@ -41,6 +43,25 @@
                    ,?WORKER_NAME_ARGS('poolboy', ?POOL_NAME, ?POOL_ARGS)
                   ]).
 
+-define(ATOM(X), wh_util:to_atom(X, 'true')).
+
+-define(ADD_POOL_ARGS(Pool, Broker, Size, Overflow, Bindings, Exchanges), 
+        [[{'worker_module', 'wh_amqp_worker'}
+          ,{'name', {'local', Pool}}
+          ,{'size', Size}
+          ,{'max_overflow', Overflow}
+          ,{'neg_resp_threshold', 1}
+          ,{'amqp_broker', Broker}
+          ,{'amqp_queuename_start', Pool}
+          ,{'amqp_bindings', Bindings}
+          ,{'amqp_exchanges', Exchanges}
+         ]]).
+-define(POOL_SPEC(UUID, Broker, PoolSize, PoolOverflow, Bindings, Exchanges),
+           ?WORKER_NAME_ARGS('poolboy'
+                 ,UUID
+                 ,?ADD_POOL_ARGS(UUID, Broker, PoolSize, PoolOverflow, Bindings, Exchanges))).
+ 
+
 %% ===================================================================
 %% API functions
 %% ===================================================================
@@ -62,6 +83,37 @@ stop_bootstrap() ->
 
 -spec pool_name() -> ?POOL_NAME.
 pool_name() -> ?POOL_NAME.
+
+-spec add_amqp_pool(atom() | binary(), binary(), integer(), integer()) -> sup_startchild_ret().
+add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow) ->
+    add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, []).
+
+-spec add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, Bindings) -> sup_startchild_ret() when
+    UUID :: atom() | binary(),
+    Broker :: binary(), 
+    PoolSize :: integer(), 
+    PoolOverflow :: integer(), 
+    Bindings :: wh_proplist().          
+add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, Bindings) ->
+    add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, Bindings, []).
+
+-spec add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, Bindings, Exchanges) -> sup_startchild_ret() when
+    UUID :: atom() | binary(),
+    Broker :: binary(),
+    PoolSize :: integer(),
+    PoolOverflow :: integer(),
+    Bindings :: wh_proplist(),
+    Exchanges :: wh_proplist().
+add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, Bindings, Exchanges) ->
+    supervisor:start_child(?MODULE, ?POOL_SPEC(?ATOM(UUID), Broker, PoolSize, PoolOverflow, Bindings, Exchanges)).
+
+-spec pool_pid(atom() | binary()) -> 'undefined' | pid().
+pool_pid(Pool) ->
+    case [ Pid || {Id,Pid,_,_} <- supervisor:which_children(?MODULE), Id =:= ?ATOM(Pool)] of
+        [] -> 'undefined';
+        [P | _] -> P
+    end.
+        
 
 %% ===================================================================
 %% Supervisor callbacks

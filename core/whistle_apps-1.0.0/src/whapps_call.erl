@@ -829,7 +829,9 @@ kvs_append(Key, Value, #whapps_call{kvs=Dict}=Call) ->
 kvs_append_list(Key, ValList, #whapps_call{kvs=Dict}=Call) ->
     Call#whapps_call{kvs=orddict:append_list(wh_util:to_binary(Key), ValList, Dict)}.
 
--spec kvs_erase(term(), call()) -> call().
+-spec kvs_erase(term() | [term(),...], call()) -> call().
+kvs_erase(Keys, #whapps_call{kvs=Dict}=Call) when is_list(Keys)->    
+    Call#whapps_call{kvs=lists:foldl(fun(K, D) -> orddict:erase(wh_util:to_binary(K), D) end, Dict, Keys)};
 kvs_erase(Key, #whapps_call{kvs=Dict}=Call) ->
     Call#whapps_call{kvs=orddict:erase(wh_util:to_binary(Key), Dict)}.
 

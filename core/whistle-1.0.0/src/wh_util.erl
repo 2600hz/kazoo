@@ -12,6 +12,7 @@
 -export([log_stacktrace/0, log_stacktrace/1
          ,format_account_id/1, format_account_id/2, format_account_id/3
          ,format_account_mod_id/1, format_account_mod_id/2, format_account_mod_id/3
+         ,format_account_db/1
          ,normalize_account_name/1
         ]).
 -export([is_in_account_hierarchy/2, is_in_account_hierarchy/3]).
@@ -93,6 +94,8 @@
 -export([format_date/0, format_date/1]).
 -export([format_time/0, format_time/1]).
 -export([format_datetime/0, format_datetime/1]).
+
+-export([node_name/0, node_hostname/0]).
 
 -include_lib("kernel/include/inet.hrl").
 
@@ -263,6 +266,9 @@ format_account_mod_id(AccountId, Timestamp) when is_integer(Timestamp) ->
 format_account_mod_id(AccountId, Year, Month) ->
     format_account_id(AccountId, Year, Month).
 
+-spec format_account_db(ne_binaries() | api_binary() | wh_json:object()) -> api_binary().
+format_account_db(AccountId) -> format_account_id(AccountId, 'encoded').
+
 -spec pad_month(wh_month() | ne_binary()) -> ne_binary().
 pad_month(<<_/binary>> = Month) ->
     pad_month(to_integer(Month));
@@ -375,8 +381,8 @@ is_account_expired(Account) ->
             Now = wh_util:current_tstamp(),
             Trial = wh_json:get_integer_value(<<"pvt_trial_expires">>, Doc, Now+1),
             Trial < Now;
-        {'error', R} ->
-            lager:debug("failed to check if expired token auth, ~p", [R]),
+        {'error', _R} ->
+            lager:debug("failed to check if expired token auth, ~p", [_R]),
             'false'
     end.
 
@@ -398,8 +404,8 @@ get_account_realm('undefined', _) -> 'undefined';
 get_account_realm(Db, AccountId) ->
     case couch_mgr:open_cache_doc(Db, AccountId) of
         {'ok', JObj} -> wh_json:get_ne_value(<<"realm">>, JObj);
-        {'error', R} ->
-            lager:debug("error while looking up account realm in ~s: ~p", [AccountId, R]),
+        {'error', _R} ->
+            lager:debug("error while looking up account realm in ~s: ~p", [AccountId, _R]),
             'undefined'
     end.
 
@@ -1081,6 +1087,15 @@ format_datetime() ->
 
 format_datetime(Timestamp) ->
     list_to_binary([format_date(Timestamp), " ", format_time(Timestamp)]).
+
+-spec node_name() -> binary().
+-spec node_hostname() -> binary().
+node_name() ->
+    [Name, _Host] = binary:split(to_binary(node()), <<"@">>),
+    Name.
+node_hostname() ->
+    [_Name, Host] = binary:split(to_binary(node()), <<"@">>),
+    Host.
 
 -ifdef(TEST).
 

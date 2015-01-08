@@ -9,8 +9,7 @@
 
 -behaviour(gen_server).
 
--export([start_link/0
-        ]).
+-export([start_link/0]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -108,7 +107,7 @@ handle_cast({'omnipresence',{'resubscribe_notify', <<"message-summary">>, User, 
     wh_amqp_worker:cast(Query, fun wapi_presence:publish_mwi_query/1),
     {'noreply', State};
 handle_cast({'omnipresence',{'mwi_update', JObj}}, State) ->
-    spawn(fun() -> mwi_event(JObj) end),
+    _ = spawn(fun() -> mwi_event(JObj) end),
     {'noreply', State};
 handle_cast({'omnipresence', _}, State) ->
     {'noreply', State};
@@ -221,9 +220,14 @@ send_update(User, Props, Subscriptions) ->
 send_update(_, _User, _Props, []) -> 'ok';
 send_update(<<"amqp">>, _User, Props, Subscriptions) ->
     Stalkers = lists:usort([St || #omnip_subscription{stalker=St} <- Subscriptions]),
-    [whapps_util:amqp_pool_send(Props
-                               ,fun(P) -> wapi_omnipresence:publish_update(S, P) end
-                              ) || S <- Stalkers];
+    {'ok', Worker} = wh_amqp_worker:checkout_worker(),
+    [wh_amqp_worker:cast(Props
+                         ,fun(P) -> wapi_omnipresence:publish_update(S, P) end
+                         ,Worker
+                        )
+     || S <- Stalkers
+    ],
+    wh_amqp_worker:checkin_worker(Worker);
 send_update(<<"sip">>, User, Props, Subscriptions) ->
     Body = build_body(User, Props),
     Options = [{'body', Body}

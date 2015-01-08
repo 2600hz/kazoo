@@ -20,6 +20,7 @@
 -define(DEFAULT_LANGUAGE, <<"en-US">>).
 -define(DEFAULT_UNAVAILABLE_MESSAGE, <<"sms service unavailable">>).
 -define(DEFAULT_UNAVAILABLE_MESSAGE_NODE, wh_json:from_list([{?DEFAULT_LANGUAGE, ?DEFAULT_UNAVAILABLE_MESSAGE}])).
+-define(RESTRICTED_MSG, <<"endpoint is restricted from making this call">>).
 
 -export([handle_req/2
          ,maybe_restrict_call/2
@@ -31,10 +32,7 @@ handle_req(JObj, _Options) ->
     put('callid', CallId),
     lager:info("doodle has received a route win, taking control of the call"),
     case whapps_call:retrieve(CallId) of
-        {'ok', Call} ->
-            Call1 = whapps_call:from_route_win(JObj, Call),
-            doodle_util:save_sms(JObj, Call1),
-            maybe_restrict_call(JObj, Call1);
+        {'ok', Call} -> maybe_restrict_call(JObj, Call);
         {'error', R} ->
             lager:info("unable to find callflow during second lookup (HUH?) ~p", [R])
     end.
@@ -44,7 +42,8 @@ maybe_restrict_call(JObj, Call) ->
     case should_restrict_call(Call) of
         'true' ->
             lager:debug("endpoint is restricted from making this call, terminate", []),
-            send_service_unavailable(JObj, Call),
+            _ = send_service_unavailable(JObj, Call),
+            doodle_util:save_sms(doodle_util:set_flow_error(<<"error">>, ?RESTRICTED_MSG, Call)),
             'ok';
         'false' ->
             lager:info("setting initial information about the call"),
@@ -62,11 +61,10 @@ should_restrict_call(Call) ->
 
 -spec maybe_service_unavailable(wh_json:object(), whapps_call:call()) -> boolean().
 maybe_service_unavailable(JObj, Call) ->
-    Id = wh_json:get_value(<<"_id">>, JObj),    
+    Id = wh_json:get_value(<<"_id">>, JObj),
     Services = wh_json:merge_recursive(
                  wh_json:get_value(<<"services">>, JObj, ?DEFAULT_SERVICES),
                  wh_json:get_value(<<"pvt_services">>, JObj, wh_json:new())),
-    lager:debug("SERVICES ~p", [Services]),
     case wh_json:is_true([<<"sms">>,<<"enabled">>], Services, 'true') of
         'true' ->
             maybe_account_service_unavailable(JObj, Call);
@@ -79,7 +77,7 @@ maybe_service_unavailable(JObj, Call) ->
 maybe_account_service_unavailable(JObj, Call) ->
     AccountId = whapps_call:account_id(Call),
     AccountDb = whapps_call:account_db(Call),
-    {'ok', Doc} = couch_mgr:open_cache_doc(AccountDb, AccountId),    
+    {'ok', Doc} = couch_mgr:open_cache_doc(AccountDb, AccountId),
     Services = wh_json:merge_recursive(
                  wh_json:get_value(<<"services">>, Doc, ?DEFAULT_SERVICES),
                  wh_json:get_value(<<"pvt_services">>, Doc, wh_json:new())),
@@ -90,7 +88,7 @@ maybe_account_service_unavailable(JObj, Call) ->
             lager:debug("account ~s does not have sms service enabled", [AccountId]),
             'true'
     end.
-  
+
 -spec maybe_closed_group_restriction(wh_json:object(), whapps_call:call()) -> boolean().
 maybe_closed_group_restriction(JObj, Call) ->
     case wh_json:get_value([<<"call_restriction">>, <<"closed_groups">>, <<"action">>], JObj) of
@@ -223,8 +221,7 @@ update_ccvs(Call) ->
     lager:info("bootstrapping with caller id type ~s: \"~s\" ~s"
                ,[CallerIdType, CIDName, CIDNumber]),
     Props = props:filter_undefined(
-              [{<<"Hold-Media">>, cf_attributes:moh_attributes(<<"media_id">>, Call)}
-               ,{<<"Caller-ID-Name">>, CIDName}
+              [{<<"Caller-ID-Name">>, CIDName}
                ,{<<"Caller-ID-Number">>, CIDNumber}
                | get_incoming_security(Call)
               ]),
@@ -258,14 +255,13 @@ send_service_unavailable(_JObj, Call) ->
                 ,fun update_ccvs/1
                 ,fun set_service_unavailable_message/1
                 ,fun set_sms_sender/1
-                %% all funs above here return whapps_call:call()
                 ,fun send_reply_msg/1
                ],
-    lists:foldl(fun(F, C) -> F(C) end, Call, Routines).
+    whapps_call:exec(Routines, Call).
 
 -spec set_service_unavailable_message(whapps_call:call()) -> whapps_call:call().
 set_service_unavailable_message(Call) ->
-    Endpoint = cf_endpoint:get(Call),
+    {'ok', Endpoint} = cf_endpoint:get(Call),
     Language = wh_json:get_value(<<"language">>, Endpoint, ?DEFAULT_LANGUAGE),
     TextNode = whapps_config:get(?CONFIG_CAT, <<"unavailable_message">>, ?DEFAULT_UNAVAILABLE_MESSAGE_NODE),
     Text = wh_json:get_value(Language, TextNode, ?DEFAULT_UNAVAILABLE_MESSAGE),

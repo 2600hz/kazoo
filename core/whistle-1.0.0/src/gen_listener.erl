@@ -18,6 +18,8 @@
 %%%   {queue_options, [{key, value}]} -> optional, if the queue requires different params
 %%%   {consume_options, [{key, value}]} -> optional, if the consumption requires special params
 %%%   {basic_qos, integer()} -> optional, if QoS is being set on this queue
+%%%   {broker | broker_tag, ne_binary()} -> optional, for binding to specific brokers
+%%%   {declare_exchanges, declare_exchanges()} -> optional, for declaring dynamic exchanges used only in this connection
 %%% ]
 %%% @end
 %%% @contributors
@@ -122,11 +124,10 @@
          ,federators = [] :: federator_listeners()
          ,self = self() :: pid()
          ,consumer_key = wh_amqp_channel:consumer_pid()
+         ,consumer_tags = [] :: binaries()
          }).
 
 -type state() :: #state{}.
-
--type basic_deliver() :: #'basic.deliver'{}.
 
 -type handle_event_return() :: {'reply', wh_proplist()} | 'ignore'.
 
@@ -139,12 +140,19 @@
 -type responder_callback_mappings() :: [responder_callback_mapping(),...] | [].
 -type responder_start_params() :: [{responder_callback_mod(), responder_callback_mappings()},...].
 
+%% ExchangeName, ExchangeType[, ExchangeOptions]
+-type declare_exchange() :: {ne_binary(), ne_binary()} |
+                            {ne_binary(), ne_binary(), wh_proplist()}.
+-type declare_exchanges() :: [declare_exchange(),...] | [].
+
 -type start_params() :: [{'responders', responder_start_params()} |
                          {'bindings', bindings()} |
                          {'queue_name', binary()} |
                          {'queue_options', wh_proplist()} |
                          {'consume_options', wh_proplist()} |
-                         {'basic_qos', non_neg_integer()}
+                         {'basic_qos', non_neg_integer()} |
+                         {'broker' | 'broker_tag', ne_binary()} |
+                         {'declare_exchanges', declare_exchanges()}
                         ].
 
 -export_type([handle_event_return/0
@@ -505,6 +513,22 @@ handle_cast({'start_listener', Params}, #state{queue='undefined'
 handle_cast({'start_listener', _Params}, State) ->
     lager:debug("gen listener asked to start listener but it is already initialized"),
     {'noreply', State};
+
+handle_cast({'pause_consumers'}, #state{is_consuming='true', consumer_tags=Tags}=State) ->
+    [amqp_util:basic_cancel(Tag) || Tag <- Tags],
+    {'noreply', State};
+
+handle_cast({'resume_consumers'}, #state{queue='undefined'}=State) ->
+    {'noreply', State};
+handle_cast({'resume_consumers'}, #state{is_consuming='false'
+                                         ,params=Params
+                                         ,queue=Q
+                                         ,other_queues=OtherQueues}=State) ->
+    start_consumer(Q, props:get_value('consume_options', Params)),
+    [start_consumer(Q1, props:get_value('consume_options', P)) 
+                   || {Q1, {_, P}} <- OtherQueues],
+    {'noreply', State};
+
 handle_cast(Message, State) ->
     handle_module_cast(Message, State).
 
@@ -538,13 +562,13 @@ handle_info({#'basic.return'{}=BR, #amqp_msg{props=#'P_basic'{content_type=CT}
 handle_info(#'basic.consume_ok'{consumer_tag=CTag}, #state{queue='undefined'}=State) ->
     lager:debug("received consume ok (~s) for abandoned queue", [CTag]),
     {'noreply', State};
-handle_info(#'basic.consume_ok'{}, State) ->
+handle_info(#'basic.consume_ok'{consumer_tag=CTag}, #state{consumer_tags=CTags}=State) ->
     gen_server:cast(self(), {'gen_listener', {'is_consuming', 'true'}}),
-    {'noreply', State#state{is_consuming='true'}};
-handle_info(#'basic.cancel_ok'{consumer_tag=CTag}, State) ->
+    {'noreply', State#state{is_consuming='true', consumer_tags=[CTag | CTags]}};
+handle_info(#'basic.cancel_ok'{consumer_tag=CTag}, #state{consumer_tags=CTags}=State) ->
     lager:debug("recv a basic.cancel_ok for tag ~s", [CTag]),
     gen_server:cast(self(), {'gen_listener', {'is_consuming', 'false'}}),
-    {'noreply', State#state{is_consuming='false'}};
+    {'noreply', State#state{is_consuming='false', consumer_tags=lists:delete(CTag, CTags)}};
 handle_info('$is_gen_listener_consuming'
             ,#state{is_consuming='false'
                     ,bindings=ExistingBindings
@@ -992,6 +1016,7 @@ federated_queue_name(Params) ->
 -spec handle_amqp_channel_available(state()) -> state().
 handle_amqp_channel_available(#state{params=Params}=State) ->
     lager:debug("channel started, let's connect"),
+    maybe_declare_exchanges(props:get_value('declare_exchanges', Params, [])),
     {'ok', Q} = start_amqp(Params),
 
     State1 = start_initial_bindings(State#state{queue=Q}, Params),
@@ -1001,6 +1026,24 @@ handle_amqp_channel_available(#state{params=Params}=State) ->
     gen_server:cast(self(), {'gen_listener', {'created_queue', Q}}),
 
     State1#state{is_consuming='false'}.
+
+-spec maybe_declare_exchanges(wh_proplist()) -> 'ok'.
+maybe_declare_exchanges([]) -> 'ok';
+maybe_declare_exchanges(Exchanges) ->
+    maybe_declare_exchanges(wh_amqp_assignments:get_channel(), Exchanges).
+
+-spec maybe_declare_exchanges(wh_amqp_assignment(), wh_proplist()) -> 'ok'.
+maybe_declare_exchanges(_Channel, []) -> 'ok';
+maybe_declare_exchanges(Channel, [Exchange | Exchanges]) ->
+    case Exchange of
+        {Ex, Type, Opts} -> declare_exchange(Channel, amqp_util:declare_exchange(Ex, Type, Opts));
+        {Ex, Type} -> declare_exchange(Channel, amqp_util:declare_exchange(Ex, Type))
+    end,
+    maybe_declare_exchanges(Channel, Exchanges).
+
+-spec declare_exchange(wh_amqp_assignment(), wh_amqp_exchange()) -> command_ret().
+declare_exchange(Channel, Exchange) ->
+    wh_amqp_channel:command(Channel, Exchange).
 
 -spec start_initial_bindings(state(), wh_proplist()) -> state().
 start_initial_bindings(State, Params) ->
@@ -1018,14 +1061,27 @@ channel_requisition(Params) ->
         'undefined' ->
             case props:get_value('broker', Params) of
                 'undefined' -> wh_amqp_channel:requisition();
-                Broker -> wh_amqp_channel:requisition(Broker)
+                Broker -> maybe_add_broker_connection(Broker)                           
             end;
         Tag ->
             case wh_amqp_connections:broker_with_tag(Tag) of
                 'undefined' -> wh_amqp_channel:requisition();
-                Broker -> wh_amqp_channel:requisition(Broker)
+                Broker -> maybe_add_broker_connection(Broker)
             end
     end.
+
+-spec maybe_add_broker_connection(binary()) -> boolean().
+-spec maybe_add_broker_connection(binary(), non_neg_integer()) -> boolean().
+maybe_add_broker_connection(Broker) ->
+    Count = wh_amqp_connections:broker_available_connections(Broker),
+    maybe_add_broker_connection(Broker, Count).
+    
+maybe_add_broker_connection(Broker, Count) when Count =:= 0 ->
+    wh_amqp_connections:add(Broker, wh_util:rand_hex_binary(6), [<<"hidden">>]),
+    wh_amqp_channel:requisition(Broker);
+maybe_add_broker_connection(Broker, _Count) ->
+    wh_amqp_channel:requisition(Broker).
+    
 
 -spec start_listener(pid(), wh_proplist()) -> 'ok'.
 start_listener(Srv, Params) ->

@@ -5,15 +5,11 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(blackhole_listener).
+-module(doodle_inbound_listener).
 
 -behaviour(gen_listener).
 
--export([start_link/0
-         ,handle_amqp_event/3
-         ,add_call_binding/1, remove_call_binding/1
-         ,add_binding/2, remove_binding/2
-        ]).
+-export([start_link/0]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -23,20 +19,40 @@
          ,code_change/3
         ]).
 
--include("blackhole.hrl").
+-include("doodle.hrl").
 
 -record(state, {}).
--type state() :: #state{}.
 
-%% By convention, we put the options here in macros, but not required.
--define(BINDINGS, []).
--define(RESPONDERS, [{{?MODULE, 'handle_amqp_event'}
-                      ,[{<<"*">>, <<"*">>}]
-                      }
-                    ]).
--define(QUEUE_NAME, <<>>).
--define(QUEUE_OPTIONS, []).
--define(CONSUME_OPTIONS, []).
+-define(DEFAULT_EXCHANGE, <<"sms">>).
+-define(DEFAULT_EXCHANGE_TYPE, <<"topic">>).
+-define(DEFAULT_EXCHANGE_OPTIONS, [{'passive', 'true'}]).
+-define(DEFAULT_BROKER, <<"amqp://user:pass@server.com:5672/babble">>).
+-define(QUEUE_NAME, <<"smsc_inbound_queue_", (wh_util:rand_hex_binary(6))/binary>>).
+
+-define(DOODLE_INBOUND_QUEUE, whapps_config:get_ne_binary(?CONFIG_CAT, <<"inbound_queue_name">>, ?QUEUE_NAME)).
+-define(DOODLE_INBOUND_BROKER, whapps_config:get_ne_binary(?CONFIG_CAT, <<"inbound_broker">>, ?DEFAULT_BROKER)).
+-define(DOODLE_INBOUND_EXCHANGE, whapps_config:get_ne_binary(?CONFIG_CAT, <<"inbound_exchange">>, ?DEFAULT_EXCHANGE)).
+-define(DOODLE_INBOUND_EXCHANGE_TYPE, whapps_config:get_ne_binary(?CONFIG_CAT, <<"inbound_exchange_type">>, ?DEFAULT_EXCHANGE_TYPE)).
+-define(DOODLE_INBOUND_EXCHANGE_OPTIONS,  whapps_config:get(?CONFIG_CAT, <<"inbound_exchange_options">>, ?DEFAULT_EXCHANGE_OPTIONS)).
+
+
+-define(BINDINGS(Ex), [{'sms', [{'exchange', Ex}
+                                ,{'restrict_to', ['inbound']}
+                               ]}
+                       ,{'self', []}
+                      ]).
+-define(RESPONDERS, [{'doodle_inbound_handler',[{<<"message">>, <<"inbound">>}]}]).
+
+-define(QUEUE_OPTIONS, [{'exclusive', 'false'}
+                        ,{'durable', 'true'}
+                        ,{'auto_delete', 'false'}
+                        ,{'arguments', [{<<"x-message-ttl">>, 'infinity'}
+                                        ,{<<"x-max-length">>, 'infinity'}
+                                       ]}
+                       ]).
+-define(CONSUME_OPTIONS, [{'exclusive', 'false'}
+                          ,{'no_ack', 'false'}
+                         ]).
 
 %%%===================================================================
 %%% API
@@ -50,37 +66,24 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
+    Broker = ?DOODLE_INBOUND_BROKER,
+    Exchange = ?DOODLE_INBOUND_EXCHANGE,
+    Type = ?DOODLE_INBOUND_EXCHANGE_TYPE,
+    QUEUE = ?DOODLE_INBOUND_QUEUE,
+    Options = [{'passive', 'true'}],
+    Exchanges = [{Exchange, Type, Options}],
     gen_listener:start_link({'local', ?MODULE}
-                           ,?MODULE
-                           ,[{'bindings', ?BINDINGS}
-                            ,{'responders', ?RESPONDERS}
-                            ,{'queue_name', ?QUEUE_NAME}       % optional to include
-                            ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
-                            ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
-                            ], []).
-
--spec handle_amqp_event(wh_json:object(), wh_proplist(), #'basic.deliver'{} | ne_binary()) -> any().
-handle_amqp_event(EventJObj, Props, #'basic.deliver'{routing_key=RoutingKey}) ->
-    handle_amqp_event(EventJObj, Props, RoutingKey);
-handle_amqp_event(EventJObj, _Props, <<_/binary>> = RoutingKey) ->
-    lager:debug("recv event ~p (~s)", [wh_util:get_event_type(EventJObj), RoutingKey]),
-    blackhole_bindings:map(RoutingKey, EventJObj).
-
--spec add_call_binding(ne_binary()) -> 'ok'.
-add_call_binding(AccountId) ->
-    gen_listener:cast(?MODULE, {'add_call_binding', AccountId}).
-
--spec remove_call_binding(ne_binary()) -> 'ok'.
-remove_call_binding(AccountId) ->
-    gen_listener:cast(?MODULE, {'remove_call_binding', AccountId}).
-
--spec add_binding(atom(), wh_proplist()) -> 'ok'.
-add_binding(Wapi, Options) ->
-    gen_listener:add_binding(?MODULE, Wapi, Options).
-
--spec remove_binding(atom(), wh_proplist()) -> 'ok'.
-remove_binding(Wapi, Options) ->
-    gen_listener:rm_binding(?MODULE, Wapi, Options).
+                            ,?MODULE
+                            ,[{'bindings', ?BINDINGS(Exchange)}
+                              ,{'responders', ?RESPONDERS}
+                              ,{'queue_name', QUEUE}       % optional to include
+                              ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
+                              ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
+                              ,{'declare_exchanges', Exchanges}
+                              ,{'broker', Broker}
+                             ]
+                            ,[]
+                           ).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -127,9 +130,6 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'add_call_binding', AccountId}, State) ->
-    wh_hooks:register(AccountId),
-    {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
@@ -147,17 +147,11 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(?HOOK_EVT(ne_binary(), ne_binary(), wh_json:object()), state()) -> {'noreply', state()};
-                 (_, state()) -> {'noreply', state()}.
-handle_info(?HOOK_EVT(_AccountId, EventType, JObj), State) ->
-    spawn(?MODULE, 'handle_amqp_event', [JObj, [], call_routing(EventType, JObj)]),
+handle_info({'send_outbound', Payload}, State) ->
+    wapi_sms:publish_outbound(Payload),
     {'noreply', State};
 handle_info(_Info, State) ->
     {'noreply', State}.
-
--spec call_routing(ne_binary(), wh_json:object()) -> ne_binary().
-call_routing(EventType, JObj) ->
-    wapi_call:event_routing_key(EventType, wh_json:get_value(<<"Call-ID">>, JObj)).
 
 %%--------------------------------------------------------------------
 %% @private

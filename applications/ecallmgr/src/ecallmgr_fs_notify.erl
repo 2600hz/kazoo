@@ -99,7 +99,6 @@ resp_to_probe(State, User, Realm) ->
                       ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:hash(md5, PresenceId))}
                       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                      ],
-    io:format("resp_to_probe: ~p~n", [PresenceUpdate]),
     wh_amqp_worker:cast(PresenceUpdate, fun wapi_presence:publish_update/1).
 
 -spec check_sync(ne_binary(), ne_binary()) -> 'ok'.

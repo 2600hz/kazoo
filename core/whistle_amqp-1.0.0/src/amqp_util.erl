@@ -106,9 +106,10 @@
 -export([new_queue/0, new_queue/1, new_queue/2]).
 -export([basic_consume/1, basic_consume/2]).
 -export([basic_publish/3, basic_publish/4, basic_publish/5]).
--export([basic_cancel/0]).
+-export([basic_cancel/0, basic_cancel/1]).
 -export([queue_delete/1, queue_delete/2]).
 -export([new_exchange/2, new_exchange/3]).
+-export([declare_exchange/2, declare_exchange/3]).
 
 -export([access_request/0, access_request/1, basic_ack/1, basic_nack/1, basic_qos/1]).
 
@@ -465,6 +466,22 @@ new_exchange(Exchange, Type, Options) ->
       ,arguments = ?P_GET('arguments', Options, [])
      },
     wh_amqp_channel:command(ED).
+
+-spec declare_exchange(ne_binary(), ne_binary()) -> wh_amqp_exchange().
+-spec declare_exchange(ne_binary(), ne_binary(), wh_proplist()) -> wh_amqp_exchange().
+declare_exchange(Exchange, Type) ->
+    declare_exchange(Exchange, Type, []).
+declare_exchange(Exchange, Type, Options) ->
+    #'exchange.declare'{
+      exchange = Exchange
+      ,type = Type
+      ,passive = ?P_GET('passive', Options, 'false')
+      ,durable = ?P_GET('durable', Options, 'false')
+      ,auto_delete = ?P_GET('auto_delete', Options, 'false')
+      ,internal = ?P_GET('internal', Options, 'false')
+      ,nowait = ?P_GET('nowait', Options, 'false')
+      ,arguments = ?P_GET('arguments', Options, [])
+     }.
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -890,7 +907,9 @@ basic_consume(Queue, Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec basic_cancel() -> 'ok'.
+-spec basic_cancel(ne_binary()) -> 'ok'.
 basic_cancel() -> wh_amqp_channel:command(#'basic.cancel'{}).
+basic_cancel(ConsumerTag) -> wh_amqp_channel:command(#'basic.cancel'{consumer_tag=ConsumerTag}).
 
 %%------------------------------------------------------------------------------
 %% @public

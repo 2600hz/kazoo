@@ -59,8 +59,8 @@
 -type load_view_params() :: #load_view_params{}.
 
 -spec pagination_page_size() -> pos_integer().
--spec pagination_page_size(cb_context:context()) -> pos_integer().
--spec pagination_page_size(cb_context:context(), ne_binary()) -> pos_integer().
+-spec pagination_page_size(cb_context:context()) -> 'undefined' | pos_integer().
+-spec pagination_page_size(cb_context:context(), ne_binary()) -> 'undefined' | pos_integer().
 pagination_page_size() ->
     ?PAGINATION_PAGE_SIZE.
 
