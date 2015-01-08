@@ -27,6 +27,7 @@
             ,?MACRO_VALUE(<<"owner.last_name">>, <<"last_name">>, <<"Last Name">>, <<"Last name of the owner of the voicemail box">>)
             ,?MACRO_VALUE(<<"voicemail.max_messages">>, <<"max_messages">>, <<"Maximum Messages">>, <<"The maximum number of messages this box can hold">>)
             ,?MACRO_VALUE(<<"voicemail.message_count">>, <<"message_count">>, <<"Message Count">>, <<"The current number of messages in the voicemail box">>)
+            | ?SERVICE_MACROS
            ])
        ).
 
@@ -36,10 +37,10 @@
 -define(TEMPLATE_CATEGORY, <<"voicemail">>).
 -define(TEMPLATE_NAME, <<"Full Voicemail Box">>).
 
--define(TEMPLATE_TO, ?CONFIGURED_EMAILS(<<"original">>)).
+-define(TEMPLATE_TO, ?CONFIGURED_EMAILS(?EMAIL_ORIGINAL)).
 -define(TEMPLATE_FROM, teletype_util:default_from_address(?MOD_CONFIG_CAT)).
--define(TEMPLATE_CC, ?CONFIGURED_EMAILS(<<"specified">>, [])).
--define(TEMPLATE_BCC, ?CONFIGURED_EMAILS(<<"specificed">>, [])).
+-define(TEMPLATE_CC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
+-define(TEMPLATE_BCC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
 -define(TEMPLATE_REPLY_TO, teletype_util:default_reply_to(?MOD_CONFIG_CAT)).
 
 -spec init() -> 'ok'.
@@ -84,6 +85,7 @@ handle_full_voicemail(JObj, _Props) ->
               wh_json:set_values([{<<"voicemail">>, VMBox}
                                   ,{<<"owner">>, User}
                                   ,{<<"account">>, AccountJObj}
+                                  ,{<<"to">>, [wh_json:get_ne_value(<<"email">>, User)]}
                                  ]
                                  ,DataJObj
                                 )
@@ -143,11 +145,12 @@ process_req(DataJObj, Templates) ->
                 ,Macros
                ),
 
+    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
+
     %% Send email
-    case teletype_util:send_email(?TEMPLATE_ID
-                                  ,wh_json:set_value([<<"to">>, <<"email_addresses">>], to_email_addresses(DataJObj), DataJObj)
-                                  ,ServiceData
+    case teletype_util:send_email(Emails
                                   ,Subject
+                                  ,ServiceData
                                   ,RenderedTemplates
                                  )
     of
@@ -160,40 +163,6 @@ build_template_data(DataJObj) ->
     props:filter_undefined(
       [{<<"voicemail">>, build_voicemail_data(DataJObj)}]
      ).
-
--spec to_email_addresses(wh_json:object()) -> api_binaries().
--spec to_email_addresses(wh_json:object(), api_binaries() | ne_binary()) -> api_binaries().
-to_email_addresses(DataJObj) ->
-    to_email_addresses(DataJObj
-                       ,wh_json:get_first_defined([[<<"to">>, <<"email_addresses">>]
-                                                   ,[<<"owner">>, <<"email">>]
-                                                   ,[<<"owner">>, <<"username">>]
-                                                  ]
-                                                  ,DataJObj
-                                                 )
-                      ).
-
-to_email_addresses(_DataJObj, <<_/binary>> = Email) ->
-    [Email];
-to_email_addresses(_DataJObj, [_|_] = Emails) ->
-    Emails;
-to_email_addresses(DataJObj, _) ->
-    case teletype_util:find_account_rep_email(wh_json:get_value(<<"account">>, DataJObj)) of
-        'undefined' ->
-            lager:debug("failed to find account rep email, using defaults"),
-            default_to_addresses();
-        Emails ->
-            lager:debug("using ~p for To", [Emails]),
-            Emails
-    end.
-
--spec default_to_addresses() -> api_binaries().
-default_to_addresses() ->
-    case whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>) of
-        'undefined' -> 'undefined';
-        <<_/binary>> = Email -> [Email];
-        [_|_]=Emails -> Emails
-    end.
 
 -spec build_voicemail_data(wh_json:object()) -> wh_proplist().
 build_voicemail_data(DataJObj) ->
