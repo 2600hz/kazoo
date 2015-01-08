@@ -10,6 +10,7 @@
 
 -export([init/0
          ,handle_new_voicemail/2
+         ,test/2
         ]).
 
 -include("../teletype.hrl").
@@ -27,20 +28,51 @@
             ,?MACRO_VALUE(<<"owner.first_name">>, <<"first_name">>, <<"First Name">>, <<"First name of the owner of the voicemail box">>)
             ,?MACRO_VALUE(<<"owner.last_name">>, <<"last_name">>, <<"Last Name">>, <<"Last name of the owner of the voicemail box">>)
             | ?DEFAULT_CALL_MACROS
+            ++ ?SERVICE_MACROS
            ])
        ).
 
--define(TEMPLATE_TEXT, <<"New Voicemail Message\n\nCaller ID: {{caller_id.number}}\nCaller Name: {{caller_id.name}}\n\nCalled To: {{to_user}}   (Originally dialed number)\nCalled On: {{date_called.local|date:\"l, F j, Y \\a\\t H:i\"}}\n\nTranscription: {{voicemail.transcription|default:\"Not Enabled\"}}\n\n\nFor help or questions using your phone or voicemail, please contact support at {{service.support_number}} or email {{service.support_email}}.">>).
--define(TEMPLATE_HTML, <<"<html><body><h3>New Voicemail Message</h3><table><tr><td>Caller ID</td><td>{{caller_id.name}} ({{caller_id.number}})</td></tr><tr><td>Callee ID</td><td>{{to_user}} (originally dialed number)</td></tr><tr><td>Call received</td><td>{{date_called.local|date:\"l, F j, Y \\a\\t H:i\"}}</td></tr></table><p>For help or questions using your phone or voicemail, please contact {{service.support_number}} or email <a href=\"mailto:{{service.support_email}}\">Support</a></p><p style=\"font-size: 9px;color:#C0C0C0\">{{call_id}}</p><p>Transcription: {{voicemail.transcription|default:\"Not Enabled\"}}</p></body></html>">>).
+-define(TEMPLATE_TEXT, <<"New Voicemail Message\n\nCaller ID: {{caller_id.number}}\nCaller Name: {{caller_id.name}}\n\nCalled To: {{to.user}}   (Originally dialed number)\nCalled On: {{date_called.local|date:\"l, F j, Y \\a\\t H:i\"}}\n\nTranscription: {{voicemail.transcription|default:\"Not Enabled\"}}\n\n\nFor help or questions using your phone or voicemail, please contact support at {{service.support_number}} or email {{service.support_email}}.">>).
+-define(TEMPLATE_HTML, <<"<html><body><h3>New Voicemail Message</h3><table><tr><td>Caller ID</td><td>{{caller_id.name}} ({{caller_id.number}})</td></tr><tr><td>Callee ID</td><td>{{to.user}} (originally dialed number)</td></tr><tr><td>Call received</td><td>{{date_called.local|date:\"l, F j, Y \\a\\t H:i\"}}</td></tr></table><p>For help or questions using your phone or voicemail, please contact {{service.support_number}} or email <a href=\"mailto:{{service.support_email}}\">Support</a></p><p style=\"font-size: 9px;color:#C0C0C0\">{{call_id}}</p><p>Transcription: {{voicemail.transcription|default:\"Not Enabled\"}}</p></body></html>">>).
 -define(TEMPLATE_SUBJECT, <<"New voicemail from {{caller_id.name}} ({{caller_id.number}})">>).
 -define(TEMPLATE_CATEGORY, <<"voicemail">>).
 -define(TEMPLATE_NAME, <<"Voicemail To Email">>).
 
--define(TEMPLATE_TO, ?CONFIGURED_EMAILS(<<"original">>)).
+-define(TEMPLATE_TO, ?CONFIGURED_EMAILS(?EMAIL_ORIGINAL)).
 -define(TEMPLATE_FROM, teletype_util:default_from_address(?MOD_CONFIG_CAT)).
--define(TEMPLATE_CC, ?CONFIGURED_EMAILS(<<"specified">>, [])).
--define(TEMPLATE_BCC, ?CONFIGURED_EMAILS(<<"specificed">>, [])).
+-define(TEMPLATE_CC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
+-define(TEMPLATE_BCC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
 -define(TEMPLATE_REPLY_TO, teletype_util:default_reply_to(?MOD_CONFIG_CAT)).
+
+test(AccountId, VoicemailBoxId) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    {'ok', VMBox} = couch_mgr:open_cache_doc(AccountDb
+                                             ,VoicemailBoxId
+                                            ),
+
+    MediaId = wh_json:get_value([<<"messages">>, 1, <<"media_id">>], VMBox),
+    Length = wh_json:get_value([<<"messages">>, 1, <<"length">>], VMBox),
+    CallId = wh_json:get_value([<<"messages">>, 1, <<"call_id">>], VMBox),
+
+    Prop = [{<<"From-User">>, <<"TestFromUser">>}
+            ,{<<"From-Realm">>, <<"TestFromRealm">>}
+            ,{<<"To-User">>, <<"TestToUser">>}
+            ,{<<"To-Realm">>, <<"TestToRealm">>}
+            ,{<<"Account-DB">>, AccountDb}
+            ,{<<"Account-ID">>, AccountId}
+            ,{<<"Voicemail-Box">>, VoicemailBoxId}
+            ,{<<"Voicemail-Name">>, MediaId}
+            ,{<<"Caller-ID-Number">>, <<"CallerIdNumber">>}
+            ,{<<"Caller-ID-Name">>, <<"CallerIdName">>}
+            ,{<<"Voicemail-Timestamp">>, wh_util:current_tstamp()}
+            ,{<<"Voicemail-Length">>, Length}
+            ,{<<"Call-ID">>, CallId}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    whapps_util:amqp_pool_collect(Prop
+                                  ,fun wapi_notifications:publish_voicemail/1
+                                  ,5000
+                                 ).
 
 -spec init() -> 'ok'.
 init() ->
@@ -70,7 +102,6 @@ handle_new_voicemail(JObj, _Props) ->
     AccountDb = wh_json:get_value(<<"account_db">>, DataJObj),
 
     {'ok', VMBox} = couch_mgr:open_cache_doc(AccountDb, wh_json:get_value(<<"voicemail_box">>, DataJObj)),
-
     {'ok', UserJObj} = couch_mgr:open_cache_doc(AccountDb, wh_json:get_value(<<"owner_id">>, VMBox)),
 
     case (Email = wh_json:get_ne_value(<<"email">>, UserJObj)) =/= 'undefined'
@@ -92,7 +123,7 @@ handle_new_voicemail(JObj, _Props) ->
               wh_json:set_values([{<<"voicemail">>, VMBox}
                                   ,{<<"owner">>, UserJObj}
                                   ,{<<"account">>, AccountJObj}
-                                  ,{[<<"to">>, <<"email_addresses">>], [Email]}
+                                  ,{<<"to">>, [Email]}
                                  ]
                                  ,DataJObj
                                 )
@@ -105,8 +136,6 @@ process_req(DataJObj) ->
 
     ServiceData = teletype_util:service_params(DataJObj, ?MOD_CONFIG_CAT),
     Macros = [{<<"service">>, ServiceData}
-              ,{<<"account">>, wh_json:to_proplist(wh_json:get_value(<<"account">>, DataJObj))}
-              ,{<<"owner">>, wh_json:to_proplist(wh_json:get_value(<<"owner">>, DataJObj))}
               | build_template_data(DataJObj)
              ],
 
@@ -114,9 +143,11 @@ process_req(DataJObj) ->
     Templates = teletype_util:fetch_templates(?TEMPLATE_ID, DataJObj),
 
     %% Populate templates
-    RenderedTemplates = [{ContentType, teletype_util:render(?TEMPLATE_ID, Template, Macros)}
-                         || {ContentType, Template} <- Templates
-                        ],
+    RenderedTemplates =
+        props:filter_undefined(
+          [{ContentType, teletype_util:render(?TEMPLATE_ID, Template, Macros)}
+           || {ContentType, Template} <- Templates
+          ]),
 
     {'ok', TemplateMetaJObj} = teletype_util:fetch_template_meta(?TEMPLATE_ID, wh_json:get_value(<<"account_Id">>, DataJObj)),
 
@@ -125,11 +156,12 @@ process_req(DataJObj) ->
                 ,Macros
                ),
 
+    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
+
     %% Send email
-    case teletype_util:send_email(?TEMPLATE_ID
-                                  ,DataJObj
-                                  ,ServiceData
+    case teletype_util:send_email(Emails
                                   ,Subject
+                                  ,ServiceData
                                   ,RenderedTemplates
                                   ,email_attachments(DataJObj, Macros)
                                  )
@@ -201,15 +233,14 @@ mime_to_extension(_) -> <<"wav">>.
 
 -spec build_template_data(wh_json:object()) -> wh_proplist().
 build_template_data(DataJObj) ->
-    props:filter_empty(
-      [{<<"caller_id">>, build_caller_id_data(DataJObj)}
-       ,{<<"callee_id">>, build_callee_id_data(DataJObj)}
-       ,{<<"date_called">>, build_date_called_data(DataJObj)}
-       ,{<<"voicemail">>, build_voicemail_data(DataJObj)}
-       ,{<<"call_id">>, wh_json:get_value(<<"call_id">>, DataJObj)}
-       ,{<<"from">>, build_from_data(DataJObj)}
-       ,{<<"to">>, build_to_data(DataJObj)}
-      ]).
+    [{<<"caller_id">>, build_caller_id_data(DataJObj)}
+     ,{<<"callee_id">>, build_callee_id_data(DataJObj)}
+     ,{<<"date_called">>, build_date_called_data(DataJObj)}
+     ,{<<"voicemail">>, build_voicemail_data(DataJObj)}
+     ,{<<"call_id">>, wh_json:get_value(<<"call_id">>, DataJObj)}
+     ,{<<"from">>, build_from_data(DataJObj)}
+     ,{<<"to">>, build_to_data(DataJObj)}
+    ].
 
 -spec build_from_data(wh_json:object()) -> wh_proplist().
 build_from_data(DataJObj) ->
