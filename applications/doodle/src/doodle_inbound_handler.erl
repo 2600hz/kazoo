@@ -36,7 +36,8 @@ maybe_relay_request(JObj) ->
     case doodle_util:lookup_number(Number) of
         {'error', _R} ->
             lager:info("unable to determine account for ~s: ~p", [Number, _R]),
-            'nack';
+            %% TODO send system notify ?
+            'ack';
         {'ok', _, NumberProps} ->
             Routines = [fun set_account_id/3
                         ,fun set_inception/3
