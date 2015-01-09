@@ -10,11 +10,80 @@
 
 -export([init/0
          ,handle_fax_inbound/2
+         ,convert/3
         ]).
 
 -include("../teletype.hrl").
 
--define(TIFF_TO_PDF_CMD, <<"tiff2pdf -o ~s ~s &> /dev/null && echo -n \"success\"">>).
+convert(FromFormat, FromFormat, Bin) ->
+    {'ok', Bin};
+convert(FromFormat, ToFormat, Bin) ->
+    OldFlag = process_flag('trap_exit', 'true'),
+
+    Command = iolist_to_binary(["/usr/bin/convert "
+                                ,valid_format(FromFormat), ":- "
+                                ,valid_format(ToFormat), ":-"
+                               ]),
+    PortOptions = ['binary'
+                   ,'exit_status'
+                   ,'use_stdio'
+                   ,'stderr_to_stdout'
+                  ],
+
+    Response =
+        try open_port({'spawn', wh_util:to_list(Command)}, PortOptions) of
+            Port ->
+                lager:debug("opened port ~p for '~s'", [Port, Command]),
+                convert(Port, Bin)
+        catch
+            _E:_R ->
+                lager:debug("failed to open port with '~s': ~s: ~p", [Command, _E, _R]),
+                {'error', 'port_failure'}
+        end,
+    process_flag('trap_exit', OldFlag),
+    Response.
+
+valid_format(<<"tiff">>) -> <<"tif">>;
+valid_format(Format) -> Format.
+
+convert(Port, Bin) ->
+    try erlang:port_command(Port, Bin) of
+        'true' ->
+            lager:debug("send contents to port"),
+            wait_for_results(Port)
+    catch
+        _E:_R ->
+            lager:debug("failed to send data to port: ~s: ~p", [_E, _R]),
+            catch erlang:port_close(Port),
+            {'error', 'command_failure'}
+    end.
+
+wait_for_results(Port) ->
+    wait_for_results(Port, []).
+wait_for_results(Port, Acc) ->
+    receive
+        {Port, {'data', Msg}} ->
+            lager:debug("recv data ~p", [Msg]),
+            wait_for_results(Port, [Acc | [Msg]]);
+        {Port, {'exit_status', 0}} ->
+            lager:debug("port exited"),
+            {'ok', Acc};
+        {Port, {'exit_status', _Status}} ->
+            lager:debug("port exit status: ~p", [_Status]),
+            {'error', iolist_to_binary(Acc)};
+        {'EXIT', Port, Reason} ->
+            lager:debug("port exited: ~p", [Reason]),
+            {'error', iolist_to_binary(Acc)}
+    after
+        60000 ->
+            lager:debug("port timed out: ~p", [Acc]),
+            catch erlang:port_close(Port),
+            {'error', iolist_to_binary(Acc)}
+    end.
+
+%-define(TIFF_TO_PDF_CMD, <<"tiff2pdf -o ~s ~s &> /dev/null && echo -n \"success\"">>).
+-define(TIFF_TO_PDF_CMD, <<"convert tiff:- pdf:-">>).
+-define(PDF_TO_TIFF_CMD, <<"convert ~s.pdf ~s.tiff">>).
 
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".fax_inbound_to_email">>).
 -define(FAX_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".fax">>).
@@ -166,7 +235,7 @@ handle_fax_inbound(JObj, _Props) ->
                             ).
 
 get_attachment(DataJObj, FaxMacros) ->
-    FaxId = props:get_first_defined([<<"fax_jobid">>, <<"fax_id">>], FaxMacros),
+    FaxId = props:get_first_defined([<<"id">>, <<"fax_jobid">>, <<"fax_id">>], FaxMacros),
     Db = fax_db(DataJObj),
     lager:debug("accessing fax at ~s / ~s", [Db, FaxId]),
     {'ok', ContentType, Bin} = get_attachment_binary(Db, FaxId),
@@ -175,7 +244,7 @@ get_attachment(DataJObj, FaxMacros) ->
         _Type -> convert_to_tiff(DataJObj, FaxMacros, ContentType, Bin)
     end.
 
-convert_to_tiff(_DataJObj, FaxMacros, _ContentType, Bin) ->
+convert_to_tiff(_DataJObj, FaxMacros, <<"image/tiff">>, Bin) ->
     {<<"image/tiff">>, get_file_name(FaxMacros, <<"tiff">>), Bin}.
 
 convert_to_pdf(_DataJObj, FaxMacros, <<"application/pdf">> = ContentType, Bin) ->
@@ -215,7 +284,6 @@ get_file_name(FaxMacros, Ext) ->
 -spec tmp_file_name(ne_binary()) -> string().
 tmp_file_name(Ext) ->
     wh_util:to_list(<<"/tmp/", (wh_util:rand_hex_binary(10))/binary, "_notify_fax.", Ext/binary>>).
-
 
 -spec get_attachment_binary(ne_binary(), ne_binary()) ->
                                    {'ok', ne_binary(), binary()}.
