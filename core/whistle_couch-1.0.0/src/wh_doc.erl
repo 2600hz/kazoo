@@ -21,6 +21,7 @@
          ,attachment/1, attachment/2, attachment/3
          ,delete_attachments/1
          ,maybe_remove_attachments/1, maybe_remove_attachments/2
+         ,revision/1
         ]).
 -export([update_pvt_modified/1]).
 
@@ -194,3 +195,7 @@ maybe_remove_attachments(JObj) ->
 maybe_remove_attachments(JObj, 'undefined') -> JObj;
 maybe_remove_attachments(JObj, _Attachments) ->
     wh_json:delete_key(?KEY_ATTACHMENTS, JObj).
+
+-spec revision(wh_json:object()) -> api_binary().
+revision(JObj) ->
+    wh_json:get_value(<<"_rev">>, JObj).
