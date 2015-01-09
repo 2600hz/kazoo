@@ -596,7 +596,7 @@ create_fax_doc(JObj, #state{owner_id = OwnerId
 rx_result(JObj) ->
     wh_json:from_list(
       fax_util:fax_properties(
-        wh_json:get_value(<<"Application-Data">>, JObj)
+        wh_json:get_value(<<"Application-Data">>, JObj, wh_json:new())
        )
      ).
 
