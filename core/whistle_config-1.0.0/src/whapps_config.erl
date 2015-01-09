@@ -250,6 +250,7 @@ get_value(Category, Node, Keys, Default, JObj) ->
 get_default_value(Category, Keys, Default, JObj) ->
     case wh_json:get_value([<<"default">> | Keys], JObj) of
         'undefined' ->
+            lager:debug("setting default for ~s ~p: ~p", [Category, Keys, Default]),
             _ = set(Category, Keys, Default),
             Default;
         Else -> Else
@@ -338,11 +339,20 @@ update_category(Category, Keys, Value, Node, Opts, JObj) ->
         orelse props:is_true('node_specific', Opts, 'false')
     of
         'true' ->
-            J = wh_json:set_value([Node | Keys], Value, JObj),
-            maybe_save_category(Category, J);
+            update_category(Category, wh_json:set_value([Node | Keys], Value, JObj));
         'false' ->
-            J = wh_json:set_value([<<"default">> | Keys], Value, JObj),
-            maybe_save_category(Category, J)
+            update_category(Category, wh_json:set_value([<<"default">> | Keys], Value, JObj))
+    end.
+
+-spec update_category(config_category(), wh_json:object()) ->
+                             {'ok', wh_json:object()}.
+update_category(Category, JObj) ->
+    case maybe_save_category(Category, JObj) of
+        {'error', 'conflict'} ->
+            lager:debug("conflict saving ~s, merging and saving", [Category]),
+            {'ok', Updated} = couch_mgr:open_doc(?WH_CONFIG_DB, Category),
+            update_category(Category, wh_json:merge_jobjs(Updated, wh_json:public_fields(JObj)));
+        Else -> Else
     end.
 
 %%-----------------------------------------------------------------------------
@@ -359,7 +369,7 @@ maybe_save_category(Category, JObj) ->
     maybe_save_category(Category, JObj, 'false').
 
 maybe_save_category(Category, JObj, Looped) ->
-    lager:debug("updating configuration category ~s", [Category]),
+    lager:debug("updating configuration category ~s(~s)", [Category, wh_doc:revision(JObj)]),
     JObj1 =
         wh_doc:update_pvt_parameters(
           wh_json:set_value(<<"_id">>, Category, JObj)
@@ -368,7 +378,7 @@ maybe_save_category(Category, JObj, Looped) ->
          ),
     case couch_mgr:save_doc(?WH_CONFIG_DB, JObj1) of
         {'ok', SavedJObj} ->
-            lager:debug("saved cat ~s to db ~s", [Category, ?WH_CONFIG_DB]),
+            lager:debug("saved cat ~s to db ~s (~s)", [Category, ?WH_CONFIG_DB, wh_doc:revision(SavedJObj)]),
             couch_mgr:cache_db_doc(?WH_CONFIG_DB, Category, SavedJObj),
             {'ok', SavedJObj};
         {'error', 'not_found'} when not Looped ->
