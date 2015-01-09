@@ -150,8 +150,10 @@ authorize(_Verb, _Nouns) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_resource(cb_context:context()) -> cb_context:context().
--spec validate_resource(cb_context:context(), path_token()) -> cb_context:context().
 validate_resource(Context) -> Context.
+
+-spec validate_resource(cb_context:context(), path_token()) -> cb_context:context().
+validate_resource(Context, <<"status">>) -> Context;
 validate_resource(Context, DeviceId) -> validate_device_id(Context, DeviceId).
 
 -spec validate_device_id(cb_context:context(), api_binary()) -> cb_context:context().
