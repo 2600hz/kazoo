@@ -14,7 +14,10 @@
 
 -include("../teletype.hrl").
 
+-define(TIFF_TO_PDF_CMD, <<"tiff2pdf -o ~s ~s &> /dev/null && echo -n \"success\"">>).
+
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".fax_inbound_to_email">>).
+-define(FAX_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".fax">>).
 
 -define(TEMPLATE_ID, <<"fax_inbound_to_email">>).
 
@@ -33,6 +36,7 @@
             ,?MACRO_VALUE(<<"fax.encoding">>, <<"fax_encoding">>, <<"Fax Encoding">>, <<"Encoding of the fax">>)
             ,?MACRO_VALUE(<<"fax.doc_id">>, <<"fax_doc_id">>, <<"Document ID">>, <<"Crossbar ID of the Fax document">>)
             | ?DEFAULT_CALL_MACROS
+            ++ ?SERVICE_MACROS
            ]
           )).
 
@@ -42,10 +46,10 @@
 -define(TEMPLATE_CATEGORY, <<"fax">>).
 -define(TEMPLATE_NAME, <<"Inbound Fax to Email">>).
 
--define(TEMPLATE_TO, ?CONFIGURED_EMAILS(<<"original">>)).
+-define(TEMPLATE_TO, ?CONFIGURED_EMAILS(?EMAIL_ORIGINAL)).
 -define(TEMPLATE_FROM, teletype_util:default_from_address(?MOD_CONFIG_CAT)).
--define(TEMPLATE_CC, ?CONFIGURED_EMAILS(<<"specified">>, [])).
--define(TEMPLATE_BCC, ?CONFIGURED_EMAILS(<<"specified">>, [])).
+-define(TEMPLATE_CC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
+-define(TEMPLATE_BCC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
 -define(TEMPLATE_REPLY_TO, teletype_util:default_reply_to(?MOD_CONFIG_CAT)).
 
 -spec init() -> 'ok'.
@@ -139,13 +143,108 @@ handle_fax_inbound(JObj, _Props) ->
                ),
     lager:debug("rendered subject: ~s", [Subject]),
 
+    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
+
     %% Send email
-    teletype_util:send_email(?TEMPLATE_ID
-                             ,DataJObj
-                             ,props:get_value(<<"service">>, Macros)
+    teletype_util:send_email(Emails
                              ,Subject
+                             ,props:get_value(<<"service">>, Macros)
                              ,RenderedTemplates
+                             ,get_attachment(DataJObj, props:get_value(<<"fax">>, Macros))
                             ).
+
+get_attachment(DataJObj, FaxMacros) ->
+    FaxId = props:get_first_defined([<<"fax_jobid">>, <<"fax_id">>], FaxMacros),
+    Db = fax_db(DataJObj),
+    lager:debug("accessing fax at ~s / ~s", [Db, FaxId]),
+    {'ok', ContentType, Bin} = get_attachment_binary(Db, FaxId),
+    case whapps_config:get(?FAX_CONFIG_CAT, <<"attachment_format">>, <<"pdf">>) of
+        <<"pdf">> -> convert_to_pdf(DataJObj, FaxMacros, ContentType, Bin);
+        _Type -> convert_to_tiff(DataJObj, FaxMacros, ContentType, Bin)
+    end.
+
+convert_to_tiff(_DataJObj, FaxMacros, _ContentType, Bin) ->
+    {<<"image/tiff">>, get_file_name(FaxMacros, <<"tiff">>), Bin}.
+
+convert_to_pdf(_DataJObj, FaxMacros, <<"application/pdf">> = ContentType, Bin) ->
+    {ContentType, get_file_name(FaxMacros, <<"pdf">>), Bin};
+convert_to_pdf(_DataJObj, FaxMacros, _ContentType, Bin) ->
+    TiffFile = tmp_file_name(<<"tiff">>),
+    PDFFile = tmp_file_name(<<"pdf">>),
+    _ = file:write_file(TiffFile, Bin),
+    ConvertCmd = whapps_config:get_binary(?FAX_CONFIG_CAT, <<"tiff_to_pdf_conversion_command">>, ?TIFF_TO_PDF_CMD),
+    Cmd = io_lib:format(ConvertCmd, [PDFFile, TiffFile]),
+    lager:debug("running command: ~s", [Cmd]),
+    _ = os:cmd(Cmd),
+    _ = file:delete(TiffFile),
+    case file:read_file(PDFFile) of
+        {'ok', PDFBin} ->
+            _ = file:delete(PDFFile),
+            {<<"application/pdf">>, get_file_name(FaxMacros, <<"pdf">>), PDFBin};
+        {'error', _R}=E ->
+            lager:debug("unable to convert tiff: ~p", [_R]),
+            E
+    end.
+
+get_file_name(FaxMacros, Ext) ->
+    CallerID =
+        case {props:get_value(<<"caller_id_name">>, FaxMacros)
+              ,props:get_value(<<"caller_id_number">>, FaxMacros)
+             }
+        of
+            {'undefined', 'undefined'} -> <<"Unknown">>;
+            {'undefined', Num} -> wh_util:to_binary(Num);
+            {Name, _} -> wh_util:to_binary(Name)
+        end,
+    LocalDateTime = props:get_value(<<"date_called">>, FaxMacros, <<"0000-00-00_00-00-00">>),
+    FName = list_to_binary([CallerID, "_", wh_util:pretty_print_datetime(LocalDateTime), ".", Ext]),
+    re:replace(wh_util:to_lower_binary(FName), <<"\\s+">>, <<"_">>, [{'return', 'binary'}, 'global']).
+
+-spec tmp_file_name(ne_binary()) -> string().
+tmp_file_name(Ext) ->
+    wh_util:to_list(<<"/tmp/", (wh_util:rand_hex_binary(10))/binary, "_notify_fax.", Ext/binary>>).
+
+
+-spec get_attachment_binary(ne_binary(), ne_binary()) ->
+                                   {'ok', ne_binary(), binary()}.
+get_attachment_binary(Db, Id) ->
+    get_attachment_binary(Db, Id, 2).
+get_attachment_binary(_Db, _Id, 0) ->
+    lager:debug("failed to find ~s in ~s, retries expired", [_Id, _Db]),
+    throw({'error', 'no_attachment'});
+get_attachment_binary(Db, Id, Retries) ->
+    case couch_mgr:open_cache_doc(Db, Id) of
+        {'error', 'not_found'} when Db =/= ?WH_FAXES ->
+            get_attachment_binary(?WH_FAXES, Id, Retries);
+        {'ok', FaxJObj} ->
+            case wh_doc:attachment(FaxJObj) of
+                'undefined' -> delayed_retry(Db, Id, Retries);
+                AttachmentJObj ->
+                    get_attachment_binary(Db, Id, Retries, AttachmentJObj)
+            end
+    end.
+
+delayed_retry(Db, Id, Retries) ->
+    lager:debug("waiting to query fax doc ~s for attachment", [Id]),
+    timer:sleep(?MILLISECONDS_IN_MINUTE * 5),
+    get_attachment_binary(Db, Id, Retries-1).
+
+get_attachment_binary(Db, Id, Retries, AttachmentJObj) ->
+    [AttachmentName] = wh_json:get_keys(AttachmentJObj),
+    ContentType = wh_json:get_value([AttachmentName, <<"content_type">>], AttachmentJObj, <<"image/tiff">>),
+
+    case couch_mgr:fetch_attachment(Db, Id, AttachmentName) of
+        {'ok', Bin} -> {'ok', ContentType, Bin};
+        {'error', _E} ->
+            lager:debug("failed to fetch attachment ~s: ~p", [AttachmentName, _E]),
+            delayed_retry(Db, Id, Retries-1)
+    end.
+
+fax_db(DataJObj) ->
+    case teletype_util:find_account_db(DataJObj) of
+        'undefined' -> ?WH_FAXES;
+        Db -> Db
+    end.
 
 -spec build_template_data(wh_json:object()) -> wh_proplist().
 build_template_data(DataJObj) ->
