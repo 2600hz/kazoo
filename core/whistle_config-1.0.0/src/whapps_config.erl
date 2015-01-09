@@ -351,7 +351,9 @@ update_category(Category, JObj) ->
         {'error', 'conflict'} ->
             lager:debug("conflict saving ~s, merging and saving", [Category]),
             {'ok', Updated} = couch_mgr:open_doc(?WH_CONFIG_DB, Category),
-            update_category(Category, wh_json:merge_jobjs(Updated, wh_json:public_fields(JObj)));
+            Merged = wh_json:merge_jobjs(Updated, wh_json:public_fields(JObj)),
+            lager:debug("updating from ~s to ~s", [wh_doc:revision(JObj), wh_doc:revision(Merged)]),
+            update_category(Category, Merged);
         Else -> Else
     end.
 
