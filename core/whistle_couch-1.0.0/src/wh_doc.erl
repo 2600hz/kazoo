@@ -17,7 +17,10 @@
          ,public_fields/1
          ,private_fields/1
          ,attachments/1, attachments/2
+         ,attachment_names/1
          ,attachment/1, attachment/2, attachment/3
+         ,delete_attachments/1
+         ,maybe_remove_attachments/1, maybe_remove_attachments/2
         ]).
 -export([update_pvt_modified/1]).
 
@@ -29,6 +32,8 @@
                    ,fun add_pvt_type/3
                    ,fun add_pvt_node/3
                   ]).
+
+-define(KEY_ATTACHMENTS, <<"_attachments">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -153,7 +158,11 @@ private_fields(JObj) -> wh_json:filter(fun({K, _}) -> is_private_key(K) end, JOb
 attachments(JObj) ->
     attachments(JObj, 'undefined').
 attachments(JObj, Default) ->
-    wh_json:get_value(<<"_attachments">>, JObj, Default).
+    wh_json:get_value(?KEY_ATTACHMENTS, JObj, Default).
+
+-spec attachment_names(wh_json:object()) -> ne_binaries().
+attachment_names(JObj) ->
+    wh_json:get_keys(attachments(JObj, wh_json:new())).
 
 -spec attachment(wh_json:object()) -> api_object().
 -spec attachment(wh_json:object(), wh_json:key()) -> api_object().
@@ -169,3 +178,19 @@ attachment(JObj, AName) ->
     attachment(JObj, AName, 'undefined').
 attachment(JObj, AName, Default) ->
     wh_json:get_value(AName, attachments(JObj, wh_json:new()), Default).
+
+-spec delete_attachments(wh_json:object()) -> wh_json:object().
+delete_attachments(JObj) ->
+    maybe_remove_attachments(JObj, attachments(JObj)).
+
+-spec maybe_remove_attachments(wh_json:object()) -> {boolean(), wh_json:object()}.
+maybe_remove_attachments(JObj) ->
+    case attachments(JObj) of
+        'undefined' -> {'false', JObj};
+        _Attachments -> {'true', wh_json:delete_key(?KEY_ATTACHMENTS, JObj)}
+    end.
+
+-spec maybe_remove_attachments(wh_json:object(), api_object()) -> wh_json:object().
+maybe_remove_attachments(JObj, 'undefined') -> JObj;
+maybe_remove_attachments(JObj, _Attachments) ->
+    wh_json:delete_key(?KEY_ATTACHMENTS, JObj).
