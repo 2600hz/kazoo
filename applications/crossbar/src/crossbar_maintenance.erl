@@ -372,9 +372,9 @@ create_account(AccountName, Realm, Username, Password) ->
                              ]),
     try
         {'ok', C1} = validate_account(Account, #cb_context{}),
-        {'ok', C2} = validate_user(User, C1),
-        {'ok', #cb_context{db_name=Db, account_id=AccountId}} = create_account(C1),
-        {'ok', _} = create_user(C2#cb_context{db_name=Db, account_id=AccountId}),
+        {'ok', #cb_context{db_name=Db, account_id=AccountId}=C2} = create_account(C1),
+        {'ok', C3} = validate_user(User, C2),
+        {'ok', _} = create_user(C3),
         case whapps_util:get_all_accounts() of
             [Db] ->
                 _ = promote_account(AccountId),
