@@ -10,6 +10,7 @@
 
 -export([voicemail_to_email/1, voicemail_to_email/2
          ,voicemail_full/1, voicemail_full/2
+         ,fax_inbound_to_email/1, fax_inbound_to_email/2
          ,skel/1, skel/2
         ]).
 
@@ -125,3 +126,49 @@ voicemail_full(AccountId, Box) ->
                                 ,fun wapi_notifications:publish_voicemail_full/1
                                 ,5000
                                ).
+
+fax_inbound_to_email(AccountId) ->
+    fax_inbound_to_email(AccountId, 'undefined').
+fax_inbound_to_email(AccountId, <<_/binary>> = FaxId) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    {'ok', Fax} = couch_mgr:open_cache_doc(AccountDb, FaxId),
+    fax_inbound_to_email(AccountId, Fax);
+fax_inbound_to_email(AccountId, Fax) ->
+    Message = props:filter_undefined(
+                [{<<"Fax-ID">>, wh_json:get_value(<<"_id">>, Fax)}
+                 ,{<<"Owner-ID">>, wh_json:get_value(<<"owner_id">>, Fax)}
+                 ,{<<"FaxBox-ID">>, wh_json:get_value(<<"faxbox_id">>, Fax)}
+                 ,{<<"Account-ID">>, AccountId}
+                 | notify_fields(Fax)
+                ]),
+    wh_amqp_worker:call_collect(Message, fun wapi_notifications:publish_fax_inbound/1, 2000).
+
+-spec notify_fields(wh_json:object()) -> wh_proplist().
+notify_fields(JObj) ->
+    props:filter_empty(
+      [{<<"From-User">>, <<"FromUser">>}
+       ,{<<"From-Realm">>, <<"FromRealm">>}
+       ,{<<"To-User">>, <<"ToUser">>}
+       ,{<<"To-Realm">>, <<"ToRealm">>}
+       ,{<<"Fax-Info">>,
+         wh_json:from_list(
+           fax_fields(
+             wh_json:get_value(<<"Application-Data">>, JObj)
+            ))
+        }
+       ,{<<"Caller-ID-Number">>, <<"CID-Number">>}
+       ,{<<"Caller-ID-Name">>, <<"CID-Name">>}
+       ,{<<"Callee-ID-Number">>, <<"Callee-Number">>}
+       ,{<<"Callee-ID-Name">>, <<"Callee-Name">>}
+       ,{<<"Call-ID">>, wh_json:get_value(<<"call_id">>, JObj)}
+       ,{<<"Fax-Timestamp">>, wh_util:current_tstamp()}
+       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+      ]).
+
+-spec fax_fields(wh_json:object()) -> wh_proplist().
+fax_fields(JObj) ->
+    [{K,V} || {K, V} <- wh_json:to_proplist(JObj), is_fax_key(K)].
+
+is_fax_key(<<"Fax-", _/binary>>) -> 'true';
+is_fax_key(<<"fax_", _/binary>>) -> 'true';
+is_fax_key(_) -> 'false'.
