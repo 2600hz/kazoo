@@ -20,6 +20,7 @@
          ,find_account_rep_email/1
          ,find_account_admin_email/1
          ,find_account_id/1
+         ,find_account_db/1
          ,is_notice_enabled/3
 
          ,default_from_address/1
@@ -138,7 +139,8 @@ relay_encoded_email(To, From, Encoded) ->
     %% The callback will receive either `{ok, Receipt}' where Receipt is the SMTP server's receipt
     %% identifier,  `{error, Type, Message}' or `{exit, ExitReason}', as the single argument.
     receive
-        {'relay_response', {'ok', _Msg}} -> lager:debug("relayed message: ~p", [_Msg]);
+        {'relay_response', {'ok', _Receipt}} ->
+            lager:debug("relayed message: ~p", [_Receipt]);
         {'relay_response', {'error', _Type, Message}} ->
             lager:debug("error relyaing message: ~p: ~p", [_Type, Message]),
             {'error', Message};
@@ -721,6 +723,21 @@ find_account_id(JObj) ->
                               ]
                               ,JObj
                              ).
+find_account_db(JObj) ->
+    case wh_json:get_first_defined([<<"account_db">>
+                                    ,<<"pvt_account_db">>
+                                   ]
+                                   ,JObj
+                                  )
+    of
+        'undefined' -> find_account_db_from_id(JObj);
+        Db -> Db
+    end.
+find_account_db_from_id(JObj) ->
+    case find_account_id(JObj) of
+        'undefined' -> 'undefined';
+        Id -> wh_util:format_account_id(Id, 'encoded')
+    end.
 
 -spec maybe_decode_html(api_binary()) -> api_binary().
 maybe_decode_html('undefined') -> 'undefined';
