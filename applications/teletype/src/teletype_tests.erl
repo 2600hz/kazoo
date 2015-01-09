@@ -98,6 +98,7 @@ find_user_for_skel(AccountId, User, Users, PotentialEmail) ->
 skel(AccountId, <<_/binary>> = UserId) ->
     Req = [{<<"Account-ID">>, AccountId}
            ,{<<"User-ID">>, UserId}
+           ,{<<"Preview">>, 'true'}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     wh_amqp_worker:cast(Req, fun wapi_notifications:publish_skel/1).
@@ -120,6 +121,7 @@ voicemail_full(AccountId, Box) ->
              ,{<<"Voicemail-Number">>, wh_json:get_value(<<"mailbox">>, Box)}
              ,{<<"Max-Message-Count">>, 1}
              ,{<<"Message-Count">>, 2}
+             ,{<<"Preview">>, 'true'}
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     wh_amqp_worker:call_collect(Props
@@ -150,12 +152,7 @@ notify_fields(JObj) ->
        ,{<<"From-Realm">>, <<"FromRealm">>}
        ,{<<"To-User">>, <<"ToUser">>}
        ,{<<"To-Realm">>, <<"ToRealm">>}
-       ,{<<"Fax-Info">>,
-         wh_json:from_list(
-           fax_fields(
-             wh_json:get_value(<<"Application-Data">>, JObj)
-            ))
-        }
+       ,{<<"Fax-Info">>, wh_json:get_value(<<"rx_results">>, JObj)}
        ,{<<"Caller-ID-Number">>, <<"CID-Number">>}
        ,{<<"Caller-ID-Name">>, <<"CID-Name">>}
        ,{<<"Callee-ID-Number">>, <<"Callee-Number">>}
@@ -164,11 +161,3 @@ notify_fields(JObj) ->
        ,{<<"Fax-Timestamp">>, wh_util:current_tstamp()}
        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
-
--spec fax_fields(wh_json:object()) -> wh_proplist().
-fax_fields(JObj) ->
-    [{K,V} || {K, V} <- wh_json:to_proplist(JObj), is_fax_key(K)].
-
-is_fax_key(<<"Fax-", _/binary>>) -> 'true';
-is_fax_key(<<"fax_", _/binary>>) -> 'true';
-is_fax_key(_) -> 'false'.
