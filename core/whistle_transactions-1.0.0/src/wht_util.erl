@@ -23,7 +23,7 @@
 -export([calculate_cost/5]).
 -export([default_reason/0]).
 -export([is_valid_reason/1]).
--export([reason_code/1]).
+-export([reason_code/1, code_reason/1]).
 -export([collapse_call_transactions/1]).
 -export([modb/1]).
 -export([rollup/1
@@ -372,6 +372,18 @@ is_valid_reason(Reason) ->
 reason_code(Reason) ->
     {_, Code} = lists:keyfind(Reason, 1, ?REASONS),
     Code.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec code_reason(ne_binary()) -> integer().
+code_reason(Code) ->
+    {Reason, _} = lists:keyfind(Code, 2, ?REASONS),
+    Reason.
+
 
 %%--------------------------------------------------------------------
 %% @public

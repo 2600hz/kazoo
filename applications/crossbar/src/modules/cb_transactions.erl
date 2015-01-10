@@ -126,13 +126,11 @@ validate_transaction(Context, _PathToken, _Verb) ->
 %%--------------------------------------------------------------------
 -spec fetch(cb_context:context(), wh_proplist()) -> cb_context:context().
 fetch(Context, Options) ->
-    Transactions = fetch_transactions(Context, Options),
-    ProratedTransactions = fetch_braintree_transactions(Context, Options),
-    case {Transactions, ProratedTransactions} of
-        {{'ok', Trs}, {'ok', PTrs}} ->
-            send_resp({'ok', Trs ++ PTrs}, Context);
-        {_, {'error', _}=E} -> send_resp(E, Context);
-        {{'error', _}=E, _} -> send_resp(E, Context)
+    case fetch_transactions(Context, Options) of
+        {'error', _R}=Error -> send_resp(Error, Context);
+        {'ok', Transactions} ->
+            JObjs = maybe_filter_by_reason(Transactions, Options),
+            send_resp({'ok', wht_util:collapse_call_transactions(JObjs)}, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -155,21 +153,11 @@ fetch_monthly_recurring(Context, Options) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_transactions(cb_context:context(), wh_proplist()) ->
-                                {'ok', wh_json:objects()} |
-                                {'error', ne_binary()}.
+-spec fetch_transactions(cb_context:context(), wh_proplist()) -> wh_json:objects().
 fetch_transactions(Context, Options) ->
     From = props:get_value('from', Options),
     To = props:get_value('to', Options),
-    try wh_transactions:fetch_since(cb_context:account_id(Context), From, To) of
-        {'ok', Transactions} ->
-            JObjs = maybe_filter_by_reason(Transactions, Options),
-            {'ok', wht_util:collapse_call_transactions(JObjs)};
-        {'error', _}=Error -> Error
-    catch
-        _:_ ->
-            {'error', <<"error while fetching transactions">>}
-    end.
+    wh_transactions:fetch_since(cb_context:account_id(Context), From, To).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -181,27 +169,29 @@ fetch_transactions(Context, Options) ->
                                           {'ok', wh_json:objects()} |
                                           {'error', ne_binary()}.
 fetch_braintree_transactions(Context, Options) ->
-    From = props:get_value('from', Options),
-    To = props:get_value('to', Options),
     Prorated = props:get_value('prorated', Options, 'false'),
     case wh_service_transactions:current_billing_period(
            cb_context:account_id(Context)
            ,'transactions'
-           ,{timestamp_to_braintree(From), timestamp_to_braintree(To)}
+           ,{props:get_value('from', Options)
+             ,props:get_value('to', Options)}
           )
     of
-        'not_found' ->
-            {'error', <<"no data found in braintree">>};
-        'unknown_error' ->
-            {'error', <<"unknown braintree error">>};
-        BTransactions ->
-            JObjs = lists:foldl(fun(BTr, Acc) ->
-                                        IsProrated = braintree_transaction_is_prorated(BTr),
-                                        case IsProrated =:= Prorated of
-                                            'true' -> [filter_braintree_transaction(BTr)|Acc];
-                                            'false' -> Acc
-                                        end
-                                end, [], BTransactions),
+        {'error', _Reason}=Error -> Error;
+        {'ok', Transactions} ->
+            JObjs =
+                lists:foldl(
+                    fun(BTr, Acc) ->
+                        JObj = wh_transaction:to_public_json(BTr),
+                        IsProrated = braintree_transaction_is_prorated(JObj),
+                        case IsProrated =:= Prorated of
+                            'true' -> [JObj|Acc];
+                            'false' -> Acc
+                        end
+                    end
+                    ,[]
+                    ,Transactions
+                ),
             {'ok', JObjs}
     end.
 
@@ -228,7 +218,8 @@ maybe_filter_by_reason(Transactions, Options) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec braintree_transaction_is_prorated(wh_json:objects()) -> boolean().
-braintree_transaction_is_prorated(BTransaction) ->
+braintree_transaction_is_prorated(Transaction) ->
+    BTransaction = wh_json:get_value(<<"metadata">>, Transaction, wh_json:new()),
     case wh_json:get_value(<<"subscription_id">>, BTransaction) of
         'undefined' -> 'true';
         _Id ->
@@ -272,64 +263,6 @@ calculate([Addon|Addons], Acc) ->
     Amount = wh_json:get_number_value(<<"amount">>, Addon, 0)*100,
     Quantity = wh_json:get_number_value(<<"quantity">>, Addon, 0),
     calculate(Addons, (Amount*Quantity+Acc)).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec filter_braintree_transaction(wh_json:object()) ->
-                                          wh_json:object().
-filter_braintree_transaction(BTransaction) ->
-    Routines = [fun(BTr) -> clean_braintree_transaction(BTr) end
-                ,fun(BTr) -> correct_date_braintree_transaction(BTr) end
-                ,fun(BTr) -> prorated_braintree_transaction(BTr) end
-               ],
-    lists:foldl(fun(F, BTr) -> F(BTr) end, BTransaction, Routines).
-
--spec clean_braintree_transaction(wh_json:object()) -> wh_json:object().
-clean_braintree_transaction(BTransaction) ->
-    RemoveKeys = [<<"status">>
-                  ,<<"type">>
-                  ,<<"currency_code">>
-                  ,<<"merchant_account_id">>
-                  ,<<"settlement_batch">>
-                  ,<<"avs_postal_response">>
-                  ,<<"avs_street_response">>
-                  ,<<"ccv_response_code">>
-                  ,<<"processor_authorization_code">>
-                  ,<<"processor_response_code">>
-                  ,<<"tax_exempt">>
-                  ,<<"billing_address">>
-                  ,<<"shipping_address">>
-                  ,<<"customer">>
-                  ,<<"card">>
-                 ],
-    wh_json:delete_keys(RemoveKeys, BTransaction).
-
--spec correct_date_braintree_transaction(wh_json:object()) -> wh_json:object().
-correct_date_braintree_transaction(BTransaction) ->
-    Keys = [<<"created_at">>, <<"update_at">>],
-    lists:foldl(fun correct_date_braintree_transaction_fold/2, BTransaction, Keys).
-
-correct_date_braintree_transaction_fold(Key, BTr) ->
-    case wh_json:get_value(Key, BTr, 'null') of
-        'null' -> BTr;
-        V1 ->
-            V2 = string:substr(binary:bin_to_list(V1), 1, 10),
-            [Y, M, D|_] = string:tokens(V2, "-"),
-            {{Y1, _}, {M1, _}, {D1, _}} = {string:to_integer(Y), string:to_integer(M), string:to_integer(D)},
-            DateTime = {{Y1, M1, D1}, {0, 0, 0}},
-            Timestamp = calendar:datetime_to_gregorian_seconds(DateTime),
-            wh_json:set_value(Key, Timestamp, BTr)
-    end.
-
--spec prorated_braintree_transaction(wh_json:object()) -> wh_json:object().
-prorated_braintree_transaction(BTransaction) ->
-    wh_json:set_value(<<"prorated">>
-                      ,braintree_transaction_is_prorated(BTransaction)
-                      ,BTransaction).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -438,17 +371,3 @@ send_resp({'ok', JObj}, Context) ->
                         ]);
 send_resp({'error', Details}, Context) ->
     cb_context:add_system_error('bad_identifier', [{'details', Details}], Context).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec timestamp_to_braintree(pos_integer()) -> ne_binary().
-timestamp_to_braintree(Timestamp) ->
-    {{Y, M, D}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
-    <<(wh_util:to_binary(M))/binary, "/"
-      ,(wh_util:to_binary(D))/binary, "/"
-      ,(wh_util:to_binary(Y))/binary
-    >>.

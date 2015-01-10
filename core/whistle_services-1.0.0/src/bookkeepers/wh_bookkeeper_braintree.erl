@@ -14,9 +14,12 @@
 -export([commit_transactions/2]).
 -export([charge_transactions/2]).
 -export([already_charged/2]).
+-export([timestamp_to_braintree/1]).
 
 
 -include("../whistle_services.hrl").
+
+-define(TR_DESCRIPTION, <<"braintree transaction">>).
 
 -record(wh_service_update, {bt_subscription
                             ,plan_id :: api_binary()
@@ -113,16 +116,21 @@ sync([ServiceItem|ServiceItems], AccountId, Updates) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec transactions(ne_binary(), ne_binary(), ne_binary()) ->
-                          'not_found' |
-                          'unknown_error' |
-                          wh_json:objects().
-transactions(AccountId, Min, Max) ->
-    try braintree_transaction:find_by_customer(AccountId, Min, Max) of
-        Transactions ->
-            [braintree_transaction:record_to_json(Tr) || Tr <- Transactions]
+                          {'error', 'not_found'} |
+                          {'error', 'unknown_error'} |
+                          {'ok', wh_transaction:transactions()}.
+transactions(Account, Min, Max) ->
+    From = timestamp_to_braintree(Min),
+    To = timestamp_to_braintree(Max),
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    try braintree_transaction:find_by_customer(AccountId, From, To) of
+        BTTransactions ->
+            JObjs = [braintree_transaction:record_to_json(Tr) || Tr <- BTTransactions],
+            Transactions = convert_transactions(JObjs),
+            {'ok', Transactions}
     catch
-        'throw':{'not_found', _} -> 'not_found';
-        _:_ -> 'unknown_error'
+        'throw':{'not_found', _} -> {'error', 'not_found'};
+        _:_ -> {'error', 'unknown_error'}
     end.
 
 %%--------------------------------------------------------------------
@@ -228,6 +236,127 @@ charge_transactions(BillingId, [Transaction|Transactions], Dict) ->
     charge_transactions(BillingId
                         ,Transactions
                         ,dict:store(Code, L, Dict)).
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec convert_transactions(wh_json:objects()) -> wh_json:objects().
+-spec convert_transactions(wh_json:objects(), wh_transaction:transactions()) -> wh_json:objects().
+convert_transactions(BTTransactions) ->
+    convert_transactions(BTTransactions, []).
+
+
+convert_transactions([], Transactions) -> Transactions;
+convert_transactions([BTTransaction|BTTransactions], Transactions) ->
+    Transaction = convert_transaction(BTTransaction),
+    convert_transactions(BTTransactions, [Transaction|Transactions]).
+
+
+-spec convert_transaction(wh_json:object()) -> wh_json:object().
+convert_transaction(BTTransaction) ->
+    Routines = [fun set_description/2
+                ,fun set_bookkeeper_info/2
+                ,fun set_metadata/2
+                ,fun set_reason/2
+                ,fun set_amount/2
+                ,fun set_created/2
+                ,fun set_modified/2
+                ,fun set_account_id/2
+                ,fun set_account_db/2
+    ],
+    lists:foldl(fun(F, T) -> F(BTTransaction, T) end, wh_transaction:new(), Routines).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec set_description(wh_json:object(), wh_transaction:transaction()) -> wh_transaction:transaction().
+set_description(_BTTransaction, Transaction) ->
+    wh_transaction:set_description(?TR_DESCRIPTION, Transaction).
+
+-spec set_bookkeeper_info(wh_json:object(), wh_transaction:transaction()) -> wh_transaction:transaction().
+set_bookkeeper_info(BTTransaction, Transaction) ->
+    wh_transaction:set_bookkeeper_info(
+        wh_json:from_list([
+            {<<"id">>, wh_json:get_value(<<"id">>, BTTransaction)}
+            ,{<<"merchant_account_id">>, wh_json:get_value(<<"merchant_account_id">>, BTTransaction)}
+        ])
+        ,Transaction
+    ).
+
+-spec set_metadata(wh_json:object(), wh_transaction:transaction()) -> wh_transaction:transaction().
+set_metadata(BTTransaction, Transaction) ->
+    wh_transaction:set_metadata(BTTransaction, Transaction).
+
+-spec set_reason(wh_json:object(), wh_transaction:transaction()) -> wh_transaction:transaction().
+set_reason(_, Transaction) ->
+    wh_transaction:set_reason(<<"unknown">>, Transaction).
+
+-spec set_amount(wh_json:object(), wh_transaction:transaction()) -> wh_transaction:transaction().
+set_amount(BTTransaction, Transaction) ->
+    Amount = wh_json:get_value(<<"amount">>, BTTransaction),
+    wh_transaction:set_amount(wht_util:dollars_to_units(Amount), Transaction).
+
+-spec set_created(wh_json:object(), wh_transaction:transaction()) -> wh_transaction:transaction().
+set_created(BTTransaction, Transaction) ->
+    Created = utc_to_gregorian_seconds(wh_json:get_value(<<"created_at">>, BTTransaction)),
+    wh_transaction:set_created(Created, Transaction).
+
+-spec set_modified(wh_json:object(), wh_transaction:transaction()) -> wh_transaction:transaction().
+set_modified(BTTransaction, Transaction) ->
+    Modified = utc_to_gregorian_seconds(wh_json:get_value(<<"update_at">>, BTTransaction)),
+    wh_transaction:set_modified(Modified, Transaction).
+
+-spec set_account_id(wh_json:object(), wh_transaction:transaction()) -> wh_transaction:transaction().
+set_account_id(BTTransaction, Transaction) ->
+    AccountId = wh_util:format_account_id(wh_json:get_value([<<"customer">>, <<"id">>], BTTransaction), 'raw'),
+    wh_transaction:set_account_id(AccountId, Transaction).
+
+-spec set_account_db(wh_json:object(), wh_transaction:transaction()) -> wh_transaction:transaction().
+set_account_db(BTTransaction, Transaction) ->
+    AccountDb = wh_util:format_account_id(wh_json:get_value([<<"customer">>, <<"id">>], BTTransaction), 'encoded'),
+    wh_transaction:set_account_db(AccountDb, Transaction).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec timestamp_to_braintree(pos_integer()) -> ne_binary().
+timestamp_to_braintree('undefined') ->
+    lager:debug("imestamp undefined using current_tstamp"),
+    timestamp_to_braintree(wh_util:current_tstamp());
+timestamp_to_braintree(Timestamp) ->
+    {{Y, M, D}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
+    <<(wh_util:pad_month(M))/binary, "/"
+      ,(wh_util:pad_month(D))/binary, "/"
+      ,(wh_util:to_binary(Y))/binary
+    >>.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec utc_to_gregorian_seconds(pos_integer()) -> ne_binary().
+utc_to_gregorian_seconds(<<Y:4/binary, "-", M:2/binary, "-", D:2/binary, "T"
+                          ,H:2/binary, ":", Mi:2/binary, ":", S:2/binary, _>>) ->
+    Date = {
+        {wh_util:to_integer(Y), wh_util:to_integer(M), wh_util:to_integer(D)}
+        ,{wh_util:to_integer(H), wh_util:to_integer(Mi), wh_util:to_integer(S)}
+    },
+    calendar:datetime_to_gregorian_seconds(Date);
+utc_to_gregorian_seconds(UTC) ->
+    lager:warning("unknown UTC date dormat ~s", [UTC]),
+    'undefined'.
 
 %%--------------------------------------------------------------------
 %% @private

@@ -8,34 +8,30 @@
 %%%-------------------------------------------------------------------
 -module(wh_transaction).
 
--export([id/1]).
--export([description/1]).
--export([call_id/1]).
--export([sub_account_id/1]).
--export([event/1]).
--export([number/1]).
--export([feature/1]).
--export([bookkeeper_info/1]).
--export([metadata/1]).
--export([reason/1]).
--export([code/1]).
--export([amount/1]).
--export([type/1]).
--export([created/1]).
--export([modified/1]).
--export([account_id/1]).
--export([account_db/1]).
+-export([id/1, set_id/2]).
+-export([rev/1, set_rev/2]).
+-export([description/1, set_description/2]).
+-export([call_id/1, set_call_id/2]).
+-export([sub_account_id/1, set_sub_account_id/2]).
+-export([event/1, set_event/2]).
+-export([number/1, set_number/2]).
+-export([feature/1, set_feature/2]).
+-export([bookkeeper_info/1, set_bookkeeper_info/2]).
+-export([metadata/1, set_metadata/2]).
+-export([reason/1, set_reason/2]).
+-export([code/1, set_code/2]).
+-export([amount/1, set_amount/2]).
+-export([type/1, set_type/2]).
+-export([created/1, set_created/2]).
+-export([modified/1, set_modified/2]).
+-export([account_id/1, set_account_id/2]).
+-export([account_db/1, set_account_db/2]).
+-export([version/1, set_version/2]).
+
+-export([new/0]).
 -export([debit/2]).
 -export([credit/2]).
--export([set_reason/2]).
--export([set_event/2]).
--export([set_number/2]).
--export([set_feature/2]).
--export([set_bookkeeper_info/2]).
--export([set_metadata/2]).
--export([set_description/2]).
--export([set_call_id/2]).
--export([set_sub_account_id/2]).
+
 -export([is_reason/2]).
 -export([to_json/1]).
 -export([to_public_json/1]).
@@ -75,150 +71,88 @@
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%%
+%% GET
 %% @end
 %%--------------------------------------------------------------------
+-spec id(transaction()) -> ne_binary().
 id(#wh_transaction{id=Id}) ->
     Id.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
+-spec rev(transaction()) -> ne_binary().
+rev(#wh_transaction{rev=Rev}) ->
+    Rev.
+
+-spec description(transaction()) -> ne_binary().
 description(#wh_transaction{description=Description}) ->
     Description.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
+-spec call_id(transaction()) -> ne_binary().
 call_id(#wh_transaction{call_id=CallId}) ->
     CallId.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
+-spec sub_account_id(transaction()) -> ne_binary().
 sub_account_id(#wh_transaction{sub_account_id=SubAccountId}) ->
     SubAccountId.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
+-spec event(transaction()) -> ne_binary().
 event(#wh_transaction{event=Event}) ->
     Event.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
+-spec number(transaction()) -> ne_binary().
 number(#wh_transaction{number=Number}) ->
     Number.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
+-spec feature(transaction()) -> ne_binary().
 feature(#wh_transaction{feature=Feature}) ->
     Feature.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
+-spec bookkeeper_info(transaction()) -> wh_json:object().
 bookkeeper_info(#wh_transaction{bookkeeper_info=BookkeeperInfo}) ->
     BookkeeperInfo.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
+-spec metadata(transaction()) -> wh_json:object().
 metadata(#wh_transaction{metadata=MetaData}) ->
     MetaData.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
+-spec reason(transaction()) -> ne_binary().
 reason(#wh_transaction{pvt_reason=Reason}) ->
     Reason.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
+-spec code(transaction()) -> non_neg_integer().
 code(#wh_transaction{pvt_code=Code}) ->
     Code.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
+-spec amount(transaction()) -> non_neg_integer().
 amount(#wh_transaction{pvt_amount=Amount}) ->
     Amount.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
+-spec type(transaction()) -> ne_binary().
 type(#wh_transaction{pvt_type=Type}) ->
     Type.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
+-spec created(transaction()) -> wh_now().
 created(#wh_transaction{pvt_created='undefined'}) ->
     wh_util:current_tstamp();
 created(#wh_transaction{pvt_created=Created}) ->
     Created.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
+-spec modified(transaction()) -> wh_now().
 modified(#wh_transaction{pvt_modified='undefined'}) ->
     wh_util:current_tstamp();
 modified(#wh_transaction{pvt_modified=Modified}) ->
     Modified.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
+-spec account_id(transaction()) -> ne_binary().
 account_id(#wh_transaction{pvt_account_id=AccountId}) ->
     AccountId.
+
+-spec account_db(transaction()) -> ne_binary().
+account_db(#wh_transaction{pvt_account_db=AccountDb}) ->
+    AccountDb.
+
+-spec version(transaction()) -> integer().
+version(#wh_transaction{pvt_vsn=Version}) ->
+    Version.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -226,8 +160,9 @@ account_id(#wh_transaction{pvt_account_id=AccountId}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
-account_db(#wh_transaction{pvt_account_db=AccountDb}) ->
-    AccountDb.
+-spec new() -> transaction().
+new() ->
+    #wh_transaction{}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -252,90 +187,99 @@ debit(Ledger, Amount) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Set a restricted reason
+%% SET
 %% @end
 %%--------------------------------------------------------------------
-set_reason(Reason, #wh_transaction{}=Transaction) ->
+-spec set_id(ne_binary(), transaction()) -> transaction().
+set_id(Id, Transaction) ->
+    Transaction#wh_transaction{id=Id}.
+
+-spec set_rev(ne_binary(), transaction()) -> transaction().
+set_rev(Rev, Transaction) ->
+    Transaction#wh_transaction{rev=Rev}.
+
+-spec set_description(ne_binary(), transaction()) -> transaction().
+set_description(Desc, Transaction) when is_binary(Desc) ->
+    Transaction#wh_transaction{description=Desc}.
+
+-spec set_call_id(ne_binary(), transaction()) -> transaction().
+set_call_id(CallId, Transaction) when is_binary(CallId) ->
+    Transaction#wh_transaction{call_id=CallId}.
+
+-spec set_sub_account_id(ne_binary(), transaction()) -> transaction().
+set_sub_account_id(AccountId, Transaction) when is_binary(AccountId) ->
+    Transaction#wh_transaction{sub_account_id=AccountId}.
+
+-spec set_event(ne_binary(), transaction()) -> transaction().
+set_event(Event, Transaction) ->
+    Transaction#wh_transaction{event=Event}.
+
+-spec set_number(ne_binary(), transaction()) -> transaction().
+set_number(Number, Transaction) ->
+    Transaction#wh_transaction{number=Number}.
+
+-spec set_feature(ne_binary(), transaction()) -> transaction().
+set_feature(Feature, Transaction) ->
+    Transaction#wh_transaction{feature=Feature}.
+
+-spec set_bookkeeper_info(wh_json:object(), transaction()) -> transaction().
+set_bookkeeper_info(BookkeeperInfo, Transaction) ->
+    Transaction#wh_transaction{bookkeeper_info=BookkeeperInfo}.
+
+-spec set_metadata(wh_json:object(), transaction()) -> transaction().
+set_metadata(MetaData, Transaction) ->
+    Transaction#wh_transaction{metadata=MetaData}.
+
+-spec set_reason(ne_binary(), transaction()) -> transaction().
+set_reason(Reason, Transaction) ->
     Code = wht_util:reason_code(Reason),
     Transaction#wh_transaction{pvt_reason=Reason
                                ,pvt_code=Code
                               }.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Set an event type that spawned the creation of this transaction
-%% @end
-%%--------------------------------------------------------------------
-set_event(Event, #wh_transaction{}=Transaction) ->
-    Transaction#wh_transaction{event=Event}.
+-spec set_code(non_neg_integer(), transaction()) -> transaction().
+set_code(Code, Transaction) ->
+    Reason = wht_util:code_reason(Code),
+    Transaction#wh_transaction{pvt_reason=Reason
+                               ,pvt_code=Code
+                              }.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
-set_number(Number, #wh_transaction{}=Transaction) ->
-    Transaction#wh_transaction{number=Number}.
+-spec set_amount(integer(), transaction()) -> transaction().
+set_amount(Amount, Transaction) when Amount > 0 ->
+    Transaction#wh_transaction{pvt_amount=Amount,
+                               pvt_type= <<"credit">>};
+set_amount(Amount, Transaction) when Amount < 0 ->
+    Transaction#wh_transaction{pvt_amount=Amount,
+                               pvt_type= <<"debit">>};
+set_amount(Amount, Transaction) when is_binary(Amount) ->
+    set_amount(wh_util:to_integer(Amount), Transaction);
+set_amount(Amount, Transaction) ->
+        Transaction#wh_transaction{pvt_amount=Amount}.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
-set_feature(Feature, #wh_transaction{}=Transaction) ->
-    Transaction#wh_transaction{feature=Feature}.
+-spec set_type(ne_binary(), transaction()) -> transaction().
+set_type(Type, Transaction) ->
+    Transaction#wh_transaction{pvt_type=Type}.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
-set_bookkeeper_info(BookkeeperInfo, #wh_transaction{}=Transaction) ->
-    Transaction#wh_transaction{bookkeeper_info=BookkeeperInfo}.
+-spec set_created(wh_now(), transaction()) -> transaction().
+set_created(Created, Transaction) ->
+    Transaction#wh_transaction{pvt_created=Created}.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
-set_metadata(MetaData, #wh_transaction{}=Transaction) ->
-    Transaction#wh_transaction{metadata=MetaData}.
+-spec set_modified(wh_now(), transaction()) -> transaction().
+set_modified(Modified, Transaction) ->
+    Transaction#wh_transaction{pvt_modified=Modified}.
 
+-spec set_account_id(ne_binary(), transaction()) -> transaction().
+set_account_id(AccountId, Transaction) ->
+    Transaction#wh_transaction{pvt_account_id=AccountId}.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Set free form description
-%% @end
-%%--------------------------------------------------------------------
--spec set_description(ne_binary(), transaction()) -> transaction().
-set_description(Desc, #wh_transaction{}=Transaction) when is_binary(Desc) ->
-    Transaction#wh_transaction{description=Desc}.
+-spec set_account_db(ne_binary(), transaction()) -> transaction().
+set_account_db(AccountDb, Transaction) ->
+    Transaction#wh_transaction{pvt_account_db=AccountDb}.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Set sub account ID
-%% @end
-%%--------------------------------------------------------------------
--spec set_sub_account_id(ne_binary(), transaction()) -> transaction().
-set_sub_account_id(AccountId, #wh_transaction{}=Transaction) when is_binary(AccountId) ->
-    Transaction#wh_transaction{sub_account_id=AccountId}.
+-spec set_version(ne_binary(), transaction()) -> transaction().
+set_version(Vsn, Transaction) ->
+    Transaction#wh_transaction{pvt_vsn=Vsn}.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Set Call-Id
-%% @end
-%%--------------------------------------------------------------------
--spec set_call_id(ne_binary(), transaction()) -> transaction().
-set_call_id(CallId, #wh_transaction{}=Transaction) when is_binary(CallId) ->
-    Transaction#wh_transaction{call_id=CallId}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -346,7 +290,7 @@ set_call_id(CallId, #wh_transaction{}=Transaction) when is_binary(CallId) ->
 -spec is_reason(ne_binary() | ne_binaries(), transaction()) -> boolean().
 is_reason(Reason, #wh_transaction{pvt_reason=Reason}) -> true;
 is_reason([Reason | _], #wh_transaction{pvt_reason=Reason}) -> true;
-is_reason([_ | Reasons], #wh_transaction{}=Transaction) ->
+is_reason([_ | Reasons], Transaction) ->
     is_reason(Reasons, Transaction);
 is_reason([], #wh_transaction{}) -> false;
 is_reason(_, _) -> false.
@@ -411,9 +355,9 @@ clean_jobj(JObj) ->
                  ,{<<"pvt_code">>, <<"code">>}
                 ],
     RemoveKeys = [<<"pvt_account_db">>
-                      ,<<"pvt_account_id">>
-                      ,<<"pvt_modified">>
-                      ,<<"_rev">>
+                  ,<<"pvt_account_id">>
+                  ,<<"pvt_modified">>
+                  ,<<"_rev">>
                  ],
     wh_json:normalize_jobj(JObj, RemoveKeys, CleanKeys).
 
