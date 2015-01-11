@@ -298,8 +298,8 @@ user_discards_or_not_error({'digit', Digit}) ->
 user_discards_or_not_error('error') ->
     'false'.
 
--spec record_prononced_name(whapps_call:call()) -> name_pronounced().
-record_prononced_name(Call) ->
+-spec record_pronounced_name(whapps_call:call()) -> name_pronounced().
+record_pronounced_name(Call) ->
     RecordName = list_to_binary(["conf_announce_",couch_mgr:get_uuid(), ".mp3"]),
 
     Choice = while(fun user_discards_or_not_error/1
@@ -366,7 +366,7 @@ maybe_play_name(Conference, Call, Srv) ->
             PronouncedName = case pronounced_name_object(Call) of
                                  'undefined' ->
                                      lager:debug("Recording pronunciation of the name"),
-                                     record_prononced_name(Call);
+                                     record_pronounced_name(Call);
                                  Value ->
                                      lager:debug("has pronounced name: ~p", [Value]),
                                      Value
