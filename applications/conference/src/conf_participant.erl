@@ -292,10 +292,10 @@ handle_cast('play_announce', #participant{name_pronounced = 'undefuned'} = Parti
     lager:debug("Skipping announce"),
     {'noreply', Participant};
 handle_cast('play_announce', #participant{conference = Conference
-                                           ,name_pronounced = {_, AccountDb, MediaId}
+                                           ,name_pronounced = {_, AccountId, MediaId}
                                           }=Participant) ->
     lager:debug("Make announce from couch media"),
-    Recording = wh_media_util:media_path(MediaId, AccountDb),
+    Recording = wh_media_util:media_path(MediaId, AccountId),
     whapps_conference_command:play(Recording, Conference),
     {'noreply', Participant};
 handle_cast('join_local', #participant{call=Call
@@ -445,7 +445,8 @@ terminate(_Reason, #participant{name_pronounced = Name}) ->
 -spec maybe_clear(name_pronounced()) -> 'ok'.
 maybe_clear('undefined') ->
     'ok';
-maybe_clear({'temp_doc_id', AccountDb, MediaId}) ->
+maybe_clear({'temp_doc_id', AccountId, MediaId}) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     lager:debug("Deleting doc: ~s/~s", [AccountDb, MediaId]),
     couch_mgr:del_doc(AccountDb, MediaId),
     'ok';
