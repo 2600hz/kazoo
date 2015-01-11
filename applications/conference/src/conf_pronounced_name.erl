@@ -101,11 +101,10 @@ record_name(RecordName, Call) ->
             {'ok', <<"1">>}
     end.
 
--spec save_pronounced_name(ne_binary(), whapps_call:call()) -> name_pronounced().
-save_pronounced_name(RecordName, Call) ->
+-spec prepare_media_doc(ne_binary(), whapps_call:call()) -> api_binary().
+prepare_media_doc(RecordName, Call) ->
     UserId = get_user_id(Call),
     AccountDb = whapps_call:account_db(Call),
-    AccountId = whapps_call:account_id(Call),
     Props = props:filter_undefined(
               [{<<"name">>, RecordName}
                ,{<<"description">>, <<"conference: user's pronounced name">>}
@@ -116,8 +115,16 @@ save_pronounced_name(RecordName, Call) ->
                ,{<<"streamable">>, 'true'}
               ]),
     Doc = wh_doc:update_pvt_parameters(wh_json:from_list(Props), AccountDb, [{'type', <<"media">>}]),
-    {'ok', MediaJObj} = couch_mgr:save_doc(AccountDb, Doc),
-    MediaDocId = wh_json:get_value(<<"_id">>, MediaJObj),
+    case couch_mgr:save_doc(AccountDb, Doc) of
+        {'ok', MediaJObj} when not is_list(MediaJObj) -> wh_json:get_value(<<"_id">>, MediaJObj);
+        _ -> 'undefined'
+    end.
+
+-spec save_recording(ne_binary(), ne_binary(), whapps_call:call()) -> name_pronounced().
+save_recording(RecordName, MediaDocId, Call) ->
+    UserId = get_user_id(Call),
+    AccountDb = whapps_call:account_db(Call),
+    AccountId = whapps_call:account_id(Call),
     whapps_call_command:b_store(RecordName, get_new_attachment_url(RecordName, MediaDocId, Call), Call),
     case couch_mgr:open_cache_doc(AccountDb, UserId) of
         {'ok', UserJObj} ->
@@ -128,6 +135,14 @@ save_pronounced_name(RecordName, Call) ->
         {'error', _Err} ->
             lager:info("Can't update user's doc due to error ~p", [_Err]),
             {'temp_doc_id', AccountId, MediaDocId}
+    end.
+
+
+-spec save_pronounced_name(ne_binary(), whapps_call:call()) -> name_pronounced().
+save_pronounced_name(RecordName, Call) ->
+    case prepare_media_doc(RecordName, Call) of
+        'undefined' -> 'undefined';
+        MediaDocId -> save_recording(RecordName, MediaDocId, Call)
     end.
 
 -spec get_new_attachment_url(ne_binary(), ne_binary(), whapps_call:call()) -> ne_binary().
