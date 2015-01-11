@@ -241,10 +241,7 @@ pronounced_name_object(Call) ->
 
 -type predicate() :: fun((any()) -> boolean()).
 -type loop_body() :: fun(() -> any()).
--spec while(predicate(), loop_body()) -> any().
-while(Predicate, LoopBody) ->
-    Value = LoopBody(),
-    while(Predicate, LoopBody, Value, Predicate(Value)).
+-spec while(predicate(), loop_body(), any(), boolean()) -> any().
 while(Predicate, LoopBody, _, 'true') ->
     Value = LoopBody(),
     while(Predicate, LoopBody, Value, Predicate(Value));
@@ -304,6 +301,8 @@ record_pronounced_name(Call) ->
 
     Choice = while(fun user_discards_or_not_error/1
                    ,fun () -> record_name(RecordName, Call) end
+                   ,'undefined'
+                   ,'true'
                   ),
 
     case Choice of
