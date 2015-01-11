@@ -248,7 +248,7 @@ while(Predicate, LoopBody, _, 'true') ->
 while(_, _, Value, 'false') ->
     Value.
 
--spec review(ne_binary(), whapps_call:call()) -> {'digit', ne_binary()} | 'error'.
+-spec review(ne_binary(), whapps_call:call()) -> whapps_call_command:collect_digits_return().
 review(RecordName, Call) ->
     lager:debug("review record"),
     NoopId = whapps_call_command:audio_macro([{'prompt', <<"conf-your_announcment">>}
@@ -256,21 +256,15 @@ review(RecordName, Call) ->
                                               ,{'prompt', <<"conf-review">>}
                                              ], Call),
 
-    case whapps_call_command:collect_digits(1
-                                            ,whapps_call_command:default_collect_timeout()
-                                            ,whapps_call_command:default_interdigit_timeout()
-                                            ,NoopId
-                                            ,Call
-                                           )
-    of
-        {'ok', Digit} ->
-            {'digit', Digit};
-        {'error', _} ->
-            'error'
-    end.
+    whapps_call_command:collect_digits(1
+                                       ,whapps_call_command:default_collect_timeout()
+                                       ,whapps_call_command:default_interdigit_timeout()
+                                       ,NoopId
+                                       ,Call
+                                      ).
 
 
--spec record_name(ne_binary(), whapps_call:call()) -> {'digit', ne_binary()} | 'error'.
+-spec record_name(ne_binary(), whapps_call:call()) -> whapps_call_command:collect_digits_return().
 record_name(RecordName, Call) ->
     lager:debug("recording name"),
     Tone = wh_json:from_list([{<<"Frequencies">>, [<<"440">>]}
@@ -286,13 +280,13 @@ record_name(RecordName, Call) ->
         'true' ->
             review(RecordName, Call);
         'false' ->
-            {'digit', <<"1">>}
+            {'ok', <<"1">>}
     end.
 
--spec user_discards_or_not_error({'digit', ne_binary()} | 'error') -> boolean().
-user_discards_or_not_error({'digit', Digit}) ->
+-spec user_discards_or_not_error(whapps_call_command:collect_digits_return()) -> boolean().
+user_discards_or_not_error({'ok', Digit}) ->
     Digit =/= <<"1">>;
-user_discards_or_not_error('error') ->
+user_discards_or_not_error(_) ->
     'false'.
 
 -spec record_pronounced_name(whapps_call:call()) -> name_pronounced().
