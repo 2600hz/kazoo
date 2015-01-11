@@ -16,7 +16,7 @@
     },
     "play_name":{
       "name": "Play name",
-      "description": "Does we need to announce new conference members?",
+      "description": "Do we need to announce new conference members?",
       "type":"boolean",
       "required": false,
       "default": false
