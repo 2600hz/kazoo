@@ -63,8 +63,8 @@ record(Call) ->
                   ),
 
     case Choice of
-        'error' -> 'undefined';
-        {'digit', <<"1">>} -> save_pronounced_name(RecordName, Call)
+        {'ok', <<"1">>} -> save_pronounced_name(RecordName, Call);
+        _ -> 'undefined'
     end.
 
 -type predicate() :: fun((any()) -> boolean()).
