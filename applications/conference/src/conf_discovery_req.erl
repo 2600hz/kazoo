@@ -316,7 +316,7 @@ get_new_attachment_url(AttachmentName, MediaId, Call) ->
     AccountDb = whapps_call:account_db(Call),
     _ = case couch_mgr:open_doc(AccountDb, MediaId) of
             {'ok', JObj} ->
-                case wh_json:get_keys(wh_json:get_value(<<"_attachments">>, JObj, wh_json:new())) of
+                case wh_doc:attachments(JObj, []) of
                     [] -> 'ok';
                     Existing ->
                         [begin
