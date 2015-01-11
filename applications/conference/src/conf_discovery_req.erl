@@ -335,6 +335,7 @@ get_new_attachment_url(AttachmentName, MediaId, Call) ->
 save_pronounced_name(RecordName, Call) ->
     UserId = get_user_id(Call),
     AccountDb = whapps_call:account_db(Call),
+    AccountId = whapps_call:account_id(Call),
     Props = props:filter_undefined(
               [{<<"name">>, RecordName}
                ,{<<"description">>, <<"conference: user's pronounced name">>}
@@ -353,10 +354,10 @@ save_pronounced_name(RecordName, Call) ->
             lager:debug("Updating user's doc"),
             JObj1 = wh_json:set_value(?PRONOUNCED_NAME_KEY, MediaDocId, UserJObj),
             couch_mgr:save_doc(AccountDb, JObj1),
-            {'media_doc_id', AccountDb, MediaDocId};
+            {'media_doc_id', AccountId, MediaDocId};
         {'error', _Err} ->
             lager:info("Can't update user's doc due to error ~p", [_Err]),
-            {'temp_doc_id', AccountDb, MediaDocId}
+            {'temp_doc_id', AccountId, MediaDocId}
     end.
 
 -spec maybe_play_name(whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
