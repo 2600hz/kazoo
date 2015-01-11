@@ -73,7 +73,7 @@
                       ,last_dtmf = <<>> :: binary()
                       ,queue :: api_binary()
                       ,server = self() :: pid()
-                      ,name_pronounced = 'undefined' :: name_pronounced()
+                      ,name_pronounced = conf_pronounced_name:name_pronounced()
                      }).
 -type participant() :: #participant{}.
 
@@ -112,7 +112,7 @@ discovery_event(Srv) -> gen_listener:call(Srv, {'get_discovery_event'}).
 -spec set_discovery_event(wh_json:object(), pid()) -> 'ok'.
 set_discovery_event(DE, Srv) -> gen_listener:cast(Srv, {'set_discovery_event', DE}).
 
--spec set_name_pronounced(name_pronounced(), pid()) -> 'ok'.
+-spec set_name_pronounced(conf_pronounced_name:name_pronounced(), pid()) -> 'ok'.
 set_name_pronounced(Name, Srv) -> gen_listener:cast(Srv, {'set_name_pronounced', Name}).
 
 -spec call(pid()) -> {'ok', whapps_call:call()}.
@@ -442,7 +442,7 @@ terminate(_Reason, #participant{name_pronounced = Name}) ->
     maybe_clear(Name),
     lager:debug("conference participant execution has been stopped: ~p", [_Reason]).
 
--spec maybe_clear(name_pronounced()) -> 'ok'.
+-spec maybe_clear(conf_pronounced_name:name_pronounced()) -> 'ok'.
 maybe_clear('undefined') ->
     'ok';
 maybe_clear({'temp_doc_id', AccountId, MediaId}) ->
