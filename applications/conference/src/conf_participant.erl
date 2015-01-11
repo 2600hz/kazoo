@@ -73,7 +73,7 @@
                       ,last_dtmf = <<>> :: binary()
                       ,queue :: api_binary()
                       ,server = self() :: pid()
-                      ,name_pronounced = conf_pronounced_name:name_pronounced()
+                      ,name_pronounced = 'undefined' :: conf_pronounced_name:name_pronounced()
                      }).
 -type participant() :: #participant{}.
 
