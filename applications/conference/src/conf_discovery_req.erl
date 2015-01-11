@@ -275,7 +275,7 @@ record_name(RecordName, Call) ->
                                          ,{'tones', [Tone]}
                                         ], Call),
     whapps_call_command:b_record(RecordName, ?ANY_DIGIT, <<"60">>, Call),
-    Force = whapps_config:get(<<"conferences">>, <<"review_name">>, 'false'),
+    Force = whapps_config:get_is_true(<<"conferences">>, <<"review_name">>, 'false'),
     case Force of
         'true' ->
             review(RecordName, Call);
