@@ -29,9 +29,9 @@
 
 -include("teletype.hrl").
 
--spec send_email(wh_proplist(), ne_binary(), wh_json:object(), wh_proplist()) ->
+-spec send_email(email_map(), ne_binary(), wh_proplist(), rendered_templates()) ->
                         'ok' | {'error', _}.
--spec send_email(wh_proplist(), ne_binary(), wh_json:object(), wh_proplist(), attachments()) ->
+-spec send_email(email_map(), ne_binary(), wh_proplist(), rendered_templates(), attachments()) ->
                         'ok' | {'error', _}.
 send_email(Emails, Subject, ServiceData, RenderedTemplates) ->
     send_email(Emails, Subject, ServiceData, RenderedTemplates, []).
@@ -44,11 +44,11 @@ send_email(Emails, Subject, ServiceData, RenderedTemplates, Attachments) ->
              ,<<"mixed">>
              ,email_parameters(
                 [{<<"To">>, To}
-                 ,{<<"Cc">>, wh_json:get_value(<<"cc">>, Emails)}
-                 ,{<<"Bcc">>, wh_json:get_value(<<"bcc">>, Emails)}
+                 ,{<<"Cc">>, props:get_value(<<"cc">>, Emails)}
+                 ,{<<"Bcc">>, props:get_value(<<"bcc">>, Emails)}
                 ]
                 ,[{<<"From">>, From}
-                  ,{<<"Reply-To">>, wh_json:get_value(<<"reply_to">>, Emails)}
+                  ,{<<"Reply-To">>, props:get_value(<<"reply_to">>, Emails)}
                   ,{<<"Subject">>, Subject}
                  ]
                )
@@ -905,9 +905,9 @@ is_notice_enabled_default(Key) ->
     whapps_config:get_is_true(?MOD_CONFIG_CAT(Key), <<"default_enabled">>, 'false').
 
 -spec find_addresses(wh_json:object(), wh_json:object(), ne_binary()) ->
-                            wh_proplist().
--spec find_addresses(wh_json:object(), wh_json:object(), ne_binary(), wh_json:keys(), wh_proplist()) ->
-                            wh_proplist().
+                            email_map().
+-spec find_addresses(wh_json:object(), wh_json:object(), ne_binary(), wh_json:keys(), email_map()) ->
+                            email_map().
 find_addresses(DataJObj, TemplateMetaJObj, ConfigCat) ->
     AddressKeys = [<<"to">>, <<"cc">>, <<"bcc">>, <<"from">>, <<"reply_to">>],
     find_addresses(DataJObj, TemplateMetaJObj, ConfigCat, AddressKeys, []).

@@ -16,6 +16,13 @@
 -type attachment() :: {ne_binary(), ne_binary(), ne_binary()}.
 -type attachments() :: [attachment(),...] | [].
 
+%% {ContentType, Content}
+-type rendered_template() :: {ne_binary(), iolist()}.
+-type rendered_templates() :: [rendered_template(),...] | [].
+
+%% {"to"/"cc"/etc, [Address,...]}
+-type email_map() :: [{ne_binary(), ne_binaries()},...] | [].
+
 -type init_param() :: {'macros', wh_json:object()} |
                       {'text', ne_binary()} |
                       {'html', ne_binary()} |

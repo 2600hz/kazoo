@@ -140,7 +140,7 @@ fax_inbound_to_email(AccountId) ->
 find_fax_with_attachment(_AccountId, []) ->
     lager:debug("failed to find fax with attachment in ~s", [_AccountId]);
 find_fax_with_attachment(AccountId, [Fax|Faxes]) ->
-    case wh_doc:attachments(wh_json:get_value(<<"doc">>, Fax)) of
+    case wh_doc:attachment_names(wh_json:get_value(<<"doc">>, Fax)) of
         [] -> find_fax_with_attachment(AccountId, Faxes);
         _As -> fax_inbound_to_email(AccountId, wh_json:get_value(<<"doc">>, Fax))
     end.

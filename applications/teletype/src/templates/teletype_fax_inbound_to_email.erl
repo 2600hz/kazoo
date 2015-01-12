@@ -82,6 +82,7 @@ get_fax_doc(DataJObj) ->
             maybe_send_failure(DataJObj, <<"Fax-ID was invalid">>)
     end.
 
+-spec get_fax_doc_from_modb(wh_json:object(), ne_binary(), ne_binary()) -> wh_json:object().
 get_fax_doc_from_modb(DataJObj, AccountId, FaxId) ->
     case kazoo_modb:open_doc(AccountId, FaxId) of
         {'ok', FaxJObj} -> FaxJObj;
@@ -124,12 +125,7 @@ handle_fax_inbound(JObj, _Props) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
 
-    lager:debug("opened account doc ~s", [AccountId]),
-
     OwnerJObj = get_owner_doc(FaxJObj),
-    lager:debug("opened owner email: ~s"
-                ,[wh_json:get_first_defined([<<"email">>, <<"username">>], OwnerJObj)]
-               ),
 
     Macros = build_template_data(
                wh_json:set_values([{<<"account">>, wh_doc:public_fields(AccountJObj)}
@@ -138,20 +134,18 @@ handle_fax_inbound(JObj, _Props) ->
                                   ]
                                   ,DataJObj
                                  )),
-    lager:debug("loaded macros"),
 
     %% Load templates
     Templates = teletype_util:fetch_templates(?TEMPLATE_ID, DataJObj),
-    lager:debug("loaded templates"),
 
     %% Populate templates
     RenderedTemplates = [{ContentType, teletype_util:render(?TEMPLATE_ID, Template, Macros)}
-                         || {ContentType, Template} <- Templates
+                         || {ContentType, Template} <- Templates,
+                            Template =/= 'undefined'
                         ],
     lager:debug("rendered templates"),
 
     {'ok', TemplateMetaJObj} = teletype_util:fetch_template_meta(?TEMPLATE_ID, wh_json:get_value(<<"Account-ID">>, JObj)),
-    lager:debug("built template metadata"),
 
     Subject = teletype_util:render_subject(
                 wh_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
@@ -160,20 +154,24 @@ handle_fax_inbound(JObj, _Props) ->
     lager:debug("rendered subject: ~s", [Subject]),
 
     Emails = teletype_util:find_addresses(wh_json:set_value(<<"to">>
-                                                                ,props:get_value([<<"to">>, <<"email_addresses">>], Macros)
-                                                                ,DataJObj
-                                                            )
+                                                            ,to_email_addresses(DataJObj)
+                                                            ,DataJObj
+                                                           )
                                           ,TemplateMetaJObj
                                           ,?MOD_CONFIG_CAT
                                          ),
 
     %% Send email
-    teletype_util:send_email(Emails
-                             ,Subject
-                             ,props:get_value(<<"service">>, Macros)
-                             ,RenderedTemplates
-                             ,[get_attachment(DataJObj, Macros)]
-                            ).
+    case teletype_util:send_email(Emails
+                                  ,Subject
+                                  ,props:get_value(<<"service">>, Macros)
+                                  ,RenderedTemplates
+                                  ,[get_attachment(DataJObj, Macros)]
+                                 )
+    of
+        'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
+        {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
+    end.
 
 -spec get_owner_doc(wh_json:object()) -> wh_json:object().
 get_owner_doc(FaxJObj) ->
@@ -258,11 +256,13 @@ get_attachment_binary(Db, Id, Retries) ->
             end
     end.
 
+-spec delayed_retry(ne_binary(), ne_binary(), 1..2) -> {'ok', ne_binary(), binary()}.
 delayed_retry(Db, Id, Retries) ->
     lager:debug("waiting to query fax doc ~s for attachment", [Id]),
     timer:sleep(?MILLISECONDS_IN_MINUTE * 5),
     get_attachment_binary(Db, Id, Retries-1).
 
+-spec get_attachment_binary(ne_binary(), ne_binary(), 1..2) -> {'ok', ne_binary(), binary()}.
 get_attachment_binary(Db, Id, Retries, AttachmentJObj) ->
     [AttachmentName] = wh_json:get_keys(AttachmentJObj),
     ContentType = wh_json:get_value([AttachmentName, <<"content_type">>], AttachmentJObj, <<"image/tiff">>),
@@ -274,6 +274,7 @@ get_attachment_binary(Db, Id, Retries, AttachmentJObj) ->
             delayed_retry(Db, Id, Retries-1)
     end.
 
+-spec fax_db(wh_json:object()) -> ne_binary().
 fax_db(DataJObj) ->
     case teletype_util:find_account_db(DataJObj) of
         'undefined' -> ?WH_FAXES;
@@ -334,9 +335,9 @@ to_data(DataJObj) ->
     props:filter_undefined(
       [{<<"user">>, wnm_util:pretty_print(ToE164)}
        ,{<<"realm">>, wh_json:get_value(<<"to_realm">>, DataJObj)}
-       ,{<<"email_addresses">>, to_email_addresses(DataJObj)}
       ]).
 
+-spec to_email_addresses(wh_json:object()) -> api_binaries().
 to_email_addresses(DataJObj) ->
     to_email_addresses(DataJObj
                        ,wh_json:get_first_defined([[<<"to">>, <<"email_addresses">>]
@@ -348,6 +349,7 @@ to_email_addresses(DataJObj) ->
                                                  )
                       ).
 
+-spec to_email_addresses(wh_json:object(), ne_binary() | api_binaries()) -> api_binaries().
 to_email_addresses(_DataJObj, <<_/binary>> = Email) ->
     [Email];
 to_email_addresses(_DataJObj, [_|_] = Emails) ->
