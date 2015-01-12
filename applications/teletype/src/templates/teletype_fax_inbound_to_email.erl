@@ -135,7 +135,6 @@ handle_fax_inbound(JObj, _Props) ->
                wh_json:set_values([{<<"account">>, wh_doc:public_fields(AccountJObj)}
                                    ,{<<"fax">>, wh_doc:public_fields(FaxJObj)}
                                    ,{<<"owner">>, wh_doc:public_fields(OwnerJObj)}
-                                   ,{<<"to">>, [wh_json:get_first_defined([<<"email">>, <<"username">>], OwnerJObj)]}
                                   ]
                                   ,DataJObj
                                  )),
@@ -160,7 +159,13 @@ handle_fax_inbound(JObj, _Props) ->
                ),
     lager:debug("rendered subject: ~s", [Subject]),
 
-    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
+    Emails = teletype_util:find_addresses(wh_json:set_value(<<"to">>
+                                                                ,props:get_value([<<"to">>, <<"email_addresses">>], Macros)
+                                                                ,DataJObj
+                                                            )
+                                          ,TemplateMetaJObj
+                                          ,?MOD_CONFIG_CAT
+                                         ),
 
     %% Send email
     teletype_util:send_email(Emails
@@ -335,6 +340,7 @@ to_data(DataJObj) ->
 to_email_addresses(DataJObj) ->
     to_email_addresses(DataJObj
                        ,wh_json:get_first_defined([[<<"to">>, <<"email_addresses">>]
+                                                   ,[<<"fax">>, <<"email">>, <<"send_to">>]
                                                    ,[<<"owner">>, <<"email">>]
                                                    ,[<<"owner">>, <<"username">>]
                                                   ]
@@ -366,14 +372,9 @@ default_to_addresses() ->
 
 -spec build_fax_template_data(wh_json:object()) -> wh_proplist().
 build_fax_template_data(DataJObj) ->
+    FaxJObj = wh_json:get_value(<<"fax">>, DataJObj),
     props:filter_undefined(
       [{<<"id">>, wh_json:get_value(<<"fax_id">>, DataJObj)}
        ,{<<"media">>, wh_json:get_value(<<"fax_name">>, DataJObj)}
-       | fax_values(wh_json:get_value(<<"fax_info">>, DataJObj, wh_json:new()))
+       | wh_json:to_proplist(wh_json:get_value(<<"rx_results">>, FaxJObj, wh_json:new()))
       ]).
-
--spec fax_values(wh_json:object()) -> wh_proplist().
-fax_values(DataJObj) ->
-    [{K, V}
-     || {<<"fax_", K/binary>>, V} <- wh_json:to_proplist(DataJObj)
-    ].
