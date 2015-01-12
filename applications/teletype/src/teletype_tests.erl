@@ -130,7 +130,21 @@ voicemail_full(AccountId, Box) ->
                                ).
 
 fax_inbound_to_email(AccountId) ->
-    fax_inbound_to_email(AccountId, 'undefined').
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:get_results(AccountDb, <<"faxes/crossbar_listing">>, ['include_docs']) of
+        {'ok', Faxes} -> find_fax_with_attachment(AccountId, Faxes);
+        {'error', _E} ->
+            lager:debug("failed to find faxes: ~p", [_E])
+    end.
+
+find_fax_with_attachment(_AccountId, []) ->
+    lager:debug("failed to find fax with attachment in ~s", [_AccountId]);
+find_fax_with_attachment(AccountId, [Fax|Faxes]) ->
+    case wh_doc:attachments(wh_json:get_value(<<"doc">>, Fax)) of
+        [] -> find_fax_with_attachment(AccountId, Faxes);
+        _As -> fax_inbound_to_email(AccountId, wh_json:get_value(<<"doc">>, Fax))
+    end.
+
 fax_inbound_to_email(AccountId, <<_/binary>> = FaxId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     {'ok', Fax} = couch_mgr:open_cache_doc(AccountDb, FaxId),
@@ -143,6 +157,7 @@ fax_inbound_to_email(AccountId, Fax) ->
                  ,{<<"Account-ID">>, AccountId}
                  | notify_fields(Fax)
                 ]),
+    lager:debug("publishing fax inbound to email req for ~s/~s", [AccountId, wh_json:get_value(<<"_id">>, Fax)]),
     wh_amqp_worker:call_collect(Message, fun wapi_notifications:publish_fax_inbound/1, 2000).
 
 -spec notify_fields(wh_json:object()) -> wh_proplist().

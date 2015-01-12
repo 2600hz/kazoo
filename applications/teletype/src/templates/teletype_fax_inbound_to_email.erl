@@ -10,90 +10,9 @@
 
 -export([init/0
          ,handle_fax_inbound/2
-         ,convert/3
         ]).
 
 -include("../teletype.hrl").
-
-convert(FromFormat, FromFormat, Bin) ->
-    {'ok', Bin};
-convert(FromFormat0, ToFormat0, Bin) ->
-    OldFlag = process_flag('trap_exit', 'true'),
-
-    FromFormat = valid_format(FromFormat0),
-    ToFormat = valid_format(ToFormat0),
-
-    Args = [iolist_to_binary([valid_format(FromFormat) | ":fd:0"])
-            ,iolist_to_binary([valid_format(ToFormat) | ":/tmp/file.pdf"])
-           ],
-    PortOptions = ['binary'
-                   ,'exit_status'
-                   ,'use_stdio'
-                   ,'stderr_to_stdout'
-                   ,'stream'
-                   ,{'args', [wh_util:to_list(Arg) || Arg <- Args]}
-                  ],
-
-    Response =
-        try open_port({'spawn_executable', "/usr/bin/convert"}, PortOptions) of
-            Port ->
-                lager:debug("opened port ~p for '~p'", [Port, Args]),
-                convert(Port, Bin)
-        catch
-            _E:_R ->
-                lager:debug("failed to open port with '~p': ~s: ~p", [Args, _E, _R]),
-                {'error', 'port_failure'}
-        end,
-    process_flag('trap_exit', OldFlag),
-    Response.
-
-valid_format(<<"tiff">>) -> <<"tif">>;
-valid_format(Format) -> Format.
-
-convert(Port, Bin) ->
-    try erlang:port_command(Port, Bin) of
-        'true' ->
-            erlang:port_command(Port, [$\n]),
-            lager:debug("send contents to port"),
-            wait_for_results(Port)
-    catch
-        _E:_R ->
-            lager:debug("failed to send data to port: ~s: ~p", [_E, _R]),
-            catch erlang:port_close(Port),
-            {'error', 'command_failure'}
-    end.
-
-wait_for_results(Port) ->
-    wait_for_results(Port, []).
-wait_for_results(Port, Acc) ->
-    lager:debug("port info: ~p", [erlang:port_info(Port)]),
-    receive
-        {Port, {'data', Msg}} ->
-            lager:debug("recv data ~p", [Msg]),
-            wait_for_results(Port, [Acc | [Msg]]);
-        {Port, {'exit_status', 0}} ->
-            lager:debug("port exited"),
-            {'ok', iolist_to_binary(Acc)};
-        {Port, {'exit_status', _Status}} ->
-            lager:debug("port exit status: ~p", [_Status]),
-            {'error', iolist_to_binary(Acc)};
-        {'EXIT', Port, Reason} ->
-            lager:debug("port exited: ~p", [Reason]),
-            {'error', iolist_to_binary(Acc)};
-        _Msg ->
-            lager:debug("recv msg ~p", [_Msg]),
-            wait_for_results(Port, Acc)
-    after
-        ?MILLISECONDS_IN_MINUTE ->
-            lager:debug("port timed out: ~p", [Acc]),
-            lager:debug("port info: ~p", [erlang:port_info(Port)]),
-            catch erlang:port_close(Port),
-            {'error', iolist_to_binary(Acc)}
-    end.
-
-%-define(TIFF_TO_PDF_CMD, <<"tiff2pdf -o ~s ~s &> /dev/null && echo -n \"success\"">>).
--define(TIFF_TO_PDF_CMD, <<"convert tiff:- pdf:-">>).
--define(PDF_TO_TIFF_CMD, <<"convert ~s.pdf ~s.tiff">>).
 
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".fax_inbound_to_email">>).
 -define(FAX_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".fax">>).
@@ -207,9 +126,16 @@ handle_fax_inbound(JObj, _Props) ->
 
     lager:debug("opened account doc ~s", [AccountId]),
 
+    OwnerJObj = get_owner_doc(FaxJObj),
+    lager:debug("opened owner email: ~s"
+                ,[wh_json:get_first_defined([<<"email">>, <<"username">>], OwnerJObj)]
+               ),
+
     Macros = build_template_data(
                wh_json:set_values([{<<"account">>, wh_doc:public_fields(AccountJObj)}
                                    ,{<<"fax">>, wh_doc:public_fields(FaxJObj)}
+                                   ,{<<"owner">>, wh_doc:public_fields(OwnerJObj)}
+                                   ,{<<"to">>, [wh_json:get_first_defined([<<"email">>, <<"username">>], OwnerJObj)]}
                                   ]
                                   ,DataJObj
                                  )),
@@ -241,59 +167,72 @@ handle_fax_inbound(JObj, _Props) ->
                              ,Subject
                              ,props:get_value(<<"service">>, Macros)
                              ,RenderedTemplates
-                             ,get_attachment(DataJObj, props:get_value(<<"fax">>, Macros))
+                             ,[get_attachment(DataJObj, Macros)]
                             ).
 
-get_attachment(DataJObj, FaxMacros) ->
+-spec get_owner_doc(wh_json:object()) -> wh_json:object().
+get_owner_doc(FaxJObj) ->
+    AccountDb = wh_json:get_value(<<"pvt_account_db">>, FaxJObj),
+    OwnerId = wh_json:get_value(<<"owner_id">>, FaxJObj),
+
+    lager:debug("trying owner ~s ", [OwnerId]),
+
+    case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
+        {'ok', OwnerJObj} -> OwnerJObj;
+        {'error', 'not_found'} -> wh_json:new()
+    end.
+
+-spec get_attachment(wh_json:object(), wh_proplist()) -> attachment().
+get_attachment(DataJObj, Macros) ->
+    FaxMacros = props:get_value(<<"fax">>, Macros),
     FaxId = props:get_first_defined([<<"id">>, <<"fax_jobid">>, <<"fax_id">>], FaxMacros),
     Db = fax_db(DataJObj),
     lager:debug("accessing fax at ~s / ~s", [Db, FaxId]),
     {'ok', ContentType, Bin} = get_attachment_binary(Db, FaxId),
-    case whapps_config:get(?FAX_CONFIG_CAT, <<"attachment_format">>, <<"pdf">>) of
-        <<"pdf">> -> convert_to_pdf(DataJObj, FaxMacros, ContentType, Bin);
-        _Type -> convert_to_tiff(DataJObj, FaxMacros, ContentType, Bin)
-    end.
 
-convert_to_tiff(_DataJObj, FaxMacros, <<"image/tiff">>, Bin) ->
-    {<<"image/tiff">>, get_file_name(FaxMacros, <<"tiff">>), Bin}.
+    ToFormat = whapps_config:get(?FAX_CONFIG_CAT, <<"attachment_format">>, <<"pdf">>),
+    FromFormat = from_format_from_content_type(ContentType),
 
-convert_to_pdf(_DataJObj, FaxMacros, <<"application/pdf">> = ContentType, Bin) ->
-    {ContentType, get_file_name(FaxMacros, <<"pdf">>), Bin};
-convert_to_pdf(_DataJObj, FaxMacros, _ContentType, Bin) ->
-    TiffFile = tmp_file_name(<<"tiff">>),
-    PDFFile = tmp_file_name(<<"pdf">>),
-    _ = file:write_file(TiffFile, Bin),
-    ConvertCmd = whapps_config:get_binary(?FAX_CONFIG_CAT, <<"tiff_to_pdf_conversion_command">>, ?TIFF_TO_PDF_CMD),
-    Cmd = io_lib:format(ConvertCmd, [PDFFile, TiffFile]),
-    lager:debug("running command: ~s", [Cmd]),
-    _ = os:cmd(Cmd),
-    _ = file:delete(TiffFile),
-    case file:read_file(PDFFile) of
-        {'ok', PDFBin} ->
-            _ = file:delete(PDFFile),
-            {<<"application/pdf">>, get_file_name(FaxMacros, <<"pdf">>), PDFBin};
-        {'error', _R}=E ->
-            lager:debug("unable to convert tiff: ~p", [_R]),
-            E
-    end.
+    lager:debug("converting from ~s to ~s", [FromFormat, ToFormat]),
 
-get_file_name(FaxMacros, Ext) ->
+    {'ok', Converted} = teletype_fax_util:convert(FromFormat, ToFormat, Bin),
+
+    Filename = get_file_name(Macros, ToFormat),
+    lager:debug("adding attachment as ~s", [Filename]),
+    {content_type_from_extension(Filename)
+     ,Filename
+     ,Converted
+    }.
+
+-spec from_format_from_content_type(ne_binary()) -> ne_binary().
+from_format_from_content_type(<<"application/pdf">>) ->
+    <<"pdf">>;
+from_format_from_content_type(<<"image/tiff">>) ->
+    <<"tif">>;
+from_format_from_content_type(ContentType) ->
+    [_Type, SubType] = binary:split(ContentType, <<"/">>),
+    SubType.
+
+-spec content_type_from_extension(ne_binary()) -> ne_binary().
+content_type_from_extension(Ext) ->
+    {Type, SubType, _} = cow_mimetypes:all(Ext),
+    <<Type/binary, "/", SubType/binary>>.
+
+-spec get_file_name(wh_proplist(), ne_binary()) -> ne_binary().
+get_file_name(Macros, Ext) ->
+    CallerIdMacros = props:get_value(<<"caller_id">>, Macros),
     CallerID =
-        case {props:get_value(<<"caller_id_name">>, FaxMacros)
-              ,props:get_value(<<"caller_id_number">>, FaxMacros)
+        case {props:get_value(<<"name">>, CallerIdMacros)
+              ,props:get_value(<<"number">>, CallerIdMacros)
              }
         of
             {'undefined', 'undefined'} -> <<"Unknown">>;
             {'undefined', Num} -> wh_util:to_binary(Num);
             {Name, _} -> wh_util:to_binary(Name)
         end,
-    LocalDateTime = props:get_value(<<"date_called">>, FaxMacros, <<"0000-00-00_00-00-00">>),
+    LocalDateTime = props:get_value([<<"date_called">>, <<"local">>], Macros, <<"0000-00-00_00-00-00">>),
     FName = list_to_binary([CallerID, "_", wh_util:pretty_print_datetime(LocalDateTime), ".", Ext]),
     re:replace(wh_util:to_lower_binary(FName), <<"\\s+">>, <<"_">>, [{'return', 'binary'}, 'global']).
-
--spec tmp_file_name(ne_binary()) -> string().
-tmp_file_name(Ext) ->
-    wh_util:to_list(<<"/tmp/", (wh_util:rand_hex_binary(10))/binary, "_notify_fax.", Ext/binary>>).
 
 -spec get_attachment_binary(ne_binary(), ne_binary()) ->
                                    {'ok', ne_binary(), binary()}.
