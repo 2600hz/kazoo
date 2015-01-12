@@ -331,7 +331,7 @@ set_account_db(BTTransaction, Transaction) ->
 %%--------------------------------------------------------------------
 -spec timestamp_to_braintree(pos_integer()) -> ne_binary().
 timestamp_to_braintree('undefined') ->
-    lager:debug("imestamp undefined using current_tstamp"),
+    lager:debug("timestamp undefined using current_tstamp"),
     timestamp_to_braintree(wh_util:current_tstamp());
 timestamp_to_braintree(Timestamp) ->
     {{Y, M, D}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
