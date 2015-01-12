@@ -387,6 +387,7 @@ maybe_save_category(Category, JObj, Looped) ->
             lager:debug("attempting to create ~s DB", [?WH_CONFIG_DB]),
             couch_mgr:db_create(?WH_CONFIG_DB),
             maybe_save_category(Category, JObj, 'true');
+        {'error', 'conflict'}=E -> E;
         {'error', _R} ->
             lager:warning("unable to update ~s system config doc: ~p", [Category, _R]),
             couch_mgr:cache_db_doc(?WH_CONFIG_DB, Category, JObj1),
