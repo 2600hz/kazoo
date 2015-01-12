@@ -17,27 +17,31 @@
 
 convert(FromFormat, FromFormat, Bin) ->
     {'ok', Bin};
-convert(FromFormat, ToFormat, Bin) ->
+convert(FromFormat0, ToFormat0, Bin) ->
     OldFlag = process_flag('trap_exit', 'true'),
 
-    Command = iolist_to_binary(["/usr/bin/convert "
-                                ,valid_format(FromFormat), ":- "
-                                ,valid_format(ToFormat), ":-"
-                               ]),
+    FromFormat = valid_format(FromFormat0),
+    ToFormat = valid_format(ToFormat0),
+
+    Args = [iolist_to_binary([valid_format(FromFormat) | ":fd:0"])
+            ,iolist_to_binary([valid_format(ToFormat) | ":/tmp/file.pdf"])
+           ],
     PortOptions = ['binary'
                    ,'exit_status'
                    ,'use_stdio'
                    ,'stderr_to_stdout'
+                   ,'stream'
+                   ,{'args', [wh_util:to_list(Arg) || Arg <- Args]}
                   ],
 
     Response =
-        try open_port({'spawn', wh_util:to_list(Command)}, PortOptions) of
+        try open_port({'spawn_executable', "/usr/bin/convert"}, PortOptions) of
             Port ->
-                lager:debug("opened port ~p for '~s'", [Port, Command]),
+                lager:debug("opened port ~p for '~p'", [Port, Args]),
                 convert(Port, Bin)
         catch
             _E:_R ->
-                lager:debug("failed to open port with '~s': ~s: ~p", [Command, _E, _R]),
+                lager:debug("failed to open port with '~p': ~s: ~p", [Args, _E, _R]),
                 {'error', 'port_failure'}
         end,
     process_flag('trap_exit', OldFlag),
@@ -49,6 +53,7 @@ valid_format(Format) -> Format.
 convert(Port, Bin) ->
     try erlang:port_command(Port, Bin) of
         'true' ->
+            erlang:port_command(Port, [$\n]),
             lager:debug("send contents to port"),
             wait_for_results(Port)
     catch
@@ -61,22 +66,27 @@ convert(Port, Bin) ->
 wait_for_results(Port) ->
     wait_for_results(Port, []).
 wait_for_results(Port, Acc) ->
+    lager:debug("port info: ~p", [erlang:port_info(Port)]),
     receive
         {Port, {'data', Msg}} ->
             lager:debug("recv data ~p", [Msg]),
             wait_for_results(Port, [Acc | [Msg]]);
         {Port, {'exit_status', 0}} ->
             lager:debug("port exited"),
-            {'ok', Acc};
+            {'ok', iolist_to_binary(Acc)};
         {Port, {'exit_status', _Status}} ->
             lager:debug("port exit status: ~p", [_Status]),
             {'error', iolist_to_binary(Acc)};
         {'EXIT', Port, Reason} ->
             lager:debug("port exited: ~p", [Reason]),
-            {'error', iolist_to_binary(Acc)}
+            {'error', iolist_to_binary(Acc)};
+        _Msg ->
+            lager:debug("recv msg ~p", [_Msg]),
+            wait_for_results(Port, Acc)
     after
-        60000 ->
+        ?MILLISECONDS_IN_MINUTE ->
             lager:debug("port timed out: ~p", [Acc]),
+            lager:debug("port info: ~p", [erlang:port_info(Port)]),
             catch erlang:port_close(Port),
             {'error', iolist_to_binary(Acc)}
     end.
