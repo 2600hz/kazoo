@@ -93,6 +93,7 @@ build_macro_data(DataJObj) ->
                   ,?TEMPLATE_MACROS
                  ).
 
+-spec set_to_address(wh_json:object()) -> wh_json:object().
 set_to_address(DataJObj) ->
     AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
     UserId = wh_json:get_value(<<"user_id">>, DataJObj),
@@ -101,6 +102,7 @@ set_to_address(DataJObj) ->
                                                ),
     wh_json:set_value(<<"to">>, [find_email(UserJObj)], DataJObj).
 
+-spec find_email(wh_json:object()) -> api_binary().
 find_email(UserJObj) ->
     wh_json:get_first_defined([<<"email">>, <<"username">>], UserJObj).
 
