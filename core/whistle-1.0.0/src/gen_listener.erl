@@ -97,7 +97,6 @@
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
--include_lib("rabbitmq_server/plugins-src/rabbitmq-erlang-client/include/amqp_client.hrl").
 
 -define(TIMEOUT_RETRY_CONN, 5000).
 -define(CALLBACK_TIMEOUT_MSG, 'callback_timeout').
@@ -525,7 +524,7 @@ handle_cast({'resume_consumers'}, #state{is_consuming='false'
                                          ,queue=Q
                                          ,other_queues=OtherQueues}=State) ->
     start_consumer(Q, props:get_value('consume_options', Params)),
-    [start_consumer(Q1, props:get_value('consume_options', P)) 
+    [start_consumer(Q1, props:get_value('consume_options', P))
                    || {Q1, {_, P}} <- OtherQueues],
     {'noreply', State};
 
@@ -1061,7 +1060,7 @@ channel_requisition(Params) ->
         'undefined' ->
             case props:get_value('broker', Params) of
                 'undefined' -> wh_amqp_channel:requisition();
-                Broker -> maybe_add_broker_connection(Broker)                           
+                Broker -> maybe_add_broker_connection(Broker)
             end;
         Tag ->
             case wh_amqp_connections:broker_with_tag(Tag) of
@@ -1075,13 +1074,13 @@ channel_requisition(Params) ->
 maybe_add_broker_connection(Broker) ->
     Count = wh_amqp_connections:broker_available_connections(Broker),
     maybe_add_broker_connection(Broker, Count).
-    
+
 maybe_add_broker_connection(Broker, Count) when Count =:= 0 ->
     wh_amqp_connections:add(Broker, wh_util:rand_hex_binary(6), [<<"hidden">>]),
     wh_amqp_channel:requisition(Broker);
 maybe_add_broker_connection(Broker, _Count) ->
     wh_amqp_channel:requisition(Broker).
-    
+
 
 -spec start_listener(pid(), wh_proplist()) -> 'ok'.
 start_listener(Srv, Params) ->
