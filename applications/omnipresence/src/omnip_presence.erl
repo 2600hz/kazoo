@@ -229,21 +229,21 @@ presence_event(JObj) ->
 
 -spec maybe_handle_presence_state(wh_json:object(), api_binary()) -> 'ok'.
 maybe_handle_presence_state(JObj, <<"online">>=State) ->
-    handle_update(JObj, State, 0);
+    handle_update(JObj, State, 1);
 maybe_handle_presence_state(JObj, <<"offline">>=State) ->
-    handle_update(JObj, State, 0);
+    handle_update(JObj, State, 1);
 maybe_handle_presence_state(JObj, State) ->
     handle_update(wh_json:delete_keys([<<"From">>, <<"To">>], JObj), State, 0).
 
 -spec handle_update(wh_json:object(), ne_binary()) -> any().
 handle_update(JObj, ?PRESENCE_HANGUP) ->
-    handle_update(JObj, ?PRESENCE_HANGUP, 3600);
+    handle_update(JObj, ?PRESENCE_HANGUP, 1);
 handle_update(JObj, ?PRESENCE_RINGING) ->
     handle_update(JObj, ?PRESENCE_RINGING, 120);
 handle_update(JObj, ?PRESENCE_ANSWERED) ->
     handle_update(JObj, ?PRESENCE_ANSWERED, 36000);
 handle_update(JObj, State) ->
-    handle_update(JObj, State, 3600).
+    handle_update(JObj, State, 1).
 
 -spec handle_update(wh_json:object(), ne_binary(), integer()) -> any().
 handle_update(JObj, State, Expires) ->
