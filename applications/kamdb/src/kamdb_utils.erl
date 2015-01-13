@@ -11,7 +11,7 @@
 -include("kamdb.hrl").
 
 %% API
--export([extract_realm/1]).
+-export([extract_realm/1, is_device/1]).
 
 -spec extract_realm(ne_binary()) -> ne_binary().
 extract_realm(Entity) ->
@@ -19,3 +19,7 @@ extract_realm(Entity) ->
         [_, OnRealm] -> OnRealm;
         [JustRealm] -> JustRealm
     end.
+
+-spec is_device(wh_json:object()) -> boolean().
+is_device(JObj) ->
+    <<"device">> =:= wh_json:get_value([<<"value">>, <<"type">>], JObj).
