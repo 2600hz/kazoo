@@ -417,8 +417,25 @@ presence_id(EndpointId, Call) when is_binary(EndpointId) ->
         {'error', _} -> 'undefined'
     end;
 presence_id(Endpoint, Call) ->
-    <<(wh_json:get_binary_value([<<"sip">>, <<"username">>], Endpoint, whapps_call:request_user(Call)))/binary
-      ,$@, (cf_util:get_sip_realm(Endpoint, whapps_call:account_id(Call), whapps_call:request_realm(Call)))/binary>>.
+    PresenceId = case wh_json:get_ne_value(<<"presence_id">>, Endpoint) of
+                     'undefined' ->
+                         wh_json:get_binary_value(
+                           [<<"sip">>, <<"username">>]
+                           ,Endpoint
+                           ,whapps_call:request_user(Call)
+                          );
+                     Else -> Else
+                 end,
+    case binary:match(PresenceId, <<"@">>) of
+        'nomatch' ->
+            Realm = cf_util:get_sip_realm(
+                      Endpoint
+                      ,whapps_call:account_id(Call)
+                      ,whapps_call:request_realm(Call)
+                     ),
+            <<PresenceId/binary, $@, Realm/binary>>;
+        _Else -> PresenceId
+    end.
 
 %%-----------------------------------------------------------------------------
 %% @public
