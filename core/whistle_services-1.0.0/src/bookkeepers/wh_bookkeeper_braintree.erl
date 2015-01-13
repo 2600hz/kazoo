@@ -240,12 +240,11 @@ handle_charged_transactions(Code, JObjs, Acc, BillingId) ->
 -spec handle_topup(wh_json:objects(), wh_transactions:wh_transactions(), ne_binary()) ->
                           wh_transactions:wh_transactions().
 handle_topup(JObjs, Acc, BillingId) ->
-    BinaryCode = wh_util:to_binary(?TOPUP_CODE),
-    case already_charged(BillingId, BinaryCode) of
+    case already_charged(BillingId, ?TOPUP_CODE) of
         'true' -> Acc;
         'false' ->
             Amount = calculate_amount(JObjs),
-            Props = [{<<"purchase_order">>, BinaryCode}],
+            Props = [{<<"purchase_order">>, ?TOPUP_CODE}],
             BT = braintree_transaction:quick_sale(
                    BillingId
                    ,wht_util:units_to_dollars(Amount)
@@ -414,8 +413,8 @@ handle_quick_sale_response(BtTransaction) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec already_charged(ne_binary(), integer()) -> boolean().
--spec already_charged(ne_binary(), integer(), wh_json:objects()) -> boolean().
+-spec already_charged(ne_binary(), integer() | ne_binary()) -> boolean().
+-spec already_charged(ne_binary(), ne_binary(), wh_json:objects()) -> boolean().
 already_charged(BillingId, Code) ->
     lager:debug("checking if ~s has been charge for transaction of type ~p today", [BillingId, Code]),
     BtTransactions = braintree_transaction:find_by_customer(BillingId),
@@ -426,23 +425,29 @@ already_charged(_, _, []) ->
     lager:debug("no transactions found matching code or made today"),
     'false';
 already_charged(BillingId, Code, [Transaction|Transactions]) ->
-    TrCode = wh_json:get_value(<<"purchase_order">>, Transaction),
-    case TrCode =:= Code of
-        'false' -> already_charged(BillingId, Code, Transactions);
-        'true' ->
-            <<Year:4/binary, _:1/binary
-              ,Month:2/binary, _:1/binary
-              ,Day:2/binary
-              ,_/binary
-            >> = wh_json:get_value(<<"created_at">>, Transaction),
-            {YearNow, M, D} = erlang:date(),
-            Now = {wh_util:to_binary(YearNow), wh_util:pad_month(M), wh_util:pad_month(D)},
-            case {Year, Month, Day} =:= Now of
-                'true' ->
-                    lager:debug("found transaction matching code and date (~p)", [wh_json:get_value(<<"id">>, Transaction)]),
-                    'true';
-                'false' -> already_charged(BillingId, Code, Transactions)
-            end
+    case wh_json:get_value(<<"purchase_order">>, Transaction) of
+        Code ->
+            already_charged_transaction(BillingId, Code, Transaction, Transactions);
+        _TrCode -> already_charged(BillingId, Code, Transactions)
+    end.
+
+-spec already_charged_transaction(ne_binary(), ne_binary(), wh_json:object(), wh_json:objects()) ->
+                                         boolean().
+already_charged_transaction(BillingId, Code, Transaction, Transactions) ->
+    <<Year:4/binary, _:1/binary
+      ,Month:2/binary, _:1/binary
+      ,Day:2/binary
+      ,_/binary
+    >> = wh_json:get_value(<<"created_at">>, Transaction),
+
+    {YearNow, M, D} = erlang:date(),
+    case {wh_util:to_binary(YearNow), wh_util:pad_month(M), wh_util:pad_month(D)} of
+        {Year, Month, Day} ->
+            lager:debug("found transaction matching code and date (~p)"
+                        ,[wh_json:get_value(<<"id">>, Transaction)]
+                       ),
+            'true';
+        _Now -> already_charged(BillingId, Code, Transactions)
     end.
 
 %%--------------------------------------------------------------------
