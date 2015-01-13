@@ -148,7 +148,9 @@ filter_by_reason(Reason, Transactions) ->
 %% fetch last transactions
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_last(ne_binary(), integer()) -> wh_transactions().
+-spec fetch_last(ne_binary(), integer()) ->
+                        {'ok', wh_transactions()} |
+                        {'error', any()}.
 fetch_last(Account, Count) ->
     ViewOptions = [{'limit', Count}
                    ,'include_docs'
@@ -322,8 +324,10 @@ transaction_to_prop_fold(Transaction, Acc) ->
 %% Save list of record
 %% @end
 %%--------------------------------------------------------------------
--spec save(wh_transactions()) -> wh_transactions().
--spec save(wh_transactions(), wh_transactions()) -> wh_transactions().
+-type save_acc() :: [{'ok' | 'error', wh_transaction:transaction()},...] | [].
+
+-spec save(wh_transactions()) -> save_acc().
+-spec save(wh_transactions(), save_acc()) -> save_acc().
 save(L) ->
     save(L, []).
 
@@ -343,8 +347,10 @@ save([Transaction | Transactions], Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec remove(wh_transactions()) -> wh_transactions().
--spec remove(wh_transactions(), wh_transactions()) -> wh_transactions().
+-type remove_acc() :: ['ok' | {'error', wh_transaction:transaction()},...] | [].
+
+-spec remove(wh_transactions()) -> remove_acc().
+-spec remove(wh_transactions(), remove_acc()) -> remove_acc().
 remove(Transactions) ->
     remove(Transactions, []).
 

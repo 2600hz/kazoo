@@ -75,7 +75,7 @@ customer_has_card(Customer, AccountId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec sync(dict(), ne_binary()) -> 'ok'.
--spec sync([wh_service_item:item(),...] | [], ne_binary(), updates()) -> 'ok'.
+-spec sync(wh_service_item:items(), ne_binary(), updates()) -> 'ok'.
 sync(Items, AccountId) ->
     ItemList = wh_service_items:to_list(Items),
     case fetch_bt_customer(AccountId, ItemList =/= []) of
@@ -549,7 +549,7 @@ fetch_or_create_subscription(PlanId, #wh_service_updates{bt_subscriptions=Subscr
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec braintree_plan_addon_id(wh_service_items:item()) ->
+-spec braintree_plan_addon_id(wh_service_item:item()) ->
                                      {api_binary(), api_binary()}.
 braintree_plan_addon_id(ServiceItem) ->
     JObj = wh_service_item:bookkeeper(<<"braintree">>, ServiceItem),
@@ -561,7 +561,8 @@ braintree_plan_addon_id(ServiceItem) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec braintree_cumulative_discount_id(wh_service_item:item()) -> api_object().
+-spec braintree_cumulative_discount_id(wh_service_item:item()) ->
+                                              api_binary().
 braintree_cumulative_discount_id(ServiceItem) ->
     wh_service_item:bookkeeper([<<"braintree">>, <<"discounts">>, <<"cumulative">>], ServiceItem).
 
@@ -571,7 +572,7 @@ braintree_cumulative_discount_id(ServiceItem) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec braintree_single_discount_id(wh_service_items:item()) ->
-                                          api_object().
+-spec braintree_single_discount_id(wh_service_item:item()) ->
+                                          api_binary().
 braintree_single_discount_id(ServiceItem) ->
     wh_service_item:bookkeeper([<<"braintree">>, <<"discounts">>, <<"single">>], ServiceItem).

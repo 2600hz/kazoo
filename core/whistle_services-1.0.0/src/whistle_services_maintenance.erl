@@ -26,7 +26,7 @@
 %% credit card
 %% @end
 %%--------------------------------------------------------------------
--spec credit(text(), text()) -> 'no_return'.
+-spec credit(ne_binary(), text()) -> 'no_return'.
 credit(AccountId, Amount) ->
     Units = wht_util:dollars_to_units(Amount),
     Routines = [fun(T) -> wh_transaction:set_reason(<<"admin_discretion">>, T) end
@@ -50,7 +50,7 @@ credit(AccountId, Amount) ->
 %% debit card
 %% @end
 %%--------------------------------------------------------------------
--spec debit(text(), text()) -> 'no_return'.
+-spec debit(ne_binary(), text()) -> 'no_return'.
 debit(AccountId, Amount) ->
     Units = wht_util:dollars_to_units(Amount),
     Routines = [fun(T) -> wh_transaction:set_reason(<<"admin_discretion">>, T) end

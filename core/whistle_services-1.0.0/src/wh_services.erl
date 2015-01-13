@@ -759,7 +759,8 @@ is_reseller(Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec calculate_charges(services(), list()) -> wh_json:object().
+-spec calculate_charges(services(), wh_transaction:transactions()) ->
+                               wh_json:object().
 calculate_charges(Services, Transactions) ->
     TransactionCharges = calculate_transactions_charges(Transactions),
     case calculate_services_charges(Services) of
@@ -773,35 +774,50 @@ calculate_charges(Services, Transactions) ->
                                         {'no_plan', wh_json:object()} |
                                         {'error', wh_json:object()} |
                                         {'ok', wh_json:object()}.
+-spec calculate_services_charges(services(), wh_service_plans:plans()) ->
+                                        {'error', wh_json:object()} |
+                                        {'ok', wh_json:object()}.
+
 calculate_services_charges(#wh_services{jobj=ServiceJObj}=Services) ->
     case wh_service_plans:from_service_json(ServiceJObj) of
         [] -> {'no_plan', wh_json:new()};
         ServicePlans ->
-            Items1 = wh_service_plans:create_items(Services, ServicePlans),
-            case wh_service_plans:create_items(ServiceJObj) of
-                {'error', _} -> {'error', wh_json:new()};
-                {'ok', Items2} ->
-                    Changed = wh_service_items:get_udapted_items(Items1, Items2),
-                    {'ok', wh_service_items:public_json(Changed)}
-            end
+            calculate_services_charges(Services, ServicePlans)
     end.
 
--spec calculate_transactions_charges(any()) -> wh_json:object().
+calculate_services_charges(#wh_services{jobj=ServiceJObj}=Services, ServicePlans) ->
+    case wh_service_plans:create_items(ServiceJObj) of
+        {'error', _} -> {'error', wh_json:new()};
+        {'ok', ServiceItems} ->
+            PlanItems = wh_service_plans:create_items(Services, ServicePlans),
+            Changed = wh_service_items:get_updated_items(PlanItems, ServiceItems),
+            {'ok', wh_service_items:public_json(Changed)}
+    end.
+
+-spec calculate_transactions_charges(wh_transaction:transactions()) ->
+                                            wh_json:object().
 calculate_transactions_charges(Transactions) ->
-    lists:foldl(
-      fun(TransactionJObj, Acc) ->
-              Rate = wh_json:get_value(<<"pvt_amount">>, TransactionJObj, 0),
-              Description = wh_json:get_value(<<"description">>, TransactionJObj, <<>>),
-              wh_json:set_values(
-                [{<<"activation_charges">>, wht_util:units_to_dollars(Rate)}
-                 ,{<<"activation_charges_description">>, Description}
-                ]
-                ,Acc
-               )
-      end
+    lists:foldl(fun calculate_transactions_charge_fold/2
       ,wh_json:new()
-      ,wh_transactions:to_json(Transactions)
+      ,Transactions
      ).
+
+-spec calculate_transactions_charge_fold(wh_transaction:transaction(), wh_json:object()) ->
+                                                wh_json:object().
+calculate_transactions_charge_fold(Transaction, Acc) ->
+    Rate = value_or_default(wh_transaction:amount(Transaction), 0),
+    Description = value_or_default(wh_transaction:description(Transaction), <<>>),
+
+    wh_json:set_values(
+      [{<<"activation_charges">>, wht_util:units_to_dollars(Rate)}
+       ,{<<"activation_charges_description">>, Description}
+      ]
+      ,Acc
+     ).
+
+-spec value_or_default('undefined' | Value, Default) -> Value | Default.
+value_or_default('undefined', Default) -> Default;
+value_or_default(Value, _Default) -> Value.
 
 %%--------------------------------------------------------------------
 %% @public

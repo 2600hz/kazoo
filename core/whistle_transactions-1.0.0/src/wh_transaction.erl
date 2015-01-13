@@ -44,7 +44,7 @@
 
 -define(WH_SERVICES_DB, <<"services">>).
 
--record(wh_transaction, {id :: binary()
+-record(wh_transaction, {id :: api_binary()
                          ,rev :: api_binary()
                          ,description :: api_binary()
                          ,call_id :: api_binary()
@@ -54,12 +54,12 @@
                          ,feature :: api_binary()
                          ,bookkeeper_info :: 'undefined' | wh_json:object()
                          ,metadata :: 'undefined' | wh_json:object()
-                         ,pvt_reason :: ne_binary()
-                         ,pvt_code :: non_neg_integer()
-                         ,pvt_amount :: non_neg_integer()
+                         ,pvt_reason :: api_binary()
+                         ,pvt_code :: api_integer()
+                         ,pvt_amount = 0 :: non_neg_integer()
                          ,pvt_type :: ne_binary()
-                         ,pvt_created :: wh_now()
-                         ,pvt_modified :: wh_now()
+                         ,pvt_created :: gregorian_seconds()
+                         ,pvt_modified :: gregorian_seconds()
                          ,pvt_account_id :: ne_binary()
                          ,pvt_account_db :: ne_binary()
                          ,pvt_vsn = 2 :: integer()
@@ -85,7 +85,7 @@ id(#wh_transaction{id=Id}) ->
 rev(#wh_transaction{rev=Rev}) ->
     Rev.
 
--spec description(transaction()) -> ne_binary().
+-spec description(transaction()) -> api_binary().
 description(#wh_transaction{description=Description}) ->
     Description.
 
@@ -121,7 +121,7 @@ metadata(#wh_transaction{metadata=MetaData}) ->
 reason(#wh_transaction{pvt_reason=Reason}) ->
     Reason.
 
--spec code(transaction()) -> non_neg_integer().
+-spec code(transaction()) -> api_integer().
 code(#wh_transaction{pvt_code=Code}) ->
     Code.
 
@@ -133,13 +133,13 @@ amount(#wh_transaction{pvt_amount=Amount}) ->
 type(#wh_transaction{pvt_type=Type}) ->
     Type.
 
--spec created(transaction()) -> wh_now().
+-spec created(transaction()) -> gregorian_seconds().
 created(#wh_transaction{pvt_created='undefined'}) ->
     wh_util:current_tstamp();
 created(#wh_transaction{pvt_created=Created}) ->
     Created.
 
--spec modified(transaction()) -> wh_now().
+-spec modified(transaction()) -> gregorian_seconds().
 modified(#wh_transaction{pvt_modified='undefined'}) ->
     wh_util:current_tstamp();
 modified(#wh_transaction{pvt_modified=Modified}) ->
@@ -240,7 +240,7 @@ set_reason(Reason, Transaction) ->
                                ,pvt_code=Code
                               }.
 
--spec set_code(non_neg_integer(), transaction()) -> transaction().
+-spec set_code(pos_integer(), transaction()) -> transaction().
 set_code(Code, Transaction) ->
     Reason = wht_util:code_reason(Code),
     Transaction#wh_transaction{pvt_reason=Reason
@@ -249,15 +249,17 @@ set_code(Code, Transaction) ->
 
 -spec set_amount(integer(), transaction()) -> transaction().
 set_amount(Amount, Transaction) when Amount > 0 ->
-    Transaction#wh_transaction{pvt_amount=Amount,
-                               pvt_type= <<"credit">>};
+    Transaction#wh_transaction{pvt_amount=Amount
+                               ,pvt_type= <<"credit">>
+                              };
 set_amount(Amount, Transaction) when Amount < 0 ->
-    Transaction#wh_transaction{pvt_amount=Amount,
-                               pvt_type= <<"debit">>};
+    Transaction#wh_transaction{pvt_amount=Amount
+                               ,pvt_type= <<"debit">>
+                              };
 set_amount(Amount, Transaction) when is_binary(Amount) ->
     set_amount(wh_util:to_integer(Amount), Transaction);
 set_amount(Amount, Transaction) ->
-        Transaction#wh_transaction{pvt_amount=Amount}.
+    Transaction#wh_transaction{pvt_amount=Amount}.
 
 -spec set_type(ne_binary(), transaction()) -> transaction().
 set_type(Type, Transaction) ->
@@ -279,7 +281,7 @@ set_account_id(AccountId, Transaction) ->
 set_account_db(AccountDb, Transaction) ->
     Transaction#wh_transaction{pvt_account_db=AccountDb}.
 
--spec set_version(ne_binary(), transaction()) -> transaction().
+-spec set_version(integer(), transaction()) -> transaction().
 set_version(Vsn, Transaction) ->
     Transaction#wh_transaction{pvt_vsn=Vsn}.
 
@@ -335,11 +337,10 @@ to_json(#wh_transaction{}=T) ->
 %% Transform Json Object to transaction record
 %% @end
 %%--------------------------------------------------------------------
--spec to_public_json/1 :: (transaction()) -> wh_json:object().
+-spec to_public_json(transaction()) -> wh_json:object().
 to_public_json(Transaction) ->
     JObj = to_json(Transaction),
     clean_jobj(JObj).
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -347,7 +348,7 @@ to_public_json(Transaction) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec clean_jobj/1 :: (wh_json:object()) -> wh_json:object().
+-spec clean_jobj(wh_json:object()) -> wh_json:object().
 clean_jobj(JObj) ->
     CleanKeys = [{<<"_id">>, <<"id">>}
                  ,{<<"pvt_amount">>, <<"amount">>, fun wht_util:units_to_dollars/1}
@@ -364,15 +365,13 @@ clean_jobj(JObj) ->
                  ],
     wh_json:normalize_jobj(JObj, RemoveKeys, CleanKeys).
 
-
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% Transform Json Object to transaction record
 %% @end
 %%--------------------------------------------------------------------
--spec from_json/1 :: (wh_json:object()) -> transaction().
+-spec from_json(wh_json:object()) -> transaction().
 from_json(JObj) ->
     #wh_transaction{id = wh_json:get_ne_value(<<"_id">>, JObj)
                     ,rev = wh_json:get_ne_value(<<"_rev">>, JObj)

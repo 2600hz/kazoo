@@ -191,7 +191,7 @@ fetch_braintree_transactions(Context, Options) ->
                                         )
     end.
 
--spec filter_prorated_transactions(wh_json:objects(), boolean()) ->
+-spec filter_prorated_transactions(wh_transaction:transactions(), boolean()) ->
                                           {'ok', wh_json:objects()}.
 filter_prorated_transactions(Transactions, Prorated) ->
     {'ok'
@@ -201,7 +201,7 @@ filter_prorated_transactions(Transactions, Prorated) ->
                  )
     }.
 
--spec filter_prorated_transaction_fold(wh_json:object(), wh_json:objects(), boolean()) ->
+-spec filter_prorated_transaction_fold(wh_transaction:transaction(), wh_json:objects(), boolean()) ->
                                               wh_json:objects().
 filter_prorated_transaction_fold(Transaction, Acc, Prorated) ->
     JObj = wh_transaction:to_public_json(Transaction),
@@ -232,7 +232,7 @@ maybe_filter_by_reason(Transactions, Options) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec braintree_transaction_is_prorated(wh_json:objects()) -> boolean().
+-spec braintree_transaction_is_prorated(wh_json:object()) -> boolean().
 braintree_transaction_is_prorated(Transaction) ->
     BTransaction = wh_json:get_value(<<"metadata">>, Transaction, wh_json:new()),
     case wh_json:get_value(<<"subscription_id">>, BTransaction) of
