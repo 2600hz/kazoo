@@ -136,7 +136,7 @@ get_addon_quantity(#bt_subscription{add_ons=AddOns}, AddOnId) ->
 %% Get the subscription id
 %% @end
 %%--------------------------------------------------------------------
--spec update_addon_amount(subscription(), ne_binary(), ne_binary()) -> subscription().
+-spec update_addon_amount(subscription(), ne_binary(), api_binary() | number()) -> subscription().
 update_addon_amount(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId, Amount) ->
     case lists:keyfind(AddOnId, #bt_addon.id, AddOns) of
         'false' ->
@@ -291,27 +291,32 @@ reset_discounts(#bt_subscription{discounts=Discounts}=Subscription) ->
 %% or subscription id
 %% @end
 %%--------------------------------------------------------------------
--spec update_addon_quantity(subscription() | ne_binary(), ne_binary(), integer()) -> subscription().
+-spec update_addon_quantity(subscription() | ne_binary(), ne_binary(), integer() | api_binary()) ->
+                                   subscription().
 update_addon_quantity(Subscription, AddOnId, Quantity) when not is_integer(Quantity) ->
     update_addon_quantity(Subscription, AddOnId, wh_util:to_integer(Quantity));
+update_addon_quantity(<<_/binary>> = SubscriptionId, AddOnId, Quantity) ->
+    Subscription = find(SubscriptionId),
+    update_addon_quantity(Subscription, AddOnId, Quantity);
 update_addon_quantity(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId, Quantity) ->
     case lists:keyfind(AddOnId, #bt_addon.id, AddOns) of
         'false' ->
             case lists:keyfind(AddOnId, #bt_addon.inherited_from, AddOns) of
                 'false' ->
-                    AddOn = #bt_addon{inherited_from=AddOnId, quantity=Quantity},
+                    AddOn = #bt_addon{inherited_from=AddOnId
+                                      ,quantity=Quantity
+                                     },
                     Subscription#bt_subscription{add_ons=[AddOn|AddOns]};
                 #bt_addon{}=AddOn ->
                     AddOn1 = AddOn#bt_addon{quantity=Quantity},
                     Subscription#bt_subscription{add_ons=lists:keyreplace(AddOnId, #bt_addon.inherited_from, AddOns, AddOn1)}
             end;
         #bt_addon{}=AddOn ->
-            AddOn1 = AddOn#bt_addon{existing_id=AddOnId, quantity=Quantity},
+            AddOn1 = AddOn#bt_addon{existing_id=AddOnId
+                                    ,quantity=Quantity
+                                   },
             Subscription#bt_subscription{add_ons=lists:keyreplace(AddOnId, #bt_addon.id, AddOns, AddOn1)}
-    end;
-update_addon_quantity(SubscriptionId, AddOnId, Quantity) ->
-    Subscription = find(SubscriptionId),
-    update_addon_quantity(Subscription, AddOnId, Quantity).
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
