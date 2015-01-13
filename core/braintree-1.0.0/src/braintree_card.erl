@@ -63,7 +63,6 @@ default_payment_token(Cards) ->
         Card -> Card#bt_card.token
     end.
 
-
 -spec default_payment_card(cards()) -> api_binary().
 default_payment_card(Cards) ->
     case lists:keyfind('true', #bt_card.default, Cards) of
