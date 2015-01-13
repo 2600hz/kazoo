@@ -66,7 +66,10 @@
                         }).
 
 -type transaction() :: #wh_transaction{}.
--export_type([transaction/0]).
+-type transactions() :: [transaction(),...] | [].
+-export_type([transaction/0
+              ,transactions/0
+             ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -260,11 +263,11 @@ set_amount(Amount, Transaction) ->
 set_type(Type, Transaction) ->
     Transaction#wh_transaction{pvt_type=Type}.
 
--spec set_created(wh_now(), transaction()) -> transaction().
+-spec set_created(gregorian_seconds(), transaction()) -> transaction().
 set_created(Created, Transaction) ->
     Transaction#wh_transaction{pvt_created=Created}.
 
--spec set_modified(wh_now(), transaction()) -> transaction().
+-spec set_modified(gregorian_seconds(), transaction()) -> transaction().
 set_modified(Modified, Transaction) ->
     Transaction#wh_transaction{pvt_modified=Modified}.
 

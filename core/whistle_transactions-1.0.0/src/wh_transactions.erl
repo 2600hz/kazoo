@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, VoIP, INC
+%%% @copyright (C) 2013-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -22,7 +22,7 @@
 
 -include("whistle_transactions.hrl").
 
--type wh_transactions() :: [wh_transaction:transaction(), ...].
+-type wh_transactions() :: wh_transaction:transactions().
 -export_type([wh_transactions/0]).
 
 %%--------------------------------------------------------------------
@@ -148,7 +148,7 @@ filter_by_reason(Reason, Transactions) ->
 %% fetch last transactions
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_last(ne_binary(), integer()) -> wh_transaction:wh_transactions().
+-spec fetch_last(ne_binary(), integer()) -> wh_transactions().
 fetch_last(Account, Count) ->
     ViewOptions = [{'limit', Count}
                    ,'include_docs'
@@ -323,10 +323,10 @@ transaction_to_prop_fold(Transaction, Acc) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec save(wh_transactions()) -> wh_transactions().
+-spec save(wh_transactions(), wh_transactions()) -> wh_transactions().
 save(L) ->
     save(L, []).
 
--spec save(wh_transactions(), wh_transactions()) -> wh_transactions().
 save([], Acc) ->
     lists:reverse(Acc);
 save([Transaction | Transactions], Acc) ->
@@ -343,10 +343,11 @@ save([Transaction | Transactions], Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec remove(wh_transactions()) -> wh_transactions().
+-spec remove(wh_transactions(), wh_transactions()) -> wh_transactions().
 remove(Transactions) ->
     remove(Transactions, []).
 
--spec remove(wh_transactions(), wh_transactions()) -> wh_transactions().
 remove([], Acc) ->
     lists:reverse(Acc);
 remove([Transaction | Transactions], Acc) ->
@@ -364,9 +365,9 @@ remove([Transaction | Transactions], Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec to_json/1 :: (wh_transactions()) -> [wh_json:object(), ...].
+-spec to_json(wh_transactions()) -> wh_json:objects().
 to_json(Transactions) ->
-    [wh_transaction:to_json(Tr) ||  Tr <- Transactions].
+    [wh_transaction:to_json(Tr) || Tr <- Transactions].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -374,7 +375,7 @@ to_json(Transactions) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec to_public_json/1 :: (wh_transactions()) -> [wh_json:object(), ...].
+-spec to_public_json(wh_transactions()) -> wh_json:objects().
 to_public_json(Transactions) ->
     [wh_transaction:to_public_json(Tr) ||  Tr <- Transactions].
 
@@ -384,6 +385,6 @@ to_public_json(Transactions) ->
 %% fetch last transaction
 %% @end
 %%--------------------------------------------------------------------
--spec viewres_to_recordlist/1 :: (list()) -> wh_transaction:wh_transactions().
+-spec viewres_to_recordlist(wh_json:objects()) -> wh_transactions().
 viewres_to_recordlist(ViewRes) ->
     [wh_transaction:from_json(wh_json:get_value(<<"doc">>, Tr)) || Tr <- ViewRes].

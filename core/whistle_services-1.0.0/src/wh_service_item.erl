@@ -128,7 +128,7 @@ set_item(Item, #wh_service_item{}=ServiceItem) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec quantity(item()) -> integer().
+-spec quantity(item()) -> api_integer().
 quantity(#wh_service_item{quantity=Quantity}) ->
     Quantity.
 
