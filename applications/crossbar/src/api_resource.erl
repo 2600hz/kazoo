@@ -818,7 +818,7 @@ correct_jobj(JObj) ->
     L = lists:map(fun(X) -> correct_proplist(X) end, Prop),
     wh_json:from_list(L).
 
-correct_proplist({K}) -> {K, <<"">>};
+correct_proplist({K}) -> {K, <<>>};
 correct_proplist(T) -> T.
 
 -spec multiple_choices(cowboy_req:req(), cb_context:context()) ->
@@ -834,7 +834,7 @@ generate_etag(Req0, Context0) ->
     case cb_context:resp_etag(Context1) of
         'automatic' ->
             {Content, _} = api_util:create_resp_content(Req1, Context1),
-            Tag = wh_util:to_hex_binary(crypto:hash(md5, Content)),
+            Tag = wh_util:to_hex_binary(crypto:hash('md5', Content)),
             {list_to_binary([$", Tag, $"]), Req1, cb_context:set_resp_etag(Context1, Tag)};
         'undefined' ->
             {'undefined', Req1, cb_context:set_resp_etag(Context1, 'undefined')};
