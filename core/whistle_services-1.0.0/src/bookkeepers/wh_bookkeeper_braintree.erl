@@ -16,8 +16,10 @@
 -export([already_charged/2]).
 -export([timestamp_to_braintree/1]).
 
-
+-include_lib("braintree/include/braintree.hrl").
 -include("../whistle_services.hrl").
+
+-define(TOPUP_CODE, 3006).
 
 -define(TR_DESCRIPTION, <<"braintree transaction">>).
 
@@ -105,7 +107,10 @@ sync([ServiceItem|ServiceItems], AccountId, Updates) ->
                         ,fun(S) -> handle_single_discount(ServiceItem, S) end
                         ,fun(S) -> handle_cumulative_discounts(ServiceItem, S) end
                        ],
-            Subscription = lists:foldl(fun(F, S) -> F(S) end, fetch_or_create_subscription(PlanId, Updates), Routines),
+            Subscription = lists:foldl(fun(F, S) -> F(S) end
+                                       ,fetch_or_create_subscription(PlanId, Updates)
+                                       ,Routines
+                                      ),
             sync(ServiceItems, AccountId, update_subscriptions(PlanId, Subscription, Updates))
     end.
 
@@ -115,7 +120,7 @@ sync([ServiceItem|ServiceItems], AccountId, Updates) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec transactions(ne_binary(), ne_binary(), ne_binary()) ->
+-spec transactions(ne_binary(), 'undefined' | gregorian_seconds(), 'undefined' | gregorian_seconds()) ->
                           {'error', 'not_found'} |
                           {'error', 'unknown_error'} |
                           {'ok', wh_transaction:transactions()}.
@@ -189,54 +194,68 @@ commit_transactions(BillingId, _Transactions, _Try) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec charge_transactions(ne_binary(), wh_json:objects()) -> wh_transactions:wh_transactions() | [].
--spec charge_transactions(ne_binary(), wh_json:objects(), dict()) -> wh_transactions:wh_transactions() | [].
+-spec charge_transactions(ne_binary(), wh_json:objects()) ->
+                                 wh_transactions:wh_transactions().
+-spec charge_transactions(ne_binary(), wh_json:objects(), dict()) ->
+                                 wh_transactions:wh_transactions().
 charge_transactions(BillingId, Transactions) ->
     charge_transactions(BillingId, Transactions, dict:new()).
 
 charge_transactions(BillingId, [], Dict) ->
     dict:fold(
-        fun(Code, JObjs, Acc) when Code =:= 3006 ->
-            BinaryCode = wh_util:to_binary(Code),
-            Props = [{<<"purchase_order">>, BinaryCode}],
-            Amount = calculate_amount(JObjs),
-            case already_charged(BillingId, BinaryCode) of
-                'true' -> 'ok';
-                'false' ->
-                    BT = braintree_transaction:quick_sale(
-                            BillingId
-                            ,wht_util:units_to_dollars(Amount)
-                            ,Props),
-                    case handle_quick_sale_response(BT) of
-                        'true' -> Acc;
-                        'false' -> Acc ++ JObjs
-                    end
-            end;
-        (Code, JObjs, Acc) ->
-            Props = [{<<"purchase_order">>, Code}],
-            Amount = calculate_amount(JObjs),
-            BT = braintree_transaction:quick_sale(
-                            BillingId
-                            ,wht_util:units_to_dollars(Amount)
-                            ,Props),
-            case handle_quick_sale_response(BT) of
-                'true' -> Acc;
-                'false' -> Acc ++ JObjs
-            end
-        end
-        ,[]
-        ,Dict
-    );
+      fun(Code, JObjs, Acc) when Code =:= ?TOPUP_CODE ->
+              handle_topup(JObjs, Acc, BillingId);
+         (Code, JObjs, Acc) ->
+              handle_charged_transactions(Code, JObjs, Acc, BillingId)
+      end
+      ,[]
+      ,Dict
+     );
 charge_transactions(BillingId, [Transaction|Transactions], Dict) ->
     Code = wh_json:get_value(<<"code">>, Transaction),
     L = case dict:find(Code, Dict) of
             'error' -> [];
-            {'ok', Value} -> [Transaction] ++ Value
+            {'ok', Value} -> [Transaction | Value]
         end,
     charge_transactions(BillingId
                         ,Transactions
-                        ,dict:store(Code, L, Dict)).
+                        ,dict:store(Code, L, Dict)
+                       ).
 
+-spec handle_charged_transactions(pos_integer(), wh_json:objects(), wh_transactions:wh_transactions(), ne_binary()) ->
+                                         wh_transactions:wh_transactions().
+handle_charged_transactions(Code, JObjs, Acc, BillingId) ->
+    Props = [{<<"purchase_order">>, Code}],
+    Amount = calculate_amount(JObjs),
+    BT = braintree_transaction:quick_sale(
+           BillingId
+           ,wht_util:units_to_dollars(Amount)
+           ,Props
+          ),
+    case handle_quick_sale_response(BT) of
+        'true' -> Acc;
+        'false' -> Acc ++ JObjs
+    end.
+
+-spec handle_topup(wh_json:objects(), wh_transactions:wh_transactions(), ne_binary()) ->
+                          wh_transactions:wh_transactions().
+handle_topup(JObjs, Acc, BillingId) ->
+    BinaryCode = wh_util:to_binary(?TOPUP_CODE),
+    case already_charged(BillingId, BinaryCode) of
+        'true' -> Acc;
+        'false' ->
+            Amount = calculate_amount(JObjs),
+            Props = [{<<"purchase_order">>, BinaryCode}],
+            BT = braintree_transaction:quick_sale(
+                   BillingId
+                   ,wht_util:units_to_dollars(Amount)
+                   ,Props
+                  ),
+            case handle_quick_sale_response(BT) of
+                'true' -> Acc;
+                'false' -> Acc ++ JObjs
+            end
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -244,19 +263,19 @@ charge_transactions(BillingId, [Transaction|Transactions], Dict) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec convert_transactions(wh_json:objects()) -> wh_json:objects().
--spec convert_transactions(wh_json:objects(), wh_transaction:transactions()) -> wh_json:objects().
+-spec convert_transactions(wh_json:objects()) ->
+                                  wh_transaction:transactions().
+-spec convert_transactions(wh_json:objects(), wh_transaction:transactions()) ->
+                                  wh_transaction:transactions().
 convert_transactions(BTTransactions) ->
     convert_transactions(BTTransactions, []).
-
 
 convert_transactions([], Transactions) -> Transactions;
 convert_transactions([BTTransaction|BTTransactions], Transactions) ->
     Transaction = convert_transaction(BTTransaction),
     convert_transactions(BTTransactions, [Transaction|Transactions]).
 
-
--spec convert_transaction(wh_json:object()) -> wh_json:object().
+-spec convert_transaction(wh_json:object()) -> wh_transaction:transaction().
 convert_transaction(BTTransaction) ->
     Routines = [fun set_description/2
                 ,fun set_bookkeeper_info/2
@@ -267,7 +286,7 @@ convert_transaction(BTTransaction) ->
                 ,fun set_modified/2
                 ,fun set_account_id/2
                 ,fun set_account_db/2
-    ],
+               ],
     lists:foldl(fun(F, T) -> F(BTTransaction, T) end, wh_transaction:new(), Routines).
 
 %%--------------------------------------------------------------------
@@ -329,7 +348,7 @@ set_account_db(BTTransaction, Transaction) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec timestamp_to_braintree(pos_integer()) -> ne_binary().
+-spec timestamp_to_braintree('undefined' | gregorian_seconds()) -> ne_binary().
 timestamp_to_braintree('undefined') ->
     lager:debug("timestamp undefined using current_tstamp"),
     timestamp_to_braintree(wh_util:current_tstamp());
@@ -346,16 +365,17 @@ timestamp_to_braintree(Timestamp) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec utc_to_gregorian_seconds(pos_integer()) -> ne_binary().
+-spec utc_to_gregorian_seconds(ne_binary()) -> 'undefined' | gregorian_seconds().
 utc_to_gregorian_seconds(<<Y:4/binary, "-", M:2/binary, "-", D:2/binary, "T"
-                          ,H:2/binary, ":", Mi:2/binary, ":", S:2/binary, _>>) ->
+                          ,H:2/binary, ":", Mi:2/binary, ":", S:2/binary, _/binary>>
+                        ) ->
     Date = {
-        {wh_util:to_integer(Y), wh_util:to_integer(M), wh_util:to_integer(D)}
-        ,{wh_util:to_integer(H), wh_util:to_integer(Mi), wh_util:to_integer(S)}
-    },
+      {wh_util:to_integer(Y), wh_util:to_integer(M), wh_util:to_integer(D)}
+      ,{wh_util:to_integer(H), wh_util:to_integer(Mi), wh_util:to_integer(S)}
+     },
     calendar:datetime_to_gregorian_seconds(Date);
 utc_to_gregorian_seconds(UTC) ->
-    lager:warning("unknown UTC date dormat ~s", [UTC]),
+    lager:warning("unknown UTC date format ~s", [UTC]),
     'undefined'.
 
 %%--------------------------------------------------------------------
@@ -372,7 +392,8 @@ calculate_amount(JObjs) ->
 calculate_amount([], Amount) -> Amount;
 calculate_amount([JObj|JObjs], Amount) ->
     calculate_amount(JObjs
-                    ,wh_json:get_value(<<"pvt_amount">>, JObj, 0) + Amount).
+                     ,wh_json:get_integer_value(<<"pvt_amount">>, JObj, 0) + Amount
+                    ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -380,7 +401,7 @@ calculate_amount([JObj|JObjs], Amount) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_quick_sale_response(_) -> boolean().
+-spec handle_quick_sale_response(bt_transaction()) -> boolean().
 handle_quick_sale_response(BtTransaction) ->
     Transaction = braintree_transaction:record_to_json(BtTransaction),
     RespCode = wh_json:get_value(<<"processor_response_code">>, Transaction, 9999),
