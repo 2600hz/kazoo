@@ -80,6 +80,11 @@ resource_exists(_) -> 'true'.
 validate(Context) ->
     validate_transactions(Context, cb_context:req_verb(Context)).
 
+validate(Context, PathToken) ->
+    validate_transaction(Context, PathToken, cb_context:req_verb(Context)).
+
+-spec validate_transactions(cb_context:context(), http_method()) ->
+                                   cb_context:context().
 validate_transactions(Context, ?HTTP_GET) ->
     case cb_modules_util:range_view_options(Context) of
         {CreatedFrom, CreatedTo} ->
@@ -92,9 +97,8 @@ validate_transactions(Context, ?HTTP_GET) ->
         Context1 -> Context1
     end.
 
-validate(Context, PathToken) ->
-    validate_transaction(Context, PathToken, cb_context:req_verb(Context)).
-
+-spec validate_transaction(cb_context:context(), path_token(), http_method()) ->
+                                  cb_context:context().
 validate_transaction(Context, <<"current_balance">>, ?HTTP_GET) ->
     Balance = wht_util:units_to_dollars(wht_util:current_balance(cb_context:account_id(Context))),
     JObj = wh_json:from_list([{<<"balance">>, Balance}]),
@@ -139,7 +143,8 @@ fetch(Context, Options) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_monthly_recurring(cb_context:context(), wh_proplist()) -> cb_context:context().
+-spec fetch_monthly_recurring(cb_context:context(), wh_proplist()) ->
+                                     cb_context:context().
 fetch_monthly_recurring(Context, Options) ->
     Transactions = fetch_braintree_transactions(Context, Options),
     case Transactions of
@@ -153,7 +158,9 @@ fetch_monthly_recurring(Context, Options) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_transactions(cb_context:context(), wh_proplist()) -> wh_json:objects().
+-spec fetch_transactions(cb_context:context(), wh_proplist()) ->
+                                {'ok', wh_json:objects()} |
+                                {'error', _}.
 fetch_transactions(Context, Options) ->
     From = props:get_value('from', Options),
     To = props:get_value('to', Options),
@@ -169,30 +176,38 @@ fetch_transactions(Context, Options) ->
                                           {'ok', wh_json:objects()} |
                                           {'error', ne_binary()}.
 fetch_braintree_transactions(Context, Options) ->
-    Prorated = props:get_value('prorated', Options, 'false'),
     case wh_service_transactions:current_billing_period(
            cb_context:account_id(Context)
            ,'transactions'
            ,{props:get_value('from', Options)
-             ,props:get_value('to', Options)}
+             ,props:get_value('to', Options)
+            }
           )
     of
         {'error', _Reason}=Error -> Error;
         {'ok', Transactions} ->
-            JObjs =
-                lists:foldl(
-                    fun(BTr, Acc) ->
-                        JObj = wh_transaction:to_public_json(BTr),
-                        IsProrated = braintree_transaction_is_prorated(JObj),
-                        case IsProrated =:= Prorated of
-                            'true' -> [JObj|Acc];
-                            'false' -> Acc
-                        end
-                    end
-                    ,[]
-                    ,Transactions
-                ),
-            {'ok', JObjs}
+            filter_prorated_transactions(Transactions
+                                         ,props:get_value('prorated', Options, 'false')
+                                        )
+    end.
+
+-spec filter_prorated_transactions(wh_json:objects(), boolean()) ->
+                                          {'ok', wh_json:objects()}.
+filter_prorated_transactions(Transactions, Prorated) ->
+    {'ok'
+     ,lists:foldl(fun(Transaction, Acc) ->
+                          filter_prorated_transaction_fold(Transaction, Acc, Prorated)
+                  end, [], Transactions
+                 )
+    }.
+
+-spec filter_prorated_transaction_fold(wh_json:object(), wh_json:objects(), boolean()) ->
+                                              wh_json:objects().
+filter_prorated_transaction_fold(Transaction, Acc, Prorated) ->
+    JObj = wh_transaction:to_public_json(Transaction),
+    case braintree_transaction_is_prorated(JObj) of
+        Prorated -> [JObj|Acc];
+        _ -> Acc
     end.
 
 %%--------------------------------------------------------------------
@@ -344,7 +359,7 @@ correct_date_braintree_subscription(BSubscription) ->
            ],
     lists:foldl(fun correct_date_braintree_subscription_fold/2, BSubscription, Keys).
 
--spec correct_date_braintree_subscription_fold(ne_binary(), wh_json:object()) -> wh_json:objects().
+-spec correct_date_braintree_subscription_fold(ne_binary(), wh_json:object()) -> wh_json:object().
 correct_date_braintree_subscription_fold(Key, BSub) ->
     case wh_json:get_value(Key, BSub, 'null') of
         'null' -> BSub;

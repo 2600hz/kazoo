@@ -161,7 +161,9 @@ fetch_last(Account, Count) ->
 %% fetch last transaction from date to now
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_since(ne_binary(), integer(), integer()) -> {'ok', wh_transactions()} | {'error', any()}.
+-spec fetch_since(ne_binary(), integer(), integer()) ->
+                         {'ok', wh_transactions()} |
+                         {'error', any()}.
 fetch_since(Account, From, To) ->
     case check_range(From, To) of
         {'error', _Reason}=Error -> Error;
@@ -175,7 +177,9 @@ fetch_since(Account, From, To) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec check_range(integer(), integer()) -> {'ok', wh_proplist(), wh_proplist()} | {'error', ne_binary()}.
+-spec check_range(integer(), integer()) ->
+                         {'ok', wh_proplist(), wh_proplist()} |
+                         {'error', ne_binary()}.
 check_range(From, To) ->
     {{YearFrom, MonthFrom, _}, _} = calendar:gregorian_seconds_to_datetime(From),
     {{YearTo, MonthTo, _}, _} = calendar:gregorian_seconds_to_datetime(To),
@@ -204,18 +208,20 @@ check_range(From, To) ->
             {'error', <<"max range 2 consecutive month">>}
     end.
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec fetch(ne_binary(), wh_proplist(), wh_proplist()) -> {'ok', wh_transactions()} | {'error', any()}.
+-spec fetch(ne_binary(), wh_proplist(), wh_proplist()) ->
+                   {'ok', wh_transactions()} |
+                   {'error', any()}.
 fetch(Account, ViewOptionsFrom, ViewOptionsTo) ->
     case {fetch_local(Account, ViewOptionsFrom)
           ,fetch_local(Account, ViewOptionsTo)
-          ,fetch_bookkeeper(Account, ViewOptionsTo)}
+          ,fetch_bookkeeper(Account, ViewOptionsTo)
+         }
     of
         {{'error', _R}=Error, _, _} -> Error;
         {_, {'error', _R}=Error, _} -> Error;
@@ -230,7 +236,9 @@ fetch(Account, ViewOptionsFrom, ViewOptionsTo) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_local(ne_binary(), wh_proplist()) -> {'ok', wh_transactions()} | {'error', any()}.
+-spec fetch_local(ne_binary(), wh_proplist()) ->
+                         {'ok', wh_transactions()} |
+                         {'error', any()}.
 fetch_local(Account, ViewOptions) ->
     case kazoo_modb:get_results(Account, <<"transactions/by_timestamp">>, ViewOptions) of
         {'error', _}=Error -> Error;
@@ -245,7 +253,9 @@ fetch_local(Account, ViewOptions) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_bookkeeper(ne_binary(), wh_proplist()) -> {'ok', wh_transactions()} | {'error', any()}.
+-spec fetch_bookkeeper(ne_binary(), wh_proplist()) ->
+                              {'ok', wh_transactions()} |
+                              {'error', any()}.
 fetch_bookkeeper(Account, ViewOptions) ->
     Bookkeeper = whapps_config:get_atom(<<"services">>, <<"master_account_bookkeeper">>),
     From = props:get_value('startkey', ViewOptions),
@@ -271,23 +281,22 @@ de_duplicate_transactions(Transactions, BookkeeperTransactions) ->
     PropsBTr = transactions_to_props(BookkeeperTransactions),
     de_duplicate_transactions(PropsTr, PropsBTr, []).
 
-
 de_duplicate_transactions([], BookkeeperTransactions, Acc) ->
     [Tr || {_, Tr} <- BookkeeperTransactions] ++ Acc;
 de_duplicate_transactions([{Key, Value}|Transactions], BookkeeperTransactions, Acc) ->
     case props:is_defined(Key, BookkeeperTransactions) of
         'true' ->
             de_duplicate_transactions(
-                Transactions
-                ,props:delete(Key, BookkeeperTransactions)
-                ,[Value|Acc]
-            );
+              Transactions
+              ,props:delete(Key, BookkeeperTransactions)
+              ,[Value|Acc]
+             );
         'false' ->
             de_duplicate_transactions(
-                Transactions
-                ,BookkeeperTransactions
-                ,[Value|Acc]
-            )
+              Transactions
+              ,BookkeeperTransactions
+              ,[Value|Acc]
+             )
     end.
 
 %%--------------------------------------------------------------------
@@ -298,16 +307,14 @@ de_duplicate_transactions([{Key, Value}|Transactions], BookkeeperTransactions, A
 %%--------------------------------------------------------------------
 -spec transactions_to_props(wh_transactions()) -> wh_proplist().
 transactions_to_props(Transactions) ->
-    lists:foldl(
-        fun(Transaction, Acc) ->
-            Amount = wh_transaction:amount(Transaction),
-            Timestamp = wh_transaction:created(Transaction),
-            {Date, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
-            [{{Date, Amount}, Transaction}| Acc]
-        end
-        ,[]
-        ,Transactions
-    ).
+    lists:foldl(fun transaction_to_prop_fold/2, [], Transactions).
+
+-spec transaction_to_prop_fold(wh_transaction:transaction(), wh_proplist()) -> wh_proplist().
+transaction_to_prop_fold(Transaction, Acc) ->
+    Amount = wh_transaction:amount(Transaction),
+    Timestamp = wh_transaction:created(Transaction),
+    {Date, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
+    [{{Date, Amount}, Transaction}|Acc].
 
 %%--------------------------------------------------------------------
 %% @public
