@@ -81,7 +81,9 @@ authorize(Context, AuthAccountId, [{<<"notifications">>, _Id}]) ->
     {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
     cb_context:req_verb(Context) =:= ?HTTP_GET
         orelse AuthAccountId =:= MasterAccountId;
-authorize(_Context, _AuthAccountId, _Nouns) -> 'false'.
+authorize(_Context, _AuthAccountId, _Nouns) ->
+    lager:debug("not authz ~s for ~p", [_AuthAccountId, _Nouns]),
+    'false'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -269,24 +271,8 @@ do_post(Context) ->
     end.
 
 post(Context, Id, ?PREVIEW) ->
-    Notification = cb_context:doc(Context),
+    Preview = build_preview_payload(Context),
 
-    Preview =
-        props:filter_undefined(
-          [{<<"To">>, wh_json:get_value(<<"to">>, Notification)}
-           ,{<<"From">>, wh_json:get_value(<<"from">>, Notification)}
-           ,{<<"Cc">>, wh_json:get_value(<<"cc">>, Notification)}
-           ,{<<"Bcc">>, wh_json:get_value(<<"bcc">>, Notification)}
-           ,{<<"Reply-To">>, wh_json:get_value(<<"reply_to">>, Notification)}
-           ,{<<"Subject">>, wh_json:get_value(<<"subject">>, Notification)}
-           ,{<<"HTML">>, wh_json:get_value(<<"html">>, Notification)}
-           ,{<<"Text">>, wh_json:get_value(<<"plain">>, Notification)}
-           ,{<<"Account-ID">>, cb_context:account_id(Context)}
-           ,{<<"Account-DB">>, cb_context:account_db(Context)}
-           ,{<<"Msg-ID">>, cb_context:req_id(Context)}
-           ,{<<"Preview">>, 'true'}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ]),
     {API, _} = lists:foldl(fun preview_fold/2
                            ,{Preview, cb_context:doc(Context)}
                            ,wapi_notifications:headers(Id)
@@ -304,6 +290,25 @@ post(Context, Id, ?PREVIEW) ->
             lager:debug("failed to publish preview for ~s: ~p", [Id, _E]),
             crossbar_util:response('error', <<"Failed to process notification preview">>, Context)
     end.
+
+-spec build_preview_payload(cb_context:context()) -> wh_proplist().
+build_preview_payload(Context) ->
+    Notification = cb_context:doc(Context),
+    props:filter_empty(
+      [{<<"To">>, wh_json:get_value(<<"to">>, Notification)}
+       ,{<<"From">>, wh_json:get_value(<<"from">>, Notification)}
+       ,{<<"Cc">>, wh_json:get_value(<<"cc">>, Notification)}
+       ,{<<"Bcc">>, wh_json:get_value(<<"bcc">>, Notification)}
+       ,{<<"Reply-To">>, wh_json:get_value(<<"reply_to">>, Notification)}
+       ,{<<"Subject">>, wh_json:get_value(<<"subject">>, Notification)}
+       ,{<<"HTML">>, wh_json:get_value(<<"html">>, Notification)}
+       ,{<<"Text">>, wh_json:get_value(<<"plain">>, Notification)}
+       ,{<<"Account-ID">>, cb_context:account_id(Context)}
+       ,{<<"Account-DB">>, cb_context:account_db(Context)}
+       ,{<<"Msg-ID">>, cb_context:req_id(Context)}
+       ,{<<"Preview">>, 'true'}
+       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+      ]).
 
 -spec handle_preview_response(cb_context:context(), wh_json:object()) -> cb_context:context().
 handle_preview_response(Context, Resp) ->
@@ -323,7 +328,12 @@ handle_preview_response(Context, Resp) ->
 publish_fun(<<"voicemail">>) ->
     fun wapi_notifications:publish_voicemail/1;
 publish_fun(<<"voicemail_full">>) ->
-    fun wapi_notifications:publish_voicemail_full/1.
+    fun wapi_notifications:publish_voicemail_full/1;
+publish_fun(<<"fax_inbound_to_email">>) ->
+    fun wapi_notifications:publish_fax_inbound/1;
+publish_fun(_Id) ->
+    lager:debug("no wapi_notification:publish_~s/1 defined", [_Id]),
+    fun(_Any) -> 'ok' end.
 
 -spec preview_fold(ne_binary(), {wh_proplist(), wh_json:object()}) ->
                           {wh_proplist(), wh_json:object()}.

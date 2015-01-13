@@ -780,17 +780,14 @@ get_path(Req, Relative) ->
 
 -spec maybe_remove_attachments(cb_context:context()) -> cb_context:context().
 maybe_remove_attachments(Context) ->
-    JObj = cb_context:doc(Context),
-    maybe_remove_attachments(Context, JObj
-                             ,wh_json:get_value(<<"_attachments">>, JObj)
-                            ).
-maybe_remove_attachments(Context, _JObj, 'undefined') ->
-    Context;
-maybe_remove_attachments(Context, JObj, _Attachments) ->
-    lager:debug("removing old attachments"),
-    crossbar_doc:save(cb_context:set_doc(Context
-                                         ,wh_json:delete_key(<<"_attachments">>, JObj)
-                                        )).
+    case wh_doc:maybe_remove_attachments(cb_context:doc(Context)) of
+        {'false', _} -> Context;
+        {'true', RemovedJObj} ->
+            lager:debug("deleting attachments from doc"),
+            crossbar_doc:save(
+              cb_context:set_doc(Context, RemovedJObj)
+             )
+    end.
 
 -spec create_auth_token(cb_context:context(), atom()) -> cb_context:context().
 create_auth_token(Context, Method) ->

@@ -73,27 +73,51 @@ init(_) ->
     {'ok', Module}.
 
 handle_call({'render', _TemplateId, Template, TemplateData}, _From, TemplateModule) ->
-    lager:debug("trying to compile template for ~p", [_From]),
-    try erlydtl:compile_template(Template, TemplateModule, [{'out_dir', 'false'}]) of
+    lager:debug("trying to compile template ~s as ~s for ~p", [_TemplateId, TemplateModule, _From]),
+    try erlydtl:compile_template(Template
+                                 ,TemplateModule
+                                 ,[{'out_dir', 'false'}]
+                                )
+    of
         {'ok', TemplateModule} ->
-            Resp = render_template(TemplateModule, TemplateData),
-            lager:debug("rendered as ~p", [Resp]),
-            {'reply', Resp, TemplateModule};
+            {'reply'
+             ,render_template(TemplateModule, TemplateData)
+             ,TemplateModule
+             ,'hibernate'
+            };
+        {'ok', TemplateModule, []} ->
+            {'reply'
+             ,render_template(TemplateModule, TemplateData)
+             ,TemplateModule
+             ,'hibernate'
+            };
         {'ok', TemplateModule, Warnings} ->
             lager:debug("compiling template produced warnings: ~p", [Warnings]),
             lager:debug("template: ~s", [Template]),
-            Resp = render_template(TemplateModule, TemplateData),
-            {'reply', Resp, TemplateModule};
+
+            {'reply'
+             ,render_template(TemplateModule, TemplateData)
+             ,TemplateModule
+             ,'hibernate'
+            };
         {'error', Errors, Warnings} ->
             lager:debug("failed to compile template"),
             lager:debug("errors: ~p", [Errors]),
             lager:debug("warnings: ~p", [Warnings]),
             lager:debug("template: ~s", [Template]),
-            {'reply', {'error', 'failed_to_compile'}, TemplateModule}
+            {'reply'
+             ,{'error', 'failed_to_compile'}
+             ,TemplateModule
+             ,'hibernate'
+            }
     catch
         _E:_R ->
             lager:debug("exception compiling template: ~s: ~p", [_E, _R]),
-            {'reply', {'error', 'failed_to_compile'}, TemplateModule}
+            {'reply'
+             ,{'error', 'failed_to_compile'}
+             ,TemplateModule
+             ,'hibernate'
+            }
     end;
 handle_call(_Req, _From, TemplateModule) ->
     {'noreply', TemplateModule}.
@@ -122,6 +146,11 @@ render_template(TemplateModule, TemplateData) ->
             lager:debug("failed to render template: ~p", [_E]),
             E
     catch
+        'error':'undef' ->
+            ST = erlang:get_stacktrace(),
+            lager:debug("something in the template ~s is undefined", [TemplateModule]),
+            wh_util:log_stacktrace(ST),
+            {'error', 'undefined'};
         _E:R ->
             lager:debug("crashed rendering template ~s: ~s: ~p", [TemplateModule, _E, R]),
             {'error', R}

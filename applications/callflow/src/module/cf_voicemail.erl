@@ -305,6 +305,7 @@ compose_voicemail(#mailbox{max_message_count=MaxCount
                                                andalso MaxCount > 0 ->
     lager:debug("voicemail box is full, cannot hold more messages, sending notification"),
     Props = [{<<"Account-DB">>, whapps_call:account_db(Call)}
+             ,{<<"Account-ID">>, whapps_call:account_id(Call)}
              ,{<<"Voicemail-Box">>, VMBId}
              ,{<<"Voicemail-Number">>, VMBN}
              ,{<<"Max-Message-Count">>, MaxCount}

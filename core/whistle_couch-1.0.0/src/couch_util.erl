@@ -177,6 +177,8 @@ get_new_conn(Host, Port, Opts) ->
             E
     end.
 
+-spec server_info(server()) -> {'ok', wh_json:object()} |
+                               {'error', _}.
 server_info(#server{}=Conn) -> couchbeam:server_info(Conn).
 
 -spec server_url(server()) -> ne_binary().

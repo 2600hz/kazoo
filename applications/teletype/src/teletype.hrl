@@ -16,6 +16,13 @@
 -type attachment() :: {ne_binary(), ne_binary(), ne_binary()}.
 -type attachments() :: [attachment(),...] | [].
 
+%% {ContentType, Content}
+-type rendered_template() :: {ne_binary(), iolist()}.
+-type rendered_templates() :: [rendered_template(),...] | [].
+
+%% {"to"/"cc"/etc, [Address,...]}
+-type email_map() :: [{ne_binary(), ne_binaries()},...] | [].
+
 -type init_param() :: {'macros', wh_json:object()} |
                       {'text', ne_binary()} |
                       {'html', ne_binary()} |
@@ -32,6 +39,10 @@
 -define(TEXT_PLAIN, <<"text/plain">>).
 -define(TEXT_HTML, <<"text/html">>).
 
+-define(EMAIL_SPECIFIED, <<"specified">>).
+-define(EMAIL_ORIGINAL, <<"original">>).
+-define(EMAIL_ADMINS, <<"admins">>).
+
 -define(CONFIGURED_EMAILS(Type, Addresses)
         ,wh_json:from_list(
            props:filter_undefined(
@@ -42,6 +53,55 @@
        ).
 -define(CONFIGURED_EMAILS(Type), wh_json:from_list([{<<"type">>, Type}])).
 
+-define(MACRO_VALUE(Key, Label, Name, Description)
+        ,{Key
+          ,wh_json:from_list([{<<"i18n_label">>, Label}
+                              ,{<<"friendly_name">>, Name}
+                              ,{<<"description">>, Description}
+                             ])
+         }).
+
+-define(CALLER_ID_MACROS
+        ,[?MACRO_VALUE(<<"caller_id.number">>, <<"caller_id_number">>, <<"Caller ID Number">>, <<"Number of the caller">>)
+          ,?MACRO_VALUE(<<"caller_id.name">>, <<"caller_id_name">>, <<"Caller ID Name">>, <<"Name of the caller">>)
+         ]).
+
+-define(CALLEE_ID_MACROS
+        ,[?MACRO_VALUE(<<"callee_id.number">>, <<"callee_id_number">>, <<"Callee ID Number">>, <<"Number of the callee">>)
+          ,?MACRO_VALUE(<<"callee_id.name">>, <<"callee_id_name">>, <<"Callee ID Name">>, <<"Name of the callee">>)
+         ]).
+
+-define(DATE_CALLED_MACROS
+        ,[?MACRO_VALUE(<<"date_called.utc">>, <<"date_called_utc">>, <<"Date (UTC)">>, <<"When was the voicemail left (UTC)">>)
+          ,?MACRO_VALUE(<<"date_called.local">>, <<"date_called_local">>, <<"Date">>, <<"When was the voicemail left (Local time)">>)
+         ]).
+
+-define(FROM_MACROS
+        ,[?MACRO_VALUE(<<"from.user">>, <<"from_user">>, <<"From User">>, <<"SIP From Username">>)
+          ,?MACRO_VALUE(<<"from.realm">>, <<"from_realm">>, <<"From Realm">>, <<"SIP From Realm">>)
+         ]).
+
+-define(TO_MACROS
+        ,[?MACRO_VALUE(<<"to.user">>, <<"to_user">>, <<"To User">>, <<"SIP To Username">>)
+          ,?MACRO_VALUE(<<"to.realm">>, <<"to_realm">>, <<"To Realm">>, <<"SIP To Realm">>)
+         ]).
+
+-define(SERVICE_MACROS
+        ,[?MACRO_VALUE(<<"service.url">>, <<"service_url">>, <<"Service Provider URL">>, <<"Service Provider URL">>)
+          ,?MACRO_VALUE(<<"service.name">>, <<"service_name">>, <<"Service Provider Name">>, <<"Service Provider Name">>)
+          ,?MACRO_VALUE(<<"service.provider">>, <<"service_provider">>, <<"Service Provider">>, <<"Service Provider">>)
+          ,?MACRO_VALUE(<<"service.support_number">>, <<"service_support_number">>, <<"Support Number">>, <<"Support Number">>)
+          ,?MACRO_VALUE(<<"service.support_email">>, <<"service_support_email">>, <<"Support Email">>, <<"Support Email">>)
+          ,?MACRO_VALUE(<<"service.from">>, <<"service_from">>, <<"Service Provider Email">>, <<"Service Provider's Email">>)
+         ]).
+
+-define(DEFAULT_CALL_MACROS
+        ,?CALLER_ID_MACROS
+        ++ ?CALLEE_ID_MACROS
+        ++ ?DATE_CALLED_MACROS
+        ++ ?FROM_MACROS
+        ++ ?TO_MACROS
+       ).
 
 -define(TELETYPE_HRL, 'true').
 -endif.

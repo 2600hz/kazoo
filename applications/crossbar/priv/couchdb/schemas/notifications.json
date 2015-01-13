@@ -17,12 +17,11 @@
                     "required": false,
                     "name": "Type",
                     "description": "",
-                    "minLength": 2,
-                    "maxLength": 253
+                    "enum":["original","specified","admins"]
                 },
                 "email_addresses": {
                     "type": "array",
-                    "required": true,
+                    "required": false,
                     "name": "Email Addresses",
                     "description": "",
                     "minItems":1,
@@ -45,12 +44,11 @@
                     "required": false,
                     "name": "Type",
                     "description": "",
-                    "minLength": 2,
-                    "maxLength": 253
+                    "enum":["original","specified","admins"]
                 },
                 "email_addresses": {
                     "type": "array",
-                    "required": true,
+                    "required": false,
                     "name": "CC Email Addresses",
                     "description": "",
                     "minItems":1,
@@ -73,12 +71,11 @@
                     "required": false,
                     "name": "Type",
                     "description": "",
-                    "minLength": 2,
-                    "maxLength": 253
+                    "enum":["original","specified","admins"]
                 },
                 "email_addresses": {
                     "type": "array",
-                    "required": true,
+                    "required": false,
                     "name": "BCC Email Addresses",
                     "description": "",
                     "itmes": {

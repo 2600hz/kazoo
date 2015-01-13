@@ -495,7 +495,8 @@ filter_bindings(_Predicate, '$end_of_table', Updates, Deletes) ->
 filter_bindings(Predicate, Key, Updates, Deletes) ->
     [#kz_binding{binding=Binding
                  ,binding_responders=Responders
-                }] = ets:lookup(table_id(), Key),
+                }
+    ] = ets:lookup(table_id(), Key),
     NewResponders = queue:filter(fun(#kz_responder{module=M
                                                    ,function=F
                                                    ,payload=P
@@ -503,8 +504,20 @@ filter_bindings(Predicate, Key, Updates, Deletes) ->
                                          Predicate(Binding, M, F, P)
                                  end, Responders),
     case queue:len(NewResponders) of
-        0 -> filter_bindings(Predicate, ets:next(table_id(), Key), Updates, [Key | Deletes]);
-        _Len -> filter_bindings(Predicate, ets:next(table_id(), Key), [{Key, {#kz_binding.binding_responders, NewResponders}} | Updates], Deletes)
+        0 ->
+            filter_bindings(Predicate
+                            ,ets:next(table_id(), Key)
+                            ,Updates
+                            ,[Key | Deletes]
+                           );
+        _Len ->
+            filter_bindings(Predicate
+                            ,ets:next(table_id(), Key)
+                            ,[{Key, {#kz_binding.binding_responders, NewResponders}}
+                              | Updates
+                             ]
+                            ,Deletes
+                           )
     end.
 
 %%--------------------------------------------------------------------
@@ -570,8 +583,8 @@ fold_bind_results(Responders, Payload, Route) ->
 
 -spec fold_bind_results(kz_bindings(), term(), ne_binary(), non_neg_integer(), kz_bindings()) -> term().
 fold_bind_results([#kz_responder{module=M
-                                ,function=F
-                                ,payload='undefined'
+                                 ,function=F
+                                 ,payload='undefined'
                                 }=Responder
                    | Responders], [_|Tokens]=Payload, Route, RespondersLen, ReRunResponders) ->
     try apply_responder(Responder, Payload) of
@@ -622,13 +635,13 @@ fold_bind_results([], Payload, Route, RespondersLen, ReRunResponders) ->
 
 -spec apply_responder(kz_responder(), term()) -> term().
 apply_responder(#kz_responder{module=M
-                             ,function=F
-                             ,payload='undefined'
+                              ,function=F
+                              ,payload='undefined'
                              }, Payload) ->
     apply(M, F, Payload);
 apply_responder(#kz_responder{module=M
-                             ,function=F
-                             ,payload=ResponderPayload
+                              ,function=F
+                              ,payload=ResponderPayload
                              }, Payload) ->
     apply(M, F, [ResponderPayload | Payload]).
 
@@ -690,8 +703,8 @@ fold_processor(Routing, Payload, Bindings) ->
 
     [Reply|_] = lists:foldl(
                   fun(#kz_binding{binding=Binding
-                                 ,binding_parts=BParts
-                                 ,binding_responders=Responders
+                                  ,binding_parts=BParts
+                                  ,binding_responders=Responders
                                  }, Acc) ->
                           case Binding =:= Routing orelse matches(BParts, RoutingParts) of
                               'true' ->

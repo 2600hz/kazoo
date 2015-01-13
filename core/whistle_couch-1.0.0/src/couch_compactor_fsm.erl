@@ -1569,18 +1569,29 @@ maybe_send_update(P, Ref, Update) when is_pid(P) ->
 maybe_send_update(_,_,_) -> 'ok'.
 
 -spec maybe_start_auto_compaction_job() -> 'ok'.
+-spec maybe_start_auto_compaction_job(boolean()) -> 'ok'.
 maybe_start_auto_compaction_job() ->
-    case compact_automatically()
-        andalso (catch wh_couch_connections:test_admin_conn())
-    of
+    maybe_start_auto_compaction_job(compact_automatically()).
+maybe_start_auto_compaction_job('false') ->
+    start_auto_compaction_check_timer(),
+    'ok';
+maybe_start_auto_compaction_job('true') ->
+    try wh_couch_connections:test_admin_conn() of
         {'ok', _} ->
             lager:debug("sending compact after timeout"),
             gen_fsm:send_event_after(?AUTOCOMPACTION_CHECK_TIMEOUT, 'compact');
-        _ ->
-            lager:debug("starting timer for autocompaction"),
-            erlang:send_after(?AUTOCOMPACTION_CHECK_TIMEOUT, self(), '$maybe_start_auto_compaction_job'),
-            'ok'
+        {'error', _E} ->
+            start_auto_compaction_check_timer(),
+            lager:debug("failed to test admin conn: ~p", [_E])
+    catch
+        _E:_R ->
+
+            lager:debug("~s when testing admin conn: ~p", [_E, _R])
     end.
+
+-spec start_auto_compaction_check_timer() -> reference().
+start_auto_compaction_check_timer() ->
+    erlang:send_after(?AUTOCOMPACTION_CHECK_TIMEOUT, self(), '$maybe_start_auto_compaction_job').
 
 -spec queued_jobs_status(queue()) -> 'none' | [wh_proplist(),...].
 queued_jobs_status(Jobs) ->
