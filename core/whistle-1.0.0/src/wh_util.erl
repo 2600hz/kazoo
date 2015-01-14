@@ -535,7 +535,7 @@ get_event_type(JObj) ->
 %% Generic helper to get the text value of a XML path
 %% @end
 %%--------------------------------------------------------------------
--spec get_xml_value(wh_deeplist(), xml_el()) -> api_binary().
+-spec get_xml_value(wh_deeplist(), xml_el() | string()) -> api_binary().
 get_xml_value(Paths, Xml) ->
     Path = lists:flatten(Paths),
     try xmerl_xpath:string(Path, Xml) of

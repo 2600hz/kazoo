@@ -212,7 +212,7 @@ setters_fold(F, C) when is_function(F, 1) -> F(C).
 -spec set_auth_token(context(), ne_binary()) -> context().
 -spec set_auth_doc(context(), wh_json:object()) -> context().
 -spec set_auth_account_id(context(), ne_binary()) -> context().
--spec set_req_verb(context(), ne_binary()) -> context().
+-spec set_req_verb(context(), http_method()) -> context().
 -spec set_req_data(context(), wh_json:object() | ne_binary()) -> context().
 -spec set_req_files(context(), req_files()) -> context().
 -spec set_req_nouns(context(), req_nouns()) -> context().

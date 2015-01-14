@@ -19,7 +19,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec init(ne_binary(), integer()) -> 'ok' | 'error'.
+-spec init(api_binary(), integer()) -> 'ok' | 'error'.
 init(Account, Balance) ->
     case get_top_up(Account) of
         {'error', 'topup_undefined'} ->
@@ -41,8 +41,10 @@ init(Account, Balance) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_top_up(api_binary() | wh_json:object()) -> {'error', any()} | {'ok', integer(), integer()}.
-get_top_up(Account) when is_binary(Account) ->
+-spec get_top_up(api_binary() | wh_json:object()) ->
+                        {'error', any()} |
+                        {'ok', integer(), integer()}.
+get_top_up(<<_/binary>> = Account) ->
     case whapps_config:get_is_true(?TOPUP_CONFIG, <<"enable">>, 'false') of
         'false' -> {'error', 'topup_disabled'};
         'true' ->
@@ -74,7 +76,7 @@ get_top_up(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_top_up(ne_binary(), integer(), integer(), integer()) -> 'ok' | 'error'.
+-spec maybe_top_up(ne_binary(), number(), integer(), integer()) -> 'ok' | 'error'.
 maybe_top_up(Account, Balance, Amount, Threshold) when Balance =< Threshold ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
@@ -111,7 +113,7 @@ trying_top_up(Account, Amount, [JObj|JObjs]) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
+%% @do
 %%
 %% @end
 %%--------------------------------------------------------------------
@@ -126,12 +128,3 @@ top_up(Account, Amount) ->
         {'ok', _} ->
             lager:info("account ~s top up for ~p", [Account, Amount])
     end.
-
-
-
-
-
-
-
-
-

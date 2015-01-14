@@ -136,18 +136,20 @@ get_addon_quantity(#bt_subscription{add_ons=AddOns}, AddOnId) ->
 %% Get the subscription id
 %% @end
 %%--------------------------------------------------------------------
--spec update_addon_amount(subscription(), ne_binary(), ne_binary()) -> subscription().
+-spec update_addon_amount(subscription(), ne_binary(), api_binary() | number()) -> subscription().
 update_addon_amount(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId, Amount) ->
     case lists:keyfind(AddOnId, #bt_addon.id, AddOns) of
         'false' ->
             case lists:keyfind(AddOnId, #bt_addon.inherited_from, AddOns) of
                 'false' -> braintree_util:error_not_found(<<"Add-On">>);
                 #bt_addon{}=AddOn ->
-                    AddOn1 = AddOn#bt_addon{amount=Amount},
+                    AddOn1 = AddOn#bt_addon{amount=wh_util:to_binary(Amount)},
                     Subscription#bt_subscription{add_ons=lists:keyreplace(AddOnId, #bt_addon.inherited_from, AddOns, AddOn1)}
             end;
         #bt_addon{}=AddOn ->
-            AddOn1 = AddOn#bt_addon{existing_id=AddOnId, amount=Amount},
+            AddOn1 = AddOn#bt_addon{existing_id=AddOnId
+                                    ,amount=wh_util:to_binary(Amount)
+                                   },
             Subscription#bt_subscription{add_ons=lists:keyreplace(AddOnId, #bt_addon.id, AddOns, AddOn1)}
     end.
 
@@ -174,18 +176,20 @@ get_discount(#bt_subscription{discounts=Discounts}, DiscountId) ->
 %% Update the amount of a specific discount
 %% @end
 %%--------------------------------------------------------------------
--spec update_discount_amount(subscription(), ne_binary(), ne_binary()) -> subscription().
+-spec update_discount_amount(subscription(), ne_binary(), ne_binary() | number()) -> subscription().
 update_discount_amount(#bt_subscription{discounts=Discounts}=Subscription, DiscountId, Amount) ->
     case lists:keyfind(DiscountId, #bt_discount.id, Discounts) of
         'false' ->
             case lists:keyfind(DiscountId, #bt_discount.inherited_from, Discounts) of
                 'false' -> braintree_util:error_not_found(<<"Discount">>);
                 #bt_discount{}=Discount ->
-                    Discount1 = Discount#bt_discount{amount=Amount},
+                    Discount1 = Discount#bt_discount{amount=wh_util:to_binary(Amount)},
                     Subscription#bt_subscription{discounts=lists:keyreplace(DiscountId, #bt_discount.inherited_from, Discounts, Discount1)}
             end;
         #bt_discount{}=Discount ->
-            Discount1 = Discount#bt_discount{existing_id=DiscountId, amount=Amount},
+            Discount1 = Discount#bt_discount{existing_id=DiscountId
+                                             ,amount=wh_util:to_binary(Amount)
+                                            },
             Subscription#bt_subscription{discounts=lists:keyreplace(DiscountId, #bt_discount.id, Discounts, Discount1)}
     end.
 
@@ -291,27 +295,32 @@ reset_discounts(#bt_subscription{discounts=Discounts}=Subscription) ->
 %% or subscription id
 %% @end
 %%--------------------------------------------------------------------
--spec update_addon_quantity(subscription() | ne_binary(), ne_binary(), integer()) -> subscription().
+-spec update_addon_quantity(subscription() | ne_binary(), ne_binary(), integer() | api_binary()) ->
+                                   subscription().
 update_addon_quantity(Subscription, AddOnId, Quantity) when not is_integer(Quantity) ->
     update_addon_quantity(Subscription, AddOnId, wh_util:to_integer(Quantity));
+update_addon_quantity(<<_/binary>> = SubscriptionId, AddOnId, Quantity) ->
+    Subscription = find(SubscriptionId),
+    update_addon_quantity(Subscription, AddOnId, Quantity);
 update_addon_quantity(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId, Quantity) ->
     case lists:keyfind(AddOnId, #bt_addon.id, AddOns) of
         'false' ->
             case lists:keyfind(AddOnId, #bt_addon.inherited_from, AddOns) of
                 'false' ->
-                    AddOn = #bt_addon{inherited_from=AddOnId, quantity=Quantity},
+                    AddOn = #bt_addon{inherited_from=AddOnId
+                                      ,quantity=Quantity
+                                     },
                     Subscription#bt_subscription{add_ons=[AddOn|AddOns]};
                 #bt_addon{}=AddOn ->
                     AddOn1 = AddOn#bt_addon{quantity=Quantity},
                     Subscription#bt_subscription{add_ons=lists:keyreplace(AddOnId, #bt_addon.inherited_from, AddOns, AddOn1)}
             end;
         #bt_addon{}=AddOn ->
-            AddOn1 = AddOn#bt_addon{existing_id=AddOnId, quantity=Quantity},
+            AddOn1 = AddOn#bt_addon{existing_id=AddOnId
+                                    ,quantity=Quantity
+                                   },
             Subscription#bt_subscription{add_ons=lists:keyreplace(AddOnId, #bt_addon.id, AddOns, AddOn1)}
-    end;
-update_addon_quantity(SubscriptionId, AddOnId, Quantity) ->
-    Subscription = find(SubscriptionId),
-    update_addon_quantity(Subscription, AddOnId, Quantity).
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -347,7 +356,7 @@ increment_addon_quantity(SubscriptionId, AddOnId) ->
 %% or subscription id
 %% @end
 %%--------------------------------------------------------------------
--spec update_discount_quantity(subscription() | ne_binary(), ne_binary(), integer()) -> subscription().
+-spec update_discount_quantity(subscription() | ne_binary(), ne_binary(), api_integer()) -> subscription().
 update_discount_quantity(Subscription, DiscountId, Quantity) when not is_integer(Quantity) ->
     update_discount_quantity(Subscription, DiscountId, wh_util:to_integer(Quantity));
 update_discount_quantity(#bt_subscription{discounts=Discounts}=Subscription, DiscountId, Quantity) ->
@@ -567,7 +576,7 @@ update_options(Key, Value, Props) ->
 %% Determine the necessary steps to change the add ons
 %% @end
 %%--------------------------------------------------------------------
--spec create_addon_changes([#bt_addon{},...] | []) -> changes().
+-spec create_addon_changes(bt_addons()) -> changes().
 create_addon_changes(AddOns) ->
     lists:foldr(fun(#bt_addon{id=Id, quantity=0}, C) ->
                         append_items('remove', Id, C);

@@ -51,7 +51,10 @@
                          }).
 
 -type item() :: #wh_service_item{}.
--export_type([item/0]).
+-type items() :: [item(),...] | [].
+-export_type([item/0
+              ,items/0
+             ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -128,7 +131,7 @@ set_item(Item, #wh_service_item{}=ServiceItem) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec quantity(item()) -> integer().
+-spec quantity(item()) -> api_integer().
 quantity(#wh_service_item{quantity=Quantity}) ->
     Quantity.
 
@@ -265,7 +268,7 @@ set_cumulative_discount_rate(Rate, #wh_service_item{}=ServiceItem) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec bookkeeper(wh_json:key(), item()) -> api_object().
+-spec bookkeeper(wh_json:key(), item()) -> api_object() | ne_binary().
 bookkeeper(Bookkeeper, #wh_service_item{bookkeepers=Bookkeepers}) ->
     wh_json:get_ne_value(Bookkeeper, Bookkeepers).
 
