@@ -843,29 +843,23 @@ load_account_tree(Context) ->
         {'ok', JObjs} -> format_account_tree_results(Context, JObjs)
     end.
 
-
-
 -spec get_authorized_account_tree(cb_context:context()) -> ne_binaries().
 get_authorized_account_tree(Context) ->
-    Doc = cb_context:doc(Context),
-    Tree = wh_json:get_value(<<"pvt_tree">>, Doc, []),
     AuthAccountId = cb_context:auth_account_id(Context),
-    AuthorizedTree =
-        lists:dropwhile(
-            fun(E) -> E =/= AuthAccountId end
-            ,Tree
-        ),
-    AuthorizedTree.
+    lists:dropwhile(fun(E) -> E =/= AuthAccountId end
+                    ,kz_account:tree(cb_context:doc(Context))
+                   ).
 
 -spec format_account_tree_results(cb_context:context(), wh_json:objects()) -> cb_context:context().
 format_account_tree_results(Context, JObjs) ->
     RespData =
-        [wh_json:from_list([
-          {<<"id">>, wh_json:get_value(<<"id">>, JObj)}
-          ,{<<"name">>, wh_json:get_value([<<"doc">>, <<"name">>], JObj)}
-         ]) || JObj <- JObjs],
+        [wh_json:from_list(
+           [{<<"id">>, wh_json:get_value(<<"id">>, JObj)}
+            ,{<<"name">>, wh_json:get_value([<<"doc">>, <<"name">>], JObj)}
+           ])
+         || JObj <- JObjs
+        ],
     cb_context:set_resp_data(Context, RespData).
-
 
 %%--------------------------------------------------------------------
 %% @private

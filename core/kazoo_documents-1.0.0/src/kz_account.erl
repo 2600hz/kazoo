@@ -34,9 +34,9 @@ parent_account_id(JObj) ->
         Ancestors -> lists:last(Ancestors)
     end.
 
--spec tree(wh_json:object()) -> api_binary().
+-spec tree(wh_json:object()) -> ne_binaries().
 tree(JObj) ->
-    wh_json:get_value(?TREE, JObj).
+    wh_json:get_value(?TREE, JObj, []).
 
 -ifdef(TEST).
 
