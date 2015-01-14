@@ -51,7 +51,9 @@
         ]).
 
 
--export([clean_binary/1, clean_binary/2]).
+-export([clean_binary/1, clean_binary/2
+         ,remove_white_spaces/1
+        ]).
 
 -export([uri_encode/1
          ,uri_decode/1
@@ -914,9 +916,12 @@ clean_binary(Bin, Opts) ->
 remove_white_spaces(Bin, Opts) ->
     case props:get_value(<<"remove_white_spaces">>, Opts, 'true') of
         'false' -> Bin;
-        'true' ->
-            << <<X>> || <<X>> <= Bin, X =/= $ >> %"$ " is 32
+        'true' -> remove_white_spaces(Bin)
     end.
+
+-spec remove_white_spaces(binary()) -> binary().
+remove_white_spaces(Bin) ->
+    << <<X>> || <<X>> <= Bin, X =/= $ >>. %"$ " is 32
 
 -spec binary_md5(text()) -> ne_binary().
 binary_md5(Text) -> to_hex_binary(erlang:md5(to_binary(Text))).

@@ -631,11 +631,11 @@ leak_reseller_id(Context) ->
     RespJObj = cb_context:resp_data(Context),
     ResellerId = cb_context:reseller_id(Context),
     leak_is_reseller(
-        cb_context:set_resp_data(
-            Context
-            ,wh_json:set_value(<<"reseller_id">>, ResellerId, RespJObj)
-        )
-    ).
+      cb_context:set_resp_data(
+        Context
+        ,wh_json:set_value(<<"reseller_id">>, ResellerId, RespJObj)
+       )
+     ).
 
 -spec leak_is_reseller(cb_context:context()) -> cb_context:context().
 leak_is_reseller(Context) ->
@@ -1089,8 +1089,8 @@ load_account_db(AccountId, Context) when is_binary(AccountId) ->
                                  ,{fun cb_context:set_account_id/2, AccountId}
                                  ,{fun cb_context:set_reseller_id/2, ResellerId}
                                 ]);
-       {'error', 'not_found'} -> cb_context:add_system_error('bad_identifier', [{'details', AccountId}],  Context);
-       {'error', _R} -> crossbar_util:response_db_fatal(Context)
+        {'error', 'not_found'} -> cb_context:add_system_error('bad_identifier', [{'details', AccountId}],  Context);
+        {'error', _R} -> crossbar_util:response_db_fatal(Context)
     end.
 
 %%--------------------------------------------------------------------
