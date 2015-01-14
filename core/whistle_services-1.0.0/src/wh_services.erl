@@ -798,9 +798,9 @@ calculate_services_charges(#wh_services{jobj=ServiceJObj}=Services, ServicePlans
                                             wh_json:object().
 calculate_transactions_charges(Transactions) ->
     lists:foldl(fun calculate_transactions_charge_fold/2
-      ,wh_json:new()
-      ,Transactions
-     ).
+                ,wh_json:new()
+                ,Transactions
+               ).
 
 -spec calculate_transactions_charge_fold(wh_transaction:transaction(), wh_json:object()) ->
                                                 wh_json:object().

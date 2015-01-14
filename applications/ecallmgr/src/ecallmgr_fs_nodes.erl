@@ -113,10 +113,11 @@ flush() -> do_flush(<<>>).
 flush(User, Realm) ->
     Args = <<"id "
              ,User/binary, " "
-             ,Realm/binary>>,
+             ,Realm/binary
+           >>,
     do_flush(Args).
 
--spec do_flush(binary()) -> 'ok'.
+-spec do_flush(ne_binary()) -> 'ok'.
 do_flush(Args) ->
     lager:debug("flushing xml cache ~s from all FreeSWITCH servers", [Args]),
     [freeswitch:api(Node, 'xml_flush_cache', Args)

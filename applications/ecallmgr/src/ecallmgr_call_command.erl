@@ -122,7 +122,7 @@ get_fs_app(Node, UUID, JObj, <<"record">>) ->
             %% some carriers kill the channel during long recordings since there is no
             %% reverse RTP stream
             Routines = [fun(V) ->
-                            case wh_util:is_true(ecallmgr_config:get(<<"record_waste_resources">>, 'false')) of
+                            case ecallmgr_config:is_true(<<"record_waste_resources">>, 'false') of
                                 'false' -> V;
                                 'true' -> [{<<"record_waste_resources">>, <<"true">>}|V]
                             end
@@ -152,7 +152,7 @@ get_fs_app(Node, UUID, JObj, <<"record_call">>) ->
         'false' -> {'error', <<"record_call failed to execute as JObj did not validate">>};
         'true' ->
             Routines = [fun(V) ->
-                            case wh_util:is_true(ecallmgr_config:get(<<"record_waste_resources">>, 'false')) of
+                            case ecallmgr_config:is_true(<<"record_waste_resources">>, 'false') of
                                 'false' -> V;
                                 'true' -> [{<<"record_waste_resources">>, <<"true">>}|V]
                             end
