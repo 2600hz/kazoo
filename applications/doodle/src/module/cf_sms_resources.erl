@@ -102,7 +102,7 @@ build_offnet_request(Data, Call) ->
        ,{<<"Inception">>, get_inception(Call)}
        ,{<<"Message-ID">>, whapps_call:kvs_fetch(<<"Message-ID">>, Call)}
        ,{<<"Body">>, whapps_call:kvs_fetch(<<"Body">>, Call)}
-       | wh_api:default_headers(doodle_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)
+       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
 
 -spec get_bypass_e164(wh_json:object()) -> boolean().
