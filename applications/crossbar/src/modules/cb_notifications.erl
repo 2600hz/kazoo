@@ -518,22 +518,62 @@ read_system_for_account(Context, Id) ->
     Context1 = read_system(Context, Id),
     case cb_context:resp_status(Context1) of
         'success' ->
+            lager:debug("read template ~s from master account", [Id]),
             Context2 = cb_context:set_account_db(Context1, cb_context:account_db(Context)),
-            migrate_template_to_account(Context2, Id);
+            Context3 = migrate_template_to_account(Context2, Id),
+            lager:debug("migrated template ~s from master to ~s", [Id, cb_context:account_id(Context)]),
+            read_account(Context3, Id, 'account');
         _Status -> Context1
     end.
 
 -spec migrate_template_to_account(cb_context:context(), path_token()) -> cb_context:context().
 migrate_template_to_account(Context, Id) ->
     lager:debug("saving template ~s from master to account ~s", [Id, cb_context:account_id(Context)]),
-    crossbar_doc:save(
-      cb_context:set_doc(Context
-                         ,kz_notification:set_base_properties(
-                            wh_json:public_fields(cb_context:doc(Context))
-                            ,Id
-                           )
-                        )
-     ).
+    Template = cb_context:doc(Context),
+    Context1 = crossbar_doc:save(
+                 cb_context:set_doc(Context
+                                    ,kz_notification:set_base_properties(
+                                       wh_json:public_fields(Template)
+                                       ,Id
+                                      )
+                                   )
+                ),
+    case cb_context:resp_status(Context1) of
+        'success' -> migrate_template_attachments(Context1, Id, wh_doc:attachments(Template));
+        _Status -> Context1
+    end.
+
+-spec migrate_template_attachments(cb_context:context(), ne_binary(), api_object()) ->
+                                          cb_context:context().
+migrate_template_attachments(Context, _Id, 'undefined') ->
+    lager:debug("no attachments to migrate for ~s", [_Id]),
+    Context;
+migrate_template_attachments(Context, Id, Attachments) ->
+    {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
+    wh_json:foldl(fun(AName, AMeta, C) ->
+                          migrate_template_attachment(MasterAccountDb, Id, AName, AMeta, C)
+                  end, Context, Attachments).
+
+-spec migrate_template_attachment(ne_binary(), ne_binary(), ne_binary(), wh_json:object(), cb_context:context()) ->
+                                         cb_context:context().
+migrate_template_attachment(MasterAccountDb, Id, AName, AMeta, Context) ->
+    case couch_mgr:fetch_attachment(MasterAccountDb, Id, AName) of
+        {'ok', Bin} ->
+            ContentType = wh_json:get_value(<<"content_type">>, AMeta),
+            lager:debug("saving attachment for ~s(~s): ~s", [Id, AName, ContentType]),
+            crossbar_doc:save_attachment(Id
+                                         ,attachment_name_by_content_type(ContentType)
+                                         ,Bin
+                                         ,Context
+                                         ,[{'headers'
+                                            ,[{'content_type', wh_util:to_list(ContentType)}]
+                                           }
+                                          ]
+                                        );
+        {'error', _E} ->
+            lager:debug("failed to load attachment ~s for ~s: ~p", [AName, Id, _E]),
+            Context
+    end.
 
 -spec note_account_override(wh_json:object()) -> wh_json:object().
 note_account_override(JObj) ->
