@@ -1,57 +1,43 @@
-# See LICENSE for licensing information.
-
 PROJECT = jesse
+ROOT = ../..
 
-DIALYZER = dialyzer
-REBAR = ./rebar
+EBINS =
+PA = $(foreach EBIN,$(EBINS),-pa $(EBIN))
 
-all: app
+ERLC_OPTS = +debug_info +warn_export_all $(PA)
 
-# Application.
+.PHONY: all compile clean
 
-deps:
-	@$(REBAR) get-deps
+all: compile
 
-app: deps
-	@$(REBAR) compile
+MODULES = $(shell ls src/*.erl | sed 's/src\///;s/\.erl/,/' | sed '$$s/.$$//')
+
+compile: ebin/$(PROJECT).app
+	@cat src/$(PROJECT).app.src \
+		| sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' \
+		> ebin/$(PROJECT).app
+	-@$(MAKE) ebin/$(PROJECT).app
+
+ebin/$(PROJECT).app: src/*.erl
+	@mkdir -p ebin/
+	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $?
+
+compile-test: test/$(PROJECT).app
+	@cat src/$(PROJECT).app.src \
+		| sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' \
+		> test/$(PROJECT).app
+	-@$(MAKE) test/$(PROJECT).app
+
+test/$(PROJECT).app: src/*.erl
+	@mkdir -p test/
+	erlc -v $(ERLC_OPTS) -DTEST -o test/ -pa test/ $?
 
 clean:
-	@$(REBAR) clean
-	rm -f test/*.beam
+	rm -f ebin/*
+	rm -f test/*.beam test/$(PROJECT).app
 	rm -f erl_crash.dump
 
-docs: clean-docs
-	@$(REBAR) doc skip_deps=true
+test: clean compile-test eunit
 
-clean-docs:
-	rm -f doc/*.css
-	rm -f doc/*.html
-	rm -f doc/*.png
-	rm -f doc/edoc-info
-
-# Tests.
-
-deps/jiffy:
-	@$(REBAR) -C rebar.tests.config get-deps
-	cd deps/jiffy && make
-
-submodules:
-	git submodule update --init
-
-test: clean deps/jiffy submodules app eunit ct
-
-eunit:
-	@$(REBAR) -C rebar.tests.config eunit skip_deps=true
-
-ct:
-	@$(REBAR) -C rebar.tests.config ct skip_deps=true suites=jesse_tests_draft3
-
-# Dialyzer.
-
-build-plt:
-	@$(DIALYZER) --build_plt --output_plt .$(PROJECT).plt \
-		--apps kernel stdlib sasl
-
-dialyze:
-	@$(DIALYZER) --src src --plt .$(PROJECT).plt --no_native \
-		-Werror_handling -Wrace_conditions #-Wunmatched_returns -Wunderspecs
+eunit: compile-test
+	erl -noshell -pa test -eval "eunit:test([$(MODULES)], [verbose])" -s init stop
