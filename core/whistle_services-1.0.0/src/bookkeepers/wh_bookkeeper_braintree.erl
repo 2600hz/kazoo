@@ -19,8 +19,6 @@
 -include_lib("braintree/include/braintree.hrl").
 -include("../whistle_services.hrl").
 
--define(TOPUP_CODE, 3006).
-
 -define(TR_DESCRIPTION, <<"braintree transaction">>).
 
 -record(wh_service_update, {bt_subscription
@@ -203,7 +201,7 @@ charge_transactions(BillingId, Transactions) ->
 
 charge_transactions(BillingId, [], Dict) ->
     dict:fold(
-      fun(Code, JObjs, Acc) when Code =:= ?TOPUP_CODE ->
+      fun(Code, JObjs, Acc) when Code =:= ?CODE_TOPUP ->
               handle_topup(JObjs, Acc, BillingId);
          (Code, JObjs, Acc) ->
               handle_charged_transactions(Code, JObjs, Acc, BillingId)
@@ -240,11 +238,11 @@ handle_charged_transactions(Code, JObjs, Acc, BillingId) ->
 -spec handle_topup(wh_json:objects(), wh_transactions:wh_transactions(), ne_binary()) ->
                           wh_transactions:wh_transactions().
 handle_topup(JObjs, Acc, BillingId) ->
-    case already_charged(BillingId, ?TOPUP_CODE) of
+    case already_charged(BillingId, ?CODE_TOPUP) of
         'true' -> Acc;
         'false' ->
             Amount = calculate_amount(JObjs),
-            Props = [{<<"purchase_order">>, ?TOPUP_CODE}],
+            Props = [{<<"purchase_order">>, ?CODE_TOPUP}],
             BT = braintree_transaction:quick_sale(
                    BillingId
                    ,wht_util:units_to_dollars(Amount)
@@ -403,7 +401,7 @@ calculate_amount([JObj|JObjs], Amount) ->
 -spec handle_quick_sale_response(bt_transaction()) -> boolean().
 handle_quick_sale_response(BtTransaction) ->
     Transaction = braintree_transaction:record_to_json(BtTransaction),
-    RespCode = wh_json:get_value(<<"processor_response_code">>, Transaction, 9999),
+    RespCode = wh_json:get_value(<<"processor_response_code">>, Transaction, ?CODE_UNKNOWN),
     % https://www.braintreepayments.com/docs/ruby/reference/processor_responses
     wh_util:to_integer(RespCode) < 2000.
 

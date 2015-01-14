@@ -172,7 +172,8 @@ log_update_cumulative_discount(Category, Item, ServiceItem) ->
         'true' -> 'ok';
         CumulativeRate ->
             lager:debug("set '~s/~s' cumulative discount with quantity ~p @ $~p"
-                        ,[Category, Item, CumulativeDiscount, CumulativeRate])
+                        ,[Category, Item, CumulativeDiscount, CumulativeRate]
+                       )
     end.
 
 -spec log_update_single_discount(ne_binary(), ne_binary(), wh_service_item:item()) -> 'ok'.
@@ -183,5 +184,6 @@ log_update_single_discount(Category, Item, ServiceItem) ->
         'false' -> 'ok';
         SingleRate ->
             lager:debug("set '~s/~s' single discount for $~p"
-                        ,[Category, Item, SingleRate])
+                        ,[Category, Item, SingleRate]
+                       )
     end.

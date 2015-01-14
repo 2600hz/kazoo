@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, VoIP, INC
+%%% @copyright (C) 2013-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -475,17 +475,17 @@ prepare_transaction(#wh_transaction{pvt_account_id='undefined'}) ->
     {'error', 'account_id_missing'};
 prepare_transaction(#wh_transaction{pvt_account_db='undefined'}) ->
     {'error', 'account_db_missing'};
-prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction) when 1001 =:= Code orelse 1002 =:= Code ->
+prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction) when ?CODE_PER_MINUTE_CALL =:= Code orelse ?CODE_SUB_ACCOUNT_PER_MINUTE_CALL =:= Code ->
     prepare_call_transaction(Transaction);
-prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction) when 2001 =:= Code orelse 2002 =:= Code ->
+prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction) when ?CODE_FEATURE_ACTIVATION =:= Code orelse ?CODE_SUB_ACCOUNT_FEATURE_ACTIVATION =:= Code ->
     prepare_feature_activation_transaction(Transaction);
-prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction) when 2003 =:= Code orelse 2004 =:= Code ->
+prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction) when ?CODE_NUMBER_ACTIVATION =:= Code orelse ?CODE_SUB_ACCOUNT_NUMBER_ACTIVATION =:= Code ->
     prepare_number_activation_transaction(Transaction);
-prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction) when 3001 =:= Code orelse 3002 =:= Code ->
+prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction) when ?CODE_MANUAL_ADDITION =:= Code orelse ?CODE_SUB_ACCOUNT_MANUAL_ADDITION =:= Code ->
     prepare_manual_addition_transaction(Transaction);
-prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction) when 4000 =:= Code ->
+prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction) when ?CODE_DATABASE_ROLLUP =:= Code ->
     prepare_rollup_transaction(Transaction);
-prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction) when 3006 =:= Code ->
+prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction) when ?CODE_TOPUP =:= Code ->
     prepare_topup_transaction(Transaction);
 prepare_transaction(Transaction) ->
     Transaction.
@@ -493,7 +493,7 @@ prepare_transaction(Transaction) ->
 -spec prepare_call_transaction(transaction()) -> transaction() | {'error', _}.
 prepare_call_transaction(#wh_transaction{call_id='undefined'}) ->
     {'error', 'call_id_missing'};
-prepare_call_transaction(#wh_transaction{sub_account_id='undefined', pvt_code=1002}) ->
+prepare_call_transaction(#wh_transaction{sub_account_id='undefined', pvt_code=?CODE_SUB_ACCOUNT_PER_MINUTE_CALL}) ->
     {'error', 'sub_account_id_missing'};
 prepare_call_transaction(#wh_transaction{event='undefined'}) ->
     {'error', 'event_missing'};
@@ -507,7 +507,7 @@ prepare_feature_activation_transaction(#wh_transaction{feature='undefined'}) ->
     {'error', 'feature_name_missing'};
 prepare_feature_activation_transaction(#wh_transaction{number='undefined'}) ->
     {'error', 'number_missing'};
-prepare_feature_activation_transaction(#wh_transaction{sub_account_id='undefined', pvt_code=2002}) ->
+prepare_feature_activation_transaction(#wh_transaction{sub_account_id='undefined', pvt_code=?CODE_SUB_ACCOUNT_FEATURE_ACTIVATION}) ->
     {'error', 'sub_account_id_missing'};
 prepare_feature_activation_transaction(Transaction) ->
     Transaction.
@@ -515,7 +515,7 @@ prepare_feature_activation_transaction(Transaction) ->
 -spec prepare_number_activation_transaction(transaction()) -> transaction() | {'error', _}.
 prepare_number_activation_transaction(#wh_transaction{number='undefined'}) ->
     {'error', 'number_missing'};
-prepare_number_activation_transaction(#wh_transaction{sub_account_id='undefined', pvt_code=2004}) ->
+prepare_number_activation_transaction(#wh_transaction{sub_account_id='undefined', pvt_code=?CODE_SUB_ACCOUNT_NUMBER_ACTIVATION}) ->
     {'error', 'sub_account_id_missing'};
 prepare_number_activation_transaction(Transaction) ->
     Transaction.
@@ -523,7 +523,7 @@ prepare_number_activation_transaction(Transaction) ->
 -spec prepare_manual_addition_transaction(transaction()) -> transaction() | {'error', _}.
 prepare_manual_addition_transaction(#wh_transaction{bookkeeper_info='undefined'}) ->
     {'error', 'bookkeeper_info_missing'};
-prepare_manual_addition_transaction(#wh_transaction{sub_account_id='undefined', pvt_code=3002}) ->
+prepare_manual_addition_transaction(#wh_transaction{sub_account_id='undefined', pvt_code=?CODE_SUB_ACCOUNT_MANUAL_ADDITION}) ->
     {'error', 'sub_accuont_id_missing'};
 prepare_manual_addition_transaction(Transaction) ->
     Transaction.

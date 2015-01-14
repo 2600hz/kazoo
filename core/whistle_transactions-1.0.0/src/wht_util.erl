@@ -30,26 +30,25 @@
          ,rollup/2
         ]).
 
-
 -include("whistle_transactions.hrl").
 
 %% tracked in hundred-ths of a cent
 -define(DOLLAR_TO_UNIT, 10000).
 
--define(REASONS, [{<<"per_minute_call">>, 1001}
-                  ,{<<"sub_account_per_minute_call">>, 1002}
-                  ,{<<"feature_activation">>, 2001}
-                  ,{<<"sub_account_feature_activation">>, 2002}
-                  ,{<<"number_activation">>, 2003}
-                  ,{<<"sub_account_number_activation">>, 2004}
-                  ,{<<"manual_addition">>, 3001}
-                  ,{<<"sub_account_manual_addition">>, 3002}
-                  ,{<<"auto_addition">>, 3003}
-                  ,{<<"sub_account_auto_addition">>, 3004}
-                  ,{<<"admin_discretion">>, 3005}
-                  ,{<<"topup">>, 3006}
-                  ,{<<"database_rollup">>, 4000}
-                  ,{<<"unknown">>, 9999}
+-define(REASONS, [{<<"per_minute_call">>, ?CODE_PER_MINUTE_CALL}
+                  ,{<<"sub_account_per_minute_call">>, ?CODE_SUB_ACCOUNT_PER_MINUTE_CALL}
+                  ,{<<"feature_activation">>, ?CODE_FEATURE_ACTIVATION}
+                  ,{<<"sub_account_feature_activation">>, ?CODE_SUB_ACCOUNT_FEATURE_ACTIVATION}
+                  ,{<<"number_activation">>, ?CODE_NUMBER_ACTIVATION}
+                  ,{<<"sub_account_number_activation">>, ?CODE_SUB_ACCOUNT_NUMBER_ACTIVATION}
+                  ,{<<"manual_addition">>, ?CODE_MANUAL_ADDITION}
+                  ,{<<"sub_account_manual_addition">>, ?CODE_SUB_ACCOUNT_MANUAL_ADDITION}
+                  ,{<<"auto_addition">>, ?CODE_AUTO_ADDITION}
+                  ,{<<"sub_account_auto_addition">>, ?CODE_SUB_ACCOUNT_AUTO_ADDITION}
+                  ,{<<"admin_discretion">>, ?CODE_ADMIN_DISCRETION}
+                  ,{<<"topup">>, ?CODE_TOPUP}
+                  ,{<<"database_rollup">>, ?CODE_DATABASE_ROLLUP}
+                  ,{<<"unknown">>, ?CODE_UNKNOWN}
                  ]).
 
 reasons() ->
