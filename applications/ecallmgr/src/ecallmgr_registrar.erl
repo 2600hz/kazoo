@@ -66,7 +66,6 @@
 -define(REG_QUEUE_NAME, <<>>).
 -define(REG_QUEUE_OPTIONS, []).
 -define(REG_CONSUME_OPTIONS, []).
--define(SUMMARY_REGEX, <<"^.*?:.*@([0-9.:]*)(?:;transport=udp|tcp|tls)(?:;fs_path=.*?:([0-9.:]*);)*">>).
 
 -record(state, {started = wh_util:current_tstamp()}).
 
@@ -997,14 +996,15 @@ print_summary({[#registration{username=Username
               ,Count) ->
     User = <<Username/binary, "@", Realm/binary>>,
     Remaining = (LastRegistration + Expires) - wh_util:current_tstamp(),
-    _ = case re:run(Contact, ?SUMMARY_REGEX, [{'capture', 'all_but_first', 'binary'}]) of
-            {'match', [Host, Path]} ->
+    Props = breakup_contact(Contact),
+    Hostport = props:get_first_defined(['received', 'hostport'], Props),
+    _ = case props:get_value('fs_path', Props) of
+            'undefined' ->
                 io:format("| ~-45s | ~-22s | ~-22s | ~-32s | ~-4B |~n"
-                          ,[User, Host, Path, CallId, Remaining]);
-            {'match', [Host]} ->
+                          ,[User, Hostport, <<>>, CallId, Remaining]);
+            Path ->
                 io:format("| ~-45s | ~-22s | ~-22s | ~-32s | ~-4B |~n"
-                          ,[User, Host, <<>>, CallId, Remaining]);
-            _Else -> 'ok'
+                         ,[User, Hostport, Path, CallId, Remaining])
         end,
     print_summary(ets:select(Continuation), Count + 1).
 
@@ -1031,3 +1031,30 @@ print_property(<<"Expires">> =Key, Value, #registration{expires=Expires
     io:format("~-19s: ~b/~s~n", [Key, Remaining, wh_util:to_binary(Value)]);
 print_property(Key, Value, _) ->
     io:format("~-19s: ~s~n", [Key, wh_util:to_binary(Value)]).
+
+-spec breakup_contact(text()) -> wh_proplist().
+breakup_contact(Contact) when is_binary(Contact) ->
+    C = binary:replace(Contact, [<<$'>>, <<$<>>, <<$>>>, <<"sip:">>], <<>>, ['global']),
+    [Uri|Parameters] = binary:split(C, <<";">>, ['global']),
+    Hostport = get_contact_hostport(Uri),
+    find_contact_parameters(Parameters, [{'uri', Uri}, {'hostport', Hostport}]);
+breakup_contact(Contact) ->
+    breakup_contact(wh_util:to_binary(Contact)).
+
+-spec find_contact_parameters(ne_binaries(), wh_proplist()) -> wh_proplist().
+find_contact_parameters([], Props) -> Props;
+find_contact_parameters([<<"transport=", Transport/binary>>|Parameters], Props) ->
+    find_contact_parameters(Parameters, [{'transport', Transport}|Props]);
+find_contact_parameters([<<"fs_path=", FsPath/binary>>|Parameters], Props) ->
+    find_contact_parameters(Parameters, [{'fs_path', FsPath}|Props]);
+find_contact_parameters([<<"received=", Received/binary>>|Parameters], Props) ->
+    find_contact_parameters(Parameters, [{'received', Received}|Props]);
+find_contact_parameters([_|Parameters], Props) ->
+     find_contact_parameters(Parameters, Props).
+
+-spec get_contact_hostport(ne_binary()) -> ne_binary().
+get_contact_hostport(Uri) ->
+    case binary:split(Uri, <<"@">>) of
+        [_, Hostport] -> Hostport;
+        _Else -> Uri
+    end.
