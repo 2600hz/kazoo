@@ -247,25 +247,29 @@ delete_entry(Context, EntryId) ->
     get_entry(Context, EntryId, OnSuccess).
 
 -spec post(cb_context:context()) -> cb_context:context().
+-spec post(cb_context:context(), path_token()) -> cb_context:context().
+-spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context) ->
     crossbar_doc:save(Context).
--spec post(cb_context:context(), path_token()) -> cb_context:context().
+
 post(Context, _ListId) ->
     crossbar_doc:save(Context).
--spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+
 post(Context, _ListId, _EntryId) ->
     handle_entry_success(Context).
 
 -spec put(cb_context:context()) -> cb_context:context().
+-spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context) ->
     crossbar_doc:save(Context).
--spec put(cb_context:context(), path_token()) -> cb_context:context().
+
 put(Context, _ListId) ->
     handle_entry_success(Context).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _ListId) ->
     crossbar_doc:delete(Context).
+
 -spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 delete(Context, _ListId, _EntryId) ->
     handle_entry_success(Context).
