@@ -60,7 +60,7 @@
 -define(REG_QUEUE_NAME, <<>>).
 -define(REG_QUEUE_OPTIONS, []).
 -define(REG_CONSUME_OPTIONS, []).
--define(SUMMARY_REGEX, <<"^.*?:.*@([0-9.:]*)(?:;transport=udp|tcp|tls)(?:;fs_path=.*?:([0-9.:]*);)*">>).
+-define(SUMMARY_REGEX, <<"^.*?:.*@([0-9.:]*)(?:;transport=(?:udp|tls|tcp))?(?:;ob)?(?:;rinstance=.{16})?(?:;fs_path=.*?:([0-9.:]*);)*">>).
 
 -record(state, {started = wh_util:current_tstamp()}).
 
@@ -1011,7 +1011,7 @@ print_summary({[#registration{username=Username
               ,Count) ->
     User = <<Username/binary, "@", Realm/binary>>,
     Remaining = (LastRegistration + Expires) - wh_util:current_tstamp(),
-    _ = case re:run(Contact, ?SUMMARY_REGEX, [{'capture', 'all_but_first', 'binary'}]) of
+    _ = case re:run(Contact, ?SUMMARY_REGEX, [{'capture', 'all_but_first', 'binary'}, caseless]) of
             {'match', [Host, Path]} ->
                 io:format("| ~-45s | ~-22s | ~-22s | ~-32s | ~-4B |~n"
                           ,[User, Host, Path, CallId, Remaining]);
