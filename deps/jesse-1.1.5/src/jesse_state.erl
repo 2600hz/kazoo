@@ -61,9 +61,6 @@
 
 -opaque state() :: #state{}.
 
-%% Includes
--include("jesse_schema_validator.hrl").
-
 %%% API
 %% @doc Adds `Property' to the `current_path' in `State'.
 -spec add_to_path(State :: state(), Property :: binary()) -> state().
