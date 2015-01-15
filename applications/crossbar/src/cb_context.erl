@@ -456,7 +456,11 @@ validate_request_data(<<_/binary>> = Schema, Context) ->
             validate_request_data(SchemaJObj, Context)
     end;
 validate_request_data(SchemaJObj, Context) ->
-    case jesse:validate_with_schema(SchemaJObj, wh_json:public_fields(req_data(Context))) of
+    case jesse:validate_with_schema(SchemaJObj
+                                    ,wh_json:public_fields(req_data(Context))
+                                    ,[{'schema_loader_fun', fun wh_json_schema:load/1}]
+                                   )
+    of
         {'ok', JObj} ->
             passed(
               set_doc(Context, wh_json_schema:add_defaults(JObj, SchemaJObj))
