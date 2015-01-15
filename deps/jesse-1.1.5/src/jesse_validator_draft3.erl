@@ -28,6 +28,7 @@
 
 %% Includes
 -include("jesse_schema_validator.hrl").
+-include_lib("whistle/include/wh_log.hrl").
 
 %%% API
 %% @doc Goes through attributes of the given schema `JsonSchema' and
@@ -198,6 +199,9 @@ check_value(Value, [{?EXTENDS, Extends} | Attrs], State) ->
   check_value(Value, Attrs, NewState);
 check_value(_Value, [], State) ->
   State;
+check_value(Value, [{?_REF, RefSchemaURI} | Attrs], State) ->
+  NewState = check_ref(Value, RefSchemaURI, State),
+  check_value(Value, Attrs, NewState);
 check_value(Value, [_Attr | Attrs], State) ->
   check_value(Value, Attrs, State).
 
@@ -878,6 +882,32 @@ check_extends_array(Value, Extends, State) ->
              , State
              , Extends
              ).
+
+check_ref(Value, <<"#/", LocalPath/binary>>, State) ->
+  lager:debug("ref schema is local to current schema: ~s", [LocalPath]),
+  Keys = binary:split(LocalPath, <<"/">>, ['global']),
+  OriginalSchema = jesse_state:original_schema(State),
+
+  case get_value(Keys, OriginalSchema) of
+    ?not_found ->
+      lager:debug("failed to find ref schema on original schema"),
+      State;
+    RefSchema ->
+      do_ref_schema(Value, RefSchema, State)
+  end;
+check_ref(Value, RefSchemaURI, State) ->
+  lager:debug("resolving ref schema ~s", [RefSchemaURI]),
+  case jesse_state:find_schema(State, RefSchemaURI) of
+    ?not_found ->
+      lager:debug("failed to find ref schema: ~s", [RefSchemaURI]),
+      State;
+    RefSchema ->
+      do_ref_schema(Value, RefSchema, State)
+  end.
+
+do_ref_schema(Value, RefSchema, State) ->
+  TmpState = check_value(Value, unwrap(RefSchema), set_current_schema(State, RefSchema)),
+  set_current_schema(TmpState, get_current_schema(State)).
 
 %%=============================================================================
 %% @doc Returns `true' if given values (instance) are equal, otherwise `false'

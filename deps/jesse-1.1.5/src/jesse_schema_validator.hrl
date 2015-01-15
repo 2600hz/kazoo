@@ -20,6 +20,8 @@
 %% @end
 %%%=============================================================================
 
+-ifndef(JESSE_SCHEMA_VALIDATOR_HRL).
+
 %% Constant definitions for Json schema keywords
 -define(_SCHEMA,              <<"$schema">>).
 -define(TYPE,                 <<"type">>).
@@ -96,6 +98,9 @@
 
 %%
 -define(not_found, not_found).
+
+-define(JESSE_SCHEMA_VALIDATOR_HRL, 'true').
+-endif.
 
 %%% Local Variables:
 %%% erlang-indent-level: 2
