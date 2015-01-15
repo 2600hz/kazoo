@@ -1,0 +1,76 @@
+{
+    "_id": "caller_id",
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "type": "object",
+    "required": false,
+    "name": "Caller ID",
+    "description": "Defines caller ID settings based on the type of call being made",
+    "properties": {
+        "internal": {
+            "type": "object",
+            "required": false,
+            "name": "Internal",
+            "description": "The default caller ID used when dialing internal extensions",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "required": false,
+                    "name": "Name",
+                    "description": "The caller id name for the object type",
+                    "maxLength": 35
+                },
+                "number": {
+                    "type": "string",
+                    "required": false,
+                    "name": "Number",
+                    "description": "The caller id name for the object type",
+                    "maxLength": 35
+                }
+            }
+        },
+        "external": {
+            "type": "object",
+            "required": false,
+            "name": "External",
+            "description": "The default caller ID used when dialing external numbers",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "required": false,
+                    "name": "Name",
+                    "description": "The caller id name for the object type",
+                    "maxLength": 35
+                },
+                "number": {
+                    "type": "string",
+                    "required": false,
+                    "name": "Number",
+                    "description": "The caller id name for the object type",
+                    "maxLength": 35
+                }
+            }
+        },
+        "emergency": {
+            "type": "object",
+            "required": false,
+            "name": "Emergency",
+            "description": "The caller ID used when a resource is flagged as 'emergency'",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "required": false,
+                    "name": "Name",
+                    "description": "The caller id name for the object type",
+                    "maxLength": 35
+                },
+                "number": {
+                    "type": "string",
+                    "required": false,
+                    "name": "Number",
+                    "description": "The caller id name for the object type",
+                    "maxLength": 35
+                }
+            }
+        }
+    }
+}

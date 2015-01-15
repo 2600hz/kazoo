@@ -83,74 +83,7 @@
             "type": "object",
             "required": false,
             "description": "The device caller ID parameters",
-            "properties": {
-                "internal": {
-                    "type": "object",
-                    "required": false,
-                    "name": "Internal Caller-ID",
-                    "description": "The caller ID used when dialing internal extensions if not a property of the device owner",
-                    "properties": {
-                        "name": {
-                            "type": "string",
-                            "required": false,
-                            "name": "Name",
-                            "description": "The caller id name used internally",
-                            "maxLength": 35
-                        },
-                        "number": {
-                            "type": "string",
-                            "required": false,
-                            "name": "Number",
-                            "description": "The caller id name used internally",
-                            "maxLength": 35
-                        }
-                    }
-                },
-                "external": {
-                    "type": "object",
-                    "required": false,
-                    "name": "External Caller-ID",
-                    "description": "The caller ID used when dialing external numbers if not a property of the device owner",
-                    "properties": {
-                        "name": {
-                            "type": "string",
-                            "required": false,
-                            "name": "Name",
-                            "description": "The caller id name used when dialing outbound",
-                            "maxLength": 35
-                        },
-                        "number": {
-                            "type": "string",
-                            "required": false,
-                            "name": "Number",
-                            "description": "The caller id name used when dialing outbound",
-                            "maxLength": 35
-                        }
-                    }
-                },
-                "emergency": {
-                    "type": "object",
-                    "required": false,
-                    "name": "Default Emergency Caller-ID",
-                    "description": "The caller ID used when a resource is flagged as 'emergency'",
-                    "properties": {
-                        "name": {
-                            "type": "string",
-                            "required": false,
-                            "name": "Name",
-                            "description": "The caller id name used when dialing an emergency resource",
-                            "maxLength": 35
-                        },
-                        "number": {
-                            "type": "string",
-                            "required": false,
-                            "name": "Number",
-                            "description": "The caller id name used when dialing an emergency resource",
-                            "maxLength": 35
-                        }
-                    }
-                }
-            },
+            "$ref":"caller_id",
             "default": {}
         },
         "music_on_hold": {
