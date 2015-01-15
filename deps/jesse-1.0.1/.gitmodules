@@ -1,3 +1,0 @@
-[submodule "test/jesse_tests_draft3_SUITE_data/JSON-Schema-Test-Suite"]
-	path = test/jesse_tests_draft3_SUITE_data/JSON-Schema-Test-Suite
-	url = https://github.com/json-schema/JSON-Schema-Test-Suite.git
