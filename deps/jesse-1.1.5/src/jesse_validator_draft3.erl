@@ -883,12 +883,12 @@ check_extends_array(Value, Extends, State) ->
              , Extends
              ).
 
-check_ref(Value, <<"#/", LocalPath/binary>>, State) ->
+check_ref(Value, <<"#", LocalPath/binary>>, State) ->
   lager:debug("ref schema is local to current schema: ~s", [LocalPath]),
   Keys = binary:split(LocalPath, <<"/">>, ['global']),
   OriginalSchema = jesse_state:original_schema(State),
 
-  case get_value(Keys, OriginalSchema) of
+  case get_local_schema(Keys, OriginalSchema) of
     ?not_found ->
       lager:debug("failed to find ref schema on original schema"),
       State;
@@ -903,6 +903,16 @@ check_ref(Value, RefSchemaURI, State) ->
     RefSchema ->
       do_ref_schema(Value, RefSchema, State)
   end.
+
+get_local_schema([<<>> | Keys], Schema) ->
+  get_local_schema(Keys, Schema);
+get_local_schema([Key|Keys], Schema) ->
+  SubSchema = get_value(Key, Schema),
+  case jesse_lib:is_json_object(SubSchema) of
+    true -> get_local_schema(Keys, SubSchema);
+    false -> ?not_found
+  end;
+get_local_schema([], Schema) -> Schema.
 
 do_ref_schema(Value, RefSchema, State) ->
   TmpState = check_value(Value, unwrap(RefSchema), set_current_schema(State, RefSchema)),
