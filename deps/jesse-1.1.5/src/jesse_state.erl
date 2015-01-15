@@ -177,7 +177,7 @@ find_schema(#state{schema_loader_fun=F}, SchemaKey) ->
         'false' -> ?not_found
       end
   catch
-    _:_ -> ?not_found
+    _E:_R -> ?not_found
   end.
 
 %%% Local Variables:

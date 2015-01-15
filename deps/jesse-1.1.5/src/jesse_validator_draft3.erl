@@ -896,7 +896,6 @@ check_ref(Value, <<"#/", LocalPath/binary>>, State) ->
       do_ref_schema(Value, RefSchema, State)
   end;
 check_ref(Value, RefSchemaURI, State) ->
-  lager:debug("resolving ref schema ~s", [RefSchemaURI]),
   case jesse_state:find_schema(State, RefSchemaURI) of
     ?not_found ->
       lager:debug("failed to find ref schema: ~s", [RefSchemaURI]),
