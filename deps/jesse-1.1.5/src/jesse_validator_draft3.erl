@@ -28,7 +28,6 @@
 
 %% Includes
 -include("jesse_schema_validator.hrl").
--include_lib("whistle/include/wh_log.hrl").
 
 %%% API
 %% @doc Goes through attributes of the given schema `JsonSchema' and
@@ -884,13 +883,11 @@ check_extends_array(Value, Extends, State) ->
              ).
 
 check_ref(Value, <<"#", LocalPath/binary>>, State) ->
-  lager:debug("ref schema is local to current schema: ~s", [LocalPath]),
   Keys = binary:split(LocalPath, <<"/">>, ['global']),
   OriginalSchema = jesse_state:original_schema(State),
 
   case get_local_schema(Keys, OriginalSchema) of
     ?not_found ->
-      lager:debug("failed to find ref schema on original schema"),
       State;
     RefSchema ->
       do_ref_schema(Value, RefSchema, State)
@@ -898,7 +895,6 @@ check_ref(Value, <<"#", LocalPath/binary>>, State) ->
 check_ref(Value, RefSchemaURI, State) ->
   case jesse_state:find_schema(State, RefSchemaURI) of
     ?not_found ->
-      lager:debug("failed to find ref schema: ~s", [RefSchemaURI]),
       State;
     RefSchema ->
       do_ref_schema(Value, RefSchema, State)

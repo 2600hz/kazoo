@@ -43,7 +43,6 @@
              ]).
 
 -include("jesse_schema_validator.hrl").
--include_lib("whistle/include/wh_log.hrl").
 
 -define(SCHEMA_READER, fun jesse_database:read/1).
 
