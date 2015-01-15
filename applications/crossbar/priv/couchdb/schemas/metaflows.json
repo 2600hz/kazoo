@@ -7,7 +7,7 @@
     "description": "Metaflows are initiated via DTMF sequences in established calls",
     "properties": {
         "numbers": {
-            "type": "array",
+            "type": "object",
             "required": false,
             "name": "Numbers",
             "description": "The metaflow numbers",
@@ -17,7 +17,7 @@
             }
         },
         "patterns": {
-            "type": "array",
+            "type": "object",
             "required": false,
             "name": "Patterns",
             "description": "The metaflow patterns",
@@ -50,7 +50,7 @@
             "default": "*"
         },
         "digit_timeout": {
-            "type": "string",
+            "type": "integer",
             "required": false,
             "name": "Timeout (milliseconds)",
             "description": "How long to wait between DTMF presses before processing the collected sequence",
