@@ -1,6 +1,6 @@
 {
     "_id": "callflows.record_call",
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-03/schema#",
     "type": "object",
     "required": true,
     "description": "Validator for the Record Call callflow action",
