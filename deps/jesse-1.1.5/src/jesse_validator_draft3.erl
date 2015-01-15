@@ -72,6 +72,17 @@ check_value( Value
                false -> State
        end,
   check_value(Value, Attrs, NewState);
+
+check_value( Value
+             , [{?MINPROPERTIES, MinProperties} | Attrs]
+             , State
+             ) ->
+  NewState = case jesse_lib:is_json_object(Value) of
+               'true'  -> check_min_properties(Value, MinProperties, State);
+               'false' -> State
+             end,
+  check_value(Value, Attrs, NewState);
+
 check_value(Value, [{?ITEMS, Items} | Attrs], State) ->
   NewState = case jesse_lib:is_array(Value) of
                true  -> check_items(Value, Items, State);
@@ -642,7 +653,7 @@ check_minimum(Value, Minimum, ExclusiveMinimum, State) ->
   case Result of
     true  -> State;
     false ->
-      handle_data_invalid(?not_in_range, Value, State)
+      handle_data_invalid(?not_minimum, Value, State)
   end.
 
 %%% @doc 5.10.  maximum
@@ -665,7 +676,7 @@ check_maximum(Value, Maximum, ExclusiveMaximum, State) ->
   case Result of
     true  -> State;
     false ->
-      handle_data_invalid(?not_in_range, Value, State)
+      handle_data_invalid(?not_maximum, Value, State)
   end.
 
 %% @doc 5.13.  minItems
@@ -676,7 +687,14 @@ check_maximum(Value, Maximum, ExclusiveMaximum, State) ->
 check_min_items(Value, MinItems, State) when length(Value) >= MinItems ->
   State;
 check_min_items(Value, _MinItems, State) ->
-  handle_data_invalid(?wrong_size, Value, State).
+  handle_data_invalid(?wrong_min_items, Value, State).
+
+%% @doc 5.4.2 minProperties
+check_min_properties(Value, MinProperties, State) ->
+  case length(wh_json:get_keys(Value)) >= MinProperties of
+    'true' -> State;
+    'false' -> handle_data_invalid(?wrong_min_properties, Value, State)
+  end.
 
 %% @doc 5.14.  maxItems
 %%
@@ -686,7 +704,7 @@ check_min_items(Value, _MinItems, State) ->
 check_max_items(Value, MaxItems, State) when length(Value) =< MaxItems ->
   State;
 check_max_items(Value, _MaxItems, State) ->
-  handle_data_invalid(?wrong_size, Value, State).
+  handle_data_invalid(?wrong_max_items, Value, State).
 
 %% @doc 5.15.  uniqueItems
 %%
@@ -757,7 +775,7 @@ check_min_length(Value, MinLength, State) ->
   case length(unicode:characters_to_list(Value)) >= MinLength of
     true  -> State;
     false ->
-      handle_data_invalid(?wrong_length, Value, State)
+      handle_data_invalid(?wrong_min_length, Value, State)
   end.
 
 %% @doc 5.18.  maxLength
@@ -769,7 +787,7 @@ check_max_length(Value, MaxLength, State) ->
   case length(unicode:characters_to_list(Value)) =< MaxLength of
     true  -> State;
     false ->
-      handle_data_invalid(?wrong_length, Value, State)
+      handle_data_invalid(?wrong_max_length, Value, State)
   end.
 
 %% @doc 5.19.  enum
@@ -791,7 +809,7 @@ check_enum(Value, Enum, State) ->
   case IsValid of
     true  -> State;
     false ->
-      handle_data_invalid(?not_in_range, Value, State)
+      handle_data_invalid(?not_in_enum, Value, State)
   end.
 
 check_format(_Value, _Format, State) ->
