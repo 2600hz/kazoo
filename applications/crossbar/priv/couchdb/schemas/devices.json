@@ -492,65 +492,8 @@
             }
         },
         "metaflows": {
-            "type": "object",
-            "required": false,
-            "name": "Metaflow Parameters",
             "description": "The device metaflow parameters",
-            "properties": {
-                "numbers": {
-                    "type": "object",
-                    "required": false,
-                    "name": "Numbers",
-                    "description": "The metaflow numbers"
-                },
-                "patterns": {
-                    "type": "object",
-                    "required": false,
-                    "name": "Patterns",
-                    "description": "The metaflow patterns"
-                },
-                "binding_digit": {
-                    "type": "string",
-                    "required": false,
-                    "name": "Binding Digit",
-                    "description": "What DTMF will trigger the collection and analysis of the subsequent DTMF sequence",
-                    "enum": [
-                        "1",
-                        "2",
-                        "3",
-                        "4",
-                        "5",
-                        "6",
-                        "7",
-                        "8",
-                        "9",
-                        "0",
-                        "*",
-                        "#"
-                    ],
-                    "maxLength": 1,
-                    "minLength": 1,
-                    "default": "*"
-                },
-                "digit_timeout": {
-                    "type": "string",
-                    "required": false,
-                    "name": "Timeout (milliseconds)",
-                    "description": "How long to wait between DTMF presses before processing the collected sequence",
-                    "minimum": 0
-                },
-                "listen_on": {
-                    "type": "string",
-                    "required": false,
-                    "name": "Listen On",
-                    "description": "Which leg(s) of the call to listen for DTMF",
-                    "enum": [
-                        "both",
-                        "self",
-                        "peer"
-                    ]
-                }
-            }
+            "$ref":"metaflows"
         },
         "language": {
             "type": "string",
