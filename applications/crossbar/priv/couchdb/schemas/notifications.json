@@ -24,7 +24,6 @@
                     "required": false,
                     "name": "Email Addresses",
                     "description": "",
-                    "minItems":0,
                     "items": {
                         "type": "string",
                         "format": "email",
@@ -51,7 +50,6 @@
                     "required": false,
                     "name": "CC Email Addresses",
                     "description": "",
-                    "minItems":0,
                     "items": {
                         "type": "string",
                         "format": "email",
