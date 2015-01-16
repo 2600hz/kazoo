@@ -619,6 +619,7 @@ create_new_ring_group_callflow(JObj) ->
 
 -spec base_group_ring_group(wh_json:object()) -> wh_json:object().
 base_group_ring_group(JObj) ->
+    io:format("migrating callflow ~s: ~s~n", [wh_json:get_value(<<"_id">>, JObj), wh_json:encode(JObj)]),
     BaseGroup = wh_json:from_list(
                   props:filter_undefined(
                     [{<<"pvt_vsn">>, <<"1">>}
@@ -674,7 +675,7 @@ save_new_ring_group_callflow(JObj, NewCallflow) ->
     Name = wh_json:get_value(<<"name">>, NewCallflow),
     case check_if_callflow_exist(AccountDb, Name) of
         'true' ->
-            io:format("unable to save new callflow ~p in ~p already exist~n", [Name, AccountDb]);
+            io:format("unable to save new callflow '~s' in '~s'; already exists~n", [Name, AccountDb]);
         'false' ->
             save_new_ring_group_callflow(JObj, NewCallflow, AccountDb)
     end.
@@ -686,6 +687,7 @@ save_new_ring_group_callflow(JObj, NewCallflow, AccountDb) ->
                       ,[wh_json:get_value(<<"_id">>, JObj), AccountDb]
                      );
         {'ok', NewJObj} ->
+            io:format("  saved base group callflow: ~s~n", [wh_json:encode(NewJObj)]),
             update_old_ring_group_callflow(JObj, NewJObj)
     end.
 
@@ -748,7 +750,8 @@ save_old_ring_group(JObj, NewCallflow) ->
             io:format("unable to save callflow ~p in ~p, removing new one (~p)~n", L),
             {'ok', _} = couch_mgr:del_doc(AccountDb, NewCallflow),
             'ok';
-        {'ok', _} -> 'ok'
+        {'ok', _OldJObj} ->
+            io:format("  saved ring group callflow: ~s~n", [wh_json:encode(_OldJObj)])
     end.
 
 -ifdef(TEST).
