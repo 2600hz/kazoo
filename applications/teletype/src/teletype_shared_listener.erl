@@ -32,8 +32,9 @@
                      ,{{'teletype_fax_inbound_to_email', 'handle_fax_inbound'}
                        ,[{<<"notification">>, <<"inbound_fax">>}]
                       }
-
-                     ,{'teletype_template_skel', [{<<"notification">>, <<"skel">>}]}
+                     ,{'teletype_template_skel'
+                       ,[{<<"notification">>, <<"skel">>}]
+                      }
                     ]).
 %% -define(RESPONDERS, []}
 

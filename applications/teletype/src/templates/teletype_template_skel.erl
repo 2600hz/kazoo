@@ -61,6 +61,14 @@ handle_req(JObj, _Props) ->
 
     %% Gather data for template
     DataJObj = wh_json:normalize(wh_api:remove_defaults(JObj)),
+
+    case teletype_util:should_handle_notification(DataJObj) of
+        'false' -> lager:debug("notification handling not configured for this account");
+        'true' -> handle_req(DataJObj)
+    end.
+
+-spec handle_req(wh_json:object()) -> 'ok'.
+handle_req(DataJObj) ->
     ServiceData = teletype_util:service_params(DataJObj, ?MOD_CONFIG_CAT),
     Macros = [{<<"service">>, ServiceData} | build_macro_data(DataJObj)],
 
@@ -72,7 +80,7 @@ handle_req(JObj, _Props) ->
                          || {ContentType, Template} <- Templates
                         ],
 
-    {'ok', TemplateMetaJObj} = teletype_util:fetch_template_meta(?TEMPLATE_ID, wh_json:get_value(<<"Account-ID">>, JObj)),
+    {'ok', TemplateMetaJObj} = teletype_util:fetch_template_meta(?TEMPLATE_ID, teletype_util:find_account_id(DataJObj)),
 
     Subject = teletype_util:render_subject(
                 wh_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj])

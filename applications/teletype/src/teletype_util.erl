@@ -22,6 +22,7 @@
          ,find_account_id/1
          ,find_account_db/1
          ,is_notice_enabled/3
+         ,should_handle_notification/1
 
          ,default_from_address/1
          ,default_reply_to/1
@@ -880,6 +881,13 @@ filter_for_admins(Users) ->
      || User <- Users,
         wh_json:get_value([<<"doc">>, <<"priv_level">>], User) =:= <<"admin">>
     ].
+
+-spec should_handle_notification(wh_json:object()) -> boolean().
+should_handle_notification(DataJObj) ->
+    AccountId = find_account_id(DataJObj),
+    AccountDb = find_account_db(DataJObj),
+    {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+    kz_account:notification_preference(AccountJObj) =/= 'undefined'.
 
 -define(MOD_CONFIG_CAT(Key), <<(?NOTIFY_CONFIG_CAT)/binary, ".", Key/binary>>).
 

@@ -119,6 +119,13 @@ handle_fax_inbound(JObj, _Props) ->
                              )
                           ),
 
+    case teletype_util:should_handle_notification(DataJObj) of
+        'true' -> handle_fax_inbound(DataJObj);
+        'false' -> lager:debug("notification handling not configured for this account")
+    end.
+
+-spec handle_fax_inbound(wh_json:object()) -> 'ok'.
+handle_fax_inbound(DataJObj) ->
     FaxJObj = get_fax_doc(DataJObj),
 
     AccountId = teletype_util:find_account_id(DataJObj),
@@ -145,7 +152,7 @@ handle_fax_inbound(JObj, _Props) ->
                         ],
     lager:debug("rendered templates"),
 
-    {'ok', TemplateMetaJObj} = teletype_util:fetch_template_meta(?TEMPLATE_ID, wh_json:get_value(<<"Account-ID">>, JObj)),
+    {'ok', TemplateMetaJObj} = teletype_util:fetch_template_meta(?TEMPLATE_ID, teletype_util:find_account_id(DataJObj)),
 
     Subject = teletype_util:render_subject(
                 wh_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
