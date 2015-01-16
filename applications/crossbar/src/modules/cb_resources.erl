@@ -29,6 +29,8 @@
 -define(COLLECTION, <<"collection">>).
 -define(JOBS, <<"jobs">>).
 
+-define(KEY_SUCCESS, <<"success">>).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -248,7 +250,7 @@ validate_collection_fold(Resource, C) ->
         {'ok', C1} ->
             lager:debug("~s loaded successfully", [Id]),
             cb_context:set_resp_data(C
-                                     ,wh_json:set_value([<<"success">>, Id], cb_context:doc(C1), cb_context:resp_data(C))
+                                     ,wh_json:set_value([?KEY_SUCCESS, Id], cb_context:doc(C1), cb_context:resp_data(C))
                                     );
         {'error', 'not_found'} ->
             RespData = cb_context:resp_data(C),
@@ -518,7 +520,7 @@ on_successful_job_validation('undefined', Context) ->
                                             ,{<<"pvt_request_id">>, cb_context:req_id(Context)}
                                             ,{<<"_id">>, Id}
 
-                                            ,{<<"successes">>, wh_json:new()}
+                                            ,{?KEY_SUCCESS, wh_json:new()}
                                             ,{<<"errors">>, wh_json:new()}
                                            ]
                                            ,cb_context:doc(Context)
@@ -536,8 +538,8 @@ collection_process(Context) ->
     RespData = cb_context:resp_data(Context),
 
     case wh_util:is_empty(wh_json:get_value(<<"errors">>, RespData)) of
-        'true' -> collection_process(Context, wh_json:get_value(<<"success">>, RespData));
-        'false' -> cb_context:set_resp_data(Context, wh_json:delete_key(<<"success">>, RespData))
+        'true' -> collection_process(Context, wh_json:get_value(?KEY_SUCCESS, RespData));
+        'false' -> cb_context:set_resp_data(Context, wh_json:delete_key(?KEY_SUCCESS, RespData))
     end.
 collection_process(Context, []) -> Context;
 collection_process(Context, Successes) ->
