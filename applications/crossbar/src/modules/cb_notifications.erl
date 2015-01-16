@@ -539,8 +539,42 @@ migrate_template_to_account(Context, Id) ->
                                    )
                 ),
     case cb_context:resp_status(Context1) of
-        'success' -> migrate_template_attachments(Context1, Id, wh_doc:attachments(Template));
+        'success' ->
+            Context2 = migrate_template_attachments(Context1, Id, wh_doc:attachments(Template)),
+            maybe_note_notification_preference(Context2),
+            Context2;
         _Status -> Context1
+    end.
+
+-spec maybe_note_notification_preference(cb_context:context()) -> 'ok'.
+-spec maybe_note_notification_preference(ne_binary(), wh_json:object()) -> 'ok'.
+maybe_note_notification_preference(Context) ->
+    AccountId = cb_context:account_id(Context),
+    AccountDb = cb_context:account_db(Context),
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+        {'error', _E} -> lager:debug("failed to note preference: ~p", [_E]);
+        {'ok', AccountJObj} ->
+            maybe_note_notification_preference(AccountDb, AccountJObj)
+    end.
+
+maybe_note_notification_preference(AccountDb, AccountJObj) ->
+    case kz_account:notification_preference(AccountJObj) of
+        'undefined' -> note_notification_preference(AccountDb, AccountJObj);
+        _Pref -> lager:debug("account already prefers ~s", [_Pref])
+    end.
+
+-spec note_notification_preference(ne_binary(), wh_json:object()) -> 'ok'.
+note_notification_preference(AccountDb, AccountJObj) ->
+    case couch_mgr:save_doc(AccountDb
+                            ,kz_account:set_notification_preference(AccountJObj
+                                                                    ,kz_notification:pvt_type()
+                                                                   )
+                           )
+    of
+        {'ok', _AccountJObj} ->
+            lager:debug("updated pref for account");
+        {'error', _E} ->
+            lager:debug("failed to note preference: ~p", [_E])
     end.
 
 -spec migrate_template_attachments(cb_context:context(), ne_binary(), api_object()) ->
