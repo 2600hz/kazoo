@@ -5,7 +5,6 @@ Language: en-US
 Version: 3.19
 */
 
-
 Allow managing templates for notification emails.
 
 ## Structure
@@ -285,3 +284,9 @@ It can be helpful to preview the resulting email when modifying templates, but b
 
 * `html` is the base64 encoded HTML template
 * `plain` is the plain-text template
+
+# Operations considerations
+
+In versions Kazoo prior to 3.19, notification templates were managed and processed by the `notify` app.
+
+All accounts will continue to be processed by the `notify` app until the Crossbar notification APIs are accessed for the first time (for instance, when using the Branding App in Monster). Once a client has accessed the APIs, a flag is set on the account telling the `notify` app to ignore processing and instructs the `teletype` app to process it instead. This allows admins to run both `notify` and `teletyple` concurrently without sending multiple copies of each notification.
