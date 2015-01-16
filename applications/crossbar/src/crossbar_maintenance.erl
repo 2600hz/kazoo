@@ -563,30 +563,31 @@ descendants_count(AccountId) ->
 
 -spec migrate_ring_group_callflow(ne_binary()) -> 'ok'.
 migrate_ring_group_callflow(Account) ->
-    Callflows = get_ring_group_callflows(Account),
-    lists:foreach(fun create_new_ring_group_callflow/1, Callflows).
+    lists:foreach(fun create_new_ring_group_callflow/1
+                  ,get_migrateable_ring_group_callflows(Account)
+                 ).
 
--spec get_ring_group_callflows(ne_binary()) -> wh_json:objects().
-get_ring_group_callflows(Account) ->
+-spec get_migrateable_ring_group_callflows(ne_binary()) -> wh_json:objects().
+get_migrateable_ring_group_callflows(Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     case couch_mgr:get_all_results(AccountDb, <<"callflows/crossbar_listing">>) of
         {'error', _M} ->
             io:format("error fetching callflows in ~p ~p~n", [AccountDb, _M]),
             [];
         {'ok', JObjs} ->
-            get_ring_group_callflows(AccountDb, JObjs)
+            get_migrateable_ring_group_callflows(AccountDb, JObjs)
     end.
 
--spec get_ring_group_callflows(ne_binary(), wh_json:objects()) -> wh_json:objects().
-get_ring_group_callflows(AccountDb, JObjs) ->
-    lists:foldl(fun(JObj, Acc) -> get_ring_group_callflow(JObj, Acc, AccountDb) end
+-spec get_migrateable_ring_group_callflows(ne_binary(), wh_json:objects()) -> wh_json:objects().
+get_migrateable_ring_group_callflows(AccountDb, JObjs) ->
+    lists:foldl(fun(JObj, Acc) -> get_migrateable_ring_group_callflow(JObj, Acc, AccountDb) end
                 ,[]
                 ,JObjs
                ).
 
--spec get_ring_group_callflow(wh_json:object(), wh_json:objects(), ne_binary()) ->
-                                     wh_json:objects().
-get_ring_group_callflow(JObj, Acc, AccountDb) ->
+-spec get_migrateable_ring_group_callflow(wh_json:object(), wh_json:objects(), ne_binary()) ->
+                                                 wh_json:objects().
+get_migrateable_ring_group_callflow(JObj, Acc, AccountDb) ->
     case {wh_json:get_ne_binary_value([<<"value">>, <<"group_id">>], JObj)
           ,wh_json:get_ne_binary_value([<<"value">>, <<"type">>], JObj)
          }
@@ -614,13 +615,10 @@ check_callflow_eligibility(CallflowJObj, Acc) ->
 -spec create_new_ring_group_callflow(wh_json:object()) -> 'ok'.
 create_new_ring_group_callflow(JObj) ->
     BaseGroup = base_group_ring_group(JObj),
-    set_data_for_callflow(JObj, BaseGroup).
+    save_new_ring_group_callflow(JObj, BaseGroup).
 
 -spec base_group_ring_group(wh_json:object()) -> wh_json:object().
 base_group_ring_group(JObj) ->
-    case is_ring_group_eligible(JObj) of
-        'false' -> 'ok';
-        'true' ->
     BaseGroup = wh_json:from_list(
                   props:filter_undefined(
                     [{<<"pvt_vsn">>, <<"1">>}
@@ -631,7 +629,7 @@ base_group_ring_group(JObj) ->
                      ,{<<"pvt_account_id">>, wh_json:get_value(<<"pvt_account_id">>, JObj)}
                      ,{<<"flow">>, wh_json:from_list([{<<"children">>, wh_json:new()}
                                                       ,{<<"module">>, <<"ring_group">>}
-                                         ])
+                                                     ])
                       }
                      ,{<<"group_id">>, wh_json:get_value(<<"group_id">>, JObj)}
                      ,{<<"type">>, <<"baseGroup">>}
@@ -678,41 +676,41 @@ save_new_ring_group_callflow(JObj, NewCallflow) ->
         'true' ->
             io:format("unable to save new callflow ~p in ~p already exist~n", [Name, AccountDb]);
         'false' ->
-            case couch_mgr:save_doc(AccountDb, NewCallflow) of
-                {'error', _M} ->
-                    io:format("unable to save new callflow (old:~p) in ~p aborting...~n", [wh_json:get_value(<<"_id">>, JObj), AccountDb]);
-                {'ok', NewJObj} -> update_old_ring_group_callflow(JObj, NewJObj)
-            end
+            save_new_ring_group_callflow(JObj, NewCallflow, AccountDb)
+    end.
+
+save_new_ring_group_callflow(JObj, NewCallflow, AccountDb) ->
+    case couch_mgr:save_doc(AccountDb, NewCallflow) of
+        {'error', _M} ->
+            io:format("unable to save new callflow (old:~p) in ~p aborting...~n"
+                      ,[wh_json:get_value(<<"_id">>, JObj), AccountDb]
+                     );
+        {'ok', NewJObj} ->
+            update_old_ring_group_callflow(JObj, NewJObj)
     end.
 
 -spec check_if_callflow_exist(ne_binary(), ne_binary()) -> boolean().
-check_if_callflow_exist(Account, Name) ->
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+check_if_callflow_exist(AccountDb, Name) ->
     case couch_mgr:get_all_results(AccountDb, <<"callflows/crossbar_listing">>) of
         {'error', _M} ->
             io:format("error fetching callflows in ~p ~p~n", [AccountDb, _M]),
             'true';
         {'ok', JObjs} ->
-            lists:foldl(
-                fun(JObj, Acc) ->
-                    case wh_json:get_value([<<"value">>, <<"name">>], JObj) =:= Name of
-                        'true' -> 'true';
-                        'false' -> Acc
-                    end
-                end
-                ,'false'
-                ,JObjs
+            lists:any(
+              fun(JObj) ->
+                      wh_json:get_value([<<"value">>, <<"name">>], JObj) =:= Name
+              end
+              ,JObjs
             )
     end.
 
 -spec update_old_ring_group_callflow(wh_json:object(), wh_json:object()) -> 'ok'.
 update_old_ring_group_callflow(JObj, NewCallflow) ->
-    Routines = [
-        fun update_old_ring_group_type/2
-        ,fun update_old_ring_group_metadata/2
-        ,fun update_old_ring_group_flow/2
-        ,fun save_old_ring_group/2
-    ],
+    Routines = [fun update_old_ring_group_type/2
+                ,fun update_old_ring_group_metadata/2
+                ,fun update_old_ring_group_flow/2
+                ,fun save_old_ring_group/2
+               ],
     lists:foldl(fun(F, J) -> F(J, NewCallflow) end, JObj, Routines).
 
 -spec update_old_ring_group_type(wh_json:object(), wh_json:object()) -> wh_json:object().
