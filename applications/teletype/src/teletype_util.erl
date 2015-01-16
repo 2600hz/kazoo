@@ -139,8 +139,18 @@ relay_encoded_email(To, From, Encoded) ->
     %% The callback will receive either `{ok, Receipt}' where Receipt is the SMTP server's receipt
     %% identifier,  `{error, Type, Message}' or `{exit, ExitReason}', as the single argument.
     receive
-        {'relay_response', {'ok', _Receipt}} ->
-            lager:debug("relayed message: ~p", [_Receipt]);
+        {'relay_response', {'ok', Receipt}} ->
+
+            wh_cache:store_local(?CACHE_NAME
+                                 ,{'receipt', Receipt}
+                                 ,#email_receipt{to=To
+                                                 ,from=From
+                                                 ,timestamp=wh_util:current_tstamp()
+                                                 ,call_id=wh_util:get_callid()
+                                                }
+                                 ,[{'expires', ?MILLISECONDS_IN_HOUR}]
+                                ),
+            lager:debug("relayed message: ~p", [Receipt]);
         {'relay_response', {'error', _Type, Message}} ->
             lager:debug("error relyaing message: ~p: ~p", [_Type, Message]),
             {'error', Message};

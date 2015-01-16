@@ -82,7 +82,7 @@
          ,now_s/1, now_ms/1, now_us/1
         ]).
 
--export([put_callid/1]).
+-export([put_callid/1, get_callid/0]).
 -export([get_event_type/1]).
 -export([get_xml_value/2]).
 
@@ -509,6 +509,9 @@ put_callid(Atom) when is_atom(Atom) -> erlang:put('callid', Atom);
 put_callid(Prop) when is_list(Prop) -> erlang:put('callid', callid(Prop));
 put_callid(JObj) -> erlang:put('callid', callid(JObj)).
 
+-spec get_callid() -> ne_binary().
+get_callid() -> erlang:get('callid').
+
 callid(Prop) when is_list(Prop) ->
     props:get_first_defined([<<"Call-ID">>, <<"Msg-ID">>], Prop, ?LOG_SYSTEM_ID);
 callid(JObj) ->
@@ -872,7 +875,7 @@ to_upper_char(C) when is_integer(C), 16#F8 =< C, C =< 16#FE -> C - 32;
 to_upper_char(C) -> C.
 
 -spec strip_binary(binary()) -> binary().
--spec strip_binary(binary(), 'both' | 'left' | 'right') -> binary().
+-spec strip_binary(binary(), 'both' | 'left' | 'right' | char() | list(char())) -> binary().
 -spec strip_left_binary(binary(), char()) -> binary().
 -spec strip_right_binary(binary(), char()) -> binary().
 strip_binary(B) -> strip_binary(B, 'both').
@@ -880,7 +883,13 @@ strip_binary(B) -> strip_binary(B, 'both').
 strip_binary(B, 'left') -> strip_left_binary(B, $\s);
 strip_binary(B, 'right') -> strip_right_binary(B, $\s);
 strip_binary(B, 'both') -> strip_right_binary(strip_left_binary(B, $\s), $\s);
-strip_binary(B, C) when is_integer(C) -> strip_right_binary(strip_left_binary(B, C), C).
+strip_binary(B, C) when is_integer(C) -> strip_right_binary(strip_left_binary(B, C), C);
+strip_binary(B, Cs) when is_list(Cs) ->
+    lists:foldl(fun(C, Acc) -> strip_binary(Acc, C) end
+                ,B
+                ,Cs
+               ).
+
 
 strip_left_binary(<<C, B/binary>>, C) -> strip_left_binary(B, C);
 strip_left_binary(B, _) -> B.
