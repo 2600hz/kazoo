@@ -164,8 +164,12 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 handle_event(JObj, _State) ->
     case should_handle(JObj) of
-        'true' -> {'reply', []};
-        'false' -> 'ignore'
+        'true' ->
+            lager:debug("handling notification"),
+            {'reply', []};
+        'false' ->
+            lager:debug("not handling notification"),
+            'ignore'
     end.
 
 %%--------------------------------------------------------------------
@@ -197,8 +201,10 @@ code_change(_OldVsn, State, _Extra) ->
 should_handle(JObj) ->
     case wh_json:get_first_defined([<<"Account-ID">>, <<"Account-DB">>], JObj) of
         'undefined' ->
+            lager:debug("checking system config for ~p", [wh_util:get_event_type(JObj)]),
             should_handle_system();
         Account ->
+            lager:debug("checking account config for ~p", [wh_util:get_event_type(JObj)]),
             should_handle_account(Account)
     end.
 
@@ -206,8 +212,8 @@ should_handle(JObj) ->
 should_handle_system() ->
     whapps_config:get_value(?NOTIFY_CONFIG_CAT
                             ,<<"notification_app">>
-                            ,?NOTIFY_CONFIG_CAT
-                           ) =:= ?NOTIFY_CONFIG_CAT.
+                            ,?APP_NAME
+                           ) =:= ?APP_NAME.
 
 -spec should_handle_account(ne_binary()) -> boolean().
 should_handle_account(Account) ->

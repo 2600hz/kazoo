@@ -174,8 +174,15 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(_JObj, _State) ->
-    {'reply', []}.
+handle_event(JObj, _State) ->
+    case should_handle(JObj) of
+        'true' ->
+            lager:debug("handling notification"),
+            {'reply', []};
+        'false' ->
+            lager:debug("not handling notification"),
+            'ignore'
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -205,3 +212,31 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec should_handle(wh_json:object()) -> boolean().
+should_handle(JObj) ->
+    case wh_json:get_first_defined([<<"Account-ID">>, <<"Account-DB">>], JObj) of
+        'undefined' ->
+            lager:debug("checking system config for ~p", [wh_util:get_event_type(JObj)]),
+            should_handle_system();
+        Account ->
+            lager:debug("checking account config for ~p", [wh_util:get_event_type(JObj)]),
+            should_handle_account(Account)
+    end.
+
+-spec should_handle_system() -> boolean().
+should_handle_system() ->
+    whapps_config:get_value(?NOTIFY_CONFIG_CAT
+                            ,<<"notification_app">>
+                            ,?APP_NAME
+                           ) =:= ?APP_NAME.
+
+-spec should_handle_account(ne_binary()) -> boolean().
+should_handle_account(Account) ->
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+        {'ok', AccountJObj} ->
+            kz_account:notification_preference(AccountJObj) =/= 'undefined';
+        {'error', _E} -> 'true'
+    end.
