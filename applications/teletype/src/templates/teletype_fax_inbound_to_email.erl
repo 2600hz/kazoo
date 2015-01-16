@@ -174,12 +174,16 @@ handle_fax_inbound(JObj, _Props) ->
     end.
 
 -spec get_owner_doc(wh_json:object()) -> wh_json:object().
+-spec get_owner_doc(ne_binary(), api_binary()) -> wh_json:object().
 get_owner_doc(FaxJObj) ->
     AccountDb = wh_json:get_value(<<"pvt_account_db">>, FaxJObj),
     OwnerId = wh_json:get_value(<<"owner_id">>, FaxJObj),
 
-    lager:debug("trying owner ~s ", [OwnerId]),
-
+    get_owner_doc(AccountDb, OwnerId).
+get_owner_doc(_AccountDb, 'undefined') ->
+    lager:debug("no owner found"),
+    wh_json:new();
+get_owner_doc(AccountDb, OwnerId) ->
     case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
         {'ok', OwnerJObj} -> OwnerJObj;
         {'error', 'not_found'} -> wh_json:new()
@@ -237,10 +241,11 @@ get_file_name(Macros, Ext) ->
     FName = list_to_binary([CallerID, "_", wh_util:pretty_print_datetime(LocalDateTime), ".", Ext]),
     re:replace(wh_util:to_lower_binary(FName), <<"\\s+">>, <<"_">>, [{'return', 'binary'}, 'global']).
 
--spec get_attachment_binary(ne_binary(), ne_binary()) ->
+-spec get_attachment_binary(ne_binary(), api_binary()) ->
                                    {'ok', ne_binary(), binary()}.
 get_attachment_binary(Db, Id) ->
     get_attachment_binary(Db, Id, 2).
+
 get_attachment_binary(_Db, _Id, 0) ->
     lager:debug("failed to find ~s in ~s, retries expired", [_Id, _Db]),
     throw({'error', 'no_attachment'});
@@ -248,6 +253,9 @@ get_attachment_binary(Db, Id, Retries) ->
     case couch_mgr:open_cache_doc(Db, Id) of
         {'error', 'not_found'} when Db =/= ?WH_FAXES ->
             get_attachment_binary(?WH_FAXES, Id, Retries);
+        {'error', 'not_found'} ->
+            lager:debug("no attachment binary to send"),
+            {'ok', <<"dev/null">>, <<"fax attachment">>};
         {'ok', FaxJObj} ->
             case wh_doc:attachment(FaxJObj) of
                 'undefined' -> delayed_retry(Db, Id, Retries);

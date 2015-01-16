@@ -284,7 +284,7 @@ post(Context, Id, ?PREVIEW) ->
                             )
     of
         {'ok', Resp} ->
-            lager:debug("sent API command to preview ~s: ~p: ~p", [Id, API]),
+            lager:debug("sent API command to preview ~s", [Id]),
             handle_preview_response(Context, Resp);
         {'error', _E} ->
             lager:debug("failed to publish preview for ~s: ~p", [Id, _E]),
@@ -306,6 +306,7 @@ build_preview_payload(Context) ->
        ,{<<"Account-ID">>, cb_context:account_id(Context)}
        ,{<<"Account-DB">>, cb_context:account_db(Context)}
        ,{<<"Msg-ID">>, cb_context:req_id(Context)}
+       ,{<<"Call-ID">>, cb_context:req_id(Context)}
        ,{<<"Preview">>, 'true'}
        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
@@ -314,7 +315,7 @@ build_preview_payload(Context) ->
 handle_preview_response(Context, Resp) ->
     case wh_json:get_value(<<"Status">>, Resp) of
         <<"failed">> ->
-            lager:debug("failed notificaiton preview"),
+            lager:debug("failed notificaiton preview: ~p", [Resp]),
             crossbar_util:response_invalid_data(
               wh_json:normalize(wh_api:remove_defaults(Resp))
               ,Context
