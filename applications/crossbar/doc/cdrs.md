@@ -61,6 +61,7 @@ The existence of these properties will vary depending on the nature of the call.
   * inbound - the SIP To header
 * to\_uri - SIP To header
 * user\_agent - User Agent of the endpoint
+* bridge\_id - Bridge ID
 
 ### Kazoo-specific Properties
 
