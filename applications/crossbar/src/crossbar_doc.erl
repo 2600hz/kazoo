@@ -600,36 +600,41 @@ maybe_delete_doc(Context, DocId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context()) -> cb_context:context().
--spec delete(cb_context:context(), 'permanent') -> cb_context:context().
+-spec delete(cb_context:context(), 'permanent' | 'soft') -> cb_context:context().
 
 delete(Context) ->
-    JObj0 = cb_context:doc(Context),
-    JObj1 = wh_json:set_value(<<"pvt_deleted">>, 'true', update_pvt_parameters(JObj0, Context)),
-    case couch_mgr:save_doc(cb_context:account_db(Context), JObj1) of
-        {'error', 'not_found'} -> handle_couch_mgr_success(JObj0, Context);
-        {'error', Error} ->
-            DocId = wh_json:get_value(<<"_id">>, JObj1),
-            handle_couch_mgr_errors(Error, DocId, Context);
-        {'ok', _} ->
-            lager:debug("deleted ~s from ~s", [wh_json:get_value(<<"_id">>, JObj1)
-                                               ,cb_context:account_db(Context)
-                                              ]),
-            Context1 = handle_couch_mgr_success(JObj1, Context),
-            provisioner_util:maybe_send_contact_list(Context1)
-    end.
+    delete(Context, 'soft').
 
+delete(Context, 'soft') ->
+    JObj1 = wh_json:set_value(<<"pvt_deleted">>
+                              ,'true'
+                              ,update_pvt_parameters(cb_context:doc(Context), Context)
+                             ),
+    do_delete(Context, JObj1, fun couch_mgr:save_doc/2);
 delete(Context, 'permanent') ->
-    JObj0 = cb_context:doc(Context),
-    case couch_mgr:del_doc(cb_context:account_db(Context), JObj0) of
-        {'error', 'not_found'} -> handle_couch_mgr_success(JObj0, Context);
+    JObj = cb_context:doc(Context),
+    Del = wh_json:from_list([{<<"_id">>, wh_doc:id(JObj)}
+                             ,{<<"_rev">>, wh_doc:revision(JObj)}
+                            ]),
+    do_delete(Context, Del, fun couch_mgr:del_doc/2).
+
+-type delete_fun() :: fun((ne_binary(), wh_json:object() | ne_binary()) ->
+                                 {'ok', wh_json:object() | wh_json:objects()} |
+                                 couch_mgr:couchbeam_error()).
+
+-spec do_delete(cb_context:context(), wh_json:object(), delete_fun()) ->
+                       cb_context:context().
+do_delete(Context, JObj, CouchFun) ->
+    case CouchFun(cb_context:account_db(Context), JObj) of
+        {'error', 'not_found'} -> handle_couch_mgr_success(JObj, Context);
         {'error', Error} ->
-            DocId = wh_json:get_value(<<"_id">>, JObj0),
+            DocId = wh_doc:id(JObj),
             handle_couch_mgr_errors(Error, DocId, Context);
         {'ok', _} ->
             lager:debug("permanently deleted ~s from ~s"
-                        ,[wh_json:get_value(<<"_id">>, JObj0), cb_context:account_db(Context)]
+                        ,[wh_doc:id(JObj), cb_context:account_db(Context)]
                        ),
-            Context1 = handle_couch_mgr_success(JObj0, Context),
+            Context1 = handle_couch_mgr_success(JObj, Context),
             provisioner_util:maybe_send_contact_list(Context1)
     end.
 
