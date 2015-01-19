@@ -36,6 +36,9 @@ conf-muted: Microphone muted, dial star one to un-mute.
 conf-unmuted: Microphone un-muted, dial star one to mute.
 conf-deaf: Speaker muted, dial star four to un-mute.
 conf-undeaf: Speaker un-muted, dial star four to mute.
+conf-review: Press 1 to accept recording or press any other key to rerecord.
+conf-your_announcment: You will be announced as
+conf-announce_your_name: At the tone please announce your name, then press any key or stop talking to end the recording.
 
 dir-confirm_menu: Press 1. To start over press 3. 
 dir-enter_person: Please enter the first few letters of the persons

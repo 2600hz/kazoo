@@ -56,4 +56,5 @@
 -define(DEFAULT_CHAT_CONFIG, 'undefined').
 
 -define(CONFERENCE_HRL, 'true').
+
 -endif.
