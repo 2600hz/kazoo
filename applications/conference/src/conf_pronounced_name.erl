@@ -8,46 +8,52 @@
 %%%-------------------------------------------------------------------
 -module(conf_pronounced_name).
 
--include("conference.hrl").
-
 %% API
 -export([lookup_name/1, record/1]).
--export_type([name_pronounced/0]).
+
+-include("conference.hrl").
 
 -type name_pronounced() :: 'undefined' |
                            {'temp_doc_id', ne_binary(), ne_binary()} |
                            {'media_doc_id', ne_binary(), ne_binary()}.
+-export_type([name_pronounced/0]).
 
 -define(PRONOUNCED_NAME_KEY, [<<"name_pronounced">>, <<"media_id">>]).
 
 -spec get_user_id(whapps_call:call()) -> api_binary().
 get_user_id(Call) ->
-    AuthoringId = whapps_call:authorizing_id(Call),
-    AccountDB = whapps_call:account_db(Call),
     case whapps_call:authorizing_type(Call) of
-        <<"user">> -> AuthoringId;
-        <<"device">> ->
-            case couch_mgr:open_cache_doc(AccountDB, AuthoringId) of
-                {'ok', DeviceDoc} -> wh_json:get_value(<<"owner_id">>, DeviceDoc);
-                _ -> 'undefined'
-            end;
+        <<"user">> -> whapps_call:authorizing_id(Call);
+        <<"device">> -> get_user_id_from_device(Call);
+        _Type -> 'undefined'
+    end.
+
+-spec get_user_id_from_device(whapps_call:call()) -> api_binary().
+get_user_id_from_device(Call) ->
+    case couch_mgr:open_cache_doc(whapps_call:account_db(Call)
+                                  ,whapps_call:authorizing_id(Call)
+                                 )
+    of
+        {'ok', DeviceDoc} -> wh_json:get_value(<<"owner_id">>, DeviceDoc);
         _ -> 'undefined'
     end.
 
 -spec lookup_name(whapps_call:call()) -> name_pronounced().
 lookup_name(Call) ->
-    AccountDB = whapps_call:account_db(Call),
     case get_user_id(Call) of
         'undefined' -> 'undefined';
-        UserId ->
-            case couch_mgr:open_cache_doc(AccountDB, UserId) of
-                {'ok', UserDoc} ->
-                    case wh_json:get_value(?PRONOUNCED_NAME_KEY, UserDoc) of
-                        'undefined' -> 'undefined';
-                        DocId -> {'media_doc_id', whapps_call:account_db(Call), DocId}
-                    end;
-                _ -> 'undefined'
-            end
+        UserId -> lookup_user_name(Call, UserId)
+    end.
+
+-spec lookup_user_name(whapps_call:call(), ne_binary()) -> name_pronounced().
+lookup_user_name(Call, UserId) ->
+    case couch_mgr:open_cache_doc(whapps_call:account_db(Call), UserId) of
+        {'ok', UserDoc} ->
+            case wh_json:get_value(?PRONOUNCED_NAME_KEY, UserDoc) of
+                'undefined' -> 'undefined';
+                DocId -> {'media_doc_id', whapps_call:account_db(Call), DocId}
+            end;
+        _ -> 'undefined'
     end.
 
 -spec record(whapps_call:call()) -> name_pronounced().
@@ -135,7 +141,6 @@ save_recording(RecordName, MediaDocId, Call) ->
             {'temp_doc_id', AccountId, MediaDocId}
     end.
 
-
 -spec save_pronounced_name(ne_binary(), whapps_call:call()) -> name_pronounced().
 save_pronounced_name(RecordName, Call) ->
     case prepare_media_doc(RecordName, Call) of
@@ -147,21 +152,22 @@ save_pronounced_name(RecordName, Call) ->
 get_new_attachment_url(AttachmentName, MediaId, Call) ->
     AccountDb = whapps_call:account_db(Call),
     _ = case couch_mgr:open_doc(AccountDb, MediaId) of
-            {'ok', JObj} ->
-                case wh_doc:attachments(JObj, []) of
-                    [] -> 'ok';
-                    Existing ->
-                        [begin
-                             lager:debug("need to remove ~s/~s/~s first", [AccountDb, MediaId, Attach]),
-                             couch_mgr:delete_attachment(AccountDb, MediaId, Attach)
-                         end
-                         || Attach <- Existing
-                        ]
-                end;
+            {'ok', JObj} -> maybe_remove_attachments(Call, JObj);
             {'error', _} -> 'ok'
         end,
     {'ok', URL} = wh_media_url:store(AccountDb, MediaId, AttachmentName),
     URL.
+
+-spec maybe_remove_attachments(whapps_call:call(), wh_json:object()) -> 'ok'.
+maybe_remove_attachments(Call, JObj) ->
+    case wh_doc:maybe_remove_attachments(JObj) of
+        {'false', _} -> 'ok';
+        {'true', Removed} ->
+            {'ok', _Saved} = couch_mgr:save_doc(whapps_call:account_db(Call), Removed),
+            lager:debug("removed attachments from media doc ~s (now ~s)"
+                        ,[wh_doc:id(_Saved), wh_doc:revision(_Saved)]
+                       )
+    end.
 
 -spec review(ne_binary(), whapps_call:call()) -> whapps_call_command:collect_digits_return().
 review(RecordName, Call) ->
