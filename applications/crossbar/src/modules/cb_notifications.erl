@@ -520,8 +520,7 @@ read_system_for_account(Context, Id) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             lager:debug("read template ~s from master account", [Id]),
-            Context2 = cb_context:set_account_db(Context1, cb_context:account_db(Context)),
-            read_account(Context2, Id, 'account');
+            cb_context:set_account_db(Context1, cb_context:account_db(Context));
         _Status -> Context1
     end.
 
