@@ -27,7 +27,7 @@
                     ]]).
 
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?CACHE('teletype_cache')
+-define(CHILDREN, [?CACHE(?CACHE_NAME)
                    ,?WORKER_NAME_ARGS('poolboy', ?POOL_NAME, ?POOL_ARGS)
                    ,?WORKER('teletype_listener')
                    ,?WORKER('teletype_shared_listener')

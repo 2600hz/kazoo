@@ -10,6 +10,8 @@
 
 -define(NOTIFY_CONFIG_CAT, <<"notify">>).
 
+-define(CACHE_NAME, 'teletype_cache').
+
 -type mime_tuples() :: [mimemail:mimetuple(),...] | [].
 
 %% {ContentType, Filename, Content}
@@ -102,6 +104,13 @@
         ++ ?FROM_MACROS
         ++ ?TO_MACROS
        ).
+
+-record(email_receipt, {to :: ne_binaries() | ne_binary()
+                        ,from :: ne_binary()
+                        ,call_id :: ne_binary()
+                        ,timestamp :: gregorian_seconds()
+                       }).
+-type email_receipt() :: #email_receipt{}.
 
 -define(TELETYPE_HRL, 'true').
 -endif.
