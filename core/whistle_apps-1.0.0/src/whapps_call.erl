@@ -114,9 +114,9 @@
 -define(DEFAULT_CALLER_ID_NUMBER, <<"0000000000">>).
 
 -record(whapps_call, {call_id :: api_binary()                       %% The UUID of the call
-                      ,call_id_helper = fun default_helper_function/2 :: whapps_helper_function()         %% A function used when requesting the call id, to ensure it is up-to-date
+                      ,call_id_helper = fun ?MODULE:default_helper_function/2 :: whapps_helper_function()         %% A function used when requesting the call id, to ensure it is up-to-date
                       ,control_q :: api_binary()                   %% The control queue provided on route win
-                      ,control_q_helper = fun default_helper_function/2 :: whapps_helper_function()       %% A function used when requesting the call id, to ensure it is up-to-date
+                      ,control_q_helper = fun ?MODULE:default_helper_function/2 :: whapps_helper_function()       %% A function used when requesting the call id, to ensure it is up-to-date
                       ,controller_q :: api_binary()                %%
                       ,caller_id_name = ?DEFAULT_CALLER_ID_NAME :: ne_binary()      %% The caller name
                       ,caller_id_number = ?DEFAULT_CALLER_ID_NUMBER :: ne_binary() %% The caller number
@@ -129,7 +129,7 @@
                       ,request_realm = <<"norealm">> :: ne_binary()       %% SIP request host
                       ,from = <<"nouser@norealm">> :: ne_binary()         %% Result of sip_from_user + @ + sip_from_host
                       ,from_user = <<"nouser">> :: ne_binary()            %% SIP from user
-                      ,from_realm = <<"norealm">> :: api_binary()         %% SIP from host
+                      ,from_realm = <<"norealm">> :: ne_binary()         %% SIP from host
                       ,to = <<"nouser@norealm">> :: ne_binary()           %% Result of sip_to_user + @ + sip_to_host
                       ,to_user = <<"nouser">> :: ne_binary()              %% SIP to user
                       ,to_realm = <<"norealm">> :: ne_binary()            %% SIP to host
@@ -148,11 +148,11 @@
                       ,ccvs = wh_json:new() :: wh_json:object()      %% Any custom channel vars that where provided with the route request
                       ,sip_headers = wh_json:new() :: wh_json:object()                   %% Custom SIP Headers
                       ,kvs = orddict:new() :: orddict:orddict()           %% allows callflows to set values that propogate to children
-                      ,other_leg_callid :: api_binary()
+                      ,other_leg_call_id :: api_binary()
                       ,resource_type :: api_binary()                      %% from route_req
                       ,to_tag :: api_binary()
                       ,from_tag :: api_binary()
-                      }).
+                     }).
 
 -type call() :: #whapps_call{}.
 -export_type([call/0]).
@@ -169,8 +169,8 @@
                        ,{<<"Authorizing-Type">>, #whapps_call.authorizing_type}
                       ]).
 
--spec default_helper_function(api_binary(), call()) -> api_binary().
-default_helper_function(Field, #whapps_call{} = _) -> Field.
+-spec default_helper_function(Field, call()) -> Field.
+default_helper_function(Field, #whapps_call{}) -> Field.
 
 -spec clear_helpers(call()) -> call().
 clear_helpers(#whapps_call{}=Call) ->
@@ -178,7 +178,7 @@ clear_helpers(#whapps_call{}=Call) ->
           ,fun clear_call_id_helper/1
           ,fun clear_control_queue_helper/1
          ],
-    lists:foldl(fun(F, Acc) -> F(Acc) end, Call, Fs).
+    exec(Fs, Call).
 
 -spec new() -> call().
 new() -> #whapps_call{}.
@@ -194,6 +194,8 @@ from_route_req(RouteReq) ->
 
 -spec from_route_req(wh_json:object(), call()) -> call().
 from_route_req(RouteReq, #whapps_call{call_id=OldCallId
+                                      ,account_id=OldAccountId
+                                      ,account_db=OldAccountDb
                                       ,ccvs=OldCCVs
                                       ,sip_headers=OldSHs
                                       ,request=OldRequest
@@ -203,17 +205,16 @@ from_route_req(RouteReq, #whapps_call{call_id=OldCallId
     CallId = wh_json:get_value(<<"Call-ID">>, RouteReq, OldCallId),
     put('callid', CallId),
 
-    CCVs = wh_json:merge_recursive(OldCCVs, wh_json:get_value(<<"Custom-Channel-Vars">>, RouteReq, wh_json:new())),
-    SHs = wh_json:merge_recursive(OldSHs, wh_json:get_value(<<"Custom-SIP-Headers">>, RouteReq, wh_json:new())),
+    CCVs = merge(OldCCVs, wh_json:get_value(<<"Custom-Channel-Vars">>, RouteReq)),
+    SHs = merge(OldSHs, wh_json:get_value(<<"Custom-SIP-Headers">>, RouteReq)),
 
     Request = wh_json:get_value(<<"Request">>, RouteReq, OldRequest),
     From = wh_json:get_value(<<"From">>, RouteReq, OldFrom),
     To = wh_json:get_value(<<"To">>, RouteReq, OldTo),
-    AccountId = wh_json:get_value(<<"Account-ID">>, CCVs, account_id(Call)),
-    AccountDb = case is_binary(AccountId) of
-                    'false' -> account_db(Call);
-                    'true' ->  wh_util:format_account_id(AccountId, 'encoded')
-                end,
+
+    {AccountId, AccountDb} =
+        find_account_info(OldAccountId, OldAccountDb, wh_json:get_value(<<"Account-ID">>, CCVs)),
+
     [ToUser, ToRealm] = binary:split(To, <<"@">>),
     [FromUser, FromRealm] = binary:split(From, <<"@">>),
     [RequestUser, RequestRealm] = binary:split(Request, <<"@">>),
@@ -267,13 +268,13 @@ from_route_win(RouteWin, #whapps_call{call_id=OldCallId
                                      }=Call) ->
     CallId = wh_json:get_value(<<"Call-ID">>, RouteWin, OldCallId),
     put('callid', CallId),
-    CCVs = wh_json:merge_recursive(OldCCVs, wh_json:get_value(<<"Custom-Channel-Vars">>, RouteWin, wh_json:new())),
-    SHs = wh_json:merge_recursive(OldSHs, wh_json:get_value(<<"Custom-SIP-Headers">>, RouteWin, wh_json:new())),
-    AccountId = wh_json:get_value(<<"Account-ID">>, CCVs, OldAccountId),
-    AccountDb = case is_binary(AccountId) of
-                    'false' -> OldAccountDb;
-                    'true' ->  wh_util:format_account_id(AccountId, 'encoded')
-                end,
+
+    CCVs = merge(OldCCVs, wh_json:get_value(<<"Custom-Channel-Vars">>, RouteWin)),
+    SHs = merge(OldSHs, wh_json:get_value(<<"Custom-SIP-Headers">>, RouteWin)),
+
+    {AccountId, AccountDb} =
+        find_account_info(OldAccountId, OldAccountDb, wh_json:get_value(<<"Account-ID">>, CCVs)),
+
     Call#whapps_call{call_id=CallId
                      ,account_id=AccountId
                      ,account_db=AccountDb
@@ -288,6 +289,22 @@ from_route_win(RouteWin, #whapps_call{call_id=OldCallId
                      ,bridge_id = wh_json:get_ne_value(<<"Bridge-ID">>, CCVs, OldBridgeId)
                      ,language = wh_media_util:prompt_language(AccountId, OldLanguage)
                     }.
+
+-spec find_account_info(api_binary(), api_binary(), api_binary()) ->
+                               {api_binary(), api_binary()}.
+find_account_info(OldId, OldDb, 'undefined') ->
+    {OldId, OldDb};
+find_account_info('undefined', _OldDb, AccountId) ->
+    {AccountId
+     ,wh_util:format_account_id(AccountId, 'encoded')
+    };
+find_account_info(OldId, OldDb, _AccountId) ->
+    {OldId, OldDb}.
+
+-spec merge(wh_json:object(), api_object()) -> wh_json:object().
+merge(OldJObj, 'undefined') -> OldJObj;
+merge(OldJObj, JObj) ->
+    wh_json:merge_recursive(OldJObj, JObj).
 
 -spec from_originate_uuid(wh_json:object()) -> call().
 -spec from_originate_uuid(wh_json:object(), call()) -> call().
@@ -352,7 +369,7 @@ from_json(JObj, #whapps_call{ccvs=OldCCVs
       ,ccvs = CCVs
       ,sip_headers = SHs
       ,kvs = orddict:merge(fun(_, _, V2) -> V2 end, Call#whapps_call.kvs, KVS)
-      ,other_leg_callid = wh_json:get_ne_value(<<"Other-Leg-Call-ID">>, JObj, other_leg_call_id(Call))
+      ,other_leg_call_id = wh_json:get_ne_value(<<"Other-Leg-Call-ID">>, JObj, other_leg_call_id(Call))
       ,resource_type = wh_json:get_ne_value(<<"Resource-Type">>, JObj, resource_type(Call))
       ,to_tag = wh_json:get_ne_value(<<"To-Tag">>, JObj, to_tag(Call))
       ,from_tag = wh_json:get_ne_value(<<"From-Tag">>, JObj, from_tag(Call))
@@ -461,27 +478,25 @@ set_call_id(?NE_BINARY = CallId, #whapps_call{}=Call) ->
 
 -spec set_other_leg_call_id(ne_binary(), call()) -> call().
 set_other_leg_call_id(?NE_BINARY = CallId, #whapps_call{}=Call) ->
-    Call#whapps_call{other_leg_callid=CallId}.
+    Call#whapps_call{other_leg_call_id=CallId}.
 
 -spec call_id(call()) -> api_binary().
 -spec call_id_direct(call()) -> api_binary().
 call_id(#whapps_call{call_id=CallId, call_id_helper=Fun}=Call) when is_function(Fun, 2) ->
     Fun(CallId, Call);
 call_id(#whapps_call{call_id=CallId}=Call) ->
-    default_helper_function(CallId, Call).
+    ?MODULE:default_helper_function(CallId, Call).
 
 call_id_direct(#whapps_call{call_id=CallId}) ->
     CallId.
 
 -spec other_leg_call_id(call()) -> api_binary().
-other_leg_call_id(#whapps_call{other_leg_callid=CallId}=_Call) ->
+other_leg_call_id(#whapps_call{other_leg_call_id=CallId}=_Call) ->
     CallId.
 
 -spec call_id_helper(whapps_helper_function(), call()) -> call().
 call_id_helper(Fun, #whapps_call{}=Call) when is_function(Fun, 2) ->
-    Call#whapps_call{call_id_helper=Fun};
-call_id_helper(_, #whapps_call{}=Call) ->
-    Call#whapps_call{call_id_helper=fun ?MODULE:default_helper_function/2}.
+    Call#whapps_call{call_id_helper=Fun}.
 
 -spec clear_call_id_helper(call()) -> call().
 clear_call_id_helper(Call) ->
@@ -496,16 +511,14 @@ set_control_queue(ControlQ, #whapps_call{}=Call) when is_binary(ControlQ) ->
 control_queue(#whapps_call{control_q=ControlQ, control_q_helper=Fun}=Call) when is_function(Fun, 2) ->
     Fun(ControlQ, Call);
 control_queue(#whapps_call{control_q=ControlQ}=Call) ->
-    default_helper_function(ControlQ, Call).
+    ?MODULE:default_helper_function(ControlQ, Call).
 
 control_queue_direct(#whapps_call{control_q=ControlQ}) ->
     ControlQ.
 
 -spec control_queue_helper(whapps_helper_function(), call()) -> call().
 control_queue_helper(Fun, #whapps_call{}=Call) when is_function(Fun, 2) ->
-    Call#whapps_call{control_q_helper=Fun};
-control_queue_helper(_, #whapps_call{}=Call) ->
-    Call#whapps_call{control_q_helper=fun ?MODULE:default_helper_function/2}.
+    Call#whapps_call{control_q_helper=Fun}.
 
 -spec clear_control_queue_helper(call()) -> call().
 clear_control_queue_helper(#whapps_call{}=Call) ->
@@ -611,12 +624,12 @@ to(#whapps_call{to=To}) ->
 to_user(#whapps_call{to_user=ToUser}) ->
     ToUser.
 
--spec to_realm(call()) -> ne_binary().
+-spec to_realm(call()) -> api_binary().
 to_realm(#whapps_call{to_realm=ToRealm}) ->
     ToRealm.
 
 -spec set_switch_hostname(ne_binary(), call()) -> call().
-set_switch_hostname(Srv, #whapps_call{}=Call) ->
+set_switch_hostname(<<_/binary>> = Srv, #whapps_call{}=Call) ->
     Call#whapps_call{switch_hostname=Srv}.
 
 -spec switch_hostname(call()) -> api_binary().
@@ -631,7 +644,7 @@ set_switch_nodename(Srv, #whapps_call{}=Call) ->
 switch_nodename(#whapps_call{switch_nodename=Srv}) ->
     Srv.
 
--spec set_inception(ne_binary(), call()) -> call().
+-spec set_inception(api_binary(), call()) -> call().
 set_inception('undefined', #whapps_call{}=Call) ->
     Call#whapps_call{inception='undefined'};
 set_inception(Inception, #whapps_call{}=Call) ->
@@ -641,7 +654,7 @@ set_inception(Inception, #whapps_call{}=Call) ->
 inception(#whapps_call{inception=Inception}) ->
     Inception.
 
--spec set_resource_type(ne_binary(), call()) -> call().
+-spec set_resource_type(api_binary(), call()) -> call().
 set_resource_type('undefined', #whapps_call{}=Call) ->
     Call#whapps_call{resource_type='undefined'};
 set_resource_type(ResourceType, #whapps_call{}=Call) ->
@@ -652,7 +665,7 @@ resource_type(#whapps_call{resource_type=ResourceType}) ->
     ResourceType.
 
 -spec set_account_db(ne_binary(), call()) -> call().
-set_account_db(AccountDb, #whapps_call{}=Call) when is_binary(AccountDb) ->
+set_account_db(<<_/binary>> = AccountDb, #whapps_call{}=Call) ->
     AccountId = wh_util:format_account_id(AccountDb, 'raw'),
     set_custom_channel_var(<<"Account-ID">>, AccountId, Call#whapps_call{account_db=AccountDb
                                                                          ,account_id=AccountId
@@ -663,7 +676,7 @@ account_db(#whapps_call{account_db=AccountDb}) ->
     AccountDb.
 
 -spec set_account_id(ne_binary(), call()) -> call().
-set_account_id(AccountId, #whapps_call{}=Call) when is_binary(AccountId) ->
+set_account_id(<<_/binary>> = AccountId, #whapps_call{}=Call) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     set_custom_channel_var(<<"Account-ID">>, AccountId, Call#whapps_call{account_db=AccountDb
                                                                          ,account_id=AccountId
@@ -742,7 +755,7 @@ language(#whapps_call{language=Language}) -> Language.
 set_to_tag(ToTag, #whapps_call{}=Call) when is_binary(ToTag) ->
     Call#whapps_call{to_tag=ToTag}.
 
--spec to_tag(call()) -> ne_binary().
+-spec to_tag(call()) -> api_binary().
 to_tag(#whapps_call{to_tag=ToTag}) ->
     ToTag.
 
@@ -750,7 +763,7 @@ to_tag(#whapps_call{to_tag=ToTag}) ->
 set_from_tag(FromTag, #whapps_call{}=Call) when is_binary(FromTag) ->
     Call#whapps_call{from_tag=FromTag}.
 
--spec from_tag(call()) -> ne_binary().
+-spec from_tag(call()) -> api_binary().
 from_tag(#whapps_call{from_tag=FromTag}) ->
     FromTag.
 
