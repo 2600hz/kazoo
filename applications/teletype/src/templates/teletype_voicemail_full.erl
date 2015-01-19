@@ -73,7 +73,9 @@ handle_full_voicemail(JObj, _Props) ->
 
     {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
 
-    case is_notice_enabled_on_account(AccountJObj, JObj) of
+    case teletype_util:should_handle_notification(DataJObj)
+        andalso is_notice_enabled_on_account(AccountJObj, JObj)
+    of
         'false' -> lager:debug("notification not enabled for account ~s", [wh_util:format_account_id(AccountDb, 'raw')]);
         'true' ->
             lager:debug("notification enabled for account ~s (~s)", [AccountId, AccountDb]),

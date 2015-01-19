@@ -72,9 +72,11 @@ handle_new_voicemail(JObj, _Props) ->
 
     {'ok', VMBox} = couch_mgr:open_cache_doc(AccountDb, wh_json:get_value(<<"voicemail_box">>, DataJObj)),
     {'ok', UserJObj} = couch_mgr:open_cache_doc(AccountDb, wh_json:get_value(<<"owner_id">>, VMBox)),
+    Email = wh_json:get_ne_value(<<"email">>, UserJObj),
 
-    case (Email = wh_json:get_ne_value(<<"email">>, UserJObj)) =/= 'undefined'
+    case teletype_util:should_handle_notification(DataJObj)
         andalso wh_json:is_true(<<"vm_to_email_enabled">>, UserJObj)
+        andalso Email =/= 'undefined'
     of
         'false' ->
             lager:debug("sending voicemail to email not configured for owner ~s"
