@@ -507,7 +507,7 @@ read_account(Context, Id, LoadFrom) ->
         {404, 'error'} when LoadFrom =:= 'system' ->
             read_system_for_account(Context, Id);
         {_Code, 'success'} ->
-            lager:debug("loaded from account"),
+            lager:debug("loaded ~s from account database", [Id]),
             cb_context:set_resp_data(Context1
                                      ,note_account_override(cb_context:resp_data(Context1))
                                     );
@@ -521,9 +521,7 @@ read_system_for_account(Context, Id) ->
         'success' ->
             lager:debug("read template ~s from master account", [Id]),
             Context2 = cb_context:set_account_db(Context1, cb_context:account_db(Context)),
-            Context3 = migrate_template_to_account(Context2, Id),
-            lager:debug("migrated template ~s from master to ~s", [Id, cb_context:account_id(Context)]),
-            read_account(Context3, Id, 'account');
+            read_account(Context2, Id, 'account');
         _Status -> Context1
     end.
 
@@ -760,11 +758,13 @@ summary_account(Context) ->
                                ,Context
                                ,fun normalize_available/2
                               ),
+    lager:debug("loaded account's summary"),
     summary_account(Context1, cb_context:doc(Context1)).
 
 summary_account(Context, AccountAvailable) ->
     Context1 = summary_available(Context),
     Available = cb_context:doc(Context1),
+    lager:debug("loaded system available"),
 
     crossbar_doc:handle_json_success(
       merge_available(AccountAvailable, Available)
@@ -782,6 +782,7 @@ merge_available(AccountAvailable, Available) ->
 -spec merge_fold(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 merge_fold(Overridden, Acc) ->
     Id = wh_json:get_value(<<"id">>, Overridden),
+    lager:debug("noting ~s is overridden in account", [Id]),
     [note_account_override(Overridden)
      | [JObj || JObj <- Acc, wh_json:get_value(<<"id">>, JObj) =/= Id]
     ].
@@ -830,16 +831,10 @@ on_successful_validation(Id, Context) ->
 
 -spec handle_missing_account_notification(cb_context:context(), ne_binary()) -> cb_context:context().
 handle_missing_account_notification(Context, Id) ->
-    ReqTemplate = clean_req_doc(cb_context:doc(Context)),
+    Context1 = migrate_template_to_account(Context, Id),
+    lager:debug("migrated template ~s from master to ~s", [Id, cb_context:account_id(Context)]),
 
-    case master_notification_doc(Id) of
-        {'ok', JObj} ->
-            lager:debug("account version of ~s missing but master version found, using that", [Id]),
-            crossbar_doc:merge(ReqTemplate, JObj, Context);
-        {'error', _E} ->
-            lager:debug("failed to load master account notification ~s: ~p", [Id, _E]),
-            Context
-    end.
+    on_successful_validation(Context1, Id).
 
 -spec handle_missing_master_notification(cb_context:context(), ne_binary(), wh_json:object()) ->
                                                 cb_context:context().
