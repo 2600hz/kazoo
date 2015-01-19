@@ -6,6 +6,8 @@
 -define(APP_NAME, <<"conference">>).
 -define(APP_VERSION, <<"2.0.0">>).
 
+-define(CONFIG_CAT, <<"conferences">>).
+
 -define(CONFERENCE_CACHE, 'conference_cache').
 
 -define(DEFAULT_PROFILE_CONFIG, [{<<"rate">>, 8000}
@@ -56,4 +58,5 @@
 -define(DEFAULT_CHAT_CONFIG, 'undefined').
 
 -define(CONFERENCE_HRL, 'true').
+
 -endif.

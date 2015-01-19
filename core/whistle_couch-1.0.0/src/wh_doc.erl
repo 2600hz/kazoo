@@ -21,6 +21,7 @@
          ,attachment/1, attachment/2, attachment/3
          ,delete_attachments/1
          ,maybe_remove_attachments/1, maybe_remove_attachments/2
+         ,id/1
          ,revision/1
         ]).
 -export([update_pvt_modified/1]).
@@ -199,3 +200,7 @@ maybe_remove_attachments(JObj, _Attachments) ->
 -spec revision(wh_json:object()) -> api_binary().
 revision(JObj) ->
     wh_json:get_value(<<"_rev">>, JObj).
+
+-spec id(wh_json:object()) -> api_binary().
+id(JObj) ->
+    wh_json:get_value(<<"_id">>, JObj).
