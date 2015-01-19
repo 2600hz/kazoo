@@ -195,6 +195,22 @@ for the 'allowed_errors' option
                       [<<"a">>]}]}
 ```
 
+Json Schema versions
+--------------------
+
+Currently there're two drafts of Json Schema: draft3 and draft4. Currently jesse
+supports only draft3, but the architecture allows to extend jesse to support
+any schema formats. To decide which validator to use jesse tries to read $schema
+property from the given schema, and checks if it's a supported one, otherwise it
+will return an error. If $schema property isn't provided in the given schema,
+jesse will use the default validator (currently the validator for draft3).
+
+To specify which validator to use by default (if there's no $schema property in
+the given schema), one should use 'default_schema_ver' option when call
+`jesse:validate/3` or `jesse:validate_with_schema/3`, the value should be
+a binary consisting a schema path,
+ i.e. <<"http://json-schema.org/draft-03/schema#">>.
+
 Validation errors
 -----------------
 

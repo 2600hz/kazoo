@@ -1,10 +1,16 @@
 CHANGELOG
 =========
 
+1.1.0
+-----
+*   Big refactoring
+*   Start to respect $schema
+*   Add posibility of adding validators for different schemas
+
 1.0.0
 -----
-*   start using semantic versioning (http://semver.org/)
-*   minor improvements
+*   Start using semantic versioning (http://semver.org/)
+*   Minor improvements
 
 0.5.0
 -----

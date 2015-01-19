@@ -10,6 +10,10 @@ ERLC_OPTS = -Werror +debug_info +warn_export_all $(PA)
 
 ERL_LIBS = $(subst $(eval) ,:,$(wildcard $(ROOT)/deps/rabbitmq_client-*/deps))
 
+TEST_EBINS = $(shell find $(ROOT)/deps/mochiweb-* -maxdepth 2 -name ebin -print) \
+	$(shell find $(ROOT)/deps/ejson-* -maxdepth 2 -name ebin -print)
+TEST_PA = $(foreach EBIN,$(TEST_EBINS),-pa $(EBIN))
+
 .PHONY: all compile clean
 
 all: compile
@@ -35,7 +39,7 @@ compile-test: test/$(PROJECT).app
 
 test/$(PROJECT).app: src/kazoo_transform.erl src/*.erl src/api/*.erl
 	@mkdir -p test/
-	ERL_LIBS=$(ERL_LIBS) erlc -v $(ERLC_OPTS) -DTEST -o test/ -pa test/ $(PA) $?
+	ERL_LIBS=$(ERL_LIBS) erlc -v $(ERLC_OPTS) $(TEST_PA) -DTEST -o test/ -pa test/ $?
 
 clean:
 	rm -f ebin/*
@@ -45,5 +49,5 @@ clean:
 test: clean compile-test eunit
 
 eunit: compile-test
-	erl -noshell $(PA) \
+	erl -noshell $(PA) $(TEST_PA) \
 	-pa test -eval "eunit:test([$(MODULES),$(API_MODULES)], [verbose])" -s init stop

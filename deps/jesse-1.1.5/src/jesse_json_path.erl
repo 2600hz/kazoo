@@ -4,14 +4,14 @@
 %% @doc Implementation of Key Value Coding style "queries" for commonly
 %% used Erlang data structures.
 -module(jesse_json_path).
--export([path/2, value/3, to_proplist/1, unwrap_value/1]).
+-export([path/2, path/3, value/3, to_proplist/1, unwrap_value/1]).
 
 -ifdef(namespaced_dicts).
--type jesse_dict() :: dict:dict().
--type jesse_gb_tree() :: gb_trees:tree().
+-type kvc_dict() :: dict:dict().
+-type kvc_gb_tree() :: gb_trees:tree().
 -else.
--type jesse_dict() :: dict().
--type jesse_gb_tree() :: gb_tree().
+-type kvc_dict() :: dict().
+-type kvc_gb_tree() :: gb_tree().
 -endif.
 
 -type elem_key_type() :: atom | binary | string | undefined.
@@ -19,24 +19,31 @@
 -type kvc_obj() :: kvc_obj_node() | [kvc_obj_node()] | list().
 -type kvc_key() :: binary() | atom() | string().
 -type proplist() :: [{kvc_key(), kvc_obj()}].
--type kvc_obj_node() :: proplist() | {struct, proplist()}
-                      | jesse_dict() | jesse_gb_tree() | term().
--type typed_proplist() :: {proplist() | {gb_tree, jesse_gb_tree()}, elem_type()}.
+-type kvc_obj_node() :: proplist() | {struct, proplist()} | [{}] |
+                          kvc_dict() | kvc_gb_tree() | term().
+-type typed_proplist() :: {proplist() | {gb_tree, kvc_gb_tree()},
+                           elem_type()}.
 
 -export_type([proplist/0, kvc_key/0, kvc_obj/0]).
 
 %% @doc Return the result of the query Path on P.
 -spec path(kvc_key() | [kvc_key()], kvc_obj()) -> term() | [].
-path(Path, P) when is_binary(Path) ->
-    path(binary:split(Path, <<".">>, [global]), P);
-path(Path, P) when is_atom(Path) ->
-    path(atom_to_binary(Path, utf8), P);
-path(Path=[N | _], P) when is_integer(N) ->
-    path(iolist_to_binary(Path), P);
-path([], P) ->
+path(Path, P) ->
+    path(Path, P, []).
+
+-spec path(kvc_key() | [kvc_key()], kvc_obj(), term()) -> term().
+path(Path, P, Default) when is_binary(Path) ->
+    path(binary:split(Path, <<".">>, [global]), P, Default);
+path(Path, P, Default) when is_atom(Path) ->
+    path(atom_to_binary(Path, utf8), P, Default);
+path(Path=[N | _], P, Default) when is_integer(N) ->
+    path(iolist_to_binary(Path), P, Default);
+path([], [], Default) ->
+    Default;
+path([], P, _Default) ->
     P;
-path([K | Rest], P) ->
-    path(Rest, value(K, P, [])).
+path([K | Rest], P, Default) ->
+    path(Rest, value(K, P, Default), Default).
 
 %% @doc Return the immediate result of the query for key K in P.
 -spec value(kvc_key(), kvc_obj(), term()) -> term().
@@ -80,6 +87,8 @@ to_proplist({L}) ->
 to_proplist({}) ->
     [];
 to_proplist([]) ->
+    [];
+to_proplist([{}]) ->
     [];
 to_proplist(L=[{struct, _} | _]) ->
     to_proplist_l(L);
@@ -175,6 +184,8 @@ proplist_type({struct, P=[{K, _} | _]}) ->
 proplist_type({P=[{K, _} | _]}) ->
     {P, typeof_elem(K)};
 proplist_type({}) ->
+    {[], undefined};
+proplist_type([{}]) ->
     {[], undefined};
 proplist_type(L) when is_list(L) ->
     {L, list};

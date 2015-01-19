@@ -1,5 +1,5 @@
 %%%=============================================================================
-%% Copyright 2013 Klarna AB
+%% Copyright 2014 Klarna AB
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -20,165 +20,27 @@
 %% @end
 %%%=============================================================================
 
--module(jesse_schema_validator).
+-module(jesse_validator_draft3).
 
 %% API
--export([ validate/3
-        , get_schema_id/1
-        , is_json_object/1
-        , default_error_handler/3
+-export([ check_value/3
         ]).
 
-%% Constant definitions for Json schema keywords
--define(TYPE,                 <<"type">>).
--define(PROPERTIES,           <<"properties">>).
--define(PATTERNPROPERTIES,    <<"patternProperties">>).
--define(ADDITIONALPROPERTIES, <<"additionalProperties">>).
--define(MINPROPERTIES,        <<"minProperties">>).
--define(ITEMS,                <<"items">>).
--define(ADDITIONALITEMS,      <<"additionalItems">>).
--define(REQUIRED,             <<"required">>).
--define(DEPENDENCIES,         <<"dependencies">>).
--define(MINIMUM,              <<"minimum">>).
--define(MAXIMUM,              <<"maximum">>).
--define(EXCLUSIVEMINIMUM,     <<"exclusiveMinimum">>).
--define(EXCLUSIVEMAXIMUM,     <<"exclusiveMaximum">>).
--define(MINITEMS,             <<"minItems">>).
--define(MAXITEMS,             <<"maxItems">>).
--define(UNIQUEITEMS,          <<"uniqueItems">>).
--define(PATTERN,              <<"pattern">>).
--define(MINLENGTH,            <<"minLength">>).
--define(MAXLENGTH,            <<"maxLength">>).
--define(ENUM,                 <<"enum">>).
--define(FORMAT,               <<"format">>).               % NOT IMPLEMENTED YET
--define(DIVISIBLEBY,          <<"divisibleBy">>).
--define(DISALLOW,             <<"disallow">>).
--define(EXTENDS,              <<"extends">>).
--define(ID,                   <<"id">>).
--define(_REF,                 <<"$ref">>).                 % NOT IMPLEMENTED YET
-
-%% Constant definitions for Json types
--define(ANY,                  <<"any">>).
--define(ARRAY,                <<"array">>).
--define(BOOLEAN,              <<"boolean">>).
--define(INTEGER,              <<"integer">>).
--define(NULL,                 <<"null">>).
--define(NUMBER,               <<"number">>).
--define(OBJECT,               <<"object">>).
--define(STRING,               <<"string">>).
-
-%%
--define(data_invalid,                'data_invalid').
--define(schema_invalid,              'schema_invalid').
-
--define(missing_id_field,            'missing_id_field').
--define(missing_required_property,   'missing_required_property').
--define(missing_dependency,          'missing_dependency').
--define(no_match,                    'no_match').
--define(no_extra_properties_allowed, 'no_extra_properties_allowed').
--define(no_extra_items_allowed,      'no_extra_items_allowed').
--define(not_enought_items,           'not_enought_items').
--define(not_allowed,                 'not_allowed').
--define(not_unique,                  'not_unique').
--define(not_in_range,                'not_in_range').
--define(not_minimum,                 'not_minimum').
--define(not_maximum,                 'not_maximum').
--define(not_in_enum,                 'not_in_enum').
--define(not_divisible,               'not_divisible').
--define(wrong_type,                  'wrong_type').
--define(wrong_type_items,            'wrong_type_items').
--define(wrong_type_dependency,       'wrong_type_dependency').
--define(wrong_size,                  'wrong_size').
--define(wrong_min_items,             'wrong_min_items').
--define(wrong_max_items,             'wrong_max_items').
--define(wrong_min_properties,        'wrong_min_properties').
--define(wrong_length,                'wrong_length').
--define(wrong_min_length,            'wrong_min_length').
--define(wrong_max_length,            'wrong_max_length').
--define(wrong_format,                'wrong_format').
-
-%%
--define(not_found, not_found).
-
-%% Internal datastructures
--record( state
-       , { original_schema :: jesse:json_term()
-         , current_schema  :: jesse:json_term()
-         , current_path    :: [binary()] %% current path in reversed order
-         , allowed_errors  :: non_neg_integer() | 'infinity'
-         , error_list      :: list()
-         , error_handler   :: fun((#state{}) -> list() | no_return())
-         }
-       ).
-
+%% Includes
+-include("jesse_schema_validator.hrl").
 
 %%% API
-%% @doc Validates json `Data' against `Schema' with `Options'.
-%% If the given json is valid, then it is returned to the caller as is,
-%% otherwise an exception will be thrown.
--spec validate( JsonSchema :: jesse:json_term()
-              , Data       :: jesse:json_term()
-              , Options    :: [{Key :: atom(), Data :: any()}]
-              ) -> {ok, jesse:json_term()}
-                 | no_return().
-validate(JsonSchema, Value, Options) ->
-  State    = new_state(JsonSchema, Options),
-  NewState = check_value(Value, unwrap(JsonSchema), State),
-  {result(NewState), Value}.
-
-result(State) ->
-  case State#state.error_list of
-    [] -> ok;
-    _  -> throw(State#state.error_list)
-  end.
-
-%% @doc Returns value of "id" field from json object `Schema', assuming that
-%% the given json object has such a field, otherwise an exception
-%% will be thrown.
--spec get_schema_id(Schema :: jesse:json_term()) -> string().
-get_schema_id(Schema) ->
-  case get_value(?ID, Schema) of
-    ?not_found -> throw({schema_invalid, Schema, missing_id_field});
-    Id         -> erlang:binary_to_list(Id)
-  end.
-
-%% @doc A naive check if the given data is a json object.
-%% Supports two main formats of json representation:
-%% 1) mochijson2 format (`{struct, proplist()}')
-%% 2) jiffy format (`{proplist()}')
-%% 3) jsx format (`[{binary() | atom(), any()}]')
-%% Returns `true' if the given data is an object, otherwise `false' is returned.
--spec is_json_object(any()) -> boolean().
-is_json_object({struct, Value}) when is_list(Value) -> true;
-is_json_object({Value}) when is_list(Value)         -> true;
-%% handle `jsx' empty objects
-is_json_object([{}])                                -> true;
-%% very naive check. checks only the first element.
-is_json_object([{Key, _Value} | _])
-  when is_binary(Key) orelse is_atom(Key)
-       andalso Key =/= struct                       -> true;
-is_json_object(_)                                   -> false.
-
-%%% Internal functions
-
-%% @doc Adds Property to the current path and checks the value
-%% using check_value/3
-%% @private
-check_value(Property, Value, Attrs, State) ->
-  %% Add Property to path
-  State1 = add_to_path(State, Property),
-  State2 = check_value(Value, Attrs, State1),
-  %% Reset path again
-  remove_last_from_path(State2).
-
 %% @doc Goes through attributes of the given schema `JsonSchema' and
 %% validates the value `Value' against them.
-%% @private
+-spec check_value( Value      :: any()
+                 , JsonSchema :: jesse:json_term()
+                 , State      :: jesse_state:state()
+                 ) -> jesse_state:state() | no_return().
 check_value(Value, [{?TYPE, Type} | Attrs], State) ->
   NewState = check_type(Value, Type, State),
   check_value(Value, Attrs, NewState);
 check_value(Value, [{?PROPERTIES, Properties} | Attrs], State) ->
-  NewState = case is_json_object(Value) of
+  NewState = case jesse_lib:is_json_object(Value) of
                true  -> check_properties( Value
                                         , unwrap(Properties)
                                         , State
@@ -190,7 +52,7 @@ check_value( Value
            , [{?PATTERNPROPERTIES, PatternProperties} | Attrs]
            , State
            ) ->
-  NewState = case is_json_object(Value) of
+  NewState = case jesse_lib:is_json_object(Value) of
                true  -> check_pattern_properties( Value
                                                 , PatternProperties
                                                 , State
@@ -202,7 +64,7 @@ check_value( Value
            , [{?ADDITIONALPROPERTIES, AdditionalProperties} | Attrs]
            , State
            ) ->
-  NewState = case is_json_object(Value) of
+  NewState = case jesse_lib:is_json_object(Value) of
                true  -> check_additional_properties( Value
                                                    , AdditionalProperties
                                                    , State
@@ -215,14 +77,14 @@ check_value( Value
              , [{?MINPROPERTIES, MinProperties} | Attrs]
              , State
              ) ->
-  NewState = case is_json_object(Value) of
+  NewState = case jesse_lib:is_json_object(Value) of
                'true'  -> check_min_properties(Value, MinProperties, State);
                'false' -> State
              end,
   check_value(Value, Attrs, NewState);
 
 check_value(Value, [{?ITEMS, Items} | Attrs], State) ->
-  NewState = case is_array(Value) of
+  NewState = case jesse_lib:is_array(Value) of
                true  -> check_items(Value, Items, State);
                false -> State
              end,
@@ -239,7 +101,7 @@ check_value( Value
 check_value(Value, [{?REQUIRED, _Required} | Attrs], State) ->
   check_value(Value, Attrs, State);
 check_value(Value, [{?DEPENDENCIES, Dependencies} | Attrs], State) ->
-  NewState = case is_json_object(Value) of
+  NewState = case jesse_lib:is_json_object(Value) of
                true  -> check_dependencies(Value, Dependencies, State);
                false -> State
              end,
@@ -281,19 +143,19 @@ check_value( Value
            ) ->
   check_value(Value, Attrs, State);
 check_value(Value, [{?MINITEMS, MinItems} | Attrs], State) ->
-  NewState = case is_array(Value) of
+  NewState = case jesse_lib:is_array(Value) of
                true  -> check_min_items(Value, MinItems, State);
                false -> State
              end,
   check_value(Value, Attrs, NewState);
 check_value(Value, [{?MAXITEMS, MaxItems} | Attrs], State) ->
-  NewState = case is_array(Value) of
+  NewState = case jesse_lib:is_array(Value) of
                true  -> check_max_items(Value, MaxItems, State);
                false -> State
              end,
   check_value(Value, Attrs, NewState);
 check_value(Value, [{?UNIQUEITEMS, Uniqueitems} | Attrs], State) ->
-  NewState = case is_array(Value) of
+  NewState = case jesse_lib:is_array(Value) of
                true  -> check_unique_items(Value, Uniqueitems, State);
                false -> State
              end,
@@ -336,8 +198,22 @@ check_value(Value, [{?EXTENDS, Extends} | Attrs], State) ->
   check_value(Value, Attrs, NewState);
 check_value(_Value, [], State) ->
   State;
+check_value(Value, [{?_REF, RefSchemaURI} | Attrs], State) ->
+  NewState = check_ref(Value, RefSchemaURI, State),
+  check_value(Value, Attrs, NewState);
 check_value(Value, [_Attr | Attrs], State) ->
   check_value(Value, Attrs, State).
+
+%%% Internal functions
+%% @doc Adds Property to the current path and checks the value
+%% using jesse_schema_validator:validate_with_state/3.
+%% @private
+check_value(Property, Value, Attrs, State) ->
+  %% Add Property to path
+  State1 = jesse_state:add_to_path(State, Property),
+  State2 = jesse_schema_validator:validate_with_state(Attrs, Value, State1),
+  %% Reset path again
+  jesse_state:remove_last_from_path(State2).
 
 %% @doc 5.1.  type
 %%
@@ -390,50 +266,48 @@ check_value(Value, [_Attr | Attrs], State) ->
 %%  {"type":["string","number"]}
 %% @private
 check_type(Value, Type, State) ->
-  case is_type_valid(Value, Type) of
+  case is_type_valid(Value, Type, State) of
     true  -> State;
     false -> wrong_type(Value, State)
   end.
 
-is_type_valid(Value, ?STRING)   -> is_binary(Value);
-is_type_valid(Value, ?NUMBER)   -> try_converting(Value, fun wh_util:to_number/1, fun erlang:is_number/1);
-is_type_valid(Value, ?INTEGER)  -> try_converting(Value, fun wh_util:to_integer/1, fun erlang:is_integer/1);
-is_type_valid(Value, ?BOOLEAN)  -> wh_util:is_boolean(Value);
-is_type_valid(Value, ?OBJECT)   -> is_json_object(Value);
-is_type_valid(Value, ?ARRAY)    -> is_array(Value);
-is_type_valid(Value, ?NULL)     -> is_null(Value);
-is_type_valid(_Value, ?ANY)     -> 'true';
-is_type_valid(Value, UnionType) ->
-  case is_array(UnionType) of
-    true  -> check_union_type(Value, UnionType);
+%% @private
+is_type_valid(Value, ?STRING, _State)  -> is_binary(Value);
+is_type_valid(Value, ?NUMBER, _State)  -> is_number(Value);
+is_type_valid(Value, ?INTEGER, _State) -> is_integer(Value);
+is_type_valid(Value, ?BOOLEAN, _State) -> is_boolean(Value);
+is_type_valid(Value, ?OBJECT, _State)  -> jesse_lib:is_json_object(Value);
+is_type_valid(Value, ?ARRAY, _State)   -> jesse_lib:is_array(Value);
+is_type_valid(Value, ?NULL, _State)    -> jesse_lib:is_null(Value);
+is_type_valid(_Value, ?ANY, _State)    -> true;
+is_type_valid(Value, UnionType, State) ->
+  case jesse_lib:is_array(UnionType) of
+    true  -> check_union_type(Value, UnionType, State);
     false -> true
   end.
 
-try_converting(Value, CastFun, ValidatorFun) ->
-  try CastFun(Value) of
-      Casted -> ValidatorFun(Casted)
-  catch
-    _E:_R -> 'false'
-  end.
-
 %% @private
-check_union_type(Value, UnionType) ->
+check_union_type(Value, UnionType, State) ->
   lists:any( fun(Type) ->
                  try
-                   case is_json_object(Type) of
+                   case jesse_lib:is_json_object(Type) of
                      true  ->
                        %% case when there's a schema in the array,
-                       %% then we need to validate against
-                       %% that schema
-                       NewState = new_state(Type, []),
-                       _ = check_value(Value, unwrap(Type), NewState),
+                       %% then we need to validate against that schema
+                       NewState = jesse_state:new(Type, []),
+                       _ = jesse_schema_validator:validate_with_state( Type
+                                                                     , Value
+                                                                     , NewState
+                                                                     ),
                        true;
                      false ->
-                       is_type_valid(Value, Type)
+                       is_type_valid(Value, Type, State)
                    end
                  catch
+                   %% FIXME: don't like to have these error related
+                   %% macros here.
                    throw:[{?data_invalid, _, _, _, _} | _] -> false;
-                   throw:[{?schema_invalid, _, _} | _]  -> false
+                   throw:[{?schema_invalid, _, _} | _]     -> false
                  end
              end
            , UnionType
@@ -481,7 +355,7 @@ check_properties(Value, Properties, State) ->
                                                         ),
                            check_value( PropertyName
                                       , Property
-                                      , unwrap(PropertySchema)
+                                      , PropertySchema
                                       , NewState
                                       )
                        end
@@ -517,7 +391,7 @@ check_match({PropertyName, PropertyValue}, {Pattern, Schema}, State) ->
     match   ->
       check_value( PropertyName
                  , PropertyValue
-                 , unwrap(Schema)
+                 , Schema
                  , set_current_schema(State, Schema)
                  );
     nomatch ->
@@ -570,7 +444,7 @@ check_additional_properties(Value, AdditionalProperties, State) ->
                                                         ),
                            check_value( ExtraName
                                       , Extra
-                                      , unwrap(AdditionalProperties)
+                                      , AdditionalProperties
                                       , NewState
                                       )
                        end
@@ -626,13 +500,13 @@ filter_extra_names(Pattern, ExtraNames) ->
 %% "additionalProperties" (Section 5.4) for objects.
 %% @private
 check_items(Value, Items, State) ->
-  case is_json_object(Items) of
+  case jesse_lib:is_json_object(Items) of
     true ->
       {_, TmpState} = lists:foldl( fun(Item, {Index, CurrentState}) ->
                                        { Index + 1
                                        , check_value( Index
                                                     , Item
-                                                    , unwrap(Items)
+                                                    , Items
                                                     , CurrentState
                                                     )
                                        }
@@ -682,8 +556,7 @@ check_items_fun(Tuples, State) ->
                                                               , Schema
                                                               ),
                                  { Index + 1
-                                 , check_value(Index, Item, unwrap(Schema),
-                                               NewState)
+                                 , check_value(Index, Item, Schema, NewState)
                                  }
                                end
                              , {0, State}
@@ -716,6 +589,7 @@ check_dependencies(Value, Dependencies, State) ->
                    case get_value(DependencyName, Value) of
                      ?not_found -> CurrentState;
                      _          -> check_dependency_value( Value
+                                                         , DependencyName
                                                          , DependencyValue
                                                          , CurrentState
                                                          )
@@ -726,31 +600,37 @@ check_dependencies(Value, Dependencies, State) ->
              ).
 
 %% @private
-check_dependency_value(Value, Dependency, State) when is_binary(Dependency) ->
+check_dependency_value(Value, _DependencyName, Dependency, State)
+  when is_binary(Dependency) ->
   case get_value(Dependency, Value) of
     ?not_found ->
       handle_data_invalid({?missing_dependency, Dependency}, Value, State);
     _          ->
       State
   end;
-check_dependency_value(Value, Dependency, State) ->
-  case is_json_object(Dependency) of
+check_dependency_value(Value, DependencyName, Dependency, State) ->
+  case jesse_lib:is_json_object(Dependency) of
     true ->
-      TmpState = check_value( Value
-                            , unwrap(Dependency)
+      TmpState = check_value( DependencyName
+                            , Value
+                            , Dependency
                             , set_current_schema(State, Dependency)
                             ),
       set_current_schema(TmpState, get_current_schema(State));
     false when is_list(Dependency) ->
-      check_dependency_array(Value, Dependency, State);
+      check_dependency_array(Value, DependencyName, Dependency, State);
     _ ->
       handle_schema_invalid({?wrong_type_dependency, Dependency}, State)
   end.
 
 %% @private
-check_dependency_array(Value, Dependency, State) ->
+check_dependency_array(Value, DependencyName, Dependency, State) ->
   lists:foldl( fun(PropertyName, CurrentState) ->
-                   check_dependency_value(Value, PropertyName, CurrentState)
+                   check_dependency_value( Value
+                                         , DependencyName
+                                         , PropertyName
+                                         , CurrentState
+                                         )
                end
              , State
              , Dependency
@@ -850,8 +730,8 @@ check_max_items(Value, _MaxItems, State) ->
 %%       object.</li>
 %% </ul>
 %% @private
-check_unique_items([], 'true', State) ->
-  State;
+check_unique_items([], true, State) ->
+    State;
 check_unique_items(Value, true, State) ->
   try
     lists:foldl( fun(_Item, []) ->
@@ -935,37 +815,7 @@ check_enum(Value, Enum, State) ->
       handle_data_invalid(?not_in_enum, Value, State)
   end.
 
-%% TODO:
 check_format(_Value, _Format, State) ->
-%% 'date-time': /^\d{4}-(?:0[0-9]{1}|1[0-2]{1})-[0-9]{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
-%% 'date': /^\d{4}-(?:0[0-9]{1}|1[0-2]{1})-[0-9]{2}$/,
-%% 'time': /^\d{2}:\d{2}:\d{2}$/,
-
-%% 'email': /^(?:[\w\!\#\$\%\&\'\*\+\-\/\=\?\^\`\{\|\}\~]+\.)*[\w\!\#\$\%\&\'\*\+\-\/\=\?\^\`\{\|\}\~]+@(?:(?:(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-](?!\.)){0,61}[a-zA-Z0-9]?\.)+[a-zA-Z0-9](?:[a-zA-Z0-9\-](?!$)){0,61}[a-zA-Z0-9]?)|(?:\[(?:(?:[01]?\d{1,2}|2[0-4]\d|25[0-5])\.){3}(?:[01]?\d{1,2}|2[0-4]\d|25[0-5])\]))$/,
-%% 'ip-address': /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/,
-%% 'ipv6': /^\s*((([0-9A-Fa-f]{1,4}:){7}([0-9A-Fa-f]{1,4}|:))|(([0-9A-Fa-f]{1,4}:){6}(:[0-9A-Fa-f]{1,4}|((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){5}(((:[0-9A-Fa-f]{1,4}){1,2})|:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){4}(((:[0-9A-Fa-f]{1,4}){1,3})|((:[0-9A-Fa-f]{1,4})?:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){3}(((:[0-9A-Fa-f]{1,4}){1,4})|((:[0-9A-Fa-f]{1,4}){0,2}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})|((:[0-9A-Fa-f]{1,4}){0,3}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))(%.+)?\s*$/,
-%% 'uri': /^[a-zA-Z][a-zA-Z0-9+-.]*:[^\s]*$/,
-
-%% 'color': /(#?([0-9A-Fa-f]{3,6})\b)|(aqua)|(black)|(blue)|(fuchsia)|(gray)|(green)|(lime)|(maroon)|(navy)|(olive)|(orange)|(purple)|(red)|(silver)|(teal)|(white)|(yellow)|(rgb\(\s*\b([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\b\s*,\s*\b([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\b\s*,\s*\b([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\b\s*\))|(rgb\(\s*(\d?\d%|100%)+\s*,\s*(\d?\d%|100%)+\s*,\s*(\d?\d%|100%)+\s*\))/,
-
-%% 'host-name': /^(([a-zA-Z]|[a-zA-Z][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z]|[A-Za-z][A-Za-z0-9\-]*[A-Za-z0-9])$/,
-
-%% 'alpha': /^[a-zA-Z]+$/,
-%% 'alphanumeric': /^[a-zA-Z0-9]+$/,
-%% 'utc-millisec': function (input) {
-%%   return (typeof input === 'string') && parseFloat(input) === parseInt(input, 10) && !isNaN(input);
-%% },
-%% 'regex': function (input) {
-%%   var result = true;
-%%   try {
-%%     new RegExp(input);
-%%   } catch (e) {
-%%     result = false;
-%%   }
-%%   return result;
-%% },
-%% 'style': /\s*(.+?):\s*([^;]+);?/g,
-%% 'phone': /^\+(?:[0-9] ?){6,14}[0-9]$/
   State.
 
 %% @doc 5.24.  divisibleBy
@@ -993,10 +843,11 @@ check_divisible_by(Value, DivisibleBy, State) ->
 %% is not valid.
 %% @private
 check_disallow(Value, Disallow, State) ->
-  try check_type(Value, Disallow, new_state(Disallow, [])) of
-      _ ->
-      handle_data_invalid(?not_allowed, Value, State)
+  try check_type(Value, Disallow, jesse_state:new(Disallow, [])) of
+    _ -> handle_data_invalid(?not_allowed, Value, State)
   catch
+    %% FIXME: don't like to have these error related macros
+    %% here.
     throw:[{?data_invalid, _, _, _, _} | _] -> State
   end.
 
@@ -1012,9 +863,9 @@ check_disallow(Value, Disallow, State) ->
 %% attributes, or add other constraints.
 %% @private
 check_extends(Value, Extends, State) ->
-  case is_json_object(Extends) of
+  case jesse_lib:is_json_object(Extends) of
     true  ->
-      check_value(Value, unwrap(Extends), set_current_schema(State, Extends));
+      check_value(extends, Value, Extends, set_current_schema(State, Extends));
     false ->
       case is_list(Extends) of
         true  -> check_extends_array(Value, Extends, State);
@@ -1030,6 +881,38 @@ check_extends_array(Value, Extends, State) ->
              , State
              , Extends
              ).
+
+check_ref(Value, <<"#", LocalPath/binary>> = RefSchemaURI, State) ->
+  Keys = binary:split(LocalPath, <<"/">>, ['global']),
+  OriginalSchema = jesse_state:original_schema(State),
+
+  case get_local_schema(Keys, OriginalSchema) of
+    ?not_found ->
+      handle_schema_invalid({'schema_unsupported', RefSchemaURI}, State);
+    RefSchema ->
+      do_ref_schema(Value, RefSchema, State)
+  end;
+check_ref(Value, RefSchemaURI, State) ->
+  case jesse_state:find_schema(State, RefSchemaURI) of
+    ?not_found ->
+      handle_schema_invalid({'schema_unsupported', RefSchemaURI}, State);
+    RefSchema ->
+      do_ref_schema(Value, RefSchema, State)
+  end.
+
+get_local_schema([<<>> | Keys], Schema) ->
+  get_local_schema(Keys, Schema);
+get_local_schema([Key|Keys], Schema) ->
+  SubSchema = get_value(Key, Schema),
+  case jesse_lib:is_json_object(SubSchema) of
+    true -> get_local_schema(Keys, SubSchema);
+    false -> ?not_found
+  end;
+get_local_schema([], Schema) -> Schema.
+
+do_ref_schema(Value, RefSchema, State) ->
+  TmpState = check_value(Value, unwrap(RefSchema), set_current_schema(State, RefSchema)),
+  set_current_schema(TmpState, get_current_schema(State)).
 
 %%=============================================================================
 %% @doc Returns `true' if given values (instance) are equal, otherwise `false'
@@ -1052,7 +935,8 @@ check_extends_array(Value, Extends, State) ->
 %% </ul>
 %% @private
 is_equal(Value1, Value2) ->
-  case is_json_object(Value1) andalso is_json_object(Value2) of
+  case jesse_lib:is_json_object(Value1)
+    andalso jesse_lib:is_json_object(Value2) of
     true  -> compare_objects(Value1, Value2);
     false -> case is_list(Value1) andalso is_list(Value2) of
                true  -> compare_lists(Value1, Value2);
@@ -1094,89 +978,7 @@ compare_properties(Value1, Value2) ->
            ).
 
 %%=============================================================================
-%% @private
-new_state(JsonSchema, Options) ->
-  ErrorHandler  = props:get_value( error_handler
-                                     , Options
-                                     , fun default_error_handler/3
-                                     ),
-  AllowedErrors = props:get_value( allowed_errors
-                                     , Options
-                                     , 0
-                                     ),
-  #state{ current_schema  = JsonSchema
-        , current_path    = []
-        , original_schema = JsonSchema
-        , allowed_errors  = AllowedErrors
-        , error_list      = []
-        , error_handler   = ErrorHandler
-        }.
-
-%% @private
-get_current_schema(#state{current_schema = CurrentSchema}) ->
-  CurrentSchema.
-
-%% @private
-set_current_schema(State, NewSchema) ->
-  State#state{current_schema = NewSchema}.
-
-%% get_original_schema(#state{original_schema = OriginalSchema}) ->
-%%   OriginalSchema.
-
-%% @private
-get_error_handler(#state{error_handler = ErrorHandler}) ->
-  ErrorHandler.
-
-%% @private
-get_error_list(#state{error_list = ErrorList}) ->
-  ErrorList.
-
-%% @private
-set_error_list(State, ErrorList) ->
-  State#state{error_list = ErrorList}.
-
-%% @private
-get_allowed_errors(#state{allowed_errors = AllowedErrors}) ->
-  AllowedErrors.
-
-%% @private
-add_to_path(State, Property) ->
-  CurrentPath = State#state.current_path,
-  State#state{current_path = [Property | CurrentPath]}.
-
-%% @private
-remove_last_from_path(State = #state{current_path = [_Property | Path]}) ->
-  State#state{current_path = Path}.
-
-%% @private
-handle_data_invalid(Info, Value, State) ->
-  Error = { ?data_invalid
-          , State#state.current_schema
-          , Info
-          , Value
-          , lists:reverse(State#state.current_path)
-          },
-  handle_error(Error, State).
-
-%% @private
-handle_schema_invalid(Info, State) ->
-  handle_error({?schema_invalid, State#state.current_schema, Info}, State).
-
-%% @private
-handle_error(Error, State) ->
-  ErrorHandler  = get_error_handler(State),
-  ErrorList     = get_error_list(State),
-  AllowedErrors = get_allowed_errors(State),
-  set_error_list(State, ErrorHandler(Error, ErrorList, AllowedErrors)).
-
-%% @private
-default_error_handler(Error, ErrorList, AllowedErrors) ->
-  case AllowedErrors > length(ErrorList) orelse AllowedErrors =:= 'infinity' of
-    true  -> [Error | ErrorList];
-    false -> throw([Error | ErrorList])
-  end.
-
-%%=============================================================================
+%% Wrappers
 %% @private
 get_value(Key, Schema) ->
   jesse_json_path:value(Key, Schema, ?not_found).
@@ -1186,17 +988,32 @@ unwrap(Value) ->
   jesse_json_path:unwrap_value(Value).
 
 %% @private
-empty_if_not_found(?not_found) -> [];
-empty_if_not_found(Value)      -> Value.
+handle_data_invalid(Info, Value, State) ->
+  jesse_error:handle_data_invalid(Info, Value, State).
 
-%%=============================================================================
-%% @doc This check is needed since objects in `jsx' are lists (props)
 %% @private
-is_array(Value) when is_list(Value) -> not is_json_object(Value);
-is_array(_)                         -> false.
+handle_schema_invalid(Info, State) ->
+  jesse_error:handle_schema_invalid(Info, State).
 
-is_null(null)   -> true;
-is_null(_Value) -> false.
+%% @private
+get_current_schema(State) ->
+  jesse_state:get_current_schema(State).
+
+%% @private
+set_current_schema(State, NewSchema) ->
+  jesse_state:set_current_schema(State, NewSchema).
+
+%% @private
+empty_if_not_found(Value) ->
+  jesse_lib:empty_if_not_found(Value).
+
+%% @private
+add_to_path(State, Property) ->
+  jesse_state:add_to_path(State, Property).
+
+%% @private
+remove_last_from_path(State) ->
+  jesse_state:remove_last_from_path(State).
 
 %%% Local Variables:
 %%% erlang-indent-level: 2

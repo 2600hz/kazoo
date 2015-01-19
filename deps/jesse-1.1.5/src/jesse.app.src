@@ -2,7 +2,7 @@
 
 { application, jesse
 , [ {description, "jesse"}
-  , {vsn, "1.0.1"}
+  , {vsn, "1.1.5"}
   , {modules, []}
   , {registered, []}
   , {applications, [ kernel
