@@ -14,11 +14,9 @@
 -export([lookup_name/1, record/1]).
 -export_type([name_pronounced/0]).
 
--type name_pronounced() :: 'undefined'
-                           | {'temp_doc_id', ne_binary(), ne_binary()}
-                           | {'media_doc_id', ne_binary(), ne_binary()}.
-
-
+-type name_pronounced() :: 'undefined' |
+                           {'temp_doc_id', ne_binary(), ne_binary()} |
+                           {'media_doc_id', ne_binary(), ne_binary()}.
 
 -define(PRONOUNCED_NAME_KEY, [<<"name_pronounced">>, <<"media_id">>]).
 
@@ -93,7 +91,7 @@ record_name(RecordName, Call) ->
                                          ,{'tones', [Tone]}
                                         ], Call),
     whapps_call_command:b_record(RecordName, ?ANY_DIGIT, <<"60">>, Call),
-    Force = whapps_config:get_is_true(<<"conferences">>, <<"review_name">>, 'false'),
+    Force = whapps_config:get_is_true(?CONFIG_CAT, <<"review_name">>, 'false'),
     case Force of
         'true' ->
             review(RecordName, Call);

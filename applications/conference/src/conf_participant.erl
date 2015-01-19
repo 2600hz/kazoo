@@ -11,8 +11,6 @@
 
 -behaviour(gen_listener).
 
--include("conference.hrl").
-
 %% API
 -export([start_link/1]).
 -export([relay_amqp/2]).
@@ -42,6 +40,8 @@
          ,terminate/2
          ,code_change/3
         ]).
+
+-include("conference.hrl").
 
 -define('SERVER', ?MODULE).
 
@@ -76,6 +76,10 @@
                       ,name_pronounced = 'undefined' :: conf_pronounced_name:name_pronounced()
                      }).
 -type participant() :: #participant{}.
+
+-define(DEFAULT_ENTRY_TONE, <<"tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)">>).
+-define(ENTRY_TONE, whapps_config:get(?CONFIG_CAT, <<"entry_tone">>, ?DEFAULT_ENTRY_TONE)).
+-define(MOD_ENTRY_TONE, whapps_config:get(?CONFIG_CAT, <<"moderator_entry_tone">>, ?DEFAULT_ENTRY_TONE)).
 
 %%%===================================================================
 %%% API
@@ -289,13 +293,13 @@ handle_cast(_Message, #participant{conference='undefined'}=Participant) ->
                 ,[_Message]
                ),
     {'noreply', Participant};
-handle_cast('play_announce', #participant{name_pronounced = 'undefuned'} = Participant) ->
-    lager:debug("Skipping announce"),
+handle_cast('play_announce', #participant{name_pronounced='undefined'} = Participant) ->
+    lager:debug("skipping announce"),
     {'noreply', Participant};
-handle_cast('play_announce', #participant{conference = Conference
-                                          ,name_pronounced = {_, AccountId, MediaId}
+handle_cast('play_announce', #participant{conference=Conference
+                                          ,name_pronounced={_, AccountId, MediaId}
                                          }=Participant) ->
-    lager:debug("Make announce from couch media"),
+    lager:debug("playing announcement ~s to conference", [MediaId]),
     Recording = wh_media_util:media_path(MediaId, AccountId),
     whapps_conference_command:play(Recording, Conference),
     {'noreply', Participant};
@@ -316,15 +320,12 @@ handle_cast({'join_remote', JObj}, #participant{call=Call
 handle_cast({'sync_participant', JObj}, #participant{call=Call}=Participant) ->
     {'noreply', sync_participant(JObj, Call, Participant)};
 handle_cast('play_member_entry', #participant{conference=Conference}=Participant) ->
-    _ = whapps_conference:play_entry_tone(Conference) andalso
-        whapps_conference_command:play(<<"tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)">>, Conference),
+    _ = whapps_conference:play_entry_tone(Conference)
+        andalso whapps_conference_command:play(?ENTRY_TONE, Conference),
     {'noreply', Participant};
 handle_cast('play_moderator_entry', #participant{conference=Conference}=Participant) ->
-    _ = case whapps_conference:play_entry_tone(Conference) of
-            'false' -> 'ok';
-            'true' ->
-                whapps_conference_command:play(<<"tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)">>, Conference)
-        end,
+    _ = whapps_conference:play_entry_tone(Conference)
+        andalso whapps_conference_command:play(?MOD_ENTRY_TONE, Conference),
     {'noreply', Participant};
 handle_cast({'dtmf', Digit}, #participant{last_dtmf = <<"*">>}=Participant) ->
     case Digit of
