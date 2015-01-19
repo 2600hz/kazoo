@@ -225,8 +225,7 @@ maybe_play_name(Conference, Call, Srv) ->
 
 -spec add_participant_to_conference(wh_json:object(), whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
 add_participant_to_conference(JObj, Conference, Call, Srv) ->
-
-    maybe_play_name(Conference, Call, Srv),
+    _ = maybe_play_name(Conference, Call, Srv),
 
     _ = case whapps_conference:play_entry_prompt(Conference) of
             'false' -> 'ok';

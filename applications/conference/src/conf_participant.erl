@@ -286,14 +286,15 @@ handle_cast({'set_name_pronounced', Name}, #participant{}=Participant) ->
 handle_cast(_Message, #participant{conference='undefined'}=Participant) ->
     %% ALL MESSAGES BELLOW THIS ARE CONSUMED HERE UNTIL THE CONFERENCE IS KNOWN
     lager:debug("ignoring message prior to conference discovery: ~p"
-                ,[_Message]),
+                ,[_Message]
+               ),
     {'noreply', Participant};
 handle_cast('play_announce', #participant{name_pronounced = 'undefuned'} = Participant) ->
     lager:debug("Skipping announce"),
     {'noreply', Participant};
 handle_cast('play_announce', #participant{conference = Conference
-                                           ,name_pronounced = {_, AccountId, MediaId}
-                                          }=Participant) ->
+                                          ,name_pronounced = {_, AccountId, MediaId}
+                                         }=Participant) ->
     lager:debug("Make announce from couch media"),
     Recording = wh_media_util:media_path(MediaId, AccountId),
     whapps_conference_command:play(Recording, Conference),
