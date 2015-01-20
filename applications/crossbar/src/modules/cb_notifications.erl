@@ -256,7 +256,9 @@ put(Context) ->
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, Id) ->
     case cb_context:req_files(Context) of
-        [] -> do_post(Context);
+        [] ->
+            lager:debug("handling POST of template meta for ~s", [Id]),
+            do_post(Context);
         [{_FileName, FileJObj}] ->
             lager:debug("POST is for an attachment on ~s(~s)", [Id, kz_notification:db_id(Id)]),
             update_template(Context, kz_notification:db_id(Id), FileJObj)
@@ -474,7 +476,7 @@ is_acceptable_accept(Acceptable, Type, SubType) ->
                       T =:= Type andalso S =:= SubType
               end, Acceptable).
 
--type load_from() :: 'system' | 'account'.
+-type load_from() :: 'system' | 'account' | 'system_migrate'.
 
 -spec read(cb_context:context(), ne_binary()) -> cb_context:context().
 -spec read(cb_context:context(), ne_binary(), load_from()) -> cb_context:context().
@@ -484,11 +486,17 @@ read(Context, Id) ->
 read(Context, Id, LoadFrom) ->
     Context1 =
         case cb_context:account_db(Context) of
-            'undefined' when LoadFrom =:= 'system' -> read_system(Context, Id);
-            _AccountDb -> read_account(Context, Id, LoadFrom)
+            'undefined' when LoadFrom =:= 'system'; LoadFrom =:= 'system_migrate' ->
+                lager:debug("no account id, loading ~ from system", [Id]),
+                read_system(Context, Id);
+            _AccountDb ->
+                lager:debug("reading ~s from account first", [Id]),
+                read_account(Context, Id, LoadFrom)
         end,
     case cb_context:resp_status(Context1) of
-        'success' -> read_success(Context1);
+        'success' ->
+            lager:debug("successful read of ~s", [Id]),
+            read_success(Context1);
         _Status -> Context1
     end.
 
@@ -504,25 +512,42 @@ read_account(Context, Id, LoadFrom) ->
           ,cb_context:resp_status(Context1)
          }
     of
-        {404, 'error'} when LoadFrom =:= 'system' ->
-            read_system_for_account(Context, Id);
+        {404, 'error'} when LoadFrom =:= 'system'; LoadFrom =:= 'system_migrate' ->
+            lager:debug("~s not found in account, reading from master", [Id]),
+            read_system_for_account(Context, Id, LoadFrom);
         {_Code, 'success'} ->
             lager:debug("loaded ~s from account database", [Id]),
             cb_context:set_resp_data(Context1
                                      ,note_account_override(cb_context:resp_data(Context1))
                                     );
-        {_Code, _Status} -> Context1
+        {_Code, _Status} ->
+            lager:debug("failed to load ~s: ~p", [Id, _Code]),
+            Context1
     end.
 
--spec read_system_for_account(cb_context:context(), path_token()) -> cb_context:context().
-read_system_for_account(Context, Id) ->
+-spec read_system_for_account(cb_context:context(), path_token(), load_from()) ->
+                                     cb_context:context().
+read_system_for_account(Context, Id, LoadFrom) ->
     Context1 = read_system(Context, Id),
     case cb_context:resp_status(Context1) of
-        'success' ->
+        'success' when LoadFrom =:= 'system' ->
             lager:debug("read template ~s from master account", [Id]),
-            cb_context:set_account_db(Context1, cb_context:account_db(Context));
-        _Status -> Context1
+            revert_context_to_account(Context, Context1);
+        'success' when LoadFrom =:= 'system_migrate' ->
+            lager:debug("read template ~s from master account, now migrating it", [Id]),
+            migrate_template_to_account(revert_context_to_account(Context, Context1), Id);
+        _Status ->
+            lager:debug("failed to read master db for ~s", [Id]),
+            Context1
     end.
+
+-spec revert_context_to_account(cb_context:context(), cb_context:context()) -> cb_context:context().
+revert_context_to_account(AccountContext, Context) ->
+    cb_context:setters(Context
+                       ,[{fun cb_context:set_account_db/2, cb_context:account_db(AccountContext)}
+                         ,{fun cb_context:set_account_id/2, cb_context:account_id(AccountContext)}
+                        ]).
+
 
 -spec migrate_template_to_account(cb_context:context(), path_token()) -> cb_context:context().
 migrate_template_to_account(Context, Id) ->
@@ -541,8 +566,21 @@ migrate_template_to_account(Context, Id) ->
             Context2 = migrate_template_attachments(Context1, Id, wh_doc:attachments(Template)),
             maybe_note_notification_preference(Context2),
             Context2;
+        'error' ->
+            handle_migrate_error(Context1, Id, cb_context:resp_error_code(Context1));
         _Status -> Context1
     end.
+
+-spec handle_migrate_error(cb_context:context(), ne_binary(), pos_integer()) -> cb_context:context().
+handle_migrate_error(Context, Id, 409) ->
+    lager:debug("conflict when migrating, account's version probably soft-deleted"),
+    {'ok', DelJObj} = couch_mgr:open_cache_doc(cb_context:account_db(Context), Id),
+    lager:debug("deleted version: ~p", [DelJObj]),
+    Context;
+handle_migrate_error(Context, _Id, _Code) ->
+    lager:debug("error migrating ~s: ~p", [_Id, _Code]),
+    Context.
+
 
 -spec maybe_note_notification_preference(cb_context:context()) -> 'ok'.
 -spec maybe_note_notification_preference(ne_binary(), wh_json:object()) -> 'ok'.
@@ -663,10 +701,12 @@ attachment_filename(Id, Accept) ->
 -spec maybe_update(cb_context:context(), ne_binary()) -> cb_context:context().
 maybe_update(Context, Id) ->
     case cb_context:req_files(Context) of
-        [] -> update_notification(Context, Id);
+        [] ->
+            lager:debug("updating template meta for ~s", [Id]),
+            update_notification(Context, Id);
         [{_FileName, FileJObj}] ->
             lager:debug("recv template upload of ~s: ~p", [_FileName, FileJObj]),
-            read(Context, Id)
+            read(Context, Id, 'system_migrate')
     end.
 
 -spec update_notification(cb_context:context(), ne_binary()) -> cb_context:context().
