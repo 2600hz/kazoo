@@ -977,12 +977,25 @@ request_media_url(MediaName, CallId, JObj, Type) ->
             E;
         {'ok', MediaResp} ->
             MediaUrl = wh_json:get_value(<<"Stream-URL">>, MediaResp, <<>>),
+            CacheProps = media_url_cache_props(MediaResp),
             _ = wh_cache:store_local(?ECALLMGR_UTIL_CACHE
                                      ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName)
                                      ,MediaUrl
+                                     ,CacheProps
                                     ),
             lager:debug("media ~s stored to playback cache : ~s", [MediaName, MediaUrl]),
             {'ok', MediaUrl}
+    end.
+
+-spec media_url_cache_props(wh_json:object()) -> wh_proplist().
+media_url_cache_props(MediaResp) ->
+    MediaName = wh_json:get_binary_value(<<"Media-Name">>, MediaResp, <<>>),
+    case binary:split(MediaName, <<"/">>, ['global']) of
+        [<<>>, AccountId, MediaId] ->
+            AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+            [{'origin', {'db', AccountDb, MediaId}}];
+        _ ->
+            []
     end.
 
 -spec custom_sip_headers(wh_proplist()) -> wh_proplist().
