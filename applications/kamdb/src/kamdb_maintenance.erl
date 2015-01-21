@@ -11,7 +11,9 @@
 -include("kamdb.hrl").
 
 %% API
--export([lookup_acls/1]).
+-export([lookup_acls/1
+         ,lookup_ratelimits/1
+        ]).
 
 -spec lookup_acls(ne_binary()) -> 'ok'.
 lookup_acls(Entity) ->
@@ -26,3 +28,19 @@ print_acl_record(Record) ->
     CIDRs = wh_json:get_value([<<"value">>, <<"acls">>, <<"cidr">>], Record),
     io:format("~s ~s use policy ~s for cidrs:~n",[Type, Name, Policy]),
     lists:foreach(fun (CIDR) -> io:format("~s~n", [CIDR]) end, CIDRs).
+
+-spec lookup_ratelimits(ne_binary()) -> 'ok'.
+lookup_ratelimits(Entity) ->
+    Limits = kamdb_handle_rate:lookup_rate_limit_records(Entity),
+    io:format("~p", [Limits]),
+    wh_json:foreach(fun print_limits/1, Limits).
+
+-spec print_limits({ne_binary(), wh_json:object()}) -> 'ok'.
+print_limits({Type, Rates}) ->
+    Name = wh_json:get_value(<<"name">>, Rates),
+    Min = wh_json:get_value(?MINUTE, Rates, wh_json:new()),
+    Sec = wh_json:get_value(?SECOND, Rates, wh_json:new()),
+    io:format("~s rates for ~s~n", [Type, Name]),
+    lists:foreach(fun (Key) ->
+                      io:format("~-15s: ~7.10B/m ~7.10B/s~n", [Key, wh_json:get_value(Key, Min), wh_json:get_value(Key, Sec)])
+                  end, kamdb_handle_rate:names()).

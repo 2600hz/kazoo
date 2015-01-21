@@ -17,19 +17,19 @@
 
 -define(ACCOUNT_RATES_SEC, [{<<"registrations">>, 20}
                             ,{<<"invites">>, 50}
-                            ,{<<"total">>, 100}
+                            ,{<<"total_packets">>, 100}
                            ]).
 -define(DEVICE_RATES_SEC, [{<<"registrations">>, 2}
                            ,{<<"invites">>, 5}
-                           ,{<<"total">>, 20}
+                           ,{<<"total_packets">>, 20}
                            ]).
 -define(ACCOUNT_RATES_MIN, [{<<"registrations">>, 100}
                             ,{<<"invites">>, 200}
-                            ,{<<"total">>, 2000}
+                            ,{<<"total_packets">>, 2000}
                            ]).
 -define(DEVICE_RATES_MIN, [{<<"registrations">>, 20}
                            ,{<<"invites">>, 100}
-                           ,{<<"total">>, 1000}
+                           ,{<<"total_packets">>, 1000}
                            ]).
 
 -spec sysconfig_default_rates() -> wh_json:object().

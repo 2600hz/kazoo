@@ -9,224 +9,282 @@
 -module(kamdb_handle_rate).
 
 -export([handle_rate_req/2
+         ,lookup_rate_limit_records/1
         ]).
 
 -include("kamdb.hrl").
 
 -define(DEVICE_DEFAULT_RATES, <<"device-default-rate-limits">>).
 -define(ACCOUNT_FALLBACK, <<"fallback">>).
+-define(RATES_CROSSBAR_LISTING, <<"rate_limits/crossbar_listing">>).
 
--spec method_to_name() -> wh_proplist().
-method_to_name() ->
-    [{<<"REGISTER">>, <<"registrations">>}
-     ,{<<"INVITE">>, <<"invites">>}
-     ,{<<"TOTAL">>, <<"total">>}
+-spec is_fallback(wh_json:object()) -> boolean().
+is_fallback(JObj) ->
+    IsFallback = case wh_json:get_value(<<"key">>, JObj) of
+                     [_, ?ACCOUNT_FALLBACK] -> 'true';
+                     _ -> 'false'
+                 end,
+    kamdb_utils:is_account(JObj) andalso  IsFallback.
+
+-spec is_device_defaults(wh_json:object()) -> boolean().
+is_device_defaults(JObj) ->
+    IsDefaultRates = case wh_json:get_value(<<"key">>, JObj) of
+                         [?DEVICE_DEFAULT_RATES, _] -> 'true';
+                         _ -> 'false'
+                     end,
+    kamdb_utils:is_device(JObj) andalso IsDefaultRates.
+
+-spec names() -> ne_binaries().
+names() ->
+    [<<"registrations">>
+     ,<<"invites">>
+     ,<<"total_packets">>
+    ].
+
+-spec methods() -> ne_binaries().
+methods() ->
+    [<<"REGISTER">>
+     ,<<"INVITE">>
+     ,<<"TOTAL">>
     ].
 
 -spec resolve_method(ne_binary()) -> ne_binary().
 resolve_method(Method) ->
-    props:get_value(Method, method_to_name()).
+    props:get_value(Method, lists:zip(methods(), names())).
 
 -spec handle_rate_req(wh_json:object(), wh_proplist()) -> any().
 handle_rate_req(JObj, _Props) ->
     Entity = wh_json:get_value(<<"Entity">>, JObj),
+    IncludeRealm = wh_json:is_true(<<"With-Realm">>, JObj, 'false'),
+    MethodName = resolve_method(wh_json:get_value(<<"Method">>, JObj)),
     lager:debug("Handle rate limits request for ~s", [Entity]),
-    case whapps_util:get_account_by_realm(kamdb_utils:extract_realm(Entity)) of
-        {'ok', _} ->
-            lager:debug("Found realm, try to send response"),
-            send_response(JObj);
-        _ ->
-            lager:info("Can't find realm. Deny."),
-            deny(JObj)
-    end.
+    Limits = lookup_rate_limit_records(Entity, IncludeRealm, [MethodName]),
+    send_response(Limits, JObj).
 
--spec deny(wh_json:object()) -> any().
-deny(JObj) ->
-    Entity = wh_json:get_value(<<"Entity">>, JObj),
-    RespStub = wh_json:from_list([{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                                  | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                                 ]),
-    ServerID = wh_json:get_value(<<"Server-ID">>, JObj),
-    Section = case Entity =/= kamdb_utils:extract_realm(Entity) of
-                  'true' -> <<"Device">>;
-                  _ -> <<"Realm">>
-              end,
-    DenySubObj = wh_json:from_list([{<<"Min">>, -1}
-                                    ,{<<"Sec">>, -1}
-                                   ]),
-    DenyObj = wh_json:from_list([{Section, DenySubObj}]),
-    Resp = case wh_json:is_true(<<"With-Realm">>, JObj) of
-               'true' ->
-                   RealmDeny = wh_json:from_list([{<<"Realm">>, DenySubObj}]),
-                   wh_json:merge_jobjs(DenyObj, RealmDeny);
-               _ -> DenyObj
-           end,
-    wapi_kamdb:publish_ratelimits_resp(ServerID, wh_json:merge_jobjs(Resp, RespStub)).
+-spec send_response(wh_json:object(), wh_json:object()) -> 'ok'.
+send_response(Limits, Reqest) ->
+    RespStub = wh_json:from_list([{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Reqest)}
+                                   | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                  ]),
+    Srv = wh_json:get_value(<<"Server-ID">>, Reqest),
+    wapi_kamdb:publish_ratelimits_resp(Srv, wh_json:merge_jobjs(Limits, RespStub)).
 
--spec send_response(wh_json:object()) -> any().
-send_response(JObj) ->
-    'true' = wapi_kamdb:ratelimits_req_v(JObj),
-    RespStub = wh_json:from_list([{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                                  | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                                 ]),
-    ServerID = wh_json:get_value(<<"Server-ID">>, JObj),
-    Name = resolve_method(wh_json:get_value(<<"Method">>, JObj)),
-    Entity = wh_json:get_value(<<"Entity">>, JObj),
-    Keys = binary:split(Entity, <<"@">>),
-    Limits = case Keys of
-                 [_, _] ->
-                     case wh_json:is_true(<<"With-Realm">>, JObj) of
-                         'true' -> wh_json:merge_jobjs(get_realm_limits(JObj)
-                                                       ,get_user_limits(JObj)
-                                                      );
-                         _ -> get_user_limits(JObj)
-                     end;
-                 [_] -> get_realm_limits(JObj)
-             end,
-    Resp = wh_json:merge_jobjs(RespStub, Limits),
-    lager:debug("Limits merged into response"),
-    JSysRates = get_sysconfig_rates(Keys, Name, wh_json:get_value(<<"With-Realm">>, JObj)),
-    lager:debug("Adding missed values from sysconfig, if needed"),
-    wapi_kamdb:publish_ratelimits_resp(ServerID, wh_json:merge_recursive([JSysRates, Resp])).
 
--spec get_user_limits(wh_json:object()) -> wh_json:object().
-get_user_limits(JObj) ->
-    Entity = wh_json:get_value(<<"Entity">>, JObj),
-    lager:debug("Looking for ~s`s limits", [Entity]),
-    [User, Realm] = binary:split(Entity, <<"@">>),
-    Name = resolve_method(wh_json:get_value(<<"Method">>, JObj)),
-    {'ok', UserDb} = whapps_util:get_account_by_realm(Realm),
-    ViewOpts = [{'keys',[[User, Name]
-                         ,[?DEVICE_DEFAULT_RATES, Name]
-                        ]}],
-    {'ok', Results} = couch_mgr:get_results(UserDb, <<"rate_limits/crossbar_listing">>, ViewOpts),
-    lager:debug("Got results, folding into response..."),
-    lists:foldl(fun inject_device_rate_limits/2, wh_json:new(), Results).
+-spec lookup_rate_limit_records(ne_binary()) -> wh_json:object().
+lookup_rate_limit_records(Entity) ->
+    lookup_rate_limit_records(Entity, 'true', names()).
 
--spec get_realm_limits(wh_json:object()) -> wh_json:object().
-get_realm_limits(JObj) ->
-    Entity = wh_json:get_value(<<"Entity">>, JObj),
+-spec lookup_rate_limit_records(ne_binary(), boolean(), ne_binaries()) -> wh_json:object().
+lookup_rate_limit_records(Entity, IncludeRealm, MethodList) ->
+    lager:info("Handle rate limit request for ~s", [Entity]),
     Realm = kamdb_utils:extract_realm(Entity),
-    Name = resolve_method(wh_json:get_value(<<"Method">>, JObj)),
-    ViewOpts = [{'keys',[[Realm, Name]
-                         ,[Realm, ?ACCOUNT_FALLBACK]
-                        ]}],
-    lager:debug("Looking for ~s`s limits", [Realm]),
-    {'ok', Results} = couch_mgr:get_results(<<"accounts">>, <<"rate_limits/crossbar_listing">>, ViewOpts),
-    {Rates, MaybeFallback} = lists:partition(fun is_rate_limit/1, Results),
-    RespCandidate = lists:foldl(fun (Rate, Acc) -> inject(wh_json:get_value(<<"value">>, Rate), Acc) end, wh_json:new(), Rates),
-    lager:debug("Lokking for ~s`s parents", [Realm]),
-    Parents = case MaybeFallback of
-                  [Fallback] -> wh_json:get_value([<<"value">>, <<"parents">>], Fallback);
-                  [] -> []
-              end,
-    maybe_run_through_fallbacks(RespCandidate, lists:reverse(Parents), Name).
+    Responses = case whapps_util:get_account_by_realm(Realm) of
+                    {'ok', AccountDB} ->
+                        lager:info("Found realm, try to send response"),
+                        run_rate_limits_query(Entity, AccountDB, IncludeRealm, MethodList);
+                    _ ->
+                        lager:info("Can't find realm ~s. Throttle him.", [Realm]),
+                        make_deny_rates(Entity, IncludeRealm, MethodList)
+                end,
+    lists:foldl(fun fold_responses/2, wh_json:new(), lists:flatten(Responses)).
 
--spec maybe_run_through_fallbacks(wh_json:object(), list(), ne_binary()) -> wh_json:object().
-maybe_run_through_fallbacks(JObj, Parents, Name) ->
-    case wh_json:get_integer_value([<<"Realm">>, <<"Min">>], JObj) =:= 'undefined'
-        orelse wh_json:get_integer_value([<<"Realm">>, <<"Sec">>], JObj) =:= 'undefined'
+-spec run_rate_limits_query(ne_binary(), ne_binary(), boolean(), ne_binary()) -> wh_json:objects().
+run_rate_limits_query(Entity, AccountDB, IncludeRealm, MethodList) ->
+    Self = self(),
+    lager:info("Building query list"),
+    Type = case binary:split(Entity, <<"@">>) of
+               [_, _] -> <<"device">>;
+               _ -> <<"account">>
+           end,
+    DeviceList = case Type of
+                     <<"device">> -> [fun (Ref) ->
+                                          fetch_rates_from_document(Self, Entity, Type, Ref, MethodList, AccountDB)
+                                      end
+                                      ,fun (Ref) ->
+                                           fetch_rates_from_sys_config(Self, Entity, Type, Ref, MethodList)
+                                       end
+                                     ];
+                     _ -> []
+                 end,
+    QueryList = case Type =:= <<"account">> orelse IncludeRealm of
+                    'true' ->
+                        Realm = kamdb_utils:extract_realm(Entity),
+                        [fun (Ref) ->
+                             fetch_rates_from_document(Self, Realm, <<"account">>, Ref, MethodList, AccountDB)
+                         end
+                         ,fun (Ref) ->
+                              fetch_rates_from_sys_config(Self, Realm, <<"account">>, Ref, MethodList)
+                          end
+                        ] ++ DeviceList;
+                    'false' -> DeviceList
+                end,
+    lager:info("Running queries"),
+    Refs = lists:map(fun (F) ->
+                         Ref = erlang:make_ref(),
+                         spawn(fun () -> F(Ref) end),
+                         Ref
+                     end, QueryList),
+    lager:info("Collecting results"),
+    collect_responses(Refs, []).
+
+-spec fold_responses(wh_json:object(), wh_json:object()) -> wh_json:object().
+fold_responses(Record, Acc) ->
+    Type = wh_json:get_value([<<"value">>, <<"type">>], Record),
+    [Entity, MethodName] = wh_json:get_value(<<"key">>, Record),
+    RPM = wh_json:get_value([<<"value">>, ?MINUTE], Record),
+    RPS = wh_json:get_value([<<"value">>, ?SECOND], Record),
+    Section = wh_json:get_value(Type, Acc, wh_json:new()),
+    S1 = case RPM =/= 'undefined' andalso wh_json:get_value([?MINUTE, MethodName], Section) of
+             'undefined' -> wh_json:set_value([?MINUTE, MethodName], RPM, Section);
+             _ -> Section
+         end,
+    S2 = case RPS =/= 'undefined' andalso wh_json:get_value([?SECOND, MethodName], Section) of
+             'undefined' -> wh_json:set_value([?SECOND, MethodName], RPS, S1);
+             _ -> S1
+         end,
+    S3 = case Entity =/= ?DEVICE_DEFAULT_RATES of
+             'true' -> wh_json:set_value(<<"name">>, Entity, S2);
+             'false' -> S2
+         end,
+    wh_json:set_value(Type, S3, Acc).
+
+-spec collect_responses([reference()], []) -> wh_json:objects().
+collect_responses([], Acc) ->
+    lists:reverse(Acc);
+collect_responses([Ref | Refs], Acc) ->
+    R = receive
+            {Ref, Rates} -> Rates
+        after
+            400 ->
+                lager:info("Can't wait!"),
+                []
+        end,
+    collect_responses(Refs, [R | Acc]).
+
+-spec make_deny_rates(ne_binary(), boolean(), ne_binaries()) -> wh_json:objects().
+make_deny_rates(Entity, IncludeRealm, MethodList) ->
+    Rates = deny_rates_for_entity(Entity, MethodList),
+    Realm = kamdb_utils:extract_realm(Entity),
+    case Entity =/= Realm
+         andalso IncludeRealm
     of
-        'true' ->
-            lager:debug("Gather limits from parents(~p)", [Parents]),
-            run_through_fallbacks(JObj, Parents, Name);
-        _ ->
-            lager:debug("Has all limits, return JObj"),
-            JObj
+        'true' -> Rates ++ deny_rates_for_entity(Realm, MethodList);
+        'false' -> Rates
     end.
 
--spec run_through_fallbacks(wh_json:object(), list(), ne_binary()) -> wh_json:object().
-run_through_fallbacks(JObj, Parents, Name) ->
-    case lists:dropwhile(fun not_limited/1, Parents) of
-        [Limiter | _] ->
-            lager:debug("Try to use limits from ~s", [Limiter]),
-            {'ok', JDoc} = couch_mgr:open_cache_doc(<<"accounts">>, Limiter),
-            PerMinute = wh_json:get_value([<<"rate_limits">>, ?MINUTE, Name], JDoc),
-            PerSecond = wh_json:get_value([<<"rate_limits">>, ?SECOND, Name], JDoc),
-            wh_json:set_values([{[<<"Realm">>, <<"Min">>], PerMinute}
-                                ,{[<<"Realm">>, <<"Sec">>], PerSecond}
-                               ], JObj);
-        [] ->
-            lager:debug("Can't find parent with limits"),
-            JObj
-    end.
+%% Kamailio expects -1 for unkown entities
+-spec deny_rates_for_entity(ne_binary(), ne_binaries()) -> list().
+deny_rates_for_entity(Entity, MethodList) ->
+    X = lists:map(fun (M) -> construct_records(M, Entity, -1, -1) end, MethodList),
+    lists:flatten(X).
+
+-spec construct_records(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> wh_json:object().
+construct_records(Method, Entity, RPM, RPS) ->
+    {Name, Type} = case binary:split(Entity, <<"@">>) of
+                       [User, _] -> {User, <<"device">>};
+                       [Realm] -> {Realm, <<"account">>}
+                   end,
+    RPMObject = wh_json:from_list([{<<"type">>, Type}
+                                   ,{?MINUTE, RPM}
+                                  ]),
+    RPSObject = wh_json:from_list([{<<"type">>, Type}
+                                   ,{?SECOND, RPS}
+                                  ]),
+    Record = wh_json:from_list([{<<"id">>, 'undefined'}
+                                ,{<<"key">>, [Name, Method]}
+                               ]),
+    lists:map(fun (Obj) -> wh_json:set_value(<<"value">>, Obj, Record) end, [RPMObject, RPSObject]).
+
+
+-spec fetch_rates_from_sys_config(pid(), ne_binary(), ne_binary(), reference(), ne_binaries()) -> 'ok'.
+fetch_rates_from_sys_config(Srv, _, _, Ref, []) ->
+    lager:info("sysconfig: Empty request - empty response"),
+    Srv ! {Ref, []};
+fetch_rates_from_sys_config(Srv, Entity, Type, Ref, MethodList) ->
+    AllRates = whapps_config:get(?APP_NAME, <<"rate_limits">>),
+    TargetRates = wh_json:get_value(Type, AllRates, wh_json:new()),
+    Payload = lists:foldl( fun (Method, Acc) ->
+                                    RPM = wh_json:get_value([?MINUTE, Method], TargetRates, 0),
+                                    RPS = wh_json:get_value([?SECOND, Method], TargetRates, 0),
+                                    construct_records(Method, Entity, RPM, RPS) ++ Acc
+                                end, [], MethodList),
+    Srv ! {Ref, Payload}.
+
+-spec fetch_rates_from_document(pid(), ne_binary(), ne_binary(), reference(), ne_binaries(), ne_binary()) -> 'ok'.
+fetch_rates_from_document(Srv, Entity, Type, Ref, MethodList, AccountDB) ->
+    Srv ! {Ref, fetch_rates(Entity, Type, MethodList, AccountDB)}.
+
+-spec maybe_run_throug_fallbacks(wh_json:objects(), ne_binary(), ne_binaries()) -> wh_json:objects().
+maybe_run_throug_fallbacks([], _, _) ->
+    [];
+maybe_run_throug_fallbacks([Fallback], Entity, MethodList) ->
+    ReversedFallbacks = wh_json:get_value([<<"value">>, <<"parents">>], Fallback),
+    run_throug_fallbacks(lists:reverse(ReversedFallbacks), Entity, MethodList).
+
+
+-spec fetch_rates(ne_binary(), ne_binary(), ne_binaries(), ne_binary()) -> wh_json:objects().
+fetch_rates(_, _, [], _) ->
+    lager:info("document: Empty request - empty response"),
+    [];
+fetch_rates(Entity, <<"account">>, MethodList, _) ->
+    Keys = [[Entity, Method] || Method <- [?ACCOUNT_FALLBACK | MethodList]],
+    ViewOpts = [{'keys', Keys}],
+    case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?RATES_CROSSBAR_LISTING, ViewOpts) of
+        {'ok', JObjs} ->
+            {Fallbacks, AccountRates} = lists:partition(fun is_fallback/1, JObjs),
+            case length(AccountRates) > 0 of
+                'true' -> AccountRates;
+                'false' ->
+                    maybe_run_throug_fallbacks(Fallbacks, Entity, MethodList)
+            end;
+        _ ->
+            lager:info("Can not get account rates from db"),
+            []
+    end;
+fetch_rates(Entity, <<"device">>, MethodList, AccountDB) ->
+    lager:info("Run db query..."),
+    Keys = [[E, M] || E <- [Entity, ?DEVICE_DEFAULT_RATES], M <- MethodList],
+    ViewOpts = [{'keys', Keys}],
+    case couch_mgr:get_results(AccountDB, ?RATES_CROSSBAR_LISTING, ViewOpts) of
+        {'ok', JObjs} ->
+            lager:info("Got ~p records for device ~s", [length(JObjs), Entity]),
+            {DefaultRates, DeviceRates} = lists:partition(fun is_device_defaults/1, JObjs),
+            case length(DeviceRates) > 0 of
+                'true' ->
+                    lager:info("Found rates in the device doc"),
+                    DeviceRates;
+                'false' ->
+                    lager:info("Found default rates for the device"),
+                    DefaultRates
+            end;
+        _ ->
+            lager:info("Can not get device rates drom db"),
+            []
+    end;
+fetch_rates(_Entity, _Type, _Method, _AccountDB) ->
+    lager:info("Unkown type for rate limits: ~p", _Type),
+    [].
 
 -spec not_limited(ne_binary()) -> boolean().
 not_limited(AccountId) ->
     {'ok', JDoc} = couch_mgr:open_cache_doc(<<"accounts">>, AccountId),
     wh_json:get_value(<<"rate_limits">>, JDoc) =/= 'undefuned'.
 
--spec is_rate_limit(wh_json:object()) -> boolean().
-is_rate_limit(JObj) ->
-    [_, Type] = wh_json:get_value(<<"key">>, JObj),
-    Type =/= ?ACCOUNT_FALLBACK.
-
--spec get_sysconfig_rates(ne_binaries(), ne_binary(), boolean()) -> wh_json:object().
-get_sysconfig_rates(Keys, Name, WithRealm) ->
-    Limits = whapps_config:get(?APP_NAME, <<"rate_limits">>),
-    case Keys of
-        [_, _] ->
-            DeviceMinutes = wh_json:get_value([<<"device">>, ?MINUTE, Name], Limits),
-            DeviceSeconds = wh_json:get_value([<<"device">>, ?SECOND, Name], Limits),
-            JObj = wh_json:set_value(<<"Device">>
-                                     ,wh_json:from_list([{<<"Min">>, DeviceMinutes}
-                                                         ,{<<"Sec">>, DeviceSeconds}
-                                                        ])
-                                     ,wh_json:new()
-                                    ),
-            case wh_util:is_true(WithRealm) of
-               'true' ->
-                   AccountMinutes = wh_json:get_value([<<"account">>, ?MINUTE, Name], Limits),
-                   AccountSeconds = wh_json:get_value([<<"account">>, ?SECOND, Name], Limits),
-                   wh_json:set_value(<<"Realm">>
-                                           ,wh_json:from_list([{<<"Min">>, AccountMinutes}
-                                                               ,{<<"Sec">>, AccountSeconds}
-                                                              ])
-                                           ,JObj
-                                          );
-                _ -> JObj
-            end;
-        [_] ->
-            AccountMinutes = wh_json:get_value([<<"account">>, ?MINUTE, Name], Limits),
-            AccountSeconds = wh_json:get_value([<<"account">>, ?SECOND, Name], Limits),
-            wh_json:set_value(<<"Realm">>
-                              ,wh_json:from_list([{<<"Min">>, AccountMinutes}
-                                                  ,{<<"Sec">>, AccountSeconds}
-                                                 ])
-                              ,wh_json:new()
-                             )
-    end.
-
--spec inject_device_rate_limits(wh_json:object(), wh_json:object()) -> wh_json:object().
-inject_device_rate_limits(Result, Acc) ->
-    [Name, _] = wh_json:get_value(<<"key">>, Result),
-    JVal = wh_json:get_value(<<"value">>, Result),
-    case Name of
-        ?DEVICE_DEFAULT_RATES -> inject_if_not_exists(JVal, Acc);
-        _ -> inject(JVal, Acc)
-    end.
-
--spec get_key_value(wh_json:object()) -> {wh_json:key(), term()}.
-get_key_value(JVal) ->
-    Type = case wh_json:get_value(<<"type">>, JVal) of
-               <<"account">> -> <<"Realm">>;
-               <<"device">> -> <<"Device">>
-           end,
-    {Period, Time} = case wh_json:get_value(?MINUTE, JVal) of
-                         'undefined' -> {<<"Sec">>, wh_json:get_value(?SECOND, JVal)};
-                         T -> {<<"Min">>, T}
-                     end,
-    {[Type, Period], Time}.
-
--spec inject(wh_json:object(), wh_json:object()) -> wh_json:object().
-inject(JVal, Acc) ->
-    {K, V} = get_key_value(JVal),
-    wh_json:set_value(K, V, Acc).
-
--spec inject_if_not_exists(wh_json:object(), wh_json:object()) -> wh_json:object().
-inject_if_not_exists(JVal, Acc) ->
-    {K, V} = get_key_value(JVal),
-    case wh_json:get_value(K, Acc) of
-        'undefined' -> wh_json:set_value(K, V, Acc);
-        _ -> Acc
+%TODO
+-spec run_throug_fallbacks(ne_binaries(), ne_binary(), ne_binaries()) -> wh_json:objects().
+run_throug_fallbacks(Fallback, Entity, MethodList) ->
+    case lists:dropwhile(fun not_limited/1, Fallback) of
+        [Limiter | _] ->
+            lager:debug("Try to use limits from ~s", [Limiter]),
+            {'ok', JDoc} = couch_mgr:open_cache_doc(<<"accounts">>, Limiter),
+            Limits = wh_json:get_value(<<"rate_limits">>, JDoc),
+            AccountLimits = wh_json:get_first_defined([<<"account">>, <<"own">>], Limits, wh_json:new()),
+            lists:foldl(fun (M, Acc) ->
+                            RPM = wh_json:get_value([?MINUTE, M], AccountLimits),
+                            RPS = wh_json:get_value([?SECOND, M], AccountLimits),
+                            construct_records(M, Entity, RPM, RPS) ++ Acc
+                        end, [], MethodList);
+        [] ->
+            lager:debug("Can't find parent with limits"),
+            []
     end.
