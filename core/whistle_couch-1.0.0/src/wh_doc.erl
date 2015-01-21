@@ -22,7 +22,10 @@
          ,delete_attachments/1
          ,maybe_remove_attachments/1, maybe_remove_attachments/2
          ,id/1
-         ,revision/1
+         ,revision/1, set_revision/2
+         ,set_soft_deleted/2
+
+         ,is_soft_deleted/1
         ]).
 -export([update_pvt_modified/1]).
 
@@ -201,6 +204,18 @@ maybe_remove_attachments(JObj, _Attachments) ->
 revision(JObj) ->
     wh_json:get_value(<<"_rev">>, JObj).
 
+-spec set_revision(wh_json:object(), api_binary()) -> wh_json:object().
+set_revision(JObj, Rev) ->
+    wh_json:set_value(<<"_rev">>, Rev, JObj).
+
 -spec id(wh_json:object()) -> api_binary().
 id(JObj) ->
     wh_json:get_value(<<"_id">>, JObj).
+
+-spec set_soft_deleted(wh_json:object(), boolean()) -> wh_json:object().
+set_soft_deleted(JObj, IsSoftDeleted) ->
+    wh_json:set_value(<<"pvt_deleted">>, wh_util:is_true(IsSoftDeleted), JObj).
+
+-spec is_soft_deleted(wh_json:object()) -> boolean().
+is_soft_deleted(JObj) ->
+    wh_json:is_true(<<"pvt_deleted">>, JObj).

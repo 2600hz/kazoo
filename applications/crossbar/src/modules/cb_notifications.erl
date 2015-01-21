@@ -256,7 +256,9 @@ put(Context) ->
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, Id) ->
     case cb_context:req_files(Context) of
-        [] -> do_post(Context);
+        [] ->
+            lager:debug("handling POST of template meta for ~s", [Id]),
+            do_post(Context);
         [{_FileName, FileJObj}] ->
             lager:debug("POST is for an attachment on ~s(~s)", [Id, kz_notification:db_id(Id)]),
             update_template(Context, kz_notification:db_id(Id), FileJObj)
@@ -474,7 +476,7 @@ is_acceptable_accept(Acceptable, Type, SubType) ->
                       T =:= Type andalso S =:= SubType
               end, Acceptable).
 
--type load_from() :: 'system' | 'account'.
+-type load_from() :: 'system' | 'account' | 'system_migrate'.
 
 -spec read(cb_context:context(), ne_binary()) -> cb_context:context().
 -spec read(cb_context:context(), ne_binary(), load_from()) -> cb_context:context().
@@ -484,11 +486,17 @@ read(Context, Id) ->
 read(Context, Id, LoadFrom) ->
     Context1 =
         case cb_context:account_db(Context) of
-            'undefined' when LoadFrom =:= 'system' -> read_system(Context, Id);
-            _AccountDb -> read_account(Context, Id, LoadFrom)
+            'undefined' when LoadFrom =:= 'system'; LoadFrom =:= 'system_migrate' ->
+                lager:debug("no account id, loading ~ from system", [Id]),
+                read_system(Context, Id);
+            _AccountDb ->
+                lager:debug("reading ~s from account first", [Id]),
+                read_account(Context, Id, LoadFrom)
         end,
     case cb_context:resp_status(Context1) of
-        'success' -> read_success(Context1);
+        'success' ->
+            lager:debug("successful read of ~s", [Id]),
+            read_success(Context1);
         _Status -> Context1
     end.
 
@@ -504,47 +512,77 @@ read_account(Context, Id, LoadFrom) ->
           ,cb_context:resp_status(Context1)
          }
     of
-        {404, 'error'} when LoadFrom =:= 'system' ->
-            read_system_for_account(Context, Id);
+        {404, 'error'} when LoadFrom =:= 'system'; LoadFrom =:= 'system_migrate' ->
+            lager:debug("~s not found in account, reading from master", [Id]),
+            read_system_for_account(Context, Id, LoadFrom);
         {_Code, 'success'} ->
-            lager:debug("loaded from account"),
+            lager:debug("loaded ~s from account database", [Id]),
             cb_context:set_resp_data(Context1
                                      ,note_account_override(cb_context:resp_data(Context1))
                                     );
-        {_Code, _Status} -> Context1
+        {_Code, _Status} ->
+            lager:debug("failed to load ~s: ~p", [Id, _Code]),
+            Context1
     end.
 
--spec read_system_for_account(cb_context:context(), path_token()) -> cb_context:context().
-read_system_for_account(Context, Id) ->
+-spec read_system_for_account(cb_context:context(), path_token(), load_from()) ->
+                                     cb_context:context().
+read_system_for_account(Context, Id, LoadFrom) ->
     Context1 = read_system(Context, Id),
     case cb_context:resp_status(Context1) of
-        'success' ->
+        'success' when LoadFrom =:= 'system' ->
             lager:debug("read template ~s from master account", [Id]),
-            Context2 = cb_context:set_account_db(Context1, cb_context:account_db(Context)),
-            Context3 = migrate_template_to_account(Context2, Id),
-            lager:debug("migrated template ~s from master to ~s", [Id, cb_context:account_id(Context)]),
-            read_account(Context3, Id, 'account');
-        _Status -> Context1
+            revert_context_to_account(Context, Context1);
+        'success' when LoadFrom =:= 'system_migrate' ->
+            lager:debug("read template ~s from master account, now migrating it", [Id]),
+            migrate_template_to_account(revert_context_to_account(Context, Context1), Id);
+        _Status ->
+            lager:debug("failed to read master db for ~s", [Id]),
+            Context1
     end.
+
+-spec revert_context_to_account(cb_context:context(), cb_context:context()) -> cb_context:context().
+revert_context_to_account(AccountContext, SystemContext) ->
+    cb_context:setters(SystemContext
+                       ,[{fun cb_context:set_account_db/2, cb_context:account_db(AccountContext)}
+                         ,{fun cb_context:set_account_id/2, cb_context:account_id(AccountContext)}
+                        ]).
 
 -spec migrate_template_to_account(cb_context:context(), path_token()) -> cb_context:context().
 migrate_template_to_account(Context, Id) ->
     lager:debug("saving template ~s from master to account ~s", [Id, cb_context:account_id(Context)]),
-    Template = cb_context:doc(Context),
-    Context1 = crossbar_doc:save(
-                 cb_context:set_doc(Context
-                                    ,kz_notification:set_base_properties(
-                                       wh_json:public_fields(Template)
-                                       ,Id
-                                      )
-                                   )
-                ),
+
+    Template = cb_context:fetch(Context, 'db_doc'),
+
+    Context1 =
+        crossbar_doc:ensure_saved(
+          cb_context:set_doc(Context
+                             ,kz_notification:set_base_properties(
+                                wh_doc:public_fields(Template)
+                                ,Id
+                               )
+                            )
+         ),
     case cb_context:resp_status(Context1) of
         'success' ->
+            lager:debug("saved template ~s to account ~s", [Id, cb_context:account_db(Context1)]),
             Context2 = migrate_template_attachments(Context1, Id, wh_doc:attachments(Template)),
             maybe_note_notification_preference(Context2),
             Context2;
         _Status -> Context1
+    end.
+
+-spec maybe_hard_delete(cb_context:context(), ne_binary()) -> 'ok'.
+maybe_hard_delete(Context, Id) ->
+    case couch_mgr:del_doc(cb_context:account_db(Context), Id) of
+        {'ok', _} ->
+            couch_mgr:flush_cache_doc(cb_context:account_db(Context), Id),
+            lager:debug("hard-deleted old version of ~s from ~s", [Id, cb_context:account_db(Context)]);
+        {'error', 'not_found'} ->
+            couch_mgr:flush_cache_doc(cb_context:account_db(Context), Id),
+            lager:debug("~s wasn't found in ~s", [Id, cb_context:account_db(Context)]);
+        {'error', _E} ->
+            lager:debug("error deleting ~s from ~s: ~p", [Id, cb_context:account_db(Context), _E])
     end.
 
 -spec maybe_note_notification_preference(cb_context:context()) -> 'ok'.
@@ -586,6 +624,7 @@ migrate_template_attachments(Context, _Id, 'undefined') ->
 migrate_template_attachments(Context, Id, Attachments) ->
     {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
     wh_json:foldl(fun(AName, AMeta, C) ->
+                          lager:debug("migrate attachment ~s", [AName]),
                           migrate_template_attachment(MasterAccountDb, Id, AName, AMeta, C)
                   end, Context, Attachments).
 
@@ -666,10 +705,12 @@ attachment_filename(Id, Accept) ->
 -spec maybe_update(cb_context:context(), ne_binary()) -> cb_context:context().
 maybe_update(Context, Id) ->
     case cb_context:req_files(Context) of
-        [] -> update_notification(Context, Id);
+        [] ->
+            lager:debug("updating template meta for ~s", [Id]),
+            update_notification(Context, Id);
         [{_FileName, FileJObj}] ->
             lager:debug("recv template upload of ~s: ~p", [_FileName, FileJObj]),
-            read(Context, Id)
+            read(Context, Id, 'system_migrate')
     end.
 
 -spec update_notification(cb_context:context(), ne_binary()) -> cb_context:context().
@@ -760,16 +801,27 @@ summary_account(Context) ->
                                ,Context
                                ,fun normalize_available/2
                               ),
+    lager:debug("loaded account's summary"),
     summary_account(Context1, cb_context:doc(Context1)).
 
 summary_account(Context, AccountAvailable) ->
     Context1 = summary_available(Context),
-    Available = cb_context:doc(Context1),
+    Available = filter_available(Context1),
+    lager:debug("loaded system available"),
 
     crossbar_doc:handle_json_success(
       merge_available(AccountAvailable, Available)
       ,Context
      ).
+
+-spec filter_available(cb_context:context()) -> wh_json:objects().
+filter_available(Context) ->
+    [A || A <- cb_context:doc(Context),
+          crossbar_doc:filtered_doc_by_qs(wh_json:from_list([{<<"doc">>, A}])
+                                          ,'true'
+                                          ,Context
+                                         )
+    ].
 
 -spec merge_available(wh_json:objects(), wh_json:objects()) ->
                              wh_json:objects().
@@ -782,8 +834,11 @@ merge_available(AccountAvailable, Available) ->
 -spec merge_fold(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 merge_fold(Overridden, Acc) ->
     Id = wh_json:get_value(<<"id">>, Overridden),
+    lager:debug("noting ~s is overridden in account", [Id]),
     [note_account_override(Overridden)
-     | [JObj || JObj <- Acc, wh_json:get_value(<<"id">>, JObj) =/= Id]
+     | [JObj || JObj <- Acc,
+                wh_json:get_value(<<"id">>, JObj) =/= Id
+       ]
     ].
 
 -spec normalize_available(wh_json:object(), wh_json:objects()) -> wh_json:objects().
@@ -820,26 +875,30 @@ on_successful_validation('undefined', Context) ->
             crossbar_util:response_db_fatal(Context)
     end;
 on_successful_validation(Id, Context) ->
-    Context1 = crossbar_doc:load_merge(Id, Context),
-    case cb_context:resp_error_code(Context1) of
-        404 ->
-            handle_missing_account_notification(Context1, Id);
-        _Code ->
+    ReqTemplate = clean_req_doc(cb_context:doc(Context)),
+
+    CleanedContext = cb_context:set_doc(Context, ReqTemplate),
+
+    Context1 = crossbar_doc:load_merge(Id, CleanedContext),
+
+    case {cb_context:resp_status(Context1)
+          ,cb_context:resp_error_code(Context1)
+         }
+    of
+        {'error', 404} ->
+            lager:debug("load/merge of ~s failed with a 404", [Id]),
+            handle_missing_account_notification(CleanedContext, Id);
+        {'success', _} -> Context1;
+        {_Status, _Code} ->
+            lager:debug("load/merge of ~s failed with ~p / ~p", [_Status, _Code]),
             Context1
     end.
 
 -spec handle_missing_account_notification(cb_context:context(), ne_binary()) -> cb_context:context().
 handle_missing_account_notification(Context, Id) ->
-    ReqTemplate = clean_req_doc(cb_context:doc(Context)),
-
-    case master_notification_doc(Id) of
-        {'ok', JObj} ->
-            lager:debug("account version of ~s missing but master version found, using that", [Id]),
-            crossbar_doc:merge(ReqTemplate, JObj, Context);
-        {'error', _E} ->
-            lager:debug("failed to load master account notification ~s: ~p", [Id, _E]),
-            Context
-    end.
+    _ = maybe_hard_delete(Context, Id),
+    _Context = read_system_for_account(Context, Id, 'system_migrate'),
+    on_successful_validation(Id, Context).
 
 -spec handle_missing_master_notification(cb_context:context(), ne_binary(), wh_json:object()) ->
                                                 cb_context:context().
@@ -872,7 +931,9 @@ create_new_notification(Context, DocId, ReqTemplate, AccountId) ->
 
 -spec clean_req_doc(wh_json:object()) -> wh_json:object().
 clean_req_doc(Doc) ->
-    wh_json:delete_keys([?MACROS], Doc).
+    wh_json:delete_keys([?MACROS
+                         ,<<"templates">>
+                        ], Doc).
 
 %%--------------------------------------------------------------------
 %% @private
