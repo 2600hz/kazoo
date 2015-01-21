@@ -25,14 +25,16 @@
 -export([build_channel/1]).
 -export([build_simple_channels/1]).
 -export([create_masquerade_event/2, create_masquerade_event/3]).
--export([media_path/3, media_path/4]).
+-export([media_path/3, media_path/4
+         ,lookup_media/4
+         ,cached_media_expelled/3
+        ]).
 -export([unserialize_fs_array/1]).
 -export([convert_fs_evt_name/1, convert_whistle_app_name/1]).
 -export([fax_filename/1
          ,recording_filename/1
         ]).
 -export([maybe_sanitize_fs_value/2]).
--export([lookup_media/4]).
 
 -export([custom_sip_headers/1 , is_custom_sip_header/1, normalize_custom_sip_header_name/1]).
 -export([maybe_add_expires_deviation/1, maybe_add_expires_deviation_ms/1]).
@@ -977,12 +979,48 @@ request_media_url(MediaName, CallId, JObj, Type) ->
             E;
         {'ok', MediaResp} ->
             MediaUrl = wh_json:get_value(<<"Stream-URL">>, MediaResp, <<>>),
+            CacheProps = media_url_cache_props(MediaName),
             _ = wh_cache:store_local(?ECALLMGR_UTIL_CACHE
                                      ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName)
                                      ,MediaUrl
+                                     ,CacheProps
                                     ),
             lager:debug("media ~s stored to playback cache : ~s", [MediaName, MediaUrl]),
             {'ok', MediaUrl}
+    end.
+
+-define(DEFAULT_MEDIA_CACHE_PROPS
+        ,[{'callback', fun ?MODULE:cached_media_expelled/3}]
+       ).
+
+-spec media_url_cache_props(ne_binary()) -> wh_cache:store_options().
+media_url_cache_props(<<"/", _/binary>> = MediaName) ->
+    case binary:split(MediaName, <<"/">>, ['global']) of
+        [<<>>, AccountId, MediaId] ->
+            AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+            [{'origin', {'db', AccountDb, MediaId}}
+             | ?DEFAULT_MEDIA_CACHE_PROPS
+            ];
+        _ -> ?DEFAULT_MEDIA_CACHE_PROPS
+    end;
+media_url_cache_props(_MediaName) -> ?DEFAULT_MEDIA_CACHE_PROPS.
+
+-spec cached_media_expelled(?ECALLMGR_PLAYBACK_MEDIA_KEY(ne_binary()), ne_binary(), atom()) -> 'ok'.
+cached_media_expelled(?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName), MediaUrl, _Reason) ->
+    lager:debug("media ~s was expelled(~p), flushing from media servers", [MediaName, _Reason]),
+    Nodes = ecallmgr_fs_nodes:connected(),
+    [maybe_flush_node_of_media(MediaUrl, N) || N <- Nodes],
+    'ok'.
+
+-spec maybe_flush_node_of_media(ne_binary(), atom()) -> 'ok'.
+maybe_flush_node_of_media(MediaUrl, Node) ->
+    case freeswitch:api(Node, 'http_tryget', MediaUrl) of
+        {'error', _E} -> 'ok';
+        {'ok', _Path} ->
+            lager:debug("media is on ~s at ~s", [Node, _Path]),
+            lager:debug("http_cache only supports flushing the whole cache atm, so..."),
+            _ = freeswitch:api(Node, 'http_clear_cache', []),
+            'ok'
     end.
 
 -spec custom_sip_headers(wh_proplist()) -> wh_proplist().

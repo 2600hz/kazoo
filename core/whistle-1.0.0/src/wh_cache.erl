@@ -79,6 +79,12 @@
 -type cache_obj() :: #cache_obj{}.
 -type cache_objs() :: [cache_obj(),...] | [].
 
+-type store_options() :: [{'origin', origin_tuple() | origin_tuples()} |
+                          {'expires', wh_timeout()} |
+                          {'callback', 'undefined' | callback_fun()}
+                         ] | [].
+-export_type([store_options/0]).
+
 -record(state, {name :: atom()
                 ,tab :: ets:tid()
                 ,new_channel_flush = 'false' :: boolean()
@@ -548,7 +554,7 @@ get_props_callback(Props) ->
         Fun when is_function(Fun, 3) -> Fun
     end.
 
--spec get_props_origin(wh_proplist()) -> 'undefined' | term().
+-spec get_props_origin(wh_proplist()) -> 'undefined' | origin_tuple() | origin_tuples().
 get_props_origin(Props) -> props:get_value('origin', Props).
 
 -spec maybe_erase_changed(ne_binary(), ne_binary(), ne_binary(), atom()) -> 'ok'.
