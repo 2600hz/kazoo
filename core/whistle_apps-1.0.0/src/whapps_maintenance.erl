@@ -80,18 +80,13 @@ migrate() ->
 
 -spec migrate(text() | integer()) -> 'no_return'.
 migrate(Pause) ->
-    {'ok', Databases} = couch_mgr:db_info(),
+    Databases = get_databases(),
     Accounts = [wh_util:format_account_id(Db, 'encoded')
                 || Db <- Databases,
                    whapps_util:is_account_db(Db)
                ],
-    io:format("updating system dbs...~n"),
-    _ = refresh(?KZ_SYSTEM_DBS, Pause),
-
-    %% Ensure the views in each DB are update-to-date, depreciated view removed, sip_auth docs
-    %% that need to be aggregated have been, and the account definition is aggregated
-    io:format("updating views...~n"),
-    _ = refresh([Db || Db <- Databases, (not lists:member(Db, ?KZ_SYSTEM_DBS))], Pause),
+    io:format("updating dbs...~n"),
+    _ = refresh(Databases, Pause),
 
     %% Remove depreciated dbs
     io:format("removing depreciated databases...~n"),
@@ -122,7 +117,7 @@ blocking_refresh() -> refresh().
 
 -spec blocking_refresh(text() | non_neg_integer()) -> 'no_return'.
 blocking_refresh(Pause) ->
-    {'ok', Databases} = couch_mgr:db_info(),
+    Databases = get_databases(),
     refresh(Databases, Pause).
 
 %%--------------------------------------------------------------------
@@ -136,7 +131,7 @@ blocking_refresh(Pause) ->
 -spec refresh(ne_binaries(), text() | non_neg_integer()) -> 'no_return'.
 -spec refresh(ne_binaries(), non_neg_integer(), non_neg_integer()) -> 'no_return'.
 refresh() ->
-    {'ok', Databases} = couch_mgr:db_info(),
+    Databases = get_databases(),
     refresh(Databases, 2000).
 
 refresh(Databases, Pause) ->
@@ -154,6 +149,19 @@ refresh([Database|Databases], Pause, Total) ->
         end,
     refresh(Databases, Pause, Total).
 
+-spec get_databases() -> ne_binaries().
+get_databases() ->
+    {'ok', Databases} = couch_mgr:db_info(),
+    ?KZ_SYSTEM_DBS ++ [Db || Db <- Databases, (not lists:member(Db, ?KZ_SYSTEM_DBS))].
+
+refresh(?WH_CONFIG_DB) ->
+    couch_mgr:db_create(?WH_CONFIG_DB);
+refresh(?KZ_OAUTH_DB) ->
+    couch_mgr:db_create(?KZ_OAUTH_DB),
+    kazoo_oauth_maintenance:register_common_providers();
+refresh(?KZ_WEBHOOKS_DB) ->
+    couch_mgr:db_create(?KZ_WEBHOOKS_DB),
+    couch_mgr:revise_doc_from_file(?KZ_WEBHOOKS_DB, 'crossbar', <<"views/webhooks.json">>);
 refresh(?WH_OFFNET_DB) ->
     couch_mgr:db_create(?WH_OFFNET_DB),
     stepswitch_maintenance:refresh();
@@ -290,7 +298,7 @@ fetch_all_account_views() ->
 %%--------------------------------------------------------------------
 -spec remove_depreciated_databases() -> 'ok'.
 remove_depreciated_databases() ->
-    {'ok', Databases} = couch_mgr:db_info(),
+    Databases = get_databases(),
     remove_depreciated_databases(Databases).
 
 -spec remove_depreciated_databases(ne_binaries()) -> 'ok'.
