@@ -19,11 +19,13 @@
 
 -define(CACHE_AUTHN_PROPS, [{'origin_bindings', [[{'type', <<"account">>}]
                                                  ,[{'type', <<"device">>}]
-
-                                                ]}]).
+                                                ]
+                            }
+                           ]).
 -define(CACHE_UTIL_PROPS, [{'origin_bindings', [[{'db', ?WH_CONFIG_DB}]
-                                                 ,[{'type', <<"media">>}]
-                                               ]}
+                                                ,[{'type', <<"media">>}]
+                                               ]
+                           }
                           ]).
 
 -define(CHILDREN, [?CACHE_ARGS(?ECALLMGR_UTIL_CACHE, ?CACHE_UTIL_PROPS)
