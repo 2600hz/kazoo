@@ -176,7 +176,9 @@ on_successful_validation(Context) ->
             {UserId, 'undefined'} ->
                 {<<"user">>, UserId, UserId};
             {'undefined', UserAuth} ->
-                {<<"user">>, UserAuth, UserAuth}
+                {<<"user">>, UserAuth, UserAuth};
+            {UserId, _UserAuth} ->
+                {<<"user">>, UserId, UserId}
         end,
 
     ToUser = wh_json:get_value(<<"to">>, JObj),
