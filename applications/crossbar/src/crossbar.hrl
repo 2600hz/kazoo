@@ -67,12 +67,11 @@
                           ,'cb_rates', 'cb_registrations', 'cb_resource_templates'
                           ,'cb_resources'
                           ,'cb_schemas', 'cb_service_plans', 'cb_services'
-                          ,'cb_simple_authz'
+                          ,'cb_simple_authz', 'cb_sms'
                           ,'cb_temporal_rules', 'cb_token_auth', 'cb_transactions'
                           ,'cb_user_auth', 'cb_users'
                           ,'cb_vmboxes'
                           ,'cb_webhooks', 'cb_whitelabel'
-                          ,'cb_sms'
                          ]).
 
 -define(DEPRECATED_MODULES, ['cb_local_resources', 'cb_global_resources']).
