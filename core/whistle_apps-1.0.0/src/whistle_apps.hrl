@@ -23,6 +23,7 @@
                          ,'milliwatt'
                          ,'pivot'
                          ,'camper'
+                         ,'doodle'
                         ]).
 
 -define(WHISTLE_APPS_HRL, 'true').
