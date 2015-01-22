@@ -66,8 +66,8 @@ eligible_for_flat_rate(Request) ->
     % For backward compatibility if there is no config setting with the direction it will try without the direction in the param name.
     % If not using the direction in the param name the white and black lists apply to both inbound and outbound. 
     % If that is not set it will default to the macro defined defaults that also apply to both inbound and outbound.
-    TrunkWhitelist = get_white_black_lists(<<"fllat_rate">>, <<"whitelist">>, Direction, ?DEFAULT_WHITELIST),
-    TrunkBlacklist = get_white_black_lists(<<"fllat_rate">>, <<"blacklist">>, Direction, ?DEFAULT_BLACKLIST),
+    TrunkWhitelist = get_white_black_lists(<<"flat_rate">>, <<"whitelist">>, Direction, ?DEFAULT_WHITELIST),
+    TrunkBlacklist = get_white_black_lists(<<"flat_rate">>, <<"blacklist">>, Direction, ?DEFAULT_BLACKLIST),
     Number = wnm_util:to_e164(j5_request:number(Request)),
     lager:debug("Checking if number, ~s, matches to ~s white and black lists.", [Number, Direction]),
     lager:debug("whitelist: /~s/.", [TrunkWhitelist]),
@@ -96,8 +96,8 @@ eligible_for_flat_rate(Request) ->
         _Allow
     end.
 
--spec get_white_black_lists(j5_request:request(), j5_limits:limits()) -> j5_request:request().
-get_white_black_lists(<<"fllat_rate">>=List_Type, Color, Direction, Default) ->
+-spec get_white_black_lists(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
+get_white_black_lists(List_Type, Color, Direction, Default) ->
     case  whapps_config:get(<<"jonny5">>, <<List_Type/binary, "_", Direction/binary, "_", Color/binary>>) of
         'undefined' ->
             whapps_config:get(<<"jonny5">>, <<List_Type/binary, "_", Color/binary>>, Default);
