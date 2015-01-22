@@ -187,18 +187,32 @@
 -callback code_change(term() | {'down', term()}, module_state(), term()) ->
     {'ok', module_state()} | {'error', term()}.
 
-  -spec start_link(atom(), start_params(), list()) -> startlink_ret().
-start_link(Module, Params, InitArgs) ->
+-spec start_link(atom(), start_params(), list()) -> startlink_ret().
+start_link(Module, Params, InitArgs) when is_atom(Module),
+                                          is_list(Params),
+                                          is_list(InitArgs)
+                                          ->
     gen_server:start_link(?MODULE, [Module, Params, InitArgs], []).
 
--spec start_link({'local', atom()} | {'global', term()} | atom(), atom() |start_params() , start_params() | list(), list()) -> startlink_ret().
-start_link(Module, Params, InitArgs, Options) when is_atom(Module)->
+-spec start_link(gen_server_name() | atom(), atom() | start_params(), start_params() | list(), gen_server_options() | list()) -> startlink_ret().
+start_link(Module, Params, InitArgs, Options) when is_atom(Module),
+                                                   is_list(Params),
+                                                   is_list(InitArgs),
+                                                   is_list(Options)
+                                                   ->
     gen_server:start_link(?MODULE, [Module, Params, InitArgs], Options);
-start_link(Name, Module, Params, InitArgs) ->
+start_link(Name, Module, Params, InitArgs) when is_atom(Module),
+                                                is_list(Params),
+                                                is_list(InitArgs)
+                                                ->
     gen_server:start_link(Name, ?MODULE, [Module, Params, InitArgs], []).
 
--spec start_link({'local', atom()} | {'global', term()}, atom(), start_params(), list(), list()) -> startlink_ret().
-start_link(Name, Module, Params, InitArgs, Options) ->
+-spec start_link(gen_server_name(), atom(), start_params(), list(), gen_server_options()) -> startlink_ret().
+start_link(Name, Module, Params, InitArgs, Options) when is_atom(Module),
+                                                         is_list(Params),
+                                                         is_list(InitArgs),
+                                                         is_list(Options)
+                                                         ->
     gen_server:start_link(Name, ?MODULE, [Module, Params, InitArgs], Options).
 
 -spec queue_name(server_ref()) -> ne_binary().
@@ -750,7 +764,7 @@ format_status(_Opt, [_PDict, #state{module=Module
                              ]
                     }]
     end.
-    
+
 
 -spec distribute_event(wh_json:object(), basic_deliver(), state()) -> 'ok'.
 distribute_event(JObj, BasicDeliver, State) ->

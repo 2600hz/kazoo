@@ -147,6 +147,15 @@
 
 -type server_ref() :: atom() | {atom(), atom()} | {'global', term()} | {'via', atom(), term()} | pid().
 
+
+-type gen_server_name() :: {'local', atom()} |
+                           {'global', term()} |
+                           {'via', atom(), term()}.
+-type gen_server_option() :: {'debug', list()} |
+                             {'timeout', non_neg_integer()} |
+                             {'spawn_opt', list()}.
+-type gen_server_options() :: [gen_server_option(),...] | [].
+
 %% Ibrowse-related types
 -type ibrowse_error() :: {'error', 'req_timedout'
                           | 'sel_conn_closed'
