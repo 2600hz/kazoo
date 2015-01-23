@@ -335,13 +335,16 @@ maybe_paginate_and_clean(Context, Ids) ->
     end.
 
 -spec get_cdr_ids(ne_binary(), ne_binary(), wh_proplist()) ->
-                         {'ok', wh_proplist()} |
-                         {'error', _}.
+                         {'ok', wh_proplist()}.
 get_cdr_ids(Db, View, ViewOptions) ->
     _ = maybe_add_design_doc(Db),
     case couch_mgr:get_results(Db, View, ViewOptions) of
-        {'error', _R}=E -> E;
+        {'error', _R} ->
+            lager:debug("unable to fetch ~s from ~s: ~p"
+                       ,[View, Db, _R]),
+            {'ok', []};
         {'ok', JObjs} ->
+            lager:debug("fetched cdr ids from ~s", [Db]),
             {'ok', [{wh_json:get_value(<<"id">>, JObj)
                      ,wh_json:get_value(<<"key">>, JObj)
                     }
