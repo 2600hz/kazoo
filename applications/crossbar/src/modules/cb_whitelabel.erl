@@ -610,7 +610,7 @@ maybe_cleanup_account_definition(Context, 'success') ->
     Context1 = crossbar_doc:load(cb_context:account_id(Context), Context),
     case cb_context:resp_status(Context1) of
         'success' ->
-            AccountDoc = cb_context:doc(Context),
+            AccountDoc = cb_context:doc(Context1),
             AccountDoc1 = wh_json:delete_key(<<"pvt_whitelabel_domain">>, AccountDoc),
             _ = cb_accounts:post(cb_context:set_doc(Context1, AccountDoc1), cb_context:account_id(Context)),
             Context;
