@@ -20,7 +20,7 @@
 -export([endpoint_from_sipdb/2, get_endpoint_from_sipdb/2]).
 -export([save_sms/1, save_sms/2]).
 -export([replay_sms/2]).
--export([set_sms_body/2]).
+-export([get_sms_body/1, set_sms_body/2]).
 -export([set_flow_status/2, set_flow_status/3]).
 -export([set_flow_error/2, set_flow_error/3, clear_flow_error/1]).
 -export([handle_bridge_failure/2, handle_bridge_failure/3]).
@@ -38,6 +38,10 @@
 -spec set_sms_body(ne_binary(), whapps_call:call()) -> whapps_call:call().
 set_sms_body(Body, Call) ->
     whapps_call:kvs_store(<<"Body">>, Body, Call).
+
+-spec get_sms_body(whapps_call:call()) -> ne_binary().
+get_sms_body(Call) ->
+    whapps_call:kvs_fetch(<<"Body">>, Call).
 
 -spec set_flow_status(ne_binary(), whapps_call:call()) -> whapps_call:call().
 set_flow_status(Status, Call) ->
@@ -111,7 +115,7 @@ save_sms(JObj, DocId, Doc, Call) ->
     OwnerId = whapps_call:owner_id(Call),
     AuthType = whapps_call:authorizing_type(Call),
     AuthId = whapps_call:authorizing_id(Call),
-    Body = wh_json:get_value(<<"Body">>, JObj),
+    Body = get_sms_body(Call),
     To = whapps_call:to(Call),
     From = whapps_call:from(Call),
     Request = whapps_call:request(Call),
