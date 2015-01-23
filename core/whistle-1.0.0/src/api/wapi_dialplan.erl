@@ -1049,8 +1049,8 @@ publish_error(CallID, JObj) ->
     publish_error(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_error(CallID, API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, [{<<"Event-Name">>, <<"dialplan">>}
-                                                     | ?ERROR_RESP_VALUES
-                                                    ], fun ?MODULE:error/1),
+                                                       | ?ERROR_RESP_VALUES
+                                                      ], fun ?MODULE:error/1),
     amqp_util:callevt_publish(wapi_call:event_routing_key(<<"diaplan">>, CallID), Payload, ContentType).
 
 -spec publish_originate_ready(ne_binary(), api_terms()) -> 'ok'.
