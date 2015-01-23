@@ -20,6 +20,7 @@
                       [ecallmgr_util:send_cmd_ret(),...].
 exec_cmd(Node, UUID, JObj, ControlPID) ->
     exec_cmd(Node, UUID, JObj, ControlPID, wh_json:get_value(<<"Call-ID">>, JObj)).
+
 exec_cmd(Node, UUID, JObj, ControlPid, UUID) ->
     App = wh_json:get_value(<<"Application-Name">>, JObj),
     case get_fs_app(Node, UUID, JObj, App) of
@@ -729,11 +730,11 @@ prepare_app_usurpers(Node, UUID) ->
 -spec get_call_pickup_app(atom(), ne_binary(), wh_json:object(), ne_binary(), ne_binary()) ->
                                  {ne_binary(), ne_binary()}.
 get_call_pickup_app(Node, UUID, JObj, Target, Command) ->
-    ExportsApi = [{<<"Continue-On-Fail">>, <<"true">>}
-                  ,{<<"Continue-On-Cancel">>, <<"true">>}
-                  ,{<<"Hangup-After-Pickup">>, <<"false">>}
-                  ,{<<"Park-After-Pickup">>, <<"true">>}
-                 ],
+    ExportsApi = exports_from_api(JObj, [<<"Continue-On-Fail">>
+                                         ,<<"Continue-On-Cancel">>
+                                         ,<<"Hangup-After-Pickup">>
+                                         ,<<"Park-After-Pickup">>
+                                        ]),
 
     SetApi = [{<<"Unbridged-Only">>, 'undefined', <<"intercept_unbridged_only">>}
               ,{<<"Unanswered-Only">>, 'undefined', <<"intercept_unanswered_only">>}
@@ -759,13 +760,19 @@ get_call_pickup_app(Node, UUID, JObj, Target, Command) ->
     ecallmgr_util:bridge_export(Node, UUID, Exports),
     {Command, Target}.
 
+-spec exports_from_api(wh_json:object(), ne_binaries()) -> wh_proplist().
+exports_from_api(JObj, Ks) ->
+    props:filter_undefined(
+      [{K, wh_json:get_binary_value(K, JObj)} || K <- Ks]
+     ).
+
 -spec get_eavesdrop_app(atom(), ne_binary(), wh_json:object(), ne_binary()) ->
                                  {ne_binary(), ne_binary()}.
 get_eavesdrop_app(Node, UUID, JObj, Target) ->
-    ExportsApi = [{<<"Park-After-Pickup">>, <<"false">>}
-                  ,{<<"Continue-On-Fail">>, <<"true">>}
-                  ,{<<"Continue-On-Cancel">>, <<"true">>}
-                 ],
+    ExportsApi = exports_from_api(JObj, [<<"Park-After-Pickup">>
+                                         ,<<"Continue-On-Fail">>
+                                         ,<<"Continue-On-Cancel">>
+                                        ]),
 
     SetApi = [{<<"Enable-DTMF">>, 'undefined', <<"eavesdrop_enable_dtmf">>}
              ],

@@ -1071,7 +1071,8 @@ execute_control_request(Cmd, #state{node=Node
             send_error_resp(CallId, Cmd, <<"Session "
                                            ,CallId/binary
                                            ," not found for "
-                                           ,(wh_json:get_value(<<"Application-Name">>, Cmd))/binary>>),
+                                           ,(wh_json:get_value(<<"Application-Name">>, Cmd))/binary
+                                         >>),
             Srv ! {'force_queue_advance', CallId},
             'ok';
         'error':{'badmatch', {'error', 'nosession'}} ->
@@ -1079,7 +1080,8 @@ execute_control_request(Cmd, #state{node=Node
             send_error_resp(CallId, Cmd, <<"Session "
                                            ,CallId/binary
                                            ," not found for "
-                                           ,(wh_json:get_value(<<"Application-Name">>, Cmd))/binary>>),
+                                           ,(wh_json:get_value(<<"Application-Name">>, Cmd))/binary
+                                         >>),
             Srv ! {'force_queue_advance', CallId},
             'ok';
         'error':{'badmatch', {'error', ErrMsg}} ->
@@ -1095,6 +1097,12 @@ execute_control_request(Cmd, #state{node=Node
             send_error_resp(CallId, Cmd),
             Srv ! {'force_queue_advance', CallId},
             'ok';
+        'throw':Msg ->
+            lager:debug("failed to execute ~s: ~s", [wh_json:get_value(<<"Application-Name">>, Cmd), Msg]),
+            lager:debug("only handling call id(s): ~p", [CallId | OtherLegs]),
+
+            send_error_resp(CallId, Cmd, Msg),
+            Srv ! {'force_queue_advance', CallId};
         _A:_B ->
             ST = erlang:get_stacktrace(),
             lager:debug("exception (~s) while executing ~s: ~p", [_A, wh_json:get_value(<<"Application-Name">>, Cmd), _B]),
@@ -1107,7 +1115,12 @@ execute_control_request(Cmd, #state{node=Node
 
 -spec send_error_resp(ne_binary(), wh_json:object()) -> 'ok'.
 send_error_resp(CallId, Cmd) ->
-    send_error_resp(CallId, Cmd, <<"Could not execute dialplan action: ", (wh_json:get_value(<<"Application-Name">>, Cmd))/binary>>).
+    send_error_resp(CallId
+                    ,Cmd
+                    ,<<"Could not execute dialplan action: "
+                       ,(wh_json:get_value(<<"Application-Name">>, Cmd))/binary
+                     >>
+                   ).
 
 -spec send_error_resp(ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
 send_error_resp(CallId, Cmd, Msg) ->
