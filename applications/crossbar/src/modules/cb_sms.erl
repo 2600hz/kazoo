@@ -22,7 +22,7 @@
 
 -define(CB_LIST_ALL, <<"sms/crossbar_listing">>).
 -define(CB_LIST_BY_DEVICE, <<"sms/listing_by_device">>).
--define(CB_LIST_BY_OWNERID, <<"sms/listing_by_ownerid">>).
+-define(CB_LIST_BY_OWNERID, <<"sms/listing_by_owner">>).
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".sms">>).
 
