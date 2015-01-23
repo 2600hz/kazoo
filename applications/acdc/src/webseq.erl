@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2015, 2600Hz
 %%% @doc
 %%% Log messages in a way to make importing to WebSequenceDiagrams.com
 %%% easier
@@ -31,7 +31,7 @@
 
 -include("acdc.hrl").
 
--define(WEBSEQNAME, "/tmp/webseq.txt").
+-define(WEBSEQNAME, "/tmp/webseq.wsd").
 
 -record(state, {io_device :: file:io_device()
                 ,who_registry :: dict()
@@ -120,15 +120,17 @@ handle_cast('trunc', #state{io_device=IO}=State) ->
     catch file:truncate(IO),
     {'noreply', State};
 handle_cast('rotate', #state{io_device=OldIO}=State) ->
+    lager:debug("rotating file"),
     _ = file:close(OldIO),
     _ = file:rename(?WEBSEQNAME, iolist_to_binary([?WEBSEQNAME, ".", wh_util:to_binary(wh_util:current_tstamp())])),
     {'ok', IO} = file:open(?WEBSEQNAME, [append, raw, delayed_write]),
+    lager:debug("opened ~s: ~p", [?WEBSEQNAME, IO]),
     {'noreply', State#state{io_device=IO}};
 handle_cast({'reg_who', P, W}, #state{who_registry=Who}=State) when is_pid(P) ->
     PBin = wh_util:to_binary(pid_to_list(P)),
     {'noreply', State#state{who_registry=dict:store(PBin, W, Who)}};
-    
-handle_cast(_,S) ->
+handle_cast(_Msg, S) ->
+    lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', S}.
 
 handle_info(_Info, S) ->

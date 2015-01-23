@@ -193,6 +193,7 @@
          ,<<"DETECTED_TONE">>,<<"DTMF">>
          ,<<"LEG_CREATED">>, <<"LEG_DESTROYED">>
          ,<<"RECORD_START">>,<<"RECORD_STOP">>
+         ,<<"dialplan">> %% errors are sent with this
         ]).
 
 -type xml_thing() :: xml_el() | xml_text().

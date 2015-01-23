@@ -382,6 +382,12 @@ handle_info({'event', [CallId | Props]}, #state{other_leg=CallId
             lager:debug("ignoring b-leg event ~s (not in ~p)", [Event, Events]),
             {'noreply', State}
     end;
+handle_info({'event', [_WrongCallId | _Props]}, #state{callid=_CallId
+                                                       ,other_leg=_OtherLeg
+                                                      }=State) ->
+    lager:debug("recv event for unknown ~s: ~s", [_WrongCallId, props:get_value(<<"Event-Name">>, _Props)]),
+    lager:debug("processing call ~s and other leg ~s", [_CallId, _OtherLeg]),
+    {'noreply', State};
 handle_info({'nodedown', _}, #state{node=Node
                                     ,is_node_up='true'
                                    }=State) ->
