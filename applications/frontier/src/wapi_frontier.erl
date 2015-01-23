@@ -6,9 +6,9 @@
 %%% @contributors
 %%%   SIPLABS, LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
--module(wapi_kamdb).
+-module(wapi_frontier).
 
--include("kamdb.hrl").
+-include("frontier.hrl").
 -include_lib("whistle/include/wh_amqp.hrl").
 
 -export([bind_q/2, unbind_q/2]).
@@ -22,7 +22,7 @@
          ,publish_acls_resp/2
         ]).
 
--define(KAMDB_EXCHANGE, <<"kamdb">>).
+-define(FRONTIER_EXCHANGE, <<"frontier">>).
 -define(EXCHANGE_TYPE, <<"direct">>).
 
 -define(ROUTE_KEY, <<"sbc_config">>).
@@ -65,7 +65,7 @@ ratelimits_resp(JObj) -> ratelimits_resp(wh_json:to_proplist(JObj)).
 publish_ratelimits_resp(Srv, JObj) -> publish_ratelimits_resp(Srv, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_ratelimits_resp(Srv, Req, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?RATELIMITS_RESP_VALUES, fun ratelimits_resp/1),
-    amqp_util:basic_publish(?KAMDB_EXCHANGE, Srv, Payload, ContentType).
+    amqp_util:basic_publish(?FRONTIER_EXCHANGE, Srv, Payload, ContentType).
 
 -spec ratelimits_req_v(api_terms()) -> boolean().
 ratelimits_req_v(Prop) when is_list(Prop) ->
@@ -88,7 +88,7 @@ acls_resp(JObj) -> acls_resp(wh_json:to_proplist(JObj)).
 publish_acls_resp(Srv, JObj) -> publish_acls_resp(Srv, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_acls_resp(Srv, Req, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?ACL_RESP_VALUES, fun acls_resp/1),
-    amqp_util:basic_publish(?KAMDB_EXCHANGE, Srv, Payload, ContentType).
+    amqp_util:basic_publish(?FRONTIER_EXCHANGE, Srv, Payload, ContentType).
 
 -spec acls_req_v(api_terms()) -> boolean().
 acls_req_v(Prop) when is_list(Prop) ->
@@ -102,11 +102,11 @@ acls_resp_v(JObj) -> acls_resp_v(wh_json:to_proplist(JObj)).
 
 -spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Q, _Props) ->
-    amqp_util:bind_q_to_exchange(Q, ?ROUTE_KEY, ?KAMDB_EXCHANGE).
+    amqp_util:bind_q_to_exchange(Q, ?ROUTE_KEY, ?FRONTIER_EXCHANGE).
 
 -spec unbind_q(ne_binary(), wh_proplist()) -> 'ok'.
 unbind_q(Q, _Props) ->
-    amqp_util:unbind_q_from_exchange(Q, ?ROUTE_KEY, ?KAMDB_EXCHANGE).
+    amqp_util:unbind_q_from_exchange(Q, ?ROUTE_KEY, ?FRONTIER_EXCHANGE).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -115,4 +115,4 @@ unbind_q(Q, _Props) ->
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:new_exchange(?KAMDB_EXCHANGE, ?EXCHANGE_TYPE).
+    amqp_util:new_exchange(?FRONTIER_EXCHANGE, ?EXCHANGE_TYPE).

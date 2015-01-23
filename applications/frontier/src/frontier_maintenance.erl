@@ -6,9 +6,9 @@
 %%% @contributors
 %%%   SIPLABS, LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
--module(kamdb_maintenance).
+-module(frontier_maintenance).
 
--include("kamdb.hrl").
+-include("frontier.hrl").
 
 %% API
 -export([lookup_acls/1
@@ -18,7 +18,7 @@
 -spec lookup_acls(ne_binary()) -> 'ok'.
 lookup_acls(Entity) ->
     io:format("looking for ACL records for ~s:~n", [Entity]),
-    lists:foreach(fun print_acl_record/1, kamdb_handle_acl:lookup_acl_records(Entity)).
+    lists:foreach(fun print_acl_record/1, frontier_handle_acl:lookup_acl_records(Entity)).
 
 -spec print_acl_record(wh_json:object()) -> 'ok'.
 print_acl_record(Record) ->
@@ -31,7 +31,7 @@ print_acl_record(Record) ->
 
 -spec lookup_ratelimits(ne_binary()) -> 'ok'.
 lookup_ratelimits(Entity) ->
-    Limits = kamdb_handle_rate:lookup_rate_limit_records(Entity),
+    Limits = frontier_handle_rate:lookup_rate_limit_records(Entity),
     io:format("~p", [Limits]),
     wh_json:foreach(fun print_limits/1, Limits).
 
@@ -43,4 +43,4 @@ print_limits({Type, Rates}) ->
     io:format("~s rates for ~s~n", [Type, Name]),
     lists:foreach(fun (Key) ->
                       io:format("~-15s: ~7.10B/m ~7.10B/s~n", [Key, wh_json:get_value(Key, Min), wh_json:get_value(Key, Sec)])
-                  end, kamdb_handle_rate:names()).
+                  end, frontier_handle_rate:names()).

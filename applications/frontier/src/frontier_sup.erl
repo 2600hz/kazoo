@@ -6,18 +6,18 @@
 %%% @contributors
 %%%   SIPLABS, LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
--module(kamdb_sup).
+-module(frontier_sup).
 
 -behaviour(supervisor).
 
 -export([start_link/0]).
 -export([init/1]).
 
--include("kamdb.hrl").
+-include("frontier.hrl").
 
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?WORKER('kamdb_shared_listener')
-                   ,?WORKER('kamdb_ensure_rates_in_syscfg')
+-define(CHILDREN, [?WORKER('frontier_ensure_rates_in_syscfg')
+                   ,?WORKER('frontier_shared_listener')
                   ]).
 
 %% ===================================================================

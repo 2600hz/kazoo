@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   SIPLABS, LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
--module(kamdb_app).
+-module(frontier_app).
 
 -behaviour(application).
 
@@ -23,7 +23,7 @@
 -spec start(term(), term()) ->
                    {'ok', pid()} |
                    {'error', startlink_err()}.
-start(_Type, _Args) -> kamdb:start_link().
+start(_Type, _Args) -> frontier:start_link().
 
 %%--------------------------------------------------------------------
 %% @public
@@ -32,4 +32,4 @@ start(_Type, _Args) -> kamdb:start_link().
 %% @end
 %%--------------------------------------------------------------------
 -spec stop(term()) -> 'ok'.
-stop(_State) -> kamdb:stop().
+stop(_State) -> frontier:stop().

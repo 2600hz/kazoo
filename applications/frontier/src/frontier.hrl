@@ -1,13 +1,13 @@
--ifndef(KAMDB_HRL).
+-ifndef(FRONTIER_HRL).
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
 
--define(APP_NAME, <<"kamdb">>).
--define(APP_VERSION, <<"0.0.1">> ).
+-define(APP_NAME, <<"frontier">>).
+-define(APP_VERSION, <<"0.0.2">> ).
 
 -define(MINUTE, <<"per_minute">>).
 -define(SECOND, <<"per_second">>).
 
--define(KAMDB_HRL, 'true').
+-define(FRONTIER_HRL, 'true').
 -endif.

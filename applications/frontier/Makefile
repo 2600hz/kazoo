@@ -1,4 +1,4 @@
-PROJECT = kamdb
+PROJECT = frontier
 ROOT = ../..
 REBAR = $(ROOT)/utils/rebar/rebar
 DIALYZER = dialyzer

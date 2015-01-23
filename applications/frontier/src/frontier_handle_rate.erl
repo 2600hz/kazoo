@@ -6,13 +6,13 @@
 %%% @contributors
 %%%   SIPLABS, LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
--module(kamdb_handle_rate).
+-module(frontier_handle_rate).
 
 -export([handle_rate_req/2
          ,lookup_rate_limit_records/1
         ]).
 
--include("kamdb.hrl").
+-include("frontier.hrl").
 
 -define(DEVICE_DEFAULT_RATES, <<"device-default-rate-limits">>).
 -define(ACCOUNT_FALLBACK, <<"fallback">>).
@@ -24,7 +24,7 @@ is_fallback(JObj) ->
                      [_, ?ACCOUNT_FALLBACK] -> 'true';
                      _ -> 'false'
                  end,
-    kamdb_utils:is_account(JObj) andalso  IsFallback.
+    frontier_utils:is_account(JObj) andalso  IsFallback.
 
 -spec is_device_defaults(wh_json:object()) -> boolean().
 is_device_defaults(JObj) ->
@@ -32,7 +32,7 @@ is_device_defaults(JObj) ->
                          [?DEVICE_DEFAULT_RATES, _] -> 'true';
                          _ -> 'false'
                      end,
-    kamdb_utils:is_device(JObj) andalso IsDefaultRates.
+    frontier_utils:is_device(JObj) andalso IsDefaultRates.
 
 -spec names() -> ne_binaries().
 names() ->
@@ -67,7 +67,7 @@ send_response(Limits, Reqest) ->
                                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                                   ]),
     Srv = wh_json:get_value(<<"Server-ID">>, Reqest),
-    wapi_kamdb:publish_ratelimits_resp(Srv, wh_json:merge_jobjs(Limits, RespStub)).
+    wapi_frontier:publish_ratelimits_resp(Srv, wh_json:merge_jobjs(Limits, RespStub)).
 
 
 -spec lookup_rate_limit_records(ne_binary()) -> wh_json:object().
@@ -77,7 +77,7 @@ lookup_rate_limit_records(Entity) ->
 -spec lookup_rate_limit_records(ne_binary(), boolean(), ne_binaries()) -> wh_json:object().
 lookup_rate_limit_records(Entity, IncludeRealm, MethodList) ->
     lager:info("Handle rate limit request for ~s", [Entity]),
-    Realm = kamdb_utils:extract_realm(Entity),
+    Realm = frontier_utils:extract_realm(Entity),
     Responses = case whapps_util:get_account_by_realm(Realm) of
                     {'ok', AccountDB} ->
                         lager:info("Found realm, try to send response"),
@@ -108,7 +108,7 @@ run_rate_limits_query(Entity, AccountDB, IncludeRealm, MethodList) ->
                  end,
     QueryList = case Type =:= <<"account">> orelse IncludeRealm of
                     'true' ->
-                        Realm = kamdb_utils:extract_realm(Entity),
+                        Realm = frontier_utils:extract_realm(Entity),
                         [fun (Ref) ->
                              fetch_rates_from_document(Self, Realm, <<"account">>, Ref, MethodList, AccountDB)
                          end
@@ -164,7 +164,7 @@ collect_responses([Ref | Refs], Acc) ->
 -spec make_deny_rates(ne_binary(), boolean(), ne_binaries()) -> wh_json:objects().
 make_deny_rates(Entity, IncludeRealm, MethodList) ->
     Rates = deny_rates_for_entity(Entity, MethodList),
-    Realm = kamdb_utils:extract_realm(Entity),
+    Realm = frontier_utils:extract_realm(Entity),
     case Entity =/= Realm
          andalso IncludeRealm
     of

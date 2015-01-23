@@ -6,9 +6,9 @@
 %%% @contributors
 %%%   SIPLABS, LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
--module(kamdb_ensure_rates_in_syscfg).
+-module(frontier_ensure_rates_in_syscfg).
 
--include("kamdb.hrl").
+-include("frontier.hrl").
 
 %% API
 -export([init/1

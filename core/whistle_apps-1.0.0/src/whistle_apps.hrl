@@ -24,7 +24,7 @@
                          ,'milliwatt'
                          ,'pivot'
                          ,'camper'
-                         ,'kamdb'
+                         ,'frontier'
                         ]).
 
 -define(WHISTLE_APPS_HRL, 'true').

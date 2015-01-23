@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   SIPLABS, LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
--module(kamdb_shared_listener).
+-module(frontier_shared_listener).
 
 -behaviour(gen_listener).
 
@@ -20,20 +20,20 @@
          ,code_change/3
         ]).
 
--include("kamdb.hrl").
+-include("frontier.hrl").
 
 -record(state, {}).
 
 %% By convention, we put the options here in macros, but not required.
--define(BINDINGS, [{'kamdb', []}]).
--define(RESPONDERS, [{{'kamdb_handle_rate', 'handle_rate_req'}
+-define(BINDINGS, [{'frontier', []}]).
+-define(RESPONDERS, [{{'frontier_handle_rate', 'handle_rate_req'}
                       ,[{<<"rate_limit">>, <<"query">>}]
                      }
-                     ,{{'kamdb_handle_acl', 'handle_acl_req'}
+                     ,{{'frontier_handle_acl', 'handle_acl_req'}
                        ,[{<<"acl">>, <<"query">>}]
                       }
                     ]).
--define(QUEUE_NAME, <<"kamdb_shared_queue">>).
+-define(QUEUE_NAME, <<"frontier_shared_queue">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 

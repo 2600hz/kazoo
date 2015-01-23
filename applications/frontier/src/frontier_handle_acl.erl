@@ -6,17 +6,17 @@
 %%% @contributors
 %%%   SIPLABS, LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
--module(kamdb_handle_acl).
+-module(frontier_handle_acl).
 
 -export([handle_acl_req/2
          ,lookup_acl_records/1, lookup_acl_records/2
         ]).
 
--include("kamdb.hrl").
+-include("frontier.hrl").
 
 -spec handle_acl_req(wh_json:object(), wh_proplist()) -> any().
 handle_acl_req(Reqest, _Props) ->
-    'true' = wapi_kamdb:acls_req_v(Reqest),
+    'true' = wapi_frontier:acls_req_v(Reqest),
     Entity = wh_json:get_value(<<"Entity">>, Reqest),
     IncludeRealm  = wh_json:get_value(<<"With-Realm">>, Reqest),
     Payload = lookup_acl_records(Entity, IncludeRealm),
@@ -28,12 +28,12 @@ send_response(Reqest, Responses) ->
                                   | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                                  ]),
     ServerID = wh_json:get_value(<<"Server-ID">>, Reqest),
-    {DeviceACLs, RealmACLs} = lists:partition(fun kamdb_utils:is_device/1, Responses),
+    {DeviceACLs, RealmACLs} = lists:partition(fun frontier_utils:is_device/1, Responses),
     Resp = lists:foldl(fun wh_json:merge_jobjs/2, RespStub, [make_section(DeviceACLs, <<"Device">>)
                                                              ,make_section(RealmACLs, <<"Realm">>)
                                                             ]),
     lager:debug("publishing response"),
-    wapi_kamdb:publish_acls_resp(ServerID, Resp).
+    wapi_frontier:publish_acls_resp(ServerID, Resp).
 
 -spec make_section(wh_json:objects(), ne_binary()) -> wh_json:object().
 -spec make_section(ne_binary(), api_object(), api_object()) -> wh_json:object().
@@ -52,7 +52,7 @@ make_section(Section, Order, CIDRs) ->
 -spec lookup_acl_records(ne_binary(), boolean()) -> wh_json:objects().
 lookup_acl_records(Entity, IncludeRealm) ->
     lager:debug("Handle acl request for ~s", [Entity]),
-    Realm = kamdb_utils:extract_realm(Entity),
+    Realm = frontier_utils:extract_realm(Entity),
     case whapps_util:get_account_by_realm(Realm) of
         {'ok', _} ->
             lager:debug("Found realm, try to send response"),
@@ -77,7 +77,7 @@ run_acl_query(Entity, IncludeRealm) ->
                        end;
                    [JustRealm] -> make_acl_view(JustRealm)
                end,
-    {'ok', UserDb} = whapps_util:get_account_by_realm(kamdb_utils:extract_realm(Entity)),
+    {'ok', UserDb} = whapps_util:get_account_by_realm(frontier_utils:extract_realm(Entity)),
     lager:debug("Looking for ~s's acls in ~s", [Entity, UserDb]),
     {'ok', Results} = couch_mgr:get_results(UserDb, <<"acls/crossbar_listing">>, ViewOpts),
     lager:debug("Found ~p records", [length(Results)]),
@@ -91,7 +91,7 @@ make_acl_view(Key) ->
 
 -spec make_deny_acl(ne_binary(), boolean()) -> wh_json:objects().
 make_deny_acl(Entity, IncludeRealm) ->
-    Realm = kamdb_utils:extract_realm(Entity),
+    Realm = frontier_utils:extract_realm(Entity),
     IsDevice = Realm =/= Entity,
     Type = case IsDevice of
                'true' -> <<"device">>;

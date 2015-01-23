@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   SIPLABS, LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
--module(kamdb).
+-module(frontier).
 
 -include_lib("whistle/include/wh_types.hrl").
 
@@ -25,7 +25,7 @@
 start_link() ->
     _ = start_deps(),
     _ = declare_exchanges(),
-    kamdb_sup:start_link().
+    frontier_sup:start_link().
 
 %%--------------------------------------------------------------------
 %% @public
@@ -70,4 +70,4 @@ start_deps() ->
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    wapi_kamdb:declare_exchanges().
+    wapi_frontier:declare_exchanges().

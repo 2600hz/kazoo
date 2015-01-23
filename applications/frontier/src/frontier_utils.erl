@@ -6,9 +6,9 @@
 %%% @contributors
 %%%   SIPLABS, LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
--module(kamdb_utils).
+-module(frontier_utils).
 
--include("kamdb.hrl").
+-include("frontier.hrl").
 
 %% API
 -export([extract_realm/1, is_device_entity/1
@@ -17,7 +17,7 @@
 
 -spec is_device_entity(ne_binary()) -> boolean().
 is_device_entity(Entity) ->
-    Realm = kamdb_utils:extract_realm(Entity),
+    Realm = frontier_utils:extract_realm(Entity),
     Realm =/= Entity.
 
 -spec extract_realm(ne_binary()) -> ne_binary().
