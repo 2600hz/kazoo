@@ -20,18 +20,23 @@
 
 -include("amqp_util.hrl").
 
+-define(CONFIG_SECTION, wh_config:get_node_section_name()).
+
 -define(DEFAULT_POOL_SIZE, 150).
 -define(DEFAULT_POOL_OVERFLOW, 100).
+-define(DEFAULT_POOL_THRESHOLD, 1).
 
+%%% Move the section to whistle_apps or ecallmgr for per-vm control
+-define(POOL_SIZE, wh_config:get_integer(?CONFIG_SECTION, 'pool_size', ?DEFAULT_POOL_SIZE)).
+-define(POOL_OVERFLOW, wh_config:get_integer(?CONFIG_SECTION, 'pool_size', ?DEFAULT_POOL_OVERFLOW)).
+-define(POOL_THRESHOLD, wh_config:get_integer(?CONFIG_SECTION, 'pool_threshold', ?DEFAULT_POOL_THRESHOLD)).
 -define(POOL_NAME, 'wh_amqp_pool').
--define(POOL_SIZE, wh_config:get_integer('amqp', 'pool_size', ?DEFAULT_POOL_SIZE)).
--define(POOL_OVERFLOW, wh_config:get_integer('amqp', 'pool_size', ?DEFAULT_POOL_OVERFLOW)).
 
 -define(POOL_ARGS, [[{'worker_module', 'wh_amqp_worker'}
                      ,{'name', {'local', ?POOL_NAME}}
                      ,{'size', ?POOL_SIZE}
                      ,{'max_overflow', ?POOL_OVERFLOW}
-                     ,{'neg_resp_threshold', 1}
+                     ,{'neg_resp_threshold', ?POOL_THRESHOLD}
                     ]]).
 
 -define(SERVER, ?MODULE).
@@ -45,12 +50,12 @@
 
 -define(ATOM(X), wh_util:to_atom(X, 'true')).
 
--define(ADD_POOL_ARGS(Pool, Broker, Size, Overflow, Bindings, Exchanges), 
+-define(ADD_POOL_ARGS(Pool, Broker, Size, Overflow, Bindings, Exchanges),
         [[{'worker_module', 'wh_amqp_worker'}
           ,{'name', {'local', Pool}}
           ,{'size', Size}
           ,{'max_overflow', Overflow}
-          ,{'neg_resp_threshold', 1}
+          ,{'neg_resp_threshold', ?POOL_THRESHOLD}
           ,{'amqp_broker', Broker}
           ,{'amqp_queuename_start', Pool}
           ,{'amqp_bindings', Bindings}
@@ -60,7 +65,7 @@
            ?WORKER_NAME_ARGS('poolboy'
                  ,UUID
                  ,?ADD_POOL_ARGS(UUID, Broker, PoolSize, PoolOverflow, Bindings, Exchanges))).
- 
+
 
 %% ===================================================================
 %% API functions
@@ -90,10 +95,10 @@ add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow) ->
 
 -spec add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, Bindings) -> sup_startchild_ret() when
     UUID :: atom() | binary(),
-    Broker :: binary(), 
-    PoolSize :: integer(), 
-    PoolOverflow :: integer(), 
-    Bindings :: wh_proplist().          
+    Broker :: binary(),
+    PoolSize :: integer(),
+    PoolOverflow :: integer(),
+    Bindings :: wh_proplist().
 add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, Bindings) ->
     add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, Bindings, []).
 
@@ -113,7 +118,7 @@ pool_pid(Pool) ->
         [] -> 'undefined';
         [P | _] -> P
     end.
-        
+
 
 %% ===================================================================
 %% Supervisor callbacks
