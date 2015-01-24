@@ -956,19 +956,40 @@ load_descendants_count(ViewOptions) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_update_descendants_count(ne_binary(), integer()) -> 'ok'.
+-spec maybe_update_descendants_count(ne_binary(), integer(), integer()) -> 'ok'.
+-spec maybe_update_descendants_count(ne_binary(), wh_json:object(), integer(), integer()) -> 'ok'.
+-spec maybe_update_descendants_count(ne_binary(), wh_json:object(), integer(), integer(), integer()) -> 'ok'.
+
 maybe_update_descendants_count(AccountId, NewCount) ->
+    maybe_update_descendants_count(AccountId, NewCount, 3).
+
+maybe_update_descendants_count(AccountId, _, Try) when Try =< 0 ->
+    io:fromat("too many attempts to update descendants count for ~s~p", [AccountId]);
+maybe_update_descendants_count(AccountId, NewCount, Try) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_doc(AccountDb, AccountId) of
         {'error', _E} ->
             io:format("could not load account ~s: ~p~n", [AccountId, _E]);
         {'ok', JObj} ->
-            OldCount = wh_json:get_integer_value(<<"descendants_count">>, JObj),
-            case OldCount =:= NewCount of
-                'true' -> 'ok';
-                'false' ->
-                    update_descendants_count(AccountId, JObj, NewCount)
-            end
+            maybe_update_descendants_count(AccountId, JObj, NewCount, Try)
     end.
+
+
+maybe_update_descendants_count(AccountId, JObj, NewCount, Try) ->
+    OldCount = wh_json:get_integer_value(<<"descendants_count">>, JObj),
+    maybe_update_descendants_count(AccountId, JObj, NewCount, OldCount, Try).
+
+maybe_update_descendants_count(_, _, Count, Count, _) -> 'ok';
+maybe_update_descendants_count(AccountId, JObj, NewCount, _, Try) ->
+    case update_descendants_count(AccountId, JObj, NewCount) of
+        'ok' -> 'ok';
+        'error' ->
+            maybe_update_descendants_count(AccountId, NewCount, Try-1)
+    end.
+
+
+
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -976,13 +997,12 @@ maybe_update_descendants_count(AccountId, NewCount) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_descendants_count(ne_binary(), wh_json:object(), integer()) -> 'ok'.
+-spec update_descendants_count(ne_binary(), wh_json:object(), integer()) -> 'ok' | 'error'.
 update_descendants_count(AccountId, JObj, NewCount) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     Doc = wh_json:set_value(<<"descendants_count">>, NewCount, JObj),
     case couch_mgr:save_doc(AccountDb, Doc) of
-        {'error', _E} ->
-            io:format("failed to update descendant count for ~s: ~p~n", [AccountId, _E]);
+        {'error', _E} -> 'error';
         {'ok', NewDoc} ->
             _ = replicate_account_definition(NewDoc),
             io:format("updated descendant count for ~s~n", [AccountId]),
