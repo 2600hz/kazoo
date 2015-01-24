@@ -21,13 +21,7 @@
 -define(POOL_NAME, 'wh_amqp_pool').
 -define(POOL_SIZE, 150).
 -define(POOL_OVERFLOW, 100).
-
--define(POOL_ARGS, [[{'worker_module', 'wh_amqp_worker'}
-                     ,{'name', {'local', ?POOL_NAME}}
-                     ,{'size', ?POOL_SIZE}
-                     ,{'max_overflow', ?POOL_OVERFLOW}
-                     ,{'neg_resp_threshold', 1}
-                    ]]).
+-define(POOL_THRESHOLD, 1).
 
 -define(SERVER, ?MODULE).
 -define(CHILDREN, [?WORKER('wh_amqp_connections')
@@ -35,7 +29,6 @@
                    ,?WORKER('wh_amqp_assignments')
                    ,?WORKER('wh_amqp_history')
                    ,?WORKER('wh_amqp_bootstrap')
-                   ,?WORKER_NAME_ARGS('poolboy', ?POOL_NAME, ?POOL_ARGS)
                   ]).
 
 %% ===================================================================
@@ -79,4 +72,32 @@ init([]) ->
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    {'ok', {SupFlags, ?CHILDREN}}.
+
+    PoolSize =
+        case wh_config:get(wh_config:get_node_section_name(), 'pool_size') of
+            [] -> ?POOL_SIZE;
+            [Size|_] -> wh_util:to_integer(Size)
+        end,
+
+    PoolOverflow =
+        case wh_config:get(wh_config:get_node_section_name(), 'pool_overflow') of
+            [] -> ?POOL_OVERFLOW;
+            [Overflow|_] -> wh_util:to_integer(Overflow)
+        end,
+
+    PoolThreshold =
+        case wh_config:get(wh_config:get_node_section_name(), 'pool_threshold') of
+            [] -> ?POOL_THRESHOLD;
+            [Threshold|_] -> wh_util:to_integer(Threshold)
+        end,
+
+    PoolArgs = [{'worker_module', 'wh_amqp_worker'}
+               ,{'name', {'local', ?POOL_NAME}}
+               ,{'size', PoolSize}
+               ,{'max_overflow', PoolOverflow}
+               ,{'neg_resp_threshold', PoolThreshold}
+               ],
+
+    Children = ?CHILDREN ++ [?WORKER_NAME_ARGS('poolboy', ?POOL_NAME, [PoolArgs])],
+
+    {'ok', {SupFlags, Children}}.
