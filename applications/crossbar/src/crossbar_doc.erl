@@ -579,7 +579,6 @@ save_attachment(DocId, Name, Contents, Context, Options) ->
                         ,[AName, DocId, cb_context:account_db(Context)]
                        ),
             {'ok', Rev1} = couch_mgr:lookup_doc_rev(cb_context:account_db(Context), DocId),
-            couch_mgr:flush_cache_doc(cb_context:account_db(Context), DocId),
             cb_context:setters(Context
                                ,[{fun cb_context:set_doc/2, wh_json:new()}
                                  ,{fun cb_context:set_resp_status/2, 'success'}
