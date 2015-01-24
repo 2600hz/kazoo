@@ -29,13 +29,43 @@ handle_req(JObj, Props) ->
                 %% if NoMatch is false then allow the callflow or if it is true and we are able allowed
                 %% to use it for this call
                 {'ok', Flow, NoMatch} when (not NoMatch) orelse AllowNoMatch ->
-                    maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch);
+                    NewFlow = maybe_prepend_preflow(Call, Flow),
+                    maybe_reply_to_req(JObj, Props, Call, NewFlow, NoMatch);
                 {'ok', _, 'true'} ->
                     lager:info("only available callflow is a nomatch for a unauthorized call", []);
                 {'error', R} ->
                     lager:info("unable to find callflow ~p", [R])
             end
     end.
+
+-spec maybe_prepend_preflow(whapps_call:call(), wh_json:object()) -> wh_json:object().
+maybe_prepend_preflow(Call, CallFlow) ->
+    AccountId = whapps_call:account_id(Call),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+        {'error', _E} ->
+            lager:warning("could not open ~s in ~s : ~p", [AccountId, AccountDb, _E]),
+            CallFlow;
+        {'ok', Doc} ->
+            case wh_json:get_ne_value([<<"preflow">>, <<"always">>], Doc) of
+                'undefined' -> CallFlow;
+                PreflowId   -> prepend_preflow(AccountDb, PreflowId, CallFlow),
+            end
+    end.
+
+-spec prepend_preflow(ne_binary(), ne_binary(), wh_json:object()) -> wh_json:object().
+prepend_preflow(AccountDb, PreflowId, CallFlow) ->
+    case couch_mgr:open_cache_doc(AccountDb, PreflowId) of
+        {'error', _E} ->
+            lager:warning("could not open ~s in ~s : ~p", [PreflowId, AccountDb, _E]),
+            CallFlow;
+        {'ok', Doc} ->
+            Children = wh_json:from_list([{<<"_">>, wh_json:get_value(<<"flow">>, CallFlow)}]),
+            Preflow = wh_json:set_value(<<"children">>, Children, wh_json:get_value(<<"flow">>, Doc)),
+            wh_json:set_value(<<"flow">>, Preflow, CallFlow)
+    end.
+
+
 
 -spec resource_allowed(whapps_call:call()) -> boolean().
 resource_allowed(Call) ->
