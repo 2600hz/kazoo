@@ -49,7 +49,7 @@ maybe_prepend_preflow(Call, CallFlow) ->
         {'ok', Doc} ->
             case wh_json:get_ne_value([<<"preflow">>, <<"always">>], Doc) of
                 'undefined' -> CallFlow;
-                PreflowId   -> prepend_preflow(AccountDb, PreflowId, CallFlow),
+                PreflowId   -> prepend_preflow(AccountDb, PreflowId, CallFlow)
             end
     end.
 
