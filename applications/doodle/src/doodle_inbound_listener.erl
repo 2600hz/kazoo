@@ -27,7 +27,7 @@
 -define(DEFAULT_EXCHANGE_TYPE, <<"topic">>).
 -define(DEFAULT_EXCHANGE_OPTIONS, [{'passive', 'true'}]).
 -define(DEFAULT_BROKER, <<"amqp://user:pass@server.com:5672/babble">>).
--define(QUEUE_NAME, <<"smsc_inbound_queue_", (wh_util:rand_hex_binary(6))/binary>>).
+-define(QUEUE_NAME, <<"smsc_inbound_queue_", (?DOODLE_INBOUND_EXCHANGE)/binary>>).
 
 -define(DOODLE_INBOUND_QUEUE, whapps_config:get_ne_binary(?CONFIG_CAT, <<"inbound_queue_name">>, ?QUEUE_NAME)).
 -define(DOODLE_INBOUND_BROKER, whapps_config:get_ne_binary(?CONFIG_CAT, <<"inbound_broker">>, ?DEFAULT_BROKER)).
