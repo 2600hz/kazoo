@@ -12,7 +12,7 @@
 -export([init/0
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2
          ,resource_exists/0, resource_exists/1, resource_exists/2
-         ,content_types_provided/1 ,content_types_provided/2
+         ,content_types_provided/1 ,content_types_provided/2, content_types_provided/3
          ,validate/1, validate/2, validate/3
          ,post/2
          ,delete/2
@@ -127,12 +127,12 @@ validate(Context, ?AVAILABLE) ->
       ,fun normalize_view_results/2
      );
 validate(Context, ?SYNCHRONIZATION) ->
-    case is_reseller(Context) of
+    case is_allowed(Context) of
         {'ok', _} -> cb_context:set_resp_status(Context, 'success');
         'false' -> cb_context:add_system_error('forbidden', Context)
     end;
 validate(Context, ?RECONCILIATION) ->
-    case is_reseller(Context) of
+    case is_allowed(Context) of
         {'ok', _} -> cb_context:set_resp_status(Context, 'success');
         'false' -> cb_context:add_system_error('forbidden', Context)
     end;
@@ -212,13 +212,20 @@ apply_fun(F, S) -> F(S).
 %%--------------------------------------------------------------------
 -spec content_types_provided(cb_context:context()) -> cb_context:context().
 -spec content_types_provided(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec content_types_provided(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
 content_types_provided(Context) ->
     CTPs = [{'to_json', ?JSON_CONTENT_TYPES}
             ,{'to_csv', ?CSV_CONTENT_TYPES}
            ],
     cb_context:add_content_types_provided(Context, CTPs).
 
-content_types_provided(Context, ?CURRENT) ->
+content_types_provided(Context, _) ->
+    CTPs = [{'to_json', ?JSON_CONTENT_TYPES}
+            ,{'to_csv', ?CSV_CONTENT_TYPES}
+           ],
+    cb_context:add_content_types_provided(Context, CTPs).
+
+content_types_provided(Context, ?AVAILABLE, _) ->
     CTPs = [{'to_json', ?JSON_CONTENT_TYPES}
             ,{'to_csv', ?CSV_CONTENT_TYPES}
            ],
@@ -241,10 +248,11 @@ normalize_view_results(JObj, Acc) ->
 %% Check if you have the permission to update or delete service plans
 %% @end
 %%--------------------------------------------------------------------
--spec is_reseller(cb_context:context()) -> {'ok', ne_binary()} | 'false'.
-is_reseller(Context) ->
+-spec is_allowed(cb_context:context()) -> {'ok', ne_binary()} | 'false'.
+is_allowed(Context) ->
     ResellerId = wh_services:find_reseller_id(cb_context:account_id(Context)),
-    cb_context:auth_account_id(Context) =:= ResellerId andalso {'ok', ResellerId}.
+    AuthAccountId = cb_context:auth_account_id(Context),
+    (AuthAccountId =:= ResellerId orelse wh_util:is_system_admin(AuthAccountId)) andalso {'ok', ResellerId}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -254,7 +262,7 @@ is_reseller(Context) ->
 %%--------------------------------------------------------------------
 -spec maybe_allow_change(cb_context:context(), path_token()) -> cb_context:context().
 maybe_allow_change(Context, PlanId) ->
-    case is_reseller(Context) of
+    case is_allowed(Context) of
         {'ok', ResellerId} ->
             check_plan_id(Context, PlanId, ResellerId);
         'false' ->
