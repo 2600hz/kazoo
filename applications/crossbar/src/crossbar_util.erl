@@ -964,7 +964,7 @@ maybe_update_descendants_count(AccountId, NewCount) ->
     maybe_update_descendants_count(AccountId, NewCount, 3).
 
 maybe_update_descendants_count(AccountId, _, Try) when Try =< 0 ->
-    io:fromat("too many attempts to update descendants count for ~s~p", [AccountId]);
+    io:format("too many attempts to update descendants count for ~s~n", [AccountId]);
 maybe_update_descendants_count(AccountId, NewCount, Try) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_doc(AccountDb, AccountId) of
@@ -973,7 +973,6 @@ maybe_update_descendants_count(AccountId, NewCount, Try) ->
         {'ok', JObj} ->
             maybe_update_descendants_count(AccountId, JObj, NewCount, Try)
     end.
-
 
 maybe_update_descendants_count(AccountId, JObj, NewCount, Try) ->
     OldCount = wh_json:get_integer_value(<<"descendants_count">>, JObj),
@@ -986,10 +985,6 @@ maybe_update_descendants_count(AccountId, JObj, NewCount, _, Try) ->
         'error' ->
             maybe_update_descendants_count(AccountId, NewCount, Try-1)
     end.
-
-
-
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1008,7 +1003,6 @@ update_descendants_count(AccountId, JObj, NewCount) ->
             io:format("updated descendant count for ~s~n", [AccountId]),
             'ok'
     end.
-
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
