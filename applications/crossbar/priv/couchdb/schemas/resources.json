@@ -336,7 +336,8 @@
                         "enum": [
                             "sip",
                             "freetdm",
-                            "skype"
+                            "skype",
+                            "amqp"
                         ],
                         "default": "sip"
                     },
