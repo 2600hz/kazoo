@@ -437,19 +437,26 @@ read(Number, Context) ->
 %%--------------------------------------------------------------------
 -spec find_numbers(cb_context:context()) -> cb_context:context().
 find_numbers(Context) ->
-    AccountId = cb_context:auth_account_id(Context),
-    QueryString = wh_json:set_value(<<"Account-ID">>, AccountId, cb_context:query_string(Context)),
+    JObj = get_find_numbers_req(Context),
     OnSuccess = fun(C) ->
-                    cb_context:set_resp_data(
-                        cb_context:set_resp_status(C, 'success')
-                        ,get_numbers(QueryString)
-                    )
+                        cb_context:setters(C
+                                           ,[{fun cb_context:set_resp_data/2, get_numbers(JObj)}
+                                             ,{fun cb_context:set_resp_status/2, 'success'}
+                                            ])
                 end,
-    Schema = wh_json:decode(?FIND_NUMBER_SCHEMA),
-    cb_context:validate_request_data(Schema
-                                     ,cb_context:set_req_data(Context, QueryString)
+    cb_context:validate_request_data(wh_json:decode(?FIND_NUMBER_SCHEMA)
+                                     ,cb_context:set_req_data(Context, JObj)
                                      ,OnSuccess
                                     ).
+
+-spec get_find_numbers_req(cb_context:context()) -> wh_json:object().
+get_find_numbers_req(Context) ->
+    JObj = cb_context:query_string(Context),
+    AccountId = cb_context:auth_account_id(Context),
+    Quantity = wh_json:get_integer_value(<<"quantity">>, JObj, 1),
+    wh_json:set_values([{<<"quantity">>, Quantity}
+                       ,{<<"Account-ID">>, AccountId}
+                       ], JObj).
 
 %%--------------------------------------------------------------------
 %% @private

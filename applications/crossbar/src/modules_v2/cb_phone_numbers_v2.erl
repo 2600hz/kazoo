@@ -483,10 +483,9 @@ clean_summary(Context) ->
 %%--------------------------------------------------------------------
 -spec find_numbers(cb_context:context()) -> cb_context:context().
 find_numbers(Context) ->
-    AccountId = cb_context:auth_account_id(Context),
-    JObj = wh_json:set_value(<<"Account-ID">>, AccountId, cb_context:query_string(Context)),
+    JObj = get_find_numbers_req(Context),
     Prefix = wh_json:get_ne_value(<<"prefix">>, JObj),
-    Quantity = wh_json:get_ne_value(<<"quantity">>, JObj, 1),
+    Quantity = wh_json:get_integer_value(<<"quantity">>, JObj, 1),
     OnSuccess = fun(C) ->
                     cb_context:set_resp_data(
                       cb_context:set_resp_status(C, 'success')
@@ -498,6 +497,15 @@ find_numbers(Context) ->
                                      ,cb_context:set_req_data(Context, JObj)
                                      ,OnSuccess
                                     ).
+
+-spec get_find_numbers_req(cb_context:context()) -> wh_json:object().
+get_find_numbers_req(Context) ->
+    JObj = cb_context:query_string(Context),
+    AccountId = cb_context:auth_account_id(Context),
+    Quantity = wh_json:get_integer_value(<<"quantity">>, JObj, 1),
+    wh_json:set_values([{<<"quantity">>, Quantity}
+                       ,{<<"Account-ID">>, AccountId}
+                       ], JObj).
 
 %%--------------------------------------------------------------------
 %% @private
