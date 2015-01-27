@@ -67,13 +67,29 @@ resource_exists() -> 'true'.
 %% @end
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
-validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
-    Type = wh_json:get_value(<<"pvt_type">>, cb_context:doc(Context)),
-    route_by_type(Type, Context).
+validate(Context) ->
+    validate_hotdesks(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_hotdesks(cb_context:context(), http_method(), wh_proplist()) -> cb_context:context().
+validate_hotdesks(Context, ?HTTP_GET, [{<<"hotdesks">>, _}, {<<"users">>, [UserId]}|_]) ->
+    route_by_type({<<"user">>, UserId}, Context);
+validate_hotdesks(Context, ?HTTP_GET, [{<<"hotdesks">>, _}, {<<"devices">>, [DeviceId]}|_]) ->
+    route_by_type({<<"device">>, DeviceId}, Context);
+validate_hotdesks(Context, ?HTTP_GET, [{<<"hotdesks">>, _}, {<<"accounts">>, [AccountId]}|_]) ->
+    route_by_type({<<"account">>, AccountId}, Context);
+validate_hotdesks(Context, ?HTTP_GET, _) ->
+    route_by_type('undefined', Context).
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -85,40 +101,17 @@ validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
--spec route_by_type(ne_binary(), cb_context:context()) ->
-                           cb_context:context().
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec route_by_type('undefined' | {ne_binary(), ne_binary()}, cb_context:context()) -> cb_context:context().
 route_by_type('undefined', Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
-route_by_type(<<"device">>, Context) ->
-    UserIds = wh_json:get_value([<<"hotdesk">>, <<"users">>], cb_context:doc(Context), wh_json:new()),
-    UserJObjs = wh_json:foldl(
-                  fun(UserId, _, Acc) ->
-                          case get_username(UserId, cb_context:account_db(Context)) of
-                              'undefined' -> Acc;
-                              JObj -> [JObj|Acc]
-                          end
-                  end, [], UserIds),
-    case UserJObjs of
-        [] -> cb_context:add_system_error('not_found', Context);
-        RespData ->
-            cb_context:set_resp_data(
-              cb_context:set_resp_status(Context, 'success')
-              ,RespData
-             )
-    end;
-route_by_type(<<"user">>, #cb_context{doc=Doc}=Context) ->
-    UserId = wh_json:get_value(<<"_id">>, Doc),
-    crossbar_doc:load_view(?CB_LIST, [{<<"key">>, UserId}], Context, fun normalize_view_results/2).
-
--spec get_username(ne_binary(), ne_binary()) -> api_object().
-get_username(UserId, AccoundDb) ->
-    case couch_mgr:open_cache_doc(AccoundDb, UserId) of
-        {'error', _} -> 'undefined';
-        {'ok', JObj} ->
-            FirstName = wh_json:get_value(<<"first_name">>, JObj),
-            LastName = wh_json:get_value(<<"last_name">>, JObj),
-            wh_json:from_list([{<<"first_name">>, FirstName}
-                               ,{<<"last_name">>, LastName}
-                               ,{<<"id">>, UserId}
-                              ])
-    end.
+route_by_type({<<"device">>, DeviceId}, Context) ->
+    crossbar_doc:load_view(?CB_LIST, [{<<"key">>, DeviceId}], Context, fun normalize_view_results/2);
+route_by_type({<<"user">>, UserId}, Context) ->
+    crossbar_doc:load_view(?CB_LIST, [{<<"key">>, UserId}], Context, fun normalize_view_results/2);
+route_by_type({<<"account">>, _}, Context) ->
+    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
