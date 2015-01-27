@@ -370,10 +370,12 @@ maybe_delete(Context, Id, []) ->
     delete_doc(Context, Id).
 
 -spec delete_doc(cb_context:context(), ne_binary()) -> cb_context:context().
-delete_doc(Context, _Id) ->
-    Context1 = crossbar_doc:delete(Context),
+delete_doc(Context, Id) ->
+    Context1 = crossbar_doc:delete(Context, 'permanent'),
     case cb_context:resp_status(Context1) of
-        'success' -> leak_doc_id(Context1);
+        'success' ->
+            couch_mgr:flush_cache_doc(cb_context:account_db(Context), Id),
+            leak_doc_id(Context1);
         _Status -> Context1
     end.
 
@@ -681,7 +683,7 @@ read_template(Context, Id, Accept) ->
             lager:debug("found attachment ~s in ~s", [AttachmentName, Id]),
 
             cb_context:add_resp_headers(
-              crossbar_doc:load_attachment(Id, AttachmentName, Context)
+              read_account_attachement(Context, Id, AttachmentName)
               ,[{<<"Content-Disposition">>, attachment_filename(Id, Accept)}
                 ,{<<"Content-Type">>, wh_json:get_value(<<"content_type">>, Meta)}
                 ,{<<"Content-Length">>, wh_json:get_value(<<"length">>, Meta)}
@@ -694,6 +696,29 @@ attachment_filename(Id, Accept) ->
      ,kz_notification:resp_id(Id)
      ,$., cb_modules_util:content_type_to_extension(Accept)
     ].
+
+-spec read_system_attachment(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
+read_system_attachment(Context, DocId, Name) ->
+    {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
+    crossbar_doc:load_attachment(DocId, Name, cb_context:set_account_db(Context, MasterAccountDb)).
+
+-spec read_account_attachement(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
+read_account_attachement(Context, DocId, Name) ->
+    Context1 = crossbar_doc:load_attachment(DocId, Name, Context),
+    case {cb_context:resp_error_code(Context1)
+          ,cb_context:resp_status(Context1)
+         }
+    of
+        {404, 'error'} ->
+            lager:debug("~s not found in account, reading from master", [DocId]),
+            read_system_attachment(Context, DocId, Name);
+        {_Code, 'success'} ->
+            lager:debug("loaded ~s from account database", [DocId]),
+            Context1;
+        {_Code, _Status} ->
+            lager:debug("failed to load ~s: ~p", [DocId, _Code]),
+            Context1
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
