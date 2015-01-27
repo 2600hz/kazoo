@@ -36,18 +36,23 @@ send_response(Reqest, Responses) ->
     wapi_frontier:publish_acls_resp(ServerID, Resp).
 
 -spec make_section(wh_json:objects(), ne_binary()) -> wh_json:object().
--spec make_section(ne_binary(), api_object(), api_object()) -> wh_json:object().
+-spec make_section(ne_binary(), api_binary(), api_binaries(), api_binary()) -> wh_json:object().
 make_section([], _) ->
     wh_json:new();
 make_section([JObj], Section) ->
     Order = wh_json:get_value([<<"value">>, <<"acls">>, <<"order">>], JObj),
     CIDRs = wh_json:get_value([<<"value">>, <<"acls">>, <<"cidr">>], JObj),
-    make_section(Section, Order, CIDRs).
-make_section(_, Order, CIDRs)
-    when Order =:= 'undefined' orelse CIDRs =:= 'undefined' ->
+    UserAgent = wh_json:get_value([<<"value">>, <<"acls">>, <<"user_agent">>], JObj),
+    make_section(Section, Order, CIDRs, UserAgent).
+make_section(_, Order, CIDRs, _) when Order =:= 'undefined'
+                                      orelse CIDRs =:= 'undefined' ->
         wh_json:new();
-make_section(Section, Order, CIDRs) ->
-    wh_json:from_list([{Section, wh_json:from_list([{<<"Order">>, Order}, {<<"CIDR">>, CIDRs}])}]).
+make_section(Section, Order, CIDRs, UserAgent) ->
+    Props = props:filter_undefined([{<<"Order">>, Order}
+                                    ,{<<"CIDR">>, CIDRs}
+                                    ,{<<"User-Agent">>, UserAgent}
+                                   ]),
+    wh_json:from_list([{Section, wh_json:from_list(Props)}]).
 
 -spec lookup_acl_records(ne_binary(), boolean()) -> wh_json:objects().
 lookup_acl_records(Entity, IncludeRealm) ->

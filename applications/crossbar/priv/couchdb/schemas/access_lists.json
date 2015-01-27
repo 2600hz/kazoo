@@ -22,6 +22,12 @@
       "required": true,
       "name": "order",
       "description": "Allow-Deny or Deny-Allow?"
+    },
+    "user_agent":{
+      "type":"string",
+      "required": false,
+      "name":"User-Agent",
+      "description": "RegExp to match valid user agent strings"
     }
   }
 }
