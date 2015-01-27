@@ -1,9 +1,9 @@
 {
-    "_id": "_design/acls"
+    "_id": "_design/access_lists"
     ,"language": "javascript"
     ,"views": {
         "crossbar_listing": {
-            "map": "function(doc) { if ((doc.pvt_type != 'account' && doc.pvt_type != 'device') || doc.pvt_deleted || doc.acls == null) return; name = doc.realm || doc.sip.username; emit(name, {'type':doc.pvt_type, 'acls':doc.acls}); };"
+            "map": "function(doc) { if ((doc.pvt_type != 'account' && doc.pvt_type != 'device') || doc.pvt_deleted || !doc.access_lists) return; name = doc.realm || doc.sip.username; emit(name, { 'type': doc.pvt_type, 'acls': doc.access_lists }); };"
         }
     }
 }

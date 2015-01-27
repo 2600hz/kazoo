@@ -79,9 +79,14 @@ run_acl_query(Entity, IncludeRealm) ->
                end,
     {'ok', UserDb} = whapps_util:get_account_by_realm(frontier_utils:extract_realm(Entity)),
     lager:debug("Looking for ~s's acls in ~s", [Entity, UserDb]),
-    {'ok', Results} = couch_mgr:get_results(UserDb, <<"acls/crossbar_listing">>, ViewOpts),
-    lager:debug("Found ~p records", [length(Results)]),
-    Results.
+    case couch_mgr:get_results(UserDb, <<"access_lists/crossbar_listing">>, ViewOpts) of
+        {'ok', Results} ->
+            lager:debug("Found ~p records", [length(Results)]),
+            Results;
+        _ ->
+            lager:info("Can't fetch records"),
+            []
+    end.
 
 -spec make_acl_view(ne_binaries() | ne_binary()) -> wh_proplist().
 make_acl_view(Keys) when is_list(Keys) ->
