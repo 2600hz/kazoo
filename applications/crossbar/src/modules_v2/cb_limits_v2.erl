@@ -87,9 +87,24 @@ process_billing(Context, _Nouns, _Verb) -> Context.
 
 -spec is_allowed(cb_context:context()) -> boolean().
 is_allowed(Context) ->
-    ResellerId = wh_services:find_reseller_id(cb_context:account_id(Context)),
+    AccountId = cb_context:account_id(Context),
     AuthAccountId = cb_context:auth_account_id(Context),
-    (AuthAccountId =:= ResellerId orelse wh_util:is_system_admin(AuthAccountId)).
+    IsSystemAdmin = wh_util:is_system_admin(AuthAccountId),
+    {'ok', MasterAccount} = whapps_util:get_master_account_id(),
+    case wh_services:find_reseller_id(AccountId) of
+        AuthAccountId ->
+            lager:debug("allowing reseller to update limits"),
+            'true';
+        MasterAccount ->
+            lager:debug("allowing direct account to update limits"),
+            'true';
+        _Else when IsSystemAdmin ->
+            lager:debug("allowing system admin to update limits"),
+            'true';
+        _Else ->
+            lager:debug("sub-accounts of non-master resellers must contact the reseller to change their limits"),
+            'false'
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
