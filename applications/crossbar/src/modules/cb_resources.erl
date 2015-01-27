@@ -213,7 +213,7 @@ validate_resources(Context, ?HTTP_GET) ->
 validate_resources(Context, ?HTTP_PUT) ->
     case cb_context:account_db(Context) of
         ?WH_OFFNET_DB -> create(Context);
-        _AccountDb -> cb_local_resources:validate_request('undefined', Context)
+        _AccountDb -> create_local(Context)
     end.
 
 -spec validate_resource(cb_context:context(), path_token(), http_method()) -> cb_context:context().
@@ -222,7 +222,7 @@ validate_resource(Context, Id, ?HTTP_GET) ->
 validate_resource(Context, Id, ?HTTP_POST) ->
     case cb_context:account_db(Context) of
         ?WH_OFFNET_DB -> update(Id, Context);
-        _AccountDb -> cb_local_resources:validate_request(Id, Context)
+        _AccountDb -> update_local(Context, Id)
     end;
 validate_resource(Context, Id, ?HTTP_DELETE) ->
     read(Id, Context).
@@ -478,6 +478,11 @@ create_job(Context) ->
     OnSuccess = fun(C) -> on_successful_job_validation('undefined', C) end,
     cb_context:validate_request_data(<<"resource_jobs">>, Context, OnSuccess).
 
+-spec create_local(cb_context:context()) -> cb_context:context().
+create_local(Context) ->
+    OnSuccess = fun(C) -> on_successful_local_validation('undefined', C) end,
+    cb_context:validate_request_data(<<"resources">>, Context, OnSuccess).
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -488,6 +493,11 @@ create_job(Context) ->
 -spec update(ne_binary(), cb_context:context()) -> cb_context:context().
 update(Id, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
+    cb_context:validate_request_data(<<"resources">>, Context, OnSuccess).
+
+-spec update_local(cb_context:context(), ne_binary()) -> cb_context:context().
+update_local(Context, Id) ->
+    OnSuccess = fun(C) -> on_successful_local_validation(Id, C) end,
     cb_context:validate_request_data(<<"resources">>, Context, OnSuccess).
 
 %%--------------------------------------------------------------------
@@ -503,6 +513,11 @@ on_successful_validation('undefined', Context) ->
                       );
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context).
+
+
+-spec on_successful_local_validation(api_binary(), cb_context:context()) -> cb_context:context().
+on_successful_local_validation(Id, Context) ->
+    cb_local_resources:validate_request(Id, Context).
 
 -spec on_successful_job_validation('undefined', cb_context:context()) -> cb_context:context().
 on_successful_job_validation('undefined', Context) ->
