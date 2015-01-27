@@ -683,7 +683,7 @@ read_template(Context, Id, Accept) ->
             lager:debug("found attachment ~s in ~s", [AttachmentName, Id]),
 
             cb_context:add_resp_headers(
-              read_account_attachement(Context, Id, AttachmentName)
+              read_account_attachment(Context, Id, AttachmentName)
               ,[{<<"Content-Disposition">>, attachment_filename(Id, Accept)}
                 ,{<<"Content-Type">>, wh_json:get_value(<<"content_type">>, Meta)}
                 ,{<<"Content-Length">>, wh_json:get_value(<<"length">>, Meta)}
@@ -702,8 +702,8 @@ read_system_attachment(Context, DocId, Name) ->
     {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
     crossbar_doc:load_attachment(DocId, Name, cb_context:set_account_db(Context, MasterAccountDb)).
 
--spec read_account_attachement(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
-read_account_attachement(Context, DocId, Name) ->
+-spec read_account_attachment(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
+read_account_attachment(Context, DocId, Name) ->
     Context1 = crossbar_doc:load_attachment(DocId, Name, Context),
     case {cb_context:resp_error_code(Context1)
           ,cb_context:resp_status(Context1)
