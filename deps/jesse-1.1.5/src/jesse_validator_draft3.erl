@@ -354,7 +354,7 @@ check_properties(Value, Properties, State) ->
                                handle_data_invalid( {?missing_required_property
                                                      , PropertyName}
                                                    , Value
-                                                   , CurrentState);
+                                                   , jesse_state:set_current_schema(CurrentState, PropertySchema));
                              _    ->
                                CurrentState
                            end;
