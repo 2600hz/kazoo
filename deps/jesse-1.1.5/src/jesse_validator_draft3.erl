@@ -273,9 +273,9 @@ check_type(Value, Type, State) ->
 
 %% @private
 is_type_valid(Value, ?STRING, _State)  -> is_binary(Value);
-is_type_valid(Value, ?NUMBER, _State)  -> is_number(Value);
-is_type_valid(Value, ?INTEGER, _State) -> is_integer(Value);
-is_type_valid(Value, ?BOOLEAN, _State) -> is_boolean(Value);
+is_type_valid(Value, ?NUMBER, _State)  -> try_converting(Value, fun wh_util:to_number/1, fun erlang:is_number/1);
+is_type_valid(Value, ?INTEGER, _State) -> try_converting(Value, fun wh_util:to_integer/1, fun erlang:is_integer/1);
+is_type_valid(Value, ?BOOLEAN, _State) -> wh_util:is_boolean(Value);
 is_type_valid(Value, ?OBJECT, _State)  -> jesse_lib:is_json_object(Value);
 is_type_valid(Value, ?ARRAY, _State)   -> jesse_lib:is_array(Value);
 is_type_valid(Value, ?NULL, _State)    -> jesse_lib:is_null(Value);
@@ -284,6 +284,15 @@ is_type_valid(Value, UnionType, State) ->
   case jesse_lib:is_array(UnionType) of
     true  -> check_union_type(Value, UnionType, State);
     false -> true
+  end.
+
+try_converting(Value, CastFun, ValidatorFun) ->
+  try CastFun(Value) of
+      Casted ->
+       ValidatorFun(Casted)
+  catch
+    _E:_R ->
+       'false'
   end.
 
 %% @private
