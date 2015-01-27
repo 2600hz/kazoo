@@ -110,27 +110,8 @@ normalize_view_results(JObj, Acc) ->
 route_by_type('undefined', Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
 route_by_type({<<"device">>, DeviceId}, Context) ->
-    crossbar_doc:load_view(?CB_LIST, view_options(DeviceId), Context, fun normalize_view_results/2);
+    crossbar_doc:load_view(?CB_LIST, [{<<"key">>, DeviceId}], Context, fun normalize_view_results/2);
 route_by_type({<<"user">>, UserId}, Context) ->
-    io:format("MARKER:cb_hotdesks.erl:115 ~p~n", [UserId]),
-    crossbar_doc:load_view(?CB_LIST, view_options(UserId), Context, fun normalize_view_results/2);
+    crossbar_doc:load_view(?CB_LIST, [{<<"key">>, UserId}], Context, fun normalize_view_results/2);
 route_by_type({<<"account">>, _}, Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
-
-
-view_options(Id) ->
-    [{<<"key">>, Id}].
-
-
-
-
-
-
-
-
-
-
-
-
-
-
