@@ -65,7 +65,7 @@
 
 -define(TRACKED_CALL_EVENTS, [<<"DTMF">>
                               ,<<"CHANNEL_BRIDGE">>, <<"CHANNEL_DESTROY">>
-                              ,<<"CHANNEL_TRANSFEREE">>
+                              ,<<"CHANNEL_TRANSFEREE">>, <<"CHANNEL_REPLACED">>
                              ]).
 
 -define(DYN_BINDINGS(CallId), {'call', [{'restrict_to', ?TRACKED_CALL_EVENTS}
