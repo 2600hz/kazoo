@@ -70,7 +70,7 @@
 
 -type wh_proplist_value() :: any().
 -type wh_proplist_values() :: [wh_proplist_value(),...] | [].
--type wh_proplist_key() :: binary() | atom() | number() | string() | binary().
+-type wh_proplist_key() :: ne_binary() | atom() | number() | string() | ne_binaries().
 -type wh_proplist_keys() :: [wh_proplist_key(),...] | [].
 -type wh_proplist_kv(K, V) :: [{K, V} | atom(),...] | [].
 -type wh_proplist_k(K) :: wh_proplist_kv(K, wh_proplist_value()).
@@ -183,13 +183,13 @@
 %% Used by ecallmgr and wapi_dialplan at least
 -define(CALL_EVENTS,
         [<<"CALL_SECURE">>,<<"CALL_UPDATE">>
-         ,<<"CHANNEL_ANSWER">>, <<"CHANNEL_BRIDGE">>
+         ,<<"CHANNEL_ANSWER">>
          ,<<"CHANNEL_CREATE">>, <<"CHANNEL_DESTROY">>
          ,<<"CHANNEL_EXECUTE">>, <<"CHANNEL_EXECUTE_COMPLETE">>,<<"CHANNEL_EXECUTE_ERROR">>
          ,<<"CHANNEL_FAX_STATUS">>,<<"CHANNEL_INTERCEPTED">>
          ,<<"CHANNEL_PROGRESS_MEDIA">>,<<"CHANNEL_REPLACED">>
          ,<<"CHANNEL_TRANSFEREE">>,<<"CHANNEL_TRANSFEROR">>
-         ,<<"CHANNEL_UNBRIDGE">>
+         ,<<"CHANNEL_BRIDGE">>, <<"CHANNEL_UNBRIDGE">>
          ,<<"DETECTED_TONE">>,<<"DTMF">>
          ,<<"LEG_CREATED">>, <<"LEG_DESTROYED">>
          ,<<"RECORD_START">>,<<"RECORD_STOP">>
