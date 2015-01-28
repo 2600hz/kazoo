@@ -9,7 +9,7 @@
 
 -export([sync/2]).
 -export([is_good_standing/1]).
--export([transactions/3]).
+-export([transactions/2]).
 -export([subscriptions/1]).
 -export([commit_transactions/2]).
 -export([charge_transactions/2]).
@@ -118,23 +118,83 @@ sync([ServiceItem|ServiceItems], AccountId, Updates) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec transactions(ne_binary(), 'undefined' | gregorian_seconds(), 'undefined' | gregorian_seconds()) ->
+-spec transactions(ne_binary(), wh_proplist()) ->
                           {'error', 'not_found'} |
                           {'error', 'unknown_error'} |
                           {'ok', wh_transaction:transactions()}.
-transactions(Account, Min, Max) ->
-    From = timestamp_to_braintree(Min),
-    To = timestamp_to_braintree(Max),
+transactions(Account, Options) ->
+    From = timestamp_to_braintree(props:get_value('from', Options)),
+    To = timestamp_to_braintree(props:get_value('to', Options)),
     AccountId = wh_util:format_account_id(Account, 'raw'),
     try braintree_transaction:find_by_customer(AccountId, From, To) of
         BTTransactions ->
             JObjs = [braintree_transaction:record_to_json(Tr) || Tr <- BTTransactions],
-            Transactions = convert_transactions(JObjs),
+            Filtered = filter_prorated(JObjs, props:get_value('prorated', Options, 'true')),
+            Transactions = convert_transactions(Filtered),
             {'ok', Transactions}
     catch
         'throw':{'not_found', _} -> {'error', 'not_found'};
         _:_ -> {'error', 'unknown_error'}
     end.
+
+filter_prorated(Transactions, 'true') ->
+    [Tr || Tr <- Transactions, is_prorated(Tr)];
+filter_prorated(Transactions, 'false') ->
+    [Tr || Tr <- Transactions, not(is_prorated(Tr))].
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec is_prorated(wh_json:object()) -> boolean().
+is_prorated(BTransaction) ->
+    case wh_json:get_value(<<"subscription_id">>, BTransaction) of
+        'undefined' -> 'true';
+        _Id ->
+            Addon = calculate_addon(BTransaction),
+            Discount = calculate_discount(BTransaction),
+            Amount = wh_json:get_number_value(<<"amount">>, BTransaction, 0),
+            (Addon - Discount) =/= Amount
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec calculate_addon(wh_json:object()) -> number().
+calculate_addon(BTransaction) ->
+    Addons = wh_json:get_value(<<"add_ons">>, BTransaction, []),
+    calculate(Addons, 0).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec calculate_discount(wh_json:object()) -> number().
+calculate_discount(BTransaction) ->
+    Addons = wh_json:get_value(<<"discounts">>, BTransaction, []),
+    calculate(Addons, 0).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec calculate(wh_json:objects(), number()) -> number().
+calculate([], Acc) -> Acc/100;
+calculate([Addon|Addons], Acc) ->
+    Amount = wh_json:get_number_value(<<"amount">>, Addon, 0)*100,
+    Quantity = wh_json:get_number_value(<<"quantity">>, Addon, 0),
+    calculate(Addons, (Amount*Quantity+Acc)).
+
 
 %%--------------------------------------------------------------------
 %% @public
