@@ -160,6 +160,7 @@ add_call_binding(Call, Events) ->
 -spec rm_call_binding(api_binary() | whapps_call:call()) -> 'ok'.
 rm_call_binding('undefined') -> 'ok';
 rm_call_binding(CallId) ->
+    catch gproc:unreg(?KONAMI_REG({'fsm', CallId})),
     case call_has_listeners(CallId) of
         'true' -> 'ok';
         'false' -> really_remove_call_bindings(CallId)
@@ -168,6 +169,7 @@ rm_call_binding(CallId) ->
 -spec rm_call_binding(api_binary(), ne_binaries()) -> 'ok'.
 rm_call_binding('undefined', _Evts) -> 'ok';
 rm_call_binding(CallId, Events) ->
+    catch gproc:unreg(?KONAMI_REG({'pid', CallId})),
     case call_has_listeners(CallId) of
         'true' -> 'ok';
         'false' -> really_remove_call_bindings(CallId, Events)
