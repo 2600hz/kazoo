@@ -67,7 +67,7 @@ start_fsm(Call, JObj) ->
 
     BEndpointId = b_endpoint_id(JObj, ListenOn),
 
-    lager:debug("a endpoint: ~s b: ~s", [whapps_call:authorizing_id(Call), BEndpointId]),
+    lager:debug("a endpoint: ~s b endpoint: ~s", [whapps_call:authorizing_id(Call), BEndpointId]),
 
     gen_fsm:enter_loop(?MODULE, [], 'unarmed'
                        ,#state{numbers=numbers(Call, JObj)
@@ -175,14 +175,14 @@ handle_event(?EVENT(CallId, <<"CHANNEL_BRIDGE">>, Evt)
              ,StateName
              ,#state{call_id=CallId}=State
             ) ->
-    lager:debug("channel_bridge recv for ~s to ~s", [CallId, wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt)]),
-    {'next_state', StateName, handle_channel_bridged(State, Evt)};
+    OtherLeg = wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt),
+    {'next_state', StateName, handle_channel_bridged(State, Evt, CallId, OtherLeg)};
 handle_event(?EVENT(OtherLeg, <<"CHANNEL_BRIDGE">>, Evt)
              ,StateName
              ,#state{other_leg=OtherLeg}=State
             ) ->
-    lager:debug("b leg channel_bridge recv for ~s to ~s", [OtherLeg, wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt)]),
-    {'next_state', StateName, handle_channel_bridged(State, Evt)};
+    CallId = wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt),
+    {'next_state', StateName, handle_channel_bridged(State, Evt, CallId, OtherLeg)};
 
 handle_event(?EVENT(_AccountId, <<"CHANNEL_ANSWER">>, Evt)
              ,StateName
@@ -195,8 +195,15 @@ handle_event(?EVENT(CallId, <<"CHANNEL_TRANSFEREE">>, Evt)
              ,StateName
              ,#state{call_id=CallId}=State
             ) ->
-    lager:debug("~s has been transferred", [CallId]),
-    {'next_state', StateName, handle_channel_transferee(Evt, State)};
+    lager:debug("a-leg ~s has been transferred", [CallId]),
+    {'next_state', StateName, handle_channel_transferee(CallId, Evt, State)};
+
+handle_event(?EVENT(OtherLeg, <<"CHANNEL_TRANSFEREE">>, Evt)
+             ,StateName
+             ,#state{other_leg=OtherLeg}=State
+            ) ->
+    lager:debug("b-leg ~s has been transferred", [OtherLeg]),
+    {'next_state', StateName, handle_channel_transferee(OtherLeg, Evt, State)};
 
 handle_event(?EVENT(CallId, EventName, _Evt)
              ,_StateName
@@ -278,11 +285,36 @@ handle_event(?EVENT(Target, <<"transferred">>, Evt)
     {'next_state', StateName, State#state{call=whapps_call:set_other_leg_call_id(Target, Call)
                                           ,call_id=Transferee
                                          }};
-
-handle_event(_Event, StateName, #state{call_id=_CallId
-                                       ,other_leg=_OtherLeg
-                                       ,listen_on=_LO
-                                      }=State) ->
+handle_event(?EVENT(CallId, <<"CHANNEL_UNBRIDGE">>, Evt)
+             ,StateName
+             ,#state{call_id=CallId
+                     ,other_leg=OtherLeg
+                    }=State
+            ) ->
+    case wh_json:get_value(<<"Other-Leg-Call-Id">>, Evt) of
+        OtherLeg ->
+            lager:debug("a leg ~s has unbridged from our leg ~s", [CallId, OtherLeg]);
+        _OL ->
+            lager:debug("a leg ~s has unbridged from b leg ~s (ours: ~s)", [CallId, _OL, OtherLeg])
+    end,
+    {'next_state', StateName, handle_unbridge(CallId, State)};
+handle_event(?EVENT(_CallId, _EventName, _Evt)
+             ,StateName
+             ,#state{call_id=_CallId
+                     ,other_leg=_OtherLeg
+                     ,listen_on=_LO
+                    }=State
+            ) ->
+    lager:debug("unhandled event ~s for ~s", [_EventName, _CallId]),
+    lager:debug("listen_on: '~s' call id: '~s' other leg: '~s'", [_LO, _CallId, _OtherLeg]),
+    {'next_state', StateName, State};
+handle_event(_Event
+             ,StateName
+             ,#state{call_id=_CallId
+                     ,other_leg=_OtherLeg
+                     ,listen_on=_LO
+                    }=State
+            ) ->
     lager:debug("unhandled event in ~s: ~p", [StateName, _Event]),
     lager:debug("listen_on: '~s' call id: '~s' other leg: '~s'", [_LO, _CallId, _OtherLeg]),
     {'next_state', StateName, State}.
@@ -354,7 +386,10 @@ is_a_leg(Call, <<_/binary>> = EndpointId) ->
 is_a_leg(Call, JObj) ->
     is_a_leg(Call, wh_json:get_value(<<"Endpoint-ID">>, JObj)).
 
--define(B_LEG_EVENTS, [<<"DTMF">>, <<"CHANNEL_ANSWER">>, <<"CHANNEL_BRIDGE">>, <<"CHANNEL_TRANSFEREE">>]).
+-define(B_LEG_EVENTS, [<<"DTMF">>, <<"CHANNEL_ANSWER">>
+                       ,<<"CHANNEL_BRIDGE">>, <<"CHANNEL_TRANSFEREE">>
+                       ,<<"CHANNEL_REPLACED">>
+                      ]).
 
 -spec listen_on(whapps_call:call(), wh_json:object()) -> 'a' | 'b' | 'ab'.
 listen_on(Call, JObj) ->
@@ -510,47 +545,33 @@ add_bleg_dtmf(#state{b_collected_dtmf=Collected
                 ,b_collected_dtmf = <<Collected/binary, DTMF/binary>>
                }.
 
--spec handle_channel_bridged(state(), wh_json:object()) -> state().
--spec handle_channel_bridged(state(), wh_json:object(), api_binary()) -> state().
-handle_channel_bridged(State, JObj) ->
-    handle_channel_bridged(State, JObj, wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj)).
-
-handle_channel_bridged(State, _JObj, 'undefined') -> State;
-handle_channel_bridged(#state{call_id='undefined'
+-spec handle_channel_bridged(state(), wh_json:object(), ne_binary(), ne_binary()) -> state().
+handle_channel_bridged(#state{call=Call
+                              ,call_id=CallId
+                              ,listen_on=ListenOn
                               ,other_leg=OtherLeg
+                              ,b_endpoint_id=BEndpointId
                              }=State
                        ,_JObj
                        ,CallId
-                      ) ->
-    lager:debug("b leg ~s bridged to new a leg ~s", [OtherLeg, CallId]),
-    maybe_add_call_event_bindings(CallId),
-    State#state{call_id=CallId
-                ,call='undefined'
-               };
-handle_channel_bridged(#state{call='undefined'
-                              ,other_leg=OtherLeg
-                             }=State
-                       ,_JObj
                        ,OtherLeg
                       ) ->
-    lager:debug("recv channel_bridge to ~s", [OtherLeg]),
-    maybe_add_call_event_bindings(OtherLeg),
-    State#state{other_leg=OtherLeg};
-handle_channel_bridged(#state{call=Call
-                              ,other_leg=OtherLeg
-                              ,listen_on=ListenOn
-                             }=State
-                       ,_JObj
-                       ,OtherLeg
-                      ) ->
-    lager:debug("recv channel_bridge to ~s", [OtherLeg]),
-
+    lager:debug("a leg ~s bridged to our b leg ~s (~s)", [CallId, OtherLeg, BEndpointId]),
     maybe_bind_to_other_leg(OtherLeg, ListenOn),
     State#state{other_leg=OtherLeg
                 ,call=whapps_call:set_other_leg_call_id(OtherLeg, Call)
                };
-handle_channel_bridged(#state{other_leg=_OL, call_id=_CallId}=State, _JObj, _OtherLeg) ->
+handle_channel_bridged(#state{other_leg='undefined', call_id=_CL}, _JObj, _CallId, _OtherLeg) ->
+    lager:debug("ignoring bridge from ~s -> ~s when tracking ~s and no b leg, exiting"
+                ,[_CallId, _OtherLeg, _CL]
+               ),
+    exit('normal');
+handle_channel_bridged(#state{other_leg=_OL, call_id=_CL}=State, _JObj, _CallId, _OtherLeg) ->
+    lager:debug("ignoring bridge from ~s -> ~s when tracking ~s and ~s"
+                ,[_CallId, _OtherLeg, _CL, _OL]
+               ),
     State.
+
 
 -spec maybe_bind_to_other_leg(ne_binary(), listen_on()) -> 'ok'.
 maybe_bind_to_other_leg(_OtherLeg, 'a') -> 'ok';
@@ -569,24 +590,43 @@ handle_channel_answered(CallId, Evt, #state{call_id='undefined'
     lager:debug("no a-leg call-id"),
     lager:debug("other leg: ~s evt other: ~s", [CallId, OL]),
     State;
-handle_channel_answered(_OtherLeg, _Evt, #state{other_leg='undefined'
-                                                ,listen_on='a'
-                                               }=State) ->
-    State;
 handle_channel_answered(OtherLeg, Evt, #state{b_endpoint_id=EndpointId
                                               ,call=Call
                                              }=State) ->
     case authorizing_id(Evt) of
         EndpointId ->
-            lager:debug("b leg ~s answered", [OtherLeg]),
+            lager:debug("b leg ~s for endpoint ~s has answered", [OtherLeg, EndpointId]),
+            maybe_add_call_event_bindings(OtherLeg),
             State#state{other_leg=OtherLeg
                         ,call=whapps_call:set_other_leg_call_id(OtherLeg, Call)
                        };
-        _EID -> State
+        _EID ->
+            lager:debug("b leg ~s for other endpoint ~s answered", [OtherLeg, _EID]),
+            maybe_track_other_leg(OtherLeg, State)
     end.
 
--spec handle_channel_transferee(wh_json:object(), state()) -> state().
-handle_channel_transferee(Evt, #state{other_leg=OtherLeg}=State) ->
+-spec maybe_track_other_leg(ne_binary(), state()) -> state().
+maybe_track_other_leg(OtherLeg, #state{listen_on=ListenOn
+                                       ,b_endpoint_id='undefined'
+                                       ,other_leg='undefined'
+                                       ,call=Call
+                                      }=State)
+  when ListenOn =:= 'a';
+       ListenOn =:= 'ab' ->
+    lager:debug("tracking a leg events, so noting b leg ~s", [OtherLeg]),
+    maybe_add_call_event_bindings(OtherLeg),
+    State#state{other_leg=OtherLeg
+                ,call=whapps_call:set_other_leg_call_id(OtherLeg, Call)
+               };
+maybe_track_other_leg(_OtherLeg, #state{other_leg=_OurLeg}=State) ->
+    lager:debug("not tracking ~s since we have ~s", [_OtherLeg, _OurLeg]),
+    State.
+
+-spec handle_channel_transferee(ne_binary(), wh_json:object(), state()) -> state().
+handle_channel_transferee(CallId, Evt, #state{call_id=CallId
+                                              ,other_leg=OtherLeg
+                                              ,call=Call
+                                             }=State) ->
     case {wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt)
           ,wh_json:get_value(<<"Target-Call-ID">>, Evt)
          }
@@ -594,16 +634,58 @@ handle_channel_transferee(Evt, #state{other_leg=OtherLeg}=State) ->
         {_OL, 'undefined'} -> State;
         {'undefined', TargetLeg} ->
             lager:debug("transferring to ~s", [TargetLeg]),
+
             maybe_add_call_event_bindings(TargetLeg),
             konami_event_listener:add_konami_binding(TargetLeg),
-            State#state{other_leg=TargetLeg};
+
+            State#state{other_leg=TargetLeg
+                        ,call=whapps_call:set_other_leg_call_id(TargetLeg, Call)
+                       };
         {OtherLeg, TargetLeg} ->
             lager:debug("transferring from ~s to ~s", [OtherLeg, TargetLeg]),
-            maybe_add_call_event_bindings(TargetLeg),
             maybe_remove_call_event_bindings(OtherLeg),
+
+            maybe_add_call_event_bindings(TargetLeg),
             konami_event_listener:add_konami_binding(TargetLeg),
-            State#state{other_leg=TargetLeg};
-        {_OL, _TL} -> State
+
+            State#state{other_leg=TargetLeg
+                        ,call=whapps_call:set_other_leg_call_id(TargetLeg, Call)
+                       };
+        {_OL, _TL} ->
+            lager:debug("ignoring transfer of ~s to ~s", [_OL, _TL]),
+            State
+    end;
+handle_channel_transferee(OtherLeg, Evt, #state{call_id=Call
+                                                ,other_leg=OtherLeg
+                                                ,call=Call
+                                               }=State) ->
+    case {wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt)
+          ,wh_json:get_value(<<"Target-Call-ID">>, Evt)
+         }
+    of
+        {_OL, 'undefined'} -> State;
+        {'undefined', TargetLeg} ->
+            lager:debug("transferring to ~s", [TargetLeg]),
+
+            maybe_add_call_event_bindings(TargetLeg),
+            konami_event_listener:add_konami_binding(TargetLeg),
+
+            State#state{call_id=TargetLeg
+                        ,call=whapps_call:set_call_id(TargetLeg, Call)
+                       };
+        {OtherLeg, TargetLeg} ->
+            lager:debug("transferring from ~s to ~s", [OtherLeg, TargetLeg]),
+            maybe_remove_call_event_bindings(OtherLeg),
+
+            maybe_add_call_event_bindings(TargetLeg),
+            konami_event_listener:add_konami_binding(TargetLeg),
+
+            State#state{call_id=TargetLeg
+                        ,call=whapps_call:set_call_id(TargetLeg, Call)
+                       };
+        {_OL, _TL} ->
+            lager:debug("ignoring transfer of ~s to ~s", [_OL, _TL]),
+            State
     end.
 
 -spec maybe_add_call_event_bindings(api_binary() | whapps_call:call()) -> 'ok'.
@@ -635,3 +717,23 @@ b_endpoint_id(JObj, _ListenOn) -> wh_json:get_value(<<"Endpoint-ID">>, JObj).
 -spec authorizing_id(wh_json:object()) -> api_binary().
 authorizing_id(JObj) ->
     wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], JObj).
+
+handle_unbridge(CallId, #state{listen_on='b'
+                               ,call_id=CallId
+                               ,other_leg=OtherLeg
+                               ,call=Call
+                              }=State) ->
+    lager:debug("a leg ~s unbridged, stop listening for its events", [CallId]),
+    _ = maybe_remove_call_event_bindings(OtherLeg),
+    State#state{call_id='undefined'
+                ,call=whapps_call:set_call_id('undefined', Call)
+               };
+handle_unbridge(CallId, #state{call_id=CallId
+                               ,other_leg=OtherLeg
+                               ,call=Call
+                              }=State) ->
+    lager:debug("stopping other leg ~s events", [OtherLeg]),
+    _ = maybe_remove_call_event_bindings(OtherLeg),
+    State#state{other_leg='undefined'
+                ,call=whapps_call:set_other_leg_call_id('undefined', Call)
+               }.
