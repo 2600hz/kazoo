@@ -387,7 +387,7 @@ send_req('files_post', AuthToken, MACAddress) ->
     handle_resp(Resp).
 
 send_req('devices_put', JObj, AuthToken, AccountId, MACAddress) ->
-    Data = wh_json:encode(wh_json:set_value(<<"data">>, JObj, wh_json:new())),
+    Data = wh_json:encode(wh_json:from_list([{<<"data">>, JObj}])),
     Headers = req_headers(AuthToken),
     HTTPOptions = [],
     UrlString = req_uri('devices', AccountId, MACAddress),
@@ -395,7 +395,13 @@ send_req('devices_put', JObj, AuthToken, AccountId, MACAddress) ->
     Resp = ibrowse:send_req(UrlString, Headers, 'put', Data, HTTPOptions),
     handle_resp(Resp);
 send_req('devices_post', JObj, AuthToken, AccountId, MACAddress) ->
-    Data = wh_json:encode(wh_json:set_value(<<"data">>, JObj, wh_json:new())),
+    Data = wh_json:encode(
+             wh_json:from_list(
+               [{<<"data">>, JObj}
+               ,{<<"merge">>, 'true'}
+               ]
+              )
+            ),
     Headers = req_headers(AuthToken),
     HTTPOptions = [],
     UrlString = req_uri('devices', AccountId, MACAddress),
@@ -417,7 +423,7 @@ send_req('accounts_delete', _, AuthToken, AccountId, _) ->
     Resp = ibrowse:send_req(UrlString, Headers, 'delete', [], HTTPOptions),
     handle_resp(Resp);
 send_req('accounts_update', JObj, AuthToken, AccountId, _) ->
-    Data = wh_json:encode(wh_json:set_value(<<"data">>, JObj, wh_json:new())),
+    Data = wh_json:encode(wh_json:from_list([{<<"data">>, JObj}])),
     Headers = req_headers(AuthToken),
     HTTPOptions = [],
     UrlString = req_uri('accounts', AccountId),
@@ -557,4 +563,3 @@ handle_validation_error([], AccountId) ->
 handle_validation_error([{'data_invalid', _, Reason, _, _}|Errors], AccountId) ->
     lager:error("failed to validate device: ~p", [Reason]),
     handle_validation_error(Errors, AccountId).
-
