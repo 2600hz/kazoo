@@ -146,10 +146,11 @@ fetch(Context, Options) ->
 -spec fetch_monthly_recurring(cb_context:context(), wh_proplist()) ->
                                      cb_context:context().
 fetch_monthly_recurring(Context, Options) ->
-    Transactions = fetch_braintree_transactions(Context, Options),
-    case Transactions of
-        {'ok', _}=Resp -> send_resp(Resp, Context);
-        {'error', _}=E -> send_resp(E, Context)
+    case wh_bookkeeper_braintree:transactions(cb_context:account_id(Context), Options) of
+        {'error', _}=E -> send_resp(E, Context);
+        {'ok', Transactions} ->
+            JObjs = maybe_filter_by_reason(Transactions, Options),
+            send_resp({'ok', JObjs}, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -172,50 +173,6 @@ fetch_transactions(Context, Options) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_braintree_transactions(cb_context:context(), wh_proplist()) ->
-                                          {'ok', wh_json:objects()} |
-                                          {'error', ne_binary()}.
-fetch_braintree_transactions(Context, Options) ->
-    case wh_service_transactions:current_billing_period(
-           cb_context:account_id(Context)
-           ,'transactions'
-           ,{props:get_value('from', Options)
-             ,props:get_value('to', Options)
-            }
-          )
-    of
-        {'error', _Reason}=Error -> Error;
-        {'ok', Transactions} ->
-            filter_prorated_transactions(Transactions
-                                         ,props:get_value('prorated', Options, 'false')
-                                        )
-    end.
-
--spec filter_prorated_transactions(wh_transaction:transactions(), boolean()) ->
-                                          {'ok', wh_json:objects()}.
-filter_prorated_transactions(Transactions, Prorated) ->
-    {'ok'
-     ,lists:foldl(fun(Transaction, Acc) ->
-                          filter_prorated_transaction_fold(Transaction, Acc, Prorated)
-                  end, [], Transactions
-                 )
-    }.
-
--spec filter_prorated_transaction_fold(wh_transaction:transaction(), wh_json:objects(), boolean()) ->
-                                              wh_json:objects().
-filter_prorated_transaction_fold(Transaction, Acc, Prorated) ->
-    JObj = wh_transaction:to_public_json(Transaction),
-    case braintree_transaction_is_prorated(JObj) of
-        Prorated -> [JObj|Acc];
-        _ -> Acc
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
 -spec maybe_filter_by_reason(any(), wh_proplist()) -> wh_json:objects().
 maybe_filter_by_reason(Transactions, Options) ->
     case props:get_value('reason', Options) of
@@ -225,59 +182,6 @@ maybe_filter_by_reason(Transactions, Options) ->
             Filtered = wh_transactions:filter_by_reason(Reason, Transactions),
             wh_transactions:to_public_json(Filtered)
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec braintree_transaction_is_prorated(wh_json:object()) -> boolean().
-braintree_transaction_is_prorated(Transaction) ->
-    BTransaction = wh_json:get_value(<<"metadata">>, Transaction, wh_json:new()),
-    case wh_json:get_value(<<"subscription_id">>, BTransaction) of
-        'undefined' -> 'true';
-        _Id ->
-            Addon = calculate_addon(BTransaction),
-            Discount = calculate_discount(BTransaction),
-            Amount = wh_json:get_number_value(<<"amount">>, BTransaction, 0),
-            (Addon - Discount) =/= Amount
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec calculate_addon(wh_json:object()) -> number().
-calculate_addon(BTransaction) ->
-    Addons = wh_json:get_value(<<"add_ons">>, BTransaction, []),
-    calculate(Addons, 0).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec calculate_discount(wh_json:object()) -> number().
-calculate_discount(BTransaction) ->
-    Addons = wh_json:get_value(<<"discounts">>, BTransaction, []),
-    calculate(Addons, 0).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec calculate(wh_json:objects(), number()) -> number().
-calculate([], Acc) -> Acc/100;
-calculate([Addon|Addons], Acc) ->
-    Amount = wh_json:get_number_value(<<"amount">>, Addon, 0)*100,
-    Quantity = wh_json:get_number_value(<<"quantity">>, Addon, 0),
-    calculate(Addons, (Amount*Quantity+Acc)).
 
 %%--------------------------------------------------------------------
 %% @private

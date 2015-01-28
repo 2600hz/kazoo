@@ -260,9 +260,12 @@ fetch_local(Account, ViewOptions) ->
                               {'error', any()}.
 fetch_bookkeeper(Account, ViewOptions) ->
     Bookkeeper = whapps_config:get_atom(<<"services">>, <<"master_account_bookkeeper">>),
-    From = props:get_value('startkey', ViewOptions),
-    To = props:get_value('enkey', ViewOptions),
-    try Bookkeeper:transactions(Account, From, To) of
+    Options = [
+        {'from', props:get_value('startkey', ViewOptions)}
+        ,{'to', props:get_value('endkey', ViewOptions)}
+        ,{'prorated', 'true'}
+    ],
+    try Bookkeeper:transactions(Account, Options) of
         {'ok', _}=R -> R;
         {'error', _}=Error -> Error
     catch
