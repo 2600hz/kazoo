@@ -484,6 +484,12 @@
             "name": "Language",
             "description": "The language for this user",
             "default":"en-us"
+        },
+        "timezone": {
+            "type": "string",
+            "required": false,
+            "name": "Timezone",
+            "description": "User's timezone"
         }
     }
 }
