@@ -404,6 +404,9 @@
 
 -define(FS_EVENT_REG_MSG(Node, EvtName), {'event', Node, EvtName}).
 -define(FS_CALL_EVENT_REG_MSG(Node, EvtName), {'call_event', Node, EvtName}).
+-define(FS_CALL_EVENTS_PROCESS_REG(Node, CallId)
+        ,{'call_events_process', Node, CallId}
+       ).
 
 -define(FS_CARRIER_ACL_LIST, <<"trusted">>).
 -define(FS_SBC_ACL_LIST, <<"authoritative">>).
