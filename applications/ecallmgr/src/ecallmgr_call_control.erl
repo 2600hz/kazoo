@@ -695,7 +695,7 @@ handle_sofia_replaced(ReplacedBy, #state{call_id=CallId
 
     put('callid', ReplacedBy),
     bind_to_events(Node, ReplacedBy),
-    unreg_for_call_related_events(ReplacedBy),
+    reg_for_call_related_events(ReplacedBy),
     gen_listener:add_binding(self(), 'call', [{'callid', ReplacedBy}]),
 
     lager:debug("ensuring event listener exists"),
@@ -720,9 +720,9 @@ handle_sofia_replaced(ReplacedBy, #state{call_id=CallId
 handle_channel_create(Props, #state{call_id=CallId}=State) ->
     LegId = props:get_value(<<"Caller-Unique-ID">>, Props),
     case ecallmgr_fs_channel:get_other_leg(LegId, Props) of
-        'undefined' -> 'ok';
+        'undefined' -> State;
         CallId -> add_leg(Props, LegId, State);
-        OtherLeg -> maybe_add_cleg(Props, OtherLeg, LegId, State )
+        OtherLeg -> maybe_add_cleg(Props, OtherLeg, LegId, State)
     end.
 
 -spec add_leg(wh_proplist(), ne_binary(), state()) -> state().
@@ -888,7 +888,7 @@ insert_command(#state{node=Node
             lager:debug("sending execution error for command ~s", [AName]),
             {Mega,Sec,Micro} = os:timestamp(),
             Props = [{<<"Event-Name">>, <<"CHANNEL_EXECUTE_ERROR">>}
-                     ,{<<"Event-Date-Timestamp">>, ( (Mega * 1000000 + Sec) * 1000000 + Micro )}
+                     ,{<<"Event-Date-Timestamp">>, ((Mega * 1000000 + Sec) * 1000000 + Micro)}
                      ,{<<"Call-ID">>, CallId}
                      ,{<<"Channel-Call-State">>, <<"ERROR">>}
                      ,{<<"Custom-Channel-Vars">>, JObj}
@@ -1206,5 +1206,6 @@ reg_for_call_related_events(CallId) ->
 
 -spec unreg_for_call_related_events(ne_binary()) -> 'ok'.
 unreg_for_call_related_events(CallId) ->
-    gproc:unreg({'p', 'l', {'call_control', CallId}}),
-    gproc:unreg({'p', 'l', ?LOOPBACK_BOWOUT_REG(CallId)}).
+    (catch gproc:unreg({'p', 'l', {'call_control', CallId}})),
+    (catch gproc:unreg({'p', 'l', ?LOOPBACK_BOWOUT_REG(CallId)})),
+    'ok'.
