@@ -301,14 +301,14 @@ handle_event(?EVENT(CallId, <<"CHANNEL_UNBRIDGE">>, Evt)
             lager:debug("a leg ~s has unbridged from b leg ~s (ours: ~s)", [CallId, _OL, OtherLeg])
     end,
     {'next_state', StateName, handle_unbridge(CallId, State)};
-handle_event(?EVENT(_CallId, _EventName, _Evt)
+handle_event(?EVENT(_UUID, _EventName, _Evt)
              ,StateName
              ,#state{call_id=_CallId
                      ,other_leg=_OtherLeg
                      ,listen_on=_LO
                     }=State
             ) ->
-    lager:debug("unhandled event ~s for ~s", [_EventName, _CallId]),
+    lager:debug("unhandled event ~s for ~s", [_EventName, _UUID]),
     lager:debug("listen_on: '~s' call id: '~s' other leg: '~s'", [_LO, _CallId, _OtherLeg]),
     {'next_state', StateName, State};
 handle_event(_Event
@@ -581,6 +581,18 @@ handle_channel_bridged(#state{other_leg=OtherLeg
     maybe_add_call_event_bindings(CallId),
     State#state{call_id=CallId
                 ,call=whapps_call:set_call_id(CallId, Call)
+               };
+handle_channel_bridged(#state{other_leg=OtherLeg
+                              ,call_id=CallId
+                              ,call=Call
+                             }=State
+                       ,_JObj
+                       ,UUID
+                       ,OtherLeg
+                      ) when CallId =/= UUID ->
+    lager:debug("aww, our b leg ~s was bridged to ~s instead of us ~s", [OtherLeg, UUID, CallId]),
+    State#state{other_leg='undefined'
+                ,call=whapps_call:set_other_leg_call_id('undefined', Call)
                };
 handle_channel_bridged(#state{other_leg=_OL, call_id=_CL}=State, _JObj, _CallId, _OtherLeg) ->
     lager:debug("ignoring bridge from ~s -> ~s when tracking ~s and ~s"
