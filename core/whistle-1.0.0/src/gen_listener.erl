@@ -749,7 +749,9 @@ handle_callback_info(Message, #state{module=Module
             {'stop', Reason, State#state{module_state=ModuleState1}}
     catch
         _E:R ->
+            ST = erlang:get_stacktrace(),
             lager:debug("handle_info exception: ~s: ~p", [_E, R]),
+            wh_util:log_stacktrace(ST),
             {'stop', R, State}
     end.
 
