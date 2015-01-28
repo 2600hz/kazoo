@@ -615,6 +615,7 @@ call_pickup(Node, UUID, JObj) ->
                          {'return', ne_binary()} |
                          {'error', ne_binary()}.
 connect_leg(Node, UUID, JObj) ->
+    _ = ecallmgr_fs_bridge:maybe_b_leg_events(Node, UUID, JObj),
     case prepare_app(Node, UUID, JObj) of
         {'execute', AppNode, AppUUID, AppJObj, AppTarget} ->
             get_call_pickup_app(AppNode, AppUUID, AppJObj, AppTarget, <<"call_pickup">>);
@@ -767,10 +768,14 @@ get_call_pickup_app(Node, UUID, JObj, Target, Command) ->
                     ,{<<"Fetch-ID">>, wh_util:rand_hex_binary(4)}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
-    wh_amqp_worker:cast(ControlUsurp
-                        ,fun(C) -> wapi_call:publish_usurp_control(Target, C) end
-                       ),
-    lager:debug("published control usurp for ~s", [Target]),
+
+    wh_json:is_true(<<"Publish-Usurp">>, JObj, 'true')
+        andalso begin
+                    wh_amqp_worker:cast(ControlUsurp
+                                        ,fun(C) -> wapi_call:publish_usurp_control(Target, C) end
+                                       ),
+                    lager:debug("published control usurp for ~s", [Target])
+                end,
 
     ecallmgr_util:set(Node, UUID, build_set_args(SetApi, JObj)),
     ecallmgr_util:bridge_export(Node, UUID, Exports),
