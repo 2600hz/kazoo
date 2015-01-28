@@ -34,7 +34,7 @@
 put(JObj, AuthToken) ->
     AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
     Data = provision_data(JObj),
-    case check_data(Data) of
+    case check_data(wh_json:set_value(<<"merge">>, 'false', Data)) of
         {'ok', Data1} ->
             handle_validation_success(
                 'put'

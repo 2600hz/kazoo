@@ -33,6 +33,13 @@
             "name": "Name",
             "description": "Name of the phone"
         },
+        "merge": {
+            "type": "boolean",
+            "required": false,
+            "name": "Merge",
+            "description": "Should merge settings",
+            "default": true
+        },
         "settings": {
             "type": "object",
             "required": true,
