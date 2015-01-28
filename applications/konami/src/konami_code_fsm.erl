@@ -256,12 +256,16 @@ handle_event(?EVENT(OtherLeg, EventName, _Evt)
     {'stop', 'normal', State};
 handle_event(?EVENT(OtherLeg, EventName, _Evt)
              ,StateName
-             ,#state{other_leg=OtherLeg}=State
+             ,#state{other_leg=OtherLeg
+                     ,call=Call
+                    }=State
             )
   when EventName =:= <<"CHANNEL_DESTROY">>;
        EventName =:= <<"LEG_DESTROYED">> ->
-    lager:debug("b leg destroyed but we're not interested, ignoring"),
-    {'next_state', StateName, State#state{other_leg='undefined'}};
+    lager:debug("b leg destroyed but we're not interested, stopping tracking"),
+    {'next_state', StateName, State#state{other_leg='undefined'
+                                          ,call=whapps_call:set_other_leg_call_id('undefined', Call)
+                                         }};
 handle_event(?EVENT(CallId, <<"metaflow_exe">>, Metaflow), StateName, #state{call=Call}=State) ->
     _Pid = proc_lib:spawn('konami_code_exe', 'handle', [Metaflow, Call]),
     lager:debug("recv metaflow request for ~s, processing in ~p", [CallId, _Pid]),
@@ -565,6 +569,19 @@ handle_channel_bridged(#state{other_leg='undefined', call_id=_CL}, _JObj, _CallI
                 ,[_CallId, _OtherLeg, _CL]
                ),
     exit('normal');
+handle_channel_bridged(#state{other_leg=OtherLeg
+                              ,call_id='undefined'
+                              ,call=Call
+                             }=State
+                       ,_JObj
+                       ,CallId
+                       ,OtherLeg
+                      ) ->
+    lager:debug("with only a b leg ~s, track bridged a-leg ~s", [OtherLeg, CallId]),
+    maybe_add_call_event_bindings(CallId),
+    State#state{call_id=CallId
+                ,call=whapps_call:set_call_id(CallId, Call)
+               };
 handle_channel_bridged(#state{other_leg=_OL, call_id=_CL}=State, _JObj, _CallId, _OtherLeg) ->
     lager:debug("ignoring bridge from ~s -> ~s when tracking ~s and ~s"
                 ,[_CallId, _OtherLeg, _CL, _OL]
