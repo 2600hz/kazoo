@@ -92,7 +92,6 @@
          ,is_node_up = 'true' :: boolean()
          ,keep_alive_ref :: api_reference()
          ,other_legs = [] :: ne_binaries()
-         ,bowout_legs = [] :: ne_binaries()
          ,last_removed_leg :: api_binary()
          ,sanity_check_tref :: api_reference()
          ,msg_id :: api_binary()
@@ -437,39 +436,18 @@ handle_info('nodedown_restart_exceeded', #state{is_node_up='false'}=State) ->
     {'noreply', handle_channel_destroyed(wh_json:new(), State)};
 handle_info(?LOOPBACK_BOWOUT_MSG(Node, Props), #state{call_id=ResigningUUID
                                                       ,node=Node
-                                                      ,bowout_legs=BowoutLegs
-                                                      ,other_legs=OtherLegs
                                                      }=State) ->
-    case handle_bowout(Node, Props, ResigningUUID) of
-        ResigningUUID -> {'noreply', State};
-        AcquiringUUID ->
-            put('callid', AcquiringUUID),
-            {'noreply', State#state{call_id=AcquiringUUID
-                                    ,bowout_legs=[ResigningUUID | BowoutLegs]
-                                    ,other_legs=lists:delete(AcquiringUUID, OtherLegs)
-                                   }}
+    case props:get_value(?RESIGNING_UUID, Props) of
+        ResigningUUID ->
+            AcquiringUUID = props:get_value(?ACQUIRED_UUID, Props),
+            {'noreply', handle_sofia_replaced(AcquiringUUID, State)};
+        _UUID ->
+            lager:debug("ignoring bowout for ~s", [_UUID]),
+            {'noreply', State}
     end;
 handle_info(_Msg, State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State}.
-
--spec handle_bowout(atom(), wh_proplist(), ne_binary()) -> ne_binary().
-handle_bowout(Node, Props, ResigningUUID) ->
-    AcquiringUUID = props:get_value(?ACQUIRED_UUID, Props),
-    case props:get_value(?RESIGNING_UUID, Props) of
-        ResigningUUID when AcquiringUUID =/= 'undefined' ->
-            lager:debug("loopback bowout detected, replacing ~s with ~s", [ResigningUUID, AcquiringUUID]),
-
-            unreg_for_call_related_events(ResigningUUID),
-            unbind_from_events(Node, ResigningUUID),
-
-            reg_for_call_related_events(AcquiringUUID),
-            bind_to_events(Node, AcquiringUUID),
-            AcquiringUUID;
-        _UUID ->
-            lager:debug("failed to update after bowout, r: ~s a: ~s", [_UUID, AcquiringUUID]),
-            ResigningUUID
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -712,12 +690,17 @@ handle_sofia_replaced(ReplacedBy, #state{call_id=CallId
                                         }=State) ->
     lager:info("updating callid from ~s to ~s", [CallId, ReplacedBy]),
     unbind_from_events(Node, CallId),
+    unreg_for_call_related_events(CallId),
     gen_listener:rm_binding(self(), 'call', [{'callid', CallId}]),
+
     put('callid', ReplacedBy),
     bind_to_events(Node, ReplacedBy),
+    unreg_for_call_related_events(ReplacedBy),
     gen_listener:add_binding(self(), 'call', [{'callid', ReplacedBy}]),
+
     lager:debug("ensuring event listener exists"),
     _ = ecallmgr_call_sup:start_event_process(Node, ReplacedBy),
+
     lager:info("...call id updated, continuing post-transfer"),
     Commands = [wh_json:set_value(<<"Call-ID">>, ReplacedBy, JObj)
                 || JObj <- queue:to_list(CommandQ)
@@ -1071,26 +1054,20 @@ get_module(Category, Name) ->
 execute_control_request(Cmd, #state{node=Node
                                     ,call_id=CallId
                                     ,other_legs=OtherLegs
-                                    ,bowout_legs=BowoutLegs
-                                   }=State) ->
+                                   }) ->
     put('callid', CallId),
     Srv = self(),
 
-    lager:debug("executing call command '~s' ~s", [wh_json:get_value(<<"Application-Name">>, Cmd)
-                                                   ,wh_json:get_value(<<"Msg-ID">>, Cmd, <<>>)
-                                                  ]),
+    lager:debug("executing call command '~s' ~s"
+                ,[wh_json:get_value(<<"Application-Name">>, Cmd)
+                  ,wh_json:get_value(<<"Msg-ID">>, Cmd, <<>>)
+                 ]),
     Mod = get_module(wh_json:get_value(<<"Event-Category">>, Cmd, <<>>)
                      ,wh_json:get_value(<<"Event-Name">>, Cmd, <<>>)
                     ),
 
     CmdLeg = wh_json:get_value(<<"Call-ID">>, Cmd),
-    CallLeg =
-        case lists:member(CmdLeg, OtherLegs) of
-            'true' ->
-                lager:debug("executing against ~s instead", [CmdLeg]),
-                CmdLeg;
-            'false' -> CallId
-        end,
+    CallLeg = which_call_leg(CmdLeg, OtherLegs, CallId),
 
     try Mod:exec_cmd(Node, CallLeg, Cmd, self()) of
         Result -> Result
@@ -1126,25 +1103,28 @@ execute_control_request(Cmd, #state{node=Node
             Srv ! {'force_queue_advance', CallId},
             'ok';
         'throw':Msg ->
-            case lists:member(CmdLeg, BowoutLegs) of
-                'true' ->
-                    lager:debug("executing from bowout leg ~s", [CmdLeg]),
-                    execute_control_request(wh_json:set_value(<<"Call-ID">>, CallId, Cmd), State);
-                'false' ->
-                    lager:debug("failed to execute ~s: ~s", [wh_json:get_value(<<"Application-Name">>, Cmd), Msg]),
-                    lager:debug("only handling call id(s): ~p", [[CallId | OtherLegs]]),
+            lager:debug("failed to execute ~s: ~s", [wh_json:get_value(<<"Application-Name">>, Cmd), Msg]),
+            lager:debug("only handling call id(s): ~p", [[CallId | OtherLegs]]),
 
-                    send_error_resp(CallId, Cmd, Msg),
-                    Srv ! {'force_queue_advance', CallId},
-                    'ok'
-            end;
-_A:_B ->
+            send_error_resp(CallId, Cmd, Msg),
+            Srv ! {'force_queue_advance', CallId},
+            'ok';
+        _A:_B ->
             ST = erlang:get_stacktrace(),
             lager:debug("exception (~s) while executing ~s: ~p", [_A, wh_json:get_value(<<"Application-Name">>, Cmd), _B]),
             wh_util:log_stacktrace(ST),
             send_error_resp(CallId, Cmd),
             Srv ! {'force_queue_advance', CallId},
             'ok'
+    end.
+
+-spec which_call_leg(ne_binary(), ne_binaries(), ne_binary()) -> ne_binary().
+which_call_leg(CmdLeg, OtherLegs, CallId) ->
+    case lists:member(CmdLeg, OtherLegs) of
+        'true' ->
+            lager:debug("executing against ~s instead", [CmdLeg]),
+            CmdLeg;
+        'false' -> CallId
     end.
 
 -spec send_error_resp(ne_binary(), wh_json:object()) -> 'ok'.
