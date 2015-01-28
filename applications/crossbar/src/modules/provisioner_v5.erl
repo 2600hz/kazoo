@@ -33,12 +33,11 @@
 -spec put(ne_binary(), wh_json:object()) -> 'ok'.
 put(JObj, AuthToken) ->
     AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
-    Data = provision_data(JObj),
-    case check_data(wh_json:set_value(<<"merge">>, 'false', Data)) of
-        {'ok', Data1} ->
+    case check_data(provision_data(JObj)) of
+        {'ok', Data} ->
             handle_validation_success(
                 'put'
-                ,Data1
+                ,Data
                 ,AuthToken
                 ,wh_json:get_value(<<"mac_address">>, JObj)
                 ,AccountId
@@ -56,12 +55,11 @@ put(JObj, AuthToken) ->
 -spec post(ne_binary(), wh_json:object()) -> 'ok'.
 post(JObj, AuthToken) ->
     AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
-    Data = provision_data(JObj),
-    case check_data(Data) of
-        {'ok', Data1} ->
+    case check_data(provision_data(JObj)) of
+        {'ok', Data} ->
             handle_validation_success(
                 'post'
-                ,Data1
+                ,Data
                 ,AuthToken
                 ,wh_json:get_value(<<"mac_address">>, JObj)
                 ,AccountId
