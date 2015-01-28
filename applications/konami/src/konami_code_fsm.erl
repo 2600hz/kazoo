@@ -247,7 +247,6 @@ handle_event(?EVENT(OtherLeg, EventName, _Evt)
 handle_event(?EVENT(OtherLeg, EventName, _Evt)
              ,_StateName
              ,#state{other_leg=OtherLeg
-                     ,call_id='undefined'
                      ,listen_on='ab'
                     }=State
             )
@@ -655,7 +654,7 @@ handle_channel_transferee(CallId, Evt, #state{call_id=CallId
             lager:debug("ignoring transfer of ~s to ~s", [_OL, _TL]),
             State
     end;
-handle_channel_transferee(OtherLeg, Evt, #state{call_id=Call
+handle_channel_transferee(OtherLeg, Evt, #state{call_id=CallId
                                                 ,other_leg=OtherLeg
                                                 ,call=Call
                                                }=State) ->
@@ -673,7 +672,7 @@ handle_channel_transferee(OtherLeg, Evt, #state{call_id=Call
             State#state{call_id=TargetLeg
                         ,call=whapps_call:set_call_id(TargetLeg, Call)
                        };
-        {OtherLeg, TargetLeg} ->
+        {CallId, TargetLeg} ->
             lager:debug("transferring from ~s to ~s", [OtherLeg, TargetLeg]),
             maybe_remove_call_event_bindings(OtherLeg),
 
@@ -718,6 +717,7 @@ b_endpoint_id(JObj, _ListenOn) -> wh_json:get_value(<<"Endpoint-ID">>, JObj).
 authorizing_id(JObj) ->
     wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], JObj).
 
+-spec handle_unbridge(ne_binary(), state()) -> state().
 handle_unbridge(CallId, #state{listen_on='b'
                                ,call_id=CallId
                                ,other_leg=OtherLeg
