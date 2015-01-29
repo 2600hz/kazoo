@@ -206,7 +206,7 @@ maybe_correct_used_by(#number{number=Number
         NewUsedBy ->
             lager:info("correcting used_by field for number ~s from ~s to ~s"
                       ,[Number, UsedBy, NewUsedBy]),
-            NewNumberDoc = wh_json:set_value([Number, <<"used_by">>], NewUsedBy, NumberDoc),
+            NewNumberDoc = wh_json:set_value(<<"used_by">>, NewUsedBy, NumberDoc),
             save_number_doc(N#number{used_by=NewUsedBy
                                      ,number_doc=NewNumberDoc
                                     })
