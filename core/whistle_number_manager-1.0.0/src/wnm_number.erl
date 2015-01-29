@@ -184,15 +184,13 @@ fetch_number(#number{number_db=Db
 
 -spec maybe_correct_used_by(wnm_number()) -> wnm_number().
 -spec maybe_correct_used_by(wnm_number(), wh_json:object()) -> wnm_number().
-maybe_correct_used_by(#number{assigned_to=Account
-                             }=N) ->
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case couch_mgr:open_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
-        {'error', _E} ->
-            lager:warning("failed to get phone number doc for correction: ~p", [_E]),
-            N;
+maybe_correct_used_by(#number{assigned_to=Account}=N) ->
+    case load_phone_number_doc(Account) of
         {'ok', JObj} ->
-            maybe_correct_used_by(N, JObj)
+            maybe_correct_used_by(N, JObj);
+        {'error', _R} ->
+            lager:warning("failed to get phone number doc for correction: ~p", [_R]),
+            N
     end.
 
 maybe_correct_used_by(#number{number=Number
@@ -206,8 +204,9 @@ maybe_correct_used_by(#number{number=Number
             lager:debug("~s used_by field is correct", [Number]),
             N;
         NewUsedBy ->
-            lager:info("correcting used_by field for number ~s from ~s to ~s", [Number, UsedBy, NewUsedBy]),
-            NewNumberDoc = wh_json:set_value(<<"used_by">>, NewUsedBy, NumberDoc),
+            lager:info("correcting used_by field for number ~s from ~s to ~s"
+                      ,[Number, UsedBy, NewUsedBy]),
+            NewNumberDoc = wh_json:set_value([Number, <<"used_by">>], NewUsedBy, NumberDoc),
             save_number_doc(N#number{used_by=NewUsedBy
                                      ,number_doc=NewNumberDoc
                                     })
@@ -748,13 +747,16 @@ used_by(PhoneNumber, UsedBy) ->
         'false' ->
             lager:debug("number ~s is not reconcilable, ignoring", [PhoneNumber]);
         'true' ->
-            case ?MODULE:get(PhoneNumber) of
-                {Error, _} ->
-                    lager:warning("error getting '~s' : ~p", [PhoneNumber, Error]);
+            try ?MODULE:get(PhoneNumber) of
+                #number{used_by=UsedBy} -> 'ok';
                 Number ->
                     _ = save(Number#number{used_by=UsedBy}),
                     lager:debug("updating number '~s' used_by from '~s' field to: '~s'"
                                 ,[PhoneNumber, Number#number.used_by, UsedBy])
+            catch
+                _E:_R ->
+                    lager:notice("~s getting '~s' for used_by update to ~s: ~p"
+                                ,[_E, PhoneNumber, UsedBy, _R])
             end
     end.
 
@@ -1156,11 +1158,18 @@ create_number_summary(_Account, #number{state=State
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec load_phone_number_doc(ne_binary()) ->
+                                   {'ok', wh_json:object()} |
+                                   {'error', _}.
+load_phone_number_doc(Account) ->
+    load_phone_number_doc(Account, 'true').
+
 -spec load_phone_number_doc(ne_binary(), boolean()) ->
                                    {'ok', wh_json:object()} |
                                    {'error', _}.
 load_phone_number_doc(Account, 'true') ->
-    case erlang:get({'phone_number_doc', Account}) of
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    case erlang:get({'phone_number_doc', AccountId}) of
         'undefined' -> load_phone_number_doc(Account, 'false');
         JObj -> {'ok', JObj}
     end;
@@ -1177,10 +1186,14 @@ load_phone_number_doc(Account, 'false') ->
     case couch_mgr:open_cache_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
         {'ok', J} ->
             lager:debug("loaded phone_numbers from ~s", [AccountId]),
-            {'ok', wh_json:set_values(PVTs, J)};
+            JObj = wh_json:set_values(PVTs, J),
+            erlang:put({'phone_number_doc', AccountId}, JObj),
+            {'ok', JObj};
         {'error', 'not_found'} ->
             lager:debug("creating phone_numbers in ~s", [AccountId]),
-            {'ok', wh_json:from_list([{<<"pvt_created">>, wh_util:current_tstamp()} | PVTs])};
+            JObj = wh_json:from_list([{<<"pvt_created">>, wh_util:current_tstamp()} | PVTs]),
+            erlang:put({'phone_number_doc', AccountId}, JObj),
+            {'ok', JObj};
         {'error', _}=E -> E
     end.
 
