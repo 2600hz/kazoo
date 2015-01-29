@@ -29,7 +29,7 @@
          ,terminate/2
         ]).
 
--include("acdc.hrl").
+-include("webseq.hrl").
 
 -define(WEBSEQNAME, "/tmp/webseq.wsd").
 
