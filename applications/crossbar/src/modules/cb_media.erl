@@ -42,6 +42,8 @@
                           ]).
 
 -define(CB_LIST, <<"media/crossbar_listing">>).
+-define(CB_LIST_BY_LANG, <<"media/listing_by_language">>).
+-define(CB_LIST_BY_PROMPT, <<"media/listing_by_prompt">>).
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".media">>).
 
@@ -579,7 +581,7 @@ load_available_languages(Context) ->
 
 load_available_languages(Context, 'undefined') ->
     fix_start_keys(
-      crossbar_doc:load_view(<<"media/listing_by_language">>
+      crossbar_doc:load_view(?CB_LIST_BY_LANG
                              ,[{'group_level', 1}]
                              ,cb_context:set_account_db(Context, ?WH_MEDIA_DB)
                              ,fun normalize_count_results/2
@@ -587,7 +589,7 @@ load_available_languages(Context, 'undefined') ->
      );
 load_available_languages(Context, _AccountId) ->
     fix_start_keys(
-      crossbar_doc:load_view(<<"media/listing_by_language">>
+      crossbar_doc:load_view(?CB_LIST_BY_LANG
                              ,[{'group_level', 1}]
                              ,Context
                              ,fun normalize_count_results/2
@@ -618,7 +620,7 @@ load_media_docs_by_language(Context, Language) ->
 
 load_media_docs_by_language(Context, Language, 'undefined') ->
     fix_start_keys(
-      crossbar_doc:load_view(<<"media/listing_by_language">>
+      crossbar_doc:load_view(?CB_LIST_BY_LANG
                               ,[{'startkey_fun', fun(Ctx) -> language_start_key(Ctx, Language) end}
                                ,{'endkey', [Language, wh_json:new()]}
                                ,{'reduce', 'false'}
@@ -630,7 +632,7 @@ load_media_docs_by_language(Context, Language, 'undefined') ->
      );
 load_media_docs_by_language(Context, Language, _AccountId) ->
     fix_start_keys(
-      crossbar_doc:load_view(<<"media/listing_by_language">>
+      crossbar_doc:load_view(?CB_LIST_BY_LANG
                              ,[{'startkey_fun', fun(Ctx) -> language_start_key(Ctx, Language) end}
                                ,{'endkey', [Language, wh_json:new()]}
                                ,{'reduce', 'false'}
@@ -673,7 +675,7 @@ load_available_prompts(Context) ->
 
 load_available_prompts(Context, 'undefined') ->
     fix_prompt_start_keys(
-      crossbar_doc:load_view(<<"media/listing_by_prompt">>
+      crossbar_doc:load_view(?CB_LIST_BY_PROMPT
                              ,[{'group_level', 1}
                                ,{'startkey_fun', fun prompt_start_key/1}
                               ]
@@ -683,7 +685,7 @@ load_available_prompts(Context, 'undefined') ->
      );
 load_available_prompts(Context, _AccountId) ->
     fix_prompt_start_keys(
-      crossbar_doc:load_view(<<"media/listing_by_prompt">>
+      crossbar_doc:load_view(?CB_LIST_BY_PROMPT
                              ,[{'group_level', 1}
                                ,{'startkey_fun', fun prompt_start_key/1}
                               ]
@@ -700,7 +702,7 @@ load_media_docs_by_prompt(Context, PromptId) ->
 
 load_media_docs_by_prompt(Context, PromptId, 'undefined') ->
     fix_prompt_start_keys(
-      crossbar_doc:load_view(<<"media/listing_by_prompt">>
+      crossbar_doc:load_view(?CB_LIST_BY_PROMPT
                              ,[{'startkey_fun', fun(Ctx) -> prompt_start_key(Ctx, PromptId) end}
                                ,{'endkey', [PromptId, wh_json:new()]}
                                ,{'reduce', 'false'}
@@ -712,7 +714,7 @@ load_media_docs_by_prompt(Context, PromptId, 'undefined') ->
      );
 load_media_docs_by_prompt(Context, PromptId, _AccountId) ->
     fix_prompt_start_keys(
-      crossbar_doc:load_view(<<"media/listing_by_prompt">>
+      crossbar_doc:load_view(?CB_LIST_BY_PROMPT
                              ,[{'startkey_fun', fun(Ctx) -> prompt_start_key(Ctx, PromptId) end}
                                ,{'endkey', [PromptId, wh_json:new()]}
                                ,{'reduce', 'false'}
