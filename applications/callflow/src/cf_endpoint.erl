@@ -683,7 +683,7 @@ guess_endpoint_type(Endpoint) ->
                                   ]).
 -spec guess_endpoint_type(wh_json:object(), ne_binaries()) -> ne_binary().
 guess_endpoint_type(Endpoint, [Type|Types]) ->
-    case wh_json:get_value(Type, Endpoint) of
+    case wh_json:get_ne_value(Type, Endpoint) of
         'undefined' -> guess_endpoint_type(Endpoint, Types);
         _ -> Type
     end;
@@ -1277,6 +1277,6 @@ build_mobile_sms_route(MDN) ->
     Route = case Type of
                 <<"amqp">> -> whapps_config:get(?CF_MOBILE_CONFIG_CAT, <<"sms_broker">>, ?DEFAULT_MOBILE_SMS_BROKER);
                 <<"sip">> -> build_mobile_route(MDN)
-            end,                              
+            end,
     Options = whapps_config:get(?CF_MOBILE_CONFIG_CAT, <<"sms_route_options">>, ?DEFAULT_MOBILE_SMS_OPTIONS),
     {Type, Route, Options}.
