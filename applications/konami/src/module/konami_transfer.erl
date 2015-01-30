@@ -38,14 +38,22 @@
 
 -include("../konami.hrl").
 
-%% -define(WSD_EVT(F, T, E), 'ok').
--define(WSD_EVT(F, T, E), webseq:evt(F, T, E)).
+-define(WSD_ID, {'file', get('callid')}).
+
+%% -define(WSD_EVT(Fr, T, E), 'ok').
+-define(WSD_EVT(Fr, T, E), webseq:evt(?WSD_ID, Fr, T, E)).
 
 %%%-define(WSD_NOTE(W, D, N), 'ok').
--define(WSD_NOTE(W, D, N), webseq:note(W, D, N)).
+-define(WSD_NOTE(W, D, N), webseq:note(?WSD_ID, W, D, N)).
 
 %% -define(WSD_TITLE(T), 'ok').
--define(WSD_TITLE(T), webseq:title(T)).
+-define(WSD_TITLE(T), webseq:title(?WSD_ID, T)).
+
+%% -define(WSD_START(), 'ok').
+-define(WSD_START(), webseq:start(?WSD_ID)).
+
+%% -define(WSD_STOP(), 'ok').
+-define(WSD_STOP(), webseq:stop(?WSD_ID)).
 
 -record(state, {transferor :: ne_binary()
                 ,transferee :: ne_binary()
@@ -91,6 +99,7 @@
 
 -spec handle(wh_json:object(), whapps_call:call()) -> no_return().
 handle(Data, Call) ->
+    whapps_call:put_callid(Call),
     Transferor = wh_json:get_value(<<"dtmf_leg">>, Data),
     Transferee =
         case whapps_call:call_id(Call) of
@@ -101,6 +110,8 @@ handle(Data, Call) ->
     lager:info("first, we need to receive call events for our two legs"),
     add_transferor_bindings(Transferor),
     add_transferee_bindings(Transferee),
+
+    ?WSD_START(),
 
     ?WSD_TITLE(["Transferee: ", Transferee, " and Transferor: ", Transferor]),
 
@@ -687,6 +698,7 @@ terminate(_Reason, _StateName, #state{transferor=Transferor
     konami_event_listener:rm_call_binding(Transferor, ?TRANSFEROR_CALL_EVENTS),
     konami_event_listener:rm_call_binding(Transferee, ?TRANSFEREE_CALL_EVENTS),
     konami_event_listener:rm_call_binding(Target, ?TARGET_CALL_EVENTS),
+    ?WSD_STOP(),
     lager:info("fsm terminating while in ~s: ~p", [_StateName, _Reason]).
 
 code_change(_OldVsn, StateName, State, _Extra) ->
