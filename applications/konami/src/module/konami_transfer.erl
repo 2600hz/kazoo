@@ -38,22 +38,19 @@
 
 -include("../konami.hrl").
 
--define(WSD_ID, {'file', get('callid')}).
+-define(WSD_ENABLED, 'true').
 
-%% -define(WSD_EVT(Fr, T, E), 'ok').
--define(WSD_EVT(Fr, T, E), webseq:evt(?WSD_ID, Fr, T, E)).
+-define(WSD_ID, ?WSD_ENABLED andalso {'file', <<(get('callid'))/binary, "_transfer">>}).
 
-%%%-define(WSD_NOTE(W, D, N), 'ok').
--define(WSD_NOTE(W, D, N), webseq:note(?WSD_ID, W, D, N)).
+-define(WSD_EVT(Fr, T, E), ?WSD_ENABLED andalso webseq:evt(?WSD_ID, Fr, T, E)).
 
-%% -define(WSD_TITLE(T), 'ok').
--define(WSD_TITLE(T), webseq:title(?WSD_ID, T)).
+-define(WSD_NOTE(W, D, N), ?WSD_ENABLED andalso webseq:note(?WSD_ID, W, D, N)).
 
-%% -define(WSD_START(), 'ok').
--define(WSD_START(), webseq:start(?WSD_ID)).
+-define(WSD_TITLE(T), ?WSD_ENABLED andalso webseq:title(?WSD_ID, T)).
 
-%% -define(WSD_STOP(), 'ok').
--define(WSD_STOP(), webseq:stop(?WSD_ID)).
+-define(WSD_START(), ?WSD_ENABLED andalso webseq:start(?WSD_ID)).
+
+-define(WSD_STOP(), ?WSD_ENABLED andalso webseq:stop(?WSD_ID)).
 
 -record(state, {transferor :: ne_binary()
                 ,transferee :: ne_binary()
@@ -91,7 +88,7 @@
                                 ]).
 -define(TARGET_CALL_EVENTS, [<<"CHANNEL_ANSWER">>
                              ,<<"CHANNEL_CREATE">>
-                             ,<<"CHANNEL_BRIDGE">>
+                             ,<<"CHANNEL_BRIDGE">>, <<"CHANNEL_UNBRIDGE">>
                              ,<<"CHANNEL_DESTROY">>
                              ,<<"DTMF">>, <<"CHANNEL_REPLACED">>
                              ,<<"dialplan">>
@@ -202,12 +199,12 @@ attended_wait(?EVENT(Transferor, <<"CHANNEL_BRIDGE">>, Evt)
                       ,target_call=TargetCall
                      }=State
              ) ->
-    OtherLeg = wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt),
+    OtherLeg = kz_call_event:other_leg_call_id(Evt),
     lager:info("transferor ~s bridged to ~s", [Transferor, OtherLeg]),
     case OtherLeg of
         Target ->
             lager:info("transferor and target are connected, moving to attended_answer"),
-            ?WSD_EVT(Transferor, Target, <<"Bridged">>),
+            ?WSD_EVT(Transferor, Target, <<"Bridged to target">>),
             {'next_state', 'attended_answer', State#state{
                                                 target_call=whapps_call:exec(
                                                               [{fun whapps_call:set_call_id/2, Target}
@@ -218,7 +215,7 @@ attended_wait(?EVENT(Transferor, <<"CHANNEL_BRIDGE">>, Evt)
                                                }};
         Transferee ->
             lager:info("transferor and transferee have reconnected"),
-            ?WSD_EVT(Transferor, Transferee, <<"Bridged">>),
+            ?WSD_EVT(Transferor, Transferee, <<"Bridged to transferee">>),
             whapps_call_command:hangup(TargetCall),
             {'stop', 'normal', State}
     end;
@@ -232,7 +229,7 @@ attended_wait(?EVENT(Target, <<"CHANNEL_BRIDGE">>, Evt)
                       ,transferor=Transferor
                      }=State
              ) ->
-    case wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt) of
+    case kz_call_event:other_leg_call_id(Evt) of
         Transferor ->
             lager:info("recv CHANNEL_BRIDGE on target ~s to transferor ~s, moving to attended_answer"
                        ,[Target, Transferor]
@@ -260,7 +257,7 @@ attended_wait(?EVENT(Transferor, <<"CHANNEL_BRIDGE">>, Evt)
                       ,target_call=TargetCall
                      }=State
              ) ->
-    case wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt) of
+    case kz_call_event:other_leg_call_id(Evt) of
         Target ->
             ?WSD_EVT(Transferor, Target, <<"bridge">>),
             lager:info("transferor and target are connected, moving to attended_answer"),
@@ -341,7 +338,7 @@ partial_wait(?EVENT(Transferee, <<"CHANNEL_BRIDGE">>, Evt)
                      ,target=Target
                     }=State
             ) ->
-    case wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt) of
+    case kz_call_event:other_leg_call_id(Evt) of
         Target ->
             lager:debug("transfreee has bridged to target ~s", [Target]),
             {'next_state', 'finished', State};
@@ -437,7 +434,7 @@ attended_answer(?EVENT(Transferor, <<"CHANNEL_BRIDGE">>, Evt)
                         ,target_call=TargetCall
                        }=State
                ) ->
-    case wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt) of
+    case kz_call_event:other_leg_call_id(Evt) of
         Target ->
             lager:info("transferor and target ~s are connected", [Target]),
             ?WSD_EVT(Transferor, Target, <<"transferor bridged to target">>),
@@ -465,7 +462,7 @@ attended_answer(?EVENT(Target, <<"CHANNEL_BRIDGE">>, Evt)
                         ,target=Target
                        }=State
                ) ->
-    case wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt) of
+    case kz_call_event:other_leg_call_id(Evt) of
         Transferor ->
             lager:info("transferor and target are connected"),
             ?WSD_EVT(Target, Transferor, <<"bridged">>),
@@ -531,7 +528,7 @@ finished(?EVENT(Transferee, <<"CHANNEL_BRIDGE">>, Evt)
                  ,target=Target
                 }=State
         ) ->
-    case wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt) of
+    case kz_call_event:other_leg_call_id(Evt) of
         Target ->
             lager:debug("transferee and target are bridged"),
             {'stop', 'normal', State};
@@ -544,7 +541,7 @@ finished(?EVENT(Target, <<"CHANNEL_BRIDGE">>, Evt)
                  ,transferee=Transferee
                 }=State
          ) ->
-    case wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt) of
+    case kz_call_event:other_leg_call_id(Evt) of
         Transferee ->
             lager:debug("target ~s bridged to transferee ~s", [Target, Transferee]),
             {'stop', 'normal', State};
@@ -561,7 +558,7 @@ finished(?EVENT(Transferor, <<"CHANNEL_DESTROY">>, _Evt)
          ,#state{transferor=Transferor}=State
         ) ->
     lager:info("transferor ~s has hungup", [Transferor]),
-    {'next_state', 'finished', State};
+    {'next_state', 'finished', State, 5000};
 finished(?EVENT(Transferee, <<"CHANNEL_DESTROY">>, _Evt)
          ,#state{transferee=Transferee
                  ,target_call=TargetCall
@@ -592,7 +589,7 @@ takeback(?EVENT(Transferor, <<"CHANNEL_BRIDGE">>, Evt)
                  ,target_call=TargetCall
                 }=State
         ) ->
-    _OtherLeg = wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt),
+    _OtherLeg = kz_call_event:other_leg_call_id(Evt),
     lager:debug("transferor ~s bridged to ~s, tearing down target ~s"
                 ,[Transferor
                   ,_OtherLeg
@@ -607,7 +604,7 @@ takeback(?EVENT(Transferee, <<"CHANNEL_BRIDGE">>, Evt)
                  ,target_call=TargetCall
                 }=State
         ) ->
-    _OtherLeg = wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt),
+    _OtherLeg = kz_call_event:other_leg_call_id(Evt),
     lager:debug("transferee ~s bridged to ~s, tearing down target ~s"
                 ,[Transferee
                   ,_OtherLeg
@@ -622,7 +619,7 @@ takeback(?EVENT(Target, <<"CHANNEL_BRIDGE">>, Evt)
                  ,transferor=Transferor
                 }=State
         ) ->
-    case wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt) of
+    case kz_call_event:other_leg_call_id(Evt) of
         Transferor ->
             lager:debug("target ~s is bridged to transferor ~s while in takeback"
                         ,[Target, Transferor]
