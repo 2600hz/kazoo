@@ -295,7 +295,7 @@ set_basic(JObj) ->
                 end
                 ,fun(J) ->
                     Enabled = wh_json:get_value(<<"enabled">>, JObj, 'true'),
-                    wh_json:set_value(<<"enabled">>, Enabled, J)
+                    wh_json:set_value(<<"enable">>, Enabled, J)
                 end
                ],
     lists:foldl(fun(F, J) -> F(J) end, wh_json:new(), Routines).
