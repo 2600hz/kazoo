@@ -97,7 +97,7 @@ what(IO) when is_list(IO) -> iolist_to_binary(IO).
 init([Type]) ->
     init(Type);
 init({'file', <<_/binary>>=Filename}) ->
-    init({'file', wh_util:rand_hex_binary(3), Filename});
+    init({'file', Filename, Filename});
 init({'file', Name, PreFilename}=Type) ->
     put('callid', Name),
 
@@ -119,7 +119,7 @@ init({'file', Name, PreFilename}=Type) ->
             {'stop', E}
     end;
 init({'db', Database}) ->
-    init({'db', wh_util:rand_hex_binary(3), Database});
+    init({'db', wh_util:rand_hex_binary(4), Database});
 init({'db', Name, Database}=Type) ->
     put('callid', Name),
 
@@ -136,7 +136,7 @@ init({'db', Name, Database}=Type) ->
     end.
 
 handle_call('stop', _, State) ->
-    {'stop', 'ok', 'normal', State};
+    {'stop', 'normal', 'ok', State};
 handle_call({'who', P}, _, #state{who_registry=Who}=State) when is_pid(P) ->
     PBin = wh_util:to_binary(pid_to_list(P)),
     case dict:find(PBin, Who) of
@@ -195,9 +195,11 @@ code_change(_, S, _) ->
     {'ok', S}.
 
 terminate(_Reason, #state{io_device='undefined'}) ->
+    gproc:goodbye(),
     lager:debug("webseq terminating: ~p", [_Reason]);
 terminate(_Reason, #state{io_device=IO}) ->
     _ = file:close(IO),
+    gproc:goodbye(),
     lager:debug("webseq terminating: ~p", [_Reason]).
 
 -spec webseq_doc(ne_binary(), text(), text()) -> wh_json:object().
