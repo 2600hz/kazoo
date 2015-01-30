@@ -9,53 +9,96 @@
 %%%-------------------------------------------------------------------
 -module(webseq).
 
--behaviour(gen_server).
-
--export([start_link/0
-         ,evt/3
-         ,title/1
-         ,note/3
-         ,trunc/0
-         ,rotate/0
+-export([start/1
+         ,stop/0, stop/1
+         ,evt/4
+         ,title/2
+         ,note/4
+         ,trunc/1
+         ,rotate/1
          ,process_pid/1
-         ,reg_who/2
-        ]).
-
--export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,code_change/3
-         ,terminate/2
+         ,reg_who/3
         ]).
 
 -include("webseq.hrl").
 
--define(WEBSEQNAME, "/tmp/webseq.wsd").
+-type webseq_srv() :: server_ref() | diagram_type() | ne_binary().
 
--record(state, {io_device :: file:io_device()
-                ,who_registry :: dict()
-               }).
+-define(GPROC_KEY(Type), {'n', 'l', type_key(Type)}).
 
-start_link() -> gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
+-spec type_key(diagram_type() | ne_binary() | '_') -> {?MODULE, ne_binary() | '_'}.
+type_key({'file', Filename}) -> type_key(Filename);
+type_key({'file', Name, _Filename}) -> type_key(Name);
+type_key({'db', Database}) -> type_key(Database);
+type_key({'db', Name, _Database}) -> type_key(Name);
+type_key(<<_/binary>>=Name) -> {?MODULE, Name};
+type_key('_') -> {?MODULE, '_'}.
 
--type who() :: pid() | ne_binary().
--type what() :: ne_binary() | iolist().
+-spec start(diagram_type()) ->
+                   {'ok', server_ref()} |
+                   {'error', 'already_started', server_ref()}.
+start(Type) ->
+    case server_ref(Type) of
+        'undefined' -> start_srv(Type);
+        Pid -> {'error', 'already_started', Pid}
+    end.
 
--spec title(what()) -> 'ok'.
-title(Title) ->
-    gen_server:cast(?MODULE, {'write', "title ~s~n", [what(Title)]}).
+stop() ->
+    %% {{'n', 'l', Key}, PidToMatch, ValueToMatch}
+    MatchHead = {?GPROC_KEY('_'), '_', '$1'},
+    Guard = [],
+    Result = ['$1'],
 
--spec evt(who(), who(), what()) -> 'ok'.
-evt(From, To, Desc) ->
-    gen_server:cast(?MODULE, {'write', "~s->~s: ~s~n", [who(From), who(To), what(Desc)]}).
+    case gproc:select('n', [{MatchHead, Guard, Result}]) of
+        [] -> 'ok';
+        Pids ->
+            [webseq_diagram_srv:stop(Pid) || Pid <- Pids],
+            'ok'
+    end.
 
--spec note(who(), 'right' | 'left', what()) -> 'ok'.
-note(Who, Dir, Note) ->
-    gen_server:cast(?MODULE, {'write', "note ~s of ~s: ~s~n", [Dir, who(Who), what(Note)]}).
+stop(Type) ->
+    case server_ref(Type) of
+        'undefined' -> 'ok';
+        Pid -> webseq_diagram_srv:stop(Pid)
+    end.
 
-trunc() -> gen_server:cast(?MODULE, 'trunc').
-rotate() -> gen_server:cast(?MODULE, 'rotate').
+-spec server_ref(webseq_srv()) -> api_pid().
+server_ref(Pid) when is_pid(Pid) -> Pid;
+server_ref(Type) ->
+    try gproc:lookup_value(?GPROC_KEY(Type)) of
+        Pid -> Pid
+    catch
+        _:_ -> 'undefined'
+    end.
+
+-spec start_srv(diagram_type()) -> startlink_ret().
+start_srv(Type) ->
+    case webseq_diagram_srv:start(Type) of
+        {'error', _E}=E ->
+            lager:debug("failed to start server: ~p", [_E]),
+            E;
+        {'ok', Pid} ->
+            lager:debug("started server for ~p: ~p", [?GPROC_KEY(Type), Pid]),
+            gproc:reg(?GPROC_KEY(Type), Pid),
+            {'ok', Pid}
+    end.
+
+-spec title(webseq_srv(), what()) -> 'ok'.
+title(Srv, Title) ->
+    gen_server:cast(server_ref(Srv), {'write', "title ~s~n", [what(Title)]}).
+
+-spec evt(webseq_srv(), who(), who(), what()) -> 'ok'.
+evt(Ref, From, To, Desc) ->
+    Srv = server_ref(Ref),
+    gen_server:cast(Srv, {'write', "~s->~s: ~s~n", [who(Srv, From), who(Srv, To), what(Desc)]}).
+
+-spec note(webseq_srv(), who(), 'right' | 'left', what()) -> 'ok'.
+note(Ref, Who, Dir, Note) ->
+    Srv = server_ref(Ref),
+    gen_server:cast(Srv, {'write', "note ~s of ~s: ~s~n", [Dir, who(Srv, Who), what(Note)]}).
+
+trunc(Srv) -> gen_server:cast(server_ref(Srv), 'trunc').
+rotate(Srv) -> gen_server:cast(server_ref(Srv), 'rotate').
 
 process_pid(P) ->
     ProcId = wh_json:get_value(<<"Process-ID">>, P),
@@ -65,10 +108,10 @@ process_pid(P) ->
         _ -> ProcId
     end.
 
-reg_who(P, W) -> gen_server:cast(?MODULE, {'reg_who', P, W}).
+reg_who(Srv, P, W) -> gen_server:cast(server_ref(Srv), {'reg_who', P, W}).
 
-who(P) ->
-    case catch gen_server:call(?MODULE, {'who', P}) of
+who(Srv, P) ->
+    case catch gen_server:call(server_ref(Srv), {'who', P}) of
         {'EXIT', _} when is_pid(P) -> pid_to_list(P);
         {'EXIT', _} -> P;
         'undefined' when is_pid(P) -> pid_to_list(P);
@@ -79,68 +122,3 @@ who(P) ->
 -spec what(what()) -> ne_binary().
 what(B) when is_binary(B) -> B;
 what(IO) when is_list(IO) -> iolist_to_binary(IO).
-
-init(_) ->
-    _ = file:rename(?WEBSEQNAME, iolist_to_binary([?WEBSEQNAME, ".", wh_util:to_binary(wh_util:current_tstamp())])),
-    case file:open(?WEBSEQNAME, ['append', 'raw', 'delayed_write']) of
-        {'ok', IO} ->
-            {'ok', #state{io_device=IO
-                          ,who_registry=dict:new()
-                         }};
-        {'error', 'eaccess'} ->
-            lager:info("failed to open ~s, eaccess error - check permissions", [?WEBSEQNAME]),
-            {'ok', #state{}};
-        {'error', _E} ->
-            lager:info("failed to open ~s, error: ~s", [?WEBSEQNAME, _E]),
-            {'ok', #state{}}
-    end.
-
-handle_call(_Req, _, #state{io_device='undefined'}=State) ->
-    {'reply', 'webseq_not_available', State};
-handle_call({'who', P}, _, #state{who_registry=Who}=State) when is_pid(P) ->
-    PBin = wh_util:to_binary(pid_to_list(P)),
-    case dict:find(PBin, Who) of
-        {'ok', V} -> {'reply', V, State};
-        'error' -> {'reply', P, State}
-    end;
-handle_call({'who', P}, _, #state{who_registry=Who}=State) ->
-    case dict:find(P, Who) of
-        {'ok', V} -> {'reply', V, State};
-        'error' -> {'reply', P, State}
-    end;
-handle_call(_,_,S) ->
-    {'reply', 'ok', S}.
-
-handle_cast(_Req, #state{io_device='undefined'}=State) ->
-    {'noreply', State};
-handle_cast({'write', Str, Args}, #state{io_device=IO}=State) ->
-    catch file:write(IO, io_lib:format(Str, Args)),
-    {'noreply', State};
-handle_cast('trunc', #state{io_device=IO}=State) ->
-    catch file:truncate(IO),
-    {'noreply', State};
-handle_cast('rotate', #state{io_device=OldIO}=State) ->
-    lager:debug("rotating file"),
-    _ = file:close(OldIO),
-    _ = file:rename(?WEBSEQNAME, iolist_to_binary([?WEBSEQNAME, ".", wh_util:to_binary(wh_util:current_tstamp())])),
-    {'ok', IO} = file:open(?WEBSEQNAME, [append, raw, delayed_write]),
-    lager:debug("opened ~s: ~p", [?WEBSEQNAME, IO]),
-    {'noreply', State#state{io_device=IO}};
-handle_cast({'reg_who', P, W}, #state{who_registry=Who}=State) when is_pid(P) ->
-    PBin = wh_util:to_binary(pid_to_list(P)),
-    {'noreply', State#state{who_registry=dict:store(PBin, W, Who)}};
-handle_cast(_Msg, S) ->
-    lager:debug("unhandled cast: ~p", [_Msg]),
-    {'noreply', S}.
-
-handle_info(_Info, S) ->
-    lager:debug("unhandled message: ~p", [_Info]),
-    {'noreply', S}.
-
-code_change(_, S, _) ->
-    {'ok', S}.
-
-terminate(_Reason, #state{io_device='undefined'}) -> 'ok';
-terminate(_Reason, #state{io_device=IO}) ->
-    _ = file:close(IO),
-    lager:debug("webseq terminating: ~p", [_Reason]).

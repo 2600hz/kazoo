@@ -15,7 +15,7 @@
 -include("webseq.hrl").
 
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?WORKER('webseq')]).
+-define(CHILDREN, []).
 
 %% ===================================================================
 %% API functions
