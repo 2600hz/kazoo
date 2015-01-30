@@ -11,6 +11,8 @@
 
 -export([start/1
          ,stop/0, stop/1
+         ,running/0
+
          ,evt/4
          ,title/2
          ,note/4
@@ -22,17 +24,21 @@
 
 -include("webseq.hrl").
 
--type webseq_srv() :: server_ref() | diagram_type() | ne_binary().
+-spec what(what()) -> ne_binary().
+what(B) when is_binary(B) -> B;
+what(IO) when is_list(IO) -> iolist_to_binary(IO).
 
 -define(GPROC_KEY(Type), {'n', 'l', type_key(Type)}).
 
--spec type_key(diagram_type() | ne_binary() | '_') -> {?MODULE, ne_binary() | '_'}.
+-spec type_key(diagram_type() | ne_binary() | atom()) -> {?MODULE, ne_binary() | '_' | '$1'}.
 type_key({'file', Filename}) -> type_key(Filename);
 type_key({'file', Name, _Filename}) -> type_key(Name);
 type_key({'db', Database}) -> type_key(Database);
 type_key({'db', Name, _Database}) -> type_key(Name);
 type_key(<<_/binary>>=Name) -> {?MODULE, Name};
-type_key('_') -> {?MODULE, '_'}.
+type_key(A) when is_atom(A) -> {?MODULE, A}.
+
+-type webseq_srv() :: server_ref() | diagram_type() | ne_binary().
 
 -spec start(diagram_type()) ->
                    {'ok', server_ref()} |
@@ -43,24 +49,46 @@ start(Type) ->
         Pid -> {'error', 'already_started', Pid}
     end.
 
+-spec stop() -> 'ok'.
+-spec stop(diagram_type()) -> 'ok'.
 stop() ->
     %% {{'n', 'l', Key}, PidToMatch, ValueToMatch}
-    MatchHead = {?GPROC_KEY('_'), '_', '$1'},
+    MatchHead = {?GPROC_KEY('$2'), '_', '$1'},
     Guard = [],
-    Result = ['$1'],
+    Result = ['$1', '$2'],
 
-    case gproc:select('n', [{MatchHead, Guard, Result}]) of
+    case gproc:select('n', [{MatchHead, Guard, [Result]}]) of
         [] -> 'ok';
         Pids ->
-            [webseq_diagram_srv:stop(Pid) || Pid <- Pids],
+            [stop_pid(Pid) || Pid <- Pids],
             'ok'
     end.
 
 stop(Type) ->
     case server_ref(Type) of
         'undefined' -> 'ok';
-        Pid -> webseq_diagram_srv:stop(Pid)
+        Pid -> stop_pid([Pid, Type])
     end.
+
+-spec stop_pid([atom() | diagram_type()]) -> 'ok'.
+stop_pid([Pid, Type]) ->
+    case erlang:is_process_alive(Pid) of
+        'true' -> webseq_diagram_srv:stop(Pid);
+        'false' -> 'ok'
+    end,
+    catch gproc:unreg(?GPROC_KEY(Type)),
+    'ok'.
+
+-spec running() -> wh_proplist().
+running() ->
+    %% {{'n', 'l', Key}, PidToMatch, ValueToMatch}
+    MatchHead = {?GPROC_KEY('$2'), '_', '$1'},
+    Guard = [],
+    Result = ['$1', '$2'],
+
+    Running = gproc:select('n', [{MatchHead, Guard, [Result]}]),
+    lager:debug("running: ~p", [Running]),
+    [{Pid, Type} || [Pid, Type] <- Running, erlang:is_process_alive(Pid)].
 
 -spec server_ref(webseq_srv()) -> api_pid().
 server_ref(Pid) when is_pid(Pid) -> Pid;
@@ -118,7 +146,3 @@ who(Srv, P) ->
         'undefined' -> P;
         W -> W
     end.
-
--spec what(what()) -> ne_binary().
-what(B) when is_binary(B) -> B;
-what(IO) when is_list(IO) -> iolist_to_binary(IO).
