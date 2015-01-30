@@ -223,7 +223,7 @@ handle_event(?EVENT(_AccountId, <<"CHANNEL_ANSWER">>, Evt)
              ,StateName
              ,State
             ) ->
-    CallId = wh_json:get_value(<<"Call-ID">>, Evt),
+    CallId = kz_call_event:call_id(Evt),
     {'next_state', StateName, handle_channel_answered(CallId, Evt, State)};
 
 handle_event(?EVENT(CallId, <<"CHANNEL_TRANSFEREE">>, Evt)
