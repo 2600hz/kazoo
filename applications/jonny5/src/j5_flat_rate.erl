@@ -1,9 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
+%%% David Singer
 %%%-------------------------------------------------------------------
 -module(j5_flat_rate).
 
@@ -12,15 +13,17 @@
 
 -include("jonny5.hrl").
 
+-define(DEFAULT_TRUNK_ELIGIBLE_ON_REGEX_ERROR, 'false').
 -define(DEFAULT_WHITELIST, <<"^\\+?1\\d{10}$">>).
 -define(DEFAULT_BLACKLIST, <<"^\\+?1(684|264|268|242|246|441|284|345|767|809|829|849|473|671|876|664|670|787|939|869|758|784|721|868|649|340|900|8(?:[0,2,3,4,5,6,7]{2}|8[0-9]))\\d{7}$">>).
+-define(MAX_RECURSE_DEPTH, whapps_config:get_integer(<<"jonny5">>, <<"dialed_region_max_recurse_depth">>, 20)).
 
 -ifdef(TEST).
--define(WHITELIST, ?DEFAULT_WHITELIST).
--define(BLACKLIST, ?DEFAULT_BLACKLIST).
+-define(TRUNK_ELIGIBLE_ON_REGEX_ERROR, ?DEFAULT_TRUNK_ELIGIBLE_ON_REGEX_ERROR).
 -else.
 -define(WHITELIST, whapps_config:get(<<"jonny5">>, <<"flat_rate_whitelist">>, ?DEFAULT_WHITELIST)).
 -define(BLACKLIST, whapps_config:get(<<"jonny5">>, <<"flat_rate_blacklist">>, ?DEFAULT_BLACKLIST)).
+-define(TRUNK_ELIGIBLE_ON_REGEX_ERROR, fun() ->  wh_util:is_true(whapps_config:get(<<"jonny5">>, <<"default_trunk_eligible_on_regex_error">>, ?DEFAULT_TRUNK_ELIGIBLE_ON_REGEX_ERROR)) end()).
 -endif.
 
 %%--------------------------------------------------------------------
@@ -31,11 +34,11 @@
 %%--------------------------------------------------------------------
 -spec authorize(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 authorize(Request, Limits) ->
-    case eligible_for_flat_rate(Request) of
+    lager:debug("checking if account ~s has available flat rate trunks"
+		,[j5_limits:account_id(Limits)]),
+    lager:debug("Req Info: ~p" ,[Request]),
+    case eligible_for_flat_rate(Request, Limits) of
         'true' ->
-            lager:debug("checking if account ~s has available flat rate trunks"
-                        ,[j5_limits:account_id(Limits)]
-                       ),
             maybe_consume_flat_rate(Request, Limits);
         'false' ->
             lager:debug("number '~s' is not eligible for flat rate trunks"
@@ -59,18 +62,138 @@ reconcile_cdr(_, _) -> 'ok'.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec eligible_for_flat_rate(j5_request:request()) -> boolean().
-eligible_for_flat_rate(Request) ->
-    Number = wnm_util:to_e164(j5_request:number(Request)),
-    TrunkWhitelist = ?WHITELIST,
-    TrunkBlacklist = ?BLACKLIST,
-    (wh_util:is_empty(TrunkWhitelist)
-     orelse re:run(Number, TrunkWhitelist) =/= 'nomatch'
-    )
-        andalso
-          (wh_util:is_empty(TrunkBlacklist)
-           orelse re:run(Number, TrunkBlacklist) =:= 'nomatch'
-          ).
+-spec eligible_for_flat_rate(j5_request:request(), j5_limits:limits()) -> boolean().
+eligible_for_flat_rate(Request, Limits) ->
+    try
+        eligible_for_flat_rate(
+            j5_limits:trunk_region_id(Limits)
+            , wnm_util:to_e164(j5_request:number(Request))
+            , j5_request:call_direction(Request)
+            , j5_request:classification(Request)
+            , []
+            , ?MAX_RECURSE_DEPTH
+        )
+    catch
+        Err ->
+            _Allow = ?TRUNK_ELIGIBLE_ON_REGEX_ERROR,
+            lager:debug("Error processing trunk eligibility. Trunk eligible anyway: ~p, error: ~p", [_Allow, Err]),
+            _Allow
+    end.
+
+-spec eligible_for_flat_rate(list()     , ne_binary(), ne_binary(), ne_binary(), list(), pos_integer()) -> boolean()
+    ;                       (ne_binary(), ne_binary(), ne_binary(), ne_binary(), list(), pos_integer()) -> boolean().
+eligible_for_flat_rate('undefined', Number, Direction, _, _, _) ->
+    match_default_whiteblack_list(Number, Direction);
+eligible_for_flat_rate(_TrunkDefIDs, _, _, _, _Path, Depth) when Depth < 0 ->
+    lager:debug("Reached dialed_region_max_recurse_depth: ~p. No loop detected. Current trunk_region_id(s): ~p, path: ~p", [?MAX_RECURSE_DEPTH, _TrunkDefIDs, _Path]),
+    'false';
+eligible_for_flat_rate([], _, _, _, _, _) ->
+    'false';
+eligible_for_flat_rate(TrunkDefID, Number, Direction, Class, Path, Depth) when is_binary(TrunkDefID) ->
+    eligible_for_flat_rate([TrunkDefID], Number, Direction, Class, Path, Depth);
+eligible_for_flat_rate([TrunkDefID|TrunkDefIDs], Number, Direction, Class, Path, Depth) ->
+    case trunk_def_loop_detect( TrunkDefID, Path ) of
+        'true' ->
+            eligible_for_flat_rate(TrunkDefIDs, Number, Direction, Class, Path, Depth);
+        'false' ->
+            CustomTrunkDefs = whapps_config:get(<<"jonny5">>, [<<"dialed_region_definitions">>, <<"default">>, TrunkDefID]),
+            BlackClass  = wh_json:get_value(<<Direction/binary, "_black_num_classifications">>, CustomTrunkDefs),
+            WhiteClass  = wh_json:get_value(<<Direction/binary, "_white_num_classifications">>, CustomTrunkDefs),
+            WhiteRecurseDefs = wh_json:get_value(<<"include_defs">>, CustomTrunkDefs),
+            BlackRecurseDefs = wh_json:get_value(<<"exclude_defs">>, CustomTrunkDefs),
+            % check called number class against black_num_classifications.
+            % If matched reject. Else try the other methods that might authorize the trunk.
+            lager:debug("Checking def id: ~s, others this level: ~p. Trunk def: ~p", [TrunkDefID, TrunkDefIDs, CustomTrunkDefs]),
+            not (
+                maybe_class(Class, BlackClass, <<"black">>)
+                orelse eligible_for_flat_rate(BlackRecurseDefs, Number, Direction, Class, [TrunkDefID|Path], Depth - 1)
+            ) andalso (
+                maybe_class(Class, WhiteClass, <<"white">>)
+                orelse match_custom_whiteblack_list(CustomTrunkDefs, Number, Direction)
+                orelse eligible_for_flat_rate(WhiteRecurseDefs, Number, Direction, Class, [TrunkDefID|Path], Depth - 1)
+                orelse eligible_for_flat_rate(TrunkDefIDs, Number, Direction, Class, Path, Depth)
+            )
+    end.
+-spec trunk_def_loop_detect(ne_binary(), list()) -> boolean().
+trunk_def_loop_detect(TrunkDefID, Path) ->
+    case lists:member(TrunkDefID, Path) of
+        'true' ->
+            lager:warning("WARNING Trunk definition loop detected. Curent ID: ~s, Path: ~p", [TrunkDefID, Path]),
+            'true';
+        'false' ->
+            'false'
+    end.
+
+-spec maybe_class(ne_binary(), list(), ne_binary()) -> boolean().
+maybe_class(Class, [_|_]=Classes, Color) ->
+    Matched = lists:member(Class, Classes),
+    case Matched of
+        'true' ->
+            lager:debug("Num class ~s found in ~s classifications ~p", [Class, Color, Classes]);
+        'false' ->
+            lager:debug("Num class ~s Not found in ~s classifications ~p", [Class, Color, Classes])
+    end,
+    Matched;
+maybe_class(_, 'undefined', _) ->
+    'false';
+maybe_class(_, BadFormat, Color) ->
+    lager:debug("Bad format of ~s class list. Found ~p. Should be like ['us_did','uk_did'].", [Color, BadFormat]),
+    'false'.
+
+-spec match_custom_whiteblack_list(wh_json:object(), ne_binary(), ne_binary()) -> boolean().
+match_custom_whiteblack_list(CustomTrunkDefs, Number, Direction) ->
+    TrunkWhitelist = wh_json:get_value(<<Direction/binary, "_whitelist">>, CustomTrunkDefs),
+    TrunkBlacklist = wh_json:get_value(<<Direction/binary, "_blacklist">>, CustomTrunkDefs),
+    match_whiteblack_list(TrunkWhitelist, TrunkBlacklist, Number).
+
+-spec match_default_whiteblack_list(ne_binary(), ne_binary()) -> boolean().
+match_default_whiteblack_list(Number, Direction) ->
+    lager:debug("Using system white and black lists"),
+    TrunkWhitelist = get_default_whiteblack_list(Direction, <<"_whitelist">>, ?DEFAULT_WHITELIST),
+    TrunkBlacklist = get_default_whiteblack_list(Direction, <<"_blacklist">>, ?DEFAULT_BLACKLIST),
+    match_whiteblack_list(TrunkWhitelist, TrunkBlacklist, Number).
+
+
+-spec get_default_whiteblack_list(ne_binary(), ne_binary(), ne_binary()) -> binary().
+get_default_whiteblack_list(Direction, Color, Default) ->
+    case whapps_config:get(<<"jonny5">>, <<"flat_rate_", Direction/binary, Color/binary>>) of
+        'undefined' ->
+            whapps_config:get(<<"jonny5">>, <<"flat_rate", Color/binary>>, Default);
+        _Result ->
+            _Result
+    end.
+
+-spec match_whiteblack_list(ne_binary(), ne_binary(), ne_binary()) -> boolean().
+match_whiteblack_list(TrunkWhitelist, TrunkBlacklist, Number) ->
+    try wh_util:is_empty(TrunkWhitelist) orelse re:run(Number, TrunkWhitelist) =/= 'nomatch' of
+        'true' ->
+            lager:debug("Matched trunk whitelist or empty whitelist.", []),
+            match_black_list(TrunkBlacklist, Number);
+        'false' ->
+            lager:debug("Did NOT match trunk whitelist.", []),
+            'false'
+    catch
+        Err ->
+            _Allow = ?TRUNK_ELIGIBLE_ON_REGEX_ERROR,
+            lager:debug("Error in whitelist. trunk eligible anyway: ~p, bad regex /~s/ error: ~p", [_Allow, TrunkWhitelist, Err]),
+            _Allow
+    end.
+
+-spec match_black_list(ne_binary(), ne_binary()) -> boolean().
+match_black_list(TrunkBlacklist, Number) ->
+    try (wh_util:is_empty(TrunkBlacklist) orelse re:run(Number, TrunkBlacklist) =:= 'nomatch') of
+        'true' -> 
+            lager:debug("Did NOT match trunk blacklist or empty blacklist.", []),
+            'true';
+        'false' ->
+            lager:debug("Matched trunk blacklist.", []),
+            'false'
+    catch
+        Err ->
+            _Allow = ?TRUNK_ELIGIBLE_ON_REGEX_ERROR,
+            lager:debug("Error in blacklist. trunk eligible anyway: ~p, bad regex: /~s/ error: ~p", [_Allow, TrunkBlacklist, Err]),
+            _Allow
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
