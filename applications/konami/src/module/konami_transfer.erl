@@ -517,7 +517,7 @@ attended_answer(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
     connect_to_transferee(Call),
     {'stop', 'normal', State};
 attended_answer(?EVENT(_CallId, _EventName, _Evt), State) ->
-    lager:info("attended_answer: unhandled event ~s for ~s: ~p", [_EventName, _CallId, _Evt]),
+    lager:info("attended_answer: unhandled event ~s for ~s", [_EventName, _CallId]),
     ?WSD_NOTE(_CallId, 'right', <<"unhandled ", _EventName/binary>>),
     {'next_state', 'attended_answer', State};
 attended_answer(Msg, State) ->
