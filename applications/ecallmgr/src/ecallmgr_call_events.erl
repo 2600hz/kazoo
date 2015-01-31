@@ -181,6 +181,7 @@ handle_publisher_usurp(JObj, Props) ->
 -spec init([atom() | ne_binary(),...]) -> {'ok', state()}.
 init([Node, CallId]) when is_atom(Node) andalso is_binary(CallId) ->
     put('callid', CallId),
+    register_for_events(Node, CallId),
     gen_listener:cast(self(), 'init'),
     {'ok', #state{node=Node
                   ,call_id=CallId
@@ -220,12 +221,9 @@ handle_call(_Request, _From, State) ->
 %%                                  {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast('init', #state{node=Node
-                           ,call_id=CallId
-                          }=State) ->
+handle_cast('init', #state{node=Node}=State) ->
     erlang:monitor_node(Node, 'true'),
     TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), 'sanity_check'),
-    register_for_events(Node, CallId),
     _ = usurp_other_publishers(State),
     {'noreply', State#state{sanity_check_tref=TRef}};
 handle_cast({'update_node', Node}, #state{node=Node}=State) ->
@@ -262,21 +260,20 @@ handle_cast({'transferer', _Props}, State) ->
 handle_cast({'b_leg_events', Events}, State) ->
     lager:debug("tracking b_leg events: ~p", [Events]),
     {'noreply', State#state{other_leg_events=Events}};
-handle_cast({'other_leg', _OtherLeg}, #state{other_leg_events=[]}=State) ->
-    lager:debug("ignoring other leg events for ~s", [_OtherLeg]),
-    {'noreply', State};
 handle_cast({'other_leg', OtherLeg}, #state{other_leg_events=_Events
                                             ,node=Node
                                            }=State) ->
     lager:debug("tracking other leg events for ~s: ~p", [OtherLeg, _Events]),
-    'true' = register_for_events(Node, OtherLeg),
+    _ = ecallmgr_call_sup:start_event_process(Node, OtherLeg),
+
     {'noreply', State#state{other_leg=OtherLeg}};
 handle_cast({'other_leg', OtherLeg, ChannelBridgeProps}
             ,#state{other_leg_events=Events
                     ,node=Node
                    }=State) ->
     lager:debug("tracking other leg events for ~s: ~p", [OtherLeg, Events]),
-    'true' = register_for_events(Node, OtherLeg),
+    _ = ecallmgr_call_sup:start_event_process(Node, OtherLeg),
+
     maybe_publish_other_leg_bridge(OtherLeg, ChannelBridgeProps, lists:member(<<"CHANNEL_BRIDGE">>, Events)),
     {'noreply', State#state{other_leg=OtherLeg}};
 handle_cast({'gen_listener', {'created_queue', _Q}}, State) ->
@@ -304,13 +301,19 @@ unregister_for_events(Node, CallId) ->
 -spec update_events(atom(), ne_binary(), function()) -> 'true'.
 update_events(Node, CallId, Fun) ->
     Regs = ['call_events_processes'
-            ,?FS_CALL_EVENTS_PROCESS_REG(Node, CallId)
+            ,{?FS_CALL_EVENTS_PROCESS_REG(Node, CallId), self()}
             ,?FS_CALL_EVENT_REG_MSG(Node, CallId)
             ,?FS_EVENT_REG_MSG(Node, ?CHANNEL_MOVE_RELEASED_EVENT_BIN)
             ,?LOOPBACK_BOWOUT_REG(CallId)
            ],
-    [catch Fun({'p', 'l', Reg}) || Reg <- Regs],
+    [update_event(Fun, Reg) || Reg <- Regs],
     'true'.
+
+update_event(Fun, {Reg, Value}) ->
+    lager:debug("setting ~p for ~p", [Value, Reg]),
+    catch Fun({'p', 'l', Reg}, Value);
+update_event(Fun, Reg) ->
+    catch Fun({'p', 'l', Reg}).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -442,7 +445,7 @@ handle_info('timeout', #state{node=Node
             {'stop', 'normal', State};
         {'ok', <<"true">>} ->
             lager:debug("processing call events from ~s", [Node]),
-            'true' = gproc:reg({'p', 'l', ?FS_CALL_EVENTS_PROCESS_REG(Node, CallId)}),
+            'true' = gproc:reg({'p', 'l', ?FS_CALL_EVENTS_PROCESS_REG(Node, CallId)}, self()),
             'true' = gproc:reg({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, CallId)}),
             'true' = gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, ?CHANNEL_MOVE_RELEASED_EVENT_BIN)}),
             _ = usurp_other_publishers(State),
