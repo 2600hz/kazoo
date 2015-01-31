@@ -34,12 +34,16 @@ start_link() ->
 
 -spec start_proc(list()) -> sup_startchild_ret().
 start_proc([Node, CallId|_]=Args) ->
-    case gproc:lookup_pids({'p', 'l', ?FS_CALL_EVENTS_PROCESS_REG(Node, CallId)}) of
-        [] -> supervisor:start_child(?SERVER, Args);
-        [Pid] ->
-            lager:debug("recycling existing call events worker ~p", [Pid]),
+    try gproc:lookup_value({'p', 'l', ?FS_CALL_EVENTS_PROCESS_REG(Node, CallId)}) of
+        Pid when is_pid(Pid) ->
+            lager:debug("recycling existing call events worker ~p for ~s", [Pid, CallId]),
             ecallmgr_call_events:update_node(Pid, Node),
-            {'ok', Pid}
+            {'ok', Pid};
+        _V ->
+            lager:debug("unexpected event process: ~p", [_V])
+    catch
+        'error':'badarg' ->
+            supervisor:start_child(?SERVER, Args)
     end.
 
 %%%===================================================================
