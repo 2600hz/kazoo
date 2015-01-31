@@ -60,16 +60,16 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link([term()]) -> startlink_ret().
-start_link(Args) ->
+start_link(JObj) ->
     gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
                                       ,{'bindings', ?BINDINGS}
                                       ,{'queue_name', ?QUEUE_NAME}
                                       ,{'queue_options', ?QUEUE_OPTIONS}
                                       ,{'consume_options', ?CONSUME_OPTIONS}
-                                     ], Args).
+                                     ], [JObj]).
 
 -spec init(wh_json:object()) -> {'ok', state()}.
-init(JObj) ->
+init([JObj]) ->
     CustomerNumber = wh_json:get_value(<<"Number">>, JObj),
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     OutboundCID = wh_json:get_value(<<"Outbound-Caller-ID-Number">>, JObj),
