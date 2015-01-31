@@ -166,7 +166,7 @@ pre_originate(?EVENT(_CallId, _EventName, _Evt), State) ->
     {'next_state', 'pre_originate', State}.
 
 pre_originate(_Msg, _From, State) ->
-    {'next_state', 'partial_wait', State}.
+    {'next_state', 'pre_originate', State}.
 
 attended_wait(?EVENT(Transferor, <<"DTMF">>, Evt), #state{transferor=Transferor}=State) ->
     handle_transferor_dtmf(Evt, 'attended_wait', State);
@@ -297,9 +297,9 @@ attended_wait(?EVENT(Target, EventName, _Evt)
   when EventName =:= <<"CHANNEL_DESTROY">>
        orelse EventName =:= <<"LEG_DESTROYED">> ->
     lager:info("target ~s didn't answer, reconnecting transferor and transferee", [Target]),
-    ?WSD_NOTE(Target, 'right', <<"targets down">>),
+    ?WSD_NOTE(Target, 'right', <<"hungup">>),
     connect_to_transferee(Call),
-    {'stop', 'normal', State};
+    {'next_state', 'finished', State};
 attended_wait(?EVENT(Target, <<"CHANNEL_REPLACED">>, Evt)
               ,#state{target=Target
                       ,target_call=TargetCall
@@ -515,7 +515,7 @@ attended_answer(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
     ?WSD_NOTE(Target, 'right', <<"target done">>),
 
     connect_to_transferee(Call),
-    {'stop', 'normal', State};
+    {'next_state', 'finished', State};
 attended_answer(?EVENT(_CallId, _EventName, _Evt), State) ->
     lager:info("attended_answer: unhandled event ~s for ~s", [_EventName, _CallId]),
     ?WSD_NOTE(_CallId, 'right', <<"unhandled ", _EventName/binary>>),
@@ -530,12 +530,17 @@ attended_answer(_Msg, _From, State) ->
 finished(?EVENT(Transferee, <<"CHANNEL_BRIDGE">>, Evt)
          ,#state{transferee=Transferee
                  ,target=Target
+                 ,transferor=_Transferor
                 }=State
         ) ->
     case kz_call_event:other_leg_call_id(Evt) of
         Target ->
             ?WSD_EVT(Target, Transferee, <<"bridged">>),
             lager:debug("transferee and target are bridged"),
+            {'stop', 'normal', State};
+        _Transferor ->
+            ?WSD_EVT(_Transferor, Transferee, <<"bridged">>),
+            lager:debug("transferor and transferee bridged"),
             {'stop', 'normal', State};
         _CallId ->
             ?WSD_EVT(_CallId, Transferee, <<"bridged">>),
