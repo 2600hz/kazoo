@@ -779,6 +779,7 @@ get_call_pickup_app(Node, UUID, JObj, Target, Command) ->
 
     ecallmgr_util:set(Node, UUID, build_set_args(SetApi, JObj)),
     ecallmgr_util:bridge_export(Node, UUID, Exports),
+    ecallmgr_util:bridge_export(Node, Target, Exports),
     {Command, Target}.
 
 -spec exports_from_api(wh_json:object(), ne_binaries()) -> wh_proplist().
