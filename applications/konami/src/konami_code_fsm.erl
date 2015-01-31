@@ -27,6 +27,7 @@
          ,handle_info/3
          ,terminate/3
          ,code_change/4
+         ,format_status/2
         ]).
 
 -include("konami.hrl").
@@ -53,7 +54,7 @@
                }).
 -type state() :: #state{}.
 
--define(WSD_ENABLED, 'true').
+-define(WSD_ENABLED, 'false').
 
 -define(WSD_ID, ?WSD_ENABLED andalso {'file', get('callid')}).
 
@@ -391,6 +392,11 @@ terminate(_Reason, _StateName, #state{call_id=CallId
 code_change(_OldVsn, StateName, State, _Extra) ->
     {'ok', StateName, State}.
 
+format_status(_, [_Dict, #state{call_id=CallId
+                                ,other_leg=OtherLeg
+                               }]) ->
+    [{'data', [{"StateData", {CallId, OtherLeg}}]}].
+
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
@@ -689,8 +695,7 @@ handle_channel_answered(CallId, Evt, #state{call_id='undefined'
                         ,call=whapps_call:set_call_id(CallId, Call)
                        };
         _Leg ->
-            lager:debug("no a-leg call-id"),
-            lager:debug("other leg: ~s evt other: ~s", [CallId, OtherLeg]),
+            lager:debug("no a leg, other leg answered: ~s evt other: ~s", [CallId, OtherLeg]),
             ?WSD_NOTE(CallId, 'right', <<"answered">>),
             State
     end;
