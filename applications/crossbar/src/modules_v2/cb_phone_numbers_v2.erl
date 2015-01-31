@@ -1090,8 +1090,8 @@ set_response(_Else, _, Context, _) ->
 %%--------------------------------------------------------------------
 -spec dry_run_response(wh_proplist()) -> wh_json:object().
 -spec dry_run_response(ne_binary(), wh_json:object()) -> wh_json:object().
-dry_run_response([{'services', Services}, {'activation_charges', Charges}]) ->
-    wh_services:calculate_charges(Services, Charges).
+dry_run_response([{'services', Services}]) ->
+    wh_services:dry_run(Services).
 
 dry_run_response(?COLLECTION, JObj) ->
     case wh_json:get_value(<<"error">>, JObj) of

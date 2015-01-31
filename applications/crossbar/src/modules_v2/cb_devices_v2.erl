@@ -239,26 +239,10 @@ put_resp('false', Context) ->
 dry_run(Context) ->
     JObj = cb_context:doc(Context),
     AccountId = cb_context:account_id(Context),
-
     DeviceType = wh_json:get_value(<<"device_type">>, JObj),
-
     Services = wh_services:fetch(AccountId),
     UpdateServices = wh_service_devices:reconcile(Services, DeviceType),
-
-    Charges = wh_services:activation_charges(<<"devices">>, DeviceType, Services),
-
-    case Charges > 0 of
-        'false' -> wh_services:calculate_charges(UpdateServices, []);
-        'true' ->
-            Transaction = wh_transaction:debit(AccountId, wht_util:dollars_to_units(Charges)),
-            Desc = <<"activation charges for "
-                     ,DeviceType/binary
-                     ," "
-                     ,(wh_json:get_value(<<"name">>, JObj))/binary
-                   >>,
-            Transaction2 = wh_transaction:set_description(Desc, Transaction),
-            wh_services:calculate_charges(UpdateServices, [Transaction2])
-    end.
+    wh_services:dry_run(UpdateServices).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, DeviceId) ->
