@@ -819,14 +819,14 @@ record_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id='undef
     MediaId = recording_media_doc(<<"unavailable greeting">>, Box, Call),
     record_unavailable_greeting(AttachmentName, Box#mailbox{unavailable_media_id=MediaId}, Call);
 record_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id=MediaId}=Box, Call) ->
-    case couch_mgr:open_cache_doc(whapps_call:account_db(Call), MediaId) of
+    case couch_mgr:open_doc(whapps_call:account_db(Call), MediaId) of
         {'ok', JObj} ->
             case wh_json:get_value(<<"media_source">>, JObj) of
                 <<"upload">> ->
-                    lager:debug("The voicemail greeting media is a web upload, let's not touch it,"
-                      ++ " it may be in use in some other maibox. We create new media document."),
+                    lager:debug("The voicemail media is a web upload, let's not touch it,"
+                      ++ " it may be in use in some other maibox and create new media document"),
                     record_unavailable_greeting(AttachmentName, Box#mailbox{unavailable_media_id='undefined'}, Call);
-                _ -> 
+                _ ->
                     overwrite_unavailable_greeting(AttachmentName, Box, Call)
             end;
         _ -> overwrite_unavailable_greeting(AttachmentName, Box, Call)
