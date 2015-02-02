@@ -61,7 +61,7 @@ start_link(Call) ->
                                       ,{'queue_name', ?QUEUE_NAME}       % optional to include
                                       ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
                                       ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
-                                     ], Call).
+                                     ], [Call]).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -79,7 +79,7 @@ start_link(Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec init(whapps_call:call()) -> {'ok', state()}.
-init(Call) ->
+init([Call]) ->
     process_flag('trap_exit', 'true'),
     CallId = whapps_call:call_id(Call),
     put('callid', CallId),
