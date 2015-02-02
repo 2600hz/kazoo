@@ -555,7 +555,7 @@
 
 %% Redirect
 -define(REDIRECT_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Redirect-Contact">>]).
--define(OPTIONAL_REDIRECT_REQ_HEADERS, [<<"Insert-At">>, <<"Redirect-Server">>]).
+-define(OPTIONAL_REDIRECT_REQ_HEADERS, [<<"Insert-At">>, <<"Redirect-Server">>, <<"Redirect-Node">>]).
 -define(REDIRECT_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                               ,{<<"Event-Name">>, <<"command">>}
                               ,{<<"Application-Name">>, <<"redirect">>}
@@ -563,6 +563,7 @@
                              ]).
 -define(REDIRECT_REQ_TYPES, [{<<"Redirect-Contact">>, fun is_binary/1}
                              ,{<<"Redirect-Server">>, fun is_binary/1}
+                             ,{<<"Redirect-Node">>, fun is_binary/1}
                             ]).
 
 %% Execute_Extension
