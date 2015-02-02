@@ -257,14 +257,15 @@ handle_cast('shutdown', #state{node=Node}=State) ->
 handle_cast({'transferer', _Props}, State) ->
     lager:debug("call control has been transferred"),
     {'stop', 'normal', State};
-handle_cast({'b_leg_events', Events}, State) ->
+handle_cast({'b_leg_events', NewEvents}, #state{other_leg_events=Evts}=State) ->
+    Events = lists:usort(Evts ++ NewEvents),
     lager:debug("tracking b_leg events: ~p", [Events]),
     {'noreply', State#state{other_leg_events=Events}};
-handle_cast({'other_leg', OtherLeg}, #state{other_leg_events=_Events
+handle_cast({'other_leg', OtherLeg}, #state{other_leg_events=Events
                                             ,node=Node
                                            }=State) ->
-    lager:debug("tracking other leg events for ~s: ~p", [OtherLeg, _Events]),
-    _ = ecallmgr_call_sup:start_event_process(Node, OtherLeg),
+    lager:debug("tracking other leg events for ~s: ~p", [OtherLeg, Events]),
+    _ = (Events =/= []) andalso ecallmgr_call_sup:start_event_process(Node, OtherLeg),
 
     {'noreply', State#state{other_leg=OtherLeg}};
 handle_cast({'other_leg', OtherLeg, ChannelBridgeProps}
@@ -272,7 +273,7 @@ handle_cast({'other_leg', OtherLeg, ChannelBridgeProps}
                     ,node=Node
                    }=State) ->
     lager:debug("tracking other leg events for ~s: ~p", [OtherLeg, Events]),
-    _ = ecallmgr_call_sup:start_event_process(Node, OtherLeg),
+    _ = (Events =/= []) andalso ecallmgr_call_sup:start_event_process(Node, OtherLeg),
 
     maybe_publish_other_leg_bridge(OtherLeg, ChannelBridgeProps, lists:member(<<"CHANNEL_BRIDGE">>, Events)),
     {'noreply', State#state{other_leg=OtherLeg}};
@@ -292,16 +293,17 @@ maybe_publish_other_leg_bridge(OtherLeg, Props, 'true') ->
 
 -spec register_for_events(atom(), ne_binary()) -> 'true'.
 register_for_events(Node, CallId) ->
-    update_events(Node, CallId, fun gproc:reg/1).
+    update_events(Node, CallId, fun gproc:reg/1),
+    catch gproc:reg({'p', 'l', ?FS_CALL_EVENTS_PROCESS_REG(Node, CallId)}, self()).
 
 -spec unregister_for_events(atom(), ne_binary()) -> 'true'.
 unregister_for_events(Node, CallId) ->
-    update_events(Node, CallId, fun gproc:unreg/1).
+    update_events(Node, CallId, fun gproc:unreg/1),
+    catch gproc:unreg({'p', 'l', ?FS_CALL_EVENTS_PROCESS_REG(Node, CallId)}, self()).
 
 -spec update_events(atom(), ne_binary(), function()) -> 'true'.
 update_events(Node, CallId, Fun) ->
     Regs = ['call_events_processes'
-            ,{?FS_CALL_EVENTS_PROCESS_REG(Node, CallId), self()}
             ,?FS_CALL_EVENT_REG_MSG(Node, CallId)
             ,?FS_EVENT_REG_MSG(Node, ?CHANNEL_MOVE_RELEASED_EVENT_BIN)
             ,?LOOPBACK_BOWOUT_REG(CallId)
@@ -309,9 +311,7 @@ update_events(Node, CallId, Fun) ->
     [update_event(Fun, Reg) || Reg <- Regs],
     'true'.
 
-update_event(Fun, {Reg, Value}) ->
-    lager:debug("setting ~p for ~p", [Value, Reg]),
-    catch Fun({'p', 'l', Reg}, Value);
+-spec update_event(fun(), tuple() | atom()) -> 'true'.
 update_event(Fun, Reg) ->
     catch Fun({'p', 'l', Reg}).
 
@@ -477,9 +477,14 @@ handle_info(_Info, State) ->
 
 -spec handle_bowout(atom(), wh_proplist(), ne_binary()) -> ne_binary().
 handle_bowout(Node, Props, ResigningUUID) ->
-    AcquiringUUID = props:get_value(?ACQUIRED_UUID, Props),
-    case props:get_value(?RESIGNING_UUID, Props) of
-        ResigningUUID when AcquiringUUID =/= 'undefined' ->
+    case {props:get_value(?RESIGNING_UUID, Props)
+          ,props:get_value(?ACQUIRED_UUID, Props)
+         }
+    of
+        {ResigningUUID, ResigningUUID} ->
+            lager:debug("call id after bowout remains the same"),
+            ResigningUUID;
+        {ResigningUUID, AcquiringUUID} when AcquiringUUID =/= 'undefined' ->
             lager:debug("loopback bowout detected, replacing ~s with ~s", [ResigningUUID, AcquiringUUID]),
 
             unregister_for_events(Node, ResigningUUID),
@@ -487,8 +492,8 @@ handle_bowout(Node, Props, ResigningUUID) ->
 
             put('callid', AcquiringUUID),
             AcquiringUUID;
-        _UUID ->
-            lager:debug("failed to update after bowout, r: ~s a: ~s", [_UUID, AcquiringUUID]),
+        {_UUID, _AcquiringUUID} ->
+            lager:debug("failed to update after bowout, r: ~s a: ~s", [_UUID, _AcquiringUUID]),
             ResigningUUID
     end.
 
@@ -929,7 +934,6 @@ get_application_name(Props) ->
         <<"sofia::replaced">> -> <<"transfer">>;
         <<"spandsp::rxfax", Event/binary >> -> <<"rxfax",Event/binary>>;
         <<"spandsp::txfax", Event/binary >> -> <<"txfax", Event/binary>>;
-        <<"loopback::bowout">> -> <<"originate">>;
         Else -> Else
     end.
 

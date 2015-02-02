@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2014, 2600Hz INC
+%%% @copyright (C) 2010-2015, 2600Hz INC
 %%% @doc
 %%% Execute call commands
 %%% @end
@@ -769,13 +769,15 @@ get_call_pickup_app(Node, UUID, JObj, Target, Command) ->
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
 
-    wh_json:is_true(<<"Publish-Usurp">>, JObj, 'true')
-        andalso begin
-                    wh_amqp_worker:cast(ControlUsurp
-                                        ,fun(C) -> wapi_call:publish_usurp_control(Target, C) end
-                                       ),
-                    lager:debug("published control usurp for ~s", [Target])
-                end,
+    case wh_json:is_true(<<"Publish-Usurp">>, JObj, 'true') of
+        'true' ->
+            wh_amqp_worker:cast(ControlUsurp
+                                ,fun(C) -> wapi_call:publish_usurp_control(Target, C) end
+                               ),
+            lager:debug("published control usurp for ~s", [Target]);
+        'false' ->
+            lager:debug("API is skipping control usurp")
+    end,
 
     ecallmgr_util:set(Node, UUID, build_set_args(SetApi, JObj)),
     ecallmgr_util:bridge_export(Node, UUID, Exports),
