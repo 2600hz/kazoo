@@ -114,7 +114,7 @@ search(Context, Start, Field, Type) ->
                 AuthId = cb_context:auth_account_id(Context),
                 {[AuthId, Type, Start], [AuthId, Type, End]};
              _ ->
-                 {[Type, Start], [Type, End ]}
+                 {[Type, Start], [Type, End]}
         end,
     ViewName = <<?QUERY_TPL/binary, Field/binary>>,
     ViewOptions = [{'startkey', StartKey}
@@ -122,6 +122,7 @@ search(Context, Start, Field, Type) ->
                    ,{'limit', crossbar_doc:pagination_page_size(Context)}
                   ],
     crossbar_doc:load_view(ViewName, ViewOptions, Context, fun normalize_view_results/2).
+
 
 
 %%--------------------------------------------------------------------
