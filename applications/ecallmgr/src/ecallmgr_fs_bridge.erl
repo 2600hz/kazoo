@@ -89,8 +89,8 @@ handle_ringback(Node, UUID, JObj) ->
 maybe_early_media(Node, UUID, JObj) ->
     Endpoints = wh_json:get_ne_value(<<"Endpoints">>, JObj, []),
     case ecallmgr_util:get_dial_separator(JObj, Endpoints) of
-        ?SEPARATOR_SIMULTANEOUS -> 'ok';
-        ?SEPARATOR_SINGLE ->
+        ?SEPARATOR_SINGLE -> 'ok';
+        ?SEPARATOR_SIMULTANEOUS ->
             lager:debug("bridge is simultaneous to multiple endpoints, starting local ringing"),
             %% we don't really care if this succeeds, the call will fail later on
             ecallmgr_util:send_cmd(Node, UUID, <<"ring_ready">>, ""),

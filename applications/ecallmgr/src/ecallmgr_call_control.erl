@@ -437,11 +437,17 @@ handle_info('nodedown_restart_exceeded', #state{is_node_up='false'}=State) ->
 handle_info(?LOOPBACK_BOWOUT_MSG(Node, Props), #state{call_id=ResigningUUID
                                                       ,node=Node
                                                      }=State) ->
-    case props:get_value(?RESIGNING_UUID, Props) of
-        ResigningUUID ->
-            AcquiringUUID = props:get_value(?ACQUIRED_UUID, Props),
+    case {props:get_value(?RESIGNING_UUID, Props)
+          ,props:get_value(?ACQUIRED_UUID, Props)
+         }
+    of
+        {ResigningUUID, ResigningUUID} ->
+            lager:debug("call id after bowout remains the same"),
+            {'noreply', State};
+        {ResigningUUID, AcquiringUUID} ->
+            lager:debug("replacing ~s with ~s", [ResigningUUID, AcquiringUUID]),
             {'noreply', handle_sofia_replaced(AcquiringUUID, State)};
-        _UUID ->
+        {_UUID, _AcuiringUUID} ->
             lager:debug("ignoring bowout for ~s", [_UUID]),
             {'noreply', State}
     end;
