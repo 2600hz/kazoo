@@ -517,10 +517,23 @@ get_fs_app(Node, UUID, JObj, <<"redirect">>) ->
     case wapi_dialplan:redirect_v(JObj) of
         'false' -> {'error', <<"redirect failed to execute as JObj did not validate">>};
         'true' ->
-            _ = case wh_json:get_value(<<"Redirect-Server">>, JObj) of
-                    'undefined' -> 'ok';
-                    Server -> ecallmgr_util:set(Node, UUID, [{<<"sip_rh_X-Redirect-Server">>, Server}])
-                end,
+            RedirectServer = case wh_json:get_value(<<"Redirect-Server">>, JObj) of
+                                 'undefined' ->
+                                     case wh_json:get_value(<<"Redirect-Node">>, JObj) of
+                                         'undefined' -> 'undefined';
+                                         RedirectNode ->
+                                             SipUrl = ecallmgr_fs_node:sip_url(RedirectNode),
+                                             binary:replace(SipUrl, <<"mod_sofia@">>, <<>>)
+                                     end;
+                                 Server -> Server
+                             end,
+            case RedirectServer of
+                'undefined' -> 'ok';
+                _Else ->
+                    lager:debug("Set X-Redirect-Server to ~s", [RedirectServer]),
+                    ecallmgr_util:set(Node, UUID, [{<<"sip_rh_X-Redirect-Server">>, RedirectServer}])
+            end,
+
             {<<"redirect">>, wh_json:get_value(<<"Redirect-Contact">>, JObj, <<>>)}
     end;
 
