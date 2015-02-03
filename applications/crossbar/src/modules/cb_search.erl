@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% Listing of all expected v1 callbacks
@@ -35,7 +35,6 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.search">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.search">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.search">>, ?MODULE, 'validate').
-
 
 %%--------------------------------------------------------------------
 %% @public
@@ -85,7 +84,6 @@ validate_search(Context, 'undefined') ->
 validate_search(Context, Type) ->
     validate_search(Context, cb_context:req_value(Context, <<"q">>), Type).
 
-
 -spec validate_search(cb_context:context(), api_binary(), ne_binary()) -> cb_context:context().
 validate_search(Context, 'undefined', _) ->
     cb_context:add_validation_error(<<"q">>, <<"required">>, <<"search needs to know what to look for">>, Context);
@@ -114,13 +112,13 @@ search(Context, Start, Field, Type) ->
          ,{'limit', crossbar_doc:pagination_page_size(Context)}
         ],
     fix_envelope(
-        crossbar_doc:load_view(
-            ViewName
-            ,ViewOptions
-            ,Context
-            ,fun normalize_view_results/2
-        )
-    ).
+      crossbar_doc:load_view(
+        ViewName
+        ,ViewOptions
+        ,Context
+        ,fun normalize_view_results/2
+       )
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -139,8 +137,8 @@ get_start_key(Context, Type, Start) ->
         'undefined' ->
             AuthId = cb_context:auth_account_id(Context),
             [AuthId, Type, StartKey];
-         _ ->
-             [Type, StartKey]
+        _ ->
+            [Type, StartKey]
     end.
 
 %%--------------------------------------------------------------------
@@ -151,11 +149,11 @@ get_start_key(Context, Type, Start) ->
 %%--------------------------------------------------------------------
 -spec get_end_key(cb_context:context(), ne_binary(), ne_binary()) -> ne_binaries().
 get_end_key(Context, Type, Start) ->
-     case cb_context:account_id(Context) of
+    case cb_context:account_id(Context) of
         'undefined' ->
             AuthId = cb_context:auth_account_id(Context),
             [AuthId, Type, next_binary_key(Start)];
-         _ ->
+        _ ->
             [Type, next_binary_key(Start)]
     end.
 
@@ -169,7 +167,6 @@ get_end_key(Context, Type, Start) ->
 next_binary_key(Bin) ->
     <<Bin/binary, "\ufff0">>.
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -179,13 +176,13 @@ next_binary_key(Bin) ->
 -spec fix_envelope(cb_context:context()) -> cb_context:context().
 fix_envelope(Context) ->
     cb_context:set_resp_envelope(
-        cb_context:set_resp_data(Context, lists:reverse(cb_context:resp_data(Context)))
-        ,lists:foldl(
-            fun fix_envelope_fold/2
-            ,cb_context:resp_envelope(Context)
-            ,[<<"start_key">>, <<"next_start_key">>]
+      cb_context:set_resp_data(Context, lists:reverse(cb_context:resp_data(Context)))
+      ,lists:foldl(
+         fun fix_envelope_fold/2
+         ,cb_context:resp_envelope(Context)
+         ,[<<"start_key">>, <<"next_start_key">>]
         )
-    ).
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -206,7 +203,7 @@ fix_envelope_fold(Key, JObj) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec fix_start_key(api_binary() | list()) -> api_binary().
+-spec fix_start_key(api_binaries()) -> api_binary().
 fix_start_key('undefined') -> 'undefined';
 fix_start_key([_, StartKey]) -> StartKey.
 
