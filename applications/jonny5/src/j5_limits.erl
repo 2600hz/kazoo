@@ -444,4 +444,3 @@ create_limit_jobj(AccountDb) ->
             lager:debug("failed to create initial limits document in db ~s: ~p", [AccountDb, _R]),
             wh_json:new()
     end.
-
