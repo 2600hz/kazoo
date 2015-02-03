@@ -25,6 +25,7 @@
 
          %% Getters / Setters
          ,setters/2
+         ,new/0
 
          ,account_id/1, set_account_id/2
          ,account_db/1, set_account_db/2
@@ -100,6 +101,9 @@
                      {setter_fun_2(), term()} |
                      {setter_fun_3(), term(), term()}.
 -type setters() :: [setter_kv(),...] | [].
+
+-spec new() -> context().
+new() -> #cb_context{}.
 
 -spec is_context(any()) -> boolean().
 is_context(#cb_context{}) -> 'true';
