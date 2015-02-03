@@ -948,7 +948,7 @@ load_descendants_count(ViewOptions) ->
 -spec maybe_update_descendants_count(ne_binary(), integer()) -> 'ok'.
 maybe_update_descendants_count(AccountId, NewCount) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_doc(AccountDb, AccountId) of
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
         {'error', _E} ->
             io:format("could not load account ~s: ~p~n", [AccountId, _E]);
         {'ok', JObj} ->
