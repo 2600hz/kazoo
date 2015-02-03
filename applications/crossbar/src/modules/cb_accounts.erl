@@ -977,7 +977,7 @@ load_account_db(AccountId, Context) when is_binary(AccountId) ->
                                  ,{fun cb_context:set_account_id/2, AccountId}
                                 ]);
        {'error', 'not_found'} -> cb_context:add_system_error('bad_identifier', [{'details', AccountId}],  Context);
-       {'error', _R} -> crossbar_util:response_db_fatal(Context)   
+       {'error', _R} -> crossbar_util:response_db_fatal(Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -1060,8 +1060,30 @@ create_account_definition(Context) ->
 
 -spec load_initial_views(cb_context:context()) -> 'ok'.
 load_initial_views(Context)->
-    Views = whapps_maintenance:get_all_account_views(),
-    whapps_util:update_views(cb_context:account_db(Context), Views, 'true').
+    [{FirstId, _}|_] = Views = whapps_maintenance:get_all_account_views(),
+    {LastId, _} = lists:last(Views),
+    whapps_util:update_views(cb_context:account_db(Context), Views, 'true'),
+    ensure_views(Context, [FirstId, LastId]).
+
+-spec ensure_views(cb_context:context(), ne_binaries()) -> 'ok'.
+-spec ensure_views(cb_context:context(), ne_binaries(), 0..3) -> 'ok'.
+ensure_views(Context, Ids) ->
+    ensure_views(Context, Ids, 3).
+
+ensure_views(_Context, [], _Retries) -> 'ok';
+ensure_views(_Context, [_Id|_], 0) ->
+    lager:debug("failed to find design doc ~s in ~s", [_Id, cb_context:account_db(_Context)]);
+ensure_views(Context, [Id|Ids], Retries) ->
+    AccountDb = cb_context:account_db(Context),
+    case couch_mgr:open_doc(AccountDb, Id) of
+        {'ok', _} -> ensure_views(Context, Ids, 3);
+        {'error', 'not_found'} ->
+            timer:sleep(500),
+            ensure_views(Context, [Id|Ids], Retries-1);
+        {'error', _E} ->
+            lager:debug("failed to open design doc ~s in ~s: ~p", [Id, AccountDb, _E]),
+            load_initial_views(Context)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
