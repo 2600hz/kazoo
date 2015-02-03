@@ -13,6 +13,8 @@
 -export([description/1, set_description/2]).
 -export([call_id/1, set_call_id/2]).
 -export([sub_account_id/1, set_sub_account_id/2]).
+-export([sub_account_name/1, set_sub_account_name/2]).
+-export([set_sub_account_info/2]).
 -export([event/1, set_event/2]).
 -export([number/1, set_number/2]).
 -export([feature/1, set_feature/2]).
@@ -49,6 +51,7 @@
                          ,description :: api_binary()
                          ,call_id :: api_binary()
                          ,sub_account_id :: ne_binary()
+                         ,sub_account_name :: 'undefined' | ne_binary()
                          ,event :: api_binary()
                          ,number :: api_binary()
                          ,feature :: api_binary()
@@ -96,6 +99,10 @@ call_id(#wh_transaction{call_id=CallId}) ->
 -spec sub_account_id(transaction()) -> ne_binary().
 sub_account_id(#wh_transaction{sub_account_id=SubAccountId}) ->
     SubAccountId.
+
+-spec sub_account_name(transaction()) -> api_binary().
+sub_account_name(#wh_transaction{sub_account_name=SubAccountName}) ->
+    SubAccountName.
 
 -spec event(transaction()) -> ne_binary().
 event(#wh_transaction{event=Event}) ->
@@ -213,6 +220,22 @@ set_call_id(CallId, Transaction) when is_binary(CallId) ->
 set_sub_account_id(AccountId, Transaction) when is_binary(AccountId) ->
     Transaction#wh_transaction{sub_account_id=AccountId}.
 
+-spec set_sub_account_name(ne_binary(), transaction()) -> transaction().
+set_sub_account_name(AccountName, Transaction) when is_binary(AccountName) ->
+    Transaction#wh_transaction{sub_account_name=AccountName}.
+
+-spec set_sub_account_info(ne_binary(), transaction()) -> transaction().
+set_sub_account_info(AccountId, Transaction) when is_binary(AccountId) ->
+    case couch_mgr:open_cache_doc(<<"accounts">>, AccountId) of
+        {'error', _R} ->
+            lager:error("failed to open account ~s : ~p", [AccountId, _R]),
+            Transaction#wh_transaction{sub_account_id=AccountId};
+        {'ok', JObj} ->
+            AccountName = wh_json:get_value(<<"name">>, JObj),
+            Transaction#wh_transaction{sub_account_id=AccountId
+                                       ,sub_account_name=AccountName}
+    end.
+
 -spec set_event(ne_binary(), transaction()) -> transaction().
 set_event(Event, Transaction) ->
     Transaction#wh_transaction{event=Event}.
@@ -313,6 +336,7 @@ to_json(#wh_transaction{}=T) ->
              ,{<<"description">>, T#wh_transaction.description}
              ,{<<"call_id">>, T#wh_transaction.call_id}
              ,{<<"sub_account_id">>, T#wh_transaction.sub_account_id}
+             ,{<<"sub_account_name">>, T#wh_transaction.sub_account_name}
              ,{<<"event">>, T#wh_transaction.event}
              ,{<<"number">>, T#wh_transaction.number}
              ,{<<"feature">>, T#wh_transaction.feature}
@@ -328,7 +352,8 @@ to_json(#wh_transaction{}=T) ->
              ,{<<"pvt_account_db">>, T#wh_transaction.pvt_account_db}
              ,{<<"pvt_vsn">>, T#wh_transaction.pvt_vsn}
             ],
-    wh_json:from_list(props:filter_undefined(Props)).
+    Transaction = wh_json:from_list(props:filter_undefined(Props)),
+    maybe_correct_transaction(Transaction).
 
 
 %%--------------------------------------------------------------------
@@ -340,7 +365,41 @@ to_json(#wh_transaction{}=T) ->
 -spec to_public_json(transaction()) -> wh_json:object().
 to_public_json(Transaction) ->
     JObj = to_json(Transaction),
-    clean_jobj(JObj).
+    maybe_correct_transaction(clean_jobj(JObj)).
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_correct_transaction(wh_json:object()) -> wh_json:object().
+maybe_correct_transaction(JObj) ->
+    Routines = [fun maybe_add_sub_account_name/1],
+    lists:foldl(fun(F, J) -> F(J) end, JObj, Routines).
+
+-spec maybe_add_sub_account_name(wh_json:object()) -> wh_json:object().
+maybe_add_sub_account_name(JObj) ->
+    case
+        {wh_json:get_value(<<"sub_account_name">>, JObj)
+         ,wh_json:get_value(<<"sub_account_id">>, JObj)}
+    of
+        {'undefined', 'undefined'} -> JObj;
+        {'undefined', AccountId} -> add_sub_account_name(AccountId, JObj);
+        _ -> JObj
+    end.
+
+-spec add_sub_account_name(ne_binary(), wh_json:object()) -> wh_json:object().
+add_sub_account_name(AccountId, JObj) ->
+    case couch_mgr:open_cache_doc(<<"accounts">>, AccountId) of
+        {'error', _R} ->
+            lager:error("failed to open account doc ~s : ~p", [AccountId, _R]),
+            JObj;
+        {'ok', Doc} ->
+            AccountName = wh_json:get_value(<<"name">>, Doc),
+            wh_json:set_value(<<"sub_account_name">>, AccountName, JObj)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -378,6 +437,7 @@ from_json(JObj) ->
                     ,description = wh_json:get_ne_value(<<"description">>, JObj)
                     ,call_id = wh_json:get_ne_value(<<"call_id">>, JObj)
                     ,sub_account_id = wh_json:get_ne_value(<<"sub_account_id">>, JObj)
+                    ,sub_account_name = wh_json:get_ne_value(<<"sub_account_name">>, JObj)
                     ,event = wh_json:get_ne_value(<<"event">>, JObj)
                     ,number = wh_json:get_ne_value(<<"number">>, JObj)
                     ,feature = wh_json:get_ne_value(<<"feature">>, JObj)
@@ -475,17 +535,27 @@ prepare_transaction(#wh_transaction{pvt_account_id='undefined'}) ->
     {'error', 'account_id_missing'};
 prepare_transaction(#wh_transaction{pvt_account_db='undefined'}) ->
     {'error', 'account_db_missing'};
-prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction) when ?CODE_PER_MINUTE_CALL =:= Code orelse ?CODE_SUB_ACCOUNT_PER_MINUTE_CALL =:= Code ->
+prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction)
+                    when ?CODE_PER_MINUTE_CALL =:= Code
+                    orelse ?CODE_SUB_ACCOUNT_PER_MINUTE_CALL =:= Code ->
     prepare_call_transaction(Transaction);
-prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction) when ?CODE_FEATURE_ACTIVATION =:= Code orelse ?CODE_SUB_ACCOUNT_FEATURE_ACTIVATION =:= Code ->
+prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction)
+                    when ?CODE_FEATURE_ACTIVATION =:= Code
+                    orelse ?CODE_SUB_ACCOUNT_FEATURE_ACTIVATION =:= Code ->
     prepare_feature_activation_transaction(Transaction);
-prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction) when ?CODE_NUMBER_ACTIVATION =:= Code orelse ?CODE_SUB_ACCOUNT_NUMBER_ACTIVATION =:= Code ->
+prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction)
+                    when ?CODE_NUMBER_ACTIVATION =:= Code
+                    orelse ?CODE_SUB_ACCOUNT_NUMBER_ACTIVATION =:= Code ->
     prepare_number_activation_transaction(Transaction);
-prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction) when ?CODE_MANUAL_ADDITION =:= Code orelse ?CODE_SUB_ACCOUNT_MANUAL_ADDITION =:= Code ->
+prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction)
+                    when ?CODE_MANUAL_ADDITION =:= Code
+                    orelse ?CODE_SUB_ACCOUNT_MANUAL_ADDITION =:= Code ->
     prepare_manual_addition_transaction(Transaction);
-prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction) when ?CODE_DATABASE_ROLLUP =:= Code ->
+prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction)
+                    when ?CODE_DATABASE_ROLLUP =:= Code ->
     prepare_rollup_transaction(Transaction);
-prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction) when ?CODE_TOPUP =:= Code ->
+prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction)
+                    when ?CODE_TOPUP =:= Code ->
     prepare_topup_transaction(Transaction);
 prepare_transaction(Transaction) ->
     Transaction.
@@ -493,7 +563,8 @@ prepare_transaction(Transaction) ->
 -spec prepare_call_transaction(transaction()) -> transaction() | {'error', _}.
 prepare_call_transaction(#wh_transaction{call_id='undefined'}) ->
     {'error', 'call_id_missing'};
-prepare_call_transaction(#wh_transaction{sub_account_id='undefined', pvt_code=?CODE_SUB_ACCOUNT_PER_MINUTE_CALL}) ->
+prepare_call_transaction(#wh_transaction{sub_account_id='undefined'
+                                        , pvt_code=?CODE_SUB_ACCOUNT_PER_MINUTE_CALL}) ->
     {'error', 'sub_account_id_missing'};
 prepare_call_transaction(#wh_transaction{event='undefined'}) ->
     {'error', 'event_missing'};
@@ -507,7 +578,8 @@ prepare_feature_activation_transaction(#wh_transaction{feature='undefined'}) ->
     {'error', 'feature_name_missing'};
 prepare_feature_activation_transaction(#wh_transaction{number='undefined'}) ->
     {'error', 'number_missing'};
-prepare_feature_activation_transaction(#wh_transaction{sub_account_id='undefined', pvt_code=?CODE_SUB_ACCOUNT_FEATURE_ACTIVATION}) ->
+prepare_feature_activation_transaction(#wh_transaction{sub_account_id='undefined'
+                                                       ,pvt_code=?CODE_SUB_ACCOUNT_FEATURE_ACTIVATION}) ->
     {'error', 'sub_account_id_missing'};
 prepare_feature_activation_transaction(Transaction) ->
     Transaction.
@@ -515,7 +587,8 @@ prepare_feature_activation_transaction(Transaction) ->
 -spec prepare_number_activation_transaction(transaction()) -> transaction() | {'error', _}.
 prepare_number_activation_transaction(#wh_transaction{number='undefined'}) ->
     {'error', 'number_missing'};
-prepare_number_activation_transaction(#wh_transaction{sub_account_id='undefined', pvt_code=?CODE_SUB_ACCOUNT_NUMBER_ACTIVATION}) ->
+prepare_number_activation_transaction(#wh_transaction{sub_account_id='undefined'
+                                                      ,pvt_code=?CODE_SUB_ACCOUNT_NUMBER_ACTIVATION}) ->
     {'error', 'sub_account_id_missing'};
 prepare_number_activation_transaction(Transaction) ->
     Transaction.
@@ -523,7 +596,8 @@ prepare_number_activation_transaction(Transaction) ->
 -spec prepare_manual_addition_transaction(transaction()) -> transaction() | {'error', _}.
 prepare_manual_addition_transaction(#wh_transaction{bookkeeper_info='undefined'}) ->
     {'error', 'bookkeeper_info_missing'};
-prepare_manual_addition_transaction(#wh_transaction{sub_account_id='undefined', pvt_code=?CODE_SUB_ACCOUNT_MANUAL_ADDITION}) ->
+prepare_manual_addition_transaction(#wh_transaction{sub_account_id='undefined'
+                                                    ,pvt_code=?CODE_SUB_ACCOUNT_MANUAL_ADDITION}) ->
     {'error', 'sub_accuont_id_missing'};
 prepare_manual_addition_transaction(Transaction) ->
     Transaction.

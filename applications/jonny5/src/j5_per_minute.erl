@@ -125,11 +125,11 @@ create_debit_transaction(Event, Amount, Request, Limits) ->
                 ,[LedgerId, wht_util:units_to_dollars(Amount)]),
     Routines = [fun(T) ->
                         case j5_request:account_id(Request) of
-                            LedgerId ->   
+                            LedgerId ->
                                 wh_transaction:set_reason(<<"per_minute_call">>, T);
                             AccountId ->
                                 T1 = wh_transaction:set_reason(<<"sub_account_per_minute_call">>, T),
-                                wh_transaction:set_sub_account_id(AccountId, T1)
+                                wh_transaction:set_sub_account_info(AccountId, T1)
                         end
                 end
                 ,fun(T) -> wh_transaction:set_event(Event, T) end
