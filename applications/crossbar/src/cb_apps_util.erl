@@ -36,7 +36,7 @@ allowed_apps(AccountId) ->
 %% Get allowed apps fron service plans
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_app(ne_binary(), ne_binary()) -> 'undefined' | wh_json:object().
+-spec allowed_app(ne_binary(), ne_binary()) -> api_object().
 allowed_app(AccountId, AppId) ->
     Apps = allowed_apps(AccountId),
     filter_apps(Apps, AppId, 'undefined').

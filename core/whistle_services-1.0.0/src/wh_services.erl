@@ -870,10 +870,9 @@ dry_run_activation_charges(Category, CategoryJObj, Services, Transactions) ->
     ).
 
 dry_run_activation_charges(Category, Class, Quantity, #wh_services{jobj=JObj}=Services, Transactions) ->
-    OldQ = wh_json:get_value([?QUANTITIES, Category, Class], JObj, 0),
-    case OldQ =:= Quantity of
-        'true' -> Transactions;
-        'false' ->
+    case wh_json:get_value([?QUANTITIES, Category, Class], JObj, 0) of
+        Quantity -> Transactions;
+        _OldQ ->
             AccountId = wh_services:account_id(Services),
             Amount = wht_util:dollars_to_units(activation_charges(Category, Class, Services)),
             MetaData =

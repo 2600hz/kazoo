@@ -466,7 +466,7 @@ maybe_get_screenshot(Context, Number) ->
     Screenshots = wh_json:get_value(<<"screenshots">>, JObj),
     try lists:nth(wh_util:to_integer(Number)+1, Screenshots) of
         Name ->
-            case wh_json:get_value([<<"_attachments">>, Name], JObj) of
+            case wh_doc:attachment(JObj, Name) of
                 'undefined' -> 'error';
                 Attachment ->
                     {'ok', Name, Attachment}
@@ -512,7 +512,7 @@ load_account(Context) ->
 get_attachement(Context, Id) ->
     JObj = cb_context:doc(Context),
     AppId = wh_json:get_value(<<"_id">>, JObj),
-    case wh_json:get_value([<<"_attachments">>, Id], JObj) of
+    case wh_doc:attachment(JObj, Id) of
         'undefined' ->
             crossbar_util:response_bad_identifier(AppId, Context);
         Attachment ->
