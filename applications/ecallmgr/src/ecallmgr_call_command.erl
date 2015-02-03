@@ -517,10 +517,9 @@ get_fs_app(Node, UUID, JObj, <<"redirect">>) ->
     case wapi_dialplan:redirect_v(JObj) of
         'false' -> {'error', <<"redirect failed to execute as JObj did not validate">>};
         'true' ->
-            _ = case wh_json:get_value(<<"Redirect-Server">>, JObj) of
-                    'undefined' -> 'ok';
-                    Server -> ecallmgr_util:set(Node, UUID, [{<<"sip_rh_X-Redirect-Server">>, Server}])
-                end,
+            RedirectServer = lookup_redirect_server(JObj) ,
+            maybe_add_redirect_header(Node, UUID, RedirectServer),
+
             {<<"redirect">>, wh_json:get_value(<<"Redirect-Contact">>, JObj, <<>>)}
     end;
 
@@ -557,6 +556,34 @@ get_fs_app(_Node, _UUID, JObj, <<"fax_detection">>) ->
 get_fs_app(_Node, _UUID, _JObj, _App) ->
     lager:debug("unknown application ~s", [_App]),
     {'error', <<"application unknown">>}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Redirect command helpers
+%% @end
+%%--------------------------------------------------------------------
+
+-spec lookup_redirect_server(wh_json:object()) -> api_binary().
+lookup_redirect_server(JObj) ->
+    case wh_json:get_value(<<"Redirect-Server">>, JObj) of
+        'undefined' -> fixup_redirect_node(wh_json:get_value(<<"Redirect-Node">>, JObj));
+        Server -> Server
+    end.
+
+-spec fixup_redirect_node(api_binary()) -> api_binary().
+fixup_redirect_node('undefined') ->
+    'undefined';
+fixup_redirect_node(Node) ->
+    SipUrl = ecallmgr_fs_node:sip_url(Node),
+    binary:replace(SipUrl, <<"mod_sofia@">>, <<>>).
+
+-spec maybe_add_redirect_header(ne_binary(), ne_binary(), api_binary()) -> 'ok'.
+maybe_add_redirect_header(_, _, 'undefined') ->
+    'ok';
+maybe_add_redirect_header(Node, UUID, RedirectServer) ->
+    lager:debug("Set X-Redirect-Server to ~s", [RedirectServer]),
+    ecallmgr_util:set(Node, UUID, [{<<"sip_rh_X-Redirect-Server">>, RedirectServer}]).
 
 %%--------------------------------------------------------------------
 %% @private
