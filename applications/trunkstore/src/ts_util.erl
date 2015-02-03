@@ -108,6 +108,7 @@ lookup_did(DID, AccountId) ->
             Resp;
         {'error', 'not_found'} ->
             Options = [{'key', DID}],
+            CacheProps = [{'origin', [{'db', wnm_util:number_to_db_name(DID), DID}, {'type', <<"number">>}]}],
             case couch_mgr:get_results(AccountDb, ?TS_VIEW_DIDLOOKUP, Options) of
                 {'ok', []} ->
                     lager:info("cache miss for ~s, no results", [DID]),
@@ -119,6 +120,7 @@ lookup_did(DID, AccountId) ->
                     wh_cache:store_local(?TRUNKSTORE_CACHE
                                          ,{'lookup_did', DID, AccountId}
                                          ,Resp
+                                         ,CacheProps
                                         ),
                     {'ok', Resp};
                 {'ok', [ViewJObj | _Rest]} ->
@@ -129,6 +131,7 @@ lookup_did(DID, AccountId) ->
                     wh_cache:store_local(?TRUNKSTORE_CACHE
                                          ,{'lookup_did', DID, AccountId}
                                          ,Resp
+                                         ,CacheProps
                                         ),
                     {'ok', Resp};
                 {'error', _}=E ->
