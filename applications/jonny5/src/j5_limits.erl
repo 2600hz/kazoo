@@ -68,7 +68,7 @@
 get(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     Limits = case wh_cache:peek_local(?JONNY5_CACHE, ?LIMITS_KEY(AccountId)) of
-        {'ok', _Limits} -> _Limits;
+        {'ok', LimitsCached} -> LimitsCached;
         {'error', 'not_found'} -> fetch(AccountId)
     end,
     lager:debug("Account limits: ~p" ,[to_props(Limits)]),
