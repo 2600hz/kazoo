@@ -1344,7 +1344,7 @@ append_feature_debit(Feature, Units, #number{billing_id=Ledger
                             'false' ->
                                 wh_transaction:set_reason(<<"feature_activation">>, T);
                             'true' ->
-                                T1 = wh_transaction:set_sub_account_id(AccountId, T),
+                                T1 = wh_transaction:set_sub_account_info(AccountId, T),
                                 wh_transaction:set_reason(<<"sub_account_feature_activation">>, T1)
                         end
                 end
@@ -1379,7 +1379,7 @@ append_phone_number_debit(Units, #number{billing_id=Ledger
                             'false' ->
                                 wh_transaction:set_reason(<<"number_activation">>, T);
                             'true' ->
-                                T1 = wh_transaction:set_sub_account_id(AccountId, T),
+                                T1 = wh_transaction:set_sub_account_info(AccountId, T),
                                 wh_transaction:set_reason(<<"sub_account_number_activation">>, T1)
                         end
                 end
