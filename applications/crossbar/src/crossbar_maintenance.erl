@@ -409,15 +409,19 @@ validate_account(JObj, Context) ->
                            {'ok', cb_context:context()} |
                            {'error', wh_json:object()}.
 validate_user(JObj, Context) ->
-    Payload = [Context#cb_context{req_data=JObj
-                                  ,req_nouns=[{?WH_ACCOUNTS_DB, []}]
-                                  ,req_verb = ?HTTP_PUT
-                                  ,resp_status = 'fatal'
-                                 }
+    Payload = [cb_context:setters(Context
+                                  ,[{fun cb_context:set_req_data/2, JObj}
+                                    ,{fun cb_context:set_req_nouns/2, [{?WH_ACCOUNTS_DB, []}]}
+                                    ,{fun cb_context:set_req_verb/2, ?HTTP_PUT}
+                                    ,{fun cb_context:set_resp_status/2, 'fatal'}
+                                   ]
+                                 )
               ],
-    case crossbar_bindings:fold(<<"v1_resource.validate.users">>, Payload) of
-        #cb_context{resp_status='success'}=Context1 -> {'ok', Context1};
-        #cb_context{resp_data=Errors} ->
+    Context1 = crossbar_bindings:fold(<<"v1_resource.validate.users">>, Payload),
+    case cb_context:resp_status(Context1) of
+        'success' -> {'ok', Context1};
+        _Status ->
+            Errors = cb_context:resp_data(Context1),
             io:format("failed to validate user properties: '~s'~n", [wh_json:encode(Errors)]),
             {'error', Errors}
     end.
