@@ -218,7 +218,9 @@ cache_key(Number) -> {'cnam', Number}.
 
 fetch_cnam(Number, JObj) ->
     CNAM = make_request(Number, JObj),
-    CacheProps = [{'expires', whapps_config:get_integer(?CONFIG_CAT, <<"cnam_expires">>, ?DEFAULT_EXPIRES)}],
+    CacheProps = [{'expires', whapps_config:get_integer(?CONFIG_CAT, <<"cnam_expires">>, ?DEFAULT_EXPIRES)}
+                  ,{'origin', [{'db', wnm_util:number_to_db_name(Number), Number}, {'type', <<"number">>}]}
+                 ],
     wh_cache:store_local(?STEPSWITCH_CACHE, cache_key(Number), CNAM, CacheProps),
     CNAM.
 
