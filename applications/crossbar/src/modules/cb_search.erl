@@ -90,7 +90,6 @@ validate_search(Context, Type) ->
 validate_search(Context, 'undefined', _) ->
     cb_context:add_validation_error(<<"q">>, <<"required">>, <<"search needs to know what to look for">>, Context);
 validate_search(Context, Q, T) ->
-
     validate_search(Context, cb_context:req_value(Context, <<"v">>), Q, T).
 
 -spec validate_search(cb_context:context(), api_binary(), ne_binary(), ne_binary()) -> cb_context:context().
@@ -129,7 +128,7 @@ search(Context, Start, Field, Type) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec get_start_key(cb_context:context(), ne_binary(), ne_binary) -> ne_binaries().
+-spec get_start_key(cb_context:context(), ne_binary(), ne_binary()) -> ne_binaries().
 get_start_key(Context, Type, Start) ->
     StartKey =
         case cb_context:req_value(Context, <<"start_key">>) of
@@ -150,7 +149,7 @@ get_start_key(Context, Type, Start) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec get_end_key(cb_context:context(), ne_binary(), ne_binary) -> ne_binaries().
+-spec get_end_key(cb_context:context(), ne_binary(), ne_binary()) -> ne_binaries().
 get_end_key(Context, Type, Start) ->
      case cb_context:account_id(Context) of
         'undefined' ->
