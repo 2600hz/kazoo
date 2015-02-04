@@ -36,29 +36,29 @@
 -include("wnm.hrl").
 
 -define(SERVER, ?MODULE).
--define(DEFAULT_CLASSIFIERS, [{<<"tollfree_us">>, wh_json:from_list([{<<"regex">>, <<"^\\+1((800|888|877|866|855)\\d{7})$">>}
+-define(DEFAULT_CLASSIFIERS, [{<<"tollfree_us">>, wh_json:from_list([{<<"regex">>, <<"^\\+1(800|888|877|866|855)\\d{7}$">>}
                                                                      ,{<<"friendly_name">>, <<"US TollFree">>}
                                                                      ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
                                                                     ])}
-                              ,{<<"toll_us">>, wh_json:from_list([{<<"regex">>, <<"^\\+1(900\\d{7})$">>}
+                              ,{<<"toll_us">>, wh_json:from_list([{<<"regex">>, <<"^\\+1900\\d{7}$">>}
                                                                   ,{<<"friendly_name">>, <<"US Toll">>}
                                                                   ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
                                                                  ])}
-                              ,{<<"emergency">>, wh_json:from_list([{<<"regex">>, <<"^(911)$">>}
+                              ,{<<"emergency">>, wh_json:from_list([{<<"regex">>, <<"^911$">>}
                                                                     ,{<<"friendly_name">>, <<"Emergency Dispatcher">>}
                                                                    ])}
-                              ,{<<"caribbean">>, wh_json:from_list([{<<"regex">>, <<"^\\+?1((684|264|268|242|246|441|284|345|767|809|829|849|473|671|876|664|670|787|939|869|758|784|721|868|649|340)\\d{7})$">>}
+                              ,{<<"caribbean">>, wh_json:from_list([{<<"regex">>, <<"^\\+?1(684|264|268|242|246|441|284|345|767|809|829|849|473|671|876|664|670|787|939|869|758|784|721|868|649|340)\\d{7}$">>}
                                                                     ,{<<"friendly_name">>, <<"Caribbean">>}
                                                                     ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
                                                                    ])}
-                              ,{<<"did_us">>, wh_json:from_list([{<<"regex">>, <<"^\\+?1?(([2-9][0-9]{2}[2-9][0-9]{6}))$">>}
+                              ,{<<"did_us">>, wh_json:from_list([{<<"regex">>, <<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$">>}
                                                                  ,{<<"friendly_name">>, <<"US DID">>}
                                                                  ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
                                                                 ])}
-                              ,{<<"international">>, wh_json:from_list([{<<"regex">>, <<"^(011\\d*)$|^(00\\d*)$">>}
+                              ,{<<"international">>, wh_json:from_list([{<<"regex">>, <<"^011\\d*$|^00\\d*$">>}
                                                                         ,{<<"friendly_name">>, <<"International">>}
                                                                        ])}
-                              ,{<<"unknown">>, wh_json:from_list([{<<"regex">>, <<"^(.*)$">>}
+                              ,{<<"unknown">>, wh_json:from_list([{<<"regex">>, <<"^.*$">>}
                                                                   ,{<<"friendly_name">>, <<"Unknown">>}
                                                                  ])}
                              ]).
