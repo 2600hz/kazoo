@@ -1037,26 +1037,29 @@ add_to_phone_numbers_doc(Context) ->
 
 add_to_phone_numbers_doc(Context, JObj) ->
     AccountId = cb_context:account_id(Context),
-
     Now = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
+
     PhoneNumbersJObj =
         wh_json:foldl(
           fun(Number, _, Acc) ->
-                  NumberJObj =
-                      wh_json:from_list(
-                        [{<<"state">>, <<"in_service">>}
-                         ,{<<"features">>, []}
-                         ,{<<"assigned_to">>, AccountId}
-                         ,{<<"used_by">>, <<>>}
-                         ,{<<"created">>, Now}
-                         ,{<<"updated">>, Now}
-                        ]),
+                  NumberJObj = build_number_properties(AccountId, Now),
                   wh_json:set_value(Number, NumberJObj, Acc)
           end
           ,JObj
           ,wh_json:get_value(<<"numbers">>, cb_context:doc(Context), wh_json:new())
          ),
     save_phone_numbers_doc(Context, PhoneNumbersJObj).
+
+-spec build_number_properties(ne_binary(), gregorian_seconds()) -> wh_json:object().
+build_number_properties(AccountId, Now) ->
+    wh_json:from_list(
+      [{<<"state">>, <<"in_service">>}
+       ,{<<"features">>, []}
+       ,{<<"assigned_to">>, AccountId}
+       ,{<<"used_by">>, <<>>}
+       ,{<<"created">>, Now}
+       ,{<<"updated">>, Now}
+      ]).
 
 %%--------------------------------------------------------------------
 %% @private
