@@ -18,9 +18,11 @@
 
 -include("ts.hrl").
 
--define(ORIGIN_BINDINGS, [[{'type', <<"account">>}]
-                          ,[{'type', <<"connectivity">>}]
-                          ,[{'type', <<"sys_info">>}]
+-define(ORIGIN_BINDINGS, [[{'type', <<"account">>}
+                           ,{'type', <<"connectivity">>}
+                           ,{'type', <<"sys_info">>}
+                           ,{'type', <<"number">>}
+                          ]
                          ]).
 -define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
 
