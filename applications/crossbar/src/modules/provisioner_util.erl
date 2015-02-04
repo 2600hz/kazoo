@@ -134,14 +134,13 @@ maybe_delete_provision(#cb_context{doc=JObj, auth_token=AuthToken}=Context, 'suc
     MACAddress = get_mac_address(Context),
     case MACAddress =/= 'undefined' andalso get_provisioning_type() of
         <<"super_awesome_provisioner">> ->
-            _ = spawn(fun() ->
-                              delete_full_provision(MACAddress, Context)
-                      end),
+            _ = spawn(?MODULE, 'delete_full_provision', [MACAddress, Context]),
             'true';
         <<"provisioner_v5">>  ->
-            _ = spawn(fun() -> provisioner_v5:delete(JObj, AuthToken) end),
+            _ = spawn('provisioner_v5', 'delete', [JObj, AuthToken]),
             'true';
-        _ -> 'false'
+        _ ->
+            'false'
     end;
 maybe_delete_provision(_Context, _Status) -> 'false'.
 
