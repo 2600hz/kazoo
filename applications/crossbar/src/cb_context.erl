@@ -807,7 +807,7 @@ find_schema(<<_/binary>> = Schema) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec add_system_error(atom() | binary(), context()) -> context().
--spec add_system_error(atom() | binary(), wh_proplist(), context()) -> context().
+-spec add_system_error(atom() | binary(), wh_proplist() | ne_binary(), context()) -> context().
 add_system_error('too_many_requests', Context) ->
     build_system_error(429, 'too_many_requests', <<"too many requests">>, Context);
 add_system_error('no_credit', Context) ->
@@ -859,24 +859,21 @@ add_system_error('bad_identifier', Props, Context) ->
     build_system_error(404, 'bad_identifier', <<"bad identifier">>, Data, Context);
 add_system_error('invalid_bulk_type', Props, Context) ->
     Type = props:get_value('type', Props),
-    Data =
-        wh_json:from_list([
-            {<<"target">>, Type}
-        ]),
+    Data = wh_json:from_list([{<<"target">>, Type}]),
     Reason = <<"bulk operations do not support documents of type ", (wh_util:to_binary(Type))/binary>>,
     build_system_error(400, 'invalid_bulk_type', Reason, Data, Context);
 add_system_error('forbidden', Props, Context) ->
-    Data =
-        wh_json:from_list([
-            {<<"target">>, props:get_value('details', Props)}
-        ]),
+    Data = wh_json:from_list([{<<"target">>, props:get_value('details', Props)}]),
     build_system_error(403, 'forbidden', <<"forbidden">>, Data, Context);
 add_system_error('timeout', Props, Context) ->
-    Data =
-        wh_json:from_list([
-            {<<"target">>, props:get_value('details', Props)}
-        ]),
+    Data = wh_json:from_list([{<<"target">>, props:get_value('details', Props)}]),
     build_system_error(500, 'timeout', <<"timeout">>, Data, Context);
+add_system_error('invalid_method', Msg, Context) ->
+    build_system_error(405, 'invalid_method', Msg, Context);
+add_system_error('bad_gateway', Msg, Context) ->
+    build_system_error(502, 'bad_gateway', Msg, Context);
+add_system_error(Error, <<_/binary>>=Msg, Context) ->
+    build_system_error(500, Error, Msg, Context);
 add_system_error(Error, Props, Context) ->
     Data =
         wh_json:from_list([
@@ -890,9 +887,9 @@ add_system_error(Error, Props, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec build_system_error(integer(), atom(), ne_binary(), cb_context:context()) ->
+-spec build_system_error(integer(), atom() | ne_binary(), ne_binary(), cb_context:context()) ->
                                 cb_context:context().
--spec build_system_error(integer(), atom(), ne_binary(), wh_json:object(), cb_context:context()) ->
+-spec build_system_error(integer(), atom() | ne_binary(), ne_binary(), wh_json:object(), cb_context:context()) ->
                                 cb_context:context().
 -spec build_system_error(ne_binary(), integer(), atom(), ne_binary(), wh_json:object(), cb_context:context()) ->
                                 cb_context:context().
