@@ -96,7 +96,7 @@ eligible_for_flat_rate([TrunkDefID|TrunkDefIDs], Number, Direction, Class, Path,
             BlackClass  = wh_json:get_value(<<Direction/binary, "_black_num_classifications">>, CustomTrunkDefs),
             WhiteClass  = wh_json:get_value(<<Direction/binary, "_white_num_classifications">>, CustomTrunkDefs),
             WhiteRecurseDefs = wh_json:get_value(<<"include_defs">>, CustomTrunkDefs),
-            BlaskRecurseDefs = wh_json:get_value(<<"exclude_defs">>, CustomTrunkDefs),
+            BlackRecurseDefs = wh_json:get_value(<<"exclude_defs">>, CustomTrunkDefs),
             % check called number class against black_num_classifications. 
             % If matched reject. Else try the other methods that might authorize the trunk.
             lager:debug("Checking def id: ~s, others this level: ~p. Trunk def: ~p", [TrunkDefID, TrunkDefIDs, CustomTrunkDefs]),
