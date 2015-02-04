@@ -526,22 +526,24 @@ read_descendants(Context) ->
 read_descendants(Context, SubAccounts) ->
     AllPortRequests =
         lists:foldl(
-            fun(Account, Acc) ->
-                AccountId = wh_json:get_value(<<"id">>, Account),
-                AccountName = wh_json:get_value([<<"value">>, <<"name">>], Account),
-                case read_descendant(Context, AccountId) of
-                    [] -> Acc;
-                    PortRequests ->
-                        [wh_json:from_list([
-                            {<<"account_id">>, AccountId}
-                            ,{<<"account_name">>, AccountName}
-                            ,{<<"port_requests">>, PortRequests}
-                         ])|Acc]
-                end
-            end
-            ,[]
-            ,SubAccounts
-        ),
+          fun(Account, Acc) ->
+                  AccountId = wh_json:get_value(<<"id">>, Account),
+                  case read_descendant(Context, AccountId) of
+                      [] -> Acc;
+                      PortRequests ->
+                          [wh_json:from_list(
+                             [{<<"account_id">>, AccountId}
+                              ,{<<"account_name">>, wh_json:get_value([<<"value">>, <<"name">>], Account)}
+                              ,{<<"port_requests">>, PortRequests}
+                             ]
+                            )
+                           |Acc
+                          ]
+                  end
+          end
+          ,[]
+          ,SubAccounts
+         ),
     crossbar_doc:handle_json_success(AllPortRequests, Context).
 
 -spec read_descendant(cb_context:context(), ne_binary()) -> wh_json:object().
