@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle client requests for braintree documents
@@ -471,7 +471,7 @@ add_credit_to_account(BraintreeData, Units, LedgerId, AccountId) ->
                             'false' ->
                                 wh_transaction:set_reason(<<"manual_addition">>, T);
                             'true' ->
-                                T1 = wh_transaction:set_sub_account_id(AccountId, T),
+                                T1 = wh_transaction:set_sub_account_info(AccountId, T),
                                 wh_transaction:set_reason(<<"sub_account_manual_addition">>, T1)
                         end
                 end
