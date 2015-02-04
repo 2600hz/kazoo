@@ -1076,15 +1076,22 @@ remove_from_phone_numbers_doc(Context) ->
     end.
 
 remove_from_phone_numbers_doc(Context, JObj) ->
-    PhoneNumbersJObj =
-        wh_json:foldl(
-          fun(Number, _, Acc) ->
-                  wh_json:delete_key(Number, Acc)
-          end
-          ,JObj
-          ,wh_json:get_value(<<"numbers">>, cb_context:doc(Context), wh_json:new())
-         ),
-    save_phone_numbers_doc(Context, PhoneNumbersJObj).
+    {Updated, PhoneNumbersJObj} =
+        wh_json:foldl(fun remove_phone_number/3
+                      ,{'false', JObj}
+                      ,wh_json:get_value(<<"numbers">>, cb_context:doc(Context), wh_json:new())
+                     ),
+    case Updated of
+        'true' ->
+            save_phone_numbers_doc(Context, PhoneNumbersJObj);
+        'false' ->
+            lager:debug("no numbers removed, not updating")
+    end.
+
+-spec remove_phone_number(wh_json:key(), wh_json:json_term(), {boolean(), wh_json:object()}) ->
+                                 {boolean(), wh_json:object()}.
+remove_phone_number(Number, _, {_, Acc}) ->
+    {'true', wh_json:delete_key(Number, Acc)}.
 
 %%--------------------------------------------------------------------
 %% @private
