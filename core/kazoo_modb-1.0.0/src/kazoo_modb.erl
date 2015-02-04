@@ -17,6 +17,7 @@
 -export([maybe_archive_modb/1]).
 -export([refresh_views/1]).
 -export([create/1]).
+-export([maybe_delete/1]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -286,3 +287,26 @@ should_archive(AccountMODb, Year, Month) ->
             ModbMonths = (ModbYear * 12) + ModbMonth,
             (Months - ModbMonths) > whapps_config:get_integer(?CONFIG_CAT, <<"active_modbs">>, 6)
     end.
+
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Delete an modb if it is no longer associated with its account.
+%% (That is: orphaned).
+%% AccountMODb must be 'encoded' otherwise couch_mgr:db_delete/1 will
+%% fail. Returns whether AccountMODb has been deleted.
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_delete (ne_binary()) -> boolean().
+maybe_delete (AccountMODb) ->
+    AccountId = wh_util:format_account_id(AccountMODb, 'raw'),
+    AccountIds = whapps_util:get_all_accounts('raw'),
+    IsOrphaned = not lists:member(AccountId, AccountIds),
+    delete_if_orphaned(AccountMODb, IsOrphaned).
+
+-spec delete_if_orphaned (ne_binary(), boolean()) -> boolean().
+delete_if_orphaned (_AccountMODb, 'false') -> 'false';
+delete_if_orphaned (AccountMODb, 'true') ->
+    Succeeded = couch_mgr:db_delete(AccountMODb),
+    lager:debug("cleanse orphaned modb ~p... ~p", [AccountMODb,Succeeded]),
+    Succeeded.

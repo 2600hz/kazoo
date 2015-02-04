@@ -41,6 +41,7 @@
 -export([call_id_status/1, call_id_status/2]).
 -export([get_all_account_views/0]).
 -export([cleanup_voicemail_media/1]).
+-export([cleanup_orphan_modbs/0]).
 
 -define(DEVICES_CB_LIST, <<"devices/crossbar_listing">>).
 -define(MAINTENANCE_VIEW_FILE, <<"views/maintenance.json">>).
@@ -430,6 +431,11 @@ cleanup_voicemail_media(Account) ->
             lager:error("could not delete docs ~p: ~p", [ExtraMedia, _E]),
             Err
     end.
+
+-spec cleanup_orphan_modbs () -> 'ok'.
+cleanup_orphan_modbs () ->
+    AccountMODbs = whapps_util:get_all_account_mods('encoded'),
+    lists:foreach(fun kazoo_modb:maybe_delete/1, AccountMODbs).
 
 -spec get_messages(ne_binary()) -> ne_binaries().
 get_messages(Account) ->
