@@ -432,10 +432,14 @@ cleanup_voicemail_media(Account) ->
             Err
     end.
 
--spec cleanup_orphan_modbs () -> 'ok'.
-cleanup_orphan_modbs () ->
+-spec cleanup_orphan_modbs() -> 'ok'.
+cleanup_orphan_modbs() ->
     AccountMODbs = whapps_util:get_all_account_mods('encoded'),
-    lists:foreach(fun kazoo_modb:maybe_delete/1, AccountMODbs).
+    AccountIds = whapps_util:get_all_accounts('raw'),
+    DeleteOrphaned = fun (AccountMODb) ->
+                             kazoo_modb:maybe_delete(AccountMODb, AccountIds)
+                     end,
+    lists:foreach(DeleteOrphaned, AccountMODbs).
 
 -spec get_messages(ne_binary()) -> ne_binaries().
 get_messages(Account) ->

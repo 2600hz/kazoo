@@ -126,8 +126,8 @@ handle_info('next_account', [Account|Accounts]) ->
             AccountId ->
                 %% do not open the account def in the account db or we will
                 %% be wasting bigcouch's file descriptors
-                Doc = couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId),
-                check_then_process_account(AccountId, Doc)
+                OpenResult = couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId),
+                check_then_process_account(AccountId, OpenResult)
         end,
     Cycle = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"interaccount_delay">>, 10000),
     erlang:send_after(Cycle, self(), 'next_account'),
@@ -146,18 +146,17 @@ handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
 
--spec check_then_process_account (ne_binary(), {'ok', wh_json:object()} | {'error',_}) -> 'ok'.
-check_then_process_account (AccountId, {'ok', JObj}) ->
+-spec check_then_process_account(ne_binary(), {'ok', wh_json:object()} | {'error',_}) -> 'ok'.
+check_then_process_account(AccountId, {'ok', JObj}) ->
     case wh_json:is_true(<<"pvt_deleted">>, JObj) of
         'true' ->
             %% Account has actually been soft-destroyed
-            lager:debug("not processing account ~p (soft-destroyed)", [AccountId]),
-            'ok';
+            lager:debug("not processing account ~p (soft-destroyed)", [AccountId]);
         'false' ->
             AccountDb = wh_json:get_value(<<"pvt_account_db">>, JObj),
             process_account(AccountId, AccountDb, JObj)
     end;
-check_then_process_account (AccountId, {'error', _R}) ->
+check_then_process_account(AccountId, {'error', _R}) ->
     lager:warning("unable to open account definition for ~s: ~p", [AccountId, _R]).
 
 %%--------------------------------------------------------------------

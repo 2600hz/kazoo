@@ -17,7 +17,7 @@
 -export([maybe_archive_modb/1]).
 -export([refresh_views/1]).
 -export([create/1]).
--export([maybe_delete/1]).
+-export([maybe_delete/2]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -293,20 +293,20 @@ should_archive(AccountMODb, Year, Month) ->
 %% @doc
 %% Delete an modb if it is no longer associated with its account.
 %% (That is: orphaned).
-%% AccountMODb must be 'encoded' otherwise couch_mgr:db_delete/1 will
-%% fail. Returns whether AccountMODb has been deleted.
+%% AccountMODb must be 'encoded' otherwise couch_mgr:db_delete/1 will fail.
+%% AccountIds should be whapps_util:get_all_accounts('raw').
+%% Returns whether AccountMODb has been deleted.
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_delete (ne_binary()) -> boolean().
-maybe_delete (AccountMODb) ->
+-spec maybe_delete(ne_binary(), [ne_binary()]) -> boolean().
+maybe_delete(AccountMODb, AccountIds) ->
     AccountId = wh_util:format_account_id(AccountMODb, 'raw'),
-    AccountIds = whapps_util:get_all_accounts('raw'),
     IsOrphaned = not lists:member(AccountId, AccountIds),
     delete_if_orphaned(AccountMODb, IsOrphaned).
 
--spec delete_if_orphaned (ne_binary(), boolean()) -> boolean().
-delete_if_orphaned (_AccountMODb, 'false') -> 'false';
-delete_if_orphaned (AccountMODb, 'true') ->
+-spec delete_if_orphaned(ne_binary(), boolean()) -> boolean().
+delete_if_orphaned(_AccountMODb, 'false') -> 'false';
+delete_if_orphaned(AccountMODb, 'true') ->
     Succeeded = couch_mgr:db_delete(AccountMODb),
     lager:debug("cleanse orphaned modb ~p... ~p", [AccountMODb,Succeeded]),
     Succeeded.
