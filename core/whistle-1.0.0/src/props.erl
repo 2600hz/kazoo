@@ -229,7 +229,7 @@ delete_keys([_|_]=Ks, Props) -> lists:foldl(fun ?MODULE:delete/2, Props, Ks).
 is_defined(Key, Props) ->
     case lists:keyfind(Key, 1, Props) of
         {Key,_} -> 'true';
-        _ -> 'false'
+        'false' -> lists:member(Key, Props)
     end.
 
 -spec unique(wh_proplist()) -> wh_proplist().
@@ -386,4 +386,15 @@ insert_values_test() ->
     ?assertEqual(3, get_value(c, P1)),
     ?assertEqual('true', get_value(d, P1)).
 
--endif.
+is_defined_test() ->
+    Tests = [{[], 'foo', 'false'}
+             ,{['foo'], 'foo', 'true'}
+             ,{['foo'], 'bar', 'false'}
+             ,{[{'foo', 'bar'}], 'foo', 'true'}
+             ,{[{'foo', 'bar'}], 'bar', 'false'}
+            ],
+    lists:foreach(fun({Props, Key, Expected}) ->
+                          ?assertEqual(Expected, is_defined(Key, Props))
+                  end, Tests).
+
+ -endif.
