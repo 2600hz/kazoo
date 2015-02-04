@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -65,7 +65,7 @@ maybe_credit_available(Amount, Limits) ->
 
 -spec maybe_prepay_credit_available(integer(), integer(), j5_limits:limits()) -> boolean().
 maybe_prepay_credit_available(Balance, Amount, Limits) ->
-    AccountId = j5_limits:account_id(Limits),    
+    AccountId = j5_limits:account_id(Limits),
     case j5_limits:allow_prepay(Limits) of
         'false' ->
             lager:debug("account ~s is restricted from using prepay"
