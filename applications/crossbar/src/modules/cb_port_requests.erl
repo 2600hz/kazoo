@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz INC
+%%% @copyright (C) 2013-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% Handles port request lifecycles
@@ -361,8 +361,10 @@ is_deletable(Context, ?PORT_WAITING) -> Context;
 is_deletable(Context, ?PORT_REJECT) -> Context;
 is_deletable(Context, _PortState) ->
     lager:debug("port is in state ~s, can't modify", [_PortState]),
-    cb_context:add_system_error(<<"port request is not modifiable in this state">>, Context).
-
+    cb_context:add_system_error('invalid_method'
+                                ,<<"port request is not modifiable in this state">>
+                                ,Context
+                               ).
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -421,7 +423,10 @@ post(Context, Id, ?PORT_SUBMITTED) ->
     catch
         _E:_R ->
             lager:debug("failed to send the port request notification: ~s:~p", [_E, _R]),
-            cb_context:add_system_error(<<"failed to send port request email to system admins">>, Context)
+            cb_context:add_system_error('bad_gateway'
+                                        ,<<"failed to send port request email to system admins">>
+                                        ,Context
+                                       )
     end;
 post(Context, Id, ?PORT_SCHEDULED) ->
     do_post(Context, Id);
@@ -436,7 +441,10 @@ post(Context, Id, ?PORT_REJECT) ->
     catch
         _E:_R ->
             lager:debug("failed to send the port cancel notification: ~s:~p", [_E, _R]),
-            cb_context:add_system_error(<<"failed to send port cancel email to system admins">>, Context)
+            cb_context:add_system_error('bad_gateway'
+                                        ,<<"failed to send port cancel email to system admins">>
+                                        ,Context
+                                       )
     end.
 
 post(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
@@ -604,7 +612,7 @@ normalize_view_results(Res, Acc) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec summary_attachments(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec summary_attachments(cb_context:context(), ne_binary()) -> cb_context:context().
 summary_attachments(Context, Id) ->
     Context1 = crossbar_doc:load(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)),
 
@@ -647,11 +655,11 @@ on_successful_validation(Context, _Id, 'false') ->
                 ,[PortState]
                ),
     cb_context:add_validation_error(
-        PortState
-        ,<<"type">>
-        ,<<"Updating port requests not allowed in current port state">>
-        ,Context
-    ).
+      PortState
+      ,<<"type">>
+      ,<<"Updating port requests not allowed in current port state">>
+      ,Context
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -708,19 +716,19 @@ check_number_portability(PortId, Number, Context) ->
         {'ok', [_|_]=_PortReqs} ->
             lager:debug("number ~s(~s) exists on multiple port request docs. That's bad!", [E164, Number]),
             cb_context:add_validation_error(
-                Number
-                ,<<"type">>
-                ,<<"Number is currently on multiple port requests. Contact a system admin to rectify">>
-                ,Context
-            );
+              Number
+              ,<<"type">>
+              ,<<"Number is currently on multiple port requests. Contact a system admin to rectify">>
+              ,Context
+             );
         {'error', _E} ->
             lager:debug("failed to query the port request view: ~p", [_E]),
             cb_context:add_validation_error(
-                Number
-                ,<<"type">>
-                ,<<"Failed to query backend services, cannot port at this time">>
-                ,Context
-            )
+              Number
+              ,<<"type">>
+              ,<<"Failed to query backend services, cannot port at this time">>
+              ,Context
+             )
     end.
 
 check_number_portability(PortId, Number, Context, E164, PortReq) ->
@@ -738,21 +746,21 @@ check_number_portability(PortId, Number, Context, E164, PortReq) ->
                         ,[E164, Number, cb_context:account_id(Context), wh_json:get_value(<<"id">>, PortReq)]
                        ),
             cb_context:add_validation_error(
-                Number
-                ,<<"type">>
-                ,<<"Number is on a port request already: ", (wh_json:get_value(<<"id">>, PortReq))/binary>>
-                ,Context
-            );
+              Number
+              ,<<"type">>
+              ,<<"Number is on a port request already: ", (wh_json:get_value(<<"id">>, PortReq))/binary>>
+              ,Context
+             );
         {'false', _} ->
             lager:debug("number ~s(~s) is on existing port request for other account(~s)"
                         ,[E164, Number, wh_json:get_value(<<"value">>, PortReq)]
                        ),
             cb_context:add_validation_error(
-                Number,
-                <<"type">>
-                ,<<"Number is being ported for a different account">>
-                ,Context
-            )
+              Number
+              ,<<"type">>
+              ,<<"Number is being ported for a different account">>
+              ,Context
+             )
     end.
 
 %%--------------------------------------------------------------------
@@ -830,18 +838,18 @@ maybe_move_state(Context, Id, PortState) ->
             cb_context:set_doc(Context1, PortRequest);
         {'error', 'invalid_state_transition'} ->
             cb_context:add_validation_error(
-                <<"port_state">>
-                ,<<"enum">>
-                ,<<"cannot move to new state from current state">>
-                ,Context
-            );
+              <<"port_state">>
+              ,<<"enum">>
+              ,<<"cannot move to new state from current state">>
+              ,Context
+             );
         {'error', _E} ->
             cb_context:add_validation_error(
-                <<"port_state">>
-                ,<<"enum">>
-                ,<<"failed to move to new state from current state">>
-                ,Context
-            )
+              <<"port_state">>
+              ,<<"enum">>
+              ,<<"failed to move to new state from current state">>
+              ,Context
+             )
     end.
 
 %%--------------------------------------------------------------------
@@ -1019,32 +1027,36 @@ send_port_cancel_notification(Context, Id) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec add_to_phone_numbers_doc(cb_context:context()) -> 'ok' | 'error'.
+-spec add_to_phone_numbers_doc(cb_context:context(), wh_json:object()) -> 'ok' | 'error'.
 add_to_phone_numbers_doc(Context) ->
-    Doc = cb_context:doc(Context),
-    AccountId = cb_context:account_id(Context),
     case get_phone_numbers_doc(Context) of
         {'error', _R} -> 'error';
         {'ok', JObj} ->
-            Now = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
-            PhoneNumbersJObj =
-                wh_json:foldl(
-                    fun(Number, _, Acc) ->
-                        NumberJObj =
-                            wh_json:from_list([
-                                {<<"state">>, <<"in_service">>}
-                                ,{<<"features">>, []}
-                                ,{<<"assigned_to">>, AccountId}
-                                ,{<<"used_by">>, <<>>}
-                                ,{<<"created">>, Now}
-                                ,{<<"updated">>, Now}
-                            ]),
-                        wh_json:set_value(Number, NumberJObj, Acc)
-                    end
-                    ,JObj
-                    ,wh_json:get_value(<<"numbers">>, Doc, wh_json:new())
-                ),
-            save_phone_numbers_doc(Context, PhoneNumbersJObj)
+            add_to_phone_numbers_doc(Context, JObj)
     end.
+
+add_to_phone_numbers_doc(Context, JObj) ->
+    AccountId = cb_context:account_id(Context),
+
+    Now = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
+    PhoneNumbersJObj =
+        wh_json:foldl(
+          fun(Number, _, Acc) ->
+                  NumberJObj =
+                      wh_json:from_list(
+                        [{<<"state">>, <<"in_service">>}
+                         ,{<<"features">>, []}
+                         ,{<<"assigned_to">>, AccountId}
+                         ,{<<"used_by">>, <<>>}
+                         ,{<<"created">>, Now}
+                         ,{<<"updated">>, Now}
+                        ]),
+                  wh_json:set_value(Number, NumberJObj, Acc)
+          end
+          ,JObj
+          ,wh_json:get_value(<<"numbers">>, cb_context:doc(Context), wh_json:new())
+         ),
+    save_phone_numbers_doc(Context, PhoneNumbersJObj).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1052,36 +1064,41 @@ add_to_phone_numbers_doc(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec remove_from_phone_numbers_doc(cb_context:context()) -> 'ok' | 'error'.
+-spec remove_from_phone_numbers_doc(cb_context:context(), wh_json:object()) -> 'ok' | 'error'.
 remove_from_phone_numbers_doc(Context) ->
-    Doc = cb_context:doc(Context),
     case get_phone_numbers_doc(Context) of
         {'error', _R}-> 'ok';
         {'ok', JObj} ->
-            PhoneNumbersJObj =
-                wh_json:foldl(
-                    fun(Number, _, Acc) ->
-                        wh_json:delete_key(Number, Acc)
-                    end
-                    ,JObj
-                    ,wh_json:get_value(<<"numbers">>, Doc, wh_json:new())
-                ),
-            save_phone_numbers_doc(Context, PhoneNumbersJObj)
+            remove_from_phone_numbers_doc(Context, JObj)
     end.
+
+remove_from_phone_numbers_doc(Context, JObj) ->
+    PhoneNumbersJObj =
+        wh_json:foldl(
+          fun(Number, _, Acc) ->
+                  wh_json:delete_key(Number, Acc)
+          end
+          ,JObj
+          ,wh_json:get_value(<<"numbers">>, cb_context:doc(Context), wh_json:new())
+         ),
+    save_phone_numbers_doc(Context, PhoneNumbersJObj).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_phone_numbers_doc(cb_context:context()) -> {'ok', wh_json:obecjt()} | {'error', atom()}.
+-spec get_phone_numbers_doc(cb_context:context()) ->
+                                   {'ok', wh_json:object()} |
+                                   {'error', _}.
 get_phone_numbers_doc(Context) ->
-    AccountId = cb_context:account_id(Context),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_doc(AccountDb, <<"phone_numbers">>) of
-        {'ok', _}=Ok -> Ok;
-        {'error', _R}=Error ->
-            lager:error("failed to open phone_numbers doc in ~s : ~p", [AccountDb, _R]),
-            Error
+    Context1 = crossbar_doc:load(<<"phone_numbers">>, Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            {'ok', cb_context:doc(Context1)};
+        Status ->
+            lager:error("failed to open phone_numbers doc in ~s : ~p", [cb_context:account_id(Context), Status]),
+            {'error', Status}
     end.
 
 %%--------------------------------------------------------------------
@@ -1091,11 +1108,10 @@ get_phone_numbers_doc(Context) ->
 %%--------------------------------------------------------------------
 -spec save_phone_numbers_doc(cb_context:context(), wh_json:object()) -> 'ok' | 'error'.
 save_phone_numbers_doc(Context, JObj) ->
-    AccountId = cb_context:account_id(Context),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:save_doc(AccountDb, JObj) of
-        {'ok', _} -> 'ok';
-        {'error', _R} ->
-            lager:error("failed to save phone_numbers doc in ~s : ~p", [AccountDb, _R]),
+    Context1 = crossbar_doc:save(cb_context:set_doc(Context, JObj)),
+    case cb_context:resp_status(Context1) of
+        'success' -> 'ok';
+        _Status ->
+            lager:error("failed to save phone_numbers doc in ~s : ~p", [cb_context:account_id(Context), _Status]),
             'error'
     end.
