@@ -39,7 +39,7 @@ allowed_apps(AccountId) ->
 -spec allowed_app(ne_binary(), ne_binary()) -> api_object().
 allowed_app(AccountId, AppId) ->
     Apps = allowed_apps(AccountId),
-    filter_apps(Apps, AppId, 'undefined').
+    filter_apps(Apps, AppId).
 
 %%%===================================================================
 %%% Internal functions
@@ -50,12 +50,12 @@ allowed_app(AccountId, AppId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec filter_apps(wh_json:objects(), ne_binary(), 'undefined' | wh_json:object()) -> 'undefined' | wh_json:object().
-filter_apps([], _, Acc) -> Acc;
-filter_apps([App|Apps], AppId, Acc) ->
+-spec filter_apps(wh_json:objects(), ne_binary()) -> api_object().
+filter_apps([], _) -> 'undefined';
+filter_apps([App|Apps], AppId) ->
     case wh_json:get_value(<<"_id">>, App) of
         AppId -> App;
-        _ -> filter_apps(Apps, AppId, Acc)
+        _ -> filter_apps(Apps, AppId)
     end.
 
 %%--------------------------------------------------------------------
