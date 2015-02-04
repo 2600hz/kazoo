@@ -45,6 +45,9 @@ attempt_endpoints(Endpoints, Data, Call) ->
                 'ok' -> lager:debug("bridge failure handled");
                 'not_found' -> cf_exe:continue(Call)
             end;
+        {'error', 'timeout'} ->
+            lager:debug("bridge timed out waiting for someone to answer"),
+            cf_exe:continue(Call);
         {'error', _R} ->
             lager:info("error bridging to ring group: ~p"
                        ,[wh_json:get_value(<<"Error-Message">>, _R)]
