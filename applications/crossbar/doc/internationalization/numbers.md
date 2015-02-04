@@ -83,33 +83,33 @@ This is a set of regexes to group numbers by type and are not used for routing. 
 
     "classifiers":{
         "tollfree_us":{
-            "regex":"^\\+1(800|888|877|866|855)\\d{7}$",
+            "regex":"^\\+1((800|888|877|866|855)\\d{7})$",
             "friendly_name":"US TollFree"
         },
         "toll_us":{
-            "regex":"^\\+1900\\d{7}$",
+            "regex":"^\\+1(900\\d{7})$",
             "friendly_name":"US Toll"
         },
         "emergency":{
-            "regex":"^911$",
+            "regex":"^(911)$",
             "friendly_name":"Emergency Dispatcher"
         },
         "caribbean":{
-            "regex":"^\\+?1(684|264|268|242|246|441|284|345|767|809|829|849|473|671|876|664|670|787|939|869|758|784|721|868|649|340)\\d{7}$",
+            "regex":"^\\+?1((684|264|268|242|246|441|284|345|767|809|829|849|473|671|876|664|670|787|939|869|758|784|721|868|649|340)\\d{7})$",
             "friendly_name":"Caribbean"
         },
         "did_us":{
-            "regex":"^\\+?1?[2-9][0-9]{2}[2-9][0-9]{6}$",
+            "regex":"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$",
             "friendly_name":"US DID",
             "pretty_print":"SS(###) ### - ####"
         },
         "international":{
-            "regex":"^011\\d*$|^00\\d*$",
+            "regex":"^(011\\d*)$|^(00\\d*)$",
             "friendly_name":"International",
             "pretty_print":"SSS011*"
         },
         "unknown":{
-            "regex":"^.*$",
+            "regex":"^(.*)$",
             "friendly_name":"Unknown"
         }
     }
