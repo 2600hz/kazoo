@@ -260,10 +260,14 @@ set_line_realm(JObj) ->
 %%--------------------------------------------------------------------
 -spec create_provision_settings(wh_json:object()) -> wh_json:object().
 create_provision_settings(JObj) ->
+    SubSettings =
+        wh_json:from_list([
+            {<<"timezone">>, wh_json:get_value(<<"timezone">>, JObj)}
+        ]),
     Settings = wh_json:from_list([
         {<<"lines">>, [set_line(JObj)]}
         ,{<<"codecs">>, [set_codecs(JObj)]}
-        ,{<<"timezone">>, wh_json:get_value(<<"timezone">>, JObj)}
+        ,{<<"settings">>, SubSettings}
     ]),
     wh_json:from_list([
         {<<"brand">>, wh_json:get_value([<<"provision">>, <<"endpoint_brand">>], JObj, <<>>)}
