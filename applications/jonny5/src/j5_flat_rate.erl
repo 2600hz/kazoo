@@ -18,7 +18,7 @@
 -define(MAX_RECURSE_DEPTH, whapps_config:get_integer(?CONFIG_CAT, <<"dialed_region_max_recurse_depth">>, 20)).
 
 -ifdef(TEST).
--define(DEFAULT_TRUNK_ELIGIBLE_ON_REGEX_ERROR, 'false').
+-define(TRUNK_ELIGIBLE_ON_REGEX_ERROR, 'false').
 -else.
 -define(WHITELIST, whapps_config:get(<<"jonny5">>, <<"flat_rate_whitelist">>, ?DEFAULT_WHITELIST)).
 -define(BLACKLIST, whapps_config:get(<<"jonny5">>, <<"flat_rate_blacklist">>, ?DEFAULT_BLACKLIST)).
