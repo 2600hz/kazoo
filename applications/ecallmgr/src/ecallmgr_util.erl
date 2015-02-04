@@ -1050,6 +1050,7 @@ is_custom_sip_header(_Header) -> 'false'.
 maybe_add_expires_deviation('undefined') -> 'undefined';
 maybe_add_expires_deviation(Expires) when not is_integer(Expires) ->
     maybe_add_expires_deviation(wh_util:to_integer(Expires));
+maybe_add_expires_deviation(0) -> 0; 
 maybe_add_expires_deviation(Expires) ->
     Expires + ecallmgr_config:get_integer(<<"expires_deviation_time">>, 180).
 
