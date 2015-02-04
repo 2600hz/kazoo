@@ -529,7 +529,7 @@ read_descendants(Context, SubAccounts) ->
           fun(Account, Acc) ->
                   AccountId = wh_json:get_value(<<"id">>, Account),
                   case read_descendant(Context, AccountId) of
-                      [] -> Acc;
+                      'undefined' -> Acc;
                       PortRequests ->
                           [wh_json:from_list(
                              [{<<"account_id">>, AccountId}
@@ -546,12 +546,12 @@ read_descendants(Context, SubAccounts) ->
          ),
     crossbar_doc:handle_json_success(AllPortRequests, Context).
 
--spec read_descendant(cb_context:context(), ne_binary()) -> wh_json:object().
+-spec read_descendant(cb_context:context(), ne_binary()) -> api_object().
 read_descendant(Context, Id) ->
     Context1 = summary(cb_context:set_account_id(Context, Id)),
     case cb_context:resp_status(Context1) of
         'success' -> cb_context:doc(Context1);
-        _ -> wh_json:new()
+        _Status -> 'undefined'
     end.
 
 
