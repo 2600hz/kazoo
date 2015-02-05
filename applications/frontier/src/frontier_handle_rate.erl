@@ -10,6 +10,7 @@
 
 -export([handle_rate_req/2
          ,lookup_rate_limit_records/1
+         ,names/0
         ]).
 
 -include("frontier.hrl").
