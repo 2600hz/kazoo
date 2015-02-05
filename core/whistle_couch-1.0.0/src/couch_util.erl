@@ -876,7 +876,7 @@ should_publish_doc(Doc) ->
 
 -spec publish_doc(couchbeam_db(), wh_json:object(), wh_json:object()) -> 'ok'.
 publish_doc(#db{name=DbName}, Doc, JObj) ->
-    case wh_json:is_true(<<"pvt_deleted">>, Doc)
+    case wh_doc:is_soft_deleted(Doc)
         orelse wh_json:is_true(<<"_deleted">>, Doc)
     of
         'true' -> publish('deleted', wh_util:to_binary(DbName), Doc);

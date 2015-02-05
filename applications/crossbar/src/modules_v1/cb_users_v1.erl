@@ -138,7 +138,7 @@ validate_user_id(UserId, Context) ->
     end.
 
 validate_user_id(UserId, Context, Doc) ->
-    case wh_json:is_true(<<"pvt_deleted">>, Doc) of
+    case wh_doc:is_soft_deleted(Doc) of
         'true' ->
             cb_context:add_system_error(
                 'bad_identifier'

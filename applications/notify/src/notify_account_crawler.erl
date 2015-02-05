@@ -148,9 +148,8 @@ handle_info(_Info, State) ->
 
 -spec check_then_process_account(ne_binary(), {'ok', wh_json:object()} | {'error',_}) -> 'ok'.
 check_then_process_account(AccountId, {'ok', JObj}) ->
-    case wh_json:is_true(<<"pvt_deleted">>, JObj) of
+    case wh_doc:is_soft_deleted(JObj) of
         'true' ->
-            %% Account has actually been soft-destroyed
             lager:debug("not processing account ~p (soft-destroyed)", [AccountId]);
         'false' ->
             AccountDb = wh_json:get_value(<<"pvt_account_db">>, JObj),
