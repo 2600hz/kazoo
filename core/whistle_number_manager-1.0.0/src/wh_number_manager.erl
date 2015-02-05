@@ -850,7 +850,8 @@ delete_attachment(Number, Name, AuthBy) ->
                                operation_return().
 get_public_fields(Number, AuthBy) ->
     lager:debug("attempting to get public fields for number ~s", [Number]),
-    Routines = [fun(_) -> wnm_number:get(Number) end
+    lager:debug(">>> Number = ~p",[Number]),
+    Routines = [fun(_) -> N = wnm_number:get(Number), lager:debug(">>> N0 = ~p",[N]), N end
                 ,fun({_, #number{}}=E) -> lager:debug(">>> E = ~p",[E]), E;
                     (#number{}=N) when AuthBy =:= 'system' -> lager:debug(">>> N1 = ~p",[N]), N;
                     (#number{assigned_to=AssignedTo}=N) ->
