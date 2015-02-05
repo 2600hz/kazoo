@@ -848,19 +848,19 @@ maybe_build_failover(Endpoint, Clid, Call) ->
 maybe_build_push_failover(Endpoint, Clid, Call) ->
     case wh_json:get_value(<<"push">>, Endpoint) of
         'undefined' -> 'undefined';
-        Token -> build_push_failover(Endpoint, Clid, Token, Call)
+        PushJObj -> build_push_failover(Endpoint, Clid, PushJObj, Call)
     end.
 
--spec build_push_failover(wh_json:object(), clid(), binary(), whapps_call:call()) -> api_object().
-build_push_failover(Endpoint, Clid, PushObj, Call) ->
+-spec build_push_failover(wh_json:object(), clid(), wh_json:object(), whapps_call:call()) -> api_object().
+build_push_failover(Endpoint, Clid, PushJObj, Call) ->
     SIPJObj = wh_json:get_value(<<"sip">>, Endpoint),
     ToUsername = get_to_username(SIPJObj),
     ToRealm = cf_util:get_sip_realm(Endpoint, whapps_call:account_id(Call)),    
     ToUser = <<ToUsername/binary, "@", ToRealm/binary>>,
-    Proxy = wh_json:get_value(<<"Token-Proxy">>, PushObj),
+    Proxy = wh_json:get_value(<<"Token-Proxy">>, PushJObj),
     PushHeaders = wh_json:foldl(fun(K, V, Acc) -> 
                                         wh_json:set_value(<<"X-KAZOO-PUSHER-", K/binary>>, V, Acc)  
-                                end, wh_json:new(), PushObj),
+                                end, wh_json:new(), PushJObj),
     wh_json:from_list(
       props:filter_empty(
         [{<<"Invite-Format">>, <<"route">>}
