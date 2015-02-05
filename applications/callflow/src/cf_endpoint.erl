@@ -861,7 +861,6 @@ build_push_failover(Endpoint, Clid, PushObj, Call) ->
     PushHeaders = wh_json:foldl(fun(K, V, Acc) -> 
                                         wh_json:set_value(<<"X-KAZOO-PUSHER-", K/binary>>, V, Acc)  
                                 end, wh_json:new(), PushObj),
-    lager:debug("PUSHER HEADERS ~p", [PushHeaders]),
     wh_json:from_list(
       props:filter_empty(
         [{<<"Invite-Format">>, <<"route">>}
