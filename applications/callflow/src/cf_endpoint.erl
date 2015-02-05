@@ -34,8 +34,8 @@
 -define(RESOURCE_TYPE_VIDEO, <<"video">>).
 
 -define(DEFAULT_MOBILE_SMS_INTERFACE, <<"amqp">>).
--define(DEFAULT_MOBILE_SMS_BROKER, <<"amqp://user:pass@amqp.server.com:5672/vhost">>).
--define(DEFAULT_MOBILE_SMS_EXCHANGE, wh_util:rand_hex_binary(16)).
+-define(DEFAULT_MOBILE_SMS_BROKER, wh_amqp_connections:primary_broker()).
+-define(DEFAULT_MOBILE_SMS_EXCHANGE, <<"sms">>).
 -define(DEFAULT_MOBILE_SMS_EXCHANGE_TYPE, <<"topic">>).
 -define(DEFAULT_MOBILE_SMS_OPTIONS, wh_json:from_list([{<<"Route-ID">>, <<"sprint">>}
                                                        ,{<<"System-ID">>, wh_util:node_name()}
@@ -772,6 +772,12 @@ start_call_recording(RecordCall, Call) ->
                                  wh_json:object().
 create_sip_endpoint(Endpoint, Properties, Call) ->
     Clid = get_clid(Endpoint, Properties, Call),
+    _ = maybe_record_call(Endpoint, Call),
+    create_sip_endpoint(Endpoint, Properties, Clid, Call).
+
+-spec create_sip_endpoint(wh_json:object(), wh_json:object(), clid(), whapps_call:call()) ->
+                                 wh_json:object().
+create_sip_endpoint(Endpoint, Properties, #clid{}=Clid, Call) ->
     SIPJObj = wh_json:get_value(<<"sip">>, Endpoint),
     _ = maybe_record_call(Endpoint, Call),
     wh_json:from_list(
@@ -805,7 +811,7 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
          ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call)}
          ,{<<"Flags">>, get_outbound_flags(Endpoint)}
          ,{<<"Ignore-Completed-Elsewhere">>, get_ignore_completed_elsewhere(Endpoint)}
-         ,{<<"Failover">>, maybe_build_failover(Endpoint, Call)}
+         ,{<<"Failover">>, maybe_build_failover(Endpoint, Clid, Call)}
          ,{<<"Metaflows">>, wh_json:get_value(<<"metaflows">>, Endpoint)}
          | maybe_get_t38(Endpoint, Call)
         ])).
@@ -827,16 +833,62 @@ maybe_get_t38(Endpoint, Call) ->
              )
     end.
 
--spec maybe_build_failover(wh_json:object(), whapps_call:call()) -> api_object().
-maybe_build_failover(Endpoint, Call) ->
+-spec maybe_build_failover(wh_json:object(), clid(), whapps_call:call()) -> api_object().
+maybe_build_failover(Endpoint, Clid, Call) ->
     CallForward = wh_json:get_value(<<"call_forward">>, Endpoint),
     Number = wh_json:get_value(<<"number">>, CallForward),
     case wh_json:is_true(<<"failover">>, CallForward)
         andalso not wh_util:is_empty(Number)
     of
-        'false' -> 'undefined';
+        'false' -> maybe_build_push_failover(Endpoint, Clid, Call);
         'true' -> create_call_fwd_endpoint(Endpoint, wh_json:new(), Call)
     end.
+
+-spec maybe_build_push_failover(wh_json:object(), clid(), whapps_call:call()) -> api_object().
+maybe_build_push_failover(Endpoint, Clid, Call) ->
+    case wh_json:get_value(<<"push">>, Endpoint) of
+        'undefined' -> 'undefined';
+        PushJObj -> build_push_failover(Endpoint, Clid, PushJObj, Call)
+    end.
+
+-spec build_push_failover(wh_json:object(), clid(), wh_json:object(), whapps_call:call()) -> api_object().
+build_push_failover(Endpoint, Clid, PushJObj, Call) ->
+    SIPJObj = wh_json:get_value(<<"sip">>, Endpoint),
+    ToUsername = get_to_username(SIPJObj),
+    ToRealm = cf_util:get_sip_realm(Endpoint, whapps_call:account_id(Call)),    
+    ToUser = <<ToUsername/binary, "@", ToRealm/binary>>,
+    Proxy = wh_json:get_value(<<"Token-Proxy">>, PushJObj),
+    PushHeaders = wh_json:foldl(fun(K, V, Acc) -> 
+                                        wh_json:set_value(<<"X-KAZOO-PUSHER-", K/binary>>, V, Acc)  
+                                end, wh_json:new(), PushJObj),
+    wh_json:from_list(
+      props:filter_empty(
+        [{<<"Invite-Format">>, <<"route">>}
+         ,{<<"To-User">>, ToUser}
+         ,{<<"To-Username">>, ToUsername}
+         ,{<<"To-Realm">>, ToRealm}
+         ,{<<"To-DID">>, get_to_did(Endpoint, Call)}
+         ,{<<"SIP-Transport">>, get_sip_transport(SIPJObj)}
+         ,{<<"Route">>, <<"sip:", ToUser/binary, ";fs_path='", Proxy/binary, "'">> }
+         ,{<<"Callee-ID-Name">>, Clid#clid.callee_name}
+         ,{<<"Callee-ID-Number">>, Clid#clid.callee_number}
+         ,{<<"Outbound-Callee-ID-Name">>, Clid#clid.callee_name}
+         ,{<<"Outbound-Callee-ID-Number">>, Clid#clid.callee_number}
+         ,{<<"Outbound-Caller-ID-Number">>, Clid#clid.caller_number}
+         ,{<<"Outbound-Caller-ID-Name">>, Clid#clid.caller_name}
+         ,{<<"Ignore-Early-Media">>, get_ignore_early_media(Endpoint)}
+         ,{<<"Bypass-Media">>, get_bypass_media(Endpoint)}
+         ,{<<"Endpoint-Progress-Timeout">>, get_progress_timeout(Endpoint)}
+         ,{<<"Endpoint-ID">>, wh_json:get_value(<<"_id">>, Endpoint)}
+         ,{<<"Codecs">>, get_codecs(Endpoint)}
+         ,{<<"Hold-Media">>, cf_attributes:moh_attributes(Endpoint, <<"media_id">>, Call)}
+         ,{<<"Presence-ID">>, cf_attributes:presence_id(Endpoint, Call)}
+         ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, PushHeaders, Call)}
+         ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call)}
+         ,{<<"Flags">>, get_outbound_flags(Endpoint)}
+         ,{<<"Ignore-Completed-Elsewhere">>, get_ignore_completed_elsewhere(Endpoint)}
+         ,{<<"Metaflows">>, wh_json:get_value(<<"metaflows">>, Endpoint)}
+        ])).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -997,6 +1049,11 @@ maybe_add_mobile_path(Route) ->
 -spec generate_sip_headers(wh_json:object(), whapps_call:call()) ->
                                   wh_json:object().
 generate_sip_headers(Endpoint, Call) ->
+    generate_sip_headers(Endpoint, wh_json:new(), Call).
+
+-spec generate_sip_headers(wh_json:object(), wh_json:object(), whapps_call:call()) ->
+                                  wh_json:object().
+generate_sip_headers(Endpoint, Acc, Call) ->
     Inception = whapps_call:inception(Call),
     HeaderFuns = [fun(J) ->
                           case wh_json:get_value([<<"sip">>, <<"custom_sip_headers">>], Endpoint) of
@@ -1017,7 +1074,7 @@ generate_sip_headers(Endpoint, Call) ->
                            end
                    end
                  ],
-    lists:foldr(fun(F, JObj) -> F(JObj) end, wh_json:new(), HeaderFuns).
+    lists:foldr(fun(F, JObj) -> F(JObj) end, Acc, HeaderFuns).
 
 %%--------------------------------------------------------------------
 %% @private
