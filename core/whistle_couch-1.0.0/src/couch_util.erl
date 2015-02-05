@@ -802,27 +802,6 @@ maybe_add_pvt_type(Db, DocId, JObj) ->
 %%------------------------------------------------------------------------------
 %% @private
 %% @doc
-%%
-%% @end
-%%------------------------------------------------------------------------------
--spec maybe_add_pvt_type(couchbeam_db(), ne_binary(), wh_json:object()) -> wh_json:object().
-maybe_add_pvt_type(Db, DocId, JObj) ->
-    case wh_json:get_value(<<"pvt_type">>, JObj) =:= 'undefined'
-        andalso couchbeam:open_doc(Db, DocId)
-    of
-        {'error', R} ->
-            lager:error("failed to open doc ~p in ~p : ~p", [DocId, Db, R]),
-            JObj;
-        {'ok', Doc} ->
-            PvtType = wh_json:get_value(<<"pvt_type">>, Doc),
-            wh_json:set_value(<<"pvt_type">>, PvtType, JObj);
-        _Else ->
-            JObj
-    end.
-
-%%------------------------------------------------------------------------------
-%% @private
-%% @doc
 %% Send the query function in an anon fun with arity 0; if it returns 504, retry
 %% until 3 failed retries occur.
 %% @end
