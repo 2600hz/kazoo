@@ -852,12 +852,11 @@ maybe_build_push_failover(Endpoint, Clid, Call) ->
     end.
 
 -spec build_push_failover(wh_json:object(), clid(), binary(), whapps_call:call()) -> api_object().
-build_push_failover(Endpoint, Clid, Token, Call) ->
+build_push_failover(Endpoint, Clid, PushObj, Call) ->
     SIPJObj = wh_json:get_value(<<"sip">>, Endpoint),
     ToUsername = get_to_username(SIPJObj),
     ToRealm = cf_util:get_sip_realm(Endpoint, whapps_call:account_id(Call)),    
     ToUser = <<ToUsername/binary, "@", ToRealm/binary>>,
-    PushObj = wh_json:get_value(<<"push">>, Endpoint),
     Proxy = wh_json:get_value(<<"Token-Proxy">>, PushObj),
     PushHeaders = wh_json:foldl(fun(K, V, Acc) -> 
                                         wh_json:set_value(<<"X-KAZOO-PUSHER-", K/binary>>, V, Acc)  
