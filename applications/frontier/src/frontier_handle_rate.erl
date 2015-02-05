@@ -244,11 +244,12 @@ fetch_rates(Entity, <<"account">>, MethodList, _) ->
     end;
 fetch_rates(Entity, <<"device">>, MethodList, AccountDB) ->
     lager:info("Run db query..."),
-    Keys = [[E, M] || E <- [Entity, ?DEVICE_DEFAULT_RATES], M <- MethodList],
+    User = frontier_utils:extract_username(Entity),
+    Keys = [[E, M] || E <- [User, ?DEVICE_DEFAULT_RATES], M <- MethodList],
     ViewOpts = [{'keys', Keys}],
     case couch_mgr:get_results(AccountDB, ?RATES_CROSSBAR_LISTING, ViewOpts) of
         {'ok', JObjs} ->
-            lager:info("Got ~p records for device ~s", [length(JObjs), Entity]),
+            lager:info("Got ~p records for device ~s from db document", [length(JObjs), Entity]),
             {DefaultRates, DeviceRates} = lists:partition(fun is_device_defaults/1, JObjs),
             case length(DeviceRates) > 0 of
                 'true' ->
