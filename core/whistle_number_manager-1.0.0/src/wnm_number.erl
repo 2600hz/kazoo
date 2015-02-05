@@ -1186,6 +1186,7 @@ load_phone_number_doc(Account, 'false') ->
         {'ok', J} ->
             lager:debug("loaded phone_numbers from ~s", [AccountId]),
             JObj = wh_json:set_values(PVTs, J),
+            lager:debug(">>> AccountId = ~p  JObj = ~p", [AccountId,JObj]),
             erlang:put({'phone_number_doc', AccountId}, JObj),
             {'ok', JObj};
         {'error', 'not_found'} ->

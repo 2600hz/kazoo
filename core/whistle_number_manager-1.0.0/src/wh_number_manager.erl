@@ -851,9 +851,10 @@ delete_attachment(Number, Name, AuthBy) ->
 get_public_fields(Number, AuthBy) ->
     lager:debug("attempting to get public fields for number ~s", [Number]),
     Routines = [fun(_) -> wnm_number:get(Number) end
-                ,fun({_, #number{}}=E) -> E;
-                    (#number{}=N) when AuthBy =:= 'system' -> N;
+                ,fun({_, #number{}}=E) -> lager:debug(">>> E = ~p",[E]), E;
+                    (#number{}=N) when AuthBy =:= 'system' -> lager:debug(">>> N1 = ~p",[N]), N;
                     (#number{assigned_to=AssignedTo}=N) ->
+                         lager:debug(">>> N2 = ~p",[N]),
                          case wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, 'true') of
                              'false' -> wnm_number:error_unauthorized(N);
                              'true' -> N
@@ -864,6 +865,7 @@ get_public_fields(Number, AuthBy) ->
                          {E, Reason};
                     (#number{number_doc=JObj}) ->
                          lager:debug("fetch public fields successfully completed"),
+                         lager:debug(">>> publics? ~p", [JObj]),
                          {'ok', wh_json:public_fields(JObj)}
                  end
                ],

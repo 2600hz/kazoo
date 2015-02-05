@@ -865,9 +865,12 @@ private_fields(JObj) -> filter(fun({K, _}) -> is_private_key(K) end, JObj).
 %% @end
 %%--------------------------------------------------------------------
 -spec is_private_key(key()) -> boolean().
-is_private_key(<<"_", _/binary>>) -> 'true';
-is_private_key(<<"pvt_", _/binary>>) -> 'true';
-is_private_key(_) -> 'false'.
+is_private_key(K) ->
+    lager:debug(">>> Key ~p private? ~p", [K,is_private_ke(K)]),
+    is_private_ke(K).
+is_private_ke(<<"_", _/binary>>) -> 'true';
+is_private_ke(<<"pvt_", _/binary>>) -> 'true';
+is_private_ke(_) -> 'false'.
 
 -spec flatten(object() | objects(), integer(), list()) -> objects().
 -spec flatten(any(), list(), list(), integer()) -> objects().
