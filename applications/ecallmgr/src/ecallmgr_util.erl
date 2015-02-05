@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2014, 2600Hz
+%%% @copyright (C) 2010-2015, 2600Hz
 %%% @doc
 %%% Various utilities specific to ecallmgr. More general utilities go
 %%% in whistle_util.erl
@@ -39,6 +39,9 @@
 -export([custom_sip_headers/1 , is_custom_sip_header/1, normalize_custom_sip_header_name/1]).
 -export([maybe_add_expires_deviation/1, maybe_add_expires_deviation_ms/1]).
 
+-export([get_dial_separator/2]).
+
+-include_lib("whistle/src/api/wapi_dialplan.hrl").
 -include("ecallmgr.hrl").
 
 -define(HTTP_GET_PREFIX, "http_cache://").
@@ -138,7 +141,9 @@ send_cmd(Node, UUID, AppName, Args) ->
                                              ,{"execute-app-name", AppName}
                                              ,{"execute-app-arg", wh_util:to_list(Args)}
                                             ]),
-    lager:debug("execute on node ~s ~s(~s): ~p", [Node, AppName, Args, Result]),
+    lager:debug("execute on node ~s(~s) ~s(~s): ~p"
+                ,[Node, UUID, AppName, Args, Result]
+               ),
     Result.
 
 -spec get_expires(wh_proplist()) -> integer().
@@ -474,7 +479,7 @@ bridge_export(Node, UUID, Props) ->
 -spec build_bridge_string(wh_json:objects()) -> ne_binary().
 -spec build_bridge_string(wh_json:objects(), ne_binary()) -> ne_binary().
 build_bridge_string(Endpoints) ->
-    build_bridge_string(Endpoints, <<"|">>).
+    build_bridge_string(Endpoints, ?SEPARATOR_SINGLE).
 
 build_bridge_string(Endpoints, Seperator) ->
     %% De-dup the bridge strings by matching those with the same
@@ -1054,3 +1059,12 @@ maybe_add_expires_deviation_ms(Expires) when not is_integer(Expires) ->
     maybe_add_expires_deviation_ms(wh_util:to_integer(Expires));
 maybe_add_expires_deviation_ms(Expires) ->
     maybe_add_expires_deviation(Expires) * 1000.
+
+-spec get_dial_separator(api_object() | ne_binary(), wh_json:objects()) -> ne_binary().
+get_dial_separator(?DIAL_METHOD_SIMUL, [_|T]) when T =/= [] -> ?SEPARATOR_SIMULTANEOUS;
+get_dial_separator(?DIAL_METHOD_SINGLE, _Endpoints) -> ?SEPARATOR_SINGLE;
+get_dial_separator('undefined', _Endpoints) -> ?SEPARATOR_SINGLE;
+get_dial_separator(JObj, Endpoints) ->
+    get_dial_separator(wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, ?DIAL_METHOD_SINGLE)
+                       ,Endpoints
+                      ).

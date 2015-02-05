@@ -300,7 +300,6 @@ encode_kv(Prefix, K, [V|Vs], Sep, Acc) ->
     encode_kv(Prefix, K, Vs, Sep, [ <<"&">>, encode_kv(Prefix, K, Sep, mochiweb_util:quote_plus(V)) | Acc]);
 encode_kv(_, _, [], _, Acc) -> lists:reverse(Acc).
 
-
 -spec to_log(wh_proplist()) -> 'ok'.
 to_log(Props) ->
 	to_log(Props,<<"Props">>).
@@ -397,4 +396,4 @@ is_defined_test() ->
                           ?assertEqual(Expected, is_defined(Key, Props))
                   end, Tests).
 
- -endif.
+-endif.

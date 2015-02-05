@@ -244,7 +244,7 @@ maybe_extract_multipart(Context, Req0, QS) ->
     end.
 
 -spec try_json(ne_binary(), wh_json:object(), cb_context:context(), cowboy_req:req()) ->
-                      {cb_context:context(), cowbow_req:req()} |
+                      {cb_context:context(), cowboy_req:req()} |
                       halt_return().
 try_json(ReqBody, QS, Context, Req) ->
     try get_json_body(ReqBody, Req) of

@@ -535,7 +535,6 @@ is_creds_global_unique(Realm, Username, DeviceId) ->
         _ -> 'false'
     end.
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc

@@ -673,16 +673,16 @@ handle_info({'timeout', ReqRef, 'req_timeout'}, #state{current_msg_id= _MsgID
                                                        ,req_timeout_ref=ReqRef
                                                        ,callid=CallID
                                                        ,responses='undefined'
-                                                       ,client_from=From
+                                                       ,client_from={_Pid, _}=From
                                                        ,defer_response=ReservedJObj
                                                       }=State) ->
     put('callid', CallID),
     case wh_util:is_empty(ReservedJObj) of
         'true' ->
-            lager:debug("request timeout exceeded for msg id: ~s", [_MsgID]),
+            lager:debug("request timeout exceeded for msg id: ~s and client: ~p", [_MsgID, _Pid]),
             gen_server:reply(From, {'error', 'timeout'});
         'false' ->
-            lager:debug("only received defered response for msg id: ~s", [_MsgID]),
+            lager:debug("only received defered response for msg id: ~s and client: ~p", [_MsgID, _Pid]),
             gen_server:reply(From, {'ok', ReservedJObj})
     end,
     {'noreply', reset(State), 'hibernate'};

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Dialplan API commands
 %%% @end
@@ -84,8 +84,10 @@
          ,publish_originate_execute/2, publish_originate_execute/3
         ]).
 
--include("wapi_dialplan.hrl").
+-include_lib("whistle/include/wh_api.hrl").
 -include_lib("whistle/include/wh_log.hrl").
+
+-include("wapi_dialplan.hrl").
 
 -spec optional_bridge_req_headers() -> ne_binaries().
 optional_bridge_req_headers() ->
