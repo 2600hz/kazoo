@@ -1128,8 +1128,9 @@ save_meta(Length, #mailbox{mailbox_id=Id}, Call, MediaId) ->
                            {'ok', JObj} -> wh_json:get_value(<<"external_media_url">>, JObj);
                            {'error', _} -> 'undefined'
                        end,
+    Timestamp = new_timestamp(),
     Metadata = wh_json:from_list(props:filter_undefined(
-                 [{<<"timestamp">>, new_timestamp()}
+                 [{<<"timestamp">>, Timestamp}
                   ,{<<"from">>, whapps_call:from(Call)}
                   ,{<<"to">>, whapps_call:to(Call)}
                   ,{<<"caller_id_number">>, get_caller_id_number(Call)}
@@ -1141,7 +1142,25 @@ save_meta(Length, #mailbox{mailbox_id=Id}, Call, MediaId) ->
                   ,{<<"external_media_url">>, ExternalMediaUrl}
                  ])),
     {'ok', _BoxJObj} = save_metadata(Metadata, whapps_call:account_db(Call), Id),
-    lager:debug("stored voicemail metadata for ~s", [MediaId]).
+    lager:debug("stored voicemail metadata for ~s", [MediaId]),
+
+    Prop = [{<<"From-User">>, whapps_call:from_user(Call)}
+            ,{<<"From-Realm">>, whapps_call:from_realm(Call)}
+            ,{<<"To-User">>, whapps_call:to_user(Call)}
+            ,{<<"To-Realm">>, whapps_call:to_realm(Call)}
+            ,{<<"Account-DB">>, whapps_call:account_db(Call)}
+            ,{<<"Account-ID">>, whapps_call:account_id(Call)}
+            ,{<<"Voicemail-Box">>, Id}
+            ,{<<"Voicemail-Name">>, MediaId}
+            ,{<<"Caller-ID-Number">>, get_caller_id_number(Call)}
+            ,{<<"Caller-ID-Name">>, get_caller_id_name(Call)}
+            ,{<<"Voicemail-Timestamp">>, Timestamp}
+            ,{<<"Voicemail-Length">>, Length}
+            ,{<<"Call-ID">>, whapps_call:call_id(Call)}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    wapi_notifications:publish_voicemail_saved(Prop),
+    lager:debug("published voicemail_saved for ~s", [Id]).
 
 -spec maybe_transcribe(whapps_call:call(), ne_binary(), boolean()) ->
                               api_object().
