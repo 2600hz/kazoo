@@ -28,9 +28,11 @@
         ]).
 
 -export_type([ error/0
+             , error_reason/0
+             , error_reasons/0
              ]).
 
--type error() :: {error, [error_reason()]}.
+-type error() :: {error, error_reasons()}.
 
 -type error_reason() :: { 'schema_invalid'
                         , Schema :: jesse:json_term()
@@ -42,6 +44,7 @@
                         , Data   :: jesse:json_term()
                         , Path   :: [binary()]
                         }.
+-type error_reasons() :: [error_reason(),...] | [].
 
 -type error_type() :: {'missing_id_field', binary()}
                     | {'missing_required_property', binary()}
