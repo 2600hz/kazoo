@@ -32,7 +32,6 @@ print_acl_record(Record) ->
 -spec lookup_ratelimits(ne_binary()) -> 'ok'.
 lookup_ratelimits(Entity) ->
     Limits = frontier_handle_rate:lookup_rate_limit_records(Entity),
-    io:format("~p", [Limits]),
     wh_json:foreach(fun print_limits/1, Limits).
 
 -spec print_limits({ne_binary(), wh_json:object()}) -> 'ok'.
