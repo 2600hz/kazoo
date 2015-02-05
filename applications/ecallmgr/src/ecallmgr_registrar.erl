@@ -97,6 +97,8 @@
 -type registration() :: #registration{}.
 -type registrations() :: [registration(),...] | [].
 
+-define(EXPIRES_MISSING_VALUE, 0).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -125,6 +127,16 @@ reg_success(JObj, _Props) ->
     'true' = wapi_registration:success_v(JObj),
     _ = wh_util:put_callid(JObj),
     Registration = create_registration(JObj),
+    reg_success(Registration).
+
+-spec reg_success(registration()) -> 'ok'.
+reg_success(#registration{expires=0}=Registration) ->
+    lager:info("deleting registration ~s@~s with contact ~s", [Registration#registration.username
+                                                               ,Registration#registration.realm
+                                                               ,Registration#registration.contact
+                                                              ]),
+    gen_server:cast(?MODULE, {'delete_registration', Registration});
+reg_success(#registration{}=Registration) ->
     gen_server:cast(?MODULE, {'insert_registration', Registration}),
     lager:info("inserted registration ~s@~s with contact ~s", [Registration#registration.username
                                                                ,Registration#registration.realm
@@ -383,6 +395,9 @@ handle_cast({'insert_registration', Registration}, State) ->
 handle_cast({'update_registration', {Username, Realm}=Id, Props}, State) ->
     lager:debug("updated registration ~s@~s", [Username, Realm]),
     _ = ets:update_element(?MODULE, Id, Props),
+    {'noreply', State};
+handle_cast({'delete_registration', #registration{id=Id}}, State) ->
+    _ = ets:delete(?MODULE, Id),
     {'noreply', State};
 handle_cast('flush', State) ->
     _ = ets:delete_all_objects(?MODULE),
@@ -720,7 +735,7 @@ create_registration(JObj) ->
                      ,call_id=wh_json:get_value(<<"Call-ID">>, JObj)
                      ,user_agent=wh_json:get_value(<<"User-Agent">>, JObj)
                      ,expires=ecallmgr_util:maybe_add_expires_deviation(
-                                wh_json:get_integer_value(<<"Expires">>, JObj, 60))
+                                wh_json:get_integer_value(<<"Expires">>, JObj, ?EXPIRES_MISSING_VALUE))
                      ,contact=fix_contact(OriginalContact)
                      ,original_contact=OriginalContact
                      ,last_registration=wh_util:current_tstamp()

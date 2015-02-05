@@ -38,7 +38,7 @@ start() {
     export ERL_CRASH_DUMP=$(date +%s)_${KZ_APP}_erl_crash.dump
     export ERL_LIBS=${KZ_DIR}/deps:${KZ_DIR}/core:${KZ_DIR}/applications
     ensure_cookie
-    daemon --user=${USER} "erl -name ${KZ_APP} -args_file /etc/kazoo/vm.args -detached -s ${KZ_APP} >/dev/null &"
+    daemon --user=${USER} --pidfile="nofile" "erl -name ${KZ_APP} -args_file /etc/kazoo/vm.args -detached -s ${KZ_APP} >/dev/null &"
     RETVAL=$?
     echo
     [ $RETVAL -eq 0 ] && touch ${LOCKFILE}

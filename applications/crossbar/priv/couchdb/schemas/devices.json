@@ -501,6 +501,12 @@
             "name": "Language",
             "description": "The language for the device",
             "default":"en-us"
+        },
+        "timezone": {
+            "type": "string",
+            "required": false,
+            "name": "Timezone",
+            "description": "Device's timezone"
         }
     }
 }

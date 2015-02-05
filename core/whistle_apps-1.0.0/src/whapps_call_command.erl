@@ -35,6 +35,7 @@
         ]).
 -export([redirect/2
          ,redirect/3
+         ,redirect_to_node/3
         ]).
 -export([answer/1, answer_now/1
          ,hangup/1, hangup/2
@@ -607,6 +608,23 @@ redirect(Contact, Server, Call) ->
     lager:debug("redirect to ~s on ~s", [Contact, Server]),
     Command = [{<<"Redirect-Contact">>, Contact}
                ,{<<"Redirect-Server">>, Server}
+               ,{<<"Application-Name">>, <<"redirect">>}
+              ],
+    send_command(Command, Call),
+    timer:sleep(2000),
+    'ok'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Create a redirect request to Node
+%% @end
+%%--------------------------------------------------------------------
+-spec redirect_to_node(ne_binary(), api_binary(), whapps_call:call()) -> 'ok'.
+redirect_to_node(Contact, Node, Call) ->
+    lager:debug("redirect ~s to ~s", [Contact, Node]),
+    Command = [{<<"Redirect-Contact">>, Contact}
+               ,{<<"Redirect-Node">>, Node}
                ,{<<"Application-Name">>, <<"redirect">>}
               ],
     send_command(Command, Call),

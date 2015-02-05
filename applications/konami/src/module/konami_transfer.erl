@@ -619,6 +619,15 @@ finished(_Msg, State) ->
 finished(_Req, _From, State) ->
     {'next_state', 'finished', State}.
 
+takeback(?EVENT(Transferor, <<"CHANNEL_UNBRIDGE">>, _Evt)
+         ,#state{transferor=Transferor
+                 ,call=Call
+                }=State) ->
+    lager:debug("transferor ~s unbridged: ~p", [_Evt]),
+    lager:debug("now connect to the transferee"),
+
+    connect_to_transferee(Call),
+    {'next_state', 'takeback', State};
 takeback(?EVENT(Transferor, <<"CHANNEL_BRIDGE">>, Evt)
          ,#state{transferor=Transferor
                  ,target=Target

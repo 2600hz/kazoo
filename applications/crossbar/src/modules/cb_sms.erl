@@ -22,7 +22,7 @@
 
 -define(CB_LIST_ALL, <<"sms/crossbar_listing">>).
 -define(CB_LIST_BY_DEVICE, <<"sms/listing_by_device">>).
--define(CB_LIST_BY_OWNERID, <<"sms/listing_by_ownerid">>).
+-define(CB_LIST_BY_OWNERID, <<"sms/listing_by_owner">>).
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".sms">>).
 
@@ -176,7 +176,9 @@ on_successful_validation(Context) ->
             {UserId, 'undefined'} ->
                 {<<"user">>, UserId, UserId};
             {'undefined', UserAuth} ->
-                {<<"user">>, UserAuth, UserAuth}
+                {<<"user">>, UserAuth, UserAuth};
+            {UserId, _UserAuth} ->
+                {<<"user">>, UserId, UserId}
         end,
 
     ToUser = wh_json:get_value(<<"to">>, JObj),

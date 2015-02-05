@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -10,6 +10,7 @@
 -module(cf_ring_group).
 
 -include("../callflow.hrl").
+-include_lib("whistle/src/api/wapi_dialplan.hrl").
 
 -export([handle/2]).
 
@@ -33,7 +34,7 @@ handle(Data, Call) ->
 -spec attempt_endpoints(wh_json:objects(), wh_json:object(), whapps_call:call()) -> 'ok'.
 attempt_endpoints(Endpoints, Data, Call) ->
     Timeout = wh_json:get_integer_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT_S),
-    Strategy = wh_json:get_binary_value(<<"strategy">>, Data, <<"simultaneous">>),
+    Strategy = wh_json:get_binary_value(<<"strategy">>, Data, ?DIAL_METHOD_SIMUL),
     Ringback = wh_json:get_value(<<"ringback">>, Data),
     lager:info("attempting ring group of ~b members with strategy ~s", [length(Endpoints), Strategy]),
     case whapps_call_command:b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Ringback, Call) of
@@ -45,6 +46,9 @@ attempt_endpoints(Endpoints, Data, Call) ->
                 'ok' -> lager:debug("bridge failure handled");
                 'not_found' -> cf_exe:continue(Call)
             end;
+        {'error', 'timeout'} ->
+            lager:debug("bridge timed out waiting for someone to answer"),
+            cf_exe:continue(Call);
         {'error', _R} ->
             lager:info("error bridging to ring group: ~p"
                        ,[wh_json:get_value(<<"Error-Message">>, _R)]
@@ -150,8 +154,8 @@ get_group_members(Member, Id, Data, Call) ->
 
 -spec maybe_order_group_members(wh_json:object(), wh_json:object(), wh_json:object()) -> wh_json:objects().
 maybe_order_group_members(Member, JObj, Data) ->
-    case wh_json:get_binary_value(<<"strategy">>, Data, <<"simultaneous">>) of
-        <<"single">> ->
+    case wh_json:get_binary_value(<<"strategy">>, Data, ?DIAL_METHOD_SIMUL) of
+        ?DIAL_METHOD_SINGLE ->
             order_group_members(Member, JObj);
         _ ->
             unordered_group_members(Member, JObj)

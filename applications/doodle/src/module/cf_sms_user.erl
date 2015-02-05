@@ -58,7 +58,7 @@ handle_result_status(Call, _Status) ->
 maybe_handle_bridge_failure(Reason, Call) ->
     case doodle_util:handle_bridge_failure(Reason, Call) of
         'not_found' ->
-            doodle_exe:stop(doodle_util:set_flow_status(Call, <<"pending">>));
+            doodle_exe:stop(doodle_util:set_flow_status(<<"pending">>, Call));
         'ok' -> 'ok'
     end.
 
