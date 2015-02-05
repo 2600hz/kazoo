@@ -1,6 +1,4 @@
 
-**[Join us for the second annual KazooCon, this October 6th, 7th!](http://kazoocon.com/)**
-
 ````
     ... ........                                                
     ......+OO=..                                                
@@ -112,10 +110,10 @@ No problem!  We have many different places where folks can chip in time. These i
 * Maintaining and expanding the documenation
 * Blogging, tweeting, and other forms of publicizing your usage of and love for the platform, community, code, company, etc.
 * Join us in real time and help other community members:
-  * on IRC (#2600hz on Freenode)
-  * our [Users mailing list](https://groups.google.com/forum/?fromgroups#!forum/2600hz-users)
-  * our [Developers mailing list](https://groups.google.com/forum/?fromgroups#!forum/2600hz-dev)
-  * our [Forum](http://forum.2600hz.com/)
+    * on IRC (#2600hz on Freenode)
+    * our [Users mailing list](https://groups.google.com/forum/?fromgroups#!forum/2600hz-users)
+    * our [Developers mailing list](https://groups.google.com/forum/?fromgroups#!forum/2600hz-dev)
+    * our [Forum](http://forum.2600hz.com/)
 * Contribute scripts to the [community repo](https://github.com/2600hz/community-scripts)
 * Help with building RPMs, DEBs, and other system packages
 * Browse the open [Issues](https://2600hz.atlassian.net/browse/KAZOO) and test bugs to see if they're valid
@@ -130,13 +128,13 @@ If you have a non-US deployment, please consider sharing your system configurati
 ### I know me some Erlang! How can I contribute?
 
 * Clone the repo
-* If you're completely new to Git, read Github's [great introduction](https://help.github.com/articles/fork-a-repo) to forking repos
+    * If you're completely new to Git, read Github's [great introduction](https://help.github.com/articles/fork-a-repo) to forking repos
 * Squash a bug, build a feature, etc
-* Browse the [ticket queue](https://2600hz.atlassian.net/browse/KAZOO) and find one you'd like to tackle.
-* Feel free to drop a line to the [dev mailing list](https://groups.google.com/forum/?fromgroups#!forum/2600hz-dev) letting us know you're taking on a ticket, especially if you have questions.
-* Once you feel the code is ready for inclusion, issue a [pull request](https://help.github.com/articles/using-pull-requests)
-* Please keep your pull requests focused and specific to the task at hand
-* If, in the course of your work you add/modify/delete code unrelated to the core task, create a new ticket describing why you've made these additional changes, and issue a separate pull request.
+    * Browse the [ticket queue](https://2600hz.atlassian.net/browse/KAZOO) and find one you'd like to tackle.
+    * Feel free to drop a line to the [dev mailing list](https://groups.google.com/forum/?fromgroups#!forum/2600hz-dev) letting us know you're taking on a ticket, especially if you have questions.
+* Once you feel the code is ready for inclusion, issue a [pull request](https://help.github.com/articles/using-pull-requests)!
+    * Please keep your pull requests focused and specific to the task at hand
+    * If, in the course of your work you add/modify/delete code unrelated to the core task, create a new ticket describing why you've made these additional changes, and issue a separate pull request.
 
 ### Do you know other languages?
 
@@ -156,6 +154,9 @@ If you have a non-US deployment, please consider sharing your system configurati
 * zip
 * unzip
 * expat-devel
+* zlib-devel
+* openssl-devel
+* libxml-devel
 * make
 * nc
 

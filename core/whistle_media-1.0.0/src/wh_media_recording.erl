@@ -16,6 +16,8 @@
 %%%-------------------------------------------------------------------
 -module(wh_media_recording).
 
+-behaviour(gen_listener).
+
 -export([start_link/2
          ,start_recording/2
          ,handle_call_event/2
@@ -90,6 +92,7 @@ start_recording(Call, Data) ->
                                       ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
                                      ], State).
 
+-spec handle_call_event(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_call_event(JObj, Props) ->
     wh_util:put_callid(JObj),
     case wh_util:get_event_type(JObj) of
@@ -202,10 +205,7 @@ handle_cast('maybe_start_recording', #state{is_recording='false'
                                            }=State) ->
     start_recording(Call, MediaName, TimeLimit, <<"wh_media_recording">>),
     {'noreply', State};
-handle_cast('maybe_start_recording_on_answer', #state{is_recording='true'}=State) ->
-    lager:debug("we've already starting a recording for this call"),
-    {'noreply', State};
-handle_cast('maybe_start_recording_on_answer', #state{is_recording='false'
+handle_cast('maybe_start_recording', #state{is_recording='false'
                                             ,record_on_answer='true'
                                             ,call=Call
                                             ,media_name=MediaName
@@ -213,14 +213,26 @@ handle_cast('maybe_start_recording_on_answer', #state{is_recording='false'
                                             ,should_store={'true', 'other', _}
                                            }=State) ->
     start_recording(Call, MediaName, TimeLimit),
+    {'stop', 'normal', State};
+handle_cast('maybe_start_recording_on_answer', #state{is_recording='true'}=State) ->
+    lager:debug("we've already starting a recording for this call"),
+    {'noreply', State};
+handle_cast('maybe_start_recording_on_answer', #state{is_recording='false'
+                                                      ,record_on_answer='true'
+                                                      ,call=Call
+                                                      ,media_name=MediaName
+                                                      ,time_limit=TimeLimit
+                                                      ,should_store={'true', 'other', _}
+                                                     }=State) ->
+    start_recording(Call, MediaName, TimeLimit),
     lager:debug("statred recording on answer shutting down"),
     {'stop', 'normal', State};
 handle_cast('maybe_start_recording_on_answer', #state{is_recording='false'
-                                            ,record_on_answer='true'
-                                            ,call=Call
-                                            ,media_name=MediaName
-                                            ,time_limit=TimeLimit
-                                           }=State) ->
+                                                      ,record_on_answer='true'
+                                                      ,call=Call
+                                                      ,media_name=MediaName
+                                                      ,time_limit=TimeLimit
+                                                     }=State) ->
     start_recording(Call, MediaName, TimeLimit, <<"wh_media_recording">>),
     {'noreply', State};
 handle_cast('stop_call', #state{store_attempted='true'}=State) ->
@@ -429,9 +441,11 @@ store_recording_meta(Call, MediaName, Ext) ->
                 ),
     couch_mgr:save_doc(AcctDb, MediaDoc).
 
+-spec ext_to_mime(ne_binary()) -> ne_binary().
 ext_to_mime(<<"wav">>) -> <<"audio/x-wav">>;
 ext_to_mime(_) -> <<"audio/mp3">>.
 
+-spec get_recording_doc_id(ne_binary()) -> ne_binary().
 get_recording_doc_id(CallId) -> <<"call_recording_", CallId/binary>>.
 
 -spec get_media_name(ne_binary(), api_binary()) -> ne_binary().

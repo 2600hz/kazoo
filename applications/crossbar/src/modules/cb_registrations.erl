@@ -22,6 +22,7 @@
          ,authorize/2
          ,validate/1, validate/2
          ,lookup_regs/1
+         ,delete/1, delete/2
         ]).
 
 -include("../crossbar.hrl").
@@ -44,17 +45,21 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.registrations">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.registrations">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
-    _ = crossbar_bindings:bind(<<"*.validate.registrations">>, ?MODULE, 'validate').
+    _ = crossbar_bindings:bind(<<"*.validate.registrations">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.delete.registrations">>, ?MODULE, 'delete').
 
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
-    [?HTTP_GET].
+    [?HTTP_GET, ?HTTP_DELETE].
 allowed_methods(?COUNT_PATH_TOKEN) ->
-    [?HTTP_GET].
+    [?HTTP_GET];
+allowed_methods(_) ->
+    [?HTTP_DELETE].
 
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
-resource_exists(?COUNT_PATH_TOKEN) -> 'true'.
+resource_exists(?COUNT_PATH_TOKEN) -> 'true';
+resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -63,11 +68,13 @@ resource_exists(?COUNT_PATH_TOKEN) -> 'true'.
 %%--------------------------------------------------------------------
 -spec authorize(cb_context:context(), path_token()) -> boolean().
 
-authorize(#cb_context{req_nouns=[{<<"registrations">>
-                                      ,[?COUNT_PATH_TOKEN]}
-                                ]}=Context, ?COUNT_PATH_TOKEN) ->
-    cb_modules_util:is_superduper_admin(Context);
+authorize(Context, ?COUNT_PATH_TOKEN) ->
+    authorize_admin(Context, cb_context:req_nouns(Context));
 authorize(_, _) -> 'false'.
+
+-spec authorize_admin(cb_context:context(), req_nouns()) -> boolean().
+authorize_admin(Context, [{<<"registrations">>, [?COUNT_PATH_TOKEN]}]) ->
+    cb_modules_util:is_superduper_admin(Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -80,32 +87,73 @@ authorize(_, _) -> 'false'.
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
-validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
-    crossbar_util:response(lookup_regs(Context), Context).
+validate(Context) ->
+    validate_registrations(Context, cb_context:req_verb(Context)).
 
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, ?COUNT_PATH_TOKEN) ->
+-spec validate_registrations(cb_context:context(), http_method()) -> cb_context:context().
+validate_registrations(Context, ?HTTP_GET) ->
+    crossbar_util:response(lookup_regs(Context), Context);
+validate_registrations(Context, ?HTTP_DELETE) ->
+    crossbar_util:response(<<"ok">>, Context).
+
+validate(Context, ?COUNT_PATH_TOKEN) ->
+    validate_count(Context);
+validate(Context, Username) ->
+    validate_sip_username(Context, Username).
+
+-spec validate_count(cb_context:context()) -> cb_context:context().
+validate_count(Context) ->
     crossbar_util:response(
       wh_json:from_list([{<<"count">>, count_registrations(Context)}])
       ,Context
      ).
 
+-spec validate_sip_username(cb_context:context(), ne_binary()) -> cb_context:context().
+validate_sip_username(Context, Username) ->
+    case sip_username_exists(Context, Username) of
+        'true' ->
+            crossbar_util:response(<<"ok">>, Context);
+        'false' ->
+            crossbar_util:response_bad_identifier(Username, Context)
+    end.
+
+-spec sip_username_exists(cb_context:context(), ne_binary()) -> boolean().
+sip_username_exists(Context, Username) ->
+    ViewOptions = [{<<"key">>, wh_util:to_lower_binary(Username)}],
+    case couch_mgr:get_results(cb_context:account_db(Context)
+                               ,<<"devices/sip_credentials">>
+                               ,ViewOptions
+                              )
+    of
+        {'ok', [_]} -> 'true';
+        _ -> 'false'
+    end.
+
+-spec delete(cb_context:context()) -> cb_context:context().
+-spec delete(cb_context:context(), path_token()) -> cb_context:context().
+delete(Context) ->
+    crossbar_util:flush_registrations(Context),
+    crossbar_util:response(<<"ok">>, Context).
+
+delete(Context, Username) ->
+    crossbar_util:flush_registration(Username, Context),
+    crossbar_util:response(<<"ok">>, Context).
+
 -spec lookup_regs(cb_context:context()) -> wh_json:objects().
 lookup_regs(Context) ->
-    AccountId = cb_context:account_id(Context),
-    AccountDb = cb_context:account_db(Context),
-    AccountRealm = wh_util:get_account_realm(AccountDb, AccountId),
+    AccountRealm = crossbar_util:get_account_realm(Context),
     Req = [{<<"Realm">>, AccountRealm}
            ,{<<"Fields">>, []}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
+
     ReqResp = whapps_util:amqp_pool_collect(Req
                                             ,fun wapi_registration:publish_query_req/1
                                             ,{'ecallmgr', 'true'}
                                            ),
     case ReqResp of
         {'error', _} -> [];
-        {_, JObjs} ->
-            merge_responses(JObjs)
+        {_, JObjs} -> merge_responses(JObjs)
     end.
 
 -spec merge_responses(wh_json:objects()) -> wh_json:objects().
@@ -179,13 +227,9 @@ count_registrations(Context) ->
         {'timeout', _} -> lager:debug("timed out query for counting regs"), 0
     end.
 
+-spec get_realm_for_counting(cb_context:context()) -> ne_binary().
 get_realm_for_counting(Context) ->
-    AccountId = cb_context:account_id(Context),
-    case AccountId =:= 'undefined' of
-        'false' ->
-            AccountDb = cb_context:account_db(Context),
-            wh_util:get_account_realm(AccountDb, AccountId);
-        'true' ->
-            lager:debug("no account id means all regs are counted"),
-            <<"all">>
+    case cb_context:account_id(Context) of
+        'undefined' -> <<"all">>;
+        _AccountId -> crossbar_util:get_account_realm(Context)
     end.

@@ -38,6 +38,8 @@
 
 -include("crossbar.hrl").
 
+-define(MAX_UPLOAD_SIZE, whapps_config:get_integer(?CONFIG_CAT, <<"max_upload_size">>, 8000000)).
+
 -type cowboy_multipart_response() :: {{'headers', cowboy_http:headers()} |
                                       {'data', binary()} |
                                       'end_of_part' |
@@ -298,10 +300,17 @@ extract_multipart_content({'body', Datum, Req}, JObj) ->
                           {cb_context:context(), cowboy_req:req()} |
                           halt_return().
 extract_file(Context, ContentType, Req0) ->
-    case cowboy_req:body(Req0) of
-        {'error', 'badarg'} ->
+    case cowboy_req:body(Req0, [{'length', ?MAX_UPLOAD_SIZE}]) of
+        {'error', _} ->
             lager:debug("failed to extract file body"),
             {Context, Req0};
+        {'more', _, Req1} ->
+            lager:error("file size exceeded, max is ~p", [?MAX_UPLOAD_SIZE]),
+            ?MODULE:halt(Req1
+                         ,cb_context:add_validation_error(<<"file">>, <<"maxLength">>
+                                                          ,?MAX_UPLOAD_SIZE
+                                                          ,Context
+                                                          ));
         {'ok', FileContents, Req1} ->
             %% http://tools.ietf.org/html/rfc2045#page-17
             case cowboy_req:header(<<"content-transfer-encoding">>, Req1) of
@@ -357,9 +366,13 @@ decode_base64(Context, CT, Req0, Body) ->
                             cb_context:set_resp_data(Context, E)
                             ,'fatal'
                            ));
-        {'more', BinData, Req1} ->
-            lager:debug("recv ~p bytes with more to come", [byte_size(BinData)]),
-            decode_base64(Context, CT, Req1, [BinData | Body]);
+        {'more', _, Req1} ->
+            lager:error("file size exceeded, max is ~p", [?MAX_UPLOAD_SIZE]),
+            ?MODULE:halt(Req1
+                         ,cb_context:add_validation_error(<<"file">>, <<"maxLength">>
+                                                          ,?MAX_UPLOAD_SIZE
+                                                          ,Context
+                                                          ));
         {'ok', Base64Data, Req1} ->
             Data = iolist_to_binary(lists:reverse([Base64Data | Body])),
 
@@ -420,9 +433,9 @@ get_request_body(Req0, Body) ->
         {'error', _E} ->
             lager:debug("request body had no payload: ~p", [_E]),
             {<<>>, Req0};
-        {'more', Data, Req1} ->
-            lager:debug("recv chunk ~p bytes", [byte_size(Data)]),
-            get_request_body(Req1, [Body, Data]);
+        {'more', _, Req1} ->
+            lager:error("file size exceeded, max is ~p", [?MAX_UPLOAD_SIZE]),
+            {<<>>, Req1};
         {'ok', Data, Req1} ->
             {iolist_to_binary([Body, Data]), Req1}
     end.
@@ -523,7 +536,7 @@ get_http_verb(Method, Context) ->
 parse_path_tokens(Context, Tokens) ->
     parse_path_tokens(Context, Tokens, []).
 
--spec parse_path_tokens(cb_context:context(), wh_json:json_strings(), cb_mods_with_tokens()) ->
+-spec parse_path_tokens(cb_context:context(), wh_json:keys(), cb_mods_with_tokens()) ->
                                cb_mods_with_tokens().
 parse_path_tokens(_, [], Events) -> Events;
 parse_path_tokens(_, [<<>>], Events) -> Events;
@@ -626,14 +639,27 @@ is_authentic(Req0, Context0, _ReqVerb) ->
         [] ->
             lager:debug("failed to authenticate"),
             ?MODULE:halt(Req0, cb_context:add_system_error('invalid_credentials', Context0));
-        ['true'|_] ->
-            {'true', Req1, Context1};
+        ['true'|T] ->
+            prefer_new_context(T, Req1, Context1);
         [{'true', Context2}|_] ->
             {'true', Req1, Context2};
         [{'halt', Context2}|_] ->
             lager:debug("authn halted"),
             ?MODULE:halt(Req1, Context2)
     end.
+
+-spec prefer_new_context(wh_proplist(), cowboy_req:req(), cb_context:context()) ->
+                        {{'false', <<>>} | 'true', cowboy_req:req(), cb_context:context()} |
+                        halt_return().
+prefer_new_context([], Req, Context) ->
+    {'true', Req, Context};
+prefer_new_context([{'true', Context1}|_], Req, _) ->
+    {'true', Req, Context1};
+prefer_new_context(['true'|T], Req, Context) ->
+    prefer_new_context(T, Req, Context);
+prefer_new_context([{'halt', Context1}|_], Req, _) ->
+    lager:debug("authn halted"),
+    ?MODULE:halt(Req, Context1).
 
 -spec get_auth_token(cowboy_req:req(), cb_context:context()) ->
                             {cowboy_req:req(), cb_context:context()}.

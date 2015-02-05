@@ -398,9 +398,11 @@ default_prompt_language(Default) ->
 prompt_language(AccountId) ->
     prompt_language(AccountId, default_prompt_language()).
 
--spec prompt_language(api_binary(), ne_binary()) -> ne_binary().
+-spec prompt_language(api_binary(), api_binary()) -> ne_binary().
 prompt_language('undefined', Default) ->
     default_prompt_language(Default);
+prompt_language(<<_/binary>> = AccountId, 'undefined') ->
+    prompt_language(AccountId);
 prompt_language(<<_/binary>> = AccountId, Default) ->
     case ?USE_ACCOUNT_OVERRIDES of
         'false' -> default_prompt_language();

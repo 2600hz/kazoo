@@ -647,35 +647,34 @@ collection_process(Context, Numbers, Action) ->
                                operation_return().
 -spec collection_action(cb_context:context(), ne_binary(), ne_binary()) ->
                                operation_return().
-collection_action(#cb_context{account_id=AssignTo
-                              ,auth_account_id=AuthBy
-                              ,doc=JObj
-                              ,req_verb = ?HTTP_PUT
-                             }, Number) ->
-    wh_number_manager:create_number(Number, AssignTo, AuthBy, wh_json:delete_key(<<"numbers">>, JObj));
-collection_action(#cb_context{auth_account_id=AuthBy
-                              ,doc=Doc
-                              ,req_verb = ?HTTP_POST
-                             }, Number) ->
-    case wh_number_manager:get_public_fields(Number, AuthBy) of
+collection_action(#cb_context{req_verb = ?HTTP_PUT}=Context, Number) ->
+    wh_number_manager:create_number(Number
+                                    ,cb_context:account_id(Context)
+                                    ,cb_context:auth_account_id(Context)
+                                    ,wh_json:delete_key(<<"numbers">>, cb_context:doc(Context))
+                                   );
+collection_action(#cb_context{req_verb = ?HTTP_POST}=Context, Number) ->
+    case wh_number_manager:get_public_fields(Number, cb_context:auth_account_id(Context)) of
         {'ok', JObj} ->
-            Doc1 = wh_json:delete_key(<<"numbers">>, Doc),
-            wh_number_manager:set_public_fields(Number, wh_json:merge_jobjs(JObj, Doc1), AuthBy);
+            Doc1 = wh_json:delete_key(<<"numbers">>, cb_context:doc(Context)),
+            wh_number_manager:set_public_fields(Number
+                                                ,wh_json:merge_jobjs(JObj, Doc1)
+                                                ,cb_context:auth_account_id(Context)
+                                               );
         {State, Error} ->
             lager:error("error while fetching number ~p : ~p", [Number, Error]),
             {State, Error}
     end;
-collection_action(#cb_context{auth_account_id=AuthBy
-                              ,req_verb = ?HTTP_DELETE
-                             }, Number) ->
-    wh_number_manager:release_number(Number, AuthBy).
+collection_action(#cb_context{req_verb = ?HTTP_DELETE}=Context, Number) ->
+    wh_number_manager:release_number(Number, cb_context:auth_accuont_id(Context)).
 
-collection_action(#cb_context{account_id=AssignTo
-                              ,auth_account_id=AuthBy
-                              ,doc=JObj
-                              ,req_verb = ?HTTP_PUT
-                             }, Number, ?ACTIVATE) ->
-    case wh_number_manager:assign_number_to_account(Number, AssignTo, AuthBy, JObj) of
+collection_action(#cb_context{req_verb = ?HTTP_PUT}=Context, Number, ?ACTIVATE) ->
+    case wh_number_manager:assign_number_to_account(Number
+                                                    ,cb_context:account_id(Context)
+                                                    ,cb_context:auth_account_id(Context)
+                                                    ,cb_context:doc(Context)
+                                                   )
+    of
         {'ok', RJObj} ->
             {'ok', wh_json:delete_key(<<"numbers">>, RJObj)};
         Else -> Else
@@ -686,7 +685,11 @@ collection_action(#cb_context{account_id=AssignTo
 has_tokens(Context) -> has_tokens(Context, 1).
 has_tokens(Context, Count) ->
     Name = <<(cb_context:account_id(Context))/binary, "/", ?PHONE_NUMBERS_CONFIG_CAT/binary>>,
-    case kz_buckets:consume_tokens(Name, Count) of
+    case kz_buckets:consume_tokens(?APP_NAME
+                                   ,Name
+                                   ,cb_modules_util:token_cost(Context, Count)
+                                  )
+    of
         'true' -> 'true';
         'false' ->
             lager:warning("rate limiting activation limit reached, rejecting"),

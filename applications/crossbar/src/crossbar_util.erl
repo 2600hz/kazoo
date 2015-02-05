@@ -22,6 +22,7 @@
          ,response_redirect/4
         ]).
 -export([response_202/2, response_202/3]).
+-export([response_400/3]).
 -export([response_402/2]).
 -export([response_faulty_request/1]).
 -export([response_bad_identifier/2]).
@@ -90,14 +91,19 @@
 response(JTerm, Context) ->
     create_response('success', 'undefined', 'undefined', JTerm, Context).
 
--spec response_202(wh_json:json_string(), cb_context:context()) ->
+-spec response_202(wh_json:key(), cb_context:context()) ->
                           cb_context:context().
--spec response_202(wh_json:json_string(), wh_json:json_term(), cb_context:context()) ->
+-spec response_202(wh_json:key(), wh_json:json_term(), cb_context:context()) ->
                           cb_context:context().
 response_202(Msg, Context) ->
     response_202(Msg, Msg, Context).
 response_202(Msg, JTerm, Context) ->
     create_response('success', Msg, 202, JTerm, Context).
+
+-spec response_400(ne_binary(), wh_json:object(), cb_context:context()) ->
+                          cb_context:context().
+response_400(Message, Data, Context) ->
+    create_response('error', Message, 400, Data, Context).
 
 -spec response_402(wh_json:object(), cb_context:context()) ->
                           cb_context:context().
@@ -111,7 +117,7 @@ response_402(Data, Context) ->
 %% fatal or error.
 %% @end
 %%--------------------------------------------------------------------
--spec response(fails(), wh_json:json_string(), cb_context:context()) ->
+-spec response(fails(), wh_json:key(), cb_context:context()) ->
                       cb_context:context().
 response('error', Msg, Context) ->
     create_response('error', Msg, 500, wh_json:new(), Context);
@@ -125,7 +131,7 @@ response('fatal', Msg, Context) ->
 %% of type fatal or error.
 %% @end
 %%--------------------------------------------------------------------
--spec response(fails(), wh_json:json_string(), api_integer(), cb_context:context()) ->
+-spec response(fails(), wh_json:key(), api_integer(), cb_context:context()) ->
                       cb_context:context().
 response('error', Msg, Code, Context) ->
     create_response('error', Msg, Code, wh_json:new(), Context);
@@ -139,7 +145,7 @@ response('fatal', Msg, Code, Context) ->
 %% of type fatal or error with additional data
 %% @end
 %%--------------------------------------------------------------------
--spec response(fails(), wh_json:json_string(), api_integer(), wh_json:json_term(), cb_context:context()) -> cb_context:context().
+-spec response(fails(), wh_json:key(), api_integer(), wh_json:json_term(), cb_context:context()) -> cb_context:context().
 response('error', Msg, Code, JTerm, Context) ->
     create_response('error', Msg, Code, JTerm, Context);
 response('fatal', Msg, Code, JTerm, Context) ->
@@ -153,7 +159,7 @@ response('fatal', Msg, Code, JTerm, Context) ->
 %% other parameters.
 %% @end
 %%--------------------------------------------------------------------
--spec create_response(crossbar_status(), wh_json:json_string(), api_integer()
+-spec create_response(crossbar_status(), wh_json:key(), api_integer()
                       ,wh_json:json_term(), cb_context:context()
                      ) -> cb_context:context().
 create_response(Status, Msg, Code, JTerm, Context) ->
@@ -338,21 +344,25 @@ get_account_realm(Db, AccountId) ->
             'undefined'
     end.
 
--spec flush_registrations(ne_binary()) -> 'ok'.
-flush_registrations(Realm) ->
+-spec flush_registrations(ne_binary() | cb_context:context()) -> 'ok'.
+flush_registrations(<<_/binary>> = Realm) ->
     FlushCmd = [{<<"Realm">>, Realm}
                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                ],
-    whapps_util:amqp_pool_send(FlushCmd, fun wapi_registration:publish_flush/1).
+    whapps_util:amqp_pool_send(FlushCmd, fun wapi_registration:publish_flush/1);
+flush_registrations(Context) ->
+    flush_registrations(crossbar_util:get_account_realm(Context)).
 
--spec flush_registration(api_binary(), ne_binary()) -> 'ok'.
+-spec flush_registration(api_binary(), ne_binary() | cb_context:context()) -> 'ok'.
 flush_registration('undefined', _Realm) -> 'ok';
-flush_registration(Username, Realm) ->
+flush_registration(Username, <<_/binary>> = Realm) ->
     FlushCmd = [{<<"Realm">>, Realm}
                 ,{<<"Username">>, Username}
                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                ],
-    whapps_util:amqp_pool_send(FlushCmd, fun wapi_registration:publish_flush/1).
+    whapps_util:amqp_pool_send(FlushCmd, fun wapi_registration:publish_flush/1);
+flush_registration(Username, Context) ->
+    flush_registration(Username, get_account_realm(Context)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -770,17 +780,14 @@ get_path(Req, Relative) ->
 
 -spec maybe_remove_attachments(cb_context:context()) -> cb_context:context().
 maybe_remove_attachments(Context) ->
-    JObj = cb_context:doc(Context),
-    maybe_remove_attachments(Context, JObj
-                             ,wh_json:get_value(<<"_attachments">>, JObj)
-                            ).
-maybe_remove_attachments(Context, _JObj, 'undefined') ->
-    Context;
-maybe_remove_attachments(Context, JObj, _Attachments) ->
-    lager:debug("removing old attachments"),
-    crossbar_doc:save(cb_context:set_doc(Context
-                                         ,wh_json:delete_key(<<"_attachments">>, JObj)
-                                        )).
+    case wh_doc:maybe_remove_attachments(cb_context:doc(Context)) of
+        {'false', _} -> Context;
+        {'true', RemovedJObj} ->
+            lager:debug("deleting attachments from doc"),
+            crossbar_doc:save(
+              cb_context:set_doc(Context, RemovedJObj)
+             )
+    end.
 
 -spec create_auth_token(cb_context:context(), atom()) -> cb_context:context().
 create_auth_token(Context, Method) ->
@@ -851,46 +858,51 @@ generate_year_month_sequence({FromYear, FromMonth}, {ToYear, ToMonth}, Range) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec descendants_count() -> 'ok'.
--spec descendants_count(wh_proplists() | ne_binary()) -> 'ok'.
+-spec descendants_count(wh_proplist() | ne_binary()) -> 'ok'.
 descendants_count() ->
     Limit = whapps_config:get_integer(<<"whistle_couch">>, <<"default_chunk_size">>, 1000),
-    ViewOptions = [
-        {'limit', Limit}
-        ,{'skip', 0}
-    ],
+    ViewOptions = [{'limit', Limit}
+                   ,{'skip', 0}
+                  ],
     descendants_count(ViewOptions).
 
-descendants_count(Opts) when is_list(Opts) ->
-    ViewOptions = [
-        {'group_level', 1}
-        |props:delete('group_level', Opts)
-    ],
+descendants_count(<<_/binary>> = Account) ->
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    descendants_count([{'key', AccountId}]);
+descendants_count(Opts) ->
+    ViewOptions = [{'group_level', 1}
+                   | props:delete('group_level', Opts)
+                  ],
+
     case load_descendants_count(ViewOptions) of
         {'error', 'no_descendants'} ->
-            case props:get_value('key', ViewOptions) of
-                'undefined' -> 'ok';
-                AccountId ->
-                    maybe_update_descendants_count(AccountId, 0)
-            end;
+            handle_no_descendants(ViewOptions);
         {'error', _E} ->
             io:format("could not load view listing_by_descendants_count: ~p~n", [_E]);
         {'ok', Counts} ->
-            lists:foreach(
-                fun({AccountId, Count}) ->
-                    maybe_update_descendants_count(AccountId, Count)
-                end
-                ,Counts
-            ),
-            case props:get_value('skip', ViewOptions) of
-                'undefined' -> 'ok';
-                Skip ->
-                    Limit = props:get_value('limit', ViewOptions),
-                    descendants_count(props:set_value('skip', Skip+Limit, ViewOptions))
-            end
-    end;
-descendants_count(Account) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-    descendants_count([{'key', AccountId}]).
+            handle_descendant_counts(ViewOptions, Counts)
+    end.
+
+-spec handle_descendant_counts(wh_proplist(), wh_proplist()) -> 'ok'.
+handle_descendant_counts(ViewOptions, Counts) ->
+    _ = [maybe_update_descendants_count(AccountId, Count)
+         || {AccountId, Count} <- Counts
+        ],
+
+    case props:get_value('skip', ViewOptions) of
+        'undefined' -> 'ok';
+        Skip ->
+            Limit = props:get_value('limit', ViewOptions),
+            descendants_count(props:set_value('skip', Skip+Limit, ViewOptions))
+    end.
+
+-spec handle_no_descendants(wh_proplist()) -> 'ok'.
+handle_no_descendants(ViewOptions) ->
+    case props:get_value('key', ViewOptions) of
+        'undefined' -> 'ok';
+        AccountId ->
+            maybe_update_descendants_count(AccountId, 0)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -922,21 +934,19 @@ format_emergency_caller_id_number(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec load_descendants_count(wh_proplists()) -> {'ok', wh_proplists()} | {'error', _}.
+-spec load_descendants_count(wh_proplist()) ->
+                                    {'ok', wh_proplist()} |
+                                    {'error', _}.
 load_descendants_count(ViewOptions) ->
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants_count">>, ViewOptions) of
         {'error', _E}=Resp -> Resp;
         {'ok', []} -> {'error', 'no_descendants'};
-        {'ok', [JObj|[]]} ->
-            {'ok', [{wh_json:get_value(<<"key">>, JObj)
-                     ,wh_json:get_value(<<"value">>, JObj)}
-                   ]};
         {'ok', JObjs} ->
-            Counts =
-                [{wh_json:get_value(<<"key">>, JObj)
-                 ,wh_json:get_value(<<"value">>, JObj)}
-                 || JObj <- JObjs],
-            {'ok', Counts}
+            {'ok', [{wh_json:get_value(<<"key">>, JObj)
+                     ,wh_json:get_value(<<"value">>, JObj)
+                    }
+                    || JObj <- JObjs
+                   ]}
     end.
 
 %%--------------------------------------------------------------------
@@ -946,18 +956,34 @@ load_descendants_count(ViewOptions) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_update_descendants_count(ne_binary(), integer()) -> 'ok'.
+-spec maybe_update_descendants_count(ne_binary(), integer(), integer()) -> 'ok'.
+-spec maybe_update_descendants_count(ne_binary(), wh_json:object(), integer(), integer()) -> 'ok'.
+-spec maybe_update_descendants_count(ne_binary(), wh_json:object(), integer(), integer(), integer()) -> 'ok'.
+
 maybe_update_descendants_count(AccountId, NewCount) ->
+    maybe_update_descendants_count(AccountId, NewCount, 3).
+
+maybe_update_descendants_count(AccountId, _, Try) when Try =< 0 ->
+    io:format("too many attempts to update descendants count for ~s~n", [AccountId]);
+maybe_update_descendants_count(AccountId, NewCount, Try) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
         {'error', _E} ->
             io:format("could not load account ~s: ~p~n", [AccountId, _E]);
         {'ok', JObj} ->
-            OldCount = wh_json:get_integer_value(<<"descendants_count">>, JObj),
-            case OldCount =:= NewCount of
-                'true' -> 'ok';
-                'false' ->
-                    update_descendants_count(AccountId, JObj, NewCount)
-            end
+            maybe_update_descendants_count(AccountId, JObj, NewCount, Try)
+    end.
+
+maybe_update_descendants_count(AccountId, JObj, NewCount, Try) ->
+    OldCount = wh_json:get_integer_value(<<"descendants_count">>, JObj),
+    maybe_update_descendants_count(AccountId, JObj, NewCount, OldCount, Try).
+
+maybe_update_descendants_count(_, _, Count, Count, _) -> 'ok';
+maybe_update_descendants_count(AccountId, JObj, NewCount, _, Try) ->
+    case update_descendants_count(AccountId, JObj, NewCount) of
+        'ok' -> 'ok';
+        'error' ->
+            maybe_update_descendants_count(AccountId, NewCount, Try-1)
     end.
 
 %%--------------------------------------------------------------------
@@ -966,19 +992,17 @@ maybe_update_descendants_count(AccountId, NewCount) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_descendants_count(ne_binary(), wh_json:object(), integer()) -> 'ok'.
+-spec update_descendants_count(ne_binary(), wh_json:object(), integer()) -> 'ok' | 'error'.
 update_descendants_count(AccountId, JObj, NewCount) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     Doc = wh_json:set_value(<<"descendants_count">>, NewCount, JObj),
     case couch_mgr:save_doc(AccountDb, Doc) of
-        {'error', _E} ->
-            io:format("failed to update descendant count for ~s: ~p~n", [AccountId, _E]);
+        {'error', _E} -> 'error';
         {'ok', NewDoc} ->
             _ = replicate_account_definition(NewDoc),
             io:format("updated descendant count for ~s~n", [AccountId]),
             'ok'
     end.
-
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").

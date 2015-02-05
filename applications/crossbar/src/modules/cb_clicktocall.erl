@@ -67,7 +67,7 @@ allowed_methods() ->
 allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 allowed_methods(_, ?CONNECT_CALL) ->
-    [?HTTP_POST];
+    [?HTTP_GET, ?HTTP_POST];
 allowed_methods(_, ?HISTORY) ->
     [?HTTP_GET].
 
@@ -94,24 +94,46 @@ resource_exists(_, ?HISTORY) ->
 -spec authenticate(cb_context:context()) -> 'true'.
 authenticate(Context) ->
     case is_c2c_url(Context, cb_context:req_nouns(Context)) of
-        'true' ->
-            lager:debug("authenticating request"),
-            'true';
+        'true' -> maybe_authenticate(Context);
         'false' -> 'false'
     end.
 
 -spec authorize(cb_context:context()) -> 'true'.
 authorize(Context) ->
     case is_c2c_url(Context, cb_context:req_nouns(Context)) of
-        'true' ->
-            lager:debug("authorizing request"),
-            'true';
+        'true' -> maybe_authorize(Context);
         'false' -> 'false'
     end.
 
+-spec maybe_authenticate(cb_context:context()) -> boolean().
+maybe_authenticate(Context) ->
+    case is_auth_required(Context) of
+        'true' -> 'false';
+        'false' ->
+            lager:debug("authenticating request"),
+            'true'
+    end.
+
+-spec maybe_authorize(cb_context:context()) -> boolean().
+maybe_authorize(Context) ->
+    case is_auth_required(Context) of
+        'true' -> 'false';
+        'false' ->
+            lager:debug("authorizing request"),
+            'true'
+    end.
+
+-spec is_auth_required(cb_context:context()) -> boolean().
+is_auth_required(Context) ->
+    Nouns = cb_context:req_nouns(Context),
+    [C2CID, _] = props:get_value(<<"clicktocall">>, Nouns),
+    JObj = cb_context:doc(crossbar_doc:load(C2CID, Context)),
+    wh_json:is_true(<<"auth_required">>, JObj, 'true').
+
 -spec is_c2c_url(cb_context:context(), req_nouns()) -> boolean().
 is_c2c_url(Context, ?CONNECT_C2C_URL) ->
-    cb_context:req_verb(Context) =:= ?HTTP_POST;
+    Verb = cb_context:req_verb(Context),
+    (Verb =:= ?HTTP_GET) orelse (Verb =:= ?HTTP_POST);
 is_c2c_url(_Context, _Nouns) -> 'false'.
 
 %%--------------------------------------------------------------------
@@ -337,6 +359,10 @@ originate_call(Contact, JObj, AccountId) ->
                ],
 
     MsgId = wh_json:get_value(<<"Msg-ID">>, JObj, wh_util:rand_hex_binary(16)),
+    OutboundNumber = case wh_json:get_value(<<"caller_id_number">>, JObj) of
+                         'undefined' -> Contact;
+                         Number -> Number
+                     end,
     Request = props:filter_undefined(
                 [{<<"Application-Name">>, <<"transfer">>}
                  ,{<<"Application-Data">>, wh_json:from_list([{<<"Route">>, Contact}])}
@@ -350,11 +376,11 @@ originate_call(Contact, JObj, AccountId) ->
                  ,{<<"Outbound-Callee-ID-Name">>, Exten}
                  ,{<<"Outbound-Callee-ID-Number">>, Exten}
                  ,{<<"Outbound-Caller-ID-Name">>, FriendlyName}
-                 ,{<<"Outbound-Caller-ID-Number">>, Contact}
+                 ,{<<"Outbound-Caller-ID-Number">>, OutboundNumber}
                  ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
                  ,{<<"Dial-Endpoint-Method">>, <<"single">>}
                  ,{<<"Continue-On-Fail">>, 'true'}
-                 ,{<<"SIP-Headers">>, wh_json:get_value(<<"SIP-Headers">>, JObj)}
+                 ,{<<"Custom-SIP-Headers">>, wh_json:get_value(<<"custom_sip_headers">>, JObj)}
                  ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
                  ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>]}
                  | wh_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)

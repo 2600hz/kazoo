@@ -143,8 +143,16 @@ clean_expired() ->
                           {'true' | 'halt', cb_context:context()}.
 authenticate(Context) ->
     _ = cb_context:put_reqid(Context),
-    case kz_buckets:consume_token(cb_modules_util:bucket_name(Context)) of
-        'true' -> check_auth_token(Context, cb_context:auth_token(Context), cb_context:magic_pathed(Context));
+    case kz_buckets:consume_tokens(?APP_NAME
+                                   ,cb_modules_util:bucket_name(Context)
+                                   ,cb_modules_util:token_cost(Context)
+                                  )
+    of
+        'true' ->
+            check_auth_token(Context
+                             ,cb_context:auth_token(Context)
+                             ,cb_context:magic_pathed(Context)
+                            );
         'false' ->
             lager:warning("rate limiting threshold hit for ~s!", [cb_context:client_ip(Context)]),
             {'halt', cb_context:add_system_error('too_many_requests', Context)}

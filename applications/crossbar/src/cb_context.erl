@@ -30,18 +30,23 @@
          ,account_id/1, set_account_id/2
          ,account_db/1, set_account_db/2
          ,user_id/1, set_user_id/2
+         ,device_id/1, set_device_id/2
          ,account_modb/1, account_modb/2, account_modb/3
          ,set_account_modb/3, set_account_modb/4
+         ,reseller_id/1, set_reseller_id/2
          ,account_realm/1
          ,account_doc/1
          ,auth_token/1, set_auth_token/2
          ,auth_doc/1, set_auth_doc/2
          ,auth_account_id/1, set_auth_account_id/2
+         ,auth_user_id/1
          ,req_verb/1, set_req_verb/2
          ,req_data/1, set_req_data/2
          ,req_id/1, set_req_id/2
          ,req_files/1, set_req_files/2
          ,req_nouns/1, set_req_nouns/2
+         ,req_headers/1, set_req_headers/2
+         ,req_header/2
          ,query_string/1, set_query_string/2
          ,client_ip/1
          ,doc/1, set_doc/2
@@ -81,16 +86,19 @@
 -include("./crossbar.hrl").
 
 -type context() :: #cb_context{}.
+-type setter_fun_1() :: fun((context()) -> context()).
 -type setter_fun_2() :: fun((context(), term()) -> context()).
 -type setter_fun_3() :: fun((context(), term(), term()) -> context()).
--type setter_fun() :: setter_fun_2() | setter_fun_3().
+-type setter_fun() :: setter_fun_1() | setter_fun_2() | setter_fun_3().
 -export_type([context/0
               ,setter_fun/0
+              ,setter_fun_1/0
               ,setter_fun_2/0
               ,setter_fun_3/0
              ]).
 
--type setter_kv() :: {setter_fun_2(), term()} |
+-type setter_kv() :: setter_fun_1() |
+                     {setter_fun_2(), term()} |
                      {setter_fun_3(), term(), term()}.
 -type setters() :: [setter_kv(),...] | [].
 
@@ -112,6 +120,7 @@ req_value(#cb_context{req_data=ReqData, query_json=QS}, Key, Default) ->
 -spec account_id(context()) -> api_binary().
 -spec account_db(context()) -> api_binary().
 -spec user_id(context()) -> api_binary().
+-spec device_id(context()) -> api_binary().
 -spec account_modb(context()) -> api_binary().
 -spec account_modb(context(), wh_now() | wh_timeout()) -> api_binary().
 -spec account_modb(context(), wh_year(), wh_month()) -> api_binary().
@@ -120,6 +129,8 @@ req_value(#cb_context{req_data=ReqData, query_json=QS}, Key, Default) ->
 
 account_id(#cb_context{account_id=AcctId}) -> AcctId.
 user_id(#cb_context{user_id=UserId}) -> UserId.
+device_id(#cb_context{device_id=DeviceId}) -> DeviceId.
+reseller_id(#cb_context{reseller_id=AcctId}) -> AcctId.
 account_db(#cb_context{db_name=AcctDb}) -> AcctDb.
 
 account_modb(Context) ->
@@ -143,10 +154,14 @@ account_doc(Context) ->
 auth_token(#cb_context{auth_token=AuthToken}) -> AuthToken.
 auth_doc(#cb_context{auth_doc=AuthDoc}) -> AuthDoc.
 auth_account_id(#cb_context{auth_account_id=AuthBy}) -> AuthBy.
+auth_user_id(#cb_context{auth_doc='undefined'}) -> 'undefined';
+auth_user_id(#cb_context{auth_doc=JObj}) -> wh_json:get_value(<<"owner_id">>, JObj).
 req_verb(#cb_context{req_verb=ReqVerb}) -> ReqVerb.
 req_data(#cb_context{req_data=ReqData}) -> ReqData.
 req_files(#cb_context{req_files=ReqFiles}) -> ReqFiles.
 req_nouns(#cb_context{req_nouns=ReqNouns}) -> ReqNouns.
+req_headers(#cb_context{req_headers=Hs}) -> Hs.
+req_header(#cb_context{req_headers=Hs}, K) -> props:get_value(K, Hs).
 query_string(#cb_context{query_json=Q}) -> Q.
 client_ip(#cb_context{client_ip=IP}) -> IP.
 req_id(#cb_context{req_id=ReqId}) -> ReqId.
@@ -191,18 +206,21 @@ setters(#cb_context{}=Context, [_|_]=Setters) ->
 
 -spec setters_fold(setter_kv(), context()) -> context().
 setters_fold({F, V}, C) -> F(C, V);
-setters_fold({F, K, V}, C) -> F(C, K, V).
+setters_fold({F, K, V}, C) -> F(C, K, V);
+setters_fold(F, C) when is_function(F, 1) -> F(C).
 
 -spec set_account_id(context(), ne_binary()) -> context().
 -spec set_account_db(context(), ne_binary()) -> context().
 -spec set_user_id(context(), ne_binary()) -> context().
+-spec set_device_id(context(), ne_binary()) -> context().
 -spec set_auth_token(context(), ne_binary()) -> context().
 -spec set_auth_doc(context(), wh_json:object()) -> context().
 -spec set_auth_account_id(context(), ne_binary()) -> context().
--spec set_req_verb(context(), ne_binary()) -> context().
+-spec set_req_verb(context(), http_method()) -> context().
 -spec set_req_data(context(), wh_json:object() | ne_binary()) -> context().
 -spec set_req_files(context(), req_files()) -> context().
 -spec set_req_nouns(context(), req_nouns()) -> context().
+-spec set_req_headers(context(), cowboy:http_headers()) -> context().
 -spec set_query_string(context(), wh_json:object()) -> context().
 -spec set_req_id(context(), ne_binary()) -> context().
 -spec set_doc(context(), api_object() | wh_json:objects()) -> context().
@@ -233,6 +251,8 @@ setters_fold({F, K, V}, C) -> F(C, K, V).
 
 set_account_id(#cb_context{}=Context, AcctId) -> Context#cb_context{account_id=AcctId}.
 set_user_id(#cb_context{}=Context, UserId) -> Context#cb_context{user_id=UserId}.
+set_device_id(#cb_context{}=Context, DeviceId) -> Context#cb_context{device_id=DeviceId}.
+set_reseller_id(#cb_context{}=Context, AcctId) -> Context#cb_context{reseller_id=AcctId}.
 set_account_db(#cb_context{}=Context, AcctDb) -> Context#cb_context{db_name=AcctDb}.
 set_account_modb(#cb_context{}=Context, Year, Month) ->
     Context#cb_context{db_name=kazoo_modb:get_modb(account_id(Context), Year, Month)}.
@@ -245,6 +265,7 @@ set_req_verb(#cb_context{}=Context, ReqVerb) -> Context#cb_context{req_verb=ReqV
 set_req_data(#cb_context{}=Context, ReqData) -> Context#cb_context{req_data=ReqData}.
 set_req_files(#cb_context{}=Context, ReqFiles) -> Context#cb_context{req_files=ReqFiles}.
 set_req_nouns(#cb_context{}=Context, ReqNouns) -> Context#cb_context{req_nouns=ReqNouns}.
+set_req_headers(#cb_context{}=Context, ReqHs) -> Context#cb_context{req_headers=ReqHs}.
 set_query_string(#cb_context{}=Context, Q) -> Context#cb_context{query_json=Q}.
 set_req_id(#cb_context{}=Context, ReqId) -> Context#cb_context{req_id=ReqId}.
 set_doc(#cb_context{}=Context, Doc) -> Context#cb_context{doc=Doc}.
@@ -439,7 +460,11 @@ validate_request_data(<<_/binary>> = Schema, Context) ->
             validate_request_data(SchemaJObj, Context)
     end;
 validate_request_data(SchemaJObj, Context) ->
-    case jesse:validate_with_schema(SchemaJObj, wh_json:public_fields(req_data(Context))) of
+    case jesse:validate_with_schema(SchemaJObj
+                                    ,wh_json:public_fields(req_data(Context))
+                                    ,[{'schema_loader_fun', fun wh_json_schema:load/1}]
+                                   )
+    of
         {'ok', JObj} ->
             passed(
               set_doc(Context, wh_json_schema:add_defaults(JObj, SchemaJObj))
@@ -782,63 +807,141 @@ find_schema(<<_/binary>> = Schema) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec add_system_error(atom() | binary(), context()) -> context().
+-spec add_system_error(atom() | binary(), wh_proplist(), context()) -> context().
 add_system_error('too_many_requests', Context) ->
-    crossbar_util:response('fatal', <<"too many requests">>, 429, Context);
+    build_system_error(429, 'too_many_requests', <<"too many requests">>, Context);
 add_system_error('no_credit', Context) ->
-    crossbar_util:response('error', <<"not enough credit to perform action">>, 402, Context);
+    build_system_error(402, 'no_credit', <<"not enough credit to perform action">>, Context);
 add_system_error('unspecified_fault', Context) ->
-    crossbar_util:response('fatal', <<"unspecified fault">>, Context);
+    build_system_error(500, 'unspecified_fault', <<"unspecified fault">>, Context);
 add_system_error('account_cant_create_tree', Context) ->
-    crossbar_util:response('fatal', <<"account creation fault">>, Context);
+    build_system_error(500, 'account_cant_create_tree', <<"account creation fault">>, Context);
 add_system_error('account_has_descendants', Context) ->
-    crossbar_util:response('fatal', <<"account has descendants">>, Context);
+    build_system_error(500, 'account_has_descendants', <<"account has descendants">>, Context);
 add_system_error('faulty_request', Context) ->
-    crossbar_util:response_faulty_request(Context);
+    build_system_error(404, 'faulty_request', <<"faulty request">>, Context);
 
 add_system_error('bad_identifier', Context) ->
-    crossbar_util:response_bad_identifier(<<"unknown">>, Context);
+    build_system_error(404, 'bad_identifier', <<"bad identifier">>, Context);
 
 add_system_error('forbidden', Context) ->
-    crossbar_util:response('error', <<"forbidden">>, 403, Context);
+    build_system_error(403, 'forbidden', <<"forbidden">>, Context);
 add_system_error('invalid_credentials', Context) ->
-    crossbar_util:response('error', <<"invalid credentials">>, 401, Context);
+    build_system_error(401, 'invalid_credentials', <<"invalid credentials">>, Context);
 
 add_system_error('datastore_missing', Context) ->
-    crossbar_util:response_db_missing(Context);
+    build_system_error(503, 'datastore_missing', <<"data collection missing: database not found">>, Context);
 add_system_error('datastore_missing_view', Context) ->
-    crossbar_util:response_missing_view(Context);
+    build_system_error(503, 'datastore_missing_view', <<"datastore missing view">>, Context);
 add_system_error('datastore_conflict', Context) ->
-    crossbar_util:response_conflicting_docs(Context);
+    build_system_error(409, 'datastore_conflict', <<"conflicting documents">>, Context);
 add_system_error('datastore_unreachable', Context) ->
-    crossbar_util:response_datastore_timeout(Context);
+    build_system_error(503, 'datastore_unreachable', <<"datastore timeout">>, Context);
 add_system_error('datastore_fault', Context) ->
-    crossbar_util:response_db_fatal(Context);
+    build_system_error(503, 'datastore_fault', <<"datastore fatal error">>, Context);
 add_system_error('empty_tree_accounts_exist', Context) ->
-    crossbar_util:response('error', <<"unable to create account tree">>, 400, Context);
+    build_system_error(400, 'empty_tree_accounts_exist', <<"unable to create account tree">>, Context);
 
 add_system_error('parse_error', Context) ->
-    crossbar_util:response('error', <<"failed to parse request body">>, 400, Context);
+    build_system_error(400, 'parse_error', <<"failed to parse request body">>, Context);
 add_system_error('invalid_method', Context) ->
-    crossbar_util:response('error', <<"method not allowed">>, 405, Context);
+    build_system_error(405, 'invalid_method', <<"method not allowed">>, Context);
 add_system_error('not_found', Context) ->
-    crossbar_util:response('error', <<"not found">>, 404, Context);
+    build_system_error(404, 'not_found', <<"not found">>, Context);
 add_system_error(Error, Context) ->
-    crossbar_util:response('error', Error, Context).
+    build_system_error(500, Error, wh_util:to_binary(Error), Context).
 
 add_system_error('bad_identifier', Props, Context) ->
-    Identifier = props:get_value('details', Props),
-    crossbar_util:response_bad_identifier(Identifier, Context);
+    Data =
+        wh_json:from_list([
+            {<<"target">>, props:get_value('details', Props)}
+        ]),
+    build_system_error(404, 'bad_identifier', <<"bad identifier">>, Data, Context);
 add_system_error('invalid_bulk_type', Props, Context) ->
     Type = props:get_value('type', Props),
+    Data =
+        wh_json:from_list([
+            {<<"target">>, Type}
+        ]),
     Reason = <<"bulk operations do not support documents of type ", (wh_util:to_binary(Type))/binary>>,
-    crossbar_util:response('error', <<"invalid bulk type">>, 400, Reason, Context);
+    build_system_error(400, 'invalid_bulk_type', Reason, Data, Context);
 add_system_error('forbidden', Props, Context) ->
-    Reason = props:get_value('details', Props),
-    crossbar_util:response('error', <<"forbidden">>, 403, Reason, Context);
+    Data =
+        wh_json:from_list([
+            {<<"target">>, props:get_value('details', Props)}
+        ]),
+    build_system_error(403, 'forbidden', <<"forbidden">>, Data, Context);
 add_system_error('timeout', Props, Context) ->
-    crossbar_util:response('error', <<"timeout">>, 500, props:get_value('details', Props), Context);
-add_system_error(Error, _, Context) ->
-    add_system_error(Error, Context).
+    Data =
+        wh_json:from_list([
+            {<<"target">>, props:get_value('details', Props)}
+        ]),
+    build_system_error(500, 'timeout', <<"timeout">>, Data, Context);
+add_system_error(Error, Props, Context) ->
+    Data =
+        wh_json:from_list([
+            {<<"target">>, props:get_value('details', Props)}
+        ]),
+    build_system_error(500, Error, wh_util:to_binary(Error), Data, Context).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec build_system_error(integer(), atom(), ne_binary(), cb_context:context()) ->
+                                cb_context:context().
+-spec build_system_error(integer(), atom(), ne_binary(), wh_json:object(), cb_context:context()) ->
+                                cb_context:context().
+-spec build_system_error(ne_binary(), integer(), atom(), ne_binary(), wh_json:object(), cb_context:context()) ->
+                                cb_context:context().
+build_system_error(Code, Identifier, Message, Context) ->
+    build_system_error(Code, Identifier, Message, wh_json:new(), Context).
+
+build_system_error(Code, Identifier, Message, Data, Context) ->
+    ApiVersion = cb_context:api_version(Context),
+    build_system_error(ApiVersion, Code, Identifier, Message, Data, Context).
+
+build_system_error(?VERSION_1, Code, _, Message, Data, Context) ->
+    Context#cb_context{resp_status='error'
+                       ,resp_error_code=Code
+                       ,resp_data=Data
+                       ,resp_error_msg=Message
+                      };
+build_system_error(_, 500, Identifier, Message, Data, Context) ->
+    UpdatedData = build_error_data(Identifier, Message, Data, Context),
+    Context#cb_context{resp_status='error'
+                       ,resp_error_code=500
+                       ,resp_data=UpdatedData
+                       ,resp_error_msg = <<"unable to comply">>
+                      };
+build_system_error(_, Code, Identifier, Message, Data, Context) ->
+    UpdatedData = build_error_data(Identifier, Message, Data, Context),
+    Context#cb_context{resp_status='error'
+                       ,resp_error_code=Code
+                       ,resp_data=UpdatedData
+                       ,resp_error_msg=Message
+                      }.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec build_error_data(atom(), ne_binary(), wh_json:object(), cb_context:context()) -> wh_json:object().
+build_error_data(Identifier, Message, Data, _Context) ->
+    SubData =
+        wh_json:from_list(
+            props:filter_undefined([
+                {<<"message">>, Message}
+                ,{<<"target">>, wh_json:get_value(<<"target">>, Data)}
+            ])
+        ),
+    wh_json:from_list([
+        {wh_util:to_binary(Identifier), SubData}
+    ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -911,7 +1014,7 @@ add_depreciated_validation_error(Property, Code, Message, #cb_context{validation
 
 -spec build_error_message(ne_binary(), ne_binary(), ne_binary() | integer()) ->
                                  ne_binary() | wh_json:object().
-build_error_message(<<"v1">>, V1Msg, _V2Target) ->
+build_error_message(?VERSION_1, V1Msg, _V2Target) ->
     V1Msg;
 build_error_message(_Version, V1Msg, V2Target) ->
     wh_json:from_list([{<<"message">>, V1Msg}

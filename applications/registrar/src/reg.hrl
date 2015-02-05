@@ -8,6 +8,8 @@
 
 -define(CONFIG_CAT, <<"registrar">>).
 
+-define(REG_CACHE, 'registrar_cache').
+
 -record(auth_user, {realm :: ne_binary()
                     ,username :: ne_binary()
                     ,password :: api_binary()

@@ -42,7 +42,7 @@ handle_req(JObj, _Props) ->
 -spec handle_audio_req(ne_binary(), wh_json:object()) -> any().
 handle_audio_req(JObj) ->
     Number = stepswitch_util:get_outbound_destination(JObj),
-    lager:debug("received outbound audio resource request for ~s", [Number]),
+    lager:debug("received outbound audio resource request for ~s: ~p", [Number, JObj]),
     handle_audio_req(Number, JObj).
 
 handle_audio_req(Number, JObj) ->
@@ -62,7 +62,8 @@ handle_audio_req(Number, JObj) ->
 handle_originate_req(JObj) ->
     Number = stepswitch_util:get_outbound_destination(JObj),
     lager:debug("received outbound audio resource request for ~s from account ~s"
-                ,[Number, wh_json:get_value(<<"Account-ID">>, JObj)]),
+                ,[Number, wh_json:get_value(<<"Account-ID">>, JObj)]
+               ),
     case wh_json:get_value(<<"Outbound-Call-ID">>, JObj) of
         'undefined' ->
             J = wh_json:set_value(<<"Outbound-Call-ID">>, wh_util:rand_hex_binary(8), JObj),
@@ -82,9 +83,7 @@ handle_sms_req(JObj) ->
     lager:debug("received outbound sms resource request for ~s", [Number]),
     case stepswitch_util:lookup_number(Number) of
         {'ok', AccountId, Props} ->
-            maybe_force_outbound_sms([{'account_id', AccountId}
-                                  | Props
-                                 ], JObj);
+            maybe_force_outbound_sms(wh_number_properties:set_account_id(Props, AccountId), JObj);
         _ -> maybe_sms(Number, JObj)
     end.
 
@@ -96,8 +95,8 @@ handle_sms_req(JObj) ->
 %%--------------------------------------------------------------------
 -spec maybe_force_outbound(wh_proplist(), wh_json:object()) -> any().
 maybe_force_outbound(Props, JObj) ->
-    case wh_number_properties:should_force_outbound(Props) orelse
-        wh_json:is_true(<<"Force-Outbound">>, JObj, 'false')
+    case wh_number_properties:should_force_outbound(Props)
+        orelse wh_json:is_true(<<"Force-Outbound">>, JObj, 'false')
     of
         'false' -> local_extension(Props, JObj);
         'true' ->
@@ -113,8 +112,8 @@ maybe_force_outbound(Props, JObj) ->
 %%--------------------------------------------------------------------
 -spec maybe_force_outbound_sms(wh_proplist(), wh_json:object()) -> any().
 maybe_force_outbound_sms(Props, JObj) ->
-    case props:get_is_true('force_outbound', Props) orelse
-        wh_json:is_true(<<"Force-Outbound">>, JObj, 'false')
+    case props:get_is_true('force_outbound', Props)
+        orelse wh_json:is_true(<<"Force-Outbound">>, JObj, 'false')
     of
         'false' -> local_sms(Props, JObj);
         'true' ->
@@ -175,17 +174,7 @@ local_extension(Props, JObj) -> stepswitch_request_sup:local_extension(Props, JO
 %% @end
 %%--------------------------------------------------------------------
 -spec local_sms(wh_proplist(), wh_json:object()) -> any().
-local_sms(Props, JObj) ->
-    AccountId = props:get_value('account_id', Props),
-    AccountRealm = wh_util:get_account_realm(AccountId),
-    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
-    Number = props:get_value('number', Props),
-    NewObj = wh_json:set_values(
-               [{<<"Bounce-Back">>, <<"true">>}
-                 ,{<<"Custom-Channel-Vars">>, 
-                   wh_json:set_value(<<"Bounce-Realm">>, AccountRealm, CCVs)}
-               ], JObj),
-    maybe_sms(Number, NewObj).
+local_sms(Props, JObj) -> stepswitch_local_sms:local_message_handling(Props, JObj).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -218,11 +207,12 @@ publish_no_resources(JObj) ->
 no_resources(JObj) ->
     ToDID = wh_json:get_value(<<"To-DID">>, JObj),
     lager:info("no available resources for ~s", [ToDID]),
-    props:filter_undefined([{<<"To-DID">>, ToDID}
-                            ,{<<"Response-Message">>, <<"NO_ROUTE_DESTINATION">>}
-                            ,{<<"Response-Code">>, <<"sip:404">>}
-                            ,{<<"Error-Message">>, <<"no available resources">>}
-                            ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-                            ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
-                            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                           ]).
+    props:filter_undefined(
+      [{<<"To-DID">>, ToDID}
+       ,{<<"Response-Message">>, <<"NO_ROUTE_DESTINATION">>}
+       ,{<<"Response-Code">>, <<"sip:404">>}
+       ,{<<"Error-Message">>, <<"no available resources">>}
+       ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+       ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
+       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+      ]).

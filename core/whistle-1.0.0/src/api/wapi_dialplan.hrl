@@ -8,7 +8,6 @@
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -ifndef(WAPI_DIALPLAN_HRL).
--include_lib("whistle/include/wh_api.hrl").
 -include_lib("whistle/include/wh_types.hrl").
 
 %% For dialplan messages, what does the Invite-Format param accept as values?
@@ -48,7 +47,7 @@
           ,<<"Dial-Endpoint-Method">>, <<"Insert-At">>
           ,<<"Media">>, <<"Hold-Media">>, <<"Ringback">>
           ,<<"Custom-Channel-Vars">>, <<"Secure-RTP">>, <<"Force-Fax">>
-          ,<<"SIP-Transport">>, <<"SIP-Headers">>
+          ,<<"SIP-Transport">>, <<"Custom-SIP-Headers">>
           ,<<"Ignore-Completed-Elsewhere">>
           ,<<"Enable-T38-Fax">>, <<"Enable-T38-Fax-Request">>
           ,<<"Enable-T38-Passthrough">>, <<"Enable-T38-Gateway">>
@@ -64,7 +63,7 @@
                             ,?INSERT_AT_TUPLE
                            ]).
 -define(BRIDGE_REQ_TYPES, [{<<"Endpoints">>, fun is_list/1}
-                           ,{<<"SIP-Headers">>, fun wh_json:is_json_object/1}
+                           ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
                            ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
                            ,{<<"Continue-On-Fail">>, fun wh_util:is_boolean/1}
                            ,{<<"Secure-RTP">>, fun wh_util:is_boolean/1}
@@ -83,7 +82,7 @@
           ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
           ,<<"Ignore-Early-Media">>, <<"Bypass-Media">>, <<"Hold-Media">>
           ,<<"Endpoint-Timeout">>, <<"Endpoint-Progress-Timeout">>
-          ,<<"Endpoint-Delay">>, <<"Codecs">>, <<"SIP-Headers">>, <<"Presence-ID">>
+          ,<<"Endpoint-Delay">>, <<"Codecs">>, <<"Custom-SIP-Headers">>, <<"Presence-ID">>
           ,<<"Custom-Channel-Vars">>, <<"Auth-User">>, <<"Auth-Password">>
           ,<<"Endpoint-Type">>, <<"Endpoint-Options">>, <<"Force-Fax">>
           ,<<"Proxy-IP">>, <<"Forward-IP">>, <<"SIP-Transport">>
@@ -98,7 +97,7 @@
                                      ,{<<"Enable-T38-Gateway">>, [<<"self">>, <<"peer">>]}
                                      ,{<<"SIP-Transport">>, [<<"udp">>, <<"tcp">>, <<"tls">>, <<"sctp">>]}
                                     ]).
--define(BRIDGE_REQ_ENDPOINT_TYPES, [{<<"SIP-Headers">>, fun wh_json:is_json_object/1}
+-define(BRIDGE_REQ_ENDPOINT_TYPES, [{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
                                     ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
                                     ,{<<"Endpoint-Options">>, fun wh_json:is_json_object/1}
                                     ,{<<"Ignore-Early-Media">>, fun wh_util:is_boolean/1}
@@ -110,7 +109,7 @@
 -define(OPTIONAL_PAGE_REQ_HEADERS, [<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
                                     ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
                                     ,<<"Timeout">>, <<"Insert-At">>
-                                    ,<<"Custom-Channel-Vars">>, <<"SIP-Headers">>
+                                    ,<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
                                    ]).
 -define(PAGE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                           ,{<<"Event-Name">>, <<"command">>}
@@ -118,7 +117,7 @@
                           ,?INSERT_AT_TUPLE
                          ]).
 -define(PAGE_REQ_TYPES, [{<<"Endpoints">>, fun is_list/1}
-                         ,{<<"SIP-Headers">>, fun wh_json:is_json_object/1}
+                         ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
                          ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
                         ]).
 

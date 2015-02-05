@@ -22,6 +22,7 @@
 -module(nksip_lib).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 
+-export([ensure_all_started/2]).
 -export([cseq/0, luid/0, lhash/1, uid/0, uuid_4122/0, hash/1, hash36/1]).
 -export([get_local_ips/0, find_main_ip/0, find_main_ip/2]).
 -export([timestamp/0, l_timestamp/0, l_timestamp_to_float/1]).
@@ -31,7 +32,7 @@
 -export([get_integer/2, get_integer/3, store_value/2, store_value/3]).
 -export([to_binary/1, to_list/1, to_integer/1, to_ip/1, to_host/1, to_host/2]).
 -export([to_lower/1, to_upper/1, strip/1, unquote/1, is_string/1]).
--export([bjoin/1, bjoin/2, tokens/1, hex/1, extract/2, delete/2, bin_last/2]).
+-export([bjoin/1, bjoin/2, tokens/1, hex/1, extract/2, delete/2, defaults/2, bin_last/2]).
 -export([cancel_timer/1, msg/2]).
 
 -export_type([optslist/0, timestamp/0, l_timestamp/0]).
@@ -56,7 +57,35 @@
 %% Public
 %% =================================================================
 
-%
+%% @doc Ensure that an application and all of its transitive
+%% dependencies are started.
+ensure_all_started(Application, Type) ->
+    case ensure_all_started(Application, Type, []) of
+        {ok, Started} ->
+            {ok, lists:reverse(Started)};
+        {error, Reason, Started} ->
+            [ application:stop(App) || App <- Started ],
+            {error, Reason}
+    end.
+
+ensure_all_started(Application, Type, Started) ->
+    case application:start(Application, Type) of
+        ok ->
+            {ok, [Application | Started]};
+        {error, {already_started, Application}} ->
+            {ok, Started};
+        {error, {not_started, Dependency}} ->
+            case ensure_all_started(Dependency, Type, Started) of
+                {ok, NewStarted} ->
+                    ensure_all_started(Application, Type, NewStarted);
+                Error ->
+                    Error
+            end;
+        {error, Reason} ->
+            {error, Reason, Started}
+    end.
+
+
 %% @doc Generates an incrementing-each-second 31 bit integer.
 %% It will not wrap around until until {{2080,1,19},{3,14,7}} GMT.
 -spec cseq() -> 
@@ -95,11 +124,19 @@ uuid_4122() ->
     binary().
 
 lhash(Base) -> 
-    <<I:160/integer>> = crypto:hash(sha, term_to_binary(Base)),
+    <<I:160/integer>> = sha(term_to_binary(Base)),
     case encode_integer(I) of
         Hash when byte_size(Hash) == 27 -> Hash;
         Hash -> <<(binary:copy(<<"a">>, 27-byte_size(Hash)))/binary, Hash/binary>>
     end.
+
+
+%% @private
+-ifdef(old_crypto_hash).
+sha(Term) -> crypto:sha(Term).
+-else.
+sha(Term) -> crypto:hash(sha, Term).
+-endif.
 
 
 %% @doc Generates a new random tag of 6 chars
@@ -390,16 +427,16 @@ get_integer(Key, List, Default) ->
 -spec store_value(term(), list()) ->
     list().
  
-store_value(Tem, List) ->
-    case lists:member(Tem, List) of
+store_value(Term, List) ->
+    case lists:member(Term, List) of
         true -> List;
-        false -> [Tem|List]
+        false -> [Term|List]
     end.
 
     
 %% @doc Stores a value in a proplist
--spec store_value(term(), term(), nksip_lib:optslist()) ->
-    nksip_lib:optslist().
+-spec store_value(term(), term(), nksip:optslist()) ->
+    nksip:optslist().
  
 store_value(Key, Val, List) ->
     lists:keystore(Key, 1, List, {Key, Val}).
@@ -627,6 +664,19 @@ delete(PropList, KeyOrKeys) ->
     end,
     lists:filter(Fun, PropList).
 
+%% @doc Inserts defaults in a proplist
+-spec defaults([{term(), term()}], [{term(), term()}]) ->
+    [{term(), term()}].
+
+defaults(List, []) ->
+    List;
+
+defaults(List, [{Key, Val}|Rest]) ->
+    case lists:keymember(Key, 1, List) of
+        true -> defaults(List, Rest);
+        false -> defaults([{Key, Val}|List], Rest)
+    end.
+
 
 %% @doc Checks if `Term' is a `string()' or `[]'.
 -spec is_string(Term::term()) -> 
@@ -747,8 +797,11 @@ cancel_timer(_) ->
 
 msg(Msg, Vars) ->
     case catch list_to_binary(io_lib:format(Msg, Vars)) of
-        {'EXIT', _} -> <<"Msg parser error">>;
-        Result -> Result
+        {'EXIT', _} -> 
+            lager:warning("MSG PARSE ERROR: ~p, ~p", [Msg, Vars]),
+            <<"Msg parser error">>;
+        Result -> 
+            Result
     end.
 
 

@@ -77,23 +77,7 @@ get_fs_app(Node, UUID, JObj, <<"tts">>) ->
     case wapi_dialplan:tts_v(JObj) of
         'false' -> {'error', <<"tts failed to execute as JObj didn't validate">>};
         'true' ->
-            'ok' = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
-
-            case wh_json:get_value(<<"Engine">>, JObj, <<"flite">>) of
-                <<"flite">> -> ecallmgr_fs_flite:call_command(Node, UUID, JObj);
-                _Engine ->
-                    SayMe = wh_json:get_value(<<"Text">>, JObj),
-                    lager:debug("using engine ~s to say: ~s", [_Engine, SayMe]),
-
-                    TTS = <<"tts://", SayMe/binary>>,
-                    case ecallmgr_util:media_path(TTS, UUID, JObj) of
-                        TTS ->
-                            lager:debug("failed to fetch a playable media, reverting to flite"),
-                            get_fs_app(Node, UUID, wh_json:set_value(<<"Engine">>, <<"flite">>, JObj), <<"tts">>);
-                        MediaPath ->
-                            play(Node, UUID, wh_json:set_value(<<"Media-Name">>, MediaPath, JObj))
-                    end
-            end
+            tts(Node, UUID, JObj)
     end;
 
 get_fs_app(Node, UUID, JObj, <<"play">>) ->
@@ -139,7 +123,7 @@ get_fs_app(Node, UUID, JObj, <<"record">>) ->
             %% some carriers kill the channel during long recordings since there is no
             %% reverse RTP stream
             Routines = [fun(V) ->
-                            case wh_util:is_true(ecallmgr_config:get(<<"record_waste_resources">>, 'false')) of
+                            case ecallmgr_config:is_true(<<"record_waste_resources">>, 'false') of
                                 'false' -> V;
                                 'true' -> [{<<"record_waste_resources">>, <<"true">>}|V]
                             end
@@ -169,7 +153,7 @@ get_fs_app(Node, UUID, JObj, <<"record_call">>) ->
         'false' -> {'error', <<"record_call failed to execute as JObj did not validate">>};
         'true' ->
             Routines = [fun(V) ->
-                            case wh_util:is_true(ecallmgr_config:get(<<"record_waste_resources">>, 'false')) of
+                            case ecallmgr_config:is_true(<<"record_waste_resources">>, 'false') of
                                 'false' -> V;
                                 'true' -> [{<<"record_waste_resources">>, <<"true">>}|V]
                             end
@@ -1119,6 +1103,28 @@ create_dialplan_move_ccvs(Root, Node, UUID, DP) ->
         _Error ->
             lager:debug("failed to get result from uuid_dump for ~s", [UUID]),
             DP
+    end.
+
+-spec tts(atom(), ne_binary(), wh_json:object()) ->
+                 {ne_binary(), ne_binary()}.
+tts(Node, UUID, JObj) ->
+    'ok' = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
+
+    case wh_json:get_value(<<"Engine">>, JObj, <<"flite">>) of
+        <<"flite">> -> ecallmgr_fs_flite:call_command(Node, UUID, JObj);
+        _Engine ->
+            SayMe = wh_json:get_value(<<"Text">>, JObj),
+            lager:debug("using engine ~s to say: ~s", [_Engine, SayMe]),
+
+            TTS = <<"tts://", SayMe/binary>>,
+            case ecallmgr_util:media_path(TTS, UUID, JObj) of
+                TTS ->
+                    lager:debug("failed to fetch a playable media, reverting to flite"),
+                    get_fs_app(Node, UUID, wh_json:set_value(<<"Engine">>, <<"flite">>, JObj), <<"tts">>);
+                MediaPath ->
+                    lager:debug("got media path ~s", [MediaPath]),
+                    play(Node, UUID, wh_json:set_value(<<"Media-Name">>, MediaPath, JObj))
+            end
     end.
 
 %%--------------------------------------------------------------------

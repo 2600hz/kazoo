@@ -55,13 +55,13 @@ get_attachment(Category, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec raw_attachment_binary(wh_proplist()) ->
-                                   {'ok', ne_binary()} |
+                                   {'ok', ne_binary(), ne_binary()} |
                                    {'error', _}.
 -spec raw_attachment_binary(ne_binary(), ne_binary()) ->
-                                   {'ok', ne_binary()} |
+                                   {'ok', ne_binary(), ne_binary()} |
                                    {'error', _}.
--spec raw_attachment_binary(ne_binary(), ne_binary(), integer()) ->
-                                   {'ok', ne_binary()} |
+-spec raw_attachment_binary(ne_binary(), ne_binary(), non_neg_integer()) ->
+                                   {'ok', ne_binary(), ne_binary()} |
                                    {'error', _}.
 raw_attachment_binary(Props) ->
     Fax = props:get_value(<<"fax">>, Props),
@@ -77,7 +77,7 @@ raw_attachment_binary(Db, FaxId, Retries) when Retries > 0 ->
     case couch_mgr:open_doc(Db, FaxId) of
         {'error','not_found'} when Db =/= ?WH_FAXES ->
             raw_attachment_binary(?WH_FAXES, FaxId, Retries);
-        {'ok', FaxJObj} ->            
+        {'ok', FaxJObj} ->
             case wh_json:get_keys(<<"_attachments">>, FaxJObj) of
                 [AttachmentId | _] ->
                     ContentType = wh_json:get_value([<<"_attachments">>, AttachmentId, <<"content_type">>], FaxJObj, <<"image/tiff">>),
@@ -96,7 +96,8 @@ raw_attachment_binary(Db, FaxId, Retries) when Retries > 0 ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec convert_to_tiff(ne_binary(), wh_proplist(), ne_binary()) -> {ne_binary(), ne_binary(), ne_binary()}.
+-spec convert_to_tiff(ne_binary(), wh_proplist(), ne_binary()) ->
+                             {ne_binary(), ne_binary(), ne_binary()}.
 convert_to_tiff(AttachmentBin, Props, _ContentType) ->
     {<<"image/tiff">>, get_file_name(Props, "tiff"), AttachmentBin}.
 
@@ -138,4 +139,3 @@ convert_to_pdf(AttachmentBin, Props, _ContentType) ->
 -spec tmp_file_name(ne_binary()) -> string().
 tmp_file_name(Ext) ->
     wh_util:to_list(<<"/tmp/", (wh_util:rand_hex_binary(10))/binary, "_notify_fax.", Ext/binary>>).
-

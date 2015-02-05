@@ -146,7 +146,7 @@ send_probe(JObj, State) ->
     PresenceUpdate =
         [{<<"State">>, State}
          ,{<<"Presence-ID">>, To}
-         ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:md5(To))}
+         ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:hash(md5, To))}
          | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
         ],
     wapi_presence:publish_update(PresenceUpdate).

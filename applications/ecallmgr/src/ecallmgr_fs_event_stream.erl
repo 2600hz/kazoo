@@ -28,10 +28,9 @@
                 ,ip :: inet:ip_address()
                 ,port :: inet:port_number()
                 ,socket :: inet:socket()
+                ,idle_alert = 'infinity' :: wh_timeout()
                }).
 -type state() :: #state{}.
-
--define(PUBLISH_CHANNEL_STATE, <<"publish_channel_state">>).
 
 %%%===================================================================
 %%% API
@@ -71,6 +70,7 @@ init([Node, Bindings, Subclasses]) ->
     {'ok', #state{node=Node
                   ,bindings=Bindings
                   ,subclasses=Subclasses
+                  ,idle_alert=idle_alert_timeout()
                  }}.
 
 %%--------------------------------------------------------------------
@@ -115,7 +115,7 @@ handle_cast('request_event_stream', #state{node=Node}=State) ->
             lager:warning("unable to establish event stream to ~p for ~p: ~p", [Node, Bindings, Reason]),
             {'stop', Reason, State}
     end;
-handle_cast('connect', #state{ip=IP, port=Port}=State) ->
+handle_cast('connect', #state{ip=IP, port=Port, idle_alert=Timeout}=State) ->
     PacketType = ecallmgr_config:get_integer(<<"tcp_packet_type">>, 2),
     case gen_tcp:connect(IP, Port, [{'mode', 'binary'}
                                     ,{'packet', PacketType}
@@ -123,15 +123,17 @@ handle_cast('connect', #state{ip=IP, port=Port}=State) ->
     of
         {'ok', Socket} ->
             lager:debug("opened event stream socket to ~p:~p for ~p"
-                        ,[IP, Port, get_event_bindings(State)]
-                       ),
-            {'noreply', State#state{socket=Socket}};
+                        ,[IP, Port, get_event_bindings(State)]),
+            {'noreply', State#state{socket=Socket}, Timeout};
         {'error', Reason} ->
             {'stop', Reason, State}
     end;
-handle_cast(_Msg, State) ->
+handle_cast(_Msg, #state{socket='undefined'}=State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
-    {'noreply', State}.
+    {'noreply', State};
+handle_cast(_Msg, #state{idle_alert=Timeout}=State) ->
+    lager:debug("unhandled cast: ~p", [_Msg]),
+    {'noreply', State, Timeout}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -143,18 +145,23 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'tcp', Socket, Data}, #state{socket=Socket, node=Node}=State) ->
+handle_info({'tcp', Socket, Data}, #state{socket=Socket
+                                         ,node=Node
+                                         ,idle_alert=Timeout
+                                         }=State) ->
     try binary_to_term(Data) of
         {'event', [UUID | Props]} when is_binary(UUID) orelse UUID =:= 'undefined' ->
             EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
             _ = spawn(fun() -> maybe_send_event(EventName, UUID, Props, Node) end),
             _ = spawn(fun() -> process_event(EventName, UUID, Props, Node) end),
-            {'noreply', State};
+            {'noreply', State, Timeout};
         _Else ->
-            {'noreply', State}
+            io:format("~p~n", [_Else]),
+            {'noreply', State, Timeout}
     catch
         'error':'badarg' ->
-            lager:warning("failed to decode packet from ~s(~p b)", [Node, byte_size(Data)]),
+            lager:warning("failed to decode packet from ~s (~p b) for ~p: ~p"
+                         ,[Node, byte_size(Data), get_event_bindings(State), Data]),
             {'stop', 'decode_error', State}
     end;
 handle_info({'tcp_closed', Socket}, #state{socket=Socket, node=Node}=State) ->
@@ -166,9 +173,16 @@ handle_info({'tcp_error', Socket, _Reason}, #state{socket=Socket}=State) ->
     gen_tcp:close(Socket),
     gen_server:cast(self(), 'request_event_stream'),
     {'noreply', State#state{socket='undefined'}};
-handle_info(_Msg, State) ->
+handle_info('timeout', #state{node=Node, idle_alert=Timeout}=State) ->
+    lager:warning("event stream for ~p on node ~p is unexpectedly idle",
+                  [get_event_bindings(State), Node]),
+    {'noreply', State, Timeout};
+handle_info(_Msg, #state{socket='undefined'}=State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
-    {'noreply', State}.
+    {'noreply', State};
+handle_info(_Msg, #state{idle_alert=Timeout}=State) ->
+    lager:debug("unhandled message: ~p", [_Msg]),
+    {'noreply', State, Timeout}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -210,7 +224,15 @@ get_event_bindings(State) ->
     get_event_bindings(State, []).
 
 -spec get_event_bindings(state(), atoms()) -> atoms().
-get_event_bindings(#state{bindings='undefined', subclasses='undefined'}, Acc) -> Acc;
+get_event_bindings(#state{bindings='undefined'
+                         ,subclasses='undefined'
+                         ,idle_alert='infinity'
+                         }, Acc) ->
+    Acc;
+get_event_bindings(#state{bindings='undefined'
+                         ,subclasses='undefined'
+                         }, Acc) ->
+    ['HEARTBEAT' | Acc];
 get_event_bindings(#state{subclasses=Subclasses}=State, Acc) when is_list(Subclasses) ->
     get_event_bindings(State#state{subclasses='undefined'}
                        ,[wh_util:to_atom(Subclass, 'true') || Subclass <- Subclasses] ++ Acc
@@ -235,7 +257,6 @@ get_event_bindings(#state{bindings=Binding}=State, Acc) when is_binary(Binding) 
     get_event_bindings(State#state{bindings='undefined'}
                        ,[wh_util:to_atom(Binding, 'true') | Acc]
                       ).
-
 
 -spec maybe_bind(atom(), atoms()) ->
                         {'ok', {text(), inet:port_number()}} |
@@ -286,6 +307,7 @@ process_event(<<"loopback::bowout">>, _UUID, Props, Node) ->
 process_event(_, _, _, _) -> 'ok'.
 
 -spec maybe_send_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
+maybe_send_event(<<"HEARTBEAT">>, _UUID, _Props, _Node) -> 'ok';
 maybe_send_event(<<"CHANNEL_BRIDGE">>=EventName, UUID, Props, Node) ->
     wh_util:put_callid(UUID),
     BridgeID = props:get_value(<<"variable_bridge_uuid">>, Props),
@@ -329,4 +351,11 @@ maybe_start_event_listener(Node, UUID) ->
     case wh_cache:fetch_local(?ECALLMGR_UTIL_CACHE, {UUID, 'start_listener'}) of
         {'ok', 'true'} -> ecallmgr_call_sup:start_event_process(Node, UUID);
         _E -> 'ok'
+    end.
+
+-spec idle_alert_timeout() -> non_neg_integer() | 'infinity'.
+idle_alert_timeout() ->
+    case ecallmgr_config:get_integer(<<"event_stream_idle_alert">>, 0) of
+        Timeout when Timeout =< 30 -> 'infinity';
+        Else -> Else * 1000
     end.

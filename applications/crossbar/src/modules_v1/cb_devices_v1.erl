@@ -22,8 +22,6 @@
          ,put/1
          ,post/2
          ,delete/2
-         ,is_ip_acl_unique/1
-         ,get_all_acl_ips/0
          ,lookup_regs/1
          ,registration_update/1
         ]).
@@ -125,7 +123,7 @@ process_billing(Context, _Nouns, _Verb) -> Context.
 -spec authenticate(cb_context:context()) -> 'true'.
 authenticate(Context) ->
     authenticate(cb_context:req_nouns(Context), cb_context:req_verb(Context)).
-authenticate(?DEVICES_QCALL_NOUNS, ?HTTP_GET) ->
+authenticate(?DEVICES_QCALL_NOUNS(_DeviceId, _Number), ?HTTP_GET) ->
     lager:debug("authenticating request"),
     'true';
 authenticate(_Nouns, _Verb) -> 'false'.
@@ -133,7 +131,7 @@ authenticate(_Nouns, _Verb) -> 'false'.
 -spec authorize(cb_context:context()) -> 'true'.
 authorize(Context) ->
     authorize(cb_context:req_nouns(Context), cb_context:req_verb(Context)).
-authorize(?DEVICES_QCALL_NOUNS, ?HTTP_GET) ->
+authorize(?DEVICES_QCALL_NOUNS(_DeviceId, _Number), ?HTTP_GET) ->
     lager:debug("authorizing request"),
     'true';
 authorize(_Nouns, _Verb) -> 'false'.
@@ -376,7 +374,7 @@ validate_device_ip(IP, DeviceId, Context) ->
     end.
 
 validate_device_ip_unique(IP, DeviceId, Context) ->
-    case is_ip_unique(IP, DeviceId) of
+    case cb_devices_utils:is_ip_unique(IP, DeviceId) of
         'true' ->
             check_emergency_caller_id(DeviceId, cb_context:store(Context, 'aggregate_device', 'true'));
         'false' ->
@@ -540,31 +538,6 @@ is_creds_global_unique(Realm, Username, DeviceId) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Check if the device sip ip is unique
-%% @end
-%%--------------------------------------------------------------------
--spec is_ip_unique(ne_binary(), ne_binary()) -> boolean().
-is_ip_unique(IP, DeviceId) ->
-    is_ip_acl_unique(IP)
-        andalso is_ip_sip_auth_unique(IP, DeviceId).
-
--spec is_ip_acl_unique(ne_binary()) -> boolean().
-is_ip_acl_unique(IP) ->
-    lists:all(fun(CIDR) -> not (wh_network_utils:verify_cidr(IP, CIDR)) end, get_all_acl_ips()).
-
--spec is_ip_sip_auth_unique(ne_binary(), ne_binary()) -> boolean().
-is_ip_sip_auth_unique(IP, DeviceId) ->
-    ViewOptions = [{<<"key">>, IP}],
-    case couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup_by_ip">>, ViewOptions) of
-        {'ok', []} -> 'true';
-        {'ok', [JObj]} -> wh_json:get_value(<<"id">>, JObj) =:= DeviceId;
-        {'error', 'not_found'} -> 'true';
-        _ -> 'false'
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %%
 %% @end
 %%--------------------------------------------------------------------
@@ -607,38 +580,3 @@ maybe_remove_aggregate(DeviceId, _Context, 'success') ->
         {'error', 'not_found'} -> 'false'
     end;
 maybe_remove_aggregate(_, _, _) -> 'false'.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec get_all_acl_ips() -> ne_binaries().
-get_all_acl_ips() ->
-    Req = [{<<"Category">>, <<"ecallmgr">>}
-           ,{<<"Key">>, <<"acls">>}
-           ,{<<"Node">>, <<"all">>}
-           ,{<<"Default">>, wh_json:new()}
-           ,{<<"Msg-ID">>, wh_util:rand_hex_binary(16)}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    Resp = whapps_util:amqp_pool_request(
-             props:filter_undefined(Req)
-             ,fun wapi_sysconf:publish_get_req/1
-             ,fun wapi_sysconf:get_resp_v/1
-            ),
-    case Resp of
-        {'error', _} -> [];
-        {'ok', JObj} ->
-            extract_all_ips(wh_json:get_value(<<"Value">>, JObj, wh_json:new()))
-    end.
-
--spec extract_all_ips(wh_json:object()) -> ne_binaries().
-extract_all_ips(JObj) ->
-    lists:foldr(fun(K, IPs) ->
-                        case wh_json:get_value([K, <<"cidr">>], JObj) of
-                            'undefined' -> IPs;
-                            CIDR -> [CIDR|IPs]
-                        end
-                end, [], wh_json:get_keys(JObj)).

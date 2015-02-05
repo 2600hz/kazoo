@@ -511,8 +511,20 @@ filter_bindings(Predicate, Key, Updates, Deletes) ->
                                          Predicate(Binding, M, F, P)
                                  end, Responders),
     case queue:len(NewResponders) of
-        0 -> filter_bindings(Predicate, ets:next(table_id(), Key), Updates, [Key | Deletes]);
-        _Len -> filter_bindings(Predicate, ets:next(table_id(), Key), [{Key, {#kz_binding.binding_responders, NewResponders}} | Updates], Deletes)
+        0 ->
+            filter_bindings(Predicate
+                            ,ets:next(table_id(), Key)
+                            ,Updates
+                            ,[Key | Deletes]
+                           );
+        _Len ->
+            filter_bindings(Predicate
+                            ,ets:next(table_id(), Key)
+                            ,[{Key, {#kz_binding.binding_responders, NewResponders}}
+                              | Updates
+                             ]
+                            ,Deletes
+                           )
     end.
 
 %%--------------------------------------------------------------------

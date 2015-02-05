@@ -47,6 +47,7 @@
                                        ,<<"Network-IP">>, <<"Network-Port">>
                                        ,<<"Suppress-Unregister-Notify">>
                                        ,<<"Original-Contact">>
+                                       ,<<"Registrar-Node">>
                                       ]).
 -define(REG_SUCCESS_VALUES, [{<<"Event-Category">>, <<"directory">>}
                              ,{<<"Event-Name">>, <<"reg_success">>}

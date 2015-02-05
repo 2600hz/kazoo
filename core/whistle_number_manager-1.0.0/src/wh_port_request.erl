@@ -38,7 +38,7 @@ init() ->
 -spec current_state(wh_json:object()) -> api_binary().
 current_state(JObj) ->
     lager:debug("current state: ~p", [JObj]),
-    wh_json:get_first_defined([?PORT_PVT_STATE, ?PORT_STATE], JObj, ?PORT_WAITING).
+    wh_json:get_value(?PORT_PVT_STATE, JObj, ?PORT_WAITING).
 
 -spec get(ne_binary()) ->
                  {'ok', wh_json:object()} |
@@ -55,7 +55,7 @@ public_fields(JObj) ->
                         ,{<<"created">>, wh_json:get_value(<<"pvt_created">>, JObj)}
                         ,{<<"updated">>, wh_json:get_value(<<"pvt_modified">>, JObj)}
                         ,{<<"uploads">>, NormalizedAs}
-                        ,{?PORT_STATE, wh_json:get_value(?PORT_PVT_STATE, JObj, ?PORT_WAITING)}
+                        ,{<<"port_state">>, wh_json:get_value(?PORT_PVT_STATE, JObj, ?PORT_WAITING)}
                        ], wh_doc:public_fields(JObj)).
 
 -spec normalize_attachments(wh_json:object()) -> wh_json:object().
@@ -115,10 +115,7 @@ transition(_JObj, [], _ToState, _CurrentState) ->
     {'error', 'invalid_state_transition'};
 transition(JObj, [CurrentState | _], ToState, CurrentState) ->
     lager:debug("going from ~s to ~s", [CurrentState, ToState]),
-    {'ok', wh_json:set_values([{?PORT_PVT_STATE, ToState}
-                               ,{?PORT_STATE, ToState}
-                              ]
-                              ,JObj)};
+    {'ok', wh_json:set_value(?PORT_PVT_STATE, ToState, JObj)};
 transition(JObj, [_FromState | FromStates], ToState, CurrentState) ->
     lager:debug("skipping from ~s to ~s c ~p", [_FromState, ToState, CurrentState]),
     transition(JObj, FromStates, ToState, CurrentState).

@@ -4,8 +4,6 @@
 -include_lib("whistle/include/wh_databases.hrl").
 -include_lib("whistle_apps/include/wh_hooks.hrl").
 
--define(WEBHOOKS_HRL, 'true').
-
 -type http_verb() :: 'get' | 'post'.
 -type hook_retries() :: 1..5.
 
@@ -22,4 +20,5 @@
 -type webhook() :: #webhook{}.
 -type webhooks() :: [webhook(),...] | [].
 
+-define(WEBHOOKS_HRL, 'true').
 -endif.

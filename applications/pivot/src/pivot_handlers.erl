@@ -15,6 +15,5 @@
 -spec handle_pivot_req(wh_json:object(), wh_proplist()) -> any().
 handle_pivot_req(JObj, _Props) ->
     'true' = wapi_pivot:req_v(JObj),
-
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
     pivot_calls_sup:new(Call, JObj).

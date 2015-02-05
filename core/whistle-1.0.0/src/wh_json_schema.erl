@@ -23,7 +23,10 @@
 -spec load(ne_binary()) -> {'ok', wh_json:object()} |
                            {'error', term()}.
 load(<<_/binary>> = Schema) ->
-    couch_mgr:open_cache_doc(?WH_SCHEMA_DB, Schema, [{'cache_failures', ['not_found']}]).
+    case couch_mgr:open_cache_doc(?WH_SCHEMA_DB, Schema, [{'cache_failures', ['not_found']}]) of
+        {'error', _E}=E -> E;
+        {'ok', JObj} -> {'ok', wh_json:insert_value(<<"id">>, Schema, JObj)}
+    end.
 
 -spec flush() -> 'ok'.
 -spec flush(ne_binary()) -> 'ok'.

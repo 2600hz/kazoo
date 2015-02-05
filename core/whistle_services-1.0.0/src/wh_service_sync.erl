@@ -277,7 +277,7 @@ did_topup_failed(JObjs) ->
     lists:foldl(
         fun(JObj, Acc) ->
             case wh_json:get_integer_value(<<"code">>, JObj) of
-                3006 -> 'true';
+                ?CODE_TOPUP -> 'true';
                 _ -> Acc
             end
         end
@@ -294,7 +294,7 @@ handle_topup_transactions(Account, JObjs, Failed) when is_list(Failed) ->
 handle_topup_transactions(_, [], _) -> 'ok';
 handle_topup_transactions(Account, [JObj|JObjs], Retry) when Retry > 0 ->
     case wh_json:get_integer_value(<<"code">>, JObj) of
-        3006 ->
+        ?CODE_TOPUP ->
             Amount = wh_json:get_value(<<"pvt_amount">>, JObj),
             Transaction = wh_transaction:credit(Account, Amount),
             Transaction1 = wh_transaction:set_reason(<<"topup">>, Transaction),

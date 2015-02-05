@@ -145,7 +145,6 @@ try_failover_e164(State, ToDID) ->
            ,{<<"Account-ID">>, AcctID}
            ,{<<"Control-Queue">>, CtlQ}
            ,{<<"Application-Name">>, <<"bridge">>}
-           ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Account-ID">>, AcctID}])}
            ,{<<"Flags">>, wh_json:get_value(<<"flags">>, EP)}
            ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, EP)}
            ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, EP)}
@@ -153,7 +152,7 @@ try_failover_e164(State, ToDID) ->
            ,{<<"Outbound-Caller-ID-Number">>, wh_json:get_value(<<"Outbound-Caller-ID-Number">>, EP)}
            ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, EP)}
            ,{<<"Hunt-Account-ID">>, wh_json:get_value(<<"Hunt-Account-ID">>, EP)}
-           ,{<<"Diversions">>, get_diversions(CCVs)}
+           ,{<<"Custom-SIP-Headers">>, ts_callflow:get_custom_sip_headers(State)}
            ,{<<"Inception">>,  wh_json:get_value(<<"Inception">>, CCVs)}
            ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Account-ID">>, AcctID}])}
            | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
@@ -161,14 +160,6 @@ try_failover_e164(State, ToDID) ->
     lager:info("sending offnet request for DID ~s", [ToDID]),
     wapi_offnet_resource:publish_req(props:filter_undefined(Req)),
     wait_for_bridge(ts_callflow:set_failover(State, wh_json:new())).
-
--spec get_diversions(wh_json:object()) -> 'undefined' | wh_json:object().
-get_diversions(JObj) ->
-    case wh_json:get_value(<<"Diversions">>, JObj) of
-        'undefined' -> 'undefined';
-        [] -> 'undefined';
-        Diversions ->  Diversions
-    end.
 
 %%--------------------------------------------------------------------
 %% Out-of-band functions
@@ -291,7 +282,7 @@ routing_data(ToDID, AcctID, Settings) ->
                          ,{<<"Endpoint-Progress-Timeout">>, ProgressTimeout}
                          ,{<<"Failover">>, Failover}
                          ,{<<"Endpoint-Delay">>, Delay}
-                         ,{<<"SIP-Headers">>, SIPHeaders}
+                         ,{<<"Custom-SIP-Headers">>, SIPHeaders}
                          ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
                          ,{<<"Endpoint-Timeout">>, Timeout}
                          ,{<<"Callee-ID-Name">>, CalleeName}

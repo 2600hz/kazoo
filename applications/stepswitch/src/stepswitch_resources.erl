@@ -7,11 +7,13 @@
 %%%-------------------------------------------------------------------
 -module(stepswitch_resources).
 
--export([get_props/0, get_props/1]).
+-export([get_props/0, get_props/1, get_props/2]).
 -export([endpoints/2]).
 -export([reverse_lookup/1]).
 
--export([fetch_global_resources/0]).
+-export([fetch_global_resources/0
+         ,fetch_local_resources/1
+        ]).
 
 -include("stepswitch.hrl").
 
@@ -49,6 +51,8 @@
           ,flags = [] :: list()
           ,rules = [] :: list()
           ,raw_rules = [] :: list()
+          ,cid_rules = [] :: list()
+          ,cid_raw_rules = [] :: list()
           ,gateways = [] :: list()
           ,is_emergency = 'false' :: boolean()
           ,require_flags = 'false' :: boolean()
@@ -84,6 +88,14 @@ get_props(ResourceId) ->
         Resource -> resource_to_props(Resource)
     end.
 
+-spec get_props(ne_binary(), api_binary()) -> wh_proplist() | 'undefined'.
+get_props(_ResourceId, 'undefined') -> 'undefined';
+get_props(ResourceId, AccountId) ->
+    case get_local_resource(ResourceId, AccountId) of
+        'undefined' -> 'undefined';
+        Resource -> resource_to_props(Resource)
+    end.
+
 -spec resource_to_props(resource()) -> wh_proplist().
 resource_to_props(#resrc{}=Resource) ->
     props:filter_undefined(
@@ -102,6 +114,7 @@ resource_to_props(#resrc{}=Resource) ->
        ,{<<"Flags">>, Resource#resrc.flags}
        ,{<<"Codecs">>, Resource#resrc.codecs}
        ,{<<"Rules">>, Resource#resrc.raw_rules}
+       ,{<<"Caller-ID-Rules">>, Resource#resrc.cid_raw_rules}
        ,{<<"Formatters">>, Resource#resrc.formatters}
       ]).
 
@@ -328,18 +341,16 @@ resources_to_endpoints([Resource|Resources], Number, JObj, Endpoints) ->
 maybe_resource_to_endpoints(#resrc{id=Id
                                    ,name=Name
                                    ,rules=Rules
+                                   ,cid_rules=CallerIdRules
                                    ,gateways=Gateways
                                    ,global=Global
                                    ,weight=Weight
                                   }
                             ,Number, JObj, Endpoints) ->
-    case evaluate_rules(Rules, Number) of
-        {'error', 'no_match'} ->
-            lager:debug("resource ~s does not match request, skipping", [Id]),
-            Endpoints;
-        {'ok', Match} ->
-            lager:debug("building resource ~s endpoints with regex match: ~s"
-                        ,[Id, Match]),
+    CallerIdNumber = wh_json:get_value(<<"Outbound-Caller-ID-Number">>,JObj),
+    case filter_resource_by_rules(Id, Number, Rules, CallerIdNumber, CallerIdRules) of
+        {'ok', Number_Match} ->
+            lager:debug("building resource ~s endpoints", [Id]),
             Updates = [{<<"Global-Resource">>, wh_util:to_binary(Global)}
                        ,{<<"Resource-ID">>, Id}
                       ],
@@ -348,8 +359,32 @@ maybe_resource_to_endpoints(#resrc{id=Id
                                 ]
                                 ,update_ccvs(Endpoint, Updates)
                                )
-             || Endpoint <- gateways_to_endpoints(Match, Gateways, JObj, [])
-            ] ++ Endpoints
+             || Endpoint <- gateways_to_endpoints(Number_Match, Gateways, JObj, [])
+            ] ++ Endpoints;
+        {'error','no_match'} -> Endpoints
+    end.
+
+
+-spec filter_resource_by_rules(ne_binary(), ne_binary(), re:mp(), ne_binary(), re:mp()) ->
+                            {'ok', ne_binary()} |
+                            {'error', 'no_match'}.
+filter_resource_by_rules(Id, Number, Rules, CallerIdNumber, CallerIdRules) ->
+    case evaluate_rules(Rules, Number) of
+        {'error', 'no_match'} ->
+            lager:debug("resource ~s does not match request, skipping", [Id]),
+            {'error','no_match'};
+        {'ok', Match} ->
+            case evaluate_cid_rules(CallerIdRules, CallerIdNumber) of
+                {'ok', 'empty_rules'} ->
+                    lager:debug("resource ~s match number: ~s with regex match: ~s, and dont have any caller id rules", [Id, Number, Match]),
+                    {'ok', Match};
+                {'ok', CIDMatch} ->
+                    lager:debug("resource ~s match number: ~s with regex match: ~s, and match caller id number rules: ~s", [Id, Number, Match, CIDMatch]),
+                    {'ok', Match};
+                {'error', 'no_match'} ->
+                    lager:debug("resource ~s does not match caller id number: ~s, skipping", [Id, CallerIdNumber]),
+                    {'error','no_match'}
+            end
     end.
 
 -spec update_ccvs(wh_json:object(), wh_proplist()) -> wh_json:object().
@@ -372,6 +407,14 @@ evaluate_rules([Rule|Rules], Number) ->
             {'ok', binary:part(Number, Start, End)};
         _ -> evaluate_rules(Rules, Number)
     end.
+
+-spec evaluate_cid_rules(re:mp(), ne_binary()) ->
+                            {'ok', ne_binary()} |
+                            {'ok', 'empty_rules'} | %% empty rules, it`s ok, allow any number
+                            {'error', 'no_match'}.
+evaluate_cid_rules([], _) -> {'ok','empty_rules'};
+evaluate_cid_rules(CIDRules, CIDNumber) -> evaluate_rules(CIDRules, CIDNumber).
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -408,7 +451,7 @@ gateway_to_endpoint(Number, Gateway, JObj) ->
          ,{<<"Codecs">>, Gateway#gateway.codecs}
          ,{<<"Auth-User">>, Gateway#gateway.username}
          ,{<<"Auth-Password">>, Gateway#gateway.password}
-         ,{<<"SIP-Headers">>, Gateway#gateway.sip_headers}
+         ,{<<"Custom-SIP-Headers">>, Gateway#gateway.sip_headers}
          ,{<<"SIP-Interface">>, Gateway#gateway.sip_interface}
          ,{<<"Endpoint-Type">>, Gateway#gateway.endpoint_type}
          ,{<<"Endpoint-Options">>, Gateway#gateway.endpoint_options}
@@ -458,11 +501,9 @@ get(AccountId) ->
 
 -spec get_resource(ne_binary()) -> resource() | 'undefined'.
 get_resource(ResourceId) ->
-    case wh_cache:fetch_local(?STEPSWITCH_CACHE, 'global_resources') of
-        {'ok', Resources} -> get_resource(ResourceId, Resources);
-        {'error', 'not_found'} ->
-            fetch_global_resources(),
-            get_resource(ResourceId)
+    case get('undefined') of
+        [] -> 'undefined';
+        Resources -> get_resource(ResourceId, Resources)
     end.
 
 get_resource(ResourceId, [#resrc{id=ResourceId}=Resource|_Resources]) ->
@@ -471,6 +512,13 @@ get_resource(ResourceId, [#resrc{}|Resources]) ->
     get_resource(ResourceId, Resources);
 get_resource(_ResourceId, []) ->
     'undefined'.
+
+-spec get_local_resource(ne_binary(), ne_binary()) -> resource() | 'undefined'.
+get_local_resource(ResourceId, AccountId) ->
+    case get(AccountId) of
+        [] -> 'undefined';
+        Resources -> get_resource(ResourceId, Resources)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -497,10 +545,8 @@ fetch_global_resources() ->
 -type wh_cache_props() :: [cache_property(),...] | [].
 
 -spec fetch_global_cache_origin(wh_json:objects(), wh_cache_props()) -> wh_cache_props().
-fetch_global_cache_origin([], Props) -> [{'type', <<"resource">>} | Props];
-fetch_global_cache_origin([JObj|JObjs], Props) ->
-    Id = wh_json:get_value(<<"id">>, JObj),
-    fetch_global_cache_origin(JObjs, [{'db', ?RESOURCES_DB, Id}|Props]).
+fetch_global_cache_origin(_JObjs, _Props) ->
+    [{'db', ?RESOURCES_DB, <<"resource">>}].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -553,7 +599,7 @@ create_resource(JObj, Resources) ->
     case wh_json:get_value(<<"classifiers">>, JObj) of
         'undefined' -> [resource_from_jobj(JObj) | Resources];
         ResourceClassifiers ->
-            ConfigClassifiers = wh_json:to_proplist(whapps_config:get_value(?CONFIG_CAT, <<"classifiers">>)),
+            ConfigClassifiers = wh_json:to_proplist(whapps_config:get(?CONFIG_CAT, <<"classifiers">>)),
             create_resource(wh_json:to_proplist(ResourceClassifiers), ConfigClassifiers, JObj, Resources)
     end.
 
@@ -599,6 +645,8 @@ resource_from_jobj(JObj) ->
                       ,fax_option=wh_json:is_true([<<"media">>, <<"fax_option">>], JObj)
                       ,raw_rules=wh_json:get_value(<<"rules">>, JObj, [])
                       ,rules=resource_rules(JObj)
+                      ,cid_raw_rules=wh_json:get_value(<<"cid_rules">>, JObj, [])
+                      ,cid_rules=resource_cid_rules(JObj)
                       ,weight=resource_weight(JObj)
                       ,grace_period=resource_grace_period(JObj)
                       ,is_emergency=resource_is_emergency(JObj)
@@ -650,6 +698,15 @@ resource_rules([Rule|Rules], CompiledRules) ->
             lager:warning("bad rule '~s': ~p", [Rule, _R]),
             resource_rules(Rules, CompiledRules)
     end.
+
+-spec resource_cid_rules(wh_json:object()) -> rules().
+resource_cid_rules(JObj) ->
+    lager:info("compiling resource rules for ~s / ~s"
+               ,[wh_json:get_value(<<"pvt_account_db">>, JObj, <<"offnet">>)
+                 ,wh_json:get_value(<<"_id">>, JObj)
+                ]),
+    Rules = wh_json:get_value(<<"cid_rules">>, JObj, []),
+    resource_rules(Rules, []).
 
 -spec resource_grace_period(wh_json:object() | integer()) -> 0..100.
 resource_grace_period(JObj) when not is_integer(JObj) ->
@@ -767,8 +824,26 @@ endpoint_options(JObj, <<"skype">>) ->
         [{<<"Skype-Interface">>, wh_json:get_value(<<"interface">>, JObj)}
          ,{<<"Skype-RR">>, wh_json:is_true(<<"skype_rr">>, JObj, true)}
         ]));
-endpoint_options(_, _) -> wh_json:new().
-
+endpoint_options(JObj, <<"amqp">>) ->
+    Server = wh_json:get_value(<<"server">>, JObj),
+    User = wh_json:get_value(<<"username">>, JObj),
+    Password = wh_json:get_value(<<"password">>, JObj),
+    Broker = <<"amqp://", User/binary, ":", Password/binary, "@", Server/binary>>,
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"AMQP-Broker">>, Broker}
+         ,{<<"Exchange-ID">>, wh_json:get_value(<<"amqp_exchange">>, JObj)}
+         ,{<<"Exchange-Type">>, wh_json:get_value(<<"amqp_exchange_type">>, JObj)}
+         ,{<<"Route-ID">>, wh_json:get_value(<<"route_id">>, JObj)}
+         ,{<<"System-ID">>, wh_json:get_value(<<"system_id">>, JObj)}
+        ]));
+endpoint_options(JObj, <<"sip">>) ->
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"Route-ID">>, wh_json:get_value(<<"route_id">>, JObj)}
+        ]));
+endpoint_options(_, _) -> wh_json:new().    
+    
 %%--------------------------------------------------------------------
 %% @private
 %% @doc

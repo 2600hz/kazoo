@@ -22,7 +22,7 @@ optionally, since we know E.164 is 15 max digits (including country code), it ca
     "^0(\\d{8,})$": {
         "prefix": "+62"
     },
-    "^+62(\\d{8,})$": {
+    "^\\+62(\\d{8,})$": {
         "prefix": "+62"
     }
 ```

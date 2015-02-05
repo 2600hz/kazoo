@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, VoIP INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -7,9 +7,9 @@
 %%%-------------------------------------------------------------------
 -module(conf_config_req).
 
--include("conference.hrl").
-
 -export([handle_req/2]).
+
+-include("conference.hrl").
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> any().
 handle_req(JObj, _Options) ->
@@ -18,10 +18,10 @@ handle_req(JObj, _Options) ->
     fetch_config(JObj, ConfigName).
 
 fetch_config(JObj, <<"default">> = ConfigName) ->
-    Config =  whapps_config:get(<<"conferences">>, [<<"profiles">>, ConfigName], wh_json:from_list(?DEFAULT_PROFILE_CONFIG)),
+    Config =  whapps_config:get(?CONFIG_CAT, [<<"profiles">>, ConfigName], wh_json:from_list(?DEFAULT_PROFILE_CONFIG)),
     fetch_config(JObj, ConfigName, Config);
 fetch_config(JObj, ConfigName) ->
-    Config =  whapps_config:get(<<"conferences">>, [<<"profiles">>, ConfigName]),
+    Config =  whapps_config:get(?CONFIG_CAT, [<<"profiles">>, ConfigName]),
     fetch_config(JObj, ConfigName, Config).
 
 fetch_config(_JObj, _ConfigName, 'undefined') ->
@@ -47,25 +47,25 @@ fetch_config(JObj, ConfigName, Profile) ->
     end.
 
 caller_controls(<<"default">> = ConfigName) ->
-    caller_controls(ConfigName, whapps_config:get(<<"conferences">>, [<<"caller-controls">>, ConfigName], ?DEFAULT_CALLER_CONTROLS_CONFIG));
+    caller_controls(ConfigName, whapps_config:get(?CONFIG_CAT, [<<"caller-controls">>, ConfigName], ?DEFAULT_CALLER_CONTROLS_CONFIG));
 caller_controls(ConfigName) ->
-    caller_controls(ConfigName, whapps_config:get(<<"conferences">>, [<<"caller-controls">>, ConfigName])).
+    caller_controls(ConfigName, whapps_config:get(?CONFIG_CAT, [<<"caller-controls">>, ConfigName])).
 
 caller_controls(_ConfigName, 'undefined') -> 'undefined';
 caller_controls(ConfigName, Controls) ->
     wh_json:from_list([{ConfigName, Controls}]).
 
 advertise(<<"default">> = ConfigName) ->
-    advertise(ConfigName, whapps_config:get(<<"conferences">>, [<<"advertise">>, ConfigName], ?DEFAULT_ADVERTISE_CONFIG));
+    advertise(ConfigName, whapps_config:get(?CONFIG_CAT, [<<"advertise">>, ConfigName], ?DEFAULT_ADVERTISE_CONFIG));
 advertise(ConfigName) ->
-    advertise(ConfigName, whapps_config:get(<<"conferences">>, [<<"advertise">>, ConfigName])).
+    advertise(ConfigName, whapps_config:get(?CONFIG_CAT, [<<"advertise">>, ConfigName])).
 
 advertise(_ConfigName, 'undefined') -> 'undefined';
 advertise(ConfigName, Advertise) -> wh_json:from_list([{ConfigName, Advertise}]).
 
 chat_permissions(<<"default">> = ConfigName) ->
-    chat_permissions(ConfigName, whapps_config:get(<<"conferences">>, [<<"chat-permissions">>, ConfigName], ?DEFAULT_CHAT_CONFIG));
+    chat_permissions(ConfigName, whapps_config:get(?CONFIG_CAT, [<<"chat-permissions">>, ConfigName], ?DEFAULT_CHAT_CONFIG));
 chat_permissions(ConfigName) ->
-    chat_permissions(ConfigName, whapps_config:get(<<"conferences">>, [<<"chat-permissions">>, ConfigName])).
+    chat_permissions(ConfigName, whapps_config:get(?CONFIG_CAT, [<<"chat-permissions">>, ConfigName])).
 chat_permissions(_ConfigName, 'undefined') -> 'undefined';
 chat_permissions(ConfigName, Chat) -> wh_json:from_list([{ConfigName, Chat}]).

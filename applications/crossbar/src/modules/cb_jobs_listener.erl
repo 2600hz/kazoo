@@ -37,6 +37,8 @@
         ,whapps_config:get_integer(?MOD_CONFIG_CAT, <<"job_recovery_threshold_s">>, ?SECONDS_IN_HOUR)
        ).
 
+-define(KEY_SUCCESS, <<"success">>).
+
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'delegate', [{'app_name', ?APP_ROUTING}]}]).
 -define(RESPONDERS, [{{?MODULE, 'handle_job'}
@@ -145,7 +147,7 @@ select_carrier_module(Job) ->
 -spec maybe_create_number(wh_json:object(), ne_binary(), ne_binary(), api_binary(), ne_binary()) ->
                                  wh_json:object().
 maybe_create_number(Job, AccountId, AuthAccountId, CarrierModule, Number) ->
-    case wh_json:get_first_defined([[<<"success">>, Number]
+    case wh_json:get_first_defined([[?KEY_SUCCESS, Number]
                                     ,[<<"errors">>, Number]
                                    ], Job)
     of
@@ -168,7 +170,7 @@ create_number(Job, AccountId, AuthAccountId, CarrierModule, Number) ->
     of
         {'ok', NumberJObj} ->
             lager:debug("successfully created number ~s for account ~s", [Number, AccountId]),
-            update_status(wh_json:set_value([<<"success">>, Number], NumberJObj, Job)
+            update_status(wh_json:set_value([?KEY_SUCCESS, Number], NumberJObj, Job)
                           ,<<"running">>
                          );
         {Failure, JObj} ->

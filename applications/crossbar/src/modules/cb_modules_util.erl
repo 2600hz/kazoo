@@ -16,8 +16,10 @@
 
          ,attachment_name/2
          ,content_type_to_extension/1
+         ,parse_media_type/1
 
          ,bucket_name/1
+         ,token_cost/1, token_cost/2
          ,reconcile_services/1
          ,bind/2
 
@@ -26,7 +28,11 @@
 
 -include("../crossbar.hrl").
 
--define(MAX_RANGE, whapps_config:get_integer(?CONFIG_CAT, <<"maximum_range">>, (?SECONDS_IN_DAY * 31))).
+-define(MAX_RANGE, whapps_config:get_integer(?CONFIG_CAT
+                                             ,<<"maximum_range">>
+                                             ,(?SECONDS_IN_DAY * 31 + ?SECONDS_IN_HOUR)
+                                            )
+       ).
 
 -spec range_view_options(cb_context:context()) ->
                                 {pos_integer(), pos_integer()} |
@@ -106,8 +112,8 @@ reconcile_services(Context) ->
 -spec pass_hashes(ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
 pass_hashes(Username, Password) ->
     Creds = list_to_binary([Username, ":", Password]),
-    SHA1 = wh_util:to_hex_binary(crypto:sha(Creds)),
-    MD5 = wh_util:to_hex_binary(erlang:md5(Creds)),
+    SHA1 = wh_util:to_hex_binary(crypto:hash(sha, Creds)),
+    MD5 = wh_util:to_hex_binary(crypto:hash(md5, Creds)),
     {MD5, SHA1}.
 
 -spec update_mwi(api_binary(), ne_binary()) -> pid().
@@ -151,60 +157,64 @@ maybe_originate_quickcall(Context) ->
 
 -spec create_call_from_context(cb_context:context()) -> whapps_call:call().
 create_call_from_context(Context) ->
-    Routines = [fun(C) -> whapps_call:set_account_db(cb_context:account_db(Context), C) end
-                ,fun(C) -> whapps_call:set_account_id(cb_context:account_id(Context), C) end
-                ,fun(C) ->
-                         case wh_json:get_ne_value(<<"owner_id">>, cb_context:doc(Context)) of
-                             'undefined' -> C;
-                             OwnerId -> whapps_call:set_owner_id(OwnerId, C)
-                         end
-                 end
-                | request_specific_extraction_funs(Context)
-               ],
-    lists:foldl(fun(F, C) -> F(C) end, whapps_call:new(), Routines).
+    Routines =
+        props:filter_undefined(
+          [{fun whapps_call:set_account_db/2, cb_context:account_db(Context)}
+           ,{fun whapps_call:set_account_id/2, cb_context:account_id(Context)}
+           ,{fun whapps_call:set_owner_id/2, wh_json:get_ne_value(<<"owner_id">>, cb_context:doc(Context))}
+           | request_specific_extraction_funs(Context)
+          ]),
+    whapps_call:exec(Routines, whapps_call:new()).
 
--spec request_specific_extraction_funs(cb_context:context()) -> [function(),...] | [].
--spec request_specific_extraction_funs_from_nouns(req_nouns()) -> [function(),...] | [].
+-spec request_specific_extraction_funs(cb_context:context()) -> functions().
+-spec request_specific_extraction_funs_from_nouns(cb_context:context(), req_nouns()) -> functions().
 request_specific_extraction_funs(Context) ->
-    request_specific_extraction_funs_from_nouns(cb_context:req_nouns(Context)).
+    request_specific_extraction_funs_from_nouns(Context, cb_context:req_nouns(Context)).
 
-request_specific_extraction_funs_from_nouns(?DEVICES_QCALL_NOUNS) ->
-    [fun(C) -> whapps_call:set_authorizing_id(_DeviceId, C) end
-     ,fun(C) -> whapps_call:set_authorizing_type(<<"device">>, C) end
-     ,fun(C) -> whapps_call:set_request(<<_Number/binary, "@devicequickcall">>, C) end
-     ,fun(C) -> whapps_call:set_to(<<_Number/binary, "@devicequickcall">>, C) end
+request_specific_extraction_funs_from_nouns(Context, ?DEVICES_QCALL_NOUNS(DeviceId, Number)) ->
+    NumberURI = build_number_uri(Context, Number),
+    [{fun whapps_call:set_authorizing_id/2, DeviceId}
+     ,{fun whapps_call:set_authorizing_type/2, <<"device">>}
+     ,{fun whapps_call:set_request/2, NumberURI}
+     ,{fun whapps_call:set_to/2, NumberURI}
     ];
-request_specific_extraction_funs_from_nouns(?USERS_QCALL_NOUNS) ->
-    [fun(C) -> whapps_call:set_authorizing_id(_UserId, C) end
-     ,fun(C) -> whapps_call:set_authorizing_type(<<"user">>, C) end
-     ,fun(C) -> whapps_call:set_request(<<_Number/binary, "@userquickcall">>, C) end
-     ,fun(C) -> whapps_call:set_to(<<_Number/binary, "@userquickcall">>, C) end
+request_specific_extraction_funs_from_nouns(Context, ?USERS_QCALL_NOUNS(UserId, Number)) ->
+    NumberURI = build_number_uri(Context, Number),
+    [{fun whapps_call:set_authorizing_id/2, UserId}
+     ,{fun whapps_call:set_authorizing_type/2, <<"user">>}
+     ,{fun whapps_call:set_request/2, NumberURI}
+     ,{fun whapps_call:set_to/2, NumberURI}
     ];
-request_specific_extraction_funs_from_nouns(_ReqNouns) ->
+request_specific_extraction_funs_from_nouns(_Context, _ReqNouns) ->
     [].
+
+-spec build_number_uri(cb_context:context(), ne_binary()) -> ne_binary().
+build_number_uri(Context, Number) ->
+    Realm = wh_util:get_account_realm(cb_context:account_id(Context)),
+    <<Number/binary, "@", Realm/binary>>.
 
 -spec get_endpoints(whapps_call:call(), cb_context:context()) -> wh_json:objects().
 -spec get_endpoints(whapps_call:call(), cb_context:context(), req_nouns()) -> wh_json:objects().
 get_endpoints(Call, Context) ->
     get_endpoints(Call, Context, cb_context:req_nouns(Context)).
 
-get_endpoints(Call, Context, ?DEVICES_QCALL_NOUNS) ->
+get_endpoints(Call, Context, ?DEVICES_QCALL_NOUNS(_DeviceId, Number)) ->
     Properties = wh_json:from_list([{<<"can_call_self">>, 'true'}
                                     ,{<<"suppress_clid">>, 'true'}
                                     ,{<<"source">>, 'cb_devices'}
                                    ]),
-    case cf_endpoint:build(cb_context:doc(Context), Properties, aleg_cid(_Number, Call)) of
+    case cf_endpoint:build(cb_context:doc(Context), Properties, aleg_cid(Number, Call)) of
         {'error', _} -> [];
         {'ok', []} -> [];
         {'ok', Endpoints} -> Endpoints
     end;
-get_endpoints(Call, _Context, ?USERS_QCALL_NOUNS) ->
+get_endpoints(Call, _Context, ?USERS_QCALL_NOUNS(_UserId, Number)) ->
     Properties = wh_json:from_list([{<<"can_call_self">>, 'true'}
                                     ,{<<"suppress_clid">>, 'true'}
                                     ,{<<"source">>, 'cb_users'}
                                    ]),
     lists:foldr(fun(EndpointId, Acc) ->
-                        case cf_endpoint:build(EndpointId, Properties, aleg_cid(_Number, Call)) of
+                        case cf_endpoint:build(EndpointId, Properties, aleg_cid(Number, Call)) of
                             {'ok', Endpoint} -> Endpoint ++ Acc;
                             {'error', _E} -> Acc
                         end
@@ -273,10 +283,10 @@ maybe_auto_answer(Endpoints) ->
 get_application_data(Context) ->
     get_application_data_from_nouns(cb_context:req_nouns(Context)).
 
-get_application_data_from_nouns(?DEVICES_QCALL_NOUNS) ->
-    wh_json:from_list([{<<"Route">>, _Number}]);
-get_application_data_from_nouns(?USERS_QCALL_NOUNS) ->
-    wh_json:from_list([{<<"Route">>, _Number}]);
+get_application_data_from_nouns(?DEVICES_QCALL_NOUNS(_DeviceId, Number)) ->
+    wh_json:from_list([{<<"Route">>, Number}]);
+get_application_data_from_nouns(?USERS_QCALL_NOUNS(_UserId, Number)) ->
+    wh_json:from_list([{<<"Route">>, Number}]);
 get_application_data_from_nouns(_Nouns) ->
     wh_json:from_list([{<<"Route">>, <<"0">>}]).
 
@@ -386,7 +396,19 @@ content_type_to_extension(<<"audio/mpeg3">>) -> <<"mp3">>;
 content_type_to_extension(<<"audio/mp3">>) -> <<"mp3">>;
 content_type_to_extension(<<"audio/ogg">>) -> <<"ogg">>;
 content_type_to_extension(<<"application/x-pdf">>) -> <<"pdf">>;
-content_type_to_extension(<<"application/pdf">>) -> <<"pdf">>.
+content_type_to_extension(<<"application/pdf">>) -> <<"pdf">>;
+content_type_to_extension(<<"image/jpg">>) -> <<"jpg">>;
+content_type_to_extension(<<"image/jpeg">>) -> <<"jpg">>;
+content_type_to_extension(<<"image/png">>) -> <<"png">>;
+content_type_to_extension(<<"image/gif">>) -> <<"gif">>;
+content_type_to_extension(<<"text/html">>) -> <<"html">>;
+content_type_to_extension(<<"text/plain">>) -> <<"txt">>.
+
+-spec parse_media_type(ne_binary()) ->
+                              {'error', 'badarg'} |
+                              media_values().
+parse_media_type(MediaType) ->
+    cowboy_http:nonempty_list(MediaType, fun cowboy_http:media_range/2).
 
 -spec bucket_name(cb_context:context()) -> ne_binary().
 -spec bucket_name(api_binary(), api_binary()) -> ne_binary().
@@ -403,3 +425,61 @@ bucket_name('undefined', AccountId) ->
     <<"no_ip/", AccountId/binary>>;
 bucket_name(IP, AccountId) ->
     <<IP/binary, "/", AccountId/binary>>.
+
+-spec token_cost(cb_context:context()) -> non_neg_integer().
+-spec token_cost(cb_context:context(), non_neg_integer() | wh_json:key() | wh_json:keys()) -> non_neg_integer().
+-spec token_cost(cb_context:context(), non_neg_integer(), wh_json:keys()) -> non_neg_integer().
+
+token_cost(Context) ->
+    token_cost(Context, 1).
+
+token_cost(Context, <<_/binary>> = Suffix) ->
+    token_cost(Context, 1, [Suffix]);
+token_cost(Context, [_|_]=Suffix) ->
+    token_cost(Context, 1, Suffix);
+token_cost(Context, Default) ->
+    token_cost(Context, Default, []).
+
+token_cost(Context, Default, Suffix) when is_integer(Default), Default >= 0 ->
+    Costs = whapps_config:get(?CONFIG_CAT, <<"token_costs">>, 1),
+    find_token_cost(Costs
+                    ,Default
+                    ,Suffix
+                    ,cb_context:req_nouns(Context)
+                    ,cb_context:req_verb(Context)
+                    ,cb_context:account_id(Context)
+                   ).
+
+-spec find_token_cost(wh_json:object() | non_neg_integer()
+                      ,non_neg_integer()
+                      ,wh_json:keys()
+                      ,req_nouns()
+                      ,http_method()
+                      ,api_binary()
+                     ) ->
+                             non_neg_integer().
+
+find_token_cost(N, _Default, _Suffix, _Nouns, _ReqVerb, _AccountId) when is_integer(N) ->
+    lager:debug("flat token cost of ~p configured", [N]),
+    N;
+find_token_cost(JObj, Default, Suffix, [{Endpoint, _} | _], ReqVerb, 'undefined') ->
+    Keys = [[Endpoint, ReqVerb | Suffix]
+            ,[Endpoint | Suffix]
+           ],
+    get_token_cost(JObj, Default, Keys);
+find_token_cost(JObj, Default, Suffix, [{Endpoint, _}|_], ReqVerb, AccountId) ->
+    Keys = [[AccountId, Endpoint, ReqVerb | Suffix]
+            ,[AccountId, Endpoint | Suffix]
+            ,[AccountId | Suffix]
+            ,[Endpoint, ReqVerb | Suffix]
+            ,[Endpoint | Suffix]
+           ],
+    get_token_cost(JObj, Default, Keys).
+
+-spec get_token_cost(wh_json:object(), non_neg_integer(), wh_json:keys()) ->
+                            non_neg_integer().
+get_token_cost(JObj, Default, Keys) ->
+    case wh_json:get_first_defined(Keys, JObj) of
+        'undefined' -> Default;
+        V -> wh_util:to_integer(V)
+    end.

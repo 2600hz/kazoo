@@ -574,11 +574,11 @@ props_to_update(Props) ->
                             ,{#channel.from_tag, props:get_value(<<"variable_sip_from_tag">>, Props)}
                            ]).
 
--spec get_other_leg(api_binary(), wh_proplist()) -> api_binary().
+-spec get_other_leg(ne_binary(), wh_proplist()) -> api_binary().
 get_other_leg(UUID, Props) ->
     get_other_leg_name(UUID, Props, props:get_value(<<"Other-Leg-Channel-Name">>, Props)).
 
--spec get_other_leg_name(api_binary(), wh_proplist(), ne_binary()) -> api_binary().
+-spec get_other_leg_name(ne_binary(), wh_proplist(), ne_binary()) -> api_binary().
 get_other_leg_name(UUID, Props, <<"loopback/", _/binary>>) ->
     %% loopback channel, use channel var BridgeId
     get_other_leg(UUID, Props, props:get_value(?GET_CCV(<<"Bridge-ID">>), Props));
@@ -588,7 +588,7 @@ get_other_leg_name(UUID, Props, _ChannelName) ->
                                                         ,<<"variable_origination_uuid">>
                                                        ], Props)).
 
--spec get_other_leg(api_binary(), wh_proplist(), api_binary()) -> api_binary().
+-spec get_other_leg(ne_binary(), wh_proplist(), api_binary()) -> api_binary().
 get_other_leg(UUID, Props, 'undefined') ->
     maybe_other_bridge_leg(UUID
                            ,Props
@@ -597,7 +597,7 @@ get_other_leg(UUID, Props, 'undefined') ->
                           );
 get_other_leg(_UUID, _Props, OtherLeg) -> OtherLeg.
 
--spec maybe_other_bridge_leg(api_binary(), wh_proplist(), ne_binary(), ne_binary()) -> api_binary().
+-spec maybe_other_bridge_leg(ne_binary(), wh_proplist(), ne_binary(), ne_binary()) -> api_binary().
 maybe_other_bridge_leg(UUID, _Props, UUID, OtherLeg) -> OtherLeg;
 maybe_other_bridge_leg(UUID, _Props, OtherLeg, UUID) -> OtherLeg;
 maybe_other_bridge_leg(UUID, Props, _, _) ->

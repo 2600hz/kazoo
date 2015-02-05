@@ -85,6 +85,7 @@ rate_resp(Rate, JObj) ->
     RateSurcharge = get_surcharge(Rate),
     RateMinimum = wh_json:get_integer_value(<<"rate_minimum">>, Rate, 60),
     BaseCost = wht_util:base_call_cost(RateCost, RateMinimum, RateSurcharge),
+    PrivateCost = get_private_cost(Rate),
     lager:debug("base cost for a minute call: ~p", [BaseCost]),
     UpdateCalleeId = maybe_update_callee_id(JObj),
     [{<<"Rate">>, wh_util:to_binary(RateCost)}
@@ -95,6 +96,8 @@ rate_resp(Rate, JObj) ->
      ,{<<"Rate-Name">>, wh_json:get_binary_value(<<"rate_name">>, Rate)}
      ,{<<"Rate-ID">>, wh_json:get_binary_value(<<"rate_id">>, Rate)}
      ,{<<"Base-Cost">>, wh_util:to_binary(BaseCost)}
+     ,{<<"Pvt-Cost">>, wh_util:to_binary(PrivateCost)}
+     ,{<<"Rate-NoCharge-Time">>, wh_json:get_binary_value(<<"rate_nocharge_time">>, Rate)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
      ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
      ,{<<"Update-Callee-ID">>, UpdateCalleeId}
@@ -109,6 +112,11 @@ get_surcharge(Rate) ->
 -spec get_rate_cost(wh_json:object()) -> integer().
 get_rate_cost(Rate) ->
     Cost = wh_json:get_float_value(<<"rate_cost">>, Rate, 0.0),
+    wht_util:dollars_to_units(Cost).
+
+-spec get_private_cost(wh_json:object()) -> integer().
+get_private_cost(Rate) ->
+    Cost = wh_json:get_float_value(<<"pvt_internal_rate_cost">>, Rate, 0.0),
     wht_util:dollars_to_units(Cost).
 
 -spec maybe_update_callee_id(wh_json:object()) -> boolean().

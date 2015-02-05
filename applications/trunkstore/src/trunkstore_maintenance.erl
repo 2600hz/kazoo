@@ -11,7 +11,7 @@
 -export([migrate/0
          ,i_understand_migrate/0
          ,clear_old_calls/0
-         ,classifier_allow/2
+         ,classifier_inherit/2
          ,classifier_deny/2
          ,flush/0, flush/1
         ]).
@@ -177,10 +177,10 @@ clear_old_calls(Super) ->
     ].
 
 %%
-%% Usage example: sup trunkstore_maintenance classifier_allow international pbx_username@realm.domain.tld
+%% Usage example: sup trunkstore_maintenance classifier_inherit international pbx_username@realm.domain.tld
 %%
-classifier_allow(Classifier, UserR) ->
-    set_classifier_action(<<"allow">>, Classifier, UserR).
+classifier_inherit(Classifier, UserR) ->
+    set_classifier_action(<<"inherit">>, Classifier, UserR).
 
 %%
 %% Usage example: sup trunkstore_maintenance classifier_deny international pbx_username@realm.domain.tld

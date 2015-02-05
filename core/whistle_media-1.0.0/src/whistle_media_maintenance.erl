@@ -87,7 +87,7 @@ import_prompt(Path) ->
 import_prompt(Path, Lang) ->
     couch_mgr:db_create(?WH_MEDIA_DB),
     timer:sleep(250),
-	case file:read_file(Path) of
+    case file:read_file(Path) of
         {'ok', Contents} ->
             io:format("importing prompt '~s' with language '~s'~n", [Path, Lang]),
             import_prompt(Path, Lang, Contents);
@@ -247,15 +247,27 @@ migrate_node_config(Node, Settings, MediaJObj, [{K, V} | KVs]) ->
             migrate_node_config(Node, Settings, maybe_update_media_config(Node, K, V, MediaJObj), KVs);
         NodeV ->
             io:format("  maybe setting ~p for node ~p to '~p'~n", [K, Node, NodeV]),
-            migrate_node_config(Node, Settings, wh_json:set_value([Node, K], NodeV, MediaJObj), KVs)
+
+            migrate_node_config(Node, Settings, set_node_value(Node, K, NodeV, MediaJObj), KVs)
     end.
 
--spec maybe_update_media_config(ne_binary(), ne_binary(), api_binary(), wh_json:object()) -> wh_json:object().
+-spec set_node_value(ne_binary(), ne_binary() | ne_binaries(), ne_binary(), wh_json:object()) ->
+                            wh_json:object().
+set_node_value(Node, <<_/binary>> = K, V, MediaJObj) ->
+    set_node_value(Node, [K], V, MediaJObj);
+set_node_value(Node, K, V, MediaJObj) ->
+    wh_json:set_value([Node | K], V, MediaJObj).
+
+
+-spec maybe_update_media_config(ne_binary(), ne_binary() | ne_binaries(), api_binary(), wh_json:object()) ->
+                                       wh_json:object().
 maybe_update_media_config(_Node, _K, 'undefined', MediaJObj) ->
     io:format("    no value to set for ~p~n", [_K]),
     MediaJObj;
+maybe_update_media_config(Node, <<_/binary>> = K, V, MediaJObj) ->
+    maybe_update_media_config(Node, [K], V, MediaJObj);
 maybe_update_media_config(Node, K, V, MediaJObj) ->
-    Key = [Node, K],
+    Key = [Node | K],
     case wh_json:get_value(Key, MediaJObj) of
         'undefined' -> wh_json:set_value(Key, V, MediaJObj);
         V ->

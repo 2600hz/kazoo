@@ -761,7 +761,7 @@ start_control_process(#state{originate_req=JObj
                              ,fetch_id=FetchId
                              ,control_pid='undefined'
                             }=State) ->
-    case ecallmgr_call_sup:start_control_process(Node, Id, FetchId) of
+    case ecallmgr_call_sup:start_control_process(Node, Id, FetchId, ServerId, wh_json:new()) of
         {'ok', CtrlPid} when is_pid(CtrlPid) ->
             CtrlQ = ecallmgr_call_control:queue_name(CtrlPid),
             _ = publish_originate_uuid(ServerId, UUID, JObj, CtrlQ),

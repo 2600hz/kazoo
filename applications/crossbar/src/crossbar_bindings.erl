@@ -44,7 +44,7 @@
                    cb_context:context() |
                    {cb_context:context(), wh_proplist()} | % v1_resource:rest_init/2
                    {'error', _} | % v1_util:execute_request/2
-                   {wh_json:json_strings(), cb_context:context(), path_tokens()} |
+                   {wh_json:keys(), cb_context:context(), path_tokens()} |
                    {wh_datetime(), cowboy_req:req(), cb_context:context()} | % v1_resource:expires/2
                    {cowboy_req:req(), cb_context:context()}. % mapping over the request/context records
 
@@ -95,9 +95,9 @@ all(Res) when is_list(Res) ->
 -spec succeeded(map_results()) -> map_results().
 succeeded(Res) when is_list(Res) ->
     Successes = kazoo_bindings:succeeded(Res, fun filter_out_failed/1),
-    case lists:keyfind('halt', 1, Successes) of
-        'false' -> Successes;
-        {'value', HaltTuple} -> [HaltTuple]
+    case props:get_value('halt', Successes) of
+        'undefined' -> Successes;
+        HaltContext -> [{'halt', HaltContext}]
     end.
 
 -spec failed(map_results()) -> map_results().
@@ -179,6 +179,7 @@ modules_loaded() ->
               is_cb_module(Mod)
       ]).
 
+-spec is_cb_module(ne_binary() | atom()) -> boolean().
 is_cb_module(<<"cb_", _/binary>>) -> 'true';
 is_cb_module(<<"crossbar_", _binary>>) -> 'true';
 is_cb_module(<<_/binary>>) -> 'false';
@@ -190,27 +191,32 @@ init() ->
 
     put('callid', ?LOG_SYSTEM_ID),
     _ = [maybe_init_mod(Mod)
-         || Mod <- whapps_config:get(?CONFIG_CAT, <<"autoload_modules">>, ?DEFAULT_MODULES)
+         || Mod <- crossbar_config:autoload_modules(?DEFAULT_MODULES)
     ],
     'ok'.
 
-maybe_init_mod(ModBin) ->
-    try (wh_util:to_atom(ModBin, 'true')):init() of
+-spec maybe_init_mod(ne_binary() | atom()) -> 'ok'.
+maybe_init_mod(Mod) ->
+    try (wh_util:to_atom(Mod, 'true')):init() of
         _ -> 'ok'
     catch
         _E:_R ->
-            lager:notice("failed to initialize ~s: ~p, ~p. Trying other versions...", [ModBin, _E, _R]),
-            maybe_init_mod_versions(?VERSION_SUPPORTED, ModBin)
+            lager:notice("failed to initialize ~s: ~p (trying other versions)", [Mod, _R]),
+            maybe_init_mod_versions(?VERSION_SUPPORTED, Mod)
     end.
 
+-spec maybe_init_mod_versions(ne_binaries(), ne_binary() | atom()) -> 'ok'.
 maybe_init_mod_versions([], _) -> 'ok';
-maybe_init_mod_versions([Version|Versions], ModBin) ->
-    Module = <<(wh_util:to_binary(ModBin))/binary
-               , "_", (wh_util:to_binary(Version))/binary>>,
+maybe_init_mod_versions([Version|Versions], Mod) ->
+    Module = <<(wh_util:to_binary(Mod))/binary
+               , "_", (wh_util:to_binary(Version))/binary
+             >>,
     try (wh_util:to_atom(Module, 'true')):init() of
-        _ -> maybe_init_mod_versions(Versions, ModBin)
+        _ ->
+            lager:notice("module ~s version ~s successfully loaded", [Mod, Version]),
+            maybe_init_mod_versions(Versions, Mod)
     catch
         _E:_R ->
-            lager:notice("failed to initialize ~s: ~p, ~p", [Module, _E, _R]),
-            maybe_init_mod_versions(Versions, ModBin)
+            lager:warning("failed to initialize module ~s version ~s: ~p", [Mod, Version, _R]),
+            maybe_init_mod_versions(Versions, Mod)
     end.

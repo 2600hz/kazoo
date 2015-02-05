@@ -17,8 +17,8 @@
 
 -define(RATE_VARS, [<<"Rate">>, <<"Rate-Increment">>
                     ,<<"Rate-Minimum">>, <<"Surcharge">>
-                    ,<<"Rate-Name">>, <<"Base-Cost">>
-                    ,<<"Discount-Percentage">>
+                    ,<<"Rate-Name">>, <<"Base-Cost">>, <<"Pvt-Cost">>
+                    ,<<"Discount-Percentage">>, <<"Rate-NoCharge-Time">>
                    ]).
 
 -spec authorize(wh_proplist(), ne_binary(), atom()) -> boolean().
@@ -231,15 +231,36 @@ maybe_deny_call(Props, CallId, Node) ->
 rate_channel(Props, Node) ->
     CallId = props:get_value(<<"Unique-ID">>, Props),
     put('callid', CallId),
-
+    Direction = props:get_binary_value(<<"Call-Direction">>, Props),
     ReqResp = wh_amqp_worker:call(rating_req(CallId, Props)
                                   ,fun wapi_rate:publish_req/1
                                   ,fun wapi_rate:resp_v/1
-                                  ,10000
+                                  %% get inbound_rate_resp_timeout or outbound_rate_resp_timeout
+                                  ,ecallmgr_config:get_integer(<<Direction/binary, "_rate_resp_timeout">>, 10000)
                                  ),
     case ReqResp of
-        {'error', _R} -> lager:debug("rate request lookup failed: ~p", [_R]);
+        {'error', _R} ->
+            lager:debug("rate request lookup failed: ~p", [_R]),
+            %%  Disconnect only per_minute channels
+            AccountBilling = props:get_binary_value(?GET_CCV(<<"Account-Billing">>), Props),
+            ResellerBilling = props:get_binary_value(?GET_CCV(<<"Reseller-Billing">>), Props),
+            case AccountBilling =:= <<"per_minute">>
+                orelse ResellerBilling =:= <<"per_minute">>
+            of
+                'true' -> maybe_kill_unrated_channel(Props, Node, Direction);
+                _ -> 'ok'
+            end;
         {'ok', RespJObj} -> set_rating_ccvs(RespJObj, Node)
+    end.
+
+-spec maybe_kill_unrated_channel(wh_proplist(), atom(), ne_binary()) -> 'ok'.
+maybe_kill_unrated_channel(Props, Node, Direction) ->
+    %% get inbound_rate_required or outbound_rate_required
+    case ecallmgr_config:get_boolean(<<Direction/binary, "_rate_required">>, 'false') of
+        'true' ->
+            lager:debug("rate is mandatory for ~s call, killing this channel", [Direction]),
+            kill_channel(Props, Node);
+        _ -> 'ok'
     end.
 
 -spec authz_default(wh_proplist(), ne_binary(), atom()) -> {'ok', ne_binary()} | boolean().

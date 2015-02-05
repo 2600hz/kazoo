@@ -44,6 +44,8 @@
 -include_lib("whistle/src/api/wapi_dialplan.hrl").
 -include("ecallmgr.hrl").
 
+-define(HTTP_GET_PREFIX, "http_cache://").
+
 -type send_cmd_ret() :: fs_sendmsg_ret() | fs_api_ret().
 -export_type([send_cmd_ret/0]).
 
@@ -248,20 +250,6 @@ custom_channel_vars(Props, Initial) ->
                         [{<<"Referred-By">>, wh_util:to_binary(mochiweb_util:unquote(V))} | Acc];
                    ({<<"variable_sip_refer_to">>, V}, Acc) ->
                         [{<<"Referred-To">>, wh_util:to_binary(mochiweb_util:unquote(V))} | Acc];
-                   ({<<"variable_sip_h_Diversion">>, V}, Acc) ->
-                        try kzsip_diversion:from_binary(wh_util:to_binary(mochiweb_util:unquote(V))) of
-                            Diversion ->
-                                Diversions = props:get_value(<<"Diversions">>, Acc, []),
-                                props:set_value(<<"Diversions">>
-                                                ,[Diversion | Diversions]
-                                                ,Acc
-                                               )
-                        catch
-                            _E:_R ->
-                                lager:warning("failed to process diversion header: ~s", [V]),
-                                lager:warning("~s: ~p", [_E, _R]),
-                                Acc
-                        end;
                    (_, Acc) -> Acc
                 end, Initial, Props).
 
@@ -331,6 +319,7 @@ get_fs_kv(Key, Val, _) ->
 get_fs_key_and_value(<<"Hold-Media">>, Media, UUID) ->
     {<<"hold_music">>, media_path(Media, 'extant', UUID, wh_json:new())};
 get_fs_key_and_value(<<"Diversion">>, DiversionJObj, _UUID) ->
+    lager:debug("setting diversion header to ~s", [kzsip_diversion:to_binary(DiversionJObj)]),
     {<<"sip_h_Diversion">>, kzsip_diversion:to_binary(DiversionJObj)};
 get_fs_key_and_value(Key, Val, _UUID) when is_binary(Val) ->
     case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
@@ -348,13 +337,13 @@ get_fs_key_and_value(_, _, _) -> 'skip'.
 %%--------------------------------------------------------------------
 -spec maybe_sanitize_fs_value(text(), text()) -> binary().
 maybe_sanitize_fs_value(<<"Outbound-Caller-ID-Name">>, Val) ->
-    re:replace(Val, <<"[^a-zA-Z0-9\s]">>, <<>>, ['global', {'return', 'binary'}]);
+    re:replace(Val, <<"[^a-zA-Z0-9-\s]">>, <<>>, ['global', {'return', 'binary'}]);
 maybe_sanitize_fs_value(<<"Outbound-Callee-ID-Name">>, Val) ->
-    re:replace(Val, <<"[^a-zA-Z0-9\s]">>, <<>>, ['global', {'return', 'binary'}]);
+    re:replace(Val, <<"[^a-zA-Z0-9-\s]">>, <<>>, ['global', {'return', 'binary'}]);
 maybe_sanitize_fs_value(<<"Caller-ID-Name">>, Val) ->
-    re:replace(Val, <<"[^a-zA-Z0-9\s]">>, <<>>, ['global', {'return', 'binary'}]);
+    re:replace(Val, <<"[^a-zA-Z0-9-\s]">>, <<>>, ['global', {'return', 'binary'}]);
 maybe_sanitize_fs_value(<<"Callee-ID-Name">>, Val) ->
-    re:replace(Val, <<"[^a-zA-Z0-9\s]">>, <<>>, ['global', {'return', 'binary'}]);
+    re:replace(Val, <<"[^a-zA-Z0-9-\s]">>, <<>>, ['global', {'return', 'binary'}]);
 maybe_sanitize_fs_value(Key, Val) when not is_binary(Key) ->
     maybe_sanitize_fs_value(wh_util:to_binary(Key), Val);
 maybe_sanitize_fs_value(Key, Val) when not is_binary(Val) ->
@@ -482,7 +471,7 @@ bridge_export(Node, UUID, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -type bridge_channel() :: ne_binary().
--type bridge_channels() :: [] | [bridge_channel(),...].
+-type bridge_channels() :: ne_binaries().
 -type build_return() :: bridge_channel() | {'worker', pid()}.
 -type build_returns() :: [build_return(),...] | [].
 -type bridge_endpoints() :: [bridge_endpoint(),...] | [].
@@ -616,11 +605,13 @@ build_bridge_channels([Endpoint|Endpoints], Channels) ->
     end;
 %% wait for any registration lookups to complete
 build_bridge_channels([], IntermediateResults) ->
-    lists:foldr(fun({'worker', Pid}, Channels) ->
-                        maybe_collect_worker_channel(Pid, Channels);
-                 (Channel, Channels) ->
-                        [Channel|Channels]
-                end, [], IntermediateResults).
+    lists:foldr(fun intermediate_results_fold/2, [], IntermediateResults).
+
+-spec intermediate_results_fold(build_return(), bridge_channels()) -> bridge_channels().
+intermediate_results_fold({'worker', Pid}, Channels) ->
+    maybe_collect_worker_channel(Pid, Channels);
+intermediate_results_fold(Channel, Channels) ->
+    [Channel|Channels].
 
 -spec maybe_collect_worker_channel(pid(), bridge_channels()) -> bridge_channels().
 maybe_collect_worker_channel(Pid, Channels) ->
@@ -631,6 +622,8 @@ maybe_collect_worker_channel(Pid, Channels) ->
         2000 -> Channels
     end.
 
+-spec build_channel(bridge_endpoint()) -> {'ok', bridge_channel()} |
+                                          {'error', _}.
 build_channel(#bridge_endpoint{endpoint_type = <<"freetdm">>}=Endpoint) ->
     build_freetdm_channel(Endpoint);
 build_channel(#bridge_endpoint{endpoint_type = <<"skype">>}=Endpoint) ->
@@ -702,8 +695,8 @@ build_sip_channel(#bridge_endpoint{failover=Failover}=Endpoint) ->
     end.
 
 -spec maybe_failover(wh_json:object()) ->
-                               {'ok', bridge_channel()} |
-                               {'error', _}.
+                            {'ok', bridge_channel()} |
+                            {'error', _}.
 maybe_failover(Endpoint) ->
     case wh_util:is_empty(Endpoint) of
         'true' -> {'error', 'invalid'};
@@ -763,7 +756,12 @@ maybe_replace_fs_path(Contact, #bridge_endpoint{proxy_address=Proxy}=Endpoint) -
 -spec maybe_replace_transport(ne_binary(), bridge_endpoint()) -> ne_binary().
 maybe_replace_transport(Contact, #bridge_endpoint{transport='undefined'}) -> Contact;
 maybe_replace_transport(Contact, #bridge_endpoint{transport=Transport}) ->
-    case re:replace(Contact, <<";transport=[^;?]*">>, <<";transport=", Transport/binary>>, [{'return', 'binary'}]) of
+    case re:replace(Contact
+                    ,<<";transport=[^;?]*">>
+                    ,<<";transport=", Transport/binary>>
+                    ,[{'return', 'binary'}]
+                   )
+    of
         Contact ->
             %% NOTE: this will be invalid if the channel has headers, see rfc3261 19.1.1
             <<Contact/binary, ";transport=", Transport/binary>>;
@@ -779,7 +777,6 @@ maybe_format_user(Contact, #bridge_endpoint{invite_format = <<"username">>
                                             ,username=Username
                                            }) when Username =/= 'undefined' ->
     re:replace(Contact, "^[^\@]+", Username, [{'return', 'binary'}]);
-
 maybe_format_user(Contact, #bridge_endpoint{number='undefined'}) -> Contact;
 maybe_format_user(Contact, #bridge_endpoint{invite_format = <<"e164">>, number=Number}) ->
     re:replace(Contact, "^[^\@]+", wnm_util:to_e164(Number), [{'return', 'binary'}]);
@@ -824,7 +821,8 @@ create_masquerade_event(Application, EventName, Boolean) ->
              end,
     <<Prefix/binary, "Event-Name=CUSTOM,Event-Subclass=whistle::masquerade"
       ,",whistle_event_name=", EventName/binary
-      ,",whistle_application_name=", Application/binary>>.
+      ,",whistle_application_name=", Application/binary
+    >>.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -845,12 +843,15 @@ media_path(<<"local_stream://", FSPath/binary>>, _Type, _UUID, _) -> recording_f
 media_path(<<?LOCAL_MEDIA_PATH, _/binary>> = FSPath, _Type, _UUID, _) -> FSPath;
 media_path(<<"http://", _/binary>> = URI, _Type, _UUID, _) -> get_fs_playback(URI);
 media_path(<<"https://", _/binary>> = URI, _Type, _UUID, _) -> get_fs_playback(URI);
+media_path(<<?HTTP_GET_PREFIX, _/binary>> = Media, _Type, _UUID, _) -> Media;
 media_path(MediaName, Type, UUID, JObj) ->
     case lookup_media(MediaName, UUID, JObj, Type) of
         {'error', _E} ->
             lager:warning("failed to get media path for ~s: ~p", [MediaName, _E]),
             wh_util:to_binary(MediaName);
-        {'ok', Path} -> wh_util:to_binary(get_fs_playback(Path))
+        {'ok', Path} ->
+            lager:debug("found path ~s for ~s", [Path, MediaName]),
+            wh_util:to_binary(get_fs_playback(Path))
     end.
 
 -spec fax_filename(ne_binary()) -> file:filename().
@@ -867,17 +868,19 @@ recording_filename(MediaName) ->
     RootName = filename:basename(MediaName, Ext),
     Directory = recording_directory(MediaName),
     RecordingName = filename:join([Directory
-                                   ,<<(amqp_util:encode(RootName))/binary
-                                      ,Ext/binary>>
+                                   ,<<(amqp_util:encode(RootName))/binary, Ext/binary>>
                                   ]),
     _ = wh_cache:store_local(?ECALLMGR_UTIL_CACHE
                              ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName)
-                             ,RecordingName),
+                             ,RecordingName
+                            ),
     RecordingName.
 
+-spec recording_directory(ne_binary()) -> ne_binary().
 recording_directory(<<"/", _/binary>> = FullPath) -> filename:dirname(FullPath);
 recording_directory(_RelativePath) -> ecallmgr_config:get(<<"recording_file_path">>, <<"/tmp/">>).
 
+-spec recording_extension(ne_binary()) -> ne_binary().
 recording_extension(MediaName) ->
     case filename:extension(MediaName) of
         Empty when Empty =:= <<>> orelse Empty =:= [] ->
@@ -896,6 +899,7 @@ recording_extension(MediaName) ->
 get_fs_playback(<<?LOCAL_MEDIA_PATH, _/binary>> = URI) -> URI;
 get_fs_playback(URI) -> maybe_playback_via_vlc(URI).
 
+-spec maybe_playback_via_vlc(ne_binary()) -> ne_binary().
 maybe_playback_via_vlc(URI) ->
     case wh_util:is_true(ecallmgr_config:get(<<"use_vlc">>, 'false')) of
         'false' -> maybe_playback_via_shout(URI);
@@ -904,6 +908,7 @@ maybe_playback_via_vlc(URI) ->
             <<"vlc://", URI/binary>>
     end.
 
+-spec maybe_playback_via_shout(ne_binary()) -> ne_binary().
 maybe_playback_via_shout(URI) ->
     case filename:extension(URI) =:= <<".mp3">>
         andalso wh_util:is_true(ecallmgr_config:get(<<"use_shout">>, 'false'))
@@ -914,19 +919,25 @@ maybe_playback_via_shout(URI) ->
             binary:replace(URI, [<<"http">>, <<"https">>], <<"shout">>)
     end.
 
+-spec maybe_playback_via_http_cache(ne_binary()) -> ne_binary().
+maybe_playback_via_http_cache(<<?HTTP_GET_PREFIX, _/binary>> = URI) ->
+    lager:debug("media is streamed via http_cache, using ~s", [URI]),
+    URI;
 maybe_playback_via_http_cache(URI) ->
     case wh_util:is_true(ecallmgr_config:get(<<"use_http_cache">>, 'true')) of
-        'false' -> URI;
+        'false' ->
+            lager:debug("using straight URI ~s", [URI]),
+            URI;
         'true' ->
             lager:debug("media is streamed via http_cache, using ~s", [URI]),
-            <<"${http_get(", URI/binary, ")}">>
+            <<?HTTP_GET_PREFIX, URI/binary>>
     end.
 
 %% given a proplist of a FS event, return the Whistle-equivalent app name(s).
 %% a FS event could have multiple Whistle equivalents
 -spec convert_fs_evt_name(ne_binary()) -> ne_binaries().
 convert_fs_evt_name(EvtName) ->
-    [ WhAppEvt || {FSEvt, WhAppEvt} <- ?FS_APPLICATION_NAMES, FSEvt =:= EvtName].
+    [WhAppEvt || {FSEvt, WhAppEvt} <- ?FS_APPLICATION_NAMES, FSEvt =:= EvtName].
 
 %% given a Whistle Dialplan Application name, return the FS-equivalent event name
 %% A Whistle Dialplan Application name is 1-to-1 with the FS-equivalent
@@ -950,7 +961,9 @@ lookup_media(MediaName, CallId, JObj, Type) ->
             request_media_url(MediaName, CallId, JObj, Type)
     end.
 
--spec request_media_url(ne_binary(), ne_binary(), wh_json:object(), media_types()) -> {'ok', ne_binary()} | {'error', _}.
+-spec request_media_url(ne_binary(), ne_binary(), wh_json:object(), media_types()) ->
+                               {'ok', ne_binary()} |
+                               {'error', _}.
 request_media_url(MediaName, CallId, JObj, Type) ->
     Request = wh_json:set_values(
                 props:filter_undefined(
@@ -967,8 +980,8 @@ request_media_url(MediaName, CallId, JObj, Type) ->
                                  ),
     case ReqResp of
         {'error', _E}=E ->
-             lager:debug("error get media url from amqp ~p", [E]),
-              E;
+            lager:debug("error get media url from amqp ~p", [E]),
+            E;
         {'ok', MediaResp} ->
             MediaUrl = wh_json:get_value(<<"Stream-URL">>, MediaResp, <<>>),
             CacheProps = media_url_cache_props(MediaName),

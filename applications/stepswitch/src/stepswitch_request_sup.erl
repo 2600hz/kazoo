@@ -37,40 +37,54 @@ start_link() ->
 -spec bridge(wh_json:objects(), wh_json:object()) -> sup_startchild_ret().
 bridge(Endpoints, JObj) ->
     Name = <<(wh_json:get_value(<<"Call-ID">>, JObj))/binary
-             ,"-", (wh_util:rand_hex_binary(3))/binary>>,
+             ,"-", (wh_util:rand_hex_binary(3))/binary
+           >>,
     supervisor:start_child(?MODULE
                            ,?WORKER_NAME_ARGS_TYPE(Name
                                                    ,'stepswitch_bridge'
                                                    ,[Endpoints, JObj]
-                                                   ,'temporary')).
+                                                   ,'temporary'
+                                                  )
+                          ).
 
+-spec local_extension(wh_proplist(), wh_json:object()) -> sup_startchild_ret().
 local_extension(Props, JObj) ->
     Name = <<(wh_json:get_value(<<"Call-ID">>, JObj))/binary
-             ,"-", (wh_util:rand_hex_binary(3))/binary>>,
+             ,"-", (wh_util:rand_hex_binary(3))/binary
+           >>,
     supervisor:start_child(?MODULE
                            ,?WORKER_NAME_ARGS_TYPE(Name
                                                    ,'stepswitch_local_extension'
                                                    ,[Props, JObj]
-                                                   ,'temporary')).
+                                                   ,'temporary'
+                                                  )
+                          ).
 
+-spec originate(wh_json:objects(), wh_json:object()) -> sup_startchild_ret().
 originate(Endpoints, JObj) ->
     Name = <<(wh_json:get_value(<<"Outbound-Call-ID">>, JObj))/binary
-             ,"-", (wh_util:rand_hex_binary(3))/binary>>,
+             ,"-", (wh_util:rand_hex_binary(3))/binary
+           >>,
     supervisor:start_child(?MODULE
                            ,?WORKER_NAME_ARGS_TYPE(Name
                                                    ,'stepswitch_originate'
                                                    ,[Endpoints, JObj]
-                                                   ,'temporary')).
+                                                   ,'temporary'
+                                                  )
+                          ).
 
 -spec sms(wh_json:objects(), wh_json:object()) -> sup_startchild_ret().
 sms(Endpoints, JObj) ->
     Name = <<(wh_json:get_value(<<"Call-ID">>, JObj))/binary
-             ,"-", (wh_util:rand_hex_binary(3))/binary>>,
+             ,"-", (wh_util:rand_hex_binary(3))/binary
+           >>,
     supervisor:start_child(?MODULE
                            ,?WORKER_NAME_ARGS_TYPE(Name
                                                    ,'stepswitch_sms'
                                                    ,[Endpoints, JObj]
-                                                   ,'temporary')).
+                                                   ,'temporary'
+                                                  )
+                          ).
 
 %% ===================================================================
 %% Supervisor callbacks

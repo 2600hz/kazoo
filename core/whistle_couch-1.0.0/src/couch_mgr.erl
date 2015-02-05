@@ -897,7 +897,7 @@ get_results_count(DbName, DesignDoc, Options) ->
 get_result_keys(JObjs) ->
     lists:map(fun get_keys/1, JObjs).
 
--spec get_keys(wh_json:object()) -> wh_json:json_string().
+-spec get_keys(wh_json:object()) -> wh_json:key().
 get_keys(JObj) -> wh_json:get_value(<<"key">>, JObj).
 
 -spec get_uuid() -> ne_binary().

@@ -23,7 +23,7 @@
 -define(ACCT_MD5_LIST, <<"users/creds_by_md5">>).
 -define(ACCT_SHA1_LIST, <<"users/creds_by_sha">>).
 -define(USERNAME_LIST, <<"users/list_by_username">>).
--define(DEFAULT_LANGUAGE, <<"en-US">>).
+-define(DEFAULT_LANGUAGE, <<"en-us">>).
 -define(USER_AUTH_TOKENS, whapps_config:get_integer(?CONFIG_CAT, <<"user_auth_tokens">>, 35)).
 
 %%%===================================================================
@@ -414,8 +414,9 @@ find_account(PhoneNumber, AccountRealm, AccountName, Context) ->
 
 -spec consume_tokens(cb_context:context()) -> cb_context:context().
 consume_tokens(Context) ->
-    case kz_buckets:consume_tokens_until(cb_modules_util:bucket_name(Context)
-                                         ,?USER_AUTH_TOKENS
+    case kz_buckets:consume_tokens_until(?APP_NAME
+                                         ,cb_modules_util:bucket_name(Context)
+                                         ,cb_modules_util:token_cost(Context, ?USER_AUTH_TOKENS)
                                         )
     of
         'true' -> cb_context:set_resp_status(Context, 'success');

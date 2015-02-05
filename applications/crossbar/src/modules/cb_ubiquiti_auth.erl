@@ -22,7 +22,7 @@
 -define(U_CONFIG_CAT, <<"crossbar.ubiquiti">>).
 
 -define(UBIQUITI_AUTH_TOKENS, whapps_config:get_integer(?U_CONFIG_CAT, <<"tokens_per_request">>, 35)).
--define(UBIQUITI_RESELLER_ID, whapps_config:get(?U_CONFIG_CAT, <<"sso_reseller_id">>)).
+-define(UBIQUITI_PROVIDER_ID, whapps_config:get(?U_CONFIG_CAT, <<"sso_provider_id">>)).
 
 -define(SSO_STAGING_URI, <<"https://sso-stage.ubnt.com/api/sso/v1/">>).
 -define(SSO_PROD_URI, <<"https://sso.ubnt.com/api/sso/v1/">>).
@@ -46,9 +46,9 @@ init() ->
     lager:debug("SSO Environment: ~s", [?SSO_ENV]),
     lager:debug("SSO URI: ~s", [?SSO_URL]),
 
-    case ?UBIQUITI_RESELLER_ID of
-        'undefined' -> lager:error("no reseller account id for Ubiquiti has been defined");
-        _ResellerId -> lager:debug("SSO Reseller Account ID: ~s", [_ResellerId])
+    case ?UBIQUITI_PROVIDER_ID of
+        'undefined' -> lager:error("no provider account id for Ubiquiti has been defined");
+        _ProviderId -> lager:debug("SSO Provider Account ID: ~s", [_ProviderId])
     end,
 
     couch_mgr:db_create(?KZ_TOKEN_DB),
@@ -170,10 +170,8 @@ auth_response(_Context, _RespHeaders, RespBody) ->
 
     maybe_add_account_information(UUID
                                   ,wh_json:from_list(
-                                     [{<<"sso">>, wh_json:set_value(<<"provider">>, ?SSO_PROVIDER, RespJObj)}
-                                      ,{<<"reseller_id">>, ?UBIQUITI_RESELLER_ID}
-                                      ,{<<"is_reseller">>, 'false'}
-                                     ])
+                                     [{<<"sso">>, wh_json:set_value(<<"provider">>, ?SSO_PROVIDER, RespJObj)}]
+                                    )
                                  ).
 
 -spec maybe_add_account_information(api_binary(), wh_json:object()) -> wh_json:object().
@@ -184,8 +182,13 @@ maybe_add_account_information(UUID, AuthResponse) ->
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_sso">>, Options) of
         {'ok', []} -> AuthResponse;
         {'ok', [AccountJObj]} ->
-            wh_json:set_values(<<"account_id">>
-                               ,wh_json:get_value(<<"account_id">>, AccountJObj)
+            AccountId = wh_json:get_value(<<"account_id">>, AccountJObj),
+            lager:debug("found account as ~s", [AccountId]),
+
+            wh_json:set_values([{<<"account_id">>, AccountId}
+                                ,{<<"is_reseller">>, wh_services:is_reseller(AccountId)}
+                                ,{<<"reseller_id">>, wh_services:find_reseller_id(AccountId)}
+                               ]
                                ,AuthResponse
                               );
         {'error', _E} ->
@@ -195,8 +198,9 @@ maybe_add_account_information(UUID, AuthResponse) ->
 
 -spec consume_tokens(cb_context:context()) -> cb_context:context().
 consume_tokens(Context) ->
-    case kz_buckets:consume_tokens_until(cb_modules_util:bucket_name(Context)
-                                         ,?UBIQUITI_AUTH_TOKENS
+    case kz_buckets:consume_tokens_until(?APP_NAME
+                                         ,cb_modules_util:bucket_name(Context)
+                                         ,cb_modules_util:token_cost(Context, ?UBIQUITI_AUTH_TOKENS)
                                         )
     of
         'true' -> cb_context:set_resp_status(Context, 'success');

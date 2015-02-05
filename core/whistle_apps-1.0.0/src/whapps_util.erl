@@ -27,7 +27,9 @@
 -export([get_account_by_realm/1
          ,get_accounts_by_name/1
         ]).
--export([get_master_account_id/0]).
+-export([get_master_account_id/0
+         ,get_master_account_db/0
+        ]).
 -export([get_account_name/1]).
 -export([find_oldest_doc/1]).
 -export([get_event_type/1, put_callid/1]).
@@ -145,19 +147,28 @@ get_master_account_id() ->
     case whapps_config:get(?WH_SYSTEM_CONFIG_ACCOUNT, <<"master_account_id">>) of
         'undefined' ->
             R = couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_id">>, ['include_docs']),
-            get_master_account_id(R);
+            find_master_account_id(R);
         Default -> {'ok', Default}
     end.
 
-get_master_account_id({'error', _}=E) -> E;
-get_master_account_id({'ok', []}) -> {'error', 'no_accounts'};
-get_master_account_id({'ok', Accounts}) ->
+find_master_account_id({'error', _}=E) -> E;
+find_master_account_id({'ok', []}) -> {'error', 'no_accounts'};
+find_master_account_id({'ok', Accounts}) ->
     {'ok', OldestAccountId}=Ok = find_oldest_doc([wh_json:get_value(<<"doc">>, Account)
                                                   || Account <- Accounts
                                                  ]),
     lager:debug("setting ~s.master_account_id to ~s", [?WH_SYSTEM_CONFIG_ACCOUNT, OldestAccountId]),
     {'ok', _} = whapps_config:set(?WH_SYSTEM_CONFIG_ACCOUNT, <<"master_account_id">>, OldestAccountId),
     Ok.
+
+-spec get_master_account_db() -> {'ok', ne_binary()} |
+                                 {'error', _}.
+get_master_account_db() ->
+    case get_master_account_id() of
+        {'error', _}=E -> E;
+        {'ok', AccountId} ->
+            {'ok', wh_util:format_account_id(AccountId, 'encoded')}
+    end.
 
 %%--------------------------------------------------------------------
 %% @public

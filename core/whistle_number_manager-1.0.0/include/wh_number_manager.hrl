@@ -72,7 +72,7 @@
                         api_binary().
 
 -type operation_return() :: {'ok', wh_json:object()} |
-                            {wnm_failures(), wh_json:object()}.
+                            {wnm_failures(), api_object()}.
 
 %%% NUMBER STATES
 %%% discovery    - The number was discovered via a carrier lookup but has not been reserved or purchased.

@@ -96,7 +96,7 @@
                                ,?EAVESDROP_MODE
                               ]).
 -define(ORIGINATE_REQ_TYPES, [{<<"Endpoints">>, fun is_list/1}
-                              ,{<<"SIP-Headers">>, fun wh_json:is_json_object/1}
+                              ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
                               ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
                               ,{<<"Continue-On-Fail">>, fun wh_util:is_boolean/1}
                               ,{<<"Simplify-Bowout">>, fun wh_util:is_boolean/1}
@@ -107,7 +107,7 @@
 -define(OPTIONAL_ORIGINATE_REQ_ENDPOINT_HEADERS, wapi_dialplan:optional_bridge_req_endpoint_headers()).
 -define(ORIGINATE_REQ_ENDPOINT_VALUES, [{<<"Endpoint-Type">>, [<<"sip">>, <<"freetdm">>]}
                                        ]).
--define(ORIGINATE_REQ_ENDPOINT_TYPES, [{<<"SIP-Headers">>, fun wh_json:is_json_object/1}
+-define(ORIGINATE_REQ_ENDPOINT_TYPES, [{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
                                        ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
                                        ,{<<"Endpoint-Options">>, fun wh_json:is_json_object/1}
                                        ,{<<"Ignore-Early-Media">>, fun wh_util:is_boolean/1}

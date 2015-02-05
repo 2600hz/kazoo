@@ -40,11 +40,12 @@
 -define(AGG_VIEW_NAME, <<"accounts/listing_by_name">>).
 
 -define(PVT_TYPE, <<"account">>).
--define(CHANNELS, <<"channels">>).
 -define(CHILDREN, <<"children">>).
 -define(DESCENDANTS, <<"descendants">>).
 -define(SIBLINGS, <<"siblings">>).
 -define(API_KEY, <<"api_key">>).
+-define(TREE, <<"tree">>).
+-define(PARENTS, <<"parents">>).
 
 -define(REMOVE_SPACES, [<<"realm">>]).
 -define(MOVE, <<"move">>).
@@ -95,8 +96,9 @@ allowed_methods(_, Path) ->
     Paths =  [?CHILDREN
               ,?DESCENDANTS
               ,?SIBLINGS
-              ,?CHANNELS
               ,?API_KEY
+              ,?TREE
+              ,?PARENTS
              ],
     case lists:member(Path, Paths) of
         'true' -> [?HTTP_GET];
@@ -120,9 +122,10 @@ resource_exists(_, Path) ->
     Paths =  [?CHILDREN
               ,?DESCENDANTS
               ,?SIBLINGS
-              ,?CHANNELS
               ,?API_KEY
               ,?MOVE
+              ,?TREE
+              ,?PARENTS
              ],
     lists:member(Path, Paths).
 
@@ -185,14 +188,14 @@ validate(Context, AccountId, PathToken) ->
 
 -spec validate_account_path(cb_context:context(), ne_binary(), ne_binary(), http_method()) ->
                                    cb_context:context().
-validate_account_path(Context, AccountId, ?CHANNELS, ?HTTP_GET) ->
-    get_channels(AccountId, Context);
 validate_account_path(Context, AccountId, ?CHILDREN, ?HTTP_GET) ->
     load_children(AccountId, prepare_context('undefined', Context));
 validate_account_path(Context, AccountId, ?DESCENDANTS, ?HTTP_GET) ->
     load_descendants(AccountId, prepare_context('undefined', Context));
 validate_account_path(Context, AccountId, ?SIBLINGS, ?HTTP_GET) ->
     load_siblings(AccountId, prepare_context('undefined', Context));
+validate_account_path(Context, AccountId, ?PARENTS, ?HTTP_GET) ->
+    load_parents(AccountId, prepare_context('undefined', Context));
 validate_account_path(Context, AccountId, ?API_KEY, ?HTTP_GET) ->
     Context1 = crossbar_doc:load(AccountId, prepare_context('undefined', Context)),
     case cb_context:resp_status(Context1) of
@@ -218,6 +221,12 @@ validate_account_path(Context, AccountId, ?MOVE, ?HTTP_POST) ->
                 'true' -> cb_context:set_resp_status(Context, 'success');
                 'false' -> cb_context:add_system_error('forbidden', [], Context)
             end
+    end;
+validate_account_path(Context, AccountId, ?TREE, ?HTTP_GET) ->
+    Context1 = crossbar_doc:load(AccountId, prepare_context('undefined', Context)),
+    case cb_context:resp_status(Context1) of
+        'success' -> load_account_tree(Context1);
+        _Else -> Context1
     end.
 
 %%--------------------------------------------------------------------
@@ -359,47 +368,6 @@ move_account(Context, AccountId) ->
             load_account(AccountId, prepare_context(AccountId, Context))
     end.
 
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec get_channels(ne_binary(), cb_context:context()) -> cb_context:context().
-get_channels(AccountId, Context) ->
-    Req = [{<<"Account-ID">>, AccountId}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    case whapps_util:amqp_pool_collect(Req
-                                       ,fun wapi_call:publish_query_account_channels_req/1
-                                       ,{'ecallmgr', 'true'}
-                                      )
-    of
-        {'error', _R} ->
-            lager:error("could not reach ecallmgr channels: ~p", [_R]),
-            crossbar_util:response('error', <<"could not reach ecallmgr channels">>, Context);
-        {_, Resp} ->
-            Channels = merge_user_channels_jobjs(Resp),
-            crossbar_util:response(Channels, Context)
-    end.
-
--spec merge_user_channels_jobjs(wh_json:objects()) -> wh_json:objects().
-merge_user_channels_jobjs(JObjs) ->
-    merge_user_channels_jobjs(JObjs, dict:new()).
-
--spec merge_user_channels_jobjs(wh_json:objects(), dict()) -> wh_json:objects().
-merge_user_channels_jobjs([], Dict) ->
-    [Channel || {_, Channel} <- dict:to_list(Dict)];
-merge_user_channels_jobjs([JObj|JObjs], Dict) ->
-    merge_user_channels_jobjs(JObjs, merge_user_channels_jobj(JObj, Dict)).
-
--spec merge_user_channels_jobj(wh_json:object(), dict()) -> dict().
-merge_user_channels_jobj(JObj, Dict) ->
-    lists:foldl(fun(Channel, D) ->
-                        UUID = wh_json:get_value(<<"uuid">>, Channel),
-                        dict:store(UUID, Channel, D)
-                end, Dict, wh_json:get_value(<<"Channels">>, JObj, [])).
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -462,12 +430,9 @@ cleanup_leaky_keys(AccountId, Context) ->
                   ,<<"superduper_admin">>
                   ,<<"billing_mode">>
                  ],
+    ReqData = wh_json:delete_keys(RemoveKeys, cb_context:req_data(Context)),
     validate_realm_is_unique(AccountId
-                             ,cb_context:set_req_data(Context
-                                                      ,wh_json:delete_keys(RemoveKeys
-                                                                           ,cb_context:req_data(Context)
-                                                                          )
-                                                     )
+                             ,cb_context:set_req_data(Context, ReqData)
                             ).
 
 -spec validate_realm_is_unique(api_binary(), cb_context:context()) -> cb_context:context().
@@ -510,6 +475,10 @@ on_successful_validation(AccountId, Context) ->
     Context1 = crossbar_doc:load_merge(AccountId, Context),
     maybe_import_enabled(Context1).
 
+-spec maybe_import_enabled(cb_context:context()) ->
+                                  cb_context:context().
+-spec maybe_import_enabled(cb_context:context(), crossbar_status()) ->
+                                  cb_context:context().
 maybe_import_enabled(Context) ->
     case cb_context:auth_account_id(Context) =:= cb_context:account_id(Context) of
         'true' ->
@@ -576,6 +545,7 @@ load_account(AccountId, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec leak_pvt_fields(cb_context:context()) -> cb_context:context().
+-spec leak_pvt_fields(cb_context:context(), crossbar_status()) -> cb_context:context().
 leak_pvt_fields(Context) ->
     leak_pvt_fields(Context, cb_context:resp_status(Context)).
 
@@ -618,7 +588,8 @@ leak_pvt_api_key(Context) ->
             ApiKey = wh_json:get_value(<<"pvt_api_key">>, JObj),
             leak_pvt_created(
               cb_context:set_resp_data(Context
-                                       ,wh_json:set_value(<<"api_key">>, ApiKey, RespJObj))
+                                       ,wh_json:set_value(<<"api_key">>, ApiKey, RespJObj)
+                                      )
              )
     end.
 
@@ -630,7 +601,8 @@ leak_pvt_created(Context) ->
     Created = wh_json:get_value(<<"pvt_created">>, JObj),
     leak_pvt_enabled(
       cb_context:set_resp_data(Context
-                               ,wh_json:set_value(<<"created">>, Created, RespJObj))
+                               ,wh_json:set_value(<<"created">>, Created, RespJObj)
+                              )
      ).
 
 -spec leak_pvt_enabled(cb_context:context()) -> cb_context:context().
@@ -639,20 +611,43 @@ leak_pvt_enabled(Context) ->
 
     case wh_json:get_value(<<"pvt_enabled">>, cb_context:doc(Context)) of
         'true' ->
-            leak_billing_mode(
+            leak_reseller_id(
               cb_context:set_resp_data(Context
                                        ,wh_json:set_value(<<"enabled">>, 'true', RespJObj)
                                       )
              );
         'false' ->
-            leak_billing_mode(
+            leak_reseller_id(
               cb_context:set_resp_data(Context
                                        ,wh_json:set_value(<<"enabled">>, 'false', RespJObj)
                                       )
              );
         _ ->
-            leak_billing_mode(Context)
+            leak_reseller_id(Context)
     end.
+
+-spec leak_reseller_id(cb_context:context()) -> cb_context:context().
+leak_reseller_id(Context) ->
+    RespJObj = cb_context:resp_data(Context),
+    ResellerId = cb_context:reseller_id(Context),
+    leak_is_reseller(
+      cb_context:set_resp_data(
+        Context
+        ,wh_json:set_value(<<"reseller_id">>, ResellerId, RespJObj)
+       )
+     ).
+
+-spec leak_is_reseller(cb_context:context()) -> cb_context:context().
+leak_is_reseller(Context) ->
+    RespJObj = cb_context:resp_data(Context),
+    AccountId = cb_context:account_id(Context),
+    IsReseller = wh_services:is_reseller(AccountId),
+    leak_billing_mode(
+      cb_context:set_resp_data(
+        Context
+        ,wh_json:set_value(<<"is_reseller">>, IsReseller, RespJObj)
+       )
+     ).
 
 -spec leak_billing_mode(cb_context:context()) -> cb_context:context().
 leak_billing_mode(Context) ->
@@ -661,7 +656,7 @@ leak_billing_mode(Context) ->
     AuthAccountId = cb_context:auth_account_id(Context),
     RespJObj = cb_context:resp_data(Context),
 
-    case wh_services:find_reseller_id(cb_context:account_id(Context)) of
+    case cb_context:reseller_id(Context) of
         AuthAccountId ->
             cb_context:set_resp_data(Context
                                      ,wh_json:set_value(<<"billing_mode">>, <<"limits_only">>, RespJObj)
@@ -687,7 +682,7 @@ load_children(AccountId, Context) ->
     load_children(AccountId, Context, cb_context:api_version(Context)).
 
 -spec load_children(ne_binary(), cb_context:context(), ne_binary()) -> cb_context:context().
-load_children(AccountId, Context, <<"v1">>) ->
+load_children(AccountId, Context, ?VERSION_1) ->
     load_children_v1(AccountId, Context);
 load_children(AccountId, Context, _Version) ->
     load_paginated_children(AccountId, Context).
@@ -704,23 +699,15 @@ load_children_v1(AccountId, Context) ->
 
 -spec load_paginated_children(ne_binary(), cb_context:context()) -> cb_context:context().
 load_paginated_children(AccountId, Context) ->
-    StartKey = crossbar_doc:start_key(Context),
+    StartKey = start_key(Context),
     fix_envelope(
       crossbar_doc:load_view(?AGG_VIEW_CHILDREN
-                             ,[{'startkey', start_key(AccountId, StartKey)}
+                             ,[{'startkey', [AccountId, StartKey]}
                                ,{'endkey', [AccountId, wh_json:new()]}
                               ]
                              ,Context
                              ,fun normalize_view_results/2
                             )).
-
--spec start_key(ne_binary(), api_binary()) -> ne_binaries().
-start_key(AccountId, 'undefined') ->
-    [AccountId];
-start_key(AccountId, AccountId) ->
-    [AccountId];
-start_key(AccountId, StartKey) ->
-    [AccountId, StartKey].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -732,7 +719,7 @@ start_key(AccountId, StartKey) ->
 load_descendants(AccountId, Context) ->
     load_descendants(AccountId, Context, cb_context:api_version(Context)).
 
-load_descendants(AccountId, Context, <<"v1">>) ->
+load_descendants(AccountId, Context, ?VERSION_1) ->
     load_descendants_v1(AccountId, Context);
 load_descendants(AccountId, Context, _Version) ->
     load_paginated_descendants(AccountId, Context).
@@ -745,12 +732,12 @@ load_descendants_v1(AccountId, Context) ->
 
 -spec load_paginated_descendants(ne_binary(), cb_context:context()) -> cb_context:context().
 load_paginated_descendants(AccountId, Context) ->
-    StartKey = crossbar_doc:start_key(Context),
+    StartKey = start_key(Context),
     lager:debug("account ~s startkey ~s", [AccountId, StartKey]),
     fix_envelope(
       crossbar_doc:load_view(?AGG_VIEW_DESCENDANTS
-                             ,[{'startkey', start_key(AccountId, StartKey)}
-                               ,{'endkey', [AccountId, wh_json:new()]}
+                             ,[{'startkey', [AccountId, StartKey]}
+                               ,{'endkey',  [AccountId, wh_json:new()]}
                               ]
                              ,Context
                              ,fun normalize_view_results/2
@@ -767,7 +754,7 @@ load_siblings(AccountId, Context) ->
     load_siblings(AccountId, Context, cb_context:api_version(Context)).
 
 -spec load_siblings(ne_binary(), cb_context:context(), ne_binary()) -> cb_context:context().
-load_siblings(AccountId, Context, <<"v1">>) ->
+load_siblings(AccountId, Context, ?VERSION_1) ->
     load_siblings_v1(AccountId, Context);
 load_siblings(AccountId, Context, _Version) ->
     load_paginated_siblings(AccountId, Context).
@@ -808,20 +795,31 @@ load_siblings_results(_AccountId, Context, [JObj|_]) ->
 load_siblings_results(AccountId, Context, _) ->
     cb_context:add_system_error('bad_identifier', [{'details', AccountId}],  Context).
 
+
+-spec start_key(cb_context:context()) -> binary().
+start_key(Context) ->
+    case crossbar_doc:start_key(Context) of
+        'undefined' -> <<>>;
+        Key -> Key
+    end.
+
 -spec fix_envelope(cb_context:context()) -> cb_context:context().
 fix_envelope(Context) ->
     cb_context:set_resp_envelope(
-      Context
-      ,lists:foldl(fun(Key, Env) ->
-                           lager:debug("maybe fixing ~s: ~p", [Key, wh_json:get_value(Key, Env)]),
-                           case fix_start_key(wh_json:get_value(Key, Env)) of
-                               'undefined' -> wh_json:delete_key(Key, Env);
-                               V -> wh_json:set_value(Key, V, Env)
-                           end
-                   end
-                   ,cb_context:resp_envelope(Context)
-                   ,[<<"start_key">>, <<"next_start_key">>]
-                  )).
+        cb_context:set_resp_data(Context, lists:reverse(cb_context:resp_data(Context)))
+        ,lists:foldl(
+            fun fix_envelope_fold/2
+            ,cb_context:resp_envelope(Context)
+            ,[<<"start_key">>, <<"next_start_key">>]
+        )
+    ).
+
+-spec fix_envelope_fold(binary(), wh_json:object()) -> wh_json:object().
+fix_envelope_fold(Key, JObj) ->
+    case fix_start_key(wh_json:get_value(Key, JObj)) of
+        'undefined' -> wh_json:delete_key(Key, JObj);
+        V -> wh_json:set_value(Key, V, JObj)
+    end.
 
 -spec fix_start_key(api_binary() | list()) -> api_binary().
 fix_start_key('undefined') -> 'undefined';
@@ -830,6 +828,114 @@ fix_start_key([StartKey]) -> StartKey;
 fix_start_key([_AccountId, [_|_]=Keys]) -> lists:last(Keys);
 fix_start_key([_AccountId, StartKey]) -> StartKey;
 fix_start_key([StartKey|_T]) -> StartKey.
+
+-spec load_account_tree(cb_context:context()) -> cb_context:context().
+load_account_tree(Context) ->
+    Tree = get_authorized_account_tree(Context),
+    Options = [{'keys', Tree}, 'include_docs'],
+    case couch_mgr:all_docs(?WH_ACCOUNTS_DB, Options) of
+        {'error', R} -> crossbar_doc:handle_couch_mgr_errors(R, ?WH_ACCOUNTS_DB, Context);
+        {'ok', JObjs} -> format_account_tree_results(Context, JObjs)
+    end.
+
+-spec get_authorized_account_tree(cb_context:context()) -> ne_binaries().
+get_authorized_account_tree(Context) ->
+    AuthAccountId = cb_context:auth_account_id(Context),
+    lists:dropwhile(fun(E) -> E =/= AuthAccountId end
+                    ,kz_account:tree(cb_context:doc(Context))
+                   ).
+
+-spec format_account_tree_results(cb_context:context(), wh_json:objects()) -> cb_context:context().
+format_account_tree_results(Context, JObjs) ->
+    RespData =
+        [wh_json:from_list(
+           [{<<"id">>, wh_json:get_value(<<"id">>, JObj)}
+            ,{<<"name">>, wh_json:get_value([<<"doc">>, <<"name">>], JObj)}
+           ])
+         || JObj <- JObjs
+        ],
+    cb_context:set_resp_data(Context, RespData).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec load_parents(ne_binary(), cb_context:context()) -> cb_context:context().
+load_parents(AccountId, Context) ->
+    Context1 = crossbar_doc:load_view(?AGG_VIEW_SUMMARY
+                                      ,[]
+                                      ,cb_context:set_account_db(Context, ?WH_ACCOUNTS_DB)
+                                     ),
+    case cb_context:resp_status(Context1) of
+        'success' -> load_parent_tree(AccountId, Context1);
+        _Status -> Context1
+    end.
+
+-spec load_parent_tree(ne_binary(), cb_context:context()) -> cb_context:context().
+load_parent_tree(AccountId, Context) ->
+    RespData = cb_context:resp_data(Context),
+    Tree = extract_tree(AccountId, RespData),
+    Parents = find_accounts_from_tree(Tree, RespData, Context),
+    RespEnv =
+        wh_json:set_value(
+          <<"page_size">>
+          ,erlang:length(Parents)
+          ,cb_context:resp_envelope(Context)
+         ),
+    cb_context:setters(
+      Context
+      ,[{fun cb_context:set_resp_data/2, Parents}
+        ,{fun cb_context:set_resp_envelope/2, RespEnv}
+       ]
+     ).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec extract_tree(ne_binary(), wh_json:objects()) -> ne_binaries().
+extract_tree(AccountId, JObjs) ->
+    JObj = wh_json:find_value(<<"id">>, AccountId, JObjs),
+    [_, Tree] = wh_json:get_value(<<"key">>, JObj),
+    lists:delete(AccountId, Tree).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec find_accounts_from_tree(ne_binaries(), wh_json:objects(), cb_context:context()) -> wh_json:objects().
+-spec find_accounts_from_tree(ne_binaries(), wh_json:objects(), ne_binary(), wh_json:objects()) -> wh_json:objects().
+find_accounts_from_tree(Tree, JObjs, Context) ->
+    find_accounts_from_tree(
+        lists:reverse(Tree)
+        ,JObjs
+        ,cb_context:auth_account_id(Context)
+        ,[]
+     ).
+
+find_accounts_from_tree([], _, _, Acc) -> Acc;
+find_accounts_from_tree([AuthAccountId|_], JObjs, AuthAccountId, Acc) ->
+    JObj = wh_json:find_value(<<"id">>, AuthAccountId, JObjs),
+    Value = wh_json:get_value(<<"value">>, JObj),
+    [account_from_tree(Value)|Acc];
+find_accounts_from_tree([AccountId|Tree], JObjs, AuthAccountId, Acc) ->
+    JObj = wh_json:find_value(<<"id">>, AccountId, JObjs),
+    Value = wh_json:get_value(<<"value">>, JObj),
+    find_accounts_from_tree(
+      Tree
+      ,JObjs
+      ,AuthAccountId
+      ,[account_from_tree(Value)|Acc]
+     ).
+
+-spec account_from_tree(wh_json:object()) -> wh_json:object().
+account_from_tree(JObj) ->
+    wh_json:from_list([{<<"id">>, wh_json:get_value(<<"id">>, JObj)}
+                       ,{<<"name">>, wh_json:get_value(<<"name">>, JObj)}
+                      ]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -969,15 +1075,17 @@ load_account_db([AccountId|_], Context) ->
 load_account_db(AccountId, Context) when is_binary(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {'ok', _} ->
+        {'ok', _JObj} ->
             lager:debug("account ~s db exists, setting operating database as ~s", [AccountId, AccountDb]),
+            ResellerId = wh_services:find_reseller_id(AccountId),
             cb_context:setters(Context
                                ,[{fun cb_context:set_resp_status/2, 'success'}
                                  ,{fun cb_context:set_account_db/2, AccountDb}
                                  ,{fun cb_context:set_account_id/2, AccountId}
+                                 ,{fun cb_context:set_reseller_id/2, ResellerId}
                                 ]);
-       {'error', 'not_found'} -> cb_context:add_system_error('bad_identifier', [{'details', AccountId}],  Context);
-       {'error', _R} -> crossbar_util:response_db_fatal(Context)
+        {'error', 'not_found'} -> cb_context:add_system_error('bad_identifier', [{'details', AccountId}],  Context);
+        {'error', _R} -> crossbar_util:response_db_fatal(Context)
     end.
 
 %%--------------------------------------------------------------------

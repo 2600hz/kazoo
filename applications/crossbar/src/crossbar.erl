@@ -191,7 +191,9 @@ maybe_start_plaintext(Dispatch) ->
                                    ]
                                  ) of
                 {'ok', _} ->
-                    lager:info("started plaintext API server")
+                    lager:info("started plaintext API server");
+                {'error', {'already_started', _P}} ->
+                    lager:info("already started plaintext API server at ~p", [_P])
             catch
                 _E:_R ->
                     lager:warning("crashed starting API server: ~s: ~p", [_E, _R])
@@ -225,7 +227,11 @@ start_ssl(Dispatch) ->
                                   )
             of
                 {'ok', _} ->
-                    lager:info("started SSL API server on port ~b", [props:get_value('port', SSLOpts)])
+                    lager:info("started SSL API server on port ~b", [props:get_value('port', SSLOpts)]);
+                {'error', {'already_started', _P}} ->
+                    lager:info("already started SSL API server on port ~b at ~p"
+                               ,[props:get_value('port', SSLOpts), _P]
+                              )
             catch
                 'throw':{'invalid_file', _File} ->
                     lager:info("SSL disabled: failed to find ~s", [_File]);

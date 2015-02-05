@@ -17,7 +17,9 @@
 -export([start_module/1]).
 -export([stop_module/1]).
 -export([running_modules/0]).
--export([refresh/0, refresh/1]).
+-export([refresh/0, refresh/1
+         ,flush/0
+        ]).
 -export([find_account_by_number/1]).
 -export([find_account_by_name/1]).
 -export([find_account_by_realm/1]).
@@ -28,6 +30,7 @@
 -export([create_account/1]).
 -export([move_account/2]).
 -export([descendants_count/0, descendants_count/1]).
+-export([migrate_ring_group_callflow/1]).
 
 -include_lib("crossbar.hrl").
 
@@ -45,18 +48,31 @@ migrate() ->
 
 -spec migrate(ne_binaries()) -> 'no_return'.
 migrate(Accounts) ->
-    io:format("updating default crossbar modules~n", []),
     _ = migrate_accounts_data(Accounts),
-    Modules =
+
+    CurrentModules =
         [wh_util:to_atom(Module, 'true')
-         || Module <- whapps_config:get(<<"crossbar">>, <<"autoload_modules">>, [])
+         || Module <- crossbar_config:autoload_modules()
         ],
+
+    UpdatedModules = remove_deprecated_modules(CurrentModules, ?DEPRECATED_MODULES),
+
     add_missing_modules(
-      Modules,
-      [Module
-       || Module <- ?DEFAULT_MODULES
-              ,(not lists:member(Module, Modules))
-      ]).
+      UpdatedModules
+      ,[Module
+        || Module <- ?DEFAULT_MODULES,
+           (not lists:member(Module, CurrentModules))
+       ]).
+
+-spec remove_deprecated_modules(atoms(), atoms()) -> atoms().
+remove_deprecated_modules(Modules, Deprecated) ->
+    case lists:foldl(fun lists:delete/2, Modules, Deprecated) of
+        Modules -> Modules;
+        Ms ->
+            io:format(" removed deprecated modules from autoloaded modules: ~p~n", [Deprecated]),
+            crossbar_config:set_autoload_modules(Ms),
+            Ms
+    end.
 
 -spec migrate_accounts_data() -> 'no_return'.
 migrate_accounts_data() ->
@@ -70,13 +86,15 @@ migrate_accounts_data([Account|Accounts]) ->
 
 -spec migrate_account_data(ne_binary()) -> 'no_return'.
 migrate_account_data(Account) ->
-    cb_clicktocall:maybe_migrate_history(Account),
+    _ = cb_clicktocall:maybe_migrate_history(Account),
+    _ = migrate_ring_group_callflow(Account),
     'no_return'.
 
 -spec add_missing_modules(atoms(), atoms()) -> 'no_return'.
 add_missing_modules(_, []) -> 'no_return';
 add_missing_modules(Modules, MissingModules) ->
-    _ = whapps_config:set(<<"crossbar">>, <<"autoload_modules">>, Modules ++ MissingModules),
+    io:format("  saving autoload_modules with missing modules added: ~p~n", [MissingModules]),
+    crossbar_config:set_autoload_modules(lists:sort(Modules ++ MissingModules)),
     'no_return'.
 
 %%--------------------------------------------------------------------
@@ -94,6 +112,11 @@ refresh() ->
 refresh(Value) ->
     io:format("please use whapps_maintenance:refresh(~p).", [Value]).
 
+-spec flush() -> 'ok'.
+flush() ->
+    crossbar_config:flush(),
+    wh_cache:flush_local(?CROSSBAR_CACHE).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -104,10 +127,10 @@ refresh(Value) ->
 start_module(Module) ->
     try crossbar:start_mod(Module) of
         _ ->
-            Mods = whapps_config:get(?CONFIG_CAT, <<"autoload_modules">>, []),
-            whapps_config:set_default(?CONFIG_CAT, <<"autoload_modules">>, [wh_util:to_binary(Module)
-                                                                            | lists:delete(wh_util:to_binary(Module), Mods)
-                                                                           ]),
+            Mods = crossbar_config:autoload_modules(),
+            crossbar_config:set_default_autoload_modules([wh_util:to_binary(Module)
+                                                          | lists:delete(wh_util:to_binary(Module), Mods)
+                                                         ]),
             io:format("started and added ~s to autoloaded modules~n", [Module])
     catch
         _E:_R ->
@@ -124,8 +147,8 @@ start_module(Module) ->
 stop_module(Module) ->
     try crossbar:stop_mod(Module) of
         _ ->
-            Mods = whapps_config:get(?CONFIG_CAT, <<"autoload_modules">>, []),
-            whapps_config:set_default(?CONFIG_CAT, <<"autoload_modules">>, lists:delete(wh_util:to_binary(Module), Mods)),
+            Mods = crossbar_config:autoload_modules(),
+            crossbar_config:set_default_autoload_modules(lists:delete(wh_util:to_binary(Module), Mods)),
             io:format("stopped and removed ~s from autoloaded modules~n", [Module])
     catch
         _E:_R ->
@@ -538,10 +561,10 @@ move_account(Account, ToAccount) ->
 
 -spec maybe_move_account(ne_binary(), ne_binary()) -> 'ok'.
 maybe_move_account(AccountId, AccountId) ->
-    io:format("can not move to the same account~n", []);
+    io:format("can not move to the same account~n");
 maybe_move_account(AccountId, ToAccountId) ->
     case crossbar_util:move_account(AccountId, ToAccountId) of
-        {'ok', _} -> io:format("move complete!~n", []);
+        {'ok', _} -> io:format("move complete!~n");
         {'error', Reason} ->
             io:format("unable to complete move: ~p~n", [Reason])
     end.
@@ -559,3 +582,210 @@ descendants_count() ->
 
 descendants_count(AccountId) ->
     crossbar_util:descendants_count(AccountId).
+
+-spec migrate_ring_group_callflow(ne_binary()) -> 'ok'.
+migrate_ring_group_callflow(Account) ->
+    lists:foreach(fun create_new_ring_group_callflow/1
+                  ,get_migrateable_ring_group_callflows(Account)
+                 ).
+
+-spec get_migrateable_ring_group_callflows(ne_binary()) -> wh_json:objects().
+get_migrateable_ring_group_callflows(Account) ->
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    case couch_mgr:get_all_results(AccountDb, <<"callflows/crossbar_listing">>) of
+        {'error', _M} ->
+            io:format("error fetching callflows in ~p ~p~n", [AccountDb, _M]),
+            [];
+        {'ok', JObjs} ->
+            get_migrateable_ring_group_callflows(AccountDb, JObjs)
+    end.
+
+-spec get_migrateable_ring_group_callflows(ne_binary(), wh_json:objects()) -> wh_json:objects().
+get_migrateable_ring_group_callflows(AccountDb, JObjs) ->
+    lists:foldl(fun(JObj, Acc) -> get_migrateable_ring_group_callflow(JObj, Acc, AccountDb) end
+                ,[]
+                ,JObjs
+               ).
+
+-spec get_migrateable_ring_group_callflow(wh_json:object(), wh_json:objects(), ne_binary()) ->
+                                                 wh_json:objects().
+get_migrateable_ring_group_callflow(JObj, Acc, AccountDb) ->
+    case {wh_json:get_ne_binary_value([<<"value">>, <<"group_id">>], JObj)
+          ,wh_json:get_ne_binary_value([<<"value">>, <<"type">>], JObj)
+         }
+    of
+        {'undefined', _} -> Acc;
+        {_, 'undefined'} ->
+            Id = wh_json:get_value(<<"id">>, JObj),
+            case couch_mgr:open_cache_doc(AccountDb, Id) of
+                {'ok', CallflowJObj} -> check_callflow_eligibility(CallflowJObj, Acc);
+                {'error', _M} ->
+                    io:format("  error fetching callflow ~p in ~p ~p~n", [Id, AccountDb, _M]),
+                    Acc
+            end;
+        {_, _} -> Acc
+    end.
+
+-spec check_callflow_eligibility(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+check_callflow_eligibility(CallflowJObj, Acc) ->
+    case wh_json:get_value([<<"flow">>, <<"module">>], CallflowJObj) of
+        <<"ring_group">> -> [CallflowJObj|Acc];
+        <<"record_call">> -> [CallflowJObj|Acc];
+        _Module -> Acc
+    end.
+
+-spec create_new_ring_group_callflow(wh_json:object()) -> 'ok'.
+create_new_ring_group_callflow(JObj) ->
+    BaseGroup = base_group_ring_group(JObj),
+    save_new_ring_group_callflow(JObj, BaseGroup).
+
+-spec base_group_ring_group(wh_json:object()) -> wh_json:object().
+base_group_ring_group(JObj) ->
+    io:format("migrating callflow ~s: ~s~n", [wh_json:get_value(<<"_id">>, JObj), wh_json:encode(JObj)]),
+    BaseGroup = wh_json:from_list(
+                  props:filter_undefined(
+                    [{<<"pvt_vsn">>, <<"1">>}
+                     ,{<<"pvt_type">>, <<"callflow">>}
+                     ,{<<"pvt_modified">>, wh_util:current_tstamp()}
+                     ,{<<"pvt_created">>, wh_util:current_tstamp()}
+                     ,{<<"pvt_account_db">>, wh_json:get_value(<<"pvt_account_db">>, JObj)}
+                     ,{<<"pvt_account_id">>, wh_json:get_value(<<"pvt_account_id">>, JObj)}
+                     ,{<<"flow">>, wh_json:from_list([{<<"children">>, wh_json:new()}
+                                                      ,{<<"module">>, <<"ring_group">>}
+                                                     ])
+                      }
+                     ,{<<"group_id">>, wh_json:get_value(<<"group_id">>, JObj)}
+                     ,{<<"type">>, <<"baseGroup">>}
+                    ])),
+    set_data_for_callflow(JObj, BaseGroup).
+
+-spec set_data_for_callflow(wh_json:object(), wh_json:object()) -> wh_json:object().
+set_data_for_callflow(JObj, BaseGroup) ->
+    Flow = wh_json:get_value(<<"flow">>, BaseGroup),
+    case wh_json:get_value([<<"flow">>, <<"module">>], JObj) of
+        <<"ring_group">> ->
+            Data = wh_json:get_value([<<"flow">>, <<"data">>], JObj),
+            NewFlow = wh_json:set_value(<<"data">>, Data, Flow),
+            set_number_for_callflow(JObj, wh_json:set_value(<<"flow">>, NewFlow, BaseGroup));
+        <<"record_call">> ->
+            Data = wh_json:get_value([<<"flow">>, <<"children">>, <<"_">>, <<"data">>], JObj),
+            NewFlow = wh_json:set_value(<<"data">>, Data, Flow),
+            set_number_for_callflow(JObj, wh_json:set_value(<<"flow">>, NewFlow, BaseGroup))
+    end.
+
+-spec set_number_for_callflow(wh_json:object(), wh_json:object()) -> wh_json:object().
+set_number_for_callflow(JObj, BaseGroup) ->
+    Number = <<"group_", (wh_util:to_binary(wh_util:now_ms(os:timestamp())))/binary>>,
+    Numbers = [Number],
+    set_name_for_callflow(JObj, wh_json:set_value(<<"numbers">>, Numbers, BaseGroup)).
+
+-spec set_name_for_callflow(wh_json:object(), wh_json:object()) -> wh_json:object().
+set_name_for_callflow(JObj, BaseGroup) ->
+    Name = wh_json:get_value(<<"name">>, JObj),
+    NewName = binary:replace(Name, <<"Ring Group">>, <<"Base Group">>),
+    set_ui_metadata(JObj, wh_json:set_value(<<"name">>, NewName, BaseGroup)).
+
+-spec set_ui_metadata(wh_json:object(), wh_json:object()) -> wh_json:object().
+set_ui_metadata(JObj, BaseGroup) ->
+    MetaData = wh_json:get_value(<<"ui_metadata">>, JObj),
+    NewMetaData = wh_json:set_value(<<"version">>, <<"v3.19">>, MetaData),
+    wh_json:set_value(<<"ui_metadata">>, NewMetaData, BaseGroup).
+
+-spec save_new_ring_group_callflow(wh_json:object(), wh_json:object()) -> 'ok'.
+save_new_ring_group_callflow(JObj, NewCallflow) ->
+    AccountDb = wh_json:get_value(<<"pvt_account_db">>, JObj),
+    Name = wh_json:get_value(<<"name">>, NewCallflow),
+    case check_if_callflow_exist(AccountDb, Name) of
+        'true' ->
+            io:format("unable to save new callflow '~s' in '~s'; already exists~n", [Name, AccountDb]);
+        'false' ->
+            save_new_ring_group_callflow(JObj, NewCallflow, AccountDb)
+    end.
+
+save_new_ring_group_callflow(JObj, NewCallflow, AccountDb) ->
+    case couch_mgr:save_doc(AccountDb, NewCallflow) of
+        {'error', _M} ->
+            io:format("unable to save new callflow (old:~p) in ~p aborting...~n"
+                      ,[wh_json:get_value(<<"_id">>, JObj), AccountDb]
+                     );
+        {'ok', NewJObj} ->
+            io:format("  saved base group callflow: ~s~n", [wh_json:encode(NewJObj)]),
+            update_old_ring_group_callflow(JObj, NewJObj)
+    end.
+
+-spec check_if_callflow_exist(ne_binary(), ne_binary()) -> boolean().
+check_if_callflow_exist(AccountDb, Name) ->
+    case couch_mgr:get_all_results(AccountDb, <<"callflows/crossbar_listing">>) of
+        {'error', _M} ->
+            io:format("error fetching callflows in ~p ~p~n", [AccountDb, _M]),
+            'true';
+        {'ok', JObjs} ->
+            lists:any(
+              fun(JObj) ->
+                      wh_json:get_value([<<"value">>, <<"name">>], JObj) =:= Name
+              end
+              ,JObjs
+            )
+    end.
+
+-spec update_old_ring_group_callflow(wh_json:object(), wh_json:object()) -> 'ok'.
+update_old_ring_group_callflow(JObj, NewCallflow) ->
+    Routines = [fun update_old_ring_group_type/2
+                ,fun update_old_ring_group_metadata/2
+                ,fun update_old_ring_group_flow/2
+                ,fun save_old_ring_group/2
+               ],
+    lists:foldl(fun(F, J) -> F(J, NewCallflow) end, JObj, Routines).
+
+-spec update_old_ring_group_type(wh_json:object(), wh_json:object()) -> wh_json:object().
+update_old_ring_group_type(JObj, _NewCallflow) ->
+    wh_json:set_value(<<"type">>, <<"userGroup">>, JObj).
+
+-spec update_old_ring_group_metadata(wh_json:object(), wh_json:object()) -> wh_json:object().
+update_old_ring_group_metadata(JObj, _NewCallflow) ->
+    MetaData = wh_json:get_value(<<"ui_metadata">>, JObj),
+    NewMetaData = wh_json:set_value(<<"version">>, <<"v3.19">>, MetaData),
+    wh_json:set_value(<<"ui_metadata">>, NewMetaData, JObj).
+
+-spec update_old_ring_group_flow(wh_json:object(), wh_json:object()) -> wh_json:object().
+update_old_ring_group_flow(JObj, NewCallflow) ->
+    Data = wh_json:from_list([{<<"id">>, wh_json:get_value(<<"_id">>, NewCallflow)}]),
+    case wh_json:get_value([<<"flow">>, <<"module">>], JObj) of
+        <<"ring_group">> ->
+            Flow = wh_json:get_value(<<"flow">>, JObj),
+            NewFlow = wh_json:set_values([{<<"data">>, Data}, {<<"module">>, <<"callflow">>}], Flow),
+            wh_json:set_value(<<"flow">>, NewFlow, JObj);
+        <<"record_call">> ->
+            ChFlow = wh_json:get_value([<<"flow">>, <<"children">>, <<"_">>], JObj),
+            ChNewFlow = wh_json:set_values([{<<"data">>, Data}, {<<"module">>, <<"callflow">>}], ChFlow),
+            Children = wh_json:set_value(<<"_">>, ChNewFlow, wh_json:get_value([<<"flow">>, <<"children">>], JObj)),
+            Flow = wh_json:set_value(<<"children">>, Children, wh_json:get_value(<<"flow">>, JObj)),
+            wh_json:set_value(<<"flow">>, Flow, JObj)
+    end.
+
+-spec save_old_ring_group(wh_json:object(), wh_json:object()) -> 'ok'.
+save_old_ring_group(JObj, NewCallflow) ->
+    AccountDb = wh_json:get_value(<<"pvt_account_db">>, JObj),
+    case couch_mgr:save_doc(AccountDb, JObj) of
+        {'error', _M} ->
+            L = [wh_json:get_value(<<"_id">>, JObj), AccountDb, wh_json:get_value(<<"_id">>, NewCallflow)],
+            io:format("unable to save callflow ~p in ~p, removing new one (~p)~n", L),
+            {'ok', _} = couch_mgr:del_doc(AccountDb, NewCallflow),
+            'ok';
+        {'ok', _OldJObj} ->
+            io:format("  saved ring group callflow: ~s~n", [wh_json:encode(_OldJObj)])
+    end.
+
+-ifdef(TEST).
+
+-include("eunit/include/eunit.hrl").
+
+migrate_ring_group_callflow_test() ->
+    OldCallflow = <<"{\"_id\":\"cccaaaaaa\",\"numbers\":[\"1234\"],\"name\":\"Some Ring Group\",\"flow\":{\"module\":\"ring_group\",\"children\":{\"_\":{\"data\":{\"id\":\"vvvaaaaaa\"},\"module\":\"voicemail\",\"children\":{}}},\"data\":{\"strategy\":\"simultaneous\",\"timeout\":120,\"endpoints\":[{\"delay\":0,\"timeout\":40,\"id\":\"uuuaaaaaa\",\"endpoint_type\":\"user\"},{\"delay\":40,\"timeout\":40,\"id\":\"uuubbbbbb\",\"endpoint_type\":\"user\"}]}},\"group_id\":\"gggaaaaaa\",\"ui_metadata\":{\"version\":\"v3.19\",\"ui\":\"monster-ui\"},\"pvt_type\":\"callflow\"}">>,
+
+    NewCallflows = <<"[{\"_id\":\"cccaaaaaa\",\"numbers\":[\"1234\"],\"name\":\"Some Ring Group\",\"flow\":{\"module\":\"callflow\",\"children\":{\"_\":{\"data\":{\"id\":\"vvvaaaaaa\"},\"module\":\"voicemail\",\"children\":{}}},\"data\":{\"id\":\"cccbbbbbb\"}},\"group_id\":\"gggaaaaaa\",\"type\":\"userGroup\",\"ui_metadata\":{\"version\":\"v3.19\",\"ui\":\"monster-ui\"},\"pvt_type\":\"callflow\"},{\"_id\":\"cccbbbbbb\",\"numbers\":[\"abcdefghijklmnopqrstuvwxy\"],\"name\":\"Some Base Group\",\"flow\":{\"module\":\"ring_group\",\"children\":{},\"data\":{\"strategy\":\"simultaneous\",\"timeout\":120,\"endpoints\":[{\"delay\":0,\"timeout\":40,\"id\":\"uuuaaaaaa\",\"endpoint_type\":\"user\"},{\"delay\":40,\"timeout\":40,\"id\":\"uuubbbbbb\",\"endpoint_type\":\"user\"}]}},\"group_id\":\"gggaaaaaa\",\"type\":\"baseGroup\",\"ui_metadata\":{\"version\":\"v3.19\",\"ui\":\"monster-ui\"},\"pvt_type\":\"callflow\"}]">>,
+
+
+    ok.
+
+-endif.

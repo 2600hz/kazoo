@@ -62,6 +62,7 @@
                   ,rate :: api_binary() | '_'
                   ,rate_increment :: api_binary() | '_'
                   ,rate_minimum :: api_binary() | '_'
+                  ,rate_nocharge_time :: api_binary() | '_'
                   ,discount_percentage :: api_binary() | '_'
                   ,surcharge :: api_binary() | '_'
                   ,rate_name :: api_binary() | '_'
@@ -379,6 +380,7 @@ to_props(#channel{call_id=CallId
                   ,rate=Rate
                   ,rate_increment=RateIncrement
                   ,rate_minimum=RateMinimum
+                  ,rate_nocharge_time=RateNoChargeTime
                   ,discount_percentage=DiscountPercentage
                   ,surcharge=Surcharge
                   ,rate_name=RateName
@@ -399,6 +401,7 @@ to_props(#channel{call_id=CallId
        ,{<<"Rate">>, Rate}
        ,{<<"Rate-Increment">>, RateIncrement}
        ,{<<"Rate-Minimum">>, RateMinimum}
+       ,{<<"Rate-NoCharge-Time">>, RateNoChargeTime}
        ,{<<"Discount-Percentage">>, DiscountPercentage}
        ,{<<"Surcharge">>, Surcharge}
        ,{<<"Rate-Name">>, RateName}
@@ -484,6 +487,7 @@ handle_cast({'rate_resp', JObj}, State) ->
               [{#channel.rate, wh_json:get_value(<<"Rate">>, JObj)}
                ,{#channel.rate_increment, wh_json:get_value(<<"Rate-Increment">>, JObj)}
                ,{#channel.rate_minimum, wh_json:get_value(<<"Rate-Minimum">>, JObj)}
+               ,{#channel.rate_nocharge_time, wh_json:get_value(<<"Rate-NoCharge-Time">>, JObj)}
                ,{#channel.discount_percentage, wh_json:get_value(<<"Discount-Percentage">>, JObj)}
                ,{#channel.surcharge, wh_json:get_value(<<"Surcharge">>, JObj)}
                ,{#channel.rate_name, wh_json:get_value(<<"Rate-Name">>, JObj)}

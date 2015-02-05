@@ -48,7 +48,7 @@
 -include("../include/wh_log.hrl").
 
 -define(SERVER, ?MODULE).
--define(EXPIRES, 3600). %% an hour
+-define(EXPIRES, ?SECONDS_IN_HOUR). %% an hour
 -define(EXPIRE_PERIOD, 10000).
 -define(DEFAULT_WAIT_TIMEOUT, 5).
 
@@ -63,12 +63,15 @@
 -define(CONSUME_OPTIONS, []).
 
 -type callback_fun() :: fun((_, _, 'flush' | 'erase' | 'expire') -> _).
--type origin_tuple() :: {'db', ne_binary(), ne_binary()} | {'db', ne_binary()}.
+-type origin_tuple() :: {'db', ne_binary(), ne_binary()} | %% {db, Database, PvtType or Id}
+                        {'type', ne_binary(), ne_binary()} | %% {type, PvtType, Id}
+                        {'db', ne_binary()} | %% {db, Database}
+                        {'type', ne_binary()}. %% {type, PvtType}
 -type origin_tuples() :: [origin_tuple(),...] | [].
 -record(cache_obj, {key :: term() | '_' | '$1'
                     ,value :: term() | '_' | '$1' | '$2'
-                    ,expires :: pos_integer() | 'infinity' | '_' | '$3'
-                    ,timestamp = wh_util:current_tstamp() :: pos_integer() | '_' | '$4'
+                    ,expires :: wh_timeout() | '_' | '$3'
+                    ,timestamp = wh_util:current_tstamp() :: gregorian_seconds() | '_' | '$4'
                     ,callback :: callback_fun() | '_' | '$2' | '$3' | '$5'
                     ,origin :: origin_tuple() | origin_tuples() | '$1' | '_'
                     ,type = 'normal' :: 'normal' | 'monitor' | 'pointer' | '_'
@@ -180,11 +183,17 @@ wait_for_key(Key) -> wait_for_key(Key, ?DEFAULT_WAIT_TIMEOUT).
 wait_for_key(Key, Timeout) -> wait_for_key_local(?SERVER, Key, Timeout).
 
 %% Local cache API
--spec store_local(atom(), term(), term()) -> 'ok'.
--spec store_local(atom(), term(), term(), wh_proplist()) -> 'ok'.
+-spec store_local(server_ref(), term(), term()) -> 'ok'.
+-spec store_local(server_ref(), term(), term(), wh_proplist()) -> 'ok'.
 
 store_local(Srv, K, V) -> store_local(Srv, K, V, []).
 
+store_local(Srv, K, V, Props) when is_atom(Srv) ->
+    case whereis(Srv) of
+        'undefined' ->
+            throw({'error', 'unknown_cache', Srv});
+        Pid -> store_local(Pid, K, V, Props)
+    end;
 store_local(Srv, K, V, Props) ->
     gen_server:cast(Srv, {'store', #cache_obj{key=K
                                               ,value=V
@@ -559,6 +568,14 @@ maybe_erase_changed(Db, Type, Id, Tab) ->
                    ,['$_']
                   }
                  ,{#cache_obj{origin = {'db', Db, Id}, _ = '_'}
+                   ,[]
+                   ,['$_']
+                  }
+                 ,{#cache_obj{origin = {'type', Type, Id}, _ = '_'}
+                   ,[]
+                   ,['$_']
+                  }
+                 ,{#cache_obj{origin = {'type', Type}, _ = '_'}
                    ,[]
                    ,['$_']
                   }

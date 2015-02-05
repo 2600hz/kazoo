@@ -61,7 +61,7 @@ check_numbers(Numbers, _Props) ->
         Url ->
             DefaultCountry = whapps_config:get(?WNM_OTHER_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY),
             ReqBody = wh_json:set_value(<<"data">>, FormatedNumbers, wh_json:new()),
-            Uri = <<Url/binary,  "/", DefaultCountry/binary, "/status">>,
+            Uri = <<Url/binary,  "/numbers/", DefaultCountry/binary, "/status">>,
             lager:debug("making request to ~s with body ~p", [Uri, ReqBody]),
             case ibrowse:send_req(binary:bin_to_list(Uri), [], 'post', wh_json:encode(ReqBody)) of
                 {'error', Reason} ->
@@ -129,13 +129,12 @@ acquire_number(#number{number=Num}=Number) ->
                     end,
 
             ReqBody = wh_json:set_values([{[<<"data">>, <<"numbers">>], [Num]}
-                                          ,{[<<"data">>, <<"hosts">>], Hosts}
+                                          ,{[<<"data">>, <<"gateways">>], Hosts}
                                          ]
                                          ,wh_json:new()
                                         ),
 
-            Uri = <<Url/binary,  "/", DefaultCountry/binary, "/order">>,
-
+            Uri = <<Url/binary,  "/numbers/", DefaultCountry/binary, "/order">>,
             case ibrowse:send_req(wh_util:to_list(Uri), [], 'put', wh_json:encode(ReqBody)) of
                 {'error', Reason} ->
                     lager:error("number lookup failed to ~s: ~p", [Uri, Reason]),
@@ -163,8 +162,8 @@ disconnect_number(Number) -> Number.
 get_numbers(Url, Number, Quantity, Props) ->
     Offset = props:get_value(<<"offset">>, Props, <<"0">>),
     Country = whapps_config:get(?WNM_OTHER_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY),
-    ReqBody = <<"?pattern=", Number/binary, "&limit=", Quantity/binary, "&offset=", Offset/binary>>,
-    Uri = <<Url/binary, "/", Country/binary, "/search", ReqBody/binary>>,
+    ReqBody = <<"?prefix=", Number/binary, "&limit=", Quantity/binary, "&offset=", Offset/binary>>,
+    Uri = <<Url/binary, "/numbers/", Country/binary, "/search", ReqBody/binary>>,
     case ibrowse:send_req(wh_util:to_list(Uri), [], 'get') of
         {'error', _Reason} ->
             lager:error("number lookup error to ~s: ~p", [Uri, _Reason]),
@@ -182,20 +181,11 @@ get_numbers(Url, Number, Quantity, Props) ->
 format_numbers_resp(JObj) ->
     case wh_json:get_value(<<"status">>, JObj) of
         <<"success">> ->
-            Numbers = lists:foldl(fun format_numbers_resp_fold/2
-                                 ,[]
-                                 ,wh_json:get_value(<<"data">>, JObj, [])
-                                 ),
-            {'ok', wh_json:from_list(Numbers)};
+            {'ok', wh_json:get_value(<<"data">>, JObj)};
         _Error ->
             lager:error("block lookup resp error: ~p", [_Error]),
             {'error', 'non_available'}
     end.
-
--spec format_numbers_resp_fold(wh_json:object(), wh_json:objects()) -> wh_json:objects().
-format_numbers_resp_fold(JObj, Numbers) ->
-    Number = wnm_util:to_e164(wh_json:get_value(<<"number">>, JObj)),
-    [{Number, JObj} | Numbers].
 
 -spec get_blocks(ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
                         {'error', 'non_available'} |
@@ -204,11 +194,11 @@ get_blocks(Url, Number, Quantity, Props) ->
     Offset = props:get_value(<<"offset">>, Props, <<"0">>),
     Limit = props:get_value(<<"blocks">>, Props, <<"0">>),
     Country = whapps_config:get(?WNM_OTHER_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY),
-    ReqBody = <<"?pattern=", (wh_util:uri_encode(Number))/binary
+    ReqBody = <<"?prefix=", (wh_util:uri_encode(Number))/binary
                             ,"&size=", Quantity/binary
                             ,"&offset=", Offset/binary
                             ,"&limit=", Limit/binary>>,
-    Uri = <<Url/binary, "/", Country/binary, "/block_search", ReqBody/binary>>,
+    Uri = <<Url/binary, "/blocks/", Country/binary, "/search", ReqBody/binary>>,
     lager:debug("making request to ~s", [Uri]),
     case ibrowse:send_req(binary:bin_to_list(Uri), [], 'get') of
         {'error', Reason} ->
@@ -248,13 +238,34 @@ format_blocks_resp_fold(JObj, Numbers) ->
     [wh_json:set_values(Props, JObj) | Numbers].
 
 -spec format_acquire_resp(wh_json:object(), wnm_number()) -> wnm_number().
-format_acquire_resp(Body, Number) ->
-    case wh_json:get_value(<<"status">>, Body) of
+format_acquire_resp(Body, #number{number=Num}=Number) ->
+    JObj = wh_json:get_value([<<"data">>, Num], Body, wh_json:new()),
+    case wh_json:get_value(<<"status">>, JObj) of
         <<"success">> ->
-            Number#number{module_data=wh_json:get_value(<<"data">>, Body, wh_json:new())};
+            Routines = [fun maybe_merge_opaque/2
+                        ,fun maybe_merge_locality/2
+                       ],
+            lists:foldl(fun(F, N) -> F(JObj, N) end, Number, Routines);
         Error ->
             lager:error("number lookup resp error: ~p", [Error]),
             wnm_number:error_carrier_fault(Error, Number)
+    end.
+
+-spec maybe_merge_opaque(wh_json:object(), wnm_number()) -> wnm_number().
+maybe_merge_opaque(JObj, Number) ->
+    case wh_json:get_ne_value(<<"opaque">>, JObj) of
+        'undefined' -> Number;
+        Opaque ->
+            Number#number{module_data=Opaque}
+    end.
+
+-spec maybe_merge_locality(wh_json:object(), wnm_number()) -> wnm_number().
+maybe_merge_locality(JObj, #number{number_doc=Doc}=Number) ->
+    case wh_json:get_ne_value(<<"locality">>,  JObj) of
+        'undefined' -> Number;
+        Locality ->
+            Updated = wh_json:set_value(<<"locality">>, Locality, Doc),
+            Number#number{number_doc=Updated}
     end.
 
 %%--------------------------------------------------------------------

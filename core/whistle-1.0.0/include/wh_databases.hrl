@@ -40,6 +40,8 @@
                         ,?WH_DEDICATED_IP_DB
                         ,?KZ_ACDC_DB
                         ,?KZ_OAUTH_DB
+                        ,?KZ_WEBHOOKS_DB
+                        ,?KZ_TOKEN_DB
                        ]).
 
 -define(WH_DATABASES_HRL, 'true').

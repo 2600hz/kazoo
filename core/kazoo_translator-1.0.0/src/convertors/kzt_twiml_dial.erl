@@ -152,7 +152,6 @@ dial_me(Call, Attrs, DialMe) ->
 
     OffnetProps = [{<<"Timeout">>, kzt_util:get_call_timeout(Call1)}
                    ,{<<"Media">>, media_processing(Call1)}
-                   ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"park_after_bridge">>, 'true'}])}
                    ,{<<"Force-Outbound">>, force_outbound(Props)}
                    ,{<<"Server-ID">>, whapps_call:controller_queue(Call1)}
                   ],
@@ -179,7 +178,7 @@ setup_call_for_dial(Call, Props) ->
     Setters = [{fun whapps_call:set_caller_id_number/2, caller_id(Props, Call)}
                ,{fun kzt_util:set_hangup_dtmf/2, hangup_dtmf(Props)}
                ,{fun kzt_util:set_record_call/2, should_record_call(Props)}
-               ,{fun kzt_util:set_call_timeout/2, kzt_twiml:timeout_s(Props)}
+               ,{fun kzt_util:set_call_timeout/2, kzt_twiml_util:timeout_s(Props)}
                ,{fun kzt_util:set_call_time_limit/2, timelimit_s(Props)}
               ],
     whapps_call:exec(Setters, Call).
@@ -187,7 +186,7 @@ setup_call_for_dial(Call, Props) ->
 -spec maybe_end_dial(whapps_call:call(), wh_proplist()) ->
                             {'ok' | 'stop', whapps_call:call()}.
 maybe_end_dial(Call, Props) ->
-    maybe_end_dial(Call, Props, kzt_twiml:action_url(Props)).
+    maybe_end_dial(Call, Props, kzt_twiml_util:action_url(Props)).
 
 maybe_end_dial(Call, _Props, 'undefined') ->
     lager:debug("a-leg status after bridge: ~s", [kzt_util:get_call_status(Call)]),
@@ -407,8 +406,8 @@ add_conference_profile(Call, ConfProps) ->
                    ,{<<"energy-level">>, props:get_integer_value('energyLevel', ConfProps, 20)}
                    ,{<<"member-flags">>, conference_member_flags(ConfProps)}
                    ,{<<"conference-flags">>, conference_flags(ConfProps)}
-                   ,{<<"tts-engine">>, kzt_twiml:get_engine(ConfProps)}
-                   ,{<<"tts-voice">>, kzt_twiml:get_voice(ConfProps)}
+                   ,{<<"tts-engine">>, kzt_twiml_util:get_engine(ConfProps)}
+                   ,{<<"tts-voice">>, kzt_twiml_util:get_voice(ConfProps)}
                    ,{<<"max-members">>, get_max_participants(ConfProps)}
                    ,{<<"comfort-noise">>, props:get_integer_value('comfortNoise', ConfProps, 1000)}
                    ,{<<"annouce-count">>, props:get_integer_value('announceCount', ConfProps)}

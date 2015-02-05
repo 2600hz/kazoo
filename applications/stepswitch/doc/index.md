@@ -1,4 +1,4 @@
-/*                                                                                                                                                                                                                                                                                                 
+/*
 Section: Stepswitch
 Title: Stepswitch
 Language: en-US

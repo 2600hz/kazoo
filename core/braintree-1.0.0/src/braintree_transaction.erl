@@ -136,8 +136,8 @@ create(CustomerId, Transaction) ->
 %%--------------------------------------------------------------------
 -spec sale(bt_transaction()) -> bt_transaction().
 -spec sale(ne_binary(), bt_transaction()) -> bt_transaction().
--spec quick_sale(ne_binary(), ne_binary()) -> bt_transaction().
--spec quick_sale(ne_binary(), ne_binary(), wh_proplist()) -> bt_transaction().
+-spec quick_sale(ne_binary(), number() | ne_binary()) -> bt_transaction().
+-spec quick_sale(ne_binary(), number() | ne_binary(), wh_proplist()) -> bt_transaction().
 
 sale(Transaction) ->
     create(Transaction#bt_transaction{type=?BT_TRANS_SALE}).
@@ -146,11 +146,11 @@ sale(CustomerId, Transaction) ->
     create(Transaction#bt_transaction{type=?BT_TRANS_SALE, customer_id=CustomerId}).
 
 quick_sale(CustomerId, Amount) ->
-    sale(CustomerId, #bt_transaction{amount=Amount}).
+    sale(CustomerId, #bt_transaction{amount=wh_util:to_binary(Amount)}).
 
 quick_sale(CustomerId, Amount, Props) ->
     Transaction = json_to_record(wh_json:from_list(Props)),
-    sale(CustomerId, Transaction#bt_transaction{amount=Amount}).
+    sale(CustomerId, Transaction#bt_transaction{amount=wh_util:to_binary(Amount)}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -285,7 +285,8 @@ record_to_xml(#bt_transaction{}=Transaction, ToString) ->
              ,{'payment-method-token', Transaction#bt_transaction.payment_token}
              ,{'shipping-address-id', Transaction#bt_transaction.shipping_address_id}
              ,{'tax-amount', Transaction#bt_transaction.tax_amount}
-             ,{'tax-exempt', Transaction#bt_transaction.tax_exempt}],
+             ,{'tax-exempt', Transaction#bt_transaction.tax_exempt}
+            ],
     Conditionals = [fun(#bt_transaction{billing_address='undefined'}, P) -> P;
                        (#bt_transaction{billing_address=BA}, P) ->
                             [{'billing', braintree_address:record_to_xml(BA)}|P]
@@ -454,5 +455,3 @@ json_to_record(JObj) ->
         ,change_billing_address = wh_json:get_value(<<"change_billing_address">>, JObj, 'false')
         ,store_shipping_address = wh_json:get_value(<<"store_shipping_address">>, JObj, 'false')
     }.
-
-

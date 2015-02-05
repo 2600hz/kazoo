@@ -55,6 +55,7 @@
 -record(state, {transferor :: ne_binary()
                 ,transferee :: ne_binary()
                 ,target :: ne_binary()
+                ,target_b_legs = [] :: ne_binaries()
                 ,call :: whapps_call:call()
                 ,target_call = whapps_call:new() :: whapps_call:call()
                 ,takeback_dtmf :: ne_binary()
@@ -371,6 +372,7 @@ partial_wait(?EVENT(Transferor, <<"LEG_DESTROYED">>, _Evt)
     {'next_state', 'partial_wait', State};
 partial_wait(?EVENT(Target, EventName, _Evt)
              ,#state{target=Target
+                     ,target_b_legs=[]
                      ,transferor=_Transferor
                      ,transferee=_Transferee
                     }=State
@@ -381,6 +383,24 @@ partial_wait(?EVENT(Target, EventName, _Evt)
                ,[Target, _Transferee]
               ),
     {'stop', 'normal', State};
+partial_wait(?EVENT(Target, EventName, _Evt)
+             ,#state{target=Target
+                     ,target_b_legs=[B|Bs]
+                     ,call=Call
+                     ,transferor=Transferor
+                     ,transferee=Transferee
+                    }=State
+            )
+  when EventName =:= <<"CHANNEL_DESTROY">>
+       orelse EventName =:= <<"LEG_DESTROYED">> ->
+    lager:info("target ~s hungup (but ~s is still up)", [Target, B]),
+
+    connect_transferee_to_target(B, Call),
+    issue_internal_transferee(Call, Transferor, Transferee, B),
+
+    {'next_state', 'partial_wait', State#state{target=B
+                                               ,target_b_legs=Bs
+                                              }};
 partial_wait(?EVENT(Target, <<"CHANNEL_ANSWER">>, _Evt)
              ,#state{target=Target}=State
             ) ->

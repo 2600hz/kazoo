@@ -34,7 +34,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec send_email(ne_binary(), 'undefined' | binary(), term()) ->
-                              'ok' | {'error', _}.
+                        'ok' | {'error', _}.
 send_email(_, 'undefined', _) -> lager:debug("no email to send to");
 send_email(_, <<>>, _) -> lager:debug("empty email to send to");
 send_email(From, To, Email) ->
@@ -43,7 +43,7 @@ send_email(From, To, Email) ->
     Username = wh_util:to_list(whapps_config:get(<<"smtp_client">>, <<"username">>, <<"">>)),
     Password = wh_util:to_list(whapps_config:get(<<"smtp_client">>, <<"password">>, <<"">>)),
     Auth = wh_util:to_list(whapps_config:get(<<"smtp_client">>, <<"auth">>, <<"never">>)),
-    Port = wh_util:to_list(whapps_config:get(<<"smtp_client">>, <<"port">>, <<"25">>)),
+    Port = whapps_config:get_integer(<<"smtp_client">>, <<"port">>, 25),
 
     lager:debug("sending email to ~s from ~s via ~s", [To, From, Relay]),
     ReqId = get('callid'),
@@ -92,7 +92,7 @@ send_update(RespQ, MsgId, Status, Msg) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_template_props(api_object()) -> 'undefined' | wh_proplist().
+-spec json_to_template_props(api_object() | wh_json:objects()) -> 'undefined' | wh_proplist().
 json_to_template_props('undefined') -> 'undefined';
 json_to_template_props(JObj) ->
     normalize_proplist(wh_json:recursive_to_proplist(JObj)).
@@ -172,10 +172,19 @@ get_default_template(Category, Key) ->
 -spec render_template(api_binary(), atom(), wh_proplist()) ->
                                    {'ok', iolist()} |
                                    {'error', term()}.
-render_template('undefined', DefaultTemplate, Props) ->
+render_template(Template, DefaultTemplate, Props) ->
+    case do_render_template(Template, DefaultTemplate, Props) of
+        {'ok', R} -> {'ok', binary_to_list(iolist_to_binary(R))};
+        Else -> Else
+    end.
+
+-spec do_render_template(api_binary(), atom(), wh_proplist()) ->
+                                   {'ok', iolist()} |
+                                   {'error', term()}.
+do_render_template('undefined', DefaultTemplate, Props) ->
     lager:debug("rendering default ~s template", [DefaultTemplate]),
     DefaultTemplate:render(Props);
-render_template(Template, DefaultTemplate, Props) ->
+do_render_template(Template, DefaultTemplate, Props) ->
     try
         CustomTemplate = wh_util:to_atom(list_to_binary([couch_mgr:get_uuid(), "_"
                                                         ,wh_util:to_binary(DefaultTemplate)
@@ -193,7 +202,7 @@ render_template(Template, DefaultTemplate, Props) ->
     catch
         _:_E ->
             lager:debug("error compiling custom ~s template: ~p", [DefaultTemplate, _E]),
-            render_template('undefined', DefaultTemplate, Props)
+            do_render_template('undefined', DefaultTemplate, Props)
     end.
 
 %%--------------------------------------------------------------------
@@ -449,4 +458,3 @@ get_charset_params(Service) ->
                 };
             _ -> {[], <<>>}
         end.
-

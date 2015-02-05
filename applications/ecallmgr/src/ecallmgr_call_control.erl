@@ -310,11 +310,24 @@ handle_cast({'event_execute_complete', CallId, AppName, JObj}
 handle_cast({'event_execute_complete', _, _, _}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', _}}
-            ,#state{controller_q='undefined'}=State) ->
+            ,#state{controller_q='undefined'}=State
+           ) ->
+    lager:debug("call control got created_queue but controller is undefined"),
     {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
-    {'noreply', call_control_ready(Q, State)};
+    {'noreply', State#state{control_q=Q}};
+handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}
+            ,#state{controller_q='undefined'}=State
+           ) ->
+    lager:debug("call control got is_consuming but controller is undefined"),
+    {'noreply', State};
+handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}
+            ,#state{control_q='undefined'}=State
+           ) ->
+    lager:debug("call control got is_consuming but control_q is undefined"),
+    {'noreply', State};
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
+    call_control_ready(State),
     {'noreply', State};
 handle_cast({'fs_nodedown', Node}, #state{node=Node
                                           ,is_node_up='true'
@@ -506,12 +519,14 @@ code_change(_OldVsn, State, _Extra) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec call_control_ready(ne_binary(), state()) -> state().
-call_control_ready(Q, #state{call_id=CallId
-                             ,controller_q=ControllerQ
-                             ,initial_ccvs=CCVs
-                             ,fetch_id=FetchId
-                             ,node=Node}=State) ->
+-spec call_control_ready(state()) -> 'ok'.
+call_control_ready(#state{call_id=CallId
+                          ,controller_q=ControllerQ
+                          ,control_q=Q
+                          ,initial_ccvs=CCVs
+                          ,fetch_id=FetchId
+                          ,node=Node
+                         }) ->
     Win = [{<<"Msg-ID">>, CallId}
            ,{<<"Call-ID">>, CallId}
            ,{<<"Control-Queue">>, Q}
@@ -527,8 +542,7 @@ call_control_ready(Q, #state{call_id=CallId
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     lager:debug("sending control usurp for ~s", [FetchId]),
-    wapi_call:publish_usurp_control(CallId, Usurp),
-    State#state{control_q=Q}.
+    wapi_call:publish_usurp_control(CallId, Usurp).
 
 %%--------------------------------------------------------------------
 %% @private

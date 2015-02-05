@@ -11,7 +11,6 @@
 
 -compile({'no_auto_import', [error/1]}).
 
-%% Accessors
 -export([v/1]).
 
 -export([optional_bridge_req_headers/0]).
@@ -85,8 +84,10 @@
          ,publish_originate_execute/2, publish_originate_execute/3
         ]).
 
--include("wapi_dialplan.hrl").
+-include_lib("whistle/include/wh_api.hrl").
 -include_lib("whistle/include/wh_log.hrl").
+
+-include("wapi_dialplan.hrl").
 
 -spec optional_bridge_req_headers() -> ne_binaries().
 optional_bridge_req_headers() ->

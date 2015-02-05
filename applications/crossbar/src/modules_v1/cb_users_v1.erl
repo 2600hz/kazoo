@@ -172,7 +172,7 @@ process_billing(Context, _Nouns, _Verb) -> Context.
 authenticate(Context) ->
     authenticate_users(cb_context:req_nouns(Context), cb_context:req_verb(Context)).
 
-authenticate_users(?USERS_QCALL_NOUNS, ?HTTP_GET) ->
+authenticate_users(?USERS_QCALL_NOUNS(_UserId, _Number), ?HTTP_GET) ->
     lager:debug("authenticating request"),
     'true';
 authenticate_users(_Nouns, _Verb) -> 'false'.
@@ -181,7 +181,7 @@ authenticate_users(_Nouns, _Verb) -> 'false'.
 authorize(Context) ->
     authorize_users(cb_context:req_nouns(Context), cb_context:req_verb(Context)).
 
-authorize_users(?USERS_QCALL_NOUNS, ?HTTP_GET) ->
+authorize_users(?USERS_QCALL_NOUNS(_UserId, _Number), ?HTTP_GET) ->
     lager:debug("authorizing request"),
     'true';
 authorize_users(_Nouns, _Verb) -> 'false'.
@@ -353,7 +353,7 @@ validate_patch(UserId, Context) ->
 prepare_username(UserId, Context) ->
     JObj = cb_context:req_data(Context),
     case wh_json:get_ne_value(<<"username">>, JObj) of
-        'undefined' -> check_user_schema(UserId, Context);
+        'undefined' -> check_user_name(UserId, Context);
         Username ->
             JObj1 = wh_json:set_value(<<"username">>, wh_util:to_lower_binary(Username), JObj),
             check_user_name(UserId, cb_context:set_req_data(Context, JObj1))

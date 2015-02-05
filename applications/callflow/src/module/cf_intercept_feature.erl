@@ -46,7 +46,6 @@
 
 -export([handle/2]).
 
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -60,18 +59,7 @@ handle(Data, Call) ->
     InterceptType = wh_json:get_value(<<"type">>, Data),
     case build_intercept_params(Number, InterceptType, Call) of
         {'ok', Params} ->
-            case make_secure_params(Data) of
-                [] ->
-                    case maybe_allowed_to_intercept(Call, Params) of
-                        'true' ->
-                            cf_intercept:handle(wh_json:from_list(Params), Call);
-                        'false' ->
-                            no_permission_to_intercept(Call),
-                            cf_exe:stop(Call)
-                    end;
-                SParams ->
-                    cf_intercept:handle(wh_json:from_list(SParams ++ Params), Call)
-            end;
+            maybe_intercept(Data, Call, Params);
         {'error', _E} ->
             lager:info("Error <<~s>> processing intercept '~s' for number ~s"
                        ,[_E, InterceptType, Number]),
@@ -79,14 +67,31 @@ handle(Data, Call) ->
             cf_exe:stop(Call)
     end.
 
--spec make_secure_params(wh_json:object()) -> wh_proplist().
-make_secure_params(Data) ->
-    SecureParams = [
-      {<<"approved_device_id">>, wh_json:get_value(<<"approved_device_id">>, Data)},
-      {<<"approved_user_id">>, wh_json:get_value(<<"approved_user_id">>, Data)},
-      {<<"approved_group_id">>, wh_json:get_value(<<"approved_group_id">>, Data)}
-    ],
-    props:filter_undefined(SecureParams).
+-spec maybe_intercept(wh_json:object(), whapps_call:call(), wh_proplist()) -> 'ok'.
+maybe_intercept(Data, Call, Params) ->
+    case intercept_restrictions(Data) of
+        [] -> maybe_intercept(Call, Params);
+        SParams ->
+            cf_intercept:handle(wh_json:from_list(SParams ++ Params), Call)
+    end.
+
+-spec maybe_intercept(whapps_call:call(), wh_proplist()) -> 'ok'.
+maybe_intercept(Call, Params) ->
+    case maybe_allowed_to_intercept(Call, Params) of
+        'true' ->
+            cf_intercept:handle(wh_json:from_list(Params), Call);
+        'false' ->
+            no_permission_to_intercept(Call),
+            cf_exe:stop(Call)
+    end.
+
+-spec intercept_restrictions(wh_json:object()) -> wh_proplist().
+intercept_restrictions(Data) ->
+    props:filter_undefined(
+      [{<<"approved_device_id">>, wh_json:get_value(<<"approved_device_id">>, Data)}
+       ,{<<"approved_user_id">>, wh_json:get_value(<<"approved_user_id">>, Data)}
+       ,{<<"approved_group_id">>, wh_json:get_value(<<"approved_group_id">>, Data)}
+      ]).
 
 -spec maybe_allowed_to_intercept(whapps_call:call(), wh_proplist()) -> boolean().
 maybe_allowed_to_intercept(Call, Props) ->
@@ -102,24 +107,29 @@ maybe_allowed_to_intercept(Call, Props) ->
 maybe_allowed_to_intercept(Call, Props, DeviceDoc) ->
     case props:get_value(<<"user_id">>, Props) of
         'undefined' ->
-            case props:get_value(<<"device_id">>, Props) of
-                'undefined' -> 'false';
-                DeviceId ->
-                    case couch_mgr:open_cache_doc(whapps_call:account_db(Call), DeviceId) of
-                        {'ok', TargetDevice} ->
-                            wh_json:get_value(<<"owner_id">>, DeviceDoc) =:=
-                                wh_json:get_value(<<"owner_id">>, TargetDevice);
-                        Err ->
-                            lager:info("Error while opening couch document: ~p", [Err]),
-                            'false'
-                    end
-            end;
+            can_device_intercept(Call, Props, DeviceDoc);
         UserId -> UserId =:= wh_json:get_value(<<"owner_id">>, DeviceDoc)
     end.
 
+-spec can_device_intercept(whapps_call:call(), wh_proplist(), wh_json:object()) -> boolean().
+can_device_intercept(Call, Props, DeviceDoc) ->
+    device_has_same_owner(Call, DeviceDoc, props:get_value(<<"device_id">>, Props)).
+
+-spec device_has_same_owner(whapps_call:call(), wh_json:object(), api_binary()) -> boolean().
+device_has_same_owner(_Call, _Device, 'undefined') -> 'false';
+device_has_same_owner(Call, DeviceDoc, TargetDeviceId) ->
+    case couch_mgr:open_cache_doc(whapps_call:account_db(Call), TargetDeviceId) of
+        {'ok', TargetDevice} ->
+            wh_json:get_value(<<"owner_id">>, DeviceDoc)
+                =:= wh_json:get_value(<<"owner_id">>, TargetDevice);
+        {'error', _E} ->
+            lager:info("error while opening device ~s: ~p", [TargetDeviceId, _E]),
+            'false'
+    end.
+
 -spec build_intercept_params(ne_binary(), ne_binary(), whapps_call:call()) ->
-                                 {'ok', wh_proplist()} |
-                                 {'error', ne_binary()}.
+                                    {'ok', wh_proplist()} |
+                                    {'error', ne_binary()}.
 build_intercept_params(Number, <<"device">>, Call) ->
     AccountDb = whapps_call:account_db(Call),
     case cf_util:endpoint_id_by_sip_username(AccountDb, Number) of

@@ -9,7 +9,10 @@
 
 -behaviour(gen_listener).
 
--export([start_link/3]).
+-export([start_link/3
+         ,stop/1
+         ,broker/1
+        ]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -22,7 +25,6 @@
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
--include_lib("rabbitmq_server/plugins-src/rabbitmq-erlang-client/include/amqp_client.hrl").
 
 -record(state, {parent :: pid()
                 ,broker :: ne_binary()
@@ -44,6 +46,14 @@
 start_link(Parent, Broker, Params) ->
     gen_listener:start_link(?MODULE, Params, [Parent, Broker]).
 
+-spec broker(server_ref()) -> ne_binary().
+broker(Pid) ->
+    gen_listener:call(Pid, 'get_broker').
+
+-spec stop(server_ref()) -> 'ok'.
+stop(Pid) ->
+    gen_listener:call(Pid, {'stop', self()}).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -61,7 +71,8 @@ start_link(Parent, Broker, Params) ->
 %%--------------------------------------------------------------------
 init([Parent, Broker]) ->
     lager:debug("federating listener ~p on broker ~s"
-                ,[Parent, Broker]),
+                ,[Parent, Broker]
+               ),
     wh_amqp_channel:consumer_broker(Broker),
     {'ok', #state{parent=Parent
                   ,broker=Broker
@@ -81,8 +92,12 @@ init([Parent, Broker]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({'stop', Parent}, _From, #state{parent=Parent}=State) ->
+    {'stop', 'normal', 'ok', State};
+handle_call('get_broker', _From, #state{broker=Broker}=State) ->
+    {'reply', Broker, State};
 handle_call(_Request, _From, State) ->
-    {'reply', {'error', 'not_implemented'}, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -128,15 +143,18 @@ handle_event(JObj, BasicDeliver, #state{parent=Parent
                                         ,self_binary=Self
                                        }) ->
     lager:debug("relaying federated event to ~p with consumer pid ~p",
-                [Parent, Self]),
+                [Parent, Self]
+               ),
     RemoteServerId = <<"consumer://"
                        ,(Self)/binary, "/"
-                       ,(wh_json:get_value(<<"Server-ID">>, JObj, <<>>))/binary>>,
+                       ,(wh_json:get_value(<<"Server-ID">>, JObj, <<>>))/binary
+                     >>,
     gen_listener:federated_event(Parent
                                  ,wh_json:set_values([{<<"Server-ID">>, RemoteServerId}
                                                       ,{<<"AMQP-Broker">>, Broker}
                                                      ], JObj)
-                                 ,BasicDeliver),
+                                 ,BasicDeliver
+                                ),
     'ignore'.
 
 %%--------------------------------------------------------------------

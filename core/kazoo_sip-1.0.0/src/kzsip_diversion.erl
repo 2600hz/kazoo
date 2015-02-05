@@ -12,13 +12,15 @@
          ,from_binary/1
         ]).
 
--export([reason/1
-         ,counter/1
+-export([reason/1, set_reason/2
+         ,counter/1, set_counter/2
          ,limit/1
          ,privacy/1
          ,screen/1
          ,extensions/1
-         ,address/1
+         ,address/1, set_address/2
+         ,user/1, set_user/2
+         ,new/0
         ]).
 
 -define(PARAM_REASON, <<"reason">>).
@@ -36,6 +38,9 @@
 -type diversion() :: wh_json:object().
 -export_type([diversion/0]).
 
+-spec new() -> diversion().
+new() -> wh_json:new().
+
 -spec reason(diversion()) -> api_binary().
 -spec counter(diversion()) -> non_neg_integer().
 -spec limit(diversion()) -> api_integer().
@@ -43,7 +48,10 @@
 -spec screen(diversion()) -> api_binary().
 -spec extensions(diversion()) -> api_list().
 -spec address(diversion()) -> api_binary().
+-spec user(diversion()) -> api_binary().
 
+user(JObj) ->
+    wnm_sip:user(wnm_sip:parse(address(JObj))).
 address(JObj) ->
     wh_json:get_ne_binary_value(?PARAM_ADDRESS, JObj).
 reason(JObj) ->
@@ -69,6 +77,22 @@ extensions_fold({K, ?SOLO_EXTENSION}, Acc) ->
     [K | Acc];
 extensions_fold({_K, _V}=Extention, Acc) ->
     [Extention | Acc].
+
+-spec set_address(diversion(), ne_binary()) -> diversion().
+-spec set_reason(diversion(), ne_binary()) -> diversion().
+-spec set_counter(diversion(), non_neg_integer()) -> diversion().
+
+set_user(JObj, User) ->
+    Address = wnm_sip:parse(address(JObj)),
+    Address1 = wnm_sip:set_user(Address, User),
+    set_address(JObj, list_to_binary([<<"<">>, wnm_sip:encode(Address1), <<">">>])).
+set_address(JObj, Address) ->
+    wh_json:set_value(?PARAM_ADDRESS, Address, JObj).
+set_reason(JObj, Reason) ->
+    wh_json:set_value(?PARAM_REASON, Reason, JObj).
+set_counter(JObj, Counter) ->
+    wh_json:set_value(?PARAM_COUNTER, Counter, JObj).
+
 
 -spec from_binary(ne_binary()) -> wh_json:object().
 from_binary(<<"Diversion:", Header/binary>>) ->
@@ -215,8 +239,9 @@ parse_param_value(<<"\"", _/binary>> = Param, _Literals) ->
 parse_param_value(<<"'", _/binary>> = Param, _Literals) ->
     parse_quoted_param(Param);
 parse_param_value(Param, [Literal | Literals]) ->
-    case Param of
-        <<Literal, _/binary>> -> Literal;
+    LiteralSize = byte_size(Literal),
+    case binary:longest_common_prefix([Param, Literal]) of
+        LiteralSize -> Literal;
         _ -> parse_param_value(Param, Literals)
     end;
 parse_param_value(Param, []) ->
@@ -370,5 +395,17 @@ to_binary_fix_address_test() ->
     Header = <<"sip:0123456789@1.22.133.4;counter=1 ">>,
     NewHeader = to_binary(from_binary(Header)),
     ?assertEqual(<<"<sip:0123456789@1.22.133.4>;counter=1">>, NewHeader).
+
+user_test() ->
+    Header = <<"<sip:0123456789@1.22.133.4>;counter=1">>,
+    D = from_binary(Header),
+    ?assertEqual(<<"0123456789">>, user(D)).
+
+set_user_test() ->
+    Header = <<"<sip:0123456789@1.22.133.4>;counter=1">>,
+    D = set_user(from_binary(Header), <<"12345556789">>),
+
+    ?assertEqual(<<"12345556789">>, user(D)),
+    ?assertEqual(<<"<sip:12345556789@1.22.133.4>">>, address(D)).
 
 -endif.

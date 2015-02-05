@@ -89,6 +89,13 @@
               ,db_classifications/0
              ]).
 
+-define(DELETE_KEYS, [<<"_rev">>, <<"id">>, <<"_attachments">>]).
+
+-type copy_function() :: fun((server(), ne_binary(), wh_json:object(), wh_proplist()) ->
+                              {'ok', wh_json:object()} | couchbeam_error()).
+-export_type([copy_function/0]).
+-define(COPY_DOC_OVERRIDE_PROPERTY, 'override_existing_document').
+
 %%------------------------------------------------------------------------------
 %% @public
 %% @doc
@@ -181,6 +188,8 @@ get_new_conn(Host, Port, Opts) ->
             E
     end.
 
+-spec server_info(server()) -> {'ok', wh_json:object()} |
+                               {'error', _}.
 server_info(#server{}=Conn) -> couchbeam:server_info(Conn).
 
 -spec server_url(server()) -> ne_binary().
@@ -748,12 +757,46 @@ get_db(#server{}=Conn, DbName) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec maybe_add_rev(couchbeam_db(), ne_binary(), wh_proplist()) -> wh_proplist().
-maybe_add_rev(Db, DocId, Options) ->
+maybe_add_rev(#db{name=_Name}=Db, DocId, Options) ->
     case props:get_value('rev', Options) =:= 'undefined'
         andalso do_fetch_rev(Db, DocId)
     of
-        ?NE_BINARY = Rev -> [{'rev', Rev} | Options];
-        _Else -> Options
+        <<_/binary>> = Rev ->
+            lager:debug("adding rev ~s to options", [Rev]),
+            [{'rev', Rev} | Options];
+        'false' ->
+            lager:debug("rev is in options list: ~p", [Options]),
+            Options;
+        {'error', 'not_found'} ->
+            lager:debug("failed to find rev of ~s in ~p, not_found in db", [DocId, _Name]),
+            Options;
+        {'error', 'empty_doc_id'} ->
+            lager:debug("failed to find doc id ~p", [DocId]),
+            Options;
+        _Else ->
+            lager:debug("unknown rev format for ~p: ~p", [DocId, _Else]),
+            Options
+    end.
+
+%%------------------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_add_pvt_type(couchbeam_db(), ne_binary(), wh_json:object()) -> wh_json:object().
+maybe_add_pvt_type(Db, DocId, JObj) ->
+    case wh_json:get_value(<<"pvt_type">>, JObj) =:= 'undefined'
+        andalso couchbeam:open_doc(Db, DocId)
+    of
+        {'error', R} ->
+            lager:error("failed to open doc ~p in ~p : ~p", [DocId, Db, R]),
+            JObj;
+        {'ok', Doc} ->
+            PvtType = wh_json:get_value(<<"pvt_type">>, Doc),
+            wh_json:set_value(<<"pvt_type">>, PvtType, JObj);
+        _Else ->
+            JObj
     end.
 
 %%------------------------------------------------------------------------------
@@ -908,7 +951,11 @@ doc_acct_id(Db, Doc) ->
         AccountId -> AccountId
     end.
 
--define(DELETE_KEYS, [<<"_rev">>, <<"id">>, <<"_attachments">>]).
+
+
+-spec default_copy_function(boolean()) -> copy_function().
+default_copy_function('true') -> fun ensure_saved/4;
+default_copy_function('false') -> fun save_doc/4.
 
 -spec copy_doc(server(), copy_doc(), wh_proplist()) ->
                       {'ok', wh_json:object()} |
@@ -922,6 +969,14 @@ copy_doc(#server{}=Conn, #wh_copy_doc{source_dbname = SourceDb
 copy_doc(#server{}=Conn, #wh_copy_doc{dest_doc_id='undefined'}=CopySpec, Options) ->
     copy_doc(Conn, CopySpec#wh_copy_doc{dest_doc_id=wh_util:rand_hex_binary(16)}, Options);
 copy_doc(#server{}=Conn, CopySpec, Options) ->
+    SaveFun = default_copy_function(props:is_defined(?COPY_DOC_OVERRIDE_PROPERTY, Options)),
+    copy_doc(Conn, CopySpec, SaveFun, props:delete(?COPY_DOC_OVERRIDE_PROPERTY, Options)).
+
+
+-spec copy_doc(server(), copy_doc(), copy_function(), wh_proplist()) ->
+                      {'ok', wh_json:object()} |
+                      couchbeam_error().
+copy_doc(#server{}=Conn, CopySpec, CopyFun, Options) ->
     #wh_copy_doc{source_dbname = SourceDbName
                  ,source_doc_id = SourceDocId
                  ,dest_dbname = DestDbName
@@ -931,7 +986,7 @@ copy_doc(#server{}=Conn, CopySpec, Options) ->
         {'ok', SourceDoc} ->
             Props = [{<<"_id">>, DestDocId}],
             DestinationDoc = wh_json:set_values(Props,wh_json:delete_keys(?DELETE_KEYS, SourceDoc)),
-            case save_doc(Conn, DestDbName, DestinationDoc, Options) of
+            case CopyFun(Conn, DestDbName, DestinationDoc, Options) of
                 {'ok', _JObj} ->
                     Attachments = wh_json:get_value(<<"_attachments">>, SourceDoc, wh_json:new()),
                     copy_attachments(Conn, CopySpec, wh_json:get_values(Attachments));
@@ -940,7 +995,7 @@ copy_doc(#server{}=Conn, CopySpec, Options) ->
         Error -> Error
     end.
 
--spec copy_attachments(server(), copy_doc(), {wh_json:json_terms(), wh_json:json_strings()}) ->
+-spec copy_attachments(server(), copy_doc(), {wh_json:json_terms(), wh_json:keys()}) ->
                               {'ok', ne_binary()} |
                               {'error', any()}.
 copy_attachments(#server{}=Conn, CopySpec, {[], []}) ->

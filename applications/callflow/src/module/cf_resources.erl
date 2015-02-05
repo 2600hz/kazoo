@@ -86,11 +86,10 @@ build_offnet_request(Data, Call) ->
                             ,{<<"Flags">>, get_flags(Data, Call)}
                             ,{<<"Ignore-Early-Media">>, get_ignore_early_media(Data)}
                             ,{<<"Fax-T38-Enabled">>, get_t38_enabled(Call)}
-                            ,{<<"SIP-Headers">>,get_sip_headers(Data, Call)}
+                            ,{<<"Custom-SIP-Headers">>, get_sip_headers(Data, Call)}
                             ,{<<"To-DID">>, get_to_did(Data, Call)}
                             ,{<<"From-URI-Realm">>, get_from_uri_realm(Data, Call)}
                             ,{<<"Bypass-E164">>, get_bypass_e164(Data)}
-                            ,{<<"Diversions">>, get_diversions(Call)}
                             ,{<<"Inception">>, get_inception(Call)}
                             | wh_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)
                            ]).
@@ -190,7 +189,12 @@ get_sip_headers(Data, Call) ->
                 end
                ],
     CustomHeaders = wh_json:get_value(<<"custom_sip_headers">>, Data, wh_json:new()),
-    JObj = lists:foldl(fun(F, J) -> F(J) end, CustomHeaders, Routines),
+
+    Diversion = whapps_call:custom_sip_header(<<"Diversion">>, Call),
+
+    Headers = wh_json:set_value(<<"Diversion">>, Diversion, CustomHeaders),
+
+    JObj = lists:foldl(fun(F, J) -> F(J) end, Headers, Routines),
     case wh_util:is_empty(JObj) of
         'true' -> 'undefined';
         'false' -> JObj
@@ -284,14 +288,6 @@ is_flag_exported(Flag, [{F, 1}|Funs]) ->
         'false' -> is_flag_exported(Flag, Funs)
     end;
 is_flag_exported(Flag, [_|Funs]) -> is_flag_exported(Flag, Funs).
-
--spec get_diversions(whapps_call:call()) -> api_object().
-get_diversions(Call) ->
-    case wh_json:get_value(<<"Diversions">>, whapps_call:custom_channel_vars(Call)) of
-        'undefined' -> 'undefined';
-        [] -> 'undefined';
-        Diversions ->  Diversions
-    end.
 
 -spec get_inception(whapps_call:call()) -> api_binary().
 get_inception(Call) ->

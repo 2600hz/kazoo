@@ -663,7 +663,6 @@ handle_channel_bridged(#state{other_leg=_OL, call_id=_CL}=State, _JObj, _CallId,
     ?WSD_EVT(_CallId, _OtherLeg, <<"ignoring bridge">>),
     State.
 
-
 -spec maybe_bind_to_other_leg(ne_binary(), listen_on()) -> 'ok'.
 maybe_bind_to_other_leg(_OtherLeg, 'a') -> 'ok';
 maybe_bind_to_other_leg(OtherLeg, _ListenOn) ->

@@ -23,6 +23,8 @@
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 -behaviour(gen_server).
 
+-compile([export_all]).
+
 -include("nksip.hrl").
 
 -export([resolve/1, get_ips/1, get_srvs/1, get_naptr/1, clear/1, clear/0]).
@@ -172,8 +174,10 @@ get_ips(Host) ->
                     ok;
                 {error, _} -> 
                     case inet:getaddrs(Host1, inet6) of
-                        {ok, Ips} -> ok;
-                        {error, _} -> Ips = []
+                        {ok, Ips} -> 
+                            ok;
+                        {error, _} -> 
+                            Ips = []
                     end
             end,
             Now = nksip_lib:timestamp(),
@@ -620,11 +624,12 @@ resolv_test() ->
     ok.
 
 path_test() ->
-    [{udp, {127,0,0,1}, 5060, <<>>}] = 
+    % Travis CI environment returns several entries for "localhost"
+    [{udp, {127,0,0,1}, 5060, <<>>}|_] = 
         nksip_dns:resolve("sip://localhost/base"),
-    [{ws, {127,0,0,1}, 80, <<"/base">>}] = 
+    [{ws, {127,0,0,1}, 80, <<"/base">>}|_] = 
         nksip_dns:resolve("<sip://localhost/base;transport=ws>"),
-    [{wss, {127,0,0,1}, 1234, <<"/base">>}] = 
+    [{wss, {127,0,0,1}, 1234, <<"/base">>}|_] = 
         nksip_dns:resolve("<sips://localhost:1234/base;transport=ws>"),
     ok.
 

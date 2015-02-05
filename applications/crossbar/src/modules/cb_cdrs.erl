@@ -139,7 +139,7 @@ content_types_provided(Context) ->
     cb_context:add_content_types_provided(Context, CTPs).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% This function determines if the parameters and content are correct
 %% for this request
@@ -195,7 +195,7 @@ load_cdr_summary(Context, _Nouns) ->
                                  {'ok', wh_proplist()} |
                                  cb_context:context().
 create_view_options(OwnerId, Context) ->
-    MaxRange = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_range">>, (?SECONDS_IN_DAY * 31)),
+    MaxRange = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_range">>, (?SECONDS_IN_DAY * 31  + ?SECONDS_IN_HOUR)),
 
     case cb_modules_util:range_view_options(Context, MaxRange) of
         {CreatedFrom, CreatedTo} ->
@@ -208,15 +208,27 @@ create_view_options(OwnerId, Context) ->
 create_view_options('undefined', Context, CreatedFrom, CreatedTo) ->
     {'ok', [{'startkey', CreatedTo}
             ,{'endkey', CreatedFrom}
-            ,{'limit', crossbar_doc:pagination_page_size(Context)}
+            ,{'limit', pagination_page_size(Context)}
            ,'descending'
            ]};
 create_view_options(OwnerId, Context, CreatedFrom, CreatedTo) ->
     {'ok', [{'startkey', [OwnerId, CreatedTo]}
             ,{'endkey', [OwnerId, CreatedFrom]}
-            ,{'limit', crossbar_doc:pagination_page_size(Context)}
+            ,{'limit', pagination_page_size(Context)}
             ,'descending'
            ]}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec pagination_page_size(cb_context:context()) ->pos_integer().
+pagination_page_size(Context) ->
+    case crossbar_doc:pagination_page_size(Context) of
+        'undefined' -> 'undefined';
+        PageSize -> PageSize + 1
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -454,6 +466,7 @@ normalize_cdr(JObj, Context) ->
                          ,{<<"call_type">>, wh_json:get_value([<<"custom_channel_vars">>, <<"account_billing">>], JObj, <<>>)}
                          ,{<<"rate">>, wht_util:units_to_dollars(wh_json:get_value([<<"custom_channel_vars">>, <<"rate">>], JObj, 0))}
                          ,{<<"rate_name">>, wh_json:get_value([<<"custom_channel_vars">>, <<"rate_name">>], JObj, <<>>)}
+                         ,{<<"bridge_id">>, wh_json:get_value([<<"custom_channel_vars">>, <<"bridge_id">>], JObj, <<>>)}
                          ,{<<"recording_url">>, wh_json:get_value([<<"custom_channel_vars">>, <<"recording_url">>], JObj, <<>>)}
                         ])
       ,Context
@@ -488,6 +501,7 @@ normalize_cdr_to_csv(JObj, Context) ->
                                ,wh_json:get_value([<<"custom_channel_vars">>, <<"account_billing">>], JObj, <<>>)
                                ,wh_util:to_binary(wht_util:units_to_dollars(wh_json:get_value([<<"custom_channel_vars">>, <<"rate">>], JObj, 0)))
                                ,wh_json:get_value([<<"custom_channel_vars">>, <<"rate_name">>], JObj, <<>>)
+                               ,wh_json:get_value([<<"custom_channel_vars">>, <<"bridge_id">>], JObj, <<>>)
                               ], <<",">>),
     case cb_context:fetch(Context, 'is_reseller') of
         'false' -> <<CSV/binary, "\r">>;
@@ -526,6 +540,7 @@ normalize_cdr_to_csv_header(_JObj, Context) ->
             ,"call_type,"
             ,"rate,"
             ,"rate_name"
+            ,"bridge_id"
           >>,
     case cb_context:fetch(Context, 'is_reseller') of
         'false' -> <<CSV/binary, "\r">>;

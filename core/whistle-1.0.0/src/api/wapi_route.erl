@@ -82,8 +82,9 @@
                                             ,<<"Proxy-Via">>, <<"Media">>, <<"Auth-User">>
                                             ,<<"Auth-Password">>, <<"Codecs">>, <<"Progress-Timeout">>
                                             ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"Caller-ID-Type">>
-                                            ,<<"Rate">>, <<"Rate-Increment">>, <<"Rate-Minimum">>, <<"Surcharge">>
-                                            ,<<"SIP-Headers">>, <<"Custom-Channel-Vars">>
+                                            ,<<"Rate">>, <<"Rate-Increment">>, <<"Rate-Minimum">>
+                                            ,<<"Surcharge">>, <<"Rate-NoCharge-Time">>
+                                            ,<<"Custom-SIP-Headers">>, <<"Custom-Channel-Vars">>
                                             ,<<"Weight-Cost">>, <<"Weight-Location">>
                                            ]).
 -define(ROUTE_RESP_ROUTE_VALUES, [{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
@@ -94,7 +95,7 @@
                                  ,{<<"Route">>, fun is_binary/1}
                                  ,{<<"To-User">>, fun is_binary/1}
                                  ,{<<"To-Realm">>, fun is_binary/1}
-                                 ,{<<"SIP-Headers">>, fun wh_json:is_json_object/1}
+                                 ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
                                  ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
                                 ]).
 

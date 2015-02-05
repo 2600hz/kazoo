@@ -6,6 +6,7 @@
 %%%   ,"retries":3
 %%%   // optional after here
 %%%   ,"interdigit":2000
+%%%   ,"max_digits":15
 %%% }
 %%% @end
 %%% @contributors
@@ -52,8 +53,11 @@ try_collect_pin(Call, _Pin, 0, _Interdigit) ->
 try_collect_pin(Call, Pin, Retries, Interdigit) ->
     Prompt = <<"disa-enter_pin">>,
     NoopId = whapps_call_command:prompt(Prompt, Call),
+    DefaultPinLength = whapps_config:get_integer(?CF_CONFIG_CAT, <<"default_pin_length">>, 10),
+    PinLength = erlang:max(DefaultPinLength, byte_size(Pin)),
 
-    case whapps_call_command:collect_digits(6
+    lager:debug("collecting up to ~p digits for pin", [PinLength]),
+    case whapps_call_command:collect_digits(PinLength
                                             ,whapps_call_command:default_collect_timeout()
                                             ,Interdigit
                                             ,NoopId
@@ -80,8 +84,10 @@ allow_dial(_, Call, 0, _Interdigit) ->
     cf_exe:continue(Call);
 allow_dial(Data, Call, Retries, Interdigit) ->
     _ = start_preconnect_audio(Data, Call),
+    MaxDigits = wh_json:get_integer_value(<<"max_digits">>, Data, 15),
 
-    {'ok', Digits} = whapps_call_command:collect_digits(15
+    lager:debug("collecting max ~p digits for destination number", [MaxDigits]),
+    {'ok', Digits} = whapps_call_command:collect_digits(MaxDigits
                                                         ,whapps_call_command:default_collect_timeout()
                                                         ,Interdigit
                                                         ,Call

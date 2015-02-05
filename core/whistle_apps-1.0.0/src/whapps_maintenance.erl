@@ -18,7 +18,9 @@
          ,migrate/1
         ]).
 -export([find_invalid_acccount_dbs/0]).
--export([refresh/0, refresh/1]).
+-export([refresh/0, refresh/1
+         ,refresh_account_db/1
+        ]).
 -export([blocking_refresh/0
          ,blocking_refresh/1
         ]).
@@ -47,6 +49,7 @@
 -define(FAXBOX_VIEW_FILE, <<"views/faxbox.json">>).
 -define(ACCOUNTS_AGG_VIEW_FILE, <<"views/accounts.json">>).
 -define(ACCOUNTS_AGG_NOTIFY_VIEW_FILE, <<"views/notify.json">>).
+-define(SEARCH_VIEW_FILE, <<"views/search.json">>).
 
 -define(VMBOX_VIEW, <<"vmboxes/crossbar_listing">>).
 -define(PMEDIA_VIEW, <<"media/listing_private_media">>).
@@ -200,6 +203,7 @@ refresh(?WH_ACCOUNTS_DB) ->
     couch_mgr:db_create(?WH_ACCOUNTS_DB),
     Views = [whapps_util:get_view_json('whistle_apps', ?MAINTENANCE_VIEW_FILE)
              ,whapps_util:get_view_json('whistle_apps', ?ACCOUNTS_AGG_VIEW_FILE)
+             ,whapps_util:get_view_json('whistle_apps', ?SEARCH_VIEW_FILE)
              ,whapps_util:get_view_json('notify', ?ACCOUNTS_AGG_NOTIFY_VIEW_FILE)
             ],
     whapps_util:update_views(?WH_ACCOUNTS_DB, Views, 'true'),
@@ -285,7 +289,7 @@ get_all_account_views() ->
 -spec fetch_all_account_views() -> wh_proplist().
 fetch_all_account_views() ->
     [whapps_util:get_view_json('whistle_apps', ?MAINTENANCE_VIEW_FILE)
-    ,whapps_util:get_view_json('conference', <<"views/conference.json">>)
+     ,whapps_util:get_view_json('conference', <<"views/conference.json">>)
      |whapps_util:get_views_json('crossbar', "account")
      ++ whapps_util:get_views_json('callflow', "views")
     ].

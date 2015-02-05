@@ -79,3 +79,29 @@ You can set the `debug` flag to "true" to log the requests and responses Pivot r
     }
 
 Remember to URL-encode the `{CALL_ID}` before sending the request.
+
+### Failback
+
+
+You can add a children to your pivot callflow in case your server is unrechable or send back an error.
+
+```
+"flow": {
+    "data": {
+        "method": "GET",
+        "req_timeout": "5",
+        "req_format": "kazoo",
+        "voice_url": "{SERVER_URL}"
+    },
+    "module": "pivot",
+    "children": {
+        "_": {
+            "module": "play",
+            "data": {
+                "id": "{MEDIA_ID}"
+            },
+            "children": {}
+        }
+    }
+}
+```

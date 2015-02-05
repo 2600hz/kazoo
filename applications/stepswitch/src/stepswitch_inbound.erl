@@ -49,7 +49,7 @@ maybe_relay_request(JObj) ->
                         ,fun maybe_blacklisted/2
                         ,fun maybe_transition_port_in/2
                        ],
-            _ = lists:foldl(fun(F, J) ->  F(NumberProps, J) end
+            _ = lists:foldl(fun(F, J) -> F(NumberProps, J) end
                             ,JObj
                             ,Routines
                            ),
@@ -67,7 +67,6 @@ maybe_relay_request(JObj) ->
 set_account_id(NumberProps, JObj) ->
     AccountId = wh_number_properties:account_id(NumberProps),
     wh_json:set_value(?CCV(<<"Account-ID">>), AccountId, JObj).
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -105,11 +104,11 @@ maybe_find_resource(_NumberProps, JObj) ->
         {'error', 'not_found'} -> JObj;
         {'ok', ResourceProps} ->
             Routines = [fun maybe_add_resource_id/2
-                       ,fun maybe_add_t38_settings/2
+                        ,fun maybe_add_t38_settings/2
                        ],
             lists:foldl(fun(F, J) ->  F(J, ResourceProps) end
-                       ,JObj
-                       ,Routines
+                        ,JObj
+                        ,Routines
                        )
     end.
 
@@ -124,17 +123,18 @@ maybe_add_resource_id(JObj, ResourceProps) ->
                              )
     end.
 
+-spec maybe_add_t38_settings(wh_json:object(), wh_proplist()) -> wh_json:object().
 maybe_add_t38_settings(JObj, ResourceProps) ->
     case props:get_value('fax_option', ResourceProps) of
         'true' ->
             wh_json:set_value(?CCV(<<"Resource-Fax-Option">>)
-                             ,props:get_value('fax_option', ResourceProps)
-                             ,JObj
+                              ,props:get_value('fax_option', ResourceProps)
+                              ,JObj
                              );
         <<"auto">> ->
             wh_json:set_value(?CCV(<<"Resource-Fax-Option">>)
-                             ,props:get_value('fax_option', ResourceProps)
-                             ,JObj
+                              ,props:get_value('fax_option', ResourceProps)
+                              ,JObj
                              );
         _ -> JObj
     end.
@@ -147,100 +147,9 @@ maybe_format_destination(_NumberProps, JObj) ->
             case stepswitch_resources:get_props(ResourceId) of
                 'undefined' -> JObj;
                 Resource ->
-                    maybe_apply_meta_formatters(JObj, props:get_value(<<"Formatters">>, Resource, wh_json:new()))
+                    stepswitch_formatters:apply(JObj, props:get_value(<<"Formatters">>, Resource, wh_json:new()), 'inbound')
             end
     end.
-
--spec maybe_apply_meta_formatters(wh_json:object(), wh_json:object()) ->
-                                         wh_json:object().
-maybe_apply_meta_formatters(JObj, MetaFormatters) ->
-    JObjKeys = [{wh_util:to_lower_binary(K), K}
-                || K <- wh_json:get_keys(wh_api:remove_defaults(JObj))
-               ],
-    wh_json:foldl(fun(MetaKey, Formatters, AccJObj) ->
-                          maybe_apply_formatters_fold(AccJObj, JObjKeys, MetaKey, Formatters)
-                  end, JObj, MetaFormatters).
-
--spec maybe_apply_formatters_fold(wh_json:object(), wh_json:keys(), wh_json:key()
-                                  ,wh_json:objects() | wh_json:object()
-                                 ) ->  wh_json:object().
-maybe_apply_formatters_fold(JObj, _JObjKeys, _MetaKey, []) -> JObj;
-maybe_apply_formatters_fold(JObj, JObjKeys, MetaKey, [_|_]=Formatters) ->
-    case props:get_value(wh_util:to_lower_binary(MetaKey), JObjKeys) of
-        'undefined' -> JObj;
-        JObjKey ->
-            maybe_apply_formatters(JObj, JObjKey, Formatters)
-    end;
-maybe_apply_formatters_fold(JObj, JObjKeys, MetaKey, Formatter) ->
-    maybe_apply_formatters_fold(JObj, JObjKeys, MetaKey, [Formatter]).
-
--spec maybe_apply_formatters(wh_json:object(), ne_binary(), wh_json:objects()) ->
-                                    wh_json:object().
--spec maybe_apply_formatters(wh_json:object(), ne_binary(), ne_binary(), wh_json:objects()) ->
-                                    wh_json:object().
--spec maybe_apply_formatters(wh_json:object(), ne_binary(), ne_binary(), ne_binary(), wh_json:objects()) ->
-                                    wh_json:object().
-maybe_apply_formatters(JObj, <<"Request">> = RequestKey, Formatters) ->
-    [RequestUser, RequestRealm] = binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>),
-    maybe_apply_formatters(JObj, RequestKey, RequestUser, RequestRealm, Formatters);
-maybe_apply_formatters(JObj, <<"To">> = ToKey, Formatters) ->
-    [ToUser, ToRealm] = binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>),
-    maybe_apply_formatters(JObj, ToKey, ToUser, ToRealm, Formatters);
-maybe_apply_formatters(JObj, <<"From">> = FromKey, Formatters) ->
-    [FromUser, FromRealm] = binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>),
-    maybe_apply_formatters(JObj, FromKey, FromUser, FromRealm, Formatters);
-maybe_apply_formatters(JObj, Key, Formatters) ->
-    maybe_apply_formatters(JObj, Key, wh_json:get_value(Key, JObj), Formatters).
-
-maybe_apply_formatters(JObj, _Key, _Value, []) -> JObj;
-maybe_apply_formatters(JObj, Key, Value, [Formatter|Formatters]) ->
-    case maybe_match(wh_json:get_value(<<"regex">>, Formatter), Value) of
-        {'match', Captured} -> apply_formatter(JObj, Key, Captured, Formatter);
-        'nomatch' -> maybe_apply_formatters(JObj, Key, Value, Formatters)
-    end.
-
-maybe_apply_formatters(JObj, _Key, _User, _Realm, []) -> JObj;
-maybe_apply_formatters(JObj, Key, User, Realm, [Formatter|Formatters]) ->
-    case maybe_match(wh_json:get_value(<<"regex">>, Formatter), User) of
-        {'match', Captured} -> apply_formatter(JObj, Key, Captured, Realm, Formatter);
-        'nomatch' -> maybe_apply_formatters(JObj, Key, User, Realm, Formatters)
-    end.
-
--spec maybe_match(api_binary(), ne_binary()) ->
-                         {'match', binary()} |
-                         'nomatch'.
-maybe_match('undefined', _Value) -> 'nomatch';
-maybe_match(Regex, Value) ->
-    case re:run(Value, Regex, [{'capture', 'all', 'binary'}]) of
-        {'match', [_All, Captured |_]} ->
-            lager:debug("formatter ~s captured ~s", [Regex, Captured]),
-            {'match', Captured};
-        {'match', [All]} ->
-            lager:debug("formatter ~s didn't capture, but did match ~s", [Regex, All]),
-            {'match', All};
-        {'match', []} -> 'nomatch';
-        'nomatch' -> 'nomatch'
-    end.
-
--spec apply_formatter(wh_json:object(), ne_binary(), ne_binary(), wh_json:object()) ->
-                             wh_json:object().
--spec apply_formatter(wh_json:object(), ne_binary(), ne_binary(), ne_binary(), wh_json:object()) ->
-                             wh_json:object().
-apply_formatter(JObj, Key, Captured, Formatter) ->
-    Value = list_to_binary([wh_json:get_value(<<"prefix">>, Formatter, <<>>)
-                            ,Captured
-                            ,wh_json:get_value(<<"suffix">>, Formatter, <<>>)
-                           ]),
-    lager:debug("updating ~s to '~s'", [Key, Value]),
-    wh_json:set_value(Key, Value, JObj).
-
-apply_formatter(JObj, Key, Captured, Realm, Formatter) ->
-    User = list_to_binary([wh_json:get_value(<<"prefix">>, Formatter, <<>>)
-                           ,Captured
-                           ,wh_json:get_value(<<"suffix">>, Formatter, <<>>)
-                          ]),
-    lager:debug("updating ~s user to '~s'@~s", [Key, User, Realm]),
-    wh_json:set_value(Key, list_to_binary([User, "@", Realm]), JObj).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -343,7 +252,7 @@ maybe_transition_port_in(NumberProps, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_blacklisted(wh_json:object()) -> wh_json:object().
+-spec is_blacklisted(wh_json:object()) -> boolean().
 is_blacklisted(JObj) ->
     AccountId = wh_json:get_ne_value(?CCV(<<"Account-ID">>), JObj),
     case get_blacklists(AccountId) of
@@ -363,7 +272,9 @@ is_blacklisted(JObj) ->
             end
     end.
 
--spec get_blacklists(ne_binary()) -> {'error', any()} | {'ok', ne_binaries()}.
+-spec get_blacklists(ne_binary()) ->
+                            {'ok', ne_binaries()} |
+                            {'error', any()}.
 get_blacklists(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of

@@ -21,6 +21,7 @@
 
 -include("stepswitch.hrl").
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
+-include_lib("whistle/src/wh_json.hrl").
 
 -record(state, {endpoints = [] :: wh_json:objects()
                 ,resource_req :: wh_json:object()
@@ -259,34 +260,69 @@ build_bridge(#state{endpoints=Endpoints
        ,{<<"Outbound-Caller-ID-Name">>, CIDName}
        ,{<<"Caller-ID-Number">>, CIDNum}
        ,{<<"Caller-ID-Name">>, CIDName}
-       ,{<<"Endpoints">>, maybe_endpoints_format_from(Endpoints, CIDNum, JObj)}
+       ,{<<"Endpoints">>, format_endpoints(Endpoints, CIDNum, JObj, AccountId)}
        ,{<<"Timeout">>, wh_json:get_value(<<"Timeout">>, JObj)}
        ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"Ignore-Early-Media">>, JObj, <<"false">>)}
        ,{<<"Media">>, wh_json:get_value(<<"Media">>, JObj)}
        ,{<<"Hold-Media">>, wh_json:get_value(<<"Hold-Media">>, JObj)}
        ,{<<"Presence-ID">>, wh_json:get_value(<<"Presence-ID">>, JObj)}
        ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
-       ,{<<"SIP-Headers">>, wh_json:get_value(<<"SIP-Headers">>, JObj)}
        ,{<<"Custom-Channel-Vars">>, wh_json:set_values(CCVUpdates, CCVs)}
        ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
        ,{<<"Fax-Identity-Number">>, wh_json:get_value(<<"Fax-Identity-Number">>, JObj, CIDNum)}
        ,{<<"Fax-Identity-Name">>, wh_json:get_value(<<"Fax-Identity-Name">>, JObj, CIDName)}
        ,{<<"Outbound-Callee-ID-Number">>, wh_json:get_value(<<"Outbound-Callee-ID-Number">>, JObj)}
        ,{<<"Outbound-Callee-ID-Name">>, wh_json:get_value(<<"Outbound-Callee-ID-Name">>, JObj)}
-       ,{<<"SIP-Headers">>, get_sip_headers(JObj)}
        | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
--spec maybe_endpoints_format_from(wh_json:objects(), api_binary(), wh_json:object()) ->
-                                         wh_json:objects().
-maybe_endpoints_format_from(Endpoints, 'undefined', _) -> Endpoints;
-maybe_endpoints_format_from(Endpoints, CIDNum, JObj) ->
+-spec format_endpoints(wh_json:objects(), api_binary(), wh_json:object(), api_binary()) ->
+                              wh_json:objects().
+format_endpoints(Endpoints, CIDNum, JObj, AccountId) ->
+    SIPHeaders = get_sip_headers(JObj),
+
     DefaultRealm = wh_json:get_first_defined([<<"From-URI-Realm">>
                                               ,<<"Account-Realm">>
                                              ], JObj),
-    [maybe_endpoint_format_from(Endpoint, CIDNum, DefaultRealm)
+    [format_endpoint(Endpoint, CIDNum, AccountId, SIPHeaders, DefaultRealm)
      || Endpoint <- Endpoints
     ].
+
+-spec format_endpoint(wh_json:object(), api_binary(), api_binary(), api_object(), api_binary()) -> wh_json:object().
+format_endpoint(Endpoint, CIDNum, AccountId, SIPHeaders, DefaultRealm) ->
+    FormattedEndpoint =
+        stepswitch_formatters:apply(maybe_add_sip_headers(Endpoint, SIPHeaders)
+                                    ,props:get_value(<<"Formatters">>
+                                                     ,endpoint_props(Endpoint, AccountId)
+                                                     ,wh_json:new()
+                                                    )
+                                    ,'outbound'
+                                   ),
+    maybe_endpoint_format_from(FormattedEndpoint, CIDNum, DefaultRealm).
+
+-spec maybe_add_sip_headers(wh_json:object(), api_object()) -> wh_json:object().
+maybe_add_sip_headers(Endpoint, 'undefined') -> Endpoint;
+maybe_add_sip_headers(Endpoint, SIPHeaders) ->
+    LocalSIPHeaders = wh_json:get_value(<<"Custom-SIP-Headers">>, Endpoint, wh_json:new()),
+
+    case wh_json:merge_jobjs(SIPHeaders, LocalSIPHeaders) of
+        ?EMPTY_JSON_OBJECT -> Endpoint;
+        MergedHeaders -> wh_json:set_value(<<"Custom-SIP-Headers">>, MergedHeaders, Endpoint)
+    end.
+
+-spec endpoint_props(wh_json:object(), api_binary()) -> wh_proplist().
+endpoint_props(Endpoint, AccountId) ->
+    ResourceId = wh_json:get_value(?CCV(<<"Resource-ID">>), Endpoint),
+    case wh_json:is_true(?CCV(<<"Global-Resource">>), Endpoint) of
+        'true' ->
+            empty_list_on_undefined(stepswitch_resources:get_props(ResourceId));
+        'false' ->
+            empty_list_on_undefined(stepswitch_resources:get_props(ResourceId, AccountId))
+    end.
+
+-spec empty_list_on_undefined(wh_proplist() | 'undefined') -> wh_proplist().
+empty_list_on_undefined('undefined') -> [];
+empty_list_on_undefined(L) -> L.
 
 -spec maybe_endpoint_format_from(wh_json:object(), ne_binary(), api_binary()) ->
                                         wh_json:object().
@@ -498,23 +534,39 @@ bridge_failure(JObj, Request) ->
 -spec get_sip_headers(wh_json:object()) -> api_object().
 get_sip_headers(JObj) ->
     case get_diversions(JObj) of
-        'undefined' -> 'undefined';
+        'undefined' ->
+            maybe_remove_diversion(wh_json:get_value(<<"Custom-SIP-Headers">>, JObj));
         Diversion ->
-            wh_json:from_list([{<<"Diversion">>, Diversion}])
+            wh_json:set_value(<<"Diversion">>
+                              ,Diversion
+                              ,wh_json:get_value(<<"Custom-SIP-Headers">>, JObj, wh_json:new())
+                             )
     end.
+
+-spec maybe_remove_diversion(api_object()) -> api_object().
+maybe_remove_diversion('undefined') -> 'undefined';
+maybe_remove_diversion(JObj) ->
+    wh_json:delete_key(<<"Diversion">>, JObj).
 
 -spec get_diversions(wh_json:object()) -> api_object().
 get_diversions(JObj) ->
     Inception = wh_json:get_value(<<"Inception">>, JObj),
-    Diversions = wh_json:get_value(<<"Diversions">>, JObj, []),
-    get_diversions(Inception, Diversions).
+    Diversion = wh_json:get_value([<<"Custom-SIP-Headers">>, <<"Diversion">>], JObj),
+    get_diversions(Inception, Diversion).
 
--spec get_diversions(api_binary(), wh_json:object()) -> api_object().
-get_diversions('undefined', _) -> 'undefined';
-get_diversions(Inception, Diversions) ->
-    wh_json:from_list([{<<"address">>, <<"sip:", Inception/binary>>}
-                       ,{<<"counter">>, find_diversion_count(Diversions) + 1}
-                      ]).
+-spec get_diversions(api_binary(), wh_json:object()) -> 'undefined' | kzsip_diversion:diversion().
+get_diversions('undefined', _Diversion) -> 'undefined';
+get_diversions(_Inception, 'undefined') -> 'undefined';
+get_diversions(Inception, <<_/binary>> = Diversion) ->
+    get_diversions(Inception, kzsip_diversion:from_binary(Diversion));
+get_diversions(Inception, Diversion) ->
+    Fs = [{fun kzsip_diversion:set_address/2, <<"sip:", Inception/binary>>}
+          ,{fun kzsip_diversion:set_counter/2, find_diversion_count(Diversion) + 1}
+         ],
+    lists:foldl(fun({F, V}, D) -> F(D, V) end
+                ,kzsip_diversion:new()
+                ,Fs
+               ).
 
 -spec find_diversion_count(wh_json:objects()) -> non_neg_integer().
 find_diversion_count([]) -> 0;

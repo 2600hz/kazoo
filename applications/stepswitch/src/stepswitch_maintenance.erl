@@ -15,7 +15,7 @@
 -export([lookup_number/1
          ,number_tree/1
         ]).
--export([reload_resources/0]).
+-export([reload_resources/0, reload_resources/1]).
 -export([process_number/1
          ,process_number/2
         ]).
@@ -180,6 +180,12 @@ pretty_print_number_props([{Key, Value}|Props]) ->
 -spec reload_resources() -> 'ok'.
 reload_resources() ->
     stepswitch_resources:fetch_global_resources(),
+    'ok'.
+
+-spec reload_resources(ne_binary()) -> 'ok'.
+reload_resources(Account) ->
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    stepswitch_resources:fetch_local_resources(AccountId),
     'ok'.
 
 %%--------------------------------------------------------------------

@@ -21,8 +21,8 @@
 
 -include("whistle_services.hrl").
 
--record(wh_service_plans, {vendor_id = 'undefined'
-                           ,plans = []
+-record(wh_service_plans, {vendor_id = 'undefined' :: api_binary()
+                           ,plans = [] :: wh_json:objects()
                           }).
 
 -type plans() :: [#wh_service_plans{},...] | [].
@@ -214,14 +214,18 @@ maybe_fetch_vendor_plan(PlanId, _, ResellerId, _) ->
 %% for that vendor, creating a new list (record) if not present.
 %% @end
 %%--------------------------------------------------------------------
--spec append_vendor_plan(wh_service_plan:plan(), ne_binary(), plans()) -> plans().
+-spec append_vendor_plan(wh_json:object(), ne_binary(), plans()) -> plans().
 append_vendor_plan(Plan, VendorId, ServicePlans) ->
     case lists:keyfind(VendorId, #wh_service_plans.vendor_id, ServicePlans) of
         'false' ->
             ServicePlan = #wh_service_plans{vendor_id=VendorId
-                                            ,plans=[Plan]},
+                                            ,plans=[Plan]
+                                           },
             [ServicePlan|ServicePlans];
         #wh_service_plans{plans=Plans}=ServicePlan ->
-            lists:keyreplace(VendorId, #wh_service_plans.vendor_id, ServicePlans
-                             ,ServicePlan#wh_service_plans{plans=[Plan|Plans]})
+            lists:keyreplace(VendorId
+                             ,#wh_service_plans.vendor_id
+                             ,ServicePlans
+                             ,ServicePlan#wh_service_plans{plans=[Plan|Plans]}
+                            )
     end.

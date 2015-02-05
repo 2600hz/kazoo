@@ -185,14 +185,16 @@ It is helpful to be able to upload a list of numbers to a specific account, vers
     {"auth_token": "{AUTH_TOKEN}",
      "data": [
         {
-            "failures": false,
+            "failures": 0,
+            "successes": 2,
             "id": "201408-394de70ecf6f8252",
             "status": "pending",
             "timestamp": 63575950041,
             "resource_id":{RESOURCE_ID}
         },
         {
-            "failures": false,
+            "failures": 0,
+            "successes": 1,
             "id": "201408-70766ed00a24",
             "status": "pending",
             "timestamp": 63575878379,
@@ -207,6 +209,8 @@ It is helpful to be able to upload a list of numbers to a specific account, vers
     }
 
 Do note you can use the `created_from` and `created_to` flags to change to time period queried.
+
+The keys `failures` and `successes` represent the count of how many numbers failed and succeeded, respectively.
 
 #### _PUT_ - Create a new job to add a list of numbers
 

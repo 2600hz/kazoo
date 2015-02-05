@@ -29,6 +29,8 @@
 -define(COLLECTION, <<"collection">>).
 -define(JOBS, <<"jobs">>).
 
+-define(KEY_SUCCESS, <<"success">>).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -161,35 +163,32 @@ resource_exists(?JOBS, _ID) -> 'true'.
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
-    case cb_context:account_id(Context) of
-        'undefined' ->
-            lager:debug("validating global resources"),
+    case is_global_resource_request(Context) of
+        'true' ->
             validate_resources(cb_context:set_account_db(Context, ?WH_OFFNET_DB)
                                ,cb_context:req_verb(Context)
                               );
-        _AccountId ->
+        'false' ->
             validate_resources(Context, cb_context:req_verb(Context))
     end.
 
 validate(Context, ?COLLECTION) ->
-    case cb_context:account_id(Context) of
-        'undefined' ->
-            lager:debug("validating global resources collection"),
+    case is_global_resource_request(Context) of
+        'true' ->
             validate_collection(cb_context:set_account_db(Context, ?WH_OFFNET_DB));
-        _AccountId ->
+        'false' ->
             validate_collection(Context)
     end;
 validate(Context, ?JOBS) ->
     validate_jobs(maybe_set_account_to_master(Context), cb_context:req_verb(Context));
 validate(Context, Id) ->
-    case cb_context:account_id(Context) of
-        'undefined' ->
-            lager:debug("validating global resource ~s", [Id]),
+    case is_global_resource_request(Context) of
+        'true' ->
             validate_resource(cb_context:set_account_db(Context, ?WH_OFFNET_DB)
                               ,Id
                               ,cb_context:req_verb(Context)
                              );
-        _AccountId ->
+        'false' ->
             validate_resource(Context, Id, cb_context:req_verb(Context))
     end.
 
@@ -236,7 +235,7 @@ validate_collection(Context) ->
                                       ,{fun cb_context:set_resp_status/2, 'success'}
                                      ]
                                    )
-                    ,cb_context:req_data(Context)
+                ,cb_context:req_data(Context)
                ).
 
 -type collection_fold_acc() :: cb_context:context().
@@ -251,7 +250,7 @@ validate_collection_fold(Resource, C) ->
         {'ok', C1} ->
             lager:debug("~s loaded successfully", [Id]),
             cb_context:set_resp_data(C
-                                     ,wh_json:set_value([<<"success">>, Id], cb_context:doc(C1), cb_context:resp_data(C))
+                                     ,wh_json:set_value([?KEY_SUCCESS, Id], cb_context:doc(C1), cb_context:resp_data(C))
                                     );
         {'error', 'not_found'} ->
             RespData = cb_context:resp_data(C),
@@ -521,7 +520,7 @@ on_successful_job_validation('undefined', Context) ->
                                             ,{<<"pvt_request_id">>, cb_context:req_id(Context)}
                                             ,{<<"_id">>, Id}
 
-                                            ,{<<"successes">>, wh_json:new()}
+                                            ,{?KEY_SUCCESS, wh_json:new()}
                                             ,{<<"errors">>, wh_json:new()}
                                            ]
                                            ,cb_context:doc(Context)
@@ -539,8 +538,8 @@ collection_process(Context) ->
     RespData = cb_context:resp_data(Context),
 
     case wh_util:is_empty(wh_json:get_value(<<"errors">>, RespData)) of
-        'true' -> collection_process(Context, wh_json:get_value(<<"success">>, RespData));
-        'false' -> cb_context:set_resp_data(Context, wh_json:delete_key(<<"success">>, RespData))
+        'true' -> collection_process(Context, wh_json:get_value(?KEY_SUCCESS, RespData));
+        'false' -> cb_context:set_resp_data(Context, wh_json:delete_key(?KEY_SUCCESS, RespData))
     end.
 collection_process(Context, []) -> Context;
 collection_process(Context, Successes) ->
@@ -554,3 +553,18 @@ collection_process(Context, Successes) ->
             summary(Context1);
         _Status -> 'ok'
     end.
+
+-spec is_global_resource_request(cb_context:context()) -> boolean().
+-spec is_global_resource_request(req_nouns(), api_binary()) -> boolean().
+is_global_resource_request(Context) ->
+    is_global_resource_request(cb_context:req_nouns(Context), cb_context:account_id(Context)).
+
+is_global_resource_request(_ReqNouns, 'undefined') ->
+    lager:debug("request is for global resources"),
+    'true';
+is_global_resource_request([{<<"global_resources">>, _}|_], _AccountId) ->
+    lager:debug("request is for global resources"),
+    'true';
+is_global_resource_request(_ReqNouns, _AccountId) ->
+    lager:debug("request is for local resources for account ~s", [_AccountId]),
+    'false'.

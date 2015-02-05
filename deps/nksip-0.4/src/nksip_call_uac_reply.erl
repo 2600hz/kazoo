@@ -33,73 +33,85 @@
 %% ===================================================================
 
 %% @private
--spec reply({req, nksip:request()} | {resp, nksip:response()} | {error, term()},
+-spec reply({req, nksip:request()} | {resp, nksip:response()} | {error, term()}, 
             nksip_call:trans(), nksip_call:call()) ->
     nksip_call:call().
 
-reply({req, Req}, #trans{from={srv, From}, method='ACK', opts=Opts}, Call) ->
+reply(Class, UAC, #call{app_id=AppId}=Call) ->
+    case AppId:nkcb_uac_reply(Class, UAC, Call) of
+        {continue, [Class1, UAC1, Call1]} ->
+            do_reply(Class1, UAC1, Call1);
+        {ok, Call1} ->
+            {ok, Call1}
+    end.
+
+
+%% @private
+-spec do_reply({req, nksip:request()} | {resp, nksip:response()} | {error, term()}, 
+               nksip_call:trans(), nksip_call:call()) ->
+    nksip_call:call().
+
+do_reply({req, Req}, #trans{from={srv, From}, method='ACK', opts=Opts}, Call) ->
+    CB = nksip_lib:get_value(callback, Opts),
     Async = lists:member(async, Opts),
-    Get = lists:member(get_request, Opts),
-    if
-        Async, Get -> fun_call({req, Req}, Opts);
-        Async -> fun_call(ok, Opts);
-        Get -> gen_server:reply(From, {req, Req});
-        not Get -> gen_server:reply(From, ok)
+    case 
+        is_function(CB, 1) andalso 
+        (Async orelse lists:member(get_request, Opts))
+    of
+        true -> call(CB, {req, Req, Call});
+        false -> ok
+    end,
+    case Async of
+        true -> ok;
+        false -> gen_server:reply(From, ok)
     end,
     Call;
 
-reply({req, Req}, #trans{from={srv, _From}, opts=Opts}, Call) ->
-    case lists:member(get_request, Opts) of
-        true -> fun_call({req, Req}, Opts);
-        false ->  ok
+do_reply({req, Req}, #trans{from={srv, _From}, opts=Opts}, Call) ->
+    CB = nksip_lib:get_value(callback, Opts),
+    case is_function(CB, 1) andalso lists:member(get_request, Opts) of
+        true -> call(CB, {req, Req, Call});
+        false -> ok
     end,
     Call;
 
-reply({resp, Resp}, #trans{from={srv, From}, opts=Opts}, Call) ->
-    #sipmsg{class={resp, Code, Reason}} = Resp,
+do_reply({resp, Resp}, #trans{from={srv, From}, opts=Opts}, Call) ->
+    #sipmsg{class={resp, Code, _Reason}} = Resp,
+    CB = nksip_lib:get_value(callback, Opts),
     Async = lists:member(async, Opts),
-    case nksip_lib:get_value(refer_subscription_id, Opts) of
-        undefined -> 
-            ok;
-        SubsId ->
-            Sipfrag = <<
-                "SIP/2.0 ", (nksip_lib:to_binary(Code))/binary, 32,
-                Reason/binary
-            >>,
-            NotifyOpts = [
-                async, 
-                {content_type, <<"message/sipfrag;version=2.0">>}, 
-                {body, Sipfrag},
-                {state, 
-                    case Code>=200 of 
-                        true -> {terminated, noresource}; 
-                        false -> active
-                    end}
-            ],
-            nksip_uac:notify(SubsId, NotifyOpts)
+    case 
+        is_function(CB, 1) andalso Code>100 andalso 
+        (Code<200 orelse Async)
+    of
+        true -> call(CB, {resp, Code, Resp, Call});
+        false -> ok
     end,
-    if
-        Code < 101 -> ok;
-        Async -> fun_call(fun_response(Resp, Opts), Opts);
-        Code < 200 -> fun_call(fun_response(Resp, Opts), Opts);
-        Code >= 200 -> gen_server:reply(From, fun_response(Resp, Opts))
+    case Async of
+        false when Code>=200 -> gen_server:reply(From, response(Resp, Opts));
+        _ -> ok
     end,
     Call;
 
-reply({error, Error}, #trans{from={srv, From}, opts=Opts}, Call) ->
-    case lists:member(async, Opts) of
-        true -> fun_call({error, Error}, Opts);
+do_reply({error, Error}, #trans{from={srv, From}, opts=Opts}, Call) ->
+    CB = nksip_lib:get_value(callback, Opts),
+    Async = lists:member(async, Opts),
+    case is_function(CB, 1) andalso Async of
+        true -> call(CB, {error, Error});
+        false -> ok
+    end,
+    case Async of
+        true -> ok;
         false -> gen_server:reply(From, {error, Error})
     end,
     Call;
 
-reply({req, _Req}, #trans{from={fork, _}}, Call) ->
+do_reply({req, _}, #trans{from={fork, _}}, Call) ->
     Call;
 
-reply({resp, Resp}, #trans{id=Id, from={fork, ForkId}}, Call) ->
+do_reply({resp, Resp}, #trans{id=Id, from={fork, ForkId}}, Call) ->
     nksip_call_fork:response(ForkId, Id, Resp, Call);
 
-reply({error, Error}, #trans{id=Id, from={fork, ForkId}, request=Req}, Call) ->
+do_reply({error, Error}, #trans{id=Id, from={fork, ForkId}, request=Req}, Call) ->
     Reply = case nksip_reply:parse(Error) of
         error -> 
             ?call_notice("Invalid proxy internal response: ~p", [Error]),
@@ -112,49 +124,49 @@ reply({error, Error}, #trans{id=Id, from={fork, ForkId}, request=Req}, Call) ->
     Resp1 = Resp#sipmsg{vias=[#via{}|Resp#sipmsg.vias]},
     nksip_call_fork:response(ForkId, Id, Resp1, Call);
 
-reply(_, _, Call) ->
+do_reply(_, #trans{from=none}, Call) ->
     Call.
 
 
 %% @private
-fun_call(Msg, Opts) ->
-    case nksip_lib:get_value(callback, Opts) of
-        Fun when is_function(Fun, 1) -> spawn(fun() -> Fun(Msg) end);
-        _ -> ok
+call(CB, Arg) ->
+    case catch CB(Arg) of
+        {'EXIT', Error} -> 
+            ?call_warning("Error calling UAC callback function: ~p", [Error]);
+        _ -> 
+            ok
     end.
 
 
 %% @private
-fun_response(Resp, Opts) ->
+response(Resp, Opts) ->
     #sipmsg{class={resp, Code, _}, cseq={_, Method}}=Resp,
-    case lists:member(get_response, Opts) of
-        true ->
-            {resp, Resp};
-        false ->
-            Fields0 = case Method of
-                'INVITE' when Code>100, Code<300 -> 
-                    [{dialog_id, nksip_dialog:get_id(Resp)}];
-                'SUBSCRIBE' when Code>=200, Code<300 -> 
-                    [{subscription_id, nksip_subscription:get_id(Resp)}];
-                'REFER' when Code>=200, Code<300 -> 
-                    [{subscription_id, nksip_subscription:get_id(Resp)}];
-                'PUBLISH' when Code>=200, Code<300 ->
-                    Expires = nksip_sipmsg:field(Resp, parsed_expires),
-                    case nksip_sipmsg:header(Resp, <<"sip-etag">>) of
-                        [SipETag] -> [{sip_etag, SipETag}, {expires, Expires}];
-                        _ -> []
-                    end;
-                _ -> 
-                    []
-            end,
-            Values = case nksip_lib:get_value(meta, Opts, []) of
-                [] ->
-                    Fields0;
-                Fields when is_list(Fields) ->
-                    Fields0 ++ lists:zip(Fields, nksip_sipmsg:fields(Resp, Fields));
-                _ ->
-                    Fields0
-            end,
-            {ok, Code, Values}
-    end.
+    Metas0 = case Method of
+        'INVITE' when Code>100, Code<300 -> 
+            Handle = nksip_dialog_lib:get_handle(Resp),
+            [{dialog, Handle}];
+        'SUBSCRIBE' when Code>=200, Code<300 -> 
+            Handle = nksip_subscription_lib:get_handle(Resp),
+            [{subscription, Handle}];
+        'REFER' when Code>=200, Code<300 -> 
+            Handle = nksip_subscription_lib:get_handle(Resp),
+            [{subscription, Handle}];
+        'PUBLISH' when Code>=200, Code<300 ->
+            Expires = nksip_sipmsg:meta(expires, Resp),
+            case nksip_sipmsg:header(<<"sip-etag">>, Resp) of
+                [SipETag] -> [{sip_etag, SipETag}, {expires, Expires}];
+                _ -> []
+            end;
+        _ -> 
+            []
+    end,
+    Metas = case nksip_lib:get_value(meta, Opts, []) of
+        [] ->
+            Metas0;
+        Fields when is_list(Fields) ->
+            Metas0 ++ nksip_sipmsg:metas(Fields, Resp);
+        _ ->
+            Metas0
+    end,
+    {ok, Code, Metas}.
 

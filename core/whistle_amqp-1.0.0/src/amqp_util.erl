@@ -105,10 +105,11 @@
 -export([unbind_q_from_exchange/3]).
 -export([new_queue/0, new_queue/1, new_queue/2]).
 -export([basic_consume/1, basic_consume/2]).
--export([basic_publish/3, basic_publish/4]).
--export([basic_cancel/0]).
+-export([basic_publish/3, basic_publish/4, basic_publish/5]).
+-export([basic_cancel/0, basic_cancel/1]).
 -export([queue_delete/1, queue_delete/2]).
 -export([new_exchange/2, new_exchange/3]).
+-export([declare_exchange/2, declare_exchange/3]).
 
 -export([access_request/0, access_request/1, basic_ack/1, basic_nack/1, basic_qos/1]).
 
@@ -235,19 +236,19 @@ document_routing_key(Action, Db, Type) ->
 document_routing_key(<<"*">>, Db, Type, Id) ->
     list_to_binary([<<"*.">>, wh_util:to_binary(Db)
                     ,".", wh_util:to_binary(Type)
-                    ,".", wh_util:to_binary(Id)
+                    ,".", encode(wh_util:to_binary(Id))
                    ]);
 document_routing_key(<<"doc_", _/binary>> = Action, Db, Type, Id) ->
-    list_to_binary([wh_util:to_list(Action)
+    list_to_binary([Action
                     ,".", wh_util:to_binary(Db)
                     ,".", wh_util:to_binary(Type)
-                    ,".", wh_util:to_binary(Id)
+                    ,".", encode(wh_util:to_binary(Id))
                    ]);
 document_routing_key(Action, Db, Type, Id) ->
     list_to_binary(["doc_", wh_util:to_list(Action)
                     ,".", wh_util:to_binary(Db)
                     ,".", wh_util:to_binary(Type)
-                    ,".", wh_util:to_binary(Id)
+                    ,".", encode(wh_util:to_binary(Id))
                    ]).
 
 -spec callctl_publish(ne_binary(), amqp_payload()) -> 'ok'.
@@ -466,6 +467,22 @@ new_exchange(Exchange, Type, Options) ->
      },
     wh_amqp_channel:command(ED).
 
+-spec declare_exchange(ne_binary(), ne_binary()) -> wh_amqp_exchange().
+-spec declare_exchange(ne_binary(), ne_binary(), wh_proplist()) -> wh_amqp_exchange().
+declare_exchange(Exchange, Type) ->
+    declare_exchange(Exchange, Type, []).
+declare_exchange(Exchange, Type, Options) ->
+    #'exchange.declare'{
+      exchange = Exchange
+      ,type = Type
+      ,passive = ?P_GET('passive', Options, 'false')
+      ,durable = ?P_GET('durable', Options, 'false')
+      ,auto_delete = ?P_GET('auto_delete', Options, 'false')
+      ,internal = ?P_GET('internal', Options, 'false')
+      ,nowait = ?P_GET('nowait', Options, 'false')
+      ,arguments = ?P_GET('arguments', Options, [])
+     }.
+
 %%------------------------------------------------------------------------------
 %% @public
 %% @doc
@@ -621,6 +638,7 @@ queue_arguments(Arguments) ->
 max_length(Args, Acc) ->
     case props:get_value(<<"x-max-length">>, Args) of
         'undefined' -> [{<<"x-max-length">>, 'short', 100}|Acc];
+        'infinity' -> props:delete(<<"x-max-length">>, Acc);
         Value ->
             Acc1 = props:delete(<<"x-max-length">>, Acc),
             [{<<"x-max-length">>, 'short', Value}|Acc1]
@@ -630,6 +648,7 @@ max_length(Args, Acc) ->
 message_ttl(Args, Acc) ->
     case props:get_value(<<"x-message-ttl">>, Args) of
         'undefined' -> [{<<"x-message-ttl">>, 'signedint', 60000}|Acc];
+        'infinity' -> props:delete(<<"x-message-ttl">>, Acc);
         Value ->
             Acc1 = props:delete(<<"x-message-ttl">>, Acc),
             [{<<"x-message-ttl">>, 'signedint', Value}|Acc1]
@@ -888,7 +907,9 @@ basic_consume(Queue, Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec basic_cancel() -> 'ok'.
+-spec basic_cancel(ne_binary()) -> 'ok'.
 basic_cancel() -> wh_amqp_channel:command(#'basic.cancel'{}).
+basic_cancel(ConsumerTag) -> wh_amqp_channel:command(#'basic.cancel'{consumer_tag=ConsumerTag}).
 
 %%------------------------------------------------------------------------------
 %% @public

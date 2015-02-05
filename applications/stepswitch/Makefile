@@ -1,21 +1,12 @@
 PROJECT = stepswitch
 ROOT = ../..
-REBAR = $(ROOT)/utils/rebar/rebar
-DIALYZER = dialyzer
 
 EBINS = $(shell find $(ROOT)/core -maxdepth 2 -name ebin -print) $(shell find $(ROOT)/deps -maxdepth 2 -name ebin -print)
 PA = $(foreach EBIN,$(EBINS),-pa $(EBIN))
 
- ERLC_OPTS = -Werror +debug_info +warn_export_all -I$(ROOT)/core -I$(ROOT)/deps $(PA)
-     # +bin_opt_info
+ERLC_OPTS = -Werror +debug_info +warn_export_all -I$(ROOT)/core -I$(ROOT)/deps $(PA)
 
 ERL_LIBS = $(subst $(eval) ,:,$(wildcard $(ROOT)/deps/rabbitmq_client-*/deps))
-
-DIRS =  . \
-    $(ROOT)/core/whistle-1.0.0 \
-    $(ROOT)/core/whistle_amqp-1.0.0 \
-    $(ROOT)/core/whistle_couch-1.0.0 \
-    $(ROOT)/core/whistle_apps-1.0.0
 
 .PHONY: all compile clean
 
@@ -41,7 +32,7 @@ compile-test: test/$(PROJECT).app
 
 test/$(PROJECT).app: src/*.erl
 	@mkdir -p test/
-	ERL_LIBS=$(ERL_LIBS) erlc -v $(ERLC_OPTS)  -o test/ -pa test/  $?
+	ERL_LIBS=$(ERL_LIBS) erlc -v $(ERLC_OPTS) -DTEST -o test/ -pa test/  $?
 
 clean:
 	rm -f ebin/*
@@ -51,9 +42,4 @@ clean:
 test: clean compile-test eunit
 
 eunit: compile-test
-	erl -noshell -pa test -eval "eunit:test([$(MODULES)], [verbose])" -s init stop
-
-dialyze:
-	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) \
-		--plt $(ROOT)/.platform_dialyzer.plt --no_native \
-		-Werror_handling -Wrace_conditions -Wunmatched_returns # -Wunderspecs
+	erl -noshell -pa $(PA) -pa test -eval "eunit:test([$(MODULES)], [verbose])" -s init stop

@@ -79,6 +79,29 @@
       },
       "description": "Information that applies to the account as a whole"
     },
+    "call_restriction": {
+        "type": "object",
+        "required": false,
+        "name": "Call Restrictions",
+        "description": "Trunk level call restrictions for each available number classification",
+        "additionalProperties": {
+            "type": "object",
+            "required": false,
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "required": false,
+                    "name": "Action",
+                    "description": "If set to deny all calls of this type will be rejected.",
+                    "enum": [
+                        "inherit",
+                        "deny"
+                    ]
+                }
+            }
+        },
+        "default": {}
+    },
     "servers": {
       "type": "array",
       "default": [],

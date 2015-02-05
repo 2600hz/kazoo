@@ -15,6 +15,7 @@
 -export([init/0
          ,allowed_methods/0, allowed_methods/1, allowed_methods/3
          ,resource_exists/0, resource_exists/1, resource_exists/3
+         ,validate_resource/1, validate_resource/2
          ,billing/1
          ,authenticate/1
          ,authorize/1
@@ -22,8 +23,6 @@
          ,put/1
          ,post/2
          ,delete/2
-         ,is_ip_acl_unique/1
-         ,get_all_acl_ips/0
          ,lookup_regs/1
         ]).
 
@@ -48,6 +47,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"v2_resource.authenticate">>, ?MODULE, 'authenticate'),
     _ = crossbar_bindings:bind(<<"v2_resource.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"v2_resource.billing">>, ?MODULE, 'billing'),
+    _ = crossbar_bindings:bind(<<"v2_resource.validate_resource.devices">>, ?MODULE, 'validate_resource'),
     _ = crossbar_bindings:bind(<<"v2_resource.validate.devices">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"v2_resource.execute.put.devices">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"v2_resource.execute.post.devices">>, ?MODULE, 'post'),
@@ -124,7 +124,7 @@ billing(Context, _ReqVerb, _Nouns) -> Context.
 authenticate(Context) ->
     authenticate(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
-authenticate(?HTTP_GET, ?DEVICES_QCALL_NOUNS) ->
+authenticate(?HTTP_GET, ?DEVICES_QCALL_NOUNS(_DeviceId, _Number)) ->
     lager:debug("authenticating request"),
     'true';
 authenticate(_Verb, _Nouns) ->
@@ -134,11 +134,35 @@ authenticate(_Verb, _Nouns) ->
 authorize(Context) ->
     authorize(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
-authorize(?HTTP_GET, ?DEVICES_QCALL_NOUNS) ->
+authorize(?HTTP_GET, ?DEVICES_QCALL_NOUNS(_DeviceId, _Number)) ->
     lager:debug("authorizing request"),
     'true';
 authorize(_Verb, _Nouns) ->
     'false'.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% This function determines if the provided list of Nouns and Resource Ids are valid.
+%% If valid, updates Context with deviceId
+%%
+%% Failure here returns 404
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_resource(cb_context:context()) -> cb_context:context().
+validate_resource(Context) -> Context.
+
+-spec validate_resource(cb_context:context(), path_token()) -> cb_context:context().
+validate_resource(Context, <<"status">>) -> Context;
+validate_resource(Context, DeviceId) -> validate_device_id(Context, DeviceId).
+
+-spec validate_device_id(cb_context:context(), api_binary()) -> cb_context:context().
+validate_device_id(Context, DeviceId) ->
+    case couch_mgr:open_cache_doc(cb_context:account_db(Context), DeviceId) of
+       {'ok', _} -> cb_context:set_device_id(Context, DeviceId);
+       {'error', 'not_found'} -> cb_context:add_system_error('bad_identifier', [{'details', DeviceId}],  Context);
+       {'error', _R} -> crossbar_util:response_db_fatal(Context)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -386,7 +410,7 @@ validate_device_ip(IP, DeviceId, Context) ->
     end.
 
 validate_device_ip_unique(IP, DeviceId, Context) ->
-    case is_ip_unique(IP, DeviceId) of
+    case cb_devices_utils:is_ip_unique(IP, DeviceId) of
         'true' ->
             check_emergency_caller_id(DeviceId, cb_context:store(Context, 'aggregate_device', 'true'));
         'false' ->
@@ -421,8 +445,19 @@ on_successful_validation(DeviceId, Context) ->
 maybe_validate_quickcall(Context) ->
     maybe_validate_quickcall(Context, cb_context:resp_status(Context)).
 maybe_validate_quickcall(Context, 'success') ->
+    case kz_buckets:consume_tokens(?APP_NAME
+                                   ,cb_modules_util:bucket_name(Context)
+                                   ,cb_modules_util:token_cost(Context, 1, [?QUICKCALL_PATH_TOKEN])
+                                  )
+    of
+        'true' -> maybe_allow_quickcalls(Context);
+        'false' -> cb_context:add_system_error('too_many_requests', Context)
+    end.
+
+-spec maybe_allow_quickcalls(cb_context:context()) -> cb_context:context().
+maybe_allow_quickcalls(Context) ->
     case (not wh_util:is_empty(cb_context:auth_token(Context)))
-        orelse wh_util:is_true(cb_context:req_value(Context, <<"allow_anoymous_quickcalls">>))
+        orelse wh_util:is_true(cb_context:req_value(Context, <<"allow_anonymous_quickcalls">>))
     of
         'false' -> cb_context:add_system_error('invalid_credentials', Context);
         'true' -> Context
@@ -548,28 +583,6 @@ is_creds_global_unique(Realm, Username, DeviceId) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Check if the device sip ip is unique
-%% @end
-%%--------------------------------------------------------------------
-is_ip_unique(IP, DeviceId) ->
-    is_ip_acl_unique(IP)
-        andalso is_ip_sip_auth_unique(IP, DeviceId).
-
-is_ip_acl_unique(IP) ->
-    lists:all(fun(CIDR) -> not (wh_network_utils:verify_cidr(IP, CIDR)) end, get_all_acl_ips()).
-
-is_ip_sip_auth_unique(IP, DeviceId) ->
-    ViewOptions = [{<<"key">>, IP}],
-    case couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup_by_ip">>, ViewOptions) of
-        {'ok', []} -> 'true';
-        {'ok', [JObj]} -> wh_json:get_value(<<"id">>, JObj) =:= DeviceId;
-        {'error', 'not_found'} -> 'true';
-        _ -> 'false'
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %%
 %% @end
 %%--------------------------------------------------------------------
@@ -612,38 +625,3 @@ maybe_remove_aggregate(DeviceId, _Context, 'success') ->
         {'error', 'not_found'} -> 'false'
     end;
 maybe_remove_aggregate(_, _, _) -> 'false'.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec get_all_acl_ips() -> ne_binaries().
-get_all_acl_ips() ->
-    Req = [{<<"Category">>, <<"ecallmgr">>}
-           ,{<<"Key">>, <<"acls">>}
-           ,{<<"Node">>, <<"all">>}
-           ,{<<"Default">>, wh_json:new()}
-           ,{<<"Msg-ID">>, wh_util:rand_hex_binary(16)}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    Resp = whapps_util:amqp_pool_request(
-             props:filter_undefined(Req)
-             ,fun wapi_sysconf:publish_get_req/1
-             ,fun wapi_sysconf:get_resp_v/1
-            ),
-    case Resp of
-        {'error', _} -> [];
-        {'ok', JObj} ->
-            extract_all_ips(wh_json:get_value(<<"Value">>, JObj, wh_json:new()))
-    end.
-
--spec extract_all_ips(wh_json:object()) -> ne_binaries().
-extract_all_ips(JObj) ->
-    lists:foldr(fun(K, IPs) ->
-                        case wh_json:get_value([K, <<"cidr">>], JObj) of
-                            'undefined' -> IPs;
-                            CIDR -> [CIDR|IPs]
-                        end
-                end, [], wh_json:get_keys(JObj)).

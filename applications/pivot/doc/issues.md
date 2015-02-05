@@ -1,4 +1,4 @@
-/*                                                                                                                                                                                                                                                                                                 
+/*
 Section: Pivot
 Title: Issues
 Language: en-US

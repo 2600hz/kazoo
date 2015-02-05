@@ -23,7 +23,7 @@
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 -behaviour(gen_server).
 
--export([start_listener/5, connect/6, send/2, async_send/2, stop/2]).
+-export([is_max/1, send/2, async_send/2, stop/2]).
 -export([start_refresh/3, stop_refresh/1, set_timeout/2, get_transport/1, get_refresh/1]).
 -export([incoming/2, stop_all/0]).
 -export([start_link/4, init/1, terminate/2, code_change/3, handle_call/3,   
@@ -37,60 +37,37 @@
 -define(MAX_UDP, 1500).
 
 
-
 %% ===================================================================
 %% Public
 %% ===================================================================
 
+%% @doc Checks if we already have the maximum number of connections
+-spec is_max(nksip:app_id()) ->
+    boolean().
 
-%% @doc Starts a new listening server
--spec start_listener(nksip:app_id(), nksip:protocol(), 
-                    inet:ip_address(), inet:port_number(), nksip_lib:optslist()) ->
-    {ok, pid()} | {error, term()}.
-
-start_listener(AppId, Proto, Ip, Port, Opts) ->
-    Transp = #transport{
-        proto = Proto,
-        local_ip = Ip, 
-        local_port = Port,
-        listen_ip = Ip,
-        listen_port = Port,
-        remote_ip = {0,0,0,0},
-        remote_port = 0
-    },
-    Spec = case Proto of
-        udp -> nksip_transport_udp:get_listener(AppId, Transp, Opts);
-        tcp -> nksip_transport_tcp:get_listener(AppId, Transp, Opts);
-        tls -> nksip_transport_tcp:get_listener(AppId, Transp, Opts);
-        sctp -> nksip_transport_sctp:get_listener(AppId, Transp, Opts);
-        ws -> nksip_transport_ws:get_listener(AppId, Transp, Opts);
-        wss -> nksip_transport_ws:get_listener(AppId, Transp, Opts)
-    end,
-    nksip_transport_sup:add_transport(AppId, Spec).
-
-    
-%% @doc Starts a new connection to a remote server
--spec connect(nksip:app_id(), nksip:protocol(), inet:ip_address(), inet:port_number(), 
-              binary(), nksip_lib:optslist()) ->
-    {ok, pid(), nksip_transport:transport()} | {error, term()}.
-         
-connect(AppId, Proto, Ip, Port, Res, _Opts) ->
-    Class = case size(Ip) of 4 -> ipv4; 8 -> ipv6 end,
-    case nksip_transport:get_listening(AppId, Proto, Class) of
-        [{Transp, Pid}|_] -> 
-            Transp1 = Transp#transport{remote_ip=Ip, remote_port=Port, resource=Res},
-            Config = AppId:config(),
-            case Proto of
-                udp -> nksip_transport_udp:connect(Pid, Transp1, Config);
-                tcp -> nksip_transport_tcp:connect(AppId, Transp1, Config);
-                tls -> nksip_transport_tcp:connect(AppId, Transp1, Config);
-                sctp -> nksip_transport_sctp:connect(Pid, Transp1, Config);
-                ws -> nksip_transport_ws:connect(AppId, Transp1, Config);
-                wss -> nksip_transport_ws:connect(AppId, Transp1, Config)
-            end;
-        [] ->
-            {error, no_listening_transport}
+is_max(AppId) ->
+    Max = nksip_config_cache:global_max_connections(),
+    case nksip_counters:value(nksip_connections) of
+        Current when Current > Max -> 
+            true;
+        _ -> 
+            AppMax = AppId:config_max_connections(),
+            case nksip_counters:value({nksip_connections, AppId}) of
+                AppCurrent when AppCurrent > AppMax -> 
+                    true;
+                _ ->
+                    false
+            end
     end.
+
+
+%% @doc Starts a new connection
+-spec start_link(nksip:app_id(), nksip:transport(), port()|pid(), integer()) ->
+    {ok, pid()}.
+
+start_link(AppId, Transport, SocketOrPid, Timeout) -> 
+    Args = [AppId, Transport, SocketOrPid, Timeout],
+    gen_server:start_link(?MODULE, Args, []).
 
 
 %% @doc Sends a new request or response to a started connection
@@ -98,26 +75,24 @@ connect(AppId, Proto, Ip, Port, Res, _Opts) ->
     ok | {error, term()}.
 
 send(Pid, #sipmsg{}=SipMsg) ->
-    #sipmsg{app_id=AppId, class=Class, call_id=CallId, transport=Transp} = SipMsg,
-    #transport{proto=Proto, remote_ip=Ip, remote_port=Port} = Transp,
+    #sipmsg{app_id=AppId, call_id=CallId, transport=Transp} = SipMsg,
+    #transport{proto=Proto} = Transp,
     Packet = nksip_unparse:packet(SipMsg),
     case do_send(Pid, Proto, Packet) of
         ok ->
-            case Class of
-                {req, Method} ->
-                    nksip_trace:insert(SipMsg, {Proto, Ip, Port, Method, Packet}),
-                    nksip_trace:sipmsg(AppId, CallId, <<"TO">>, Transp, Packet),
-                    ok;
-                {resp, Code, _Reason} ->
-                    nksip_trace:insert(SipMsg, {Proto, Ip, Port, Code, Packet}),
-                    nksip_trace:sipmsg(AppId, CallId, <<"TO">>, Transp, Packet),
-                    ok
-            end;
+            AppId:nkcb_connection_sent(SipMsg, Packet);
         udp_too_large ->
             {error, udp_too_large};
         {error, Error} ->
             ?notice(AppId, CallId, "could not send ~p message: ~p", [Proto, Error]),
             {error, Error}
+    end;
+
+send(Pid, Packet) when is_binary(Packet) ->
+    case catch gen_server:call(Pid, {send, Packet}, 30000) of
+        ok -> ok;
+        {error, Error} -> {error, Error};
+        {'EXIT', Error} -> {error, Error}
     end.
 
 
@@ -126,8 +101,9 @@ do_send(_Pid, udp, Packet) when byte_size(Packet) > ?MAX_UDP ->
     udp_too_large;
 
 do_send(Pid, _Proto, Packet) ->
-    case catch gen_server:call(Pid, {send, Packet}) of
+    case catch gen_server:call(Pid, {send, Packet}, 30000) of
         ok -> ok;
+        {error, Error} -> {error, Error};
         {'EXIT', Error} -> {error, Error}
     end.
 
@@ -151,10 +127,8 @@ stop(Pid, Reason) ->
 -spec start_refresh(pid(), pos_integer(), term()) ->
     ok | error.
 
-start_refresh(Pid, Secs, Ref) ->
-    Rand = crypto:rand_uniform(80, 101),
-    Time = (Rand*Secs) div 100,
-    case catch gen_server:call(Pid, {start_refresh, Time, Ref, self()}) of
+start_refresh(Pid, Secs, Ref) when is_integer(Secs), Secs>0 ->
+    case catch gen_server:call(Pid, {start_refresh, Secs, Ref, self()}) of
         ok -> ok;
         _ -> error
     end.
@@ -194,7 +168,7 @@ get_transport(Pid) ->
     end.
 
 
-%% @private Gets the transport record (and extends the timeout)
+%% @private Gets remaining and total refresh time  (and extends the timeout)
 -spec get_refresh(pid()) ->
     {true, pos_integer(), pos_integer()} | {false, pos_integer()} | error.
 
@@ -209,13 +183,13 @@ get_refresh(Pid) ->
             error 
     end.
 
+
 %% @private 
 -spec incoming(pid(), binary()) ->
     ok.
 
 incoming(Pid, Packet) when is_binary(Packet) ->
     gen_server:cast(Pid, {incoming, Packet}).
-
 
 
 %% @private
@@ -229,9 +203,6 @@ stop_all() ->
 %% ===================================================================
 
 
-%% @private
-start_link(AppId, Transport, SocketOrPid, Timeout) -> 
-    gen_server:start_link(?MODULE, [AppId, Transport, SocketOrPid, Timeout], []).
 
 -record(state, {
     app_id :: nksip:app_id(),
@@ -247,8 +218,8 @@ start_link(AppId, Transport, SocketOrPid, Timeout) ->
     refresh_notify = [] :: [from()],
     buffer = <<>> :: binary(),
     rnrn_pattern :: binary:cp(),
-    ws_frag = #message{},            % Store previous ws fragmented message
-    ws_pid :: pid()                  % Cowboy protocol's pid
+    ws_frag = #message{},            % store previous ws fragmented message
+    ws_pid :: pid()                  % ws protocol's pid
 }).
 
 
@@ -260,7 +231,7 @@ init([AppId, Transport, SocketOrPid, Timeout]) ->
     #transport{proto=Proto, remote_ip=Ip, remote_port=Port, resource=Res} = Transport,
     nksip_proc:put({nksip_connection, {AppId, Proto, Ip, Port, Res}}, Transport), 
     nksip_proc:put(nksip_transports, {AppId, Transport}),
-    nksip_counters:async([nksip_connections]),
+    nksip_counters:async([nksip_connections, {nksip_connections, AppId}]),
     case is_pid(SocketOrPid) of
         true ->
             Socket = undefined,
@@ -270,7 +241,7 @@ init([AppId, Transport, SocketOrPid, Timeout]) ->
             Socket = SocketOrPid,
             Pid = undefined
     end,
-    ?debug(AppId, <<>>, "created ~p connection ~p (~p) ~p", 
+    ?debug(AppId, <<>>, "Created ~p connection ~p (~p) ~p", 
                 [Proto, {Ip, Port}, self(), Timeout]),
     State = #state{
         app_id = AppId,
@@ -337,7 +308,7 @@ handle_call(get_refresh, From, State) ->
     do_noreply(State);
 
 handle_call(Msg, _From, State) ->
-    lager:warning("Module ~p received unexpected call: ~p", [?MODULE, Msg]),
+    lager:error("Module ~p received unexpected call: ~p", [?MODULE, Msg]),
     do_noreply(State).
 
 
@@ -396,7 +367,7 @@ handle_cast({stop, Reason}, State) ->
     do_stop(Reason, State);
 
 handle_cast(Msg, State) ->
-    lager:warning("Module ~p received unexpected cast: ~p", [?MODULE, Msg]),
+    lager:error("Module ~p received unexpected cast: ~p", [?MODULE, Msg]),
     do_noreply(State).
 
 
@@ -404,7 +375,6 @@ handle_cast(Msg, State) ->
 -spec handle_info(term(), #state{}) ->
     gen_server_info(#state{}).
 
-%% @private
 handle_info({tcp, Socket, Packet}, #state{proto=Proto, socket=Socket}=State) ->
     inet:setopts(Socket, [{active, once}]),
     case Proto of
@@ -480,13 +450,13 @@ code_change(_OldVsn, State, _Extra) ->
     gen_server_terminate().
 
 terminate(_Reason, #state{app_id=AppId, ws_pid=Pid, proto=Proto}) when is_pid(Pid) ->
-    ?debug(AppId, <<>>, "~p connection process stopped (~p)", [Proto, self()]),
+    ?debug(AppId, <<>>, "Connection ~p process stopped (~p)", [Proto, self()]),
     Pid ! stop;
 
 terminate(_Reason, State) ->
     #state{app_id=AppId, socket=Socket, transport=Transp} = State,
     #transport{proto=Proto, sctp_id=AssocId} = Transp,
-    ?debug(AppId, <<>>, "~p connection process stopped (~p)", [Proto, self()]),
+    ?debug(AppId, <<>>, "Connection ~p process stopped (~p)", [Proto, self()]),
     case Proto of
         udp -> ok;
         tcp -> gen_tcp:close(Socket);
@@ -532,15 +502,20 @@ do_send(Packet, State) ->
     end.
 
     
-%% @private
+%% @private Parse for UDP/TCP/TLS/SCTP
 -spec parse(binary(), #state{}) ->
     gen_server_info(#state{}).
 
 parse(Binary, #state{buffer=Buffer}=State) ->
-    Data = <<Buffer/binary, Binary/binary>>,
+    Data = case Buffer of
+        <<>> -> Binary;
+        _ -> <<Buffer/binary, Binary/binary>>
+    end,
     case do_parse(Data, State) of
-        {ok, State1} -> do_noreply(State1);
-        {error, Error} -> do_stop(Error, State)
+        {ok, State1} -> 
+            do_noreply(State1);
+        {error, Error} -> 
+            do_stop(Error, State)
     end.
 
 
@@ -551,6 +526,7 @@ parse(Binary, #state{buffer=Buffer}=State) ->
 do_parse(<<>>, State) ->
     {ok, State#state{buffer = <<>>}};
 
+%% For TCP, we send a \r\n\r\n, remote must reply with \r\n
 do_parse(<<"\r\n\r\n", Rest/binary>>, #state{app_id=AppId, proto=Proto}=State) 
         when Proto==tcp; Proto==tls; Proto==sctp ->
     ?debug(AppId, <<>>, "transport responding to refresh", []),
@@ -558,6 +534,9 @@ do_parse(<<"\r\n\r\n", Rest/binary>>, #state{app_id=AppId, proto=Proto}=State)
         ok -> do_parse(Rest, State);
         {error, _} -> {error, send_error}
     end;
+
+do_parse(<<"\r\n">>, #state{proto=udp}=State) ->
+    {ok, State};
 
 do_parse(<<"\r\n", Rest/binary>>, #state{proto=Proto}=State) 
         when Proto==tcp; Proto==tls; Proto==sctp ->
@@ -600,24 +579,23 @@ do_parse(Data, State) ->
         nomatch when Proto==tcp; Proto==tls ->
             {ok, State#state{buffer=Data}};
         nomatch ->
-            ?notice(AppId, <<>>, "invalid partial msg ~p: ~p", [Proto, Data]),
+            ?notice(AppId, <<>>, "ignoring partial ~p msg: ~p", [Proto, Data]),
             {error, parse_error};
-        _ ->
-            do_parse(AppId, Transp, Data, State)
+        {Pos, 4} ->
+            do_parse(AppId, Transp, Data, Pos+4, State)
     end.
 
 
 %% @private
--spec do_parse(nksip:app_id(), nksip:transport(), binary(), #state{}) ->
+-spec do_parse(nksip:app_id(), nksip:transport(), binary(), integer(), #state{}) ->
     {ok, #state{}} | {error, term()}.
 
-do_parse(AppId, Transp, Data, State) ->
-    #transport{proto=Proto, remote_ip=Ip, remote_port=Port} = Transp,
-    case nksip_parse:packet(AppId, Transp, Data) of
-        {ok, #sipmsg{call_id=CallId, class=_Class}=SipMsg, Rest} -> 
-            nksip_trace:sipmsg(AppId, CallId, <<"FROM">>, Transp, Data),
-            nksip_trace:insert(AppId, CallId, {Proto, Ip, Port, Data}),
-            case nksip_call_router:incoming_sync(SipMsg) of
+do_parse(AppId, Transp, Data, Pos, State) ->
+    #transport{proto=Proto} = Transp,
+    case extract(Proto, Data, Pos) of
+        {ok, CallId, Msg, Rest} ->
+            AppId:nkcb_connection_recv(AppId, CallId, Transp, Msg),
+            case nksip_router:incoming_sync(AppId, CallId, Transp, Msg) of
                 ok -> 
                     do_parse(Rest, State);
                 {error, Error} -> 
@@ -630,17 +608,12 @@ do_parse(AppId, Transp, Data, State) ->
         partial ->
             ?notice(AppId, <<>>, "ignoring partial msg ~p: ~p", [Proto, Data]),
             {ok, State};
-        {reply_error, Error, Reply} ->
-            ?notice(AppId, <<>>, "error parsing ~p request: ~p", [Proto, Error]),
-            do_send(Reply, State),
-            {error, Error};
-        {error, Error} -> 
-            ?notice(AppId, <<>>, "error parsing ~p request: ~p", [Proto, Error]),
+        {error, Error} ->
+            reply_error(Data, Error, State),
             {error, parse_error}
     end.
 
-
-%% @private
+%% @private Parse for WS/WSS
 -spec parse_ws(binary(), #state{}) ->
     gen_server_info(#state{}).
 
@@ -685,8 +658,10 @@ do_parse_ws_messages([#message{type=fragmented}=Msg|Rest], State) ->
 do_parse_ws_messages([#message{type=Type, payload=Data}|Rest], State) 
         when Type==text; Type==binary ->
     case do_parse(nksip_lib:to_binary(Data), State) of
-        {ok, State1} -> do_parse_ws_messages(Rest, State1);
-        {error, Error} -> {error, Error}
+        {ok, State1} -> 
+            do_parse_ws_messages(Rest, State1);
+        {error, Error} -> 
+            {error, Error}
     end;
 
 do_parse_ws_messages([#message{type=close}|_], _State) ->
@@ -716,9 +691,57 @@ do_stop(Reason, #state{app_id=AppId, proto=Proto}=State) ->
     {stop, normal, State}.
 
 
+%% @private
+-spec extract(nksip:protocol(), binary(), integer()) ->
+    {ok, nksip:call_id(), binary(), binary()} | partial | {error, binary()}.
+
+extract(Proto, Data, Pos) ->
+    case 
+        re:run(Data, nksip_config_cache:re_call_id(), [{capture, all_but_first, binary}])
+    of
+        {match, [_, CallId]} ->
+            case 
+                re:run(Data, nksip_config_cache:re_content_length(), 
+                       [{capture, all_but_first, list}])
+            of
+                {match, [_, CL0]} ->
+                    case catch list_to_integer(CL0) of
+                        CL when is_integer(CL), CL>=0 ->
+                            MsgSize = Pos+CL,
+                            case byte_size(Data) of
+                                MsgSize ->
+                                    {ok, CallId, Data, <<>>};
+                                BS when BS<MsgSize andalso (Proto==tcp orelse Proto==tls) ->
+                                    partial;
+                                BS when BS<MsgSize ->
+                                    {error, <<"Invalid Content-Length">>};
+                                _ when Proto==tcp; Proto==tls ->
+                                    {Msg, Rest} = split_binary(Data, MsgSize),
+                                    {ok, CallId, Msg, Rest};
+                                _ ->
+                                    {error, <<"Invalid Content-Length">>}
+                            end;
+                        _ ->
+                            {error, <<"Invalid Content-Length">>}
+                    end;
+                _ ->
+                    {error, <<"Invalid Content-Length">>}
+            end;
+        _ ->
+            {error, <<"Invalid Call-ID">>}
+    end.
 
 
+%% @private
+-spec reply_error(binary(), binary(), #state{}) ->
+    ok.
 
-
-
+reply_error(Data, Msg, #state{app_id=AppId}=State) ->
+    case nksip_parse_sipmsg:parse(Data) of
+        {ok, {req, _, _}, Headers, _} ->
+            Resp = nksip_unparse:response(Headers, 400, Msg),
+            do_send(Resp, State);
+        O ->
+            ?notice(AppId, <<>>, "error parsing request: ~s", [O])
+    end.
 

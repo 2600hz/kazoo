@@ -9,13 +9,17 @@
 
 -define(CONFIG_CAT, <<"crossbar">>).
 
+-define(CROSSBAR_CACHE, 'crossbar_cache').
+
 -define(MAINTENANCE_VIEW_FILE, <<"views/maintenance.json">>).
 -define(ACCOUNTS_AGG_VIEW_FILE, <<"views/accounts.json">>).
 
 -define(APP_NAME, <<"crossbar">>).
 -define(APP_VERSION, <<"0.8.0">>).
 
--define(VERSION_SUPPORTED, [<<"v1">>, <<"v2">>]).
+-define(VERSION_1, <<"v1">>).
+-define(VERSION_2, <<"v2">>).
+-define(VERSION_SUPPORTED, [?VERSION_1, ?VERSION_2]).
 
 -define(CACHE_TTL, whapps_config:get_integer(<<"crossbar">>, <<"cache_ttl">>, 300)).
 
@@ -36,59 +40,41 @@
                           ,?HTTP_OPTIONS
                          ]).
 
--define(USERS_QCALL_NOUNS, [{<<"users">>, [_UserId, <<"quickcall">>, _Number]}
-                            ,{?WH_ACCOUNTS_DB, [_]}
-                           ]).
--define(DEVICES_QCALL_NOUNS, [{<<"devices">>, [_DeviceId, <<"quickcall">>, _Number]}
-                              ,{?WH_ACCOUNTS_DB, [_]}
-                             ]).
+-define(DEVICES_QCALL_NOUNS(DeviceId, Number)
+        ,[{<<"devices">>, [DeviceId, <<"quickcall">>, Number]}
+          ,{?WH_ACCOUNTS_DB, [_]}
+         ]).
+-define(USERS_QCALL_NOUNS(UserId, Number)
+        ,[{<<"users">>, [UserId, <<"quickcall">>, Number]}
+          ,{?WH_ACCOUNTS_DB, [_]}
+         ]).
 
--define(DEFAULT_MODULES, ['cb_about'
-                          ,'cb_accounts'
-                          ,'cb_acls'
-                          ,'cb_apps_store'
-                          ,'cb_api_auth'
+-define(DEFAULT_MODULES, ['cb_about', 'cb_accounts', 'cb_acls'
+                          ,'cb_api_auth', 'cb_apps_store'
                           ,'cb_bulk'
-                          ,'cb_callflows'
-                          ,'cb_cdrs'
-                          ,'cb_clicktocall'
-                          ,'cb_conferences'
-                          ,'cb_configs'
-                          ,'cb_connectivity'
-                          ,'cb_contact_list'
-                          ,'cb_devices'
-                          ,'cb_directories'
-                          ,'cb_faxes'
-                          ,'cb_global_resources'
+                          ,'cb_callflows', 'cb_cdrs', 'cb_channels'
+                          ,'cb_clicktocall', 'cb_conferences', 'cb_configs'
+                          ,'cb_connectivity', 'cb_contact_list'
+                          ,'cb_devices', 'cb_directories'
+                          ,'cb_faxboxes', 'cb_faxes'
                           ,'cb_groups'
                           ,'cb_hotdesks'
-                          ,'cb_ip_auth'
+                          ,'cb_ip_auth', 'cb_ips'
                           ,'cb_limits'
-                          ,'cb_local_resources'
-                          ,'cb_media'
-                          ,'cb_menus'
-                          ,'cb_phone_numbers'
-                          ,'cb_rates'
-                          ,'cb_registrations'
-                          ,'cb_schemas'
-                          ,'cb_service_plans'
-                          ,'cb_services'
-                          ,'cb_simple_authz'
-                          ,'cb_temporal_rules'
-                          ,'cb_token_auth'
-                          ,'cb_transactions'
-                          ,'cb_user_auth'
-                          ,'cb_users'
+                          ,'cb_media', 'cb_menus', 'cb_metaflows'
+                          ,'cb_notifications'
+                          ,'cb_phone_numbers', 'cb_port_requests'
+                          ,'cb_rates', 'cb_registrations', 'cb_resource_templates'
+                          ,'cb_resources'
+                          ,'cb_schemas', 'cb_service_plans', 'cb_services'
+                          ,'cb_simple_authz', 'cb_sms'
+                          ,'cb_temporal_rules', 'cb_token_auth', 'cb_transactions'
+                          ,'cb_user_auth', 'cb_users'
                           ,'cb_vmboxes'
-                          ,'cb_whitelabel'
-                          ,'cb_faxboxes'
-                          ,'cb_metaflows'
-                          ,'cb_webhooks'
-                          ,'cb_port_requests'
-                          ,'cb_resource_templates'
-                          ,'cb_ips'
-                          ,'cb_channels'
+                          ,'cb_webhooks', 'cb_whitelabel'
                          ]).
+
+-define(DEPRECATED_MODULES, ['cb_local_resources', 'cb_global_resources']).
 
 -record(cb_context, {
            content_types_provided = [] :: crossbar_content_handlers()
@@ -106,15 +92,18 @@
           ,req_json = wh_json:new() :: req_json()
           ,req_files = [] :: req_files()
           ,req_data :: wh_json:json_term()  % the "data" from the request JSON envelope
+          ,req_headers = [] :: cowboy:http_headers()
           ,query_json = wh_json:new() :: wh_json:object()
           ,account_id :: api_binary()
           ,user_id :: api_binary()   % Will be loaded in validate stage for endpoints such as /accounts/{acct-id}/users/{user-id}/*
+          ,device_id :: api_binary()   % Will be loaded in validate stage for endpoints such as /accounts/{acct-id}/devices/{device-id}/*
+          ,reseller_id :: api_binary()
           ,db_name :: api_binary() | ne_binaries()
           ,doc :: api_object() | wh_json:objects()
           ,resp_expires = {{1999,1,1},{0,0,0}} :: wh_datetime()
           ,resp_etag :: 'automatic' | string() | api_binary()
           ,resp_status = 'error' :: crossbar_status()
-          ,resp_error_msg :: wh_json:json_string()
+          ,resp_error_msg :: wh_json:key()
           ,resp_error_code :: pos_integer()
           ,resp_data :: resp_data()
           ,resp_headers = [] :: wh_proplist() %% allow the modules to set headers (like Location: XXX to get a 201 response code)
@@ -131,7 +120,7 @@
           ,client_ip = <<"127.0.0.1">> :: api_binary()
           ,load_merge_bypass :: api_object()
           ,profile_id :: api_binary()
-          ,api_version = <<"v1">> :: binary()
+          ,api_version = ?VERSION_1 :: ne_binary()
           ,magic_pathed = 'false' :: boolean()
          }).
 

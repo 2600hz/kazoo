@@ -54,8 +54,8 @@ vias(String, Acc) ->
         {#via{}=Via, []} when Acc==[]-> [Via];
         {#via{}=Via, []} -> lists:reverse([Via|Acc]);
         {#via{}=Via, Rest} -> vias(Rest, [Via|Acc]);
-        {error, Type, Line} -> 
-            lager:debug("Error parsing via ~s: ~p (~p)", [String, Type, Line]),
+        {error, _Type, _Line} -> 
+            % lager:debug("Error parsing via ~s: ~p (~p)", [String, _Type, _Line]),
             error
     end.
 
