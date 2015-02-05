@@ -18,6 +18,8 @@
                     "name": "Type",
                     "description": "",
                     "enum":["original","specified","admins"]
+                    "minLength": 2,
+                    "maxLength": 253
                 },
                 "email_addresses": {
                     "type": "array",
@@ -70,6 +72,8 @@
                     "name": "Type",
                     "description": "",
                     "enum":["original","specified","admins"]
+                    "minLength": 2,
+                    "maxLength": 253
                 },
                 "email_addresses": {
                     "type": "array",

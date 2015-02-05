@@ -109,7 +109,7 @@ add(Broker, Zone) when not is_atom(Zone) ->
 add(Broker, Zone) ->
     add(Broker, Zone, []).
 
-add(Broker, Zone, Tags) ->    
+add(Broker, Zone, Tags) ->
     case catch amqp_uri:parse(wh_util:to_list(Broker)) of
         {'EXIT', _R} ->
             lager:error("failed to parse AMQP URI '~s': ~p", [Broker, _R]),
@@ -445,7 +445,7 @@ brokers_with_tag(Tag, Available) ->
         || #wh_amqp_connections{tags=Tags}=Connection <- ets:select(?TAB, MatchSpec),
            lists:member(Tag, Tags)
     ].
-        
+
 -spec broker_with_tag(ne_binary()) -> api_binary().
 broker_with_tag(Tag) ->
     case brokers_with_tag(Tag, 'true') of

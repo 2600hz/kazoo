@@ -472,12 +472,12 @@ set_application_version(AppVersion, #whapps_call{}=Call) when is_binary(AppVersi
 application_version(#whapps_call{app_version=AppVersion}) ->
     AppVersion.
 
--spec set_call_id(ne_binary(), call()) -> call().
-set_call_id(?NE_BINARY = CallId, #whapps_call{}=Call) ->
+-spec set_call_id(api_binary(), call()) -> call().
+set_call_id(CallId, #whapps_call{}=Call) ->
     Call#whapps_call{call_id=CallId}.
 
--spec set_other_leg_call_id(ne_binary(), call()) -> call().
-set_other_leg_call_id(?NE_BINARY = CallId, #whapps_call{}=Call) ->
+-spec set_other_leg_call_id(api_binary(), call()) -> call().
+set_other_leg_call_id(CallId, #whapps_call{}=Call) ->
     Call#whapps_call{other_leg_call_id=CallId}.
 
 -spec call_id(call()) -> api_binary().

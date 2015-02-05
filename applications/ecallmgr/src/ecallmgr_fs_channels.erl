@@ -263,7 +263,7 @@ handle_query_channels(JObj, _Props) ->
 
     maybe_send_query_channels_resp(JObj, query_channels(Fields, CallId)).
 
--spec maybe_send_query_channels_resp(wh_json:object(), wh_json:objects()) -> 'ok'.
+-spec maybe_send_query_channels_resp(wh_json:object(), wh_json:object()) -> 'ok'.
 maybe_send_query_channels_resp(JObj, Channels) ->
     case wh_util:is_empty(Channels) and
         wh_json:is_true(<<"Active-Only">>, JObj, 'false')

@@ -73,10 +73,9 @@
          ,rm_responder/3
         ]).
 
--export([add_binding/2
-         ,add_binding/3
-         ,rm_binding/2
-         ,rm_binding/3
+-export([add_binding/2, add_binding/3
+         ,b_add_binding/2, b_add_binding/3
+         ,rm_binding/2, rm_binding/3
         ]).
 
 -export([ack/2
@@ -306,9 +305,21 @@ add_binding(Srv, {Binding, Props}) when is_list(Props)
 add_binding(Srv, Binding) when is_binary(Binding) orelse is_atom(Binding) ->
     gen_server:cast(Srv, {'add_binding', wh_util:to_binary(Binding), []}).
 
+
 -spec add_binding(server_ref(), ne_binary() | atom(), wh_proplist()) -> 'ok'.
 add_binding(Srv, Binding, Props) when is_binary(Binding) orelse is_atom(Binding) ->
     gen_server:cast(Srv, {'add_binding', wh_util:to_binary(Binding), Props}).
+
+-spec b_add_binding(server_ref(), binding() | ne_binary() | atom()) -> 'ok'.
+b_add_binding(Srv, {Binding, Props}) when is_list(Props)
+                                        ,(is_atom(Binding) orelse is_binary(Binding)) ->
+    gen_server:call(Srv, {'add_binding', wh_util:to_binary(Binding), Props});
+b_add_binding(Srv, Binding) when is_binary(Binding) orelse is_atom(Binding) ->
+    gen_server:call(Srv, {'add_binding', wh_util:to_binary(Binding), []}).
+
+-spec b_add_binding(server_ref(), ne_binary() | atom(), wh_proplist()) -> 'ok'.
+b_add_binding(Srv, Binding, Props) when is_binary(Binding) orelse is_atom(Binding) ->
+    gen_server:call(Srv, {'add_binding', wh_util:to_binary(Binding), Props}).
 
 %% It is expected that responders have been set up already, prior to binding the new queue
 -spec add_queue(server_ref(), binary(), wh_proplist(), binding() | bindings()) ->
@@ -425,6 +436,12 @@ handle_call('is_consuming', _From, #state{is_consuming=IsC}=State) ->
     {'reply', IsC, State};
 handle_call({'$client_call', Request}, From, State) ->
     handle_module_call(Request, From, State);
+handle_call({'add_binding', _Binding, _Props}=AddBinding, _From, State) ->
+    case handle_cast(AddBinding, State) of
+        {'noreply', State1} -> {'reply', 'ok', State1};
+        {'noreply', State1, Timeout} -> {'reply', 'ok', State1, Timeout};
+        {'stop', _Reason, _State1}=Stop -> Stop
+    end;
 handle_call(Request, From, State) ->
     handle_module_call(Request, From, State).
 
@@ -713,7 +730,9 @@ handle_callback_info(Message, #state{module=Module
             {'stop', Reason, State#state{module_state=ModuleState1}}
     catch
         _E:R ->
+            ST = erlang:get_stacktrace(),
             lager:debug("handle_info exception: ~s: ~p", [_E, R]),
+            wh_util:log_stacktrace(ST),
             {'stop', R, State}
     end.
 

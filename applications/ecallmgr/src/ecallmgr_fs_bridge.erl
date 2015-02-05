@@ -9,6 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_bridge).
 
+-include_lib("whistle/src/api/wapi_dialplan.hrl").
 -include("ecallmgr.hrl").
 
 -export([call_command/3
@@ -41,7 +42,8 @@ call_command(Node, UUID, JObj) ->
                        ],
             lager:debug("creating bridge dialplan"),
             XferExt = lists:foldr(fun(F, DP) ->
-                                          F(DP, Node, UUID, JObj) end
+                                          F(DP, Node, UUID, JObj)
+                                  end
                                   ,[], Routines),
             {<<"xferext">>, XferExt}
     end.
@@ -68,42 +70,41 @@ unbridge(UUID, JObj) ->
 %% Bridge command helpers
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_ringback(atom(), ne_binary(), wh_json:object()) -> 'ok'.
 handle_ringback(Node, UUID, JObj) ->
-    case wh_json:get_value(<<"Ringback">>, JObj) of
-        'undefined' ->
-            case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Ringback">>], JObj) of
-                'undefined' -> 'ok';
-                Media ->
-                    Stream = ecallmgr_util:media_path(Media, 'extant', UUID, JObj),
-                    lager:debug("bridge has custom ringback in channel vars: ~s", [Stream]),
-                    ecallmgr_util:set(Node, UUID, [{<<"ringback">>, Stream}])
-            end;
+    case wh_json:get_first_defined([<<"Ringback">>
+                                    ,[<<"Custom-Channel-Vars">>, <<"Ringback">>]
+                                   ]
+                                   ,JObj
+                                  )
+    of
+        'undefined' -> 'ok';
         Media ->
-            Stream = ecallmgr_util:media_path(Media, extant, UUID, JObj),
+            Stream = ecallmgr_util:media_path(Media, 'extant', UUID, JObj),
             lager:debug("bridge has custom ringback: ~s", [Stream]),
             ecallmgr_util:set(Node, UUID, [{<<"ringback">>, Stream}])
     end.
 
+-spec maybe_early_media(atom(), ne_binary(), wh_json:object()) -> 'ok'.
 maybe_early_media(Node, UUID, JObj) ->
-    case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
-        <<"simultaneous">> ->
-            case length(wh_json:get_ne_value(<<"Endpoints">>, JObj, [])) > 1 of
-                'false' -> 'ok';
-                'true' ->
-                    lager:debug("bridge is simultaneous to multiple endpoints, starting local ringing"),
-                    %% we don't really care if this succeeds, the call will fail later on
-                    ecallmgr_util:send_cmd(Node, UUID, <<"ring_ready">>, "")
-            end;
-        _Else -> 'ok'
+    Endpoints = wh_json:get_ne_value(<<"Endpoints">>, JObj, []),
+    case ecallmgr_util:get_dial_separator(JObj, Endpoints) of
+        ?SEPARATOR_SINGLE -> 'ok';
+        ?SEPARATOR_SIMULTANEOUS ->
+            lager:debug("bridge is simultaneous to multiple endpoints, starting local ringing"),
+            %% we don't really care if this succeeds, the call will fail later on
+            ecallmgr_util:send_cmd(Node, UUID, <<"ring_ready">>, ""),
+            'ok'
     end.
 
+-spec handle_hold_media(wh_proplist(), atom(), ne_binary(), wh_json:object()) -> wh_proplist().
 handle_hold_media(DP, _Node, UUID, JObj) ->
     case wh_json:get_value(<<"Hold-Media">>, JObj) of
         'undefined' ->
             case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Hold-Media">>], JObj) of
                 'undefined' -> DP;
                 Media ->
-                    Stream = ecallmgr_util:media_path(Media, extant, UUID, JObj),
+                    Stream = ecallmgr_util:media_path(Media, 'extant', UUID, JObj),
                     lager:debug("bridge has custom music-on-hold in channel vars: ~s", [Stream]),
                     [{"application", <<"set hold_music=", Stream/binary>>}
                      ,{"application", <<"set transfer_ringback=", Stream/binary>>}
@@ -111,7 +112,7 @@ handle_hold_media(DP, _Node, UUID, JObj) ->
                     ]
             end;
         Media ->
-            Stream = ecallmgr_util:media_path(Media, extant, UUID, JObj),
+            Stream = ecallmgr_util:media_path(Media, 'extant', UUID, JObj),
             lager:debug("bridge has custom music-on-hold: ~s", [Stream]),
             [{"application", <<"set hold_music=", Stream/binary>>}
              ,{"application", <<"set transfer_ringback=", Stream/binary>>}
@@ -119,12 +120,14 @@ handle_hold_media(DP, _Node, UUID, JObj) ->
             ]
     end.
 
+-spec handle_secure_rtp(wh_proplist(), atom(), ne_binary(), wh_json:object()) -> wh_proplist().
 handle_secure_rtp(DP, _Node, _UUID, JObj) ->
     case wh_json:is_true(<<"Secure-RTP">>, JObj, 'false') of
         'true' -> [{"application", "set zrtp_secure_media=true"}|DP];
         'false' -> DP
     end.
 
+-spec handle_bypass_media(wh_proplist(), atom(), ne_binary(), wh_json:object()) -> wh_proplist().
 handle_bypass_media(DP, _Node, _UUID, JObj) ->
     case wh_json:get_value(<<"Media">>, JObj) of
         <<"process">> ->
@@ -149,6 +152,7 @@ maybe_bypass_endpoint_media([Endpoint], DP) ->
 maybe_bypass_endpoint_media(_, DP) ->
     DP.
 
+-spec handle_ccvs(wh_proplist(), atom(), ne_binary(), wh_json:object()) -> wh_proplist().
 handle_ccvs(DP, _Node, _UUID, JObj) ->
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
     case wh_json:is_json_object(CCVs) of
@@ -161,7 +165,8 @@ handle_ccvs(DP, _Node, _UUID, JObj) ->
             DP
     end.
 
-pre_exec(DP, _, _, _) ->
+-spec pre_exec(wh_proplist(), atom(), ne_binary(), wh_json:object()) -> wh_proplist().
+pre_exec(DP, _Node, _UUID, _JObj) ->
     [{"application", "set continue_on_fail=true"}
      ,{"application", "export sip_redirect_context=context_2"}
      ,{"application", "set hangup_after_bridge=true"}
@@ -173,6 +178,7 @@ pre_exec(DP, _, _, _) ->
      |DP
     ].
 
+-spec create_command(wh_proplist(), atom(), ne_binary(), wh_json:object()) -> wh_proplist().
 create_command(DP, _Node, _UUID, JObj) ->
     Endpoints = wh_json:get_ne_value(<<"Endpoints">>, JObj, []),
     BridgeCmd = list_to_binary(["bridge "
@@ -181,8 +187,9 @@ create_command(DP, _Node, _UUID, JObj) ->
                                ]),
     [{"application", BridgeCmd}|DP].
 
+-spec try_create_bridge_string(wh_json:objects(), wh_json:object()) -> ne_binary().
 try_create_bridge_string(Endpoints, JObj) ->
-    DialSeparator = determine_dial_separator(Endpoints, JObj),
+    DialSeparator = ecallmgr_util:get_dial_separator(JObj, Endpoints),
     case ecallmgr_util:build_bridge_string(Endpoints, DialSeparator) of
         <<>> ->
             lager:warning("bridge string resulted in no enpoints"),
@@ -190,6 +197,7 @@ try_create_bridge_string(Endpoints, JObj) ->
         BridgeString -> BridgeString
     end.
 
+-spec build_channels_vars(wh_json:objects(), wh_json:object()) -> iolist().
 build_channels_vars(Endpoints, JObj) ->
     Props = case wh_json:find(<<"Force-Fax">>, Endpoints, wh_json:get_value(<<"Force-Fax">>, JObj)) of
                 'undefined' -> [];
@@ -198,13 +206,8 @@ build_channels_vars(Endpoints, JObj) ->
             end,
     ecallmgr_fs_xml:get_channel_vars(wh_json:set_values(Props, JObj)).
 
-determine_dial_separator(Endpoints, JObj) ->
-    case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
-        <<"simultaneous">> when length(Endpoints) > 1 -> <<",">>;
-        _Else -> <<"|">>
-    end.
-
-post_exec(DP, _, _, _) ->
+-spec post_exec(wh_proplist(), atom(), ne_binary(), wh_json:object()) -> wh_proplist().
+post_exec(DP, _Node, _UUID, _JObj) ->
     Event = ecallmgr_util:create_masquerade_event(<<"bridge">>, <<"CHANNEL_EXECUTE_COMPLETE">>),
     [{"application", Event}
      ,{"application", "park "}

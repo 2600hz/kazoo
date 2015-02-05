@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014 2600Hz INC
+%%% @yright (C) 2011-2014 2600Hz INC
 %%% @doc
 %%% Dialplan API definitions
 %%% @end
@@ -8,7 +8,6 @@
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -ifndef(WAPI_DIALPLAN_HRL).
--include_lib("whistle/include/wh_api.hrl").
 -include_lib("whistle/include/wh_types.hrl").
 
 %% For dialplan messages, what does the Invite-Format param accept as values?
@@ -408,6 +407,7 @@
                                            ,<<"Park-After-Pickup">> %% Will park either leg after cancel
                                            ,<<"Hangup-After-Pickup">>
                                            ,<<"Move-Channel-If-Necessary">>
+                                           ,<<"Publish-Usurp">>, <<"B-Leg-Events">>
                                           ]).
 -define(CONNECT_LEG_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                                  ,{<<"Event-Name">>, <<"command">>}
@@ -417,6 +417,8 @@
 -define(CONNECT_LEG_REQ_TYPES, [{<<"Park-After-Pickup">>, fun wh_util:is_boolean/1}
                                 ,{<<"Hangup-After-Pickup">>, fun wh_util:is_boolean/1}
                                 ,{<<"Move-Channel-If-Necessary">>, fun wh_util:is_boolean/1}
+                                ,{<<"Publish-Usurp">>, fun wh_util:is_boolean/1}
+                                ,{<<"B-Leg-Events">>, fun b_leg_events_v/1}
                                ]).
 
 %% Eavesdrop
