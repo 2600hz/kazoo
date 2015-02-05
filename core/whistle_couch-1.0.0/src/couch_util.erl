@@ -89,6 +89,13 @@
               ,db_classifications/0
              ]).
 
+-define(DELETE_KEYS, [<<"_rev">>, <<"id">>, <<"_attachments">>]).
+
+-type copy_function() :: fun((server(), ne_binary(), wh_json:object(), wh_proplist()) ->
+                              {'ok', wh_json:object()} | couchbeam_error()).
+-export_type([copy_function/0]).
+-define(COPY_DOC_OVERRIDE_PROPERTY, 'override_existing_document').
+
 %%------------------------------------------------------------------------------
 %% @public
 %% @doc
@@ -923,7 +930,11 @@ doc_acct_id(Db, Doc) ->
         AccountId -> AccountId
     end.
 
--define(DELETE_KEYS, [<<"_rev">>, <<"id">>, <<"_attachments">>]).
+
+
+-spec default_copy_function(boolean()) -> copy_function().
+default_copy_function('true') -> fun ensure_saved/4;
+default_copy_function('false') -> fun save_doc/4.
 
 -spec copy_doc(server(), copy_doc(), wh_proplist()) ->
                       {'ok', wh_json:object()} |
@@ -937,6 +948,14 @@ copy_doc(#server{}=Conn, #wh_copy_doc{source_dbname = SourceDb
 copy_doc(#server{}=Conn, #wh_copy_doc{dest_doc_id='undefined'}=CopySpec, Options) ->
     copy_doc(Conn, CopySpec#wh_copy_doc{dest_doc_id=wh_util:rand_hex_binary(16)}, Options);
 copy_doc(#server{}=Conn, CopySpec, Options) ->
+    SaveFun = default_copy_function(props:is_defined(?COPY_DOC_OVERRIDE_PROPERTY, Options)),
+    copy_doc(Conn, CopySpec, SaveFun, props:delete(?COPY_DOC_OVERRIDE_PROPERTY, Options)).
+
+
+-spec copy_doc(server(), copy_doc(), copy_function(), wh_proplist()) ->
+                      {'ok', wh_json:object()} |
+                      couchbeam_error().
+copy_doc(#server{}=Conn, CopySpec, CopyFun, Options) ->
     #wh_copy_doc{source_dbname = SourceDbName
                  ,source_doc_id = SourceDocId
                  ,dest_dbname = DestDbName
@@ -946,7 +965,7 @@ copy_doc(#server{}=Conn, CopySpec, Options) ->
         {'ok', SourceDoc} ->
             Props = [{<<"_id">>, DestDocId}],
             DestinationDoc = wh_json:set_values(Props,wh_json:delete_keys(?DELETE_KEYS, SourceDoc)),
-            case save_doc(Conn, DestDbName, DestinationDoc, Options) of
+            case CopyFun(Conn, DestDbName, DestinationDoc, Options) of
                 {'ok', _JObj} ->
                     Attachments = wh_json:get_value(<<"_attachments">>, SourceDoc, wh_json:new()),
                     copy_attachments(Conn, CopySpec, wh_json:get_values(Attachments));
