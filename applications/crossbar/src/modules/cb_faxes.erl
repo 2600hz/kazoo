@@ -410,7 +410,7 @@ do_load_fax_binary(FaxId, Context) ->
             JObj = cb_context:doc(Context1),
             FaxMeta = wh_json:get_value([<<"_attachments">>], JObj),
             case wh_json:get_keys(FaxMeta) of
-                [] -> cb_context:add_system_error('bad_identifier', [{'details', FaxId}], Context1);
+                [] -> cb_context:add_system_error('bad_identifier', wh_json:from_list([{<<"cause">>, FaxId}]), Context1);
                 [Attachment|_] ->
                     cb_context:set_resp_etag(
                       cb_context:set_resp_headers(crossbar_doc:load_attachment(JObj, Attachment, Context1)

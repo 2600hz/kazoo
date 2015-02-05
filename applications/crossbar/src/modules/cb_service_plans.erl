@@ -298,5 +298,9 @@ is_service_plan(Context, PlanId, JObj) ->
     case wh_json:get_value(<<"pvt_type">>, JObj) =:= <<"service_plan">> of
         'true' -> cb_context:set_resp_status(Context, 'success');
         'false' ->
-            cb_context:add_system_error('bad_identifier', [{'details', PlanId}], Context)
+            cb_context:add_system_error(
+                'bad_identifier'
+                ,wh_json:from_list([{<<"cause">>, PlanId}])
+                ,Context
+            )
     end.

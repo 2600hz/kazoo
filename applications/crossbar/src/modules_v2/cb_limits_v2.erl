@@ -78,7 +78,11 @@ process_billing(Context, [{<<"limits">>, _}|_], _Verb) ->
         'true' -> Context;
         'false' ->
             Message = <<"Please contact your phone provider to add limits.">>,
-            cb_context:add_system_error('forbidden', [{'details', Message}], Context)
+            cb_context:add_system_error(
+                'forbidden'
+                ,wh_json:from_list([{<<"message">>, Message}])
+                ,Context
+            )
     catch
         'throw':{Error, Reason} ->
             crossbar_util:response('error', wh_util:to_binary(Error), 500, Reason, Context)

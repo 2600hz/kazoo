@@ -425,7 +425,12 @@ find_whitelabel(Context, Domain) ->
                                        ,[{fun cb_context:set_account_db/2, Db}
                                          ,{fun cb_context:set_account_id/2, Id}
                                        ]);
-                _Doc -> cb_context:add_system_error('bad_identifier', [{'details', Domain}], Context1)
+                _Doc ->
+                    cb_context:add_system_error(
+                        'bad_identifier'
+                        ,wh_json:from_list([{<<"cause">>, Domain}])
+                        ,Context1
+                    )
             end;
         _Status -> Context1
     end.

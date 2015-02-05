@@ -124,12 +124,12 @@ maybe_authenticate_user(Context) ->
                                                         ,resp_status='success'});
         {'error', _R} ->
             lager:debug("error verifying token: ~p",[_R]),
-            cb_context:add_system_error('invalid_credentials', Context)			
+            cb_context:add_system_error('invalid_credentials', Context)
     end.
 
 -spec maybe_account_is_disabled(cb_context:context()) -> cb_context:context().
 maybe_account_is_disabled(Context) ->
-    JObj = cb_context:doc(Context),		
+    JObj = cb_context:doc(Context),
     case wh_json:get_value([<<"AuthDoc">>,<<"pvt_account_id">>], JObj) of
         'undefined' -> Context;
         Account ->
@@ -137,8 +137,11 @@ maybe_account_is_disabled(Context) ->
                 'true' -> maybe_load_username(Account, Context);
                 'false' ->
                     lager:debug("account ~s is disabled", [Account]),
-                    Props = [{'details', <<"account_disabled">>}],
-                    cb_context:add_system_error('forbidden', Props, Context)
+                    cb_context:add_system_error(
+                        'forbidden'
+                        ,wh_json:from_list([{<<"cause">>, <<"account_disabled">>}])
+                        ,Context
+                    )
             end
     end.
 
@@ -212,7 +215,7 @@ maybe_load_username(Account, Context) ->
 create_token(Context) ->
     JObj = cb_context:doc(Context),
     case wh_json:get_value(<<"User">>, JObj) of
-        'undefined' -> 
+        'undefined' ->
             Profile = wh_json:get_value(<<"Profile">>, JObj),
             crossbar_util:response(
               wh_json:from_list([{<<"profile">>, Profile}])

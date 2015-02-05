@@ -310,7 +310,7 @@ post(Context, ?CARDS_PATH_TOKEN, CardId) ->
         'throw':{'api_error', Reason} ->
             crossbar_util:response('error', <<"braintree api error">>, 400, Reason, Context);
         'throw':{'not_found', _} ->
-            cb_context:add_system_error('bad_identifier', [{'details', CardId}], Context);
+            cb_context:add_system_error('bad_identifier', wh_json:from_list([{<<"cause">>, CardId}]), Context);
         'throw':{Error, Reason} ->
             crossbar_util:response('error', wh_util:to_binary(Error), 500, Reason, Context)
     end;

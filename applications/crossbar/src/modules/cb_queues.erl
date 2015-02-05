@@ -410,10 +410,11 @@ eavesdrop_req(Context, Prop) ->
     of
         {'ok', Resp} -> crossbar_util:response(filter_response_fields(Resp), Context);
         {'error', 'timeout'} ->
-            cb_context:add_system_error('timeout'
-                                        ,[{'details', <<"eavesdrop failed to start">>}]
-                                        ,Context
-                                       );
+            cb_context:add_system_error(
+                'timeout'
+                ,wh_json:from_list([{<<"cause">>, <<"eavesdrop failed to start">>}])
+                ,Context
+            );
         {'error', E} -> crossbar_util:response('error', <<"error">>, 500, E, Context)
     end.
 

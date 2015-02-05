@@ -159,9 +159,14 @@ validate_resource(Context, DeviceId) -> validate_device_id(Context, DeviceId).
 -spec validate_device_id(cb_context:context(), api_binary()) -> cb_context:context().
 validate_device_id(Context, DeviceId) ->
     case couch_mgr:open_cache_doc(cb_context:account_db(Context), DeviceId) of
-       {'ok', _} -> cb_context:set_device_id(Context, DeviceId);
-       {'error', 'not_found'} -> cb_context:add_system_error('bad_identifier', [{'details', DeviceId}],  Context);
-       {'error', _R} -> crossbar_util:response_db_fatal(Context)
+        {'ok', _} -> cb_context:set_device_id(Context, DeviceId);
+        {'error', 'not_found'} ->
+            cb_context:add_system_error(
+                'bad_identifier'
+                ,wh_json:from_list([{<<"cause">>, DeviceId}])
+                ,Context
+            );
+        {'error', _R} -> crossbar_util:response_db_fatal(Context)
     end.
 
 %%--------------------------------------------------------------------

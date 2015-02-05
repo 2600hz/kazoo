@@ -128,13 +128,23 @@ validate_resource(Context, UserId, _, _) -> validate_user_id(UserId, Context).
 validate_user_id(UserId, Context) ->
     case couch_mgr:open_cache_doc(cb_context:account_db(Context), UserId) of
         {'ok', Doc} -> validate_user_id(UserId, Context, Doc);
-        {'error', 'not_found'} -> cb_context:add_system_error('bad_identifier', [{'details', UserId}],  Context);
+        {'error', 'not_found'} ->
+            cb_context:add_system_error(
+                'bad_identifier'
+                ,wh_json:from_list([{<<"cause">>, UserId}])
+                ,Context
+            );
         {'error', _R} -> crossbar_util:response_db_fatal(Context)
     end.
 
 validate_user_id(UserId, Context, Doc) ->
     case wh_json:is_true(<<"pvt_deleted">>, Doc) of
-        'true' -> cb_context:add_system_error('bad_identifier', [{'details', UserId}],  Context);
+        'true' ->
+            cb_context:add_system_error(
+                'bad_identifier'
+                ,wh_json:from_list([{<<"cause">>, UserId}])
+                ,Context
+            );
         'false'->
             cb_context:setters(Context
                                ,[{fun cb_context:set_user_id/2, UserId}

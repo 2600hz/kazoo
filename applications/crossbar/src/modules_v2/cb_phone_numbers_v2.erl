@@ -952,7 +952,11 @@ handle_locality_resp(Resp) ->
 identify(Context, Number) ->
     case wh_number_manager:lookup_account_by_number(Number) of
         {'error', 'not_reconcilable'} ->
-            cb_context:add_system_error('bad_identifier', [{'details', Number}], Context);
+            cb_context:add_system_error(
+                'bad_identifier'
+                ,wh_json:from_list([{<<"cause">>, Number}])
+                ,Context
+            );
         {'error', E} ->
             Fun = fun() -> Context end,
             set_response({wh_util:to_binary(E), <<>>}, Number, Context, Fun);

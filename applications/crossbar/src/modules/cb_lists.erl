@@ -195,7 +195,11 @@ get_entry(Context, EntryId, OnSuccess) ->
     case wh_json:get_value([<<"entries">>, EntryId], Doc) of
         'undefined' ->
             lager:debug("operation on entry ~s failed: not_found", [EntryId, cb_context:account_db(Context)]),
-            cb_context:add_system_error('bad_identifier', [{'details', EntryId}],  Context);
+            cb_context:add_system_error(
+                'bad_identifier'
+                ,wh_json:from_list([{<<"cause">>, EntryId}])
+                ,Context
+            );
         EntryData ->
             OnSuccess(Context, EntryData)
     end.
