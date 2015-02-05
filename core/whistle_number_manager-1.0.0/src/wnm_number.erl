@@ -150,7 +150,7 @@ get(Number) -> get(Number, 'undefined').
 get(Number, PublicFields) ->
     Num = wnm_util:normalize_number(Number),
     Routines = [fun check_reconcilable/1
-                ,fun(#number{}=N) -> R=fetch_number(N, PublicFields), lager:debug(">>> fetch_number -> ~p",[R]), R end
+                ,fun(#number{}=N) -> fetch_number(N, PublicFields) end
                 ,fun maybe_add_information/1
                ],
     lists:foldl(fun(F, N) -> F(N) end
@@ -1182,7 +1182,6 @@ load_phone_number_doc(Account, 'false') ->
         {'ok', J} ->
             lager:debug("loaded phone_numbers from ~s", [AccountId]),
             JObj = wh_json:set_values(PVTs, J),
-            lager:debug(">>> AccountId = ~p  JObj = ~p", [AccountId,JObj]),
             erlang:put({'phone_number_doc', AccountId}, JObj),
             {'ok', JObj};
         {'error', 'not_found'} ->

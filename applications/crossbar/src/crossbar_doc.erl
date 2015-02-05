@@ -143,7 +143,6 @@ handle_successful_load(Context, JObj, 'true') ->
                                 ,Context
                                );
 handle_successful_load(Context, JObj, 'false') ->
-    lager:debug(">>> JObj = ~p  Context = ~p", [JObj,Context]),
     lager:debug("loaded doc ~s(~s) from ~s"
                 ,[wh_doc:id(JObj), wh_doc:revision(JObj), cb_context:account_db(Context)]
                ),
