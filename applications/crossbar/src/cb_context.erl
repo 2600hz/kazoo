@@ -513,10 +513,9 @@ failed_error({'data_invalid'
 
     add_validation_error(FailedKeyPath
                          ,<<"minLength">>
-                         ,build_error_message(cb_context:api_version(Context)
-                                              ,<<"String must be at least ", MinLen/binary, " characters">>
-                                              ,Minimum
-                                             )
+                         ,[{<<"message">>, <<"String must be at least ", MinLen/binary, " characters">>}
+                            ,{<<"target">>, Minimum}
+                          ]
                          ,Context
                         );
 failed_error({'data_invalid'
@@ -530,21 +529,22 @@ failed_error({'data_invalid'
 
     add_validation_error(FailedKeyPath
                          ,<<"maxLength">>
-                         ,build_error_message(cb_context:api_version(Context)
-                                              ,<<"String must not be more than ", MaxLen/binary, " characters">>
-                                              ,Maximum
-                                             )
+                         ,[{<<"message">>, <<"String must not be more than ", MaxLen/binary, " characters">>}
+                           ,{<<"target">>, Maximum}
+                         ]
                          ,Context
                         );
 failed_error({'data_invalid'
-              ,_FailedSchemaJObj
+              ,FailedSchemaJObj
               ,'not_in_enum'
               ,_FailedValue
               ,FailedKeyPath
              }, Context) ->
     add_validation_error(FailedKeyPath
                          ,<<"enum">>
-                         ,<<"Value not found in enumerated list of values">>
+                         ,[{<<"message">>, <<"Value not found in enumerated list of values">>}
+                           ,{<<"target">>, wh_json:get_value(<<"enum">>, FailedSchemaJObj, [])}
+                         ]
                          ,Context
                         );
 failed_error({'data_invalid'
@@ -558,10 +558,9 @@ failed_error({'data_invalid'
 
     add_validation_error(FailedKeyPath
                          ,<<"minimum">>
-                         ,build_error_message(cb_context:api_version(Context)
-                                              ,<<"Value must be at least ", Min/binary>>
-                                              ,Minimum
-                                             )
+                         ,[{<<"message">>, <<"Value must be at least ", Min/binary>>}
+                           ,{<<"target">>, Minimum}
+                          ]
                          ,Context
                         );
 failed_error({'data_invalid'
@@ -575,10 +574,9 @@ failed_error({'data_invalid'
 
     add_validation_error(FailedKeyPath
                          ,<<"maximum">>
-                         ,build_error_message(cb_context:api_version(Context)
-                                              ,<<"Value must be at most ", Max/binary>>
-                                              ,Maximum
-                                             )
+                         ,[{<<"message">>, <<"Value must be at most ", Max/binary>>}
+                            ,{<<"target">>, Maximum}
+                          ]
                          ,Context
                         );
 failed_error({'data_invalid'
@@ -592,10 +590,9 @@ failed_error({'data_invalid'
 
     add_validation_error(FailedKeyPath
                          ,<<"minItems">>
-                         ,build_error_message(cb_context:api_version(Context)
-                                              ,<<"The list must have at least ", Min/binary, " items">>
-                                              ,Minimum
-                                             )
+                         ,[{<<"message">>, <<"The list must have at least ", Min/binary, " items">>}
+                            ,{<<"target">>, Minimum}
+                          ]
                          ,Context
                         );
 failed_error({'data_invalid'
@@ -609,10 +606,9 @@ failed_error({'data_invalid'
 
     add_validation_error(FailedKeyPath
                          ,<<"maxItems">>
-                         ,build_error_message(cb_context:api_version(Context)
-                                              ,<<"The list is more than ", Max/binary, " items">>
-                                              ,Maximum
-                                             )
+                         ,[{<<"message">>, <<"The list is more than ", Max/binary, " items">>}
+                           ,{<<"target">>, Maximum}
+                         ]
                          ,Context
                         );
 failed_error({'data_invalid'
@@ -626,23 +622,22 @@ failed_error({'data_invalid'
 
     add_validation_error(FailedKeyPath
                          ,<<"minProperties">>
-                         ,build_error_message(cb_context:api_version(Context)
-                                              ,<<"The object must have at least ", Min/binary, " keys">>
-                                              ,Minimum
-                                             )
+                         ,[{<<"message">>, <<"The object must have at least ", Min/binary, " keys">>}
+                            ,{<<"target">>, Minimum}
+                          ]
                          ,Context
                         );
 failed_error({'data_invalid'
-              ,_FailedSchemaJObj
+              ,FailedSchemaJObj
               ,{'not_unique', _Item}
               ,_FailedValue
               ,FailedKeyPath
              }, Context) ->
     lager:debug("item ~p is not unique", [_Item]),
-    lager:debug("failed schema: ~p", [_FailedSchemaJObj]),
+    lager:debug("failed schema: ~p", [FailedSchemaJObj]),
     add_validation_error(FailedKeyPath
                          ,<<"uniqueItems">>
-                         ,<<"List of items is not unique">>
+                         ,[{<<"message">>, <<"List of items is not unique">>}]
                          ,Context
                         );
 failed_error({'data_invalid'
@@ -676,7 +671,9 @@ failed_error({'data_invalid'
     Pattern = wh_json:get_value(<<"pattern">>, FailedSchemaJObj),
     add_validation_error(FailedKeyPath
                          ,<<"pattern">>
-                         ,<<"Failed to match pattern '", Pattern/binary, "'">>
+                         ,[{<<"message">>, <<"Failed to match pattern '", Pattern/binary, "'">>}
+                           ,{<<"target">>, Pattern}
+                          ]
                          ,Context
                         );
 failed_error({'data_invalid'
@@ -710,7 +707,9 @@ failed_error({'data_invalid'
     DivBy = wh_json:get_binary_value(<<"divisibleBy">>, FailedSchemaJObj),
     add_validation_error(FailedKeyPath
                          ,<<"divisibleBy">>
-                         ,<<"Value not divisible by ", DivBy/binary>>
+                         ,[{<<"message">>, <<"Value not divisible by ", DivBy/binary>>}
+                           ,{<<"target">>, DivBy}
+                          ]
                          ,Context
                         );
 failed_error({'data_invalid'
@@ -722,7 +721,9 @@ failed_error({'data_invalid'
     Disallow = get_disallow(FailedSchemaJObj),
     add_validation_error(FailedKeyPath
                          ,<<"disallow">>
-                         ,<<"Value is disallwed by ", Disallow/binary>>
+                         ,[{<<"message">>, <<"Value is disallowed by ", Disallow/binary>>}
+                           ,{<<"target">>, Disallow}
+                          ]
                          ,Context
                         );
 failed_error({'data_invalid'
@@ -734,7 +735,9 @@ failed_error({'data_invalid'
     Types = get_types(FailedSchemaJObj),
     add_validation_error(FailedKeyPath
                          ,<<"type">>
-                         ,<<"Value did not match type(s): ", Types/binary>>
+                         ,[{<<"message">>, <<"Value did not match type(s): ", Types/binary>>}
+                            ,{<<"target">>, Types}
+                          ]
                          ,Context
                         );
 failed_error({'data_invalid'
@@ -807,7 +810,7 @@ find_schema(<<_/binary>> = Schema) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec add_system_error(atom() | binary(), context()) -> context().
--spec add_system_error(atom() | binary(), wh_proplist() | ne_binary(), context()) -> context().
+-spec add_system_error(atom() | binary(), ne_binary() | wh_json:object(), context()) -> context().
 add_system_error('too_many_requests', Context) ->
     build_system_error(429, 'too_many_requests', <<"too many requests">>, Context);
 add_system_error('no_credit', Context) ->
@@ -851,35 +854,38 @@ add_system_error('not_found', Context) ->
 add_system_error(Error, Context) ->
     build_system_error(500, Error, wh_util:to_binary(Error), Context).
 
-add_system_error('bad_identifier', Props, Context) ->
-    Data =
-        wh_json:from_list([
-            {<<"target">>, props:get_value('details', Props)}
-        ]),
-    build_system_error(404, 'bad_identifier', <<"bad identifier">>, Data, Context);
-add_system_error('invalid_bulk_type', Props, Context) ->
-    Type = props:get_value('type', Props),
-    Data = wh_json:from_list([{<<"target">>, Type}]),
-    Reason = <<"bulk operations do not support documents of type ", (wh_util:to_binary(Type))/binary>>,
-    build_system_error(400, 'invalid_bulk_type', Reason, Data, Context);
-add_system_error('forbidden', Props, Context) ->
-    Data = wh_json:from_list([{<<"target">>, props:get_value('details', Props)}]),
-    build_system_error(403, 'forbidden', <<"forbidden">>, Data, Context);
-add_system_error('timeout', Props, Context) ->
-    Data = wh_json:from_list([{<<"target">>, props:get_value('details', Props)}]),
-    build_system_error(500, 'timeout', <<"timeout">>, Data, Context);
-add_system_error('invalid_method', Msg, Context) ->
-    build_system_error(405, 'invalid_method', Msg, Context);
-add_system_error('bad_gateway', Msg, Context) ->
-    build_system_error(502, 'bad_gateway', Msg, Context);
-add_system_error(Error, <<_/binary>>=Msg, Context) ->
-    build_system_error(500, Error, Msg, Context);
-add_system_error(Error, Props, Context) ->
-    Data =
-        wh_json:from_list([
-            {<<"target">>, props:get_value('details', Props)}
-        ]),
-    build_system_error(500, Error, wh_util:to_binary(Error), Data, Context).
+add_system_error(Error, <<_/binary>>=Message, Context) ->
+    JObj = wh_json:from_list([{<<"message">>, Message}]),
+    add_system_error(Error, JObj, Context);
+add_system_error('bad_identifier'=Error, JObj, Context) ->
+    J = wh_json:set_value(<<"message">>, <<"bad identifier">>, JObj),
+    build_system_error(404, Error, J, Context);
+add_system_error('invalid_bulk_type'=Error, JObj, Context) ->
+    %% TODO: JObj is expected to have a type key!!
+    Type = wh_json:get_value(<<"type">>, JObj),
+    Message = <<"bulk operations do not support documents of type ", (wh_util:to_binary(Type))/binary>>,
+    J = wh_json:set_value(<<"message">>, Message, JObj),
+    build_system_error(400, Error, J, Context);
+add_system_error('forbidden'=Error, JObj, Context) ->
+    J = wh_json:set_value(<<"message">>, <<"forbidden">>, JObj),
+    build_system_error(403, Error, J, Context);
+add_system_error('timeout'=Error, JObj, Context) ->
+    J = wh_json:set_value(<<"message">>, <<"timeout">>, JObj),
+    build_system_error(500, Error, J, Context);
+add_system_error('invalid_method'=Error, JObj, Context) ->
+    J = wh_json:set_value(<<"message">>, <<"invalid method">>, JObj),
+    build_system_error(405, Error, J, Context);
+add_system_error('bad_gateway'=Error, JObj, Context) ->
+    J = wh_json:set_value(<<"message">>, <<"bad gateway">>, JObj),
+    build_system_error(502, Error, J, Context);
+add_system_error(Error, JObj, Context) ->
+    case wh_json:get_ne_value(<<"message">>, JObj) of
+        'undefined' ->
+            J = wh_json:set_value(<<"message">>, <<"unknown failure">>, JObj),
+            build_system_error(500, Error, J, Context);
+        _Else ->
+            build_system_error(500, Error, JObj, Context)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -889,56 +895,15 @@ add_system_error(Error, Props, Context) ->
 %%--------------------------------------------------------------------
 -spec build_system_error(integer(), atom() | ne_binary(), ne_binary(), cb_context:context()) ->
                                 cb_context:context().
--spec build_system_error(integer(), atom() | ne_binary(), ne_binary(), wh_json:object(), cb_context:context()) ->
-                                cb_context:context().
--spec build_system_error(ne_binary(), integer(), atom(), ne_binary(), wh_json:object(), cb_context:context()) ->
-                                cb_context:context().
-build_system_error(Code, Identifier, Message, Context) ->
-    build_system_error(Code, Identifier, Message, wh_json:new(), Context).
 
-build_system_error(Code, Identifier, Message, Data, Context) ->
+build_system_error(Code, Error, JObj, Context) ->
     ApiVersion = cb_context:api_version(Context),
-    build_system_error(ApiVersion, Code, Identifier, Message, Data, Context).
-
-build_system_error(?VERSION_1, Code, _, Message, Data, Context) ->
+    Message = build_error_message(ApiVersion, JObj),
     Context#cb_context{resp_status='error'
                        ,resp_error_code=Code
-                       ,resp_data=Data
-                       ,resp_error_msg=Message
-                      };
-build_system_error(_, 500, Identifier, Message, Data, Context) ->
-    UpdatedData = build_error_data(Identifier, Message, Data, Context),
-    Context#cb_context{resp_status='error'
-                       ,resp_error_code=500
-                       ,resp_data=UpdatedData
-                       ,resp_error_msg = <<"unable to comply">>
-                      };
-build_system_error(_, Code, Identifier, Message, Data, Context) ->
-    UpdatedData = build_error_data(Identifier, Message, Data, Context),
-    Context#cb_context{resp_status='error'
-                       ,resp_error_code=Code
-                       ,resp_data=UpdatedData
-                       ,resp_error_msg=Message
+                       ,resp_data=Message
+                       ,resp_error_msg=wh_util:to_binary(Error)
                       }.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec build_error_data(atom(), ne_binary(), wh_json:object(), cb_context:context()) -> wh_json:object().
-build_error_data(Identifier, Message, Data, _Context) ->
-    SubData =
-        wh_json:from_list(
-            props:filter_undefined([
-                {<<"message">>, Message}
-                ,{<<"target">>, wh_json:get_value(<<"target">>, Data)}
-            ])
-        ),
-    wh_json:from_list([
-        {wh_util:to_binary(Identifier), SubData}
-    ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1001,19 +966,25 @@ add_depreciated_validation_error(Property, Code, Message, Context) when is_binar
 add_depreciated_validation_error(Property, Code, Message, #cb_context{validation_errors=JObj}=Context) ->
     %% Maintain the same error format we are currently using until we are ready to
     %% convert to something that makes sense....
+    ApiVersion = cb_context:api_version(Context),
+    Error = build_error_message(ApiVersion, Message),
     Key = wh_util:join_binary(Property, <<".">>),
-    Context#cb_context{validation_errors=wh_json:set_value([Key, Code], Message, JObj)
+    Context#cb_context{validation_errors=wh_json:set_value([Key, Code], Error, JObj)
                        ,resp_status='error'
                        ,resp_error_code=400
                        ,resp_data=wh_json:new()
                        ,resp_error_msg = <<"invalid data">>
                       }.
 
--spec build_error_message(ne_binary(), ne_binary(), ne_binary() | integer()) ->
-                                 ne_binary() | wh_json:object().
-build_error_message(?VERSION_1, V1Msg, _V2Target) ->
-    V1Msg;
-build_error_message(_Version, V1Msg, V2Target) ->
-    wh_json:from_list([{<<"message">>, V1Msg}
-                       ,{<<"target">>, V2Target}
-                      ]).
+-spec build_error_message('v1', ne_binary() | wh_json:object()) ->
+                                 ne_binary();
+                         (ne_binary(), ne_binary() | wh_json:object()) ->
+                                  wh_json:object().
+build_error_message(?VERSION_1, Message) when is_binary(Message) ->
+    Message;
+build_error_message(?VERSION_1, JObj) ->
+    wh_json:get_value(<<"message">>, JObj);
+build_error_message(_Version, Message) when is_binary(Message) ->
+    wh_json:from_list([{<<"message">>, Message}]);
+build_error_message(_Version, JObj) ->
+    JObj.
