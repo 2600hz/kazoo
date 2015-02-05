@@ -287,14 +287,32 @@ validate_attachment(Context, AttachType, ?HTTP_POST) ->
 -spec validate_attachment_post(cb_context:context(), path_token(), _) ->
                                       cb_context:context().
 validate_attachment_post(Context, ?LOGO_REQ, []) ->
-    Message = <<"please provide an image file">>,
-    cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context);
+    cb_context:add_validation_error(
+        <<"file">>
+        ,<<"required">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"Please provide an image file">>}
+         ])
+        ,Context
+    );
 validate_attachment_post(Context, ?ICON_REQ, []) ->
-    Message = <<"please provide an image file">>,
-    cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context);
+    cb_context:add_validation_error(
+        <<"file">>
+        ,<<"required">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"Please provide an image file">>}
+         ])
+        ,Context
+    );
 validate_attachment_post(Context, ?WELCOME_REQ, []) ->
-    Message = <<"please provide an html file">>,
-    cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context);
+    cb_context:add_validation_error(
+        <<"file">>
+        ,<<"required">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"Please provide an html file">>}
+         ])
+        ,Context
+    );
 validate_attachment_post(Context, ?LOGO_REQ, [{_Filename, FileJObj}]) ->
     validate_upload(Context, FileJObj);
 validate_attachment_post(Context, ?ICON_REQ, [{_Filename, FileJObj}]) ->
@@ -302,14 +320,32 @@ validate_attachment_post(Context, ?ICON_REQ, [{_Filename, FileJObj}]) ->
 validate_attachment_post(Context, ?WELCOME_REQ, [{_Filename, FileJObj}]) ->
     validate_upload(Context, FileJObj);
 validate_attachment_post(Context, ?LOGO_REQ, _Files) ->
-    Message = <<"please provide a single image file">>,
-    cb_context:add_validation_error(<<"file">>, <<"maxItems">>, Message, Context);
+    cb_context:add_validation_error(
+        <<"file">>
+        ,<<"maxItems">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"Please provide a single image file">>}
+         ])
+        ,Context
+    );
 validate_attachment_post(Context, ?ICON_REQ, _Files) ->
-    Message = <<"please provide a single image file">>,
-    cb_context:add_validation_error(<<"file">>, <<"maxItems">>, Message, Context);
+    cb_context:add_validation_error(
+        <<"file">>
+        ,<<"maxItems">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"Please provide a single image file">>}
+         ])
+        ,Context
+    );
 validate_attachment_post(Context, ?WELCOME_REQ, _Files) ->
-    Message = <<"please provide a single html file">>,
-    cb_context:add_validation_error(<<"file">>, <<"maxItems">>, Message, Context).
+    cb_context:add_validation_error(
+        <<"file">>
+        ,<<"maxItems">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"please provide a single html file">>}
+         ])
+        ,Context
+    ).
 
 -spec validate_upload(cb_context:context(), wh_json:object()) ->
                              cb_context:context().
@@ -496,11 +532,16 @@ validate_unique_domain(Context, WhitelabelId) ->
     case is_domain_unique(cb_context:account_id(Context), Domain) of
         'true' -> check_whitelabel_schema(Context, WhitelabelId);
         'false' ->
-            Context1 = cb_context:add_validation_error(<<"domain">>
-                                                       ,<<"unique">>
-                                                       ,<<"Whitelabel domain is already in use">>
-                                                       ,Context
-                                                      ),
+            Context1 =
+                cb_context:add_validation_error(
+                    <<"domain">>
+                   ,<<"unique">>
+                   ,wh_json:from_list([
+                        {<<"message">>, <<"White label domain is already in use">>}
+                        ,{<<"cause">>, Domain}
+                     ])
+                   ,Context
+                ),
             check_whitelabel_schema(Context1, WhitelabelId)
     end.
 

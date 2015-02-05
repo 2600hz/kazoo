@@ -272,9 +272,15 @@ fetch_ranged_agent_stats(Context, StartRange) ->
     case wh_util:to_integer(StartRange) of
         F when F > To ->
             %% start_range is larger than end_range
-            cb_context:add_validation_error(<<"end_range">>, <<"maximum">>
-                                            ,<<"value is greater than start_range">>, Context
-                                           );
+            cb_context:add_validation_error(
+                <<"end_range">>
+                ,<<"maximum">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"value is greater than start_range">>}
+                    ,{<<"cause">>, To}
+                 ])
+                ,Context
+            );
         F when F < MaxFrom ->
             %% Range is too big
             fetch_ranged_agent_stats(Context, MaxFrom, To, MaxFrom >= Past);
@@ -455,7 +461,15 @@ validate_status_change(Context, S) ->
         'true' -> validate_status_change_params(Context, S);
         'false' ->
             lager:debug("status ~s not valid", [S]),
-            cb_context:add_validation_error(<<"status">>, <<"enum">>, <<"value is not a valid status">>, Context)
+            cb_context:add_validation_error(
+                <<"status">>
+                ,<<"enum">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"value is not a valid status">>}
+                    ,{<<"cause">>, S}
+                 ])
+                ,Context
+            )
     end.
 
 -spec check_for_status_error(cb_context:context(), api_binary()) -> cb_context:context().
@@ -464,21 +478,46 @@ check_for_status_error(Context, S) ->
         'true' -> Context;
         'false' ->
             lager:debug("status ~s not found", [S]),
-            cb_context:add_validation_error(<<"status">>, <<"enum">>, <<"value is not a valid status">>, Context)
+            cb_context:add_validation_error(
+                <<"status">>
+                ,<<"enum">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"value is not a valid status">>}
+                    ,{<<"cause">>, S}
+                 ])
+                ,Context
+            )
     end.
 
 -spec validate_status_change_params(cb_context:context(), ne_binary()) ->
                                            cb_context:context().
 validate_status_change_params(Context, <<"pause">>) ->
-    try wh_util:to_integer(cb_context:req_value(Context, <<"timeout">>)) of
+    Value = cb_context:req_value(Context, <<"timeout">>),
+    try wh_util:to_integer(Value) of
         N when N >= 0 -> cb_context:set_resp_status(Context, 'success');
-        _N ->
-            lager:debug("bad int for pause: ~p", [_N]),
-            cb_context:add_validation_error(<<"timeout">>, <<"minimum">>, <<"value must be at least greater than or equal to 0">>, Context)
+        N ->
+            lager:debug("bad int for pause: ~p", [N]),
+            cb_context:add_validation_error(
+                <<"timeout">>
+                ,<<"minimum">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"value must be at least greater than or equal to 0">>}
+                    ,{<<"cause">>, N}
+                 ])
+                ,Context
+            )
     catch
         _:_ ->
             lager:debug("bad int for pause"),
-            cb_context:add_validation_error(<<"timeout">>, <<"type">>, <<"value must be an integer greater than or equal to 0">>, Context)
+            cb_context:add_validation_error(
+                <<"timeout">>
+                ,<<"type">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"value must be an integer greater than or equal to 0">>}
+                    ,{<<"cause">>, Value}
+                 ])
+                ,Context
+            )
     end;
 validate_status_change_params(Context, _S) ->
     lager:debug("great success for ~s", [_S]),

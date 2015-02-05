@@ -273,15 +273,27 @@ validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Number, ?PORT_DOCS, _) ->
     read(Number, Context);
 validate(#cb_context{req_files=[]}=Context, _, ?PORT_DOCS, _) ->
     lager:debug("No files in request to save attachment"),
-    Message = <<"please provide an port document">>,
-    cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context);
+    cb_context:add_validation_error(
+        <<"file">>
+        ,<<"required">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"Please provide an port document">>}
+         ])
+        ,Context
+    );
 validate(#cb_context{req_files=[{_, FileObj}]}=Context, Number, ?PORT_DOCS, Name) ->
     FileName = wh_util:to_binary(http_uri:encode(wh_util:to_list(Name))),
     read(Number, Context#cb_context{req_files=[{FileName, FileObj}]});
 validate(Context, _, ?PORT_DOCS, _) ->
     lager:debug("Multiple files in request to save attachment"),
-    Message = <<"please provide a single port document per request">>,
-    cb_context:add_validation_error(<<"file">>, <<"maxItems">>, Message, Context).
+    cb_context:add_validation_error(
+        <<"file">>
+        ,<<"maxItems">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"Please provide a single port document per request">>}
+         ])
+        ,Context
+    ).
 
 -spec post(cb_context:context(), path_token()) ->
                   cb_context:context().

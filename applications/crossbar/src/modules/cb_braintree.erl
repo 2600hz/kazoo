@@ -206,10 +206,19 @@ validate(#cb_context{req_verb = ?HTTP_PUT
                     }=Context, ?CREDITS_PATH_TOKEN) ->
     Amount = wh_json:get_float_value(<<"amount">>, JObj),
     MaxCredit = whapps_config:get_float(?MOD_CONFIG_CAT, <<"max_account_credit">>, 500.00),
-    case current_account_dollars(AccountId) + Amount > MaxCredit of
+    FuturAmount = current_account_dollars(AccountId) + Amount,
+    case FuturAmount > MaxCredit of
         'true' ->
             Message = <<"Available credit can not exceed $", (wh_util:to_binary(MaxCredit))/binary>>,
-            cb_context:add_validation_error(<<"amount">>, <<"maximum">>, Message, Context);
+            cb_context:add_validation_error(
+                <<"amount">>
+                ,<<"maximum">>
+                ,wh_json:from_list([
+                    {<<"message">>, Message}
+                    ,{<<"cause">>, FuturAmount}
+                 ])
+                ,Context
+            );
         'false' ->
             maybe_charge_billing_id(Amount, Context)
     end.
@@ -441,10 +450,18 @@ maybe_charge_billing_id(Amount, #cb_context{auth_account_id=AuthAccountId, accou
         MasterAccount ->
             lager:debug("invoking a bookkeeper to acquire requested credit", []),
             charge_billing_id(Amount, Context);
-        _Else ->
+        Else ->
             lager:debug("sub-accounts of non-master resellers must contact the reseller to change their credit", []),
             Message = <<"Please contact your phone provider to add credit.">>,
-            cb_context:add_validation_error(<<"amount">>, <<"forbidden">>, Message, Context)
+            cb_context:add_validation_error(
+                <<"amount">>
+                ,<<"forbidden">>
+                ,wh_json:from_list([
+                    {<<"message">>, Message}
+                    ,{<<"cause">>, Else}
+                 ])
+                ,Context
+            )
     end.
 
 -spec charge_billing_id(float(), cb_context:context()) -> cb_context:context().

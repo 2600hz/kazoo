@@ -231,11 +231,14 @@ validate_unique_vmbox(VMBoxId, Context, _AccountDb) ->
     case check_uniqueness(VMBoxId, Context) of
         'true' -> check_vmbox_schema(VMBoxId, Context);
         'false' ->
-            C = cb_context:add_validation_error(<<"mailbox">>
-                                                ,<<"unique">>
-                                                ,<<"Invalid mailbox number or already exists">>
-                                                ,Context
-                                               ),
+            C = cb_context:add_validation_error(
+                    <<"mailbox">>
+                    ,<<"unique">>
+                    ,wh_json:from_list([
+                        {<<"message">>, <<"Invalid mailbox number or already exists">>}
+                     ])
+                    ,Context
+                ),
             check_vmbox_schema(VMBoxId, C)
     end.
 

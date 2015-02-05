@@ -241,31 +241,45 @@ check_pin(Context) ->
     case unique_pin(Context) of
         'empty' -> create(Context);
         _ ->
-            cb_context:add_validation_error(<<"cccp">>
-                                            ,<<"unique">>
-                                            ,<<"Pin already exists">>
-                                            ,Context)
+            cb_context:add_validation_error(
+                <<"cccp">>
+                ,<<"unique">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"Pin already exists">>}
+                 ])
+                ,Context
+            )
     end.
 
 -spec check_cid(cb_context:context()) -> cb_context:context().
 check_cid(#cb_context{req_data=ReqData}=Context) ->
     CID = wh_json:get_value(<<"cid">>, ReqData),
     case wnm_util:is_reconcilable(CID) of
-        'false' -> 
-            cb_context:add_validation_error(<<"cccp">>
-                                            ,<<"unique">>
-                                            ,<<"Number is non reconcilable">>
-                                            ,Context);
+        'false' ->
+            cb_context:add_validation_error(
+                <<"cccp">>
+                ,<<"unique">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"Number is non reconcilable">>}
+                    ,{<<"cause">>, CID}
+                 ])
+                ,Context
+            );
         'true' ->
             ReqData2 = wh_json:set_value(<<"cid">>, wnm_util:normalize_number(CID), ReqData),
             Context2 = Context#cb_context{req_data=ReqData2},
             case unique_cid(Context2) of
                 'empty' -> create(Context2);
                 _ ->
-                    cb_context:add_validation_error(<<"cccp">>
-                                                ,<<"unique">>
-                                                ,<<"CID already exists">>
-                                                ,Context)
+                    cb_context:add_validation_error(
+                        <<"cccp">>
+                        ,<<"unique">>
+                        ,wh_json:from_list([
+                            {<<"message">>, <<"CID already exists">>}
+                            ,{<<"cause">>, CID}
+                         ])
+                        ,Context
+                    )
             end
 
     end.

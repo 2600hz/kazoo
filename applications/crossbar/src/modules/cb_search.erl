@@ -80,19 +80,40 @@ validate(Context) ->
 
 -spec validate_search(cb_context:context(), api_binary()) -> cb_context:context().
 validate_search(Context, 'undefined') ->
-    cb_context:add_validation_error(<<"t">>, <<"required">>, <<"search needs to know what to look for">>, Context);
+    cb_context:add_validation_error(
+        <<"t">>
+        ,<<"required">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"Search needs to know what to look for">>}
+         ])
+        ,Context
+    );
 validate_search(Context, Type) ->
     validate_search(Context, cb_context:req_value(Context, <<"q">>), Type).
 
 -spec validate_search(cb_context:context(), api_binary(), ne_binary()) -> cb_context:context().
 validate_search(Context, 'undefined', _) ->
-    cb_context:add_validation_error(<<"q">>, <<"required">>, <<"search needs to know what to look for">>, Context);
+    cb_context:add_validation_error(
+        <<"q">>
+        ,<<"required">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"Search needs to know what to look for">>}
+         ])
+        ,Context
+    );
 validate_search(Context, Q, T) ->
     validate_search(Context, cb_context:req_value(Context, <<"v">>), Q, T).
 
 -spec validate_search(cb_context:context(), api_binary(), ne_binary(), ne_binary()) -> cb_context:context().
 validate_search(Context, 'undefined', _, _) ->
-    cb_context:add_validation_error(<<"v">>, <<"required">>, <<"search needs to know what to look for">>, Context);
+    cb_context:add_validation_error(
+        <<"v">>
+        ,<<"required">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"Search needs to know what to look for">>}
+         ])
+        ,Context
+    );
 validate_search(Context, V, Q, T) ->
     search(Context, V, Q, T).
 

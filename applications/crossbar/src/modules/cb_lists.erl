@@ -155,8 +155,15 @@ entry_schema_success(Context, ListId, EntryId) ->
             on_entry_successful_validation(ListId, EntryId, Context);
         {'error', {Reason0, Pos}} ->
             Reason = io_lib:format("Error: ~s in position ~p", [Reason0, Pos]),
-            BinReason = iolist_to_binary(Reason),
-            cb_context:add_validation_error(<<"pattern">>, <<"type">>, BinReason, Context)
+            cb_context:add_validation_error(
+                <<"pattern">>
+                ,<<"type">>
+                ,wh_json:from_list([
+                    {<<"message">>, iolist_to_binary(Reason)}
+                    ,{<<"cause">>, Pattern}
+                ])
+                ,Context
+            )
     end.
 
 -spec on_entry_successful_validation(path_token(), path_token() | 'undefined', cb_context:context()) ->

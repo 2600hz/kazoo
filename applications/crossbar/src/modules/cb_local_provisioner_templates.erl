@@ -241,13 +241,25 @@ load_template_image(DocId, Context) ->
 %%--------------------------------------------------------------------
 -spec upload_template_image(path_token(), #cb_context{}) -> #cb_context{}.
 upload_template_image(_, #cb_context{req_files=[]}=Context) ->
-    Message = <<"please provide an image file">>,
-    cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context);
+    cb_context:add_validation_error(
+        <<"file">>
+        ,<<"required">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"please provide an image file">>}
+         ])
+        ,Context
+    );
 upload_template_image(_, #cb_context{req_files=[{_, _}]}=Context) ->
     crossbar_util:response(wh_json:new(), Context);
 upload_template_image(_, #cb_context{req_files=[_|_]}=Context) ->
-    Message = <<"please provide a single image file">>,
-    cb_context:add_validation_error(<<"file">>, <<"maxItems">>, Message, Context).
+   cb_context:add_validation_error(
+        <<"file">>
+        ,<<"maxItems">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"Please provide a single image file">>}
+         ])
+        ,Context
+    ).
 
 %%--------------------------------------------------------------------
 %% @private

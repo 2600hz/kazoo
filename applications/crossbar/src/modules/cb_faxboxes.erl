@@ -136,19 +136,26 @@ validate_faxbox(Context, Id, ?HTTP_DELETE) ->
 
 -spec validate_email_address(cb_context:context()) -> cb_context:context().
 validate_email_address(Context) ->
-    DocId = wh_json:get_value(<<"_id">>, cb_context:doc(Context)),
-    IsValid = case wh_json:get_value(<<"custom_smtp_email_address">>, cb_context:doc(Context)) of
-                  'undefined' -> 'true';
-                  CustomEmail -> is_faxbox_email_global_unique(CustomEmail, DocId)
-              end,
+    Email = wh_json:get_value(<<"custom_smtp_email_address">>, cb_context:doc(Context)),
+    IsValid =
+        case Email of
+            'undefined' -> 'true';
+            Email ->
+                DocId = wh_json:get_value(<<"_id">>, cb_context:doc(Context)),
+                is_faxbox_email_global_unique(Email, DocId)
+        end,
     case IsValid of
         'true' -> Context;
         'false' ->
-            cb_context:add_validation_error(<<"custom_smtp_email_address">>
-                                            ,<<"unique">>
-                                            ,<<"email address must be unique">>
-                                            ,Context
-                                           )
+            cb_context:add_validation_error(
+                <<"custom_smtp_email_address">>
+                ,<<"unique">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"email address must be unique">>}
+                    ,{<<"cause">>, Email}
+                 ])
+                ,Context
+            )
     end.
 
 %%--------------------------------------------------------------------

@@ -306,7 +306,14 @@ originate_call(C2CId, Context) ->
     case get_c2c_contact(cb_context:req_value(Context, <<"contact">>)) of
         'undefined' ->
             Message = <<"The contact extension for this click to call has not been set">>,
-            cb_context:add_validation_error(<<"contact">>, <<"required">>, Message, Context);
+            cb_context:add_validation_error(
+                <<"contact">>
+                ,<<"required">>
+                ,wh_json:from_list([
+                    {<<"message">>, Message}
+                 ])
+                ,Context
+            );
         Contact ->
             ReqId = cb_context:req_id(Context),
             AccountId = cb_context:account_id(Context),

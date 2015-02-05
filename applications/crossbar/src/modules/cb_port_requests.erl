@@ -651,14 +651,18 @@ on_successful_validation(Context, Id, 'true') ->
     end;
 on_successful_validation(Context, _Id, 'false') ->
     PortState = wh_json:get_value(?PORT_PVT_STATE, cb_context:doc(Context)),
-    lager:debug("port state ~s is not valid for updating a port request"
-                ,[PortState]
-               ),
+    lager:debug(
+        "port state ~s is not valid for updating a port request"
+        ,[PortState]
+    ),
     cb_context:add_validation_error(
-      PortState
-      ,<<"type">>
-      ,<<"Updating port requests not allowed in current port state">>
-      ,Context
+        PortState
+        ,<<"type">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"Updating port requests not allowed in current port state">>}
+            ,{<<"cause">>, PortState}
+         ])
+        ,Context
      ).
 
 %%--------------------------------------------------------------------
@@ -707,28 +711,35 @@ successful_validation(Context, _Id) ->
 check_number_portability(PortId, Number, Context) ->
     E164 = wnm_util:to_e164(Number),
     lager:debug("checking ~s(~s) for portability", [E164, Number]),
-
     PortOptions = [{'key', E164}],
     case couch_mgr:get_results(?KZ_PORT_REQUESTS_DB, <<"port_requests/port_in_numbers">>, PortOptions) of
         {'ok', []} -> check_number_existence(E164, Number, Context);
         {'ok', [PortReq]} ->
             check_number_portability(PortId, Number, Context, E164, PortReq);
         {'ok', [_|_]=_PortReqs} ->
+            Message = <<"Number is currently on multiple port requests. Contact a system admin to rectify">>,
             lager:debug("number ~s(~s) exists on multiple port request docs. That's bad!", [E164, Number]),
             cb_context:add_validation_error(
-              Number
-              ,<<"type">>
-              ,<<"Number is currently on multiple port requests. Contact a system admin to rectify">>
-              ,Context
-             );
+                Number
+                ,<<"type">>
+                ,wh_json:from_list([
+                    {<<"message">>, Message}
+                    ,{<<"cause">>, Number}
+                 ])
+                ,Context
+            );
         {'error', _E} ->
+            Message = <<"Failed to query backend services, cannot port at this time">>,
             lager:debug("failed to query the port request view: ~p", [_E]),
             cb_context:add_validation_error(
-              Number
-              ,<<"type">>
-              ,<<"Failed to query backend services, cannot port at this time">>
-              ,Context
-             )
+                Number
+                ,<<"type">>
+                ,wh_json:from_list([
+                    {<<"message">>, Message}
+                    ,{<<"cause">>, Number}
+                 ])
+                ,Context
+            )
     end.
 
 check_number_portability(PortId, Number, Context, E164, PortReq) ->
@@ -737,30 +748,40 @@ check_number_portability(PortId, Number, Context, E164, PortReq) ->
          }
     of
         {'true', 'true'} ->
-            lager:debug("number ~s(~s) is on this existing port request for this account(~s)"
-                        ,[E164, Number, cb_context:account_id(Context)]
-                       ),
+            lager:debug(
+                "number ~s(~s) is on this existing port request for this account(~s)"
+                ,[E164, Number, cb_context:account_id(Context)]
+            ),
             cb_context:set_resp_status(Context, 'success');
         {'true', 'false'} ->
-            lager:debug("number ~s(~s) is on a different port request in this account(~s): ~s"
-                        ,[E164, Number, cb_context:account_id(Context), wh_json:get_value(<<"id">>, PortReq)]
-                       ),
+            lager:debug(
+                "number ~s(~s) is on a different port request in this account(~s): ~s"
+                ,[E164, Number, cb_context:account_id(Context), wh_json:get_value(<<"id">>, PortReq)]
+            ),
+            Message = <<"Number is on a port request already: ", (wh_json:get_value(<<"id">>, PortReq))/binary>>,
             cb_context:add_validation_error(
-              Number
-              ,<<"type">>
-              ,<<"Number is on a port request already: ", (wh_json:get_value(<<"id">>, PortReq))/binary>>
-              ,Context
-             );
+                Number
+                ,<<"type">>
+                ,wh_json:from_list([
+                    {<<"message">>, Message}
+                    ,{<<"cause">>, Number}
+                 ])
+                ,Context
+            );
         {'false', _} ->
-            lager:debug("number ~s(~s) is on existing port request for other account(~s)"
-                        ,[E164, Number, wh_json:get_value(<<"value">>, PortReq)]
-                       ),
+            lager:debug(
+                "number ~s(~s) is on existing port request for other account(~s)"
+                ,[E164, Number, wh_json:get_value(<<"value">>, PortReq)]
+            ),
             cb_context:add_validation_error(
-              Number
-              ,<<"type">>
-              ,<<"Number is being ported for a different account">>
-              ,Context
-             )
+                Number
+                ,<<"type">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"Number is being ported for a different account">>}
+                    ,{<<"cause">>, Number}
+                 ])
+                ,Context
+            )
     end.
 
 %%--------------------------------------------------------------------
@@ -774,7 +795,15 @@ check_number_existence(E164, Number, Context) ->
     case wh_number_manager:lookup_account_by_number(E164) of
         {'ok', _AccountId, _} ->
             lager:debug("number ~s exists and belongs to ~s", [E164, _AccountId]),
-            cb_context:add_validation_error(Number, <<"type">>, <<"Number exists on the system already">>, Context);
+            cb_context:add_validation_error(
+                Number
+                ,<<"type">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"Number exists on the system already">>}
+                    ,{<<"cause">>, Number}
+                 ])
+                ,Context
+            );
         {'error', 'not_found'} ->
             lager:debug("number ~s not found in numbers db (portable!)", [E164]),
             cb_context:set_resp_status(Context, 'success');
@@ -782,8 +811,16 @@ check_number_existence(E164, Number, Context) ->
             lager:debug("number ~s not assigned to an account (portable!)", [E164]),
             cb_context:set_resp_status(Context, 'success');
         {'error', E} ->
-            lager:debug("number ~s errored when looking up: ~p", [E164, E]),
-            cb_context:add_validation_error(Number, <<"type">>, wh_util:to_binary(E), Context)
+            lager:debug("number ~s error-ed when looking up: ~p", [E164, E]),
+            cb_context:add_validation_error(
+                Number
+                ,<<"type">>
+                ,wh_json:from_list([
+                    {<<"message">>, wh_util:to_binary(E)}
+                    ,{<<"cause">>, Number}
+                 ])
+                ,Context
+            )
     end.
 
 %%--------------------------------------------------------------------
@@ -838,18 +875,24 @@ maybe_move_state(Context, Id, PortState) ->
             cb_context:set_doc(Context1, PortRequest);
         {'error', 'invalid_state_transition'} ->
             cb_context:add_validation_error(
-              <<"port_state">>
-              ,<<"enum">>
-              ,<<"cannot move to new state from current state">>
-              ,Context
+                <<"port_state">>
+                ,<<"enum">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"Cannot move to new state from current state">>}
+                    ,{<<"cause">>, PortState}
+                 ])
+                ,Context
              );
         {'error', _E} ->
             cb_context:add_validation_error(
-              <<"port_state">>
-              ,<<"enum">>
-              ,<<"failed to move to new state from current state">>
-              ,Context
-             )
+                <<"port_state">>
+                ,<<"enum">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"failed to move to new state from current state">>}
+                    ,{<<"cause">>, PortState}
+                 ])
+                ,Context
+            )
     end.
 
 %%--------------------------------------------------------------------

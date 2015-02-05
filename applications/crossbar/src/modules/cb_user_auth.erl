@@ -274,7 +274,7 @@ maybe_recover_user_password(Context) ->
 maybe_load_username(Account, Context) ->
     JObj = cb_context:doc(Context),
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    lager:debug("attempting to load username in db: ~s", [AccountDb]),
+    lager:debug("attempting to load user name in db: ~s", [AccountDb]),
     Username = wh_json:get_value(<<"username">>, JObj),
     ViewOptions = [{'key', Username}
                    ,'include_docs'
@@ -283,25 +283,33 @@ maybe_load_username(Account, Context) ->
         {'ok', [User]} ->
             case wh_json:is_false([<<"doc">>, <<"enabled">>], JObj) of
                 'false' ->
-                    lager:debug("the username '~s' was found and is not disabled, continue", [Username]),
+                    lager:debug("the user name '~s' was found and is not disabled, continue", [Username]),
                     cb_context:setters(Context, [{fun cb_context:set_account_db/2, Account}
                                                  ,{fun cb_context:set_doc/2, wh_json:get_value(<<"doc">>, User)}
                                                  ,{fun cb_context:set_resp_status/2, 'success'}
                                                 ]);
                 'true' ->
-                    lager:debug("the username '~s' was found but is disabled", [Username]),
-                    cb_context:add_validation_error(<<"username">>
-                                                    ,<<"forbidden">>
-                                                    ,<<"The provided username is disabled">>
-                                                    ,Context
-                                                   )
+                    lager:debug("the user name '~s' was found but is disabled", [Username]),
+                    cb_context:add_validation_error(
+                        <<"username">>
+                        ,<<"forbidden">>
+                        ,wh_json:from_list([
+                            {<<"message">>, <<"The provided user name is disabled">>}
+                            ,{<<"cause">>, Username}
+                         ])
+                        ,Context
+                    )
             end;
         _ ->
-            cb_context:add_validation_error(<<"username">>
-                                            ,<<"not_found">>
-                                            ,<<"The provided username was not found">>
-                                            ,Context
-                                           )
+            cb_context:add_validation_error(
+                <<"username">>
+                ,<<"not_found">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"The provided user name was not found">>}
+                    ,{<<"cause">>, Username}
+                 ])
+                ,Context
+            )
     end.
 
 %%--------------------------------------------------------------------
@@ -358,10 +366,15 @@ find_account('undefined', 'undefined', AccountName, Context) ->
     case whapps_util:get_accounts_by_name(AccountName) of
         {'ok', 'undefined'} ->
             lager:debug("failed to find account ~s by name", [AccountName]),
-            C = cb_context:add_validation_error(<<"account_name">>
-                                                ,<<"not_found">>
-                                                ,<<"The provided account name could not be found">>
-                                                ,Context),
+            C = cb_context:add_validation_error(
+                    <<"account_name">>
+                    ,<<"not_found">>
+                    ,wh_json:from_list([
+                        {<<"message">>, <<"The provided account name could not be found">>}
+                        ,{<<"cause">>, AccountName}
+                     ])
+                    ,Context
+                ),
             find_account('undefined', 'undefined', 'undefined', C);
         {'ok', AccountDb} ->
             lager:debug("found account by name '~s': ~s", [AccountName, AccountDb]),
@@ -370,20 +383,30 @@ find_account('undefined', 'undefined', AccountName, Context) ->
             lager:debug("the account name returned multiple results"),
             {'ok', AccountDbs};
         {'error', _} ->
-            C = cb_context:add_validation_error(<<"account_name">>
-                                                ,<<"not_found">>
-                                                ,<<"The provided account name could not be found">>
-                                                ,Context),
+            C = cb_context:add_validation_error(
+                    <<"account_name">>
+                    ,<<"not_found">>
+                    ,wh_json:from_list([
+                        {<<"message">>, <<"The provided account name could not be found">>}
+                        ,{<<"cause">>, AccountName}
+                     ])
+                    ,Context
+                ),
             find_account('undefined', 'undefined', 'undefined', C)
     end;
 find_account('undefined', AccountRealm, AccountName, Context) ->
     case whapps_util:get_account_by_realm(AccountRealm) of
         {'ok', 'undefined'} ->
             lager:debug("failed to find account ~s by name", [AccountName]),
-            C = cb_context:add_validation_error(<<"account_name">>
-                                                ,<<"not_found">>
-                                                ,<<"The provided account name could not be found">>
-                                                ,Context),
+            C = cb_context:add_validation_error(
+                    <<"account_name">>
+                    ,<<"not_found">>
+                    ,wh_json:from_list([
+                        {<<"message">>, <<"The provided account name could not be found">>}
+                        ,{<<"cause">>, AccountName}
+                     ])
+                    ,Context
+                ),
             find_account('undefined', 'undefined', 'undefined', C);
         {'ok', AccountDb} ->
             lager:debug("found account by realm '~s': ~s", [AccountRealm, AccountDb]),
@@ -392,10 +415,15 @@ find_account('undefined', AccountRealm, AccountName, Context) ->
             lager:debug("the account realm returned multiple results"),
             {'ok', AccountDbs};
         {'error', _} ->
-            C = cb_context:add_validation_error(<<"account_realm">>
-                                                ,<<"not_found">>
-                                                ,<<"The provided account realm could not be found">>
-                                                ,Context),
+            C = cb_context:add_validation_error(
+                    <<"account_realm">>
+                    ,<<"not_found">>
+                    ,wh_json:from_list([
+                        {<<"message">>, <<"The provided account realm could not be found">>}
+                        ,{<<"cause">>, AccountRealm}
+                     ])
+                    ,Context
+                ),
             find_account('undefined', 'undefined', AccountName, C)
     end;
 find_account(PhoneNumber, AccountRealm, AccountName, Context) ->
@@ -405,10 +433,15 @@ find_account(PhoneNumber, AccountRealm, AccountName, Context) ->
             lager:debug("found account by phone number '~s': ~s", [PhoneNumber, AccountDb]),
             {'ok', AccountDb};
         {'error', _} ->
-            C = cb_context:add_validation_error(<<"phone_number">>
-                                                ,<<"not_found">>
-                                                ,<<"The provided phone number could not be found">>
-                                                ,Context),
+            C = cb_context:add_validation_error(
+                    <<"phone_number">>
+                    ,<<"not_found">>
+                    ,wh_json:from_list([
+                        {<<"message">>, <<"The provided phone number could not be found">>}
+                        ,{<<"cause">>, PhoneNumber}
+                     ])
+                    ,Context
+                ),
             find_account('undefined', AccountRealm, AccountName, C)
     end.
 

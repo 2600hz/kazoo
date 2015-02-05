@@ -384,15 +384,27 @@ validate_port_docs(Context, Number, Name, _Verb) ->
                                        cb_context:context().
 validate_port_docs_upload(Context, _Number, _Name, []) ->
     lager:debug("No files in request to save attachment"),
-    Message = <<"please provide an port document">>,
-    cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context);
+    cb_context:add_validation_error(
+        <<"file">>
+        ,<<"required">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"Please provide an port document">>}
+         ])
+        ,Context
+    );
 validate_port_docs_upload(Context, Number, Name, [{_, FileObj}]) ->
     FileName = wh_util:to_binary(http_uri:encode(wh_util:to_list(Name))),
     read(Number, cb_context:set_req_files(Context, [{FileName, FileObj}]));
 validate_port_docs_upload(Context, _Name, _Number, _Files) ->
     lager:debug("Multiple files in request to save attachment"),
-    Message = <<"please provide a single port document per request">>,
-    cb_context:add_validation_error(<<"file">>, <<"maxItems">>, Message, Context).
+    cb_context:add_validation_error(
+        <<"file">>
+        ,<<"maxItems">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"Please provide a single port document per request">>}
+         ])
+        ,Context
+    ).
 
 -spec post(cb_context:context(), path_token()) ->
                   cb_context:context().
@@ -662,17 +674,23 @@ find_prefix(Context) ->
 find_locality(Context) ->
     case cb_context:req_value(Context, <<"numbers">>) of
         'undefined' ->
-            cb_context:add_validation_error(<<"numbers">>
-                                            ,<<"required">>
-                                            ,<<"list of numbers missing">>
-                                            ,Context
-                                           );
+            cb_context:add_validation_error(
+                <<"numbers">>
+                ,<<"required">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"list of numbers missing">>}
+                 ])
+                ,Context
+            );
         [] ->
-            cb_context:add_validation_error(<<"numbers">>
-                                            ,<<"minimum">>
-                                            ,<<"minimum 1 number required">>
-                                            ,Context
-                                           );
+            cb_context:add_validation_error(
+                <<"numbers">>
+                ,<<"minimum">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"minimum 1 number required">>}
+                 ])
+                ,Context
+            );
         Numbers when is_list(Numbers) ->
             Url = get_url(cb_context:req_value(Context, <<"quality">>)),
             case get_locality(Numbers, Url) of
@@ -685,11 +703,14 @@ find_locality(Context) ->
                      )
             end;
         _E ->
-            cb_context:add_validation_error(<<"numbers">>
-                                            ,<<"type">>
-                                            ,<<"numbers must be a list">>
-                                            ,Context
-                                           )
+            cb_context:add_validation_error(
+                <<"numbers">>
+                ,<<"type">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"numbers must be a list">>}
+                 ])
+                ,Context
+            )
     end.
 
 %%--------------------------------------------------------------------
@@ -702,28 +723,38 @@ find_locality(Context) ->
 check_number(Context) ->
     case cb_context:req_value(Context, <<"numbers">>) of
         'undefined' ->
-            cb_context:add_validation_error(<<"numbers">>
-                                            ,<<"required">>
-                                            ,<<"list of numbers missing">>
-                                            ,Context
-                                           );
+            cb_context:add_validation_error(
+                <<"numbers">>
+                ,<<"required">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"list of numbers missing">>}
+                 ])
+                ,Context
+            );
         [] ->
-            cb_context:add_validation_error(<<"numbers">>
-                                            ,<<"minimum">>
-                                            ,<<"minimum 1 number required">>
-                                            ,Context
-                                           );
+            cb_context:add_validation_error(
+                <<"numbers">>
+                ,<<"minimum">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"minimum 1 number required">>}
+                 ])
+                ,Context
+            );
         Numbers when is_list(Numbers) ->
             cb_context:set_resp_data(
               cb_context:set_resp_status(Context, 'success')
               ,wh_number_manager:check(Numbers)
              );
-        _E ->
-            cb_context:add_validation_error(<<"numbers">>
-                                            ,<<"type">>
-                                            ,<<"numbers must be a list">>
-                                            ,Context
-                                           )
+        E ->
+            cb_context:add_validation_error(
+                <<"numbers">>
+                ,<<"type">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"numbers must be a list">>}
+                    ,{<<"cause">>, E}
+                 ])
+                ,Context
+            )
     end.
 
 -spec get_url(any()) -> binary().

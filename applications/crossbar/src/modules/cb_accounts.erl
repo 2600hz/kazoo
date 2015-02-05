@@ -210,10 +210,14 @@ validate_account_path(Context, AccountId, ?MOVE, ?HTTP_POST) ->
     Data = cb_context:req_data(Context),
     case wh_json:get_binary_value(<<"to">>, Data) of
         'undefined' ->
-            cb_context:add_validation_error(<<"to">>
-                                            ,<<"required">>
-                                            ,<<"Field 'to' is required">>
-                                            ,Context);
+            cb_context:add_validation_error(
+                <<"to">>
+                ,<<"required">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"Field 'to' is required">>}
+                 ])
+                ,Context
+            );
         ToAccount ->
             case validate_move(whapps_config:get(?ACCOUNTS_CONFIG_CAT, <<"allow_move">>, <<"superduper_admin">>)
                                ,Context, AccountId, ToAccount)
@@ -441,11 +445,15 @@ validate_realm_is_unique(AccountId, Context) ->
     case is_unique_realm(AccountId, Realm) of
         'true' -> validate_account_name_is_unique(AccountId, Context);
         'false' ->
-            C = cb_context:add_validation_error([<<"realm">>]
-                                                ,<<"unique">>
-                                                ,<<"Account realm already in use">>
-                                                ,Context
-                                               ),
+            C = cb_context:add_validation_error(
+                    [<<"realm">>]
+                    ,<<"unique">>
+                    ,wh_json:from_list([
+                        {<<"message">>, <<"Account realm already in use">>}
+                        ,{<<"cause">>, Realm}
+                     ])
+                    ,Context
+                ),
             validate_account_name_is_unique(AccountId, C)
     end.
 
@@ -455,11 +463,15 @@ validate_account_name_is_unique(AccountId, Context) ->
     case maybe_is_unique_account_name(AccountId, Name) of
         'true' -> validate_account_schema(AccountId, Context);
         'false' ->
-            C = cb_context:add_validation_error([<<"name">>]
-                                                ,<<"unique">>
-                                                ,<<"Account name already in use">>
-                                                ,Context
-                                               ),
+            C = cb_context:add_validation_error(
+                    [<<"name">>]
+                    ,<<"unique">>
+                    ,wh_json:from_list([
+                        {<<"message">>, <<"Account name already in use">>}
+                        ,{<<"cause">>, Name}
+                     ])
+                    ,Context
+                ),
             validate_account_schema(AccountId, C)
     end.
 
@@ -1296,7 +1308,15 @@ support_depreciated_billing_id(BillingId, AccountId, Context) ->
             Context
     catch
         'throw':{Error, Reason} ->
-            cb_context:add_validation_error(<<"billing_id">>, <<"not_found">>, wh_util:to_binary(Error), Reason)
+            cb_context:add_validation_error(
+                <<"billing_id">>
+                ,<<"not_found">>
+                ,wh_json:from_list([
+                        {<<"message">>, wh_util:to_binary(Error)}
+                        ,{<<"cause">>, AccountId}
+                     ])
+                ,Reason
+            )
     end.
 
 %%--------------------------------------------------------------------

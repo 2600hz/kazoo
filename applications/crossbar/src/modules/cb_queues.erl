@@ -245,14 +245,20 @@ all_true(Fs) ->
                 end, 'true', Fs).
 
 is_valid_mode(Context, Data) ->
-    case wapi_resource:is_valid_mode(wh_json:get_value(<<"mode">>, Data, <<"listen">>)) of
+    Mode = wh_json:get_value(<<"mode">>, Data, <<"listen">>),
+    case wapi_resource:is_valid_mode() of
         'true' -> 'true';
         'false' ->
             {'false'
-             ,cb_context:add_validation_error(<<"mode">>, <<"enum">>
-                                              ,<<"enum:Value not found in enumerated list of values">>
-                                              ,Context
-                                             )
+             ,cb_context:add_validation_error(
+                 <<"mode">>
+                 ,<<"enum">>
+                 ,wh_json:from_list([
+                    {<<"message">>, <<"Value not found in enumerated list of values">>}
+                    ,{<<"cause">>, Mode}
+                 ])
+                 ,Context
+              )
             }
     end.
 
@@ -260,20 +266,29 @@ is_valid_call(Context, Data) ->
     case wh_json:get_binary_value(<<"call_id">>, Data) of
         'undefined' ->
             {'false'
-             ,cb_context:add_validation_error(<<"call_id">>, <<"required">>
-                                              ,<<"required:Field is required but missing">>
-                                              ,Context
-                                             )
+             ,cb_context:add_validation_error(
+                  <<"call_id">>
+                  ,<<"required">>
+                  ,wh_json:from_list([
+                       {<<"message">>, <<"Field is required but missing">>}
+                   ])
+                  ,Context
+              )
             };
         CallId ->
             case whapps_call_command:b_channel_status(CallId) of
                 {'error', _E} ->
                     lager:debug("is not valid call: ~p", [_E]),
                     {'false'
-                     ,cb_context:add_validation_error(<<"call_id">>, <<"not_found">>
-                                                      ,<<"not_found:Call was not found">>
-                                                      ,Context
-                                                     )
+                     ,cb_context:add_validation_error(
+                          <<"call_id">>
+                          ,<<"not_found">>
+                          ,wh_json:from_list([
+                               {<<"message">>, <<"Call was not found">>}
+                               ,{<<"cause">>, CallId}
+                           ])
+                          ,Context
+                      )
                     };
                 {'ok', _} -> 'true'
             end
@@ -285,10 +300,15 @@ is_valid_queue(Context, ?NE_BINARY = QueueId) ->
         {'ok', QueueJObj} -> is_valid_queue(Context, QueueJObj);
         {'error', _} ->
             {'false'
-             ,cb_context:add_validation_error(<<"queue_id">>, <<"not_found">>
-                                              ,<<"not_found:Queue was not found">>
-                                              ,Context
-                                             )
+             ,cb_context:add_validation_error(
+                  <<"queue_id">>
+                  ,<<"not_found">>
+                  ,wh_json:from_list([
+                       {<<"message">>, <<"Queue was not found">>}
+                       ,{<<"cause">>, QueueId}
+                  ])
+                  ,Context
+              )
             }
     end;
 is_valid_queue(Context, QueueJObj) ->
@@ -296,36 +316,49 @@ is_valid_queue(Context, QueueJObj) ->
         <<"queue">> -> 'true';
         _ ->
             {'false'
-             ,cb_context:add_validation_error(<<"queue_id">>, <<"type">>
-                                              ,<<"type:Id did not represent a queue">>
-                                              ,Context
-                                             )
+             ,cb_context:add_validation_error(
+                  <<"queue_id">>
+                  ,<<"type">>
+                  ,wh_json:from_list([
+                       {<<"message">>, <<"Id did not represent a queue">>}
+                   ])
+                  ,Context
+              )
             }
     end.
 
 is_valid_endpoint(Context, DataJObj) ->
     AcctDb = cb_context:account_db(Context),
     Id = wh_json:get_value(<<"id">>, DataJObj),
-
     case couch_mgr:open_cache_doc(AcctDb, Id) of
         {'ok', CallMeJObj} -> is_valid_endpoint_type(Context, CallMeJObj);
         {'error', _} ->
             {'false'
-             ,cb_context:add_validation_error(<<"id">>, <<"not_found">>
-                                              ,<<"not_found:Id was not found">>
-                                              ,Context
-                                             )
+             ,cb_context:add_validation_error(
+                  <<"id">>
+                  ,<<"not_found">>
+                  ,wh_json:from_list([
+                       {<<"message">>, <<"Id was not found">>}
+                       ,{<<"cause">>, Id}
+                   ])
+                  ,Context
+              )
             }
     end.
 is_valid_endpoint_type(Context, CallMeJObj) ->
     case wh_json:get_value(<<"pvt_type">>, CallMeJObj) of
         <<"device">> -> 'true';
-        _ ->
+        Type ->
             {'false'
-             ,cb_context:add_validation_error(<<"id">>, <<"type">>
-                                              ,<<"type:Id did not represent a valid endpoint">>
-                                              ,Context
-                                             )
+             ,cb_context:add_validation_error(
+                  <<"id">>
+                  ,<<"type">>
+                  ,wh_json:from_list([
+                       {<<"message">>, <<"Id did not represent a valid endpoint">>}
+                       ,{<<"cause">>, Type}
+                   ])
+                  ,Context
+              )
             }
     end.
 
@@ -641,9 +674,15 @@ fetch_ranged_queue_stats(Context, StartRange) ->
     case wh_util:to_integer(StartRange) of
         F when F > To ->
             %% start_range is larger than end_range
-            cb_context:add_validation_error(<<"end_range">>, <<"maximum">>
-                                            ,<<"value is greater than start_range">>, Context
-                                           );
+            cb_context:add_validation_error(
+                <<"end_range">>
+                ,<<"maximum">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"value is greater than start_range">>}
+                    ,{<<"cause">>, StartRange}
+                 ])
+                ,Context
+            );
         F when F < MaxFrom ->
             %% Range is too big
             fetch_ranged_queue_stats(Context, MaxFrom, To, MaxFrom >= Past);

@@ -386,11 +386,17 @@ normalize_channel(JObj) ->
 -spec maybe_transfer(cb_context:context(), ne_binary(), ne_binary(), ne_binary()) -> cb_context:context().
 maybe_transfer(Context, Transferor) ->
     Channel = cb_context:resp_data(Context),
-
     case wh_json:get_value(<<"other_leg_call_id">>, Channel) of
         'undefined' ->
             lager:debug("no transferee leg found"),
-            cb_context:add_validation_error(<<"other_leg_call_id">>, <<"required">>, <<"Channel is not bridged">>, Context);
+            cb_context:add_validation_error(
+                <<"other_leg_call_id">>
+                ,<<"required">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"Channel is not bridged">>}
+                 ])
+                ,Context
+            );
         Transferee ->
             maybe_transfer(Context, Transferor, Transferee)
     end.
@@ -399,7 +405,14 @@ maybe_transfer(Context, Transferor, Transferee) ->
     case cb_context:req_value(Context, <<"target">>) of
         'undefined' ->
             lager:debug("no target destination"),
-            cb_context:add_validation_error(<<"target">>, <<"required">>, <<"No target destination specified">>, Context);
+            cb_context:add_validation_error(
+                <<"target">>
+                ,<<"required">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"No target destination specified">>}
+                 ])
+                ,Context
+            );
         Target ->
             maybe_transfer(Context, Transferor, Transferee, Target)
     end.

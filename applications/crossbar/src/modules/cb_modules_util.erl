@@ -49,22 +49,29 @@ range_view_options(Context, MaxRange) ->
 
     case CreatedTo - CreatedFrom of
         N when N < 0 ->
-            Message = <<"created_from is prior to created_to">>,
-            cb_context:add_validation_error(<<"created_from">>
-                                            ,<<"date_range">>
-                                            ,Message
-                                            ,Context
-                                           );
+            cb_context:add_validation_error(
+                <<"created_from">>
+                ,<<"date_range">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"created_from is prior to created_to">>}
+                    ,{<<"cause">>, CreatedFrom}
+                 ])
+                ,Context
+            );
         N when N > MaxRange ->
             Message = <<"created_to is more than "
                         ,(wh_util:to_binary(MaxRange))/binary
                         ," seconds from created_from"
                       >>,
-            cb_context:add_validation_error(<<"created_from">>
-                                            ,<<"date_range">>
-                                            ,Message
-                                            ,Context
-                                           );
+            cb_context:add_validation_error(
+                <<"created_from">>
+                ,<<"date_range">>
+                ,wh_json:from_list([
+                    {<<"message">>, Message}
+                    ,{<<"cause">>, CreatedTo}
+                 ])
+                ,Context
+            );
         _N -> {CreatedFrom, CreatedTo}
     end.
 
