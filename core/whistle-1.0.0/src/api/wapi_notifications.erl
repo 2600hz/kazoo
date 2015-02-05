@@ -72,6 +72,7 @@
                                    ,<<"Preview">>
                                   ]).
 
+-define(NOTIFY_VOICEMAIL_SAVED, <<"notifications.voicemail.saved">>).
 -define(NOTIFY_VOICEMAIL_NEW, <<"notifications.voicemail.new">>).
 -define(NOTIFY_VOICEMAIL_FULL, <<"notifications.voicemail.full">>).
 -define(NOTIFY_FAX_INBOUND, <<"notifications.fax.inbound">>).
@@ -95,7 +96,7 @@
 -define(NOTIFY_WEBHOOK_CALLFLOW, <<"notifications.webhook.callflow">>).
 -define(NOTIFY_SKEL, <<"notifications.skel">>).
 
-%% Notify New Voicemail
+%% Notify New Voicemail or Voicemail Saved
 -define(VOICEMAIL_HEADERS, [<<"From-User">>, <<"From-Realm">>
                             ,<<"To-User">>, <<"To-Realm">>
                             ,<<"Account-DB">>
@@ -111,6 +112,10 @@
                            ,{<<"Event-Name">>, <<"voicemail_new">>}
                           ]).
 -define(VOICEMAIL_TYPES, []).
+
+-define(VOICEMAIL_SAVED_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                           ,{<<"Event-Name">>, <<"voicemail_saved">>}
+                          ]).
 
 %% Notify Voicemail full
 -define(VOICEMAIL_FULL_HEADERS, [<<"Account-DB">>
@@ -375,6 +380,23 @@ voicemail(JObj) -> voicemail(wh_json:to_proplist(JObj)).
 voicemail_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?VOICEMAIL_HEADERS, ?VOICEMAIL_VALUES, ?VOICEMAIL_TYPES);
 voicemail_v(JObj) -> voicemail_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+voicemail_saved(Prop) when is_list(Prop) ->
+    case voicemail_saved_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?VOICEMAIL_HEADERS, ?OPTIONAL_VOICEMAIL_HEADERS);
+        'false' -> {'error', "Proplist failed validation for voicemail"}
+    end;
+voicemail_saved(JObj) -> voicemail_saved(wh_json:to_proplist(JObj)).
+
+-spec voicemail_saved_v(api_terms()) -> boolean().
+voicemail_saved_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?VOICEMAIL_HEADERS, ?VOICEMAIL_SAVED_VALUES, ?VOICEMAIL_TYPES);
+voicemail_saved_v(JObj) -> voicemail_saved_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -726,6 +748,8 @@ bind_to_q(Q, 'undefined') ->
     'ok' = amqp_util:bind_q_to_notifications(Q, <<"notifications.*.*">>);
 bind_to_q(Q, ['new_voicemail'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_VOICEMAIL_NEW),
+bind_to_q(Q, ['voicemail_saved'|T]) ->
+    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_VOICEMAIL_SAVED),
     bind_to_q(Q, T);
 bind_to_q(Q, ['voicemail_full'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_VOICEMAIL_FULL),
@@ -881,6 +905,13 @@ unbind_q_from(_Q, []) ->
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
     amqp_util:notifications_exchange().
+
+-spec publish_voicemail_saved(api_terms()) -> 'ok'.
+-spec publish_voicemail_saved(api_terms(), ne_binary()) -> 'ok'.
+publish_voicemail_saved(JObj) -> publish_voicemail_saved(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_voicemail_saved(Voicemail, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(Voicemail, ?VOICEMAIL_VALUES, fun ?MODULE:voicemail_saved/1),
+    amqp_util:notifications_publish(?NOTIFY_VOICEMAIL_SAVED, Payload, ContentType).
 
 -spec publish_voicemail(api_terms()) -> 'ok'.
 -spec publish_voicemail(api_terms(), ne_binary()) -> 'ok'.
