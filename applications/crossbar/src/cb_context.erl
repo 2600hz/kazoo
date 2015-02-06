@@ -511,13 +511,15 @@ failed_error({'data_invalid'
     Minimum = wh_json:get_value(<<"minLength">>, FailedSchemaJObj),
     MinLen = wh_util:to_binary(Minimum),
 
-    add_validation_error(FailedKeyPath
-                         ,<<"minLength">>
-                         ,[{<<"message">>, <<"String must be at least ", MinLen/binary, " characters">>}
-                            ,{<<"target">>, Minimum}
-                          ]
-                         ,Context
-                        );
+    add_validation_error(
+        FailedKeyPath
+        ,<<"minLength">>
+        ,wh_json:from_list([
+             {<<"message">>, <<"String must be at least ", MinLen/binary, " characters">>}
+             ,{<<"target">>, Minimum}
+         ])
+        ,Context
+    );
 failed_error({'data_invalid'
               ,FailedSchemaJObj
               ,'wrong_max_length'
@@ -527,26 +529,30 @@ failed_error({'data_invalid'
     Maximum = wh_json:get_value(<<"maxLength">>, FailedSchemaJObj),
     MaxLen = wh_util:to_binary(Maximum),
 
-    add_validation_error(FailedKeyPath
-                         ,<<"maxLength">>
-                         ,[{<<"message">>, <<"String must not be more than ", MaxLen/binary, " characters">>}
-                           ,{<<"target">>, Maximum}
-                         ]
-                         ,Context
-                        );
+    add_validation_error(
+        FailedKeyPath
+        ,<<"maxLength">>
+        ,wh_json:from_list([
+             {<<"message">>, <<"String must not be more than ", MaxLen/binary, " characters">>}
+             ,{<<"target">>, Maximum}
+         ])
+        ,Context
+    );
 failed_error({'data_invalid'
               ,FailedSchemaJObj
               ,'not_in_enum'
-              ,_FailedValue
+                  ,_FailedValue
               ,FailedKeyPath
              }, Context) ->
-    add_validation_error(FailedKeyPath
-                         ,<<"enum">>
-                         ,[{<<"message">>, <<"Value not found in enumerated list of values">>}
-                           ,{<<"target">>, wh_json:get_value(<<"enum">>, FailedSchemaJObj, [])}
-                         ]
-                         ,Context
-                        );
+    add_validation_error(
+        FailedKeyPath
+        ,<<"enum">>
+        ,wh_json:from_list([
+             {<<"message">>, <<"Value not found in enumerated list of values">>}
+             ,{<<"target">>, wh_json:get_value(<<"enum">>, FailedSchemaJObj, [])}
+         ])
+        ,Context
+    );
 failed_error({'data_invalid'
               ,FailedSchemaJObj
               ,'not_minimum'
@@ -556,13 +562,15 @@ failed_error({'data_invalid'
     Minimum = wh_json:get_first_defined([<<"minimum">>, <<"exclusiveMinimum">>], FailedSchemaJObj),
     Min = wh_util:to_binary(Minimum),
 
-    add_validation_error(FailedKeyPath
-                         ,<<"minimum">>
-                         ,[{<<"message">>, <<"Value must be at least ", Min/binary>>}
-                           ,{<<"target">>, Minimum}
-                          ]
-                         ,Context
-                        );
+    add_validation_error(
+        FailedKeyPath
+        ,<<"minimum">>
+        ,wh_json:from_list([
+             {<<"message">>, <<"Value must be at least ", Min/binary>>}
+             ,{<<"target">>, Minimum}
+         ])
+        ,Context
+    );
 failed_error({'data_invalid'
               ,FailedSchemaJObj
               ,'not_maximum'
@@ -572,13 +580,15 @@ failed_error({'data_invalid'
     Maximum = wh_json:get_first_defined([<<"maximum">>, <<"exclusiveMaximum">>], FailedSchemaJObj),
     Max = wh_util:to_binary(Maximum),
 
-    add_validation_error(FailedKeyPath
-                         ,<<"maximum">>
-                         ,[{<<"message">>, <<"Value must be at most ", Max/binary>>}
-                            ,{<<"target">>, Maximum}
-                          ]
-                         ,Context
-                        );
+    add_validation_error(
+        FailedKeyPath
+        ,<<"maximum">>
+        ,wh_json:from_list([
+             {<<"message">>, <<"Value must be at most ", Max/binary>>}
+             ,{<<"target">>, Maximum}
+          ])
+        ,Context
+    );
 failed_error({'data_invalid'
               ,FailedSchemaJObj
               ,'wrong_min_items'
@@ -588,13 +598,15 @@ failed_error({'data_invalid'
     Minimum = wh_json:get_value(<<"minItems">>, FailedSchemaJObj),
     Min = wh_util:to_binary(Minimum),
 
-    add_validation_error(FailedKeyPath
-                         ,<<"minItems">>
-                         ,[{<<"message">>, <<"The list must have at least ", Min/binary, " items">>}
-                            ,{<<"target">>, Minimum}
-                          ]
-                         ,Context
-                        );
+    add_validation_error(
+        FailedKeyPath
+        ,<<"minItems">>
+        ,wh_json:from_list([
+             {<<"message">>, <<"The list must have at least ", Min/binary, " items">>}
+             ,{<<"target">>, Minimum}
+         ])
+        ,Context
+    );
 failed_error({'data_invalid'
               ,FailedSchemaJObj
               ,'wrong_max_items'
@@ -604,13 +616,15 @@ failed_error({'data_invalid'
     Maximum = wh_json:get_value(<<"maxItems">>, FailedSchemaJObj),
     Max = wh_util:to_binary(Maximum),
 
-    add_validation_error(FailedKeyPath
-                         ,<<"maxItems">>
-                         ,[{<<"message">>, <<"The list is more than ", Max/binary, " items">>}
-                           ,{<<"target">>, Maximum}
-                         ]
-                         ,Context
-                        );
+    add_validation_error(
+        FailedKeyPath
+        ,<<"maxItems">>
+        ,wh_json:from_list([
+             {<<"message">>, <<"The list is more than ", Max/binary, " items">>}
+             ,{<<"target">>, Maximum}
+         ])
+        ,Context
+    );
 failed_error({'data_invalid'
               ,FailedSchemaJObj
               ,'wrong_min_properties'
@@ -620,13 +634,15 @@ failed_error({'data_invalid'
     Minimum = wh_json:get_value(<<"minProperties">>, FailedSchemaJObj),
     Min = wh_util:to_binary(Minimum),
 
-    add_validation_error(FailedKeyPath
-                         ,<<"minProperties">>
-                         ,[{<<"message">>, <<"The object must have at least ", Min/binary, " keys">>}
-                            ,{<<"target">>, Minimum}
-                          ]
-                         ,Context
-                        );
+    add_validation_error(
+        FailedKeyPath
+        ,<<"minProperties">>
+        ,wh_json:from_list([
+             {<<"message">>, <<"The object must have at least ", Min/binary, " keys">>}
+             ,{<<"target">>, Minimum}
+         ])
+        ,Context
+    );
 failed_error({'data_invalid'
               ,FailedSchemaJObj
               ,{'not_unique', _Item}
@@ -635,33 +651,40 @@ failed_error({'data_invalid'
              }, Context) ->
     lager:debug("item ~p is not unique", [_Item]),
     lager:debug("failed schema: ~p", [FailedSchemaJObj]),
-    add_validation_error(FailedKeyPath
-                         ,<<"uniqueItems">>
-                         ,[{<<"message">>, <<"List of items is not unique">>}]
-                         ,Context
-                        );
+    add_validation_error(
+        FailedKeyPath
+        ,<<"uniqueItems">>
+        ,wh_json:from_list([{<<"message">>, <<"List of items is not unique">>}])
+        ,Context
+    );
 failed_error({'data_invalid'
               ,_FailedSchemaJObj
               ,'no_extra_properties_allowed'
               ,_FailedValue
               ,FailedKeyPath
              }, Context) ->
-    add_validation_error(FailedKeyPath
-                         ,<<"additionalProperties">>
-                         ,<<"Strict checking of data is enabled; only include schema-defined properties">>
-                         ,Context
-                        );
+    add_validation_error(
+        FailedKeyPath
+        ,<<"additionalProperties">>
+        ,wh_json:from_list([
+             {<<"message">>, <<"Strict checking of data is enabled; only include schema-defined properties">>}
+         ])
+        ,Context
+    );
 failed_error({'data_invalid'
               ,_FailedSchemaJObj
               ,'no_extra_items_allowed'
               ,_FailedValue
               ,FailedKeyPath
              }, Context) ->
-    add_validation_error(FailedKeyPath
-                         ,<<"additionalItems">>
-                         ,<<"Strict checking of data is enabled; only include schema-defined items">>
-                         ,Context
-                        );
+    add_validation_error(
+        FailedKeyPath
+        ,<<"additionalItems">>
+        ,wh_json:from_list([
+             {<<"message">>, <<"Strict checking of data is enabled; only include schema-defined items">>}
+         ])
+        ,Context
+    );
 failed_error({'data_invalid'
               ,FailedSchemaJObj
               ,'no_match'
@@ -669,35 +692,43 @@ failed_error({'data_invalid'
               ,FailedKeyPath
              }, Context) ->
     Pattern = wh_json:get_value(<<"pattern">>, FailedSchemaJObj),
-    add_validation_error(FailedKeyPath
-                         ,<<"pattern">>
-                         ,[{<<"message">>, <<"Failed to match pattern '", Pattern/binary, "'">>}
-                           ,{<<"target">>, Pattern}
-                          ]
-                         ,Context
-                        );
+    add_validation_error(
+        FailedKeyPath
+        ,<<"pattern">>
+        ,wh_json:from_list([
+             {<<"message">>, <<"Failed to match pattern '", Pattern/binary, "'">>}
+             ,{<<"target">>, Pattern}
+         ])
+        ,Context
+    );
 failed_error({'data_invalid'
               ,_FailedSchemaJObj
               ,'missing_required_property'
               ,_FailedValue
               ,FailedKeyPath
              }, Context) ->
-    add_validation_error(FailedKeyPath
-                         ,<<"required">>
-                         ,<<"Field is required but missing">>
-                         ,Context
-                        );
+    add_validation_error(
+        FailedKeyPath
+        ,<<"required">>
+        ,wh_json:from_list([
+             {<<"message">>, <<"Field is required but missing">>}
+         ])
+        ,Context
+    );
 failed_error({'data_invalid'
               ,_FailedSchemaJObj
               ,'missing_dependency'
               ,_FailedValue
               ,FailedKeyPath
              }, Context) ->
-    add_validation_error(FailedKeyPath
-                         ,<<"dependencies">>
-                         ,<<"Dependencies were not validated">>
-                         ,Context
-                        );
+    add_validation_error(
+        FailedKeyPath
+        ,<<"dependencies">>
+         ,wh_json:from_list([
+             {<<"message">>, <<"Dependencies were not validated">>}
+          ])
+        ,Context
+    );
 failed_error({'data_invalid'
               ,FailedSchemaJObj
               ,'not_divisible'
@@ -705,13 +736,15 @@ failed_error({'data_invalid'
               ,FailedKeyPath
              }, Context) ->
     DivBy = wh_json:get_binary_value(<<"divisibleBy">>, FailedSchemaJObj),
-    add_validation_error(FailedKeyPath
-                         ,<<"divisibleBy">>
-                         ,[{<<"message">>, <<"Value not divisible by ", DivBy/binary>>}
-                           ,{<<"target">>, DivBy}
-                          ]
-                         ,Context
-                        );
+    add_validation_error(
+        FailedKeyPath
+        ,<<"divisibleBy">>
+        ,wh_json:from_list([
+             {<<"message">>, <<"Value not divisible by ", DivBy/binary>>}
+             ,{<<"target">>, DivBy}
+         ])
+        ,Context
+    );
 failed_error({'data_invalid'
               ,FailedSchemaJObj
               ,'not_allowed'
@@ -719,13 +752,15 @@ failed_error({'data_invalid'
               ,FailedKeyPath
              }, Context) ->
     Disallow = get_disallow(FailedSchemaJObj),
-    add_validation_error(FailedKeyPath
-                         ,<<"disallow">>
-                         ,[{<<"message">>, <<"Value is disallowed by ", Disallow/binary>>}
-                           ,{<<"target">>, Disallow}
-                          ]
-                         ,Context
-                        );
+    add_validation_error(
+        FailedKeyPath
+        ,<<"disallow">>
+        ,wh_json:from_list([
+             {<<"message">>, <<"Value is disallowed by ", Disallow/binary>>}
+             ,{<<"target">>, Disallow}
+         ])
+        ,Context
+    );
 failed_error({'data_invalid'
               ,FailedSchemaJObj
               ,'wrong_type'
@@ -733,23 +768,29 @@ failed_error({'data_invalid'
               ,FailedKeyPath
              }, Context) ->
     Types = get_types(FailedSchemaJObj),
-    add_validation_error(FailedKeyPath
-                         ,<<"type">>
-                         ,[{<<"message">>, <<"Value did not match type(s): ", Types/binary>>}
-                            ,{<<"target">>, Types}
-                          ]
-                         ,Context
-                        );
+    add_validation_error(
+        FailedKeyPath
+        ,<<"type">>
+        ,wh_json:from_list([
+             {<<"message">>, <<"Value did not match type(s): ", Types/binary>>}
+             ,{<<"target">>, Types}
+         ])
+        ,Context
+    );
 failed_error({'data_invalid'
               ,_FailedSchemaJObj
               ,{'missing_required_property', FailKey}
               ,_FailedValue
               ,FailedKeyPath
              }, Context) ->
-    add_validation_error([FailedKeyPath, FailKey]
-                         ,<<"required">>
-                         ,<<"Field is required but missing">>
-                         ,Context);
+    add_validation_error(
+        [FailedKeyPath, FailKey]
+        ,<<"required">>
+        ,wh_json:from_list([
+             {<<"message">>, <<"Field is required but missing">>}
+         ])
+        ,Context
+    );
 failed_error({'data_invalid'
               ,_FailedSchemaJObj
               ,FailMsg
@@ -760,7 +801,14 @@ failed_error({'data_invalid'
     lager:debug("failed schema: ~p", [_FailedSchemaJObj]),
     lager:debug("failed value: ~p", [_FailedValue]),
     lager:debug("failed keypath: ~p", [FailedKeyPath]),
-    add_validation_error(FailedKeyPath, wh_util:to_binary(FailMsg), <<"failed to validate">>, Context).
+    add_validation_error(
+        FailedKeyPath
+        ,wh_util:to_binary(FailMsg)
+        ,wh_json:from_list([
+             {<<"message">>, <<"failed to validate">>}
+         ])
+        ,Context
+    ).
 
 -spec get_disallow(wh_json:object()) -> ne_binary().
 get_disallow(JObj) ->
