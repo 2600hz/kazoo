@@ -479,7 +479,7 @@ admin_db_compact(DbName) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Delete a database
+%% Delete a database (takes an 'encoded' DbName)
 %% @end
 %%--------------------------------------------------------------------
 -spec db_delete(text()) -> boolean().
