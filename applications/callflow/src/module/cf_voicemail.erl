@@ -1124,24 +1124,55 @@ maybe_save_meta(Length, #mailbox{delete_after_notify='true'}=Box, Call, MediaId,
 
 -spec save_meta(pos_integer(), mailbox(), whapps_call:call(), ne_binary()) -> 'ok'.
 save_meta(Length, #mailbox{mailbox_id=Id}, Call, MediaId) ->
+    Timestamp = new_timestamp(),
+    Metadata = create_metadata_object(Length, Call, MediaId, Timestamp),
+    {'ok', _BoxJObj} = save_metadata(Metadata, whapps_call:account_db(Call), Id),
+    lager:debug("stored voicemail metadata for ~s", [MediaId]),
+
+    publish_voicemail_saved(Length, Id, Call, MediaId, Timestamp).
+
+-spec create_metadata_object(pos_integer(), whapps_call:call(), ne_binary(), gregorian_seconds()) ->
+                                    wh_json:object().
+create_metadata_object(Length, Call, MediaId, Timestamp) ->
     ExternalMediaUrl = case couch_mgr:open_doc(whapps_call:account_db(Call), MediaId) of
                            {'ok', JObj} -> wh_json:get_value(<<"external_media_url">>, JObj);
                            {'error', _} -> 'undefined'
                        end,
-    Metadata = wh_json:from_list(props:filter_undefined(
-                 [{<<"timestamp">>, new_timestamp()}
-                  ,{<<"from">>, whapps_call:from(Call)}
-                  ,{<<"to">>, whapps_call:to(Call)}
-                  ,{<<"caller_id_number">>, get_caller_id_number(Call)}
-                  ,{<<"caller_id_name">>, get_caller_id_name(Call)}
-                  ,{<<"call_id">>, whapps_call:call_id(Call)}
-                  ,{<<"folder">>, ?FOLDER_NEW}
-                  ,{<<"length">>, Length}
-                  ,{<<"media_id">>, MediaId}
-                  ,{<<"external_media_url">>, ExternalMediaUrl}
-                 ])),
-    {'ok', _BoxJObj} = save_metadata(Metadata, whapps_call:account_db(Call), Id),
-    lager:debug("stored voicemail metadata for ~s", [MediaId]).
+
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"timestamp">>, Timestamp}
+         ,{<<"from">>, whapps_call:from(Call)}
+         ,{<<"to">>, whapps_call:to(Call)}
+         ,{<<"caller_id_number">>, get_caller_id_number(Call)}
+         ,{<<"caller_id_name">>, get_caller_id_name(Call)}
+         ,{<<"call_id">>, whapps_call:call_id(Call)}
+         ,{<<"folder">>, ?FOLDER_NEW}
+         ,{<<"length">>, Length}
+         ,{<<"media_id">>, MediaId}
+         ,{<<"external_media_url">>, ExternalMediaUrl}
+        ])).
+
+-spec publish_voicemail_saved(pos_integer(), ne_binary(), whapps_call:call(), ne_binary(), gregorian_seconds()) ->
+                                     'ok'.
+publish_voicemail_saved(Length, Id, Call, MediaId, Timestamp) ->
+    Prop = [{<<"From-User">>, whapps_call:from_user(Call)}
+            ,{<<"From-Realm">>, whapps_call:from_realm(Call)}
+            ,{<<"To-User">>, whapps_call:to_user(Call)}
+            ,{<<"To-Realm">>, whapps_call:to_realm(Call)}
+            ,{<<"Account-DB">>, whapps_call:account_db(Call)}
+            ,{<<"Account-ID">>, whapps_call:account_id(Call)}
+            ,{<<"Voicemail-Box">>, Id}
+            ,{<<"Voicemail-Name">>, MediaId}
+            ,{<<"Caller-ID-Number">>, get_caller_id_number(Call)}
+            ,{<<"Caller-ID-Name">>, get_caller_id_name(Call)}
+            ,{<<"Voicemail-Timestamp">>, Timestamp}
+            ,{<<"Voicemail-Length">>, Length}
+            ,{<<"Call-ID">>, whapps_call:call_id(Call)}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    wapi_notifications:publish_voicemail_saved(Prop),
+    lager:debug("published voicemail_saved for ~s", [Id]).
 
 -spec maybe_transcribe(whapps_call:call(), ne_binary(), boolean()) ->
                               api_object().
@@ -1847,7 +1878,7 @@ tmp_file() ->
 %% with year 0.
 %% @end
 %%--------------------------------------------------------------------
--spec new_timestamp() -> pos_integer().
+-spec new_timestamp() -> gregorian_seconds().
 new_timestamp() -> wh_util:current_tstamp().
 
 %%--------------------------------------------------------------------
