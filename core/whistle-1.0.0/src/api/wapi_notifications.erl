@@ -14,6 +14,7 @@
 
 -export([voicemail/1, voicemail_v/1
          ,voicemail_full/1, voicemail_full_v/1
+         ,voicemail_saved/1, voicemail_saved_v/1
          ,fax_inbound/1, fax_inbound_v/1
          ,fax_inbound_error/1, fax_inbound_error_v/1
          ,fax_outbound/1, fax_outbound_v/1
@@ -40,6 +41,7 @@
 
 -export([publish_voicemail/1, publish_voicemail/2
          ,publish_voicemail_full/1, publish_voicemail_full/2
+         ,publish_voicemail_saved/1, publish_voicemail_saved/2
          ,publish_fax_inbound/1, publish_fax_inbound/2
          ,publish_fax_outbound/1, publish_fax_outbound/2
          ,publish_fax_inbound_error/1, publish_fax_inbound_error/2
@@ -748,6 +750,7 @@ bind_to_q(Q, 'undefined') ->
     'ok' = amqp_util:bind_q_to_notifications(Q, <<"notifications.*.*">>);
 bind_to_q(Q, ['new_voicemail'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_VOICEMAIL_NEW),
+    bind_to_q(Q, T);
 bind_to_q(Q, ['voicemail_saved'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_VOICEMAIL_SAVED),
     bind_to_q(Q, T);
