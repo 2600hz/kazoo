@@ -57,10 +57,27 @@ resolve_method(Method) ->
 handle_rate_req(JObj, _Props) ->
     Entity = wh_json:get_value(<<"Entity">>, JObj),
     IncludeRealm = wh_json:is_true(<<"With-Realm">>, JObj, 'false'),
-    MethodName = resolve_method(wh_json:get_value(<<"Method">>, JObj)),
+    MethodList = lookup_methods(JObj),
     lager:debug("Handle rate limits request for ~s", [Entity]),
-    Limits = lookup_rate_limit_records(Entity, IncludeRealm, [MethodName]),
+    Limits = lookup_rate_limit_records(Entity, IncludeRealm, MethodList),
     send_response(Limits, JObj).
+
+-spec lookup_methods(wh_json:object()) -> api_binaries().
+lookup_methods(JObj) ->
+    Method = wh_json:get_value(<<"Method">>, JObj),
+    MethodName = case Method of
+                     'undefined' -> 'undefuned';
+                     _ -> [resolve_method(Method)]
+                 end,
+    Methods = wh_json:get_value(<<"Method-List">>, JObj),
+    MethodNames = case is_list(Methods) of
+                      'true' -> lists:map(fun resolve_method/1, Methods);
+                      'false' -> []
+                  end,
+    case is_list(MethodName) of
+        'false' -> MethodNames;
+        'true' -> MethodName
+    end.
 
 -spec send_response(wh_json:object(), wh_json:object()) -> 'ok'.
 send_response(Limits, Reqest) ->
