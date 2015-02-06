@@ -65,7 +65,7 @@ ratelimits_resp(JObj) -> ratelimits_resp(wh_json:to_proplist(JObj)).
 publish_ratelimits_resp(Srv, JObj) -> publish_ratelimits_resp(Srv, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_ratelimits_resp(Srv, Req, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?RATELIMITS_RESP_VALUES, fun ratelimits_resp/1),
-    amqp_util:basic_publish(?FRONTIER_EXCHANGE, Srv, Payload, ContentType).
+    amqp_util:targeted_publish(Srv, Payload, ContentType).
 
 -spec ratelimits_req_v(api_terms()) -> boolean().
 ratelimits_req_v(Prop) when is_list(Prop) ->
@@ -88,7 +88,7 @@ acls_resp(JObj) -> acls_resp(wh_json:to_proplist(JObj)).
 publish_acls_resp(Srv, JObj) -> publish_acls_resp(Srv, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_acls_resp(Srv, Req, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?ACL_RESP_VALUES, fun acls_resp/1),
-    amqp_util:basic_publish(?FRONTIER_EXCHANGE, Srv, Payload, ContentType).
+    amqp_util:targeted_publish(Srv, Payload, ContentType).
 
 -spec acls_req_v(api_terms()) -> boolean().
 acls_req_v(Prop) when is_list(Prop) ->
