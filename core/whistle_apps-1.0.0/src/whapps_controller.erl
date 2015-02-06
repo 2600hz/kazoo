@@ -83,6 +83,7 @@ restart_app(App) when is_atom(App) ->
           ,'public_key'
           ,'ranch'
           ,'sasl','socketio','ssl','stdlib','syslog'
+          ,'webseq'
           ,'whistle_amqp','whistle_apps','whistle_couch','whistle_stats'
           ,'xmerl'
          ]).
