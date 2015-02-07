@@ -51,6 +51,7 @@
 
 -record(state, {call = whapps_call:new() :: whapps_call:call()
                 ,flow = wh_json:new() :: wh_json:object()
+                ,flows = [] :: wh_json:objects()
                 ,cf_module_pid :: {pid(), reference()} | 'undefined'
                 ,status = <<"sane">> :: ne_binary()
                 ,queue :: api_binary()
@@ -334,15 +335,18 @@ handle_cast({'continue', Key}, #state{flow=Flow
                     {'noreply', State}
             end
     end;
-handle_cast('stop', State) ->
+handle_cast('stop', #state{flows=[]}=State) ->
     {'stop', 'normal', State};
+handle_cast('stop', #state{flows=[Flow|Flows]}=State) ->
+    {'noreply', launch_cf_module(State#state{flow=Flow, flows=Flows})};
 handle_cast('transfer', State) ->
     {'stop', {'shutdown', 'transfer'}, State};
 handle_cast('control_usurped', State) ->
     {'stop', {'shutdown', 'control_usurped'}, State};
-handle_cast({'branch', NewFlow}, State) ->
+handle_cast({'branch', NewFlow}, #state{flow=Flow, flows=Flows}=State) ->
     lager:info("callflow has been branched"),
-    {'noreply', launch_cf_module(State#state{flow=NewFlow})};
+    NewFlows = [wh_json:get_value([<<"children">>, <<"_">>], Flow)|Flows],
+    {'noreply', launch_cf_module(State#state{flow=NewFlow, flows=NewFlows})};
 handle_cast({'callid_update', NewCallId}, #state{call=Call}=State) ->
     put('callid', NewCallId),
     PrevCallId = whapps_call:call_id_direct(Call),
