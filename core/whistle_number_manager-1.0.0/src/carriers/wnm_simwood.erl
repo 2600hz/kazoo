@@ -41,7 +41,7 @@
                           {'ok', wh_json:objects()} |
                           {'error', _}.
 find_numbers(Prefix, Quantity, _Options) ->
-    URL = list_to_binary([?SW_NUMBER_URL, "/", ?SW_ACCOUNT_ID, <<"/available/standard/">>, sw_quantity(Quantity), "?pattern=", Prefix]), 
+    URL = list_to_binary([?SW_NUMBER_URL, "/", ?SW_ACCOUNT_ID, <<"/available/standard/">>, sw_quantity(Quantity), "?pattern=", Prefix, "*"]), 
     {'ok', Body} = query_simwood(URL, 'get'), 
     process_response(wh_json:decode(Body)).
 
