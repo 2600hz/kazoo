@@ -31,28 +31,32 @@ reconcile(Services) ->
             lager:debug("unable to get current ui apps in service: ~p for account: ~s", [_R, AccountId]),
             Services;
         {'ok', AccountDoc} ->
-            wh_json:foldl(
-                fun(_, AppJObj, S) ->
-                    case is_in_use(AppJObj) of
-                        'false' -> S;
-                        'true' ->
-                            AppName = wh_json:get_value(<<"name">>, AppJObj),
-                            wh_services:update(?CATEGORY, AppName, 1, S)
-                    end
-                end
-                ,wh_services:reset_category(<<"ui_apps">>, Services)
-                ,wh_json:get_value(<<"ui_apps">>, AccountDoc, wh_json:new())
-            )
+            reconcile_account(Services, AccountDoc)
     end.
 
+-spec reconcile_account(wh_services:services(), wh_json:object()) -> wh_services:services().
+reconcile_account(Services, AccountDoc) ->
+    wh_json:foldl(
+      fun(_, AppJObj, S) ->
+              case is_in_use(AppJObj) of
+                  'false' -> S;
+                  'true' ->
+                      AppName = wh_json:get_value(<<"name">>, AppJObj),
+                      wh_services:update(?CATEGORY, AppName, 1, S)
+              end
+      end
+      ,wh_services:reset_category(<<"ui_apps">>, Services)
+      ,wh_json:get_value(<<"ui_apps">>, AccountDoc, wh_json:new())
+     ).
+
 reconcile(Services, AppName) ->
-    % Because you can only be charged once for an app
+    %% Because you can only be charged once for an app
     wh_services:update(
-        ?CATEGORY
-        ,AppName
-        ,1
-        ,wh_services:reset_category(<<"ui_apps">>, Services)
-    ).
+      ?CATEGORY
+      ,AppName
+      ,1
+      ,wh_services:reset_category(<<"ui_apps">>, Services)
+     ).
 
 %%--------------------------------------------------------------------
 %% @public

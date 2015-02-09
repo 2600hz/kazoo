@@ -20,8 +20,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec allowed_apps(ne_binary()) -> wh_json:objects().
-
-allowed_apps(AccountId) ->
+allowed_apps(<<_/binary>> = AccountId) ->
     ServicePlan = wh_services:service_plan_json(AccountId),
     case wh_json:get_value(<<"ui_apps">>, ServicePlan) of
         'undefined' ->
@@ -37,7 +36,7 @@ allowed_apps(AccountId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec allowed_app(ne_binary(), ne_binary()) -> api_object().
-allowed_app(AccountId, AppId) ->
+allowed_app(<<_/binary>> = AccountId, <<_/binary>> = AppId) ->
     Apps = allowed_apps(AccountId),
     filter_apps(Apps, AppId).
 
@@ -115,10 +114,10 @@ load_all_apps(AppsPlan) ->
 load_apps(AppsPlan) ->
     lager:debug("loading specific apps"),
     wh_json:foldl(
-        fun load_apps_foldl/3
-        ,[]
-        ,AppsPlan
-    ).
+      fun load_apps_foldl/3
+      ,[]
+      ,AppsPlan
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -162,10 +161,10 @@ set_account(Account, JObj) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     AccountId = wh_util:format_account_id(Account, 'raw'),
     Corrected =
-        wh_json:set_values([
-            {<<"pvt_account_id">>, AccountId}
-            ,{<<"pvt_account_db">>, AccountDb}
-        ], JObj),
+        wh_json:set_values(
+          [{<<"pvt_account_id">>, AccountId}
+           ,{<<"pvt_account_db">>, AccountDb}
+          ], JObj),
     case couch_mgr:save_doc(AccountDb, Corrected) of
         {'error', _R} ->
             lager:error("failed to correct app"),

@@ -115,13 +115,13 @@ couch_open(AccountMODb, DocId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec save_doc(ne_binary(), ne_binary()) ->
+-spec save_doc(ne_binary(), wh_json:object()) ->
                       {'ok', wh_json:object()} |
                       {'error', atom()}.
--spec save_doc(ne_binary(), ne_binary(), integer()) ->
+-spec save_doc(ne_binary(), wh_json:object(), integer()) ->
                       {'ok', wh_json:object()} |
                       {'error', atom()}.
--spec save_doc(ne_binary(), ne_binary(), integer(), integer()) ->
+-spec save_doc(ne_binary(), wh_json:object(), integer(), integer()) ->
                       {'ok', wh_json:object()} |
                       {'error', atom()}.
 save_doc(Account, Doc) ->
@@ -136,7 +136,7 @@ save_doc(Account, Doc, Year, Month) ->
     AccountMODb = get_modb(Account, Year, Month),
     couch_save(AccountMODb, Doc, 3).
 
--spec couch_save(ne_binary(), ne_binary(), integer()) ->
+-spec couch_save(ne_binary(), wh_json:object(), integer()) ->
                         {'ok', wh_json:object()} |
                         {'error', atom()}.
 couch_save(AccountMODb, _Doc, 0) ->

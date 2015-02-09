@@ -53,7 +53,8 @@
         ]).
 -export([get_path/2]).
 -export([get_language/1
-         ,get_language/2]).
+         ,get_language/2
+        ]).
 -export([get_user_timezone/2
          ,get_account_timezone/1
         ]).
@@ -640,14 +641,15 @@ load_apps(AccountId, UserId) ->
     FilteredApps = filter_apps(Apps, AccountId, UserId),
     format_apps(AccountId, UserId, FilteredApps).
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec filter_apps(wh_json:object(), ne_binary(), ne_binary()) -> wh_json:objects().
--spec filter_apps(wh_json:objects(), wh_json:object(), ne_binary(), wh_json:object()) -> wh_json:objects().
+-spec filter_apps(wh_json:objects(), ne_binary(), ne_binary()) ->
+                         wh_json:objects().
+-spec filter_apps(wh_json:objects(), wh_json:object(), ne_binary(), wh_json:objects()) ->
+                         wh_json:objects().
 filter_apps(Apps, AccountId, UserId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_doc(AccountDb, AccountId) of
@@ -666,7 +668,6 @@ filter_apps([App|Apps], AccountDoc, UserId, Acc) ->
         'true' ->
             filter_apps(Apps, AccountDoc, UserId, [App|Acc])
     end.
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -691,18 +692,16 @@ is_authorized(AccountDoc, UserId, App) ->
             'false'
     end.
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
 -spec format_apps(wh_json:objects() | ne_binary(), ne_binary(), wh_json:objects()) -> wh_json:objects().
+format_apps([], _, Acc) -> Acc;
 format_apps(AccountId, UserId, JObjs) when is_binary(AccountId) ->
     Lang = get_language(AccountId, UserId),
     format_apps(JObjs, Lang, []);
-format_apps([], _, Acc) ->
-    Acc;
 format_apps([JObj|JObjs], Lang, Acc) ->
     FormatedApp = format_app(JObj, Lang),
     format_apps(JObjs, Lang, [FormatedApp|Acc]).
@@ -717,14 +716,14 @@ format_app(JObj, Lang) ->
     DefaultLabel = wh_json:get_value([<<"i18n">>, ?DEFAULT_LANGUAGE, <<"label">>], JObj),
     wh_json:from_list(
         props:filter_undefined(
-            [{<<"id">>, wh_json:get_first_defined([<<"id">>, <<"_id">>], JObj)}
-             ,{<<"name">>, wh_json:get_value(<<"name">>, JObj)}
-             ,{<<"api_url">>, wh_json:get_value(<<"api_url">>, JObj)}
-             ,{<<"source_url">>, wh_json:get_value(<<"source_url">>, JObj)}
-             ,{<<"label">>, wh_json:get_value([<<"i18n">>, Lang, <<"label">>], JObj, DefaultLabel)}
-            ]
-        )
-    ).
+          [{<<"id">>, wh_json:get_first_defined([<<"id">>, <<"_id">>], JObj)}
+           ,{<<"name">>, wh_json:get_value(<<"name">>, JObj)}
+           ,{<<"api_url">>, wh_json:get_value(<<"api_url">>, JObj)}
+           ,{<<"source_url">>, wh_json:get_value(<<"source_url">>, JObj)}
+           ,{<<"label">>, wh_json:get_value([<<"i18n">>, Lang, <<"label">>], JObj, DefaultLabel)}
+          ]
+         )
+     ).
 
 %%--------------------------------------------------------------------
 %% @public

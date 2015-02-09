@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600hz
+%%% @copyright (C) 2013-2015, 2600hz
 %%% @doc
 %%%
 %%% Listing of all expected v1 callbacks
@@ -45,7 +45,6 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.post.apps_store">>, ?MODULE, 'post'),
     crossbar_bindings:bind(<<"*.execute.delete.apps_store">>, ?MODULE, 'delete').
 
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -53,10 +52,10 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods() | [].
--spec allowed_methods(path_token()) -> http_methods() | [].
--spec allowed_methods(path_token(), path_token()) -> http_methods() | [].
--spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods() | [].
+-spec allowed_methods() -> http_methods().
+-spec allowed_methods(path_token()) -> http_methods().
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
+-spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET].
 allowed_methods(_) ->
@@ -211,7 +210,7 @@ delete(Context, _Id) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec validate_app(cb_context:context(), ne_binary(), http_methods()) -> cb_context:context().
+-spec validate_app(cb_context:context(), ne_binary(), http_method()) -> cb_context:context().
 validate_app(Context, Id, ?HTTP_GET) ->
     Context1 = load_app(Context, Id),
     case cb_context:resp_status(Context1) of
@@ -259,7 +258,7 @@ validate_modification(Context, Id) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec can_modify(cb_context:context(), ne_binary()) -> boolean().
+-spec can_modify(cb_context:context(), ne_binary()) -> cb_context:context().
 can_modify(Context, Id) ->
     AccountId = cb_context:account_id(Context),
     case cb_apps_util:allowed_app(AccountId, Id) of
@@ -268,10 +267,10 @@ can_modify(Context, Id) ->
             cb_context:add_system_error('forbidden', Props, Context);
         App ->
             cb_context:store(
-                cb_context:set_resp_status(Context, 'success')
-                ,Id
-                ,App
-            )
+              cb_context:set_resp_status(Context, 'success')
+              ,Id
+              ,App
+             )
     end.
 
 %%--------------------------------------------------------------------
@@ -284,11 +283,11 @@ load_apps(Context) ->
     AccountId = cb_context:account_id(Context),
     Apps = cb_apps_util:allowed_apps(AccountId),
     cb_context:setters(
-        Context
-        ,[{fun cb_context:set_resp_status/2, 'success'}
-          ,{fun cb_context:set_resp_data/2, normalize_apps_result(Apps)}
-         ]
-    ).
+      Context
+      ,[{fun cb_context:set_resp_status/2, 'success'}
+        ,{fun cb_context:set_resp_data/2, normalize_apps_result(Apps)}
+       ]
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -304,15 +303,15 @@ normalize_apps_result([], Acc) -> Acc;
 normalize_apps_result([App|Apps], Acc) ->
     JObj =
         wh_json:from_list(
-            props:filter_undefined([
-                {<<"id">>, wh_json:get_value(<<"_id">>, App)}
-                ,{<<"name">>, wh_json:get_value(<<"name">>, App)}
-                ,{<<"i18n">>, wh_json:get_value(<<"i18n">>, App)}
-                ,{<<"tags">>, wh_json:get_value(<<"tags">>, App)}
-                ,{<<"api_url">>, wh_json:get_value(<<"api_url">>, App)}
-                ,{<<"source_url">>, wh_json:get_value(<<"source_url">>, App)}
-            ])
-        ),
+            props:filter_undefined(
+              [{<<"id">>, wh_json:get_value(<<"_id">>, App)}
+               ,{<<"name">>, wh_json:get_value(<<"name">>, App)}
+               ,{<<"i18n">>, wh_json:get_value(<<"i18n">>, App)}
+               ,{<<"tags">>, wh_json:get_value(<<"tags">>, App)}
+               ,{<<"api_url">>, wh_json:get_value(<<"api_url">>, App)}
+               ,{<<"source_url">>, wh_json:get_value(<<"source_url">>, App)}
+              ])
+         ),
     normalize_apps_result(Apps, [JObj|Acc]).
 
 %%--------------------------------------------------------------------
@@ -326,17 +325,17 @@ load_app(Context, AppId) ->
     case cb_apps_util:allowed_app(AccountId, AppId) of
         'undefined' ->
             cb_context:add_system_error(
-                'bad_identifier'
-                ,[{'details', AppId}]
-                ,Context
-            );
+              'bad_identifier'
+              ,[{'details', AppId}]
+              ,Context
+             );
         App ->
             cb_context:setters(
-                Context
-                ,[{fun cb_context:set_doc/2, App}
-                  ,{fun cb_context:set_resp_status/2, 'success'}
-                 ]
-            )
+              Context
+              ,[{fun cb_context:set_doc/2, App}
+                ,{fun cb_context:set_resp_status/2, 'success'}
+               ]
+             )
     end.
 
 %%--------------------------------------------------------------------
@@ -345,10 +344,11 @@ load_app(Context, AppId) ->
 %% maybe_install a new app on the account
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_modify(ne_binary(), cb_context:context(), atom()) -> cb_context:context().
+-type modify_fun() :: fun((cb_context:context(), ne_binary()) -> cb_context:context()).
+-spec maybe_modify(cb_context:context(), ne_binary(), modify_fun()) -> cb_context:context().
 maybe_modify(Context, Id, Fun) ->
     case not(wh_service_ui_apps:is_in_use(cb_context:req_data(Context)))
-         orelse wh_json:is_true(<<"accept_charges">>, cb_context:req_json(Context))
+        orelse wh_json:is_true(<<"accept_charges">>, cb_context:req_json(Context))
     of
         'true' -> Fun(Context, Id);
         'false' -> dry_run(Context, Id, Fun)
@@ -359,7 +359,7 @@ maybe_modify(Context, Id, Fun) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec dry_run(cb_context:context(), ne_binary(), atom()) -> cb_context:context().
+-spec dry_run(cb_context:context(), ne_binary(), modify_fun()) -> cb_context:context().
 dry_run(Context, Id, Fun) ->
     AccountId = cb_context:account_id(Context),
     AppName = wh_json:get_value(<<"name">>, cb_context:fetch(Context, Id)),
@@ -387,10 +387,10 @@ install(Context, Id) ->
             AppName = wh_json:get_value(<<"name">>, cb_context:fetch(Context, Id)),
             UpdatedApps =
                 wh_json:set_value(
-                    Id
-                    ,wh_json:set_value(<<"name">>, AppName, Data)
-                    ,Apps
-                ),
+                  Id
+                  ,wh_json:set_value(<<"name">>, AppName, Data)
+                  ,Apps
+                 ),
             UpdatedDoc = wh_json:set_value(<<"apps">>, UpdatedApps, Doc),
             cb_context:set_doc(Context, UpdatedDoc);
         _ ->
@@ -434,10 +434,10 @@ update(Context, Id) ->
             AppName = wh_json:get_value(<<"name">>, cb_context:fetch(Context, Id)),
             UpdatedApps =
                 wh_json:set_value(
-                    Id
-                    ,wh_json:set_value(<<"name">>, AppName, Data)
-                    ,Apps
-                ),
+                  Id
+                  ,wh_json:set_value(<<"name">>, AppName, Data)
+                  ,Apps
+                 ),
             UpdatedDoc = wh_json:set_value(<<"apps">>, UpdatedApps, Doc),
             cb_context:set_doc(Context, UpdatedDoc)
     end.
@@ -449,9 +449,9 @@ update(Context, Id) ->
 %%--------------------------------------------------------------------
 -spec get_icon(cb_context:context()) -> cb_context:context().
 get_icon(Context) ->
-   JObj = cb_context:doc(Context),
+    JObj = cb_context:doc(Context),
     Icon = wh_json:get_value(?ICON, JObj),
-    get_attachement(Context, Icon).
+    get_attachment(Context, Icon).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -485,11 +485,11 @@ get_screenshot(Context, Number) ->
     case maybe_get_screenshot(Context, Number) of
         'error' ->
             crossbar_util:response_bad_identifier(
-                <<?SCREENSHOT/binary , "/", Number/binary>>
-                ,Context
-            );
+              <<?SCREENSHOT/binary , "/", Number/binary>>
+              ,Context
+             );
         {'ok', Name, _} ->
-            get_attachement(Context, Name)
+            get_attachment(Context, Name)
     end.
 
 %%--------------------------------------------------------------------
@@ -508,34 +508,47 @@ load_account(Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_attachement(cb_context:context(), ne_binary()) -> cb_context:context().
-get_attachement(Context, Id) ->
+-spec get_attachment(cb_context:context(), ne_binary()) ->
+                            cb_context:context().
+-spec get_attachment(cb_context:context(), ne_binary(), wh_json:object(), wh_json:object()) ->
+                            cb_context:context().
+get_attachment(Context, Id) ->
     JObj = cb_context:doc(Context),
-    AppId = wh_json:get_value(<<"_id">>, JObj),
     case wh_doc:attachment(JObj, Id) of
         'undefined' ->
+            AppId = wh_json:get_value(<<"_id">>, JObj),
             crossbar_util:response_bad_identifier(AppId, Context);
         Attachment ->
-            Db = wh_json:get_value(<<"pvt_account_db">>, JObj),
-            case couch_mgr:fetch_attachment(Db, AppId, Id) of
-                {'error', R} ->
-                    Reason = wh_util:to_binary(R),
-                    lager:error("failed to fetch attachement, ~s in ~s, (account: ~s)", [Id, AppId, Db]),
-                    cb_context:add_system_error('datastore_fault', [{'details', Reason}], Context);
-                {'ok', AttachBin} ->
-                    RespHeaders =
-                        [{<<"Content-Disposition">>, <<"attachment; filename=", Id/binary>>}
-                         ,{<<"Content-Type">>, wh_json:get_value(<<"content_type">>, Attachment)}
-                         ,{<<"Content-Length">>, wh_json:get_value(<<"length">>, Attachment)}
-                        ],
-                    cb_context:setters(
-                        Context
-                        ,[{fun cb_context:set_resp_data/2, AttachBin}
-                          ,{fun cb_context:add_resp_headers/2, RespHeaders}
-                        ]
-                    )
-            end
+            get_attachment(Context, Id, JObj, Attachment)
     end.
+
+get_attachment(Context, Id, JObj, Attachment) ->
+    Db = wh_json:get_value(<<"pvt_account_db">>, JObj),
+    AppId = wh_json:get_value(<<"_id">>, JObj),
+
+    case couch_mgr:fetch_attachment(Db, AppId, Id) of
+        {'error', R} ->
+            Reason = wh_util:to_binary(R),
+            lager:error("failed to fetch attachment, ~s in ~s, (account: ~s)", [Id, AppId, Db]),
+            cb_context:add_system_error('datastore_fault', [{'details', Reason}], Context);
+        {'ok', AttachBin} ->
+            add_attachment(Context, Id, Attachment, AttachBin)
+    end.
+
+-spec add_attachment(cb_context:context(), ne_binary(), wh_json:object(), binary()) ->
+                            cb_context:context().
+add_attachment(Context, Id, Attachment, AttachBin) ->
+    RespHeaders =
+        [{<<"Content-Disposition">>, <<"attachment; filename=", Id/binary>>}
+         ,{<<"Content-Type">>, wh_json:get_value(<<"content_type">>, Attachment)}
+         ,{<<"Content-Length">>, wh_json:get_value(<<"length">>, Attachment)}
+        ],
+    cb_context:setters(
+      Context
+      ,[{fun cb_context:set_resp_data/2, AttachBin}
+        ,{fun cb_context:add_resp_headers/2, RespHeaders}
+       ]
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
