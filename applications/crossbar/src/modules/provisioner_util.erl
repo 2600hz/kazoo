@@ -20,6 +20,7 @@
 -export([maybe_delete_account/1]).
 -export([maybe_send_contact_list/1]).
 -export([get_provision_defaults/1]).
+-export([delete_full_provision/2]).
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".devices">>).
 -define(PROVISIONER_CONFIG, <<"provisioner">>).
@@ -41,7 +42,8 @@ get_mac_address(Context) ->
                        ,""
                        ,[{'return', 'list'}
                          ,'global'
-                        ])
+                        ]
+                      )
     end.
 
 %%--------------------------------------------------------------------
@@ -63,7 +65,8 @@ get_old_mac_address(Context) ->
                                ,""
                                ,[{'return', 'list'}
                                  ,'global'
-                                ])
+                                ]
+                              )
             end
     end.
 
@@ -82,8 +85,8 @@ maybe_provision(Context, 'success') ->
     case MACAddress =/= 'undefined' andalso get_provisioning_type() of
         <<"super_awesome_provisioner">> ->
             _ = spawn(fun() ->
-                        do_full_provisioner_provider(MACAddress, Context),
-                        do_full_provision(MACAddress, Context)
+                              do_full_provisioner_provider(MACAddress, Context),
+                              do_full_provision(MACAddress, Context)
                       end),
             'true';
         <<"awesome_provisioner">> ->
@@ -94,7 +97,7 @@ maybe_provision(Context, 'success') ->
             'true';
         <<"provisioner_v5">>  ->
             maybe_provision_v5(Context, cb_context:req_verb(Context)),
-            true;
+            'true';
         _ -> 'false'
     end;
 maybe_provision(_Context, _Status) -> 'false'.
@@ -130,18 +133,22 @@ maybe_provision_v5(Context, ?HTTP_POST) ->
 -spec maybe_delete_provision(cb_context:context(), crossbar_status()) -> boolean().
 maybe_delete_provision(Context) ->
     maybe_delete_provision(Context, cb_context:resp_status(Context)).
-maybe_delete_provision(#cb_context{doc=JObj, auth_token=AuthToken}=Context, 'success') ->
+maybe_delete_provision(Context, 'success') ->
     MACAddress = get_mac_address(Context),
-    case MACAddress =/= 'undefined' andalso get_provisioning_type() of
+
+    case MACAddress =/= 'undefined'
+        andalso get_provisioning_type()
+    of
         <<"super_awesome_provisioner">> ->
-            _ = spawn(fun() ->
-                              delete_full_provision(MACAddress, Context)
-                      end),
+            _ = spawn(?MODULE, 'delete_full_provision', [MACAddress, Context]),
             'true';
         <<"provisioner_v5">>  ->
-            _ = spawn(fun() -> provisioner_v5:delete(JObj, AuthToken) end),
+            _ = spawn('provisioner_v5', 'delete', [cb_context:doc(Context)
+                                                   ,cb_context:auth_token(Context)
+                                                  ]),
             'true';
-        _ -> 'false'
+        _ ->
+            'false'
     end;
 maybe_delete_provision(_Context, _Status) -> 'false'.
 
@@ -152,13 +159,16 @@ maybe_delete_provision(_Context, _Status) -> 'false'.
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_update_account(cb_context:context()) -> boolean().
-maybe_update_account(#cb_context{account_id=AccountId
-                                 ,auth_token=AuthToken
-                                 ,doc=Doc}=Context) ->
-    case cb_context:is_context(Context) andalso get_provisioning_type() of
+maybe_update_account(Context) ->
+    case cb_context:is_context(Context)
+        andalso get_provisioning_type()
+    of
         'false' -> 'false';
         <<"provisioner_v5">> ->
-            _ = spawn('provisioner_v5', 'update_account', [AccountId, Doc, AuthToken]),
+            _ = spawn('provisioner_v5', 'update_account', [cb_context:account_id(Context)
+                                                           ,cb_context:doc(Context)
+                                                           ,cb_context:auth_token(Context)
+                                                          ]),
             'true';
         _ -> 'false'
     end.
@@ -170,14 +180,18 @@ maybe_update_account(#cb_context{account_id=AccountId
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_delete_account(cb_context:context()) -> boolean().
-maybe_delete_account(#cb_context{account_id=AccountId, auth_token=AuthToken}=Context) ->
-    case cb_context:is_context(Context) andalso get_provisioning_type() of
+maybe_delete_account(Context) ->
+    case cb_context:is_context(Context)
+        andalso get_provisioning_type()
+    of
         'false' -> 'false';
         <<"super_awesome_provisioner">> ->
             _ = spawn(fun() -> delete_account(Context) end),
             'true';
         <<"provisioner_v5">> ->
-            _ = spawn('provisioner_v5', 'delete_account', [AccountId, AuthToken]),
+            _ = spawn('provisioner_v5', 'delete_account', [cb_context:account_id(Context)
+                                                           ,cb_context:auth_token(Context)
+                                                          ]),
             'true';
         _ -> 'false'
     end.
@@ -212,7 +226,7 @@ do_full_provision_contact_list(Context) ->
 do_full_provision_contact_list(AccountId, AccountDb) ->
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
         {'ok', JObj} ->
-            Routines = [fun(J) -> wh_json:public_fields(J) end
+            Routines = [fun wh_json:public_fields/1
                         ,fun(J) ->
                                  ResellerId = wh_services:find_reseller_id(AccountId),
                                  wh_json:set_value(<<"provider_id">>, ResellerId, J)
@@ -255,7 +269,8 @@ should_build_contact_list(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_provision_defaults(cb_context:context()) -> cb_context:context().
-get_provision_defaults(#cb_context{doc=JObj}=Context) ->
+get_provision_defaults(Context) ->
+    JObj = cb_context:doc(Context),
     Url = [whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_url">>)
            ,"?request=data"
            ,"&brand=", mochiweb_util:quote_plus(wh_json:get_string_value([<<"properties">>, <<"brand">>], JObj))
@@ -275,10 +290,10 @@ get_provision_defaults(#cb_context{doc=JObj}=Context) ->
         {'ok', "200", _, Response} ->
             lager:debug("great success, accquired provisioning template"),
             JResp = wh_json:decode(Response),
-            Context#cb_context{
-              doc = wh_json:set_value(<<"template">>, JResp, JObj)
-              ,resp_status = 'success'
-             };
+            cb_context:setters(Context
+                               ,[{fun cb_context:set_doc/2, wh_json:set_value(<<"template">>, JResp, JObj)}
+                                 ,{fun cb_context:set_resp_status/2, 'success'}
+                                ]);
         {'ok', Status, _, _} ->
             lager:debug("could not get provisioning template defaults: ~s", [Status]),
             crossbar_util:response('error', <<"Error retrieving content from external site">>, 500, Context);
@@ -294,7 +309,8 @@ get_provision_defaults(#cb_context{doc=JObj}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec do_simple_provision(string(), cb_context:context()) -> boolean().
-do_simple_provision(MACAddress, #cb_context{doc=JObj}=Context) ->
+do_simple_provision(MACAddress, Context) ->
+    JObj = cb_context:doc(Context),
     case whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_url">>) of
         'undefined' -> 'false';
         Url ->
@@ -315,7 +331,7 @@ do_simple_provision(MACAddress, #cb_context{doc=JObj}=Context) ->
                    ],
             Encoded = mochiweb_util:urlencode(Body),
             lager:debug("posting to ~s with: ~-300p", [Url, Encoded]),
-            Res = ibrowse:send_req(Url, Headers, post, Encoded, HTTPOptions),
+            Res = ibrowse:send_req(Url, Headers, 'post', Encoded, HTTPOptions),
             lager:debug("response from server: ~p", [Res]),
             'true'
     end.
@@ -326,22 +342,23 @@ do_simple_provision(MACAddress, #cb_context{doc=JObj}=Context) ->
 %% post data to a provisiong server
 %% @end
 %%--------------------------------------------------------------------
--spec delete_account(api_binary() | cb_context:context()) -> boolean().
-delete_account(#cb_context{account_id=AccountId}) ->
-    delete_account(AccountId);
-delete_account(AccountId) ->
-    PartialURL = <<AccountId/binary>>,
-    maybe_send_to_full_provisioner(PartialURL).
+-spec delete_account(ne_binary() | cb_context:context()) -> boolean().
+delete_account(<<_/binary>> = AccountId) ->
+    maybe_send_to_full_provisioner(AccountId);
+delete_account(Context) ->
+    delete_account(cb_context:account_id(Context)).
+
 
 -spec delete_full_provision(string(), cb_context:context() | wh_json:object()) -> boolean().
 delete_full_provision(MACAddress, #cb_context{}=Context) ->
     case get_merged_device(MACAddress, Context) of
-        {'ok', #cb_context{doc=JObj}} ->
-            delete_full_provision(MACAddress, JObj)
+        {'ok', Context1} ->
+            delete_full_provision(MACAddress, cb_context:doc(Context1))
     end;
 delete_full_provision(MACAddress, JObj) ->
     PartialURL = <<(wh_json:get_binary_value(<<"account_id">>, JObj))/binary
-                   ,"/", (wh_util:to_binary(MACAddress))/binary>>,
+                   ,"/", (wh_util:to_binary(MACAddress))/binary
+                 >>,
     maybe_send_to_full_provisioner(PartialURL).
 
 -spec do_full_provision(string(), cb_context:context() | wh_json:object()) -> boolean().
@@ -359,10 +376,9 @@ do_full_provision(MACAddress, #cb_context{}=Context) ->
     end;
 do_full_provision(MACAddress, JObj) ->
     PartialURL = <<(wh_json:get_binary_value(<<"account_id">>, JObj))/binary
-                   ,"/", (wh_util:to_binary(MACAddress))/binary>>,
+                   ,"/", (wh_util:to_binary(MACAddress))/binary
+                 >>,
     maybe_send_to_full_provisioner(PartialURL, JObj).
-
-
 
 maybe_send_to_full_provisioner(PartialURL) ->
     case whapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_url">>) of
@@ -387,7 +403,7 @@ maybe_send_to_full_provisioner(PartialURL, JObj) ->
             case wh_json:get_integer_value([<<"error">>, <<"code">>], wh_json:decode(RawJObj)) of
                 'undefined' -> send_to_full_provisioner('post', FullUrl, JObj);
                 404 -> send_to_full_provisioner('put', FullUrl, JObj);
-                _ -> false
+                _ -> 'false'
             end
     end.
 
@@ -406,35 +422,34 @@ send_to_full_provisioner(FullUrl) ->
 
 -spec send_to_full_provisioner('put' | 'post', ne_binary(), wh_json:object()) -> boolean().
 send_to_full_provisioner('put', FullUrl, JObj) ->
-        Headers = props:filter_undefined(
-                    [{"Host", whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_host">>)}
-                     ,{"Referer", whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_referer">>)}
-                     ,{"User-Agent", wh_util:to_list(erlang:node())}
-                     ,{"Content-Type", "application/json"}
-                    ]),
-        Body = wh_util:to_list(wh_json:encode(JObj)),
-        lager:debug("making put request to ~s with: ~-300p", [FullUrl, Body]),
-        Res = ibrowse:send_req(FullUrl, Headers, 'put', Body, [{'inactivity_timeout', 10000}]),
-        lager:debug("response from server: ~p", [Res]),
-        'true';
+    Headers = props:filter_undefined(
+                [{"Host", whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_host">>)}
+                 ,{"Referer", whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_referer">>)}
+                 ,{"User-Agent", wh_util:to_list(erlang:node())}
+                 ,{"Content-Type", "application/json"}
+                ]),
+    Body = wh_util:to_list(wh_json:encode(JObj)),
+    lager:debug("making put request to ~s with: ~-300p", [FullUrl, Body]),
+    Res = ibrowse:send_req(FullUrl, Headers, 'put', Body, [{'inactivity_timeout', 10000}]),
+    lager:debug("response from server: ~p", [Res]),
+    'true';
 send_to_full_provisioner('post', FullUrl, JObj) ->
-        Headers = props:filter_undefined(
-                    [{"Host", whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_host">>)}
-                     ,{"Referer", whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_referer">>)}
-                     ,{"User-Agent", wh_util:to_list(erlang:node())}
-                     ,{"Content-Type", "application/json"}
-                    ]),
-        Props = [{<<"provider_id">>, wh_json:get_value(<<"provider_id">>, JObj)}
-                 ,{<<"name">>, wh_json:get_value(<<"name">>, JObj)}
-                 ,{<<"settings">>, JObj}
-                ],
-        J =  wh_json:from_list(props:filter_undefined(Props)),
-        Body = wh_util:to_list(wh_json:encode(J)),
-        lager:debug("making post request to ~s with: ~-300p", [FullUrl, Body]),
-        Res = ibrowse:send_req(FullUrl, Headers, 'put', Body, [{'inactivity_timeout', 10000}]),
-        lager:debug("response from server: ~p", [Res]),
-        'true'.
-
+    Headers = props:filter_undefined(
+                [{"Host", whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_host">>)}
+                 ,{"Referer", whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_referer">>)}
+                 ,{"User-Agent", wh_util:to_list(erlang:node())}
+                 ,{"Content-Type", "application/json"}
+                ]),
+    Props = [{<<"provider_id">>, wh_json:get_value(<<"provider_id">>, JObj)}
+             ,{<<"name">>, wh_json:get_value(<<"name">>, JObj)}
+             ,{<<"settings">>, JObj}
+            ],
+    J =  wh_json:from_list(props:filter_undefined(Props)),
+    Body = wh_util:to_list(wh_json:encode(J)),
+    lager:debug("making post request to ~s with: ~-300p", [FullUrl, Body]),
+    Res = ibrowse:send_req(FullUrl, Headers, 'put', Body, [{'inactivity_timeout', 10000}]),
+    lager:debug("response from server: ~p", [Res]),
+    'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -461,16 +476,19 @@ do_awesome_provision(_MACAddress, Context) ->
                                {'ok', cb_context:context()}.
 get_merged_device(MACAddress, Context) ->
     {'ok', Data} = merge_device(MACAddress, Context),
-    {'ok', Context#cb_context{doc=Data}}.
+    {'ok', cb_context:set_doc(Context, Data)}.
 
 -spec merge_device(string(), cb_context:context()) ->
                           {'ok', wh_json:object()}.
-merge_device(MACAddress, #cb_context{doc=JObj, account_id=AccountId}) ->
+merge_device(MACAddress, Context) ->
+    JObj = cb_context:doc(Context),
+    AccountId = cb_context:account_id(Context),
+
     Routines = [fun(J) -> wh_json:set_value(<<"mac_address">>, wh_util:to_binary(MACAddress), J) end
                 ,fun(J) ->
-                        OwnerId = wh_json:get_ne_value(<<"owner_id">>, JObj),
-                        Owner = get_owner(OwnerId, AccountId),
-                        wh_json:merge_recursive(J, Owner)
+                         OwnerId = wh_json:get_ne_value(<<"owner_id">>, JObj),
+                         Owner = get_owner(OwnerId, AccountId),
+                         wh_json:merge_recursive(J, Owner)
                  end
                 ,fun(J) -> wh_json:delete_key(<<"apps">>, J) end
                 ,fun(J) -> wh_json:set_value(<<"account_id">>, AccountId, J) end
@@ -495,11 +513,12 @@ get_owner(OwnerId, AccountId) ->
 %% Do awesome provisioning
 %% @end
 %%--------------------------------------------------------------------
-send_provisioning_template(JObj, #cb_context{doc=Device}=Context) ->
+send_provisioning_template(JObj, Context) ->
     %% TODO: theoretically this is the start of multiple line support....
     Line = <<"lineloop|line_1">>,
-    MAC = re:replace(wh_json:get_string_value(<<"mac_address">>, Device, "")
-                     ,"[^0-9a-fA-F]", "", [{'return', 'list'}, 'global']),
+    MAC = re:replace(wh_json:get_string_value(<<"mac_address">>, cb_context:doc(Context), "")
+                     ,"[^0-9a-fA-F]", "", [{'return', 'list'}, 'global']
+                    ),
     LineGenerators = [fun set_device_line_defaults/1
                       ,fun set_account_line_defaults/1
                      ],
@@ -740,7 +759,7 @@ send_provisioning_request(Template, MACAddress) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_provisioning_type() -> ne_binary() | 'undefined'.
+-spec get_provisioning_type() -> api_binary().
 get_provisioning_type() ->
     case whapps_config:get_non_empty(?MOD_CONFIG_CAT, <<"provisioning_type">>) of
         'undefined' ->
@@ -750,4 +769,3 @@ get_provisioning_type() ->
             lager:debug("using ~p for provisioner_type", [?MOD_CONFIG_CAT]),
             Result
     end.
-

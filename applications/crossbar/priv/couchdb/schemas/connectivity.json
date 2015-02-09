@@ -9,7 +9,6 @@
     },
     "account": {
       "type": "object",
-      "required": true,
       "properties": {
         "auth_realm": {
           "type": "string",
@@ -18,7 +17,6 @@
         },
         "trunks": {
           "type": "integer",
-          "required": true,
           "minimum": 0,
           "description": "The number of two-way trunks this account has purchased"
         },
@@ -27,15 +25,11 @@
           "properties": {
             "cid_name": {
               "type": "string",
-              "minLength": 1,
-              "maxLength": 35,
-              "required": true
+              "maxLength": 35
             },
             "cid_number": {
               "type": "string",
-              "minLength": 1,
-              "maxLength": 35,
-              "required": true
+              "maxLength": 35
             }
           }
         },
@@ -44,15 +38,11 @@
           "properties": {
             "cid_name": {
               "type": "string",
-              "minLength": 1,
-              "maxLength": 35,
-              "required": true
+              "maxLength": 35
             },
             "cid_number": {
               "type": "string",
-              "minLength": 1,
-              "maxLength": 35,
-              "required": true
+              "maxLength": 35
             }
           }
         }

@@ -155,11 +155,19 @@
                         }
                     }
                 },
-                "timezone": {
-                    "type": "string",
+                "settings": {
+                    "type": "object",
                     "required": true,
-                    "name": "Timezone",
-                    "description": "Phone's timezone"
+                    "name": "Settings",
+                    "description": "Phone's settings",
+                    "properties": {
+                        "timezone": {
+                            "type": "string",
+                            "required": true,
+                            "name": "Timezone",
+                            "description": "Phone's timezone"
+                        }
+                    }
                 }
             }
         }

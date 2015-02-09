@@ -311,7 +311,7 @@ handle_event(?EVENT(OtherLeg, EventName, _Evt)
                                          }};
 handle_event(?EVENT(CallId, <<"metaflow_exe">>, Metaflow), StateName, #state{call=Call}=State) ->
     _Pid = proc_lib:spawn('konami_code_exe', 'handle', [Metaflow, Call]),
-    lager:debug("recv metaflow request for ~s, processing in ~p", [CallId, _Pid]),
+    lager:debug("recv metaflow exe request for ~s, processing in ~p", [CallId, _Pid]),
     {'next_state', StateName, State};
 handle_event(?EVENT(Target, <<"transferred">>, Evt)
              ,StateName

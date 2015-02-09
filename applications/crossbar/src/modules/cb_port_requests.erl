@@ -564,7 +564,6 @@ read_descendant(Context, Id) ->
         _Status -> 'undefined'
     end.
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
