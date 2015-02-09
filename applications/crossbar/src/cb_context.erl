@@ -489,16 +489,8 @@ validate_request_data(Schema, Context, OnSuccess, OnFailure) ->
     end.
 
 
--type validator_error() :: {'data_invalid'
-                            ,wh_json:object()
-                            ,atom()
-                            ,wh_json:json_term()
-                            ,ne_binaries()
-                           }.
--type validator_errors() :: [validator_error(),...] | [].
-
--spec failed(context(), validator_errors()) -> context().
--spec failed_error(validator_error(), context()) -> context().
+-spec failed(context(), jesse_error:error_reasons()) -> context().
+-spec failed_error(jesse_error:error_reason(), context()) -> context().
 failed(Context, Errors) ->
     lists:foldl(fun failed_error/2, set_resp_status(Context, 'error'), Errors).
 
@@ -941,9 +933,8 @@ add_system_error(Error, JObj, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec build_system_error(integer(), atom() | ne_binary(), ne_binary(), cb_context:context()) ->
+-spec build_system_error(integer(), atom() | ne_binary(), ne_binary() | wh_json:object(), cb_context:context()) ->
                                 cb_context:context().
-
 build_system_error(Code, Error, JObj, Context) ->
     ApiVersion = cb_context:api_version(Context),
     Message = build_error_message(ApiVersion, JObj),
@@ -1027,7 +1018,7 @@ add_depreciated_validation_error(Property, Code, Message, #cb_context{validation
 -spec build_error_message('v1', ne_binary() | wh_json:object()) ->
                                  ne_binary();
                          (ne_binary(), ne_binary() | wh_json:object()) ->
-                                  wh_json:object().
+                                 wh_json:object().
 build_error_message(?VERSION_1, Message) when is_binary(Message) ->
     Message;
 build_error_message(?VERSION_1, JObj) ->

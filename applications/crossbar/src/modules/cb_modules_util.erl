@@ -19,7 +19,7 @@
          ,parse_media_type/1
 
          ,bucket_name/1
-         ,token_cost/1, token_cost/2
+         ,token_cost/1, token_cost/2, token_cost/3
          ,reconcile_services/1
          ,bind/2
 

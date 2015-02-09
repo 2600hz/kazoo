@@ -223,7 +223,7 @@ validate_account_path(Context, AccountId, ?MOVE, ?HTTP_POST) ->
                                ,Context, AccountId, ToAccount)
             of
                 'true' -> cb_context:set_resp_status(Context, 'success');
-                'false' -> cb_context:add_system_error('forbidden', [], Context)
+                'false' -> cb_context:add_system_error('forbidden', Context)
             end
     end;
 validate_account_path(Context, AccountId, ?TREE, ?HTTP_GET) ->

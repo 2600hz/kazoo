@@ -682,7 +682,7 @@ collection_action(#cb_context{req_verb = ?HTTP_POST}=Context, Number) ->
             {State, Error}
     end;
 collection_action(#cb_context{req_verb = ?HTTP_DELETE}=Context, Number) ->
-    wh_number_manager:release_number(Number, cb_context:auth_accuont_id(Context)).
+    wh_number_manager:release_number(Number, cb_context:auth_account_id(Context)).
 
 collection_action(#cb_context{req_verb = ?HTTP_PUT}=Context, Number, ?ACTIVATE) ->
     case wh_number_manager:assign_number_to_account(Number

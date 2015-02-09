@@ -465,7 +465,7 @@ render_templates(Number, AccountId, Username, Realm, Props) ->
     ].
 
 -spec render_template(ne_binary(), ne_binary(), ne_binary(), ne_binary(), wh_proplist(), file:name_all(), atom()) ->
-                             'ok' | {'error', file:posiz() | 'badarg' | 'terminated' | 'system_limit'}.
+                             'ok' | {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'}.
 render_template(Number, AccountId, Username, Realm, Props, Dir, Module) ->
     maybe_accumulate_realm(lists:member(Realm, get(<<"Realms">>)), Realm),
     WorkDir = get(<<"WorkDir">>),

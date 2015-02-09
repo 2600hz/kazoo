@@ -153,7 +153,7 @@ validate_by_api_key(Context, ApiKey, []) ->
     lager:debug("api key '~s' not associated with any accounts"
                 ,[ApiKey]
                ),
-    crossbar_doc:response_bad_identifier(ApiKey, Context);
+    crossbar_util:response_bad_identifier(ApiKey, Context);
 validate_by_api_key(Context, ApiKey, [Doc|_]) ->
     lager:debug("found multiple accounts with api key '~s', using '~s'"
                 ,[ApiKey, wh_json:get_value(<<"id">>, Doc)]

@@ -40,7 +40,7 @@
 
 -define(MAX_UPLOAD_SIZE, whapps_config:get_integer(?CONFIG_CAT, <<"max_upload_size">>, 8000000)).
 
--type cowboy_multipart_response() :: {{'headers', cowboy_http:headers()} |
+-type cowboy_multipart_response() :: {{'headers', cowboy:http_headers()} |
                                       {'data', binary()} |
                                       'end_of_part' |
                                       'eof'
