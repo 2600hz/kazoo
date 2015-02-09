@@ -219,7 +219,7 @@ maybe_account_is_enabled(Context, Credentials, Method, Account) ->
         'false' ->
             lager:debug("account ~p is disabled", [Account]),
             Props = [{'details', <<"account_disabled">>}],
-            cb_context:add_system_error('forbidden', Props, Context)
+            cb_context:add_system_error('forbidden', wh_json:from_list(Props), Context)
     end.
 
 -spec load_sha1_results(cb_context:context(), wh_json:objects() | wh_json:object()) ->

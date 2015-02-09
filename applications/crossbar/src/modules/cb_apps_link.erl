@@ -48,7 +48,7 @@ init() ->
 %% allowed to access the resource, or false if not.
 %% @end
 %%--------------------------------------------------------------------
--spec authorize(cb_context:context()) -> 'false'.
+-spec authorize(cb_context:context()) -> 'true'.
 authorize(#cb_context{req_nouns=[{<<"apps_link">>, _}]}) ->
     'true'.
 
@@ -96,4 +96,3 @@ validate(#cb_context{auth_doc=Doc}=Context, ?AUTHORIZE) ->
     AccountId = wh_json:get_value(<<"account_id">>, Doc),
     JObj = wh_json:set_value(<<"account_id">>, RequestedAccountId, Doc),
     crossbar_util:response(crossbar_util:response_auth(JObj, AccountId), Context).
-

@@ -329,7 +329,7 @@ is_faxbox_email_global_unique(Email, FaxBoxId) ->
 -spec maybe_register_cloud_printer(cb_context:context()) -> cb_context:context().
 maybe_register_cloud_printer(Context) ->
     ResellerId =  cb_context:reseller_id(Context),
-    CloudConnectorEnable = whapps_account_config:get(ResellerId, <<"fax">>, <<"enable_cloud_connector">>, 'false'), 
+    CloudConnectorEnable = whapps_account_config:get(ResellerId, <<"fax">>, <<"enable_cloud_connector">>, 'false'),
     case wh_util:is_true(CloudConnectorEnable) of
         'true' -> maybe_register_cloud_printer(Context, cb_context:doc(Context));
         'false' -> Context
@@ -462,7 +462,7 @@ build_file_parts(Boundary, Files, Acc0) ->
                 ,Files
                ).
 
--spec join_formdata_fold(ne_binary(), binary()) -> iolist().
+-spec join_formdata_fold(ne_binary(), iolist()) -> iolist().
 join_formdata_fold(Bin, Acc) ->
     string:join([binary_to_list(Bin), Acc], "\r\n").
 

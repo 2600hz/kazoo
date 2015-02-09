@@ -371,11 +371,7 @@ delete_keys(JObj) ->
                          ,<<"fetch_id">>
                         ], JObj).
 
--spec normalize_channel(api_object() | wh_json:objects()) -> api_object() | wh_json:objects().
-normalize_channel('undefined') -> [];
-normalize_channel([]) -> [];
-normalize_channel([_|_]=JObjs) ->
-    [normalize_channel(JObj) || JObj <- JObjs];
+-spec normalize_channel(wh_json:object()) -> wh_json:object().
 normalize_channel(JObj) ->
     delete_keys(
       wh_json:normalize(JObj)
