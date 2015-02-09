@@ -231,11 +231,14 @@ validate_unique_vmbox(VMBoxId, Context, _AccountDb) ->
     case check_uniqueness(VMBoxId, Context) of
         'true' -> check_vmbox_schema(VMBoxId, Context);
         'false' ->
-            C = cb_context:add_validation_error(<<"mailbox">>
-                                                ,<<"unique">>
-                                                ,<<"Invalid mailbox number or already exists">>
-                                                ,Context
-                                               ),
+            C = cb_context:add_validation_error(
+                    <<"mailbox">>
+                    ,<<"unique">>
+                    ,wh_json:from_list([
+                        {<<"message">>, <<"Invalid mailbox number or already exists">>}
+                     ])
+                    ,Context
+                ),
             check_vmbox_schema(VMBoxId, C)
     end.
 
@@ -322,7 +325,14 @@ load_message(DocId, MediaId, UpdateJObj, Context) ->
         'success' ->
             Messages = wh_json:get_value(<<"messages">>, cb_context:doc(Context1), []),
             case get_message_index(MediaId, Messages) of
-                'false' -> {'false', cb_context:add_system_error('bad_identifier', [{'details', DocId}], Context)};
+                'false' ->
+                    {'false'
+                     ,cb_context:add_system_error(
+                          'bad_identifier'
+                          ,wh_json:from_list([{<<"cause">>, DocId}])
+                          ,Context
+                      )
+                    };
                 Index ->
                     CurrentMetaData = wh_json:get_value([<<"messages">>, Index], cb_context:doc(Context1), wh_json:new()),
                     CurrentFolder = wh_json:get_value(<<"folder">>, CurrentMetaData, <<"new">>),
@@ -363,7 +373,11 @@ load_message_binary(DocId, MediaId, Context) ->
 
             case couch_mgr:open_cache_doc(cb_context:account_db(Context), MediaId) of
                 {'error', 'not_found'} ->
-                    cb_context:add_system_error('bad_identifier', [{'details', MediaId}], Context1);
+                    cb_context:add_system_error(
+                        'bad_identifier'
+                        ,wh_json:from_list([{<<"cause">>, MediaId}])
+                        ,Context1
+                    );
                 {'error', _E} ->
                     cb_context:add_system_error('datastore_fault', Context1);
                 {'ok', Media} ->
@@ -377,22 +391,30 @@ load_message_binary(DocId, MediaId, Context) ->
                         {'error', 'db_not_reachable'} ->
                             {'false', cb_context:add_system_error('datastore_unreachable', Context1)};
                         {'error', 'not_found'} ->
-                            {'false', cb_context:add_system_error('bad_identifier', [{'details', MediaId}], Context1)};
+                            {'false'
+                             ,cb_context:add_system_error(
+                                  'bad_identifier'
+                                  ,wh_json:from_list([{<<"cause">>, MediaId}])
+                                  ,Context1
+                              )
+                            };
                         {'ok', AttachBin} ->
                             lager:debug("Sending file with filename ~s", [Filename]),
                             {Update
                              ,cb_context:set_resp_data(
-                                cb_context:set_resp_etag(
-                                  cb_context:add_resp_headers(Context1
-                                                              ,[{<<"Content-Type">>, wh_json:get_value([<<"_attachments">>, AttachmentId, <<"content_type">>], Doc)}
-                                                                ,{<<"Content-Disposition">>, <<"attachment; filename=", Filename/binary>>}
-                                                                ,{<<"Content-Length">>, wh_util:to_binary(wh_json:get_value([<<"_attachments">>, AttachmentId, <<"length">>], Doc))}
-                                                               ]
-                                                             )
-                                  ,'undefined'
-                                 )
+                                  cb_context:set_resp_etag(
+                                      cb_context:add_resp_headers(
+                                          Context1
+                                          ,[{<<"Content-Type">>, wh_json:get_value([<<"_attachments">>, AttachmentId, <<"content_type">>], Doc)}
+                                            ,{<<"Content-Disposition">>, <<"attachment; filename=", Filename/binary>>}
+                                            ,{<<"Content-Length">>, wh_util:to_binary(wh_json:get_value([<<"_attachments">>, AttachmentId, <<"length">>], Doc))}
+                                           ]
+                                      )
+                                      ,'undefined'
+                                  )
                                 ,AttachBin
-                                )}
+                              )
+                            }
                     end
             end;
         _Status -> {Update, Context1}

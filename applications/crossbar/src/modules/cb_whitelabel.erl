@@ -287,14 +287,32 @@ validate_attachment(Context, AttachType, ?HTTP_POST) ->
 -spec validate_attachment_post(cb_context:context(), path_token(), _) ->
                                       cb_context:context().
 validate_attachment_post(Context, ?LOGO_REQ, []) ->
-    Message = <<"please provide an image file">>,
-    cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context);
+    cb_context:add_validation_error(
+        <<"file">>
+        ,<<"required">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"Please provide an image file">>}
+         ])
+        ,Context
+    );
 validate_attachment_post(Context, ?ICON_REQ, []) ->
-    Message = <<"please provide an image file">>,
-    cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context);
+    cb_context:add_validation_error(
+        <<"file">>
+        ,<<"required">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"Please provide an image file">>}
+         ])
+        ,Context
+    );
 validate_attachment_post(Context, ?WELCOME_REQ, []) ->
-    Message = <<"please provide an html file">>,
-    cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context);
+    cb_context:add_validation_error(
+        <<"file">>
+        ,<<"required">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"Please provide an html file">>}
+         ])
+        ,Context
+    );
 validate_attachment_post(Context, ?LOGO_REQ, [{_Filename, FileJObj}]) ->
     validate_upload(Context, FileJObj);
 validate_attachment_post(Context, ?ICON_REQ, [{_Filename, FileJObj}]) ->
@@ -302,14 +320,32 @@ validate_attachment_post(Context, ?ICON_REQ, [{_Filename, FileJObj}]) ->
 validate_attachment_post(Context, ?WELCOME_REQ, [{_Filename, FileJObj}]) ->
     validate_upload(Context, FileJObj);
 validate_attachment_post(Context, ?LOGO_REQ, _Files) ->
-    Message = <<"please provide a single image file">>,
-    cb_context:add_validation_error(<<"file">>, <<"maxItems">>, Message, Context);
+    cb_context:add_validation_error(
+        <<"file">>
+        ,<<"maxItems">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"Please provide a single image file">>}
+         ])
+        ,Context
+    );
 validate_attachment_post(Context, ?ICON_REQ, _Files) ->
-    Message = <<"please provide a single image file">>,
-    cb_context:add_validation_error(<<"file">>, <<"maxItems">>, Message, Context);
+    cb_context:add_validation_error(
+        <<"file">>
+        ,<<"maxItems">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"Please provide a single image file">>}
+         ])
+        ,Context
+    );
 validate_attachment_post(Context, ?WELCOME_REQ, _Files) ->
-    Message = <<"please provide a single html file">>,
-    cb_context:add_validation_error(<<"file">>, <<"maxItems">>, Message, Context).
+    cb_context:add_validation_error(
+        <<"file">>
+        ,<<"maxItems">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"please provide a single html file">>}
+         ])
+        ,Context
+    ).
 
 -spec validate_upload(cb_context:context(), wh_json:object()) ->
                              cb_context:context().
@@ -389,7 +425,12 @@ find_whitelabel(Context, Domain) ->
                                        ,[{fun cb_context:set_account_db/2, Db}
                                          ,{fun cb_context:set_account_id/2, Id}
                                        ]);
-                _Doc -> cb_context:add_system_error('bad_identifier', [{'details', Domain}], Context1)
+                _Doc ->
+                    cb_context:add_system_error(
+                        'bad_identifier'
+                        ,wh_json:from_list([{<<"cause">>, Domain}])
+                        ,Context1
+                    )
             end;
         _Status -> Context1
     end.
@@ -418,7 +459,7 @@ find_whitelabel_meta(Context, Domain) ->
 %% Load a whitelabel binary attachment from the database
 %% @end
 %%--------------------------------------------------------------------
--spec load_whitelabel_binary(cb_context:context(), ne_binary()) -> ne_binary().
+-spec load_whitelabel_binary(cb_context:context(), ne_binary()) -> cb_context:context().
 load_whitelabel_binary(Context, AttachType) ->
     case whitelabel_binary_meta(Context, AttachType) of
         'undefined' -> crossbar_util:response_bad_identifier(AttachType, Context);
@@ -426,7 +467,7 @@ load_whitelabel_binary(Context, AttachType) ->
             update_response_with_attachment(Context, AttachmentId, JObj)
     end.
 
--spec find_whitelabel_binary(cb_context:context(), ne_binary(), ne_binary()) -> ne_binary().
+-spec find_whitelabel_binary(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
 find_whitelabel_binary(Context, Domain, AttachType) ->
     Context1 = find_whitelabel_meta(Context, Domain),
     case cb_context:resp_status(Context1) of
@@ -446,9 +487,7 @@ find_whitelabel_binary_meta(Context, Domain, AttachType) ->
 -spec whitelabel_binary_meta(cb_context:context(), ne_binary()) ->
                                     'undefined' | {ne_binary(), wh_json:object()}.
 whitelabel_binary_meta(Context, AttachType) ->
-    JObj = wh_json:get_value(<<"_attachments">>
-                            ,cb_context:doc(Context)
-                            ,wh_json:new()),
+    JObj = wh_doc:attachments(cb_context:doc(Context), wh_json:new()),
     case whitelabel_attachment_id(JObj, AttachType) of
         'undefined' -> 'undefined';
         AttachmentId ->
@@ -468,15 +507,16 @@ filter_attachment_type([AttachmentId|AttachmentIds], AttachType) ->
         _Else -> filter_attachment_type(AttachmentIds, AttachType)
     end.
 
--spec update_response_with_attachment(cb_context:context(), ne_binary(), wh_json:object()) -> cb_context:context().
+-spec update_response_with_attachment(cb_context:context(), ne_binary(), wh_json:object()) ->
+                                             cb_context:context().
 update_response_with_attachment(Context, AttachmentId, JObj) ->
     cb_context:set_resp_etag(
       cb_context:add_resp_headers(
         crossbar_doc:load_attachment(cb_context:doc(Context), AttachmentId, Context)
-                                 ,[{<<"Content-Disposition">>, <<"attachment; filename=", AttachmentId/binary>>}
-                                  ,{<<"Content-Type">>, wh_json:get_value([AttachmentId, <<"content_type">>], JObj)}
-                                  ,{<<"Content-Length">>, wh_json:get_value([AttachmentId, <<"length">>], JObj)}
-                                  ]
+        ,[{<<"Content-Disposition">>, <<"attachment; filename=", AttachmentId/binary>>}
+          ,{<<"Content-Type">>, wh_json:get_value([AttachmentId, <<"content_type">>], JObj)}
+          ,{<<"Content-Length">>, wh_json:get_value([AttachmentId, <<"length">>], JObj)}
+         ]
        ), 'undefined'
      ).
 
@@ -490,21 +530,26 @@ update_response_with_attachment(Context, AttachmentId, JObj) ->
 validate_request(Context, WhitelabelId) ->
     validate_unique_domain(Context, WhitelabelId).
 
--spec validate_unique_domain(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec validate_unique_domain(cb_context:context(), api_binary()) -> cb_context:context().
 validate_unique_domain(Context, WhitelabelId) ->
     Domain = wh_json:get_ne_value(<<"domain">>, cb_context:req_data(Context)),
     case is_domain_unique(cb_context:account_id(Context), Domain) of
         'true' -> check_whitelabel_schema(Context, WhitelabelId);
         'false' ->
-            Context1 = cb_context:add_validation_error(<<"domain">>
-                                                       ,<<"unique">>
-                                                       ,<<"Whitelabel domain is already in use">>
-                                                       ,Context
-                                                      ),
+            Context1 =
+                cb_context:add_validation_error(
+                  <<"domain">>
+                  ,<<"unique">>
+                  ,wh_json:from_list(
+                     [{<<"message">>, <<"White label domain is already in use">>}
+                      ,{<<"cause">>, Domain}
+                     ])
+                  ,Context
+                 ),
             check_whitelabel_schema(Context1, WhitelabelId)
     end.
 
--spec check_whitelabel_schema(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec check_whitelabel_schema(cb_context:context(), api_binary()) -> cb_context:context().
 check_whitelabel_schema(Context, WhitelabelId) ->
     OnSuccess = fun(C) -> on_successful_validation(C, WhitelabelId) end,
     cb_context:validate_request_data(<<"whitelabel">>, Context, OnSuccess).

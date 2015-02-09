@@ -251,8 +251,14 @@ validate_media_binary(Context, MediaId, ?HTTP_GET, _Files) ->
     lager:debug("fetch media contents for '~s'", [MediaId]),
     load_media_binary(Context, MediaId);
 validate_media_binary(Context, _MediaId, ?HTTP_POST, []) ->
-    Message = <<"please provide an media file">>,
-    cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context);
+    cb_context:add_validation_error(
+        <<"file">>
+        ,<<"required">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"Please provide an media file">>}
+         ])
+        ,Context
+    );
 validate_media_binary(Context, MediaId, ?HTTP_POST, [{_Filename, FileObj}]) ->
     Context1 = load_media_meta(Context, MediaId),
     lager:debug("loaded media meta for '~s'", [MediaId]),
@@ -262,8 +268,14 @@ validate_media_binary(Context, MediaId, ?HTTP_POST, [{_Filename, FileObj}]) ->
         _Status -> Context1
     end;
 validate_media_binary(Context, _MediaId, ?HTTP_POST, _Files) ->
-    Message = <<"please provide a single media file">>,
-    cb_context:add_validation_error(<<"file">>, <<"maxItems">>, Message, Context).
+    cb_context:add_validation_error(
+        <<"file">>
+        ,<<"maxItems">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"Please provide a single media file">>}
+         ])
+        ,Context
+    ).
 
 -spec maybe_normalize_upload(cb_context:context(), ne_binary(), wh_json:object()) -> cb_context:context().
 maybe_normalize_upload(Context, MediaId, FileJObj) ->
@@ -826,7 +838,15 @@ validate_prompt(MediaId, Context, PromptId) ->
             lager:info("attempt to change prompt id '~s' is not allowed on existing media doc '~s'"
                        ,[PromptId, MediaId]
                       ),
-            cb_context:add_validation_error(<<"prompt_id">>, <<"invalid">>, <<"Changing the prompt_id on an existing prompt is not allowed">>, Context)
+            cb_context:add_validation_error(
+                <<"prompt_id">>
+                ,<<"invalid">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"Changing the prompt_id on an existing prompt is not allowed">>}
+                    ,{<<"cause">>, PromptId}
+                 ])
+                ,Context
+            )
     end.
 
 -spec maybe_add_prompt_fields(cb_context:context()) -> wh_proplist().

@@ -139,7 +139,7 @@ handle_successful_load(Context, JObj, 'true') ->
                 ,[wh_doc:id(JObj), wh_doc:revision(JObj)]
                ),
     cb_context:add_system_error('bad_identifier'
-                                ,[{'details', wh_doc:id(JObj)}]
+                                ,wh_json:from_list([{<<"cause">>, wh_doc:id(JObj)}])
                                 ,Context
                                );
 handle_successful_load(Context, JObj, 'false') ->
@@ -971,23 +971,23 @@ version_specific_success(JObjs, Context, _Version) ->
                                      cb_context:context().
 handle_couch_mgr_errors('invalid_db_name', _, Context) ->
     lager:debug("datastore ~s not_found", [cb_context:account_db(Context)]),
-    cb_context:add_system_error('datastore_missing', [{'details', cb_context:account_db(Context)}], Context);
+    cb_context:add_system_error('datastore_missing', wh_json:from_list([{<<"cause">>, cb_context:account_db(Context)}]), Context);
 handle_couch_mgr_errors('db_not_reachable', _DocId, Context) ->
     lager:debug("operation on doc ~s from ~s failed: db_not_reachable", [_DocId, cb_context:account_db(Context)]),
     cb_context:add_system_error('datastore_unreachable', Context);
 handle_couch_mgr_errors('not_found', DocId, Context) ->
     lager:debug("operation on doc ~s from ~s failed: not_found", [DocId, cb_context:account_db(Context)]),
-    cb_context:add_system_error('bad_identifier', [{'details', DocId}],  Context);
+    cb_context:add_system_error('bad_identifier', wh_json:from_list([{<<"cause">>, DocId}]),  Context);
 handle_couch_mgr_errors('conflict', DocId, Context) ->
     lager:debug("failed to update doc ~s in ~s: conflicts", [DocId, cb_context:account_db(Context)]),
     cb_context:add_system_error('datastore_conflict', Context);
 handle_couch_mgr_errors('invalid_view_name', View, Context) ->
     lager:debug("loading view ~s from ~s failed: invalid view", [View, cb_context:account_db(Context)]),
-    cb_context:add_system_error('datastore_missing_view', [{'details', wh_util:to_binary(View)}], Context);
+    cb_context:add_system_error('datastore_missing_view', wh_json:from_list([{<<"cause">>, wh_util:to_binary(View)}]), Context);
 handle_couch_mgr_errors(Else, _View, Context) ->
     lager:debug("operation failed: ~p on ~p", [Else, _View]),
     try wh_util:to_binary(Else) of
-        Reason -> cb_context:add_system_error('datastore_fault', [{'details', Reason}], Context)
+        Reason -> cb_context:add_system_error('datastore_fault', wh_json:from_list([{<<"cause">>, Reason}]), Context)
     catch
         _:_ -> cb_context:add_system_error('datastore_fault', Context)
     end.

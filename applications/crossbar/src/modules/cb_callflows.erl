@@ -168,7 +168,8 @@ load_callflow(DocId, Context) ->
 -spec validate_request(api_binary(), cb_context:context()) -> cb_context:context().
 validate_request(CallflowId, Context) ->
     JObj = cb_context:req_data(Context),
-    try [wnm_util:to_e164(Number) || Number <- wh_json:get_ne_value(<<"numbers">>, JObj, [])] of
+    OriginalNumbers = wh_json:get_ne_value(<<"numbers">>, JObj, []),
+    try [wnm_util:to_e164(Number) || Number <- OriginalNumbers] of
         [] -> prepare_patterns(CallflowId, Context);
         Numbers ->
             C = cb_context:set_req_data(Context
@@ -178,15 +179,20 @@ validate_request(CallflowId, Context) ->
     catch
         _E:_R ->
             lager:debug("failed to convert all numbers to e164: ~s: ~p", [_E, _R]),
-            C = cb_context:add_validation_error(<<"numbers">>
-                                                ,<<"type">>
-                                                ,<<"Value is not of type array">>
-                                                ,Context
-                                               ),
-            validate_unique_numbers(CallflowId
-                                    ,[]
-                                    ,cb_context:set_req_data(C, wh_json:set_value(<<"numbers">>, [], JObj))
-                                   )
+            C = cb_context:add_validation_error(
+                    <<"numbers">>
+                    ,<<"type">>
+                    ,wh_json:from_list([
+                        {<<"message">>, <<"Value is not of type array">>}
+                        ,{<<"cause">>, OriginalNumbers}
+                     ])
+                    ,Context
+                ),
+            validate_unique_numbers(
+                CallflowId
+                ,[]
+                ,cb_context:set_req_data(C, wh_json:set_value(<<"numbers">>, [], JObj))
+            )
     end.
 
 -spec prepare_patterns(api_binary(), cb_context:context()) -> cb_context:context().
@@ -194,11 +200,14 @@ prepare_patterns(CallflowId, Context) ->
     JObj = cb_context:req_data(Context),
     case wh_json:get_value(<<"patterns">>, JObj, []) of
         [] ->
-            C = cb_context:add_validation_error(<<"numbers">>
-                                                ,<<"required">>
-                                                ,<<"Callflows must be assigned at least one number">>
-                                                ,Context
-                                               ),
+            C = cb_context:add_validation_error(
+                    <<"numbers">>
+                    ,<<"required">>
+                    ,wh_json:from_list([
+                        {<<"message">>, <<"Callflows must be assigned at least one number">>}
+                     ])
+                    ,Context
+                ),
             check_callflow_schema(CallflowId, C);
         _Else ->
             check_callflow_schema(CallflowId, Context)
@@ -276,25 +285,34 @@ validate_callflow_element_schema(Context, Module, Data) ->
                                        cb_context:context().
 validate_callflow_element(Context, <<"record_call">>, Data) ->
     Max = wh_media_util:max_recording_time_limit(),
+    TimeLimit = wh_json:get_integer_value(<<"time_limit">>, Data),
     try wh_json:get_value(<<"action">>, Data) =:= <<"start">> andalso
-        wh_json:get_integer_value(<<"time_limit">>, Data) > Max
+        TimeLimit > Max
     of
         'true' ->
             lager:debug("the requested time limit is too damn high"),
-            cb_context:add_validation_error(<<"time_limit">>
-                                            ,<<"maximum">>
-                                            ,<<"Exceeds system limit of ", (wh_util:to_binary(Max))/binary, " seconds">>
-                                            ,Context
-                                           );
+            cb_context:add_validation_error(
+                <<"time_limit">>
+                ,<<"maximum">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"Exceeds system limit of ", (wh_util:to_binary(Max))/binary, " seconds">>}
+                    ,{<<"cause">>, TimeLimit}
+                 ])
+                ,Context
+            );
         'false' -> Context
     catch
         _E:_R ->
             lager:debug("failed to get integer from data: ~s: ~p", [_E, _R]),
-            cb_context:add_validation_error(<<"time_limit">>
-                                            ,<<"type">>
-                                            ,<<"Must be an integer">>
-                                            ,Context
-                                           )
+            cb_context:add_validation_error(
+                <<"time_limit">>
+                ,<<"type">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"Must be an integer">>}
+                    ,{<<"cause">>, TimeLimit}
+                 ])
+                ,Context
+            )
     end;
 validate_callflow_element(Context, _Module, _Data) ->
     Context.
@@ -390,10 +408,14 @@ check_uniqueness(Numbers, JObjs, Context) ->
                                       cb_context:context().
 check_numbers_uniqueness([], _, Context) -> Context;
 check_numbers_uniqueness([Number|Numbers], JObjs, Context) ->
-    case lists:dropwhile(fun(J) ->
-                                 N = wh_json:get_ne_value([<<"doc">>, <<"numbers">>], J, []),
-                                 (not lists:member(Number, N))
-                         end, JObjs)
+    case
+        lists:dropwhile(
+            fun(J) ->
+                N = wh_json:get_ne_value([<<"doc">>, <<"numbers">>], J, []),
+                (not lists:member(Number, N))
+            end
+            ,JObjs
+        )
     of
         [] -> check_numbers_uniqueness(Numbers, JObjs, Context);
         [JObj|_] ->
@@ -405,10 +427,14 @@ check_numbers_uniqueness([Number|Numbers], JObjs, Context) ->
                                        cb_context:context().
 check_patterns_uniqueness([], _, Context) -> Context;
 check_patterns_uniqueness([Number|Numbers], JObjs, Context) ->
-    case lists:dropwhile(fun(J) ->
-                                 Patterns = wh_json:get_ne_value([<<"doc">>, <<"patterns">>], J, []),
-                                 patterns_dont_match(Number, Patterns)
-                         end, JObjs)
+    case
+        lists:dropwhile(
+            fun(J) ->
+                Patterns = wh_json:get_ne_value([<<"doc">>, <<"patterns">>], J, []),
+                patterns_dont_match(Number, Patterns)
+            end
+            ,JObjs
+        )
     of
         [] -> check_patterns_uniqueness(Numbers, JObjs, Context);
         [JObj|_] ->
@@ -436,17 +462,25 @@ add_number_conflict(Number, JObj, Context) ->
     Id = wh_json:get_value(<<"id">>, JObj),
     case wh_json:get_ne_value([<<"doc">>, <<"featurecode">>, <<"name">>], JObj) of
         'undefined' ->
-            cb_context:add_validation_error(<<"numbers">>
-                                            ,<<"unique">>
-                                            ,<<"Number ", Number/binary, " exists in callflow ", Id/binary>>
-                                            ,Context
-                                           );
+            cb_context:add_validation_error(
+                <<"numbers">>
+                ,<<"unique">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"Number ", Number/binary, " exists in callflow ", Id/binary>>}
+                    ,{<<"cause">>, Number}
+                 ])
+                ,Context
+            );
         _Else ->
-            cb_context:add_validation_error(<<"numbers">>
-                                            ,<<"unique">>
-                                            ,<<"Number ", Number/binary, " conflicts with featurecode callflow ", Id/binary>>
-                                            ,Context
-                                           )
+            cb_context:add_validation_error(
+                <<"numbers">>
+                ,<<"unique">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"Number ", Number/binary, " conflicts with featurecode callflow ", Id/binary>>}
+                    ,{<<"cause">>, Number}
+                 ])
+                ,Context
+            )
     end.
 
 %%--------------------------------------------------------------------

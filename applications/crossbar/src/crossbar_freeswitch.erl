@@ -219,9 +219,9 @@ setup_directory() ->
     WorkRootDir = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"work_dir">>, <<"/tmp/">>),
     WorkDir = filename:join([WorkRootDir, TopDir]),
     file:make_dir(WorkDir),
-    Files = [{"directory", ?FS_DIRECTORY}
-             ,{"chatplan", ?FS_CHATPLAN}
-             ,{"dialplan", ?FS_DIALPLAN}
+    Files = [{<<"directory">>, ?FS_DIRECTORY}
+             ,{<<"chatplan">>, ?FS_CHATPLAN}
+             ,{<<"dialplan">>, ?FS_DIALPLAN}
             ],
     Filter = whapps_config:get(?MOD_CONFIG_CAT, <<"files_to_include">>, ?DEFAULT_FS_INCLUDE_DIRECTORY_FILES),
     _ = [file:make_dir(filename:join([WorkDir, Dir])) || {Dir, _} <- Files],
@@ -237,33 +237,39 @@ setup_directory() ->
 -spec process_realms() -> any().
 process_realms() ->
     Realms = get(<<"Realms">>),
-    Templates = [{"directory", ?FS_DIRECTORY_REALM}
-                ,{"chatplan", ?FS_CHATPLAN_REALM}
-                ,{"dialplan", ?FS_DIALPLAN_REALM}
+    Templates = [{<<"directory">>, ?FS_DIRECTORY_REALM}
+                 ,{<<"chatplan">>, ?FS_CHATPLAN_REALM}
+                 ,{<<"dialplan">>, ?FS_DIALPLAN_REALM}
                 ],
     Filter = whapps_config:get(?MOD_CONFIG_CAT, <<"realm_templates_to_process">>, ?FS_REALM_TEMPLATES),
     [process_realms(Realms, D, T)
-     || {D, T} <- Templates, lists:member(wh_util:to_binary(T), Filter)
+     || {D, T} <- Templates,
+        lists:member(wh_util:to_binary(T), Filter)
     ].
 
--spec process_realms(ne_binaries(), ne_binary(), atom()) -> any().
+-spec process_realms(api_binaries(), ne_binary(), atom()) -> 'ok'.
+process_realms('undefined', _Dir, _Module) -> 'ok';
 process_realms([], _, _) -> 'ok';
 process_realms([Realm | Realms], Dir, Module) ->
     process_realm(Realm, Dir, Module),
     process_realms(Realms, Dir, Module).
 
--spec process_realm(ne_binary(), ne_binary(), atom()) -> any().
+-spec process_realm(ne_binary(), ne_binary(), atom()) -> 'ok'.
 process_realm(Realm, Dir, Module) ->
     Props = [{<<"realm">>, Realm}],
     WorkDir = get(<<"WorkDir">>),
     OutDir = filename:join([WorkDir, Dir]),
     file:make_dir(OutDir),
     XMLFile = filename:join([OutDir, <<Realm/binary,".xml">>]),
+
     case render(Module, Props) of
-        {'ok', Result} -> file:write_file(XMLFile, Result);
+        {'ok', Result} ->
+            file:write_file(XMLFile, Result),
+            lager:debug("wrote file ~s", [XMLFile]);
         {'error', E} ->
             lager:debug("error rendering template ~s for realm ~s: ~p"
-                        ,[Module, Realm, E])
+                        ,[Module, Realm, E]
+                       )
     end.
 
 -spec build_freeswitch(pid()) -> any().
@@ -305,7 +311,7 @@ crawl_numbers_db(NumberDb) ->
                         ,[_E, Db, _R])
     end.
 
--spec get_numbers(wh_json:objects()) -> [ne_binaries()] | [].
+-spec get_numbers(wh_json:objects()) -> ne_binaries().
 get_numbers(JObjs) ->
     [Number
      || JObj <- JObjs
@@ -318,7 +324,7 @@ get_numbers(JObjs) ->
 -spec maybe_export_numbers(ne_binary(), ne_binaries()) -> 'ok'.
 maybe_export_numbers(_, []) -> 'ok';
 maybe_export_numbers(Db, [Number|Numbers]) ->
-    _  =case couch_mgr:open_doc(Db, Number) of
+    _ = case couch_mgr:open_doc(Db, Number) of
             {'ok', JObj} ->
                 maybe_export_number(Number
                                     ,wh_json:get_value(<<"pvt_number_state">>, JObj)
@@ -326,11 +332,12 @@ maybe_export_numbers(Db, [Number|Numbers]) ->
                                    );
             {'error', _R} ->
                 lager:debug("error fetching number ~s from ~d: ~p"
-                            ,[Number, Db, _R])
+                            ,[Number, Db, _R]
+                           )
         end,
     maybe_export_numbers(Db, Numbers).
 
--spec maybe_export_number(ne_binary(), api_binary(), api_binary()) -> any().
+-spec maybe_export_number(ne_binary(), api_binary(), api_binary()) -> 'ok'.
 maybe_export_number(Number, <<"in_service">>, AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     ViewOptions = [{'key', Number}
@@ -343,17 +350,19 @@ maybe_export_number(Number, <<"in_service">>, AccountId) ->
     case couch_mgr:get_results(AccountDb, ?CALLFLOW_VIEW, ViewOptions) of
         {'ok', []} ->
             lager:debug("number ~s in service for account ~s but no callflows using it"
-                        ,[Number, AccountId]);
+                        ,[Number, AccountId]
+                       );
         {'ok', JObjs} ->
             Flows = [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs],
             process_callflows(Number, AccountId, Flows);
         {'error', _R} ->
             lager:debug("unable to get callflows for number ~s in account ~s"
-                        ,[Number, AccountId])
+                        ,[Number, AccountId]
+                       )
     end;
 maybe_export_number(_, _, _) -> 'ok'.
 
--spec process_callflows(ne_binary(), ne_binary(), wh_json:objects()) -> any().
+-spec process_callflows(ne_binary(), ne_binary(), wh_json:objects()) -> 'ok'.
 process_callflows(_, _, []) -> 'ok';
 process_callflows(Number, AccountId, [JObj | JObjs]) ->
     FlowId = wh_json:get_value(<<"_id">>, JObj),
@@ -363,7 +372,7 @@ process_callflows(Number, AccountId, [JObj | JObjs]) ->
     process_callflow(Number, AccountId, Flow),
     process_callflows(Number, AccountId, JObjs).
 
--spec process_callflow(ne_binary(), ne_binary(), api_object()) -> any().
+-spec process_callflow(ne_binary(), ne_binary(), api_object()) -> 'ok'.
 process_callflow(_, _, 'undefined') -> 'ok';
 process_callflow(Number, AccountId, Flow) ->
     Module = wh_json:get_value(<<"module">>, Flow),
@@ -371,26 +380,30 @@ process_callflow(Number, AccountId, Flow) ->
     Children = wh_json:get_value(<<"children">>, Flow),
     process_callflow(Number, AccountId, Module, Data),
     process_callflow(Number, AccountId
-                    ,case wh_json:is_empty(Children) of
-                         'true' -> 'undefined';
-                         _ -> Children
-                     end).
+                     ,case wh_json:is_empty(Children) of
+                          'true' -> 'undefined';
+                          _ -> Children
+                      end).
 
--spec process_callflow(ne_binary(), ne_binary(), ne_binary(), api_binary()) -> 'ok' | {'error', _}.
+-spec process_callflow(ne_binary(), ne_binary(), ne_binary(), api_binary()) ->
+                              'ok' | {'error', _}.
 process_callflow(_, _, _, 'undefined') -> 'ok';
 process_callflow(Number, AccountId, <<"device">>, DeviceId) ->
     lager:debug("found device ~s associated with ~s"
-                ,[DeviceId, Number]),
+                ,[DeviceId, Number]
+               ),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_cache_doc(AccountDb, DeviceId) of
         {'ok', JObj } -> process_device(Number, AccountId, JObj);
         {'error', _R} ->
             lager:debug("unable to get device ~s from account ~s: ~p"
-                        ,[DeviceId, AccountId, _R])
+                        ,[DeviceId, AccountId, _R]
+                       )
     end;
 process_callflow(Number, AccountId, <<"user">>, UserId) ->
     lager:debug("found user ~s associated with ~s"
-                ,[UserId, Number]),
+                ,[UserId, Number]
+               ),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     ViewOptions = [{'key', UserId}],
     case couch_mgr:get_results(AccountDb, ?DEVICES_VIEW, ViewOptions) of
@@ -403,11 +416,13 @@ process_callflow(Number, AccountId, <<"user">>, UserId) ->
             ];
         {'error', _R} ->
             lager:debug("unable to get user ~s from account ~s: ~p"
-                        ,[UserId, AccountId, _R])
+                        ,[UserId, AccountId, _R]
+                       )
     end;
 process_callflow(_, _, _, _) -> 'ok'.
 
--spec process_device(ne_binary(), ne_binary(), wh_json:object()) -> 'ok' | {'error', _}.
+-spec process_device(ne_binary(), ne_binary(), wh_json:object()) ->
+                            'ok' | {'error', _}.
 process_device(Number, AccountId, JObj) ->
     AccountRealm = wh_util:get_account_realm(AccountId),
     Realm = wh_json:get_value([<<"sip">>,<<"realm">>], JObj, AccountRealm),
@@ -415,22 +430,24 @@ process_device(Number, AccountId, JObj) ->
     case query_registrar(Realm, Username) of
         {'ok', Auth} ->
             Props = props_for_rendering(Number, Username, Realm, Auth),
-            render_templates(Number, AccountId, Username, Realm, Props);
+            render_templates(Number, AccountId, Username, Realm, Props),
+            lager:debug("rendered templates");
         {'error', _R} ->
             lager:debug("unable to query registrar for credentails of ~s@~s in account ~s: ~p"
-                        ,[Username, Realm, AccountId, _R])
+                        ,[Username, Realm, AccountId, _R]
+                       )
     end.
 
--spec props_for_rendering(ne_binary(), ne_binary(), ne_binary(),  wh_json:object()) -> wh_proplist().
+-spec props_for_rendering(ne_binary(), ne_binary(), ne_binary(), wh_json:object()) -> wh_proplist().
 props_for_rendering(Number, Username, Realm, Auth) ->
     props:filter_empty(
       wh_json:recursive_to_proplist(
         normalize(
           wh_json:set_values(
             [{<<"effective_caller_id_number">>, Number}
-            ,{<<"username">>, Username}
-            ,{<<"realm">>, Realm}
-            ,{<<"number">>, Number}
+             ,{<<"username">>, Username}
+             ,{<<"realm">>, Realm}
+             ,{<<"number">>, Number}
             ], Auth)))).
 
 -spec normalize(wh_json:object()) -> wh_json:object().
@@ -456,8 +473,8 @@ normalize(JObj) ->
 -spec render_templates(ne_binary(), ne_binary(), ne_binary(), ne_binary(), wh_proplist()) -> wh_proplist().
 render_templates(Number, AccountId, Username, Realm, Props) ->
     Templates = [{"directory", ?FS_DIRECTORY}
-                ,{"chatplan", ?FS_CHATPLAN}
-                ,{"dialplan", ?FS_DIALPLAN}
+                 ,{"chatplan", ?FS_CHATPLAN}
+                 ,{"dialplan", ?FS_DIALPLAN}
                 ],
     Filter = whapps_config:get(?MOD_CONFIG_CAT, <<"templates_to_process">>, ?DEFAULT_FS_TEMPLATES),
     [render_template(Number, AccountId, Username, Realm, Props, D, T)
@@ -465,7 +482,7 @@ render_templates(Number, AccountId, Username, Realm, Props) ->
     ].
 
 -spec render_template(ne_binary(), ne_binary(), ne_binary(), ne_binary(), wh_proplist(), file:name_all(), atom()) ->
-                             'ok' | {'error', file:posiz() | 'badarg' | 'terminated' | 'system_limit'}.
+                             'ok' | {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'}.
 render_template(Number, AccountId, Username, Realm, Props, Dir, Module) ->
     maybe_accumulate_realm(lists:member(Realm, get(<<"Realms">>)), Realm),
     WorkDir = get(<<"WorkDir">>),
@@ -572,27 +589,27 @@ xml_file_from_config(Module, 'undefined', KeyName) ->
     Contents;
 xml_file_from_config(_, Contents, _) -> Contents.
 
--spec del_dir(string()) -> strings().
+-spec del_dir(string()) -> 'ok'.
 %% TODO: This should be moved to a wh_file helper
 %%    when wh_util is cleaned-up
 del_dir(Dir) ->
     lists:foreach(fun(D) ->
-                         'ok' = file:del_dir(D)
-                 end, del_all_files([Dir], [])).
+                          'ok' = file:del_dir(D)
+                  end, del_all_files([Dir], [])).
 
 -spec del_all_files(strings(), strings()) -> strings().
 del_all_files([], EmptyDirs) -> EmptyDirs;
 del_all_files([Dir | T], EmptyDirs) ->
     {'ok', FilesInDir} = file:list_dir(Dir),
     {Files, Dirs} = lists:foldl(fun(F, {Fs, Ds}) ->
-                                       Path = Dir ++ "/" ++ F,
-                                       case filelib:is_dir(Path) of
-                                      'true' ->
-                                          {Fs, [Path | Ds]};
-                                      'false' ->
-                                          {[Path | Fs], Ds}
-                                  end
-                               end, {[],[]}, FilesInDir),
+                                        Path = Dir ++ "/" ++ F,
+                                        case filelib:is_dir(Path) of
+                                            'true' ->
+                                                {Fs, [Path | Ds]};
+                                            'false' ->
+                                                {[Path | Fs], Ds}
+                                        end
+                                end, {[],[]}, FilesInDir),
     _ = lists:foreach(fun(F) ->
                               'ok' = file:delete(F)
                       end, Files),

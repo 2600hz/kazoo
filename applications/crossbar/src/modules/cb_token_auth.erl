@@ -179,8 +179,8 @@ is_expired(Context, JObj) ->
         'false' -> check_restrictions(Context, JObj);
         'true' ->
             _ = spawn(fun() -> maybe_disable_account(AccountId) end),
-            Props = [{'details', <<"account expired">>}],
-            {'halt', cb_context:add_system_error('forbidden', Props, Context)}
+            Cause = wh_json:from_list([{<<"cause">>, <<"account expired">>}]),
+            {'halt', cb_context:add_system_error('forbidden', Cause, Context)}
     end.
 
 -spec maybe_disable_account(ne_binary()) -> 'ok'.

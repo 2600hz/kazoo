@@ -264,7 +264,7 @@ can_modify(Context, Id) ->
     case cb_apps_util:allowed_app(AccountId, Id) of
         'undefined' ->
             Props = [{'details', Id}],
-            cb_context:add_system_error('forbidden', Props, Context);
+            cb_context:add_system_error('forbidden', wh_json:from_list(Props), Context);
         App ->
             cb_context:store(
               cb_context:set_resp_status(Context, 'success')
@@ -326,7 +326,7 @@ load_app(Context, AppId) ->
         'undefined' ->
             cb_context:add_system_error(
               'bad_identifier'
-              ,[{'details', AppId}]
+              ,wh_json:from_list([{'details', AppId}])
               ,Context
              );
         App ->
@@ -530,7 +530,7 @@ get_attachment(Context, Id, JObj, Attachment) ->
         {'error', R} ->
             Reason = wh_util:to_binary(R),
             lager:error("failed to fetch attachment, ~s in ~s, (account: ~s)", [Id, AppId, Db]),
-            cb_context:add_system_error('datastore_fault', [{'details', Reason}], Context);
+            cb_context:add_system_error('datastore_fault', wh_json:from_list([{'details', Reason}]), Context);
         {'ok', AttachBin} ->
             add_attachment(Context, Id, Attachment, AttachBin)
     end.

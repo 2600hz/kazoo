@@ -72,7 +72,7 @@ resource_exists() -> 'true'.
 authenticate(Context) ->
     authenticate_nouns(Context, cb_context:req_nouns(Context)).
 
--spec authenticate_nouns(cb_context:context(), ne_binary()) ->
+-spec authenticate_nouns(cb_context:context(), req_nouns()) ->
                                 'false' | 'true' | {'true', cb_context:context()}.
 authenticate_nouns(_Context, [{<<"ip_auth">>, _}]) ->
     lager:debug("request is for the ip_auth module", []),

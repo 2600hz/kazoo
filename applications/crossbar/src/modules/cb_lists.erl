@@ -155,8 +155,15 @@ entry_schema_success(Context, ListId, EntryId) ->
             on_entry_successful_validation(ListId, EntryId, Context);
         {'error', {Reason0, Pos}} ->
             Reason = io_lib:format("Error: ~s in position ~p", [Reason0, Pos]),
-            BinReason = iolist_to_binary(Reason),
-            cb_context:add_validation_error(<<"pattern">>, <<"type">>, BinReason, Context)
+            cb_context:add_validation_error(
+                <<"pattern">>
+                ,<<"type">>
+                ,wh_json:from_list([
+                    {<<"message">>, iolist_to_binary(Reason)}
+                    ,{<<"cause">>, Pattern}
+                ])
+                ,Context
+            )
     end.
 
 -spec on_entry_successful_validation(path_token(), path_token() | 'undefined', cb_context:context()) ->
@@ -188,7 +195,11 @@ get_entry(Context, EntryId, OnSuccess) ->
     case wh_json:get_value([<<"entries">>, EntryId], Doc) of
         'undefined' ->
             lager:debug("operation on entry ~s failed: not_found", [EntryId, cb_context:account_db(Context)]),
-            cb_context:add_system_error('bad_identifier', [{'details', EntryId}],  Context);
+            cb_context:add_system_error(
+                'bad_identifier'
+                ,wh_json:from_list([{<<"cause">>, EntryId}])
+                ,Context
+            );
         EntryData ->
             OnSuccess(Context, EntryData)
     end.

@@ -163,7 +163,8 @@ on_request(Req0) ->
         _ -> Req1
     end.
 
--spec on_response(cowboy_http:status(), cowboy_http:headers(), text(), cowboy_req:req()) -> cowboy_req:req().
+-spec on_response(cowboy:http_status(), cowboy:http_headers(), text(), cowboy_req:req()) ->
+                         cowboy_req:req().
 on_response(_Status, _Headers, _Body, Req0) ->
     {Method, Req1} = cowboy_req:method(Req0),
     case Method of

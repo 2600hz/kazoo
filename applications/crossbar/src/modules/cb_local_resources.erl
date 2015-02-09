@@ -67,11 +67,14 @@ check_if_peer(ResourceId, Context) ->
         {'true', 'true'} ->
             check_if_gateways_have_ip(ResourceId, Context);
         {'true', 'false'} ->
-            C = cb_context:add_validation_error([<<"peer">>]
-                                                ,<<"forbidden">>
-                                                ,<<"Peers are currently disabled, please contact the system admin">>
-                                                ,Context
-                                               ),
+            C = cb_context:add_validation_error(
+                    [<<"peer">>]
+                    ,<<"forbidden">>
+                    ,wh_json:from_list([
+                        {<<"message">>, <<"Peers are currently disabled, please contact the system admin">>}
+                     ])
+                    ,Context
+                ),
             check_resource_schema(ResourceId, C);
         {_, _} ->
             check_resource_schema(ResourceId, Context)
@@ -91,11 +94,15 @@ validate_gateway_ips([], _, _, ResourceId, Context, 'error') ->
 validate_gateway_ips([], _, _, ResourceId, Context, 'success') ->
     check_resource_schema(ResourceId, cb_context:store(Context, 'aggregate_resource', 'true'));
 validate_gateway_ips([{Idx, 'undefined', 'undefined'}|IPs], SIPAuth, ACLs, ResourceId, Context, 'success') ->
-    C = cb_context:add_validation_error([<<"gateways">>, Idx, <<"server">>]
-                                        ,<<"required">>
-                                        ,<<"Gateway server must be an IP when peering with the resource">>
-                                        ,Context
-                                       ),
+    C = cb_context:add_validation_error(
+            [<<"gateways">>, Idx, <<"server">>]
+            ,<<"required">>
+            ,wh_json:from_list([
+                {<<"message">>, <<"Gateway server must be an IP when peering with the resource">>}
+                ,{<<"cause">>, Idx}
+             ])
+            ,Context
+        ),
     validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, C, cb_context:resp_status(C));
 validate_gateway_ips([{Idx, 'undefined', ServerIP}|IPs], SIPAuth, ACLs, ResourceId, Context, 'success') ->
     case wh_network_utils:is_ipv4(ServerIP) of
@@ -104,11 +111,15 @@ validate_gateway_ips([{Idx, 'undefined', ServerIP}|IPs], SIPAuth, ACLs, Resource
                 'true' ->
                     validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, Context, cb_context:resp_status(Context));
                 'false' ->
-                    C = cb_context:add_validation_error([<<"gateways">>, Idx, <<"server">>]
-                                                        ,<<"unique">>
-                                                        ,<<"Gateway server ip is already in use">>
-                                                        ,Context
-                                                       ),
+                    C = cb_context:add_validation_error(
+                            [<<"gateways">>, Idx, <<"server">>]
+                            ,<<"unique">>
+                            ,wh_json:from_list([
+                                {<<"message">>, <<"Gateway server ip is already in use">>}
+                                ,{<<"cause">>, Idx}
+                             ])
+                            ,Context
+                        ),
                     validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, C, cb_context:resp_status(C))
             end;
         'false' ->
@@ -121,10 +132,15 @@ validate_gateway_ips([{Idx, InboundIP, ServerIP}|IPs], SIPAuth, ACLs, ResourceId
                 'true' ->
                     validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, Context, cb_context:resp_status(Context));
                 'false' ->
-                    C = cb_context:add_validation_error([<<"gateways">>, Idx, <<"inbound_ip">>]
-                                                        ,<<"unique">>
-                                                        ,<<"Gateway inbound ip is already in use">>
-                                                        ,Context),
+                    C = cb_context:add_validation_error([
+                            <<"gateways">>, Idx, <<"inbound_ip">>]
+                            ,<<"unique">>
+                            ,wh_json:from_list([
+                                {<<"message">>, <<"Gateway inbound ip is already in use">>}
+                                ,{<<"cause">>, Idx}
+                             ])
+                            ,Context
+                        ),
                     validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, C, cb_context:resp_status(C))
             end;
         'false' ->

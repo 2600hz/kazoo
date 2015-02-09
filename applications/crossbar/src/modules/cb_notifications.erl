@@ -391,7 +391,11 @@ maybe_delete_template(Context, Id, ContentType, TemplateJObj) ->
     case wh_doc:attachment(TemplateJObj, AttachmentName) of
         'undefined' ->
             lager:debug("failed to find attachment ~s", [AttachmentName]),
-            cb_context:add_system_error('bad_identifier', [{'details', ContentType}],  Context);
+            cb_context:add_system_error(
+                'bad_identifier'
+                ,wh_json:from_list([{<<"cause">>, ContentType}])
+                , Context
+            );
         _Attachment ->
             lager:debug("attempting to delete attachment ~s", [AttachmentName]),
             crossbar_doc:delete_attachment(kz_notification:db_id(Id), AttachmentName, Context)

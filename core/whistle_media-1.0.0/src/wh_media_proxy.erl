@@ -97,7 +97,7 @@ on_request(Req0) ->
     {_Method, Req1} = cowboy_req:method(Req0),
     Req1.
 
--spec on_response(cowboy_http:status(), cowboy_http:headers(), cowboy_req:req()) -> cowboy_req:req().
+-spec on_response(cowboy:http_status(), cowboy:http_headers(), cowboy_req:req()) -> cowboy_req:req().
 on_response(_Status, _Headers, Req) -> Req.
 
 -spec find_file(string(), string()) -> string().

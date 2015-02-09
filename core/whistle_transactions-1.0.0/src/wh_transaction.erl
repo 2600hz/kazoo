@@ -622,7 +622,7 @@ prepare_manual_addition_transaction(#wh_transaction{bookkeeper_info='undefined'}
 prepare_manual_addition_transaction(#wh_transaction{sub_account_id='undefined'
                                                     ,pvt_code=?CODE_SUB_ACCOUNT_MANUAL_ADDITION
                                                    }) ->
-    {'error', 'sub_accuont_id_missing'};
+    {'error', 'sub_account_id_missing'};
 prepare_manual_addition_transaction(Transaction) ->
     Transaction.
 

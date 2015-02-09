@@ -210,15 +210,27 @@ check_uploaded_file(Context, [{_Name, File}|_]) ->
     lager:debug("checking file ~s", [_Name]),
     case wh_json:get_value(<<"contents">>, File) of
         'undefined' ->
-            Message = <<"file contents not found">>,
-            cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context);
+            cb_context:add_validation_error(
+                <<"file">>
+                ,<<"required">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"file contents not found">>}
+                 ])
+                ,Context
+            );
         Bin when is_binary(Bin) ->
             lager:debug("file: ~s", [Bin]),
             cb_context:set_resp_status(Context, 'success')
     end;
 check_uploaded_file(Context, _ReqFiles) ->
-    Message = <<"no file to process">>,
-    cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context).
+    cb_context:add_validation_error(
+        <<"file">>
+        ,<<"required">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"no file to process">>}
+         ])
+        ,Context
+    ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -256,8 +268,14 @@ process_upload_file(Context, [{_Name, File}|_]) ->
                  ,Context
                 );
 process_upload_file(Context, _ReqFiles) ->
-    Message = <<"no file to process">>,
-    cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context).
+    cb_context:add_validation_error(
+        <<"file">>
+        ,<<"required">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"no file to process">>}
+         ])
+        ,Context
+    ).
 
 -spec convert_file(ne_binary(), ne_binary(), cb_context:context()) ->
                           {'ok', {non_neg_integer(), wh_json:objects()}}.
