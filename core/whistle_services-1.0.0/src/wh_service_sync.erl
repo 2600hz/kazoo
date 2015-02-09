@@ -186,8 +186,10 @@ maybe_sync_service() ->
 bump_modified(JObj) ->
     AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
     Services = wh_services:reconcile_only(AccountId),
+    'true' = (Services =/= 'false'),
+
     UpdatedJObj = wh_json:set_values([{<<"pvt_modified">>, wh_util:current_tstamp()}
-                                     ,{<<"_rev">>, wh_json:get_value(<<"_rev">>, JObj)}
+                                      ,{<<"_rev">>, wh_json:get_value(<<"_rev">>, JObj)}
                                      ], wh_services:to_json(Services)),
     case couch_mgr:save_doc(?WH_SERVICES_DB, UpdatedJObj) of
         {'error', _}=E ->
