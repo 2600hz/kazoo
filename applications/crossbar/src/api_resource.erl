@@ -706,11 +706,11 @@ to_csv(Req, Context) ->
     [{Mod, _Params}|_] = cb_context:req_nouns(Context),
     Verb = cb_context:req_verb(Context),
     Event = api_util:create_event_name(Context, [<<"to_csv">>
-                                        ,wh_util:to_lower_binary(Verb)
-                                        ,Mod
-                                       ]),
+                                                 ,wh_util:to_lower_binary(Verb)
+                                                 ,Mod
+                                                ]),
     {Req1, Context1} = crossbar_bindings:fold(Event, {Req, Context}),
-     case cb_context:fetch(Context1, 'is_chunked') of
+    case cb_context:fetch(Context1, 'is_chunked') of
         'true' -> {'halt', Req1, Context1};
         _ ->
             RespBody = maybe_flatten_jobj(Context1),
