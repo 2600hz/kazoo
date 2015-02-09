@@ -126,16 +126,29 @@ flush() ->
 -spec start_module(text()) -> 'ok' | {'error', _}.
 start_module(Module) ->
     try crossbar:start_mod(Module) of
-        _ ->
-            Mods = crossbar_config:autoload_modules(),
-            crossbar_config:set_default_autoload_modules([wh_util:to_binary(Module)
-                                                          | lists:delete(wh_util:to_binary(Module), Mods)
-                                                         ]),
-            io:format("started and added ~s to autoloaded modules~n", [Module])
+        _ -> maybe_autoload_module(wh_util:to_binary(Module))
     catch
         _E:_R ->
             io:format("failed to start ~s: ~s: ~p~n", [Module, _E, _R])
     end.
+
+-spec maybe_autoload_module(ne_binary()) -> 'ok'.
+maybe_autoload_module(Module) ->
+    Mods = crossbar_config:autoload_modules(),
+    case lists:member(Module, Mods) of
+        'true' ->
+            io:format("module ~s started~n", [Module]);
+        'false' ->
+            persist_module(Module, Mods),
+            io:format("started and added ~s to autoloaded modules~n", [Module])
+    end.
+
+-spec persist_module(ne_binary(), ne_binaries()) -> 'ok'.
+persist_module(Module, Mods) ->
+    crossbar_config:set_default_autoload_modules(
+      [wh_util:to_binary(Module)
+       | lists:delete(wh_util:to_binary(Module), Mods)
+      ]).
 
 %%--------------------------------------------------------------------
 %% @public
