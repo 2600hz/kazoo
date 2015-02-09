@@ -1,6 +1,7 @@
 NAME=pusher
 ROOT=../..
-REBAR=$(ROOT)/utils/rebar/rebar
+#REBAR=$(ROOT)/utils/rebar/rebar
+REBAR=./rebar
 OTP_PLT=~/.otp.plt
 PRJ_PLT=$(NAME).plt
 
