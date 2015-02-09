@@ -126,6 +126,6 @@ process_response([JObj|T], Acc) ->
     CountryCode = wh_json:get_value(<<"country_code">>, JObj),
     FoundNumber = wh_json:get_value(<<"number">>, JObj),
     E164 = <<"+", CountryCode/binary, FoundNumber/binary>>, 
-    Number = {E164, {[{<<"number">>, E164}, {<<"rate">>,<<"2">>}, {<<"activation_charge">>,<<"0">>}]}}, 
+    Number = {E164, {[{<<"number">>, E164}]}}, 
     process_response(T, [Number|Acc]).
 
