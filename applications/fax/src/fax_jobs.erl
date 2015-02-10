@@ -118,9 +118,9 @@ handle_info('timeout', #state{jobs=[]}=State) ->
             lager:debug("failed to fetch fax jobs: ~p", [_Reason]),
             {'noreply', State, ?POLLING_INTERVAL}
     end;
-handle_info({'DOWN', Ref, process, Pid, Reason}, State) ->
+handle_info({'DOWN', Ref, process, Pid, Reason}, #state{jobs=Jobs}=State) ->
     lager:debug("Fax Worker crashed ? ~p / ~p / ~p",[Ref, Pid, Reason]),
-    {'noreply', State, ?POLLING_INTERVAL};
+    {'noreply', State#state{jobs=distribute_jobs(Jobs)}, ?POLLING_INTERVAL};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State, ?POLLING_INTERVAL}.
@@ -178,5 +178,3 @@ cleanup_jobs() ->
             'ok';
         {'error', _R} -> lager:debug("unable to cleanup jobs: ~p", [_R])
     end.
-
-
