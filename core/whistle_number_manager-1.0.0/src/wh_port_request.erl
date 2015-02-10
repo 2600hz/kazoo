@@ -70,33 +70,46 @@ normalize_attachments_map(K, V) ->
 -spec normalize_numbers(wh_json:object()) -> wh_json:object().
 normalize_numbers(JObj) ->
     Numbers = wh_json:get_value(<<"numbers">>, JObj, wh_json:new()),
-    wh_json:set_value(<<"numbers">>
-                      ,wh_json:map(fun(N, Meta) ->
-                                           {wnm_util:to_e164(N), Meta}
-                                   end, Numbers)
-                      ,JObj
-                     ).
+    wh_json:set_value(
+        <<"numbers">>
+        ,wh_json:map(
+            fun(N, Meta) ->
+                {wnm_util:to_e164(N), Meta}
+            end
+            ,Numbers
+         )
+        ,JObj
+    ).
 
 -spec transition_to_submitted(wh_json:object()) -> transition_response().
+-spec transition_to_pending(wh_json:object()) -> transition_response().
 -spec transition_to_scheduled(wh_json:object()) -> transition_response().
 -spec transition_to_complete(wh_json:object()) -> transition_response().
 -spec transition_to_rejected(wh_json:object()) -> transition_response().
 
 transition_to_submitted(JObj) ->
     transition(JObj, [?PORT_WAITING, ?PORT_REJECT], ?PORT_SUBMITTED).
+
+transition_to_pending(JObj) ->
+    transition(JObj, [?PORT_SUBMITTED], ?PORT_PENDING).
+
 transition_to_scheduled(JObj) ->
-    transition(JObj, [?PORT_SUBMITTED], ?PORT_SCHEDULED).
+    transition(JObj, [?PORT_PENDING], ?PORT_SCHEDULED).
+
 transition_to_complete(JObj) ->
-    case transition(JObj, [?PORT_SUBMITTED, ?PORT_SCHEDULED, ?PORT_REJECT], ?PORT_COMPLETE) of
+    case transition(JObj, [?PORT_PENDING, ?PORT_SCHEDULED, ?PORT_REJECT], ?PORT_COMPLETE) of
         {'error', _}=E -> E;
         {'ok', Transitioned} -> completed_port(Transitioned)
     end.
+
 transition_to_rejected(JObj) ->
-    transition(JObj, [?PORT_SUBMITTED, ?PORT_SCHEDULED], ?PORT_REJECT).
+    transition(JObj, [?PORT_SUBMITTED, ?PORT_SCHEDULED, ?PORT_PENDING], ?PORT_REJECT).
 
 -spec maybe_transition(wh_json:object(), ne_binary()) -> transition_response().
 maybe_transition(PortReq, ?PORT_SUBMITTED) ->
     transition_to_submitted(PortReq);
+maybe_transition(PortReq, ?PORT_PENDING) ->
+    transition_to_pending(PortReq);
 maybe_transition(PortReq, ?PORT_SCHEDULED) ->
     transition_to_scheduled(PortReq);
 maybe_transition(PortReq, ?PORT_COMPLETE) ->
@@ -136,7 +149,7 @@ charge_for_port(_JObj, AccountId) ->
 completed_port(PortReq) ->
     case charge_for_port(PortReq) of
         'ok' ->
-            lager:debug("successfully charged for port, transtitioning numbers to active"),
+            lager:debug("successfully charged for port, transitioning numbers to active"),
             transition_numbers(PortReq);
         'error' ->
             throw({'error', 'failed_to_charge'})
@@ -149,7 +162,7 @@ transition_numbers(PortReq) ->
     PortOps = [enable_number(N) || N <- Numbers],
     case lists:all(fun(X) -> wh_util:is_true(X) end, PortOps) of
         'true' ->
-            lager:debug("all numbers ported, removing from port req"),
+            lager:debug("all numbers ported, removing from port request"),
             ClearedPortRequest = clear_numbers_from_port(PortReq),
             {'ok', ClearedPortRequest};
         'false' ->

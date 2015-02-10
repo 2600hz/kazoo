@@ -2,7 +2,7 @@
 %%% @copyright (C) 2013-2015, 2600Hz INC
 %%% @doc
 %%%
-%%% Handles port request lifecycles
+%%% Handles port request life cycles
 %%% GET /port_requests - list all the account's port requests
 %%% GET /port_requests/descendants - detailed report of a port request
 %%% GET /port_requests/{id} - detailed report of a port request
@@ -164,6 +164,8 @@ allowed_methods(_Id) ->
 
 allowed_methods(_Id, ?PORT_SUBMITTED) ->
     [?HTTP_POST];
+allowed_methods(_Id, ?PORT_PENDING) ->
+    [?HTTP_POST];
 allowed_methods(_Id, ?PORT_SCHEDULED) ->
     [?HTTP_POST];
 allowed_methods(_Id, ?PORT_COMPLETE) ->
@@ -196,6 +198,7 @@ resource_exists() -> 'true'.
 resource_exists(_Id) -> 'true'.
 
 resource_exists(_Id, ?PORT_SUBMITTED) -> 'true';
+resource_exists(_Id, ?PORT_PENDING) -> 'true';
 resource_exists(_Id, ?PORT_SCHEDULED) -> 'true';
 resource_exists(_Id, ?PORT_COMPLETE) -> 'true';
 resource_exists(_Id, ?PORT_REJECT) -> 'true';
@@ -301,6 +304,8 @@ validate(Context, Id) ->
 
 validate(Context, Id, ?PORT_SUBMITTED) ->
     validate_port_request(Context, Id, ?PORT_SUBMITTED, cb_context:req_verb(Context));
+validate(Context, Id, ?PORT_PENDING) ->
+    validate_port_request(Context, Id, ?PORT_PENDING, cb_context:req_verb(Context));
 validate(Context, Id, ?PORT_SCHEDULED) ->
     validate_port_request(Context, Id, ?PORT_SCHEDULED, cb_context:req_verb(Context));
 validate(Context, Id, ?PORT_COMPLETE) ->
@@ -329,6 +334,8 @@ validate_port_request(Context, Id, ?HTTP_DELETE) ->
 
 validate_port_request(Context, Id, ?PORT_SUBMITTED, ?HTTP_POST) ->
     maybe_move_state(Context, Id, ?PORT_SUBMITTED);
+validate_port_request(Context, Id, ?PORT_PENDING, ?HTTP_POST) ->
+    maybe_move_state(Context, Id, ?PORT_PENDING);
 validate_port_request(Context, Id, ?PORT_SCHEDULED, ?HTTP_POST) ->
     maybe_move_state(Context, Id, ?PORT_SCHEDULED);
 validate_port_request(Context, Id, ?PORT_COMPLETE, ?HTTP_POST) ->
@@ -368,7 +375,7 @@ is_deletable(Context, _PortState) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% If the HTTP verib is PUT, execute the actual action, usually a db save.
+%% If the HTTP verb is PUT, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
 -spec get(cb_context:context(), path_token(), path_token()) -> cb_context:context().
@@ -379,7 +386,7 @@ get(Context, Id, ?PATH_TOKEN_LOA) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% If the HTTP verib is PUT, execute the actual action, usually a db save.
+%% If the HTTP verb is PUT, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
@@ -405,7 +412,7 @@ put(Context, Id, ?PORT_ATTACHMENT) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% If the HTTP verib is POST, execute the actual action, usually a db save
+%% If the HTTP verb is POST, execute the actual action, usually a db save
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
@@ -479,7 +486,7 @@ do_post(Context, _Id) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% If the HTTP verib is DELETE, execute the actual action, usually a db delete
+%% If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token()) ->
@@ -673,7 +680,7 @@ on_successful_validation(Context, _Id, 'false') ->
 -spec can_update_port_request(cb_context:context()) -> boolean().
 -spec can_update_port_request(cb_context:context(), ne_binary()) -> boolean().
 can_update_port_request(Context) ->
-    lager:debug("port req: ~p", [cb_context:doc(Context)]),
+    lager:debug("port request: ~p", [cb_context:doc(Context)]),
     can_update_port_request(Context, wh_port_request:current_state(cb_context:doc(Context))).
 
 can_update_port_request(_Context, ?PORT_WAITING) ->
@@ -729,7 +736,7 @@ check_number_portability(PortId, Number, Context) ->
                 ,Context
             );
         {'error', _E} ->
-            Message = <<"Failed to query backend services, cannot port at this time">>,
+            Message = <<"Failed to query back-end services, cannot port at this time">>,
             lager:debug("failed to query the port request view: ~p", [_E]),
             cb_context:add_validation_error(
                 Number
