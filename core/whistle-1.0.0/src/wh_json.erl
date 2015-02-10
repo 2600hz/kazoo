@@ -103,7 +103,7 @@ encode(JObj) -> ejson:encode(JObj).
 -spec decode(iolist() | ne_binary(), ne_binary()) -> json_term().
 
 decode(Thing) when is_list(Thing) orelse is_binary(Thing) ->
-    decode(Thing, ?DEFAULT_CONTENT_TYPE).
+    decode(Thing, <<"application/json">>).
 
 decode(JSON, <<"application/json">>) ->
     try ejson:decode(JSON) of

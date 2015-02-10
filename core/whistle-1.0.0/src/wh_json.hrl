@@ -1,7 +1,6 @@
 -ifndef(WH_JSON_HRL).
 
 -include_lib("whistle/include/wh_types.hrl").
--include_lib("whistle/include/wh_amqp.hrl").
 
 %% How do we wrap proplists to denote they're json objects?
 %% -define(JSON_WRAPPER(Proplist), {struct, Proplist}).
