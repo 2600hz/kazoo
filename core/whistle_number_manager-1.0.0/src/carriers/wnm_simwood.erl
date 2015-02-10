@@ -23,13 +23,12 @@
 -define(WNM_SW_CONFIG_CAT, <<(?WNM_CONFIG_CAT)/binary, ".simwood">>).
 
 -define(SW_NUMBER_URL, whapps_config:get_string(?WNM_SW_CONFIG_CAT
-                                                   ,<<"numbers_api_url">>
-                                                   ,<<"https://api.simwood.com/v3/numbers">>)).
+                                                ,<<"numbers_api_url">>
+                                                ,<<"https://api.simwood.com/v3/numbers">>)).
 
 -define(SW_ACCOUNT_ID, whapps_config:get_string(?WNM_SW_CONFIG_CAT, <<"simwood_account_id">>, <<>>)).
 -define(SW_AUTH_USERNAME, whapps_config:get_string(?WNM_SW_CONFIG_CAT, <<"auth_username">>, <<>>)).
 -define(SW_AUTH_PASSWORD, whapps_config:get_string(?WNM_SW_CONFIG_CAT, <<"auth_password">>, <<>>)).
-
 
 %%--------------------------------------------------------------------
 %% @public
@@ -38,11 +37,11 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) ->
-                          {'ok', wh_json:objects()} |
+                          {'ok', wh_json:object()} |
                           {'error', _}.
 find_numbers(Prefix, Quantity, _Options) ->
-    URL = list_to_binary([?SW_NUMBER_URL, "/", ?SW_ACCOUNT_ID, <<"/available/standard/">>, sw_quantity(Quantity), "?pattern=", Prefix, "*"]), 
-    {'ok', Body} = query_simwood(URL, 'get'), 
+    URL = list_to_binary([?SW_NUMBER_URL, "/", ?SW_ACCOUNT_ID, <<"/available/standard/">>, sw_quantity(Quantity), "?pattern=", Prefix, "*"]),
+    {'ok', Body} = query_simwood(URL, 'get'),
     process_response(wh_json:decode(Body)).
 
 %%--------------------------------------------------------------------
@@ -56,7 +55,7 @@ acquire_number(#number{dry_run='true'}=NR) -> NR;
 acquire_number(#number{number=(<<$+, Number/binary>>)}=NR) ->
     acquire_number(NR#number{number=Number});
 acquire_number(#number{number=Number}=NR) ->
-    URL = list_to_binary([?SW_NUMBER_URL, "/", ?SW_ACCOUNT_ID, <<"/allocated/">>, wh_util:to_binary(Number)]), 
+    URL = list_to_binary([?SW_NUMBER_URL, "/", ?SW_ACCOUNT_ID, <<"/allocated/">>, wh_util:to_binary(Number)]),
     {'ok', _Body} = query_simwood(URL, 'put'),
     NR#number{number=(wnm_util:normalize_number(Number))}.
 
@@ -67,10 +66,10 @@ acquire_number(#number{number=Number}=NR) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec disconnect_number(wnm_number()) -> wnm_number().
-disconnect_number(#number{number=(<<$+, Number/binary>>)}=NR) -> 
-    disconnect_number(NR#number{number=Number}); 
-disconnect_number(#number{number=Number}=NR) -> 
-    URL = list_to_binary([?SW_NUMBER_URL, "/", ?SW_ACCOUNT_ID, <<"/allocated/">>, wh_util:to_binary(Number)]), 
+disconnect_number(#number{number=(<<$+, Number/binary>>)}=NR) ->
+    disconnect_number(NR#number{number=Number});
+disconnect_number(#number{number=Number}=NR) ->
+    URL = list_to_binary([?SW_NUMBER_URL, "/", ?SW_ACCOUNT_ID, <<"/allocated/">>, wh_util:to_binary(Number)]),
     {'ok', _Body} = query_simwood(URL, 'delete'),
     NR#number{number=(wnm_util:normalize_number(Number))}.
 
@@ -90,7 +89,9 @@ should_lookup_cnam() -> 'true'.
 %%% Internal functions
 %%%===================================================================
 
--spec query_simwood(ne_binary(), 'get'|'put'|'post'|'delete') -> {'ok', any()} | {'error', 'not_available'}.
+-spec query_simwood(ne_binary(), 'get'|'put'|'post'|'delete') ->
+                           {'ok', iolist()} |
+                           {'error', 'not_available'}.
 query_simwood(URL, Verb) ->
     lager:debug("Querying Simwood. Verb: ~p. URL: ~p.", [Verb, URL]),
     HTTPOptions = [{'ssl',[{'verify',0}]}
@@ -115,17 +116,16 @@ sw_quantity(Quantity) when Quantity == 1 -> <<"1">>;
 sw_quantity(Quantity) when Quantity > 1, Quantity =< 10  -> <<"10">>;
 sw_quantity(_Quantity) -> <<"100">>.
 
--spec process_response(wh_proplist()) -> {'ok', wh_json:object()}.
+-spec process_response(wh_json:objects()) -> {'ok', wh_json:object()}.
 process_response([]) -> {'ok', wh_json:new()};
-process_response(Body) ->
-    process_response(Body, []).
+process_response(JObjs) ->
+    process_response(JObjs, wh_json:new()).
 
--spec process_response(wh_proplist(), wh_proplist()) -> {'ok', wh_json:object()}.
-process_response([], Acc) -> {'ok', wh_json:from_list(Acc)};
-process_response([JObj|T], Acc) -> 
+-spec process_response(wh_json:objects(), wh_json:object()) -> {'ok', wh_json:object()}.
+process_response([], Acc) -> {'ok', Acc};
+process_response([JObj|JObjs], Acc) ->
     CountryCode = wh_json:get_value(<<"country_code">>, JObj),
     FoundNumber = wh_json:get_value(<<"number">>, JObj),
-    E164 = <<"+", CountryCode/binary, FoundNumber/binary>>, 
-    Number = {E164, {[{<<"number">>, E164}]}}, 
-    process_response(T, [Number|Acc]).
-
+    E164 = <<"+", CountryCode/binary, FoundNumber/binary>>,
+    NumberJObj = wh_json:from_list([{<<"number">>, E164}]),
+    process_response(JObjs, wh_json:set_value(E164, NumberJObj, Acc)).
