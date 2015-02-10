@@ -12,6 +12,7 @@
 
 -export([init/0
          ,allowed_methods/0
+         ,authorize/1, authorize/2
          ,resource_exists/0
          ,validate/1
         ]).
@@ -34,7 +35,24 @@
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.search">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.search">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"*.validate.search">>, ?MODULE, 'validate').
+    _ = crossbar_bindings:bind(<<"*.validate.search">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize').
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Authorize the request
+%% @end
+
+-spec authorize(cb_context:context()) -> 'false'.
+-spec authorize(cb_context:context(), path_token()) -> boolean().
+
+authorize(Context) ->
+    cb_context:auth_token(Context) =/= 'undefined'.
+
+authorize(Context, _Module) ->
+    cb_context:auth_token(Context) =/= 'undefined'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -91,6 +109,8 @@ validate_search(Context, Q, T) ->
     validate_search(Context, cb_context:req_value(Context, <<"v">>), Q, T).
 
 -spec validate_search(cb_context:context(), api_binary(), ne_binary(), ne_binary()) -> cb_context:context().
+validate_search(Context, 'true', Q, T) ->    
+    validate_search(Context, <<>>, Q, T);
 validate_search(Context, 'undefined', _, _) ->
     cb_context:add_validation_error(<<"v">>, <<"required">>, <<"search needs to know what to look for">>, Context);
 validate_search(Context, V, Q, T) ->
@@ -163,7 +183,11 @@ get_end_key(Context, Type, Start) ->
 %% replaces last character in binary with next character
 %% @end
 %%--------------------------------------------------------------------
--spec next_binary_key(binary()) -> binary().
+-spec next_binary_key(api_binary()) -> binary().
+next_binary_key('undefined') ->
+    <<"\ufff0">>;
+next_binary_key(<<>>) ->
+    <<"\ufff0">>;
 next_binary_key(Bin) ->
     <<Bin/binary, "\ufff0">>.
 
@@ -205,7 +229,8 @@ fix_envelope_fold(Key, JObj) ->
 %%--------------------------------------------------------------------
 -spec fix_start_key(api_binaries()) -> api_binary().
 fix_start_key('undefined') -> 'undefined';
-fix_start_key([_, StartKey]) -> StartKey.
+fix_start_key([_ , StartKey]) -> StartKey;
+fix_start_key([_ , _, StartKey]) -> StartKey.
 
 %%--------------------------------------------------------------------
 %% @private
