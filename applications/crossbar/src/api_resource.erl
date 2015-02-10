@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% API resource
 %%% @end
@@ -354,12 +354,13 @@ options(Req0, Context) ->
                                     {content_type_callbacks(), cowboy_req:req(), cb_context:context()}.
 content_types_provided(Req, Context0) ->
     lager:debug("run: content_types_provided"),
-    Context1 =
-        lists:foldr(fun({Mod, Params}, ContextAcc) ->
-                            Event = api_util:create_event_name(Context0, <<"content_types_provided.", Mod/binary>>),
-                            Payload = [ContextAcc | Params],
-                            crossbar_bindings:fold(Event, Payload)
-                    end, Context0, cb_context:req_nouns(Context0)),
+
+    [{Mod, Params}|_] = cb_context:req_nouns(Context0),
+    Event = api_util:create_event_name(Context0, <<"content_types_provided.", Mod/binary>>),
+    Payload = [Context0 | Params],
+
+    Context1 = crossbar_bindings:fold(Event, Payload),
+
     content_types_provided(Req, Context1, cb_context:content_types_provided(Context1)).
 
 content_types_provided(Req, Context, []) ->
