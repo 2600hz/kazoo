@@ -50,6 +50,12 @@ This will add the French version of the prompt to the system_media database. If 
 
 Now, when the `menu-transferring_call` prompt is played, if the call's or account's language is set to `fr-fr`, that version of the prompt will be played for the caller.
 
+### Cluster Default Language
+
+To set your cluster's default language to something other than "en-us":
+
+    sup whapps_config set_default media default_language ab-cd
+
 ### Per-Account Prompts
 
 It is possible to create per-account prompts to be used in place of the system prompts. This is done via the Crossbar /media API.
