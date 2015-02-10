@@ -415,19 +415,8 @@ post(Context, Id) ->
     do_post(Context, Id).
 
 post(Context, Id, ?PORT_SUBMITTED) ->
-    _  = add_to_phone_numbers_doc(Context),
-    try send_port_request_notification(Context, Id) of
-        _ ->
-            lager:debug("port request notification sent"),
-            do_post(Context, Id)
-    catch
-        _E:_R ->
-            lager:debug("failed to send the port request notification: ~s:~p", [_E, _R]),
-            cb_context:add_system_error('bad_gateway'
-                                        ,<<"failed to send port request email to system admins">>
-                                        ,Context
-                                       )
-    end;
+    DryRun = (not wh_json:is_true(<<"accept_charges">>, cb_context:req_json(Context), 'false')),
+    post_submitted(DryRun, Context, Id);
 post(Context, Id, ?PORT_SCHEDULED) ->
     do_post(Context, Id);
 post(Context, Id, ?PORT_COMPLETE) ->
@@ -446,6 +435,28 @@ post(Context, Id, ?PORT_REJECT) ->
                                         ,Context
                                        )
     end.
+
+post_submitted('false', Context, Id) ->
+    _  = add_to_phone_numbers_doc(Context),
+    try send_port_request_notification(Context, Id) of
+        _ ->
+            lager:debug("port request notification sent"),
+            do_post(Context, Id)
+    catch
+        _E:_R ->
+            lager:debug("failed to send the port request notification: ~s:~p", [_E, _R]),
+            cb_context:add_system_error('bad_gateway'
+                                        ,<<"failed to send port request email to system admins">>
+                                        ,Context
+                                       )
+    end;
+post_submitted('true', Context, Id) ->
+    DryRunJObj = dry_run(Context),
+    case wh_json:is_empty(DryRunJObj) of
+        'false' -> crossbar_util:response_402(DryRunJObj, Context);
+        'true' -> post_submitted('false', Context, Id)
+    end.
+
 
 post(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
     [{_Filename, FileJObj}] = cb_context:req_files(Context),
@@ -1145,12 +1156,14 @@ remove_phone_number(Number, _, {_, Acc}) ->
                                    {'ok', wh_json:object()} |
                                    {'error', _}.
 get_phone_numbers_doc(Context) ->
-    Context1 = crossbar_doc:load(<<"phone_numbers">>, Context),
+    AccountId = cb_context:account_id(Context),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    Context1 = crossbar_doc:load(<<"phone_numbers">>, cb_context:set_account_db(Context, AccountDb)),
     case cb_context:resp_status(Context1) of
         'success' ->
             {'ok', cb_context:doc(Context1)};
         Status ->
-            lager:error("failed to open phone_numbers doc in ~s : ~p", [cb_context:account_id(Context), Status]),
+            lager:error("failed to open phone_numbers doc in ~s : ~p", [AccountId, Status]),
             {'error', Status}
     end.
 
@@ -1161,10 +1174,45 @@ get_phone_numbers_doc(Context) ->
 %%--------------------------------------------------------------------
 -spec save_phone_numbers_doc(cb_context:context(), wh_json:object()) -> 'ok' | 'error'.
 save_phone_numbers_doc(Context, JObj) ->
-    Context1 = crossbar_doc:save(cb_context:set_doc(Context, JObj)),
-    case cb_context:resp_status(Context1) of
+    AccountId = cb_context:account_id(Context),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    Context1 =
+        cb_context:setters(
+            Context
+            ,[{fun cb_context:set_doc/2, JObj}
+              ,{fun cb_context:set_account_db/2, AccountDb}
+             ]
+        ),
+    Context2 = crossbar_doc:save(Context1),
+    case cb_context:resp_status(Context2) of
         'success' -> 'ok';
         _Status ->
-            lager:error("failed to save phone_numbers doc in ~s : ~p", [cb_context:account_id(Context), _Status]),
+            lager:error("failed to save phone_numbers doc in ~s : ~p", [AccountId, _Status]),
             'error'
     end.
+
+-spec dry_run(cb_context:context()) -> wh_json:object().
+dry_run(Context) ->
+    JObj = cb_context:doc(Context),
+    Numbers = wh_json:get_value(<<"numbers">>, JObj),
+    PhoneNumbers =
+        wh_json:foldl(
+            fun(Number, NumberJObj, Acc) ->
+                wh_json:set_value(
+                    Number
+                    ,wh_json:set_value(
+                         <<"features">>
+                         ,[<<"port">>]
+                         ,NumberJObj
+                     )
+                    ,Acc
+                )
+            end
+            ,wh_json:new()
+            ,Numbers
+
+        ),
+    AccountId = cb_context:account_id(Context),
+    Services = wh_services:fetch(AccountId),
+    UpdateServices = wh_service_phone_numbers:reconcile(PhoneNumbers, Services),
+    wh_services:dry_run(UpdateServices).
