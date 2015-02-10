@@ -85,7 +85,9 @@ to_csv({Req, Context}) ->
     case props:get_value(<<"cdrs">>, Nouns, []) of
         [_|_] -> {Req, Context};
         [] ->
-            Headers = props:set_values([{<<"content-type">>, <<"application/octet-stream">>}]
+            Headers = props:set_values([{<<"content-type">>, <<"application/octet-stream">>}
+                                        ,{<<"content-disposition">>, <<"attachment; filename=\"cdrs.csv\"">>}
+                                       ]
                                        ,cowboy_req:get('resp_headers', Req)
                                       ),
             {'ok', Req1} = cowboy_req:chunked_reply(200, Headers, Req),
