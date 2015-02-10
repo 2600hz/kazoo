@@ -554,7 +554,7 @@ get_xml_value(Paths, Xml) ->
             wh_util:to_binary(Value);
         [#xmlAttribute{}|_]=Values ->
             iolist_to_binary([wh_util:to_binary(Value)
-                              || #xmlText{value=Value} <- Values
+                              || #xmlAttribute{value=Value} <- Values
                              ]);
         _Else -> 'undefined'
     catch

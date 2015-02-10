@@ -99,8 +99,8 @@ new() -> ?JSON_WRAPPER([]).
 -spec encode(json_term()) -> text().
 encode(JObj) -> ejson:encode(JObj).
 
--spec decode(iolist() | ne_binary()) -> object().
--spec decode(iolist() | ne_binary(), ne_binary()) -> object().
+-spec decode(iolist() | ne_binary()) -> json_term().
+-spec decode(iolist() | ne_binary(), ne_binary()) -> json_term().
 
 decode(Thing) when is_list(Thing) orelse is_binary(Thing) ->
     decode(Thing, ?DEFAULT_CONTENT_TYPE).
