@@ -425,5 +425,6 @@ maybe_transfer(Context, Transferor, _Transferee, Target) ->
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
 
+    lager:debug("attempting to transfer ~s to ~s by ~s", [_Transferee, Target, Transferor]),
     wh_amqp_worker:cast(API, fun wapi_metaflow:publish_req/1),
     crossbar_util:response_202(<<"transfer initiated">>, Context).

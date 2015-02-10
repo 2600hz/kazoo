@@ -18,7 +18,6 @@
 -define(CHILDREN, [?WORKER('konami_listener')
                    ,?WORKER('konami_event_listener')
                    ,?WORKER('konami_init')
-                   ,?WORKER('webseq')
                   ]).
 
 %% ===================================================================

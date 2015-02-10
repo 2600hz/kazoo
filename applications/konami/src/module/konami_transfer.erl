@@ -87,7 +87,7 @@
 
 -define(TARGET_CALL_EVENTS, [<<"CHANNEL_ANSWER">>
                              ,<<"CHANNEL_CREATE">>
-                             ,<<"CHANNEL_BRIDGE">>, <<"CHANNEL_UNBRIDGE">>
+                             ,<<"CHANNEL_BRIDGE">>
                              ,<<"CHANNEL_DESTROY">>
                              ,<<"DTMF">>, <<"CHANNEL_REPLACED">>
                              ,<<"dialplan">>
