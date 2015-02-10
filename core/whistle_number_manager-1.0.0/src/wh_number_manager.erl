@@ -317,7 +317,9 @@ ported(Number) ->
                 ,Routines
                ).
 
--spec check_ports(wnm_number()) -> operation_return().
+-spec check_ports(wnm_number()) ->
+                         wnm_number() |
+                         {'not_found', wnm_number()}.
 check_ports(#number{number=MaybePortNumber}=Number) ->
     case wnm_number:find_port_in_number(Number) of
         {'ok', PortDoc} ->

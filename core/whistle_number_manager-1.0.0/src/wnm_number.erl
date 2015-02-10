@@ -107,7 +107,6 @@ module_name('undefined') ->
     whapps_config:get_binary(?WNM_CONFIG_CAT, <<"available_module_name">>, <<"wnm_local">>);
 module_name(M) -> wh_util:to_binary(M).
 
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -1016,14 +1015,14 @@ error_service_restriction(Props, N) when is_list(Props) ->
            ,N#number{error_jobj=wh_json:from_list(Props)}
           }).
 
--spec error_provider_fault(wh_json:object(), wnm_number()) -> no_return().
+-spec error_provider_fault(wh_json:json_term(), wnm_number()) -> no_return().
 error_provider_fault(Reason, N) ->
     lager:debug("feature provider(s) fault: ~p", [wh_json:encode(Reason)]),
     throw({'provider_fault'
            ,N#number{error_jobj=wh_json:from_list([{<<"provider_fault">>, Reason}])}
           }).
 
--spec error_carrier_fault(wh_json:object() | ne_binary(), wnm_number()) -> no_return().
+-spec error_carrier_fault(wh_json:json_term(), wnm_number()) -> no_return().
 error_carrier_fault(Reason, N) ->
     lager:debug("carrier provider fault: ~p", [wh_json:encode(Reason)]),
     throw({'carrier_fault'
@@ -1222,7 +1221,8 @@ update_service_plans(#number{dry_run='true'
                              ,phone_number_docs=Docs
                              ,module_name=ModuleName
                              ,services=Services
-                             ,number=PhoneNumber}=Number) ->
+                             ,number=PhoneNumber
+                            }=Number) ->
     case dict:find(AssignedTo, Docs) of
         'error' -> Number;
         {'ok', JObj} ->
@@ -1234,16 +1234,18 @@ update_service_plans(#number{dry_run='true'
             S = wh_service_phone_numbers:reconcile(PhoneNumbers, Services),
             Number#number{services=S}
     end;
-update_service_plans(#number{assigned_to=AssignedTo, prev_assigned_to=PrevAssignedTo}=N) ->
+update_service_plans(#number{assigned_to=AssignedTo
+                             ,prev_assigned_to=PrevAssignedTo
+                            }=N) ->
     _ = wh_services:reconcile(AssignedTo, <<"phone_numbers">>),
     _ = wh_services:reconcile(PrevAssignedTo, <<"phone_numbers">>),
     _ = commit_activations(N),
     N.
 
 -spec commit_activations(wnm_number()) -> wnm_number().
-commit_activations(#number{billing_id='undefined'}=Number) ->
-    Number;
-commit_activations(#number{activations=Activations, services=Services}=N) ->
+commit_activations(#number{activations=Activations
+                           ,services=Services
+                          }=N) ->
     _ = wh_services:commit_transactions(Services, Activations),
     N.
 
