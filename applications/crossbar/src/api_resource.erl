@@ -431,12 +431,11 @@ content_types_accepted(CT, Req, Context) ->
                                 {ne_binaries(), cowboy_req:req(), cb_context:context()}.
 languages_provided(Req0, Context0) ->
     lager:debug("run: languages_provided"),
-    Context1 =
-        lists:foldr(fun({Mod, Params}, ContextAcc) ->
-                            Event = api_util:create_event_name(Context0, <<"languages_provided.", Mod/binary>>),
-                            Payload = [ContextAcc | Params],
-                            crossbar_bindings:fold(Event, Payload)
-                    end, Context0, cb_context:req_nouns(Context0)),
+
+    [{Mod, Params} | _] = cb_context:req_nouns(Context0),
+    Event = api_util:create_event_name(Context0, <<"languages_provided.", Mod/binary>>),
+    Payload = [Context0 | Params],
+    Context1 = crossbar_bindings:fold(Event, Payload),
 
     case cowboy_req:parse_header(<<"accept-language">>, Req0) of
         {'ok', 'undefined', Req1} ->
