@@ -452,13 +452,11 @@ charsets_provided(_Req, _Context) ->
                                 {ne_binaries(), cowboy_req:req(), cb_context:context()}.
 encodings_provided(Req0, Context0) ->
     lager:debug("run: encodings_provided"),
-    {Req1, Context1} =
-        lists:foldr(fun({Mod, Params}, {ReqAcc, ContextAcc}) ->
-                            Event = api_util:create_event_name(Context0, <<"encodings_provided.", Mod/binary>>),
-                            Payload = {ReqAcc, ContextAcc, Params},
-                            {ReqAcc1, ContextAcc1, _} = crossbar_bindings:fold(Event, Payload),
-                            {ReqAcc1, ContextAcc1}
-                    end, {Req0, Context0}, cb_context:req_nouns(Context0)),
+
+    [{Mod, Params} | _] = cb_context:req_nouns(Context0),
+    Event = api_util:create_event_name(Context0, <<"encodings_provided.", Mod/binary>>),
+    Payload = {Req0, Context0, Params},
+    {Req1, Context1, _} = crossbar_bindings:fold(Event, Payload),
     {cb_context:encodings_provided(Context1), Req1, Context1}.
 
 -spec resource_exists(cowboy_req:req(), cb_context:context()) ->
