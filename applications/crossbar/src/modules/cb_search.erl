@@ -108,7 +108,7 @@ validate_search(Context, 'undefined', _) ->
 validate_search(Context, Q, T) ->
     validate_search(Context, cb_context:req_value(Context, <<"v">>), Q, T).
 
--spec validate_search(cb_context:context(), api_binary(), ne_binary(), ne_binary()) -> cb_context:context().
+-spec validate_search(cb_context:context(), api_binary() | atom() , ne_binary(), ne_binary()) -> cb_context:context().
 validate_search(Context, 'true', Q, T) ->    
     validate_search(Context, <<>>, Q, T);
 validate_search(Context, 'undefined', _, _) ->
