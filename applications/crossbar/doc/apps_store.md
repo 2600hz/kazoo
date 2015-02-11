@@ -204,8 +204,7 @@ Update app permission on your account.
 ```
 {
     "data": {
-        "allowed_users": "all",
-        "users": []
+        "allowed_users": "all"
     }
 }
 ```
