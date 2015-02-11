@@ -37,6 +37,7 @@
          ,unbind_q/2
         ]).
 -export([declare_exchanges/0]).
+-export([sync/1, sync_v/1, publish_sync/1, publish_sync/2]).
 
 -include_lib("whistle/include/wh_api.hrl").
 
@@ -148,6 +149,15 @@
                        ,{<<"Event-Name">>, <<"reset">>}
                       ]).
 -define(RESET_TYPES, []).
+
+%% Sync presence 
+-define(SYNC_HEADERS, [<<"Action">>]).
+-define(OPTIONAL_SYNC_HEADERS, [<<"Queue">>, <<"Event-Package">>]).
+-define(SYNC_VALUES, [{<<"Event-Category">>, <<"presence">>}
+                      ,{<<"Event-Name">>, <<"sync">>}
+                      ,{<<"Action">>, [<<"Request">>, <<"Start">>, <<"End">>]}
+                      ]).
+-define(SYNC_TYPES, []).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -494,6 +504,30 @@ publish_flush(JObj) ->
 publish_flush(Req, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?FLUSH_VALUES, fun ?MODULE:flush/1),
     amqp_util:presence_publish(<<"flush">>, Payload, ContentType).
+
+%%--------------------------------------------------------------------
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec sync(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+sync(Prop) when is_list(Prop) ->
+    case sync_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?SYNC_HEADERS, ?OPTIONAL_SYNC_HEADERS);
+        'false' -> {'error', "Proplist failed validation for sync query"}
+    end;
+sync(JObj) -> sync(wh_json:to_proplist(JObj)).
+
+-spec sync_v(api_terms()) -> boolean().
+sync_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?SYNC_HEADERS, ?SYNC_VALUES, ?SYNC_TYPES);
+sync_v(JObj) -> sync_v(wh_json:to_proplist(JObj)).
+
+publish_sync(JObj) ->
+    publish_sync(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_sync(Req, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(Req, ?SYNC_VALUES, fun ?MODULE:sync/1),
+    amqp_util:presence_publish(<<"sync">>, Payload, ContentType).
 
 %%--------------------------------------------------------------------
 %% @doc
