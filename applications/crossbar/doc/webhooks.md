@@ -45,13 +45,13 @@ Webhooks allow Kazoo to send HTTP requests to a third-party webserver, alerting 
 
 Webhooks tracks attempts to send the hook payloads to your URIs. You can get a listing of the more recent attempts to help debug what went wrong.
 
-#### Account Attempts Summary
+#### Account Attempts Attempts
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/webhooks/summary
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/webhooks/attempts
 
-#### Hook Attempts Summary
+#### Hook Attempts Attempts
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}/summary
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}/attempts
 
 ## Hook Payload
 
