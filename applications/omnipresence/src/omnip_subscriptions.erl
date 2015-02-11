@@ -30,6 +30,7 @@
          ,subscription_to_json/1
          ,subscriptions_to_json/1
          ,cached_terminated_callids/0
+         ,handle_sync/2
         ]).
 -export([init/1
          ,handle_call/3
@@ -50,7 +51,9 @@
 
 -record(state, {
           expire_ref :: reference(),
-          ready = 'false' :: boolean()
+          ready = 'false' :: boolean(),
+          sync = 'false'  :: boolean(),
+          sync_nodes = [] :: list()               
          }).
 
 %%%===================================================================
@@ -127,6 +130,13 @@ handle_kamailio_subscribe(JObj, _Props) ->
             distribute_subscribe(JObj)
     end.
 
+-spec handle_sync(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_sync(JObj, _Props) ->
+    'true' = wapi_presence:sync_v(JObj),
+    Action = wh_json:get_value(<<"Action">>, JObj),
+    Node = wh_json:get_value(<<"Node">>, JObj),
+    gen_server:cast(?MODULE, {'sync', {Action, Node}}).
+       
 -spec handle_mwi_update(wh_json:object(), wh_proplist()) -> any().
 handle_mwi_update(JObj, _Props) ->
     'true' = wapi_presence:mwi_update_v(JObj),
@@ -246,18 +256,6 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 
-handle_cast({'subscribe_notify', #omnip_subscription{event=Package
-                                                     ,user=User
-                                                    }=Subscription}, State) ->
-    Msg = {'omnipresence', {'subscribe_notify', Package, User, Subscription}},
-    notify_packages(Msg),
-    {'noreply', State};
-handle_cast({'resubscribe_notify', #omnip_subscription{event=Package
-                                                       ,user=User
-                                                      }=Subscription}, State) ->
-    Msg = {'omnipresence', {'resubscribe_notify', Package, User, Subscription}},
-    notify_packages(Msg),
-    {'noreply', State};
 handle_cast({'distribute_subscribe', JObj}, State) ->
     distribute_subscribe(JObj),
     {'noreply', State};
@@ -273,8 +271,11 @@ handle_cast({'presence_update', JObj}, State) ->
     Msg = {'omnipresence', {'presence_update', JObj}},
     notify_packages(Msg),
     {'noreply', State};
+handle_cast({'sync', {<<"Start">>, Node}}, #state{sync_nodes=Nodes}=State) ->
+    {'noreply', State#state{sync_nodes=[Node | Nodes]}};
+handle_cast({'sync', {<<"End">>, Node}}, #state{sync_nodes=Nodes} = State) ->
+    {'noreply', State#state{sync_nodes=Nodes -- [Node]}};
 handle_cast(_Msg, State) ->
-    lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -298,6 +299,12 @@ handle_info({'timeout', Ref, ?EXPIRE_MESSAGE}=_R, #state{expire_ref=Ref, ready='
 handle_info(?TABLE_READY(_Tbl), State) ->
     lager:debug("recv table_ready for ~p", [_Tbl]),
     {'noreply', State#state{ready='true'}, 'hibernate'};
+handle_info('check_sync', #state{sync_nodes=[]} = State) ->
+    gen_listener:cast('omnipresence_shared_listener', {'ready'}),
+    {'noreply', State};
+handle_info('check_sync', State) ->
+    erlang:send_after(5000, self(), 'check_sync'),
+    {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
@@ -569,26 +576,7 @@ get_subscriptions(Event, User) ->
     U = wh_util:to_lower_binary(User),
     case find_subscriptions(Event, U) of
         {'ok', Subs} -> {'ok', Subs};
-        {'error', 'not_found'} ->
-            [Username, Realm] = binary:split(U, <<"@">>),
-            Payload = [{<<"Realm">>, Realm}
-                       ,{<<"Username">>, Username}
-                       ,{<<"Event-Package">>, Event}
-                       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                      ],
-            Resp = wh_amqp_worker:call(Payload
-                                       ,fun wapi_presence:publish_search_req/1
-                                       ,fun wapi_presence:search_resp_v/1
-                                       ,500
-                                      ),
-            case Resp of
-                {'ok', JObj} ->
-                    Subs = [subscription_from_json(WSub)
-                            || WSub <- wh_json:get_value(<<"Subscriptions">>, JObj, [])
-                           ],
-                    {'ok', Subs};
-                _ ->   {'error', 'not_found'}
-            end
+        {'error', _}=Err -> Err
     end.
 
 -spec dedup(subscriptions()) -> subscriptions().
