@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle CRUD operations for WebHooks
@@ -20,6 +20,7 @@
         ]).
 
 -include("../crossbar.hrl").
+-include_lib("whistle/src/wh_json.hrl").
 
 -define(CB_LIST, <<"webhooks/crossbar_listing">>).
 
@@ -165,14 +166,54 @@ update(Id, Context) ->
 %%--------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST
-                           ,[{'startkey', [cb_context:account_id(Context)]}
-                             ,{'endkey', [cb_context:account_id(Context), wh_json:new()]}
+    maybe_fix_envelope(
+      crossbar_doc:load_view(?CB_LIST
+                             ,[{'startkey', [cb_context:account_id(Context)]}
+                               ,{'endkey', [cb_context:account_id(Context), wh_json:new()]}
                             ]
-                           ,Context
-                           ,fun normalize_view_results/2
-                          ).
+                             ,Context
+                             ,fun normalize_view_results/2
+                            )
+     ).
 
+-spec maybe_fix_envelope(cb_context:context()) -> cb_context:context().
+maybe_fix_envelope(Context) ->
+    case cb_context:resp_status(Context) of
+        'success' -> fix_envelope(Context);
+        _Status -> Context
+    end.
+
+-spec fix_envelope(cb_context:context()) -> cb_context:context().
+fix_envelope(Context) ->
+    UpdatedEnvelope =
+        case {cb_context:doc(Context)
+              ,cb_context:resp_envelope(Context)
+             }
+        of
+            {[], Envelope} ->
+                wh_json:delete_keys([<<"start_key">>, <<"next_start_key">>], Envelope);
+            {_, Envelope} ->
+                fix_keys(Envelope)
+        end,
+    cb_context:set_resp_envelope(Context, UpdatedEnvelope).
+
+-spec fix_keys(wh_json:object()) -> wh_json:object().
+fix_keys(Envelope) ->
+    lists:foldl(fun fix_key_fold/2, Envelope, [<<"start_key">>, <<"next_start_key">>]).
+
+-spec fix_key_fold(wh_json:key(), wh_json:object()) -> wh_json:object().
+fix_key_fold(Key, Envelope) ->
+    case wh_json:get_value(Key, Envelope) of
+        [_AccountId, Value, ?EMPTY_JSON_OBJECT] -> wh_json:set_value(Key, Value, Envelope);
+        [_AccountId, ?EMPTY_JSON_OBJECT] -> wh_json:delete_key(Key, Envelope);
+        [_AccountId, Value] -> wh_json:set_value(Key, Value, Envelope);
+        [_AccountId] -> wh_json:delete_key(Key, Envelope);
+        <<_/binary>> = _ -> Envelope;
+        'undefined' -> Envelope
+    end.
+
+-spec summary_attempts(cb_context:context()) -> cb_context:context().
+-spec summary_attempts(cb_context:context(), api_binary()) -> cb_context:context().
 summary_attempts(Context) ->
     summary_attempts(Context, 'undefined').
 summary_attempts(Context, 'undefined') ->
@@ -195,11 +236,13 @@ summary_attempts(Context, HookId) ->
 summary_attempts_fetch(Context, ViewOptions, View) ->
     Db = wh_util:format_account_mod_id(cb_context:account_id(Context), wh_util:current_tstamp()),
 
-    crossbar_doc:load_view(View
-                           ,ViewOptions
-                           ,cb_context:set_account_db(Context, Db)
-                           ,fun normalize_attempt_results/2
-                          ).
+    maybe_fix_envelope(
+      crossbar_doc:load_view(View
+                             ,ViewOptions
+                             ,cb_context:set_account_db(Context, Db)
+                             ,fun normalize_attempt_results/2
+                            )
+     ).
 
 normalize_attempt_results(JObj, Acc) ->
     Doc = wh_json:get_value(<<"doc">>, JObj),
