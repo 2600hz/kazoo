@@ -110,7 +110,7 @@ is_context(#cb_context{}) -> 'true';
 is_context(_) -> 'false'.
 
 -spec req_value(context(), wh_json:key()) -> wh_json:json_term().
--spec req_value(context(), wh_json:key(), term()) -> wh_json:json_term().
+-spec req_value(context(), wh_json:key(), Default) -> wh_json:json_term() | Default.
 req_value(#cb_context{}=Context, Key) ->
     req_value(Context, Key, 'undefined').
 req_value(#cb_context{req_data=ReqData, query_json=QS}, Key, Default) ->
@@ -539,10 +539,10 @@ failed_error({'data_invalid'
     add_validation_error(
         FailedKeyPath
         ,<<"enum">>
-        ,wh_json:from_list([
-             {<<"message">>, <<"Value not found in enumerated list of values">>}
-             ,{<<"target">>, wh_json:get_value(<<"enum">>, FailedSchemaJObj, [])}
-         ])
+        ,wh_json:from_list(
+           [{<<"message">>, <<"Value not found in enumerated list of values">>}
+            ,{<<"target">>, wh_json:get_value(<<"enum">>, FailedSchemaJObj, [])}
+           ])
         ,Context
     );
 failed_error({'data_invalid'
