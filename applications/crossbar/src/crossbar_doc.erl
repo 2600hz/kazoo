@@ -48,6 +48,8 @@
                                                         ,50
                                                        )).
 
+-type direction() :: 'ascending' | 'descending'.
+
 -record(load_view_params, {view :: api_binary()
                            ,view_options = [] :: wh_proplist()
                            ,context :: cb_context:context()
@@ -55,6 +57,7 @@
                            ,page_size :: non_neg_integer() | api_binary()
                            ,filter_fun :: filter_fun()
                            ,dbs = [] :: ne_binaries()
+                           ,direction = 'ascending' :: direction()
                           }).
 -type load_view_params() :: #load_view_params{}.
 
@@ -254,7 +257,15 @@ load_view(View, Options, Context, StartKey, PageSize, FilterFun) ->
                                 ,dbs=lists:filter(fun couch_mgr:db_exists/1
                                                   ,props:get_value('databases', Options, [cb_context:account_db(Context)])
                                                  )
+                                ,direction=view_sort_direction(Options)
                                }).
+
+-spec view_sort_direction(wh_proplist()) -> direction().
+view_sort_direction(Options) ->
+    case props:get_value('descending', Options) of
+        'true' -> 'descending';
+        'undefined' -> 'ascending'
+    end.
 
 load_view(#load_view_params{dbs=[]
                             ,context=Context
@@ -278,11 +289,12 @@ load_view(#load_view_params{view=View
                             ,page_size=PageSize
                             ,filter_fun=FilterFun
                             ,dbs=[Db|Dbs]
+                            ,direction=_Direction
                            }=LVPs) ->
     HasFilter = is_function(FilterFun, 2) orelse has_qs_filter(Context),
     Limit = limit_by_page_size(Context, PageSize),
 
-    lager:debug("limit: ~p page_size: ~p", [Limit, PageSize]),
+    lager:debug("limit: ~p page_size: ~p dir: ~p", [Limit, PageSize, _Direction]),
 
     DefaultOptions =
         props:filter_undefined(
@@ -742,11 +754,12 @@ handle_couch_mgr_pagination_success(JObjs
                                     ,?VERSION_1
                                     ,#load_view_params{context=Context
                                                        ,filter_fun=FilterFun
+                                                       ,direction=Direction
                                                       }=LVPs
                                    ) ->
     load_view(LVPs#load_view_params{
                 context=cb_context:set_doc(Context
-                                           ,apply_filter(FilterFun, JObjs, Context)
+                                           ,apply_filter(FilterFun, JObjs, Context, Direction)
                                            ++ cb_context:doc(Context)
                                           )
                });
@@ -767,9 +780,10 @@ handle_couch_mgr_pagination_success([_|_]=JObjs
                                                        ,start_key=StartKey
                                                        ,filter_fun=FilterFun
                                                        ,page_size=PageSize
+                                                       ,direction=Direction
                                                       }=LVPs
                                    ) ->
-    Filtered = apply_filter(FilterFun, JObjs, Context),
+    Filtered = apply_filter(FilterFun, JObjs, Context, Direction),
     FilteredCount = length(Filtered),
 
     load_view(LVPs#load_view_params{context=
@@ -787,11 +801,12 @@ handle_couch_mgr_pagination_success([_|_]=JObjs
                                     ,#load_view_params{context=Context
                                                        ,start_key=StartKey
                                                        ,filter_fun=FilterFun
+                                                       ,direction=Direction
                                                       }=LVPs
                                    ) ->
     try lists:split(PageSize, JObjs) of
         {Results, []} ->
-            Filtered = apply_filter(FilterFun, Results, Context),
+            Filtered = apply_filter(FilterFun, Results, Context, Direction),
 
             load_view(LVPs#load_view_params{
                         context=
@@ -803,7 +818,7 @@ handle_couch_mgr_pagination_success([_|_]=JObjs
                        });
         {Results, [NextJObj]} ->
             NextStartKey = wh_json:get_value(<<"key">>, NextJObj),
-            Filtered = apply_filter(FilterFun, Results, Context),
+            Filtered = apply_filter(FilterFun, Results, Context, Direction),
             lager:debug("next start key: ~p", [NextStartKey]),
 
             load_view(LVPs#load_view_params{
@@ -816,7 +831,7 @@ handle_couch_mgr_pagination_success([_|_]=JObjs
                        })
     catch
         'error':'badarg' ->
-            Filtered = apply_filter(FilterFun, JObjs, Context),
+            Filtered = apply_filter(FilterFun, JObjs, Context, Direction),
             FilteredCount = length(Filtered),
 
             lager:debug("recv less than ~p results: ~p", [PageSize, FilteredCount]),
@@ -833,21 +848,26 @@ handle_couch_mgr_pagination_success([_|_]=JObjs
 
 -type filter_fun() :: fun((wh_json:object(), wh_json:objects()) -> wh_json:objects()).
 
--spec apply_filter('undefined' | filter_fun(), wh_json:objects(), cb_context:context()) ->
+-spec apply_filter('undefined' | filter_fun(), wh_json:objects(), cb_context:context(), direction()) ->
                           wh_json:objects().
--spec apply_filter('undefined' | filter_fun(), wh_json:objects(), cb_context:context(), boolean()) ->
+-spec apply_filter('undefined' | filter_fun(), wh_json:objects(), cb_context:context(), direction(), boolean()) ->
                           wh_json:objects().
-apply_filter(FilterFun, JObjs, Context) ->
-    apply_filter(FilterFun, JObjs, Context, has_qs_filter(Context)).
+apply_filter(FilterFun, JObjs, Context, Direction) ->
+    apply_filter(FilterFun, JObjs, Context, Direction, has_qs_filter(Context)).
 
-apply_filter(FilterFun, JObjs, Context, HasQSFilter) ->
-    lager:debug("applying filter fun ~p and maybe qs filter: ~p", [FilterFun, HasQSFilter]),
+apply_filter(FilterFun, JObjs, Context, Direction, HasQSFilter) ->
+    lager:debug("applying filter fun: ~p, qs filter: ~p to dir ~p", [FilterFun, HasQSFilter, Direction]),
 
-    maybe_apply_custom_filter(FilterFun
-                              ,[JObj
-                                || JObj <- JObjs,
-                                   filtered_doc_by_qs(JObj, HasQSFilter, Context)
-                               ]).
+    Filtered =
+        maybe_apply_custom_filter(FilterFun
+                                  ,[JObj
+                                    || JObj <- JObjs,
+                                       filtered_doc_by_qs(JObj, HasQSFilter, Context)
+                                   ]),
+    case Direction of
+        'ascending' -> Filtered;
+        'descending' -> lists:reverse(Filtered)
+    end.
 
 -spec maybe_apply_custom_filter('undefined' | filter_fun(), wh_json:objects()) -> wh_json:objects().
 maybe_apply_custom_filter('undefined', JObjs) -> JObjs;
