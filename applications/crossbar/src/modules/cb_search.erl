@@ -112,11 +112,20 @@ validate_search(Context, Type) ->
 -spec validate_search(cb_context:context(), ne_binary(), api_binary()) ->
                              cb_context:context().
 validate_search(Context, _Type, 'undefined') ->
+    Context1 = cb_context:add_validation_error(
+                 <<"q">>
+                 ,<<"required">>
+                 ,wh_json:from_list([{<<"message">>, <<"Search needs a view to search in">>}])
+                 ,Context
+                ),
     cb_context:add_validation_error(
       <<"q">>
-      ,<<"required">>
-      ,wh_json:from_list([{<<"message">>, <<"Search needs a view to search in">>}])
-      ,Context
+      ,<<"enum">>
+      ,wh_json:from_list(
+         [{<<"message">>, <<"Value not found in enumerated list of values">>}
+          ,{<<"target">>, query_options(cb_context:account_db(Context1))}
+         ])
+      ,Context1
      );
 validate_search(Context, Type, Query) ->
     Context1 = validate_query(Context, Query),
