@@ -5,8 +5,8 @@ Language: en-US
 */
 
 # Hangups
-Abnormal hangup cause logging
 
+Abnormal hangup cause logging
 
 ## Two ways of logging hangups
 
@@ -30,6 +30,7 @@ In case this string is causing issues, `hangups` will log the complaint and the 
 picked up will be *email*.
 
 The JSON sent has the following fields:
+
 * "details"
 * "hangup_cause"
 * "source"
@@ -38,11 +39,18 @@ The JSON sent has the following fields:
 * "realm"
 * "account_id"
 
-Example:
+### Setting the system up
+
+#### Via Erlang
 ```erlang
-{ok, _NewConf} = whapps_config:set(<<"hangups">>, <<"enable_email_alerts">>, false).
+{ok, _NewConf} = whapps_config:set_default(<<"hangups">>, <<"enable_email_alerts">>, false).
 URL = <<"http://yourserver.com/your/api/receiving/hangups/data">>.
-{ok, _} = whapps_config:set(<<"hangups">>, <<"subscriber_url">>, URL).
+{ok, _} = whapps_config:set_default(<<"hangups">>, <<"subscriber_url">>, URL).
 ```
 
 Note that URL needs to be a binary, that is, not a list.
+
+#### Via SUP
+
+    sup whapps_config set_default hangups enable_email_alerts false
+    sup whapps_config set_default hangups subscriber_url 'http://my.alerts.platform.com/hangups.php'
