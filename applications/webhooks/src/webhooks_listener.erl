@@ -12,6 +12,7 @@
 
 -export([start_link/0
          ,handle_config/2
+         ,check_failed_attempts/0
         ]).
 -export([init/1
          ,handle_call/3
@@ -24,7 +25,8 @@
 
 -include("webhooks.hrl").
 
--record(state, {}).
+-define(EXPIRY_MSG, 'failure_check').
+-record(state, {failure_tref :: reference()}).
 -type state() :: #state{}.
 
 -define(BINDINGS, [{'conf', [{'action', <<"*">>}
@@ -82,7 +84,12 @@ handle_config(JObj, Srv, <<"doc_edited">>) ->
     case wapi_conf:get_doc(JObj) of
         'undefined' -> find_and_update_hook(JObj, Srv);
         Hook ->
-            gen_listener:cast(Srv, {'update_hook', webhooks_util:jobj_to_rec(Hook)})
+            case wh_json:is_true(<<"enabled">>, Hook, 'true') of
+                'true' ->
+                    gen_listener:cast(Srv, {'update_hook', webhooks_util:jobj_to_rec(Hook)});
+                'false' ->
+                    gen_listener:cast(Srv, {'remove_hook', webhooks_util:jobj_to_rec(Hook)})
+            end
     end;
 handle_config(JObj, Srv, <<"doc_deleted">>) ->
     case wapi_conf:get_doc(JObj) of
@@ -126,6 +133,60 @@ find_hook(JObj) ->
                              ,wapi_conf:get_id(JObj)
                             ).
 
+check_failed_attempts() ->
+    Keys = wh_cache:fetch_keys_local(?CACHE_NAME),
+    check_failed_attempts(Keys).
+
+check_failed_attempts(Keys) ->
+    Failures = lists:fold(fun process_failed_key/2, dict:new(), Keys),
+    check_failures(Failures).
+
+process_failed_key(?FAILURE_CACHE_KEY(AccountId, HookId, _Timestamp)
+                   ,Dict
+                  ) ->
+    dict:update_counter({AccountId, HookId}, 1, Dict);
+process_failed_key(_Key, Dict) ->
+    Dict.
+
+-spec check_failures(dict()) -> 'ok'.
+check_failures(Failures) ->
+    [check_failure(AccountId, HookId, Count)
+     || {{AccountId, HookId}, Count} <- dict:to_list(Failures)
+    ],
+    'ok'.
+
+-spec check_failure(ne_binary(), ne_binary(), pos_integer()) -> 'ok'.
+check_failure(AccountId, HookId, Count) ->
+    try wh_util:to_integer(whapps_account_config:get_global(AccountId, ?APP_NAME, ?FAILURE_COUNT_KEY, 6)) of
+        N when N =< Count ->
+            disable_hook(AccountId, HookId);
+        _ -> 'ok'
+    catch
+        _:_ ->
+            lager:warning("account ~s has an non-integer for ~s/~s", [AccountId, ?APP_NAME, ?FAILURE_COUNT_KEY]),
+            case Count > 6 of
+                'true' ->
+                    disable_hook(AccountId, HookId);
+                'false' -> 'ok'
+            end
+    end.
+
+-spec disable_hook(ne_binary(), ne_binary()) -> 'ok'.
+disable_hook(AccountId, HookId) ->
+    case couch_mgr:open_cache_doc(?KZ_WEBHOOKS_DB, HookId) of
+        {'ok', HookJObj} ->
+            Disabled =
+                wh_json:set_values([{<<"enabled">>, 'false'}
+                                    ,{<<"pvt_disabled_message">>, <<"too many failed attempts">>}
+                                   ]
+                                   ,HookJObj
+                                  ),
+            _ = couch_mgr:ensure_saved(?KZ_WEBHOOKS_DB, Disabled),
+            lager:debug("disabled and saved ~s/~s", [AccountId, HookId]);
+        {'error', _E} ->
+            lager:debug("failed to find ~s/~s to disable: ~p", [AccountId, HookId, _E])
+    end.
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -144,7 +205,7 @@ find_hook(JObj) ->
 -spec init([]) -> {'ok', state()}.
 init([]) ->
     wh_util:put_callid(?MODULE),
-    {'ok', #state{}}.
+    {'ok', #state{failure_tref=start_failure_check_timer()}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -213,6 +274,9 @@ handle_info({'ETS-TRANSFER', _TblId, _From, _Data}, State) ->
                       webhooks_util:init_mods()
               end),
     {'noreply', State};
+handle_info({'timeout', Ref, ?EXPIRY_MSG}, #state{failure_tref=Ref}=State) ->
+    _ = spawn(?MODULE, 'check_failed_attempts', []),
+    {'noreply', State#state{failure_tref=start_failure_check_timer()}};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
@@ -256,3 +320,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+-spec start_failure_check_timer() -> reference().
+start_failure_check_timer() ->
+    Expiry = webhooks_util:system_expires_time(),
+    erlang:start_timer(Expiry, self(), ?EXPIRY_MSG).
