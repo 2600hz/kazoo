@@ -2,6 +2,7 @@
 
 -define(PORT_WAITING, <<"unconfirmed">>).
 -define(PORT_SUBMITTED, <<"submitted">>).
+-define(PORT_PENDING, <<"pending">>).
 -define(PORT_SCHEDULED, <<"scheduled">>).
 -define(PORT_COMPLETE, <<"completed">>).
 -define(PORT_REJECT, <<"rejected">>).
