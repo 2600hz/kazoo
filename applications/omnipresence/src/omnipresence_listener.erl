@@ -136,7 +136,7 @@ handle_cast('find_subscriptions_srv', #state{subs_pid=_Pid}=State) ->
 handle_cast({'gen_listener',{'created_queue',Queue}}, State) ->
     gen_listener:cast(self(), 'send_sync'),
     {'noreply', State#state{queue=Queue}};
-handle_cast({'gen_listener',{'is_consuming',IsConsuming}}, #state{queue=Queue} = State) ->
+handle_cast({'gen_listener',{'is_consuming',IsConsuming}}, State) ->
     gen_listener:cast(self(), 'send_sync'),
     {'noreply', State#state{consuming=IsConsuming}};
 handle_cast('send_sync', #state{subs_pid=Pid, queue=Queue, consuming=IsConsuming} = State)
