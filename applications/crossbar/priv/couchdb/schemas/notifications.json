@@ -17,7 +17,7 @@
                     "required": false,
                     "name": "Type",
                     "description": "",
-                    "enum":["original","specified","admins"]
+                    "enum":["original","specified","admins"],
                     "minLength": 2,
                     "maxLength": 253
                 },
@@ -71,7 +71,7 @@
                     "required": false,
                     "name": "Type",
                     "description": "",
-                    "enum":["original","specified","admins"]
+                    "enum":["original","specified","admins"],
                     "minLength": 2,
                     "maxLength": 253
                 },
