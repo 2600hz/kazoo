@@ -218,8 +218,7 @@ curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/js
 ```
 {
     "data": {
-        "allowed_users": "all",
-        "users": []
+        "allowed_users": "all"
     },
     "status": "success"
 }
