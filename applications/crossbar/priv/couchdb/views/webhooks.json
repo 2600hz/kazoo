@@ -3,7 +3,10 @@
     ,"language": "javascript"
     ,"views": {
         "crossbar_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'webhook' || doc.pvt_deleted) return; emit([doc.pvt_account_id, doc._id], {'id': doc._id, 'hook': doc.hook, 'name':doc.name, 'uri': doc.uri}); }"
+            "map": "function(doc) { if (doc.pvt_type != 'webhook' || doc.pvt_deleted) return; emit([doc.pvt_account_id, doc._id], {'id': doc._id, 'hook': doc.hook, 'name':doc.name, 'uri': doc.uri, 'enabled':doc.enabled || true}); }"
+        }
+        ,"webhooks_listing": {
+            "map": "function(doc) { if (doc.pvt_type != 'webhook' || doc.pvt_deleted || ! doc.enabled) return; emit([doc.pvt_account_id, doc._id], {'id': doc._id, 'hook': doc.hook, 'name':doc.name, 'uri': doc.uri}); }"
         }
         ,"accounts_listing":{
             "map":"function(doc) { if (doc.pvt_type != 'webhook' || doc.pvt_deleted) return; emit(doc.pvt_account_id, null); }"
