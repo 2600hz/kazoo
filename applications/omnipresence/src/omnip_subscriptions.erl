@@ -451,28 +451,6 @@ subscription_to_json(#omnip_subscription{user=User
          ,{<<"version">>, Version}
         ])).
 
--spec subscription_from_json(wh_json:object()) -> subscription().
-subscription_from_json(JObj) ->
-    User = wh_json:get_value(<<"user">>, JObj),
-    From = wh_json:get_value(<<"from">>, JObj),
-    #omnip_subscription{user=User
-                        ,from=From
-                        ,normalized_user=wh_util:to_lower_binary(User)
-                        ,normalized_from=wh_util:to_lower_binary(From)
-                        ,stalker=wh_json:get_value(<<"stalker">>, JObj)
-                        ,expires=wh_json:get_value(<<"expires">>, JObj)
-                        ,timestamp=wh_json:get_value(<<"timestamp">>, JObj)
-                        ,protocol=wh_json:get_value(<<"protocol">>, JObj)
-                        ,username=wh_json:get_value(<<"username">>, JObj)
-                        ,realm=wh_json:get_value(<<"realm">>, JObj)
-                        ,event=wh_json:get_value(<<"event">>, JObj)
-                        ,contact=wh_json:get_value(<<"contact">>, JObj)
-                        ,call_id=wh_json:get_value(<<"call_id">>, JObj)
-                        ,subscription_id=wh_json:get_value(<<"subscription_id">>, JObj)
-                        ,proxy_route=wh_json:get_value(<<"proxy_route">>, JObj)
-                        ,version=wh_json:get_value(<<"version">>, JObj)
-                       }.
-
 -spec start_expire_ref() -> reference().
 start_expire_ref() ->
     erlang:start_timer(?EXPIRE_SUBSCRIPTIONS, self(), ?EXPIRE_MESSAGE).
