@@ -2,7 +2,7 @@
 %%% @copyright (C) 2013-2015, 2600Hz INC
 %%% @doc
 %%%
-%%% Handles port request lifecycles
+%%% Handles port request life cycles
 %%% GET /port_requests - list all the account's port requests
 %%% GET /port_requests/descendants - detailed report of a port request
 %%% GET /port_requests/{id} - detailed report of a port request
@@ -405,7 +405,7 @@ put(Context, Id, ?PORT_ATTACHMENT) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% If the HTTP verib is POST, execute the actual action, usually a db save
+%% If the HTTP verb is POST, execute the actual action, usually a db save
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
@@ -415,7 +415,7 @@ post(Context, Id) ->
     do_post(Context, Id).
 
 post(Context, Id, ?PORT_SUBMITTED) ->
-    DryRun = (not wh_json:is_true(<<"accept_charges">>, cb_context:req_json(Context), 'false')),
+    DryRun = cb_context:accepting_charges(Context),
     post_submitted(DryRun, Context, Id);
 post(Context, Id, ?PORT_SCHEDULED) ->
     do_post(Context, Id);
@@ -490,7 +490,7 @@ do_post(Context, _Id) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% If the HTTP verib is DELETE, execute the actual action, usually a db delete
+%% If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token()) ->

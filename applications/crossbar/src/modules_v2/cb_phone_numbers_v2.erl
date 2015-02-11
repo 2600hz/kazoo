@@ -1235,10 +1235,7 @@ collection_process_result(Context, JObj) ->
                                operation_return() |
                                {'dry_run', wh_json:object()}.
 collection_action(Context, Number, ?ACTIVATE) ->
-    DryRun = (not wh_json:is_true(<<"accept_charges">>
-                                  ,cb_context:req_json(Context)
-                                  ,'false'
-                                 )),
+    DryRun = cb_context:accepting_charges(Context),
     case wh_number_manager:assign_number_to_account(Number
                                                     ,cb_context:account_id(Context)
                                                     ,cb_context:auth_account_id(Context)
