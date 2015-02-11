@@ -60,12 +60,10 @@ This is located on the account document.
             ]
         },
         "{{application_id}}": {
-            "allowed_users": "admin",
-            "users": []
+            "allowed_users": "admin"
         },
         "{{application_id}}": {
-            "allowed_users": "all",
-            "users": []
+            "allowed_users": "all"
         }
     }
 }
@@ -213,7 +211,7 @@ Update app permission on your account.
 ```
 
 ```
-curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{APP_ID} -d '{"data": {"allowed_users": "all","users": []}}'
+curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{APP_ID} -d '{"data": {"allowed_users": "all"}}'
 ```
 
 #### Response
