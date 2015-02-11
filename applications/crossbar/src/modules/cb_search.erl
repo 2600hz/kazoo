@@ -130,12 +130,8 @@ validate_search(Context, Type, Query) ->
 -spec validate_query(cb_context:context(), ne_binary()) -> cb_context:context().
 -spec validate_query(cb_context:context(), ne_binary(), ne_binaries()) -> cb_context:context().
 validate_query(Context, Query) ->
-    case cb_context:account_db(Context) of
-        ?WH_ACCOUNTS_DB ->
-            validate_query(Context, Query, ?ACCOUNTS_QUERY_OPTIONS);
-        _AccountId ->
-            validate_query(Context, Query, ?ACCOUNT_QUERY_OPTIONS)
-    end.
+    QueryOptions = query_options(cb_context:account_db(Context)),
+    validate_query(Context, Query, QueryOptions).
 
 validate_query(Context, Query, Available) ->
     case lists:member(Query, Available) of
@@ -151,6 +147,25 @@ validate_query(Context, Query, Available) ->
               ,Context
              )
     end.
+
+-spec query_options(ne_binary()) -> ne_binaries().
+query_options(AccountDb) ->
+    case couch_mgr:open_cache_doc(AccountDb, <<"_design/search">>) of
+        {'ok', JObj} ->
+            format_query_options(wh_json:get_keys(<<"views">>, JObj));
+        {'error', _E} when AccountDb =:= ?WH_ACCOUNTS_DB ->
+            ?ACCOUNTS_QUERY_OPTIONS;
+        {'error', _E} ->
+            ?ACCOUNT_QUERY_OPTIONS
+    end.
+
+-spec format_query_options(ne_binaries()) -> ne_binaries().
+format_query_options(Views) ->
+    [format_query_option(View) || View <- Views].
+
+-spec format_query_option(ne_binary()) -> ne_binary().
+format_query_option(<<"search_by_", Name/binary>>) -> Name;
+format_query_option(Name) -> Name.
 
 -spec validate_search(cb_context:context(), ne_binary(), ne_binary(), binary() | 'undefined') ->
                              cb_context:context().
