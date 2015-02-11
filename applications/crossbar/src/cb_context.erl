@@ -81,6 +81,7 @@
 
          %% Special accessors
          ,req_value/2, req_value/3
+         ,accepting_charges/1
         ]).
 
 -include("./crossbar.hrl").
@@ -115,6 +116,11 @@ req_value(#cb_context{}=Context, Key) ->
     req_value(Context, Key, 'undefined').
 req_value(#cb_context{req_data=ReqData, query_json=QS}, Key, Default) ->
     wh_json:find(Key, [ReqData, QS], Default).
+
+
+-spec accepting_charges(context()) -> boolean().
+accepting_charges(Context) ->
+    wh_util:is_true(req_value(Context, <<"accept_charges">>, 'false')).
 
 %% Accessors
 -spec account_id(context()) -> api_binary().

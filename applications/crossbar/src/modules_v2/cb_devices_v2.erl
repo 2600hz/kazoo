@@ -223,7 +223,7 @@ post(Context, DeviceId) ->
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    DryRun = (not wh_json:is_true(<<"accept_charges">>, cb_context:req_json(Context), 'false')),
+    DryRun = not(cb_context:accepting_charges(Context)),
     put_resp(DryRun, Context).
 
 put_resp('true', Context) ->

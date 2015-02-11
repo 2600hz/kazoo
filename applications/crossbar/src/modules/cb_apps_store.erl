@@ -348,7 +348,7 @@ load_app(Context, AppId) ->
 -spec maybe_modify(cb_context:context(), ne_binary(), modify_fun()) -> cb_context:context().
 maybe_modify(Context, Id, Fun) ->
     case not(wh_service_ui_apps:is_in_use(cb_context:req_data(Context)))
-        orelse wh_json:is_true(<<"accept_charges">>, cb_context:req_json(Context))
+        orelse cb_context:accepting_charges(Context)
     of
         'true' -> Fun(Context, Id);
         'false' -> dry_run(Context, Id, Fun)
