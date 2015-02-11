@@ -415,7 +415,7 @@ post(Context, Id) ->
     do_post(Context, Id).
 
 post(Context, Id, ?PORT_SUBMITTED) ->
-    DryRun = cb_context:accepting_charges(Context),
+    DryRun = not(cb_context:accepting_charges(Context)),
     post_submitted(DryRun, Context, Id);
 post(Context, Id, ?PORT_SCHEDULED) ->
     do_post(Context, Id);
@@ -436,6 +436,7 @@ post(Context, Id, ?PORT_REJECT) ->
                                        )
     end.
 
+-spec post_submitted(boolean(), cb_context:context(), ne_binary()) -> cb_context:context().
 post_submitted('false', Context, Id) ->
     _  = add_to_phone_numbers_doc(Context),
     try send_port_request_notification(Context, Id) of
@@ -1197,22 +1198,23 @@ dry_run(Context) ->
     Numbers = wh_json:get_value(<<"numbers">>, JObj),
     PhoneNumbers =
         wh_json:foldl(
-            fun(Number, NumberJObj, Acc) ->
-                wh_json:set_value(
-                    Number
-                    ,wh_json:set_value(
-                         <<"features">>
-                         ,[<<"port">>]
-                         ,NumberJObj
-                     )
-                    ,Acc
-                )
-            end
+            fun dry_run_foldl/3
             ,wh_json:new()
             ,Numbers
-
         ),
     AccountId = cb_context:account_id(Context),
     Services = wh_services:fetch(AccountId),
     UpdateServices = wh_service_phone_numbers:reconcile(PhoneNumbers, Services),
     wh_services:dry_run(UpdateServices).
+
+-spec dry_run_foldl(ne_binary(), wh_json:object(), wh_json:object()) -> wh_json:object().
+dry_run_foldl(Number, NumberJObj, JObj) ->
+    wh_json:set_value(
+        Number
+        ,wh_json:set_value(
+             <<"features">>
+             ,[<<"port">>]
+             ,NumberJObj
+         )
+        ,JObj
+    ).

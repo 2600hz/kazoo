@@ -193,7 +193,7 @@ maybe_handle_load_failure(Context, _RespCode) -> Context.
 %%--------------------------------------------------------------------
 -spec maybe_update_limits(cb_context:context()) -> cb_context:context().
 maybe_update_limits(Context) ->
-    case cb_context:accepting_charges(Context) of
+    case not(cb_context:accepting_charges(Context)) of
         'false' -> update_limits(Context);
         'true' -> maybe_dry_run(Context)
     end.

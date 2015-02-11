@@ -223,7 +223,7 @@ post(Context, DeviceId) ->
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    DryRun = cb_context:accepting_charges(Context),
+    DryRun = not(cb_context:accepting_charges(Context)),
     put_resp(DryRun, Context).
 
 put_resp('true', Context) ->
