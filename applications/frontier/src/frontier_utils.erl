@@ -12,7 +12,7 @@
 
 %% API
 -export([extract_realm/1, extract_username/1, is_device_entity/1
-         ,is_device/1, is_account/1
+         ,is_device/1, is_realm/1
         ]).
 
 -spec is_device_entity(ne_binary()) -> boolean().
@@ -38,7 +38,7 @@ extract_username(Entity) ->
 is_device(JObj) ->
     <<"device">> =:= wh_json:get_value([<<"value">>, <<"type">>], JObj).
 
--spec is_account(wh_json:object()) -> boolean().
-is_account(JObj) ->
-    <<"account">> =:= wh_json:get_value([<<"value">>, <<"type">>], JObj).
+-spec is_realm(wh_json:object()) -> boolean().
+is_realm(JObj) ->
+    <<"realm">> =:= wh_json:get_value([<<"value">>, <<"type">>], JObj).
 

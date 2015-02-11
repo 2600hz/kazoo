@@ -11,6 +11,7 @@
 -export([handle_rate_req/2
          ,lookup_rate_limit_records/1
          ,names/0
+         ,name_to_method/1
         ]).
 
 -include("frontier.hrl").
@@ -25,7 +26,7 @@ is_fallback(JObj) ->
                      [_, ?ACCOUNT_FALLBACK] -> 'true';
                      _ -> 'false'
                  end,
-    frontier_utils:is_account(JObj) andalso  IsFallback.
+    frontier_utils:is_realm(JObj) andalso  IsFallback.
 
 -spec is_device_defaults(wh_json:object()) -> boolean().
 is_device_defaults(JObj) ->
@@ -48,6 +49,11 @@ methods() ->
      ,<<"INVITE">>
      ,<<"TOTAL">>
     ].
+
+-spec name_to_method(ne_binary()) -> ne_binary().
+name_to_method(Name) ->
+    Props = lists:zip(names(), methods()),
+    props:get_value(Name, Props).
 
 -spec resolve_method(ne_binary()) -> ne_binary().
 resolve_method(Method) ->
@@ -112,7 +118,7 @@ run_rate_limits_query(Entity, AccountDB, IncludeRealm, MethodList) ->
     lager:info("Building query list"),
     Type = case binary:split(Entity, <<"@">>) of
                [_, _] -> <<"device">>;
-               _ -> <<"account">>
+               _ -> <<"realm">>
            end,
     DeviceList = case Type of
                      <<"device">> -> [fun (Ref) ->
@@ -124,14 +130,14 @@ run_rate_limits_query(Entity, AccountDB, IncludeRealm, MethodList) ->
                                      ];
                      _ -> []
                  end,
-    QueryList = case Type =:= <<"account">> orelse IncludeRealm of
+    QueryList = case Type =:= <<"realm">> orelse IncludeRealm of
                     'true' ->
                         Realm = frontier_utils:extract_realm(Entity),
                         [fun (Ref) ->
-                             fetch_rates_from_document(Self, Realm, <<"account">>, Ref, MethodList, AccountDB)
+                             fetch_rates_from_document(Self, Realm, <<"realm">>, Ref, MethodList, AccountDB)
                          end
                          ,fun (Ref) ->
-                              fetch_rates_from_sys_config(Self, Realm, <<"account">>, Ref, MethodList)
+                              fetch_rates_from_sys_config(Self, Realm, <<"realm">>, Ref, MethodList)
                           end
                         ] ++ DeviceList;
                     'false' -> DeviceList
@@ -145,23 +151,38 @@ run_rate_limits_query(Entity, AccountDB, IncludeRealm, MethodList) ->
     lager:info("Collecting results"),
     collect_responses(Refs, []).
 
+-spec to_first_upper(ne_binary()) -> ne_binary().
+to_first_upper(<<L, Ls/binary>>) ->
+    list_to_binary([string:to_upper(L), Ls]).
+
+-spec key_join(ne_binary(), ne_binary()) -> ne_binary().
+key_join(X, Acc) ->
+    list_to_binary([Acc, "-", X]).
+
+-spec to_json_key(ne_binary()) -> ne_binary().
+to_json_key(Token) ->
+    Tokens = binary:split(Token, <<"_">>),
+    [H | Tail] = lists:map(fun to_first_upper/1, Tokens),
+    lists:foldl(fun key_join/2, H, Tail).
+
 -spec fold_responses(wh_json:object(), wh_json:object()) -> wh_json:object().
 fold_responses(Record, Acc) ->
-    Type = wh_json:get_value([<<"value">>, <<"type">>], Record),
+    Type = to_json_key(wh_json:get_value([<<"value">>, <<"type">>], Record)),
     [Entity, MethodName] = wh_json:get_value(<<"key">>, Record),
+    JsonMethod = name_to_method(MethodName),
     RPM = wh_json:get_value([<<"value">>, ?MINUTE], Record),
     RPS = wh_json:get_value([<<"value">>, ?SECOND], Record),
     Section = wh_json:get_value(Type, Acc, wh_json:new()),
-    S1 = case RPM =/= 'undefined' andalso wh_json:get_value([?MINUTE, MethodName], Section) of
-             'undefined' -> wh_json:set_value([?MINUTE, MethodName], RPM, Section);
+    S1 = case RPM =/= 'undefined' andalso wh_json:get_value([<<"Minute">>, JsonMethod], Section) of
+             'undefined' -> wh_json:set_value([<<"Minute">>, JsonMethod], RPM, Section);
              _ -> Section
          end,
-    S2 = case RPS =/= 'undefined' andalso wh_json:get_value([?SECOND, MethodName], Section) of
-             'undefined' -> wh_json:set_value([?SECOND, MethodName], RPS, S1);
+    S2 = case RPS =/= 'undefined' andalso wh_json:get_value([<<"Second">>, JsonMethod], Section) of
+             'undefined' -> wh_json:set_value([<<"Second">>, JsonMethod], RPS, S1);
              _ -> S1
          end,
     S3 = case Entity =/= ?DEVICE_DEFAULT_RATES of
-             'true' -> wh_json:set_value(<<"name">>, Entity, S2);
+             'true' -> wh_json:set_value(<<"Name">>, Entity, S2);
              'false' -> S2
          end,
     wh_json:set_value(Type, S3, Acc).
@@ -200,7 +221,7 @@ deny_rates_for_entity(Entity, MethodList) ->
 construct_records(Method, Entity, RPM, RPS) ->
     {Name, Type} = case binary:split(Entity, <<"@">>) of
                        [User, _] -> {User, <<"device">>};
-                       [Realm] -> {Realm, <<"account">>}
+                       [Realm] -> {Realm, <<"realm">>}
                    end,
     RPMObject = wh_json:from_list([{<<"type">>, Type}
                                    ,{?MINUTE, RPM}
@@ -219,8 +240,12 @@ fetch_rates_from_sys_config(Srv, _, _, Ref, []) ->
     lager:info("sysconfig: Empty request - empty response"),
     Srv ! {Ref, []};
 fetch_rates_from_sys_config(Srv, Entity, Type, Ref, MethodList) ->
+    Section = case Type of
+                  <<"device">> -> <<"device">>;
+                  <<"realm">> -> <<"account">>
+              end,
     AllRates = whapps_config:get(?APP_NAME, <<"rate_limits">>),
-    TargetRates = wh_json:get_value(Type, AllRates, wh_json:new()),
+    TargetRates = wh_json:get_value(Section, AllRates, wh_json:new()),
     Payload = lists:foldl( fun (Method, Acc) ->
                                     RPM = wh_json:get_value([?MINUTE, Method], TargetRates, 0),
                                     RPS = wh_json:get_value([?SECOND, Method], TargetRates, 0),
@@ -244,7 +269,7 @@ maybe_run_throug_fallbacks([Fallback], Entity, MethodList) ->
 fetch_rates(_, _, [], _) ->
     lager:info("document: Empty request - empty response"),
     [];
-fetch_rates(Entity, <<"account">>, MethodList, _) ->
+fetch_rates(Entity, <<"realm">>, MethodList, _) ->
     Keys = [[Entity, Method] || Method <- [?ACCOUNT_FALLBACK | MethodList]],
     ViewOpts = [{'keys', Keys}],
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?RATES_CROSSBAR_LISTING, ViewOpts) of

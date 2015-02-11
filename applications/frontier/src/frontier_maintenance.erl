@@ -25,7 +25,7 @@ print_acl_record(Record) ->
     Name = wh_json:get_value(<<"key">>, Record),
     Type = wh_json:get_value([<<"value">>, <<"type">>], Record),
     Policy = wh_json:get_value([<<"value">>, <<"acls">>, <<"order">>], Record),
-    CIDRs = wh_json:get_value([<<"value">>, <<"acls">>, <<"cidr">>], Record),
+    CIDRs = wh_json:get_value([<<"value">>, <<"acls">>, <<"cidrs">>], Record),
     io:format("~s ~s use policy ~s for cidrs:~n",[Type, Name, Policy]),
     lists:foreach(fun (CIDR) -> io:format("~s~n", [CIDR]) end, CIDRs).
 
@@ -36,10 +36,11 @@ lookup_ratelimits(Entity) ->
 
 -spec print_limits({ne_binary(), wh_json:object()}) -> 'ok'.
 print_limits({Type, Rates}) ->
-    Name = wh_json:get_value(<<"name">>, Rates),
-    Min = wh_json:get_value(?MINUTE, Rates, wh_json:new()),
-    Sec = wh_json:get_value(?SECOND, Rates, wh_json:new()),
+    Name = wh_json:get_value(<<"Name">>, Rates),
+    Min = wh_json:get_value(<<"Minute">>, Rates, wh_json:new()),
+    Sec = wh_json:get_value(<<"Second">>, Rates, wh_json:new()),
     io:format("~s rates for ~s~n", [Type, Name]),
+    Keys = lists:map(fun frontier_handle_rate:name_to_method/1, frontier_handle_rate:names()),
     lists:foreach(fun (Key) ->
                       io:format("~-15s: ~7.10B/m ~7.10B/s~n", [Key, wh_json:get_value(Key, Min), wh_json:get_value(Key, Sec)])
-                  end, frontier_handle_rate:names()).
+                  end, Keys).

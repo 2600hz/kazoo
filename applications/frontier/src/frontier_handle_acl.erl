@@ -41,7 +41,7 @@ make_section([], _) ->
     wh_json:new();
 make_section([JObj], Section) ->
     Order = wh_json:get_value([<<"value">>, <<"acls">>, <<"order">>], JObj),
-    CIDRs = wh_json:get_value([<<"value">>, <<"acls">>, <<"cidr">>], JObj),
+    CIDRs = wh_json:get_value([<<"value">>, <<"acls">>, <<"cidrs">>], JObj),
     UserAgent = wh_json:get_value([<<"value">>, <<"acls">>, <<"user_agent">>], JObj),
     make_section(Section, Order, CIDRs, UserAgent).
 make_section(_, Order, CIDRs, _) when Order =:= 'undefined'
@@ -105,10 +105,10 @@ make_deny_acl(Entity, IncludeRealm) ->
     IsDevice = Realm =/= Entity,
     Type = case IsDevice of
                'true' -> <<"device">>;
-               _ -> <<"account">>
+               _ -> <<"realm">>
            end,
     ACL = wh_json:from_list([{<<"order">>, <<"AD">>}
-                             ,{<<"cidr">>, [<<"0.0.0.0/0">>]}
+                             ,{<<"cidrs">>, [<<"0.0.0.0/0">>]}
                             ]),
     Value = wh_json:from_list([{<<"type">>, Type}
                                ,{<<"acls">>, ACL}
