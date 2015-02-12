@@ -255,7 +255,7 @@ handle_cast({'add_hook', #webhook{id=_Id}=Hook}, State) ->
     {'noreply', State};
 handle_cast({'update_hook', #webhook{id=_Id}=Hook}, State) ->
     lager:debug("updating hook ~s", [_Id]),
-    ets:insert(webhooks_util:table_id(), Hook),
+    _ = ets:insert(webhooks_util:table_id(), Hook),
     {'noreply', State};
 handle_cast({'remove_hook', #webhook{id=Id}}, State) ->
     lager:debug("removing hook ~s", [Id]),

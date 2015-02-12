@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2015, 2600Hz
+%%% @Copyright (C) 2013-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -72,6 +72,8 @@ set_disable_threshold(Account, Count) ->
             io:format("error in count, must be an integer~n")
     end.
 
+-spec failure_status() -> 'ok'.
+-spec failure_status(ne_binary()) -> 'ok'.
 failure_status() ->
     Failed = webhooks_listener:find_failures(),
     Sorted = lists:keysort(1, Failed),
