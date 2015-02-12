@@ -320,6 +320,7 @@ send_update(User, Props, Subscriptions) ->
 -spec send_update(ne_binary(), ne_binary(), wh_proplist(), subscriptions()) -> 'ok'.
 send_update(_, _User, _Props, []) -> 'ok';
 send_update(<<"amqp">>, _User, Props, Subscriptions) ->
+    lager:debug("building SIP presence update: ~p", [Props]),
     Stalkers = lists:usort([St || #omnip_subscription{stalker=St} <- Subscriptions]),
     [whapps_util:amqp_pool_send(Props
                                 ,fun(P) -> wapi_omnipresence:publish_update(S, P) end
@@ -327,6 +328,7 @@ send_update(<<"amqp">>, _User, Props, Subscriptions) ->
      || S <- Stalkers
     ];
 send_update(<<"sip">>, User, Props, Subscriptions) ->
+    lager:debug("building SIP presence update: ~p", [Props]),
     Options = [{'body', build_body(User, Props)}
                ,{'content_type', <<"application/pidf+xml">>}
                ,{'subscription_state', 'active'}

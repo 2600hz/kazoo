@@ -102,11 +102,10 @@ create_ccvs(#auth_user{}=AuthUser) ->
 maybe_get_presence_id(#auth_user{account_db=AccountDb
                                  ,authorizing_id=DeviceId
                                  ,owner_id=OwnerId
-                                 ,username=Username
                                  ,account_realm=Realm
                                 }) ->
     case get_presence_id(AccountDb, DeviceId, OwnerId) of
-        'undefined' -> <<Username/binary, "@", Realm/binary>>;
+        'undefined' -> 'undefined';
         PresenceId ->
             case binary:match(PresenceId, <<"@">>) of
                 'nomatch' -> <<PresenceId/binary, "@", Realm/binary>>;
