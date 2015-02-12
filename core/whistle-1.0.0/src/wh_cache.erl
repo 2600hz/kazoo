@@ -28,7 +28,7 @@
 -export([fetch_local/2, fetch_keys_local/1]).
 -export([erase_local/2]).
 -export([flush_local/1]).
--export([filter_local/2]).
+-export([filter_local/2, filter_erase_local/2]).
 -export([dump_local/1, dump_local/2]).
 -export([wait_for_key_local/2
          ,wait_for_key_local/3
@@ -240,6 +240,17 @@ fetch_keys_local(Srv) ->
                   ,['$1']
                  }],
     ets:select(Srv, MatchSpec).
+
+-spec filter_erase_local(atom(), fun((term(), term()) -> boolean())) ->
+                          'ok'.
+filter_erase_local(Srv, Pred) when is_function(Pred, 2) ->
+    ets:foldl(fun(#cache_obj{key=K, value=V, type = 'normal'}, 'ok') ->
+                      case Pred(K, V) of
+                          'true' -> erase_local(Srv, K);
+                          'false' -> 'ok'
+                      end;
+                 (_, 'ok') -> 'ok'
+              end, 'ok', Srv).
 
 -spec filter_local(atom(), fun((term(), term()) -> boolean())) ->
                           [{term(), term()},...] | [].
