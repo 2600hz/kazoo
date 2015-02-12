@@ -547,6 +547,9 @@ bind_q(Queue, ['search_req'|Restrict], Props) ->
     RoutingKey = search_req_routing_key(Realm),
     amqp_util:bind_q_to_presence(Queue, RoutingKey),
     bind_q(Queue, Restrict, Props);
+bind_q(Queue, ['sync'|Restrict], Props) ->
+    amqp_util:bind_q_to_presence(Queue, <<"sync">>),
+    bind_q(Queue, Restrict, Props);
 bind_q(Queue, ['subscribe'|Restrict], Props) ->
     User = props:get_value('user', Props, <<"*">>),
     RoutingKey = subscribe_routing_key(User),
@@ -603,6 +606,9 @@ unbind_q(Queue, ['search_req'|Restrict], Props) ->
     Realm = props:get_value('realm', Props, <<"*">>),
     RoutingKey = search_req_routing_key(Realm),
     amqp_util:unbind_q_from_presence(Queue, RoutingKey),
+    unbind_q(Queue, Restrict, Props);
+unbind_q(Queue, ['sync'|Restrict], Props) ->
+    amqp_util:unbind_q_from_presence(Queue, <<"sync">>),
     unbind_q(Queue, Restrict, Props);
 unbind_q(Queue, ['subscribe'|Restrict], Props) ->
     User = props:get_value('user', Props, <<"*">>),
