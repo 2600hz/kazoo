@@ -18,7 +18,7 @@
 handle_acl_req(Reqest, _Props) ->
     'true' = wapi_frontier:acls_req_v(Reqest),
     Entity = wh_json:get_value(<<"Entity">>, Reqest),
-    IncludeRealm  = wh_json:get_value(<<"With-Realm">>, Reqest),
+    IncludeRealm  = wh_json:is_true(<<"With-Realm">>, Reqest, 'false'),
     Payload = lookup_acl_records(Entity, IncludeRealm),
     send_response(Reqest, Payload).
 
