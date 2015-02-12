@@ -93,11 +93,13 @@ resource_exists(_Id, ?PATH_TOKEN_ATTEMPTS) -> 'true'.
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_webhooks(cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB)
                       ,cb_context:req_verb(Context)
                      ).
 
+-spec validate_webhooks(cb_context:context(), http_method()) -> cb_context:context().
 validate_webhooks(Context, ?HTTP_GET) ->
     summary(Context);
 validate_webhooks(Context, ?HTTP_PUT) ->
@@ -111,6 +113,7 @@ validate(Context, Id) ->
                      ,cb_context:req_verb(Context)
                     ).
 
+-spec validate_webhook(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_webhook(Context, Id, ?HTTP_GET) ->
     read(Id, Context);
 validate_webhook(Context, Id, ?HTTP_POST) ->
@@ -254,8 +257,6 @@ summary_attempts(Context, 'undefined') ->
                    ,'include_docs'
                    ,'descending'
                   ],
-%% FIX start_key/next_start_Key when sort is descending in crossbar_doc
-
     summary_attempts_fetch(Context, ViewOptions, ?ATTEMPTS_BY_ACCOUNT);
 summary_attempts(Context, HookId) ->
     ViewOptions = [{'endkey', [HookId, 0]}
