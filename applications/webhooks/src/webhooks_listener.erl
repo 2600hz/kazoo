@@ -193,6 +193,7 @@ disable_hook(AccountId, HookId) ->
             lager:debug("failed to find ~s/~s to disable: ~p", [AccountId, HookId, _E])
     end.
 
+-spec filter_cache(ne_binary(), ne_binary()) -> non_neg_integer().
 filter_cache(AccountId, HookId) ->
     wh_cache:filter_erase_local(?CACHE_NAME
                                 ,fun(?FAILURE_CACHE_KEY(A, H, _), _) ->
