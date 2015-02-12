@@ -162,6 +162,10 @@ fire_hook(_JObj, Hook, URI, _Method, Retries, {'error', 'retry_later'}) ->
     lager:debug("failed with 'retry_later' to ~s", [URI]),
     _ = failed_hook(Hook, Retries, <<"retry_later">>),
     'ok';
+fire_hook(_JObj, Hook, URI, _Method, Retries, {'error', {'conn_failed', {'error', E}}}) ->
+    lager:debug("connection failed with ~p to ~s", [E, URI]),
+    _ = failed_hook(Hook, Retries, wh_util:to_binary(E)),
+    'ok';
 fire_hook(JObj, Hook, URI, Method, Retries, {'error', E}) ->
     lager:debug("failed to fire hook: ~p", [E]),
     _ = failed_hook(Hook, Retries, E),
