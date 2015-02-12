@@ -10,6 +10,8 @@
 -behaviour(gen_listener).
 
 -export([start_link/0]).
+-export([start_listener/0]).
+
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -74,6 +76,9 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+-spec start_listener() -> 'ok'.
+start_listener() ->
+    gen_listener:cast(?MODULE, {'ready'}).
 
 %%--------------------------------------------------------------------
 %% @doc

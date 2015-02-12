@@ -157,7 +157,7 @@ handle_cast('send_sync', #state{subs_pid=Pid, queue=Queue, consuming='true', syn
                  | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ]),
     wapi_presence:publish_sync(Payload),
-    erlang:send_after(2000, Pid, 'check_sync'),     
+    erlang:send_after(2000, Pid, 'check_sync'),
     {'noreply', State#state{sync='true'}};
 handle_cast(_Msg, State) ->
     {'noreply', State}.

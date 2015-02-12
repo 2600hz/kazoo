@@ -300,7 +300,7 @@ handle_info(?TABLE_READY(_Tbl), State) ->
     lager:debug("recv table_ready for ~p", [_Tbl]),
     {'noreply', State#state{ready='true'}, 'hibernate'};
 handle_info('check_sync', #state{sync_nodes=[]} = State) ->
-    gen_listener:cast('omnipresence_shared_listener', {'ready'}),
+    omnipresence_shared_listener:start_listener(),
     {'noreply', State};
 handle_info('check_sync', State) ->
     erlang:send_after(5000, self(), 'check_sync'),
