@@ -566,10 +566,11 @@ find_user_subscriptions(Event, User) when is_binary(User) ->
                                {'ok', subscriptions()} |
                                {'error', 'not_found'}.
 get_subscriptions(Event, User) ->
-    case find_subscriptions(Event, User) of
+    U = wh_util:to_lower_binary(User),
+    case find_subscriptions(Event, U) of
         {'ok', Subs} -> {'ok', Subs};
         {'error', 'not_found'} ->
-            [Username, Realm] = binary:split(User, <<"@">>),
+            [Username, Realm] = binary:split(U, <<"@">>),
             Payload = [{<<"Realm">>, Realm}
                        ,{<<"Username">>, Username}
                        ,{<<"Event-Package">>, Event}

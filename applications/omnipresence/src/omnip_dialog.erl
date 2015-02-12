@@ -325,6 +325,7 @@ send_update(User, Props, Subscriptions) ->
 -spec send_update(ne_binary(), ne_binary(), wh_proplist(), subscriptions()) -> 'ok'.
 send_update(_, _User, _Props, []) -> 'ok';
 send_update(<<"amqp">>, _User, Props, Subscriptions) ->
+    lager:debug("sending AMQP dialog update: ~p", [Props]),
     Stalkers = lists:usort([St || #omnip_subscription{stalker=St} <- Subscriptions]),
     {'ok', Worker} = wh_amqp_worker:checkout_worker(),
     [wh_amqp_worker:cast(Props
@@ -335,6 +336,7 @@ send_update(<<"amqp">>, _User, Props, Subscriptions) ->
     ],
     wh_amqp_worker:checkin_worker(Worker);
 send_update(<<"sip">>, User, Props, Subscriptions) ->
+    lager:debug("building SIP dialog update: ~p", [Props]),
     Body = build_body(User, Props),
     Options = [{'body', Body}
                ,{'content_type', <<"application/dialog-info+xml">>}
