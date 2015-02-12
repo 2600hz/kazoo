@@ -13,6 +13,7 @@
 -export([start_link/0
          ,handle_config/2
          ,check_failed_attempts/0
+         ,find_failures/0
         ]).
 -export([init/1
          ,handle_call/3
@@ -81,9 +82,10 @@ handle_config(JObj, Srv, <<"doc_created">>) ->
         Hook -> webhooks_util:load_hook(Srv, Hook)
     end;
 handle_config(JObj, Srv, <<"doc_edited">>) ->
-    case wapi_conf:get_doc(JObj) of
+    case wapi_conf:get_id(JObj) of
         'undefined' -> find_and_update_hook(JObj, Srv);
-        Hook ->
+        HookId ->
+            {'ok', Hook} = couch_mgr:open_cache_doc(?KZ_WEBHOOKS_DB, HookId),
             case wh_json:is_true(<<"enabled">>, Hook, 'true') of
                 'true' ->
                     gen_listener:cast(Srv, {'update_hook', webhooks_util:jobj_to_rec(Hook)});
@@ -134,12 +136,15 @@ find_hook(JObj) ->
                             ).
 
 check_failed_attempts() ->
-    Keys = wh_cache:fetch_keys_local(?CACHE_NAME),
-    check_failed_attempts(Keys).
-
-check_failed_attempts(Keys) ->
-    Failures = lists:fold(fun process_failed_key/2, dict:new(), Keys),
+    Failures = find_failures(),
     check_failures(Failures).
+
+find_failures() ->
+    Keys = wh_cache:fetch_keys_local(?CACHE_NAME),
+    find_failures(Keys).
+
+find_failures(Keys) ->
+    dict:to_list(lists:foldl(fun process_failed_key/2, dict:new(), Keys)).
 
 process_failed_key(?FAILURE_CACHE_KEY(AccountId, HookId, _Timestamp)
                    ,Dict
@@ -148,10 +153,10 @@ process_failed_key(?FAILURE_CACHE_KEY(AccountId, HookId, _Timestamp)
 process_failed_key(_Key, Dict) ->
     Dict.
 
--spec check_failures(dict()) -> 'ok'.
+-spec check_failures(list()) -> 'ok'.
 check_failures(Failures) ->
     [check_failure(AccountId, HookId, Count)
-     || {{AccountId, HookId}, Count} <- dict:to_list(Failures)
+     || {{AccountId, HookId}, Count} <- Failures
     ],
     'ok'.
 
@@ -182,10 +187,20 @@ disable_hook(AccountId, HookId) ->
                                    ,HookJObj
                                   ),
             _ = couch_mgr:ensure_saved(?KZ_WEBHOOKS_DB, Disabled),
+            filter_cache(AccountId, HookId),
             lager:debug("disabled and saved ~s/~s", [AccountId, HookId]);
         {'error', _E} ->
             lager:debug("failed to find ~s/~s to disable: ~p", [AccountId, HookId, _E])
     end.
+
+filter_cache(AccountId, HookId) ->
+    wh_cache:filter_erase_local(?CACHE_NAME
+                                ,fun(?FAILURE_CACHE_KEY(A, H, _), _) ->
+                                         lager:debug("maybe remove ~s/~s", [A, H]),
+                                         A =:= AccountId andalso H =:= HookId;
+                                    (_K, _V) -> 'false'
+                                 end
+                               ).
 
 %%%===================================================================
 %%% gen_server callbacks
