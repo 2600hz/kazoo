@@ -245,8 +245,14 @@ load_view(View, ViewOptions, Context) ->
     FromMODb = view_created_from_modb(AccountId, ViewOptions),
     load_chunked_db(View, ViewOptions, ToMODb, FromMODb, Context).
 
--spec load_chunked_db(ne_binary(), wh_proplist(), ne_binary(), ne_binary(), cb_context:context()) ->
+-spec load_chunked_db(ne_binary(), wh_proplist(), api_binary(), api_binary(), cb_context:context()) ->
                              cb_context:context().
+load_chunked_db(View, ViewOptions, Db, 'undefined', Context) ->
+    C = cb_context:store(Context, 'chunked_dbs', [Db]),
+    load_chunked_view_options(View, ViewOptions, C);
+load_chunked_db(View, ViewOptions, 'undefined', Db, Context) ->
+    C = cb_context:store(Context, 'chunked_dbs', [Db]),
+    load_chunked_view_options(View, ViewOptions, C);
 load_chunked_db(View, ViewOptions, Db, Db, Context) ->
     C = cb_context:store(Context, 'chunked_dbs', [Db]),
     load_chunked_view_options(View, ViewOptions, C);
@@ -264,9 +270,10 @@ load_chunked_view(View, Context) ->
     C = cb_context:store(Context, 'chunked_view', View),
     cb_context:set_resp_status(C, 'success').
 
--spec view_created_to_modb(ne_binary(), wh_proplist()) -> ne_binary().
+-spec view_created_to_modb(ne_binary(), wh_proplist()) -> api_binary().
 view_created_to_modb(AccountId, ViewOptions) ->
-    kazoo_modb:get_modb(AccountId, view_key_created_to(ViewOptions)).
+    Modb = kazoo_modb:get_modb(AccountId, view_key_created_to(ViewOptions)),
+    ensure_modb_exists(Modb).
 
 -spec view_key_created_to(wh_proplist()) -> pos_integer().
 view_key_created_to(ViewOptions) ->
@@ -275,9 +282,17 @@ view_key_created_to(ViewOptions) ->
         CreatedTo -> CreatedTo
     end.
 
--spec view_created_from_modb(ne_binary(), wh_proplist()) -> ne_binary().
+-spec view_created_from_modb(ne_binary(), wh_proplist()) -> api_binary().
 view_created_from_modb(AccountId, ViewOptions) ->
-    kazoo_modb:get_modb(AccountId, view_key_created_from(ViewOptions)).
+    Modb = kazoo_modb:get_modb(AccountId, view_key_created_from(ViewOptions)),
+    ensure_modb_exists(Modb).
+
+-spec ensure_modb_exists(ne_binary()) -> api_binary().
+ensure_modb_exists(Modb) ->
+    case couch_mgr:db_exists(Modb) of
+        'true' -> Modb;
+        'false' -> 'undefined'
+    end.
 
 -spec view_key_created_from(wh_proplist()) -> pos_integer().
 view_key_created_from(ViewOptions) ->
