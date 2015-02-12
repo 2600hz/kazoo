@@ -347,12 +347,18 @@ get_prompt(#cf_menu_data{greeting_id=Id}, Call) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec store_recording(binary(), binary(), whapps_call:call()) ->
+-spec store_recording(ne_binary(), ne_binary(), whapps_call:call()) ->
                              {'ok', wh_json:object()} |
                              {'error', wh_json:object()}.
 store_recording(AttachmentName, MediaId, Call) ->
     lager:info("storing recording ~s as media ~s", [AttachmentName, MediaId]),
-    'ok' = update_doc(<<"content_type">>, <<"audio/mpeg">>, MediaId, Call),
+    CallerIdName = whapps_call:caller_id_name(Call),
+    Description = <<"recorded by ", CallerIdName/binary>>,
+    Updates = [{<<"content_type">>, <<"audio/mpeg">>}
+               ,{<<"media_source">>, <<"recording">>}
+               ,{<<"description">>, Description}
+              ],
+    'ok' = update_doc(Updates, MediaId, Call),
     whapps_call_command:b_store(AttachmentName, get_new_attachment_url(AttachmentName, MediaId, Call), Call).
 
 %%--------------------------------------------------------------------
@@ -419,7 +425,7 @@ review_recording(MediaName, #cf_menu_data{keys=#menu_keys{listen=ListenKey
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec recording_media_doc(binary(), menu(), whapps_call:call()) -> binary().
+-spec recording_media_doc(ne_binary(), menu(), whapps_call:call()) -> ne_binary().
 recording_media_doc(Type, #cf_menu_data{name=MenuName
                                         ,menu_id=Id
                                        }, Call) ->
@@ -441,13 +447,13 @@ recording_media_doc(Type, #cf_menu_data{name=MenuName
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_doc(text(), wh_json:json_term(), menu() | binary(),  whapps_call:call() | binary()) ->
+-spec update_doc(text(), wh_json:json_term(), menu() | ne_binary(),  whapps_call:call() | ne_binary()) ->
+                        'ok' | {'error', atom()}.
+-spec update_doc(wh_proplist(), ne_binary(), whapps_call:call() | ne_binary()) ->
                         'ok' | {'error', atom()}.
 update_doc(Key, Value, #cf_menu_data{menu_id=Id}, Db) ->
     update_doc(Key, Value, Id, Db);
-update_doc(Key, Value, Id, Call) when is_tuple(Call) ->
-    update_doc(Key, Value, Id, whapps_call:account_db(Call));
-update_doc(Key, Value, Id, Db) ->
+update_doc(Key, Value, Id, <<_/binary>> = Db) ->
     case couch_mgr:open_doc(Db, Id) of
         {'error', _}=E -> lager:info("unable to update ~s in ~s, ~p", [Id, Db, E]);
         {'ok', JObj} ->
@@ -456,7 +462,22 @@ update_doc(Key, Value, Id, Db) ->
                 {'ok', _} -> 'ok';
                 {'error', _}=E -> lager:info("unable to update ~s in ~s, ~p", [Id, Db, E])
             end
-    end.
+    end;
+update_doc(Key, Value, Id, Call) ->
+    update_doc(Key, Value, Id, whapps_call:account_db(Call)).
+
+update_doc(Updates, Id, <<_/binary>> = Db) ->
+    case couch_mgr:open_doc(Db, Id) of
+        {'error', _}=E -> lager:info("unable to update ~s in ~s, ~p", [Id, Db, E]);
+        {'ok', JObj} ->
+            case couch_mgr:save_doc(Db, wh_json:set_values(Updates, JObj)) of
+                {'error', 'conflict'} -> update_doc(Updates, Id, Db);
+                {'ok', _} -> 'ok';
+                {'error', _}=E -> lager:info("unable to update ~s in ~s, ~p", [Id, Db, E])
+            end
+    end;
+update_doc(Updates, Id, Call) ->
+    update_doc(Updates, Id, whapps_call:account_db(Call)).
 
 %%--------------------------------------------------------------------
 %% @private
