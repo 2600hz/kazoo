@@ -18,40 +18,93 @@ Webhooks allow Kazoo to send HTTP requests to a third-party webserver, alerting 
     * `all`: All available webhook events
 * `retries`: How many times to retry sending the webhook to `uri`
 * `custom_data`: JSON object of custom data to be sent along with the event data to the `uri`
+* `enabled`: Boolean, is this webhook enabled for operation
 
 ## Sample cURL Requests
 
 ### List webhooks
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/webhooks
+    curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://server.com:8000/v1/accounts/{ACCOUNT_ID}/webhooks
 
 ### Create webhook
 
-    curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/webhooks -d '{"data":{"name":"New Calls", "uri":"http://my.server.com/calls/new.php", "http_verb":"post", "hook":"channel_create", "retries":3}}'
+    curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "Content-Type: application/json" \
+    http://server.com:8000/v1/accounts/{ACCOUNT_ID}/webhooks \
+    -d '{"data":{"name":"New Calls", "uri":"http://my.server.com/calls/new.php", \
+    "http_verb":"post", "hook":"channel_create", "retries":3}}'
 
 ### Get details of the webhook
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
+    curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://server.com:8000/v1/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 
 ### Edit webhook
 
-    curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID} -d '{"data":{"name":"New Calls", "uri":"http://my.server.com/calls/new_calls.php", "http_verb":"post", "hook":"channel_create", "retries":3}}'
+    curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "Content-Type: application/json" \
+    http://server.com:8000/v1/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID} \
+    -d '{"data":{"name":"New Calls", "uri":"http://my.server.com/calls/new_calls.php", \
+    "http_verb":"post", "hook":"channel_create", "retries":3}}'
+
+### Patch webhook
+
+You can also patch an existing webhook:
+
+    curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "Content-Type: application/json" \
+    http://server.com:8000/v1/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID} \
+    -d '{"data":{"enabled":true}}'
 
 ### Delete a webhook
 
-    curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
+    curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://server.com:8000/v1/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 
 ### List Attempts
 
 Webhooks tracks attempts to send the hook payloads to your URIs. You can get a listing of the more recent attempts to help debug what went wrong.
 
-#### Account Attempts Attempts
+#### Account Attempts
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/webhooks/attempts
+    curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://server.com:8000/v1/accounts/{ACCOUNT_ID}/webhooks/attempts
 
-#### Hook Attempts Attempts
+    {"auth_token": "c89bc20fd8954f6e67614b99e31b4f58",
+    "data": [
+        {
+            "client_error": "nxdomain",
+            "hook_id": "{HOOK_ID}",
+            "reason": "kazoo http client error",
+            "result": "failure",
+            "retries left": 2,
+            "timestamp": 63590996563
+        },
+        {
+            "hook_id": "{HOOK_ID}",
+            "result": "success",
+            "timestamp": 63590996562
+        }
+    ],
+    "page_size": 2,
+    "request_id": "{REQUEST_ID}",
+    "status": "success"
+    }
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}/attempts
+
+#### Hook Attempts
+
+    curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://server.com:8000/v1/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}/attempts
 
 ## Hook Payload
 
