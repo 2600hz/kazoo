@@ -151,7 +151,7 @@ get(Number, PublicFields) ->
     Num = wnm_util:normalize_number(Number),
     Routines = [fun check_reconcilable/1
                 ,fun(#number{}=N) -> fetch_number(N, PublicFields) end
-                ,fun maybe_add_information/1
+                ,fun maybe_correct_used_by/1
                ],
     lists:foldl(fun(F, N) -> F(N) end
                 ,#number{number=Num, number_db=wnm_util:number_to_db_name(Num)}
@@ -181,29 +181,34 @@ fetch_number(#number{number_db=Db
             error_number_database(Reason, N)
     end.
 
-
--spec maybe_add_information(wnm_number()) -> wnm_number().
-maybe_add_information(#number{assigned_to=Account}=N) ->
+-spec maybe_correct_used_by(wnm_number()) -> wnm_number().
+-spec maybe_correct_used_by(wnm_number(), wh_json:object()) -> wnm_number().
+maybe_correct_used_by(#number{assigned_to=Account}=N) ->
     case load_phone_number_doc(Account) of
         {'ok', JObj} ->
-            maybe_add_information(N, JObj);
+            maybe_correct_used_by(N, JObj);
         {'error', _R} ->
-            lager:warning("failed to get phone number doc for addition: ~p", [_R]),
+            lager:warning("failed to get phone number doc for correction: ~p", [_R]),
             N
     end.
 
--spec maybe_add_information(wnm_number(), wh_json:object()) -> wnm_number().
-maybe_add_information(#number{number=Number
+maybe_correct_used_by(#number{number=Number
+                              ,used_by=UsedBy
                               ,number_doc=NumberDoc
                              }=N
-                      ,JObj) ->
-    case wh_json:get_value(Number, JObj) of
-        'undefined' -> N;
-        NumberInfo ->
-            lager:info("merging doc data into number_doc for number ~s", [Number]),
-            %% This also makes sure used_by field is correct
-            NewNumberDoc = wh_json:merge_jobjs(NumberInfo, NumberDoc),
-            save_number_doc(N#number{number_doc=NewNumberDoc})
+                      ,JObj
+                     ) ->
+    case wh_json:get_value([Number, <<"used_by">>], JObj) of
+        UsedBy ->
+            lager:debug("~s used_by field is correct", [Number]),
+            N;
+        NewUsedBy ->
+            lager:info("correcting used_by field for number ~s from ~s to ~s"
+                      ,[Number, UsedBy, NewUsedBy]),
+            NewNumberDoc = wh_json:set_value(<<"used_by">>, NewUsedBy, NumberDoc),
+            save_number_doc(N#number{used_by=NewUsedBy
+                                     ,number_doc=NewNumberDoc
+                                    })
     end.
 
 -spec find_port_in_number(wnm_number() | ne_binary()) ->
@@ -746,13 +751,11 @@ used_by(PhoneNumber, UsedBy) ->
                 Number ->
                     _ = save(Number#number{used_by=UsedBy}),
                     lager:debug("updating number '~s' used_by from '~s' field to: '~s'"
-                                ,[PhoneNumber, Number#number.used_by, UsedBy]
-                               )
+                                ,[PhoneNumber, Number#number.used_by, UsedBy])
             catch
                 _E:_R ->
                     lager:notice("~s getting '~s' for used_by update to ~s: ~p"
-                                 ,[_E, PhoneNumber, UsedBy, _R]
-                                )
+                                ,[_E, PhoneNumber, UsedBy, _R])
             end
     end.
 
