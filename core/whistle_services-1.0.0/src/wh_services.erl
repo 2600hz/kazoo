@@ -121,7 +121,7 @@ new(AccountId) ->
                  ,dirty='true'
                  ,billing_id=BillingId
                  ,current_billing_id=BillingId
-                 ,deleted=wh_json:is_true(<<"pvt_deleted">>, Account)
+                 ,deleted=wh_doc:is_soft_deleted(Account)
                 }.
 
 %%--------------------------------------------------------------------
@@ -141,7 +141,7 @@ from_service_json(JObj) ->
                  ,status=wh_json:get_ne_value(<<"pvt_status">>, JObj, <<"good_standing">>)
                  ,billing_id=BillingId
                  ,current_billing_id=BillingId
-                 ,deleted=wh_json:is_true(<<"pvt_deleted">>, JObj)
+                 ,deleted=wh_doc:is_soft_deleted(JObj)
                 }.
 
 %%--------------------------------------------------------------------
@@ -173,7 +173,7 @@ handle_fetch_result(AccountId, JObj) ->
                  ,status=wh_json:get_ne_value(<<"pvt_status">>, JObj, <<"good_standing">>)
                  ,billing_id=BillingId
                  ,current_billing_id=BillingId
-                 ,deleted=wh_json:is_true(<<"pvt_deleted">>, JObj)
+                 ,deleted=wh_doc:is_soft_deleted(JObj)
                  ,dirty=wh_json:is_true(<<"pvt_dirty">>, JObj)
                 }.
 
@@ -226,7 +226,7 @@ save_as_dirty(#wh_services{jobj=JObj
             lager:debug("marked services as dirty for account ~s", [AccountId]),
             Services#wh_services{jobj=JObj
                                  ,status=wh_json:get_ne_value(<<"pvt_status">>, SavedJObj, <<"good_standing">>)
-                                 ,deleted=wh_json:is_true(<<"pvt_deleted">>, SavedJObj)
+                                 ,deleted=wh_doc:is_soft_deleted(SavedJObj)
                                  ,dirty='true'
                                 };
         {'error', 'not_found'} ->
@@ -279,7 +279,7 @@ save(#wh_services{jobj=JObj
                                  ,status=wh_json:get_ne_value(<<"pvt_status">>, NewJObj, <<"good_stainding">>)
                                  ,billing_id=BillingId
                                  ,current_billing_id=BillingId
-                                 ,deleted=wh_json:is_true(<<"pvt_deleted">>, NewJObj)
+                                 ,deleted=wh_doc:is_soft_deleted(NewJObj)
                                 };
         {'error', 'not_found'} ->
             lager:debug("service database does not exist, attempting to create"),

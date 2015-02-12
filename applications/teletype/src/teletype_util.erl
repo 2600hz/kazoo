@@ -434,7 +434,7 @@ create_template(MasterAccountDb, DocId, Params) ->
 
 -spec maybe_update_template(ne_binary(), wh_json:object(), init_params()) -> 'ok'.
 maybe_update_template(MasterAccountDb, TemplateJObj, Params) ->
-    case wh_json:is_true(<<"pvt_deleted">>, TemplateJObj) of
+    case wh_doc:is_soft_deleted(TemplateJObj) of
         'true' -> lager:debug("template is currently soft-deleted");
         'false' ->
             case update_template(MasterAccountDb, TemplateJObj, Params) of

@@ -338,7 +338,7 @@ lookup_prompt(Db, Id) ->
                               {'ok', wh_json:object()} |
                               {'error', 'not_found'}.
 prompt_is_usable(Doc) ->
-    case wh_json:is_true(<<"pvt_deleted">>, Doc, 'false') of
+    case wh_doc:is_soft_deleted(Doc) of
         'true' -> {'error', 'not_found'};
         'false' -> {'ok', Doc}
     end.

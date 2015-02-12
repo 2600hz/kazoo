@@ -359,7 +359,7 @@ maybe_update_billing_id(BillingId, AccountId, ServiceJObj) ->
             lager:debug("billing id ~s on ~s does not exist anymore, updating to bill self", [BillingId, AccountId]),
             couch_mgr:save_doc(?WH_SERVICES_DB, wh_json:set_value(<<"billing_id">>, AccountId, ServiceJObj));
         {'ok', JObj} ->
-            case wh_json:is_true(<<"pvt_deleted">>, JObj) of
+            case wh_doc:is_soft_deleted(JObj) of
                 'false' -> wh_services:reconcile(BillingId);
                 'true' ->
                     lager:debug("billing id ~s on ~s was deleted, updating to bill self", [BillingId, AccountId]),

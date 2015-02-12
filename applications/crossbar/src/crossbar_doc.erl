@@ -907,7 +907,7 @@ handle_json_success(JObj, Context) ->
 handle_json_success([_|_]=JObjs, Context, ?HTTP_PUT) ->
     RespData = [wh_json:public_fields(JObj)
                 || JObj <- JObjs,
-                   wh_json:is_false(<<"pvt_deleted">>, JObj, 'true')
+                   not wh_doc:is_soft_deleted(JObj)
                ],
     RespHeaders = [{<<"Location">>, wh_json:get_value(<<"_id">>, JObj)}
                    || JObj <- JObjs
@@ -922,7 +922,7 @@ handle_json_success([_|_]=JObjs, Context, ?HTTP_PUT) ->
 handle_json_success([_|_]=JObjs, Context, _Verb) ->
     RespData = [wh_json:public_fields(JObj)
                 || JObj <- JObjs,
-                   wh_json:is_false(<<"pvt_deleted">>, JObj, 'true')
+                   not wh_doc:is_soft_deleted(JObj)
                ],
     cb_context:setters(Context
                        ,[{fun cb_context:set_doc/2, JObjs}
