@@ -1125,8 +1125,12 @@ set_response(_Else, _, Context, _) ->
 %%--------------------------------------------------------------------
 -spec dry_run_response(wh_proplist()) -> wh_json:object().
 -spec dry_run_response(ne_binary(), wh_json:object()) -> wh_json:object().
-dry_run_response([{'services', Services}]) ->
-    wh_services:dry_run(Services).
+dry_run_response(Props) ->
+    case props:get_value('services', Props) of
+        'undefined' -> wh_json:new();
+        Services ->
+            wh_services:dry_run(Services)
+    end.
 
 dry_run_response(?COLLECTION, JObj) ->
     case wh_json:get_value(<<"error">>, JObj) of
