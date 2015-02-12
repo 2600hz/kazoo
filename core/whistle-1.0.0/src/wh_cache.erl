@@ -49,7 +49,8 @@
 
 -define(SERVER, ?MODULE).
 -define(EXPIRES, ?SECONDS_IN_HOUR). %% an hour
--define(EXPIRE_PERIOD, 10000).
+-define(EXPIRE_PERIOD, 10 * ?MILLISECONDS_IN_SECOND).
+-define(EXPIRE_PERIOD_MSG, 'expire_cache_objects').
 -define(DEFAULT_WAIT_TIMEOUT, 5).
 
 -define(NOTIFY_KEY(Key), {'monitor_key', Key}).
@@ -92,6 +93,7 @@
                 ,new_node_flush = 'false' :: boolean()
                 ,expire_node_flush = 'false' :: boolean()
                 ,expire_period = ?EXPIRE_PERIOD :: wh_timeout()
+                ,expire_period_ref :: reference()
                 ,props = [] :: list()
                }).
 
@@ -354,7 +356,7 @@ handle_document_change(JObj, Props) ->
 init([Name, ExpirePeriod, Props]) ->
     put('callid', Name),
     wapi_conf:declare_exchanges(),
-    _ = erlang:send_after(ExpirePeriod, self(), {'expire', ExpirePeriod}),
+
     Tab = ets:new(Name, ['set', 'protected', 'named_table', {'keypos', #cache_obj.key}]),
     _ = case props:get_value('new_node_flush', Props) of
             'true' -> wh_nodes:notify_new();
@@ -371,6 +373,7 @@ init([Name, ExpirePeriod, Props]) ->
                   ,new_node_flush=props:get_value('new_node_flush', Props)
                   ,expire_node_flush=props:get_value('expire_node_flush', Props)
                   ,expire_period=ExpirePeriod
+                  ,expire_period_ref=start_expire_period_timer(ExpirePeriod)
                   ,props=Props
                  }}.
 
@@ -502,10 +505,14 @@ handle_cast(_, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'expire', ExpirePeriod}, #state{tab=Tab}=State) ->
+handle_info({'timeout', Ref, ?EXPIRE_PERIOD_MSG}
+            ,#state{expire_period_ref=Ref
+                    ,expire_period=Period
+                    ,tab=Tab
+                   }=State
+           ) ->
     _ = expire_objects(Tab),
-    _ = erlang:send_after(ExpirePeriod, self(), {'expire', ExpirePeriod}),
-    {'noreply', State, 'hibernate'};
+    {'noreply', State#state{expire_period_ref=start_expire_period_timer(Period)}, 'hibernate'};
 handle_info(_Info, State) ->
     {'noreply', State, 'hibernate'}.
 
@@ -728,3 +735,7 @@ delete_monitor_callbacks(Key, Tab) ->
                   }
                  ],
     ets:select_delete(Tab, DeleteSpec).
+
+-spec start_expire_period_timer(pos_integer()) -> reference().
+start_expire_period_timer(ExpirePeriod) ->
+    erlang:start_timer(ExpirePeriod, self(), ?EXPIRE_PERIOD_MSG).
