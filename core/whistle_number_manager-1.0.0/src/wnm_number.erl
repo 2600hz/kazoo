@@ -194,9 +194,9 @@ maybe_add_information(#number{assigned_to=Account}=N) ->
 
 -spec maybe_add_information(wnm_number(), wh_json:object()) -> wnm_number().
 maybe_add_information(#number{number=Number
-                             ,number_doc=NumberDoc
+                              ,number_doc=NumberDoc
                              }=N
-                     , JObj) ->
+                      ,JObj) ->
     case wh_json:get_value(Number, JObj) of
         'undefined' -> N;
         NumberInfo ->
@@ -205,7 +205,6 @@ maybe_add_information(#number{number=Number
             NewNumberDoc = wh_json:merge_jobjs(NumberInfo, NumberDoc),
             save_number_doc(N#number{number_doc=NewNumberDoc})
     end.
-
 
 -spec find_port_in_number(wnm_number() | ne_binary()) ->
                                  {'ok', wh_json:object()} |
@@ -747,11 +746,13 @@ used_by(PhoneNumber, UsedBy) ->
                 Number ->
                     _ = save(Number#number{used_by=UsedBy}),
                     lager:debug("updating number '~s' used_by from '~s' field to: '~s'"
-                                ,[PhoneNumber, Number#number.used_by, UsedBy])
+                                ,[PhoneNumber, Number#number.used_by, UsedBy]
+                               )
             catch
                 _E:_R ->
                     lager:notice("~s getting '~s' for used_by update to ~s: ~p"
-                                ,[_E, PhoneNumber, UsedBy, _R])
+                                 ,[_E, PhoneNumber, UsedBy, _R]
+                                )
             end
     end.
 
