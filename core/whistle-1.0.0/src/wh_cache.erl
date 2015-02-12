@@ -242,15 +242,15 @@ fetch_keys_local(Srv) ->
     ets:select(Srv, MatchSpec).
 
 -spec filter_erase_local(atom(), fun((term(), term()) -> boolean())) ->
-                          'ok'.
+                          non_neg_integer().
 filter_erase_local(Srv, Pred) when is_function(Pred, 2) ->
-    ets:foldl(fun(#cache_obj{key=K, value=V, type = 'normal'}, 'ok') ->
+    ets:foldl(fun(#cache_obj{key=K, value=V, type = 'normal'}, Count) ->
                       case Pred(K, V) of
-                          'true' -> erase_local(Srv, K);
-                          'false' -> 'ok'
+                          'true' -> erase_local(Srv, K), Count+1;
+                          'false' -> Count
                       end;
-                 (_, 'ok') -> 'ok'
-              end, 'ok', Srv).
+                 (_, Count) -> Count
+              end, 0, Srv).
 
 -spec filter_local(atom(), fun((term(), term()) -> boolean())) ->
                           [{term(), term()},...] | [].
