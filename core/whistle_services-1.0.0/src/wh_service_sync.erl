@@ -42,6 +42,7 @@ start_link() ->
 -spec sync(ne_binary()) -> wh_std_return().
 sync(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
+    wh_util:put_callid(<<AccountId/binary, "-sync">>),
     case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
         {'error', _}=E -> E;
         {'ok', ServiceJObj} ->
@@ -274,19 +275,6 @@ sync_services_bookkeeper(AccountId, ServiceJObj, ServiceItems) ->
             end
     end.
 
--spec did_topup_failed(wh_json:objects()) -> boolean().
-did_topup_failed(JObjs) ->
-    lists:foldl(
-        fun(JObj, Acc) ->
-            case wh_json:get_integer_value(<<"code">>, JObj) of
-                ?CODE_TOPUP -> 'true';
-                _ -> Acc
-            end
-        end
-        ,'false'
-        ,JObjs
-    ).
-
 -spec handle_topup_transactions(ne_binary(), wh_json:objects(), wh_json:objects()| integer()) -> 'ok'.
 handle_topup_transactions(Account, JObjs, Failed) when is_list(Failed) ->
     case did_topup_failed(Failed) of
@@ -295,7 +283,7 @@ handle_topup_transactions(Account, JObjs, Failed) when is_list(Failed) ->
     end;
 handle_topup_transactions(_, [], _) -> 'ok';
 handle_topup_transactions(Account, [JObj|JObjs], Retry) when Retry > 0 ->
-    case wh_json:get_integer_value(<<"code">>, JObj) of
+    case wh_json:get_integer_value(<<"pvt_code">>, JObj) of
         ?CODE_TOPUP ->
             Amount = wh_json:get_value(<<"pvt_amount">>, JObj),
             Transaction = wh_transaction:credit(Account, Amount),
@@ -313,6 +301,19 @@ handle_topup_transactions(Account, [JObj|JObjs], Retry) when Retry > 0 ->
     end;
 handle_topup_transactions(Account, _, _) ->
     lager:error("failed to write top up transaction for account ~s too many retries", [Account]).
+
+-spec did_topup_failed(wh_json:objects()) -> boolean().
+did_topup_failed(JObjs) ->
+    lists:foldl(
+        fun(JObj, Acc) ->
+            case wh_json:get_integer_value(<<"code">>, JObj) of
+                ?CODE_TOPUP -> 'true';
+                _ -> Acc
+            end
+        end
+        ,'false'
+        ,JObjs
+    ).
 
 -spec maybe_sync_reseller(ne_binary(), wh_json:object()) -> wh_std_return().
 maybe_sync_reseller(AccountId, ServiceJObj) ->
