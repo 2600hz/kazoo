@@ -514,24 +514,23 @@ escape(V, C) ->
 encode(C, C) -> [$\\, C];
 encode(C, _) -> C.
 
--spec get_channel_params(wh_json:object()) -> wh_json:json_proplist().
+-spec get_channel_params(wh_json:object() | wh_proplist()) -> wh_proplist().
+get_channel_params(Props) when is_list(Props) ->
+    [get_channel_params_fold(K, V) || {K, V} <- Props];
 get_channel_params(JObj) ->
-    CV0 = case wh_json:get_value(<<"Tenant-ID">>, JObj) of
-              'undefined' -> [];
-              TID -> [{list_to_binary([?CHANNEL_VAR_PREFIX, "Tenant-ID"]), TID}]
-          end,
+    Props = wh_json:to_proplist(
+              wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())
+             ),
+    get_channel_params(Props).
 
-    CV1 = case wh_json:get_value(<<"Access-Group">>, JObj) of
-              'undefined' -> CV0;
-              AG -> [{list_to_binary([?CHANNEL_VAR_PREFIX, "Access-Group"]), AG} | CV0]
-          end,
-
-    Custom = wh_json:to_proplist(wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
-    lists:foldl(fun({<<"variable_", K/binary>>,V}, CV) ->
-                        [{K, V} | CV];
-                   ({K,V}, CV) ->
-                        [{list_to_binary([?CHANNEL_VAR_PREFIX, K]), V} | CV]
-                end, CV1, Custom).
+-spec get_channel_params_fold(ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
+get_channel_params_fold(Key, Val) ->
+    case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
+        'false' ->
+            {list_to_binary([?CHANNEL_VAR_PREFIX, Key]), Val};
+        {_, Prefix} ->
+            {Prefix, ecallmgr_util:maybe_sanitize_fs_value(Key, Val)}
+    end.
 
 -spec get_custom_sip_headers(wh_json:object()) -> wh_json:json_proplist().
 get_custom_sip_headers(JObj) ->
