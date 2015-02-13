@@ -363,62 +363,69 @@ load_message(DocId, MediaId, UpdateJObj, Context) ->
 %% VMId is the id for the voicemail document, containing the binary data
 %% @end
 %%--------------------------------------------------------------------
--spec load_message_binary(ne_binary(), ne_binary(), cb_context:context()) -> {boolean(), cb_context:context()}.
+-spec load_message_binary(ne_binary(), ne_binary(), cb_context:context()) ->
+                                 {boolean(), cb_context:context()}.
 load_message_binary(DocId, MediaId, Context) ->
     {Update, Context1} = load_message(DocId, MediaId, 'undefined', Context),
     case cb_context:resp_status(Context1) of
         'success' ->
-            VMMetaJObj = cb_context:resp_data(Context1),
-            Doc = cb_context:doc(Context1),
-
-            case couch_mgr:open_cache_doc(cb_context:account_db(Context), MediaId) of
-                {'error', 'not_found'} ->
-                    cb_context:add_system_error(
-                        'bad_identifier'
-                        ,wh_json:from_list([{<<"cause">>, MediaId}])
-                        ,Context1
-                    );
-                {'error', _E} ->
-                    cb_context:add_system_error('datastore_fault', Context1);
-                {'ok', Media} ->
-                    [AttachmentId] = wh_json:get_keys(<<"_attachments">>, Media),
-                    Filename = generate_media_name(wh_json:get_value(<<"caller_id_number">>, VMMetaJObj)
-                                                   ,wh_json:get_value(<<"timestamp">>, VMMetaJObj)
-                                                   ,filename:extension(AttachmentId)
-                                                   ,wh_json:get_value(<<"timezone">>, Doc)
-                                                  ),
-                    case couch_mgr:fetch_attachment(cb_context:account_db(Context1), MediaId, AttachmentId) of
-                        {'error', 'db_not_reachable'} ->
-                            {'false', cb_context:add_system_error('datastore_unreachable', Context1)};
-                        {'error', 'not_found'} ->
-                            {'false'
-                             ,cb_context:add_system_error(
-                                  'bad_identifier'
-                                  ,wh_json:from_list([{<<"cause">>, MediaId}])
-                                  ,Context1
-                              )
-                            };
-                        {'ok', AttachBin} ->
-                            lager:debug("Sending file with filename ~s", [Filename]),
-                            {Update
-                             ,cb_context:set_resp_data(
-                                  cb_context:set_resp_etag(
-                                      cb_context:add_resp_headers(
-                                          Context1
-                                          ,[{<<"Content-Type">>, wh_json:get_value([<<"_attachments">>, AttachmentId, <<"content_type">>], Doc)}
-                                            ,{<<"Content-Disposition">>, <<"attachment; filename=", Filename/binary>>}
-                                            ,{<<"Content-Length">>, wh_util:to_binary(wh_json:get_value([<<"_attachments">>, AttachmentId, <<"length">>], Doc))}
-                                           ]
-                                      )
-                                      ,'undefined'
-                                  )
-                                ,AttachBin
-                              )
-                            }
-                    end
-            end;
+            load_message_binary_from_message(MediaId, Context1, Update);
         _Status -> {Update, Context1}
     end.
+
+-spec load_message_binary_from_message(ne_binary(), cb_context:context(), boolean()) ->
+                                              {boolean(), cb_context:context()}.
+-spec load_message_binary_from_message(ne_binary(), cb_context:context(), boolean(), wh_json:object()) ->
+                                              {boolean(), cb_context:context()}.
+load_message_binary_from_message(MediaId, Context, Update) ->
+    case couch_mgr:open_cache_doc(cb_context:account_db(Context), MediaId) of
+        {'error', 'not_found'} ->
+            {'false', set_bad_media_identifier(Context, MediaId)};
+        {'error', _E} ->
+            {'false', cb_context:add_system_error('datastore_fault', Context)};
+        {'ok', Media} ->
+            load_message_binary_from_message(MediaId, Context, Update, Media)
+    end.
+
+load_message_binary_from_message(MediaId, Context, Update, Media) ->
+    VMMetaJObj = cb_context:resp_data(Context),
+    Doc = cb_context:doc(Context),
+
+    [AttachmentId] = wh_doc:attachment_names(Media),
+    Filename = generate_media_name(wh_json:get_value(<<"caller_id_number">>, VMMetaJObj)
+                                   ,wh_json:get_value(<<"timestamp">>, VMMetaJObj)
+                                   ,filename:extension(AttachmentId)
+                                   ,wh_json:get_value(<<"timezone">>, Doc)
+                                  ),
+    case couch_mgr:fetch_attachment(cb_context:account_db(Context), MediaId, AttachmentId) of
+        {'error', 'db_not_reachable'} ->
+            {'false', cb_context:add_system_error('datastore_unreachable', Context)};
+        {'error', 'not_found'} ->
+            {'false', set_bad_media_identifier(Context, MediaId)};
+        {'ok', AttachBin} ->
+            lager:debug("Sending file with filename ~s", [Filename]),
+            {Update
+             ,cb_context:setters(Context
+                                 ,[{fun cb_context:set_resp_data/2, AttachBin}
+                                   ,{fun cb_context:set_resp_etag/2, 'undefined'}
+                                   ,{fun cb_context:add_resp_headers/2
+                                     ,[{<<"Content-Type">>, wh_doc:attachment_content_type(Doc, AttachmentId)}
+                                       ,{<<"Content-Disposition">>, <<"attachment; filename=", Filename/binary>>}
+                                       ,{<<"Content-Length">>, wh_doc:attachment_length(Doc, AttachmentId)}
+                                      ]
+                                    }
+                                  ]
+                                )
+            }
+    end.
+
+-spec set_bad_media_identifier(cb_context:context(), ne_binary()) -> cb_context:context().
+set_bad_media_identifier(Context, MediaId) ->
+    cb_context:add_system_error(
+      'bad_identifier'
+      ,wh_json:from_list([{<<"cause">>, MediaId}])
+      ,Context
+     ).
 
 %%--------------------------------------------------------------------
 %% @private

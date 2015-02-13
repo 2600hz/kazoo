@@ -238,7 +238,7 @@ get_number_attachments(JObj) ->
     NumberDb = wnm_util:number_to_db_name(Number),
     case couch_mgr:open_doc(NumberDb, Number) of
         {'ok', NumberJObj} ->
-            Attachments = wh_json:get_value(<<"_attachments">>, NumberJObj, wh_json:new()),
+            Attachments = wh_doc:attachments(NumberJObj, wh_json:new()),
             fetch_attachments(wh_json:to_proplist(Attachments), NumberDb, Number);
         _ -> []
     end.
@@ -247,7 +247,7 @@ get_number_attachments(JObj) ->
 get_port_attachments(PortRequestId) ->
     case couch_mgr:open_cache_doc(?KZ_PORT_REQUESTS_DB, PortRequestId) of
         {'ok', PortJObj} ->
-            Attachments = wh_json:get_value(<<"_attachments">>, PortJObj, wh_json:new()),
+            Attachments = wh_doc:attachments(PortJObj, wh_json:new()),
             fetch_attachments(wh_json:to_proplist(Attachments), ?KZ_PORT_REQUESTS_DB, PortRequestId);
         _ -> []
     end.

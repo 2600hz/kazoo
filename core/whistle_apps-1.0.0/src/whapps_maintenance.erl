@@ -683,8 +683,9 @@ find_invalid_acccount_dbs_fold(AccountDb, Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec maybe_migrate_attachments(ne_binary(), ne_binary(), wh_json:object()) -> any().
 maybe_migrate_attachments(AccountDb, Id, JObj) ->
-    case wh_json:get_ne_value(<<"_attachments">>, JObj) of
+    case wh_doc:attachments(JObj) of
         'undefined' ->
             io:format("media doc ~s/~s has no attachments, removing~n", [AccountDb, Id]),
             couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"pvt_deleted">>, 'true', JObj));
@@ -788,7 +789,7 @@ maybe_update_attachment(AccountDb, Id, {OrigAttch, _CT1}, {NewAttch, CT}) ->
                             {'error', _}=E ->
                                 io:format("unable to fetch attachment ~s/~s/~s: ~p~n", [AccountDb, Id, OrigAttch, E]),
                                 E
-                            end
+                        end
                 end
                 ,fun({'ok', Content1}) ->
                          {'ok', Rev} = couch_mgr:lookup_doc_rev(AccountDb, Id),
@@ -799,7 +800,10 @@ maybe_update_attachment(AccountDb, Id, {OrigAttch, _CT1}, {NewAttch, CT}) ->
                          %%   so rather than check the put return fetch the new attachment and compare it to the old
                          Result = couch_mgr:put_attachment(AccountDb, Id, NewAttch, Content1, Options),
                          {'ok', JObj} = couch_mgr:open_doc(AccountDb, Id),
-                         case wh_json:get_value([<<"_attachments">>, OrigAttch, <<"length">>], JObj) =:= wh_json:get_value([<<"_attachments">>, NewAttch, <<"length">>], JObj) of
+
+                         case wh_doc:attachment_length(JObj, OrigAttch)
+                             =:= wh_doc:attachment_length(JObj, NewAttch)
+                         of
                              'false' ->
                                  io:format("unable to put new attachment ~s/~s/~s: ~p~n", [AccountDb, Id, NewAttch, Result]),
                                  {'error', 'length_mismatch'};

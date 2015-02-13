@@ -736,7 +736,7 @@ list_attachments(Number, AuthBy) ->
                          {E, Reason};
                     (#number{number_doc=JObj}) ->
                          lager:debug("list attachements successfully completed"),
-                         {'ok', wh_json:get_value(<<"_attachments">>, JObj, wh_json:new())}
+                         {'ok', wh_doc:attachments(JObj, wh_json:new())}
                  end
                ],
     lists:foldl(fun(F, J) -> catch F(J) end, 'ok', Routines).

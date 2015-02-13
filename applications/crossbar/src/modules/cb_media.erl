@@ -161,10 +161,10 @@ content_types_provided(Context, MediaId, ?BIN_DATA, ?HTTP_GET) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             JObj = cb_context:doc(Context1),
-            case wh_json:get_keys(wh_json:get_value([<<"_attachments">>], JObj, [])) of
-                [] -> Context;
+            case wh_doc:attachment_names(JObj) of
+                [] -> Context1;
                 [Attachment|_] ->
-                    CT = wh_json:get_value([<<"_attachments">>, Attachment, <<"content_type">>], JObj),
+                    CT = wh_doc:attachment_content_type(JObj, Attachment),
                     [Type, SubType] = binary:split(CT, <<"/">>),
                     cb_context:set_content_types_provided(Context, [{'to_binary', [{Type, SubType}]}])
             end;
@@ -886,16 +886,14 @@ load_media_binary(Context, MediaId) ->
     Context1 = load_media_meta(Context, MediaId),
     case cb_context:resp_status(Context1) of
         'success' ->
-            MediaMeta = wh_json:get_value([<<"_attachments">>], cb_context:doc(Context1), []),
-
-            case wh_json:get_keys(MediaMeta) of
+            case wh_doc:attachment_names(cb_context:doc(Context1)) of
                 [] -> crossbar_util:response_bad_identifier(MediaId, Context);
                 [Attachment|_] ->
                     cb_context:add_resp_headers(
                       crossbar_doc:load_attachment(cb_context:doc(Context1), Attachment, Context1)
                       ,[{<<"Content-Disposition">>, <<"attachment; filename=", Attachment/binary>>}
-                        ,{<<"Content-Type">>, wh_json:get_value([Attachment, <<"content_type">>], MediaMeta)}
-                        ,{<<"Content-Length">>, wh_json:get_value([Attachment, <<"length">>], MediaMeta)}
+                        ,{<<"Content-Type">>, wh_doc:attachment_content_type(cb_context:doc(Context1), Attachment)}
+                        ,{<<"Content-Type">>, wh_doc:attachment_length(cb_context:doc(Context1), Attachment)}
                        ])
             end;
         _Status -> Context1
@@ -948,11 +946,10 @@ delete_media_binary(MediaId, Context, _AccountId) ->
     Context1 = crossbar_doc:load(MediaId, Context),
     case cb_context:resp_status(Context1) of
         'success' ->
-            case wh_json:get_value([<<"_attachments">>, 1], cb_context:doc(Context1)) of
-                'undefined' -> crossbar_util:response_bad_identifier(MediaId, Context);
-                AttachMeta ->
-                    [AttachmentID] = wh_json:get_keys(AttachMeta),
-                    crossbar_doc:delete_attachment(MediaId, AttachmentID, Context)
+            case wh_doc:attachment_names(cb_context:doc(Context1)) of
+                [] -> crossbar_util:response_bad_identifier(MediaId, Context);
+                [AttachmentId|_] ->
+                    crossbar_doc:delete_attachment(MediaId, AttachmentId, Context)
             end;
         _Status -> Context1
     end.

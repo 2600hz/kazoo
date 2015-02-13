@@ -471,8 +471,8 @@ post(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
     Contents = wh_json:get_value(<<"contents">>, FileJObj),
     CT = wh_json:get_string_value([<<"headers">>, <<"content_type">>], FileJObj),
     Opts = [{'headers', [{'content_type', CT}]}],
-    OldAttachments = wh_json:get_value(<<"_attachments">>, cb_context:doc(Context), wh_json:new()),
-    case wh_json:get_value(AttachmentId, OldAttachments) of
+
+    case wh_doc:attachment(cb_context:doc(Context), AttachmentId) of
         'undefined' -> lager:debug("no attachment named ~s", [AttachmentId]);
         _AttachmentMeta ->
             lager:debug("deleting old attachment ~s", [AttachmentId]),
@@ -635,9 +635,9 @@ normalize_view_results(Res, Acc) ->
 summary_attachments(Context, Id) ->
     Context1 = crossbar_doc:load(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)),
 
-    A = wh_json:get_value(<<"_attachments">>, cb_context:doc(Context1), wh_json:new()),
+    As = wh_doc:attachments(cb_context:doc(Context1), wh_json:new()),
     cb_context:set_resp_data(Context1
-                             ,wh_port_request:normalize_attachments(A)
+                             ,wh_port_request:normalize_attachments(As)
                             ).
 
 %%--------------------------------------------------------------------
@@ -864,16 +864,14 @@ load_attachment(Id, AttachmentId, Context) ->
 -spec load_attachment(ne_binary(), cb_context:context()) ->
                              cb_context:context().
 load_attachment(AttachmentId, Context) ->
-    AttachmentMeta = wh_json:get_value([<<"_attachments">>, AttachmentId], cb_context:doc(Context)),
-
     cb_context:add_resp_headers(
       crossbar_doc:load_attachment(cb_context:doc(Context)
                                    ,AttachmentId
                                    ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
                                   )
       ,[{<<"Content-Disposition">>, <<"attachment; filename=", AttachmentId/binary>>}
-        ,{<<"Content-Type">>, wh_json:get_value([<<"content_type">>], AttachmentMeta)}
-        ,{<<"Content-Length">>, wh_json:get_value([<<"length">>], AttachmentMeta)}
+        ,{<<"Content-Type">>, wh_doc:attachment_content_type(cb_context:doc(Context), AttachmentId)}
+        ,{<<"Content-Length">>, wh_doc:attachment_length(cb_context:doc(Context), AttachmentId)}
        ]).
 
 %%--------------------------------------------------------------------
@@ -901,17 +899,7 @@ maybe_move_state(Context, Id, PortState) ->
                     ,{<<"cause">>, PortState}
                  ])
                 ,Context
-             );
-        {'error', _E} ->
-            cb_context:add_validation_error(
-                <<"port_state">>
-                ,<<"enum">>
-                ,wh_json:from_list([
-                    {<<"message">>, <<"failed to move to new state from current state">>}
-                    ,{<<"cause">>, PortState}
-                 ])
-                ,Context
-            )
+             )
     end.
 
 %%--------------------------------------------------------------------

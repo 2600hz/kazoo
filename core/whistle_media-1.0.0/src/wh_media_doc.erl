@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -15,18 +15,18 @@
 -spec single_attachment_url/3 :: (ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
 single_attachment_url(AccountDb, MediaId, AttachmentName) ->
     _ = case couch_mgr:open_doc(AccountDb, MediaId) of
-            {ok, JObj} ->
+            {'ok', JObj} ->
                 [begin
                      lager:debug("need to remove ~s/~s/~s first", [AccountDb, MediaId, Attach]),
                      couch_mgr:delete_attachment(AccountDb, MediaId, Attach)
                  end
-                 || Attach <- wh_json:get_keys(wh_json:get_value(<<"_attachments">>, JObj, wh_json:new()))
-                        ,Attach =/= AttachmentName
+                 || Attach <- wh_doc:attachment_names(JObj),
+                    Attach =/= AttachmentName
                 ];
-            {error, _} -> ok
+            {'error', _} -> 'ok'
         end,
     Rev = case couch_mgr:lookup_doc_rev(AccountDb, MediaId) of
-              {ok, R} -> <<"?rev=", R/binary>>;
+              {'ok', R} -> <<"?rev=", R/binary>>;
               _ -> <<>>
           end,
     list_to_binary([wh_couch_connections:get_url(), AccountDb, <<"/">>, MediaId, <<"/">>, AttachmentName, Rev]).

@@ -371,15 +371,19 @@ get_new_attachment_url(AttachmentName, MediaId, Call) ->
     AccountDb = whapps_call:account_db(Call),
     _ = case couch_mgr:open_doc(AccountDb, MediaId) of
             {'ok', JObj} ->
-                case wh_json:get_keys(wh_json:get_value(<<"_attachments">>, JObj, wh_json:new())) of
-                    [] -> 'ok';
-                    Existing ->
-                        [couch_mgr:delete_attachment(AccountDb, MediaId, Attach) || Attach <- Existing]
-                end;
+                maybe_delete_attachments(AccountDb, MediaId, JObj);
             {'error', _} -> 'ok'
         end,
     {'ok', URL} = wh_media_url:store(AccountDb, MediaId, AttachmentName),
     URL.
+
+maybe_delete_attachments(AccountDb, _MediaId, JObj) ->
+    case wh_doc:maybe_remove_attachments(JObj) of
+        {'false', _} -> 'ok';
+        {'true', Removed} ->
+            couch_mgr:save_doc(AccountDb, Removed),
+            lager:debug("removing attachments from ~s", [_MediaId])
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

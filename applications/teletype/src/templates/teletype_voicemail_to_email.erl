@@ -181,7 +181,7 @@ get_extension(MediaJObj) ->
     case wh_json:get_value(<<"media_type">>, MediaJObj) of
         'undefined' ->
             lager:debug("getting extension from attachment mime"),
-            attachment_to_extension(wh_json:get_value(<<"_attachments">>, MediaJObj));
+            attachment_to_extension(wh_doc:attachments(MediaJObj));
         MediaType -> MediaType
     end.
 
