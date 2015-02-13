@@ -46,13 +46,13 @@ send_system_alert(Request) ->
                 ,fun(P) -> add_limit_details(AccountId, <<"Account">>, P) end
                 ,fun(P) -> add_limit_details(ResellerId, <<"Reseller">>, P) end
                ],
-    wh_notify:system_alert("blocked ~s to ~s / Account ~s / Reseller ~s"
-                           ,[j5_request:from(Request)
+    wh_notify:detailed_alert("blocked ~s to ~s / Account ~s / Reseller ~s"
+                            ,[j5_request:from(Request)
                              ,j5_request:number(Request)
                              ,get_account_name(AccountId)
                              ,get_account_name(ResellerId)
-                            ]
-                           ,lists:foldr(fun(F, P) -> F(P) end, [], Routines)).
+                             ]
+                            ,lists:foldr(fun(F, P) -> F(P) end, [], Routines)).
 
 -spec add_limit_details(api_binary(), ne_binary(), wh_proplist()) -> wh_proplist().
 add_limit_details('undefined', _, Props) -> Props;

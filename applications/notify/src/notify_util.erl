@@ -22,6 +22,7 @@
          ,get_account_doc/1
          ,qr_code_image/1
          ,get_charset_params/1
+         ,post_json/3
         ]).
 
 -include("notify.hrl").
@@ -458,3 +459,16 @@ get_charset_params(Service) ->
                 };
             _ -> {[], <<>>}
         end.
+
+
+-spec post_json(ne_binary(), wh_json:object(), fun((wh_json:object()) ->'ok')) -> 'ok'.
+post_json(Url, JObj, OnErrorCallback) ->
+    Headers = [{"Content-Type", "application/json"}],
+    Encoded = wh_json:encode(JObj),
+    case ibrowse:send_req(Url, Headers, 'post', Encoded) of
+        {'ok', "200", _ResponseHeaders, _ResponseBody} ->
+            lager:debug("JSON data successfully POSTed to '~s'", [Url]);
+        _Error ->
+            lager:debug("failed to POST JSON data to ~p for reason: ~p", [Url,_Error]),
+            OnErrorCallback(JObj)
+    end.

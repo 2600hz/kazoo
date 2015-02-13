@@ -17,9 +17,11 @@
 -export([first_call/1]).
 -export([first_registration/1]).
 -export([transaction/2, transaction/3]).
--export([system_alert/2, system_alert/3]).
+-export([system_alert/2]).
+-export([detailed_alert/3]).
 
 -include("../include/wh_types.hrl").
+-include("../include/wh_log.hrl").
 
 -define(APP_NAME, <<"whistle">>).
 -define(APP_VERSION, <<"1.2.1">>).
@@ -132,17 +134,27 @@ transaction(Account, Transaction, ServicePlan) ->
     wh_amqp_worker:cast(Notify, fun wapi_notifications:publish_transaction/1).
 
 -spec system_alert(atom() | string() | binary(), [term()]) -> 'ok'.
--spec system_alert(atom() | string() | binary(), [term()], wh_proplist()) -> 'ok'.
-
 system_alert(Format, Args) ->
-    system_alert(Format, Args, []).
-
-system_alert(Format, Args, Props) ->
     Msg = io_lib:format(Format, Args),
     Notify= [{<<"Message">>, wh_util:to_binary(Msg)}
              ,{<<"Subject">>, <<"KAZOO: ", (wh_util:to_binary(Msg))/binary>>}
-             ,{<<"Details">>, wh_json:from_list(Props)}
              | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
+            ],
+    wh_amqp_worker:cast(Notify, fun wapi_notifications:publish_system_alert/1).
+
+-type props() :: [{ne_binary(), ne_binary()}].
+-spec detailed_alert(string(), list(), props()) -> 'ok'.
+detailed_alert (Format, Args, Props) ->
+    Msg = io_lib:format(Format, Args),
+    Notify= [ {<<"Message">>, wh_util:to_binary(Msg)}
+            , {<<"Subject">>, <<"KAZOO: ", (wh_util:to_binary(Msg))/binary>>}
+            , {<<"Details">>,
+               wh_json:from_list(
+                 %% Include Format to help parse JSON data sent
+                 [ {<<"Format">>, wh_util:to_binary(Format)}
+                   | Props
+                 ])}
+              | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
             ],
     wh_amqp_worker:cast(Notify, fun wapi_notifications:publish_system_alert/1).
 

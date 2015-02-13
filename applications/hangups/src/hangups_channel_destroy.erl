@@ -46,42 +46,17 @@ handle_req(JObj, _Props) ->
 -spec alert_about_hangup(ne_binary(), wh_json:object()) -> 'ok'.
 alert_about_hangup(HangupCause, JObj) ->
     lager:debug("abnormal call termination: ~s", [HangupCause]),
-    UseEmail = whapps_config:get_is_true(?APP_NAME, <<"enable_email_alerts">>, 'true'),
-    SUBUrl   = whapps_config:get_string(?APP_NAME, <<"subscriber_url">>),
     AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
-    DataDetails = maybe_add_hangup_specific(HangupCause, JObj),
-    Data = [{<<"hangup_cause">>, wh_util:to_lower_binary(HangupCause)}
-           ,{<<"source">>,       find_source(JObj)}
-           ,{<<"destination">>,  find_destination(JObj)}
-           ,{<<"direction">>,    find_direction(JObj)}
-           ,{<<"realm">>,        find_realm(JObj, AccountId)}
-           ,{<<"account_id">>,   AccountId}
-           ],
-    alert_about_hangup__email(UseEmail, Data, DataDetails),
-    alert_about_hangup__POST(SUBUrl,    Data, DataDetails, UseEmail),
+    wh_notify:detailed_alert("~s ~s to ~s (~s) on ~s(~s)"
+                            ,[wh_util:to_lower_binary(HangupCause)
+                             ,find_source(JObj)
+                             ,find_destination(JObj)
+                             ,find_direction(JObj)
+                             ,find_realm(JObj, AccountId)
+                             ,AccountId
+                             ]
+                            ,maybe_add_hangup_specific(HangupCause, JObj)),
     add_to_meters(AccountId, HangupCause).
-
--type ne_binary_proplist() :: [{ne_binary(), ne_binary()}].
-
--spec alert_about_hangup__POST(string() | 'undefined', ne_binary_proplist(), wh_proplist(), boolean()) -> 'ok'.
-alert_about_hangup__POST(SUBUrl, Data, Details0, EmailUsed) ->
-    Details = {<<"details">>, {Details0}},
-    Headers = [{"Content-Type", "application/json"}],
-    Encoded = wh_json:encode({[Details] ++ Data}),
-    case ibrowse:send_req(SUBUrl, Headers, 'post', Encoded) of
-        {'ok', "200", _ResponseHeaders, _ResponseBody} ->
-            lager:debug("hangup JSON data successfully POSTed to ~p", [SUBUrl]);
-        Error ->
-            lager:debug("failed to POST hangup JSON data to ~p for reason: ~p", [SUBUrl,Error]),
-            alert_about_hangup__email(not EmailUsed, Data, Details0)
-    end.
-
--spec alert_about_hangup__email(boolean(), ne_binary_proplist(), wh_proplist()) -> 'ok'.
-alert_about_hangup__email('false', _Data, _Details) -> 'ok';
-alert_about_hangup__email('true', Data, Details) ->
-    {_Lhs, DataRhs} = lists:unzip(Data),
-    wh_notify:system_alert("~s ~s to ~s (~s) on ~s(~s)", DataRhs, Details),
-    lager:debug("hangup JSON data successfully emailed").
 
 
 %%--------------------------------------------------------------------

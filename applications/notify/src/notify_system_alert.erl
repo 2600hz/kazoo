@@ -45,12 +45,33 @@ handle_req(JObj, _Props) ->
     'true' = wapi_notifications:system_alert_v(JObj),
     whapps_util:put_callid(JObj),
     lager:debug("creating system alert notice"),
+    UseEmail = whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"enable_email_alerts">>, 'true'),
+    SUBUrl   = whapps_config:get_string(?MOD_CONFIG_CAT, <<"subscriber_url">>),
+    case wh_json:get_value([<<"Details">>,<<"Format">>], JObj, 'undefined') of
+        'undefined' ->
+            alert_using_email('true', JObj);
+        _Format ->
+            alert_using_email(UseEmail, JObj),
+            alert_using_POST(SUBUrl,    JObj, UseEmail)
+    end.
+
+-spec alert_using_POST(string(), wh_json:object(), boolean()) -> 'ok'.
+alert_using_POST(Url, JObj, EmailUsed) ->
+    Fallback = fun (TheJObj) ->
+                       alert_using_email(not EmailUsed, TheJObj)
+               end,
+    notify_util:post_json(Url, JObj, Fallback).
+
+-spec alert_using_email(boolean(), wh_json:object()) -> 'ok'.
+alert_using_email('false', _JObj) -> 'ok';
+alert_using_email('true', JObj) ->
     Props = create_template_props(JObj),
     {'ok', TxtBody} = notify_util:render_template('undefined', ?DEFAULT_TEXT_TMPL, Props),
     {'ok', HTMLBody} = notify_util:render_template('undefined', ?DEFAULT_HTML_TMPL, Props),
     Subject = wh_json:get_ne_value(<<"Subject">>, JObj),
     To = whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<>>),
     build_and_send_email(TxtBody, HTMLBody, Subject, To, Props).
+
 
 %%--------------------------------------------------------------------
 %% @private
