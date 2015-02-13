@@ -332,6 +332,17 @@ maybe_send_event(<<"loopback::bowout">> = EventName, 'undefined', Props, Node) -
     ResigningUUID = props:get_value(?RESIGNING_UUID, Props),
     put('callid', ResigningUUID),
     maybe_send_event(EventName, ResigningUUID, Props, Node);
+maybe_send_event(<<"CHANNEL_DESTROY">> = EventName, UUID, Props, Node) ->
+    wh_util:put_callid(UUID),
+    case ecallmgr_fs_channel:node(UUID) of
+        {'ok', Node} ->
+            gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]}),
+            maybe_send_call_event(UUID, Props, Node);
+        {'ok', _OtherNode} ->
+            lager:debug("dropping channel destroy from ~s (expected ~s)", [Node, _OtherNode]);
+        {'error', 'not_found'} ->
+            lager:debug("dropping channel destroy from ~s (no such channel)", [Node])
+    end;
 maybe_send_event(EventName, UUID, Props, Node) ->
     wh_util:put_callid(UUID),
     case wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Props)) of
