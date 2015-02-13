@@ -25,7 +25,9 @@
 %% Implement the application start behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec start(term(), term()) -> startlink_ret().
+-spec start(term(), term()) ->
+                   {'ok', pid()} |
+                   {'error', startlink_err()}.
 start(_StartType, _StartArgs) -> sysconf:start_link().
 
 %%--------------------------------------------------------------------
