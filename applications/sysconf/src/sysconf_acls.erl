@@ -126,13 +126,17 @@ wait_for_pid_refs(PidRefs, Timeout) ->
 
 -spec resolve_hostname(pid(), ne_binary(), wh_json:object(), fun()) -> 'ok'.
 resolve_hostname(Collector, ResolveMe, JObj, ACLBuilderFun) ->
-    lager:debug("resolving ~s", [ResolveMe]),
-    case wh_network_utils:resolve(ResolveMe) of
+    lager:debug("attempting to resolve '~s'", [ResolveMe]),
+    case (not wh_network_utils:is_ipv4(ResolveMe))
+        andalso wh_network_utils:resolve(ResolveMe)
+    of
+        'false' ->
+            maybe_capture_ip(Collector, ResolveMe, JObj, ACLBuilderFun);
         [] ->
             lager:debug("no IPs returned, checking for raw IP"),
             maybe_capture_ip(Collector, ResolveMe, JObj, ACLBuilderFun);
         IPs ->
-                       ACLBuilderFun(Collector, JObj, IPs),
+            ACLBuilderFun(Collector, JObj, IPs),
             lager:debug("resolved '~s' for ~p: '~s'", [ResolveMe, Collector, wh_util:join_binary(IPs, <<"','">>)])
     end.
 
