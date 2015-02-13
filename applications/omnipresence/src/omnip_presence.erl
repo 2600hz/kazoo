@@ -105,7 +105,7 @@ handle_cast({'omnipresence',{'subscribe_notify', <<"presence">>, User, #omnip_su
             ],
     wh_amqp_worker:cast(Props, fun wapi_presence:publish_probe/1),
     {'noreply', State};
-handle_cast({'omnipresence',{'resubscribe_notify', <<"presence">>, User, #omnip_subscription{}=_Subscription}}, State) ->
+handle_cast({'omnipresence',{'x_resubscribe_notify', <<"presence">>, User, #omnip_subscription{}=_Subscription}}, State) ->
     [Username, Realm] = binary:split(User, <<"@">>),
     Props = [{<<"Username">>, Username}
              ,{<<"Realm">>, Realm}

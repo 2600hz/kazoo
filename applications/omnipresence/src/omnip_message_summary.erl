@@ -98,7 +98,7 @@ handle_cast({'omnipresence',{'subscribe_notify', <<"message-summary">>, User, _S
             ],
     wh_amqp_worker:cast(Query, fun wapi_presence:publish_mwi_query/1),
     {'noreply', State};
-handle_cast({'omnipresence',{'resubscribe_notify', <<"message-summary">>, User, _Subscription}}, State) ->
+handle_cast({'omnipresence',{'x_resubscribe_notify', <<"message-summary">>, User, _Subscription}}, State) ->
     [Username, Realm] = binary:split(User, <<"@">>),
     Query = [{<<"Username">>, Username}
              ,{<<"Realm">>, Realm}
