@@ -622,15 +622,17 @@ maybe_collect_worker_channel(Pid, Channels) ->
         2000 -> Channels
     end.
 
--spec build_channel(bridge_endpoint()) -> {'ok', bridge_channel()} |
-                                          {'error', _}.
+-spec build_channel(bridge_endpoint() | wh_json:object()) ->
+                           {'ok', bridge_channel()} |
+                           {'error', _}.
 build_channel(#bridge_endpoint{endpoint_type = <<"freetdm">>}=Endpoint) ->
     build_freetdm_channel(Endpoint);
 build_channel(#bridge_endpoint{endpoint_type = <<"skype">>}=Endpoint) ->
     build_skype_channel(Endpoint);
 build_channel(#bridge_endpoint{endpoint_type = <<"sip">>}=Endpoint) ->
     build_sip_channel(Endpoint);
-build_channel(EndpointJObj) -> build_channel(endpoint_jobj_to_record(EndpointJObj)).
+build_channel(EndpointJObj) ->
+    build_channel(endpoint_jobj_to_record(EndpointJObj)).
 
 -spec build_freetdm_channel(bridge_endpoint()) ->
                                    {'ok', bridge_channel()} |
@@ -1050,7 +1052,7 @@ is_custom_sip_header(_Header) -> 'false'.
 maybe_add_expires_deviation('undefined') -> 'undefined';
 maybe_add_expires_deviation(Expires) when not is_integer(Expires) ->
     maybe_add_expires_deviation(wh_util:to_integer(Expires));
-maybe_add_expires_deviation(0) -> 0; 
+maybe_add_expires_deviation(0) -> 0;
 maybe_add_expires_deviation(Expires) ->
     Expires + ecallmgr_config:get_integer(<<"expires_deviation_time">>, 180).
 

@@ -685,7 +685,7 @@ disable_local_resource_authz() ->
 limit_channel_uptime(MaxAge) ->
     limit_channel_uptime(MaxAge, 'true').
 limit_channel_uptime(MaxAge, AsDefault) ->
-    ecallmgr_fs_channels:set_max_channel_uptime(MaxAge, wh_util:is_true(AsDefault)),
+    ecallmgr_fs_channels:set_max_channel_uptime(wh_util:to_integer(MaxAge), wh_util:is_true(AsDefault)),
     io:format("updating max channel uptime to ~p (use 0 to disable check)~n", [MaxAge]).
 
 -spec hangup_long_running_channels() -> 'ok'.

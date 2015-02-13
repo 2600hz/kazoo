@@ -68,12 +68,15 @@ authn_resp_xml(JObj) ->
         {'ok', Elements} ->
             Number = wh_json:get_value([<<"Custom-SIP-Headers">>,<<"P-Kazoo-Primary-Number">>],JObj),
             Expires = ecallmgr_util:maybe_add_expires_deviation_ms(
-                        wh_json:get_value(<<"Expires">>,JObj)),
+                        wh_json:get_value(<<"Expires">>,JObj)
+                       ),
             Username = wh_json:get_value(<<"Auth-Username">>, JObj, UserId),
             UserEl = user_el([{'number-alias', Number}
                               ,{'cacheable', Expires}
-                             | user_el_default_props(Username) ]
-                             ,Elements),
+                              | user_el_default_props(Username)
+                             ]
+                             ,Elements
+                            ),
             DomainEl = domain_el(wh_json:get_value(<<"Auth-Realm">>, JObj, DomainName), UserEl),
             SectionEl = section_el(<<"directory">>, DomainEl),
             {'ok', xmerl:export([SectionEl], 'fs_xml')}
@@ -221,7 +224,7 @@ route_resp_xml(RespJObj) ->
 route_resp_fold(RouteJObj, {Idx, Acc}) ->
     case ecallmgr_util:build_channel(RouteJObj) of
         {'error', _} -> {Idx+1, Acc};
-        {'ok', Route} ->
+        {'ok', Channel} ->
             BypassMedia = case wh_json:get_value(<<"Media">>, RouteJObj) of
                               <<"bypass">> -> "true";
                               _ -> "false" %% default to not bypassing media
@@ -240,7 +243,7 @@ route_resp_fold(RouteJObj, {Idx, Acc}) ->
             BPEl = action_el(<<"set">>, [<<"bypass_media=">>, BypassMedia]),
             HangupEl = action_el(<<"set">>, <<"hangup_after_bridge=true">>),
             FailureEl = action_el(<<"set">>, <<"failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH">>),
-            BridgeEl = action_el(<<"set">>, [ChannelVars, Route]),
+            BridgeEl = action_el(<<"set">>, [ChannelVars, Channel]),
 
             ConditionEl = condition_el([BPEl, HangupEl, FailureEl, BridgeEl]),
             ExtEl = extension_el([<<"match_">>, Idx+$0], <<"true">>, [ConditionEl]),
