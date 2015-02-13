@@ -21,8 +21,11 @@
 
 -include("omnipresence.hrl").
 
--record(state, {subs_pid :: pid()
+-record(state, {subs_pid = 'undefined' :: pid() | 'undefined'
                 ,subs_ref :: reference()
+                ,queue = 'undefined' :: api_binary()
+                ,consuming = 'false' :: boolean()
+                ,sync = 'false' :: boolean()
                }).
 
 %% By convention, we put the options here in macros, but not required.
@@ -40,6 +43,9 @@
                       }
                      ,{{'omnip_subscriptions', 'handle_flush'}
                        ,[{<<"presence">>, <<"flush">>}]
+                      }
+                     ,{{'omnip_subscriptions', 'handle_sync'}
+                       ,[{<<"presence">>, <<"sync">>}]
                       }
                     ]).
 
@@ -122,16 +128,38 @@ handle_cast('find_subscriptions_srv', #state{subs_pid=_Pid}=State) ->
             {'noreply', State#state{subs_pid='undefined'}};
         P when is_pid(P) ->
             lager:debug("new subs pid: ~p", [P]),
+            gen_listener:cast(self(), 'send_sync'),
             {'noreply', State#state{subs_pid=P
                                     ,subs_ref=erlang:monitor('process', P)
                                    }}
     end;
-handle_cast({'gen_listener',{'created_queue',_Queue}}, State) ->
+handle_cast({'gen_listener',{'created_queue',Queue}}, State) ->
+    gen_listener:cast(self(), 'send_sync'),
+    {'noreply', State#state{queue=Queue}};
+handle_cast({'gen_listener',{'is_consuming',IsConsuming}}, State) ->
+    gen_listener:cast(self(), 'send_sync'),
+    {'noreply', State#state{consuming=IsConsuming}};
+handle_cast('send_sync', #state{subs_pid=Pid, queue=Queue, consuming=IsConsuming} = State)
+  when Pid =:= 'undefined' 
+  orelse Queue =:= 'undefined' 
+  orelse IsConsuming =:= 'false'  ->
     {'noreply', State};
-handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
+handle_cast('send_sync', #state{subs_pid='undefined'}=State) ->
     {'noreply', State};
+handle_cast('send_sync', #state{queue='undefined'}=State) ->
+    {'noreply', State};
+handle_cast('send_sync', #state{consuming='false'}=State) ->
+    {'noreply', State};
+handle_cast('send_sync', #state{subs_pid=Pid, queue=Queue, consuming='true', sync='false'} = State) ->
+    Payload = wh_json:from_list(
+                [{<<"Action">>, <<"Request">>}
+                 ,{<<"Queue">>, Queue}
+                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                ]),
+    wapi_presence:publish_sync(Payload),
+    erlang:send_after(2000, Pid, 'check_sync'),
+    {'noreply', State#state{sync='true'}};
 handle_cast(_Msg, State) ->
-    lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------

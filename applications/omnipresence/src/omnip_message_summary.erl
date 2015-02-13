@@ -253,7 +253,6 @@ build_variables(_User, Props) ->
 -spec build_body(ne_binary(), wh_proplist()) -> ne_binary().
 build_body(User, Props) ->
     Variables = build_variables(User, Props),
-    lager:debug("MSG_SUM Vars ~p", [Variables]),
     {'ok', Text} = sub_package_message_summary:render(Variables),
     Body = wh_util:to_binary(Text),
     binary:replace(Body, <<"\n">>, <<"\r\n">>, ['global']).
