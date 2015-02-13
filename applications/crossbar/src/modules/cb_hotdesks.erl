@@ -82,13 +82,11 @@ validate(Context) ->
 %%--------------------------------------------------------------------
 -spec validate_hotdesks(cb_context:context(), http_method(), wh_proplist()) -> cb_context:context().
 validate_hotdesks(Context, ?HTTP_GET, [{<<"hotdesks">>, _}, {<<"users">>, [UserId]}|_]) ->
-    route_by_type({<<"user">>, UserId}, Context);
+    fetch_device_hotdesks(UserId, Context);
 validate_hotdesks(Context, ?HTTP_GET, [{<<"hotdesks">>, _}, {<<"devices">>, [DeviceId]}|_]) ->
-    route_by_type({<<"device">>, DeviceId}, Context);
-validate_hotdesks(Context, ?HTTP_GET, [{<<"hotdesks">>, _}, {<<"accounts">>, [AccountId]}|_]) ->
-    route_by_type({<<"account">>, AccountId}, Context);
+    fetch_user_hotdesks(DeviceId, Context);
 validate_hotdesks(Context, ?HTTP_GET, _) ->
-    route_by_type('undefined', Context).
+    fetch_all_hotdesks(Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -106,12 +104,28 @@ normalize_view_results(JObj, Acc) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec route_by_type('undefined' | {ne_binary(), ne_binary()}, cb_context:context()) -> cb_context:context().
-route_by_type('undefined', Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
-route_by_type({<<"device">>, DeviceId}, Context) ->
-    crossbar_doc:load_view(?CB_LIST, [{<<"key">>, DeviceId}], Context, fun normalize_view_results/2);
-route_by_type({<<"user">>, UserId}, Context) ->
-    crossbar_doc:load_view(?CB_LIST, [{<<"key">>, UserId}], Context, fun normalize_view_results/2);
-route_by_type({<<"account">>, _}, Context) ->
+-spec fetch_all_hotdesks(cb_context:context()) -> cb_context:context().
+fetch_all_hotdesks(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+
+-spec fetch_user_hotdesks(ne_binary(), cb_context:context()) -> cb_context:context().
+fetch_user_hotdesks(DeviceId, Context) ->
+    Context1 = crossbar_doc:load(DeviceId, Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            JObj = cb_context:doc(Context1),
+            Users = wh_json:get_value([<<"hotdesk">>, <<"users">>], JObj, wh_json:new()),
+            fetch_users(wh_json:get_keys(Users), Context1);
+        _Else -> Context1
+    end.
+
+-spec fetch_users(ne_binaries(), cb_context:context()) -> cb_context:context().
+fetch_users(UserIds, Context) ->
+    ViewOptions = [{<<"keys">>, UserIds}],
+    View = <<"users/list_by_id">>,
+    crossbar_doc:load_view(View, ViewOptions, Context, fun normalize_view_results/2).
+
+-spec fetch_device_hotdesks(ne_binary(), cb_context:context()) -> cb_context:context().
+fetch_device_hotdesks(UserId, Context) ->
+    ViewOptions = [{<<"key">>, UserId}],
+    crossbar_doc:load_view(?CB_LIST, ViewOptions, Context, fun normalize_view_results/2).
