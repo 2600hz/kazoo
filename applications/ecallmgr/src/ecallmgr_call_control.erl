@@ -778,10 +778,11 @@ maybe_add_cleg(Props, OtherLeg, LegId, #state{other_legs=Legs}=State) ->
     end.
 
 -spec add_cleg(wh_proplist(), api_binary(), api_binary(), state()) -> state().
+add_cleg(_Props, _OtherLeg, 'undefined', State) -> State;
 add_cleg(Props, OtherLeg, LegId, #state{other_legs=Legs
                                         ,call_id=CallId
                                        }=State) ->
-    case LegId =:= 'undefined' orelse lists:member(LegId, Legs) of
+    case lists:member(LegId, Legs) of
         'true' -> State;
         'false' ->
             lager:debug("added cleg ~s to call", [LegId]),
