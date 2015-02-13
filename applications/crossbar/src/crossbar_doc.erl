@@ -30,6 +30,9 @@
         ]).
 
 -export([handle_json_success/2]).
+-export([handle_couch_mgr_success/2
+        ,handle_couch_mgr_errors/3
+        ]).
 
 -include("crossbar.hrl").
 
