@@ -93,10 +93,10 @@ handle_cast({'gen_listener',{'created_queue',_Queue}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
-handle_cast({'omnipresence',{'subscribe_notify', <<"dialog">>, User, #omnip_subscription{}=_Subscription}}, State) ->
+handle_cast({'omnipresence',{'x_subscribe_notify', <<"dialog">>, User, #omnip_subscription{}=_Subscription}}, State) ->
     spawn(fun() -> initial_update(User) end),
     {'noreply', State};
-handle_cast({'omnipresence',{'resubscribe_notify', <<"dialog">>, User, #omnip_subscription{}=_Subscription}}, State) ->
+handle_cast({'omnipresence',{'x_resubscribe_notify', <<"dialog">>, User, #omnip_subscription{}=_Subscription}}, State) ->
     spawn(fun() -> initial_update(User) end),
     {'noreply', State};
 handle_cast({'omnipresence',{'channel_event', JObj}}, State) ->
