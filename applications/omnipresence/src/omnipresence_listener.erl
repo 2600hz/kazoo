@@ -47,6 +47,8 @@
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
+-define(SUBSCRIPTIONS_SYNC_ENABLED, whapps_config:get_is_true(?CONFIG_CAT, <<"subscriptions_sync_enabled">>, 'true')).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -133,7 +135,7 @@ handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
 handle_cast('send_sync', #state{consuming='false'}=State) ->
     {'noreply', State};
 handle_cast('send_sync', #state{subs_pid=Pid, queue=Queue, consuming='true', sync='false'} = State) ->
-    maybe_sync_subscriptions(?SUBSCRIPTIONS_SYNC_ENABLED, Queue),
+    maybe_sync_subscriptions(?SUBSCRIPTIONS_SYNC_ENABLED),
     erlang:send_after(2000, Pid, 'check_sync'),
     {'noreply', State#state{sync='true'}};
 handle_cast(_Msg, State) ->
@@ -201,9 +203,9 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec maybe_sync_subscriptions(boolean(), binary()) -> '0k'.
-maybe_sync_subscriptions('false', _) -> 'ok';
-maybe_sync_subscriptions('true', Queue) ->
+-spec maybe_sync_subscriptions(boolean()) -> '0k'.
+maybe_sync_subscriptions('false') -> 'ok';
+maybe_sync_subscriptions('true') ->
     Payload = wh_json:from_list(
                 [{<<"Action">>, <<"Request">>}
                  ,{<<"Queue">>, Queue}
