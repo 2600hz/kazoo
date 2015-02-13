@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013 2600Hz Inc
+%%% @copyright (C) 2013-2015 2600Hz Inc
 %%% @doc
 %%% Conference participant process
 %%% @end
@@ -46,14 +46,14 @@
 -define('SERVER', ?MODULE).
 
 -define(RESPONDERS, [{{?MODULE, 'relay_amqp'}
-                     ,[{<<"call_event">>, <<"*">>}]
+                      ,[{<<"call_event">>, <<"*">>}]
                      }
-                    ,{{?MODULE, 'handle_participants_event'}
-                     ,[{<<"conference">>, <<"participants_event">>}]
-                     }
-                    ,{{?MODULE, 'handle_conference_error'}
-                     ,[{<<"conference">>, <<"error">>}]
-                     }
+                     ,{{?MODULE, 'handle_participants_event'}
+                       ,[{<<"conference">>, <<"participants_event">>}]
+                      }
+                     ,{{?MODULE, 'handle_conference_error'}
+                       ,[{<<"conference">>, <<"error">>}]
+                      }
                     ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
@@ -65,15 +65,14 @@
                       ,muted = 'false' :: boolean()
                       ,deaf = 'false' :: boolean()
                       ,waiting_for_mod = 'false' :: boolean()
-                      ,call_event_consumers = [] :: list()
+                      ,call_event_consumers = [] :: pids()
                       ,in_conference = 'false' :: boolean()
-                      ,join_attempts = 0 :: integer()
-                      ,conference = 'undefined'
-                      ,discovery_event = wh_json:new()
+                      ,join_attempts = 0 :: non_neg_integer()
+                      ,conference :: whapps_conference:conference()
+                      ,discovery_event = wh_json:new() :: wh_json:object()
                       ,last_dtmf = <<>> :: binary()
-                      ,queue :: api_binary()
                       ,server = self() :: pid()
-                      ,name_pronounced = 'undefined' :: conf_pronounced_name:name_pronounced()
+                      ,name_pronounced :: conf_pronounced_name:name_pronounced()
                      }).
 -type participant() :: #participant{}.
 
@@ -158,8 +157,8 @@ consume_call_events(Srv) -> gen_listener:cast(Srv, {'add_consumer', self()}).
 -spec relay_amqp(wh_json:object(), wh_proplist()) -> 'ok'.
 relay_amqp(JObj, Props) ->
     _ = [whapps_call_command:relay_event(Pid, JObj)
-         || Pid <- props:get_value('call_event_consumers', Props, [])
-                ,is_pid(Pid)
+         || Pid <- props:get_value('call_event_consumers', Props, []),
+            is_pid(Pid)
         ],
     Digit = wh_json:get_value(<<"DTMF-Digit">>, JObj),
     case is_binary(Digit) of
@@ -173,8 +172,8 @@ relay_amqp(JObj, Props) ->
 handle_participants_event(JObj, Props) ->
     'true' = wapi_conference:participants_event_v(JObj),
     _ = [whapps_call_command:relay_event(Pid, JObj)
-         || Pid <- props:get_value('call_event_consumers', Props, [])
-                ,is_pid(Pid)
+         || Pid <- props:get_value('call_event_consumers', Props, []),
+            is_pid(Pid)
         ],
     Srv = props:get_value('server', Props),
     gen_listener:cast(Srv, {'sync_participant', JObj}).
@@ -563,6 +562,7 @@ sync_member(JObj, Call, #participant{conference=Conference
                             ,participant_id=ParticipantId
                            }.
 
+-spec notify_requestor(ne_binary(), ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
 notify_requestor(MyQ, MyId, DiscoveryEvent, ConferenceId) ->
     case wh_json:get_value(<<"Server-ID">>, DiscoveryEvent) of
         'undefined' -> 'ok';
