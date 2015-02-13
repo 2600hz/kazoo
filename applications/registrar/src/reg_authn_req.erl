@@ -91,7 +91,7 @@ create_ccvs(#auth_user{}=AuthUser) ->
              ,{<<"Authorizing-ID">>, AuthUser#auth_user.authorizing_id}
              ,{<<"Authorizing-Type">>, AuthUser#auth_user.authorizing_type}
              ,{<<"Owner-ID">>, AuthUser#auth_user.owner_id}
-             ,{<<"Account-Realm">>, AuthUser#auth_user.account_realm}
+             ,{<<"Account-Realm">>, AuthUser#auth_user.account_normalized_realm}
              ,{<<"Account-Name">>, AuthUser#auth_user.account_name}
              ,{<<"Presence-ID">>, maybe_get_presence_id(AuthUser)}
              | create_specific_ccvs(AuthUser, AuthUser#auth_user.method)
@@ -102,13 +102,14 @@ create_ccvs(#auth_user{}=AuthUser) ->
 maybe_get_presence_id(#auth_user{account_db=AccountDb
                                  ,authorizing_id=DeviceId
                                  ,owner_id=OwnerId
-                                 ,account_realm=Realm
-                                }) ->
+                                 ,account_realm=AccountRealm
+                                }
+                     ) ->
     case get_presence_id(AccountDb, DeviceId, OwnerId) of
         'undefined' -> 'undefined';
         PresenceId ->
             case binary:match(PresenceId, <<"@">>) of
-                'nomatch' -> <<PresenceId/binary, "@", Realm/binary>>;
+                'nomatch' -> <<PresenceId/binary, "@", AccountRealm/binary>>;
                 _ -> PresenceId
             end
     end.
@@ -364,7 +365,8 @@ add_account_name(#auth_user{account_id=AccountId}=AuthUser, AccountDb) ->
         {'error', _} -> AuthUser;
         {'ok', Account} ->
             AuthUser#auth_user{account_name=wh_json:get_value(<<"name">>, Account)
-                               ,account_realm=wh_json:get_lower_binary(<<"realm">>, Account)
+                               ,account_realm=wh_json:get_value(<<"realm">>, Account)
+                               ,account_normalized_realm=wh_json:get_lower_binary(<<"realm">>, Account)
                               }
     end.
 
