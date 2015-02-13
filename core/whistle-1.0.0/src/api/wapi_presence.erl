@@ -37,6 +37,7 @@
          ,unbind_q/2
         ]).
 -export([declare_exchanges/0]).
+-export([sync/1, sync_v/1, publish_sync/1, publish_sync/2]).
 
 -include_lib("whistle/include/wh_api.hrl").
 
@@ -148,6 +149,15 @@
                        ,{<<"Event-Name">>, <<"reset">>}
                       ]).
 -define(RESET_TYPES, []).
+
+%% Sync presence 
+-define(SYNC_HEADERS, [<<"Action">>]).
+-define(OPTIONAL_SYNC_HEADERS, [<<"Queue">>, <<"Event-Package">>]).
+-define(SYNC_VALUES, [{<<"Event-Category">>, <<"presence">>}
+                      ,{<<"Event-Name">>, <<"sync">>}
+                      ,{<<"Action">>, [<<"Request">>, <<"Start">>, <<"End">>]}
+                      ]).
+-define(SYNC_TYPES, []).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -500,6 +510,30 @@ publish_flush(Req, ContentType) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec sync(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+sync(Prop) when is_list(Prop) ->
+    case sync_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?SYNC_HEADERS, ?OPTIONAL_SYNC_HEADERS);
+        'false' -> {'error', "Proplist failed validation for sync query"}
+    end;
+sync(JObj) -> sync(wh_json:to_proplist(JObj)).
+
+-spec sync_v(api_terms()) -> boolean().
+sync_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?SYNC_HEADERS, ?SYNC_VALUES, ?SYNC_TYPES);
+sync_v(JObj) -> sync_v(wh_json:to_proplist(JObj)).
+
+publish_sync(JObj) ->
+    publish_sync(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_sync(Req, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(Req, ?SYNC_VALUES, fun ?MODULE:sync/1),
+    amqp_util:presence_publish(<<"sync">>, Payload, ContentType).
+
+%%--------------------------------------------------------------------
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     RestrictTo = props:get_value('restrict_to', Props),
@@ -512,6 +546,9 @@ bind_q(Queue, ['search_req'|Restrict], Props) ->
     Realm = props:get_value('realm', Props, <<"*">>),
     RoutingKey = search_req_routing_key(Realm),
     amqp_util:bind_q_to_presence(Queue, RoutingKey),
+    bind_q(Queue, Restrict, Props);
+bind_q(Queue, ['sync'|Restrict], Props) ->
+    amqp_util:bind_q_to_presence(Queue, <<"sync">>),
     bind_q(Queue, Restrict, Props);
 bind_q(Queue, ['subscribe'|Restrict], Props) ->
     User = props:get_value('user', Props, <<"*">>),
@@ -569,6 +606,9 @@ unbind_q(Queue, ['search_req'|Restrict], Props) ->
     Realm = props:get_value('realm', Props, <<"*">>),
     RoutingKey = search_req_routing_key(Realm),
     amqp_util:unbind_q_from_presence(Queue, RoutingKey),
+    unbind_q(Queue, Restrict, Props);
+unbind_q(Queue, ['sync'|Restrict], Props) ->
+    amqp_util:unbind_q_from_presence(Queue, <<"sync">>),
     unbind_q(Queue, Restrict, Props);
 unbind_q(Queue, ['subscribe'|Restrict], Props) ->
     User = props:get_value('user', Props, <<"*">>),

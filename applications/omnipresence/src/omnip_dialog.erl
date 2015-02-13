@@ -224,15 +224,15 @@ presence_event(JObj) ->
 maybe_handle_presence_state(_JObj, <<"online">>) -> 'ok';
 maybe_handle_presence_state(_JObj, <<"offline">>) -> 'ok';
 maybe_handle_presence_state(JObj, ?PRESENCE_HANGUP=State) ->
-    handle_update(JObj, State, 1);
+    handle_update(JObj, State, 10);
 maybe_handle_presence_state(JObj, ?PRESENCE_RINGING=State) ->
-    handle_update(JObj, State, 1);
+    handle_update(JObj, State, 0);
 maybe_handle_presence_state(JObj, State) ->
-    handle_update(JObj, State, 1).
+    handle_update(JObj, State, 0).
 
 -spec handle_update(wh_json:object(), ne_binary()) -> any().
 handle_update(JObj, ?PRESENCE_HANGUP) ->
-    handle_update(JObj, ?PRESENCE_HANGUP, 1);
+    handle_update(JObj, ?PRESENCE_HANGUP, 10);
 handle_update(JObj, ?PRESENCE_RINGING) ->
     handle_update(JObj, ?PRESENCE_RINGING, 120);
 handle_update(JObj, ?PRESENCE_ANSWERED) ->
@@ -260,11 +260,11 @@ handle_update(JObj, State, Expires) ->
                          [{<<"From">>, <<"sip:", From/binary>>}
                           ,{<<"From-User">>, FromUsername}
                           ,{<<"From-Realm">>, FromRealm}
-                          ,{<<"From-Tag">>, wh_json:get_value(<<"From-Tag">>, JObj)}
+                          ,{<<"From-Tag">>, wh_json:get_value(<<"To-Tag">>, JObj)}
                           ,{<<"To">>, <<"sip:", To/binary>>}
                           ,{<<"To-User">>, ToUsername}
                           ,{<<"To-Realm">>, ToRealm}
-                          ,{<<"To-Tag">>, wh_json:get_value(<<"To-Tag">>, JObj)}
+                          ,{<<"To-Tag">>, wh_json:get_value(<<"From-Tag">>, JObj)}
                           ,{<<"State">>, State}
                           ,{<<"Expires">>, Expires}
                           ,{<<"Flush-Level">>, wh_json:get_value(<<"Flush-Level">>, JObj)}
@@ -284,12 +284,12 @@ handle_update(JObj, State, Expires) ->
                        [{<<"From">>, <<"sip:", To/binary>>}
                         ,{<<"From-User">>, ToUsername}
                         ,{<<"From-Realm">>, ToRealm}
-                        ,{<<"From-Tag">>, wh_json:get_value(<<"To-Tag">>, JObj)}
+                        ,{<<"From-Tag">>, wh_json:get_value(<<"From-Tag">>, JObj)}
                         ,{<<"To">>, ToURI}
                         ,{<<"To-URI">>, ToURI}
                         ,{<<"To-User">>, FromUsername}
                         ,{<<"To-Realm">>, FromRealm}
-                        ,{<<"To-Tag">>, wh_json:get_value(<<"From-Tag">>, JObj)}
+                        ,{<<"To-Tag">>, wh_json:get_value(<<"To-Tag">>, JObj)}
                         ,{<<"State">>, State}
                         ,{<<"Expires">>, Expires}
                         ,{<<"Flush-Level">>, wh_json:get_value(<<"Flush-Level">>, JObj)}
