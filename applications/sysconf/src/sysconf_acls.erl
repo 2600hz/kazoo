@@ -16,6 +16,7 @@
 -include("sysconf.hrl").
 
 -define(REQUEST_TIMEOUT, whapps_config:get_integer(?APP_NAME, <<"acl_request_timeout_ms">>, 2000)).
+-define(REQUEST_TIMEOUT_FUDGE, whapps_config:get_integer(?APP_NAME, <<"acl_request_timeout_fudge_ms">>, 100)).
 -define(IP_REGEX, <<"^(\\d{1,3}\\\.\\d{1,3}\\\.\\d{1,3}\\\.\\d{1,3}).*">>).
 -define(ACL_RESULT(IP, ACL), {'acl', IP, ACL}).
 
@@ -36,10 +37,17 @@ build(Node) ->
 -spec collect(wh_json:object(), pid_refs(), wh_timeout()) ->
                      wh_json:object().
 collect(ACLs, PidRefs) ->
-    collect(ACLs, PidRefs, ?REQUEST_TIMEOUT).
+    collect(ACLs, PidRefs, request_timeout()).
+
+-spec request_timeout() -> pos_integer().
+request_timeout() ->
+    case whapps_config:get(<<"ecallmgr">>, <<"fetch_timeout">>) of
+        'undefined' -> ?REQUEST_TIMEOUT;
+        Timeout -> Timeout - ?REQUEST_TIMEOUT_FUDGE
+    end.
 
 collect(ACLs, [], _Timeout) ->
-    lager:debug("acls built in ~p ms", [?REQUEST_TIMEOUT - _Timeout]),
+    lager:debug("acls built with ~p ms to spare", [_Timeout]),
     ACLs;
 collect(ACLs, _PidRefs, Timeout) when Timeout < 0 ->
     lager:debug("timed out waiting for ACLs, returning what we got"),
