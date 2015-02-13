@@ -10,6 +10,8 @@
 
 -define(CHANNELS_TBL, 'ecallmgr_channels').
 
+-define(DEFAULT_FETCH_TIMEOUT, 2600).
+
 -define(ECALLMGR_PLAYBACK_MEDIA_KEY(M), {'playback_media', M}).
 
 -define(DEFAULT_FREESWITCH_CONTEXT, ecallmgr_config:get(<<"freeswitch_context">>, <<"context_2">>)).

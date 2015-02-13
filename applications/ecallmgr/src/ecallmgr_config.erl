@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -18,8 +18,8 @@
          ,is_true/1, is_true/2, is_true/3
          ,get_default/1, get_default/2
         ]).
--export([fetch/1, fetch/2, fetch/3]).
--export([set/2
+-export([fetch/1, fetch/2, fetch/3, fetch/4
+         ,set/2
          ,set_default/2
          ,set_node/2
         ]).
@@ -154,6 +154,7 @@ is_true(Key, Default, Node) ->
 -spec fetch(wh_json:key()) -> wh_json:json_term() | 'undefined'.
 -spec fetch(wh_json:key(), Default) -> wh_json:json_term() | Default.
 -spec fetch(wh_json:key(), Default, wh_json:key() | atom()) -> wh_json:json_term() | Default.
+-spec fetch(wh_json:key(), Default, wh_json:key() | atom(), pos_integer()) -> wh_json:json_term() | Default.
 
 fetch(Key) ->
     fetch(Key, 'undefined').
@@ -167,7 +168,12 @@ fetch(Key, Default, Node) when not is_binary(Key) ->
     fetch(wh_util:to_binary(Key), Default, Node);
 fetch(Key, Default, Node) when not is_binary(Node) ->
     fetch(Key, Default, wh_util:to_binary(Node));
-fetch(Key, Default, Node) ->
+fetch(Key, Default, <<_/binary>> = Node) ->
+    fetch(Key, Default, Node, ?DEFAULT_FETCH_TIMEOUT);
+fetch(Key, Default, Timeout) when is_integer(Timeout) ->
+    fetch(Key, Default, wh_util:to_binary(node()), Timeout).
+
+fetch(Key, Default, Node, RequestTimeout) ->
     Req = [{<<"Category">>, <<"ecallmgr">>}
            ,{<<"Key">>, Key}
            ,{<<"Default">>, Default}
@@ -179,6 +185,7 @@ fetch(Key, Default, Node) ->
     ReqResp = wh_amqp_worker:call(props:filter_undefined(Req)
                                   ,fun wapi_sysconf:publish_get_req/1
                                   ,fun wapi_sysconf:get_resp_v/1
+                                  ,RequestTimeout - 100
                                  ),
     case ReqResp of
         {'error', _R} ->
