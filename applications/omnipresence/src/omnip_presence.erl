@@ -105,7 +105,7 @@ handle_cast({'omnipresence',{'subscribe_notify', <<"presence">>, User, #omnip_su
             ],
     wh_amqp_worker:cast(Props, fun wapi_presence:publish_probe/1),
     {'noreply', State};
-handle_cast({'omnipresence',{'resubscribe_notify', <<"presence">>, User, #omnip_subscription{}=_Subscription}}, State) ->
+handle_cast({'omnipresence',{'x_resubscribe_notify', <<"presence">>, User, #omnip_subscription{}=_Subscription}}, State) ->
     [Username, Realm] = binary:split(User, <<"@">>),
     Props = [{<<"Username">>, Username}
              ,{<<"Realm">>, Realm}
@@ -229,21 +229,21 @@ presence_event(JObj) ->
 
 -spec maybe_handle_presence_state(wh_json:object(), api_binary()) -> 'ok'.
 maybe_handle_presence_state(JObj, <<"online">>=State) ->
-    handle_update(JObj, State, 1);
+    handle_update(JObj, State, 0);
 maybe_handle_presence_state(JObj, <<"offline">>=State) ->
-    handle_update(JObj, State, 1);
+    handle_update(JObj, State, 0);
 maybe_handle_presence_state(JObj, State) ->
     handle_update(wh_json:delete_keys([<<"From">>, <<"To">>], JObj), State, 0).
 
 -spec handle_update(wh_json:object(), ne_binary()) -> any().
 handle_update(JObj, ?PRESENCE_HANGUP) ->
-    handle_update(JObj, ?PRESENCE_HANGUP, 1);
+    handle_update(JObj, ?PRESENCE_HANGUP, 0);
 handle_update(JObj, ?PRESENCE_RINGING) ->
     handle_update(JObj, ?PRESENCE_RINGING, 120);
 handle_update(JObj, ?PRESENCE_ANSWERED) ->
     handle_update(JObj, ?PRESENCE_ANSWERED, 36000);
 handle_update(JObj, State) ->
-    handle_update(JObj, State, 1).
+    handle_update(JObj, State, 0).
 
 -spec handle_update(wh_json:object(), ne_binary(), integer()) -> any().
 handle_update(JObj, State, Expires) ->
