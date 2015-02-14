@@ -1,7 +1,6 @@
-ROOT = ../..
-REBAR = $(ROOT)/utils/rebar/rebar
-PROJECT = gcm
 NAME=gcm
+ROOT=../../../../
+REBAR=$(ROOT)/utils/rebar/rebar
 OTP_PLT=~/.otp.plt
 PRJ_PLT=$(NAME).plt
 

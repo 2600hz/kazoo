@@ -1,8 +1,6 @@
-NAME=apns
-ROOT = ../..
-REBAR = $(ROOT)/utils/rebar/rebar
-PROJECT = apns
-
+NAME=apns4erl
+ROOT=../../../../
+REBAR=$(ROOT)/utils/rebar/rebar
 OTP_PLT=~/.otp.plt
 PRJ_PLT=$(NAME).plt
 
