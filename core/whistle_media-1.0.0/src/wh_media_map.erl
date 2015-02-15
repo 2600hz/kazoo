@@ -362,7 +362,10 @@ get_map(?WH_MEDIA_DB = Db, PromptId) ->
             #media_map{id=MapId
                        ,account_id=Db
                        ,prompt_id=PromptId
-                       ,languages=wh_json:new()
+                       ,languages=wh_json:set_value(wh_media_util:default_prompt_language()
+                                                    ,<<"/", ?WH_MEDIA_DB/binary, "/", (wh_media_util:default_prompt_language())/binary, "%2F", PromptId/binary>>
+                                                    , wh_json:new()
+                                                   )
                       }
     end;
 get_map(AccountId, PromptId) ->
