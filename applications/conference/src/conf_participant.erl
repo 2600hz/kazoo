@@ -76,10 +76,6 @@
                      }).
 -type participant() :: #participant{}.
 
--define(DEFAULT_ENTRY_TONE, <<"tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)">>).
--define(ENTRY_TONE, whapps_config:get(?CONFIG_CAT, <<"entry_tone">>, ?DEFAULT_ENTRY_TONE)).
--define(MOD_ENTRY_TONE, whapps_config:get(?CONFIG_CAT, <<"moderator_entry_tone">>, ?DEFAULT_ENTRY_TONE)).
-
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -244,22 +240,23 @@ handle_call(_Request, _, P) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast('hungup', #participant{conference=Conference
-                                   ,in_conference=InConference
+handle_cast('hunup', #participant{in_conference='true'
+                                  ,call=Call
+                                  ,conference=Conference
+                                 }=Participant
+            ) ->
+    whapps_conference_command:play(<<"tone_stream://v=-7;>=2;+=.1;%(300,0,523,440);v=-7;>=3;+=.1;%(800,0,349,440)">>, Conference),
+    _ = whapps_call_command:hangup(Call),
+    {'stop', {'shutdown', 'hungup'}, Participant};
+handle_cast('hungup', #participant{in_conference='false'
                                    ,call=Call
                                   }=Participant) ->
-    _ = case InConference of
-            'true' ->
-                whapps_conference_command:play(<<"tone_stream://v=-7;>=2;+=.1;%(300,0,523,440);v=-7;>=3;+=.1;%(800,0,349,440)">>, Conference);
-            'false' -> 'ok'
-        end,
     _ = whapps_call_command:hangup(Call),
     {'stop', {'shutdown', 'hungup'}, Participant};
 handle_cast({'gen_listener', {'created_queue', Q}}, #participant{conference='undefined'
                                                                  ,call=Call
                                                                 }=P) ->
     {'noreply', P#participant{call=whapps_call:set_controller_queue(Q, Call)}};
-
 handle_cast({'gen_listener', {'created_queue', Q}}, #participant{conference=Conference
                                                                  ,call=Call
                                                                 }=P) ->

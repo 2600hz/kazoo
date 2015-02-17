@@ -10,11 +10,17 @@
 
 -define(CONFERENCE_CACHE, 'conference_cache').
 
+-define(DEFAULT_ENTRY_TONE, <<"tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)">>).
+-define(ENTRY_TONE, whapps_config:get(?CONFIG_CAT, <<"entry_tone">>, ?DEFAULT_ENTRY_TONE)).
+-define(MOD_ENTRY_TONE, whapps_config:get(?CONFIG_CAT, <<"moderator_entry_tone">>, ?DEFAULT_ENTRY_TONE)).
+
 -define(DEFAULT_PROFILE_CONFIG, [{<<"rate">>, 8000}
                                  ,{<<"caller-controls">>, <<"default">>}
                                  ,{<<"interval">>, 20}
                                  ,{<<"energy-level">>, 20}
                                  ,{<<"comfort-noise">>, 1000}
+                                 ,{<<"moh-sound">>, <<"$${hold_music}">>}
+                                 ,{<<"enter-sound">>, ?ENTRY_TONE}
                                 ]).
 
 -define(DEFAULT_CALLER_CONTROLS_CONFIG, [wh_json:from_list([{<<"action">>, <<"vol talk dn">>}
