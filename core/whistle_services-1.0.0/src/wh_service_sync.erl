@@ -273,7 +273,7 @@ sync_services_bookkeeper(AccountId, ServiceJObj, ServiceItems) ->
             end
     end.
 
--spec handle_topup_transactions(ne_binary(), wh_json:objects(), wh_json:objects()| integer()) -> 'ok'.
+-spec handle_topup_transactions(ne_binary(), wh_json:objects(), wh_json:objects() | integer()) -> 'ok'.
 handle_topup_transactions(Account, JObjs, Failed) when is_list(Failed) ->
     case did_topup_failed(Failed) of
         'true' -> 'ok';
@@ -292,7 +292,8 @@ handle_topup_transactions(Account, [JObj|JObjs], Retry) when Retry > 0 ->
                     lager:warning("did not write top up transaction for account ~s already exist for today", [Account]);
                 {'error', _E} ->
                     lager:error("failed to write top up transaction ~p , for account ~s (amount: ~p), retrying ~p..."
-                                ,[_E, Account, Amount, Retry]),
+                                ,[_E, Account, Amount, Retry]
+                               ),
                     handle_topup_transactions(Account, [JObj|JObjs], Retry-1)
             end;
         _ -> handle_topup_transactions(Account, JObjs, 3)
@@ -303,15 +304,15 @@ handle_topup_transactions(Account, _, _) ->
 -spec did_topup_failed(wh_json:objects()) -> boolean().
 did_topup_failed(JObjs) ->
     lists:foldl(
-        fun(JObj, Acc) ->
-            case wh_json:get_integer_value(<<"code">>, JObj) of
-                ?CODE_TOPUP -> 'true';
-                _ -> Acc
-            end
-        end
-        ,'false'
-        ,JObjs
-    ).
+      fun(JObj, Acc) ->
+              case wh_json:get_integer_value(<<"code">>, JObj) of
+                  ?CODE_TOPUP -> 'true';
+                  _ -> Acc
+              end
+      end
+      ,'false'
+      ,JObjs
+     ).
 
 -spec maybe_sync_reseller(ne_binary(), wh_json:object()) -> wh_std_return().
 maybe_sync_reseller(AccountId, ServiceJObj) ->
