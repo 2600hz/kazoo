@@ -275,18 +275,14 @@ charge_transactions(BillingId, [], Dict) ->
      );
 charge_transactions(BillingId, [Transaction|Transactions], Dict) ->
     Code = wh_json:get_value(<<"pvt_code">>, Transaction),
-    L = case dict:find(Code, Dict) of
-            'error' -> [Transaction];
-            {'ok', Value} -> [Transaction | Value]
-        end,
     charge_transactions(BillingId
                         ,Transactions
-                        ,dict:store(Code, L, Dict)
+                        ,dict:append(Code, Transaction, Dict)
                        ).
 
 -spec handle_charged_transactions(ne_binary(), pos_integer(), wh_json:objects()) -> boolean().
 handle_charged_transactions(BillingId, Code, []) ->
-    lager:debug("no transaction found for ~s", [{BillingId, Code}]),
+    lager:debug("no transaction found for ~p", [{BillingId, Code}]),
     'true';
 handle_charged_transactions(BillingId, Code, JObjs) ->
     Props = [{<<"purchase_order">>, Code}],
