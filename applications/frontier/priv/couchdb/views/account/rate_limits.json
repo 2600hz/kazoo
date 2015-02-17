@@ -1,9 +1,0 @@
-{
-    "_id": "_design/rate_limits"
-    ,"language": "javascript"
-    ,"views": {
-        "crossbar_listing": {
-            "map": "function(doc) { if ((doc.pvt_type != 'account' && doc.pvt_type != 'device') || doc.pvt_deleted || doc.rate_limits == null) return; if (doc.pvt_type == 'account') { dev_limits = doc.rate_limits.device; for( key in dev_limits.per_minute ) { emit(['device-default-rate-limits', key], {'type':'device', 'per_minute':dev_limits.per_minute[key]}) }; for( key in dev_limits.per_second ) { emit(['device-default-rate-limits', key], {'type':'device', 'per_second':dev_limits.per_second[key]}) }; } if (doc.pvt_type == 'device') { limits = doc.rate_limits; username = doc.sip.username; for( key in limits.per_minute ) { emit([username, key], {'type':doc.pvt_type, 'per_minute':limits.per_minute[key]}) }; for( key in limits.per_second ) { emit([username, key], {'type':doc.pvt_type, 'per_second':limits.per_second[key]}) }; } };"
-        }
-    }
-}

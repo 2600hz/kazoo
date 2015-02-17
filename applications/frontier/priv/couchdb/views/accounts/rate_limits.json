@@ -1,9 +1,0 @@
-{
-    "_id": "_design/rate_limits"
-    ,"language": "javascript"
-    ,"views": {
-        "crossbar_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; if (doc.pvt_type == 'account') { if (doc.rate_limits != null) { limits = doc.rate_limits.account || doc.rate_limits.own; for (key in limits.per_minute) { emit([doc.realm, key], { 'type': 'realm', 'per_minute': limits.per_minute[key] }) }; for (key in limits.per_second) { emit([doc.realm, key], { 'type': 'realm', 'per_second': limits.per_second[key] }) }; } else { emit([doc.realm, 'fallback'], { 'type': 'realm', 'parents': doc.pvt_tree }) } } };"
-        }
-    }
-}

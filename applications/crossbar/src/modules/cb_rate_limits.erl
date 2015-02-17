@@ -22,6 +22,8 @@
 
 -include("../crossbar.hrl").
 
+-define(LISTING_BY_OWNER, <<"rate_limits/list_by_owner">>).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -79,19 +81,19 @@ validate(Context) ->
 
 -spec validate_rate_limits(cb_context:context(), http_method()) -> cb_context:context().
 validate_rate_limits(Context, ?HTTP_GET) ->
-    validate_get_rate_limits(Context, thing_doc(Context));
+    validate_get_rate_limits(Context, thing_id(Context));
 validate_rate_limits(Context, ?HTTP_POST) ->
     ValidateDevice = fun (C) -> validate_section(<<"device">>, C, fun validate_set_rate_limits/1) end,
-    case cb_context:req_nouns(Context) of
-        [{<<"rate_limits">>, []}, {<<"accounts">>, [_]} | _] ->
+    case thing_type(Context) of
+        <<"accounts">> ->
             validate_section(<<"account">>, Context, ValidateDevice);
-        [{<<"rate_limits">>, []}, {<<"devices">>, [_]} | _] ->
+        <<"devices">> ->
             cb_context:validate_request_data(<<"rate_limits">>, Context, fun validate_set_rate_limits/1);
         _Else ->
             crossbar_util:response_faulty_request(Context)
     end;
 validate_rate_limits(Context, ?HTTP_DELETE) ->
-    validate_delete_acls(Context, thing_doc(Context)).
+    validate_delete_rate_limits(Context, thing_id(Context)).
 
 -spec validate_section(ne_binary(), cb_context:context(), cb_context:after_fun()) -> cb_context:context().
 validate_section(Section, Context, OnSuccess) ->
@@ -100,62 +102,100 @@ validate_section(Section, Context, OnSuccess) ->
     Continue = fun (C) -> OnSuccess(cb_context:set_req_data(C, Data)) end,
     cb_context:validate_request_data(<<"rate_limits">>, cb_context:set_req_data(Context, NewData), Continue).
 
--spec thing_doc(cb_context:context()) -> api_object().
--spec thing_doc(cb_context:context(), ne_binary()) -> api_object().
-thing_doc(Context) ->
+-spec thing_type(cb_context:context()) -> api_binary().
+thing_type(Context) ->
     case cb_context:req_nouns(Context) of
-        [{<<"rate_limits">>, []}, {<<"accounts">>, [AccountId]} | _] ->
-            lager:debug("loading rate limits from account: '~s'", [AccountId]),
-            thing_doc(Context, AccountId);
-        [{<<"rate_limits">>, []}, {<<"devices">>, [DeviceId]} | _] ->
-            lager:debug("loading rate limits from device: '~s'", [DeviceId]),
-            thing_doc(Context, DeviceId);
+        [{<<"rate_limits">>, []}, {Type, [_ThingId]} | _] ->
+            Type;
         _Nouns -> 'undefined'
     end.
 
-thing_doc(Context, ThingId) ->
-    Context1 = crossbar_doc:load(ThingId, Context),
-    case cb_context:resp_status(Context1) of
-        'success' -> cb_context:doc(Context1);
-        _Status ->
-            lager:debug("failed to load thing ~s", [ThingId]),
+-spec thing_id(cb_context:context()) -> api_binary().
+thing_id(Context) ->
+    case cb_context:req_nouns(Context) of
+        [{<<"rate_limits">>, []}, {<<"accounts">>, [AccountId]} | _] ->
+            AccountId;
+        [{<<"rate_limits">>, []}, {<<"devices">>, [DeviceId]} | _] ->
+            DeviceId;
+        _Nouns -> 'undefined'
+    end.
+
+-spec get_rate_limits_id_for_thing(cb_context:context(), ne_binary()) -> api_binaries().
+get_rate_limits_id_for_thing(Context, ThingId) ->
+    ViewOpt = [{'key', ThingId}],
+    case couch_mgr:get_results(cb_context:account_db(Context), ?LISTING_BY_OWNER, ViewOpt) of
+        {'ok', JObjs} ->
+            lists:map(fun get_value/1, JObjs);
+        {'error', _Err} ->
+            lager:error("Can't load rate limits due to err: ~p", [_Err]),
             'undefined'
     end.
 
--spec validate_get_rate_limits(cb_context:context(), api_object()) -> cb_context:context().
+-spec get_value(wh_json:object()) -> api_binary().
+get_value(JObj) ->
+    wh_json:get_value(<<"value">>, JObj).
+
+-spec validate_get_rate_limits(cb_context:context(), api_binary()) -> cb_context:context().
 validate_get_rate_limits(Context, 'undefined') ->
     crossbar_util:response_faulty_request(Context);
-validate_get_rate_limits(Context, Doc) ->
-    RateLimits = wh_json:get_value(<<"rate_limits">>, Doc, wh_json:new()),
-    crossbar_util:response(RateLimits, Context).
+validate_get_rate_limits(Context, ThingId) ->
+    case get_rate_limits_id_for_thing(Context, ThingId) of
+        'undefined' -> crossbar_util:response('fatal', <<"data collection error">>, 503, Context);
+        [] -> crossbar_doc:handle_json_success(wh_json:new(), Context);
+        [RateLimitsId] -> crossbar_doc:load(RateLimitsId, Context);
+        RateLimitsIds ->
+            AccountDb = cb_context:account_db(Context),
+            lager:error("Found more than one result, please check ids(from db ~s): ~p ", [AccountDb, RateLimitsIds]),
+            crossbar_util:response('fatal', <<"data collection error">>, 503, Context)
+    end.
 
--spec validate_delete_acls(cb_context:context(), api_object()) -> cb_context:context().
-validate_delete_acls(Context, 'undefined') ->
+-spec validate_delete_rate_limits(cb_context:context(), api_binary()) -> cb_context:context().
+validate_delete_rate_limits(Context, 'undefined') ->
     crossbar_util:response_faulty_request(Context);
-validate_delete_acls(Context, Doc) ->
-    crossbar_util:response(wh_json:new()
-                           ,cb_context:set_doc(Context
-                                               ,wh_json:delete_key(<<"rate_limits">>, Doc)
-                                              )).
+validate_delete_rate_limits(Context, ThingId) ->
+    case get_rate_limits_id_for_thing(Context, ThingId) of
+        'undefined' -> crossbar_util:response('fatal', <<"data collection error">>, 503, Context);
+        [] -> crossbar_doc:handle_json_success(wh_json:new(), Context);
+        [RateLimitsId] -> crossbar_doc:load(RateLimitsId, Context);
+        RateLimitsIds ->
+            AccountDb = cb_context:account_db(Context),
+            lager:error("Found more than one result, please check ids(from db ~s): ~p ", [AccountDb, RateLimitsIds]),
+            crossbar_util:response('fatal', <<"data collection error">>, 503, Context)
+    end.
 
 -spec validate_set_rate_limits(cb_context:context()) ->
                                     cb_context:context().
--spec validate_set_rate_limits(cb_context:context(), wh_json:object(), api_object()) ->
+-spec validate_set_rate_limits(cb_context:context(), api_binary()) ->
                                     cb_context:context().
 validate_set_rate_limits(Context) ->
     lager:debug("rate limits data is valid, setting on thing"),
-    validate_set_rate_limits(Context, cb_context:doc(Context), thing_doc(Context)).
+    validate_set_rate_limits(Context, thing_id(Context)).
 
-validate_set_rate_limits(Context, _, 'undefined') ->
-    lager:debug("no doc found"),
+validate_set_rate_limits(Context, 'undefined') ->
+    lager:debug("no thing found"),
     crossbar_util:response_faulty_request(Context);
-validate_set_rate_limits(Context, RateLimits, Doc) ->
-    Doc1 = wh_json:set_value(<<"rate_limits">>, RateLimits, Doc),
+validate_set_rate_limits(Context, ThingId) ->
+    case get_rate_limits_id_for_thing(Context, ThingId) of
+        'undefined' -> crossbar_util:response('fatal', <<"data collection error">>, 503, Context);
+        [] -> Context;
+        [RateLimitsId] -> crossbar_doc:load_merge(RateLimitsId, Context);
+        RateLimitsIds ->
+            AccountDb = cb_context:account_db(Context),
+            lager:error("Found more than one result, please check ids(from db ~s): ~p ", [AccountDb, RateLimitsIds]),
+            crossbar_util:response('fatal', <<"data collection error">>, 503, Context)
+    end.
 
-    crossbar_util:response(RateLimits
-                           ,cb_context:set_doc(Context, Doc1)
-                          ).
-
+-spec set_pvt_fields(cb_context:context()) -> cb_context:context().
+set_pvt_fields(Context) ->
+    Type = case thing_type(Context) of
+               <<"accounts">> -> <<"account">>;
+               <<"devices">> -> <<"device">>
+           end,
+    Props = [{<<"pvt_type">>, <<"rate_limits">>}
+             ,{<<"pvt_owner_id">>, thing_id(Context)}
+             ,{<<"pvt_owner_type">>, Type}
+            ],
+    cb_context:set_doc(Context, wh_json:set_values(Props, cb_context:doc(Context))).
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -164,21 +204,7 @@ validate_set_rate_limits(Context, RateLimits, Doc) ->
 %%--------------------------------------------------------------------
 -spec post(cb_context:context()) -> cb_context:context().
 post(Context) ->
-    lager:debug("saving ~p", [cb_context:doc(Context)]),
-    after_post(crossbar_doc:save(Context)).
-
--spec after_post(cb_context:context()) -> cb_context:context().
--spec after_post(cb_context:context(), crossbar_status()) -> cb_context:context().
-after_post(Context) ->
-    after_post(Context, cb_context:resp_status(Context)).
-
-after_post(Context, 'success') ->
-    lager:debug("saved, returning the rate limits"),
-    crossbar_util:response(wh_json:get_value(<<"rate_limits">>, cb_context:doc(Context))
-                           ,Context
-                          );
-after_post(Context, _RespStatus) ->
-    Context.
+    crossbar_doc:save(set_pvt_fields(Context)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -188,14 +214,5 @@ after_post(Context, _RespStatus) ->
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context()) -> cb_context:context().
 delete(Context) ->
-    after_delete(crossbar_doc:save(Context)).
-
--spec after_delete(cb_context:context()) -> cb_context:context().
--spec after_delete(cb_context:context(), crossbar_status()) -> cb_context:context().
-after_delete(Context) ->
-    after_delete(Context, cb_context:resp_status(Context)).
-
-after_delete(Context, 'success') ->
-    crossbar_util:response(wh_json:new(), Context);
-after_delete(Context, _RespStatus) ->
-    Context.
+    lager:info("Loaded doc: ~p", [cb_context:doc(Context)]),
+    crossbar_doc:delete(Context).
