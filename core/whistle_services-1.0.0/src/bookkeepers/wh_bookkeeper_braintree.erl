@@ -21,13 +21,13 @@
 
 -define(TR_DESCRIPTION, <<"braintree transaction">>).
 
--record(wh_service_update, {bt_subscription
+-record(wh_service_update, {bt_subscription :: braintree_subscription:subscription()
                             ,plan_id :: api_binary()
                            }).
 
 -record(wh_service_updates, {bt_subscriptions = [] :: [update(),...] | []
                              ,account_id :: api_binary()
-                             ,bt_customer
+                             ,bt_customer :: braintree_customer:customer()
                             }).
 
 -type update() :: #wh_service_update{}.
@@ -49,6 +49,7 @@ is_good_standing(AccountId) ->
             'false'
     end.
 
+-spec customer_has_card(braintree_customer:customer(), ne_binary()) -> boolean().
 customer_has_card(Customer, AccountId) ->
     try braintree_customer:default_payment_card(Customer) of
         Card ->
@@ -72,7 +73,7 @@ customer_has_card(Customer, AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec sync(dict(), ne_binary()) -> 'ok'.
+-spec sync(wh_service_items:items(), ne_binary()) -> 'ok'.
 -spec sync(wh_service_item:items(), ne_binary(), updates()) -> 'ok'.
 sync(Items, AccountId) ->
     ItemList = wh_service_items:to_list(Items),
@@ -141,7 +142,6 @@ filter_prorated(Transactions, 'true') ->
     [Tr || Tr <- Transactions, is_prorated(Tr)];
 filter_prorated(Transactions, 'false') ->
     [Tr || Tr <- Transactions, not(is_prorated(Tr))].
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -259,20 +259,20 @@ charge_transactions(BillingId, Transactions) ->
 
 charge_transactions(BillingId, [], Dict) ->
     dict:fold(
-        fun(Code, JObjs, Acc) when Code =:= ?CODE_TOPUP ->
-            case handle_topup(BillingId, JObjs) of
-                'true' -> Acc;
-                'false' -> JObjs ++ Acc
-            end;
-        (Code, JObjs, Acc) ->
-             case handle_charged_transactions(BillingId, Code, JObjs) of
-                'true' -> Acc;
-                'false' -> JObjs ++ Acc
-            end
-        end
-        ,[]
-        ,Dict
-    );
+      fun(Code, JObjs, Acc) when Code =:= ?CODE_TOPUP ->
+              case handle_topup(BillingId, JObjs) of
+                  'true' -> Acc;
+                  'false' -> JObjs ++ Acc
+              end;
+         (Code, JObjs, Acc) ->
+              case handle_charged_transactions(BillingId, Code, JObjs) of
+                  'true' -> Acc;
+                  'false' -> JObjs ++ Acc
+              end
+      end
+      ,[]
+      ,Dict
+     );
 charge_transactions(BillingId, [Transaction|Transactions], Dict) ->
     Code = wh_json:get_value(<<"pvt_code">>, Transaction),
     L = case dict:find(Code, Dict) of
@@ -477,7 +477,9 @@ handle_quick_sale_response(BtTransaction) ->
 already_charged(BillingId, Code) when is_integer(Code) ->
     lager:debug("checking if ~s has been charge for transaction of type ~p today", [BillingId, Code]),
     BtTransactions = braintree_transaction:find_by_customer(BillingId),
-    Transactions = [braintree_transaction:record_to_json(BtTransaction) || BtTransaction <- BtTransactions],
+    Transactions = [braintree_transaction:record_to_json(BtTransaction)
+                    || BtTransaction <- BtTransactions
+                   ],
     already_charged(wh_util:to_binary(Code), Transactions);
 
 already_charged(_, []) ->
@@ -486,11 +488,11 @@ already_charged(_, []) ->
 already_charged(Code, [Transaction|Transactions]) ->
     case
         already_charged_transaction(
-            Code
-            ,wh_json:get_value(<<"status">>, Transaction)
-            ,wh_json:get_value(<<"purchase_order">>, Transaction)
-            ,Transaction
-        )
+          Code
+          ,wh_json:get_value(<<"status">>, Transaction)
+          ,wh_json:get_value(<<"purchase_order">>, Transaction)
+          ,Transaction
+         )
     of
         'true' -> 'true';
         'false' ->
@@ -504,7 +506,7 @@ already_charged(Code, [Transaction|Transactions]) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec already_charged_transaction(integer(), ne_binary(), integer(), wh_json:object()) -> boolean().
-already_charged_transaction(_ , <<"voided">>, _, Transaction) ->
+already_charged_transaction(_ , ?BT_TRANS_VOIDED, _, Transaction) ->
     Id = wh_json:get_value(<<"id">>, Transaction),
     lager:debug("transaction was voided (~s)", [Id]),
     'false';
@@ -589,10 +591,12 @@ fetch_bt_customer(AccountId, NewItems) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_subscriptions(ne_binary(), update(), updates()) ->
+-spec update_subscriptions(ne_binary(), braintree_subscription:subscription(), updates()) ->
                                   updates().
 update_subscriptions(PlanId, Subscription, #wh_service_updates{bt_subscriptions=Subscriptions}=Updates) ->
-    Update = #wh_service_update{bt_subscription=Subscription, plan_id=PlanId},
+    Update = #wh_service_update{bt_subscription=Subscription
+                                ,plan_id=PlanId
+                               },
     Updates#wh_service_updates{bt_subscriptions=lists:keystore(PlanId, #wh_service_update.plan_id, Subscriptions, Update)}.
 
 %%--------------------------------------------------------------------
