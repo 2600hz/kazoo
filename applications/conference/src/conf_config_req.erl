@@ -18,16 +18,16 @@ handle_req(JObj, _Options) ->
     fetch_config(JObj, ConfigName).
 
 fetch_config(JObj, <<"default">> = ConfigName) ->
-    Config =  whapps_config:get(?CONFIG_CAT, [<<"profiles">>, ConfigName], wh_json:from_list(?DEFAULT_PROFILE_CONFIG)),
+    Config = whapps_config:get(?CONFIG_CAT, [<<"profiles">>, ConfigName], wh_json:from_list(?DEFAULT_PROFILE_CONFIG)),
     fetch_config(JObj, ConfigName, Config);
 fetch_config(JObj, ConfigName) ->
-    Config =  whapps_config:get(?CONFIG_CAT, [<<"profiles">>, ConfigName]),
+    Config = whapps_config:get(?CONFIG_CAT, [<<"profiles">>, ConfigName]),
     fetch_config(JObj, ConfigName, Config).
 
 fetch_config(_JObj, _ConfigName, 'undefined') ->
     lager:debug("no profile defined for ~s", [_ConfigName]);
 fetch_config(JObj, ConfigName, Profile) ->
-    lager:debug("profile ~s found", [ConfigName]),
+    lager:debug("profile '~s' found", [ConfigName]),
     Resp = [{<<"Profiles">>, wh_json:from_list([{ConfigName, Profile}])}
             ,{<<"Caller-Controls">>, caller_controls(ConfigName)}
             ,{<<"Advertise">>, advertise(ConfigName)}
