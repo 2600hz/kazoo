@@ -32,8 +32,8 @@ exec_cmd(Node, UUID, JObj, ControlPid, UUID) ->
             ecallmgr_call_control:event_execute_complete(ControlPid, UUID, AppName);
         {AppName, AppData} ->
             ecallmgr_util:send_cmd(Node, UUID, AppName, AppData);
-        %% {AppName, AppData, NewNode} ->
-        %%     ecallmgr_util:send_cmd(NewNode, UUID, AppName, AppData);
+        {AppName, AppData, NewNode} ->
+            ecallmgr_util:send_cmd(NewNode, UUID, AppName, AppData);
         [_|_]=Apps ->
             [ecallmgr_util:send_cmd(Node, UUID, AppName, AppData) || {AppName, AppData} <- Apps]
     end;
@@ -810,27 +810,20 @@ build_set_args([{ApiHeader, Default, FSHeader}|Headers], JObj, Args) ->
 %% Conference command helpers
 %% @end
 %%--------------------------------------------------------------------
+-spec get_conference_app(atom(), ne_binary(), wh_json:object(), boolean()) ->
+                                {ne_binary(), ne_binary(), atom()} |
+                                {ne_binary(), 'noop' | ne_binary()}.
 get_conference_app(ChanNode, UUID, JObj, 'true') ->
     ConfName = wh_json:get_value(<<"Conference-ID">>, JObj),
     ConferenceConfig = wh_json:get_value(<<"Profile">>, JObj, <<"default">>),
     Cmd = list_to_binary([ConfName, "@", ConferenceConfig, get_conference_flags(JObj)]),
-    ecallmgr_util:export(ChanNode, UUID, [{<<"Hold-Media">>, <<"silence">>}]),
+
     case ecallmgr_fs_conferences:node(ConfName) of
         {'error', 'not_found'} ->
-            lager:debug("conference ~s hasn't been started yet", [ConfName]),
-            {'ok', _} = ecallmgr_util:send_cmd(ChanNode, UUID, "conference", Cmd),
-
-            case wait_for_conference(ConfName) of
-                {'ok', ChanNode} ->
-                    lager:debug("conference has started on ~s", [ChanNode]),
-                    maybe_set_nospeak_flags(ChanNode, UUID, JObj),
-                    {<<"conference">>, 'noop'};
-                {'ok', OtherNode} ->
-                    lager:debug("conference has started on other node ~s, lets move", [OtherNode]),
-                    get_conference_app(ChanNode, UUID, JObj, 'true')
-            end;
+            maybe_start_conference_on_our_node(ChanNode, UUID, JObj);
         {'ok', ChanNode} ->
             lager:debug("channel is on same node as conference"),
+            ecallmgr_util:export(ChanNode, UUID, [{<<"Hold-Media">>, <<"silence">>}]),
             maybe_set_nospeak_flags(ChanNode, UUID, JObj),
             {<<"conference">>, Cmd};
         {'ok', ConfNode} ->
@@ -845,8 +838,29 @@ get_conference_app(ChanNode, UUID, JObj, 'false') ->
     ConfName = wh_json:get_value(<<"Conference-ID">>, JObj),
     ConferenceConfig = wh_json:get_value(<<"Profile">>, JObj, <<"default">>),
     maybe_set_nospeak_flags(ChanNode, UUID, JObj),
-    ecallmgr_util:export(ChanNode, UUID, [{<<"Hold-Media">>, <<"silence">>}]),
+    %% ecallmgr_util:export(ChanNode, UUID, [{<<"Hold-Media">>, <<"silence">>}]),
     {<<"conference">>, list_to_binary([ConfName, "@", ConferenceConfig, get_conference_flags(JObj)])}.
+
+-spec maybe_start_conference_on_our_node(atom(), ne_binary(), wh_json:object()) ->
+                                                {ne_binary(), ne_binary(), atom()} |
+                                                {ne_binary(), 'noop' | ne_binary()}.
+maybe_start_conference_on_our_node(ChanNode, UUID, JObj) ->
+    ConfName = wh_json:get_value(<<"Conference-ID">>, JObj),
+    ConferenceConfig = wh_json:get_value(<<"Profile">>, JObj, <<"default">>),
+    Cmd = list_to_binary([ConfName, "@", ConferenceConfig, get_conference_flags(JObj)]),
+
+    lager:debug("conference ~s hasn't been started yet", [ConfName]),
+    {'ok', _} = ecallmgr_util:send_cmd(ChanNode, UUID, "conference", Cmd),
+
+    case wait_for_conference(ConfName) of
+        {'ok', ChanNode} ->
+            lager:debug("conference has started on ~s", [ChanNode]),
+            maybe_set_nospeak_flags(ChanNode, UUID, JObj),
+            {<<"conference">>, 'noop'};
+        {'ok', OtherNode} ->
+            lager:debug("conference has started on other node ~s, lets move", [OtherNode]),
+            get_conference_app(ChanNode, UUID, JObj, 'true')
+    end.
 
 maybe_set_nospeak_flags(Node, UUID, JObj) ->
     case wh_json:is_true(<<"Member-Nospeak">>, JObj) of
