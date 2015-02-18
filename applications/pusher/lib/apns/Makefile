@@ -1,56 +1,48 @@
-NAME=apns4erl
-ROOT=../../../../
-REBAR=$(ROOT)/utils/rebar/rebar
-OTP_PLT=~/.otp.plt
-PRJ_PLT=$(NAME).plt
+PROJECT = apns
+ROOT = ../../../../
 
-.PHONY: test
+EBINS = $(shell find $(ROOT)/core/whistle-* -maxdepth 2 -name ebin -print) \
+	$(shell find $(ROOT)/applications/pusher/lib/apns -maxdepth 2 -name ebin -print)
+PA = $(foreach EBIN,$(EBINS),-pa $(EBIN))
+ERLC_OPTS = -Werror +debug_info \
+	+warn_export_all \
+	+warn_missing_spec \
+	+warn_unused_vars \
+	-Iinclude/ \
+	$(PA)
 
-all: compile xref
+MODULES = $(shell ls src/*.erl | sed 's/src\///;s/\.erl/,/' | sed '$$s/.$$//')
 
-generate: compile xref
-	@rm -rf ./rel/$(NAME)
-	@$(REBAR) generate
+.PHONY: test all compile clean
 
-escriptize: compile xref
-	@$(REBAR) escriptize
+all: compile
 
-compile: get-deps
-	@$(REBAR) compile
+compile: ebin/$(PROJECT).app
+	@cat src/$(PROJECT).app.src \
+		| sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' \
+		> ebin/$(PROJECT).app
+	-@$(MAKE) ebin/$(PROJECT).app
 
-xref: compile
-	@$(REBAR) xref skip_deps=true
+ebin/$(PROJECT).app: src/*.erl
+	@mkdir -p ebin/
+	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $?
 
-get-deps:
-	@$(REBAR) get-deps
+compile-test: test/$(PROJECT).app
+	@cat src/$(PROJECT).app.src \
+		| sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' \
+		> test/$(PROJECT).app
+	-@$(MAKE) test/$(PROJECT).app
 
-update-deps:
-	@$(REBAR) update-deps
+test/$(PROJECT).app: src/*.erl
+	@mkdir -p test/
+	erlc -v $(ERLC_OPTS) -DTEST -o test/ -pa test/ $?
 
 clean:
-	@$(REBAR) clean
+	rm -f ebin/*
+	rm -f test/*.beam test/$(PROJECT).app
+	rm -f erl_crash.dump
 
-test: xref
-	@$(REBAR) eunit skip_deps=true
+test: clean compile-test eunit
 
-dialyze: $(OTP_PLT) compile $(PRJ_PLT)
-	@dialyzer --plt $(PRJ_PLT) -r ./subapps/*/ebin
-
-$(OTP_PLT):
-	@dialyzer --build_plt --output_plt $(OTP_PLT) --apps erts \
-		kernel stdlib crypto mnesia sasl common_test eunit ssl \
-		asn1 compiler syntax_tools inets
-
-$(PRJ_PLT):
-	@dialyzer --add_to_plt --plt $(OTP_PLT) --output_plt $(PRJ_PLT) \
-	-r ./deps/*/ebin ./subapps/*/ebin
-
-console:
-	@./rel/$(NAME)/bin/$(NAME) console
-
-develop:
-	@./rel/$(NAME)/bin/$(NAME) develop
-
-tags:
-	@find . -name "*.[e,h]rl" -print | etags -
-	
+eunit: compile-test
+	erl -noshell -pa test -eval "eunit:test([$(MODULES)], [verbose])" -s init stop

@@ -15,7 +15,6 @@
 
 -include("pusher.hrl").
 
-
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?SUPER('apns_sup')
                    ,?SUPER('gcm_sup')
@@ -23,8 +22,6 @@
                    ,?WORKER('pusher_listener')
                    ,?CACHE(?PUSHER_CACHE)
                   ]).
-
-
 
 %% ===================================================================
 %% API functions

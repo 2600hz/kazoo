@@ -81,9 +81,9 @@ do_push(RegIds, Message, Key, Retry) ->
             {error, Reason}
     end.
 
-handle_result(GCMResult, RegIds) ->
-    {_MulticastId, _SuccessesNumber, _FailuresNumber, _CanonicalIdsNumber, Results} = GCMResult,
-    lists:map(fun({Result, RegId}) -> {RegId, parse(Result)} end, lists:zip(Results, RegIds)).
+%% handle_result(GCMResult, RegIds) ->
+%%     {_MulticastId, _SuccessesNumber, _FailuresNumber, _CanonicalIdsNumber, Results} = GCMResult,
+%%     lists:map(fun({Result, RegId}) -> {RegId, parse(Result)} end, lists:zip(Results, RegIds)).
 
 do_backoff(RetryAfter, RegIds, Message, Key, Retry) ->
     case RetryAfter of
@@ -94,16 +94,16 @@ do_backoff(RetryAfter, RegIds, Message, Key, Retry) ->
         timer:apply_after(RetryAfter * 1000, ?MODULE, do_push, [RegIds, Message, Key, Retry - 1])
     end.
 
-parse(Result) ->
-    case {
-      proplists:get_value(<<"error">>, Result),
-      proplists:get_value(<<"message_id">>, Result),
-      proplists:get_value(<<"registration_id">>, Result)
-     } of
-        {Error, undefined, undefined} ->
-            Error;
-        {undefined, _MessageId, undefined}  ->
-            ok;
-        {undefined, _MessageId, NewRegId} ->
-            {<<"NewRegistrationId">>, NewRegId}
-    end.
+%% parse(Result) ->
+%%     case {
+%%       proplists:get_value(<<"error">>, Result),
+%%       proplists:get_value(<<"message_id">>, Result),
+%%       proplists:get_value(<<"registration_id">>, Result)
+%%      } of
+%%         {Error, undefined, undefined} ->
+%%             Error;
+%%         {undefined, _MessageId, undefined}  ->
+%%             ok;
+%%         {undefined, _MessageId, NewRegId} ->
+%%             {<<"NewRegistrationId">>, NewRegId}
+%%     end.

@@ -8,7 +8,7 @@
 
 -behaviour(supervisor).
 
--include("apns.hrl").
+-include_lib("apns/include/apns.hrl").
 
 -export([start_link/0, start_connection/1, start_connection/2]).
 -export([init/1]).

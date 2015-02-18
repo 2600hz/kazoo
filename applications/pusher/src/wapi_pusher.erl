@@ -13,14 +13,13 @@
 -export([publish_push_req/1, publish_push_req/2]).
 -export([publish_push_resp/1, publish_push_resp/2]).
 -export([publish_targeted_push_resp/2, publish_targeted_push_resp/3]).
-  
+
 -export([bind_q/2, unbind_q/2]).
 
 
 -export([declare_exchanges/0]).
 
 -include_lib("whistle/include/wh_api.hrl").
-
 
 -define(PUSH_EXCHANGE, <<"pushes">>).
 
