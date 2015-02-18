@@ -82,16 +82,21 @@ handle_full_voicemail(JObj, _Props) ->
 
             VMBox = get_vm_box(AccountDb, DataJObj),
             User = get_vm_box_owner(AccountDb, VMBox),
+            ReqData =
+                wh_json:set_values(
+                    [{<<"voicemail">>, VMBox}
+                      ,{<<"owner">>, User}
+                      ,{<<"account">>, AccountJObj}
+                      ,{<<"to">>, [wh_json:get_ne_value(<<"email">>, User)]}
+                    ]
+                    ,DataJObj
+                ),
 
-            process_req(
-              wh_json:set_values([{<<"voicemail">>, VMBox}
-                                  ,{<<"owner">>, User}
-                                  ,{<<"account">>, AccountJObj}
-                                  ,{<<"to">>, [wh_json:get_ne_value(<<"email">>, User)]}
-                                 ]
-                                 ,DataJObj
-                                )
-             )
+            case wh_json:is_true(<<"preview">>, DataJObj, 'false') of
+                'false' -> process_req(ReqData);
+                'true' ->
+                    process_req(wh_json:merge_jobjs(DataJObj, ReqData))
+            end
     end.
 
 -spec get_vm_box(ne_binary(), wh_json:object()) -> wh_json:object().
@@ -117,7 +122,6 @@ get_vm_box_owner(AccountDb, VMBox) ->
 -spec process_req(wh_json:object(), wh_proplist()) -> 'ok'.
 process_req(DataJObj) ->
     teletype_util:send_update(DataJObj, <<"pending">>),
-
     %% Load templates
     process_req(DataJObj, teletype_util:fetch_templates(?TEMPLATE_ID, DataJObj)).
 
