@@ -930,7 +930,7 @@ find_addresses(DataJObj, TemplateMetaJObj, ConfigCat) ->
     AddressKeys = [<<"to">>, <<"cc">>, <<"bcc">>, <<"from">>, <<"reply_to">>],
     find_addresses(DataJObj, TemplateMetaJObj, ConfigCat, AddressKeys, []).
 
-find_addresses(_, _, _, [], Acc) -> Acc;
+find_addresses(_DataJObj, _TemplateMetaJObj, _ConfigCat, [], Acc) -> Acc;
 find_addresses(DataJObj, TemplateMetaJObj, ConfigCat, [Key|Keys], Acc) ->
     find_addresses(
         DataJObj
@@ -966,10 +966,9 @@ find_address(DataJObj, _TemplateMetaJObj, ConfigCat, Key, ?EMAIL_ADMINS) ->
     lager:debug("looking for admin emails for '~s'", [Key]),
     {Key, find_admin_emails(DataJObj, ConfigCat, Key)}.
 
-
+-spec find_address(wh_json:key(), wh_json:object(), wh_json:object()) -> api_binaries().
 find_address(Key, DataJObj, TemplateMetaJObj) ->
-    case wh_json:get_value(Key, DataJObj) of
-        [] -> wh_json:get_value(Key, TemplateMetaJObj);
+    case wh_json:get_ne_value(Key, DataJObj) of
         'undefined' -> wh_json:get_value(Key, TemplateMetaJObj);
         Emails -> Emails
     end.
