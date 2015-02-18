@@ -18,6 +18,7 @@
 -export([declare_exchanges/0]).
 
 -include_lib("whistle/include/wh_api.hrl").
+-include_lib("whistle/include/wh_amqp.hrl").
 
 %% Offnet Resource Request
 -define(OFFNET_RESOURCE_REQ_HEADERS, [<<"Resource-Type">>, <<"To-DID">>

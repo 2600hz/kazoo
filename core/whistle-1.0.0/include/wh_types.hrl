@@ -18,6 +18,8 @@
                     ,<<"*">>, <<"0">>, <<"#">>
                    ]).
 
+-define(DEFAULT_CONTENT_TYPE, <<"application/json">>).
+
 %% Hangup Causes that are fine
 -define(SUCCESSFUL_HANGUPS, [<<"NORMAL_CLEARING">>, <<"ORIGINATOR_CANCEL">>, <<"SUCCESS">>]).
 
