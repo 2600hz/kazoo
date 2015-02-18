@@ -503,8 +503,8 @@ already_charged(Code, [Transaction|Transactions]) ->
 %%--------------------------------------------------------------------
 -spec already_charged_transaction(integer(), ne_binary(), integer(), wh_json:object()) -> boolean().
 already_charged_transaction(_ , ?BT_TRANS_VOIDED, _, Transaction) ->
-    Id = wh_json:get_value(<<"id">>, Transaction),
-    lager:debug("transaction was voided (~s)", [Id]),
+    _Id = wh_json:get_value(<<"id">>, Transaction),
+    lager:debug("transaction was voided (~s)", [_Id]),
     'false';
 already_charged_transaction(Code , _, Code, Transaction) ->
     <<Year:4/binary, _:1/binary

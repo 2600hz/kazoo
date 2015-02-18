@@ -441,7 +441,7 @@ rollup(<<_/binary>> = AccountMODb, Balance) ->
 collapse_call_transactions([], Calls, Transactions) ->
     clean_transactions(Transactions ++ dict:to_list(Calls));
 collapse_call_transactions([JObj|JObjs], Calls, Transactions) ->
-    case wh_json:get_integer_value(<<"code">>, JObj) of
+    case wh_json:get_integer_value(<<"pvt_code">>, JObj) of
         Code when Code >= 1000 andalso Code < 2000 ->
             C = collapse_call_transaction(JObj, Calls),
             collapse_call_transactions(JObjs, C, Transactions);
