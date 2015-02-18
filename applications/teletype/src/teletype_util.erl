@@ -99,7 +99,7 @@ relay_email(To, From, {_Type
             throw({'error', 'missing_from'});
         _E:_R ->
             ST = erlang:get_stacktrace(),
-            lager:debug("failed to encode email: ~s: ~p", [_E, _R]),
+            lager:warning("failed to encode email: ~s: ~p", [_E, _R]),
             wh_util:log_stacktrace(ST),
             throw({'error', 'email_encoding_failed'})
     end.
@@ -930,34 +930,49 @@ find_addresses(DataJObj, TemplateMetaJObj, ConfigCat) ->
     AddressKeys = [<<"to">>, <<"cc">>, <<"bcc">>, <<"from">>, <<"reply_to">>],
     find_addresses(DataJObj, TemplateMetaJObj, ConfigCat, AddressKeys, []).
 
-find_addresses(_DataJObj, _TemplateJObj, _ConfigCat, [], Acc) -> Acc;
+find_addresses(_, _, _, [], Acc) -> Acc;
 find_addresses(DataJObj, TemplateMetaJObj, ConfigCat, [Key|Keys], Acc) ->
-    find_addresses(DataJObj, TemplateMetaJObj, ConfigCat
-                   ,Keys
-                   ,[find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key)|Acc]
-                  ).
+    find_addresses(
+        DataJObj
+        ,TemplateMetaJObj
+        ,ConfigCat
+        ,Keys
+        ,[find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key)|Acc]
+    ).
 
 -spec find_address(wh_json:object(), wh_json:object(), ne_binary(), wh_json:key()) ->
                           {wh_json:key(), api_binaries()}.
 -spec find_address(wh_json:object(), wh_json:object(), ne_binary(), wh_json:key(), api_binary()) ->
                           {wh_json:key(), api_binaries()}.
 find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key) ->
-    find_address(DataJObj, TemplateMetaJObj, ConfigCat
-                 ,Key, wh_json:get_value([Key, <<"type">>], TemplateMetaJObj)
-                ).
+    find_address(
+        DataJObj
+        ,TemplateMetaJObj
+        ,ConfigCat
+        ,Key
+        ,wh_json:find([Key, <<"type">>], [DataJObj, TemplateMetaJObj])
+    ).
 
 find_address(_DataJObj, TemplateMetaJObj, _ConfigCat, Key, 'undefined') ->
     lager:debug("email type for '~s' not defined in template, checking just the key", [Key]),
     {Key, wh_json:get_ne_value(Key, TemplateMetaJObj)};
-find_address(_DataJObj, TemplateMetaJObj, _ConfigCat, Key, ?EMAIL_SPECIFIED) ->
+find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, ?EMAIL_SPECIFIED) ->
     lager:debug("checking template for '~s' email addresses", [Key]),
-    {Key, wh_json:get_ne_value([Key, <<"email_addresses">>], TemplateMetaJObj)};
-find_address(DataJObj, _TemplateMetaJObj, _ConfigCat, Key, ?EMAIL_ORIGINAL) ->
+    {Key, find_address([Key, <<"email_addresses">>], DataJObj, TemplateMetaJObj)};
+find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, ?EMAIL_ORIGINAL) ->
     lager:debug("checking data for '~s' email address(es)", [Key]),
-    {Key, wh_json:get_value(Key, DataJObj)};
+    {Key, find_address(Key, DataJObj, TemplateMetaJObj)};
 find_address(DataJObj, _TemplateMetaJObj, ConfigCat, Key, ?EMAIL_ADMINS) ->
     lager:debug("looking for admin emails for '~s'", [Key]),
     {Key, find_admin_emails(DataJObj, ConfigCat, Key)}.
+
+
+find_address(Key, DataJObj, TemplateMetaJObj) ->
+    case wh_json:get_value(Key, DataJObj) of
+        [] -> wh_json:get_value(Key, TemplateMetaJObj);
+        'undefined' -> wh_json:get_value(Key, TemplateMetaJObj);
+        Emails -> Emails
+    end.
 
 -spec find_admin_emails(wh_json:object(), ne_binary(), wh_json:key()) -> api_binaries().
 find_admin_emails(DataJObj, ConfigCat, Key) ->
