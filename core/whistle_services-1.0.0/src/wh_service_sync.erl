@@ -306,15 +306,15 @@ handle_topup_transactions(Account, _, _) ->
 -spec did_topup_failed(wh_json:objects()) -> boolean().
 did_topup_failed(JObjs) ->
     lists:foldl(
-      fun(JObj, Acc) ->
-              case wh_json:get_integer_value(<<"code">>, JObj) of
-                  ?CODE_TOPUP -> 'true';
-                  _ -> Acc
-              end
-      end
-      ,'false'
-      ,JObjs
-     ).
+        fun(JObj, Acc) ->
+            case wh_json:get_integer_value(<<"pvt_code">>, JObj) of
+                ?CODE_TOPUP -> 'true';
+                _ -> Acc
+            end
+        end
+        ,'false'
+        ,JObjs
+    ).
 
 -spec maybe_sync_reseller(ne_binary(), wh_json:object()) -> wh_std_return().
 maybe_sync_reseller(AccountId, ServiceJObj) ->
