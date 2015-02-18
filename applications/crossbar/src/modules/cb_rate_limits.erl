@@ -65,6 +65,18 @@ allowed_methods() ->
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
 
+-spec only_if_reseller_or_master(cb_context:context()
+                                 ,fun((cb_context:context()) -> cb_context:context())
+                                ) -> cb_context:context().
+only_if_reseller_or_master(Context, Continue) ->
+    {'ok', MasterAccount} = whapps_util:get_master_account_id(),
+    AuthAccountId = cb_context:auth_account_id(Context),
+    case AuthAccountId =:= MasterAccount
+         orelse wh_services:is_reseller(AuthAccountId) of
+        'true' -> Continue(Context);
+        'false' -> cb_context:add_system_error('forbidden', Context)
+    end.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -83,6 +95,12 @@ validate(Context) ->
 validate_rate_limits(Context, ?HTTP_GET) ->
     validate_get_rate_limits(Context, thing_id(Context));
 validate_rate_limits(Context, ?HTTP_POST) ->
+    only_if_reseller_or_master(Context, fun validate_post_rate_limits/1);
+validate_rate_limits(Context, ?HTTP_DELETE) ->
+    only_if_reseller_or_master(Context, fun (C) -> validate_delete_rate_limits(C, thing_id(C)) end).
+
+-spec validate_post_rate_limits(cb_context:context()) -> cb_context:context().
+validate_post_rate_limits(Context) ->
     ValidateDevice = fun (C) -> validate_section(<<"device">>, C, fun validate_set_rate_limits/1) end,
     case thing_type(Context) of
         <<"accounts">> ->
@@ -91,9 +109,7 @@ validate_rate_limits(Context, ?HTTP_POST) ->
             cb_context:validate_request_data(<<"rate_limits">>, Context, fun validate_set_rate_limits/1);
         _Else ->
             crossbar_util:response_faulty_request(Context)
-    end;
-validate_rate_limits(Context, ?HTTP_DELETE) ->
-    validate_delete_rate_limits(Context, thing_id(Context)).
+    end.
 
 -spec validate_section(ne_binary(), cb_context:context(), cb_context:after_fun()) -> cb_context:context().
 validate_section(Section, Context, OnSuccess) ->
