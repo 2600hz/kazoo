@@ -281,6 +281,7 @@
                                     "CELT_48",
                                     "CELT_64",
                                     "Speex"
+                                    "speex"
                                 ]
                             },
                             "default": [
