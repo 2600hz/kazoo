@@ -114,8 +114,11 @@ is_context(_) -> 'false'.
 -spec req_value(context(), wh_json:key(), Default) -> wh_json:json_term() | Default.
 req_value(#cb_context{}=Context, Key) ->
     req_value(Context, Key, 'undefined').
-req_value(#cb_context{req_data=ReqData, query_json=QS}, Key, Default) ->
-    wh_json:find(Key, [ReqData, QS], Default).
+req_value(#cb_context{req_data=ReqData
+                     ,query_json=QS
+                     ,req_json=JObj
+                     }, Key, Default) ->
+    wh_json:find(Key, [ReqData, QS, JObj], Default).
 
 
 -spec accepting_charges(context()) -> boolean().
