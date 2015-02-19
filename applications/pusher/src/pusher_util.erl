@@ -16,6 +16,22 @@
 
 -include("pusher.hrl").
 
+-type pki_asn1_type() :: 'Certificate' |
+                         'RSAPrivateKey'| 'RSAPublicKey' |
+                         'DSAPrivateKey' | 'DSAPublicKey' |
+                         'DHParameter' | 'SubjectPublicKeyInfo'|
+                         'PrivateKeyInfo' | 'CertificationRequest'.
+
+-type pem_entry() :: {pki_asn1_type()
+                      ,binary()
+                      ,'not_encrypted' | cipher_info()
+                     }.
+
+-type cipher_info() :: term().
+                       %% {"RC2-CBC" | "DES-CBC" | "DES-EDE3-CBC"
+                       %%  ,binary() | 'PBES2-params'
+                       %% }.
+
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
@@ -23,6 +39,10 @@
 -spec binary_to_keycert(binary()) -> {term(), term()}.
 binary_to_keycert(Binary) ->
     RSAEntries = public_key:pem_decode(Binary),
+    keycert(RSAEntries).
+
+-spec keycert([pem_entry()]) -> {term(), term()}.
+keycert(RSAEntries) ->
     [Cert] =  [Bin || {'Certificate', Bin, 'not_encrypted'} <- RSAEntries],
     [Key] =  [{'PrivateKeyInfo', Bin}
               || {'PrivateKeyInfo', Bin, 'not_encrypted'} <- RSAEntries

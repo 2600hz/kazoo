@@ -48,7 +48,7 @@ stop(QID) ->
 in(QID, Msg) ->
     gen_server:cast(QID, {in, Msg}).
 
--spec fail(QID :: pid(), ID :: binary()) -> [apns:msg()].
+-spec fail(QID :: pid(), ID :: binary()) -> {apns:msg(), [apns:msg()]}.
 fail(QID, ID) ->
     gen_server:call(QID, {fail, ID}).
 
@@ -82,7 +82,7 @@ handle_cast(_Msg, State) ->
     {noreply, State}.
 
 %% @hidden
--spec handle_call(X::term(), reference(), state()) -> {reply, {Failed::apns:msg(), RestToRetry::[apns:msg()]}, state()}.
+-spec handle_call(X::term(), {pid(), reference()}, state()) -> {reply, {apns:msg(), [apns:msg()]}, state()}.
 handle_call({fail, ID}, _From, #state{queue=Queue}=State) ->
     {reply, recover_fail(ID, Queue), State#state{queue=queue:new()}};
 

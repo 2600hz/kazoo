@@ -232,7 +232,7 @@ message_id() ->
 %%       If called with an integer, it will add that many seconds to current
 %%       time and return a valid expiry value for that date.
 -spec expiry(
-  none | {{1970..9999, 1..12, 1..31}, {0..24, 0..60, 0..60}} | pos_integer()) ->
+  none | {{1970..9999, 1..12, 1..31}, {0..24, 0..60, 0..60}} | non_neg_integer()) ->
     non_neg_integer().
 expiry(none) -> 0;
 expiry(Secs) when is_integer(Secs) ->

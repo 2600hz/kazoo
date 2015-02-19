@@ -135,7 +135,7 @@ open_feedback(Connection) ->
   end.
 
 %% @hidden
--spec handle_call(X, reference(), state()) ->
+-spec handle_call(X, {pid(), reference()}, state()) ->
   {stop, {unknown_request, X}, {unknown_request, X}, state()}.
 handle_call(Request, _From, State) ->
   {stop, {unknown_request, Request}, {unknown_request, Request}, State}.
@@ -362,7 +362,7 @@ parse_status(_) -> unknown.
 %
 build_frame(MsgId, Expiry, BinToken, Payload, Priority) ->
   PayloadLength = erlang:size(Payload),
-  <<1:8, 32:16/big, BinToken/binary, 
+  <<1:8, 32:16/big, BinToken/binary,
     2:8, PayloadLength:16/big, Payload/binary,
     3:8, 4:16/big, MsgId/binary,
     4:8, 4:16/big, Expiry:4/big-unsigned-integer-unit:8,
