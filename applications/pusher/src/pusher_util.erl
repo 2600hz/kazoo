@@ -36,18 +36,25 @@
 %% Internal functions
 %% ====================================================================
 
--spec binary_to_keycert(binary()) -> {term(), term()}.
+-type keycert() :: {'undefined' | {'PrivateKeyInfo', binary()}
+                    ,'undefined' | binary()
+                   }.
+-spec binary_to_keycert(binary()) -> keycert().
 binary_to_keycert(Binary) ->
     RSAEntries = public_key:pem_decode(Binary),
     keycert(RSAEntries).
 
--spec keycert([pem_entry()]) -> {term(), term()}.
+-spec keycert([pem_entry()]) -> keycert().
 keycert(RSAEntries) ->
-    [Cert] =  [Bin || {'Certificate', Bin, 'not_encrypted'} <- RSAEntries],
-    [Key] =  [{'PrivateKeyInfo', Bin}
-              || {'PrivateKeyInfo', Bin, 'not_encrypted'} <- RSAEntries
-             ],
-    {Key, Cert}.
+    lists:foldl(fun keycert_fold/2, {'undefined', 'undefined'}, RSAEntries).
+
+-spec keycert_fold(pem_entry(), keycert()) -> keycert().
+keycert_fold({'Certificate', Bin, 'not_encrypted'}, {Key, 'undefined'}) ->
+    {Key, Bin};
+keycert_fold({'PrivateKeyInfo', Bin, 'not_encrypted'}, {'undefined', Cert}) ->
+    {{'PrivateKeyInfo', Bin}, Cert};
+keycert_fold(_Entry, KeyCert) ->
+    KeyCert.
 
 -spec user_agent_push_properties(ne_binary()) -> api_object().
 -spec user_agent_push_properties(ne_binary(), wh_json:objects()) -> api_object().

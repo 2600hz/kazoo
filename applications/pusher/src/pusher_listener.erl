@@ -25,13 +25,13 @@
         ]).
 
 -include("pusher.hrl").
--include("gen_listener_spec.hrl").
 
 -include_lib("nksip/include/nksip.hrl").
 
 -record(state, {subs_pid :: pid()
                 ,subs_ref :: reference()
                }).
+-type state() :: #state{}.
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'self', []}
@@ -173,6 +173,7 @@ start_link() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', state()}.
 init([]) ->
     put('callid', ?MODULE),
     lager:debug("pusher_listener started"),
@@ -192,6 +193,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(term(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -205,7 +207,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-
+-spec handle_cast(term(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'wh_amqp_channel',{'new_channel',_IsNew}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'created_queue',_Queue}}, State) ->
@@ -232,6 +234,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(term(), state()) -> handle_info_ret_state(state()).
 handle_info({'DOWN', _Ref, 'process', _Pid, _R}, State) ->
     {'noreply', State};
 handle_info(_Info, State) ->
@@ -246,6 +249,7 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_event(wh_json:object(), state()) -> handle_event_ret().
 handle_event(_JObj, _State) ->
     {'reply', []}.
 
@@ -260,6 +264,7 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(term(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("pusher listener terminating: ~p", [_Reason]).
 
@@ -271,6 +276,7 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(term(), state(), term()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
