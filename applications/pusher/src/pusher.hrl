@@ -15,6 +15,5 @@
 -define(TOKEN_KEY, <<"Token-ID">>).
 -define(TOKEN_PROXY_KEY, <<"Proxy-Path">>).
 
-
 -define(PUSHER_HRL, 'true').
 -endif.

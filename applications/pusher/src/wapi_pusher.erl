@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
-%%%   James Aimonetti
+%%%   Luis Azedo
 %%%-------------------------------------------------------------------
 -module(wapi_pusher).
 
@@ -16,7 +16,6 @@
 
 -export([bind_q/2, unbind_q/2]).
 
-
 -export([declare_exchanges/0]).
 
 -include_lib("whistle/include/wh_api.hrl").
@@ -25,26 +24,27 @@
 
 -define(PUSH_REQ_HEADERS, [<<"Token-ID">>
                            ,<<"Token-Type">>, <<"Token-App">>
-						  ,[<<"Alert-Body">>,[<<"Alert-Key">>,<<"Alert-Params">>]]
-						  ]).
+                           ,[<<"Alert-Body">>,[<<"Alert-Key">>,<<"Alert-Params">>]]
+                          ]).
 -define(OPTIONAL_PUSH_REQ_HEADERS, [<<"Queue">>, <<"Call-ID">>
-								   ,<<"Badge">>, <<"Sound">>
-								   ,<<"Account-ID">>, <<"Endpoint-ID">>
-								   ,<<"Expires">>
-                                   ,<<"Token-Reg">>
-							   ]).
+                                    ,<<"Badge">>, <<"Sound">>
+                                    ,<<"Account-ID">>, <<"Endpoint-ID">>
+                                    ,<<"Expires">>
+                                    ,<<"Token-Reg">>
+                                   ]).
 -define(PUSH_REQ_VALUES, [{<<"Event-Category">>, <<"notification">>}
-						 ,{<<"Event-Name">>, <<"push_req">>}]).
+                          ,{<<"Event-Name">>, <<"push_req">>}
+                         ]).
 -define(PUSH_REQ_TYPES, [{<<"Expires">>, fun(V) -> is_integer(wh_util:to_integer(V)) end}]).
 
 -define(PUSH_RESP_HEADERS, [<<"Token-ID">>]).
 -define(OPTIONAL_PUSH_RESP_HEADERS, []).
 -define(PUSH_RESP_VALUES, [{<<"Event-Category">>, <<"notification">>}
-						  ,{<<"Event-Name">>, <<"push_resp">>}]).
+                           ,{<<"Event-Name">>, <<"push_resp">>}
+                          ]).
 -define(PUSH_RESP_TYPES, []).
 
 -define(KEY_PUSH, <<"notification.push">>).
-
 
 -spec push_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 push_req(Prop) when is_list(Prop) ->
@@ -76,7 +76,6 @@ push_resp_v(Prop) when is_list(Prop) ->
 push_resp_v(JObj) ->
     push_resp_v(wh_json:to_proplist(JObj)).
 
-
 -spec publish_push_req(api_terms()) -> 'ok'.
 -spec publish_push_req(api_terms(), binary()) -> 'ok'.
 publish_push_req(JObj) ->
@@ -92,7 +91,6 @@ publish_push_resp(JObj) ->
 publish_push_resp(Req, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?PUSH_RESP_VALUES, fun ?MODULE:push_resp/1),
     amqp_util:basic_publish(?PUSH_EXCHANGE, push_routing_key(Req), Payload, ContentType).
-
 
 -spec publish_targeted_push_resp(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_targeted_push_resp(ne_binary(), api_terms(), binary()) -> 'ok'.
@@ -112,7 +110,8 @@ push_routing_key(Type, Token) ->
 
 %% API Helpers
 
--spec bind_q(binary(), wh_proplist()) -> 'ok'.
+-spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
+-spec bind_q(ne_binary(), ne_binary(), ne_binary(), api_binaries()) -> 'ok'.
 bind_q(Queue, Props) ->
     Token = props:get_value('token', Props, <<"*">>),
     Type = props:get_value('type', Props, <<"*">>),
@@ -120,19 +119,15 @@ bind_q(Queue, Props) ->
 
 bind_q(Queue, Type, Token, 'undefined') ->
     amqp_util:bind_q_to_exchange(Queue, push_routing_key(Type, Token), ?PUSH_EXCHANGE);
-
 bind_q(Queue, Type, Token, ['push'|Restrict]) ->
     amqp_util:bind_q_to_exchange(Queue, push_routing_key(Type, Token), ?PUSH_EXCHANGE),
     bind_q(Queue, Type, Token, Restrict);
-
 bind_q(Queue, Type, Token, [_|Restrict]) ->
     bind_q(Queue, Type, Token, Restrict);
-
-bind_q(_, _, _, []) -> 'ok'.
-
-
+bind_q(_Queue, _Type, _Token, []) -> 'ok'.
 
 -spec unbind_q(binary(), wh_proplist()) -> 'ok'.
+-spec unbind_q(ne_binary(), ne_binary(), ne_binary(), api_binaries()) -> 'ok'.
 unbind_q(Queue, Props) ->
     Token = props:get_value('token', Props, <<"*">>),
     Type = props:get_value('type', Props, <<"*">>),
@@ -140,15 +135,12 @@ unbind_q(Queue, Props) ->
 
 unbind_q(Queue, Type, Token, 'undefined') ->
     amqp_util:unbind_q_from_exchange(Queue, push_routing_key(Type, Token), ?PUSH_EXCHANGE);
-
 unbind_q(Queue, Type, Token, ['push'|Restrict]) ->
     amqp_util:unbind_q_from_exchange(Queue, push_routing_key(Type, Token), ?PUSH_EXCHANGE),
     unbind_q(Queue, Type, Token, Restrict);
-
 unbind_q(Queue, Type, Token, [_|Restrict]) ->
     unbind_q(Queue, Type, Token, Restrict);
-unbind_q(_, _, _, []) -> 'ok'.
-
+unbind_q(_Queue, _Type, _Token, []) -> 'ok'.
 
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->

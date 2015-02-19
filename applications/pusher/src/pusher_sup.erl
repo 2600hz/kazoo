@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -36,7 +36,6 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
-
 
 %% ===================================================================
 %% Supervisor callbacks

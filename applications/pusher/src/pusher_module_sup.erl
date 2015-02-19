@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -33,7 +33,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link() -> {ok, pid()} | ignore | {error, term()}.
+-spec start_link() -> startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
@@ -61,10 +61,11 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-	Children = [ ?WORKER(wh_util:to_atom(Mod,'true')) || Mod <- whapps_config:get(?CONFIG_CAT, <<"modules">>, []) ],
-	lager:debug("pusher_module_sup init ~p",[Children]),
-
-	{'ok', {SupFlags, Children}}.
+    Children = [?WORKER(wh_util:to_atom(Mod, 'true'))
+                || Mod <- whapps_config:get(?CONFIG_CAT, <<"modules">>, [])
+               ],
+    lager:debug("pusher_module_sup init: ~p", [Children]),
+    {'ok', {SupFlags, Children}}.
 
 %%%===================================================================
 %%% Internal functions

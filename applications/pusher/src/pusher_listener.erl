@@ -1,15 +1,20 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2015, 2600Hz
 %%% @doc
-%%% 
+%%%
 %%% @end
 %%% @contributors
+%%%   Luis Azedo
 %%%-------------------------------------------------------------------
 -module(pusher_listener).
 
 -behaviour(gen_listener).
 
--export([start_link/0]).
+-export([start_link/0
+         ,handle_push/2
+         ,handle_reg_success/2
+        ]).
+
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -18,8 +23,6 @@
          ,terminate/2
          ,code_change/3
         ]).
-
--export([handle_push/2, handle_reg_success/2]).
 
 -include("pusher.hrl").
 -include("gen_listener_spec.hrl").
@@ -35,10 +38,9 @@
                    ,{'pusher', []}
                    ,{'registration', [{'restrict_to',['reg_success']}]}
                   ]).
--define(RESPONDERS, [
-                     {{?MODULE, 'handle_push'}
-                       ,[{<<"notification">>, <<"push_req">>}]
-                      }
+-define(RESPONDERS, [{{?MODULE, 'handle_push'}
+                      ,[{<<"notification">>, <<"push_req">>}]
+                     }
                      ,{{?MODULE, 'handle_reg_success'}
                        ,[{<<"directory">>, <<"reg_success">>}]
                       }
@@ -62,7 +64,7 @@ handle_push(JObj, _Props) ->
                          ,JObj
                          ,[{'expires', 20}]
                         ),
-    gen_server:cast(Module, {'push', JObj}).
+    gen_listener:cast(Module, {'push', JObj}).
 
 -spec handle_reg_success(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_reg_success(JObj, _Props) ->
@@ -70,9 +72,10 @@ handle_reg_success(JObj, _Props) ->
     UserAgentProperties = pusher_util:user_agent_push_properties(UserAgent),
     maybe_process_reg_success(UserAgentProperties, JObj).
 
-maybe_process_reg_success('undefined', _) -> 
-    'ok';
-maybe_process_reg_success(UA, JObj) -> 
+-spec maybe_process_reg_success(api_object(), wh_json:object()) -> 'ok'.
+-spec maybe_process_reg_success(api_binary(), wh_json:object(), wh_json:object(), wh_proplist()) -> 'ok'.
+maybe_process_reg_success('undefined', _JObj) -> 'ok';
+maybe_process_reg_success(UA, JObj) ->
     OriginalContact = wh_json:get_value(<<"Original-Contact">>, JObj),
     [#uri{opts=A, ext_opts=B}] = nksip_parse_uri:uris(OriginalContact),
     Params = A ++ B,
@@ -80,53 +83,61 @@ maybe_process_reg_success(UA, JObj) ->
     Token = props:get_value(TokenKey, Params),
     maybe_process_reg_success(Token, wh_json:set_value(<<"Token-Proxy">>, ?TOKEN_PROXY_KEY, UA) , JObj, Params).
 
-maybe_process_reg_success('undefined', _, _, _) -> 
-    'ok';
+maybe_process_reg_success('undefined', _UA, _JObj, _Params) -> 'ok';
 maybe_process_reg_success(Token, UA, JObj, Params) ->
     case wh_cache:fetch_local(?PUSHER_CACHE, Token) of
-        {'error', 'not_found'} -> maybe_update_push_token(Token, UA, JObj, Params);
+        {'error', 'not_found'} -> maybe_update_push_token(UA, JObj, Params);
         {'ok', TokenJObj} -> send_reply(Token, TokenJObj)
     end.
-    
-maybe_update_push_token(Token, UA, JObj, Params) ->
+
+-spec maybe_update_push_token(wh_json:object(), wh_json:object(), wh_proplist()) -> 'ok'.
+-spec maybe_update_push_token(api_binary(), api_binary(), wh_json:object(), wh_json:object(), wh_proplist()) -> 'ok'.
+maybe_update_push_token(UA, JObj, Params) ->
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     AuthorizingId = wh_json:get_value(<<"Authorizing-ID">>, JObj),
-    maybe_update_push_token(AccountId, AuthorizingId, Token, UA, JObj, Params).
+    maybe_update_push_token(AccountId, AuthorizingId, UA, JObj, Params).
 
-maybe_update_push_token('undefined', _AuthorizingId, _Token, _UA, _JObj, _Params) -> 'ok';
-maybe_update_push_token(_AccountId, 'undefined', _Token, _UA, _JObj, _Params) -> 'ok';
-maybe_update_push_token(AccountId, AuthorizingId, _Token, UA, JObj, Params) ->
+maybe_update_push_token('undefined', _AuthorizingId, _UA, _JObj, _Params) -> 'ok';
+maybe_update_push_token(_AccountId, 'undefined', _UA, _JObj, _Params) -> 'ok';
+maybe_update_push_token(AccountId, AuthorizingId, UA, JObj, Params) ->
     AccountDb = wh_util:format_account_db(AccountId),
     case couch_mgr:open_cache_doc(AccountDb, AuthorizingId) of
         {'ok', Doc} ->
             Push = wh_json:get_value(<<"push">>, Doc),
-            NewPush = build_push(UA, JObj, Params, wh_json:new()),
-            case Push =:= NewPush of
-                'false' -> couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"push">>, NewPush, Doc));
-                'true' -> 'ok'
+            case build_push(UA, JObj, Params, wh_json:new()) of
+                Push -> 'ok';
+                NewPush ->
+                    {'ok', _} = couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"push">>, NewPush, Doc)),
+                    'ok'
             end;
         {'error', _} -> 'ok'
-    end,
-    'ok'.
+    end.
 
+-spec build_push(wh_json:object(), wh_json:object(), wh_proplist(), wh_json:object()) ->
+                        wh_json:object().
 build_push(UA, JObj, Params, InitialAcc) ->
     wh_json:foldl(
-      fun(K, V, Acc)->
-              case props:get_value(V, Params) of
-                  'undefined' ->
-                      case wh_json:get_value(V, JObj) of
-                          'undefined' -> Acc;
-                          V1 -> wh_json:set_value(K, V1, Acc)
-                      end;
-                  V2 -> wh_json:set_value(K, V2, Acc)
-              end
+      fun(K, V, Acc) ->
+              build_push_fold(K, V, Acc, JObj, Params)
       end, InitialAcc, UA).
 
+-spec build_push_fold(wh_json:key(), wh_json:json_term(), wh_json:object(), wh_json:object(), wh_proplist()) -> wh_json:object().
+build_push_fold(K, V, Acc, JObj, Params) ->
+    case props:get_value(V, Params) of
+        'undefined' ->
+            case wh_json:get_value(V, JObj) of
+                'undefined' -> Acc;
+                V1 -> wh_json:set_value(K, V1, Acc)
+            end;
+        V2 -> wh_json:set_value(K, V2, Acc)
+    end.
+
+-spec send_reply(ne_binary(), wh_json:object()) -> 'ok'.
 send_reply(Token, JObj) ->
     wh_cache:erase_local(?PUSHER_CACHE, Token),
     Queue = wh_json:get_value(<<"Server-ID">>, JObj),
     Payload = [{<<"Token-ID">>, Token}
-              ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+               ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     wh_amqp_worker:cast(Payload, fun(P) -> wapi_pusher:publish_targeted_push_resp(Queue, P) end).
@@ -138,14 +149,13 @@ send_reply(Token, JObj) ->
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link() -> {ok, pid()} | ignore | {error, term()}.
+-spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS}
                                       ,{'responders', ?RESPONDERS}
                                       ,{'queue_name', ?QUEUE_NAME}       % optional to include
                                       ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
                                       ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
-                                      %%,{'basic_qos', 1}                % only needed if prefetch controls
                                      ], []).
 
 %%%===================================================================
@@ -202,15 +212,11 @@ handle_cast({'gen_listener',{'created_queue',_Queue}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
-handle_cast({'push',JObj}, State) ->
-	lager:debug("HANDLE_PUSH_push ~p",[JObj]),
-
+handle_cast({'push', JObj}, State) ->
+    lager:debug("HANDLE_PUSH_push ~p", [JObj]),
     {'noreply', State};
 handle_cast({'reg',JObj}, State) ->
-	lager:debug("handle_cast_reg ~p",[JObj]),
-    
-       
-
+    lager:debug("handle_cast_reg ~p",[JObj]),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -228,7 +234,6 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({'DOWN', _Ref, 'process', _Pid, _R}, State) ->
     {'noreply', State};
-
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
@@ -242,7 +247,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, _State) ->
-    {reply, []}.
+    {'reply', []}.
 
 %%--------------------------------------------------------------------
 %% @private
