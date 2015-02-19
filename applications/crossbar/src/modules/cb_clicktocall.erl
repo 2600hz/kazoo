@@ -344,7 +344,11 @@ originate_call(C2CId, Context) ->
 
 originate_call(Contact, JObj, AccountId) ->
     Exten = wnm_util:to_e164(wh_json:get_binary_value(<<"extension">>, JObj)),
+
+    CalleeName = wh_json:get_binary_value(<<"outbound_callee_id_name">>, JObj, Exten),
+    CalleeNumber = wnm_util:to_e164(wh_json:get_binary_value(<<"outbound_callee_id_number">>, JObj, Exten)),
     FriendlyName = wh_json:get_ne_value(<<"name">>, JObj, <<>>),
+    OutboundNumber = wh_json:get_value(<<"caller_id_number">>, JObj, Contact),
 
     lager:debug("attempting clicktocall ~s in account ~s", [FriendlyName, AccountId]),
 
@@ -366,10 +370,6 @@ originate_call(Contact, JObj, AccountId) ->
                ],
 
     MsgId = wh_json:get_value(<<"Msg-ID">>, JObj, wh_util:rand_hex_binary(16)),
-    OutboundNumber = case wh_json:get_value(<<"caller_id_number">>, JObj) of
-                         'undefined' -> Contact;
-                         Number -> Number
-                     end,
     Request = props:filter_undefined(
                 [{<<"Application-Name">>, <<"transfer">>}
                  ,{<<"Application-Data">>, wh_json:from_list([{<<"Route">>, Contact}])}
@@ -380,8 +380,8 @@ originate_call(Contact, JObj, AccountId) ->
                  ,{<<"Media">>, wh_json:get_value(<<"Media">>, JObj)}
                  ,{<<"Hold-Media">>, wh_json:get_value(<<"Hold-Media">>, JObj)}
                  ,{<<"Presence-ID">>, wh_json:get_value(<<"Presence-ID">>, JObj)}
-                 ,{<<"Outbound-Callee-ID-Name">>, Exten}
-                 ,{<<"Outbound-Callee-ID-Number">>, Exten}
+                 ,{<<"Outbound-Callee-ID-Name">>, CalleeName}
+                 ,{<<"Outbound-Callee-ID-Number">>, CalleeNumber}
                  ,{<<"Outbound-Caller-ID-Name">>, FriendlyName}
                  ,{<<"Outbound-Caller-ID-Number">>, OutboundNumber}
                  ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}

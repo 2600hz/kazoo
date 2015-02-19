@@ -49,6 +49,18 @@
       "required": false,
       "name": "Keep Original Caller ID?",
       "description": "Explicitly set caller id number"
+    },
+    "outbound_callee_id_name": {
+      "type": "string",
+      "required": false,
+      "name": "Outbound Callee ID Name",
+      "description": "Caller ID Name of the device calling out to the contact number"
+    },
+    "outbound_callee_id_number": {
+      "type": "string",
+      "required": false,
+      "name": "Outbound Callee ID Number",
+      "description": "Caller ID Number of the device calling out to the contact number"
     }
   }
 }
