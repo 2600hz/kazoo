@@ -59,17 +59,21 @@ handle_push(JObj, _Props) ->
     Token = wh_json:get_value(<<"Token-ID">>, JObj),
     TokenType = wh_json:get_value(<<"Token-Type">>, JObj),
     Module = wh_util:to_atom(<<"pm_",TokenType/binary>> , 'true'),
+
+    lager:debug("pushing for token ~s(~s) to module ~s", [Token, TokenType, Module]),
+
     wh_cache:store_local(?PUSHER_CACHE
                          ,Token
                          ,JObj
                          ,[{'expires', 20}]
                         ),
-    gen_listener:cast(Module, {'push', JObj}).
+    gen_server:cast(Module, {'push', JObj}).
 
 -spec handle_reg_success(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_reg_success(JObj, _Props) ->
     UserAgent = wh_json:get_value(<<"User-Agent">>, JObj),
     UserAgentProperties = pusher_util:user_agent_push_properties(UserAgent),
+
     maybe_process_reg_success(UserAgentProperties, JObj).
 
 -spec maybe_process_reg_success(api_object(), wh_json:object()) -> 'ok'.
@@ -77,8 +81,10 @@ handle_reg_success(JObj, _Props) ->
 maybe_process_reg_success('undefined', _JObj) -> 'ok';
 maybe_process_reg_success(UA, JObj) ->
     OriginalContact = wh_json:get_value(<<"Original-Contact">>, JObj),
+
     [#uri{opts=A, ext_opts=B}] = nksip_parse_uri:uris(OriginalContact),
     Params = A ++ B,
+
     TokenKey = wh_json:get_value(?TOKEN_KEY, UA),
     Token = props:get_value(TokenKey, Params),
     maybe_process_reg_success(Token, wh_json:set_value(<<"Token-Proxy">>, ?TOKEN_PROXY_KEY, UA) , JObj, Params).
@@ -93,8 +99,13 @@ maybe_process_reg_success(Token, UA, JObj, Params) ->
 -spec maybe_update_push_token(wh_json:object(), wh_json:object(), wh_proplist()) -> 'ok'.
 -spec maybe_update_push_token(api_binary(), api_binary(), wh_json:object(), wh_json:object(), wh_proplist()) -> 'ok'.
 maybe_update_push_token(UA, JObj, Params) ->
-    AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
-    AuthorizingId = wh_json:get_value(<<"Authorizing-ID">>, JObj),
+    AccountId = wh_json:get_first_defined([[<<"Custom-Channel-Vars">>, <<"Account-ID">>]
+                                           ,<<"Account-ID">>
+                                          ], JObj),
+    AuthorizingId = wh_json:get_first_defined([[<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>]
+                                               ,<<"Authorizing-ID">>
+                                              ], JObj),
+
     maybe_update_push_token(AccountId, AuthorizingId, UA, JObj, Params).
 
 maybe_update_push_token('undefined', _AuthorizingId, _UA, _JObj, _Params) -> 'ok';
@@ -105,12 +116,12 @@ maybe_update_push_token(AccountId, AuthorizingId, UA, JObj, Params) ->
         {'ok', Doc} ->
             Push = wh_json:get_value(<<"push">>, Doc),
             case build_push(UA, JObj, Params, wh_json:new()) of
-                Push -> 'ok';
+                Push -> lager:debug("push exists: ~p", [Push]);
                 NewPush ->
                     {'ok', _} = couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"push">>, NewPush, Doc)),
-                    'ok'
+                    lager:debug("setting push object for ~s: ~s: ~p", [AccountId, AuthorizingId, NewPush])
             end;
-        {'error', _} -> 'ok'
+        {'error', _} -> lager:debug("failed to open ~s in ~s", [AuthorizingId, AccountId])
     end.
 
 -spec build_push(wh_json:object(), wh_json:object(), wh_proplist(), wh_json:object()) ->
@@ -140,6 +151,7 @@ send_reply(Token, JObj) ->
                ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
+    lager:debug("sending pusher reply to ~s: ~p", [Queue, Payload]),
     wh_amqp_worker:cast(Payload, fun(P) -> wapi_pusher:publish_targeted_push_resp(Queue, P) end).
 
 %%--------------------------------------------------------------------
