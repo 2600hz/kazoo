@@ -51,6 +51,9 @@
                                        ,<<"Suppress-Unregister-Notify">>
                                        ,<<"Original-Contact">>
                                        ,<<"Registrar-Node">>
+                                       ,<<"Proxy-Path">>, <<"AOR">>, <<"RUID">>
+                                       ,<<"First-Registration">>
+                                       ,<<"Custom-Channel-Vars">>
                                       ]).
 -define(REG_SUCCESS_VALUES, [{<<"Event-Category">>, <<"directory">>}
                              ,{<<"Event-Name">>, <<"reg_success">>}
