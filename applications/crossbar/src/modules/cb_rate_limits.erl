@@ -101,22 +101,14 @@ validate_rate_limits(Context, ?HTTP_DELETE) ->
 
 -spec validate_post_rate_limits(cb_context:context()) -> cb_context:context().
 validate_post_rate_limits(Context) ->
-    ValidateDevice = fun (C) -> validate_section(<<"device">>, C, fun validate_set_rate_limits/1) end,
     case thing_type(Context) of
         <<"accounts">> ->
-            validate_section(<<"account">>, Context, ValidateDevice);
+            cb_context:validate_request_data(<<"account_rate_limits">>, Context, fun validate_set_rate_limits/1);
         <<"devices">> ->
-            cb_context:validate_request_data(<<"rate_limits">>, Context, fun validate_set_rate_limits/1);
+            cb_context:validate_request_data(<<"device_rate_limits">>, Context, fun validate_set_rate_limits/1);
         _Else ->
             crossbar_util:response_faulty_request(Context)
     end.
-
--spec validate_section(ne_binary(), cb_context:context(), cb_context:after_fun()) -> cb_context:context().
-validate_section(Section, Context, OnSuccess) ->
-    Data = cb_context:req_data(Context),
-    NewData = wh_json:get_value(Section, Data),
-    Continue = fun (C) -> OnSuccess(cb_context:set_req_data(C, Data)) end,
-    cb_context:validate_request_data(<<"rate_limits">>, cb_context:set_req_data(Context, NewData), Continue).
 
 -spec thing_type(cb_context:context()) -> api_binary().
 thing_type(Context) ->

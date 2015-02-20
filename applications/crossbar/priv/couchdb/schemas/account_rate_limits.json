@@ -1,0 +1,137 @@
+{
+  "_id": "account_rate_limits",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "required": true,
+  "name": "Rate limits",
+  "description": "describe limits for SIP requests",
+  "additionalProperties": false,
+  "properties": {
+    "account": {
+      "type": "object",
+      "required": true,
+      "name": "Rate limits",
+      "description": "describe limits for SIP requests",
+      "additionalProperties": false,
+      "properties": {
+        "per_minute": {
+          "type": "object",
+          "required": true,
+          "name": "Per minute",
+          "description": "The limits to apply by a minute",
+          "additionalProperties": false,
+          "properties": {
+            "invites": {
+              "name": "Invites",
+              "description": "Count for the specified SIP method",
+              "type": "integer",
+              "required": false
+            },
+            "registrations": {
+              "name": "Registrations",
+              "description": "Count for the specified SIP method",
+              "type": "integer",
+              "required": false
+            },
+            "total_packets": {
+              "name": "Total packets",
+              "description": "Summary count for all of the SIP methods",
+              "type": "integer",
+              "required": true
+            }
+          }
+        },
+        "per_second": {
+          "type": "object",
+          "required": true,
+          "name": "Per second",
+          "description": "The limits to apply by a second",
+          "additionalProperties": false,
+          "properties": {
+            "invites": {
+              "name": "Invites",
+              "description": "Count for the specified SIP method",
+              "type": "integer",
+              "required": false
+            },
+            "registrations": {
+              "name": "Registrations",
+              "description": "Count for the specified SIP method",
+              "type": "integer",
+              "required": false
+            },
+            "total_packets": {
+              "name": "Total packets",
+              "description": "Summary count for all of the SIP methods",
+              "type": "integer",
+              "required": true
+            }
+          }
+        }
+      }
+    },
+    "device": {
+      "type": "object",
+      "required": true,
+      "name": "Rate limits",
+      "description": "describe limits for SIP requests",
+      "additionalProperties": false,
+      "properties": {
+        "per_minute": {
+          "type": "object",
+          "required": true,
+          "name": "Per minute",
+          "description": "The limits to apply by a minute",
+          "additionalProperties": false,
+          "properties": {
+            "invites": {
+              "name": "Invites",
+              "description": "Count for the specified SIP method",
+              "type": "integer",
+              "required": false
+            },
+            "registrations": {
+              "name": "Registrations",
+              "description": "Count for the specified SIP method",
+              "type": "integer",
+              "required": false
+            },
+            "total_packets": {
+              "name": "Total packets",
+              "description": "Summary count for all of the SIP methods",
+              "type": "integer",
+              "required": true
+            }
+          }
+        },
+        "per_second": {
+          "type": "object",
+          "required": true,
+          "name": "Per second",
+          "description": "The limits to apply by a second",
+          "additionalProperties": false,
+          "properties": {
+            "invites": {
+              "name": "Invites",
+              "description": "Count for the specified SIP method",
+              "type": "integer",
+              "required": false
+            },
+            "registrations": {
+              "name": "Registrations",
+              "description": "Count for the specified SIP method",
+              "type": "integer",
+              "required": false
+            },
+            "total_packets": {
+              "name": "Total packets",
+              "description": "Summary count for all of the SIP methods",
+              "type": "integer",
+              "required": true
+            }
+          }
+        }
+      }
+    }
+  }
+}

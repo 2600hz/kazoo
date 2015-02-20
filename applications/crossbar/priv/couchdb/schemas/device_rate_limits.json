@@ -1,8 +1,8 @@
 {
-  "_id": "rate_limits",
+  "_id": "device_rate_limits",
   "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "object",
-  "required": false,
+  "required": true,
   "name": "Rate limits",
   "description": "describe limits for SIP requests",
   "additionalProperties": false,
