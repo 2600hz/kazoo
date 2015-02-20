@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%% Renders a custom account email template, or the system default,
 %%% and sends the email with voicemail attachment to the user.
@@ -10,7 +10,9 @@
 %%%-------------------------------------------------------------------
 -module(notify_system_alert).
 
--export([init/0, handle_req/2]).
+-export([init/0
+         ,handle_req/2
+        ]).
 
 -include("notify.hrl").
 
@@ -46,18 +48,18 @@ handle_req(JObj, _Props) ->
     whapps_util:put_callid(JObj),
     lager:debug("creating system alert notice"),
     UseEmail = whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"enable_email_alerts">>, 'true'),
-    SUBUrl   = whapps_config:get_string(?MOD_CONFIG_CAT, <<"subscriber_url">>),
-    case wh_json:get_value([<<"Details">>,<<"Format">>], JObj, 'undefined') of
+    SUBUrl = whapps_config:get_string(?MOD_CONFIG_CAT, <<"subscriber_url">>),
+    case wh_json:get_value([<<"Details">>,<<"Format">>], JObj) of
         'undefined' ->
             alert_using_email('true', JObj);
         _Format ->
             alert_using_email(UseEmail, JObj),
-            alert_using_POST(SUBUrl,    JObj, UseEmail)
+            alert_using_POST(SUBUrl, JObj, UseEmail)
     end.
 
 -spec alert_using_POST(string(), wh_json:object(), boolean()) -> 'ok'.
 alert_using_POST(Url, JObj, EmailUsed) ->
-    Fallback = fun (TheJObj) ->
+    Fallback = fun(TheJObj) ->
                        alert_using_email(not EmailUsed, TheJObj)
                end,
     notify_util:post_json(Url, JObj, Fallback).
@@ -71,7 +73,6 @@ alert_using_email('true', JObj) ->
     Subject = wh_json:get_ne_value(<<"Subject">>, JObj),
     To = whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<>>),
     build_and_send_email(TxtBody, HTMLBody, Subject, To, Props).
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -90,7 +91,11 @@ create_template_props(Event) ->
                                             ,<<"Server-ID">>
                                             ,<<"Message">>
                                             ,<<"Subject">>
-                                           ], Event))}
+                                           ]
+                                           ,Event
+                                          )
+                      )
+     }
      ,{<<"message">>, wh_json:get_binary_value(<<"Message">>, Event)}
      ,{<<"details">>, notify_util:json_to_template_props(wh_json:get_value(<<"Details">>, Event))}
      ,{<<"service">>, notify_util:get_service_props(wh_json:new(), ?MOD_CONFIG_CAT)}
@@ -116,24 +121,28 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
 
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>
-                 ,[{<<"From">>, From}
-                   ,{<<"To">>, To}
-                   ,{<<"Subject">>, Subject}
-                  ]
+             ,[{<<"From">>, From}
+               ,{<<"To">>, To}
+               ,{<<"Subject">>, Subject}
+              ]
              ,ContentTypeParams
              ,[{<<"multipart">>, <<"alternative">>, [], []
-               ,[{<<"text">>, <<"plain">>
+                ,[{<<"text">>, <<"plain">>
                    ,props:filter_undefined(
                       [{<<"Content-Type">>, iolist_to_binary([<<"text/plain">>, CharsetString])}
                        ,{<<"Content-Transfer-Encoding">>, PlainTransferEncoding}
                       ])
-                   ,[], iolist_to_binary(TxtBody)}
+                   ,[]
+                   ,iolist_to_binary(TxtBody)
+                  }
                   ,{<<"text">>, <<"html">>
                     ,props:filter_undefined(
                        [{<<"Content-Type">>, iolist_to_binary([<<"text/html">>, CharsetString])}
                         ,{<<"Content-Transfer-Encoding">>, HTMLTransferEncoding}
                        ])
-                    ,[], iolist_to_binary(HTMLBody)}
+                    ,[]
+                    ,iolist_to_binary(HTMLBody)
+                   }
                  ]
                }
               ]
