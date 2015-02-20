@@ -36,7 +36,7 @@ maybe_branch_callflow(Data, Call) ->
             lager:info("could not branch to callflow ~s, ~p", [Id, R]),
             cf_exe:continue(Call);
         {'ok', JObj} ->
-            case whapps_call_command:channel_status(Call) of
+            case whapps_call_command:b_channel_status(Call) of
                 {'error', 'no_channel_id'} ->
                     lager:info("no channel up for ~s stopping", [Id]),
                     cf_exe:hard_stop(Call);
