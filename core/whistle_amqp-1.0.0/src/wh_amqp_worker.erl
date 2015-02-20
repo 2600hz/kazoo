@@ -114,7 +114,7 @@ start_link(Args) ->
                                       ,{'queue_options', ?QUEUE_OPTIONS}
                                       ,{'consume_options', ?CONSUME_OPTIONS}
                                       | maybe_broker(Args)
-                                         ++ maybe_exchanges(Args)
+                                      ++ maybe_exchanges(Args)
                                      ], [Args]).
 
 -spec maybe_broker(wh_proplist()) -> wh_proplist().
@@ -124,7 +124,7 @@ maybe_broker(Args) ->
         Broker -> [{'broker', Broker}]
     end.
 
--spec maybe_queuename(wh_proplist()) -> wh_proplist().
+-spec maybe_queuename(wh_proplist()) -> binary().
 maybe_queuename(Args) ->
     case props:get_value('amqp_queuename_start', Args) of
         'undefined' -> ?QUEUE_NAME;
