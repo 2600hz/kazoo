@@ -8,6 +8,8 @@
 
 -export([push/3, push/4, sync_push/3, sync_push/4]).
 
+-include_lib("whistle/include/wh_log.hrl").
+
 -define(SERVER, ?MODULE).
 -define(RETRY, 3).
 
@@ -38,6 +40,8 @@ start_link(Name, Key) ->
     gen_server:start_link({local, Name}, ?MODULE, [Key], []).
 
 init([Key]) ->
+    wh_util:put_callid(?MODULE),
+    lager:debug("starting with key ~s", [Key]),
     {ok, #state{key=Key}}.
 
 handle_call(stop, _From, State) ->
@@ -68,16 +72,20 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 %% Internal
-do_push(_, _, _, 0) ->
-    ok;
-
+do_push(_RegIds, _, _, 0) ->
+    lager:info("retries exceeded for ~p", [_RegIds]);
 do_push(RegIds, Message, Key, Retry) ->
+    lager:info("trying to push to ~p(~p): ~p", [RegIds, Key, Message]),
     case gcm_api:push(RegIds, Message, Key) of
-        {ok, _}=R -> R;
+        {ok, _}=R ->
+            lager:info("pushed: ~p", [R]),
+            R;
         {error, {retry, RetryAfter}} ->
+            lager:info("retry after: ~p", [RetryAfter]),
             do_backoff(RetryAfter, RegIds, Message, Key, Retry),
             {error, retry};
         {error, Reason} ->
+            lager:info("error pushing: ~p", [Reason]),
             {error, Reason}
     end.
 
