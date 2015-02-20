@@ -10,7 +10,7 @@
 
 -behaviour(supervisor).
 
--include_lib("whistle/include/wh_types.hrl").
+-include("hangups.hrl").
 
 %% API
 -export([start_link/0]).
@@ -20,7 +20,6 @@
 
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?WORKER('hangups_listener')
-                   ,?WORKER('hangups_query_listener')
                    ,?WORKER('hangups_monitoring')
                   ]).
 

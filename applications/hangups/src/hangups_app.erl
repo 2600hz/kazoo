@@ -10,7 +10,7 @@
 
 -behaviour(application).
 
--include_lib("whistle/include/wh_types.hrl").
+-include("hangups.hrl").
 
 -export([start/2, stop/1]).
 
