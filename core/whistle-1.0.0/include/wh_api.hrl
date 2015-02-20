@@ -1,9 +1,6 @@
 -ifndef(WH_API_HEADERS).
 
--ifndef(WHISTLE_TYPES_INCLUDED).
--include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_types.hrl").
--endif.
 
 -type api_formatter_return() :: {'ok', iolist()} | {'error', string()}.
 -type api_headers() :: ne_binaries().

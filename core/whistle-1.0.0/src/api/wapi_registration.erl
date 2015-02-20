@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, VoIP INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Handle registration-related APIs, like reg_success and reg_lookup.
 %%% @end
@@ -29,6 +29,9 @@
         ]).
 
 -include_lib("whistle/include/wh_api.hrl").
+
+-define(KEY_REG_SUCCESS, <<"registration.success">>).
+-define(KEY_REG_QUERY, <<"registration.query">>).
 
 %% Registration Success
 -define(REG_SUCCESS_HEADERS, [<<"Event-Timestamp">>, <<"Contact">>

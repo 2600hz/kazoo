@@ -18,6 +18,8 @@
                     ,<<"*">>, <<"0">>, <<"#">>
                    ]).
 
+-define(DEFAULT_CONTENT_TYPE, <<"application/json">>).
+
 %% Hangup Causes that are fine
 -define(SUCCESSFUL_HANGUPS, [<<"NORMAL_CLEARING">>, <<"ORIGINATOR_CANCEL">>, <<"SUCCESS">>]).
 
@@ -147,14 +149,24 @@
                            {'noreply', term()} | {'noreply', term(), gen_server_timeout()} |
                            {'stop', term(), term()} | {'stop', term(), term(), term()}.
 
+-type handle_call_ret_state(State) :: {'reply', term(), State} | {'reply', term(), State, gen_server_timeout()} |
+                                      {'noreply', State} | {'noreply', State, gen_server_timeout()} |
+                                      {'stop', term(), State} | {'stop', term(), State, term()}.
+
 -type handle_cast_ret() :: {'noreply', term()} | {'noreply', term(), gen_server_timeout()} |
                            {'stop', term(), term()}.
+-type handle_cast_ret_state(State) :: {'noreply', State} | {'noreply', State, gen_server_timeout()} |
+                                      {'stop', term(), State}.
 
 -type handle_info_ret() :: {'noreply', term()} | {'noreply', term(), gen_server_timeout()} |
                            {'stop', term(), term()}.
+-type handle_info_ret_state(State) :: {'noreply', State} | {'noreply', State, gen_server_timeout()} |
+                                      {'stop', term(), State}.
+
+-type handle_event_ret() :: 'ignore' |
+                            {'reply', wh_proplist()}.
 
 -type server_ref() :: atom() | {atom(), atom()} | {'global', term()} | {'via', atom(), term()} | pid().
-
 
 -type gen_server_name() :: {'local', atom()} |
                            {'global', term()} |

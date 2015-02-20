@@ -406,7 +406,7 @@ flush() ->
 
 -spec flush(ne_binary()) -> 'ok'.
 flush(Category) ->
-    couch_mgr:flush_cache_docs(?WH_CONFIG_DB, Category).
+    couch_mgr:flush_cache_doc(?WH_CONFIG_DB, Category).
 
 -spec flush(ne_binary(), ne_binary()) -> 'ok'.
 -spec flush(ne_binary(), ne_binary() | ne_binaries(), atom() | ne_binary()) -> 'ok'.
