@@ -203,13 +203,18 @@ validate_set_rate_limits(Context, ThingId) ->
 
 -spec set_pvt_fields(cb_context:context()) -> cb_context:context().
 set_pvt_fields(Context) ->
-    Type = case thing_type(Context) of
-               <<"accounts">> -> <<"account">>;
-               <<"devices">> -> <<"device">>
-           end,
+    AccountDb = cb_context:account_db(Context),
+    ThingId = thing_id(Context),
+    {'ok', JObj} = couch_mgr:open_cache_doc(AccountDb, ThingId),
+    ThingType = wh_json:get_value(<<"pvt_type">>, JObj),
+    QueryName = case ThingType of
+                    <<"account">> -> wh_json:get_value(<<"realm">>, JObj);
+                    <<"device">> -> wh_json:get_value([<<"sip">>, <<"username">>], JObj)
+                end,
     Props = [{<<"pvt_type">>, <<"rate_limits">>}
-             ,{<<"pvt_owner_id">>, thing_id(Context)}
-             ,{<<"pvt_owner_type">>, Type}
+             ,{<<"pvt_owner_id">>, ThingId}
+             ,{<<"pvt_owner_type">>, ThingType}
+             ,{<<"pvt_queryname">>, QueryName}
             ],
     cb_context:set_doc(Context, wh_json:set_values(Props, cb_context:doc(Context))).
 %%--------------------------------------------------------------------

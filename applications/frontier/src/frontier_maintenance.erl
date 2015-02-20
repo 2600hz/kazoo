@@ -32,14 +32,14 @@ print_acl_record(Record) ->
 -spec lookup_ratelimits(ne_binary()) -> 'ok'.
 lookup_ratelimits(Entity) ->
     Limits = frontier_handle_rate:lookup_rate_limit_records(Entity),
-    wh_json:foreach(fun print_limits/1, Limits).
+    lists:foreach(fun (S) -> print_limits(S, wh_json:get_value(S, Limits)) end,[<<"Device">>, <<"Realm">>]).
 
--spec print_limits({ne_binary(), wh_json:object()}) -> 'ok'.
-print_limits({Type, Rates}) ->
+-spec print_limits(ne_binary(), wh_json:object()) -> 'ok'.
+print_limits(Section, Rates) ->
     Name = wh_json:get_value(<<"Name">>, Rates),
     Min = wh_json:get_value(<<"Minute">>, Rates, wh_json:new()),
     Sec = wh_json:get_value(<<"Second">>, Rates, wh_json:new()),
-    io:format("~s rates for ~s~n", [Type, Name]),
+    io:format("~s rates for ~s~n", [Section, Name]),
     Keys = lists:map(fun frontier_handle_rate:name_to_method/1, frontier_handle_rate:names()),
     lists:foreach(fun (Key) ->
                       io:format("~-15s: ~7.10B/m ~7.10B/s~n", [Key, wh_json:get_value(Key, Min), wh_json:get_value(Key, Sec)])

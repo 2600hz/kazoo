@@ -17,16 +17,7 @@
 -include("frontier.hrl").
 
 -define(DEVICE_DEFAULT_RATES, <<"device-default-rate-limits">>).
--define(ACCOUNT_FALLBACK, <<"fallback">>).
 -define(RATES_CROSSBAR_LISTING, <<"rate_limits/crossbar_listing">>).
-
--spec is_fallback(wh_json:object()) -> boolean().
-is_fallback(JObj) ->
-    IsFallback = case wh_json:get_value(<<"key">>, JObj) of
-                     [_, ?ACCOUNT_FALLBACK] -> 'true';
-                     _ -> 'false'
-                 end,
-    frontier_utils:is_realm(JObj) andalso  IsFallback.
 
 -spec is_device_defaults(wh_json:object()) -> boolean().
 is_device_defaults(JObj) ->
@@ -112,44 +103,34 @@ lookup_rate_limit_records(Entity, IncludeRealm, MethodList) ->
                 end,
     lists:foldl(fun fold_responses/2, wh_json:new(), lists:flatten(Responses)).
 
+-spec build_list_of_querynames(ne_binary(), boolean()) -> ne_binaries().
+build_list_of_querynames(Entity, IncludeRealm) ->
+    Realm = frontier_utils:extract_realm(Entity),
+    Username = frontier_utils:extract_username(Entity),
+    QueryName = case Realm =/= Entity of
+                    'true' -> Username;
+                    'false' -> Realm
+                end,
+    case IncludeRealm andalso Realm =/= Entity of
+        'true' -> [Realm, Username];
+        'false' -> [QueryName]
+    end.
+
+
 -spec run_rate_limits_query(ne_binary(), ne_binary(), boolean(), ne_binary()) -> wh_json:objects().
 run_rate_limits_query(Entity, AccountDB, IncludeRealm, MethodList) ->
-    Self = self(),
-    lager:info("Building query list"),
-    Type = case binary:split(Entity, <<"@">>) of
-               [_, _] -> <<"device">>;
-               _ -> <<"realm">>
-           end,
-    DeviceList = case Type of
-                     <<"device">> -> [fun (Ref) ->
-                                          fetch_rates_from_document(Self, Entity, Type, Ref, MethodList, AccountDB)
-                                      end
-                                      ,fun (Ref) ->
-                                           fetch_rates_from_sys_config(Self, Entity, Type, Ref, MethodList)
-                                       end
-                                     ];
-                     _ -> []
-                 end,
-    QueryList = case Type =:= <<"realm">> orelse IncludeRealm of
-                    'true' ->
-                        Realm = frontier_utils:extract_realm(Entity),
-                        [fun (Ref) ->
-                             fetch_rates_from_document(Self, Realm, <<"realm">>, Ref, MethodList, AccountDB)
-                         end
-                         ,fun (Ref) ->
-                              fetch_rates_from_sys_config(Self, Realm, <<"realm">>, Ref, MethodList)
-                          end
-                        ] ++ DeviceList;
-                    'false' -> DeviceList
-                end,
-    lager:info("Running queries"),
-    Refs = lists:map(fun (F) ->
-                         Ref = erlang:make_ref(),
-                         spawn(fun () -> F(Ref) end),
-                         Ref
-                     end, QueryList),
-    lager:info("Collecting results"),
-    collect_responses(Refs, []).
+    EntityList = build_list_of_querynames(Entity, IncludeRealm),
+    Rates = fetch_rates(EntityList, IncludeRealm, MethodList, AccountDB),
+    Realm = frontier_utils:extract_realm(Entity),
+    FromSysCOnfig = case Realm =/= EntityList andalso IncludeRealm of
+                        'true' ->
+                            fetch_rates_from_sys_config(Realm, <<"realm">>, MethodList)
+                            ++ fetch_rates_from_sys_config(Entity, <<"device">>, MethodList);
+                        'false' ->
+                            Type = frontier_utils:get_entity_type(Entity),
+                            fetch_rates_from_sys_config(Entity, Type, MethodList)
+                    end,
+    Rates ++ FromSysCOnfig.
 
 -spec to_first_upper(ne_binary()) -> ne_binary().
 to_first_upper(<<L, Ls/binary>>) ->
@@ -187,19 +168,6 @@ fold_responses(Record, Acc) ->
          end,
     wh_json:set_value(Type, S3, Acc).
 
--spec collect_responses([reference()], []) -> wh_json:objects().
-collect_responses([], Acc) ->
-    lists:reverse(Acc);
-collect_responses([Ref | Refs], Acc) ->
-    R = receive
-            {Ref, Rates} -> Rates
-        after
-            400 ->
-                lager:info("Can't wait!"),
-                []
-        end,
-    collect_responses(Refs, [R | Acc]).
-
 -spec make_deny_rates(ne_binary(), boolean(), ne_binaries()) -> wh_json:objects().
 make_deny_rates(Entity, IncludeRealm, MethodList) ->
     Rates = deny_rates_for_entity(Entity, MethodList),
@@ -214,10 +182,9 @@ make_deny_rates(Entity, IncludeRealm, MethodList) ->
 %% Kamailio expects -1 for unkown entities
 -spec deny_rates_for_entity(ne_binary(), ne_binaries()) -> list().
 deny_rates_for_entity(Entity, MethodList) ->
-    X = lists:map(fun (M) -> construct_records(M, Entity, -1, -1) end, MethodList),
-    lists:flatten(X).
+    lists:flatmap(fun (M) -> construct_records(M, Entity, -1, -1) end, MethodList).
 
--spec construct_records(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> wh_json:object().
+-spec construct_records(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> wh_json:objects().
 construct_records(Method, Entity, RPM, RPS) ->
     {Name, Type} = case binary:split(Entity, <<"@">>) of
                        [User, _] -> {User, <<"device">>};
@@ -235,100 +202,128 @@ construct_records(Method, Entity, RPM, RPS) ->
     lists:map(fun (Obj) -> wh_json:set_value(<<"value">>, Obj, Record) end, [RPMObject, RPSObject]).
 
 
--spec fetch_rates_from_sys_config(pid(), ne_binary(), ne_binary(), reference(), ne_binaries()) -> 'ok'.
-fetch_rates_from_sys_config(Srv, _, _, Ref, []) ->
+-spec fetch_rates_from_sys_config(ne_binaries(), ne_binary(), ne_binaries()) -> 'ok'.
+fetch_rates_from_sys_config(_, _, []) ->
     lager:info("sysconfig: Empty request - empty response"),
-    Srv ! {Ref, []};
-fetch_rates_from_sys_config(Srv, Entity, Type, Ref, MethodList) ->
+    [];
+fetch_rates_from_sys_config(Entity, Type, MethodList) ->
     Section = case Type of
                   <<"device">> -> <<"device">>;
                   <<"realm">> -> <<"account">>
               end,
     AllRates = whapps_config:get(?APP_NAME, <<"rate_limits">>),
     TargetRates = wh_json:get_value(Section, AllRates, wh_json:new()),
-    Payload = lists:foldl( fun (Method, Acc) ->
-                                    RPM = wh_json:get_value([?MINUTE, Method], TargetRates, 0),
-                                    RPS = wh_json:get_value([?SECOND, Method], TargetRates, 0),
-                                    construct_records(Method, Entity, RPM, RPS) ++ Acc
-                                end, [], MethodList),
-    Srv ! {Ref, Payload}.
+    lists:foldl( fun (Method, Acc) ->
+                      RPM = wh_json:get_value([?MINUTE, Method], TargetRates),
+                      RPS = wh_json:get_value([?SECOND, Method], TargetRates),
+                      case RPM =:= 'undefined' orelse RPS =:= 'undefined' of
+                          'true' -> Acc;
+                          'false' -> construct_records(Method, Entity, RPM, RPS) ++ Acc
+                      end
+                 end, [], MethodList).
 
--spec fetch_rates_from_document(pid(), ne_binary(), ne_binary(), reference(), ne_binaries(), ne_binary()) -> 'ok'.
-fetch_rates_from_document(Srv, Entity, Type, Ref, MethodList, AccountDB) ->
-    Srv ! {Ref, fetch_rates(Entity, Type, MethodList, AccountDB)}.
-
--spec maybe_run_throug_fallbacks(wh_json:objects(), ne_binary(), ne_binaries()) -> wh_json:objects().
-maybe_run_throug_fallbacks([], _, _) ->
-    [];
-maybe_run_throug_fallbacks([Fallback], Entity, MethodList) ->
-    ReversedFallbacks = wh_json:get_value([<<"value">>, <<"parents">>], Fallback),
-    run_throug_fallbacks(lists:reverse(ReversedFallbacks), Entity, MethodList).
-
-
--spec fetch_rates(ne_binary(), ne_binary(), ne_binaries(), ne_binary()) -> wh_json:objects().
+-spec fetch_rates(ne_binary(), boolean(), ne_binaries(), ne_binary()) -> wh_json:objects().
 fetch_rates(_, _, [], _) ->
     lager:info("document: Empty request - empty response"),
     [];
-fetch_rates(Entity, <<"realm">>, MethodList, _) ->
-    Keys = [[Entity, Method] || Method <- [?ACCOUNT_FALLBACK | MethodList]],
-    ViewOpts = [{'keys', Keys}],
-    case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?RATES_CROSSBAR_LISTING, ViewOpts) of
-        {'ok', JObjs} ->
-            {Fallbacks, AccountRates} = lists:partition(fun is_fallback/1, JObjs),
-            case length(AccountRates) > 0 of
-                'true' -> AccountRates;
-                'false' ->
-                    maybe_run_throug_fallbacks(Fallbacks, Entity, MethodList)
-            end;
-        _ ->
-            lager:info("Can not get account rates from db"),
-            []
-    end;
-fetch_rates(Entity, <<"device">>, MethodList, AccountDB) ->
+fetch_rates([], _, _, _) ->
+    lager:info("document: Empty request - empty response"),
+    [];
+fetch_rates(EntityList, IncludeRealm, MethodList, AccountDB) ->
     lager:info("Run db query..."),
-    User = frontier_utils:extract_username(Entity),
-    Keys = [[E, M] || E <- [User, ?DEVICE_DEFAULT_RATES], M <- MethodList],
+    Keys = [[E, M] || E <- [?DEVICE_DEFAULT_RATES | EntityList], M <- MethodList],
     ViewOpts = [{'keys', Keys}],
-    case couch_mgr:get_results(AccountDB, ?RATES_CROSSBAR_LISTING, ViewOpts) of
-        {'ok', JObjs} ->
-            lager:info("Got ~p records for device ~s from db document", [length(JObjs), Entity]),
-            {DefaultRates, DeviceRates} = lists:partition(fun is_device_defaults/1, JObjs),
-            case length(DeviceRates) > 0 of
-                'true' ->
-                    lager:info("Found rates in the device doc"),
-                    DeviceRates;
-                'false' ->
-                    lager:info("Found default rates for the device"),
-                    DefaultRates
-            end;
-        _ ->
-            lager:info("Can not get device rates drom db"),
-            []
+    Results = case couch_mgr:get_results(AccountDB, ?RATES_CROSSBAR_LISTING, ViewOpts) of
+                  {'ok', JObjs} ->
+                      lager:info("Got ~p records for entities ~p from db document", [length(JObjs), EntityList]),
+                      JObjs;
+                  _ ->
+                      lager:info("Can not get device rates drom db"),
+                      []
+              end,
+    Status = handle_db_response(Results, IncludeRealm),
+    [H | _] = EntityList,
+    Realm = frontier_utils:extract_realm(H),
+    case Status of
+        {'ok', Ret} -> Ret;
+        {_, Partial} -> Partial ++ fetch_from_parents(AccountDB, MethodList, Realm)
+    end.
+
+-spec fetch_from_parents(ne_binary(), ne_binaries(), ne_binary()) -> wh_json:objects().
+fetch_from_parents(AccountDb, MethodList, Realm) ->
+    AccountId = wh_util:format_account_id(AccountDb, 'raw'),
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+        {'ok', JObj} ->
+            Tree = lists:reverse(wh_json:get_value(<<"pvt_tree">>, JObj)),
+            check_fallbacks(Tree, MethodList, Realm);
+        {'error', _Reason} ->
+            lager:info("Cant't access to db: ~p", [_Reason])
+    end.
+
+-spec check_fallbacks(ne_binaries(), ne_binaries(), ne_binary()) -> wh_json:objects().
+check_fallbacks(Tree, MethodList, Realm) ->
+    Result = lists:foldl(fun (X, Acc) -> check_fallback(X, Acc, MethodList, Realm) end, 'empty', Tree),
+    case Result of
+        'empty' -> [];
+        _ -> Result
+    end.
+
+-spec check_fallback(ne_binary(), atom() | wh_json:objects(), ne_binaries(), ne_binary()) -> atom() | wh_json:objects().
+check_fallback(AccountId, 'empty', MethodList, Realm) ->
+    AccountDB = wh_util:format_account_id(AccountId, 'encoded'),
+    ViewOpts = [{'key', AccountId}],
+    case couch_mgr:get_results(AccountDB, <<"rate_limits/list_by_owner">>, ViewOpts) of
+        {'ok', []} -> 'empty';
+        {'ok', [JObj]} ->
+            Fallback = wh_json:get_value(<<"value">>, JObj),
+            build_results(couch_mgr:open_cache_doc(AccountDB, Fallback), MethodList, Realm);
+        {'ok', _JObjs} ->
+            lager:error("found many results, please check account rate limits for ~s", [AccountDB]),
+            'empty';
+        {'error', _Reason} ->
+            lager:error("Can't fetch data from db: ~p", [_Reason]),
+            'empty'
     end;
-fetch_rates(_Entity, _Type, _Method, _AccountDB) ->
-    lager:info("Unkown type for rate limits: ~p", _Type),
-    [].
+check_fallback(_, Acc, _, _) ->
+    Acc.
 
--spec not_limited(ne_binary()) -> boolean().
-not_limited(AccountId) ->
-    {'ok', JDoc} = couch_mgr:open_cache_doc(<<"accounts">>, AccountId),
-    wh_json:get_value(<<"rate_limits">>, JDoc) =/= 'undefuned'.
+-type couch_ret() :: {'ok', wh_json:object()} | {'error', any()}.
+-spec build_results(couch_ret(), ne_binaries(), ne_binary()) -> wh_json:objects().
+build_results({'error', _Reason}, _, _) ->
+    lager:error("Can't fetch data from db: ~p", [_Reason]),
+    [];
+build_results({'ok', JObj}, MethodList, Realm) ->
+    Limits = wh_json:get_value(<<"account">>, JObj),
+    lists:foldl(fun (M, Acc) -> build(M, Acc, Limits, Realm) end,[],MethodList).
 
-%TODO
--spec run_throug_fallbacks(ne_binaries(), ne_binary(), ne_binaries()) -> wh_json:objects().
-run_throug_fallbacks(Fallback, Entity, MethodList) ->
-    case lists:dropwhile(fun not_limited/1, Fallback) of
-        [Limiter | _] ->
-            lager:debug("Try to use limits from ~s", [Limiter]),
-            {'ok', JDoc} = couch_mgr:open_cache_doc(<<"accounts">>, Limiter),
-            Limits = wh_json:get_value(<<"rate_limits">>, JDoc),
-            AccountLimits = wh_json:get_first_defined([<<"account">>, <<"own">>], Limits, wh_json:new()),
-            lists:foldl(fun (M, Acc) ->
-                            RPM = wh_json:get_value([?MINUTE, M], AccountLimits),
-                            RPS = wh_json:get_value([?SECOND, M], AccountLimits),
-                            construct_records(M, Entity, RPM, RPS) ++ Acc
-                        end, [], MethodList);
-        [] ->
-            lager:debug("Can't find parent with limits"),
-            []
+-spec build(ne_binary(), wh_json:objects(), wh_json:object(), ne_binary()) -> wh_json:objects().
+build(Method, Acc, JObj, Realm) ->
+    PerMinute = wh_json:get_value([?MINUTE, Method], JObj),
+    PerSecond = wh_json:get_value([?SECOND, Method], JObj),
+    case PerMinute =:= 'undefined' orelse PerSecond =:= 'undefined' of
+        'true' -> Acc;
+        'false' -> construct_records(Method, Realm, PerMinute, PerSecond)
+    end.
+
+-type status() :: 'ok' | 'need_account'.
+-type rates_ret() :: {status(), wh_json:objects()}.
+-spec handle_db_response(wh_json:objects(), boolean()) -> rates_ret().
+handle_db_response(JObjs, IncludeRealm) ->
+    {DefaultRates, OtherRates} = lists:partition(fun is_device_defaults/1, JObjs),
+    {AccountRates, DeviceRates} = lists:partition(fun frontier_utils:is_realm/1, OtherRates),
+    DeviceResult = case length(DeviceRates) > 0 of
+                       'true' ->
+                           lager:info("Found rates in the device doc"),
+                           DeviceRates;
+                       'false' ->
+                           lager:info("Found default rates for the device"),
+                           DefaultRates
+                   end,
+    Status = case IncludeRealm andalso length(AccountRates) =:= 0 of
+                 'true' -> 'need_account';
+                 'false' -> 'ok'
+             end,
+    case Status of
+        'ok' -> {Status, AccountRates ++ DeviceResult};
+        'need_account' -> {Status, DeviceResult}
     end.
