@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2013, 2600Hz INC
+%%% @copyright (C) 2010-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -38,51 +38,24 @@ handle_req(JObj, _Props) ->
     HangupCause = wh_json:get_value(<<"Hangup-Cause">>, JObj, <<"unknown">>),
     case lists:member(HangupCause, ?IGNORE) of
         'true' -> 'ok';
-        'false' ->
-            alert_about_hangup(HangupCause, JObj)
+        'false' -> alert_about_hangup(HangupCause, JObj)
     end.
-
 
 -spec alert_about_hangup(ne_binary(), wh_json:object()) -> 'ok'.
 alert_about_hangup(HangupCause, JObj) ->
     lager:debug("abnormal call termination: ~s", [HangupCause]),
-    UseEmail = whapps_config:get_is_true(?APP_NAME, <<"enable_email_alerts">>, 'true'),
-    SUBUrl   = whapps_config:get_string(?APP_NAME, <<"subscriber_url">>),
-    AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
-    DataDetails = maybe_add_hangup_specific(HangupCause, JObj),
-    Data = [{<<"hangup_cause">>, wh_util:to_lower_binary(HangupCause)}
-           ,{<<"source">>,       find_source(JObj)}
-           ,{<<"destination">>,  find_destination(JObj)}
-           ,{<<"direction">>,    find_direction(JObj)}
-           ,{<<"realm">>,        find_realm(JObj, AccountId)}
-           ,{<<"account_id">>,   AccountId}
-           ],
-    alert_about_hangup__email(UseEmail, Data, DataDetails),
-    alert_about_hangup__POST(SUBUrl,    Data, DataDetails, UseEmail),
+    AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj, <<"unknown">>),
+    wh_notify:detailed_alert("~s ~s to ~s (~s) on ~s(~s)"
+                             ,[wh_util:to_lower_binary(HangupCause)
+                               ,find_source(JObj)
+                               ,find_destination(JObj)
+                               ,find_direction(JObj)
+                               ,find_realm(JObj, AccountId)
+                               ,AccountId
+                              ]
+                             ,maybe_add_hangup_specific(HangupCause, JObj)
+                            ),
     add_to_meters(AccountId, HangupCause).
-
--type ne_binary_proplist() :: [{ne_binary(), ne_binary()}].
-
--spec alert_about_hangup__POST(string() | 'undefined', ne_binary_proplist(), wh_proplist(), boolean()) -> 'ok'.
-alert_about_hangup__POST(SUBUrl, Data, Details0, EmailUsed) ->
-    Details = {<<"details">>, {Details0}},
-    Headers = [{"Content-Type", "application/json"}],
-    Encoded = wh_json:encode({[Details] ++ Data}),
-    case ibrowse:send_req(SUBUrl, Headers, 'post', Encoded) of
-        {'ok', "200", _ResponseHeaders, _ResponseBody} ->
-            lager:debug("hangup JSON data successfully POSTed to ~p", [SUBUrl]);
-        Error ->
-            lager:debug("failed to POST hangup JSON data to ~p for reason: ~p", [SUBUrl,Error]),
-            alert_about_hangup__email(not EmailUsed, Data, Details0)
-    end.
-
--spec alert_about_hangup__email(boolean(), ne_binary_proplist(), wh_proplist()) -> 'ok'.
-alert_about_hangup__email('false', _Data, _Details) -> 'ok';
-alert_about_hangup__email('true', Data, Details) ->
-    {_Lhs, DataRhs} = lists:unzip(Data),
-    wh_notify:system_alert("~s ~s to ~s (~s) on ~s(~s)", DataRhs, Details),
-    lager:debug("hangup JSON data successfully emailed").
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -210,12 +183,10 @@ find_direction(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec start_meters(ne_binary()) -> 'ok'.
--spec start_meters(api_binary(), api_binary()) -> 'ok'.
+-spec start_meters(ne_binary(), ne_binary()) -> 'ok'.
 start_meters(HangupCause) ->
     folsom_metrics:new_meter(hangups_util:meter_name(HangupCause)).
 
-start_meters('undefined', _) -> 'ok';
-start_meters(_, 'undefined') -> 'ok';
 start_meters(AccountId, HangupCause) ->
     folsom_metrics:new_meter(hangups_util:meter_name(HangupCause, AccountId)).
 
@@ -225,13 +196,13 @@ start_meters(AccountId, HangupCause) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec add_to_meters(api_binary(), api_binary()) -> 'ok'.
+-spec add_to_meters(ne_binary(), ne_binary()) -> 'ok'.
 add_to_meters(AccountId, HangupCause) ->
     lager:debug("add to meter ~s/~s", [AccountId, HangupCause]),
-    
+
     start_meters(HangupCause),
     start_meters(AccountId, HangupCause),
-    
+
     notify_meters(HangupCause),
     notify_meters(AccountId, HangupCause),
     'ok'.
@@ -243,11 +214,9 @@ add_to_meters(AccountId, HangupCause) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec notify_meters(ne_binary()) -> any().
--spec notify_meters(api_binary(), api_binary()) -> any().
+-spec notify_meters(ne_binary(), ne_binary()) -> any().
 notify_meters(HangupCause) ->
     folsom_metrics_meter:mark(hangups_util:meter_name(HangupCause)).
 
-notify_meters('undefined', _) -> 'ok';
-notify_meters(_, 'undefined') -> 'ok';
 notify_meters(AccountId, HangupCause) ->
     folsom_metrics_meter:mark(hangups_util:meter_name(HangupCause, AccountId)).

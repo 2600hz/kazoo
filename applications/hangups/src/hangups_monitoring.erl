@@ -164,7 +164,8 @@ check_stats() ->
     lists:foreach(fun check_stats/1, ?HANGUPS_TO_MONITOR).
 
 check_stats(HC) ->
-    try folsom_metrics_meter:get_values(hangups_util:meter_name(HC)) of
+    MeterName = hangups_util:meter_name(HC),
+    try folsom_metrics_meter:get_values(MeterName) of
         Stats -> maybe_alert(HC, Stats)
     catch
         'error':{'badmatch', []} ->
@@ -172,35 +173,39 @@ check_stats(HC) ->
     end.
 
 -spec maybe_alert(ne_binary(), list()) -> 'ok'.
--spec maybe_alert(ne_binary(), list(), atom()) -> boolean().
-maybe_alert(HC, Stats) ->
-    case lists:any(fun(Key) ->
-                           maybe_alert(HC, Stats, Key)
-                   end, props:get_keys(Stats))
-    of
-        'true' -> send_alert(HC);
+maybe_alert(HangupCause, Stats) ->
+    PastThreshold = fun(Key) -> maybe_alert(HangupCause, Stats, Key) end,
+    case lists:any(PastThreshold, props:get_keys(Stats)) of
+        'true' -> send_alert(HangupCause);
         'false' -> 'ok'
     end.
 
-maybe_alert(_, _, 'acceleration') -> 'false';
-maybe_alert(_, _, 'count') -> 'false';
-maybe_alert(HC, Stats, Key) ->
-    case whapps_config:get_float(<<?APP_NAME/binary, ".", (wh_util:to_lower_binary(HC))/binary>>, Key) of
-        'undefined' -> 'false';
-        Threshold ->
-            maybe_alert_on_threshold(props:get_value(Key, Stats), Threshold)
-    end.
+-spec maybe_alert(ne_binary(), list(), atom()) -> boolean().
+maybe_alert(_HangupCause, _Stats, 'acceleration') -> 'false';
+maybe_alert(_HangupCause, _Stats, 'count') -> 'false';
+maybe_alert(HangupCause, Stats, Key) ->
+    ConfigName = hangups_util:meter_name(HangupCause),
+    Threshold  = whapps_config:get_float(ConfigName, folsom_field(Key)),
+    Value      = props:get_value(Key, Stats),
+    maybe_alert_on_threshold(Value, Threshold).
 
--spec maybe_alert_on_threshold(number(), number()) -> boolean().
+-spec maybe_alert_on_threshold(number(), number() | 'undefined') -> boolean().
+maybe_alert_on_threshold(_Value, 'undefined') -> 'false';
 maybe_alert_on_threshold(Value, Threshold) ->
     Value > Threshold.
 
 -spec send_alert(ne_binary()) -> 'ok'.
-send_alert(HC) ->
-    lager:debug("hangup cause ~s past threshold, system alerting", [HC]),
-    wh_notify:system_alert("~s alerted past configured threshold"
-                           ,[wh_util:to_lower_binary(HC)]
-                           ,wh_json:from_list(
-                              hangups_query_listener:meter_resp(hangups_util:meter_name(HC))
-                             )
-                          ).
+send_alert(HangupCause) ->
+    lager:debug("hangup cause ~s past threshold, system alerting", [HangupCause]),
+    Meter = hangups_util:meter_name(HangupCause),
+    wh_notify:detailed_alert("~s alerted past configured threshold"
+                            , [wh_util:to_lower_binary(HangupCause)]
+                            , hangups_query_listener:meter_resp(Meter)
+                            ).
+
+-spec folsom_field(atom()) -> ne_binary().
+folsom_field('one') -> <<"one">>;
+folsom_field('five') -> <<"five">>;
+folsom_field('fifteen') -> <<"fifteen">>;
+folsom_field('day') -> <<"day">>;
+folsom_field('mean') -> <<"mean">>.

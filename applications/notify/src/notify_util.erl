@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
-%%% @doc
+%%% @copyright (C) 2012-2015, 2600Hz INC
+%%% @docg
 %%% @end
 %%% @contributors
 %%%   Karl Anderson <karl@2600hz.org>
@@ -22,6 +22,7 @@
          ,get_account_doc/1
          ,qr_code_image/1
          ,get_charset_params/1
+         ,post_json/3
         ]).
 
 -include("notify.hrl").
@@ -424,7 +425,6 @@ category_to_file(<<"notify.topup">>) ->
 category_to_file(_) ->
     'undefined'.
 
-
 -spec qr_code_image(api_binary()) -> wh_proplist() | 'undefined'.
 qr_code_image('undefined') -> 'undefined';
 qr_code_image(Text) ->
@@ -447,7 +447,6 @@ qr_code_image(Text) ->
             'undefined'
     end.
 
-
 -spec get_charset_params(term()) -> tuple().
 get_charset_params(Service) ->
         case props:get_value(<<"template_charset">>, Service) of
@@ -458,3 +457,16 @@ get_charset_params(Service) ->
                 };
             _ -> {[], <<>>}
         end.
+
+-spec post_json(ne_binary(), wh_json:object(), fun((wh_json:object()) -> 'ok')) -> 'ok'.
+post_json(Url, JObj, OnErrorCallback) ->
+    Headers = [{"Content-Type", "application/json"}],
+    Encoded = wh_json:encode(JObj),
+
+    case ibrowse:send_req(wh_util:to_list(Url), Headers, 'post', Encoded) of
+        {'ok', "2" ++ _, _ResponseHeaders, _ResponseBody} ->
+            lager:debug("JSON data successfully POSTed to '~s'", [Url]);
+        _Error ->
+            lager:debug("failed to POST JSON data to ~p for reason: ~p", [Url,_Error]),
+            OnErrorCallback(JObj)
+    end.

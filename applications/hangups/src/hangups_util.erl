@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz INC
+%%% @copyright (C) 2013-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -35,12 +35,6 @@ meter_name(HangupCause, AccountId) ->
 meter_prefix() ->
     ?METER_PREFIX.
 
--spec is_hangup_meter(ne_binary()) -> boolean().
-is_hangup_meter(<<?METER_PREFIX_LIST, _/binary>>) ->
-    'true';
-is_hangup_meter(_) ->
-    'false'.
-
 -spec meter_account_id(ne_binary()) -> api_binary().
 meter_account_id(Name) ->
     case binary:split(Name, <<".">>, ['global']) of
@@ -56,12 +50,16 @@ meter_hangup_cause(Name) ->
         _ -> 'undefined'
     end.
 
+-spec is_hangup_meter(ne_binary()) -> boolean().
+is_hangup_meter(<<?METER_PREFIX_LIST, ".", _/binary>>) -> 'true';
+is_hangup_meter(_) -> 'false'.
+
 -spec is_hangup_meter(ne_binary(), ne_binary()) -> boolean().
 is_hangup_meter(Name, HangupCause) ->
     Size = byte_size(HangupCause),
     case Name of
-        <<?METER_PREFIX_LIST, ".", HC:Size/binary, ".", _/binary>> when HC =:= HangupCause -> 'true';
-        <<?METER_PREFIX_LIST, ".", HC:Size/binary>> when HC =:= HangupCause -> 'true';
+        <<?METER_PREFIX_LIST, ".", HangupCause:Size/binary, ".", _/binary>> -> 'true';
+        <<?METER_PREFIX_LIST, ".", HangupCause:Size/binary>> -> 'true';
         _ -> 'false'
     end.
 
