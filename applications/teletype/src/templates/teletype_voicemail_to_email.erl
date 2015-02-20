@@ -90,11 +90,12 @@ handle_new_voicemail(JObj, _Props) ->
             {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb
                                                            ,wh_util:format_account_id(AccountDb, 'raw')
                                                           ),
+            Emails = [Email | wh_json:get_value(<<"notify_email_address">>, VMBox, [])],
             process_req(
               wh_json:set_values([{<<"voicemail">>, VMBox}
                                   ,{<<"owner">>, UserJObj}
                                   ,{<<"account">>, AccountJObj}
-                                  ,{<<"to">>, [Email]}
+                                  ,{<<"to">>, Emails}
                                  ]
                                  ,DataJObj
                                 )
