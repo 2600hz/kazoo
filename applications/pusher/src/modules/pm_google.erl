@@ -23,6 +23,7 @@ start_link() ->
 -spec init([]) -> {'ok', state()}.
 init([]) ->
     put('callid', ?MODULE),
+    lager:debug("starting server"),
     {'ok', #state{tab=ets:new(?MODULE, [])}}.
 
 -spec handle_call(term(), pid_ref(), state()) -> handle_call_ret_state(state()).
@@ -31,6 +32,7 @@ handle_call(_Request, _From, State) ->
 
 -spec handle_cast(term(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'push', JObj}, #state{tab=ETS}=State) ->
+    lager:debug("process a push"),
     TokenApp = wh_json:get_value(<<"Token-App">>, JObj),
     maybe_send_push_notification(get_gcm(TokenApp, ETS), JObj),
     {'noreply', State};
@@ -51,14 +53,14 @@ code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
 -spec maybe_send_push_notification(api_pid(), wh_json:object()) -> any().
-maybe_send_push_notification('undefined', _JObj) -> 'ok';
+maybe_send_push_notification('undefined', _JObj) -> lager:debug("no pid to send push");
 maybe_send_push_notification(Pid, JObj) ->
     TokenID = wh_json:get_value(<<"Token-ID">>, JObj),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    Message = wh_json:from_list([{<<"data">>
-                                      ,wh_json:from_list([{<<"Call-ID">>, CallId}])
-                                 }
-                                ]),
+    Message = wh_json:from_list([{<<"data">>,wh_json:from_list([{<<"Call-ID">>, CallId}])}]),
+
+    lager:debug("pushing to ~p: ~s: ~p", [Pid, TokenID, Message]),
+
     gcm:push(Pid, [TokenID], Message).
 
 -spec get_gcm(api_binary(), ets:tid()) -> api_pid().
@@ -71,6 +73,7 @@ get_gcm(App, ETS) ->
 
 -spec maybe_load_gcm(api_binary(), ets:tid()) -> api_pid().
 maybe_load_gcm(App, ETS) ->
+    lager:debug("loading gcm secret for ~s", [App]),
     maybe_load_gcm(App, ETS, whapps_config:get_binary(?CONFIG_CAT, <<"google">>, 'undefined', App)).
 
 -spec maybe_load_gcm(api_binary(), ets:tid(), api_binary()) -> api_pid().
