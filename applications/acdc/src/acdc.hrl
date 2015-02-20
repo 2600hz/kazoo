@@ -1,6 +1,4 @@
 -ifndef(ACDC_HRL).
--include_lib("rabbitmq_client/include/amqp_client.hrl").
--include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
@@ -34,8 +32,7 @@
 -type abandon_reason() :: ?ABANDON_TIMEOUT | ?ABANDON_EXIT |
                           ?ABANDON_HANGUP.
 
--type delivery() :: #'basic.deliver'{}.
--type deliveries() :: [delivery(),...] | [].
+-type deliveries() :: [gen_listener:basic_delivery(),...] | [].
 
 %% Check for cleanup every 5 minutes
 -define(CLEANUP_PERIOD, whapps_config:get_integer(?CONFIG_CAT, <<"cleanup_period_ms">>, 360000)).
