@@ -174,7 +174,7 @@ check_stats(HC) ->
 
 -spec maybe_alert(ne_binary(), list()) -> 'ok'.
 maybe_alert(HangupCause, Stats) ->
-    PastThreshold = fun (Key) -> maybe_alert(HangupCause, Stats, Key) end,
+    PastThreshold = fun(Key) -> maybe_alert(HangupCause, Stats, Key) end,
     case lists:any(PastThreshold, props:get_keys(Stats)) of
         'true' -> send_alert(HangupCause);
         'false' -> 'ok'
@@ -203,8 +203,9 @@ send_alert(HangupCause) ->
                             , hangups_query_listener:meter_resp(Meter)
                             ).
 
-folsom_field(one) -> <<"one">>;
-folsom_field(five) -> <<"five">>;
-folsom_field(fifteen) -> <<"fifteen">>;
-folsom_field(day) -> <<"day">>;
-folsom_field(mean) -> <<"mean">>.
+-spec folsom_field(atom()) -> ne_binary().
+folsom_field('one') -> <<"one">>;
+folsom_field('five') -> <<"five">>;
+folsom_field('fifteen') -> <<"fifteen">>;
+folsom_field('day') -> <<"day">>;
+folsom_field('mean') -> <<"mean">>.
