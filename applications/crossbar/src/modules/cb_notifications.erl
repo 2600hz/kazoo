@@ -916,15 +916,18 @@ on_successful_validation(Id, Context) ->
     of
         {'error', 404} ->
             lager:debug("load/merge of ~s failed with a 404", [Id]),
-            handle_missing_account_notification(CleanedContext, Id);
+            handle_missing_account_notification(CleanedContext, Id, cb_context:req_nouns(CleanedContext));
         {'success', _} -> Context1;
         {_Status, _Code} ->
             lager:debug("load/merge of ~s failed with ~p / ~p", [_Status, _Code]),
             Context1
     end.
 
--spec handle_missing_account_notification(cb_context:context(), ne_binary()) -> cb_context:context().
-handle_missing_account_notification(Context, Id) ->
+-spec handle_missing_account_notification(cb_context:context(), ne_binary(), wh_proplist()) -> cb_context:context().
+handle_missing_account_notification(Context, Id, [{<<"notifications">>, [Id ,<<"preview">>]}|_]) ->
+    lager:debug("preview request, ignoring if notification ~s is missing", [Id]),
+    on_successful_validation(Id, Context);
+handle_missing_account_notification(Context, Id, _ReqNouns) ->
     _ = maybe_hard_delete(Context, Id),
     _Context = read_system_for_account(Context, Id, 'system_migrate'),
     on_successful_validation(Id, Context).
