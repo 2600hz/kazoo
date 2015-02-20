@@ -978,8 +978,8 @@ stream_over_http(Node, UUID, File, Method, Type, JObj) ->
 -spec send_detailed_alert(atom(), ne_binary(), ne_binary(), 'store' | 'fax', term()) -> any().
 send_detailed_alert(Node, UUID, File, Type, Reason) ->
     wh_notify:detailed_alert("Failed to store ~s: media file ~s for call ~s on ~s "
-                            ,[Type, File, UUID, Node]
-                            ,[{<<"Details">>, Reason}]
+                             ,[Type, File, UUID, Node]
+                             ,[{<<"Details">>, Reason}]
                             ).
 
 -spec send_fs_store(atom(), ne_binary(), 'put' | 'post') -> fs_api_ret().
