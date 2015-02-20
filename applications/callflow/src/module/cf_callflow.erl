@@ -32,11 +32,17 @@ handle(Data, Call) ->
 maybe_branch_callflow(Data, Call) ->
     Id = wh_json:get_value(<<"id">>, Data),
     case couch_mgr:open_doc(whapps_call:account_db(Call), Id) of
-        {'ok', JObj} ->
-            lager:info("branching to callflow ~s", [Id]),
-            Flow = wh_json:get_value(<<"flow">>, JObj, wh_json:new()),
-            cf_exe:branch(Flow, Call);
         {'error', R} ->
             lager:info("could not branch to callflow ~s, ~p", [Id, R]),
-            cf_exe:continue(Call)
+            cf_exe:continue(Call);
+        {'ok', JObj} ->
+            case whapps_call_command:channel_status(Call) of
+                {'error', 'no_channel_id'} ->
+                    lager:info("no channel up for ~s stopping", [Id]),
+                    cf_exe:hard_stop(Call);
+                'ok' ->
+                    lager:info("branching to callflow ~s", [Id]),
+                    Flow = wh_json:get_value(<<"flow">>, JObj, wh_json:new()),
+                    cf_exe:branch(Flow, Call)
+            end
     end.
