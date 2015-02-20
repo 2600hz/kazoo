@@ -46,6 +46,7 @@ maybe_relay_request(JObj) ->
                         ,fun maybe_set_ringback/2
                         ,fun maybe_set_transfer_media/2
                         ,fun maybe_lookup_cnam/2
+                        ,fun maybe_add_prepend/2
                         ,fun maybe_blacklisted/2
                         ,fun maybe_transition_port_in/2
                        ],
@@ -194,6 +195,19 @@ maybe_lookup_cnam(NumberProps, JObj) ->
     case wh_number_properties:inbound_cnam_enabled(NumberProps) of
         'false' -> JObj;
         'true' -> stepswitch_cnam:lookup(JObj)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_add_prepend(wh_proplist(), wh_json:object()) ->
+                               wh_json:object().
+maybe_add_prepend(NumberProps, JObj) ->
+    case wh_number_properties:prepend(NumberProps) of
+        'undefined' -> JObj;
+        Prepend -> wh_json:set_value(<<"Prepend-CID-Name">>, Prepend, JObj)
     end.
 
 %%--------------------------------------------------------------------

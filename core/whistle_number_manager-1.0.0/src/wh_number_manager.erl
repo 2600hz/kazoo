@@ -233,17 +233,21 @@ number_options(#number{state=State
                        ,number=Num
                        ,assigned_to=AssignedTo
                       }=Number) ->
-    [{'force_outbound', should_force_outbound(Number)}
-     ,{'pending_port', State =:= ?NUMBER_STATE_PORT_IN}
-     ,{'local', Module =:= 'wnm_local'}
-     ,{'inbound_cnam'
-       ,sets:is_element(<<"inbound_cnam">>, Features)
-       andalso should_lookup_cnam(Module)
-      }
-     ,{'ringback_media', find_early_ringback(Number)}
-     ,{'transfer_media', find_transfer_ringback(Number)}
-     ,{'number', Num }
-     ,{'account_id', AssignedTo}
+    [
+        {'force_outbound', should_force_outbound(Number)}
+        ,{'pending_port', State =:= ?NUMBER_STATE_PORT_IN}
+        ,{'local', Module =:= 'wnm_local'}
+        ,{'inbound_cnam'
+            ,sets:is_element(<<"inbound_cnam">>, Features)
+            andalso should_lookup_cnam(Module)
+         }
+        ,{'ringback_media', find_early_ringback(Number)}
+        ,{'transfer_media', find_transfer_ringback(Number)}
+        ,{'number', Num}
+        ,{'account_id', AssignedTo}
+        ,{'prepend'
+            ,sets:is_element(<<"prepend">>, Features)
+             andalso preprend(Number)}
     ].
 
 %% Checks the carrier module for whether to lookup CNAM on this number
@@ -279,6 +283,15 @@ find_early_ringback(#number{number_doc=JObj}) ->
 -spec find_transfer_ringback(wnm_number()) -> api_binary().
 find_transfer_ringback(#number{number_doc=JObj}) ->
     wh_json:get_ne_value([<<"ringback">>, <<"transfer">>], JObj).
+
+-spec preprend(wnm_number()) -> api_binary().
+preprend(#number{number_doc=JObj}) ->
+    case wh_json:is_true([<<"prepend">>, <<"enabled">>], JObj) of
+        'false' -> 'undefined';
+        'true' ->
+             wh_json:get_ne_value([<<"prepend">>, <<"name">>], JObj)
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @public
