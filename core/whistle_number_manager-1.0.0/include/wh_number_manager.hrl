@@ -44,7 +44,7 @@
 
 -define(WNM_DEAFULT_CARRIER_MODULES, [<<"wnm_local">>]).
 -define(WNM_DEAFULT_PROVIDER_MODULES, [<<"cnam_notifier">>, <<"port_notifier">>
-                                           ,<<"failover">>
+                                       ,<<"failover">> ,<<"prepend">>
                                       ]).
 
 -define(WNM_DB_PREFIX, <<"numbers/">>).

@@ -219,34 +219,41 @@ from_route_req(RouteReq, #whapps_call{call_id=OldCallId
     [FromUser, FromRealm] = binary:split(From, <<"@">>),
     [RequestUser, RequestRealm] = binary:split(Request, <<"@">>),
 
-    Call#whapps_call{call_id=CallId
-                     ,request=Request
-                     ,request_user=wnm_util:to_e164(RequestUser)
-                     ,request_realm=RequestRealm
-                     ,from=From
-                     ,from_user=FromUser
-                     ,from_realm=FromRealm
-                     ,to=To
-                     ,to_user=ToUser
-                     ,to_realm=ToRealm
-                     ,account_id=AccountId
-                     ,account_db=AccountDb
-                     ,inception = wh_json:get_value(<<"Inception">>, CCVs, inception(Call))
-                     ,switch_hostname = wh_json:get_value(<<"Switch-Hostname">>, RouteReq, switch_hostname(Call))
-                     ,switch_nodename = wh_json:get_ne_value(<<"Switch-Nodename">>, RouteReq, switch_nodename(Call))
-                     ,authorizing_id = wh_json:get_ne_value(<<"Authorizing-ID">>, CCVs, authorizing_id(Call))
-                     ,authorizing_type = wh_json:get_ne_value(<<"Authorizing-Type">>, CCVs, authorizing_type(Call))
-                     ,owner_id = wh_json:get_ne_value(<<"Owner-ID">>, CCVs, owner_id(Call))
-                     ,fetch_id = wh_json:get_ne_value(<<"Fetch-ID">>, CCVs, fetch_id(Call))
-                     ,bridge_id = wh_json:get_ne_value(<<"Bridge-ID">>, CCVs, bridge_id(Call))
-                     ,caller_id_name = wh_json:get_value(<<"Caller-ID-Name">>, RouteReq, caller_id_name(Call))
-                     ,caller_id_number = wh_json:get_value(<<"Caller-ID-Number">>, RouteReq, caller_id_number(Call))
-                     ,ccvs = CCVs
-                     ,sip_headers = SHs
-                     ,resource_type = wh_json:get_value(<<"Resource-Type">>, RouteReq, resource_type(Call))
-                     ,to_tag = wh_json:get_value(<<"To-Tag">>, RouteReq, to_tag(Call))
-                     ,from_tag = wh_json:get_value(<<"From-Tag">>, RouteReq, from_tag(Call))
-                    }.
+    Call1 =
+        case wh_json:get_value(<<"Prepend-CID-Name">>, RouteReq) of
+            'undefined' -> Call;
+            Prepend -> kvs_store('prepend_cid_name', Prepend, Call)
+        end,
+
+    Call1#whapps_call{
+        call_id=CallId
+        ,request=Request
+        ,request_user=wnm_util:to_e164(RequestUser)
+        ,request_realm=RequestRealm
+        ,from=From
+        ,from_user=FromUser
+        ,from_realm=FromRealm
+        ,to=To
+        ,to_user=ToUser
+        ,to_realm=ToRealm
+        ,account_id=AccountId
+        ,account_db=AccountDb
+        ,inception = wh_json:get_value(<<"Inception">>, CCVs, inception(Call))
+        ,switch_hostname = wh_json:get_value(<<"Switch-Hostname">>, RouteReq, switch_hostname(Call))
+        ,switch_nodename = wh_json:get_ne_value(<<"Switch-Nodename">>, RouteReq, switch_nodename(Call))
+        ,authorizing_id = wh_json:get_ne_value(<<"Authorizing-ID">>, CCVs, authorizing_id(Call))
+        ,authorizing_type = wh_json:get_ne_value(<<"Authorizing-Type">>, CCVs, authorizing_type(Call))
+        ,owner_id = wh_json:get_ne_value(<<"Owner-ID">>, CCVs, owner_id(Call))
+        ,fetch_id = wh_json:get_ne_value(<<"Fetch-ID">>, CCVs, fetch_id(Call))
+        ,bridge_id = wh_json:get_ne_value(<<"Bridge-ID">>, CCVs, bridge_id(Call))
+        ,caller_id_name = wh_json:get_value(<<"Caller-ID-Name">>, RouteReq, caller_id_name(Call))
+        ,caller_id_number = wh_json:get_value(<<"Caller-ID-Number">>, RouteReq, caller_id_number(Call))
+        ,ccvs = CCVs
+        ,sip_headers = SHs
+        ,resource_type = wh_json:get_value(<<"Resource-Type">>, RouteReq, resource_type(Call))
+        ,to_tag = wh_json:get_value(<<"To-Tag">>, RouteReq, to_tag(Call))
+        ,from_tag = wh_json:get_value(<<"From-Tag">>, RouteReq, from_tag(Call))
+    }.
 
 -spec from_route_win(wh_json:object()) -> call().
 from_route_win(RouteWin) ->
