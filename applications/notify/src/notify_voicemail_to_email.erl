@@ -63,7 +63,7 @@ handle_req(JObj, _Props) ->
             {'ok', AcctObj} = couch_mgr:open_cache_doc(AcctDB, wh_util:format_account_id(AcctDB, 'raw')),
             Docs = [VMBox, UserJObj, AcctObj],
 
-            Emails = [Email | wh_json:get_value(<<"notify_email_address">>, VMBox, [])],
+            Emails = [Email | email_list(wh_json:get_value(<<"notify_email_address">>, VMBox, []))],
 
             Props = [{<<"email_address">>, Emails}
                      | create_template_props(JObj, Docs, AcctObj)
@@ -83,6 +83,10 @@ handle_req(JObj, _Props) ->
                                  ,{RespQ, MsgId}
                                 )
     end.
+
+-spec email_list(binary() | binaries()) -> binaries().
+email_list(Email) when is_binary(Email) -> [Email];
+email_list(Email) when is_list(Email) -> Email.
 
 %%--------------------------------------------------------------------
 %% @private
