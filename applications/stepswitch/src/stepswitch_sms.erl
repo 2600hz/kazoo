@@ -268,8 +268,8 @@ send(<<"amqp">>, Endpoint, API) ->
 -spec maybe_add_broker(binary(), binary(), binary()) -> 'ok'.
 maybe_add_broker(Broker, Exchange, ExchangeType) ->
     maybe_add_broker(Broker, Exchange, ExchangeType, wh_amqp_sup:pool_pid(?ATOM(Exchange)) =/= 'undefined').
-    
-    
+
+
 -spec maybe_add_broker(binary(), binary(), binary(), boolean()) -> 'ok'.
 maybe_add_broker(_Broker, _Exchange, _ExchangeType, 'true') -> 'ok';
 maybe_add_broker(Broker, Exchange, ExchangeType, 'false') ->
@@ -277,8 +277,8 @@ maybe_add_broker(Broker, Exchange, ExchangeType, 'false') ->
     Exchanges = [{Exchange, ExchangeType, [{'passive', 'true'}]}],
     wh_amqp_sup:add_amqp_pool(?ATOM(Exchange), Broker, 5, 5, [], Exchanges),
     'ok'.
-      
--spec build_sms(state()) -> wh_proplist().
+
+-spec build_sms(state()) -> state().
 build_sms(#state{endpoints=Endpoints
                  ,resource_req=JObj
                  ,queue=Q
@@ -288,7 +288,7 @@ build_sms(#state{endpoints=Endpoints
     State#state{messages=queue:from_list(maybe_endpoints_format_from(Endpoints, CIDNum, JObj))
                 ,message=build_sms_base({CIDNum, CIDName}, JObj, Q)
                }.
-        
+
 -spec build_sms_base({binary(), binary()}, wh_json:object(), binary()) -> wh_proplist().
 build_sms_base({CIDNum, CIDName}, JObj, Q) ->
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
