@@ -202,7 +202,7 @@ maybe_lookup_cnam(NumberProps, JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_add_prepend(wh_proplist(), wh_json:object()) ->
+-spec maybe_add_prepend(wh_number_manager:number_properties(), wh_json:object()) ->
                                wh_json:object().
 maybe_add_prepend(NumberProps, JObj) ->
     case wh_number_properties:prepend(NumberProps) of
