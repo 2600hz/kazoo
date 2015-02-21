@@ -159,7 +159,6 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, {RespQ, MsgId}) ->
     DocId = props:get_value(<<"media">>, Voicemail),
 
     From = props:get_value(<<"send_from">>, Service),
-    To = props:get_value(<<"email_address">>, Props),
 
     {ContentTypeParams, CharsetString} = notify_util:get_charset_params(Service),
 
