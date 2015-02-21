@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle client requests for phone_number documents
@@ -32,6 +32,10 @@
 -export([track_assignment/2]).
 
 -include("wnm.hrl").
+
+-export_type([number_property/0
+              ,number_properties/0
+             ]).
 
 -define(SERVER, ?MODULE).
 
@@ -226,28 +230,28 @@ check_account(#number{assigned_to=AssignedTo}=N) ->
         'true' -> {'ok', AssignedTo, number_options(N)}
     end.
 
--spec number_options(wnm_number()) -> wh_proplist().
+-spec number_options(wnm_number()) -> number_properties().
 number_options(#number{state=State
                        ,features=Features
                        ,module_name=Module
                        ,number=Num
                        ,assigned_to=AssignedTo
                       }=Number) ->
-    [
-        {'force_outbound', should_force_outbound(Number)}
-        ,{'pending_port', State =:= ?NUMBER_STATE_PORT_IN}
-        ,{'local', Module =:= 'wnm_local'}
-        ,{'inbound_cnam'
-            ,sets:is_element(<<"inbound_cnam">>, Features)
-            andalso should_lookup_cnam(Module)
-         }
-        ,{'ringback_media', find_early_ringback(Number)}
-        ,{'transfer_media', find_transfer_ringback(Number)}
-        ,{'number', Num}
-        ,{'account_id', AssignedTo}
-        ,{'prepend'
-            ,sets:is_element(<<"prepend">>, Features)
-             andalso preprend(Number)}
+    [{'force_outbound', should_force_outbound(Number)}
+     ,{'pending_port', State =:= ?NUMBER_STATE_PORT_IN}
+     ,{'local', Module =:= 'wnm_local'}
+     ,{'inbound_cnam'
+       ,sets:is_element(<<"inbound_cnam">>, Features)
+       andalso should_lookup_cnam(Module)
+      }
+     ,{'ringback_media', find_early_ringback(Number)}
+     ,{'transfer_media', find_transfer_ringback(Number)}
+     ,{'number', Num}
+     ,{'account_id', AssignedTo}
+     ,{'prepend'
+       ,sets:is_element(<<"prepend">>, Features)
+       andalso prepend(Number)
+      }
     ].
 
 %% Checks the carrier module for whether to lookup CNAM on this number
@@ -284,14 +288,13 @@ find_early_ringback(#number{number_doc=JObj}) ->
 find_transfer_ringback(#number{number_doc=JObj}) ->
     wh_json:get_ne_value([<<"ringback">>, <<"transfer">>], JObj).
 
--spec preprend(wnm_number()) -> api_binary().
-preprend(#number{number_doc=JObj}) ->
+-spec prepend(wnm_number()) -> api_binary().
+prepend(#number{number_doc=JObj}) ->
     case wh_json:is_true([<<"prepend">>, <<"enabled">>], JObj) of
         'false' -> 'undefined';
         'true' ->
              wh_json:get_ne_value([<<"prepend">>, <<"name">>], JObj)
     end.
-
 
 %%--------------------------------------------------------------------
 %% @public

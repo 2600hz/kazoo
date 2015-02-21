@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Routing requests, responses, and wins!
 %%% @end
@@ -70,8 +70,8 @@
                           ,{<<"Cost-Parameters">>, fun(JObj) ->
                                                            wh_json:is_json_object(JObj)
                                                                andalso lists:all(fun({K, _V}) ->
-                                                                                 lists:member(K, ?ROUTE_REQ_COST_PARAMS)
-                                                                         end, wh_json:to_proplist(JObj))
+                                                                                         lists:member(K, ?ROUTE_REQ_COST_PARAMS)
+                                                                                 end, wh_json:to_proplist(JObj))
                                                    end}
                           ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
                           ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
