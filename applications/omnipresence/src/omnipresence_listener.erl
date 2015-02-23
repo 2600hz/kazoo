@@ -53,7 +53,7 @@
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
--define(SUBSCRIPTIONS_SYNC_ENABLED, whapps_config:get_is_true(?CONFIG_CAT, <<"subscriptions_sync_enabled">>, 'true')).
+-define(SUBSCRIPTIONS_SYNC_ENABLED, whapps_config:get_is_true(?CONFIG_CAT, <<"subscriptions_sync_enabled">>, 'false')).
 
 %%%===================================================================
 %%% API
@@ -142,8 +142,8 @@ handle_cast({'gen_listener',{'is_consuming',IsConsuming}}, State) ->
     gen_listener:cast(self(), 'send_sync'),
     {'noreply', State#state{consuming=IsConsuming}};
 handle_cast('send_sync', #state{subs_pid=Pid, queue=Queue, consuming=IsConsuming} = State)
-  when Pid =:= 'undefined' 
-  orelse Queue =:= 'undefined' 
+  when Pid =:= 'undefined'
+  orelse Queue =:= 'undefined'
   orelse IsConsuming =:= 'false'  ->
     {'noreply', State};
 handle_cast('send_sync', #state{subs_pid='undefined'}=State) ->
