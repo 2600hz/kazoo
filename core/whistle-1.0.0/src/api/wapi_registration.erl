@@ -49,6 +49,7 @@
                                        ,<<"FreeSWITCH-Nodename">>
                                        ,<<"Network-IP">>, <<"Network-Port">>
                                        ,<<"Suppress-Unregister-Notify">>
+                                       ,<<"Register-Overwrite-Notify">>
                                        ,<<"Original-Contact">>
                                        ,<<"Registrar-Node">>
                                        ,<<"Proxy-Path">>, <<"AOR">>, <<"RUID">>
