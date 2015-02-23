@@ -217,8 +217,7 @@ merge_attributes([<<"caller_id">> = Key|Keys], Account, Endpoint, Owner) ->
     AccountAttr = wh_json:get_ne_value(Key, Account, wh_json:new()),
     EndpointAttr = wh_json:get_ne_value(Key, Endpoint, wh_json:new()),
     OwnerAttr = caller_id_owner_attr(Owner),
-    Merged = wh_json:merge_recursive([AccountAttr, EndpointAttr, OwnerAttr]
-                                     ,fun(_, V) -> wh_util:is_not_empty(V) end),
+    Merged = merge_attribute_caller_id(Account, AccountAttr, OwnerAttr, EndpointAttr),
     case wh_json:get_ne_value([<<"emergency">>, <<"number">>], EndpointAttr) of
         'undefined' ->
             merge_attributes(Keys, Account, wh_json:set_value(Key, Merged, Endpoint), Owner);
@@ -242,6 +241,15 @@ merge_attributes([Key|Keys], Account, Endpoint, Owner) ->
                                      ,fun(_, V) -> wh_util:is_not_empty(V) end
                                     ),
     merge_attributes(Keys, Account, wh_json:set_value(Key, Merged, Endpoint), Owner).
+
+-spec merge_attribute_caller_id(api_object(), api_object(), api_object(), api_object()) -> api_object().
+merge_attribute_caller_id(AccountJObj, AccountJAttr, UserJAttr, EndpointJAttr) ->
+    Merging =
+        case wh_json:is_true(<<"prefer_device_caller_id">>, AccountJObj, 'false') of
+            'true' -> [AccountJAttr, UserJAttr, EndpointJAttr];
+            'false' -> [AccountJAttr, EndpointJAttr, UserJAttr]
+        end,
+    wh_json:merge_recursive(Merging, fun(_, V) -> wh_util:is_not_empty(V) end).
 
 -spec merge_value(ne_binaries(), api_object(), wh_json:object(), api_object()) ->
                               wh_json:object().
