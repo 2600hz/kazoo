@@ -14,6 +14,7 @@
 
 -export([init/0
          ,allowed_methods/0
+         ,authorize/1
          ,resource_exists/0
          ,validate/1
          ,post/1
@@ -38,6 +39,7 @@
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.rate_limits">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.rate_limits">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.validate.rate_limits">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.post.rate_limits">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.rate_limits">>, ?MODULE, 'delete').
@@ -52,6 +54,41 @@ init() ->
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+
+-spec authorize(cb_context:context()) -> boolean().
+authorize(Context) ->
+    case thing_type_id(Context) of
+        'undefined' -> 'false';
+        _ ->
+            {'ok', MasterAccount} = whapps_util:get_master_account_id(),
+            AuthAccountId = cb_context:auth_account_id(Context),
+            AuthAccountId =:= MasterAccount orelse wh_services:is_reseller(AuthAccountId)
+    end.
+
+-type thing_type() :: ne_binary().
+-type thing_id() :: ne_binary().
+-type thing_description() :: {thing_type(), thing_id()}.
+-spec thing_type_id(cb_context:context()) -> thing_description() | 'undefined'.
+thing_type_id(Context) ->
+    case cb_context:req_nouns(Context) of
+        [{<<"rate_limits">>, []}, {<<"accounts">> = Type, [Id]} | _] -> {Type, Id};
+        [{<<"rate_limits">>, []}, {<<"devices">> = Type, [Id]} | _] -> {Type, Id};
+        _ReqNouns -> 'undefined'
+    end.
+
+-spec thing_type(cb_context:context()) -> thing_type() | 'undefiend'.
+thing_type(Context) ->
+    case thing_type_id(Context) of
+        {Type, _} -> Type;
+        'undefined' -> 'undefined'
+    end.
+
+-spec thing_id(cb_context:context()) -> thing_id() | 'undefined'.
+thing_id(Context) ->
+    case thing_type_id(Context) of
+        {_, Id} -> Id;
+        'undefined' -> 'undefined'
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -110,38 +147,20 @@ validate_post_rate_limits(Context) ->
             crossbar_util:response_faulty_request(Context)
     end.
 
--spec thing_type(cb_context:context()) -> api_binary().
-thing_type(Context) ->
-    case cb_context:req_nouns(Context) of
-        [{<<"rate_limits">>, []}, {Type, [_ThingId]} | _] ->
-            Type;
-        _Nouns -> 'undefined'
-    end.
-
--spec thing_id(cb_context:context()) -> api_binary().
-thing_id(Context) ->
-    case cb_context:req_nouns(Context) of
-        [{<<"rate_limits">>, []}, {<<"accounts">>, [AccountId]} | _] ->
-            AccountId;
-        [{<<"rate_limits">>, []}, {<<"devices">>, [DeviceId]} | _] ->
-            DeviceId;
-        _Nouns -> 'undefined'
-    end.
-
 -spec get_rate_limits_id_for_thing(cb_context:context(), ne_binary()) -> api_binaries().
 get_rate_limits_id_for_thing(Context, ThingId) ->
     ViewOpt = [{'key', ThingId}],
     case couch_mgr:get_results(cb_context:account_db(Context), ?LISTING_BY_OWNER, ViewOpt) of
         {'ok', JObjs} ->
-            lists:map(fun get_value/1, JObjs);
+            lists:map(fun get_id/1, JObjs);
         {'error', _Err} ->
             lager:error("Can't load rate limits due to err: ~p", [_Err]),
             'undefined'
     end.
 
--spec get_value(wh_json:object()) -> api_binary().
-get_value(JObj) ->
-    wh_json:get_value(<<"value">>, JObj).
+-spec get_id(wh_json:object()) -> api_binary().
+get_id(JObj) ->
+    wh_json:get_value(<<"id">>, JObj).
 
 -spec validate_get_rate_limits(cb_context:context(), api_binary()) -> cb_context:context().
 validate_get_rate_limits(Context, 'undefined') ->

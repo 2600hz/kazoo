@@ -3,7 +3,7 @@
     ,"language": "javascript"
     ,"views": {
         "crossbar_listing": {
-            "map": "function(doc) { if ((doc.pvt_type != 'account' && doc.pvt_type != 'device') || doc.pvt_deleted || !doc.access_lists) return; var name = doc.realm || doc.sip.username; var type = ''; if (doc.pvt_type == 'account') type = 'realm'; else type = 'device'; emit(name, { 'type': type, 'acls': doc.access_lists }); };"
+            "map": "function(doc) { if ((doc.pvt_type != 'account' && doc.pvt_type != 'device') || doc.pvt_deleted) return; var name = doc.realm || doc.sip.username; var type = ''; if (doc.pvt_type == 'account') type = 'realm'; else type = 'device'; emit(name, { 'type': type, 'acls': doc.access_lists }); };"
         }
     }
 }

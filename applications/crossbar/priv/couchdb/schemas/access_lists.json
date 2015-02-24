@@ -1,11 +1,11 @@
 {
   "_id": "access_lists",
-  "$schema": "http://json-schema.org/draft-04/schema#",
+  "$schema": "http://json-schema.org/draft-03/schema#",
   "type": "object",
   "required": false,
   "name": "ACL Entry",
   "description": "Access Control List entries for device or account",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "properties": {
     "cidrs": {
       "type": "array",
@@ -16,8 +16,8 @@
     "order":{
       "type":"string",
       "enum":[
-        "AD",
-        "DA"
+        "allow,deny",
+        "deny,allow"
       ],
       "required": true,
       "name": "order",

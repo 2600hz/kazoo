@@ -18,6 +18,7 @@
 
 -define(DEVICE_DEFAULT_RATES, <<"device-default-rate-limits">>).
 -define(RATES_CROSSBAR_LISTING, <<"rate_limits/crossbar_listing">>).
+-define(RATES_LISTING_BY_OWNER, <<"rate_limits/list_by_owner">>).
 
 -spec is_device_defaults(wh_json:object()) -> boolean().
 is_device_defaults(JObj) ->
@@ -272,10 +273,10 @@ check_fallbacks(Tree, MethodList, Realm) ->
 check_fallback(AccountId, 'empty', MethodList, Realm) ->
     AccountDB = wh_util:format_account_id(AccountId, 'encoded'),
     ViewOpts = [{'key', AccountId}],
-    case couch_mgr:get_results(AccountDB, <<"rate_limits/list_by_owner">>, ViewOpts) of
+    case couch_mgr:get_results(AccountDB, ?RATES_LISTING_BY_OWNER, ViewOpts) of
         {'ok', []} -> 'empty';
         {'ok', [JObj]} ->
-            Fallback = wh_json:get_value(<<"value">>, JObj),
+            Fallback = wh_json:get_value(<<"id">>, JObj),
             build_results(couch_mgr:open_cache_doc(AccountDB, Fallback), MethodList, Realm);
         {'ok', _JObjs} ->
             lager:error("found many results, please check account rate limits for ~s", [AccountDB]),
