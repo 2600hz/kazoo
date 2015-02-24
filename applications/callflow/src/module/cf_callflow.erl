@@ -45,8 +45,8 @@ continue_if_still_active(Call, JObj) ->
         {'error', _E} ->
             lager:info("failed to get channel status: ~p", [_E]),
             cf_exe:hard_stop(Call);
-        'ok' ->
-            lager:info("branching to new calllflow ~s", [wh_doc:id(JObj)]),
+        {'ok', _} ->
+            lager:info("branching to new callflow ~s", [wh_doc:id(JObj)]),
             Flow = wh_json:get_value(<<"flow">>, JObj, wh_json:new()),
             cf_exe:branch(Flow, Call)
     end.
