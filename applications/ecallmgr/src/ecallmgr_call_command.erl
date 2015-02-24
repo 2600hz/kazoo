@@ -353,7 +353,7 @@ get_fs_app(_Node, _UUID, JObj, <<"page">>) ->
                         ,fun(DP) ->
                                  lists:foldl(fun(Channel, D) ->
                                                      [{"application", <<"conference_set_auto_outcall "
-                                                                        ,"{sip_auto_answer=true}"
+                                                                        ,"{alert_info=intercom}[sip_auto_answer=true]"
                                                                         ,Channel/binary>>}
                                                       |D
                                                      ]
