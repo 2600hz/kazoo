@@ -248,10 +248,7 @@ number_options(#number{state=State
      ,{'transfer_media', find_transfer_ringback(Number)}
      ,{'number', Num}
      ,{'account_id', AssignedTo}
-     ,{'prepend'
-       ,sets:is_element(<<"prepend">>, Features)
-       andalso prepend(Number)
-      }
+     ,{'prepend', prepend(Number)}
     ].
 
 %% Checks the carrier module for whether to lookup CNAM on this number
@@ -289,8 +286,11 @@ find_transfer_ringback(#number{number_doc=JObj}) ->
     wh_json:get_ne_value([<<"ringback">>, <<"transfer">>], JObj).
 
 -spec prepend(wnm_number()) -> api_binary().
-prepend(#number{number_doc=JObj}) ->
-    case wh_json:is_true([<<"prepend">>, <<"enabled">>], JObj) of
+prepend(#number{number_doc=JObj, features=Features}) ->
+    case
+        sets:is_element(<<"prepend">>, Features)
+        andalso wh_json:is_true([<<"prepend">>, <<"enabled">>], JObj)
+    of
         'false' -> 'undefined';
         'true' ->
              wh_json:get_ne_value([<<"prepend">>, <<"name">>], JObj)
