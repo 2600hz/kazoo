@@ -117,6 +117,7 @@ check_sync(Username, Realm) ->
 send_check_sync(Node, Username, Realm, Contact) ->
     Headers = [{"profile", ?DEFAULT_FS_PROFILE}
                ,{"contact", Contact}
+               ,{"contact-uri", Contact}
                ,{"to-uri", <<"sip:", Username/binary, "@", Realm/binary>>}
                ,{"from-uri", <<"sip:", Username/binary, "@", Realm/binary>>}
                ,{"event-string", "check-sync"}
@@ -158,6 +159,7 @@ send_mwi_update(JObj, Node, Registration) ->
                         ]),
     Headers = [{"profile", ?DEFAULT_FS_PROFILE}
                ,{"contact", Contact}
+               ,{"contact-uri", Contact}
                ,{"to-uri", To}
                ,{"from-uri", From}
                ,{"event-str", "message-summary"}
@@ -182,6 +184,7 @@ register_overwrite(JObj, Props) ->
     NewBody = wh_util:to_list(<<"Overwrote:", PrevContact/binary>>),
     PrevContactHeaders = [{"profile", ?DEFAULT_FS_PROFILE}
                           ,{"contact", PrevContact}
+                          ,{"contact-uri", PrevContact}
                           ,{"to-uri", SipUri}
                           ,{"from-uri", SipUri}
                           ,{"event-str", "registration-overwrite"}
@@ -191,6 +194,7 @@ register_overwrite(JObj, Props) ->
                          ],
     NewContactHeaders = [{"profile", ?DEFAULT_FS_PROFILE}
                          ,{"contact", NewContact}
+                         ,{"contact-uri", NewContact}
                          ,{"to-uri", SipUri}
                          ,{"from-uri", SipUri}
                          ,{"event-str", "registration-overwrite"}
