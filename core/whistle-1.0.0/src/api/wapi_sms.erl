@@ -81,7 +81,7 @@
 %% Delivery
 -define(DELIVERY_REQ_EVENT_NAME, <<"delivery">>).
 -define(DELIVERY_HEADERS, [<<"Call-ID">>, <<"Message-ID">>]).
--define(OPTIONAL_DELIVERY_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>
+-define(OPTIONAL_DELIVERY_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>, <<"Orig-Port">>
                                     ,<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
                                     ,<<"From-Network-Addr">>
                                     ,<<"Switch-Hostname">>, <<"Switch-Nodename">>
@@ -121,7 +121,7 @@
 %% Inbound
 -define(INBOUND_REQ_EVENT_NAME, <<"inbound">>).
 -define(INBOUND_HEADERS, [<<"Message-ID">>]).
--define(OPTIONAL_INBOUND_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>
+-define(OPTIONAL_INBOUND_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>, <<"Orig-Port">>
                                    ,<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
                                    ,<<"From-Network-Addr">>
                                    ,<<"Switch-Hostname">>, <<"Switch-Nodename">>
@@ -159,7 +159,7 @@
 %% Outbound
 -define(OUTBOUND_REQ_EVENT_NAME, <<"outbound">>).
 -define(OUTBOUND_HEADERS, [<<"Message-ID">>]).
--define(OPTIONAL_OUTBOUND_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>
+-define(OPTIONAL_OUTBOUND_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>, <<"Orig-Port">>
                                     ,<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
                                     ,<<"From-Network-Addr">>
                                     ,<<"Switch-Hostname">>, <<"Switch-Nodename">>

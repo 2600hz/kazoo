@@ -897,6 +897,7 @@ query_authn(#registration{username=Username
                           ,from_user=FromUser
                           ,from_host=FromHost
                           ,network_ip=NetworkIP
+                          ,network_port=NetworkPort
                           ,registrar_node=Node
                           ,call_id=CallId
                          }=Reg) ->
@@ -904,6 +905,7 @@ query_authn(#registration{username=Username
     Req = [{<<"To">>, <<ToUser/binary, "@", ToHost/binary>>}
            ,{<<"From">>, <<FromUser/binary, "@", FromHost/binary>>}
            ,{<<"Orig-IP">>, NetworkIP}
+           ,{<<"Orig-Port">>, NetworkPort}
            ,{<<"Auth-User">>, Username}
            ,{<<"Auth-Realm">>, Realm}
            ,{<<"Media-Server">>, wh_util:to_binary(Node)}
