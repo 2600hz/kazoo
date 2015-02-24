@@ -399,10 +399,10 @@
                         "default": false
                     },
                     "force_port": {
-                        "type": "boolean"m
+                        "type": "boolean",
                         "required": false,
                         "name": "Force port",
-                        "description": "Receive only from this port",
+                        "description": "Allow request only from this port",
                         "default": false
                     }
                 },
