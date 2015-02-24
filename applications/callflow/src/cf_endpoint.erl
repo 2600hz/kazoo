@@ -151,6 +151,7 @@ merge_attributes(Endpoint, Type) ->
             ,<<"language">>
             ,<<"record_call">>
             ,<<"mobile">>
+            ,<<"presence_id">>
             ,?CF_ATTR_LOWER_KEY
            ],
     merge_attributes(Endpoint, Type, Keys).
@@ -226,6 +227,8 @@ merge_attributes([<<"caller_id">> = Key|Keys], Account, Endpoint, Owner) ->
             merge_attributes(Keys, Account, wh_json:set_value(Key, CallerId, Endpoint), Owner)
     end;
 merge_attributes([<<"language">>|_]=Keys, Account, Endpoint, Owner) ->
+    merge_value(Keys, Account, Endpoint, Owner);
+merge_attributes([<<"presence_id">>|_]=Keys, Account, Endpoint, Owner) ->
     merge_value(Keys, Account, Endpoint, Owner);
 merge_attributes([<<"record_call">> = Key|Keys], Account, Endpoint, Owner) ->
     EndpointAttr = wh_json:get_ne_value(Key, Endpoint, wh_json:new()),
