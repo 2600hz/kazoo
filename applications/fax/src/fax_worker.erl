@@ -185,7 +185,7 @@ handle_cast({'channel_destroy', JobId, JObj}, #state{job_id=JobId
                                             }=State) ->
     lager:debug("received channel destroy for ~s",[JobId]),
     send_error_status(State, wh_json:get_value(<<"Hangup-Cause">>, JObj)),
-    release_failed_job('channel_destroy', JObj, Job),
+    _ = release_failed_job('channel_destroy', JObj, Job),
     gen_server:cast(Pid, {'job_complete', self()}),
     {'noreply', reset(State)};
 handle_cast({'channel_destroy', JobId2, _JObj}, #state{job_id=JobId}=State) ->
@@ -285,7 +285,7 @@ handle_cast('prepare_job', #state{job_id=JobId
             end;
         {'ok', Status, _, _} ->
             lager:debug("failed to fetch file for job: http response ~p", [Status]),
-            send_error_status(State, Status),
+            _ = send_error_status(State, Status),
             release_failed_job('fetch_failed', Status, JObj),
             gen_server:cast(Pid, {'job_complete', self()}),
             {'noreply', reset(State)};
@@ -385,35 +385,36 @@ code_change(_OldVsn, State, _Extra) ->
 -spec attempt_to_acquire_job(ne_binary(), ne_binary()) ->
                                     {'ok', wh_json:object()} |
                                     {'error', term()}.
+-spec attempt_to_acquire_job(wh_json:object()) ->
+                                    {'ok', wh_json:object()} |
+                                    {'error', term()}.
 attempt_to_acquire_job(Id, Q) ->
     case couch_mgr:open_doc(?WH_FAXES, Id) of
         {'error', _}=E -> E;
         {'ok', JObj} ->
-            case wh_json:get_value(<<"pvt_job_status">>, JObj) of
-                <<"pending">> ->
-                    Opts = [{'rev', wh_json:get_first_defined([<<"_rev">>, <<"rev">>], JObj)}],
-                    couch_mgr:save_doc(?WH_FAXES, wh_json:set_values([{<<"pvt_job_status">>, <<"processing">>}
-                                                                      ,{<<"pvt_job_node">>, wh_util:to_binary(node())}
-                                                                      ,{<<"pvt_modified">>, wh_util:current_tstamp()}
-                                                                      ,{<<"pvt_queue">>, Q}
-                                                                     ],JObj), Opts);
-                _Else ->
-                    lager:debug("job not in an available status: ~s", [_Else]),
-                    {'error', 'job_not_available'}
-            end
+            attempt_to_acquire_job(wh_json:set_value(<<"pvt_queue">>, Q, JObj))
     end.
 
+attempt_to_acquire_job(JObj) ->
+    case wh_json:get_value(<<"pvt_job_status">>, JObj) of
+        <<"pending">> ->
+            couch_mgr:save_doc(?WH_FAXES
+                               ,wh_json:set_values([{<<"pvt_job_status">>, <<"processing">>}
+                                                    ,{<<"pvt_job_node">>, wh_util:to_binary(node())}
+                                                    ,{<<"pvt_modified">>, wh_util:current_tstamp()}
+                                                   ]
+                                                   ,JObj
+                                                  )
+                               ,[{'rev', wh_doc:revision(JObj)}]
+                              );
+        _Else ->
+            lager:debug("job not in an available status: ~s", [_Else]),
+            {'error', 'job_not_available'}
+    end.
 
--spec release_failed_job('fetch_failed', string(), wh_json:object()) -> 'failure';
-                        ('bad_file', ne_binary(), wh_json:object()) -> 'failure';
-                        ('job_timeout', 'undefined', wh_json:object()) -> 'failure';
-                        ('fetch_error', {atom(), _}, wh_json:object()) -> 'failure';
-                        ('tx_resp', wh_json:object(), wh_json:object()) -> 'failure';
-                        ('invalid_number', api_binary(), wh_json:object()) -> 'failure';
-                        ('exception', _, wh_json:object()) -> 'failure';
-                        ('timeout', _, wh_json:object()) -> 'failure'.
+-spec release_failed_job(atom(), any(), wh_json:object()) -> 'failure'.
 release_failed_job('fetch_failed', Status, JObj) ->
-    Msg = wh_util:to_binary(io_lib:format("could not retrieve file, http response ~s", [Status])),
+    Msg = wh_util:to_binary(io_lib:format("could not retrieve file, http response ~p", [Status])),
     Result = [{<<"success">>, 'false'}
               ,{<<"result_code">>, 0}
               ,{<<"result_text">>, Msg}
@@ -450,7 +451,7 @@ release_failed_job('fetch_error', {'conn_failed', _}, JObj) ->
              ],
     release_job(Result, JObj);
 release_failed_job('fetch_error', {Cause, _}, JObj) ->
-    Msg = wh_util:to_binary(io_lib:format("could not connect to document URL: ~s", [Cause])),    
+    Msg = wh_util:to_binary(io_lib:format("could not connect to document URL: ~s", [Cause])),
     Result = [{<<"success">>, 'false'}
               ,{<<"result_code">>, 0}
               ,{<<"result_text">>, Msg}
@@ -473,7 +474,7 @@ release_failed_job('tx_resp', Resp, JObj) ->
              ],
     release_job(Result, JObj, Resp);
 release_failed_job('invalid_number', Number, JObj) ->
-    Msg = wh_util:to_binary(io_lib:format("invalid fax number: ~s", [Number])),    
+    Msg = wh_util:to_binary(io_lib:format("invalid fax number: ~s", [Number])),
     Result = [{<<"success">>, 'false'}
               ,{<<"result_code">>, 500}
               ,{<<"result_text">>, Msg}
@@ -483,29 +484,18 @@ release_failed_job('invalid_number', Number, JObj) ->
     release_job(Result, JObj);
 release_failed_job('channel_destroy', Resp, JObj) ->
     Result = [{<<"success">>, 'false'}
-               | fax_util:collect_channel_props(Resp)],
-    release_job(Result, JObj, Resp);
-release_failed_job('exception', _Error, JObj) ->
-    Result = [{<<"success">>, 'false'}
-              ,{<<"result_code">>, 0}
-              ,{<<"result_text">>, <<"fax job caused an exception">>}
-              ,{<<"pages_sent">>, 0}
-              ,{<<"time_elapsed">>, elapsed_time(JObj)}
-              ,{<<"fax_bad_rows">>, 0}
-              ,{<<"fax_speed">>, 0}
-              ,{<<"fax_receiver_id">>, <<>>}
-              ,{<<"fax_error_correction">>, 'false'}
+              | fax_util:collect_channel_props(Resp)
              ],
-    release_job(Result, JObj);
+    release_job(Result, JObj, Resp);
 release_failed_job('fax_result', Resp, JObj) ->
     <<"sip:", Code/binary>> = wh_json:get_value(<<"Hangup-Code">>, Resp, <<"sip:487">>),
-    Result = props:filter_undefined([
-               {<<"time_elapsed">>, elapsed_time(JObj)}
-              ,{<<"result_code">>, wh_util:to_integer(Code)}
-              ,{<<"result_cause">>, wh_json:get_value(<<"Hangup-Cause">>, Resp)}
-              ,{<<"success">>, 'false'}
-              | fax_util:fax_properties(wh_json:get_value(<<"Application-Data">>, Resp, Resp))
-             ]),
+    Result = props:filter_undefined(
+               [{<<"time_elapsed">>, elapsed_time(JObj)}
+                ,{<<"result_code">>, wh_util:to_integer(Code)}
+                ,{<<"result_cause">>, wh_json:get_value(<<"Hangup-Cause">>, Resp)}
+                ,{<<"success">>, 'false'}
+                | fax_util:fax_properties(wh_json:get_value(<<"Application-Data">>, Resp, Resp))
+               ]),
     release_job(Result, JObj, Resp);
 release_failed_job('job_timeout', _Error, JObj) ->
     Result = [{<<"success">>, 'false'}
@@ -519,9 +509,6 @@ release_failed_job('job_timeout', _Error, JObj) ->
               ,{<<"fax_error_correction">>, 'false'}
              ],
     release_job(Result, JObj).
-
-
-
 
 -spec release_successful_job(wh_json:object(), wh_json:object()) -> 'ok'.
 release_successful_job(Resp, JObj) ->
@@ -589,7 +576,8 @@ apply_reschedule_logic(JObj) ->
     end.
 
 -spec apply_reschedule_rules({wh_json:json_terms(), wh_json:keys()}, wh_json:object()) ->
-          {'ok', wh_json:object()} | {'no_rules', wh_json:object()}.
+                                    {'ok', wh_json:object()} |
+                                    {'no_rules', wh_json:object()}.
 apply_reschedule_rules({[], _}, JObj) -> {'no_rules', JObj};
 apply_reschedule_rules({[Rule | Rules], [Key | Keys]}, JObj) ->
     Attempts = wh_json:get_integer_value(<<"attempts">>, JObj, 0),
@@ -602,20 +590,19 @@ apply_reschedule_rules({[Rule | Rules], [Key | Keys]}, JObj) ->
     Retries = wh_json:get_integer_value(<<"retries">>, Rule, ?DEFAULT_RETRY_COUNT),
     NewRetries = wh_json:get_integer_value(<<"new-retry-count">>, Rule, Retries),
     case (Attempt =:= Attempts orelse Attempt =:= -1)
-         andalso lists:member(ResultValue, ValueList)
+        andalso lists:member(ResultValue, ValueList)
     of
         'true' ->
             NewJObj = wh_json:set_values([{<<"retry_after">>, RetryAfter}
                                           ,{<<"retries">>, NewRetries}
                                           ,{<<"reschedule_rule">>, Key}
-                               ], JObj),
+                                         ], JObj),
             {'ok', NewJObj};
         'false' ->
             apply_reschedule_rules({Rules, Keys}, JObj)
     end.
 
-
--spec get_attempt_value(api_binary() | integer() ) -> wh_json:object().
+-spec get_attempt_value(api_binary() | integer()) -> integer().
 get_attempt_value(X) when is_integer(X) -> X;
 get_attempt_value('undefined') -> -1;
 get_attempt_value(<<"any">>) -> -1;
@@ -624,7 +611,8 @@ get_attempt_value(X) -> wh_util:to_integer(X).
 -spec set_default_update_fields(wh_json:object()) -> wh_json:object().
 set_default_update_fields(JObj) ->
     wh_json:set_values([{<<"pvt_modified">>, wh_util:current_tstamp()}
-                       ,{<<"retry_after">>, ?DEFAULT_RETRY_PERIOD}], JObj).
+                       ,{<<"retry_after">>, ?DEFAULT_RETRY_PERIOD}
+                       ], JObj).
 
 
 -spec maybe_notify(wh_proplist(), wh_json:object(), wh_json:object(), ne_binary()) -> any().
@@ -657,9 +645,9 @@ notify_fields(JObj, Resp) ->
       ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, JObj)}
       ,{<<"Fax-JobId">>, wh_json:get_value(<<"_id">>, JObj)}
       ,{<<"FaxBox-ID">>, wh_json:get_value(<<"faxbox_id">>, JObj)}
-      ,{<<"Fax-Notifications">>,
-        wh_json:from_list([{<<"email">>,
-          wh_json:from_list([{<<"send_to">>, Notify}])}])}
+      ,{<<"Fax-Notifications">>
+        ,wh_json:from_list([{<<"email">>, wh_json:from_list([{<<"send_to">>, Notify}])}])
+       }
       ,{<<"Fax-Info">>, wh_json:from_list(FaxFields) }
       ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, Resp)}
       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -679,21 +667,25 @@ elapsed_time(JObj) ->
                             {'ok', string(), wh_proplist(), ne_binary()} |
                             {'error', term()}.
 fetch_document(JObj) ->
-    case wh_json:get_value(<<"_attachments">>, JObj, []) of
+    case wh_doc:attachment_names(JObj) of
         [] -> fetch_document_from_url(JObj);
-        Attachments -> fetch_document_from_attachment(JObj, Attachments)
+        AttachmentNames -> fetch_document_from_attachment(JObj, AttachmentNames)
     end.
 
--spec fetch_document_from_attachment(wh_json:object(), wh_json:objects()) ->
+-spec fetch_document_from_attachment(wh_json:object(), ne_binaries()) ->
                                             {'ok', string(), wh_proplist(), ne_binary()} |
                                             {'error', term()}.
-fetch_document_from_attachment(JObj, Attachments) ->
+fetch_document_from_attachment(JObj, [AttachmentName|_]) ->
     JobId = wh_json:get_value(<<"_id">>, JObj),
-    [AttachmentName|_] = wh_json:get_keys(Attachments),
     Extension = filename:extension(AttachmentName),
     DefaultContentType = fax_util:extension_to_content_type(Extension),
-    CT = wh_json:get_value([AttachmentName, <<"content_type">>], Attachments, DefaultContentType),
-    Props = [{"Content-Type", CT}],
+
+    ContentType = case wh_doc:attachment_content_type(JObj, AttachmentName) of
+                      'undefined' -> DefaultContentType;
+                      CT -> CT
+                  end,
+
+    Props = [{"Content-Type", ContentType}],
     {'ok', Contents} = couch_mgr:fetch_attachment(?WH_FAXES, JobId, AttachmentName),
     {'ok', "200", Props, Contents}.
 
@@ -747,16 +739,16 @@ prepare_contents(JobId, RespHeaders, RespContent) ->
             {'error', list_to_binary(["file type '", Else, "' is unsupported"])}
     end.
 
--spec get_sizes(ne_binary()) -> 'ok'.
+-spec get_sizes(ne_binary()) -> {integer(), integer()}.
 get_sizes(OutputFile) ->
     CmdCount = whapps_config:get_binary(<<"fax">>, <<"count_pages_command">>, ?COUNT_PAGES_CMD),
     Cmd = io_lib:format(CmdCount, [OutputFile]),
     Result = os:cmd(wh_util:to_list(Cmd)),
-    NumberOfPages = wh_util:to_integer( Result ),
+    NumberOfPages = wh_util:to_integer(Result),
     FileSize = filelib:file_size(OutputFile),
     {NumberOfPages, FileSize}.
 
--spec normalize_content_type(string() | ne_binary()) -> ne_binary().
+-spec normalize_content_type(text()) -> ne_binary().
 normalize_content_type(<<"image/tif">>) -> <<"image/tiff">>;
 normalize_content_type(<<"image/x-tif">>) -> <<"image/tiff">>;
 normalize_content_type(<<"image/tiff">>) -> <<"image/tiff">>;
@@ -777,7 +769,7 @@ normalize_content_type(CT) ->
 send_fax(JobId, JObj, Q) ->
     send_fax(JobId, JObj, Q, get_did(JObj)).
 
--spec send_fax(ne_binary(), wh_json:object(), ne_binary(), ne_binary()) -> 'ok'.
+-spec send_fax(ne_binary(), wh_json:object(), ne_binary(), binary() | 'undefined') -> 'ok'.
 send_fax(_JobId, _JObj, _Q, 'undefined') ->
     gen_server:cast(self(), {'error', 'invalid_number', <<"(undefined)">>});
 send_fax(_JobId, _JObj, _Q, <<>>) ->
@@ -819,7 +811,7 @@ send_fax(JobId, JObj, Q, ToDID) ->
                                              ]),
     wapi_offnet_resource:publish_req(Request).
 
--spec get_did(wh_json:object()) -> ne_binary().
+-spec get_did(wh_json:object()) -> api_binary().
 get_did(JObj) ->
     case wh_json:is_true(<<"bypass_e164">>, JObj, 'false') of
         'true' -> wh_json:get_value(<<"to_number">>, JObj);
@@ -845,17 +837,21 @@ reset(State) ->
 send_status(State, Status) ->
     send_status(State, Status, ?FAX_SEND, 'undefined').
 
--spec send_error_status(state(), ne_binary()) -> any().
+-spec send_error_status(state(), text()) -> any().
 send_error_status(State, Status) ->
     send_status(State, Status, ?FAX_ERROR, 'undefined').
 
--spec send_status(state(), ne_binary(), api_object()) -> any().
+-spec send_status(state(), text(), api_object()) -> any().
 send_status(State, Status, FaxInfo) ->
     send_status(State, Status, ?FAX_SEND, FaxInfo).
 
--spec send_status(state(), ne_binary(), ne_binary(), api_object()) -> any().
-send_status(State, Status, FaxState, FaxInfo) ->
-    #state{job=JObj, page=Page, job_id=JobId, account_id=AccountId} = State,
+-spec send_status(state(), text(), ne_binary(), api_object()) -> any().
+send_status(#state{job=JObj
+                   ,page=Page
+                   ,job_id=JobId
+                   ,account_id=AccountId
+                  }
+            ,Status, FaxState, FaxInfo) ->
     FaxboxId = wh_json:get_value(<<"faxbox_id">>, JObj),
     CloudJobId = wh_json:get_value(<<"cloud_job_id">>, JObj),
     CloudPrinterId = wh_json:get_value(<<"cloud_printer_id">>, JObj),
@@ -865,7 +861,7 @@ send_status(State, Status, FaxState, FaxInfo) ->
                  ,{<<"Account-ID">>, AccountId}
                  ,{<<"Cloud-Job-ID">>, CloudJobId}
                  ,{<<"Cloud-Printer-ID">>, CloudPrinterId}
-                 ,{<<"Status">>, Status}
+                 ,{<<"Status">>, wh_util:to_binary(Status)}
                  ,{<<"Fax-State">>, FaxState}
                  ,{<<"Fax-Info">>, FaxInfo}
                  ,{<<"Direction">>, ?FAX_OUTGOING}

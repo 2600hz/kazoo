@@ -8,7 +8,7 @@
 %%% Note regarding storing the template as an attachment:
 %%% Since the tempalte is a 300k json object it is more efficent to store it as
 %%% an attachment, funky I know but necessary. Also since we already require
-%%% two API calls for editing a template we will maintain backward compatiblity by 
+%%% two API calls for editing a template we will maintain backward compatiblity by
 %%% not requiring an additional API call for the template and merge/unmerge it
 %%% from requests.
 %%%
@@ -21,7 +21,7 @@
 -module(cb_local_provisioner_templates).
 
 -export([init/0
-         ,content_types_provided/3, content_types_accepted/3         
+         ,content_types_provided/3, content_types_accepted/3
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2
          ,resource_exists/0, resource_exists/1, resource_exists/2
          ,validate/1, validate/2, validate/3
@@ -65,18 +65,21 @@ init() ->
 %% Add content types provided by this module
 %% @end
 %%--------------------------------------------------------------------
--spec content_types_provided(#cb_context{}, path_token(), path_token()) -> crossbar_content_handlers().
+-spec content_types_provided(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 content_types_provided(#cb_context{req_verb = ?HTTP_GET, auth_account_id=AccountId}=Context, DocId, ?IMAGE_REQ) ->
-    Db = wh_util:format_account_id(AccountId, encoded),
+    Db = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_doc(Db, DocId) of
-        {error, _} -> Context;
-        {ok, JObj} ->
-            ContentType = wh_json:get_value([<<"_attachments">>, ?IMAGE_REQ, <<"content_type">>]
-                                            ,JObj
-                                            ,<<"application/octet-stream">>),            
+        {'error', _} -> Context;
+        {'ok', JObj} ->
+            ContentType = case wh_doc:attachment_content_type(JObj, ?IMAGE_REQ) of
+                              'undefined' -> <<"application/octet-stream">>;
+                              CT -> CT
+                          end,
             [Type, SubType] = binary:split(ContentType, <<"/">>),
             lager:debug("found attachement of content type: ~s/~s~n", [Type, SubType]),
-            Context#cb_context{content_types_provided=[{to_binary, [{Type, SubType}]}]}
+            cb_context:set_content_types_provided(Context
+                                                  ,[{'to_binary', [{Type, SubType}]}]
+                                                 )
     end;
 content_types_provided(Context, _, _) ->
     Context.
@@ -179,7 +182,7 @@ post(#cb_context{doc=JObj}=Context, DocId) ->
             end;
         Else -> Else
     end.
-                
+
 -spec put(#cb_context{}) -> #cb_context{}.
 put(#cb_context{doc=JObj}=Context) ->
     %% see note at top of file
@@ -281,7 +284,7 @@ load_provisioner_template_summary(Context) ->
 -spec create_provisioner_template(#cb_context{}) -> #cb_context{}.
 create_provisioner_template(#cb_context{}=Context) ->
     OnSuccess = fun(C) -> on_successful_validation(undefined, C) end,
-    cb_context:validate_request_data(<<"provisioner_templates">>, Context, OnSuccess).    
+    cb_context:validate_request_data(<<"provisioner_templates">>, Context, OnSuccess).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -317,7 +320,7 @@ update_provisioner_template(DocId, #cb_context{}=Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec on_successful_validation('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.

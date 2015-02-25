@@ -95,10 +95,9 @@ content_types_provided(Context, Id, ?ICON) ->
         'success' ->
             JObj = cb_context:doc(Context1),
             Icon = wh_json:get_value(?ICON, JObj),
-            case wh_json:get_value([<<"_attachments">>, Icon], JObj) of
+            case wh_doc:attachment_content_type(JObj, Icon) of
                 'undefined' -> Context1;
-                Attachment ->
-                    CT = wh_json:get_value(<<"content_type">>, Attachment),
+                CT ->
                     [Type, SubType] = binary:split(CT, <<"/">>),
                     cb_context:set_content_types_provided(Context1, [{'to_binary', [{Type, SubType}]}])
             end;
@@ -111,7 +110,7 @@ content_types_provided(Context, Id, ?SCREENSHOT, Number) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             case maybe_get_screenshot(Context1, Number) of
-                'error' ->Context;
+                'error' -> Context;
                 {'ok', _, Attachment} ->
                     CT = wh_json:get_value(<<"content_type">>, Attachment),
                     [Type, SubType] = binary:split(CT, <<"/">>),
@@ -120,7 +119,6 @@ content_types_provided(Context, Id, ?SCREENSHOT, Number) ->
         _ -> Context1
     end;
 content_types_provided(Context, _, _, _) -> Context.
-
 
 %%--------------------------------------------------------------------
 %% @public

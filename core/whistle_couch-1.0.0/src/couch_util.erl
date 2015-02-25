@@ -964,10 +964,10 @@ copy_doc(#server{}=Conn, CopySpec, CopyFun, Options) ->
     case open_doc(Conn, SourceDbName, SourceDocId, Options) of
         {'ok', SourceDoc} ->
             Props = [{<<"_id">>, DestDocId}],
-            DestinationDoc = wh_json:set_values(Props,wh_json:delete_keys(?DELETE_KEYS, SourceDoc)),
+            DestinationDoc = wh_json:set_values(Props, wh_json:delete_keys(?DELETE_KEYS, SourceDoc)),
             case CopyFun(Conn, DestDbName, DestinationDoc, Options) of
                 {'ok', _JObj} ->
-                    Attachments = wh_json:get_value(<<"_attachments">>, SourceDoc, wh_json:new()),
+                    Attachments = wh_doc:attachments(SourceDoc, wh_json:new()),
                     copy_attachments(Conn, CopySpec, wh_json:get_values(Attachments));
                 Error -> Error
             end;

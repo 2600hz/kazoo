@@ -587,11 +587,17 @@ update_whitelabel_binary(AttachType, WhitelabelId, Context) ->
 
     JObj1 = case whitelabel_binary_meta(Context, AttachType) of
                 'undefined' -> JObj;
-                {AttachmentId, _} -> wh_json:delete_key([<<"_attachments">>, AttachmentId], JObj)
+                {AttachmentId, _} ->
+                    wh_doc:delete_attachment(JObj, AttachmentId)
             end,
     Context1 = crossbar_doc:save(cb_context:set_doc(Context, JObj1)),
 
-    crossbar_doc:save_attachment(WhitelabelId, attachment_name(AttachType, Filename, CT), Contents, Context1, Opts).
+    crossbar_doc:save_attachment(WhitelabelId
+                                 ,attachment_name(AttachType, Filename, CT)
+                                 ,Contents
+                                 ,Context1
+                                 ,Opts
+                                ).
 
 %%--------------------------------------------------------------------
 %% @private

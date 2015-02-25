@@ -165,7 +165,7 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, {RespQ, MsgId}) ->
     lager:debug("attempting to attach media ~s in ~s", [DocId, DB]),
     {'ok', VMJObj} = couch_mgr:open_doc(DB, DocId),
 
-    [AttachmentId] = wh_json:get_keys(<<"_attachments">>, VMJObj),
+    [AttachmentId] = wh_doc:attachment_names(VMJObj),
     lager:debug("attachment id ~s", [AttachmentId]),
     {'ok', AttachmentBin} = couch_mgr:fetch_attachment(DB, DocId, AttachmentId),
 
@@ -177,11 +177,11 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, {RespQ, MsgId}) ->
 
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>
-                 ,[{<<"From">>, From}
-                   ,{<<"To">>, To}
-                   ,{<<"Subject">>, Subject}
-                   ,{<<"X-Call-ID">>, props:get_value(<<"call_id">>, Voicemail)}
-                  ]
+             ,[{<<"From">>, From}
+               ,{<<"To">>, To}
+               ,{<<"Subject">>, Subject}
+               ,{<<"X-Call-ID">>, props:get_value(<<"call_id">>, Voicemail)}
+              ]
              ,ContentTypeParams
              ,[{<<"multipart">>, <<"alternative">>, [], []
                 ,[{<<"text">>, <<"plain">>
@@ -199,10 +199,10 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, {RespQ, MsgId}) ->
                  ]
                }
                ,{<<"audio">>, <<"mpeg">>
-                     ,[{<<"Content-Disposition">>, list_to_binary([<<"attachment; filename=\"">>, AttachmentFileName, "\""])}
-                       ,{<<"Content-Type">>, list_to_binary([<<"audio/mpeg; name=\"">>, AttachmentFileName, "\""])}
-                       ,{<<"Content-Transfer-Encoding">>, <<"base64">>}
-                      ]
+                 ,[{<<"Content-Disposition">>, list_to_binary([<<"attachment; filename=\"">>, AttachmentFileName, "\""])}
+                   ,{<<"Content-Type">>, list_to_binary([<<"audio/mpeg; name=\"">>, AttachmentFileName, "\""])}
+                   ,{<<"Content-Transfer-Encoding">>, <<"base64">>}
+                  ]
                  ,[], AttachmentBin
                 }
               ]
@@ -243,7 +243,7 @@ get_extension(MediaJObj) ->
     case wh_json:get_value(<<"media_type">>, MediaJObj) of
         'undefined' ->
             lager:debug("getting extension from attachment mime"),
-            attachment_to_extension(wh_json:get_value(<<"_attachments">>, MediaJObj));
+            attachment_to_extension(wh_doc:attachments(MediaJObj));
         MediaType -> MediaType
     end.
 

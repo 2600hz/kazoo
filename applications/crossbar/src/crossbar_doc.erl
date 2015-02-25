@@ -555,7 +555,7 @@ save_attachment(DocId, Name, Contents, Context, Options) ->
         {'error', 'conflict'=Error} ->
             lager:debug("saving attachment resulted in a conflict, checking for validity"),
             Context1 = load(DocId, Context, [{'use_cache', 'false'}]),
-            case wh_json:get_value([<<"_attachments">>, AName], cb_context:doc(Context1)) of
+            case wh_doc:attachment(cb_context:doc(Context1), AName) of
                 'undefined' ->
                     lager:debug("attachment does appear to be missing, reporting error"),
                     _ = maybe_delete_doc(Context, DocId),
@@ -589,16 +589,17 @@ save_attachment(DocId, Name, Contents, Context, Options) ->
                                 ])
     end.
 
--spec maybe_delete_doc(cb_context:context(), ne_binary()) -> {'ok', _} | {'error', _}.
+-spec maybe_delete_doc(cb_context:context(), ne_binary()) ->
+                              {'ok', _} |
+                              {'error', _}.
 maybe_delete_doc(Context, DocId) ->
     AccountDb = cb_context:account_db(Context),
     case couch_mgr:open_doc(AccountDb, DocId) of
         {'error', _}=Error -> Error;
         {'ok', JObj} ->
-            Attachments = wh_json:get_value(<<"_attachments">>, JObj, wh_json:new()),
-            case wh_json:is_empty(Attachments) of
-                'false' -> {'ok', 'non_empty'};
-                'true' -> couch_mgr:del_doc(AccountDb, JObj)
+            case wh_doc:attachments(JObj) of
+                'undefined' -> couch_mgr:del_doc(AccountDb, JObj);
+                _Attachments -> {'ok', 'non_empty'}
             end
     end.
 

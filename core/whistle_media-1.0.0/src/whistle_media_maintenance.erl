@@ -188,7 +188,7 @@ maybe_cleanup_metadoc(ID, E) ->
 maybe_retry_upload(ID, AttachmentName, Contents, Options, Retries) ->
     case couch_mgr:open_doc(?WH_MEDIA_DB, ID) of
         {'ok', JObj} ->
-            case wh_json:get_value([<<"_attachments">>, AttachmentName], JObj) of
+            case wh_doc:attachment(JObj, AttachmentName) of
                 'undefined' ->
                     io:format("  attachment does not appear on the document, retrying after a pause~n"),
                     timer:sleep(1000),
@@ -308,15 +308,8 @@ remove_empty_media_docs(AccountId, AccountDb, File, [Media|MediaDocs]) ->
 
 -spec maybe_remove_media_doc(ne_binary(), file:io_device(), wh_json:object()) -> 'ok'.
 maybe_remove_media_doc(AccountDb, File, MediaJObj) ->
-    case wh_json:get_value(<<"_attachments">>, MediaJObj) of
+    case wh_doc:attachments(MediaJObj) of
         'undefined' ->
-            io:format("media doc ~s has undefined attachments, archiving and removing~n"
-                      ,[wh_json:get_value(<<"_id">>, MediaJObj)]
-                     ),
-            file:write(File, wh_json:encode(MediaJObj)),
-            file:write(File, [$\n]),
-            remove_media_doc(AccountDb, MediaJObj);
-        [] ->
             io:format("media doc ~s has no attachments, archiving and removing~n"
                       ,[wh_json:get_value(<<"_id">>, MediaJObj)]
                      ),

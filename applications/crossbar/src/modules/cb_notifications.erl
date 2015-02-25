@@ -149,7 +149,7 @@ content_types_provided(Context, _Id, _Verb) ->
 
 -spec maybe_set_content_types(cb_context:context()) -> cb_context:context().
 maybe_set_content_types(Context) ->
-    case wh_json:get_value(<<"_attachments">>, cb_context:doc(Context)) of
+    case wh_doc:attachments(cb_context:doc(Context)) of
         'undefined' -> Context;
         Attachments -> set_content_types(Context, Attachments)
     end.
@@ -679,18 +679,18 @@ maybe_read_template(Context, Id, Accept) ->
 read_template(Context, Id, Accept) ->
     Doc = cb_context:fetch(Context, 'db_doc'),
     AttachmentName = attachment_name_by_media_type(Accept),
-    case wh_json:get_value([<<"_attachments">>, AttachmentName], Doc) of
+    case wh_doc:attachment(Doc, AttachmentName) of
         'undefined' ->
             lager:debug("failed to find attachment ~s in ~s", [AttachmentName, Id]),
             crossbar_util:response_faulty_request(Context);
-        Meta ->
+        _Meta ->
             lager:debug("found attachment ~s in ~s", [AttachmentName, Id]),
 
             cb_context:add_resp_headers(
               read_account_attachment(Context, Id, AttachmentName)
               ,[{<<"Content-Disposition">>, attachment_filename(Id, Accept)}
-                ,{<<"Content-Type">>, wh_json:get_value(<<"content_type">>, Meta)}
-                ,{<<"Content-Length">>, wh_json:get_value(<<"length">>, Meta)}
+                ,{<<"Content-Type">>, wh_doc:attachment_content_type(Doc, AttachmentName)}
+                ,{<<"Content-Length">>, wh_doc:attachment_length(Doc, AttachmentName)}
                ])
     end.
 

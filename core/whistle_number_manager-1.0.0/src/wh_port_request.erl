@@ -48,15 +48,16 @@ get(Number) ->
 
 -spec public_fields(wh_json:object()) -> wh_json:object().
 public_fields(JObj) ->
-    As = wh_json:get_value(<<"_attachments">>, JObj, wh_json:new()),
-    NormalizedAs = normalize_attachments(As),
+    As = wh_doc:attachments(JObj, wh_json:new()),
 
     wh_json:set_values([{<<"id">>, wh_json:get_value(<<"_id">>, JObj)}
                         ,{<<"created">>, wh_json:get_value(<<"pvt_created">>, JObj)}
                         ,{<<"updated">>, wh_json:get_value(<<"pvt_modified">>, JObj)}
-                        ,{<<"uploads">>, NormalizedAs}
+                        ,{<<"uploads">>, normalize_attachments(As)}
                         ,{<<"port_state">>, wh_json:get_value(?PORT_PVT_STATE, JObj, ?PORT_WAITING)}
-                       ], wh_doc:public_fields(JObj)).
+                       ]
+                       ,wh_doc:public_fields(JObj)
+                      ).
 
 -spec normalize_attachments(wh_json:object()) -> wh_json:object().
 normalize_attachments(Attachments) ->

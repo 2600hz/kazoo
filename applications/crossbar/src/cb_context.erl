@@ -343,8 +343,7 @@ add_attachment_content_type(#cb_context{}=Context, DocId, AttachmentId) ->
 
 -spec maybe_add_content_type_provided(context(), ne_binary()) -> context().
 maybe_add_content_type_provided(Context, AttachmentId) ->
-    ContentTypeKey = [<<"_attachments">>, AttachmentId, <<"content_type">>],
-    case wh_json:get_value(ContentTypeKey, doc(Context)) of
+    case wh_doc:attachment_content_type(doc(Context), AttachmentId) of
         'undefined' -> Context;
         ContentType ->
             lager:debug("found content type ~s", [ContentType]),

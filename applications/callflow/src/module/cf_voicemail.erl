@@ -1179,16 +1179,15 @@ publish_voicemail_saved(Length, Id, Call, MediaId, Timestamp) ->
 maybe_transcribe(Call, MediaId, 'true') ->
     Db = whapps_call:account_db(Call),
     {'ok', MediaDoc} = couch_mgr:open_doc(Db, MediaId),
-    case wh_json:get_value(<<"_attachments">>, MediaDoc, []) of
+    case wh_doc:attachment_names(MediaDoc) of
         [] ->
             lager:warning("no audio attachments on media doc ~s: ~p", [MediaId, MediaDoc]),
             'undefined';
-        Attachments ->
-            {Attachment, MetaData} = hd(wh_json:to_proplist(Attachments)),
-            case couch_mgr:fetch_attachment(Db, MediaId, Attachment) of
+        [AttachmentId|_] ->
+            case couch_mgr:fetch_attachment(Db, MediaId, AttachmentId) of
                 {'ok', Bin} ->
-                    lager:info("transcribing first attachment ~s: ~p", [Attachment, MetaData]),
-                    maybe_transcribe(Db, MediaDoc, Bin, wh_json:get_value(<<"content_type">>, MetaData));
+                    lager:info("transcribing first attachment ~s", [AttachmentId]),
+                    maybe_transcribe(Db, MediaDoc, Bin, wh_doc:attachment_content_type(MediaDoc, AttachmentId));
                 {'error', _E} ->
                     lager:info("error fetching vm: ~p", [_E]),
                     'undefined'
@@ -1197,7 +1196,7 @@ maybe_transcribe(Call, MediaId, 'true') ->
 maybe_transcribe(_, _, 'false') -> 'undefined'.
 
 -spec maybe_transcribe(ne_binary(), wh_json:object(), binary(), api_binary()) ->
-                                    api_object().
+                              api_object().
 maybe_transcribe(_, _, _, 'undefined') -> 'undefined';
 maybe_transcribe(_, _, <<>>, _) -> 'undefined';
 maybe_transcribe(Db, MediaDoc, Bin, ContentType) ->
@@ -1565,9 +1564,9 @@ store_recording(AttachmentName, DocId, Call) ->
     case couch_mgr:open_doc(AccountDb, DocId) of
         {'ok', JObj} ->
             MinLength = min_recording_length(Call),
-            AttachmentLength = wh_json:get_integer_value([<<"_attachments">>, AttachmentName, <<"length">>], JObj, 0),
+            AttachmentLength = wh_doc:attachment_length(JObj, AttachmentName),
             lager:info("attachment length is ~B and must be larger than ~B to be stored", [AttachmentLength, MinLength]),
-            AttachmentLength > MinLength;
+            is_integer(AttachmentLength) andalso AttachmentLength > MinLength;
         _Else -> 'false'
     end.
 
@@ -1627,10 +1626,9 @@ get_new_attachment_url(AttachmentName, MediaId, Call) ->
 
 -spec maybe_remove_attachments(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 maybe_remove_attachments(AccountDb, MediaId, JObj) ->
-    case wh_json:get_keys(wh_doc:attachments(JObj, wh_json:new())) of
-        [] -> 'ok';
-        _Existing ->
-            Removed = wh_json:delete_key(<<"_attachments">>, JObj),
+    case wh_doc:maybe_remove_attachments(JObj) of
+        {'false', _} -> 'ok';
+        {'true', Removed} ->
             couch_mgr:save_doc(AccountDb, Removed),
             lager:debug("doc ~s has existing attachments, removing", [MediaId])
     end.

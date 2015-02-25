@@ -65,17 +65,18 @@ init() ->
 %% Add content types provided by this module
 %% @end
 %%--------------------------------------------------------------------
--spec content_types_provided(#cb_context{}, path_token(), path_token()) -> crossbar_content_handlers().
+-spec content_types_provided(cb_context:context(), path_token(), path_token()) -> crossbar_content_handlers().
 content_types_provided(#cb_context{req_verb = ?HTTP_GET}=Context, DocId, ?IMAGE_REQ) ->
     case couch_mgr:open_doc(?WH_PROVISIONER_DB, DocId) of
-        {error, _} -> Context;
-        {ok, JObj} ->
-            ContentType = wh_json:get_value([<<"_attachments">>, ?IMAGE_REQ, <<"content_type">>]
-                                            ,JObj
-                                            ,<<"application/octet-stream">>),
+        {'error', _} -> Context;
+        {'ok', JObj} ->
+            ContentType = case wh_doc:attachment_content_type(JObj, ?IMAGE_REQ) of
+                              'undefined' -> <<"application/octet-stream">>;
+                              CT -> CT
+                          end,
             [Type, SubType] = binary:split(ContentType, <<"/">>),
             lager:debug("found attachement of content type: ~s/~s~n", [Type, SubType]),
-            Context#cb_context{content_types_provided=[{to_binary, [{Type, SubType}]}]}
+            Context#cb_context{content_types_provided=[{'to_binary', [{Type, SubType}]}]}
     end;
 content_types_provided(Context, _, _) ->
     Context.
@@ -317,7 +318,7 @@ update_provisioner_template(DocId, #cb_context{}=Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec on_successful_validation('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.

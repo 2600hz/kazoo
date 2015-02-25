@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Utilities for manipulating Kazoo/Whistle documents
 %%% @end
@@ -19,10 +19,13 @@
          ,attachments/1, attachments/2
          ,attachment_names/1
          ,attachment/1, attachment/2, attachment/3
-         ,delete_attachments/1
+
+         ,attachment_length/2, attachment_content_type/2
+         ,attachment_property/3
+         ,delete_attachments/1, delete_attachment/2
          ,maybe_remove_attachments/1, maybe_remove_attachments/2
          ,id/1
-         ,revision/1, set_revision/2
+         ,revision/1, set_revision/2, delete_revision/1
          ,set_soft_deleted/2
 
          ,is_soft_deleted/1
@@ -184,9 +187,24 @@ attachment(JObj, AName) ->
 attachment(JObj, AName, Default) ->
     wh_json:get_value(AName, attachments(JObj, wh_json:new()), Default).
 
+-spec attachment_length(wh_json:object(), ne_binary()) -> api_integer().
+attachment_length(JObj, AName) ->
+    attachment_property(JObj, AName, <<"length">>).
+
+-spec attachment_content_type(wh_json:object(), ne_binary()) -> api_binary().
+attachment_content_type(JObj, AName) ->
+    attachment_property(JObj, AName, <<"content_type">>).
+
+-spec attachment_property(wh_json:object(), ne_binary(), wh_json:key()) -> wh_json:json_term().
+attachment_property(JObj, AName, Key) ->
+    wh_json:get_value(Key, attachment(JObj, AName, wh_json:new())).
+
 -spec delete_attachments(wh_json:object()) -> wh_json:object().
 delete_attachments(JObj) ->
     maybe_remove_attachments(JObj, attachments(JObj)).
+
+delete_attachment(JObj, AName) ->
+    maybe_remove_attachment(JObj, AName, attachment(JObj, AName)).
 
 -spec maybe_remove_attachments(wh_json:object()) -> {boolean(), wh_json:object()}.
 maybe_remove_attachments(JObj) ->
@@ -200,13 +218,22 @@ maybe_remove_attachments(JObj, 'undefined') -> JObj;
 maybe_remove_attachments(JObj, _Attachments) ->
     wh_json:delete_key(?KEY_ATTACHMENTS, JObj).
 
+-spec maybe_remove_attachment(wh_json:object(), ne_binary(), api_object()) -> wh_json:object().
+maybe_remove_attachment(JObj, _AName, 'undefined') -> JObj;
+maybe_remove_attachment(JObj, AName, _AMeta) ->
+    wh_json:delete_key([?KEY_ATTACHMENTS, AName], JObj).
+
 -spec revision(wh_json:object()) -> api_binary().
 revision(JObj) ->
-    wh_json:get_value(<<"_rev">>, JObj).
+    wh_json:get_first_defined([<<"_rev">>, <<"rev">>], JObj).
 
 -spec set_revision(wh_json:object(), api_binary()) -> wh_json:object().
 set_revision(JObj, Rev) ->
     wh_json:set_value(<<"_rev">>, Rev, JObj).
+
+-spec delete_revision(wh_json:object()) -> wh_json:object().
+delete_revision(JObj) ->
+    wh_json:delete_key(<<"_rev">>, JObj).
 
 -spec id(wh_json:object()) -> api_binary().
 id(JObj) ->
