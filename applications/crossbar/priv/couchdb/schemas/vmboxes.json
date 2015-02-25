@@ -18,7 +18,7 @@
       "type": "string",
       "required": true,
       "description": "The voicemail box number",
-      "minLength": 2,
+      "minLength": 1,
       "maxLength": 30
     },
     "require_pin": {

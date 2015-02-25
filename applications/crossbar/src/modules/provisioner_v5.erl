@@ -268,14 +268,26 @@ set_line_realm(JObj) ->
 -spec create_provision_settings(wh_json:object()) -> wh_json:object().
 create_provision_settings(JObj) ->
     SubSettings =
+        case wh_json:get_value(<<"timezone">>, JObj) of
+            'undefined' -> 'undefined';
+            Timezone ->
+                wh_json:set_value([<<"datetime">>
+                                  ,<<"time">>
+                                  ,<<"timezone">>
+                                  ]
+                                  ,Timezone
+                                  ,wh_json:new()
+                                 )
+        end,
+    Settings =
         wh_json:from_list(
-          [{<<"timezone">>, wh_json:get_value(<<"timezone">>, JObj)}]
+          props:filter_undefined(
+            [{<<"lines">>, [set_line(JObj)]}
+            ,{<<"codecs">>, [set_codecs(JObj)]}
+            ,{<<"settings">>, SubSettings}
+            ]
+           )
          ),
-    Settings = wh_json:from_list(
-                 [{<<"lines">>, [set_line(JObj)]}
-                  ,{<<"codecs">>, [set_codecs(JObj)]}
-                  ,{<<"settings">>, SubSettings}
-                 ]),
     wh_json:from_list(
       [{<<"brand">>, wh_json:get_value([<<"provision">>, <<"endpoint_brand">>], JObj, <<>>)}
        ,{<<"family">>, wh_json:get_value([<<"provision">>, <<"endpoint_family">>], JObj, <<>>)}
@@ -315,14 +327,7 @@ set_basic(JObj) ->
 set_sip(JObj) ->
     Routines = [fun(J) ->
                     Name = wh_json:get_value([<<"sip">>, <<"username">>], JObj),
-                    wh_json:set_values([
-                        {<<"register_name">>, Name}
-                        ,{<<"username">>, Name}
-                    ], J)
-                end
-                ,fun(J) ->
-                    Pass = wh_json:get_value([<<"sip">>, <<"password">>], JObj),
-                    wh_json:set_value(<<"password">>, Pass, J)
+                    wh_json:set_value(<<"username">>, Name, J)
                 end
                 ,fun(J) ->
                     Pass = wh_json:get_value([<<"sip">>, <<"password">>], JObj),
@@ -330,7 +335,7 @@ set_sip(JObj) ->
                 end
                 ,fun(J) ->
                     Pass = wh_json:get_value(<<"realm">>, JObj),
-                    wh_json:set_value(<<"sip_server_1">>, Pass, J)
+                    wh_json:set_value(<<"realm">>, Pass, J)
                 end
                ],
     lists:foldl(fun(F, J) -> F(J) end, wh_json:new(), Routines).
@@ -356,8 +361,7 @@ set_advanced(JObj) ->
 %%--------------------------------------------------------------------
 -spec set_codecs(wh_json:object()) -> wh_json:object().
 set_codecs(JObj) ->
-    Routines = [fun(J) -> wh_json:set_value(<<"audio">>, set_audio(JObj), J) end
-               ],
+    Routines = [fun(J) -> wh_json:set_value(<<"audio">>, set_audio(JObj), J) end],
     lists:foldl(fun(F, J) -> F(J) end, wh_json:new(), Routines).
 
 -spec set_audio(wh_json:object()) -> wh_json:object().
