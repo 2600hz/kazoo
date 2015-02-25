@@ -12,7 +12,7 @@
 
 -include("doodle.hrl").
 
--spec handle_req(wh_json:object(), wh_proplist(), basic_deliver()) -> 'ok'.
+-spec handle_req(wh_json:object(), wh_proplist(), gen_listener:basic_deliver()) -> 'ok'.
 handle_req(JObj, Props, Deliver) ->
     Srv = props:get_value('server', Props),
     case wapi_sms:inbound_v(JObj) of
@@ -23,7 +23,7 @@ handle_req(JObj, Props, Deliver) ->
             gen_listener:ack(Srv, Deliver)
     end.
 
--spec handle_inbound_sms(wh_json:object(), pid(), basic_deliver()) -> 'ok'.
+-spec handle_inbound_sms(wh_json:object(), pid(), gen_listener:basic_deliver()) -> 'ok'.
 handle_inbound_sms(JObj, Srv, Deliver) ->
     case maybe_relay_request(JObj) of
         'ack' -> gen_listener:ack(Srv, Deliver);

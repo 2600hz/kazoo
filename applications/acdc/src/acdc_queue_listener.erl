@@ -67,7 +67,7 @@
            %% While processing a call
           ,call :: whapps_call:call()
           ,agent_id :: ne_binary()
-          ,delivery :: #'basic.deliver'{}
+          ,delivery :: gen_listener:basic_deliver()
          }).
 -type state() :: #state{}.
 
@@ -152,7 +152,7 @@ finish_member_call(Srv, AcceptJObj) ->
 
 -spec cancel_member_call(pid()) -> 'ok'.
 -spec cancel_member_call(pid(), wh_json:object()) -> 'ok'.
--spec cancel_member_call(pid(), wh_json:object(), #'basic.deliver'{}) -> 'ok'.
+-spec cancel_member_call(pid(), wh_json:object(), gen_listener:basic_deliver()) -> 'ok'.
 cancel_member_call(Srv) ->
     gen_listener:cast(Srv, {'cancel_member_call'}).
 cancel_member_call(Srv, RejectJObj) ->
@@ -160,7 +160,7 @@ cancel_member_call(Srv, RejectJObj) ->
 cancel_member_call(Srv, MemberCallJObj, Delivery) ->
     gen_listener:cast(Srv, {'cancel_member_call', MemberCallJObj, Delivery}).
 
--spec ignore_member_call(pid(), whapps_call:call(), #'basic.deliver'{}) -> 'ok'.
+-spec ignore_member_call(pid(), whapps_call:call(), gen_listener:basic_deliver()) -> 'ok'.
 ignore_member_call(Srv, Call, Delivery) ->
     gen_listener:cast(Srv, {'ignore_member_call', Call, Delivery}).
 
@@ -430,7 +430,7 @@ handle_cast({'cancel_member_call'}, #state{delivery=Delivery
 handle_cast({'cancel_member_call', _RejectJObj}, #state{delivery='undefined'}=State) ->
     lager:debug("cancel a member_call that I don't have delivery info for"),
     {'noreply', State};
-handle_cast({'cancel_member_call', _RejectJObj}, #state{delivery = #'basic.deliver'{}=Delivery
+handle_cast({'cancel_member_call', _RejectJObj}, #state{delivery=Delivery
                                                         ,call=Call
                                                         ,shared_pid=Pid
                                                        }=State) ->
@@ -596,7 +596,7 @@ publish_sync_resp(Strategy, StrategyState, ReqJObj, Id) ->
              ]),
     publish(wh_json:get_value(<<"Server-ID">>, ReqJObj), Resp, fun wapi_acdc_queue:publish_sync_resp/2).
 
--spec maybe_nack(whapps_call:call(), #'basic.deliver'{}, pid()) -> boolean().
+-spec maybe_nack(whapps_call:call(), gen_listener:basic_deliver(), pid()) -> boolean().
 maybe_nack(Call, Delivery, SharedPid) ->
     case is_call_alive(Call) of
         'true' ->

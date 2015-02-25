@@ -7,7 +7,6 @@ PA = $(foreach EBIN,$(EBINS),-pa $(EBIN))
 
 ERLC_OPTS = -Werror +debug_info +warn_export_all $(PA)
 
-
 .PHONY: all compile clean
 
 all: compile

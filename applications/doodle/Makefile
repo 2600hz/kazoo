@@ -1,12 +1,13 @@
 PROJECT = doodle
 ROOT = ../..
 
-EBINS = $(shell find $(ROOT)/core -maxdepth 2 -name ebin -print) $(shell find $(ROOT)/deps -maxdepth 2 -name ebin -print)
+EBINS = $(shell find $(ROOT)/core/whistle-* -maxdepth 2 -name ebin -print) \
+	$(shell find $(ROOT)/core/whistle_apps-* -maxdepth 2 -name ebin -print) \
+	$(shell find $(ROOT)/core/whistle_number_manager-* -maxdepth 2 -name ebin -print) \
+	$(shell find $(ROOT)/deps/lager-* -maxdepth 2 -name ebin -print)
 PA = $(foreach EBIN,$(EBINS),-pa $(EBIN))
 
-ERLC_OPTS = -Werror +debug_info +warn_export_all -I$(ROOT)/core -I$(ROOT)/deps $(PA)
-
-ERL_LIBS = $(subst $(eval) ,:,$(wildcard $(ROOT)/deps/rabbitmq_client-*/deps))
+ERLC_OPTS = -Werror +debug_info +warn_export_all $(PA)
 
 .PHONY: all compile clean
 
@@ -33,7 +34,7 @@ compile-test: test/$(PROJECT).app
 
 test/$(PROJECT).app: src/*.erl
 	@mkdir -p test/
-	erlc -v $(ERLC_OPTS) -DTEST -o test/ -pa test/  $?
+	erlc -v $(ERLC_OPTS) -DTEST -o test/ -pa test/ $?
 
 clean:
 	rm -f ebin/*

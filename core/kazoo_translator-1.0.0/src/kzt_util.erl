@@ -54,7 +54,6 @@
         ]).
 
 -ifdef(TEST).
--export([test/0]).
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
