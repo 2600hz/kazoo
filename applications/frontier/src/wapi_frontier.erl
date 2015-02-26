@@ -40,8 +40,8 @@
 -define(RATELIMITS_RESP_VALUES, [{<<"Event-Category">>, <<"rate_limit">>}
                                 ,{<<"Event-Name">>, <<"query_resp">>}
                                ]).
--define(RATELIMITS_RESP_TYPES, [{<<"Realm">>, fun(V) -> wh_json:is_json_object(V) end}
-                                ,{<<"Device">>, fun(V) -> wh_json:is_json_object(V) end}
+-define(RATELIMITS_RESP_TYPES, [{<<"Realm">>, fun wh_json:is_json_object/1}
+                                ,{<<"Device">>, fun wh_json:is_json_object/1}
                                ]).
 
 -define(ACL_REQ_VALUES, [{<<"Event-Category">>, <<"acl">>}
@@ -50,8 +50,8 @@
 -define(ACL_RESP_VALUES, [{<<"Event-Category">>, <<"acl">>}
                           ,{<<"Event-Name">>, <<"query_resp">>}
                          ]).
--define(ACL_RESP_TYPES, [{<<"Realm">>, fun(V) -> wh_json:is_json_object(V) end}
-                         ,{<<"Device">>, fun(V) -> wh_json:is_json_object(V) end}
+-define(ACL_RESP_TYPES, [{<<"Realm">>, fun wh_json:is_json_object/1}
+                         ,{<<"Device">>, fun wh_json:is_json_object/1}
                         ]).
 
 -spec ratelimits_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.

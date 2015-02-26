@@ -16,7 +16,7 @@
 -include("frontier.hrl").
 
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?WORKER('frontier_ensure_rates_in_syscfg')
+-define(CHILDREN, [?WORKER('frontier_init')
                    ,?WORKER('frontier_shared_listener')
                   ]).
 

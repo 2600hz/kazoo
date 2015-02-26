@@ -12,7 +12,7 @@
 
 %% API
 -export([lookup_acls/1
-         ,lookup_ratelimits/1
+         ,lookup_rate_limits/1
         ]).
 
 -spec lookup_acls(ne_binary()) -> 'ok'.
@@ -29,8 +29,8 @@ print_acl_record(Record) ->
     io:format("~s ~s use policy ~s for cidrs:~n",[Type, Name, Policy]),
     lists:foreach(fun (CIDR) -> io:format("~s~n", [CIDR]) end, CIDRs).
 
--spec lookup_ratelimits(ne_binary()) -> 'ok'.
-lookup_ratelimits(Entity) ->
+-spec lookup_rate_limits(ne_binary()) -> 'ok'.
+lookup_rate_limits(Entity) ->
     Limits = frontier_handle_rate:lookup_rate_limit_records(Entity),
     lists:foreach(fun (S) -> print_limits(S, wh_json:get_value(S, Limits)) end,[<<"Device">>, <<"Realm">>]).
 

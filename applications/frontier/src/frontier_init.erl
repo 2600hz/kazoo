@@ -6,13 +6,13 @@
 %%% @contributors
 %%%   SIPLABS, LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
--module(frontier_ensure_rates_in_syscfg).
+-module(frontier_init).
 
 -include("frontier.hrl").
 
 %% API
--export([init/1
-         ,start_link/0
+-export([start_link/0
+         ,init/0
         ]).
 
 -define(ACCOUNT_RATES_SEC, [{<<"registrations">>, 20}
@@ -52,8 +52,8 @@ sysconfig_default_rates() ->
 
 -spec start_link() -> startlink_ret().
 start_link() ->
-    gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
-
-init(_) ->
-    _ = whapps_config:get(?APP_NAME, <<"rate_limits">>, sysconfig_default_rates()),
+    spawn('init'),
     'ignore'.
+
+init() ->
+    whapps_config:get(?APP_NAME, <<"rate_limits">>, sysconfig_default_rates()).
