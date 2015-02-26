@@ -12,7 +12,7 @@
 
 %% API
 -export([start_link/0
-         ,init/0
+         ,default_rate_limits/0
         ]).
 
 -define(ACCOUNT_RATES_SEC, [{<<"registrations">>, 20}
@@ -52,8 +52,9 @@ sysconfig_default_rates() ->
 
 -spec start_link() -> startlink_ret().
 start_link() ->
-    spawn('init'),
+    spawn('default_rate_limits'),
     'ignore'.
 
-init() ->
+-spec default_rate_limits() -> wh_json:object().
+default_rate_limits() ->
     whapps_config:get(?APP_NAME, <<"rate_limits">>, sysconfig_default_rates()).

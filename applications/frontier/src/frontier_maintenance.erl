@@ -13,6 +13,7 @@
 %% API
 -export([lookup_acls/1
          ,lookup_rate_limits/1
+         ,update_system_default/2
         ]).
 
 -spec lookup_acls(ne_binary()) -> 'ok'.
@@ -44,3 +45,13 @@ print_limits(Section, Rates) ->
     lists:foreach(fun (Key) ->
                       io:format("~-15s: ~7.10B/m ~7.10B/s~n", [Key, wh_json:get_value(Key, Min), wh_json:get_value(Key, Sec)])
                   end, Keys).
+
+-spec update_system_default(ne_binary(), ne_binary()) -> 'ok'.
+update_system_default(Path, Value) ->
+    Keys = binary:split(Path, <<".">>, ['global']),
+    NewRate = wh_util:to_integer(Value),
+    Rates = frontier_init:default_rate_limits(),
+    OldRate = wh_json:get_value(Keys, Rates),
+    io:format("Updating ~s from ~p to ~p~n", [Path, OldRate, NewRate]),
+    {'ok', _} = whapps_config:set(?APP_NAME, <<"rate_limits">>, wh_json:set_value(Keys, NewRate, Rates)),
+    'ok'.
