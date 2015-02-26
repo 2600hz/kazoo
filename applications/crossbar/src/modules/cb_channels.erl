@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% Listing of all expected v1 callbacks
@@ -196,6 +196,8 @@ maybe_execute_command(Context, CallId) ->
 
 maybe_execute_command(Context, Transferor, <<"transfer">>) ->
     maybe_transfer(Context, Transferor);
+maybe_execute_command(Context, CallId, <<"hangup">>) ->
+    maybe_hangup(Context, CallId);
 maybe_execute_command(Context, _CallId, _Command) ->
     lager:debug("unknown command: ~s", [_Command]),
     crossbar_util:response_invalid_data(cb_context:doc(Context), Context).
@@ -428,3 +430,14 @@ maybe_transfer(Context, Transferor, _Transferee, Target) ->
     lager:debug("attempting to transfer ~s to ~s by ~s", [_Transferee, Target, Transferor]),
     wh_amqp_worker:cast(API, fun wapi_metaflow:publish_req/1),
     crossbar_util:response_202(<<"transfer initiated">>, Context).
+
+-spec maybe_hangup(cb_context:context(), ne_binary()) -> cb_context:context().
+maybe_hangup(Context, CallId) ->
+    API = [{<<"Call-ID">>, CallId}
+           ,{<<"Action">>, <<"hangup">>}
+           ,{<<"Data">>, wh_json:new()}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    lager:debug("attempting to hangup ~s", [CallId]),
+    wh_amqp_worker:cast(API, fun wapi_metaflow:publish_req/1),
+    crossbar_util:response_202(<<"hangup initiated">>, Context).

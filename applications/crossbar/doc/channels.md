@@ -54,4 +54,5 @@ The Channels API allows queries to find active channels for an account, a user, 
 
 * `action`: What to do to the channel
   * `transfer`: Transfers the `{CALL_ID}` leg to the `target` extension/DID and places the other leg on hold
+  * `hangup`: Hangup the `{CALL_ID}` leg
 * All other arguments are determined by the `action` value
