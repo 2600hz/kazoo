@@ -73,6 +73,7 @@
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
+-define(CALL_PARK_FEATURE, "*3").
 -record(state, {max_channel_cleanup_ref :: reference()}).
 -type state() :: #state{}.
 
@@ -562,6 +563,18 @@ find_by_user_realm('undefined', Realm) ->
         Channels ->
             [{Channel#channel.uuid, ecallmgr_fs_channel:to_json(Channel)}
               || Channel <- Channels
+            ]
+    end;
+find_by_user_realm(<<?CALL_PARK_FEATURE, _/binary>>=Username, Realm) ->
+    Pattern = #channel{destination=wh_util:to_lower_binary(Username)
+                      ,realm=wh_util:to_lower_binary(Realm)
+                      ,other_leg='undefined'
+                      ,_='_'},
+    case ets:match_object(?CHANNELS_TBL, Pattern) of
+        [] -> [];
+        Channels ->
+            [{Channel#channel.uuid, ecallmgr_fs_channel:to_json(Channel)}
+                || Channel <- Channels
             ]
     end;
 find_by_user_realm(Usernames, Realm) when is_list(Usernames) ->
