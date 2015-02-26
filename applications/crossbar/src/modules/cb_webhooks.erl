@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle CRUD operations for WebHooks
@@ -16,10 +16,12 @@
          ,validate/1, validate/2, validate/3
          ,put/1
          ,post/2
+         ,patch/2
          ,delete/2
         ]).
 
 -include("../crossbar.hrl").
+-include_lib("whistle/src/wh_json.hrl").
 
 -define(CB_LIST, <<"webhooks/crossbar_listing">>).
 
@@ -41,6 +43,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.webhooks">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.webhooks">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.webhooks">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.patch.webhooks">>, ?MODULE, 'patch'),
     crossbar_bindings:bind(<<"*.execute.delete.webhooks">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
@@ -60,7 +63,7 @@ allowed_methods() ->
 allowed_methods(?PATH_TOKEN_ATTEMPTS) ->
     [?HTTP_GET];
 allowed_methods(_) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 allowed_methods(_Id, ?PATH_TOKEN_ATTEMPTS) ->
     [?HTTP_GET].
 
@@ -90,22 +93,49 @@ resource_exists(_Id, ?PATH_TOKEN_ATTEMPTS) -> 'true'.
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
-validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
-    summary(cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB));
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
-    create(cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB)).
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+validate(Context) ->
+    validate_webhooks(cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB)
+                      ,cb_context:req_verb(Context)
+                     ).
+
+-spec validate_webhooks(cb_context:context(), http_method()) -> cb_context:context().
+validate_webhooks(Context, ?HTTP_GET) ->
+    summary(Context);
+validate_webhooks(Context, ?HTTP_PUT) ->
+    create(Context).
 
 validate(Context, ?PATH_TOKEN_ATTEMPTS) ->
     summary_attempts(Context);
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id) ->
-    read(Id, cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB));
-validate(#cb_context{req_verb = ?HTTP_POST}=Context, Id) ->
-    update(Id, cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB));
-validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Id) ->
-    read(Id, cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB)).
+validate(Context, Id) ->
+    validate_webhook(cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB)
+                     ,Id
+                     ,cb_context:req_verb(Context)
+                    ).
+
+-spec validate_webhook(cb_context:context(), path_token(), http_method()) -> cb_context:context().
+validate_webhook(Context, Id, ?HTTP_GET) ->
+    read(Id, Context);
+validate_webhook(Context, Id, ?HTTP_POST) ->
+    update(Id, Context);
+validate_webhook(Context, Id, ?HTTP_PATCH) ->
+    validate_patch(read(Id, Context), Id);
+validate_webhook(Context, Id, ?HTTP_DELETE) ->
+    read(Id, Context).
 
 validate(Context, Id, ?PATH_TOKEN_ATTEMPTS) ->
     summary_attempts(Context, Id).
+
+-spec validate_patch(cb_context:context(), ne_binary()) -> cb_context:context().
+validate_patch(Context, Id) ->
+    case cb_context:resp_status(Context) of
+        'success' ->
+            PatchJObj = wh_doc:public_fields(cb_context:req_data(Context)),
+            JObj = wh_json:merge_jobjs(PatchJObj, cb_context:doc(Context)),
+            OnValidateReqDataSuccess = fun(C) -> crossbar_doc:load_merge(Id, C) end,
+            cb_context:validate_request_data(<<"webhooks">>, cb_context:set_req_data(Context, JObj), OnValidateReqDataSuccess);
+        _Status -> Context
+    end.
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _) ->
@@ -113,6 +143,10 @@ post(Context, _) ->
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
+    crossbar_doc:save(cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB)).
+
+-spec patch(cb_context:context(), path_token()) -> cb_context:context().
+patch(Context, _Id) ->
     crossbar_doc:save(cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB)).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
@@ -165,47 +199,105 @@ update(Id, Context) ->
 %%--------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST
-                           ,[{'startkey', [cb_context:account_id(Context)]}
-                             ,{'endkey', [cb_context:account_id(Context), wh_json:new()]}
-                            ]
-                           ,Context
-                           ,fun normalize_view_results/2
-                          ).
+    maybe_fix_envelope(
+      crossbar_doc:load_view(?CB_LIST
+                             ,[{'startkey', [cb_context:account_id(Context), get_summary_start_key(Context)]}
+                               ,{'endkey', [cb_context:account_id(Context), wh_json:new()]}
+                              ]
+                             ,Context
+                             ,fun normalize_view_results/2
+                            )
+     ).
 
+-spec maybe_fix_envelope(cb_context:context()) -> cb_context:context().
+maybe_fix_envelope(Context) ->
+    case cb_context:resp_status(Context) of
+        'success' -> fix_envelope(Context);
+        _Status -> Context
+    end.
+
+-spec fix_envelope(cb_context:context()) -> cb_context:context().
+fix_envelope(Context) ->
+    UpdatedEnvelope =
+        case {cb_context:doc(Context)
+              ,cb_context:resp_envelope(Context)
+             }
+        of
+            {[], Envelope} ->
+                wh_json:delete_keys([<<"start_key">>, <<"next_start_key">>], Envelope);
+            {_, Envelope} ->
+                fix_keys(Envelope)
+        end,
+    cb_context:set_resp_envelope(Context, UpdatedEnvelope).
+
+-spec fix_keys(wh_json:object()) -> wh_json:object().
+fix_keys(Envelope) ->
+    lists:foldl(fun fix_key_fold/2, Envelope, [<<"start_key">>, <<"next_start_key">>]).
+
+-spec fix_key_fold(wh_json:key(), wh_json:object()) -> wh_json:object().
+fix_key_fold(Key, Envelope) ->
+    case wh_json:get_value(Key, Envelope) of
+        [_AccountId, ?EMPTY_JSON_OBJECT] -> wh_json:delete_key(Key, Envelope);
+        [_AccountId, 0] -> wh_json:delete_key(Key, Envelope);
+        [_AccountId, Value] -> wh_json:set_value(Key, Value, Envelope);
+        <<_/binary>> = _ -> Envelope;
+        0 -> wh_json:delete_key(Key, Envelope);
+        I when is_integer(I) -> Envelope;
+        ?EMPTY_JSON_OBJECT -> wh_json:delete_key(Key, Envelope);
+        'undefined' -> Envelope
+    end.
+
+-spec summary_attempts(cb_context:context()) -> cb_context:context().
+-spec summary_attempts(cb_context:context(), api_binary()) -> cb_context:context().
 summary_attempts(Context) ->
     summary_attempts(Context, 'undefined').
 summary_attempts(Context, 'undefined') ->
-    ViewOptions = [{'endkey', [cb_context:account_id(Context), 0]}
-                   ,{'startkey', [cb_context:account_id(Context), wh_json:new()]}
-                   ,{'limit', 15}
+    ViewOptions = [{'endkey', 0}
+                   ,{'startkey', get_attempts_start_key(Context)}
                    ,'include_docs'
                    ,'descending'
                   ],
     summary_attempts_fetch(Context, ViewOptions, ?ATTEMPTS_BY_ACCOUNT);
 summary_attempts(Context, HookId) ->
-    ViewOptions = [{'endkey', [cb_context:account_id(Context), HookId, 0]}
-                   ,{'startkey', [cb_context:account_id(Context), HookId, wh_json:new()]}
-                   ,{'limit', 15}
+    ViewOptions = [{'endkey', [HookId, 0]}
+                   ,{'startkey', [HookId, get_attempts_start_key(Context)]}
                    ,'include_docs'
                    ,'descending'
                   ],
     summary_attempts_fetch(Context, ViewOptions, ?ATTEMPTS_BY_HOOK).
 
+-spec get_summary_start_key(cb_context:context()) -> ne_binary() | wh_json:object().
+get_summary_start_key(Context) ->
+    get_start_key(Context, 0, fun wh_util:identity/1).
+
+-spec get_attempts_start_key(cb_context:context()) -> integer() | wh_json:object().
+get_attempts_start_key(Context) ->
+    get_start_key(Context, wh_json:new(), fun wh_util:to_integer/1).
+
+-spec get_start_key(cb_context:context(), term(), fun()) -> term().
+get_start_key(Context, Default, Formatter) ->
+    case cb_context:req_value(Context, <<"start_key">>) of
+        'undefined' -> Default;
+        V -> Formatter(V)
+    end.
+
 summary_attempts_fetch(Context, ViewOptions, View) ->
     Db = wh_util:format_account_mod_id(cb_context:account_id(Context), wh_util:current_tstamp()),
 
-    crossbar_doc:load_view(View
-                           ,ViewOptions
-                           ,cb_context:set_account_db(Context, Db)
-                           ,fun normalize_attempt_results/2
-                          ).
+    lager:debug("loading view ~s with options ~p", [View, ViewOptions]),
+    maybe_fix_envelope(
+      crossbar_doc:load_view(View
+                             ,ViewOptions
+                             ,cb_context:set_account_db(Context, Db)
+                             ,fun normalize_attempt_results/2
+                            )
+     ).
 
 normalize_attempt_results(JObj, Acc) ->
     Doc = wh_json:get_value(<<"doc">>, JObj),
     Timestamp = wh_json:get_value(<<"pvt_created">>, Doc),
     [wh_json:delete_keys([<<"id">>, <<"_id">>]
-                        ,wh_json:set_value(<<"timestamp">>, Timestamp, Doc)
+                         ,wh_json:set_value(<<"timestamp">>, Timestamp, Doc)
                         )
      | Acc
     ].

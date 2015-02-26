@@ -21,6 +21,10 @@
          ,hook_event/1
          ,load_hooks/1
          ,load_hook/2
+         ,hook_id/2
+
+         ,account_expires_time/1
+         ,system_expires_time/0
         ]).
 
 %% ETS Management
@@ -48,7 +52,6 @@ find_me() -> whereis(?MODULE).
 -spec gift_data() -> 'ok'.
 gift_data() -> 'ok'.
 
-
 -spec from_json(wh_json:object()) -> webhook().
 from_json(Hook) ->
     #webhook{id = hook_id(Hook)
@@ -63,14 +66,14 @@ from_json(Hook) ->
 
 -spec to_json(webhook()) -> wh_json:object().
 to_json(Hook) ->
-    wh_json:from_list([
-        {<<"_id">>, Hook#webhook.id}
-        ,{<<"uri">>, Hook#webhook.uri}
-        ,{<<"http_verb">>, Hook#webhook.http_verb}
-        ,{<<"retries">>, Hook#webhook.retries}
-        ,{<<"account_id">>, Hook#webhook.account_id}
-        ,{<<"custom_data">>, Hook#webhook.custom_data}
-    ]).
+    wh_json:from_list(
+      [{<<"_id">>, Hook#webhook.id}
+       ,{<<"uri">>, Hook#webhook.uri}
+       ,{<<"http_verb">>, Hook#webhook.http_verb}
+       ,{<<"retries">>, Hook#webhook.retries}
+       ,{<<"account_id">>, Hook#webhook.account_id}
+       ,{<<"custom_data">>, Hook#webhook.custom_data}
+      ]).
 
 -spec find_webhooks(ne_binary(), api_binary()) -> webhooks().
 find_webhooks(_HookEvent, 'undefined') -> [];
@@ -159,6 +162,10 @@ fire_hook(_JObj, Hook, URI, _Method, Retries, {'error', 'retry_later'}) ->
     lager:debug("failed with 'retry_later' to ~s", [URI]),
     _ = failed_hook(Hook, Retries, <<"retry_later">>),
     'ok';
+fire_hook(_JObj, Hook, URI, _Method, Retries, {'error', {'conn_failed', {'error', E}}}) ->
+    lager:debug("connection failed with ~p to ~s", [E, URI]),
+    _ = failed_hook(Hook, Retries, wh_util:to_binary(E)),
+    'ok';
 fire_hook(JObj, Hook, URI, Method, Retries, {'error', E}) ->
     lager:debug("failed to fire hook: ~p", [E]),
     _ = failed_hook(Hook, Retries, E),
@@ -184,6 +191,7 @@ successful_hook(#webhook{hook_id=HookId
 failed_hook(#webhook{hook_id=HookId
                      ,account_id=AccountId
                     }) ->
+    note_failed_attempt(AccountId, HookId),
     Attempt = wh_json:from_list([{<<"hook_id">>, HookId}
                                  ,{<<"result">>, <<"failure">>}
                                  ,{<<"reason">>, <<"retries exceeded">>}
@@ -194,6 +202,7 @@ failed_hook(#webhook{hook_id=HookId
                      ,account_id=AccountId
                     }
             ,Retries, RespCode, RespBody) ->
+    note_failed_attempt(AccountId, HookId),
     Attempt = wh_json:from_list([{<<"hook_id">>, HookId}
                                  ,{<<"result">>, <<"failure">>}
                                  ,{<<"reason">>, <<"bad response code">>}
@@ -207,6 +216,7 @@ failed_hook(#webhook{hook_id=HookId
                      ,account_id=AccountId
                     }
             ,Retries, E) ->
+    note_failed_attempt(AccountId, HookId),
     Error = try wh_util:to_binary(E) of
                 Bin -> Bin
             catch
@@ -284,7 +294,7 @@ retries(_) -> 5.
 load_hooks(Srv) ->
     lager:debug("loading hooks into memory"),
     case couch_mgr:get_results(?KZ_WEBHOOKS_DB
-                               ,<<"webhooks/crossbar_listing">>
+                               ,<<"webhooks/webhooks_listing">> %% excludes disabled
                                ,['include_docs']
                               )
     of
@@ -367,3 +377,27 @@ init_mod(Acct, Year, Month) ->
     kazoo_modb:create(Db),
     lager:debug("updated account_mod ~s", [Db]).
 
+-spec note_failed_attempt(ne_binary(), ne_binary()) -> 'ok'.
+note_failed_attempt(AccountId, HookId) ->
+    wh_cache:store_local(?CACHE_NAME
+                         ,?FAILURE_CACHE_KEY(AccountId, HookId, wh_util:current_tstamp())
+                         ,'true'
+                         ,[{'expires', account_expires_time(AccountId)}]
+                        ).
+
+-spec account_expires_time(ne_binary()) -> pos_integer().
+account_expires_time(AccountId) ->
+    Expiry = whapps_account_config:get_global(AccountId
+                                              ,?APP_NAME
+                                              ,?ATTEMPT_EXPIRY_KEY
+                                              ,?MILLISECONDS_IN_MINUTE
+                                             ),
+    try wh_util:to_integer(Expiry) of
+        I -> I
+    catch
+        _:_ -> ?MILLISECONDS_IN_MINUTE
+    end.
+
+-spec system_expires_time() -> pos_integer().
+system_expires_time() ->
+    whapps_config:get_integer(?APP_NAME, ?ATTEMPT_EXPIRY_KEY, ?MILLISECONDS_IN_MINUTE).
