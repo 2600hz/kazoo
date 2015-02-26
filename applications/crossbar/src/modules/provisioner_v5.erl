@@ -252,7 +252,7 @@ set_line_realm(JObj) ->
     wh_json:set_value(
       <<"sip">>
       ,wh_json:set_value(
-         <<"sip_server_1">>
+         <<"realm">>
          ,wh_json:get_value(<<"realm">>, JObj)
          ,wh_json:new()
         )
@@ -289,9 +289,9 @@ create_provision_settings(JObj) ->
            )
          ),
     wh_json:from_list(
-      [{<<"brand">>, wh_json:get_value([<<"provision">>, <<"endpoint_brand">>], JObj, <<>>)}
-       ,{<<"family">>, wh_json:get_value([<<"provision">>, <<"endpoint_family">>], JObj, <<>>)}
-       ,{<<"model">>, wh_json:get_value([<<"provision">>, <<"endpoint_model">>], JObj, <<>>)}
+      [{<<"brand">>, wh_json:get_binary_value([<<"provision">>, <<"endpoint_brand">>], JObj, <<>>)}
+       ,{<<"family">>, wh_json:get_binary_value([<<"provision">>, <<"endpoint_family">>], JObj, <<>>)}
+       ,{<<"model">>, wh_json:get_binary_value([<<"provision">>, <<"endpoint_model">>], JObj, <<>>)}
        ,{<<"name">>, wh_json:get_value(<<"name">>, JObj)}
        ,{<<"settings">>, Settings}
       ]).
@@ -573,6 +573,6 @@ handle_validation_success('post', Data, Token, MACAddress, AccountId) ->
 -spec handle_validation_error(jesse_error:error_reasons(), api_binary()) -> 'ok'.
 handle_validation_error([], AccountId) ->
     lager:error("not sending data to provisioner, data failed to validate in ~s", [AccountId]);
-handle_validation_error([{'data_invalid', _, _Reason, _, _}|Errors], AccountId) ->
-    lager:error("failed to validate device: ~p", [_Reason]),
+handle_validation_error([{'data_invalid', _, _Reason, _Key, _Value}|Errors], AccountId) ->
+    lager:error("failed to validate device: ~p ~p ~p", [_Reason, _Key, _Value]),
     handle_validation_error(Errors, AccountId).
