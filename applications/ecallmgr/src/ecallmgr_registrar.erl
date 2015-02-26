@@ -136,7 +136,7 @@ reg_success(#registration{expires=0}=Registration) ->
                                                                ,Registration#registration.contact
                                                               ]),
     gen_server:cast(?MODULE, {'delete_registration', Registration});
-reg_success(#registration{}=Registration) ->
+reg_success(#registration{initial='true'}=Registration) ->
     gen_server:cast(?MODULE, {'insert_registration', Registration}),
     lager:info("inserted registration ~s@~s with contact ~s", [Registration#registration.username
                                                                ,Registration#registration.realm
@@ -144,7 +144,14 @@ reg_success(#registration{}=Registration) ->
                                                               ]),
     whistle_stats:increment_counter("register-success"),
     _ = maybe_initial_registration(Registration),
-    maybe_registration_notify(Registration).
+    maybe_registration_notify(Registration);
+reg_success(#registration{}=Registration) ->
+    gen_server:cast(?MODULE, {'insert_registration', Registration}),
+    lager:debug("updated registration ~s@~s with contact ~s", [Registration#registration.username
+                                                               ,Registration#registration.realm
+                                                               ,Registration#registration.contact
+                                                              ]),
+    whistle_stats:increment_counter("register-success").
 
 -spec reg_query(wh_json:object(), wh_proplist()) -> 'ok'.
 reg_query(JObj, _Props) ->
@@ -396,8 +403,9 @@ handle_cast({'update_registration', {Username, Realm}=Id, Props}, State) ->
     lager:debug("updated registration ~s@~s", [Username, Realm]),
     _ = ets:update_element(?MODULE, Id, Props),
     {'noreply', State};
-handle_cast({'delete_registration', #registration{id=Id}}, State) ->
-    _ = ets:delete(?MODULE, Id),
+handle_cast({'delete_registration', #registration{id=Id}=Reg}, State) ->
+    spawn(fun() -> maybe_send_deregister_notice(Reg) end),
+    ets:delete(?MODULE, Id),
     {'noreply', State};
 handle_cast('flush', State) ->
     _ = ets:delete_all_objects(?MODULE),
@@ -601,33 +609,9 @@ expire_objects() ->
 
 -spec expire_object(_) -> 'ok'.
 expire_object('$end_of_table') -> 'ok';
-expire_object({[#registration{id=Id
-                              ,suppress_unregister='true'
-                              ,username=Username
-                              ,realm=Realm
-                              ,call_id=CallId}
-               ], Continuation}) ->
-    put(callid, CallId),
-    lager:debug("registration ~s@~s expired", [Username, Realm]),
+expire_object({[#registration{id=Id}=Reg], Continuation}) ->
+    spawn(fun() -> maybe_send_deregister_notice(Reg) end),
     _ = ets:delete(?MODULE, Id),
-    expire_object(ets:select(Continuation));
-expire_object({[#registration{id=Id
-                              ,username=Username
-                              ,realm=Realm
-                              ,call_id=CallId}=Reg
-               ], Continuation}) ->
-    put('callid', CallId),
-    lager:debug("registration ~s@~s expired", [Username, Realm]),
-    _ = ets:delete(?MODULE, Id),
-    _ = spawn(fun() ->
-                      put('callid', CallId),
-                      case maybe_oldest_registrar(Username, Realm) of
-                          'false' -> 'ok';
-                          'true' ->
-                              lager:debug("sending deregister notice for ~s@~s", [Username, Realm]),
-                              send_deregister_notice(Reg)
-                      end
-              end),
     expire_object(ets:select(Continuation)).
 
 -spec maybe_resp_to_query(wh_json:object()) -> 'ok'.
@@ -721,9 +705,13 @@ registration_id(Username, Realm) ->
 create_registration(JObj) ->
     Username = wh_json:get_value(<<"Username">>, JObj),
     Realm = wh_json:get_value(<<"Realm">>, JObj),
-    Reg = existing_or_new_registration(Username, Realm),
+    #registration{initial=Initial}=Reg = existing_or_new_registration(Username, Realm),
     OriginalContact = wh_json:get_value(<<"Contact">>, JObj),
-
+    
+    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
+    AccountId = wh_json:get_value(<<"Account-ID">>, CCVs),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    
     Reg#registration{username=Username
                      ,realm=Realm
                      ,network_port=wh_json:get_value(<<"Network-Port">>, JObj)
@@ -744,6 +732,16 @@ create_registration(JObj) ->
                                                                 ,<<"Node">>
                                                                ], JObj)
                      ,registrar_hostname=wh_json:get_value(<<"Hostname">>, JObj)
+                     ,account_id = AccountId
+                     ,account_db = AccountDb
+                     ,authorizing_id = wh_json:get_value(<<"Authorizing-ID">>, CCVs)
+                     ,authorizing_type = wh_json:get_value(<<"Authorizing-Type">>, CCVs)
+                     ,owner_id = wh_json:get_value(<<"Owner-ID">>, CCVs)
+                     ,account_realm = wh_json:get_value(<<"Account-Realm">>, CCVs)
+                     ,account_name = wh_json:get_value(<<"Account-Name">>, CCVs)
+                     ,suppress_unregister = wh_json:is_true(<<"Suppress-Unregister-Notifications">>, JObj)
+                     ,register_overwrite_notify = wh_json:is_true(<<"Register-Overwrite-Notify">>, JObj)
+                     ,initial = wh_json:is_true(<<"First-Registration">>, JObj, Initial)
                     }.
 
 -spec fix_contact(ne_binary()) -> ne_binary().
@@ -799,11 +797,19 @@ maybe_initial_registration(#registration{initial='true'}=Reg) ->
     initial_registration(Reg).
 
 -spec initial_registration(registration()) -> 'ok'.
-initial_registration(#registration{}=Reg) ->
+initial_registration(#registration{account_id='undefined'}=Reg) ->
     Routines = [fun maybe_query_authn/1
                 ,fun update_cache/1
                 ,fun maybe_send_register_notice/1
                ],
+    initial_registration(Reg, Routines);
+initial_registration(#registration{}=Reg) ->
+    Routines = [fun maybe_send_register_notice/1
+               ],
+    initial_registration(Reg, Routines).
+
+-spec initial_registration(registration(), list()) -> 'ok'.
+initial_registration(#registration{}=Reg, Routines) ->
     _ = lists:foldl(fun(F, R) -> F(R) end, Reg, Routines),
     'ok'.
 
@@ -925,11 +931,33 @@ send_register_notice(Reg) ->
         ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION),
     wapi_notifications:publish_register(Props).
 
+
+-spec maybe_send_deregister_notice(registration()) -> 'ok'.
+maybe_send_deregister_notice(#registration{username=Username
+                                           ,realm=Realm
+                                           ,suppress_unregister='true'
+                                           ,call_id=CallId
+                                          }) -> 
+    put('callid', CallId),                                                     
+    lager:debug("registration ~s@~s expired", [Username, Realm]);
+maybe_send_deregister_notice(#registration{username=Username
+                                           ,realm=Realm
+                                           ,call_id=CallId
+                                          }=Reg) ->
+    put('callid', CallId),                                                     
+    case maybe_oldest_registrar(Username, Realm) of
+        'false' -> 'ok';
+        'true' ->
+            lager:debug("sending deregister notice for ~s@~s", [Username, Realm]),
+            send_deregister_notice(Reg)
+    end.
+
 -spec send_deregister_notice(registration()) -> 'ok'.
 send_deregister_notice(Reg) ->
     Props = to_props(Reg)
         ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION),
-    wapi_notifications:publish_deregister(Props).
+    wh_amqp_worker:cast(Props, fun wapi_notifications:publish_deregister/1).
+%    wapi_notifications:publish_deregister(Props).
 
 -spec to_props(registration()) -> wh_proplist().
 to_props(Reg) ->
