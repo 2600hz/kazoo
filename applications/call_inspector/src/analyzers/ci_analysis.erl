@@ -9,6 +9,9 @@
 -module(ci_analysis).
 
 -export([new/0]).
+-export([set_call_id/2
+         ,call_id/1
+        ]).
 -export([set_originiate_type/2
         ,originiate_type/1
         ]).
@@ -23,10 +26,11 @@
         ]).
 -export([to_json/1]).
 
--record(ci_analysis, {originiate_type
-                      ,terminate_type
-                      ,failure_location
-                      ,reason
+-record(ci_analysis, {call_id
+                     ,originiate_type
+                     ,terminate_type
+                     ,failure_location
+                     ,reason
                      }).
 -type ci_analysis() :: #ci_analysis{}.
 
@@ -36,6 +40,14 @@
 
 -spec new() -> ci_analysis().
 new() -> #ci_analysis{}.
+
+-spec set_call_id(ci_analysis(), ne_binary()) -> ci_analysis().
+set_call_id(Analysis, CallId) ->
+    Analysis#ci_analysis{call_id=CallId}.
+
+-spec call_id(ci_analysis()) -> api_binary().
+call_id(#ci_analysis{call_id=CallId}) ->
+    CallId.
 
 -spec set_originiate_type(ci_analysis(), ne_binary()) -> ci_analysis().
 set_originiate_type(Analysis, <<"phone">> = Type) ->
