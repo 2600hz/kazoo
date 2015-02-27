@@ -28,7 +28,9 @@
         ]).
 
 -record(state, {logfile :: file:name()
-               ,iodevice :: file:io_device()}).
+               ,iodevice :: file:io_device()
+               }
+       ).
 -type state() :: #state{}.
 
 -define(SERVER, ?MODULE).
@@ -36,15 +38,6 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
-
-
-open_logfile(Filename) ->
-    gen_server:cast(?MODULE, {'open_logfile', Filename}).
-
-
-start_parsing() ->
-    gen_server:cast(?MODULE, 'start_parsing').
-
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -54,7 +47,15 @@ start_parsing() ->
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_server:start_link(?MODULE, [], []).
+    gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
+
+open_logfile(Filename) when is_list(Filename) ->
+    gen_server:cast(?MODULE, {'open_logfile', Filename});
+open_logfile(Filename) ->
+    open_logfile(wh_util:to_list(Filename)).
+
+start_parsing() ->
+    gen_server:cast(?MODULE, 'start_parsing').
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -242,12 +243,22 @@ get_field(_Fields, []) ->
     'undefined';
 get_field(Fields, [Data|Rest]) ->
     F = fun (Field) -> try_all(Data, Field) end,
-    case lists:filtermap(F, Fields) of
+    case filtermap(F, Fields) of
         [] ->
             get_field(Fields, Rest);
         [Value] ->
             Value
     end.
+
+filtermap(Fun, List1) ->
+    lists:foldr(fun(Elem, Acc) ->
+                        case Fun(Elem) of
+                            false ->
+                                Acc;
+                            true -> [Elem|Acc];
+                            {true,Value} -> [Value|Acc]
+                        end
+                end, [], List1).
 
 -spec try_all(ne_binary(), ne_binary()) -> 'false' | {'true', ne_binary()}.
 try_all(Data, Field) ->

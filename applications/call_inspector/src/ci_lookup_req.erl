@@ -25,12 +25,27 @@ handle_req(JObj, _Props) ->
     end.
 
 -spec send_response(wh_proplist(), ne_binary(), ne_binary()) -> 'ok'.
-send_response(_Props, Q, MessageId) ->
+send_response(Props, Q, MessageId) ->
     JObj = wh_json:from_list(
-             [{<<"Chunks">>, wh_json:new()}
-             ,{<<"Analysis">>, wh_json:new()}
+             [{<<"Chunks">>, chunks_as_json(Props)}
+             ,{<<"Analysis">>, analysis_as_json(Props)}
              ,{<<"Msg-ID">>, MessageId}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]
             ),
     wapi_inspector:publish_lookup_resp(Q, JObj).
+
+-spec chunks_as_json(wh_proplist()) -> wh_json:objects().
+chunks_as_json(Props) ->
+    [ci_chunk:to_json(Chunk)
+     || Chunk <- props:get_value('chunks', Props, [])
+    ].
+
+-spec analysis_as_json(wh_proplist()) -> wh_json:object().
+analysis_as_json(Props) ->
+    case props:get_value('analysis', Props) of
+        'undefined' ->
+            wh_json:new();
+        Analysis ->
+            ci_analysis:to_json(Analysis)
+    end.

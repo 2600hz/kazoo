@@ -24,6 +24,7 @@
          ,from/1]).
 -export([to_json/1]).
 -export([is_chunk/1]).
+-export([sort_by_timestamp/1]).
 
 -record(ci_chunk, {call_id = 'undefined'
                   ,data = []
@@ -31,63 +32,78 @@
                   ,to = 'undefined'
                   ,from = 'undefined'
                   }).
--type ci_chunk() :: #ci_chunk{}.
+-type chunk() :: #ci_chunk{}.
+-type chunks() :: [chunk(),...].
 
--export_type([ci_chunk/0]).
+-export_type([chunk/0
+              ,chunks/0
+             ]).
 
 -include("../call_inspector.hrl").
 
--spec new() -> ci_chunk().
+-spec new() -> chunk().
 new() -> #ci_chunk{}.
 
--spec set_call_id(ci_chunk(), ne_binary()) -> ci_chunk().
+-spec set_call_id(chunk(), ne_binary()) -> chunk().
 set_call_id(Chunk, CallId) ->
     Chunk#ci_chunk{call_id=CallId}.
 
--spec call_id(ci_chunk()) -> api_binary().
+-spec call_id(chunk()) -> api_binary().
 call_id(#ci_chunk{call_id=CallId}) ->
     CallId.
 
--spec append_data(ci_chunk(), ne_binary()) -> ci_chunk().
+-spec append_data(chunk(), ne_binary()) -> chunk().
 append_data(#ci_chunk{data=D}=Chunk, Data) ->
     Chunk#ci_chunk{data=[Data|D]}.
 
--spec set_data(ci_chunk(), ne_binaries()) -> ci_chunk().
+-spec set_data(chunk(), ne_binaries()) -> chunk().
 set_data(Chunk, Data) ->
     Chunk#ci_chunk{data=Data}.
 
--spec data(ci_chunk()) -> ne_binaries().
+-spec data(chunk()) -> ne_binaries().
 data(#ci_chunk{data=Data}) ->
     Data.
 
--spec set_timestamp(ci_chunk(), ne_binary()) -> ci_chunk().
+-spec set_timestamp(chunk(), ne_binary()) -> chunk().
 set_timestamp(Chunk, Timestamp) ->
     Chunk#ci_chunk{timestamp=Timestamp}.
 
--spec timestamp(ci_chunk()) -> api_binary().
+-spec timestamp(chunk()) -> api_binary().
 timestamp(#ci_chunk{timestamp=Timestamp}) ->
     Timestamp.
 
--spec set_to(ci_chunk(), ne_binary()) -> ci_chunk().
+-spec set_to(chunk(), ne_binary()) -> chunk().
 set_to(Chunk, To) ->
     Chunk#ci_chunk{to=To}.
 
--spec to(ci_chunk()) -> api_binary().
+-spec to(chunk()) -> api_binary().
 to(#ci_chunk{to=To}) ->
     To.
 
--spec set_from(ci_chunk(), ne_binary()) -> ci_chunk().
+-spec set_from(chunk(), ne_binary()) -> chunk().
 set_from(Chunk, From) ->
     Chunk#ci_chunk{from=From}.
 
--spec from(ci_chunk()) -> api_binary().
+-spec from(chunk()) -> api_binary().
 from(#ci_chunk{from=From}) ->
     From.
 
--spec to_json(ci_chunk()) -> ne_binaries().
+-spec to_json(chunk()) -> ne_binaries().
 to_json(Chunk) ->
-    data(Chunk).
+    wh_json:from_list(
+      [{<<"from">>, from(Chunk)}
+       ,{<<"to">>, to(Chunk)}
+       ,{<<"call-id">>, call_id(Chunk)}
+       ,{<<"timestamp">>, timestamp(Chunk)}
+       ,{<<"raw">>, data(Chunk)}
+      ]
+     ).
 
 -spec is_chunk(_) -> boolean().
 is_chunk(#ci_chunk{}) -> 'true';
 is_chunk(_) -> 'false'.
+
+-spec sort_by_timestamp(chunks()) -> chunks().
+sort_by_timestamp(Chunks) ->
+    F = fun(C1, C2) -> timestamp(C1) < timestamp(C2) end,
+    lists:sort(F, Chunks).

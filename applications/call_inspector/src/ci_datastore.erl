@@ -17,6 +17,9 @@
 -export([store_chunk/1]).
 -export([store_analysis/1]).
 -export([lookup_callid/1]).
+-export([flush/0
+        ,flush/1
+        ]).
 
 %% gen_server callbacks
 -export([init/1
@@ -67,12 +70,26 @@ store_analysis(Analysis) ->
 
 -spec lookup_callid(ne_binary()) -> wh_json:object().
 lookup_callid(CallId) ->
-    lists:foldl(fun(#object{type='chunk', value=Chunk}, P) ->
-                        Chunks = props:get_value('chunks', P, []),
-                        props:set_value('chunks', [Chunk|Chunks], P);
-                   (#object{type='analysis', value=Analysis}, P) ->
-                        props:set_value('analysis', Analysis, P)
-                end, [], ets:lookup(?TAB, CallId)).
+    Props = lists:foldl(fun(#object{type='chunk', value=Chunk}, P) ->
+                                Chunks = props:get_value('chunks', P, []),
+                                props:set_value('chunks', [Chunk|Chunks], P);
+                           (#object{type='analysis', value=Analysis}, P) ->
+                                props:set_value('analysis', Analysis, P)
+                        end
+                       ,[{'chunks', []}, {'analysis', []}]
+                       ,ets:lookup(?TAB, CallId)),
+    props:set_value('chunks'
+                   ,lists:reverse(props:get_value('chunks', Props))
+                   ,Props
+                   ).
+
+-spec flush() -> 'ok'.
+flush() ->
+    gen_server:cast(?SERVER, 'flush').
+
+-spec flush(ne_binary()) -> 'ok'.
+flush(CallId) ->
+    gen_server:cast(?SERVER, {'flush', CallId}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -144,6 +161,12 @@ handle_cast({'store_analysis', CallId, Analysis}, State) ->
                     ,value=Analysis
                     },
     _ = ets:insert(?TAB, Object),
+    {'noreply', State};
+handle_cast('flush', State) ->
+    _ = ets:delete(?TAB),
+    {'noreply', State};
+handle_cast({'flush', CallId}, State) ->
+    _ = ets:delete(?TAB, CallId),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled handle_cast ~p", [_Msg]),
