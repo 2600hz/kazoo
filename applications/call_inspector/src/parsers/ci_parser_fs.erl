@@ -39,11 +39,11 @@
 
 
 open_logfile(Filename) ->
-    gen_server:cast(?MODULE, {open_logfile, Filename}).
+    gen_server:cast(?MODULE, {'open_logfile', Filename}).
 
 
 start_parsing() ->
-    gen_server:cast(?MODULE, start_parsing).
+    gen_server:cast(?MODULE, 'start_parsing').
 
 
 %%--------------------------------------------------------------------
@@ -104,19 +104,13 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({open_logfile, LogFile}, State) ->
-    {ok, IoDevice} = file:open(LogFile, [read,raw,binary,read_ahead]),%read+append??
+handle_cast({'open_logfile', LogFile}, State) ->
+    {'ok', IoDevice} = file:open(LogFile, ['read','raw','binary','read_ahead']),%read+append??
     NewState = State#state{logfile = LogFile, iodevice = IoDevice},
-    {noreply, NewState};
-handle_cast(start_parsing, State=#state{iodevice = IoDevice}) ->
-    case extract_chunk(IoDevice) of
-        [] -> ok;
-        Data ->
-            Chunk = ci_chunk:set_data(ci_chunk:new(), Data),
-            CallId = extract_callid(Data),
-            ci_datastore:put(CallId, Chunk)
-    end,
-    {noreply, State};
+    {'noreply', NewState};
+handle_cast('start_parsing', State=#state{iodevice = IoDevice}) ->
+    'ok' = extract_chunks(IoDevice),
+    {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled handle_cast ~p", [_Msg]),
     {'noreply', State}.
@@ -166,13 +160,21 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
-extract_chunk(Dev) ->
-    extract_chunk(Dev, []).
+extract_chunks(Dev) ->
+    case extract_chunk(Dev, []) of
+        [] -> 'ok';
+        Data ->
+            Chunk0 = ci_chunk:set_data(ci_chunk:new(), Data),
+            CallId = extract_callid(Data),
+            Chunk  = ci_chunk:set_call_id(Chunk0, CallId),
+            ci_datastore:store_chunk(Chunk),
+            extract_chunks(Dev)
+    end.
 
 extract_chunk(Dev, Buffer) ->
     case file:read_line(Dev) of
-        eof -> [];
-        {ok, Line} ->
+        'eof' -> [];
+        {'ok', Line} ->
             case {Line,Buffer} of
                 {<<"recv ", _/binary>>
                 ,[]} ->
@@ -187,7 +189,7 @@ extract_chunk(Dev, Buffer) ->
                     %% Second line of a chunk (special case given end of chunk)
                     extract_chunk(Dev, Acc);
                 {<<"   ------------------------------------------------------------------------\n">>
-                ,_} ->
+                ,Acc} when Acc =/= [] ->
                     %% End of current chunk
                     lists:reverse(Buffer);
                 {_
@@ -205,6 +207,8 @@ extract_chunk(Dev, Buffer) ->
 extract_callid([Data|Rest]) ->
     case Data of
         <<"   Call-ID: ", CallId/binary>> ->
+            CallId;
+        <<"   i: ", CallId/binary>> ->
             CallId;
         _ ->
             extract_callid(Rest)
