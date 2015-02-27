@@ -163,7 +163,7 @@ handle_cast({'store_analysis', CallId, Analysis}, State) ->
     _ = ets:insert(?TAB, Object),
     {'noreply', State};
 handle_cast('flush', State) ->
-    _ = ets:delete(?TAB),
+    _ = ets:delete_all_objects(?TAB),
     {'noreply', State};
 handle_cast({'flush', CallId}, State) ->
     _ = ets:delete(?TAB, CallId),
