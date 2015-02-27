@@ -469,7 +469,7 @@ get_whapp_info(Master) when is_pid(Master) ->
     get_whapp_info(props:get_value(links, erlang:process_info(Master), []));
 get_whapp_info([_P1, P2 | _]) when is_pid(P2) ->
     get_whapp_process_info(erlang:process_info(P2));
-get_whapp_info(PList) ->
+get_whapp_info(_) ->
     #whapp_info{}.
     
 -spec get_whapp_process_info(wh_proplist() | 'undefined') -> whapp_info().
@@ -615,10 +615,12 @@ whapp_oldest_node(Whapp, 'true') ->
 
 -spec determine_whapp_oldest_node(ne_binary(), ets:match_spec()) -> non_neg_integer().
 determine_whapp_oldest_node(Whapp, MatchSpec) ->
-    {Node, Start} = lists:foldl(fun({Whapps, Node}=Info, Acc) when is_list(Whapps) ->
+    case lists:foldl(fun({Whapps, _Node}=Info, Acc) when is_list(Whapps) ->
                         determine_whapp_oldest_node_fold(Info, Acc, Whapp)
-                end, 'undefined', ets:select(?MODULE, MatchSpec)),
-    Node.
+                end, 'undefined', ets:select(?MODULE, MatchSpec)) of
+        {Node, _Start} -> Node;
+        'undefined' -> 'undefined'
+    end.
 
 -spec determine_whapp_oldest_node_fold({wh_proplist(), node()}, 'undefined' | {node(), gregorian_seconds()}, ne_binary()) -> non_neg_integer().
 determine_whapp_oldest_node_fold({Whapps, Node}, 'undefined'=Acc, Whapp) -> 
