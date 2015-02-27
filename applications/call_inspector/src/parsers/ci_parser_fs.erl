@@ -173,6 +173,7 @@ extract_chunks(Dev) ->
                       ,fun (C) -> ci_chunk:set_timestamp(C, extract_timestamp(Data)) end
                       ,fun (C) -> ci_chunk:set_to(C, get_field([<<"To">>, <<"t">>],Data)) end
                       ,fun (C) -> ci_chunk:set_from(C, get_field([<<"From">>, <<"f">>],Data)) end
+                      ,fun (C) -> ci_chunk:set_parser(C, ?MODULE) end
                       ],
             Chunk = lists:foldl(fun (F,A) -> F(A) end, ci_chunk:new(), Setters),
             ci_datastore:store_chunk(Chunk),
