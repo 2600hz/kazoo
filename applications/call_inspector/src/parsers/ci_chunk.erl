@@ -16,11 +16,20 @@
         ,set_data/2
         ,data/1
         ]).
+-export([set_timestamp/2
+         ,timestamp/1]).
+-export([set_to/2
+         ,to/1]).
+-export([set_from/2
+         ,from/1]).
 -export([to_json/1]).
 -export([is_chunk/1]).
 
--record(ci_chunk, {call_id
+-record(ci_chunk, {call_id = 'undefined'
                   ,data = []
+                  ,timestamp = 'undefined'
+                  ,to = 'undefined'
+                  ,from = 'undefined'
                   }).
 -type ci_chunk() :: #ci_chunk{}.
 
@@ -50,6 +59,30 @@ set_data(Chunk, Data) ->
 -spec data(ci_chunk()) -> ne_binaries().
 data(#ci_chunk{data=Data}) ->
     Data.
+
+-spec set_timestamp(ci_chunk(), ne_binary()) -> ci_chunk().
+set_timestamp(Chunk, Timestamp) ->
+    Chunk#ci_chunk{timestamp=Timestamp}.
+
+-spec timestamp(ci_chunk()) -> api_binary().
+timestamp(#ci_chunk{timestamp=Timestamp}) ->
+    Timestamp.
+
+-spec set_to(ci_chunk(), ne_binary()) -> ci_chunk().
+set_to(Chunk, To) ->
+    Chunk#ci_chunk{to=To}.
+
+-spec to(ci_chunk()) -> api_binary().
+to(#ci_chunk{to=To}) ->
+    To.
+
+-spec set_from(ci_chunk(), ne_binary()) -> ci_chunk().
+set_from(Chunk, From) ->
+    Chunk#ci_chunk{from=From}.
+
+-spec from(ci_chunk()) -> api_binary().
+from(#ci_chunk{from=From}) ->
+    From.
 
 -spec to_json(ci_chunk()) -> ne_binaries().
 to_json(Chunk) ->
