@@ -88,7 +88,7 @@ reason(#ci_analysis{reason=Reason}) ->
     Reason.
 
 -spec to_json(ci_analysis()) -> wh_json:object().
-to_json(Analysis) ->
+to_json(#ci_analysis{}=Analysis) ->
     wh_json:from_list(
       props:filter_undefined(
         [{<<"originiate_type">>, originiate_type(Analysis)}
@@ -96,7 +96,9 @@ to_json(Analysis) ->
         ,{<<"failure_location">>, failure_location(Analysis)}
          ,{<<"reason">>, reason(Analysis)}
         ])
-     ).
+     );
+to_json(_) ->
+    wh_json:new().
 
 -spec is_analysis(_) -> boolean().
 is_analysis(#ci_analysis{}) -> 'true';
