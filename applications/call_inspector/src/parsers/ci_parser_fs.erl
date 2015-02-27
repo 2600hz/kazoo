@@ -164,6 +164,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 
 extract_chunks(Dev, LogIP) ->
+    extract_chunks(Dev, LogIP, 1).
+extract_chunks(Dev, LogIP, Counter) ->
     case extract_chunk(Dev, []) of
         [] -> 'ok';
         Data0 ->
@@ -175,14 +177,14 @@ extract_chunks(Dev, LogIP) ->
             Data = lists:foldl(Apply, Data0, Cleansers),
             Setters = [fun (C) -> ci_chunk:set_data(C, Data) end
                       ,fun (C) -> ci_chunk:set_call_id(C, extract_call_id(Data)) end
-                      ,fun (C) -> ci_chunk:set_timestamp(C, extract_timestamp(Data)) end
+                      ,fun (C) -> ci_chunk:set_timestamp(C, Counter) end
                       ,fun (C) -> set_legs(LogIP, C, Data) end
                       ,fun (C) -> ci_chunk:set_parser(C, ?MODULE) end
                       ,fun (C) -> ci_chunk:set_label(C, extract_label(Data)) end
                       ],
             Chunk = lists:foldl(Apply, ci_chunk:new(), Setters),
             ci_datastore:store_chunk(Chunk),
-            extract_chunks(Dev, LogIP)
+            extract_chunks(Dev, LogIP, Counter+1)
     end.
 
 extract_chunk(Dev, Buffer) ->
@@ -215,31 +217,6 @@ extract_chunk(Dev, Buffer) ->
                     %% Skip over the rest
                     extract_chunk(Dev, Buffer)
             end
-    end.
-
-
-extract_timestamp([]) -> 'undefined';
-extract_timestamp([Data|Rest]) ->
-    case Data of
-        <<"send ", _/binary>> ->
-            do_extract_timestamp(Data, Rest);
-        <<"recv ", _/binary>> ->
-            do_extract_timestamp(Data, Rest);
-        _ ->
-            extract_timestamp(Rest)
-    end.
-
-do_extract_timestamp(Line, Rest) ->
-    case binary:split(Line, <<" at ">>) of
-        [_IpPort, Data] ->
-            <<HH:2/binary, ":", MM:2/binary, ":", SS:2/binary, ".", MS:6/binary>> = Data,
-            H = wh_util:to_integer(HH),
-            M = wh_util:to_integer(MM),
-            S = wh_util:to_integer(SS),
-            Ms = wh_util:to_integer(MS),
-            H * 24 * 60  +  M * 60  +  S  +  Ms * 1.0e-6;
-        _ ->
-            extract_timestamp(Rest)
     end.
 
 
