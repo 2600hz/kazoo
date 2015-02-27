@@ -1,8 +1,8 @@
 %% -*- coding: utf-8 -*-
 %% 2015 Pierre Fenoll ‹pierrefenoll@gmail.com›
--module(seqdi).
+-module(callinspector).
 
-%% seqdi: 
+%% callinspector: 
 
 -export([ main/1
         , find/2

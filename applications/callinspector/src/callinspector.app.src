@@ -1,8 +1,8 @@
-{application, seqdi,
+{application, callinspector,
  [
   {description, "Watch logs for data to build sequence diagrams"},
   {vsn, "1"},
-  {modules, [ seqdi
+  {modules, [ callinspector
             , plists ]},
   {registered, []},
   {applications, [ kernel
