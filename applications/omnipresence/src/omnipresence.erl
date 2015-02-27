@@ -24,6 +24,7 @@
 start_link() ->
     _ = start_deps(),
     _ = declare_exchanges(),
+    put('$startup', wh_util:current_tstamp()),
     omnipresence_sup:start_link().
 
 %%--------------------------------------------------------------------
