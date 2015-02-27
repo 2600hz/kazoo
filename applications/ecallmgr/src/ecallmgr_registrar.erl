@@ -918,7 +918,7 @@ update_cache(#registration{authorizing_id=AuthorizingId
 maybe_send_register_notice(#registration{username=Username
                                          ,realm=Realm
                                         }=Reg) ->
-    case maybe_oldest_registrar(Username, Realm) of
+    case oldest_registrar() of
         'false' -> 'ok';
         'true' ->
             lager:debug("sending register notice for ~s@~s", [Username, Realm]),
@@ -945,7 +945,7 @@ maybe_send_deregister_notice(#registration{username=Username
                                            ,call_id=CallId
                                           }=Reg) ->
     put('callid', CallId),                                                     
-    case maybe_oldest_registrar(Username, Realm) of
+    case oldest_registrar() of
         'false' -> 'ok';
         'true' ->
             lager:debug("sending deregister notice for ~s@~s", [Username, Realm]),
@@ -957,7 +957,6 @@ send_deregister_notice(Reg) ->
     Props = to_props(Reg)
         ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION),
     wh_amqp_worker:cast(Props, fun wapi_notifications:publish_deregister/1).
-%    wapi_notifications:publish_deregister(Props).
 
 -spec to_props(registration()) -> wh_proplist().
 to_props(Reg) ->
@@ -994,37 +993,9 @@ filter(Fields, JObj) ->
                                           [{F, wh_json:get_value(F, JObj)} | Acc]
                                   end, [], Fields)).
 
--spec maybe_oldest_registrar(ne_binary(), ne_binary()) -> boolean().
-maybe_oldest_registrar(Username, Realm) ->
-    case ecallmgr_config:get_boolean(<<"send_registrar_notifications">>, 'true') of
-        'true' -> oldest_registrar(Username, Realm);
-        'false' -> 'false'
-    end.
-
--spec oldest_registrar(ne_binary(), ne_binary()) -> boolean().
-oldest_registrar(Username, Realm) ->
-    Reg = [{<<"Username">>, Username}
-           ,{<<"Realm">>, Realm}
-           ,{<<"Fields">>, [<<"Expires">>]}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    case wh_amqp_worker:call_collect(Reg
-                                     ,fun wapi_registration:publish_query_req/1
-                                     ,'ecallmgr'
-                                     ,2000
-                                    )
-    of
-        {'ok', JObjs} ->
-            case
-                [wh_json:get_integer_value(<<"Registrar-Age">>, JObj, 0)
-                 || JObj <- JObjs
-                ]
-            of
-                [] -> 'true';
-                Ages -> lists:max(Ages) =< gen_server:call(?MODULE, 'registrar_age')
-            end;
-        _Else -> 'true'
-    end.
+-spec oldest_registrar() -> boolean().
+oldest_registrar() ->
+    wh_nodes:whapp_oldest_node(?APP_NAME, 'true') =:= node().
 
 -type ets_continuation() :: '$end_of_table' |
                             {registrations(), term()}.
