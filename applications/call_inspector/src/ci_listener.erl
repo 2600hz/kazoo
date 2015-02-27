@@ -23,8 +23,13 @@
 
 -record(state, {}).
 
--define(BINDINGS, [{'self', []}]).
--define(RESPONDERS, []).
+-define(BINDINGS, [{'self', []}
+                   ,{'inspector', []}
+                  ]).
+-define(RESPONDERS, [{'ci_lookup_req',
+                      [{<<"call_inspector">>, <<"lookup_req">>}]
+                     }
+                    ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
