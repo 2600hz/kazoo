@@ -227,9 +227,12 @@ extract_timestamp([Data|Rest]) ->
 do_extract_timestamp(Line, Rest) ->
     case binary:split(Line, <<" at ">>) of
         [_IpPort, Data] ->
-            RmLastTwo = byte_size(Data) - 2,
-            <<Timestamp:RmLastTwo/binary, ":\n">> = Data,
-            Timestamp;
+            <<HH:2/binary, ":", MM:2/binary, ":", SS:2/binary, ".", MS:6/binary, ":\n">> = Data,
+            H = wh_util:to_integer(HH),
+            M = wh_util:to_integer(MM),
+            S = wh_util:to_integer(SS),
+            Ms = wh_util:to_integer(MS),
+            H * 24 * 60  +  M * 60  +  S  +  Ms * 1.0e-6;
         _ ->
             extract_timestamp(Rest)
     end.
