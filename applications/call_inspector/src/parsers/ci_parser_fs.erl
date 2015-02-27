@@ -164,9 +164,13 @@ extract_chunks(Dev) ->
     case extract_chunk(Dev, []) of
         [] -> 'ok';
         Data ->
-            Chunk0 = ci_chunk:set_data(ci_chunk:new(), Data),
-            CallId = extract_callid(Data),
-            Chunk  = ci_chunk:set_call_id(Chunk0, CallId),
+            Setters = [fun (Chunk) -> ci_chunk:set_data(Chunk, Data) end
+                      ,fun (C) -> ci_chunk:set_call_id(C, extract_call_id(Data)) end
+                      ,fun (C) -> ci_chunk:set_timestamp(C, extract_timestamp(Data)) end
+                      ,fun (C) -> ci_chunk:set_to(C, get_field([<<"To">>, <<"t">>],Data)) end
+                      ,fun (C) -> ci_chunk:set_from(C, get_field([<<"From">>, <<"f">>],Data)) end
+                      ],
+            Chunk = lists:foldl(fun (F,A) -> F(A) end, ci_chunk:new(), Setters),
             ci_datastore:store_chunk(Chunk),
             extract_chunks(Dev)
     end.
@@ -204,12 +208,57 @@ extract_chunk(Dev, Buffer) ->
     end.
 
 
-extract_callid([Data|Rest]) ->
+extract_timestamp([]) -> 'undefined';
+extract_timestamp([Data|Rest]) ->
     case Data of
-        <<"   Call-ID: ", CallId/binary>> ->
-            CallId;
-        <<"   i: ", CallId/binary>> ->
-            CallId;
+        <<"send ", _/binary>> ->
+            do_extract_timestamp(Data, Rest);
+        <<"recv ", _/binary>> ->
+            do_extract_timestamp(Data, Rest);
         _ ->
-            extract_callid(Rest)
+            extract_timestamp(Rest)
+    end.
+
+do_extract_timestamp(Line, Rest) ->
+    case binary:split(Line, <<" at ">>) of
+        [_IpPort, Data] ->
+            RmLastTwo = byte_size(Data) - 2,
+            <<Timestamp:RmLastTwo/binary, ":\n">> = Data,
+            Timestamp;
+        _ ->
+            extract_timestamp(Rest)
+    end.
+
+
+extract_call_id(Data) ->
+    get_field([<<"Call-ID">>, <<"i">>], Data).
+
+
+-spec get_field(ne_binaries(), ne_binaries()) -> api_binary().
+get_field(_Fields, []) ->
+    'undefined';
+get_field(Fields, [Data|Rest]) ->
+    F = fun (Field) -> try_all(Data, Field) end,
+    case lists:filtermap(F, Fields) of
+        [] ->
+            get_field(Fields, Rest);
+        [Value] ->
+            Value
+    end.
+
+-spec try_all(ne_binary(), ne_binary()) -> 'false' | {'true', ne_binary()}.
+try_all(Data, Field) ->
+    FieldSz = byte_size(Field),
+    case Data of
+        <<"   ", Field:FieldSz/binary, _/binary>> ->
+            case binary:split(Data, <<": ">>) of
+                [_Key, Value0] ->
+                    NewlinePos = byte_size(Value0) -1,
+                    <<Value:NewlinePos/binary, "\n">> = Value0,
+                    {'true', Value};
+                _ ->
+                    'false'
+            end;
+        _ ->
+            'false'
     end.
