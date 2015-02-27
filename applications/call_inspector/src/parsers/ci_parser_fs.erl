@@ -165,17 +165,21 @@ extract_chunks(Dev) ->
     case extract_chunk(Dev, []) of
         [] -> 'ok';
         Data0 ->
+            Apply = fun (Fun, Arg) -> Fun(Arg) end,
             Cleansers = [fun remove_whitespace_lines/1
-                        ,fun strip_pieces/1],
-            Data = lists:foldl(fun (F,A) -> F(A) end, Data0, Cleansers),
+                        ,fun remove_unrelated_lines/1 %% MUST be called before unwrap_lines/1
+                        ,fun unwrap_lines/1
+                        ,fun strip_truncating_pieces/1],
+            Data = lists:foldl(Apply, Data0, Cleansers),
             Setters = [fun (C) -> ci_chunk:set_data(C, Data) end
                       ,fun (C) -> ci_chunk:set_call_id(C, extract_call_id(Data)) end
                       ,fun (C) -> ci_chunk:set_timestamp(C, extract_timestamp(Data)) end
                       ,fun (C) -> ci_chunk:set_to(C, get_field([<<"To">>, <<"t">>],Data)) end
                       ,fun (C) -> ci_chunk:set_from(C, get_field([<<"From">>, <<"f">>],Data)) end
                       ,fun (C) -> ci_chunk:set_parser(C, ?MODULE) end
+                      ,fun (C) -> ci_chunk:set_label(C, extract_label(Data)) end
                       ],
-            Chunk = lists:foldl(fun (F,A) -> F(A) end, ci_chunk:new(), Setters),
+            Chunk = lists:foldl(Apply, ci_chunk:new(), Setters),
             ci_datastore:store_chunk(Chunk),
             extract_chunks(Dev)
     end.
@@ -227,7 +231,7 @@ extract_timestamp([Data|Rest]) ->
 do_extract_timestamp(Line, Rest) ->
     case binary:split(Line, <<" at ">>) of
         [_IpPort, Data] ->
-            <<HH:2/binary, ":", MM:2/binary, ":", SS:2/binary, ".", MS:6/binary, ":\n">> = Data,
+            <<HH:2/binary, ":", MM:2/binary, ":", SS:2/binary, ".", MS:6/binary>> = Data,
             H = wh_util:to_integer(HH),
             M = wh_util:to_integer(MM),
             S = wh_util:to_integer(SS),
@@ -237,6 +241,9 @@ do_extract_timestamp(Line, Rest) ->
             extract_timestamp(Rest)
     end.
 
+
+extract_label(Data) ->
+    lists:nth(2, Data).
 
 extract_call_id(Data) ->
     get_field([<<"Call-ID">>, <<"i">>], Data).
@@ -268,11 +275,10 @@ filtermap(Fun, List1) ->
 try_all(Data, Field) ->
     FieldSz = byte_size(Field),
     case Data of
-        <<"   ", Field:FieldSz/binary, _/binary>> ->
+        <<Field:FieldSz/binary, _/binary>> ->
             case binary:split(Data, <<": ">>) of
                 [_Key, Value0] ->
-                    RmLastCharacter = byte_size(Value0) -1,
-                    Value = binary:part(Value0, {0, RmLastCharacter}),
+                    Value = binary:part(Value0, {0, byte_size(Value0)}),
                     {'true', Value};
                 _ ->
                     'false'
@@ -293,11 +299,36 @@ all_whitespace(<<>>) -> 'true';
 all_whitespace(_) -> 'false'.
 
 
-strip_pieces([]) -> [];
-strip_pieces([Data|Rest]) ->
+strip_truncating_pieces([]) -> [];
+strip_truncating_pieces([Data|Rest]) ->
     case re:run(Data, "(\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{6} \\[[A-Z]+\\] )") of
         nomatch ->
-            [Data | strip_pieces(Rest)];
+            [Data | strip_truncating_pieces(Rest)];
         {match, [{Offset,_}|_]} ->
-            [binary:part(Data, {0,Offset}) | strip_pieces(Rest)]
+            [binary:part(Data, {0,Offset}) | strip_truncating_pieces(Rest)]
     end.
+
+
+remove_unrelated_lines([FirstLine|Lines]) ->
+    [FirstLine | do_remove_unrelated_lines(Lines)].
+
+do_remove_unrelated_lines([]) -> [];
+do_remove_unrelated_lines([<<"   ", _/binary>>=Line|Lines]) ->
+    [Line | do_remove_unrelated_lines(Lines)];
+do_remove_unrelated_lines([_|Lines]) ->
+    do_remove_unrelated_lines(Lines).
+
+
+unwrap_lines([FirstLine|Lines]) ->
+    [unwrap_first_line(FirstLine)] ++ [unwrap(Line) || Line <- Lines].
+
+unwrap_first_line(FirstLine) ->
+    Rm = length(":\n"),
+    Sz = byte_size(FirstLine) - Rm,
+    <<Line:Sz/binary, _:Rm/binary>> = FirstLine,
+    Line.
+
+unwrap(Line) ->
+    Sz = byte_size(Line) - length("   ") - length("\n"),
+    <<"   ", Data:Sz/binary, _:1/binary>> = Line,
+    Data.

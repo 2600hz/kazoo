@@ -24,6 +24,8 @@
          ,from/1]).
 -export([set_parser/2
          ,parser/1]).
+-export([set_label/2
+         ,label/1]).
 -export([to_json/1]).
 -export([is_chunk/1]).
 -export([sort_by_timestamp/1]).
@@ -34,7 +36,8 @@
                   ,to = 'undefined'
                   ,from = 'undefined'
                   ,parser :: atom()
-                  }).
+                  ,label = 'undefined'
+                 }).
 -type chunk() :: #ci_chunk{}.
 -type chunks() :: [chunk(),...].
 
@@ -98,6 +101,14 @@ set_parser(Chunk, Parser) ->
 -spec parser(chunk()) -> atom().
 parser(#ci_chunk{parser=Parser}) ->
     Parser.
+
+-spec set_label(chunk(), ne_binary()) -> chunk().
+set_label(Chunk, Label) ->
+    Chunk#ci_chunk{label=Label}.
+
+-spec label(chunk()) -> api_binary().
+label(#ci_chunk{label=Label}) ->
+    Label.
 
 -spec to_json(chunk()) -> ne_binaries().
 to_json(Chunk) ->

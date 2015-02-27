@@ -34,7 +34,7 @@ callid_details(CallId) ->
     Props = ci_datastore:lookup_callid(CallId),
     _ = case props:get_value('chunks', Props) of
             [] ->
-                io:format("not found", []);
+                io:format("not found\n", []);
             Chunks ->
                 print_chunks(ci_chunk:sort_by_timestamp(Chunks))
         end,
