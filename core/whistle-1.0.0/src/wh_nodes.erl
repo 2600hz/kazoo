@@ -13,6 +13,8 @@
 -export([start_link/0]).
 -export([whapp_count/1
          ,whapp_count/2
+         ,whapp_oldest_node/1
+         ,whapp_oldest_node/2
         ]).
 -export([status/0]).
 -export([flush/0]).
@@ -59,9 +61,15 @@
                }).
 -type nodes_state() :: #state{}.
 
--record(node, {node = node() :: atom() | '$1' | '_'
+-record(whapp_info, {startup = 'undefined' :: gregorian_seconds() | 'undefined'
+                    }).
+
+-type whapp_info() :: #whapp_info{}.
+-type whapps_info() :: [{binary(), whapp_info()}, ...] | [].
+
+-record(node, {node = node() :: atom() | '$1' | '$2' | '_'
                ,expires = 0 :: non_neg_integer() | 'undefined' | '$2' | '_'
-               ,whapps = [] :: ne_binaries() | '$1' | '_'
+               ,whapps = [] :: whapps_info() | '$1' | '_'
                ,media_servers = [] :: ne_binaries() | '_'
                ,last_heartbeat = wh_util:now_ms(now()) :: pos_integer() | 'undefined' | '$3' | '_'
                ,zone :: ne_binary() | '_'
@@ -128,7 +136,7 @@ determine_whapp_count(Whapp, MatchSpec) ->
 
 -spec determine_whapp_count_fold(ne_binaries(), non_neg_integer(), ne_binary()) -> non_neg_integer().
 determine_whapp_count_fold(Whapps, Acc, Whapp) ->
-    case lists:member(Whapp, Whapps) of
+    case props:is_defined(Whapp, Whapps) of
         'true' -> Acc + 1;
         'false' -> Acc
     end.
@@ -157,7 +165,7 @@ print_status(Nodes) ->
              io:format("Ports         : ~B~n", [Node#node.ports]),
              io:format("Zone          : ~s~n", [Node#node.zone]),
              io:format("Broker        : ~s~n", [Node#node.broker]),
-             _ = case lists:sort(Node#node.whapps) of
+             _ = case lists:sort(fun({K1,_},{K2,_}) -> K1 < K2 end,Node#node.whapps) of
                      []-> 'ok';
                      Whapps ->
                          io:format("WhApps        : ", []),
@@ -186,7 +194,7 @@ status_list([], _) -> io:format("~n", []);
 status_list(Whapps, Column) when Column > 3 ->
     io:format("~n                ", []),
     status_list(Whapps, 0);
-status_list([Whapp|Whapps], Column) ->
+status_list([{Whapp, _}|Whapps], Column) ->
     io:format("~-20s", [Whapp]),
     status_list(Whapps, Column + 1).
 
@@ -430,7 +438,7 @@ maybe_add_whapps_data(Node) ->
 
 -spec add_whapps_data(wh_node()) -> wh_node().
 add_whapps_data(Node) ->
-    Whapps = [wh_util:to_binary(Whapp)
+    Whapps = [{wh_util:to_binary(Whapp), get_whapp_info(Whapp)}             
               || Whapp <- whapps_controller:list_apps()
              ],
     maybe_add_ecallmgr_data(Node#node{whapps=Whapps}).
@@ -448,10 +456,28 @@ add_ecallmgr_data(#node{whapps=Whapps}=Node) ->
                || Server <- ecallmgr_fs_nodes:connected()
               ],
     Node#node{media_servers=Servers
-              ,whapps=[<<"ecallmgr">>|Whapps]
+              ,whapps=[{<<"ecallmgr">>, get_whapp_info('ecallmgr')} |Whapps]
               ,channels=ecallmgr_fs_channels:count()
               ,registrations=ecallmgr_registrar:count()
              }.
+
+-spec get_whapp_info(atom() | pid() | wh_proplist() | 'undefined') -> whapp_info().
+get_whapp_info('undefined') -> #whapp_info{};
+get_whapp_info(Whapp) when is_atom(Whapp) ->
+    get_whapp_info(application_controller:get_master(Whapp));
+get_whapp_info(Master) when is_pid(Master) ->
+    get_whapp_info(props:get_value(links, erlang:process_info(Master), []));
+get_whapp_info([_P1, P2 | _]) when is_pid(P2) ->
+    get_whapp_process_info(erlang:process_info(P2));
+get_whapp_info(PList) ->
+    #whapp_info{}.
+    
+-spec get_whapp_process_info(wh_proplist() | 'undefined') -> whapp_info().
+get_whapp_process_info('undefined') -> #whapp_info{};
+get_whapp_process_info([]) -> #whapp_info{};
+get_whapp_process_info(PInfo) ->
+    Startup = props:get_value('$startup', props:get_value(dictionary,PInfo,[])),
+    #whapp_info{startup=Startup}.
 
 -spec is_whapps_present() -> boolean().
 is_whapps_present() ->
@@ -466,7 +492,7 @@ is_ecallmgr_present() ->
 -spec advertise_payload(wh_node()) -> wh_proplist().
 advertise_payload(Node) ->
     [{<<"Expires">>, wh_util:to_binary(Node#node.expires)}
-     ,{<<"WhApps">>, Node#node.whapps}
+     ,{<<"WhApps">>, whapps_to_json(Node#node.whapps) }
      ,{<<"Media-Servers">>, Node#node.media_servers}
      ,{<<"Used-Memory">>, Node#node.used_memory}
      ,{<<"Processes">>, Node#node.processes}
@@ -483,7 +509,7 @@ from_json(JObj, State) ->
     Node = wh_json:get_value(<<"Node">>, JObj),
     #node{node=wh_util:to_atom(Node, 'true')
           ,expires=wh_util:to_integer(wh_json:get_integer_value(<<"Expires">>, JObj, 0) * ?FUDGE_FACTOR)
-          ,whapps=wh_json:get_value(<<"WhApps">>, JObj, [])
+          ,whapps=whapps_from_json(wh_json:get_value(<<"WhApps">>, JObj))
           ,media_servers=wh_json:get_value(<<"Media-Servers">>, JObj, [])
           ,used_memory=wh_json:get_integer_value(<<"Used-Memory">>, JObj, 0)
           ,processes=wh_json:get_integer_value(<<"Processes">>, JObj, 0)
@@ -494,6 +520,37 @@ from_json(JObj, State) ->
           ,zone=get_zone(JObj, State)
           ,broker=get_amqp_broker(JObj)
          }.
+
+-spec whapps_from_json(wh_json:object()) -> whapps_info().
+-spec whapp_from_json(binary(), wh_json:object()) -> {binary(), whapp_info()}.
+-spec whapp_info_from_json(wh_json:object()) -> whapp_info().
+
+whapps_from_json(JObj) ->
+    Keys = wh_json:get_keys(JObj),
+    [whapp_from_json(Key, JObj) || Key <- Keys].
+
+whapp_from_json(Key, JObj) ->
+    {Key, whapp_info_from_json(wh_json:get_value(Key, JObj))}.
+
+whapp_info_from_json(JObj) ->
+    #whapp_info{startup=wh_json:get_value(<<"Startup">>, JObj)
+               }.
+
+-spec whapps_to_json(whapps_info()) -> wh_json:object().
+-spec whapp_to_json(wh_json:object()) -> {binary(), whapp_info()}.
+-spec whapp_info_to_json(whapp_info()) -> wh_json:object().
+
+whapps_to_json(Whapps) ->
+    List = [whapp_to_json(Whapp) || Whapp <- Whapps],
+    wh_json:from_list(List).
+
+whapp_to_json({K, Info}) ->
+    {K, whapp_info_to_json(Info)}.
+
+whapp_info_to_json(#whapp_info{startup=Start}) ->
+    wh_json:from_list(props:filter_undefined(
+        [{<<"Startup">>, Start}]
+        )).
 
 -spec get_zone(wh_json:object(), nodes_state()) -> ne_binary().
 get_zone(JObj, #state{zone=Zone}) ->
@@ -530,3 +587,51 @@ notify_new(Node, Pids) ->
          || Pid <- Pids
         ],
     'ok'.
+
+-spec whapp_oldest_node(text()) -> integer().
+whapp_oldest_node(Whapp) ->
+    whapp_oldest_node(Whapp, 'false').
+
+-spec whapp_oldest_node(text(), text() | boolean()) -> integer().
+whapp_oldest_node(Whapp, 'false') ->
+    MatchSpec = [{#node{whapps='$1'
+                        ,node='$2'
+                        ,zone = <<"local">>
+                        ,_ = '_'
+                       }
+                  ,[{'=/=', '$1', []}]
+                  ,[{{'$1', '$2'}}]
+                 }],
+    determine_whapp_oldest_node(wh_util:to_binary(Whapp), MatchSpec);
+whapp_oldest_node(Whapp, 'true') ->
+    MatchSpec = [{#node{whapps='$1'
+                        ,node='$2'
+                        ,_ = '_'
+                       }
+                  ,[{'=/=', '$1', []}]
+                  ,[{{'$1','$2'}}]
+                 }],
+    determine_whapp_oldest_node(wh_util:to_binary(Whapp), MatchSpec).
+
+-spec determine_whapp_oldest_node(ne_binary(), ets:match_spec()) -> non_neg_integer().
+determine_whapp_oldest_node(Whapp, MatchSpec) ->
+    {Node, Start} = lists:foldl(fun({Whapps, Node}=Info, Acc) when is_list(Whapps) ->
+                        determine_whapp_oldest_node_fold(Info, Acc, Whapp)
+                end, 'undefined', ets:select(?MODULE, MatchSpec)),
+    Node.
+
+-spec determine_whapp_oldest_node_fold({wh_proplist(), node()}, 'undefined' | {node(), gregorian_seconds()}, ne_binary()) -> non_neg_integer().
+determine_whapp_oldest_node_fold({Whapps, Node}, 'undefined'=Acc, Whapp) -> 
+    case props:get_value(Whapp, Whapps) of
+        'undefined' -> Acc;
+        #whapp_info{startup=Start} -> {Node, Start}
+    end;
+determine_whapp_oldest_node_fold({Whapps, Node}, {_, Startup}=Acc, Whapp) ->
+    case props:get_value(Whapp, Whapps) of
+        'undefined' -> Acc;
+        #whapp_info{startup='undefined'} -> Acc;
+        #whapp_info{startup=Start} 
+          when Start =< Startup         
+          orelse Acc =:= 'undefined'-> {Node, Start};
+        _ -> Acc
+    end.
