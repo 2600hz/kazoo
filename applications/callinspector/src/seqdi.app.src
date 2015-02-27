@@ -1,0 +1,11 @@
+{application, seqdi,
+ [
+  {description, "Watch logs for data to build sequence diagrams"},
+  {vsn, "1"},
+  {modules, [ seqdi
+            , plists ]},
+  {registered, []},
+  {applications, [ kernel
+                 , stdlib ]},
+  {env, []}
+ ]}.
