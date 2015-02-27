@@ -66,9 +66,13 @@ store_analysis(Analysis) ->
     gen_server:cast(?SERVER, {'store_analysis', CallId, Analysis}).
 
 -spec lookup_callid(ne_binary()) -> wh_json:object().
-lookup_callid(_CallId) ->
-    %% TODO: based on the datastore do something
-    wh_json:new().
+lookup_callid(CallId) ->
+    lists:foldl(fun(#object{type='chunk', value=Chunk}, P) ->
+                        Chunks = props:get_value('chunks', P, []),
+                        props:set_value('chunks', [Chunk|Chunks], P);
+                   (#object{type='analysis', value=Analysis}, P) ->
+                        props:set_value('analysis', Analysis, P)
+                end, [], ets:lookup(?TAB, CallId)).
 
 %%%===================================================================
 %%% gen_server callbacks
