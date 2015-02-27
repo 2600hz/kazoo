@@ -13,8 +13,11 @@
 
 -export([init/0
          ,allowed_methods/0
+         ,allowed_methods/1
          ,resource_exists/0
+         ,resource_exists/1
          ,validate/1
+         ,validate/2
         ]).
 
 -include("../crossbar.hrl").
@@ -46,6 +49,10 @@ init() ->
 allowed_methods() ->
     [?HTTP_GET].
 
+-spec allowed_methods(path_token()) -> http_methods().
+allowed_methods(_) ->
+    [?HTTP_GET].
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -57,6 +64,9 @@ allowed_methods() ->
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
+resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -70,12 +80,16 @@ resource_exists() -> 'true'.
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
-    QueryString = cb_context:query_string(Context),
-    case wh_json:get_ne_value(<<"call_id">>, QueryString) of
-        'undefined' ->
-            Message = <<"Requests must include a query string parameter 'call_id'">>,
-            cb_context:add_validation_error(<<"call_id">>, <<"required">>, Message, Context);
-        CallId ->
+    %% TODO: get a cdr equivelent listing of the available call ids
+    %%   that can be inspected for this account from call_inspector
+    cb_context:add_system_error('not_found', Context).
+
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
+validate(Context, CallId) ->
+    case wh_util:is_empty(CallId) of
+        'true' ->
+            cb_context:add_system_error('not_found', Context);
+        'false' ->
             inspect_call_id(CallId, Context)
     end.
 
