@@ -163,8 +163,11 @@ code_change(_OldVsn, State, _Extra) ->
 extract_chunks(Dev) ->
     case extract_chunk(Dev, []) of
         [] -> 'ok';
-        Data ->
-            Setters = [fun (Chunk) -> ci_chunk:set_data(Chunk, Data) end
+        Data0 ->
+            Cleansers = [fun remove_whitespace_lines/1
+                        ,fun strip_pieces/1],
+            Data = lists:foldl(fun (F,A) -> F(A) end, Data0, Cleansers),
+            Setters = [fun (C) -> ci_chunk:set_data(C, Data) end
                       ,fun (C) -> ci_chunk:set_call_id(C, extract_call_id(Data)) end
                       ,fun (C) -> ci_chunk:set_timestamp(C, extract_timestamp(Data)) end
                       ,fun (C) -> ci_chunk:set_to(C, get_field([<<"To">>, <<"t">>],Data)) end
@@ -253,12 +256,33 @@ try_all(Data, Field) ->
         <<"   ", Field:FieldSz/binary, _/binary>> ->
             case binary:split(Data, <<": ">>) of
                 [_Key, Value0] ->
-                    NewlinePos = byte_size(Value0) -1,
-                    <<Value:NewlinePos/binary, "\n">> = Value0,
+                    RmLastCharacter = byte_size(Value0) -1,
+                    Value = binary:part(Value0, {0, RmLastCharacter}),
                     {'true', Value};
                 _ ->
                     'false'
             end;
         _ ->
             'false'
+    end.
+
+
+remove_whitespace_lines(Data) ->
+    [Line || Line <- Data, not all_whitespace(Line)].
+
+all_whitespace(<<$\s, Rest/binary>>) ->
+    all_whitespace(Rest);
+all_whitespace(<<$\n, Rest/binary>>) ->
+    all_whitespace(Rest);
+all_whitespace(<<>>) -> 'true';
+all_whitespace(_) -> 'false'.
+
+
+strip_pieces([]) -> [];
+strip_pieces([Data|Rest]) ->
+    case re:run(Data, "(\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{6} \\[[A-Z]+\\] )") of
+        nomatch ->
+            [Data | strip_pieces(Rest)];
+        {match, [{Offset,_}|_]} ->
+            [binary:part(Data, {0,Offset}) | strip_pieces(Rest)]
     end.
