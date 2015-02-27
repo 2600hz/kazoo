@@ -30,7 +30,14 @@
 -record(state, {}).
 -type state() :: #state{}.
 
+-record(object, {call_id
+                 ,timestamp
+                 ,type
+                 ,value
+                 }).
+
 -define(SERVER, ?MODULE).
+-define(TAB, ?MODULE).
 
 %%%===================================================================
 %%% API
@@ -44,19 +51,19 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
+    gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
 -spec store_chunk(ci_chunk:chunk()) -> 'ok'.
 store_chunk(Chunk) ->
     'true' = ci_chunk:is_chunk(Chunk),
     CallId = ci_chunk:call_id(Chunk),
-    gen_server:cast(?MODULE, {'store_chunk', CallId, Chunk}).
+    gen_server:cast(?SERVER, {'store_chunk', CallId, Chunk}).
 
 -spec store_analysis(ci_analysis:analysis()) -> 'ok'.
 store_analysis(Analysis) ->
     'true' = ci_analysis:is_analysis(Analysis),
     CallId = ci_analysis:call_id(Analysis),
-    gen_server:cast(?MODULE, {'store_analysis', CallId, Analysis}).
+    gen_server:cast(?SERVER, {'store_analysis', CallId, Analysis}).
 
 -spec lookup_callid(ne_binary()) -> wh_json:object().
 lookup_callid(_CallId) ->
@@ -79,6 +86,12 @@ lookup_callid(_CallId) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    _ = ets:new(?TAB, ['named_table'
+                      ,'duplicate_bag'
+                      ,{'keypos', #object.call_id}
+                      ,'protected'
+                      ,{'read_concurrency', 'true'}
+                      ]),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
@@ -112,11 +125,21 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({'store_chunk', CallId, Chunk}, State) ->
-    %% TODO: store data
+    Object = #object{call_id=CallId
+                    ,timestamp=wh_util:current_tstamp()
+                    ,type='chunk'
+                    ,value=Chunk
+                    },
+    _ = ets:insert(?TAB, Object),
     _ = ci_analyzers:new_chunk(CallId, Chunk),
     {'noreply', State};
-handle_cast({'store_analysis', _CallId, _Analysis}, State) ->
-    %% TODO: store data
+handle_cast({'store_analysis', CallId, Analysis}, State) ->
+    Object = #object{call_id=CallId
+                    ,timestamp=wh_util:current_tstamp()
+                    ,type='analysis'
+                    ,value=Analysis
+                    },
+    _ = ets:insert(?TAB, Object),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled handle_cast ~p", [_Msg]),

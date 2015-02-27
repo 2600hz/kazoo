@@ -18,6 +18,7 @@
 -define(CHILDREN, [?CACHE('call_inspector_cache')
                    ,?SUPER('ci_analyzers_sup')
                    ,?SUPER('ci_parsers_sup')
+                   ,?WORKER('ci_datastore')
                    ,?WORKER('ci_listener')
                   ]).
 
