@@ -25,6 +25,7 @@
          ,reason/1
         ]).
 -export([to_json/1]).
+-export([is_analysis/1]).
 
 -record(ci_analysis, {call_id
                      ,originiate_type
@@ -96,3 +97,7 @@ to_json(Analysis) ->
          ,{<<"reason">>, reason(Analysis)}
         ])
      ).
+
+-spec is_analysis(_) -> boolean().
+is_analysis(#ci_analysis{}) -> 'true';
+is_analysis(_) -> 'false'.

@@ -17,6 +17,7 @@
         ,data/1
         ]).
 -export([to_json/1]).
+-export([is_chunk/1]).
 
 -record(ci_chunk, {call_id
                   ,data = []
@@ -53,3 +54,7 @@ data(#ci_chunk{data=Data}) ->
 -spec to_json(ci_chunk()) -> ne_binaries().
 to_json(Chunk) ->
     data(Chunk).
+
+-spec is_chunk(_) -> boolean().
+is_chunk(#ci_chunk{}) -> 'true';
+is_chunk(_) -> 'false'.
