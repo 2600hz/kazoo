@@ -52,7 +52,7 @@ $now = time();
 
 $hour = date("G", $now);
 
-if ( $hour > 8 && $hour < 17 ) {
+if ( $hour >= 9 && $hour < 17 ) {
   business_hours();
 } else {
   after_hours();
@@ -122,4 +122,5 @@ Bring it all together:
       }
     <?php
     }
-    ```
+?>
+```
