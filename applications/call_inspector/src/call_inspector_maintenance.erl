@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(call_inspector_maintenance).
 
--export([import_freeswitch_log/1]).
+-export([import_freeswitch_log/2]).
 -export([flush/0
          ,flush/1
         ]).
@@ -16,9 +16,9 @@
 
 -include("call_inspector.hrl").
 
--spec import_freeswitch_log(text()) -> 'ok'.
-import_freeswitch_log(Filename) ->
-    _ = ci_parser_fs:open_logfile(wh_util:to_list(Filename)),
+-spec import_freeswitch_log(text(), text()) -> 'ok'.
+import_freeswitch_log(Filename, IPAddr) ->
+    _ = ci_parser_fs:open_logfile(Filename, IPAddr),
     ci_parser_fs:start_parsing().
 
 -spec flush() -> 'ok'.

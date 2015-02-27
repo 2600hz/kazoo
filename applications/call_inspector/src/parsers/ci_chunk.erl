@@ -30,13 +30,13 @@
 -export([is_chunk/1]).
 -export([sort_by_timestamp/1]).
 
--record(ci_chunk, {call_id = 'undefined'
+-record(ci_chunk, {call_id
                   ,data = []
-                  ,timestamp = 'undefined'
-                  ,to = 'undefined'
-                  ,from = 'undefined'
+                  ,timestamp
+                  ,to
+                  ,from
                   ,parser :: atom()
-                  ,label = 'undefined'
+                  ,label
                  }).
 -type chunk() :: #ci_chunk{}.
 -type chunks() :: [chunk(),...].

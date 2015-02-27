@@ -14,7 +14,7 @@
 
 %% API
 -export([start_link/0
-         ,open_logfile/1
+         ,open_logfile/2
          ,start_parsing/0
         ]).
 
@@ -29,6 +29,7 @@
 
 -record(state, {logfile :: file:name()
                ,iodevice :: file:io_device()
+               ,logip :: ne_binary()
                }
        ).
 -type state() :: #state{}.
@@ -49,10 +50,8 @@
 start_link() ->
     gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
 
-open_logfile(Filename) when is_list(Filename) ->
-    gen_server:cast(?MODULE, {'open_logfile', Filename});
-open_logfile(Filename) ->
-    open_logfile(wh_util:to_list(Filename)).
+open_logfile(Filename, LogfileIP) ->
+    gen_server:cast(?MODULE, {'open_logfile', Filename, LogfileIP}).
 
 start_parsing() ->
     gen_server:cast(?MODULE, 'start_parsing').
@@ -105,12 +104,15 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'open_logfile', LogFile}, State) ->
+handle_cast({'open_logfile', LogFile, LogIP}, State) ->
     {'ok', IoDevice} = file:open(LogFile, ['read','raw','binary','read_ahead']),%read+append??
-    NewState = State#state{logfile = LogFile, iodevice = IoDevice},
+    NewState = State#state{logfile = LogFile
+                          ,iodevice = IoDevice
+                          ,logip = LogIP},
     {'noreply', NewState};
-handle_cast('start_parsing', State=#state{iodevice = IoDevice}) ->
-    'ok' = extract_chunks(IoDevice),
+handle_cast('start_parsing', State=#state{iodevice = IoDevice
+                                         ,logip = LogIP}) ->
+    'ok' = extract_chunks(IoDevice, LogIP),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled handle_cast ~p", [_Msg]),
@@ -161,7 +163,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
-extract_chunks(Dev) ->
+extract_chunks(Dev, LogIP) ->
     case extract_chunk(Dev, []) of
         [] -> 'ok';
         Data0 ->
@@ -174,14 +176,13 @@ extract_chunks(Dev) ->
             Setters = [fun (C) -> ci_chunk:set_data(C, Data) end
                       ,fun (C) -> ci_chunk:set_call_id(C, extract_call_id(Data)) end
                       ,fun (C) -> ci_chunk:set_timestamp(C, extract_timestamp(Data)) end
-                      ,fun (C) -> ci_chunk:set_to(C, get_field([<<"To">>, <<"t">>],Data)) end
-                      ,fun (C) -> ci_chunk:set_from(C, get_field([<<"From">>, <<"f">>],Data)) end
+                      ,fun (C) -> set_legs(LogIP, C, Data) end
                       ,fun (C) -> ci_chunk:set_parser(C, ?MODULE) end
                       ,fun (C) -> ci_chunk:set_label(C, extract_label(Data)) end
                       ],
             Chunk = lists:foldl(Apply, ci_chunk:new(), Setters),
             ci_datastore:store_chunk(Chunk),
-            extract_chunks(Dev)
+            extract_chunks(Dev, LogIP)
     end.
 
 extract_chunk(Dev, Buffer) ->
@@ -242,6 +243,25 @@ do_extract_timestamp(Line, Rest) ->
     end.
 
 
+set_legs(LogIP, Chunk, [FirstLine|_Lines]) ->
+    case FirstLine of
+        <<"send ", _/binary>> ->
+            From = LogIP,
+            To   = get_ip(FirstLine);
+        <<"recv ", _/binary>> ->
+            From = get_ip(FirstLine),
+            To   = LogIP
+    end,
+    ci_chunk:set_to(ci_chunk:set_from(Chunk,From), To).
+
+get_ip('undefined') -> 'undefined';
+get_ip(Bin) ->
+    case re:run(Bin, "/\\[([\\d\\.]+)\\]:", [{capture,all_but_first,binary}]) of
+        {match, [IP]} -> IP;
+        nomatch -> 'undefined'
+    end.
+
+
 extract_label(Data) ->
     lists:nth(2, Data).
 
@@ -264,8 +284,7 @@ get_field(Fields, [Data|Rest]) ->
 filtermap(Fun, List1) ->
     lists:foldr(fun(Elem, Acc) ->
                         case Fun(Elem) of
-                            false ->
-                                Acc;
+                            false -> Acc;
                             true -> [Elem|Acc];
                             {true,Value} -> [Value|Acc]
                         end
