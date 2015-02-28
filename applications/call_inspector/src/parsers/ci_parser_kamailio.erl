@@ -190,7 +190,7 @@ make_and_store_chunk(Counter, Callid, Data) ->
                %% from to (legs)
               ],
     Chunk = lists:foldl(Apply, ci_chunk:new(), Setters),
-    io:format("~p\n",[Chunk]),
+    %% io:format("~p\n",[Chunk]),
     ci_datastore:store_chunk(Chunk).
 
 extract_chunk(Dev) ->
@@ -218,6 +218,7 @@ acc(<<"start|",_/binary>>=Logged, Buffer, Key, _Dev)
     put(Key, [Logged]),
     {Key, lists:reverse(Buffer)};
 acc(<<"log|external ",_/binary>>=Logged, Buffer, Key, _Dev) ->
+    %% Turn into chunk to make sure consecutive "external ..." don't get ignored
     put(Key, []),
     {Key, lists:reverse([Logged|Buffer])};
 acc(<<"log|",_/binary>>=Logged, Buffer, Key, Dev) ->
@@ -228,10 +229,7 @@ acc(<<"pass|",_/binary>>=Logged, Buffer, Key, _Dev) ->
     {Key, lists:reverse([Logged|Buffer])};
 acc(<<"end|",_/binary>>=Logged, Buffer, Key, _Dev) ->
     put(Key, []),
-    {Key, lists:reverse([Logged|Buffer])};
-acc(Logged, Buffer, Key, Dev) ->
-    io:format("Unhandled acc/4 case:\n\tLogged=~p\n\tBuffer=~p\n\tKey=~p\n", [Logged,Buffer,Key]),
-    extract_chunk(Dev).
+    {Key, lists:reverse([Logged|Buffer])}.
 
 get_buffer(Key) ->
     case get(Key) of
@@ -245,7 +243,13 @@ dump_buffers() ->
                   Buff =/= []],
     case Buffers of
         [] -> [];
-        _ -> {'buffers', Buffers}
+        _ ->
+            RmFromProcDict =
+                fun ({Key, _Buffer}) ->
+                        put(Key, [])
+                end,
+            lists:foreach(RmFromProcDict, Buffers),
+            {'buffers', Buffers}
     end.
 
 
@@ -261,7 +265,7 @@ label(<<"start|recieved UDP request ", Label/binary>>) -> Label;
 label(<<"start|recieved udp request ", Label/binary>>) -> Label;
 label(<<"log|external reply ", Label/binary>>) -> Label;
 label(<<"start|received failure reply ", Label/binary>>) -> Label;
-label(_Other) -> io:format("??LABEL?? ~p\n",[_Other]), 'undefined'.
+label(_Other) -> 'undefined'.
 
 source([]) -> 'undefined';
 source([<<"log|source ", Source0/binary>>|_]) ->

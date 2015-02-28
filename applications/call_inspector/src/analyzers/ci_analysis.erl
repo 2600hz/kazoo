@@ -35,7 +35,7 @@
                      }).
 -type analysis() :: #ci_analysis{}.
 
--export_type([ci_analysis/0]).
+-export_type([analysis/0]).
 
 -include("../call_inspector.hrl").
 
