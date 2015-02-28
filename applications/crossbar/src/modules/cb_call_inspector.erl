@@ -104,7 +104,13 @@ inspect_call_id(CallId, Context) ->
                             )
     of
         {'ok', JObj} ->
-            crossbar_util:response(JObj, Context);
+            Response =
+                wh_json:from_list(
+                  [{<<"messages">>, wh_json:get_value(<<"Chunks">>, JObj)}
+                  ,{<<"analysis">>, wh_json:get_value(<<"Analysis">>, JObj)}
+                  ]
+                 ),
+            crossbar_util:response(Response, Context);
         {'timeout', _Resp} ->
             lager:debug("timeout: ~p", [_Resp]),
             crossbar_util:response_datastore_timeout(Context);

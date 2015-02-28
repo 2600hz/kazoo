@@ -117,6 +117,7 @@ to_json(Chunk) ->
        ,{<<"to">>, to(Chunk)}
        ,{<<"call-id">>, call_id(Chunk)}
        ,{<<"timestamp">>, timestamp(Chunk)}
+       ,{<<"label">>, label(Chunk)}
        ,{<<"raw">>, data(Chunk)}
       ]
      ).
