@@ -80,7 +80,7 @@ timestamp(#ci_chunk{timestamp=Timestamp}) ->
 
 -spec set_to(chunk(), ne_binary()) -> chunk().
 set_to(Chunk, To) ->
-    Chunk#ci_chunk{to=To}.
+    Chunk#ci_chunk{to=resolve(To)}.
 
 -spec to(chunk()) -> api_binary().
 to(#ci_chunk{to=To}) ->
@@ -88,7 +88,7 @@ to(#ci_chunk{to=To}) ->
 
 -spec set_from(chunk(), ne_binary()) -> chunk().
 set_from(Chunk, From) ->
-    Chunk#ci_chunk{from=From}.
+    Chunk#ci_chunk{from=resolve(From)}.
 
 -spec from(chunk()) -> api_binary().
 from(#ci_chunk{from=From}) ->
@@ -130,3 +130,6 @@ is_chunk(_) -> 'false'.
 sort_by_timestamp(Chunks) ->
     F = fun(C1, C2) -> timestamp(C1) < timestamp(C2) end,
     lists:sort(F, Chunks).
+
+
+resolve(IP) -> IP.

@@ -8,7 +8,8 @@
 %%%-------------------------------------------------------------------
 -module(call_inspector_maintenance).
 
--export([import_freeswitch_log/2]).
+-export([import_freeswitch_log/2
+         ,import_kamailio_log/1]).
 -export([flush/0
          ,flush/1
         ]).
@@ -20,6 +21,11 @@
 import_freeswitch_log(Filename, IPAddr) ->
     _ = ci_parser_fs:open_logfile(Filename, IPAddr),
     ci_parser_fs:start_parsing().
+
+-spec import_kamailio_log(text()) -> 'ok'.
+import_kamailio_log(Filename) ->
+    _ = ci_parser_kamailio:open_logfile(Filename),
+    ci_parser_kamailio:start_parsing().
 
 -spec flush() -> 'ok'.
 flush() ->

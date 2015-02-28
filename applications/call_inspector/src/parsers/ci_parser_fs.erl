@@ -144,7 +144,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{iodevice = IoDevice}) ->
-    ok = file:close(IoDevice),
+    'ok' = file:close(IoDevice),
     lager:debug("call inspector freeswitch parser terminated: ~p", [_Reason]),
     'ok'.
 
@@ -233,9 +233,9 @@ set_legs(LogIP, Chunk, [FirstLine|_Lines]) ->
 
 get_ip('undefined') -> 'undefined';
 get_ip(Bin) ->
-    case re:run(Bin, "/\\[([\\d\\.]+)\\]:", [{capture,all_but_first,binary}]) of
-        {match, [IP]} -> IP;
-        nomatch -> 'undefined'
+    case re:run(Bin, "/\\[([\\d\\.]+)\\]:", [{'capture','all_but_first','binary'}]) of
+        {'match', [IP]} -> IP;
+        'nomatch' -> 'undefined'
     end.
 
 
@@ -261,9 +261,9 @@ get_field(Fields, [Data|Rest]) ->
 filtermap(Fun, List1) ->
     lists:foldr(fun(Elem, Acc) ->
                         case Fun(Elem) of
-                            false -> Acc;
-                            true -> [Elem|Acc];
-                            {true,Value} -> [Value|Acc]
+                            'false' -> Acc;
+                            'true' -> [Elem|Acc];
+                            {'true',Value} -> [Value|Acc]
                         end
                 end, [], List1).
 
@@ -298,9 +298,9 @@ all_whitespace(_) -> 'false'.
 strip_truncating_pieces([]) -> [];
 strip_truncating_pieces([Data|Rest]) ->
     case re:run(Data, "(\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{6} \\[[A-Z]+\\] )") of
-        nomatch ->
+        'nomatch' ->
             [Data | strip_truncating_pieces(Rest)];
-        {match, [{Offset,_}|_]} ->
+        {'match', [{Offset,_}|_]} ->
             [binary:part(Data, {0,Offset}) | strip_truncating_pieces(Rest)]
     end.
 

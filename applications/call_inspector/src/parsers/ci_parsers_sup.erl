@@ -15,7 +15,8 @@
 -include("../call_inspector.hrl").
 
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?WORKER('ci_parser_fs')]).
+-define(CHILDREN, [?WORKER('ci_parser_fs')
+                  ,?WORKER('ci_parser_kamailio')]).
 
 %% ===================================================================
 %% API functions
