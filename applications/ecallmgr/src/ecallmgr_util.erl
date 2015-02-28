@@ -1020,15 +1020,12 @@ cached_media_expelled(?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName), MediaUrl, _Reason
     'ok'.
 
 -spec maybe_flush_node_of_media(ne_binary(), atom()) -> 'ok'.
-maybe_flush_node_of_media(MediaUrl, Node) ->
-    case freeswitch:api(Node, 'http_tryget', MediaUrl) of
-        {'error', _E} -> 'ok';
-        {'ok', _Path} ->
-            lager:debug("media is on ~s at ~s", [Node, _Path]),
-            lager:debug("http_cache only supports flushing the whole cache atm, so..."),
-            _ = freeswitch:api(Node, 'http_clear_cache', []),
-            'ok'
-    end.
+maybe_flush_node_of_media(_MediaUrl, _Node) ->
+    %% TODO: We need to both reduce the expelled
+    %%  notifications (they currently include things
+    %%  like voicemail message saves) as well as
+    %%  massively increase the effeciency of the flush.
+    'ok'.
 
 -spec custom_sip_headers(wh_proplist()) -> wh_proplist().
 custom_sip_headers(Props) ->
