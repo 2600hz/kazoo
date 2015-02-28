@@ -232,9 +232,9 @@ merge_attributes([<<"language">>|_]=Keys, Account, Endpoint, Owner) ->
 merge_attributes([<<"presence_id">>|_]=Keys, Account, Endpoint, Owner) ->
     merge_value(Keys, Account, Endpoint, Owner);
 merge_attributes([<<"record_call">> = Key|Keys], Account, Endpoint, Owner) ->
-    EndpointAttr = wh_json:get_ne_value(Key, Endpoint, wh_json:new()),
-    AccountAttr = wh_json:get_ne_value(Key, Account, wh_json:new()),
-    OwnerAttr = wh_json:get_ne_value(Key, Owner, wh_json:new()),
+    EndpointAttr = get_record_call_properties(Endpoint),
+    AccountAttr = get_record_call_properties(Account),
+    OwnerAttr = get_record_call_properties(Owner),
     Merged = wh_json:merge_recursive([AccountAttr, OwnerAttr, EndpointAttr]),
     merge_attributes(Keys, Account, wh_json:set_value(Key, Merged, Endpoint), Owner);
 merge_attributes([Key|Keys], Account, Endpoint, Owner) ->
@@ -245,6 +245,23 @@ merge_attributes([Key|Keys], Account, Endpoint, Owner) ->
                                      ,fun(_, V) -> wh_util:is_not_empty(V) end
                                     ),
     merge_attributes(Keys, Account, wh_json:set_value(Key, Merged, Endpoint), Owner).
+
+-spec get_record_call_properties(wh_json:object()) -> wh_json:object().
+get_record_call_properties(JObj) ->
+    RecordCall = wh_json:get_ne_value(<<"record_call">>, JObj),
+    case wh_json:is_json_object(RecordCall) of
+        'true' -> RecordCall;
+        'false' ->
+            case wh_util:is_true(RecordCall) of
+                'false' -> wh_json:new();
+                'true' ->
+                    wh_json:from_list(
+                      [{<<"action">>, <<"start">>}
+                       ,{<<"record_call">>, 'true'}
+                      ]
+                     )
+            end
+    end.
 
 -spec merge_value(ne_binaries(), api_object(), wh_json:object(), api_object()) ->
                               wh_json:object().
