@@ -80,9 +80,50 @@ resource_exists(_) -> 'true'.
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
-    %% TODO: get a cdr equivelent listing of the available call ids
-    %%   that can be inspected for this account from call_inspector
-    cb_context:add_system_error('not_found', Context).
+    C = cb_cdrs:validate(Context),
+    case cb_context:resp_status(C) of
+        'success' -> maybe_filter_cdrs(C);
+        Else -> Else
+    end.
+
+-spec maybe_filter_cdrs(cb_context:context()) -> cb_context:context().
+maybe_filter_cdrs(Context) ->
+    case cb_context:resp_data(Context) of
+        [] -> Context;
+        'undefined' -> crossbar_util:response([], Context);
+        Cdrs -> filter_cdrs(Context, Cdrs)
+    end.
+
+-spec filter_cdrs(cb_context:context(), ne_binaries()) -> cb_context:context().
+filter_cdrs(Context, Cdrs) ->
+    Req = [{<<"Call-IDs">>,
+            [wh_json:get_value(<<"call_id">>, Cdr)
+             || Cdr <- Cdrs
+            ]
+           }
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    case wh_amqp_worker:call(Req
+                            ,fun wapi_inspector:publish_filter_req/1
+                            ,fun wapi_inspector:filter_resp_v/1
+                            )
+    of
+        {'ok', JObj} ->
+            Ids = wh_json:get_value(<<"Call-IDs">>, JObj, []),
+            crossbar_util:response(
+              [Cdr
+               || Cdr <- Cdrs
+                  ,lists:member(wh_json:get_value(<<"call_id">>, Cdr), Ids)
+              ]
+              ,Context
+             );
+        {'timeout', _Resp} ->
+            lager:debug("timeout: ~p", [_Resp]),
+            crossbar_util:response_datastore_timeout(Context);
+        {'error', _E} ->
+            lager:debug("error: ~p", [_E]),
+            crossbar_util:response_datastore_timeout(Context)
+    end.
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, CallId) ->

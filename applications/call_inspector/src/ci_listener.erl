@@ -29,6 +29,9 @@
 -define(RESPONDERS, [{'ci_lookup_req',
                       [{<<"call_inspector">>, <<"lookup_req">>}]
                      }
+                    ,{'ci_filter_req',
+                      [{<<"call_inspector">>, <<"filter_req">>}]
+                     }
                     ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).

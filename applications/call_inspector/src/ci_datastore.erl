@@ -17,6 +17,7 @@
 -export([store_chunk/1]).
 -export([store_analysis/1]).
 -export([lookup_callid/1]).
+-export([callid_exists/1]).
 -export([flush/0
         ,flush/1
         ]).
@@ -67,6 +68,13 @@ store_analysis(Analysis) ->
     'true' = ci_analysis:is_analysis(Analysis),
     CallId = ci_analysis:call_id(Analysis),
     gen_server:cast(?SERVER, {'store_analysis', CallId, Analysis}).
+
+-spec callid_exists(ne_binary()) -> boolean().
+callid_exists(CallId) ->
+    case ets:lookup(?TAB, CallId) of
+        [] -> 'false';
+        _Else -> 'true'
+    end.
 
 -spec lookup_callid(ne_binary()) -> wh_json:object().
 lookup_callid(CallId) ->
