@@ -14,7 +14,7 @@
 
 %% API
 -export([start_link/0
-         ,open_logfile/1
+         ,open_logfile/2
          ,start_parsing/0
         ]).
 
@@ -29,6 +29,7 @@
 
 -record(state, {logfile :: file:name()
                ,iodevice :: file:io_device()
+               ,kamailioIP :: ne_binary()
                }
        ).
 -type state() :: #state{}.
@@ -49,8 +50,8 @@
 start_link() ->
     gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
 
-open_logfile(Filename) ->
-    gen_server:cast(?MODULE, {'open_logfile', Filename}).
+open_logfile(Filename, KamailioIP) ->
+    gen_server:cast(?MODULE, {'open_logfile', Filename, KamailioIP}).
 
 start_parsing() ->
     gen_server:cast(?MODULE, 'start_parsing').
@@ -103,13 +104,15 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'open_logfile', LogFile}, State) ->
+handle_cast({'open_logfile', LogFile, KamailioIP}, State) ->
     {'ok', IoDevice} = file:open(LogFile, ['read','raw','binary','read_ahead']),%read+append??
     NewState = State#state{logfile = LogFile
-                          ,iodevice = IoDevice},
+                          ,iodevice = IoDevice
+                          ,kamailioIP = KamailioIP},
     {'noreply', NewState};
-handle_cast('start_parsing', State=#state{iodevice = IoDevice}) ->
-    'ok' = extract_chunks(IoDevice),
+handle_cast('start_parsing', State=#state{iodevice = IoDevice
+                                         ,kamailioIP = KamailioIP}) ->
+    'ok' = extract_chunks(IoDevice, KamailioIP),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled handle_cast ~p", [_Msg]),
@@ -160,25 +163,25 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
-extract_chunks(Dev) ->
-    extract_chunks(Dev, 1).
-extract_chunks(Dev, Counter) ->
+extract_chunks(Dev, KamailioIP) ->
+    extract_chunks(Dev, KamailioIP, 1).
+extract_chunks(Dev, KamailioIP, Counter) ->
     case extract_chunk(Dev) of
         [] -> 'ok';
         {{'callid',Callid}, Data} ->
-            make_and_store_chunk(Counter, Callid, Data),
-            extract_chunks(Dev, Counter+1);
+            make_and_store_chunk(KamailioIP, Counter, Callid, Data),
+            extract_chunks(Dev, KamailioIP, Counter+1);
         {'buffers', Buffers} ->
             StoreEach =
                 fun ({{'callid',Callid}, Data}, Count) ->
-                        make_and_store_chunk(Counter, Callid, Data),
+                        make_and_store_chunk(KamailioIP, Counter, Callid, Data),
                         Count + 1
                 end,
             lists:foldl(StoreEach, Counter, Buffers),
             'ok'
     end.
 
-make_and_store_chunk(Counter, Callid, Data) ->
+make_and_store_chunk(KamailioIP, Counter, Callid, Data) ->
     Apply = fun (Fun, Arg) -> Fun(Arg) end,
     Setters = [fun (C) -> ci_chunk:set_data(C, Data) end
               ,fun (C) -> ci_chunk:set_call_id(C, Callid) end
@@ -186,11 +189,9 @@ make_and_store_chunk(Counter, Callid, Data) ->
               ,fun (C) -> ci_chunk:set_parser(C, ?MODULE) end
               ,fun (C) -> ci_chunk:set_label(C, label(hd(Data))) end
               ,fun (C) -> ci_chunk:set_from(C, source(Data)) end
-              ,fun (C) -> ci_chunk:set_to(C, to(Data)) end
-               %% from to (legs)
+              ,fun (C) -> ci_chunk:set_to(C, KamailioIP) end
               ],
     Chunk = lists:foldl(Apply, ci_chunk:new(), Setters),
-    %% io:format("~p\n",[Chunk]),
     ci_datastore:store_chunk(Chunk).
 
 extract_chunk(Dev) ->
@@ -261,11 +262,16 @@ callid(Line) ->
     Callid.
 
 label(<<"start|recieved internal reply ", Label/binary>>) -> Label;
-label(<<"start|recieved UDP request ", Label/binary>>) -> Label;
-label(<<"start|recieved udp request ", Label/binary>>) -> Label;
+label(<<"start|recieved ", _Protocol:3/binary, " request ", Label/binary>>) -> Label;
 label(<<"log|external reply ", Label/binary>>) -> Label;
 label(<<"start|received failure reply ", Label/binary>>) -> Label;
-label(_Other) -> 'undefined'.
+label(Other) ->
+    case binary:split(Other, <<"|">>) of
+        [_Tag, <<"recieved ">>=Line] ->
+            Line;
+        _ ->
+            'undefined'
+    end.
 
 source([]) -> 'undefined';
 source([<<"log|source ", Source0/binary>>|_]) ->
@@ -273,15 +279,3 @@ source([<<"log|source ", Source0/binary>>|_]) ->
     Source;
 source([_Line|Lines]) ->
     source(Lines).
-
-to([]) -> 'undefined';
-to([<<"log|to ", _/binary>>=Line|_]) ->
-    case re:run(Line, "(?:@([^@;]+);|@([^@$]+)$|:([^:]+):|:([^:$]+)$)"
-               ,[{'capture','all_but_first','binary'}]) of
-        {'match', Matches} ->
-            [Host] = [Match || Match <- Matches, Match =/= <<>>],
-            Host;
-        'nomatch' -> 'undefined'
-    end;
-to([_Line|Lines]) ->
-    to(Lines).
