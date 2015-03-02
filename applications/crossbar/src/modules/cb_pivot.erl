@@ -108,7 +108,7 @@ read(Id, Context) ->
 
 -spec debug_read(ne_binary(), cb_context:context()) -> cb_context:context().
 debug_read(CallId, Context) ->
-    AccountModb = wh_util:format_account_mod_id(cb_context:account_id(Context)),
+    AccountModb = get_modb(Context),
     Context1 =
         crossbar_doc:load_view(
             ?CB_DEBUG_LIST
@@ -146,12 +146,29 @@ summary(Context) ->
 
 -spec debug_summary(cb_context:context()) -> cb_context:context().
 debug_summary(Context) ->
-    AccountModb = wh_util:format_account_mod_id(cb_context:account_id(Context)),
-    crossbar_doc:load_view(?CB_DEBUG_LIST
-                           ,[{'group_level', 1}]
-                           ,cb_context:set_account_db(Context, AccountModb)
-                           ,fun normalize_debug_results/2
-                          ).
+    AccountModb = get_modb(Context),
+    Context1 =
+        crossbar_doc:load_view(
+            ?CB_DEBUG_LIST
+            ,[]
+            ,cb_context:set_account_db(Context, AccountModb)
+            ,fun normalize_view_results/2
+        ),
+    normalize_debug_results(Context1).
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec get_modb(cb_context:context()) -> ne_binary().
+get_modb(Context) ->
+    AccountId = cb_context:account_id(Context),
+    case cb_context:req_value(Context, <<"created_from">>) of
+        'undefined' -> wh_util:format_account_mod_id(AccountId);
+        From -> wh_util:format_account_mod_id(AccountId, wh_util:to_integer(From))
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -166,13 +183,28 @@ normalize_view_results(JObj, Acc) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_debug_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
-normalize_debug_results(JObj, Acc) ->
-    [wh_json:get_value([<<"key">>, 1], JObj)|Acc].
+-spec normalize_debug_results(cb_context:context()) -> cb_context:context().
+normalize_debug_results(Context) ->
+    Dict =
+        lists:foldl(
+            fun(JObj, Acc) ->
+                CallId = wh_json:get_value(<<"call_id">>, JObj),
+                dict:append(CallId, wh_json:delete_key(<<"call_id">>, JObj), Acc)
+            end
+            ,dict:new()
+            ,lists:reverse(cb_context:resp_data(Context))
+        ),
+    RespData = [wh_json:from_list([{<<"call_id">>, CallId}, {<<"flows">>, Flows}])
+                || {CallId, Flows} <- dict:to_list(Dict)],
+    cb_context:set_resp_data(Context, RespData).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec normalize_debug_read(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_debug_read(JObj, Acc) ->
     [wh_json:get_value(<<"doc">>, JObj) | Acc].
