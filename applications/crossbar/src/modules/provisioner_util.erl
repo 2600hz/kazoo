@@ -447,7 +447,7 @@ send_to_full_provisioner('post', FullUrl, JObj) ->
     J =  wh_json:from_list(props:filter_undefined(Props)),
     Body = wh_util:to_list(wh_json:encode(J)),
     lager:debug("making post request to ~s with: ~-300p", [FullUrl, Body]),
-    Res = ibrowse:send_req(FullUrl, Headers, 'put', Body, [{'inactivity_timeout', 10000}]),
+    Res = ibrowse:send_req(FullUrl, Headers, 'post', Body, [{'inactivity_timeout', 10000}]),
     lager:debug("response from server: ~p", [Res]),
     'true'.
 
