@@ -501,6 +501,14 @@ whitelabel_attachment_id(JObj, AttachType) ->
 
 -spec filter_attachment_type(ne_binaries(), ne_binary()) -> api_binary().
 filter_attachment_type([], _) -> 'undefined';
+filter_attachment_type([AttachmentId], <<"logo">>) ->
+    %% if there is only one attachment and it is not an icon
+    %%  then it is the deprecated whitelabel when we assumed
+    %%  the only attachment was the logo...
+    case binary:match(AttachmentId, <<"icon">>) of
+        {0, _} -> 'undefined';
+        _Else -> AttachmentId
+    end;
 filter_attachment_type([AttachmentId|AttachmentIds], AttachType) ->
     case binary:match(AttachmentId, AttachType) of
         {0, _} -> AttachmentId;
