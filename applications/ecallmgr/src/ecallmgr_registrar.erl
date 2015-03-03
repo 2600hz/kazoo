@@ -92,6 +92,7 @@
                        ,initial = 'true' :: boolean() | '_'
                        ,account_realm :: api_binary() | '_' | '$2'
                        ,account_name :: api_binary() | '_'
+                       ,proxy :: api_binary() | '_'
                       }).
 
 -type registration() :: #registration{}.
@@ -181,7 +182,7 @@ lookup_contact(Realm, Username) ->
                                ,[Username, Realm, Contact]
                               ),
                     {'ok', Contact};
-                'undefined' -> fetch_contact(Username, Realm)
+                'undefined' -> maybe_fetch_contact(Username, Realm)
             end
     end.
 
@@ -521,6 +522,15 @@ fetch_registration(Username, Realm) ->
             {'error', 'not_found'}
     end.
 
+-spec maybe_fetch_contact(ne_binary(), ne_binary()) ->
+                           {'ok', ne_binary()} |
+                           {'error', 'not_found'}.
+maybe_fetch_contact(Username, Realm) ->
+    case oldest_registrar() of
+        'true' -> {'error', 'not_found'};
+        'false' -> fetch_contact(Username, Realm)
+    end.
+    
 -spec fetch_contact(ne_binary(), ne_binary()) ->
                            {'ok', ne_binary()} |
                            {'error', 'not_found'}.
@@ -705,13 +715,11 @@ registration_id(Username, Realm) ->
 create_registration(JObj) ->
     Username = wh_json:get_value(<<"Username">>, JObj),
     Realm = wh_json:get_value(<<"Realm">>, JObj),
+    Proxy = wh_json:get_value(<<"Proxy-Path">>, JObj),
     #registration{initial=Initial}=Reg = existing_or_new_registration(Username, Realm),
-    OriginalContact = wh_json:get_value(<<"Contact">>, JObj),
+    OriginalContact = wh_json:get_first_defined([<<"Original-Contact">>, <<"Contact">>], JObj),
     
-    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
-    AccountId = wh_json:get_value(<<"Account-ID">>, CCVs),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    
+    maybe_add_ccvs(wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
     Reg#registration{username=Username
                      ,realm=Realm
                      ,network_port=wh_json:get_value(<<"Network-Port">>, JObj)
@@ -732,16 +740,24 @@ create_registration(JObj) ->
                                                                 ,<<"Node">>
                                                                ], JObj)
                      ,registrar_hostname=wh_json:get_value(<<"Hostname">>, JObj)
-                     ,account_id = AccountId
+                     ,suppress_unregister = wh_json:is_true(<<"Suppress-Unregister-Notifications">>, JObj)
+                     ,register_overwrite_notify = wh_json:is_true(<<"Register-Overwrite-Notify">>, JObj)
+                     ,initial = wh_json:is_true(<<"First-Registration">>, JObj, Initial)
+                     ,proxy=Proxy
+                    }).
+
+-spec maybe_add_ccvs(api_object(), registration()) -> registration().
+maybe_add_ccvs('undefined', Reg) -> Reg;
+maybe_add_ccvs(CCVs, Reg) ->
+    AccountId = wh_json:get_value(<<"Account-ID">>, CCVs),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    Reg#registration{account_id = AccountId
                      ,account_db = AccountDb
                      ,authorizing_id = wh_json:get_value(<<"Authorizing-ID">>, CCVs)
                      ,authorizing_type = wh_json:get_value(<<"Authorizing-Type">>, CCVs)
                      ,owner_id = wh_json:get_value(<<"Owner-ID">>, CCVs)
                      ,account_realm = wh_json:get_value(<<"Account-Realm">>, CCVs)
                      ,account_name = wh_json:get_value(<<"Account-Name">>, CCVs)
-                     ,suppress_unregister = wh_json:is_true(<<"Suppress-Unregister-Notifications">>, JObj)
-                     ,register_overwrite_notify = wh_json:is_true(<<"Register-Overwrite-Notify">>, JObj)
-                     ,initial = wh_json:is_true(<<"First-Registration">>, JObj, Initial)
                     }.
 
 -spec fix_contact(ne_binary()) -> ne_binary().
