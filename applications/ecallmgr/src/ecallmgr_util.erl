@@ -250,7 +250,12 @@ custom_channel_vars(Props, Initial) ->
                         [{<<"Referred-By">>, wh_util:to_binary(mochiweb_util:unquote(V))} | Acc];
                    ({<<"variable_sip_refer_to">>, V}, Acc) ->
                         [{<<"Referred-To">>, wh_util:to_binary(mochiweb_util:unquote(V))} | Acc];
-                   (_, Acc) -> Acc
+                   ({<<"variable_sip_h_X-", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
+                        case props:is_defined(Key, Acc) of
+                            'true' -> Acc;
+                            'false' -> [{Key, V} | Acc]
+                        end;
+                (_, Acc) -> Acc
                 end, Initial, Props).
 
 %% convert a raw FS string of headers to a proplist
