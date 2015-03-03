@@ -199,7 +199,7 @@ lookup_original_contact(Realm, Username) ->
                                ,[Username, Realm, Contact]
                               ),
                     {'ok', Contact};
-                'undefined' -> fetch_original_contact(Username, Realm)
+                'undefined' -> maybe_fetch_original_contact(Username, Realm)
             end
     end.
 
@@ -210,7 +210,7 @@ lookup_registration(Realm, Username) ->
     case get_registration(Realm, Username) of
         #registration{}=Registration ->
             {'ok', wh_json:from_list(to_props(Registration))};
-        'undefined' -> fetch_registration(Username, Realm)
+        'undefined' -> maybe_fetch_registration(Username, Realm)
     end.
 
 -spec get_registration(ne_binary(), ne_binary()) -> 'undefined' | registration().
@@ -494,6 +494,15 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec maybe_fetch_registration(ne_binary(), ne_binary()) ->
+                           {'ok', ne_binary()} |
+                           {'error', 'not_found'}.
+maybe_fetch_registration(Username, Realm) ->
+    case oldest_registrar() of
+        'true' -> {'error', 'not_found'};
+        'false' -> fetch_registration(Username, Realm)
+    end.
+
 -spec fetch_registration(ne_binary(), ne_binary()) ->
                                 {'ok', ne_binary()} |
                                 {'error', 'not_found'}.
@@ -570,6 +579,15 @@ query_for_registration(Reg) ->
                                 ,{'ecallmgr', fun wapi_registration:query_resp_v/1, 'true'}
                                 ,2000
                                ).
+
+-spec maybe_fetch_original_contact(ne_binary(), ne_binary()) ->
+                           {'ok', ne_binary()} |
+                           {'error', 'not_found'}.
+maybe_fetch_original_contact(Username, Realm) ->
+    case oldest_registrar() of
+        'true' -> {'error', 'not_found'};
+        'false' -> fetch_original_contact(Username, Realm)
+    end.
 
 -spec fetch_original_contact(ne_binary(), ne_binary()) ->
                                     {'ok', ne_binary()} |
