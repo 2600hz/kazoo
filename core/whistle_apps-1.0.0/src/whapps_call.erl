@@ -15,6 +15,7 @@
 -export([from_route_req/1, from_route_req/2]).
 -export([from_route_win/1, from_route_win/2]).
 -export([from_originate_uuid/1, from_originate_uuid/2]).
+-export([from_channel_create/1, from_channel_create/2]).
 -export([to_json/1, from_json/1, from_json/2]).
 -export([to_proplist/1]).
 -export([is_call/1]).
@@ -323,6 +324,14 @@ from_originate_uuid(JObj, #whapps_call{}=Call) ->
     Call#whapps_call{control_q=wh_json:get_value(<<"Outbound-Call-Control-Queue">>, JObj, control_queue(Call))
                      ,call_id=wh_json:get_value(<<"Outbound-Call-ID">>, JObj, call_id(Call))
                     }.
+
+-spec from_channel_create(wh_json:object()) -> call().
+-spec from_channel_create(wh_json:object(), call()) -> call().
+from_channel_create(JObj) ->
+    from_channel_create(JObj, new()).
+
+from_channel_create(JObj, Call) ->
+    from_json(JObj, Call).
 
 %%--------------------------------------------------------------------
 %% @public

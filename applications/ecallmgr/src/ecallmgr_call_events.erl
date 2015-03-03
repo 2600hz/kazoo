@@ -36,7 +36,6 @@
 -export([get_application_name/1]).
 -export([queue_name/1
          ,callid/1
-         ,other_leg/1
          ,node/1
          ,update_node/2
         ]).
@@ -122,9 +121,6 @@ listen_for_other_leg(Node, UUID, [_|_] = Events) ->
 -spec callid(pid()) -> ne_binary().
 callid(Srv) -> gen_listener:call(Srv, 'callid', 1000).
 
--spec other_leg(pid()) -> api_binary().
-other_leg(Srv) -> gen_listener:call(Srv, 'other_leg', 1000).
-
 -spec node(pid()) -> ne_binary().
 node(Srv) -> gen_listener:call(Srv, 'node', 1000).
 
@@ -180,9 +176,10 @@ handle_publisher_usurp(JObj, Props) ->
 %%--------------------------------------------------------------------
 -spec init([atom() | ne_binary(),...]) -> {'ok', state()}.
 init([Node, CallId]) when is_atom(Node) andalso is_binary(CallId) ->
-    put('callid', CallId),
+    wh_util:put_callid(CallId),
     register_for_events(Node, CallId),
     gen_listener:cast(self(), 'init'),
+    lager:debug("started call event publisher"),
     {'ok', #state{node=Node
                   ,call_id=CallId
                   ,ref=wh_util:rand_hex_binary(12)
@@ -205,8 +202,6 @@ init([Node, CallId]) when is_atom(Node) andalso is_binary(CallId) ->
 handle_call('node', _From, #state{node=Node}=State) ->
     {'reply', Node, State};
 handle_call('callid', _From, #state{call_id=CallId}=State) ->
-    {'reply', CallId, State};
-handle_call('other_leg', _From, #state{other_leg=CallId}=State) ->
     {'reply', CallId, State};
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
@@ -257,25 +252,31 @@ handle_cast('shutdown', #state{node=Node}=State) ->
 handle_cast({'transferer', _Props}, State) ->
     lager:debug("call control has been transferred"),
     {'stop', 'normal', State};
-handle_cast({'b_leg_events', NewEvents}, #state{other_leg_events=Evts}=State) ->
+handle_cast({'b_leg_events', NewEvents}, #state{other_leg_events=Evts
+                                                ,other_leg='undefined'
+                                               }=State) ->
     Events = lists:usort(Evts ++ NewEvents),
-    lager:debug("tracking b_leg events: ~p", [Events]),
+    lager:debug("will start event listener for b-leg if encountered"),
     {'noreply', State#state{other_leg_events=Events}};
-handle_cast({'other_leg', OtherLeg}, #state{other_leg_events=Events
-                                            ,node=Node
-                                           }=State) ->
+handle_cast({'b_leg_events', NewEvents}, #state{other_leg_events=Evts
+                                                ,other_leg=OtherLeg
+                                                ,node=Node
+                                               }=State) ->
+    Events = lists:usort(Evts ++ NewEvents),
     lager:debug("tracking other leg events for ~s: ~p", [OtherLeg, Events]),
-    _ = (Events =/= []) andalso ecallmgr_call_sup:start_event_process(Node, OtherLeg),
+    _Started = (Events =/= []) andalso ecallmgr_call_sup:start_event_process(Node, OtherLeg),
+    lager:debug("started event process: ~p", [_Started]),
 
-    {'noreply', State#state{other_leg=OtherLeg}};
-handle_cast({'other_leg', OtherLeg, ChannelBridgeProps}
+    {'noreply', State#state{other_leg_events=Events}};
+
+handle_cast({'other_leg', OtherLeg}
             ,#state{other_leg_events=Events
                     ,node=Node
                    }=State) ->
     lager:debug("tracking other leg events for ~s: ~p", [OtherLeg, Events]),
-    _ = (Events =/= []) andalso ecallmgr_call_sup:start_event_process(Node, OtherLeg),
+    _Started = (Events =/= []) andalso ecallmgr_call_sup:start_event_process(Node, OtherLeg),
+    lager:debug("started event process: ~p", [_Started]),
 
-    maybe_publish_other_leg_bridge(OtherLeg, ChannelBridgeProps, lists:member(<<"CHANNEL_BRIDGE">>, Events)),
     {'noreply', State#state{other_leg=OtherLeg}};
 handle_cast({'gen_listener', {'created_queue', _Q}}, State) ->
     {'noreply', State};
@@ -284,12 +285,6 @@ handle_cast({'gen_listener',{'is_consuming', _IsConsuming}}, State) ->
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
-
--spec maybe_publish_other_leg_bridge(ne_binary(), wh_proplist(), boolean()) -> 'ok'.
-maybe_publish_other_leg_bridge(_OtherLeg, _Props, 'false') -> 'ok';
-maybe_publish_other_leg_bridge(OtherLeg, Props, 'true') ->
-    OtherProps = props:set_value(<<"Call-ID">>, OtherLeg, swap_call_legs(Props)),
-    wapi_call:publish_event(OtherProps).
 
 -spec register_for_events(atom(), ne_binary()) -> 'true'.
 register_for_events(Node, CallId) ->
@@ -490,7 +485,7 @@ handle_bowout(Node, Props, ResigningUUID) ->
             unregister_for_events(Node, ResigningUUID),
             register_for_events(Node, AcquiringUUID),
 
-            put('callid', AcquiringUUID),
+            wh_util:put_callid(AcquiringUUID),
             AcquiringUUID;
         {_UUID, _AcquiringUUID} ->
             lager:debug("failed to update after bowout, r: ~s a: ~s", [_UUID, _AcquiringUUID]),
@@ -650,7 +645,7 @@ publish_event(Props) ->
                        );
         {<<>>, <<"channel_bridge">>} ->
             OtherLeg = get_other_leg(Props),
-            gen_listener:cast(self(), {'other_leg', OtherLeg, Props}),
+            gen_listener:cast(self(), {'other_leg', OtherLeg}),
             lager:debug("publishing channel_bridge to other leg ~s", [OtherLeg]);
         {<<>>, _Event} ->
             lager:debug("publishing call event ~s", [_Event]);
@@ -890,6 +885,7 @@ get_call_id(Props) ->
                              ,?RESIGNING_UUID
                             ], Props).
 
+-spec get_other_leg(wh_proplist()) -> api_binary().
 get_other_leg(Props) ->
     ecallmgr_fs_channel:get_other_leg(get_call_id(Props), Props).
 

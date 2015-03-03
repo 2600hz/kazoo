@@ -771,7 +771,9 @@ maybe_start_metaflow(Call, Endpoint) ->
                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                     ]),
             lager:debug("sending metaflow for endpoint: ~s: ~s"
-                        ,[wh_json:get_value(<<"Endpoint-ID">>, Endpoint), wh_json:get_value(<<"listen_on">>, JObj)]
+                        ,[wh_json:get_value(<<"Endpoint-ID">>, Endpoint)
+                          ,wh_json:get_value(<<"listen_on">>, JObj)
+                         ]
                        ),
             whapps_util:amqp_pool_send(API, fun wapi_dialplan:publish_metaflow/1)
     end.

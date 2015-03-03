@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP, INC
+%%% @copyright (C) 2012-2015, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -19,9 +19,8 @@
 -export([start_event_process/2]).
 -export([init/1]).
 
--define(CHILD(Name, Type), fun(N, T) -> {N, {N, 'start_link', []}, 'permanent', 'infinity', T, [N]} end(Name, Type)).
--define(CHILDREN, [{'ecallmgr_call_event_sup', 'supervisor'}
-                   ,{'ecallmgr_call_control_sup', 'supervisor'}
+-define(CHILDREN, [?SUPER('ecallmgr_call_event_sup')
+                   ,?SUPER('ecallmgr_call_control_sup')
                   ]).
 
 %% ===================================================================
@@ -36,7 +35,7 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
 start_event_process(Node, UUID) ->
     ecallmgr_call_event_sup:start_proc([Node, UUID]).
@@ -72,6 +71,5 @@ init([]) ->
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    Children = [?CHILD(Name, Type) || {Name, Type} <- ?CHILDREN],
 
-    {'ok', {SupFlags, Children}}.
+    {'ok', {SupFlags, ?CHILDREN}}.

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Simple-One-For-One strategy for restarting call event processes
 %%% @end
@@ -34,16 +34,17 @@ start_link() ->
 
 -spec start_proc(list()) -> sup_startchild_ret().
 start_proc([Node, CallId|_]=Args) ->
-    try gproc:lookup_value({'p', 'l', ?FS_CALL_EVENTS_PROCESS_REG(Node, CallId)}) of
-        Pid when is_pid(Pid) ->
+    case gproc:lookup_values({'p', 'l', ?FS_CALL_EVENTS_PROCESS_REG(Node, CallId)}) of
+        [] ->
+            lager:debug("no registrations for ~s", [Node]),
+            supervisor:start_child(?SERVER, Args);
+        [{Pid, _V}] when is_pid(Pid) ->
             lager:debug("recycling existing call events worker ~p for ~s", [Pid, CallId]),
             ecallmgr_call_events:update_node(Pid, Node),
             {'ok', Pid};
         _V ->
-            lager:debug("unexpected event process: ~p", [_V])
-    catch
-        'error':'badarg' ->
-            supervisor:start_child(?SERVER, Args)
+            lager:debug("unexpected event process: ~p", [_V]),
+            {'error', 'multiple_handlers'}
     end.
 
 %%%===================================================================
