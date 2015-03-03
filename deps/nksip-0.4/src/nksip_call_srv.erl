@@ -55,17 +55,17 @@ stop(Pid) ->
     gen_server:cast(Pid, stop).
 
 
-%% @doc Sends a synchronous piece of {@link nksip_call:work()} to the call.
+%% @doc Sends a synchronous piece of {@link nksip_call_worker:work()} to the call.
 %% After receiving the work, the call will send `{sync_work_ok, Ref}' to `Sender'
--spec sync_work(pid(), reference(), pid(), nksip_call:work(), from()|none) ->
+-spec sync_work(pid(), reference(), pid(), nksip_call_worker:work(), from()|none) ->
     ok.
 
 sync_work(Pid, Ref, Sender, Work, From) ->
     gen_server:cast(Pid, {sync_work, Ref, Sender, Work, From}).
 
 
-%% @doc Sends an asynchronous piece of {@link nksip_call:work()} to the call.
--spec async_work(pid(), nksip_call:work()) ->
+%% @doc Sends an asynchronous piece of {@link nksip_call_worker:work()} to the call.
+-spec async_work(pid(), nksip_call_worker:work()) ->
     ok.
 
 async_work(Pid, Work) ->
@@ -87,7 +87,7 @@ get_data(Pid) ->
     gen_server_init(call()).
 
 init([AppId, CallId]) ->
-    nksip_counters:async([nksip_calls]),
+    nksip_counters:async([nksip_calls, {nksip_calls, AppId}]),
     Id = erlang:phash2(make_ref()) * 1000,
     Call = #call{
         app_id = AppId, 
@@ -103,7 +103,8 @@ init([AppId, CallId]) ->
         timers = AppId:config_timers()
     },
     nksip_config:put_log_cache(AppId, CallId),
-    erlang:start_timer(2000*?MAX_TRANS_TIME, self(), check_call),
+    Timeout = 2000*(Call#call.timers)#call_timers.trans,
+    erlang:start_timer(Timeout, self(), check_call),
     ?call_debug("Call process ~p started (~p)", [Id, self()]),
     {ok, Call}.
 
@@ -126,11 +127,11 @@ handle_call(get_data, _From, Call) ->
     gen_server_cast(call()).
 
 handle_cast({sync_work, Ref, Pid, Work, From}, Call) ->
-    Pid ! {sync_work_ok, Ref},
-    next(nksip_call:work(Work, From, Call));
+    Pid ! {sync_work_ok, Ref, self()},
+    next(nksip_call_worker:work(Work, From, Call));
 
 handle_cast({async_work, Work}, Call) ->
-    next(nksip_call:work(Work, none, Call));
+    next(nksip_call_worker:work(Work, none, Call));
 
 handle_cast(stop, Call) ->
     {stop, normal, Call};
@@ -144,11 +145,17 @@ handle_cast(Msg, Call) ->
 -spec handle_info(term(), call()) ->
     gen_server_info(call()).
 
-handle_info({timeout, Ref, Type}, Call) ->
-    next(nksip_call:timeout(Type, Ref, Call));
+handle_info({timeout, _Ref, check_call}, Call) ->
+    Call1 = nksip_call:check_call(Call),
+    Timeout = 2000*(Call#call.timers)#call_timers.trans,
+    erlang:start_timer(Timeout, self(), check_call),
+    next(Call1);
 
-handle_info(timeout, Call) ->
-    next(Call);
+handle_info({timeout, Ref, Type}, Call) ->
+    next(nksip_call_worker:timeout(Type, Ref, Call));
+
+% handle_info(timeout, Call) ->
+%     next(Call);
 
 handle_info(Info, Call) ->
     lager:warning("Module ~p received unexpected info: ~p", [?MODULE, Info]),
@@ -182,8 +189,10 @@ terminate(_Reason, #call{}) ->
 
 next(#call{trans=[], forks=[], dialogs=[], events=[]}=Call) -> 
     case erlang:process_info(self(), message_queue_len) of
-        {_, 0} -> {stop, normal, Call};
-        _ -> {noreply, Call}
+        {_, 0} -> 
+            {stop, normal, Call};
+        _ -> 
+            {noreply, Call}
     end;
 
 next(#call{hibernate=Hibernate}=Call) -> 

@@ -19,6 +19,7 @@
          ,content_types_provided/5
          ,put/1
          ,post/2, post/4
+         ,patch/2
          ,delete/2, delete/4
          ,cleanup_heard_voicemail/1
         ]).
@@ -41,6 +42,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.vmboxes">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.vmboxes">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.vmboxes">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.patch.vmboxes">>, ?MODULE, 'patch'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.vmboxes">>, ?MODULE, 'delete'),
     _ = crossbar_bindings:bind(crossbar_cleanup:binding_account(), ?MODULE, 'cleanup_heard_voicemail').
 
@@ -62,7 +64,7 @@ init() ->
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 allowed_methods(_VMBoxID) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE, ?HTTP_PATCH].
 allowed_methods(_VMBoxID, ?MESSAGES_RESOURCE) ->
     [?HTTP_GET].
 allowed_methods(_VMBoxID, ?MESSAGES_RESOURCE, _MsgID) ->
@@ -135,6 +137,8 @@ validate_vmbox(Context, DocId, ?HTTP_GET) ->
     load_vmbox(DocId, Context);
 validate_vmbox(Context, DocId, ?HTTP_POST) ->
     validate_request(DocId, Context);
+validate_vmbox(Context, DocId, ?HTTP_PATCH) ->
+    validate_patch(load_vmbox(DocId, Context), DocId);
 validate_vmbox(Context, DocId, ?HTTP_DELETE) ->
     load_vmbox(DocId, Context).
 
@@ -193,6 +197,10 @@ delete(Context, _DocID, ?MESSAGES_RESOURCE, _MediaID) ->
     C = crossbar_doc:save(Context),
     update_mwi(C).
 
+-spec patch(cb_context:context(), path_token()) -> cb_context:context().
+patch(Context, _Id) ->
+    crossbar_doc:save(Context).
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -223,11 +231,14 @@ validate_unique_vmbox(VMBoxId, Context, _AccountDb) ->
     case check_uniqueness(VMBoxId, Context) of
         'true' -> check_vmbox_schema(VMBoxId, Context);
         'false' ->
-            C = cb_context:add_validation_error(<<"mailbox">>
-                                                ,<<"unique">>
-                                                ,<<"Invalid mailbox number or already exists">>
-                                                ,Context
-                                               ),
+            C = cb_context:add_validation_error(
+                    <<"mailbox">>
+                    ,<<"unique">>
+                    ,wh_json:from_list([
+                        {<<"message">>, <<"Invalid mailbox number or already exists">>}
+                     ])
+                    ,Context
+                ),
             check_vmbox_schema(VMBoxId, C)
     end.
 
@@ -240,6 +251,24 @@ on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context, wh_json:set_values(Props, cb_context:doc(Context)));
 on_successful_validation(VMBoxId, Context) ->
     crossbar_doc:load_merge(VMBoxId, Context).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%  Support PATCH - merge vmbox document with request data
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_patch(cb_context:context(), ne_binary()) -> cb_context:context().
+validate_patch(Context, DocId)->
+    case cb_context:resp_status(Context) of
+        'success' ->
+            PatchJObj = wh_doc:public_fields(cb_context:req_data(Context)),
+            VmJObj = wh_json:merge_jobjs(PatchJObj, cb_context:doc(Context)),
+            OnValidateReqDataSuccess = fun(C) -> crossbar_doc:load_merge(DocId, C) end,
+            cb_context:validate_request_data(<<"vmboxes">>, cb_context:set_req_data(Context, VmJObj), OnValidateReqDataSuccess);
+
+        _Status -> Context
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -296,7 +325,14 @@ load_message(DocId, MediaId, UpdateJObj, Context) ->
         'success' ->
             Messages = wh_json:get_value(<<"messages">>, cb_context:doc(Context1), []),
             case get_message_index(MediaId, Messages) of
-                'false' -> {'false', cb_context:add_system_error('bad_identifier', [{'details', DocId}], Context)};
+                'false' ->
+                    {'false'
+                     ,cb_context:add_system_error(
+                          'bad_identifier'
+                          ,wh_json:from_list([{<<"cause">>, DocId}])
+                          ,Context
+                      )
+                    };
                 Index ->
                     CurrentMetaData = wh_json:get_value([<<"messages">>, Index], cb_context:doc(Context1), wh_json:new()),
                     CurrentFolder = wh_json:get_value(<<"folder">>, CurrentMetaData, <<"new">>),
@@ -327,50 +363,69 @@ load_message(DocId, MediaId, UpdateJObj, Context) ->
 %% VMId is the id for the voicemail document, containing the binary data
 %% @end
 %%--------------------------------------------------------------------
--spec load_message_binary(ne_binary(), ne_binary(), cb_context:context()) -> {boolean(), cb_context:context()}.
+-spec load_message_binary(ne_binary(), ne_binary(), cb_context:context()) ->
+                                 {boolean(), cb_context:context()}.
 load_message_binary(DocId, MediaId, Context) ->
     {Update, Context1} = load_message(DocId, MediaId, 'undefined', Context),
     case cb_context:resp_status(Context1) of
         'success' ->
-            VMMetaJObj = cb_context:resp_data(Context1),
-            Doc = cb_context:doc(Context1),
-
-            case couch_mgr:open_cache_doc(cb_context:account_db(Context), MediaId) of
-                {'error', 'not_found'} ->
-                    cb_context:add_system_error('bad_identifier', [{'details', MediaId}], Context1);
-                {'error', _E} ->
-                    cb_context:add_system_error('datastore_fault', Context1);
-                {'ok', Media} ->
-                    [AttachmentId] = wh_json:get_keys(<<"_attachments">>, Media),
-                    Filename = generate_media_name(wh_json:get_value(<<"caller_id_number">>, VMMetaJObj)
-                                                   ,wh_json:get_value(<<"timestamp">>, VMMetaJObj)
-                                                   ,filename:extension(AttachmentId)
-                                                   ,wh_json:get_value(<<"timezone">>, Doc)
-                                                  ),
-                    case couch_mgr:fetch_attachment(cb_context:account_db(Context1), MediaId, AttachmentId) of
-                        {'error', 'db_not_reachable'} ->
-                            {'false', cb_context:add_system_error('datastore_unreachable', Context1)};
-                        {'error', 'not_found'} ->
-                            {'false', cb_context:add_system_error('bad_identifier', [{'details', MediaId}], Context1)};
-                        {'ok', AttachBin} ->
-                            lager:debug("Sending file with filename ~s", [Filename]),
-                            {Update
-                             ,cb_context:set_resp_data(
-                                cb_context:set_resp_etag(
-                                  cb_context:add_resp_headers(Context1
-                                                              ,[{<<"Content-Type">>, wh_json:get_value([<<"_attachments">>, AttachmentId, <<"content_type">>], Doc)}
-                                                                ,{<<"Content-Disposition">>, <<"attachment; filename=", Filename/binary>>}
-                                                                ,{<<"Content-Length">>, wh_util:to_binary(wh_json:get_value([<<"_attachments">>, AttachmentId, <<"length">>], Doc))}
-                                                               ]
-                                                             )
-                                  ,'undefined'
-                                 )
-                                ,AttachBin
-                                )}
-                    end
-            end;
+            load_message_binary_from_message(MediaId, Context1, Update);
         _Status -> {Update, Context1}
     end.
+
+-spec load_message_binary_from_message(ne_binary(), cb_context:context(), boolean()) ->
+                                              {boolean(), cb_context:context()}.
+-spec load_message_binary_from_message(ne_binary(), cb_context:context(), boolean(), wh_json:object()) ->
+                                              {boolean(), cb_context:context()}.
+load_message_binary_from_message(MediaId, Context, Update) ->
+    case couch_mgr:open_cache_doc(cb_context:account_db(Context), MediaId) of
+        {'error', 'not_found'} ->
+            {'false', set_bad_media_identifier(Context, MediaId)};
+        {'error', _E} ->
+            {'false', cb_context:add_system_error('datastore_fault', Context)};
+        {'ok', Media} ->
+            load_message_binary_from_message(MediaId, Context, Update, Media)
+    end.
+
+load_message_binary_from_message(MediaId, Context, Update, Media) ->
+    VMMetaJObj = cb_context:resp_data(Context),
+    Doc = cb_context:doc(Context),
+
+    [AttachmentId] = wh_doc:attachment_names(Media),
+    Filename = generate_media_name(wh_json:get_value(<<"caller_id_number">>, VMMetaJObj)
+                                   ,wh_json:get_value(<<"timestamp">>, VMMetaJObj)
+                                   ,filename:extension(AttachmentId)
+                                   ,wh_json:get_value(<<"timezone">>, Doc)
+                                  ),
+    case couch_mgr:fetch_attachment(cb_context:account_db(Context), MediaId, AttachmentId) of
+        {'error', 'db_not_reachable'} ->
+            {'false', cb_context:add_system_error('datastore_unreachable', Context)};
+        {'error', 'not_found'} ->
+            {'false', set_bad_media_identifier(Context, MediaId)};
+        {'ok', AttachBin} ->
+            lager:debug("Sending file with filename ~s", [Filename]),
+            {Update
+             ,cb_context:setters(Context
+                                 ,[{fun cb_context:set_resp_data/2, AttachBin}
+                                   ,{fun cb_context:set_resp_etag/2, 'undefined'}
+                                   ,{fun cb_context:add_resp_headers/2
+                                     ,[{<<"Content-Type">>, wh_doc:attachment_content_type(Doc, AttachmentId)}
+                                       ,{<<"Content-Disposition">>, <<"attachment; filename=", Filename/binary>>}
+                                       ,{<<"Content-Length">>, wh_doc:attachment_length(Doc, AttachmentId)}
+                                      ]
+                                    }
+                                  ]
+                                )
+            }
+    end.
+
+-spec set_bad_media_identifier(cb_context:context(), ne_binary()) -> cb_context:context().
+set_bad_media_identifier(Context, MediaId) ->
+    cb_context:add_system_error(
+      'bad_identifier'
+      ,wh_json:from_list([{<<"cause">>, MediaId}])
+      ,Context
+     ).
 
 %%--------------------------------------------------------------------
 %% @private

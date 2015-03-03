@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, VoIP INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Handle registration-related APIs, like reg_success and reg_lookup.
 %%% @end
@@ -30,6 +30,9 @@
 
 -include_lib("whistle/include/wh_api.hrl").
 
+-define(KEY_REG_SUCCESS, <<"registration.success">>).
+-define(KEY_REG_QUERY, <<"registration.query">>).
+
 %% Registration Success
 -define(REG_SUCCESS_HEADERS, [<<"Event-Timestamp">>, <<"Contact">>
                               ,<<"Expires">>, <<"Username">>
@@ -46,7 +49,12 @@
                                        ,<<"FreeSWITCH-Nodename">>
                                        ,<<"Network-IP">>, <<"Network-Port">>
                                        ,<<"Suppress-Unregister-Notify">>
+                                       ,<<"Register-Overwrite-Notify">>
                                        ,<<"Original-Contact">>
+                                       ,<<"Registrar-Node">>
+                                       ,<<"Proxy-Path">>, <<"AOR">>, <<"RUID">>
+                                       ,<<"First-Registration">>
+                                       ,<<"Custom-Channel-Vars">>
                                       ]).
 -define(REG_SUCCESS_VALUES, [{<<"Event-Category">>, <<"directory">>}
                              ,{<<"Event-Name">>, <<"reg_success">>}

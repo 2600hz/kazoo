@@ -85,7 +85,9 @@ to_csv({Req, Context}) ->
     case props:get_value(<<"cdrs">>, Nouns, []) of
         [_|_] -> {Req, Context};
         [] ->
-            Headers = props:set_values([{<<"content-type">>, <<"application/octet-stream">>}]
+            Headers = props:set_values([{<<"content-type">>, <<"application/octet-stream">>}
+                                        ,{<<"content-disposition">>, <<"attachment; filename=\"cdrs.csv\"">>}
+                                       ]
                                        ,cowboy_req:get('resp_headers', Req)
                                       ),
             {'ok', Req1} = cowboy_req:chunked_reply(200, Headers, Req),
@@ -139,7 +141,7 @@ content_types_provided(Context) ->
     cb_context:add_content_types_provided(Context, CTPs).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% This function determines if the parameters and content are correct
 %% for this request
@@ -243,8 +245,14 @@ load_view(View, ViewOptions, Context) ->
     FromMODb = view_created_from_modb(AccountId, ViewOptions),
     load_chunked_db(View, ViewOptions, ToMODb, FromMODb, Context).
 
--spec load_chunked_db(ne_binary(), wh_proplist(), ne_binary(), ne_binary(), cb_context:context()) ->
+-spec load_chunked_db(ne_binary(), wh_proplist(), api_binary(), api_binary(), cb_context:context()) ->
                              cb_context:context().
+load_chunked_db(View, ViewOptions, Db, 'undefined', Context) ->
+    C = cb_context:store(Context, 'chunked_dbs', [Db]),
+    load_chunked_view_options(View, ViewOptions, C);
+load_chunked_db(View, ViewOptions, 'undefined', Db, Context) ->
+    C = cb_context:store(Context, 'chunked_dbs', [Db]),
+    load_chunked_view_options(View, ViewOptions, C);
 load_chunked_db(View, ViewOptions, Db, Db, Context) ->
     C = cb_context:store(Context, 'chunked_dbs', [Db]),
     load_chunked_view_options(View, ViewOptions, C);
@@ -262,9 +270,10 @@ load_chunked_view(View, Context) ->
     C = cb_context:store(Context, 'chunked_view', View),
     cb_context:set_resp_status(C, 'success').
 
--spec view_created_to_modb(ne_binary(), wh_proplist()) -> ne_binary().
+-spec view_created_to_modb(ne_binary(), wh_proplist()) -> api_binary().
 view_created_to_modb(AccountId, ViewOptions) ->
-    kazoo_modb:get_modb(AccountId, view_key_created_to(ViewOptions)).
+    Modb = kazoo_modb:get_modb(AccountId, view_key_created_to(ViewOptions)),
+    ensure_modb_exists(Modb).
 
 -spec view_key_created_to(wh_proplist()) -> pos_integer().
 view_key_created_to(ViewOptions) ->
@@ -273,9 +282,17 @@ view_key_created_to(ViewOptions) ->
         CreatedTo -> CreatedTo
     end.
 
--spec view_created_from_modb(ne_binary(), wh_proplist()) -> ne_binary().
+-spec view_created_from_modb(ne_binary(), wh_proplist()) -> api_binary().
 view_created_from_modb(AccountId, ViewOptions) ->
-    kazoo_modb:get_modb(AccountId, view_key_created_from(ViewOptions)).
+    Modb = kazoo_modb:get_modb(AccountId, view_key_created_from(ViewOptions)),
+    ensure_modb_exists(Modb).
+
+-spec ensure_modb_exists(ne_binary()) -> api_binary().
+ensure_modb_exists(Modb) ->
+    case couch_mgr:db_exists(Modb) of
+        'true' -> Modb;
+        'false' -> 'undefined'
+    end.
 
 -spec view_key_created_from(wh_proplist()) -> pos_integer().
 view_key_created_from(ViewOptions) ->
@@ -298,18 +315,14 @@ send_chunked_cdrs({Req, Context}) ->
 
 -spec send_chunked_cdrs(ne_binaries(), payload()) -> payload().
 send_chunked_cdrs([], Payload) -> Payload;
-send_chunked_cdrs([Db | Dbs], {Req, Context}=Payload) ->
+send_chunked_cdrs([Db | Dbs], {Req, Context}) ->
     View = cb_context:fetch(Context, 'chunked_view'),
     ViewOptions = fetch_view_options(Context),
     Context1 = cb_context:store(Context, 'start_key', props:get_value('startkey', ViewOptions)),
     Context2 = cb_context:store(Context1, 'page_size', 0),
-    P = case get_cdr_ids(Db, View, ViewOptions) of
-            {'ok', Ids} ->
-                {Context3, CDRIds} = maybe_paginate_and_clean(Context2, Ids),
-                load_chunked_cdrs(Db, CDRIds, {Req, Context3});
-            {'error', _} -> Payload
-        end,
-    send_chunked_cdrs(Dbs, P).
+    {'ok', Ids} = get_cdr_ids(Db, View, ViewOptions),
+    {Context3, CDRIds} = maybe_paginate_and_clean(Context2, Ids),
+    send_chunked_cdrs(Dbs, load_chunked_cdrs(Db, CDRIds, {Req, Context3})).
 
 -spec fetch_view_options(cb_context:context()) -> wh_proplist().
 fetch_view_options(Context) ->
@@ -347,13 +360,16 @@ maybe_paginate_and_clean(Context, Ids) ->
     end.
 
 -spec get_cdr_ids(ne_binary(), ne_binary(), wh_proplist()) ->
-                         {'ok', wh_proplist()} |
-                         {'error', _}.
+                         {'ok', wh_proplist()}.
 get_cdr_ids(Db, View, ViewOptions) ->
     _ = maybe_add_design_doc(Db),
     case couch_mgr:get_results(Db, View, ViewOptions) of
-        {'error', _R}=E -> E;
+        {'error', _R} ->
+            lager:debug("unable to fetch ~s from ~s: ~p"
+                       ,[View, Db, _R]),
+            {'ok', []};
         {'ok', JObjs} ->
+            lager:debug("fetched cdr ids from ~s", [Db]),
             {'ok', [{wh_json:get_value(<<"id">>, JObj)
                      ,wh_json:get_value(<<"key">>, JObj)
                     }
@@ -463,6 +479,8 @@ normalize_cdr(JObj, Context) ->
                          ,{<<"call_type">>, wh_json:get_value([<<"custom_channel_vars">>, <<"account_billing">>], JObj, <<>>)}
                          ,{<<"rate">>, wht_util:units_to_dollars(wh_json:get_value([<<"custom_channel_vars">>, <<"rate">>], JObj, 0))}
                          ,{<<"rate_name">>, wh_json:get_value([<<"custom_channel_vars">>, <<"rate_name">>], JObj, <<>>)}
+                         ,{<<"bridge_id">>, wh_json:get_value([<<"custom_channel_vars">>, <<"bridge_id">>], JObj, <<>>)}
+                         ,{<<"recording_url">>, wh_json:get_value([<<"custom_channel_vars">>, <<"recording_url">>], JObj, <<>>)}
                         ])
       ,Context
      ).
@@ -496,6 +514,7 @@ normalize_cdr_to_csv(JObj, Context) ->
                                ,wh_json:get_value([<<"custom_channel_vars">>, <<"account_billing">>], JObj, <<>>)
                                ,wh_util:to_binary(wht_util:units_to_dollars(wh_json:get_value([<<"custom_channel_vars">>, <<"rate">>], JObj, 0)))
                                ,wh_json:get_value([<<"custom_channel_vars">>, <<"rate_name">>], JObj, <<>>)
+                               ,wh_json:get_value([<<"custom_channel_vars">>, <<"bridge_id">>], JObj, <<>>)
                               ], <<",">>),
     case cb_context:fetch(Context, 'is_reseller') of
         'false' -> <<CSV/binary, "\r">>;
@@ -534,6 +553,7 @@ normalize_cdr_to_csv_header(_JObj, Context) ->
             ,"call_type,"
             ,"rate,"
             ,"rate_name"
+            ,"bridge_id"
           >>,
     case cb_context:fetch(Context, 'is_reseller') of
         'false' -> <<CSV/binary, "\r">>;

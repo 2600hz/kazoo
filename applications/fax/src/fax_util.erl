@@ -11,8 +11,9 @@
 -export([fax_properties/1]).
 -export([collect_channel_props/1]).
 -export([save_fax_docs/3, save_fax_attachment/3]).
--export([content_type_to_extension/1]).
+-export([content_type_to_extension/1, extension_to_content_type/1]).
 -export([notify_email_list/3]).
+-export([filter_numbers/1]).
 
 -include("fax.hrl").
 
@@ -61,6 +62,22 @@ content_type_to_extension(<<"image/tiff">>) -> <<"tiff">>;
 content_type_to_extension(CT) when is_binary(CT) ->
     lager:debug("content-type ~s not handled, returning 'tmp'",[CT]),
     <<"tmp">>.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Convert known extensions to media types 
+%% @end
+%%--------------------------------------------------------------------
+-spec extension_to_content_type(ne_binary() | string() | list()) -> ne_binary().
+extension_to_content_type(Ext) when not is_binary(Ext) ->
+    extension_to_content_type(wh_util:to_binary(Ext));
+extension_to_content_type(<<".pdf">>) -> <<"application/pdf">>;
+extension_to_content_type(<<".tif">>) -> <<"image/tiff">>;
+extension_to_content_type(<<".tiff">>) -> <<"image/tiff">>;
+extension_to_content_type(Ext) ->
+    lager:debug("extension ~s not handled, returning 'application/octet-stream'",[Ext]),
+    <<"application/octet-stream">>.
 
 
 %%--------------------------------------------------------------------
@@ -154,3 +171,10 @@ notify_email_list('undefined', OwnerEmail, List) ->
     lists:usort([OwnerEmail | List]);
 notify_email_list(From, OwnerEmail, List) ->
     lists:usort([From, OwnerEmail | List]).
+
+-spec filter_numbers(binary()) -> binary().
+filter_numbers(Number) ->
+    << <<X>> || <<X>> <= Number, is_digit(X)>>.
+
+-spec is_digit(binary()) -> boolean().
+is_digit(N) -> N >= $0 andalso N =< $9.

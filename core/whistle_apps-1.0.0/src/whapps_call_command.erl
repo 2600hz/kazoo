@@ -35,6 +35,7 @@
         ]).
 -export([redirect/2
          ,redirect/3
+         ,redirect_to_node/3
         ]).
 -export([answer/1, answer_now/1
          ,hangup/1, hangup/2
@@ -182,7 +183,7 @@
 -export([get_inbound_t38_settings/1, get_inbound_t38_settings/2]).
 
 -type audio_macro_prompt() :: {'play', binary()} | {'play', binary(), binaries()} |
-                              {'prompt', binary()} | {'prompt', binary(), binary()} |
+                              {'prompt', binary()} | {'prompt', binary(), ne_binaries()} |
                               {'say', binary()} | {'say', binary(), binary()} |
                               {'say', binary(), binary(), binary()} |
                               {'say', binary(), binary(), binary(), binary()} |
@@ -191,7 +192,9 @@
                               {'tts', ne_binary(), ne_binary()} |
                               {'tts', ne_binary(), ne_binary(), ne_binary()}.
 -type audio_macro_prompts() :: [audio_macro_prompt(),...] | [].
--export_type([audio_macro_prompt/0]).
+-export_type([audio_macro_prompt/0
+              ,audio_macro_prompts/0
+             ]).
 
 -define(CONFIG_CAT, <<"call_command">>).
 
@@ -605,6 +608,23 @@ redirect(Contact, Server, Call) ->
     lager:debug("redirect to ~s on ~s", [Contact, Server]),
     Command = [{<<"Redirect-Contact">>, Contact}
                ,{<<"Redirect-Server">>, Server}
+               ,{<<"Application-Name">>, <<"redirect">>}
+              ],
+    send_command(Command, Call),
+    timer:sleep(2000),
+    'ok'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Create a redirect request to Node
+%% @end
+%%--------------------------------------------------------------------
+-spec redirect_to_node(ne_binary(), api_binary(), whapps_call:call()) -> 'ok'.
+redirect_to_node(Contact, Node, Call) ->
+    lager:debug("redirect ~s to ~s", [Contact, Node]),
+    Command = [{<<"Redirect-Contact">>, Contact}
+               ,{<<"Redirect-Node">>, Node}
                ,{<<"Application-Name">>, <<"redirect">>}
               ],
     send_command(Command, Call),
@@ -1106,11 +1126,11 @@ b_prompt(Prompt, Lang, Call) ->
 -spec play(ne_binary(), api_binaries(), api_binary(), whapps_call:call()) ->
                   ne_binary().
 
--spec play_command(ne_binary(), whapps_call:call()) ->
+-spec play_command(ne_binary(), whapps_call:call() | ne_binary()) ->
                           wh_json:object().
--spec play_command(ne_binary(), api_binaries(), whapps_call:call()) ->
+-spec play_command(ne_binary(), api_binaries(), whapps_call:call() | ne_binary()) ->
                           wh_json:object().
--spec play_command(ne_binary(), api_binaries(), api_binary(), whapps_call:call()) ->
+-spec play_command(ne_binary(), api_binaries(), api_binary(), whapps_call:call() | ne_binary()) ->
                           wh_json:object().
 
 -spec b_play(ne_binary(), whapps_call:call()) ->
@@ -1124,15 +1144,17 @@ play_command(Media, Call) ->
     play_command(Media, ?ANY_DIGIT, Call).
 play_command(Media, Terminators, Call) ->
     play_command(Media, Terminators, 'undefined', Call).
-play_command(Media, Terminators, Leg, Call) ->
+play_command(Media, Terminators, Leg, <<_/binary>> = CallId) ->
     wh_json:from_list(
       props:filter_undefined(
         [{<<"Application-Name">>, <<"play">>}
          ,{<<"Media-Name">>, Media}
          ,{<<"Terminators">>, play_terminators(Terminators)}
          ,{<<"Leg">>, play_leg(Leg)}
-         ,{<<"Call-ID">>, whapps_call:call_id(Call)}
-        ])).
+         ,{<<"Call-ID">>, CallId}
+        ]));
+play_command(Media, Terminators, Leg, Call) ->
+    play_command(Media, Terminators, Leg, whapps_call:call_id(Call)).
 
 -spec play_terminators(api_binaries()) -> ne_binaries().
 play_terminators('undefined') -> ?ANY_DIGIT;
@@ -2240,48 +2262,47 @@ wait_for_bridge(Timeout, _, _) when Timeout < 0 ->
     {'error', 'timeout'};
 wait_for_bridge(Timeout, Fun, Call) ->
     Start = os:timestamp(),
-    receive
-        {'amqp_msg', JObj} ->
-            Disposition = wh_json:get_value(<<"Disposition">>, JObj),
-            Cause = wh_json:get_first_defined([<<"Application-Response">>
-                                               ,<<"Hangup-Cause">>
-                                              ], JObj, <<"UNSPECIFIED">>),
-            Result = case Disposition =:= <<"SUCCESS">>
-                         orelse Cause =:= <<"SUCCESS">>
-                     of
-                         'true' -> 'ok';
-                         'false' -> 'fail'
-                     end,
-            case get_event_type(JObj) of
-                {<<"error">>, _, <<"bridge">>} ->
-                    lager:debug("channel execution error while waiting for bridge: ~s", [wh_json:encode(JObj)]),
-                    {'error', JObj};
-                {<<"call_event">>, <<"CHANNEL_BRIDGE">>, _} ->
-                    CallId = wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
-                    lager:debug("channel bridged to ~s", [CallId]),
-                    case is_function(Fun, 1) of
-                        'false' -> 'ok';
-                        'true' -> Fun(JObj)
-                    end,
-                    wait_for_bridge('infinity', Fun, Call);
-                {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
-                    %% TODO: reduce log level if no issue is found with
-                    %%    basing the Result on Disposition
-                    lager:info("bridge completed with result ~s(~s)", [Disposition, Result]),
-                    {Result, JObj};
-                {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} ->
-                    %% TODO: reduce log level if no issue is found with
-                    %%    basing the Result on Disposition
-                    lager:info("bridge completed with result ~s(~s)", [Disposition, Result]),
-                    {Result, JObj};
-                _ ->
-                    wait_for_bridge(wh_util:decr_timeout(Timeout, Start), Fun, Call)
-            end;
-        %% dont let the mailbox grow unbounded if
-        %%   this process hangs around...
-        _ -> wait_for_bridge(wh_util:decr_timeout(Timeout, Start), Fun, Call)
-    after
-        Timeout -> {'error', 'timeout'}
+
+    lager:debug("waiting for bridge for ~p ms", [Timeout]),
+    wait_for_bridge(Timeout, Fun, Call, Start, receive_event(Timeout)).
+
+wait_for_bridge(_Timeout, _Fun, _Call, _Start, {'error', 'timeout'}=E) -> E;
+wait_for_bridge(Timeout, Fun, Call, Start, {'ok', JObj}) ->
+    Disposition = wh_json:get_value(<<"Disposition">>, JObj),
+    Cause = wh_json:get_first_defined([<<"Application-Response">>
+                                       ,<<"Hangup-Cause">>
+                                      ], JObj, <<"UNSPECIFIED">>),
+    Result = case Disposition =:= <<"SUCCESS">>
+                 orelse Cause =:= <<"SUCCESS">>
+             of
+                 'true' -> 'ok';
+                 'false' -> 'fail'
+             end,
+    case get_event_type(JObj) of
+        {<<"error">>, _, <<"bridge">>} ->
+            lager:debug("channel execution error while waiting for bridge: ~s", [wh_json:encode(JObj)]),
+            {'error', JObj};
+        {<<"call_event">>, <<"CHANNEL_BRIDGE">>, _} ->
+            CallId = wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
+            lager:debug("channel bridged to ~s", [CallId]),
+            case is_function(Fun, 1) of
+                'false' -> 'ok';
+                'true' -> Fun(JObj)
+            end,
+            wait_for_bridge('infinity', Fun, Call);
+        {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
+            %% TODO: reduce log level if no issue is found with
+            %%    basing the Result on Disposition
+            lager:info("bridge completed with result ~s(~s)", [Disposition, Result]),
+            {Result, JObj};
+        {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} ->
+            %% TODO: reduce log level if no issue is found with
+            %%    basing the Result on Disposition
+            lager:info("bridge completed with result ~s(~s)", [Disposition, Result]),
+            {Result, JObj};
+        _E ->
+            lager:debug("unhandled event type: ~p", [_E]),
+            wait_for_bridge(wh_util:decr_timeout(Timeout, Start), Fun, Call)
     end.
 
 %%--------------------------------------------------------------------
@@ -2328,8 +2349,8 @@ wait_for_channel_unbridge() ->
 %%--------------------------------------------------------------------
 -spec wait_for_channel_bridge() -> {'ok', wh_json:object()}.
 wait_for_channel_bridge() ->
-    receive
-        {'amqp_msg', JObj} ->
+    case receive_event('infinity') of
+        {'ok', JObj} ->
             case whapps_util:get_event_type(JObj) of
                 {<<"call_event">>, <<"CHANNEL_BRIDGE">>} -> {'ok', JObj};
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>} -> {'ok', JObj};

@@ -1,6 +1,6 @@
 {
   "_id": "vmboxes",
-  "$schema": "http://json-schema.org/draft-04/schema#",
+  "$schema": "http://json-schema.org/draft-03/schema#",
   "type": "object",
   "required": true,
   "name": "Voicemail Box",
@@ -18,7 +18,7 @@
       "type": "string",
       "required": true,
       "description": "The voicemail box number",
-      "minLength": 2,
+      "minLength": 1,
       "maxLength": 30
     },
     "require_pin": {

@@ -23,33 +23,32 @@
 -export([calculate_cost/5]).
 -export([default_reason/0]).
 -export([is_valid_reason/1]).
--export([reason_code/1]).
+-export([reason_code/1, code_reason/1]).
 -export([collapse_call_transactions/1]).
 -export([modb/1]).
 -export([rollup/1
          ,rollup/2
         ]).
 
-
 -include("whistle_transactions.hrl").
 
 %% tracked in hundred-ths of a cent
 -define(DOLLAR_TO_UNIT, 10000).
 
--define(REASONS, [{<<"per_minute_call">>, 1001}
-                  ,{<<"sub_account_per_minute_call">>, 1002}
-                  ,{<<"feature_activation">>, 2001}
-                  ,{<<"sub_account_feature_activation">>, 2002}
-                  ,{<<"number_activation">>, 2003}
-                  ,{<<"sub_account_number_activation">>, 2004}
-                  ,{<<"manual_addition">>, 3001}
-                  ,{<<"sub_account_manual_addition">>, 3002}
-                  ,{<<"auto_addition">>, 3003}
-                  ,{<<"sub_account_auto_addition">>, 3004}
-                  ,{<<"admin_discretion">>, 3005}
-                  ,{<<"topup">>, 3006}
-                  ,{<<"database_rollup">>, 4000}
-                  ,{<<"unknown">>, 9999}
+-define(REASONS, [{<<"per_minute_call">>, ?CODE_PER_MINUTE_CALL}
+                  ,{<<"sub_account_per_minute_call">>, ?CODE_SUB_ACCOUNT_PER_MINUTE_CALL}
+                  ,{<<"feature_activation">>, ?CODE_FEATURE_ACTIVATION}
+                  ,{<<"sub_account_feature_activation">>, ?CODE_SUB_ACCOUNT_FEATURE_ACTIVATION}
+                  ,{<<"number_activation">>, ?CODE_NUMBER_ACTIVATION}
+                  ,{<<"sub_account_number_activation">>, ?CODE_SUB_ACCOUNT_NUMBER_ACTIVATION}
+                  ,{<<"manual_addition">>, ?CODE_MANUAL_ADDITION}
+                  ,{<<"sub_account_manual_addition">>, ?CODE_SUB_ACCOUNT_MANUAL_ADDITION}
+                  ,{<<"auto_addition">>, ?CODE_AUTO_ADDITION}
+                  ,{<<"sub_account_auto_addition">>, ?CODE_SUB_ACCOUNT_AUTO_ADDITION}
+                  ,{<<"admin_discretion">>, ?CODE_ADMIN_DISCRETION}
+                  ,{<<"topup">>, ?CODE_TOPUP}
+                  ,{<<"database_rollup">>, ?CODE_DATABASE_ROLLUP}
+                  ,{<<"unknown">>, ?CODE_UNKNOWN}
                  ]).
 
 reasons() ->
@@ -71,7 +70,7 @@ reasons(Min, Max, [_ | T], Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec dollars_to_units(float() | integer()) -> integer().
+-spec dollars_to_units(text() | number()) -> integer().
 dollars_to_units(Dollars) when is_number(Dollars) ->
     round(Dollars * ?DOLLAR_TO_UNIT);
 dollars_to_units(Dollars) ->
@@ -83,7 +82,7 @@ dollars_to_units(Dollars) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec units_to_dollars(float() | number()) -> float().
+-spec units_to_dollars(number()) -> float().
 units_to_dollars(Units) when is_number(Units) ->
     trunc(Units) / ?DOLLAR_TO_UNIT;
 units_to_dollars(Units) ->
@@ -349,8 +348,7 @@ calculate_cost(R, RI, RM, Sur, Secs) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec default_reason() -> ne_binary().
-default_reason() ->
-    <<"unknown">>.
+default_reason() -> <<"unknown">>.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -368,10 +366,21 @@ is_valid_reason(Reason) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reason_code(ne_binary()) -> integer().
+-spec reason_code(ne_binary()) -> pos_integer().
 reason_code(Reason) ->
     {_, Code} = lists:keyfind(Reason, 1, ?REASONS),
     Code.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec code_reason(pos_integer()) -> ne_binary().
+code_reason(Code) ->
+    {Reason, _} = lists:keyfind(Code, 2, ?REASONS),
+    Reason.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -394,14 +403,14 @@ collapse_call_transactions(Transactions) ->
 %%--------------------------------------------------------------------
 -spec modb(ne_binary()) -> 'ok'.
 modb(AccountMODb) ->
-    Routines = [fun(MoDb) -> kazoo_modb_util:prev_year_month(MoDb) end
+    Routines = [fun kazoo_modb_util:prev_year_month/1
                 ,fun({Year, Month}) -> previous_balance(AccountMODb, Year, Month) end
                 ,fun(Balance) -> rollup(AccountMODb, Balance) end
                ],
     lists:foldl(fun(F, A) -> F(A) end, AccountMODb, Routines).
 
 -spec rollup(wh_transaction:transaction()) -> 'ok'.
--spec rollup(ne_binary(), integer()) -> wh_transaction:transaction().
+-spec rollup(ne_binary(), integer()) -> 'ok'.
 rollup(Transaction) ->
     Transaction1 = wh_transaction:set_reason(<<"database_rollup">>, Transaction),
     Transaction2 = wh_transaction:set_description(<<"monthly rollup">>, Transaction1),
@@ -414,13 +423,12 @@ rollup(Transaction) ->
             lager:debug("monthly rollup transaction success", [])
     end.
 
-rollup(AccountMODb, Balance) when Balance >= 0 ->
+rollup(<<_/binary>> = AccountMODb, Balance) when Balance >= 0 ->
     AccountId = wh_util:format_account_id(AccountMODb, 'raw'),
     rollup(wh_transaction:credit(AccountId, Balance));
-rollup(AccountMODb, Balance) ->
+rollup(<<_/binary>> = AccountMODb, Balance) ->
     AccountId = wh_util:format_account_id(AccountMODb, 'raw'),
     rollup(wh_transaction:debit(AccountId, -1*Balance)).
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -433,7 +441,7 @@ rollup(AccountMODb, Balance) ->
 collapse_call_transactions([], Calls, Transactions) ->
     clean_transactions(Transactions ++ dict:to_list(Calls));
 collapse_call_transactions([JObj|JObjs], Calls, Transactions) ->
-    case wh_json:get_integer_value(<<"code">>, JObj) of
+    case wh_json:get_integer_value(<<"pvt_code">>, JObj) of
         Code when Code >= 1000 andalso Code < 2000 ->
             C = collapse_call_transaction(JObj, Calls),
             collapse_call_transactions(JObjs, C, Transactions);

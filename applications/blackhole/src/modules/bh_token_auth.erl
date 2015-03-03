@@ -38,7 +38,7 @@ init() ->
                           {'true' | 'halt', bh_context:context()}.
 authenticate(Context) ->
     lager:debug("trying to authenticate with token: ~s", [bh_context:auth_token(Context)]),
-    case kz_buckets:consume_token(bucket_name(Context)) of
+    case kz_buckets:consume_token(?APP_NAME, bucket_name(Context)) of
         'true' -> check_auth_token(Context, bh_context:auth_token(Context));
         'false' ->
             lager:warning("rate limiting threshold hit for ~s!", [bh_context:websocket_session_id(Context)]),
@@ -57,9 +57,9 @@ check_auth_token(Context, AuthToken) ->
         {'ok', JObj} ->
             lager:debug("token auth is valid, authenticating"),
             {'true'
-            ,bh_context:set_auth_account_id(Context
-                                           ,wh_json:get_ne_value(<<"account_id">>, JObj)
-                                           )
+             ,bh_context:set_auth_account_id(Context
+                                             ,wh_json:get_ne_value(<<"account_id">>, JObj)
+                                            )
             };
         {'error', R} ->
             lager:debug("failed to authenticate token auth, ~p", [R]),

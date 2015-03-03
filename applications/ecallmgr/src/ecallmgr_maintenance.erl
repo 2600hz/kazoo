@@ -93,6 +93,10 @@
 -export([show_calls/0]).
 -export([check_sync/2]).
 
+-export([limit_channel_uptime/1, limit_channel_uptime/2
+         ,hangup_long_running_channels/0, hangup_long_running_channels/1
+        ]).
+
 -include("ecallmgr.hrl").
 
 -spec add_fs_node(text()) -> 'ok'.
@@ -675,3 +679,20 @@ enable_local_resource_authz() ->
 disable_local_resource_authz() ->
     ecallmgr_config:set_default(<<"authz_local_resources">>, 'false'),
     io:format("turned off authz for local resources; calls to local resources will no longer require authorization~n").
+
+-spec limit_channel_uptime(ne_binary()) -> 'ok'.
+-spec limit_channel_uptime(ne_binary(), ne_binary() | boolean()) -> 'ok'.
+limit_channel_uptime(MaxAge) ->
+    limit_channel_uptime(MaxAge, 'true').
+limit_channel_uptime(MaxAge, AsDefault) ->
+    ecallmgr_fs_channels:set_max_channel_uptime(wh_util:to_integer(MaxAge), wh_util:is_true(AsDefault)),
+    io:format("updating max channel uptime to ~p (use 0 to disable check)~n", [MaxAge]).
+
+-spec hangup_long_running_channels() -> 'ok'.
+hangup_long_running_channels() ->
+    MaxAge = ecallmgr_fs_channels:max_channel_uptime(),
+    hangup_long_running_channels(MaxAge).
+hangup_long_running_channels(MaxAge) ->
+    io:format("hanging up channels older than ~p seconds~n", [MaxAge]),
+    N = ecallmgr_fs_channels:cleanup_old_channels(wh_util:to_integer(MaxAge)),
+    io:format("hungup ~p channels~n", [N]).

@@ -1,6 +1,6 @@
 {
     "_id": "notifications",
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-03/schema#",
     "type": "object",
     "required": true,
     "name": "Notifications",
@@ -17,15 +17,41 @@
                     "required": false,
                     "name": "Type",
                     "description": "",
+                    "enum":["original","specified","admins"],
                     "minLength": 2,
                     "maxLength": 253
                 },
                 "email_addresses": {
                     "type": "array",
-                    "required": true,
+                    "required": false,
                     "name": "Email Addresses",
                     "description": "",
-                    "minItems":1,
+                    "items": {
+                        "type": "string",
+                        "format": "email",
+                        "required": false
+                    }
+                }
+            }
+        },
+        "cc": {
+            "type": "object",
+            "required": false,
+            "name": "Cc",
+            "description": "CC email field",
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "required": false,
+                    "name": "Type",
+                    "description": "",
+                    "enum":["original","specified","admins"]
+                },
+                "email_addresses": {
+                    "type": "array",
+                    "required": false,
+                    "name": "CC Email Addresses",
+                    "description": "",
                     "items": {
                         "type": "string",
                         "format": "email",
@@ -45,13 +71,14 @@
                     "required": false,
                     "name": "Type",
                     "description": "",
+                    "enum":["original","specified","admins"],
                     "minLength": 2,
                     "maxLength": 253
                 },
                 "email_addresses": {
-                    "type": "string",
-                    "required": true,
-                    "name": "Email Addresses",
+                    "type": "array",
+                    "required": false,
+                    "name": "BCC Email Addresses",
                     "description": "",
                     "itmes": {
                         "type": "string",
@@ -68,6 +95,13 @@
             "description": "From: email address",
             "format": "email"
         },
+        "reply_to": {
+            "type": "string",
+            "required": false,
+            "name": "Reply-To",
+            "description": "Reply-To: email address",
+            "format": "email"
+        },
         "subject": {
             "type": "string",
             "required": true,
@@ -78,14 +112,14 @@
         },
         "enabled": {
             "type": "boolean",
-            "required": true,
+            "required": false,
             "name": "Enabled",
             "description": "Enable notification",
-            "default": false
+            "default":true
         },
         "template_charset": {
             "type": "string",
-            "required": true,
+            "required": false,
             "name": "Template charset",
             "description": "",
             "default": "utf-8",
@@ -98,6 +132,18 @@
             "description": "",
             "properties": {},
             "default": {}
+        },
+        "category":{
+            "type":"string",
+            "required":false,
+            "description":"Category of the template, for grouping purposes",
+            "minLength":1
+        },
+        "friendly_name":{
+            "type":"string",
+            "required":false,
+            "description":"Friendly name of the template",
+            "minLength":1
         }
     }
 }

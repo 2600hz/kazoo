@@ -78,12 +78,13 @@
                        ,payload :: term()
                       }).
 -type kz_responder() :: #kz_responder{}.
+-type kz_responders() :: [kz_responder(),...] | [].
 
--record(kz_binding, {binding :: ne_binary()
-                     ,binding_parts :: ne_binaries()
-                     ,binding_responders = queue:new() :: queue()
+-record(kz_binding, {binding :: ne_binary() | '_'
+                     ,binding_parts :: ne_binaries() | '_'
+                     ,binding_responders = queue:new() :: queue() | '_'
                       %% queue -> [#kz_responder{}]
-                     ,binding_prefix :: api_binary()
+                     ,binding_prefix :: api_binary() | '$1' | '_'
                     }).
 -type kz_binding() :: #kz_binding{}.
 -type kz_bindings() :: [kz_binding(),...] | [].
@@ -295,9 +296,14 @@ filter(Predicate) when is_function(Predicate, 4) ->
 
 -spec modules_loaded() -> atoms().
 modules_loaded() ->
-    ets:foldl(fun(#kz_binding{binding_responders=Responders}, Acc) ->
-                      props:unique([M || #kz_responder{module=M} <- queue:to_list(Responders)]) ++ Acc
-              end, [], table_id()).
+    ets:foldl(fun modules_loaded_fold/2, [], table_id()).
+
+-spec modules_loaded_fold(kz_binding(), atoms()) -> atoms().
+modules_loaded_fold(#kz_binding{binding_responders=Responders}, Acc) ->
+    props:unique([M
+                  || #kz_responder{module=M} <- queue:to_list(Responders)
+                 ])
+        ++ Acc.
 
 -spec table_id() -> ?MODULE.
 table_id() -> ?MODULE.
@@ -359,8 +365,9 @@ handle_call({'unbind', Binding, Mod, Fun, Payload}, _, #state{}=State) ->
     lager:debug("maybe rm binding ~s: ~p", [Binding, Resp]),
     {'reply', Resp, State}.
 
--spec maybe_add_binding(ne_binary(), atom(), atom(), term()) -> 'ok' |
-                                                                {'error', 'exists'}.
+-spec maybe_add_binding(ne_binary(), atom(), atom(), term()) ->
+                               'ok' |
+                               {'error', 'exists'}.
 maybe_add_binding(Binding, Mod, Fun, Payload) ->
     Responder = #kz_responder{module=Mod
                               ,function=Fun
@@ -432,9 +439,9 @@ add_optimized_binding(Binding, Responder, Pieces, Vsn, Action) ->
 -spec add_binding(ne_binary(), kz_responder(), ne_binaries(), api_binary()) -> boolean().
 add_binding(Binding, Responder, Pieces, Prefix) ->
     Bind = #kz_binding{binding=Binding
-                      ,binding_parts=lists:reverse(Pieces)
-                      ,binding_responders=queue:in(Responder, queue:new())
-                      ,binding_prefix=Prefix
+                       ,binding_parts=lists:reverse(Pieces)
+                       ,binding_responders=queue:in(Responder, queue:new())
+                       ,binding_prefix=Prefix
                       },
     ets:insert_new(table_id(), Bind).
 
@@ -495,7 +502,8 @@ filter_bindings(_Predicate, '$end_of_table', Updates, Deletes) ->
 filter_bindings(Predicate, Key, Updates, Deletes) ->
     [#kz_binding{binding=Binding
                  ,binding_responders=Responders
-                }] = ets:lookup(table_id(), Key),
+                }
+    ] = ets:lookup(table_id(), Key),
     NewResponders = queue:filter(fun(#kz_responder{module=M
                                                    ,function=F
                                                    ,payload=P
@@ -503,8 +511,20 @@ filter_bindings(Predicate, Key, Updates, Deletes) ->
                                          Predicate(Binding, M, F, P)
                                  end, Responders),
     case queue:len(NewResponders) of
-        0 -> filter_bindings(Predicate, ets:next(table_id(), Key), Updates, [Key | Deletes]);
-        _Len -> filter_bindings(Predicate, ets:next(table_id(), Key), [{Key, {#kz_binding.binding_responders, NewResponders}} | Updates], Deletes)
+        0 ->
+            filter_bindings(Predicate
+                            ,ets:next(table_id(), Key)
+                            ,Updates
+                            ,[Key | Deletes]
+                           );
+        _Len ->
+            filter_bindings(Predicate
+                            ,ets:next(table_id(), Key)
+                            ,[{Key, {#kz_binding.binding_responders, NewResponders}}
+                              | Updates
+                             ]
+                            ,Deletes
+                           )
     end.
 
 %%--------------------------------------------------------------------
@@ -561,19 +581,22 @@ code_change(_OldVsn, State, _Extra) ->
 %% previous payload being passed to the next invocation.
 %% @end
 %%--------------------------------------------------------------------
--spec fold_bind_results(queue() | kz_bindings(), term(), ne_binary()) -> term().
+-spec fold_bind_results(kz_responders(), term(), ne_binary()) -> term().
 fold_bind_results(_, {'error', _}=E, _) -> [E];
-fold_bind_results(Responders, Payload, Route) when is_list(Responders) ->
-    fold_bind_results(Responders, Payload, Route, length(Responders), []);
+fold_bind_results([], Payload, _Route) -> Payload;
 fold_bind_results(Responders, Payload, Route) ->
-    fold_bind_results(queue:to_list(Responders), Payload, Route, queue:len(Responders), []).
+    fold_bind_results(Responders, Payload, Route, length(Responders), []).
 
--spec fold_bind_results(kz_bindings(), term(), ne_binary(), non_neg_integer(), kz_bindings()) -> term().
+-spec fold_bind_results(kz_responders(), term(), ne_binary(), non_neg_integer(), kz_responders()) -> term().
 fold_bind_results([#kz_responder{module=M
-                                ,function=F
-                                ,payload='undefined'
+                                 ,function=F
+                                 ,payload='undefined'
                                 }=Responder
-                   | Responders], [_|Tokens]=Payload, Route, RespondersLen, ReRunResponders) ->
+                   | Responders]
+                  ,[_|Tokens]=Payload
+                  ,Route
+                  ,RespondersLen
+                  ,ReRunResponders) ->
     try apply_responder(Responder, Payload) of
         'eoq' ->
             lager:debug("putting ~s to eoq", [M]),
@@ -622,13 +645,13 @@ fold_bind_results([], Payload, Route, RespondersLen, ReRunResponders) ->
 
 -spec apply_responder(kz_responder(), term()) -> term().
 apply_responder(#kz_responder{module=M
-                             ,function=F
-                             ,payload='undefined'
+                              ,function=F
+                              ,payload='undefined'
                              }, Payload) ->
     apply(M, F, Payload);
 apply_responder(#kz_responder{module=M
-                             ,function=F
-                             ,payload=ResponderPayload
+                              ,function=F
+                              ,payload=ResponderPayload
                              }, Payload) ->
     apply(M, F, [ResponderPayload | Payload]).
 
@@ -670,14 +693,18 @@ map_processor(Routing, Payload, Bindings) ->
                                 ,binding_responders=Responders
                                }, Acc) when Binding =:= Routing ->
                         lager:debug("exact match for ~s", [Routing]),
-                        [catch Map(Responder) || Responder <- queue:to_list(Responders)] ++ Acc;
+                        [catch Map(Responder)
+                         || Responder <- queue:to_list(Responders)
+                        ] ++ Acc;
                    (#kz_binding{binding_parts=BParts
                                 ,binding_responders=Responders
                                }, Acc) ->
                         case matches(BParts, RoutingParts) of
                             'true' ->
                                 lager:debug("matched ~p to ~p", [BParts, RoutingParts]),
-                                [catch Map(Responder) || Responder <- queue:to_list(Responders)] ++ Acc;
+                                [catch Map(Responder)
+                                 || Responder <- queue:to_list(Responders)
+                                ] ++ Acc;
                             'false' -> Acc
                         end
                 end, [], Bindings).
@@ -690,13 +717,13 @@ fold_processor(Routing, Payload, Bindings) ->
 
     [Reply|_] = lists:foldl(
                   fun(#kz_binding{binding=Binding
-                                 ,binding_parts=BParts
-                                 ,binding_responders=Responders
+                                  ,binding_parts=BParts
+                                  ,binding_responders=Responders
                                  }, Acc) ->
                           case Binding =:= Routing orelse matches(BParts, RoutingParts) of
                               'true' ->
                                   lager:debug("routing ~s matches ~s", [Routing, Binding]),
-                                  fold_bind_results(Responders, Acc, Routing);
+                                  fold_bind_results(queue:to_list(Responders), Acc, Routing);
                               'false' -> Acc
                           end
                   end, Payload, Bindings),

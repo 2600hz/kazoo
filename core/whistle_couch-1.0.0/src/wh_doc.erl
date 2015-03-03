@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Utilities for manipulating Kazoo/Whistle documents
 %%% @end
@@ -16,6 +16,19 @@
 -export([update_pvt_parameters/2, update_pvt_parameters/3
          ,public_fields/1
          ,private_fields/1
+         ,attachments/1, attachments/2
+         ,attachment_names/1
+         ,attachment/1, attachment/2, attachment/3
+
+         ,attachment_length/2, attachment_content_type/2
+         ,attachment_property/3
+         ,delete_attachments/1, delete_attachment/2
+         ,maybe_remove_attachments/1, maybe_remove_attachments/2
+         ,id/1
+         ,revision/1, set_revision/2, delete_revision/1
+         ,set_soft_deleted/2
+
+         ,is_soft_deleted/1
         ]).
 -export([update_pvt_modified/1]).
 
@@ -27,6 +40,8 @@
                    ,fun add_pvt_type/3
                    ,fun add_pvt_node/3
                   ]).
+
+-define(KEY_ATTACHMENTS, <<"_attachments">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -145,3 +160,89 @@ is_private_key(_) -> 'false'.
                             wh_json:object() | wh_json:objects().
 private_fields(JObjs) when is_list(JObjs) -> [public_fields(JObj) || JObj <- JObjs];
 private_fields(JObj) -> wh_json:filter(fun({K, _}) -> is_private_key(K) end, JObj).
+
+-spec attachments(wh_json:object()) -> api_object().
+-spec attachments(wh_json:object(), Default) -> wh_json:object() | Default.
+attachments(JObj) ->
+    attachments(JObj, 'undefined').
+attachments(JObj, Default) ->
+    wh_json:get_value(?KEY_ATTACHMENTS, JObj, Default).
+
+-spec attachment_names(wh_json:object()) -> ne_binaries().
+attachment_names(JObj) ->
+    wh_json:get_keys(attachments(JObj, wh_json:new())).
+
+-spec attachment(wh_json:object()) -> api_object().
+-spec attachment(wh_json:object(), wh_json:key()) -> api_object().
+-spec attachment(wh_json:object(), wh_json:key(), Default) -> wh_json:object() | Default.
+attachment(JObj) ->
+    case wh_json:get_values(attachments(JObj, wh_json:new())) of
+        {[], []} -> 'undefined';
+        {[Attachment|_], [AttachmentName|_]} ->
+                wh_json:from_list([{AttachmentName, Attachment}])
+        end.
+
+attachment(JObj, AName) ->
+    attachment(JObj, AName, 'undefined').
+attachment(JObj, AName, Default) ->
+    wh_json:get_value(AName, attachments(JObj, wh_json:new()), Default).
+
+-spec attachment_length(wh_json:object(), ne_binary()) -> api_integer().
+attachment_length(JObj, AName) ->
+    attachment_property(JObj, AName, <<"length">>).
+
+-spec attachment_content_type(wh_json:object(), ne_binary()) -> api_binary().
+attachment_content_type(JObj, AName) ->
+    attachment_property(JObj, AName, <<"content_type">>).
+
+-spec attachment_property(wh_json:object(), ne_binary(), wh_json:key()) -> wh_json:json_term().
+attachment_property(JObj, AName, Key) ->
+    wh_json:get_value(Key, attachment(JObj, AName, wh_json:new())).
+
+-spec delete_attachments(wh_json:object()) -> wh_json:object().
+delete_attachments(JObj) ->
+    maybe_remove_attachments(JObj, attachments(JObj)).
+
+delete_attachment(JObj, AName) ->
+    maybe_remove_attachment(JObj, AName, attachment(JObj, AName)).
+
+-spec maybe_remove_attachments(wh_json:object()) -> {boolean(), wh_json:object()}.
+maybe_remove_attachments(JObj) ->
+    case attachments(JObj) of
+        'undefined' -> {'false', JObj};
+        _Attachments -> {'true', wh_json:delete_key(?KEY_ATTACHMENTS, JObj)}
+    end.
+
+-spec maybe_remove_attachments(wh_json:object(), api_object()) -> wh_json:object().
+maybe_remove_attachments(JObj, 'undefined') -> JObj;
+maybe_remove_attachments(JObj, _Attachments) ->
+    wh_json:delete_key(?KEY_ATTACHMENTS, JObj).
+
+-spec maybe_remove_attachment(wh_json:object(), ne_binary(), api_object()) -> wh_json:object().
+maybe_remove_attachment(JObj, _AName, 'undefined') -> JObj;
+maybe_remove_attachment(JObj, AName, _AMeta) ->
+    wh_json:delete_key([?KEY_ATTACHMENTS, AName], JObj).
+
+-spec revision(wh_json:object()) -> api_binary().
+revision(JObj) ->
+    wh_json:get_first_defined([<<"_rev">>, <<"rev">>], JObj).
+
+-spec set_revision(wh_json:object(), api_binary()) -> wh_json:object().
+set_revision(JObj, Rev) ->
+    wh_json:set_value(<<"_rev">>, Rev, JObj).
+
+-spec delete_revision(wh_json:object()) -> wh_json:object().
+delete_revision(JObj) ->
+    wh_json:delete_key(<<"_rev">>, JObj).
+
+-spec id(wh_json:object()) -> api_binary().
+id(JObj) ->
+    wh_json:get_value(<<"_id">>, JObj).
+
+-spec set_soft_deleted(wh_json:object(), boolean()) -> wh_json:object().
+set_soft_deleted(JObj, IsSoftDeleted) ->
+    wh_json:set_value(<<"pvt_deleted">>, wh_util:is_true(IsSoftDeleted), JObj).
+
+-spec is_soft_deleted(wh_json:object()) -> boolean().
+is_soft_deleted(JObj) ->
+    wh_json:is_true(<<"pvt_deleted">>, JObj).

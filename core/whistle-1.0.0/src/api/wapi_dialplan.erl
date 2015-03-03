@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Dialplan API commands
 %%% @end
@@ -84,8 +84,10 @@
          ,publish_originate_execute/2, publish_originate_execute/3
         ]).
 
--include("wapi_dialplan.hrl").
+-include_lib("whistle/include/wh_api.hrl").
 -include_lib("whistle/include/wh_log.hrl").
+
+-include("wapi_dialplan.hrl").
 
 -spec optional_bridge_req_headers() -> ne_binaries().
 optional_bridge_req_headers() ->
@@ -1049,8 +1051,8 @@ publish_error(CallID, JObj) ->
     publish_error(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_error(CallID, API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, [{<<"Event-Name">>, <<"dialplan">>}
-                                                     | ?ERROR_RESP_VALUES
-                                                    ], fun ?MODULE:error/1),
+                                                       | ?ERROR_RESP_VALUES
+                                                      ], fun ?MODULE:error/1),
     amqp_util:callevt_publish(wapi_call:event_routing_key(<<"diaplan">>, CallID), Payload, ContentType).
 
 -spec publish_originate_ready(ne_binary(), api_terms()) -> 'ok'.

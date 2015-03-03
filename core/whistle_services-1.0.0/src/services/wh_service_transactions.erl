@@ -24,10 +24,17 @@
 current_billing_period(AccountId, 'subscriptions') ->
     wh_bookkeeper_braintree:subscriptions(AccountId).
 
--spec current_billing_period(ne_binary(), atom(), {ne_binary(), ne_binary()}) ->
-                                    wh_json:objects() | atom().
+-spec current_billing_period(ne_binary(), atom(), {gregorian_seconds(), gregorian_seconds()}) ->
+                                    {'error', 'not_found'} |
+                                    {'error', 'unknown_error'} |
+                                    {'ok', wh_transaction:transactions()}.
 current_billing_period(AccountId, 'transactions', {Min, Max}) ->
-    wh_bookkeeper_braintree:transactions(AccountId, Min, Max).
+    Options = [
+        {'from', Min}
+        ,{'to', Max}
+        ,{'prorated', 'false'}
+    ],
+    wh_bookkeeper_braintree:transactions(AccountId, Options).
 
 %%--------------------------------------------------------------------
 %% @public

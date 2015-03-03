@@ -479,7 +479,7 @@ admin_db_compact(DbName) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Delete a database
+%% Delete a database (takes an 'encoded' DbName)
 %% @end
 %%--------------------------------------------------------------------
 -spec db_delete(text()) -> boolean().
@@ -529,19 +529,20 @@ cache_db_doc(DbName, DocId, Doc) ->
         {'error', _}=E -> E
     end.
 
--spec flush_cache_doc(ne_binary(), ne_binary()) ->
+-spec flush_cache_doc(ne_binary(), ne_binary() | wh_json:object()) ->
                              'ok' |
                              {'error', 'invalid_db_name'}.
--spec flush_cache_doc(ne_binary(), ne_binary(), wh_proplist()) ->
+flush_cache_doc(DbName, Doc) ->
+    flush_cache_doc(DbName, Doc, []).
+
+-spec flush_cache_doc(ne_binary(), ne_binary() | wh_json:object(), wh_proplist()) ->
                              'ok' |
                              {'error', 'invalid_db_name'}.
-flush_cache_doc(DbName, DocId) ->
-    flush_cache_doc(DbName, DocId, []).
-flush_cache_doc(DbName, DocId, Options) when ?VALID_DBNAME ->
-    couch_util:flush_cache_doc(wh_couch_connections:get_server(), DbName, DocId, Options);
-flush_cache_doc(DbName, DocId, Options) ->
+flush_cache_doc(DbName, Doc, Options) when ?VALID_DBNAME ->
+    couch_util:flush_cache_doc(DbName, Doc, Options);
+flush_cache_doc(DbName, Doc, Options) ->
     case maybe_convert_dbname(DbName) of
-        {'ok', Db} -> flush_cache_doc(Db, DocId, Options);
+        {'ok', Db} -> flush_cache_doc(Db, Doc, Options);
         {'error', _}=E -> E
     end.
 
@@ -896,7 +897,7 @@ get_results_count(DbName, DesignDoc, Options) ->
 get_result_keys(JObjs) ->
     lists:map(fun get_keys/1, JObjs).
 
--spec get_keys(wh_json:object()) -> wh_json:json_string().
+-spec get_keys(wh_json:object()) -> wh_json:key().
 get_keys(JObj) -> wh_json:get_value(<<"key">>, JObj).
 
 -spec get_uuid() -> ne_binary().

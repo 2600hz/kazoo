@@ -73,8 +73,8 @@ resource_exists(_) -> 'true'.
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate(#cb_context{}) -> #cb_context{}.
--spec validate(#cb_context{}, path_token()) -> #cb_context{}.
+-spec validate(cb_context:context()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(#cb_context{req_nouns=[{<<"templates">>, _}], req_verb = ?HTTP_GET}=Context) ->
     summary(Context).
 
@@ -113,7 +113,7 @@ account_created(#cb_context{doc=JObj, account_id=AccountId, db_name=AccountDb}) 
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec summary(#cb_context{}) -> #cb_context{}.
+-spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
     case couch_mgr:db_info() of
         {'ok', Dbs} ->
@@ -133,7 +133,7 @@ summary(Context) ->
 %% for this account
 %% @end
 %%--------------------------------------------------------------------
--spec load_template_db(ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec load_template_db(ne_binary(), cb_context:context()) -> cb_context:context().
 load_template_db([TemplateName], Context) ->
     load_template_db(TemplateName, Context);
 load_template_db(TemplateName, Context) ->
@@ -166,7 +166,7 @@ format_template_name(TemplateName, 'encoded') ->
 format_template_name(<<"template%2F", TemplateName/binary>>, 'raw') ->
     TemplateName;
 format_template_name(<<"template/", TemplateName/binary>>, 'raw') ->
-    TemplateName; 
+    TemplateName;
 format_template_name(TemplateName, 'raw') ->
     TemplateName.
 
@@ -177,7 +177,7 @@ format_template_name(TemplateName, 'raw') ->
 %% used as an 'account'
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_db(ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec create_template_db(ne_binary(), cb_context:context()) -> cb_context:context().
 create_template_db(TemplateName, Context) ->
     TemplateDb = format_template_name(TemplateName, 'encoded'),
     case couch_mgr:db_create(TemplateDb) of
@@ -188,7 +188,7 @@ create_template_db(TemplateName, Context) ->
             lager:debug("created DB for template ~s", [TemplateName]),
             couch_mgr:revise_docs_from_folder(TemplateDb, 'crossbar', "account", 'false'),
             _ = couch_mgr:revise_doc_from_file(TemplateDb, 'crossbar', ?MAINTENANCE_VIEW_FILE),
-            Context#cb_context{resp_status='success'}
+            cb_context:set_resp_status(Context, 'success')
     end.
 
 %%--------------------------------------------------------------------
@@ -208,13 +208,16 @@ import_template(TemplateName, AccountId, AccountDb) ->
             Ids = [Id || Doc <- Docs,
                          begin
                              Id = wh_json:get_value(<<"id">>, Doc),
-                             (fun(<<"_design/", _/binary>>) -> 'false';
-                                 (_) -> 'true' end)(Id)
+                             not is_design_doc_id(Id)
                          end
                   ],
             import_template_docs(Ids, TemplateDb, AccountId, AccountDb);
         _ -> 'ok'
-    end.            
+    end.
+
+-spec is_design_doc_id(ne_binary()) -> boolean().
+is_design_doc_id(<<"_design/", _/binary>>) -> 'false';
+is_design_doc_id(_) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -223,18 +226,18 @@ import_template(TemplateName, AccountId, AccountDb) ->
 %% account database, correcting the pvt fields.
 %% @end
 %%--------------------------------------------------------------------
--spec import_template_docs([] | [ne_binary(),...], ne_binary(), ne_binary(), ne_binary()) -> ok.
+-spec import_template_docs(ne_binaries(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 import_template_docs([], _, _, _) -> 'ok';
 import_template_docs([Id|Ids], TemplateDb, AccountId, AccountDb) ->
     case couch_mgr:open_doc(TemplateDb, Id) of
         {'ok', JObj} ->
             Routines = [fun(J) -> wh_json:set_value(<<"pvt_account_id">>, AccountId, J) end
                         ,fun(J) -> wh_json:set_value(<<"pvt_account_db">>, AccountDb, J) end
-                        ,fun(J) -> wh_json:delete_key(<<"_rev">>, J) end
-                        ,fun(J) -> wh_json:delete_key(<<"_attachments">>, J) end
+                        ,fun wh_doc:delete_revision/1
+                        ,fun wh_doc:delete_attachments/1
                        ],
             _ = couch_mgr:ensure_saved(AccountDb, lists:foldr(fun(F, J) -> F(J) end, JObj, Routines)),
-            Attachments = wh_json:get_keys(<<"_attachments">>, JObj),
+            Attachments = wh_doc:attachment_names(JObj),
             _ = import_template_attachments(Attachments, JObj, TemplateDb, AccountDb, Id),
             import_template_docs(Ids, TemplateDb, AccountId, AccountDb);
         {'error', _} -> import_template_docs(Ids, TemplateDb, AccountId, AccountDb)
@@ -244,7 +247,7 @@ import_template_docs([Id|Ids], TemplateDb, AccountId, AccountDb) ->
 import_template_attachments([], _, _, _, _) -> 'ok';
 import_template_attachments([Attachment|Attachments], JObj, TemplateDb, AccountDb, Id) ->
     {'ok', Bin} = couch_mgr:fetch_attachment(TemplateDb, Id, Attachment),
-    ContentType = wh_json:get_value([<<"_attachments">>, Attachment, <<"content_type">>], JObj),
+    ContentType = wh_doc:attachment_content_type(JObj, Attachment),
     Opts = [{'headers', [{'content_type', wh_util:to_list(ContentType)}]}],
     _ = couch_mgr:put_attachment(AccountDb, Id, Attachment, Bin, Opts),
     import_template_attachments(Attachments, JObj, TemplateDb, AccountDb, Id).

@@ -92,7 +92,7 @@ update(Key, Fun) ->
 %% If no record is found, old value would be `[]'. 
 %% If the new generated value is `[]' record will be deleted.
 %% See {@link put/3} for options.
--spec update(term(), function(), nksip_lib:optslist()) -> 
+-spec update(term(), function(), nksip:optslist()) -> 
     {ok, FunResult::term()} | {error, Error::term()}.
 update(Key, Fun, Opts) when is_function(Fun, 1), is_list(Opts) ->
     gen_server:call(?MODULE, {update, Key, Fun, Opts}).
@@ -288,7 +288,11 @@ terminate(_Reason, _State) ->
 %% @private
 -spec timeout() -> integer().
 timeout() ->
-    nksip_config:get(nksip_store_timer, ?STORE_TIMER).
+    % In some tests edge cases ETS is not available
+    case catch nksip_config:get(nksip_store_timer, ?STORE_TIMER) of
+        {'EXIT', _} -> ?STORE_TIMER;
+        Timeout -> Timeout
+    end.
 
 %% @private
 delete_expired_iter('$end_of_table') ->

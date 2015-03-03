@@ -1,0 +1,177 @@
+{
+   "_id": "provisioner_v5",
+   "$schema": "http://json-schema.org/draft-03/schema#",
+   "type": "object",
+   "required": true,
+   "name": "Provisioner V5",
+   "description": "Provisioner schema",
+   "properties": {
+       "brand": {
+           "type": "string",
+           "required": false,
+           "name": "Brand",
+           "description": "Brand of the phone",
+           "default": ""
+       },
+       "family": {
+           "type": "string",
+           "required": false,
+           "name": "Family",
+           "description": "Family name of the phone",
+           "default": ""
+       },
+       "model": {
+           "type": "string",
+           "required": false,
+           "name": "Model",
+           "description": "Model name of the phone",
+           "default": ""
+       },
+       "name": {
+           "type": "string",
+           "required": true,
+           "name": "Name",
+           "description": "Name of the phone"
+       },
+       "settings": {
+           "type": "object",
+           "required": true,
+           "name": "Settings",
+           "description": "Phone's settings",
+           "properties": {
+               "lines": {
+                   "type": "array",
+                   "minItems": 1,
+                   "name": "Lines",
+                   "description": "Phone lines",
+                   "items": {
+                       "type": "object",
+                       "required": true,
+                       "properties": {
+                           "basic": {
+                               "type": "object",
+                               "required": true,
+                               "name": "Basic",
+                               "description": "Basic settings",
+                               "properties": {
+                                   "display_name": {
+                                       "type": "string",
+                                       "required": true,
+                                       "name": "Display Name",
+                                       "description": "Friendly name for phone"
+                                   },
+                                   "enabled": {
+                                       "type": "boolean",
+                                       "required": false,
+                                       "name": "Enabled",
+                                       "description": "Enable line",
+                                       "default": true
+                                   }
+                               }
+                           },
+                           "sip": {
+                               "type": "object",
+                               "required": true,
+                               "name": "Sip",
+                               "description": "Sip settings",
+                               "properties": {
+                                   "username": {
+                                       "type": "string",
+                                       "required": true,
+                                       "name": "Username",
+                                       "description": "Line's username"
+                                   },
+                                   "password": {
+                                       "type": "string",
+                                       "required": true,
+                                       "name": "Password",
+                                       "description": "Line's password"
+                                   },
+                                   "realm": {
+                                       "type": "string",
+                                       "required": true,
+                                       "name": "Realm",
+                                       "description": "Line's Sip realm"
+                                   }
+                               }
+                           },
+                           "advanced": {
+                               "type": "object",
+                               "required": true,
+                               "name": "advanced",
+                               "description": "Advanced settings",
+                               "properties": {
+                                   "expire": {
+                                       "type": "integer",
+                                       "required": false,
+                                       "name": "Expire",
+                                       "default": 360
+                                   },
+                                   "srtp": {
+                                       "type": "boolean",
+                                       "required": false,
+                                       "name": "srtp",
+                                       "default": false
+                                   }
+                               }
+                           }
+                       }
+                   }
+               },
+               "codecs": {
+                   "type": "array",
+                   "minItems": 1,
+                   "name": "Codecs",
+                   "description": "Phone's codecs",
+                   "items": {
+                       "type": "object",
+                       "properties": {
+                           "audio": {
+                               "type": "object",
+                               "required": true,
+                               "name": "Audio",
+                               "description": "Audio codecs",
+                               "properties": {
+                                   "primary_codec": {
+                                       "type": "string",
+                                       "required": true,
+                                       "name": "Primary Codec",
+                                       "description": "First codec"
+                                   },
+                                   "secondary_codec": {
+                                       "type": "string",
+                                       "required": false,
+                                       "name": "Secondary Codec",
+                                       "description": "Second codec"
+                                   }
+                               }
+                           }
+                       }
+                   }
+               },
+               "datetime": {
+                   "type": "object",
+                   "required": false,
+                   "name": "Date/Time",
+                   "description": "Date and time settings",
+                   "properties": {
+                       "time": {
+                           "type": "object",
+                           "required": true,
+                           "name": "Time",
+                           "description": "Time settings",
+                           "properties": {
+                               "timezone": {
+                                   "type": "string",
+                                   "required": true,
+                                   "name": "Timezone",
+                                   "description": "Phone's timezone"
+                               }
+                           }
+                       }
+                   }
+               }
+           }
+       }
+   }
+}

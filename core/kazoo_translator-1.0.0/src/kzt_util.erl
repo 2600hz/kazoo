@@ -54,7 +54,6 @@
         ]).
 
 -ifdef(TEST).
--export([test/0]).
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
@@ -110,7 +109,8 @@ offnet_req(Data, Call) ->
            ,{<<"Ringback">>, props:get_value(<<"ringback">>, Data)}
            | wh_api:default_headers(whapps_call:controller_queue(Call), ?APP_NAME, ?APP_VERSION)
           ] ++ Data,
-    wapi_offnet_resource:publish_req(Req).
+
+    wh_amqp_worker:cast(Req, fun wapi_offnet_resource:publish_req/1).
 
 -spec update_call_status(ne_binary(), whapps_call:call()) -> whapps_call:call().
 -spec get_call_status(whapps_call:call()) -> api_binary().

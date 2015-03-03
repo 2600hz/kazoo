@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -107,7 +107,7 @@ handle_cast('request_event_stream', #state{node=Node}=State) ->
             {'ok', IPAddress} = inet_parse:address(IP),
             gen_server:cast(self(), 'connect'),
             put('callid', list_to_binary([wh_util:to_binary(Node)
-                                         ,$-, wh_util:to_binary(IP)
+                                          ,$-, wh_util:to_binary(IP)
                                          ,$:, wh_util:to_binary(Port)
                                          ])),
             {'noreply', State#state{ip=IPAddress, port=wh_util:to_integer(Port)}};
@@ -259,10 +259,10 @@ get_event_bindings(#state{bindings=Binding}=State, Acc) when is_binary(Binding) 
                       ).
 
 -spec maybe_bind(atom(), atoms()) ->
-                        {'ok', {inet:ip_address(), inet:port_number()}} |
+                        {'ok', {text(), inet:port_number()}} |
                         {'error', _}.
 -spec maybe_bind(atom(), atoms(), non_neg_integer()) ->
-                        {'ok', {inet:ip_address(), inet:port_number()}} |
+                        {'ok', {text(), inet:port_number()}} |
                         {'error', _}.
 maybe_bind(Node, Bindings) ->
     maybe_bind(Node, Bindings, 0).
@@ -298,6 +298,12 @@ process_event(?CHANNEL_MOVE_COMPLETE_EVENT_BIN, _, Props, Node) ->
               );
 process_event(<<"sofia::register">>, _UUID, Props, Node) ->
     gproc:send({'p', 'l', ?REGISTER_SUCCESS_REG}, ?REGISTER_SUCCESS_MSG(Node, Props));
+process_event(<<"loopback::bowout">>, _UUID, Props, Node) ->
+    ResigningUUID = props:get_value(?RESIGNING_UUID, Props),
+    lager:debug("bowout detected on ~s, transferring to ~s"
+                ,[ResigningUUID, props:get_value(?ACQUIRED_UUID, Props)]
+               ),
+    gproc:send({'p', 'l', ?LOOPBACK_BOWOUT_REG(ResigningUUID)}, ?LOOPBACK_BOWOUT_MSG(Node, Props));
 process_event(_, _, _, _) -> 'ok'.
 
 -spec maybe_send_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
@@ -321,6 +327,21 @@ maybe_send_event(<<"CHANNEL_BRIDGE">>=EventName, UUID, Props, Node) ->
         _Else ->
             gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]}),
             maybe_send_call_event(UUID, Props, Node)
+    end;
+maybe_send_event(<<"loopback::bowout">> = EventName, 'undefined', Props, Node) ->
+    ResigningUUID = props:get_value(?RESIGNING_UUID, Props),
+    put('callid', ResigningUUID),
+    maybe_send_event(EventName, ResigningUUID, Props, Node);
+maybe_send_event(<<"CHANNEL_DESTROY">> = EventName, UUID, Props, Node) ->
+    wh_util:put_callid(UUID),
+    case ecallmgr_fs_channel:node(UUID) of
+        {'ok', Node} ->
+            gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]}),
+            maybe_send_call_event(UUID, Props, Node);
+        {'ok', _OtherNode} ->
+            lager:debug("dropping channel destroy from ~s (expected ~s)", [Node, _OtherNode]);
+        {'error', 'not_found'} ->
+            lager:debug("dropping channel destroy from ~s (no such channel)", [Node])
     end;
 maybe_send_event(EventName, UUID, Props, Node) ->
     wh_util:put_callid(UUID),

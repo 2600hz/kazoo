@@ -42,6 +42,8 @@
                           ]).
 
 -define(CB_LIST, <<"media/crossbar_listing">>).
+-define(CB_LIST_BY_LANG, <<"media/listing_by_language">>).
+-define(CB_LIST_BY_PROMPT, <<"media/listing_by_prompt">>).
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".media">>).
 
@@ -159,10 +161,10 @@ content_types_provided(Context, MediaId, ?BIN_DATA, ?HTTP_GET) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             JObj = cb_context:doc(Context1),
-            case wh_json:get_keys(wh_json:get_value([<<"_attachments">>], JObj, [])) of
-                [] -> Context;
+            case wh_doc:attachment_names(JObj) of
+                [] -> Context1;
                 [Attachment|_] ->
-                    CT = wh_json:get_value([<<"_attachments">>, Attachment, <<"content_type">>], JObj),
+                    CT = wh_doc:attachment_content_type(JObj, Attachment),
                     [Type, SubType] = binary:split(CT, <<"/">>),
                     cb_context:set_content_types_provided(Context, [{'to_binary', [{Type, SubType}]}])
             end;
@@ -249,8 +251,14 @@ validate_media_binary(Context, MediaId, ?HTTP_GET, _Files) ->
     lager:debug("fetch media contents for '~s'", [MediaId]),
     load_media_binary(Context, MediaId);
 validate_media_binary(Context, _MediaId, ?HTTP_POST, []) ->
-    Message = <<"please provide an media file">>,
-    cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context);
+    cb_context:add_validation_error(
+        <<"file">>
+        ,<<"required">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"Please provide an media file">>}
+         ])
+        ,Context
+    );
 validate_media_binary(Context, MediaId, ?HTTP_POST, [{_Filename, FileObj}]) ->
     Context1 = load_media_meta(Context, MediaId),
     lager:debug("loaded media meta for '~s'", [MediaId]),
@@ -260,8 +268,14 @@ validate_media_binary(Context, MediaId, ?HTTP_POST, [{_Filename, FileObj}]) ->
         _Status -> Context1
     end;
 validate_media_binary(Context, _MediaId, ?HTTP_POST, _Files) ->
-    Message = <<"please provide a single media file">>,
-    cb_context:add_validation_error(<<"file">>, <<"maxItems">>, Message, Context).
+    cb_context:add_validation_error(
+        <<"file">>
+        ,<<"maxItems">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"Please provide a single media file">>}
+         ])
+        ,Context
+    ).
 
 -spec maybe_normalize_upload(cb_context:context(), ne_binary(), wh_json:object()) -> cb_context:context().
 maybe_normalize_upload(Context, MediaId, FileJObj) ->
@@ -579,7 +593,7 @@ load_available_languages(Context) ->
 
 load_available_languages(Context, 'undefined') ->
     fix_start_keys(
-      crossbar_doc:load_view(<<"media/listing_by_language">>
+      crossbar_doc:load_view(?CB_LIST_BY_LANG
                              ,[{'group_level', 1}]
                              ,cb_context:set_account_db(Context, ?WH_MEDIA_DB)
                              ,fun normalize_count_results/2
@@ -587,7 +601,7 @@ load_available_languages(Context, 'undefined') ->
      );
 load_available_languages(Context, _AccountId) ->
     fix_start_keys(
-      crossbar_doc:load_view(<<"media/listing_by_language">>
+      crossbar_doc:load_view(?CB_LIST_BY_LANG
                              ,[{'group_level', 1}]
                              ,Context
                              ,fun normalize_count_results/2
@@ -618,7 +632,7 @@ load_media_docs_by_language(Context, Language) ->
 
 load_media_docs_by_language(Context, Language, 'undefined') ->
     fix_start_keys(
-      crossbar_doc:load_view(<<"media/listing_by_language">>
+      crossbar_doc:load_view(?CB_LIST_BY_LANG
                               ,[{'startkey_fun', fun(Ctx) -> language_start_key(Ctx, Language) end}
                                ,{'endkey', [Language, wh_json:new()]}
                                ,{'reduce', 'false'}
@@ -630,7 +644,7 @@ load_media_docs_by_language(Context, Language, 'undefined') ->
      );
 load_media_docs_by_language(Context, Language, _AccountId) ->
     fix_start_keys(
-      crossbar_doc:load_view(<<"media/listing_by_language">>
+      crossbar_doc:load_view(?CB_LIST_BY_LANG
                              ,[{'startkey_fun', fun(Ctx) -> language_start_key(Ctx, Language) end}
                                ,{'endkey', [Language, wh_json:new()]}
                                ,{'reduce', 'false'}
@@ -673,7 +687,7 @@ load_available_prompts(Context) ->
 
 load_available_prompts(Context, 'undefined') ->
     fix_prompt_start_keys(
-      crossbar_doc:load_view(<<"media/listing_by_prompt">>
+      crossbar_doc:load_view(?CB_LIST_BY_PROMPT
                              ,[{'group_level', 1}
                                ,{'startkey_fun', fun prompt_start_key/1}
                               ]
@@ -683,7 +697,7 @@ load_available_prompts(Context, 'undefined') ->
      );
 load_available_prompts(Context, _AccountId) ->
     fix_prompt_start_keys(
-      crossbar_doc:load_view(<<"media/listing_by_prompt">>
+      crossbar_doc:load_view(?CB_LIST_BY_PROMPT
                              ,[{'group_level', 1}
                                ,{'startkey_fun', fun prompt_start_key/1}
                               ]
@@ -700,7 +714,7 @@ load_media_docs_by_prompt(Context, PromptId) ->
 
 load_media_docs_by_prompt(Context, PromptId, 'undefined') ->
     fix_prompt_start_keys(
-      crossbar_doc:load_view(<<"media/listing_by_prompt">>
+      crossbar_doc:load_view(?CB_LIST_BY_PROMPT
                              ,[{'startkey_fun', fun(Ctx) -> prompt_start_key(Ctx, PromptId) end}
                                ,{'endkey', [PromptId, wh_json:new()]}
                                ,{'reduce', 'false'}
@@ -712,7 +726,7 @@ load_media_docs_by_prompt(Context, PromptId, 'undefined') ->
      );
 load_media_docs_by_prompt(Context, PromptId, _AccountId) ->
     fix_prompt_start_keys(
-      crossbar_doc:load_view(<<"media/listing_by_prompt">>
+      crossbar_doc:load_view(?CB_LIST_BY_PROMPT
                              ,[{'startkey_fun', fun(Ctx) -> prompt_start_key(Ctx, PromptId) end}
                                ,{'endkey', [PromptId, wh_json:new()]}
                                ,{'reduce', 'false'}
@@ -824,7 +838,15 @@ validate_prompt(MediaId, Context, PromptId) ->
             lager:info("attempt to change prompt id '~s' is not allowed on existing media doc '~s'"
                        ,[PromptId, MediaId]
                       ),
-            cb_context:add_validation_error(<<"prompt_id">>, <<"invalid">>, <<"Changing the prompt_id on an existing prompt is not allowed">>, Context)
+            cb_context:add_validation_error(
+                <<"prompt_id">>
+                ,<<"invalid">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"Changing the prompt_id on an existing prompt is not allowed">>}
+                    ,{<<"cause">>, PromptId}
+                 ])
+                ,Context
+            )
     end.
 
 -spec maybe_add_prompt_fields(cb_context:context()) -> wh_proplist().
@@ -864,16 +886,14 @@ load_media_binary(Context, MediaId) ->
     Context1 = load_media_meta(Context, MediaId),
     case cb_context:resp_status(Context1) of
         'success' ->
-            MediaMeta = wh_json:get_value([<<"_attachments">>], cb_context:doc(Context1), []),
-
-            case wh_json:get_keys(MediaMeta) of
+            case wh_doc:attachment_names(cb_context:doc(Context1)) of
                 [] -> crossbar_util:response_bad_identifier(MediaId, Context);
                 [Attachment|_] ->
                     cb_context:add_resp_headers(
                       crossbar_doc:load_attachment(cb_context:doc(Context1), Attachment, Context1)
                       ,[{<<"Content-Disposition">>, <<"attachment; filename=", Attachment/binary>>}
-                        ,{<<"Content-Type">>, wh_json:get_value([Attachment, <<"content_type">>], MediaMeta)}
-                        ,{<<"Content-Length">>, wh_json:get_value([Attachment, <<"length">>], MediaMeta)}
+                        ,{<<"Content-Type">>, wh_doc:attachment_content_type(cb_context:doc(Context1), Attachment)}
+                        ,{<<"Content-Type">>, wh_doc:attachment_length(cb_context:doc(Context1), Attachment)}
                        ])
             end;
         _Status -> Context1
@@ -926,11 +946,10 @@ delete_media_binary(MediaId, Context, _AccountId) ->
     Context1 = crossbar_doc:load(MediaId, Context),
     case cb_context:resp_status(Context1) of
         'success' ->
-            case wh_json:get_value([<<"_attachments">>, 1], cb_context:doc(Context1)) of
-                'undefined' -> crossbar_util:response_bad_identifier(MediaId, Context);
-                AttachMeta ->
-                    [AttachmentID] = wh_json:get_keys(AttachMeta),
-                    crossbar_doc:delete_attachment(MediaId, AttachmentID, Context)
+            case wh_doc:attachment_names(cb_context:doc(Context1)) of
+                [] -> crossbar_util:response_bad_identifier(MediaId, Context);
+                [AttachmentId|_] ->
+                    crossbar_doc:delete_attachment(MediaId, AttachmentId, Context)
             end;
         _Status -> Context1
     end.

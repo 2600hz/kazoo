@@ -140,7 +140,7 @@ registration_update(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec  track_assignment(atom(), cb_context:context()) -> cb_context:context().
+-spec  track_assignment(atom(), cb_context:context()) -> 'ok'.
 track_assignment('post', Context) ->
     OldNums = get_numbers(cb_context:fetch(Context, 'db_doc')),
     NewNums = get_numbers(cb_context:doc(Context)),

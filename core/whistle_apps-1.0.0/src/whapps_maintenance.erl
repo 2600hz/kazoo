@@ -18,7 +18,9 @@
          ,migrate/1
         ]).
 -export([find_invalid_acccount_dbs/0]).
--export([refresh/0, refresh/1]).
+-export([refresh/0, refresh/1
+         ,refresh_account_db/1
+        ]).
 -export([blocking_refresh/0
          ,blocking_refresh/1
         ]).
@@ -39,6 +41,7 @@
 -export([call_id_status/1, call_id_status/2]).
 -export([get_all_account_views/0]).
 -export([cleanup_voicemail_media/1]).
+-export([cleanup_orphan_modbs/0]).
 
 -define(DEVICES_CB_LIST, <<"devices/crossbar_listing">>).
 -define(MAINTENANCE_VIEW_FILE, <<"views/maintenance.json">>).
@@ -81,18 +84,13 @@ migrate() ->
 
 -spec migrate(text() | integer()) -> 'no_return'.
 migrate(Pause) ->
-    {'ok', Databases} = couch_mgr:db_info(),
+    Databases = get_databases(),
     Accounts = [wh_util:format_account_id(Db, 'encoded')
                 || Db <- Databases,
                    whapps_util:is_account_db(Db)
                ],
-    io:format("updating system dbs...~n"),
-    _ = refresh(?KZ_SYSTEM_DBS, Pause),
-
-    %% Ensure the views in each DB are update-to-date, depreciated view removed, sip_auth docs
-    %% that need to be aggregated have been, and the account definition is aggregated
-    io:format("updating views...~n"),
-    _ = refresh([Db || Db <- Databases, (not lists:member(Db, ?KZ_SYSTEM_DBS))], Pause),
+    io:format("updating dbs...~n"),
+    _ = refresh(Databases, Pause),
 
     %% Remove depreciated dbs
     io:format("removing depreciated databases...~n"),
@@ -123,7 +121,7 @@ blocking_refresh() -> refresh().
 
 -spec blocking_refresh(text() | non_neg_integer()) -> 'no_return'.
 blocking_refresh(Pause) ->
-    {'ok', Databases} = couch_mgr:db_info(),
+    Databases = get_databases(),
     refresh(Databases, Pause).
 
 %%--------------------------------------------------------------------
@@ -137,7 +135,7 @@ blocking_refresh(Pause) ->
 -spec refresh(ne_binaries(), text() | non_neg_integer()) -> 'no_return'.
 -spec refresh(ne_binaries(), non_neg_integer(), non_neg_integer()) -> 'no_return'.
 refresh() ->
-    {'ok', Databases} = couch_mgr:db_info(),
+    Databases = get_databases(),
     refresh(Databases, 2000).
 
 refresh(Databases, Pause) ->
@@ -155,6 +153,19 @@ refresh([Database|Databases], Pause, Total) ->
         end,
     refresh(Databases, Pause, Total).
 
+-spec get_databases() -> ne_binaries().
+get_databases() ->
+    {'ok', Databases} = couch_mgr:db_info(),
+    ?KZ_SYSTEM_DBS ++ [Db || Db <- Databases, (not lists:member(Db, ?KZ_SYSTEM_DBS))].
+
+refresh(?WH_CONFIG_DB) ->
+    couch_mgr:db_create(?WH_CONFIG_DB);
+refresh(?KZ_OAUTH_DB) ->
+    couch_mgr:db_create(?KZ_OAUTH_DB),
+    kazoo_oauth_maintenance:register_common_providers();
+refresh(?KZ_WEBHOOKS_DB) ->
+    couch_mgr:db_create(?KZ_WEBHOOKS_DB),
+    couch_mgr:revise_doc_from_file(?KZ_WEBHOOKS_DB, 'crossbar', <<"views/webhooks.json">>);
 refresh(?WH_OFFNET_DB) ->
     couch_mgr:db_create(?WH_OFFNET_DB),
     stepswitch_maintenance:refresh();
@@ -193,7 +204,7 @@ refresh(?WH_ACCOUNTS_DB) ->
     couch_mgr:db_create(?WH_ACCOUNTS_DB),
     Views = [whapps_util:get_view_json('whistle_apps', ?MAINTENANCE_VIEW_FILE)
              ,whapps_util:get_view_json('whistle_apps', ?ACCOUNTS_AGG_VIEW_FILE)
-             ,whapps_util:get_view_json('whistle_apps', ?SEARCH_VIEW_FILE)            
+             ,whapps_util:get_view_json('whistle_apps', ?SEARCH_VIEW_FILE)
              ,whapps_util:get_view_json('notify', ?ACCOUNTS_AGG_NOTIFY_VIEW_FILE)
             ],
     whapps_util:update_views(?WH_ACCOUNTS_DB, Views, 'true'),
@@ -279,7 +290,7 @@ get_all_account_views() ->
 -spec fetch_all_account_views() -> wh_proplist().
 fetch_all_account_views() ->
     [whapps_util:get_view_json('whistle_apps', ?MAINTENANCE_VIEW_FILE)
-    ,whapps_util:get_view_json('conference', <<"views/conference.json">>)
+     ,whapps_util:get_view_json('conference', <<"views/conference.json">>)
      |whapps_util:get_views_json('crossbar', "account")
      ++ whapps_util:get_views_json('callflow', "views")
     ].
@@ -292,7 +303,7 @@ fetch_all_account_views() ->
 %%--------------------------------------------------------------------
 -spec remove_depreciated_databases() -> 'ok'.
 remove_depreciated_databases() ->
-    {'ok', Databases} = couch_mgr:db_info(),
+    Databases = get_databases(),
     remove_depreciated_databases(Databases).
 
 -spec remove_depreciated_databases(ne_binaries()) -> 'ok'.
@@ -420,6 +431,15 @@ cleanup_voicemail_media(Account) ->
             lager:error("could not delete docs ~p: ~p", [ExtraMedia, _E]),
             Err
     end.
+
+-spec cleanup_orphan_modbs() -> 'ok'.
+cleanup_orphan_modbs() ->
+    AccountMODbs = whapps_util:get_all_account_mods('encoded'),
+    AccountIds = whapps_util:get_all_accounts('raw'),
+    DeleteOrphaned = fun (AccountMODb) ->
+                             kazoo_modb:maybe_delete(AccountMODb, AccountIds)
+                     end,
+    lists:foreach(DeleteOrphaned, AccountMODbs).
 
 -spec get_messages(ne_binary()) -> ne_binaries().
 get_messages(Account) ->
@@ -663,8 +683,9 @@ find_invalid_acccount_dbs_fold(AccountDb, Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec maybe_migrate_attachments(ne_binary(), ne_binary(), wh_json:object()) -> any().
 maybe_migrate_attachments(AccountDb, Id, JObj) ->
-    case wh_json:get_ne_value(<<"_attachments">>, JObj) of
+    case wh_doc:attachments(JObj) of
         'undefined' ->
             io:format("media doc ~s/~s has no attachments, removing~n", [AccountDb, Id]),
             couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"pvt_deleted">>, 'true', JObj));
@@ -768,7 +789,7 @@ maybe_update_attachment(AccountDb, Id, {OrigAttch, _CT1}, {NewAttch, CT}) ->
                             {'error', _}=E ->
                                 io:format("unable to fetch attachment ~s/~s/~s: ~p~n", [AccountDb, Id, OrigAttch, E]),
                                 E
-                            end
+                        end
                 end
                 ,fun({'ok', Content1}) ->
                          {'ok', Rev} = couch_mgr:lookup_doc_rev(AccountDb, Id),
@@ -779,7 +800,10 @@ maybe_update_attachment(AccountDb, Id, {OrigAttch, _CT1}, {NewAttch, CT}) ->
                          %%   so rather than check the put return fetch the new attachment and compare it to the old
                          Result = couch_mgr:put_attachment(AccountDb, Id, NewAttch, Content1, Options),
                          {'ok', JObj} = couch_mgr:open_doc(AccountDb, Id),
-                         case wh_json:get_value([<<"_attachments">>, OrigAttch, <<"length">>], JObj) =:= wh_json:get_value([<<"_attachments">>, NewAttch, <<"length">>], JObj) of
+
+                         case wh_doc:attachment_length(JObj, OrigAttch)
+                             =:= wh_doc:attachment_length(JObj, NewAttch)
+                         of
                              'false' ->
                                  io:format("unable to put new attachment ~s/~s/~s: ~p~n", [AccountDb, Id, NewAttch, Result]),
                                  {'error', 'length_mismatch'};

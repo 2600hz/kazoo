@@ -73,7 +73,8 @@
                                          ,<<"Custom-Channel-Vars">>
                                          ,<<"Export-Custom-Channel-Vars">>
                                          ,<<"Outbound-Call-ID">>
-                                         ,<<"Existing-Call-ID">> % If set, use this node, otherwise ignore                                                                  %% Eavesdrop
+                                         ,<<"Existing-Call-ID">> % If set, use this node, otherwise ignore
+                                         %% Eavesdrop
                                          ,<<"Eavesdrop-Call-ID">>
                                          ,<<"Eavesdrop-Mode">>
                                          ,<<"Eavesdrop-Group-ID">>
@@ -81,6 +82,7 @@
                                          ,<<"Fax-Identity-Name">>
                                          ,<<"Fax-Timezone">>
                                          ,<<"Intercept-Unbridged-Only">>
+                                         ,<<"Simplify-Loopback">> %% loopback_bowout flag
                                          | wapi_dialplan:optional_bridge_req_headers()
                                         ]).
 -define(ORIGINATE_REQ_VALUES, [{<<"Event-Category">>, <<"resource">>}
@@ -97,6 +99,7 @@
                               ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
                               ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
                               ,{<<"Continue-On-Fail">>, fun wh_util:is_boolean/1}
+                              ,{<<"Simplify-Bowout">>, fun wh_util:is_boolean/1}
                              ]).
 
 %% Originate Endpoints

@@ -99,7 +99,7 @@ maybe_start_file_cache(Db, Id, Attachment) ->
             {'stop', Reason};
         {'ok', JObj} ->
             lager:debug("starting cache for ~s on ~s in ~s", [Attachment, Id, Db]),
-            Meta = wh_json:get_value([<<"_attachments">>, Attachment], JObj, wh_json:new()),
+            Meta = wh_doc:attachment(JObj, Attachment, wh_json:new()),
             {'ok', Ref} = couch_mgr:stream_attachment(Db, Id, Attachment),
             {'ok', #state{db=Db
                           ,doc=Id

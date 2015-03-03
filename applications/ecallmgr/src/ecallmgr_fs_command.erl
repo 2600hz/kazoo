@@ -10,7 +10,7 @@
 -module(ecallmgr_fs_command).
 
 -export([set/3, set/4
-         ,export/3
+         ,export/3, bridge_export/3
         ]).
 
 -include("ecallmgr.hrl").
@@ -38,9 +38,20 @@ set(Node, UUID, K, V) -> set(Node, UUID, [{K, V}]).
 export(_, _, []) -> 'ok';
 export(Node, UUID, [{K,V}|Exports]) ->
     Export = <<K/binary, "=", V/binary>>,
-    lager:debug("~s sendmsg ~s ~s", [Node, UUID, Export]),
+    lager:debug("~s sendmsg export ~s ~s", [Node, UUID, Export]),
     freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
                                     ,{"execute-app-name", "export"}
                                     ,{"execute-app-arg", wh_util:to_list(Export)}
                                    ]),
     export(Node, UUID, Exports).
+
+-spec bridge_export(atom(), ne_binary(), wh_proplist()) -> ecallmgr_util:send_cmd_ret().
+bridge_export(_, _, []) -> 'ok';
+bridge_export(Node, UUID, [{K,V}|Exports]) ->
+    Export = <<K/binary, "=", V/binary>>,
+    lager:debug("~s sendmsg bridge_export ~s ~s", [Node, UUID, Export]),
+    freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
+                                    ,{"execute-app-name", "bridge_export"}
+                                    ,{"execute-app-arg", wh_util:to_list(Export)}
+                                   ]),
+    bridge_export(Node, UUID, Exports).

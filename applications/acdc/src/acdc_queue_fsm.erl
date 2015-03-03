@@ -118,7 +118,7 @@ refresh(FSM, QueueJObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec member_call(pid(), wh_json:object(), #'basic.deliver'{}) -> 'ok'.
+-spec member_call(pid(), wh_json:object(), gen_listener:basic_deliver()) -> 'ok'.
 member_call(FSM, CallJObj, Delivery) ->
     gen_fsm:send_event(FSM, {'member_call', CallJObj, Delivery}).
 

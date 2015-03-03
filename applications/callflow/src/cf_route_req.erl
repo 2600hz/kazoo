@@ -33,7 +33,7 @@ handle_req(JObj, Props) ->
                 %% if NoMatch is false then allow the callflow or if it is true and we are able allowed
                 %% to use it for this call
                 {'ok', Flow, NoMatch} when (not NoMatch) orelse AllowNoMatch ->
-                    maybe_exec_preflow(JObj, Props, Call, Flow, NoMatch);
+                    maybe_prepend_preflow(JObj, Props, Call, Flow, NoMatch);
                 {'ok', _, 'true'} ->
                     lager:info("only available callflow is a nomatch for a unauthorized call", []);
                 {'error', R} ->
@@ -43,16 +43,16 @@ handle_req(JObj, Props) ->
             'ok'
     end.
 
--spec maybe_exec_preflow(wh_json:object(), wh_proplist()
+-spec maybe_prepend_preflow(wh_json:object(), wh_proplist()
                          ,whapps_call:call(), wh_json:object()
                          ,boolean()
                         ) -> whapps_call:call().
-maybe_exec_preflow(JObj, Props, Call, Flow, NoMatch) ->
+maybe_prepend_preflow(JObj, Props, Call, Flow, NoMatch) ->
     AccountId = whapps_call:account_id(Call),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
         {'error', _E} ->
-            lager:warning("coudl not open ~s in ~s : ~p", [AccountId, AccountDb, _E]),
+            lager:warning("could not open ~s in ~s : ~p", [AccountId, AccountDb, _E]),
             maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch);
         {'ok', Doc} ->
             case wh_json:get_ne_value([<<"preflow">>, <<"always">>], Doc) of
@@ -60,13 +60,13 @@ maybe_exec_preflow(JObj, Props, Call, Flow, NoMatch) ->
                     lager:debug("ignore preflow, not set"),
                     maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch);
                 PreflowId ->
-                    NewFlow = exec_preflow(AccountId, PreflowId, Flow),
+                    NewFlow = prepend_preflow(AccountId, PreflowId, Flow),
                     maybe_reply_to_req(JObj, Props, Call, NewFlow, NoMatch)
             end
     end.
 
--spec exec_preflow(ne_binary(), ne_binary(), wh_json:object()) -> wh_json:object().
-exec_preflow(AccountId, PreflowId, Flow) ->
+-spec prepend_preflow(ne_binary(), ne_binary(), wh_json:object()) -> wh_json:object().
+prepend_preflow(AccountId, PreflowId, Flow) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_cache_doc(AccountDb, PreflowId) of
         {'error', _E} ->
@@ -87,7 +87,7 @@ maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch) ->
                                                        ,whapps_call:account_id(Call)
                                                       ]),
     {Name, Cost} = bucket_info(Call, Flow),
-    case kz_buckets:consume_tokens(Name, Cost) of
+    case kz_buckets:consume_tokens(?APP_NAME, Name, Cost) of
         'false' ->
             lager:debug("bucket ~s doesn't have enough tokens(~b needed) for this call", [Name, Cost]);
         'true' ->

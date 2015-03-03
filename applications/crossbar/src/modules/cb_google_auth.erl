@@ -124,12 +124,12 @@ maybe_authenticate_user(Context) ->
                                                         ,resp_status='success'});
         {'error', _R} ->
             lager:debug("error verifying token: ~p",[_R]),
-            cb_context:add_system_error('invalid_credentials', Context)			
+            cb_context:add_system_error('invalid_credentials', Context)
     end.
 
 -spec maybe_account_is_disabled(cb_context:context()) -> cb_context:context().
 maybe_account_is_disabled(Context) ->
-    JObj = cb_context:doc(Context),		
+    JObj = cb_context:doc(Context),
     case wh_json:get_value([<<"AuthDoc">>,<<"pvt_account_id">>], JObj) of
         'undefined' -> Context;
         Account ->
@@ -137,8 +137,11 @@ maybe_account_is_disabled(Context) ->
                 'true' -> maybe_load_username(Account, Context);
                 'false' ->
                     lager:debug("account ~s is disabled", [Account]),
-                    Props = [{'details', <<"account_disabled">>}],
-                    cb_context:add_system_error('forbidden', Props, Context)
+                    cb_context:add_system_error(
+                        'forbidden'
+                        ,wh_json:from_list([{<<"cause">>, <<"account_disabled">>}])
+                        ,Context
+                    )
             end
     end.
 
@@ -151,7 +154,7 @@ maybe_account_is_disabled(Context) ->
 %%--------------------------------------------------------------------
 -spec maybe_load_username(ne_binary(), cb_context:context()) -> cb_context:context().
 maybe_load_username(Account, Context) ->
-    JObj = cb_context:doc(Context),	
+    JObj = cb_context:doc(Context),
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     Username = wh_json:get_value([<<"AuthDoc">>,<<"pvt_username">>], JObj),
     lager:debug("attempting to load username in db: ~s", [AccountDb]),
@@ -164,27 +167,42 @@ maybe_load_username(Account, Context) ->
                 'false' ->
                     lager:debug("the username '~s' was found and is not disabled, continue", [Username]),
                     UserDoc = wh_json:get_value(<<"doc">>, User),
-                    User2 = wh_json:set_values([{<<"account_id">>, wh_json:get_value(<<"pvt_account_id">>, UserDoc)}
-                                                ,{<<"owner_id">>, wh_json:get_value(<<"_id">>, UserDoc)}
-                                               ], UserDoc),
-                    cb_context:setters(Context, [{fun cb_context:set_account_db/2, Account}
-                                                 ,{fun cb_context:set_doc/2, wh_json:set_value(<<"User">>, User2, JObj)} 
-                                                 ,{fun cb_context:set_resp_status/2, 'success'}
-                                                ]);
+                    User2 =
+                        wh_json:set_values(
+                            [{<<"account_id">>, wh_json:get_value(<<"pvt_account_id">>, UserDoc)}
+                             ,{<<"owner_id">>, wh_json:get_value(<<"_id">>, UserDoc)}
+                            ]
+                           ,UserDoc
+                        ),
+                    cb_context:setters(
+                        Context
+                        ,[{fun cb_context:set_account_db/2, Account}
+                          ,{fun cb_context:set_doc/2, wh_json:set_value(<<"User">>, User2, JObj)}
+                          ,{fun cb_context:set_resp_status/2, 'success'}
+                         ]
+                    );
                 'true' ->
                     lager:debug("the username '~s' was found but is disabled", [Username]),
-                    cb_context:add_validation_error(<<"username">>
-                                                    ,<<"forbidden">>
-                                                    ,<<"The provided username is disabled">>
-                                                    ,Context
-                                                   )
+                    cb_context:add_validation_error(
+                        <<"username">>
+                        ,<<"forbidden">>
+                        ,wh_json:from_list([
+                            {<<"message">>, <<"The provided user name is disabled">>}
+                            ,{<<"cause">>, Username}
+                         ])
+                        ,Context
+                    )
             end;
         _ ->
-            cb_context:add_validation_error(<<"username">>
-                                            ,<<"not_found">>
-                                            ,<<"The provided username was not found">>
-                                            ,Context
-                                           )
+            cb_context:add_validation_error(
+                <<"username">>
+                ,<<"not_found">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"The provided user name was not found">>}
+                    ,{<<"cause">>, Username}
+                 ])
+                ,Context
+            )
     end.
 
 %%--------------------------------------------------------------------
@@ -197,7 +215,7 @@ maybe_load_username(Account, Context) ->
 create_token(Context) ->
     JObj = cb_context:doc(Context),
     case wh_json:get_value(<<"User">>, JObj) of
-        'undefined' -> 
+        'undefined' ->
             Profile = wh_json:get_value(<<"Profile">>, JObj),
             crossbar_util:response(
               wh_json:from_list([{<<"profile">>, Profile}])

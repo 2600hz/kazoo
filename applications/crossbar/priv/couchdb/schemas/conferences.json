@@ -1,6 +1,6 @@
 {
   "_id": "conferences",
-  "$schema": "http://json-schema.org/draft-04/schema#",
+  "$schema": "http://json-schema.org/draft-03/schema#",
   "type": "object",
   "required": false,
   "name": "Conference",
@@ -13,6 +13,13 @@
       "description": "A friendly name for the conference",
       "minLength": 1,
       "maxLength": 128
+    },
+    "play_name":{
+      "name": "Play name",
+      "description": "Do we need to announce new conference members?",
+      "type":"boolean",
+      "required": false,
+      "default": false
     },
     "profile": {
       "type": "string",

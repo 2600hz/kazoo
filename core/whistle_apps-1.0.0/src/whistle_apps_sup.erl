@@ -20,17 +20,10 @@
 -include("whapps_call_command.hrl").
 -include("whistle_apps.hrl").
 
--define(ORIGIN_BINDINGS, [[{'type', <<"account">>}]
-                          ,[{'db', ?WH_CONFIG_DB}]
-                         ]).
--define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
-
 -define(CHILDREN, [?WORKER('wh_nodes')
                    ,?WORKER('wh_hooks_listener')
                    ,?WORKER('wh_cache')
-                   ,?CACHE_ARGS(?WHAPPS_CONFIG_CACHE, ?CACHE_PROPS)
                    ,?WORKER('whistle_apps_init')
-                   ,?CACHE_ARGS(?WHAPPS_CALL_CACHE, ?CACHE_PROPS)
                    ,?WORKER('whapps_controller')
                    ,?SUPER('whistle_services_sup')
                   ]).

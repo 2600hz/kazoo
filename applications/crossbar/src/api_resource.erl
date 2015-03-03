@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% API resource
 %%% @end
@@ -113,7 +113,7 @@ find_version(Path, Req) ->
 find_version(Path) ->
     lager:debug("find version in ~s", [Path]),
     case binary:split(Path, <<"/">>, ['global']) of
-        [Path] -> <<"v1">>;
+        [Path] -> ?VERSION_1;
         [<<>>, Ver | _] -> to_version(Ver);
         [Ver | _] -> to_version(Ver)
     end.
@@ -122,9 +122,9 @@ to_version(<<"v", Int/binary>>=Version) ->
     try wh_util:to_integer(Int) of
         _ -> Version
     catch
-        _:_ -> <<"v1">>
+        _:_ -> ?VERSION_1
     end;
-to_version(_) -> <<"v1">>.
+to_version(_) -> ?VERSION_1.
 
 find_path(Req, Opts) ->
     case props:get_value('magic_path', Opts) of
@@ -273,8 +273,8 @@ malformed_request(Req, Context, ?HTTP_OPTIONS) ->
     {'false', Req, Context};
 malformed_request(Req, Context, _ReqVerb) ->
     case props:get_value(<<"accounts">>, cb_context:req_nouns(Context)) of
-        [AcctId] ->
-            Context1 = cb_accounts:validate(Context, AcctId),
+        [AccountId] ->
+            Context1 = cb_accounts:validate_resource(Context, AccountId),
             case cb_context:resp_status(Context1) of
                 'success' ->
                     {'false', Req, Context1};
@@ -354,12 +354,13 @@ options(Req0, Context) ->
                                     {content_type_callbacks(), cowboy_req:req(), cb_context:context()}.
 content_types_provided(Req, Context0) ->
     lager:debug("run: content_types_provided"),
-    Context1 =
-        lists:foldr(fun({Mod, Params}, ContextAcc) ->
-                            Event = api_util:create_event_name(Context0, <<"content_types_provided.", Mod/binary>>),
-                            Payload = [ContextAcc | Params],
-                            crossbar_bindings:fold(Event, Payload)
-                    end, Context0, cb_context:req_nouns(Context0)),
+
+    [{Mod, Params}|_] = cb_context:req_nouns(Context0),
+    Event = api_util:create_event_name(Context0, <<"content_types_provided.", Mod/binary>>),
+    Payload = [Context0 | Params],
+
+    Context1 = crossbar_bindings:fold(Event, Payload),
+
     content_types_provided(Req, Context1, cb_context:content_types_provided(Context1)).
 
 content_types_provided(Req, Context, []) ->
@@ -382,12 +383,11 @@ content_types_provided(Req, Context, CTPs) ->
                                     {content_type_callbacks(), cowboy_req:req(), cb_context:context()}.
 content_types_accepted(Req0, Context0) ->
     lager:debug("run: content_types_accepted"),
-    Context1 =
-        lists:foldr(fun({Mod, Params}, ContextAcc) ->
-                            Event = api_util:create_event_name(Context0, <<"content_types_accepted.", Mod/binary>>),
-                            Payload = [ContextAcc | Params],
-                            crossbar_bindings:fold(Event, Payload)
-                    end, Context0, cb_context:req_nouns(Context0)),
+
+    [{Mod, Params} | _] = cb_context:req_nouns(Context0),
+    Event = api_util:create_event_name(Context0, <<"content_types_accepted.", Mod/binary>>),
+    Payload = [Context0 | Params],
+    Context1 = crossbar_bindings:fold(Event, Payload),
 
     case cowboy_req:parse_header(<<"content-type">>, Req0) of
         {'undefined', <<>>, Req1} -> default_content_types_accepted(Req1, Context1);
@@ -431,12 +431,11 @@ content_types_accepted(CT, Req, Context) ->
                                 {ne_binaries(), cowboy_req:req(), cb_context:context()}.
 languages_provided(Req0, Context0) ->
     lager:debug("run: languages_provided"),
-    Context1 =
-        lists:foldr(fun({Mod, Params}, ContextAcc) ->
-                            Event = api_util:create_event_name(Context0, <<"languages_provided.", Mod/binary>>),
-                            Payload = [ContextAcc | Params],
-                            crossbar_bindings:fold(Event, Payload)
-                    end, Context0, cb_context:req_nouns(Context0)),
+
+    [{Mod, Params} | _] = cb_context:req_nouns(Context0),
+    Event = api_util:create_event_name(Context0, <<"languages_provided.", Mod/binary>>),
+    Payload = [Context0 | Params],
+    Context1 = crossbar_bindings:fold(Event, Payload),
 
     case cowboy_req:parse_header(<<"accept-language">>, Req0) of
         {'ok', 'undefined', Req1} ->
@@ -453,13 +452,11 @@ charsets_provided(_Req, _Context) ->
                                 {ne_binaries(), cowboy_req:req(), cb_context:context()}.
 encodings_provided(Req0, Context0) ->
     lager:debug("run: encodings_provided"),
-    {Req1, Context1} =
-        lists:foldr(fun({Mod, Params}, {ReqAcc, ContextAcc}) ->
-                            Event = api_util:create_event_name(Context0, <<"encodings_provided.", Mod/binary>>),
-                            Payload = {ReqAcc, ContextAcc, Params},
-                            {ReqAcc1, ContextAcc1, _} = crossbar_bindings:fold(Event, Payload),
-                            {ReqAcc1, ContextAcc1}
-                    end, {Req0, Context0}, cb_context:req_nouns(Context0)),
+
+    [{Mod, Params} | _] = cb_context:req_nouns(Context0),
+    Event = api_util:create_event_name(Context0, <<"encodings_provided.", Mod/binary>>),
+    Payload = {Req0, Context0, Params},
+    {Req1, Context1, _} = crossbar_bindings:fold(Event, Payload),
     {cb_context:encodings_provided(Context1), Req1, Context1}.
 
 -spec resource_exists(cowboy_req:req(), cb_context:context()) ->
@@ -625,34 +622,79 @@ from_form(Req0, Context0) ->
 
 -spec to_json(cowboy_req:req(), cb_context:context()) ->
                      {iolist() | ne_binary() | 'halt', cowboy_req:req(), cb_context:context()}.
-to_json(Req0, Context0) ->
+to_json(Req, Context) ->
+    to_json(Req, Context, accept_override(Context)).
+
+to_json(Req0, Context0, 'undefined') ->
     lager:debug("run: to_json"),
-    case is_csv_request(Context0) of
-        'true' ->
-            lager:debug("overriding JSON, sending as CSV"),
-            to_csv(Req0, Context0);
-        'false' ->
-            [{Mod, _Params}|_] = cb_context:req_nouns(Context0),
-            Verb = cb_context:req_verb(Context0),
-            Event = api_util:create_event_name(Context0, [<<"to_json">>
-                                                ,wh_util:to_lower_binary(Verb)
-                                                ,Mod
-                                               ]),
-            {Req1, Context1} = crossbar_bindings:fold(Event, {Req0, Context0}),
-            case cb_context:fetch(Context1, 'is_chunked') of
-                'true' -> {'halt', Req1, Context1};
-                _ -> api_util:create_pull_response(Req1, Context1)
-            end
+    [{Mod, _Params}|_] = cb_context:req_nouns(Context0),
+    Verb = cb_context:req_verb(Context0),
+    Event = api_util:create_event_name(Context0, [<<"to_json">>
+                                                      ,wh_util:to_lower_binary(Verb)
+                                                  ,Mod
+                                                 ]),
+    {Req1, Context1} = crossbar_bindings:fold(Event, {Req0, Context0}),
+    case cb_context:fetch(Context1, 'is_chunked') of
+        'true' -> {'halt', Req1, Context1};
+        _ -> api_util:create_pull_response(Req1, Context1)
+    end;
+to_json(Req, Context, <<"csv">>) ->
+    lager:debug("overridding json with csv builder"),
+    to_csv(Req, Context);
+to_json(Req, Context, Accept) ->
+    case to_fun(Context, Accept, 'to_json') of
+        'to_json' -> to_json(Req, Context, 'undefined');
+        Fun ->
+            lager:debug("calling ~s instead of to_json to render response", [Fun]),
+            apply(?MODULE, Fun, [Req, Context])
     end.
 
 -spec to_binary(cowboy_req:req(), cb_context:context()) ->
-                       {binary(), cowboy_req:req(), cb_context:context()}.
+                       {binary() | 'halt', cowboy_req:req(), cb_context:context()}.
 to_binary(Req, Context) ->
+    to_binary(Req, Context, accept_override(Context)).
+
+to_binary(Req, Context, 'undefined') ->
     lager:debug("run: to_binary"),
     RespData = cb_context:resp_data(Context),
     Event = api_util:create_event_name(Context, <<"to_binary">>),
     _ = crossbar_bindings:map(Event, {Req, Context}),
-    {RespData, api_util:set_resp_headers(Req, Context), Context}.
+    {RespData, api_util:set_resp_headers(Req, Context), Context};
+to_binary(Req, Context, Accept) ->
+    lager:debug("request has overridden accept header: ~s", [Accept]),
+    case to_fun(Context, Accept, 'to_binary') of
+        'to_binary' -> to_binary(Req, Context, 'undefined');
+        Fun ->
+            lager:debug("calling ~s instead of to_binary to render response", [Fun]),
+            apply(?MODULE, Fun, [Req, Context])
+    end.
+
+-spec to_fun(cb_context:context(), ne_binary(), atom()) -> atom().
+-spec to_fun(cb_context:context(), ne_binary(), ne_binary(), atom()) -> atom().
+to_fun(Context, Accept, Default) ->
+    case binary:split(Accept, <<"/">>) of
+        [Major, Minor] -> to_fun(Context, Major, Minor, Default);
+        _ -> Default
+    end.
+
+to_fun(Context, Major, Minor, Default) ->
+    case [F || {F, CTPs} <- cb_context:content_types_provided(Context),
+               accept_matches_provided(Major, Minor, CTPs)
+         ]
+    of
+        [] -> Default;
+        [F|_] -> F
+    end.
+
+-spec accept_matches_provided(ne_binary(), ne_binary(), wh_proplist()) -> boolean().
+accept_matches_provided(Major, Minor, CTPs) ->
+    lists:any(fun({Pri, Sec}) ->
+                      Pri =:= Major
+                          andalso ((Sec =:= Minor)
+                                   orelse (Minor =:= <<"*">>)
+                                  )
+              end, CTPs
+             ).
 
 -spec to_csv(cowboy_req:req(), cb_context:context()) ->
                     {iolist(), cowboy_req:req(), cb_context:context()}.
@@ -661,11 +703,11 @@ to_csv(Req, Context) ->
     [{Mod, _Params}|_] = cb_context:req_nouns(Context),
     Verb = cb_context:req_verb(Context),
     Event = api_util:create_event_name(Context, [<<"to_csv">>
-                                        ,wh_util:to_lower_binary(Verb)
-                                        ,Mod
-                                       ]),
+                                                 ,wh_util:to_lower_binary(Verb)
+                                                 ,Mod
+                                                ]),
     {Req1, Context1} = crossbar_bindings:fold(Event, {Req, Context}),
-     case cb_context:fetch(Context1, 'is_chunked') of
+    case cb_context:fetch(Context1, 'is_chunked') of
         'true' -> {'halt', Req1, Context1};
         _ ->
             RespBody = maybe_flatten_jobj(Context1),
@@ -680,9 +722,9 @@ to_csv(Req, Context) ->
             }
     end.
 
--spec is_csv_request(cb_context:context()) -> boolean().
-is_csv_request(Context) ->
-    cb_context:req_value(Context, <<"accept">>) =:= <<"csv">>.
+-spec accept_override(cb_context:context()) -> api_binary().
+accept_override(Context) ->
+    cb_context:req_value(Context, <<"accept">>).
 
 -spec maybe_flatten_jobj(cb_context:context()) -> iolist().
 maybe_flatten_jobj(Context) ->
@@ -773,7 +815,7 @@ correct_jobj(JObj) ->
     L = lists:map(fun(X) -> correct_proplist(X) end, Prop),
     wh_json:from_list(L).
 
-correct_proplist({K}) -> {K, <<"">>};
+correct_proplist({K}) -> {K, <<>>};
 correct_proplist(T) -> T.
 
 -spec multiple_choices(cowboy_req:req(), cb_context:context()) ->
@@ -789,7 +831,7 @@ generate_etag(Req0, Context0) ->
     case cb_context:resp_etag(Context1) of
         'automatic' ->
             {Content, _} = api_util:create_resp_content(Req1, Context1),
-            Tag = wh_util:to_hex_binary(crypto:md5(Content)),
+            Tag = wh_util:to_hex_binary(crypto:hash('md5', Content)),
             {list_to_binary([$", Tag, $"]), Req1, cb_context:set_resp_etag(Context1, Tag)};
         'undefined' ->
             {'undefined', Req1, cb_context:set_resp_etag(Context1, 'undefined')};

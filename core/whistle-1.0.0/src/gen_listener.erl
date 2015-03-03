@@ -18,6 +18,8 @@
 %%%   {queue_options, [{key, value}]} -> optional, if the queue requires different params
 %%%   {consume_options, [{key, value}]} -> optional, if the consumption requires special params
 %%%   {basic_qos, integer()} -> optional, if QoS is being set on this queue
+%%%   {broker | broker_tag, ne_binary()} -> optional, for binding to specific brokers
+%%%   {declare_exchanges, declare_exchanges()} -> optional, for declaring dynamic exchanges used only in this connection
 %%% ]
 %%% @end
 %%% @contributors
@@ -30,7 +32,10 @@
 
 -export([start_link/3
          ,start_link/4
+         ,start_link/5
         ]).
+
+-export([start_listener/2]).
 
 -export([queue_name/1
          ,bindings/1
@@ -68,10 +73,9 @@
          ,rm_responder/3
         ]).
 
--export([add_binding/2
-         ,add_binding/3
-         ,rm_binding/2
-         ,rm_binding/3
+-export([add_binding/2, add_binding/3
+         ,b_add_binding/2, b_add_binding/3
+         ,rm_binding/2, rm_binding/3
         ]).
 
 -export([ack/2
@@ -93,7 +97,6 @@
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
--include_lib("rabbitmq_server/plugins-src/rabbitmq-erlang-client/include/amqp_client.hrl").
 
 -define(TIMEOUT_RETRY_CONN, 5000).
 -define(CALLBACK_TIMEOUT_MSG, 'callback_timeout').
@@ -120,11 +123,10 @@
          ,federators = [] :: federator_listeners()
          ,self = self() :: pid()
          ,consumer_key = wh_amqp_channel:consumer_pid()
+         ,consumer_tags = [] :: binaries()
          }).
 
 -type state() :: #state{}.
-
--type basic_deliver() :: #'basic.deliver'{}.
 
 -type handle_event_return() :: {'reply', wh_proplist()} | 'ignore'.
 
@@ -137,12 +139,19 @@
 -type responder_callback_mappings() :: [responder_callback_mapping(),...] | [].
 -type responder_start_params() :: [{responder_callback_mod(), responder_callback_mappings()},...].
 
+%% ExchangeName, ExchangeType[, ExchangeOptions]
+-type declare_exchange() :: {ne_binary(), ne_binary()} |
+                            {ne_binary(), ne_binary(), wh_proplist()}.
+-type declare_exchanges() :: [declare_exchange(),...] | [].
+
 -type start_params() :: [{'responders', responder_start_params()} |
                          {'bindings', bindings()} |
                          {'queue_name', binary()} |
                          {'queue_options', wh_proplist()} |
                          {'consume_options', wh_proplist()} |
-                         {'basic_qos', non_neg_integer()}
+                         {'basic_qos', non_neg_integer()} |
+                         {'broker' | 'broker_tag', ne_binary()} |
+                         {'declare_exchanges', declare_exchanges()}
                         ].
 
 -export_type([handle_event_return/0
@@ -189,12 +198,32 @@
     {'ok', module_state()} | {'error', term()}.
 
 -spec start_link(atom(), start_params(), list()) -> startlink_ret().
-start_link(Module, Params, InitArgs) ->
+start_link(Module, Params, InitArgs) when is_atom(Module),
+                                          is_list(Params),
+                                          is_list(InitArgs)
+                                          ->
     gen_server:start_link(?MODULE, [Module, Params, InitArgs], []).
 
--spec start_link({'local', atom()} | {'global', term()}, atom(), start_params(), list()) -> startlink_ret().
-start_link(Name, Module, Params, InitArgs) ->
+-spec start_link(gen_server_name() | atom(), atom() | start_params(), start_params() | list(), gen_server_options() | list()) -> startlink_ret().
+start_link(Module, Params, InitArgs, Options) when is_atom(Module),
+                                                   is_list(Params),
+                                                   is_list(InitArgs),
+                                                   is_list(Options)
+                                                   ->
+    gen_server:start_link(?MODULE, [Module, Params, InitArgs], Options);
+start_link(Name, Module, Params, InitArgs) when is_atom(Module),
+                                                is_list(Params),
+                                                is_list(InitArgs)
+                                                ->
     gen_server:start_link(Name, ?MODULE, [Module, Params, InitArgs], []).
+
+-spec start_link(gen_server_name(), atom(), start_params(), list(), gen_server_options()) -> startlink_ret().
+start_link(Name, Module, Params, InitArgs, Options) when is_atom(Module),
+                                                         is_list(Params),
+                                                         is_list(InitArgs),
+                                                         is_list(Options)
+                                                         ->
+    gen_server:start_link(Name, ?MODULE, [Module, Params, InitArgs], Options).
 
 -spec queue_name(server_ref()) -> ne_binary().
 queue_name(Srv) -> gen_server:call(Srv, 'queue_name').
@@ -272,13 +301,25 @@ rm_responder(Srv, Responder, Keys) ->
 -spec add_binding(server_ref(), binding() | ne_binary() | atom()) -> 'ok'.
 add_binding(Srv, {Binding, Props}) when is_list(Props)
                                         ,(is_atom(Binding) orelse is_binary(Binding)) ->
-    gen_server:cast(Srv, {'add_binding', Binding, Props});
+    gen_server:cast(Srv, {'add_binding', wh_util:to_binary(Binding), Props});
 add_binding(Srv, Binding) when is_binary(Binding) orelse is_atom(Binding) ->
     gen_server:cast(Srv, {'add_binding', wh_util:to_binary(Binding), []}).
+
 
 -spec add_binding(server_ref(), ne_binary() | atom(), wh_proplist()) -> 'ok'.
 add_binding(Srv, Binding, Props) when is_binary(Binding) orelse is_atom(Binding) ->
     gen_server:cast(Srv, {'add_binding', wh_util:to_binary(Binding), Props}).
+
+-spec b_add_binding(server_ref(), binding() | ne_binary() | atom()) -> 'ok'.
+b_add_binding(Srv, {Binding, Props}) when is_list(Props)
+                                        ,(is_atom(Binding) orelse is_binary(Binding)) ->
+    gen_server:call(Srv, {'add_binding', wh_util:to_binary(Binding), Props});
+b_add_binding(Srv, Binding) when is_binary(Binding) orelse is_atom(Binding) ->
+    gen_server:call(Srv, {'add_binding', wh_util:to_binary(Binding), []}).
+
+-spec b_add_binding(server_ref(), ne_binary() | atom(), wh_proplist()) -> 'ok'.
+b_add_binding(Srv, Binding, Props) when is_binary(Binding) orelse is_atom(Binding) ->
+    gen_server:call(Srv, {'add_binding', wh_util:to_binary(Binding), Props}).
 
 %% It is expected that responders have been set up already, prior to binding the new queue
 -spec add_queue(server_ref(), binary(), wh_proplist(), binding() | bindings()) ->
@@ -395,6 +436,12 @@ handle_call('is_consuming', _From, #state{is_consuming=IsC}=State) ->
     {'reply', IsC, State};
 handle_call({'$client_call', Request}, From, State) ->
     handle_module_call(Request, From, State);
+handle_call({'add_binding', _Binding, _Props}=AddBinding, _From, State) ->
+    case handle_cast(AddBinding, State) of
+        {'noreply', State1} -> {'reply', 'ok', State1};
+        {'noreply', State1, Timeout} -> {'reply', 'ok', State1, Timeout};
+        {'stop', _Reason, _State1}=Stop -> Stop
+    end;
 handle_call(Request, From, State) ->
     handle_module_call(Request, From, State).
 
@@ -443,11 +490,7 @@ handle_cast({'add_binding', Binding, Props}, State) ->
 handle_cast({'rm_binding', Binding, Props}, #state{queue=Q
                                                    ,bindings=Bs
                                                   }=State) ->
-    KeepBs = lists:filter(fun({B, P}) when B =:= Binding, P =:= Props ->
-                                  remove_binding(B, P, Q),
-                                  'false';
-                             ({_B, _P}) -> 'true'
-                          end, Bs),
+    KeepBs = lists:filter(fun(BP) -> maybe_remove_binding(BP, Binding, Props, Q) end, Bs),
     {'noreply', State#state{bindings=KeepBs}, 'hibernate'};
 handle_cast({'wh_amqp_assignment', {'new_channel', 'true'}}, State) ->
     lager:debug("channel reconnecting"),
@@ -492,8 +535,46 @@ handle_cast({'$execute', Function}=Msg
     {'noreply', State};
 handle_cast({'$client_cast', Message}, State) ->
     handle_module_cast(Message, State);
+handle_cast({'start_listener', Params}, #state{queue='undefined'
+                                              ,is_consuming='false'
+                                              ,responders=[]
+                                              ,bindings=[]
+                                              ,params=[]
+                                               }=State) ->
+    #state{module=Module
+           ,module_state=ModuleState
+           ,module_timeout_ref=TimeoutRef
+          } = State,
+    {'ok', #state{}=N} = init(Module, Params, ModuleState, TimeoutRef),
+    {'noreply', N};
+handle_cast({'start_listener', _Params}, State) ->
+    lager:debug("gen listener asked to start listener but it is already initialized"),
+    {'noreply', State};
+
+handle_cast({'pause_consumers'}, #state{is_consuming='true', consumer_tags=Tags}=State) ->
+    [amqp_util:basic_cancel(Tag) || Tag <- Tags],
+    {'noreply', State};
+
+handle_cast({'resume_consumers'}, #state{queue='undefined'}=State) ->
+    {'noreply', State};
+handle_cast({'resume_consumers'}, #state{is_consuming='false'
+                                         ,params=Params
+                                         ,queue=Q
+                                         ,other_queues=OtherQueues}=State) ->
+    start_consumer(Q, props:get_value('consume_options', Params)),
+    [start_consumer(Q1, props:get_value('consume_options', P))
+                   || {Q1, {_, P}} <- OtherQueues],
+    {'noreply', State};
+
 handle_cast(Message, State) ->
     handle_module_cast(Message, State).
+
+-spec maybe_remove_binding(binding(), binding_module(), wh_proplist(), ne_binary()) -> boolean().
+maybe_remove_binding({B, P}, B, P, Q) ->
+    lager:debug("removing ~s: ~p", [B, P]),
+    remove_binding(B, P, Q),
+    'false';
+maybe_remove_binding(_BP, _B, _P, _Q) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -518,13 +599,13 @@ handle_info({#'basic.return'{}=BR, #amqp_msg{props=#'P_basic'{content_type=CT}
 handle_info(#'basic.consume_ok'{consumer_tag=CTag}, #state{queue='undefined'}=State) ->
     lager:debug("received consume ok (~s) for abandoned queue", [CTag]),
     {'noreply', State};
-handle_info(#'basic.consume_ok'{}, State) ->
+handle_info(#'basic.consume_ok'{consumer_tag=CTag}, #state{consumer_tags=CTags}=State) ->
     gen_server:cast(self(), {'gen_listener', {'is_consuming', 'true'}}),
-    {'noreply', State#state{is_consuming='true'}};
-handle_info(#'basic.cancel_ok'{consumer_tag=CTag}, State) ->
+    {'noreply', State#state{is_consuming='true', consumer_tags=[CTag | CTags]}};
+handle_info(#'basic.cancel_ok'{consumer_tag=CTag}, #state{consumer_tags=CTags}=State) ->
     lager:debug("recv a basic.cancel_ok for tag ~s", [CTag]),
     gen_server:cast(self(), {'gen_listener', {'is_consuming', 'false'}}),
-    {'noreply', State#state{is_consuming='false'}};
+    {'noreply', State#state{is_consuming='false', consumer_tags=lists:delete(CTag, CTags)}};
 handle_info('$is_gen_listener_consuming'
             ,#state{is_consuming='false'
                     ,bindings=ExistingBindings
@@ -649,18 +730,24 @@ handle_callback_info(Message, #state{module=Module
             {'stop', Reason, State#state{module_state=ModuleState1}}
     catch
         _E:R ->
+            ST = erlang:get_stacktrace(),
             lager:debug("handle_info exception: ~s: ~p", [_E, R]),
+            wh_util:log_stacktrace(ST),
             {'stop', R, State}
     end.
 
 format_status(_Opt, [_PDict, #state{module=Module
                                     ,module_state=ModuleState
                                    }=State]) ->
-    [{'data', [{"Module State", ModuleState}
-               ,{"Module", Module}
-              ]}
-     ,{'data', [{"Listener State", State}]}
-    ].
+    case erlang:function_exported(Module, format_status, 2) of
+        'true' -> Module:format_status(_Opt, [_PDict, ModuleState]);
+        'false' -> [{'data', [{"Module State", ModuleState}
+                              ,{"Module", Module}
+                              ,{"Listener State", State}
+                             ]
+                    }]
+    end.
+
 
 -spec distribute_event(wh_json:object(), basic_deliver(), state()) -> 'ok'.
 distribute_event(JObj, BasicDeliver, State) ->
@@ -689,6 +776,7 @@ distribute_event(Props, JObj, BasicDeliver, #state{responders=Responders
 client_handle_event(JObj, ConsumerKey, Module, Fun, Props, BasicDeliver) ->
     _ = wh_util:put_callid(JObj),
     _ = wh_amqp_channel:consumer_pid(ConsumerKey),
+
     case erlang:function_exported(Module, Fun, 3) of
         'true' -> Module:Fun(JObj, Props, BasicDeliver);
         'false' -> Module:Fun(JObj, Props)
@@ -759,7 +847,7 @@ start_consumer(Q, ConsumeProps) -> amqp_util:basic_consume(Q, ConsumeProps).
 -spec remove_binding(binding_module(), wh_proplist(), api_binary()) -> any().
 remove_binding(Binding, Props, Q) ->
     Wapi = list_to_binary([<<"wapi_">>, wh_util:to_binary(Binding)]),
-lager:debug("trying to remove bindings with ~s:unbind_q(~s, ~p)", [Wapi, Q, Props]),
+    lager:debug("trying to remove bindings with ~s:unbind_q(~s, ~p)", [Wapi, Q, Props]),
     try (wh_util:to_atom(Wapi, 'true')):unbind_q(Q, Props) of
         Return -> Return
     catch
@@ -841,7 +929,10 @@ handle_module_call(Request, From, #state{module=Module
             {'stop', Reason, Reply, State#state{module_state=ModuleState1}}
     catch
         _E:R ->
+            ST = erlang:get_stacktrace(),
             lager:debug("handle_call exception: ~s: ~p", [_E, R]),
+            wh_util:log_stacktrace(ST),
+
             {'stop', R, State}
     end.
 
@@ -968,6 +1059,7 @@ federated_queue_name(Params) ->
 -spec handle_amqp_channel_available(state()) -> state().
 handle_amqp_channel_available(#state{params=Params}=State) ->
     lager:debug("channel started, let's connect"),
+    maybe_declare_exchanges(props:get_value('declare_exchanges', Params, [])),
     {'ok', Q} = start_amqp(Params),
 
     State1 = start_initial_bindings(State#state{queue=Q}, Params),
@@ -977,6 +1069,24 @@ handle_amqp_channel_available(#state{params=Params}=State) ->
     gen_server:cast(self(), {'gen_listener', {'created_queue', Q}}),
 
     State1#state{is_consuming='false'}.
+
+-spec maybe_declare_exchanges(wh_proplist()) -> 'ok'.
+maybe_declare_exchanges([]) -> 'ok';
+maybe_declare_exchanges(Exchanges) ->
+    maybe_declare_exchanges(wh_amqp_assignments:get_channel(), Exchanges).
+
+-spec maybe_declare_exchanges(wh_amqp_assignment(), wh_proplist()) -> 'ok'.
+maybe_declare_exchanges(_Channel, []) -> 'ok';
+maybe_declare_exchanges(Channel, [Exchange | Exchanges]) ->
+    case Exchange of
+        {Ex, Type, Opts} -> declare_exchange(Channel, amqp_util:declare_exchange(Ex, Type, Opts));
+        {Ex, Type} -> declare_exchange(Channel, amqp_util:declare_exchange(Ex, Type))
+    end,
+    maybe_declare_exchanges(Channel, Exchanges).
+
+-spec declare_exchange(wh_amqp_assignment(), wh_amqp_exchange()) -> command_ret().
+declare_exchange(Channel, Exchange) ->
+    wh_amqp_channel:command(Channel, Exchange).
 
 -spec start_initial_bindings(state(), wh_proplist()) -> state().
 start_initial_bindings(State, Params) ->
@@ -988,16 +1098,34 @@ start_initial_bindings(State, Params) ->
                ).
 
 -spec channel_requisition(wh_proplist()) -> boolean().
+channel_requisition([]) -> 'false';
 channel_requisition(Params) ->
     case props:get_value('broker_tag', Params) of
         'undefined' ->
             case props:get_value('broker', Params) of
                 'undefined' -> wh_amqp_channel:requisition();
-                Broker -> wh_amqp_channel:requisition(Broker)
+                Broker -> maybe_add_broker_connection(Broker)
             end;
         Tag ->
             case wh_amqp_connections:broker_with_tag(Tag) of
                 'undefined' -> wh_amqp_channel:requisition();
-                Broker -> wh_amqp_channel:requisition(Broker)
+                Broker -> maybe_add_broker_connection(Broker)
             end
     end.
+
+-spec maybe_add_broker_connection(binary()) -> boolean().
+-spec maybe_add_broker_connection(binary(), non_neg_integer()) -> boolean().
+maybe_add_broker_connection(Broker) ->
+    Count = wh_amqp_connections:broker_available_connections(Broker),
+    maybe_add_broker_connection(Broker, Count).
+
+maybe_add_broker_connection(Broker, Count) when Count =:= 0 ->
+    wh_amqp_connections:add(Broker, wh_util:rand_hex_binary(6), [<<"hidden">>]),
+    wh_amqp_channel:requisition(Broker);
+maybe_add_broker_connection(Broker, _Count) ->
+    wh_amqp_channel:requisition(Broker).
+
+
+-spec start_listener(pid(), wh_proplist()) -> 'ok'.
+start_listener(Srv, Params) ->
+    gen_server:cast(Srv, {'start_listener', Params}).

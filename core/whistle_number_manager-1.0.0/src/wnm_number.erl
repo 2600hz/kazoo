@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle state transitions enforcing business logic
@@ -107,7 +107,6 @@ module_name('undefined') ->
     whapps_config:get_binary(?WNM_CONFIG_CAT, <<"available_module_name">>, <<"wnm_local">>);
 module_name(M) -> wh_util:to_binary(M).
 
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -184,15 +183,13 @@ fetch_number(#number{number_db=Db
 
 -spec maybe_correct_used_by(wnm_number()) -> wnm_number().
 -spec maybe_correct_used_by(wnm_number(), wh_json:object()) -> wnm_number().
-maybe_correct_used_by(#number{assigned_to=Account
-                             }=N) ->
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case couch_mgr:open_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
-        {'error', _E} ->
-            lager:warning("failed to get phone number doc for correction: ~p", [_E]),
-            N;
+maybe_correct_used_by(#number{assigned_to=Account}=N) ->
+    case load_phone_number_doc(Account) of
         {'ok', JObj} ->
-            maybe_correct_used_by(N, JObj)
+            maybe_correct_used_by(N, JObj);
+        {'error', _R} ->
+            lager:warning("failed to get phone number doc for correction: ~p", [_R]),
+            N
     end.
 
 maybe_correct_used_by(#number{number=Number
@@ -206,7 +203,8 @@ maybe_correct_used_by(#number{number=Number
             lager:debug("~s used_by field is correct", [Number]),
             N;
         NewUsedBy ->
-            lager:info("correcting used_by field for number ~s from ~s to ~s", [Number, UsedBy, NewUsedBy]),
+            lager:info("correcting used_by field for number ~s from ~s to ~s"
+                      ,[Number, UsedBy, NewUsedBy]),
             NewNumberDoc = wh_json:set_value(<<"used_by">>, NewUsedBy, NumberDoc),
             save_number_doc(N#number{used_by=NewUsedBy
                                      ,number_doc=NewNumberDoc
@@ -748,13 +746,16 @@ used_by(PhoneNumber, UsedBy) ->
         'false' ->
             lager:debug("number ~s is not reconcilable, ignoring", [PhoneNumber]);
         'true' ->
-            case ?MODULE:get(PhoneNumber) of
-                {Error, _} ->
-                    lager:warning("error getting '~s' : ~p", [PhoneNumber, Error]);
+            try ?MODULE:get(PhoneNumber) of
+                #number{used_by=UsedBy} -> 'ok';
                 Number ->
                     _ = save(Number#number{used_by=UsedBy}),
                     lager:debug("updating number '~s' used_by from '~s' field to: '~s'"
                                 ,[PhoneNumber, Number#number.used_by, UsedBy])
+            catch
+                _E:_R ->
+                    lager:notice("~s getting '~s' for used_by update to ~s: ~p"
+                                ,[_E, PhoneNumber, UsedBy, _R])
             end
     end.
 
@@ -1014,14 +1015,14 @@ error_service_restriction(Props, N) when is_list(Props) ->
            ,N#number{error_jobj=wh_json:from_list(Props)}
           }).
 
--spec error_provider_fault(wh_json:object(), wnm_number()) -> no_return().
+-spec error_provider_fault(wh_json:json_term(), wnm_number()) -> no_return().
 error_provider_fault(Reason, N) ->
     lager:debug("feature provider(s) fault: ~p", [wh_json:encode(Reason)]),
     throw({'provider_fault'
            ,N#number{error_jobj=wh_json:from_list([{<<"provider_fault">>, Reason}])}
           }).
 
--spec error_carrier_fault(wh_json:object() | ne_binary(), wnm_number()) -> no_return().
+-spec error_carrier_fault(wh_json:json_term(), wnm_number()) -> no_return().
 error_carrier_fault(Reason, N) ->
     lager:debug("carrier provider fault: ~p", [wh_json:encode(Reason)]),
     throw({'carrier_fault'
@@ -1156,11 +1157,18 @@ create_number_summary(_Account, #number{state=State
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec load_phone_number_doc(ne_binary()) ->
+                                   {'ok', wh_json:object()} |
+                                   {'error', _}.
+load_phone_number_doc(Account) ->
+    load_phone_number_doc(Account, 'true').
+
 -spec load_phone_number_doc(ne_binary(), boolean()) ->
                                    {'ok', wh_json:object()} |
                                    {'error', _}.
 load_phone_number_doc(Account, 'true') ->
-    case erlang:get({'phone_number_doc', Account}) of
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    case erlang:get({'phone_number_doc', AccountId}) of
         'undefined' -> load_phone_number_doc(Account, 'false');
         JObj -> {'ok', JObj}
     end;
@@ -1177,10 +1185,14 @@ load_phone_number_doc(Account, 'false') ->
     case couch_mgr:open_cache_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
         {'ok', J} ->
             lager:debug("loaded phone_numbers from ~s", [AccountId]),
-            {'ok', wh_json:set_values(PVTs, J)};
+            JObj = wh_json:set_values(PVTs, J),
+            erlang:put({'phone_number_doc', AccountId}, JObj),
+            {'ok', JObj};
         {'error', 'not_found'} ->
             lager:debug("creating phone_numbers in ~s", [AccountId]),
-            {'ok', wh_json:from_list([{<<"pvt_created">>, wh_util:current_tstamp()} | PVTs])};
+            JObj = wh_json:from_list([{<<"pvt_created">>, wh_util:current_tstamp()} | PVTs]),
+            erlang:put({'phone_number_doc', AccountId}, JObj),
+            {'ok', JObj};
         {'error', _}=E -> E
     end.
 
@@ -1209,7 +1221,8 @@ update_service_plans(#number{dry_run='true'
                              ,phone_number_docs=Docs
                              ,module_name=ModuleName
                              ,services=Services
-                             ,number=PhoneNumber}=Number) ->
+                             ,number=PhoneNumber
+                            }=Number) ->
     case dict:find(AssignedTo, Docs) of
         'error' -> Number;
         {'ok', JObj} ->
@@ -1221,16 +1234,18 @@ update_service_plans(#number{dry_run='true'
             S = wh_service_phone_numbers:reconcile(PhoneNumbers, Services),
             Number#number{services=S}
     end;
-update_service_plans(#number{assigned_to=AssignedTo, prev_assigned_to=PrevAssignedTo}=N) ->
+update_service_plans(#number{assigned_to=AssignedTo
+                             ,prev_assigned_to=PrevAssignedTo
+                            }=N) ->
     _ = wh_services:reconcile(AssignedTo, <<"phone_numbers">>),
     _ = wh_services:reconcile(PrevAssignedTo, <<"phone_numbers">>),
     _ = commit_activations(N),
     N.
 
 -spec commit_activations(wnm_number()) -> wnm_number().
-commit_activations(#number{billing_id='undefined'}=Number) ->
-    Number;
-commit_activations(#number{activations=Activations, services=Services}=N) ->
+commit_activations(#number{activations=Activations
+                           ,services=Services
+                          }=N) ->
     _ = wh_services:commit_transactions(Services, Activations),
     N.
 
@@ -1319,7 +1334,7 @@ activate_phone_number(Units, #number{phone_number_activation_charges=Charges
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec append_feature_debit(wh_json:json_string(), integer(), wnm_number()) -> wh_json:objects().
+-spec append_feature_debit(wh_json:key(), integer(), wnm_number()) -> wh_json:objects().
 append_feature_debit(Feature, Units, #number{billing_id=Ledger
                                              ,assigned_to=AccountId
                                              ,activations=Activations
@@ -1331,7 +1346,7 @@ append_feature_debit(Feature, Units, #number{billing_id=Ledger
                             'false' ->
                                 wh_transaction:set_reason(<<"feature_activation">>, T);
                             'true' ->
-                                T1 = wh_transaction:set_sub_account_id(AccountId, T),
+                                T1 = wh_transaction:set_sub_account_info(AccountId, T),
                                 wh_transaction:set_reason(<<"sub_account_feature_activation">>, T1)
                         end
                 end
@@ -1366,7 +1381,7 @@ append_phone_number_debit(Units, #number{billing_id=Ledger
                             'false' ->
                                 wh_transaction:set_reason(<<"number_activation">>, T);
                             'true' ->
-                                T1 = wh_transaction:set_sub_account_id(AccountId, T),
+                                T1 = wh_transaction:set_sub_account_info(AccountId, T),
                                 wh_transaction:set_reason(<<"sub_account_number_activation">>, T1)
                         end
                 end

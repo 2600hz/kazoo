@@ -58,12 +58,12 @@
 -spec default_headers_v(api_terms()) -> boolean().
 
 -spec default_headers(ne_binary(), ne_binary()) -> wh_proplist().
--spec default_headers(binary(), ne_binary(), ne_binary()) -> wh_proplist().
--spec default_headers(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> wh_proplist().
--spec default_headers(binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> wh_proplist().
+-spec default_headers(api_binary(), ne_binary(), ne_binary()) -> wh_proplist().
+-spec default_headers(api_binary(), ne_binary(), ne_binary(), ne_binary()) -> wh_proplist().
+-spec default_headers(api_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> wh_proplist().
 
 default_headers(AppName, AppVsn) ->
-    default_headers(<<>>, AppName, AppVsn).
+    default_headers('undefined', AppName, AppVsn).
 
 default_headers(ServerID, AppName, AppVsn) ->
     [{<<"Server-ID">>, ServerID}
@@ -84,13 +84,17 @@ default_headers(ServerID, EvtCat, EvtName, AppName, AppVsn) ->
      ,{<<"Node">>, wh_util:to_binary(node())}
     ].
 
-default_headers_v(Prop) ->
-    props:get_value(<<"Server-ID">>, Prop) =/= 'undefined'
-        andalso (not wh_util:is_empty(props:get_value(<<"Event-Category">>, Prop)))
-        andalso (not wh_util:is_empty(props:get_value(<<"Event-Name">>, Prop)))
-        andalso (not wh_util:is_empty(props:get_value(<<"App-Name">>, Prop)))
-        andalso (not wh_util:is_empty(props:get_value(<<"App-Version">>, Prop)))
-        andalso (not wh_util:is_empty(props:get_value(<<"Node">>, Prop))).
+default_headers_v(Props) when is_list(Props) ->
+    Filtered = props:filter_empty(Props),
+    lists:all(fun(K) -> default_header_v(K, Filtered) end
+              ,?DEFAULT_HEADERS
+             );
+default_headers_v(JObj) ->
+    default_headers_v(wh_json:to_proplist(JObj)).
+
+-spec default_header_v(ne_binary(), wh_proplist()) -> boolean().
+default_header_v(Header, Props) ->
+    not wh_util:is_empty(props:get_value(Header, Props)).
 
 disambiguate_and_publish(ReqJObj, RespJObj, Binding) ->
     Wapi = list_to_binary([<<"wapi_">>, wh_util:to_binary(Binding)]),
@@ -206,12 +210,13 @@ extract_defaults(JObj) ->
 
 -spec remove_defaults(api_terms()) -> api_terms().
 remove_defaults(Prop) when is_list(Prop) ->
-    [ KV || {K, _}=KV <- Prop,
-            (not lists:member(K, ?DEFAULT_HEADERS)),
-            (not lists:member(K, ?OPTIONAL_DEFAULT_HEADERS))
-    ];
+    props:delete_keys(?OPTIONAL_DEFAULT_HEADERS
+                      ,props:delete_keys(?DEFAULT_HEADERS, Prop)
+                     );
 remove_defaults(JObj) ->
-    wh_json:from_list(remove_defaults(wh_json:to_proplist(JObj))).
+    wh_json:delete_keys(?OPTIONAL_DEFAULT_HEADERS
+                        ,wh_json:delete_keys(?DEFAULT_HEADERS, JObj)
+                       ).
 
 %%--------------------------------------------------------------------
 %% @doc Format an error event

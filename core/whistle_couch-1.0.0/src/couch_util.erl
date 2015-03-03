@@ -32,8 +32,12 @@
 %% Doc related
 -export([open_cache_doc/4
          ,cache_db_doc/3
-         ,flush_cache_doc/4
-         ,flush_cache_docs/0, flush_cache_docs/1
+         ,flush_cache_doc/2
+         ,flush_cache_doc/3
+         ,flush_cache_docs/0
+         ,flush_cache_docs/1
+         ,flush_cache_docs/2
+         ,flush_cache_docs/3
          ,open_doc/4
          ,lookup_doc_rev/3
          ,save_doc/4
@@ -84,6 +88,13 @@
               ,couchbeam_errors/0
               ,db_classifications/0
              ]).
+
+-define(DELETE_KEYS, [<<"_rev">>, <<"id">>, <<"_attachments">>]).
+
+-type copy_function() :: fun((server(), ne_binary(), wh_json:object(), wh_proplist()) ->
+                              {'ok', wh_json:object()} | couchbeam_error()).
+-export_type([copy_function/0]).
+-define(COPY_DOC_OVERRIDE_PROPERTY, 'override_existing_document').
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -177,6 +188,8 @@ get_new_conn(Host, Port, Opts) ->
             E
     end.
 
+-spec server_info(server()) -> {'ok', wh_json:object()} |
+                               {'error', _}.
 server_info(#server{}=Conn) -> couchbeam:server_info(Conn).
 
 -spec server_url(server()) -> ne_binary().
@@ -417,16 +430,24 @@ cache_db_doc(DbName, DocId, CacheValue) ->
     CacheProps = [{'origin', {'db', DbName, DocId}}],
     wh_cache:store_local(?WH_COUCH_CACHE, {?MODULE, DbName, DocId}, CacheValue, CacheProps).
 
--spec flush_cache_doc(server() | 'undefined', ne_binary() | db(), ne_binary(), wh_proplist()) -> 'ok'.
-flush_cache_doc(Server, #db{name=Name}, DocId, Options) ->
-    flush_cache_doc(Server, wh_util:to_binary(Name), DocId, Options);
-flush_cache_doc(_, DbName, DocId, _Options) ->
-    wh_cache:erase_local(?WH_COUCH_CACHE, {?MODULE, DbName, DocId}).
+-spec flush_cache_doc(ne_binary() | db(), ne_binary() | wh_json:object()) -> 'ok'.
+flush_cache_doc(#db{name=Name}, Doc) ->
+    flush_cache_doc(#db{name=Name}, Doc, []).
+
+-spec flush_cache_doc(ne_binary() | db(), ne_binary() | wh_json:object(), wh_proplist()) -> 'ok'.
+flush_cache_doc(#db{name=Name}, Doc, Options) ->
+    flush_cache_doc(wh_util:to_binary(Name), Doc, Options);
+flush_cache_doc(DbName, DocId, _Options) when is_binary(DocId) ->
+    wh_cache:erase_local(?WH_COUCH_CACHE, {?MODULE, DbName, DocId});
+flush_cache_doc(DbName, Doc, Options) ->
+    flush_cache_doc(DbName, doc_id(Doc), Options).
 
 -spec flush_cache_docs() -> 'ok'.
--spec flush_cache_docs(ne_binary()) -> 'ok'.
-
 flush_cache_docs() -> wh_cache:flush_local(?WH_COUCH_CACHE).
+
+-spec flush_cache_docs(ne_binary() | db()) -> 'ok'.
+flush_cache_docs(#db{name=Name}) ->
+    flush_cache_docs(wh_util:to_binary(Name));
 flush_cache_docs(DbName) ->
     Filter = fun({?MODULE, DbName1, _DocId}=K, _) when DbName1 =:= DbName ->
                      wh_cache:erase_local(?WH_COUCH_CACHE, K),
@@ -434,6 +455,17 @@ flush_cache_docs(DbName) ->
                 (_, _) -> 'false'
              end,
     _ = wh_cache:filter_local(?WH_COUCH_CACHE, Filter),
+    'ok'.
+
+-spec flush_cache_docs(ne_binary() | db(), ne_binaries() | wh_json:objects()) -> 'ok'.
+flush_cache_docs(Db, Docs) ->
+    flush_cache_docs(Db, Docs, []).
+
+-spec flush_cache_docs(ne_binary() | db(), ne_binaries() | wh_json:objects(), wh_proplist()) -> 'ok'.
+flush_cache_docs(Db, Docs, Options) ->
+    _ = [flush_cache_doc(Db, Doc, Options)
+         || Doc <- Docs
+        ],
     'ok'.
 
 -spec open_doc(server(), ne_binary(), ne_binary(), wh_proplist()) ->
@@ -543,9 +575,7 @@ prepare_doc_for_del(Conn, #db{name=DbName}, Doc) ->
                              couchbeam_error().
 do_ensure_saved(#db{}=Db, Doc, Opts) ->
     case do_save_doc(Db, Doc, Opts) of
-        {'ok', JObj}=Ok ->
-            _ = maybe_publish_doc(Db, Doc, JObj),
-            Ok;
+        {'ok', _}=Ok -> Ok;
         {'error', 'conflict'} ->
             case do_fetch_rev(Db, doc_id(Doc)) of
                 {'error', 'not_found'} ->
@@ -582,9 +612,11 @@ do_fetch_doc(#db{}=Db, DocId, Options) ->
 do_save_doc(#db{}=Db, Docs, Options) when is_list(Docs) ->
     do_save_docs(Db, Docs, Options);
 do_save_doc(#db{}=Db, Doc, Options) ->
-    case ?RETRY_504(couchbeam:save_doc(Db, maybe_set_docid(Doc), Options)) of
+    PreparedDoc = maybe_set_docid(Doc),
+    _ = flush_cache_doc(Db, PreparedDoc),
+    case ?RETRY_504(couchbeam:save_doc(Db, PreparedDoc, Options)) of
         {'ok', JObj}=Ok ->
-            _ = maybe_publish_doc(Db, Doc, JObj),
+            _ = maybe_publish_doc(Db, PreparedDoc, JObj),
             Ok;
         Else -> Else
     end.
@@ -609,6 +641,7 @@ do_save_docs(#db{}=Db, Docs, Options, Acc) ->
     case catch(lists:split(?MAX_BULK_INSERT, Docs)) of
         {'EXIT', _} ->
             PreparedDocs = [maybe_set_docid(D) || D <- Docs],
+            _ = flush_cache_docs(Db, PreparedDocs),
             case ?RETRY_504(couchbeam:save_docs(Db, PreparedDocs, Options)) of
                 {'ok', JObjs} ->
                     _ = maybe_publish_docs(Db, PreparedDocs, JObjs),
@@ -617,6 +650,7 @@ do_save_docs(#db{}=Db, Docs, Options, Acc) ->
             end;
         {Save, Cont} ->
             PreparedDocs = [maybe_set_docid(D) || D <- Save],
+            _ = flush_cache_docs(Db, PreparedDocs),
             case ?RETRY_504(couchbeam:save_docs(Db, PreparedDocs, Options)) of
                 {'ok', JObjs} ->
                     _ = maybe_publish_docs(Db, PreparedDocs, JObjs),
@@ -682,6 +716,7 @@ do_stream_attachment(#db{}=Db, DocId, AName, Caller) ->
                                {'ok', wh_json:object()} |
                                couchbeam_error().
 do_put_attachment(#db{}=Db, DocId, AName, Contents, Options) ->
+    _ = flush_cache_doc(Db, DocId),
     case ?RETRY_504(couchbeam:put_attachment(Db, DocId, AName, Contents, Options)) of
         {'ok', JObj}=Ok ->
             maybe_publish_doc(Db, wh_json:from_list([{<<"_id">>, DocId}]), maybe_add_pvt_type(Db, DocId, JObj)),
@@ -694,6 +729,7 @@ do_put_attachment(#db{}=Db, DocId, AName, Contents, Options) ->
                                couchbeam_error().
 do_del_attachment(#db{}=Db, DocId, AName, Options) ->
     Doc = wh_util:to_binary(http_uri:encode(wh_util:to_list(DocId))),
+    _ = flush_cache_doc(Db, DocId),
     case ?RETRY_504(couchbeam:delete_attachment(Db, Doc, AName, Options)) of
         {'ok', JObj}=Ok ->
             maybe_publish_doc(Db, wh_json:from_list([{<<"_id">>, DocId}]), maybe_add_pvt_type(Db, DocId, JObj)),
@@ -721,12 +757,25 @@ get_db(#server{}=Conn, DbName) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec maybe_add_rev(couchbeam_db(), ne_binary(), wh_proplist()) -> wh_proplist().
-maybe_add_rev(Db, DocId, Options) ->
+maybe_add_rev(#db{name=_Name}=Db, DocId, Options) ->
     case props:get_value('rev', Options) =:= 'undefined'
         andalso do_fetch_rev(Db, DocId)
     of
-        ?NE_BINARY = Rev -> [{'rev', Rev} | Options];
-        _Else -> Options
+        <<_/binary>> = Rev ->
+            lager:debug("adding rev ~s to options", [Rev]),
+            [{'rev', Rev} | Options];
+        'false' ->
+            lager:debug("rev is in options list: ~p", [Options]),
+            Options;
+        {'error', 'not_found'} ->
+            lager:debug("failed to find rev of ~s in ~p, not_found in db", [DocId, _Name]),
+            Options;
+        {'error', 'empty_doc_id'} ->
+            lager:debug("failed to find doc id ~p", [DocId]),
+            Options;
+        _Else ->
+            lager:debug("unknown rev format for ~p: ~p", [DocId, _Else]),
+            Options
     end.
 
 %%------------------------------------------------------------------------------
@@ -796,15 +845,10 @@ retry504s(Fun, Cnt) ->
     end.
 
 -spec maybe_publish_docs(couchbeam_db(), wh_json:objects(), wh_json:objects()) -> 'ok'.
-maybe_publish_docs(#db{name=DbName}=Db, Docs, JObjs) ->
+maybe_publish_docs(#db{}=Db, Docs, JObjs) ->
     case couch_mgr:change_notice() of
         'true' ->
             spawn(fun() ->
-                          [wh_cache:erase_local(?WH_COUCH_CACHE
-                                                ,{?MODULE, wh_util:to_binary(DbName), doc_id(Doc)}
-                                               )
-                           || Doc <- Docs
-                          ],
                           [publish_doc(Db, Doc, JObj)
                            || {Doc, JObj} <- lists:zip(Docs, JObjs),
                               should_publish_doc(Doc)
@@ -832,7 +876,7 @@ should_publish_doc(Doc) ->
 
 -spec publish_doc(couchbeam_db(), wh_json:object(), wh_json:object()) -> 'ok'.
 publish_doc(#db{name=DbName}, Doc, JObj) ->
-    case wh_json:is_true(<<"pvt_deleted">>, Doc)
+    case wh_doc:is_soft_deleted(Doc)
         orelse wh_json:is_true(<<"_deleted">>, Doc)
     of
         'true' -> publish('deleted', wh_util:to_binary(DbName), Doc);
@@ -886,7 +930,11 @@ doc_acct_id(Db, Doc) ->
         AccountId -> AccountId
     end.
 
--define(DELETE_KEYS, [<<"_rev">>, <<"id">>, <<"_attachments">>]).
+
+
+-spec default_copy_function(boolean()) -> copy_function().
+default_copy_function('true') -> fun ensure_saved/4;
+default_copy_function('false') -> fun save_doc/4.
 
 -spec copy_doc(server(), copy_doc(), wh_proplist()) ->
                       {'ok', wh_json:object()} |
@@ -900,6 +948,14 @@ copy_doc(#server{}=Conn, #wh_copy_doc{source_dbname = SourceDb
 copy_doc(#server{}=Conn, #wh_copy_doc{dest_doc_id='undefined'}=CopySpec, Options) ->
     copy_doc(Conn, CopySpec#wh_copy_doc{dest_doc_id=wh_util:rand_hex_binary(16)}, Options);
 copy_doc(#server{}=Conn, CopySpec, Options) ->
+    SaveFun = default_copy_function(props:is_defined(?COPY_DOC_OVERRIDE_PROPERTY, Options)),
+    copy_doc(Conn, CopySpec, SaveFun, props:delete(?COPY_DOC_OVERRIDE_PROPERTY, Options)).
+
+
+-spec copy_doc(server(), copy_doc(), copy_function(), wh_proplist()) ->
+                      {'ok', wh_json:object()} |
+                      couchbeam_error().
+copy_doc(#server{}=Conn, CopySpec, CopyFun, Options) ->
     #wh_copy_doc{source_dbname = SourceDbName
                  ,source_doc_id = SourceDocId
                  ,dest_dbname = DestDbName
@@ -908,17 +964,17 @@ copy_doc(#server{}=Conn, CopySpec, Options) ->
     case open_doc(Conn, SourceDbName, SourceDocId, Options) of
         {'ok', SourceDoc} ->
             Props = [{<<"_id">>, DestDocId}],
-            DestinationDoc = wh_json:set_values(Props,wh_json:delete_keys(?DELETE_KEYS, SourceDoc)),
-            case save_doc(Conn, DestDbName, DestinationDoc, Options) of
+            DestinationDoc = wh_json:set_values(Props, wh_json:delete_keys(?DELETE_KEYS, SourceDoc)),
+            case CopyFun(Conn, DestDbName, DestinationDoc, Options) of
                 {'ok', _JObj} ->
-                    Attachments = wh_json:get_value(<<"_attachments">>, SourceDoc, wh_json:new()),
+                    Attachments = wh_doc:attachments(SourceDoc, wh_json:new()),
                     copy_attachments(Conn, CopySpec, wh_json:get_values(Attachments));
                 Error -> Error
             end;
         Error -> Error
     end.
 
--spec copy_attachments(server(), copy_doc(), {wh_json:json_terms(), wh_json:json_strings()}) ->
+-spec copy_attachments(server(), copy_doc(), {wh_json:json_terms(), wh_json:keys()}) ->
                               {'ok', ne_binary()} |
                               {'error', any()}.
 copy_attachments(#server{}=Conn, CopySpec, {[], []}) ->

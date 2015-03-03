@@ -63,7 +63,9 @@ handle_req(JObj, _Props) ->
             {'ok', AcctObj} = couch_mgr:open_cache_doc(AcctDB, wh_util:format_account_id(AcctDB, 'raw')),
             Docs = [VMBox, UserJObj, AcctObj],
 
-            Props = [{<<"email_address">>, Email}
+            Emails = [Email | email_list(wh_json:get_value(<<"notify_email_address">>, VMBox, []))],
+
+            Props = [{<<"email_address">>, Emails}
                      | create_template_props(JObj, Docs, AcctObj)
                     ],
 
@@ -76,11 +78,15 @@ handle_req(JObj, _Props) ->
             CustomSubjectTemplate = wh_json:get_value(?EMAIL_SUBJECT_TEMPLATE_KEY, AcctObj),
             {'ok', Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
 
-            build_and_send_email(TxtBody, HTMLBody, Subject, Email
+            build_and_send_email(TxtBody, HTMLBody, Subject, Emails
                                  ,props:filter_undefined(Props)
                                  ,{RespQ, MsgId}
                                 )
     end.
+
+-spec email_list(binary() | binaries()) -> binaries().
+email_list(Email) when is_binary(Email) -> [Email];
+email_list(Email) when is_list(Email) -> Email.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -153,14 +159,13 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, {RespQ, MsgId}) ->
     DocId = props:get_value(<<"media">>, Voicemail),
 
     From = props:get_value(<<"send_from">>, Service),
-    To = props:get_value(<<"email_address">>, Props),
 
     {ContentTypeParams, CharsetString} = notify_util:get_charset_params(Service),
 
     lager:debug("attempting to attach media ~s in ~s", [DocId, DB]),
     {'ok', VMJObj} = couch_mgr:open_doc(DB, DocId),
 
-    [AttachmentId] = wh_json:get_keys(<<"_attachments">>, VMJObj),
+    [AttachmentId] = wh_doc:attachment_names(VMJObj),
     lager:debug("attachment id ~s", [AttachmentId]),
     {'ok', AttachmentBin} = couch_mgr:fetch_attachment(DB, DocId, AttachmentId),
 
@@ -172,11 +177,11 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, {RespQ, MsgId}) ->
 
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>
-                 ,[{<<"From">>, From}
-                   ,{<<"To">>, To}
-                   ,{<<"Subject">>, Subject}
-                   ,{<<"X-Call-ID">>, props:get_value(<<"call_id">>, Voicemail)}
-                  ]
+             ,[{<<"From">>, From}
+               ,{<<"To">>, To}
+               ,{<<"Subject">>, Subject}
+               ,{<<"X-Call-ID">>, props:get_value(<<"call_id">>, Voicemail)}
+              ]
              ,ContentTypeParams
              ,[{<<"multipart">>, <<"alternative">>, [], []
                 ,[{<<"text">>, <<"plain">>
@@ -194,10 +199,10 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, {RespQ, MsgId}) ->
                  ]
                }
                ,{<<"audio">>, <<"mpeg">>
-                     ,[{<<"Content-Disposition">>, list_to_binary([<<"attachment; filename=\"">>, AttachmentFileName, "\""])}
-                       ,{<<"Content-Type">>, list_to_binary([<<"audio/mpeg; name=\"">>, AttachmentFileName, "\""])}
-                       ,{<<"Content-Transfer-Encoding">>, <<"base64">>}
-                      ]
+                 ,[{<<"Content-Disposition">>, list_to_binary([<<"attachment; filename=\"">>, AttachmentFileName, "\""])}
+                   ,{<<"Content-Type">>, list_to_binary([<<"audio/mpeg; name=\"">>, AttachmentFileName, "\""])}
+                   ,{<<"Content-Transfer-Encoding">>, <<"base64">>}
+                  ]
                  ,[], AttachmentBin
                 }
               ]
@@ -238,7 +243,7 @@ get_extension(MediaJObj) ->
     case wh_json:get_value(<<"media_type">>, MediaJObj) of
         'undefined' ->
             lager:debug("getting extension from attachment mime"),
-            attachment_to_extension(wh_json:get_value(<<"_attachments">>, MediaJObj));
+            attachment_to_extension(wh_doc:attachments(MediaJObj));
         MediaType -> MediaType
     end.
 

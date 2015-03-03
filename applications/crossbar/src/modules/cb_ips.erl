@@ -135,7 +135,11 @@ load_available(Context) ->
                 ,JObjs
             );
         {'error', Reason} ->
-            cb_context:add_system_error('datastore_fault', [{'details', Reason}], Context)
+            cb_context:add_system_error(
+                'datastore_fault'
+                ,wh_json:from_list([{<<"cause">>, Reason}])
+                ,Context
+            )
     end.
 
 %%--------------------------------------------------------------------
@@ -153,7 +157,11 @@ load_assigned(Context) ->
                 ,JObjs
             );
         {'error', Reason} ->
-            cb_context:add_system_error('datastore_fault', [{'details', Reason}], Context)
+            cb_context:add_system_error(
+                'datastore_fault'
+                ,wh_json:from_list([{<<"cause">>, Reason}])
+                ,Context
+            )
     end.
 
 %%--------------------------------------------------------------------
@@ -170,7 +178,11 @@ load_zones(Context) ->
                 ,JObjs
             );
         {'error', Reason} ->
-            cb_context:add_system_error('datastore_fault', [{'details', Reason}], Context)
+            cb_context:add_system_error(
+                'datastore_fault'
+                ,wh_json:from_list([{<<"cause">>, Reason}])
+                ,Context
+            )
     end.
 
 %%--------------------------------------------------------------------
@@ -187,7 +199,11 @@ load_hosts(Context) ->
                 ,JObjs
             );
         {'error', Reason} ->
-            cb_context:add_system_error('datastore_fault', [{'details', Reason}], Context)
+            cb_context:add_system_error(
+                'datastore_fault'
+                ,wh_json:from_list([{<<"cause">>, Reason}])
+                ,Context
+            )
     end.
 
 %%--------------------------------------------------------------------
@@ -205,7 +221,11 @@ load_ip(Context, Id) ->
                 ,clean_ip(IPJSON)
             );
         {'error', Reason} ->
-            cb_context:add_system_error('datastore_fault', [{'details', Reason}], Context)
+            cb_context:add_system_error(
+                'datastore_fault'
+                ,wh_json:from_list([{<<"cause">>, Reason}])
+                ,Context
+            )
     end.
 
 %%--------------------------------------------------------------------
@@ -224,7 +244,11 @@ assign_ip(Context, Id) ->
                 ,clean_ip(IPJSON)
             );
         {'error', Reason} ->
-            cb_context:add_system_error('datastore_fault', [{'details', Reason}], Context)
+            cb_context:add_system_error(
+                'datastore_fault'
+                ,wh_json:from_list([{<<"cause">>, Reason}])
+                ,Context
+            )
     end.
 
 %%--------------------------------------------------------------------
@@ -242,7 +266,11 @@ release_ip(Context, Id) ->
                 ,clean_ip(IPJSON)
             );
         {'error', Reason} ->
-            cb_context:add_system_error('datastore_fault', [{'details', Reason}], Context)
+            cb_context:add_system_error(
+                'datastore_fault'
+                ,wh_json:from_list([{<<"cause">>, Reason}])
+                ,Context
+            )
     end.
 
 %%--------------------------------------------------------------------

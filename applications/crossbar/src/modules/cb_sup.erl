@@ -179,7 +179,7 @@ allowed_methods(_Module, _Function, _Args) ->
 -spec resource_exists() -> 'false'.
 -spec resource_exists(path_token()) -> boolean().
 -spec resource_exists(path_token(), path_token()) -> boolean().
--spec resource_exists(path_token(), path_token(), path_token()) -> boolean().
+-spec resource_exists(path_token(), path_token(), ne_binaries()) -> boolean().
 resource_exists() -> 'false'.
 
 resource_exists(ModuleBin) ->

@@ -22,6 +22,7 @@
 -include_lib("whistle/include/wh_databases.hrl").
 
 -define(MOD_CONFIG_CAT, <<"provisioner">>).
+-define(SCHEMA, <<"provisioner_v5">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -29,20 +30,21 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec put(ne_binary(), wh_json:object()) -> 'ok'.
+-spec put(wh_json:object(), ne_binary()) -> 'ok'.
 put(JObj, AuthToken) ->
-    Routines = [fun(J) -> set_account(J) end
-                ,fun(J) -> set_owner(J) end
-                ,fun(J) -> device_settings(J) end
-               ],
-    Data = lists:foldl(fun(F, J) -> F(J) end, JObj, Routines),
-    MACAddress = wh_json:get_value(<<"mac_address">>, JObj),
-    _ = send_req('devices_put'
-                 ,Data
-                 ,AuthToken
-                 ,wh_json:get_value(<<"pvt_account_id">>, JObj)
-                 ,MACAddress),
-    send_req('files_post', AuthToken, MACAddress).
+    AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
+    case check_data(provision_data(JObj)) of
+        {'ok', Data} ->
+            handle_validation_success(
+              'put'
+              ,Data
+              ,AuthToken
+              ,wh_json:get_value(<<"mac_address">>, JObj)
+              ,AccountId
+             );
+        {'error', Errors} ->
+            handle_validation_error(Errors, AccountId)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -50,20 +52,21 @@ put(JObj, AuthToken) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec post(ne_binary(), wh_json:object()) -> 'ok'.
+-spec post(wh_json:object(), ne_binary()) -> 'ok'.
 post(JObj, AuthToken) ->
-    Routines = [fun(J) -> set_account(J) end
-                ,fun(J) -> set_owner(J) end
-                ,fun(J) -> device_settings(J) end
-               ],
-    Data = lists:foldl(fun(F, J) -> F(J) end, JObj, Routines),
-    MACAddress = wh_json:get_value(<<"mac_address">>, JObj),
-    _ = send_req('devices_post'
-                 ,Data
-                 ,AuthToken
-                 ,wh_json:get_value(<<"pvt_account_id">>, JObj)
-                 ,MACAddress),
-    send_req('files_post', AuthToken, MACAddress).
+    AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
+    case check_data(provision_data(JObj)) of
+        {'ok', Data} ->
+            handle_validation_success(
+              'post'
+              ,Data
+              ,AuthToken
+              ,wh_json:get_value(<<"mac_address">>, JObj)
+              ,AccountId
+             );
+        {'error', Errors} ->
+            handle_validation_error(Errors, AccountId)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -71,13 +74,14 @@ post(JObj, AuthToken) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec delete(ne_binary(), wh_json:object()) -> 'ok'.
+-spec delete(wh_json:object(), ne_binary()) -> 'ok'.
 delete(JObj, AuthToken) ->
     send_req('devices_delete'
              ,'none'
              ,AuthToken
              ,wh_json:get_value(<<"pvt_account_id">>, JObj)
-             ,wh_json:get_value(<<"mac_address">>, JObj)).
+             ,wh_json:get_value(<<"mac_address">>, JObj)
+            ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -91,7 +95,8 @@ delete_account(AccountId, AuthToken) ->
              ,'none'
              ,AuthToken
              ,AccountId
-             ,'none').
+             ,'none'
+            ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -105,22 +110,39 @@ update_account(AccountId, JObj, AuthToken) ->
              ,account_settings(AccountId, JObj)
              ,AuthToken
              ,AccountId
-             ,'none').
+             ,'none'
+            ).
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_account(wh_json:object()) -> wh_json:object().
-set_account(JObj) ->
-    AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
-    AccountDb = wh_json:get_value(<<"pvt_account_db">>, JObj),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+-spec provision_data(wh_json:object()) -> wh_json:object().
+provision_data(JObj) ->
+    Routines =
+        [fun set_realm/1
+         ,fun set_owner/1
+         ,fun maybe_set_timezone/1
+         ,fun create_provision_settings/1
+        ],
+    lists:foldl(fun(F, J) -> F(J) end, JObj, Routines).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec set_realm(wh_json:object()) -> wh_json:object().
+set_realm(JObj) ->
+    case get_account(JObj) of
         {'ok', Doc} ->
             Realm = wh_json:get_value(<<"realm">>, Doc),
             wh_json:set_value(<<"realm">>, Realm, JObj);
         {'error', _R} ->
+            AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
             lager:warning("failed to get account definition for ~s: ~p", [AccountId, _R]),
             JObj
     end.
@@ -135,20 +157,80 @@ set_account(JObj) ->
 set_owner(JObj) ->
     AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
     OwnerId = wh_json:get_ne_value(<<"owner_id">>, JObj),
-    Owner = get_owner(OwnerId, AccountId),
-    wh_json:merge_recursive(JObj, Owner).
+    case get_owner(OwnerId, AccountId) of
+        {'ok', Doc} -> wh_json:merge_recursive(Doc, JObj);
+        {'error', _R} -> JObj
+    end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_set_timezone(wh_json:object()) -> wh_json:object().
+-spec maybe_set_timezone(wh_json:object(), wh_json:object()) -> wh_json:object().
+maybe_set_timezone(JObj) ->
+    case wh_json:get_value(<<"timezone">>, JObj) of
+        'undefined' -> maybe_set_account_timezone(JObj);
+        _TZ -> JObj
+    end.
 
--spec get_owner(api_binary(), ne_binary()) -> wh_json:object().
-get_owner('undefined', _) -> wh_json:new();
+maybe_set_timezone(JObj, AccountDoc) ->
+    case wh_json:get_value(<<"timezone">>, AccountDoc) of
+        'undefined' -> JObj;
+        TZ -> set_timezone(JObj, TZ)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_set_account_timezone(wh_json:object()) -> wh_json:object().
+maybe_set_account_timezone(JObj) ->
+    case get_account(JObj) of
+        {'ok', Doc} -> maybe_set_timezone(JObj, Doc);
+        {'error', _R} -> JObj
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec set_timezone(wh_json:object(), ne_binary()) -> wh_json:object().
+set_timezone(JObj, TZ) ->
+    wh_json:set_value(<<"timezone">>, TZ, JObj).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec get_owner(api_binary(), ne_binary()) ->
+                       {'ok', wh_json:object()} |
+                       {'error', any()}.
+get_owner('undefined', _) -> {'error', 'undefined'};
 get_owner(OwnerId, AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
-        {'ok', Owner} -> Owner;
-        {'error', _R} ->
-            lager:debug("unable to open user definition ~s/~s: ~p", [AccountDb, OwnerId, _R]),
-            wh_json:new()
-    end.
+    couch_mgr:open_cache_doc(AccountDb, OwnerId).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec get_account(wh_json:object()) ->
+                         {'ok', wh_json:object()} |
+                         {'error', any()}.
+get_account(JObj) ->
+    AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
+    AccountDb = wh_json:get_value(<<"pvt_account_db">>, JObj),
+    couch_mgr:open_cache_doc(AccountDb, AccountId).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -158,24 +240,24 @@ get_owner(OwnerId, AccountId) ->
 %%--------------------------------------------------------------------
 -spec account_settings(ne_binary(), wh_json:object()) -> wh_json:object().
 account_settings(AccountId, JObj) ->
-    Settings = wh_json:set_values([
-        {<<"lines">>, [set_realm(JObj)]}
-    ], wh_json:new()),
+    Settings = wh_json:from_list([{<<"lines">>, [set_line_realm(JObj)]}]),
+    wh_json:from_list(
+      [{<<"provider_id">>, wh_services:find_reseller_id(AccountId)}
+       ,{<<"name">>, wh_json:get_value(<<"name">>, JObj)}
+       ,{<<"settings">>, Settings}
+      ]).
 
-    wh_json:set_values([
-        {<<"provider_id">>, wh_services:find_reseller_id(AccountId)}
-        ,{<<"name">>, wh_json:get_value(<<"name">>, JObj)}
-        ,{<<"settings">>, Settings}
-    ], wh_json:new()).
-
-set_realm(JObj) ->
+-spec set_line_realm(wh_json:object()) -> wh_json:object().
+set_line_realm(JObj) ->
     wh_json:set_value(
-        <<"sip">>
-        ,wh_json:set_value(
-            <<"sip_server_1">>
-            ,wh_json:get_value(<<"realm">>, JObj)
-            ,wh_json:new())
-        ,wh_json:new()).
+      <<"sip">>
+      ,wh_json:set_value(
+         <<"realm">>
+         ,wh_json:get_value(<<"realm">>, JObj)
+         ,wh_json:new()
+        )
+      ,wh_json:new()
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -183,20 +265,36 @@ set_realm(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec device_settings(wh_json:object()) -> wh_json:object().
-device_settings(JObj) ->
-    Settings = wh_json:set_values([
-        {<<"lines">>, [set_line(JObj)]}
-        ,{<<"codecs">>, set_codecs(JObj)}
-    ], wh_json:new()),
-
-    wh_json:set_values([
-        {<<"brand">>, wh_json:get_value([<<"provision">>, <<"endpoint_brand">>], JObj)}
-        ,{<<"family">>, wh_json:get_value([<<"provision">>, <<"endpoint_family">>], JObj)}
-        ,{<<"model">>, wh_json:get_value([<<"provision">>, <<"endpoint_model">>], JObj)}
-        ,{<<"name">>, wh_json:get_value(<<"name">>, JObj)}
-        ,{<<"settings">>, Settings}
-    ], wh_json:new()).
+-spec create_provision_settings(wh_json:object()) -> wh_json:object().
+create_provision_settings(JObj) ->
+    SubSettings =
+        case wh_json:get_value(<<"timezone">>, JObj) of
+            'undefined' -> 'undefined';
+            Timezone ->
+                wh_json:set_value([<<"datetime">>
+                                  ,<<"time">>
+                                  ,<<"timezone">>
+                                  ]
+                                  ,Timezone
+                                  ,wh_json:new()
+                                 )
+        end,
+    Settings =
+        wh_json:from_list(
+          props:filter_undefined(
+            [{<<"lines">>, [set_line(JObj)]}
+            ,{<<"codecs">>, [set_codecs(JObj)]}
+            ,{<<"settings">>, SubSettings}
+            ]
+           )
+         ),
+    wh_json:from_list(
+      [{<<"brand">>, wh_json:get_binary_value([<<"provision">>, <<"endpoint_brand">>], JObj, <<>>)}
+       ,{<<"family">>, wh_json:get_binary_value([<<"provision">>, <<"endpoint_family">>], JObj, <<>>)}
+       ,{<<"model">>, wh_json:get_binary_value([<<"provision">>, <<"endpoint_model">>], JObj, <<>>)}
+       ,{<<"name">>, wh_json:get_value(<<"name">>, JObj)}
+       ,{<<"settings">>, Settings}
+      ]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -219,7 +317,7 @@ set_basic(JObj) ->
                     wh_json:set_value(<<"display_name">>, Name, J)
                 end
                 ,fun(J) ->
-                    Enabled = wh_json:get_value(<<"enabled">>, JObj, 1),
+                    Enabled = wh_json:get_value(<<"enabled">>, JObj, 'true'),
                     wh_json:set_value(<<"enable">>, Enabled, J)
                 end
                ],
@@ -229,14 +327,7 @@ set_basic(JObj) ->
 set_sip(JObj) ->
     Routines = [fun(J) ->
                     Name = wh_json:get_value([<<"sip">>, <<"username">>], JObj),
-                    wh_json:set_values([
-                        {<<"register_name">>, Name}
-                        ,{<<"username">>, Name}
-                    ], J)
-                end
-                ,fun(J) ->
-                    Pass = wh_json:get_value([<<"sip">>, <<"password">>], JObj),
-                    wh_json:set_value(<<"password">>, Pass, J)
+                    wh_json:set_value(<<"username">>, Name, J)
                 end
                 ,fun(J) ->
                     Pass = wh_json:get_value([<<"sip">>, <<"password">>], JObj),
@@ -244,7 +335,7 @@ set_sip(JObj) ->
                 end
                 ,fun(J) ->
                     Pass = wh_json:get_value(<<"realm">>, JObj),
-                    wh_json:set_value(<<"sip_server_1">>, Pass, J)
+                    wh_json:set_value(<<"realm">>, Pass, J)
                 end
                ],
     lists:foldl(fun(F, J) -> F(J) end, wh_json:new(), Routines).
@@ -252,11 +343,11 @@ set_sip(JObj) ->
 -spec set_advanced(wh_json:object()) -> wh_json:object().
 set_advanced(JObj) ->
     Routines = [fun(J) ->
-                    Expire = wh_json:get_value([<<"sip">>, <<"expire_seconds">>], JObj, 360),
+                    Expire = wh_json:get_integer_value([<<"sip">>, <<"expire_seconds">>], JObj, 360),
                     wh_json:set_value(<<"expire">>, Expire, J)
                 end
                 ,fun(J) ->
-                    Srtp = wh_json:get_value([<<"media">>, <<"secure_rtp">>], JObj, 0),
+                    Srtp = wh_json:get_value([<<"media">>, <<"secure_rtp">>], JObj, 'false'),
                     wh_json:set_value(<<"srtp">>, Srtp, J)
                 end
                ],
@@ -270,8 +361,7 @@ set_advanced(JObj) ->
 %%--------------------------------------------------------------------
 -spec set_codecs(wh_json:object()) -> wh_json:object().
 set_codecs(JObj) ->
-    Routines = [fun(J) -> wh_json:set_value(<<"audio">>, set_audio(JObj), J) end
-               ],
+    Routines = [fun(J) -> wh_json:set_value(<<"audio">>, set_audio(JObj), J) end],
     lists:foldl(fun(F, J) -> F(J) end, wh_json:new(), Routines).
 
 -spec set_audio(wh_json:object()) -> wh_json:object().
@@ -296,6 +386,8 @@ set_audio([Codec|Codecs], [Key|Keys], JObj) ->
 %% Send provisioning request
 %% @end
 %%--------------------------------------------------------------------
+-spec send_req(atom(), ne_binary(), ne_binary()) -> 'ok'.
+-spec send_req(atom(), wh_json:object() | 'none', ne_binary(), ne_binary(), 'none' | ne_binary()) -> 'ok'.
 send_req('files_post', AuthToken, MACAddress) ->
     Addr = binary:replace(MACAddress, <<":">>, <<>>, ['global']),
     JObj =  wh_json:from_list([{<<"mac_address">>, Addr}]),
@@ -308,7 +400,7 @@ send_req('files_post', AuthToken, MACAddress) ->
     handle_resp(Resp).
 
 send_req('devices_put', JObj, AuthToken, AccountId, MACAddress) ->
-    Data = wh_json:encode(wh_json:set_value(<<"data">>, JObj, wh_json:new())),
+    Data = wh_json:encode(wh_json:from_list([{<<"data">>, JObj}])),
     Headers = req_headers(AuthToken),
     HTTPOptions = [],
     UrlString = req_uri('devices', AccountId, MACAddress),
@@ -316,7 +408,13 @@ send_req('devices_put', JObj, AuthToken, AccountId, MACAddress) ->
     Resp = ibrowse:send_req(UrlString, Headers, 'put', Data, HTTPOptions),
     handle_resp(Resp);
 send_req('devices_post', JObj, AuthToken, AccountId, MACAddress) ->
-    Data = wh_json:encode(wh_json:set_value(<<"data">>, JObj, wh_json:new())),
+    Data = wh_json:encode(
+             wh_json:from_list(
+               [{<<"data">>, JObj}
+               ,{<<"merge">>, 'true'}
+               ]
+              )
+            ),
     Headers = req_headers(AuthToken),
     HTTPOptions = [],
     UrlString = req_uri('devices', AccountId, MACAddress),
@@ -338,16 +436,21 @@ send_req('accounts_delete', _, AuthToken, AccountId, _) ->
     Resp = ibrowse:send_req(UrlString, Headers, 'delete', [], HTTPOptions),
     handle_resp(Resp);
 send_req('accounts_update', JObj, AuthToken, AccountId, _) ->
-    Data = wh_json:encode(wh_json:set_value(<<"data">>, JObj, wh_json:new())),
+    Data = wh_json:encode(wh_json:from_list([{<<"data">>, JObj}])),
     Headers = req_headers(AuthToken),
     HTTPOptions = [],
     UrlString = req_uri('accounts', AccountId),
     lager:debug("account update via ~s", [UrlString]),
     Resp = ibrowse:send_req(UrlString, Headers, 'post', Data, HTTPOptions),
-    handle_resp(Resp);
-send_req(_, _, _, _, _) ->
-    'ok'.
+    handle_resp(Resp).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_resp(any()) -> 'ok'.
 handle_resp({'ok', "200", _, Resp}) ->
     lager:debug("provisioning success ~p", [Resp]);
 handle_resp({'ok', Code, _, Resp}) ->
@@ -355,7 +458,13 @@ handle_resp({'ok', Code, _, Resp}) ->
 handle_resp(_Error) ->
     lager:error("provisioning fatal error ~p", [_Error]).
 
-
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec req_headers(ne_binary()) -> wh_proplist().
 req_headers(Token) ->
     props:filter_undefined(
         [{"Content-Type", "application/json"}
@@ -363,6 +472,13 @@ req_headers(Token) ->
          ,{"User-Agent", wh_util:to_list(erlang:node())}
     ]).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec req_uri(atom()) -> iolist().
 req_uri('files') ->
     Url = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_url">>),
     Uri = wh_util:uri(Url, [<<"files/generate">>]),
@@ -378,3 +494,85 @@ req_uri('devices', AccountId, MACAddress) ->
     EncodedAddress = binary:replace(MACAddress, <<":">>, <<>>, ['global']),
     Uri = wh_util:uri(Url, [<<"devices">>, AccountId, EncodedAddress]),
     binary:bin_to_list(Uri).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec check_data(wh_json:object()) ->
+                        {'ok', wh_json:object()} |
+                        jesse_error:error().
+check_data(Data) ->
+    case get_schema() of
+        'undefined' ->
+            lager:warning("skiping validation, missing schema"),
+            {'ok', Data};
+        Schema ->
+            case
+                jesse:validate_with_schema(
+                    Schema
+                    ,Data
+                    ,[{'allowed_errors', 'infinity'}
+                      ,{'schema_loader_fun', fun wh_json_schema:load/1}
+                     ]
+                )
+            of
+                {'error', _}=Error -> Error;
+                {'ok', JObj} ->
+                    {'ok', wh_json_schema:add_defaults(JObj, Schema)}
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec get_schema() -> api_object().
+get_schema() ->
+    case wh_json_schema:load(?SCHEMA) of
+        {'ok', SchemaJObj} -> SchemaJObj;
+        {'error', _E} ->
+            lager:debug("failed to find schema ~s: ~p", [?SCHEMA, _E]),
+            'undefined'
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_validation_success('put' | 'post', wh_json:object(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+handle_validation_success('put', Data, Token, MACAddress, AccountId) ->
+    lager:debug("put data validated, sending to provisioner"),
+    _ = send_req('devices_put'
+             ,Data
+             ,Token
+             ,AccountId
+             ,MACAddress),
+    send_req('files_post', Token, MACAddress);
+handle_validation_success('post', Data, Token, MACAddress, AccountId) ->
+    lager:debug("post data validated, sending to provisioner"),
+    _ = send_req('devices_post'
+             ,Data
+             ,Token
+             ,AccountId
+             ,MACAddress),
+    send_req('files_post', Token, MACAddress).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_validation_error(jesse_error:error_reasons(), api_binary()) -> 'ok'.
+handle_validation_error([], AccountId) ->
+    lager:error("not sending data to provisioner, data failed to validate in ~s", [AccountId]);
+handle_validation_error([{'data_invalid', _, _Reason, _Key, _Value}|Errors], AccountId) ->
+    lager:error("failed to validate device: ~p ~p ~p", [_Reason, _Key, _Value]),
+    handle_validation_error(Errors, AccountId).

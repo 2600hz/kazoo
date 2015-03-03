@@ -207,8 +207,26 @@ handle_search_resp(JObj, Conference, Call, Srv) ->
             whapps_call_command:hangup(Call)
     end.
 
+-spec maybe_play_name(whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
+maybe_play_name(Conference, Call, Srv) ->
+    case whapps_conference:play_name_on_join(Conference) of
+        'true' ->
+            PronouncedName = case conf_pronounced_name:lookup_name(Call) of
+                                 'undefined' ->
+                                     lager:debug("Recording pronunciation of the name"),
+                                     conf_pronounced_name:record(Call);
+                                 Value ->
+                                     lager:debug("has pronounced name: ~p", [Value]),
+                                     Value
+                             end,
+            conf_participant:set_name_pronounced(PronouncedName, Srv);
+        'false' -> 'ok'
+    end.
+
 -spec add_participant_to_conference(wh_json:object(), whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
 add_participant_to_conference(JObj, Conference, Call, Srv) ->
+    _ = maybe_play_name(Conference, Call, Srv),
+
     _ = case whapps_conference:play_entry_prompt(Conference) of
             'false' -> 'ok';
             'true' -> whapps_call_command:prompt(<<"conf-joining_conference">>, Call)

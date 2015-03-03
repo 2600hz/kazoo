@@ -1,6 +1,6 @@
 {
   "_id": "port_requests",
-  "$schema": "http://json-schema.org/draft-04/schema#",
+  "$schema": "http://json-schema.org/draft-03/schema#",
   "type": "object",
   "required": true,
   "name": "Port Request",
@@ -32,11 +32,12 @@
       "name": "Port State",
       "description": "What state the port request is currently in",
       "enum": [
-        "unconfirmed",
-        "submitted",
-        "scheduled",
-        "completed",
-        "rejected"
+          "unconfirmed",
+          "pending",
+          "submitted",
+          "scheduled",
+          "completed",
+          "rejected"
       ]
     },
     "transfer_date": {

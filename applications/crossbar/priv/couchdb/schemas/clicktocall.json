@@ -1,6 +1,6 @@
 {
   "_id": "clicktocall",
-  "$schema": "http://json-schema.org/draft-04/schema#",
+  "$schema": "http://json-schema.org/draft-03/schema#",
   "type": "object",
   "required": true,
   "name": "Click-to-Call",
@@ -49,6 +49,18 @@
       "required": false,
       "name": "Keep Original Caller ID?",
       "description": "Explicitly set caller id number"
+    },
+    "outbound_callee_id_name": {
+      "type": "string",
+      "required": false,
+      "name": "Outbound Callee ID Name",
+      "description": "Callee ID Name of the device calling out to the contact number"
+    },
+    "outbound_callee_id_number": {
+      "type": "string",
+      "required": false,
+      "name": "Outbound Callee ID Number",
+      "description": "Callee ID Number of the device calling out to the contact number"
     }
   }
 }

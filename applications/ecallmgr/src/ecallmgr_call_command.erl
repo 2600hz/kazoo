@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2014, 2600Hz INC
+%%% @copyright (C) 2010-2015, 2600Hz INC
 %%% @doc
 %%% Execute call commands
 %%% @end
@@ -20,6 +20,7 @@
                       [ecallmgr_util:send_cmd_ret(),...].
 exec_cmd(Node, UUID, JObj, ControlPID) ->
     exec_cmd(Node, UUID, JObj, ControlPID, wh_json:get_value(<<"Call-ID">>, JObj)).
+
 exec_cmd(Node, UUID, JObj, ControlPid, UUID) ->
     App = wh_json:get_value(<<"Application-Name">>, JObj),
     case get_fs_app(Node, UUID, JObj, App) of
@@ -76,23 +77,7 @@ get_fs_app(Node, UUID, JObj, <<"tts">>) ->
     case wapi_dialplan:tts_v(JObj) of
         'false' -> {'error', <<"tts failed to execute as JObj didn't validate">>};
         'true' ->
-            'ok' = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
-
-            case wh_json:get_value(<<"Engine">>, JObj, <<"flite">>) of
-                <<"flite">> -> ecallmgr_fs_flite:call_command(Node, UUID, JObj);
-                _Engine ->
-                    SayMe = wh_json:get_value(<<"Text">>, JObj),
-                    lager:debug("using engine ~s to say: ~s", [_Engine, SayMe]),
-
-                    TTS = <<"tts://", SayMe/binary>>,
-                    case ecallmgr_util:media_path(TTS, UUID, JObj) of
-                        TTS ->
-                            lager:debug("failed to fetch a playable media, reverting to flite"),
-                            get_fs_app(Node, UUID, wh_json:set_value(<<"Engine">>, <<"flite">>, JObj), <<"tts">>);
-                        MediaPath ->
-                            play(Node, UUID, wh_json:set_value(<<"Media-Name">>, MediaPath, JObj))
-                    end
-            end
+            tts(Node, UUID, JObj)
     end;
 
 get_fs_app(Node, UUID, JObj, <<"play">>) ->
@@ -138,7 +123,7 @@ get_fs_app(Node, UUID, JObj, <<"record">>) ->
             %% some carriers kill the channel during long recordings since there is no
             %% reverse RTP stream
             Routines = [fun(V) ->
-                            case wh_util:is_true(ecallmgr_config:get(<<"record_waste_resources">>, 'false')) of
+                            case ecallmgr_config:is_true(<<"record_waste_resources">>, 'false') of
                                 'false' -> V;
                                 'true' -> [{<<"record_waste_resources">>, <<"true">>}|V]
                             end
@@ -168,7 +153,7 @@ get_fs_app(Node, UUID, JObj, <<"record_call">>) ->
         'false' -> {'error', <<"record_call failed to execute as JObj did not validate">>};
         'true' ->
             Routines = [fun(V) ->
-                            case wh_util:is_true(ecallmgr_config:get(<<"record_waste_resources">>, 'false')) of
+                            case ecallmgr_config:is_true(<<"record_waste_resources">>, 'false') of
                                 'false' -> V;
                                 'true' -> [{<<"record_waste_resources">>, <<"true">>}|V]
                             end
@@ -368,7 +353,7 @@ get_fs_app(_Node, _UUID, JObj, <<"page">>) ->
                         ,fun(DP) ->
                                  lists:foldl(fun(Channel, D) ->
                                                      [{"application", <<"conference_set_auto_outcall "
-                                                                        ,"{sip_auto_answer=true}"
+                                                                        ,"{alert_info=intercom}[sip_auto_answer=true]"
                                                                         ,Channel/binary>>}
                                                       |D
                                                      ]
@@ -532,10 +517,9 @@ get_fs_app(Node, UUID, JObj, <<"redirect">>) ->
     case wapi_dialplan:redirect_v(JObj) of
         'false' -> {'error', <<"redirect failed to execute as JObj did not validate">>};
         'true' ->
-            _ = case wh_json:get_value(<<"Redirect-Server">>, JObj) of
-                    'undefined' -> 'ok';
-                    Server -> ecallmgr_util:set(Node, UUID, [{<<"sip_rh_X-Redirect-Server">>, Server}])
-                end,
+            RedirectServer = lookup_redirect_server(JObj) ,
+            maybe_add_redirect_header(Node, UUID, RedirectServer),
+
             {<<"redirect">>, wh_json:get_value(<<"Redirect-Contact">>, JObj, <<>>)}
     end;
 
@@ -572,6 +556,33 @@ get_fs_app(_Node, _UUID, JObj, <<"fax_detection">>) ->
 get_fs_app(_Node, _UUID, _JObj, _App) ->
     lager:debug("unknown application ~s", [_App]),
     {'error', <<"application unknown">>}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Redirect command helpers
+%% @end
+%%--------------------------------------------------------------------
+
+-spec lookup_redirect_server(wh_json:object()) -> api_binary().
+lookup_redirect_server(JObj) ->
+    case wh_json:get_value(<<"Redirect-Server">>, JObj) of
+        'undefined' -> fixup_redirect_node(wh_json:get_value(<<"Redirect-Node">>, JObj));
+        Server -> Server
+    end.
+
+-spec fixup_redirect_node(api_binary()) -> api_binary().
+fixup_redirect_node('undefined') ->
+    'undefined';
+fixup_redirect_node(Node) ->
+    SipUrl = ecallmgr_fs_node:sip_url(Node),
+    binary:replace(SipUrl, <<"mod_sofia@">>, <<>>).
+
+-spec maybe_add_redirect_header(atom(), ne_binary(), api_binary()) -> 'ok'.
+maybe_add_redirect_header(_Node, _UUID, 'undefined') -> 'ok';
+maybe_add_redirect_header(Node, UUID, RedirectServer) ->
+    lager:debug("Set X-Redirect-Server to ~s", [RedirectServer]),
+    ecallmgr_util:set(Node, UUID, [{<<"sip_rh_X-Redirect-Server">>, RedirectServer}]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -614,6 +625,7 @@ call_pickup(Node, UUID, JObj) ->
                          {'return', ne_binary()} |
                          {'error', ne_binary()}.
 connect_leg(Node, UUID, JObj) ->
+    _ = ecallmgr_fs_bridge:maybe_b_leg_events(Node, UUID, JObj),
     case prepare_app(Node, UUID, JObj) of
         {'execute', AppNode, AppUUID, AppJObj, AppTarget} ->
             get_call_pickup_app(AppNode, AppUUID, AppJObj, AppTarget, <<"call_pickup">>);
@@ -745,11 +757,11 @@ prepare_app_usurpers(Node, UUID) ->
 -spec get_call_pickup_app(atom(), ne_binary(), wh_json:object(), ne_binary(), ne_binary()) ->
                                  {ne_binary(), ne_binary()}.
 get_call_pickup_app(Node, UUID, JObj, Target, Command) ->
-    ExportsApi = [{<<"Continue-On-Fail">>, <<"true">>}
-                  ,{<<"Continue-On-Cancel">>, <<"true">>}
-                  ,{<<"Hangup-After-Pickup">>, <<"false">>}
-                  ,{<<"Park-After-Pickup">>, <<"true">>}
-                 ],
+    ExportsApi = exports_from_api(JObj, [<<"Continue-On-Fail">>
+                                         ,<<"Continue-On-Cancel">>
+                                         ,<<"Hangup-After-Pickup">>
+                                         ,<<"Park-After-Pickup">>
+                                        ]),
 
     SetApi = [{<<"Unbridged-Only">>, 'undefined', <<"intercept_unbridged_only">>}
               ,{<<"Unanswered-Only">>, 'undefined', <<"intercept_unanswered_only">>}
@@ -766,22 +778,35 @@ get_call_pickup_app(Node, UUID, JObj, Target, Command) ->
                     ,{<<"Fetch-ID">>, wh_util:rand_hex_binary(4)}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
-    wh_amqp_worker:cast(ControlUsurp
-                        ,fun(C) -> wapi_call:publish_usurp_control(Target, C) end
-                       ),
-    lager:debug("published control usurp for ~s", [Target]),
+
+    case wh_json:is_true(<<"Publish-Usurp">>, JObj, 'true') of
+        'true' ->
+            wh_amqp_worker:cast(ControlUsurp
+                                ,fun(C) -> wapi_call:publish_usurp_control(Target, C) end
+                               ),
+            lager:debug("published control usurp for ~s", [Target]);
+        'false' ->
+            lager:debug("API is skipping control usurp")
+    end,
 
     ecallmgr_util:set(Node, UUID, build_set_args(SetApi, JObj)),
-    ecallmgr_util:export(Node, UUID, Exports),
+    ecallmgr_util:bridge_export(Node, UUID, Exports),
+    ecallmgr_util:bridge_export(Node, Target, Exports),
     {Command, Target}.
+
+-spec exports_from_api(wh_json:object(), ne_binaries()) -> wh_proplist().
+exports_from_api(JObj, Ks) ->
+    props:filter_undefined(
+      [{K, wh_json:get_binary_value(K, JObj)} || K <- Ks]
+     ).
 
 -spec get_eavesdrop_app(atom(), ne_binary(), wh_json:object(), ne_binary()) ->
                                  {ne_binary(), ne_binary()}.
 get_eavesdrop_app(Node, UUID, JObj, Target) ->
-    ExportsApi = [{<<"Park-After-Pickup">>, <<"false">>}
-                  ,{<<"Continue-On-Fail">>, <<"true">>}
-                  ,{<<"Continue-On-Cancel">>, <<"true">>}
-                 ],
+    ExportsApi = exports_from_api(JObj, [<<"Park-After-Pickup">>
+                                         ,<<"Continue-On-Fail">>
+                                         ,<<"Continue-On-Cancel">>
+                                        ]),
 
     SetApi = [{<<"Enable-DTMF">>, 'undefined', <<"eavesdrop_enable_dtmf">>}
              ],
@@ -938,23 +963,24 @@ stream_over_http(Node, UUID, File, Method, Type, JObj) ->
                      <<"success">>;
                  {'ok', Err} ->
                      lager:debug("store media failed for ~s: ~s", [Type, Err]),
-                     wh_notify:system_alert("Failed to store ~s: media file ~s for call ~s on ~s "
-                                            ,[Type, File, UUID, Node]
-                                            ,[{<<"Details">>, Err}]
-                                           ),
+                     send_detailed_alert(Node, UUID, File, Type, Err),
                      <<"failure">>;
                  {'error', E} ->
                      lager:debug("error executing http_put for ~s: ~p", [Type, E]),
-                     wh_notify:system_alert("Failed to store ~s: media file ~s for call ~s on ~s "
-                                            ,[Type, File, UUID, Node]
-                                            ,[{<<"Details">>, E}]
-                                           ),
+                     send_detailed_alert(Node, UUID, File, Type, E),
                      <<"failure">>
              end,
     case Type of
         'store' -> send_store_call_event(Node, UUID, Result);
         'fax' -> send_store_fax_call_event(UUID, Result)
     end.
+
+-spec send_detailed_alert(atom(), ne_binary(), ne_binary(), 'store' | 'fax', term()) -> any().
+send_detailed_alert(Node, UUID, File, Type, Reason) ->
+    wh_notify:detailed_alert("Failed to store ~s: media file ~s for call ~s on ~s "
+                             ,[Type, File, UUID, Node]
+                             ,[{<<"Details">>, Reason}]
+                            ).
 
 -spec send_fs_store(atom(), ne_binary(), 'put' | 'post') -> fs_api_ret().
 send_fs_store(Node, Args, 'put') ->
@@ -1104,6 +1130,28 @@ create_dialplan_move_ccvs(Root, Node, UUID, DP) ->
         _Error ->
             lager:debug("failed to get result from uuid_dump for ~s", [UUID]),
             DP
+    end.
+
+-spec tts(atom(), ne_binary(), wh_json:object()) ->
+                 {ne_binary(), ne_binary()}.
+tts(Node, UUID, JObj) ->
+    'ok' = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
+
+    case wh_json:get_value(<<"Engine">>, JObj, <<"flite">>) of
+        <<"flite">> -> ecallmgr_fs_flite:call_command(Node, UUID, JObj);
+        _Engine ->
+            SayMe = wh_json:get_value(<<"Text">>, JObj),
+            lager:debug("using engine ~s to say: ~s", [_Engine, SayMe]),
+
+            TTS = <<"tts://", SayMe/binary>>,
+            case ecallmgr_util:media_path(TTS, UUID, JObj) of
+                TTS ->
+                    lager:debug("failed to fetch a playable media, reverting to flite"),
+                    get_fs_app(Node, UUID, wh_json:set_value(<<"Engine">>, <<"flite">>, JObj), <<"tts">>);
+                MediaPath ->
+                    lager:debug("got media path ~s", [MediaPath]),
+                    play(Node, UUID, wh_json:set_value(<<"Media-Name">>, MediaPath, JObj))
+            end
     end.
 
 %%--------------------------------------------------------------------

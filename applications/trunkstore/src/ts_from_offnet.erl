@@ -214,7 +214,7 @@ routing_data(ToDID, AcctID, Settings) ->
     AuthR = wh_json:find(<<"auth_realm">>, [AuthOpts, Acct]),
 
     {Srv, AcctStuff} =
-        try ts_util:lookup_user_flags(AuthU, AuthR, AcctID) of
+        try ts_util:lookup_user_flags(AuthU, AuthR, AcctID, ToDID) of
             {'ok', AccountSettings} ->
                 lager:info("got account settings"),
                 {wh_json:get_value(<<"server">>, AccountSettings, wh_json:new())

@@ -28,26 +28,36 @@
 -define(DO_CALL_LOG(Level, Text, List), 
     ?DO_LOG(Level, erlang:get(nksip_app_name), erlang:get(nksip_call_id), Text, List)).
 
+-define(DO_DEBUG(Level, Text, List),
+    (erlang:get(nksip_app_id)):nkcb_debug(erlang:get(nksip_app_id), 
+                                          erlang:get(nksip_call_id),
+                                          {Level, Text, List})).
+
+
 
 -define(call_debug(Text, List),
+    ?DO_DEBUG(debug, Text, List),
     case erlang:get(nksip_log_level)>=8 of
         true -> ?DO_CALL_LOG(debug, Text, List);
         false -> ok
     end).
 
 -define(call_info(Text, List),
+    ?DO_DEBUG(info, Text, List),
     case erlang:get(nksip_log_level)>=7 of
         true -> ?DO_CALL_LOG(info, Text, List);
         false -> ok
     end).
 
 -define(call_notice(Text, List),
+    ?DO_DEBUG(notice, Text, List),
     case erlang:get(nksip_log_level)>=6 of
         true -> ?DO_CALL_LOG(notice, Text, List);
         false -> ok
     end).
 
 -define(call_warning(Text, List),
+    ?DO_DEBUG(warning, Text, List),
     case erlang:get(nksip_log_level)>=5 of
         true -> ?DO_CALL_LOG(warning, Text, List);
         false -> 
@@ -55,6 +65,7 @@
     end).
 
 -define(call_error(Text, List),
+    ?DO_DEBUG(error, Text, List),
     case erlang:get(nksip_log_level)>=4 of
         true -> ?DO_CALL_LOG(error, Text, List);
         false -> ok
@@ -66,38 +77,35 @@
     RSeq::nksip:cseq(), 
     CSeq::nksip:cseq(), 
     CSeqMethod:: nksip:method(),
-    DialogId :: nksip_dialog:id()
+    DialogId :: nksip_dialog_lib:id()
 }.
 
 
 -record(trans, {
-    id :: nksip_call_uac:id() | nksip_call_uas:id(),
+    id :: nksip_call:trans_id(),
     class :: uac | uas,
     status :: nksip_call_uac:status() | nksip_call_uas:status(),
     start :: nksip_lib:timestamp(),
     from :: none | {srv, from()} | {fork, nksip_call_fork:id()},
-    opts :: nksip_lib:optslist(),
+    opts :: nksip:optslist(),
     trans_id :: integer(),
     request :: nksip:request(),
     method :: nksip:method(),
     ruri :: nksip:uri(),
     proto :: nksip:protocol(),
     response :: nksip:response(),
-    code :: 0 | nksip:response_code(),
+    code :: 0 | nksip:sip_code(),
     to_tags = [] :: [nksip:tag()],
     stateless :: boolean(),
-    rseq = 0 :: 0 | nksip:cseq(),
-    pracks = [] :: [prack()],
+    iter = 1 :: pos_integer(),
+    cancel :: undefined | to_cancel | cancelled,
+    loop_id :: integer(),
     timeout_timer :: {nksip_call_lib:timeout_timer(), reference()},
     retrans_timer :: {nksip_call_lib:retrans_timer(), reference()},
     next_retrans :: non_neg_integer(),
     expire_timer :: {nksip_call_lib:expire_timer(), reference()},
-    callback_timer :: {term(), reference()},
-    cancel :: undefined | to_cancel | cancelled,
-    loop_id :: integer(),
     ack_trans_id :: integer(),
-    iter = 1 :: integer(),
-    meta1 = [] :: nksip_lib:optslist()
+    meta = [] :: nksip:optslist()
 }).
 
 
@@ -107,24 +115,24 @@
     start :: nksip_lib:timestamp(),
     request :: nksip:request(),
     method :: nksip:method(),
-    opts :: nksip_lib:optslist(),
+    opts :: nksip:optslist(),
     uriset :: nksip:uri_set(),          
     uacs :: [integer()],
     pending :: [integer()],
     responses :: [nksip:response()], 
     final :: false | '2xx' | '6xx',
-    meta = [] :: nksip_lib:optslist()   % No current use
+    meta = [] :: nksip:optslist() 
 }).
 
 
 -record(provisional_event, {
-    id :: {Id::nksip_subscription:id(), Tag::binary()},
+    id :: {Id::nksip_subscription_lib:id(), Tag::binary()},
     timer_n :: reference()
 }).
 
 
 -type call_auth() :: {
-    nksip_dialog:id(), 
+    nksip_dialog_lib:id(), 
     nksip:protocol(), 
     inet:ip_address(), 
     inet:port_number()
@@ -133,10 +141,19 @@
 
 -type call_msg() :: {
     nksip_sipmsg:id(), 
-    nksip_call_uac:id()|nksip_call_uas:id(), 
-    nksip_dialog:id()
+    nksip_call:trans_id(),
+    nksip_dialog_lib:id()
 }.
 
+
+-record(call_timers, {
+    t1 :: integer(),
+    t2 :: integer(),
+    t4 :: integer(), 
+    tc :: integer(),
+    trans :: integer(),
+    dialog :: integer()
+}).
 
 
 %% Current Meta uses:
@@ -153,8 +170,8 @@
     auths = [] :: [call_auth()],
     msgs = [] :: [call_msg()],
     events = [] :: [#provisional_event{}],
-    timers :: {T1::integer(), T2::integer(), T4::integer(), TC::integer(), App::integer()},
-    meta = [] :: nksip_lib:optslist()
+    timers :: #call_timers{},
+    meta = [] :: nksip:optslist()
 }).
 
 

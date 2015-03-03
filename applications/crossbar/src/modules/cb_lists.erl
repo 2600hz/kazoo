@@ -8,7 +8,7 @@
 %%% @end
 %%% @contributors
 %%%   Kozlov Yakov
-%%%   SIPLABS LLC (Maksim Krzhemenevskiy)
+%%%   SIPLABS, LLC (Maksim Krzhemenevskiy)
 %%%----------------------------------------------------------------------------
 -module(cb_lists).
 
@@ -155,8 +155,15 @@ entry_schema_success(Context, ListId, EntryId) ->
             on_entry_successful_validation(ListId, EntryId, Context);
         {'error', {Reason0, Pos}} ->
             Reason = io_lib:format("Error: ~s in position ~p", [Reason0, Pos]),
-            BinReason = iolist_to_binary(Reason),
-            cb_context:add_validation_error(<<"pattern">>, <<"type">>, BinReason, Context)
+            cb_context:add_validation_error(
+                <<"pattern">>
+                ,<<"type">>
+                ,wh_json:from_list([
+                    {<<"message">>, iolist_to_binary(Reason)}
+                    ,{<<"cause">>, Pattern}
+                ])
+                ,Context
+            )
     end.
 
 -spec on_entry_successful_validation(path_token(), path_token() | 'undefined', cb_context:context()) ->
@@ -188,7 +195,11 @@ get_entry(Context, EntryId, OnSuccess) ->
     case wh_json:get_value([<<"entries">>, EntryId], Doc) of
         'undefined' ->
             lager:debug("operation on entry ~s failed: not_found", [EntryId, cb_context:account_db(Context)]),
-            cb_context:add_system_error('bad_identifier', [{'details', EntryId}],  Context);
+            cb_context:add_system_error(
+                'bad_identifier'
+                ,wh_json:from_list([{<<"cause">>, EntryId}])
+                ,Context
+            );
         EntryData ->
             OnSuccess(Context, EntryData)
     end.
@@ -247,25 +258,29 @@ delete_entry(Context, EntryId) ->
     get_entry(Context, EntryId, OnSuccess).
 
 -spec post(cb_context:context()) -> cb_context:context().
+-spec post(cb_context:context(), path_token()) -> cb_context:context().
+-spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context) ->
     crossbar_doc:save(Context).
--spec post(cb_context:context(), path_token()) -> cb_context:context().
+
 post(Context, _ListId) ->
     crossbar_doc:save(Context).
--spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+
 post(Context, _ListId, _EntryId) ->
     handle_entry_success(Context).
 
 -spec put(cb_context:context()) -> cb_context:context().
+-spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context) ->
     crossbar_doc:save(Context).
--spec put(cb_context:context(), path_token()) -> cb_context:context().
+
 put(Context, _ListId) ->
-    crossbar_doc:save(Context).
+    handle_entry_success(Context).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _ListId) ->
     crossbar_doc:delete(Context).
+
 -spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 delete(Context, _ListId, _EntryId) ->
     handle_entry_success(Context).

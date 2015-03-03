@@ -75,14 +75,16 @@ init([Reg, ChildSpecs]) ->
 
 %% @private Tries to start all the configured transports for a SipApp.
 %% For every UDP transport it will start a TCP transport on the same port
--spec start_transports(nksip:app_id(), [term()], nksip_lib:optslist()) ->
+-spec start_transports(nksip:app_id(), [term()], nksip:optslist()) ->
     ok | {error, Error}
     when Error ::  {could_not_start, {udp|tcp|tls|sctp|ws|wss, term()}}.
 
 start_transports(AppId, [{Proto, Ip, Port, TOpts}|Rest], Opts) ->
     case nksip_transport:start_transport(AppId, Proto, Ip, Port, TOpts++Opts) of
-        {ok, _} -> start_transports(AppId, Rest, Opts);
-        {error, Error} -> {error, {could_not_start, {Proto, Error}}}
+        {ok, _} -> 
+            start_transports(AppId, Rest, Opts);
+        {error, Error} -> 
+            {error, {could_not_start, {Proto, Error}}}
     end;
 
 start_transports(_AppId, [], _Opts) ->

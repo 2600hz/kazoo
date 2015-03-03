@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -65,7 +65,7 @@ maybe_credit_available(Amount, Limits) ->
 
 -spec maybe_prepay_credit_available(integer(), integer(), j5_limits:limits()) -> boolean().
 maybe_prepay_credit_available(Balance, Amount, Limits) ->
-    AccountId = j5_limits:account_id(Limits),    
+    AccountId = j5_limits:account_id(Limits),
     case j5_limits:allow_prepay(Limits) of
         'false' ->
             lager:debug("account ~s is restricted from using prepay"
@@ -125,11 +125,11 @@ create_debit_transaction(Event, Amount, Request, Limits) ->
                 ,[LedgerId, wht_util:units_to_dollars(Amount)]),
     Routines = [fun(T) ->
                         case j5_request:account_id(Request) of
-                            LedgerId ->   
+                            LedgerId ->
                                 wh_transaction:set_reason(<<"per_minute_call">>, T);
                             AccountId ->
                                 T1 = wh_transaction:set_reason(<<"sub_account_per_minute_call">>, T),
-                                wh_transaction:set_sub_account_id(AccountId, T1)
+                                wh_transaction:set_sub_account_info(AccountId, T1)
                         end
                 end
                 ,fun(T) -> wh_transaction:set_event(Event, T) end

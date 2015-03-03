@@ -19,13 +19,12 @@
 %% -------------------------------------------------------------------
 
 %% @doc NkSIP Transport control module
-
 -module(nksip_transport).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 
 -export([get_all/0, get_all/1, get_listening/3, get_connected/2, get_connected/5]).
 -export([is_local/2, is_local_ip/1]).
--export([start_transport/5, connect/6, default_port/1]).
+-export([start_transport/5, default_port/1]).
 -export([get_listenhost/3, make_route/6]).
 -export([send/4]).
 -export([get_all_connected/0, get_all_connected/1, stop_all_connected/0]).
@@ -176,8 +175,9 @@ is_local_ip(Ip) ->
 
 
 %% @doc Start a new listening transport.
+%% Opts should have the transport options ++ SipApp configuration
 -spec start_transport(nksip:app_id(), nksip:protocol(), inet:ip_address(), 
-                      inet:port_number(), nksip_lib:optslist()) ->
+                      inet:port_number(), nksip:optslist()) ->
     {ok, pid()} | {error, term()}.
 
 start_transport(AppId, Proto, Ip, Port, Opts) ->
@@ -188,51 +188,33 @@ start_transport(AppId, Proto, Ip, Port, Opts) ->
             <- get_listening(AppId, Proto, Class)
     ],
     case nksip_lib:get_value({Ip, Port}, Listening) of
-        undefined -> nksip_connection:start_listener(AppId, Proto, Ip, Port, Opts);
-        Pid when is_pid(Pid) -> {ok, Pid}
+        undefined -> 
+            Transp = #transport{
+                proto = Proto,
+                local_ip = Ip, 
+                local_port = Port,
+                listen_ip = Ip,
+                listen_port = Port,
+                remote_ip = {0,0,0,0},
+                remote_port = 0
+            },
+            Spec = case Proto of
+                udp -> nksip_transport_udp:get_listener(AppId, Transp, Opts);
+                tcp -> nksip_transport_tcp:get_listener(AppId, Transp, Opts);
+                tls -> nksip_transport_tcp:get_listener(AppId, Transp, Opts);
+                sctp -> nksip_transport_sctp:get_listener(AppId, Transp, Opts);
+                ws -> nksip_transport_ws:get_listener(AppId, Transp, Opts);
+                wss -> nksip_transport_ws:get_listener(AppId, Transp, Opts)
+            end,
+            nksip_transport_sup:add_transport(AppId, Spec);
+        Pid when is_pid(Pid) -> 
+            {ok, Pid}
     end.
 
 
-%% @private Starts a new outbound connection.
--spec connect(nksip:app_id(), nksip:protocol(),
-                       inet:ip_address(), inet:port_number(), binary(), 
-                       nksip_lib:optslist()) ->
-    {ok, pid(), nksip_transport:transport()} | {error, term()}.
 
-connect(AppId, Proto, Ip, Port, Res, Opts) ->
-    Max = nksip_config_cache:max_connections(),
-    case nksip_counters:value(nksip_connections) of
-        Current when Current > Max -> {error, max_connections};
-        _ ->  try_connect(AppId, Proto, Ip, Port, Res, Opts, 300) % 30 secs,
-    end.
-
-try_connect(_, _, _, _, _, _, 0) ->
-    {error, connection_busy};
-
-try_connect(AppId, udp, Ip, Port, Res, Opts, _Try) ->
-    nksip_connection:connect(AppId, udp, Ip, Port, Res, Opts);
-
-try_connect(AppId, Proto, Ip, Port, Res, Opts, Try) ->
-    ConnId = {AppId, Proto, Ip, Port, Res},
-    case nksip_sipapp_srv:put_new(AppId, {nksip_connect_block, ConnId}, true) of
-        true ->
-            try 
-                nksip_connection:connect(AppId, Proto, Ip, Port, Res, Opts)
-            catch
-                error:Value -> 
-                    ?call_warning("Exception ~p launching connection", Value),
-                    {error, Value}
-            after
-                nksip_sipapp_srv:del(AppId, {nksip_connect_block, ConnId})
-            end;
-        false ->
-            timer:sleep(100),
-            try_connect(AppId, Proto, Ip, Port, Res, Opts, Try-1)
-    end.
-                
-
-%% @private Makes a route from a Scheme and Transport
--spec get_listenhost(nksip:app_id(), inet:ip_address(), nksip_lib:optslist()) ->
+%% @private 
+-spec get_listenhost(nksip:app_id(), inet:ip_address(), nksip:optslist()) ->
     binary().
 
 get_listenhost(AppId, Ip, Opts) ->
@@ -268,7 +250,7 @@ get_listenhost(AppId, Ip, Opts) ->
     
 %% @private Makes a route record
 -spec make_route(nksip:scheme(), nksip:protocol(), binary(), inet:port_number(),
-                 binary(), nksip_lib:optslist()) ->
+                 binary(), nksip:optslist()) ->
     #uri{}.
 
 make_route(Scheme, Proto, ListenHost, Port, User, Opts) ->
@@ -288,13 +270,12 @@ make_route(Scheme, Proto, ListenHost, Port, User, Opts) ->
 
 
 
-
 %% ===================================================================
 %% Internal
 %% ===================================================================
 
 %% @private
--spec send(nksip:app_id(), [TSpec], function(), nksip_lib:optslist()) ->
+-spec send(nksip:app_id(), [TSpec], function(), nksip:optslist()) ->
     {ok, nksip:request()|nksip:response()} | error
     when TSpec :: #uri{} | connection() | {current, connection()} | 
                   {flow, {pid(), nksip:transport()}}.
@@ -326,8 +307,10 @@ send(AppId, [{flow, {Pid, Transp}=D}|Rest], MakeMsg, Opts) ->
     ?call_debug("Transport send to flow ~p (~p)", [D, Rest]),
     SipMsg = MakeMsg(Transp),
     case nksip_connection:send(Pid, SipMsg) of
-        ok -> {ok, SipMsg};
-        {error, _} -> send(AppId, Rest, MakeMsg, Opts)
+        ok -> 
+            {ok, SipMsg};
+        {error, _} -> 
+            send(AppId, Rest, MakeMsg, Opts)
     end;
 
 send(AppId, [{Proto, Ip, 0, Res}|Rest], MakeMsg, Opts) ->
@@ -379,6 +362,69 @@ send(_, [], _MakeMsg, _Opts) ->
 %% ===================================================================
 %% Private
 %% ===================================================================
+
+
+%% @private Starts a new outbound connection.
+-spec connect(nksip:app_id(), nksip:protocol(),
+                       inet:ip_address(), inet:port_number(), binary(), 
+                       nksip:optslist()) ->
+    {ok, pid(), nksip_transport:transport()} | {error, term()}.
+
+%% Do not open simultanous connections to the same destination
+connect(AppId, Proto, Ip, Port, Res, Opts) ->
+    try_connect(AppId, Proto, Ip, Port, Res, Opts, 300).
+    
+
+%% @private
+try_connect(_, _, _, _, _, _, 0) ->
+    {error, connection_busy};
+
+try_connect(AppId, udp, Ip, Port, Res, Opts, _Try) ->
+    do_connect(AppId, udp, Ip, Port, Res, Opts);
+
+try_connect(AppId, Proto, Ip, Port, Res, Opts, Try) ->
+    ConnId = {AppId, Proto, Ip, Port, Res},
+    case nksip_sipapp_srv:put_new(AppId, {nksip_connect_block, ConnId}, true) of
+        true ->
+            try 
+                do_connect(AppId, Proto, Ip, Port, Res, Opts)
+            catch
+                error:Value -> 
+                    ?call_warning("Exception ~p launching connection: ~p", 
+                                  [Value, erlang:get_stacktrace()]),
+                    {error, Value}
+            after
+                nksip_sipapp_srv:del(AppId, {nksip_connect_block, ConnId})
+            end;
+        false ->
+            timer:sleep(100),
+            try_connect(AppId, Proto, Ip, Port, Res, Opts, Try-1);
+        {error, _} ->
+            {error, locking_error}
+    end.
+                
+
+%% @private Starts a new connection to a remote server
+-spec do_connect(nksip:app_id(), nksip:protocol(), inet:ip_address(), inet:port_number(), 
+              binary(), nksip:optslist()) ->
+    {ok, pid(), nksip_transport:transport()} | {error, term()}.
+         
+do_connect(AppId, Proto, Ip, Port, Res, Opts) ->
+    Class = case size(Ip) of 4 -> ipv4; 8 -> ipv6 end,
+    case nksip_transport:get_listening(AppId, Proto, Class) of
+        [{Transp, Pid}|_] -> 
+            Transp1 = Transp#transport{remote_ip=Ip, remote_port=Port, resource=Res},
+            case Proto of
+                udp -> nksip_transport_udp:connect(Pid, Transp1);
+                tcp -> nksip_transport_tcp:connect(AppId, Transp1);
+                tls -> nksip_transport_tcp:connect(AppId, Transp1);
+                sctp -> nksip_transport_sctp:connect(Pid, Transp1);
+                ws -> nksip_transport_ws:connect(AppId, Transp1, Opts);
+                wss -> nksip_transport_ws:connect(AppId, Transp1, Opts)
+            end;
+        [] ->
+            {error, no_listening_transport}
+    end.
 
 
 %% @private

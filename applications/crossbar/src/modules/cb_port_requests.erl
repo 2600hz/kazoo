@@ -1,8 +1,8 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz INC
+%%% @copyright (C) 2013-2015, 2600Hz INC
 %%% @doc
 %%%
-%%% Handles port request lifecycles
+%%% Handles port request life cycles
 %%% GET /port_requests - list all the account's port requests
 %%% GET /port_requests/descendants - detailed report of a port request
 %%% GET /port_requests/{id} - detailed report of a port request
@@ -164,6 +164,8 @@ allowed_methods(_Id) ->
 
 allowed_methods(_Id, ?PORT_SUBMITTED) ->
     [?HTTP_POST];
+allowed_methods(_Id, ?PORT_PENDING) ->
+    [?HTTP_POST];
 allowed_methods(_Id, ?PORT_SCHEDULED) ->
     [?HTTP_POST];
 allowed_methods(_Id, ?PORT_COMPLETE) ->
@@ -196,6 +198,7 @@ resource_exists() -> 'true'.
 resource_exists(_Id) -> 'true'.
 
 resource_exists(_Id, ?PORT_SUBMITTED) -> 'true';
+resource_exists(_Id, ?PORT_PENDING) -> 'true';
 resource_exists(_Id, ?PORT_SCHEDULED) -> 'true';
 resource_exists(_Id, ?PORT_COMPLETE) -> 'true';
 resource_exists(_Id, ?PORT_REJECT) -> 'true';
@@ -301,6 +304,8 @@ validate(Context, Id) ->
 
 validate(Context, Id, ?PORT_SUBMITTED) ->
     validate_port_request(Context, Id, ?PORT_SUBMITTED, cb_context:req_verb(Context));
+validate(Context, Id, ?PORT_PENDING) ->
+    validate_port_request(Context, Id, ?PORT_PENDING, cb_context:req_verb(Context));
 validate(Context, Id, ?PORT_SCHEDULED) ->
     validate_port_request(Context, Id, ?PORT_SCHEDULED, cb_context:req_verb(Context));
 validate(Context, Id, ?PORT_COMPLETE) ->
@@ -329,6 +334,8 @@ validate_port_request(Context, Id, ?HTTP_DELETE) ->
 
 validate_port_request(Context, Id, ?PORT_SUBMITTED, ?HTTP_POST) ->
     maybe_move_state(Context, Id, ?PORT_SUBMITTED);
+validate_port_request(Context, Id, ?PORT_PENDING, ?HTTP_POST) ->
+    maybe_move_state(Context, Id, ?PORT_PENDING);
 validate_port_request(Context, Id, ?PORT_SCHEDULED, ?HTTP_POST) ->
     maybe_move_state(Context, Id, ?PORT_SCHEDULED);
 validate_port_request(Context, Id, ?PORT_COMPLETE, ?HTTP_POST) ->
@@ -361,12 +368,14 @@ is_deletable(Context, ?PORT_WAITING) -> Context;
 is_deletable(Context, ?PORT_REJECT) -> Context;
 is_deletable(Context, _PortState) ->
     lager:debug("port is in state ~s, can't modify", [_PortState]),
-    cb_context:add_system_error(<<"port request is not modifiable in this state">>, Context).
-
+    cb_context:add_system_error('invalid_method'
+                                ,<<"port request is not modifiable in this state">>
+                                ,Context
+                               ).
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% If the HTTP verib is PUT, execute the actual action, usually a db save.
+%% If the HTTP verb is PUT, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
 -spec get(cb_context:context(), path_token(), path_token()) -> cb_context:context().
@@ -377,7 +386,7 @@ get(Context, Id, ?PATH_TOKEN_LOA) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% If the HTTP verib is PUT, execute the actual action, usually a db save.
+%% If the HTTP verb is PUT, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
@@ -403,7 +412,7 @@ put(Context, Id, ?PORT_ATTACHMENT) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% If the HTTP verib is POST, execute the actual action, usually a db save
+%% If the HTTP verb is POST, execute the actual action, usually a db save
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
@@ -413,20 +422,14 @@ post(Context, Id) ->
     do_post(Context, Id).
 
 post(Context, Id, ?PORT_SUBMITTED) ->
-    try send_port_request_notification(Context, Id) of
-        _ ->
-            lager:debug("port request notification sent"),
-            do_post(Context, Id)
-    catch
-        _E:_R ->
-            lager:debug("failed to send the port request notification: ~s:~p", [_E, _R]),
-            cb_context:add_system_error(<<"failed to send port request email to system admins">>, Context)
-    end;
+    DryRun = not(cb_context:accepting_charges(Context)),
+    post_submitted(DryRun, Context, Id);
 post(Context, Id, ?PORT_SCHEDULED) ->
     do_post(Context, Id);
 post(Context, Id, ?PORT_COMPLETE) ->
     do_post(Context, Id);
 post(Context, Id, ?PORT_REJECT) ->
+    _ = remove_from_phone_numbers_doc(Context),
     try send_port_cancel_notification(Context, Id) of
         _ ->
             lager:debug("port cancel notification sent"),
@@ -434,16 +437,42 @@ post(Context, Id, ?PORT_REJECT) ->
     catch
         _E:_R ->
             lager:debug("failed to send the port cancel notification: ~s:~p", [_E, _R]),
-            cb_context:add_system_error(<<"failed to send port cancel email to system admins">>, Context)
+            cb_context:add_system_error('bad_gateway'
+                                        ,<<"failed to send port cancel email to system admins">>
+                                        ,Context
+                                       )
     end.
+
+-spec post_submitted(boolean(), cb_context:context(), ne_binary()) -> cb_context:context().
+post_submitted('false', Context, Id) ->
+    _  = add_to_phone_numbers_doc(Context),
+    try send_port_request_notification(Context, Id) of
+        _ ->
+            lager:debug("port request notification sent"),
+            do_post(Context, Id)
+    catch
+        _E:_R ->
+            lager:debug("failed to send the port request notification: ~s:~p", [_E, _R]),
+            cb_context:add_system_error('bad_gateway'
+                                        ,<<"failed to send port request email to system admins">>
+                                        ,Context
+                                       )
+    end;
+post_submitted('true', Context, Id) ->
+    DryRunJObj = dry_run(Context),
+    case wh_json:is_empty(DryRunJObj) of
+        'false' -> crossbar_util:response_402(DryRunJObj, Context);
+        'true' -> post_submitted('false', Context, Id)
+    end.
+
 
 post(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
     [{_Filename, FileJObj}] = cb_context:req_files(Context),
     Contents = wh_json:get_value(<<"contents">>, FileJObj),
     CT = wh_json:get_string_value([<<"headers">>, <<"content_type">>], FileJObj),
     Opts = [{'headers', [{'content_type', CT}]}],
-    OldAttachments = wh_json:get_value(<<"_attachments">>, cb_context:doc(Context), wh_json:new()),
-    case wh_json:get_value(AttachmentId, OldAttachments) of
+
+    case wh_doc:attachment(cb_context:doc(Context), AttachmentId) of
         'undefined' -> lager:debug("no attachment named ~s", [AttachmentId]);
         _AttachmentMeta ->
             lager:debug("deleting old attachment ~s", [AttachmentId]),
@@ -469,7 +498,7 @@ do_post(Context, _Id) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% If the HTTP verib is DELETE, execute the actual action, usually a db delete
+%% If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token()) ->
@@ -524,19 +553,34 @@ read_descendants(Context) ->
     end.
 
 read_descendants(Context, SubAccounts) ->
-    AllPortRequests = lists:foldl(fun(Account, Acc) ->
-                                          AccountId = wh_json:get_value(<<"id">>, Account),
-                                          PortRequests = read_descendant(Context, AccountId),
-                                          wh_json:set_value(AccountId, PortRequests, Acc)
-                                  end, wh_json:new(), SubAccounts),
+    AllPortRequests =
+        lists:foldl(
+          fun(Account, Acc) ->
+                  AccountId = wh_json:get_value(<<"id">>, Account),
+                  case read_descendant(Context, AccountId) of
+                      'undefined' -> Acc;
+                      PortRequests ->
+                          [wh_json:from_list(
+                             [{<<"account_id">>, AccountId}
+                              ,{<<"account_name">>, wh_json:get_value([<<"value">>, <<"name">>], Account)}
+                              ,{<<"port_requests">>, PortRequests}
+                             ]
+                            )
+                           |Acc
+                          ]
+                  end
+          end
+          ,[]
+          ,SubAccounts
+         ),
     crossbar_doc:handle_json_success(AllPortRequests, Context).
 
--spec read_descendant(cb_context:context(), ne_binary()) -> wh_json:object().
+-spec read_descendant(cb_context:context(), ne_binary()) -> api_object().
 read_descendant(Context, Id) ->
     Context1 = summary(cb_context:set_account_id(Context, Id)),
     case cb_context:resp_status(Context1) of
         'success' -> cb_context:doc(Context1);
-        _ -> wh_json:new()
+        _Status -> 'undefined'
     end.
 
 
@@ -573,17 +617,27 @@ summary(Context) ->
                            ,fun normalize_view_results/2
                           ).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(Res, Acc) ->
     [wh_port_request:public_fields(wh_json:get_value(<<"doc">>, Res)) | Acc].
 
--spec summary_attachments(ne_binary(), cb_context:context()) -> cb_context:context().
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec summary_attachments(cb_context:context(), ne_binary()) -> cb_context:context().
 summary_attachments(Context, Id) ->
     Context1 = crossbar_doc:load(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)),
 
-    A = wh_json:get_value(<<"_attachments">>, cb_context:doc(Context1), wh_json:new()),
+    As = wh_doc:attachments(cb_context:doc(Context1), wh_json:new()),
     cb_context:set_resp_data(Context1
-                             ,wh_port_request:normalize_attachments(A)
+                             ,wh_port_request:normalize_attachments(As)
                             ).
 
 %%--------------------------------------------------------------------
@@ -616,15 +670,29 @@ on_successful_validation(Context, Id, 'true') ->
     end;
 on_successful_validation(Context, _Id, 'false') ->
     PortState = wh_json:get_value(?PORT_PVT_STATE, cb_context:doc(Context)),
-    lager:debug("port state ~s is not valid for updating a port request"
-                ,[PortState]
-               ),
-    cb_context:add_validation_error(PortState, <<"type">>, <<"Updating port requests not allowed in current port state">>, Context).
+    lager:debug(
+        "port state ~s is not valid for updating a port request"
+        ,[PortState]
+    ),
+    cb_context:add_validation_error(
+        PortState
+        ,<<"type">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"Updating port requests not allowed in current port state">>}
+            ,{<<"cause">>, PortState}
+         ])
+        ,Context
+     ).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec can_update_port_request(cb_context:context()) -> boolean().
 -spec can_update_port_request(cb_context:context(), ne_binary()) -> boolean().
 can_update_port_request(Context) ->
-    lager:debug("port req: ~p", [cb_context:doc(Context)]),
+    lager:debug("port request: ~p", [cb_context:doc(Context)]),
     can_update_port_request(Context, wh_port_request:current_state(cb_context:doc(Context))).
 
 can_update_port_request(_Context, ?PORT_WAITING) ->
@@ -634,6 +702,11 @@ can_update_port_request(_Context, ?PORT_REJECT) ->
 can_update_port_request(Context, _) ->
     cb_modules_util:is_superduper_admin(cb_context:auth_account_id(Context)).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec successful_validation(cb_context:context(), api_binary()) -> cb_context:context().
 successful_validation(Context, 'undefined') ->
     JObj = cb_context:doc(Context),
@@ -645,6 +718,11 @@ successful_validation(Context, 'undefined') ->
 successful_validation(Context, _Id) ->
     cb_context:set_doc(Context, wh_port_request:normalize_numbers(cb_context:doc(Context))).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec check_number_portability(api_binary(), ne_binary(), cb_context:context()) ->
                                       cb_context:context().
 -spec check_number_portability(api_binary(), ne_binary(), cb_context:context(), ne_binary(), wh_json:object()) ->
@@ -652,18 +730,35 @@ successful_validation(Context, _Id) ->
 check_number_portability(PortId, Number, Context) ->
     E164 = wnm_util:to_e164(Number),
     lager:debug("checking ~s(~s) for portability", [E164, Number]),
-
     PortOptions = [{'key', E164}],
     case couch_mgr:get_results(?KZ_PORT_REQUESTS_DB, <<"port_requests/port_in_numbers">>, PortOptions) of
         {'ok', []} -> check_number_existence(E164, Number, Context);
         {'ok', [PortReq]} ->
             check_number_portability(PortId, Number, Context, E164, PortReq);
         {'ok', [_|_]=_PortReqs} ->
+            Message = <<"Number is currently on multiple port requests. Contact a system admin to rectify">>,
             lager:debug("number ~s(~s) exists on multiple port request docs. That's bad!", [E164, Number]),
-            cb_context:add_validation_error(Number, <<"type">>, <<"Number is currently on multiple port requests. Contact a system admin to rectify">>, Context);
+            cb_context:add_validation_error(
+                Number
+                ,<<"type">>
+                ,wh_json:from_list([
+                    {<<"message">>, Message}
+                    ,{<<"cause">>, Number}
+                 ])
+                ,Context
+            );
         {'error', _E} ->
+            Message = <<"Failed to query back-end services, cannot port at this time">>,
             lager:debug("failed to query the port request view: ~p", [_E]),
-            cb_context:add_validation_error(Number, <<"type">>, <<"Failed to query backend services, cannot port at this time">>, Context)
+            cb_context:add_validation_error(
+                Number
+                ,<<"type">>
+                ,wh_json:from_list([
+                    {<<"message">>, Message}
+                    ,{<<"cause">>, Number}
+                 ])
+                ,Context
+            )
     end.
 
 check_number_portability(PortId, Number, Context, E164, PortReq) ->
@@ -672,29 +767,62 @@ check_number_portability(PortId, Number, Context, E164, PortReq) ->
          }
     of
         {'true', 'true'} ->
-            lager:debug("number ~s(~s) is on this existing port request for this account(~s)"
-                        ,[E164, Number, cb_context:account_id(Context)]
-                       ),
+            lager:debug(
+                "number ~s(~s) is on this existing port request for this account(~s)"
+                ,[E164, Number, cb_context:account_id(Context)]
+            ),
             cb_context:set_resp_status(Context, 'success');
         {'true', 'false'} ->
-            lager:debug("number ~s(~s) is on a different port request in this account(~s): ~s"
-                        ,[E164, Number, cb_context:account_id(Context), wh_json:get_value(<<"id">>, PortReq)]
-                       ),
-            cb_context:add_validation_error(Number, <<"type">>, <<"Number is on a port request already: ", (wh_json:get_value(<<"id">>, PortReq))/binary>>, Context);
+            lager:debug(
+                "number ~s(~s) is on a different port request in this account(~s): ~s"
+                ,[E164, Number, cb_context:account_id(Context), wh_json:get_value(<<"id">>, PortReq)]
+            ),
+            Message = <<"Number is on a port request already: ", (wh_json:get_value(<<"id">>, PortReq))/binary>>,
+            cb_context:add_validation_error(
+                Number
+                ,<<"type">>
+                ,wh_json:from_list([
+                    {<<"message">>, Message}
+                    ,{<<"cause">>, Number}
+                 ])
+                ,Context
+            );
         {'false', _} ->
-            lager:debug("number ~s(~s) is on existing port request for other account(~s)"
-                        ,[E164, Number, wh_json:get_value(<<"value">>, PortReq)]
-                       ),
-            cb_context:add_validation_error(Number, <<"type">>, <<"Number is being ported for a different account">>, Context)
+            lager:debug(
+                "number ~s(~s) is on existing port request for other account(~s)"
+                ,[E164, Number, wh_json:get_value(<<"value">>, PortReq)]
+            ),
+            cb_context:add_validation_error(
+                Number
+                ,<<"type">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"Number is being ported for a different account">>}
+                    ,{<<"cause">>, Number}
+                 ])
+                ,Context
+            )
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec check_number_existence(ne_binary(), ne_binary(), cb_context:context()) ->
                                     cb_context:context().
 check_number_existence(E164, Number, Context) ->
     case wh_number_manager:lookup_account_by_number(E164) of
         {'ok', _AccountId, _} ->
             lager:debug("number ~s exists and belongs to ~s", [E164, _AccountId]),
-            cb_context:add_validation_error(Number, <<"type">>, <<"Number exists on the system already">>, Context);
+            cb_context:add_validation_error(
+                Number
+                ,<<"type">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"Number exists on the system already">>}
+                    ,{<<"cause">>, Number}
+                 ])
+                ,Context
+            );
         {'error', 'not_found'} ->
             lager:debug("number ~s not found in numbers db (portable!)", [E164]),
             cb_context:set_resp_status(Context, 'success');
@@ -702,10 +830,23 @@ check_number_existence(E164, Number, Context) ->
             lager:debug("number ~s not assigned to an account (portable!)", [E164]),
             cb_context:set_resp_status(Context, 'success');
         {'error', E} ->
-            lager:debug("number ~s errored when looking up: ~p", [E164, E]),
-            cb_context:add_validation_error(Number, <<"type">>, wh_util:to_binary(E), Context)
+            lager:debug("number ~s error-ed when looking up: ~p", [E164, E]),
+            cb_context:add_validation_error(
+                Number
+                ,<<"type">>
+                ,wh_json:from_list([
+                    {<<"message">>, wh_util:to_binary(E)}
+                    ,{<<"cause">>, Number}
+                 ])
+                ,Context
+            )
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec load_attachment(ne_binary(), ne_binary(), cb_context:context()) ->
                              cb_context:context().
 load_attachment(Id, AttachmentId, Context) ->
@@ -715,21 +856,29 @@ load_attachment(Id, AttachmentId, Context) ->
         _ -> Context1
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec load_attachment(ne_binary(), cb_context:context()) ->
                              cb_context:context().
 load_attachment(AttachmentId, Context) ->
-    AttachmentMeta = wh_json:get_value([<<"_attachments">>, AttachmentId], cb_context:doc(Context)),
-
     cb_context:add_resp_headers(
       crossbar_doc:load_attachment(cb_context:doc(Context)
                                    ,AttachmentId
                                    ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
                                   )
       ,[{<<"Content-Disposition">>, <<"attachment; filename=", AttachmentId/binary>>}
-        ,{<<"Content-Type">>, wh_json:get_value([<<"content_type">>], AttachmentMeta)}
-        ,{<<"Content-Length">>, wh_json:get_value([<<"length">>], AttachmentMeta)}
+        ,{<<"Content-Type">>, wh_doc:attachment_content_type(cb_context:doc(Context), AttachmentId)}
+        ,{<<"Content-Length">>, wh_doc:attachment_length(cb_context:doc(Context), AttachmentId)}
        ]).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec maybe_move_state(cb_context:context(), ne_binary(), ne_binary()) ->
                               cb_context:context().
 maybe_move_state(Context, Id, PortState) ->
@@ -742,11 +891,22 @@ maybe_move_state(Context, Id, PortState) ->
             lager:debug("loaded new port request state ~s", [PortState]),
             cb_context:set_doc(Context1, PortRequest);
         {'error', 'invalid_state_transition'} ->
-            cb_context:add_validation_error(<<"port_state">>, <<"enum">>, <<"cannot move to new state from current state">>, Context);
-        {'error', _E} ->
-            cb_context:add_validation_error(<<"port_state">>, <<"enum">>, <<"failed to move to new state from current state">>, Context)
+            cb_context:add_validation_error(
+                <<"port_state">>
+                ,<<"enum">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"Cannot move to new state from current state">>}
+                    ,{<<"cause">>, PortState}
+                 ])
+                ,Context
+             )
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec generate_loa(cb_context:context()) ->
                           cb_context:context().
 -spec generate_loa(cb_context:context(), crossbar_status()) ->
@@ -758,6 +918,11 @@ generate_loa(Context, 'success') ->
 generate_loa(Context, _RespStatus) ->
     Context.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec generate_loa_from_port(cb_context:context(), wh_json:object()) ->
                                     cb_context:context().
 -spec generate_loa_from_port(cb_context:context(), wh_json:object(), ne_binary()) ->
@@ -768,6 +933,11 @@ generate_loa_from_port(Context, PortRequest) ->
 generate_loa_from_port(Context, PortRequest, <<"htmldoc">>) ->
     cb_loa_htmldoc:generate_loa(Context, PortRequest).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec find_template(ne_binary()) -> ne_binary().
 -spec find_template(ne_binary(), api_binary()) -> ne_binary().
 find_template(ResellerId) ->
@@ -791,6 +961,11 @@ find_template(ResellerId, CarrierName) ->
         {'error', _} -> find_carrier_template(ResellerDb, CarrierTemplate)
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec find_carrier_template(ne_binary(), ne_binary()) -> ne_binary().
 find_carrier_template(ResellerDb, CarrierTemplate) ->
     case couch_mgr:fetch_attachment(ResellerDb, ?TEMPLATE_DOC_ID, ?TEMPLATE_ATTACHMENT_ID) of
@@ -798,6 +973,11 @@ find_carrier_template(ResellerDb, CarrierTemplate) ->
         {'error', _} -> default_carrier_template(CarrierTemplate)
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec default_template() -> ne_binary().
 default_template() ->
     case couch_mgr:fetch_attachment(?WH_CONFIG_DB, ?TEMPLATE_DOC_ID, ?TEMPLATE_ATTACHMENT_ID) of
@@ -805,6 +985,11 @@ default_template() ->
         {'error', _} -> create_default_template()
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec default_carrier_template(ne_binary()) -> ne_binary().
 default_carrier_template(CarrierTemplate) ->
     case couch_mgr:fetch_attachment(?WH_CONFIG_DB, CarrierTemplate, ?TEMPLATE_ATTACHMENT_ID) of
@@ -812,6 +997,11 @@ default_carrier_template(CarrierTemplate) ->
         {'error', _} -> default_template()
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec create_default_template() -> ne_binary().
 create_default_template() ->
     {'ok', _Doc} =
@@ -822,6 +1012,11 @@ create_default_template() ->
                           ),
     save_default_template().
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec update_default_template() -> ne_binary().
 update_default_template() ->
     case couch_mgr:open_doc(?WH_CONFIG_DB, ?TEMPLATE_DOC_ID) of
@@ -829,6 +1024,11 @@ update_default_template() ->
         {'error', 'not_found'} -> create_default_template()
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec save_default_template() -> ne_binary().
 save_default_template() ->
     PrivDir = code:priv_dir('crossbar'),
@@ -841,16 +1041,26 @@ save_default_template() ->
         couch_mgr:put_attachment(?WH_CONFIG_DB, ?TEMPLATE_DOC_ID, ?TEMPLATE_ATTACHMENT_ID, Template),
     Template.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec send_port_request_notification(cb_context:context(), ne_binary()) -> 'ok'.
 send_port_request_notification(Context, Id) ->
     Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
            ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
            ,{<<"Port-Request-ID">>, Id}
-           ,{<<"Version">>, <<"v2">>}
+           ,{<<"Version">>, cb_context:api_version(Context)}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     whapps_util:amqp_pool_send(Req, fun wapi_notifications:publish_port_request/1).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec send_port_cancel_notification(cb_context:context(), ne_binary()) -> 'ok'.
 send_port_cancel_notification(Context, Id) ->
     Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
@@ -859,3 +1069,147 @@ send_port_cancel_notification(Context, Id) ->
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     whapps_util:amqp_pool_send(Req, fun wapi_notifications:publish_port_cancel/1).
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec add_to_phone_numbers_doc(cb_context:context()) -> 'ok' | 'error'.
+-spec add_to_phone_numbers_doc(cb_context:context(), wh_json:object()) -> 'ok' | 'error'.
+add_to_phone_numbers_doc(Context) ->
+    case get_phone_numbers_doc(Context) of
+        {'error', _R} -> 'error';
+        {'ok', JObj} ->
+            add_to_phone_numbers_doc(Context, JObj)
+    end.
+
+add_to_phone_numbers_doc(Context, JObj) ->
+    AccountId = cb_context:account_id(Context),
+    Now = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
+
+    PhoneNumbersJObj =
+        wh_json:foldl(
+          fun(Number, _, Acc) ->
+                  NumberJObj = build_number_properties(AccountId, Now),
+                  wh_json:set_value(Number, NumberJObj, Acc)
+          end
+          ,JObj
+          ,wh_json:get_value(<<"numbers">>, cb_context:doc(Context), wh_json:new())
+         ),
+    save_phone_numbers_doc(Context, PhoneNumbersJObj).
+
+-spec build_number_properties(ne_binary(), gregorian_seconds()) -> wh_json:object().
+build_number_properties(AccountId, Now) ->
+    wh_json:from_list(
+      [{<<"state">>, <<"in_service">>}
+       ,{<<"features">>, []}
+       ,{<<"assigned_to">>, AccountId}
+       ,{<<"used_by">>, <<>>}
+       ,{<<"created">>, Now}
+       ,{<<"updated">>, Now}
+      ]).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec remove_from_phone_numbers_doc(cb_context:context()) -> 'ok' | 'error'.
+-spec remove_from_phone_numbers_doc(cb_context:context(), wh_json:object()) -> 'ok' | 'error'.
+remove_from_phone_numbers_doc(Context) ->
+    case get_phone_numbers_doc(Context) of
+        {'error', _R}-> 'ok';
+        {'ok', JObj} ->
+            remove_from_phone_numbers_doc(Context, JObj)
+    end.
+
+remove_from_phone_numbers_doc(Context, JObj) ->
+    {Updated, PhoneNumbersJObj} =
+        wh_json:foldl(fun remove_phone_number/3
+                      ,{'false', JObj}
+                      ,wh_json:get_value(<<"numbers">>, cb_context:doc(Context), wh_json:new())
+                     ),
+    case Updated of
+        'true' ->
+            save_phone_numbers_doc(Context, PhoneNumbersJObj);
+        'false' ->
+            lager:debug("no numbers removed, not updating")
+    end.
+
+-spec remove_phone_number(wh_json:key(), wh_json:json_term(), {boolean(), wh_json:object()}) ->
+                                 {boolean(), wh_json:object()}.
+remove_phone_number(Number, _, {_, Acc}) ->
+    {'true', wh_json:delete_key(Number, Acc)}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec get_phone_numbers_doc(cb_context:context()) ->
+                                   {'ok', wh_json:object()} |
+                                   {'error', _}.
+get_phone_numbers_doc(Context) ->
+    AccountId = cb_context:account_id(Context),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    Context1 = crossbar_doc:load(<<"phone_numbers">>, cb_context:set_account_db(Context, AccountDb)),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            {'ok', cb_context:doc(Context1)};
+        Status ->
+            lager:error("failed to open phone_numbers doc in ~s : ~p", [AccountId, Status]),
+            {'error', Status}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec save_phone_numbers_doc(cb_context:context(), wh_json:object()) -> 'ok' | 'error'.
+save_phone_numbers_doc(Context, JObj) ->
+    AccountId = cb_context:account_id(Context),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    Context1 =
+        cb_context:setters(
+            Context
+            ,[{fun cb_context:set_doc/2, JObj}
+              ,{fun cb_context:set_account_db/2, AccountDb}
+             ]
+        ),
+    Context2 = crossbar_doc:save(Context1),
+    case cb_context:resp_status(Context2) of
+        'success' -> 'ok';
+        _Status ->
+            lager:error("failed to save phone_numbers doc in ~s : ~p", [AccountId, _Status]),
+            'error'
+    end.
+
+-spec dry_run(cb_context:context()) -> wh_json:object().
+dry_run(Context) ->
+    JObj = cb_context:doc(Context),
+    Numbers = wh_json:get_value(<<"numbers">>, JObj),
+    PhoneNumbers =
+        wh_json:foldl(
+            fun dry_run_foldl/3
+            ,wh_json:new()
+            ,Numbers
+        ),
+    AccountId = cb_context:account_id(Context),
+    Services = wh_services:fetch(AccountId),
+    UpdateServices = wh_service_phone_numbers:reconcile(PhoneNumbers, Services),
+    wh_services:dry_run(UpdateServices).
+
+-spec dry_run_foldl(ne_binary(), wh_json:object(), wh_json:object()) -> wh_json:object().
+dry_run_foldl(Number, NumberJObj, JObj) ->
+    wh_json:set_value(
+        Number
+        ,wh_json:set_value(
+             <<"features">>
+             ,[<<"port">>]
+             ,NumberJObj
+         )
+        ,JObj
+    ).

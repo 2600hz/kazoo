@@ -54,7 +54,6 @@ handle(Data, Call) ->
 
 -spec wait_for_pivot(wh_json:object(), whapps_call:call()) -> any().
 wait_for_pivot(Data, Call) ->
-    lager:debug("waiting for events"),
     case whapps_call_command:receive_event(?DEFAULT_EVENT_WAIT, 'true') of
         {'ok', JObj} ->
             case wh_util:get_event_type(JObj) of
@@ -68,19 +67,5 @@ wait_for_pivot(Data, Call) ->
                     wait_for_pivot(Data, Call)
             end;
         {'error', 'timeout'} ->
-            lager:warning("no events received timeout"),
             wait_for_pivot(Data, Call)
     end.
-
-
-
-
-
-
-
-
-
-
-
-
-

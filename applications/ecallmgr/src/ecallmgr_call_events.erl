@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2014, 2600Hz
+%%% @copyright (C) 2010-2015, 2600Hz
 %%% @doc
 %%% Receive call events from freeSWITCH, publish to the call's event queue
 %%% @end
@@ -60,7 +60,7 @@
 
 -record(state, {
           node :: atom()
-          ,callid :: api_binary()
+          ,call_id :: api_binary()
           ,other_leg :: api_binary()
           ,other_leg_events = [] :: ne_binaries()
           ,is_node_up = 'true' :: boolean()
@@ -117,7 +117,7 @@ listen_for_other_leg(Node, UUID, [_|_] = Events) ->
     _ = [gen_listener:cast(Pid, {'b_leg_events', Events})
          || Pid <- gproc:lookup_pids({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, UUID)})
         ],
-    'ok'.
+    lager:debug("sent msg to ~s to bind for b leg events ~p", [UUID, Events]).
 
 -spec callid(pid()) -> ne_binary().
 callid(Srv) -> gen_listener:call(Srv, 'callid', 1000).
@@ -181,9 +181,10 @@ handle_publisher_usurp(JObj, Props) ->
 -spec init([atom() | ne_binary(),...]) -> {'ok', state()}.
 init([Node, CallId]) when is_atom(Node) andalso is_binary(CallId) ->
     put('callid', CallId),
+    register_for_events(Node, CallId),
     gen_listener:cast(self(), 'init'),
     {'ok', #state{node=Node
-                  ,callid=CallId
+                  ,call_id=CallId
                   ,ref=wh_util:rand_hex_binary(12)
                  }}.
 
@@ -203,7 +204,7 @@ init([Node, CallId]) when is_atom(Node) andalso is_binary(CallId) ->
 %%--------------------------------------------------------------------
 handle_call('node', _From, #state{node=Node}=State) ->
     {'reply', Node, State};
-handle_call('callid', _From, #state{callid=CallId}=State) ->
+handle_call('callid', _From, #state{call_id=CallId}=State) ->
     {'reply', CallId, State};
 handle_call('other_leg', _From, #state{other_leg=CallId}=State) ->
     {'reply', CallId, State};
@@ -220,27 +221,19 @@ handle_call(_Request, _From, State) ->
 %%                                  {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast('init', #state{node=Node
-                           ,callid=CallId
-                          }=State) ->
+handle_cast('init', #state{node=Node}=State) ->
     erlang:monitor_node(Node, 'true'),
     TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), 'sanity_check'),
-    'true' = gproc:reg({'p', 'l', 'call_events_processes'}),
-    'true' = gproc:reg({'p', 'l', {'call_events_process', Node, CallId}}),
-    'true' = gproc:reg({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, CallId)}),
-    'true' = gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, ?CHANNEL_MOVE_RELEASED_EVENT_BIN)}),
     _ = usurp_other_publishers(State),
     {'noreply', State#state{sanity_check_tref=TRef}};
 handle_cast({'update_node', Node}, #state{node=Node}=State) ->
     {'noreply', State};
 handle_cast({'update_node', Node}, #state{node=OldNode
-                                          ,callid=CallId
+                                          ,call_id=CallId
                                          }=State) ->
     lager:debug("node has changed from ~s to ~s", [OldNode, Node]),
     erlang:monitor_node(OldNode, 'false'),
-    _ = gproc:unreg({'p', 'l', {'call_events_process', OldNode, CallId}}),
-    _ = gproc:unreg({'p', 'l', ?FS_CALL_EVENT_REG_MSG(OldNode, CallId)}),
-    _ = gproc:unreg({'p', 'l', ?FS_EVENT_REG_MSG(OldNode, ?CHANNEL_MOVE_RELEASED_EVENT_BIN)}),
+    unregister_for_events(OldNode, CallId),
     {'noreply', State#state{node=Node}, 0};
 handle_cast({'passive'}, State) ->
     lager:debug("publisher has been usurp'd by newer process on another ecallmgr, moving to passive mode"),
@@ -250,7 +243,7 @@ handle_cast({'channel_redirected', Props}, State) ->
     process_channel_event(Props),
     {'stop', {'shutdown', 'redirect'}, State};
 handle_cast({'graceful_shutdown', CallId}, #state{node=Node
-                                                  ,callid=CallId
+                                                  ,call_id=CallId
                                                  }=State) ->
     lager:debug("call event listener on node ~s received graceful shutdown request", [Node]),
     erlang:send_after(5000, self(), 'shutdown'),
@@ -261,21 +254,28 @@ handle_cast({'graceful_shutdown', _CallId}, #state{}=State) ->
 handle_cast('shutdown', #state{node=Node}=State) ->
     lager:debug("call event listener on node ~s received shutdown request", [Node]),
     {'stop', 'normal', State};
-handle_cast({'transferer', _}, State) ->
-    lager:debug("call control has been transfered."),
+handle_cast({'transferer', _Props}, State) ->
+    lager:debug("call control has been transferred"),
     {'stop', 'normal', State};
-handle_cast({'b_leg_events', Events}, State) ->
+handle_cast({'b_leg_events', NewEvents}, #state{other_leg_events=Evts}=State) ->
+    Events = lists:usort(Evts ++ NewEvents),
     lager:debug("tracking b_leg events: ~p", [Events]),
     {'noreply', State#state{other_leg_events=Events}};
-handle_cast({'other_leg', _OtherLeg}, #state{other_leg_events=[]}=State) ->
-    lager:debug("ignoring other leg events for ~s", [_OtherLeg]),
-    {'noreply', State};
-handle_cast({'other_leg', OtherLeg}, #state{other_leg_events=_Events
+handle_cast({'other_leg', OtherLeg}, #state{other_leg_events=Events
                                             ,node=Node
                                            }=State) ->
-    lager:debug("tracking other leg events for ~s", [OtherLeg]),
-    'true' = gproc:reg({'p', 'l', {'call_events_process', Node, OtherLeg}}),
-    'true' = gproc:reg({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, OtherLeg)}),
+    lager:debug("tracking other leg events for ~s: ~p", [OtherLeg, Events]),
+    _ = (Events =/= []) andalso ecallmgr_call_sup:start_event_process(Node, OtherLeg),
+
+    {'noreply', State#state{other_leg=OtherLeg}};
+handle_cast({'other_leg', OtherLeg, ChannelBridgeProps}
+            ,#state{other_leg_events=Events
+                    ,node=Node
+                   }=State) ->
+    lager:debug("tracking other leg events for ~s: ~p", [OtherLeg, Events]),
+    _ = (Events =/= []) andalso ecallmgr_call_sup:start_event_process(Node, OtherLeg),
+
+    maybe_publish_other_leg_bridge(OtherLeg, ChannelBridgeProps, lists:member(<<"CHANNEL_BRIDGE">>, Events)),
     {'noreply', State#state{other_leg=OtherLeg}};
 handle_cast({'gen_listener', {'created_queue', _Q}}, State) ->
     {'noreply', State};
@@ -284,6 +284,36 @@ handle_cast({'gen_listener',{'is_consuming', _IsConsuming}}, State) ->
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
+
+-spec maybe_publish_other_leg_bridge(ne_binary(), wh_proplist(), boolean()) -> 'ok'.
+maybe_publish_other_leg_bridge(_OtherLeg, _Props, 'false') -> 'ok';
+maybe_publish_other_leg_bridge(OtherLeg, Props, 'true') ->
+    OtherProps = props:set_value(<<"Call-ID">>, OtherLeg, swap_call_legs(Props)),
+    wapi_call:publish_event(OtherProps).
+
+-spec register_for_events(atom(), ne_binary()) -> 'true'.
+register_for_events(Node, CallId) ->
+    update_events(Node, CallId, fun gproc:reg/1),
+    catch gproc:reg({'p', 'l', ?FS_CALL_EVENTS_PROCESS_REG(Node, CallId)}, self()).
+
+-spec unregister_for_events(atom(), ne_binary()) -> 'true'.
+unregister_for_events(Node, CallId) ->
+    update_events(Node, CallId, fun gproc:unreg/1),
+    catch gproc:unreg({'p', 'l', ?FS_CALL_EVENTS_PROCESS_REG(Node, CallId)}, self()).
+
+-spec update_events(atom(), ne_binary(), function()) -> 'true'.
+update_events(Node, CallId, Fun) ->
+    Regs = ['call_events_processes'
+            ,?FS_CALL_EVENT_REG_MSG(Node, CallId)
+            ,?FS_EVENT_REG_MSG(Node, ?CHANNEL_MOVE_RELEASED_EVENT_BIN)
+            ,?LOOPBACK_BOWOUT_REG(CallId)
+           ],
+    [update_event(Fun, Reg) || Reg <- Regs],
+    'true'.
+
+-spec update_event(fun(), tuple() | atom()) -> 'true'.
+update_event(Fun, Reg) ->
+    catch Fun({'p', 'l', Reg}).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -295,14 +325,14 @@ handle_cast(_Msg, State) ->
 %%                                   {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'event', [CallId | _]}, #state{callid=CallId
+handle_info({'event', [CallId | _]}, #state{call_id=CallId
                                             ,passive='true'
                                            }=State) ->
     {'noreply', State};
 handle_info({'event', [CallId | Props]}, #state{node=Node
-                                                ,callid=CallId
+                                                ,call_id=CallId
                                                }=State) ->
-    case {props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props))
+    case {props:get_first_defined([<<"Event-Subclass">>, <<"Event-Name">>], Props)
           ,props:get_value(<<"Application">>, Props)
          }
     of
@@ -337,6 +367,7 @@ handle_info({'event', [CallId | Props]}, #state{node=Node
             process_channel_event(Props),
             {'noreply', State};
         {_A, _B} ->
+            lager:debug("processing ~s/~s", [_A, _B]),
             process_channel_event(Props),
             {'noreply', State}
     end;
@@ -352,9 +383,15 @@ handle_info({'event', [CallId | Props]}, #state{other_leg=CallId
             process_channel_event(Props),
             {'noreply', State};
         'false' ->
-            lager:debug("ignoring b-leg event ~s", [Event]),
+            lager:debug("ignoring b-leg event ~s (not in ~p)", [Event, Events]),
             {'noreply', State}
     end;
+handle_info({'event', [_WrongCallId | _Props]}, #state{call_id=_CallId
+                                                       ,other_leg=_OtherLeg
+                                                      }=State) ->
+    lager:debug("recv event for unknown ~s: ~s", [_WrongCallId, props:get_value(<<"Event-Name">>, _Props)]),
+    lager:debug("will process events for call ~s and other leg ~s", [_CallId, _OtherLeg]),
+    {'noreply', State};
 handle_info({'nodedown', _}, #state{node=Node
                                     ,is_node_up='true'
                                    }=State) ->
@@ -370,7 +407,7 @@ handle_info({'check_node_status'}, #state{is_node_up='false'
     lager:debug("node still not up after ~p checks, giving up", [FNC]),
     {'stop', 'normal', State};
 handle_info({'check_node_status'}, #state{node=Node
-                                          ,callid=CallId
+                                          ,call_id=CallId
                                           ,is_node_up='false'
                                           ,failed_node_checks=FNC
                                          }=State) ->
@@ -394,7 +431,7 @@ handle_info('timeout', #state{failed_node_checks=FNC}=State) when (FNC+1) > ?MAX
     lager:debug("unable to establish initial connectivity to the media node, laterz"),
     {'stop', 'normal', State};
 handle_info('timeout', #state{node=Node
-                              ,callid=CallId
+                              ,call_id=CallId
                               ,failed_node_checks=FNC
                              }=State) ->
     erlang:monitor_node(Node, 'true'),
@@ -408,7 +445,7 @@ handle_info('timeout', #state{node=Node
             {'stop', 'normal', State};
         {'ok', <<"true">>} ->
             lager:debug("processing call events from ~s", [Node]),
-            'true' = gproc:reg({'p', 'l', {'call_events_process', Node, CallId}}),
+            'true' = gproc:reg({'p', 'l', ?FS_CALL_EVENTS_PROCESS_REG(Node, CallId)}, self()),
             'true' = gproc:reg({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, CallId)}),
             'true' = gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, ?CHANNEL_MOVE_RELEASED_EVENT_BIN)}),
             _ = usurp_other_publishers(State),
@@ -417,7 +454,7 @@ handle_info('timeout', #state{node=Node
             lager:warning("unable to find call on node ~s: ~p", [Node, Reason]),
             {'stop', 'normal', State}
     end;
-handle_info('sanity_check', #state{callid=CallId}=State) ->
+handle_info('sanity_check', #state{call_id=CallId}=State) ->
     case ecallmgr_fs_channel:exists(CallId) of
         'true' ->
             lager:debug("listener passed sanity check, call is still up"),
@@ -429,9 +466,36 @@ handle_info('sanity_check', #state{callid=CallId}=State) ->
     end;
 handle_info('shutdown', State) ->
     {'stop', 'normal', State};
+handle_info(?LOOPBACK_BOWOUT_MSG(Node, Props), #state{call_id=ResigningUUID
+                                                      ,node=Node
+                                                     }=State) ->
+    NewUUID = handle_bowout(Node, Props, ResigningUUID),
+    {'noreply', State#state{call_id=NewUUID}};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
+
+-spec handle_bowout(atom(), wh_proplist(), ne_binary()) -> ne_binary().
+handle_bowout(Node, Props, ResigningUUID) ->
+    case {props:get_value(?RESIGNING_UUID, Props)
+          ,props:get_value(?ACQUIRED_UUID, Props)
+         }
+    of
+        {ResigningUUID, ResigningUUID} ->
+            lager:debug("call id after bowout remains the same"),
+            ResigningUUID;
+        {ResigningUUID, AcquiringUUID} when AcquiringUUID =/= 'undefined' ->
+            lager:debug("loopback bowout detected, replacing ~s with ~s", [ResigningUUID, AcquiringUUID]),
+
+            unregister_for_events(Node, ResigningUUID),
+            register_for_events(Node, AcquiringUUID),
+
+            put('callid', AcquiringUUID),
+            AcquiringUUID;
+        {_UUID, _AcquiringUUID} ->
+            lager:debug("failed to update after bowout, r: ~s a: ~s", [_UUID, _AcquiringUUID]),
+            ResigningUUID
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -442,7 +506,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, #state{ref=Ref
-                           ,callid=CallId
+                           ,call_id=CallId
                            ,node=Node
                           }) ->
     {'reply', [{'reference', Ref}
@@ -489,7 +553,8 @@ maybe_process_channel_destroy(Node, CallId, Props) ->
         {'error', _} -> gen_server:cast(self(), {'graceful_shutdown', CallId});
         {'ok', _NewNode} ->
             lager:debug("channel is on ~s, not ~s: publishing channel move"
-                        ,[CallId, _NewNode, Node]),
+                        ,[CallId, _NewNode, Node]
+                       ),
             Event = create_event(<<"CHANNEL_MOVED">>, <<"call_pickup">>, Props),
             publish_event(Event)
     end.
@@ -504,7 +569,8 @@ process_channel_event(Props) ->
         'false' ->
             Action = props:get_value(<<"Action">>, Props),
             lager:debug("not publishing ~s(~s): ~s"
-                               ,[EventName, ApplicationName, Action]);
+                        ,[EventName, ApplicationName, Action]
+                       );
         'true' ->
             Event = create_event(EventName, ApplicationName, Props),
             publish_event(Event)
@@ -532,6 +598,7 @@ generic_call_event_props(Props) ->
     Timestamp = wh_util:to_binary(((Mega * 1000000 + Sec) * 1000000 + Micro)),
     FSTimestamp = props:get_integer_value(<<"Event-Date-Timestamp">>, Props, Timestamp),
     NormalizedFSTimestamp = wh_util:unix_seconds_to_gregorian_seconds(FSTimestamp div 1000000),
+
     [{<<"Timestamp">>, NormalizedFSTimestamp}
      ,{<<"Msg-ID">>, wh_util:to_binary(FSTimestamp)}
      ,{<<"Call-ID">>, get_call_id(Props)}
@@ -562,7 +629,7 @@ generic_call_event_props(Props) ->
      ,{<<"Presence-ID">>, props:get_value(<<"variable_presence_id">>, Props)}
      ,{<<"Raw-Application-Data">>, props:get_value(<<"Application-Data">>, Props)}
      ,{<<"Media-Server">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
-     ,{<<"Replaced-By">>, props:get_value(<<"att_xfer_replaced_by">>, Props)}
+     ,{<<"Replaced-By">>, props:get_first_defined([<<"att_xfer_replaced_by">>, ?ACQUIRED_UUID], Props)}
      ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
      ,{<<"Custom-SIP-Headers">>, wh_json:from_list(ecallmgr_util:custom_sip_headers(Props))}
      ,{<<"From-Tag">>, props:get_value(<<"variable_sip_from_tag">>, Props)}
@@ -578,11 +645,12 @@ publish_event(Props) ->
     ApplicationName = wh_util:to_lower_binary(props:get_value(<<"Application-Name">>, Props, <<>>)),
     case {ApplicationName, EventName} of
         {_, <<"dtmf">>} ->
-            Pressed = props:get_value(<<"DTMF-Digit">>, Props),
-            lager:debug("publishing received DTMF digit ~s", [Pressed]);
+            lager:debug("publishing received DTMF digit ~s"
+                        ,[props:get_value(<<"DTMF-Digit">>, Props)]
+                       );
         {<<>>, <<"channel_bridge">>} ->
             OtherLeg = get_other_leg(Props),
-            gen_listener:cast(self(), {'other_leg', OtherLeg}),
+            gen_listener:cast(self(), {'other_leg', OtherLeg, Props}),
             lager:debug("publishing channel_bridge to other leg ~s", [OtherLeg]);
         {<<>>, _Event} ->
             lager:debug("publishing call event ~s", [_Event]);
@@ -671,7 +739,8 @@ specific_call_event_props(<<"RECORD_STOP">>, _, Props) ->
     [{<<"Application-Name">>, <<"record">>}
      ,{<<"Application-Response">>, props:get_first_defined([<<"Record-File-Path">>
                                                             ,<<"whistle_application_response">>
-                                                           ], Props)}
+                                                           ], Props)
+      }
      ,{<<"Terminator">>, props:get_value(<<"variable_playback_terminator_used">>, Props)}
      ,{<<"Length">>, props:get_value(<<"variable_record_ms">>, Props)}
      ,{<<"Silence-Terminated">>, silence_terminated(Props)}
@@ -699,8 +768,7 @@ specific_call_event_props(<<"CHANNEL_FAX_STATUS">>, <<"txfax", Event/binary>>, P
     ,{<<"Application-Data">>, wh_json:from_list(fax_specific(Prop))}
     ];
 specific_call_event_props(<<"CHANNEL_INTERCEPTED">>, _, Props) ->
-    [{<<"Intercepted-By">>, props:get_value(<<"intercepted_by">>, Props)}
-    ];
+    [{<<"Intercepted-By">>, props:get_value(<<"intercepted_by">>, Props)}];
 specific_call_event_props(_Evt, Application, Props) ->
     [{<<"Application-Name">>, props:get_value(Application, ?FS_APPLICATION_NAMES)}
      ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Props)}
@@ -819,6 +887,7 @@ get_call_id(Props) ->
                              ,<<"variable_uuid">>
                              ,<<"Channel-Call-UUID">>
                              ,<<"variable_sip_call_id">>
+                             ,?RESIGNING_UUID
                             ], Props).
 
 get_other_leg(Props) ->
@@ -837,6 +906,7 @@ get_event_name(Props) ->
         <<"sofia::intercepted">> -> <<"CHANNEL_INTERCEPTED">>;
         <<"spandsp::txfax", _/binary>> -> <<"CHANNEL_FAX_STATUS">>;
         <<"spandsp::rxfax", _/binary>> -> <<"CHANNEL_FAX_STATUS">>;
+        <<"loopback::bowout">> -> <<"CHANNEL_REPLACED">>;
         _Else ->
             case  props:get_first_defined([<<"whistle_event_name">>
                                            ,<<"Event-Name">>
@@ -874,26 +944,27 @@ get_raw_application_name(Props) ->
                              ,<<"Event-Subclass">>
                             ], Props).
 
--spec get_fax_success(wh_proplist()) -> 'undefined' | boolean().
+-spec get_fax_success(wh_proplist()) -> api_boolean().
 get_fax_success(Props) ->
     case props:get_value(<<"variable_fax_success">>, Props) of
         'undefined' -> 'undefined';
         Else -> Else =/= <<"0">>
     end.
 
--spec get_fax_ecm_used(wh_proplist()) -> 'undefined' | boolean().
+-spec get_fax_ecm_used(wh_proplist()) -> api_boolean().
 get_fax_ecm_used(Props) ->
     case props:get_value(<<"variable_fax_ecm_used">>, Props) of
         'undefined' -> 'undefined';
         Else -> Else =/= <<"off">>
     end.
 
--spec get_transfer_history(wh_proplist()) -> wh_json:object().
+-spec get_transfer_history(wh_proplist()) -> api_object().
 get_transfer_history(Props) ->
     SerializedHistory = props:get_value(<<"variable_transfer_history">>, Props),
     case [HistJObj
           || Trnsf <- ecallmgr_util:unserialize_fs_array(SerializedHistory),
-             (HistJObj = create_trnsf_history_object(binary:split(Trnsf, <<":">>, ['global']))) =/= 'undefined']
+             (HistJObj = create_trnsf_history_object(binary:split(Trnsf, <<":">>, ['global']))) =/= 'undefined'
+         ]
     of
         [] -> 'undefined';
         History -> wh_json:from_list(History)
@@ -928,11 +999,13 @@ get_hangup_cause(Props) ->
         <<"bridge">> ->
             props:get_first_defined([<<"variable_bridge_hangup_cause">>
                                      ,<<"variable_hangup_cause">>
-                                     ,<<"Hangup-Cause">>], Props);
+                                     ,<<"Hangup-Cause">>
+                                    ], Props);
         _Else ->
             props:get_first_defined([<<"variable_hangup_cause">>
                                      ,<<"variable_bridge_hangup_cause">>
-                                     ,<<"Hangup-Cause">>], Props)
+                                     ,<<"Hangup-Cause">>
+                                    ], Props)
     end.
 
 -spec get_disposition(wh_proplist()) -> api_binary().
@@ -954,6 +1027,8 @@ swap_call_legs(Props) when is_list(Props) -> swap_call_legs(Props, []);
 swap_call_legs(JObj) -> swap_call_legs(wh_json:to_proplist(JObj)).
 
 swap_call_legs([], Swap) -> Swap;
+swap_call_legs([{<<"Call-ID">>, Value}|T], Swap) ->
+    swap_call_legs(T, [{<<"Other-Leg-Call-ID">>, Value}|Swap]);
 swap_call_legs([{<<"Caller-", Key/binary>>, Value}|T], Swap) ->
     swap_call_legs(T, [{<<"Other-Leg-", Key/binary>>, Value}|Swap]);
 swap_call_legs([{<<"Other-Leg-", Key/binary>>, Value}|T], Swap) ->
@@ -964,7 +1039,7 @@ swap_call_legs([Prop|T], Swap) ->
 -spec usurp_other_publishers(state()) -> 'ok'.
 usurp_other_publishers(#state{node=Node
                               ,ref=Ref
-                              ,callid=CallId}) ->
+                              ,call_id=CallId}) ->
     Usurp = [{<<"Call-ID">>, CallId}
              ,{<<"Media-Node">>, Node}
              ,{<<"Reference">>, Ref}

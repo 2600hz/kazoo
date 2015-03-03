@@ -1,8 +1,0 @@
-
-    This is escaped: &lt;b&gt;bold&lt;/b&gt;
-    
-    This is not escaped: <b>bold</b>
-
-    This is escaped: &lt;b&gt;bold&lt;/b&gt;
-    
-

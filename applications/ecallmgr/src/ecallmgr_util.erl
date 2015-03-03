@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2014, 2600Hz
+%%% @copyright (C) 2010-2015, 2600Hz
 %%% @doc
 %%% Various utilities specific to ecallmgr. More general utilities go
 %%% in whistle_util.erl
@@ -14,7 +14,7 @@
 -export([send_cmd/4]).
 -export([get_fs_kv/3]).
 -export([set/3]).
--export([export/3]).
+-export([export/3, bridge_export/3]).
 -export([get_expires/1]).
 -export([get_interface_properties/1, get_interface_properties/2]).
 -export([get_sip_to/1, get_sip_from/1, get_sip_request/1, get_orig_ip/1]).
@@ -25,19 +25,26 @@
 -export([build_channel/1]).
 -export([build_simple_channels/1]).
 -export([create_masquerade_event/2, create_masquerade_event/3]).
--export([media_path/3, media_path/4]).
+-export([media_path/3, media_path/4
+         ,lookup_media/4
+         ,cached_media_expelled/3
+        ]).
 -export([unserialize_fs_array/1]).
 -export([convert_fs_evt_name/1, convert_whistle_app_name/1]).
 -export([fax_filename/1
          ,recording_filename/1
         ]).
 -export([maybe_sanitize_fs_value/2]).
--export([lookup_media/4]).
 
 -export([custom_sip_headers/1 , is_custom_sip_header/1, normalize_custom_sip_header_name/1]).
 -export([maybe_add_expires_deviation/1, maybe_add_expires_deviation_ms/1]).
 
+-export([get_dial_separator/2]).
+
+-include_lib("whistle/src/api/wapi_dialplan.hrl").
 -include("ecallmgr.hrl").
+
+-define(HTTP_GET_PREFIX, "http_cache://").
 
 -type send_cmd_ret() :: fs_sendmsg_ret() | fs_api_ret().
 -export_type([send_cmd_ret/0]).
@@ -134,7 +141,9 @@ send_cmd(Node, UUID, AppName, Args) ->
                                              ,{"execute-app-name", AppName}
                                              ,{"execute-app-arg", wh_util:to_list(Args)}
                                             ]),
-    lager:debug("execute on node ~s ~s(~s): ~p", [Node, AppName, Args, Result]),
+    lager:debug("execute on node ~s(~s) ~s(~s): ~p"
+                ,[Node, UUID, AppName, Args, Result]
+               ),
     Result.
 
 -spec get_expires(wh_proplist()) -> integer().
@@ -179,6 +188,7 @@ get_sip_to(Props, _) ->
 
 %% retrieves the sip address for the 'from' field
 -spec get_sip_from(wh_proplist()) -> ne_binary().
+-spec get_sip_from(wh_proplist(), api_binary()) -> ne_binary().
 get_sip_from(Props) ->
     get_sip_from(Props, props:get_value(<<"Call-Direction">>, Props)).
 
@@ -189,8 +199,10 @@ get_sip_from(Props, <<"outbound">>) ->
             Realm = props:get_first_defined([?GET_CCV(<<"Realm">>)
                                              ,<<"variable_sip_auth_realm">>
                                             ], Props, ?DEFAULT_REALM),
-            props:get_value(<<"variable_sip_from_uri">>, Props,
-                            <<Number/binary, "@", Realm/binary>>);
+            props:get_value(<<"variable_sip_from_uri">>
+                            ,Props
+                            ,<<Number/binary, "@", Realm/binary>>
+                           );
         OtherChannel ->
             lists:last(binary:split(OtherChannel, <<"/">>, ['global']))
     end;
@@ -433,6 +445,21 @@ export(Node, UUID, Props) ->
     Exports = [get_fs_key_and_value(Key, Val, UUID) || {Key, Val} <- Props],
     ecallmgr_fs_command:export(Node, UUID, props:filter(Exports, 'skip')).
 
+-spec bridge_export(atom(), ne_binary(), wh_proplist()) ->
+                    ecallmgr_util:send_cmd_ret().
+bridge_export(_, _, []) -> 'ok';
+bridge_export(Node, UUID, [{<<"Auto-Answer", _/binary>> = K, V} | Props]) ->
+    BridgeExports = [get_fs_key_and_value(Key, Val, UUID)
+                     || {Key, Val} <- Props
+                    ],
+    ecallmgr_fs_command:bridge_export(Node, UUID, [{<<"alert_info">>, <<"intercom">>}
+                                                   ,get_fs_key_and_value(K, V, UUID)
+                                                   | props:filter(BridgeExports, 'skip')
+                                                  ]);
+bridge_export(Node, UUID, Props) ->
+    BridgeExports = [get_fs_key_and_value(Key, Val, UUID) || {Key, Val} <- Props],
+    ecallmgr_fs_command:bridge_export(Node, UUID, props:filter(BridgeExports, 'skip')).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -452,7 +479,7 @@ export(Node, UUID, Props) ->
 -spec build_bridge_string(wh_json:objects()) -> ne_binary().
 -spec build_bridge_string(wh_json:objects(), ne_binary()) -> ne_binary().
 build_bridge_string(Endpoints) ->
-    build_bridge_string(Endpoints, <<"|">>).
+    build_bridge_string(Endpoints, ?SEPARATOR_SINGLE).
 
 build_bridge_string(Endpoints, Seperator) ->
     %% De-dup the bridge strings by matching those with the same
@@ -595,15 +622,17 @@ maybe_collect_worker_channel(Pid, Channels) ->
         2000 -> Channels
     end.
 
--spec build_channel(bridge_endpoint()) -> {'ok', bridge_channel()} |
-                                          {'error', _}.
+-spec build_channel(bridge_endpoint() | wh_json:object()) ->
+                           {'ok', bridge_channel()} |
+                           {'error', _}.
 build_channel(#bridge_endpoint{endpoint_type = <<"freetdm">>}=Endpoint) ->
     build_freetdm_channel(Endpoint);
 build_channel(#bridge_endpoint{endpoint_type = <<"skype">>}=Endpoint) ->
     build_skype_channel(Endpoint);
 build_channel(#bridge_endpoint{endpoint_type = <<"sip">>}=Endpoint) ->
     build_sip_channel(Endpoint);
-build_channel(EndpointJObj) -> build_channel(endpoint_jobj_to_record(EndpointJObj)).
+build_channel(EndpointJObj) ->
+    build_channel(endpoint_jobj_to_record(EndpointJObj)).
 
 -spec build_freetdm_channel(bridge_endpoint()) ->
                                    {'ok', bridge_channel()} |
@@ -816,12 +845,15 @@ media_path(<<"local_stream://", FSPath/binary>>, _Type, _UUID, _) -> recording_f
 media_path(<<?LOCAL_MEDIA_PATH, _/binary>> = FSPath, _Type, _UUID, _) -> FSPath;
 media_path(<<"http://", _/binary>> = URI, _Type, _UUID, _) -> get_fs_playback(URI);
 media_path(<<"https://", _/binary>> = URI, _Type, _UUID, _) -> get_fs_playback(URI);
+media_path(<<?HTTP_GET_PREFIX, _/binary>> = Media, _Type, _UUID, _) -> Media;
 media_path(MediaName, Type, UUID, JObj) ->
     case lookup_media(MediaName, UUID, JObj, Type) of
         {'error', _E} ->
             lager:warning("failed to get media path for ~s: ~p", [MediaName, _E]),
             wh_util:to_binary(MediaName);
-        {'ok', Path} -> wh_util:to_binary(get_fs_playback(Path))
+        {'ok', Path} ->
+            lager:debug("found path ~s for ~s", [Path, MediaName]),
+            wh_util:to_binary(get_fs_playback(Path))
     end.
 
 -spec fax_filename(ne_binary()) -> file:filename().
@@ -846,9 +878,11 @@ recording_filename(MediaName) ->
                             ),
     RecordingName.
 
+-spec recording_directory(ne_binary()) -> ne_binary().
 recording_directory(<<"/", _/binary>> = FullPath) -> filename:dirname(FullPath);
 recording_directory(_RelativePath) -> ecallmgr_config:get(<<"recording_file_path">>, <<"/tmp/">>).
 
+-spec recording_extension(ne_binary()) -> ne_binary().
 recording_extension(MediaName) ->
     case filename:extension(MediaName) of
         Empty when Empty =:= <<>> orelse Empty =:= [] ->
@@ -888,19 +922,24 @@ maybe_playback_via_shout(URI) ->
     end.
 
 -spec maybe_playback_via_http_cache(ne_binary()) -> ne_binary().
+maybe_playback_via_http_cache(<<?HTTP_GET_PREFIX, _/binary>> = URI) ->
+    lager:debug("media is streamed via http_cache, using ~s", [URI]),
+    URI;
 maybe_playback_via_http_cache(URI) ->
     case wh_util:is_true(ecallmgr_config:get(<<"use_http_cache">>, 'true')) of
-        'false' -> URI;
+        'false' ->
+            lager:debug("using straight URI ~s", [URI]),
+            URI;
         'true' ->
             lager:debug("media is streamed via http_cache, using ~s", [URI]),
-            <<"${http_get(", URI/binary, ")}">>
+            <<?HTTP_GET_PREFIX, URI/binary>>
     end.
 
 %% given a proplist of a FS event, return the Whistle-equivalent app name(s).
 %% a FS event could have multiple Whistle equivalents
 -spec convert_fs_evt_name(ne_binary()) -> ne_binaries().
 convert_fs_evt_name(EvtName) ->
-    [ WhAppEvt || {FSEvt, WhAppEvt} <- ?FS_APPLICATION_NAMES, FSEvt =:= EvtName].
+    [WhAppEvt || {FSEvt, WhAppEvt} <- ?FS_APPLICATION_NAMES, FSEvt =:= EvtName].
 
 %% given a Whistle Dialplan Application name, return the FS-equivalent event name
 %% A Whistle Dialplan Application name is 1-to-1 with the FS-equivalent
@@ -947,13 +986,46 @@ request_media_url(MediaName, CallId, JObj, Type) ->
             E;
         {'ok', MediaResp} ->
             MediaUrl = wh_json:get_value(<<"Stream-URL">>, MediaResp, <<>>),
+            CacheProps = media_url_cache_props(MediaName),
             _ = wh_cache:store_local(?ECALLMGR_UTIL_CACHE
                                      ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName)
                                      ,MediaUrl
+                                     ,CacheProps
                                     ),
             lager:debug("media ~s stored to playback cache : ~s", [MediaName, MediaUrl]),
             {'ok', MediaUrl}
     end.
+
+-define(DEFAULT_MEDIA_CACHE_PROPS
+        ,[{'callback', fun ?MODULE:cached_media_expelled/3}]
+       ).
+
+-spec media_url_cache_props(ne_binary()) -> wh_cache:store_options().
+media_url_cache_props(<<"/", _/binary>> = MediaName) ->
+    case binary:split(MediaName, <<"/">>, ['global']) of
+        [<<>>, AccountId, MediaId] ->
+            AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+            [{'origin', {'db', AccountDb, MediaId}}
+             | ?DEFAULT_MEDIA_CACHE_PROPS
+            ];
+        _ -> ?DEFAULT_MEDIA_CACHE_PROPS
+    end;
+media_url_cache_props(_MediaName) -> ?DEFAULT_MEDIA_CACHE_PROPS.
+
+-spec cached_media_expelled(?ECALLMGR_PLAYBACK_MEDIA_KEY(ne_binary()), ne_binary(), atom()) -> 'ok'.
+cached_media_expelled(?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName), MediaUrl, _Reason) ->
+    lager:debug("media ~s was expelled(~p), flushing from media servers", [MediaName, _Reason]),
+    Nodes = ecallmgr_fs_nodes:connected(),
+    [maybe_flush_node_of_media(MediaUrl, N) || N <- Nodes],
+    'ok'.
+
+-spec maybe_flush_node_of_media(ne_binary(), atom()) -> 'ok'.
+maybe_flush_node_of_media(_MediaUrl, _Node) ->
+    %% TODO: We need to both reduce the expelled
+    %%  notifications (they currently include things
+    %%  like voicemail message saves) as well as
+    %%  massively increase the effeciency of the flush.
+    'ok'.
 
 -spec custom_sip_headers(wh_proplist()) -> wh_proplist().
 custom_sip_headers(Props) ->
@@ -977,6 +1049,7 @@ is_custom_sip_header(_Header) -> 'false'.
 maybe_add_expires_deviation('undefined') -> 'undefined';
 maybe_add_expires_deviation(Expires) when not is_integer(Expires) ->
     maybe_add_expires_deviation(wh_util:to_integer(Expires));
+maybe_add_expires_deviation(0) -> 0;
 maybe_add_expires_deviation(Expires) ->
     Expires + ecallmgr_config:get_integer(<<"expires_deviation_time">>, 180).
 
@@ -986,3 +1059,12 @@ maybe_add_expires_deviation_ms(Expires) when not is_integer(Expires) ->
     maybe_add_expires_deviation_ms(wh_util:to_integer(Expires));
 maybe_add_expires_deviation_ms(Expires) ->
     maybe_add_expires_deviation(Expires) * 1000.
+
+-spec get_dial_separator(api_object() | ne_binary(), wh_json:objects()) -> ne_binary().
+get_dial_separator(?DIAL_METHOD_SIMUL, [_|T]) when T =/= [] -> ?SEPARATOR_SIMULTANEOUS;
+get_dial_separator(?DIAL_METHOD_SINGLE, _Endpoints) -> ?SEPARATOR_SINGLE;
+get_dial_separator('undefined', _Endpoints) -> ?SEPARATOR_SINGLE;
+get_dial_separator(JObj, Endpoints) ->
+    get_dial_separator(wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, ?DIAL_METHOD_SINGLE)
+                       ,Endpoints
+                      ).

@@ -39,6 +39,7 @@ deps/rabbitmq_server-*/src/rabbit_framing_amqp_0_8.erl
 deps/rabbitmq_server-*/src/rabbit_framing_amqp_0_9_1.erl
 deps/rabbitmq_server-*/src/rabbit_plugins_usage.erl
 deps/rabbitmq_client-*
+deps/rabbit_common-*
 !deps/rabbitmq_server-*/plugins-src/eldap-wrapper/eldap-git/ebin/eldap.app
 !deps/rabbitmq_server-*/plugins-src/erlang-rfc4627-wrapper/erlang-rfc4627-git/ebin/rfc4627_jsonrpc.app
 !deps/rabbitmq_server-*/plugins-src/webmachine-wrapper/webmachine-git/ebin/webmachine.app
@@ -49,3 +50,4 @@ applications/*/priv/archive_data/*
 /deps/erlang-localtime-1.0.0/include/tz_index.hrl
 .project
 .settings
+/deps/rabbit_common-3.3.5/

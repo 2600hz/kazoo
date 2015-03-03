@@ -4,24 +4,25 @@
 -type bt_result() :: {'ok', term()}.
 -type bt_xml() :: term(). %%  record_proplist() | braintree_util:char_to_bin_res().
 
--type braintree_failures() :: no_payment_token |
-                              authentication |
-                              authorization |
-                              not_found |
-                              upgrade_required |
-                              server_error |
-                              maintenance |
-                              io_fault |
-                              api_error.
+-type braintree_failures() :: 'no_payment_token' |
+                              'authentication' |
+                              'authorization' |
+                              'not_found' |
+                              'upgrade_required' |
+                              'server_error' |
+                              'maintenance' |
+                              'io_fault' |
+                              'api_error'.
 
--define(BT_DEBUG, whapps_config:get_is_true(<<"braintree">>, <<"debug">>, false)).
+-define(BT_DEBUG, whapps_config:get_is_true(<<"braintree">>, <<"debug">>, 'false')).
 
 -define(BT_XML_PROLOG, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>").
 -define(BT_API_VERSION, 2).
 -define(BT_SERVER_URL, [{"production", "www.braintreegateway.com"}
-                         ,{"prodcution", "www.braintreegateway.com"}
-                         ,{"qa", "qa.braintreegateway.com"}
-                         ,{"sandbox", "sandbox.braintreegateway.com"}]).
+                        ,{"prodcution", "www.braintreegateway.com"}
+                        ,{"qa", "qa.braintreegateway.com"}
+                        ,{"sandbox", "sandbox.braintreegateway.com"}
+                       ]).
 -define(BT_EMPTY_XML, fun() -> xmerl_scan:string("<?xml version=\"1.0\"?><empty />") end()).
 
 -define(BT_CARD_AMEX, <<"American Express">>).

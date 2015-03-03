@@ -16,6 +16,7 @@
 -export([init/0
          ,allowed_methods/0, allowed_methods/1, allowed_methods/3
          ,resource_exists/0, resource_exists/1, resource_exists/3
+         ,validate_resource/1, validate_resource/2, validate_resource/3, validate_resource/4
          ,billing/1
          ,authenticate/1
          ,authorize/1
@@ -52,6 +53,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"v2_resource.authenticate">>, ?MODULE, 'authenticate'),
     _ = crossbar_bindings:bind(<<"v2_resource.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"v2_resource.billing">>, ?MODULE, 'billing'),
+    _ = crossbar_bindings:bind(<<"v2_resource.validate_resource.users">>, ?MODULE, 'validate_resource'),
     _ = crossbar_bindings:bind(<<"v2_resource.validate.users">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"v2_resource.execute.put.users">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"v2_resource.execute.post.users">>, ?MODULE, 'post'),
@@ -144,6 +146,53 @@ process_billing(Context, _Nouns, _Verb) -> Context.
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% This function determines if the provided list of Nouns and Resource Ids are valid.
+%% If valid, updates Context with userId
+%%
+%% Failure here returns 404
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_resource(cb_context:context()) -> cb_context:context().
+-spec validate_resource(cb_context:context(), path_token()) -> cb_context:context().
+-spec validate_resource(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+-spec validate_resource(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
+validate_resource(Context) -> Context.
+validate_resource(Context, UserId) -> validate_user_id(UserId, Context).
+validate_resource(Context, UserId, _) -> validate_user_id(UserId, Context).
+validate_resource(Context, UserId, _, _) -> validate_user_id(UserId, Context).
+
+-spec validate_user_id(api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_user_id(api_binary(), cb_context:context(), wh_json:object()) -> cb_context:context().
+validate_user_id(UserId, Context) ->
+    case couch_mgr:open_cache_doc(cb_context:account_db(Context), UserId) of
+        {'ok', Doc} -> validate_user_id(UserId, Context, Doc);
+        {'error', 'not_found'} ->
+            cb_context:add_system_error(
+                'bad_identifier'
+                ,wh_json:from_list([{<<"cause">>, UserId}])
+                ,Context
+            );
+        {'error', _R} -> crossbar_util:response_db_fatal(Context)
+    end.
+
+validate_user_id(UserId, Context, Doc) ->
+    case wh_doc:is_soft_deleted(Doc) of
+        'true' ->
+            cb_context:add_system_error(
+                'bad_identifier'
+                ,wh_json:from_list([{<<"cause">>, UserId}])
+                ,Context
+            );
+        'false'->
+            cb_context:setters(Context
+                               ,[{fun cb_context:set_user_id/2, UserId}
+                                 ,{fun cb_context:set_resp_status/2, 'success'}
+                                ])
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
 %% This function determines if the parameters and content are correct
 %% for this request
 %%
@@ -187,7 +236,7 @@ post(Context, _) ->
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    DryRun = (not wh_json:is_true(<<"accept_charges">>, cb_context:req_json(Context), 'false')),
+    DryRun = not(cb_context:accepting_charges(Context)),
     put_resp(DryRun, Context).
 
 put_resp('true', Context) ->
@@ -205,23 +254,10 @@ put_resp('false', Context) ->
 dry_run(Context) ->
     JObj = cb_context:doc(Context),
     AccountId = cb_context:account_id(Context),
-
     UserType = wh_json:get_value(<<"priv_level">>, JObj),
-    UserName = wh_json:get_value(<<"username">>, JObj),
-
     Services = wh_services:fetch(AccountId),
     UpdateServices = wh_service_users:reconcile(Services, UserType),
-
-    Charges = wh_services:activation_charges(<<"devices">>, UserType, Services),
-
-    case Charges > 0 of
-        'false' -> wh_services:calculate_charges(UpdateServices, []);
-        'true' ->
-            Transaction = wh_transaction:debit(AccountId, wht_util:dollars_to_units(Charges)),
-            Desc = <<"activation charges for ", UserType/binary , " ", UserName/binary>>,
-            Transaction2 = wh_transaction:set_description(Desc, Transaction),
-            wh_services:calculate_charges(UpdateServices, [Transaction2])
-    end.
+    wh_services:dry_run(UpdateServices).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _Id) ->
@@ -240,7 +276,18 @@ patch(Context, _Id) ->
 %%--------------------------------------------------------------------
 -spec load_user_summary(cb_context:context()) -> cb_context:context().
 load_user_summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+    fix_envelope(
+        crossbar_doc:load_view(
+            ?CB_LIST
+            ,[]
+            ,Context
+            ,fun normalize_view_results/2
+        )
+    ).
+
+-spec fix_envelope(cb_context:context()) -> cb_context:context().
+fix_envelope(Context) ->
+    cb_context:set_resp_data(Context, lists:reverse(cb_context:resp_data(Context))).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -299,7 +346,10 @@ check_user_name(UserId, Context) ->
                 cb_context:add_validation_error(
                     [<<"username">>]
                     ,<<"unique">>
-                    ,<<"Username already in use">>
+                    ,wh_json:from_list([
+                        {<<"message">>, <<"User name already in use">>}
+                        ,{<<"cause">>, UserName}
+                     ])
                     ,Context
                 ),
             lager:error("username ~p is already used", [UserName]),
@@ -311,7 +361,7 @@ check_emergency_caller_id(UserId, Context) ->
     Context1 = crossbar_util:format_emergency_caller_id_number(Context),
     check_user_schema(UserId, Context1).
 
--spec is_username_unique(api_binary(), ne_binary(), ne_binary()) -> boolean().
+-spec is_username_unique(api_binary(), api_binary(), ne_binary()) -> boolean().
 is_username_unique(AccountDb, UserId, UserName) ->
     ViewOptions = [{'key', UserName}],
     case couch_mgr:get_results(AccountDb, ?LIST_BY_USERNAME, ViewOptions) of
@@ -374,24 +424,28 @@ maybe_validate_username(UserId, Context) ->
             manditory_rehash_creds(UserId, NewUsername, Context);
         %% updated username to existing, collect any further errors...
         _Else ->
-            C = cb_context:add_validation_error(<<"username">>
-                                                ,<<"unique">>
-                                                ,<<"Username is not unique for this account">>
-                                                ,Context
-                                               ),
+            C = cb_context:add_validation_error(
+                    <<"username">>
+                    ,<<"unique">>
+                    ,wh_json:from_list([
+                        {<<"message">>, <<"User name is not unique for this account">>}
+                        ,{<<"cause">>, NewUsername}
+                     ])
+                    ,Context
+                ),
             manditory_rehash_creds(UserId, NewUsername, C)
     end.
 
 -spec maybe_rehash_creds(api_binary(), api_binary(), cb_context:context()) -> cb_context:context().
 maybe_rehash_creds(UserId, Username, Context) ->
     case wh_json:get_ne_value(<<"password">>, cb_context:doc(Context)) of
-        %% No username or hash, no creds for you!
+        %% No user name or hash, no creds for you!
         'undefined' when Username =:= 'undefined' ->
             HashKeys = [<<"pvt_md5_auth">>, <<"pvt_sha1_auth">>],
             cb_context:set_doc(Context, wh_json:delete_keys(HashKeys, cb_context:doc(Context)));
-        %% Username without password, creds status quo
+        %% User name without password, creds status quo
         'undefined' -> Context;
-        %% Got a password, hope you also have a username...
+        %% Got a password, hope you also have a user name...
         Password -> rehash_creds(UserId, Username, Password, Context)
     end.
 
@@ -400,22 +454,28 @@ maybe_rehash_creds(UserId, Username, Context) ->
 manditory_rehash_creds(UserId, Username, Context) ->
     case wh_json:get_ne_value(<<"password">>, cb_context:doc(Context)) of
         'undefined' ->
-            cb_context:add_validation_error(<<"password">>
-                                            ,<<"required">>
-                                            ,<<"The password must be provided when updating the username">>
-                                            ,Context
-                                           );
+            cb_context:add_validation_error(
+                <<"password">>
+                ,<<"required">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"The password must be provided when updating the user name">>}
+                 ])
+                ,Context
+            );
         Password -> rehash_creds(UserId, Username, Password, Context)
     end.
 
 -spec rehash_creds(api_binary(), api_binary(), ne_binary(), cb_context:context()) ->
                           cb_context:context().
 rehash_creds(_UserId, 'undefined', _Password, Context) ->
-    cb_context:add_validation_error(<<"username">>
-                                    ,<<"required">>
-                                    ,<<"The username must be provided when updating the password">>
-                                    ,Context
-                                   );
+    cb_context:add_validation_error(
+        <<"username">>
+        ,<<"required">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"The user name must be provided when updating the password">>}
+         ])
+        ,Context
+    );
 rehash_creds(_UserId, Username, Password, Context) ->
     lager:debug("password set on doc, updating hashes for ~s", [Username]),
     {MD5, SHA1} = cb_modules_util:pass_hashes(Username, Password),
@@ -448,7 +508,7 @@ maybe_validate_quickcall(Context, _) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% This function will determine if the username in the request is
+%% This function will determine if the user name in the request is
 %% unique or belongs to the request being made
 %% @end
 %%--------------------------------------------------------------------
@@ -469,7 +529,7 @@ username_doc_id(Username, Context, _AccountDb) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Normalizes the resuts of a view
+%% Normalizes the results of a view
 %% @end
 %%--------------------------------------------------------------------
 -spec(normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects()).

@@ -24,7 +24,7 @@
 -behaviour(gen_server).
 
 -export([send_stun_sync/3, send_stun_async/3, get_port/1]).
--export([get_listener/3, connect/3]).
+-export([get_listener/3, connect/2]).
 -export([start_link/3, init/1, terminate/2, code_change/3, handle_call/3, handle_cast/2,
              handle_info/2]).
 
@@ -41,8 +41,10 @@
 %% It does not open a new NkSIP's UDP connection
 send_stun_sync(Pid, Ip, Port) ->
     case catch gen_server:call(Pid, {send_stun, Ip, Port}, 30000) of
-        {ok, StunIp, StunPort} -> {ok, StunIp, StunPort};
-        error -> error
+        {ok, StunIp, StunPort} -> 
+            {ok, StunIp, StunPort};
+        error -> 
+            error
     end.
 
 
@@ -66,7 +68,7 @@ get_port(Pid) ->
 
 
 %% @private Starts a new listening server
--spec get_listener(nksip:app_id(), nksip:transport(), nksip_lib:optslist()) ->
+-spec get_listener(nksip:app_id(), nksip:transport(), nksip:optslist()) ->
     term().
 
 get_listener(AppId, #transport{listen_ip=Ip, listen_port=Port}=Transp, Opts) ->
@@ -81,14 +83,17 @@ get_listener(AppId, #transport{listen_ip=Ip, listen_port=Port}=Transp, Opts) ->
 
 
 %% @private Starts a new connection to a remote server
--spec connect(pid(), nksip:transport(), nksip_lib:optslist()) ->
+-spec connect(pid(), nksip:transport()) ->
     {ok, pid(), nksip_transport:transport()} | {error, term()}.
          
-%% @private Registers a new connection
-connect(Pid, #transport{remote_ip=Ip, remote_port=Port}, _Opts) ->
-    case catch gen_server:call(Pid, {connect, Ip, Port}) of
-        {ok, Pid1, Transp1} -> {ok, Pid1, Transp1};
-        _ -> {error, internal_error}
+connect(Pid, #transport{remote_ip=Ip, remote_port=Port}) ->
+    case catch gen_server:call(Pid, {connect, Ip, Port}, 30000) of
+        {ok, Pid1, Transp1} -> 
+            {ok, Pid1, Transp1};
+        {error, Error} ->
+            {error, Error};
+        {'EXIT', Error} -> 
+            {error, Error}
     end.
 
 
@@ -157,8 +162,7 @@ init([AppId, #transport{listen_ip=Ip, listen_port=Port}=Transp, Opts]) ->
     gen_server_call(#state{}).
 
 handle_call({connect, Ip, Port}, _From, State) ->
-    {Pid, Transp1} = do_connect(Ip, Port, State),
-    {reply, {ok, Pid, Transp1}, State};
+    {reply, do_connect(Ip, Port, State), State};
 
 % It should not be used normally, use the nksip_connection version
 handle_call({send, Ip, Port, Packet}, _From, #state{socket=Socket}=State) ->
@@ -171,7 +175,7 @@ handle_call(get_port, _From, #state{transport=#transport{listen_port=Port}}=Stat
     {reply, {ok, Port}, State};
 
 handle_call(Msg, _Form, State) -> 
-    lager:warning("Module ~p received unexpected call: ~p", [?MODULE, Msg]),
+    lager:error("Module ~p received unexpected call: ~p", [?MODULE, Msg]),
     {noreply, State}.
 
 
@@ -189,7 +193,7 @@ handle_cast({send_stun, Ip, Port, Pid}, #state{app_id=AppId}=State) ->
     {noreply, do_send_stun(AppId, Ip, Port, {cast, Pid}, State)};
 
 handle_cast(Msg, State) -> 
-    lager:warning("Module ~p received unexpected cast: ~p", [?MODULE, Msg]),
+    lager:error("Module ~p received unexpected cast: ~p", [?MODULE, Msg]),
     {noreply, State}.
 
 
@@ -206,11 +210,16 @@ handle_info({udp, Socket, Ip, Port, <<0:2, _Header:158, _Msg/binary>>=Packet}, S
     ok = inet:setopts(Socket, [{active, once}]),
     case nksip_stun:decode(Packet) of
         {request, binding, TransId, _} ->
-            {Pid, _Transp} = do_connect(Ip, Port, State),
-            Response = nksip_stun:binding_response(TransId, Ip, Port),
-            nksip_connection:async_send(Pid, Response),
-            ?debug(AppId, <<>>, "sent STUN bind response to ~p:~p", [Ip, Port]),
-            {noreply, State};
+            case do_connect(Ip, Port, State) of
+                {ok, Pid, _Transp} ->    
+                    Response = nksip_stun:binding_response(TransId, Ip, Port),
+                    nksip_connection:async_send(Pid, Response),
+                    ?debug(AppId, <<>>, "sent STUN bind response to ~p:~p", [Ip, Port]),
+                    {noreply, State};
+                {error, Error} ->
+                    ?notice(AppId, <<>>, "Error starting UDP connection: ~p", [Error]),
+                    {noreply, State}
+            end;
         {response, binding, TransId, Attrs} ->
             {noreply, do_stun_response(TransId, Attrs, State)};
         error ->
@@ -349,8 +358,10 @@ do_stun_timeout(Stun, State) ->
 %% @private
 start_tcp(AppId, Ip, Port, Opts, Pid) ->
     case nksip_transport:start_transport(AppId, tcp, Ip, Port, Opts) of
-        {ok, TcpPid} -> gen_server:cast(Pid, {matching_tcp, {ok, TcpPid}});
-        {error, Error} -> gen_server:cast(Pid, {matching_tcp, {error, Error}})
+        {ok, TcpPid} -> 
+            gen_server:cast(Pid, {matching_tcp, {ok, TcpPid}});
+        {error, Error} -> 
+            gen_server:cast(Pid, {matching_tcp, {error, Error}})
     end.
 
 %% @private Checks if a port is available for UDP and TCP
@@ -373,12 +384,16 @@ open_port(AppId, Ip, Port, Iter) ->
 
 %% @private 
 read_packets(Ip, Port, Packet, #state{socket=Socket}=State, N) ->
-    {Pid, _} = do_connect(Ip, Port, State),
-    nksip_connection:incoming(Pid, Packet),
-    case N>0 andalso gen_udp:recv(Socket, 0, 0) of
-        {ok, {Ip1, Port1, Packet1}} -> 
-            read_packets(Ip1, Port1, Packet1, State, N-1);
-        _ ->
+    case do_connect(Ip, Port, State) of
+        {ok, Pid, _} ->
+            nksip_connection:incoming(Pid, Packet),
+            case N>0 andalso gen_udp:recv(Socket, 0, 0) of
+                {ok, {Ip1, Port1, Packet1}} -> 
+                    read_packets(Ip1, Port1, Packet1, State, N-1);
+                _ ->
+                    ok
+            end;
+        {error, _} ->
             ok
     end.
 
@@ -388,11 +403,17 @@ do_connect(Ip, Port, State) ->
     #state{app_id=AppId, transport=Transp, socket=Socket, timeout=Timeout}= State,
     case nksip_transport:get_connected(AppId, udp, Ip, Port, <<>>) of
         [{Transp1, Pid}|_] -> 
-            {Pid, Transp1};
+            {ok, Pid, Transp1};
         [] ->
-            Transp1 = Transp#transport{remote_ip=Ip, remote_port=Port},
-            {ok, Pid} = nksip_connection:start_link(AppId, Transp1, Socket, Timeout),
-            {Pid, Transp1}
+            case nksip_connection:is_max(AppId) of
+                false ->
+                    Transp1 = Transp#transport{remote_ip=Ip, remote_port=Port},
+                    {ok, Pid} = nksip_connection:start_link(AppId, Transp1, 
+                                                            Socket, Timeout),
+                    {ok, Pid, Transp1};
+                true ->
+                    {error, max_connections}
+            end
     end.
 
 

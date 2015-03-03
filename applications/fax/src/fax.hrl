@@ -1,7 +1,6 @@
 -ifndef(FAX_HRL).
 
 %% Typical includes needed
--include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
@@ -29,6 +28,17 @@
          }).
 -type fax_storage() :: #fax_storage{}.
 
+-define(FAX_OUTGOING, <<"outgoing">>).
+-define(FAX_INCOMING, <<"incoming">>).
+
+-define(FAX_START, <<"start">>).
+-define(FAX_PREPARE, <<"prepare">>).
+-define(FAX_SEND, <<"send">>).
+-define(FAX_RECEIVE, <<"receive">>).
+-define(FAX_END, <<"end">>).
+-define(FAX_ERROR, <<"error">>).
+
+-define(FAX_STATE_LIST, [?FAX_START, ?FAX_PREPARE, ?FAX_SEND, ?FAX_RECEIVE, ?FAX_END, ?FAX_ERROR]).
 
 -define(FAX_HRL, 'true').
 -endif.

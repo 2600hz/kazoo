@@ -24,7 +24,6 @@
         ]).
 
 -include("blackhole.hrl").
--include_lib("rabbitmq_server/include/rabbit_framing.hrl").
 
 -record(state, {}).
 -type state() :: #state{}.
@@ -60,7 +59,7 @@ start_link() ->
                             ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
                             ], []).
 
--spec handle_amqp_event(wh_json:object(), wh_proplist(), #'basic.deliver'{} | ne_binary()) -> any().
+-spec handle_amqp_event(wh_json:object(), wh_proplist(), gen_listener:basic_deliver() | ne_binary()) -> any().
 handle_amqp_event(EventJObj, Props, #'basic.deliver'{routing_key=RoutingKey}) ->
     handle_amqp_event(EventJObj, Props, RoutingKey);
 handle_amqp_event(EventJObj, _Props, <<_/binary>> = RoutingKey) ->

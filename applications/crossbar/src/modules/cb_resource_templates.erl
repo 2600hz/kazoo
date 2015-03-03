@@ -166,10 +166,14 @@ is_allowed_to_update(Context) ->
 
 -spec forbidden(cb_context:context()) -> cb_context:context().
 forbidden(Context) ->
-    cb_context:add_validation_error(<<"Account">>
-                                   ,<<"forbidden">>
-                                   ,<<"You are not authorized to modify the resource templates">>
-                                   ,Context).
+    cb_context:add_validation_error(
+        <<"Account">>
+        ,<<"forbidden">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"You are not authorized to modify the resource templates">>}
+         ])
+        ,Context
+    ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -189,10 +193,14 @@ validate_request(ResourceId, Context) ->
 check_template_name(Context) ->
     case wh_json:get_ne_value(<<"template_name">>, cb_context:req_data(Context)) of
         'undefined' ->
-            cb_context:add_validation_error(<<"template_name">>
-                                           ,<<"required">>
-                                           ,<<"Template name is required">>
-                                           ,Context);
+            cb_context:add_validation_error(
+                <<"template_name">>
+               ,<<"required">>
+               ,wh_json:from_list([
+                    {<<"message">>, <<"Template name is required">>}
+                 ])
+               ,Context
+            );
         _Name -> cb_context:set_resp_status(Context, 'success')
     end.
 

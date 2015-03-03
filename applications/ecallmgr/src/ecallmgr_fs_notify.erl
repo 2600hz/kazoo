@@ -96,10 +96,9 @@ resp_to_probe(State, User, Realm) ->
     PresenceId = <<User/binary, "@", Realm/binary>>,
     PresenceUpdate = [{<<"Presence-ID">>, PresenceId}
                       ,{<<"State">>, State}
-                      ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:md5(PresenceId))}
+                      ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:hash(md5, PresenceId))}
                       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                      ],
-    io:format("resp_to_probe: ~p~n", [PresenceUpdate]),
     wh_amqp_worker:cast(PresenceUpdate, fun wapi_presence:publish_update/1).
 
 -spec check_sync(ne_binary(), ne_binary()) -> 'ok'.
@@ -118,6 +117,7 @@ check_sync(Username, Realm) ->
 send_check_sync(Node, Username, Realm, Contact) ->
     Headers = [{"profile", ?DEFAULT_FS_PROFILE}
                ,{"contact", Contact}
+               ,{"contact-uri", Contact}
                ,{"to-uri", <<"sip:", Username/binary, "@", Realm/binary>>}
                ,{"from-uri", <<"sip:", Username/binary, "@", Realm/binary>>}
                ,{"event-string", "check-sync"}
@@ -159,6 +159,7 @@ send_mwi_update(JObj, Node, Registration) ->
                         ]),
     Headers = [{"profile", ?DEFAULT_FS_PROFILE}
                ,{"contact", Contact}
+               ,{"contact-uri", Contact}
                ,{"to-uri", To}
                ,{"from-uri", From}
                ,{"event-str", "message-summary"}
@@ -183,6 +184,7 @@ register_overwrite(JObj, Props) ->
     NewBody = wh_util:to_list(<<"Overwrote:", PrevContact/binary>>),
     PrevContactHeaders = [{"profile", ?DEFAULT_FS_PROFILE}
                           ,{"contact", PrevContact}
+                          ,{"contact-uri", PrevContact}
                           ,{"to-uri", SipUri}
                           ,{"from-uri", SipUri}
                           ,{"event-str", "registration-overwrite"}
@@ -192,6 +194,7 @@ register_overwrite(JObj, Props) ->
                          ],
     NewContactHeaders = [{"profile", ?DEFAULT_FS_PROFILE}
                          ,{"contact", NewContact}
+                         ,{"contact-uri", NewContact}
                          ,{"to-uri", SipUri}
                          ,{"from-uri", SipUri}
                          ,{"event-str", "registration-overwrite"}

@@ -26,7 +26,7 @@
 
 -define(SERVER, ?MODULE).
 
--define(RESPONDERS, [{'notify_voicemail_to_email', [{<<"notification">>, <<"new_voicemail">>}]}
+-define(RESPONDERS, [{'notify_voicemail_to_email', [{<<"notification">>, <<"voicemail_new">>}]}
                      ,{'notify_voicemail_full', [{<<"notification">>, <<"voicemail_full">>}]}
                      ,{'notify_fax_inbound_to_email', [{<<"notification">>, <<"inbound_fax">>}]}
                      ,{'notify_fax_outbound_to_email', [{<<"notification">>, <<"outbound_fax">>}]}
@@ -162,8 +162,13 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Props}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(_JObj, _State) ->
-    {'reply', []}.
+handle_event(JObj, _State) ->
+    case should_handle(JObj) of
+        'false' -> 'ignore';
+        'true' ->
+            lager:debug("handling notification for ~p", [wh_util:get_event_type(JObj)]),
+            {'reply', []}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -189,3 +194,28 @@ terminate(_Reason, _State) ->
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
+
+-spec should_handle(wh_json:object()) -> boolean().
+should_handle(JObj) ->
+    case wh_json:get_first_defined([<<"Account-ID">>, <<"Account-DB">>], JObj) of
+        'undefined' -> should_handle_system();
+        Account -> should_handle_account(Account)
+    end.
+
+-spec should_handle_system() -> boolean().
+should_handle_system() ->
+    whapps_config:get_value(?NOTIFY_CONFIG_CAT
+                            ,<<"notification_app">>
+                            ,?APP_NAME
+                           ) =:= ?APP_NAME.
+
+-spec should_handle_account(ne_binary()) -> boolean().
+should_handle_account(Account) ->
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+        {'ok', AccountJObj} ->
+            kz_account:notification_preference(AccountJObj) =:= 'undefined';
+        {'error', _E} -> 'true'
+    end.

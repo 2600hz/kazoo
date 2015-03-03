@@ -16,8 +16,10 @@
 
          ,attachment_name/2
          ,content_type_to_extension/1
+         ,parse_media_type/1
 
          ,bucket_name/1
+         ,token_cost/1, token_cost/2, token_cost/3
          ,reconcile_services/1
          ,bind/2
 
@@ -28,7 +30,11 @@
 
 -include("../crossbar.hrl").
 
--define(MAX_RANGE, whapps_config:get_integer(?CONFIG_CAT, <<"maximum_range">>, (?SECONDS_IN_DAY * 31 + ?SECONDS_IN_HOUR))).
+-define(MAX_RANGE, whapps_config:get_integer(?CONFIG_CAT
+                                             ,<<"maximum_range">>
+                                             ,(?SECONDS_IN_DAY * 31 + ?SECONDS_IN_HOUR)
+                                            )
+       ).
 
 -spec range_view_options(cb_context:context()) ->
                                 {pos_integer(), pos_integer()} |
@@ -45,22 +51,29 @@ range_view_options(Context, MaxRange) ->
 
     case CreatedTo - CreatedFrom of
         N when N < 0 ->
-            Message = <<"created_from is prior to created_to">>,
-            cb_context:add_validation_error(<<"created_from">>
-                                            ,<<"date_range">>
-                                            ,Message
-                                            ,Context
-                                           );
+            cb_context:add_validation_error(
+                <<"created_from">>
+                ,<<"date_range">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"created_from is prior to created_to">>}
+                    ,{<<"cause">>, CreatedFrom}
+                 ])
+                ,Context
+            );
         N when N > MaxRange ->
             Message = <<"created_to is more than "
                         ,(wh_util:to_binary(MaxRange))/binary
                         ," seconds from created_from"
                       >>,
-            cb_context:add_validation_error(<<"created_from">>
-                                            ,<<"date_range">>
-                                            ,Message
-                                            ,Context
-                                           );
+            cb_context:add_validation_error(
+                <<"created_from">>
+                ,<<"date_range">>
+                ,wh_json:from_list([
+                    {<<"message">>, Message}
+                    ,{<<"cause">>, CreatedTo}
+                 ])
+                ,Context
+            );
         _N -> {CreatedFrom, CreatedTo}
     end.
 
@@ -116,8 +129,8 @@ reconcile_services(Context) ->
 -spec pass_hashes(ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
 pass_hashes(Username, Password) ->
     Creds = list_to_binary([Username, ":", Password]),
-    SHA1 = wh_util:to_hex_binary(crypto:sha(Creds)),
-    MD5 = wh_util:to_hex_binary(erlang:md5(Creds)),
+    SHA1 = wh_util:to_hex_binary(crypto:hash(sha, Creds)),
+    MD5 = wh_util:to_hex_binary(crypto:hash(md5, Creds)),
     {MD5, SHA1}.
 
 -spec update_mwi(api_binary(), ne_binary()) -> pid().
@@ -408,6 +421,12 @@ content_type_to_extension(<<"image/gif">>) -> <<"gif">>;
 content_type_to_extension(<<"text/html">>) -> <<"html">>;
 content_type_to_extension(<<"text/plain">>) -> <<"txt">>.
 
+-spec parse_media_type(ne_binary()) ->
+                              {'error', 'badarg'} |
+                              media_values().
+parse_media_type(MediaType) ->
+    cowboy_http:nonempty_list(MediaType, fun cowboy_http:media_range/2).
+
 -spec bucket_name(cb_context:context()) -> ne_binary().
 -spec bucket_name(api_binary(), api_binary()) -> ne_binary().
 bucket_name(Context) ->
@@ -423,3 +442,61 @@ bucket_name('undefined', AccountId) ->
     <<"no_ip/", AccountId/binary>>;
 bucket_name(IP, AccountId) ->
     <<IP/binary, "/", AccountId/binary>>.
+
+-spec token_cost(cb_context:context()) -> non_neg_integer().
+-spec token_cost(cb_context:context(), non_neg_integer() | wh_json:key() | wh_json:keys()) -> non_neg_integer().
+-spec token_cost(cb_context:context(), non_neg_integer(), wh_json:keys()) -> non_neg_integer().
+
+token_cost(Context) ->
+    token_cost(Context, 1).
+
+token_cost(Context, <<_/binary>> = Suffix) ->
+    token_cost(Context, 1, [Suffix]);
+token_cost(Context, [_|_]=Suffix) ->
+    token_cost(Context, 1, Suffix);
+token_cost(Context, Default) ->
+    token_cost(Context, Default, []).
+
+token_cost(Context, Default, Suffix) when is_integer(Default), Default >= 0 ->
+    Costs = whapps_config:get(?CONFIG_CAT, <<"token_costs">>, 1),
+    find_token_cost(Costs
+                    ,Default
+                    ,Suffix
+                    ,cb_context:req_nouns(Context)
+                    ,cb_context:req_verb(Context)
+                    ,cb_context:account_id(Context)
+                   ).
+
+-spec find_token_cost(wh_json:object() | non_neg_integer()
+                      ,non_neg_integer()
+                      ,wh_json:keys()
+                      ,req_nouns()
+                      ,http_method()
+                      ,api_binary()
+                     ) ->
+                             non_neg_integer().
+
+find_token_cost(N, _Default, _Suffix, _Nouns, _ReqVerb, _AccountId) when is_integer(N) ->
+    lager:debug("flat token cost of ~p configured", [N]),
+    N;
+find_token_cost(JObj, Default, Suffix, [{Endpoint, _} | _], ReqVerb, 'undefined') ->
+    Keys = [[Endpoint, ReqVerb | Suffix]
+            ,[Endpoint | Suffix]
+           ],
+    get_token_cost(JObj, Default, Keys);
+find_token_cost(JObj, Default, Suffix, [{Endpoint, _}|_], ReqVerb, AccountId) ->
+    Keys = [[AccountId, Endpoint, ReqVerb | Suffix]
+            ,[AccountId, Endpoint | Suffix]
+            ,[AccountId | Suffix]
+            ,[Endpoint, ReqVerb | Suffix]
+            ,[Endpoint | Suffix]
+           ],
+    get_token_cost(JObj, Default, Keys).
+
+-spec get_token_cost(wh_json:object(), non_neg_integer(), wh_json:keys()) ->
+                            non_neg_integer().
+get_token_cost(JObj, Default, Keys) ->
+    case wh_json:get_first_defined(Keys, JObj) of
+        'undefined' -> Default;
+        V -> wh_util:to_integer(V)
+    end.

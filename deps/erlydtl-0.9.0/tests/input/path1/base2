@@ -1,5 +1,0 @@
-pre content
-
-{% block content %}default content{% endblock %}
-
-post

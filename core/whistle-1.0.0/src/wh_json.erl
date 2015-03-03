@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz
+%%% @copyright (C) 2011-2015, 2600Hz
 %%% @doc
 %%% proplists-like interface to json objects
 %%% @end
@@ -33,15 +33,20 @@
          ,map/2
          ,foldl/3
          ,find/2, find/3
+         ,find_value/3, find_value/4
          ,foreach/2
          ,all/2, any/2
         ]).
+
 -export([get_ne_value/2, get_ne_value/3]).
 -export([get_value/2, get_value/3
-         ,get_values/1
+         ,get_values/1, get_values/2
         ]).
 -export([get_keys/1, get_keys/2]).
--export([set_value/3, set_values/2, new/0]).
+-export([set_value/3, set_values/2
+         ,insert_value/3
+         ,new/0
+        ]).
 -export([delete_key/2, delete_key/3, delete_keys/2]).
 -export([merge_recursive/1
          ,merge_recursive/2
@@ -82,10 +87,8 @@
 
 -include("wh_json.hrl").
 
--export_type([json_string/0, json_strings/0
-              ,json_term/0, json_terms/0
+-export_type([json_term/0, json_terms/0
               ,json_proplist/0, json_proplist_k/1, json_proplist_kv/2
-              ,json_key/0
               ,object/0, objects/0
               ,key/0, keys/0
              ]).
@@ -96,11 +99,11 @@ new() -> ?JSON_WRAPPER([]).
 -spec encode(json_term()) -> text().
 encode(JObj) -> ejson:encode(JObj).
 
--spec decode(iolist() | ne_binary()) -> object().
--spec decode(iolist() | ne_binary(), ne_binary()) -> object().
+-spec decode(iolist() | ne_binary()) -> json_term().
+-spec decode(iolist() | ne_binary(), ne_binary()) -> json_term().
 
 decode(Thing) when is_list(Thing) orelse is_binary(Thing) ->
-    decode(Thing, ?DEFAULT_CONTENT_TYPE).
+    decode(Thing, <<"application/json">>).
 
 decode(JSON, <<"application/json">>) ->
     try ejson:decode(JSON) of
@@ -216,7 +219,7 @@ merge_recursive(JObj1, JObj2, Pred) when is_function(Pred, 2) ->
     merge_recursive(JObj1, JObj2, Pred, []).
 
 %% inserts values from JObj2 into JObj1
--spec merge_recursive(object(), object() | json_term(), merge_pred(), json_strings()) -> object().
+-spec merge_recursive(object(), object() | json_term(), merge_pred(), keys()) -> object().
 merge_recursive(?JSON_WRAPPER(_)=JObj1, ?JSON_WRAPPER(Prop2), Pred, Keys) when is_function(Pred, 2) ->
     lists:foldr(fun(Key, J) ->
                         merge_recursive(J, props:get_value(Key, Prop2), Pred, [Key|Keys])
@@ -259,7 +262,7 @@ to_querystring(JObj, Prefix) ->
 %% foreach key/value pair, encode the key/value with the prefix and prepend the &
 %% if the last key/value pair, encode the key/value with the prefix, prepend to accumulator
 %% and reverse the list (putting the key/value at the end of the list)
--spec fold_kvs(json_strings(), json_terms(), binary() | iolist(), iolist()) -> iolist().
+-spec fold_kvs(keys(), json_terms(), binary() | iolist(), iolist()) -> iolist().
 fold_kvs([], [], _, Acc) -> Acc;
 fold_kvs([K], [V], Prefix, Acc) -> lists:reverse([encode_kv(Prefix, K, V) | Acc]);
 fold_kvs([K|Ks], [V|Vs], Prefix, Acc) ->
@@ -304,9 +307,9 @@ get_json_value(Key, ?JSON_WRAPPER(_)=JObj, Default) ->
         _ -> Default
     end.
 
--spec filter(fun(({json_string(), json_term()}) -> boolean()), object()) ->
+-spec filter(fun(({key(), json_term()}) -> boolean()), object()) ->
                           object().
--spec filter(fun(({json_string(), json_term()}) -> boolean()), object(), key()) ->
+-spec filter(fun(({key(), json_term()}) -> boolean()), object(), key()) ->
                           object() | objects().
 filter(Pred, ?JSON_WRAPPER(Prop)) when is_function(Pred, 1) ->
     from_list([E || {_,_}=E <- Prop, Pred(E)]).
@@ -316,7 +319,7 @@ filter(Pred, ?JSON_WRAPPER(_)=JObj, Keys) when is_list(Keys),
     set_value(Keys, filter(Pred, get_json_value(Keys, JObj)), JObj);
 filter(Pred, JObj, Key) -> filter(Pred, JObj, [Key]).
 
--spec map(fun((json_string(), json_term()) -> {json_string(), json_term()}), object()) -> object().
+-spec map(fun((key(), json_term()) -> {key(), json_term()}), object()) -> object().
 map(F, ?JSON_WRAPPER(Prop)) -> from_list([ F(K, V) || {K,V} <- Prop]).
 
 -spec foreach(fun(({json_key(), json_term()}) -> any()), object()) -> 'ok'.
@@ -462,14 +465,14 @@ get_binary_boolean(Key, JObj, Default) ->
         Value -> wh_util:to_binary(wh_util:is_true(Value))
     end.
 
--spec get_keys(object()) -> json_strings().
--spec get_keys(key(), object()) -> [pos_integer(),...] | json_strings().
+-spec get_keys(object()) -> keys().
+-spec get_keys(key(), object()) -> [pos_integer(),...] | keys().
 get_keys(JObj) -> get_keys1(JObj).
 
 get_keys([], JObj) -> get_keys1(JObj);
 get_keys(Keys, JObj) -> get_keys1(get_value(Keys, JObj, new())).
 
--spec get_keys1(list() | object()) -> [pos_integer(),...] | json_strings().
+-spec get_keys1(list() | object()) -> [pos_integer(),...] | keys().
 get_keys1(KVs) when is_list(KVs) -> lists:seq(1,length(KVs));
 get_keys1(JObj) -> props:get_keys(to_proplist(JObj)).
 
@@ -505,6 +508,25 @@ find(Key, [JObj|JObjs], Default) when is_list(JObjs) ->
     case get_value(Key, JObj) of
         'undefined' -> find(Key, JObjs, Default);
         V -> V
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Find first json object that has a Value for Key.
+%% Returns the json object or 'undefined'
+%% @end
+%%--------------------------------------------------------------------
+-spec find_value(key(), json_term(), objects()) -> api_object().
+-spec find_value(key(), json_term(), objects(), Default) -> object() | Default.
+find_value(Key, Value, JObjs) ->
+    find_value(Key, Value, JObjs, 'undefined').
+
+find_value(_Key, _Value, [], Default) -> Default;
+find_value(Key, Value, [JObj|JObjs], Default) ->
+    case get_value(Key, JObj) of
+        Value -> JObj;
+        _Value -> find_value(Key, Value, JObjs, Default)
     end.
 
 -spec get_first_defined(keys(), object()) -> 'undefined' | json_term().
@@ -554,22 +576,33 @@ get_value1([K|Ks], ?JSON_WRAPPER(Props)=_JObj, Default) ->
 get_value1(_, _, Default) -> Default.
 
 %% split the json object into values and the corresponding keys
--spec get_values(object()) -> {json_terms(), json_strings()}.
+-spec get_values(object()) -> {json_terms(), keys()}.
 get_values(JObj) ->
     lists:foldr(fun(Key, {Vs, Ks}) ->
                         {[get_value(Key, JObj)|Vs], [Key|Ks]}
                 end, {[], []}, ?MODULE:get_keys(JObj)).
+
+-spec get_values(key(), object()) -> {json_terms(), keys()}.
+get_values(Key, JObj) ->
+    get_values(get_value(Key, JObj, new())).
 
 %% Figure out how to set the current key among a list of objects
 -spec set_values(json_proplist(), object()) -> object().
 set_values(KVs, JObj) when is_list(KVs) ->
     lists:foldr(fun({K,V}, JObj0) -> set_value(K, V, JObj0) end, JObj, KVs).
 
+-spec insert_value(key(), json_term(), object()) -> object().
+insert_value(Key, Value, JObj) ->
+    case get_value(Key, JObj) of
+        'undefined' -> set_value(Key, Value, JObj);
+        _V -> JObj
+    end.
+
 -spec set_value(key(), json_term(), object() | objects()) -> object() | objects().
 set_value(Keys, Value, JObj) when is_list(Keys) -> set_value1(Keys, Value, JObj);
 set_value(Key, Value, JObj) -> set_value1([Key], Value, JObj).
 
--spec set_value1(json_strings() | [integer(),...], json_term(), object() | objects()) -> object() | objects().
+-spec set_value1(keys() | integers(), json_term(), object() | objects()) -> object() | objects().
 set_value1([Key|_]=Keys, Value, []) when not is_integer(Key) -> set_value1(Keys, Value, new());
 set_value1([Key|T], Value, JObjs) when is_list(JObjs) ->
     Key1 = wh_util:to_integer(Key),
@@ -831,7 +864,7 @@ private_fields(JObj) -> filter(fun({K, _}) -> is_private_key(K) end, JObj).
 %% considered private; otherwise 'false'
 %% @end
 %%--------------------------------------------------------------------
--spec is_private_key(json_string()) -> boolean().
+-spec is_private_key(key()) -> boolean().
 is_private_key(<<"_", _/binary>>) -> 'true';
 is_private_key(<<"pvt_", _/binary>>) -> 'true';
 is_private_key(_) -> 'false'.
@@ -914,7 +947,7 @@ prop_get_value() ->
                       end)).
 
 prop_set_value() ->
-    ?FORALL({JObj, Key, Value}, {object(), json_strings(), json_term()},
+    ?FORALL({JObj, Key, Value}, {object(), keys(), json_term()},
             ?WHENFAIL(io:format("Failed prop_set_value with ~p:~p -> ~p~n", [Key, Value, JObj]),
                       begin
                           JObj1 = set_value(Key, Value, JObj),
@@ -1218,9 +1251,10 @@ to_querystring_test() ->
 get_values_test() ->
     ?assertEqual('true', are_all_there(?D1, [<<"d1v1">>, d1v2, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]], [<<"d1k1">>, <<"d1k2">>, <<"d1k3">>])).
 
+-define(K3_JOBJ, ?JSON_WRAPPER([{<<"k3.1">>, <<"v3.1">>}])).
 -define(CODEC_JOBJ, ?JSON_WRAPPER([{<<"k1">>, <<"v1">>}
                                    ,{<<"k2">>, ?EMPTY_JSON_OBJECT}
-                                   ,{<<"k3">>, ?JSON_WRAPPER([{<<"k3.1">>, <<"v3.1">>}])}
+                                   ,{<<"k3">>, ?K3_JOBJ}
                                    ,{<<"k4">>, [1,2,3]}
                                   ])).
 codec_test() ->
@@ -1230,5 +1264,18 @@ are_all_there(JObj, Vs, Ks) ->
     {Values, Keys} = get_values(JObj),
     lists:all(fun(K) -> lists:member(K, Keys) end, Ks) andalso
         lists:all(fun(V) -> lists:member(V, Values) end, Vs).
+
+find_value_test() ->
+    JObjs = decode(<<"[{\"k1\":\"v1\"},{\"k1\":\"v2\"}]">>),
+    ?assertEqual(<<"{\"k1\":\"v1\"}">>, encode(find_value(<<"k1">>, <<"v1">>, JObjs))),
+    ?assertEqual(<<"{\"k1\":\"v2\"}">>, encode(find_value(<<"k1">>, <<"v2">>, JObjs))),
+    ?assertEqual('undefined', find_value(<<"k1">>, <<"v3">>, JObjs)).
+
+insert_value_test() ->
+    JObj = decode(<<"{\"k1\":\"v1\",\"k2\":\"v2\"}">>),
+    NonInsert = insert_value(<<"k1">>, <<"v3">>, JObj),
+    Insert = insert_value(<<"k3">>, <<"v3">>, JObj),
+    ?assertEqual(<<"v1">>, get_value(<<"k1">>, NonInsert)),
+    ?assertEqual(<<"v3">>, get_value(<<"k3">>, Insert)).
 
 -endif.

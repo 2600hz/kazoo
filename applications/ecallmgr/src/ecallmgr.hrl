@@ -10,6 +10,8 @@
 
 -define(CHANNELS_TBL, 'ecallmgr_channels').
 
+-define(DEFAULT_FETCH_TIMEOUT, 2600).
+
 -define(ECALLMGR_PLAYBACK_MEDIA_KEY(M), {'playback_media', M}).
 
 -define(DEFAULT_FREESWITCH_CONTEXT, ecallmgr_config:get(<<"freeswitch_context">>, <<"context_2">>)).
@@ -66,7 +68,7 @@
                   ,other_leg :: api_binary() | '$2' | '_'
                   ,node :: atom() | '$1' | '$2' | '$3' | '_'
                   ,former_node :: atom() | '$2' | '_'
-                  ,timestamp :: pos_integer() | '_'
+                  ,timestamp :: gregorian_seconds() | '$3' | '_'
                   ,profile :: api_binary() | '_'
                   ,context :: api_binary() | '_'
                   ,dialplan :: api_binary() | '_'
@@ -293,7 +295,7 @@
                               ]).
 
 -define(FS_EVENTS, [['CHANNEL_CREATE', 'CHANNEL_ANSWER', 'CHANNEL_DESTROY']
-                    , 'CALL_UPDATE', 'DETECTED_TONE', 'CHANNEL_PROGRESS_MEDIA'
+                    ,'CALL_UPDATE', 'DETECTED_TONE', 'CHANNEL_PROGRESS_MEDIA'
                     ,'DTMF', 'RECORD_START', 'RECORD_STOP', 'CHANNEL_BRIDGE'
                     ,'CHANNEL_UNBRIDGE', 'CHANNEL_EXECUTE', 'CHANNEL_EXECUTE_COMPLETE'
                     ,'CHANNEL_DATA', 'CALL_SECURE'
@@ -315,6 +317,7 @@
                            ,'KZ::DELIVERY_REPORT'
                            ,'SMS::DELIVERY_REPORT'
                            ,'KZ::MESSAGE'
+                           ,'loopback::bowout'
                           ]).
 
 -define(FS_DEFAULT_HDRS, [<<"Event-Name">>, <<"Core-UUID">>, <<"FreeSWITCH-Hostname">>, <<"FreeSWITCH-Switchname">>
@@ -395,11 +398,23 @@
 -define(REGISTER_SUCCESS_REG, 'register_success').
 -define(REGISTER_SUCCESS_MSG(Node, Props), {Node, Props}).
 
+-define(LOOPBACK_BOWOUT_REG(CallId), {'loopback_bowout', CallId}).
+-define(LOOPBACK_BOWOUT_MSG(Node, Props), {Node, Props}).
+
+-define(ACQUIRED_UUID, <<"Acquired-UUID">>).
+-define(RESIGNING_UUID, <<"Resigning-UUID">>).
+
 -define(FS_EVENT_REG_MSG(Node, EvtName), {'event', Node, EvtName}).
 -define(FS_CALL_EVENT_REG_MSG(Node, EvtName), {'call_event', Node, EvtName}).
+-define(FS_CALL_EVENTS_PROCESS_REG(Node, CallId)
+        ,{'call_events_process', Node, CallId}
+       ).
 
 -define(FS_CARRIER_ACL_LIST, <<"trusted">>).
 -define(FS_SBC_ACL_LIST, <<"authoritative">>).
+
+-define(SEPARATOR_SIMULTANEOUS, <<",">>).
+-define(SEPARATOR_SINGLE, <<"|">>).
 
 -define(ECALLMGR_HRL, 'true').
 -endif.

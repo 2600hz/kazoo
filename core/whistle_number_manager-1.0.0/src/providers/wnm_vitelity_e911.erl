@@ -140,8 +140,10 @@ get_location_options(DID) ->
 update_e911(Number, Address) ->
     query_vitelity(Number, wnm_vitelity_util:build_uri(e911_options(Number, Address))).
 
--spec e911_options(ne_binary(), wh_json:object()) -> list().
-e911_options(#number{number=Number, assigned_to=AccountId}, AddressJObj) ->
+-spec e911_options(wnm_number(), wh_json:object()) -> list().
+e911_options(#number{number=Number
+                     ,assigned_to=AccountId
+                    }, AddressJObj) ->
     State = wnm_vitelity_util:get_short_state(wh_json:get_value(<<"region">>, AddressJObj)),
     {UnitType, UnitNumber} = get_unit(wh_json:get_value(<<"extended_address">>, AddressJObj)),
     [{'qs', props:filter_undefined(

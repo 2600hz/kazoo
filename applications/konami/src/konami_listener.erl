@@ -77,8 +77,7 @@ handle_metaflow(JObj, Props) ->
         _E:_R ->
             ST = erlang:get_stacktrace(),
             lager:debug("failed to run FSM: ~s: ~p", [_E, _R]),
-            wh_util:log_stacktrace(ST),
-            konami_tracker:untrack()
+            wh_util:log_stacktrace(ST)
     end.
 
 -spec handle_channel_create(wh_json:object(), wh_proplist()) -> 'ok'.

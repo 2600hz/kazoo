@@ -133,10 +133,10 @@ content_types_provided_for_fax(Context, FaxId, ?HTTP_GET) ->
     Context1 = load_fax_meta(FaxId, Context),
     case cb_context:resp_status(Context1) of
         'success' ->
-            case wh_json:get_keys(wh_json:get_value([<<"_attachments">>], cb_context:doc(Context1))) of
+            case wh_doc:attachment_names(cb_context:doc(Context1)) of
                 [] -> Context;
-                [Attachment|_] ->
-                    CT = wh_json:get_value([<<"_attachments">>, Attachment, <<"content_type">>], cb_context:doc(Context1)),
+                [AttachmentId|_] ->
+                    CT = wh_doc:attachment_content_type(cb_context:doc(Context1), AttachmentId),
                     [Type, SubType] = binary:split(CT, <<"/">>),
                     cb_context:set_content_types_provided(Context, [{'to_binary', [{Type, SubType}]}])
             end;
@@ -407,23 +407,26 @@ do_load_fax_binary(FaxId, Context) ->
     Context1 = load_fax_meta(FaxId, Context),
     case cb_context:resp_status(Context1) of
         'success' ->
-            JObj = cb_context:doc(Context1),
-            FaxMeta = wh_json:get_value([<<"_attachments">>], JObj),
-            case wh_json:get_keys(FaxMeta) of
-                [] -> cb_context:add_system_error('bad_identifier', [{'details', FaxId}], Context1);
-                [Attachment|_] ->
-                    cb_context:set_resp_etag(
-                      cb_context:set_resp_headers(crossbar_doc:load_attachment(JObj, Attachment, Context1)
-                                                  ,[{<<"Content-Disposition">>, <<"attachment; filename=", Attachment/binary>>}
-                                                    ,{<<"Content-Type">>, wh_json:get_value([Attachment, <<"content_type">>], FaxMeta)}
-                                                    ,{<<"Content-Length">>, wh_json:get_value([Attachment, <<"length">>], FaxMeta)}
-                                                        | cb_context:resp_headers(Context)
-                                                   ])
-                      ,'undefined'
-                                            )
+            case wh_doc:attachment_names(cb_context:doc(Context1)) of
+                [] -> cb_context:add_system_error('bad_identifier', wh_json:from_list([{<<"cause">>, FaxId}]), Context1);
+                [AttachmentId|_] ->
+                    set_fax_binary(Context1, AttachmentId)
             end;
         _Status -> Context1
     end.
+
+-spec set_fax_binary(cb_context:context(), ne_binary()) -> cb_context:context().
+set_fax_binary(Context, AttachmentId) ->
+    cb_context:setters(crossbar_doc:load_attachment(cb_context:doc(Context), AttachmentId, Context)
+                       ,[{fun cb_context:set_resp_etag/2, 'undefined'}
+                         ,{fun cb_context:add_resp_headers/2
+                           ,[{<<"Content-Disposition">>, <<"attachment; filename=", AttachmentId/binary>>}
+                             ,{<<"Content-Type">>, wh_doc:attachment_content_type(cb_context:doc(Context), AttachmentId)}
+                             ,{<<"Content-Length">>, wh_doc:attachment_length(cb_context:doc(Context), AttachmentId)}
+                            ]
+                          }
+                        ]
+                      ).
 
 %%--------------------------------------------------------------------
 %% @private

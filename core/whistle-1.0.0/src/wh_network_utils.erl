@@ -131,7 +131,9 @@ resolve(Address) ->
 
 -spec maybe_is_ip(ne_binary()) -> ne_binaries().
 maybe_is_ip(Address) ->
-    case is_ipv4(Address) of
+    case is_ipv4(Address)
+        orelse is_ipv6(Address)
+    of
         'true' -> [Address];
         'false' -> maybe_resolve_srv_records(Address)
     end.

@@ -384,15 +384,27 @@ validate_port_docs(Context, Number, Name, _Verb) ->
                                        cb_context:context().
 validate_port_docs_upload(Context, _Number, _Name, []) ->
     lager:debug("No files in request to save attachment"),
-    Message = <<"please provide an port document">>,
-    cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context);
+    cb_context:add_validation_error(
+        <<"file">>
+        ,<<"required">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"Please provide an port document">>}
+         ])
+        ,Context
+    );
 validate_port_docs_upload(Context, Number, Name, [{_, FileObj}]) ->
     FileName = wh_util:to_binary(http_uri:encode(wh_util:to_list(Name))),
     read(Number, cb_context:set_req_files(Context, [{FileName, FileObj}]));
 validate_port_docs_upload(Context, _Name, _Number, _Files) ->
     lager:debug("Multiple files in request to save attachment"),
-    Message = <<"please provide a single port document per request">>,
-    cb_context:add_validation_error(<<"file">>, <<"maxItems">>, Message, Context).
+    cb_context:add_validation_error(
+        <<"file">>
+        ,<<"maxItems">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"Please provide a single port document per request">>}
+         ])
+        ,Context
+    ).
 
 -spec post(cb_context:context(), path_token()) ->
                   cb_context:context().
@@ -603,10 +615,9 @@ clean_summary(Context) ->
 %%--------------------------------------------------------------------
 -spec find_numbers(cb_context:context()) -> cb_context:context().
 find_numbers(Context) ->
-    AccountId = cb_context:auth_account_id(Context),
-    JObj = wh_json:set_value(<<"Account-ID">>, AccountId, cb_context:query_string(Context)),
+    JObj = get_find_numbers_req(Context),
     Prefix = wh_json:get_ne_value(<<"prefix">>, JObj),
-    Quantity = wh_json:get_ne_value(<<"quantity">>, JObj, 1),
+    Quantity = wh_json:get_integer_value(<<"quantity">>, JObj, 1),
     OnSuccess = fun(C) ->
                         cb_context:setters(C
                                            ,[{fun cb_context:set_resp_data/2, wh_number_manager:find(Prefix, Quantity, wh_json:to_proplist(JObj))}
@@ -617,6 +628,15 @@ find_numbers(Context) ->
                                      ,cb_context:set_req_data(Context, JObj)
                                      ,OnSuccess
                                     ).
+
+-spec get_find_numbers_req(cb_context:context()) -> wh_json:object().
+get_find_numbers_req(Context) ->
+    JObj = cb_context:query_string(Context),
+    AccountId = cb_context:auth_account_id(Context),
+    Quantity = wh_json:get_integer_value(<<"quantity">>, JObj, 1),
+    wh_json:set_values([{<<"quantity">>, Quantity}
+                       ,{<<"Account-ID">>, AccountId}
+                       ], JObj).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -654,17 +674,23 @@ find_prefix(Context) ->
 find_locality(Context) ->
     case cb_context:req_value(Context, <<"numbers">>) of
         'undefined' ->
-            cb_context:add_validation_error(<<"numbers">>
-                                            ,<<"required">>
-                                            ,<<"list of numbers missing">>
-                                            ,Context
-                                           );
+            cb_context:add_validation_error(
+                <<"numbers">>
+                ,<<"required">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"list of numbers missing">>}
+                 ])
+                ,Context
+            );
         [] ->
-            cb_context:add_validation_error(<<"numbers">>
-                                            ,<<"minimum">>
-                                            ,<<"minimum 1 number required">>
-                                            ,Context
-                                           );
+            cb_context:add_validation_error(
+                <<"numbers">>
+                ,<<"minimum">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"minimum 1 number required">>}
+                 ])
+                ,Context
+            );
         Numbers when is_list(Numbers) ->
             Url = get_url(cb_context:req_value(Context, <<"quality">>)),
             case get_locality(Numbers, Url) of
@@ -677,11 +703,14 @@ find_locality(Context) ->
                      )
             end;
         _E ->
-            cb_context:add_validation_error(<<"numbers">>
-                                            ,<<"type">>
-                                            ,<<"numbers must be a list">>
-                                            ,Context
-                                           )
+            cb_context:add_validation_error(
+                <<"numbers">>
+                ,<<"type">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"numbers must be a list">>}
+                 ])
+                ,Context
+            )
     end.
 
 %%--------------------------------------------------------------------
@@ -694,28 +723,38 @@ find_locality(Context) ->
 check_number(Context) ->
     case cb_context:req_value(Context, <<"numbers">>) of
         'undefined' ->
-            cb_context:add_validation_error(<<"numbers">>
-                                            ,<<"required">>
-                                            ,<<"list of numbers missing">>
-                                            ,Context
-                                           );
+            cb_context:add_validation_error(
+                <<"numbers">>
+                ,<<"required">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"list of numbers missing">>}
+                 ])
+                ,Context
+            );
         [] ->
-            cb_context:add_validation_error(<<"numbers">>
-                                            ,<<"minimum">>
-                                            ,<<"minimum 1 number required">>
-                                            ,Context
-                                           );
+            cb_context:add_validation_error(
+                <<"numbers">>
+                ,<<"minimum">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"minimum 1 number required">>}
+                 ])
+                ,Context
+            );
         Numbers when is_list(Numbers) ->
             cb_context:set_resp_data(
               cb_context:set_resp_status(Context, 'success')
               ,wh_number_manager:check(Numbers)
              );
-        _E ->
-            cb_context:add_validation_error(<<"numbers">>
-                                            ,<<"type">>
-                                            ,<<"numbers must be a list">>
-                                            ,Context
-                                           )
+        E ->
+            cb_context:add_validation_error(
+                <<"numbers">>
+                ,<<"type">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"numbers must be a list">>}
+                    ,{<<"cause">>, E}
+                 ])
+                ,Context
+            )
     end.
 
 -spec get_url(any()) -> binary().
@@ -913,7 +952,11 @@ handle_locality_resp(Resp) ->
 identify(Context, Number) ->
     case wh_number_manager:lookup_account_by_number(Number) of
         {'error', 'not_reconcilable'} ->
-            cb_context:add_system_error('bad_identifier', [{'details', Number}], Context);
+            cb_context:add_system_error(
+                'bad_identifier'
+                ,wh_json:from_list([{<<"cause">>, Number}])
+                ,Context
+            );
         {'error', E} ->
             Fun = fun() -> Context end,
             set_response({wh_util:to_binary(E), <<>>}, Number, Context, Fun);
@@ -1082,8 +1125,12 @@ set_response(_Else, _, Context, _) ->
 %%--------------------------------------------------------------------
 -spec dry_run_response(wh_proplist()) -> wh_json:object().
 -spec dry_run_response(ne_binary(), wh_json:object()) -> wh_json:object().
-dry_run_response([{'services', Services}, {'activation_charges', Charges}]) ->
-    wh_services:calculate_charges(Services, Charges).
+dry_run_response(Props) ->
+    case props:get_value('services', Props) of
+        'undefined' -> wh_json:new();
+        Services ->
+            wh_services:dry_run(Services)
+    end.
 
 dry_run_response(?COLLECTION, JObj) ->
     case wh_json:get_value(<<"error">>, JObj) of
@@ -1192,10 +1239,7 @@ collection_process_result(Context, JObj) ->
                                operation_return() |
                                {'dry_run', wh_json:object()}.
 collection_action(Context, Number, ?ACTIVATE) ->
-    DryRun = (not wh_json:is_true(<<"accept_charges">>
-                                  ,cb_context:req_json(Context)
-                                  ,'false'
-                                 )),
+    DryRun = not(cb_context:accepting_charges(Context)),
     case wh_number_manager:assign_number_to_account(Number
                                                     ,cb_context:account_id(Context)
                                                     ,cb_context:auth_account_id(Context)
@@ -1247,7 +1291,11 @@ number_action(Context, Number, ?HTTP_DELETE) ->
 has_tokens(Context) -> has_tokens(Context, 1).
 has_tokens(Context, Count) ->
     Name = <<(cb_context:account_id(Context))/binary, "/", ?PHONE_NUMBERS_CONFIG_CAT/binary>>,
-    case kz_buckets:consume_tokens(Name, Count) of
+    case kz_buckets:consume_tokens(?APP_NAME
+                                   ,Name
+                                   ,cb_modules_util:token_cost(Context, Count)
+                                  )
+    of
         'true' -> 'true';
         'false' ->
             lager:warning("rate limiting activation limit reached, rejecting"),

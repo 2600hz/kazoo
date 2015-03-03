@@ -53,6 +53,7 @@
          ,find_user_endpoints/3
          ,find_group_endpoints/2
          ,check_value_of_fields/4
+         ,get_timezone/2, account_timezone/1
         ]).
 
 -export([wait_for_noop/2]).
@@ -150,7 +151,7 @@ manual_presence_resp(Username, Realm, JObj) ->
         State ->
             PresenceUpdate = [{<<"Presence-ID">>, PresenceId}
                               ,{<<"State">>, State}
-                              ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:md5(PresenceId))}
+                              ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:hash(md5, PresenceId))}
                               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                              ],
             whapps_util:amqp_pool_send(PresenceUpdate, fun wapi_presence:publish_update/1)
@@ -185,7 +186,9 @@ mwi_query(JObj) ->
         _Else -> 'ok'
     end.
 
--spec mwi_resp(ne_binary(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+-spec mwi_resp(api_binary(), api_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+mwi_resp('undefined', _Realm, _AccountDb, _JObj) -> 'ok';
+mwi_resp(_Username, 'undefined', _AccountDb, _JObj) -> 'ok';
 mwi_resp(Username, Realm, AccountDb, JObj) ->
     case owner_ids_by_sip_username(AccountDb, Username) of
         {'ok', [OwnerId]} ->
@@ -401,7 +404,9 @@ owner_ids_by_sip_username(AccountDb, Username) ->
             get_owner_ids_by_sip_username(AccountDb, Username)
     end.
 
--spec get_owner_ids_by_sip_username(ne_binary(), ne_binary()) -> {'ok', ne_binaries()} | {'error', _}.
+-spec get_owner_ids_by_sip_username(ne_binary(), ne_binary()) ->
+                                           {'ok', ne_binaries()} |
+                                           {'error', _}.
 get_owner_ids_by_sip_username(AccountDb, Username) ->
     ViewOptions = [{'key', Username}],
     case couch_mgr:get_results(AccountDb, <<"cf_attributes/sip_username">>, ViewOptions) of
@@ -460,7 +465,8 @@ get_endpoint_id_by_sip_username(AccountDb, Username) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_operator_callflow(ne_binary()) -> wh_jobj_return().
+-spec get_operator_callflow(ne_binary()) -> {'ok', wh_json:object()} |
+                                            couch_mgr:couchbeam_error().
 get_operator_callflow(Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     Options = [{'key', ?OPERATOR_KEY}, 'include_docs'],
@@ -901,6 +907,26 @@ process_event(Call, NoopId, JObj) ->
             wait_for_noop(whapps_call:add_to_dtmf_collection(DTMF, Call), NoopId);
         _Ignore ->
             wait_for_noop(Call, NoopId)
+    end.
+
+-define(DEFAULT_TIMEZONE, <<"America/Los_Angeles">>).
+
+-spec get_timezone(wh_json:object(), whapps_call:call()) -> ne_binary().
+get_timezone(JObj, Call) ->
+    case wh_json:get_value(<<"timezone">>, JObj) of
+        'undefined' -> cf_util:account_timezone(Call);
+        TZ -> TZ
+    end.
+
+-spec account_timezone(whapps_call:call()) -> ne_binary().
+account_timezone(Call) ->
+    case couch_mgr:open_cache_doc(whapps_call:account_db(Call)
+                                  ,whapps_call:account_id(Call)
+                                 )
+    of
+        {'ok', JObj} -> wh_json:get_value(<<"timezone">>, JObj, ?DEFAULT_TIMEZONE);
+        {'error', _E} ->
+            whapps_config:get(<<"accounts">>, <<"timezone">>, ?DEFAULT_TIMEZONE)
     end.
 
 -ifdef(TEST).

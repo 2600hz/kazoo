@@ -205,7 +205,7 @@ from_conference_doc(JObj, Conference) ->
       ,moderator_pins = wh_json:get_ne_value(<<"pins">>, Moderator, moderator_pins(Conference))
       ,member_join_muted = wh_json:is_true(<<"join_muted">>, Member, member_join_muted(Conference))
       ,member_join_deaf = wh_json:is_true(<<"join_deaf">>, Member, member_join_deaf(Conference))
-      ,play_name_on_join = wh_json:is_true(<<"play_name">>, Member, play_name_on_join(Conference))
+      ,play_name_on_join = wh_json:is_true(<<"play_name">>, JObj, play_name_on_join(Conference))
       ,play_entry_prompt = wh_json:is_true(<<"play_entry_prompt">>, Member, play_entry_prompt(Conference))
       ,play_entry_tone = wh_json:is_true(<<"play_entry_tone">>, JObj, play_entry_tone(Conference))
       ,play_welcome = wh_json:is_true(<<"play_welcome">>, JObj, play_welcome(Conference))
@@ -226,7 +226,7 @@ update(Updaters, Conference) ->
 
 -spec update_fold(updater_1() | updater_2(), whapps_conference:conference()) ->
                          whapps_conference:conference().
-update_fold({Value, Fun}, Conference) when is_function(Fun, 2) ->
+update_fold({Fun, Value}, Conference) when is_function(Fun, 2) ->
     Fun(Value, Conference);
 update_fold(Fun, Conference) when is_function(Fun, 1) ->
     Fun(Conference).

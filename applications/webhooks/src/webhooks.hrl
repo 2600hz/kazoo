@@ -4,6 +4,9 @@
 -include_lib("whistle/include/wh_databases.hrl").
 -include_lib("whistle_apps/include/wh_hooks.hrl").
 
+-define(APP_NAME, <<"webhooks">>).
+-define(APP_VERSION, <<"3.19.0">>).
+
 -type http_verb() :: 'get' | 'post'.
 -type hook_retries() :: 1..5.
 
@@ -19,6 +22,15 @@
          }).
 -type webhook() :: #webhook{}.
 -type webhooks() :: [webhook(),...] | [].
+
+-define(CACHE_NAME, 'webhooks_cache').
+
+-define(ATTEMPT_EXPIRY_KEY, <<"attempt_failure_expiry_ms">>).
+-define(FAILURE_COUNT_KEY, <<"attempt_failure_count">>).
+
+-define(FAILURE_CACHE_KEY(AccountId, HookId, Timestamp)
+        ,{'failure', AccountId, HookId, Timestamp}
+       ).
 
 -define(WEBHOOKS_HRL, 'true').
 -endif.

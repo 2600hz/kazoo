@@ -6,6 +6,7 @@
 %%% @contributors
 %%%   Karl Anderson
 %%%   James Aimonetti
+%%%   Luis Azedo
 %%%-------------------------------------------------------------------
 -module(cf_endpoint).
 
@@ -22,11 +23,25 @@
 
 -define(CF_MOBILE_CONFIG_CAT, <<(?CF_CONFIG_CAT)/binary, ".mobile">>).
 -define(DEFAULT_MOBILE_FORMATER, <<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$">>).
--define(DEFAULT_MOBILE_PREFIX, <<"">>).
--define(DEFAULT_MOBILE_SUFFIX, <<"">>).
+-define(DEFAULT_MOBILE_PREFIX, <<>>).
+-define(DEFAULT_MOBILE_SUFFIX, <<>>).
 -define(DEFAULT_MOBILE_REALM, <<"mobile.k.zswitch.net">>).
--define(DEFAULT_MOBILE_PATH, <<"">>).
+-define(DEFAULT_MOBILE_PATH, <<>>).
 -define(DEFAULT_MOBILE_CODECS, [<<"PCMU">>]).
+
+-define(RESOURCE_TYPE_SMS, <<"sms">>).
+-define(RESOURCE_TYPE_AUDIO, <<"audio">>).
+-define(RESOURCE_TYPE_VIDEO, <<"video">>).
+
+-define(DEFAULT_MOBILE_SMS_INTERFACE, <<"amqp">>).
+-define(DEFAULT_MOBILE_SMS_BROKER, wh_amqp_connections:primary_broker()).
+-define(DEFAULT_MOBILE_SMS_EXCHANGE, <<"sms">>).
+-define(DEFAULT_MOBILE_SMS_EXCHANGE_TYPE, <<"topic">>).
+-define(DEFAULT_MOBILE_SMS_OPTIONS, wh_json:from_list([{<<"Route-ID">>, <<"sprint">>}
+                                                       ,{<<"System-ID">>, wh_util:node_name()}
+                                                       ,{<<"Exchange-ID">>, ?DEFAULT_MOBILE_SMS_EXCHANGE}
+                                                       ,{<<"Exchange-Type">>, ?DEFAULT_MOBILE_SMS_EXCHANGE_TYPE}
+                                                      ])).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -53,7 +68,9 @@ get(EndpointId, AccountDb) when is_binary(AccountDb) ->
 get(EndpointId, Call) ->
     get(EndpointId, whapps_call:account_db(Call)).
 
--spec maybe_fetch_endpoint(ne_binary(), ne_binary()) -> wh_jobj_return().
+-spec maybe_fetch_endpoint(ne_binary(), ne_binary()) ->
+                                  {'ok', wh_json:object()} |
+                                  couch_mgr:couchbeam_error().
 maybe_fetch_endpoint(EndpointId, AccountDb) ->
     case couch_mgr:open_doc(AccountDb, EndpointId) of
         {'ok', JObj} ->
@@ -63,25 +80,37 @@ maybe_fetch_endpoint(EndpointId, AccountDb) ->
             E
     end.
 
--spec maybe_have_endpoint(wh_json:object(), ne_binary(), ne_binary()) ->  wh_jobj_return().
+-spec maybe_have_endpoint(wh_json:object(), ne_binary(), ne_binary()) ->
+                                 {'ok', wh_json:object()} |
+                                 {'error', 'not_device_nor_user'}.
 maybe_have_endpoint(JObj, EndpointId, AccountDb) ->
     case wh_json:get_value(<<"pvt_type">>, JObj) of
-        <<"device">> ->
-            Endpoint = wh_json:set_value(<<"Endpoint-ID">>, EndpointId, merge_attributes(JObj)),
+        <<"device">> = EndpointType ->
+            Endpoint = wh_json:set_value(<<"Endpoint-ID">>, EndpointId, merge_attributes(JObj, EndpointType)),
             CacheProps = [{'origin', cache_origin(JObj, EndpointId, AccountDb)}],
-            wh_cache:store_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, EndpointId}, Endpoint, CacheProps),
+            catch wh_cache:store_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, EndpointId}, Endpoint, CacheProps),
+            {'ok', Endpoint};
+        <<"user">> = EndpointType ->
+            Endpoint = wh_json:set_value(<<"Endpoint-ID">>, EndpointId, merge_attributes(JObj, EndpointType)),
+            CacheProps = [{'origin', cache_origin(JObj, EndpointId, AccountDb)}],
+            catch wh_cache:store_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, EndpointId}, Endpoint, CacheProps),
+            {'ok', Endpoint};
+        <<"account">> = EndpointType ->
+            Endpoint = wh_json:set_value(<<"Endpoint-ID">>, EndpointId, merge_attributes(JObj, EndpointType)),
+            CacheProps = [{'origin', cache_origin(JObj, EndpointId, AccountDb)}],
+            catch wh_cache:store_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, EndpointId}, Endpoint, CacheProps),
             {'ok', Endpoint};
         _Else ->
             lager:info("endpoint module does not manage document type ~s", [_Else]),
-            {'error', 'not_device'}
+            {'error', 'not_device_nor_user'}
     end.
 
 -spec cache_origin(wh_json:object(), ne_binary(), ne_binary()) ->  list().
 cache_origin(JObj, EndpointId, AccountDb) ->
-    Routines = [fun(P) -> [{'db', AccountDb, EndpointId}|P] end
+    Routines = [fun(P) -> [{'db', AccountDb, EndpointId} | P] end
                 ,fun(P) ->
                          [{'db', AccountDb, wh_util:format_account_id(AccountDb, 'raw')}
-                          |P
+                          | P
                          ]
                  end
                 ,fun(P) -> maybe_cached_owner_id(P, JObj, AccountDb) end
@@ -106,8 +135,9 @@ maybe_cached_hotdesk_ids(Props, JObj, AccountDb) ->
                         end, Props, OwnerIds)
     end.
 
--spec merge_attributes(wh_json:object()) -> wh_json:object().
-merge_attributes(Endpoint) ->
+-spec merge_attributes(wh_json:object(), ne_binary()) -> wh_json:object().
+-spec merge_attributes(wh_json:object(), ne_binary(), ne_binaries()) -> wh_json:object().
+merge_attributes(Endpoint, Type) ->
     Keys = [<<"name">>
             ,<<"call_restriction">>
             ,<<"music_on_hold">>
@@ -119,11 +149,19 @@ merge_attributes(Endpoint) ->
             ,<<"dial_plan">>
             ,<<"metaflows">>
             ,<<"language">>
+            ,<<"record_call">>
+            ,<<"mobile">>
+            ,<<"presence_id">>
             ,?CF_ATTR_LOWER_KEY
            ],
+    merge_attributes(Endpoint, Type, Keys).
+
+merge_attributes(Endpoint, <<"user">>, Keys) ->
+    merge_attributes(Keys, 'undefined', 'undefined', Endpoint);
+merge_attributes(Endpoint, _Type, Keys) ->
     merge_attributes(Keys, 'undefined', Endpoint, 'undefined').
 
--spec merge_attributes(ne_binaries(), api_object(), wh_json:object(), api_object()) ->
+-spec merge_attributes(ne_binaries(), api_object(), api_object(), api_object()) ->
                               wh_json:object().
 merge_attributes([], _AccountDoc, Endpoint, _OwnerDoc) -> Endpoint;
 merge_attributes(Keys, Account, Endpoint, 'undefined') ->
@@ -134,6 +172,8 @@ merge_attributes(Keys, Account, Endpoint, 'undefined') ->
                      ,Account
                      ,wh_json:set_value(<<"owner_id">>, Id, Endpoint)
                      ,JObj);
+merge_attributes(Keys, Account, 'undefined', Owner) ->
+    merge_attributes(Keys, Account, wh_json:new(), Owner);
 merge_attributes(Keys, 'undefined', Endpoint, Owner) ->
     AccountDb = wh_json:get_value(<<"pvt_account_db">>, Endpoint),
     AccountId = wh_json:get_value(<<"pvt_account_id">>, Endpoint),
@@ -178,8 +218,7 @@ merge_attributes([<<"caller_id">> = Key|Keys], Account, Endpoint, Owner) ->
     AccountAttr = wh_json:get_ne_value(Key, Account, wh_json:new()),
     EndpointAttr = wh_json:get_ne_value(Key, Endpoint, wh_json:new()),
     OwnerAttr = caller_id_owner_attr(Owner),
-    Merged = wh_json:merge_recursive([AccountAttr, EndpointAttr, OwnerAttr]
-                                     ,fun(_, V) -> wh_util:is_not_empty(V) end),
+    Merged = merge_attribute_caller_id(Account, AccountAttr, OwnerAttr, EndpointAttr),
     case wh_json:get_ne_value([<<"emergency">>, <<"number">>], EndpointAttr) of
         'undefined' ->
             merge_attributes(Keys, Account, wh_json:set_value(Key, Merged, Endpoint), Owner);
@@ -189,6 +228,14 @@ merge_attributes([<<"caller_id">> = Key|Keys], Account, Endpoint, Owner) ->
     end;
 merge_attributes([<<"language">>|_]=Keys, Account, Endpoint, Owner) ->
     merge_value(Keys, Account, Endpoint, Owner);
+merge_attributes([<<"presence_id">>|_]=Keys, Account, Endpoint, Owner) ->
+    merge_value(Keys, Account, Endpoint, Owner);
+merge_attributes([<<"record_call">> = Key|Keys], Account, Endpoint, Owner) ->
+    EndpointAttr = get_record_call_properties(Endpoint),
+    AccountAttr = get_record_call_properties(Account),
+    OwnerAttr = get_record_call_properties(Owner),
+    Merged = wh_json:merge_recursive([AccountAttr, OwnerAttr, EndpointAttr]),
+    merge_attributes(Keys, Account, wh_json:set_value(Key, Merged, Endpoint), Owner);
 merge_attributes([Key|Keys], Account, Endpoint, Owner) ->
     AccountAttr = wh_json:get_ne_value(Key, Account, wh_json:new()),
     EndpointAttr = wh_json:get_ne_value(Key, Endpoint, wh_json:new()),
@@ -197,6 +244,32 @@ merge_attributes([Key|Keys], Account, Endpoint, Owner) ->
                                      ,fun(_, V) -> wh_util:is_not_empty(V) end
                                     ),
     merge_attributes(Keys, Account, wh_json:set_value(Key, Merged, Endpoint), Owner).
+
+-spec merge_attribute_caller_id(api_object(), api_object(), api_object(), api_object()) -> api_object().
+merge_attribute_caller_id(AccountJObj, AccountJAttr, UserJAttr, EndpointJAttr) ->
+    Merging =
+        case wh_json:is_true(<<"prefer_device_caller_id">>, AccountJObj, 'false') of
+            'true' -> [AccountJAttr, UserJAttr, EndpointJAttr];
+            'false' -> [AccountJAttr, EndpointJAttr, UserJAttr]
+        end,
+    wh_json:merge_recursive(Merging, fun(_, V) -> wh_util:is_not_empty(V) end).
+
+-spec get_record_call_properties(wh_json:object()) -> wh_json:object().
+get_record_call_properties(JObj) ->
+    RecordCall = wh_json:get_ne_value(<<"record_call">>, JObj),
+    case wh_json:is_json_object(RecordCall) of
+        'true' -> RecordCall;
+        'false' ->
+            case wh_util:is_true(RecordCall) of
+                'false' -> wh_json:new();
+                'true' ->
+                    wh_json:from_list(
+                      [{<<"action">>, <<"start">>}
+                       ,{<<"record_call">>, 'true'}
+                      ]
+                     )
+            end
+    end.
 
 -spec merge_value(ne_binaries(), api_object(), wh_json:object(), api_object()) ->
                               wh_json:object().
@@ -509,8 +582,8 @@ maybe_do_not_disturb(Endpoint, _, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_endpoints(wh_json:object(), wh_json:object(), whapps_call:call()) ->
-                                    {'ok', wh_json:objects()} |
-                                    {'error', 'no_endpoints'}.
+                              {'ok', wh_json:objects()} |
+                              {'error', 'no_endpoints'}.
 create_endpoints(Endpoint, Properties, Call) ->
     Routines = [fun maybe_create_fwd_endpoint/3
                 ,fun maybe_create_endpoint/3
@@ -638,7 +711,7 @@ guess_endpoint_type(Endpoint) ->
                                   ]).
 -spec guess_endpoint_type(wh_json:object(), ne_binaries()) -> ne_binary().
 guess_endpoint_type(Endpoint, [Type|Types]) ->
-    case wh_json:get_value(Type, Endpoint) of
+    case wh_json:get_ne_value(Type, Endpoint) of
         'undefined' -> guess_endpoint_type(Endpoint, Types);
         _ -> Type
     end;
@@ -685,11 +758,56 @@ get_clid(Endpoint, Properties, Call) ->
                  }
     end.
 
+-spec maybe_record_call(wh_json:object(), whapps_call:call()) -> 'ok'.
+maybe_record_call(Endpoint, Call) ->
+    case is_call_recording(Call) orelse is_sms(Call) of
+        'true' -> 'ok';
+        'false' -> maybe_start_call_recording(wh_json:get_value(<<"record_call">>, Endpoint, wh_json:new()), Call)
+    end.
+
+-spec is_call_recording(whapps_call:call()) -> boolean().
+is_call_recording(Call) ->
+    case wh_cache:peek_local(?CALLFLOW_CACHE, call_recording_cache_key(Call)) of
+        {'ok', _} -> 'true';
+        {'error', 'not_found'} -> 'false'
+    end.
+
+-spec call_recording_cache_key(whapps_call:call()) ->
+                                      {?MODULE, 'recording', ne_binary()}.
+call_recording_cache_key(Call) ->
+    {?MODULE, 'recording', whapps_call:call_id(Call)}.
+
+-spec maybe_start_call_recording(wh_json:object(), whapps_call:call()) -> 'ok'.
+maybe_start_call_recording(RecordCall, Call) ->
+    case wh_util:is_empty(RecordCall) of
+        'true' -> 'ok';
+        'false' -> start_call_recording(RecordCall, Call)
+    end.
+
+-spec start_call_recording(wh_json:object(), whapps_call:call()) -> 'ok'.
+start_call_recording(RecordCall, Call) ->
+    wh_cache:store_local(
+      ?CALLFLOW_CACHE
+      ,call_recording_cache_key(Call)
+      ,'true'
+      ,[{'expires', 60}]
+     ),
+    Data = wh_json:set_value(<<"spawned">>, 'true', RecordCall),
+    _P = spawn('cf_record_call', 'handle', [Data, Call]),
+    lager:debug("spawned record_call handler in ~p", [_P]).
+
 -spec create_sip_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
                                  wh_json:object().
 create_sip_endpoint(Endpoint, Properties, Call) ->
     Clid = get_clid(Endpoint, Properties, Call),
+    _ = maybe_record_call(Endpoint, Call),
+    create_sip_endpoint(Endpoint, Properties, Clid, Call).
+
+-spec create_sip_endpoint(wh_json:object(), wh_json:object(), clid(), whapps_call:call()) ->
+                                 wh_json:object().
+create_sip_endpoint(Endpoint, Properties, #clid{}=Clid, Call) ->
     SIPJObj = wh_json:get_value(<<"sip">>, Endpoint),
+    _ = maybe_record_call(Endpoint, Call),
     wh_json:from_list(
       props:filter_empty(
         [{<<"Invite-Format">>, get_invite_format(SIPJObj)}
@@ -721,7 +839,7 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
          ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call)}
          ,{<<"Flags">>, get_outbound_flags(Endpoint)}
          ,{<<"Ignore-Completed-Elsewhere">>, get_ignore_completed_elsewhere(Endpoint)}
-         ,{<<"Failover">>, maybe_build_failover(Endpoint, Call)}
+         ,{<<"Failover">>, maybe_build_failover(Endpoint, Clid, Call)}
          ,{<<"Metaflows">>, wh_json:get_value(<<"metaflows">>, Endpoint)}
          | maybe_get_t38(Endpoint, Call)
         ])).
@@ -743,16 +861,63 @@ maybe_get_t38(Endpoint, Call) ->
              )
     end.
 
--spec maybe_build_failover(wh_json:object(), whapps_call:call()) -> api_object().
-maybe_build_failover(Endpoint, Call) ->
+-spec maybe_build_failover(wh_json:object(), clid(), whapps_call:call()) -> api_object().
+maybe_build_failover(Endpoint, Clid, Call) ->
     CallForward = wh_json:get_value(<<"call_forward">>, Endpoint),
     Number = wh_json:get_value(<<"number">>, CallForward),
     case wh_json:is_true(<<"failover">>, CallForward)
         andalso not wh_util:is_empty(Number)
     of
-        'false' -> 'undefined';
+        'false' -> maybe_build_push_failover(Endpoint, Clid, Call);
         'true' -> create_call_fwd_endpoint(Endpoint, wh_json:new(), Call)
     end.
+
+-spec maybe_build_push_failover(wh_json:object(), clid(), whapps_call:call()) -> api_object().
+maybe_build_push_failover(Endpoint, Clid, Call) ->
+    case wh_json:get_value(<<"push">>, Endpoint) of
+        'undefined' -> 'undefined';
+        PushJObj -> build_push_failover(Endpoint, Clid, PushJObj, Call)
+    end.
+
+-spec build_push_failover(wh_json:object(), clid(), wh_json:object(), whapps_call:call()) -> api_object().
+build_push_failover(Endpoint, Clid, PushJObj, Call) ->
+    lager:debug("building push failover"),
+    SIPJObj = wh_json:get_value(<<"sip">>, Endpoint),
+    ToUsername = get_to_username(SIPJObj),
+    ToRealm = cf_util:get_sip_realm(Endpoint, whapps_call:account_id(Call)),
+    ToUser = <<ToUsername/binary, "@", ToRealm/binary>>,
+    Proxy = wh_json:get_value(<<"Token-Proxy">>, PushJObj),
+    PushHeaders = wh_json:foldl(fun(K, V, Acc) ->
+                                        wh_json:set_value(<<"X-KAZOO-PUSHER-", K/binary>>, V, Acc)
+                                end, wh_json:new(), PushJObj),
+    wh_json:from_list(
+      props:filter_empty(
+        [{<<"Invite-Format">>, <<"route">>}
+         ,{<<"To-User">>, ToUser}
+         ,{<<"To-Username">>, ToUsername}
+         ,{<<"To-Realm">>, ToRealm}
+         ,{<<"To-DID">>, get_to_did(Endpoint, Call)}
+         ,{<<"SIP-Transport">>, get_sip_transport(SIPJObj)}
+         ,{<<"Route">>, <<"sip:", ToUser/binary, ";fs_path='", Proxy/binary, "'">> }
+         ,{<<"Callee-ID-Name">>, Clid#clid.callee_name}
+         ,{<<"Callee-ID-Number">>, Clid#clid.callee_number}
+         ,{<<"Outbound-Callee-ID-Name">>, Clid#clid.callee_name}
+         ,{<<"Outbound-Callee-ID-Number">>, Clid#clid.callee_number}
+         ,{<<"Outbound-Caller-ID-Number">>, Clid#clid.caller_number}
+         ,{<<"Outbound-Caller-ID-Name">>, Clid#clid.caller_name}
+         ,{<<"Ignore-Early-Media">>, get_ignore_early_media(Endpoint)}
+         ,{<<"Bypass-Media">>, get_bypass_media(Endpoint)}
+         ,{<<"Endpoint-Progress-Timeout">>, get_progress_timeout(Endpoint)}
+         ,{<<"Endpoint-ID">>, wh_json:get_value(<<"_id">>, Endpoint)}
+         ,{<<"Codecs">>, get_codecs(Endpoint)}
+         ,{<<"Hold-Media">>, cf_attributes:moh_attributes(Endpoint, <<"media_id">>, Call)}
+         ,{<<"Presence-ID">>, cf_attributes:presence_id(Endpoint, Call)}
+         ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, PushHeaders, Call)}
+         ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call)}
+         ,{<<"Flags">>, get_outbound_flags(Endpoint)}
+         ,{<<"Ignore-Completed-Elsewhere">>, get_ignore_completed_elsewhere(Endpoint)}
+         ,{<<"Metaflows">>, wh_json:get_value(<<"metaflows">>, Endpoint)}
+        ])).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -839,6 +1004,14 @@ create_call_fwd_endpoint(Endpoint, Properties, Call) ->
 -spec create_mobile_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
                                     wh_json:object().
 create_mobile_endpoint(Endpoint, Properties, Call) ->
+    case whapps_call:resource_type(Call) of
+        ?RESOURCE_TYPE_SMS -> create_mobile_sms_endpoint(Endpoint, Properties, Call);
+        _Other -> create_mobile_audio_endpoint(Endpoint, Properties, Call)
+    end.
+
+-spec create_mobile_audio_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
+                                    wh_json:object().
+create_mobile_audio_endpoint(Endpoint, Properties, Call) ->
     case maybe_build_mobile_route(Endpoint) of
         {'error', _R}=Error ->
             lager:info("unable to build mobile endpoint: ~s", [_R]),
@@ -863,18 +1036,18 @@ create_mobile_endpoint(Endpoint, Properties, Call) ->
 maybe_build_mobile_route(Endpoint) ->
     case wh_json:get_ne_value([<<"mobile">>, <<"mdn">>], Endpoint) of
         'undefined' ->
-            lager:info("unable to build mobile endpoint, MDM missing", []),
+            lager:info("unable to build mobile endpoint, MDN missing", []),
             {'error', 'mdn_missing'};
         MDN -> build_mobile_route(MDN)
     end.
 
--spec build_mobile_route(ne_binary()) -> ne_binary() | {'error', 'invalid_mdm'}.
+-spec build_mobile_route(ne_binary()) -> ne_binary() | {'error', 'invalid_mdn'}.
 build_mobile_route(MDN) ->
     Regex = whapps_config:get_binary(?CF_MOBILE_CONFIG_CAT, <<"formatter">>, ?DEFAULT_MOBILE_FORMATER),
     case re:run(MDN, Regex, [{'capture', 'all', 'binary'}]) of
         'nomatch' ->
-            lager:info("unable to build mobile endpoint, invalid MDM ~s", [MDN]),
-            {'error', 'invalid_mdm'};
+            lager:info("unable to build mobile endpoint, invalid MDN ~s", [MDN]),
+            {'error', 'invalid_mdn'};
         {'match', Captures} ->
             Root = lists:last(Captures),
             Prefix = whapps_config:get_binary(?CF_MOBILE_CONFIG_CAT, <<"prefix">>, ?DEFAULT_MOBILE_PREFIX),
@@ -882,10 +1055,12 @@ build_mobile_route(MDN) ->
             Realm = whapps_config:get_binary(?CF_MOBILE_CONFIG_CAT, <<"realm">>, ?DEFAULT_MOBILE_REALM),
             Route = <<"sip:"
                       ,Prefix/binary, Root/binary, Suffix/binary
-                      ,"@", Realm/binary>>,
+                      ,"@", Realm/binary
+                    >>,
             maybe_add_mobile_path(Route)
     end.
 
+-spec maybe_add_mobile_path(ne_binary()) -> ne_binary().
 maybe_add_mobile_path(Route) ->
     Path = whapps_config:get_binary(?CF_MOBILE_CONFIG_CAT, <<"path">>, ?DEFAULT_MOBILE_PATH),
     case wh_util:is_empty(Path) of
@@ -903,6 +1078,11 @@ maybe_add_mobile_path(Route) ->
 -spec generate_sip_headers(wh_json:object(), whapps_call:call()) ->
                                   wh_json:object().
 generate_sip_headers(Endpoint, Call) ->
+    generate_sip_headers(Endpoint, wh_json:new(), Call).
+
+-spec generate_sip_headers(wh_json:object(), wh_json:object(), whapps_call:call()) ->
+                                  wh_json:object().
+generate_sip_headers(Endpoint, Acc, Call) ->
     Inception = whapps_call:inception(Call),
     HeaderFuns = [fun(J) ->
                           case wh_json:get_value([<<"sip">>, <<"custom_sip_headers">>], Endpoint) of
@@ -923,7 +1103,7 @@ generate_sip_headers(Endpoint, Call) ->
                            end
                    end
                  ],
-    lists:foldr(fun(F, JObj) -> F(JObj) end, wh_json:new(), HeaderFuns).
+    lists:foldr(fun(F, JObj) -> F(JObj) end, Acc, HeaderFuns).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1139,3 +1319,50 @@ get_ignore_completed_elsewhere(JObj) ->
         'undefined' -> whapps_config:get_is_true(?CF_CONFIG_CAT, <<"default_ignore_completed_elsewhere">>, 'true');
         IgnoreCompletedElsewhere -> wh_util:is_true(IgnoreCompletedElsewhere)
     end.
+
+-spec is_sms(whapps_call:call()) -> boolean().
+is_sms(Call) ->
+    whapps_call:resource_type(Call) =:= <<"sms">>.
+
+-spec create_mobile_sms_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
+                                    wh_json:object().
+create_mobile_sms_endpoint(Endpoint, Properties, Call) ->
+    case maybe_build_mobile_sms_route(Endpoint) of
+        {'error', _R}=Error ->
+            lager:info("unable to build mobile sms endpoint: ~s", [_R]),
+            Error;
+        {Type, Route, Options} ->
+            Clid = get_clid(Endpoint, Properties, Call),
+            Prop = [{<<"Invite-Format">>, <<"route">>}
+                    ,{<<"Endpoint-Type">>, Type}
+                    ,{<<"Route">>, Route}
+                    ,{<<"Endpoint-Options">>, Options}
+                    ,{<<"To-DID">>, get_to_did(Endpoint, Call)}
+                    ,{<<"Callee-ID-Name">>, Clid#clid.callee_name}
+                    ,{<<"Callee-ID-Number">>, Clid#clid.callee_number}
+                    ,{<<"Presence-ID">>, cf_attributes:presence_id(Endpoint, Call)}
+                    ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
+                    ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call, wh_json:new())}
+                   ],
+            wh_json:from_list(props:filter_undefined(Prop))
+    end.
+
+-spec maybe_build_mobile_sms_route(wh_json:object()) -> ne_binary() | {'error', 'mdn_missing'}.
+maybe_build_mobile_sms_route(Endpoint) ->
+    case wh_json:get_ne_value([<<"mobile">>, <<"mdn">>], Endpoint) of
+        'undefined' ->
+            lager:info("unable to build mobile sms endpoint, MDN missing", []),
+            {'error', 'mdn_missing'};
+        MDN -> build_mobile_sms_route(MDN)
+    end.
+
+-spec build_mobile_sms_route(ne_binary()) -> {ne_binary(), ne_binary(), api_object()}
+                                             | {'error', 'invalid_mdn'}.
+build_mobile_sms_route(MDN) ->
+    Type = whapps_config:get(?CF_MOBILE_CONFIG_CAT, <<"sms_interface">>, ?DEFAULT_MOBILE_SMS_INTERFACE),
+    Route = case Type of
+                <<"amqp">> -> whapps_config:get(?CF_MOBILE_CONFIG_CAT, <<"sms_broker">>, ?DEFAULT_MOBILE_SMS_BROKER);
+                <<"sip">> -> build_mobile_route(MDN)
+            end,
+    Options = whapps_config:get(?CF_MOBILE_CONFIG_CAT, <<"sms_route_options">>, ?DEFAULT_MOBILE_SMS_OPTIONS),
+    {Type, Route, Options}.

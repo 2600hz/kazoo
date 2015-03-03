@@ -30,10 +30,10 @@ handle(Data, Call) ->
 -spec update_presence(ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
 update_presence(<<"idle">>, PresenceId, Call) ->
     _ = couch_mgr:update_doc(whapps_call:account_db(Call), ?MANUAL_PRESENCE_DOC, [{PresenceId, <<"terminated">>}]),
-    whapps_call_command:presence(<<"terminated">>, PresenceId, wh_util:to_hex_binary(crypto:md5(PresenceId)));
+    whapps_call_command:presence(<<"terminated">>, PresenceId, wh_util:to_hex_binary(crypto:hash(md5, PresenceId)));
 update_presence(<<"ringing">>, PresenceId, Call) ->
     _ = couch_mgr:update_doc(whapps_call:account_db(Call), ?MANUAL_PRESENCE_DOC, [{PresenceId, <<"early">>}]),
-    whapps_call_command:presence(<<"early">>, PresenceId, wh_util:to_hex_binary(crypto:md5(PresenceId)));
+    whapps_call_command:presence(<<"early">>, PresenceId, wh_util:to_hex_binary(crypto:hash(md5, PresenceId)));
 update_presence(<<"busy">>, PresenceId, Call) ->
     _ = couch_mgr:update_doc(whapps_call:account_db(Call), ?MANUAL_PRESENCE_DOC, [{PresenceId, <<"confirmed">>}]),
-    whapps_call_command:presence(<<"confirmed">>, PresenceId, wh_util:to_hex_binary(crypto:md5(PresenceId))).
+    whapps_call_command:presence(<<"confirmed">>, PresenceId, wh_util:to_hex_binary(crypto:hash(md5, PresenceId))).

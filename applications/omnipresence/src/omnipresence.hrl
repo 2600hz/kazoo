@@ -1,7 +1,6 @@
 -ifndef(OMNIPRESENCE_HRL).
 
 %% Typical includes needed
--include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
@@ -21,7 +20,7 @@
 -define(MWI_EVENT, <<"message-summary">>).
 -define(PRESENCE_EVENT, <<"presence">>).
 
--define(FAKE_CALLID(C), wh_util:to_hex_binary(crypto:md5(C))).
+-define(FAKE_CALLID(C), wh_util:to_hex_binary(crypto:hash(md5, C))).
 
 -record(omnip_subscription, {
           user                                  :: api_binary() | '_' %% user@realm.com

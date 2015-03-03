@@ -68,12 +68,15 @@ authn_resp_xml(JObj) ->
         {'ok', Elements} ->
             Number = wh_json:get_value([<<"Custom-SIP-Headers">>,<<"P-Kazoo-Primary-Number">>],JObj),
             Expires = ecallmgr_util:maybe_add_expires_deviation_ms(
-                        wh_json:get_value(<<"Expires">>,JObj)),
+                        wh_json:get_value(<<"Expires">>,JObj)
+                       ),
             Username = wh_json:get_value(<<"Auth-Username">>, JObj, UserId),
             UserEl = user_el([{'number-alias', Number}
                               ,{'cacheable', Expires}
-                             | user_el_default_props(Username) ]
-                             ,Elements),
+                              | user_el_default_props(Username)
+                             ]
+                             ,Elements
+                            ),
             DomainEl = domain_el(wh_json:get_value(<<"Auth-Realm">>, JObj, DomainName), UserEl),
             SectionEl = section_el(<<"directory">>, DomainEl),
             {'ok', xmerl:export([SectionEl], 'fs_xml')}
@@ -221,7 +224,7 @@ route_resp_xml(RespJObj) ->
 route_resp_fold(RouteJObj, {Idx, Acc}) ->
     case ecallmgr_util:build_channel(RouteJObj) of
         {'error', _} -> {Idx+1, Acc};
-        {'ok', Route} ->
+        {'ok', Channel} ->
             BypassMedia = case wh_json:get_value(<<"Media">>, RouteJObj) of
                               <<"bypass">> -> "true";
                               _ -> "false" %% default to not bypassing media
@@ -240,7 +243,7 @@ route_resp_fold(RouteJObj, {Idx, Acc}) ->
             BPEl = action_el(<<"set">>, [<<"bypass_media=">>, BypassMedia]),
             HangupEl = action_el(<<"set">>, <<"hangup_after_bridge=true">>),
             FailureEl = action_el(<<"set">>, <<"failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH">>),
-            BridgeEl = action_el(<<"set">>, [ChannelVars, Route]),
+            BridgeEl = action_el(<<"set">>, [ChannelVars, Channel]),
 
             ConditionEl = condition_el([BPEl, HangupEl, FailureEl, BridgeEl]),
             ExtEl = extension_el([<<"match_">>, Idx+$0], <<"true">>, [ConditionEl]),
@@ -514,24 +517,23 @@ escape(V, C) ->
 encode(C, C) -> [$\\, C];
 encode(C, _) -> C.
 
--spec get_channel_params(wh_json:object()) -> wh_json:json_proplist().
+-spec get_channel_params(wh_json:object() | wh_proplist()) -> wh_proplist().
+get_channel_params(Props) when is_list(Props) ->
+    [get_channel_params_fold(K, V) || {K, V} <- Props];
 get_channel_params(JObj) ->
-    CV0 = case wh_json:get_value(<<"Tenant-ID">>, JObj) of
-              'undefined' -> [];
-              TID -> [{list_to_binary([?CHANNEL_VAR_PREFIX, "Tenant-ID"]), TID}]
-          end,
+    Props = wh_json:to_proplist(
+              wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())
+             ),
+    get_channel_params(Props).
 
-    CV1 = case wh_json:get_value(<<"Access-Group">>, JObj) of
-              'undefined' -> CV0;
-              AG -> [{list_to_binary([?CHANNEL_VAR_PREFIX, "Access-Group"]), AG} | CV0]
-          end,
-
-    Custom = wh_json:to_proplist(wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
-    lists:foldl(fun({<<"variable_", K/binary>>,V}, CV) ->
-                        [{K, V} | CV];
-                   ({K,V}, CV) ->
-                        [{list_to_binary([?CHANNEL_VAR_PREFIX, K]), V} | CV]
-                end, CV1, Custom).
+-spec get_channel_params_fold(ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
+get_channel_params_fold(Key, Val) ->
+    case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
+        'false' ->
+            {list_to_binary([?CHANNEL_VAR_PREFIX, Key]), Val};
+        {_, Prefix} ->
+            {Prefix, ecallmgr_util:maybe_sanitize_fs_value(Key, Val)}
+    end.
 
 -spec get_custom_sip_headers(wh_json:object()) -> wh_json:json_proplist().
 get_custom_sip_headers(JObj) ->

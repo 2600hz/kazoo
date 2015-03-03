@@ -19,7 +19,6 @@
 %% -------------------------------------------------------------------
 
 %% @doc NkSIP Config Server.
-
 -module(nksip_config).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 -behaviour(gen_server).
@@ -27,14 +26,15 @@
 -include("nksip.hrl").
 
 -export([get/1, get/2, put/2, del/1, cseq/0, increment/2]).
--export([get_cached/2, get_cached/3, parse_config/1, parse_config/2]).
 -export([start_link/0, init/1, terminate/2, code_change/3, handle_call/3, handle_cast/2, 
          handle_info/2]).
--export([put_log_cache/2]).
+-export([make_cache/0, put_log_cache/2]).
 
 -compile({no_auto_import,[put/2]}).
 
--define(MINUS_CSEQ, 46111468).  % Lower values to debug
+-define(MINUS_CSEQ, 46111468).  % Generate lower values to debug
+-define(RE_CALL_ID, "\r\n\s*(i|call\-id)\s*:\s*(.*?)\s*\r\n").
+-define(RE_CONTENT_LENGTH, "\r\n\s*(l|content-length)\s*:\s*(.*?)\s*\r\n").
 
 
 %% ===================================================================
@@ -58,29 +58,6 @@ get(Key, Default) ->
     case ets:lookup(?MODULE, Key) of
         [] -> Default;
         [{_, Value}] -> Value
-    end.
-
-
-%% @doc Equivalent to `get_cached(Key, undefined)'.
--spec get_cached(term(), nksip_lib:optslist()) -> 
-    Value :: term().
-
-get_cached(Key, CachedList) ->
-    case nksip_lib:get_value(Key, CachedList, '$nksip_config_undefined') of
-        '$nksip_config_undefined' -> ?MODULE:get(Key);
-        Cached -> Cached
-    end.
-
-
-%% @doc Tries to get a value from `CacheList' if it is not present,
-%% gets it from config.
--spec get_cached(term(), nksip_lib:optslist(), term()) -> 
-    Value :: term().
-
-get_cached(Key, CachedList, Default) ->
-    case nksip_lib:get_value(Key, CachedList, '$nksip_config_undefined') of
-        '$nksip_config_undefined' -> get(Key, Default);
-        Cached -> Cached
     end.
 
 
@@ -122,52 +99,58 @@ increment(Key, Count) ->
 
 %% @private Default config values
 -spec default_config() ->
-    nksip_lib:optslist().
+    nksip:optslist().
 
 default_config() ->
     [
-        {timer_t1, 500},                    % (msecs) 0.5 secs
-        {timer_t2, 4000},                   % (msecs) 4 secs
-        {timer_t4, 5000},                   % (msecs) 5 secs
-        {timer_c,  180},                    % (secs) 3min
-        {sipapp_timer, 5},                  % Time to refresh SipApp (registrations...)
-        {session_expires, 1800},            % (secs) 30 min
-        {min_session_expires, 90},          % (secs) 90 secs (min 90, recomended 1800)
-        {udp_timeout, 180},                 % (secs) 3 min
-        {tcp_timeout, 180},                 % (secs) 3 min
-        {sctp_timeout, 180},                % (secs) 3 min
-        {ws_timeout, 180},                  % (secs) 3 min
-        {nonce_timeout, 30},                % (secs) 30 secs
-        {sipapp_timeout, 32},               % (secs) 32 secs  
-        {max_calls, 100000},                % Each Call-ID counts as a call
-        {max_connections, 1024},            % Per transport and SipApp
-        {registrar_default_time, 3600},     % (secs) 1 hour
-        {registrar_min_time, 60},           % (secs) 1 miluen
-        {registrar_max_time, 86400},        % (secs) 24 hour
-        {outbound_time_all_fail, 30},       % (secs)
-        {outbound_time_any_ok, 90},         % (secs)
-        {outbound_max_time, 1800},          % (secs)
+        {global_max_calls, 100000},         % Each Call-ID counts as a call
+        {global_max_connections, 1024},     % 
         {dns_cache_ttl, 3600},              % (secs) 1 hour
-        {local_data_path, "log"}            % To store UUID
+        {local_data_path, "log"},           % To store UUID
+        {sync_call_time, 30},               % Synchronous call timeout
+        {msg_routers, 16}                   % Number of parallel msg routers 
     ].
 
 
-%% @doc Parses a list of options
--spec parse_config(nksip_lib:optslist()) ->
-    {ok, nksip_lib:optslist()} | {error, term()}.
+%% @private 
+-spec make_cache() ->
+    ok.
 
-parse_config(Opts) ->
-    parse_config_opts(Opts, []).
-
-
-%% @doc Parses a single config option
--spec parse_config(atom(), term()) ->
-    {ok, term()} | {error, term()}.
-
-parse_config(Name, Value) ->
-    case parse_config_opts([{Name, Value}], []) of
-        {ok, [{_, Value1}]} -> {ok, Value1};
-        {error, Error} -> {error, Error}
+make_cache() ->
+    case parse_config(application:get_all_env(nksip), []) of
+        {ok, EnvConfig1} ->
+            EnvConfig2 = nksip_lib:defaults(EnvConfig1, default_config()),
+            GlobalOpts = [Key || {Key, _} <- default_config()],
+            AppConfig = nksip_lib:delete(EnvConfig2, 
+                                         [included_applications|GlobalOpts]),
+            CacheConfig = [
+                {global_id, nksip_lib:luid()},
+                {local_ips, nksip_lib:get_local_ips()},
+                {main_ip, nksip_lib:find_main_ip()},
+                {main_ip6, nksip_lib:find_main_ip(auto, ipv6)},
+                {sync_call_time, 
+                    1000*nksip_lib:get_value(sync_call_time, EnvConfig2)},
+                {dns_cache_ttl, 
+                    nksip_lib:get_value(dns_cache_ttl, EnvConfig2)},
+                {local_data_path, 
+                    nksip_lib:get_value(local_data_path, EnvConfig2)},
+                {global_max_connections, 
+                    nksip_lib:get_value(global_max_connections, EnvConfig2)},
+                {global_max_calls, 
+                    nksip_lib:get_value(global_max_calls, EnvConfig2)},
+                {msg_routers, 
+                    nksip_lib:get_value(msg_routers, EnvConfig2)},
+                {re_call_id, 
+                    element(2, re:compile(?RE_CALL_ID, [caseless]))},
+                {re_content_length, 
+                    element(2, re:compile(?RE_CONTENT_LENGTH, [caseless]))},
+                {app_config, AppConfig}
+            ],
+            make_cache(CacheConfig),
+            ok;
+        {error, Error} ->
+            lager:error("Config error: ~p", [Error]),
+            error(config_error)
     end.
 
 
@@ -192,34 +175,15 @@ start_link() ->
 init([]) ->
     ets:new(?MODULE, [named_table, public, {read_concurrency, true}]),
     ?MODULE:put(current_cseq, nksip_lib:cseq()-?MINUS_CSEQ),
-    AppConfig = lists:map(
-        fun({Key, Default}) ->
-            case application:get_env(nksip, Key) of
-                {ok, Value} -> {Key, Value};
-                _ -> {Key, Default}
-            end
-        end,
-        default_config()),
-    case parse_config(AppConfig) of
-        {ok, AppConfig1} ->
-            AppConfig2 = nksip_lib:delete(AppConfig1, [local_data_path, dns_cache_ttl]),
-            GlobalConfig = [
-                {global_id, nksip_lib:luid()},
-                {local_ips, nksip_lib:get_local_ips()},
-                {main_ip, nksip_lib:find_main_ip()},
-                {main_ip6, nksip_lib:find_main_ip(auto, ipv6)},
-                {app_config, AppConfig2},
-                {max_connections, nksip_lib:get_value(max_connections, AppConfig1)}
-            ],
-            lists:foreach(
-                fun({Key, Value}) -> nksip_config:put(Key, Value) end,
-                AppConfig1++GlobalConfig),
-            make_cache(GlobalConfig),
-            {ok, #state{}};
-        {error, Error} ->
-            lager:error("Config error: ~p", [Error]),
-            {error, config_error}
-    end.
+    CacheConfig = [
+        global_id, local_ips, main_ip, main_ip6, sync_call_time,
+        dns_cache_ttl, local_data_path, global_max_connections, 
+        global_max_calls, msg_routers, app_config
+    ],
+    lists:foreach(
+        fun(Key) -> nksip_config:put(Key, nksip_config_cache:Key()) end,
+        CacheConfig),
+    {ok, #state{}}.
 
 
 %% @private
@@ -272,86 +236,68 @@ terminate(_Reason, _State) ->
 
 %% @private Save cache for speed log access
 put_log_cache(AppId, CallId) ->
-    erlang:put(nksip_log_level, AppId:config_log_level()),
+    erlang:put(nksip_app_id, AppId),
+    erlang:put(nksip_call_id, CallId),
     erlang:put(nksip_app_name, AppId:name()),
-    erlang:put(nksip_call_id, CallId).
+    erlang:put(nksip_log_level, AppId:config_log_level()).
+
 
 %% @private
-parse_config_opts([], Opts) ->
+parse_config([], Opts) ->
     {ok, Opts};
 
-parse_config_opts([Term|Rest], Opts) ->
-    try 
-        Op = case Term of
-            {timer_t1, MSecs} when is_integer(MSecs), MSecs>=10, MSecs=<2500 ->
-                update;
-            {timer_t2, MSecs} when is_integer(MSecs), MSecs>=100, MSecs=<16000 ->
-                update;
-            {timer_t4, MSecs} when is_integer(MSecs), MSecs>=100, MSecs=<25000 ->
-                update;
-            {timer_c, Secs}  when is_integer(Secs), Secs>=1 ->
-                update;
-            {session_expires, Secs} when is_integer(Secs), Secs>=5 ->
-                update;
-            {min_session_expires, Secs} when is_integer(Secs), Secs>=1 ->
-                update;
-            {udp_timeout, Secs} when is_integer(Secs), Secs>=5 ->
-                update;
-            {tcp_timeout, Secs} when is_integer(Secs), Secs>=5 ->
-                update;
-            {sctp_timeout, Secs} when is_integer(Secs), Secs>=5 ->
-                update;
-            {ws_timeout, Secs} when is_integer(Secs), Secs>=5 -> 
-                update;
-            {nonce_timeout, Secs} when is_integer(Secs), Secs>=5 ->
-                update;
-            {sipapp_timeout, MSecs} when is_float(MSecs), MSecs>=0.01 ->
-                update;
-            {sipapp_timeout, Secs} when is_integer(Secs), Secs>=5, Secs=<180 ->
-                update;
-            {max_calls, Max} when is_integer(Max), Max>=1, Max=<1000000 ->
-                update;
-            {max_connections, Max} when is_integer(Max), Max>=1, Max=<1000000 ->
-                update;
-            {registrar_default_time, Secs} when is_integer(Secs), Secs>=5 ->
-                update;
-            {registrar_min_time, Secs} when is_integer(Secs), Secs>=1 ->
-                update;
-            {registrar_max_time, Secs} when is_integer(Secs), Secs>=60 ->
-                update;
-            {dns_cache_ttl, Secs} when is_integer(Secs), Secs>=5 ->
-                update;
-            {local_data_path, Dir} when is_list(Dir) ->
-                Path = filename:join(Dir, "write_test"),
-                case file:write_file(Path, <<"test">>) of
-                   ok ->
-                        case file:delete(Path) of
-                            ok -> update;
-                            _ -> throw(invalid)
-                        end;
-                    _ ->
-                        throw(invalid)
-                end;
-            {outbound_time_all_fail, Secs} when is_integer(Secs), Secs>=1 ->
-                update;
-            {outbound_time_any_ok, Secs} when is_integer(Secs), Secs>=1 ->
-                update;
-            {outbound_max_time, Secs} when is_integer(Secs), Secs>=1 ->
-                update;
-            {sipapp_timer, Secs} when is_integer(Secs), Secs>=1 ->
-                update;
-            _ ->
-                throw(invalid)
-        end,
-        case Op of
-            update -> 
-                Opts1 = nksip_lib:store_value(Term, Opts),
-                parse_config_opts(Rest, Opts1)
-        end
-    catch
-        throw:invalid when is_tuple(Term) -> 
+parse_config([Term|Rest], Opts) ->
+    Op = case Term of
+        {sync_call_time, Secs} ->
+            case is_integer(Secs) andalso Secs>=1 of
+                true -> update;
+                false -> error
+            end;
+        {dns_cache_ttl, Secs} ->
+            case is_integer(Secs) andalso Secs>=5 of
+                true -> update;
+                false -> error
+            end;
+        {local_data_path, Dir} ->
+            case is_list(Dir) andalso filename:join(Dir, "write_test") of
+                false ->
+                    error;
+                Path ->
+                    case file:write_file(Path, <<"test">>) of
+                       ok ->
+                            case file:delete(Path) of
+                                ok -> update;
+                                _ -> error
+                            end;
+                        _ ->
+                            error
+                    end
+            end;
+        {global_max_calls, Max} ->
+            case is_integer(Max) andalso Max>=1 andalso Max=<1000000 of
+                true -> update;
+                false -> error
+            end;
+        {global_max_connections, Max} ->
+            case is_integer(Max) andalso Max>=1 andalso Max=<1000000 of
+                true -> update;
+                false -> error
+            end;
+        {msg_routers, Routers} ->
+            case is_integer(Routers) andalso Routers>=1 andalso Routers=<127 of
+                true -> update;
+                false -> error
+            end;
+        _ ->
+            update
+    end,
+    case Op of
+        update -> 
+            Opts1 = nksip_lib:store_value(Term, Opts),
+            parse_config(Rest, Opts1);
+        error when is_tuple(Term) ->
             {error, {invalid, element(1, Term)}};
-        throw:invalid ->
+        error ->
             {error, {invalid, Term}}
     end.
 
@@ -362,5 +308,6 @@ make_cache(Config) ->
         fun({Key, Value}, Acc) -> [nksip_code_util:getter(Key, Value)|Acc] end,
         [],
         Config),
-    ok = nksip_code_util:compile(nksip_config_cache, Syntax).
+    {ok, Tree} = nksip_code_util:compile(nksip_config_cache, Syntax),
+    ok = nksip_code_util:write(nksip_config_cache, Tree).
 

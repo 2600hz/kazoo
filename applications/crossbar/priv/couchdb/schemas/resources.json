@@ -1,6 +1,6 @@
 {
     "_id": "resources",
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-03/schema#",
     "type": "object",
     "required": true,
     "name": "Resource",
@@ -131,7 +131,8 @@
                                     "G722_32",
                                     "CELT_48",
                                     "CELT_64",
-                                    "Speex"
+                                    "Speex",
+                                    "speex"
                                 ]
                             },
                             "default": [
@@ -336,7 +337,8 @@
                         "enum": [
                             "sip",
                             "freetdm",
-                            "skype"
+                            "skype",
+                            "amqp"
                         ],
                         "default": "sip"
                     },

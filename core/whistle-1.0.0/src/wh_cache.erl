@@ -28,7 +28,7 @@
 -export([fetch_local/2, fetch_keys_local/1]).
 -export([erase_local/2]).
 -export([flush_local/1]).
--export([filter_local/2]).
+-export([filter_local/2, filter_erase_local/2]).
 -export([dump_local/1, dump_local/2]).
 -export([wait_for_key_local/2
          ,wait_for_key_local/3
@@ -48,8 +48,9 @@
 -include("../include/wh_log.hrl").
 
 -define(SERVER, ?MODULE).
--define(EXPIRES, 3600). %% an hour
--define(EXPIRE_PERIOD, 10000).
+-define(EXPIRES, ?SECONDS_IN_HOUR). %% an hour
+-define(EXPIRE_PERIOD, 10 * ?MILLISECONDS_IN_SECOND).
+-define(EXPIRE_PERIOD_MSG, 'expire_cache_objects').
 -define(DEFAULT_WAIT_TIMEOUT, 5).
 
 -define(NOTIFY_KEY(Key), {'monitor_key', Key}).
@@ -63,18 +64,27 @@
 -define(CONSUME_OPTIONS, []).
 
 -type callback_fun() :: fun((_, _, 'flush' | 'erase' | 'expire') -> _).
--type origin_tuple() :: {'db', ne_binary(), ne_binary()} | {'db', ne_binary()}.
+-type origin_tuple() :: {'db', ne_binary(), ne_binary()} | %% {db, Database, PvtType or Id}
+                        {'type', ne_binary(), ne_binary()} | %% {type, PvtType, Id}
+                        {'db', ne_binary()} | %% {db, Database}
+                        {'type', ne_binary()}. %% {type, PvtType}
 -type origin_tuples() :: [origin_tuple(),...] | [].
 -record(cache_obj, {key :: term() | '_' | '$1'
                     ,value :: term() | '_' | '$1' | '$2'
-                    ,expires :: pos_integer() | 'infinity' | '_' | '$3'
-                    ,timestamp = wh_util:current_tstamp() :: pos_integer() | '_' | '$4'
+                    ,expires :: wh_timeout() | '_' | '$3'
+                    ,timestamp = wh_util:current_tstamp() :: gregorian_seconds() | '_' | '$4'
                     ,callback :: callback_fun() | '_' | '$2' | '$3' | '$5'
                     ,origin :: origin_tuple() | origin_tuples() | '$1' | '_'
                     ,type = 'normal' :: 'normal' | 'monitor' | 'pointer' | '_'
                    }).
 -type cache_obj() :: #cache_obj{}.
 -type cache_objs() :: [cache_obj(),...] | [].
+
+-type store_options() :: [{'origin', origin_tuple() | origin_tuples()} |
+                          {'expires', wh_timeout()} |
+                          {'callback', 'undefined' | callback_fun()}
+                         ] | [].
+-export_type([store_options/0]).
 
 -record(state, {name :: atom()
                 ,tab :: ets:tid()
@@ -83,6 +93,7 @@
                 ,new_node_flush = 'false' :: boolean()
                 ,expire_node_flush = 'false' :: boolean()
                 ,expire_period = ?EXPIRE_PERIOD :: wh_timeout()
+                ,expire_period_ref :: reference()
                 ,props = [] :: list()
                }).
 
@@ -174,11 +185,17 @@ wait_for_key(Key) -> wait_for_key(Key, ?DEFAULT_WAIT_TIMEOUT).
 wait_for_key(Key, Timeout) -> wait_for_key_local(?SERVER, Key, Timeout).
 
 %% Local cache API
--spec store_local(atom(), term(), term()) -> 'ok'.
--spec store_local(atom(), term(), term(), wh_proplist()) -> 'ok'.
+-spec store_local(server_ref(), term(), term()) -> 'ok'.
+-spec store_local(server_ref(), term(), term(), wh_proplist()) -> 'ok'.
 
 store_local(Srv, K, V) -> store_local(Srv, K, V, []).
 
+store_local(Srv, K, V, Props) when is_atom(Srv) ->
+    case whereis(Srv) of
+        'undefined' ->
+            throw({'error', 'unknown_cache', Srv});
+        Pid -> store_local(Pid, K, V, Props)
+    end;
 store_local(Srv, K, V, Props) ->
     gen_server:cast(Srv, {'store', #cache_obj{key=K
                                               ,value=V
@@ -225,6 +242,17 @@ fetch_keys_local(Srv) ->
                   ,['$1']
                  }],
     ets:select(Srv, MatchSpec).
+
+-spec filter_erase_local(atom(), fun((term(), term()) -> boolean())) ->
+                          non_neg_integer().
+filter_erase_local(Srv, Pred) when is_function(Pred, 2) ->
+    ets:foldl(fun(#cache_obj{key=K, value=V, type = 'normal'}, Count) ->
+                      case Pred(K, V) of
+                          'true' -> erase_local(Srv, K), Count+1;
+                          'false' -> Count
+                      end;
+                 (_, Count) -> Count
+              end, 0, Srv).
 
 -spec filter_local(atom(), fun((term(), term()) -> boolean())) ->
                           [{term(), term()},...] | [].
@@ -328,7 +356,7 @@ handle_document_change(JObj, Props) ->
 init([Name, ExpirePeriod, Props]) ->
     put('callid', Name),
     wapi_conf:declare_exchanges(),
-    _ = erlang:send_after(ExpirePeriod, self(), {'expire', ExpirePeriod}),
+
     Tab = ets:new(Name, ['set', 'protected', 'named_table', {'keypos', #cache_obj.key}]),
     _ = case props:get_value('new_node_flush', Props) of
             'true' -> wh_nodes:notify_new();
@@ -345,6 +373,7 @@ init([Name, ExpirePeriod, Props]) ->
                   ,new_node_flush=props:get_value('new_node_flush', Props)
                   ,expire_node_flush=props:get_value('expire_node_flush', Props)
                   ,expire_period=ExpirePeriod
+                  ,expire_period_ref=start_expire_period_timer(ExpirePeriod)
                   ,props=Props
                  }}.
 
@@ -476,10 +505,14 @@ handle_cast(_, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'expire', ExpirePeriod}, #state{tab=Tab}=State) ->
+handle_info({'timeout', Ref, ?EXPIRE_PERIOD_MSG}
+            ,#state{expire_period_ref=Ref
+                    ,expire_period=Period
+                    ,tab=Tab
+                   }=State
+           ) ->
     _ = expire_objects(Tab),
-    _ = erlang:send_after(ExpirePeriod, self(), {'expire', ExpirePeriod}),
-    {'noreply', State, 'hibernate'};
+    {'noreply', State#state{expire_period_ref=start_expire_period_timer(Period)}, 'hibernate'};
 handle_info(_Info, State) ->
     {'noreply', State, 'hibernate'}.
 
@@ -539,7 +572,7 @@ get_props_callback(Props) ->
         Fun when is_function(Fun, 3) -> Fun
     end.
 
--spec get_props_origin(wh_proplist()) -> 'undefined' | term().
+-spec get_props_origin(wh_proplist()) -> 'undefined' | origin_tuple() | origin_tuples().
 get_props_origin(Props) -> props:get_value('origin', Props).
 
 -spec maybe_erase_changed(ne_binary(), ne_binary(), ne_binary(), atom()) -> 'ok'.
@@ -553,6 +586,14 @@ maybe_erase_changed(Db, Type, Id, Tab) ->
                    ,['$_']
                   }
                  ,{#cache_obj{origin = {'db', Db, Id}, _ = '_'}
+                   ,[]
+                   ,['$_']
+                  }
+                 ,{#cache_obj{origin = {'type', Type, Id}, _ = '_'}
+                   ,[]
+                   ,['$_']
+                  }
+                 ,{#cache_obj{origin = {'type', Type}, _ = '_'}
                    ,[]
                    ,['$_']
                   }
@@ -694,3 +735,7 @@ delete_monitor_callbacks(Key, Tab) ->
                   }
                  ],
     ets:select_delete(Tab, DeleteSpec).
+
+-spec start_expire_period_timer(pos_integer()) -> reference().
+start_expire_period_timer(ExpirePeriod) ->
+    erlang:start_timer(ExpirePeriod, self(), ?EXPIRE_PERIOD_MSG).

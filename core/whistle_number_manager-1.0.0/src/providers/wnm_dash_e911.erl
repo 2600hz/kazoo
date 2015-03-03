@@ -299,7 +299,7 @@ remove_number(Number) ->
         {'error', 'server_error'} ->
             lager:debug("removed number from dash e911"),
             <<"REMOVED">>;
-        Response ->
+        {'ok', Response} ->
             case wh_util:get_xml_value("//URIStatus/code/text()", Response) of
                 <<"REMOVED">> = R ->
                     lager:debug("removed number from dash e911"),

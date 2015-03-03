@@ -68,7 +68,7 @@ handle(Data, Call) ->
 
     Interdigit = wh_json:get_integer_value(<<"interdigit_timeout">>
                                            ,Data
-                                           ,whapps_call_commnd:default_interdigit_timeout()
+                                           ,whapps_call_command:default_interdigit_timeout()
                                           ),
 
     NoopId = whapps_call_command:play(Media, Call),

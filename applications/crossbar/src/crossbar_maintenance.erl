@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz, INC
+%%% @copyright (C) 2012-2015, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -17,7 +17,9 @@
 -export([start_module/1]).
 -export([stop_module/1]).
 -export([running_modules/0]).
--export([refresh/0, refresh/1]).
+-export([refresh/0, refresh/1
+         ,flush/0
+        ]).
 -export([find_account_by_number/1]).
 -export([find_account_by_name/1]).
 -export([find_account_by_realm/1]).
@@ -46,18 +48,31 @@ migrate() ->
 
 -spec migrate(ne_binaries()) -> 'no_return'.
 migrate(Accounts) ->
-    io:format("updating default crossbar modules~n", []),
     _ = migrate_accounts_data(Accounts),
-    Modules =
+
+    CurrentModules =
         [wh_util:to_atom(Module, 'true')
-         || Module <- whapps_config:get(<<"crossbar">>, <<"autoload_modules">>, [])
+         || Module <- crossbar_config:autoload_modules()
         ],
+
+    UpdatedModules = remove_deprecated_modules(CurrentModules, ?DEPRECATED_MODULES),
+
     add_missing_modules(
-      Modules,
-      [Module
-       || Module <- ?DEFAULT_MODULES
-              ,(not lists:member(Module, Modules))
-      ]).
+      UpdatedModules
+      ,[Module
+        || Module <- ?DEFAULT_MODULES,
+           (not lists:member(Module, CurrentModules))
+       ]).
+
+-spec remove_deprecated_modules(atoms(), atoms()) -> atoms().
+remove_deprecated_modules(Modules, Deprecated) ->
+    case lists:foldl(fun lists:delete/2, Modules, Deprecated) of
+        Modules -> Modules;
+        Ms ->
+            io:format(" removed deprecated modules from autoloaded modules: ~p~n", [Deprecated]),
+            crossbar_config:set_autoload_modules(Ms),
+            Ms
+    end.
 
 -spec migrate_accounts_data() -> 'no_return'.
 migrate_accounts_data() ->
@@ -78,7 +93,8 @@ migrate_account_data(Account) ->
 -spec add_missing_modules(atoms(), atoms()) -> 'no_return'.
 add_missing_modules(_, []) -> 'no_return';
 add_missing_modules(Modules, MissingModules) ->
-    _ = whapps_config:set(<<"crossbar">>, <<"autoload_modules">>, Modules ++ MissingModules),
+    io:format("  saving autoload_modules with missing modules added: ~p~n", [MissingModules]),
+    crossbar_config:set_autoload_modules(lists:sort(Modules ++ MissingModules)),
     'no_return'.
 
 %%--------------------------------------------------------------------
@@ -96,6 +112,11 @@ refresh() ->
 refresh(Value) ->
     io:format("please use whapps_maintenance:refresh(~p).", [Value]).
 
+-spec flush() -> 'ok'.
+flush() ->
+    crossbar_config:flush(),
+    wh_cache:flush_local(?CROSSBAR_CACHE).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -105,16 +126,29 @@ refresh(Value) ->
 -spec start_module(text()) -> 'ok' | {'error', _}.
 start_module(Module) ->
     try crossbar:start_mod(Module) of
-        _ ->
-            Mods = whapps_config:get(?CONFIG_CAT, <<"autoload_modules">>, []),
-            whapps_config:set_default(?CONFIG_CAT, <<"autoload_modules">>, [wh_util:to_binary(Module)
-                                                                            | lists:delete(wh_util:to_binary(Module), Mods)
-                                                                           ]),
-            io:format("started and added ~s to autoloaded modules~n", [Module])
+        _ -> maybe_autoload_module(wh_util:to_binary(Module))
     catch
         _E:_R ->
             io:format("failed to start ~s: ~s: ~p~n", [Module, _E, _R])
     end.
+
+-spec maybe_autoload_module(ne_binary()) -> 'ok'.
+maybe_autoload_module(Module) ->
+    Mods = crossbar_config:autoload_modules(),
+    case lists:member(Module, Mods) of
+        'true' ->
+            io:format("module ~s started~n", [Module]);
+        'false' ->
+            persist_module(Module, Mods),
+            io:format("started and added ~s to autoloaded modules~n", [Module])
+    end.
+
+-spec persist_module(ne_binary(), ne_binaries()) -> 'ok'.
+persist_module(Module, Mods) ->
+    crossbar_config:set_default_autoload_modules(
+      [wh_util:to_binary(Module)
+       | lists:delete(wh_util:to_binary(Module), Mods)
+      ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -126,8 +160,8 @@ start_module(Module) ->
 stop_module(Module) ->
     try crossbar:stop_mod(Module) of
         _ ->
-            Mods = whapps_config:get(?CONFIG_CAT, <<"autoload_modules">>, []),
-            whapps_config:set_default(?CONFIG_CAT, <<"autoload_modules">>, lists:delete(wh_util:to_binary(Module), Mods)),
+            Mods = crossbar_config:autoload_modules(),
+            crossbar_config:set_default_autoload_modules(lists:delete(wh_util:to_binary(Module), Mods)),
             io:format("stopped and removed ~s from autoloaded modules~n", [Module])
     catch
         _E:_R ->
@@ -350,12 +384,16 @@ create_account(AccountName, Realm, Username, Password) ->
                               ,{<<"priv_level">>, <<"admin">>}
                              ]),
     try
-        {'ok', C1} = validate_account(Account, #cb_context{}),
-        {'ok', C2} = validate_user(User, C1),
-        {'ok', #cb_context{db_name=Db, account_id=AccountId}} = create_account(C1),
-        {'ok', _} = create_user(C2#cb_context{db_name=Db, account_id=AccountId}),
+        {'ok', C1} = validate_account(Account, cb_context:new()),
+        {'ok', C2} = create_account(C1),
+        {'ok', C3} = validate_user(User, C2),
+        {'ok', _} = create_user(C3),
+
+        AccountDb = cb_context:account_db(C1),
+        AccountId = cb_context:account_id(C1),
+
         case whapps_util:get_all_accounts() of
-            [Db] ->
+            [AccountDb] ->
                 _ = promote_account(AccountId),
                 _ = allow_account_number_additions(AccountId),
                 _ = whistle_services_maintenance:make_reseller(AccountId),
@@ -365,13 +403,11 @@ create_account(AccountName, Realm, Username, Password) ->
         'ok'
     catch
         _E:_R ->
-            lager:error("crashed creating account: ~s: ~p", [_E, _R]),
             ST = erlang:get_stacktrace(),
+            lager:error("crashed creating account: ~s: ~p", [_E, _R]),
             wh_util:log_stacktrace(ST),
             'failed'
     end.
-
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -383,16 +419,19 @@ create_account(AccountName, Realm, Username, Password) ->
                               {'ok', cb_context:context()} |
                               {'error', wh_json:object()}.
 validate_account(JObj, Context) ->
-    Payload = [Context#cb_context{req_data=JObj
-                                  ,req_nouns=[{?WH_ACCOUNTS_DB, []}]
-                                  ,req_verb = ?HTTP_PUT
-                                  ,resp_status = 'fatal'
-                                 }
+    Payload = [cb_context:setters(Context
+                                  ,[{fun cb_context:set_req_data/2, JObj}
+                                    ,{fun cb_context:set_req_nouns/2, [{?WH_ACCOUNTS_DB, []}]}
+                                    ,{fun cb_context:set_req_verb/2, ?HTTP_PUT}
+                                    ,{fun cb_context:set_resp_status/2, 'fatal'}
+                                   ])
               ],
-    case crossbar_bindings:fold(<<"v1_resource.validate.accounts">>, Payload) of
-        #cb_context{resp_status='success'}=Context1 -> {'ok', Context1};
-        #cb_context{resp_status=_S, resp_data=Errors} ->
-            io:format("failed to validate account properties(~p): '~s'~n", [_S, wh_json:encode(Errors)]),
+    Context1 = crossbar_bindings:fold(<<"v1_resource.validate.accounts">>, Payload),
+    case cb_context:resp_status(Context1) of
+        'success' -> {'ok', Context1};
+        _Status ->
+            Errors = cb_context:resp_data(Context1),
+            io:format("failed to validate account properties(~p): '~s'~n", [_Status, wh_json:encode(Errors)]),
             {'error', Errors}
     end.
 
@@ -406,15 +445,19 @@ validate_account(JObj, Context) ->
                            {'ok', cb_context:context()} |
                            {'error', wh_json:object()}.
 validate_user(JObj, Context) ->
-    Payload = [Context#cb_context{req_data=JObj
-                                  ,req_nouns=[{?WH_ACCOUNTS_DB, []}]
-                                  ,req_verb = ?HTTP_PUT
-                                  ,resp_status = 'fatal'
-                                 }
+    Payload = [cb_context:setters(Context
+                                  ,[{fun cb_context:set_req_data/2, JObj}
+                                    ,{fun cb_context:set_req_nouns/2, [{?WH_ACCOUNTS_DB, []}]}
+                                    ,{fun cb_context:set_req_verb/2, ?HTTP_PUT}
+                                    ,{fun cb_context:set_resp_status/2, 'fatal'}
+                                   ]
+                                 )
               ],
-    case crossbar_bindings:fold(<<"v1_resource.validate.users">>, Payload) of
-        #cb_context{resp_status='success'}=Context1 -> {'ok', Context1};
-        #cb_context{resp_data=Errors} ->
+    Context1 = crossbar_bindings:fold(<<"v1_resource.validate.users">>, Payload),
+    case cb_context:resp_status(Context1) of
+        'success' -> {'ok', Context1};
+        _Status ->
+            Errors = cb_context:resp_data(Context1),
             io:format("failed to validate user properties: '~s'~n", [wh_json:encode(Errors)]),
             {'error', Errors}
     end.
@@ -429,12 +472,16 @@ validate_user(JObj, Context) ->
                             {'ok', cb_context:context()} |
                             {'error', wh_json:object()}.
 create_account(Context) ->
-    case crossbar_bindings:fold(<<"v1_resource.execute.put.accounts">>, [Context]) of
-        #cb_context{resp_status='success', db_name=AccountDb, account_id=AccountId}=Context1 ->
-            io:format("created new account '~s' in db '~s'~n", [AccountId, AccountDb]),
+    Context1 = crossbar_bindings:fold(<<"v1_resource.execute.put.accounts">>, [Context]),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            io:format("created new account '~s' in db '~s'~n", [cb_context:account_id(Context1)
+                                                                ,cb_context:account_db(Context1)
+                                                               ]),
             {'ok', Context1};
-        #cb_context{resp_data=Errors} ->
-            io:format("failed to create account: '~s'~n", [list_to_binary(wh_json:encode(Errors))]),
+        _Status ->
+            Errors = cb_context:resp_data(Context1),
+            io:format("failed to create account: '~s'~n", [wh_json:encode(Errors)]),
             AccountId = wh_json:get_value(<<"_id">>, cb_context:req_data(Context)),
             couch_mgr:db_delete(wh_util:format_account_id(AccountId, 'encoded')),
             {'error', Errors}
@@ -450,12 +497,16 @@ create_account(Context) ->
                          {'ok', cb_context:context()} |
                          {'error', wh_json:object()}.
 create_user(Context) ->
-    case crossbar_bindings:fold(<<"v1_resource.execute.put.users">>, [Context]) of
-        #cb_context{resp_status='success', doc=JObj}=Context1 ->
-            io:format("created new account admin user '~s'~n", [wh_json:get_value(<<"_id">>, JObj)]),
+    Context1 = crossbar_bindings:fold(<<"v1_resource.execute.put.users">>, [Context]),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            io:format("created new account admin user '~s'~n"
+                      ,[wh_json:get_value(<<"_id">>, cb_context:doc(Context1))]
+                     ),
             {'ok', Context1};
-        #cb_context{resp_data=Errors} ->
-            io:format("failed to create account admin user: '~s'~n", [list_to_binary(wh_json:encode(Errors))]),
+        _Status ->
+            Errors = cb_context:resp_data(Context1),
+            io:format("failed to create account admin user: '~s'~n", [wh_json:encode(Errors)]),
             {'error', Errors}
     end.
 
@@ -466,8 +517,8 @@ create_user(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_account(input_term(), ne_binary(), term()) ->
-                                  {'ok', wh_json:object()} |
-                                  {'error', term()}.
+                            {'ok', wh_json:object()} |
+                            {'error', term()}.
 update_account(AccountId, Key, Value) when not is_binary(AccountId) ->
     update_account(wh_util:to_binary(AccountId), Key, Value);
 update_account(AccountId, Key, Value) ->
@@ -486,8 +537,13 @@ update_account(AccountId, Key, Value) ->
                          end
                  end
                ],
-    lists:foldl(fun(F, J) -> F(J) end, couch_mgr:open_doc(AccountDb, AccountId), Updaters).
+    lists:foldl(fun(F, J) -> F(J) end
+                ,couch_mgr:open_cache_doc(AccountDb, AccountId)
+                ,Updaters
+               ).
 
+-spec print_account_info(ne_binary()) -> {'ok', ne_binary()}.
+-spec print_account_info(ne_binary(), ne_binary()) -> {'ok', ne_binary()}.
 print_account_info(AccountDb) ->
     AccountId = wh_util:format_account_id(AccountDb, 'raw'),
     print_account_info(AccountDb, AccountId).
@@ -510,18 +566,18 @@ print_account_info(AccountDb, AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec move_account(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} | {'error', _}.
+-spec move_account(ne_binary(), ne_binary()) -> 'ok'.
 move_account(Account, ToAccount) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     ToAccountId = wh_util:format_account_id(ToAccount, 'raw'),
     maybe_move_account(AccountId, ToAccountId).
 
--spec maybe_move_account(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} | {'error', _}.
+-spec maybe_move_account(ne_binary(), ne_binary()) -> 'ok'.
 maybe_move_account(AccountId, AccountId) ->
-    io:format("can not move to the same account~n", []);
+    io:format("can not move to the same account~n");
 maybe_move_account(AccountId, ToAccountId) ->
     case crossbar_util:move_account(AccountId, ToAccountId) of
-        {'ok', _} -> io:format("move complete!~n", []);
+        {'ok', _} -> io:format("move complete!~n");
         {'error', Reason} ->
             io:format("unable to complete move: ~p~n", [Reason])
     end.
@@ -542,95 +598,111 @@ descendants_count(AccountId) ->
 
 -spec migrate_ring_group_callflow(ne_binary()) -> 'ok'.
 migrate_ring_group_callflow(Account) ->
-    Callflows = get_ring_group_callflows(Account),
-    lists:foreach(fun create_new_ring_group_callflow/1 ,Callflows),
-    'ok'.
+    lists:foreach(fun create_new_ring_group_callflow/1
+                  ,get_migrateable_ring_group_callflows(Account)
+                 ).
 
--spec get_ring_group_callflows(ne_binary()) -> wh_json:objects().
-get_ring_group_callflows(Account) ->
+-spec get_migrateable_ring_group_callflows(ne_binary()) -> wh_json:objects().
+get_migrateable_ring_group_callflows(Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     case couch_mgr:get_all_results(AccountDb, <<"callflows/crossbar_listing">>) of
         {'error', _M} ->
             io:format("error fetching callflows in ~p ~p~n", [AccountDb, _M]),
             [];
         {'ok', JObjs} ->
-            lists:foldl(
-                fun(JObj, Acc) ->
-                    case
-                        {wh_json:get_ne_binary_value([<<"value">>, <<"group_id">>], JObj)
-                         ,wh_json:get_ne_binary_value([<<"value">>, <<"type">>], JObj)}
-                    of
-                        {'undefined', _} -> Acc;
-                        {_, 'undefined'} ->
-                            Id = wh_json:get_value(<<"id">>, JObj),
-                            case couch_mgr:open_doc(AccountDb, Id) of
-                                {'ok', CallflowJObj} -> [CallflowJObj|Acc];
-                                {'error', _M} ->
-                                    io:format("error fetching callflow ~p in ~p ~p~n", [Id, AccountDb, _M]),
-                                    Acc
-                            end;
-                        {_, _} -> Acc
-                    end
-                end
+            get_migrateable_ring_group_callflows(AccountDb, JObjs)
+    end.
+
+-spec get_migrateable_ring_group_callflows(ne_binary(), wh_json:objects()) -> wh_json:objects().
+get_migrateable_ring_group_callflows(AccountDb, JObjs) ->
+    lists:foldl(fun(JObj, Acc) -> get_migrateable_ring_group_callflow(JObj, Acc, AccountDb) end
                 ,[]
                 ,JObjs
-            )
+               ).
+
+-spec get_migrateable_ring_group_callflow(wh_json:object(), wh_json:objects(), ne_binary()) ->
+                                                 wh_json:objects().
+get_migrateable_ring_group_callflow(JObj, Acc, AccountDb) ->
+    case {wh_json:get_ne_binary_value([<<"value">>, <<"group_id">>], JObj)
+          ,wh_json:get_ne_binary_value([<<"value">>, <<"type">>], JObj)
+         }
+    of
+        {'undefined', _} -> Acc;
+        {_, 'undefined'} ->
+            Id = wh_json:get_value(<<"id">>, JObj),
+            case couch_mgr:open_cache_doc(AccountDb, Id) of
+                {'ok', CallflowJObj} -> check_callflow_eligibility(CallflowJObj, Acc);
+                {'error', _M} ->
+                    io:format("  error fetching callflow ~p in ~p ~p~n", [Id, AccountDb, _M]),
+                    Acc
+            end;
+        {_, _} -> Acc
+    end.
+
+-spec check_callflow_eligibility(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+check_callflow_eligibility(CallflowJObj, Acc) ->
+    case wh_json:get_value([<<"flow">>, <<"module">>], CallflowJObj) of
+        <<"ring_group">> -> [CallflowJObj|Acc];
+        <<"record_call">> -> [CallflowJObj|Acc];
+        _Module -> Acc
     end.
 
 -spec create_new_ring_group_callflow(wh_json:object()) -> 'ok'.
 create_new_ring_group_callflow(JObj) ->
-    Props =
-        props:filter_undefined([
-            {<<"pvt_vsn">>, <<"1">>}
-            ,{<<"pvt_type">>, <<"callflow">>}
-            ,{<<"pvt_modified">>, wh_util:current_tstamp()}
-            ,{<<"pvt_created">>, wh_util:current_tstamp()}
-            ,{<<"pvt_account_db">>, wh_json:get_value(<<"pvt_account_db">>, JObj)}
-            ,{<<"pvt_account_id">>, wh_json:get_value(<<"pvt_account_id">>, JObj)}
-            ,{<<"flow">>, wh_json:from_list([
-                    {<<"children">>, wh_json:new()}
-                    ,{<<"module">>, <<"ring_group">>}
-                ])
-             }
-            ,{<<"group_id">>, wh_json:get_value(<<"group_id">>, JObj)}
-            ,{<<"type">>, <<"baseGroup">>}
-        ]),
-    set_data_for_callflow(JObj, wh_json:from_list(Props)).
+    BaseGroup = base_group_ring_group(JObj),
+    save_new_ring_group_callflow(JObj, BaseGroup).
 
+-spec base_group_ring_group(wh_json:object()) -> wh_json:object().
+base_group_ring_group(JObj) ->
+    io:format("migrating callflow ~s: ~s~n", [wh_json:get_value(<<"_id">>, JObj), wh_json:encode(JObj)]),
+    BaseGroup = wh_json:from_list(
+                  props:filter_undefined(
+                    [{<<"pvt_vsn">>, <<"1">>}
+                     ,{<<"pvt_type">>, <<"callflow">>}
+                     ,{<<"pvt_modified">>, wh_util:current_tstamp()}
+                     ,{<<"pvt_created">>, wh_util:current_tstamp()}
+                     ,{<<"pvt_account_db">>, wh_json:get_value(<<"pvt_account_db">>, JObj)}
+                     ,{<<"pvt_account_id">>, wh_json:get_value(<<"pvt_account_id">>, JObj)}
+                     ,{<<"flow">>, wh_json:from_list([{<<"children">>, wh_json:new()}
+                                                      ,{<<"module">>, <<"ring_group">>}
+                                                     ])
+                      }
+                     ,{<<"group_id">>, wh_json:get_value(<<"group_id">>, JObj)}
+                     ,{<<"type">>, <<"baseGroup">>}
+                    ])),
+    set_data_for_callflow(JObj, BaseGroup).
 
--spec set_data_for_callflow(wh_json:object(), wh_json:object()) -> 'ok'.
-set_data_for_callflow(JObj, NewCallflow) ->
-    Flow = wh_json:get_value(<<"flow">>, NewCallflow),
+-spec set_data_for_callflow(wh_json:object(), wh_json:object()) -> wh_json:object().
+set_data_for_callflow(JObj, BaseGroup) ->
+    Flow = wh_json:get_value(<<"flow">>, BaseGroup),
     case wh_json:get_value([<<"flow">>, <<"module">>], JObj) of
         <<"ring_group">> ->
             Data = wh_json:get_value([<<"flow">>, <<"data">>], JObj),
             NewFlow = wh_json:set_value(<<"data">>, Data, Flow),
-            set_number_for_callflow(JObj, wh_json:set_value(<<"flow">>, NewFlow, NewCallflow));
+            set_number_for_callflow(JObj, wh_json:set_value(<<"flow">>, NewFlow, BaseGroup));
         <<"record_call">> ->
             Data = wh_json:get_value([<<"flow">>, <<"children">>, <<"_">>, <<"data">>], JObj),
             NewFlow = wh_json:set_value(<<"data">>, Data, Flow),
-            set_number_for_callflow(JObj, wh_json:set_value(<<"flow">>, NewFlow, NewCallflow));
-        _ ->
-            io:format("unable to find data for ~p aborting...~n", [wh_json:get_value(<<"_id">>, JObj)])
+            set_number_for_callflow(JObj, wh_json:set_value(<<"flow">>, NewFlow, BaseGroup))
     end.
 
--spec set_number_for_callflow(wh_json:object(), wh_json:object()) -> 'ok'.
-set_number_for_callflow(JObj, NewCallflow) ->
-    Number = <<"group_", (wh_util:to_binary(wh_util:now_ms(erlang:now())))/binary>>,
+-spec set_number_for_callflow(wh_json:object(), wh_json:object()) -> wh_json:object().
+set_number_for_callflow(JObj, BaseGroup) ->
+    Number = <<"group_", (wh_util:to_binary(wh_util:now_ms(os:timestamp())))/binary>>,
     Numbers = [Number],
-    set_name_for_callflow(JObj, wh_json:set_value(<<"numbers">>, Numbers, NewCallflow)).
+    set_name_for_callflow(JObj, wh_json:set_value(<<"numbers">>, Numbers, BaseGroup)).
 
--spec set_name_for_callflow(wh_json:object(), wh_json:object()) -> 'ok'.
-set_name_for_callflow(JObj, NewCallflow) ->
+-spec set_name_for_callflow(wh_json:object(), wh_json:object()) -> wh_json:object().
+set_name_for_callflow(JObj, BaseGroup) ->
     Name = wh_json:get_value(<<"name">>, JObj),
     NewName = binary:replace(Name, <<"Ring Group">>, <<"Base Group">>),
-    set_ui_metadata(JObj, wh_json:set_value(<<"name">>, NewName, NewCallflow)).
+    set_ui_metadata(JObj, wh_json:set_value(<<"name">>, NewName, BaseGroup)).
 
--spec set_ui_metadata(wh_json:object(), wh_json:object()) -> 'ok'.
-set_ui_metadata(JObj, NewCallflow) ->
+-spec set_ui_metadata(wh_json:object(), wh_json:object()) -> wh_json:object().
+set_ui_metadata(JObj, BaseGroup) ->
     MetaData = wh_json:get_value(<<"ui_metadata">>, JObj),
     NewMetaData = wh_json:set_value(<<"version">>, <<"v3.19">>, MetaData),
-    save_new_ring_group_callflow(JObj, wh_json:set_value(<<"ui_metadata">>, NewMetaData, NewCallflow)).
+    wh_json:set_value(<<"ui_metadata">>, NewMetaData, BaseGroup).
 
 -spec save_new_ring_group_callflow(wh_json:object(), wh_json:object()) -> 'ok'.
 save_new_ring_group_callflow(JObj, NewCallflow) ->
@@ -638,43 +710,44 @@ save_new_ring_group_callflow(JObj, NewCallflow) ->
     Name = wh_json:get_value(<<"name">>, NewCallflow),
     case check_if_callflow_exist(AccountDb, Name) of
         'true' ->
-            io:format("unable to save new callflow ~p in ~p already exist~n", [Name, AccountDb]);
+            io:format("unable to save new callflow '~s' in '~s'; already exists~n", [Name, AccountDb]);
         'false' ->
-            case couch_mgr:save_doc(AccountDb, NewCallflow) of
-                {'error', _M} ->
-                    io:format("unable to save new callflow (old:~p) in ~p aborting...~n", [wh_json:get_value(<<"_id">>, JObj), AccountDb]);
-                {'ok', NewJObj} -> update_old_ring_group_callflow(JObj, NewJObj)
-            end
+            save_new_ring_group_callflow(JObj, NewCallflow, AccountDb)
     end.
 
--spec check_if_callflow_exist(ne_binary(), ne_binary()) -> 'ok'.
-check_if_callflow_exist(Account, Name) ->
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+save_new_ring_group_callflow(JObj, NewCallflow, AccountDb) ->
+    case couch_mgr:save_doc(AccountDb, NewCallflow) of
+        {'error', _M} ->
+            io:format("unable to save new callflow (old:~p) in ~p aborting...~n"
+                      ,[wh_json:get_value(<<"_id">>, JObj), AccountDb]
+                     );
+        {'ok', NewJObj} ->
+            io:format("  saved base group callflow: ~s~n", [wh_json:encode(NewJObj)]),
+            update_old_ring_group_callflow(JObj, NewJObj)
+    end.
+
+-spec check_if_callflow_exist(ne_binary(), ne_binary()) -> boolean().
+check_if_callflow_exist(AccountDb, Name) ->
     case couch_mgr:get_all_results(AccountDb, <<"callflows/crossbar_listing">>) of
         {'error', _M} ->
             io:format("error fetching callflows in ~p ~p~n", [AccountDb, _M]),
             'true';
         {'ok', JObjs} ->
-            lists:foldl(
-                fun(JObj, Acc) ->
-                    case wh_json:get_value([<<"value">>, <<"name">>], JObj) =:= Name of
-                        'true' -> 'true';
-                        'false' -> Acc
-                    end
-                end
-                ,'false'
-                ,JObjs
+            lists:any(
+              fun(JObj) ->
+                      wh_json:get_value([<<"value">>, <<"name">>], JObj) =:= Name
+              end
+              ,JObjs
             )
     end.
 
 -spec update_old_ring_group_callflow(wh_json:object(), wh_json:object()) -> 'ok'.
 update_old_ring_group_callflow(JObj, NewCallflow) ->
-    Routines = [
-        fun update_old_ring_group_type/2
-        ,fun update_old_ring_group_metadata/2
-        ,fun update_old_ring_group_flow/2
-        ,fun save_old_ring_group/2
-    ],
+    Routines = [fun update_old_ring_group_type/2
+                ,fun update_old_ring_group_metadata/2
+                ,fun update_old_ring_group_flow/2
+                ,fun save_old_ring_group/2
+               ],
     lists:foldl(fun(F, J) -> F(J, NewCallflow) end, JObj, Routines).
 
 -spec update_old_ring_group_type(wh_json:object(), wh_json:object()) -> wh_json:object().
@@ -712,5 +785,20 @@ save_old_ring_group(JObj, NewCallflow) ->
             io:format("unable to save callflow ~p in ~p, removing new one (~p)~n", L),
             {'ok', _} = couch_mgr:del_doc(AccountDb, NewCallflow),
             'ok';
-        {'ok', _} -> 'ok'
+        {'ok', _OldJObj} ->
+            io:format("  saved ring group callflow: ~s~n", [wh_json:encode(_OldJObj)])
     end.
+
+-ifdef(TEST).
+
+-include("eunit/include/eunit.hrl").
+
+migrate_ring_group_callflow_test() ->
+    OldCallflow = <<"{\"_id\":\"cccaaaaaa\",\"numbers\":[\"1234\"],\"name\":\"Some Ring Group\",\"flow\":{\"module\":\"ring_group\",\"children\":{\"_\":{\"data\":{\"id\":\"vvvaaaaaa\"},\"module\":\"voicemail\",\"children\":{}}},\"data\":{\"strategy\":\"simultaneous\",\"timeout\":120,\"endpoints\":[{\"delay\":0,\"timeout\":40,\"id\":\"uuuaaaaaa\",\"endpoint_type\":\"user\"},{\"delay\":40,\"timeout\":40,\"id\":\"uuubbbbbb\",\"endpoint_type\":\"user\"}]}},\"group_id\":\"gggaaaaaa\",\"ui_metadata\":{\"version\":\"v3.19\",\"ui\":\"monster-ui\"},\"pvt_type\":\"callflow\"}">>,
+
+    NewCallflows = <<"[{\"_id\":\"cccaaaaaa\",\"numbers\":[\"1234\"],\"name\":\"Some Ring Group\",\"flow\":{\"module\":\"callflow\",\"children\":{\"_\":{\"data\":{\"id\":\"vvvaaaaaa\"},\"module\":\"voicemail\",\"children\":{}}},\"data\":{\"id\":\"cccbbbbbb\"}},\"group_id\":\"gggaaaaaa\",\"type\":\"userGroup\",\"ui_metadata\":{\"version\":\"v3.19\",\"ui\":\"monster-ui\"},\"pvt_type\":\"callflow\"},{\"_id\":\"cccbbbbbb\",\"numbers\":[\"abcdefghijklmnopqrstuvwxy\"],\"name\":\"Some Base Group\",\"flow\":{\"module\":\"ring_group\",\"children\":{},\"data\":{\"strategy\":\"simultaneous\",\"timeout\":120,\"endpoints\":[{\"delay\":0,\"timeout\":40,\"id\":\"uuuaaaaaa\",\"endpoint_type\":\"user\"},{\"delay\":40,\"timeout\":40,\"id\":\"uuubbbbbb\",\"endpoint_type\":\"user\"}]}},\"group_id\":\"gggaaaaaa\",\"type\":\"baseGroup\",\"ui_metadata\":{\"version\":\"v3.19\",\"ui\":\"monster-ui\"},\"pvt_type\":\"callflow\"}]">>,
+
+
+    ok.
+
+-endif.

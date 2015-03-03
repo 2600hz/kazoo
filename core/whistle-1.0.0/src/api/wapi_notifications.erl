@@ -14,6 +14,7 @@
 
 -export([voicemail/1, voicemail_v/1
          ,voicemail_full/1, voicemail_full_v/1
+         ,voicemail_saved/1, voicemail_saved_v/1
          ,fax_inbound/1, fax_inbound_v/1
          ,fax_inbound_error/1, fax_inbound_error_v/1
          ,fax_outbound/1, fax_outbound_v/1
@@ -33,10 +34,14 @@
          ,webhook/1, webhook_v/1
          %% published on completion of notification
          ,notify_update/1, notify_update_v/1
+         ,skel/1, skel_v/1
+
+         ,headers/1
         ]).
 
 -export([publish_voicemail/1, publish_voicemail/2
          ,publish_voicemail_full/1, publish_voicemail_full/2
+         ,publish_voicemail_saved/1, publish_voicemail_saved/2
          ,publish_fax_inbound/1, publish_fax_inbound/2
          ,publish_fax_outbound/1, publish_fax_outbound/2
          ,publish_fax_inbound_error/1, publish_fax_inbound_error/2
@@ -55,10 +60,21 @@
          ,publish_system_alert/1, publish_system_alert/2
          ,publish_webhook/1, publish_webhook/2
          ,publish_notify_update/2, publish_notify_update/3
+         ,publish_skel/1, publish_skel/2
         ]).
 
 -include_lib("whistle/include/wh_api.hrl").
+-include_lib("whistle/include/wh_log.hrl").
 
+%% supports preview mode
+-define(DEFAULT_OPTIONAL_HEADERS, [<<"To">>, <<"Cc">>, <<"Bcc">>
+                                   ,<<"From">>, <<"Reply-To">>
+                                   ,<<"Subject">>, <<"HTML">>, <<"Text">>
+                                   ,<<"Account-ID">>, <<"Account-DB">>
+                                   ,<<"Preview">>
+                                  ]).
+
+-define(NOTIFY_VOICEMAIL_SAVED, <<"notifications.voicemail.saved">>).
 -define(NOTIFY_VOICEMAIL_NEW, <<"notifications.voicemail.new">>).
 -define(NOTIFY_VOICEMAIL_FULL, <<"notifications.voicemail.full">>).
 -define(NOTIFY_FAX_INBOUND, <<"notifications.fax.inbound">>).
@@ -80,8 +96,9 @@
 -define(NOTIFY_TRANSACTION, <<"notifications.account.transaction">>).
 -define(NOTIFY_SYSTEM_ALERT, <<"notifications.system.alert">>).
 -define(NOTIFY_WEBHOOK_CALLFLOW, <<"notifications.webhook.callflow">>).
+-define(NOTIFY_SKEL, <<"notifications.skel">>).
 
-%% Notify New Voicemail
+%% Notify New Voicemail or Voicemail Saved
 -define(VOICEMAIL_HEADERS, [<<"From-User">>, <<"From-Realm">>
                             ,<<"To-User">>, <<"To-Realm">>
                             ,<<"Account-DB">>
@@ -91,19 +108,23 @@
 -define(OPTIONAL_VOICEMAIL_HEADERS, [<<"Voicemail-Length">>, <<"Call-ID">>
                                      ,<<"Caller-ID-Number">>, <<"Caller-ID-Name">>
                                      ,<<"Voicemail-Transcription">>
-                                     ,<<"Account-ID">>
+                                     | ?DEFAULT_OPTIONAL_HEADERS
                                     ]).
 -define(VOICEMAIL_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                           ,{<<"Event-Name">>, <<"new_voicemail">>}
+                           ,{<<"Event-Name">>, <<"voicemail_new">>}
                           ]).
 -define(VOICEMAIL_TYPES, []).
+
+-define(VOICEMAIL_SAVED_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                           ,{<<"Event-Name">>, <<"voicemail_saved">>}
+                          ]).
 
 %% Notify Voicemail full
 -define(VOICEMAIL_FULL_HEADERS, [<<"Account-DB">>
                                  ,<<"Voicemail-Box">> ,<<"Voicemail-Number">>
                                  ,<<"Max-Message-Count">> ,<<"Message-Count">>
                                 ]).
--define(OPTIONAL_VOICEMAIL_FULL_HEADERS, [<<"Account-ID">>]).
+-define(OPTIONAL_VOICEMAIL_FULL_HEADERS, ?DEFAULT_OPTIONAL_HEADERS).
 -define(VOICEMAIL_FULL_VALUES, [{<<"Event-Category">>, <<"notification">>}
                                 ,{<<"Event-Name">>, <<"voicemail_full">>}
                                ]).
@@ -119,6 +140,7 @@
                                        ,<<"Call-ID">>, <<"Fax-Info">>
                                        ,<<"Owner-ID">>, <<"FaxBox-ID">>
                                        ,<<"Fax-Notifications">>, <<"Fax-Timestamp">>
+                                       | ?DEFAULT_OPTIONAL_HEADERS
                                       ]).
 -define(FAX_INBOUND_VALUES, [{<<"Event-Category">>, <<"notification">>}
                              ,{<<"Event-Name">>, <<"inbound_fax">>}
@@ -135,6 +157,7 @@
                                              ,<<"Owner-ID">>, <<"FaxBox-ID">>
                                              ,<<"Fax-Notifications">>, <<"Fax-Error">>
                                              ,<<"Fax-Timestamp">>
+                                             | ?DEFAULT_OPTIONAL_HEADERS
                                             ]).
 -define(FAX_INBOUND_ERROR_VALUES, [{<<"Event-Category">>, <<"notification">>}
                                    ,{<<"Event-Name">>, <<"inbound_fax_error">>}
@@ -148,6 +171,7 @@
                                         ,<<"Call-ID">>, <<"Fax-Info">>
                                         ,<<"Owner-ID">>, <<"FaxBox-ID">>
                                         ,<<"Fax-Notifications">>, <<"Fax-Timestamp">>
+                                        | ?DEFAULT_OPTIONAL_HEADERS
                                        ]).
 -define(FAX_OUTBOUND_VALUES, [{<<"Event-Category">>, <<"notification">>}
                               ,{<<"Event-Name">>, <<"outbound_fax">>}
@@ -160,7 +184,8 @@
                                               ,<<"Call-ID">>, <<"Fax-Info">>
                                               ,<<"Owner-ID">>, <<"FaxBox-ID">>
                                               ,<<"Fax-Notifications">>, <<"Fax-Error">>
-                                              ,<<"Account-ID">>, <<"Fax-Timestamp">>
+                                              ,<<"Fax-Timestamp">>
+                                              | ?DEFAULT_OPTIONAL_HEADERS
                                              ]).
 -define(FAX_OUTBOUND_ERROR_VALUES, [{<<"Event-Category">>, <<"notification">>}
                                     ,{<<"Event-Name">>, <<"outbound_fax_error">>}
@@ -174,6 +199,7 @@
                                       ,<<"To-User">>, <<"To-Host">>, <<"Network-IP">>, <<"Network-Port">>
                                       ,<<"Event-Timestamp">>, <<"Contact">>, <<"Expires">>, <<"Account-DB">>
                                       ,<<"Authorizing-ID">>, <<"Suppress-Unregister-Notify">>
+                                      | ?DEFAULT_OPTIONAL_HEADERS
                                      ]).
 -define(DEREGISTER_VALUES, [{<<"Event-Category">>, <<"notification">>}
                             ,{<<"Event-Name">>, <<"deregister">>}
@@ -183,22 +209,25 @@
 %% Notify Register
 -define(REGISTER_HEADERS, [<<"Username">>, <<"Realm">>, <<"Account-ID">>]).
 -define(OPTIONAL_REGISTER_HEADERS, [<<"Owner-ID">>, <<"User-Agent">>, <<"Call-ID">>
-                                        ,<<"From-User">>, <<"From-Host">>
-                                        ,<<"To-User">>, <<"To-Host">>
-                                        ,<<"Network-IP">>, <<"Network-Port">>
-                                        ,<<"Event-Timestamp">>, <<"Contact">>
-                                        ,<<"Expires">>, <<"Account-DB">>
-                                        ,<<"Authorizing-ID">>, <<"Authorizing-Type">>
-                                        ,<<"Suppress-Unregister-Notify">>
-                                     ]).
+                                    ,<<"From-User">>, <<"From-Host">>
+                                    ,<<"To-User">>, <<"To-Host">>
+                                    ,<<"Network-IP">>, <<"Network-Port">>
+                                    ,<<"Event-Timestamp">>, <<"Contact">>
+                                    ,<<"Expires">>, <<"Account-DB">>
+                                    ,<<"Authorizing-ID">>, <<"Authorizing-Type">>
+                                    ,<<"Suppress-Unregister-Notify">>
+                                    | ?DEFAULT_OPTIONAL_HEADERS
+                                   ]).
 -define(REGISTER_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                            ,{<<"Event-Name">>, <<"register">>}
-                           ]).
+                          ,{<<"Event-Name">>, <<"register">>}
+                         ]).
 -define(REGISTER_TYPES, []).
 
 %% Notify Password Recovery
 -define(PWD_RECOVERY_HEADERS, [<<"Email">>, <<"Password">>, <<"Account-ID">>]).
--define(OPTIONAL_PWD_RECOVERY_HEADERS, [<<"First-Name">>, <<"Last-Name">>, <<"Account-DB">>, <<"Request">>]).
+-define(OPTIONAL_PWD_RECOVERY_HEADERS, [<<"First-Name">>, <<"Last-Name">>, <<"Account-DB">>, <<"Request">>
+                                        | ?DEFAULT_OPTIONAL_HEADERS
+                                       ]).
 -define(PWD_RECOVERY_VALUES, [{<<"Event-Category">>, <<"notification">>}
                               ,{<<"Event-Name">>, <<"password_recovery">>}
                              ]).
@@ -206,10 +235,12 @@
 
 %% Notify New Account
 -define(NEW_ACCOUNT_HEADERS, [<<"Account-ID">>]).
--define(OPTIONAL_NEW_ACCOUNT_HEADERS, [<<"Account-DB">>, <<"Account-Name">>, <<"Account-API-Key">>, <<"Account-Realm">>]).
+-define(OPTIONAL_NEW_ACCOUNT_HEADERS, [<<"Account-DB">>, <<"Account-Name">>, <<"Account-API-Key">>, <<"Account-Realm">>
+                                       | ?DEFAULT_OPTIONAL_HEADERS
+                                      ]).
 -define(NEW_ACCOUNT_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                              ,{<<"Event-Name">>, <<"new_account">>}
-                             ]).
+                             ,{<<"Event-Name">>, <<"new_account">>}
+                            ]).
 -define(NEW_ACCOUNT_TYPES, []).
 
 %% Notify Port Request
@@ -217,6 +248,7 @@
 -define(OPTIONAL_PORT_REQUEST_HEADERS, [<<"Authorized-By">>, <<"Port-Request-ID">>
                                         ,<<"Number-State">>, <<"Local-Number">>
                                         ,<<"Number">>, <<"Port">>, <<"Version">>
+                                        | ?DEFAULT_OPTIONAL_HEADERS
                                        ]).
 -define(PORT_REQUEST_VALUES, [{<<"Event-Category">>, <<"notification">>}
                               ,{<<"Event-Name">>, <<"port_request">>}
@@ -226,17 +258,20 @@
 % Notify Port Cancel
 -define(PORT_CANCEL_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_PORT_CANCEL_HEADERS, [<<"Authorized-By">>, <<"Port-Request-ID">>
-                                        ,<<"Number-State">>, <<"Local-Number">>
-                                        ,<<"Number">>, <<"Port">>
-                                       ]).
+                                       ,<<"Number-State">>, <<"Local-Number">>
+                                       ,<<"Number">>, <<"Port">>
+                                       | ?DEFAULT_OPTIONAL_HEADERS
+                                      ]).
 -define(PORT_CANCEL_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                              ,{<<"Event-Name">>, <<"port_cancel">>}
-                             ]).
+                             ,{<<"Event-Name">>, <<"port_cancel">>}
+                            ]).
 -define(PORT_CANCEL_TYPES, []).
 
 %% Notify Ported Request
 -define(PORTED_HEADERS, [<<"Account-ID">>, <<"Number">>, <<"Port">>]).
--define(OPTIONAL_PORTED_HEADERS, [<<"Number-State">>, <<"Local-Number">>, <<"Authorized-By">>, <<"Request">>]).
+-define(OPTIONAL_PORTED_HEADERS, [<<"Number-State">>, <<"Local-Number">>, <<"Authorized-By">>, <<"Request">>
+                                  | ?DEFAULT_OPTIONAL_HEADERS
+                                 ]).
 -define(PORTED_VALUES, [{<<"Event-Category">>, <<"notification">>}
                         ,{<<"Event-Name">>, <<"ported">>}
                        ]).
@@ -244,7 +279,9 @@
 
 %% Notify Cnam Request
 -define(CNAM_REQUEST_HEADERS, [<<"Account-ID">>, <<"Number">>, <<"Cnam">>]).
--define(OPTIONAL_CNAM_REQUEST_HEADERS, [<<"Number-State">>, <<"Local-Number">>, <<"Acquired-For">>, <<"Request">>]).
+-define(OPTIONAL_CNAM_REQUEST_HEADERS, [<<"Number-State">>, <<"Local-Number">>, <<"Acquired-For">>, <<"Request">>
+                                        | ?DEFAULT_OPTIONAL_HEADERS
+                                       ]).
 -define(CNAM_REQUEST_VALUES, [{<<"Event-Category">>, <<"notification">>}
                               ,{<<"Event-Name">>, <<"cnam_request">>}
                              ]).
@@ -252,7 +289,7 @@
 
 %% Notify Low Balance
 -define(LOW_BALANCE_HEADERS, [<<"Account-ID">>, <<"Current-Balance">>]).
--define(OPTIONAL_LOW_BALANCE_HEADERS, []).
+-define(OPTIONAL_LOW_BALANCE_HEADERS, ?DEFAULT_OPTIONAL_HEADERS).
 -define(LOW_BALANCE_VALUES, [{<<"Event-Category">>, <<"notification">>}
                              ,{<<"Event-Name">>, <<"low_balance">>}
                             ]).
@@ -260,16 +297,17 @@
 
 %% Notify Top Up
 -define(TOPUP_HEADERS, [<<"Account-ID">>]).
--define(OPTIONAL_TOPUP_HEADERS, []).
+-define(OPTIONAL_TOPUP_HEADERS, ?DEFAULT_OPTIONAL_HEADERS).
 -define(TOPUP_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                        ,{<<"Event-Name">>, <<"low_balance">>}
+                       ,{<<"Event-Name">>, <<"low_balance">>}
                       ]).
 -define(TOPUP_TYPES, []).
 
-
 %% Notify Transaction
 -define(TRANSACTION_HEADERS, [<<"Account-ID">>, <<"Transaction">>]).
--define(OPTIONAL_TRANSACTION_HEADERS, [<<"Service-Plan">>, <<"Billing-ID">>]).
+-define(OPTIONAL_TRANSACTION_HEADERS, [<<"Service-Plan">>, <<"Billing-ID">>
+                                       | ?DEFAULT_OPTIONAL_HEADERS
+                                      ]).
 -define(TRANSACTION_VALUES, [{<<"Event-Category">>, <<"notification">>}
                              ,{<<"Event-Name">>, <<"transaction">>}
                             ]).
@@ -278,7 +316,8 @@
 %% Notify System Alert
 -define(SYSTEM_ALERT_HEADERS, [<<"Subject">>, <<"Message">>]).
 -define(OPTIONAL_SYSTEM_ALERT_HEADERS, [<<"Pid">>, <<"Module">>, <<"Line">>, <<"Request-ID">>, <<"Section">>
-                                            ,<<"Node">>, <<"Details">>, <<"Account-ID">>
+                                        ,<<"Node">>, <<"Details">>
+                                        | ?DEFAULT_OPTIONAL_HEADERS
                                        ]).
 -define(SYSTEM_ALERT_VALUES, [{<<"Event-Category">>, <<"notification">>}
                               ,{<<"Event-Name">>, <<"system_alert">>}
@@ -287,20 +326,45 @@
 
 %% Notify webhook
 -define(WEBHOOK_HEADERS, [<<"Hook">>, <<"Data">>]).
--define(OPTIONAL_WEBHOOK_HEADERS, [<<"Timestamp">>]).
+-define(OPTIONAL_WEBHOOK_HEADERS, [<<"Timestamp">>
+                                   | ?DEFAULT_OPTIONAL_HEADERS
+                                  ]).
 -define(WEBHOOK_VALUES, [{<<"Event-Category">>, <<"notification">>}
                          ,{<<"Event-Name">>, <<"webhook">>}
+
                         ]).
 -define(WEBHOOK_TYPES, []).
 
 -define(NOTIFY_UPDATE_HEADERS, [<<"Status">>]).
--define(OPTIONAL_NOTIFY_UPDATE_HEADERS, [<<"Failure-Message">>]).
+-define(OPTIONAL_NOTIFY_UPDATE_HEADERS, [<<"Failure-Message">>
+                                         | ?DEFAULT_OPTIONAL_HEADERS
+                                        ]).
 -define(NOTIFY_UPDATE_VALUES, [{<<"Event-Category">>, <<"notification">>}
                                ,{<<"Event-Name">>, <<"update">>}
                                ,{<<"Status">>, [<<"completed">>, <<"failed">>, <<"pending">>]}
                               ]).
 -define(NOTIFY_UPDATE_TYPES, []).
 
+%% Skeleton
+-define(SKEL_HEADERS, [<<"Account-ID">>, <<"User-ID">>]).
+-define(OPTIONAL_SKEL_HEADERS, ?DEFAULT_OPTIONAL_HEADERS).
+-define(SKEL_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                      ,{<<"Event-Name">>, <<"skel">>}
+                     ]).
+-define(SKEL_TYPES, []).
+
+-spec headers(ne_binary()) -> ne_binaries().
+headers(<<"voicemail">>) ->
+    ?VOICEMAIL_HEADERS ++ ?OPTIONAL_VOICEMAIL_HEADERS;
+headers(<<"voicemail_full">>) ->
+    ?VOICEMAIL_FULL_HEADERS ++ ?OPTIONAL_VOICEMAIL_FULL_HEADERS;
+headers(<<"fax_inbound_to_email">>) ->
+    ?FAX_INBOUND_HEADERS ++ ?OPTIONAL_FAX_INBOUND_HEADERS;
+headers(<<"skel">>) ->
+    ?SKEL_HEADERS ++ ?OPTIONAL_SKEL_HEADERS;
+headers(_Notification) ->
+    lager:debug("no notification headers for ~s", [_Notification]),
+    [].
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -318,6 +382,23 @@ voicemail(JObj) -> voicemail(wh_json:to_proplist(JObj)).
 voicemail_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?VOICEMAIL_HEADERS, ?VOICEMAIL_VALUES, ?VOICEMAIL_TYPES);
 voicemail_v(JObj) -> voicemail_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+voicemail_saved(Prop) when is_list(Prop) ->
+    case voicemail_saved_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?VOICEMAIL_HEADERS, ?OPTIONAL_VOICEMAIL_HEADERS);
+        'false' -> {'error', "Proplist failed validation for voicemail"}
+    end;
+voicemail_saved(JObj) -> voicemail_saved(wh_json:to_proplist(JObj)).
+
+-spec voicemail_saved_v(api_terms()) -> boolean().
+voicemail_saved_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?VOICEMAIL_HEADERS, ?VOICEMAIL_SAVED_VALUES, ?VOICEMAIL_TYPES);
+voicemail_saved_v(JObj) -> voicemail_saved_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -643,6 +724,24 @@ notify_update_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?NOTIFY_UPDATE_HEADERS, ?NOTIFY_UPDATE_VALUES, ?NOTIFY_UPDATE_TYPES);
 notify_update_v(JObj) -> notify_update_v(wh_json:to_proplist(JObj)).
 
+%%--------------------------------------------------------------------
+%% @doc webhook notification - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+skel(Prop) when is_list(Prop) ->
+    case skel_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?SKEL_HEADERS, ?OPTIONAL_SKEL_HEADERS);
+        'false' -> {'error', "Proplist failed validation for skel"}
+    end;
+skel(JObj) -> skel(wh_json:to_proplist(JObj)).
+
+-spec skel_v(api_terms()) -> boolean().
+skel_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?SKEL_HEADERS, ?SKEL_VALUES, ?SKEL_TYPES);
+skel_v(JObj) -> skel_v(wh_json:to_proplist(JObj)).
+
+
 -spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     bind_to_q(Queue, props:get_value('restrict_to', Props)).
@@ -651,6 +750,9 @@ bind_to_q(Q, 'undefined') ->
     'ok' = amqp_util:bind_q_to_notifications(Q, <<"notifications.*.*">>);
 bind_to_q(Q, ['new_voicemail'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_VOICEMAIL_NEW),
+    bind_to_q(Q, T);
+bind_to_q(Q, ['voicemail_saved'|T]) ->
+    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_VOICEMAIL_SAVED),
     bind_to_q(Q, T);
 bind_to_q(Q, ['voicemail_full'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_VOICEMAIL_FULL),
@@ -713,6 +815,9 @@ bind_to_q(Q, ['system_alerts'|T]) ->
     bind_to_q(Q, T);
 bind_to_q(Q, ['webhook'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_WEBHOOK_CALLFLOW),
+    bind_to_q(Q, T);
+bind_to_q(Q, ['skel'|T]) ->
+    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_SKEL),
     bind_to_q(Q, T);
 bind_to_q(_Q, []) ->
     'ok'.
@@ -789,6 +894,9 @@ unbind_q_from(Q, ['system_alert'|T]) ->
 unbind_q_from(Q, ['webhook'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_WEBHOOK_CALLFLOW),
     unbind_q_from(Q, T);
+unbind_q_from(Q, ['skel'|T]) ->
+    'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_SKEL),
+    unbind_q_from(Q, T);
 unbind_q_from(_Q, []) ->
     'ok'.
 
@@ -800,6 +908,13 @@ unbind_q_from(_Q, []) ->
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
     amqp_util:notifications_exchange().
+
+-spec publish_voicemail_saved(api_terms()) -> 'ok'.
+-spec publish_voicemail_saved(api_terms(), ne_binary()) -> 'ok'.
+publish_voicemail_saved(JObj) -> publish_voicemail_saved(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_voicemail_saved(Voicemail, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(Voicemail, ?VOICEMAIL_SAVED_VALUES, fun ?MODULE:voicemail_saved/1),
+    amqp_util:notifications_publish(?NOTIFY_VOICEMAIL_SAVED, Payload, ContentType).
 
 -spec publish_voicemail(api_terms()) -> 'ok'.
 -spec publish_voicemail(api_terms(), ne_binary()) -> 'ok'.
@@ -940,3 +1055,10 @@ publish_notify_update(RespQ, JObj) -> publish_notify_update(RespQ, JObj, ?DEFAUL
 publish_notify_update(RespQ, API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?NOTIFY_UPDATE_VALUES, fun ?MODULE:notify_update/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
+
+-spec publish_skel(api_terms()) -> 'ok'.
+-spec publish_skel(api_terms(), ne_binary()) -> 'ok'.
+publish_skel(JObj) -> publish_skel(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_skel(API, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(API, ?SKEL_VALUES, fun ?MODULE:skel/1),
+    amqp_util:notifications_publish(?NOTIFY_SKEL, Payload, ContentType).

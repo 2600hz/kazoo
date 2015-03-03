@@ -42,6 +42,7 @@ start_link() ->
 -spec sync(ne_binary()) -> wh_std_return().
 sync(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
+    wh_util:put_callid(<<AccountId/binary, "-sync">>),
     case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
         {'error', _}=E -> E;
         {'ok', ServiceJObj} ->
@@ -185,15 +186,18 @@ maybe_sync_service() ->
 -spec bump_modified(wh_json:object()) -> wh_std_return().
 bump_modified(JObj) ->
     AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
-    UpdatedJObj = wh_json:set_value(<<"pvt_modified">>, wh_util:current_tstamp(), JObj),
+    Services = wh_services:reconcile_only(AccountId),
+    'true' = (Services =/= 'false'),
+
+    UpdatedJObj = wh_json:set_values([{<<"pvt_modified">>, wh_util:current_tstamp()}
+                                      ,{<<"_rev">>, wh_json:get_value(<<"_rev">>, JObj)}
+                                     ], wh_services:to_json(Services)),
     case couch_mgr:save_doc(?WH_SERVICES_DB, UpdatedJObj) of
         {'error', _}=E ->
             %% If we conflict or cant save the doc with a new modified timestamp
             %% then another process is probably handling it, move on
             E;
-        {'ok', _} ->
-            Services = wh_services:reconcile_only(AccountId),
-            NewJObj = wh_services:to_json(Services),
+        {'ok', NewJObj} ->
             %% If we can change the timestamp then (since the view requires the
             %% modified time to be x mins in the past) we have gain exclusive
             %% control for x mins.... good luck!
@@ -271,20 +275,7 @@ sync_services_bookkeeper(AccountId, ServiceJObj, ServiceItems) ->
             end
     end.
 
--spec did_topup_failed(wh_json:objects()) -> boolean().
-did_topup_failed(JObjs) ->
-    lists:foldl(
-        fun(JObj, Acc) ->
-            case wh_json:get_integer_value(<<"code">>, JObj) of
-                3006 -> 'true';
-                _ -> Acc
-            end
-        end
-        ,'false'
-        ,JObjs
-    ).
-
--spec handle_topup_transactions(ne_binary(), wh_json:objects(), wh_json:objects()| integer()) -> 'ok'.
+-spec handle_topup_transactions(ne_binary(), wh_json:objects(), wh_json:objects() | integer()) -> 'ok'.
 handle_topup_transactions(Account, JObjs, Failed) when is_list(Failed) ->
     case did_topup_failed(Failed) of
         'true' -> 'ok';
@@ -292,8 +283,8 @@ handle_topup_transactions(Account, JObjs, Failed) when is_list(Failed) ->
     end;
 handle_topup_transactions(_, [], _) -> 'ok';
 handle_topup_transactions(Account, [JObj|JObjs], Retry) when Retry > 0 ->
-    case wh_json:get_integer_value(<<"code">>, JObj) of
-        3006 ->
+    case wh_json:get_integer_value(<<"pvt_code">>, JObj) of
+        ?CODE_TOPUP ->
             Amount = wh_json:get_value(<<"pvt_amount">>, JObj),
             Transaction = wh_transaction:credit(Account, Amount),
             Transaction1 = wh_transaction:set_reason(<<"topup">>, Transaction),
@@ -303,13 +294,27 @@ handle_topup_transactions(Account, [JObj|JObjs], Retry) when Retry > 0 ->
                     lager:warning("did not write top up transaction for account ~s already exist for today", [Account]);
                 {'error', _E} ->
                     lager:error("failed to write top up transaction ~p , for account ~s (amount: ~p), retrying ~p..."
-                                ,[_E, Account, Amount, Retry]),
+                                ,[_E, Account, Amount, Retry]
+                               ),
                     handle_topup_transactions(Account, [JObj|JObjs], Retry-1)
             end;
         _ -> handle_topup_transactions(Account, JObjs, 3)
     end;
 handle_topup_transactions(Account, _, _) ->
     lager:error("failed to write top up transaction for account ~s too many retries", [Account]).
+
+-spec did_topup_failed(wh_json:objects()) -> boolean().
+did_topup_failed(JObjs) ->
+    lists:foldl(
+        fun(JObj, Acc) ->
+            case wh_json:get_integer_value(<<"pvt_code">>, JObj) of
+                ?CODE_TOPUP -> 'true';
+                _ -> Acc
+            end
+        end
+        ,'false'
+        ,JObjs
+    ).
 
 -spec maybe_sync_reseller(ne_binary(), wh_json:object()) -> wh_std_return().
 maybe_sync_reseller(AccountId, ServiceJObj) ->
@@ -356,7 +361,7 @@ maybe_update_billing_id(BillingId, AccountId, ServiceJObj) ->
             lager:debug("billing id ~s on ~s does not exist anymore, updating to bill self", [BillingId, AccountId]),
             couch_mgr:save_doc(?WH_SERVICES_DB, wh_json:set_value(<<"billing_id">>, AccountId, ServiceJObj));
         {'ok', JObj} ->
-            case wh_json:is_true(<<"pvt_deleted">>, JObj) of
+            case wh_doc:is_soft_deleted(JObj) of
                 'false' -> wh_services:reconcile(BillingId);
                 'true' ->
                     lager:debug("billing id ~s on ~s was deleted, updating to bill self", [BillingId, AccountId]),

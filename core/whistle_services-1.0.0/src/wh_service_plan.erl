@@ -20,7 +20,7 @@
 %% Merge any plan overrides into the plan property.
 %% @end
 %%--------------------------------------------------------------------
--spec fetch(ne_binary(), ne_binary(), wh_json:object()) -> 'undefined' | wh_json:object().
+-spec fetch(ne_binary(), ne_binary(), wh_json:object()) -> api_object().
 fetch(PlanId, VendorId, Overrides) ->
     VendorDb = wh_util:format_account_id(VendorId, 'encoded'),
     case couch_mgr:open_doc(VendorDb, PlanId) of

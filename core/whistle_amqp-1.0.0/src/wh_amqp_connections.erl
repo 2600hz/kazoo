@@ -28,6 +28,7 @@
 -export([unavailable/1]).
 -export([is_available/0]).
 -export([wait_for_available/0]).
+-export([wait_for_available_tag/1]).
 
 -export([brokers_for_zone/1, brokers_for_zone/2, broker_for_zone/1]).
 -export([brokers_with_tag/1, brokers_with_tag/2,broker_with_tag/1]).
@@ -108,7 +109,7 @@ add(Broker, Zone) when not is_atom(Zone) ->
 add(Broker, Zone) ->
     add(Broker, Zone, []).
 
-add(Broker, Zone, Tags) ->    
+add(Broker, Zone, Tags) ->
     case catch amqp_uri:parse(wh_util:to_list(Broker)) of
         {'EXIT', _R} ->
             lager:error("failed to parse AMQP URI '~s': ~p", [Broker, _R]),
@@ -244,15 +245,18 @@ broker_zone(Broker) ->
 is_available() -> primary_broker() =/= 'undefined'.
 
 -spec wait_for_available() -> 'ok'.
-wait_for_available() -> wait_for_available('infinity').
+wait_for_available() -> wait_for_available(fun is_available/0, 'infinity').
 
--spec wait_for_available('infinity') -> 'ok';
-                        (non_neg_integer()) -> 'ok' | {'error', 'timeout'}.
-wait_for_available(Timeout) ->
-    case is_available() of
+-spec wait_for_available_tag(binary()) -> 'ok'.
+wait_for_available_tag(Tag) -> wait_for_available(fun() -> is_tag_available(Tag) end, 'infinity').
+
+-spec wait_for_available(any(), 'infinity') -> 'ok';
+                        (any(), non_neg_integer()) -> 'ok' | {'error', 'timeout'}.
+wait_for_available(Fun, Timeout) ->
+    case apply(Fun,[]) of
         'true' -> 'ok';
         'false' ->
-            gen_server:cast(?MODULE, {'add_watcher', self()}),
+            gen_server:cast(?MODULE, {'add_watcher', Fun, self()}),
             wait_for_notification(Timeout)
     end.
 
@@ -327,8 +331,8 @@ handle_cast({'connection_unavailable', Connection}, State) ->
     Props = [{#wh_amqp_connections.available, 'false'}],
     _ = ets:update_element(?TAB, Connection, Props),
     {'noreply', State, 'hibernate'};
-handle_cast({'add_watcher', Watcher}, State) ->
-    case is_available() of
+handle_cast({'add_watcher', Fun, Watcher}, State) ->
+    case apply(Fun, []) of
         'false' -> {'noreply', add_watcher(Watcher, State), 'hibernate'};
         'true' ->
             _ = notify_watcher(Watcher),
@@ -441,7 +445,7 @@ brokers_with_tag(Tag, Available) ->
         || #wh_amqp_connections{tags=Tags}=Connection <- ets:select(?TAB, MatchSpec),
            lists:member(Tag, Tags)
     ].
-        
+
 -spec broker_with_tag(ne_binary()) -> api_binary().
 broker_with_tag(Tag) ->
     case brokers_with_tag(Tag, 'true') of

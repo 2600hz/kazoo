@@ -262,7 +262,6 @@ find_srv(Node) when is_binary(Node) -> find_srv(wh_util:to_atom(Node));
 find_srv(Node) when is_atom(Node) ->
     ecallmgr_fs_node_sup:node_srv(ecallmgr_fs_sup:find_node(Node)).
 
--define(DEFAULT_FETCH_TIMEOUT, 2600).
 -spec fetch_timeout() -> pos_integer().
 -spec fetch_timeout(fs_node()) -> pos_integer().
 fetch_timeout() ->

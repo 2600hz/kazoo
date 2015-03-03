@@ -19,6 +19,7 @@
 -export([continue/1, continue/2]).
 -export([branch/2]).
 -export([stop/1]).
+-export([hard_stop/1]).
 -export([transfer/1]).
 -export([control_usurped/1]).
 -export([get_branch_keys/1, get_all_branch_keys/1]).
@@ -51,6 +52,7 @@
 
 -record(state, {call = whapps_call:new() :: whapps_call:call()
                 ,flow = wh_json:new() :: wh_json:object()
+                ,flows = [] :: wh_json:objects()
                 ,cf_module_pid :: {pid(), reference()} | 'undefined'
                 ,status = <<"sane">> :: ne_binary()
                 ,queue :: api_binary()
@@ -123,6 +125,13 @@ stop(Call) ->
     Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     stop(Srv).
 
+-spec hard_stop(whapps_call:call() | pid()) -> 'ok'.
+hard_stop(Srv) when is_pid(Srv) ->
+    gen_listener:cast(Srv, 'hard_stop');
+hard_stop(Call) ->
+    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
+    hard_stop(Srv).
+
 -spec transfer(whapps_call:call() | pid()) -> 'ok'.
 transfer(Srv) when is_pid(Srv) ->
     gen_listener:cast(Srv, 'transfer');
@@ -179,7 +188,8 @@ get_branch_keys(Call) ->
     Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     get_branch_keys(Srv).
 
--spec get_all_branch_keys(whapps_call:call() | pid()) -> {'branch_keys', wh_json:keys()}.
+-spec get_all_branch_keys(whapps_call:call() | pid()) ->
+                                 {'branch_keys', wh_json:keys()}.
 get_all_branch_keys(Srv) when is_pid(Srv) ->
     gen_listener:call(Srv, {'get_branch_keys', 'all'});
 get_all_branch_keys(Call) ->
@@ -333,15 +343,20 @@ handle_cast({'continue', Key}, #state{flow=Flow
                     {'noreply', State}
             end
     end;
-handle_cast('stop', State) ->
+handle_cast('stop', #state{flows=[]}=State) ->
+    {'stop', 'normal', State};
+handle_cast('stop', #state{flows=[Flow|Flows]}=State) ->
+    {'noreply', launch_cf_module(State#state{flow=Flow, flows=Flows})};
+handle_cast('hard_stop', State) ->
     {'stop', 'normal', State};
 handle_cast('transfer', State) ->
     {'stop', {'shutdown', 'transfer'}, State};
 handle_cast('control_usurped', State) ->
     {'stop', {'shutdown', 'control_usurped'}, State};
-handle_cast({'branch', NewFlow}, State) ->
+handle_cast({'branch', NewFlow}, #state{flow=Flow, flows=Flows}=State) ->
     lager:info("callflow has been branched"),
-    {'noreply', launch_cf_module(State#state{flow=NewFlow})};
+    NewFlows = [wh_json:get_value([<<"children">>, <<"_">>], Flow, wh_json:new())|Flows],
+    {'noreply', launch_cf_module(State#state{flow=NewFlow, flows=NewFlows})};
 handle_cast({'callid_update', NewCallId}, #state{call=Call}=State) ->
     put('callid', NewCallId),
     PrevCallId = whapps_call:call_id_direct(Call),
@@ -520,7 +535,7 @@ get_pid(_) -> 'undefined'.
 %% @end
 %%--------------------------------------------------------------------
 terminate({'shutdown', 'transfer'}, _) ->
-    lager:info("callflow execution has been transfered");
+    lager:info("callflow execution has been transferred");
 terminate({'shutdown', 'control_usurped'}, _) ->
     lager:info("the call has been usurped by an external process");
 terminate(_Reason, #state{call=Call

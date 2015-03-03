@@ -18,6 +18,8 @@
                     ,<<"*">>, <<"0">>, <<"#">>
                    ]).
 
+-define(DEFAULT_CONTENT_TYPE, <<"application/json">>).
+
 %% Hangup Causes that are fine
 -define(SUCCESSFUL_HANGUPS, [<<"NORMAL_CLEARING">>, <<"ORIGINATOR_CANCEL">>, <<"SUCCESS">>]).
 
@@ -61,6 +63,7 @@
 -type binaries() :: [binary(),...] | [].
 
 -type strings() :: [string(),...] | [].
+-type integers() :: [integer(),...] | [].
 
 -type functions() :: [function(),...] | [].
 
@@ -72,7 +75,7 @@
 
 -type wh_proplist_value() :: any().
 -type wh_proplist_values() :: [wh_proplist_value(),...] | [].
--type wh_proplist_key() :: binary() | atom() | number() | string() | binary().
+-type wh_proplist_key() :: binary() | atom() | number() | string() | function() | ne_binaries().
 -type wh_proplist_keys() :: [wh_proplist_key(),...] | [].
 -type wh_proplist_kv(K, V) :: [{K, V} | atom(),...] | [].
 -type wh_proplist_k(K) :: wh_proplist_kv(K, wh_proplist_value()).
@@ -101,6 +104,8 @@
 -type wh_time() :: calendar:time(). %%{wh_hour(), wh_minute(), wh_second()}.
 -type wh_datetime() :: calendar:datetime(). %%{wh_date(), wh_time()}.
 -type wh_iso_week() :: calendar:yearweeknum(). %%{wh_year(), wh_weeknum()}.
+-type gregorian_seconds() :: pos_integer().
+-type unix_seconds() :: pos_integer().
 
 -type wh_timeout() :: non_neg_integer() | 'infinity'.
 
@@ -127,6 +132,8 @@
 -define(SUPER(I), {I, {I, 'start_link', []}, 'permanent', 'infinity', 'supervisor', [I]}).
 -define(SUPER_TYPE(I, Type), {I, {I, 'start_link', []}, Type, 'infinity', 'supervisor', [I]}).
 -define(SUPER_ARGS(I, Args), {I, {I, 'start_link', Args}, 'permanent', 'infinity', 'supervisor', [I]}).
+-define(SUPER_ARGS_TYPE(I, Args, Type), {I, {I, 'start_link', Args}, Type, 'infinity', 'supervisor', [I]}).
+-define(SUPER_NAME_ARGS_TYPE(N, I, Args, Type), {N, {I, 'start_link', Args}, Type, 'infinity', 'supervisor', [I]}).
 
 -define(CACHE(N), {N, {'wh_cache', 'start_link', [N]}, 'permanent', 5000, 'worker', ['wh_cache']}).
 -define(CACHE_ARGS(N, Arg), {N, {'wh_cache', 'start_link', [N, Arg]}, 'permanent', 5000, 'worker', ['wh_cache']}).
@@ -134,6 +141,7 @@
 %% Recreate the non-exported types defined in the erlang gen_server source
 -type startlink_err() :: {'already_started', pid()} | 'shutdown' | term().
 -type startlink_ret() :: {'ok', pid()} | 'ignore' | {'error', startlink_err()}.
+-type startapp_ret() :: {'ok', pid()} | {'ok', pid(), term()} | {'error', startlink_err()}.
 
 -type call_from() :: pid_ref().
 -type gen_server_timeout() :: 'hibernate' | non_neg_integer().
@@ -141,13 +149,32 @@
                            {'noreply', term()} | {'noreply', term(), gen_server_timeout()} |
                            {'stop', term(), term()} | {'stop', term(), term(), term()}.
 
+-type handle_call_ret_state(State) :: {'reply', term(), State} | {'reply', term(), State, gen_server_timeout()} |
+                                      {'noreply', State} | {'noreply', State, gen_server_timeout()} |
+                                      {'stop', term(), State} | {'stop', term(), State, term()}.
+
 -type handle_cast_ret() :: {'noreply', term()} | {'noreply', term(), gen_server_timeout()} |
                            {'stop', term(), term()}.
+-type handle_cast_ret_state(State) :: {'noreply', State} | {'noreply', State, gen_server_timeout()} |
+                                      {'stop', term(), State}.
 
 -type handle_info_ret() :: {'noreply', term()} | {'noreply', term(), gen_server_timeout()} |
                            {'stop', term(), term()}.
+-type handle_info_ret_state(State) :: {'noreply', State} | {'noreply', State, gen_server_timeout()} |
+                                      {'stop', term(), State}.
+
+-type handle_event_ret() :: 'ignore' |
+                            {'reply', wh_proplist()}.
 
 -type server_ref() :: atom() | {atom(), atom()} | {'global', term()} | {'via', atom(), term()} | pid().
+
+-type gen_server_name() :: {'local', atom()} |
+                           {'global', term()} |
+                           {'via', atom(), term()}.
+-type gen_server_option() :: {'debug', list()} |
+                             {'timeout', non_neg_integer()} |
+                             {'spawn_opt', list()}.
+-type gen_server_options() :: [gen_server_option(),...] | [].
 
 %% Ibrowse-related types
 -type ibrowse_error() :: {'error', 'req_timedout'
@@ -174,16 +201,21 @@
 -type xml_texts() :: [xml_text(),...] | [].
 
 %% Used by ecallmgr and wapi_dialplan at least
--define(CALL_EVENTS, [<<"CHANNEL_EXECUTE">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"CHANNEL_EXECUTE_ERROR">>
-                      ,<<"CHANNEL_BRIDGE">>, <<"CHANNEL_UNBRIDGE">>
-                      ,<<"CHANNEL_CREATE">>, <<"CHANNEL_DESTROY">>
-                      ,<<"RECORD_START">>, <<"RECORD_STOP">>
-                      ,<<"DETECTED_TONE">>, <<"DTMF">>, <<"CALL_UPDATE">>
-                      ,<<"CHANNEL_ANSWER">>, <<"CHANNEL_PROGRESS_MEDIA">>
-                      ,<<"CHANNEL_TRANSFEREE">>, <<"CHANNEL_TRANSFEROR">>
-                      ,<<"CHANNEL_REPLACED">>, <<"CALL_SECURE">>, <<"CHANNEL_FAX_STATUS">>
-                      ,<<"CHANNEL_INTERCEPTED">>
-                     ]).
+-define(CALL_EVENTS,
+        [<<"CALL_SECURE">>,<<"CALL_UPDATE">>
+         ,<<"CHANNEL_ANSWER">>
+         ,<<"CHANNEL_CREATE">>, <<"CHANNEL_DESTROY">>
+         ,<<"CHANNEL_EXECUTE">>, <<"CHANNEL_EXECUTE_COMPLETE">>,<<"CHANNEL_EXECUTE_ERROR">>
+         ,<<"CHANNEL_FAX_STATUS">>,<<"CHANNEL_INTERCEPTED">>
+         ,<<"CHANNEL_PROGRESS_MEDIA">>,<<"CHANNEL_REPLACED">>
+         ,<<"CHANNEL_TRANSFEREE">>,<<"CHANNEL_TRANSFEROR">>
+         ,<<"CHANNEL_BRIDGE">>, <<"CHANNEL_UNBRIDGE">>
+         ,<<"DETECTED_TONE">>,<<"DTMF">>
+         ,<<"LEG_CREATED">>, <<"LEG_DESTROYED">>
+         ,<<"RECORD_START">>,<<"RECORD_STOP">>
+         ,<<"dialplan">> %% errors are sent with this
+        ]).
+
 -type xml_thing() :: xml_el() | xml_text().
 -type xml_things() :: xml_els() | xml_texts().
 

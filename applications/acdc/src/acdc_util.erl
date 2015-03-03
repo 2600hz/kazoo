@@ -80,7 +80,7 @@ send_cdr(Url, JObj, Retries) ->
     end.
 
 %% Returns the list of agents configured for the queue
--spec agents_in_queue(ne_binary(), ne_binary()) -> wh_json:json_strings().
+-spec agents_in_queue(ne_binary(), ne_binary()) -> wh_json:keys().
 agents_in_queue(AcctDb, QueueId) ->
     case couch_mgr:get_results(AcctDb, <<"queues/agents_listing">>, [{'key', QueueId}]) of
         {'ok', []} -> [];

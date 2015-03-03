@@ -162,7 +162,7 @@ code_change(_OldVsn, State, _Extra) ->
 handle_config_req(Node, Id, <<"acl.conf">>, _Props) ->
     wh_util:put_callid(Id),
 
-    SysconfResp = ecallmgr_config:fetch(<<"acls">>, wh_json:new()),
+    SysconfResp = ecallmgr_config:fetch(<<"acls">>, wh_json:new(), ecallmgr_fs_node:fetch_timeout(Node)),
 
     try generate_acl_xml(SysconfResp) of
         'undefined' ->

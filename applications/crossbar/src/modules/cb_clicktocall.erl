@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% Click to call
@@ -67,7 +67,7 @@ allowed_methods() ->
 allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 allowed_methods(_, ?CONNECT_CALL) ->
-    [?HTTP_POST];
+    [?HTTP_GET, ?HTTP_POST];
 allowed_methods(_, ?HISTORY) ->
     [?HTTP_GET].
 
@@ -94,24 +94,46 @@ resource_exists(_, ?HISTORY) ->
 -spec authenticate(cb_context:context()) -> 'true'.
 authenticate(Context) ->
     case is_c2c_url(Context, cb_context:req_nouns(Context)) of
-        'true' ->
-            lager:debug("authenticating request"),
-            'true';
+        'true' -> maybe_authenticate(Context);
         'false' -> 'false'
     end.
 
 -spec authorize(cb_context:context()) -> 'true'.
 authorize(Context) ->
     case is_c2c_url(Context, cb_context:req_nouns(Context)) of
-        'true' ->
-            lager:debug("authorizing request"),
-            'true';
+        'true' -> maybe_authorize(Context);
         'false' -> 'false'
     end.
 
+-spec maybe_authenticate(cb_context:context()) -> boolean().
+maybe_authenticate(Context) ->
+    case is_auth_required(Context) of
+        'true' -> 'false';
+        'false' ->
+            lager:debug("authenticating request"),
+            'true'
+    end.
+
+-spec maybe_authorize(cb_context:context()) -> boolean().
+maybe_authorize(Context) ->
+    case is_auth_required(Context) of
+        'true' -> 'false';
+        'false' ->
+            lager:debug("authorizing request"),
+            'true'
+    end.
+
+-spec is_auth_required(cb_context:context()) -> boolean().
+is_auth_required(Context) ->
+    Nouns = cb_context:req_nouns(Context),
+    [C2CID, _] = props:get_value(<<"clicktocall">>, Nouns),
+    JObj = cb_context:doc(crossbar_doc:load(C2CID, Context)),
+    wh_json:is_true(<<"auth_required">>, JObj, 'true').
+
 -spec is_c2c_url(cb_context:context(), req_nouns()) -> boolean().
 is_c2c_url(Context, ?CONNECT_C2C_URL) ->
-    cb_context:req_verb(Context) =:= ?HTTP_POST;
+    Verb = cb_context:req_verb(Context),
+    (Verb =:= ?HTTP_GET) orelse (Verb =:= ?HTTP_POST);
 is_c2c_url(_Context, _Nouns) -> 'false'.
 
 %%--------------------------------------------------------------------
@@ -277,45 +299,107 @@ clear_history_set_type(Context) ->
 %% @end
 %%-------------------------------------------------------------------
 -spec originate_call(ne_binary(), cb_context:context()) -> cb_context:context().
--spec originate_call(ne_binary(), wh_json:object(), ne_binary()) ->
+-spec originate_call(ne_binary(), cb_context:context(), api_binary()) -> cb_context:context().
+originate_call(C2CId, Context) ->
+    originate_call(C2CId, Context, get_c2c_contact(cb_context:req_value(Context, <<"contact">>))).
+
+originate_call(_C2CId, Context, 'undefined') ->
+    Message = <<"The contact extension for this click to call has not been set">>,
+    cb_context:add_validation_error(
+      <<"contact">>
+      ,<<"required">>
+      ,wh_json:from_list([{<<"message">>, Message}])
+      ,Context
+     );
+originate_call(C2CId, Context, Contact) ->
+    ReqId = cb_context:req_id(Context),
+    AccountId = cb_context:account_id(Context),
+    AccountModb = cb_context:account_modb(Context),
+
+    JObj = cb_context:doc(Context),
+
+    _Pid = spawn(fun() ->
+                         put('callid', ReqId),
+                         Request = build_originate_req(Contact, JObj, AccountId),
+                         Status = exec_originate(Request),
+                         lager:debug("got status ~p", [Status]),
+
+                         HistoryItem = wh_doc:update_pvt_parameters(
+                                         wh_json:from_list(
+                                           [{<<"pvt_clicktocall_id">>, C2CId}
+                                            | create_c2c_history_item(Status, Contact)
+                                           ]
+                                          )
+                                         ,AccountModb
+                                         ,[{'account_id', AccountId}
+                                           ,{'type', <<"c2c_history">>}
+                                          ]),
+                         kazoo_modb:save_doc(AccountId, HistoryItem)
+                 end),
+    lager:debug("attempting call in ~p", [_Pid]),
+    crossbar_util:response_202(<<"processing request">>, Context).
+
+-spec exec_originate(api_terms()) ->
                             {'success', ne_binary()} |
                             {'error', ne_binary()}.
-originate_call(C2CId, Context) ->
-    case get_c2c_contact(cb_context:req_value(Context, <<"contact">>)) of
-        'undefined' ->
-            Message = <<"The contact extension for this click to call has not been set">>,
-            cb_context:add_validation_error(<<"contact">>, <<"required">>, Message, Context);
-        Contact ->
-            ReqId = cb_context:req_id(Context),
-            AccountId = cb_context:account_id(Context),
-            AccountModb = cb_context:account_modb(Context),
+exec_originate(Request) ->
+    handle_originate_resp(
+      wh_amqp_worker:call_collect(Request
+                                  ,fun wapi_resource:publish_originate_req/1
+                                  ,fun is_resp/1
+                                  ,20000
+                                 )
+     ).
 
-            JObj = cb_context:doc(Context),
-            _Pid = spawn(fun() ->
-                                 put('callid', ReqId),
-                                 Status = originate_call(Contact, JObj, AccountId),
-                                 lager:debug("got status ~p", [Status]),
+-spec handle_originate_resp({'ok', wh_json:objects()} |
+                            {'returned', wh_json:object(), wh_json:object()} |
+                            {'error', _} |
+                            {'timeout', _}
+                           ) ->
+                                   {'success', ne_binary()} |
+                                   {'error', ne_binary()}.
+handle_originate_resp({'ok', [Resp|_]}) ->
+    AppResponse = wh_json:get_first_defined([<<"Application-Response">>
+                                             ,<<"Hangup-Cause">>
+                                             ,<<"Error-Message">>
+                                            ], Resp),
+    case lists:member(AppResponse, ?SUCCESSFUL_HANGUP_CAUSES) of
+        'true' ->
+            {'success', wh_json:get_value(<<"Call-ID">>, Resp)};
+        'false' when AppResponse =:= 'undefined' ->
+            {'success', wh_json:get_value(<<"Call-ID">>, Resp)};
+        'false' ->
+            lager:debug("app response ~s not successful: ~p", [AppResponse, Resp]),
+            {'error', AppResponse}
+    end;
+handle_originate_resp({'returned', _JObj, Return}) ->
+    case {wh_json:get_value(<<"code">>, Return)
+          ,wh_json:get_value(<<"message">>, Return)
+         }
+    of
+        {312, _Msg} ->
+            lager:debug("no resources available to take request: ~s", [_Msg]),
+            {'error', <<"no resources">>};
+        {_Code, Msg} ->
+            lager:debug("failed to publish request: ~p: ~s", [_Code, Msg]),
+            {'error', <<"request failed: ", Msg>>}
+    end;
+handle_originate_resp({'error', _E}) ->
+    lager:debug("errored while originating: ~p", [_E]),
+    {'error', <<"timed out">>};
+handle_originate_resp({'timeout', _T}) ->
+    lager:debug("timed out while originating: ~p", [_T]),
+    {'error', <<"timed out">>}.
 
-                                 HistoryItem = wh_doc:update_pvt_parameters(
-                                                 wh_json:from_list(
-                                                   [{<<"pvt_clicktocall_id">>, C2CId}
-                                                    | create_c2c_history_item(Status, Contact)
-                                                   ]
-                                                  )
-                                                 ,AccountModb
-                                                 ,[{'account_id', AccountId}
-                                                   ,{'type', <<"c2c_history">>}
-                                                  ]),
+-spec build_originate_req(ne_binary(), wh_json:object(), ne_binary()) ->
+                                 api_terms().
+build_originate_req(Contact, JObj, AccountId) ->
+        Exten = wnm_util:to_e164(wh_json:get_binary_value(<<"extension">>, JObj)),
 
-                                 kazoo_modb:save_doc(AccountId, HistoryItem)
-                         end),
-            lager:debug("attempting call in ~p", [_Pid]),
-            crossbar_util:response_202(<<"processing request">>, Context)
-    end.
-
-originate_call(Contact, JObj, AccountId) ->
-    Exten = wnm_util:to_e164(wh_json:get_binary_value(<<"extension">>, JObj)),
+    CalleeName = wh_json:get_binary_value(<<"outbound_callee_id_name">>, JObj, Exten),
+    CalleeNumber = wnm_util:to_e164(wh_json:get_binary_value(<<"outbound_callee_id_number">>, JObj, Exten)),
     FriendlyName = wh_json:get_ne_value(<<"name">>, JObj, <<>>),
+    OutboundNumber = wh_json:get_value(<<"caller_id_number">>, JObj, Contact),
 
     lager:debug("attempting clicktocall ~s in account ~s", [FriendlyName, AccountId]),
 
@@ -337,78 +421,34 @@ originate_call(Contact, JObj, AccountId) ->
                ],
 
     MsgId = wh_json:get_value(<<"Msg-ID">>, JObj, wh_util:rand_hex_binary(16)),
-    OutboundNumber = case wh_json:get_value(<<"caller_id_number">>, JObj) of
-                         'undefined' -> Contact;
-                         Number -> Number
-                     end,
-    Request = props:filter_undefined(
-                [{<<"Application-Name">>, <<"transfer">>}
-                 ,{<<"Application-Data">>, wh_json:from_list([{<<"Route">>, Contact}])}
-                 ,{<<"Msg-ID">>, MsgId}
-                 ,{<<"Endpoints">>, [wh_json:from_list(Endpoint)]}
-                 ,{<<"Timeout">>, wh_json:get_value(<<"Timeout">>, JObj)}
-                 ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"Ignore-Early-Media">>, JObj)}
-                 ,{<<"Media">>, wh_json:get_value(<<"Media">>, JObj)}
-                 ,{<<"Hold-Media">>, wh_json:get_value(<<"Hold-Media">>, JObj)}
-                 ,{<<"Presence-ID">>, wh_json:get_value(<<"Presence-ID">>, JObj)}
-                 ,{<<"Outbound-Callee-ID-Name">>, Exten}
-                 ,{<<"Outbound-Callee-ID-Number">>, Exten}
-                 ,{<<"Outbound-Caller-ID-Name">>, FriendlyName}
-                 ,{<<"Outbound-Caller-ID-Number">>, OutboundNumber}
-                 ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
-                 ,{<<"Dial-Endpoint-Method">>, <<"single">>}
-                 ,{<<"Continue-On-Fail">>, 'true'}
-                 ,{<<"Custom-SIP-Headers">>, wh_json:get_value(<<"custom_sip_headers">>, JObj)}
-                 ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
-                 ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>]}
-                 | wh_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
-                ]),
-
-    case whapps_util:amqp_pool_collect(Request
-                                       ,fun wapi_resource:publish_originate_req/1
-                                       ,fun is_resp/1
-                                       ,20000
-                                      )
-    of
-        {'ok', [Resp|_]} ->
-            AppResponse = wh_json:get_first_defined([<<"Application-Response">>
-                                                     ,<<"Hangup-Cause">>
-                                                     ,<<"Error-Message">>
-                                                    ], JObj),
-            case lists:member(AppResponse, ?SUCCESSFUL_HANGUP_CAUSES) of
-                'true' ->
-                    {'success', wh_json:get_value(<<"Call-ID">>, Resp)};
-                'false' when AppResponse =:= 'undefined' ->
-                    {'success', wh_json:get_value(<<"Call-ID">>, Resp)};
-                'false' ->
-                    lager:debug("app response ~s not successful: ~p", [AppResponse, Resp]),
-                    {'error', AppResponse}
-            end;
-        {'returned', _JObj, Return} ->
-            case {wh_json:get_value(<<"code">>, Return)
-                  ,wh_json:get_value(<<"message">>, Return)
-                 }
-            of
-                {312, _Msg} ->
-                    lager:debug("no resources available to take request: ~s", [_Msg]),
-                    {'error', <<"no resources">>};
-                {_Code, Msg} ->
-                    lager:debug("failed to publish request: ~p: ~s", [_Code, Msg]),
-                    {'error', <<"request failed: ", Msg>>}
-            end;
-        {'error', _E} ->
-            lager:debug("errored while originating: ~p", [_E]),
-            {'error', <<"timed out">>};
-        {'timeout', _T} ->
-            lager:debug("timed out while originating: ~p", [_T]),
-            {'error', <<"timed out">>}
-    end.
+    props:filter_undefined(
+      [{<<"Application-Name">>, <<"transfer">>}
+       ,{<<"Application-Data">>, wh_json:from_list([{<<"Route">>, Contact}])}
+       ,{<<"Msg-ID">>, MsgId}
+       ,{<<"Endpoints">>, [wh_json:from_list(Endpoint)]}
+       ,{<<"Timeout">>, wh_json:get_value(<<"Timeout">>, JObj)}
+       ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"Ignore-Early-Media">>, JObj)}
+       ,{<<"Media">>, wh_json:get_value(<<"Media">>, JObj)}
+       ,{<<"Hold-Media">>, wh_json:get_value(<<"Hold-Media">>, JObj)}
+       ,{<<"Presence-ID">>, wh_json:get_value(<<"Presence-ID">>, JObj)}
+       ,{<<"Outbound-Callee-ID-Name">>, CalleeName}
+       ,{<<"Outbound-Callee-ID-Number">>, CalleeNumber}
+       ,{<<"Outbound-Caller-ID-Name">>, FriendlyName}
+       ,{<<"Outbound-Caller-ID-Number">>, OutboundNumber}
+       ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
+       ,{<<"Dial-Endpoint-Method">>, <<"single">>}
+       ,{<<"Continue-On-Fail">>, 'true'}
+       ,{<<"Custom-SIP-Headers">>, wh_json:get_value(<<"custom_sip_headers">>, JObj)}
+       ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
+       ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>]}
+       | wh_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
+      ]).
 
 -spec is_resp(wh_json:objects() | wh_json:object()) -> boolean().
 is_resp([JObj|_]) -> is_resp(JObj);
 is_resp(JObj) ->
-    wapi_resource:originate_resp_v(JObj) orelse
-        wh_api:error_resp_v(JObj).
+    wapi_resource:originate_resp_v(JObj)
+        orelse wh_api:error_resp_v(JObj).
 
 -spec get_c2c_contact(api_binary()) -> api_binary().
 get_c2c_contact('undefined') -> 'undefined';

@@ -313,12 +313,21 @@ maybe_add_prompt(AccountId, JObj) ->
     maybe_add_prompt(AccountId, JObj, wh_json:get_value(<<"prompt_id">>, JObj)).
 
 maybe_add_prompt(?WH_MEDIA_DB, JObj, 'undefined') ->
-    lager:warning("adding old system prompt ~s", [wh_json:get_value(<<"_id">>, JObj)]),
-    maybe_add_prompt(?WH_MEDIA_DB, JObj, wh_json:get_value(<<"_id">>, JObj));
+    Id = wh_json:get_value(<<"_id">>, JObj),
+
+    MapId = mapping_id(?WH_MEDIA_DB, Id),
+
+    case ets:lookup(table_id(), MapId) of
+        [] ->
+            lager:warning("adding old system prompt ~s", [Id]),
+            maybe_add_prompt(?WH_MEDIA_DB, JObj, Id);
+        [#media_map{languages=_Ls}] ->
+            lager:debug("old prompt ~s being ignored, has languages ~p", [Id, _Ls])
+    end;
 maybe_add_prompt(_AccountId, _JObj, 'undefined') ->
     lager:debug("no prompt id, ignoring ~s for ~s", [wh_json:get_value(<<"_id">>, _JObj), _AccountId]);
 maybe_add_prompt(AccountId, JObj, PromptId) ->
-    lager:debug("add prompt ~s to ~s", [PromptId, AccountId]),
+    lager:debug("add prompt ~s to ~s (~s)", [PromptId, AccountId, wh_json:get_value(<<"_id">>, JObj)]),
     Lang = wh_util:to_lower_binary(
              wh_json:get_value(<<"language">>, JObj, wh_media_util:prompt_language(AccountId))
             ),

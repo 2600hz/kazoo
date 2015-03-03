@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle client requests for phone_number documents
@@ -32,6 +32,10 @@
 -export([track_assignment/2]).
 
 -include("wnm.hrl").
+
+-export_type([number_property/0
+              ,number_properties/0
+             ]).
 
 -define(SERVER, ?MODULE).
 
@@ -226,7 +230,7 @@ check_account(#number{assigned_to=AssignedTo}=N) ->
         'true' -> {'ok', AssignedTo, number_options(N)}
     end.
 
--spec number_options(wnm_number()) -> wh_proplist().
+-spec number_options(wnm_number()) -> number_properties().
 number_options(#number{state=State
                        ,features=Features
                        ,module_name=Module
@@ -242,8 +246,9 @@ number_options(#number{state=State
       }
      ,{'ringback_media', find_early_ringback(Number)}
      ,{'transfer_media', find_transfer_ringback(Number)}
-     ,{'number', Num }
+     ,{'number', Num}
      ,{'account_id', AssignedTo}
+     ,{'prepend', prepend(Number)}
     ].
 
 %% Checks the carrier module for whether to lookup CNAM on this number
@@ -279,6 +284,17 @@ find_early_ringback(#number{number_doc=JObj}) ->
 -spec find_transfer_ringback(wnm_number()) -> api_binary().
 find_transfer_ringback(#number{number_doc=JObj}) ->
     wh_json:get_ne_value([<<"ringback">>, <<"transfer">>], JObj).
+
+-spec prepend(wnm_number()) -> api_binary().
+prepend(#number{number_doc=JObj, features=Features}) ->
+    case
+        sets:is_element(<<"prepend">>, Features)
+        andalso wh_json:is_true([<<"prepend">>, <<"enabled">>], JObj)
+    of
+        'false' -> 'undefined';
+        'true' ->
+             wh_json:get_ne_value([<<"prepend">>, <<"name">>], JObj)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -317,7 +333,9 @@ ported(Number) ->
                 ,Routines
                ).
 
--spec check_ports(wnm_number()) -> operation_return().
+-spec check_ports(wnm_number()) ->
+                         wnm_number() |
+                         {'not_found', wnm_number()}.
 check_ports(#number{number=MaybePortNumber}=Number) ->
     case wnm_number:find_port_in_number(Number) of
         {'ok', PortDoc} ->
@@ -734,7 +752,7 @@ list_attachments(Number, AuthBy) ->
                          {E, Reason};
                     (#number{number_doc=JObj}) ->
                          lager:debug("list attachements successfully completed"),
-                         {'ok', wh_json:get_value(<<"_attachments">>, JObj, wh_json:new())}
+                         {'ok', wh_doc:attachments(JObj, wh_json:new())}
                  end
                ],
     lists:foldl(fun(F, J) -> catch F(J) end, 'ok', Routines).

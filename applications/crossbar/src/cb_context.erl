@@ -25,9 +25,12 @@
 
          %% Getters / Setters
          ,setters/2
+         ,new/0
 
          ,account_id/1, set_account_id/2
          ,account_db/1, set_account_db/2
+         ,user_id/1, set_user_id/2
+         ,device_id/1, set_device_id/2
          ,account_modb/1, account_modb/2, account_modb/3
          ,set_account_modb/3, set_account_modb/4
          ,reseller_id/1, set_reseller_id/2
@@ -36,12 +39,14 @@
          ,auth_token/1, set_auth_token/2
          ,auth_doc/1, set_auth_doc/2
          ,auth_account_id/1, set_auth_account_id/2
+         ,auth_user_id/1
          ,req_verb/1, set_req_verb/2
          ,req_data/1, set_req_data/2
          ,req_id/1, set_req_id/2
          ,req_files/1, set_req_files/2
          ,req_nouns/1, set_req_nouns/2
          ,req_headers/1, set_req_headers/2
+         ,req_header/2
          ,query_string/1, set_query_string/2
          ,client_ip/1
          ,doc/1, set_doc/2
@@ -76,38 +81,55 @@
 
          %% Special accessors
          ,req_value/2, req_value/3
+         ,accepting_charges/1
         ]).
 
 -include("./crossbar.hrl").
 
 -type context() :: #cb_context{}.
+-type setter_fun_1() :: fun((context()) -> context()).
 -type setter_fun_2() :: fun((context(), term()) -> context()).
 -type setter_fun_3() :: fun((context(), term(), term()) -> context()).
--type setter_fun() :: setter_fun_2() | setter_fun_3().
+-type setter_fun() :: setter_fun_1() | setter_fun_2() | setter_fun_3().
 -export_type([context/0
               ,setter_fun/0
+              ,setter_fun_1/0
               ,setter_fun_2/0
               ,setter_fun_3/0
              ]).
 
--type setter_kv() :: {setter_fun_2(), term()} |
+-type setter_kv() :: setter_fun_1() |
+                     {setter_fun_2(), term()} |
                      {setter_fun_3(), term(), term()}.
 -type setters() :: [setter_kv(),...] | [].
+
+-spec new() -> context().
+new() -> #cb_context{}.
 
 -spec is_context(any()) -> boolean().
 is_context(#cb_context{}) -> 'true';
 is_context(_) -> 'false'.
 
 -spec req_value(context(), wh_json:key()) -> wh_json:json_term().
--spec req_value(context(), wh_json:key(), term()) -> wh_json:json_term().
+-spec req_value(context(), wh_json:key(), Default) -> wh_json:json_term() | Default.
 req_value(#cb_context{}=Context, Key) ->
     req_value(Context, Key, 'undefined').
-req_value(#cb_context{req_data=ReqData, query_json=QS}, Key, Default) ->
-    wh_json:find(Key, [ReqData, QS], Default).
+req_value(#cb_context{req_data=ReqData
+                     ,query_json=QS
+                     ,req_json=JObj
+                     }, Key, Default) ->
+    wh_json:find(Key, [ReqData, QS, JObj], Default).
+
+
+-spec accepting_charges(context()) -> boolean().
+accepting_charges(Context) ->
+    wh_util:is_true(req_value(Context, <<"accept_charges">>, 'false')).
 
 %% Accessors
 -spec account_id(context()) -> api_binary().
 -spec account_db(context()) -> api_binary().
+-spec user_id(context()) -> api_binary().
+-spec device_id(context()) -> api_binary().
 -spec account_modb(context()) -> api_binary().
 -spec account_modb(context(), wh_now() | wh_timeout()) -> api_binary().
 -spec account_modb(context(), wh_year(), wh_month()) -> api_binary().
@@ -115,6 +137,8 @@ req_value(#cb_context{req_data=ReqData, query_json=QS}, Key, Default) ->
 -spec account_doc(context()) -> api_object().
 
 account_id(#cb_context{account_id=AcctId}) -> AcctId.
+user_id(#cb_context{user_id=UserId}) -> UserId.
+device_id(#cb_context{device_id=DeviceId}) -> DeviceId.
 reseller_id(#cb_context{reseller_id=AcctId}) -> AcctId.
 account_db(#cb_context{db_name=AcctDb}) -> AcctDb.
 
@@ -139,11 +163,14 @@ account_doc(Context) ->
 auth_token(#cb_context{auth_token=AuthToken}) -> AuthToken.
 auth_doc(#cb_context{auth_doc=AuthDoc}) -> AuthDoc.
 auth_account_id(#cb_context{auth_account_id=AuthBy}) -> AuthBy.
+auth_user_id(#cb_context{auth_doc='undefined'}) -> 'undefined';
+auth_user_id(#cb_context{auth_doc=JObj}) -> wh_json:get_value(<<"owner_id">>, JObj).
 req_verb(#cb_context{req_verb=ReqVerb}) -> ReqVerb.
 req_data(#cb_context{req_data=ReqData}) -> ReqData.
 req_files(#cb_context{req_files=ReqFiles}) -> ReqFiles.
 req_nouns(#cb_context{req_nouns=ReqNouns}) -> ReqNouns.
 req_headers(#cb_context{req_headers=Hs}) -> Hs.
+req_header(#cb_context{req_headers=Hs}, K) -> props:get_value(K, Hs).
 query_string(#cb_context{query_json=Q}) -> Q.
 client_ip(#cb_context{client_ip=IP}) -> IP.
 req_id(#cb_context{req_id=ReqId}) -> ReqId.
@@ -188,14 +215,17 @@ setters(#cb_context{}=Context, [_|_]=Setters) ->
 
 -spec setters_fold(setter_kv(), context()) -> context().
 setters_fold({F, V}, C) -> F(C, V);
-setters_fold({F, K, V}, C) -> F(C, K, V).
+setters_fold({F, K, V}, C) -> F(C, K, V);
+setters_fold(F, C) when is_function(F, 1) -> F(C).
 
 -spec set_account_id(context(), ne_binary()) -> context().
 -spec set_account_db(context(), ne_binary()) -> context().
+-spec set_user_id(context(), ne_binary()) -> context().
+-spec set_device_id(context(), ne_binary()) -> context().
 -spec set_auth_token(context(), ne_binary()) -> context().
 -spec set_auth_doc(context(), wh_json:object()) -> context().
 -spec set_auth_account_id(context(), ne_binary()) -> context().
--spec set_req_verb(context(), ne_binary()) -> context().
+-spec set_req_verb(context(), http_method()) -> context().
 -spec set_req_data(context(), wh_json:object() | ne_binary()) -> context().
 -spec set_req_files(context(), req_files()) -> context().
 -spec set_req_nouns(context(), req_nouns()) -> context().
@@ -229,6 +259,8 @@ setters_fold({F, K, V}, C) -> F(C, K, V).
 -spec set_validation_errors(context(), wh_json:object()) -> context().
 
 set_account_id(#cb_context{}=Context, AcctId) -> Context#cb_context{account_id=AcctId}.
+set_user_id(#cb_context{}=Context, UserId) -> Context#cb_context{user_id=UserId}.
+set_device_id(#cb_context{}=Context, DeviceId) -> Context#cb_context{device_id=DeviceId}.
 set_reseller_id(#cb_context{}=Context, AcctId) -> Context#cb_context{reseller_id=AcctId}.
 set_account_db(#cb_context{}=Context, AcctDb) -> Context#cb_context{db_name=AcctDb}.
 set_account_modb(#cb_context{}=Context, Year, Month) ->
@@ -311,8 +343,7 @@ add_attachment_content_type(#cb_context{}=Context, DocId, AttachmentId) ->
 
 -spec maybe_add_content_type_provided(context(), ne_binary()) -> context().
 maybe_add_content_type_provided(Context, AttachmentId) ->
-    ContentTypeKey = [<<"_attachments">>, AttachmentId, <<"content_type">>],
-    case wh_json:get_value(ContentTypeKey, doc(Context)) of
+    case wh_doc:attachment_content_type(doc(Context), AttachmentId) of
         'undefined' -> Context;
         ContentType ->
             lager:debug("found content type ~s", [ContentType]),
@@ -437,7 +468,11 @@ validate_request_data(<<_/binary>> = Schema, Context) ->
             validate_request_data(SchemaJObj, Context)
     end;
 validate_request_data(SchemaJObj, Context) ->
-    case jesse:validate_with_schema(SchemaJObj, wh_json:public_fields(req_data(Context))) of
+    case jesse:validate_with_schema(SchemaJObj
+                                    ,wh_json:public_fields(req_data(Context))
+                                    ,[{'schema_loader_fun', fun wh_json_schema:load/1}]
+                                   )
+    of
         {'ok', JObj} ->
             passed(
               set_doc(Context, wh_json_schema:add_defaults(JObj, SchemaJObj))
@@ -462,16 +497,8 @@ validate_request_data(Schema, Context, OnSuccess, OnFailure) ->
     end.
 
 
--type validator_error() :: {'data_invalid'
-                            ,wh_json:object()
-                            ,atom()
-                            ,wh_json:json_term()
-                            ,ne_binaries()
-                           }.
--type validator_errors() :: [validator_error(),...] | [].
-
--spec failed(context(), validator_errors()) -> context().
--spec failed_error(validator_error(), context()) -> context().
+-spec failed(context(), jesse_error:error_reasons()) -> context().
+-spec failed_error(jesse_error:error_reason(), context()) -> context().
 failed(Context, Errors) ->
     lists:foldl(fun failed_error/2, set_resp_status(Context, 'error'), Errors).
 
@@ -484,14 +511,15 @@ failed_error({'data_invalid'
     Minimum = wh_json:get_value(<<"minLength">>, FailedSchemaJObj),
     MinLen = wh_util:to_binary(Minimum),
 
-    add_validation_error(FailedKeyPath
-                         ,<<"minLength">>
-                         ,build_error_message(cb_context:api_version(Context)
-                                              ,<<"String must be at least ", MinLen/binary, " characters">>
-                                              ,Minimum
-                                             )
-                         ,Context
-                        );
+    add_validation_error(
+        FailedKeyPath
+        ,<<"minLength">>
+        ,wh_json:from_list([
+             {<<"message">>, <<"String must be at least ", MinLen/binary, " characters">>}
+             ,{<<"target">>, Minimum}
+         ])
+        ,Context
+    );
 failed_error({'data_invalid'
               ,FailedSchemaJObj
               ,'wrong_max_length'
@@ -501,25 +529,30 @@ failed_error({'data_invalid'
     Maximum = wh_json:get_value(<<"maxLength">>, FailedSchemaJObj),
     MaxLen = wh_util:to_binary(Maximum),
 
-    add_validation_error(FailedKeyPath
-                         ,<<"maxLength">>
-                         ,build_error_message(cb_context:api_version(Context)
-                                              ,<<"String must not be more than ", MaxLen/binary, " characters">>
-                                              ,Maximum
-                                             )
-                         ,Context
-                        );
+    add_validation_error(
+        FailedKeyPath
+        ,<<"maxLength">>
+        ,wh_json:from_list([
+             {<<"message">>, <<"String must not be more than ", MaxLen/binary, " characters">>}
+             ,{<<"target">>, Maximum}
+         ])
+        ,Context
+    );
 failed_error({'data_invalid'
-              ,_FailedSchemaJObj
+              ,FailedSchemaJObj
               ,'not_in_enum'
-              ,_FailedValue
+                  ,_FailedValue
               ,FailedKeyPath
              }, Context) ->
-    add_validation_error(FailedKeyPath
-                         ,<<"enum">>
-                         ,<<"Value not found in enumerated list of values">>
-                         ,Context
-                        );
+    add_validation_error(
+        FailedKeyPath
+        ,<<"enum">>
+        ,wh_json:from_list(
+           [{<<"message">>, <<"Value not found in enumerated list of values">>}
+            ,{<<"target">>, wh_json:get_value(<<"enum">>, FailedSchemaJObj, [])}
+           ])
+        ,Context
+    );
 failed_error({'data_invalid'
               ,FailedSchemaJObj
               ,'not_minimum'
@@ -529,14 +562,15 @@ failed_error({'data_invalid'
     Minimum = wh_json:get_first_defined([<<"minimum">>, <<"exclusiveMinimum">>], FailedSchemaJObj),
     Min = wh_util:to_binary(Minimum),
 
-    add_validation_error(FailedKeyPath
-                         ,<<"minimum">>
-                         ,build_error_message(cb_context:api_version(Context)
-                                              ,<<"Value must be at least ", Min/binary>>
-                                              ,Minimum
-                                             )
-                         ,Context
-                        );
+    add_validation_error(
+        FailedKeyPath
+        ,<<"minimum">>
+        ,wh_json:from_list([
+             {<<"message">>, <<"Value must be at least ", Min/binary>>}
+             ,{<<"target">>, Minimum}
+         ])
+        ,Context
+    );
 failed_error({'data_invalid'
               ,FailedSchemaJObj
               ,'not_maximum'
@@ -546,14 +580,15 @@ failed_error({'data_invalid'
     Maximum = wh_json:get_first_defined([<<"maximum">>, <<"exclusiveMaximum">>], FailedSchemaJObj),
     Max = wh_util:to_binary(Maximum),
 
-    add_validation_error(FailedKeyPath
-                         ,<<"maximum">>
-                         ,build_error_message(cb_context:api_version(Context)
-                                              ,<<"Value must be at most ", Max/binary>>
-                                              ,Maximum
-                                             )
-                         ,Context
-                        );
+    add_validation_error(
+        FailedKeyPath
+        ,<<"maximum">>
+        ,wh_json:from_list([
+             {<<"message">>, <<"Value must be at most ", Max/binary>>}
+             ,{<<"target">>, Maximum}
+          ])
+        ,Context
+    );
 failed_error({'data_invalid'
               ,FailedSchemaJObj
               ,'wrong_min_items'
@@ -563,14 +598,15 @@ failed_error({'data_invalid'
     Minimum = wh_json:get_value(<<"minItems">>, FailedSchemaJObj),
     Min = wh_util:to_binary(Minimum),
 
-    add_validation_error(FailedKeyPath
-                         ,<<"minItems">>
-                         ,build_error_message(cb_context:api_version(Context)
-                                              ,<<"The list must have at least ", Min/binary, " items">>
-                                              ,Minimum
-                                             )
-                         ,Context
-                        );
+    add_validation_error(
+        FailedKeyPath
+        ,<<"minItems">>
+        ,wh_json:from_list([
+             {<<"message">>, <<"The list must have at least ", Min/binary, " items">>}
+             ,{<<"target">>, Minimum}
+         ])
+        ,Context
+    );
 failed_error({'data_invalid'
               ,FailedSchemaJObj
               ,'wrong_max_items'
@@ -580,14 +616,15 @@ failed_error({'data_invalid'
     Maximum = wh_json:get_value(<<"maxItems">>, FailedSchemaJObj),
     Max = wh_util:to_binary(Maximum),
 
-    add_validation_error(FailedKeyPath
-                         ,<<"maxItems">>
-                         ,build_error_message(cb_context:api_version(Context)
-                                              ,<<"The list is more than ", Max/binary, " items">>
-                                              ,Maximum
-                                             )
-                         ,Context
-                        );
+    add_validation_error(
+        FailedKeyPath
+        ,<<"maxItems">>
+        ,wh_json:from_list([
+             {<<"message">>, <<"The list is more than ", Max/binary, " items">>}
+             ,{<<"target">>, Maximum}
+         ])
+        ,Context
+    );
 failed_error({'data_invalid'
               ,FailedSchemaJObj
               ,'wrong_min_properties'
@@ -597,49 +634,57 @@ failed_error({'data_invalid'
     Minimum = wh_json:get_value(<<"minProperties">>, FailedSchemaJObj),
     Min = wh_util:to_binary(Minimum),
 
-    add_validation_error(FailedKeyPath
-                         ,<<"minProperties">>
-                         ,build_error_message(cb_context:api_version(Context)
-                                              ,<<"The object must have at least ", Min/binary, " keys">>
-                                              ,Minimum
-                                             )
-                         ,Context
-                        );
+    add_validation_error(
+        FailedKeyPath
+        ,<<"minProperties">>
+        ,wh_json:from_list([
+             {<<"message">>, <<"The object must have at least ", Min/binary, " keys">>}
+             ,{<<"target">>, Minimum}
+         ])
+        ,Context
+    );
 failed_error({'data_invalid'
-              ,_FailedSchemaJObj
+              ,FailedSchemaJObj
               ,{'not_unique', _Item}
               ,_FailedValue
               ,FailedKeyPath
              }, Context) ->
     lager:debug("item ~p is not unique", [_Item]),
-    lager:debug("failed schema: ~p", [_FailedSchemaJObj]),
-    add_validation_error(FailedKeyPath
-                         ,<<"uniqueItems">>
-                         ,<<"List of items is not unique">>
-                         ,Context
-                        );
+    lager:debug("failed schema: ~p", [FailedSchemaJObj]),
+    add_validation_error(
+        FailedKeyPath
+        ,<<"uniqueItems">>
+        ,wh_json:from_list([{<<"message">>, <<"List of items is not unique">>}])
+        ,Context
+    );
 failed_error({'data_invalid'
               ,_FailedSchemaJObj
               ,'no_extra_properties_allowed'
               ,_FailedValue
               ,FailedKeyPath
              }, Context) ->
-    add_validation_error(FailedKeyPath
-                         ,<<"additionalProperties">>
-                         ,<<"Strict checking of data is enabled; only include schema-defined properties">>
-                         ,Context
-                        );
+    add_validation_error(
+        FailedKeyPath
+        ,<<"additionalProperties">>
+        ,wh_json:from_list([
+             {<<"message">>, <<"Strict checking of data is enabled; only include schema-defined properties">>}
+         ])
+        ,Context
+    );
 failed_error({'data_invalid'
               ,_FailedSchemaJObj
               ,'no_extra_items_allowed'
               ,_FailedValue
               ,FailedKeyPath
              }, Context) ->
-    add_validation_error(FailedKeyPath
-                         ,<<"additionalItems">>
-                         ,<<"Strict checking of data is enabled; only include schema-defined items">>
-                         ,Context
-                        );
+    add_validation_error(
+        FailedKeyPath
+        ,<<"additionalItems">>
+        ,wh_json:from_list([
+             {<<"message">>, <<"Strict checking of data is enabled; only include schema-defined items">>}
+         ])
+        ,Context
+    );
 failed_error({'data_invalid'
               ,FailedSchemaJObj
               ,'no_match'
@@ -647,33 +692,43 @@ failed_error({'data_invalid'
               ,FailedKeyPath
              }, Context) ->
     Pattern = wh_json:get_value(<<"pattern">>, FailedSchemaJObj),
-    add_validation_error(FailedKeyPath
-                         ,<<"pattern">>
-                         ,<<"Failed to match pattern '", Pattern/binary, "'">>
-                         ,Context
-                        );
+    add_validation_error(
+        FailedKeyPath
+        ,<<"pattern">>
+        ,wh_json:from_list([
+             {<<"message">>, <<"Failed to match pattern '", Pattern/binary, "'">>}
+             ,{<<"target">>, Pattern}
+         ])
+        ,Context
+    );
 failed_error({'data_invalid'
               ,_FailedSchemaJObj
               ,'missing_required_property'
               ,_FailedValue
               ,FailedKeyPath
              }, Context) ->
-    add_validation_error(FailedKeyPath
-                         ,<<"required">>
-                         ,<<"Field is required but missing">>
-                         ,Context
-                        );
+    add_validation_error(
+        FailedKeyPath
+        ,<<"required">>
+        ,wh_json:from_list([
+             {<<"message">>, <<"Field is required but missing">>}
+         ])
+        ,Context
+    );
 failed_error({'data_invalid'
               ,_FailedSchemaJObj
               ,'missing_dependency'
               ,_FailedValue
               ,FailedKeyPath
              }, Context) ->
-    add_validation_error(FailedKeyPath
-                         ,<<"dependencies">>
-                         ,<<"Dependencies were not validated">>
-                         ,Context
-                        );
+    add_validation_error(
+        FailedKeyPath
+        ,<<"dependencies">>
+         ,wh_json:from_list([
+             {<<"message">>, <<"Dependencies were not validated">>}
+          ])
+        ,Context
+    );
 failed_error({'data_invalid'
               ,FailedSchemaJObj
               ,'not_divisible'
@@ -681,11 +736,15 @@ failed_error({'data_invalid'
               ,FailedKeyPath
              }, Context) ->
     DivBy = wh_json:get_binary_value(<<"divisibleBy">>, FailedSchemaJObj),
-    add_validation_error(FailedKeyPath
-                         ,<<"divisibleBy">>
-                         ,<<"Value not divisible by ", DivBy/binary>>
-                         ,Context
-                        );
+    add_validation_error(
+        FailedKeyPath
+        ,<<"divisibleBy">>
+        ,wh_json:from_list([
+             {<<"message">>, <<"Value not divisible by ", DivBy/binary>>}
+             ,{<<"target">>, DivBy}
+         ])
+        ,Context
+    );
 failed_error({'data_invalid'
               ,FailedSchemaJObj
               ,'not_allowed'
@@ -693,11 +752,15 @@ failed_error({'data_invalid'
               ,FailedKeyPath
              }, Context) ->
     Disallow = get_disallow(FailedSchemaJObj),
-    add_validation_error(FailedKeyPath
-                         ,<<"disallow">>
-                         ,<<"Value is disallwed by ", Disallow/binary>>
-                         ,Context
-                        );
+    add_validation_error(
+        FailedKeyPath
+        ,<<"disallow">>
+        ,wh_json:from_list([
+             {<<"message">>, <<"Value is disallowed by ", Disallow/binary>>}
+             ,{<<"target">>, Disallow}
+         ])
+        ,Context
+    );
 failed_error({'data_invalid'
               ,FailedSchemaJObj
               ,'wrong_type'
@@ -705,21 +768,29 @@ failed_error({'data_invalid'
               ,FailedKeyPath
              }, Context) ->
     Types = get_types(FailedSchemaJObj),
-    add_validation_error(FailedKeyPath
-                         ,<<"type">>
-                         ,<<"Value did not match type(s): ", Types/binary>>
-                         ,Context
-                        );
+    add_validation_error(
+        FailedKeyPath
+        ,<<"type">>
+        ,wh_json:from_list([
+             {<<"message">>, <<"Value did not match type(s): ", Types/binary>>}
+             ,{<<"target">>, Types}
+         ])
+        ,Context
+    );
 failed_error({'data_invalid'
               ,_FailedSchemaJObj
               ,{'missing_required_property', FailKey}
               ,_FailedValue
               ,FailedKeyPath
              }, Context) ->
-    add_validation_error([FailedKeyPath, FailKey]
-                         ,<<"required">>
-                         ,<<"Field is required but missing">>
-                         ,Context);
+    add_validation_error(
+        [FailedKeyPath, FailKey]
+        ,<<"required">>
+        ,wh_json:from_list([
+             {<<"message">>, <<"Field is required but missing">>}
+         ])
+        ,Context
+    );
 failed_error({'data_invalid'
               ,_FailedSchemaJObj
               ,FailMsg
@@ -730,7 +801,14 @@ failed_error({'data_invalid'
     lager:debug("failed schema: ~p", [_FailedSchemaJObj]),
     lager:debug("failed value: ~p", [_FailedValue]),
     lager:debug("failed keypath: ~p", [FailedKeyPath]),
-    add_validation_error(FailedKeyPath, wh_util:to_binary(FailMsg), <<"failed to validate">>, Context).
+    add_validation_error(
+        FailedKeyPath
+        ,wh_util:to_binary(FailMsg)
+        ,wh_json:from_list([
+             {<<"message">>, <<"failed to validate">>}
+         ])
+        ,Context
+    ).
 
 -spec get_disallow(wh_json:object()) -> ne_binary().
 get_disallow(JObj) ->
@@ -780,63 +858,99 @@ find_schema(<<_/binary>> = Schema) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec add_system_error(atom() | binary(), context()) -> context().
+-spec add_system_error(atom() | binary(), ne_binary() | wh_json:object(), context()) -> context().
 add_system_error('too_many_requests', Context) ->
-    crossbar_util:response('fatal', <<"too many requests">>, 429, Context);
+    build_system_error(429, 'too_many_requests', <<"too many requests">>, Context);
 add_system_error('no_credit', Context) ->
-    crossbar_util:response('error', <<"not enough credit to perform action">>, 402, Context);
+    build_system_error(402, 'no_credit', <<"not enough credit to perform action">>, Context);
 add_system_error('unspecified_fault', Context) ->
-    crossbar_util:response('fatal', <<"unspecified fault">>, Context);
+    build_system_error(500, 'unspecified_fault', <<"unspecified fault">>, Context);
 add_system_error('account_cant_create_tree', Context) ->
-    crossbar_util:response('fatal', <<"account creation fault">>, Context);
+    build_system_error(500, 'account_cant_create_tree', <<"account creation fault">>, Context);
 add_system_error('account_has_descendants', Context) ->
-    crossbar_util:response('fatal', <<"account has descendants">>, Context);
+    build_system_error(500, 'account_has_descendants', <<"account has descendants">>, Context);
 add_system_error('faulty_request', Context) ->
-    crossbar_util:response_faulty_request(Context);
+    build_system_error(404, 'faulty_request', <<"faulty request">>, Context);
 
 add_system_error('bad_identifier', Context) ->
-    crossbar_util:response_bad_identifier(<<"unknown">>, Context);
+    build_system_error(404, 'bad_identifier', <<"bad identifier">>, Context);
 
 add_system_error('forbidden', Context) ->
-    crossbar_util:response('error', <<"forbidden">>, 403, Context);
+    build_system_error(403, 'forbidden', <<"forbidden">>, Context);
 add_system_error('invalid_credentials', Context) ->
-    crossbar_util:response('error', <<"invalid credentials">>, 401, Context);
+    build_system_error(401, 'invalid_credentials', <<"invalid credentials">>, Context);
 
 add_system_error('datastore_missing', Context) ->
-    crossbar_util:response_db_missing(Context);
+    build_system_error(503, 'datastore_missing', <<"data collection missing: database not found">>, Context);
 add_system_error('datastore_missing_view', Context) ->
-    crossbar_util:response_missing_view(Context);
+    build_system_error(503, 'datastore_missing_view', <<"datastore missing view">>, Context);
 add_system_error('datastore_conflict', Context) ->
-    crossbar_util:response_conflicting_docs(Context);
+    build_system_error(409, 'datastore_conflict', <<"conflicting documents">>, Context);
 add_system_error('datastore_unreachable', Context) ->
-    crossbar_util:response_datastore_timeout(Context);
+    build_system_error(503, 'datastore_unreachable', <<"datastore timeout">>, Context);
 add_system_error('datastore_fault', Context) ->
-    crossbar_util:response_db_fatal(Context);
+    build_system_error(503, 'datastore_fault', <<"datastore fatal error">>, Context);
 add_system_error('empty_tree_accounts_exist', Context) ->
-    crossbar_util:response('error', <<"unable to create account tree">>, 400, Context);
+    build_system_error(400, 'empty_tree_accounts_exist', <<"unable to create account tree">>, Context);
 
 add_system_error('parse_error', Context) ->
-    crossbar_util:response('error', <<"failed to parse request body">>, 400, Context);
+    build_system_error(400, 'parse_error', <<"failed to parse request body">>, Context);
 add_system_error('invalid_method', Context) ->
-    crossbar_util:response('error', <<"method not allowed">>, 405, Context);
+    build_system_error(405, 'invalid_method', <<"method not allowed">>, Context);
 add_system_error('not_found', Context) ->
-    crossbar_util:response('error', <<"not found">>, 404, Context);
+    build_system_error(404, 'not_found', <<"not found">>, Context);
 add_system_error(Error, Context) ->
-    crossbar_util:response('error', Error, Context).
+    build_system_error(500, Error, wh_util:to_binary(Error), Context).
 
-add_system_error('bad_identifier', Props, Context) ->
-    Identifier = props:get_value('details', Props),
-    crossbar_util:response_bad_identifier(Identifier, Context);
-add_system_error('invalid_bulk_type', Props, Context) ->
-    Type = props:get_value('type', Props),
-    Reason = <<"bulk operations do not support documents of type ", (wh_util:to_binary(Type))/binary>>,
-    crossbar_util:response('error', <<"invalid bulk type">>, 400, Reason, Context);
-add_system_error('forbidden', Props, Context) ->
-    Reason = props:get_value('details', Props),
-    crossbar_util:response('error', <<"forbidden">>, 403, Reason, Context);
-add_system_error('timeout', Props, Context) ->
-    crossbar_util:response('error', <<"timeout">>, 500, props:get_value('details', Props), Context);
-add_system_error(Error, _, Context) ->
-    add_system_error(Error, Context).
+add_system_error(Error, <<_/binary>>=Message, Context) ->
+    JObj = wh_json:from_list([{<<"message">>, Message}]),
+    add_system_error(Error, JObj, Context);
+add_system_error('bad_identifier'=Error, JObj, Context) ->
+    J = wh_json:set_value(<<"message">>, <<"bad identifier">>, JObj),
+    build_system_error(404, Error, J, Context);
+add_system_error('invalid_bulk_type'=Error, JObj, Context) ->
+    %% TODO: JObj is expected to have a type key!!
+    Type = wh_json:get_value(<<"type">>, JObj),
+    Message = <<"bulk operations do not support documents of type ", (wh_util:to_binary(Type))/binary>>,
+    J = wh_json:set_value(<<"message">>, Message, JObj),
+    build_system_error(400, Error, J, Context);
+add_system_error('forbidden'=Error, JObj, Context) ->
+    J = wh_json:set_value(<<"message">>, <<"forbidden">>, JObj),
+    build_system_error(403, Error, J, Context);
+add_system_error('timeout'=Error, JObj, Context) ->
+    J = wh_json:set_value(<<"message">>, <<"timeout">>, JObj),
+    build_system_error(500, Error, J, Context);
+add_system_error('invalid_method'=Error, JObj, Context) ->
+    J = wh_json:set_value(<<"message">>, <<"invalid method">>, JObj),
+    build_system_error(405, Error, J, Context);
+add_system_error('bad_gateway'=Error, JObj, Context) ->
+    J = wh_json:set_value(<<"message">>, <<"bad gateway">>, JObj),
+    build_system_error(502, Error, J, Context);
+add_system_error(Error, JObj, Context) ->
+    case wh_json:get_ne_value(<<"message">>, JObj) of
+        'undefined' ->
+            J = wh_json:set_value(<<"message">>, <<"unknown failure">>, JObj),
+            build_system_error(500, Error, J, Context);
+        _Else ->
+            build_system_error(500, Error, JObj, Context)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec build_system_error(integer(), atom() | ne_binary(), ne_binary() | wh_json:object(), cb_context:context()) ->
+                                cb_context:context().
+build_system_error(Code, Error, JObj, Context) ->
+    ApiVersion = cb_context:api_version(Context),
+    Message = build_error_message(ApiVersion, JObj),
+    Context#cb_context{resp_status='error'
+                       ,resp_error_code=Code
+                       ,resp_data=Message
+                       ,resp_error_msg=wh_util:to_binary(Error)
+                      }.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -899,19 +1013,25 @@ add_depreciated_validation_error(Property, Code, Message, Context) when is_binar
 add_depreciated_validation_error(Property, Code, Message, #cb_context{validation_errors=JObj}=Context) ->
     %% Maintain the same error format we are currently using until we are ready to
     %% convert to something that makes sense....
+    ApiVersion = cb_context:api_version(Context),
+    Error = build_error_message(ApiVersion, Message),
     Key = wh_util:join_binary(Property, <<".">>),
-    Context#cb_context{validation_errors=wh_json:set_value([Key, Code], Message, JObj)
+    Context#cb_context{validation_errors=wh_json:set_value([Key, Code], Error, JObj)
                        ,resp_status='error'
                        ,resp_error_code=400
                        ,resp_data=wh_json:new()
                        ,resp_error_msg = <<"invalid data">>
                       }.
 
--spec build_error_message(ne_binary(), ne_binary(), ne_binary() | integer()) ->
-                                 ne_binary() | wh_json:object().
-build_error_message(<<"v1">>, V1Msg, _V2Target) ->
-    V1Msg;
-build_error_message(_Version, V1Msg, V2Target) ->
-    wh_json:from_list([{<<"message">>, V1Msg}
-                       ,{<<"target">>, V2Target}
-                      ]).
+-spec build_error_message('v1', ne_binary() | wh_json:object()) ->
+                                 ne_binary();
+                         (ne_binary(), ne_binary() | wh_json:object()) ->
+                                 wh_json:object().
+build_error_message(?VERSION_1, Message) when is_binary(Message) ->
+    Message;
+build_error_message(?VERSION_1, JObj) ->
+    wh_json:get_value(<<"message">>, JObj);
+build_error_message(_Version, Message) when is_binary(Message) ->
+    wh_json:from_list([{<<"message">>, Message}]);
+build_error_message(_Version, JObj) ->
+    JObj.

@@ -154,7 +154,7 @@ revalidate_doc(Id, JObj, Context) ->
         undefined ->
             Details = [{type, wh_json:get_value(<<"pvt_type">>, JObj)}],
             InterimContext = cb_context:add_system_error(invalid_bulk_type
-                                                         ,Details
+                                                         ,wh_json:from_list(Details)
                                                          ,#cb_context{}),
             import_results(Id, InterimContext, Context);
         Binding ->
@@ -206,7 +206,7 @@ maybe_save_doc(Id, JObj, Context) ->
         undefined ->
             Details = [{type, wh_json:get_value(<<"pvt_type">>, JObj)}],
             InterimContext = cb_context:add_system_error(invalid_bulk_type
-                                                         ,Details
+                                                         ,wh_json:from_list(Details)
                                                          ,#cb_context{}),
             import_results(Id, InterimContext, Context);
         Binding ->
@@ -252,7 +252,7 @@ maybe_delete_doc(Id, JObj, Context) ->
         undefined ->
             Details = [{type, wh_json:get_value(<<"pvt_type">>, JObj)}],
             InterimContext = cb_context:add_system_error(invalid_bulk_type
-                                                         ,Details
+                                                         ,wh_json:from_list(Details)
                                                          ,#cb_context{}),
             import_results(Id, InterimContext, Context);
         Binding ->
