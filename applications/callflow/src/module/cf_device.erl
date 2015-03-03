@@ -57,6 +57,5 @@ bridge_to_endpoints(Data, Call) ->
         {'ok', Endpoints} ->
             Timeout = wh_json:get_integer_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT_S),
             IgnoreEarlyMedia = cf_util:ignore_early_media(Endpoints),
-            cf_util:maybe_start_metaflows(Call, Endpoints),
             whapps_call_command:b_bridge(Endpoints, Timeout, <<"simultaneous">>, IgnoreEarlyMedia, Call)
     end.
