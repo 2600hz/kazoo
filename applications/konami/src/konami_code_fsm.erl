@@ -557,6 +557,15 @@ handle_channel_bridge(#state{call_id=CallId
                             }=State, CallId, OtherLeg) ->
     lager:debug("joy, 'a' and 'b' legs bridged"),
     State;
+handle_channel_bridge(#state{call_id=CallId
+                             ,listen_on='a'
+                             ,call=Call
+                            }=State, CallId, OtherLeg) ->
+    lager:debug("joy, 'a' is bridged to ~s", [OtherLeg]),
+    maybe_add_call_event_bindings(OtherLeg),
+    State#state{call=whapps_call:set_other_leg_call_id(OtherLeg, Call)
+                ,other_leg=OtherLeg
+               };
 handle_channel_bridge(#state{other_leg='undefined'}
                       ,_CallId
                       ,_OtherLeg
@@ -616,5 +625,5 @@ handle_channel_destroy(#state{other_leg=OtherLeg
                       ) ->
     lager:debug("'b' ~s has ended but we're still interested in the 'a'", [OtherLeg]),
     State#state{other_leg='undefined'
-                ,call=whapps_call:set_other_call_id('undefined', Call)
+                ,call=whapps_call:set_other_leg_call_id('undefined', Call)
                }.

@@ -253,7 +253,7 @@ relay_to_fsms(CallId, Event, JObj) ->
      || FSM <- fsms_for_callid(CallId)
     ].
 
--spec fsms_for_callid(ne_binary()) -> pids().
+-spec fsms_for_callid(ne_binary() | '_') -> pids().
 fsms_for_callid(CallId) ->
     %% {{'p', 'l', Key}, PidToMatch, ValueToMatch}
     MatchHead = {?KONAMI_REG({'fsm', CallId}), '$1', '_'},
@@ -262,9 +262,11 @@ fsms_for_callid(CallId) ->
 
     gproc:select('p', [{MatchHead, Guard, [Result]}]).
 
+-spec fsms() -> pids().
 fsms() ->
     fsms_for_callid('_').
 
+-spec metaflows() -> pids().
 metaflows() ->
     pids_for_callid('_').
 
@@ -282,7 +284,7 @@ relay_to_pids(CallId, JObj) ->
      || Pid <- pids_for_callid(CallId)
     ].
 
--spec pids_for_callid(ne_binary()) -> pids().
+-spec pids_for_callid(ne_binary() | '_') -> pids().
 pids_for_callid(CallId) ->
     %% {{'p', 'l', Key}, PidToMatch, ValueToMatch}
     MatchHead = {?KONAMI_REG({'pid', CallId}), '$1', '_'},
