@@ -618,7 +618,7 @@ finished(?EVENT(_CallId, _EventName, _Evt)
             ?WSD_NOTE(_CallId, 'right', <<"unhandled ", _EventName/binary>>);
         _OtherLeg ->
             lager:info("unhandled event ~s for ~s to ~s", [_EventName, _CallId, _OtherLeg]),
-            ?WSD_NOTE(_CallId, _OtherLeg, <<"unhandled ", _EventName/binary>>)
+            ?WSD_NOTE(_CallId, 'right', <<"unhandled ", _EventName/binary>>)
     end,
     {'next_state', 'finished', State};
 finished('timeout', State) ->
