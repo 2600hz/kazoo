@@ -48,7 +48,7 @@ The Channels API allows queries to find active channels for an account, a user, 
 
         curl -v -X GET -H "Content-Type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" 'http://localhost:8000/v2/accounts/{ACCOUNT_ID}/channels/{UUID}'
 
-### _POST - Execute an application against a Channel
+### _POST_ - Execute an application against a Channel
 
      curl -v -X POST -H "Content-Type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" 'http://localhost:8000/v2/accounts/{ACCOUNT_ID}/channels/{CALL_ID} -d '{"data": {"action": "transfer", "target": "2600", "takeback_dtmf": "*1", "moh": "media_id" }}'
 
