@@ -169,29 +169,43 @@ extract_chunks(Dev, LogIP, Counter) ->
     case extract_chunk(Dev, []) of
         [] -> 'ok';
         Data0 ->
-            Apply = fun (Fun, Arg) -> Fun(Arg) end,
-            Cleansers = [fun remove_whitespace_lines/1
-                        ,fun remove_unrelated_lines/1 %% MUST be called before unwrap_lines/1
-                        ,fun unwrap_lines/1
-                        ,fun strip_truncating_pieces/1],
-            Data = lists:foldl(Apply, Data0, Cleansers),
-            Setters = [fun (C) -> ci_chunk:set_data(C, Data) end
-                      ,fun (C) -> ci_chunk:set_call_id(C, extract_call_id(Data)) end
-                      ,fun (C) -> ci_chunk:set_timestamp(C, Counter) end
-                      ,fun (C) -> set_legs(LogIP, C, Data) end
-                      ,fun (C) -> ci_chunk:set_parser(C, ?MODULE) end
-                      ,fun (C) -> ci_chunk:set_label(C, extract_label(Data)) end
-                      ],
-            Chunk = lists:foldl(Apply, ci_chunk:new(), Setters),
-            ci_datastore:store_chunk(Chunk),
+            make_and_store_chunk(LogIP, Counter, Data0),
             extract_chunks(Dev, LogIP, Counter+1)
     end.
+
+make_and_store_chunk(LogIP, _Counter, Data0) ->
+    Apply = fun (Fun, Arg) -> Fun(Arg) end,
+    Timestamp = case lists:keyfind('timestamp', 1, Data0) of
+                    {'timestamp', TS} -> TS;
+                    'false' -> 'undefined'
+                end,
+    Cleansers = [fun (D) -> lists:keydelete('timestamp', 1, D) end
+                ,fun remove_whitespace_lines/1
+                ,fun remove_unrelated_lines/1 %% MUST be called before unwrap_lines/1
+                ,fun unwrap_lines/1
+                ,fun strip_truncating_pieces/1],
+    Data = lists:foldl(Apply, Data0, Cleansers),
+    Setters = [fun (C) -> ci_chunk:set_data(C, Data) end
+              ,fun (C) -> ci_chunk:set_call_id(C, callid(Data)) end
+              ,fun (C) -> ci_chunk:set_timestamp(C, Timestamp) end
+              ,fun (C) -> set_legs(LogIP, C, Data) end
+              ,fun (C) -> ci_chunk:set_parser(C, ?MODULE) end
+              ,fun (C) -> ci_chunk:set_label(C, label(Data)) end
+              ],
+    Chunk = lists:foldl(Apply, ci_chunk:new(), Setters),
+    io:format("Chunk = ~p\n", [Chunk]),
+    ci_datastore:store_chunk(Chunk).
 
 extract_chunk(Dev, Buffer) ->
     case file:read_line(Dev) of
         'eof' -> [];
         {'ok', Line} ->
-            case binary:split(Line, <<"--> ">>) of
+            case binary:split(Line, <<":  ">>) of
+                %% Keep log's timestamp from chunks' beginnings
+                [RawTimestamp, <<"send ",_/binary>>=Logged0] ->
+                    acc(Logged0, [{'timestamp',ci_parsers_util:timestamp(RawTimestamp)}|Buffer], Dev);
+                [RawTimestamp, <<"recv ",_/binary>>=Logged0] ->
+                    acc(Logged0, [{'timestamp',ci_parsers_util:timestamp(RawTimestamp)}|Buffer], Dev);
                 [_Timestamp, Logged0] ->
                     acc(Logged0, Buffer, Dev);
                 [Line] ->
@@ -227,25 +241,25 @@ set_legs(LogIP, Chunk, [FirstLine|_Lines]) ->
     case FirstLine of
         <<"send ", _/binary>> ->
             From = LogIP,
-            To   = get_ip(FirstLine);
+            To   = ip(FirstLine);
         <<"recv ", _/binary>> ->
-            From = get_ip(FirstLine),
+            From = ip(FirstLine),
             To   = LogIP
     end,
     ci_chunk:set_to(ci_chunk:set_from(Chunk,From), To).
 
-get_ip('undefined') -> 'undefined';
-get_ip(Bin) ->
+ip('undefined') -> 'undefined';
+ip(Bin) ->
     case re:run(Bin, "/\\[([\\d\\.]+)\\]:", [{'capture','all_but_first','binary'}]) of
         {'match', [IP]} -> IP;
         'nomatch' -> 'undefined'
     end.
 
 
-extract_label(Data) ->
+label(Data) ->
     lists:nth(2, Data).
 
-extract_call_id(Data) ->
+callid(Data) ->
     get_field([<<"Call-ID">>, <<"i">>], Data).
 
 
