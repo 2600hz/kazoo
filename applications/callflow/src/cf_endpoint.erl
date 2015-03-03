@@ -1086,6 +1086,8 @@ generate_sip_headers(Endpoint, Call) ->
                                   wh_json:object().
 generate_sip_headers(Endpoint, Acc, Call) ->
     Inception = whapps_call:inception(Call),
+    Realm = wh_json:get_value([<<"sip">>, <<"realm">>], Endpoint, whapps_call:account_realm(Call)),
+    Username = wh_json:get_value([<<"sip">>, <<"username">>], Endpoint),
     HeaderFuns = [fun(J) ->
                           case wh_json:get_value([<<"sip">>, <<"custom_sip_headers">>], Endpoint) of
                               'undefined' -> J;
@@ -1103,6 +1105,9 @@ generate_sip_headers(Endpoint, Acc, Call) ->
                                'undefined' -> J;
                                Ringtone -> wh_json:set_value(<<"Alert-Info">>, Ringtone, J)
                            end
+                   end
+                  ,fun(J) -> 
+                          wh_json:set_value(<<"X-KAZOO-AOR">>, <<"sip:", Username/binary, "@", Realm/binary>> , J)
                    end
                  ],
     lists:foldr(fun(F, JObj) -> F(JObj) end, Acc, HeaderFuns).
