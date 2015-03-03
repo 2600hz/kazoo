@@ -152,8 +152,10 @@ handle_info({'tcp', Socket, Data}, #state{socket=Socket
     try binary_to_term(Data) of
         {'event', [UUID | Props]} when is_binary(UUID) orelse UUID =:= 'undefined' ->
             EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
-            _ = spawn(fun() -> maybe_send_event(EventName, UUID, Props, Node) end),
-            _ = spawn(fun() -> process_event(EventName, UUID, Props, Node) end),
+            _ = spawn(fun() ->
+                              maybe_send_event(EventName, UUID, Props, Node),
+                              process_event(EventName, UUID, Props, Node)
+                      end),
             {'noreply', State, Timeout};
         _Else ->
             io:format("~p~n", [_Else]),
@@ -300,6 +302,7 @@ process_event(<<"sofia::register">>, _UUID, Props, Node) ->
     gproc:send({'p', 'l', ?REGISTER_SUCCESS_REG}, ?REGISTER_SUCCESS_MSG(Node, Props));
 process_event(<<"loopback::bowout">>, _UUID, Props, Node) ->
     ResigningUUID = props:get_value(?RESIGNING_UUID, Props),
+    wh_util:put_callid(ResigningUUID),
     lager:debug("bowout detected on ~s, transferring to ~s"
                 ,[ResigningUUID, props:get_value(?ACQUIRED_UUID, Props)]
                ),
@@ -328,18 +331,25 @@ maybe_send_event(<<"CHANNEL_BRIDGE">>=EventName, UUID, Props, Node) ->
             gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]}),
             maybe_send_call_event(UUID, Props, Node)
     end;
-maybe_send_event(<<"loopback::bowout">> = EventName, 'undefined', Props, Node) ->
+maybe_send_event(<<"loopback::bowout">> = EventName, _UUID, Props, Node) ->
     ResigningUUID = props:get_value(?RESIGNING_UUID, Props),
-    put('callid', ResigningUUID),
-    maybe_send_event(EventName, ResigningUUID, Props, Node);
+    _AcquiringUUID = props:get_value(?ACQUIRED_UUID, Props),
+    wh_util:put_callid(ResigningUUID),
+
+    lager:debug("bowout for '~s', resigning ~s acquiring ~s", [_UUID, ResigningUUID, _AcquiringUUID]),
+
+    send_event(EventName, ResigningUUID, Props, Node);
 maybe_send_event(EventName, UUID, Props, Node) ->
     wh_util:put_callid(UUID),
     case wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Props)) of
         'true' -> 'ok';
         'false' ->
-            gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]}),
-            maybe_send_call_event(UUID, Props, Node)
+            send_event(EventName, UUID, Props, Node)
     end.
+
+send_event(EventName, UUID, Props, Node) ->
+    gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]}),
+    maybe_send_call_event(UUID, Props, Node).
 
 -spec maybe_send_call_event(api_binary(), wh_proplist(), atom()) -> any().
 maybe_send_call_event('undefined', _, _) -> 'ok';

@@ -11,8 +11,11 @@
 -export([call_id/1
          ,other_leg_call_id/1
          ,replaced_by/1
-         ,custom_channel_vars/1
+         ,custom_channel_vars/1, custom_channel_var/2
          ,custom_sip_headers/1
+         ,authorizing_id/1
+         ,dtmf_digit/1
+         ,event_name/1
         ]).
 
 -include("kz_documents.hrl").
@@ -33,6 +36,21 @@ replaced_by(JObj) ->
 custom_channel_vars(JObj) ->
     wh_json:get_value(<<"Custom-Channel-Vars">>, JObj).
 
+-spec custom_channel_var(wh_json:object(), wh_json:key()) -> api_binary().
+custom_channel_var(JObj, Key) ->
+    wh_json:get_value([<<"Custom-Channel-Vars">>, Key], JObj).
+
 -spec custom_sip_headers(wh_json:object()) -> api_object().
 custom_sip_headers(JObj) ->
     wh_json:get_value(<<"Custom-SIP-Headers">>, JObj).
+
+-spec authorizing_id(wh_json:object()) -> api_binary().
+authorizing_id(JObj) ->
+    custom_channel_var(JObj, <<"Authorizing-ID">>).
+
+-spec dtmf_digit(wh_json:object()) -> api_binary().
+dtmf_digit(JObj) ->
+    wh_json:get_value(<<"DTMF-Digit">>, JObj).
+
+event_name(JObj) ->
+    wh_json:get_value(<<"Event-Name">>, JObj).

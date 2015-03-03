@@ -214,7 +214,8 @@ handle_cast({'request', Uri, Method, Params}, #state{call=Call
                                    }};
         _ ->
             wapi_pivot:publish_failed(Q, [{<<"Call-ID">>,whapps_call:call_id(Call)}
-                                          | wh_api:default_headers(?APP_NAME, ?APP_VERSION)]),
+                                          | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                         ]),
             {'stop', 'normal', State}
     end;
 

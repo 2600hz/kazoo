@@ -63,12 +63,14 @@ get_fs_app(Node, UUID, JObj, <<"noop">>) ->
                        'undefined' ->
                            <<"Event-Subclass=whistle::noop,Event-Name=CUSTOM"
                              ,",whistle_event_name=CHANNEL_EXECUTE_COMPLETE"
-                             ,",whistle_application_name=noop">>;
+                             ,",whistle_application_name=noop"
+                           >>;
                        NoopId ->
                            <<"Event-Subclass=whistle::noop,Event-Name=CUSTOM"
                              ,",whistle_event_name=CHANNEL_EXECUTE_COMPLETE"
                              ,",whistle_application_name=noop"
-                             ,",whistle_application_response=", (wh_util:to_binary(NoopId))/binary>>
+                             ,",whistle_application_response=", (wh_util:to_binary(NoopId))/binary
+                           >>
                    end,
             {<<"event">>, Args}
     end;

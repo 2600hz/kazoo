@@ -1,9 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author Edouard Swiac <edouard@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Switch events messages
 %%% @end
+%%% @contributors
+%%%   Eduoard Swiac
 %%%-------------------------------------------------------------------
 -module(wapi_switch).
 

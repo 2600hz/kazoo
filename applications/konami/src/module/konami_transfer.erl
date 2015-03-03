@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014, 2600Hz
+%%% @copyright (C) 2014-2015, 2600Hz
 %%% @doc
 %%% Transfers caller to the extension extracted in the regex
 %%% Data = {
@@ -55,7 +55,6 @@
 -record(state, {transferor :: ne_binary()
                 ,transferee :: ne_binary()
                 ,target :: ne_binary()
-                ,target_b_legs = [] :: ne_binaries()
                 ,call :: whapps_call:call()
                 ,target_call = whapps_call:new() :: whapps_call:call()
                 ,takeback_dtmf :: ne_binary()
@@ -163,7 +162,14 @@ pre_originate(?EVENT(_CallId, <<"CHANNEL_DESTROY">>, _Evt), State) ->
     lager:debug("~s has hungup before we originated, done here", [_CallId]),
     {'stop', 'normal', State};
 pre_originate(?EVENT(_CallId, _EventName, _Evt), State) ->
-    lager:debug("unhandled event ~s for ~s", [_EventName, _CallId]),
+    case kz_call_event:other_leg_call_id(_Evt) of
+        'undefined' ->
+            lager:info("unhandled event ~s for ~s", [_EventName, _CallId]),
+            ?WSD_NOTE(_CallId, 'right', <<"unhandled ", _EventName/binary>>);
+        _OtherLeg ->
+            lager:info("unhandled event ~s for ~s to ~s", [_EventName, _CallId, _OtherLeg]),
+            ?WSD_NOTE(_CallId, _OtherLeg, <<"unhandled ", _EventName/binary>>)
+    end,
     {'next_state', 'pre_originate', State}.
 
 pre_originate(_Msg, _From, State) ->
@@ -223,7 +229,13 @@ attended_wait(?EVENT(Transferor, <<"CHANNEL_BRIDGE">>, Evt)
 attended_wait(?EVENT(Target, <<"CHANNEL_ANSWER">>, _Evt)
               ,#state{target=Target}=State
              ) ->
-    lager:info("target ~s has answered", [Target]),
+    case kz_call_event:other_leg_call_id(_Evt) of
+        'undefined' ->
+            lager:info("target ~s has answered", [Target]);
+        _OtherLeg ->
+            lager:info("target ~s has answered with ~s", [Target, _OtherLeg]),
+            ?WSD_EVT(Target, _OtherLeg, <<"target answered">>)
+    end,
     {'next_state', 'attended_wait', State};
 attended_wait(?EVENT(Target, <<"CHANNEL_BRIDGE">>, Evt)
               ,#state{target=Target
@@ -239,7 +251,6 @@ attended_wait(?EVENT(Target, <<"CHANNEL_BRIDGE">>, Evt)
             {'next_state', 'attended_answer', State};
         _CallId ->
             lager:info("recv CHANNEL_BRIDGE on target ~s to call id ~s", [Target, _CallId]),
-            ?WSD_EVT(Target, _CallId, <<"unknown bridged">>),
             {'next_state', 'attended_wait', State}
     end;
 attended_wait(?EVENT(Target, <<"originate_uuid">>, Evt)
@@ -319,14 +330,15 @@ attended_wait(?EVENT(Target, <<"CHANNEL_REPLACED">>, Evt)
     {'next_state', 'attended_wait', State#state{target=ReplacementId
                                                 ,target_call=TargetCall1
                                                }};
-attended_wait(?EVENT(_CallId, _EventName, _Evt)
-              ,#state{transferor=_Transferor
-                      ,transferee=_Transferee
-                      ,target=_Target
-                     }=State) ->
-    lager:info("attended_wait: unhandled event ~s for ~s: ~p", [_EventName, _CallId, _Evt]),
-    lager:debug("transferor: ~s transferee: ~s target: ~s", [_Transferor, _Transferee, _Target]),
-    ?WSD_NOTE(_CallId, 'right', <<"unhandled ", _EventName/binary>>),
+attended_wait(?EVENT(_CallId, _EventName, _Evt), State) ->
+    case kz_call_event:other_leg_call_id(_Evt) of
+        'undefined' ->
+            lager:info("unhandled event ~s for ~s", [_EventName, _CallId]),
+            ?WSD_NOTE(_CallId, 'right', <<"unhandled ", _EventName/binary>>);
+        _OtherLeg ->
+            lager:info("unhandled event ~s for ~s to ~s", [_EventName, _CallId, _OtherLeg]),
+            ?WSD_NOTE(_CallId, _OtherLeg, <<"unhandled ", _EventName/binary>>)
+    end,
     {'next_state', 'attended_wait', State};
 attended_wait(Msg, State) ->
     lager:info("attended_wait: unhandled msg ~p", [Msg]),
@@ -372,7 +384,6 @@ partial_wait(?EVENT(Transferor, <<"LEG_DESTROYED">>, _Evt)
     {'next_state', 'partial_wait', State};
 partial_wait(?EVENT(Target, EventName, _Evt)
              ,#state{target=Target
-                     ,target_b_legs=[]
                      ,transferor=_Transferor
                      ,transferee=_Transferee
                     }=State
@@ -383,28 +394,12 @@ partial_wait(?EVENT(Target, EventName, _Evt)
                ,[Target, _Transferee]
               ),
     {'stop', 'normal', State};
-partial_wait(?EVENT(Target, EventName, _Evt)
-             ,#state{target=Target
-                     ,target_b_legs=[B|Bs]
-                     ,call=Call
-                     ,transferor=Transferor
-                     ,transferee=Transferee
-                    }=State
-            )
-  when EventName =:= <<"CHANNEL_DESTROY">>
-       orelse EventName =:= <<"LEG_DESTROYED">> ->
-    lager:info("target ~s hungup (but ~s is still up)", [Target, B]),
-
-    connect_transferee_to_target(B, Call),
-    issue_internal_transferee(Call, Transferor, Transferee, B),
-
-    {'next_state', 'partial_wait', State#state{target=B
-                                               ,target_b_legs=Bs
-                                              }};
 partial_wait(?EVENT(Target, <<"CHANNEL_ANSWER">>, _Evt)
              ,#state{target=Target}=State
             ) ->
-    lager:info("target ~s has answered", [Target]),
+    lager:info("target ~s has answered (with ~s)"
+               ,[Target, kz_call_event:other_leg_call_id(_Evt)]
+              ),
     {'next_state', 'partial_wait', State};
 partial_wait(?EVENT(Target, <<"originate_uuid">>, Evt)
              ,#state{target=Target
@@ -414,6 +409,7 @@ partial_wait(?EVENT(Target, <<"originate_uuid">>, Evt)
     lager:info("recv control for target ~s", [Target]),
     ?WSD_NOTE(Target, 'right', <<"control for target recv">>),
     {'next_state', 'partial_wait', State#state{target_call=whapps_call:from_originate_uuid(Evt, TargetCall)}};
+
 partial_wait(?EVENT(Target, <<"CHANNEL_REPLACED">>, Evt)
              ,#state{target=Target
                      ,target_call=TargetCall
@@ -432,15 +428,20 @@ partial_wait(?EVENT(Target, <<"CHANNEL_REPLACED">>, Evt)
     TargetCall1 = whapps_call:set_call_id(ReplacementId, TargetCall),
     {Leg, Call} = how_to_transfer(OriginalCall, TargetCall1, Transferor, ReplacementId, Transferee),
     connect_transferee_to_target(Leg, Call),
-    issue_internal_transferee(Call, Transferor, Transferee, ReplacementId),
 
     {'next_state', 'partial_wait', State#state{target=ReplacementId
                                                ,target_call=TargetCall1
                                               }};
 
 partial_wait(?EVENT(_CallId, _EventName, _Evt), State) ->
-    lager:info("partial_wait: unhandled event ~s for ~s", [_EventName, _CallId]),
-    ?WSD_NOTE(_CallId, 'right', <<"unhandled ", _EventName/binary>>),
+    case kz_call_event:other_leg_call_id(_Evt) of
+        'undefined' ->
+            lager:info("unhandled event ~s for ~s", [_EventName, _CallId]),
+            ?WSD_NOTE(_CallId, 'right', <<"unhandled ", _EventName/binary>>);
+        _OtherLeg ->
+            lager:info("unhandled event ~s for ~s to ~s", [_EventName, _CallId, _OtherLeg]),
+            ?WSD_NOTE(_CallId, _OtherLeg, <<"unhandled ", _EventName/binary>>)
+    end,
     {'next_state', 'partial_wait', State};
 partial_wait(Msg, State) ->
     lager:info("partial_wait: unhandled msg ~p", [Msg]),
@@ -520,7 +521,6 @@ attended_answer(?EVENT(Transferor, <<"CHANNEL_DESTROY">>, _Evt)
     ?WSD_NOTE(Transferor, 'right', <<"channel done">>),
     {Leg, Call} = how_to_transfer(OriginalCall, TargetCall, Transferor, Target, Transferee),
     connect_transferee_to_target(Leg, Call),
-    issue_internal_transferee(Call, Transferor, Transferee, Target),
     {'next_state', 'finished', State};
 attended_answer(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
               ,#state{target=Target
@@ -537,8 +537,14 @@ attended_answer(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
     connect_to_transferee(Call),
     {'next_state', 'finished', State};
 attended_answer(?EVENT(_CallId, _EventName, _Evt), State) ->
-    lager:info("attended_answer: unhandled event ~s for ~s", [_EventName, _CallId]),
-    ?WSD_NOTE(_CallId, 'right', <<"unhandled ", _EventName/binary>>),
+    case kz_call_event:other_leg_call_id(_Evt) of
+        'undefined' ->
+            lager:info("unhandled event ~s for ~s", [_EventName, _CallId]),
+            ?WSD_NOTE(_CallId, 'right', <<"unhandled ", _EventName/binary>>);
+        _OtherLeg ->
+            lager:info("unhandled event ~s for ~s to ~s", [_EventName, _CallId, _OtherLeg]),
+            ?WSD_NOTE(_CallId, _OtherLeg, <<"unhandled ", _EventName/binary>>)
+    end,
     {'next_state', 'attended_answer', State};
 attended_answer(Msg, State) ->
     lager:info("attended_answer: unhandled msg ~p", [Msg]),
@@ -606,8 +612,14 @@ finished(?EVENT(Transferee, <<"CHANNEL_DESTROY">>, _Evt)
 finished(?EVENT(_CallId, _EventName, _Evt)
          ,State
         ) ->
-    lager:info("unhandled event ~s for ~s", [_EventName, _CallId]),
-    ?WSD_NOTE(_CallId, 'right', <<"unhandled ", _EventName/binary>>),
+    case kz_call_event:other_leg_call_id(_Evt) of
+        'undefined' ->
+            lager:info("unhandled event ~s for ~s", [_EventName, _CallId]),
+            ?WSD_NOTE(_CallId, 'right', <<"unhandled ", _EventName/binary>>);
+        _OtherLeg ->
+            lager:info("unhandled event ~s for ~s to ~s", [_EventName, _CallId, _OtherLeg]),
+            ?WSD_NOTE(_CallId, _OtherLeg, <<"unhandled ", _EventName/binary>>)
+    end,
     {'next_state', 'finished', State};
 finished('timeout', State) ->
     lager:info("haven't received anything in a while, going down"),
@@ -700,8 +712,14 @@ takeback(?EVENT(Transferee, <<"CHANNEL_DESTROY">>, _Evt)
 takeback(?EVENT(_CallId, _EventName, _Evt)
          ,State
         ) ->
-    lager:debug("unhandled event for ~s: ~s", [_CallId, _EventName]),
-    ?WSD_NOTE(_CallId, 'right', <<"unhandled ", _EventName/binary>>),
+    case kz_call_event:other_leg_call_id(_Evt) of
+        'undefined' ->
+            lager:info("unhandled event ~s for ~s", [_EventName, _CallId]),
+            ?WSD_NOTE(_CallId, 'right', <<"unhandled ", _EventName/binary>>);
+        _OtherLeg ->
+            lager:info("unhandled event ~s for ~s to ~s", [_EventName, _CallId, _OtherLeg]),
+            ?WSD_NOTE(_CallId, _OtherLeg, <<"unhandled ", _EventName/binary>>)
+    end,
     {'next_state', 'takeback', State};
 takeback('timeout', #state{call=Call}=State) ->
     lager:debug("we haven't heard from anyone during takeback, trying to connect again"),
@@ -743,6 +761,7 @@ terminate(_Reason, _StateName, #state{transferor=Transferor
     konami_event_listener:rm_call_binding(Transferor, ?TRANSFEROR_CALL_EVENTS),
     konami_event_listener:rm_call_binding(Transferee, ?TRANSFEREE_CALL_EVENTS),
     konami_event_listener:rm_call_binding(Target, ?TARGET_CALL_EVENTS),
+    ?WSD_NOTE(Transferor, 'right', <<"eot while in ", (wh_util:to_binary(_StateName))/binary>>),
     ?WSD_STOP(),
     lager:info("fsm terminating while in ~s: ~p", [_StateName, _Reason]).
 
@@ -1087,17 +1106,6 @@ issue_transferee_event(Target, Call) ->
          | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
         ],
     wapi_call:publish_event(API).
-
--spec issue_internal_transferee(whapps_call:call(), api_binary(), ne_binary(), ne_binary()) -> 'ok'.
-issue_internal_transferee(Call, Transferor, Transferee, Target) ->
-    API =
-        [{<<"Target">>, Target}
-         ,{<<"Transferee">>, Transferee}
-         ,{<<"Transferor">>, Transferor}
-         ,{<<"Call">>, whapps_call:to_json(Call)}
-         | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-        ],
-    wapi_konami:publish_transferred(Target, API).
 
 %% We need to figure out which whapps call to issue the connect_leg against
 %% When the A-leg is the transferor, its ecallmgr control will be down at this
