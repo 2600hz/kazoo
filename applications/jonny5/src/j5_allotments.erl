@@ -62,7 +62,18 @@ maybe_reconcile_allotment(Request, Limits) ->
         'undefined' -> 'ok';
         Allotment ->
             BillingSeconds = j5_request:billing_seconds(Request),
-            reconcile_allotment(BillingSeconds, Allotment, Request, Limits)
+            AllotmentSeconds = get_allotment_seconds(BillingSeconds, Allotment),
+            reconcile_allotment(AllotmentSeconds, Allotment, Request, Limits)
+    end.
+
+-spec get_allotment_seconds(non_neg_integer(), wh_json:object()) -> non_neg_integer().
+get_allotment_seconds(BillingSeconds, Allotment) ->
+    NoConsumeTime = wh_json:get_integer_value(<<"no_consume_time">>, Allotment, 0),
+    Increment = wh_json:get_integer_value(<<"increment">>, Allotment, 1),
+    Minimum = wh_json:get_integer_value(<<"minimum">>, Allotment, 0),
+    case BillingSeconds > NoConsumeTime of
+        'true' -> ((BillingSeconds div Increment) * Increment) + Minimum;
+        'false' -> 0
     end.
 
 -spec reconcile_allotment(non_neg_integer(), wh_json:object(), j5_request:request(), j5_limits:limits()) ->
