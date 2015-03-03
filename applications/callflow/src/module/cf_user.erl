@@ -30,8 +30,6 @@ handle(Data, Call) ->
     Strategy = wh_json:get_binary_value(<<"strategy">>, Data, <<"simultaneous">>),
     IgnoreEarlyMedia = cf_util:ignore_early_media(Endpoints),
 
-    cf_util:maybe_start_metaflows(Call, Endpoints),
-
     lager:info("attempting ~b user devices with strategy ~s", [length(Endpoints), Strategy]),
     case length(Endpoints) > 0
         andalso whapps_call_command:b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call)

@@ -585,7 +585,9 @@ create_endpoints(Endpoint, Properties, Call) ->
           end,
     case lists:foldl(Fun, [], Routines) of
         [] -> {'error', 'no_endpoints'};
-        Endpoints -> {'ok', Endpoints}
+        Endpoints ->
+            cf_util:maybe_start_metaflows(Call, Endpoints),
+            {'ok', Endpoints}
     end.
 
 -type ep_routine() :: fun((wh_json:object(), wh_json:object(), whapps_call:call()) ->
