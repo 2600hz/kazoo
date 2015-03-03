@@ -17,7 +17,7 @@ Sections:
 
 * access_lists - root element
     * order - order of rules: can be "allow,deny" or "deny,allow", just like in Apache configuration file
-    * cidr - array containing IPv4 subnet addresses in CIDR notation that should be allowed or denied (cidr array looks much like one in ecallmgr configuration document)
+    * cidrs - array containing IPv4 subnet addresses in CIDR notation that should be allowed or denied (cidr array looks much like one in ecallmgr configuration document)
     * user_agent - regex for user_agent field specified in SIP packet. Useful for protecting hardware phone accounts from various brute-force attacks
 
 ### Account access lists URI
@@ -32,7 +32,7 @@ This URI is used to manipulate the access_lists for the entire account.
 
 #### _POST_ - Update account-level access lists:
 
-    curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v1/accounts/{ACCOUNT_ID}/access_lists -d '{"data": {"order": "AD","cidrs": ["127.0.0.3/32"]}}'
+    curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v1/accounts/{ACCOUNT_ID}/access_lists -d '{"data": {"order": "allow,deny","cidrs": ["127.0.0.3/32"]}}'
 
 #### _DELETE_ - Remove account-level access lists:
 
@@ -50,7 +50,7 @@ Here, `{THINGS}` would be "accounts" or "devices" and `{THING_ID}` would be a de
 
 #### _POST_ - Update device-level access lists:
 
-    curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v1/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/access_lists -d '{"data": {"order": "AD","cidrs": ["127.0.0.3/32"]}}'
+    curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v1/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/access_lists -d '{"data": {"order": "allow,deny","cidrs": ["127.0.0.3/32"]}}'
 
 #### _DELETE_ - Remove device-level access lists:
 

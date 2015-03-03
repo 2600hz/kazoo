@@ -107,16 +107,24 @@ thing_doc(Context, ThingId) ->
             'undefined'
     end.
 
+-spec thing_id_not_found(cb_context:context()) -> cb_context:context().
+thing_id_not_found(Context) ->
+    cb_context:add_system_error(
+                'bad_identifier'
+                ,wh_json:from_list([{<<"cause">>, <<"Thing id not found">>}])
+                ,Context
+            ).
+
 -spec validate_get_acls(cb_context:context(), api_object()) -> cb_context:context().
 validate_get_acls(Context, 'undefined') ->
-    crossbar_util:response_faulty_request(Context);
+    thing_id_not_found(Context);
 validate_get_acls(Context, Doc) ->
     AccessLists = wh_json:get_value(<<"access_lists">>, Doc, wh_json:new()),
     crossbar_util:response(AccessLists, Context).
 
 -spec validate_delete_acls(cb_context:context(), api_object()) -> cb_context:context().
 validate_delete_acls(Context, 'undefined') ->
-    crossbar_util:response_faulty_request(Context);
+    thing_id_not_found(Context);
 validate_delete_acls(Context, Doc) ->
     crossbar_util:response(wh_json:new()
                            ,cb_context:set_doc(Context
@@ -132,8 +140,7 @@ validate_set_acls(Context) ->
     validate_set_acls(Context, cb_context:doc(Context), thing_doc(Context)).
 
 validate_set_acls(Context, _, 'undefined') ->
-    lager:debug("no doc found"),
-    crossbar_util:response_faulty_request(Context);
+    thing_id_not_found(Context);
 validate_set_acls(Context, AccessLists, Doc) ->
     Doc1 = wh_json:set_value(<<"access_lists">>, AccessLists, Doc),
 

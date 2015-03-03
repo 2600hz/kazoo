@@ -61,7 +61,7 @@ the account-level documents.
 }
 ````
 
- * device-pevel document contains is one level "higher" and contains only the "device" part
+ * device-level document contains is one level "higher" and contains only the "device" part
     which contains "registrations", "invites" and "total_packets" keys with integer values of possible number of packets within
     "per_minute" and "per_second" sections
  
