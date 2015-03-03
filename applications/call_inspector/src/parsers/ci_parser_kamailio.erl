@@ -230,6 +230,9 @@ acc(<<"pass|",_/binary>>=Logged, Buffer, Key, _Dev) ->
     {Key, lists:reverse([Logged|Buffer])};
 acc(<<"end|",_/binary>>=Logged, Buffer, Key, _Dev) ->
     put(Key, []),
+    {Key, lists:reverse([Logged|Buffer])};
+acc(<<"stop|",_/binary>>=Logged, Buffer, Key, _Dev) ->
+    put(Key, []),
     {Key, lists:reverse([Logged|Buffer])}.
 
 get_buffer(Key) ->
