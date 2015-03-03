@@ -30,17 +30,33 @@ maybe_consume_allotment('undefined', Request, _) ->
 maybe_consume_allotment(Allotment, Request, Limits) ->
     AccountId = j5_limits:account_id(Limits),
     Amount = wh_json:get_integer_value(<<"amount">>, Allotment, 0),
+    Minimum = wh_json:get_integer_value(<<"minimum">>, Allotment, 0),
+    ConsumeGroup = wh_json:get_value(<<"group_consume">>, Allotment, []),
+    GroupConsumed = maybe_group_consumed(ConsumeGroup, Allotment, Limits, 0),
     case allotment_consumed_so_far(Allotment, Limits) of
+        {'error', _R} when GroupConsumed > (Amount - Minimum) -> 
+            lager:debug("account ~s has used all ~ws of their allotment"
+                        ,[AccountId, Amount]),
+            Request;
         {'error', _R} -> Request;
-        Consumed when Consumed > (Amount - 60) ->
+        Consumed when (Consumed + GroupConsumed) > (Amount - Minimum) ->
             lager:debug("account ~s has used all ~ws of their allotment"
                         ,[AccountId, Amount]),
             Request;
         Consumed ->
             lager:debug("account ~s has ~ws remaining of their allotment"
-                        ,[AccountId, Amount - Consumed]),
+                        ,[AccountId, Amount - Consumed - GroupConsumed]),
             Classification = wh_json:get_value(<<"classification">>, Allotment),
             j5_request:authorize(<<"allotment_", Classification/binary>>, Request, Limits)
+    end.
+
+-spec maybe_group_consumed(binaries(), wh_json:object(), j5_limits:limits(), non_neg_integer()) -> non_neg_integer().
+maybe_group_consumed([], _Allotment, _Limits, Acc) -> Acc;
+maybe_group_consumed([Member|Group], Allotment, Limits, Acc) when is_binary(Member) -> 
+    NewAllotment = wh_json:set_value(<<"classification">>, Member, Allotment),
+    case allotment_consumed_so_far(NewAllotment, Limits) of
+        {'error', _R} -> maybe_group_consumed(Group, Allotment, Limits, Acc);
+        Consumed -> maybe_group_consumed(Group, Allotment, Limits, Acc+Consumed)
     end.
 
 %%--------------------------------------------------------------------
