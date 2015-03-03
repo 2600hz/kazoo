@@ -73,15 +73,7 @@ lookup_acl_records(Entity) ->
 
 -spec run_acl_query(ne_binary(), boolean()) -> wh_json:objects().
 run_acl_query(Entity, IncludeRealm) ->
-    Keys = binary:split(Entity, <<"@">>),
-    ViewOpts = case Keys of
-                   [User, _OnRealm] ->
-                       case IncludeRealm of
-                           'true' -> make_acl_view(Keys);
-                           _ -> make_acl_view(User)
-                       end;
-                   [JustRealm] -> make_acl_view(JustRealm)
-               end,
+    ViewOpts = build_view_options(Entity, IncludeRealm),
     {'ok', UserDb} = whapps_util:get_account_by_realm(frontier_utils:extract_realm(Entity)),
     lager:debug("Looking for ~s's acls in ~s", [Entity, UserDb]),
     case couch_mgr:get_results(UserDb, <<"access_lists/crossbar_listing">>, ViewOpts) of
@@ -93,11 +85,16 @@ run_acl_query(Entity, IncludeRealm) ->
             []
     end.
 
--spec make_acl_view(ne_binaries() | ne_binary()) -> wh_proplist().
-make_acl_view(Keys) when is_list(Keys) ->
-    [{'keys', Keys}];
-make_acl_view(Key) ->
-    [{'key', Key}].
+-spec build_view_options(ne_binary(), boolean()) -> wh_proplist().
+build_view_options(Entity, IncludeRealm) ->
+    case binary:split(Entity, <<"@">>) of
+        [User, _OnRealm] = Keys ->
+            case IncludeRealm of
+                'true' -> [{'keys', Keys}];
+                _ -> [{'key', User}]
+            end;
+        [JustRealm] -> [{'key', JustRealm}]
+    end.
 
 -spec make_deny_acl(ne_binary(), boolean()) -> wh_json:objects().
 make_deny_acl(Entity, IncludeRealm) ->
@@ -107,7 +104,7 @@ make_deny_acl(Entity, IncludeRealm) ->
                'true' -> <<"device">>;
                _ -> <<"realm">>
            end,
-    ACL = wh_json:from_list([{<<"order">>, <<"AD">>}
+    ACL = wh_json:from_list([{<<"order">>, <<"allow,deny">>}
                              ,{<<"cidrs">>, [<<"0.0.0.0/0">>]}
                             ]),
     Value = wh_json:from_list([{<<"type">>, Type}

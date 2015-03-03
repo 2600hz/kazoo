@@ -312,15 +312,15 @@ build(Method, Acc, JObj, Realm) ->
 handle_db_response(JObjs, IncludeRealm) ->
     {DefaultRates, OtherRates} = lists:partition(fun is_device_defaults/1, JObjs),
     {AccountRates, DeviceRates} = lists:partition(fun frontier_utils:is_realm/1, OtherRates),
-    DeviceResult = case length(DeviceRates) > 0 of
-                       'true' ->
-                           lager:info("Found rates in the device doc"),
-                           DeviceRates;
-                       'false' ->
+    DeviceResult = case DeviceRates of
+                       [] ->
                            lager:info("Found default rates for the device"),
-                           DefaultRates
+                           DefaultRates;
+                       _ ->
+                           lager:info("Found rates in the device doc"),
+                           DeviceRates
                    end,
-    Status = case IncludeRealm andalso length(AccountRates) =:= 0 of
+    Status = case IncludeRealm andalso AccountRates =:= [] of
                  'true' -> 'need_account';
                  'false' -> 'ok'
              end,
