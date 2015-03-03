@@ -191,33 +191,36 @@ extract_chunk(Dev, Buffer) ->
     case file:read_line(Dev) of
         'eof' -> [];
         {'ok', Line} ->
-            case {Line,Buffer} of
-                {<<"recv ", _/binary>>
-                ,[]} ->
-                    %% Start of a new chunk
-                    extract_chunk(Dev, [Line]);
-                {<<"send ", _/binary>>
-                ,[]} ->
-                    %% Start of a new chunk
-                    extract_chunk(Dev, [Line]);
-                {<<"   ------------------------------------------------------------------------\n">>
-                ,Acc=[_]} ->
-                    %% Second line of a chunk (special case given end of chunk)
-                    extract_chunk(Dev, Acc);
-                {<<"   ------------------------------------------------------------------------\n">>
-                ,Acc} when Acc =/= [] ->
-                    %% End of current chunk
-                    lists:reverse(Buffer);
-                {_
-                ,Acc} when Acc =/= [] ->
-                    %% Between start and end of chunk
-                    extract_chunk(Dev, [Line|Acc]);
-                {_
-                ,_} ->
-                    %% Skip over the rest
-                    extract_chunk(Dev, Buffer)
+            case binary:split(Line, <<"--> ">>) of
+                [_Timestamp, Logged0] ->
+                    acc(Logged0, Buffer, Dev);
+                [Line] ->
+                    acc(Line, Buffer, Dev)
             end
     end.
+
+acc(<<"recv ", _/binary>>=Line, Buffer, Dev)
+  when Buffer == [] ->
+    %% Start of a new chunk
+    extract_chunk(Dev, [Line]);
+acc(<<"send ", _/binary>>=Line, Buffer, Dev)
+  when Buffer == [] ->
+    %% Start of a new chunk
+    extract_chunk(Dev, [Line]);
+acc(<<"   ------------------------------------------------------------------------\n">>, [_]=Buffer, Dev) ->
+    %% Second line of a chunk (special case given end of chunk)
+    extract_chunk(Dev, Buffer);
+acc(<<"   ------------------------------------------------------------------------\n">>, Buffer, _Dev)
+  when Buffer =/= [] ->
+    %% End of current chunk
+    lists:reverse(Buffer);
+acc(Line, Buffer, Dev)
+  when Buffer =/= [] ->
+    %% Between start and end of chunk
+    extract_chunk(Dev, [Line|Buffer]);
+acc(_Line, Buffer, Dev) ->
+    %% Skip over the rest
+    extract_chunk(Dev, Buffer).
 
 
 set_legs(LogIP, Chunk, [FirstLine|_Lines]) ->
