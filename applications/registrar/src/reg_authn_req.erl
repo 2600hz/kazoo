@@ -16,6 +16,12 @@
 
 -include("reg.hrl").
 
+-define(ENCRYPTION_MAP, [{<<"srtp">>, [{<<"RTP-Secure-Media">>, 'true'}]}
+                        ,{<<"zrtp">>, [{<<"ZRTP-Secure-Media">>, 'true'}
+                                       ,{<<"ZRTP-Enrollment">>, 'true'}
+                                      ]}
+                        ]).
+
 -spec init() -> 'ok'.
 init() -> 'ok'.
 
@@ -98,7 +104,8 @@ create_ccvs(#auth_user{}=AuthUser) ->
              ,{<<"Account-Realm">>, AuthUser#auth_user.account_normalized_realm}
              ,{<<"Account-Name">>, AuthUser#auth_user.account_name}
              ,{<<"Presence-ID">>, maybe_get_presence_id(AuthUser)}
-             | create_specific_ccvs(AuthUser, AuthUser#auth_user.method)
+             | (create_specific_ccvs(AuthUser, AuthUser#auth_user.method)
+                 ++ generate_security_ccvs(AuthUser))
             ],
     wh_json:from_list(props:filter_undefined(Props)).
 
@@ -147,7 +154,7 @@ get_device_presence_id(AccountDb, DeviceId) ->
 -spec create_specific_ccvs(auth_user(), ne_binary()) -> wh_proplist().
 create_specific_ccvs(#auth_user{}=AuthUser, ?GSM_ANY_METHOD) ->
     [{<<"Caller-ID">>, AuthUser#auth_user.msisdn}
-     ,{<<"variable_effective_caller_id_number">>, AuthUser#auth_user.msisdn}
+     ,{<<"Caller-ID-Number">>, AuthUser#auth_user.msisdn}
     ];
 create_specific_ccvs(_, _) -> [].
 
@@ -572,3 +579,50 @@ get_account_db(JObj) ->
 -spec remove_dashes(ne_binary()) -> ne_binary().
 remove_dashes(Bin) ->
     << <<B>> || <<B>> <= Bin, B =/= $->>.
+
+-spec encryption_method_map(wh_proplist(), api_binaries() | wh_json:object()) -> wh_proplist().
+encryption_method_map(Props, []) -> Props;
+encryption_method_map(Props, [Method|Methods]) ->
+    case props:get_value(Method, ?ENCRYPTION_MAP, []) of
+        [] -> encryption_method_map(Props, Methods);
+        Values ->
+            encryption_method_map(props:set_values(Values, Props), Methods)
+    end;
+encryption_method_map(Props, JObj) ->
+    encryption_method_map(Props
+                          ,wh_json:get_value([<<"media">>
+                                              ,<<"encryption">>
+                                              ,<<"methods">>
+                                             ]
+                                             ,JObj
+                                             ,[]
+                                            )
+                         ).
+
+-spec generate_security_ccvs(auth_user()) -> wh_proplist().
+-spec generate_security_ccvs(auth_user(), wh_proplist()) -> wh_proplist().
+
+generate_security_ccvs(#auth_user{}=User) ->
+    generate_security_ccvs(User, []).
+
+generate_security_ccvs(#auth_user{}=User, Acc0) ->
+    CCVFuns = [fun maybe_enforce_security/1
+               ,fun maybe_set_encryption_flags/1
+              ],
+    {_, Acc} = lists:foldl(fun(F, Acc) -> F(Acc) end, {User, Acc0}, CCVFuns),
+    Acc.
+
+-spec maybe_enforce_security({auth_user(), wh_proplist()}) -> {auth_user(), wh_proplist()}.
+maybe_enforce_security({#auth_user{doc=JObj}=User, Acc}) ->
+    case wh_json:is_true([<<"media">>
+                          ,<<"encryption">>
+                          ,<<"enforce_security">>
+                         ], JObj, 'false') 
+    of        
+        'true' -> {User, [{<<"Media-Encryption-Enforce-Security">>, 'true'} | Acc]};
+        'false' -> {User, Acc}
+    end.
+        
+-spec maybe_set_encryption_flags({auth_user(), wh_proplist()}) -> {auth_user(), wh_proplist()}.
+maybe_set_encryption_flags({#auth_user{doc=JObj}=User, Acc}) ->
+    {User, encryption_method_map(Acc, JObj)}.
