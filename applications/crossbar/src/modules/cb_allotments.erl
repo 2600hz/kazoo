@@ -105,7 +105,7 @@ post(Context) ->
 -spec load_allotments(cb_context:context()) -> cb_context:context().
 load_allotments(Context) ->
     Context1 = maybe_handle_load_failure(crossbar_doc:load(?PVT_TYPE, Context)),
-    Allotments = wh_json:get_json_value(?PVT_ALLOTMENTS, cb_context:doc(Context1)),
+    Allotments = wh_json:get_json_value(?PVT_ALLOTMENTS, cb_context:doc(Context1), wh_json:new()),
     cb_context:set_resp_data(Context1, Allotments).
 
 %%--------------------------------------------------------------------
