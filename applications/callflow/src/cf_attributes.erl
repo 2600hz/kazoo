@@ -297,7 +297,7 @@ is_valid_caller_id(Number, Call) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec callee_id(api_binary() | wh_json:object(), whapps_call:call()) ->
-                             {api_binary(), api_binary()}.
+                       {api_binary(), api_binary()}.
 callee_id(EndpointId, Call) when is_binary(EndpointId) ->
     case cf_endpoint:get(EndpointId, Call) of
         {'ok', Endpoint} -> callee_id(Endpoint, Call);
@@ -310,9 +310,8 @@ callee_id(Endpoint, Call) ->
     Name = get_cid_or_default(Attribute, <<"name">>, Endpoint),
     maybe_normalize_callee(Number, Name, Endpoint, Call).
 
-
 -spec maybe_normalize_callee(api_binary(), api_binary(), wh_json:object(), whapps_call:call()) ->
-                                          {api_binary(), api_binary()}.
+                                    {api_binary(), api_binary()}.
 maybe_normalize_callee('undefined', Name, Endpoint, Call) ->
     maybe_normalize_callee(whapps_call:request_user(Call), Name, Endpoint, Call);
 maybe_normalize_callee(Number, 'undefined', Endpoint, Call) ->
