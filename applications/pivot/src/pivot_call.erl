@@ -43,6 +43,8 @@
                 ,call :: whapps_call:call()
                 ,request_id :: ibrowse_req_id()
                 ,request_params :: wh_json:object()
+                ,response_code :: binary()
+                ,response_headers :: binaries()
                 ,response_body :: binary()
                 ,response_content_type :: binary()
                 ,response_pid :: pid() %% pid of the processing of the response
@@ -148,9 +150,11 @@ init([Call, JObj]) ->
 
     ?MODULE:new_request(self(), VoiceUri, Method, BaseParams),
 
+    Counter = whapps_call:kvs_fetch('pivot_counter', 1, Call),
+
     {'ok'
      ,#state{cdr_uri=wh_json:get_value(<<"CDR-URI">>, JObj)
-             ,call=Call
+             ,call=whapps_call:kvs_update_counter('pivot_counter', Counter, Call)
              ,request_format=ReqFormat
              ,debug=wh_json:is_true(<<"Debug">>, JObj, 'false')
              ,requester_queue = whapps_call:controller_queue(Call)
@@ -248,8 +252,7 @@ handle_cast({'cdr', JObj}, #state{cdr_uri=Url
 
     case ibrowse:send_req(wh_util:to_list(Url), Headers, 'post', Body) of
         {'ok', RespCode, RespHeaders, RespBody} ->
-            maybe_debug_resp_headers(Debug, Call, RespCode, RespHeaders),
-            maybe_debug_resp_body(Debug, Call, RespBody),
+            maybe_debug_resp(Debug, Call, RespCode, RespHeaders, RespBody),
             lager:debug("recv ~s from cdr url ~s", [RespCode, Url]);
         {'error', _E} ->
             lager:debug("failed to send CDR: ~p", [_E])
@@ -287,15 +290,17 @@ handle_info({'stop', _Call}, State) ->
     {'stop', 'normal', State};
 handle_info({'ibrowse_async_headers', ReqId, "200"=StatusCode, Hdrs}
             ,#state{request_id=ReqId
-                    ,debug=Debug
-                    ,call=Call
+                    ,response_body=RespBody
                    }=State) ->
     RespHeaders = normalize_resp_headers(Hdrs),
     lager:debug("recv resp headers"),
-
-    maybe_debug_resp_headers(Debug, Call, wh_util:to_binary(StatusCode), RespHeaders),
-
-    {'noreply', State#state{response_content_type=props:get_value(<<"content-type">>, RespHeaders)}};
+    {'noreply', State#state{
+                    response_content_type=props:get_value(<<"content-type">>, RespHeaders)
+                    ,response_code=wh_util:to_binary(StatusCode)
+                    ,response_headers=RespHeaders
+                    ,response_body=RespBody
+                }
+    };
 
 handle_info({'ibrowse_async_headers', ReqId, "302"=StatusCode, Hdrs}
             ,#state{voice_uri=Uri
@@ -304,32 +309,41 @@ handle_info({'ibrowse_async_headers', ReqId, "302"=StatusCode, Hdrs}
                     ,request_params=Params
                     ,call=Call
                     ,debug=Debug
+                    ,response_body=RespBody
                    }=State) ->
     RespHeaders = normalize_resp_headers(Hdrs),
     Redirect = props:get_value("location", RespHeaders),
     lager:info("recv 302: redirect to ~s", [Redirect]),
     Redirect1 = kzt_util:resolve_uri(Uri, Redirect),
 
-    maybe_debug_resp_headers(Debug, Call, wh_util:to_binary(StatusCode), RespHeaders),
+    maybe_debug_resp(Debug, Call, wh_util:to_binary(StatusCode), RespHeaders, RespBody),
 
     ?MODULE:new_request(self(), Redirect1, Method, Params),
     {'noreply', State};
 handle_info({'ibrowse_async_headers', ReqId, "4"++_=StatusCode, RespHeaders}
             ,#state{request_id=ReqId
-                    ,call=Call
-                    ,debug=Debug
+                    ,response_body=RespBody
                    }=State) ->
     lager:info("recv client failure status code ~s", [StatusCode]),
-    maybe_debug_resp_headers(Debug, Call, wh_util:to_binary(StatusCode), RespHeaders),
-    {'noreply', State};
+    {'noreply', State#state{
+                    response_content_type=props:get_value(<<"content-type">>, RespHeaders)
+                    ,response_code=wh_util:to_binary(StatusCode)
+                    ,response_headers=RespHeaders
+                    ,response_body=RespBody
+                }
+    };
 handle_info({'ibrowse_async_headers', ReqId, "5"++_=StatusCode, RespHeaders}
             ,#state{request_id=ReqId
-                    ,call=Call
-                    ,debug=Debug
+                    ,response_body=RespBody
                    }=State) ->
     lager:info("recv server failure status code ~s", [StatusCode]),
-    maybe_debug_resp_headers(Debug, Call, wh_util:to_binary(StatusCode), RespHeaders),
-    {'noreply', State};
+    {'noreply', State#state{
+                    response_content_type=props:get_value(<<"content-type">>, RespHeaders)
+                    ,response_code=wh_util:to_binary(StatusCode)
+                    ,response_headers=RespHeaders
+                    ,response_body=RespBody
+                }
+    };
 
 handle_info({'ibrowse_async_response', ReqId, {'error', 'connection_closed'}}
             ,#state{request_id=ReqId
@@ -345,15 +359,15 @@ handle_info({'ibrowse_async_response', ReqId, Chunk}
     {'noreply', State#state{response_body = <<RespBody/binary, Chunk/binary>>}};
 
 handle_info({'ibrowse_async_response_end', ReqId}, #state{request_id=ReqId
+                                                          ,response_code=RespCode
+                                                          ,response_headers=RespHeaders
                                                           ,response_body=RespBody
                                                           ,response_content_type=CT
                                                           ,call=Call
                                                           ,debug=Debug
                                                          }=State) ->
     Self = self(),
-
-    maybe_debug_resp_body(Debug, Call, RespBody),
-
+    maybe_debug_resp(Debug, Call, RespCode, RespHeaders, RespBody),
     {Pid, Ref} = spawn_monitor(?MODULE, 'handle_resp', [kzt_util:set_amqp_listener(Self, Call)
                                                         ,CT
                                                         ,RespBody
@@ -551,35 +565,35 @@ maybe_debug_req(Call, Uri, Method, ReqHdrs, ReqBody, 'true') ->
                        ,{<<"method">>, wh_util:to_binary(Method)}
                        ,{<<"req_headers">>, wh_json:from_list(ReqHdrs)}
                        ,{<<"req_body">>, iolist_to_binary(ReqBody)}
+                       ,{<<"iteration">>, whapps_call:kvs_fetch('pivot_counter', Call)}
                       ]).
 
--spec maybe_debug_resp_body(boolean(), whapps_call:call(), ne_binary()) -> 'ok'.
-maybe_debug_resp_body('false', _Call, _RespBody) -> 'ok';
-maybe_debug_resp_body('true', Call, RespBody) ->
-    store_debug(Call, [{<<"resp_body">>, RespBody}]).
-
--spec maybe_debug_resp_headers(boolean(), whapps_call:call(), ne_binary(), list()) -> 'ok'.
-maybe_debug_resp_headers('false', _Call, _StatusCode, _RespHeaders) -> 'ok';
-maybe_debug_resp_headers('true', Call, StatusCode, RespHeaders) ->
+-spec maybe_debug_resp(boolean(), whapps_call:call(), ne_binary(), ne_binary(), list()) -> 'ok'.
+maybe_debug_resp('false', _Call, _StatusCode, _RespHeaders, _RespBody) -> 'ok';
+maybe_debug_resp('true', Call, StatusCode, RespHeaders, RespBody) ->
     Headers = wh_json:from_list([{fix_value(K), fix_value(V)} || {K, V} <- RespHeaders]),
-    store_debug(Call, [{<<"resp_headers">>, Headers}
-                       ,{<<"resp_status_code">>, StatusCode}
-                      ]).
+    store_debug(
+        Call
+        ,[{<<"resp_status_code">>, StatusCode}
+          ,{<<"resp_headers">>, Headers}
+          ,{<<"resp_body">>, RespBody}
+          ,{<<"iteration">>, whapps_call:kvs_fetch('pivot_counter', Call)}
+        ]
+    ).
 
 -spec store_debug(whapps_call:call(), wh_proplist()) -> 'ok'.
 store_debug(Call, Doc) ->
     AccountModDb = wh_util:format_account_mod_id(whapps_call:account_id(Call)),
-    JObj = wh_doc:update_pvt_parameters(
-             wh_json:from_list(
-               [{<<"call_id">>, whapps_call:call_id(Call)}
-                | Doc
-               ])
-             ,AccountModDb
-             ,[{'account_id', whapps_call:account_id(Call)}
-               ,{'account_db', AccountModDb}
-               ,{'type', <<"pivot_debug">>}
-               ,{'now', wh_util:current_tstamp()}
-              ]),
+    JObj =
+        wh_doc:update_pvt_parameters(
+            wh_json:from_list([{<<"call_id">>, whapps_call:call_id(Call)} | Doc])
+            ,AccountModDb
+            ,[{'account_id', whapps_call:account_id(Call)}
+              ,{'account_db', AccountModDb}
+              ,{'type', <<"pivot_debug">>}
+              ,{'now', wh_util:current_tstamp()}
+            ]
+        ),
     case kazoo_modb:save_doc(AccountModDb, JObj) of
         {'ok', _Saved} ->
             lager:debug("saved debug doc: ~p", [_Saved]);
