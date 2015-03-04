@@ -144,7 +144,7 @@ reg_success(#registration{initial='true'}=Registration) ->
                                                                ,Registration#registration.contact
                                                               ]),
     whistle_stats:increment_counter("register-success"),
-    _ = maybe_initial_registration(Registration),
+    _ = initial_registration(Registration),
     maybe_registration_notify(Registration);
 reg_success(#registration{}=Registration) ->
     gen_server:cast(?MODULE, {'insert_registration', Registration}),
@@ -539,7 +539,7 @@ maybe_fetch_contact(Username, Realm) ->
         'true' -> {'error', 'not_found'};
         'false' -> fetch_contact(Username, Realm)
     end.
-    
+
 -spec fetch_contact(ne_binary(), ne_binary()) ->
                            {'ok', ne_binary()} |
                            {'error', 'not_found'}.
@@ -736,33 +736,35 @@ create_registration(JObj) ->
     Proxy = wh_json:get_value(<<"Proxy-Path">>, JObj),
     #registration{initial=Initial}=Reg = existing_or_new_registration(Username, Realm),
     OriginalContact = wh_json:get_first_defined([<<"Original-Contact">>, <<"Contact">>], JObj),
-    
-    maybe_add_ccvs(wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
-    Reg#registration{username=Username
-                     ,realm=Realm
-                     ,network_port=wh_json:get_value(<<"Network-Port">>, JObj)
-                     ,network_ip=wh_json:get_value(<<"Network-IP">>, JObj)
-                     ,to_host=wh_json:get_value(<<"To-Host">>, JObj, ?DEFAULT_REALM)
-                     ,to_user=wh_json:get_value(<<"To-User">>, JObj, <<"nouser">>)
-                     ,from_host=wh_json:get_value(<<"From-Host">>, JObj, ?DEFAULT_REALM)
-                     ,from_user=wh_json:get_value(<<"From-User">>, JObj, <<"nouser">>)
-                     ,call_id=wh_json:get_value(<<"Call-ID">>, JObj)
-                     ,user_agent=wh_json:get_value(<<"User-Agent">>, JObj)
-                     ,expires=ecallmgr_util:maybe_add_expires_deviation(
-                                wh_json:get_integer_value(<<"Expires">>, JObj, ?EXPIRES_MISSING_VALUE))
-                     ,contact=fix_contact(OriginalContact)
-                     ,original_contact=OriginalContact
-                     ,last_registration=wh_util:current_tstamp()
-                     ,registrar_node=wh_json:get_first_defined([<<"Registrar-Node">>
-                                                                ,<<"FreeSWITCH-Nodename">>
-                                                                ,<<"Node">>
-                                                               ], JObj)
-                     ,registrar_hostname=wh_json:get_value(<<"Hostname">>, JObj)
-                     ,suppress_unregister = wh_json:is_true(<<"Suppress-Unregister-Notifications">>, JObj)
-                     ,register_overwrite_notify = wh_json:is_true(<<"Register-Overwrite-Notify">>, JObj)
-                     ,initial = wh_json:is_true(<<"First-Registration">>, JObj, Initial)
-                     ,proxy=Proxy
-                    }).
+
+    maybe_add_ccvs(wh_json:get_value(<<"Custom-Channel-Vars">>, JObj)
+                   ,Reg#registration{username=Username
+                                     ,realm=Realm
+                                     ,network_port=wh_json:get_value(<<"Network-Port">>, JObj)
+                                     ,network_ip=wh_json:get_value(<<"Network-IP">>, JObj)
+                                     ,to_host=wh_json:get_value(<<"To-Host">>, JObj, ?DEFAULT_REALM)
+                                     ,to_user=wh_json:get_value(<<"To-User">>, JObj, <<"nouser">>)
+                                     ,from_host=wh_json:get_value(<<"From-Host">>, JObj, ?DEFAULT_REALM)
+                                     ,from_user=wh_json:get_value(<<"From-User">>, JObj, <<"nouser">>)
+                                     ,call_id=wh_json:get_value(<<"Call-ID">>, JObj)
+                                     ,user_agent=wh_json:get_value(<<"User-Agent">>, JObj)
+                                     ,expires=ecallmgr_util:maybe_add_expires_deviation(
+                                                wh_json:get_integer_value(<<"Expires">>, JObj, ?EXPIRES_MISSING_VALUE)
+                                               )
+                                     ,contact=fix_contact(OriginalContact)
+                                     ,original_contact=OriginalContact
+                                     ,last_registration=wh_util:current_tstamp()
+                                     ,registrar_node=wh_json:get_first_defined([<<"Registrar-Node">>
+                                                                                ,<<"FreeSWITCH-Nodename">>
+                                                                                ,<<"Node">>
+                                                                               ], JObj)
+                                     ,registrar_hostname=wh_json:get_value(<<"Hostname">>, JObj)
+                                     ,suppress_unregister = wh_json:is_true(<<"Suppress-Unregister-Notifications">>, JObj)
+                                     ,register_overwrite_notify = wh_json:is_true(<<"Register-Overwrite-Notify">>, JObj)
+                                     ,initial = wh_json:is_true(<<"First-Registration">>, JObj, Initial)
+                                     ,proxy=Proxy
+                                    }
+                  ).
 
 -spec maybe_add_ccvs(api_object(), registration()) -> registration().
 maybe_add_ccvs('undefined', Reg) -> Reg;
@@ -823,13 +825,6 @@ registration_notify(#registration{previous_contact=PrevContact
               ]),
     wapi_presence:publish_register_overwrite(Props).
 
--spec maybe_initial_registration(registration()) -> 'ok'.
-maybe_initial_registration(#registration{account_id='undefined'}=Reg) ->
-    initial_registration(Reg);
-maybe_initial_registration(#registration{initial='false'}) -> 'ok';
-maybe_initial_registration(#registration{initial='true'}=Reg) ->
-    initial_registration(Reg).
-
 -spec initial_registration(registration()) -> 'ok'.
 initial_registration(#registration{account_id='undefined'}=Reg) ->
     Routines = [fun maybe_query_authn/1
@@ -838,8 +833,7 @@ initial_registration(#registration{account_id='undefined'}=Reg) ->
                ],
     initial_registration(Reg, Routines);
 initial_registration(#registration{}=Reg) ->
-    Routines = [fun maybe_send_register_notice/1
-               ],
+    Routines = [fun maybe_send_register_notice/1],
     initial_registration(Reg, Routines).
 
 -spec initial_registration(registration(), list()) -> 'ok'.
@@ -910,7 +904,8 @@ query_authn(#registration{username=Username
             wh_cache:store_local(?ECALLMGR_AUTH_CACHE
                                  ,?CREDS_KEY(Realm, Username)
                                  ,JObj
-                                 ,CacheProps),
+                                 ,CacheProps
+                                ),
             Reg#registration{account_id = AccountId
                              ,account_db = AccountDb
                              ,authorizing_id = AuthorizingId
@@ -965,20 +960,19 @@ send_register_notice(Reg) ->
         ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION),
     wapi_notifications:publish_register(Props).
 
-
 -spec maybe_send_deregister_notice(registration()) -> 'ok'.
 maybe_send_deregister_notice(#registration{username=Username
                                            ,realm=Realm
                                            ,suppress_unregister='true'
                                            ,call_id=CallId
-                                          }) -> 
-    put('callid', CallId),                                                     
+                                          }) ->
+    put('callid', CallId),
     lager:debug("registration ~s@~s expired", [Username, Realm]);
 maybe_send_deregister_notice(#registration{username=Username
                                            ,realm=Realm
                                            ,call_id=CallId
                                           }=Reg) ->
-    put('callid', CallId),                                                     
+    put('callid', CallId),
     case oldest_registrar() of
         'false' -> 'ok';
         'true' ->
