@@ -386,7 +386,7 @@ partial_wait(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
                     }=State
             ) ->
     Ref = erlang:start_timer(1000, self(), 'purgatory'),
-    {'next_state', 'attended_wait', State#state{purgatory_ref=Ref}};
+    {'next_state', 'partial_wait', State#state{purgatory_ref=Ref}};
 partial_wait({'timeout', Ref, 'purgatory'}
              ,#state{purgatory_ref=Ref
                      ,target=Target
