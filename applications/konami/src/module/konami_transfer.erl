@@ -63,6 +63,7 @@
                 ,moh :: api_binary()
                 ,extension :: api_binary()
                 ,purgatory_ref :: api_reference()
+                ,event_node :: ne_binary()
                }).
 -type state() :: #state{}.
 
@@ -255,10 +256,13 @@ attended_wait(?EVENT(Target, <<"originate_uuid">>, Evt)
                       ,target_call=TargetCall
                      }=State
              ) ->
-    lager:info("recv control for target ~s", [Target]),
+    Node = wh_json:get_value(<<"Node">>, Evt),
+    lager:info("recv control for target ~s from node ~s", [Target, Node]),
     TargetCall1 = whapps_call:from_originate_uuid(Evt, TargetCall),
     ?WSD_NOTE(Target, 'right', <<"control for target recv">>),
-    {'next_state', 'attended_wait', State#state{target_call=TargetCall1}};
+    {'next_state', 'attended_wait', State#state{target_call=TargetCall1
+                                                ,event_node=Node
+                                               }};
 attended_wait(?EVENT(Transferor, <<"CHANNEL_BRIDGE">>, Evt)
               ,#state{transferor=Transferor
                       ,transferee=Transferee
@@ -743,7 +747,23 @@ handle_sync_event(_Event, _From, StateName, State) ->
     lager:info("unhandled sync_event in ~s: ~p", [StateName, _Event]),
     {'next_state', StateName, State}.
 
-handle_info({'amqp_msg', JObj}, StateName, State) ->
+handle_info({'amqp_msg', JObj}, StateName, #state{event_node=EventNode}=State) ->
+    case wh_json:get_value(<<"Node">>, JObj) of
+        EventNode -> send_event(JObj);
+        _Node when EventNode =:= 'undefined' -> send_event(JObj);
+        _Node -> lager:debug("supressing event ~s from ~s (we want events from ~s)"
+                             ,[kz_call_event:event_name(JObj)
+                               ,_Node
+                               ,EventNode
+                              ])
+    end,
+    {'next_state', StateName, State};
+handle_info(_Info, StateName, State) ->
+    lager:info("unhandled msg in ~s: ~p", [StateName, _Info]),
+    {'next_state', StateName, State}.
+
+-spec send_event(wh_json:object()) -> 'ok'.
+send_event(JObj) ->
     gen_fsm:send_event(self()
                        ,?EVENT(wh_json:get_first_defined([<<"Call-ID">>
                                                           ,<<"Outbound-Call-ID">>
@@ -751,11 +771,7 @@ handle_info({'amqp_msg', JObj}, StateName, State) ->
                                ,wh_json:get_value(<<"Event-Name">>, JObj)
                                ,JObj
                               )
-                      ),
-    {'next_state', StateName, State};
-handle_info(_Info, StateName, State) ->
-    lager:info("unhandled msg in ~s: ~p", [StateName, _Info]),
-    {'next_state', StateName, State}.
+                      ).
 
 terminate(_Reason, _StateName, #state{transferor=Transferor
                                       ,transferee=Transferee
