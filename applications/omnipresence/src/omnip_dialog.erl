@@ -243,6 +243,18 @@ handle_update(_JObj, _State) -> 'ok'.
 handle_update(JObj, State, Expires) ->
     To = wh_json:get_first_defined([<<"To">>, <<"Presence-ID">>], JObj),
     From = wh_json:get_first_defined([<<"From">>, <<"Presence-ID">>], JObj),
+    case binary:split(To, <<"@">>) of
+        [_, _] -> case binary:split(From, <<"@">>) of
+                      [_ , _] -> handle_update(JObj, State, From, To, Expires);
+                      _ -> lager:warning("presence handler invalid from uri ~p", [From])
+                  end;
+        _ -> lager:warning("presence handler invalid to uri ~p", [To])
+    end.
+
+-spec handle_update(wh_json:object(), ne_binary(), ne_binary(), ne_binary(), integer()) -> any().
+handle_update(JObj, State, From, To, Expires) ->
+    To = wh_json:get_first_defined([<<"To">>, <<"Presence-ID">>], JObj),
+    From = wh_json:get_first_defined([<<"From">>, <<"Presence-ID">>], JObj),
     [ToUsername, ToRealm] = binary:split(To, <<"@">>),
     [FromUsername, FromRealm] = binary:split(From, <<"@">>),
     Direction = wh_json:get_lower_binary(<<"Call-Direction">>, JObj),
