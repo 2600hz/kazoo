@@ -246,9 +246,9 @@ handle_update(JObj, State, Expires) ->
     case binary:split(To, <<"@">>) of
         [_, _] -> case binary:split(From, <<"@">>) of
                       [_ , _] -> handle_update(JObj, State, From, To, Expires);
-                      _ -> lager:warning("presence handler invalid from uri ~p", [From])
+                      _ -> lager:warning("dialog handler invalid from uri ~p", [From])
                   end;
-        _ -> lager:warning("presence handler invalid to uri ~p", [To])
+        _ -> lager:warning("dialog handler invalid to uri ~p", [To])
     end.
 
 -spec handle_update(wh_json:object(), ne_binary(), ne_binary(), ne_binary(), integer()) -> any().
