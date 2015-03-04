@@ -194,10 +194,15 @@ print_status(Nodes) ->
 -spec status_list(whapps_info(), 0..4) -> 'ok'.
 status_list([], _) -> io:format("~n", []);
 status_list(Whapps, Column) when Column > 3 ->
-    io:format("~n                ", []),
+    io:format("~n~-16s", [""]),
     status_list(Whapps, 0);
-status_list([{Whapp, _}|Whapps], Column) ->
-    io:format("~-20s", [Whapp]),
+status_list([{Whapp, #whapp_info{startup='undefined'}}|Whapps], Column) ->
+    io:format("~-25s", [Whapp]),
+    status_list(Whapps, Column + 1);
+status_list([{Whapp, #whapp_info{startup=Started}}|Whapps], Column) ->
+    Elapsed = wh_util:elapsed_s(Started),
+    Print = <<(wh_util:to_binary(Whapp))/binary, "(", (wh_util:pretty_print_elapsed_s(Elapsed))/binary, ")">>,
+    io:format("~-25s", [Print]),
     status_list(Whapps, Column + 1).
 
 -spec flush() -> 'ok'.
@@ -468,9 +473,10 @@ get_whapp_info('undefined') -> #whapp_info{};
 get_whapp_info(Whapp) when is_atom(Whapp) ->
     get_whapp_info(application_controller:get_master(Whapp));
 get_whapp_info(Master) when is_pid(Master) ->
-    get_whapp_info(props:get_value(links, erlang:process_info(Master), []));
-get_whapp_info([_P1, P2 | _]) when is_pid(P2) ->
-    get_whapp_process_info(erlang:process_info(P2));
+    get_whapp_info(application_master:get_child(Master));
+get_whapp_info({Pid, _Module}) when is_pid(Pid) ->
+    lager:debug("Getting whapp info from ~p (~p)", [Pid, _Module]),
+    get_whapp_process_info(erlang:process_info(Pid));
 get_whapp_info(_) ->
     #whapp_info{}.
 
@@ -529,10 +535,12 @@ from_json(JObj, State) ->
           ,broker=get_amqp_broker(JObj)
          }.
 
--spec whapps_from_json(wh_json:object()) -> whapps_info().
+-spec whapps_from_json(api_terms()) -> whapps_info().
 -spec whapp_from_json(binary(), wh_json:object()) -> {binary(), whapp_info()}.
 -spec whapp_info_from_json(wh_json:object()) -> whapp_info().
 
+whapps_from_json(Whapps) when is_list(Whapps) ->
+    [{Whapp, #whapp_info{}} || Whapp <- Whapps];
 whapps_from_json(JObj) ->
     Keys = wh_json:get_keys(JObj),
     [whapp_from_json(Key, JObj) || Key <- Keys].
