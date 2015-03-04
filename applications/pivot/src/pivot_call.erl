@@ -150,11 +150,9 @@ init([Call, JObj]) ->
 
     ?MODULE:new_request(self(), VoiceUri, Method, BaseParams),
 
-    Counter = whapps_call:kvs_fetch('pivot_counter', 1, Call),
-
     {'ok'
      ,#state{cdr_uri=wh_json:get_value(<<"CDR-URI">>, JObj)
-             ,call=whapps_call:kvs_update_counter('pivot_counter', Counter, Call)
+             ,call=whapps_call:kvs_update_counter('pivot_counter', 1, Call)
              ,request_format=ReqFormat
              ,debug=wh_json:is_true(<<"Debug">>, JObj, 'false')
              ,requester_queue = whapps_call:controller_queue(Call)
