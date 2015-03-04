@@ -489,7 +489,6 @@ get_whapp_info(Whapp) when is_atom(Whapp) ->
 get_whapp_info(Master) when is_pid(Master) ->
     get_whapp_info(application_master:get_child(Master));
 get_whapp_info({Pid, _Module}) when is_pid(Pid) ->
-    lager:debug("Getting whapp info from ~p (~p)", [Pid, _Module]),
     get_whapp_process_info(erlang:process_info(Pid));
 get_whapp_info(_) ->
     #whapp_info{}.
