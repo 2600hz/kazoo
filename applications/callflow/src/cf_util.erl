@@ -42,7 +42,9 @@
 -export([owner_ids_by_sip_username/2]).
 -export([apply_dialplan/2]).
 -export([encryption_method_map/2]).
--export([maybe_start_metaflows/2]).
+-export([maybe_start_metaflow/2
+         ,maybe_start_metaflows/2
+        ]).
 -export([sip_users_from_device_ids/2]).
 
 -export([caller_belongs_to_group/2
@@ -753,12 +755,13 @@ maybe_start_metaflows(Call, Endpoints) ->
     'ok'.
 
 maybe_start_metaflow(Call, Endpoint) ->
-    case wh_json:get_value(<<"Metaflows">>, Endpoint) of
+    case wh_json:get_first_defined([<<"metaflows">>, <<"Metaflows">>], Endpoint) of
         'undefined' -> 'ok';
         ?EMPTY_JSON_OBJECT -> 'ok';
         JObj ->
+            Id = wh_json:get_first_defined([<<"_id">>, <<"Endpoint-ID">>], Endpoint),
             API = props:filter_undefined(
-                    [{<<"Endpoint-ID">>, wh_json:get_value(<<"Endpoint-ID">>, Endpoint)}
+                    [{<<"Endpoint-ID">>, Id}
                      ,{<<"Call">>, whapps_call:to_json(
                                      set_callee(Call, Endpoint)
                                     )
@@ -771,7 +774,7 @@ maybe_start_metaflow(Call, Endpoint) ->
                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                     ]),
             lager:debug("sending metaflow for endpoint: ~s: ~s"
-                        ,[wh_json:get_value(<<"Endpoint-ID">>, Endpoint)
+                        ,[Id
                           ,wh_json:get_value(<<"listen_on">>, JObj)
                          ]
                        ),
@@ -780,8 +783,9 @@ maybe_start_metaflow(Call, Endpoint) ->
 
 -spec set_callee(whapps_call:call(), wh_json:object()) -> whapps_call:call().
 set_callee(Call, Endpoint) ->
-    whapps_call:exec([{fun whapps_call:set_callee_id_name/2, wh_json:get_value(<<"Callee-ID-Name">>, Endpoint)}
-                      ,{fun whapps_call:set_callee_id_number/2, wh_json:get_value(<<"Callee-ID-Number">>, Endpoint)}
+    {Name, Number} = cf_attributes:callee_id(Endpoint, Call),
+    whapps_call:exec([{fun whapps_call:set_callee_id_name/2, Name}
+                      ,{fun whapps_call:set_callee_id_number/2, Number}
                      ]
                      ,Call
                     ).
