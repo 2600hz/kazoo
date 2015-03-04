@@ -175,6 +175,13 @@ mwi_event(JObj) ->
 -spec handle_update(wh_json:object()) -> 'ok'.
 handle_update(JObj) ->
     To = wh_json:get_value(<<"To">>, JObj),
+    case binary:split(To, <<"@">>) of
+        [_, _] -> handle_update(JObj, To);
+        _ -> lager:warning("mwi handler invalid to uri ~p", [To])
+    end.
+
+-spec handle_update(wh_json:object(), ne_binary()) -> 'ok'.
+handle_update(JObj, To) ->
     [ToUsername, ToRealm] = binary:split(To, <<"@">>),
     MessagesNew = wh_json:get_integer_value(<<"Messages-New">>, JObj, 0),
     MessagesSaved = wh_json:get_integer_value(<<"Messages-Waiting">>, JObj, 0),
