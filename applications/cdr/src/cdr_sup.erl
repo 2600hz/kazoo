@@ -71,7 +71,7 @@ start_v3_migrate() ->
                  ,['cdr_v3_migrate_server']
                 },
     case supervisor:start_child(?MODULE, ChildSpec) of
-        {'error', 'already_present'} -> 
+        {'error', 'already_present'} ->
             supervisor:restart_child(?MODULE, 'cdr_v3_migrator');
         {'error', _E} -> lager:debug("error starting cdr_v3_migrate: ~p", [_E]);
         {'ok', _} -> 'ok'
@@ -87,6 +87,7 @@ stop_v3_migrate() ->
 
 -spec init([]) -> sup_init_ret().
 init([]) ->
+    wh_util:set_startup(),
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,

@@ -39,6 +39,7 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
+    wh_util:set_startup(),
     {'ok', { {'one_for_one', 5, 10}
              ,[?SUPER('ts_onnet_sup') %% handles calls originating on-net (customer)
                ,?WORKER('ts_offnet_sup') %% handles calls originating off-net (carrier)

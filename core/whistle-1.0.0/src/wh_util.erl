@@ -72,7 +72,7 @@
 
 -export([current_tstamp/0, current_unix_tstamp/0
          ,gregorian_seconds_to_unix_seconds/1, unix_seconds_to_gregorian_seconds/1
-         ,pretty_print_datetime/1
+         ,pretty_print_datetime/1, pretty_print_elapsed_s/1
          ,decr_timeout/2
         ]).
 -export([microseconds_to_seconds/1
@@ -82,7 +82,9 @@
          ,now_s/1, now_ms/1, now_us/1
         ]).
 
--export([put_callid/1, get_callid/0]).
+-export([put_callid/1, get_callid/0
+         ,set_startup/0, startup/0
+        ]).
 -export([get_event_type/1]).
 -export([get_xml_value/2]).
 
@@ -516,6 +518,14 @@ callid(Prop) when is_list(Prop) ->
     props:get_first_defined([<<"Call-ID">>, <<"Msg-ID">>], Prop, ?LOG_SYSTEM_ID);
 callid(JObj) ->
     wh_json:get_first_defined([<<"Call-ID">>, <<"Msg-ID">>], JObj, ?LOG_SYSTEM_ID).
+
+-spec set_startup() -> 'undefined' | gregorian_seconds().
+set_startup() ->
+    put('$startup', current_tstamp()).
+
+-spec startup() -> 'undefined' | gregorian_seconds().
+startup() ->
+    get('$startup').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1003,17 +1013,13 @@ ensure_started(App) when is_atom(App) ->
         E -> E
     end.
 
-%% there are 86400 seconds in a day
-%% there are 62167219200 seconds between Jan 1, 0000 and Jan 1, 1970
--define(UNIX_EPOCH_AS_GREG_SECONDS, 62167219200).
-
 -spec gregorian_seconds_to_unix_seconds(integer() | string() | binary()) -> integer().
 gregorian_seconds_to_unix_seconds(GregorianSeconds) ->
-    to_integer(GregorianSeconds) - ?UNIX_EPOCH_AS_GREG_SECONDS.
+    to_integer(GregorianSeconds) - ?UNIX_EPOCH_IN_GREGORIAN.
 
 -spec unix_seconds_to_gregorian_seconds(integer() | string() | binary()) -> integer().
 unix_seconds_to_gregorian_seconds(UnixSeconds) ->
-    to_integer(UnixSeconds) + ?UNIX_EPOCH_AS_GREG_SECONDS.
+    to_integer(UnixSeconds) + ?UNIX_EPOCH_IN_GREGORIAN.
 
 -spec pretty_print_datetime(wh_datetime() | integer()) -> ne_binary().
 pretty_print_datetime(Timestamp) when is_integer(Timestamp) ->
@@ -1022,6 +1028,25 @@ pretty_print_datetime({{Y,Mo,D},{H,Mi,S}}) ->
     iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0w_~2..0w-~2..0w-~2..0w"
                                    ,[Y, Mo, D, H, Mi, S]
                                   )).
+
+-spec pretty_print_elapsed_s(non_neg_integer()) -> ne_binary().
+pretty_print_elapsed_s(0) -> <<"0s">>;
+pretty_print_elapsed_s(Seconds) ->
+    iolist_to_binary(unitfy_seconds(Seconds)).
+
+-spec unitfy_seconds(non_neg_integer()) -> iolist().
+unitfy_seconds(0) -> "";
+unitfy_seconds(Seconds) when Seconds < ?SECONDS_IN_MINUTE ->
+    [to_binary(Seconds), "s"];
+unitfy_seconds(Seconds) when Seconds < ?SECONDS_IN_HOUR ->
+    M = Seconds div ?SECONDS_IN_MINUTE,
+    [to_binary(M), "m", unitfy_seconds(Seconds - (M * ?SECONDS_IN_MINUTE))];
+unitfy_seconds(Seconds) when Seconds < ?SECONDS_IN_DAY ->
+    H = Seconds div ?SECONDS_IN_HOUR,
+    [to_binary(H), "h", unitfy_seconds(Seconds - (H * ?SECONDS_IN_HOUR))];
+unitfy_seconds(Seconds) ->
+    D = Seconds div ?SECONDS_IN_DAY,
+    [to_binary(D), "d", unitfy_seconds(Seconds - (D * ?SECONDS_IN_DAY))].
 
 -spec decr_timeout(wh_timeout(), non_neg_integer() | wh_now()) -> wh_timeout().
 decr_timeout('infinity', _) -> 'infinity';
@@ -1130,20 +1155,25 @@ prop_to_number() ->
             end).
 
 prop_to_float() ->
-    ?FORALL({F, I}, {float(), integer()},
-            begin
-                Fs = [ [Fun(N), N] || Fun <- [ fun to_list/1, fun to_binary/1], N <- [F, I] ],
-                lists:all(fun([FN, N]) -> erlang:is_float(to_float(N)) andalso erlang:is_float(to_float(FN)) end, Fs)
-            end).
+    ?FORALL({F, I}
+            ,{float(), integer()}
+            ,begin
+                 Fs = [ [Fun(N), N] || Fun <- [ fun to_list/1, fun to_binary/1], N <- [F, I] ],
+                 lists:all(fun([FN, N]) -> erlang:is_float(to_float(N)) andalso erlang:is_float(to_float(FN)) end, Fs)
+             end).
 
 prop_to_list() ->
-    ?FORALL({A, L, B, I, F}, {atom(), list(), binary(), integer(), float()},
-            lists:all(fun(X) -> is_list(to_list(X)) end, [A, L, B, I, F])).
+    ?FORALL({A, L, B, I, F}
+            ,{atom(), list(), binary(), integer(), float()}
+            ,lists:all(fun(X) -> is_list(to_list(X)) end, [A, L, B, I, F])
+           ).
 
-                                                %-type iolist() :: maybe_improper_list(char() | binary() | iolist(), binary() | []).
+%%-type iolist() :: maybe_improper_list(char() | binary() | iolist(), binary() | []).
 prop_to_binary() ->
-    ?FORALL({A, L, B, I, F, IO}, {atom(), list(range(0,255)), binary(), integer(), float(), iolist()},
-            lists:all(fun(X) -> is_binary(to_binary(X)) end, [A, L, B, I, F, IO])).
+    ?FORALL({A, L, B, I, F, IO}
+            ,{atom(), list(range(0,255)), binary(), integer(), float(), iolist()}
+            ,lists:all(fun(X) -> is_binary(to_binary(X)) end, [A, L, B, I, F, IO])
+           ).
 
 prop_iolist_t() ->
     ?FORALL(IO, iolist(), is_binary(to_binary(IO))).
@@ -1154,11 +1184,32 @@ prop_to_from_hex() ->
                 F =:= from_hex_binary(to_hex_binary(F))
             end).
 
+prop_pretty_print_elapsed_s() ->
+    ?FORALL({D, H, M, S}
+            ,{non_neg_integer(), range(0,23), range(0, 59), range(0,59)}
+            ,begin
+                 Seconds = (D * ?SECONDS_IN_DAY) + (H * ?SECONDS_IN_HOUR) + (M * ?SECONDS_IN_MINUTE) + S,
+                 Expected = lists:foldl(fun({0, "s"}, "") -> ["s", <<"0">>];
+                                           ({0, _}, Acc) -> Acc;
+                                           ({N, Unit}, Acc) -> [Unit, to_binary(N) | Acc]
+                                        end
+                                        ,[]
+                                        ,[{D, "d"}
+                                          ,{H, "h"}
+                                          ,{M, "m"}
+                                          ,{S, "s"}
+                                         ]),
+                 Result = pretty_print_elapsed_s(Seconds),
+                 Result =:= iolist_to_binary(lists:reverse(Expected))
+             end).
+
 proper_test_() ->
     {"Runs the module's PropEr tests during eunit testing",
      {'timeout', 15000,
       [
-       ?_assertEqual([], proper:module(?MODULE, [{'max_shrinks', 0}]))
+       ?_assertEqual([], proper:module(?MODULE, [{'max_shrinks', 0}
+                                                 ,{'to_file', 'user'}
+                                                ]))
       ]}}.
 
 pad_binary_test() ->
@@ -1166,11 +1217,11 @@ pad_binary_test() ->
 
 greg_secs_to_unix_secs_test() ->
     GregSecs = current_tstamp(),
-    ?assertEqual(GregSecs - ?UNIX_EPOCH_AS_GREG_SECONDS, gregorian_seconds_to_unix_seconds(GregSecs)).
+    ?assertEqual(GregSecs - ?UNIX_EPOCH_IN_GREGORIAN, gregorian_seconds_to_unix_seconds(GregSecs)).
 
 unix_secs_to_greg_secs_test() ->
     UnixSecs = 1000000000,
-    ?assertEqual(UnixSecs + ?UNIX_EPOCH_AS_GREG_SECONDS, unix_seconds_to_gregorian_seconds(UnixSecs)).
+    ?assertEqual(UnixSecs + ?UNIX_EPOCH_IN_GREGORIAN, unix_seconds_to_gregorian_seconds(UnixSecs)).
 
 microsecs_to_secs_test() ->
     Microsecs = 1310157838405890,
@@ -1298,6 +1349,5 @@ resolve_uri_test() ->
 
     ?assertEqual(RawPathList, resolve_uri_path(RawPath, Relative)),
     ?assertEqual(RawPathList, resolve_uri_path(RawPath, <<"/", Relative/binary>>)).
-
 
 -endif.

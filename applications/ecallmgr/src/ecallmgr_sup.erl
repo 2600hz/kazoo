@@ -14,11 +14,11 @@
 -export([start_link/0]).
 -export([init/1]).
 
--define(CHILDREN, [?WORKER('ecallmgr_init')
+-define(CHILDREN, [?WORKER('wh_nodes')
+                   ,?WORKER('ecallmgr_init')
                    ,?SUPER('ecallmgr_auxiliary_sup')
                    ,?SUPER('ecallmgr_call_sup')
                    ,?SUPER('ecallmgr_fs_sup')
-                   ,?WORKER('wh_nodes')
                   ]).
 
 %% ===================================================================
@@ -50,6 +50,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> sup_init_ret().
 init([]) ->
+    wh_util:set_startup(),
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
