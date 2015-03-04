@@ -238,25 +238,30 @@ get_orig_ip(Prop) ->
 %% Extract custom channel variables to include in the event
 -spec custom_channel_vars(wh_proplist()) -> wh_proplist().
 -spec custom_channel_vars(wh_proplist(), wh_proplist()) -> wh_proplist().
+-spec custom_channel_vars_fold({ne_binary(), ne_binary()}, wh_proplist()) -> wh_proplist().
 custom_channel_vars(Props) ->
     custom_channel_vars(Props, []).
 
 custom_channel_vars(Props, Initial) ->
-    lists:foldl(fun({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
-                        [{Key, V} | Acc];
-                   ({<<?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
-                        [{Key, V} | Acc];
-                   ({<<"variable_sip_h_Referred-By">>, V}, Acc) ->
-                        [{<<"Referred-By">>, wh_util:to_binary(mochiweb_util:unquote(V))} | Acc];
-                   ({<<"variable_sip_refer_to">>, V}, Acc) ->
-                        [{<<"Referred-To">>, wh_util:to_binary(mochiweb_util:unquote(V))} | Acc];
-                   ({<<"variable_sip_h_X-", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
-                        case props:is_defined(Key, Acc) of
-                            'true' -> Acc;
-                            'false' -> [{Key, V} | Acc]
-                        end;
-                (_, Acc) -> Acc
-                end, Initial, Props).
+    lists:foldl(fun custom_channel_vars_fold/2
+                ,Initial
+                ,Props
+               ).
+
+custom_channel_vars_fold({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
+    [{Key, V} | Acc];
+custom_channel_vars_fold({<<?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
+    [{Key, V} | Acc];
+custom_channel_vars_fold({<<"variable_sip_h_Referred-By">>, V}, Acc) ->
+    [{<<"Referred-By">>, wh_util:to_binary(mochiweb_util:unquote(V))} | Acc];
+custom_channel_vars_fold({<<"variable_sip_refer_to">>, V}, Acc) ->
+    [{<<"Referred-To">>, wh_util:to_binary(mochiweb_util:unquote(V))} | Acc];
+custom_channel_vars_fold({<<"variable_sip_h_X-", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
+    case props:is_defined(Key, Acc) of
+        'true' -> Acc;
+        'false' -> [{Key, V} | Acc]
+    end;
+custom_channel_vars_fold(_, Acc) -> Acc.
 
 %% convert a raw FS string of headers to a proplist
 %% "Event-Name: NAME\nEvent-Timestamp: 1234\n" -> [{<<"Event-Name">>, <<"NAME">>}, {<<"Event-Timestamp">>, <<"1234">>}]
