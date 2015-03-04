@@ -279,20 +279,15 @@ callid(Line) ->
               ,[{'capture','all_but_first','binary'}]),
     Callid.
 
-label(<<"start|recieved internal reply ", Label/binary>>) -> Label;
-label(<<"start|recieved ", _Protocol:3/binary, " request ", Label/binary>>) -> Label;
-label(<<"log|external reply ", Label/binary>>) -> Label;
-label(<<"start|received failure reply ", Label/binary>>) -> Label;
-label(Other) ->
-    case binary:split(Other, <<"|">>) of
-        [_Tag, <<"recieved ">>=Line] ->
-            Line;
-        _ ->
-            'undefined'
-    end.
+label(<<"recieved internal reply ", Label/binary>>) -> Label;
+label(<<"recieved ", _Protocol:3/binary, " request ", Label/binary>>) -> Label;
+label(<<"external reply ", Label/binary>>) -> Label;
+label(<<"received failure reply ", Label/binary>>) -> Label;
+label(<<"recieved ", Label/binary>>) -> Label;
+label(_Other) -> 'undefined'.
 
 source([]) -> 'undefined';
-source([<<"log|source ", Source0/binary>>|_]) ->
+source([<<"source ", Source0/binary>>|_]) ->
     [Source, _Port] = binary:split(Source0, <<":">>),
     Source;
 source([_Line|Lines]) ->
