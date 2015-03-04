@@ -32,7 +32,7 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    spawn(fun() -> put('callid', ?LOG_SYSTEM_ID), initialize_whapps() end),
+    _ = spawn(fun initialize_whapps/0),
     'ignore'.
 
 -spec start_app(atom() | nonempty_string() | ne_binary()) ->
@@ -41,12 +41,13 @@ start_app(App) when not is_atom(App) ->
     start_app(wh_util:to_atom(App, 'true'));
 start_app(App) ->
     case lists:keyfind(App, 1, application:which_applications()) of
-        {App, _, _} ->
-            lager:info("Kazoo app ~s already running", [App]),
+        {App, _Desc, _Ver} ->
+            lager:info("Kazoo app ~s already running (~s)", [App, _Ver]),
             'exists';
         'false' ->
             case application:start(App) of
-                'ok' -> lager:info("Kazoo app ~s is now running", [App]);
+                'ok' ->
+                    lager:info("Kazoo app ~s is now running", [App]);
                 {'error', _R} ->
                     lager:error("Kazoo app ~s failed to start: ~p", [App, _R]),
                     'error'
@@ -119,7 +120,9 @@ running_apps_list() ->
         Resp -> Resp
     end.
 
+-spec initialize_whapps() -> 'ok'.
 initialize_whapps() ->
+    put('callid', ?LOG_SYSTEM_ID),
     case couch_mgr:db_exists(?WH_ACCOUNTS_DB) of
         'false' -> whapps_maintenance:refresh();
         'true' -> 'ok'
@@ -130,7 +133,7 @@ initialize_whapps() ->
     [?MODULE:start_app(A) || A <- StartWhApps],
     lager:notice("auto-started whapps ~p", [StartWhApps]).
 
--spec list_apps() -> [atom(),...] | [].
+-spec list_apps() -> atoms().
 list_apps() ->
     case [App
           || {App, _, _} <- application:which_applications(),
