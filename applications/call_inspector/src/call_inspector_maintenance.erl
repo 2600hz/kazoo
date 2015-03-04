@@ -47,7 +47,6 @@ callid_details(CallId) ->
     'no_return'.
 
 -spec print_chunks(ci_chunk:chunks()) -> 'ok'.
-print_chunks([]) -> 'ok';
-print_chunks([Chunk|Chunks]) ->
-    io:fwrite(ci_chunk:data(Chunk)),
-    print_chunks(Chunks).
+print_chunks(Chunks) ->
+    JSONArray = lists:map(fun ci_chunk:to_json/1, Chunks),
+    io:fwrite(io_lib:format("~ts\n", [wh_json:encode(JSONArray)])).
