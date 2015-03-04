@@ -239,7 +239,7 @@ cleanse_data_and_get_timestamp(Data0) ->
         fun (Bin, {Acc, TS}) ->
                 case ci_parsers_util:timestamp(Bin) of
                     'undefined' ->
-                        {[Bin|Acc], TS};
+                        {[unwrap(Bin)|Acc], TS};
                     Ts when Ts < TS ->
                         {Acc, Ts};
                     _Ts ->
@@ -266,6 +266,10 @@ dump_buffers() ->
             lists:foreach(RmFromProcDict, Buffers),
             {'buffers', Buffers}
     end.
+
+unwrap(Bin0) ->
+    [_Tag, Bin] = binary:split(Bin0, <<"|">>),
+    Bin.
 
 
 callid(Line) ->
