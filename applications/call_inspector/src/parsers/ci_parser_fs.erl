@@ -164,16 +164,14 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 
 extract_chunks(Dev, LogIP) ->
-    extract_chunks(Dev, LogIP, 1).
-extract_chunks(Dev, LogIP, Counter) ->
     case extract_chunk(Dev, []) of
         [] -> 'ok';
         Data0 ->
-            make_and_store_chunk(LogIP, Counter, Data0),
-            extract_chunks(Dev, LogIP, Counter+1)
+            make_and_store_chunk(LogIP, Data0),
+            extract_chunks(Dev, LogIP)
     end.
 
-make_and_store_chunk(LogIP, _Counter, Data0) ->
+make_and_store_chunk(LogIP, Data0) ->
     Apply = fun (Fun, Arg) -> Fun(Arg) end,
     Timestamp = case lists:keyfind('timestamp', 1, Data0) of
                     {'timestamp', TS} -> TS;
@@ -193,7 +191,6 @@ make_and_store_chunk(LogIP, _Counter, Data0) ->
               ,fun (C) -> ci_chunk:set_label(C, label(Data)) end
               ],
     Chunk = lists:foldl(Apply, ci_chunk:new(), Setters),
-    io:format("Chunk = ~p\n", [Chunk]),
     ci_datastore:store_chunk(Chunk).
 
 extract_chunk(Dev, Buffer) ->

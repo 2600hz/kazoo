@@ -164,28 +164,25 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 
 extract_chunks(Dev, KamailioIP) ->
-    extract_chunks(Dev, KamailioIP, 1).
-extract_chunks(Dev, KamailioIP, Counter) ->
     case extract_chunk(Dev) of
         [] -> 'ok';
-        {{'callid',Callid}, Data} ->
-            make_and_store_chunk(KamailioIP, Counter, Callid, Data),
-            extract_chunks(Dev, KamailioIP, Counter+1);
+        {{'callid',Callid}, Data0} ->
+            make_and_store_chunk(KamailioIP, Callid, Data0),
+            extract_chunks(Dev, KamailioIP);
         {'buffers', Buffers} ->
             StoreEach =
-                fun ({{'callid',Callid}, Data}, Count) ->
-                        make_and_store_chunk(KamailioIP, Counter, Callid, Data),
-                        Count + 1
+                fun ({{'callid',Callid}, Data0}) ->
+                        make_and_store_chunk(KamailioIP, Callid, Data0)
                 end,
-            lists:foldl(StoreEach, Counter, Buffers),
-            'ok'
+            lists:foreach(StoreEach, Buffers)
     end.
 
-make_and_store_chunk(KamailioIP, Counter, Callid, Data) ->
+make_and_store_chunk(KamailioIP, Callid, Data0) ->
     Apply = fun (Fun, Arg) -> Fun(Arg) end,
+    {Data, Timestamp} = cleanse_data_and_get_timestamp(Data0),
     Setters = [fun (C) -> ci_chunk:set_data(C, Data) end
               ,fun (C) -> ci_chunk:set_call_id(C, Callid) end
-              ,fun (C) -> ci_chunk:set_timestamp(C, Counter) end
+              ,fun (C) -> ci_chunk:set_timestamp(C, Timestamp) end
               ,fun (C) -> ci_chunk:set_parser(C, ?MODULE) end
               ,fun (C) -> ci_chunk:set_label(C, label(hd(Data))) end
               ,fun (C) -> ci_chunk:set_from(C, source(Data)) end
@@ -200,40 +197,56 @@ extract_chunk(Dev) ->
             dump_buffers();
         {'ok', Line} ->
             case binary:split(Line, <<"|">>) of
-                [_Timestamp, Logged0] ->
+                [RawTimestamp, Logged0] ->
                     [Logged, <<>>] = binary:split(Logged0, <<"\n">>),
                     Key = {'callid',callid(Line)},
                     Buffer = get_buffer(Key),
-                    acc(Logged, Buffer, Key, Dev);
+                    acc(Logged, [RawTimestamp|Buffer], Dev, Key);
                 _Ignore ->
                     extract_chunk(Dev)
             end
     end.
 
-acc(<<"start|",_/binary>>=Logged, Buffer, Key, Dev)
-  when Buffer == [] ->
+acc(<<"start|",_/binary>>=Logged, Buffer, Dev, Key) ->
     put(Key, [Logged]),
-    extract_chunk(Dev);
-acc(<<"start|",_/binary>>=Logged, Buffer, Key, _Dev)
-  when Buffer =/= [] ->
-    put(Key, [Logged]),
-    {Key, lists:reverse(Buffer)};
-acc(<<"log|external ",_/binary>>=Logged, Buffer, Key, _Dev) ->
+    case Buffer of
+        [_RawTimestamp] ->
+            %% This is a new chunk, keep buffering
+            extract_chunk(Dev);
+        _ ->
+            %% Return buffered chunk
+            {Key, Buffer}
+    end;
+acc(<<"log|external ",_/binary>>=Logged, Buffer, _Dev, Key) ->
     %% Turn into chunk to make sure consecutive "external ..." don't get ignored
     put(Key, []),
-    {Key, lists:reverse([Logged|Buffer])};
-acc(<<"log|",_/binary>>=Logged, Buffer, Key, Dev) ->
+    {Key, [Logged] ++ Buffer};
+acc(<<"log|",_/binary>>=Logged, Buffer, Dev, Key) ->
     put(Key, [Logged|Buffer]),
     extract_chunk(Dev);
-acc(<<"pass|",_/binary>>=Logged, Buffer, Key, _Dev) ->
+acc(<<"pass|",_/binary>>=Logged, Buffer, _Dev, Key) ->
     put(Key, []),
-    {Key, lists:reverse([Logged|Buffer])};
-acc(<<"end|",_/binary>>=Logged, Buffer, Key, _Dev) ->
+    {Key, [Logged|Buffer]};
+acc(<<"end|",_/binary>>=Logged, Buffer, _Dev, Key) ->
     put(Key, []),
-    {Key, lists:reverse([Logged|Buffer])};
-acc(<<"stop|",_/binary>>=Logged, Buffer, Key, _Dev) ->
+    {Key, [Logged|Buffer]};
+acc(<<"stop|",_/binary>>=Logged, Buffer, _Dev, Key) ->
     put(Key, []),
-    {Key, lists:reverse([Logged|Buffer])}.
+    {Key, [Logged|Buffer]}.
+
+cleanse_data_and_get_timestamp(Data0) ->
+    F =
+        fun (Bin, {Acc, TS}) ->
+                case ci_parsers_util:timestamp(Bin) of
+                    'undefined' ->
+                        {[Bin|Acc], TS};
+                    Ts when Ts < TS ->
+                        {Acc, Ts};
+                    _Ts ->
+                        {Acc, TS}
+                end
+        end,
+    lists:foldl(F, {[], 1.0e100}, Data0).
 
 get_buffer(Key) ->
     case get(Key) of
@@ -242,16 +255,14 @@ get_buffer(Key) ->
     end.
 
 dump_buffers() ->
-    Buffers = [{Key, lists:reverse(Buff)}
-               || {{'callid',_}=Key,Buff} <- get(),
-                  Buff =/= []],
+    Buffers = [{Key, Buff} || {{'callid',_}=Key,Buff} <- get()
+                                  , Buff =/= []],
     case Buffers of
         [] -> [];
         _ ->
-            RmFromProcDict =
-                fun ({Key, _Buffer}) ->
-                        put(Key, [])
-                end,
+            RmFromProcDict = fun ({Key, _Buffer}) ->
+                                     put(Key, [])
+                             end,
             lists:foreach(RmFromProcDict, Buffers),
             {'buffers', Buffers}
     end.
