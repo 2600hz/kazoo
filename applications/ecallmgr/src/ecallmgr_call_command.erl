@@ -791,9 +791,9 @@ get_call_pickup_app(Node, UUID, JObj, Target, Command) ->
             lager:debug("API is skipping control usurp")
     end,
 
-    ecallmgr_util:set(Node, UUID, build_set_args(SetApi, JObj)),
-    ecallmgr_util:bridge_export(Node, UUID, Exports),
-    ecallmgr_util:bridge_export(Node, Target, Exports),
+    spawn('ecallmgr_util', 'set', [Node, UUID, build_set_args(SetApi, JObj)]),
+    spawn('ecallmgr_util', 'bridge_export', [Node, UUID, Exports]),
+
     {Command, Target}.
 
 -spec exports_from_api(wh_json:object(), ne_binaries()) -> wh_proplist().
