@@ -16,7 +16,7 @@
 -behaviour(gen_server).
 
 -export([start_link/0]).
--export([connected/0]).
+-export([connected/0, connected/1]).
 -export([all_nodes_connected/0]).
 -export([add/1, add/2, add/3]).
 -export([remove/1]).
@@ -53,6 +53,7 @@
 -record(node, {node :: atom()
                ,cookie :: atom()
                ,connected = 'false' :: boolean()
+               ,started = wh_util:current_tstamp() :: gregorian_seconds()
                ,client_version :: api_binary()
                ,options = [] :: wh_proplist()
               }).
@@ -103,8 +104,11 @@ nodeup(Node) -> gen_server:cast(?MODULE, {'fs_nodeup', Node}).
 -spec remove(atom()) -> 'ok'.
 remove(Node) -> gen_server:cast(?MODULE, {'rm_fs_node', Node}).
 
--spec connected() -> atoms().
-connected() -> gen_server:call(?MODULE, 'connected_nodes').
+-spec connected() -> atoms() | wh_proplist_kv(atom(), gregorian_seconds()).
+connected() ->
+    connected('false').
+connected(Verbose) ->
+    gen_server:call(?MODULE, {'connected_nodes', Verbose}).
 
 -spec flush() -> 'ok'.
 -spec flush(ne_binary(), ne_binary()) -> 'ok'.
@@ -333,10 +337,23 @@ handle_call({'is_node_up', Node}, _From, #state{nodes=Nodes}=State) ->
                    Connected
            end,
     {'reply', Resp, State};
-handle_call('connected_nodes', _From, #state{nodes=Nodes}=State) ->
+handle_call({'connected_nodes', 'false'}, _From, #state{nodes=Nodes}=State) ->
     Resp = [Node
-             || {_, #node{node=Node, connected=Connected}} <- dict:to_list(Nodes)
-                ,Connected
+             || {_, #node{node=Node
+                          ,connected=IsConnected
+                         }
+                } <- dict:to_list(Nodes),
+                IsConnected
+           ],
+    {'reply', Resp, State};
+handle_call({'connected_nodes', 'true'}, _From, #state{nodes=Nodes}=State) ->
+    Resp = [{Node, Started}
+             || {_, #node{node=Node
+                          ,connected=Connected
+                          ,started=Started
+                         }
+                } <- dict:to_list(Nodes),
+                Connected
            ],
     {'reply', Resp, State};
 handle_call({'add_fs_node', NodeName, Cookie, Options}, From, State) ->
