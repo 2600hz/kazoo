@@ -62,6 +62,7 @@
                 ,ringback :: api_binary()
                 ,moh :: api_binary()
                 ,extension :: api_binary()
+                ,purgatory_ref :: api_reference()
                }).
 -type state() :: #state{}.
 
@@ -302,12 +303,18 @@ attended_wait(?EVENT(Target, <<"originate_resp">>, _Evt), State) ->
     ?WSD_NOTE(Target, 'right', <<"originated">>),
     {'next_state', 'attended_wait', State};
 attended_wait(?EVENT(Target, EventName, _Evt)
-              ,#state{target=Target
-                      ,call=Call
-                     }=State
+              ,#state{target=Target}=State
              )
   when EventName =:= <<"CHANNEL_DESTROY">>
        orelse EventName =:= <<"LEG_DESTROYED">> ->
+    Ref = erlang:start_timer(1000, self(), 'purgatory'),
+    {'next_state', 'attended_wait', State#state{purgatory_ref=Ref}};
+attended_wait({'timeout', Ref, 'purgatory'}
+              ,#state{purgatory_ref=Ref
+                      ,target=Target
+                      ,call=Call
+                     }=State
+             ) ->
     lager:info("target ~s didn't answer, reconnecting transferor and transferee", [Target]),
     ?WSD_NOTE(Target, 'right', <<"hungup">>),
     connect_to_transferee(Call),
@@ -316,8 +323,10 @@ attended_wait(?EVENT(Target, <<"CHANNEL_REPLACED">>, Evt)
               ,#state{target=Target
                       ,target_call=TargetCall
                       ,transferor=Transferor
+                      ,purgatory_ref=Ref
                      }=State
              ) ->
+    maybe_cancel_timer(Ref),
     ReplacementId = kz_call_event:replaced_by(Evt),
     lager:debug("target ~s being replaced by ~s", [Target, ReplacementId]),
     ?WSD_EVT(Target, ReplacementId, <<"replaced">>),
@@ -329,6 +338,7 @@ attended_wait(?EVENT(Target, <<"CHANNEL_REPLACED">>, Evt)
     connect_transferor_to_target(Transferor, TargetCall1),
     {'next_state', 'attended_wait', State#state{target=ReplacementId
                                                 ,target_call=TargetCall1
+                                                ,purgatory_ref='undefined'
                                                }};
 attended_wait(?EVENT(_CallId, _EventName, _Evt), State) ->
     case kz_call_event:other_leg_call_id(_Evt) of
@@ -383,13 +393,18 @@ partial_wait(?EVENT(Transferor, <<"LEG_DESTROYED">>, _Evt)
     lager:info("transferor ~s hungup, still waiting on target and transferee", [Transferor]),
     {'next_state', 'partial_wait', State};
 partial_wait(?EVENT(Target, EventName, _Evt)
-             ,#state{target=Target
-                     ,transferor=_Transferor
-                     ,transferee=_Transferee
-                    }=State
+             ,#state{target=Target}=State
             )
   when EventName =:= <<"CHANNEL_DESTROY">>
        orelse EventName =:= <<"LEG_DESTROYED">> ->
+    Ref = erlang:start_timer(1000, self(), 'purgatory'),
+    {'next_state', 'attended_wait', State#state{purgatory_ref=Ref}};
+partial_wait({'timeout', Ref, 'purgatory'}
+             ,#state{purgatory_ref=Ref
+                     ,target=Target
+                     ,transferee=_Transferee
+                    }=State
+            ) ->
     lager:info("target ~s hungup, sorry transferee ~s"
                ,[Target, _Transferee]
               ),
@@ -416,8 +431,10 @@ partial_wait(?EVENT(Target, <<"CHANNEL_REPLACED">>, Evt)
                      ,transferor=Transferor
                      ,transferee=Transferee
                      ,call=OriginalCall
+                     ,purgatory_ref=Ref
                     }=State
             ) ->
+    maybe_cancel_timer(Ref),
     ReplacementId = kz_call_event:replaced_by(Evt),
     lager:debug("target ~s being replaced by ~s", [Target, ReplacementId]),
     ?WSD_EVT(Target, ReplacementId, <<"replaced">>),
@@ -431,6 +448,7 @@ partial_wait(?EVENT(Target, <<"CHANNEL_REPLACED">>, Evt)
 
     {'next_state', 'partial_wait', State#state{target=ReplacementId
                                                ,target_call=TargetCall1
+                                               ,purgatory_ref='undefined'
                                               }};
 
 partial_wait(?EVENT(_CallId, _EventName, _Evt), State) ->
@@ -1139,3 +1157,7 @@ maybe_start_transferor_ringback(Call, Transferor, Ringback) ->
     Command = whapps_call_command:play_command(Ringback, Transferor),
     lager:debug("playing ringback on ~s to ~s", [Transferor, Ringback]),
     whapps_call_command:send_command(wh_json:set_values([{<<"Insert-At">>, <<"now">>}], Command), Call).
+
+-spec maybe_cancel_timer(api_reference()) -> 'ok'.
+maybe_cancel_timer('undefined') -> 'ok';
+maybe_cancel_timer(Ref) -> erlang:cancel_timer(Ref).
