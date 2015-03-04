@@ -243,6 +243,16 @@ handle_update(_JObj, _State) -> 'ok'.
 handle_update(JObj, State, Expires) ->
     To = wh_json:get_first_defined([<<"To">>, <<"Presence-ID">>], JObj),
     From = wh_json:get_first_defined([<<"From">>, <<"Presence-ID">>], JObj),
+
+    case omnip_util:are_valid_uris([To, From]) of
+        'true' -> handle_update(JObj, State, From, To, Expires);
+        'false' -> lager:warning("dialog handler ignoring update from ~s to ~s", [From, To])
+    end.
+
+-spec handle_update(wh_json:object(), ne_binary(), ne_binary(), ne_binary(), integer()) -> any().
+handle_update(JObj, State, From, To, Expires) ->
+    To = wh_json:get_first_defined([<<"To">>, <<"Presence-ID">>], JObj),
+    From = wh_json:get_first_defined([<<"From">>, <<"Presence-ID">>], JObj),
     [ToUsername, ToRealm] = binary:split(To, <<"@">>),
     [FromUsername, FromRealm] = binary:split(From, <<"@">>),
     Direction = wh_json:get_lower_binary(<<"Call-Direction">>, JObj),
