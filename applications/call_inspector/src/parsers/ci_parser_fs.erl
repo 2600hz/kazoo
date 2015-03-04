@@ -181,7 +181,8 @@ make_and_store_chunk(LogIP, Data0) ->
                 ,fun remove_whitespace_lines/1
                 ,fun remove_unrelated_lines/1 %% MUST be called before unwrap_lines/1
                 ,fun unwrap_lines/1
-                ,fun strip_truncating_pieces/1],
+                ,fun strip_truncating_pieces/1
+                ,fun remove_dashes/1],
     Data = lists:foldl(Apply, Data0, Cleansers),
     Setters = [fun (C) -> ci_chunk:set_data(C, Data) end
               ,fun (C) -> ci_chunk:set_call_id(C, callid(Data)) end
@@ -342,3 +343,11 @@ unwrap(Line) ->
     Sz = byte_size(Line) - length("   ") - length("\n"),
     <<"   ", Data:Sz/binary, _:1/binary>> = Line,
     Data.
+
+remove_dashes([]) -> [];
+remove_dashes([Line|Lines]) ->
+    case binary:split(Line, <<"#012   --">>) of
+        [Good, _Bad] -> Good;
+        Good -> Good
+    end,
+    [Good | remove_dashes(Lines)].
