@@ -175,9 +175,9 @@ mwi_event(JObj) ->
 -spec handle_update(wh_json:object()) -> 'ok'.
 handle_update(JObj) ->
     To = wh_json:get_value(<<"To">>, JObj),
-    case binary:split(To, <<"@">>) of
-        [_, _] -> handle_update(JObj, To);
-        _ -> lager:warning("mwi handler invalid to uri ~p", [To])
+    case omnip_util:is_valid_uri(To) of
+        'true' -> handle_update(JObj, To);
+        'false' -> lager:warning("mwi handler ignoring update from invalid To: ~s", [To])
     end.
 
 -spec handle_update(wh_json:object(), ne_binary()) -> 'ok'.
