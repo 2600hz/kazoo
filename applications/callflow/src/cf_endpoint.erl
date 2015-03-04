@@ -1086,8 +1086,13 @@ generate_sip_headers(Endpoint, Call) ->
                                   wh_json:object().
 generate_sip_headers(Endpoint, Acc, Call) ->
     Inception = whapps_call:inception(Call),
+    SIP = wh_json:get_value(<<"sip">>, Endpoint),
+
+    Realm = wh_json:get_value(<<"realm">>, SIP, whapps_call:account_realm(Call)),
+    Username = wh_json:get_value(<<"username">>, SIP),
+
     HeaderFuns = [fun(J) ->
-                          case wh_json:get_value([<<"sip">>, <<"custom_sip_headers">>], Endpoint) of
+                          case wh_json:get_value(<<"custom_sip_headers">>, SIP) of
                               'undefined' -> J;
                               CustomHeaders ->
                                   wh_json:merge_jobjs(CustomHeaders, J)
@@ -1103,6 +1108,9 @@ generate_sip_headers(Endpoint, Acc, Call) ->
                                'undefined' -> J;
                                Ringtone -> wh_json:set_value(<<"Alert-Info">>, Ringtone, J)
                            end
+                   end
+                  ,fun(J) ->
+                          wh_json:set_value(<<"X-KAZOO-AOR">>, <<"sip:", Username/binary, "@", Realm/binary>> , J)
                    end
                  ],
     lists:foldr(fun(F, JObj) -> F(JObj) end, Acc, HeaderFuns).
