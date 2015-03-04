@@ -171,14 +171,14 @@ extract_chunks(Dev, LogIP) ->
             extract_chunks(Dev, LogIP)
     end.
 
-make_and_store_chunk(LogIP, Data0) ->
+make_and_store_chunk(LogIP, Data00) ->
     Apply = fun (Fun, Arg) -> Fun(Arg) end,
-    Timestamp = case lists:keyfind('timestamp', 1, Data0) of
-                    {'timestamp', TS} -> TS;
-                    'false' -> 'undefined'
-                end,
-    Cleansers = [fun (D) -> lists:keydelete('timestamp', 1, D) end
-                ,fun remove_whitespace_lines/1
+    {Timestamp, Data0} =
+        case lists:keytake('timestamp', 1, Data00) of
+            {'value', {'timestamp',TS}, D0} -> {TS, D0};
+            'false' -> {'undefined', Data00}
+        end,
+    Cleansers = [fun remove_whitespace_lines/1
                 ,fun remove_unrelated_lines/1 %% MUST be called before unwrap_lines/1
                 ,fun unwrap_lines/1
                 ,fun strip_truncating_pieces/1
@@ -189,8 +189,7 @@ make_and_store_chunk(LogIP, Data0) ->
               ,fun (C) -> ci_chunk:set_timestamp(C, Timestamp) end
               ,fun (C) -> set_legs(LogIP, C, Data) end
               ,fun (C) -> ci_chunk:set_parser(C, ?MODULE) end
-              ,fun (C) -> ci_chunk:set_label(C, label(Data)) end
-              ],
+              ,fun (C) -> ci_chunk:set_label(C, label(Data)) end],
     Chunk = lists:foldl(Apply, ci_chunk:new(), Setters),
     ci_datastore:store_chunk(Chunk).
 
@@ -348,6 +347,6 @@ remove_dashes([]) -> [];
 remove_dashes([Line|Lines]) ->
     case binary:split(Line, <<"#012   --">>) of
         [Good, _Bad] -> Good;
-        Good -> Good
+        [Good] -> Good
     end,
     [Good | remove_dashes(Lines)].
