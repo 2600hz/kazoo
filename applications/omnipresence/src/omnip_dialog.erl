@@ -243,12 +243,10 @@ handle_update(_JObj, _State) -> 'ok'.
 handle_update(JObj, State, Expires) ->
     To = wh_json:get_first_defined([<<"To">>, <<"Presence-ID">>], JObj),
     From = wh_json:get_first_defined([<<"From">>, <<"Presence-ID">>], JObj),
-    case binary:split(To, <<"@">>) of
-        [_, _] -> case binary:split(From, <<"@">>) of
-                      [_ , _] -> handle_update(JObj, State, From, To, Expires);
-                      _ -> lager:warning("dialog handler invalid from uri ~p", [From])
-                  end;
-        _ -> lager:warning("dialog handler invalid to uri ~p", [To])
+
+    case omnip_util:are_valid_uris([To, From]) of
+        'true' -> handle_update(JObj, State, From, To, Expires);
+        'false' -> lager:warning("dialog handler ignoring update from ~s to ~s", [From, To])
     end.
 
 -spec handle_update(wh_json:object(), ne_binary(), ne_binary(), ne_binary(), integer()) -> any().
