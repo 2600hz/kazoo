@@ -11,7 +11,7 @@
 -export([init/0
          ,allowed_methods/0, allowed_methods/1
          ,resource_exists/0, resource_exists/1
-         ,validate/1
+         ,validate/1, validate/2
          ,post/1
         ]).
 
@@ -76,18 +76,22 @@ resource_exists(?CONSUMED) -> 'true'.
 validate(Context) ->
     validate_allotments(Context, cb_context:req_verb(Context)).
 
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
+validate(Context, ?CONSUMED) ->
+    validate_consumed(Context, cb_context:req_verb(Context)).
+
 -spec validate_allotments(cb_context:context(), http_method()) -> cb_context:context().
 validate_allotments(Context, ?HTTP_GET) ->
     load_allotments(Context);
 validate_allotments(Context, ?HTTP_POST) ->
     case is_allowed(Context) of
-        'true' -> load_allotments(Context);
-        'false' -> 
-            cb_context:set_resp_error_code(
-                cb_context:set_resp_error_msg(Context, "sub-accounts of non-master resellers must contact the reseller to change their allotments"),
-                403
-            )
+        'true' -> maybe_handle_load_failure(crossbar_doc:load(?PVT_TYPE, Context));
+        'false' -> crossbar_util:response_400("sub-accounts of non-master resellers must contact the reseller to change their allotments", wh_json:new(), Context)
     end.
+
+-spec validate_consumed(cb_context:context(), http_method()) -> cb_context:context().
+validate_consumed(Context, ?HTTP_GET) ->
+    load_consumed(Context).
 
 -spec post(cb_context:context()) -> cb_context:context().
 post(Context) ->
@@ -107,6 +111,11 @@ load_allotments(Context) ->
     Context1 = maybe_handle_load_failure(crossbar_doc:load(?PVT_TYPE, Context)),
     Allotments = wh_json:get_json_value(?PVT_ALLOTMENTS, cb_context:doc(Context1), wh_json:new()),
     cb_context:set_resp_data(Context1, Allotments).
+
+
+-spec load_consumed(cb_context:context()) -> cb_context:context().
+load_consumed(Context) ->
+    cb_context:set_doc(Context,wh_json:new()).
 
 %%--------------------------------------------------------------------
 %% @private
