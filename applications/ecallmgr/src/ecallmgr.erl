@@ -23,7 +23,7 @@
 start_link() ->
     _ = start_deps(),
     _ = declare_exchanges(),
-    put('$startup', wh_util:current_tstamp()),
+
     ecallmgr_sup:start_link().
 
 %%--------------------------------------------------------------------
@@ -34,7 +34,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec start() -> 'ok' | {'error', _}.
 start() ->
-    application:start(?MODULE).
+    whapps_controller:start_app('ecallmgr').
 
 %%--------------------------------------------------------------------
 %% @public

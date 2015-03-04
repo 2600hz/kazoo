@@ -7,7 +7,7 @@
 %%%-------------------------------------------------------------------
 -module(omnipresence).
 
--include_lib("whistle/include/wh_types.hrl").
+-include("omnipresence.hrl").
 
 -export([start_link/0
          ,start/0
@@ -24,7 +24,6 @@
 start_link() ->
     _ = start_deps(),
     _ = declare_exchanges(),
-    put('$startup', wh_util:current_tstamp()),
     omnipresence_sup:start_link().
 
 %%--------------------------------------------------------------------
@@ -44,7 +43,7 @@ start() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec stop() -> 'ok'.
-stop() -> 
+stop() ->
     exit(whereis('omnipresence_sup'), 'shutdown'),
     'ok'.
 
