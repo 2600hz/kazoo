@@ -40,11 +40,18 @@
 
 -type ts_state() :: #ts_callflow_state{}.
 
+-spec is_bridged(wh_json:object()) -> boolean().
+is_bridged(JObj) ->
+    case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Bridge-ID">>], JObj) of
+        'undefined' -> 'false';
+        _BridgeId -> 'true'
+    end.
+
 -spec init(wh_json:object()) -> ts_state() | {'error', 'not_ts_account'}.
 init(RouteReqJObj) ->
     CallID = wh_json:get_value(<<"Call-ID">>, RouteReqJObj),
     put('callid', CallID),
-    case is_trunkstore_acct(RouteReqJObj) of
+    case is_trunkstore_acct(RouteReqJObj) andalso not is_bridged(RouteReqJObj) of
         'false' ->
             lager:info("request is not for a trunkstore account"),
             {'error', 'not_ts_account'};
