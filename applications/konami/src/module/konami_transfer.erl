@@ -178,23 +178,19 @@ pre_originate(_Msg, _From, State) ->
 
 attended_wait(?EVENT(Transferor, <<"DTMF">>, Evt), #state{transferor=Transferor}=State) ->
     handle_transferor_dtmf(Evt, 'attended_wait', State);
-attended_wait(?EVENT(Transferee, EventName, _Evt)
+attended_wait(?EVENT(Transferee, <<"CHANNEL_DESTROY">>, _Evt)
               ,#state{transferee=Transferee}=State
-             )
-  when EventName =:= <<"CHANNEL_DESTROY">>
-       orelse EventName =:= <<"LEG_DESTROYED">> ->
+             ) ->
     lager:info("transferee ~s hungup before target could be reached", [Transferee]),
     lager:info("transferor and target are on their own"),
     ?WSD_NOTE(Transferee, 'right', <<"Transferee down in attended_wait">>),
     {'stop', 'normal', State};
-attended_wait(?EVENT(Transferor, EventName, _Evt)
+attended_wait(?EVENT(Transferor, <<"CHANNEL_DESTROY">>, _Evt)
               ,#state{transferor=Transferor
                       ,target=Target
                       ,transferee=Transferee
                      }=State
-             )
-  when EventName =:= <<"CHANNEL_DESTROY">>
-       orelse EventName =:= <<"LEG_DESTROYED">> ->
+             ) ->
     lager:info("transferor ~s hungup, connecting transferee ~s and target ~s"
                ,[Transferor, Transferee, Target]
               ),
@@ -303,10 +299,11 @@ attended_wait(?EVENT(Target, <<"originate_resp">>, _Evt), State) ->
     ?WSD_NOTE(Target, 'right', <<"originated">>),
     {'next_state', 'attended_wait', State};
 attended_wait(?EVENT(Target, EventName, _Evt)
-              ,#state{target=Target}=State
+              ,#state{target=Target
+                      ,purgatory_ref='undefined'
+                     }=State
              )
-  when EventName =:= <<"CHANNEL_DESTROY">>
-       orelse EventName =:= <<"LEG_DESTROYED">> ->
+  when EventName =:= <<"CHANNEL_DESTROY">> ->
     Ref = erlang:start_timer(1000, self(), 'purgatory'),
     {'next_state', 'attended_wait', State#state{purgatory_ref=Ref}};
 attended_wait({'timeout', Ref, 'purgatory'}
@@ -370,33 +367,24 @@ partial_wait(?EVENT(Transferee, <<"CHANNEL_BRIDGE">>, Evt)
             lager:debug("transferee has bridged to unknown ~s", [_OID]),
             {'stop', 'normal', State}
     end;
-partial_wait(?EVENT(Transferee, EventName, _Evt)
+partial_wait(?EVENT(Transferee, <<"CHANNEL_DESTROY">>, _Evt)
              ,#state{transferee=Transferee
                      ,target_call=TargetCall
                     }=State
-            )
-  when EventName =:= <<"CHANNEL_DESTROY">>
-       orelse EventName =:= <<"LEG_DESTROYED">> ->
+            ) ->
     lager:info("transferee ~s hungup while target was being rung", [Transferee]),
     hangup_target(TargetCall),
     {'stop', 'normal', State};
-partial_wait(?EVENT(Transferor, EventName, _Evt)
-             ,#state{transferor=Transferor}=State
-            )
-  when EventName =:= <<"CHANNEL_DESTROY">>
-       orelse EventName =:= <<"LEG_DESTROYED">> ->
-    lager:info("transferor ~s hungup, still waiting on target and transferee", [Transferor]),
-    {'next_state', 'partial_wait', State};
-partial_wait(?EVENT(Transferor, <<"LEG_DESTROYED">>, _Evt)
+partial_wait(?EVENT(Transferor, <<"CHANNEL_DESTROY">>, _Evt)
              ,#state{transferor=Transferor}=State
             ) ->
     lager:info("transferor ~s hungup, still waiting on target and transferee", [Transferor]),
     {'next_state', 'partial_wait', State};
-partial_wait(?EVENT(Target, EventName, _Evt)
-             ,#state{target=Target}=State
-            )
-  when EventName =:= <<"CHANNEL_DESTROY">>
-       orelse EventName =:= <<"LEG_DESTROYED">> ->
+partial_wait(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
+             ,#state{target=Target
+                     ,purgatory_ref='undefined'
+                    }=State
+            ) ->
     Ref = erlang:start_timer(1000, self(), 'purgatory'),
     {'next_state', 'attended_wait', State#state{purgatory_ref=Ref}};
 partial_wait({'timeout', Ref, 'purgatory'}
@@ -515,12 +503,9 @@ attended_answer(?EVENT(Target, <<"CHANNEL_BRIDGE">>, Evt)
             ?WSD_EVT(Target, _CallId, <<"target bridged to unknown">>),
             {'next_state', 'attended_answer', State}
     end;
-attended_answer(?EVENT(Transferee, EventName, _Evt)
+attended_answer(?EVENT(Transferee, <<"CHANNEL_DESTROY">>, _Evt)
                 ,#state{transferee=Transferee}=State
-               )
-  when EventName =:= <<"CHANNEL_DESTROY">>;
-       EventName =:= <<"LEG_DESTROYED">>
-       ->
+               ) ->
     lager:info("transferee ~s hungup while transferor and target were talking", [Transferee]),
     lager:info("transferor and target are on their own"),
     ?WSD_NOTE(Transferee, 'right', <<"channel done">>),
