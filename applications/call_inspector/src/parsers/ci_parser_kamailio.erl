@@ -31,6 +31,7 @@
                ,iodevice :: file:io_device()
                ,kamailioIP :: ne_binary()
                ,timer :: reference()
+               ,counter :: pos_integer()
                }
        ).
 -type state() :: #state{}.
@@ -109,7 +110,8 @@ handle_cast({'open_logfile', LogFile, KamailioIP}, State) ->
     IoDevice = ci_parsers_util:open_file(LogFile),
     NewState = State#state{logfile = LogFile
                           ,iodevice = IoDevice
-                          ,kamailioIP = KamailioIP},
+                          ,kamailioIP = KamailioIP
+                          ,counter = 1},
     {'noreply', NewState};
 handle_cast('start_parsing', State) ->
     self() ! 'start_parsing',
@@ -130,15 +132,17 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info('start_parsing', State=#state{iodevice = IoDevice
                                          ,kamailioIP = KamailioIP
-                                         ,timer = OldTimer}) ->
+                                         ,timer = OldTimer
+                                         ,counter = Counter}) ->
     case OldTimer of
         'undefined' -> 'ok';
         _ -> erlang:cancel_timer(OldTimer)
     end,
-    'ok' = extract_chunks(IoDevice, KamailioIP),
+    NewCounter = extract_chunks(IoDevice, KamailioIP, Counter),
     NewTimer = erlang:send_after(ci_parsers_util:parse_interval()
                                 , self(), 'start_parsing'),
-    {'noreply', State#state{timer = NewTimer}};
+    {'noreply', State#state{timer = NewTimer
+                           ,counter = NewCounter}};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
@@ -174,23 +178,28 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
-extract_chunks(Dev, KamailioIP) ->
+extract_chunks(Dev, KamailioIP, Counter) ->
     case extract_chunk(Dev) of
-        [] -> 'ok';
+        [] -> Counter;
         {{'callid',Callid}, Data0} ->
-            make_and_store_chunk(KamailioIP, Callid, Data0),
-            extract_chunks(Dev, KamailioIP);
+            NewCounter = make_and_store_chunk(KamailioIP, Callid, Counter, Data0),
+            extract_chunks(Dev, KamailioIP, NewCounter);
         {'buffers', Buffers} ->
             StoreEach =
-                fun ({{'callid',Callid}, Data0}) ->
-                        make_and_store_chunk(KamailioIP, Callid, Data0)
+                fun ({{'callid',Callid}, Data0}, ACounter) ->
+                        make_and_store_chunk(KamailioIP, Callid, ACounter, Data0)
                 end,
-            lists:foreach(StoreEach, Buffers)
+            lists:foldl(StoreEach, Counter, Buffers)
     end.
 
-make_and_store_chunk(KamailioIP, Callid, Data0) ->
+make_and_store_chunk(KamailioIP, Callid, Counter, Data0) ->
     Apply = fun (Fun, Arg) -> Fun(Arg) end,
-    {Data, Timestamp} = cleanse_data_and_get_timestamp(Data0),
+    {Data, Ts} = cleanse_data_and_get_timestamp(Data0),
+    %% Counter is a fallback time ID (for old logfile format)
+    {NewCounter, Timestamp} = case Ts of
+                                  'undefined' -> {Counter+1, Counter};
+                                  _Ts -> {Counter, Ts}
+                              end,
     Setters = [fun (C) -> ci_chunk:set_data(C, Data) end
               ,fun (C) -> ci_chunk:set_call_id(C, Callid) end
               ,fun (C) -> ci_chunk:set_timestamp(C, Timestamp) end
@@ -200,7 +209,8 @@ make_and_store_chunk(KamailioIP, Callid, Data0) ->
               ,fun (C) -> ci_chunk:set_to(C, KamailioIP) end
               ],
     Chunk = lists:foldl(Apply, ci_chunk:new(), Setters),
-    ci_datastore:store_chunk(Chunk).
+    ci_datastore:store_chunk(Chunk),
+    NewCounter.
 
 extract_chunk(Dev) ->
     case file:read_line(Dev) of
