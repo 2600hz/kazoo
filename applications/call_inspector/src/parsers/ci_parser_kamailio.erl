@@ -208,11 +208,10 @@ extract_chunk(Dev) ->
             dump_buffers();
         {'ok', Line} ->
             case binary:split(Line, <<"|">>) of
-                [RawTimestamp, Logged0] ->
-                    [Logged, <<>>] = binary:split(Logged0, <<"\n">>),
+                [RawTimestamp, Logged] ->
                     Key = {'callid',callid(Line)},
                     Buffer = get_buffer(Key),
-                    acc(Logged, [RawTimestamp|Buffer], Dev, Key);
+                    acc(rm_newline(Logged), [{RawTimestamp}|Buffer], Dev, Key);
                 _Ignore ->
                     extract_chunk(Dev)
             end
@@ -247,17 +246,17 @@ acc(<<"stop|",_/binary>>=Logged, Buffer, _Dev, Key) ->
 
 cleanse_data_and_get_timestamp(Data0) ->
     F =
-        fun (Bin, {Acc, TS}) ->
-                case ci_parsers_util:timestamp(Bin) of
-                    'undefined' ->
-                        {[unwrap(Bin)|Acc], TS};
+        fun ({RawTimestamp}, {Acc, TS}) ->
+                case ci_parsers_util:timestamp(RawTimestamp) of
                     Ts when Ts < TS ->
                         {Acc, Ts};
                     _Ts ->
                         {Acc, TS}
-                end
+                end;
+            (Bin, {Acc, TS}) ->
+                {[unwrap(Bin)|Acc], TS}
         end,
-    lists:foldl(F, {[], 1.0e100}, Data0).
+    lists:foldl(F, {[], 'undefined'}, Data0).
 
 get_buffer(Key) ->
     case get(Key) of
@@ -279,8 +278,14 @@ dump_buffers() ->
     end.
 
 unwrap(Bin0) ->
-    [_Tag, Bin] = binary:split(Bin0, <<"|">>),
-    Bin.
+    case binary:split(Bin0, <<"|">>) of
+        [_Tag, Bin] -> Bin;
+        [RawTimestamp] -> RawTimestamp
+    end.
+
+rm_newline(Line0) ->
+    [Line, <<>>] = binary:split(Line0, <<"\n">>),
+    Line.
 
 
 callid(Line) ->
