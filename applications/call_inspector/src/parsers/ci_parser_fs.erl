@@ -31,6 +31,7 @@
                ,iodevice :: file:io_device()
                ,logip :: ne_binary()
                ,timer :: reference()
+               ,counter :: pos_integer()
                }
        ).
 -type state() :: #state{}.
@@ -109,7 +110,8 @@ handle_cast({'open_logfile', LogFile, LogIP}, State) ->
     IoDevice = ci_parsers_util:open_file(LogFile),
     NewState = State#state{logfile = LogFile
                           ,iodevice = IoDevice
-                          ,logip = LogIP},
+                          ,logip = LogIP
+                          ,counter = 1},
     {'noreply', NewState};
 handle_cast('start_parsing', State) ->
     self() ! 'start_parsing',
@@ -130,15 +132,17 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info('start_parsing', State=#state{iodevice = IoDevice
                                          ,logip = LogIP
-                                         ,timer = OldTimer}) ->
+                                         ,timer = OldTimer
+                                         ,counter = Counter}) ->
     case OldTimer of
         'undefined' -> 'ok';
         _ -> erlang:cancel_timer(OldTimer)
     end,
-    'ok' = extract_chunks(IoDevice, LogIP),
+    NewCounter = extract_chunks(IoDevice, LogIP, Counter),
     NewTimer = erlang:send_after(ci_parsers_util:parse_interval()
                                 , self(), 'start_parsing'),
-    {'noreply', State#state{timer = NewTimer}};
+    {'noreply', State#state{timer = NewTimer
+                           ,counter = NewCounter}};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
@@ -174,20 +178,20 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
-extract_chunks(Dev, LogIP) ->
+extract_chunks(Dev, LogIP, Counter) ->
     case extract_chunk(Dev, []) of
-        [] -> 'ok';
+        [] -> Counter;
         Data0 ->
-            make_and_store_chunk(LogIP, Data0),
-            extract_chunks(Dev, LogIP)
+            NewCounter = make_and_store_chunk(LogIP, Counter, Data0),
+            extract_chunks(Dev, LogIP, NewCounter)
     end.
 
-make_and_store_chunk(LogIP, Data00) ->
+make_and_store_chunk(LogIP, Counter, Data00) ->
     Apply = fun (Fun, Arg) -> Fun(Arg) end,
-    {Timestamp, Data0} =
+    {Timestamp, Data0, NewCounter} =
         case lists:keytake('timestamp', 1, Data00) of
-            {'value', {'timestamp',TS}, D0} -> {TS, D0};
-            'false' -> {'undefined', Data00}
+            {'value', {'timestamp',TS}, D0} -> {TS, D0, Counter};
+            'false' ->                         {Counter, Data00, Counter+1}
         end,
     Cleansers = [fun remove_whitespace_lines/1
                 ,fun remove_unrelated_lines/1 %% MUST be called before unwrap_lines/1
@@ -202,7 +206,8 @@ make_and_store_chunk(LogIP, Data00) ->
               ,fun (C) -> ci_chunk:set_parser(C, ?MODULE) end
               ,fun (C) -> ci_chunk:set_label(C, label(Data)) end],
     Chunk = lists:foldl(Apply, ci_chunk:new(), Setters),
-    ci_datastore:store_chunk(Chunk).
+    ci_datastore:store_chunk(Chunk),
+    NewCounter.
 
 extract_chunk(Dev, Buffer) ->
     case file:read_line(Dev) of
