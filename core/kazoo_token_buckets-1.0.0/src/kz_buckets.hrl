@@ -6,9 +6,8 @@
 -define(APP_NAME, <<"token_buckets">>).
 -define(DEFAULT_APP, <<"default">>).
 
--define(INACTIVITY_TIMEOUT_MS
+-define(INACTIVITY_TIMEOUT_S
         ,whapps_config:get_integer(?APP_NAME, <<"inactivity_timeout_s">>, ?SECONDS_IN_MINUTE * 10)
-        * ?MILLISECONDS_IN_SECOND
        ).
 -define(INACTIVITY_MSG, 'inactivity_timeout').
 

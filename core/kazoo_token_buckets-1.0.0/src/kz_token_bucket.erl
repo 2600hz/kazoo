@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2014, 2600Hz
+%%% @copyright (C) 2013-2015, 2600Hz
 %%% @doc
 %%% Implementation of a token bucket as gen_server
 %%%   https://en.wikipedia.org/wiki/Token_bucket#The_token_bucket_algorithm
@@ -149,7 +149,7 @@ init([Max, FillRate, FillAsBlock, FillTime]) ->
                   ,fill_as_block=FillAsBlock
                   ,tokens=Max
                  }
-     ,?INACTIVITY_TIMEOUT_MS
+     ,?INACTIVITY_TIMEOUT_S * 1000
     }.
 
 %%--------------------------------------------------------------------
@@ -170,25 +170,25 @@ handle_call({'consume', Req}, _From, #state{tokens=Current}=State) ->
     case Current - Req of
         N when N >= 0 ->
             lager:debug("consumed ~p, ~p left", [Req, N]),
-            {'reply', 'true', State#state{tokens=N}, ?INACTIVITY_TIMEOUT_MS};
+            {'reply', 'true', State#state{tokens=N}, ?INACTIVITY_TIMEOUT_S * 1000};
         _ ->
             lager:debug("not enough tokens (~p) to consume ~p", [Current, Req]),
-            {'reply', 'false', State, ?INACTIVITY_TIMEOUT_MS}
+            {'reply', 'false', State, ?INACTIVITY_TIMEOUT_S * 1000}
     end;
 handle_call({'consume_until', Req}, _From, #state{tokens=Current}=State) ->
     case Current - Req of
         N when N >= 0 ->
             lager:debug("consumed ~p, ~p left", [Req, N]),
-            {'reply', 'true', State#state{tokens=N}, ?INACTIVITY_TIMEOUT_MS};
+            {'reply', 'true', State#state{tokens=N}, ?INACTIVITY_TIMEOUT_S * 1000};
         _N ->
             lager:debug("not enough tokens (~p) to consume ~p, zeroing out tokens", [Current, Req]),
-            {'reply', 'false', State#state{tokens=0}, ?INACTIVITY_TIMEOUT_MS}
+            {'reply', 'false', State#state{tokens=0}, ?INACTIVITY_TIMEOUT_S * 1000}
     end;
 handle_call({'tokens'}, _From, #state{tokens=Current}=State) ->
-    {'reply', Current, State, ?INACTIVITY_TIMEOUT_MS};
+    {'reply', Current, State, ?INACTIVITY_TIMEOUT_S * 1000};
 handle_call(_Request, _From, State) ->
     lager:debug("unhandled call: ~p", [_Request]),
-    {'reply', 'ok', State, ?INACTIVITY_TIMEOUT_MS}.
+    {'reply', 'ok', State, ?INACTIVITY_TIMEOUT_S * 1000}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -206,21 +206,21 @@ handle_cast({'credit', Req}, #state{tokens=Current
     case Current + Req of
         N when N > Max ->
             lager:debug("credit of ~p tokens overfills, setting to ~p", [Req, Max]),
-            {'noreply', State#state{tokens=Max}, ?INACTIVITY_TIMEOUT_MS};
+            {'noreply', State#state{tokens=Max}, ?INACTIVITY_TIMEOUT_S * 1000};
         N ->
             lager:debug("crediting ~p tokens, now at ~p", [Req, N]),
-            {'noreply', State#state{tokens=N}, ?INACTIVITY_TIMEOUT_MS}
+            {'noreply', State#state{tokens=N}, ?INACTIVITY_TIMEOUT_S * 1000}
     end;
 handle_cast({'name', Name}, State) ->
     wh_util:put_callid(Name),
     lager:debug("updated name to ~p", [Name]),
-    {'noreply', State, ?INACTIVITY_TIMEOUT_MS};
+    {'noreply', State, ?INACTIVITY_TIMEOUT_S * 1000};
 handle_cast('stop', State) ->
     lager:debug("asked to stop"),
     {'stop', 'normal', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
-    {'noreply', State, ?INACTIVITY_TIMEOUT_MS}.
+    {'noreply', State, ?INACTIVITY_TIMEOUT_S * 1000}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -246,11 +246,11 @@ handle_info({'timeout', Ref, ?TOKEN_FILL_TIME}, #state{max_tokens=Max
      ,State#state{tokens=add_tokens(Max, Current, FillRate, FillAsBlock, FillTime)
                   ,fill_ref=start_fill_timer(FillRate, FillAsBlock, FillTime)
                  }
-     ,?INACTIVITY_TIMEOUT_MS
+     ,?INACTIVITY_TIMEOUT_S * 1000
     };
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
-    {'noreply', State, ?INACTIVITY_TIMEOUT_MS}.
+    {'noreply', State, ?INACTIVITY_TIMEOUT_S * 1000}.
 
 %%--------------------------------------------------------------------
 %% @private
