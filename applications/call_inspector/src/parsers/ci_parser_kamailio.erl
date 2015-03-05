@@ -106,13 +106,20 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'open_logfile', LogFile, KamailioIP}, State) ->
-    IoDevice = ci_parsers_util:open_file(LogFile),
-    NewState = State#state{logfile = LogFile
-                          ,iodevice = IoDevice
-                          ,kamailioIP = KamailioIP
-                          ,counter = 1},
-    {'noreply', NewState};
+handle_cast({'open_logfile', LogFile, KamailioIP}, #state{iodevice = Dev}=State) ->
+    case Dev of
+        'undefined' ->
+            NewDev = ci_parsers_util:open_file(LogFile),
+            NewState = State#state{logfile = LogFile
+                                  ,iodevice = NewDev
+                                  ,kamailioIP = KamailioIP
+                                  ,counter = 1},
+            {'noreply', NewState};
+        _Dev ->
+            lager:debug("~s cannot parse '~s' as it is already parsing '~s'"
+                       ,[?MODULE, LogFile, State#state.logfile]),
+            {'noreply', State}
+    end;
 handle_cast('start_parsing', State) ->
     self() ! 'start_parsing',
     {'noreply', State};

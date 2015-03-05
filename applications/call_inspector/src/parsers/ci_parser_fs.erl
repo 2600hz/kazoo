@@ -106,13 +106,20 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'open_logfile', LogFile, LogIP}, State) ->
-    IoDevice = ci_parsers_util:open_file(LogFile),
-    NewState = State#state{logfile = LogFile
-                          ,iodevice = IoDevice
-                          ,logip = LogIP
-                          ,counter = 1},
-    {'noreply', NewState};
+handle_cast({'open_logfile', LogFile, LogIP}, #state{iodevice = Dev}=State) ->
+    case Dev of
+        'undefined' ->
+            NewDev = ci_parsers_util:open_file(LogFile),
+            NewState = State#state{logfile = LogFile
+                                  ,iodevice = NewDev
+                                  ,logip = LogIP
+                                  ,counter = 1},
+            {'noreply', NewState};
+        _Dev ->
+            lager:debug("~s cannot parse '~s' as it is already parsing '~s'"
+                       ,[?MODULE, LogFile, State#state.logfile]),
+            {'noreply', State}
+    end;
 handle_cast('start_parsing', State) ->
     self() ! 'start_parsing',
     {'noreply', State};
@@ -179,7 +186,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 
 extract_chunks(Dev, LogIP, Counter) ->
-    case extract_chunk(Dev, []) of
+    case extract_chunk(Dev, buffer()) of
         [] -> Counter;
         Data0 ->
             NewCounter = make_and_store_chunk(LogIP, Counter, Data0),
@@ -211,7 +218,7 @@ make_and_store_chunk(LogIP, Counter, Data00) ->
 
 extract_chunk(Dev, Buffer) ->
     case file:read_line(Dev) of
-        'eof' -> [];
+        'eof' -> buffer(Buffer);
         {'ok', Line} ->
             case binary:split(Line, <<":  ">>) of
                 %% Keep log's timestamp from chunks' beginnings
@@ -248,6 +255,17 @@ acc(Line, Buffer, Dev)
 acc(_Line, Buffer, Dev) ->
     %% Skip over the rest
     extract_chunk(Dev, Buffer).
+
+buffer() ->
+    case get('buffer') of
+        'undefined' -> [];
+        Buffer -> Buffer
+    end,
+    [].
+
+buffer(Buffer) ->
+    _OldBuffer = put('buffer', Buffer),
+    [].
 
 
 set_legs(LogIP, Chunk, [FirstLine|_Lines]) ->
