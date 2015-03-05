@@ -1050,19 +1050,22 @@ usurp_other_publishers(#state{node=Node
                              [ecallmgr_util:send_cmd_ret(),...].
 store_recording(Props, CallId, Node) ->
     MediaName = props:get_value(?GET_CCV(<<"Media-Name">>), Props),
-    Destination = props:get_value(?GET_CCV(<<"Media-Transfer-Destination">>), Props),
-    %% TODO: if you change this logic be sure it matches wh_media_util as well!
-    Url = wh_util:strip_right_binary(Destination, $/),
-    JObj = wh_json:from_list(
-             [{<<"Call-ID">>, CallId}
-              ,{<<"Msg-ID">>, CallId}
-              ,{<<"Media-Name">>, MediaName}
-              ,{<<"Media-Transfer-Destination">>, <<Url/binary, "/", MediaName/binary>>}
-              ,{<<"Insert-At">>, props:get_value(?GET_CCV(<<"Insert-At">>), Props, <<"now">>)}
-              ,{<<"Media-Transfer-Method">>, props:get_value(?GET_CCV(<<"Media-Transfer-Method">>), Props, <<"put">>)}
-              ,{<<"Application-Name">>, <<"store">>}
-              ,{<<"Event-Category">>, <<"call">>}
-              ,{<<"Event-Name">>, <<"command">>}
-              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-             ]),
-    ecallmgr_call_command:exec_cmd(Node, CallId, JObj, 'undefined').
+    case props:get_value(?GET_CCV(<<"Media-Transfer-Destination">>), Props) of
+        'undefined' -> 'ok';
+        Destination ->
+            %% TODO: if you change this logic be sure it matches wh_media_util as well!
+            Url = wh_util:strip_right_binary(Destination, $/),
+            JObj = wh_json:from_list(
+                     [{<<"Call-ID">>, CallId}
+                     ,{<<"Msg-ID">>, CallId}
+                     ,{<<"Media-Name">>, MediaName}
+                     ,{<<"Media-Transfer-Destination">>, <<Url/binary, "/", MediaName/binary>>}
+                     ,{<<"Insert-At">>, props:get_value(?GET_CCV(<<"Insert-At">>), Props, <<"now">>)}
+                     ,{<<"Media-Transfer-Method">>, props:get_value(?GET_CCV(<<"Media-Transfer-Method">>), Props, <<"put">>)}
+                     ,{<<"Application-Name">>, <<"store">>}
+                     ,{<<"Event-Category">>, <<"call">>}
+                     ,{<<"Event-Name">>, <<"command">>}
+                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                     ]),
+            ecallmgr_call_command:exec_cmd(Node, CallId, JObj, 'undefined')
+    end.
