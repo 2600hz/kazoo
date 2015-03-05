@@ -73,6 +73,7 @@
 -export([current_tstamp/0, current_unix_tstamp/0
          ,gregorian_seconds_to_unix_seconds/1, unix_seconds_to_gregorian_seconds/1
          ,pretty_print_datetime/1
+         ,pretty_print_elapsed_s/1
          ,decr_timeout/2
         ]).
 -export([microseconds_to_seconds/1
@@ -1023,6 +1024,25 @@ pretty_print_datetime({{Y,Mo,D},{H,Mi,S}}) ->
                                    ,[Y, Mo, D, H, Mi, S]
                                   )).
 
+-spec pretty_print_elapsed_s(non_neg_integer()) -> ne_binary().
+pretty_print_elapsed_s(0) -> <<"0s">>;
+pretty_print_elapsed_s(Seconds) ->
+    iolist_to_binary(unitfy_seconds(Seconds)).
+
+-spec unitfy_seconds(non_neg_integer()) -> iolist().
+unitfy_seconds(0) -> "";
+unitfy_seconds(Seconds) when Seconds < ?SECONDS_IN_MINUTE ->
+    [to_binary(Seconds), "s"];
+unitfy_seconds(Seconds) when Seconds < ?SECONDS_IN_HOUR ->
+    M = Seconds div ?SECONDS_IN_MINUTE,
+    [to_binary(M), "m", unitfy_seconds(Seconds - (M * ?SECONDS_IN_MINUTE))];
+unitfy_seconds(Seconds) when Seconds < ?SECONDS_IN_DAY ->
+    H = Seconds div ?SECONDS_IN_HOUR,
+    [to_binary(H), "h", unitfy_seconds(Seconds - (H * ?SECONDS_IN_HOUR))];
+unitfy_seconds(Seconds) ->
+    D = Seconds div ?SECONDS_IN_DAY,
+    [to_binary(D), "d", unitfy_seconds(Seconds - (D * ?SECONDS_IN_DAY))].
+
 -spec decr_timeout(wh_timeout(), non_neg_integer() | wh_now()) -> wh_timeout().
 decr_timeout('infinity', _) -> 'infinity';
 decr_timeout(Timeout, Elapsed) when is_integer(Elapsed) ->
@@ -1068,13 +1088,13 @@ elapsed_us({_,_,_}=Start, Now) -> elapsed_us(now_s(Start), Now);
 elapsed_us(Start, {_,_,_}=Now) -> elapsed_us(Start, now_s(Now));
 elapsed_us(Start, Now) when is_integer(Start), is_integer(Now) -> (Now - Start) * 1000000.
 
--spec now_s(wh_now()) -> integer().
--spec now_ms(wh_now()) -> integer().
--spec now_us(wh_now()) -> gregorian_seconds().
+-spec now_s(wh_now()) -> gregorian_seconds().
+-spec now_ms(wh_now()) -> pos_integer().
+-spec now_us(wh_now()) -> pos_integer().
 now_us({MegaSecs,Secs,MicroSecs}) ->
-    unix_seconds_to_gregorian_seconds((MegaSecs*1000000 + Secs)*1000000 + MicroSecs).
+    (MegaSecs*1000000 + Secs)*1000000 + MicroSecs.
 now_ms({_,_,_}=Now) -> now_us(Now) div 1000.
-now_s({_,_,_}=Now) -> now_us(Now) div 1000000.
+now_s({_,_,_}=Now) -> unix_seconds_to_gregorian_seconds(now_us(Now) div 1000000).
 
 -spec format_date() -> binary().
 -spec format_date(gregorian_seconds()) -> binary().
@@ -1153,12 +1173,33 @@ prop_to_from_hex() ->
             begin
                 F =:= from_hex_binary(to_hex_binary(F))
             end).
+prop_pretty_print_elapsed_s() ->
+    ?FORALL({D, H, M, S}
+            ,{non_neg_integer(), range(0,23), range(0, 59), range(0,59)}
+            ,begin
+                 Seconds = (D * ?SECONDS_IN_DAY) + (H * ?SECONDS_IN_HOUR) + (M * ?SECONDS_IN_MINUTE) + S,
+                 Expected = lists:foldl(fun({0, "s"}, "") ->
+                                                ["s", <<"0">>];
+                                           ({0, _}, Acc) -> Acc;
+                                           ({N, Unit}, Acc) -> [Unit, to_binary(N) | Acc]
+                                        end
+                                        ,[]
+                                        ,[{D, "d"}
+                                          ,{H, "h"}
+                                          ,{M, "m"}
+                                          ,{S, "s"}
+                                         ]),
+                 Result = pretty_print_elapsed_s(Seconds),
+                 Result =:= iolist_to_binary(lists:reverse(Expected))
+             end).
 
 proper_test_() ->
     {"Runs the module's PropEr tests during eunit testing",
      {'timeout', 15000,
       [
-       ?_assertEqual([], proper:module(?MODULE, [{'max_shrinks', 0}]))
+       ?_assertEqual([], proper:module(?MODULE, [{'max_shrinks', 0}
+                                                 ,{'to_file', 'user'}
+                                                ]))
       ]}}.
 
 pad_binary_test() ->
