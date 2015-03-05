@@ -747,15 +747,22 @@ handle_sync_event(_Event, _From, StateName, State) ->
     lager:info("unhandled sync_event in ~s: ~p", [StateName, _Event]),
     {'next_state', StateName, State}.
 
-handle_info({'amqp_msg', JObj}, StateName, #state{event_node=EventNode}=State) ->
-    case wh_json:get_value(<<"Node">>, JObj) of
-        EventNode -> send_event(JObj);
-        _Node when EventNode =:= 'undefined' -> send_event(JObj);
-        _Node -> lager:debug("supressing event ~s from ~s (we want events from ~s)"
-                             ,[kz_call_event:event_name(JObj)
-                               ,_Node
-                               ,EventNode
-                              ])
+handle_info({'amqp_msg', JObj}, StateName, #state{event_node=EventNode
+                                                  ,target=Target
+                                                 }=State) ->
+    case {kz_call_event:call_id(JObj)
+          ,wh_api:node(JObj)
+         }
+    of
+        {Target, 'undefined'} -> send_event(JObj);
+        {Target, EventNode} -> send_event(JObj);
+        {Target, _OtherNode} ->
+            lager:debug("supressing event ~s from ~s (we want events from ~s)"
+                        ,[kz_call_event:event_name(JObj)
+                          ,_OtherNode
+                          ,EventNode
+                         ]);
+        {_CallId, _Node} -> send_event(JObj)
     end,
     {'next_state', StateName, State};
 handle_info(_Info, StateName, State) ->
