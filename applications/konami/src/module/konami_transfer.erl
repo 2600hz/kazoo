@@ -302,24 +302,14 @@ attended_wait(?EVENT(Target, <<"originate_resp">>, _Evt), State) ->
     lager:info("originate has responded for target ~s", [Target]),
     ?WSD_NOTE(Target, 'right', <<"originated">>),
     {'next_state', 'attended_wait', State};
-attended_wait(?EVENT(Target, EventName, _Evt)
+attended_wait(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
               ,#state{target=Target
                       ,purgatory_ref='undefined'
                      }=State
-             )
-  when EventName =:= <<"CHANNEL_DESTROY">> ->
-    Ref = erlang:start_timer(1000, self(), 'purgatory'),
-    {'next_state', 'attended_wait', State#state{purgatory_ref=Ref}};
-attended_wait({'timeout', Ref, 'purgatory'}
-              ,#state{purgatory_ref=Ref
-                      ,target=Target
-                      ,call=Call
-                     }=State
              ) ->
-    lager:info("target ~s didn't answer, reconnecting transferor and transferee", [Target]),
-    ?WSD_NOTE(Target, 'right', <<"hungup">>),
-    connect_to_transferee(Call),
-    {'next_state', 'finished', State};
+    Ref = erlang:start_timer(1000, self(), 'purgatory'),
+    lager:debug("target ~s has gone done, going to purgatory in ~p", [Target, Ref]),
+    {'next_state', 'attended_wait', State#state{purgatory_ref=Ref}};
 attended_wait(?EVENT(Target, <<"CHANNEL_REPLACED">>, Evt)
               ,#state{target=Target
                       ,target_call=TargetCall
@@ -391,16 +381,6 @@ partial_wait(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
             ) ->
     Ref = erlang:start_timer(1000, self(), 'purgatory'),
     {'next_state', 'partial_wait', State#state{purgatory_ref=Ref}};
-partial_wait({'timeout', Ref, 'purgatory'}
-             ,#state{purgatory_ref=Ref
-                     ,target=Target
-                     ,transferee=_Transferee
-                    }=State
-            ) ->
-    lager:info("target ~s hungup, sorry transferee ~s"
-               ,[Target, _Transferee]
-              ),
-    {'stop', 'normal', State};
 partial_wait(?EVENT(Target, <<"CHANNEL_ANSWER">>, _Evt)
              ,#state{target=Target}=State
             ) ->
@@ -765,6 +745,30 @@ handle_info({'amqp_msg', JObj}, StateName, #state{event_node=EventNode
         {_CallId, _Node} -> send_event(JObj)
     end,
     {'next_state', StateName, State};
+handle_info({'timeout', Ref, 'purgatory'}
+            ,'attended_wait'
+            ,#state{purgatory_ref=Ref
+                    ,target=Target
+                    ,call=Call
+                   }=State
+           ) ->
+    lager:info("target ~s didn't answer, reconnecting transferor and transferee", [Target]),
+    ?WSD_NOTE(Target, 'right', <<"hungup">>),
+    connect_to_transferee(Call),
+    {'next_state', 'finished', State};
+handle_info({'timeout', Ref, 'purgatory'}
+            ,'partial_wait'
+            ,#state{purgatory_ref=Ref
+                    ,target=Target
+                    ,transferee=_Transferee
+                    ,call=Call
+                   }=State
+           ) ->
+    lager:info("target ~s hungup, sorry transferee ~s"
+               ,[Target, _Transferee]
+              ),
+    whapps_call_command:hangup(Call),
+    {'stop', 'normal', State};
 handle_info(_Info, StateName, State) ->
     lager:info("unhandled msg in ~s: ~p", [StateName, _Info]),
     {'next_state', StateName, State}.
