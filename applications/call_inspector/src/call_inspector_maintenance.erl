@@ -38,12 +38,8 @@ flush(CallId) ->
 -spec callid_details(text()) -> 'no_return'.
 callid_details(CallId) ->
     Props = ci_datastore:lookup_callid(CallId),
-    'ok' = case props:get_value('chunks', Props) of
-               [] ->
-                   io:format("not found\n");
-               Chunks ->
-                   print_chunks(ci_chunk:sort_by_timestamp(Chunks))
-           end,
+    Chunks = props:get_value('chunks', Props),
+    'ok' = print_chunks(ci_chunk:sort_by_timestamp(Chunks)),
     'no_return'.
 
 -spec print_chunks(ci_chunk:chunks()) -> 'ok'.

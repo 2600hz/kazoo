@@ -30,6 +30,7 @@
 -record(state, {logfile :: file:name()
                ,iodevice :: file:io_device()
                ,kamailioIP :: ne_binary()
+               ,timer :: reference()
                }
        ).
 -type state() :: #state{}.
@@ -105,14 +106,13 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({'open_logfile', LogFile, KamailioIP}, State) ->
-    {'ok', IoDevice} = file:open(LogFile, ['read','raw','binary','read_ahead']),%read+append??
+    IoDevice = ci_parsers_util:open_file(LogFile),
     NewState = State#state{logfile = LogFile
                           ,iodevice = IoDevice
                           ,kamailioIP = KamailioIP},
     {'noreply', NewState};
-handle_cast('start_parsing', State=#state{iodevice = IoDevice
-                                         ,kamailioIP = KamailioIP}) ->
-    'ok' = extract_chunks(IoDevice, KamailioIP),
+handle_cast('start_parsing', State) ->
+    self() ! 'start_parsing',
     {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled handle_cast ~p", [_Msg]),
@@ -128,6 +128,17 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info('start_parsing', State=#state{iodevice = IoDevice
+                                         ,kamailioIP = KamailioIP
+                                         ,timer = OldTimer}) ->
+    case OldTimer of
+        'undefined' -> 'ok';
+        _ -> erlang:cancel_timer(OldTimer)
+    end,
+    'ok' = extract_chunks(IoDevice, KamailioIP),
+    NewTimer = erlang:send_after(ci_parsers_util:parse_interval()
+                                , self(), 'start_parsing'),
+    {'noreply', State#state{timer = NewTimer}};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.

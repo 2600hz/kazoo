@@ -8,9 +8,11 @@
 %%%-------------------------------------------------------------------
 -module(ci_parsers_util).
 
-%% ci_parsers_util: 
+%% ci_parsers_util: utilities for parsers.
 
 -export([timestamp/1]).
+-export([open_file/1]).
+-export([parse_interval/0]).
 
 -include_lib("whistle/include/wh_types.hrl").
 
@@ -25,6 +27,24 @@ timestamp(<<YYYY:4/binary, "-", MM:2/binary, "-", DD:2/binary, "T"
           { {wh_util:to_integer(YYYY), wh_util:to_integer(MM), wh_util:to_integer(DD)}
           , {wh_util:to_integer(HH), wh_util:to_integer(MMM), wh_util:to_integer(SS)} });
 timestamp(_) -> 'undefined'.
+
+
+-spec open_file(iodata()) -> file:io_device().
+open_file(Filename) ->
+    Options = ['read','append'     %% Read whole file then from its end
+              ,'binary'            %% Return binaries instead of lists
+              ,'raw','read_ahead'  %% Faster access to file
+              ],
+    case file:open(Filename, Options) of
+        {'ok', IoDevice} -> IoDevice;
+        {'error', _FileOpenError} ->
+            lager:debug("parser cannot open '~p': ~p", [Filename,_FileOpenError])
+    end.
+
+
+-spec parse_interval() -> pos_integer().
+parse_interval() ->
+    2*1000.  %% Milliseconds
 
 %% Internals
 
