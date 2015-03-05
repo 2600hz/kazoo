@@ -130,25 +130,27 @@ allotment_consumed_so_far(Allotment, Limits) ->
     Cycle = wh_json:get_ne_value(<<"cycle">>, Allotment, <<"monthly">>),
     CycleStart = cycle_start(Cycle),
     CycleSpan = cycle_span(Cycle),
-    case allotment_consumed_so_far(CycleStart, Classification, Limits, 0) of
+    CycleEnd = CycleStart + CycleSpan,
+    case allotment_consumed_so_far(CycleStart, CycleEnd, Classification, Limits, 0) of
         {'error', _}=Error -> Error;
         Consumed ->
             Consumed + j5_channels:allotment_consumed(CycleStart, CycleSpan, Classification, Limits)
     end.
 
--spec allotment_consumed_so_far(non_neg_integer(), ne_binary(), j5_limits:limits(), 0..3) ->
+-spec allotment_consumed_so_far(non_neg_integer(), non_neg_integer(), ne_binary(), j5_limits:limits(), 0..3) ->
                                        integer() |
                                        {'error', _}.
-allotment_consumed_so_far(_, _, _, Attempts) when Attempts > 2 -> 0;
-allotment_consumed_so_far(CycleStart, Classification, Limits, Attempts) ->
+allotment_consumed_so_far(_, _, _, _, Attempts) when Attempts > 2 -> 0;
+allotment_consumed_so_far(CycleStart, CycleEnd, Classification, Limits, Attempts) ->
     AccountId = j5_limits:account_id(Limits),
     LedgerDb = wh_util:format_account_mod_id(AccountId),
     ViewOptions = [{'startkey', [Classification, CycleStart]}
+                   ,{'endkey', [Classification, CycleEnd]}
                    ,{'reduce', 'false'}
                   ],
     case couch_mgr:get_results(LedgerDb, <<"allotments/consumed">>, ViewOptions) of
         {'error', 'not_found'} ->
-            add_transactions_view(LedgerDb, CycleStart, Classification, Limits, Attempts);
+            add_transactions_view(LedgerDb, CycleStart, CycleEnd, Classification, Limits, Attempts);
         {'error', _R}=Error ->
             lager:debug("unable to get consumed quanity for ~s allotment from ~s: ~p"
                         ,[Classification, LedgerDb, _R]),
@@ -172,12 +174,12 @@ sum_allotment_consumed_so_far([JObj|JObjs], CycleStart, Seconds) ->
             sum_allotment_consumed_so_far(JObjs, CycleStart, Seconds + (Timestamp - CycleStart))
     end.
 
--spec add_transactions_view(ne_binary(), non_neg_integer(), ne_binary(), j5_limits:limits(), 0..3) ->
+-spec add_transactions_view(ne_binary(), non_neg_integer(), non_neg_integer(), ne_binary(), j5_limits:limits(), 0..3) ->
                                    integer() |
                                    {'error', _}.
-add_transactions_view(LedgerDb, CycleStart, Classification, Limits, Attempts) ->
+add_transactions_view(LedgerDb, CycleStart, CycleEnd, Classification, Limits, Attempts) ->
     _ = couch_mgr:revise_views_from_folder(LedgerDb, 'jonny5'),
-    allotment_consumed_so_far(CycleStart, Classification, Limits, Attempts + 1).
+    allotment_consumed_so_far(CycleStart, CycleEnd, Classification, Limits, Attempts + 1).
 
 %%--------------------------------------------------------------------
 %% @private
