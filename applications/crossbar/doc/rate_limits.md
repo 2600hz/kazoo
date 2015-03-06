@@ -1,12 +1,11 @@
 /*
 Section: Crossbar
-Title: Access lists
+Title: SBC Rate Limits
 Language: en-US
+Version: 3.20
 */
 
-The rate-limits API allows setting per-second and per-minute incoming SIP packets rate limits for devices and 
-whole accounts (realms) that can be used at SBC level. The system level packet rate limits can also be set to 
-protect the whole cluster. 
+The rate-limits API allows setting per-second and per-minute incoming SIP packets rate limits for devices and whole accounts (realms) that can be used at SBC level. The system level packet rate limits can also be set to protect the whole cluster.
 
 ## Crossbar
 
@@ -16,20 +15,20 @@ Using Crossbar to modify rate_limits is very simple. There are only three action
 * POST - Updates the rate limits on the document (account or device)
 * DELETE - Removes the rate limits object from the document (account or device)
 
-JSON object has self-describing structure. The name of the root key is "rate_limits". 
+JSON object has self-describing structure. The name of the root key is "rate_limits".
 
-The application-level system-wide configuration resides in system_config/frontier document and its syntax is equal to 
-the account-level documents. 
- 
-  
+The application-level system-wide configuration resides in system_config/frontier document and its syntax is equal to
+the account-level documents.
+
+
  * Account-level document contains two sections:
-   The "account" section sets rate limits for the entire account 
+   The "account" section sets rate limits for the entire account
    The "device" section sets rate limits for devices inside the account (if not overwritten by device-level rate limits)
-   Both sections contain "registrations", "invites" and "total_packets" keys with integer values of possible number of packets within
-    "per_minute" and "per_second" sections
- 
- Example
- 
+   Both sections contain "registrations", "invites" and "total\_packets" keys with integer values of possible number of packets within
+    "per\_minute" and "per\_second" sections
+
+#### Example
+
 ````
 {
     "data": {
@@ -62,12 +61,11 @@ the account-level documents.
 ````
 
  * device-level document contains is one level "higher" and contains only the "device" part
-    which contains "registrations", "invites" and "total_packets" keys with integer values of possible number of packets within
-    "per_minute" and "per_second" sections
- 
+    which contains "registrations", "invites" and "total\_packets" keys with integer values of possible number of packets within
+    "per\_minute" and "per\_second" sections
 
- Example
- 
+#### Example
+
 ````
 {
     "data": {
@@ -120,5 +118,3 @@ Here, `{THINGS}` would be "accounts" or "devices" and `{THING_ID}` would be a de
 #### _DELETE_ - Remove device rate limits:
 
     curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/rate_limits
-
-  

@@ -1,24 +1,25 @@
 /*
 Section: Crossbar
-Title: Access lists
+Title: SBC Access lists
 Language: en-US
+Version: 3.20
 */
 
-SBC-level per-account and per-device access lists allow setting individual IP-based access filtering rules which 
-significantly increases security for users working on-premise. 
+SBC-level per-account and per-device access lists allow setting individual IP-based access filtering rules which
+significantly increases security for users working on-premise.
 
 Rules can be applied at account level or at individual device level
 
 ## API
 
-"access_lists" API works both at `accounts` and `devices` documents level.
+"access\_lists" API works both at `accounts` and `devices` documents level.
 
 Sections:
 
 * access_lists - root element
     * order - order of rules: can be "allow,deny" or "deny,allow", just like in Apache configuration file
     * cidrs - array containing IPv4 subnet addresses in CIDR notation that should be allowed or denied (cidr array looks much like one in ecallmgr configuration document)
-    * user_agent - regex for user_agent field specified in SIP packet. Useful for protecting hardware phone accounts from various brute-force attacks
+    * user\_agent - regex for user_agent field specified in SIP packet. Useful for protecting hardware phone accounts from various brute-force attacks
 
 ### Account access lists URI
 
