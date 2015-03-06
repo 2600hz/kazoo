@@ -159,8 +159,9 @@ validate_get_rate_limits(Context, ThingId) ->
         [] -> crossbar_doc:handle_json_success(wh_json:new(), Context);
         [RateLimitsId] -> crossbar_doc:load(RateLimitsId, Context);
         RateLimitsIds ->
-            AccountDb = cb_context:account_db(Context),
-            lager:error("Found more than one result, please check ids(from db ~s): ~p ", [AccountDb, RateLimitsIds]),
+            lager:error("Found more than one result, please check ids(from db ~s): ~p"
+                        ,[cb_context:account_db(Context), RateLimitsIds]
+                       ),
             crossbar_util:response('fatal', <<"data collection error">>, 503, Context)
     end.
 
@@ -173,8 +174,9 @@ validate_delete_rate_limits(Context, ThingId) ->
         [] -> crossbar_doc:handle_json_success(wh_json:new(), Context);
         [RateLimitsId] -> crossbar_doc:load(RateLimitsId, Context);
         RateLimitsIds ->
-            AccountDb = cb_context:account_db(Context),
-            lager:error("Found more than one result, please check ids(from db ~s): ~p ", [AccountDb, RateLimitsIds]),
+            lager:error("Found more than one result, please check ids(from db ~s): ~p"
+                        ,[cb_context:account_db(Context), RateLimitsIds]
+                       ),
             crossbar_util:response('fatal', <<"data collection error">>, 503, Context)
     end.
 
@@ -195,27 +197,31 @@ validate_set_rate_limits(Context, ThingId) ->
         [] -> Context;
         [RateLimitsId] -> crossbar_doc:load_merge(RateLimitsId, Context);
         RateLimitsIds ->
-            AccountDb = cb_context:account_db(Context),
-            lager:error("Found more than one result, please check ids(from db ~s): ~p ", [AccountDb, RateLimitsIds]),
+            lager:error("Found more than one result, please check ids(from db ~s): ~p"
+                        ,[cb_context:account_db(Context), RateLimitsIds]
+                       ),
             crossbar_util:response('fatal', <<"data collection error">>, 503, Context)
     end.
 
 -spec set_pvt_fields(cb_context:context()) -> cb_context:context().
 set_pvt_fields(Context) ->
-    AccountDb = cb_context:account_db(Context),
     ThingId = thing_id(Context),
-    {'ok', JObj} = couch_mgr:open_cache_doc(AccountDb, ThingId),
+    {'ok', JObj} = couch_mgr:open_cache_doc(cb_context:account_db(Context), ThingId),
     ThingType = wh_json:get_value(<<"pvt_type">>, JObj),
-    QueryName = case ThingType of
-                    <<"account">> -> wh_json:get_value(<<"realm">>, JObj);
-                    <<"device">> -> wh_json:get_value([<<"sip">>, <<"username">>], JObj)
-                end,
+
     Props = [{<<"pvt_type">>, <<"rate_limits">>}
              ,{<<"pvt_owner_id">>, ThingId}
              ,{<<"pvt_owner_type">>, ThingType}
-             ,{<<"pvt_queryname">>, QueryName}
+             ,{<<"pvt_queryname">>, query_name(ThingType, JObj)}
             ],
     cb_context:set_doc(Context, wh_json:set_values(Props, cb_context:doc(Context))).
+
+-spec query_name(ne_binary(), wh_json:object()) -> api_binary().
+query_name(<<"account">>, JObj) ->
+    wh_json:get_value(<<"realm">>, JObj);
+query_name(<<"device">>, JObj) ->
+    wh_json:get_value([<<"sip">>, <<"username">>], JObj).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -234,5 +240,4 @@ post(Context) ->
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context()) -> cb_context:context().
 delete(Context) ->
-    lager:info("Loaded doc: ~p", [cb_context:doc(Context)]),
     crossbar_doc:delete(Context).
