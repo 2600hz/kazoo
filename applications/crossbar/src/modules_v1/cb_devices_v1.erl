@@ -415,7 +415,11 @@ check_emergency_caller_id(DeviceId, Context) ->
 
 check_device_schema(DeviceId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(DeviceId, C) end,
-    cb_context:validate_request_data(<<"devices">>, Context, OnSuccess).
+    cb_context:validate_request_data(<<"devices">>
+                                     ,Context
+                                     ,OnSuccess
+                                     ,fun cb_modules_util:maybe_clear_outbound_flags/1
+                                    ).
 
 on_successful_validation('undefined', Context) ->
     Props = [{<<"pvt_type">>, <<"device">>}],

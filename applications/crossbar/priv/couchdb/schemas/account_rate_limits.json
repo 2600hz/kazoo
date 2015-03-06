@@ -1,0 +1,17 @@
+{
+  "_id": "account_rate_limits",
+  "$schema": "http://json-schema.org/draft-03/schema#",
+  "type": "object",
+  "required": true,
+  "name": "Rate limits",
+  "description": "describe limits for SIP requests",
+  "additionalProperties": true,
+  "properties": {
+    "account": {
+      "$ref":"device_rate_limits"
+    },
+    "device": {
+      "$ref":"device_rate_limits"
+    }
+  }
+}

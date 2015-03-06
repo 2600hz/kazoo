@@ -23,6 +23,7 @@
                          ,'milliwatt'
                          ,'pivot'
                          ,'camper'
+                         ,'frontier'
                          ,'doodle'
                         ]).
 
