@@ -42,10 +42,7 @@
 
 -spec is_bridged(wh_json:object()) -> boolean().
 is_bridged(JObj) ->
-    case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Bridge-ID">>], JObj) of
-        'undefined' -> 'false';
-        _BridgeId -> 'true'
-    end.
+    wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Bridge-ID">>], JObj) =/= 'undefined'.
 
 -spec init(wh_json:object()) -> ts_state() | {'error', 'not_ts_account'}.
 init(RouteReqJObj) ->
