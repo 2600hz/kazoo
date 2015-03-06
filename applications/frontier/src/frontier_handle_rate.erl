@@ -114,11 +114,10 @@ build_list_of_querynames(Entity, IncludeRealm) ->
                 end,
     case IncludeRealm andalso Realm =/= Entity of
         'true' -> [Realm, Username];
-        'false' -> [QueryName]
+    'false' -> [QueryName]
     end.
 
-
--spec run_rate_limits_query(ne_binary(), ne_binary(), boolean(), ne_binary()) -> wh_json:objects().
+-spec run_rate_limits_query(ne_binary(), ne_binary(), boolean(), ne_binaries()) -> wh_json:objects().
 run_rate_limits_query(Entity, AccountDB, IncludeRealm, MethodList) ->
     EntityList = build_list_of_querynames(Entity, IncludeRealm),
     Rates = fetch_rates(EntityList, IncludeRealm, MethodList, AccountDB),
@@ -126,26 +125,17 @@ run_rate_limits_query(Entity, AccountDB, IncludeRealm, MethodList) ->
     FromSysCOnfig = case Realm =/= EntityList andalso IncludeRealm of
                         'true' ->
                             fetch_rates_from_sys_config(Realm, <<"realm">>, MethodList)
-                            ++ fetch_rates_from_sys_config(Entity, <<"device">>, MethodList);
+                                ++ fetch_rates_from_sys_config(Entity, <<"device">>, MethodList);
                         'false' ->
                             Type = frontier_utils:get_entity_type(Entity),
                             fetch_rates_from_sys_config(Entity, Type, MethodList)
                     end,
     Rates ++ FromSysCOnfig.
 
--spec to_first_upper(ne_binary()) -> ne_binary().
-to_first_upper(<<L, Ls/binary>>) ->
-    list_to_binary([string:to_upper(L), Ls]).
-
--spec key_join(ne_binary(), ne_binary()) -> ne_binary().
-key_join(X, Acc) ->
-    list_to_binary([Acc, "-", X]).
-
 -spec to_json_key(ne_binary()) -> ne_binary().
 to_json_key(Token) ->
     Tokens = binary:split(Token, <<"_">>),
-    [H | Tail] = lists:map(fun to_first_upper/1, Tokens),
-    lists:foldl(fun key_join/2, H, Tail).
+    wh_util:join_binary([wh_util:ucfirst_binary(T) || T <- Tokens], <<"-">>).
 
 -spec fold_responses(wh_json:object(), wh_json:object()) -> wh_json:object().
 fold_responses(Record, Acc) ->
@@ -181,11 +171,16 @@ make_deny_rates(Entity, IncludeRealm, MethodList) ->
     end.
 
 %% Kamailio expects -1 for unkown entities
--spec deny_rates_for_entity(ne_binary(), ne_binaries()) -> list().
+-spec deny_rates_for_entity(ne_binary(), ne_binaries()) -> wh_json:objects().
 deny_rates_for_entity(Entity, MethodList) ->
-    lists:flatmap(fun (M) -> construct_records(M, Entity, -1, -1) end, MethodList).
+    lists:flatmap(fun(Method) ->
+                          construct_records(Method, Entity, -1, -1)
+                  end
+                  ,MethodList
+                 ).
 
--spec construct_records(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> wh_json:objects().
+-spec construct_records(ne_binary(), ne_binary(), ne_binary() | integer(), ne_binary() | integer()) ->
+                               wh_json:objects().
 construct_records(Method, Entity, RPM, RPS) ->
     {Name, Type} = case binary:split(Entity, <<"@">>) of
                        [User, _] -> {User, <<"device">>};
@@ -200,34 +195,37 @@ construct_records(Method, Entity, RPM, RPS) ->
     Record = wh_json:from_list([{<<"id">>, 'undefined'}
                                 ,{<<"key">>, [Name, Method]}
                                ]),
-    lists:map(fun (Obj) -> wh_json:set_value(<<"value">>, Obj, Record) end, [RPMObject, RPSObject]).
+    lists:map(fun(JObj) ->
+                      wh_json:set_value(<<"value">>, JObj, Record)
+              end
+              ,[RPMObject, RPSObject]
+             ).
 
+-spec section_type(ne_binary()) -> ne_binary().
+section_type(<<"realm">>) -> <<"account">>;
+section_type(<<"device">>) -> <<"device">>.
 
--spec fetch_rates_from_sys_config(ne_binaries(), ne_binary(), ne_binaries()) -> 'ok'.
+-spec fetch_rates_from_sys_config(ne_binary() | ne_binaries(), ne_binary(), ne_binaries()) ->
+                                         wh_json:objects().
 fetch_rates_from_sys_config(_, _, []) ->
     lager:info("sysconfig: Empty request - empty response"),
     [];
-fetch_rates_from_sys_config(Entity, Type, MethodList) ->
-    Section = case Type of
-                  <<"device">> -> <<"device">>;
-                  <<"realm">> -> <<"account">>
-              end,
+fetch_rates_from_sys_config(<<_/binary>> = Entity, Type, MethodList) ->
+    Section = section_type(Type),
     AllRates = whapps_config:get(?APP_NAME, <<"rate_limits">>),
     TargetRates = wh_json:get_value(Section, AllRates, wh_json:new()),
-    lists:foldl( fun (Method, Acc) ->
-                      RPM = wh_json:get_value([?MINUTE, Method], TargetRates),
-                      RPS = wh_json:get_value([?SECOND, Method], TargetRates),
-                      case RPM =:= 'undefined' orelse RPS =:= 'undefined' of
-                          'true' -> Acc;
-                          'false' -> construct_records(Method, Entity, RPM, RPS) ++ Acc
-                      end
-                 end, [], MethodList).
 
--spec fetch_rates(ne_binary(), boolean(), ne_binaries(), ne_binary()) -> wh_json:objects().
+    lists:foldl(fun(Method, Acc) ->
+                        RPM = wh_json:get_value([?MINUTE, Method], TargetRates),
+                        RPS = wh_json:get_value([?SECOND, Method], TargetRates),
+                        case RPM =:= 'undefined' orelse RPS =:= 'undefined' of
+                            'true' -> Acc;
+                            'false' -> construct_records(Method, Entity, RPM, RPS) ++ Acc
+                         end
+                end, [], MethodList).
+
+-spec fetch_rates(ne_binaries(), boolean(), ne_binaries(), ne_binary()) -> wh_json:objects().
 fetch_rates(_, _, [], _) ->
-    lager:info("document: Empty request - empty response"),
-    [];
-fetch_rates([], _, _, _) ->
     lager:info("document: Empty request - empty response"),
     [];
 fetch_rates(EntityList, IncludeRealm, MethodList, AccountDB) ->
@@ -308,23 +306,24 @@ build(Method, Acc, JObj, Realm) ->
 
 -type status() :: 'ok' | 'need_account'.
 -type rates_ret() :: {status(), wh_json:objects()}.
+
 -spec handle_db_response(wh_json:objects(), boolean()) -> rates_ret().
+-spec handle_db_response(wh_json:objects(), wh_json:objects(), boolean()) -> rates_ret().
+-spec handle_db_response(wh_json:objects(), wh_json:objects(), wh_json:objects(), boolean()) -> rates_ret().
 handle_db_response(JObjs, IncludeRealm) ->
     {DefaultRates, OtherRates} = lists:partition(fun is_device_defaults/1, JObjs),
     {AccountRates, DeviceRates} = lists:partition(fun frontier_utils:is_realm/1, OtherRates),
-    DeviceResult = case DeviceRates of
-                       [] ->
-                           lager:info("Found default rates for the device"),
-                           DefaultRates;
-                       _ ->
-                           lager:info("Found rates in the device doc"),
-                           DeviceRates
-                   end,
-    Status = case IncludeRealm andalso AccountRates =:= [] of
-                 'true' -> 'need_account';
-                 'false' -> 'ok'
-             end,
-    case Status of
-        'ok' -> {Status, AccountRates ++ DeviceResult};
-        'need_account' -> {Status, DeviceResult}
-    end.
+
+    handle_db_response(AccountRates, DeviceRates, DefaultRates, IncludeRealm).
+
+handle_db_response(AccountRates, [], DefaultRates, IncludeRealm) ->
+    lager:debug("using default rates for the device"),
+    handle_db_response(AccountRates, DefaultRates, IncludeRealm);
+handle_db_response(AccountRates, DeviceRates, _DefaultRates, IncludeRealm) ->
+    lager:debug("found rates in the device doc"),
+    handle_db_response(AccountRates, DeviceRates, IncludeRealm).
+
+handle_db_response([], DeviceRates, 'true') ->
+    {'need_account', DeviceRates};
+handle_db_response(AccountRates, DeviceRates, _IncludeRealm) ->
+    {'ok', AccountRates ++ DeviceRates}.
