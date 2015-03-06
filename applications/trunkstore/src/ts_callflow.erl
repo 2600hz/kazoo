@@ -5,6 +5,8 @@
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
+%%%
+%%% Fix KAZOO-3382 sponsored by Conversant, Ltd. Implemented by SIPLABS, LLC.
 %%%-------------------------------------------------------------------
 -module(ts_callflow).
 
