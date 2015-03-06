@@ -8,9 +8,6 @@
 %%%-------------------------------------------------------------------
 -module(wapi_frontier).
 
--include("frontier.hrl").
--include_lib("whistle/include/wh_amqp.hrl").
-
 -export([bind_q/2, unbind_q/2]).
 -export([declare_exchanges/0]).
 -export([ratelimits_req_v/1
@@ -21,6 +18,9 @@
 -export([publish_ratelimits_resp/2
          ,publish_acls_resp/2
         ]).
+
+-include("frontier.hrl").
+-include_lib("whistle/include/wh_amqp.hrl").
 
 -define(FRONTIER_EXCHANGE, <<"frontier">>).
 -define(EXCHANGE_TYPE, <<"direct">>).
@@ -33,19 +33,18 @@
 -define(RESP_HEADERS, []).
 -define(OPTIONAL_RESP_HEADERS, [<<"Realm">>, <<"Device">>]).
 
-
 -define(RATELIMITS_REQ_VALUES, [{<<"Event-Category">>, <<"rate_limit">>}
                                 ,{<<"Event-Name">>, <<"query">>}
                                ]).
 -define(RATELIMITS_RESP_VALUES, [{<<"Event-Category">>, <<"rate_limit">>}
-                                ,{<<"Event-Name">>, <<"query_resp">>}
-                               ]).
+                                 ,{<<"Event-Name">>, <<"query_resp">>}
+                                ]).
 -define(RATELIMITS_RESP_TYPES, [{<<"Realm">>, fun wh_json:is_json_object/1}
                                 ,{<<"Device">>, fun wh_json:is_json_object/1}
                                ]).
 
 -define(ACL_REQ_VALUES, [{<<"Event-Category">>, <<"acl">>}
-                          ,{<<"Event-Name">>, <<"query">>}
+                         ,{<<"Event-Name">>, <<"query">>}
                         ]).
 -define(ACL_RESP_VALUES, [{<<"Event-Category">>, <<"acl">>}
                           ,{<<"Event-Name">>, <<"query_resp">>}
