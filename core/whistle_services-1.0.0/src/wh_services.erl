@@ -414,7 +414,7 @@ commit_transactions(#wh_services{billing_id=BillingId}, Activations) ->
 -spec select_bookkeeper(ne_binary()) -> bookkeeper().
 select_bookkeeper(BillingId) ->
     ResellerId = get_reseller_id(BillingId),
-    MasterAccountId = whapps_util:get_master_account_id(),
+    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
     case ResellerId =:= MasterAccountId of
         'true' -> 'wh_bookkeeper_local';
         'false' ->
