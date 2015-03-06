@@ -167,7 +167,7 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{iodevice = IoDevice}) ->
     'ok' = file:close(IoDevice),
-    lager:debug("call inspector freeswitch parser terminated: ~p", [_Reason]),
+    lager:debug("call inspector kamailio parser terminated: ~p", [_Reason]),
     'ok'.
 
 %%--------------------------------------------------------------------
@@ -247,7 +247,7 @@ acc(<<"start|",_/binary>>=Logged, Buffer, Dev, Key) ->
 acc(<<"log|external ",_/binary>>=Logged, Buffer, _Dev, Key) ->
     %% Turn into chunk to make sure consecutive "external ..." don't get ignored
     put(Key, []),
-    {Key, [Logged] ++ Buffer};
+    {Key, [Logged|Buffer]};
 acc(<<"log|",_/binary>>=Logged, Buffer, Dev, Key) ->
     put(Key, [Logged|Buffer]),
     extract_chunk(Dev);
