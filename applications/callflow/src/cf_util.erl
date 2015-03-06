@@ -762,10 +762,7 @@ maybe_start_metaflow(Call, Endpoint) ->
             Id = wh_json:get_first_defined([<<"_id">>, <<"Endpoint-ID">>], Endpoint),
             API = props:filter_undefined(
                     [{<<"Endpoint-ID">>, Id}
-                     ,{<<"Call">>, whapps_call:to_json(
-                                     set_callee(Call, Endpoint)
-                                    )
-                      }
+                     ,{<<"Call">>, whapps_call:to_json(Call)}
                      ,{<<"Numbers">>, wh_json:get_value(<<"numbers">>, JObj)}
                      ,{<<"Patterns">>, wh_json:get_value(<<"patterns">>, JObj)}
                      ,{<<"Binding-Digit">>, wh_json:get_value(<<"binding_digit">>, JObj)}
@@ -780,15 +777,6 @@ maybe_start_metaflow(Call, Endpoint) ->
                        ),
             whapps_util:amqp_pool_send(API, fun wapi_dialplan:publish_metaflow/1)
     end.
-
--spec set_callee(whapps_call:call(), wh_json:object()) -> whapps_call:call().
-set_callee(Call, Endpoint) ->
-    {Name, Number} = cf_attributes:callee_id(Endpoint, Call),
-    whapps_call:exec([{fun whapps_call:set_callee_id_name/2, Name}
-                      ,{fun whapps_call:set_callee_id_number/2, Number}
-                     ]
-                     ,Call
-                    ).
 
 -spec caller_belongs_to_group(ne_binary(), whapps_call:call()) -> boolean().
 caller_belongs_to_group(GroupId, Call) ->
