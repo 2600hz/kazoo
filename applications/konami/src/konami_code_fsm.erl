@@ -44,10 +44,12 @@
 
                 ,a_digit_timeout_ref :: api_reference()
                 ,a_collected_dtmf = <<>> :: binary()
+                ,a_leg_armed = 'false' :: boolean()
 
                 ,b_digit_timeout_ref :: api_reference()
                 ,b_collected_dtmf = <<>> :: binary()
                 ,b_endpoint_id :: api_binary()
+                ,b_leg_armed = 'false' :: boolean()
 
                 ,call_id :: ne_binary()
                 ,other_leg :: api_binary()
@@ -180,19 +182,25 @@ unarmed(_Event, _From, State) ->
     lager:debug("unhandled unarmed/3: ~p", [_Event]),
     {'reply', {'error', 'not_implemented'}, 'unarmed', State}.
 
-armed({'dtmf', CallId, DTMF}, #state{call_id=CallId}=State) ->
+armed({'dtmf', CallId, DTMF}, #state{call_id=CallId
+                                     ,a_leg_armed='true'
+                                    }=State) ->
     {'next_state', 'armed', add_aleg_dtmf(State, DTMF)};
-armed({'dtmf', CallId, DTMF}, #state{other_leg=CallId}=State) ->
+armed({'dtmf', CallId, DTMF}, #state{other_leg=CallId
+                                     ,b_leg_armed='true'
+                                    }=State) ->
     {'next_state', 'armed', add_bleg_dtmf(State, DTMF)};
 armed({'timeout', Ref, 'digit_timeout'}, #state{a_digit_timeout_ref = Ref
                                                 ,call_id=_CallId
                                                }=State) ->
+    lager:debug("disarming 'a' leg"),
     _ = maybe_handle_aleg_code(State),
     ?WSD_NOTE(_CallId, 'right', <<"disarming">>),
     {'next_state', 'unarmed', disarm_state(State), 'hibernate'};
 armed({'timeout', Ref, 'digit_timeout'}, #state{b_digit_timeout_ref = Ref
                                                 ,other_leg=_OtherLeg
                                                }=State) ->
+    lager:debug("disarming 'b' leg"),
     _ = maybe_handle_bleg_code(State),
     ?WSD_NOTE(_OtherLeg, 'right', <<"disarming">>),
     {'next_state', 'unarmed', disarm_state(State), 'hibernate'};
@@ -404,8 +412,10 @@ disarm_state(#state{a_digit_timeout_ref=ARef
 
     State#state{a_digit_timeout_ref='undefined'
                 ,a_collected_dtmf = <<>>
+                ,a_leg_armed = 'false'
                 ,b_digit_timeout_ref='undefined'
                 ,b_collected_dtmf = <<>>
+                ,b_leg_armed = 'false'
                }.
 
 -spec maybe_cancel_timer(term()) -> 'ok'.
@@ -460,12 +470,14 @@ handle_pattern_metaflow(Call, P, DTMFLeg) ->
 arm_aleg(#state{digit_timeout=Timeout}=State) ->
     State#state{a_digit_timeout_ref = gen_fsm:start_timer(Timeout, 'digit_timeout')
                 ,a_collected_dtmf = <<>>
+                ,a_leg_armed='true'
                }.
 
 -spec arm_bleg(state()) -> state().
 arm_bleg(#state{digit_timeout=Timeout}=State) ->
     State#state{b_digit_timeout_ref = gen_fsm:start_timer(Timeout, 'digit_timeout')
                 ,b_collected_dtmf = <<>>
+                ,b_leg_armed='true'
                }.
 
 -spec add_aleg_dtmf(state(), ne_binary()) -> state().
@@ -474,7 +486,7 @@ add_aleg_dtmf(#state{a_collected_dtmf=Collected
                      ,digit_timeout=Timeout
                     }=State, DTMF) ->
     lager:debug("a recv dtmf '~s' while armed, adding to '~s'", [DTMF, Collected]),
-    gen_fsm:cancel_timer(OldRef),
+    maybe_cancel_timer(OldRef),
     State#state{a_digit_timeout_ref = gen_fsm:start_timer(Timeout, 'digit_timeout')
                 ,a_collected_dtmf = <<Collected/binary, DTMF/binary>>
                }.
@@ -485,7 +497,7 @@ add_bleg_dtmf(#state{b_collected_dtmf=Collected
                      ,digit_timeout=Timeout
                     }=State, DTMF) ->
     lager:debug("b recv dtmf '~s' while armed, adding to '~s'", [DTMF, Collected]),
-    gen_fsm:cancel_timer(OldRef),
+    maybe_cancel_timer(OldRef),
     State#state{b_digit_timeout_ref = gen_fsm:start_timer(Timeout, 'digit_timeout')
                 ,b_collected_dtmf = <<Collected/binary, DTMF/binary>>
                }.
