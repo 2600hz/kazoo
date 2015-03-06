@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014, 2600Hz INC
+%%% @copyright (C) 2014-2015, 2600Hz INC
 %%% @doc
 %%% API interface for buckets
 %%% ETS writer for table
@@ -55,7 +55,7 @@
 -record(bucket, {key :: {ne_binary(), ne_binary()} | '_'
                  ,srv :: pid() | '$1' | '_'
                  ,ref :: reference() | '$2' | '_'
-                 ,accessed = os:timestamp() :: wh_now() | '_'
+                 ,accessed = wh_util:now_s(os:timestamp()) :: gregorian_seconds() | '$1' | '_'
                 }).
 -type bucket() :: #bucket{}.
 
@@ -207,20 +207,38 @@ start_bucket(App, Name, MaxTokens, FillRate, FillTime) ->
             gen_server:call(?MODULE, {'start', App, Name, MaxTokens, FillRate, FillTime})
     end.
 
+-define(TOKEN_FORMAT_STRING, " ~20s | ~50.50s | ~15.15s | ~6.6s | ~20.20s |~n").
 -spec tokens() -> 'ok'.
 tokens() ->
-    io:format("~60.60s | ~20.20s | ~10.10s | ~20.20s |~n", [<<"Key">>, <<"Pid">>, <<"Tokens">>, <<"Last Accessed">>]),
-    tokens_traverse(ets:first(table_id())).
-tokens_traverse('$end_of_table') ->
-    io:format("~s~n", [<<"No more token servers">>]);
-tokens_traverse(Key) ->
-    [#bucket{key=K, srv=P, accessed=Accessed}] = ets:lookup(table_id(), Key),
-    io:format("~60.60s | ~20.20s | ~10.10s | ~20.20s |~n"
-              ,[K, pid_to_list(P), integer_to_list(kz_token_bucket:tokens(P))
-                ,integer_to_list(wh_util:elapsed_s(Accessed))
+    io:format(?TOKEN_FORMAT_STRING
+              ,[<<"Application">>, <<"Key">>, <<"Pid">>, <<"Tokens">>, <<"Last Accessed">>]
+             ),
+
+    lists:foldl(fun print_bucket_info/2
+                ,'undefined'
+                ,lists:keysort(#bucket.key, ets:tab2list(table_id()))
+               ),
+    'ok'.
+
+print_bucket_info(#bucket{key={CurrentApp, Name}
+                          ,srv=P
+                          ,accessed=Accessed
+                         }
+                  ,CurrentApp) ->
+    io:format(?TOKEN_FORMAT_STRING
+              ,[""
+                ,Name
+                ,pid_to_list(P)
+                ,integer_to_list(kz_token_bucket:tokens(P))
+                ,wh_util:pretty_print_elapsed_s(wh_util:elapsed_s(Accessed))
                ]
              ),
-    tokens_traverse(ets:next(table_id(), Key)).
+    CurrentApp;
+print_bucket_info(#bucket{key={App, _}}=Bucket, _OldApp) ->
+    io:format(?TOKEN_FORMAT_STRING
+              ,[App, "", "", "" ,""]
+             ),
+    print_bucket_info(Bucket, App).
 
 %%%===================================================================
 %%% ETS
@@ -306,7 +324,7 @@ handle_cast(_Req, #state{table_id='undefined'}=State) ->
     lager:debug("ignoring req: ~p", [_Req]),
     {'noreply', State};
 handle_cast({'bucket_accessed', Key}, State) ->
-    ets:update_element(table_id(), Key, {#bucket.accessed, os:timestamp()}),
+    ets:update_element(table_id(), Key, {#bucket.accessed, wh_util:now_s(os:timestamp())}),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
@@ -387,35 +405,16 @@ start_inactivity_timer() ->
     erlang:send_after(?MILLISECONDS_IN_MINUTE, self(), ?INACTIVITY_MSG).
 
 -spec check_for_inactive_buckets() -> 'ok'.
--spec check_for_inactive_buckets(wh_now(), pos_integer(), {ne_binary(), ne_binary()} | '$end_of_table') -> 'ok'.
-
 check_for_inactive_buckets() ->
     wh_util:put_callid(?MODULE),
-    Now = os:timestamp(),
-    InactivityTimeout = ?INACTIVITY_TIMEOUT_MS,
-    check_for_inactive_buckets(Now, InactivityTimeout, ets:first(table_id())).
+    Now = wh_util:now_s(os:timestamp()),
+    InactivityTimeout = ?INACTIVITY_TIMEOUT_S,
 
-check_for_inactive_buckets(_Now, _InactivityTimeout, '$end_of_table') -> 'ok';
-check_for_inactive_buckets(Now, InactivityTimeout, {App, Key}) ->
-    case get_bucket(App, Key, 'record') of
-        'undefined' -> 'ok';
-        Bucket ->
-            maybe_stop_bucket(Now, InactivityTimeout, Bucket)
-    end,
-    check_for_inactive_buckets(Now, InactivityTimeout, ets:next(table_id(), {App, Key})).
-
--spec maybe_stop_bucket(wh_now(), pos_integer(), bucket()) -> 'ok'.
-maybe_stop_bucket(Now
-                  ,InactivityTimeout
-                  ,#bucket{accessed=Accessed
-                           ,srv=Srv
-                           ,key=Key
-                          }
-                 ) ->
-    case wh_util:elapsed_ms(Accessed, Now) > InactivityTimeout of
-        'false' -> 'ok';
-        'true' ->
-            lager:debug("bucket ~p(~p) hasn't been accessed recently, stopping", [Key, Srv]),
-            kz_token_bucket:stop(Srv),
-            'ok'
+    MS = [{#bucket{accessed='$1', srv='$2', _='_'}
+           ,[{'<', '$1', {'const', Now-InactivityTimeout}}]
+           ,['$2']
+          }],
+    case [kz_token_bucket:stop(Srv) || Srv <- ets:select(?MODULE:table_id(), MS)] of
+        [] -> 'ok';
+        L -> lager:debug("stopped ~p servers", [length(L)])
     end.
