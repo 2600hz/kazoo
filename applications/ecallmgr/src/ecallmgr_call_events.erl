@@ -176,6 +176,15 @@ handle_publisher_usurp(JObj, Props) ->
 %%--------------------------------------------------------------------
 -spec init([atom() | ne_binary(),...]) -> {'ok', state()}.
 init([Node, CallId]) when is_atom(Node) andalso is_binary(CallId) ->
+    try gproc:reg(?FS_CALL_EVENTS_PROCESS_REG(Node, CallId)) of
+        'true' -> init(Node, CallId)
+    catch
+        _E:_R ->
+            lager:debug("failed to register for ~s:~s: ~s:~p", [Node, CallId, _E, _R]),
+            {'stop', 'normal'}
+    end.
+
+init(Node, CallId) ->
     wh_util:put_callid(CallId),
     register_for_events(Node, CallId),
     gen_listener:cast(self(), 'init'),
@@ -288,13 +297,11 @@ handle_cast(_Msg, State) ->
 
 -spec register_for_events(atom(), ne_binary()) -> 'true'.
 register_for_events(Node, CallId) ->
-    update_events(Node, CallId, fun gproc:reg/1),
-    catch gproc:reg({'p', 'l', ?FS_CALL_EVENTS_PROCESS_REG(Node, CallId)}, self()).
+    update_events(Node, CallId, fun gproc:reg/1).
 
 -spec unregister_for_events(atom(), ne_binary()) -> 'true'.
 unregister_for_events(Node, CallId) ->
-    update_events(Node, CallId, fun gproc:unreg/1),
-    catch gproc:unreg({'p', 'l', ?FS_CALL_EVENTS_PROCESS_REG(Node, CallId)}, self()).
+    update_events(Node, CallId, fun gproc:unreg/1).
 
 -spec update_events(atom(), ne_binary(), function()) -> 'true'.
 update_events(Node, CallId, Fun) ->
@@ -440,7 +447,6 @@ handle_info('timeout', #state{node=Node
             {'stop', 'normal', State};
         {'ok', <<"true">>} ->
             lager:debug("processing call events from ~s", [Node]),
-            'true' = gproc:reg({'p', 'l', ?FS_CALL_EVENTS_PROCESS_REG(Node, CallId)}, self()),
             'true' = gproc:reg({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, CallId)}),
             'true' = gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, ?CHANNEL_MOVE_RELEASED_EVENT_BIN)}),
             _ = usurp_other_publishers(State),

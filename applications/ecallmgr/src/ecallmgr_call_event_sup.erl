@@ -34,7 +34,7 @@ start_link() ->
 
 -spec start_proc(list()) -> sup_startchild_ret().
 start_proc([Node, CallId|_]=Args) ->
-    case gproc:lookup_values({'p', 'l', ?FS_CALL_EVENTS_PROCESS_REG(Node, CallId)}) of
+    case gproc:lookup_values(?FS_CALL_EVENTS_PROCESS_REG(Node, CallId)) of
         [] ->
             lager:debug("no registrations for ~s", [Node]),
             supervisor:start_child(?SERVER, Args);
