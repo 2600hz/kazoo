@@ -24,8 +24,6 @@
          ,bind/2
 
          ,range_view_options/1, range_view_options/2
-
-         ,maybe_clear_outbound_flags/1
         ]).
 
 -include("../crossbar.hrl").
@@ -75,14 +73,6 @@ range_view_options(Context, MaxRange) ->
                 ,Context
             );
         _N -> {CreatedFrom, CreatedTo}
-    end.
-
--spec maybe_clear_outbound_flags(cb_context:context()) -> cb_context:context().
-maybe_clear_outbound_flags(Context) ->
-    Data = cb_context:req_data(Context),
-    case wh_json:get_value(<<"outbound_flags">>, Data) of
-        [] -> cb_context:set_req_data(Context, wh_json:delete_key(<<"outbound_flags">>, Data));
-        _Else -> Context
     end.
 
 -spec created_to(cb_context:context(), pos_integer()) -> pos_integer().
