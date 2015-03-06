@@ -25,6 +25,13 @@
          ,default_headers/3
          ,default_headers/4
          ,default_headers/5
+
+         ,server_id/1
+         ,event_category/1
+         ,event_name/1
+         ,app_name/1
+         ,app_version/1
+         ,node/1
         ]).
 -export([prepare_api_payload/2, prepare_api_payload/3]).
 -export([set_missing_values/2]).
@@ -48,6 +55,29 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+-spec server_id(wh_json:object()) -> api_binary().
+server_id(JObj) ->
+    wh_json:get_value(<<"Server-ID">>, JObj).
+
+-spec event_category(wh_json:object()) -> api_binary().
+event_category(JObj) ->
+    wh_json:get_value(<<"Event-Category">>, JObj).
+
+-spec event_name(wh_json:object()) -> api_binary().
+event_name(JObj) ->
+    wh_json:get_value(<<"Event-Name">>, JObj).
+
+-spec app_name(wh_json:object()) -> api_binary().
+app_name(JObj) ->
+    wh_json:get_value(<<"App-Name">>, JObj).
+
+-spec app_version(wh_json:object()) -> api_binary().
+app_version(JObj) ->
+    wh_json:get_value(<<"App-Version">>, JObj).
+
+-spec node(wh_json:object()) -> api_binary().
+node(JObj) ->
+    wh_json:get_value(<<"Node">>, JObj).
 
 %%--------------------------------------------------------------------
 %% @doc Default Headers in all messages - see wiki
