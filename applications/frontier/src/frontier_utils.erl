@@ -11,8 +11,12 @@
 -include("frontier.hrl").
 
 %% API
--export([extract_realm/1, extract_username/1, is_device_entity/1
-         ,is_device/1, is_realm/1, get_entity_type/1
+-export([extract_realm/1
+         ,extract_username/1
+         ,is_device_entity/1
+         ,is_device/1
+         ,is_realm/1
+         ,get_entity_type/1
         ]).
 
 -spec get_entity_type(ne_binary()) -> ne_binary().
@@ -48,4 +52,3 @@ is_device(JObj) ->
 -spec is_realm(wh_json:object()) -> boolean().
 is_realm(JObj) ->
     <<"realm">> =:= wh_json:get_value([<<"value">>, <<"type">>], JObj).
-
