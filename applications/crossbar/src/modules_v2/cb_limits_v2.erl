@@ -228,8 +228,19 @@ update_limits(Context) ->
 dry_run(Context) ->
     ReqData = cb_context:req_data(Context),
     AccountId = cb_context:account_id(Context),
-    Updates = [{<<"limits">>, <<"twoway_trunks">>, wh_json:get_integer_value(<<"twoway_trunks">>, ReqData, 0)}
-               ,{<<"limits">>, <<"inbound_trunks">>, wh_json:get_integer_value(<<"inbound_trunks">>, ReqData, 0)}
-               ,{<<"limits">>, <<"outbound_trunks">>, wh_json:get_integer_value(<<"outbound_trunks">>, ReqData, 0)}
-              ],
-    wh_services:dry_run(AccountId, Updates).
+    Services = wh_services:fetch(AccountId),
+    Routines = [fun(S) ->
+                        Quantity = wh_json:get_integer_value(<<"twoway_trunks">>, ReqData, 0),
+                        wh_services:update(<<"limits">>, <<"twoway_trunks">>, Quantity, S)
+                end
+                ,fun(S) ->
+                         Quantity = wh_json:get_integer_value(<<"inbound_trunks">>, ReqData, 0),
+                         wh_services:update(<<"limits">>, <<"inbound_trunks">>, Quantity, S)
+                 end
+                 ,fun(S) ->
+                         Quantity = wh_json:get_integer_value(<<"outbound_trunks">>, ReqData, 0),
+                         wh_services:update(<<"limits">>, <<"outbound_trunks">>, Quantity, S)
+                 end
+               ],
+    UpdatedServices = lists:foldl(fun(F, S) -> F(S) end, wh_services:update(<<"limits">>, Services), Routines),
+    wh_services:dry_run(UpdatedServices).
