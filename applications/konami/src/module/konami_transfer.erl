@@ -54,7 +54,9 @@
 
 -record(state, {transferor :: ne_binary()
                 ,transferee :: ne_binary()
-                ,target :: ne_binary()
+                ,target :: ne_binary() %% this is the real b-leg, if any
+                ,target_a_leg :: api_binary() %% loopback-a
+                ,target_b_leg :: api_binary() %% loopback-b
                 ,call :: whapps_call:call()
                 ,target_call = whapps_call:new() :: whapps_call:call()
                 ,takeback_dtmf :: ne_binary()
@@ -79,15 +81,13 @@
 
 -define(TRANSFEROR_CALL_EVENTS, [<<"CHANNEL_BRIDGE">>, <<"CHANNEL_UNBRIDGE">>
                                  ,<<"DTMF">>
-                                 ,<<"CHANNEL_ANSWER">>
                                  ,<<"CHANNEL_DESTROY">>
                                  ,<<"dialplan">>
                                 ]).
 
 -define(TRANSFEREE_CALL_EVENTS, ?TRANSFEROR_CALL_EVENTS).
 
--define(TARGET_CALL_EVENTS, [<<"CHANNEL_ANSWER">>
-                             ,<<"CHANNEL_CREATE">>
+-define(TARGET_CALL_EVENTS, [<<"CHANNEL_CREATE">>
                              ,<<"CHANNEL_BRIDGE">>
                              ,<<"CHANNEL_DESTROY">>
                              ,<<"DTMF">>, <<"CHANNEL_REPLACED">>
@@ -159,8 +159,8 @@ pre_originate(?EVENT(UUID, <<"CHANNEL_UNBRIDGE">>, _Evt)
     lager:info("ok, now we need to originate to the requested number ~s", [Extension]),
 
     Target = originate_to_extension(Extension, Transferor, Call),
-    lager:info("originating to ~s", [Target]),
-    {'next_state', 'attended_wait', State#state{target=Target}};
+    lager:info("originating to target 'a' ~s", [Target]),
+    {'next_state', 'attended_wait', State#state{target_a_leg=Target}};
 pre_originate(?EVENT(_CallId, <<"CHANNEL_DESTROY">>, _Evt), State) ->
     lager:debug("~s has hungup before we originated, done here", [_CallId]),
     {'stop', 'normal', State};
@@ -193,7 +193,7 @@ attended_wait(?EVENT(Transferor, <<"CHANNEL_DESTROY">>, _Evt)
                       ,transferee=Transferee
                      }=State
              ) ->
-    lager:info("transferor ~s hungup, connecting transferee ~s and target ~s"
+    lager:info("transferor ~s hungup, connecting transferee ~s and target ~s (or tbd)"
                ,[Transferor, Transferee, Target]
               ),
     ?WSD_NOTE(Transferor, 'right', <<"Transferor down in attended wait">>),
@@ -205,11 +205,9 @@ attended_wait(?EVENT(Transferor, <<"CHANNEL_BRIDGE">>, Evt)
                       ,target_call=TargetCall
                      }=State
              ) ->
-    OtherLeg = kz_call_event:other_leg_call_id(Evt),
-    lager:info("transferor ~s bridged to ~s", [Transferor, OtherLeg]),
-    case OtherLeg of
+    case kz_call_event:other_leg_call_id(Evt) of
         Target ->
-            lager:info("transferor and target are connected, moving to attended_answer"),
+            lager:info("transferor and target ~s are connected, moving to attended_answer", [Target]),
             ?WSD_EVT(Transferor, Target, <<"Bridged to target">>),
             {'next_state', 'attended_answer', State#state{
                                                 target_call=whapps_call:exec(
@@ -225,24 +223,25 @@ attended_wait(?EVENT(Transferor, <<"CHANNEL_BRIDGE">>, Evt)
             hangup_target(TargetCall),
             {'stop', 'normal', State}
     end;
-attended_wait(?EVENT(Target, <<"CHANNEL_ANSWER">>, _Evt)
-              ,#state{target=Target}=State
+attended_wait(?EVENT(TargetA, <<"CHANNEL_ANSWER">>, _Evt)
+              ,#state{target_a_leg=TargetA}=State
              ) ->
     case kz_call_event:other_leg_call_id(_Evt) of
         'undefined' ->
-            ?WSD_NOTE(Target, 'right', <<"target answered">>),
-            lager:info("target ~s has answered", [Target]);
-        Target ->
-            ?WSD_NOTE(Target, 'right', <<"target answered">>),
-            lager:info("target ~s has answered", [Target]);
+            ?WSD_NOTE(TargetA, 'right', <<"target 'a' answered">>),
+            lager:info("target 'a' leg ~s has answered", [TargetA]);
+        TargetA ->
+            ?WSD_NOTE(TargetA, 'right', <<"target 'a' answered">>),
+            lager:info("target 'a' leg ~s has answered", [TargetA]);
         _OtherLeg ->
-            ?WSD_EVT(Target, _OtherLeg, <<"target answered">>),
-            lager:info("target ~s has answered, attached to ~s", [Target, _OtherLeg])
+            ?WSD_EVT(TargetA, _OtherLeg, <<"target 'a' answered">>),
+            lager:info("target 'a' leg ~s has answered, attached to ~s", [TargetA, _OtherLeg])
     end,
     {'next_state', 'attended_wait', State};
 attended_wait(?EVENT(Target, <<"CHANNEL_BRIDGE">>, Evt)
               ,#state{target=Target
                       ,transferor=Transferor
+                      ,purgatory_ref=Ref
                      }=State
              ) ->
     case kz_call_event:other_leg_call_id(Evt) of
@@ -251,20 +250,21 @@ attended_wait(?EVENT(Target, <<"CHANNEL_BRIDGE">>, Evt)
                        ,[Target, Transferor]
                       ),
             ?WSD_EVT(Target, Transferor, <<"bridged">>),
-            {'next_state', 'attended_answer', State};
+            maybe_cancel_timer(Ref),
+            {'next_state', 'attended_answer', State#state{purgatory_ref='undefined'}};
         _CallId ->
             lager:info("recv CHANNEL_BRIDGE on target ~s to call id ~s", [Target, _CallId]),
             {'next_state', 'attended_wait', State}
     end;
-attended_wait(?EVENT(Target, <<"originate_uuid">>, Evt)
-              ,#state{target=Target
+attended_wait(?EVENT(TargetA, <<"originate_uuid">>, Evt)
+              ,#state{target_a_leg=TargetA
                       ,target_call=TargetCall
                      }=State
              ) ->
     Node = wh_json:get_value(<<"Node">>, Evt),
-    lager:info("recv control for target ~s from node ~s", [Target, Node]),
+    lager:info("recv control for target 'a' ~s from node ~s", [TargetA, Node]),
     TargetCall1 = whapps_call:from_originate_uuid(Evt, TargetCall),
-    ?WSD_NOTE(Target, 'right', <<"control for target recv">>),
+    ?WSD_NOTE(TargetA, 'right', <<"control for target recv">>),
     {'next_state', 'attended_wait', State#state{target_call=TargetCall1
                                                 ,event_node=Node
                                                }};
@@ -292,31 +292,46 @@ attended_wait(?EVENT(Transferor, <<"CHANNEL_BRIDGE">>, Evt)
                       ),
             {'next_state', 'attended_answer', State}
     end;
-attended_wait(?EVENT(Target, <<"CHANNEL_CREATE">>, _Evt)
-              ,#state{target=Target
+attended_wait(?EVENT(TargetA, <<"CHANNEL_CREATE">>, _Evt)
+              ,#state{target_a_leg=TargetA
                       ,transferor=Transferor
                       ,ringback=Ringback
                       ,call=Call
                      }=State
              ) ->
-    lager:info("transfer target ~s channel created", [Target]),
-    ?WSD_NOTE(Target, 'right', <<"created">>),
+    lager:info("transfer target 'a' ~s channel created", [TargetA]),
+    ?WSD_NOTE(TargetA, 'right', <<"created">>),
     maybe_start_transferor_ringback(Call, Transferor, Ringback),
     {'next_state', 'attended_wait', State};
-attended_wait(?EVENT(Target, <<"originate_resp">>, _Evt), State) ->
-    lager:info("originate has responded for target ~s", [Target]),
-    ?WSD_NOTE(Target, 'right', <<"originated">>),
+attended_wait(?EVENT(TargetA, <<"LEG_CREATED">>, Evt)
+              ,#state{target_a_leg=TargetA
+                      ,target_b_leg='undefined'
+                     }=State
+             ) ->
+    TargetB = kz_call_event:other_leg_call_id(Evt),
+    lager:debug("target 'b' started: ~s", [TargetB]),
+    konami_event_listener:add_call_binding(TargetB, ?TARGET_CALL_EVENTS),
+    {'next_state', 'attended_wait', State#state{target_b_leg=TargetB}};
+attended_wait(?EVENT(TargetA, <<"originate_resp">>, _Evt)
+              ,#state{target_a_leg=TargetA}=State) ->
+    lager:info("originate has responded for target ~s", [TargetA]),
+    ?WSD_NOTE(TargetA, 'right', <<"originated">>),
     {'next_state', 'attended_wait', State};
-attended_wait(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
-              ,#state{target=Target
+attended_wait(?EVENT(TargetA, <<"CHANNEL_DESTROY">>, _Evt)
+              ,#state{target_a_leg=TargetA
                       ,purgatory_ref='undefined'
                      }=State
              ) ->
     Ref = erlang:start_timer(1000, self(), 'purgatory'),
-    lager:debug("target ~s has gone done, going to purgatory in ~p", [Target, Ref]),
+    lager:debug("target 'a' ~s has gone done, going to purgatory in ~p", [TargetA, Ref]),
     {'next_state', 'attended_wait', State#state{purgatory_ref=Ref}};
-attended_wait(?EVENT(Target, <<"CHANNEL_REPLACED">>, Evt)
-              ,#state{target=Target
+attended_wait(?EVENT(TargetB, <<"CHANNEL_DESTROY">>, _Evt)
+              ,#state{target_b_leg=TargetB}=State
+             ) ->
+    lager:debug("target 'b' ~s has gone done", [TargetB]),
+    {'next_state', 'attended_wait', State};
+attended_wait(?EVENT(TargetA, <<"CHANNEL_REPLACED">>, Evt)
+              ,#state{target_a_leg=TargetA
                       ,target_call=TargetCall
                       ,transferor=Transferor
                       ,purgatory_ref=Ref
@@ -324,10 +339,9 @@ attended_wait(?EVENT(Target, <<"CHANNEL_REPLACED">>, Evt)
              ) ->
     maybe_cancel_timer(Ref),
     ReplacementId = kz_call_event:replaced_by(Evt),
-    lager:debug("target ~s being replaced by ~s", [Target, ReplacementId]),
-    ?WSD_EVT(Target, ReplacementId, <<"replaced">>),
+    lager:debug("target 'a' ~s being replaced by ~s", [TargetA, ReplacementId]),
+    ?WSD_EVT(TargetA, ReplacementId, <<"replaced">>),
 
-    konami_event_listener:rm_call_binding(Target, ?TARGET_CALL_EVENTS),
     konami_event_listener:add_call_binding(ReplacementId, ?TARGET_CALL_EVENTS),
 
     TargetCall1 = whapps_call:set_call_id(ReplacementId, TargetCall),
@@ -336,6 +350,29 @@ attended_wait(?EVENT(Target, <<"CHANNEL_REPLACED">>, Evt)
                                                 ,target_call=TargetCall1
                                                 ,purgatory_ref='undefined'
                                                }};
+attended_wait(?EVENT(TargetB, <<"CHANNEL_ANSWER">>, _Evt)
+              ,#state{target_b_leg=TargetB}=State
+             ) ->
+    lager:debug("target 'b' ~s answered", [TargetB]),
+    ?WSD_NOTE(TargetB, 'right', <<"answered">>),
+    {'next_state', 'attended_wait', State};
+attended_wait(?EVENT(TargetB, <<"LEG_CREATED">>, _Evt)
+              ,#state{target_b_leg=TargetB}=State
+             ) ->
+    lager:debug("target 'b' ~s has leg ~s starting"
+                ,[TargetB, kz_call_event:other_leg_call_id(_Evt)]
+               ),
+    {'next_state', 'attended_wait', State};
+attended_wait(?EVENT(TargetB, <<"CHANNEL_BRIDGE">>, Evt)
+              ,#state{target_b_leg=TargetB}=State
+             ) ->
+    OtherLeg = kz_call_event:other_leg_call_id(Evt),
+    lager:debug("target 'b' ~s bridged to ~s", [TargetB, OtherLeg]),
+    ?WSD_EVT(TargetB, OtherLeg, <<"bridged">>),
+
+    konami_event_listener:add_call_binding(OtherLeg, ?TARGET_CALL_EVENTS),
+
+    {'next_state', 'attended_wait', State};
 attended_wait(?EVENT(_CallId, _EventName, _Evt), State) ->
     case kz_call_event:other_leg_call_id(_Evt) of
         'undefined' ->
@@ -528,6 +565,18 @@ attended_answer(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
 
     connect_to_transferee(Call),
     {'next_state', 'finished', State};
+attended_answer(?EVENT(TargetA, <<"CHANNEL_DESTROY">>, _Evt)
+                ,#state{target_a_leg=TargetA}=State
+               ) ->
+    lager:debug("target 'a' ~s destroyed", [TargetA]),
+    ?WSD_EVT(TargetA, 'right', <<"destroyed">>),
+    {'next_state', 'attended_answer', State};
+attended_answer(?EVENT(TargetB, <<"CHANNEL_DESTROY">>, _Evt)
+                ,#state{target_b_leg=TargetB}=State
+               ) ->
+    lager:debug("target 'b' ~s destroyed", [TargetB]),
+    ?WSD_EVT(TargetB, 'right', <<"destroyed">>),
+    {'next_state', 'attended_answer', State};
 attended_answer(?EVENT(_CallId, _EventName, _Evt), State) ->
     case kz_call_event:other_leg_call_id(_Evt) of
         'undefined' ->
@@ -545,6 +594,26 @@ attended_answer(Msg, State) ->
 attended_answer(_Msg, _From, State) ->
     {'next_state', 'attended_answer', State}.
 
+finished(?EVENT(Transferor, <<"CHANNEL_BRIDGE">>, Evt)
+         ,#state{transferee=_Transferee
+                 ,target=Target
+                 ,transferor=Transferor
+                }=State
+        ) ->
+    case kz_call_event:other_leg_call_id(Evt) of
+        Target ->
+            ?WSD_EVT(Target, Transferor, <<"bridged">>),
+            lager:debug("transferor and target are bridged"),
+            {'stop', 'normal', State};
+        _Transferee ->
+            ?WSD_EVT(Transferor, _Transferee, <<"bridged">>),
+            lager:debug("transferor and transferee bridged"),
+            {'stop', 'normal', State};
+        _CallId ->
+            ?WSD_EVT(_CallId, Transferor, <<"bridged">>),
+            lager:debug("transferor bridged to unknown callid ~s", [_CallId]),
+            {'next_state', 'finished', State, 5000}
+    end;
 finished(?EVENT(Transferee, <<"CHANNEL_BRIDGE">>, Evt)
          ,#state{transferee=Transferee
                  ,target=Target
@@ -732,21 +801,23 @@ handle_sync_event(_Event, _From, StateName, State) ->
     lager:info("unhandled sync_event in ~s: ~p", [StateName, _Event]),
     {'next_state', StateName, State}.
 
+handle_info({'amqp_msg', JObj}, StateName, #state{event_node='undefined'}=State) ->
+    send_event(JObj),
+    {'next_state', StateName, State};
 handle_info({'amqp_msg', JObj}, StateName, #state{event_node=EventNode
+                                                  ,target_a_leg=TargetA
+                                                  ,target_b_leg=TargetB
                                                   ,target=Target
                                                  }=State) ->
     case {kz_call_event:call_id(JObj)
           ,wh_api:node(JObj)
          }
     of
-        {Target, 'undefined'} -> send_event(JObj);
-        {Target, EventNode} -> send_event(JObj);
-        {Target, _OtherNode} ->
-            lager:debug("supressing event ~s from ~s (we want events from ~s)"
-                        ,[kz_call_event:event_name(JObj)
-                          ,_OtherNode
-                          ,EventNode
-                         ]);
+        {_CallId, 'undefined'} -> send_event(JObj);
+        {_CallId, EventNode} -> send_event(JObj);
+        {Target, OtherNode} -> suppress_event(JObj, EventNode, OtherNode);
+        {TargetA, OtherNode} -> suppress_event(JObj, EventNode, OtherNode);
+        {TargetB, OtherNode} -> suppress_event(JObj, EventNode, OtherNode);
         {_CallId, _Node} -> send_event(JObj)
     end,
     {'next_state', StateName, State};
@@ -1178,3 +1249,12 @@ maybe_start_transferor_ringback(Call, Transferor, Ringback) ->
 -spec maybe_cancel_timer(api_reference()) -> 'ok'.
 maybe_cancel_timer('undefined') -> 'ok';
 maybe_cancel_timer(Ref) -> erlang:cancel_timer(Ref).
+
+-spec suppress_event(wh_json:object(), api_binary(), ne_binary()) -> 'ok'.
+suppress_event(JObj, _EventNode, _OtherNode) ->
+    lager:debug("supressing event ~s from ~s (we want events from ~s): ~s"
+                ,[kz_call_event:event_name(JObj)
+                  ,_OtherNode
+                  ,_EventNode
+                  ,wh_json:encode(JObj)
+                 ]).

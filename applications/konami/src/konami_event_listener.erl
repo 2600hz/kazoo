@@ -369,7 +369,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(?HOOK_EVT(AccountId, EventName, Event), State) ->
+handle_info(?HOOK_EVT(AccountId, <<"CHANNEL_ANSWER">> = EventName, Event), State) ->
     relay_to_fsms(AccountId, EventName, Event),
     {'noreply', State};
 handle_info({'timeout', Ref, _Msg}, #state{cleanup_ref=Ref}=State) ->
