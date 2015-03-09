@@ -974,10 +974,10 @@ flush() ->
 -spec cache(call(), api_binary(), pos_integer()) -> 'ok'.
 
 cache(Call) ->
-    cache(Call, 'undefined', 300).
+    cache(Call, 'undefined', 5 * ?SECONDS_IN_MINUTE).
 
 cache(Call, AppName) ->
-    cache(Call, AppName, 300).
+    cache(Call, AppName, 5 * ?SECONDS_IN_MINUTE).
 
 cache(#whapps_call{call_id=CallId}=Call, AppName, Expires) ->
     CacheProps = [{'expires', Expires}],

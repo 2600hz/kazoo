@@ -77,11 +77,7 @@
 start_fsm(Call, JObj) ->
     ListenOn = listen_on(Call, JObj),
 
-    Self = pid_to_list(self()),
-
-    put('callid', <<"konami_code_fsm_", (wh_util:to_binary(ListenOn))/binary
-                    ,"_", (wh_util:to_binary(Self))/binary
-                  >>),
+    whapps_call:put_callid(Call),
 
     maybe_add_call_event_bindings(Call, ListenOn),
 
