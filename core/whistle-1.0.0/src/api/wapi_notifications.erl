@@ -23,6 +23,7 @@
          ,deregister/1, deregister_v/1
          ,pwd_recovery/1, pwd_recovery_v/1
          ,new_account/1, new_account_v/1
+         ,new_user/1, new_user_v/1
          ,port_request/1, port_request_v/1
          ,port_cancel/1, port_cancel_v/1
          ,ported/1, ported_v/1
@@ -50,6 +51,7 @@
          ,publish_deregister/1, publish_deregister/2
          ,publish_pwd_recovery/1, publish_pwd_recovery/2
          ,publish_new_account/1, publish_new_account/2
+         ,publish_new_user/1, publish_new_user/2
          ,publish_port_request/1, publish_port_request/2
          ,publish_port_cancel/1, publish_port_cancel/2
          ,publish_ported/1, publish_ported/2
@@ -86,6 +88,7 @@
 -define(NOTIFY_REGISTER, <<"notifications.sip.register">>).
 -define(NOTIFY_PWD_RECOVERY, <<"notifications.password.recovery">>).
 -define(NOTIFY_NEW_ACCOUNT, <<"notifications.account.new">>).
+-define(NOTIFY_NEW_USER, <<"notifications.user.new">>).
 %% -define(NOTIFY_DELETE_ACCOUNT, <<"notifications.account.delete">>).
 -define(NOTIFY_PORT_REQUEST, <<"notifications.number.port">>).
 -define(NOTIFY_PORT_CANCEL, <<"notifications.number.port_cancel">>).
@@ -242,6 +245,14 @@
                              ,{<<"Event-Name">>, <<"new_account">>}
                             ]).
 -define(NEW_ACCOUNT_TYPES, []).
+
+%% Notify New User
+-define(NEW_USER_HEADERS, [<<"Account-ID">>, <<"User-ID">>, <<"Password">>]).
+-define(OPTIONAL_NEW_USER_HEADERS, ?DEFAULT_OPTIONAL_HEADERS).
+-define(NEW_USER_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                             ,{<<"Event-Name">>, <<"new_user">>}
+                            ]).
+-define(NEW_USER_TYPES, []).
 
 %% Notify Port Request
 -define(PORT_REQUEST_HEADERS, [<<"Account-ID">>]).
@@ -554,6 +565,23 @@ new_account_v(Prop) when is_list(Prop) ->
 new_account_v(JObj) -> new_account_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
+%% @doc New user notification - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+new_user(Prop) when is_list(Prop) ->
+    case new_user_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?NEW_USER_HEADERS, ?OPTIONAL_NEW_USER_HEADERS);
+        'false' -> {'error', "Proplist failed validation for new_user"}
+    end;
+new_user(JObj) -> new_user(wh_json:to_proplist(JObj)).
+
+-spec new_user_v(api_terms()) -> boolean().
+new_user_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?NEW_USER_HEADERS, ?NEW_USER_VALUES, ?NEW_USER_TYPES);
+new_user_v(JObj) -> new_user_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
 %% @doc Port request notification - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
@@ -789,6 +817,9 @@ bind_to_q(Q, ['pwd_recovery'|T]) ->
 bind_to_q(Q, ['new_account'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_NEW_ACCOUNT),
     bind_to_q(Q, T);
+bind_to_q(Q, ['new_user'|T]) ->
+    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_NEW_USER),
+    bind_to_q(Q, T);
 bind_to_q(Q, ['port_request'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PORT_REQUEST),
     bind_to_q(Q, T);
@@ -866,6 +897,9 @@ unbind_q_from(Q, ['pwd_recovery'|T]) ->
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['new_account'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_NEW_ACCOUNT),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, ['new_user'|T]) ->
+    'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_NEW_USER),
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['port_request'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PORT_REQUEST),
@@ -985,6 +1019,13 @@ publish_new_account(JObj) -> publish_new_account(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_new_account(API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?NEW_ACCOUNT_VALUES, fun ?MODULE:new_account/1),
     amqp_util:notifications_publish(?NOTIFY_NEW_ACCOUNT, Payload, ContentType).
+
+-spec publish_new_user(api_terms()) -> 'ok'.
+-spec publish_new_user(api_terms(), ne_binary()) -> 'ok'.
+publish_new_user(JObj) -> publish_new_user(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_new_user(API, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(API, ?NEW_USER_VALUES, fun ?MODULE:new_user/1),
+    amqp_util:notifications_publish(?NOTIFY_NEW_USER, Payload, ContentType).
 
 -spec publish_port_request(api_terms()) -> 'ok'.
 -spec publish_port_request(api_terms(), ne_binary()) -> 'ok'.
