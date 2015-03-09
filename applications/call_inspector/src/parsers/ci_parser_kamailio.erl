@@ -212,8 +212,8 @@ make_and_store_chunk(KamailioIP, Callid, Counter, Data0) ->
               ,fun (C) -> ci_chunk:set_timestamp(C, Timestamp) end
               ,fun (C) -> ci_chunk:set_parser(C, ?MODULE) end
               ,fun (C) -> ci_chunk:set_label(C, label(hd(Data))) end
-              ,fun (C) -> ci_chunk:set_from(C, source(Data)) end
-              ,fun (C) -> ci_chunk:set_to(C, KamailioIP) end
+              ,fun (C) -> ci_chunk:set_from(C, from(lists:reverse(Data0),KamailioIP)) end
+              ,fun (C) -> ci_chunk:set_to(C, to(lists:reverse(Data0),KamailioIP)) end
               ],
     Chunk = lists:foldl(Apply, ci_chunk:new(), Setters),
     ci_datastore:store_chunk(Chunk),
@@ -246,19 +246,19 @@ acc(<<"start|",_/binary>>=Logged, Buffer, Dev, Key) ->
     end;
 acc(<<"log|external ",_/binary>>=Logged, Buffer, _Dev, Key) ->
     %% Turn into chunk to make sure consecutive "external ..." don't get ignored
-    put(Key, []),
+    erase(Key),
     {Key, [Logged|Buffer]};
 acc(<<"log|",_/binary>>=Logged, Buffer, Dev, Key) ->
     put(Key, [Logged|Buffer]),
     extract_chunk(Dev);
 acc(<<"pass|",_/binary>>=Logged, Buffer, _Dev, Key) ->
-    put(Key, []),
+    erase(Key),
     {Key, [Logged|Buffer]};
 acc(<<"end|",_/binary>>=Logged, Buffer, _Dev, Key) ->
-    put(Key, []),
+    erase(Key),
     {Key, [Logged|Buffer]};
 acc(<<"stop|",_/binary>>=Logged, Buffer, _Dev, Key) ->
-    put(Key, []),
+    erase(Key),
     {Key, [Logged|Buffer]}.
 
 cleanse_data_and_get_timestamp(Data0) ->
@@ -282,13 +282,12 @@ get_buffer(Key) ->
     end.
 
 dump_buffers() ->
-    Buffers = [{Key, Buff} || {{'callid',_}=Key,Buff} <- get()
-                                  , Buff =/= []],
+    Buffers = [{Key, Buff} || {{'callid',_}=Key,Buff} <- get()],
     case Buffers of
         [] -> [];
         _ ->
             RmFromProcDict = fun ({Key, _Buffer}) ->
-                                     put(Key, [])
+                                     erase(Key)
                              end,
             lists:foreach(RmFromProcDict, Buffers),
             {'buffers', Buffers}
@@ -319,9 +318,23 @@ label(<<"received failure reply ", Label/binary>>) -> Label;
 label(<<"recieved ", Label/binary>>) -> Label;
 label(_Other) -> 'undefined'.
 
-source([]) -> 'undefined';
-source([<<"source ", Source0/binary>>|_]) ->
-    [Source, _Port] = binary:split(Source0, <<":">>),
-    Source;
-source([_Line|Lines]) ->
-    source(Lines).
+from([], LogIP) -> LogIP;
+from([<<"start|recieved internal reply", _/binary>>|_Data], LogIP) -> LogIP;
+from([<<"log|external reply", _/binary>>|_Data], LogIP) -> LogIP;
+from([<<"log|source ", From/binary>>|_Data], _LogIP) ->
+    ip(From);
+from([_Line|Lines], LogIP) ->
+    from(Lines, LogIP).
+
+ip(RawIP) ->
+    [IP, _Port] = binary:split(RawIP, <<":">>),
+    IP.
+
+to([], LogIP) -> LogIP;
+to([<<"start|recieved internal reply",_/binary>>|Data], LogIP) ->
+    to(Data, LogIP);
+to([<<"start|",_/binary>>|_Data], LogIP) -> LogIP;
+to([<<"pass|",To/binary>>|_Data], _LogIP) ->
+    ip(To);
+to([_Datum|Data], LogIP) ->
+    to(Data, LogIP).
