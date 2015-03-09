@@ -757,7 +757,7 @@ add_leg(Props, LegId, #state{other_legs=Legs
             _ = spawn(fun() ->
                               _ = put('callid', CallId),
                               wh_amqp_channel:consumer_pid(ConsumerPid),
-                              publish_leg_addition(Props)
+                              publish_leg_addition(props:set_value(<<"Other-Leg-Unique-ID">>, CallId, Props))
                       end),
             State#state{other_legs=[LegId|Legs]}
     end.

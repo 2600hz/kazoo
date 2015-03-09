@@ -142,7 +142,7 @@ is_bridged(UUID) ->
                 ],
     case ets:select(?CHANNELS_TBL, MatchSpec) of
         ['undefined'] -> lager:debug("channel is not bridged"), 'false';
-        [Bin] when is_binary(Bin) -> lager:debug("bridged: ~s", [Bin]), 'true';
+        [Bin] when is_binary(Bin) -> lager:debug("is bridged to: ~s", [Bin]), 'true';
         _E -> lager:debug("not bridged: ~p", [_E]), 'false'
     end.
 
