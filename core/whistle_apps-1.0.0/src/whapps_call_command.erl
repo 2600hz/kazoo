@@ -439,9 +439,7 @@ response(Code, Call) ->
 response(Code, Cause, Call) ->
     response(Code, Cause, 'undefined', Call).
 response(Code, Cause, Media, Call) ->
-    CallId = whapps_call:call_id(Call),
-    CtrlQ = whapps_call:control_queue(Call),
-    wh_call_response:send(CallId, CtrlQ, Code, Cause, Media).
+    wh_call_response:send(Call, Code, Cause, Media).
 
 %%--------------------------------------------------------------------
 %% @public

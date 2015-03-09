@@ -42,6 +42,7 @@
 -export([get_all_account_views/0]).
 -export([cleanup_voicemail_media/1]).
 -export([cleanup_orphan_modbs/0]).
+-export([delete_system_media_references/0]).
 
 -define(DEVICES_CB_LIST, <<"devices/crossbar_listing">>).
 -define(MAINTENANCE_VIEW_FILE, <<"views/maintenance.json">>).
@@ -159,7 +160,8 @@ get_databases() ->
     ?KZ_SYSTEM_DBS ++ [Db || Db <- Databases, (not lists:member(Db, ?KZ_SYSTEM_DBS))].
 
 refresh(?WH_CONFIG_DB) ->
-    couch_mgr:db_create(?WH_CONFIG_DB);
+    couch_mgr:db_create(?WH_CONFIG_DB),
+    delete_system_media_references();
 refresh(?KZ_OAUTH_DB) ->
     couch_mgr:db_create(?KZ_OAUTH_DB),
     kazoo_oauth_maintenance:register_common_providers();
@@ -949,3 +951,23 @@ show_status(CallId, 'true', Resp) ->
     lager:info("Media Server: ~s", [wh_json:get_value(<<"Switch-Hostname">>, Resp)]),
     lager:info("Responding App: ~s", [wh_json:get_value(<<"App-Name">>, Resp)]),
     lager:info("Responding Node: ~s", [wh_json:get_value(<<"Node">>, Resp)]).
+
+
+-spec delete_system_media_references() -> 'ok'.
+delete_system_media_references() ->
+    DocId = <<"media">>,
+    {'ok', MediaDoc} = couch_mgr:open_cache_doc(?WH_CONFIG_DB, DocId),
+    TheKey = <<"default">>,
+    MediaDefault = wh_json:get_value(TheKey, MediaDoc),
+    Deleter =
+        fun (_Key, <<"/system_media/",_/binary>>, Acc) -> Acc;
+            (Key, Value, Acc) -> wh_json:set_value(Key, Value, Acc)
+        end,
+    case wh_json:foldl(Deleter, wh_json:new(), MediaDefault) of
+        MediaDefault -> 'ok';
+        NewMediaDefault ->
+            NewMediaDoc = wh_json:set_value(TheKey, NewMediaDefault
+                                           ,wh_json:delete_key(TheKey, MediaDoc)),
+            _ = couch_mgr:save_doc(DocId, NewMediaDoc)
+    end,
+    'ok'.

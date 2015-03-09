@@ -525,9 +525,7 @@ send_default_response(Cause, Call) ->
     case cf_exe:wildcard_is_empty(Call) of
         'false' -> 'ok';
         'true' ->
-            CallId = cf_exe:callid(Call),
-            CtrlQ = cf_exe:control_queue(Call),
-            case wh_call_response:send_default(CallId, CtrlQ, Cause) of
+            case wh_call_response:send_default(Call, Cause) of
                 {'error', 'no_response'} -> 'ok';
                 {'ok', NoopId} ->
                     _ = whapps_call_command:wait_for_noop(Call, NoopId),
