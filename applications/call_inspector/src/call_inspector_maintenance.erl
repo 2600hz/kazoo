@@ -8,6 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(call_inspector_maintenance).
 
+-export([list_active_parsers/0]).
 -export([import_freeswitch_log/2
          ,import_kamailio_log/2]).
 -export([flush/0
@@ -17,15 +18,19 @@
 
 -include("call_inspector.hrl").
 
+-spec list_active_parsers() -> 'ok'.
+list_active_parsers() ->
+    io:format("~p\n", [supervisor:which_children('ci_parsers_sup')]).
+
 -spec import_freeswitch_log(text(), text()) -> 'ok'.
-import_freeswitch_log(Filename, IPAddr) ->
-    'ok' = ci_parser_fs:open_logfile(Filename, IPAddr),
-    ci_parser_fs:start_parsing().
+import_freeswitch_log(Filename, LogIP) ->
+    Args = [{'parser_args', Filename, LogIP}],
+    ci_parsers_sup:start_child('ci_parser_fs', Args).
 
 -spec import_kamailio_log(text(), text()) -> 'ok'.
-import_kamailio_log(Filename, KamailioIP) ->
-    'ok' = ci_parser_kamailio:open_logfile(Filename, KamailioIP),
-    ci_parser_kamailio:start_parsing().
+import_kamailio_log(Filename, LogIP) ->
+    Args = [{'parser_args', Filename, LogIP}],
+    ci_parsers_sup:start_child('ci_parser_kamailio', Args).
 
 -spec flush() -> 'ok'.
 flush() ->

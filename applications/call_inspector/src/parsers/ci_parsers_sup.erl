@@ -11,12 +11,9 @@
 
 -export([start_link/0]).
 -export([init/1]).
+-export([start_child/2]).
 
 -include("../call_inspector.hrl").
-
-%% Helper macro for declaring children of supervisor
--define(CHILDREN, [?WORKER('ci_parser_fs')
-                  ,?WORKER('ci_parser_kamailio')]).
 
 %% ===================================================================
 %% API functions
@@ -53,4 +50,10 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, ?CHILDREN}}.
+    {'ok', {SupFlags, []}}.
+
+
+start_child(Module, Args) ->
+    {'parser_args', File, _IP} = lists:keyfind('parser_args', 1, Args),
+    ChildSpec = ?WORKER_NAME_ARGS(Module, File, Args),
+    supervisor:start_child(?MODULE, ChildSpec).

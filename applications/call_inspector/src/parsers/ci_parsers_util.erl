@@ -13,6 +13,7 @@
 -export([timestamp/1]).
 -export([open_file/1]).
 -export([parse_interval/0]).
+-export([make_name/1]).
 
 -include_lib("whistle/include/wh_types.hrl").
 
@@ -45,6 +46,12 @@ open_file(Filename) ->
 -spec parse_interval() -> pos_integer().
 parse_interval() ->
     2*1000.  %% Milliseconds
+
+
+-spec make_name({'parser_args',ne_binary(),_}) -> atom().
+make_name({'parser_args', Filename, _IP}) ->
+    FName = filename:absname(Filename),
+    binary_to_atom(FName, utf8).
 
 %% Internals
 

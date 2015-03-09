@@ -13,10 +13,7 @@
 -include("../call_inspector.hrl").
 
 %% API
--export([start_link/0
-         ,open_logfile/2
-         ,start_parsing/0
-        ]).
+-export([start_link/1]).
 
 %% gen_server callbacks
 -export([init/1
@@ -36,8 +33,6 @@
        ).
 -type state() :: #state{}.
 
--define(SERVER, ?MODULE).
-
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -46,17 +41,12 @@
 %% @doc
 %% Starts the server
 %%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
+%% @spec start_link(term()) -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link() ->
-    gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
-
-open_logfile(Filename, LogfileIP) ->
-    gen_server:cast(?MODULE, {'open_logfile', Filename, LogfileIP}).
-
-start_parsing() ->
-    gen_server:cast(?MODULE, 'start_parsing').
+start_link(Args) ->
+    ServerName = ci_parsers_util:make_name(Args),
+    gen_server:start_link({'local', ServerName}, ?MODULE, Args, []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -73,8 +63,14 @@ start_parsing() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([]) ->
-    {'ok', #state{}}.
+init({'parser_args', LogFile, LogIP}) ->
+    NewDev = ci_parsers_util:open_file(LogFile),
+    State = #state{logfile = LogFile
+                  ,iodevice = NewDev
+                  ,logip = LogIP
+                  ,counter = 1},
+    self() ! 'start_parsing',
+    {'ok', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -106,23 +102,6 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'open_logfile', LogFile, LogIP}, #state{iodevice = Dev}=State) ->
-    case Dev of
-        'undefined' ->
-            NewDev = ci_parsers_util:open_file(LogFile),
-            NewState = State#state{logfile = LogFile
-                                  ,iodevice = NewDev
-                                  ,logip = LogIP
-                                  ,counter = 1},
-            {'noreply', NewState};
-        _Dev ->
-            lager:debug("~s cannot parse '~s' as it is already parsing '~s'"
-                       ,[?MODULE, LogFile, State#state.logfile]),
-            {'noreply', State}
-    end;
-handle_cast('start_parsing', State) ->
-    self() ! 'start_parsing',
-    {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled handle_cast ~p", [_Msg]),
     {'noreply', State}.
@@ -213,6 +192,7 @@ make_and_store_chunk(LogIP, Counter, Data00) ->
               ,fun (C) -> ci_chunk:set_parser(C, ?MODULE) end
               ,fun (C) -> ci_chunk:set_label(C, label(Data)) end],
     Chunk = lists:foldl(Apply, ci_chunk:new(), Setters),
+    lager:debug("parsed freeswitch chunk ~s", [ci_chunk:call_id(Chunk)]),
     ci_datastore:store_chunk(Chunk),
     NewCounter.
 

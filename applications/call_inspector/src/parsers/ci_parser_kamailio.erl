@@ -13,10 +13,7 @@
 -include("../call_inspector.hrl").
 
 %% API
--export([start_link/0
-         ,open_logfile/2
-         ,start_parsing/0
-        ]).
+-export([start_link/1]).
 
 %% gen_server callbacks
 -export([init/1
@@ -29,14 +26,12 @@
 
 -record(state, {logfile :: file:name()
                ,iodevice :: file:io_device()
-               ,kamailioIP :: ne_binary()
+               ,logip :: ne_binary()
                ,timer :: reference()
                ,counter :: pos_integer()
                }
        ).
 -type state() :: #state{}.
-
--define(SERVER, ?MODULE).
 
 %%%===================================================================
 %%% API
@@ -46,17 +41,12 @@
 %% @doc
 %% Starts the server
 %%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
+%% @spec start_link(term()) -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link() ->
-    gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
-
-open_logfile(Filename, KamailioIP) ->
-    gen_server:cast(?MODULE, {'open_logfile', Filename, KamailioIP}).
-
-start_parsing() ->
-    gen_server:cast(?MODULE, 'start_parsing').
+start_link(Args) ->
+    ServerName = ci_parsers_util:make_name(Args),
+    gen_server:start_link({'local', ServerName}, ?MODULE, Args, []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -73,8 +63,14 @@ start_parsing() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([]) ->
-    {'ok', #state{}}.
+init({'parser_args', LogFile, LogIP}) ->
+    NewDev = ci_parsers_util:open_file(LogFile),
+    State = #state{logfile = LogFile
+                  ,iodevice = NewDev
+                  ,logip = LogIP
+                  ,counter = 1},
+    self() ! 'start_parsing',
+    {'ok', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -106,23 +102,6 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'open_logfile', LogFile, KamailioIP}, #state{iodevice = Dev}=State) ->
-    case Dev of
-        'undefined' ->
-            NewDev = ci_parsers_util:open_file(LogFile),
-            NewState = State#state{logfile = LogFile
-                                  ,iodevice = NewDev
-                                  ,kamailioIP = KamailioIP
-                                  ,counter = 1},
-            {'noreply', NewState};
-        _Dev ->
-            lager:debug("~s cannot parse '~s' as it is already parsing '~s'"
-                       ,[?MODULE, LogFile, State#state.logfile]),
-            {'noreply', State}
-    end;
-handle_cast('start_parsing', State) ->
-    self() ! 'start_parsing',
-    {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled handle_cast ~p", [_Msg]),
     {'noreply', State}.
@@ -138,14 +117,14 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info('start_parsing', State=#state{iodevice = IoDevice
-                                         ,kamailioIP = KamailioIP
+                                         ,logip = LogIP
                                          ,timer = OldTimer
                                          ,counter = Counter}) ->
     case OldTimer of
         'undefined' -> 'ok';
         _ -> erlang:cancel_timer(OldTimer)
     end,
-    NewCounter = extract_chunks(IoDevice, KamailioIP, Counter),
+    NewCounter = extract_chunks(IoDevice, LogIP, Counter),
     NewTimer = erlang:send_after(ci_parsers_util:parse_interval()
                                 , self(), 'start_parsing'),
     {'noreply', State#state{timer = NewTimer
@@ -185,21 +164,21 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
-extract_chunks(Dev, KamailioIP, Counter) ->
+extract_chunks(Dev, LogIP, Counter) ->
     case extract_chunk(Dev) of
         [] -> Counter;
         {{'callid',Callid}, Data0} ->
-            NewCounter = make_and_store_chunk(KamailioIP, Callid, Counter, Data0),
-            extract_chunks(Dev, KamailioIP, NewCounter);
+            NewCounter = make_and_store_chunk(LogIP, Callid, Counter, Data0),
+            extract_chunks(Dev, LogIP, NewCounter);
         {'buffers', Buffers} ->
             StoreEach =
                 fun ({{'callid',Callid}, Data0}, ACounter) ->
-                        make_and_store_chunk(KamailioIP, Callid, ACounter, Data0)
+                        make_and_store_chunk(LogIP, Callid, ACounter, Data0)
                 end,
             lists:foldl(StoreEach, Counter, Buffers)
     end.
 
-make_and_store_chunk(KamailioIP, Callid, Counter, Data0) ->
+make_and_store_chunk(LogIP, Callid, Counter, Data0) ->
     Apply = fun (Fun, Arg) -> Fun(Arg) end,
     {Data, Ts} = cleanse_data_and_get_timestamp(Data0),
     %% Counter is a fallback time ID (for old logfile format)
@@ -212,10 +191,11 @@ make_and_store_chunk(KamailioIP, Callid, Counter, Data0) ->
               ,fun (C) -> ci_chunk:set_timestamp(C, Timestamp) end
               ,fun (C) -> ci_chunk:set_parser(C, ?MODULE) end
               ,fun (C) -> ci_chunk:set_label(C, label(hd(Data))) end
-              ,fun (C) -> ci_chunk:set_from(C, from(lists:reverse(Data0),KamailioIP)) end
-              ,fun (C) -> ci_chunk:set_to(C, to(lists:reverse(Data0),KamailioIP)) end
+              ,fun (C) -> ci_chunk:set_from(C, from(lists:reverse(Data0),LogIP)) end
+              ,fun (C) -> ci_chunk:set_to(C, to(lists:reverse(Data0),LogIP)) end
               ],
     Chunk = lists:foldl(Apply, ci_chunk:new(), Setters),
+    lager:debug("parsed kamailio chunk ~s", [ci_chunk:call_id(Chunk)]),
     ci_datastore:store_chunk(Chunk),
     NewCounter.
 
