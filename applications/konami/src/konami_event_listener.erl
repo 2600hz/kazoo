@@ -47,7 +47,9 @@
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'self', []}]).
 -define(RESPONDERS, [{{?MODULE, 'handle_call_event'}
-                      ,[{<<"call_event">>, <<"*">>}]
+                      ,[{<<"call_event">>, <<"*">>}
+                        ,{<<"error">>, <<"*">>}
+                       ]
                      }
                      ,{{?MODULE, 'handle_originate_event'}
                        ,[{<<"resource">>, <<"*">>}
@@ -199,7 +201,8 @@ really_remove_call_bindings(CallId, Events) ->
 
 -spec handle_call_event(wh_json:object(), wh_proplist()) -> any().
 handle_call_event(JObj, Props) ->
-    'true' = wapi_call:event_v(JObj),
+    'true' = wapi_call:event_v(JObj)
+        orelse wapi_dialplan:error_v(JObj),
     wh_util:put_callid(JObj),
     handle_call_event(JObj, Props, kz_call_event:event_name(JObj)).
 
