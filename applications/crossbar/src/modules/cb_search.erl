@@ -12,7 +12,6 @@
 
 -export([init/0
          ,allowed_methods/0
-         ,authorize/1, authorize/2
          ,resource_exists/0
          ,validate/1
         ]).
@@ -38,23 +37,7 @@
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.search">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.search">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"*.validate.search">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize').
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Authorize the request
-%% @end
-
--spec authorize(cb_context:context()) -> 'false'.
--spec authorize(cb_context:context(), path_token()) -> boolean().
-
-authorize(Context) ->
-    cb_context:auth_token(Context) =/= 'undefined'.
-
-authorize(Context, _Module) ->
-    cb_context:auth_token(Context) =/= 'undefined'.
+    _ = crossbar_bindings:bind(<<"*.validate.search">>, ?MODULE, 'validate').
 
 %%--------------------------------------------------------------------
 %% @public
