@@ -1347,6 +1347,7 @@ record_call(Media, Action, TimeLimit, Terminators, Call) ->
     Destination = props:get_value(<<"Media-Transfer-Destination">>, Media),
     Headers = props:get_value(<<"Additional-Headers">>, Media),
     Limit = props:get_value(<<"Time-Limit">>, Media, wh_util:to_binary(TimeLimit)),
+    SampleRate = props:get_value(<<"Record-Sample-Rate">>, Media),
 
     Command = props:filter_undefined(
                 [{<<"Application-Name">>, <<"record_call">>}
@@ -1358,6 +1359,7 @@ record_call(Media, Action, TimeLimit, Terminators, Call) ->
                  ,{<<"Media-Transfer-Method">>, Method}
                  ,{<<"Media-Transfer-Destination">>, Destination}
                  ,{<<"Additional-Headers">>, Headers}
+                 ,{<<"Record-Sample-Rate">>, SampleRate}
                 ]),
     send_command(Command, Call).
 

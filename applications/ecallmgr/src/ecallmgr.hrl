@@ -23,6 +23,8 @@
 
 -define(LOCAL_MEDIA_PATH, "/tmp/").
 
+-define(DEFAULT_SAMPLE_RATE, 8000).
+
 -type fs_api_ret()       :: {'ok', binary()} |
                             {'error', 'badarg'} |
                             'timeout'.
@@ -218,6 +220,8 @@
                                ,{<<"tts_voice">>, <<"tts_voice">>}
                                ,{<<"playback_terminators">>, <<"playback_terminators">>}
                                ,{<<"record_waste_resources">>, <<"record_waste_resources">>}
+                               ,{<<"record_sample_rate">>, <<"record_sample_rate">>}
+                               ,{<<"Record-Sample-Rate">>, <<"record_sample_rate">>}
                                ,{<<"recording_follow_transfer">>, <<"recording_follow_transfer">>}
                                ,{<<"recording_follow_attxfer">>, <<"recording_follow_attxfer">>}
                                ,{<<"enable_file_write_buffering">>, <<"enable_file_write_buffering">>}
