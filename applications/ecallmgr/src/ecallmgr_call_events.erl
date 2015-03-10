@@ -1029,8 +1029,10 @@ swap_call_legs(Props) when is_list(Props) -> swap_call_legs(Props, []);
 swap_call_legs(JObj) -> swap_call_legs(wh_json:to_proplist(JObj)).
 
 swap_call_legs([], Swap) -> Swap;
-swap_call_legs([{<<"Call-ID">>, Value}|T], Swap) ->
+swap_call_legs([{<<"Unique-ID">>, Value}|T], Swap) ->
     swap_call_legs(T, [{<<"Other-Leg-Call-ID">>, Value}|Swap]);
+swap_call_legs([{<<"Other-Leg-Call-ID">>, Value}|T], Swap) ->
+    swap_call_legs(T, [{<<"Call-ID">>, Value}|Swap]);
 swap_call_legs([{<<"Caller-", Key/binary>>, Value}|T], Swap) ->
     swap_call_legs(T, [{<<"Other-Leg-", Key/binary>>, Value}|Swap]);
 swap_call_legs([{<<"Other-Leg-", Key/binary>>, Value}|T], Swap) ->
