@@ -92,6 +92,7 @@
                              ,<<"CHANNEL_DESTROY">>
                              ,<<"DTMF">>, <<"CHANNEL_REPLACED">>
                              ,<<"dialplan">>
+                             ,<<"LEG_CREATED">>
                             ]).
 
 -spec handle(wh_json:object(), whapps_call:call()) -> no_return().
@@ -229,10 +230,14 @@ attended_wait(?EVENT(Target, <<"CHANNEL_ANSWER">>, _Evt)
              ) ->
     case kz_call_event:other_leg_call_id(_Evt) of
         'undefined' ->
+            ?WSD_NOTE(Target, 'right', <<"target answered">>),
+            lager:info("target ~s has answered", [Target]);
+        Target ->
+            ?WSD_NOTE(Target, 'right', <<"target answered">>),
             lager:info("target ~s has answered", [Target]);
         _OtherLeg ->
-            lager:info("target ~s has answered with ~s", [Target, _OtherLeg]),
-            ?WSD_EVT(Target, _OtherLeg, <<"target answered">>)
+            ?WSD_EVT(Target, _OtherLeg, <<"target answered">>),
+            lager:info("target ~s has answered, attached to ~s", [Target, _OtherLeg])
     end,
     {'next_state', 'attended_wait', State};
 attended_wait(?EVENT(Target, <<"CHANNEL_BRIDGE">>, Evt)
