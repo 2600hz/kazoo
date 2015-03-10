@@ -51,8 +51,11 @@
          ,enable_account/1
          ,change_pvt_enabled/2
         ]).
+-export([load_apps/2]).
 -export([get_path/2]).
--export([get_language/1
+-export([get_user_lang/2
+         ,get_account_lang/1
+         ,get_language/1
          ,get_language/2
         ]).
 -export([get_user_timezone/2
