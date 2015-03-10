@@ -16,6 +16,7 @@
          ,authorizing_id/1
          ,dtmf_digit/1
          ,event_name/1
+         ,hangup_cause/1, hangup_code/1
         ]).
 
 -include("kz_documents.hrl").
@@ -52,5 +53,14 @@ authorizing_id(JObj) ->
 dtmf_digit(JObj) ->
     wh_json:get_value(<<"DTMF-Digit">>, JObj).
 
+-spec event_name(wh_json:object()) -> api_binary().
 event_name(JObj) ->
     wh_json:get_value(<<"Event-Name">>, JObj).
+
+-spec hangup_cause(wh_json:object()) -> api_binary().
+hangup_cause(JObj) ->
+    wh_json:get_value(<<"Hangup-Cause">>, JObj).
+
+-spec hangup_code(wh_json:object()) -> api_binary().
+hangup_code(JObj) ->
+    wh_json:get_value(<<"Hangup-Code">>, JObj).
