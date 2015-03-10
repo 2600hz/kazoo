@@ -183,7 +183,9 @@ attended_wait(?EVENT(Transferor, <<"DTMF">>, Evt), #state{transferor=Transferor}
 attended_wait(?EVENT(Transferee, <<"CHANNEL_DESTROY">>, _Evt)
               ,#state{transferee=Transferee}=State
              ) ->
-    lager:info("transferee ~s hungup before target could be reached", [Transferee]),
+    lager:info("transferee ~s hungup (~s) before target could be reached"
+               ,[Transferee, kz_call_event:hangup_cause(_Evt)]
+              ),
     lager:info("transferor and target are on their own"),
     ?WSD_NOTE(Transferee, 'right', <<"Transferee down in attended_wait">>),
     {'stop', 'normal', State};
@@ -193,8 +195,8 @@ attended_wait(?EVENT(Transferor, <<"CHANNEL_DESTROY">>, _Evt)
                       ,transferee=Transferee
                      }=State
              ) ->
-    lager:info("transferor ~s hungup, connecting transferee ~s and target ~s (or tbd)"
-               ,[Transferor, Transferee, Target]
+    lager:info("transferor ~s hungup (~s), connecting transferee ~s and target ~s (or tbd)"
+               ,[Transferor, kz_call_event:hangup_cause(_Evt), Transferee, Target]
               ),
     ?WSD_NOTE(Transferor, 'right', <<"Transferor down in attended wait">>),
     {'next_state', 'partial_wait', State};
@@ -323,12 +325,16 @@ attended_wait(?EVENT(TargetA, <<"CHANNEL_DESTROY">>, _Evt)
                      }=State
              ) ->
     Ref = erlang:start_timer(1000, self(), 'purgatory'),
-    lager:debug("target 'a' ~s has gone done, going to purgatory in ~p", [TargetA, Ref]),
+    lager:debug("target 'a' ~s has gone done (~s), going to purgatory in ~p"
+                ,[TargetA, kz_call_event:hangup_cause(_Evt), Ref]
+               ),
     {'next_state', 'attended_wait', State#state{purgatory_ref=Ref}};
 attended_wait(?EVENT(TargetB, <<"CHANNEL_DESTROY">>, _Evt)
               ,#state{target_b_leg=TargetB}=State
              ) ->
-    lager:debug("target 'b' ~s has gone done", [TargetB]),
+    lager:debug("target 'b' ~s has gone done: ~s"
+                ,[TargetB, kz_call_event:hangup_cause(_Evt)]
+               ),
     {'next_state', 'attended_wait', State};
 attended_wait(?EVENT(TargetA, <<"CHANNEL_REPLACED">>, Evt)
               ,#state{target_a_leg=TargetA
@@ -408,13 +414,17 @@ partial_wait(?EVENT(Transferee, <<"CHANNEL_DESTROY">>, _Evt)
                      ,target_call=TargetCall
                     }=State
             ) ->
-    lager:info("transferee ~s hungup while target was being rung", [Transferee]),
+    lager:info("transferee ~s hungup (~s) while target was being rung"
+               ,[Transferee, kz_call_event:hangup_cause(_Evt)]
+              ),
     hangup_target(TargetCall),
     {'stop', 'normal', State};
 partial_wait(?EVENT(Transferor, <<"CHANNEL_DESTROY">>, _Evt)
              ,#state{transferor=Transferor}=State
             ) ->
-    lager:info("transferor ~s hungup, still waiting on target and transferee", [Transferor]),
+    lager:info("transferor ~s hungup(~s), still waiting on target and transferee"
+               ,[Transferor, kz_call_event:hangup_cause(_Evt)]
+              ),
     {'next_state', 'partial_wait', State};
 partial_wait(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
              ,#state{target=Target
@@ -532,7 +542,9 @@ attended_answer(?EVENT(Target, <<"CHANNEL_BRIDGE">>, Evt)
 attended_answer(?EVENT(Transferee, <<"CHANNEL_DESTROY">>, _Evt)
                 ,#state{transferee=Transferee}=State
                ) ->
-    lager:info("transferee ~s hungup while transferor and target were talking", [Transferee]),
+    lager:info("transferee ~s hungup(~s) while transferor and target were talking"
+               ,[Transferee, kz_call_event:hangup_cause(_Evt)]
+              ),
     lager:info("transferor and target are on their own"),
     ?WSD_NOTE(Transferee, 'right', <<"channel done">>),
     {'next_state', 'finished', State};
@@ -544,8 +556,8 @@ attended_answer(?EVENT(Transferor, <<"CHANNEL_DESTROY">>, _Evt)
                         ,target_call=TargetCall
                        }=State
                ) ->
-    lager:info("transferor ~s hungup, connecting transferee ~s and target ~s"
-               ,[Transferor, Transferee, Target]
+    lager:info("transferor ~s hungup(~s), connecting transferee ~s and target ~s"
+               ,[Transferor, kz_call_event:hangup_cause(_Evt), Transferee, Target]
               ),
     ?WSD_NOTE(Transferor, 'right', <<"channel done">>),
     {Leg, Call} = how_to_transfer(OriginalCall, TargetCall, Transferor, Target, Transferee),
@@ -558,8 +570,8 @@ attended_answer(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
                       ,call=Call
                      }=State
              ) ->
-    lager:info("target ~s hungup, reconnecting transferor ~s to transferee ~s"
-                ,[Target, Transferor, Transferee]
+    lager:info("target ~s hungup(~s), reconnecting transferor ~s to transferee ~s"
+                ,[Target, kz_call_event:hangup_cause(_Evt), Transferor, Transferee]
                ),
     ?WSD_NOTE(Target, 'right', <<"target done">>),
 
@@ -568,13 +580,13 @@ attended_answer(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
 attended_answer(?EVENT(TargetA, <<"CHANNEL_DESTROY">>, _Evt)
                 ,#state{target_a_leg=TargetA}=State
                ) ->
-    lager:debug("target 'a' ~s destroyed", [TargetA]),
+    lager:debug("target 'a' ~s destroyed(~s)", [TargetA, kz_call_event:hangup_cause(_Evt)]),
     ?WSD_EVT(TargetA, 'right', <<"destroyed">>),
     {'next_state', 'attended_answer', State};
 attended_answer(?EVENT(TargetB, <<"CHANNEL_DESTROY">>, _Evt)
                 ,#state{target_b_leg=TargetB}=State
                ) ->
-    lager:debug("target 'b' ~s destroyed", [TargetB]),
+    lager:debug("target 'b' ~s destroyed: ~s", [TargetB, kz_call_event:hangup_cause(_Evt)]),
     ?WSD_EVT(TargetB, 'right', <<"destroyed">>),
     {'next_state', 'attended_answer', State};
 attended_answer(?EVENT(_CallId, _EventName, _Evt), State) ->
@@ -653,20 +665,20 @@ finished(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
          ,#state{target=Target}=State
         ) ->
     ?WSD_NOTE(Target, 'right', <<"target hungup">>),
-    lager:info("target ~s has hungup", [Target]),
+    lager:info("target ~s has hungup: ~s", [Target, kz_call_event:hangup_cause(_Evt)]),
     {'stop', 'normal', State};
 finished(?EVENT(Transferor, <<"CHANNEL_DESTROY">>, _Evt)
          ,#state{transferor=Transferor}=State
         ) ->
     ?WSD_NOTE(Transferor, 'right', <<"transferor hungup">>),
-    lager:info("transferor ~s has hungup", [Transferor]),
+    lager:info("transferor ~s has hungup: ~s", [Transferor, kz_call_event:hangup_cause(_Evt)]),
     {'next_state', 'finished', State, 5000};
 finished(?EVENT(Transferee, <<"CHANNEL_DESTROY">>, _Evt)
          ,#state{transferee=Transferee
                  ,target_call=TargetCall
                 }=State
         ) ->
-    lager:info("transferee ~s has hungup", [Transferee]),
+    lager:info("transferee ~s has hungup: ~s", [Transferee, kz_call_event:hangup_cause(_Evt)]),
     ?WSD_NOTE(Transferee, 'right', <<"transferee hungup">>),
     hangup_target(TargetCall),
     {'stop', 'normal', State};
@@ -754,7 +766,7 @@ takeback(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
                  ,call=Call
                 }=State
         ) ->
-    lager:debug("target ~s has ended", [Target]),
+    lager:debug("target ~s has ended: ~s", [Target, kz_call_event:hangup_cause(_Evt)]),
     ?WSD_NOTE(Target, 'right', <<"hungup">>),
     connect_to_transferee(Call),
     {'next_state', 'takeback', State, 5000};
@@ -762,13 +774,13 @@ takeback(?EVENT(Transferor, <<"CHANNEL_DESTROY">>, _Evt)
          ,#state{transferor=Transferor}=State
         ) ->
     ?WSD_NOTE(Transferor, 'right', <<"hungup">>),
-    lager:debug("transferor ~s has ended", [Transferor]),
+    lager:debug("transferor ~s has ended: ~s", [Transferor, kz_call_event:hangup_cause(_Evt)]),
     {'stop', 'normal', State};
 takeback(?EVENT(Transferee, <<"CHANNEL_DESTROY">>, _Evt)
          ,#state{transferee=Transferee}=State
         ) ->
     ?WSD_NOTE(Transferee, 'right', <<"hungup">>),
-    lager:debug("transferee ~s has ended", [Transferee]),
+    lager:debug("transferee ~s has ended: ~s", [Transferee, kz_call_event:hangup_cause(_Evt)]),
     {'stop', 'normal', State};
 takeback(?EVENT(_CallId, _EventName, _Evt)
          ,State
