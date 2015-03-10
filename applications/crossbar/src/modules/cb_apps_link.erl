@@ -89,7 +89,7 @@ resource_exists(?AUTHORIZE) -> 'true'.
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?AUTHORIZE) ->
     JObj = wh_json:from_list(
-             [{<<"auth-token">>, auth_info(Context)}
+             [{<<"auth_token">>, auth_info(Context)}
               ,{<<"account">>, account_info(Context)}
              ]
             ),
