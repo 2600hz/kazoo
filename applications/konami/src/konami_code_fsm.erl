@@ -610,6 +610,13 @@ handle_channel_destroy(#state{call_id=CallId
     lager:debug("'a' leg has ended, so should we"),
     exit('normal');
 handle_channel_destroy(#state{call_id=CallId
+                              ,other_leg='undefined'
+                             }
+                       ,CallId
+                      ) ->
+    lager:debug("'a' leg has ended and we have no 'b' leg"),
+    exit('normal');
+handle_channel_destroy(#state{call_id=CallId
                               ,other_leg=_OtherLeg
                               ,call=Call
                              }=State

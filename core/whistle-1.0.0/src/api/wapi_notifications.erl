@@ -119,8 +119,8 @@
 -define(VOICEMAIL_TYPES, []).
 
 -define(VOICEMAIL_SAVED_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                           ,{<<"Event-Name">>, <<"voicemail_saved">>}
-                          ]).
+                                 ,{<<"Event-Name">>, <<"voicemail_saved">>}
+                                ]).
 
 %% Notify Voicemail full
 -define(VOICEMAIL_FULL_HEADERS, [<<"Account-DB">>

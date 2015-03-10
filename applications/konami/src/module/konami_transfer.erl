@@ -57,6 +57,7 @@
                 ,target :: ne_binary() %% this is the real b-leg, if any
                 ,target_a_leg :: api_binary() %% loopback-a
                 ,target_b_leg :: api_binary() %% loopback-b
+                ,target_legs = [] :: ne_binaries()
                 ,call :: whapps_call:call()
                 ,target_call = whapps_call:new() :: whapps_call:call()
                 ,takeback_dtmf :: ne_binary()
@@ -92,7 +93,7 @@
                              ,<<"CHANNEL_DESTROY">>
                              ,<<"DTMF">>, <<"CHANNEL_REPLACED">>
                              ,<<"dialplan">>
-                             ,<<"LEG_CREATED">>
+                             ,<<"LEG_CREATED">>, <<"LEG_DESTROYED">>
                             ]).
 
 -spec handle(wh_json:object(), whapps_call:call()) -> no_return().
@@ -366,20 +367,42 @@ attended_wait(?EVENT(TargetA, <<"CHANNEL_REPLACED">>, Evt)
             {'next_state', 'attended_wait', handle_real_target(State, ReplacementId)}
     end;
 attended_wait(?EVENT(TargetB, <<"CHANNEL_ANSWER">>, _Evt)
+              ,#state{target_b_leg=TargetB
+                      ,target_a_leg=TargetA
+                      ,target_legs=[]
+                     }=State
+             ) ->
+    lager:debug("target 'b' ~s answered with no target legs, connecting to transferor", [TargetB]),
+    ?WSD_NOTE(TargetB, 'right', <<"answered with no target legs">>),
+    {'next_state', 'attended_wait', handle_real_target(State, TargetA)};
+attended_wait(?EVENT(TargetB, <<"CHANNEL_ANSWER">>, _Evt)
               ,#state{target_b_leg=TargetB}=State
              ) ->
-    lager:debug("target 'b' ~s answered", [TargetB]),
+    lager:debug("target 'b' ~s answered: ~s", [TargetB, wh_json:encode(_Evt)]),
     ?WSD_NOTE(TargetB, 'right', <<"answered">>),
     {'next_state', 'attended_wait', State};
-attended_wait(?EVENT(TargetB, <<"LEG_CREATED">>, _Evt)
-              ,#state{target_b_leg=TargetB}=State
+attended_wait(?EVENT(TargetB, <<"LEG_CREATED">>, Evt)
+              ,#state{target_b_leg=TargetB
+                      ,target_legs=TargetLegs
+                     }=State
              ) ->
-    OtherLeg = kz_call_event:other_leg_call_id(_Evt),
+    OtherLeg = kz_call_event:other_leg_call_id(Evt),
     lager:debug("target 'b' ~s has leg ~s starting"
                 ,[TargetB, OtherLeg]
                ),
     ?WSD_EVT(TargetB, OtherLeg, <<"created">>),
-    {'next_state', 'attended_wait', State};
+    {'next_state', 'attended_wait', State#state{target_legs=[OtherLeg | TargetLegs]}};
+attended_wait(?EVENT(TargetB, <<"LEG_DESTROYED">>, Evt)
+              ,#state{target_b_leg=TargetB
+                      ,target_legs=TargetLegs
+                     }=State
+             ) ->
+    OtherLeg = kz_call_event:other_leg_call_id(Evt),
+    lager:debug("target 'b' ~s has leg ~s ending"
+                ,[TargetB, OtherLeg]
+               ),
+    ?WSD_EVT(TargetB, OtherLeg, <<"created">>),
+    {'next_state', 'attended_wait', State#state{target_legs=props:delete(OtherLeg, TargetLegs)}};
 attended_wait(?EVENT(TargetB, <<"CHANNEL_BRIDGE">>, Evt)
               ,#state{target_b_leg=TargetB
                       ,target=Target
@@ -485,6 +508,22 @@ partial_wait(?EVENT(Target, <<"originate_uuid">>, Evt)
     lager:info("recv control for target ~s", [Target]),
     ?WSD_NOTE(Target, 'right', <<"control for target recv">>),
     {'next_state', 'partial_wait', State#state{target_call=whapps_call:from_originate_uuid(Evt, TargetCall)}};
+
+partial_wait(?EVENT(TargetB, <<"CHANNEL_ANSWER">>, _Evt)
+              ,#state{target_b_leg=TargetB
+                      ,target_a_leg=TargetA
+                      ,target_legs=[]
+                     }=State
+             ) ->
+    lager:debug("target 'b' ~s answered with no target legs, connecting to transferor", [TargetB]),
+    ?WSD_NOTE(TargetB, 'right', <<"answered with no target legs">>),
+    {'next_state', 'partial_wait', handle_real_target(State, TargetA, 'transferee')};
+partial_wait(?EVENT(TargetB, <<"CHANNEL_ANSWER">>, _Evt)
+              ,#state{target_b_leg=TargetB}=State
+             ) ->
+    lager:debug("target 'b' ~s answered: ~s", [TargetB, wh_json:encode(_Evt)]),
+    ?WSD_NOTE(TargetB, 'right', <<"answered">>),
+    {'next_state', 'partial_wait', State};
 
 partial_wait(?EVENT(TargetB, <<"CHANNEL_BRIDGE">>, Evt)
              ,#state{target_b_leg=TargetB
