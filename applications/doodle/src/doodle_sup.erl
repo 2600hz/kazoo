@@ -23,9 +23,9 @@
 -define(CHILDREN, [?CACHE_ARGS(?DOODLE_CACHE, ?CACHE_PROPS)
                    ,?WORKER('doodle_listener')
                    ,?WORKER('doodle_shared_listener')
-                   ,?WORKER('doodle_inbound_listener')
                    ,?SUPER('doodle_event_handler_sup')
                    ,?SUPER('doodle_exe_sup')
+                   ,?SUPER('doodle_inbound_listener_sup')
                   ]).
 
 %% ===================================================================
