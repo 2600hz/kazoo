@@ -70,8 +70,9 @@ record_call(Data, Call) ->
              ,{<<"Media-Transfer-Destination">>, wh_json:get_value(<<"url">>, Data)}
              ,{<<"Additional-Headers">>, wh_json:get_value(<<"additional_headers">>, Data)}
              ,{<<"Time-Limit">>, wh_json:get_value(<<"time_limit">>, Data)}
+             ,{<<"Record-Sample-Rate">>, wh_json:get_value(<<"record_sample_rate">>, Data)}
             ],
-    _ = whapps_call_command:record_call(Props, <<"start">>, Call),
+    _ = whapps_call_command:record_call(props:filter_undefined(Props), <<"start">>, Call),
     lager:debug("auto handling call recording").
 
 -spec get_action(api_binary()) -> ne_binary().

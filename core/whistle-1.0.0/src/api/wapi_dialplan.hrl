@@ -479,7 +479,7 @@
                                  ]).
 -define(OPTIONAL_RECORD_CALL_REQ_HEADERS, [<<"Time-Limit">>, <<"Insert-At">>, <<"Follow-Transfer">>
                                            ,<<"Media-Transfer-Method">> ,<<"Media-Transfer-Destination">>
-                                           ,<<"Additional-Headers">>
+                                           ,<<"Additional-Headers">>, <<"Record-Sample-Rate">>
                                           ]).
 -define(RECORD_CALL_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                                  ,{<<"Event-Name">>, <<"command">>}
@@ -487,7 +487,7 @@
                                  ,{<<"Record-Action">>, [<<"start">>, <<"stop">>]}
                                  ,?INSERT_AT_TUPLE
                                 ]).
--define(RECORD_CALL_REQ_TYPES, []).
+-define(RECORD_CALL_REQ_TYPES, [{<<"Record-Sample-Rate">>, fun is_integer/1}]).
 
 %% Play and Record Digits
 -define(PLAY_COLLECT_DIGITS_REQ_HEADERS
