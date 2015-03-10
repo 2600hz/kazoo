@@ -26,8 +26,8 @@
            ])
        ).
 
--define(TEMPLATE_TEXT, <<"Welcome {{user.first_name}} {{user.last_name}}.\n\nYour password is : {{user.password}}.\n Please keep it safe and secret.">>).
--define(TEMPLATE_HTML, <<"<p>Welcome {{user.first_name}} {{user.last_name}}.</p><p>Your password is : {{user.password}}.</p><p>Please keep it safe and secret.</p>">>).
+-define(TEMPLATE_TEXT, <<"Welcome {{user.first_name}} {{user.last_name}}.\n\nYour password is : {{user.password}}.\n Make sure to change it.">>).
+-define(TEMPLATE_HTML, <<"<p>Welcome {{user.first_name}} {{user.last_name}}.</p><p>Your password is : {{user.password}}.</p><p>Make sure to change it.</p>">>).
 -define(TEMPLATE_SUBJECT, <<"New user">>).
 -define(TEMPLATE_CATEGORY, <<"new_user">>).
 -define(TEMPLATE_NAME, <<"new_user">>).
