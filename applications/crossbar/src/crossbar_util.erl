@@ -50,9 +50,12 @@
          ,enable_account/1
          ,change_pvt_enabled/2
         ]).
+-export([load_apps/2]).
 -export([get_path/2]).
 -export([get_user_lang/2
          ,get_account_lang/1
+         ,get_language/1
+         ,get_language/2
         ]).
 -export([get_user_timezone/2
          ,get_account_timezone/1
@@ -604,7 +607,6 @@ populate_resp(JObj, AccountId, UserId) ->
      ).
 
 -spec load_apps(ne_binary(), api_binary()) -> api_object().
-load_apps(_, 'undefined') -> 'undefined';
 load_apps(AccountId, UserId) ->
     MasterAccountDb = get_master_account_db(),
     Lang = get_language(AccountId, UserId),
@@ -637,8 +639,15 @@ filter_apps([JObj|JObjs], Lang, Acc) ->
         ),
     filter_apps(JObjs, Lang, [FormatedApp|Acc]).
 
+-spec get_language(ne_binary()) -> api_binary().
+get_language(AccountId) -> get_language(AccountId, 'undefined').
+
 -spec get_language(ne_binary(), api_binary()) -> api_binary().
-get_language(_, 'undefined') -> 'undefined';
+get_language(AccountId, 'undefined') ->
+    case ?MODULE:get_account_lang(AccountId) of
+        {'ok', Lang} -> Lang;
+        'error' -> ?DEFAULT_LANGUAGE
+    end;
 get_language(AccountId, UserId) ->
     case ?MODULE:get_user_lang(AccountId, UserId) of
         {'ok', Lang} -> Lang;
