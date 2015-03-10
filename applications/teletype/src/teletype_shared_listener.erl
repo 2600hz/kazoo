@@ -32,6 +32,9 @@
                      ,{{'teletype_fax_inbound_to_email', 'handle_fax_inbound'}
                        ,[{<<"notification">>, <<"inbound_fax">>}]
                       }
+                     ,{{'teletype_new_user', 'handle_req'}
+                       ,[{<<"notification">>, <<"new_user">>}]
+                      }
                      ,{'teletype_template_skel'
                        ,[{<<"notification">>, <<"skel">>}]
                       }
@@ -58,6 +61,7 @@
 -define(RESTRICT_TO, ['new_voicemail'
                       ,'voicemail_full'
                       ,'inbound_fax'
+                      ,'new_user'
 
                       %% ,'inbound_fax_error'
                       %% ,'outbound_fax'
