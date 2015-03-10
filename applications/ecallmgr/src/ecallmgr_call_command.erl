@@ -793,6 +793,7 @@ get_call_pickup_app(Node, UUID, JObj, Target, Command) ->
 
     ecallmgr_util:set(Node, UUID, build_set_args(SetApi, JObj) ++ Exports),
     ecallmgr_util:set(Node, UUID, Exports),
+    ecallmgr_util:set(Node, Target, Exports),
 
     {Command, Target}.
 
