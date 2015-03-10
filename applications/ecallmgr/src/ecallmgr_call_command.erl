@@ -6,6 +6,8 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%   Karl Anderson
+%%%
+%%% Fix KAZOO-3406: Sponsored by Velvetech LLC, implemented by SIPLABS LLC
 %%%-------------------------------------------------------------------
 -module(ecallmgr_call_command).
 
