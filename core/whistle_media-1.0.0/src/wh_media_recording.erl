@@ -13,6 +13,8 @@
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
+%%%
+%%% Fix KAZOO-3406: Sponsored by Velvetech LLC, implemented by SIPLABS LLC
 %%%-------------------------------------------------------------------
 -module(wh_media_recording).
 
