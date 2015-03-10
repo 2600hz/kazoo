@@ -258,6 +258,13 @@ attended_wait(?EVENT(Target, <<"CHANNEL_BRIDGE">>, Evt)
             lager:info("recv CHANNEL_BRIDGE on target ~s to call id ~s", [Target, _CallId]),
             {'next_state', 'attended_wait', State}
     end;
+attended_wait(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
+              ,#state{target=Target}=State
+             ) ->
+    lager:debug("target ~s hungup before bridging to transferor", [Target]),
+    ?WSD_NOTE(Target, 'right', <<"hungup">>),
+    Ref = erlang:start_timer(1000, self(), 'purgatory'),
+    {'next_state', 'attended_wait', State#state{purgatory_ref=Ref}};
 attended_wait(?EVENT(TargetA, <<"originate_uuid">>, Evt)
               ,#state{target_a_leg=TargetA
                       ,target_call=TargetCall
@@ -313,6 +320,9 @@ attended_wait(?EVENT(TargetA, <<"LEG_CREATED">>, Evt)
     TargetB = kz_call_event:other_leg_call_id(Evt),
     lager:debug("target 'b' started: ~s", [TargetB]),
     konami_event_listener:add_call_binding(TargetB, ?TARGET_CALL_EVENTS),
+
+    ?WSD_EVT(TargetA, TargetB, <<"target b leg created">>),
+
     {'next_state', 'attended_wait', State#state{target_b_leg=TargetB}};
 attended_wait(?EVENT(TargetA, <<"originate_resp">>, _Evt)
               ,#state{target_a_leg=TargetA}=State) ->
@@ -321,6 +331,7 @@ attended_wait(?EVENT(TargetA, <<"originate_resp">>, _Evt)
     {'next_state', 'attended_wait', State};
 attended_wait(?EVENT(TargetA, <<"CHANNEL_DESTROY">>, _Evt)
               ,#state{target_a_leg=TargetA
+                      ,target='undefined'
                       ,purgatory_ref='undefined'
                      }=State
              ) ->
@@ -338,24 +349,22 @@ attended_wait(?EVENT(TargetB, <<"CHANNEL_DESTROY">>, _Evt)
     {'next_state', 'attended_wait', State};
 attended_wait(?EVENT(TargetA, <<"CHANNEL_REPLACED">>, Evt)
               ,#state{target_a_leg=TargetA
-                      ,target_call=TargetCall
-                      ,transferor=Transferor
-                      ,purgatory_ref=Ref
+                      ,target='undefined'
                      }=State
              ) ->
-    maybe_cancel_timer(Ref),
-    ReplacementId = kz_call_event:replaced_by(Evt),
-    lager:debug("target 'a' ~s being replaced by ~s", [TargetA, ReplacementId]),
-    ?WSD_EVT(TargetA, ReplacementId, <<"replaced">>),
-
-    konami_event_listener:add_call_binding(ReplacementId, ?TARGET_CALL_EVENTS),
-
-    TargetCall1 = whapps_call:set_call_id(ReplacementId, TargetCall),
-    connect_transferor_to_target(Transferor, TargetCall1),
-    {'next_state', 'attended_wait', State#state{target=ReplacementId
-                                                ,target_call=TargetCall1
-                                                ,purgatory_ref='undefined'
-                                               }};
+    {'next_state', 'attended_wait', handle_real_target(State, kz_call_event:replaced_by(Evt))};
+attended_wait(?EVENT(TargetA, <<"CHANNEL_REPLACED">>, Evt)
+              ,#state{target_a_leg=TargetA
+                      ,target=Target
+                     }=State
+             ) ->
+    case kz_call_event:replaced_by(Evt) of
+        Target ->
+            lager:debug("target 'a' ~s replaced by known target ~s", [TargetA, Target]),
+            {'next_state', 'attended_wait', State};
+        ReplacementId ->
+            {'next_state', 'attended_wait', handle_real_target(State, ReplacementId)}
+    end;
 attended_wait(?EVENT(TargetB, <<"CHANNEL_ANSWER">>, _Evt)
               ,#state{target_b_leg=TargetB}=State
              ) ->
@@ -365,19 +374,25 @@ attended_wait(?EVENT(TargetB, <<"CHANNEL_ANSWER">>, _Evt)
 attended_wait(?EVENT(TargetB, <<"LEG_CREATED">>, _Evt)
               ,#state{target_b_leg=TargetB}=State
              ) ->
+    OtherLeg = kz_call_event:other_leg_call_id(_Evt),
     lager:debug("target 'b' ~s has leg ~s starting"
-                ,[TargetB, kz_call_event:other_leg_call_id(_Evt)]
+                ,[TargetB, OtherLeg]
                ),
+    ?WSD_EVT(TargetB, OtherLeg, <<"created">>),
     {'next_state', 'attended_wait', State};
 attended_wait(?EVENT(TargetB, <<"CHANNEL_BRIDGE">>, Evt)
               ,#state{target_b_leg=TargetB}=State
              ) ->
     OtherLeg = kz_call_event:other_leg_call_id(Evt),
     lager:debug("target 'b' ~s bridged to ~s", [TargetB, OtherLeg]),
+
     ?WSD_EVT(TargetB, OtherLeg, <<"bridged">>),
 
-    konami_event_listener:add_call_binding(OtherLeg, ?TARGET_CALL_EVENTS),
-
+    {'next_state', 'attended_wait', handle_real_target(State, OtherLeg)};
+attended_wait(?EVENT(_CallId, <<"LEG_CREATED">>, _Evt), State) ->
+    lager:debug("ignoring leg_created for ~s and ~s"
+                ,[_CallId, kz_call_event:other_leg_call_id(_Evt)]
+               ),
     {'next_state', 'attended_wait', State};
 attended_wait(?EVENT(_CallId, _EventName, _Evt), State) ->
     case kz_call_event:other_leg_call_id(_Evt) of
@@ -386,7 +401,7 @@ attended_wait(?EVENT(_CallId, _EventName, _Evt), State) ->
             ?WSD_NOTE(_CallId, 'right', <<"unhandled ", _EventName/binary>>);
         _OtherLeg ->
             lager:info("unhandled event ~s for ~s to ~s", [_EventName, _CallId, _OtherLeg]),
-            ?WSD_NOTE(_CallId, _OtherLeg, <<"unhandled ", _EventName/binary>>)
+            ?WSD_EVT(_CallId, _OtherLeg, <<"unhandled ", _EventName/binary>>)
     end,
     {'next_state', 'attended_wait', State};
 attended_wait(Msg, State) ->
@@ -770,6 +785,21 @@ takeback(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
     ?WSD_NOTE(Target, 'right', <<"hungup">>),
     connect_to_transferee(Call),
     {'next_state', 'takeback', State, 5000};
+takeback(?EVENT(TargetA, <<"CHANNEL_DESTROY">>, _Evt)
+         ,#state{target_a_leg=TargetA
+                 ,call=Call
+                }=State
+        ) ->
+    lager:debug("target 'a' ~s has ended: ~s", [TargetA, kz_call_event:hangup_cause(_Evt)]),
+    ?WSD_NOTE(TargetA, 'right', <<"hungup">>),
+    connect_to_transferee(Call),
+    {'next_state', 'takeback', State, 5000};
+takeback(?EVENT(TargetB, <<"CHANNEL_DESTROY">>, _Evt)
+         ,#state{target_b_leg=TargetB}=State
+        ) ->
+    lager:debug("target 'a' ~s has ended: ~s", [TargetB, kz_call_event:hangup_cause(_Evt)]),
+    ?WSD_NOTE(TargetB, 'right', <<"hungup">>),
+    {'next_state', 'takeback', State};
 takeback(?EVENT(Transferor, <<"CHANNEL_DESTROY">>, _Evt)
          ,#state{transferor=Transferor}=State
         ) ->
@@ -782,9 +812,12 @@ takeback(?EVENT(Transferee, <<"CHANNEL_DESTROY">>, _Evt)
     ?WSD_NOTE(Transferee, 'right', <<"hungup">>),
     lager:debug("transferee ~s has ended: ~s", [Transferee, kz_call_event:hangup_cause(_Evt)]),
     {'stop', 'normal', State};
-takeback(?EVENT(_CallId, _EventName, _Evt)
-         ,State
+takeback(?EVENT(TargetA, _EventName, _Evt)
+         ,#state{target_a_leg=TargetA}=State
         ) ->
+    lager:debug("ignoring target 'a' ~s: ~s", [TargetA, _EventName]),
+    {'next_state', 'takeback', State};
+takeback(?EVENT(_CallId, _EventName, _Evt), State) ->
     case kz_call_event:other_leg_call_id(_Evt) of
         'undefined' ->
             lager:info("unhandled event ~s for ~s", [_EventName, _CallId]),
@@ -1270,3 +1303,25 @@ suppress_event(JObj, _EventNode, _OtherNode) ->
                   ,_EventNode
                   ,wh_json:encode(JObj)
                  ]).
+
+-spec handle_real_target(state(), ne_binary()) -> state().
+handle_real_target(#state{target_a_leg=TargetA
+                          ,target_call=TargetCall
+                          ,transferor=Transferor
+                          ,purgatory_ref=Ref
+                         }=State
+                   ,ReplacementId
+                  ) ->
+    maybe_cancel_timer(Ref),
+
+    lager:debug("target 'a' ~s being replaced by ~s", [TargetA, ReplacementId]),
+    ?WSD_EVT(TargetA, ReplacementId, <<"replaced target 'a'">>),
+
+    konami_event_listener:add_call_binding(ReplacementId, ?TARGET_CALL_EVENTS),
+
+    TargetCall1 = whapps_call:set_call_id(ReplacementId, TargetCall),
+    connect_transferor_to_target(Transferor, TargetCall1),
+    State#state{target=ReplacementId
+                ,target_call=TargetCall1
+                ,purgatory_ref='undefined'
+               }.
