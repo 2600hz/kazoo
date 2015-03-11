@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600hz
+%%% @copyright (C) 2013-2015, 2600hz
 %%% @doc
 %%%
 %%% Listing of all expected v1 callbacks
@@ -49,7 +49,6 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.post.apps_store">>, ?MODULE, 'post'),
     crossbar_bindings:bind(<<"*.execute.delete.apps_store">>, ?MODULE, 'delete').
 
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -84,7 +83,6 @@ resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
 resource_exists(_, _) -> 'true'.
 resource_exists(_, _, _) -> 'true'.
-
 
 %%--------------------------------------------------------------------
 %% @public
@@ -124,31 +122,34 @@ content_types_provided(Context, _, _, _) -> Context.
 -spec content_types_provided_master(cb_context:context(), path_token(), path_token(), path_token(), path_token()) ->
                                     cb_context:context().
 content_types_provided_master(Context, ?HTTP_GET, Id, ?ICON) ->
-    case master_app_read(Id, Context) of
-        #cb_context{resp_status='success', doc=JObj} ->
+    Context1 = master_app_read(Id, Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            JObj = cb_context:doc(Context1),
             Icon = wh_json:get_value(?ICON, JObj),
             case wh_json:get_value([<<"_attachments">>, Icon], JObj) of
-                'undefined' -> Context;
+                'undefined' -> Context1;
                 Attachment ->
                     CT = wh_json:get_value(<<"content_type">>, Attachment),
                     [Type, SubType] = binary:split(CT, <<"/">>),
-                    Context#cb_context{content_types_provided=[{'to_binary', [{Type, SubType}]}]}
+                    cb_context:set_content_types_provided(Context1, [{'to_binary', [{Type, SubType}]}])
             end;
-        _ -> Context
+        _Status -> Context1
     end;
 content_types_provided_master(Context, _, _, _) -> Context.
 
 content_types_provided_master(Context, ?HTTP_GET, Id, ?SCREENSHOT, Number) ->
-    case master_app_read(Id, Context) of
-        #cb_context{resp_status='success'}=Con ->
-            case maybe_get_screenshot(Number, Con) of
-                'error' -> Context;
+    Context1 = master_app_read(Id, Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            case maybe_get_screenshot(Number, Context1) of
+                'error' -> Context1;
                 {'ok', _, Attachment} ->
                     CT = wh_json:get_value(<<"content_type">>, Attachment),
                     [Type, SubType] = binary:split(CT, <<"/">>),
-                    Context#cb_context{content_types_provided=[{'to_binary', [{Type, SubType}]}]}
+                    cb_context:set_content_types_provided(Context1, [{'to_binary', [{Type, SubType}]}])
             end;
-        _ -> Context
+        _Status -> Context
     end;
 content_types_provided_master(Context, _, _, _, _) -> Context.
 
@@ -164,8 +165,10 @@ content_types_provided_master(Context, _, _, _, _) -> Context.
 validate(Context) ->
     case master_or_local(Context) of
         'local' ->
+            lager:debug("validating local apps listing"),
             validate_local(load_account(Context), cb_context:req_verb(Context));
         'master' ->
+            lager:debug("validating master apps listing"),
             validate_master_app(Context, cb_context:req_verb(Context))
     end.
 
@@ -285,10 +288,17 @@ delete(Context, _) ->
 -spec master_or_local(cb_context:context()) -> 'local' | 'master'.
 master_or_local(Context) ->
     case cb_context:req_nouns(Context) of
-        [{<<"apps_store">>, _}, {<<"accounts">>, _}|_] -> 'local';
+        [{<<"apps_store">>, _}, {<<"accounts">>, [AccountId]}|_] ->
+            master_or_local_id(AccountId);
         [{<<"apps_store">>, _}|_] -> 'master'
     end.
 
+-spec master_or_local_id(ne_binary()) -> 'local' | 'master'.
+master_or_local_id(AccountId) ->
+    case whapps_util:get_master_account_id() of
+        {'ok', AccountId} -> 'master';
+        {'ok', _MasterAccountId} -> 'local'
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -297,22 +307,24 @@ master_or_local(Context) ->
 %%--------------------------------------------------------------------
 -spec get_icon(ne_binary(), cb_context:context()) -> cb_context:context().
 get_icon(Id, Context) ->
-    case master_app_read(Id, Context) of
-        #cb_context{resp_status='success', doc=JObj}=Con ->
+    Context1 = master_app_read(Id, Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            JObj = cb_context:doc(Context1),
             Icon = wh_json:get_value(?ICON, JObj),
             case wh_json:get_value([<<"_attachments">>, Icon], JObj) of
-                'undefined' -> crossbar_util:response_bad_identifier(Id, Context);
+                'undefined' -> crossbar_util:response_bad_identifier(Id, Context1);
                 Attachment ->
                     lists:foldl(fun({K, V}, C) ->
-                                    cb_context:add_resp_header(C, K, V)
+                                        cb_context:add_resp_header(C, K, V)
                                 end
-                                ,crossbar_doc:load_attachment(Id, Icon, Con)
+                                ,crossbar_doc:load_attachment(Id, Icon, Context1)
                                 ,[{<<"Content-Disposition">>, <<"attachment; filename=", Icon/binary>>}
                                   ,{<<"Content-Type">>, wh_json:get_value(<<"content_type">>, Attachment)}
                                   ,{<<"Content-Length">>, wh_json:get_value(<<"length">>, Attachment)}
                                  ])
             end;
-        Context1 -> Context1
+        _Status -> Context1
     end.
 
 %%--------------------------------------------------------------------
@@ -322,23 +334,24 @@ get_icon(Id, Context) ->
 %%--------------------------------------------------------------------
 -spec get_sreenshot(ne_binary(), cb_context:context(), ne_binary()) -> cb_context:context().
 get_sreenshot(Id, Context, Number) ->
-    case master_app_read(Id, Context) of
-        #cb_context{resp_status='success'}=Con ->
-            case maybe_get_screenshot(Number, Con) of
+    Context1 = master_app_read(Id, Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            case maybe_get_screenshot(Number, Context1) of
                 'error' ->
-                    crossbar_util:response_bad_identifier(Number, Context);
+                    crossbar_util:response_bad_identifier(Number, Context1);
                 {'ok', Screenshot, Attachment} ->
                     lists:foldl(
-                        fun({K, V}, C) ->
-                            cb_context:add_resp_header(C, K, V)
-                        end
-                        ,crossbar_doc:load_attachment(Id, Screenshot, Con)
-                        ,[{<<"Content-Disposition">>, <<"attachment; filename=", Screenshot/binary>>}
-                          ,{<<"Content-Type">>, wh_json:get_value(<<"content_type">>, Attachment)}
-                          ,{<<"Content-Length">>, wh_json:get_value(<<"length">>, Attachment)}
-                         ])
+                      fun({K, V}, C) ->
+                              cb_context:add_resp_header(C, K, V)
+                      end
+                      ,crossbar_doc:load_attachment(Id, Screenshot, Context1)
+                      ,[{<<"Content-Disposition">>, <<"attachment; filename=", Screenshot/binary>>}
+                        ,{<<"Content-Type">>, wh_json:get_value(<<"content_type">>, Attachment)}
+                        ,{<<"Content-Length">>, wh_json:get_value(<<"length">>, Attachment)}
+                       ])
             end;
-        Context1 -> Context1
+        _Status -> Context1
     end.
 
 %%--------------------------------------------------------------------
@@ -349,8 +362,8 @@ get_sreenshot(Id, Context, Number) ->
 -spec maybe_get_screenshot(ne_binary(), cb_context:context()) ->
                                   'error' |
                                   {'ok', ne_binary(), ne_binary()}.
-maybe_get_screenshot(Number, #cb_context{doc=JObj}=Context) ->
-    Screenshots = wh_json:get_value(<<"screenshots">>, JObj),
+maybe_get_screenshot(Number, Context) ->
+    Screenshots = wh_json:get_value(<<"screenshots">>, cb_context:doc(Context)),
     try lists:nth(wh_util:to_integer(Number)+1, Screenshots) of
         S -> maybe_get_attachment(Context, S)
     catch
@@ -365,8 +378,8 @@ maybe_get_screenshot(Number, #cb_context{doc=JObj}=Context) ->
 -spec maybe_get_attachment(cb_context:context(), ne_binary()) ->
                                   'error' |
                                   {'ok', ne_binary(), wh_json:object()}.
-maybe_get_attachment(#cb_context{doc=JObj}, Name) ->
-    case wh_json:get_value([<<"_attachments">>, Name], JObj) of
+maybe_get_attachment(Context, Name) ->
+    case wh_doc:attachment(cb_context:doc(Context), Name) of
         'undefined' -> 'error';
         Attachment -> {'ok', Name, Attachment}
     end.
@@ -525,8 +538,7 @@ uninstall(AppId, Context) ->
 %%--------------------------------------------------------------------
 -spec set_master_account_db(cb_context:context()) -> cb_context:context().
 set_master_account_db(Context) ->
-    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
-    MasterAccountDb = wh_util:format_account_id(MasterAccountId, 'encoded'),
+    {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
     cb_context:set_account_db(Context, MasterAccountDb).
 
 %%--------------------------------------------------------------------
