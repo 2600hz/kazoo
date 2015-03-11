@@ -143,7 +143,7 @@ init([Call, Data]) ->
     Format = get_format(wh_json:get_value(<<"format">>, Data)),
     TimeLimit = get_timelimit(wh_json:get_integer_value(<<"time_limit">>, Data)),
     RecordOnAnswer = wh_json:is_true(<<"record_on_answer">>, Data, 'false'),
-    SampleRate = wh_json:get_value(<<"record_sample_rate">>, Data),
+    SampleRate = wh_json:get_integer_value(<<"record_sample_rate">>, Data),
 
     Url = get_url(Data),
 
