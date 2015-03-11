@@ -44,7 +44,7 @@
 
 -record(state, {url                        :: ne_binary()
                 ,format                    :: ne_binary()
-                ,sample_rate = undefined   :: integer() | 'undefined'
+                ,sample_rate               :: integer() | 'undefined'
                 ,media_name                :: ne_binary()
                 ,call                      :: whapps_call:call()
                 ,record_on_answer          :: boolean()

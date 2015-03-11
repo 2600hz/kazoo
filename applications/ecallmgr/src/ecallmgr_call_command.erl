@@ -182,8 +182,8 @@ get_fs_app(Node, UUID, JObj, <<"record_call">>) ->
             case wh_json:get_value(<<"Record-Action">>, JObj) of
                 <<"start">> ->
                     FollowTransfer = wh_json:get_binary_boolean(<<"Follow-Transfer">>, JObj, <<"true">>),
-                    ConfigSampleRate = ecallmgr_config:get(<<"record_sample_rate">>, ?DEFAULT_SAMPLE_RATE),
-                    SampleRate = wh_json:get_value(<<"Record-Sample-Rate">>, JObj, ConfigSampleRate),
+                    ConfigSampleRate = ecallmgr_config:get_integer(<<"record_sample_rate">>, ?DEFAULT_SAMPLE_RATE),
+                    SampleRate = wh_json:get_integer_value(<<"Record-Sample-Rate">>, JObj, ConfigSampleRate),
                     SampleRateBin = wh_util:to_binary(SampleRate),
                     _ = ecallmgr_util:set(Node, UUID, [{<<"recording_follow_transfer">>, FollowTransfer}
                                                        ,{<<"recording_follow_attxfer">>, FollowTransfer}
