@@ -22,8 +22,7 @@
             "items": {
                 "type": "string",
                 "required": false
-            },
-            "default": []
+            }
         },
         "suppress_unregister_notifications": {
             "type": "boolean",
