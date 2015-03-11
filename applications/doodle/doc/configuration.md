@@ -1,12 +1,13 @@
-/*                                                                                                                                                                                                                                                                                                 
+/*
 Section: Doodle
 Title: Doodle
 Language: en-US
+Version: 3.20
 */
 
-# Configure inbound listeners 
+# Configure inbound listeners
 
-to create multiple inbound listeners, edit the document system_config/doodle
+To create multiple inbound listeners, edit the document `system_config/doodle`
 and add a connections object.
 
 ```
@@ -31,4 +32,3 @@ and add a connections object.
        }
    }
 ```
-
