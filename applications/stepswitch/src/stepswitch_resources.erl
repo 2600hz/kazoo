@@ -207,13 +207,9 @@ reverse_lookup(JObj) ->
 
 -spec find_port(wh_json:object()) -> api_integer().
 find_port(JObj) ->
-    case wh_json:get_first_defined([<<"From-Network-Port">>
+    wh_json:get_first_defined([<<"From-Network-Port">>
                                     ,<<"Orig-Port">>
-                                   ], JObj)
-    of
-        'undefined' -> 'undefined';
-        Port -> wh_util:to_integer(Port)
-    end.
+                                   ], JObj).
 
 -spec find_account_id(api_binary(), wh_json:object()) -> api_binary().
 find_account_id(Realm, JObj) ->
@@ -233,20 +229,20 @@ find_account_id(Realm) ->
         {'ok', AccountId} -> AccountId
     end.
 
--spec maybe_find_global(api_binary(), api_integer(), api_binary()) ->
+-spec maybe_find_global(api_binary(), api_binary(), api_binary()) ->
                                {'ok', wh_proplist()} |
                                {'error', 'not_found'}.
 maybe_find_global(IP, Port, Realm) ->
     search_resources(IP, Port, Realm, get()).
 
--spec maybe_find_local(api_binary(), api_integer(), api_binary(), api_binary()) ->
+-spec maybe_find_local(api_binary(), api_binary(), api_binary(), api_binary()) ->
                               {'ok', wh_proplist()} |
                               {'error', 'not_found'}.
 maybe_find_local(_, _, _, 'undefined') -> {'error', 'not_found'};
 maybe_find_local(IP, Port, Realm, AccountId) ->
     search_resources(IP, Port, Realm, get(AccountId)).
 
--spec search_resources(api_binary(), api_integer(), api_binary(), resources()) ->
+-spec search_resources(api_binary(), api_binary(), api_binary(), resources()) ->
                               {'ok', wh_proplist()} |
                               {'error', 'not_found'}.
 search_resources(_IP, _Port, _Realm, []) ->
@@ -272,7 +268,7 @@ search_resources(IP, Port, Realm, [#resrc{id=Id
             {'ok', Props}
     end.
 
--spec search_gateways(api_binary(), api_integer(), api_binary(), gateways()) ->
+-spec search_gateways(api_binary(), api_binary(), api_binary(), gateways()) ->
                              gateway() |
                              {'error', 'not_found'}.
 search_gateways(_, _, _, []) -> {'error', 'not_found'};
@@ -282,7 +278,7 @@ search_gateways(IP, Port, Realm, [Gateway | Gateways]) ->
         #gateway{}=Gateway -> Gateway
     end.
 
--spec search_gateway(api_binary(), api_integer(), api_binary(), gateway()) ->
+-spec search_gateway(api_binary(), api_binary(), api_binary(), gateway()) ->
                             gateway() |
                             {'error', 'not_found'}.
 search_gateway(IP, Port, _, #gateway{server=IP, port=Port, force_port='true'}=Gateway) when IP =/= 'undefined' andalso Port =/= 'undefined' -> Gateway;
@@ -857,7 +853,7 @@ gateway_from_jobj(JObj, #resrc{is_emergency=IsEmergency
     EndpointType = wh_json:get_ne_value(<<"endpoint_type">>, JObj, <<"sip">>),
     #gateway{endpoint_type=EndpointType
              ,server=wh_json:get_value(<<"server">>, JObj)
-             ,port=wh_json:get_integer_value(<<"port">>, JObj)
+             ,port=wh_json:get_binary_value(<<"port">>, JObj)
              ,realm=wh_json:get_value(<<"realm">>, JObj)
              ,username=wh_json:get_value(<<"username">>, JObj)
              ,password=wh_json:get_value(<<"password">>, JObj)

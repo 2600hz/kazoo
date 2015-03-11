@@ -211,11 +211,12 @@ get_sip_request(Props) ->
 get_orig_ip(Prop) ->
     props:get_first_defined([<<"X-AUTH-IP">>, <<"ip">>], Prop).
 
--spec get_orig_port(wh_proplist()) -> api_integer().
+-spec get_orig_port(wh_proplist()) -> api_binary().
 get_orig_port(Prop) ->
     case props:get_first_defined([<<"X-AUTH-PORT">>, <<"port">>], Prop) of
-        'undefined' -> 'undefined';
-        Port -> wh_util:to_integer(Port)
+        <<>> -> 'undefined';
+        <<"0">> -> 'undefined';
+        Port -> Port
     end.
 
 %% Extract custom channel variables to include in the event
