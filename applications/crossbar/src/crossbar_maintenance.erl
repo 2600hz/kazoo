@@ -842,7 +842,9 @@ find_app(Db, Name) ->
 
 -spec create_app(ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
 create_app(AppPath, MetaData, MasterAccountDb) ->
-    Doc = wh_doc:update_pvt_parameters(MetaData, MasterAccountDb, [{'type', <<"app">>}]),
+    Doc = wh_json:delete_keys([<<"source_url">>]
+                              ,wh_doc:update_pvt_parameters(MetaData, MasterAccountDb, [{'type', <<"app">>}])
+                             ),
     case couch_mgr:save_doc(MasterAccountDb, Doc) of
         {'ok', JObj} ->
             io:format(" saved app ~s as doc ~s~n", [wh_json:get_value(<<"name">>, JObj)
