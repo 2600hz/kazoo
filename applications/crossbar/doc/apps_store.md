@@ -2,6 +2,7 @@
 Section: Crossbar
 Title: Apps Store
 Language: en-US
+Version: 3.19
 */
 
 # Apps Store
@@ -40,6 +41,19 @@ Ex:
     "id": "d5c75363d3d188f08dfcf5f5b80f645f"
 }
 ```
+
+### Install Master applications
+
+Assuming you've installed your Monster applications to `/path/to/monster-ui/apps`, you can run the following SUP command on the server:
+
+    sup crossbar_maintenance init_apps '/path/to/monster-ui/apps' 'http://your.api.server:8000/v2'
+
+This will load the apps (and let you know which apps it couldn't automatically load) into the master account (including icons, if present). For any apps that failed to be loaded automatically, you can follow the manual instructions below.
+
+If you want to install a single Monster application:
+
+    sup crossbar_maintenance init_apps '/path/to/monster-ui/apps/monster-ui-{APP}' 'http://your.api.server:8000/v2'
+
 
 ## App Permission
 
@@ -276,4 +290,3 @@ curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/apps_store/
 #### Response
 
 Application Screen shot
-

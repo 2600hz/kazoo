@@ -116,7 +116,7 @@ content_types_provided(Context, Id, ?SCREENSHOT, Number) ->
                     [Type, SubType] = binary:split(CT, <<"/">>),
                     cb_context:set_content_types_provided(Context1, [{'to_binary', [{Type, SubType}]}])
             end;
-        _ -> Context1
+        _Status -> Context1
     end;
 content_types_provided(Context, _, _, _) -> Context.
 
