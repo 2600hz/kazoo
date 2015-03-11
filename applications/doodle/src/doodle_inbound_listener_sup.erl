@@ -11,15 +11,14 @@
 
 -export([start_link/0]).
 -export([init/1]).
+-export([start_inbound_listener/1]).
 
 -include("doodle.hrl").
-
--define(JSON(Proplist), {Proplist}).
 
 -define(DEFAULT_EXCHANGE, <<"sms">>).
 -define(DEFAULT_EXCHANGE_TYPE, <<"topic">>).
 -define(DEFAULT_EXCHANGE_OPTIONS, [{'passive', 'true'}] ).
--define(DEFAULT_EXCHANGE_OPTIONS_JOBJ, ?JSON(?DEFAULT_EXCHANGE_OPTIONS) ).
+-define(DEFAULT_EXCHANGE_OPTIONS_JOBJ, wh_json:from_list(?DEFAULT_EXCHANGE_OPTIONS) ).
 
 -define(DEFAULT_BROKER, wh_amqp_connections:primary_broker()).
 -define(QUEUE_NAME, <<"smsc_inbound_queue_", (?DOODLE_INBOUND_EXCHANGE)/binary>>).
@@ -30,17 +29,18 @@
 -define(DOODLE_INBOUND_EXCHANGE_TYPE, whapps_config:get_ne_binary(?CONFIG_CAT, <<"inbound_exchange_type">>, ?DEFAULT_EXCHANGE_TYPE)).
 -define(DOODLE_INBOUND_EXCHANGE_OPTIONS,  whapps_config:get(?CONFIG_CAT, <<"inbound_exchange_options">>, ?DEFAULT_EXCHANGE_OPTIONS)).
 
-
--define(ATOM(A), wh_util:to_atom(A, 'true')).
--define(CHILD_NAME, ?ATOM(wh_util:rand_hex_binary(16))).
-
--define(CHILDREN, [?WORKER_NAME_ARGS('doodle_inbound_listener', ?CHILD_NAME, [C]) 
-                     || #amqp_listener_connection{}=C <- connections()
-                  ]).
-
 %% ===================================================================
 %% API functions
 %% ===================================================================
+
+-spec start_inbound_listener(amqp_listener_connection()) -> startlink_ret().
+start_inbound_listener(Connection) ->
+    supervisor:start_child(?MODULE, [Connection]).
+
+-spec start_listeners() -> 'ok'.
+start_listeners() ->
+    [start_inbound_listener(C) || C <- connections()],
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -50,7 +50,13 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    R = supervisor:start_link({'local', ?MODULE}, ?MODULE, []),
+    case R of
+        {'ok', _} -> start_listeners();
+        _Other -> lager:error("error starting inbound_listeneres sup : ~p", [_Other])
+    end,
+    R.
+        
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -68,11 +74,13 @@ start_link() ->
 -spec init([]) -> sup_init_ret().
 init([]) ->
     wh_util:set_startup(),
-    RestartStrategy = 'one_for_one',
+    RestartStrategy = 'simple_one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    {'ok', {SupFlags, ?CHILDREN}}.
+    {'ok', {SupFlags, [?WORKER('doodle_inbound_listener')]}}.
+
+
 
 -spec default_connection() -> amqp_listener_connection().
 default_connection() ->
