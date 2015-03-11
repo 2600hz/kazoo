@@ -103,7 +103,7 @@ maybe_migrate_private_media(AccountDb, JObj) ->
     end.
 
 migrate_private_media(AccountDb, Doc, <<"tiff">>) ->
-    _ = couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"pvt_type">>, <<"fax">>, Doc)),
+    {'ok', _} = couch_mgr:ensure_saved(AccountDb, wh_json:set_value(<<"pvt_type">>, <<"fax">>, Doc)),
     'ok';
 migrate_private_media(_AccountDb, _JObj, _MediaType) -> 'ok'.
 
@@ -134,7 +134,7 @@ maybe_recover_private_media(AccountDb, JObj) ->
 recover_private_media(_AccountDb, _Doc, <<"tiff">>) ->
     'ok';
 recover_private_media(AccountDb, Doc, _MediaType) ->
-    _ = couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"pvt_type">>, <<"private_media">>, Doc)),
+    {'ok', _ } = couch_mgr:ensure_saved(AccountDb, wh_json:set_value(<<"pvt_type">>, <<"private_media">>, Doc)),
     'ok'.
 
 -spec migrate_faxes_to_modb(ne_binary(),  wh_proplist()) -> 'ok'.
