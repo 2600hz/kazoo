@@ -9,7 +9,7 @@
 
 -behaviour(gen_listener).
 
--export([start_link/0]).
+-export([start_link/1]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -21,20 +21,7 @@
 
 -include("doodle.hrl").
 
--record(state, {}).
-
--define(DEFAULT_EXCHANGE, <<"sms">>).
--define(DEFAULT_EXCHANGE_TYPE, <<"topic">>).
--define(DEFAULT_EXCHANGE_OPTIONS, [{'passive', 'true'}]).
--define(DEFAULT_BROKER, wh_amqp_connections:primary_broker()).
--define(QUEUE_NAME, <<"smsc_inbound_queue_", (?DOODLE_INBOUND_EXCHANGE)/binary>>).
-
--define(DOODLE_INBOUND_QUEUE, whapps_config:get_ne_binary(?CONFIG_CAT, <<"inbound_queue_name">>, ?QUEUE_NAME)).
--define(DOODLE_INBOUND_BROKER, whapps_config:get_ne_binary(?CONFIG_CAT, <<"inbound_broker">>, ?DEFAULT_BROKER)).
--define(DOODLE_INBOUND_EXCHANGE, whapps_config:get_ne_binary(?CONFIG_CAT, <<"inbound_exchange">>, ?DEFAULT_EXCHANGE)).
--define(DOODLE_INBOUND_EXCHANGE_TYPE, whapps_config:get_ne_binary(?CONFIG_CAT, <<"inbound_exchange_type">>, ?DEFAULT_EXCHANGE_TYPE)).
--define(DOODLE_INBOUND_EXCHANGE_OPTIONS,  whapps_config:get(?CONFIG_CAT, <<"inbound_exchange_options">>, ?DEFAULT_EXCHANGE_OPTIONS)).
-
+-record(state, {connection :: amqp_listener_connection()}).
 
 -define(BINDINGS(Ex), [{'sms', [{'exchange', Ex}
                                 ,{'restrict_to', ['inbound']}
@@ -65,23 +52,25 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link() ->
-    Broker = ?DOODLE_INBOUND_BROKER,
-    Exchange = ?DOODLE_INBOUND_EXCHANGE,
-    Type = ?DOODLE_INBOUND_EXCHANGE_TYPE,
-    QUEUE = ?DOODLE_INBOUND_QUEUE,
-    Options = [{'passive', 'true'}],
+-spec start_link(amqp_listener_connection()) -> startlink_ret().
+start_link(#amqp_listener_connection{broker=Broker
+                                     ,exchange=Exchange
+                                     ,type=Type
+                                     ,queue=Queue
+                                     ,options=Options
+                                    }=C) ->
+    lager:debug("DOODLE LISTENER  0"),
     Exchanges = [{Exchange, Type, Options}],
-    gen_listener:start_link({'local', ?MODULE}
-                            ,?MODULE
+    gen_listener:start_link(?MODULE
                             ,[{'bindings', ?BINDINGS(Exchange)}
                               ,{'responders', ?RESPONDERS}
-                              ,{'queue_name', QUEUE}       % optional to include
+                              ,{'queue_name', Queue}       % optional to include
                               ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
                               ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
                               ,{'declare_exchanges', Exchanges}
                               ,{'broker', Broker}
                              ]
+                            ,[C]
                             ,[]
                            ).
 
@@ -100,8 +89,8 @@ start_link() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([]) ->
-    {'ok', #state{}}.
+init([#amqp_listener_connection{}=Connection]) ->
+    {'ok', #state{connection=Connection}}.
 
 %%--------------------------------------------------------------------
 %% @private

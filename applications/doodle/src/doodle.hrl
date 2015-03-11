@@ -13,5 +13,16 @@
 
 -define(CCV(Key), [<<"Custom-Channel-Vars">>, Key]).
 
+-record(amqp_listener_connection,{name :: binary()
+                                  ,broker :: binary()
+                                  ,exchange :: binary()
+                                  ,type :: binary()
+                                  ,queue :: binary()
+                                  ,options :: wh_proplist()
+                                 }).
+
+-type amqp_listener_connection() :: #amqp_listener_connection{}.
+-type amqp_listener_connections() :: [amqp_listener_connection(),...].
+
 -define(DOODLE_HRL, 'true').
 -endif.
