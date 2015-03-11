@@ -122,30 +122,10 @@ update_account(AccountId, JObj, AuthToken) ->
 -spec provision_data(wh_json:object()) -> wh_json:object().
 provision_data(JObj) ->
     Routines =
-        [fun set_realm/1
-         ,fun set_owner/1
-         ,fun maybe_set_timezone/1
+        [fun set_owner/1
          ,fun create_provision_settings/1
         ],
     lists:foldl(fun(F, J) -> F(J) end, JObj, Routines).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec set_realm(wh_json:object()) -> wh_json:object().
-set_realm(JObj) ->
-    case get_account(JObj) of
-        {'ok', Doc} ->
-            Realm = wh_json:get_value(<<"realm">>, Doc),
-            wh_json:set_value(<<"realm">>, Realm, JObj);
-        {'error', _R} ->
-            AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
-            lager:warning("failed to get account definition for ~s: ~p", [AccountId, _R]),
-            JObj
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -168,48 +148,6 @@ set_owner(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_set_timezone(wh_json:object()) -> wh_json:object().
--spec maybe_set_timezone(wh_json:object(), wh_json:object()) -> wh_json:object().
-maybe_set_timezone(JObj) ->
-    case wh_json:get_value(<<"timezone">>, JObj) of
-        'undefined' -> maybe_set_account_timezone(JObj);
-        _TZ -> JObj
-    end.
-
-maybe_set_timezone(JObj, AccountDoc) ->
-    case wh_json:get_value(<<"timezone">>, AccountDoc) of
-        'undefined' -> JObj;
-        TZ -> set_timezone(JObj, TZ)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec maybe_set_account_timezone(wh_json:object()) -> wh_json:object().
-maybe_set_account_timezone(JObj) ->
-    case get_account(JObj) of
-        {'ok', Doc} -> maybe_set_timezone(JObj, Doc);
-        {'error', _R} -> JObj
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec set_timezone(wh_json:object(), ne_binary()) -> wh_json:object().
-set_timezone(JObj, TZ) ->
-    wh_json:set_value(<<"timezone">>, TZ, JObj).
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
 -spec get_owner(api_binary(), ne_binary()) ->
                        {'ok', wh_json:object()} |
                        {'error', any()}.
@@ -217,20 +155,6 @@ get_owner('undefined', _) -> {'error', 'undefined'};
 get_owner(OwnerId, AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     couch_mgr:open_cache_doc(AccountDb, OwnerId).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec get_account(wh_json:object()) ->
-                         {'ok', wh_json:object()} |
-                         {'error', any()}.
-get_account(JObj) ->
-    AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
-    AccountDb = wh_json:get_value(<<"pvt_account_db">>, JObj),
-    couch_mgr:open_cache_doc(AccountDb, AccountId).
 
 %%--------------------------------------------------------------------
 %% @private
