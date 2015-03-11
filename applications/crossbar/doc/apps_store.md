@@ -67,7 +67,7 @@ This will load the apps (and let you know which apps it couldn't automatically l
 
 If you want to install a single Monster application:
 
-    sup crossbar_maintenance init_apps '/path/to/monster-ui/apps/monster-ui-{APP}' 'http://your.api.server:8000/v2'
+    sup crossbar_maintenance init_app '/path/to/monster-ui/apps/{APP}' 'http://your.api.server:8000/v2'
 
 ## Crossbar (Local)
 
