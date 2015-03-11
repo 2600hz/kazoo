@@ -32,7 +32,6 @@
 %% ===================================================================
 %% API functions
 %% ===================================================================
-
 -spec start_inbound_listener(amqp_listener_connection()) -> startlink_ret().
 start_inbound_listener(Connection) ->
     supervisor:start_child(?MODULE, [Connection]).
@@ -56,7 +55,6 @@ start_link() ->
         _Other -> lager:error("error starting inbound_listeneres sup : ~p", [_Other])
     end,
     R.
-        
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -80,8 +78,6 @@ init([]) ->
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
     {'ok', {SupFlags, [?WORKER('doodle_inbound_listener')]}}.
 
-
-
 -spec default_connection() -> amqp_listener_connection().
 default_connection() ->
     #amqp_listener_connection{name = <<"default">>
@@ -89,7 +85,7 @@ default_connection() ->
                               ,exchange = ?DOODLE_INBOUND_EXCHANGE
                               ,type = ?DOODLE_INBOUND_EXCHANGE_TYPE
                               ,queue = ?DOODLE_INBOUND_QUEUE
-                              ,options = wh_json:to_proplist(?DEFAULT_EXCHANGE_OPTIONS_JOBJ)  
+                              ,options = wh_json:to_proplist(?DEFAULT_EXCHANGE_OPTIONS_JOBJ)
                              }.
 
 -spec connections() -> amqp_listener_connections().
@@ -99,19 +95,22 @@ connections() ->
         JObj -> wh_json:foldl(fun connections_fold/3, [], JObj)
     end.
 
--spec connections_fold(binary(), term(), wh_proplist()) -> amqp_listener_connection().
+-spec connections_fold(wh_json:key(), wh_json:json_term(), amqp_listener_connections()) ->
+                              amqp_listener_connections().
 connections_fold(K, V, Acc) ->
     C = #amqp_listener_connection{name = K
-                              ,broker = wh_json:get_value(<<"broker">>, V) 
-                              ,exchange = wh_json:get_value(<<"exchange">>, V) 
-                              ,type = wh_json:get_value(<<"type">>, V) 
-                              ,queue = wh_json:get_value(<<"queue">>, V) 
-                              ,options = connection_options(wh_json:get_value(<<"options">>, V)) 
-                              },
-    [ C | Acc].
+                                  ,broker = wh_json:get_value(<<"broker">>, V)
+                                  ,exchange = wh_json:get_value(<<"exchange">>, V)
+                                  ,type = wh_json:get_value(<<"type">>, V)
+                                  ,queue = wh_json:get_value(<<"queue">>, V)
+                                  ,options = connection_options(wh_json:get_value(<<"options">>, V))
+                                 },
+    [C | Acc].
 
 -spec connection_options(api_object()) -> wh_proplist().
-connection_options('undefined') -> ?DEFAULT_EXCHANGE_OPTIONS;
+connection_options('undefined') ->
+    ?DEFAULT_EXCHANGE_OPTIONS;
 connection_options(JObj) ->
-    [ {wh_util:to_atom(K, 'true'), V} || {K, V} <- wh_json:to_proplist(JObj) ].
-    
+    [{wh_util:to_atom(K, 'true'), V}
+     || {K, V} <- wh_json:to_proplist(JObj)
+    ].

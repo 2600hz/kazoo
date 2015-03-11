@@ -23,8 +23,6 @@
 
 -record(state, {connection :: amqp_listener_connection()}).
 
-
-
 -define(BINDINGS(Ex), [{'sms', [{'exchange', Ex}
                                 ,{'restrict_to', ['inbound']}
                                ]}
@@ -55,12 +53,12 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link(amqp_listener_connection()) -> startlink_ret().
-start_link( #amqp_listener_connection{broker=Broker
-                                      ,exchange=Exchange
-                                      ,type=Type
-                                      ,queue=Queue
-                                      ,options=Options
-                                     }=C) ->
+start_link(#amqp_listener_connection{broker=Broker
+                                     ,exchange=Exchange
+                                     ,type=Type
+                                     ,queue=Queue
+                                     ,options=Options
+                                    }=C) ->
     lager:debug("DOODLE LISTENER  0"),
     Exchanges = [{Exchange, Type, Options}],
     gen_listener:start_link(?MODULE
@@ -73,7 +71,7 @@ start_link( #amqp_listener_connection{broker=Broker
                               ,{'broker', Broker}
                              ]
                             ,[C]
-                           ,[]
+                            ,[]
                            ).
 
 %%%===================================================================
