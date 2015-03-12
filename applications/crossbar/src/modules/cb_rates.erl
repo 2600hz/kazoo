@@ -9,10 +9,10 @@
 -module(cb_rates).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1
-         ,resource_exists/0, resource_exists/1
+         ,allowed_methods/0, allowed_methods/1 ,allowed_methods/2
+         ,resource_exists/0, resource_exists/1 ,resource_exists/2
          ,content_types_accepted/1
-         ,validate/1, validate/2
+         ,validate/1, validate/2, validate/3
          ,put/1
          ,post/1, post/2
          ,delete/2
@@ -22,6 +22,7 @@
 
 -define(PVT_FUNS, [fun add_pvt_type/2]).
 -define(PVT_TYPE, <<"rate">>).
+-define(NUMBER_RATE, <<"number_rate">>).
 -define(CB_LIST, <<"rates/crossbar_listing">>).
 
 -define(UPLOAD_MIME_TYPES, [{<<"text">>, <<"csv">>}
@@ -62,6 +63,10 @@ allowed_methods() ->
 allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
+-spec allowed_methods(path_token(),path_token()) -> http_methods().
+allowed_methods(?NUMBER_RATE,_) ->
+    [?HTTP_GET].
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -75,6 +80,9 @@ resource_exists() -> 'true'.
 
 -spec resource_exists(path_token()) -> 'true'.
 resource_exists(_) -> 'true'.
+
+-spec resource_exists(path_token(),path_token()) -> 'true'.
+resource_exists(?NUMBER_RATE,_) -> 'true'.
 
 -spec content_types_accepted(cb_context:context()) -> cb_context:context().
 content_types_accepted(Context) ->
@@ -95,10 +103,13 @@ content_types_accepted_by_verb(Context, ?HTTP_POST) ->
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_rates(Context, cb_context:req_verb(Context)).
 validate(Context, Id) ->
     validate_rate(Context, Id, cb_context:req_verb(Context)).
+validate(Context, ?NUMBER_RATE, Phonenumber) ->
+    rate_for_number(Context, Phonenumber).
 
 -spec validate_rates(cb_context:context(), http_method()) -> cb_context:context().
 validate_rates(Context, ?HTTP_GET) ->
@@ -435,3 +446,12 @@ save_processed_rates(Context, Count) ->
                   _ = crossbar_doc:save(Context, [{'publish_doc', 'false'}]),
                   lager:debug("saved up to ~b docs (took ~b ms)", [Count, wh_util:elapsed_ms(Now)])
           end).
+
+-spec rate_for_number(ne_binary(),ne_binary()) -> cb_context:context().
+rate_for_number(Context, Phonenumber) ->
+    {ok, Rates} = hon_util:candidate_rates(Phonenumber),
+    Resp = case hon_util:matching_rates(Rates, Phonenumber) of
+        [Rate|_] -> Rate;
+        _ -> wh_json:new() 
+    end,
+    crossbar_util:response(Resp, Context).
