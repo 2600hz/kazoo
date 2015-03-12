@@ -12,11 +12,16 @@
 -export([send_default/2]).
 -export([get_response/2]).
 -export([default_response/2]).
+-export([config_doc_id/0]).
 
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 
 -define(CALL_RESPONSE_CONF, <<"call_response">>).
+
+-spec config_doc_id() -> ne_binary().
+config_doc_id() ->
+    ?CALL_RESPONSE_CONF.
 
 %%--------------------------------------------------------------------
 %% @public

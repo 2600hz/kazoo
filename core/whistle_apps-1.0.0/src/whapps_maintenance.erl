@@ -952,22 +952,30 @@ show_status(CallId, 'true', Resp) ->
     lager:info("Responding App: ~s", [wh_json:get_value(<<"App-Name">>, Resp)]),
     lager:info("Responding Node: ~s", [wh_json:get_value(<<"Node">>, Resp)]).
 
-
 -spec delete_system_media_references() -> 'ok'.
 delete_system_media_references() ->
-    DocId = <<"media">>,
-    {'ok', MediaDoc} = couch_mgr:open_cache_doc(?WH_CONFIG_DB, DocId),
+    DocId = wh_call_response:config_doc_id(),
+    {'ok', CallResponsesDoc} = couch_mgr:open_doc(?WH_CONFIG_DB, DocId),
     TheKey = <<"default">>,
-    MediaDefault = wh_json:get_value(TheKey, MediaDoc),
-    Deleter =
-        fun (_Key, <<"/system_media/",_/binary>>, Acc) -> Acc;
-            (Key, Value, Acc) -> wh_json:set_value(Key, Value, Acc)
-        end,
-    case wh_json:foldl(Deleter, wh_json:new(), MediaDefault) of
-        MediaDefault -> 'ok';
-        NewMediaDefault ->
-            NewMediaDoc = wh_json:set_value(TheKey, NewMediaDefault
-                                           ,wh_json:delete_key(TheKey, MediaDoc)),
-            _ = couch_mgr:save_doc(DocId, NewMediaDoc)
+    Default = wh_json:get_value(TheKey, CallResponsesDoc),
+
+    case wh_json:map(fun remove_system_media_refs/2, Default) of
+        Default -> 'ok';
+        NewDefault ->
+           io:format("updating ~s with stripped system_media references~n", [DocId]),
+            NewCallResponsesDoc = wh_json:set_value(TheKey, NewDefault, CallResponsesDoc),
+            _Resp = couch_mgr:save_doc(?WH_CONFIG_DB, NewCallResponsesDoc)
     end,
     'ok'.
+
+-spec remove_system_media_refs(wh_json:key(), wh_json:json_term()) ->
+                                      {wh_json:key(), wh_json:json_term()}.
+remove_system_media_refs(HangupCause, Config) ->
+    {HangupCause
+     ,wh_json:foldl(fun remove_system_media_ref/3, wh_json:new(), Config)
+    }.
+
+-spec remove_system_media_ref(wh_json:key(), wh_json:json_term(), wh_json:object()) ->
+                                     wh_json:object().
+remove_system_media_ref(_Key, <<"/system_media/", _/binary>>, Acc) -> Acc;
+remove_system_media_ref(Key, Value, Acc) -> wh_json:set_value(Key, Value, Acc).
