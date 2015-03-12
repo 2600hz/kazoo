@@ -9,7 +9,9 @@
 
 -behaviour(gen_server).
 
--export([start_link/0]).
+-export([start_link/0
+         ,set_presence_state/2
+        ]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -435,3 +437,8 @@ ensure_template() ->
     File = lists:concat([BasePath, "/packages/presence.xml"]),
     Mod = wh_util:to_atom(<<"sub_package_presence">>, 'true'),
     {'ok', _CompileResult} = erlydtl:compile(File, Mod, [{'record_info', [{'call', record_info('fields', 'call')}]}]).
+
+-spec set_presence_state(ne_binary(), ne_binary()) -> any().
+set_presence_state(PresenceId, State) ->
+    Headers = [{<<"Presence-ID">>, PresenceId }],
+    handle_update(wh_json:from_list(Headers), State, 0).
