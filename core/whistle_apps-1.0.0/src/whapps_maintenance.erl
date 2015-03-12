@@ -42,6 +42,7 @@
 -export([get_all_account_views/0]).
 -export([cleanup_voicemail_media/1]).
 -export([cleanup_orphan_modbs/0]).
+-export([delete_system_media_references/0]).
 
 -define(DEVICES_CB_LIST, <<"devices/crossbar_listing">>).
 -define(MAINTENANCE_VIEW_FILE, <<"views/maintenance.json">>).
@@ -159,7 +160,8 @@ get_databases() ->
     ?KZ_SYSTEM_DBS ++ [Db || Db <- Databases, (not lists:member(Db, ?KZ_SYSTEM_DBS))].
 
 refresh(?WH_CONFIG_DB) ->
-    couch_mgr:db_create(?WH_CONFIG_DB);
+    couch_mgr:db_create(?WH_CONFIG_DB),
+    delete_system_media_references();
 refresh(?KZ_OAUTH_DB) ->
     couch_mgr:db_create(?KZ_OAUTH_DB),
     kazoo_oauth_maintenance:register_common_providers();
@@ -949,3 +951,31 @@ show_status(CallId, 'true', Resp) ->
     lager:info("Media Server: ~s", [wh_json:get_value(<<"Switch-Hostname">>, Resp)]),
     lager:info("Responding App: ~s", [wh_json:get_value(<<"App-Name">>, Resp)]),
     lager:info("Responding Node: ~s", [wh_json:get_value(<<"Node">>, Resp)]).
+
+-spec delete_system_media_references() -> 'ok'.
+delete_system_media_references() ->
+    DocId = wh_call_response:config_doc_id(),
+    {'ok', CallResponsesDoc} = couch_mgr:open_doc(?WH_CONFIG_DB, DocId),
+    TheKey = <<"default">>,
+    Default = wh_json:get_value(TheKey, CallResponsesDoc),
+
+    case wh_json:map(fun remove_system_media_refs/2, Default) of
+        Default -> 'ok';
+        NewDefault ->
+           io:format("updating ~s with stripped system_media references~n", [DocId]),
+            NewCallResponsesDoc = wh_json:set_value(TheKey, NewDefault, CallResponsesDoc),
+            _Resp = couch_mgr:save_doc(?WH_CONFIG_DB, NewCallResponsesDoc)
+    end,
+    'ok'.
+
+-spec remove_system_media_refs(wh_json:key(), wh_json:json_term()) ->
+                                      {wh_json:key(), wh_json:json_term()}.
+remove_system_media_refs(HangupCause, Config) ->
+    {HangupCause
+     ,wh_json:foldl(fun remove_system_media_ref/3, wh_json:new(), Config)
+    }.
+
+-spec remove_system_media_ref(wh_json:key(), wh_json:json_term(), wh_json:object()) ->
+                                     wh_json:object().
+remove_system_media_ref(_Key, <<"/system_media/", _/binary>>, Acc) -> Acc;
+remove_system_media_ref(Key, Value, Acc) -> wh_json:set_value(Key, Value, Acc).

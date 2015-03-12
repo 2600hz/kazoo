@@ -229,10 +229,8 @@ get_prompt(Name, 'undefined') ->
 get_prompt(Name, <<_/binary>> = Lang) ->
     get_prompt(Name, Lang, 'undefined');
 get_prompt(Name, Call) ->
-    get_prompt(Name
-               ,whapps_call:language(Call)
-               ,Call
-              ).
+    Lang = whapps_call:language(Call),
+    get_prompt(Name, Lang, Call).
 
 get_prompt(<<"/system_media/", Name/binary>>, Lang, Call) ->
     get_prompt(Name, Lang, Call);
