@@ -184,9 +184,7 @@ handle_info(_Info, State) ->
 handle_event(JObj, _State) ->
     case should_handle(JObj) of
         'false' -> 'ignore';
-        'true' ->
-            lager:debug("handling notification for ~p", [wh_util:get_event_type(JObj)]),
-            {'reply', []}
+        'true' -> {'reply', []}
     end.
 
 %%--------------------------------------------------------------------

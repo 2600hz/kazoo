@@ -173,7 +173,7 @@ handle_fax_outbound(DataJObj) ->
                                   ,Subject
                                   ,props:get_value(<<"service">>, Macros)
                                   ,RenderedTemplates
-                                  ,[get_attachment(DataJObj, Macros)]
+                                  ,get_attachments(DataJObj, Macros)
                                  )
     of
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
@@ -196,8 +196,13 @@ get_owner_doc(AccountDb, OwnerId) ->
         {'error', 'not_found'} -> wh_json:new()
     end.
 
--spec get_attachment(wh_json:object(), wh_proplist()) -> attachment().
-get_attachment(DataJObj, Macros) ->
+-spec get_attachments(wh_json:object(), wh_proplist()) -> attachments().
+-spec get_attachments(wh_json:object(), wh_proplist(), boolean()) -> attachments().
+get_attachments(DataJObj, Macros) ->
+    get_attachments(DataJObj, Macros, wh_json:is_true(<<"preview">>, DataJObj, 'false')).
+
+get_attachments(_DataJObj, _Macros, 'true') -> [];
+get_attachments(DataJObj, Macros, 'false') ->
     FaxMacros = props:get_value(<<"fax">>, Macros),
     FaxId = props:get_first_defined([<<"id">>, <<"fax_jobid">>, <<"fax_id">>], FaxMacros),
     Db = fax_db(DataJObj),
@@ -213,10 +218,11 @@ get_attachment(DataJObj, Macros) ->
 
     Filename = get_file_name(Macros, ToFormat),
     lager:debug("adding attachment as ~s", [Filename]),
-    {content_type_from_extension(Filename)
-     ,Filename
-     ,Converted
-    }.
+
+    [{content_type_from_extension(Filename)
+      ,Filename
+      ,Converted
+     }].
 
 -spec from_format_from_content_type(ne_binary()) -> ne_binary().
 from_format_from_content_type(<<"application/pdf">>) ->
