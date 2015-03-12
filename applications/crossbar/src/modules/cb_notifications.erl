@@ -268,7 +268,9 @@ post(Context, Id) ->
 do_post(Context) ->
     Context1 = crossbar_doc:save(Context),
     case cb_context:resp_status(Context1) of
-        'success' -> leak_doc_id(Context1);
+        'success' ->
+            maybe_note_notification_preference(Context1),
+            leak_doc_id(Context1);
         _Status -> Context1
     end.
 
