@@ -285,7 +285,7 @@ on_faxbox_successful_validation(DocId, Context) ->
 -spec generate_email_address(cb_context:context()) -> ne_binary().
 generate_email_address(Context) ->
     ResellerId =  cb_context:reseller_id(Context),
-    Domain = whapps_account_config:get(ResellerId, <<"fax">>, <<"default_smtp_domain">>, ?DEFAULT_FAX_SMTP_DOMAIN),
+    Domain = whapps_account_config:get_global(ResellerId, <<"fax">>, <<"default_smtp_domain">>, ?DEFAULT_FAX_SMTP_DOMAIN),
     New = wh_util:rand_hex_binary(4),
     <<New/binary, ".", Domain/binary>>.
 
@@ -322,7 +322,7 @@ is_faxbox_email_global_unique(Email, FaxBoxId) ->
 -spec maybe_register_cloud_printer(cb_context:context()) -> cb_context:context().
 maybe_register_cloud_printer(Context) ->
     ResellerId =  cb_context:reseller_id(Context),
-    CloudConnectorEnable = whapps_account_config:get(ResellerId, <<"fax">>, <<"enable_cloud_connector">>, 'false'), 
+    CloudConnectorEnable = whapps_account_config:get(ResellerId, <<"fax">>, <<"enable_cloud_connector">>, 'false'),
     case wh_util:is_true(CloudConnectorEnable) of
         'true' -> maybe_register_cloud_printer(Context, cb_context:doc(Context));
         'false' -> Context
