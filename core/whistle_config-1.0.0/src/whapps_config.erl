@@ -364,9 +364,11 @@ update_category(Category, JObj) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec maybe_save_category(ne_binary(), wh_json:object()) ->
-                                 {'ok', wh_json:object()}.
+                                 {'ok', wh_json:object()} |
+                                 {'error', 'conflict'}.
 -spec maybe_save_category(ne_binary(), wh_json:object(), boolean()) ->
-                                 {'ok', wh_json:object()}.
+                                 {'ok', wh_json:object()} |
+                                 {'error', 'conflict'}.
 maybe_save_category(Category, JObj) ->
     maybe_save_category(Category, JObj, 'false').
 
