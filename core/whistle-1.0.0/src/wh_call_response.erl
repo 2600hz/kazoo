@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2014, 2600Hz
+%%% @copyright (C) 2013-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -26,25 +26,23 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec send(ne_binary(), ne_binary(), api_binary()) ->
-                        {'ok', ne_binary()} |
-                        {'error', 'no_response'}.
+                  {'ok', ne_binary()} |
+                  {'error', 'no_response'}.
 -spec send(ne_binary() | whapps_call:call(), ne_binary(), api_binary(), 'undefined' | binary()) ->
-                        {'ok', ne_binary()} |
-                        {'error', 'no_response'}.
+                  {'ok', ne_binary()} |
+                  {'error', 'no_response'}.
 -spec send(ne_binary(), ne_binary(), api_binary(), 'undefined' | binary(), 'undefined' | binary()) ->
-                        {'ok', ne_binary()} |
-                        {'error', 'no_response'}.
+                  {'ok', ne_binary()} |
+                  {'error', 'no_response'}.
 
 send(CallId, CtrlQ, Code) ->
     send(CallId, CtrlQ, Code, 'undefined').
 
-send(CallId, CtrlQ, Code, Cause)
-  when is_binary(CallId) ->
+send(<<_/binary>> = CallId, CtrlQ, Code, Cause) ->
     send(CallId, CtrlQ, Code, Cause, 'undefined');
-
 send(Call, Code, Cause, Media) ->
     CallId = whapps_call:call_id(Call),
-    CtrlQ  = whapps_call:control_queue(Call),
+    CtrlQ = whapps_call:control_queue(Call),
     send(CallId, CtrlQ, Code, Cause, Media).
 
 send(_, _, 'undefined', 'undefined', 'undefined') ->
@@ -107,14 +105,20 @@ send(CallId, CtrlQ, Code, Cause, Media) ->
     do_send(CallId, CtrlQ, Commands),
     {'ok', NoopId}.
 
+-spec do_send(ne_binary(), ne_binary(), wh_json:objects()) -> 'ok'.
 do_send(CallId, CtrlQ, Commands) ->
     Command = [{<<"Application-Name">>, <<"queue">>}
                ,{<<"Call-ID">>, CallId}
                ,{<<"Commands">>, Commands}
                ,{<<"Msg-ID">>, wh_util:rand_hex_binary(6)}
-               | wh_api:default_headers(<<>>, <<"call">>, <<"command">>, <<"call_response">>, <<"0.1.0">>)],
-    {'ok', Payload} = wapi_dialplan:queue(Command),
-    wapi_dialplan:publish_action(CtrlQ, Payload).
+               | wh_api:default_headers(<<"call">>, <<"command">>, <<"call_response">>, <<"0.1.0">>)
+              ],
+    wh_amqp_worker:cast(Command
+                        ,fun(C) ->
+                                 {'ok', Payload} = wapi_dialplan:queue(C),
+                                 wapi_dialplan:publish_action(CtrlQ, Payload)
+                         end
+                       ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -131,10 +135,11 @@ send_default(Call, Cause) ->
     lager:debug("attempting to send default response for ~s", [Cause]),
     Response = get_response(Cause, Call),
     send(whapps_call:call_id(Call)
-        ,whapps_call:control_queue(Call)
-        ,wh_json:get_value(<<"Code">>, Response)
-        ,wh_json:get_value(<<"Message">>, Response)
-        ,wh_json:get_value(<<"Media">>, Response)).
+         ,whapps_call:control_queue(Call)
+         ,wh_json:get_value(<<"Code">>, Response)
+         ,wh_json:get_value(<<"Message">>, Response)
+         ,wh_json:get_value(<<"Media">>, Response)
+        ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -192,7 +197,7 @@ default_response(_Call, <<"CRASH">>) -> 'undefined';
 default_response(Call, <<"UNALLOCATED_NUMBER">>) ->
     [{<<"Code">>, <<"404">>}
      ,{<<"Message">>, <<"No route to destination">>}
-     ,{<<"Media">>, wh_media_util:get_prompt(<<"fault-can_not_be_completed_as_dialed">>,Call)}
+     ,{<<"Media">>, wh_media_util:get_prompt(<<"fault-can_not_be_completed_as_dialed">>, Call)}
     ];
 default_response(_Call, <<"NO_ROUTE_TRANSIT_NET">>) ->
     [{<<"Code">>, <<"404">>}
@@ -201,7 +206,7 @@ default_response(_Call, <<"NO_ROUTE_TRANSIT_NET">>) ->
 default_response(Call, <<"NO_ROUTE_DESTINATION">>) ->
     [{<<"Code">>, <<"404">>}
      ,{<<"Message">>, <<"No route to destination">>}
-     ,{<<"Media">>, wh_media_util:get_prompt(<<"fault-can_not_be_completed_as_dialed">>,Call)}
+     ,{<<"Media">>, wh_media_util:get_prompt(<<"fault-can_not_be_completed_as_dialed">>, Call)}
     ];
 default_response(_Call, <<"NORMAL_CLEARING">>) ->
     [{<<"Media">>, <<"tone_stream://%(500,500,480,620);loops=25">>}];
@@ -239,17 +244,17 @@ default_response(_Call, <<"REDIRECTION_TO_NEW_DESTINATION">>) ->
 default_response(Call, <<"EXCHANGE_ROUTING_ERROR">>) ->
     [{<<"Code">>, <<"483">>}
      ,{<<"Message">>, <<"Exchange routing error">>}
-     ,{<<"Media">>, wh_media_util:get_prompt(<<"fault-facility_trouble">>,Call)}
+     ,{<<"Media">>, wh_media_util:get_prompt(<<"fault-facility_trouble">>, Call)}
     ];
 default_response(Call, <<"DESTINATION_OUT_OF_ORDER">>) ->
     [{<<"Code">>, <<"502">>}
      ,{<<"Message">>, <<"Destination out of order">>}
-     ,{<<"Media">>, wh_media_util:get_prompt(<<"fault-can_not_be_completed_as_dialed">>,Call)}
+     ,{<<"Media">>, wh_media_util:get_prompt(<<"fault-can_not_be_completed_as_dialed">>, Call)}
     ];
 default_response(Call, <<"INVALID_NUMBER_FORMAT">>) ->
     [{<<"Code">>, <<"484">>}
      ,{<<"Message">>, <<"Invalid number format">>}
-     ,{<<"Media">>, wh_media_util:get_prompt(<<"fault-can_not_be_completed_as_dialed">>,Call)}
+     ,{<<"Media">>, wh_media_util:get_prompt(<<"fault-can_not_be_completed_as_dialed">>, Call)}
     ];
 default_response(_Call, <<"FACILITY_REJECTED">>) ->
     [{<<"Code">>, <<"510">>}
@@ -270,7 +275,7 @@ default_response(_Call, <<"NETWORK_OUT_OF_ORDER">>) ->
 default_response(Call, <<"NORMAL_TEMPORARY_FAILURE">>) ->
     [{<<"Code">>, <<"503">>}
      ,{<<"Message">>, <<"Normal temporary failure">>}
-     ,{<<"Media">>, wh_media_util:get_prompt(<<"fault-can_not_be_completed_at_this_time">>,Call)}
+     ,{<<"Media">>, wh_media_util:get_prompt(<<"fault-can_not_be_completed_at_this_time">>, Call)}
     ];
 default_response(_Call, <<"SWITCH_CONGESTION">>) ->
     [{<<"Code">>, <<"503">>}
@@ -307,17 +312,17 @@ default_response(_Call, <<"FACILITY_NOT_IMPLEMENTED">>) ->
 default_response(Call, <<"SERVICE_NOT_IMPLEMENTED">>) ->
     [{<<"Code">>, <<"501">>}
      ,{<<"Message">>, <<"Service not implemented">>}
-     ,{<<"Media">>, wh_media_util:get_prompt(<<"fault-facility_trouble">>,Call)}
+     ,{<<"Media">>, wh_media_util:get_prompt(<<"fault-facility_trouble">>, Call)}
     ];
 default_response(Call, <<"INCOMPATIBLE_DESTINATION">>) ->
     [{<<"Code">>, <<"488">>}
      ,{<<"Message">>, <<"Incompatible destination">>}
-     ,{<<"Media">>, wh_media_util:get_prompt(<<"fault-facility_trouble">>,Call)}
+     ,{<<"Media">>, wh_media_util:get_prompt(<<"fault-facility_trouble">>, Call)}
     ];
 default_response(Call, <<"MANDATORY_IE_MISSING">>) ->
     [{<<"Code">>, <<"400">>}
      ,{<<"Message">>, <<"Mandatory informatin missing">>}
-     ,{<<"Media">>, wh_media_util:get_prompt(<<"fault-facility_trouble">>,Call)}
+     ,{<<"Media">>, wh_media_util:get_prompt(<<"fault-facility_trouble">>, Call)}
     ];
 default_response(_Call, <<"RECOVERY_ON_TIMER_EXPIRE">>) ->
     [{<<"Code">>, <<"504">>}
@@ -327,7 +332,7 @@ default_response(_Call, <<"RECOVERY_ON_TIMER_EXPIRE">>) ->
 default_response(Call, <<"MANDATORY_IE_LENGTH_ERROR">>) ->
     [{<<"Code">>, <<"400">>}
      ,{<<"Message">>, <<"Mandatory informatin missing">>}
-     ,{<<"Media">>, wh_media_util:get_prompt(<<"fault-facility_trouble">>,Call)}
+     ,{<<"Media">>, wh_media_util:get_prompt(<<"fault-facility_trouble">>, Call)}
     ];
 default_response(_Call, <<"ORIGINATOR_CANCEL">>) ->
     [{<<"Code">>, <<"487">>}
@@ -341,5 +346,5 @@ default_response(_Call, <<"MEDIA_TIMEOUT">>) ->
 default_response(Call, <<"PROGRESS_TIMEOUT">>) ->
     [{<<"Code">>, <<"486">>}
      ,{<<"Message">>, <<"Progress timeout">>}
-     ,{<<"Media">>, wh_media_util:get_prompt(<<"fault-can_not_be_completed_at_this_time">>,Call)}
+     ,{<<"Media">>, wh_media_util:get_prompt(<<"fault-can_not_be_completed_at_this_time">>, Call)}
     ].
