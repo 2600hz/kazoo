@@ -9,6 +9,7 @@
 %%%   ,"format":["mp3","wav"] // what format to store the recording in
 %%%   ,"url":"http://server.com/path/to/dump/file" // what URL to PUT the file to
 %%%   ,"record_on_answer": boolean() // whether to delay the start of the recording
+%%%   ,"record_sample_rate": integer() // sample rate to record at, in Hz
 %%% }
 %%% @end
 %%% @contributors

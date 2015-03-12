@@ -37,6 +37,12 @@
             "required":false,
             "name":"Record on Answer",
             "description":"Whether to delay starting the recording until the call is answered"
+        },
+        "record_sample_rate":{
+            "type":"integer",
+            "required":false,
+            "name":"Sample Rate",
+            "description":"Sampling rate of the recording, in Hz"
         }
     }
 }
