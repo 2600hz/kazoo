@@ -164,25 +164,11 @@ reconcile_providers([], Config) ->
 -spec cleanup_phone_numbers() -> 'ok'.
 -spec cleanup_phone_numbers(ne_binary() | ne_binaries()) -> 'ok'.
 cleanup_phone_numbers() ->
-    Databases = get_databases(),
-    Accounts = [wh_util:format_account_id(Db, 'encoded')
-                || Db <- Databases,
-                   whapps_util:is_account_db(Db)
-               ],
+    Accounts = whapps_util:get_all_accounts('raw'),
     wh_number_fix:fix_account_numbers(Accounts).
 
 cleanup_phone_numbers(Account) ->
     wh_number_fix:fix_account_numbers(Account).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec get_databases() -> ne_binaries().
-get_databases() ->
-    {'ok', Databases} = couch_mgr:db_info(),
-    ?KZ_SYSTEM_DBS ++ [Db || Db <- Databases, (not lists:member(Db, ?KZ_SYSTEM_DBS))].
 
 %%--------------------------------------------------------------------
 %% @private
