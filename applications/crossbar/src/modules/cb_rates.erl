@@ -450,10 +450,9 @@ save_processed_rates(Context, Count) ->
 -spec rate_for_number(ne_binary(),ne_binary()) -> cb_context:context().
 rate_for_number(Context, Phonenumber) ->
     Resp = case wh_amqp_worker:call([{<<"To-DID">>, wnm_util:normalize_number(Phonenumber)}| wh_api:default_headers(?APP_NAME, ?APP_VERSION)]
-                                       ,fun wapi_rate:publish_req/1
-                                       ,fun wapi_rate:resp_v/1
-                                       ,10000) of
-
+                                    ,fun wapi_rate:publish_req/1
+                                    ,fun wapi_rate:resp_v/1
+                                    ,10000) of
                {'ok', Rate} ->  Rate;
                _ -> wh_json:new() 
            end,
