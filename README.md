@@ -56,7 +56,7 @@
                                                  ....           
 ````
 
-[![Build Status](https://secure.travis-ci.org/2600hz/2600hz-platform.png)](http://travis-ci.org/2600hz/2600hz-platform)
+[![Build Status](https://secure.travis-ci.org/2600hz/kazoo.png)](http://travis-ci.org/2600hz/kazoo)
 
 ## Kazoo
 
