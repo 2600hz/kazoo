@@ -87,30 +87,6 @@ send_cmd(Node, UUID, "xferext", Dialplan) ->
     'ok' = freeswitch:sendmsg(Node, UUID, [{"call-command", "xferext"} | XferExt]);
 send_cmd(Node, UUID, App, Args) when not is_list(Args) ->
     send_cmd(Node, UUID, App, wh_util:to_list(Args));
-send_cmd(Node, UUID, "record_call", Args) ->
-    lager:debug("execute on node ~s: uuid_record(~s)", [Node, Args]),
-    case freeswitch:api(Node, 'uuid_record', Args) of
-        {'ok', _Msg}=Ret ->
-            lager:debug("executing uuid_record returned: ~s", [_Msg]),
-            Ret;
-        {'error', <<"-ERR ", E/binary>>} ->
-            lager:debug("error executing uuid_record: ~s", [E]),
-            Evt = list_to_binary([ecallmgr_util:create_masquerade_event(<<"record_call">>, <<"RECORD_STOP">>)
-                                  ,",whistle_application_response="
-                                  ,"'",binary:replace(E, <<"\n">>, <<>>),"'"
-                                 ]),
-            lager:debug("publishing event: ~s", [Evt]),
-            _ = send_cmd(Node, UUID, "application", Evt),
-            {'error', E};
-        {'error', _Reason}=Error ->
-            lager:debug("error executing uuid_record: ~p", [_Reason]),
-            Evt = list_to_binary([ecallmgr_util:create_masquerade_event(<<"record_call">>, <<"RECORD_STOP">>)
-                                 ,",whistle_application_response=timeout"
-                                 ]),
-            lager:debug("publishing event: ~s", [Evt]),
-            _ = send_cmd(Node, UUID, "application", Evt),
-            Error
-    end;
 send_cmd(Node, UUID, "playstop", _Args) ->
     lager:debug("execute on node ~s: uuid_break(~s all)", [Node, UUID]),
     freeswitch:api(Node, 'uuid_break', wh_util:to_list(<<UUID/binary, " all">>));

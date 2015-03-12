@@ -9,10 +9,13 @@
 %%%   ,"format":["mp3","wav"] // what format to store the recording in
 %%%   ,"url":"http://server.com/path/to/dump/file" // what URL to PUT the file to
 %%%   ,"record_on_answer": boolean() // whether to delay the start of the recording
+%%%   ,"record_sample_rate": integer() // sample rate to record at, in Hz
 %%% }
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
+%%%
+%%% Fix KAZOO-3406: Sponsored by Velvetech LLC, implemented by SIPLABS LLC
 %%%-------------------------------------------------------------------
 -module(cf_record_call).
 
@@ -70,8 +73,9 @@ record_call(Data, Call) ->
              ,{<<"Media-Transfer-Destination">>, wh_json:get_value(<<"url">>, Data)}
              ,{<<"Additional-Headers">>, wh_json:get_value(<<"additional_headers">>, Data)}
              ,{<<"Time-Limit">>, wh_json:get_value(<<"time_limit">>, Data)}
+             ,{<<"Record-Sample-Rate">>, wh_json:get_integer_value(<<"record_sample_rate">>, Data)}
             ],
-    _ = whapps_call_command:record_call(Props, <<"start">>, Call),
+    _ = whapps_call_command:record_call(props:filter_undefined(Props), <<"start">>, Call),
     lager:debug("auto handling call recording").
 
 -spec get_action(api_binary()) -> ne_binary().

@@ -6,6 +6,8 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%   Karl Anderson
+%%%
+%%% Fix KAZOO-3406: Sponsored by Velvetech LLC, implemented by SIPLABS LLC
 %%%-------------------------------------------------------------------
 -module(ecallmgr_call_command).
 
@@ -154,58 +156,7 @@ get_fs_app(Node, UUID, JObj, <<"record_call">>) ->
     case wapi_dialplan:record_call_v(JObj) of
         'false' -> {'error', <<"record_call failed to execute as JObj did not validate">>};
         'true' ->
-            Routines = [fun(V) ->
-                            case ecallmgr_config:is_true(<<"record_waste_resources">>, 'false') of
-                                'false' -> V;
-                                'true' -> [{<<"record_waste_resources">>, <<"true">>}|V]
-                            end
-                        end
-                        ,fun(V) ->
-                            case get_terminators(JObj) of
-                                'undefined' -> V;
-                                Terminators -> [Terminators|V]
-                            end
-                         end
-                        ,fun(V) -> [{<<"RECORD_APPEND">>, <<"true">>}
-                                    ,{<<"enable_file_write_buffering">>, <<"false">>}
-                                    | V
-                                   ]
-                         end
-                       ],
-            Vars = lists:foldl(fun(F, V) -> F(V) end, [], Routines),
-            _ = ecallmgr_util:set(Node, UUID, Vars),
-
-            MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
-            RecordingName = ecallmgr_util:recording_filename(MediaName),
-            case wh_json:get_value(<<"Record-Action">>, JObj) of
-                <<"start">> ->
-                    FollowTransfer = wh_json:get_binary_boolean(<<"Follow-Transfer">>, JObj, <<"true">>),
-                    _ = ecallmgr_util:set(Node, UUID, [{<<"recording_follow_transfer">>, FollowTransfer}
-                                                       ,{<<"recording_follow_attxfer">>, FollowTransfer}
-                                                      ]),
-                    _ = ecallmgr_util:export(
-                            Node
-                            ,UUID
-                            ,[{<<"Insert-At">>, wh_json:get_value(<<"Insert-At">>, JObj)}
-                              ,{<<"Time-Limit">>, wh_json:get_value(<<"Time-Limit">>, JObj)}
-                              ,{<<"Media-Name">>, wh_json:get_value(<<"Media-Name">>, JObj)}
-                              ,{<<"Media-Transfer-Method">>, wh_json:get_value(<<"Media-Transfer-Method">>, JObj)}
-                              ,{<<"Media-Transfer-Destination">>, wh_json:get_value(<<"Media-Transfer-Destination">>, JObj)}
-                              ,{<<"Additional-Headers">>, wh_json:get_value(<<"Additional-Headers">>, JObj)}
-                             ]
-                        ),
-                    %% UUID start path/to/media limit
-                    RecArg = binary_to_list(
-                                list_to_binary([UUID, <<" start ">>
-                                                ,RecordingName, <<" ">>
-                                                ,wh_json:get_string_value(<<"Time-Limit">>, JObj, "3600") % one hour
-                                               ])),
-                    {<<"record_call">>, RecArg};
-                <<"stop">> ->
-                    %% UUID stop path/to/media
-                    RecArg = binary_to_list(list_to_binary([UUID, <<" stop ">>, RecordingName])),
-                    {<<"record_call">>, RecArg}
-            end
+            record_call(Node, UUID, JObj)
     end;
 
 get_fs_app(Node, UUID, JObj, <<"store">>) ->
@@ -1251,6 +1202,82 @@ maybe_set_park_timeout(Node, UUID, JObj) ->
                         [wh_util:to_binary(Timeout), ":", Cause]
                 end,
             ecallmgr_fs_command:set(Node, UUID, [{<<"park_timeout">>, ParkTimeout}])
+    end.
+
+-spec record_call(atom(), ne_binary(), wh_json:object()) -> fs_app().
+record_call(Node, UUID, JObj) ->
+    set_record_call_vars(Node, UUID, JObj),
+
+    MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
+    RecordingName = ecallmgr_util:recording_filename(MediaName),
+
+    RecArg = case wh_json:get_value(<<"Record-Action">>, JObj) of
+                 <<"start">> ->
+                     start_record_call_args(Node, UUID, JObj, RecordingName);
+                 <<"stop">> ->
+                     list_to_binary([UUID, <<" stop ">>, RecordingName])
+             end,
+    ecallmgr_fs_command:record_call(Node, UUID, RecArg),
+    {<<"record_call">>, 'noop'}.
+
+-spec set_record_call_vars(atom(), ne_binary(), wh_json:object()) -> 'ok'.
+set_record_call_vars(Node, UUID, JObj) ->
+    Routines = [fun maybe_waste_resources/1
+                ,fun(Acc) -> maybe_get_terminators(Acc, JObj) end
+               ],
+
+    Vars = lists:foldl(fun(F, V) -> F(V) end
+                       ,[{<<"RECORD_APPEND">>, <<"true">>}
+                         ,{<<"enable_file_write_buffering">>, <<"false">>}
+                        ]
+                       ,Routines
+                      ),
+    ecallmgr_util:set(Node, UUID, Vars).
+
+-spec maybe_waste_resources(wh_proplist()) -> wh_proplist().
+maybe_waste_resources(Acc) ->
+    case ecallmgr_config:is_true(<<"record_waste_resources">>, 'false') of
+        'false' -> Acc;
+        'true' -> [{<<"record_waste_resources">>, <<"true">>}|Acc]
+    end.
+
+-spec maybe_get_terminators(wh_proplist(), wh_json:object()) -> wh_proplist().
+maybe_get_terminators(Acc, JObj) ->
+    case get_terminators(JObj) of
+        'undefined' -> Acc;
+        Terminators -> [Terminators|Acc]
+    end.
+
+-spec start_record_call_args(atom(), ne_binary(), wh_json:object(), ne_binary()) -> ne_binary().
+start_record_call_args(Node, UUID, JObj, RecordingName) ->
+    FollowTransfer = wh_json:get_binary_boolean(<<"Follow-Transfer">>, JObj, <<"true">>),
+    SampleRate = get_sample_rate(JObj),
+
+    _ = ecallmgr_util:set(Node, UUID, [{<<"recording_follow_transfer">>, FollowTransfer}
+                                       ,{<<"recording_follow_attxfer">>, FollowTransfer}
+                                       ,{<<"record_sample_rate">>, wh_util:to_binary(SampleRate)}
+                                      ]),
+    _ = ecallmgr_util:export(
+          Node
+          ,UUID
+          ,[{<<"Insert-At">>, wh_json:get_value(<<"Insert-At">>, JObj)}
+            ,{<<"Time-Limit">>, wh_json:get_value(<<"Time-Limit">>, JObj)}
+            ,{<<"Media-Name">>, wh_json:get_value(<<"Media-Name">>, JObj)}
+            ,{<<"Media-Transfer-Method">>, wh_json:get_value(<<"Media-Transfer-Method">>, JObj)}
+            ,{<<"Media-Transfer-Destination">>, wh_json:get_value(<<"Media-Transfer-Destination">>, JObj)}
+            ,{<<"Additional-Headers">>, wh_json:get_value(<<"Additional-Headers">>, JObj)}
+           ]),
+
+    list_to_binary([UUID, <<" start ">>
+                    ,RecordingName, <<" ">>
+                    ,wh_json:get_string_value(<<"Time-Limit">>, JObj, "3600") % one hour
+                   ]).
+
+-spec get_sample_rate(wh_json:object()) -> pos_integer().
+get_sample_rate(JObj) ->
+    case wh_json:get_integer_value(<<"Record-Sample-Rate">>, JObj) of
+        'undefined' -> ?DEFAULT_SAMPLE_RATE;
+        SampleRate -> SampleRate
     end.
 
 -ifdef(TEST).
