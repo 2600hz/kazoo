@@ -800,9 +800,17 @@ csv_header(JObj) ->
 -spec csv_ize(wh_json:keys()) -> iolist().
 csv_ize([F|Rest]) ->
     [<<"\"">>, wh_util:to_binary(F), <<"\"">>
-     ,[[<<",\"">>, wh_util:to_binary(V), <<"\"">>] || V <- Rest]
+     ,[[<<",\"">>, try_to_binary(V), <<"\"">>] || V <- Rest]
      ,<<"\n">>
     ].
+
+-spec try_to_binary(_) -> binary().
+try_to_binary(Value) ->
+    try wh_util:to_binary(Value) of
+        V -> V
+    catch
+        _E:_R -> <<"">>
+   end.
 
 -spec json_to_csv(wh_json:object()) -> iolist().
 json_to_csv(JObj) ->
