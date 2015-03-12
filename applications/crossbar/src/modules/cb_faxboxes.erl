@@ -292,7 +292,7 @@ on_faxbox_successful_validation(DocId, Context) ->
 -spec generate_email_address(cb_context:context()) -> ne_binary().
 generate_email_address(Context) ->
     ResellerId =  cb_context:reseller_id(Context),
-    Domain = whapps_account_config:get(ResellerId, <<"fax">>, <<"default_smtp_domain">>, ?DEFAULT_FAX_SMTP_DOMAIN),
+    Domain = whapps_account_config:get_global(ResellerId, <<"fax">>, <<"default_smtp_domain">>, ?DEFAULT_FAX_SMTP_DOMAIN),
     New = wh_util:rand_hex_binary(4),
     <<New/binary, ".", Domain/binary>>.
 
