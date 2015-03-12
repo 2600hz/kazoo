@@ -66,7 +66,7 @@ content_type_to_extension(CT) when is_binary(CT) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Convert known extensions to media types 
+%% Convert known extensions to media types
 %% @end
 %%--------------------------------------------------------------------
 -spec extension_to_content_type(ne_binary() | string() | list()) -> ne_binary().
@@ -135,29 +135,42 @@ save_fax_attachment(JObj, FileContents, CT, Count) ->
             ,{'rev', Rev}
            ],
     Name = attachment_name(<<>>, CT),
-    case couch_mgr:put_attachment(?WH_FAXES, DocId, Name, FileContents, Opts) of
-        {'ok', _DocObj} ->
-            save_fax_doc_completed(DocId);
-        {'error', E} ->
-            lager:debug("Error ~p saving fax attachment on fax id ~s rev ~s",[E, DocId, Rev]),
-            save_fax_attachment(JObj, FileContents, CT, Count-1)
+    _ = couch_mgr:put_attachment(?WH_FAXES, DocId, Name, FileContents, Opts),
+    case check_fax_attachment(DocId, Name) of
+        {'ok', J} -> save_fax_doc_completed(J);
+        {'missing', J} ->
+            lager:debug("Missing fax attachment on fax id ~s rev ~s",[DocId, Rev]),
+            save_fax_attachment(J, FileContents, CT, Count-1);
+        {'error', _R} ->
+            lager:debug("Error ~p saving fax attachment on fax id ~s rev ~s",[_R, DocId, Rev]),
+            {'ok', J} = couch_mgr:open_doc(?WH_FAXES, DocId),
+            save_fax_attachment(J, FileContents, CT, Count-1)
     end.
 
--spec save_fax_doc_completed(ne_binary())-> {'ok', wh_json:object()} | {'error', any()}.
-save_fax_doc_completed(DocId)->
+-spec check_fax_attachment(ne_binary(), ne_binary())->
+                                  {'ok', wh_json:object()}
+                                      | {'missing', wh_json:object()}
+                                      | {'error', any()}.
+check_fax_attachment(DocId, Name) ->
     case couch_mgr:open_doc(?WH_FAXES, DocId) of
-        {'error', E} ->
-            lager:debug("error ~p reading fax ~s while setting to pending",[E, DocId]),
-            {'error', E};
         {'ok', JObj} ->
-            case couch_mgr:save_doc(?WH_FAXES, wh_json:set_values([{<<"pvt_job_status">>, <<"pending">>}], JObj)) of
-                {'ok', Doc} ->
-                    lager:debug("fax jobid ~s set to pending", [DocId]),
-                    {'ok', Doc};
-                {'error', E} ->
-                    lager:debug("error ~p setting fax jobid ~s to pending",[E, DocId]),
-                    {'error', E}
-            end
+            case wh_doc:attachment(JObj, Name) of
+                'undefined' -> {'missing', JObj};
+                _Else -> {'ok', JObj}
+            end;
+        {'error', _}=E -> E
+    end.
+
+-spec save_fax_doc_completed(wh_json:object())-> {'ok', wh_json:object()} | {'error', any()}.
+save_fax_doc_completed(JObj)->
+    DocId = wh_json:get_value(<<"_id">>, JObj),
+    case couch_mgr:save_doc(?WH_FAXES, wh_json:set_values([{<<"pvt_job_status">>, <<"pending">>}], JObj)) of
+        {'ok', Doc} ->
+            lager:debug("fax jobid ~s set to pending", [DocId]),
+            {'ok', Doc};
+        {'error', E} ->
+            lager:debug("error ~p setting fax jobid ~s to pending",[E, DocId]),
+            {'error', E}
     end.
 
 -spec notify_email_list(api_binary(), api_binary(), ne_binary() | list()) -> list().
