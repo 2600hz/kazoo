@@ -1,0 +1,130 @@
+{
+    "_id": "app",
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "type": "object",
+    "required": true,
+    "name": "Application",
+    "description": "Appstore applications",
+    "additionalProperties": false,
+    "properties": {
+        "name": {
+            "type": "string",
+            "required": true,
+            "name": "Name",
+            "description": "Application name",
+            "minLength": 3,
+            "maxLength": 64
+        },
+        "source_url": {
+            "type": "string",
+            "required": true,
+            "name": "Source Url",
+            "description": "Application source url",
+            "format": "uri"
+        },
+        "i18n": {
+            "type": "object",
+            "required": true,
+            "name": "i18n",
+            "description": "Application source url",
+            "patternProperties": {
+                "[a-z]{2}\\-[A-Z]{2}": {
+                    "type": "object",
+                    "required": true,
+                    "properties": {
+                        "label": {
+                            "type": "string",
+                            "required": true,
+                            "name": "Label",
+                            "minLength": 3,
+                            "maxLength": 64
+                        },
+                        "description": {
+                            "type": "string",
+                            "required": true,
+                            "name": "Description",
+                            "minLength": 3
+                        },
+                        "extended_description": {
+                            "type": "string",
+                            "required": false,
+                            "name": "Extended Description"
+                        },
+                        "features": {
+                            "type": "array",
+                            "required": false,
+                            "name": "Features",
+                            "items": {
+                                "type": "string",
+                                "required": false
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "tags": {
+            "type": "array",
+            "required": false,
+            "name": "Tags",
+            "items": {
+                "type": "string",
+                "required": false
+            }
+        },
+        "icon": {
+            "type": "string",
+            "required": true,
+            "name": "Icon",
+            "description": "Application icon"
+        },
+        "api_url": {
+            "type": "string",
+            "required": true,
+            "name": "Api url",
+            "description": "Application api url",
+            "format": "uri"
+        },
+        "author": {
+            "type": "string",
+            "required": true,
+            "name": "Author",
+            "description": "Application author",
+            "minLength": 2,
+            "maxLength": 64
+        },
+        "version": {
+            "type": "string",
+            "required": true,
+            "name": "Version",
+            "description": "Application version"
+        },
+        "license": {
+            "type": "string",
+            "required": true,
+            "name": "License",
+            "description": "Application license"
+        },
+        "price": {
+            "type": "integer",
+            "required": true,
+            "name": "Price",
+            "description": "Application price",
+            "minimum": 0
+        },
+        "screenshots": {
+            "type": "array",
+            "required": false,
+            "name": "Screenshots",
+            "items": {
+                "type": "string",
+                "required": false
+            }
+        },
+        "urls": {
+            "type": "object",
+            "name": "Urls",
+            "required": false
+        }
+    }
+}

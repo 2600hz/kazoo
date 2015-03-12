@@ -807,7 +807,9 @@ init_app(AppPath, AppUrl) ->
     io:format("trying to init app from ~s~n", [AppPath]),
     try find_metadata(AppPath) of
         {'ok', MetaData} ->
-            maybe_create_app(AppPath, wh_json:set_value(<<"api_url">>, AppUrl, MetaData))
+            maybe_create_app(AppPath, wh_json:set_value(<<"api_url">>, AppUrl, MetaData));
+        {'invalid_data', _E} ->
+            io:format("  failed to validate app data ~s: ~p~n", [AppPath, _E])
     catch
         'error':{'badmatch', {'error', 'enoent'}} ->
             io:format("  failed to incorporate app because there was no app.json in ~s~n"
@@ -896,7 +898,7 @@ read_icon(Path, File) ->
     {'ok', IconData} = file:read_file(filename:join([Path, File])),
     IconData.
 
--spec find_metadata(ne_binary()) -> {'ok', wh_json:object()}.
+-spec find_metadata(ne_binary()) -> {'ok', wh_json:object()} | {'invalid_data', wh_proplist()}.
 find_metadata(AppPath) ->
     {'ok', Dirs} = file:list_dir(AppPath),
     case lists:member("app.json", Dirs) of
@@ -904,10 +906,19 @@ find_metadata(AppPath) ->
         'false' -> read_metadata(filename:join([AppPath, <<"metadata">>]))
     end.
 
--spec read_metadata(ne_binary()) -> {'ok', wh_json:object()}.
+-spec read_metadata(ne_binary()) -> {'ok', wh_json:object()} | {'invalid_data', wh_proplist()}.
 read_metadata(MetadataPath) ->
     {'ok', JSON} = file:read_file(filename:join([MetadataPath, <<"app.json">>])),
-    {'ok', wh_json:decode(JSON)}.
+    validate_metadata(wh_json:decode(JSON)).
+
+-spec validate_metadata(wh_json:object()) -> {'ok', wh_json:object()} | {'invalid_data', wh_proplist()}.
+validate_metadata(JObj) ->
+    {'ok', Schema} = wh_json_schema:load(<<"app">>),
+    case jesse:validate_with_schema(Schema, wh_json:public_fields(JObj)) of
+        {'ok', _}=OK -> OK;
+        {'error', Errors} ->
+            {'invalid_data', [Error || {'data_invalid', _, Error, _, _} <- Errors]}
+    end.
 
 -ifdef(TEST).
 
