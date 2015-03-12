@@ -14,8 +14,8 @@
 
 -define(PHONE_NUMBERS, <<"phone_numbers">>).
 
--define(TIME_BETWEEN_ACCOUNTS, whapps_config:get_integer(?WNM_CONFIG_CAT, <<"time_between_accounts">>, 1000)).
--define(TIME_BETWEEN_NUMBERS, whapps_config:get_integer(?WNM_CONFIG_CAT, <<"time_between_numbers">>, 1000)).
+-define(TIME_BETWEEN_ACCOUNTS_MS, whapps_config:get_integer(?WNM_CONFIG_CAT, <<"time_between_accounts_ms">>, ?MILLISECONDS_IN_SECOND)).
+-define(TIME_BETWEEN_NUMBERS_MS, whapps_config:get_integer(?WNM_CONFIG_CAT, <<"time_between_numbers_ms">>, ?MILLISECONDS_IN_SECOND)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -26,7 +26,7 @@
 fix_account_numbers([]) -> 'ok';
 fix_account_numbers([Account|Accounts]) ->
     _ = fix_account_numbers(Account),
-    timer:sleep(?TIME_BETWEEN_ACCOUNTS),
+    timer:sleep(?TIME_BETWEEN_ACCOUNTS_MS),
     fix_account_numbers(Accounts);
 fix_account_numbers(Account) when is_binary(Account) ->
     io:format("########## fixing [~s] ##########~n", [Account]),
@@ -136,7 +136,7 @@ get_callflow_numbers(AccountId) ->
 -spec fix_numbers(wh_proplist()) -> 'ok'.
 fix_numbers([]) -> 'ok';
 fix_numbers([{Number, Docs}|Numbers]) ->
-    timer:sleep(?TIME_BETWEEN_NUMBERS),
+    timer:sleep(?TIME_BETWEEN_NUMBERS_MS),
     io:format("##### fixing [~s] #####~n", [Number]),
     Routines = [
         fun maybe_fix_assignment/2
