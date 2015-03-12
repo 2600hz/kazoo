@@ -227,6 +227,7 @@ xml_to_record(Xml, Base) ->
     DiscountsPath = lists:flatten([Base, "/discounts/discount"]),
     BillingAddress = braintree_address:xml_to_record(Xml, [Base, "/billing"]),
     Card = braintree_card:xml_to_record(Xml, [Base, "/credit-card"]),
+    StatusHistory = get_status_history(Xml, Base),
     #bt_transaction{id = get_xml_value([Base, "/id/text()"], Xml)
                     ,status = get_xml_value([Base, "/status/text()"], Xml)
                     ,type = get_xml_value([Base, "/type/text()"], Xml)
@@ -261,7 +262,40 @@ xml_to_record(Xml, Base) ->
                     ,discounts = [braintree_discount:xml_to_record(Discounts)
                                   || Discounts <- xmerl_xpath:string(DiscountsPath, Xml)
                                  ]
+                   ,is_api = props:get_value('is_api', StatusHistory)
+                   ,is_automatic = props:get_value('is_automatic', StatusHistory)
+                   ,is_recurring = props:get_value('is_recurring', StatusHistory)
                    }.
+
+-spec get_status_history(bt_xml(), wh_deeplist()) -> wh_proplist().
+get_status_history(Xml, Base) ->
+    HistoryPath = lists:flatten([Base, "/status-history/status-event"]),
+    History = xmerl_xpath:string(HistoryPath, Xml),
+    Sources = get_transaction_sources(History, []),
+    Users = get_users(History, []),
+    [{'is_automatic', lists:all(fun('undefined') -> 'true';
+                                   (_) -> 'false'
+                                end, Users)}
+    ,{'is_api', lists:any(fun(<<"api">>) -> 'true';
+                             (<<"2600hz-api">>) -> 'true';
+                             (_) -> 'false'
+                          end, Sources ++ Users)}
+     ,{'is_recurring', lists:any(fun(<<"recurring">>) -> 'true';
+                                    (_) -> 'false'
+                                 end, Sources)}
+    ].
+
+-spec get_users(bt_xml(), api_binaries()) -> api_binaries().
+get_users([], Users) -> Users;
+get_users([Element|Elements], Users) ->
+    User = get_xml_value("user/text()", Element),
+    get_users(Elements, [User|Users]).
+
+-spec get_transaction_sources(bt_xml(), api_binaries()) -> api_binaries().
+get_transaction_sources([], Sources) -> Sources;
+get_transaction_sources([Element|Elements], Sources) ->
+    Source = get_xml_value("transaction-source/text()", Element),
+    get_transaction_sources(Elements, [Source|Sources]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -402,6 +436,9 @@ record_to_json(#bt_transaction{}=Transaction) ->
              ,{<<"discounts">>, [braintree_discount:record_to_json(Discounts)
                                  || Discounts <- Transaction#bt_transaction.discounts
                                 ]}
+            ,{<<"is_api">>, Transaction#bt_transaction.is_api}
+            ,{<<"is_automatic">>, Transaction#bt_transaction.is_automatic}
+            ,{<<"is_recurring">>, Transaction#bt_transaction.is_recurring}
             ],
     wh_json:from_list(props:filter_undefined(Props)).
 
@@ -444,7 +481,6 @@ json_to_record(JObj) ->
         ,add_ons = [braintree_addon:json_to_record(Addon)
                        || Addon <- wh_json:get_value(<<"add_ons">>, JObj, [])
                    ]
-
         ,discounts = [braintree_discount:json_to_record(Discount)
                         || Discount <- wh_json:get_value(<<"discounts">>, JObj, [])
                      ]
@@ -454,4 +490,7 @@ json_to_record(JObj) ->
         ,settle = wh_json:get_value(<<"tax_exempt">>, JObj, 'false')
         ,change_billing_address = wh_json:get_value(<<"change_billing_address">>, JObj, 'false')
         ,store_shipping_address = wh_json:get_value(<<"store_shipping_address">>, JObj, 'false')
+        ,is_api = wh_json:is_true(<<"is_api">>, JObj)
+        ,is_automatic = wh_json:is_true(<<"is_automatic">>, JObj)
+        ,is_recurring = wh_json:is_true(<<"is_recurring">>, JObj)
     }.

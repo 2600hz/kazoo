@@ -130,71 +130,11 @@ transactions(Account, Options) ->
     try braintree_transaction:find_by_customer(AccountId, From, To) of
         BTTransactions ->
             JObjs = [braintree_transaction:record_to_json(Tr) || Tr <- BTTransactions],
-            Filtered = filter_prorated(JObjs, props:get_value('prorated', Options, 'true')),
-            Transactions = convert_transactions(Filtered),
-            {'ok', Transactions}
+            {'ok', convert_transactions(JObjs)}
     catch
         'throw':{'not_found', _} -> {'error', 'not_found'};
         _:_ -> {'error', 'unknown_error'}
     end.
-
-filter_prorated(Transactions, 'true') ->
-    [Tr || Tr <- Transactions, is_prorated(Tr)];
-filter_prorated(Transactions, 'false') ->
-    [Tr || Tr <- Transactions, not(is_prorated(Tr))].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec is_prorated(wh_json:object()) -> boolean().
-is_prorated(BTransaction) ->
-    case wh_json:get_value(<<"subscription_id">>, BTransaction) of
-        'undefined' -> 'true';
-        _Id ->
-            Addon = calculate_addon(BTransaction),
-            Discount = calculate_discount(BTransaction),
-            Amount = wh_json:get_number_value(<<"amount">>, BTransaction, 0),
-            (Addon - Discount) =/= Amount
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec calculate_addon(wh_json:object()) -> number().
-calculate_addon(BTransaction) ->
-    Addons = wh_json:get_value(<<"add_ons">>, BTransaction, []),
-    calculate(Addons, 0).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec calculate_discount(wh_json:object()) -> number().
-calculate_discount(BTransaction) ->
-    Addons = wh_json:get_value(<<"discounts">>, BTransaction, []),
-    calculate(Addons, 0).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec calculate(wh_json:objects(), number()) -> number().
-calculate([], Acc) -> Acc/100;
-calculate([Addon|Addons], Acc) ->
-    Amount = wh_json:get_number_value(<<"amount">>, Addon, 0)*100,
-    Quantity = wh_json:get_number_value(<<"quantity">>, Addon, 0),
-    calculate(Addons, (Amount*Quantity+Acc)).
-
 
 %%--------------------------------------------------------------------
 %% @public
@@ -336,6 +276,7 @@ convert_transaction(BTTransaction) ->
                 ,fun set_bookkeeper_info/2
                 ,fun set_metadata/2
                 ,fun set_reason/2
+                ,fun set_status/2
                 ,fun set_amount/2
                 ,fun set_created/2
                 ,fun set_modified/2
@@ -369,8 +310,27 @@ set_metadata(BTTransaction, Transaction) ->
     wh_transaction:set_metadata(BTTransaction, Transaction).
 
 -spec set_reason(wh_json:object(), wh_transaction:transaction()) -> wh_transaction:transaction().
-set_reason(_, Transaction) ->
-    wh_transaction:set_reason(<<"unknown">>, Transaction).
+set_reason(BTTransaction, Transaction) ->
+    IsApi = wh_json:is_true(<<"is_api">>, BTTransaction),
+    IsAutomatic = wh_json:is_true(<<"is_automatic">>, BTTransaction),
+    IsRecurring = wh_json:is_true(<<"is_recurring">>, BTTransaction),
+    if
+        IsApi, IsRecurring ->
+            wh_transaction:set_reason(<<"recurring_prorate">>, Transaction);
+        IsAutomatic, IsRecurring ->
+            wh_transaction:set_reason(<<"monthly_recurring">>, Transaction);
+        IsRecurring ->
+            wh_transaction:set_reason(<<"recurring">>, Transaction);
+        IsApi ->
+            wh_transaction:set_reason(<<"manual_addition">>, Transaction);
+        'true' ->
+            wh_transaction:set_reason(<<"unknown">>, Transaction)
+    end.
+
+-spec set_status(wh_json:object(), wh_transaction:transaction()) -> wh_transaction:transaction().
+set_status(BTTransaction, Transaction) ->
+    Status = wh_json:get_value(<<"status">>, BTTransaction),
+    wh_transaction:set_status(Status, Transaction).
 
 -spec set_amount(wh_json:object(), wh_transaction:transaction()) -> wh_transaction:transaction().
 set_amount(BTTransaction, Transaction) ->

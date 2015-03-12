@@ -12,13 +12,17 @@
          ,allowed_methods/0, allowed_methods/1
          ,resource_exists/0, resource_exists/1
          ,validate/1, validate/2
+         ,to_csv/1
         ]).
 
 -include("../crossbar.hrl").
+-include_lib("whistle_transactions/include/whistle_transactions.hrl").
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 -endif.
+
+-type payload() :: {cowboy_req:req(), cb_context:context()}.
 
 %%%===================================================================
 %%% API
@@ -34,7 +38,29 @@
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.transactions">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.transactions">>, ?MODULE, 'resource_exists'),
-    crossbar_bindings:bind(<<"*.validate.transactions">>, ?MODULE, 'validate').
+    _ = crossbar_bindings:bind(<<"*.validate.transactions">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.to_csv.get.transactions">>, ?MODULE, 'to_csv').
+
+-spec to_csv(payload()) -> payload().
+to_csv({Req, Context}) ->
+    JObjs = flatten(cb_context:resp_data(Context), []),
+    {Req, cb_context:set_resp_data(Context, JObjs)}.
+
+-spec flatten(wh_json:objects(), wh_json:objects()) -> wh_json:objects().
+flatten([], Results) ->
+    wht_util:collapse_call_transactions(Results);
+flatten([JObj|JObjs], Results) ->
+    Metadata = wh_json:get_ne_value(<<"metadata">>, JObj),
+    case wh_json:is_json_object(Metadata) of
+        'true' ->
+            Props = wh_json:to_proplist(
+                      wh_json:delete_key(<<"account_id">>, Metadata)
+                     ),
+            flatten(JObjs, [wh_json:set_values(Props, JObj)|Results]);
+        'false' ->
+            flatten(JObjs, [JObj|Results])
+    end;
+flatten(Else, _) -> Else.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -90,7 +116,6 @@ validate_transactions(Context, ?HTTP_GET) ->
         {CreatedFrom, CreatedTo} ->
             Options = [{'from', CreatedFrom}
                        ,{'to', CreatedTo}
-                       ,{'prorated', 'true'}
                        ,{'reason', cb_context:req_value(Context, <<"reason">>)}
                       ],
             fetch(Context, Options);
@@ -111,7 +136,6 @@ validate_transaction(Context, <<"monthly_recurring">>, ?HTTP_GET) ->
         {CreatedFrom, CreatedTo} ->
             Options = [{'from', CreatedFrom}
                        ,{'to', CreatedTo}
-                       ,{'prorated', 'false'}
                        ,{'reason', cb_context:req_value(Context, <<"reason">>)}
                       ],
             fetch_monthly_recurring(Context, Options);
@@ -134,22 +158,7 @@ fetch(Context, Options) ->
         {'error', _R}=Error -> send_resp(Error, Context);
         {'ok', Transactions} ->
             JObjs = maybe_filter_by_reason(Transactions, Options),
-            send_resp(flatten(JObjs, []), Context)
-    end.
-
--spec flatten(wh_json:objects(), wh_json:objects()) -> {'ok', wh_json:objects()}.
-flatten([], Results) ->
-    {'ok', wht_util:collapse_call_transactions(Results)};
-flatten([JObj|JObjs], Results) ->
-    Metadata = wh_json:get_ne_value(<<"metadata">>, JObj),
-    case wh_json:is_json_object(Metadata) of
-        'true' ->
-            Props = wh_json:to_proplist(
-                      wh_json:delete_key(<<"account_id">>, Metadata)
-                     ),
-            flatten(JObjs, [wh_json:set_values(Props, JObj)|Results]);
-        'false' ->
-            flatten(JObjs, [JObj|Results])
+            send_resp({'ok', JObjs}, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -164,7 +173,10 @@ fetch_monthly_recurring(Context, Options) ->
     case wh_bookkeeper_braintree:transactions(cb_context:account_id(Context), Options) of
         {'error', _}=E -> send_resp(E, Context);
         {'ok', Transactions} ->
-            JObjs = maybe_filter_by_reason(Transactions, Options),
+            JObjs = [JObj
+                     || JObj <- maybe_filter_by_reason(Transactions, Options)
+                            ,wh_json:get_integer_value(<<"code">>, JObj) =:= ?CODE_MONTHLY_RECURRING
+                    ],
             send_resp({'ok', JObjs}, Context)
     end.
 

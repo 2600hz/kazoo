@@ -233,6 +233,9 @@
                          ,settle = 'true' :: boolean()
                          ,change_billing_address = 'false' :: boolean()
                          ,store_shipping_address = 'false' :: boolean()
+                         ,is_api = 'false' :: boolean()
+                         ,is_automatic = 'false' :: boolean()
+                         ,is_recurring = 'false' :: boolean()
                         }).
 -type bt_transaction() :: #bt_transaction{}.
 -type bt_transactions() :: [bt_transaction(),...] | [].

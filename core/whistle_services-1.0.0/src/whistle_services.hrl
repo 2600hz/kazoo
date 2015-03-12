@@ -3,7 +3,7 @@
 -include_lib("whistle/include/wh_databases.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 
--include_lib("whistle_transactions/src/whistle_transactions.hrl").
+-include_lib("whistle_transactions/include/whistle_transactions.hrl").
 
 -define(WHS_CONFIG_CAT, <<"services">>).
 -define(WHISTLE_SERVICES_HRL, 'true').
