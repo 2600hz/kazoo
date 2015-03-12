@@ -29,6 +29,7 @@
 -export([account_id/1, set_account_id/2]).
 -export([account_db/1, set_account_db/2]).
 -export([version/1, set_version/2]).
+-export([status/1, set_status/2]).
 
 -export([new/0]).
 -export([debit/2]).
@@ -42,7 +43,7 @@
 -export([save/1]).
 -export([service_save/1]).
 
--include("whistle_transactions.hrl").
+-include("../include/whistle_transactions.hrl").
 
 -define(WH_SERVICES_DB, <<"services">>).
 
@@ -57,6 +58,7 @@
                          ,feature :: api_binary()
                          ,bookkeeper_info :: api_object()
                          ,metadata :: api_object()
+                         ,pvt_status :: api_binary()
                          ,pvt_reason :: api_binary()
                          ,pvt_code :: api_integer()
                          ,pvt_amount = 0 :: non_neg_integer()
@@ -127,6 +129,10 @@ metadata(#wh_transaction{metadata=MetaData}) ->
 -spec reason(transaction()) -> ne_binary().
 reason(#wh_transaction{pvt_reason=Reason}) ->
     Reason.
+
+-spec status(transaction()) -> ne_binary().
+status(#wh_transaction{pvt_status=Status}) ->
+    Status.
 
 -spec code(transaction()) -> api_integer().
 code(#wh_transaction{pvt_code=Code}) ->
@@ -264,6 +270,10 @@ set_reason(Reason, Transaction) ->
                                ,pvt_code=Code
                               }.
 
+-spec set_status(ne_binary(), transaction()) -> transaction().
+set_status(Status, Transaction) ->
+    Transaction#wh_transaction{pvt_status=Status}.
+
 -spec set_code(pos_integer(), transaction()) -> transaction().
 set_code(Code, Transaction) ->
     Reason = wht_util:code_reason(Code),
@@ -343,6 +353,7 @@ to_json(#wh_transaction{}=T) ->
              ,{<<"feature">>, T#wh_transaction.feature}
              ,{<<"bookkeeper_info">>, T#wh_transaction.bookkeeper_info}
              ,{<<"metadata">>, T#wh_transaction.metadata}
+             ,{<<"pvt_status">>, T#wh_transaction.pvt_status}
              ,{<<"pvt_reason">>, T#wh_transaction.pvt_reason}
              ,{<<"pvt_code">>, T#wh_transaction.pvt_code}
              ,{<<"pvt_amount">>, T#wh_transaction.pvt_amount}
@@ -412,6 +423,7 @@ clean_jobj(JObj) ->
     CleanKeys = [{<<"_id">>, <<"id">>}
                  ,{<<"pvt_amount">>, <<"amount">>, fun wht_util:units_to_dollars/1}
                  ,{<<"pvt_reason">>, <<"reason">>}
+                 ,{<<"pvt_status">>, <<"status">>}
                  ,{<<"pvt_type">>, <<"type">>}
                  ,{<<"pvt_created">>, <<"created">>}
                  ,{<<"pvt_vsn">>, <<"version">>}
@@ -444,6 +456,7 @@ from_json(JObj) ->
                     ,bookkeeper_info = wh_json:get_ne_value(<<"bookkeeper_info">>, JObj)
                     ,metadata = wh_json:get_ne_value(<<"metadata">>, JObj)
                     ,pvt_reason = wh_json:get_ne_value(<<"pvt_reason">>, JObj)
+                    ,pvt_status = wh_json:get_ne_value(<<"pvt_status">>, JObj)
                     ,pvt_code = wh_json:get_integer_value(<<"pvt_code">>, JObj, 0)
                     ,pvt_amount = wh_json:get_integer_value(<<"pvt_amount">>, JObj, 0)
                     ,pvt_type = wh_json:get_ne_value(<<"pvt_type">>, JObj)

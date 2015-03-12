@@ -30,7 +30,7 @@
          ,rollup/2
         ]).
 
--include("whistle_transactions.hrl").
+-include("../include/whistle_transactions.hrl").
 
 %% tracked in hundred-ths of a cent
 -define(DOLLAR_TO_UNIT, 10000).
@@ -48,6 +48,9 @@
                   ,{<<"admin_discretion">>, ?CODE_ADMIN_DISCRETION}
                   ,{<<"topup">>, ?CODE_TOPUP}
                   ,{<<"database_rollup">>, ?CODE_DATABASE_ROLLUP}
+                  ,{<<"recurring">>, ?CODE_RECURRING}
+                  ,{<<"monthly_recurring">>, ?CODE_MONTHLY_RECURRING}
+                  ,{<<"recurring_prorate">>, ?CODE_RECURRING_PRORATE}
                   ,{<<"unknown">>, ?CODE_UNKNOWN}
                  ]).
 

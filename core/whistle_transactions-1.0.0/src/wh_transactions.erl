@@ -20,7 +20,7 @@
 -export([to_json/1]).
 -export([to_public_json/1]).
 
--include("whistle_transactions.hrl").
+-include("../include/whistle_transactions.hrl").
 
 -type wh_transactions() :: wh_transaction:transactions().
 -export_type([wh_transactions/0]).
@@ -263,7 +263,6 @@ fetch_bookkeeper(Account, ViewOptions) ->
     Options = [
         {'from', props:get_value('startkey', ViewOptions)}
         ,{'to', props:get_value('endkey', ViewOptions)}
-        ,{'prorated', 'true'}
     ],
     try Bookkeeper:transactions(Account, Options) of
         {'ok', _}=R -> R;
