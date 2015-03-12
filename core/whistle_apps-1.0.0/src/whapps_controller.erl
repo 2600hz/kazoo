@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2014, 2600Hz
+%%% @copyright (C) 2010-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -60,17 +60,20 @@ stop_app(App) when not is_atom(App) ->
     stop_app(wh_util:to_atom(App));
 stop_app(App) ->
     case application:stop(App) of
-      ok -> lager:info("stopped kazoo application ~s", [App]);
-      Err -> lager:error("Error stopping ~p application: ~p~n", [App, Err]), Err
+        'ok' -> lager:info("stopped kazoo application ~s", [App]);
+        {'error', _E}=Err ->
+            lager:error("error stopping applicaiton ~s: ~p", [App, _E]),
+            Err
     end.
 
--spec restart_app(atom() | nonempty_string() | ne_binary()) -> 'ok' | {'error', term()}.
+-spec restart_app(atom() | nonempty_string() | ne_binary()) ->
+                         'ok' | 'error' | 'exists'.
 restart_app(App) when not is_atom(App) ->
     restart_app(wh_util:to_atom(App));
 restart_app(App) when is_atom(App) ->
     lager:info("restarting whistle application ~s", [App]),
-    application:stop(App),
-    application:start(App).
+    _ = stop_app(App),
+    start_app(App).
 
 -define(HIDDEN_APPS
         ,['amqp_client','asn1'
@@ -99,6 +102,7 @@ running_apps(Verbose) ->
         'false' -> running_apps_list()
     end.
 
+-spec running_apps_verbose() -> atoms() | string().
 running_apps_verbose() ->
     case [wh_util:to_binary(io_lib:format("~s(~s): ~s~n", [App, Vsn, Desc]))
           || {App, Desc, Vsn} <- application:which_applications(),
@@ -109,6 +113,7 @@ running_apps_verbose() ->
         Resp -> Resp
     end.
 
+-spec running_apps_list() -> atoms() | string().
 running_apps_list() ->
     case [App
           || {App, _, _} <- application:which_applications(),
@@ -128,8 +133,8 @@ initialize_whapps() ->
     end,
     WhApps = whapps_config:get(?MODULE, <<"whapps">>, ?DEFAULT_WHAPPS),
     StartWhApps = [wh_util:to_atom(WhApp, 'true') || WhApp <- WhApps],
-    %_ = whistle_apps_sup:initialize_whapps([]),
-    [?MODULE:start_app(A) || A <- StartWhApps],
+
+    _ = [?MODULE:start_app(A) || A <- StartWhApps],
     lager:notice("auto-started whapps ~p", [StartWhApps]).
 
 -spec list_apps() -> atoms().
