@@ -22,7 +22,7 @@
 
 -define(PVT_FUNS, [fun add_pvt_type/2]).
 -define(PVT_TYPE, <<"rate">>).
--define(NUMBER_RATE, <<"number_rate">>).
+-define(NUMBER, <<"number">>).
 -define(CB_LIST, <<"rates/crossbar_listing">>).
 
 -define(UPLOAD_MIME_TYPES, [{<<"text">>, <<"csv">>}
@@ -64,7 +64,7 @@ allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
 -spec allowed_methods(path_token(),path_token()) -> http_methods().
-allowed_methods(?NUMBER_RATE,_) ->
+allowed_methods(?NUMBER,_) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
@@ -82,7 +82,7 @@ resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
 
 -spec resource_exists(path_token(),path_token()) -> 'true'.
-resource_exists(?NUMBER_RATE,_) -> 'true'.
+resource_exists(?NUMBER,_) -> 'true'.
 
 -spec content_types_accepted(cb_context:context()) -> cb_context:context().
 content_types_accepted(Context) ->
@@ -108,7 +108,7 @@ validate(Context) ->
     validate_rates(Context, cb_context:req_verb(Context)).
 validate(Context, Id) ->
     validate_rate(Context, Id, cb_context:req_verb(Context)).
-validate(Context, ?NUMBER_RATE, Phonenumber) ->
+validate(Context, ?NUMBER, Phonenumber) ->
     rate_for_number(Context, Phonenumber).
 
 -spec validate_rates(cb_context:context(), http_method()) -> cb_context:context().
@@ -449,9 +449,8 @@ save_processed_rates(Context, Count) ->
 
 -spec rate_for_number(ne_binary(),ne_binary()) -> cb_context:context().
 rate_for_number(Context, Phonenumber) ->
-    {ok, Rates} = hon_util:candidate_rates(Phonenumber),
-    Resp = case hon_util:matching_rates(Rates, Phonenumber) of
-        [Rate|_] -> Rate;
-        _ -> wh_json:new() 
-    end,
+    {'ok', Resp} = wh_amqp_worker:call([{<<"To-DID">>, wnm_util:normalize_number(Phonenumber)}| wh_api:default_headers(?APP_NAME, ?APP_VERSION)]
+                                       ,fun wapi_rate:publish_req/1
+                                       ,fun wapi_rate:resp_v/1
+                                       ,10000),
     crossbar_util:response(Resp, Context).
