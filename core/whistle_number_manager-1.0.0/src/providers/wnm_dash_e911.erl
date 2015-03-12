@@ -24,7 +24,11 @@
 -define(DASH_EMERG_URL, whapps_config:get_string(?WNM_DASH_CONFIG_CAT
                                                  ,<<"emergency_provisioning_url">>
                                                  ,<<"https://service.dashcs.com/dash-api/xml/emergencyprovisioning/v1">>)).
+
 -define(DASH_DEBUG, whapps_config:get_is_true(?WNM_DASH_CONFIG_CAT, <<"debug">>, 'false')).
+-define(DASH_DEBUG(Fmt, Args), ?DASH_DEBUG
+        andalso file:write_file("/tmp/dash_e911.xml", io_lib:format(Fmt, Args))
+       ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -146,7 +150,8 @@ emergency_provisioning_request(Verb, Props) ->
     URL = list_to_binary([?DASH_EMERG_URL, "/", wh_util:to_lower_binary(Verb)]),
     Body = xmerl:export_simple([{Verb, Props}]
                                ,'xmerl_xml'
-                               ,[{'prolog', ?DASH_XML_PROLOG}]),
+                               ,[{'prolog', ?DASH_XML_PROLOG}]
+                              ),
     Headers = [{"Accept", "*/*"}
                ,{"User-Agent", ?WNM_USER_AGENT}
                ,{"Content-Type", "text/xml"}
@@ -157,46 +162,33 @@ emergency_provisioning_request(Verb, Props) ->
                    ,{'basic_auth', {?DASH_AUTH_USERNAME, ?DASH_AUTH_PASSWORD}}
                   ],
     lager:debug("making ~s request to dash e911 ~s", [Verb, URL]),
-    ?DASH_DEBUG andalso file:write_file("/tmp/dash_e911.xml"
-                                        ,io_lib:format("Request:~n~s ~s~n~s~n", ['post', URL, Body])),
+    ?DASH_DEBUG("Request:~n~s ~s~n~s~n", ['post', URL, Body]),
     case ibrowse:send_req(wh_util:to_list(URL), Headers, 'post'
                           ,unicode:characters_to_binary(Body), HTTPOptions, 180000
                          )
     of
         {'ok', "401", _, _Response} ->
-            ?DASH_DEBUG andalso file:write_file("/tmp/dash_e911.xml"
-                                                ,io_lib:format("Response:~n401~n~s~n", [_Response])
-                                                ,['append']),
+            ?DASH_DEBUG("Response:~n401~n~s~n", [_Response]),
             lager:debug("dash e911 request error: 401 (unauthenticated)"),
             {'error', 'authentication'};
         {'ok', "403", _, _Response} ->
-            ?DASH_DEBUG andalso file:write_file("/tmp/dash_e911.xml"
-                                                ,io_lib:format("Response:~n403~n~s~n", [_Response])
-                                                ,['append']),
+            ?DASH_DEBUG("Response:~n403~n~s~n", [_Response]),
             lager:debug("dash e911 request error: 403 (unauthorized)"),
             {'error', 'authorization'};
         {'ok', "404", _, _Response} ->
-            ?DASH_DEBUG andalso file:write_file("/tmp/dash_e911.xml"
-                                                ,io_lib:format("Response:~n404~n~s~n", [_Response])
-                                                ,['append']),
+            ?DASH_DEBUG("Response:~n404~n~s~n", [_Response]),
             lager:debug("dash e911 request error: 404 (not found)"),
             {'error', 'not_found'};
         {'ok', "500", _, _Response} ->
-            ?DASH_DEBUG andalso file:write_file("/tmp/dash_e911.xml"
-                                                ,io_lib:format("Response:~n500~n~s~n", [_Response])
-                                                ,['append']),
+            ?DASH_DEBUG("Response:~n500~n~s~n", [_Response]),
             lager:debug("dash e911 request error: 500 (server error)"),
             {'error', 'server_error'};
         {'ok', "503", _, _Response} ->
-            ?DASH_DEBUG andalso file:write_file("/tmp/dash_e911.xml"
-                                                ,io_lib:format("Response:~n503~n~s~n", [_Response])
-                                                ,['append']),
+            ?DASH_DEBUG("Response:~n503~n~s~n", [_Response]),
             lager:debug("dash e911 request error: 503"),
             {'error', 'server_error'};
         {'ok', Code, _, Response} ->
-            ?DASH_DEBUG andalso file:write_file("/tmp/dash_e911.xml"
-                                                ,io_lib:format("Response:~n~p~n~s~n", [Code, Response])
-                                                ,['append']),
+            ?DASH_DEBUG("Response:~n~p~n~s~n", [Code, Response]),
             lager:debug("received response from dash e911"),
             try xmerl_scan:string(Response) of
                 {Xml, _} -> {'ok', Xml}
