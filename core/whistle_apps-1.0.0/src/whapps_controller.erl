@@ -59,13 +59,12 @@ start_app(App) ->
 stop_app(App) when not is_atom(App) ->
     stop_app(wh_util:to_atom(App));
 stop_app(App) ->
-    _ = application:stop(App),
-    lager:info("stopped kazoo application ~s", [App]).
+    case application:stop(App) of
+      ok -> lager:info("stopped kazoo application ~s", [App]);
+      Err -> lager:error("Error stopping ~p application: ~p~n", [App, Err]), Err
+    end.
 
--spec restart_app(atom() | nonempty_string() | ne_binary()) ->
-                         {'ok', pid() | 'undefined'} |
-                         {'ok', pid() | 'undefined', term()} |
-                         {'error', term()}.
+-spec restart_app(atom() | nonempty_string() | ne_binary()) -> 'ok' | {'error', term()}.
 restart_app(App) when not is_atom(App) ->
     restart_app(wh_util:to_atom(App));
 restart_app(App) when is_atom(App) ->
