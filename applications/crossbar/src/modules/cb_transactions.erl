@@ -134,7 +134,22 @@ fetch(Context, Options) ->
         {'error', _R}=Error -> send_resp(Error, Context);
         {'ok', Transactions} ->
             JObjs = maybe_filter_by_reason(Transactions, Options),
-            send_resp({'ok', wht_util:collapse_call_transactions(JObjs)}, Context)
+            send_resp(flatten(JObjs, []), Context)
+    end.
+
+-spec flatten(wh_json:objects(), wh_json:objects()) -> {'ok', wh_json:objects()}.
+flatten([], Results) ->
+    {'ok', wht_util:collapse_call_transactions(Results)};
+flatten([JObj|JObjs], Results) ->
+    Metadata = wh_json:get_ne_value(<<"metadata">>, JObj),
+    case wh_json:is_json_object(Metadata) of
+        'true' ->
+            Props = wh_json:to_proplist(
+                      wh_json:delete_key(<<"account_id">>, Metadata)
+                     ),
+            flatten(JObjs, [wh_json:set_values(Props, JObj)|Results]);
+        'false' ->
+            flatten(JObjs, [JObj|Results])
     end.
 
 %%--------------------------------------------------------------------
