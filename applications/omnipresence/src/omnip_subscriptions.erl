@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2014, 2600Hz
+%%% @copyright (C) 2013-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -53,7 +53,7 @@
           expire_ref :: reference(),
           ready = 'false' :: boolean(),
           sync = 'false'  :: boolean(),
-          sync_nodes = [] :: list()               
+          sync_nodes = [] :: list()
          }).
 
 %%%===================================================================
@@ -136,7 +136,7 @@ handle_sync(JObj, _Props) ->
     Action = wh_json:get_value(<<"Action">>, JObj),
     Node = wh_json:get_value(<<"Node">>, JObj),
     gen_server:cast(?MODULE, {'sync', {Action, Node}}).
-       
+
 -spec handle_mwi_update(wh_json:object(), wh_proplist()) -> any().
 handle_mwi_update(JObj, _Props) ->
     'true' = wapi_presence:mwi_update_v(JObj),
@@ -479,13 +479,22 @@ find_subscription(#omnip_subscription{normalized_user=U
                                       ,normalized_from=F
                                       ,stalker=S
                                       ,event=Event
+                                      ,call_id='undefined'
                                      }) ->
-    MatchSpec = #omnip_subscription{normalized_user=U
-                                    ,normalized_from=F
-                                    ,stalker=S
-                                    ,event=Event
-                                    ,_='_'
-                                   },
+    match_subscription(#omnip_subscription{normalized_user=U
+                                           ,normalized_from=F
+                                           ,stalker=S
+                                           ,event=Event
+                                           ,_='_'
+                                          });
+find_subscription(#omnip_subscription{call_id=CallId}) ->
+    match_subscription(#omnip_subscription{call_id=CallId
+                                           ,_='_'
+                                          }).
+
+-spec match_subscription(subscription()) -> {'ok', subscription()} |
+                                            {'error', 'not_found'}.
+match_subscription(MatchSpec) ->
     case ets:match_object(table_id(), MatchSpec) of
         [] -> {'error', 'not_found'};
         [#omnip_subscription{}=Sub] -> {'ok', Sub};
@@ -655,6 +664,7 @@ subscribe(#omnip_subscription{expires=E
 subscribe(#omnip_subscription{user=_U
                               ,from=_F
                               ,expires=_E1
+                              ,timestamp=_T1
                               ,stalker=_S
                              }=S) ->
     case find_subscription(S) of
@@ -664,8 +674,8 @@ subscribe(#omnip_subscription{user=_U
             lager:debug("re-subscribe ~s/~s expires in ~ps(prior remaing ~ps)"
                         ,[_U, _F, _E1, _E2 - wh_util:elapsed_s(_T)]),
             ets:delete_object(table_id(), O),
-            ets:insert(table_id(), S),
-            {'resubscribe', S};
+            ets:insert(table_id(), O#omnip_subscription{timestamp=_T1, expires=_E1, stalker=_S}),
+            {'resubscribe', O};
         {'error', 'not_found'} ->
             lager:debug("subscribe ~s/~s expires in ~ps", [_U, _F, _E1]),
             ets:insert(table_id(), S),
