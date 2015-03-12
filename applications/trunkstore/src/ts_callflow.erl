@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Common functionality for onnet and offnet call handling
 %%% @end
@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(ts_callflow).
 
--export([init/1
+-export([init/2
          ,start_amqp/1
          ,send_park/1
          ,wait_for_win/1
@@ -40,11 +40,12 @@
 
 -type ts_state() :: #ts_callflow_state{}.
 
--spec init(wh_json:object()) -> ts_state() | {'error', 'not_ts_account'}.
-init(RouteReqJObj) ->
+-spec init(wh_json:object(), api_binary()) ->
+                  ts_state() | {'error', 'not_ts_account'}.
+init(RouteReqJObj, Type) ->
     CallID = wh_json:get_value(<<"Call-ID">>, RouteReqJObj),
     put('callid', CallID),
-    case is_trunkstore_acct(RouteReqJObj) of
+    case is_trunkstore_acct(RouteReqJObj, Type) of
         'false' ->
             lager:info("request is not for a trunkstore account"),
             {'error', 'not_ts_account'};
@@ -256,13 +257,9 @@ set_failover(State, Failover) -> State#ts_callflow_state{failover=Failover}.
 -spec get_failover(ts_state()) -> wh_json:object() | 'undefined'.
 get_failover(#ts_callflow_state{failover=Fail}) -> Fail.
 
--spec is_trunkstore_acct(wh_json:object()) -> boolean().
-is_trunkstore_acct(JObj) ->
-    case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-Type">>], JObj) of
-        <<"sys_info">> -> 'true';
-        'undefined' -> 'true';
-        _AuthType -> 'false'
-    end.
+-spec is_trunkstore_acct(wh_json:object(), api_binary()) -> boolean().
+is_trunkstore_acct(JObj, Type) ->
+    Type =:= wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-Type">>], JObj).
 
 -spec pre_park_action() -> ne_binary().
 pre_park_action() ->

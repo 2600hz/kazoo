@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, VoIP INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Calls coming from offnet (in this case, likely stepswitch) potentially
 %%% destined for a trunkstore client, or, if the account exists and
@@ -19,7 +19,7 @@ start_link(RouteReqJObj) ->
 
 init(Parent, RouteReqJObj) ->
     proc_lib:init_ack(Parent, {'ok', self()}),
-    start_amqp(ts_callflow:init(RouteReqJObj)).
+    start_amqp(ts_callflow:init(RouteReqJObj, 'undefined')).
 
 start_amqp({'error', 'not_ts_account'}) -> 'ok';
 start_amqp(State) ->
