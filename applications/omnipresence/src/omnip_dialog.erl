@@ -256,13 +256,14 @@ handle_update(JObj, State, From, To, Expires) ->
     [ToUsername, ToRealm] = binary:split(To, <<"@">>),
     [FromUsername, FromRealm] = binary:split(From, <<"@">>),
     Direction = wh_json:get_lower_binary(<<"Call-Direction">>, JObj),
-    ToURI = case {State, wh_json:get_value(<<"App-Name">>, JObj)} of
+    App = wh_json:get_value(<<"App-Name">>, JObj),
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj, ?FAKE_CALLID(From)),
+    ToURI = case {State, App} of
                 {?PRESENCE_RINGING, <<"park">>} ->
-                    <<"sip:", From/binary,";kazoo-pickup=true">>;
+                    <<"sip:", From/binary,";kazoo-id=", (wh_util:uri_encode(CallId))/binary, ";kazoo-pickup=true">>;
                 {_State, _App} ->
                     <<"sip:", From/binary>>
             end,
-
     {User, Props} =
         case Direction =:= <<"inbound">> of
             'true' ->
