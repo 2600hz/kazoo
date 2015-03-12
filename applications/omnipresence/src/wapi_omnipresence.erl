@@ -132,10 +132,12 @@ bind_q(Queue, [_|Restrict], Props) ->
     bind_q(Queue, Restrict, Props);
 bind_q(_, [], _) -> 'ok'.
 
+-spec unbind_q(ne_binary(), wh_proplist()) -> 'ok'.
+-spec unbind_q(ne_binary(), atoms() | 'undefined', wh_proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
     unbind_q(Queue, props:get_value('restrict_to', Props), Props).
 
-unbind_q(Queue, _Props, 'undefined') ->
+unbind_q(Queue, 'undefined', _Props) ->
     amqp_util:unbind_q_from_exchange(Queue
                                      ,Queue
                                      ,?SUBSCRIPTIONS_EXCHANGE
