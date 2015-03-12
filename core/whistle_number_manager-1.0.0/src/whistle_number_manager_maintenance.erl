@@ -15,6 +15,8 @@
 
 -export([reconcile_providers/0]).
 
+-export([cleanup_phone_numbers/0, cleanup_phone_numbers/1]).
+
 -include("wnm.hrl").
 
 %% These are temporary until the viewing of numbers in an account can
@@ -152,6 +154,21 @@ reconcile_providers([_|Avail], Config) ->
     reconcile_providers(Avail, Config);
 reconcile_providers([], Config) ->
     whapps_config:set_default(?WNM_CONFIG_CAT, <<"providers">>, Config).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% exist
+%% @end
+%%--------------------------------------------------------------------
+-spec cleanup_phone_numbers() -> 'ok'.
+-spec cleanup_phone_numbers(ne_binary() | ne_binaries()) -> 'ok'.
+cleanup_phone_numbers() ->
+    Accounts = whapps_util:get_all_accounts('raw'),
+    wh_number_fix:fix_account_numbers(Accounts).
+
+cleanup_phone_numbers(Account) ->
+    wh_number_fix:fix_account_numbers(Account).
 
 %%--------------------------------------------------------------------
 %% @private
