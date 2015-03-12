@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2014, 2600Hz
+%%% @copyright (C) 2013-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -53,7 +53,7 @@
           expire_ref :: reference(),
           ready = 'false' :: boolean(),
           sync = 'false'  :: boolean(),
-          sync_nodes = [] :: list()               
+          sync_nodes = [] :: list()
          }).
 
 %%%===================================================================
@@ -136,7 +136,7 @@ handle_sync(JObj, _Props) ->
     Action = wh_json:get_value(<<"Action">>, JObj),
     Node = wh_json:get_value(<<"Node">>, JObj),
     gen_server:cast(?MODULE, {'sync', {Action, Node}}).
-       
+
 -spec handle_mwi_update(wh_json:object(), wh_proplist()) -> any().
 handle_mwi_update(JObj, _Props) ->
     'true' = wapi_presence:mwi_update_v(JObj),
@@ -481,30 +481,20 @@ find_subscription(#omnip_subscription{normalized_user=U
                                       ,event=Event
                                       ,call_id='undefined'
                                      }) ->
-    MatchSpec = #omnip_subscription{normalized_user=U
-                                    ,normalized_from=F
-                                    ,stalker=S
-                                    ,event=Event
-                                    ,_='_'
-                                   },
-    case ets:match_object(table_id(), MatchSpec) of
-        [] -> {'error', 'not_found'};
-        [#omnip_subscription{}=Sub] -> {'ok', Sub};
-        Subs ->
-            {#omnip_subscription{}=Sub, _} =
-                lists:foldl(fun(#omnip_subscription{timestamp=T}=SubT, {_, Tc}=Acc) ->
-                                    case T > Tc of
-                                        'true' -> {SubT, T};
-                                        'false' -> Acc
-                                    end
-                            end, {'ok', 0}, Subs),
-            {'ok', Sub}
-    end;
-find_subscription(#omnip_subscription{call_id=CallId
-                                     }) ->
-    MatchSpec = #omnip_subscription{call_id=CallId
-                                    ,_='_'
-                                   },
+    match_subscription(#omnip_subscription{normalized_user=U
+                                           ,normalized_from=F
+                                           ,stalker=S
+                                           ,event=Event
+                                           ,_='_'
+                                          });
+find_subscription(#omnip_subscription{call_id=CallId}) ->
+    match_subscription(#omnip_subscription{call_id=CallId
+                                           ,_='_'
+                                          }).
+
+-spec match_subscription(subscription()) -> {'ok', subscription()} |
+                                            {'error', 'not_found'}.
+match_subscription(MatchSpec) ->
     case ets:match_object(table_id(), MatchSpec) of
         [] -> {'error', 'not_found'};
         [#omnip_subscription{}=Sub] -> {'ok', Sub};

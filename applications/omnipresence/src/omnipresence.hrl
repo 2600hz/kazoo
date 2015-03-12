@@ -27,7 +27,7 @@
           ,from                                 :: api_binary() | <<>> | '_' %% user@realm.com
           ,stalker                              :: api_binary() | '_' % amqp queue to publish updates to
           ,expires = 0                          :: non_neg_integer() | '_' | '$2'
-          ,timestamp = wh_util:current_tstamp() :: non_neg_integer() | '_' | '$1'
+          ,timestamp = wh_util:current_tstamp() :: gregorian_seconds() | '_' | '$1'
           ,protocol = <<"sip">>                 :: ne_binary() | '_' % protocol
           ,username                             :: api_binary() | '_'
           ,realm                                :: api_binary() | '_'
