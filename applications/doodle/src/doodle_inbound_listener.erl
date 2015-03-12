@@ -59,7 +59,6 @@ start_link(#amqp_listener_connection{broker=Broker
                                      ,queue=Queue
                                      ,options=Options
                                     }=C) ->
-    lager:debug("DOODLE LISTENER  0"),
     Exchanges = [{Exchange, Type, Options}],
     gen_listener:start_link(?MODULE
                             ,[{'bindings', ?BINDINGS(Exchange)}
