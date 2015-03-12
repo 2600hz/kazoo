@@ -421,7 +421,7 @@ commit_transactions(#wh_services{billing_id=BillingId}, Activations) ->
 select_bookkeeper(BillingId) ->
     ResellerId = get_reseller_id(BillingId),
     {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
-    case ResellerId =:= MasterAccountId of
+    case ResellerId =/= MasterAccountId of
         'true' -> 'wh_bookkeeper_local';
         'false' ->
             whapps_config:get_atom(?WHS_CONFIG_CAT, <<"master_account_bookkeeper">>, 'wh_bookkeeper_local')
