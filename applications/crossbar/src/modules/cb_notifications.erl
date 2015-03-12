@@ -328,7 +328,7 @@ handle_preview_response(Context, Resp) ->
     end.
 
 -spec publish_fun(ne_binary()) -> fun((api_terms()) -> 'ok').
-publish_fun(<<"voicemail">>) ->
+publish_fun(<<"voicemail_to_email">>) ->
     fun wapi_notifications:publish_voicemail/1;
 publish_fun(<<"voicemail_full">>) ->
     fun wapi_notifications:publish_voicemail_full/1;

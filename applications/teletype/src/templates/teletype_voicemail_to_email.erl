@@ -144,16 +144,20 @@ process_req(DataJObj) ->
 
 -spec email_attachments(wh_json:object(), wh_proplist()) -> attachments().
 email_attachments(DataJObj, Macros) ->
-    VMId = wh_json:get_value(<<"voicemail_name">>, DataJObj),
-    AccountDb = wh_json:get_value(<<"account_db">>, DataJObj),
-    {'ok', VMJObj} = couch_mgr:open_cache_doc(AccountDb, VMId),
-    {[AttachmentMeta], [AttachmentId]} = wh_json:get_values(wh_doc:attachments(VMJObj)),
-    {'ok', AttachmentBin} = couch_mgr:fetch_attachment(AccountDb, VMId, AttachmentId),
+    case wh_json:is_true(<<"preview">>, DataJObj, 'false') of
+        'true' -> [];
+        'false' ->
+            VMId = wh_json:get_value(<<"voicemail_box">>, DataJObj),
+            AccountDb = wh_json:get_value(<<"account_db">>, DataJObj),
+            {'ok', VMJObj} = couch_mgr:open_cache_doc(AccountDb, VMId),
+            {[AttachmentMeta], [AttachmentId]} = wh_json:get_values(wh_doc:attachments(VMJObj)),
+            {'ok', AttachmentBin} = couch_mgr:fetch_attachment(AccountDb, VMId, AttachmentId),
 
-    [{wh_json:get_value(<<"content_type">>, AttachmentMeta)
-      ,get_file_name(VMJObj, Macros)
-      ,AttachmentBin
-     }].
+            [{wh_json:get_value(<<"content_type">>, AttachmentMeta)
+              ,get_file_name(VMJObj, Macros)
+              ,AttachmentBin
+             }]
+    end.
 
 -spec get_file_name(wh_json:object(), wh_proplist()) -> ne_binary().
 get_file_name(MediaJObj, Macros) ->

@@ -173,7 +173,7 @@ handle_fax_inbound(DataJObj) ->
                                   ,Subject
                                   ,props:get_value(<<"service">>, Macros)
                                   ,RenderedTemplates
-                                  ,[get_attachment(DataJObj, Macros)]
+                                  ,get_attachment(DataJObj, Macros)
                                  )
     of
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
@@ -198,25 +198,29 @@ get_owner_doc(AccountDb, OwnerId) ->
 
 -spec get_attachment(wh_json:object(), wh_proplist()) -> attachment().
 get_attachment(DataJObj, Macros) ->
-    FaxMacros = props:get_value(<<"fax">>, Macros),
-    FaxId = props:get_first_defined([<<"id">>, <<"fax_jobid">>, <<"fax_id">>], FaxMacros),
-    Db = fax_db(DataJObj),
-    lager:debug("accessing fax at ~s / ~s", [Db, FaxId]),
-    {'ok', ContentType, Bin} = get_attachment_binary(Db, FaxId),
+  case wh_json:is_true(<<"preview">>, DataJObj, 'false') of
+        'true' -> [];
+        'false' ->
+            FaxMacros = props:get_value(<<"fax">>, Macros),
+            FaxId = props:get_first_defined([<<"id">>, <<"fax_jobid">>, <<"fax_id">>], FaxMacros),
+            Db = fax_db(DataJObj),
+            lager:debug("accessing fax at ~s / ~s", [Db, FaxId]),
+            {'ok', ContentType, Bin} = get_attachment_binary(Db, FaxId),
 
-    ToFormat = whapps_config:get(?FAX_CONFIG_CAT, <<"attachment_format">>, <<"pdf">>),
-    FromFormat = from_format_from_content_type(ContentType),
+            ToFormat = whapps_config:get(?FAX_CONFIG_CAT, <<"attachment_format">>, <<"pdf">>),
+            FromFormat = from_format_from_content_type(ContentType),
 
-    lager:debug("converting from ~s to ~s", [FromFormat, ToFormat]),
+            lager:debug("converting from ~s to ~s", [FromFormat, ToFormat]),
 
-    {'ok', Converted} = teletype_fax_util:convert(FromFormat, ToFormat, Bin),
+            {'ok', Converted} = teletype_fax_util:convert(FromFormat, ToFormat, Bin),
 
-    Filename = get_file_name(Macros, ToFormat),
-    lager:debug("adding attachment as ~s", [Filename]),
-    {content_type_from_extension(Filename)
-     ,Filename
-     ,Converted
-    }.
+            Filename = get_file_name(Macros, ToFormat),
+            lager:debug("adding attachment as ~s", [Filename]),
+            [{content_type_from_extension(Filename)
+             ,Filename
+             ,Converted
+            }]
+    end.
 
 -spec from_format_from_content_type(ne_binary()) -> ne_binary().
 from_format_from_content_type(<<"application/pdf">>) ->
