@@ -1215,7 +1215,7 @@ record_call(Node, UUID, JObj) ->
                  <<"start">> ->
                      start_record_call_args(Node, UUID, JObj, RecordingName);
                  <<"stop">> ->
-                     binary_to_list(list_to_binary([UUID, <<" stop ">>, RecordingName]))
+                     list_to_binary([UUID, <<" stop ">>, RecordingName])
              end,
     ecallmgr_fs_command:record_call(Node, UUID, RecArg),
     {<<"record_call">>, 'noop'}.
@@ -1268,11 +1268,10 @@ start_record_call_args(Node, UUID, JObj, RecordingName) ->
             ,{<<"Additional-Headers">>, wh_json:get_value(<<"Additional-Headers">>, JObj)}
            ]),
 
-    binary_to_list(
-      list_to_binary([UUID, <<" start ">>
-                          ,RecordingName, <<" ">>
-                          ,wh_json:get_string_value(<<"Time-Limit">>, JObj, "3600") % one hour
-                     ])).
+    list_to_binary([UUID, <<" start ">>
+                    ,RecordingName, <<" ">>
+                    ,wh_json:get_string_value(<<"Time-Limit">>, JObj, "3600") % one hour
+                   ]).
 
 -spec get_sample_rate(wh_json:object()) -> pos_integer().
 get_sample_rate(JObj) ->
