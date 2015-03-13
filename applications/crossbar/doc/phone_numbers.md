@@ -61,3 +61,22 @@ This API check if the numbers are still available for purchase.
      ,"revision": "undefined"
      ,"status": "success"
     }
+
+
+## Fix Phone Numbers
+
+
+### Request
+
+- Verb: `POST`
+- Url: `v2/accounts/ACCOUNT_ID/phone_numbers/fix`
+- Payload: None
+
+### Response
+
+```
+{
+    "data": {}
+    "status": "success"
+}
+```
