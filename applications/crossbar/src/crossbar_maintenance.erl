@@ -793,14 +793,19 @@ save_old_ring_group(JObj, NewCallflow) ->
 
 -spec init_apps(ne_binary(), ne_binary()) -> 'ok'.
 init_apps(AppsPath, AppUrl) ->
-    {'ok', Apps} = find_apps(AppsPath),
-    [init_app(App, AppUrl) || App <- Apps],
-    'ok'.
+    Apps = find_apps(AppsPath),
+    InitApp = fun (App) -> init_app(App, AppUrl) end,
+    lists:foreach(InitApp, Apps).
 
 -spec find_apps(ne_binary()) -> {'ok', ne_binaries()}.
 find_apps(AppsPath) ->
-    {'ok', Apps} = file:list_dir(AppsPath),
-    {'ok', [filename:join([AppsPath, App]) || App <- Apps]}.
+    AccFun =
+        fun (AppJSONPath, Acc) ->
+                App = filename:absname(AppJSONPath),
+                %% App/metadata/app.json --> App
+                [filename:dirname(filename:dirname(App)) | Acc]
+        end,
+    filelib:fold_files(AppsPath, "app\\.json", 'true', AccFun, []).
 
 -spec init_app(ne_binary(), ne_binary()) -> 'ok'.
 init_app(AppPath, AppUrl) ->
