@@ -29,6 +29,12 @@
                             ,{<<"text">>, <<"comma-separated-values">>}
                            ]).
 
+-define(NUMBER_RESP_FIELDS, [<<"Prefix">>, <<"Rate-Name">>
+                             ,<<"Rate-Description">>, <<"Base-Cost">>
+                             ,<<"Rate">>, <<"Rate-Minimum">>
+                             ,<<"Rate-Increment">>, <<"Surcharge">>
+                            ]).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -449,24 +455,14 @@ save_processed_rates(Context, Count) ->
 
 -spec rate_for_number(ne_binary(),ne_binary()) -> cb_context:context().
 rate_for_number(Context, Phonenumber) ->
-    Resp = case wh_amqp_worker:call([{<<"To-DID">>, wnm_util:normalize_number(Phonenumber)}| wh_api:default_headers(?APP_NAME, ?APP_VERSION)]
-                                    ,fun wapi_rate:publish_req/1
-                                    ,fun wapi_rate:resp_v/1
-                                    ,10000) of
-               {'ok', Rate} ->  
-                   Routines = [fun(J) -> wh_json:set_value(<<"Base-Cost">>, wh_util:to_binary(wh_util:to_float(wh_json:get_value(<<"Base-Cost">>, J))/10000), J) end
-                               ,fun(J) -> wh_json:set_value(<<"Rate">>, wh_util:to_binary(wh_util:to_float(wh_json:get_value(<<"Rate">>, J))/10000), J) end
-                               ,fun(J) -> wh_json:delete_key(<<"Event-Category">>, J) end
-                               ,fun(J) -> wh_json:delete_key(<<"Event-Name">>, J) end
-                               ,fun(J) -> wh_json:delete_key(<<"App-Name">>, J) end
-                               ,fun(J) -> wh_json:delete_key(<<"App-Version">>, J) end
-                               ,fun(J) -> wh_json:delete_key(<<"Msg-ID">>, J) end
-                               ,fun(J) -> wh_json:delete_key(<<"Node">>, J) end
-                               ,fun(J) -> wh_json:delete_key(<<"Call-ID">>, J) end
-                               ,fun(J) -> wh_json:delete_key(<<"Pvt-Cost">>, J) end
-                               ,fun(J) -> wh_json:delete_key(<<"Update-Callee-ID">>, J) end
-                              ],
-                   lists:foldl(fun(F, J) -> F(J) end, Rate, Routines);
-               _ -> wh_json:new() 
-           end,
-    crossbar_util:response(Resp, Context).
+    case wh_amqp_worker:call([{<<"To-DID">>, wnm_util:normalize_number(Phonenumber)}| wh_api:default_headers(?APP_NAME, ?APP_VERSION)]
+                             ,fun wapi_rate:publish_req/1
+                             ,fun wapi_rate:resp_v/1
+                             ,10000) of
+        {'ok', Rate} ->  
+            Routines = [fun(J) -> wh_json:set_value(<<"Base-Cost">>, wh_util:to_binary(wh_util:to_float(wh_json:get_value(<<"Base-Cost">>, J))/10000), J) end
+                        ,fun(J) -> wh_json:set_value(<<"Rate">>, wh_util:to_binary(wh_util:to_float(wh_json:get_value(<<"Rate">>, J))/10000), J) end
+                       ],
+            crossbar_util:response(lists:foldl(fun(F, J) -> F(J) end, wh_json:filter(fun({K,_}) -> lists:member(K, ?NUMBER_RESP_FIELDS)  end, Rate), Routines), Context);
+        _ -> cb_context:add_system_error('Wrong phone number provided', Context) 
+    end.
