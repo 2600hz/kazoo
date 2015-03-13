@@ -38,6 +38,7 @@
 -define(CLASSIFIERS, <<"classifiers">>).
 -define(IDENTIFY, <<"identify">>).
 -define(COLLECTION, <<"collection">>).
+-define(FIX, <<"fix">>).
 -define(MIME_TYPES, [{<<"application">>, <<"pdf">>}
                      ,{<<"application">>, <<"x-gzip">>}
                      ,{<<"application">>, <<"zip">>}
@@ -154,6 +155,8 @@ maybe_authorize(_Verb, _Nouns) ->
 allowed_methods() ->
     [?HTTP_GET].
 
+allowed_methods(?FIX) ->
+    [?HTTP_POST];
 allowed_methods(?CLASSIFIERS) ->
     [?HTTP_GET];
 allowed_methods(?COLLECTION) ->
@@ -199,6 +202,7 @@ allowed_methods(_, ?PORT_DOCS, _) ->
 -spec resource_exists(path_token(), path_token(), path_token()) -> boolean().
 resource_exists() -> 'true'.
 
+resource_exists(?FIX) -> 'true';
 resource_exists(?PREFIX) -> 'true';
 resource_exists(?LOCALITY) -> 'true';
 resource_exists(?CHECK) -> 'true';
@@ -281,6 +285,11 @@ validate_phone_numbers(Context, ?HTTP_GET, 'undefined') ->
 validate_phone_numbers(Context, ?HTTP_GET, _AccountId) ->
     summary(Context).
 
+validate(Context, ?FIX) ->
+    cb_context:set_resp_data(
+        cb_context:set_resp_status(Context, 'success')
+        ,wh_json:new()
+    );
 validate(Context, ?PREFIX) ->
     find_prefix(Context);
 validate(Context, ?COLLECTION) ->
@@ -398,6 +407,10 @@ validate_port_docs_upload(Context, _Name, _Number, _Files) ->
                   cb_context:context().
 -spec post(cb_context:context(), path_token(), path_token(), path_token()) ->
                   cb_context:context().
+post(Context, ?FIX) ->
+    AccountId = cb_context:account_id(Context),
+    _ = wh_number_fix:fix_account_numbers(AccountId),
+    Context;
 post(Context, ?COLLECTION) ->
     post_collection(Context, cb_context:req_json(Context));
 post(Context, Number) ->
