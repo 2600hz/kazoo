@@ -453,7 +453,20 @@ rate_for_number(Context, Phonenumber) ->
                                     ,fun wapi_rate:publish_req/1
                                     ,fun wapi_rate:resp_v/1
                                     ,10000) of
-               {'ok', Rate} ->  Rate;
+               {'ok', Rate} ->  
+                   Routines = [fun(J) -> wh_json:set_value(<<"Base-Cost">>, wh_util:to_binary(wh_util:to_float(wh_json:get_value(<<"Base-Cost">>, J))/10000), J) end
+                               ,fun(J) -> wh_json:set_value(<<"Rate">>, wh_util:to_binary(wh_util:to_float(wh_json:get_value(<<"Rate">>, J))/10000), J) end
+                               ,fun(J) -> wh_json:delete_key(<<"Event-Category">>, J) end
+                               ,fun(J) -> wh_json:delete_key(<<"Event-Name">>, J) end
+                               ,fun(J) -> wh_json:delete_key(<<"App-Name">>, J) end
+                               ,fun(J) -> wh_json:delete_key(<<"App-Version">>, J) end
+                               ,fun(J) -> wh_json:delete_key(<<"Msg-ID">>, J) end
+                               ,fun(J) -> wh_json:delete_key(<<"Node">>, J) end
+                               ,fun(J) -> wh_json:delete_key(<<"Call-ID">>, J) end
+                               ,fun(J) -> wh_json:delete_key(<<"Pvt-Cost">>, J) end
+                               ,fun(J) -> wh_json:delete_key(<<"Update-Callee-ID">>, J) end
+                              ],
+                   lists:foldl(fun(F, J) -> F(J) end, Rate, Routines);
                _ -> wh_json:new() 
            end,
     crossbar_util:response(Resp, Context).
