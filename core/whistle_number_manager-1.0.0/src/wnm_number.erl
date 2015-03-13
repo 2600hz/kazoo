@@ -198,13 +198,22 @@ maybe_correct_used_by(#number{number=Number
                              }=N
                       ,JObj
                      ) ->
-    case wh_json:get_value([Number, <<"used_by">>], JObj) of
+    case wh_json:get_ne_value([Number, <<"used_by">>], JObj, <<>>) of
+        <<"undefined">> ->
+            lager:info("correcting used_by field for number ~s from \"undefined\" to \"\""
+                       ,[Number]
+                      ),
+            NewNumberDoc = wh_json:set_value(<<"used_by">>, <<>>, NumberDoc),
+            save_number_doc(N#number{used_by= <<>>
+                                     ,number_doc=NewNumberDoc
+                                    });
         UsedBy ->
-            lager:debug("~s used_by field is correct", [Number]),
+            lager:debug("~s used_by field (~s) is correct", [Number, UsedBy]),
             N;
         NewUsedBy ->
             lager:info("correcting used_by field for number ~s from ~s to ~s"
-                      ,[Number, UsedBy, NewUsedBy]),
+                       ,[Number, UsedBy, NewUsedBy]
+                      ),
             NewNumberDoc = wh_json:set_value(<<"used_by">>, NewUsedBy, NumberDoc),
             save_number_doc(N#number{used_by=NewUsedBy
                                      ,number_doc=NewNumberDoc
