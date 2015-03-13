@@ -199,7 +199,7 @@ maybe_correct_used_by(#number{number=Number
                              }=N
                       ,JObj
                      ) ->
-    case wh_json:get_value([Number, <<"used_by">>], JObj) of
+    case wh_json:get_value([Number, <<"used_by">>], JObj, <<>>) of
         UsedBy ->
             lager:debug("~s used_by field is correct", [Number]),
             N;
