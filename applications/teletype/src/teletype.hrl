@@ -88,6 +88,14 @@
           ,?MACRO_VALUE(<<"to.realm">>, <<"to_realm">>, <<"To Realm">>, <<"SIP To Realm">>)
          ]).
 
+-define(ACCOUNT_MACROS
+        ,[?MACRO_VALUE(<<"account.name">>, <<"account_name">>, <<"Account Name">>, <<"Name of the account">>)
+          ,?MACRO_VALUE(<<"account.realm">>, <<"account_realm">>, <<"Account Realm">>, <<"SIP Realm of the account">>)
+          ,?MACRO_VALUE(<<"account.id">>, <<"account_id">>, <<"Account ID">>, <<"Account ID">>)
+          ,?MACRO_VALUE(<<"account.language">>, <<"account_language">>, <<"Account Language">>, <<"Account Language">>)
+          ,?MACRO_VALUE(<<"account.timezone">>, <<"account_timezone">>, <<"Account Timezone">>, <<"Account Timezone">>)
+         ]).
+
 -define(SERVICE_MACROS
         ,[?MACRO_VALUE(<<"service.url">>, <<"service_url">>, <<"Service Provider URL">>, <<"Service Provider URL">>)
           ,?MACRO_VALUE(<<"service.name">>, <<"service_name">>, <<"Service Provider Name">>, <<"Service Provider Name">>)
