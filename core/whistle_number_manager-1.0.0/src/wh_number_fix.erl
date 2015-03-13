@@ -14,8 +14,14 @@
 
 -define(PHONE_NUMBERS, <<"phone_numbers">>).
 
--define(TIME_BETWEEN_ACCOUNTS_MS, whapps_config:get_integer(?WNM_CONFIG_CAT, <<"time_between_accounts_ms">>, ?MILLISECONDS_IN_SECOND)).
--define(TIME_BETWEEN_NUMBERS_MS, whapps_config:get_integer(?WNM_CONFIG_CAT, <<"time_between_numbers_ms">>, ?MILLISECONDS_IN_SECOND)).
+-define(TIME_BETWEEN_ACCOUNTS_MS
+        ,whapps_config:get_integer(?WNM_CONFIG_CAT, <<"time_between_accounts_ms">>, ?MILLISECONDS_IN_SECOND)
+       ).
+-define(TIME_BETWEEN_NUMBERS_MS
+        ,whapps_config:get_integer(?WNM_CONFIG_CAT, <<"time_between_numbers_ms">>, ?MILLISECONDS_IN_SECOND)
+       ).
+
+-type extracted_numbers() :: [{ne_binary(), wh_json:object(), wh_proplist()},...] | [].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -28,7 +34,7 @@ fix_account_numbers([Account|Accounts]) ->
     _ = fix_account_numbers(Account),
     timer:sleep(?TIME_BETWEEN_ACCOUNTS_MS),
     fix_account_numbers(Accounts);
-fix_account_numbers(Account) when is_binary(Account) ->
+fix_account_numbers(<<_/binary>> = Account) ->
     io:format("########## fixing [~s] ##########~n", [Account]),
 
     io:format("[~s] getting numbers~n", [Account]),
@@ -40,13 +46,12 @@ fix_account_numbers(Account) when is_binary(Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     couch_mgr:flush_cache_doc(AccountDb, ?PHONE_NUMBERS).
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_phone_numbers(ne_binary()) -> ne_binaries().
+-spec get_phone_numbers(ne_binary()) -> extracted_numbers().
 get_phone_numbers(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
@@ -62,7 +67,7 @@ get_phone_numbers(Account) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec extract_numbers(ne_binary(), wh_json:object()) -> ne_binaries().
+-spec extract_numbers(ne_binary(), wh_json:object()) -> extracted_numbers().
 extract_numbers(AccountId, Doc) ->
     TrunkstoreNumbers = get_trunkstore_numbers(AccountId),
     CallflowNumbers = get_callflow_numbers(AccountId),
@@ -70,31 +75,40 @@ extract_numbers(AccountId, Doc) ->
              ,{'trunkstore_numbers', TrunkstoreNumbers}
              ,{'callflow_numbers', CallflowNumbers}
             ],
-    wh_json:foldl(
-        fun(Number, JObj, Acc) ->
-            case wnm_util:is_reconcilable(Number) of
-                'false' -> Acc;
-                'true' ->
-                    [{Number, get_number_doc(Number), [{'phone_numbers_doc', JObj}|Props]} |Acc]
-            end
-        end
-        ,[]
-        ,Doc
-    ).
+    wh_json:foldl(fun(Number, JObj, Acc) ->
+                          extract_numbers_fold(Number, JObj, Acc, Props)
+                  end
+                  ,[]
+                  ,Doc
+                 ).
+
+-spec extract_numbers_fold(wh_json:key(), wh_json:object(), extracted_numbers(), wh_proplist()) ->
+                                  extracted_numbers().
+extract_numbers_fold(Number, JObj, Acc, Props) ->
+    case wnm_util:is_reconcilable(Number) of
+        'false' -> Acc;
+        'true' ->
+            [{Number
+              ,get_number_doc(Number)
+              ,[{'phone_numbers_doc', JObj} | Props]
+             }
+             |Acc
+            ]
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_number_doc(ne_binary()) -> wh_json:object() | 'undefined'.
+-spec get_number_doc(ne_binary()) -> api_object().
 get_number_doc(Number) ->
     NumberDb = wnm_util:number_to_db_name(Number),
     case couch_mgr:open_doc(NumberDb, Number) of
+        {'ok', JObj} -> JObj;
         {'error', _E} ->
             io:format("failed to open ~s doc ~p~n", [Number, _E]),
-            'undefined';
-        {'ok', JObj} -> JObj
+            'undefined'
     end.
 
 %%--------------------------------------------------------------------
@@ -132,22 +146,21 @@ get_callflow_numbers(AccountId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec fix_numbers(wh_proplist()) -> 'ok'.
+-spec fix_numbers(extracted_numbers()) -> 'ok'.
 fix_numbers([]) -> 'ok';
 fix_numbers([{Number, NumberDoc, Props}|Numbers]) ->
     timer:sleep(?TIME_BETWEEN_NUMBERS_MS),
     io:format("##### fixing [~s] #####~n", [Number]),
-    Routines = [
-        fun maybe_fix_assignment/3
-        ,fun maybe_fix_used_by/3
-    ],
+    Routines = [fun maybe_fix_assignment/3
+                ,fun maybe_fix_used_by/3
+               ],
     lists:foldl(
-        fun(_, 'stop') -> 'stop';
-           (F, 'ok') -> F(Number, NumberDoc, Props)
-        end
-        ,'ok'
-        ,Routines
-    ),
+      fun(_, 'stop') -> 'stop';
+         (F, 'ok') -> F(Number, NumberDoc, Props)
+      end
+      ,'ok'
+      ,Routines
+     ),
     fix_numbers(Numbers).
 
 %%--------------------------------------------------------------------
@@ -163,18 +176,18 @@ maybe_fix_assignment(Number, NumberDoc, Props) ->
     AccountId = props:get_value('account_id', Props),
 
     fix_assignment(
-        AccountId
-        ,get_assignment(PhoneNumbersDoc)
-        ,get_assignment(NumberDoc)
-        ,Number
-    ).
+      AccountId
+      ,get_assignment(PhoneNumbersDoc)
+      ,get_assignment(NumberDoc)
+      ,Number
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_assignment(wh_json:object() | 'undefined') -> wh_json:object() | 'undefined'.
+-spec get_assignment(api_object()) -> api_binary().
 get_assignment('undefined') -> 'undefined';
 get_assignment(JObj) ->
     wh_json:get_first_defined([<<"pvt_assigned_to">>, <<"assigned_to">>], JObj).
@@ -184,7 +197,7 @@ get_assignment(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec fix_assignment(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec fix_assignment(ne_binary(), api_binary(), api_binary(), ne_binary()) -> 'ok'.
 fix_assignment(AccountId, AccountId, AccountId, _Number) ->
     io:format("[~s] assignment is OK~n", [_Number]);
 fix_assignment(AccountId, _PhoneNumbersAssignment, 'undefined', Number) ->
@@ -205,19 +218,23 @@ fix_assignment(AccountId, PhoneNumbersAssignment, NumberAssignment, Number) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec fix_phone_numbers_doc_assignment(ne_binary(), ne_binary()) -> 'ok'.
+-spec fix_phone_numbers_doc_assignment(ne_binary(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 fix_phone_numbers_doc_assignment(AccountId, Number) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_doc(AccountDb, ?PHONE_NUMBERS) of
         {'error', _E} ->
             io:format("[~s] failed to open phone_numbers doc: ~p~n", [Number, _E]);
         {'ok', JObj} ->
-            JObj1 = wh_json:set_value([Number, <<"assigned_to">>], AccountId, JObj),
-            case couch_mgr:ensure_saved(AccountDb, JObj1) of
-                {'ok', _} ->
-                    io:format("[~s] phone_numbers doc assigned_to (~s) fixed~n", [Number, AccountId]);
-                {'error', _E1} ->
-                    io:format("[~s] phone_numbers doc assigned_to failed to fix: ~p~n", [Number, _E1])
-            end
+            fix_phone_numbers_doc_assignment(AccountId, Number, AccountDb, JObj)
+    end.
+
+fix_phone_numbers_doc_assignment(AccountId, Number, AccountDb, JObj) ->
+    JObj1 = wh_json:set_value([Number, <<"assigned_to">>], AccountId, JObj),
+    case couch_mgr:ensure_saved(AccountDb, JObj1) of
+        {'ok', _} ->
+            io:format("[~s] phone_numbers doc assigned_to (~s) fixed~n", [Number, AccountId]);
+        {'error', _E1} ->
+            io:format("[~s] phone_numbers doc assigned_to failed to fix: ~p~n", [Number, _E1])
     end.
 
 %%--------------------------------------------------------------------
@@ -226,22 +243,25 @@ fix_phone_numbers_doc_assignment(AccountId, Number) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec remove_number(ne_binary(), ne_binary()) -> 'stop'.
+-spec remove_number(ne_binary(), ne_binary(), ne_binary(), wh_json:object()) -> 'stop'.
 remove_number(AccountId, Number) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_doc(AccountDb, ?PHONE_NUMBERS) of
         {'error', _E} ->
             io:format("[~s] failed to open phone_numbers doc: ~p~n", [Number, _E]);
         {'ok', JObj} ->
-            JObj1 = wh_json:delete_key(Number, JObj),
-            case couch_mgr:ensure_saved(AccountDb, JObj1) of
-                {'ok', _} ->
-                    io:format("[~s] phone_numbers doc fixed, number removed~n", [Number]);
-                {'error', _E1} ->
-                    io:format("[~s] phone_numbers doc failed to fix: ~p~n", [Number, _E1])
-            end
+            remove_number(AccountId, Number, AccountDb, JObj)
+    end.
+
+remove_number(_AccountId, Number, AccountDb, JObj) ->
+    JObj1 = wh_json:delete_key(Number, JObj),
+    case couch_mgr:ensure_saved(AccountDb, JObj1) of
+        {'ok', _} ->
+            io:format("[~s] phone_numbers doc fixed, number removed~n", [Number]);
+        {'error', _E1} ->
+            io:format("[~s] phone_numbers doc failed to fix: ~p~n", [Number, _E1])
     end,
     'stop'.
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -249,22 +269,26 @@ remove_number(AccountId, Number) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_add_to_account(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec maybe_add_to_account(ne_binary(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 maybe_add_to_account(Number, AccountId, NumberAssignment)->
     AccountDb = wh_util:format_account_id(NumberAssignment, 'encoded'),
     case couch_mgr:open_doc(AccountDb, ?PHONE_NUMBERS) of
         {'error', _E} ->
             io:format("[~s] failed to open phone_numbers doc for account [~s]: ~p~n", [Number, NumberAssignment, _E]);
         {'ok', JObj} ->
-            case wh_json:get_value(Number, JObj) of
-                'undefined' ->
-                    add_to_account(Number, AccountId, NumberAssignment, JObj);
-                NumJObj ->
-                    case wh_json:is_empty(NumJObj) of
-                        'false' ->
-                            io:format("[~s] number is already added to right account (~s)~n", [Number, NumberAssignment]);
-                        'true' ->
-                            add_to_account(Number, AccountId, NumberAssignment, JObj)
-                    end
+            maybe_add_to_account(Number, AccountId, NumberAssignment, JObj)
+    end.
+
+maybe_add_to_account(Number, AccountId, NumberAssignment, JObj) ->
+    case wh_json:get_value(Number, JObj) of
+        'undefined' ->
+            add_to_account(Number, AccountId, NumberAssignment, JObj);
+        NumJObj ->
+            case wh_json:is_empty(NumJObj) of
+                'false' ->
+                    io:format("[~s] number is already added to right account (~s)~n", [Number, NumberAssignment]);
+                'true' ->
+                    add_to_account(Number, AccountId, NumberAssignment, JObj)
             end
     end.
 
@@ -309,13 +333,13 @@ maybe_fix_used_by(Number, NumberDoc, Props) ->
     PhoneNumbersDocUsedBy = wh_json:get_value(<<"used_by">>, PhoneNumbersDoc),
     UsedBy =
         case {lists:member(Number, TrunkstoreNumbers)
-              ,lists:member(Number, CallflowNumbers)}
+              ,lists:member(Number, CallflowNumbers)
+             }
         of
             {'false', 'false'} -> <<>>;
             {'true', 'false'} -> <<"trunkstore">>;
             {'false', 'true'} -> <<"callflow">>;
             {'true', 'true'} -> 'error'
-
         end,
     fix_used_by(AccountId, UsedBy, NumberDocUsedBy, PhoneNumbersDocUsedBy, Number).
 
