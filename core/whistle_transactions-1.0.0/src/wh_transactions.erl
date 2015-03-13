@@ -180,7 +180,7 @@ fetch_since(Account, From, To) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec check_range(integer(), integer()) ->
-                         {'ok', wh_proplist(), wh_proplist()} |
+                         {'ok', 'undefined' | wh_proplist(), wh_proplist()} |
                          {'error', ne_binary()}.
 check_range(From, To) ->
     {{YearFrom, MonthFrom, _}, _} = calendar:gregorian_seconds_to_datetime(From),
@@ -198,6 +198,7 @@ check_range(From, To) ->
                       ,'include_docs'
                     ],
     case {YearTo - YearFrom, MonthTo - MonthFrom} of
+        {0, 0} -> {'ok', 'undefined', ViewOptionsTo};
         {0, M} when M > 2 ->
             {'error', <<"max range 2 consecutive month">>};
         {0, _M} ->
@@ -216,7 +217,7 @@ check_range(From, To) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec fetch(ne_binary(), wh_proplist(), wh_proplist()) ->
+-spec fetch(ne_binary(), 'undefined' | wh_proplist(), wh_proplist()) ->
                    {'ok', wh_transactions()} |
                    {'error', any()}.
 fetch(Account, ViewOptionsFrom, ViewOptionsTo) ->
@@ -238,9 +239,10 @@ fetch(Account, ViewOptionsFrom, ViewOptionsTo) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_local(ne_binary(), wh_proplist()) ->
+-spec fetch_local(ne_binary(), 'undefined' | wh_proplist()) ->
                          {'ok', wh_transactions()} |
                          {'error', any()}.
+fetch_local(_, 'undefined') -> {'ok', []};
 fetch_local(Account, ViewOptions) ->
     case kazoo_modb:get_results(Account, <<"transactions/by_timestamp">>, ViewOptions) of
         {'error', _}=Error -> Error;
