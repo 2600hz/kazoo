@@ -64,6 +64,8 @@ get_phone_numbers(Account) ->
 %%--------------------------------------------------------------------
 -spec extract_numbers(ne_binary(), wh_json:object()) -> ne_binaries().
 extract_numbers(AccountId, Doc) ->
+    TrunkstoreNumbers = get_trunkstore_numbers(AccountId),
+    CallflowNumbers = get_callflow_numbers(AccountId),
     wh_json:foldl(
         fun(Number, JObj, Acc) ->
             case wnm_util:is_reconcilable(Number) of
@@ -73,8 +75,8 @@ extract_numbers(AccountId, Doc) ->
                         {'account_id', AccountId}
                         ,{'phone_numbers_doc', JObj}
                         ,{'number_doc', get_number_doc(Number)}
-                        ,{'trunkstore_numbers', get_trunkstore_numbers(AccountId)}
-                        ,{'callflow_numbers', get_callflow_numbers(AccountId)}
+                        ,{'trunkstore_numbers', TrunkstoreNumbers}
+                        ,{'callflow_numbers', CallflowNumbers}
                     ],
                     [{Number, Props} |Acc]
             end
