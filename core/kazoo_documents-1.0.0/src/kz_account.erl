@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014, 2600Hz
+%%% @copyright (C) 2015, 2600Hz
 %%% @doc
-%%% Device document manipulation
+%%% Account document
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
@@ -9,6 +9,10 @@
 -module(kz_account).
 
 -export([name/1, set_name/2
+         ,realm/1, set_realm/2
+         ,language/1, set_language/2
+         ,timezone/1, set_timezone/2
+         ,id/1
          ,parent_account_id/1
          ,tree/1
          ,notification_preference/1, set_notification_preference/2
@@ -16,10 +20,16 @@
 
 -define(ID, <<"_id">>).
 -define(NAME, <<"name">>).
+-define(REALM, <<"realm">>).
+-define(LANGUAGE, <<"language">>).
+-define(TIMEZONE, <<"timezone">>).
 -define(TREE, <<"pvt_tree">>).
 -define(NOTIFY_PREF, <<"pvt_notification_preference">>).
 
 -include("kz_documents.hrl").
+
+id(JObj) ->
+    wh_doc:id(JObj).
 
 -spec name(wh_json:object()) -> api_binary().
 name(JObj) ->
@@ -28,6 +38,30 @@ name(JObj) ->
 -spec set_name(wh_json:object(), ne_binary()) -> wh_json:object().
 set_name(JObj, Name) ->
     wh_json:set_value(?NAME, Name, JObj).
+
+-spec realm(wh_json:object()) -> api_binary().
+realm(JObj) ->
+    wh_json:get_value(?REALM, JObj).
+
+-spec set_realm(wh_json:object(), ne_binary()) -> wh_json:object().
+set_realm(JObj, Realm) ->
+    wh_json:set_value(?REALM, Realm, JObj).
+
+-spec language(wh_json:object()) -> api_binary().
+language(JObj) ->
+    wh_json:get_value(?LANGUAGE, JObj).
+
+-spec set_language(wh_json:object(), ne_binary()) -> wh_json:object().
+set_language(JObj, Language) ->
+    wh_json:set_value(?LANGUAGE, Language, JObj).
+
+-spec timezone(wh_json:object()) -> api_binary().
+timezone(JObj) ->
+    wh_json:get_value(?TIMEZONE, JObj).
+
+-spec set_timezone(wh_json:object(), ne_binary()) -> wh_json:object().
+set_timezone(JObj, Timezone) ->
+    wh_json:set_value(?TIMEZONE, Timezone, JObj).
 
 -spec parent_account_id(wh_json:object()) -> api_binary().
 parent_account_id(JObj) ->
