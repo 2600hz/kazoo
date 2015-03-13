@@ -41,13 +41,16 @@
                      ,{'teletype_template_skel'
                        ,[{<<"notification">>, <<"skel">>}]
                       }
+                     ,{{'teletype_deregister', 'handle_deregister'}
+                       ,[{<<"notification">>, <<"deregister">>}]
+                      }
                     ]).
 %% -define(RESPONDERS, []}
 
 %%                      ,{'teletype_fax_outbound_to_email', [{<<"notification">>, <<"outbound_fax">>}]}
 %%                      ,{'teletype_fax_inbound_error_to_email', [{<<"notification">>, <<"inbound_fax_error">>}]}
 %%                      ,{'teletype_fax_outbound_error_to_email', [{<<"notification">>, <<"outbound_fax_error">>}]}
-%%                      ,{'teletype_deregister', [{<<"notification">>, <<"deregister">>}]}
+
 %%                      ,{'teletype_password_recovery', [{<<"notification">>, <<"password_recovery">>}]}
 %%                      ,{'teletype_new_account', [{<<"notification">>, <<"new_account">>}]}
 %%                      ,{'teletype_cnam_request', [{<<"notification">>, <<"cnam_request">>}]}
@@ -69,7 +72,7 @@
 
                       %% ,'inbound_fax_error'
                       %% ,'outbound_fax_error'
-                      %% ,'deregister'
+                      ,'deregister'
                       %% ,'pwd_recovery'
                       %% ,'new_account'
                       %% ,'cnam_requests'
@@ -78,7 +81,7 @@
                       %% ,'low_balance'
                       %% ,'transaction'
                       %% ,'system_alerts'
-                      ,'skel'
+                      %%,'skel'
                      ]).
 
 -define(BINDINGS, [{'notifications', [{'restrict_to', ?RESTRICT_TO}]}
