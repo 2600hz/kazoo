@@ -32,6 +32,9 @@
                      ,{{'teletype_fax_inbound_to_email', 'handle_fax_inbound'}
                        ,[{<<"notification">>, <<"inbound_fax">>}]
                       }
+                     ,{{'teletype_fax_outbound_to_email', 'handle_fax_outbound'}
+                       ,[{<<"notification">>, <<"outbound_fax">>}]
+                      }
                      ,{{'teletype_new_user', 'handle_req'}
                        ,[{<<"notification">>, <<"new_user">>}]
                       }
@@ -61,10 +64,10 @@
 -define(RESTRICT_TO, ['new_voicemail'
                       ,'voicemail_full'
                       ,'inbound_fax'
+                      ,'outbound_fax'
                       ,'new_user'
 
                       %% ,'inbound_fax_error'
-                      %% ,'outbound_fax'
                       %% ,'outbound_fax_error'
                       %% ,'deregister'
                       %% ,'pwd_recovery'
@@ -181,9 +184,7 @@ handle_info(_Info, State) ->
 handle_event(JObj, _State) ->
     case should_handle(JObj) of
         'false' -> 'ignore';
-        'true' ->
-            lager:debug("handling notification for ~p", [wh_util:get_event_type(JObj)]),
-            {'reply', []}
+        'true' -> {'reply', []}
     end.
 
 %%--------------------------------------------------------------------

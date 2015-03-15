@@ -1512,7 +1512,7 @@ get_node_connections(Host, Port, User, Pass, AdminPort, Retries) ->
             lager:warning("check that those ports are correct and the bigcouch_cookie(~s) is correct"
                           ,[BCCookie]
                          ),
-            lager:warning("'sup whapps_config set_default bigcouch_cookie <cookie>' if needed"),
+            lager:warning("'sup whapps_config set_default whistle_couch bigcouch_cookie <cookie>' if needed"),
             get_node_connections(Host, Port, User, Pass, AdminPort, Retries+1);
         _E:_R ->
             lager:warning("failed to connect to ~s: ~s: ~p", [Host, _E, _R]),
@@ -1529,7 +1529,7 @@ get_ports(Node, Cookie) ->
             lager:warning("check that the configured bigcouch_cookie(~s) is correct"
                           ,[BCCookie]
                          ),
-            lager:warning("'sup whapps_config set_default bigcouch_cookie <cookie>' if needed"),
+            lager:warning("'sup whapps_config set_default whistle_couch bigcouch_cookie <cookie>' if needed"),
             {wh_couch_connections:get_port(), wh_couch_connections:get_admin_port()};
         Ports -> Ports
     end.

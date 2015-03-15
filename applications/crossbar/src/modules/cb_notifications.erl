@@ -268,7 +268,9 @@ post(Context, Id) ->
 do_post(Context) ->
     Context1 = crossbar_doc:save(Context),
     case cb_context:resp_status(Context1) of
-        'success' -> leak_doc_id(Context1);
+        'success' ->
+            maybe_note_notification_preference(Context1),
+            leak_doc_id(Context1);
         _Status -> Context1
     end.
 
@@ -334,6 +336,8 @@ publish_fun(<<"voicemail_full">>) ->
     fun wapi_notifications:publish_voicemail_full/1;
 publish_fun(<<"fax_inbound_to_email">>) ->
     fun wapi_notifications:publish_fax_inbound/1;
+publish_fun(<<"fax_outbound_to_email">>) ->
+    fun wapi_notifications:publish_fax_outbound/1;
 publish_fun(<<"new_user">>) ->
     fun wapi_notifications:publish_new_user/1;
 publish_fun(_Id) ->

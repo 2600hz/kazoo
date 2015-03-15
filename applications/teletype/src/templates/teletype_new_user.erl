@@ -29,8 +29,8 @@
 -define(TEMPLATE_TEXT, <<"Welcome {{user.first_name}} {{user.last_name}}.\n\nYour password is : {{user.password}}.\n Make sure to change it.">>).
 -define(TEMPLATE_HTML, <<"<p>Welcome {{user.first_name}} {{user.last_name}}.</p><p>Your password is : {{user.password}}.</p><p>Make sure to change it.</p>">>).
 -define(TEMPLATE_SUBJECT, <<"New user">>).
--define(TEMPLATE_CATEGORY, <<"new_user">>).
--define(TEMPLATE_NAME, <<"new_user">>).
+-define(TEMPLATE_CATEGORY, <<"user">>).
+-define(TEMPLATE_NAME, <<"New User">>).
 
 -define(TEMPLATE_TO, ?CONFIGURED_EMAILS(?EMAIL_ORIGINAL)).
 -define(TEMPLATE_FROM, teletype_util:default_from_address(?MOD_CONFIG_CAT)).
