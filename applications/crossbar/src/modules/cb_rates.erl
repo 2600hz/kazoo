@@ -115,7 +115,7 @@ validate(Context) ->
 validate(Context, Id) ->
     validate_rate(Context, Id, cb_context:req_verb(Context)).
 validate(Context, ?NUMBER, Phonenumber) ->
-    rate_for_number(Context, Phonenumber).
+    validate_number(Phonenumber, Context).
 
 -spec validate_rates(cb_context:context(), http_method()) -> cb_context:context().
 validate_rates(Context, ?HTTP_GET) ->
@@ -149,6 +149,23 @@ put(Context) ->
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _RateId) ->
     crossbar_doc:delete(Context).
+
+-spec validate_number(ne_binary(), cb_context:context()) -> cb_context:context().
+validate_number(Phonenumber, Context) ->
+    case length(re:replace(Phonenumber, "[^0-9]", "", [global, {return, list}])) >= 7 of 
+        'true' -> 
+            rate_for_number(Context, Phonenumber);
+        'false' -> 
+            cb_context:add_validation_error(
+                <<"number format">>
+                ,<<"error">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"Format number is wrong. Should exceed 7 difits">>}
+                    ,{<<"cause">>, <<"Cause filed">>}
+                 ])
+                ,Context
+            )
+    end.
 
 %%%===================================================================
 %%% Internal functions
@@ -459,10 +476,25 @@ rate_for_number(Context, Phonenumber) ->
                              ,fun wapi_rate:publish_req/1
                              ,fun wapi_rate:resp_v/1
                              ,10000) of
-        {'ok', Rate} ->  
-            Routines = [fun(J) -> wh_json:set_value(<<"Base-Cost">>, wh_util:to_binary(wh_util:to_float(wh_json:get_value(<<"Base-Cost">>, J))/10000), J) end
-                        ,fun(J) -> wh_json:set_value(<<"Rate">>, wh_util:to_binary(wh_util:to_float(wh_json:get_value(<<"Rate">>, J))/10000), J) end
-                       ],
-            crossbar_util:response(lists:foldl(fun(F, J) -> F(J) end, wh_json:filter(fun({K,_}) -> lists:member(K, ?NUMBER_RESP_FIELDS)  end, Rate), Routines), Context);
-        _ -> cb_context:add_system_error('Wrong phone number provided', Context) 
+        {'ok', Rate} -> normalize_view(Rate, Context); 
+        _ -> cb_context:add_system_error('No rate found for this number', Context) 
     end.
+
+-spec normalize_view(wh_json:object(),cb_context:context()) -> cb_context:context().
+normalize_view(Rate, Context) ->
+    crossbar_util:response(filter_view(Rate), Context).
+
+-spec filter_view(wh_json:object()) -> wh_json:object().
+filter_view(Rate) ->
+    normalize_fields(wh_json:filter(fun filter_fields/1, Rate)).
+
+-spec filter_fields(tuple()) -> boolean().
+filter_fields({K,_}) -> 
+    lists:member(K, ?NUMBER_RESP_FIELDS).
+
+-spec normalize_fields(wh_json:object()) -> wh_json:object().
+normalize_fields(Rate) ->
+    Routines = [fun(J) -> wh_json:set_value(<<"Base-Cost">>, wh_util:to_binary(wh_util:to_float(wh_json:get_value(<<"Base-Cost">>, J))/10000), J) end
+                ,fun(J) -> wh_json:set_value(<<"Rate">>, wh_util:to_binary(wh_util:to_float(wh_json:get_value(<<"Rate">>, J))/10000), J) end
+               ],
+    lists:foldl(fun(F, J) -> F(J) end, Rate, Routines).
