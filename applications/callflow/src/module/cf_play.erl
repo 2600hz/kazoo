@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
-%%%
+%%% "data":{"id":"doc_id"}
 %%% @end
 %%% @contributors
 %%%   Karl Anderson
@@ -24,20 +24,26 @@
 handle(Data, Call) ->
     AccountId = whapps_call:account_id(Call),
     Path = wh_json:get_value(<<"id">>, Data),
-    Call2 =
-        case wh_media_util:media_path(Path, AccountId) of
-            'undefined' ->
-                lager:info("invalid data in the play callflow"),
-                Call;
-            Media ->
-                NoopId = play(Data, Call, Media),
-                {'ok', Call1} = cf_util:wait_for_noop(Call, NoopId),
-                cf_exe:set_call(Call1),
-                Call1
-    end,
-    cf_exe:continue(Call2).
+    case wh_media_util:media_path(Path, AccountId) of
+        'undefined' ->
+            lager:info("invalid data in the play callflow"),
+            cf_exe:continue(Call);
+        Media ->
+            NoopId = play(Data, Call, Media),
+            handle_noop_recv(Call, cf_util:wait_for_noop(Call, NoopId))
+    end.
 
--spec play(wh_json:object(), whapps_call:call(), ne_binary()) -> any().
+-spec handle_noop_recv(whapps_call:call(), {'ok', whapps_call:call()} | {'error', _}) -> 'ok'.
+handle_noop_recv(_OldCall, {'ok', Call}) ->
+    cf_exe:set_call(Call),
+    cf_exe:continue(Call);
+handle_noop_recv(Call, {'error', 'channel_destroy'}) ->
+    cf_exe:hard_stop(Call);
+handle_noop_recv(Call, {'error', _E}) ->
+    lager:debug("failure playing: ~p", [_E]),
+    cf_exe:continue(Call).
+
+-spec play(wh_json:object(), whapps_call:call(), ne_binary()) -> ne_binary().
 play(Data, Call, Media) ->
     case wh_json:is_false(<<"answer">>, Data) of
         'true' -> 'ok';
