@@ -168,7 +168,7 @@
 -define(FAX_INBOUND_ERROR_TYPES, []).
 
 -define(FAX_OUTBOUND_HEADERS, [<<"Caller-ID-Number">>, <<"Callee-ID-Number">>
-                               ,<<"Account-ID">>, <<"Fax-JobId">>
+                               ,<<"Account-ID">>, <<"Fax-JobId">>, <<"Fax-ID">>
                               ]).
 -define(OPTIONAL_FAX_OUTBOUND_HEADERS, [<<"Caller-ID-Name">>, <<"Callee-ID-Name">>
                                         ,<<"Call-ID">>, <<"Fax-Info">>
