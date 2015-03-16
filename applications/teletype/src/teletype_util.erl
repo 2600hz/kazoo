@@ -15,6 +15,7 @@
          ,send_email/4, send_email/5
          ,render_subject/2, render/3
          ,service_params/2, service_params/3
+         ,account_params/1
          ,send_update/2, send_update/3
          ,find_addresses/3
          ,find_account_rep_email/1
@@ -290,6 +291,32 @@ service_params(APIJObj, ConfigCat, AccountId) ->
      ,{<<"from">>, wh_json:get_value(<<"send_from">>, NotificationJObj, default_from_address(APIJObj, ConfigCat))}
      ,{<<"template_charset">>, wh_json:get_value(<<"template_charset">>, NotificationJObj, default_charset(APIJObj, ConfigCat))}
      ,{<<"host">>, wh_util:to_binary(net_adm:localhost())}
+    ].
+
+-spec account_params(wh_json:object()) -> wh_proplist().
+account_params(DataJObj) ->
+    case find_account_id(DataJObj) of
+        'undefined' -> [];
+        AccountId -> find_account_params(AccountId)
+    end.
+
+-spec find_account_params(ne_binary()) -> wh_proplist().
+find_account_params(AccountId) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+        {'ok', AccountJObj} -> build_account_params(AccountJObj);
+        {'error', _E} ->
+            lager:debug("failed to find account doc for ~s: ~p", [AccountId, _E]),
+            []
+    end.
+
+-spec build_account_params(wh_json:object()) -> wh_proplist().
+build_account_params(AccountJObj) ->
+    [{<<"name">>, kz_account:name(AccountJObj)}
+     ,{<<"realm">>, kz_account:realm(AccountJObj)}
+     ,{<<"id">>, kz_account:id(AccountJObj)}
+     ,{<<"language">>, kz_account:language(AccountJObj)}
+     ,{<<"timezone">>, kz_account:timezone(AccountJObj)}
     ].
 
 -spec find_notification_settings(ne_binaries(), api_binary()) -> wh_json:object().
@@ -823,10 +850,7 @@ send_update(RespQ, MsgId, Status, Msg) ->
 -spec find_account_rep_email(ne_binary(), ne_binary(), wh_json:object()) -> api_binaries().
 find_account_rep_email('undefined') -> 'undefined';
 find_account_rep_email(<<_/binary>> = AccountId) ->
-    case wh_services:find_reseller_id(AccountId) of
-        AccountId -> 'undefined';
-        ResellerId -> find_account_rep_email(AccountId, ResellerId)
-    end;
+    find_account_rep_email(AccountId, wh_services:find_reseller_id(AccountId));
 find_account_rep_email(AccountJObj) ->
     find_account_rep_email(
       wh_json:get_first_defined([<<"_id">>, <<"id">>, <<"pvt_account_id">>]
@@ -963,12 +987,12 @@ find_addresses(DataJObj, TemplateMetaJObj, ConfigCat) ->
 find_addresses(_DataJObj, _TemplateMetaJObj, _ConfigCat, [], Acc) -> Acc;
 find_addresses(DataJObj, TemplateMetaJObj, ConfigCat, [Key|Keys], Acc) ->
     find_addresses(
-        DataJObj
-        ,TemplateMetaJObj
-        ,ConfigCat
-        ,Keys
-        ,[find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key)|Acc]
-    ).
+      DataJObj
+      ,TemplateMetaJObj
+      ,ConfigCat
+      ,Keys
+      ,[find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key)|Acc]
+     ).
 
 -spec find_address(wh_json:object(), wh_json:object(), ne_binary(), wh_json:key()) ->
                           {wh_json:key(), api_binaries()}.
@@ -976,16 +1000,18 @@ find_addresses(DataJObj, TemplateMetaJObj, ConfigCat, [Key|Keys], Acc) ->
                           {wh_json:key(), api_binaries()}.
 find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key) ->
     find_address(
-        DataJObj
-        ,TemplateMetaJObj
-        ,ConfigCat
-        ,Key
-        ,wh_json:find([Key, <<"type">>], [DataJObj, TemplateMetaJObj])
-    ).
+      DataJObj
+      ,TemplateMetaJObj
+      ,ConfigCat
+      ,Key
+      ,wh_json:find([Key, <<"type">>]
+                    ,[DataJObj, TemplateMetaJObj]
+                   )
+     ).
 
-find_address(_DataJObj, TemplateMetaJObj, _ConfigCat, Key, 'undefined') ->
+find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, 'undefined') ->
     lager:debug("email type for '~s' not defined in template, checking just the key", [Key]),
-    {Key, wh_json:get_ne_value(Key, TemplateMetaJObj)};
+    {Key, wh_json:find(Key, [DataJObj, TemplateMetaJObj])};
 find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, ?EMAIL_SPECIFIED) ->
     lager:debug("checking template for '~s' email addresses", [Key]),
     {Key, find_address([Key, <<"email_addresses">>], DataJObj, TemplateMetaJObj)};
@@ -1009,7 +1035,9 @@ find_admin_emails(DataJObj, ConfigCat, Key) ->
            teletype_util:find_account_id(DataJObj)
           )
     of
-        'undefined' -> find_default(ConfigCat, Key);
+        'undefined' ->
+            lager:debug("didn't find account rep for '~s'", [Key]),
+            find_default(ConfigCat, Key);
         Emails -> Emails
     end.
 

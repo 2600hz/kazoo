@@ -341,7 +341,7 @@ get_account_realm('undefined', _) -> 'undefined';
 get_account_realm(Db, AccountId) ->
     case couch_mgr:open_cache_doc(Db, AccountId) of
         {'ok', JObj} ->
-            wh_json:get_ne_value(<<"realm">>, JObj);
+            kz_account:realm(JObj);
         {'error', R} ->
             lager:debug("error while looking up account realm: ~p", [R]),
             'undefined'

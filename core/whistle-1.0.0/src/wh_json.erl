@@ -33,6 +33,7 @@
          ,map/2
          ,foldl/3
          ,find/2, find/3
+         ,find_first_defined/2, find_first_defined/3
          ,find_value/3, find_value/4
          ,foreach/2
          ,all/2, any/2
@@ -507,6 +508,18 @@ find(_, [], Default) -> Default;
 find(Key, [JObj|JObjs], Default) when is_list(JObjs) ->
     case get_value(Key, JObj) of
         'undefined' -> find(Key, JObjs, Default);
+        V -> V
+    end.
+
+-spec find_first_defined(key(), objects()) -> json_term() | 'undefined'.
+-spec find_first_defined(key(), objects(), Default) -> json_term() | Default.
+find_first_defined(Keys, Docs) ->
+    find_first_defined(Keys, Docs, 'undefined').
+
+find_first_defined([], _Docs, Default) -> Default;
+find_first_defined([Key|Keys], Docs, Default) ->
+    case find(Key, Docs) of
+        'undefined' -> find_first_defined(Keys, Docs, Default);
         V -> V
     end.
 

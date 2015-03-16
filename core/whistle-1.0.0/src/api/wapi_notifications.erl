@@ -373,10 +373,14 @@ headers(<<"fax_inbound_to_email">>) ->
     ?FAX_INBOUND_HEADERS ++ ?OPTIONAL_FAX_INBOUND_HEADERS;
 headers(<<"fax_outbound_to_email">>) ->
     ?FAX_OUTBOUND_HEADERS ++ ?OPTIONAL_FAX_OUTBOUND_HEADERS;
+headers(<<"new_user">>) ->
+    ?NEW_USER_HEADERS ++ ?OPTIONAL_NEW_USER_HEADERS;
+headers(<<"deregister">>) ->
+    ?DEREGISTER_HEADERS ++ ?OPTIONAL_DEREGISTER_HEADERS;
 headers(<<"skel">>) ->
     ?SKEL_HEADERS ++ ?OPTIONAL_SKEL_HEADERS;
 headers(_Notification) ->
-    lager:debug("no notification headers for ~s", [_Notification]),
+    lager:warning("no notification headers for ~s", [_Notification]),
     [].
 
 %%--------------------------------------------------------------------

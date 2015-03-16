@@ -340,6 +340,8 @@ publish_fun(<<"fax_outbound_to_email">>) ->
     fun wapi_notifications:publish_fax_outbound/1;
 publish_fun(<<"new_user">>) ->
     fun wapi_notifications:publish_new_user/1;
+publish_fun(<<"deregister">>) ->
+    fun wapi_notifications:publish_deregister/1;
 publish_fun(_Id) ->
     lager:debug("no wapi_notification:publish_~s/1 defined", [_Id]),
     fun(_Any) -> 'ok' end.
