@@ -96,6 +96,12 @@
           ,?MACRO_VALUE(<<"account.timezone">>, <<"account_timezone">>, <<"Account Timezone">>, <<"Account Timezone">>)
          ]).
 
+-define(USER_MACROS
+        ,[?MACRO_VALUE(<<"user.first_name">>, <<"user_first_name">>, <<"First Name">>, <<"First name of the user">>)
+          ,?MACRO_VALUE(<<"user.last_name">>, <<"user_last_name">>, <<"Last Name">>, <<"Last name of the user">>)
+          ,?MACRO_VALUE(<<"user.email">>, <<"user_email">>, <<"Email">>, <<"Email of the user">>)
+         ]).
+
 -define(SERVICE_MACROS
         ,[?MACRO_VALUE(<<"service.url">>, <<"service_url">>, <<"Service Provider URL">>, <<"Service Provider URL">>)
           ,?MACRO_VALUE(<<"service.name">>, <<"service_name">>, <<"Service Provider Name">>, <<"Service Provider Name">>)
