@@ -905,19 +905,9 @@ read_icon(Path, File) ->
 
 -spec find_metadata(ne_binary()) -> {'ok', wh_json:object()} | {'invalid_data', wh_proplist()}.
 find_metadata(AppPath) ->
-    {'ok', Dirs} = file:list_dir(AppPath),
-    case lists:member("app.json", Dirs) of
-        'true' -> read_metadata(AppPath);
-        'false' -> read_metadata(filename:join([AppPath, <<"metadata">>]))
-    end.
-
--spec read_metadata(ne_binary()) -> {'ok', wh_json:object()} | {'invalid_data', wh_proplist()}.
-read_metadata(MetadataPath) ->
-    {'ok', JSON} = file:read_file(filename:join([MetadataPath, <<"app.json">>])),
-    validate_metadata(wh_json:decode(JSON)).
-
--spec validate_metadata(wh_json:object()) -> {'ok', wh_json:object()} | {'invalid_data', wh_proplist()}.
-validate_metadata(JObj) ->
+    AppJSONPath = filename:join([AppPath, <<"metadata">>, <<"app.json">>]),
+    {'ok', JSON} = file:read_file(AppJSONPath),
+    JObj = wh_json:decode(JSON),
     {'ok', Schema} = wh_json_schema:load(<<"app">>),
     case jesse:validate_with_schema(Schema, wh_json:public_fields(JObj)) of
         {'ok', _}=OK -> OK;
