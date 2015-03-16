@@ -437,8 +437,8 @@ maybe_process_part_attachment(Props, Body, State) ->
     end.
 
 -spec process_part_attachment(ne_binary(), iolist(), state()) -> {'ok', state()}.
-process_part_attachment(Filename, Body, State) ->
-    case filename:extension(wh_util:to_lower_binary(Filename)) of
+process_part_attachment(AttchFilename, Body, State) ->
+    case filename:extension(wh_util:to_lower_binary(AttchFilename)) of
         <<".pdf">> ->
             lager:debug("found pdf filename extension, set content-type to application/pdf"),
             Filename = <<"/tmp/email_attachment_", (wh_util:to_binary(wh_util:current_tstamp()))/binary, ".pdf">>,
