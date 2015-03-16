@@ -23,9 +23,9 @@ fax_properties(JObj) ->
 
 -spec collect_channel_props(wh_json:object()) ->
                                    wh_proplist().
--spec collect_channel_props(wh_json:object(), wh_proplist()) ->
+-spec collect_channel_props(wh_json:object(), wh_proplist() | ne_binaries()) ->
                                    wh_proplist().
--spec collect_channel_props(wh_json:object(), wh_proplist(), wh_proplist()) ->
+-spec collect_channel_props(wh_json:object(), wh_proplist() | ne_binaries(), wh_proplist()) ->
                                    wh_proplist().
 collect_channel_props(JObj) ->
     collect_channel_props(JObj, ?FAX_CHANNEL_DESTROY_PROPS).
@@ -189,5 +189,5 @@ notify_email_list(From, OwnerEmail, List) ->
 filter_numbers(Number) ->
     << <<X>> || <<X>> <= Number, is_digit(X)>>.
 
--spec is_digit(binary()) -> boolean().
+-spec is_digit(integer()) -> boolean().
 is_digit(N) -> N >= $0 andalso N =< $9.

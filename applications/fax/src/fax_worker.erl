@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -243,7 +243,7 @@ handle_cast({_, Pid, _}, #state{job_id=JobId}=State) when is_binary(JobId), is_p
     {'noreply', State};
 handle_cast({'attempt_transmission', Pid, Job}, #state{queue_name=Q}=State) ->
     JobId = wh_json:get_value(<<"id">>, Job),
-    put('callid', JobId),
+    wh_util:put_callid(JobId),
     case attempt_to_acquire_job(JobId, Q) of
         {'ok', JObj} ->
             lager:debug("acquired job ~s", [JobId]),
@@ -628,41 +628,44 @@ maybe_notify(_Result, _JObj, _Resp, Status) ->
 -spec notify_fields(wh_json:object(), wh_json:object()) -> wh_proplist().
 notify_fields(JObj, Resp) ->
     <<"sip:", HangupCode/binary>> = wh_json:get_value(<<"Hangup-Code">>, Resp, <<"sip:0">>),
-    HangupCause =  wh_json:get_value(<<"Hangup-Cause">>, Resp),
+    HangupCause = wh_json:get_value(<<"Hangup-Cause">>, Resp),
     FaxFields = [{"Fax-Hangup-Code", wh_util:to_integer(HangupCode)}
-                ,{"Fax-Hangup-Cause", HangupCause}
-                | fax_fields(wh_json:get_value(<<"Application-Data">>, Resp))],
+                 ,{"Fax-Hangup-Cause", HangupCause}
+                 | fax_fields(wh_json:get_value(<<"Application-Data">>, Resp))
+                ],
 
     ToNumber = wh_util:to_binary(wh_json:get_value(<<"to_number">>, JObj)),
     ToName = wh_util:to_binary(wh_json:get_value(<<"to_name">>, JObj, ToNumber)),
     NotifyTmp = wh_json:get_value([<<"notifications">>,<<"email">>,<<"send_to">>], JObj, []),
     Notify = lists:filter(fun wh_util:is_not_empty/1, NotifyTmp),
+
     props:filter_empty(
       [{<<"Caller-ID-Name">>, wh_json:get_value(<<"from_name">>, JObj)}
-      ,{<<"Caller-ID-Number">>, wh_json:get_value(<<"from_number">>, JObj)}
-      ,{<<"Callee-ID-Number">>, ToNumber}
-      ,{<<"Callee-ID-Name">>, ToName }
-      ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, JObj)}
-      ,{<<"Fax-JobId">>, wh_json:get_value(<<"_id">>, JObj)}
-      ,{<<"Fax-ID">>, wh_json:get_value(<<"_id">>, JObj)}
-      ,{<<"FaxBox-ID">>, wh_json:get_value(<<"faxbox_id">>, JObj)}
-      ,{<<"Fax-Notifications">>
-        ,wh_json:from_list([{<<"email">>, wh_json:from_list([{<<"send_to">>, Notify}])}])
-       }
-      ,{<<"Fax-Info">>, wh_json:from_list(FaxFields) }
-      ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, Resp)}
-      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+       ,{<<"Caller-ID-Number">>, wh_json:get_value(<<"from_number">>, JObj)}
+       ,{<<"Callee-ID-Number">>, ToNumber}
+       ,{<<"Callee-ID-Name">>, ToName }
+       ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, JObj)}
+       ,{<<"Fax-JobId">>, wh_json:get_value(<<"_id">>, JObj)}
+       ,{<<"Fax-ID">>, wh_json:get_value(<<"_id">>, JObj)}
+       ,{<<"FaxBox-ID">>, wh_json:get_value(<<"faxbox_id">>, JObj)}
+       ,{<<"Fax-Notifications">>
+         ,wh_json:from_list([{<<"email">>, wh_json:from_list([{<<"send_to">>, Notify}])}])
+        }
+       ,{<<"Fax-Info">>, wh_json:from_list(FaxFields) }
+       ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, Resp)}
+       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
 
--spec fax_fields(wh_json:object()) -> wh_proplist().
-fax_fields('undefined') ->
-    [];
+-spec fax_fields(api_object()) -> wh_proplist().
+fax_fields('undefined') -> [];
 fax_fields(JObj) ->
     [{K,V} || {<<"Fax-", _/binary>> = K, V} <- wh_json:to_proplist(JObj)].
 
 -spec elapsed_time(wh_json:object()) -> non_neg_integer().
 elapsed_time(JObj) ->
-    wh_util:current_tstamp() - wh_json:get_integer_value(<<"pvt_created">>, JObj, wh_util:current_tstamp()).
+    Now = wh_util:current_tstamp(),
+    Created = wh_json:get_integer_value(<<"pvt_created">>, JObj, Now),
+    Now - Created.
 
 -spec fetch_document(wh_json:object()) ->
                             {'ok', string(), wh_proplist(), ne_binary()} |
@@ -795,9 +798,7 @@ send_fax(JobId, JObj, Q, ToDID) ->
                  ,{<<"Resource-Type">>, <<"originate">>}
                  ,{<<"Msg-ID">>, JobId}
                  ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
-                 ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Authorizing-ID">>, JobId}
-                                                                 ,{<<"Authorizing-Type">>, <<"outbound_fax">>}
-                                                                ])}
+                 ,{<<"Custom-Channel-Vars">>, resource_ccvs(JobId)}
                  ,{<<"Custom-SIP-Headers">>, wh_json:get_value(<<"custom_sip_headers">>, JObj)}
                  ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>]}
                  ,{<<"Application-Name">>, <<"fax">>}
@@ -811,6 +812,12 @@ send_fax(JobId, JObj, Q, ToDID) ->
                                               ,{'restrict_to', [<<"CHANNEL_FAX_STATUS">>]}
                                              ]),
     wapi_offnet_resource:publish_req(Request).
+
+-spec resource_ccvs(ne_binary()) -> wh_json:object().
+resource_ccvs(JobId) ->
+    wh_json:from_list([{<<"Authorizing-ID">>, JobId}
+                       ,{<<"Authorizing-Type">>, <<"outbound_fax">>}
+                      ]).
 
 -spec get_did(wh_json:object()) -> api_binary().
 get_did(JObj) ->
@@ -827,7 +834,7 @@ get_proxy_url(JobId) ->
 
 -spec reset(state()) -> state().
 reset(State) ->
-    put('callid', ?LOG_SYSTEM_ID),
+    wh_util:put_callid(?LOG_SYSTEM_ID),
     State#state{job_id='undefined'
                 ,job='undefined'
                 ,pool='undefined'
