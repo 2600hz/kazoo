@@ -139,18 +139,24 @@ send_default(_Call, 'undefined') ->
 send_default(Call, Cause) ->
     lager:debug("attempting to send default response for ~s", [Cause]),
     case get_response(Cause, Call) of
-        'undefined' -> 
+        'undefined' ->
             {'error', 'no_response'};
         Response ->
-            Media = wh_json:get_value(<<"Media">>, Response),
-            Prompt = wh_media_util:get_prompt(Media, Call),
-            send(whapps_call:call_id(Call)
-                 ,whapps_call:control_queue(Call)
-                 ,wh_json:get_value(<<"Code">>, Response)
-                 ,wh_json:get_value(<<"Message">>, Response)
-                 ,Prompt
-                )
+            send_default_response(Call, Response)
     end.
+
+-spec send_default_response(whapps_call:call(), wh_json:object()) ->
+                                   {'ok', ne_binary()} |
+                                   {'error', 'no_response'}.
+send_default_response(Call, Response) ->
+    Media = wh_json:get_value(<<"Media">>, Response),
+
+    send(whapps_call:call_id(Call)
+         ,whapps_call:control_queue(Call)
+         ,wh_json:get_value(<<"Code">>, Response)
+         ,wh_json:get_value(<<"Message">>, Response)
+         ,wh_media_util:get_prompt(Media, Call)
+        ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -158,13 +164,11 @@ send_default(Call, Cause) ->
 %% returns the configured response proplist
 %% @end
 %%--------------------------------------------------------------------
--spec get_response(ne_binary(), whapps_call:call()) -> wh_proplist() | 'undefined'.
+-spec get_response(ne_binary(), whapps_call:call()) -> api_object().
 get_response(Cause, Call) ->
+    Default = default_response(Cause),
     AccountId = whapps_call:account_id(Call),
-    case default_response(Cause) of
-        'undefined' -> whapps_account_config:get_global(AccountId, ?CALL_RESPONSE_CONF, Cause);
-        Else -> whapps_account_config:get_global(AccountId, ?CALL_RESPONSE_CONF, Cause, wh_json:from_list(Else))
-    end.
+    whapps_account_config:get_global(AccountId, ?CALL_RESPONSE_CONF, Cause, Default).
 
 %%--------------------------------------------------------------------
 %% @public
