@@ -27,6 +27,7 @@
 -export([find_account_id/1]).
 -export([get_all_number_dbs/0]).
 -export([are_jobjs_identical/2]).
+-export([is_reconcilable/2, normalize_number/2, is_e164/2, to_e164/2]).
 
 -ifdef(TEST).
 -include_lib("proper/include/proper.hrl").
@@ -247,6 +248,19 @@ is_reconcilable(Number) ->
             'true'
     end.
 
+-spec is_reconcilable(ne_binary(), ne_binary()) -> boolean().
+is_reconcilable(Number, AccountId) ->
+    Regex = whapps_account_config:get_global(AccountId, ?WNM_CONFIG_CAT, <<"reconcile_regex">>, ?DEFAULT_RECONCILE_REGEX),
+    Num = wnm_util:normalize_number(Number, AccountId),
+    case re:run(Num, Regex) of
+        'nomatch' ->
+            lager:debug("number '~s' is not reconcilable", [Num]),
+            'false';
+        _ ->
+            lager:debug("number '~s' can be reconciled, proceeding", [Num]),
+            'true'
+    end.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -313,12 +327,20 @@ normalize_number(Number) when is_binary(Number) ->
 normalize_number(Number) ->
     normalize_number(wh_util:to_binary(Number)).
 
+-spec normalize_number(binary(), api_binary()) -> binary().
+normalize_number(Number, 'undefined') -> to_e164(Number);
+normalize_number(Number, AccountId) -> to_e164(Number, AccountId).
+
+
 -spec is_e164(ne_binary()) -> boolean().
+-spec is_e164(ne_binary(), ne_binary()) -> boolean().
 -spec is_npan(ne_binary()) -> boolean().
 -spec is_1npan(ne_binary()) -> boolean().
 
 is_e164(DID) ->
     DID =:= to_e164(DID).
+is_e164(DID, AccountId) ->
+    DID =:= to_e164(DID, AccountId).
 
 is_npan(DID) ->
     re:run(DID, <<"^[2-9][0-9]{2}[2-9][0-9]{6}$">>) =/= 'nomatch'.
@@ -333,6 +355,48 @@ to_e164(Number) ->
     Converters = get_e164_converters(),
     Regexs = wh_json:get_keys(Converters),
     maybe_convert_to_e164(Regexs, Converters, Number).
+
+-spec to_e164(ne_binary(), api_binary()) -> ne_binary().
+to_e164(<<$+, _/binary>> = N, _) -> N;
+to_e164(Number, 'undefined') -> to_e164(Number);
+to_e164(Number, Account) ->
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+        {'ok', JObj} -> to_account_e164(Number, AccountId, wh_json:get_value(<<"dial_plan">>, JObj));
+        {'error', _} -> to_account_e164(Number, AccountId)
+    end.
+
+-spec to_account_e164(ne_binary(), api_binary(), api_object()) -> ne_binary().
+to_account_e164(Number, AccountId, 'undefined') -> 
+    to_account_e164(Number, AccountId);
+to_account_e164(Number, AccountId, DialPlan) ->
+    Regexs = wh_json:get_keys(DialPlan),
+    case Regexs of
+        [] -> to_account_e164(Number, AccountId);
+        _ -> to_account_e164(apply_dialplan(Regexs, DialPlan, Number), AccountId)
+    end.
+    
+apply_dialplan([], _, Number) -> Number;
+apply_dialplan([Regex|Regexs], DialPlan, Number) ->
+    case re:run(Number, Regex, [{'capture', 'all', 'binary'}]) of
+        'nomatch' ->
+            apply_dialplan(Regexs, DialPlan, Number);
+        'match' ->
+            Number;
+        {'match', Captures} ->
+            Root = lists:last(Captures),
+            Prefix = wh_json:get_binary_value([Regex, <<"prefix">>], DialPlan, <<>>),
+            Suffix = wh_json:get_binary_value([Regex, <<"suffix">>], DialPlan, <<>>),
+            <<Prefix/binary, Root/binary, Suffix/binary>>
+    end.
+
+-spec to_account_e164(ne_binary(), api_binary()) -> ne_binary().
+to_account_e164(Number, AccountId) ->
+    Converters = get_e164_converters(AccountId),
+    Regexs = wh_json:get_keys(Converters),
+    maybe_convert_to_e164(Regexs, Converters, Number).
+    
 
 maybe_convert_to_e164([], _, Number) -> Number;
 maybe_convert_to_e164([Regex|Regexs], Converters, Number) ->
@@ -365,6 +429,17 @@ to_1npan(Number) ->
 get_e164_converters() ->
     Default = wh_json:from_list(?DEFAULT_E164_CONVERTERS),
     try whapps_config:get(?WNM_CONFIG_CAT, <<"e164_converters">>, Default) of
+        Converters -> Converters
+    catch
+        _:_ ->
+            Default
+    end.
+
+-spec get_e164_converters(api_binary()) -> wh_json:object().
+get_e164_converters('undefined') -> get_e164_converters();
+get_e164_converters(AccountId) -> 
+    Default = wh_json:from_list(?DEFAULT_E164_CONVERTERS),
+    try whapps_account_config:get_global(AccountId, ?WNM_CONFIG_CAT, <<"e164_converters">>, Default) of
         Converters -> Converters
     catch
         _:_ ->
