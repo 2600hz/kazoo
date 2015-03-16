@@ -342,6 +342,8 @@ publish_fun(<<"new_user">>) ->
     fun wapi_notifications:publish_new_user/1;
 publish_fun(<<"deregister">>) ->
     fun wapi_notifications:publish_deregister/1;
+publish_fun(<<"password_recovery">>) ->
+    fun wapi_notifications:publish_pwd_recovery/1;
 publish_fun(_Id) ->
     lager:debug("no wapi_notification:publish_~s/1 defined", [_Id]),
     fun(_Any) -> 'ok' end.
@@ -613,14 +615,15 @@ maybe_note_notification_preference(Context) ->
 maybe_note_notification_preference(AccountDb, AccountJObj) ->
     case kz_account:notification_preference(AccountJObj) of
         'undefined' -> note_notification_preference(AccountDb, AccountJObj);
-        _Pref -> lager:debug("account already prefers ~s", [_Pref])
+        <<"teletype">> -> lager:debug("account already prefers teletype");
+        _Pref -> note_notification_preference(AccountDb, AccountJObj)
     end.
 
 -spec note_notification_preference(ne_binary(), wh_json:object()) -> 'ok'.
 note_notification_preference(AccountDb, AccountJObj) ->
     case couch_mgr:save_doc(AccountDb
                             ,kz_account:set_notification_preference(AccountJObj
-                                                                    ,kz_notification:pvt_type()
+                                                                    ,<<"teletype">>
                                                                    )
                            )
     of
