@@ -496,5 +496,6 @@ filter_fields({K,_}) ->
 normalize_fields(Rate) ->
     Routines = [fun(J) -> wh_json:set_value(<<"Base-Cost">>, wh_util:to_binary(wh_util:to_float(wh_json:get_value(<<"Base-Cost">>, J))/10000), J) end
                 ,fun(J) -> wh_json:set_value(<<"Rate">>, wh_util:to_binary(wh_util:to_float(wh_json:get_value(<<"Rate">>, J))/10000), J) end
+                ,fun(J) -> wh_json:set_value(<<"Surcharge">>, wh_util:to_binary(wh_util:to_float(wh_json:get_value(<<"Surcharge">>, J))/10000), J) end
                ],
     lists:foldl(fun(F, J) -> F(J) end, Rate, Routines).
