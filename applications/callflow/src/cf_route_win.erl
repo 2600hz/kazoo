@@ -183,6 +183,7 @@ get_callee_extension_info(Call) ->
 -spec bootstrap_callflow_executer(wh_json:object(), whapps_call:call()) -> {'ok', pid()}.
 bootstrap_callflow_executer(_JObj, Call) ->
     Routines = [fun store_owner_id/1
+                ,fun set_language/1
                 ,fun update_ccvs/1
                 %% all funs above here return whapps_call:call()
                 ,fun execute_callflow/1
@@ -200,6 +201,23 @@ bootstrap_callflow_executer(_JObj, Call) ->
 store_owner_id(Call) ->
     OwnerId = cf_attributes:owner_id(Call),
     whapps_call:kvs_store('owner_id', OwnerId, Call).
+
+%%-----------------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%-----------------------------------------------------------------------------
+-spec set_language(whapps_call:call()) -> whapps_call:call().
+set_language(Call) ->
+    case cf_endpoint:get(Call) of
+        {'ok', Endpoint} ->
+            Language = wh_json:get_value(<<"language">>, Endpoint, wh_media_util:default_prompt_language()),
+            lager:debug("setting language ~s  for this call", [Language]),
+            whapps_call:set_language(wh_util:to_lower_binary(Language), Call);
+        _ -> lager:debug("no source endpoint for this call, setting language to default"),
+             whapps_call:set_language(wh_media_util:default_prompt_language(), Call)
+    end.
 
 %%-----------------------------------------------------------------------------
 %% @private
