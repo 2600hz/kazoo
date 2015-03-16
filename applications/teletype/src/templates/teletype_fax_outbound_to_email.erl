@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014, 2600Hz Inc
+%%% @copyright (C) 2014-2015, 2600Hz Inc
 %%% @doc
 %%%
 %%% @end
@@ -70,7 +70,7 @@ init() ->
 -spec get_fax_doc(wh_json:object()) -> wh_json:object().
 get_fax_doc(DataJObj) ->
     AccountId = teletype_util:find_account_id(DataJObj),
-    AccountDb = ?WH_FAXES, %wh_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = ?WH_FAXES,
     FaxId = wh_json:get_value(<<"fax_id">>, DataJObj),
 
     case couch_mgr:open_doc(AccountDb, FaxId) of
@@ -126,7 +126,6 @@ handle_fax_outbound(JObj, _Props) ->
 
 -spec handle_fax_outbound(wh_json:object()) -> 'ok'.
 handle_fax_outbound(DataJObj) ->
-    lager:debug("OUTBOUND ~p", [DataJObj]),
     FaxJObj = get_fax_doc(DataJObj),
 
     AccountId = teletype_util:find_account_id(DataJObj),
