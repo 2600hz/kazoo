@@ -154,7 +154,7 @@ delete(Context, _RateId) ->
 validate_number(Phonenumber, Context) ->
     case length(re:replace(Phonenumber, "[^0-9]", "", [global, {return, list}])) >= 7 of 
         'true' -> 
-            rate_for_number(Context, Phonenumber);
+            rate_for_number(re:replace(Phonenumber, "[^0-9]", "", [global, {return, list}]), Context);
         'false' -> 
             cb_context:add_validation_error(
                 <<"number format">>
@@ -470,8 +470,8 @@ save_processed_rates(Context, Count) ->
                   lager:debug("saved up to ~b docs (took ~b ms)", [Count, wh_util:elapsed_ms(Now)])
           end).
 
--spec rate_for_number(ne_binary(),ne_binary()) -> cb_context:context().
-rate_for_number(Context, Phonenumber) ->
+-spec rate_for_number(ne_binary(), cb_context:context()) -> cb_context:context().
+rate_for_number(Phonenumber, Context) ->
     case wh_amqp_worker:call([{<<"To-DID">>, wnm_util:normalize_number(Phonenumber)}| wh_api:default_headers(?APP_NAME, ?APP_VERSION)]
                              ,fun wapi_rate:publish_req/1
                              ,fun wapi_rate:resp_v/1
