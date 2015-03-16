@@ -19,10 +19,9 @@
 -define(TEMPLATE_ID, <<"password_recovery">>).
 
 -define(TEMPLATE_MACROS
-        ,wh_json:from_list(
-           [
-            | ?SERVICE_MACROS ++ ?ACCOUNT_MACROS
-           ])
+        ,wh_json:from_list([?MACRO_VALUE(<<"user.password">>, <<"user_password">>, <<"Password">>, <<"User's Password">>)
+                            | ?SERVICE_MACROS ++ ?ACCOUNT_MACROS ++ ?USER_MACROS
+                           ])
        ).
 
 -define(TEMPLATE_TEXT, <<"Hello, {{user.first_name}} {{user.last_name}}.\n\nThis email is to inform you that the password for your {{service.provider}} {{service.name}} account \"{{account.name}}\" has been set to \"{{user.password}}\".\n\nTo login please vist {{service.url}} and use your normal username with the password \"{{user.password}}\".\n\nOnce you login you will be prompted to customize your password.">>).
@@ -54,9 +53,9 @@ init() ->
                                                ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                               ]).
 
--spec handle_full_voicemail(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_full_voicemail(JObj, _Props) ->
-    'true' = wapi_notifications:voicemail_full_v(JObj),
+-spec handle_password_recovery(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_password_recovery(JObj, _Props) ->
+    'true' = wapi_notifications:pwd_recovery_v(JObj),
     wh_util:put_callid(JObj),
 
     %% Gather data for template
@@ -70,21 +69,23 @@ handle_full_voicemail(JObj, _Props) ->
     case teletype_util:should_handle_notification(DataJObj)
         andalso is_notice_enabled_on_account(AccountJObj, JObj)
     of
-        'false' -> lager:debug("notification not enabled for account ~s", [wh_util:format_account_id(AccountDb, 'raw')]);
+        'false' ->
+            lager:debug("notification not enabled for account ~s: prefers ~s"
+                        ,[wh_util:format_account_id(AccountDb, 'raw')
+                          ,kz_account:notification_preference(AccountJObj)
+                         ]);
         'true' ->
             lager:debug("notification enabled for account ~s (~s)", [AccountId, AccountDb]),
 
-            VMBox = get_vm_box(AccountDb, DataJObj),
-            User = get_vm_box_owner(AccountDb, VMBox),
+            User = get_user(DataJObj),
             ReqData =
                 wh_json:set_values(
-                    [{<<"voicemail">>, VMBox}
-                      ,{<<"owner">>, User}
-                      ,{<<"account">>, AccountJObj}
-                      ,{<<"to">>, [wh_json:get_ne_value(<<"email">>, User)]}
+                    [{<<"user">>, User}
+                     ,{<<"account">>, AccountJObj}
+                     ,{<<"to">>, [wh_json:get_ne_value(<<"email">>, User)]}
                     ]
-                    ,DataJObj
-                ),
+                  ,DataJObj
+                 ),
 
             case wh_json:is_true(<<"preview">>, DataJObj, 'false') of
                 'false' -> process_req(ReqData);
@@ -93,24 +94,17 @@ handle_full_voicemail(JObj, _Props) ->
             end
     end.
 
--spec get_vm_box(ne_binary(), wh_json:object()) -> wh_json:object().
-get_vm_box(AccountDb, JObj) ->
-    VMBoxId = wh_json:get_value(<<"voicemail_box">>, JObj),
-    case couch_mgr:open_cache_doc(AccountDb, VMBoxId) of
-        {'ok', VMBox} -> VMBox;
-        {'error', _E} ->
-            lager:debug("failed to load vm box ~s from ~s", [VMBoxId, AccountDb]),
-            wh_json:new()
-    end.
+-spec get_user(wh_json:object()) -> wh_json:object().
+get_user(DataJObj) ->
+    Ks = [<<"first_name">>, <<"last_name">>, <<"email">>, <<"password">>],
+    lists:foldl(fun(K, Acc) -> get_user_fold(K, Acc, DataJObj) end
+                ,wh_json:new()
+                ,Ks
+               ).
 
--spec get_vm_box_owner(ne_binary(), wh_json:object()) -> wh_json:object().
-get_vm_box_owner(AccountDb, VMBox) ->
-    case couch_mgr:open_cache_doc(AccountDb, wh_json:get_value(<<"owner_id">>, VMBox)) of
-        {'ok', UserJObj} -> UserJObj;
-        {'error', _E} ->
-            lager:debug("failed to lookup owner, assuming none"),
-            wh_json:new()
-    end.
+-spec get_user_fold(wh_json:key(), wh_json:object(), wh_json:object()) -> wh_json:object().
+get_user_fold(K, Acc, DataJObj) ->
+    wh_json:set_value(K, wh_json:get_value(K, DataJObj), Acc).
 
 -spec process_req(wh_json:object()) -> 'ok'.
 -spec process_req(wh_json:object(), wh_proplist()) -> 'ok'.
@@ -126,8 +120,7 @@ process_req(DataJObj, Templates) ->
 
     Macros = [{<<"service">>, ServiceData}
               ,{<<"account">>, public_proplist(<<"account">>, DataJObj)}
-              ,{<<"owner">>, public_proplist(<<"owner">>, DataJObj)}
-              | build_template_data(DataJObj)
+              ,{<<"user">>, public_proplist(<<"user">>, DataJObj)}
              ],
 
     %% Populate templates
@@ -158,25 +151,9 @@ process_req(DataJObj, Templates) ->
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
 
--spec build_template_data(wh_json:object()) -> wh_proplist().
-build_template_data(DataJObj) ->
-    props:filter_undefined(
-      [{<<"voicemail">>, build_voicemail_data(DataJObj)}]
-     ).
-
--spec build_voicemail_data(wh_json:object()) -> wh_proplist().
-build_voicemail_data(DataJObj) ->
-    props:filter_undefined(
-      [{<<"box">>, wh_json:get_value(<<"voicemail_box">>, DataJObj)}
-       ,{<<"number">>, wh_json:get_value(<<"voicemail_number">>, DataJObj)}
-       ,{<<"max_messages">>, wh_json:get_binary_value(<<"max_message_count">>, DataJObj)}
-       ,{<<"message_count">>, wh_json:get_binary_value(<<"message_count">>, DataJObj)}
-       | props:delete(<<"pin">>, public_proplist(<<"voicemail">>, DataJObj))
-      ]).
-
 -spec is_notice_enabled_on_account(wh_json:object(), wh_json:object()) -> boolean().
 is_notice_enabled_on_account(AccountJObj, ApiJObj) ->
-    teletype_util:is_notice_enabled(AccountJObj, ApiJObj, <<"voicemail_full">>).
+    teletype_util:is_notice_enabled(AccountJObj, ApiJObj, ?TEMPLATE_ID).
 
 -spec public_proplist(wh_json:key(), wh_json:object()) -> wh_proplist().
 public_proplist(Key, JObj) ->
