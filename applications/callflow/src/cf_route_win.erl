@@ -210,13 +210,15 @@ store_owner_id(Call) ->
 %%-----------------------------------------------------------------------------
 -spec set_language(whapps_call:call()) -> whapps_call:call().
 set_language(Call) ->
+    Default = wh_media_util:prompt_language(whapps_call:account_id(Call)),
     case cf_endpoint:get(Call) of
         {'ok', Endpoint} ->
-            Language = wh_json:get_value(<<"language">>, Endpoint, wh_media_util:default_prompt_language()),
-            lager:debug("setting language ~s  for this call", [Language]),
+            Language = wh_json:get_value(<<"language">>, Endpoint, Default),
+            lager:debug("setting language '~s' for this call", [Language]),
             whapps_call:set_language(wh_util:to_lower_binary(Language), Call);
-        _ -> lager:debug("no source endpoint for this call, setting language to default"),
-             whapps_call:set_language(wh_media_util:default_prompt_language(), Call)
+        {'error', _E} ->
+            lager:debug("no source endpoint for this call, setting language to default ~s", [Default]),
+            whapps_call:set_language(Default, Call)
     end.
 
 %%-----------------------------------------------------------------------------
@@ -233,7 +235,8 @@ update_ccvs(Call) ->
                    end,
     {CIDNumber, CIDName} = cf_attributes:caller_id(CallerIdType, Call),
     lager:info("bootstrapping with caller id type ~s: \"~s\" ~s"
-               ,[CallerIdType, CIDName, CIDNumber]),
+               ,[CallerIdType, CIDName, CIDNumber]
+              ),
     Props = props:filter_undefined(
               [{<<"Hold-Media">>, cf_attributes:moh_attributes(<<"media_id">>, Call)}
                ,{<<"Caller-ID-Name">>, CIDName}
@@ -265,7 +268,7 @@ maybe_start_endpoint_metaflow(Call, EndpointId) ->
         {'ok', JObj} ->
             wh_json:to_proplist(
               cf_util:encryption_method_map(wh_json:new(), JObj)
-            )
+             )
     end.
 
 %%-----------------------------------------------------------------------------
