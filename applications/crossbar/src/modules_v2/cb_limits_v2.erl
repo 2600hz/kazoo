@@ -226,10 +226,14 @@ update_limits(Context) ->
 %%--------------------------------------------------------------------
 -spec dry_run(cb_context:context()) -> wh_json:object().
 dry_run(Context) ->
-    ReqData = cb_context:req_data(Context),
     AccountId = cb_context:account_id(Context),
-    Updates = [{<<"limits">>, <<"twoway_trunks">>, wh_json:get_integer_value(<<"twoway_trunks">>, ReqData, 0)}
-               ,{<<"limits">>, <<"inbound_trunks">>, wh_json:get_integer_value(<<"inbound_trunks">>, ReqData, 0)}
-               ,{<<"limits">>, <<"outbound_trunks">>, wh_json:get_integer_value(<<"outbound_trunks">>, ReqData, 0)}
-              ],
-    wh_services:dry_run(AccountId, Updates).
+    Services = wh_services:fetch(AccountId),
+    ReqData = cb_context:req_data(Context),
+    Updates =
+        wh_json:from_list([
+            {<<"twoway_trunks">>, wh_json:get_integer_value(<<"twoway_trunks">>, ReqData, 0)}
+            ,{<<"inbound_trunks">>, wh_json:get_integer_value(<<"inbound_trunks">>, ReqData, 0)}
+            ,{<<"outbound_trunks">>, wh_json:get_integer_value(<<"outbound_trunks">>, ReqData, 0)}
+        ]),
+    UpdateServices = wh_service_limits:reconcile(Services, Updates),
+    wh_services:dry_run(UpdateServices).
