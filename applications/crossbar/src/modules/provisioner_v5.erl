@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% Common functions for the provisioner modules
@@ -127,11 +127,9 @@ check_MAC(MacAddress, AuthToken) ->
     HTTPOptions = [],
     UrlString = req_uri('devices', MacAddress),
     lager:debug("pre-provisioning via ~s", [UrlString]),
-    Resp = ibrowse:send_req(UrlString, Headers, 'get', [], HTTPOptions),
-    case Resp of
-        {'ok', "200", _RespHeaders, JSONStr} ->
-            JObj = wh_json:decode(JSONStr),
-            wh_json:get_value([<<"data">>, <<"account_id">>], JObj);
+    case ibrowse:send_req(UrlString, Headers, 'get', [], HTTPOptions) of
+        {'ok', "200", _RespHeaders, JSON} ->
+            wh_json:get_value([<<"data">>, <<"account_id">>], wh_json:decode(JSON));
         _AnythingElse -> 'false'
     end.
 
@@ -172,7 +170,7 @@ set_owner(JObj) ->
 %%--------------------------------------------------------------------
 -spec get_owner(api_binary(), ne_binary()) ->
                        {'ok', wh_json:object()} |
-                       {'error', any()}.
+                       {'error', _}.
 get_owner('undefined', _) -> {'error', 'undefined'};
 get_owner(OwnerId, AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
@@ -325,7 +323,6 @@ set_audio([], _, JObj) -> JObj;
 set_audio([Codec|Codecs], [Key|Keys], JObj) ->
     set_audio(Codecs, Keys, wh_json:set_value(Key, Codec, JObj)).
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -396,7 +393,7 @@ send_req('accounts_update', JObj, AuthToken, AccountId, _) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_resp(any()) -> 'ok'.
+-spec handle_resp(ibrowse_ret()) -> 'ok'.
 handle_resp({'ok', "200", _, Resp}) ->
     lager:debug("provisioning success ~p", [Resp]);
 handle_resp({'ok', Code, _, Resp}) ->
@@ -413,10 +410,10 @@ handle_resp(_Error) ->
 -spec req_headers(ne_binary()) -> wh_proplist().
 req_headers(Token) ->
     props:filter_undefined(
-        [{"Content-Type", "application/json"}
-         ,{"X-Auth-Token", wh_util:to_list(Token)}
-         ,{"User-Agent", wh_util:to_list(erlang:node())}
-    ]).
+      [{"Content-Type", "application/json"}
+       ,{"X-Auth-Token", wh_util:to_list(Token)}
+       ,{"User-Agent", wh_util:to_list(erlang:node())}
+      ]).
 
 %%--------------------------------------------------------------------
 %% @private
