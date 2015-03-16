@@ -644,7 +644,6 @@ notify_fields(Call, JObj) ->
        ,{<<"From-Realm">>, whapps_call:from_realm(Call)}
        ,{<<"To-User">>, whapps_call:to_user(Call)}
        ,{<<"To-Realm">>, whapps_call:to_realm(Call)}
-       ,{<<"Account-ID">>, whapps_call:account_id(Call)}
        ,{<<"Fax-Info">>, fax_fields(wh_json:get_value(<<"Application-Data">>, JObj))}
        ,{<<"Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
        ,{<<"Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
@@ -667,7 +666,8 @@ notify_failure(JObj, Reason, #state{call=Call
                                     ,owner_id=OwnerId
                                     ,faxbox_id=FaxBoxId
                                     ,fax_notify=Notify
-                                    ,storage=#fax_storage{id=FaxId}
+                                    ,account_id=AccountId
+                                    ,storage=#fax_storage{id=FaxId, db=FaxDb}
                                    }=State) ->
     Data = wh_json:get_value(<<"Application-Data">>, JObj, wh_json:new()),
     Status = list_to_binary(["Error receiving fax : ", Reason]),
@@ -677,6 +677,8 @@ notify_failure(JObj, Reason, #state{call=Call
                  ,{<<"Fax-Error">>, Reason}
                  ,{<<"Owner-ID">>, OwnerId}
                  ,{<<"FaxBox-ID">>, FaxBoxId}
+                 ,{<<"Account-ID">>, AccountId}
+                 ,{<<"Account-DB">>, FaxDb}
                  ,{<<"Fax-Notifications">>,  Notify}
                  | notify_fields(Call, JObj)
                 ]),
@@ -687,7 +689,8 @@ notify_success(JObj, #state{call=Call
                             ,owner_id=OwnerId
                             ,faxbox_id=FaxBoxId
                             ,fax_notify=Notify
-                            ,storage=#fax_storage{id=FaxId}
+                            ,account_id=AccountId
+                            ,storage=#fax_storage{id=FaxId, db=FaxDb}
                            }=State) ->
     Data = wh_json:get_value(<<"Application-Data">>, JObj, wh_json:new()),
     Status = <<"Fax Successfuly received">>,
@@ -697,6 +700,8 @@ notify_success(JObj, #state{call=Call
                 [{<<"Fax-ID">>, FaxId}
                  ,{<<"Owner-ID">>, OwnerId}
                  ,{<<"FaxBox-ID">>, FaxBoxId}
+                 ,{<<"Account-ID">>, AccountId}
+                 ,{<<"Account-DB">>, FaxDb}
                  ,{<<"Fax-Notifications">>, Notify}
                  | notify_fields(Call, JObj)
                 ]),
