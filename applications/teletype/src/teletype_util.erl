@@ -940,16 +940,16 @@ should_handle_notification(DataJObj) ->
 should_handle_notification_for_account(AccountId, AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
-    kz_account:notification_preference(AccountJObj) =:= 'teletype';
+    kz_account:notification_preference(AccountJObj) =:= ?APP_NAME;
 should_handle_notification_for_account(AccountId, ResellerId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
     {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
     {'ok', ResellerJObj} = couch_mgr:open_cache_doc(ResellerDb, ResellerId),
 
-    kz_account:notification_preference(AccountJObj) =:= <<"teletype">>
-        orelse (kz_account:notification_preference(ResellerJObj) =:= <<"teletype">>
-                    andalso kz_account:notification_preference(AccountJObj) =:= 'undefined'
+    kz_account:notification_preference(AccountJObj) =:= ?APP_NAME
+        orelse (kz_account:notification_preference(ResellerJObj) =:= ?APP_NAME
+                andalso kz_account:notification_preference(AccountJObj) =:= 'undefined'
                )
         orelse should_handle_notification_for_account(ResellerId, wh_services:find_reseller_id(ResellerId)).
 
@@ -964,11 +964,14 @@ is_notice_enabled(AccountJObj, ApiJObj, NoticeKey) ->
           ,wh_json:is_true(<<"Preview">>, ApiJObj, 'false')
          }
     of
-        {_Account, 'true'} -> 'true';
+        {_Account, 'true'} ->
+            lager:debug("notice ~s is enabled for preview", [NoticeKey]),
+            'true';
         {'undefined', 'false'} ->
             lager:debug("account is mute, checking system config"),
             is_notice_enabled_default(NoticeKey);
         {Value, 'false'} ->
+            lager:debug("account says ~s is enabled: ~s", [NoticeKey, Value]),
             wh_util:is_true(Value)
     end.
 
