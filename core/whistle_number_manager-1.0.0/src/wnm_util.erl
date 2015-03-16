@@ -377,6 +377,7 @@ to_account_e164(Number, AccountId, DialPlan) ->
         _ -> to_account_e164(apply_dialplan(Regexs, DialPlan, Number), AccountId)
     end.
     
+-spec apply_dialplan(wh_json:keys(), wh_json:object(), ne_binary()) -> ne_binary(). 
 apply_dialplan([], _, Number) -> Number;
 apply_dialplan([Regex|Regexs], DialPlan, Number) ->
     case re:run(Number, Regex, [{'capture', 'all', 'binary'}]) of
