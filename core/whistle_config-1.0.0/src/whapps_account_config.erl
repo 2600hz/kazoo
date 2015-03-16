@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz
+%%% @copyright (C) 2012-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -36,7 +36,7 @@ get_global(Account, Category, Key, Default) ->
             case wh_services:find_reseller_id(AccountId) of
                 AccountId -> whapps_config:get(Category, Key, Default);
                 ResellerId -> get_global(ResellerId, Category, Key, Default)
-            end            
+            end
     end.
 
 -spec get_global_from_doc(ne_binary(), wh_json:key(), wh_json:json_term(), wh_json:object()) -> wh_json:object().
