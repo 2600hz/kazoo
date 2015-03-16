@@ -32,7 +32,11 @@ get_global(Account, Category, Key, Default) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_cache_doc(AccountDb, config_doc_id(Category), [{'cache_failures', ['not_found']}]) of
         {'ok', JObj} -> get_global_from_doc(Category, Key, Default, JObj);
-        {'error', _} -> whapps_config:get(Category, Key, Default)
+        {'error', _} ->
+            case wh_services:find_reseller_id(AccountId) of
+                AccountId -> whapps_config:get(Category, Key, Default);
+                ResellerId -> get_global(ResellerId, Category, Key, Default)
+            end            
     end.
 
 -spec get_global_from_doc(ne_binary(), wh_json:key(), wh_json:json_term(), wh_json:object()) -> wh_json:object().
