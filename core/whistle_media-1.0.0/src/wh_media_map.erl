@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014, 2600Hz
+%%% @copyright (C) 2014-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -83,7 +83,10 @@ prompt_path(AccountId, PromptId, L) ->
     case wh_json:get_first_defined(language_keys(Language), Langs) of
         'undefined' ->
             lager:debug("failed to find prompt ~s in ~p", [PromptId, language_keys(Language)]),
-            default_prompt_path(PromptId, Language);
+            case wh_services:find_reseller_id(AccountId) of
+                AccountId -> default_prompt_path(PromptId, Language);
+                ResellerId -> prompt_path(ResellerId, PromptId, L)
+            end;
         Path -> Path
     end.
 

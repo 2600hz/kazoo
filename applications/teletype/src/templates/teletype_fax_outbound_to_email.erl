@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014, 2600Hz Inc
+%%% @copyright (C) 2014-2015, 2600Hz Inc
 %%% @doc
 %%%
 %%% @end
@@ -70,7 +70,7 @@ init() ->
 -spec get_fax_doc(wh_json:object()) -> wh_json:object().
 get_fax_doc(DataJObj) ->
     AccountId = teletype_util:find_account_id(DataJObj),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = ?WH_FAXES,
     FaxId = wh_json:get_value(<<"fax_id">>, DataJObj),
 
     case couch_mgr:open_doc(AccountDb, FaxId) of
@@ -161,7 +161,7 @@ handle_fax_outbound(DataJObj) ->
     lager:debug("rendered subject: ~s", [Subject]),
 
     Emails = teletype_util:find_addresses(wh_json:set_value(<<"to">>
-                                                            ,to_email_addresses(DataJObj)
+                                                            ,to_email_addresses(FaxJObj)
                                                             ,DataJObj
                                                            )
                                           ,TemplateMetaJObj
@@ -363,6 +363,8 @@ to_email_addresses(DataJObj) ->
     to_email_addresses(DataJObj
                        ,wh_json:get_first_defined([[<<"to">>, <<"email_addresses">>]
                                                    ,[<<"fax">>, <<"email">>, <<"send_to">>]
+                                                   ,[<<"fax_notifications">>, <<"email">>, <<"send_to">>]
+                                                   ,[<<"notifications">>, <<"email">>, <<"send_to">>]
                                                    ,[<<"owner">>, <<"email">>]
                                                    ,[<<"owner">>, <<"username">>]
                                                   ]

@@ -70,17 +70,8 @@ init() ->
 -spec get_fax_doc(wh_json:object()) -> wh_json:object().
 get_fax_doc(DataJObj) ->
     AccountId = teletype_util:find_account_id(DataJObj),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     FaxId = wh_json:get_value(<<"fax_id">>, DataJObj),
-
-    case couch_mgr:open_doc(AccountDb, FaxId) of
-        {'ok', FaxJObj} -> FaxJObj;
-        {'error', 'not_found'} ->
-            get_fax_doc_from_modb(DataJObj, AccountId, FaxId);
-        {'error', _E} ->
-            lager:debug("failed to find fax ~s: ~p", [FaxId, _E]),
-            maybe_send_failure(DataJObj, <<"Fax-ID was invalid">>)
-    end.
+    get_fax_doc_from_modb(DataJObj, AccountId, FaxId).
 
 -spec get_fax_doc_from_modb(wh_json:object(), ne_binary(), ne_binary()) -> wh_json:object().
 get_fax_doc_from_modb(DataJObj, AccountId, FaxId) ->
@@ -161,7 +152,7 @@ handle_fax_inbound(DataJObj) ->
     lager:debug("rendered subject: ~s", [Subject]),
 
     Emails = teletype_util:find_addresses(wh_json:set_value(<<"to">>
-                                                            ,to_email_addresses(DataJObj)
+                                                            ,to_email_addresses(FaxJObj)
                                                             ,DataJObj
                                                            )
                                           ,TemplateMetaJObj
@@ -296,10 +287,10 @@ get_attachment_binary(Db, Id, Retries, AttachmentJObj) ->
 
 -spec fax_db(wh_json:object()) -> ne_binary().
 fax_db(DataJObj) ->
-    case teletype_util:find_account_db(DataJObj) of
-        'undefined' -> ?WH_FAXES;
-        Db -> Db
-    end.
+    FaxId = wh_json:get_value(<<"fax_id">>, DataJObj),
+    AccountId = teletype_util:find_account_id(DataJObj),
+    <<Year:4/binary, Month:2/binary, "-", _/binary>> = FaxId,
+    kazoo_modb:get_modb(AccountId, Year, Month).
 
 -spec build_template_data(wh_json:object()) -> wh_proplist().
 build_template_data(DataJObj) ->
@@ -362,6 +353,8 @@ to_email_addresses(DataJObj) ->
     to_email_addresses(DataJObj
                        ,wh_json:get_first_defined([[<<"to">>, <<"email_addresses">>]
                                                    ,[<<"fax">>, <<"email">>, <<"send_to">>]
+                                                   ,[<<"fax_notifications">>, <<"email">>, <<"send_to">>]
+                                                   ,[<<"notifications">>, <<"email">>, <<"send_to">>]
                                                    ,[<<"owner">>, <<"email">>]
                                                    ,[<<"owner">>, <<"username">>]
                                                   ]

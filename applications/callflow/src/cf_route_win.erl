@@ -183,6 +183,7 @@ get_callee_extension_info(Call) ->
 -spec bootstrap_callflow_executer(wh_json:object(), whapps_call:call()) -> {'ok', pid()}.
 bootstrap_callflow_executer(_JObj, Call) ->
     Routines = [fun store_owner_id/1
+                ,fun set_language/1
                 ,fun update_ccvs/1
                 %% all funs above here return whapps_call:call()
                 ,fun execute_callflow/1
@@ -207,6 +208,25 @@ store_owner_id(Call) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
+-spec set_language(whapps_call:call()) -> whapps_call:call().
+set_language(Call) ->
+    Default = wh_media_util:prompt_language(whapps_call:account_id(Call)),
+    case cf_endpoint:get(Call) of
+        {'ok', Endpoint} ->
+            Language = wh_json:get_value(<<"language">>, Endpoint, Default),
+            lager:debug("setting language '~s' for this call", [Language]),
+            whapps_call:set_language(wh_util:to_lower_binary(Language), Call);
+        {'error', _E} ->
+            lager:debug("no source endpoint for this call, setting language to default ~s", [Default]),
+            whapps_call:set_language(Default, Call)
+    end.
+
+%%-----------------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%-----------------------------------------------------------------------------
 -spec update_ccvs(whapps_call:call()) -> whapps_call:call().
 update_ccvs(Call) ->
     CallerIdType = case whapps_call:inception(Call) of
@@ -215,7 +235,8 @@ update_ccvs(Call) ->
                    end,
     {CIDNumber, CIDName} = cf_attributes:caller_id(CallerIdType, Call),
     lager:info("bootstrapping with caller id type ~s: \"~s\" ~s"
-               ,[CallerIdType, CIDName, CIDNumber]),
+               ,[CallerIdType, CIDName, CIDNumber]
+              ),
     Props = props:filter_undefined(
               [{<<"Hold-Media">>, cf_attributes:moh_attributes(<<"media_id">>, Call)}
                ,{<<"Caller-ID-Name">>, CIDName}
@@ -247,7 +268,7 @@ maybe_start_endpoint_metaflow(Call, EndpointId) ->
         {'ok', JObj} ->
             wh_json:to_proplist(
               cf_util:encryption_method_map(wh_json:new(), JObj)
-            )
+             )
     end.
 
 %%-----------------------------------------------------------------------------

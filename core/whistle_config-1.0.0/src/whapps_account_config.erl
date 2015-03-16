@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz
+%%% @copyright (C) 2012-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -29,13 +29,38 @@ get_global(Account, Category, Key) ->
     get_global(Account, Category, Key, 'undefined').
 get_global(Account, Category, Key, Default) ->
     AccountId = account_id(Account),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, config_doc_id(Category), [{'cache_failures', ['not_found']}]) of
+    case get_global_from_account(AccountId, Category, Key, Default) of
+        {'ok', JObj} -> get_global_from_doc(Category, Key, Default, JObj);
+        {'error', _} -> maybe_get_global_from_reseller(AccountId, Category, Key, Default)
+    end.
+
+-spec maybe_get_global_from_reseller(account(), ne_binary(), wh_json:key(), wh_json:json_term()) ->
+                        wh_json:json_term().
+maybe_get_global_from_reseller(Account, Category, Key, Default) ->
+    AccountId = account_id(Account),
+    ResellerId = wh_services:find_reseller_id(AccountId),
+    maybe_get_global_from_reseller(AccountId, ResellerId, Category, Key, Default).
+
+-spec maybe_get_global_from_reseller(account(), account(), ne_binary(), wh_json:key(), wh_json:json_term()) ->
+                        wh_json:json_term().
+maybe_get_global_from_reseller(AccountId, AccountId, Category, Key, Default) ->
+    whapps_config:get(Category, Key, Default);
+maybe_get_global_from_reseller(_AccountId, ResellerId, Category, Key, Default) ->
+    case get_global_from_account(ResellerId, Category, Key, Default) of
         {'ok', JObj} -> get_global_from_doc(Category, Key, Default, JObj);
         {'error', _} -> whapps_config:get(Category, Key, Default)
     end.
 
--spec get_global_from_doc(ne_binary(), wh_json:key(), wh_json:json_term(), wh_json:object()) -> wh_json:object().
+-spec get_global_from_account(account(), ne_binary(), wh_json:key(), wh_json:json_term()) ->
+                                     {'ok', wh_json:object()} |
+                                     {'error', _}.
+get_global_from_account(Account, Category, _Key, _Default) ->
+    AccountId = account_id(Account),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    couch_mgr:open_cache_doc(AccountDb, config_doc_id(Category), [{'cache_failures', ['not_found']}]).
+
+-spec get_global_from_doc(ne_binary(), wh_json:key(), wh_json:json_term(), wh_json:object()) ->
+                                 wh_json:object().
 get_global_from_doc(Category, Key, Default, JObj) ->
     case wh_json:get_value(Key, JObj) of
         'undefined' -> whapps_config:get(Category, Key, Default);

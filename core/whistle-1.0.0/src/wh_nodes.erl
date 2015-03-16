@@ -69,7 +69,7 @@
 -record(node, {node = node() :: atom() | '$1' | '$2' | '_'
                ,expires = 0 :: non_neg_integer() | 'undefined' | '$2' | '_'
                ,whapps = [] :: whapps_info() | '$1' | '_'
-               ,media_servers = [] :: wh_proplist() | '_'
+               ,media_servers = [] :: wh_proplist() | atoms() | '_'
                ,last_heartbeat = wh_util:now_ms(now()) :: pos_integer() | 'undefined' | '$3' | '_'
                ,zone :: ne_binary() | '_'
                ,broker :: api_binary() | '_'

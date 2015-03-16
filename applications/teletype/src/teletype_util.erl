@@ -30,6 +30,10 @@
 
 -include("teletype.hrl").
 
+-define(TEMPLATE_RENDERING_ORDER, [{<<"text/plain">>, 3}
+                                   ,{<<"text/html">>, 2}
+                                  ]).
+
 -spec send_email(email_map(), ne_binary(), wh_proplist(), rendered_templates()) ->
                         'ok' | {'error', _}.
 -spec send_email(email_map(), ne_binary(), wh_proplist(), rendered_templates(), attachments()) ->
@@ -61,7 +65,7 @@ send_email(Emails, Subject, ServiceData, RenderedTemplates, Attachments) ->
 
     relay_email(To, From, Email).
 
--spec email_body(wh_proplist(), wh_proplist()) -> mimemail:mimetuple().
+-spec email_body(rendered_templates(), wh_proplist()) -> mimemail:mimetuple().
 email_body(RenderedTemplates, ServiceData) ->
     {<<"multipart">>
      ,<<"alternative">>
@@ -225,11 +229,11 @@ add_attachments([{ContentType, Filename, Content}|As], Acc) ->
     lager:debug("adding attachment ~s (~s)", [Filename, ContentType]),
     add_attachments(As, [Attachment | Acc]).
 
--spec add_rendered_templates_to_email(wh_proplist(), wh_proplist()) -> mime_tuples().
+-spec add_rendered_templates_to_email(rendered_templates(), wh_proplist()) -> mime_tuples().
 add_rendered_templates_to_email(RenderedTemplates, ServiceData) ->
-    add_rendered_templates_to_email(RenderedTemplates, service_charset(ServiceData), []).
+    add_rendered_templates_to_email(sort_templates(RenderedTemplates), service_charset(ServiceData), []).
 
--spec add_rendered_templates_to_email(wh_proplist(), binary(), mime_tuples()) -> mime_tuples().
+-spec add_rendered_templates_to_email(rendered_templates(), binary(), mime_tuples()) -> mime_tuples().
 add_rendered_templates_to_email([], _Charset, Acc) -> Acc;
 add_rendered_templates_to_email([{ContentType, Content}|Rs], Charset, Acc) ->
     [Type, SubType] = binary:split(ContentType, <<"/">>),
@@ -726,6 +730,15 @@ fetch_templates(TemplateId, AccountDb, Attachments) ->
        || Attachment <- wh_json:to_proplist(Attachments)
       ]).
 
+-spec sort_templates(rendered_templates()) -> rendered_templates().
+sort_templates(RenderedTemplates) ->
+    lists:sort(fun sort_templates/2, RenderedTemplates).
+
+-spec sort_templates({ne_binary(), _}, {ne_binary(), _}) -> boolean().
+sort_templates({K1, _}, {K2, _}) ->
+    props:get_value(K1, ?TEMPLATE_RENDERING_ORDER, 1) =<
+        props:get_value(K2, ?TEMPLATE_RENDERING_ORDER, 1).
+
 -spec find_account_id(wh_json:object()) -> api_binary().
 find_account_id(JObj) ->
     wh_json:get_first_defined([<<"account_id">>
@@ -737,6 +750,7 @@ find_account_id(JObj) ->
 find_account_db(JObj) ->
     case wh_json:get_first_defined([<<"account_db">>
                                     ,<<"pvt_account_db">>
+                                    ,<<"Account-DB">>
                                    ]
                                    ,JObj
                                   )
@@ -895,9 +909,25 @@ filter_for_admins(Users) ->
 -spec should_handle_notification(wh_json:object()) -> boolean().
 should_handle_notification(DataJObj) ->
     AccountId = find_account_id(DataJObj),
-    AccountDb = find_account_db(DataJObj),
+    ResellerId = wh_services:find_reseller_id(AccountId),
+    should_handle_notification_for_account(AccountId, ResellerId).
+
+-spec should_handle_notification_for_account(ne_binary(), ne_binary()) -> boolean().
+should_handle_notification_for_account(AccountId, AccountId) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
-    kz_account:notification_preference(AccountJObj) =/= 'undefined'.
+    kz_account:notification_preference(AccountJObj) =:= 'teletype';
+should_handle_notification_for_account(AccountId, ResellerId) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
+    {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+    {'ok', ResellerJObj} = couch_mgr:open_cache_doc(ResellerDb, ResellerId),
+
+    kz_account:notification_preference(AccountJObj) =:= <<"teletype">>
+        orelse (kz_account:notification_preference(ResellerJObj) =:= <<"teletype">>
+                    andalso kz_account:notification_preference(AccountJObj) =:= 'undefined'
+               )
+        orelse should_handle_notification_for_account(ResellerId, wh_services:find_reseller_id(ResellerId)).
 
 -define(MOD_CONFIG_CAT(Key), <<(?NOTIFY_CONFIG_CAT)/binary, ".", Key/binary>>).
 
