@@ -44,6 +44,9 @@
                      ,{{'teletype_deregister', 'handle_deregister'}
                        ,[{<<"notification">>, <<"deregister">>}]
                       }
+                     ,{{'teletype_password_recovery', 'handle_password_recovery'}
+                       ,[{<<"notification">>, <<"password_recovery">>}]
+                      }
                     ]).
 %% -define(RESPONDERS, []}
 
@@ -51,7 +54,7 @@
 %%                      ,{'teletype_fax_inbound_error_to_email', [{<<"notification">>, <<"inbound_fax_error">>}]}
 %%                      ,{'teletype_fax_outbound_error_to_email', [{<<"notification">>, <<"outbound_fax_error">>}]}
 
-%%                      ,{'teletype_password_recovery', [{<<"notification">>, <<"password_recovery">>}]}
+
 %%                      ,{'teletype_new_account', [{<<"notification">>, <<"new_account">>}]}
 %%                      ,{'teletype_cnam_request', [{<<"notification">>, <<"cnam_request">>}]}
 %%                      ,{'teletype_port_request', [{<<"notification">>, <<"port_request">>}]}
@@ -73,7 +76,7 @@
                       %% ,'inbound_fax_error'
                       %% ,'outbound_fax_error'
                       ,'deregister'
-                      %% ,'pwd_recovery'
+                      ,'pwd_recovery'
                       %% ,'new_account'
                       %% ,'cnam_requests'
                       %% ,'port_request'
@@ -239,6 +242,6 @@ should_handle_account(Account) ->
 
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
         {'ok', AccountJObj} ->
-            kz_account:notification_preference(AccountJObj) =/= 'undefined';
+            kz_account:notification_preference(AccountJObj) =:= ?APP_NAME;
         {'error', _E} -> 'true'
     end.
