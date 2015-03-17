@@ -14,9 +14,9 @@
 
 -include("../teletype.hrl").
 
--define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".new_user">>).
+-define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".system_alert">>).
 
--define(TEMPLATE_ID, <<"new_user">>).
+-define(TEMPLATE_ID, <<"system_alert">>).
 -define(TEMPLATE_MACROS
         ,wh_json:from_list(
            [?MACRO_VALUE(<<"message">>, <<"message">>, <<"Message">>, <<"System message">>)
@@ -80,7 +80,7 @@ handle_req(DataJObj) ->
 -spec process_req(wh_json:object()) -> 'ok'.
 -spec process_req(wh_json:object(), wh_proplist()) -> 'ok'.
 process_req(DataJObj) ->
-    _ = send_update(<<"pending">>),
+    _ = teletype_util:send_update(DataJObj, <<"pending">>),
     %% Load templates
     process_req(DataJObj, teletype_util:fetch_templates(?TEMPLATE_ID, DataJObj)).
 
@@ -122,8 +122,8 @@ process_req(DataJObj, Templates) ->
                                   ,RenderedTemplates
                                  )
     of
-        'ok' -> send_update(<<"completed">>);
-        {'error', Reason} -> send_update(<<"failed">>, Reason)
+        'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
+        {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
 
 -spec details_macros(wh_json:object()) -> wh_proplist().
@@ -152,16 +152,4 @@ public_proplist(Key, JObj) ->
         wh_json:public_fields(
             wh_json:get_value(Key, JObj, wh_json:new())
         )
-    ).
-
--spec send_update(ne_binary()) -> 'ok'.
--spec send_update(ne_binary(), api_binary()) -> 'ok'.
-send_update(Status) ->
-    send_update(Status, 'undefined').
-
-send_update(Status, Reason) ->
-    teletype_util:send_update(
-        wh_json:from_list([{<<"server_id">>, erlang:get('server_id')}])
-        ,Status
-        ,Reason
     ).
