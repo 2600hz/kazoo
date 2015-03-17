@@ -28,7 +28,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec update_presence(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-update_presence(SlotNumber, PresenceId, AccountDb) ->
+update_presence(SlotNumber, _PresenceId, AccountDb) ->
      AccountId = wh_util:format_account_id(AccountDb, 'raw'),
      ParkedCalls = get_parked_calls(AccountDb, AccountId),
      case wh_json:get_value([<<"slots">>, SlotNumber, <<"Call-ID">>], ParkedCalls) of
@@ -621,7 +621,7 @@ wait_for_ringback(Fun, Call) ->
     end.
 
 -spec update_presence(ne_binary(), api_object()) -> 'ok'.
-update_presence(State, 'undefined') -> 'ok';
+update_presence(_State, 'undefined') -> 'ok';
 update_presence(State, Slot) ->
     PresenceId = wh_json:get_value(<<"Presence-ID">>, Slot),
     TargetURI = wh_json:get_value(<<"CID-URI">>, Slot),
