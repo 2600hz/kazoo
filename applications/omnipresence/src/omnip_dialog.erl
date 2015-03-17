@@ -323,6 +323,12 @@ build_update_to_uri(?PRESENCE_RINGING, <<"park">>, From, CallId, SwitchURI) ->
       ";kazoo-id=", (wh_util:uri_encode(CallId))/binary,
       ";kazoo-switch=", (wh_util:uri_encode(SwitchURI))/binary,
       ";kazoo-pickup=true">>;
+build_update_to_uri(?PRESENCE_RINGING, _, From, CallId, 'undefined') ->
+    <<"sip:", From/binary,";kazoo-id=", (wh_util:uri_encode(CallId))/binary>>;
+build_update_to_uri(?PRESENCE_RINGING, _, From, CallId, SwitchURI) ->
+    <<"sip:", From/binary,
+      ";kazoo-id=", (wh_util:uri_encode(CallId))/binary,
+      ";kazoo-switch=", (wh_util:uri_encode(SwitchURI))/binary>>;
 build_update_to_uri(_State, _App, From, _CallId, _) ->
     <<"sip:", From/binary>>.
 
