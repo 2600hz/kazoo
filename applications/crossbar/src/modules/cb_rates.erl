@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%% Upload a rate deck, query rates for a given DID
 %%% @end
@@ -9,6 +9,7 @@
 -module(cb_rates).
 
 -export([init/0
+         ,authorize/1
          ,allowed_methods/0, allowed_methods/1 ,allowed_methods/2
          ,resource_exists/0, resource_exists/1 ,resource_exists/2
          ,content_types_accepted/1
@@ -41,6 +42,7 @@
 %%%===================================================================
 init() ->
     _ = init_db(),
+    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.rates">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.rates">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.rates">>, ?MODULE, 'validate'),
@@ -52,6 +54,15 @@ init() ->
 init_db() ->
     _ = couch_mgr:db_create(?WH_RATES_DB),
     couch_mgr:revise_doc_from_file(?WH_RATES_DB, 'crossbar', "views/rates.json").
+
+authorize(Context) ->
+    authorize(Context, cb_context:req_nouns(Context)).
+
+authorize(_Context, [{<<"rates">>, [?NUMBER, _NumberToRate]}]) ->
+    lager:debug("authorizing rate request for ~s", [_NumberToRate]),
+    'true';
+authorize(_Context, _Nouns) ->
+    'false'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -153,19 +164,16 @@ delete(Context, _RateId) ->
 
 -spec validate_number(ne_binary(), cb_context:context()) -> cb_context:context().
 validate_number(Phonenumber, Context) ->
-    case wnm_util:is_reconcilable(Phonenumber) of 
-        'true' -> 
+    case wnm_util:is_reconcilable(Phonenumber) of
+        'true' ->
             rate_for_number(wnm_util:to_e164(Phonenumber), Context);
-        'false' -> 
+        'false' ->
             cb_context:add_validation_error(
-                <<"number format">>
-                ,<<"error">>
-                ,wh_json:from_list([
-                    {<<"message">>, <<"Format number is wrong. Should exceed 7 difits">>}
-                    ,{<<"cause">>, <<"Cause filed">>}
-                 ])
-                ,Context
-            )
+              <<"number format">>
+              ,<<"error">>
+              ,wh_json:from_list([{<<"message">>, <<"Number is un-rateable">>}])
+              ,Context
+             )
     end.
 
 %%%===================================================================
@@ -473,12 +481,32 @@ save_processed_rates(Context, Count) ->
 
 -spec rate_for_number(ne_binary(), cb_context:context()) -> cb_context:context().
 rate_for_number(Phonenumber, Context) ->
-    case wh_amqp_worker:call([{<<"To-DID">>, Phonenumber}| wh_api:default_headers(?APP_NAME, ?APP_VERSION)]
+    case wh_amqp_worker:call([{<<"To-DID">>, Phonenumber}
+                              ,{<<"Send-Empty">>, 'true'}
+                              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                             ]
                              ,fun wapi_rate:publish_req/1
                              ,fun wapi_rate:resp_v/1
-                             ,10000) of
-        {'ok', Rate} -> normalize_view(wh_json:set_value(<<"E164-Number">>, Phonenumber, Rate), Context); 
-        _ -> cb_context:add_system_error('No rate found for this number', Context) 
+                             ,10000
+                            )
+    of
+        {'ok', Rate} ->
+            lager:debug("found rate for ~s", [Phonenumber]),
+            maybe_handle_rate(Phonenumber, Context, Rate);
+        _E ->
+            lager:debug("failed to query for number ~s: ~p", [Phonenumber, _E]),
+            cb_context:add_system_error('No rate found for this number', Context)
+    end.
+
+-spec maybe_handle_rate(ne_binary(), cb_context:context(), wh_json:object()) ->
+                               cb_context:context().
+maybe_handle_rate(Phonenumber, Context, Rate) ->
+    case wh_json:get_value(<<"Base-Cost">>, Rate) of
+        'undefined' ->
+            lager:debug("empty rate response for ~s", [Phonenumber]),
+            cb_context:add_system_error('No rate found for this number', Context);
+        _BaseCost ->
+            normalize_view(wh_json:set_value(<<"E164-Number">>, Phonenumber, Rate), Context)
     end.
 
 -spec normalize_view(wh_json:object(),cb_context:context()) -> cb_context:context().
@@ -487,16 +515,25 @@ normalize_view(Rate, Context) ->
 
 -spec filter_view(wh_json:object()) -> wh_json:object().
 filter_view(Rate) ->
-    normalize_fields(wh_json:filter(fun filter_fields/1, Rate)).
+    normalize_fields(
+      wh_json:filter(fun filter_fields/1, wh_api:remove_defaults(Rate))
+     ).
 
 -spec filter_fields(tuple()) -> boolean().
-filter_fields({K,_}) -> 
+filter_fields({K,_}) ->
     lists:member(K, ?NUMBER_RESP_FIELDS).
 
 -spec normalize_fields(wh_json:object()) -> wh_json:object().
 normalize_fields(Rate) ->
-    Routines = [fun(J) -> wh_json:set_value(<<"Base-Cost">>, wh_util:to_binary(wh_util:to_float(wh_json:get_value(<<"Base-Cost">>, J))/10000), J) end
-                ,fun(J) -> wh_json:set_value(<<"Rate">>, wh_util:to_binary(wh_util:to_float(wh_json:get_value(<<"Rate">>, J))/10000), J) end
-                ,fun(J) -> wh_json:set_value(<<"Surcharge">>, wh_util:to_binary(wh_util:to_float(wh_json:get_value(<<"Surcharge">>, J))/10000), J) end
-               ],
-    lists:foldl(fun(F, J) -> F(J) end, Rate, Routines).
+    wh_json:map(fun normalize_field/2, Rate).
+
+-spec normalize_field(wh_json:key(), wh_json:json_term()) ->
+                             {wh_json:key(), wh_json:json_term()}.
+normalize_field(<<"Base-Cost">> = K, BaseCost) ->
+    {K, wht_util:units_to_dollars(BaseCost)};
+normalize_field(<<"Rate">> = K, Rate) ->
+    {K, wht_util:units_to_dollars(Rate)};
+normalize_field(<<"Surcharge">> = K, Surcharge) ->
+    {K, wht_util:units_to_dollars(Surcharge)};
+normalize_field(K, V) ->
+    {K, V}.
