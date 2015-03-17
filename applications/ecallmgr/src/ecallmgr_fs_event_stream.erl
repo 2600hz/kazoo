@@ -31,6 +31,7 @@
                 ,idle_alert = 'infinity' :: wh_timeout()
                 ,switch_url :: api_binary()
                 ,switch_uri :: api_binary()
+                ,switch_info = 'false' :: boolean()
                }).
 -type state() :: #state{}.
 
@@ -149,16 +150,19 @@ handle_cast(_Msg, #state{idle_alert=Timeout}=State) ->
 %%--------------------------------------------------------------------
 handle_info({'tcp', Socket, Data}, #state{socket=Socket
                                          ,node=Node
-                                         ,switch_uri='undefined'
+                                         ,switch_info='false'
                                          }=State) ->
     try    
         SwitchURL = ecallmgr_fs_node:sip_url(Node),    
         [_, SwitchURIHost] = binary:split(SwitchURL, <<"@">>),
         SwitchURI = <<"sip:", SwitchURIHost/binary>>,
-        handle_info({'tcp', Socket, Data}, State#state{switch_uri=SwitchURI, switch_url=SwitchURL})
+        handle_info({'tcp', Socket, Data}, State#state{switch_uri=SwitchURI
+                                                       ,switch_url=SwitchURL
+                                                       ,switch_info='true'
+                                                      })
     catch
         E1:E2 -> lager:warning("failed to include switch_url/uri for node ~s : ~p : ~p",[Node, E1, E2]),
-                 handle_info({'tcp', Socket, Data}, State)
+                 handle_info({'tcp', Socket, Data}, State#state{switch_info='true'})
     end;
 handle_info({'tcp', Socket, Data}, #state{socket=Socket
                                          ,node=Node
