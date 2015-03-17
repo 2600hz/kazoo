@@ -65,26 +65,32 @@ get_rate_data(JObj) ->
                        ),
             {'error', 'no_rate_found'};
         {'ok', Rates} ->
-            lager:debug("candidate rates found, filtering"),
-            RouteOptions = wh_json:get_value(<<"Options">>, JObj, []),
-            Direction = wh_json:get_value(<<"Direction">>, JObj),
-            Matching = hon_util:matching_rates(Rates, ToDID, Direction, RouteOptions),
+            get_rate_data(JObj, ToDID, FromDID, Rates)
+    end.
 
-            case hon_util:sort_rates(Matching) of
-                [] ->
-                    wh_notify:system_alert("no rate found after filter/sort for ~s to ~s", [FromDID, ToDID]),
-                    lager:debug("no rates left for ~s to ~s after filter"
-                                ,[FromDID, ToDID]
-                               ),
-                    {'error', 'no_rate_found'};
-                [Rate|_] ->
-                    lager:debug("using rate ~s for ~s to ~s"
-                                ,[wh_json:get_value(<<"rate_name">>, Rate)
-                                  ,FromDID
-                                  ,ToDID
-                                 ]),
-                    {'ok', rate_resp(Rate, JObj)}
-            end
+-spec get_rate_data(wh_json:object(), ne_binary(), api_binary(), wh_json:objects()) ->
+                           {'ok', api_terms()} |
+                           {'error', 'no_rate_found'}.
+get_rate_data(JObj, ToDID, FromDID, Rates) ->
+    lager:debug("candidate rates found, filtering"),
+    RouteOptions = wh_json:get_value(<<"Options">>, JObj, []),
+    Direction = wh_json:get_value(<<"Direction">>, JObj),
+    Matching = hon_util:matching_rates(Rates, ToDID, Direction, RouteOptions),
+
+    case hon_util:sort_rates(Matching) of
+        [] ->
+            wh_notify:system_alert("no rate found after filter/sort for ~s to ~s", [FromDID, ToDID]),
+            lager:debug("no rates left for ~s to ~s after filter"
+                        ,[FromDID, ToDID]
+                       ),
+            {'error', 'no_rate_found'};
+        [Rate|_] ->
+            lager:debug("using rate ~s for ~s to ~s"
+                        ,[wh_json:get_value(<<"rate_name">>, Rate)
+                          ,FromDID
+                          ,ToDID
+                         ]),
+            {'ok', rate_resp(Rate, JObj)}
     end.
 
 -spec maybe_get_rate_discount(wh_json:object()) -> api_binary().
