@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% CDR
@@ -241,29 +241,34 @@ pagination_page_size(Context) ->
                        cb_context:context().
 load_view(View, ViewOptions, Context) ->
     AccountId = cb_context:account_id(Context),
-    ToMODb   = kazoo_modb:get_modb(AccountId, view_option('endkey',  ViewOptions)),
-    FromMODb = kazoo_modb:get_modb(AccountId, view_option('startkey',ViewOptions)),
+
     ContextChanges =
-        [ fun (C) -> cb_context:store(C, 'chunked_dbs', chunked_dbs(FromMODb,ToMODb)) end
-        , fun (C) -> cb_context:store(C, 'chunked_view_options', ViewOptions) end
-        , fun (C) -> cb_context:store(C, 'chunked_view', View) end
-        , fun (C) -> cb_context:set_resp_status(C, 'success') end
+        [fun(C) -> cb_context:store(C, 'chunked_dbs', chunked_dbs(AccountId, ViewOptions)) end
+         ,fun(C) -> cb_context:store(C, 'chunked_view_options', ViewOptions) end
+         ,fun(C) -> cb_context:store(C, 'chunked_view', View) end
+         ,fun(C) -> cb_context:set_resp_status(C, 'success') end
         ],
-    lists:fold(fun (F,C) -> F(C) end, Context, ContextChanges).
+    cb_context:setters(Context, ContextChanges).
 
--spec chunked_dbs(api_binary(), api_binary()) -> ne_binaries().
-chunked_dbs(From, To) ->
-    [MODb || MODb <- chunked_dbs(From, To, [])
-                 , MODb =/= 'undefined'
-                 , couch_mgr:db_exists(MODb)].
+-spec chunked_dbs(ne_binary(), wh_proplist()) -> ne_binaries().
+chunked_dbs(AccountId, ViewOptions) ->
+    To = view_option('startkey',ViewOptions),
+    From = view_option('endkey',  ViewOptions),
 
--spec chunked_dbs(api_binary(), api_binary(), api_binaries()) -> api_binaries().
-chunked_dbs(From, From, Acc) -> [From|Acc];
-chunked_dbs(FromMODb, To, Acc) ->
-    {AccountId, _Year, _Month} = kazoo_modb_util:split_account_mod(To),
-    {PrevYear, PrevMonth} = kazoo_modb_util:prev_year_month(To),
-    Modb = kazoo_modb:get_modb(AccountId, PrevYear, PrevMonth),
-    chunked_dbs(FromMODb, Modb, [To|Acc]).
+    [MODb || MODb <- ranged_modbs(AccountId, From, To),
+             couch_mgr:db_exists(MODb)
+    ].
+
+-spec ranged_modbs(ne_binary(), gregorian_seconds(), gregorian_seconds()) ->
+                          ne_binaries().
+ranged_modbs(AccountId, From, To) ->
+    {{FromYear, FromMonth, _}, _} = calendar:gregorian_seconds_to_datetime(From),
+    {{ToYear, ToMonth, _}, _} = calendar:gregorian_seconds_to_datetime(To),
+
+    Seq = crossbar_util:generate_year_month_sequence({FromYear, FromMonth}
+                                                     ,{ToYear, ToMonth}
+                                                    ),
+    [kazoo_modb:get_modb(AccountId, Year, Month) || {Year, Month} <- Seq].
 
 -spec view_option('endkey' | 'startkey', wh_proplist()) -> pos_integer().
 view_option(Key, ViewOptions) ->
@@ -354,7 +359,7 @@ get_cdr_ids(Db, View, ViewOptions) ->
 maybe_add_design_doc(Db) ->
     case couch_mgr:lookup_doc_rev(Db, <<"_design/cdrs">>) of
         {'error', 'not_found'} ->
-            lager:warning("adding cdr views to Db ~s", [Db]),
+            lager:warning("adding cdr views to modb: ~s", [Db]),
             couch_mgr:revise_doc_from_file(Db
                                            ,'crossbar'
                                            ,<<"account/cdrs.json">>
@@ -614,3 +619,8 @@ load_cdr(<<Year:4/binary, Month:2/binary, "-", _/binary>> = CDRId, Context) ->
 load_cdr(CDRId, Context) ->
     lager:debug("error loading cdr by id ~p", [CDRId]),
     crossbar_util:response('error', <<"could not find cdr with supplied id">>, 404, Context).
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+-endif.
