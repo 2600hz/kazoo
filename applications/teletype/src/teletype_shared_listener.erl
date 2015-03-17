@@ -50,6 +50,9 @@
                      ,{{'teletype_password_recovery', 'handle_password_recovery'}
                        ,[{<<"notification">>, <<"password_recovery">>}]
                       }
+                     ,{{'teletype_system_alert', 'handle_system_alert'}
+                       ,[{<<"notification">>, <<"system_alert">>}]
+                      }
                     ]).
 %% -define(RESPONDERS, []}
 
@@ -65,7 +68,6 @@
 %%                      ,{'teletype_ported', [{<<"notification">>, <<"ported">>}]}
 %%                      ,{'teletype_low_balance', [{<<"notification">>, <<"low_balance">>}]}
 %%                      ,{'teletype_transaction', [{<<"notification">>, <<"transaction">>}]}
-%%                      ,{'teletype_system_alert', [{<<"notification">>, <<"system_alert">>}]}
 %%                      ,{'teletype_topup', [{<<"notification">>, <<"topup">>}]}
 
 %%                     ]).
@@ -85,7 +87,7 @@
                       %% ,'port_cancel'
                       %% ,'low_balance'
                       %% ,'transaction'
-                      %% ,'system_alerts'
+                      ,'system_alerts'
                       %%,'skel'
                      ]).
 
