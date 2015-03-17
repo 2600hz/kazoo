@@ -169,6 +169,9 @@
             "$ref":"caller_id",
             "default": {}
         },
+        "disable_call_waiting":{
+            "$ref":"call_waiting_description"
+        },
         "music_on_hold": {
             "type": "object",
             "required": false,
