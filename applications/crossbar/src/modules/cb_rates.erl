@@ -33,6 +33,7 @@
                              ,<<"Rate-Description">>, <<"Base-Cost">>
                              ,<<"Rate">>, <<"Rate-Minimum">>
                              ,<<"Rate-Increment">>, <<"Surcharge">>
+                             ,<<"E164-Number">>
                             ]).
 
 %%%===================================================================
@@ -152,9 +153,9 @@ delete(Context, _RateId) ->
 
 -spec validate_number(ne_binary(), cb_context:context()) -> cb_context:context().
 validate_number(Phonenumber, Context) ->
-    case length(re:replace(Phonenumber, "[^0-9]", "", [global, {return, list}])) >= 7 of 
+    case wnm_util:is_reconcilable(Phonenumber) of 
         'true' -> 
-            rate_for_number(re:replace(Phonenumber, "[^0-9]", "", [global, {return, list}]), Context);
+            rate_for_number(wnm_util:to_e164(Phonenumber), Context);
         'false' -> 
             cb_context:add_validation_error(
                 <<"number format">>
@@ -472,11 +473,11 @@ save_processed_rates(Context, Count) ->
 
 -spec rate_for_number(ne_binary(), cb_context:context()) -> cb_context:context().
 rate_for_number(Phonenumber, Context) ->
-    case wh_amqp_worker:call([{<<"To-DID">>, wnm_util:normalize_number(Phonenumber)}| wh_api:default_headers(?APP_NAME, ?APP_VERSION)]
+    case wh_amqp_worker:call([{<<"To-DID">>, Phonenumber}| wh_api:default_headers(?APP_NAME, ?APP_VERSION)]
                              ,fun wapi_rate:publish_req/1
                              ,fun wapi_rate:resp_v/1
                              ,10000) of
-        {'ok', Rate} -> normalize_view(Rate, Context); 
+        {'ok', Rate} -> normalize_view(wh_json:set_value(<<"E164-Number">>, Phonenumber, Rate), Context); 
         _ -> cb_context:add_system_error('No rate found for this number', Context) 
     end.
 
