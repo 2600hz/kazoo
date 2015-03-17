@@ -110,10 +110,6 @@ retrieve(SlotNumber, ParkedCalls, Call) ->
                     cleanup_slot(SlotNumber, ParkedCall, whapps_call:account_db(Call)),
                     whapps_call_command:wait_for_hangup();
                 {'error', _E}=E ->
-%%                     PresenceId = wh_json:get_value(<<"Presence-ID">>, Slot),
-%%                     ParkedURI = wh_json:get_value(<<"CID-URI">>, Slot),
-%%                     lager:info("update presence-id '~s' with state: terminated", [PresenceId]),
-%%                     _ = whapps_call_command:presence(<<"terminated">>, PresenceId, ParkedCall, ParkedURI, Call),
                     update_presence(<<"terminated">>, Slot),
                     lager:debug("failed to retrieve slot: ~p", [_E]),
                     E
@@ -214,10 +210,7 @@ park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Call) ->
         %% blind transfer and allowed to update the provided slot number
         {_, {'ok', _}} ->
             ParkedCallId = wh_json:get_value(<<"Call-ID">>, Slot),
-%            PresenceId = wh_json:get_value(<<"Presence-ID">>, Slot),
-%            ParkedURI = wh_json:get_value(<<"CID-URI">>, Slot),
             lager:info("call ~s parked in slot ~s", [ParkedCallId, SlotNumber]),
-%            whapps_call_command:presence(<<"early">>, PresenceId, ParkedCallId, ParkedURI, Call),
             update_presence(<<"early">>, Slot),
             wait_for_pickup(SlotNumber, Slot, Call)
     end.
@@ -393,10 +386,6 @@ update_call_id(Replaces, ParkedCalls, Call, Loops) ->
             JObj = wh_json:set_value([<<"slots">>, SlotNumber], UpdatedSlot, ParkedCalls),
             case couch_mgr:save_doc(whapps_call:account_db(Call), JObj) of
                 {'ok', _} ->
-%%                     PresenceId = wh_json:get_value(<<"Presence-ID">>, UpdatedSlot),
-%%                     ParkedCallURI = wh_json:get_value(<<"CID-URI">>, UpdatedSlot),
-%%                     lager:info("update presence-id '~s' with state: early", [PresenceId]),
-%%                     whapps_call_command:presence(<<"early">>, PresenceId, CallId, ParkedCallURI, Call),
                     update_presence(<<"early">>, UpdatedSlot),
                     {'ok', SlotNumber, UpdatedSlot};
                 {'error', 'conflict'} ->
@@ -508,10 +497,6 @@ cleanup_slot(SlotNumber, ParkedCallId, AccountDb) ->
                     lager:info("delete parked call ~s in slot ~s", [ParkedCallId, SlotNumber]),
                     case couch_mgr:save_doc(AccountDb, wh_json:delete_key([<<"slots">>, SlotNumber], JObj)) of
                         {'ok', _}=Ok ->
-%%                             PresenceId = wh_json:get_value([<<"slots">>, SlotNumber, <<"Presence-ID">>], JObj),
-%%                             ParkedURI = wh_json:get_value([<<"slots">>, SlotNumber, <<"CID-URI">>], JObj),
-%%                             lager:info("update presence-id '~s' with state: terminated", [PresenceId]),
-%%                             _ = whapps_call_command:presence(<<"terminated">>, PresenceId, ParkedCallId, ParkedURI, 'undefined'),
                             Slot = wh_json:get_value([<<"slots">>, SlotNumber], JObj),
                             update_presence(<<"terminated">>, Slot),
                             Ok;
