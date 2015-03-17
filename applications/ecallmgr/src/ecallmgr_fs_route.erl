@@ -347,9 +347,9 @@ start_message_handling(_Node, _FetchId, CallId, JObj) ->
 
 -spec route_req(ne_binary(), ne_binary(), wh_proplist(), atom()) -> wh_proplist().
 route_req(CallId, FetchId, Props, Node) ->
-    SwitchURL = ecallmgr_fs_nodes:sip_url(Node),
+    SwitchURL = ecallmgr_fs_node:sip_url(Node),
     [_, SwitchURIHost] = binary:split(SwitchURL, <<"@">>),
-    SwitchURI = <<"sip:", SwitchURIHost/binary>>,    
+    SwitchURI = <<"sip:", SwitchURIHost/binary>>,
     [{<<"Msg-ID">>, FetchId}
      ,{<<"Call-ID">>, CallId}
      ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, Props)}

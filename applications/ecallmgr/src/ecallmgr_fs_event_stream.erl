@@ -29,6 +29,8 @@
                 ,port :: inet:port_number()
                 ,socket :: inet:socket()
                 ,idle_alert = 'infinity' :: wh_timeout()
+                ,switch_url :: api_binary()
+                ,switch_uri :: api_binary()
                }).
 -type state() :: #state{}.
 
@@ -147,14 +149,32 @@ handle_cast(_Msg, #state{idle_alert=Timeout}=State) ->
 %%--------------------------------------------------------------------
 handle_info({'tcp', Socket, Data}, #state{socket=Socket
                                          ,node=Node
+                                         ,switch_uri='undefined'
+                                         }=State) ->
+    try    
+        SwitchURL = ecallmgr_fs_node:sip_url(Node),    
+        [_, SwitchURIHost] = binary:split(SwitchURL, <<"@">>),
+        SwitchURI = <<"sip:", SwitchURIHost/binary>>,
+        handle_info({'tcp', Socket, Data}, State#state{switch_uri=SwitchURI, switch_url=SwitchURL})
+    catch
+        E1:E2 -> lager:warning("failed to include switch_url/uri for node ~s",[Node]),
+                 handle_info({'tcp', Socket, Data}, State)
+    end;
+handle_info({'tcp', Socket, Data}, #state{socket=Socket
+                                         ,node=Node
                                          ,idle_alert=Timeout
+                                         ,switch_uri=SwitchURI
+                                         ,switch_url=SwitchURL
                                          }=State) ->
     try binary_to_term(Data) of
         {'event', [UUID | Props]} when is_binary(UUID) orelse UUID =:= 'undefined' ->
             EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
+            EventProps = props:filter_undefined([{<<"Switch-URL">>, SwitchURL}
+                                                 ,{<<"Switch-URI">>, SwitchURI}
+                                                ]) ++ Props ,
             _ = spawn(fun() ->
-                              maybe_send_event(EventName, UUID, Props, Node),
-                              process_event(EventName, UUID, Props, Node)
+                              maybe_send_event(EventName, UUID, EventProps, Node),
+                              process_event(EventName, UUID, EventProps, Node)
                       end),
             {'noreply', State, Timeout};
         _Else ->
