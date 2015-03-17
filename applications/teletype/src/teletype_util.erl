@@ -843,7 +843,7 @@ send_update(RespQ, MsgId, Status, Msg) ->
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     lager:debug("notification update (~s) sending to ~s", [Status, RespQ]),
-    wapi_notifications:publish_notify_update(RespQ, Prop).
+    wh_amqp_worker:cast(Prop, fun(P) -> wapi_notifications:publish_notify_update(RespQ, P) end).
 
 -spec find_account_rep_email(api_object() | ne_binary()) -> api_binaries().
 -spec find_account_rep_email(ne_binary(), api_binary()) -> api_binaries().

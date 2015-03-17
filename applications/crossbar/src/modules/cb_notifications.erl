@@ -82,7 +82,6 @@ authorize(Context, AuthAccountId, [{<<"notifications">>, _Id}]) ->
     cb_context:req_verb(Context) =:= ?HTTP_GET
         orelse AuthAccountId =:= MasterAccountId;
 authorize(_Context, _AuthAccountId, _Nouns) ->
-    lager:debug("not authz ~s for ~p", [_AuthAccountId, _Nouns]),
     'false'.
 
 %%--------------------------------------------------------------------
@@ -338,6 +337,8 @@ publish_fun(<<"fax_inbound_to_email">>) ->
     fun wapi_notifications:publish_fax_inbound/1;
 publish_fun(<<"fax_outbound_to_email">>) ->
     fun wapi_notifications:publish_fax_outbound/1;
+publish_fun(<<"new_account">>) ->
+    fun wapi_notifications:publish_new_account/1;
 publish_fun(<<"new_user">>) ->
     fun wapi_notifications:publish_new_user/1;
 publish_fun(<<"deregister">>) ->

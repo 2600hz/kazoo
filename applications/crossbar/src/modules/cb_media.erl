@@ -139,7 +139,6 @@ authorize_media(Context, [{<<"media">>, _}|_], 'undefined') ->
 authorize_media(Context, [{<<"media">>, _}, {<<"accounts">>, [AccountId]}], AccountId) ->
     cb_simple_authz:authorize(Context);
 authorize_media(_Context, _Nouns, _AccountId) ->
-    lager:debug("failing authz media: ~p ~p", [_Nouns, _AccountId]),
     'false'.
 
 %%--------------------------------------------------------------------
