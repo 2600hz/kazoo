@@ -251,21 +251,14 @@ handle_update(JObj, State, Expires) ->
 
 -spec handle_update(wh_json:object(), ne_binary(), ne_binary(), ne_binary(), integer()) -> any().
 handle_update(JObj, State, From, To, Expires) ->
-    To = wh_json:get_first_defined([<<"To">>, <<"Presence-ID">>], JObj),
-    From = wh_json:get_first_defined([<<"From">>, <<"Presence-ID">>], JObj),
     [ToUsername, ToRealm] = binary:split(To, <<"@">>),
     [FromUsername, FromRealm] = binary:split(From, <<"@">>),
-    Direction = wh_json:get_lower_binary(<<"Call-Direction">>, JObj),
-    ToURI = case {State, wh_json:get_value(<<"App-Name">>, JObj)} of
-                {?PRESENCE_RINGING, <<"park">>} ->
-                    <<"sip:", From/binary,";kazoo-pickup=true">>;
-                {_State, _App} ->
-                    <<"sip:", From/binary>>
-            end,
+
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj, ?FAKE_CALLID(From)),
 
     {User, Props} =
-        case Direction =:= <<"inbound">> of
-            'true' ->
+        case wh_json:get_lower_binary(<<"Call-Direction">>, JObj) of
+            <<"inbound">> ->
                 {From, props:filter_undefined(
                          [{<<"From">>, <<"sip:", From/binary>>}
                           ,{<<"From-User">>, FromUsername}
@@ -279,7 +272,7 @@ handle_update(JObj, State, From, To, Expires) ->
                           ,{<<"Expires">>, Expires}
                           ,{<<"Flush-Level">>, wh_json:get_value(<<"Flush-Level">>, JObj)}
                           ,{<<"Direction">>, <<"initiator">>}
-                          ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj, ?FAKE_CALLID(From))}
+                          ,{<<"Call-ID">>, CallId}
                           ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                           ,{<<"Event-Package">>, <<"dialog">>}
                           ,{<<"destination">>, ToUsername}
@@ -289,7 +282,12 @@ handle_update(JObj, State, From, To, Expires) ->
                           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                          ])
                 };
-            'false' ->
+            _Direction ->
+                App = wh_json:get_value(<<"App-Name">>, JObj),
+                SwitchURI = wh_json:get_value(<<"Switch-URI">>, JObj), 
+                TargetCallId = wh_json:get_value(<<"Target-Call-ID">>, JObj, CallId),
+                ToURI = build_update_to_uri(State, App, From, TargetCallId, SwitchURI),
+
                 {To, props:filter_undefined(
                        [{<<"From">>, <<"sip:", To/binary>>}
                         ,{<<"From-User">>, ToUsername}
@@ -304,7 +302,7 @@ handle_update(JObj, State, From, To, Expires) ->
                         ,{<<"Expires">>, Expires}
                         ,{<<"Flush-Level">>, wh_json:get_value(<<"Flush-Level">>, JObj)}
                         ,{<<"Direction">>, <<"recipient">>}
-                        ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj, ?FAKE_CALLID(To))}
+                        ,{<<"Call-ID">>, CallId}
                         ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                         ,{<<"Event-Package">>, <<"dialog">>}
                         ,{<<"destination">>, FromUsername}
@@ -316,6 +314,23 @@ handle_update(JObj, State, From, To, Expires) ->
                 }
         end,
     maybe_send_update(User, Props).
+
+-spec build_update_to_uri(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
+build_update_to_uri(?PRESENCE_RINGING, <<"park">>, From, CallId, 'undefined') ->
+    <<"sip:", From/binary,";kazoo-id=", (wh_util:uri_encode(CallId))/binary, ";kazoo-pickup=true">>;
+build_update_to_uri(?PRESENCE_RINGING, <<"park">>, From, CallId, SwitchURI) ->
+    <<"sip:", From/binary,
+      ";kazoo-id=", (wh_util:uri_encode(CallId))/binary,
+      ";kazoo-switch=", (wh_util:uri_encode(SwitchURI))/binary,
+      ";kazoo-pickup=true">>;
+build_update_to_uri(?PRESENCE_RINGING, _, From, CallId, 'undefined') ->
+    <<"sip:", From/binary,";kazoo-id=", (wh_util:uri_encode(CallId))/binary>>;
+build_update_to_uri(?PRESENCE_RINGING, _, From, CallId, SwitchURI) ->
+    <<"sip:", From/binary,
+      ";kazoo-id=", (wh_util:uri_encode(CallId))/binary,
+      ";kazoo-switch=", (wh_util:uri_encode(SwitchURI))/binary>>;
+build_update_to_uri(_State, _App, From, _CallId, _) ->
+    <<"sip:", From/binary>>.
 
 -spec maybe_send_update(ne_binary(), wh_proplist()) -> 'ok'.
 maybe_send_update(User, Props) ->
