@@ -84,13 +84,25 @@ sort_rates(Rates) ->
 %% Return whether the given rate is a candidate for the given DID
 %% taking into account direction of the call and options the DID
 %% needs to have available
--spec matching_rate(wh_json:object(), ne_binary(), 'undefined' | ne_binary(), trunking_options()) -> boolean().
+-spec matching_rate(wh_json:object(), ne_binary(), api_binary(), trunking_options()) -> boolean().
 matching_rate(Rate, E164, Direction, RouteOptions) ->
-    (Direction =:= 'undefined' orelse lists:member(Direction, wh_json:get_value([<<"direction">>], Rate, ?BOTH_DIRECTIONS)))
-        andalso options_match(RouteOptions, wh_json:get_value([<<"options">>], Rate, []))
-        andalso lists:any(fun(Regex) -> re:run(E164, Regex) =/= 'nomatch' end
-                          ,wh_json:get_value([<<"routes">>], Rate, [])
-                         ).
+    matching_direction(Rate, Direction)
+        andalso matching_options(Rate, RouteOptions)
+        andalso matching_routes(Rate, E164).
+
+-spec matching_routes(wh_json:object(), ne_binary()) -> boolean().
+matching_routes(Rate, E164) ->
+    lists:any(fun(Regex) -> re:run(E164, Regex) =/= 'nomatch' end
+              ,wh_json:get_value([<<"routes">>], Rate, [])
+             ).
+
+-spec matching_direction(wh_json:object(), api_binary()) -> boolean().
+matching_direction(_Rate, 'undefined') ->
+    'true';
+matching_direction(Rate, Direction) ->
+    lists:member(Direction
+                 ,wh_json:get_value([<<"direction">>], Rate, ?BOTH_DIRECTIONS)
+                ).
 
 %% Return true if RateA has lower weight than RateB
 -spec sort_rate(wh_json:object(), wh_json:object()) -> boolean().
@@ -110,11 +122,19 @@ sort_rate(RateA, RateB) ->
 %% Rate options come from the carrier providing the trunk
 %% All Route options must exist in a carrier's options to keep the carrier
 %% in the list of carriers capable of handling the call
+-spec matching_options(wh_json:object(), trunking_options()) -> boolean().
+matching_options(Rate, RouteOptions) ->
+    options_match(wh_json:get_value([<<"options">>], Rate, []), RouteOptions).
+
 -spec options_match(trunking_options(), trunking_options()) -> boolean().
 options_match([], []) -> 'true';
 options_match([], _) -> 'true';
-options_match(RouteOptions, RateOptions) ->
-    lists:all(fun(RouteOpt) -> props:get_value(RouteOpt, RateOptions, 'false') =/= 'false' end, RouteOptions).
+options_match(RateOptions, RouteOptions) ->
+    lists:all(fun(RouteOpt) ->
+                      props:get_value(RouteOpt, RateOptions, 'false') =/= 'false'
+              end
+              ,RouteOptions
+             ).
 
 -ifdef(TEST).
 build_keys_test() ->
@@ -123,4 +143,3 @@ build_keys_test() ->
     ?assertEqual([123, 12, 1], build_keys(<<"123">>)).
 
 -endif.
-

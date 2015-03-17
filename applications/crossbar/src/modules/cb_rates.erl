@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%% Upload a rate deck, query rates for a given DID
 %%% @end
@@ -9,10 +9,11 @@
 -module(cb_rates).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1
-         ,resource_exists/0, resource_exists/1
+         ,authorize/1
+         ,allowed_methods/0, allowed_methods/1 ,allowed_methods/2
+         ,resource_exists/0, resource_exists/1 ,resource_exists/2
          ,content_types_accepted/1
-         ,validate/1, validate/2
+         ,validate/1, validate/2, validate/3
          ,put/1
          ,post/1, post/2
          ,delete/2
@@ -22,17 +23,26 @@
 
 -define(PVT_FUNS, [fun add_pvt_type/2]).
 -define(PVT_TYPE, <<"rate">>).
+-define(NUMBER, <<"number">>).
 -define(CB_LIST, <<"rates/crossbar_listing">>).
 
 -define(UPLOAD_MIME_TYPES, [{<<"text">>, <<"csv">>}
                             ,{<<"text">>, <<"comma-separated-values">>}
                            ]).
 
+-define(NUMBER_RESP_FIELDS, [<<"Prefix">>, <<"Rate-Name">>
+                             ,<<"Rate-Description">>, <<"Base-Cost">>
+                             ,<<"Rate">>, <<"Rate-Minimum">>
+                             ,<<"Rate-Increment">>, <<"Surcharge">>
+                             ,<<"E164-Number">>
+                            ]).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
 init() ->
     _ = init_db(),
+    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.rates">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.rates">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.rates">>, ?MODULE, 'validate'),
@@ -44,6 +54,15 @@ init() ->
 init_db() ->
     _ = couch_mgr:db_create(?WH_RATES_DB),
     couch_mgr:revise_doc_from_file(?WH_RATES_DB, 'crossbar', "views/rates.json").
+
+authorize(Context) ->
+    authorize(Context, cb_context:req_nouns(Context)).
+
+authorize(_Context, [{<<"rates">>, [?NUMBER, _NumberToRate]}]) ->
+    lager:debug("authorizing rate request for ~s", [_NumberToRate]),
+    'true';
+authorize(_Context, _Nouns) ->
+    'false'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -62,6 +81,10 @@ allowed_methods() ->
 allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
+-spec allowed_methods(path_token(),path_token()) -> http_methods().
+allowed_methods(?NUMBER,_) ->
+    [?HTTP_GET].
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -75,6 +98,9 @@ resource_exists() -> 'true'.
 
 -spec resource_exists(path_token()) -> 'true'.
 resource_exists(_) -> 'true'.
+
+-spec resource_exists(path_token(),path_token()) -> 'true'.
+resource_exists(?NUMBER,_) -> 'true'.
 
 -spec content_types_accepted(cb_context:context()) -> cb_context:context().
 content_types_accepted(Context) ->
@@ -95,10 +121,13 @@ content_types_accepted_by_verb(Context, ?HTTP_POST) ->
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_rates(Context, cb_context:req_verb(Context)).
 validate(Context, Id) ->
     validate_rate(Context, Id, cb_context:req_verb(Context)).
+validate(Context, ?NUMBER, Phonenumber) ->
+    validate_number(Phonenumber, Context).
 
 -spec validate_rates(cb_context:context(), http_method()) -> cb_context:context().
 validate_rates(Context, ?HTTP_GET) ->
@@ -132,6 +161,20 @@ put(Context) ->
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _RateId) ->
     crossbar_doc:delete(Context).
+
+-spec validate_number(ne_binary(), cb_context:context()) -> cb_context:context().
+validate_number(Phonenumber, Context) ->
+    case wnm_util:is_reconcilable(Phonenumber) of
+        'true' ->
+            rate_for_number(wnm_util:to_e164(Phonenumber), Context);
+        'false' ->
+            cb_context:add_validation_error(
+              <<"number format">>
+              ,<<"error">>
+              ,wh_json:from_list([{<<"message">>, <<"Number is un-rateable">>}])
+              ,Context
+             )
+    end.
 
 %%%===================================================================
 %%% Internal functions
@@ -435,3 +478,62 @@ save_processed_rates(Context, Count) ->
                   _ = crossbar_doc:save(Context, [{'publish_doc', 'false'}]),
                   lager:debug("saved up to ~b docs (took ~b ms)", [Count, wh_util:elapsed_ms(Now)])
           end).
+
+-spec rate_for_number(ne_binary(), cb_context:context()) -> cb_context:context().
+rate_for_number(Phonenumber, Context) ->
+    case wh_amqp_worker:call([{<<"To-DID">>, Phonenumber}
+                              ,{<<"Send-Empty">>, 'true'}
+                              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                             ]
+                             ,fun wapi_rate:publish_req/1
+                             ,fun wapi_rate:resp_v/1
+                             ,10000
+                            )
+    of
+        {'ok', Rate} ->
+            lager:debug("found rate for ~s", [Phonenumber]),
+            maybe_handle_rate(Phonenumber, Context, Rate);
+        _E ->
+            lager:debug("failed to query for number ~s: ~p", [Phonenumber, _E]),
+            cb_context:add_system_error('No rate found for this number', Context)
+    end.
+
+-spec maybe_handle_rate(ne_binary(), cb_context:context(), wh_json:object()) ->
+                               cb_context:context().
+maybe_handle_rate(Phonenumber, Context, Rate) ->
+    case wh_json:get_value(<<"Base-Cost">>, Rate) of
+        'undefined' ->
+            lager:debug("empty rate response for ~s", [Phonenumber]),
+            cb_context:add_system_error('No rate found for this number', Context);
+        _BaseCost ->
+            normalize_view(wh_json:set_value(<<"E164-Number">>, Phonenumber, Rate), Context)
+    end.
+
+-spec normalize_view(wh_json:object(),cb_context:context()) -> cb_context:context().
+normalize_view(Rate, Context) ->
+    crossbar_util:response(filter_view(Rate), Context).
+
+-spec filter_view(wh_json:object()) -> wh_json:object().
+filter_view(Rate) ->
+    normalize_fields(
+      wh_json:filter(fun filter_fields/1, wh_api:remove_defaults(Rate))
+     ).
+
+-spec filter_fields(tuple()) -> boolean().
+filter_fields({K,_}) ->
+    lists:member(K, ?NUMBER_RESP_FIELDS).
+
+-spec normalize_fields(wh_json:object()) -> wh_json:object().
+normalize_fields(Rate) ->
+    wh_json:map(fun normalize_field/2, Rate).
+
+-spec normalize_field(wh_json:key(), wh_json:json_term()) ->
+                             {wh_json:key(), wh_json:json_term()}.
+normalize_field(<<"Base-Cost">> = K, BaseCost) ->
+    {K, wht_util:units_to_dollars(BaseCost)};
+normalize_field(<<"Rate">> = K, Rate) ->
+    {K, wht_util:units_to_dollars(Rate)};
+normalize_field(<<"Surcharge">> = K, Surcharge) ->
+    {K, wht_util:units_to_dollars(Surcharge)};
+normalize_field(K, V) ->
+    {K, V}.

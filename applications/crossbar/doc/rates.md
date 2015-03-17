@@ -16,6 +16,10 @@ This API is accessible only to users with the `super_duper_admin` property set.
 
     curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/rates
 
+### Rate informaton for particular number
+
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/rates/number/1234567890
+
 ### Create a rate
 
 See the system_schemas/rates doc for all the available options
