@@ -1028,6 +1028,7 @@ normalize_custom_sip_header_name(A) -> A.
 is_custom_sip_header({<<"P-", _/binary>>, _}) -> 'true';
 is_custom_sip_header({<<"X-", _/binary>>, _}) -> 'true';
 is_custom_sip_header({<<"sip_h_", _/binary>>, _}) -> 'true';
+is_custom_sip_header({<<"variable_sip_h_X-", ?CHANNEL_VAR_PREFIX, _/binary>>, _}) -> 'false';
 is_custom_sip_header({<<"variable_sip_h_", _/binary>>, _}) -> 'true';
 is_custom_sip_header(_Header) -> 'false'.
 

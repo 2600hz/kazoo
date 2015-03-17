@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Listener for reg_success, and reg_query AMQP requests
 %%% @end
@@ -93,6 +93,7 @@
                        ,account_realm :: api_binary() | '_' | '$2'
                        ,account_name :: api_binary() | '_'
                        ,proxy :: api_binary() | '_'
+                       ,bridge_uri :: api_binary() | '_'
                       }).
 
 -type registration() :: #registration{}.
@@ -172,18 +173,23 @@ reg_flush(JObj, _Props) ->
 -spec lookup_contact(ne_binary(), ne_binary()) ->
                             {'ok', ne_binary()} |
                             {'error', 'not_found'}.
-lookup_contact(Realm, Username) ->
-    case wh_util:is_empty(Realm) orelse wh_util:is_empty(Username) of
-        'true' -> {'error', 'not_found'};
-        'false' ->
-            case get_registration(Realm, Username) of
-                #registration{contact=Contact} ->
-                    lager:info("found user ~s@~s contact ~s"
-                               ,[Username, Realm, Contact]
+lookup_contact(<<>>, _Username) -> {'error', 'not_found'};
+lookup_contact(_Realm, <<>>) -> {'error', 'not_found'};
+lookup_contact(<<_/binary>> = Realm, <<_/binary>> = Username) ->
+    case get_registration(Realm, Username) of
+        'undefined' -> maybe_fetch_contact(Username, Realm);
+        #registration{contact=Contact
+                      ,bridge_uri='undefined'
+                     } ->
+            lager:info("found user ~s@~s contact ~s"
+                       ,[Username, Realm, Contact]
+                      ),
+            {'ok', Contact};
+        #registration{bridge_uri=Contact} ->
+            lager:info("found user ~s@~s bridge uri  ~s"
+                       ,[Username, Realm, Contact]
                               ),
-                    {'ok', Contact};
-                'undefined' -> maybe_fetch_contact(Username, Realm)
-            end
+            {'ok', Contact}
     end.
 
 -spec lookup_original_contact(ne_binary(), ne_binary()) ->
@@ -763,6 +769,7 @@ create_registration(JObj) ->
                                      ,register_overwrite_notify = wh_json:is_true(<<"Register-Overwrite-Notify">>, JObj)
                                      ,initial = wh_json:is_true(<<"First-Registration">>, JObj, Initial)
                                      ,proxy=Proxy
+                                     ,bridge_uri=bridge_uri(OriginalContact, Proxy, Username, Realm)
                                     }
                   ).
 
@@ -787,6 +794,25 @@ fix_contact(Contact) ->
                    ,<<>>
                    ,['global']
                   ).
+
+-spec bridge_uri(api_binary(), api_binary(), binary(), binary()) -> api_binary().
+bridge_uri(_Contact, 'undefined', _, _) -> 'undefined';
+bridge_uri('undefined', _Proxy, _, _) -> 'undefined';
+bridge_uri(Contact, Proxy, Username, Realm) ->
+    [#uri{}=UriContact] = nksip_parse_uri:uris(Contact),
+    [#uri{}=UriProxy] = nksip_parse_uri:uris(Proxy),
+    Scheme = UriContact#uri.scheme,
+    Transport = props:get_value(<<"transport">>, UriContact#uri.opts),
+
+    BridgeUri = #uri{scheme=Scheme
+                     ,user=Username
+                     ,domain=Realm
+                     ,opts=props:filter_undefined(
+                             [{<<"transport">>, Transport}
+                              ,{<<"fs_path">>, <<"'", (nksip_unparse:ruri(UriProxy))/binary, "'">>}
+                             ])
+                    },
+    nksip_unparse:ruri(BridgeUri).
 
 -spec existing_or_new_registration(ne_binary(), ne_binary()) -> registration().
 existing_or_new_registration(Username, Realm) ->
