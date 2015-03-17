@@ -48,6 +48,8 @@
 
 -export([set_switch_nodename/2, switch_nodename/1]).
 -export([set_switch_hostname/2, switch_hostname/1]).
+-export([set_switch_url/2, switch_url/1]).
+-export([set_switch_uri/2, switch_uri/1]).
 -export([set_inception/2, inception/1]).
 
 -export([set_authorizing_id/2, authorizing_id/1]).
@@ -124,13 +126,15 @@
                       ,callee_id_name :: api_binary()                     %% The callee name
                       ,callee_id_number :: api_binary()                   %% The callee number
                       ,switch_nodename = <<>> :: binary()                 %% The switch node name (as known in ecallmgr)
-                      ,switch_hostname :: api_binary()                     %% The switch hostname (as reported by the switch)
+                      ,switch_hostname :: api_binary()                    %% The switch hostname (as reported by the switch)
+                      ,switch_url :: api_binary()                         %% The switch url
+                      ,switch_uri :: api_binary()                         %% The switch uri
                       ,request = <<"nouser@norealm">> :: ne_binary()      %% The request of sip_request_user + @ + sip_request_host
                       ,request_user = <<"nouser">> :: ne_binary()         %% SIP request user
                       ,request_realm = <<"norealm">> :: ne_binary()       %% SIP request host
                       ,from = <<"nouser@norealm">> :: ne_binary()         %% Result of sip_from_user + @ + sip_from_host
                       ,from_user = <<"nouser">> :: ne_binary()            %% SIP from user
-                      ,from_realm = <<"norealm">> :: ne_binary()         %% SIP from host
+                      ,from_realm = <<"norealm">> :: ne_binary()          %% SIP from host
                       ,to = <<"nouser@norealm">> :: ne_binary()           %% Result of sip_to_user + @ + sip_to_host
                       ,to_user = <<"nouser">> :: ne_binary()              %% SIP to user
                       ,to_realm = <<"norealm">> :: ne_binary()            %% SIP to host
@@ -242,6 +246,8 @@ from_route_req(RouteReq, #whapps_call{call_id=OldCallId
         ,inception = wh_json:get_value(<<"Inception">>, CCVs, inception(Call))
         ,switch_hostname = wh_json:get_value(<<"Switch-Hostname">>, RouteReq, switch_hostname(Call))
         ,switch_nodename = wh_json:get_ne_value(<<"Switch-Nodename">>, RouteReq, switch_nodename(Call))
+        ,switch_url = wh_json:get_ne_value(<<"Switch-URL">>, RouteReq, switch_url(Call))
+        ,switch_uri = wh_json:get_ne_value(<<"Switch-URI">>, RouteReq, switch_uri(Call))
         ,authorizing_id = wh_json:get_ne_value(<<"Authorizing-ID">>, CCVs, authorizing_id(Call))
         ,authorizing_type = wh_json:get_ne_value(<<"Authorizing-Type">>, CCVs, authorizing_type(Call))
         ,owner_id = wh_json:get_ne_value(<<"Owner-ID">>, CCVs, owner_id(Call))
@@ -371,6 +377,8 @@ from_json(JObj, #whapps_call{ccvs=OldCCVs
       ,to_realm = wh_json:get_ne_value(<<"To-Realm">>, JObj, to_realm(Call))
       ,switch_hostname = wh_json:get_value(<<"Switch-Hostname">>, JObj, switch_hostname(Call))
       ,switch_nodename = wh_json:get_value(<<"Switch-Nodename">>, JObj, switch_nodename(Call))
+      ,switch_url = wh_json:get_value(<<"Switch-URL">>, JObj, switch_url(Call))
+      ,switch_uri = wh_json:get_value(<<"Switch-URI">>, JObj, switch_uri(Call))
       ,inception = wh_json:get_ne_value(<<"Inception">>, JObj, inception(Call))
       ,account_db = wh_json:get_ne_value(<<"Account-DB">>, JObj, account_db(Call))
       ,account_id = wh_json:get_ne_value(<<"Account-ID">>, JObj, account_id(Call))
@@ -435,6 +443,8 @@ to_proplist(#whapps_call{}=Call) ->
      ,{<<"To-Realm">>, to_realm(Call)}
      ,{<<"Switch-Hostname">>, switch_hostname(Call)}
      ,{<<"Switch-Nodename">>, switch_nodename(Call)}
+     ,{<<"Switch-URL">>, switch_url(Call)}
+     ,{<<"Switch-URI">>, switch_uri(Call)}
      ,{<<"Inception">>, inception(Call)}
      ,{<<"Account-DB">>, account_db(Call)}
      ,{<<"Account-ID">>, account_id(Call)}
@@ -658,6 +668,22 @@ set_switch_nodename(Srv, #whapps_call{}=Call) ->
 
 -spec switch_nodename(call()) -> binary().
 switch_nodename(#whapps_call{switch_nodename=Srv}) ->
+    Srv.
+
+-spec set_switch_url(ne_binary(), call()) -> call().
+set_switch_url(Srv, #whapps_call{}=Call) ->
+    Call#whapps_call{switch_url=Srv}.
+
+-spec switch_url(call()) -> binary().
+switch_url(#whapps_call{switch_url=Srv}) ->
+    Srv.
+
+-spec set_switch_uri(ne_binary(), call()) -> call().
+set_switch_uri(Srv, #whapps_call{}=Call) ->
+    Call#whapps_call{switch_uri=Srv}.
+
+-spec switch_uri(call()) -> binary().
+switch_uri(#whapps_call{switch_uri=Srv}) ->
     Srv.
 
 -spec set_inception(api_binary(), call()) -> call().

@@ -79,6 +79,7 @@
 -define(OPTIONAL_UPDATE_HEADERS, [<<"To">>, <<"To-Tag">>
                                   ,<<"From">>, <<"From-Tag">>
                                   ,<<"Call-Direction">>, <<"Call-ID">>
+                                  ,<<"Target-Call-ID">>, <<"Switch-URI">>
                                   ,<<"Event-Package">>
                                  ]).
 -define(UPDATE_VALUES, [{<<"Event-Category">>, <<"presence">>}

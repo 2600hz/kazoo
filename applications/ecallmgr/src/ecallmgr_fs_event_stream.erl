@@ -29,6 +29,9 @@
                 ,port :: inet:port_number()
                 ,socket :: inet:socket()
                 ,idle_alert = 'infinity' :: wh_timeout()
+                ,switch_url :: api_binary()
+                ,switch_uri :: api_binary()
+                ,switch_info = 'false' :: boolean()
                }).
 -type state() :: #state{}.
 
@@ -146,15 +149,40 @@ handle_cast(_Msg, #state{idle_alert=Timeout}=State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'tcp', Socket, Data}, #state{socket=Socket
+                                          ,node=Node
+                                          ,switch_info='false'
+                                         }=State) ->
+    try ecallmgr_fs_node:sip_url(Node) of
+        'undefined' ->
+            lager:debug("no sip url available yet for ~s", [Node]),
+            handle_no_switch({'tcp', Socket, Data}, State);
+        SwitchURL ->
+            [_, SwitchURIHost] = binary:split(SwitchURL, <<"@">>),
+            SwitchURI = <<"sip:", SwitchURIHost/binary>>,
+            handle_info({'tcp', Socket, Data}, State#state{switch_uri=SwitchURI
+                                                           ,switch_url=SwitchURL
+                                                           ,switch_info='true'
+                                                          })
+    catch
+        _E:_R ->
+            lager:warning("failed to include switch_url/uri for node ~s : ~p : ~p", [Node, _E, _R]),
+            handle_no_switch({'tcp', Socket, Data}, State)
+    end;
+handle_info({'tcp', Socket, Data}, #state{socket=Socket
                                          ,node=Node
                                          ,idle_alert=Timeout
+                                         ,switch_uri=SwitchURI
+                                         ,switch_url=SwitchURL
                                          }=State) ->
     try binary_to_term(Data) of
         {'event', [UUID | Props]} when is_binary(UUID) orelse UUID =:= 'undefined' ->
             EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
+            EventProps = props:filter_undefined([{<<"Switch-URL">>, SwitchURL}
+                                                 ,{<<"Switch-URI">>, SwitchURI}
+                                                ]) ++ Props ,
             _ = spawn(fun() ->
-                              maybe_send_event(EventName, UUID, Props, Node),
-                              process_event(EventName, UUID, Props, Node)
+                              maybe_send_event(EventName, UUID, EventProps, Node),
+                              process_event(EventName, UUID, EventProps, Node)
                       end),
             {'noreply', State, Timeout};
         _Else ->
@@ -168,7 +196,8 @@ handle_info({'tcp', Socket, Data}, #state{socket=Socket
     end;
 handle_info({'tcp_closed', Socket}, #state{socket=Socket, node=Node}=State) ->
     lager:info("event stream for ~p on node ~p closed"
-               ,[get_event_bindings(State), Node]),
+               ,[get_event_bindings(State), Node]
+              ),
     {'stop', 'normal', State#state{socket='undefined'}};
 handle_info({'tcp_error', Socket, _Reason}, #state{socket=Socket}=State) ->
     lager:warning("event stream tcp error: ~p", [_Reason]),
@@ -185,6 +214,15 @@ handle_info(_Msg, #state{socket='undefined'}=State) ->
 handle_info(_Msg, #state{idle_alert=Timeout}=State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State, Timeout}.
+
+-spec handle_no_switch({'tcp', term(), binary()}, state()) ->
+                              {'noreply', state(), wh_timeout()} |
+                              {'stop', _, state()}.
+handle_no_switch({'tcp', Socket, Data}, State) ->
+    case handle_info({'tcp', Socket, Data}, State#state{switch_info='true'}) of
+        {'noreply', _State, Timeout} -> {'noreply', State, Timeout};
+        {'stop', _Reason, _State}=STOP -> STOP
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
