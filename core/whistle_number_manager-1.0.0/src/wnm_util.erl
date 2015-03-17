@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%%
@@ -17,17 +17,20 @@
 
 -export([available_classifiers/0]).
 -export([classify_number/1]).
--export([is_reconcilable/1]).
+-export([is_reconcilable/1, is_reconcilable/2]).
 -export([list_carrier_modules/0]).
 -export([get_carrier_module/1]).
 -export([number_to_db_name/1]).
--export([normalize_number/1]).
--export([to_e164/1, to_npan/1, to_1npan/1]).
--export([is_e164/1, is_npan/1, is_1npan/1]).
+-export([normalize_number/1, normalize_number/2]).
+-export([to_e164/1, to_e164/2
+         ,to_npan/1, to_1npan/1
+        ]).
+-export([is_e164/1, is_e164/2
+         ,is_npan/1, is_1npan/1
+        ]).
 -export([find_account_id/1]).
 -export([get_all_number_dbs/0]).
 -export([are_jobjs_identical/2]).
--export([is_reconcilable/2, normalize_number/2, is_e164/2, to_e164/2]).
 
 -ifdef(TEST).
 -include_lib("proper/include/proper.hrl").
@@ -64,10 +67,10 @@
                                                                  ])}
                              ]).
 -define(DEFAULT_E164_CONVERTERS, [{<<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$">>
-                                       ,wh_json:from_list([{<<"prefix">>, <<"+1">>}])
+                                   ,wh_json:from_list([{<<"prefix">>, <<"+1">>}])
                                   }
                                   ,{<<"^011(\\d*)$|^00(\\d*)$">>
-                                        ,wh_json:from_list([{<<"prefix">>, <<"+">>}])
+                                    ,wh_json:from_list([{<<"prefix">>, <<"+">>}])
                                    }
                                  ]).
 -define(DEFAULT_RECONCILE_REGEX, <<"^\\+?1?\\d{10}$">>).
@@ -331,7 +334,6 @@ normalize_number(Number) ->
 normalize_number(Number, 'undefined') -> to_e164(Number);
 normalize_number(Number, AccountId) -> to_e164(Number, AccountId).
 
-
 -spec is_e164(ne_binary()) -> boolean().
 -spec is_e164(ne_binary(), ne_binary()) -> boolean().
 -spec is_npan(ne_binary()) -> boolean().
@@ -353,8 +355,8 @@ is_1npan(DID) ->
 to_e164(<<$+, _/binary>> = N) -> N;
 to_e164(Number) ->
     Converters = get_e164_converters(),
-    Regexs = wh_json:get_keys(Converters),
-    maybe_convert_to_e164(Regexs, Converters, Number).
+    Regexes = wh_json:get_keys(Converters),
+    maybe_convert_to_e164(Regexes, Converters, Number).
 
 -spec to_e164(ne_binary(), api_binary()) -> ne_binary().
 to_e164(<<$+, _/binary>> = N, _) -> N;
@@ -368,21 +370,20 @@ to_e164(Number, Account) ->
     end.
 
 -spec to_account_e164(ne_binary(), api_binary(), api_object()) -> ne_binary().
-to_account_e164(Number, AccountId, 'undefined') -> 
+to_account_e164(Number, AccountId, 'undefined') ->
     to_account_e164(Number, AccountId);
 to_account_e164(Number, AccountId, DialPlan) ->
-    Regexs = wh_json:get_keys(DialPlan),
-    case Regexs of
+    case wh_json:get_keys(DialPlan) of
         [] -> to_account_e164(Number, AccountId);
-        _ -> to_account_e164(apply_dialplan(Regexs, DialPlan, Number), AccountId)
+        Regexes -> to_account_e164(apply_dialplan(Regexes, DialPlan, Number), AccountId)
     end.
-    
--spec apply_dialplan(wh_json:keys(), wh_json:object(), ne_binary()) -> ne_binary(). 
+
+-spec apply_dialplan(wh_json:keys(), wh_json:object(), ne_binary()) -> ne_binary().
 apply_dialplan([], _, Number) -> Number;
-apply_dialplan([Regex|Regexs], DialPlan, Number) ->
+apply_dialplan([Regex|Regexes], DialPlan, Number) ->
     case re:run(Number, Regex, [{'capture', 'all', 'binary'}]) of
         'nomatch' ->
-            apply_dialplan(Regexs, DialPlan, Number);
+            apply_dialplan(Regexes, DialPlan, Number);
         'match' ->
             Number;
         {'match', Captures} ->
@@ -395,10 +396,11 @@ apply_dialplan([Regex|Regexs], DialPlan, Number) ->
 -spec to_account_e164(ne_binary(), api_binary()) -> ne_binary().
 to_account_e164(Number, AccountId) ->
     Converters = get_e164_converters(AccountId),
-    Regexs = wh_json:get_keys(Converters),
-    maybe_convert_to_e164(Regexs, Converters, Number).
-    
+    Regexes = wh_json:get_keys(Converters),
+    maybe_convert_to_e164(Regexes, Converters, Number).
 
+-spec maybe_convert_to_e164(ne_binaries(), wh_json:object(), ne_binary()) ->
+                                   ne_binary().
 maybe_convert_to_e164([], _, Number) -> Number;
 maybe_convert_to_e164([Regex|Regexs], Converters, Number) ->
     case re:run(Number, Regex, [{'capture', 'all', 'binary'}]) of
@@ -438,7 +440,7 @@ get_e164_converters() ->
 
 -spec get_e164_converters(api_binary()) -> wh_json:object().
 get_e164_converters('undefined') -> get_e164_converters();
-get_e164_converters(AccountId) -> 
+get_e164_converters(AccountId) ->
     Default = wh_json:from_list(?DEFAULT_E164_CONVERTERS),
     try whapps_account_config:get_global(AccountId, ?WNM_CONFIG_CAT, <<"e164_converters">>, Default) of
         Converters -> Converters
