@@ -93,7 +93,9 @@ rate_resp(Rate, JObj) ->
      ,{<<"Rate-Minimum">>, wh_util:to_binary(RateMinimum)}
      ,{<<"Discount-Percentage">>, maybe_get_rate_discount(JObj)}
      ,{<<"Surcharge">>, wh_util:to_binary(RateSurcharge)}
+     ,{<<"Prefix">>, wh_json:get_binary_value(<<"prefix">>, Rate)}
      ,{<<"Rate-Name">>, wh_json:get_binary_value(<<"rate_name">>, Rate)}
+     ,{<<"Rate-Description">>, wh_json:get_binary_value(<<"description">>, Rate)}
      ,{<<"Rate-ID">>, wh_json:get_binary_value(<<"rate_id">>, Rate)}
      ,{<<"Base-Cost">>, wh_util:to_binary(BaseCost)}
      ,{<<"Pvt-Cost">>, wh_util:to_binary(PrivateCost)}
