@@ -27,6 +27,9 @@
 
          ,default_from_address/1
          ,default_reply_to/1
+
+         ,open_doc/3
+         ,is_preview/1
         ]).
 
 -include("teletype.hrl").
@@ -34,6 +37,7 @@
 -define(TEMPLATE_RENDERING_ORDER, [{<<"text/plain">>, 3}
                                    ,{<<"text/html">>, 2}
                                   ]).
+-define(PATH, <<"../applications/teletype/src/preview_data">>).
 
 -spec send_email(email_map(), ne_binary(), wh_proplist(), rendered_templates()) ->
                         'ok' | {'error', _}.
@@ -297,13 +301,12 @@ service_params(APIJObj, ConfigCat, AccountId) ->
 account_params(DataJObj) ->
     case find_account_id(DataJObj) of
         'undefined' -> [];
-        AccountId -> find_account_params(AccountId)
+        AccountId -> find_account_params(DataJObj, AccountId)
     end.
 
--spec find_account_params(ne_binary()) -> wh_proplist().
-find_account_params(AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+-spec find_account_params(wh_json:object(), ne_binary()) -> wh_proplist().
+find_account_params(DataJObj, AccountId) ->
+    case teletype_util:open_doc(<<"account">>, AccountId, DataJObj) of
         {'ok', AccountJObj} -> build_account_params(AccountJObj);
         {'error', _E} ->
             lager:debug("failed to find account doc for ~s: ~p", [AccountId, _E]),
@@ -932,24 +935,28 @@ filter_for_admins(Users) ->
 
 -spec should_handle_notification(wh_json:object()) -> boolean().
 should_handle_notification(DataJObj) ->
-    AccountId = find_account_id(DataJObj),
-    ResellerId = wh_services:find_reseller_id(AccountId),
-    should_handle_notification_for_account(AccountId, ResellerId).
+    case wh_json:is_true(<<"preview">>, DataJObj, 'false') of
+        'true' -> 'true';
+        'false' ->
+            AccountId = find_account_id(DataJObj),
+            ResellerId = wh_services:find_reseller_id(AccountId),
+            should_handle_notification_for_account(AccountId, ResellerId)
+    end.
 
 -spec should_handle_notification_for_account(ne_binary(), ne_binary()) -> boolean().
 should_handle_notification_for_account(AccountId, AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
-    kz_account:notification_preference(AccountJObj) =:= ?APP_NAME;
+    kz_account:notification_preference(AccountJObj) =:= 'teletype';
 should_handle_notification_for_account(AccountId, ResellerId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
     {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
     {'ok', ResellerJObj} = couch_mgr:open_cache_doc(ResellerDb, ResellerId),
 
-    kz_account:notification_preference(AccountJObj) =:= ?APP_NAME
-        orelse (kz_account:notification_preference(ResellerJObj) =:= ?APP_NAME
-                andalso kz_account:notification_preference(AccountJObj) =:= 'undefined'
+    kz_account:notification_preference(AccountJObj) =:= <<"teletype">>
+        orelse (kz_account:notification_preference(ResellerJObj) =:= <<"teletype">>
+                    andalso kz_account:notification_preference(AccountJObj) =:= 'undefined'
                )
         orelse should_handle_notification_for_account(ResellerId, wh_services:find_reseller_id(ResellerId)).
 
@@ -964,14 +971,11 @@ is_notice_enabled(AccountJObj, ApiJObj, NoticeKey) ->
           ,wh_json:is_true(<<"Preview">>, ApiJObj, 'false')
          }
     of
-        {_Account, 'true'} ->
-            lager:debug("notice ~s is enabled for preview", [NoticeKey]),
-            'true';
+        {_Account, 'true'} -> 'true';
         {'undefined', 'false'} ->
             lager:debug("account is mute, checking system config"),
             is_notice_enabled_default(NoticeKey);
         {Value, 'false'} ->
-            lager:debug("account says ~s is enabled: ~s", [NoticeKey, Value]),
             wh_util:is_true(Value)
     end.
 
@@ -1051,3 +1055,33 @@ find_default(ConfigCat, Key) ->
         <<_/binary>> = Email -> [Email];
         Emails -> Emails
     end.
+
+-spec open_doc(ne_binary(), ne_binary(), wh_json:object()) -> {'ok', wh_json:object()} | {'error', any()}.
+open_doc(Type, DocId, DataJObj) ->
+    case is_preview(DataJObj) of
+        'true' ->
+            lager:debug("this is a preview, reading ~s from local file", [Type]),
+            read_doc(Type);
+        'false' ->
+            AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
+            Data = [wh_util:format_account_id(AccountId, 'encoded'), DocId],
+            lager:debug("this is not a preview, reading ~s/~s from couch", Data),
+            erlang:apply('couch_mgr', 'open_cache_doc', Data)
+    end.
+
+-spec read_doc(ne_binary()) -> {'ok', wh_json:object()} | {'error', any()}.
+read_doc(File) ->
+    try
+        {'ok', CurrentPath} = file:get_cwd(),
+        FilePath = filename:join([CurrentPath, ?PATH, <<File/binary, ".json">>]),
+        {'ok', JSON} = file:read_file(FilePath),
+        {'ok', wh_json:decode(JSON)}
+    catch
+        _E:R ->
+            lager:debug("failed to read file ~s: ~p", [File, _E]),
+            {'error', R}
+    end.
+
+-spec is_preview(wh_json:object()) -> boolean().
+is_preview(DataJObj) ->
+    wh_json:is_true(<<"preview">>, DataJObj, 'false').

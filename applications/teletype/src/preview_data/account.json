@@ -1,0 +1,136 @@
+{
+    "_id": "1760753c8d022d650418fbbe6a1a10e0",
+    "music_on_hold": {
+        "media_id": "/1760753c8d022d650418fbbe6a1a10e0/070b5e165af1343eb87a4c08281dd0c0"
+    },
+    "notifications": {
+        "voicemail_to_email": {},
+        "fax_to_email": {},
+        "deregister": {},
+        "first_occurrence": {
+            "sent_initial_registration": true,
+            "sent_initial_call": true
+        },
+        "low_balance": {
+            "sent_low_balance": true,
+            "enabled": true
+        }
+    },
+    "topup": {
+        "amount": 10,
+        "threshold": 10
+    },
+    "alias": [
+        "realm.com"
+    ],
+    "call_restriction": {
+        "tollfree_us": {
+            "action": "inherit"
+        },
+        "toll_us": {
+            "action": "inherit"
+        },
+        "emergency": {
+            "action": "inherit"
+        },
+        "caribbean": {
+            "action": "inherit"
+        },
+        "did_us": {
+            "action": "inherit"
+        },
+        "international": {
+            "action": "inherit"
+        },
+        "unknown": {
+            "action": "inherit"
+        }
+    },
+    "provision": {
+        "admin_password": "26r9de3hoh"
+    },
+    "apps": {
+        "d40a5aaa5994cfc5f26ea4545010d06f": {
+            "allowed_users": "all",
+            "users": []
+        },
+        "bd16c59184062e7382a21fefc177391f": {
+            "allowed_users": "all",
+            "users": []
+        }
+    },
+    "name": "Demo Account",
+    "realm": "realm.com",
+    "billing_id": "1760753c8d022d650418fbbe6a1a10e0",
+    "timezone": "America/Los_Angeles",
+    "caller_id_options": {},
+    "media": {
+        "bypass_media": "auto"
+    },
+    "format_from_uri": false,
+    "created": 63541743088,
+    "api_key": "1df9aa0586abe751a12e7987e646d1645a64fec722cf214412dad348bd6439cd",
+    "caller_id": {},
+    "blacklists": [
+        "dbfc14854a06bab3014898b6b4e1ffa0"
+    ],
+    "descendants_count": 4,
+    "ui_restrictions": {
+        "myaccount": {
+            "account": {
+                "show_tab": true
+            },
+            "balance": {
+                "show_credit": true,
+                "show_header": true,
+                "show_minutes": true,
+                "show_tab": true
+            },
+            "billing": {
+                "show_tab": true
+            },
+            "inbound": {
+                "show_tab": true
+            },
+            "outbound": {
+                "show_tab": true
+            },
+            "service_plan": {
+                "show_tab": true
+            },
+            "transactions": {
+                "show_tab": true
+            },
+            "user": {
+                "show_tab": true
+            }
+        }
+    },
+    "ui_metadata": {
+        "version": "v3.20_s0",
+        "ui": "monster-ui",
+        "origin": "appstore"
+    },
+    "dial_plan": {},
+    "ringtones": {},
+    "preflow": {},
+    "language": "en-us",
+    "reseller_id": "a0f3b6f2c5c0c95240993acd1bd6e762",
+    "is_reseller": false,
+    "pvt_type": "account",
+    "pvt_vsn": "1",
+    "pvt_api_key": "1df9aa0586abe751a12e7987e646d1645a64fec722cf214412dad348bd6439cd",
+    "pvt_superduper_admin": true,
+    "pvt_tree": [
+        "a0f3b6f2c5c0c95240993acd1bd6e762"
+    ],
+    "pvt_enabled": true,
+    "pvt_trial": 0,
+    "pvt_created": 63541743088,
+    "pvt_modified": 63590296858,
+    "pvt_account_db": "account%2F17%2F60%2F753c8d022d650418fbbe6a1a10e0",
+    "pvt_account_id": "1760753c8d022d650418fbbe6a1a10e0",
+    "pvt_reseller": false,
+    "prefer_device_caller_id": true,
+    "pvt_notification_preference": "teletype"
+}

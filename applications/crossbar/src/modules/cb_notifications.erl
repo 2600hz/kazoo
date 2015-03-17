@@ -278,7 +278,7 @@ post(Context, Id, ?PREVIEW) ->
 
     {API, _} = lists:foldl(fun preview_fold/2
                            ,{Preview, cb_context:doc(Context)}
-                           ,wapi_notifications:headers(Id)
+                           ,headers(Id)
                           ),
 
     case wh_amqp_worker:call(API
@@ -328,6 +328,12 @@ handle_preview_response(Context, Resp) ->
             crossbar_util:response_202(<<"Notification processing">>, Context)
     end.
 
+-spec headers(ne_binary()) -> wh_proplist().
+headers(<<"voicemail_to_email">>) ->
+    wapi_notifications:headers(<<"voicemail">>);
+headers(Id) ->
+    wapi_notifications:headers(Id).
+
 -spec publish_fun(ne_binary()) -> fun((api_terms()) -> 'ok').
 publish_fun(<<"voicemail_to_email">>) ->
     fun wapi_notifications:publish_voicemail/1;
@@ -353,7 +359,8 @@ publish_fun(_Id) ->
                           {wh_proplist(), wh_json:object()}.
 preview_fold(Header, {Props, ReqData}) ->
     case wh_json:get_first_defined([Header, wh_json:normalize_key(Header)], ReqData) of
-        'undefined' -> {props:insert_value(Header, Header, Props), ReqData};
+        'undefined' ->
+            {props:insert_value(Header, Header, Props), ReqData};
         V -> {props:set_value(Header, V, Props), ReqData}
     end.
 

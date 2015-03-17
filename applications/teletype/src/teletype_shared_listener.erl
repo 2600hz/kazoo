@@ -76,7 +76,6 @@
                       ,'outbound_fax'
                       ,'new_account'
                       ,'new_user'
-
                       %% ,'inbound_fax_error'
                       %% ,'outbound_fax_error'
                       ,'deregister'
@@ -226,9 +225,13 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec should_handle(wh_json:object()) -> boolean().
 should_handle(JObj) ->
-    case wh_json:get_first_defined([<<"Account-ID">>, <<"Account-DB">>], JObj) of
-        'undefined' -> should_handle_system();
-        Account -> should_handle_account(Account)
+    case wh_json:is_true(<<"Preview">>, JObj, 'false') of
+        'true' -> 'true';
+        'false' ->
+            case wh_json:get_first_defined([<<"Account-ID">>, <<"Account-DB">>], JObj) of
+                'undefined' -> should_handle_system();
+                Account -> should_handle_account(Account)
+            end
     end.
 
 -spec should_handle_system() -> boolean().

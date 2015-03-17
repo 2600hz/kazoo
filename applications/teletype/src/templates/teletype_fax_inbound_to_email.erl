@@ -68,10 +68,21 @@ init() ->
                                               ]).
 
 -spec get_fax_doc(wh_json:object()) -> wh_json:object().
+-spec get_fax_doc(boolean(), wh_json:object()) -> wh_json:object().
 get_fax_doc(DataJObj) ->
+    get_fax_doc(wh_json:is_true(<<"preview">>, DataJObj), DataJObj).
+
+get_fax_doc('true', DataJObj) ->
+    FaxId = wh_json:get_value(<<"fax_id">>, DataJObj),
+    case teletype_util:open_doc(<<"fax">>, FaxId, DataJObj) of
+        {'ok', JObj} -> JObj;
+        {'error', _E} -> wh_json:new()
+    end;
+get_fax_doc('false', DataJObj) ->
     AccountId = teletype_util:find_account_id(DataJObj),
     FaxId = wh_json:get_value(<<"fax_id">>, DataJObj),
     get_fax_doc_from_modb(DataJObj, AccountId, FaxId).
+
 
 -spec get_fax_doc_from_modb(wh_json:object(), ne_binary(), ne_binary()) -> wh_json:object().
 get_fax_doc_from_modb(DataJObj, AccountId, FaxId) ->
@@ -79,17 +90,7 @@ get_fax_doc_from_modb(DataJObj, AccountId, FaxId) ->
         {'ok', FaxJObj} -> FaxJObj;
         {'error', _E} ->
             lager:debug("failed to find fax ~s: ~p", [FaxId, _E]),
-            maybe_send_failure(DataJObj, <<"Fax-ID was invalid">>)
-    end.
-
--spec maybe_send_failure(wh_json:object(), ne_binary()) -> wh_json:object().
-maybe_send_failure(DataJObj, Msg) ->
-    case wh_json:is_true(<<"preview">>, DataJObj) of
-        'true' ->
-            lager:debug("not sending failure as this is a preview"),
-            wh_json:new();
-        'false' ->
-            teletype_util:send_update(DataJObj, <<"failed">>, Msg),
+            teletype_util:send_update(DataJObj, <<"failed">>, <<"Fax-ID was invalid">>),
             throw({'error', 'no_fax_id'})
     end.
 
@@ -120,10 +121,9 @@ handle_fax_inbound(DataJObj) ->
     FaxJObj = get_fax_doc(DataJObj),
 
     AccountId = teletype_util:find_account_id(DataJObj),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+    {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
 
-    OwnerJObj = get_owner_doc(FaxJObj),
+    OwnerJObj = get_owner_doc(FaxJObj, DataJObj),
 
     Macros = build_template_data(
                wh_json:set_values([{<<"account">>, wh_doc:public_fields(AccountJObj)}
@@ -151,10 +151,14 @@ handle_fax_inbound(DataJObj) ->
                ),
     lager:debug("rendered subject: ~s", [Subject]),
 
-    Emails = teletype_util:find_addresses(wh_json:set_value(<<"to">>
-                                                            ,to_email_addresses(FaxJObj)
-                                                            ,DataJObj
-                                                           )
+    EmailsJObj =
+        case teletype_util:is_preview(DataJObj) of
+            'true' -> DataJObj;
+            'false' ->
+                wh_json:set_value(<<"to">>, to_email_addresses(FaxJObj), DataJObj)
+        end,
+
+    Emails = teletype_util:find_addresses(EmailsJObj
                                           ,TemplateMetaJObj
                                           ,?MOD_CONFIG_CAT
                                          ),
@@ -171,20 +175,12 @@ handle_fax_inbound(DataJObj) ->
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
 
--spec get_owner_doc(wh_json:object()) -> wh_json:object().
--spec get_owner_doc(ne_binary(), api_binary()) -> wh_json:object().
-get_owner_doc(FaxJObj) ->
-    AccountDb = wh_json:get_value(<<"pvt_account_db">>, FaxJObj),
+-spec get_owner_doc(wh_json:object(), wh_json:object()) -> wh_json:object().
+get_owner_doc(FaxJObj, DataJObj) ->
     OwnerId = wh_json:get_value(<<"owner_id">>, FaxJObj),
-
-    get_owner_doc(AccountDb, OwnerId).
-get_owner_doc(_AccountDb, 'undefined') ->
-    lager:debug("no owner found"),
-    wh_json:new();
-get_owner_doc(AccountDb, OwnerId) ->
-    case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
+    case teletype_util:open_doc(<<"user">>, OwnerId, DataJObj) of
         {'ok', OwnerJObj} -> OwnerJObj;
-        {'error', 'not_found'} -> wh_json:new()
+        {'error', _} -> wh_json:new()
     end.
 
 -spec get_attachments(wh_json:object(), wh_proplist()) -> attachments().

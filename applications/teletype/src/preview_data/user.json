@@ -1,0 +1,69 @@
+{
+    "_id": "bd1683a4a288c4f0b8a34a02906d3520",
+    "caller_id": {
+        "internal": {
+            "name": "John Doe"
+        },
+        "external": {
+            "name": "John Doe"
+        }
+    },
+    "id": "bd1683a4a288c4f0b8a34a02906d3520",
+    "username": "john.doe@test.com",
+    "email": "john.doe@test.com",
+    "first_name": "John",
+    "last_name": "Doe",
+    "priv_level": "user",
+    "timezone": "America/Los_Angeles",
+    "ui_metadata": {
+        "version": "v3.20_s0",
+        "ui": "monster-ui",
+        "origin": "voip"
+    },
+    "enabled": true,
+    "vm_to_email_enabled": true,
+    "verified": false,
+    "require_password_update": false,
+    "music_on_hold": {},
+    "media": {
+        "encryption": {
+            "enforce_security": false,
+            "methods": []
+        },
+        "audio": {
+            "codecs": [
+                "PCMU"
+            ]
+        },
+        "video": {
+            "codecs": []
+        }
+    },
+    "call_restriction": {},
+    "dial_plan": {},
+    "ringtones": {},
+    "contact_list": {},
+    "hotdesk": {
+        "enabled": false,
+        "require_pin": false,
+        "keep_logged_in_elsewhere": false
+    },
+    "smartpbx": {
+        "call_recording": {
+            "enabled": false
+        },
+        "find_me_follow_me": {
+            "enabled": false
+        }
+    },
+    "directories": {},
+    "language": "en-us",
+    "pvt_type": "user",
+    "pvt_sha1_auth": "21098cc8977cc68d58a47ed87d71ecea0a468609",
+    "pvt_md5_auth": "8cabadefda4d85960f04ff2f1c1de866",
+    "pvt_vsn": "1",
+    "pvt_account_id": "1760753c8d022d650418fbbe6a1a10e0",
+    "pvt_account_db": "account%2F17%2F60%2F753c8d022d650418fbbe6a1a10e0",
+    "pvt_created": 63576902621,
+    "pvt_modified": 63592027582
+}
