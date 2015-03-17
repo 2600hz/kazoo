@@ -228,7 +228,8 @@
 
 %% Notify Password Recovery
 -define(PWD_RECOVERY_HEADERS, [<<"Email">>, <<"Password">>, <<"Account-ID">>]).
--define(OPTIONAL_PWD_RECOVERY_HEADERS, [<<"First-Name">>, <<"Last-Name">>, <<"Account-DB">>, <<"Request">>
+-define(OPTIONAL_PWD_RECOVERY_HEADERS, [<<"First-Name">>, <<"Last-Name">>
+                                        ,<<"Account-DB">>, <<"Request">>
                                         | ?DEFAULT_OPTIONAL_HEADERS
                                        ]).
 -define(PWD_RECOVERY_VALUES, [{<<"Event-Category">>, <<"notification">>}
@@ -377,6 +378,8 @@ headers(<<"new_user">>) ->
     ?NEW_USER_HEADERS ++ ?OPTIONAL_NEW_USER_HEADERS;
 headers(<<"deregister">>) ->
     ?DEREGISTER_HEADERS ++ ?OPTIONAL_DEREGISTER_HEADERS;
+headers(<<"password_recovery">>) ->
+    ?PWD_RECOVERY_HEADERS ++ ?OPTIONAL_PWD_RECOVERY_HEADERS;
 headers(<<"skel">>) ->
     ?SKEL_HEADERS ++ ?OPTIONAL_SKEL_HEADERS;
 headers(_Notification) ->

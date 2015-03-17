@@ -26,6 +26,8 @@
 -define(DEFAULT_LANGUAGE, <<"en-us">>).
 -define(USER_AUTH_TOKENS, whapps_config:get_integer(?CONFIG_CAT, <<"user_auth_tokens">>, 35)).
 
+-define(RECOVERY, <<"recovery">>).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -50,7 +52,7 @@ init() ->
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() -> [?HTTP_PUT].
-allowed_methods(<<"recovery">>) -> [?HTTP_PUT].
+allowed_methods(?RECOVERY) -> [?HTTP_PUT].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -63,7 +65,7 @@ allowed_methods(<<"recovery">>) -> [?HTTP_PUT].
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_tokens()) -> boolean().
 resource_exists() -> 'true'.
-resource_exists(<<"recovery">>) -> 'true';
+resource_exists(?RECOVERY) -> 'true';
 resource_exists(_) -> 'false'.
 
 %%--------------------------------------------------------------------
@@ -88,7 +90,7 @@ authenticate(Context) ->
     authenticate_nouns(cb_context:req_nouns(Context)).
 
 authenticate_nouns([{<<"user_auth">>, _}]) -> 'true';
-authenticate_nouns([{<<"user_auth">>, [<<"recovery">>]}]) -> 'true';
+authenticate_nouns([{<<"user_auth">>, [?RECOVERY]}]) -> 'true';
 authenticate_nouns(_Nouns) -> 'false'.
 
 %%--------------------------------------------------------------------
@@ -110,7 +112,7 @@ validate(Context) ->
         _Status -> Context1
     end.
 
-validate(Context, <<"recovery">>) ->
+validate(Context, ?RECOVERY) ->
     cb_context:validate_request_data(<<"user_auth_recovery">>, Context, fun maybe_recover_user_password/1).
 
 -spec put(cb_context:context()) -> cb_context:context().
@@ -119,7 +121,7 @@ put(Context) ->
     _ = cb_context:put_reqid(Context),
     crossbar_util:create_auth_token(Context, ?MODULE).
 
-put(Context, <<"recovery">>) ->
+put(Context, ?RECOVERY) ->
     _ = cb_context:put_reqid(Context),
     reset_users_password(Context).
 
@@ -256,8 +258,8 @@ maybe_recover_user_password(Context) ->
     JObj = cb_context:doc(Context),
     AccountName = normalize_account_name(wh_json:get_value(<<"account_name">>, JObj)),
     PhoneNumber = wh_json:get_ne_value(<<"phone_number">>, JObj),
-    AccountRealm = wh_json:get_value(<<"account_realm">>, JObj
-                                     ,wh_json:get_value(<<"realm">>, JObj)),
+    AccountRealm = wh_json:get_first_defined([<<"account_realm">>, <<"realm">>], JObj),
+
     case find_account(PhoneNumber, AccountRealm, AccountName, Context) of
         {'error', C} -> C;
         {'ok', [Account|_]} -> maybe_load_username(Account, Context);
@@ -291,25 +293,25 @@ maybe_load_username(Account, Context) ->
                 'true' ->
                     lager:debug("the user name '~s' was found but is disabled", [Username]),
                     cb_context:add_validation_error(
-                        <<"username">>
-                        ,<<"forbidden">>
-                        ,wh_json:from_list([
-                            {<<"message">>, <<"The provided user name is disabled">>}
-                            ,{<<"cause">>, Username}
+                      <<"username">>
+                      ,<<"forbidden">>
+                      ,wh_json:from_list(
+                         [{<<"message">>, <<"The provided user name is disabled">>}
+                          ,{<<"cause">>, Username}
                          ])
-                        ,Context
-                    )
+                      ,Context
+                     )
             end;
         _ ->
             cb_context:add_validation_error(
-                <<"username">>
-                ,<<"not_found">>
-                ,wh_json:from_list([
-                    {<<"message">>, <<"The provided user name was not found">>}
-                    ,{<<"cause">>, Username}
+              <<"username">>
+              ,<<"not_found">>
+              ,wh_json:from_list(
+                 [{<<"message">>, <<"The provided user name was not found">>}
+                  ,{<<"cause">>, Username}
                  ])
-                ,Context
-            )
+              ,Context
+             )
     end.
 
 %%--------------------------------------------------------------------

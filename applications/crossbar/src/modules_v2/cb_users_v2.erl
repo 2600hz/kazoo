@@ -300,10 +300,10 @@ send_email(Context) ->
           ],
     case
         whapps_util:amqp_pool_request(
-            Req
-            ,fun wapi_notifications:publish_new_user/1
-            ,fun wapi_notifications:new_user_v/1
-        )
+          Req
+          ,fun wapi_notifications:publish_new_user/1
+          ,fun wapi_notifications:new_user_v/1
+         )
     of
         {'ok', _Resp} ->
             lager:debug("published new user notification");
