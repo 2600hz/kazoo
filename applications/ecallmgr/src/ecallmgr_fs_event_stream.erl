@@ -152,8 +152,8 @@ handle_info({'tcp', Socket, Data}, #state{socket=Socket
                                          ,node=Node
                                          ,switch_info='false'
                                          }=State) ->
-    try    
-        SwitchURL = ecallmgr_fs_node:sip_url(Node),    
+    try
+        SwitchURL = ecallmgr_fs_node:sip_url(Node),
         [_, SwitchURIHost] = binary:split(SwitchURL, <<"@">>),
         SwitchURI = <<"sip:", SwitchURIHost/binary>>,
         handle_info({'tcp', Socket, Data}, State#state{switch_uri=SwitchURI
@@ -161,8 +161,12 @@ handle_info({'tcp', Socket, Data}, #state{socket=Socket
                                                        ,switch_info='true'
                                                       })
     catch
-        E1:E2 -> lager:warning("failed to include switch_url/uri for node ~s : ~p : ~p",[Node, E1, E2]),
-                 handle_info({'tcp', Socket, Data}, State)
+        _E:_R ->
+            lager:warning("failed to include switch_url/uri for node ~s : ~p : ~p",[Node, _E, _R]),
+            case handle_info({'tcp', Socket, Data}, State#state{switch_info='true'}) of
+                {'noreply', _State, Timeout} -> {'noreply', State, Timeout};
+                {'stop', _Reason, _State}=STOP -> STOP
+            end
     end;
 handle_info({'tcp', Socket, Data}, #state{socket=Socket
                                          ,node=Node
@@ -192,7 +196,8 @@ handle_info({'tcp', Socket, Data}, #state{socket=Socket
     end;
 handle_info({'tcp_closed', Socket}, #state{socket=Socket, node=Node}=State) ->
     lager:info("event stream for ~p on node ~p closed"
-               ,[get_event_bindings(State), Node]),
+               ,[get_event_bindings(State), Node]
+              ),
     {'stop', 'normal', State#state{socket='undefined'}};
 handle_info({'tcp_error', Socket, _Reason}, #state{socket=Socket}=State) ->
     lager:warning("event stream tcp error: ~p", [_Reason]),
