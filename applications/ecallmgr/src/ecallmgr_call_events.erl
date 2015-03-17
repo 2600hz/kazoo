@@ -599,6 +599,11 @@ generic_call_event_props(Props) ->
     Timestamp = wh_util:to_binary(((Mega * 1000000 + Sec) * 1000000 + Micro)),
     FSTimestamp = props:get_integer_value(<<"Event-Date-Timestamp">>, Props, Timestamp),
     NormalizedFSTimestamp = wh_util:unix_seconds_to_gregorian_seconds(FSTimestamp div 1000000),
+    Hostname = props:get_value(<<"FreeSWITCH-Hostname">>, Props),
+    Node = <<"freeswitch@", Hostname/binary>>,
+    SwitchURL = ecallmgr_fs_nodes:sip_url(Node),
+    [_, SwitchURIHost] = binary:split(SwitchURL, <<"@">>),
+    SwitchURI = <<"sip:", SwitchURIHost/binary>>,
 
     [{<<"Timestamp">>, NormalizedFSTimestamp}
      ,{<<"Msg-ID">>, wh_util:to_binary(FSTimestamp)}
@@ -635,6 +640,10 @@ generic_call_event_props(Props) ->
      ,{<<"Custom-SIP-Headers">>, wh_json:from_list(ecallmgr_util:custom_sip_headers(Props))}
      ,{<<"From-Tag">>, props:get_value(<<"variable_sip_from_tag">>, Props)}
      ,{<<"To-Tag">>, props:get_value(<<"variable_sip_to_tag">>, Props)}
+     ,{<<"Switch-Hostname">>, Hostname}
+     ,{<<"Switch-Nodename">>, Node}
+     ,{<<"Switch-URL">>, SwitchURL}
+     ,{<<"Switch-URI">>, SwitchURI}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 

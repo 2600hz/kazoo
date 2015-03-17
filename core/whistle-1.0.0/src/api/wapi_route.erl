@@ -43,6 +43,7 @@
                                      ,<<"Resource-Type">>, <<"Cost-Parameters">>
                                      ,<<"From-Network-Addr">>, <<"User-Agent">>
                                      ,<<"Switch-Hostname">>, <<"Switch-Nodename">>
+                                     ,<<"Switch-URL">>, <<"Switch-URI">>
                                      ,<<"Ringback-Media">>, <<"Transfer-Media">>
                                      ,<<"SIP-Request-Host">>, <<"Message-ID">>
                                      ,<<"Body">>
