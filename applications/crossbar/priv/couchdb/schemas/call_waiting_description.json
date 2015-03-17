@@ -1,0 +1,8 @@
+{
+    "_id": "call_waiting_description",
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "type": "boolean",
+    "required": false,
+    "name": "Call waiting",
+    "description": "Determines if call waiting is currently disabled"
+}
