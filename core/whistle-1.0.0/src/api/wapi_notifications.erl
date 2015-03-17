@@ -239,7 +239,8 @@
 
 %% Notify New Account
 -define(NEW_ACCOUNT_HEADERS, [<<"Account-ID">>]).
--define(OPTIONAL_NEW_ACCOUNT_HEADERS, [<<"Account-DB">>, <<"Account-Name">>, <<"Account-API-Key">>, <<"Account-Realm">>
+-define(OPTIONAL_NEW_ACCOUNT_HEADERS, [<<"Account-DB">>, <<"Account-Name">>
+                                       ,<<"Account-API-Key">>, <<"Account-Realm">>
                                        | ?DEFAULT_OPTIONAL_HEADERS
                                       ]).
 -define(NEW_ACCOUNT_VALUES, [{<<"Event-Category">>, <<"notification">>}
@@ -374,6 +375,8 @@ headers(<<"fax_inbound_to_email">>) ->
     ?FAX_INBOUND_HEADERS ++ ?OPTIONAL_FAX_INBOUND_HEADERS;
 headers(<<"fax_outbound_to_email">>) ->
     ?FAX_OUTBOUND_HEADERS ++ ?OPTIONAL_FAX_OUTBOUND_HEADERS;
+headers(<<"new_account">>) ->
+    ?NEW_ACCOUNT_HEADERS ++ ?OPTIONAL_NEW_ACCOUNT_HEADERS;
 headers(<<"new_user">>) ->
     ?NEW_USER_HEADERS ++ ?OPTIONAL_NEW_USER_HEADERS;
 headers(<<"deregister">>) ->

@@ -35,6 +35,9 @@
                      ,{{'teletype_fax_outbound_to_email', 'handle_fax_outbound'}
                        ,[{<<"notification">>, <<"outbound_fax">>}]
                       }
+                     ,{{'teletype_new_account', 'handle_new_account'}
+                       ,[{<<"notification">>, <<"new_account">>}]
+                      }
                      ,{{'teletype_new_user', 'handle_req'}
                        ,[{<<"notification">>, <<"new_user">>}]
                       }
@@ -71,13 +74,13 @@
                       ,'voicemail_full'
                       ,'inbound_fax'
                       ,'outbound_fax'
+                      ,'new_account'
                       ,'new_user'
 
                       %% ,'inbound_fax_error'
                       %% ,'outbound_fax_error'
                       ,'deregister'
                       ,'pwd_recovery'
-                      %% ,'new_account'
                       %% ,'cnam_requests'
                       %% ,'port_request'
                       %% ,'port_cancel'
