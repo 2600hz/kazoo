@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% CDR
@@ -241,64 +241,40 @@ pagination_page_size(Context) ->
                        cb_context:context().
 load_view(View, ViewOptions, Context) ->
     AccountId = cb_context:account_id(Context),
-    ToMODb = view_created_to_modb(AccountId, ViewOptions),
-    FromMODb = view_created_from_modb(AccountId, ViewOptions),
-    load_chunked_db(View, ViewOptions, ToMODb, FromMODb, Context).
 
--spec load_chunked_db(ne_binary(), wh_proplist(), api_binary(), api_binary(), cb_context:context()) ->
-                             cb_context:context().
-load_chunked_db(View, ViewOptions, Db, 'undefined', Context) ->
-    C = cb_context:store(Context, 'chunked_dbs', [Db]),
-    load_chunked_view_options(View, ViewOptions, C);
-load_chunked_db(View, ViewOptions, 'undefined', Db, Context) ->
-    C = cb_context:store(Context, 'chunked_dbs', [Db]),
-    load_chunked_view_options(View, ViewOptions, C);
-load_chunked_db(View, ViewOptions, Db, Db, Context) ->
-    C = cb_context:store(Context, 'chunked_dbs', [Db]),
-    load_chunked_view_options(View, ViewOptions, C);
-load_chunked_db(View, ViewOptions, ToMODb, FromMODb, Context) ->
-    C = cb_context:store(Context, 'chunked_dbs', [ToMODb, FromMODb]),
-    load_chunked_view_options(View, ViewOptions, C).
+    ContextChanges =
+        [fun(C) -> cb_context:store(C, 'chunked_dbs', chunked_dbs(AccountId, ViewOptions)) end
+         ,fun(C) -> cb_context:store(C, 'chunked_view_options', ViewOptions) end
+         ,fun(C) -> cb_context:store(C, 'chunked_view', View) end
+         ,fun(C) -> cb_context:set_resp_status(C, 'success') end
+        ],
+    cb_context:setters(Context, ContextChanges).
 
--spec load_chunked_view_options(ne_binary(), wh_proplist(), cb_context:context()) -> cb_context:context().
-load_chunked_view_options(View, ViewOptions, Context) ->
-    C = cb_context:store(Context, 'chunked_view_options', ViewOptions),
-    load_chunked_view(View, C).
+-spec chunked_dbs(ne_binary(), wh_proplist()) -> ne_binaries().
+chunked_dbs(AccountId, ViewOptions) ->
+    To = view_option('startkey',ViewOptions),
+    From = view_option('endkey',  ViewOptions),
 
--spec load_chunked_view(ne_binary(), cb_context:context()) -> cb_context:context().
-load_chunked_view(View, Context) ->
-    C = cb_context:store(Context, 'chunked_view', View),
-    cb_context:set_resp_status(C, 'success').
+    [MODb || MODb <- ranged_modbs(AccountId, From, To),
+             couch_mgr:db_exists(MODb)
+    ].
 
--spec view_created_to_modb(ne_binary(), wh_proplist()) -> api_binary().
-view_created_to_modb(AccountId, ViewOptions) ->
-    Modb = kazoo_modb:get_modb(AccountId, view_key_created_to(ViewOptions)),
-    ensure_modb_exists(Modb).
+-spec ranged_modbs(ne_binary(), gregorian_seconds(), gregorian_seconds()) ->
+                          ne_binaries().
+ranged_modbs(AccountId, From, To) ->
+    {{FromYear, FromMonth, _}, _} = calendar:gregorian_seconds_to_datetime(From),
+    {{ToYear, ToMonth, _}, _} = calendar:gregorian_seconds_to_datetime(To),
 
--spec view_key_created_to(wh_proplist()) -> pos_integer().
-view_key_created_to(ViewOptions) ->
-    case props:get_value('endkey', ViewOptions) of
-        [_, CreatedTo] -> CreatedTo;
-        CreatedTo -> CreatedTo
-    end.
+    Seq = crossbar_util:generate_year_month_sequence({FromYear, FromMonth}
+                                                     ,{ToYear, ToMonth}
+                                                    ),
+    [kazoo_modb:get_modb(AccountId, Year, Month) || {Year, Month} <- Seq].
 
--spec view_created_from_modb(ne_binary(), wh_proplist()) -> api_binary().
-view_created_from_modb(AccountId, ViewOptions) ->
-    Modb = kazoo_modb:get_modb(AccountId, view_key_created_from(ViewOptions)),
-    ensure_modb_exists(Modb).
-
--spec ensure_modb_exists(ne_binary()) -> api_binary().
-ensure_modb_exists(Modb) ->
-    case couch_mgr:db_exists(Modb) of
-        'true' -> Modb;
-        'false' -> 'undefined'
-    end.
-
--spec view_key_created_from(wh_proplist()) -> pos_integer().
-view_key_created_from(ViewOptions) ->
-    case props:get_value('startkey', ViewOptions) of
-        [_, CreatedFrom] -> CreatedFrom;
-        CreatedFrom -> CreatedFrom
+-spec view_option('endkey' | 'startkey', wh_proplist()) -> pos_integer().
+view_option(Key, ViewOptions) ->
+    case props:get_value(Key, ViewOptions) of
+        [_, Option] -> Option;
+        Option -> Option
     end.
 
 %%--------------------------------------------------------------------
@@ -383,7 +359,7 @@ get_cdr_ids(Db, View, ViewOptions) ->
 maybe_add_design_doc(Db) ->
     case couch_mgr:lookup_doc_rev(Db, <<"_design/cdrs">>) of
         {'error', 'not_found'} ->
-            lager:warning("adding cdr views to Db ~s", [Db]),
+            lager:warning("adding cdr views to modb: ~s", [Db]),
             couch_mgr:revise_doc_from_file(Db
                                            ,'crossbar'
                                            ,<<"account/cdrs.json">>
@@ -643,3 +619,8 @@ load_cdr(<<Year:4/binary, Month:2/binary, "-", _/binary>> = CDRId, Context) ->
 load_cdr(CDRId, Context) ->
     lager:debug("error loading cdr by id ~p", [CDRId]),
     crossbar_util:response('error', <<"could not find cdr with supplied id">>, 404, Context).
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+-endif.
