@@ -149,24 +149,24 @@ handle_cast(_Msg, #state{idle_alert=Timeout}=State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'tcp', Socket, Data}, #state{socket=Socket
-                                         ,node=Node
-                                         ,switch_info='false'
+                                          ,node=Node
+                                          ,switch_info='false'
                                          }=State) ->
-    try
-        SwitchURL = ecallmgr_fs_node:sip_url(Node),
-        [_, SwitchURIHost] = binary:split(SwitchURL, <<"@">>),
-        SwitchURI = <<"sip:", SwitchURIHost/binary>>,
-        handle_info({'tcp', Socket, Data}, State#state{switch_uri=SwitchURI
-                                                       ,switch_url=SwitchURL
-                                                       ,switch_info='true'
-                                                      })
+    try ecallmgr_fs_node:sip_url(Node) of
+        'undefined' ->
+            lager:debug("no sip url available yet for ~s", [Node]),
+            handle_no_switch({'tcp', Socket, Data}, State);
+        SwitchURL ->
+            [_, SwitchURIHost] = binary:split(SwitchURL, <<"@">>),
+            SwitchURI = <<"sip:", SwitchURIHost/binary>>,
+            handle_info({'tcp', Socket, Data}, State#state{switch_uri=SwitchURI
+                                                           ,switch_url=SwitchURL
+                                                           ,switch_info='true'
+                                                          })
     catch
         _E:_R ->
-            lager:warning("failed to include switch_url/uri for node ~s : ~p : ~p",[Node, _E, _R]),
-            case handle_info({'tcp', Socket, Data}, State#state{switch_info='true'}) of
-                {'noreply', _State, Timeout} -> {'noreply', State, Timeout};
-                {'stop', _Reason, _State}=STOP -> STOP
-            end
+            lager:warning("failed to include switch_url/uri for node ~s : ~p : ~p", [Node, _E, _R]),
+            handle_no_switch({'tcp', Socket, Data}, State)
     end;
 handle_info({'tcp', Socket, Data}, #state{socket=Socket
                                          ,node=Node
@@ -214,6 +214,15 @@ handle_info(_Msg, #state{socket='undefined'}=State) ->
 handle_info(_Msg, #state{idle_alert=Timeout}=State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State, Timeout}.
+
+-spec handle_no_switch({'tcp', term(), binary()}, state()) ->
+                              {'noreply', state(), wh_timeout()} |
+                              {'stop', _, state()}.
+handle_no_switch({'tcp', Socket, Data}, State) ->
+    case handle_info({'tcp', Socket, Data}, State#state{switch_info='true'}) of
+        {'noreply', _State, Timeout} -> {'noreply', State, Timeout};
+        {'stop', _Reason, _State}=STOP -> STOP
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
