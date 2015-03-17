@@ -713,6 +713,7 @@ apply_dialplan(Number, DialPlan) ->
         _ -> maybe_apply_dialplan(Regexs, DialPlan, Number)
     end.
 
+-spec maybe_apply_dialplan(wh_json:keys(), wh_json:object(), ne_binary()) -> ne_binary(). 
 maybe_apply_dialplan([], _, Number) -> Number;
 maybe_apply_dialplan([Regex|Regexs], DialPlan, Number) ->
     case re:run(Number, Regex, [{'capture', 'all', 'binary'}]) of
