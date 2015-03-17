@@ -18,6 +18,9 @@
 
 -type max_wait() :: pos_integer() | 'infinity'.
 
+-define(MEMBER_TIMEOUT, <<"member_timeout">>).
+-define(MEMBER_HANGUP, <<"member_hangup">>).
+
 -record(member_call, {call              :: whapps_call:call()
                       ,queue_id         :: api_binary()
                       ,config_data = [] :: wh_proplist()
@@ -98,7 +101,7 @@ wait_for_bridge(#member_call{call=Call}=MC, Timeout, Start) ->
     end.
 
 end_member_call(Call) ->
-    cancel_member_call(Call, <<"member_timeout">>),
+    cancel_member_call(Call, ?MEMBER_TIMEOUT),
     stop_hold_music(Call),
     cf_exe:continue(Call).
 
@@ -111,7 +114,7 @@ process_message(#member_call{call=Call}, _, Start, _Wait, _JObj, {<<"call_event"
     cf_exe:control_usurped(Call);
 process_message(#member_call{call=Call}, _, Start, _Wait, _JObj, {<<"call_event">>,<<"CHANNEL_DESTROY">>}) ->
     lager:info("member hungup while waiting in the queue (was there ~b s)", [wh_util:elapsed_s(Start)]),
-    cancel_member_call(Call, <<"member_hungup">>),
+    cancel_member_call(Call, ?MEMBER_HANGUP),
     cf_exe:stop(Call);
 process_message(#member_call{call=Call
                              ,queue_id=QueueId
@@ -161,6 +164,9 @@ is_queue_full(0, _) -> 'false';
 is_queue_full(MaxQueueSize, CurrQueueSize) -> CurrQueueSize >= MaxQueueSize.
 
 -spec cancel_member_call(whapps_call:call(), ne_binary()) -> 'ok'.
+cancel_member_call(Call, <<"timeout">>) ->
+    lager:info("update reason from `timeout` to `member_timeout`"),
+    cancel_member_call(Call, ?MEMBER_TIMEOUT);
 cancel_member_call(Call, Reason) ->
     AcctId = whapps_call:account_id(Call),
     {'ok', QueueId} = whapps_call:kvs_find('queue_id', Call),

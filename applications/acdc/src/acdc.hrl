@@ -10,7 +10,7 @@
 
 -define(ACDC_CACHE, 'acdc_cache').
 
--define(ABANDON_TIMEOUT, 'timeout').
+-define(ABANDON_TIMEOUT, 'member_timeout').
 -define(ABANDON_EXIT, 'member_exit').
 -define(ABANDON_HANGUP, 'member_hangup').
 

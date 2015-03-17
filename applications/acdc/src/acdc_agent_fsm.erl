@@ -750,12 +750,10 @@ ringing({'channel_hungup', MemberCallId, _Cause}, #state{agent_listener=AgentLis
                                                          ,account_id=AccountId
                                                          ,agent_id=AgentId
                                                          ,member_call_id=MemberCallId
-                                                         ,member_call_queue_id=QueueId
                                                         }=State) ->
     lager:debug("caller's channel (~s) has gone down, stop agent's call: ~s", [MemberCallId, _Cause]),
     acdc_agent_listener:channel_hungup(AgentListener, MemberCallId),
 
-    acdc_stats:call_abandoned(AccountId, QueueId, MemberCallId, ?ABANDON_HANGUP),
     acdc_agent_stats:agent_ready(AccountId, AgentId),
 
     acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_GREEN),
@@ -765,13 +763,10 @@ ringing({'dtmf_pressed', DTMF}, #state{caller_exit_key=DTMF
                                        ,agent_call_id=AgentCallId
                                        ,account_id=AccountId
                                        ,agent_id=AgentId
-                                       ,member_call_queue_id=QueueId
-                                       ,member_call_id=CallId
                                       }=State) when is_binary(DTMF) ->
     lager:debug("caller exit key pressed: ~s", [DTMF]),
     acdc_agent_listener:channel_hungup(AgentListener, AgentCallId),
 
-    acdc_stats:call_abandoned(AccountId, QueueId, CallId, ?ABANDON_EXIT),
     acdc_agent_stats:agent_ready(AccountId, AgentId),
 
     acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_GREEN),
