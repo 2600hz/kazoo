@@ -162,7 +162,7 @@ handle_info({'tcp', Socket, Data}, #state{socket=Socket
                                                       })
     catch
         E1:E2 -> lager:warning("failed to include switch_url/uri for node ~s : ~p : ~p",[Node, E1, E2]),
-                 handle_info({'tcp', Socket, Data}, State#state{switch_info='true'})
+                 handle_info({'tcp', Socket, Data}, State)
     end;
 handle_info({'tcp', Socket, Data}, #state{socket=Socket
                                          ,node=Node
