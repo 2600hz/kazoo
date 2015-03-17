@@ -44,7 +44,6 @@ reconcile(Services) ->
             lists:foldl(fun(F, S) -> F(S) end, wh_services:reset_category(<<"limits">>, Services), Routines)
     end.
 
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
