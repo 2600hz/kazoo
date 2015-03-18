@@ -17,7 +17,7 @@
         },
         "source_url": {
             "type": "string",
-            "required": true,
+            "required": false,
             "name": "Source Url",
             "description": "Application source url",
             "format": "uri"
