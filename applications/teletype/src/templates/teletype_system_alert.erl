@@ -9,7 +9,7 @@
 -module(teletype_system_alert).
 
 -export([init/0
-         ,handle_req/2
+         ,handle_system_alert/2
         ]).
 
 -include("../teletype.hrl").
@@ -25,7 +25,7 @@
        ).
 
 -define(TEMPLATE_TEXT, <<"Alert\n{{message}}\n\nProducer:\n{% for key, value in request %}{{ key }}: {{ value }}\n{% endfor %}\n{% if details %}Details\n{% for key, value in details %}{{ key }}: {{ value }}\n{% endfor %}\n{% endif %}{% if account %}Account\nAccount ID: {{account.id}}\nAccount Name: {{account.name}}\nAccount Realm: {{account.realm}}\n\n{% endif %}{% if user %}Admin\nName: {{user.first_name}} {{user.last_name}}\nEmail: {{user.email}}\nTimezone: {{user.timezone}}\n\n{% endif %}{% if account.pvt_wnm_numbers %}Phone Numbers\n{% for number in account.pvt_wnm_numbers %}{{number}}\n{% endfor %}\n{% endif %}Service\nURL: {{service.url}}\nName: {{service.name}}\nService Provider: {{service.provider}}\n\nSent from {{service.host}}">>).
--define(TEMPLATE_HTML, <<"<html><head><meta charset=\"utf-8\" /></head><body><h2>Alert</h2><p>{{message}}</p><h2>Producer</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\">{% for key, value in request %}<tr><td>{{ key }}: </td><td>{{ value }}</td></tr>{% endfor %}</table>{% if details %}<h2>Details</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\">{% for key, value in details %}<tr><td>{{ key }}: </td><td>{{ value }}</td></tr>{% endfor %}</table>{% endif %}{% if account %}<h2>Account</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>Account ID: </td><td>{{account.id}}</td></tr><tr><td>Account Name: </td><td>{{account.name}}</td></tr><tr><td>Account Realm: </td><td>{{account.realm}}</td></tr></table>{% endif %}{% if admin %}<h2>Admin</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>Name: </td><td>{{user.first_name}} {{user.last_name}}</td></tr><tr><td>Email: </td><td>{{user.email}}</td></tr><tr><td>Timezone: </td><td>{{user.timezone}}</td></tr></table>{% endif %}{% if account.pvt_wnm_numbers %}<h2>Phone Numbers</h2><ul>{% for number in account.pvt_wnm_numbers %}<li>{{number}}</li>{% endfor %}</ul>{% endif %}<h2>Service</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>URL: </td><td>{{service.url}}</td></tr><tr><td>Name: </td><td>{{service.name}}</td></tr><tr><td>Service Provider: </td><td>{{service.provider}}</td></tr></table><p style=\"font-size:9pt;color:#CCCCCC\">Sent from {{service.host}}</p></body></html>">>).
+-define(TEMPLATE_HTML, <<"<html><head><meta charset=\"utf-8\" /></head><body><h2>Alert</h2><p>{{message}}</p><h2>Producer</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\">{% for key, value in request %}<tr><td>{{ key }}: </td><td>{{ value }}</td></tr>{% endfor %}</table>{% if details %}<h2>Details</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\">{% for key, value in details %}<tr><td>{{ key }}: </td><td>{{ value }}</td></tr>{% endfor %}</table>{% endif %}{% if account %}<h2>Account</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>Account ID: </td><td>{{account.id}}</td></tr><tr><td>Account Name: </td><td>{{account.name}}</td></tr><tr><td>Account Realm: </td><td>{{account.realm}}</td></tr></table>{% endif %}{% if user %}<h2>Admin</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>Name: </td><td>{{user.first_name}} {{user.last_name}}</td></tr><tr><td>Email: </td><td>{{user.email}}</td></tr><tr><td>Timezone: </td><td>{{user.timezone}}</td></tr></table>{% endif %}{% if account.pvt_wnm_numbers %}<h2>Phone Numbers</h2><ul>{% for number in account.pvt_wnm_numbers %}<li>{{number}}</li>{% endfor %}</ul>{% endif %}<h2>Service</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>URL: </td><td>{{service.url}}</td></tr><tr><td>Name: </td><td>{{service.name}}</td></tr><tr><td>Service Provider: </td><td>{{service.provider}}</td></tr></table><p style=\"font-size:9pt;color:#CCCCCC\">Sent from {{service.host}}</p></body></html>">>).
 -define(TEMPLATE_SUBJECT, <<"{{service.name}}: {{request.level}} from {{request.node}}">>).
 -define(TEMPLATE_CATEGORY, <<"system">>).
 -define(TEMPLATE_NAME, <<"System Notifications">>).
@@ -52,25 +52,57 @@ init() ->
                                                ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                               ]).
 
--spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_req(JObj, _Props) ->
+-spec handle_system_alert(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_system_alert(JObj, _Props) ->
     'true' = wapi_notifications:system_alert_v(JObj),
 
     wh_util:put_callid(JObj),
-    %% Gather data for template
-    DataJObj = wh_json:normalize(JObj),
-    case teletype_util:should_handle_notification(DataJObj) of
-        'false' -> lager:debug("notification handling not configured for this account");
-        'true' -> handle_req(DataJObj)
+
+    case wh_json:get_value([<<"Details">>, <<"Format">>], JObj) of
+        'undefined' -> handle_req_as_email(JObj, 'true');
+        _Format ->
+            lager:debug("using format ~s", [_Format]),
+            UseEmail = whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"enable_email_alerts">>, 'true'),
+            Url = whapps_config:get_string(?MOD_CONFIG_CAT, <<"subscriber_url">>),
+            handle_req_as_email(JObj, UseEmail),
+            handle_req_as_http(JObj, Url, UseEmail)
     end.
 
--spec handle_req(wh_json:object()) -> 'ok'.
-handle_req(DataJObj) ->
-    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+-spec handle_req_as_http(wh_json:object(), ne_binary(), boolean()) -> 'ok'.
+handle_req_as_http(JObj, Url, UseEmail) ->
+    Headers = [{"Content-Type", "application/json"}],
+    Encoded = wh_json:encode(JObj),
 
-    ReqData = wh_json:set_value(<<"account">>, AccountJObj, DataJObj),
+    case ibrowse:send_req(wh_util:to_list(Url), Headers, 'post', Encoded) of
+        {'ok', "2" ++ _, _ResponseHeaders, _ResponseBody} ->
+            lager:debug("JSON data successfully POSTed to '~s'", [Url]);
+        _Error ->
+            lager:debug("failed to POST JSON data to ~p for reason: ~p", [Url,_Error]),
+            handle_req_as_email(JObj, UseEmail)
+    end.
+
+-spec handle_req_as_email(wh_json:object(), boolean()) -> 'ok'.
+handle_req_as_email(_JObj, 'false') ->
+    lager:debug("email not enabled for system alerts");
+handle_req_as_email(JObj, 'true') ->
+    %% Gather data for template
+    DataJObj = wh_json:normalize(JObj),
+
+    case teletype_util:should_handle_notification(DataJObj) of
+        'false' -> lager:debug("notification handling not configured for this account");
+        'true' -> handle_req_as_email(DataJObj)
+    end.
+
+-spec handle_req_as_email(wh_json:object()) -> 'ok'.
+handle_req_as_email(DataJObj) ->
+    ReqData =
+        case teletype_util:find_account_id(DataJObj) of
+            'undefined' -> DataJObj;
+            AccountId ->
+                {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
+                wh_json:set_value(<<"account">>, AccountJObj, DataJObj)
+        end,
+
     case wh_json:is_true(<<"preview">>, DataJObj, 'false') of
         'false' -> process_req(ReqData);
         'true' ->
@@ -84,18 +116,22 @@ process_req(DataJObj) ->
     %% Load templates
     process_req(DataJObj, teletype_util:fetch_templates(?TEMPLATE_ID, DataJObj)).
 
-process_req(_DataJObj, []) ->
-    lager:debug("no templates to render for ~s", [?TEMPLATE_ID]);
+process_req(DataJObj, []) ->
+    lager:debug("no templates to render for ~s", [?TEMPLATE_ID]),
+    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
+    process_req(wh_json:set_value(<<"account_id">>, MasterAccountId, DataJObj));
 process_req(DataJObj, Templates) ->
     ServiceData = teletype_util:service_params(DataJObj, ?MOD_CONFIG_CAT),
 
     Macros = [{<<"service">>, ServiceData}
-              ,{<<"account">>, public_proplist(<<"account">>, DataJObj)}
-              ,{<<"user">>, public_proplist(<<"user">>, DataJObj)}
+              ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
+              ,{<<"user">>, teletype_util:public_proplist(<<"user">>, DataJObj)}
               ,{<<"request">>, request_macros(DataJObj)}
               ,{<<"details">>, details_macros(DataJObj)}
-              ,{<<"message">>, wh_json:get_value(<<"message">>, DataJObj)}
+              ,{<<"message">>, wh_json:get_value(<<"message">>, DataJObj, <<>>)}
              ],
+
+    [lager:debug("m: ~p", [M]) || M <- Macros],
 
     %% Populate templates
     RenderedTemplates = [{ContentType, teletype_util:render(?TEMPLATE_ID, Template, Macros)}
@@ -128,7 +164,12 @@ process_req(DataJObj, Templates) ->
 
 -spec details_macros(wh_json:object()) -> wh_proplist().
 details_macros(DataJObj) ->
-    wh_json:recursive_to_proplist(wh_json:get_value(<<"details">>, DataJObj)).
+    case wh_json:get_value(<<"details">>, DataJObj) of
+        'undefined' -> [];
+        <<_/binary>> = Details -> [{<<"message">>, Details}];
+        Details when is_list(Details) -> Details;
+        Details -> wh_json:recursive_to_proplist(Details)
+    end.
 
 -spec request_macros(wh_json:object()) -> wh_proplist().
 request_macros(DataJObj) ->
@@ -142,14 +183,16 @@ request_macros(DataJObj) ->
                            ,<<"message">>
                            ,<<"subject">>
                            ,<<"account">>
+                           ,<<"preview">>
+                           ,<<"text">>
+                           ,<<"html">>
+                           ,<<"from">>
+                           ,<<"bcc">>
+                           ,<<"cc">>
+                           ,<<"to">>
+                           ,<<"reply_to">>
+                           ,<<"format">>
                           ]
-                          ,DataJObj)
+                          ,DataJObj
+                         )
      ).
-
--spec public_proplist(wh_json:key(), wh_json:object()) -> wh_proplist().
-public_proplist(Key, JObj) ->
-    wh_json:to_proplist(
-        wh_json:public_fields(
-            wh_json:get_value(Key, JObj, wh_json:new())
-        )
-    ).
