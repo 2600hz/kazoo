@@ -400,23 +400,30 @@ prepare_context(Context, AccountId, AccountDb) ->
 %%--------------------------------------------------------------------
 -spec validate_request(api_binary(), cb_context:context()) -> cb_context:context().
 validate_request(AccountId, Context) ->
-    ensure_account_has_realm(AccountId, Context).
+    ValidateFuns = [fun ensure_account_has_realm/2
+                   ,fun remove_spaces/2
+                   ,fun cleanup_leaky_keys/2
+                   ,fun validate_realm_is_unique/2
+                   ,fun validate_account_name_is_unique/2
+                   ,fun validate_account_schema/2
+                  ],
+    lists:foldl(fun(F, C) -> F(AccountId, C) end, Context, ValidateFuns).
 
 -spec ensure_account_has_realm(api_binary(), cb_context:context()) -> cb_context:context().
-ensure_account_has_realm(AccountId, Context) ->
+ensure_account_has_realm(_AccountId, Context) ->
     JObj = cb_context:req_data(Context),
     case wh_json:get_ne_value(<<"realm">>, JObj) of
         'undefined' ->
             RealmSuffix = whapps_config:get_binary(?ACCOUNTS_CONFIG_CAT, <<"account_realm_suffix">>, <<"sip.2600hz.com">>),
             Strength = whapps_config:get_integer(?ACCOUNTS_CONFIG_CAT, <<"random_realm_strength">>, 3),
             J = wh_json:set_value(<<"realm">>, list_to_binary([wh_util:rand_hex_binary(Strength), ".", RealmSuffix]), JObj),
-            remove_spaces(AccountId, cb_context:set_req_data(Context, J));
+            cb_context:set_req_data(Context, J);
         _Else ->
-            remove_spaces(AccountId, Context)
+            Context
     end.
 
 -spec remove_spaces(api_binary(), cb_context:context()) -> cb_context:context().
-remove_spaces(AccountId, Context) ->
+remove_spaces(_AccountId, Context) ->
     JObj = cb_context:req_data(Context),
     JObjNew = lists:foldl(fun(Key, Acc) ->
                         case wh_json:get_value(Key, Acc) of
@@ -426,53 +433,49 @@ remove_spaces(AccountId, Context) ->
                                 wh_json:set_value(Key, NoSpaces, Acc)
                         end
                 end, JObj, ?REMOVE_SPACES),
-    cleanup_leaky_keys(AccountId, cb_context:set_req_data(Context, JObjNew)).
+    cb_context:set_req_data(Context, JObjNew).
 
 -spec cleanup_leaky_keys(api_binary(), cb_context:context()) -> cb_context:context().
-cleanup_leaky_keys(AccountId, Context) ->
+cleanup_leaky_keys(_AccountId, Context) ->
     RemoveKeys = [<<"wnm_allow_additions">>
                   ,<<"superduper_admin">>
                   ,<<"billing_mode">>
                  ],
     ReqData = wh_json:delete_keys(RemoveKeys, cb_context:req_data(Context)),
-    validate_realm_is_unique(AccountId
-                             ,cb_context:set_req_data(Context, ReqData)
-                            ).
+    cb_context:set_req_data(Context, ReqData).
 
 -spec validate_realm_is_unique(api_binary(), cb_context:context()) -> cb_context:context().
 validate_realm_is_unique(AccountId, Context) ->
     Realm = wh_json:get_ne_value(<<"realm">>, cb_context:req_data(Context)),
     case is_unique_realm(AccountId, Realm) of
-        'true' -> validate_account_name_is_unique(AccountId, Context);
+        'true' -> Context;
         'false' ->
-            C = cb_context:add_validation_error(
-                    [<<"realm">>]
-                    ,<<"unique">>
-                    ,wh_json:from_list([
-                        {<<"message">>, <<"Account realm already in use">>}
-                        ,{<<"cause">>, Realm}
-                     ])
-                    ,Context
-                ),
-            validate_account_name_is_unique(AccountId, C)
+            cb_context:add_validation_error(
+                [<<"realm">>]
+                ,<<"unique">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"Account realm already in use">>}
+                    ,{<<"cause">>, Realm}
+                 ])
+                ,Context
+            )
     end.
 
 -spec validate_account_name_is_unique(api_binary(), cb_context:context()) -> cb_context:context().
 validate_account_name_is_unique(AccountId, Context) ->
     Name = wh_json:get_ne_value(<<"name">>, cb_context:req_data(Context)),
     case maybe_is_unique_account_name(AccountId, Name) of
-        'true' -> validate_account_schema(AccountId, Context);
+        'true' -> Context;
         'false' ->
-            C = cb_context:add_validation_error(
-                    [<<"name">>]
-                    ,<<"unique">>
-                    ,wh_json:from_list([
-                        {<<"message">>, <<"Account name already in use">>}
-                        ,{<<"cause">>, Name}
-                     ])
-                    ,Context
-                ),
-            validate_account_schema(AccountId, C)
+            cb_context:add_validation_error(
+                [<<"name">>]
+                ,<<"unique">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"Account name already in use">>}
+                    ,{<<"cause">>, Name}
+                 ])
+                ,Context
+            )
     end.
 
 -spec validate_account_schema(api_binary(), cb_context:context()) -> cb_context:context().
