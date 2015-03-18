@@ -225,13 +225,13 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec should_handle(wh_json:object()) -> boolean().
 should_handle(JObj) ->
-    case wh_json:is_true(<<"Preview">>, JObj, 'false') of
-        'true' -> 'true';
-        'false' ->
-            case wh_json:get_first_defined([<<"Account-ID">>, <<"Account-DB">>], JObj) of
-                'undefined' -> should_handle_system();
-                Account -> should_handle_account(Account)
-            end
+    should_handle(JObj, wh_json:is_true(<<"Preview">>, JObj, 'false')).
+
+should_handle(_JObj, 'true') -> 'true';
+should_handle(JObj, 'false') ->
+    case wh_json:get_first_defined([<<"Account-ID">>, <<"Account-DB">>], JObj) of
+        'undefined' -> should_handle_system();
+        Account -> should_handle_account(Account)
     end.
 
 -spec should_handle_system() -> boolean().
