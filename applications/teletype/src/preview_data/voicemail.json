@@ -50,8 +50,8 @@
     "not_configurable": false,
     "pvt_type": "vmbox",
     "pvt_vsn": "1",
-    "pvt_account_id": "1760753c8d022d650418fbbe6a1a10e0",
-    "pvt_account_db": "account%2F17%2F60%2F753c8d022d650418fbbe6a1a10e0",
+    "pvt_account_id": "00000000000000000000000000000000",
+    "pvt_account_db": "account%2F00%2F00%2F0000000000000000000000000000",
     "pvt_created": 63576902621,
     "pvt_modified": 63580540501,
     "pvt_request_id": "0e6a298d040f627290fb5e48d520a203"

@@ -1,7 +1,7 @@
 {
     "_id": "1760753c8d022d650418fbbe6a1a10e0",
     "music_on_hold": {
-        "media_id": "/1760753c8d022d650418fbbe6a1a10e0/070b5e165af1343eb87a4c08281dd0c0"
+        "media_id": "/00000000000000000000000000000000/070b5e165af1343eb87a4c08281dd0c0"
     },
     "notifications": {
         "voicemail_to_email": {},
@@ -61,7 +61,7 @@
     },
     "name": "Demo Account",
     "realm": "realm.com",
-    "billing_id": "1760753c8d022d650418fbbe6a1a10e0",
+    "billing_id": "00000000000000000000000000000000",
     "timezone": "America/Los_Angeles",
     "caller_id_options": {},
     "media": {
@@ -115,21 +115,21 @@
     "ringtones": {},
     "preflow": {},
     "language": "en-us",
-    "reseller_id": "a0f3b6f2c5c0c95240993acd1bd6e762",
+    "reseller_id": "11111111111111111111111111111111",
     "is_reseller": false,
     "pvt_type": "account",
     "pvt_vsn": "1",
     "pvt_api_key": "1df9aa0586abe751a12e7987e646d1645a64fec722cf214412dad348bd6439cd",
     "pvt_superduper_admin": true,
     "pvt_tree": [
-        "a0f3b6f2c5c0c95240993acd1bd6e762"
+        "11111111111111111111111111111111"
     ],
     "pvt_enabled": true,
     "pvt_trial": 0,
     "pvt_created": 63541743088,
     "pvt_modified": 63590296858,
-    "pvt_account_db": "account%2F17%2F60%2F753c8d022d650418fbbe6a1a10e0",
-    "pvt_account_id": "1760753c8d022d650418fbbe6a1a10e0",
+    "pvt_account_db": "account%2F00%2F00%2F0000000000000000000000000000",
+    "pvt_account_id": "00000000000000000000000000000000",
     "pvt_reseller": false,
     "prefer_device_caller_id": true,
     "pvt_notification_preference": "teletype"
