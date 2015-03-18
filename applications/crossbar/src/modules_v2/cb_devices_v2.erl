@@ -313,7 +313,7 @@ unique_mac_address('undefined', _Context) -> 'true';
 unique_mac_address(MacAddress, Context) ->
     DbName = cb_context:account_db(Context),
     not lists:member(MacAddress, get_mac_addresses(DbName))
-        andalso not cb_provisioner_util:is_mac_address_in_use(Context, MacAddress).
+        andalso not provisioner_util:is_mac_address_in_use(Context, MacAddress).
 
 -spec error_used_mac_address(cb_context:context()) -> cb_context:context().
 error_used_mac_address(Context) ->
