@@ -16,6 +16,10 @@
          ,parent_account_id/1
          ,tree/1
          ,notification_preference/1, set_notification_preference/2
+         ,is_enabled/1, enable/1, disable/1
+         ,api_key/1
+         ,is_superduper_admin/1
+         ,allow_number_additions/1
         ]).
 
 -define(ID, <<"_id">>).
@@ -24,6 +28,10 @@
 -define(LANGUAGE, <<"language">>).
 -define(TIMEZONE, <<"timezone">>).
 -define(TREE, <<"pvt_tree">>).
+-define(IS_ENABLED, <<"pvt_enabled">>).
+-define(API_KEY, <<"pvt_api_key">>).
+-define(IS_SUPERDUPER_ADMIN, <<"pvt_superduper_admin">>).
+-define(ALLOW_NUMBER_ADDITIONS, <<"pvt_wnm_allow_additions">>).
 -define(NOTIFY_PREF, <<"pvt_notification_preference">>).
 
 -include("kz_documents.hrl").
@@ -81,6 +89,30 @@ notification_preference(JObj) ->
 -spec set_notification_preference(wh_json:object(), ne_binary()) -> wh_json:object().
 set_notification_preference(JObj, Pref) ->
     wh_json:set_value(?NOTIFY_PREF, Pref, JObj).
+
+-spec is_enabled(wh_json:object()) -> boolean().
+is_enabled(JObj) ->
+    wh_json:is_true(?IS_ENABLED, JObj, 'true').
+
+-spec enable(wh_json:object()) -> wh_json:object().
+enable(JObj) ->
+    wh_json:set_value(?IS_ENABLED, 'true', JObj).
+
+-spec disable(wh_json:object()) -> wh_json:object().
+disable(JObj) ->
+    wh_json:set_value(?IS_ENABLED, 'false', JObj).
+
+-spec api_key(wh_json:object()) -> api_binary().
+api_key(JObj) ->
+    wh_json:get_value(?API_KEY, JObj).
+
+-spec is_superduper_admin(wh_json:object()) -> boolean().
+is_superduper_admin(JObj) ->
+    wh_json:is_true(?IS_SUPERDUPER_ADMIN, JObj).
+
+-spec allow_number_additions(wh_json:object()) -> boolean().
+allow_number_additions(JObj) ->
+    wh_json:is_true(?ALLOW_NUMBER_ADDITIONS, JObj).
 
 -ifdef(TEST).
 
