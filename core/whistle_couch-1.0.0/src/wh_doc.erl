@@ -26,6 +26,8 @@
          ,maybe_remove_attachments/1, maybe_remove_attachments/2
          ,id/1
          ,revision/1, set_revision/2, delete_revision/1
+         ,created/1
+         ,modified/1
          ,set_soft_deleted/2
 
          ,is_soft_deleted/1
@@ -246,3 +248,11 @@ set_soft_deleted(JObj, IsSoftDeleted) ->
 -spec is_soft_deleted(wh_json:object()) -> boolean().
 is_soft_deleted(JObj) ->
     wh_json:is_true(<<"pvt_deleted">>, JObj).
+
+-spec created(wh_json:object()) -> api_integer().
+created(JObj) ->
+    wh_json:get_integer_value(<<"pvt_created">>, JObj).
+
+-spec modified(wh_json:object()) -> api_integer().
+modified(JObj) ->
+    wh_json:get_integer_value(<<"pvt_modified">>, JObj).
