@@ -361,7 +361,8 @@ preview_fold(Header, {Props, ReqData}) ->
     case wh_json:get_first_defined([Header, wh_json:normalize_key(Header)], ReqData) of
         'undefined' ->
             {props:insert_value(Header, Header, Props), ReqData};
-        V -> {props:set_value(Header, V, Props), ReqData}
+        V ->
+            {props:set_value(Header, V, Props), ReqData}
     end.
 
 %%--------------------------------------------------------------------
