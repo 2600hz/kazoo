@@ -91,7 +91,7 @@ handle_fax_outbound(JObj, _Props) ->
 
 -spec handle_fax_outbound(wh_json:object()) -> 'ok'.
 handle_fax_outbound(DataJObj) ->
-    FaxJObj = teletype_util:get_fax_doc(DataJObj),
+    FaxJObj = teletype_fax_util:get_fax_doc(DataJObj),
 
     AccountId = teletype_util:find_account_id(DataJObj),
     {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
