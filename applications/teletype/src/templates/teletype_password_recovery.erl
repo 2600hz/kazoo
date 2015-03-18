@@ -119,8 +119,8 @@ process_req(DataJObj, Templates) ->
     ServiceData = teletype_util:service_params(DataJObj, ?MOD_CONFIG_CAT),
 
     Macros = [{<<"service">>, ServiceData}
-              ,{<<"account">>, public_proplist(<<"account">>, DataJObj)}
-              ,{<<"user">>, public_proplist(<<"user">>, DataJObj)}
+              ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
+              ,{<<"user">>, teletype_util:public_proplist(<<"user">>, DataJObj)}
              ],
 
     %% Populate templates
@@ -154,11 +154,3 @@ process_req(DataJObj, Templates) ->
 -spec is_notice_enabled_on_account(wh_json:object(), wh_json:object()) -> boolean().
 is_notice_enabled_on_account(AccountJObj, ApiJObj) ->
     teletype_util:is_notice_enabled(AccountJObj, ApiJObj, ?TEMPLATE_ID).
-
--spec public_proplist(wh_json:key(), wh_json:object()) -> wh_proplist().
-public_proplist(Key, JObj) ->
-    wh_json:to_proplist(
-      wh_json:public_fields(
-        wh_json:get_value(Key, JObj, wh_json:new())
-       )
-     ).

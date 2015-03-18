@@ -131,8 +131,8 @@ process_req(DataJObj, Templates) ->
     ServiceData = teletype_util:service_params(DataJObj, ?MOD_CONFIG_CAT),
 
     Macros = [{<<"service">>, ServiceData}
-              ,{<<"account">>, public_proplist(<<"account">>, DataJObj)}
-              ,{<<"owner">>, public_proplist(<<"owner">>, DataJObj)}
+              ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
+              ,{<<"owner">>, teletype_util:public_proplist(<<"owner">>, DataJObj)}
               | build_template_data(DataJObj)
              ],
 
@@ -177,17 +177,9 @@ build_voicemail_data(DataJObj) ->
        ,{<<"number">>, wh_json:get_value(<<"voicemail_number">>, DataJObj)}
        ,{<<"max_messages">>, wh_json:get_binary_value(<<"max_message_count">>, DataJObj)}
        ,{<<"message_count">>, wh_json:get_binary_value(<<"message_count">>, DataJObj)}
-       | props:delete(<<"pin">>, public_proplist(<<"voicemail">>, DataJObj))
+       | props:delete(<<"pin">>, teletype_util:public_proplist(<<"voicemail">>, DataJObj))
       ]).
 
 -spec is_notice_enabled_on_account(wh_json:object(), wh_json:object()) -> boolean().
 is_notice_enabled_on_account(AccountJObj, ApiJObj) ->
     teletype_util:is_notice_enabled(AccountJObj, ApiJObj, <<"voicemail_full">>).
-
--spec public_proplist(wh_json:key(), wh_json:object()) -> wh_proplist().
-public_proplist(Key, JObj) ->
-    wh_json:to_proplist(
-      wh_json:public_fields(
-        wh_json:get_value(Key, JObj, wh_json:new())
-       )
-     ).
