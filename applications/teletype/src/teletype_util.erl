@@ -1064,18 +1064,26 @@ find_default(ConfigCat, Key) ->
                       {'ok', wh_json:object()} |
                       {'error', _}.
 open_doc(Type, DocId, DataJObj) ->
-    case is_preview(DataJObj) of
-        'true' ->
-            lager:debug("this is a preview, reading ~s from local file", [Type]),
-            read_doc(Type);
-        'false' ->
-            AccountDb = find_account_db(DataJObj),
-            couch_mgr:open_cache_doc(AccountDb, DocId)
+    AccountDb = find_account_db(DataJObj),
+    case couch_mgr:open_cache_doc(AccountDb, DocId) of
+        {'ok', _JObj}=OK -> OK;
+        {'error', _E}=Error ->
+            maybe_load_preview(Type, Error, is_preview(DataJObj))
     end.
+
+-type read_file_error() :: file:posix() | 'badarg' | 'terminated' | 'system_limit'.
+
+-spec maybe_load_preview(ne_binary(), {'error', _}, boolean()) ->
+                                {'ok', wh_json:object()} |
+                                {'error', read_file_error()}.
+maybe_load_preview(_Type, Error, 'false') ->
+    Error;
+maybe_load_preview(Type, _Error, 'true') ->
+    read_doc(Type).
 
 -spec read_doc(ne_binary()) ->
                       {'ok', wh_json:object()} |
-                      {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'}.
+                      {'error', read_file_error()}.
 read_doc(File) ->
     AppDir = code:lib_dir('teletype'),
     PreviewFile = filename:join([AppDir, "priv", "preview_data", <<File/binary, ".json">>]),
