@@ -418,8 +418,15 @@ ensure_account_has_realm(_AccountId, Context) ->
     JObj = cb_context:req_data(Context),
     case kz_account:realm(JObj) of
         'undefined' ->
-            cb_context:set_req_data(Context, wh_json:set_value(<<"realm">>, random_realm(), JObj));
+            Realm = random_realm(),
+            lager:debug("req has no realm, creating random realm '~s'", [Realm]),
+            cb_context:set_req_data(Context, kz_account:set_realm(JObj, Realm));
+        <<>> ->
+            Realm = random_realm(),
+            lager:debug("req has no realm, creating random realm '~s'", [Realm]),
+            cb_context:set_req_data(Context, kz_account:set_realm(JObj, Realm));
         _Realm ->
+            lager:debug("req has realm '~s'", [_Realm]),
             Context
     end.
 
@@ -530,7 +537,7 @@ maybe_import_enabled(Context, 'success') ->
 maybe_import_enabled(Context, _JObj, 'undefined') -> Context;
 maybe_import_enabled(Context, JObj, IsEnabled) ->
     JObj1 =
-        case wh_json:is_true(IsEnabled) of
+        case wh_util:is_true(IsEnabled) of
             'true' -> kz_account:enable(JObj);
             'false' -> kz_accuont:disable(JObj)
         end,
@@ -613,7 +620,7 @@ leak_pvt_superduper_admin(Context) ->
 
 -spec leak_pvt_api_key(cb_context:context()) -> cb_context:context().
 leak_pvt_api_key(Context) ->
-    case wh_json:is_true(cb_context:req_value(Context, <<"include_api_key">>, 'false'))
+    case wh_util:is_true(cb_context:req_value(Context, <<"include_api_key">>, 'false'))
         orelse whapps_config:get_is_true(?ACCOUNTS_CONFIG_CAT, <<"expose_api_key">>, 'false')
     of
         'false' -> Context;
