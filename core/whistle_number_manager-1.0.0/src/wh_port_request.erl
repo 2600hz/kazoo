@@ -20,12 +20,15 @@
          ,transition_to_rejected/1
          ,maybe_transition/2
          ,charge_for_port/1, charge_for_port/2
+         ,send_submitted_requests/0
         ]).
 
 -compile({'no_auto_import', [get/1]}).
 
 -include("wnm.hrl").
 -include_lib("whistle_number_manager/include/wh_port_request.hrl").
+
+-define(LISTING_SUBMITTED, <<"port_requests/listing_submitted">>).
 
 -type transition_response() :: {'ok', wh_json:object()} |
                                {'error', 'invalid_state_transition'}.
@@ -199,4 +202,127 @@ enable_number(N) ->
         'throw':_E ->
             lager:debug("throw from ported(~s): ~p", [N, _E]),
             {'false', N}
+    end.
+
+-spec send_submitted_requests() -> 'ok'.
+send_submitted_requests() ->
+    case couch_mgr:get_results(?KZ_PORT_REQUESTS_DB, ?LISTING_SUBMITTED, ['include_docs']) of
+        {'error', _R} ->
+            lager:error("failed to open view port_requests/listing_submitted ~p", [_R]);
+        {'ok', JObjs} ->
+            Docs = [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs],
+            maybe_send_requests(Docs)
+    end.
+
+-spec maybe_send_requests(wh_json:objects()) -> 'ok'.
+-spec maybe_send_requests(ne_binary() | 'undefined', wh_json:object()) -> 'ok'.
+maybe_send_requests([]) -> 'ok';
+maybe_send_requests([JObj|JObjs]) ->
+    Id = wh_json:get_value(<<"_id">>, JObj),
+    erlang:put('callid', Id),
+
+    AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:open_doc(AccountDb, AccountId) of
+        {'error', _R} ->
+            lager:error("failed to open account ~s:~p", [AccountId, _R]);
+        {'ok', Doc} ->
+            Url = wh_json:get_value(<<"submitted_port_requests_url">>, Doc),
+            maybe_send_requests(Url, JObj)
+    end,
+    maybe_send_requests(JObjs).
+
+maybe_send_requests('undefined', JObj)->
+    AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
+    lager:debug("'submitted_port_requests_url' is not set for account ~s", [AccountId]);
+maybe_send_requests(Url, JObj)->
+    case send_request(Url, JObj) of
+        'error' -> 'ok';
+        'ok' ->
+            case send_attachements(Url, JObj) of
+                'error' -> 'ok';
+                'ok' -> set_flag(JObj)
+            end
+    end.
+
+-spec send_request(ne_binary(), wh_json:object()) -> 'error' | 'ok'.
+send_request(Url, JObj) ->
+    Id = wh_json:get_value(<<"_id">>, JObj),
+
+    Headers = [{"Content-Type", "application/json"}
+               ,{"User-Agent", wh_util:to_list(erlang:node())}
+              ],
+
+    Uri = binary:bin_to_list(<<Url/binary, "/", Id/binary>>),
+
+    Remove = [
+        <<"_rev">>
+        ,<<"ui_metadata">>
+        ,<<"_attachments">>
+        ,<<"pvt_request_id">>
+        ,<<"pvt_type">>
+        ,<<"pvt_vsn">>
+        ,<<"pvt_account_db">>
+    ],
+    Replace = [
+        {<<"_id">>, <<"id">>}
+        ,{<<"pvt_port_state">>, <<"port_state">>}
+        ,{<<"pvt_account_id">>, <<"account_id">>}
+        ,{<<"pvt_created">>, <<"created">>}
+        ,{<<"pvt_modified">>, <<"modified">>}
+    ],
+    Data = wh_json:encode(wh_json:normalize_jobj(JObj, Remove, Replace)),
+
+    case ibrowse:send_req(Uri, Headers, 'post', Data, []) of
+        {'ok', "200", _Headers, _Resp} ->
+            lager:debug("submitted_port_request successfully sent");
+        _Other ->
+            lager:error("failed to send submitted_port_request ~p", [_Other]),
+            'error'
+    end.
+
+-spec send_attachements(ne_binary(), wh_json:object()) -> 'error' | 'ok'.
+send_attachements(Url, JObj) ->
+    Id = wh_json:get_value(<<"_id">>, JObj),
+    Attachments = wh_json:get_value(<<"_attachments">>, JObj),
+    wh_json:foldl(
+        fun(Key, Value, _) ->
+            case couch_mgr:fetch_attachment(?KZ_PORT_REQUESTS_DB, Id, Key) of
+                {'error', _R} ->
+                    lager:error("failed to fetch attachment ~s : ~p", [Key, _R]),
+                    'error';
+                {'ok', Attachment} ->
+                    send_attachement(Url, Id, Key, Value, Attachment)
+            end
+        end
+        ,'ok'
+        ,Attachments
+    ).
+
+-spec send_attachement(ne_binary(), ne_binary(), ne_binary(), wh_json:object(), any()) -> 'error' | 'ok'.
+send_attachement(Url, Id, Name, Options, Attachment) ->
+    ContentType = wh_json:get_value(<<"content_type">>, Options),
+
+    Headers = [{"Content-Type", binary:bin_to_list(ContentType)}
+               ,{"User-Agent", wh_util:to_list(erlang:node())}
+              ],
+
+    Uri = binary:bin_to_list(<<Url/binary, "/", Id/binary, "/", Name/binary>>),
+
+    case ibrowse:send_req(Uri, Headers, 'post', Attachment, []) of
+        {'ok', "200", _Headers, _Resp} ->
+            lager:debug("attachment ~s for submitted_port_request successfully sent", [Name]);
+        _Other ->
+            lager:error("failed to send attachment ~s for submitted_port_request ~p", [Name, _Other]),
+            'error'
+    end.
+
+-spec set_flag(wh_json:object()) -> 'ok'.
+set_flag(JObj) ->
+    Doc = wh_json:set_value(<<"sent">>, 'true', JObj),
+    case couch_mgr:save_doc(?KZ_PORT_REQUESTS_DB, Doc) of
+        {'ok', _} ->
+            lager:debug("flag for submitted_port_request successfully set");
+        {'error', _R} ->
+            lager:debug("failed to set flag for submitted_port_request: ~p", [_R])
     end.
