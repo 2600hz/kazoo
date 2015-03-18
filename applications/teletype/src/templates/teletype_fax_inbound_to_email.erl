@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014, 2600Hz Inc
+%%% @copyright (C) 2014-2015, 2600Hz Inc
 %%% @doc
 %%%
 %%% @end
@@ -67,33 +67,6 @@ init() ->
                                                ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                               ]).
 
--spec get_fax_doc(wh_json:object()) -> wh_json:object().
--spec get_fax_doc(boolean(), wh_json:object()) -> wh_json:object().
-get_fax_doc(DataJObj) ->
-    get_fax_doc(wh_json:is_true(<<"preview">>, DataJObj), DataJObj).
-
-get_fax_doc('true', DataJObj) ->
-    FaxId = wh_json:get_value(<<"fax_id">>, DataJObj),
-    case teletype_util:open_doc(<<"fax">>, FaxId, DataJObj) of
-        {'ok', JObj} -> JObj;
-        {'error', _E} -> wh_json:new()
-    end;
-get_fax_doc('false', DataJObj) ->
-    AccountId = teletype_util:find_account_id(DataJObj),
-    FaxId = wh_json:get_value(<<"fax_id">>, DataJObj),
-    get_fax_doc_from_modb(DataJObj, AccountId, FaxId).
-
-
--spec get_fax_doc_from_modb(wh_json:object(), ne_binary(), ne_binary()) -> wh_json:object().
-get_fax_doc_from_modb(DataJObj, AccountId, FaxId) ->
-    case kazoo_modb:open_doc(AccountId, FaxId) of
-        {'ok', FaxJObj} -> FaxJObj;
-        {'error', _E} ->
-            lager:debug("failed to find fax ~s: ~p", [FaxId, _E]),
-            teletype_util:send_update(DataJObj, <<"failed">>, <<"Fax-ID was invalid">>),
-            throw({'error', 'no_fax_id'})
-    end.
-
 -spec handle_fax_inbound(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_fax_inbound(JObj, _Props) ->
     'true' = wapi_notifications:fax_inbound_v(JObj),
@@ -118,7 +91,7 @@ handle_fax_inbound(JObj, _Props) ->
 
 -spec handle_fax_inbound(wh_json:object()) -> 'ok'.
 handle_fax_inbound(DataJObj) ->
-    FaxJObj = get_fax_doc(DataJObj),
+    FaxJObj = teletype_fax_util:get_fax_doc(DataJObj),
 
     AccountId = teletype_util:find_account_id(DataJObj),
     {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),

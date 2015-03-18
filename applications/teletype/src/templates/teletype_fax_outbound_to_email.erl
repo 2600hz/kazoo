@@ -67,44 +67,6 @@ init() ->
                                                ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                               ]).
 
--spec get_fax_doc(wh_json:object()) -> wh_json:object().
-get_fax_doc(DataJObj) ->
-    get_fax_doc(wh_json:is_true(<<"preview">>, DataJObj), DataJObj).
-
-get_fax_doc('true', DataJObj) ->
-    FaxId = wh_json:get_value(<<"fax_id">>, DataJObj),
-    case teletype_util:open_doc(<<"fax">>, FaxId, DataJObj) of
-        {'ok', JObj} -> JObj;
-        {'error', _E} -> wh_json:new()
-    end;
-get_fax_doc('false', DataJObj) ->
-    AccountId = teletype_util:find_account_id(DataJObj),
-    AccountDb = ?WH_FAXES,
-    FaxId = wh_json:get_value(<<"fax_id">>, DataJObj),
-
-    case couch_mgr:open_doc(AccountDb, FaxId) of
-        {'ok', FaxJObj} -> FaxJObj;
-        {'error', 'not_found'} ->
-            get_fax_doc_from_modb(DataJObj, AccountId, FaxId);
-        {'error', _E} ->
-            lager:debug("failed to find fax ~s: ~p", [FaxId, _E]),
-            send_failure(DataJObj, <<"Fax-ID was invalid">>)
-    end.
-
--spec get_fax_doc_from_modb(wh_json:object(), ne_binary(), ne_binary()) -> wh_json:object().
-get_fax_doc_from_modb(DataJObj, AccountId, FaxId) ->
-    case kazoo_modb:open_doc(AccountId, FaxId) of
-        {'ok', FaxJObj} -> FaxJObj;
-        {'error', _E} ->
-            lager:debug("failed to find fax ~s: ~p", [FaxId, _E]),
-            send_failure(DataJObj, <<"Fax-ID was invalid">>)
-    end.
-
--spec send_failure(wh_json:object(), ne_binary()) -> wh_json:object().
-send_failure(DataJObj, Msg) ->
-    teletype_util:send_update(DataJObj, <<"failed">>, Msg),
-    throw({'error', 'no_fax_id'}).
-
 -spec handle_fax_outbound(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_fax_outbound(JObj, _Props) ->
     'true' = wapi_notifications:fax_outbound_v(JObj),
@@ -129,10 +91,10 @@ handle_fax_outbound(JObj, _Props) ->
 
 -spec handle_fax_outbound(wh_json:object()) -> 'ok'.
 handle_fax_outbound(DataJObj) ->
-    FaxJObj = get_fax_doc(DataJObj),
+    FaxJObj = teletype_util:get_fax_doc(DataJObj),
 
     AccountId = teletype_util:find_account_id(DataJObj),
-   {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
+    {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
 
     OwnerJObj = get_owner_doc(FaxJObj, DataJObj),
 
