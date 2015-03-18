@@ -421,10 +421,6 @@ ensure_account_has_realm(_AccountId, Context) ->
             Realm = random_realm(),
             lager:debug("req has no realm, creating random realm '~s'", [Realm]),
             cb_context:set_req_data(Context, kz_account:set_realm(JObj, Realm));
-        <<>> ->
-            Realm = random_realm(),
-            lager:debug("req has no realm, creating random realm '~s'", [Realm]),
-            cb_context:set_req_data(Context, kz_account:set_realm(JObj, Realm));
         _Realm ->
             lager:debug("req has realm '~s'", [_Realm]),
             Context

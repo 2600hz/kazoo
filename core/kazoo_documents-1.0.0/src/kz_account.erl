@@ -49,7 +49,7 @@ set_name(JObj, Name) ->
 
 -spec realm(wh_json:object()) -> api_binary().
 realm(JObj) ->
-    wh_json:get_value(?REALM, JObj).
+    wh_json:get_ne_value(?REALM, JObj).
 
 -spec set_realm(wh_json:object(), ne_binary()) -> wh_json:object().
 set_realm(JObj, Realm) ->
