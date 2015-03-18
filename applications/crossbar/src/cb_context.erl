@@ -115,11 +115,13 @@ is_context(_) -> 'false'.
 req_value(#cb_context{}=Context, Key) ->
     req_value(Context, Key, 'undefined').
 req_value(#cb_context{req_data=ReqData
-                     ,query_json=QS
-                     ,req_json=JObj
-                     }, Key, Default) ->
+                      ,query_json=QS
+                      ,req_json=JObj
+                     }
+          ,Key
+          ,Default
+         ) ->
     wh_json:find(Key, [ReqData, QS, JObj], Default).
-
 
 -spec accepting_charges(context()) -> boolean().
 accepting_charges(Context) ->
