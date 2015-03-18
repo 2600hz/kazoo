@@ -278,9 +278,9 @@ build_date_called_data(DataJObj) ->
        ,{<<"local">>, localtime:local_to_local(DateTime, ClockTimezone, Timezone)}
       ]).
 
+-spec date_called(api_object() | gregorian_seconds()) -> gregorian_seconds().
 date_called(Timestamp) when is_integer(Timestamp) -> Timestamp;
-date_called(Timestamp) when is_binary(Timestamp) -> wh_util:now_ms(erlang:now());
-date_called('undefined') -> wh_util:now_ms(erlang:now());
+date_called('undefined') -> wh_util:current_tstamp();
 date_called(DataJObj) ->
     date_called(wh_json:get_integer_value(<<"voicemail_timestamp">>, DataJObj)).
 
