@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014, 2600Hz INC
+%%% @copyright (C) 2014-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -777,6 +777,8 @@ find_account_id(JObj) ->
                               ]
                               ,JObj
                              ).
+
+-spec find_account_db(wh_json:object()) -> api_binary().
 find_account_db(JObj) ->
     case wh_json:get_first_defined([<<"account_db">>
                                     ,<<"pvt_account_db">>
@@ -788,6 +790,8 @@ find_account_db(JObj) ->
         'undefined' -> find_account_db_from_id(JObj);
         Db -> Db
     end.
+
+-spec find_account_db_from_id(wh_json:object()) -> api_binary().
 find_account_db_from_id(JObj) ->
     case find_account_id(JObj) of
         'undefined' -> 'undefined';
@@ -954,8 +958,8 @@ should_handle_notification_for_account(AccountId, ResellerId) ->
     {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
     {'ok', ResellerJObj} = couch_mgr:open_cache_doc(ResellerDb, ResellerId),
 
-    kz_account:notification_preference(AccountJObj) =:= <<"teletype">>
-        orelse (kz_account:notification_preference(ResellerJObj) =:= <<"teletype">>
+    kz_account:notification_preference(AccountJObj) =:= ?APP_NAME
+        orelse (kz_account:notification_preference(ResellerJObj) =:= ?APP_NAME
                     andalso kz_account:notification_preference(AccountJObj) =:= 'undefined'
                )
         orelse should_handle_notification_for_account(ResellerId, wh_services:find_reseller_id(ResellerId)).
@@ -1056,30 +1060,33 @@ find_default(ConfigCat, Key) ->
         Emails -> Emails
     end.
 
--spec open_doc(ne_binary(), ne_binary(), wh_json:object()) -> {'ok', wh_json:object()} | {'error', any()}.
+-spec open_doc(ne_binary(), ne_binary(), wh_json:object()) ->
+                      {'ok', wh_json:object()} |
+                      {'error', _}.
 open_doc(Type, DocId, DataJObj) ->
     case is_preview(DataJObj) of
         'true' ->
             lager:debug("this is a preview, reading ~s from local file", [Type]),
             read_doc(Type);
         'false' ->
-            AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
-            Data = [wh_util:format_account_id(AccountId, 'encoded'), DocId],
-            lager:debug("this is not a preview, reading ~s/~s from couch", Data),
-            erlang:apply('couch_mgr', 'open_cache_doc', Data)
+            AccountDb = find_account_db(DataJObj),
+            couch_mgr:open_cache_doc(AccountDb, DocId)
     end.
 
--spec read_doc(ne_binary()) -> {'ok', wh_json:object()} | {'error', any()}.
+-spec read_doc(ne_binary()) ->
+                      {'ok', wh_json:object()} |
+                      {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'}.
 read_doc(File) ->
-    try
-        {'ok', CurrentPath} = file:get_cwd(),
-        FilePath = filename:join([CurrentPath, ?PATH, <<File/binary, ".json">>]),
-        {'ok', JSON} = file:read_file(FilePath),
-        {'ok', wh_json:decode(JSON)}
-    catch
-        _E:R ->
-            lager:debug("failed to read file ~s: ~p", [File, _E]),
-            {'error', R}
+    AppDir = code:lib_dir('teletype'),
+    PreviewFile = filename:join([AppDir, "priv", "preview_data", <<File/binary, ".json">>]),
+
+    case file:read_file(PreviewFile) of
+        {'ok', JSON} ->
+            lager:debug("read preview data from ~s: ~s", [PreviewFile, JSON]),
+            {'ok', wh_json:decode(JSON)};
+        {'error', _Reason}=E ->
+            lager:debug("failed to read preview data from ~s: ~p", [PreviewFile, _Reason]),
+            E
     end.
 
 -spec is_preview(wh_json:object()) -> boolean().
