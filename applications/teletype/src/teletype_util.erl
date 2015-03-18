@@ -949,7 +949,9 @@ should_handle_notification(DataJObj) ->
             should_handle_notification_for_account(AccountId, ResellerId)
     end.
 
--spec should_handle_notification_for_account(ne_binary(), ne_binary()) -> boolean().
+-spec should_handle_notification_for_account(api_binary(), ne_binary()) -> boolean().
+should_handle_notification_for_account('undefined', _ResellerId) ->
+    'true';
 should_handle_notification_for_account(AccountId, AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
