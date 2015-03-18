@@ -19,10 +19,8 @@
 -define(TEMPLATE_ID, <<"new_user">>).
 -define(TEMPLATE_MACROS
         ,wh_json:from_list(
-           [?MACRO_VALUE(<<"user.first_name">>, <<"first_name">>, <<"First Name">>, <<"First Name">>)
-            ,?MACRO_VALUE(<<"user.last_name">>, <<"last_name">>, <<"Last Name">>, <<"Last Name">>)
-            ,?MACRO_VALUE(<<"user.password">>, <<"password">>, <<"Password">>, <<"Password">>)
-            | ?SERVICE_MACROS
+           [?MACRO_VALUE(<<"user.password">>, <<"password">>, <<"Password">>, <<"Password">>)
+            | ?SERVICE_MACROS ++ ?USER_MACROS
            ])
        ).
 
@@ -72,17 +70,21 @@ handle_req(DataJObj) ->
 
     UserId = wh_json:get_value(<<"user_id">>, DataJObj),
     {'ok', UserJObj} = teletype_util:open_doc(<<"user">>, UserId, DataJObj),
+
     Password = wh_json:get_value(<<"password">>, DataJObj),
 
     ReqData =
-        wh_json:set_values([
-            {<<"account">>, AccountJObj}
-            ,{<<"user">>, wh_json:set_value(<<"password">>, Password, UserJObj)}
-            ,{<<"to">>, [wh_json:get_ne_value(<<"email">>, UserJObj)]}
-        ], DataJObj),
+        wh_json:set_values(
+          [{<<"account">>, AccountJObj}
+           ,{<<"user">>, wh_json:set_value(<<"password">>, Password, UserJObj)}
+           ,{<<"to">>, [wh_json:get_ne_value(<<"email">>, UserJObj)]}
+          ]
+          ,DataJObj
+         ),
 
     case teletype_util:is_preview(DataJObj) of
-        'false' -> process_req(ReqData);
+        'false' ->
+            process_req(ReqData);
         'true' ->
             process_req(wh_json:merge_jobjs(DataJObj, ReqData))
     end.
@@ -100,8 +102,8 @@ process_req(DataJObj, Templates) ->
     ServiceData = teletype_util:service_params(DataJObj, ?MOD_CONFIG_CAT),
 
     Macros = [{<<"service">>, ServiceData}
-              ,{<<"account">>, public_proplist(<<"account">>, DataJObj)}
-              ,{<<"user">>, public_proplist(<<"user">>, DataJObj)}
+              ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
+              ,{<<"user">>, teletype_util:public_proplist(<<"user">>, DataJObj)}
              ],
 
     %% Populate templates
@@ -134,11 +136,3 @@ process_req(DataJObj, Templates) ->
         {'error', Reason} ->
             teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
-
--spec public_proplist(wh_json:key(), wh_json:object()) -> wh_proplist().
-public_proplist(Key, JObj) ->
-    wh_json:to_proplist(
-        wh_json:public_fields(
-            wh_json:get_value(Key, JObj, wh_json:new())
-        )
-    ).

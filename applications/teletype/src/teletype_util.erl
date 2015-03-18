@@ -30,6 +30,8 @@
 
          ,open_doc/3
          ,is_preview/1
+
+         ,public_proplist/2
         ]).
 
 -include("teletype.hrl").
@@ -1100,3 +1102,11 @@ read_doc(File) ->
 -spec is_preview(wh_json:object()) -> boolean().
 is_preview(DataJObj) ->
     wh_json:is_true(<<"preview">>, DataJObj, 'false').
+
+-spec public_proplist(wh_json:key(), wh_json:object()) -> wh_proplist().
+public_proplist(Key, JObj) ->
+    wh_json:to_proplist(
+        wh_json:public_fields(
+            wh_json:get_value(Key, JObj, wh_json:new())
+        )
+    ).
