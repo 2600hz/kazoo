@@ -19,10 +19,8 @@
 -define(TEMPLATE_ID, <<"new_user">>).
 -define(TEMPLATE_MACROS
         ,wh_json:from_list(
-           [?MACRO_VALUE(<<"user.first_name">>, <<"first_name">>, <<"First Name">>, <<"First Name">>)
-            ,?MACRO_VALUE(<<"user.last_name">>, <<"last_name">>, <<"Last Name">>, <<"Last Name">>)
-            ,?MACRO_VALUE(<<"user.password">>, <<"password">>, <<"Password">>, <<"Password">>)
-            | ?SERVICE_MACROS
+           [?MACRO_VALUE(<<"user.password">>, <<"password">>, <<"Password">>, <<"Password">>)
+            | ?SERVICE_MACROS ++ ?USER_MACROS
            ])
        ).
 
@@ -57,10 +55,9 @@ init() ->
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = wapi_notifications:new_user_v(JObj),
-    erlang:put(server_id, wh_api:server_id(JObj)),
     wh_util:put_callid(JObj),
     %% Gather data for template
-    DataJObj = wh_json:normalize(wh_api:remove_defaults(JObj)),
+    DataJObj = wh_json:normalize(JObj),
     case teletype_util:should_handle_notification(DataJObj) of
         'false' -> lager:debug("notification handling not configured for this account");
         'true' -> handle_req(DataJObj)
@@ -69,21 +66,25 @@ handle_req(JObj, _Props) ->
 -spec handle_req(wh_json:object()) -> 'ok'.
 handle_req(DataJObj) ->
     AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+    {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
 
     UserId = wh_json:get_value(<<"user_id">>, DataJObj),
-    {'ok', UserJObj} = couch_mgr:open_cache_doc(AccountDb, UserId),
+    {'ok', UserJObj} = teletype_util:open_doc(<<"user">>, UserId, DataJObj),
+
     Password = wh_json:get_value(<<"password">>, DataJObj),
 
     ReqData =
-        wh_json:set_values([
-            {<<"account">>, AccountJObj}
-            ,{<<"user">>, wh_json:set_value(<<"password">>, Password, UserJObj)}
-            ,{<<"to">>, [wh_json:get_ne_value(<<"email">>, UserJObj)]}
-        ], DataJObj),
-    case wh_json:is_true(<<"preview">>, DataJObj, 'false') of
-        'false' -> process_req(ReqData);
+        wh_json:set_values(
+          [{<<"account">>, AccountJObj}
+           ,{<<"user">>, wh_json:set_value(<<"password">>, Password, UserJObj)}
+           ,{<<"to">>, [wh_json:get_ne_value(<<"email">>, UserJObj)]}
+          ]
+          ,DataJObj
+         ),
+
+    case teletype_util:is_preview(DataJObj) of
+        'false' ->
+            process_req(ReqData);
         'true' ->
             process_req(wh_json:merge_jobjs(DataJObj, ReqData))
     end.
@@ -91,7 +92,7 @@ handle_req(DataJObj) ->
 -spec process_req(wh_json:object()) -> 'ok'.
 -spec process_req(wh_json:object(), wh_proplist()) -> 'ok'.
 process_req(DataJObj) ->
-    _ = send_update(<<"pending">>),
+    teletype_util:send_update(DataJObj, <<"pending">>),
     %% Load templates
     process_req(DataJObj, teletype_util:fetch_templates(?TEMPLATE_ID, DataJObj)).
 
@@ -101,8 +102,8 @@ process_req(DataJObj, Templates) ->
     ServiceData = teletype_util:service_params(DataJObj, ?MOD_CONFIG_CAT),
 
     Macros = [{<<"service">>, ServiceData}
-              ,{<<"account">>, public_proplist(<<"account">>, DataJObj)}
-              ,{<<"user">>, public_proplist(<<"user">>, DataJObj)}
+              ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
+              ,{<<"user">>, teletype_util:public_proplist(<<"user">>, DataJObj)}
              ],
 
     %% Populate templates
@@ -130,26 +131,8 @@ process_req(DataJObj, Templates) ->
                                   ,RenderedTemplates
                                  )
     of
-        'ok' -> send_update(<<"completed">>);
-        {'error', Reason} -> send_update(<<"failed">>, Reason)
+        'ok' ->
+            teletype_util:send_update(DataJObj, <<"completed">>);
+        {'error', Reason} ->
+            teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
-
--spec public_proplist(wh_json:key(), wh_json:object()) -> wh_proplist().
-public_proplist(Key, JObj) ->
-    wh_json:to_proplist(
-        wh_json:public_fields(
-            wh_json:get_value(Key, JObj, wh_json:new())
-        )
-    ).
-
--spec send_update(ne_binary()) -> 'ok'.
--spec send_update(ne_binary(), api_binary()) -> 'ok'.
-send_update(Status) ->
-    send_update(Status, 'undefined').
-
-send_update(Status, Reason) ->
-    teletype_util:send_update(
-        wh_json:from_list([{<<"server_id">>, erlang:get('server_id')}])
-        ,Status
-        ,Reason
-    ).

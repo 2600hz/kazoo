@@ -75,8 +75,6 @@ handle_deregister(JObj, _Props) ->
     'true' = wapi_notifications:deregister_v(JObj),
     wh_util:put_callid(JObj),
 
-    EventJObj = wh_json:normalize(wh_api:remove_defaults(JObj)),
-
     %% Gather data for template
     DataJObj = wh_json:normalize(JObj),
 
@@ -87,7 +85,7 @@ handle_deregister(JObj, _Props) ->
 
     Macros = [{<<"service">>, ServiceData}
               ,{<<"account">>, AccountData}
-              ,{<<"last_registration">>, wh_json:to_proplist(EventJObj)}
+              ,{<<"last_registration">>, wh_json:to_proplist(DataJObj)}
              ],
 
     %% Load templates

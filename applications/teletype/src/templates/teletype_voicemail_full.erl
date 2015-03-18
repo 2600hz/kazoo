@@ -70,8 +70,7 @@ handle_full_voicemail(JObj, _Props) ->
 
     AccountDb = wh_json:get_value(<<"account_db">>, DataJObj),
     AccountId = wh_util:format_account_id(AccountDb, 'raw'),
-
-    {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+    {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
 
     case teletype_util:should_handle_notification(DataJObj)
         andalso is_notice_enabled_on_account(AccountJObj, JObj)
@@ -81,7 +80,7 @@ handle_full_voicemail(JObj, _Props) ->
             lager:debug("notification enabled for account ~s (~s)", [AccountId, AccountDb]),
 
             VMBox = get_vm_box(AccountDb, DataJObj),
-            User = get_vm_box_owner(AccountDb, VMBox),
+            User = get_vm_box_owner(VMBox, DataJObj),
             ReqData =
                 wh_json:set_values(
                     [{<<"voicemail">>, VMBox}
@@ -92,7 +91,7 @@ handle_full_voicemail(JObj, _Props) ->
                     ,DataJObj
                 ),
 
-            case wh_json:is_true(<<"preview">>, DataJObj, 'false') of
+            case teletype_util:is_preview(DataJObj) of
                 'false' -> process_req(ReqData);
                 'true' ->
                     process_req(wh_json:merge_jobjs(DataJObj, ReqData))
@@ -102,16 +101,17 @@ handle_full_voicemail(JObj, _Props) ->
 -spec get_vm_box(ne_binary(), wh_json:object()) -> wh_json:object().
 get_vm_box(AccountDb, JObj) ->
     VMBoxId = wh_json:get_value(<<"voicemail_box">>, JObj),
-    case couch_mgr:open_cache_doc(AccountDb, VMBoxId) of
+    case teletype_util:open_doc(<<"voicemail">>, VMBoxId, JObj) of
         {'ok', VMBox} -> VMBox;
         {'error', _E} ->
             lager:debug("failed to load vm box ~s from ~s", [VMBoxId, AccountDb]),
             wh_json:new()
     end.
 
--spec get_vm_box_owner(ne_binary(), wh_json:object()) -> wh_json:object().
-get_vm_box_owner(AccountDb, VMBox) ->
-    case couch_mgr:open_cache_doc(AccountDb, wh_json:get_value(<<"owner_id">>, VMBox)) of
+-spec get_vm_box_owner(wh_json:object(), wh_json:object()) -> wh_json:object().
+get_vm_box_owner(VMBox, JObj) ->
+    UserId = wh_json:get_value(<<"owner_id">>, VMBox),
+    case teletype_util:open_doc(<<"user">>, UserId, JObj) of
         {'ok', UserJObj} -> UserJObj;
         {'error', _E} ->
             lager:debug("failed to lookup owner, assuming none"),
@@ -131,8 +131,8 @@ process_req(DataJObj, Templates) ->
     ServiceData = teletype_util:service_params(DataJObj, ?MOD_CONFIG_CAT),
 
     Macros = [{<<"service">>, ServiceData}
-              ,{<<"account">>, public_proplist(<<"account">>, DataJObj)}
-              ,{<<"owner">>, public_proplist(<<"owner">>, DataJObj)}
+              ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
+              ,{<<"owner">>, teletype_util:public_proplist(<<"owner">>, DataJObj)}
               | build_template_data(DataJObj)
              ],
 
@@ -177,17 +177,9 @@ build_voicemail_data(DataJObj) ->
        ,{<<"number">>, wh_json:get_value(<<"voicemail_number">>, DataJObj)}
        ,{<<"max_messages">>, wh_json:get_binary_value(<<"max_message_count">>, DataJObj)}
        ,{<<"message_count">>, wh_json:get_binary_value(<<"message_count">>, DataJObj)}
-       | props:delete(<<"pin">>, public_proplist(<<"voicemail">>, DataJObj))
+       | props:delete(<<"pin">>, teletype_util:public_proplist(<<"voicemail">>, DataJObj))
       ]).
 
 -spec is_notice_enabled_on_account(wh_json:object(), wh_json:object()) -> boolean().
 is_notice_enabled_on_account(AccountJObj, ApiJObj) ->
     teletype_util:is_notice_enabled(AccountJObj, ApiJObj, <<"voicemail_full">>).
-
--spec public_proplist(wh_json:key(), wh_json:object()) -> wh_proplist().
-public_proplist(Key, JObj) ->
-    wh_json:to_proplist(
-      wh_json:public_fields(
-        wh_json:get_value(Key, JObj, wh_json:new())
-       )
-     ).
