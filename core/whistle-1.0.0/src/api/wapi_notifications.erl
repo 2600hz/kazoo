@@ -383,6 +383,8 @@ headers(<<"deregister">>) ->
     ?DEREGISTER_HEADERS ++ ?OPTIONAL_DEREGISTER_HEADERS;
 headers(<<"password_recovery">>) ->
     ?PWD_RECOVERY_HEADERS ++ ?OPTIONAL_PWD_RECOVERY_HEADERS;
+headers(<<"system_alert">>) ->
+    ?SYSTEM_ALERT_HEADERS ++ ?OPTIONAL_SYSTEM_ALERT_HEADERS;
 headers(<<"skel">>) ->
     ?SKEL_HEADERS ++ ?OPTIONAL_SKEL_HEADERS;
 headers(_Notification) ->
