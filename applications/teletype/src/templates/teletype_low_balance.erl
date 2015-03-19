@@ -9,7 +9,7 @@
 -module(teletype_low_balance).
 
 -export([init/0
-         ,handle_low_balance/1
+         ,handle_low_balance/2
         ]).
 
 -include("../teletype.hrl").
@@ -54,8 +54,8 @@ init() ->
                                                ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                               ]).
 
--spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_low_blance(JObj) ->
+-spec handle_low_balance(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_low_balance(JObj, _Props) ->
     'true' = wapi_notifications:low_balance_v(JObj),
     wh_util:put_callid(JObj),
 
@@ -68,7 +68,7 @@ handle_low_blance(JObj) ->
     end.
 
 -spec stuff_data(wh_json:object()) -> wh_json:object().
-stuff_data(DataObj) ->
+stuff_data(DataJObj) ->
     AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
@@ -79,6 +79,8 @@ handle_req(DataJObj) ->
     ServiceData = teletype_util:service_params(DataJObj, ?MOD_CONFIG_CAT),
     Macros = [{<<"service">>, ServiceData}
              ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
+             ,{<<"current_balance">>, pretty_print_dollars(wht_util:units_to_dollars(CurrentBalance))}
+             ,{<<"threshold">>, pretty_print_dollars(Threshold)}
               | build_macro_data(DataJObj)],
 
     %% Load templates
@@ -100,6 +102,11 @@ handle_req(DataJObj) ->
 
     %% Send email
     teletype_util:send_email(Emails, Subject, ServiceData, RenderedTemplates).
+
+%% @private
+-spec pretty_print_dollars(float()) -> ne_binary().
+pretty_print_dollars(Amount) ->
+    wh_util:to_binary(io_lib:format("$~.2f", [Amount])).
 
 -spec build_macro_data(wh_json:object()) -> wh_proplist().
 build_macro_data(DataJObj) ->
