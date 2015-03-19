@@ -20,6 +20,7 @@
          ,find_addresses/3
          ,find_account_rep_email/1
          ,find_account_admin_email/1
+         ,find_account_admin/1
          ,find_account_id/1
          ,find_account_db/1
          ,is_notice_enabled/3
@@ -932,6 +933,40 @@ query_account_for_admin_emails(AccountId) ->
             []
     end.
 
+-spec find_account_admin(api_binary()) -> api_object().
+-spec find_account_admin(ne_binary(), ne_binary()) -> api_object().
+find_account_admin('undefined') -> 'undefined';
+find_account_admin(<<_/binary>> = AccountId) ->
+    find_account_admin(AccountId, wh_services:find_reseller_id(AccountId)).
+
+find_account_admin(AccountId, AccountId) ->
+    query_for_account_admin(AccountId);
+find_account_admin(AccountId, ResellerId) ->
+    case query_for_account_admin(AccountId) of
+        'undefined' -> find_account_admin(ResellerId);
+        Admin -> Admin
+    end.
+
+-spec query_for_account_admin(ne_binary()) -> api_object().
+query_for_account_admin(AccountId) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+
+    ViewOptions = [{'key', <<"user">>}
+                   ,'include_docs'
+                  ],
+
+    case couch_mgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
+        {'ok', []} -> 'undefined';
+        {'ok', Users} ->
+            case filter_for_admins(Users) of
+                [] -> 'undefined';
+                [Admin|_] -> Admin
+            end;
+        {'error', _E} ->
+            lager:debug("failed to find users in ~s: ~p", [AccountId, _E]),
+            'undefined'
+    end.
+
 -spec filter_for_admins(wh_json:objects()) -> wh_json:objects().
 filter_for_admins(Users) ->
     [User
@@ -1108,7 +1143,7 @@ is_preview(DataJObj) ->
 -spec public_proplist(wh_json:key(), wh_json:object()) -> wh_proplist().
 public_proplist(Key, JObj) ->
     wh_json:to_proplist(
-        wh_json:public_fields(
-            wh_json:get_value(Key, JObj, wh_json:new())
-        )
-    ).
+      wh_json:public_fields(
+        wh_json:get_value(Key, JObj, wh_json:new())
+       )
+     ).
