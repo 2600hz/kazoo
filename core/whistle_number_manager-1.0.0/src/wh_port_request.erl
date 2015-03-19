@@ -253,7 +253,7 @@ send_request(Url, JObj) ->
                ,{"User-Agent", wh_util:to_list(erlang:node())}
               ],
 
-    Uri = binary:bin_to_list(<<Url/binary, "/", Id/binary>>),
+    Uri = wh_util:to_list(<<Url/binary, "/", Id/binary>>),
 
     Remove = [
         <<"_rev">>
@@ -284,16 +284,17 @@ send_request(Url, JObj) ->
 -spec send_attachements(ne_binary(), wh_json:object()) -> 'error' | 'ok'.
 send_attachements(Url, JObj) ->
     Id = wh_json:get_value(<<"_id">>, JObj),
-    Attachments = wh_json:get_value(<<"_attachments">>, JObj),
+    Attachments = wh_doc:attachments(JObj, wh_json:new()),
     wh_json:foldl(
-        fun(Key, Value, _) ->
-            case couch_mgr:fetch_attachment(?KZ_PORT_REQUESTS_DB, Id, Key) of
-                {'error', _R} ->
-                    lager:error("failed to fetch attachment ~s : ~p", [Key, _R]),
-                    'error';
-                {'ok', Attachment} ->
-                    send_attachement(Url, Id, Key, Value, Attachment)
-            end
+        fun(_, _, 'error') -> error;
+            (Key, Value, 'ok') ->
+                case couch_mgr:fetch_attachment(?KZ_PORT_REQUESTS_DB, Id, Key) of
+                    {'error', _R} ->
+                        lager:error("failed to fetch attachment ~s : ~p", [Key, _R]),
+                        'error';
+                    {'ok', Attachment} ->
+                        send_attachement(Url, Id, Key, Value, Attachment)
+                end
         end
         ,'ok'
         ,Attachments
@@ -303,11 +304,11 @@ send_attachements(Url, JObj) ->
 send_attachement(Url, Id, Name, Options, Attachment) ->
     ContentType = wh_json:get_value(<<"content_type">>, Options),
 
-    Headers = [{"Content-Type", binary:bin_to_list(ContentType)}
+    Headers = [{"Content-Type", wh_util:to_list(ContentType)}
                ,{"User-Agent", wh_util:to_list(erlang:node())}
               ],
 
-    Uri = binary:bin_to_list(<<Url/binary, "/", Id/binary, "/", Name/binary>>),
+    Uri =wh_util:to_list(<<Url/binary, "/", Id/binary, "/", Name/binary>>),
 
     case ibrowse:send_req(Uri, Headers, 'post', Attachment, []) of
         {'ok', "200", _Headers, _Resp} ->

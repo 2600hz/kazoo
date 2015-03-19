@@ -28,7 +28,8 @@
 
 -define(MOD_CONFIG_CAT, <<(?WNM_CONFIG_CAT)/binary, ".port_request">>).
 
--record(state, {}).
+
+-record(state, {cleanup_ref :: reference()}).
 
 %%%===================================================================
 %%% API
@@ -45,7 +46,11 @@ start_link() ->
     gen_server:start_link(?MODULE, [], []).
 
 stop() ->
-    self() ! 'stop'.
+    gen_server:cast(?MODULE, 'stop').
+
+cleanup_timer() ->
+    Timeout = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"crawler_delay_time">>, ?MILLISECONDS_IN_MINUTE),
+    erlang:start_timer(Timeout, self(), 'ok').
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -65,8 +70,7 @@ stop() ->
 init([]) ->
     put('callid', ?MODULE),
     lager:debug("started ~s", [?MODULE]),
-    self() ! 'start_crawling',
-    {'ok', #state{}}.
+    {'ok', #state{cleanup_ref=cleanup_timer()}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -95,6 +99,9 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast('stop', State) ->
+    lager:debug("crawler has been stopped"),
+    {'stop', 'normal', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
@@ -109,15 +116,9 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info('start_crawling', State) ->
-    lager:debug("crawling"),
-    Cycle = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"crawler_delay_time">>, ?MILLISECONDS_IN_MINUTE),
-    wh_port_request:send_submitted_requests(),
-    erlang:send_after(Cycle, self(), 'start_crawling'),
-    {'noreply', State, 'hibernate'};
-handle_info('stop', State) ->
-    lager:debug("crawler has been stopped"),
-    {'stop', 'ok', State};
+handle_info({'timeout', Ref, _Msg}, #state{cleanup_ref=Ref}=State) ->
+    _P = spawn('wh_port_request', 'send_submitted_requests', []),
+    {'noreply', State#state{cleanup_ref=cleanup_timer()}};
 handle_info(_Msg, State) ->
     lager:debug("unhandled msg: ~p", [_Msg]),
     {'noreply', State}.
