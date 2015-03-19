@@ -58,6 +58,7 @@ public_fields(JObj) ->
                         ,{<<"updated">>, wh_json:get_value(<<"pvt_modified">>, JObj)}
                         ,{<<"uploads">>, normalize_attachments(As)}
                         ,{<<"port_state">>, wh_json:get_value(?PORT_PVT_STATE, JObj, ?PORT_WAITING)}
+                        ,{<<"sent">>, wh_json:get_value(?PVT_SENT, JObj, 'false')}
                        ]
                        ,wh_doc:public_fields(JObj)
                       ).
@@ -320,7 +321,7 @@ send_attachement(Url, Id, Name, Options, Attachment) ->
 
 -spec set_flag(wh_json:object()) -> 'ok'.
 set_flag(JObj) ->
-    Doc = wh_json:set_value(<<"sent">>, 'true', JObj),
+    Doc = wh_json:set_value(?PVT_SENT, 'true', JObj),
     case couch_mgr:save_doc(?KZ_PORT_REQUESTS_DB, Doc) of
         {'ok', _} ->
             lager:debug("flag for submitted_port_request successfully set");
