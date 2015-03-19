@@ -96,7 +96,7 @@ get_target_for_extension(Exten, Call) ->
     case cf_util:lookup_callflow(Exten, whapps_call:account_id(Call)) of
         {'ok', Callflow, _} ->
             EP = lookup_endpoint(wh_json:get_value(<<"flow">>, Callflow)),
-            lager:info("Target endpoint: ~p", [EP]),
+            lager:debug("Target endpoint: ~p", [EP]),
             EP;
         _ -> 'error'
     end.
@@ -107,7 +107,7 @@ lookup_endpoint('undefined') ->
 lookup_endpoint(Callflow) ->
     TargetType = wh_json:get_value(<<"module">>, Callflow),
     TargetId = wh_json:get_value([<<"data">>, <<"id">>], Callflow),
-    lager:info("Trying ~p", [TargetType]),
+    lager:debug("Trying ~p", [TargetType]),
     case TargetType of
         <<"device">> -> {'ok', TargetId, TargetType};
         <<"user">> -> {'ok', TargetId, TargetType};
