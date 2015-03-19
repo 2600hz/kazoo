@@ -56,6 +56,9 @@
                      ,{{'teletype_system_alert', 'handle_system_alert'}
                        ,[{<<"notification">>, <<"system_alert">>}]
                       }
+                     ,{{'teletype_cnam_request', 'handle_cnam_request'}
+                       ,[{<<"notification">>, <<"cnam_request">>}]
+                      }
                     ]).
 %% -define(RESPONDERS, []}
 
@@ -65,7 +68,6 @@
 
 
 %%                      ,{'teletype_new_account', [{<<"notification">>, <<"new_account">>}]}
-%%                      ,{'teletype_cnam_request', [{<<"notification">>, <<"cnam_request">>}]}
 %%                      ,{'teletype_port_request', [{<<"notification">>, <<"port_request">>}]}
 %%                      ,{'teletype_port_cancel', [{<<"notification">>, <<"port_cancel">>}]}
 %%                      ,{'teletype_ported', [{<<"notification">>, <<"ported">>}]}
@@ -85,7 +87,7 @@
                       %% ,'outbound_fax_error'
                       ,'deregister'
                       ,'pwd_recovery'
-                      %% ,'cnam_requests'
+                      ,'cnam_requests'
                       %% ,'port_request'
                       %% ,'port_cancel'
                       %% ,'low_balance'
