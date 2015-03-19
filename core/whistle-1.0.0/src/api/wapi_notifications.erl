@@ -312,7 +312,7 @@
 -define(TOPUP_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_TOPUP_HEADERS, ?DEFAULT_OPTIONAL_HEADERS).
 -define(TOPUP_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                       ,{<<"Event-Name">>, <<"low_balance">>}
+                       ,{<<"Event-Name">>, <<"topup">>}
                       ]).
 -define(TOPUP_TYPES, []).
 
@@ -395,6 +395,8 @@ headers(<<"cnam_request">>) ->
     ?CNAM_REQUEST_HEADERS ++ ?OPTIONAL_CNAM_REQUEST_HEADERS;
 headers(<<"skel">>) ->
     ?SKEL_HEADERS ++ ?OPTIONAL_SKEL_HEADERS;
+headers(<<"topup">>) ->
+    ?TOPUP_HEADERS ++ ?OPTIONAL_TOPUP_HEADERS;
 headers(_Notification) ->
     lager:warning("no notification headers for ~s", [_Notification]),
     [].

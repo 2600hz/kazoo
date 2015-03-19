@@ -9,26 +9,26 @@
 -module(teletype_topup).
 
 -export([init/0
-         ,handle_req/2
+         ,handle_topup/2
         ]).
 
 -include("../teletype.hrl").
 
--define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".topup">>).
-
 -define(TEMPLATE_ID, <<"topup">>).
+-define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
+
 -define(TEMPLATE_MACROS
         ,wh_json:from_list(
            [?MACRO_VALUE(<<"user.first_name">>, <<"first_name">>, <<"First Name">>, <<"First Name">>)
             ,?MACRO_VALUE(<<"user.last_name">>, <<"last_name">>, <<"Last Name">>, <<"Last Name">>)
-            | ?SERVICE_MACROS
+            | ?SERVICE_MACROS ++ ?ACCOUNT_MACROS
            ])
        ).
 
 -define(TEMPLATE_TEXT, <<"The account \"{{account.name}}\" has less than {{threshold}} of credit remaining.\n We are toping up the account for {{amount}}.">>).
 -define(TEMPLATE_HTML, <<"<html><body><h2>The account \"{{account.name}}\" has less than {{threshold}} of credit remaining.</h2><p> We are toping up the account for {{amount}}.</p></body></html>">>).
--define(TEMPLATE_SUBJECT, <<"Account {{account.name}} has been top up">>).
--define(TEMPLATE_CATEGORY, <<"topup">>).
+-define(TEMPLATE_SUBJECT, <<"Account {{account.name}} has been topped up">>).
+-define(TEMPLATE_CATEGORY, <<"account">>).
 -define(TEMPLATE_NAME, <<"Top Up">>).
 
 -define(TEMPLATE_TO, ?CONFIGURED_EMAILS(?EMAIL_ORIGINAL)).
@@ -54,8 +54,8 @@ init() ->
                                                ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                               ]).
 
--spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_req(JObj, _Props) ->
+-spec handle_topup(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_topup(JObj, _Props) ->
     'true' = wapi_notifications:topup_v(JObj),
     wh_util:put_callid(JObj),
 
@@ -107,11 +107,8 @@ build_macro_data(DataJObj) ->
 
 -spec set_to_address(wh_json:object()) -> wh_json:object().
 set_to_address(DataJObj) ->
-    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
     UserId = wh_json:get_value(<<"user_id">>, DataJObj),
-    {'ok', UserJObj} = couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded')
-                                                ,UserId
-                                               ),
+    {'ok', UserJObj} = teletype_util:open_doc(<<"user">>, UserId, DataJObj),
     wh_json:set_value(<<"to">>, [find_email(UserJObj)], DataJObj).
 
 -spec find_email(wh_json:object()) -> api_binary().

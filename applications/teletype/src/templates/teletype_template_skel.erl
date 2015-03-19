@@ -103,11 +103,8 @@ build_macro_data(DataJObj) ->
 
 -spec set_to_address(wh_json:object()) -> wh_json:object().
 set_to_address(DataJObj) ->
-    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
     UserId = wh_json:get_value(<<"user_id">>, DataJObj),
-    {'ok', UserJObj} = couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded')
-                                                ,UserId
-                                               ),
+    {'ok', UserJObj} = teletype_util:open_doc(<<"user">>, UserId, DataJObj),
     wh_json:set_value(<<"to">>, [find_email(UserJObj)], DataJObj).
 
 -spec find_email(wh_json:object()) -> api_binary().
