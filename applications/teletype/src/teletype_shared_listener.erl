@@ -32,6 +32,9 @@
                      ,{{'teletype_fax_inbound_to_email', 'handle_fax_inbound'}
                        ,[{<<"notification">>, <<"inbound_fax">>}]
                       }
+                     ,{{'teletype_fax_inbound_error_to_email', 'handle_inbound_fax_error'}
+                       ,[{<<"notification">>, <<"inbound_fax_error">>}]
+                      }
                      ,{{'teletype_fax_outbound_to_email', 'handle_fax_outbound'}
                        ,[{<<"notification">>, <<"outbound_fax">>}]
                       }
@@ -54,7 +57,7 @@
 %% -define(RESPONDERS, []}
 
 %%                      ,{'teletype_fax_outbound_to_email', [{<<"notification">>, <<"outbound_fax">>}]}
-%%                      ,{'teletype_fax_inbound_error_to_email', [{<<"notification">>, <<"inbound_fax_error">>}]}
+
 %%                      ,{'teletype_fax_outbound_error_to_email', [{<<"notification">>, <<"outbound_fax_error">>}]}
 
 
@@ -76,7 +79,7 @@
                       ,'outbound_fax'
                       ,'new_account'
                       ,'new_user'
-                      %% ,'inbound_fax_error'
+                      ,'inbound_fax_error'
                       %% ,'outbound_fax_error'
                       ,'deregister'
                       ,'pwd_recovery'
