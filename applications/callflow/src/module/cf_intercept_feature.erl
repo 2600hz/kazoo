@@ -139,15 +139,11 @@ build_intercept_params(Number, <<"device">>, Call) ->
 build_intercept_params(_Number, <<"user">>, _Call) ->
     {'error', <<"work in progress">>};
 build_intercept_params(Number, <<"extension">>, Call) ->
-    AccountId = whapps_call:account_id(Call),
-    case cf_util:lookup_callflow(Number, AccountId) of
-        {'ok', FlowDoc, 'false'} ->
-            Data = wh_json:get_value([<<"flow">>, <<"data">>], FlowDoc),
-            Module = wh_json:get_value([<<"flow">>, <<"module">>], FlowDoc),
-            params_from_data(Module, Data,Call);
-        {'ok', _FlowDoc, 'true'} ->
-            {'error', <<"no callflow with extension ", Number/binary>>};
-        {'error', _} = E -> E
+    case cf_eavesdrop_feature:get_target_for_extension(Number, Call) of
+        'error' -> {'error', <<"Can't find target for extension ", Number/binary>>};
+        {'ok', TargetId, TargetType} ->
+            Data = wh_json:from_list([{<<"id">>, TargetId}]),
+            params_from_data(TargetType, Data, Call)
     end;
 build_intercept_params(_ ,'undefined', _) ->
     {'error', <<"parameter 'type' not defined">>};

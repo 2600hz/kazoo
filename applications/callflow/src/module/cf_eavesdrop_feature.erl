@@ -23,7 +23,11 @@
 
 -include("../callflow.hrl").
 
--export([handle/2]).
+-export([handle/2
+         ,get_target_for_extension/2
+        ]).
+
+-export_type([target/0]).
 
 %%--------------------------------------------------------------------
 %% @public
