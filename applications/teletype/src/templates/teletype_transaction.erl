@@ -9,14 +9,14 @@
 -module(teletype_transaction).
 
 -export([init/0
-         ,handle_req/2
+         ,handle_transaction/2
         ]).
 
 -include("../teletype.hrl").
 
--define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".transaction">>).
-
 -define(TEMPLATE_ID, <<"transaction">>).
+-define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?NOTIFY_CONFIG_CAT)/binary>>).
+
 -define(TEMPLATE_MACROS
         ,wh_json:from_list(
            [?MACRO_VALUE(<<"user.first_name">>, <<"first_name">>, <<"First Name">>, <<"First Name">>)
@@ -25,10 +25,10 @@
            ])
        ).
 
--define(TEMPLATE_TEXT, <<"{% if transaction %}Transaction\n{% for key, value in transaction %}{{ key }}: {{ value }}\n{% endfor %}\n{% endif %}{% if plan %}Service Plan\nID: {{plan.id}}\nCategory: {{plan.category}}\nItem: {{plan.item}}\nActivation-Charge: {{plan.activation_charge}}\n\n{% endif %}Account\nAccount ID: {{account.pvt_account_id}}\nAccount Name: {{account.name}}\nAccount Realm: {{account.realm}}\n\nService\nURL: {{service.url}}\nName: {{service.name}}\nService Provider: {{service.provider}}\n\nSent from {{service.host}}">>).
--define(TEMPLATE_HTML, <<"<html><head><meta charset=\"utf-8\" /></head><body>{% if transaction %}<h2>Transaction</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\">{% for key, value in transaction %}<tr><td>{{ key }}: </td><td>{{ value }}</td></tr>{% endfor %}</table>{% endif %}{% if plan %}<h2>Service Plan</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>ID: </td><td>{{plan.id}}</td></tr><tr><td>Category: </td><td>{{plan.category}}</td></tr><tr><td>Item: </td><td>{{plan.item}}</td></tr><tr><td>Activation-Charge: </td><td>{{plan.activation_charge}}</td></tr></table>{% endif %}<h2>Account</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>Account ID: </td><td>{{account.pvt_account_id}}</td></tr><tr><td>Account Name: </td><td>{{account.name}}</td></tr><tr><td>Account Realm: </td><td>{{account.realm}}</td></tr></table><h2>Service</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>URL: </td><td>{{service.url}}</td></tr><tr><td>Name: </td><td>{{service.name}}</td></tr><tr><td>Service Provider: </td><td>{{service.provider}}</td></tr></table><p style=\"font-size:9pt;color:#CCCCCC\">Sent from {{service.host}}</p></body></html>">>).
--define(TEMPLATE_SUBJECT, <<"KAZOO: transaction notice for {{account.name}} - ${{transaction.amount}} (ID #{{account.pvt_account_id}})">>).
--define(TEMPLATE_CATEGORY, <<"transaction">>).
+-define(TEMPLATE_TEXT, <<"KAZOO: transaction notice for {{account.name}} - ${{transaction.amount}} (ID #{{account.pvt_account_id}})\n\n{% if transaction %}Transaction\n{% for key, value in transaction %}{{ key }}: {{ value }}\n{% endfor %}\n{% endif %}{% if plan %}Service Plan\nID: {{plan.id}}\nCategory: {{plan.category}}\nItem: {{plan.item}}\nActivation-Charge: {{plan.activation_charge}}\n\n{% endif %}Account\nAccount ID: {{account.pvt_account_id}}\nAccount Name: {{account.name}}\nAccount Realm: {{account.realm}}\n\nService\nURL: {{service.url}}\nName: {{service.name}}\nService Provider: {{service.provider}}\n\nSent from {{service.host}}">>).
+-define(TEMPLATE_HTML, <<"<html><head><meta charset=\"utf-8\" /></head><body><h1>KAZOO: transaction notice for {{account.name}} - ${{transaction.amount}} (ID #{{account.pvt_account_id}})</h1><br/>{% if transaction %}<h2>Transaction</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\">{% for key, value in transaction %}<tr><td>{{ key }}: </td><td>{{ value }}</td></tr>{% endfor %}</table>{% endif %}{% if plan %}<h2>Service Plan</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>ID: </td><td>{{plan.id}}</td></tr><tr><td>Category: </td><td>{{plan.category}}</td></tr><tr><td>Item: </td><td>{{plan.item}}</td></tr><tr><td>Activation-Charge: </td><td>{{plan.activation_charge}}</td></tr></table>{% endif %}<h2>Account</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>Account ID: </td><td>{{account.pvt_account_id}}</td></tr><tr><td>Account Name: </td><td>{{account.name}}</td></tr><tr><td>Account Realm: </td><td>{{account.realm}}</td></tr></table><h2>Service</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>URL: </td><td>{{service.url}}</td></tr><tr><td>Name: </td><td>{{service.name}}</td></tr><tr><td>Service Provider: </td><td>{{service.provider}}</td></tr></table><p style=\"font-size:9pt;color:#CCCCCC\">Sent from {{service.host}}</p></body></html>">>).
+-define(TEMPLATE_SUBJECT, <<"KAZOO: transaction notice (account ID #{{account.pvt_account_id}})">>).
+-define(TEMPLATE_CATEGORY, <<"account">>).
 -define(TEMPLATE_NAME, <<"Transaction">>).
 
 -define(TEMPLATE_TO, ?CONFIGURED_EMAILS(?EMAIL_ORIGINAL)).
@@ -54,8 +54,8 @@ init() ->
                                                ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                               ]).
 
--spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_req(JObj, _Props) ->
+-spec handle_transaction(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_transaction(JObj, _Props) ->
     'true' = wapi_notifications:transaction_v(JObj),
     wh_util:put_callid(JObj),
 
@@ -64,11 +64,11 @@ handle_req(JObj, _Props) ->
 
     case teletype_util:should_handle_notification(DataJObj) of
         'false' -> lager:debug("notification handling not configured for this account");
-        'true' -> handle_req(stuff_data(DataJObj))
+        'true' -> handle_req(add_account(DataJObj))
     end.
 
--spec stuff_data(wh_json:object()) -> wh_json:object().
-stuff_data(DataJObj) ->
+-spec add_account(wh_json:object()) -> wh_json:object().
+add_account(DataJObj) ->
     AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
@@ -98,10 +98,18 @@ handle_req(DataJObj) ->
                 ,Macros
                ),
 
-    Emails = teletype_util:find_addresses(set_to_address(DataJObj), TemplateMetaJObj, ?MOD_CONFIG_CAT),
+    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
 
     %% Send email
-    teletype_util:send_email(Emails, Subject, ServiceData, RenderedTemplates).
+    case teletype_util:send_email(Emails
+                                  ,Subject
+                                  ,ServiceData
+                                  ,RenderedTemplates
+                                 )
+    of
+        'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
+        {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
+    end.
 
 -spec build_macro_data(wh_json:object()) -> wh_proplist().
 build_macro_data(DataJObj) ->
@@ -111,19 +119,6 @@ build_macro_data(DataJObj) ->
                   ,[]
                   ,?TEMPLATE_MACROS
                  ).
-
--spec set_to_address(wh_json:object()) -> wh_json:object().
-set_to_address(DataJObj) ->
-    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
-    UserId = wh_json:get_value(<<"user_id">>, DataJObj),
-    {'ok', UserJObj} = couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded')
-                                                ,UserId
-                                               ),
-    wh_json:set_value(<<"to">>, [find_email(UserJObj)], DataJObj).
-
--spec find_email(wh_json:object()) -> api_binary().
-find_email(UserJObj) ->
-    wh_json:get_first_defined([<<"email">>, <<"username">>], UserJObj).
 
 -spec maybe_add_macro_key(wh_json:key(), wh_proplist(), wh_json:object()) -> wh_proplist().
 maybe_add_macro_key(<<"user.", UserKey/binary>>, Acc, DataJObj) ->

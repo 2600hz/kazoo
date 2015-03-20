@@ -50,6 +50,9 @@
                      ,{{'teletype_deregister', 'handle_deregister'}
                        ,[{<<"notification">>, <<"deregister">>}]
                       }
+                     ,{{'teletype_transaction', 'handle_transaction'}
+                       ,[{<<"notification">>, <<"transaction">>}]
+                      }
                      ,{{'teletype_password_recovery', 'handle_password_recovery'}
                        ,[{<<"notification">>, <<"password_recovery">>}]
                       }
@@ -72,7 +75,6 @@
 %%                      ,{'teletype_port_cancel', [{<<"notification">>, <<"port_cancel">>}]}
 %%                      ,{'teletype_ported', [{<<"notification">>, <<"ported">>}]}
 %%                      ,{'teletype_low_balance', [{<<"notification">>, <<"low_balance">>}]}
-%%                      ,{'teletype_transaction', [{<<"notification">>, <<"transaction">>}]}
 %%                      ,{'teletype_topup', [{<<"notification">>, <<"topup">>}]}
 
 %%                     ]).
@@ -91,8 +93,8 @@
                       %% ,'port_request'
                       %% ,'port_cancel'
                       %% ,'low_balance'
-                      %% ,'transaction'
                       ,'system_alerts'
+                      ,'transaction'
                       %%,'skel'
                      ]).
 
