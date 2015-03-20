@@ -10,7 +10,8 @@
 
 -export([reasons/0
          ,reasons/1
-         ,reasons/2]).
+         ,reasons/2
+        ]).
 -export([dollars_to_units/1]).
 -export([units_to_dollars/1]).
 -export([base_call_cost/3]).
