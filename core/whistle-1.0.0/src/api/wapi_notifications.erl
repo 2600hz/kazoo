@@ -385,6 +385,8 @@ headers(<<"new_user">>) ->
     ?NEW_USER_HEADERS ++ ?OPTIONAL_NEW_USER_HEADERS;
 headers(<<"deregister">>) ->
     ?DEREGISTER_HEADERS ++ ?OPTIONAL_DEREGISTER_HEADERS;
+headers(<<"transaction">>) ->
+    ?TRANSACTION_HEADERS ++ ?OPTIONAL_TRANSACTION_HEADERS;
 headers(<<"password_recovery">>) ->
     ?PWD_RECOVERY_HEADERS ++ ?OPTIONAL_PWD_RECOVERY_HEADERS;
 headers(<<"system_alert">>) ->

@@ -353,6 +353,8 @@ publish_fun(<<"new_user">>) ->
     fun wapi_notifications:publish_new_user/1;
 publish_fun(<<"deregister">>) ->
     fun wapi_notifications:publish_deregister/1;
+publish_fun(<<"transaction">>) ->
+    fun wapi_notifications:publish_transaction/1;
 publish_fun(<<"password_recovery">>) ->
     fun wapi_notifications:publish_pwd_recovery/1;
 publish_fun(<<"system_alert">>) ->
