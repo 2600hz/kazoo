@@ -19,19 +19,59 @@
 
 -define(TEMPLATE_MACROS
         ,wh_json:from_list(
-           [?MACRO_VALUE(<<"user.first_name">>, <<"first_name">>, <<"First Name">>, <<"First Name">>)
-            ,?MACRO_VALUE(<<"user.last_name">>, <<"last_name">>, <<"Last Name">>, <<"Last Name">>)
+           [?MACRO_VALUE(<<"plan.id">>, <<"plan_id">>, <<"Plan ID">>, <<"Plan ID">>)
+            ,?MACRO_VALUE(<<"plan.category">>, <<"plan_category">>, <<"Plan Category">>, <<"Plan Category">>)
+            ,?MACRO_VALUE(<<"plan.item">>, <<"plan_item">>, <<"Plan Item">>, <<"Plan Item">>)
+            ,?MACRO_VALUE(<<"plan.activation_charge">>, <<"plan_activation_charge">>, <<"Activation Charge">>, <<"Activiation Charge">>)
+
+            ,?MACRO_VALUE(<<"transaction.id">>, <<"transaction_id">>, <<"Transaction ID">>, <<"Transaction ID">>)
+            ,?MACRO_VALUE(<<"transaction.status">>, <<"transaction_status">>, <<"Transaction Status">>, <<"Transaction Status">>)
+            ,?MACRO_VALUE(<<"transaction.type">>, <<"transaction_type">>, <<"Transaction Type">>, <<"Transaction Type">>)
+            ,?MACRO_VALUE(<<"transaction.currency_code">>, <<"transaction_currency_code">>, <<"Currency Code">>, <<"Currency Code">>)
+            ,?MACRO_VALUE(<<"transaction.amount">>, <<"transaction_amount">>, <<"Transaction Amount">>, <<"Transaction Amount">>)
+            ,?MACRO_VALUE(<<"transaction.merchant_account_id">>, <<"transaction_merchant_account_id">>, <<"Merchant Account ID">>, <<"Merchant Account ID">>)
+            ,?MACRO_VALUE(<<"transaction.order_id">>, <<"transaction_order_id">>, <<"Order ID">>, <<"Order ID">>)
+            ,?MACRO_VALUE(<<"transaction.purchase_order">>, <<"transaction_purchase_order">>, <<"Purchase Order">>, <<"Purchase Order">>)
+            ,?MACRO_VALUE(<<"transaction.created_at">>, <<"transaction_created_at">>, <<"Transaction Created">>, <<"Transaction Created">>)
+            ,?MACRO_VALUE(<<"transaction.update_at">>, <<"transaction_update_at">>, <<"Transaction Updated">>, <<"Transaction Updated">>)
+            ,?MACRO_VALUE(<<"transaction.refund_id">>, <<"transaction_refund_id">>, <<"Refund ID">>, <<"Refund ID">>)
+            ,?MACRO_VALUE(<<"transaction.refunded_transaction">>, <<"transaction_refunded_transaction">>, <<"Refunded Transaction">>, <<"Refunded Transaction">>)
+            ,?MACRO_VALUE(<<"transaction.settlement_batch">>, <<"transaction_settlement_batch">>, <<"Settlement Batch">>, <<"Settlement Batch">>)
+            ,?MACRO_VALUE(<<"transaction.avs_error_code">>, <<"transaction_avs_error_code">>, <<"AVS Error Code">>, <<"AVS Error Code">>)
+            ,?MACRO_VALUE(<<"transaction.avs_postal_response">>, <<"transaction_avs_postal_response">>, <<"AVS Postal Response">>, <<"AVS Postal Response">>)
+            ,?MACRO_VALUE(<<"transaction.avs_street_response">>, <<"transaction_avs_street_response">>, <<"AVS Street Response">>, <<"AVS Street Response">>)
+            ,?MACRO_VALUE(<<"transaction.ccv_response_code">>, <<"transaction_ccv_response_code">>, <<"CCV Response Code">>, <<"CCV Response Code">>)
+            ,?MACRO_VALUE(<<"transaction.gateway_rejection">>, <<"transaction_gateway_rejection">>, <<"Gateway Rejection">>, <<"Gateway Rejection">>)
+            ,?MACRO_VALUE(<<"transaction.processor_authorization_code">>, <<"transaction_processer_authorization_code">>, <<"Processor Authorization Code">>, <<"Processer Authorization Code">>)
+            ,?MACRO_VALUE(<<"transaction.processor_response_code">>, <<"transaction_processer_response_code">>, <<"Processor Response Code">>, <<"Processer Response Code">>)
+            ,?MACRO_VALUE(<<"transaction.processor_response_text">>, <<"transaction_processer_response_text">>, <<"Processor Response Text">>, <<"Processer Response Test">>)
+            ,?MACRO_VALUE(<<"transaction.tax_amount">>, <<"transaction_tax_amount">>, <<"Tax Amount">>, <<"Tax Amount">>)
+            ,?MACRO_VALUE(<<"transaction.tax_exempt">>, <<"transaction_tax_exempt">>, <<"Tax Exempt">>, <<"Tax Exempt">>)
+            ,?MACRO_VALUE(<<"transaction.billing_address">>, <<"transaction_billing_address">>, <<"Billing Address">>, <<"Billing Address">>)
+            ,?MACRO_VALUE(<<"transaction.shipping_address_id">>, <<"transaction_shipping_address_id">>, <<"Shipping Address ID">>, <<"Shipping Address ID">>)
+            ,?MACRO_VALUE(<<"transaction.shipping_address">>, <<"transaction_shipping_address">>, <<"Shipping Address">>, <<"Shipping Address">>)
+            ,?MACRO_VALUE(<<"transaction.customer_id">>, <<"transaction_customer_id">>, <<"Customer ID">>, <<"Customer ID">>)
+            ,?MACRO_VALUE(<<"transaction.customer">>, <<"transaction_customer">>, <<"Customer">>, <<"Customer">>)
+            ,?MACRO_VALUE(<<"transaction.payment_token">>, <<"transaction_payment_token">>, <<"Payment Token">>, <<"Payment Token">>)
+            ,?MACRO_VALUE(<<"transaction.card">>, <<"transaction_card">>, <<"Card">>, <<"Card">>)
+            ,?MACRO_VALUE(<<"transaction.subscription_id">>, <<"transaction_subscription_id">>, <<"Subscription ID">>, <<"Subscription ID">>)
+            ,?MACRO_VALUE(<<"transaction.addons">>, <<"transaction_addons">>, <<"Transaction Add Ons">>, <<"Transaction Add Ons">>)
+            ,?MACRO_VALUE(<<"transaction.discounts">>, <<"transaction_discounts">>, <<"Transaction Discounts">>, <<"Transaction Discounts">>)
+
+            ,?MACRO_VALUE(<<"transaction.is_api">>, <<"transaction_is_api">>, <<"Is API">>, <<"Is API">>)
+            ,?MACRO_VALUE(<<"transaction.is_automatic">>, <<"transaction_is_automatic">>, <<"Is Automatic">>, <<"Is Automatic">>)
+            ,?MACRO_VALUE(<<"transaction.is_recurring">>, <<"transaction_is_recurring">>, <<"Is Recurring">>, <<"Is Recurring">>)
             | ?SERVICE_MACROS ++ ?ACCOUNT_MACROS
            ])
        ).
 
--define(TEMPLATE_TEXT, <<"KAZOO: transaction notice for {{account.name}} - ${{transaction.amount}} (ID #{{account.pvt_account_id}})\n\n{% if transaction %}Transaction\n{% for key, value in transaction %}{{ key }}: {{ value }}\n{% endfor %}\n{% endif %}{% if plan %}Service Plan\nID: {{plan.id}}\nCategory: {{plan.category}}\nItem: {{plan.item}}\nActivation-Charge: {{plan.activation_charge}}\n\n{% endif %}Account\nAccount ID: {{account.pvt_account_id}}\nAccount Name: {{account.name}}\nAccount Realm: {{account.realm}}\n\nService\nURL: {{service.url}}\nName: {{service.name}}\nService Provider: {{service.provider}}\n\nSent from {{service.host}}">>).
--define(TEMPLATE_HTML, <<"<html><head><meta charset=\"utf-8\" /></head><body><h1>KAZOO: transaction notice for {{account.name}} - ${{transaction.amount}} (ID #{{account.pvt_account_id}})</h1><br/>{% if transaction %}<h2>Transaction</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\">{% for key, value in transaction %}<tr><td>{{ key }}: </td><td>{{ value }}</td></tr>{% endfor %}</table>{% endif %}{% if plan %}<h2>Service Plan</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>ID: </td><td>{{plan.id}}</td></tr><tr><td>Category: </td><td>{{plan.category}}</td></tr><tr><td>Item: </td><td>{{plan.item}}</td></tr><tr><td>Activation-Charge: </td><td>{{plan.activation_charge}}</td></tr></table>{% endif %}<h2>Account</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>Account ID: </td><td>{{account.pvt_account_id}}</td></tr><tr><td>Account Name: </td><td>{{account.name}}</td></tr><tr><td>Account Realm: </td><td>{{account.realm}}</td></tr></table><h2>Service</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>URL: </td><td>{{service.url}}</td></tr><tr><td>Name: </td><td>{{service.name}}</td></tr><tr><td>Service Provider: </td><td>{{service.provider}}</td></tr></table><p style=\"font-size:9pt;color:#CCCCCC\">Sent from {{service.host}}</p></body></html>">>).
--define(TEMPLATE_SUBJECT, <<"KAZOO: transaction notice (account ID #{{account.pvt_account_id}})">>).
+-define(TEMPLATE_TEXT, <<"KAZOO: transaction notice for {{account.name}} - ${{transaction.amount}} (ID #{{account.id}})\n\n{% if transaction %}Transaction\n{% for key, value in transaction %}{{ key }}: {{ value }}\n{% endfor %}\n{% endif %}{% if plan %}Service Plan\nID: {{plan.id}}\nCategory: {{plan.category}}\nItem: {{plan.item}}\nActivation-Charge: {{plan.activation_charge}}\n\n{% endif %}Account\nAccount ID: {{account.id}}\nAccount Name: {{account.name}}\nAccount Realm: {{account.realm}}\n\nService\nURL: {{service.url}}\nName: {{service.name}}\nService Provider: {{service.provider}}\n\nSent from {{service.host}}">>).
+-define(TEMPLATE_HTML, <<"<html><head><meta charset=\"utf-8\" /></head><body><h1>KAZOO: transaction notice for {{account.name}} - ${{transaction.amount}} (ID #{{account.id}})</h1><br/>{% if transaction %}<h2>Transaction</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\">{% for key, value in transaction %}<tr><td>{{ key }}: </td><td>{{ value }}</td></tr>{% endfor %}</table>{% endif %}{% if plan %}<h2>Service Plan</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>ID: </td><td>{{plan.id}}</td></tr><tr><td>Category: </td><td>{{plan.category}}</td></tr><tr><td>Item: </td><td>{{plan.item}}</td></tr><tr><td>Activation-Charge: </td><td>{{plan.activation_charge}}</td></tr></table>{% endif %}<h2>Account</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>Account ID: </td><td>{{account.id}}</td></tr><tr><td>Account Name: </td><td>{{account.name}}</td></tr><tr><td>Account Realm: </td><td>{{account.realm}}</td></tr></table><h2>Service</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>URL: </td><td>{{service.url}}</td></tr><tr><td>Name: </td><td>{{service.name}}</td></tr><tr><td>Service Provider: </td><td>{{service.provider}}</td></tr></table><p style=\"font-size:9pt;color:#CCCCCC\">Sent from {{service.host}}</p></body></html>">>).
+-define(TEMPLATE_SUBJECT, <<"KAZOO: transaction notice (account ID #{{account.id}})">>).
 -define(TEMPLATE_CATEGORY, <<"account">>).
 -define(TEMPLATE_NAME, <<"Transaction">>).
 
--define(TEMPLATE_TO, ?CONFIGURED_EMAILS(?EMAIL_ORIGINAL)).
+-define(TEMPLATE_TO, ?CONFIGURED_EMAILS(?EMAIL_ADMINS)).
 -define(TEMPLATE_FROM, teletype_util:default_from_address(?MOD_CONFIG_CAT)).
 -define(TEMPLATE_CC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
 -define(TEMPLATE_BCC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
@@ -80,10 +120,10 @@ handle_req(DataJObj) ->
 
     ServiceData = teletype_util:service_params(DataJObj, ?MOD_CONFIG_CAT),
     Macros = [{<<"service">>, ServiceData}
-             ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
-             ,{<<"plan">>, notify_util:json_to_template_props(wh_json:get_value(<<"Service-Plan">>, DataJObj))}
-             ,{<<"transaction">>, notify_util:json_to_template_props(wh_json:get_value(<<"Transaction">>, DataJObj))}
-              | build_macro_data(DataJObj)],
+              ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
+              ,{<<"plan">>, teletype_util:public_proplist(wh_json:get_value(<<"service_plan">>, DataJObj))}
+              ,{<<"transaction">>, teletype_util:public_proplist(wh_json:get_value(<<"transaction">>, DataJObj))}
+             ],
 
     %% Load templates
     Templates = teletype_util:fetch_templates(?TEMPLATE_ID, DataJObj),
@@ -111,49 +151,4 @@ handle_req(DataJObj) ->
     of
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
-    end.
-
--spec build_macro_data(wh_json:object()) -> wh_proplist().
-build_macro_data(DataJObj) ->
-    wh_json:foldl(fun(MacroKey, _V, Acc) ->
-                          maybe_add_macro_key(MacroKey, Acc, DataJObj)
-                  end
-                  ,[]
-                  ,?TEMPLATE_MACROS
-                 ).
-
--spec maybe_add_macro_key(wh_json:key(), wh_proplist(), wh_json:object()) -> wh_proplist().
-maybe_add_macro_key(<<"user.", UserKey/binary>>, Acc, DataJObj) ->
-    maybe_add_user_data(UserKey, Acc, DataJObj);
-maybe_add_macro_key(_Key, Acc, _DataJObj) ->
-    lager:debug("unprocessed macro key ~s: ~p", [_Key, _DataJObj]),
-    Acc.
-
--spec maybe_add_user_data(wh_json:key(), wh_proplist(), wh_json:object()) -> wh_proplist().
-maybe_add_user_data(Key, Acc, DataJObj) ->
-    User = get_user(DataJObj),
-
-    UserMacros = props:get_value(<<"user">>, Acc, []),
-
-    case wh_json:get_value(Key, User) of
-        'undefined' ->
-            lager:debug("unprocessed user macro key ~s: ~p", [Key, User]),
-            Acc;
-        V -> props:set_value(<<"user">>, [{Key, V} | UserMacros], Acc)
-    end.
-
--spec get_user(wh_json:object()) -> wh_json:object().
-get_user(DataJObj) ->
-    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    UserId = wh_json:get_value(<<"user_id">>, DataJObj),
-
-    case couch_mgr:open_cache_doc(AccountDb, UserId) of
-        {'ok', UserJObj} -> UserJObj;
-        {'error', _E} ->
-            lager:debug("failed to find user ~s in ~s: ~p", [UserId, AccountId, _E]),
-            case wh_json:is_true(<<"preview">>, DataJObj) of
-                'false' -> throw({'error', 'not_found'});
-                'true' -> wh_json:new()
-            end
     end.
