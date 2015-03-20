@@ -114,15 +114,27 @@ add_account(DataJObj) ->
     {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
     wh_json:set_value(<<"account">>, AccountJObj, DataJObj).
 
+-spec service_plan_data(wh_json:object()) -> wh_proplist().
+service_plan_data(DataJObj) ->
+    case teletype_util:is_preview(DataJObj) of
+        'true' -> [];
+        'false' -> teletype_util:public_proplist(<<"service_plan">>, DataJObj)
+    end.
+
+-spec transaction_data(wh_json:object()) -> wh_proplist().
+transaction_data(DataJObj) ->
+    case teletype_util:is_preview(DataJObj) of
+        'true' -> [];
+        'false' -> teletype_util:public_proplist(<<"transaction">>, DataJObj)
+    end.
+
 -spec handle_req(wh_json:object()) -> 'ok'.
 handle_req(DataJObj) ->
-    teletype_util:send_update(DataJObj, <<"pending">>),
-
     ServiceData = teletype_util:service_params(DataJObj, ?MOD_CONFIG_CAT),
     Macros = [{<<"service">>, ServiceData}
               ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
-              ,{<<"plan">>, teletype_util:public_proplist(wh_json:get_value(<<"service_plan">>, DataJObj))}
-              ,{<<"transaction">>, teletype_util:public_proplist(wh_json:get_value(<<"transaction">>, DataJObj))}
+              ,{<<"plan">>, service_plan_data(DataJObj)}
+              ,{<<"transaction">>, transaction_data(DataJObj)}
              ],
 
     %% Load templates
