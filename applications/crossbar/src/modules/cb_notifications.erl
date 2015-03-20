@@ -342,9 +342,11 @@ publish_fun(<<"voicemail_full">>) ->
 publish_fun(<<"fax_inbound_to_email">>) ->
     fun wapi_notifications:publish_fax_inbound/1;
 publish_fun(<<"fax_inbound_error_to_email">>) ->
-    fun wapi_notifications:publish_fax_inbound/1;
+    fun wapi_notifications:publish_fax_inbound_error/1;
 publish_fun(<<"fax_outbound_to_email">>) ->
     fun wapi_notifications:publish_fax_outbound/1;
+publish_fun(<<"fax_outbound_error_to_email">>) ->
+    fun wapi_notifications:publish_fax_outbound_error/1;
 publish_fun(<<"new_account">>) ->
     fun wapi_notifications:publish_new_account/1;
 publish_fun(<<"new_user">>) ->

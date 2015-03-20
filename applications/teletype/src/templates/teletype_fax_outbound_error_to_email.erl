@@ -6,18 +6,18 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(teletype_fax_inbound_error_to_email).
+-module(teletype_fax_outbound_error_to_email).
 
 -export([init/0
-         ,handle_fax_inbound_error/2
+         ,handle_fax_outbound_error/2
         ]).
 
 -include("../teletype.hrl").
 
--define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".fax_inbound_error_to_email">>).
+-define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".fax_outbound_error_to_email">>).
 -define(FAX_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".fax">>).
 
--define(TEMPLATE_ID, <<"fax_inbound_error_to_email">>).
+-define(TEMPLATE_ID, <<"fax_outbound_error_to_email">>).
 
 -define(TEMPLATE_MACROS
         ,wh_json:from_list(
@@ -33,11 +33,11 @@
            ]
           )).
 
--define(TEMPLATE_TEXT, <<"Error : {% firstof error.fax_info error.call_info \"unknown error\" %} \n\nCaller ID: {% firstof fax.remote_station_id caller_id.number \"unknown number\" %}\nCaller Name: {% firstof caller_id.name fax.remote_station_id caller_id.number \"unknown number\" %}\n\nCalled To: {{to.user}}   (Originally dialed number)\nCalled On: {{fax.timestamp|date:\"l, F j, Y \\a\\t H:i\"}}\n\n\nFor help or questions about receiving faxes, please contact support at {{service.support_number}} or email {{service.support_email}}.">>).
--define(TEMPLATE_HTML, <<"<html><body><h3>Error : {% firstof error.fax_info error.call_info \"unknown error\" %} </h3><table><tr><td>Caller ID</td><td>{% firstof caller_id.name fax.remote_station_id caller_id.number \"unknown number\" %} ({% firstof fax.remote_station_id caller_id.number \"unknown number\" %})</td></tr><tr><td>Callee ID</td><td>{{to.user}} (originally dialed number)</td></tr><tr><td>Call received</td><td>{{fax.timestamp|date:\"l, F j, Y \\a\\t H:i\"}}</td></tr></table><p>For help or questions about receiving faxes, please contact {{service.support_number}} or email <a href=\"mailto:{{service.support_email}}\">Support</a></p><p style=\"font-size: 9px;color:#C0C0C0\">{{call_id}}</p></body></html>">>).
--define(TEMPLATE_SUBJECT, <<"Error Receiving Fax from {% firstof caller_id.name fax.remote_station_id caller_id.number \"unknown number\" %} ({% firstof fax.remote_station_id caller_id.number \"unknown number\" %})">>).
+-define(TEMPLATE_TEXT, <<"Error : {% firstof error.fax_info error.call_info \"unknown error\" %} \n\nnCaller ID: {% firstof fax.remote_station_id callee_id.number \"unknown number\" %}\nCaller Name: {% firstof callee_id.name fax.remote_station_id callee_id.number \"unknown number\" %}\n\nCalled To: {{to.user}} (Originally dialed number)\nCalled On: {{fax.timestamp|date:\"l, F j, Y \\a\\t H:i\"}}\n\n\nFor help or questions about receiving faxes, please contact support at {{service.support_number}} or email {{service.support_email}}.">>).
+-define(TEMPLATE_HTML, <<"<html><body><h3>Error : {% firstof error.fax_info error.call_info \"unknown error\" %} </h3><table><tr><td>Caller ID</td><td>{% firstof callee_id.name fax.remote_station_id callee_id.number \"unknown number\" %} ({% firstof fax.remote_station_id caller_id.number \"unknown number\" %})</td></tr><tr><td>Callee ID</td><td>{{to.user}} (originally dialed number)</td></tr><tr><td>Call received</td><td>{{fax.timestamp|date:\"l, F j, Y \\a\\t H:i\"}}</td></tr></table><p>For help or questions about receiving faxes, please contact {{service.support_number}} or email <a href=\"mailto:{{service.support_email}}\">Support</a></p><p style=\"font-size: 9px;color:#C0C0C0\">{{call_id}}</p></body></html>">>).
+-define(TEMPLATE_SUBJECT, <<"Error Sending Fax to {% firstof callee_id.name fax.remote_station_id callee_id.number \"unknown number\" %} ({% firstof fax.remote_station_id callee_id.number \"unknown number\" %})">>).
 -define(TEMPLATE_CATEGORY, <<"fax">>).
--define(TEMPLATE_NAME, <<"Inbound Fax Error to Email">>).
+-define(TEMPLATE_NAME, <<"Outbound Fax Error to Email">>).
 
 -define(TEMPLATE_TO, ?CONFIGURED_EMAILS(?EMAIL_ORIGINAL)).
 -define(TEMPLATE_FROM, teletype_util:default_from_address(?MOD_CONFIG_CAT)).
@@ -62,12 +62,12 @@ init() ->
                                                ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                               ]).
 
--spec handle_fax_inbound_error(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_fax_inbound_error(JObj, _Props) ->
-    'true' = wapi_notifications:fax_inbound_error_v(JObj),
+-spec handle_fax_outbound_error(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_fax_outbound_error(JObj, _Props) ->
+    'true' = wapi_notifications:fax_outbound_error_v(JObj),
     wh_util:put_callid(JObj),
 
-    lager:debug("processing fax inbound to email"),
+    lager:debug("processing fax outbound to email"),
 
     %% Gather data for template
     DataJObj =
@@ -80,12 +80,12 @@ handle_fax_inbound_error(JObj, _Props) ->
                           ),
 
     case teletype_util:should_handle_notification(DataJObj) of
-        'true' -> handle_fax_inbound(DataJObj);
+        'true' -> handle_fax_outbound(DataJObj);
         'false' -> lager:debug("notification handling not configured for this account")
     end.
 
--spec handle_fax_inbound(wh_json:object()) -> 'ok'.
-handle_fax_inbound(DataJObj) ->
+-spec handle_fax_outbound(wh_json:object()) -> 'ok'.
+handle_fax_outbound(DataJObj) ->
     FaxJObj = teletype_fax_util:get_fax_doc(DataJObj),
 
     AccountId = teletype_util:find_account_id(DataJObj),

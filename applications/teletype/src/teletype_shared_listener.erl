@@ -32,11 +32,14 @@
                      ,{{'teletype_fax_inbound_to_email', 'handle_fax_inbound'}
                        ,[{<<"notification">>, <<"inbound_fax">>}]
                       }
-                     ,{{'teletype_fax_inbound_error_to_email', 'handle_inbound_fax_error'}
+                     ,{{'teletype_fax_inbound_error_to_email', 'handle_fax_inbound_error'}
                        ,[{<<"notification">>, <<"inbound_fax_error">>}]
                       }
                      ,{{'teletype_fax_outbound_to_email', 'handle_fax_outbound'}
                        ,[{<<"notification">>, <<"outbound_fax">>}]
+                      }
+                     ,{{'teletype_fax_outbound_error_to_email', 'handle_fax_outbound_error'}
+                       ,[{<<"notification">>, <<"outbound_fax_error">>}]
                       }
                      ,{{'teletype_new_account', 'handle_new_account'}
                        ,[{<<"notification">>, <<"new_account">>}]
@@ -84,7 +87,7 @@
                       ,'new_account'
                       ,'new_user'
                       ,'inbound_fax_error'
-                      %% ,'outbound_fax_error'
+                      ,'outbound_fax_error'
                       ,'deregister'
                       ,'pwd_recovery'
                       ,'cnam_requests'
