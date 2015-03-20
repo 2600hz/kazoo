@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -28,7 +28,7 @@
 -include("wnm.hrl").
 -include_lib("whistle_number_manager/include/wh_port_request.hrl").
 
--define(LISTING_SUBMITTED, <<"port_requests/listing_submitted">>).
+-define(VIEW_LISTING_SUBMITTED, <<"port_requests/listing_submitted">>).
 
 -type transition_response() :: {'ok', wh_json:object()} |
                                {'error', 'invalid_state_transition'}.
@@ -207,7 +207,7 @@ enable_number(N) ->
 
 -spec send_submitted_requests() -> 'ok'.
 send_submitted_requests() ->
-    case couch_mgr:get_results(?KZ_PORT_REQUESTS_DB, ?LISTING_SUBMITTED, ['include_docs']) of
+    case couch_mgr:get_results(?KZ_PORT_REQUESTS_DB, ?VIEW_LISTING_SUBMITTED, ['include_docs']) of
         {'error', _R} ->
             lager:error("failed to open view port_requests/listing_submitted ~p", [_R]);
         {'ok', JObjs} ->
@@ -216,19 +216,20 @@ send_submitted_requests() ->
     end.
 
 -spec maybe_send_requests(wh_json:objects()) -> 'ok'.
--spec maybe_send_requests(ne_binary() | 'undefined', wh_json:object()) -> 'ok'.
+-spec maybe_send_requests(api_binary(), wh_json:object()) -> 'ok'.
 maybe_send_requests([]) -> 'ok';
 maybe_send_requests([JObj|JObjs]) ->
     Id = wh_json:get_value(<<"_id">>, JObj),
-    erlang:put('callid', Id),
+    wh_util:put_callid(Id),
 
     AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+
     case couch_mgr:open_doc(AccountDb, AccountId) of
         {'error', _R} ->
             lager:error("failed to open account ~s:~p", [AccountId, _R]);
-        {'ok', Doc} ->
-            Url = wh_json:get_value(<<"submitted_port_requests_url">>, Doc),
+        {'ok', AccountDoc} ->
+            Url = wh_json:get_value(<<"submitted_port_requests_url">>, AccountDoc),
             maybe_send_requests(Url, JObj)
     end,
     maybe_send_requests(JObjs).
@@ -256,22 +257,20 @@ send_request(Url, JObj) ->
 
     Uri = wh_util:to_list(<<Url/binary, "/", Id/binary>>),
 
-    Remove = [
-        <<"_rev">>
-        ,<<"ui_metadata">>
-        ,<<"_attachments">>
-        ,<<"pvt_request_id">>
-        ,<<"pvt_type">>
-        ,<<"pvt_vsn">>
-        ,<<"pvt_account_db">>
-    ],
-    Replace = [
-        {<<"_id">>, <<"id">>}
-        ,{<<"pvt_port_state">>, <<"port_state">>}
-        ,{<<"pvt_account_id">>, <<"account_id">>}
-        ,{<<"pvt_created">>, <<"created">>}
-        ,{<<"pvt_modified">>, <<"modified">>}
-    ],
+    Remove = [<<"_rev">>
+              ,<<"ui_metadata">>
+              ,<<"_attachments">>
+              ,<<"pvt_request_id">>
+              ,<<"pvt_type">>
+              ,<<"pvt_vsn">>
+              ,<<"pvt_account_db">>
+             ],
+    Replace = [{<<"_id">>, <<"id">>}
+               ,{<<"pvt_port_state">>, <<"port_state">>}
+               ,{<<"pvt_account_id">>, <<"account_id">>}
+               ,{<<"pvt_created">>, <<"created">>}
+               ,{<<"pvt_modified">>, <<"modified">>}
+              ],
     Data = wh_json:encode(wh_json:normalize_jobj(JObj, Remove, Replace)),
 
     case ibrowse:send_req(Uri, Headers, 'post', Data, []) of
@@ -284,22 +283,30 @@ send_request(Url, JObj) ->
 
 -spec send_attachements(ne_binary(), wh_json:object()) -> 'error' | 'ok'.
 send_attachements(Url, JObj) ->
+    try fetch_and_send(Url, JObj) of
+        'ok' -> 'ok'
+    catch
+        'throw':'error' -> 'error'
+    end.
+
+-spec fetch_and_send(ne_binary(), wh_json:object()) -> 'ok'.
+fetch_and_send(Url, JObj) ->
     Id = wh_json:get_value(<<"_id">>, JObj),
     Attachments = wh_doc:attachments(JObj, wh_json:new()),
+
     wh_json:foldl(
-        fun(_, _, 'error') -> error;
-            (Key, Value, 'ok') ->
-                case couch_mgr:fetch_attachment(?KZ_PORT_REQUESTS_DB, Id, Key) of
-                    {'error', _R} ->
-                        lager:error("failed to fetch attachment ~s : ~p", [Key, _R]),
-                        'error';
-                    {'ok', Attachment} ->
-                        send_attachement(Url, Id, Key, Value, Attachment)
-                end
-        end
-        ,'ok'
-        ,Attachments
-    ).
+      fun(Key, Value, 'ok') ->
+              case couch_mgr:fetch_attachment(?KZ_PORT_REQUESTS_DB, Id, Key) of
+                  {'error', _R} ->
+                      lager:error("failed to fetch attachment ~s : ~p", [Key, _R]),
+                      throw('error');
+                  {'ok', Attachment} ->
+                      send_attachement(Url, Id, Key, Value, Attachment)
+              end
+      end
+      ,'ok'
+      ,Attachments
+     ).
 
 -spec send_attachement(ne_binary(), ne_binary(), ne_binary(), wh_json:object(), any()) -> 'error' | 'ok'.
 send_attachement(Url, Id, Name, Options, Attachment) ->
