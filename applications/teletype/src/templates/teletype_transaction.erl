@@ -60,7 +60,10 @@ handle_transaction(JObj, _Props) ->
     wh_util:put_callid(JObj),
 
     %% Gather data for template
-    DataJObj = wh_json:normalize(wh_api:remove_defaults(JObj)),
+    DataJObj0 = wh_json:normalize(wh_api:remove_defaults(JObj)),
+
+    ServerID = wh_json:get_first_defined([<<"server_id">>, <<"Server-ID">>], JObj),
+    DataJObj = wh_json:set_value(<<"Server-ID">>, ServerID, DataJObj0),
 
     case teletype_util:should_handle_notification(DataJObj) of
         'false' -> lager:debug("notification handling not configured for this account");
@@ -76,6 +79,8 @@ add_account(DataJObj) ->
 
 -spec handle_req(wh_json:object()) -> 'ok'.
 handle_req(DataJObj) ->
+    teletype_util:send_update(DataJObj, <<"pending">>),
+
     ServiceData = teletype_util:service_params(DataJObj, ?MOD_CONFIG_CAT),
     Macros = [{<<"service">>, ServiceData}
              ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
