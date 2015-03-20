@@ -274,7 +274,7 @@ fax_db(DataJObj) ->
 
 -spec build_template_data(wh_json:object()) -> wh_proplist().
 build_template_data(DataJObj) ->
-    [{<<"account">>, teletype_util:pubilc_proplist(<<"account">>, DataJObj)}
+    [{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
      ,{<<"fax">>, build_fax_template_data(DataJObj)}
      ,{<<"service">>, teletype_util:service_params(DataJObj, ?MOD_CONFIG_CAT)}
      ,{<<"caller_id">>, caller_id_data(DataJObj)}
