@@ -91,10 +91,18 @@ handle_req(DataJObj) ->
                 ,Macros
                ),
 
-    Emails = teletype_util:find_addresses(set_to_address(DataJObj), TemplateMetaJObj, ?MOD_CONFIG_CAT),
+    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
 
     %% Send email
-    teletype_util:send_email(Emails, Subject, ServiceData, RenderedTemplates).
+    case teletype_util:send_email(Emails
+                                  ,Subject
+                                  ,ServiceData
+                                  ,RenderedTemplates
+                                 )
+    of
+        'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
+        {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
+    end.
 
 -spec build_macro_data(wh_json:object()) -> wh_proplist().
 build_macro_data(DataJObj) ->
@@ -104,16 +112,6 @@ build_macro_data(DataJObj) ->
                   ,[]
                   ,?TEMPLATE_MACROS
                  ).
-
--spec set_to_address(wh_json:object()) -> wh_json:object().
-set_to_address(DataJObj) ->
-    UserId = wh_json:get_value(<<"user_id">>, DataJObj),
-    {'ok', UserJObj} = teletype_util:open_doc(<<"user">>, UserId, DataJObj),
-    wh_json:set_value(<<"to">>, [find_email(UserJObj)], DataJObj).
-
--spec find_email(wh_json:object()) -> api_binary().
-find_email(UserJObj) ->
-    wh_json:get_first_defined([<<"email">>, <<"username">>], UserJObj).
 
 -spec maybe_add_macro_key(wh_json:key(), wh_proplist(), wh_json:object()) -> wh_proplist().
 maybe_add_macro_key(<<"user.", UserKey/binary>>, Acc, DataJObj) ->
