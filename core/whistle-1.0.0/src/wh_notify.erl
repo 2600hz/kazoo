@@ -143,7 +143,7 @@ system_alert(Format, Args) ->
     wh_amqp_worker:cast(Notify, fun wapi_notifications:publish_system_alert/1).
 
 -spec detailed_alert(string(), list(), wh_proplist()) -> 'ok'.
-detailed_alert (Format, Args, Props) ->
+detailed_alert(Format, Args, Props) ->
     Msg = io_lib:format(Format, Args),
     Notify = [{<<"Message">>, wh_util:to_binary(Msg)}
               ,{<<"Subject">>, <<"KAZOO: ", (wh_util:to_binary(Msg))/binary>>}

@@ -351,6 +351,8 @@ publish_fun(<<"deregister">>) ->
     fun wapi_notifications:publish_deregister/1;
 publish_fun(<<"password_recovery">>) ->
     fun wapi_notifications:publish_pwd_recovery/1;
+publish_fun(<<"system_alert">>) ->
+    fun wapi_notifications:publish_system_alert/1;
 publish_fun(_Id) ->
     lager:debug("no wapi_notification:publish_~s/1 defined", [_Id]),
     fun(_Any) -> 'ok' end.
