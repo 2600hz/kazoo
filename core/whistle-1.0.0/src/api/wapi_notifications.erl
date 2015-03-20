@@ -377,6 +377,8 @@ headers(<<"fax_inbound_error_to_email">>) ->
     ?FAX_INBOUND_ERROR_HEADERS ++ ?OPTIONAL_FAX_INBOUND_ERROR_HEADERS;
 headers(<<"fax_outbound_to_email">>) ->
     ?FAX_OUTBOUND_HEADERS ++ ?OPTIONAL_FAX_OUTBOUND_HEADERS;
+headers(<<"fax_outbound_error_to_email">>) ->
+    ?FAX_OUTBOUND_ERROR_HEADERS ++ ?OPTIONAL_FAX_OUTBOUND_ERROR_HEADERS;
 headers(<<"new_account">>) ->
     ?NEW_ACCOUNT_HEADERS ++ ?OPTIONAL_NEW_ACCOUNT_HEADERS;
 headers(<<"new_user">>) ->
