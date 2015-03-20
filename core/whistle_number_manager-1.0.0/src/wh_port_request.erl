@@ -211,14 +211,13 @@ send_submitted_requests() ->
         {'error', _R} ->
             lager:error("failed to open view port_requests/listing_submitted ~p", [_R]);
         {'ok', JObjs} ->
-            Docs = [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs],
-            maybe_send_requests(Docs)
+            [maybe_send_request(wh_json:get_value(<<"doc">>, JObj)) || JObj <- JObjs],
+            lager:debug("sent requests")
     end.
 
--spec maybe_send_requests(wh_json:objects()) -> 'ok'.
--spec maybe_send_requests(api_binary(), wh_json:object()) -> 'ok'.
-maybe_send_requests([]) -> 'ok';
-maybe_send_requests([JObj|JObjs]) ->
+-spec maybe_send_request(wh_json:object()) -> 'ok'.
+-spec maybe_send_request(wh_json:object(), api_binary()) -> 'ok'.
+maybe_send_request(JObj) ->
     Id = wh_json:get_value(<<"_id">>, JObj),
     wh_util:put_callid(Id),
 
@@ -230,15 +229,14 @@ maybe_send_requests([JObj|JObjs]) ->
             lager:error("failed to open account ~s:~p", [AccountId, _R]);
         {'ok', AccountDoc} ->
             Url = wh_json:get_value(<<"submitted_port_requests_url">>, AccountDoc),
-            maybe_send_requests(Url, JObj)
-    end,
-    maybe_send_requests(JObjs).
+            maybe_send_request(JObj, Url)
+    end.
 
-maybe_send_requests('undefined', JObj)->
+maybe_send_request(JObj, 'undefined')->
     AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
     lager:debug("'submitted_port_requests_url' is not set for account ~s", [AccountId]);
-maybe_send_requests(Url, JObj)->
-    case send_request(Url, JObj) of
+maybe_send_request(JObj, Url)->
+    case send_request(JObj, Url) of
         'error' -> 'ok';
         'ok' ->
             case send_attachements(Url, JObj) of
@@ -247,8 +245,8 @@ maybe_send_requests(Url, JObj)->
             end
     end.
 
--spec send_request(ne_binary(), wh_json:object()) -> 'error' | 'ok'.
-send_request(Url, JObj) ->
+-spec send_request(wh_json:object(), ne_binary()) -> 'error' | 'ok'.
+send_request(JObj, Url) ->
     Id = wh_json:get_value(<<"_id">>, JObj),
 
     Headers = [{"Content-Type", "application/json"}
