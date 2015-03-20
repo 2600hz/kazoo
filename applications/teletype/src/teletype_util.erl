@@ -21,7 +21,7 @@
          ,find_account_rep_email/1
          ,find_account_admin_email/1
          ,find_account_id/1
-         ,find_account_db/1
+         ,find_account_db/1, find_account_db/2
          ,is_notice_enabled/3
          ,should_handle_notification/1
 
@@ -780,6 +780,12 @@ find_account_id(JObj) ->
                               ,JObj
                              ).
 
+-spec find_account_db(ne_binary(), wh_json:object()) -> api_binary().
+find_account_db(<<"account">>, JObj) -> find_account_db_from_id(JObj);
+find_account_db(<<"user">>, JObj) -> find_account_db_from_id(JObj);
+find_account_db(<<"fax">>, JObj) -> find_account_db(JObj);
+find_account_db(_, JObj) -> find_account_db_from_id(JObj).
+
 -spec find_account_db(wh_json:object()) -> api_binary().
 find_account_db(JObj) ->
     case wh_json:get_first_defined([<<"account_db">>
@@ -955,7 +961,7 @@ should_handle_notification_for_account('undefined', _ResellerId) ->
 should_handle_notification_for_account(AccountId, AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
-    kz_account:notification_preference(AccountJObj) =:= 'teletype';
+    kz_account:notification_preference(AccountJObj) =:= ?APP_NAME;
 should_handle_notification_for_account(AccountId, ResellerId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
@@ -1068,7 +1074,7 @@ find_default(ConfigCat, Key) ->
                       {'ok', wh_json:object()} |
                       {'error', _}.
 open_doc(Type, DocId, DataJObj) ->
-    AccountDb = find_account_db(DataJObj),
+    AccountDb = find_account_db(Type, DataJObj),
     case couch_mgr:open_cache_doc(AccountDb, DocId) of
         {'ok', _JObj}=OK -> OK;
         {'error', _E}=Error ->

@@ -110,12 +110,15 @@ get_fax_doc(DataJObj, 'true') ->
         {'error', _E} -> wh_json:new()
     end;
 get_fax_doc(DataJObj, 'false') ->
-    AccountId = teletype_util:find_account_id(DataJObj),
     FaxId = wh_json:get_value(<<"fax_id">>, DataJObj),
-    get_fax_doc_from_modb(DataJObj, AccountId, FaxId).
+    case teletype_util:open_doc(<<"fax">>, FaxId, DataJObj) of
+        {'ok', JObj} -> JObj;
+        {'error', _E} -> get_fax_doc_from_modb(DataJObj, FaxId)
+    end.    
 
--spec get_fax_doc_from_modb(wh_json:object(), ne_binary(), ne_binary()) -> wh_json:object().
-get_fax_doc_from_modb(DataJObj, AccountId, FaxId) ->
+-spec get_fax_doc_from_modb(wh_json:object(), ne_binary()) -> wh_json:object().
+get_fax_doc_from_modb(DataJObj, FaxId) ->
+    AccountId = teletype_util:find_account_id(DataJObj),
     case kazoo_modb:open_doc(AccountId, FaxId) of
         {'ok', FaxJObj} -> FaxJObj;
         {'error', _E} ->

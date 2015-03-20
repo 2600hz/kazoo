@@ -72,7 +72,7 @@ handle_fax_inbound(JObj, _Props) ->
     'true' = wapi_notifications:fax_inbound_v(JObj),
     wh_util:put_callid(JObj),
 
-    lager:debug("processing fax inbound to email"),
+    lager:debug("processing fax inbound to email ~p", [JObj]),
 
     %% Gather data for template
     DataJObj =

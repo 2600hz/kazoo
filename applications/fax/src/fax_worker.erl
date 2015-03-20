@@ -645,6 +645,7 @@ notify_fields(JObj, Resp) ->
        ,{<<"Callee-ID-Number">>, ToNumber}
        ,{<<"Callee-ID-Name">>, ToName }
        ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, JObj)}
+       ,{<<"Account-DB">>, wh_json:get_value(<<"pvt_account_db">>, JObj)}
        ,{<<"Fax-JobId">>, wh_json:get_value(<<"_id">>, JObj)}
        ,{<<"Fax-ID">>, wh_json:get_value(<<"_id">>, JObj)}
        ,{<<"FaxBox-ID">>, wh_json:get_value(<<"faxbox_id">>, JObj)}
