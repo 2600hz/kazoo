@@ -4,32 +4,32 @@
 %%%
 %%% @end
 %%% @contributors
-%%%   James Aimonetti
+%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
--module(teletype_template_skel).
+-module(teletype_topup).
 
 -export([init/0
-         ,handle_req/2
+         ,handle_topup/2
         ]).
 
 -include("../teletype.hrl").
 
--define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".skel">>).
+-define(TEMPLATE_ID, <<"topup">>).
+-define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
 
--define(TEMPLATE_ID, <<"skel">>).
 -define(TEMPLATE_MACROS
         ,wh_json:from_list(
            [?MACRO_VALUE(<<"user.first_name">>, <<"first_name">>, <<"First Name">>, <<"First Name">>)
             ,?MACRO_VALUE(<<"user.last_name">>, <<"last_name">>, <<"Last Name">>, <<"Last Name">>)
-            | ?SERVICE_MACROS
+            | ?SERVICE_MACROS ++ ?ACCOUNT_MACROS
            ])
        ).
 
--define(TEMPLATE_TEXT, <<"Hi {{user.first_name}} {{user.last_name}}.\n\nThis is the skeleton template\nBrought to you by {{service.name}}">>).
--define(TEMPLATE_HTML, <<"<p>Hi {{user.first_name}} {{user.last_name}}.</p><p>This is the skeleton template</p><p>Brought to you by {{service.name}}</p>">>).
--define(TEMPLATE_SUBJECT, <<"Skeleton Template">>).
--define(TEMPLATE_CATEGORY, <<"skel">>).
--define(TEMPLATE_NAME, <<"Skeleton">>).
+-define(TEMPLATE_TEXT, <<"The account \"{{account.name}}\" has less than {{threshold}} of credit remaining.\n We are toping up the account for {{amount}}.">>).
+-define(TEMPLATE_HTML, <<"<html><body><h2>The account \"{{account.name}}\" has less than {{threshold}} of credit remaining.</h2><p> We are toping up the account for {{amount}}.</p></body></html>">>).
+-define(TEMPLATE_SUBJECT, <<"Account {{account.name}} has been topped up">>).
+-define(TEMPLATE_CATEGORY, <<"account">>).
+-define(TEMPLATE_NAME, <<"Top Up">>).
 
 -define(TEMPLATE_TO, ?CONFIGURED_EMAILS(?EMAIL_ORIGINAL)).
 -define(TEMPLATE_FROM, teletype_util:default_from_address(?MOD_CONFIG_CAT)).
@@ -54,23 +54,27 @@ init() ->
                                                ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                               ]).
 
--spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_req(JObj, _Props) ->
-    'true' = wapi_notifications:skel_v(JObj),
+-spec handle_topup(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_topup(JObj, _Props) ->
+    'true' = wapi_notifications:topup_v(JObj),
     wh_util:put_callid(JObj),
 
     %% Gather data for template
-    DataJObj = wh_json:normalize(wh_api:remove_defaults(JObj)),
+    DataJObj = wh_json:normalize(JObj),
 
     case teletype_util:should_handle_notification(DataJObj) of
         'false' -> lager:debug("notification handling not configured for this account");
-        'true' -> handle_req(DataJObj)
+        'true' -> handle_req(teletype_util:add_account(DataJObj))
     end.
 
 -spec handle_req(wh_json:object()) -> 'ok'.
 handle_req(DataJObj) ->
     ServiceData = teletype_util:service_params(DataJObj, ?MOD_CONFIG_CAT),
-    Macros = [{<<"service">>, ServiceData} | build_macro_data(DataJObj)],
+    Macros = [{<<"service">>, ServiceData}
+             ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
+             ,{<<"threshold">>, teletype_util:get_balance_threshold(DataJObj)}
+             ,{<<"amount">>, teletype_util:get_topup_amount(DataJObj)}
+              | build_macro_data(DataJObj)],
 
     %% Load templates
     Templates = teletype_util:fetch_templates(?TEMPLATE_ID, DataJObj),

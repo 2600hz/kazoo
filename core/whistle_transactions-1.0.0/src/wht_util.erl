@@ -14,6 +14,7 @@
         ]).
 -export([dollars_to_units/1]).
 -export([units_to_dollars/1]).
+-export([pretty_print_dollars/1]).
 -export([base_call_cost/3]).
 -export([current_balance/1
          ,previous_balance/3
@@ -91,6 +92,12 @@ units_to_dollars(Units) when is_number(Units) ->
     trunc(Units) / ?DOLLAR_TO_UNIT;
 units_to_dollars(Units) ->
     units_to_dollars(wh_util:to_integer(Units)).
+
+%% @public
+-spec pretty_print_dollars(float()) -> ne_binary().
+pretty_print_dollars(Amount) ->
+    wh_util:to_binary(io_lib:format("$~.2f", [Amount])).
+
 
 %%--------------------------------------------------------------------
 %% @public

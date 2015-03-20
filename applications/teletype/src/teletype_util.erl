@@ -33,6 +33,11 @@
          ,is_preview/1
 
          ,public_proplist/2
+
+         ,add_account/1
+
+         ,get_balance_threshold/1
+         ,get_topup_amount/1
         ]).
 
 -include("teletype.hrl").
@@ -309,29 +314,24 @@ account_params(DataJObj) ->
 
 -spec find_account_params(wh_json:object(), ne_binary()) -> wh_proplist().
 find_account_params(DataJObj, AccountId) ->
-    case teletype_util:open_doc(<<"account">>, AccountId, DataJObj) of
-        {'ok', AccountJObj} -> build_account_params(AccountJObj);
+    case open_doc(<<"account">>, AccountId, DataJObj) of
+        {'ok', AccountJObj} ->
+            [{<<"name">>, kz_account:name(AccountJObj)}
+             ,{<<"realm">>, kz_account:realm(AccountJObj)}
+             ,{<<"id">>, kz_account:id(AccountJObj)}
+             ,{<<"language">>, kz_account:language(AccountJObj)}
+             ,{<<"timezone">>, kz_account:timezone(AccountJObj)}
+            ];
         {'error', _E} ->
             lager:debug("failed to find account doc for ~s: ~p", [AccountId, _E]),
             []
     end.
 
--spec build_account_params(wh_json:object()) -> wh_proplist().
-build_account_params(AccountJObj) ->
-    [{<<"name">>, kz_account:name(AccountJObj)}
-     ,{<<"realm">>, kz_account:realm(AccountJObj)}
-     ,{<<"id">>, kz_account:id(AccountJObj)}
-     ,{<<"language">>, kz_account:language(AccountJObj)}
-     ,{<<"timezone">>, kz_account:timezone(AccountJObj)}
-    ].
-
 -spec find_notification_settings(ne_binaries(), api_binary()) -> wh_json:object().
 find_notification_settings(_, 'undefined') -> wh_json:new();
 find_notification_settings([_, Module], AccountId) ->
-    case couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded')
-                                  ,AccountId
-                                 )
-    of
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
         {'error', _E} -> wh_json:new();
         {'ok', AccountJObj} ->
             lager:debug("looking for notifications '~s' service info in: ~s"
@@ -1153,3 +1153,26 @@ public_proplist(Key, JObj) ->
         wh_json:get_value(Key, JObj, wh_json:new())
        )
      ).
+
+
+-spec add_account(wh_json:object()) -> wh_json:object().
+add_account(DataJObj) ->
+    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+    wh_json:set_value(<<"account">>, AccountJObj, DataJObj).
+
+
+-spec get_balance_threshold(wh_json:object()) -> float().
+get_balance_threshold(DataJObj) ->
+    Default = 5.00,
+    Key = [<<"account">>, <<"topup">>, <<"threshold">>],
+    Dollars = wh_json:get_float_value(Key, DataJObj, Default),
+    wht_util:pretty_print_dollars(Dollars).
+
+-spec get_topup_amount(wh_json:object()) -> ne_binary().
+get_topup_amount(DataJObj) ->
+    Default = 0.00,
+    Key = [<<"account">>, <<"topup">>, <<"amount">>],
+    Dollars = wh_json:get_float_value(Key, DataJObj, Default),
+    wht_util:pretty_print_dollars(Dollars).

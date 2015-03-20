@@ -62,14 +62,16 @@
                      ,{{'teletype_system_alert', 'handle_system_alert'}
                        ,[{<<"notification">>, <<"system_alert">>}]
                       }
+                     ,{{'teletype_topup', 'handle_topup'}
+                       ,[{<<"notification">>, <<"topup">>}]
+                      }
                      ,{{'teletype_cnam_request', 'handle_cnam_request'}
                        ,[{<<"notification">>, <<"cnam_request">>}]
                       }
                     ]).
 %% -define(RESPONDERS, []}
 
-%%                      ,{'teletype_fax_outbound_to_email', [{<<"notification">>, <<"outbound_fax">>}]}
-
+%%                      ,{'teletype_fax_inbound_error_to_email', [{<<"notification">>, <<"inbound_fax_error">>}]}
 %%                      ,{'teletype_fax_outbound_error_to_email', [{<<"notification">>, <<"outbound_fax_error">>}]}
 
 
@@ -78,7 +80,7 @@
 %%                      ,{'teletype_port_cancel', [{<<"notification">>, <<"port_cancel">>}]}
 %%                      ,{'teletype_ported', [{<<"notification">>, <<"ported">>}]}
 %%                      ,{'teletype_low_balance', [{<<"notification">>, <<"low_balance">>}]}
-%%                      ,{'teletype_topup', [{<<"notification">>, <<"topup">>}]}
+%%                      ,{'teletype_transaction', [{<<"notification">>, <<"transaction">>}]}
 
 %%                     ]).
 
@@ -99,6 +101,7 @@
                       ,'system_alerts'
                       ,'transaction'
                       %%,'skel'
+                      ,'topup'
                      ]).
 
 -define(BINDINGS, [{'notifications', [{'restrict_to', ?RESTRICT_TO}]}
