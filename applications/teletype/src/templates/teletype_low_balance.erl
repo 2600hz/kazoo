@@ -56,12 +56,14 @@ init() ->
 
 -spec handle_low_balance(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_low_balance(JObj, _Props) ->
-io:format("low_balance JObj ~p\n", [JObj]),
     'true' = wapi_notifications:low_balance_v(JObj),
     wh_util:put_callid(JObj),
 
     %% Gather data for template
-    DataJObj = wh_json:normalize(wh_api:remove_defaults(JObj)),
+    DataJObj0 = wh_json:normalize(wh_api:remove_defaults(JObj)),
+
+    ServerID = wh_json:get_first_defined([<<"server_id">>, <<"Server-ID">>], JObj),
+    DataJObj = wh_json:set_value(<<"Server-ID">>, ServerID, DataJObj0),
 
     case teletype_util:should_handle_notification(DataJObj) of
         'false' -> lager:debug("notification handling not configured for this account");
@@ -75,6 +77,18 @@ add_account(DataJObj) ->
     {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
     wh_json:set_value(<<"account">>, AccountJObj, DataJObj).
 
+-spec get_balance_threshold(wh_json:object()) -> float().
+get_balance_threshold(DataJObj) ->
+    Default = 5.00,
+    Key = [<<"account">>, <<"topup">>, <<"threshold">>],
+    wh_json:get_float_value(Key, DataJObj, Default).
+
+-spec get_current_balance(wh_json:object()) -> float().
+get_current_balance(DataJObj) ->
+    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
+    Units = wht_util:current_balance(AccountId),
+    wht_util:units_to_dollars(Units).
+
 -spec handle_req(wh_json:object()) -> 'ok'.
 handle_req(DataJObj) ->
     teletype_util:send_update(DataJObj, <<"pending">>),
@@ -82,8 +96,8 @@ handle_req(DataJObj) ->
     ServiceData = teletype_util:service_params(DataJObj, ?MOD_CONFIG_CAT),
     Macros = [{<<"service">>, ServiceData}
              ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
-             %% ,{<<"current_balance">>, pretty_print_dollars(wht_util:units_to_dollars(CurrentBalance))}
-             %% ,{<<"threshold">>, pretty_print_dollars(Threshold)}
+             ,{<<"current_balance">>, pretty_print_dollars(get_current_balance(DataJObj))}
+             ,{<<"threshold">>, pretty_print_dollars(get_balance_threshold(DataJObj))}
               | build_macro_data(DataJObj)],
 
     %% Load templates
@@ -114,10 +128,10 @@ handle_req(DataJObj) ->
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
 
-%% %% @private
-%% -spec pretty_print_dollars(float()) -> ne_binary().
-%% pretty_print_dollars(Amount) ->
-%%     wh_util:to_binary(io_lib:format("$~.2f", [Amount])).
+%% @private
+-spec pretty_print_dollars(float()) -> ne_binary().
+pretty_print_dollars(Amount) ->
+    wh_util:to_binary(io_lib:format("$~.2f", [Amount])).
 
 -spec build_macro_data(wh_json:object()) -> wh_proplist().
 build_macro_data(DataJObj) ->
