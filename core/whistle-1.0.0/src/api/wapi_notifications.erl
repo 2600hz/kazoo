@@ -373,6 +373,8 @@ headers(<<"voicemail_full">>) ->
     ?VOICEMAIL_FULL_HEADERS ++ ?OPTIONAL_VOICEMAIL_FULL_HEADERS;
 headers(<<"fax_inbound_to_email">>) ->
     ?FAX_INBOUND_HEADERS ++ ?OPTIONAL_FAX_INBOUND_HEADERS;
+headers(<<"fax_inbound_error_to_email">>) ->
+    ?FAX_INBOUND_ERROR_HEADERS ++ ?OPTIONAL_FAX_INBOUND_ERROR_HEADERS;
 headers(<<"fax_outbound_to_email">>) ->
     ?FAX_OUTBOUND_HEADERS ++ ?OPTIONAL_FAX_OUTBOUND_HEADERS;
 headers(<<"new_account">>) ->
