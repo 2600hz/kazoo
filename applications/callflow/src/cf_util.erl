@@ -561,7 +561,7 @@ get_sip_realm(SIPJObj, AccountId, Default) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -type lookup_callflow_ret() :: {'ok', wh_json:object(), boolean()} |
-                               {'error', term()}.
+                               {'error', _}.
 
 -spec lookup_callflow(whapps_call:call()) -> lookup_callflow_ret().
 lookup_callflow(Call) ->
@@ -713,7 +713,7 @@ apply_dialplan(Number, DialPlan) ->
         _ -> maybe_apply_dialplan(Regexs, DialPlan, Number)
     end.
 
--spec maybe_apply_dialplan(wh_json:keys(), wh_json:object(), ne_binary()) -> ne_binary(). 
+-spec maybe_apply_dialplan(wh_json:keys(), wh_json:object(), ne_binary()) -> ne_binary().
 maybe_apply_dialplan([], _, Number) -> Number;
 maybe_apply_dialplan([Regex|Regexs], DialPlan, Number) ->
     case re:run(Number, Regex, [{'capture', 'all', 'binary'}]) of
