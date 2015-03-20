@@ -4,7 +4,7 @@
 %%%
 %%% @end
 %%% @contributors
-%%%   James Aimonetti
+%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(teletype_low_balance).
 
@@ -14,9 +14,9 @@
 
 -include("../teletype.hrl").
 
--define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".low_balance">>).
-
 -define(TEMPLATE_ID, <<"low_balance">>).
+-define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
+
 -define(TEMPLATE_MACROS
         ,wh_json:from_list(
            [?MACRO_VALUE(<<"user.first_name">>, <<"first_name">>, <<"First Name">>, <<"First Name">>)
@@ -56,6 +56,7 @@ init() ->
 
 -spec handle_low_balance(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_low_balance(JObj, _Props) ->
+io:format("low_balance JObj ~p\n", [JObj]),
     'true' = wapi_notifications:low_balance_v(JObj),
     wh_util:put_callid(JObj),
 
@@ -64,11 +65,11 @@ handle_low_balance(JObj, _Props) ->
 
     case teletype_util:should_handle_notification(DataJObj) of
         'false' -> lager:debug("notification handling not configured for this account");
-        'true' -> handle_req(stuff_data(DataJObj))
+        'true' -> handle_req(add_account(DataJObj))
     end.
 
--spec stuff_data(wh_json:object()) -> wh_json:object().
-stuff_data(DataJObj) ->
+-spec add_account(wh_json:object()) -> wh_json:object().
+add_account(DataJObj) ->
     AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
@@ -76,11 +77,13 @@ stuff_data(DataJObj) ->
 
 -spec handle_req(wh_json:object()) -> 'ok'.
 handle_req(DataJObj) ->
+    teletype_util:send_update(DataJObj, <<"pending">>),
+
     ServiceData = teletype_util:service_params(DataJObj, ?MOD_CONFIG_CAT),
     Macros = [{<<"service">>, ServiceData}
              ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
-             ,{<<"current_balance">>, pretty_print_dollars(wht_util:units_to_dollars(CurrentBalance))}
-             ,{<<"threshold">>, pretty_print_dollars(Threshold)}
+             %% ,{<<"current_balance">>, pretty_print_dollars(wht_util:units_to_dollars(CurrentBalance))}
+             %% ,{<<"threshold">>, pretty_print_dollars(Threshold)}
               | build_macro_data(DataJObj)],
 
     %% Load templates
@@ -98,15 +101,23 @@ handle_req(DataJObj) ->
                 ,Macros
                ),
 
-    Emails = teletype_util:find_addresses(set_to_address(DataJObj), TemplateMetaJObj, ?MOD_CONFIG_CAT),
+    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
 
     %% Send email
-    teletype_util:send_email(Emails, Subject, ServiceData, RenderedTemplates).
+    case teletype_util:send_email(Emails
+                                  ,Subject
+                                  ,ServiceData
+                                  ,RenderedTemplates
+                                 )
+    of
+        'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
+        {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
+    end.
 
-%% @private
--spec pretty_print_dollars(float()) -> ne_binary().
-pretty_print_dollars(Amount) ->
-    wh_util:to_binary(io_lib:format("$~.2f", [Amount])).
+%% %% @private
+%% -spec pretty_print_dollars(float()) -> ne_binary().
+%% pretty_print_dollars(Amount) ->
+%%     wh_util:to_binary(io_lib:format("$~.2f", [Amount])).
 
 -spec build_macro_data(wh_json:object()) -> wh_proplist().
 build_macro_data(DataJObj) ->
@@ -116,19 +127,6 @@ build_macro_data(DataJObj) ->
                   ,[]
                   ,?TEMPLATE_MACROS
                  ).
-
--spec set_to_address(wh_json:object()) -> wh_json:object().
-set_to_address(DataJObj) ->
-    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
-    UserId = wh_json:get_value(<<"user_id">>, DataJObj),
-    {'ok', UserJObj} = couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded')
-                                                ,UserId
-                                               ),
-    wh_json:set_value(<<"to">>, [find_email(UserJObj)], DataJObj).
-
--spec find_email(wh_json:object()) -> api_binary().
-find_email(UserJObj) ->
-    wh_json:get_first_defined([<<"email">>, <<"username">>], UserJObj).
 
 -spec maybe_add_macro_key(wh_json:key(), wh_proplist(), wh_json:object()) -> wh_proplist().
 maybe_add_macro_key(<<"user.", UserKey/binary>>, Acc, DataJObj) ->
