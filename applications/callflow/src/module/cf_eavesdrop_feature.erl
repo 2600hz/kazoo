@@ -23,7 +23,11 @@
 
 -include("../callflow.hrl").
 
--export([handle/2]).
+-export([handle/2
+         ,get_target_for_extension/2
+        ]).
+
+-export_type([target/0]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -91,11 +95,25 @@ build_data('error', _Call) ->
 get_target_for_extension(Exten, Call) ->
     case cf_util:lookup_callflow(Exten, whapps_call:account_id(Call)) of
         {'ok', Callflow, _} ->
-            TargetId = wh_json:get_ne_value([<<"flow">>, <<"data">>, <<"id">>], Callflow),
-            TargetType = wh_json:get_ne_value([<<"flow">>, <<"module">>], Callflow),
-            {'ok', TargetId, TargetType};
+            EP = lookup_endpoint(wh_json:get_value(<<"flow">>, Callflow)),
+            lager:debug("Target endpoint: ~p", [EP]),
+            EP;
+        _ -> 'error'
+    end.
+
+-spec lookup_endpoint(wh_json:object() | 'undefined') -> target().
+lookup_endpoint('undefined') ->
+    'error';
+lookup_endpoint(Callflow) ->
+    TargetType = wh_json:get_value(<<"module">>, Callflow),
+    TargetId = wh_json:get_value([<<"data">>, <<"id">>], Callflow),
+    lager:debug("Trying ~p", [TargetType]),
+    case TargetType of
+        <<"device">> -> {'ok', TargetId, TargetType};
+        <<"user">> -> {'ok', TargetId, TargetType};
         _ ->
-            'error'
+            Child = wh_json:get_value([<<"children">>, <<"_">>], Callflow),
+            lookup_endpoint(Child)
     end.
 
 -spec maybe_correct_target(target(), wh_json:object(), whapps_call:call()) ->
