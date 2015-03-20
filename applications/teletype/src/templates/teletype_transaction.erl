@@ -60,10 +60,7 @@ handle_transaction(JObj, _Props) ->
     wh_util:put_callid(JObj),
 
     %% Gather data for template
-    DataJObj0 = wh_json:normalize(wh_api:remove_defaults(JObj)),
-
-    ServerID = wh_json:get_first_defined([<<"server_id">>, <<"Server-ID">>], JObj),
-    DataJObj = wh_json:set_value(<<"Server-ID">>, ServerID, DataJObj0),
+    DataJObj = wh_json:normalize(JObj),
 
     case teletype_util:should_handle_notification(DataJObj) of
         'false' -> lager:debug("notification handling not configured for this account");
