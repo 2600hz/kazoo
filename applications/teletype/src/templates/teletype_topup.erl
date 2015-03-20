@@ -60,7 +60,7 @@ handle_topup(JObj, _Props) ->
     wh_util:put_callid(JObj),
 
     %% Gather data for template
-    DataJObj = wh_json:normalize(wh_api:remove_defaults(JObj)),
+    DataJObj = wh_json:normalize(JObj),
 
     case teletype_util:should_handle_notification(DataJObj) of
         'false' -> lager:debug("notification handling not configured for this account");
