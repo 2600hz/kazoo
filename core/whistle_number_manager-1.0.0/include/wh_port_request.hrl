@@ -9,6 +9,7 @@
 -define(PORT_ATTACHMENT, <<"attachments">>).
 -define(PORT_DESCENDANTS, <<"descendants">>).
 -define(PORT_PVT_STATE, <<"pvt_port_state">>).
+-define(PVT_SENT, <<"pvt_sent">>).
 
 -define(WH_PORT_REQUEST_HRL, 'true').
 -endif.
