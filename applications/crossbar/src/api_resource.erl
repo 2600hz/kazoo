@@ -309,7 +309,7 @@ valid_content_headers(Req, Context) ->
 -spec known_content_type(cowboy_req:req(), cb_context:context(), http_method()) ->
                                 {boolean(), cowboy_req:req(), cb_context:context()}.
 known_content_type(Req, Context) ->
-    known_content_type(Req, Context, cb_context:req_verb(Context)).
+    known_content_type(Req, Context, cb_context:method(Context)).
 
 known_content_type(Req, Context, ?HTTP_OPTIONS) ->
     {'true', Req, Context};
