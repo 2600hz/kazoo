@@ -61,6 +61,7 @@
                       }
                      ,{{'teletype_system_alert', 'handle_system_alert'}
                        ,[{<<"notification">>, <<"system_alert">>}]
+                      }
                      ,{{'teletype_topup', 'handle_topup'}
                        ,[{<<"notification">>, <<"topup">>}]
                       }

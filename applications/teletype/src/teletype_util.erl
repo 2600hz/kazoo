@@ -314,7 +314,7 @@ account_params(DataJObj) ->
 
 -spec find_account_params(wh_json:object(), ne_binary()) -> wh_proplist().
 find_account_params(DataJObj, AccountId) ->
-    case ?MODULE:open_doc(<<"account">>, AccountId, DataJObj) of
+    case open_doc(<<"account">>, AccountId, DataJObj) of
         {'ok', AccountJObj} ->
             [{<<"name">>, kz_account:name(AccountJObj)}
              ,{<<"realm">>, kz_account:realm(AccountJObj)}
