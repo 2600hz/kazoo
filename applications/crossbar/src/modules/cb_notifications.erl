@@ -347,6 +347,8 @@ publish_fun(<<"fax_outbound_to_email">>) ->
     fun wapi_notifications:publish_fax_outbound/1;
 publish_fun(<<"fax_outbound_error_to_email">>) ->
     fun wapi_notifications:publish_fax_outbound_error/1;
+publish_fun(<<"low_balance">>) ->
+    fun wapi_notifications:publish_low_balance/1;
 publish_fun(<<"new_account">>) ->
     fun wapi_notifications:publish_new_account/1;
 publish_fun(<<"new_user">>) ->

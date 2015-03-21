@@ -379,6 +379,8 @@ headers(<<"fax_outbound_to_email">>) ->
     ?FAX_OUTBOUND_HEADERS ++ ?OPTIONAL_FAX_OUTBOUND_HEADERS;
 headers(<<"fax_outbound_error_to_email">>) ->
     ?FAX_OUTBOUND_ERROR_HEADERS ++ ?OPTIONAL_FAX_OUTBOUND_ERROR_HEADERS;
+headers(<<"low_balance">>) ->
+    ?LOW_BALANCE_HEADERS ++ ?OPTIONAL_LOW_BALANCE_HEADERS;
 headers(<<"new_account">>) ->
     ?NEW_ACCOUNT_HEADERS ++ ?OPTIONAL_NEW_ACCOUNT_HEADERS;
 headers(<<"new_user">>) ->

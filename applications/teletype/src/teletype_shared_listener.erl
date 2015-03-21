@@ -68,6 +68,9 @@
                      ,{{'teletype_cnam_request', 'handle_cnam_request'}
                        ,[{<<"notification">>, <<"cnam_request">>}]
                       }
+                     ,{{'teletype_low_balance', 'handle_low_balance'}
+                       ,[{<<"notification">>, <<"low_balance">>}]
+                      }
                     ]).
 %% -define(RESPONDERS, []}
 
@@ -79,8 +82,8 @@
 %%                      ,{'teletype_port_request', [{<<"notification">>, <<"port_request">>}]}
 %%                      ,{'teletype_port_cancel', [{<<"notification">>, <<"port_cancel">>}]}
 %%                      ,{'teletype_ported', [{<<"notification">>, <<"ported">>}]}
-%%                      ,{'teletype_low_balance', [{<<"notification">>, <<"low_balance">>}]}
 %%                      ,{'teletype_transaction', [{<<"notification">>, <<"transaction">>}]}
+%%                      ,{'teletype_topup', [{<<"notification">>, <<"topup">>}]}
 
 %%                     ]).
 
@@ -97,7 +100,8 @@
                       ,'cnam_requests'
                       %% ,'port_request'
                       %% ,'port_cancel'
-                      %% ,'low_balance'
+                      ,'low_balance'
+                      %% ,'transaction'
                       ,'system_alerts'
                       ,'transaction'
                       %%,'skel'
