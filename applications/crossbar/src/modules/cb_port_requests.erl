@@ -1139,7 +1139,7 @@ remove_from_phone_numbers_doc(Context, JObj) ->
     end.
 
 -spec remove_phone_number(wh_json:key(), wh_json:json_term(), {boolean(), wh_json:object()}) ->
-                                 {boolean(), wh_json:object()}.
+                                 {'true', wh_json:object()}.
 remove_phone_number(Number, _, {_, Acc}) ->
     {'true', wh_json:delete_key(Number, Acc)}.
 
@@ -1172,14 +1172,16 @@ get_phone_numbers_doc(Context) ->
 save_phone_numbers_doc(Context, JObj) ->
     AccountId = cb_context:account_id(Context),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+
     Context1 =
         cb_context:setters(
-            Context
-            ,[{fun cb_context:set_doc/2, JObj}
-              ,{fun cb_context:set_account_db/2, AccountDb}
-             ]
-        ),
+          Context
+          ,[{fun cb_context:set_doc/2, JObj}
+            ,{fun cb_context:set_account_db/2, AccountDb}
+           ]
+         ),
     Context2 = crossbar_doc:save(Context1),
+
     case cb_context:resp_status(Context2) of
         'success' -> 'ok';
         _Status ->
@@ -1193,23 +1195,24 @@ dry_run(Context) ->
     Numbers = wh_json:get_value(<<"numbers">>, JObj),
     PhoneNumbers =
         wh_json:foldl(
-            fun dry_run_foldl/3
-            ,wh_json:new()
-            ,Numbers
-        ),
+          fun dry_run_foldl/3
+          ,wh_json:new()
+          ,Numbers
+         ),
     AccountId = cb_context:account_id(Context),
     Services = wh_services:fetch(AccountId),
     UpdateServices = wh_service_phone_numbers:reconcile(PhoneNumbers, Services),
     wh_services:dry_run(UpdateServices).
 
--spec dry_run_foldl(ne_binary(), wh_json:object(), wh_json:object()) -> wh_json:object().
+-spec dry_run_foldl(ne_binary(), wh_json:object(), wh_json:object()) ->
+                           wh_json:object().
 dry_run_foldl(Number, NumberJObj, JObj) ->
     wh_json:set_value(
-        Number
-        ,wh_json:set_value(
-             <<"features">>
-             ,[<<"port">>]
-             ,NumberJObj
-         )
-        ,JObj
-    ).
+      Number
+      ,wh_json:set_value(
+         <<"features">>
+         ,[<<"port">>]
+         ,NumberJObj
+        )
+      ,JObj
+     ).
