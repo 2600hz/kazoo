@@ -168,6 +168,7 @@
                                ,{<<"Outbound-Callee-ID-Number">>, <<"origination_callee_id_number">>}
                                ,{<<"Auth-User">>, <<"sip_auth_username">>}
                                ,{<<"Auth-Password">>, <<"sip_auth_password">>}
+                               ,{<<"Auth-Realm">>, <<"sip_auth_realm">>}
                                ,{<<"Caller-ID-Name">>, <<"effective_caller_id_name">>}
                                ,{<<"Caller-ID-Number">>, <<"effective_caller_id_number">>}
                                ,{<<"Callee-ID-Name">>, <<"effective_callee_id_name">>}
