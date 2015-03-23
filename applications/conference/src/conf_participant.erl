@@ -283,6 +283,9 @@ handle_cast({'set_discovery_event', DE}, #participant{}=Participant) ->
     {'noreply', Participant#participant{discovery_event=DE}};
 handle_cast({'set_name_pronounced', Name}, #participant{}=Participant) ->
     {'noreply', Participant#participant{name_pronounced = Name}};
+handle_cast({'gen_listener',{'is_consuming','true'}}, Participant) ->
+    lager:debug("now consuming messages"),
+    {'noreply', Participant};
 handle_cast(_Message, #participant{conference='undefined'}=Participant) ->
     %% ALL MESSAGES BELLOW THIS ARE CONSUMED HERE UNTIL THE CONFERENCE IS KNOWN
     lager:debug("ignoring message prior to conference discovery: ~p"
@@ -423,8 +426,10 @@ handle_event(JObj, #participant{call_event_consumers=Consumers
                 <<"conference">> -> gen_listener:cast(Srv, 'play_announce');
                 _ -> 'ok'
             end;
-        {_Else, _} ->
-            lager:debug("unhandled event: ~p", [_Else])
+        {_Else, CallId} ->
+            lager:debug("unhandled event: ~p", [_Else]);
+        {_Else, _OtherLeg} ->
+            lager:debug("unhandled event for other leg ~s: ~p", [_OtherLeg, _Else])
     end,
     {'reply', [{'call_event_consumers', Consumers}]}.
 
