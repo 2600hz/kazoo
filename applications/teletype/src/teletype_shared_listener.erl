@@ -77,6 +77,9 @@
                      ,{'teletype_port_cancel'
                        ,[{<<"notification">>, <<"port_cancel">>}]
                       }
+                     ,{'teletype_ported'
+                       ,[{<<"notification">>, <<"ported">>}]
+                      }
                     ]).
 
 -define(RESTRICT_TO, ['new_voicemail'
@@ -92,6 +95,7 @@
                       ,'cnam_requests'
                       ,'port_request'
                       ,'port_cancel'
+                      ,'ported'
                       ,'low_balance'
                       %% ,'transaction'
                       ,'system_alerts'
