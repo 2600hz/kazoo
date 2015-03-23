@@ -74,21 +74,10 @@
                      ,{'teletype_port_request'
                        ,[{<<"notification">>, <<"port_request">>}]
                       }
+                     ,{'teletype_port_cancel'
+                       ,[{<<"notification">>, <<"port_cancel">>}]
+                      }
                     ]).
-%% -define(RESPONDERS, []}
-
-%%                      ,{'teletype_fax_inbound_error_to_email', [{<<"notification">>, <<"inbound_fax_error">>}]}
-%%                      ,{'teletype_fax_outbound_error_to_email', [{<<"notification">>, <<"outbound_fax_error">>}]}
-
-
-%%                      ,{'teletype_new_account', [{<<"notification">>, <<"new_account">>}]}
-%%                      ,{'teletype_port_request', [{<<"notification">>, <<"port_request">>}]}
-%%                      ,{'teletype_port_cancel', [{<<"notification">>, <<"port_cancel">>}]}
-%%                      ,{'teletype_ported', [{<<"notification">>, <<"ported">>}]}
-%%                      ,{'teletype_transaction', [{<<"notification">>, <<"transaction">>}]}
-%%                      ,{'teletype_topup', [{<<"notification">>, <<"topup">>}]}
-
-%%                     ]).
 
 -define(RESTRICT_TO, ['new_voicemail'
                       ,'voicemail_full'
@@ -102,7 +91,7 @@
                       ,'pwd_recovery'
                       ,'cnam_requests'
                       ,'port_request'
-                      %% ,'port_cancel'
+                      ,'port_cancel'
                       ,'low_balance'
                       %% ,'transaction'
                       ,'system_alerts'
