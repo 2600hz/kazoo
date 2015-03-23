@@ -161,7 +161,7 @@ save_sms(JObj, DocId, Doc, Call) ->
         {'ok', Saved} ->
             whapps_call:kvs_store(<<"_rev">>, wh_json:get_value(<<"_rev">>, Saved), Call);
         {'error', E} ->
-            lager:debug("error saving sms doc , wazzup ? ~p", [E]),
+            lager:info("Error saving sms doc: ~p", [E]),
             Call
     end.
 
