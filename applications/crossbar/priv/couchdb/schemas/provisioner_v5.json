@@ -40,11 +40,11 @@
            "description": "Phone's settings",
            "properties": {
                "lines": {
-                   "type": "array",
+                   "type": "object",
                    "minItems": 1,
                    "name": "Lines",
                    "description": "Phone lines",
-                   "items": {
+                   "properties": {
                        "type": "object",
                        "required": true,
                        "properties": {
