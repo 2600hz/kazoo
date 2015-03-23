@@ -75,12 +75,13 @@ extract_numbers(AccountId, Doc) ->
              ,{'trunkstore_numbers', TrunkstoreNumbers}
              ,{'callflow_numbers', CallflowNumbers}
             ],
-    wh_json:foldl(fun(Number, JObj, Acc) ->
-                          extract_numbers_fold(Number, JObj, Acc, Props)
-                  end
-                  ,[]
-                  ,Doc
-                 ).
+    wh_json:foldl(
+        fun(Number, JObj, Acc) ->
+            extract_numbers_fold(Number, JObj, Acc, Props)
+        end
+        ,[]
+        ,Doc
+    ).
 
 -spec extract_numbers_fold(wh_json:key(), wh_json:object(), extracted_numbers(), wh_proplist()) ->
                                   extracted_numbers().
@@ -242,7 +243,7 @@ fix_phone_numbers_doc_assignment(AccountId, Number, AccountDb, JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec remove_number(ne_binary(), ne_binary()) -> 'stop'.
+-spec remove_number(ne_binary(), ne_binary()) -> 'stop' | 'ok'.
 -spec remove_number(ne_binary(), ne_binary(), ne_binary(), wh_json:object()) -> 'stop'.
 remove_number(AccountId, Number) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
@@ -250,7 +251,12 @@ remove_number(AccountId, Number) ->
         {'error', _E} ->
             io:format("[~s] failed to open phone_numbers doc: ~p~n", [Number, _E]);
         {'ok', JObj} ->
-            remove_number(AccountId, Number, AccountDb, JObj)
+            case wh_json:get_value([Number, <<"state">>], JObj) of
+                <<"port_in">> ->
+                    io:format("[~s] will not be removed as it is in 'port_in' state~n", [Number]);
+                _Else ->
+                    remove_number(AccountId, Number, AccountDb, JObj)
+            end
     end.
 
 remove_number(_AccountId, Number, AccountDb, JObj) ->
