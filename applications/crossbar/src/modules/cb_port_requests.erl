@@ -427,7 +427,19 @@ post(Context, Id, ?PORT_SUBMITTED) ->
 post(Context, Id, ?PORT_SCHEDULED) ->
     do_post(Context, Id);
 post(Context, Id, ?PORT_COMPLETE) ->
-    do_post(Context, Id);
+    try send_ported_notification(Context, Id) of
+        _ ->
+            lager:debug("ported notification sent"),
+            do_post(Context, Id)
+    catch
+        _E:_R ->
+            lager:debug("failed to send the ported notification: ~s:~p", [_E, _R]),
+            cb_context:add_system_error(
+                'bad_gateway'
+                ,<<"failed to send ported email to system admins">>
+                ,Context
+            )
+    end;
 post(Context, Id, ?PORT_REJECT) ->
     _ = remove_from_phone_numbers_doc(Context),
     try send_port_cancel_notification(Context, Id) of
@@ -437,10 +449,11 @@ post(Context, Id, ?PORT_REJECT) ->
     catch
         _E:_R ->
             lager:debug("failed to send the port cancel notification: ~s:~p", [_E, _R]),
-            cb_context:add_system_error('bad_gateway'
-                                        ,<<"failed to send port cancel email to system admins">>
-                                        ,Context
-                                       )
+            cb_context:add_system_error(
+                'bad_gateway'
+                ,<<"failed to send port cancel email to system admins">>
+                ,Context
+            )
     end.
 
 -spec post_submitted(boolean(), cb_context:context(), ne_binary()) -> cb_context:context().
@@ -453,10 +466,11 @@ post_submitted('false', Context, Id) ->
     catch
         _E:_R ->
             lager:debug("failed to send the port request notification: ~s:~p", [_E, _R]),
-            cb_context:add_system_error('bad_gateway'
-                                        ,<<"failed to send port request email to system admins">>
-                                        ,Context
-                                       )
+            cb_context:add_system_error(
+                'bad_gateway'
+                ,<<"failed to send port request email to system admins">>
+                ,Context
+            )
     end;
 post_submitted('true', Context, Id) ->
     DryRunJObj = dry_run(Context),
@@ -1069,6 +1083,20 @@ send_port_cancel_notification(Context, Id) ->
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     whapps_util:amqp_pool_send(Req, fun wapi_notifications:publish_port_cancel/1).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec send_ported_notification(cb_context:context(), ne_binary()) -> 'ok'.
+send_ported_notification(Context, Id) ->
+    Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
+           ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
+           ,{<<"Port-Request-ID">>, Id}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    whapps_util:amqp_pool_send(Req, fun wapi_notifications:publish_ported/1).
 
 
 %%--------------------------------------------------------------------

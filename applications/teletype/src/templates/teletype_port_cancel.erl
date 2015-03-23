@@ -180,14 +180,15 @@ get_attachments(DataJObj) ->
 get_attachments(_DataJObj, 'true') -> [];
 get_attachments(DataJObj, 'false') ->
     PortReqId = wh_json:get_value(<<"port_request_id">>, DataJObj),
-    Attachments = wh_doc:attachments(wh_json:get_value(<<"port_request">>, DataJObj)),
-    AttachmentNames = wh_doc:attachment_names(Attachments),
+    Doc = wh_json:get_value(<<"port_request">>, DataJObj),
+    AttachmentNames = wh_doc:attachment_names(Doc),
+
     lists:foldl(
-        fun(Name, Acc) ->
-            {'ok', Attachment} = couch_mgr:fetch_attachment(?KZ_PORT_REQUESTS_DB, PortReqId, Name),
-            ContentType = wh_doc:attachment_content_type(Attachments, Name),
-            [{ContentType, Name, Attachment}|Acc]
-        end
-        ,[]
-        ,AttachmentNames
-    ).
+      fun(Name, Acc) ->
+              {'ok', Attachment} = couch_mgr:fetch_attachment(?KZ_PORT_REQUESTS_DB, PortReqId, Name),
+              ContentType = wh_doc:attachment_content_type(Doc, Name),
+              [{ContentType, Name, Attachment}|Acc]
+      end
+      ,[]
+      ,AttachmentNames
+     ).
