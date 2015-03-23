@@ -83,7 +83,8 @@
           ,<<"Ignore-Early-Media">>, <<"Bypass-Media">>, <<"Hold-Media">>
           ,<<"Endpoint-Timeout">>, <<"Endpoint-Progress-Timeout">>
           ,<<"Endpoint-Delay">>, <<"Codecs">>, <<"Custom-SIP-Headers">>, <<"Presence-ID">>
-          ,<<"Custom-Channel-Vars">>, <<"Auth-User">>, <<"Auth-Password">>
+          ,<<"Custom-Channel-Vars">>
+          ,<<"Auth-User">>, <<"Auth-Password">>, <<"Auth-Realm">>
           ,<<"Endpoint-Type">>, <<"Endpoint-Options">>, <<"Force-Fax">>
           ,<<"Proxy-IP">>, <<"Forward-IP">>, <<"SIP-Transport">>
           ,<<"Ignore-Completed-Elsewhere">>
