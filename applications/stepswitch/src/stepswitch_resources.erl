@@ -21,48 +21,48 @@
 
 -record(gateway, {
            server :: api_binary()
-          ,realm :: api_binary()
-          ,username :: api_binary()
-          ,password :: api_binary()
-          ,route :: api_binary()
-          ,prefix = <<>> :: binary()
-          ,suffix = <<>> :: binary()
-          ,codecs = [] :: ne_binaries()
-          ,bypass_media = 'false' :: boolean()
-          ,caller_id_type = <<"external">> :: ne_binary()
-          ,fax_option :: ne_binary() | boolean()
-          ,sip_headers :: api_object()
-          ,sip_interface :: api_binary()
-          ,progress_timeout = 8 :: 1..100
-          ,invite_format = <<"route">> :: ne_binary()
-          ,endpoint_type = <<"sip">> :: ne_binary()
-          ,endpoint_options = wh_json:new() :: wh_json:object()
-          ,format_from_uri = 'false' :: boolean()
-          ,from_uri_realm :: api_binary()
-          ,is_emergency = 'false' :: boolean()
+           ,realm :: api_binary()
+           ,username :: api_binary()
+           ,password :: api_binary()
+           ,route :: api_binary()
+           ,prefix = <<>> :: binary()
+           ,suffix = <<>> :: binary()
+           ,codecs = [] :: ne_binaries()
+           ,bypass_media = 'false' :: boolean()
+           ,caller_id_type = <<"external">> :: ne_binary()
+           ,fax_option :: ne_binary() | boolean()
+           ,sip_headers :: api_object()
+           ,sip_interface :: api_binary()
+           ,progress_timeout = 8 :: 1..100
+           ,invite_format = <<"route">> :: ne_binary()
+           ,endpoint_type = <<"sip">> :: ne_binary()
+           ,endpoint_options = wh_json:new() :: wh_json:object()
+           ,format_from_uri = 'false' :: boolean()
+           ,from_uri_realm :: api_binary()
+           ,is_emergency = 'false' :: boolean()
          }).
 
 -record(resrc, {
            id :: api_binary()
-          ,rev :: api_binary()
-          ,name :: api_binary()
-          ,weight = 1 :: 1..100
-          ,grace_period = 3 :: non_neg_integer()
-          ,flags = [] :: list()
-          ,rules = [] :: list()
-          ,raw_rules = [] :: list()
-          ,cid_rules = [] :: list()
-          ,cid_raw_rules = [] :: list()
-          ,gateways = [] :: list()
-          ,is_emergency = 'false' :: boolean()
-          ,require_flags = 'false' :: boolean()
-          ,global = 'true' :: boolean()
-          ,format_from_uri = 'false' :: boolean()
-          ,from_uri_realm :: api_binary()
-          ,fax_option :: ne_binary() | boolean()
-          ,codecs = [] :: ne_binaries()
-          ,bypass_media = 'false' :: boolean()
-          ,formatters :: api_objects()
+           ,rev :: api_binary()
+           ,name :: api_binary()
+           ,weight = 1 :: 1..100
+           ,grace_period = 3 :: non_neg_integer()
+           ,flags = [] :: list()
+           ,rules = [] :: list()
+           ,raw_rules = [] :: list()
+           ,cid_rules = [] :: list()
+           ,cid_raw_rules = [] :: list()
+           ,gateways = [] :: list()
+           ,is_emergency = 'false' :: boolean()
+           ,require_flags = 'false' :: boolean()
+           ,global = 'true' :: boolean()
+           ,format_from_uri = 'false' :: boolean()
+           ,from_uri_realm :: api_binary()
+           ,fax_option :: ne_binary() | boolean()
+           ,codecs = [] :: ne_binaries()
+           ,bypass_media = 'false' :: boolean()
+           ,formatters :: api_objects()
          }).
 
 -type resource() :: #resrc{}.
@@ -71,11 +71,9 @@
 -type gateway() :: #gateway{}.
 -type gateways() :: [#gateway{},...] | [].
 
--compile({'no_auto_import', [get/0
-                             ,get/1
-                            ]}).
+-compile({'no_auto_import', [get/0, get/1]}).
 
--spec get_props() -> [wh_proplist(),...] | [].
+-spec get_props() -> wh_proplists().
 get_props() ->
     [resource_to_props(Resource)
      || Resource <- sort_resources(get())
@@ -151,7 +149,8 @@ maybe_get_local_endpoints(HuntAccount, Number, JObj) ->
     case wh_util:is_in_account_hierarchy(HuntAccount, AccountId, 'true') of
         'false' ->
             lager:info("account ~s attempted to use local resources of ~s, but it is not allowed"
-                       ,[AccountId, HuntAccount]),
+                       ,[AccountId, HuntAccount]
+                      ),
             [];
         'true' ->
             lager:info("account ~s is using the local resources of ~s", [AccountId, HuntAccount]),
@@ -160,10 +159,10 @@ maybe_get_local_endpoints(HuntAccount, Number, JObj) ->
 
 -spec get_local_endpoints(ne_binary(), ne_binary(), wh_json:object()) -> wh_json:objects().
 get_local_endpoints(AccountId, Number, JObj) ->
-    lager:debug("attempting to find local resources"),
+    lager:debug("attempting to find local resources for ~s", [AccountId]),
     Flags = wh_json:get_value(<<"Flags">>, JObj, []),
     Resources = filter_resources(Flags, get(AccountId)),
-    resources_to_endpoints(Resources,  Number, JObj).
+    resources_to_endpoints(Resources, Number, JObj).
 
 -spec get_global_endpoints(ne_binary(), wh_json:object()) -> wh_json:objects().
 get_global_endpoints(Number, JObj) ->
@@ -435,9 +434,8 @@ gateways_to_endpoints(Number, [Gateway|Gateways], JObj, Endpoints) ->
 gateway_to_endpoint(Number, Gateway, JObj) ->
     CCVs = props:filter_empty(
              [{<<"Emergency-Resource">>, gateway_emergency_resource(Gateway)}
-              ,{<<"Format-From-URI">>, Gateway#gateway.format_from_uri}
-              ,{<<"From-URI-Realm">>, Gateway#gateway.from_uri_realm}
               ,{<<"Original-Number">>, Number}
+              |gateway_from_uri_settings(Gateway)
              ]),
     wh_json:from_list(
       props:filter_empty(
@@ -459,6 +457,26 @@ gateway_to_endpoint(Number, Gateway, JObj) ->
          ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
          | maybe_get_t38(Gateway, JObj)
         ])).
+
+-spec gateway_from_uri_settings(gateway()) -> wh_proplist().
+gateway_from_uri_settings(#gateway{format_from_uri='true'
+                                   ,from_uri_realm=Realm
+                                  }) ->
+    lager:debug("using gateway from_uri_realm in From: ~s", [Realm]),
+    [{<<"Format-From-URI">>, 'true'}
+     ,{<<"From-URI-Realm">>, Realm}
+    ];
+gateway_from_uri_settings(#gateway{format_from_uri='false'
+                                   ,realm='undefined'
+                                  }) ->
+    [{<<"Format-From-URI">>, 'false'}];
+gateway_from_uri_settings(#gateway{format_from_uri='false'
+                                   ,realm=Realm
+                                  }) ->
+    lager:debug("using gateway realm in From: ~s", [Realm]),
+    [{<<"Format-From-URI">>, 'true'}
+     ,{<<"From-URI-Realm">>, Realm}
+    ].
 
 -spec maybe_get_t38(gateway(), wh_json:object()) -> wh_proplist().
 maybe_get_t38(Gateway, JObj) ->
@@ -766,7 +784,7 @@ gateway_from_jobj(JObj, #resrc{is_emergency=IsEmergency
     EndpointType = wh_json:get_ne_value(<<"endpoint_type">>, JObj, <<"sip">>),
     #gateway{endpoint_type=EndpointType
              ,server=wh_json:get_value(<<"server">>, JObj)
-             ,realm=wh_json:get_value(<<"realm">>, JObj)
+             ,realm=wh_json:get_ne_value(<<"realm">>, JObj)
              ,username=wh_json:get_value(<<"username">>, JObj)
              ,password=wh_json:get_value(<<"password">>, JObj)
              ,sip_headers=wh_json:get_ne_value(<<"custom_sip_headers">>, JObj)
@@ -842,8 +860,8 @@ endpoint_options(JObj, <<"sip">>) ->
       props:filter_undefined(
         [{<<"Route-ID">>, wh_json:get_value(<<"route_id">>, JObj)}
         ]));
-endpoint_options(_, _) -> wh_json:new().    
-    
+endpoint_options(_, _) -> wh_json:new().
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
