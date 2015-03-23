@@ -1098,7 +1098,6 @@ send_ported_notification(Context, Id) ->
           ],
     whapps_util:amqp_pool_send(Req, fun wapi_notifications:publish_ported/1).
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -1202,11 +1201,11 @@ save_phone_numbers_doc(Context, JObj) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     Context1 =
         cb_context:setters(
-            Context
-            ,[{fun cb_context:set_doc/2, JObj}
-              ,{fun cb_context:set_account_db/2, AccountDb}
-             ]
-        ),
+          Context
+          ,[{fun cb_context:set_doc/2, JObj}
+            ,{fun cb_context:set_account_db/2, AccountDb}
+           ]
+         ),
     Context2 = crossbar_doc:save(Context1),
     case cb_context:resp_status(Context2) of
         'success' -> 'ok';
