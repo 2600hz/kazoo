@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   Peter Defebvre
 %%%-------------------------------------------------------------------
--module(teletype_port_request).
+-module(teletype_ported).
 
 -export([init/0
          ,handle_req/2
@@ -14,9 +14,9 @@
 
 -include("../teletype.hrl").
 
--define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".port_request">>).
+-define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".ported">>).
 
--define(TEMPLATE_ID, <<"port_request">>).
+-define(TEMPLATE_ID, <<"ported">>).
 -define(TEMPLATE_MACROS
         ,wh_json:from_list(
            [?MACRO_VALUE(<<"port_request.carrier">>, <<"carrier">>, <<"Carrier">>, <<"Carrier">>)
@@ -32,11 +32,11 @@
            ])
        ).
 
--define(TEMPLATE_TEXT, <<"Port request submitted for {{account.name}}.\n\n Request to port numbers: {% for number in port_request.numbers %} {{ number }} {% endfor %}.">>).
--define(TEMPLATE_HTML, <<"<p>Port request submitted for {{account.name}}.</p><p>Request to port numbers: {% for number in port_request.numbers %} {{ number }} {% endfor %}</p>">>).
--define(TEMPLATE_SUBJECT, <<"Port request for {{account.name}}">>).
+-define(TEMPLATE_TEXT, <<"Port request successful for {{account.name}}.\n\n Numbers: {% for number in port_request.numbers %} {{ number }} {% endfor %}.">>).
+-define(TEMPLATE_HTML, <<"<p>Port request successful for {{account.name}}.</p><p>Numbers: {% for number in port_request.numbers %} {{ number }} {% endfor %}</p>">>).
+-define(TEMPLATE_SUBJECT, <<"Port request successful for {{account.name}}">>).
 -define(TEMPLATE_CATEGORY, <<"port_request">>).
--define(TEMPLATE_NAME, <<"Port Request">>).
+-define(TEMPLATE_NAME, <<"Port Successful">>).
 
 -define(TEMPLATE_TO, ?CONFIGURED_EMAILS(?EMAIL_ORIGINAL)).
 -define(TEMPLATE_FROM, teletype_util:default_from_address(?MOD_CONFIG_CAT)).
@@ -62,7 +62,7 @@ init() ->
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
-    'true' = wapi_notifications:port_request_v(JObj),
+    'true' = wapi_notifications:ported_v(JObj),
     wh_util:put_callid(JObj),
     %% Gather data for template
     DataJObj = wh_json:normalize(JObj),
@@ -103,26 +103,25 @@ fix_port_request_data(JObj) ->
 
 -spec fix_numbers(wh_json:object()) -> wh_json:object().
 fix_numbers(JObj) ->
-    Numbers =  wh_json:foldl(fun fix_number_fold/3
-                             ,[]
-                             ,wh_json:get_value(<<"numbers">>, JObj)
-                            ),
+    Numbers =
+        wh_json:foldl(fun fix_number_fold/3
+                      ,[]
+                      ,wh_json:get_value(<<"numbers">>, JObj)
+                     ),
     wh_json:set_value(<<"numbers">>, Numbers, JObj).
 
--spec fix_number_fold(wh_json:object(), _, wh_json:keys()) -> wh_json:keys().
+-spec fix_number_fold(wh_json:key(), _, wh_json:keys()) -> wh_json:keys().
 fix_number_fold(Number, _Value, Acc) ->
     [Number|Acc].
 
 -spec fix_billing(wh_json:object()) -> wh_json:object().
 fix_billing(JObj) ->
-    wh_json:foldl(
-      fun fix_billing_fold/3
-      ,wh_json:delete_key(<<"bill">>, JObj)
-      ,wh_json:get_value(<<"bill">>, JObj)
-     ).
+    wh_json:foldl(fun fix_billing_fold/3
+                  ,wh_json:delete_key(<<"bill">>, JObj)
+                  ,wh_json:get_value(<<"bill">>, JObj)
+                 ).
 
--spec fix_billing_fold(wh_json:key(), wh_json:json_term(), wh_json:object()) ->
-                              wh_json:object().
+-spec fix_billing_fold(wh_json:key(), wh_json:json_term(), wh_json:object()) -> wh_json:object().
 fix_billing_fold(Key, Value, Acc) ->
     wh_json:set_value(<<"bill_", Key/binary>>, Value, Acc).
 

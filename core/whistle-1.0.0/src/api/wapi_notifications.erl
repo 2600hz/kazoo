@@ -281,8 +281,9 @@
 -define(PORT_CANCEL_TYPES, []).
 
 %% Notify Ported Request
--define(PORTED_HEADERS, [<<"Account-ID">>, <<"Number">>, <<"Port">>]).
+-define(PORTED_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_PORTED_HEADERS, [<<"Number-State">>, <<"Local-Number">>, <<"Authorized-By">>, <<"Request">>
+                                  ,<<"Port-Request-ID">>, <<"Number">>, <<"Port">>
                                   | ?DEFAULT_OPTIONAL_HEADERS
                                  ]).
 -define(PORTED_VALUES, [{<<"Event-Category">>, <<"notification">>}
@@ -401,6 +402,10 @@ headers(<<"topup">>) ->
     ?TOPUP_HEADERS ++ ?OPTIONAL_TOPUP_HEADERS;
 headers(<<"port_request">>) ->
     ?PORT_REQUEST_HEADERS ++ ?OPTIONAL_PORT_REQUEST_HEADERS;
+headers(<<"port_cancel">>) ->
+    ?PORT_CANCEL_HEADERS ++ ?OPTIONAL_PORT_CANCEL_HEADERS;
+headers(<<"ported">>) ->
+    ?PORTED_HEADERS ++ ?OPTIONAL_PORTED_HEADERS;
 headers(_Notification) ->
     lager:warning("no notification headers for ~s", [_Notification]),
     [].
