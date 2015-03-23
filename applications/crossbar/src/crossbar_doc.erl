@@ -1040,7 +1040,10 @@ add_pvt_vsn(JObj, _) ->
 add_pvt_account_db(JObj, Context) ->
     case wh_json:get_value(<<"pvt_account_db">>, JObj) of
         'undefined' ->
-            wh_json:set_value(<<"pvt_account_db">>, cb_context:account_db(Context), JObj);
+            case cb_context:account_db(Context) of
+                'undefined' -> JObj;
+                AccountDb -> wh_json:set_value(<<"pvt_account_db">>, AccountDb, JObj)
+            end;
         _Else -> JObj
     end.
 
@@ -1048,7 +1051,10 @@ add_pvt_account_db(JObj, Context) ->
 add_pvt_account_id(JObj, Context) ->
     case wh_json:get_value(<<"pvt_account_id">>, JObj) of
         'undefined' ->
-            wh_json:set_value(<<"pvt_account_id">>, cb_context:account_id(Context), JObj);
+            case cb_context:account_id(Context) of
+                'undefined' -> JObj;
+                AccountId -> wh_json:set_value(<<"pvt_account_id">>, AccountId, JObj)
+            end;
         _Else -> JObj
     end.
 
