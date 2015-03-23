@@ -240,12 +240,12 @@ handle_call(_Request, _, P) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast('hunup', #participant{in_conference='true'
-                                  ,call=Call
-                                  ,conference=Conference
-                                 }=Participant
-            ) ->
-    whapps_conference_command:play(<<"tone_stream://v=-7;>=2;+=.1;%(300,0,523,440);v=-7;>=3;+=.1;%(800,0,349,440)">>, Conference),
+handle_cast('hungup', #participant{in_conference='true'
+                                   ,call=Call
+                                   ,conference=Conference
+                                  }=Participant
+           ) ->
+    whapps_conference_command:play(?EXIT_TONE, Conference),
     _ = whapps_call_command:hangup(Call),
     {'stop', {'shutdown', 'hungup'}, Participant};
 handle_cast('hungup', #participant{in_conference='false'

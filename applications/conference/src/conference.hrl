@@ -14,6 +14,9 @@
 -define(ENTRY_TONE, whapps_config:get(?CONFIG_CAT, <<"entry_tone">>, ?DEFAULT_ENTRY_TONE)).
 -define(MOD_ENTRY_TONE, whapps_config:get(?CONFIG_CAT, <<"moderator_entry_tone">>, ?DEFAULT_ENTRY_TONE)).
 
+-define(DEFAULT_EXIT_TONE, <<"tone_stream://v=-7;>=2;+=.1;%(300,0,523,440);v=-7;>=3;+=.1;%(800,0,349,440)">>).
+-define(EXIT_TONE, whapps_config:get(?CONFIG_CAT, <<"exit_tone">>, ?DEFAULT_EXIT_TONE)).
+
 -define(DEFAULT_PROFILE_CONFIG, [{<<"rate">>, 8000}
                                  ,{<<"caller-controls">>, <<"default">>}
                                  ,{<<"interval">>, 20}
