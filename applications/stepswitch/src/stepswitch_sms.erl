@@ -278,7 +278,7 @@ send(<<"amqp">>, Endpoint, API) ->
     end.
 
 -spec send_amqp_sms(wh_proplist(), atom(), integer()) -> 'ok' | {'error', term()}.
-send_amqp_sms(Payload, Exchange, 0) ->
+send_amqp_sms(_Payload, _Exchange, 0) ->
     {'error', 'not_ready'};    
 send_amqp_sms(Payload, Exchange, Count) ->
     case wh_amqp_worker:cast(Payload, fun wapi_sms:publish_outbound/1, ?ATOM(Exchange)) of
