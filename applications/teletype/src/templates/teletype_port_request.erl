@@ -103,25 +103,28 @@ fix_port_request_data(JObj) ->
 
 -spec fix_numbers(wh_json:object()) -> wh_json:object().
 fix_numbers(JObj) ->
-    Numbers =
-        wh_json:foldl(
-          fun(Number, _Value, Acc) ->
-                  [Number|Acc]
-          end
-          ,[]
-          ,wh_json:get_value(<<"numbers">>, JObj)
-         ),
+    Numbers =  wh_json:foldl(fun fix_number_fold/3
+                             ,[]
+                             ,wh_json:get_value(<<"numbers">>, JObj)
+                            ),
     wh_json:set_value(<<"numbers">>, Numbers, JObj).
+
+-spec fix_number_fold(wh_json:object(), _, wh_json:keys()) -> wh_json:keys().
+fix_number_fold(Number, _Value, Acc) ->
+    [Number|Acc].
 
 -spec fix_billing(wh_json:object()) -> wh_json:object().
 fix_billing(JObj) ->
     wh_json:foldl(
-      fun(Key, Value, Acc) ->
-              wh_json:set_value(<<"bill_", Key/binary>>, Value, Acc)
-      end
+      fun fix_billing_fold/3
       ,wh_json:delete_key(<<"bill">>, JObj)
       ,wh_json:get_value(<<"bill">>, JObj)
      ).
+
+-spec fix_billing_fold(wh_json:key(), wh_json:json_term(), wh_json:object()) ->
+                              wh_json:object().
+fix_billing_fold(Key, Value, Acc) ->
+    wh_json:set_value(<<"bill_", Key/binary>>, Value, Acc).
 
 -spec handle_port_request(wh_json:object()) -> 'ok'.
 -spec handle_port_request(wh_json:object(), wh_proplist()) -> 'ok'.
@@ -155,14 +158,13 @@ handle_port_request(DataJObj, Templates) ->
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
 
-    case
-        teletype_util:send_email(
-          Emails
-          ,Subject
-          ,ServiceData
-          ,RenderedTemplates
-          ,get_attachments(DataJObj)
-         )
+    case teletype_util:send_email(
+           Emails
+           ,Subject
+           ,ServiceData
+           ,RenderedTemplates
+           ,get_attachments(DataJObj)
+          )
     of
         'ok' ->
             teletype_util:send_update(DataJObj, <<"completed">>);
