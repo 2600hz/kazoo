@@ -255,15 +255,38 @@ send(<<"amqp">>, Endpoint, API) ->
     ExchangeType = wh_json:get_value([<<"Endpoint-Options">>, <<"Exchange-Type">>], Endpoint, <<"topic">>),
     maybe_add_broker(Broker, Exchange, ExchangeType),
     lager:debug("sending sms and not waiting for response ~s", [CallId]),
-    wh_amqp_worker:cast(Payload, fun wapi_sms:publish_outbound/1, ?ATOM(Exchange)),
-    %% Message delivered
-    DeliveryProps = [{<<"Delivery-Result-Code">>, <<"sip:200">> }
-                     ,{<<"Status">>, <<"Success">>}
-                     ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, API) }
-                     ,{<<"Call-ID">>, CallId }
-                    | wh_api:default_headers(<<"message">>, <<"delivery">>, ?APP_NAME, ?APP_VERSION)
-                     ],
-    gen_listener:cast(self(), {'sms_success', wh_json:set_values(DeliveryProps, wh_json:new())}).
+    case send_amqp_sms(Payload, ?ATOM(Exchange), 3) of
+        'ok' ->
+            DeliveryProps = [{<<"Delivery-Result-Code">>, <<"sip:200">> }
+                             ,{<<"Status">>, <<"Success">>}
+                             ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, API) }
+                             ,{<<"Call-ID">>, CallId }
+                             | wh_api:default_headers(<<"message">>, <<"delivery">>, ?APP_NAME, ?APP_VERSION)
+                            ],
+            gen_listener:cast(self(), {'sms_success', wh_json:set_values(DeliveryProps, wh_json:new())});
+        {'error', Reason} ->
+            DeliveryProps = [{<<"Delivery-Result-Code">>, <<"sip:500">> }
+                             ,{<<"Delivery-Failure">>, true}
+                             ,{<<"Error-Code">>, 500}
+                             ,{<<"Error-Message">>, wh_util:to_binary(Reason)}
+                             ,{<<"Status">>, <<"Failed">>}
+                             ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, API) }
+                             ,{<<"Call-ID">>, CallId }
+                             | wh_api:default_headers(<<"message">>, <<"delivery">>, ?APP_NAME, ?APP_VERSION)
+                            ],
+            gen_listener:cast(self(), {'sms_error', wh_json:set_values(DeliveryProps, wh_json:new())})
+    end.
+
+-spec send_amqp_sms(wh_proplist(), atom(), integer()) -> 'ok' | {'error', term()}.
+send_amqp_sms(Payload, Exchange, 0) ->
+    {'error', 'not_ready'};    
+send_amqp_sms(Payload, Exchange, Count) ->
+    case wh_amqp_worker:cast(Payload, fun wapi_sms:publish_outbound/1, ?ATOM(Exchange)) of
+        'ok' -> 'ok';
+        {'error', 'not_ready'} -> timer:sleep(5000),
+                                  send_amqp_sms(Payload, Exchange, Count - 1);
+        Error -> Error
+    end.
 
 -spec maybe_add_broker(binary(), binary(), binary()) -> 'ok'.
 maybe_add_broker(Broker, Exchange, ExchangeType) ->
