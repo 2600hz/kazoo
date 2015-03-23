@@ -71,6 +71,9 @@
                      ,{{'teletype_low_balance', 'handle_low_balance'}
                        ,[{<<"notification">>, <<"low_balance">>}]
                       }
+                     ,{'teletype_port_request'
+                       ,[{<<"notification">>, <<"port_request">>}]
+                      }
                     ]).
 %% -define(RESPONDERS, []}
 
@@ -98,7 +101,7 @@
                       ,'deregister'
                       ,'pwd_recovery'
                       ,'cnam_requests'
-                      %% ,'port_request'
+                      ,'port_request'
                       %% ,'port_cancel'
                       ,'low_balance'
                       %% ,'transaction'

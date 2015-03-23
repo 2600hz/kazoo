@@ -785,6 +785,7 @@ find_account_id(JObj) ->
 find_account_db(<<"account">>, JObj) -> find_account_db_from_id(JObj);
 find_account_db(<<"user">>, JObj) -> find_account_db_from_id(JObj);
 find_account_db(<<"fax">>, JObj) -> find_account_db(JObj);
+find_account_db(<<"port_request">>, _JObj) -> <<"port_requests">>;
 find_account_db(_, JObj) -> find_account_db_from_id(JObj).
 
 -spec find_account_db(wh_json:object()) -> api_binary().
