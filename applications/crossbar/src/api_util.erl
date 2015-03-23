@@ -507,16 +507,10 @@ is_valid_request_envelope(JSON) ->
 
 -spec get_http_verb(http_method(), cb_context:context()) -> ne_binary().
 get_http_verb(Method, Context) ->
-    case wh_json:get_value(<<"verb">>, cb_context:req_json(Context)) of
-        'undefined' ->
-            case wh_json:get_value(<<"verb">>, cb_context:query_string(Context)) of
-                'undefined' -> Method;
-                Verb ->
-                    lager:debug("found verb ~s on query string, using instead of ~s", [Verb, Method]),
-                    wh_util:to_upper_binary(Verb)
-            end;
+    case cb_context:req_value(<<"verb">>, Context) of
+        'undefined' -> Method;
         Verb ->
-            lager:debug("found verb ~s in req data, using instead of ~s", [Verb, Method]),
+            lager:debug("found verb ~s on request, using instead of ~s", [Verb, Method]),
             wh_util:to_upper_binary(Verb)
     end.
 
