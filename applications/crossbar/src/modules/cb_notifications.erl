@@ -365,6 +365,8 @@ publish_fun(<<"cnam_request">>) ->
     fun wapi_notifications:publish_cnam_request/1;
 publish_fun(<<"topup">>) ->
     fun wapi_notifications:publish_topup/1;
+publish_fun(<<"port_request">>) ->
+    fun wapi_notifications:publish_port_request/1;
 publish_fun(_Id) ->
     lager:debug("no wapi_notification:publish_~s/1 defined", [_Id]),
     fun(_Any) -> 'ok' end.

@@ -399,6 +399,8 @@ headers(<<"skel">>) ->
     ?SKEL_HEADERS ++ ?OPTIONAL_SKEL_HEADERS;
 headers(<<"topup">>) ->
     ?TOPUP_HEADERS ++ ?OPTIONAL_TOPUP_HEADERS;
+headers(<<"port_request">>) ->
+    ?PORT_REQUEST_HEADERS ++ ?OPTIONAL_PORT_REQUEST_HEADERS;
 headers(_Notification) ->
     lager:warning("no notification headers for ~s", [_Notification]),
     [].
