@@ -63,6 +63,22 @@
                                                              ,{<<"digits">>, <<"#">>}
                                                             ])
                                         ]).
+
+-define(CALLER_CONTROLS(ConfigName, Default)
+        ,whapps_config:get(?CONFIG_CAT, [<<"caller-controls">>, ConfigName], Default)
+       ).
+-define(CALLER_CONTROLS(ConfigName), ?CALLER_CONTROLS(ConfigName, 'undefined')).
+
+-define(ADVERTISE(ConfigName, Default)
+        ,whapps_config:get(?CONFIG_CAT, [<<"advertise">>, ConfigName], Default)
+       ).
+-define(ADVERTISE(ConfigName), ?ADVERTISE(ConfigName, 'undefined')).
+
+-define(CHAT_PERMISSIONS(ConfigName, Default)
+        ,whapps_config:get(?CONFIG_CAT, [<<"chat-permissions">>, ConfigName], Default)
+       ).
+-define(CHAT_PERMISSIONS(ConfigName), ?CHAT_PERMISSIONS(ConfigName, 'undefined')).
+
 -define(DEFAULT_ADVERTISE_CONFIG, 'undefined').
 -define(DEFAULT_CHAT_CONFIG, 'undefined').
 
