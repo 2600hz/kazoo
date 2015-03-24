@@ -424,6 +424,8 @@ post(Context, Id) ->
 post(Context, Id, ?PORT_SUBMITTED) ->
     DryRun = not(cb_context:accepting_charges(Context)),
     post_submitted(DryRun, Context, Id);
+post(Context, Id, ?PORT_PENDING) ->
+    do_post(Context, Id);
 post(Context, Id, ?PORT_SCHEDULED) ->
     do_post(Context, Id);
 post(Context, Id, ?PORT_COMPLETE) ->
