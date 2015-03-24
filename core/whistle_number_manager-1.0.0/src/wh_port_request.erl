@@ -73,15 +73,17 @@ normalize_attachments_map(K, V) ->
 normalize_numbers(JObj) ->
     Numbers = wh_json:get_value(<<"numbers">>, JObj, wh_json:new()),
     wh_json:set_value(
-        <<"numbers">>
-        ,wh_json:map(
-            fun(N, Meta) ->
-                {wnm_util:to_e164(N), Meta}
-            end
-            ,Numbers
-         )
-        ,JObj
-    ).
+      <<"numbers">>
+      ,wh_json:map(fun normalize_number_map/2
+                   ,Numbers
+                  )
+      ,JObj
+     ).
+
+-spec normalize_number_map(wh_json:key(), wh_json:json_term()) ->
+                                  {wh_json:key(), wh_json:json_term()}.
+normalize_number_map(N, Meta) ->
+    {wnm_util:to_e164(N), Meta}.
 
 -spec transition_to_submitted(wh_json:object()) -> transition_response().
 -spec transition_to_pending(wh_json:object()) -> transition_response().
