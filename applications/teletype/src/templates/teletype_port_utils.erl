@@ -23,22 +23,30 @@ get_attachments(_DataJObj, 'true') -> [];
 get_attachments(DataJObj, 'false') ->
     PortReqId = wh_json:get_value(<<"port_request_id">>, DataJObj),
     Doc = wh_json:get_value(<<"port_request">>, DataJObj),
-    AttachmentNames = wh_doc:attachment_names(Doc),
 
-    lists:foldl(
-      fun(Name, Acc) ->
-              {'ok', Attachment} = couch_mgr:fetch_attachment(?KZ_PORT_REQUESTS_DB, PortReqId, Name),
-              ContentType = wh_doc:attachment_content_type(Doc, Name),
-              [{ContentType, Name, Attachment}|Acc]
-      end
-      ,[]
-      ,AttachmentNames
-     ).
+    lists:foldl(fun(Name, Acc) -> get_attachment_fold(Name, Acc, PortReqId, Doc) end
+                ,[]
+                ,wh_doc:attachment_names(Doc)
+               ).
+
+-spec get_attachment_fold(wh_json:key(), attachments(), ne_binary(), wh_json:object()) ->
+                                 attachments().
+get_attachment_fold(Name, Acc, PortReqId, Doc) ->
+    {'ok', Attachment} = couch_mgr:fetch_attachment(?KZ_PORT_REQUESTS_DB, PortReqId, Name),
+    ContentType = wh_doc:attachment_content_type(Doc, Name),
+    [{ContentType, Name, Attachment}|Acc].
 
 -spec fix_email(wh_json:object()) -> wh_json:object().
 fix_email(ReqData) ->
-    Email = wh_json:get_value([<<"port_request">>, <<"notifications">>, <<"email">>, <<"send_to">>], ReqData),
-    wh_json:set_value(<<"to">>, [Email], ReqData).
+    fix_email(ReqData
+              ,wh_json:get_value([<<"port_request">>, <<"notifications">>, <<"email">>, <<"send_to">>], ReqData)
+             ).
+
+-spec fix_email(wh_json:object(), ne_binary() | ne_binaries()) -> wh_json:object().
+fix_email(ReqData, <<_/binary>> = Email) ->
+    wh_json:set_value(<<"to">>, [Email], ReqData);
+fix_email(ReqData, [_|_]=Emails) ->
+    wh_json:set_value(<<"to">>, Emails, ReqData).
 
 -spec fix_port_request_data(wh_json:object()) -> wh_json:object().
 fix_port_request_data(JObj) ->
