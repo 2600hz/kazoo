@@ -18,6 +18,7 @@
          ,transition_to_scheduled/1
          ,transition_to_complete/1
          ,transition_to_rejected/1
+         ,transition_to_canceled/1
          ,maybe_transition/2
          ,charge_for_port/1, charge_for_port/2
          ,send_submitted_requests/0
@@ -91,6 +92,7 @@ normalize_numbers(JObj) ->
 -spec transition_to_scheduled(wh_json:object()) -> transition_response().
 -spec transition_to_complete(wh_json:object()) -> transition_response().
 -spec transition_to_rejected(wh_json:object()) -> transition_response().
+-spec transition_to_canceled(wh_json:object()) -> transition_response().
 
 transition_to_submitted(JObj) ->
     transition(JObj, [?PORT_WAITING, ?PORT_REJECT], ?PORT_SUBMITTED).
@@ -108,7 +110,10 @@ transition_to_complete(JObj) ->
     end.
 
 transition_to_rejected(JObj) ->
-    transition(JObj, [?PORT_SUBMITTED, ?PORT_SCHEDULED, ?PORT_PENDING], ?PORT_REJECT).
+    transition(JObj, [?PORT_SUBMITTED, ?PORT_PENDING, ?PORT_SCHEDULED], ?PORT_REJECT).
+
+transition_to_canceled(JObj) ->
+    transition(JObj, [?PORT_WAITING, ?PORT_SUBMITTED, ?PORT_PENDING, ?PORT_SCHEDULED, ?PORT_REJECT], ?PORT_CANCELED).
 
 -spec maybe_transition(wh_json:object(), ne_binary()) -> transition_response().
 maybe_transition(PortReq, ?PORT_SUBMITTED) ->
@@ -120,6 +125,8 @@ maybe_transition(PortReq, ?PORT_SCHEDULED) ->
 maybe_transition(PortReq, ?PORT_COMPLETE) ->
     transition_to_complete(PortReq);
 maybe_transition(PortReq, ?PORT_REJECT) ->
+    transition_to_rejected(PortReq);
+maybe_transition(PortReq, ?PORT_CANCELED) ->
     transition_to_rejected(PortReq).
 
 -spec transition(wh_json:object(), ne_binaries(), ne_binary()) ->
