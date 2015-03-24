@@ -509,6 +509,8 @@ endpoint_key(Endpoint) ->
      ,wh_json:get_value(<<"To-Realm">>, Endpoint)
      ,wh_json:get_value(<<"To-DID">>, Endpoint)
      ,wh_json:get_value(<<"Route">>, Endpoint)
+     ,wh_json:get_value(<<"Proxy-Zone">>, Endpoint)
+     ,wh_json:get_value(<<"Proxy-IP">>, Endpoint)
     ].
 
 -spec endpoint_jobj_to_record(wh_json:object()) -> bridge_endpoint().
