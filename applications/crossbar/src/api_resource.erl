@@ -390,42 +390,78 @@ content_types_accepted(Req0, Context0) ->
     Context1 = crossbar_bindings:fold(Event, Payload),
 
     case cowboy_req:parse_header(<<"content-type">>, Req0) of
-        {'undefined', <<>>, Req1} -> default_content_types_accepted(Req1, Context1);
-        {'ok', CT, Req1} -> content_types_accepted(CT, Req1, Context1)
+        {'undefined', <<>>, Req1} ->
+            lager:debug("no content type on request, checking defaults"),
+            default_content_types_accepted(Req1, Context1);
+        {'ok', 'undefined', Req1} ->
+            lager:debug("no content type on request, checking defaults"),
+            default_content_types_accepted(Req1, Context1);
+        {'error', 'badarg'} ->
+            lager:debug("content type failed to be processed, checking defaults"),
+            default_content_types_accepted(Req0, Context1);
+        {'ok', CT, Req1} ->
+            lager:debug("checking content type '~p' against accepted", [CT]),
+            content_types_accepted(CT, Req1, Context1)
     end.
 
 -spec default_content_types_accepted(cowboy_req:req(), cb_context:context()) ->
-                                            {[{'undefined', atom()},...], cowboy_req:req(), cb_context:context()}.
+                                            {content_types_funs(), cowboy_req:req(), cb_context:context()}.
 default_content_types_accepted(Req, Context) ->
     CTA = [ {'*', Fun}
             || {Fun, L} <- cb_context:content_types_accepted(Context),
                lists:any(fun({Type, SubType}) ->
-                                 lager:debug("t: ~p sub: ~p", [Type, SubType]),
                                  api_util:content_type_matches(?CROSSBAR_DEFAULT_CONTENT_TYPE
                                                                ,{Type, SubType, []}
                                                               );
                             ({_,_,_}=ModCT) ->
-                                 lager:debug("modct: ~p", [ModCT]),
                                  api_util:content_type_matches(?CROSSBAR_DEFAULT_CONTENT_TYPE, ModCT)
                          end, L) % check each type against the default
           ],
+    lager:debug("default cta: ~p", [CTA]),
+    {CTA, Req, Context}.
+
+-type content_type_fun() :: {content_type(), atom()}.
+-type content_types_funs() :: [content_type_fun(),...] | [].
+
+-spec content_types_accepted(content_type(), cowboy_req:req(), cb_context:context()) ->
+                                    {content_types_funs(), cowboy_req:req(), cb_context:context()}.
+-spec content_types_accepted(content_type(), cowboy_req:req(), cb_context:context(), crossbar_content_handlers()) ->
+                                    {content_types_funs(), cowboy_req:req(), cb_context:context()}.
+content_types_accepted(CT, Req, Context) ->
+    content_types_accepted(CT, Req, Context, cb_context:content_types_accepted(Context)).
+
+content_types_accepted(CT, Req, Context, []) ->
+    lager:debug("no content-types accepted, using defaults"),
+    content_types_accepted(CT, Req, cb_context:set_content_types_accepted(Context, ?CONTENT_ACCEPTED));
+content_types_accepted(CT, Req, Context, Accepted) ->
+    CTA = lists:foldl(fun(I, Acc) ->
+                              content_types_accepted_fold(I, Acc, CT)
+                      end
+                      ,[]
+                      ,Accepted
+                     ),
     lager:debug("cta: ~p", [CTA]),
     {CTA, Req, Context}.
 
--spec content_types_accepted(content_type(), cowboy_req:req(), cb_context:context()) ->
-                                    {[{content_type(), atom()},...], cowboy_req:req(), cb_context:context()}.
-content_types_accepted(CT, Req, Context) ->
-    CTA = lists:foldl(fun({Fun, L}, Acc) ->
-                              lists:foldl(fun({Type, SubType}, Acc1) ->
-                                                  case api_util:content_type_matches(CT, {Type, SubType, []}) of
-                                                      'true' -> [{CT, Fun} | Acc1];
-                                                      'false' -> Acc1
-                                                  end;
-                                             ({_,_,_}=EncType, Acc1) ->
-                                                  [ {EncType, Fun} | Acc1 ]
-                                          end, Acc, L)
-                      end, [], cb_context:content_types_accepted(Context)),
-    {CTA, Req, Context}.
+-spec content_types_accepted_fold(crossbar_content_handler(), content_types_funs(), content_type()) ->
+                                         content_types_funs().
+content_types_accepted_fold({Fun, L}, Acc, CT) ->
+    lists:foldl(fun(CTA, Acc1) ->
+                        content_type_accepted_fold(CTA, Acc1, Fun, CT)
+                end
+                ,Acc
+                ,L
+               ).
+
+-spec content_type_accepted_fold(_, content_type_fun(), atom(), content_type()) ->
+                                        content_type_fun().
+content_type_accepted_fold({Type, SubType}, Acc, Fun, CT) ->
+    case api_util:content_type_matches(CT, {Type, SubType, []}) of
+        'true' -> [{CT, Fun} | Acc];
+        'false' -> Acc
+    end;
+content_type_accepted_fold({_,_,_}=EncType, Acc, Fun, _CT) ->
+    [{EncType, Fun} | Acc].
 
 -spec languages_provided(cowboy_req:req(), cb_context:context()) ->
                                 {ne_binaries(), cowboy_req:req(), cb_context:context()}.

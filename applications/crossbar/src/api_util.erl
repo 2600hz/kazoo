@@ -507,16 +507,10 @@ is_valid_request_envelope(JSON) ->
 
 -spec get_http_verb(http_method(), cb_context:context()) -> ne_binary().
 get_http_verb(Method, Context) ->
-    case wh_json:get_value(<<"verb">>, cb_context:req_json(Context)) of
-        'undefined' ->
-            case wh_json:get_value(<<"verb">>, cb_context:query_string(Context)) of
-                'undefined' -> Method;
-                Verb ->
-                    lager:debug("found verb ~s on query string, using instead of ~s", [Verb, Method]),
-                    wh_util:to_upper_binary(Verb)
-            end;
+    case cb_context:req_value(Context, <<"verb">>) of
+        'undefined' -> Method;
         Verb ->
-            lager:debug("found verb ~s in req data, using instead of ~s", [Verb, Method]),
+            lager:debug("found verb ~s on request, using instead of ~s", [Verb, Method]),
             wh_util:to_upper_binary(Verb)
     end.
 
@@ -760,7 +754,7 @@ is_known_content_type(Req, Context, CT, CTAs) ->
                       end, [], CTAs),
 
     IsAcceptable = is_acceptable_content_type(CT, CTA),
-    lager:debug("is ~s acceptable content type: ~s", [CT, IsAcceptable]),
+    lager:debug("is ~p acceptable content type: ~s", [CT, IsAcceptable]),
     {IsAcceptable, Req, cb_context:set_content_types_accepted(Context, CTAs)}.
 
 -spec fold_in_content_type({ne_binary(), ne_binary()}, list()) -> list().
@@ -786,10 +780,10 @@ content_type_matches(CTA, {CT, SubCT, _}) when is_binary(CTA) ->
 content_type_matches(CTA, CT) when is_binary(CTA), is_binary(CT) ->
     CTA =:= CT;
 content_type_matches(_CTA, _CTAs) ->
-    lager:debug("cta: ~p, ctas: ~p", [_CTA, _CTAs]),
+    lager:debug("ct: ~p, cts: ~p", [_CTA, _CTAs]),
     'false'.
 
--spec ensure_content_type(any()) -> content_type().
+-spec ensure_content_type(content_type() | 'undefined') -> content_type().
 ensure_content_type('undefined') -> ?CROSSBAR_DEFAULT_CONTENT_TYPE;
 ensure_content_type(CT) -> CT.
 
