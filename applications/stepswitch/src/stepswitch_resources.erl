@@ -350,18 +350,19 @@ maybe_resource_to_endpoints(#resrc{id=Id
                             ,Number, JObj, Endpoints) ->
     CallerIdNumber = wh_json:get_value(<<"Outbound-Caller-ID-Number">>,JObj),
     case filter_resource_by_rules(Id, Number, Rules, CallerIdNumber, CallerIdRules) of
-        {'ok', Number_Match} ->
+        {'error','no_match'} -> Endpoints;
+        {'ok', NumberMatch} ->
             lager:debug("building resource ~s endpoints", [Id]),
             CCVUpdates = [{<<"Global-Resource">>, wh_util:to_binary(Global)}
-                       ,{<<"Resource-ID">>, Id}
-                      ],
+                          ,{<<"Resource-ID">>, Id}
+                         ],
             Updates = [{<<"Name">>, Name}
                        ,{<<"Weight">>, Weight}
                       ],
             EndpointList = [update_endpoint(Endpoint, Updates, CCVUpdates)
-                 || Endpoint <- gateways_to_endpoints(Number_Match, Gateways, JObj, [])],
-            maybe_add_proxies(EndpointList, Proxies, Endpoints);
-        {'error','no_match'} -> Endpoints
+                            || Endpoint <- gateways_to_endpoints(NumberMatch, Gateways, JObj, [])
+                           ],
+            maybe_add_proxies(EndpointList, Proxies, Endpoints)
     end.
 
 -spec update_endpoint(wh_json:object(), wh_proplist(), wh_proplist()) -> wh_json:object().
@@ -383,8 +384,8 @@ add_proxy(Endpoint, {Zone, IP}) ->
     wh_json:set_values(Updates ,Endpoint).
 
 -spec filter_resource_by_rules(ne_binary(), ne_binary(), re:mp(), ne_binary(), re:mp()) ->
-                            {'ok', ne_binary()} |
-                            {'error', 'no_match'}.
+                                      {'ok', ne_binary()} |
+                                      {'error', 'no_match'}.
 filter_resource_by_rules(Id, Number, Rules, CallerIdNumber, CallerIdRules) ->
     case evaluate_rules(Rules, Number) of
         {'error', 'no_match'} ->
