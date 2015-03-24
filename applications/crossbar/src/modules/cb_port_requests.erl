@@ -172,6 +172,8 @@ allowed_methods(_Id, ?PORT_COMPLETE) ->
     [?HTTP_POST];
 allowed_methods(_Id, ?PORT_REJECT) ->
     [?HTTP_POST];
+allowed_methods(_Id, ?PORT_CANCELED) ->
+    [?HTTP_POST];
 allowed_methods(_Id, ?PORT_ATTACHMENT) ->
     [?HTTP_GET, ?HTTP_PUT];
 allowed_methods(_Id, ?PATH_TOKEN_LOA) ->
@@ -202,6 +204,7 @@ resource_exists(_Id, ?PORT_PENDING) -> 'true';
 resource_exists(_Id, ?PORT_SCHEDULED) -> 'true';
 resource_exists(_Id, ?PORT_COMPLETE) -> 'true';
 resource_exists(_Id, ?PORT_REJECT) -> 'true';
+resource_exists(_Id, ?PORT_CANCELED) -> 'true';
 resource_exists(_Id, ?PORT_ATTACHMENT) -> 'true';
 resource_exists(_Id, ?PATH_TOKEN_LOA) -> 'true';
 resource_exists(_Id, _Unknown) -> 'false'.
@@ -312,6 +315,8 @@ validate(Context, Id, ?PORT_COMPLETE) ->
     validate_port_request(Context, Id, ?PORT_COMPLETE, cb_context:req_verb(Context));
 validate(Context, Id, ?PORT_REJECT) ->
     validate_port_request(Context, Id, ?PORT_REJECT, cb_context:req_verb(Context));
+validate(Context, Id, ?PORT_CANCELED) ->
+    validate_port_request(Context, Id, ?PORT_CANCELED, cb_context:req_verb(Context));
 validate(Context, Id, ?PORT_ATTACHMENT) ->
     validate_attachments(Context, Id, cb_context:req_verb(Context));
 validate(Context, Id, ?PATH_TOKEN_LOA) ->
@@ -341,8 +346,9 @@ validate_port_request(Context, Id, ?PORT_SCHEDULED, ?HTTP_POST) ->
 validate_port_request(Context, Id, ?PORT_COMPLETE, ?HTTP_POST) ->
     maybe_move_state(Context, Id, ?PORT_COMPLETE);
 validate_port_request(Context, Id, ?PORT_REJECT, ?HTTP_POST) ->
-    maybe_move_state(Context, Id, ?PORT_REJECT).
-
+    maybe_move_state(Context, Id, ?PORT_REJECT);
+validate_port_request(Context, Id, ?PORT_CANCELED, ?HTTP_POST) ->
+    maybe_move_state(Context, Id, ?PORT_CANCELED).
 
 -spec validate_attachments(cb_context:context(), ne_binary(), http_method()) ->
                                  cb_context:context().
@@ -366,6 +372,7 @@ is_deletable(Context) ->
     is_deletable(Context, wh_port_request:current_state(cb_context:doc(Context))).
 is_deletable(Context, ?PORT_WAITING) -> Context;
 is_deletable(Context, ?PORT_REJECT) -> Context;
+is_deletable(Context, ?PORT_CANCELED) -> Context;
 is_deletable(Context, _PortState) ->
     lager:debug("port is in state ~s, can't modify", [_PortState]),
     cb_context:add_system_error('invalid_method'
@@ -456,6 +463,21 @@ post(Context, Id, ?PORT_REJECT) ->
                 ,<<"failed to send port cancel email to system admins">>
                 ,Context
             )
+    end;
+post(Context, Id, ?PORT_CANCELED) ->
+    _ = remove_from_phone_numbers_doc(Context),
+    try send_port_cancel_notification(Context, Id) of
+        _ ->
+            lager:debug("port cancel notification sent"),
+            do_post(Context, Id)
+    catch
+        _E:_R ->
+            lager:debug("failed to send the port cancel notification: ~s:~p", [_E, _R]),
+            cb_context:add_system_error(
+              'bad_gateway'
+              ,<<"failed to send port cancel email to system admins">>
+              ,Context
+             )
     end.
 
 -spec post_submitted(boolean(), cb_context:context(), ne_binary()) -> cb_context:context().
@@ -908,13 +930,13 @@ maybe_move_state(Context, Id, PortState) ->
             cb_context:set_doc(Context1, PortRequest);
         {'error', 'invalid_state_transition'} ->
             cb_context:add_validation_error(
-                <<"port_state">>
-                ,<<"enum">>
-                ,wh_json:from_list([
-                    {<<"message">>, <<"Cannot move to new state from current state">>}
-                    ,{<<"cause">>, PortState}
-                 ])
-                ,Context
+              <<"port_state">>
+              ,<<"enum">>
+                  ,wh_json:from_list(
+                     [{<<"message">>, <<"Cannot move to new state from current state">>}
+                      ,{<<"cause">>, PortState}
+                     ])
+              ,Context
              )
     end.
 

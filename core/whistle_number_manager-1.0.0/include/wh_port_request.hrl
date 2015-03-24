@@ -6,6 +6,7 @@
 -define(PORT_SCHEDULED, <<"scheduled">>).
 -define(PORT_COMPLETE, <<"completed">>).
 -define(PORT_REJECT, <<"rejected">>).
+-define(PORT_CANCELED, <<"canceled">>).
 -define(PORT_ATTACHMENT, <<"attachments">>).
 -define(PORT_DESCENDANTS, <<"descendants">>).
 -define(PORT_PVT_STATE, <<"pvt_port_state">>).
