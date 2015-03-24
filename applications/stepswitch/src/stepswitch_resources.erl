@@ -609,16 +609,22 @@ fetch_local_resources(AccountId) ->
             lager:warning("unable to fetch local resources from ~s: ~p", [AccountId, _R]),
             [];
         {'ok', JObjs} ->
+            LocalResources = fetch_local_resources(AccountId, JObjs),
             CacheProps = [{'origin', fetch_local_cache_origin(JObjs, AccountDb, [])}],
-            Proxies = fetch_account_dedicated_proxies(AccountId),
-            Docs = [wh_json:set_values([{<<"IsGlobal">>, false}
-                                        ,{<<"Proxies">>, wh_json:from_list(Proxies)}
-                                       ], wh_json:get_value(<<"doc">>, JObj))  
-                      || JObj <- JObjs], 
-            Resources = resources_from_jobjs(Docs),
-            wh_cache:store_local(?STEPSWITCH_CACHE, {'local_resources', AccountId}, Resources, CacheProps),
-            Resources
+            wh_cache:store_local(?STEPSWITCH_CACHE, {'local_resources', AccountId}, LocalResources, CacheProps),
+            LocalResources
     end.
+
+-spec fetch_local_resources(ne_binary(), wh_json:objects()) -> resources().
+fetch_local_resources(AccountId, JObjs) ->
+    Proxies = fetch_account_dedicated_proxies(AccountId),
+    [wh_json:set_values([{<<"Is-Global">>, 'false'}
+                         ,{<<"Proxies">>, wh_json:from_list(Proxies)}
+                        ]
+                        ,wh_json:get_value(<<"doc">>, JObj)
+                       )
+     || JObj <- JObjs
+    ].
 
 -spec fetch_local_cache_origin(wh_json:objects(), ne_binary(), wh_cache_props()) -> wh_cache_props().
 fetch_local_cache_origin([], _, Props) -> [{'type', <<"resource">>} | Props];
@@ -630,15 +636,15 @@ fetch_local_cache_origin([JObj|JObjs], AccountDb, Props) ->
 fetch_account_dedicated_proxies('undefined') -> [];
 fetch_account_dedicated_proxies(AccountId) ->
     case kz_ips:assigned(AccountId) of
-        {'ok', IPS} -> [ build_account_dedicated_proxy(IP) || IP <- IPS];
+        {'ok', IPS} -> [build_account_dedicated_proxy(IP) || IP <- IPS];
         _ -> []
     end.
 
--spec build_account_dedicated_proxy(wh_json:object()) -> {binary(), binary()}.
+-spec build_account_dedicated_proxy(wh_json:object()) -> {api_binary(), api_binary()}.
 build_account_dedicated_proxy(Proxy) ->
     Zone = wh_json:get_value(<<"zone">>, Proxy),
     ProxyIP = wh_json:get_value(<<"ip">>, Proxy),
-    {Zone , ProxyIP}.
+    {Zone, ProxyIP}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -647,9 +653,10 @@ build_account_dedicated_proxy(Proxy) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec resources_from_jobjs(wh_json:objects()) -> resources().
-resources_from_jobjs(JObjs) -> resources_from_jobjs(JObjs, []).
-
 -spec resources_from_jobjs(wh_json:objects(), resources()) -> resources().
+resources_from_jobjs(JObjs) ->
+    resources_from_jobjs(JObjs, []).
+
 resources_from_jobjs([], Resources) -> Resources;
 resources_from_jobjs([JObj|JObjs], Resources) ->
     case wh_json:is_true(<<"enabled">>, JObj, 'true') of
@@ -663,11 +670,15 @@ create_resource(JObj, Resources) ->
         'undefined' -> [resource_from_jobj(JObj) | Resources];
         ResourceClassifiers ->
             ConfigClassifiers = wh_json:to_proplist(whapps_config:get(?CONFIG_CAT, <<"classifiers">>)),
-            create_resource(wh_json:to_proplist(ResourceClassifiers), ConfigClassifiers, JObj, Resources)
+            create_resource(wh_json:to_proplist(ResourceClassifiers)
+                            ,ConfigClassifiers
+                            ,JObj
+                            ,Resources
+                           )
     end.
 
 -spec create_resource(wh_proplist(), wh_proplist(), wh_json:object(), resources()) -> resources().
-create_resource([], _, _, Resources) -> Resources;
+create_resource([], _ConfigClassifiers, _JObj, Resources) -> Resources;
 create_resource([{Classifier, ClassifierJobj}|Cs], ConfigClassifiers, JObj, Resources) ->
     case (ConfigClassifier = props:get_value(Classifier, ConfigClassifiers)) =/= 'undefined'
         andalso wh_json:is_true(<<"enabled">>, ClassifierJobj, 'true')
@@ -716,11 +727,12 @@ resource_from_jobj(JObj) ->
                       ,codecs=resource_codecs(JObj)
                       ,bypass_media=resource_bypass_media(JObj)
                       ,formatters=resource_formatters(JObj)
-                      ,global=wh_json:is_true(<<"IsGlobal">>, JObj, 'true')
+                      ,global=wh_json:is_true(<<"Is-Global">>, JObj, 'true')
                       ,proxies=wh_json:to_proplist(<<"Proxies">>, JObj)
                      },
     Gateways = gateways_from_jobjs(wh_json:get_value(<<"gateways">>, JObj, [])
-                                   ,Resource),
+                                   ,Resource
+                                  ),
     Resource#resrc{gateways=Gateways}.
 
 -spec resource_bypass_media(wh_json:object()) -> boolean().
