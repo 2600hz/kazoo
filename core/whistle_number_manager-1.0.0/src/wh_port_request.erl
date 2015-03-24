@@ -14,11 +14,7 @@
          ,get/1
          ,normalize_attachments/1
          ,normalize_numbers/1
-         ,transition_to_submitted/1
-         ,transition_to_scheduled/1
          ,transition_to_complete/1
-         ,transition_to_rejected/1
-         ,transition_to_canceled/1
          ,maybe_transition/2
          ,charge_for_port/1, charge_for_port/2
          ,send_submitted_requests/0
@@ -127,7 +123,7 @@ maybe_transition(PortReq, ?PORT_COMPLETE) ->
 maybe_transition(PortReq, ?PORT_REJECT) ->
     transition_to_rejected(PortReq);
 maybe_transition(PortReq, ?PORT_CANCELED) ->
-    transition_to_rejected(PortReq).
+    transition_to_canceled(PortReq).
 
 -spec transition(wh_json:object(), ne_binaries(), ne_binary()) ->
                         transition_response().
