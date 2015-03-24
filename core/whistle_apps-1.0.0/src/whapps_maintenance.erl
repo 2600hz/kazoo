@@ -977,5 +977,5 @@ remove_system_media_refs(HangupCause, Config) ->
 
 -spec remove_system_media_ref(wh_json:key(), wh_json:json_term(), wh_json:object()) ->
                                      wh_json:object().
-remove_system_media_ref(_Key, <<"/system_media/", _/binary>>, Acc) -> Acc;
+remove_system_media_ref(Key, <<"/system_media/", Value/binary>>, Acc) -> wh_json:set_value(Key, Value, Acc);
 remove_system_media_ref(Key, Value, Acc) -> wh_json:set_value(Key, Value, Acc).
