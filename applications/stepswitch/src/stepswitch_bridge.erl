@@ -350,15 +350,15 @@ endpoint_format_from(Endpoint, CIDNum, DefaultRealm, CCVs) ->
                          ]),
             UpdatedCCVs = wh_json:set_value(<<"From-URI">>, FromURI, CCVs),
             wh_json:set_value(<<"Custom-Channel-Vars">>
-                                  ,wh_json:delete_keys([<<"Format-From-URI">>
-                                                        ,<<"From-URI-Realm">>
-                                                       ], UpdatedCCVs)
+                              ,wh_json:delete_keys([<<"Format-From-URI">>
+                                                    ,<<"From-URI-Realm">>
+                                                   ], UpdatedCCVs)
                               ,Endpoint);
         _ ->
             wh_json:set_value(<<"Custom-Channel-Vars">>
-                                  ,wh_json:delete_keys([<<"Format-From-URI">>
-                                                        ,<<"From-URI-Realm">>
-                                                       ], CCVs)
+                              ,wh_json:delete_keys([<<"Format-From-URI">>
+                                                    ,<<"From-URI-Realm">>
+                                                   ], CCVs)
                               ,Endpoint)
     end.
 

@@ -6,43 +6,38 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(teletype_fax_outbound_to_email).
+-module(teletype_fax_outbound_error_to_email).
 
 -export([init/0
-         ,handle_fax_outbound/2
+         ,handle_fax_outbound_error/2
         ]).
 
 -include("../teletype.hrl").
 
--define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".fax_outbound_to_email">>).
+-define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".fax_outbound_error_to_email">>).
 -define(FAX_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".fax">>).
 
--define(TEMPLATE_ID, <<"fax_outbound_to_email">>).
+-define(TEMPLATE_ID, <<"fax_outbound_error_to_email">>).
 
 -define(TEMPLATE_MACROS
         ,wh_json:from_list(
            [?MACRO_VALUE(<<"call_id">>, <<"call_id">>, <<"Call ID">>, <<"Call ID of the fax transmission">>)
-            ,?MACRO_VALUE(<<"fax.total_pages">>, <<"fax_total_pages">>, <<"Total Pages">>, <<"Total number of pages received">>)
-            ,?MACRO_VALUE(<<"fax.id">>, <<"fax_id">>, <<"Fax ID">>, <<"Crossbar ID of the fax transmission">>)
-            ,?MACRO_VALUE(<<"fax.media">>, <<"fax_media">>, <<"Fax Name">>, <<"Name of the fax transmission">>)
-            ,?MACRO_VALUE(<<"fax.success">>, <<"fax_success">>, <<"Fax Success">>, <<"Was the fax successful">>)
-            ,?MACRO_VALUE(<<"fax.ecm_used">>, <<"fax_ecm_used">>, <<"ECM Used">>, <<"Was ECM used">>)
-            ,?MACRO_VALUE(<<"fax.result_text">>, <<"fax_result_text">>, <<"Fax Result Text">>, <<"Result text from transmission">>)
-            ,?MACRO_VALUE(<<"fax.transferred_pages">>, <<"fax_transferred_pages">>, <<"Transferred Pages">>, <<"How many pages were transferred">>)
-            ,?MACRO_VALUE(<<"fax.bad_rows">>, <<"fax_bad_rows">>, <<"Bad Rows">>, <<"How many bad rows">>)
-            ,?MACRO_VALUE(<<"fax.transfer_rate">>, <<"fax_transfer_rate">>, <<"Transfer Rate">>, <<"Transfer Rate">>)
-            ,?MACRO_VALUE(<<"fax.encoding">>, <<"fax_encoding">>, <<"Fax Encoding">>, <<"Encoding of the fax">>)
-            ,?MACRO_VALUE(<<"fax.doc_id">>, <<"fax_doc_id">>, <<"Document ID">>, <<"Crossbar ID of the Fax document">>)
+            ,?MACRO_VALUE(<<"fax.info">>, <<"fax_info">>, <<"Fax Info">>, <<"Fax Info">>)
+            ,?MACRO_VALUE(<<"fax.id">>, <<"fax_id">>, <<"Fax ID">>, <<"Fax ID">>)
+            ,?MACRO_VALUE(<<"fax.box_id">>, <<"fax_box_id">>, <<"FaxBox ID">>, <<"FaxBox ID">>)
+            ,?MACRO_VALUE(<<"fax.error">>, <<"fax_error">>, <<"Fax Error">>, <<"Fax Error">>)
+            ,?MACRO_VALUE(<<"fax.timestamp">>, <<"fax_timestamp">>, <<"Fax Timestamp">>, <<"Fax Timestamp">>)
+            ,?MACRO_VALUE(<<"fax.remote_station_id">>, <<"fax_remote_station_id">>, <<"Fax Remote Station ID">>, <<"Fax Remote Station ID">>)
             | ?DEFAULT_CALL_MACROS
             ++ ?SERVICE_MACROS
            ]
           )).
 
--define(TEMPLATE_TEXT, <<"Sent New Fax ({{fax.total_pages}} Pages)\n\nCaller ID: {{caller_id.number}}\nCaller Name: {{caller_id.name}}\n\nCalled To: {{to.user}}   (Originally dialed number)\nCalled On: {{date_called.local|date:\"l, F j, Y \\a\\t H:i\"}}\n\n\nFor help or questions about receiving faxes, please contact support at {{service.support_number}} or email {{service.support_email}}.">>).
--define(TEMPLATE_HTML, <<"<html><body><h3>Sent New Fax ({{fax.total_pages}} Pages)</h3><table><tr><td>Caller ID</td><td>{{caller_id.name}} ({{caller_id.number}})</td></tr><tr><td>Callee ID</td><td>{{to.user}} (originally dialed number)</td></tr><tr><td>Call received</td><td>{{date_called.local|date:\"l, F j, Y \\a\\t H:i\"}}</td></tr></table><p>For help or questions about receiving faxes, please contact {{service.support_number}} or email <a href=\"mailto:{{service.support_email}}\">Support</a></p><p style=\"font-size: 9px;color:#C0C0C0\">{{fax.call_id}}</p></body></html>">>).
--define(TEMPLATE_SUBJECT, <<"Successfully sent fax to {{callee_id.name}} ({{callee_id.number}})">>).
+-define(TEMPLATE_TEXT, <<"Error : {% firstof error.fax_info error.call_info \"unknown error\" %} \n\nnCaller ID: {% firstof fax.remote_station_id callee_id.number \"unknown number\" %}\nCaller Name: {% firstof callee_id.name fax.remote_station_id callee_id.number \"unknown number\" %}\n\nCalled To: {{to.user}} (Originally dialed number)\nCalled On: {{fax.timestamp|date:\"l, F j, Y \\a\\t H:i\"}}\n\n\nFor help or questions about receiving faxes, please contact support at {{service.support_number}} or email {{service.support_email}}.">>).
+-define(TEMPLATE_HTML, <<"<html><body><h3>Error : {% firstof error.fax_info error.call_info \"unknown error\" %} </h3><table><tr><td>Caller ID</td><td>{% firstof callee_id.name fax.remote_station_id callee_id.number \"unknown number\" %} ({% firstof fax.remote_station_id caller_id.number \"unknown number\" %})</td></tr><tr><td>Callee ID</td><td>{{to.user}} (originally dialed number)</td></tr><tr><td>Call received</td><td>{{fax.timestamp|date:\"l, F j, Y \\a\\t H:i\"}}</td></tr></table><p>For help or questions about receiving faxes, please contact {{service.support_number}} or email <a href=\"mailto:{{service.support_email}}\">Support</a></p><p style=\"font-size: 9px;color:#C0C0C0\">{{call_id}}</p></body></html>">>).
+-define(TEMPLATE_SUBJECT, <<"Error Sending Fax to {% firstof callee_id.name fax.remote_station_id callee_id.number \"unknown number\" %} ({% firstof fax.remote_station_id callee_id.number \"unknown number\" %})">>).
 -define(TEMPLATE_CATEGORY, <<"fax">>).
--define(TEMPLATE_NAME, <<"Outbound Fax to Email">>).
+-define(TEMPLATE_NAME, <<"Outbound Fax Error to Email">>).
 
 -define(TEMPLATE_TO, ?CONFIGURED_EMAILS(?EMAIL_ORIGINAL)).
 -define(TEMPLATE_FROM, teletype_util:default_from_address(?MOD_CONFIG_CAT)).
@@ -67,12 +62,12 @@ init() ->
                                                ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                               ]).
 
--spec handle_fax_outbound(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_fax_outbound(JObj, _Props) ->
-    'true' = wapi_notifications:fax_outbound_v(JObj),
+-spec handle_fax_outbound_error(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_fax_outbound_error(JObj, _Props) ->
+    'true' = wapi_notifications:fax_outbound_error_v(JObj),
     wh_util:put_callid(JObj),
 
-    lager:debug("processing fax outbound to email ~p", [JObj]),
+    lager:debug("processing fax outbound to email"),
 
     %% Gather data for template
     DataJObj =
@@ -102,6 +97,7 @@ handle_fax_outbound(DataJObj) ->
                wh_json:set_values([{<<"account">>, wh_doc:public_fields(AccountJObj)}
                                    ,{<<"fax">>, wh_doc:public_fields(FaxJObj)}
                                    ,{<<"owner">>, wh_doc:public_fields(OwnerJObj)}
+                                   ,{<<"error">>, error_data(DataJObj)}
                                   ]
                                   ,DataJObj
                                  )),
@@ -148,6 +144,21 @@ handle_fax_outbound(DataJObj) ->
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
 
+-spec error_data(wh_json:object()) -> wh_json:object().
+error_data(DataJObj) ->
+    case teletype_util:is_preview(DataJObj) of
+        'false' ->
+            wh_json:from_list(
+              [{<<"call_info">>, wh_json:get_value(<<"fax_error">>, DataJObj)}
+               ,{<<"fax_info">>, wh_json:get_value([<<"fax_info">>, <<"fax_result_text">>], DataJObj)}
+              ]);
+        'true'->
+            wh_json:from_list(
+              [{<<"call_info">>, <<"CALL_INFO">>}
+               ,{<<"fax_info">>, <<"FAX_INFO">>}
+              ])
+    end.
+
 -spec get_owner_doc(wh_json:object(), wh_json:object()) -> wh_json:object().
 get_owner_doc(FaxJObj, DataJObj) ->
     OwnerId = wh_json:get_value(<<"owner_id">>, FaxJObj),
@@ -178,7 +189,6 @@ get_attachments(DataJObj, Macros, 'false') ->
 
     Filename = get_file_name(Macros, ToFormat),
     lager:debug("adding attachment as ~s", [Filename]),
-
     [{content_type_from_extension(Filename)
       ,Filename
       ,Converted
@@ -257,14 +267,14 @@ get_attachment_binary(Db, Id, Retries, AttachmentJObj) ->
 
 -spec fax_db(wh_json:object()) -> ne_binary().
 fax_db(DataJObj) ->
-    case teletype_util:find_account_db(DataJObj) of
-        'undefined' -> ?WH_FAXES;
-        Db -> Db
-    end.
+    FaxId = wh_json:get_value(<<"fax_id">>, DataJObj),
+    AccountId = teletype_util:find_account_id(DataJObj),
+    <<Year:4/binary, Month:2/binary, "-", _/binary>> = FaxId,
+    kazoo_modb:get_modb(AccountId, Year, Month).
 
 -spec build_template_data(wh_json:object()) -> wh_proplist().
 build_template_data(DataJObj) ->
-    [{<<"account">>, wh_json:to_proplist(wh_json:get_value(<<"account">>, DataJObj))}
+    [{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
      ,{<<"fax">>, build_fax_template_data(DataJObj)}
      ,{<<"service">>, teletype_util:service_params(DataJObj, ?MOD_CONFIG_CAT)}
      ,{<<"caller_id">>, caller_id_data(DataJObj)}
@@ -357,9 +367,11 @@ default_to_addresses() ->
 
 -spec build_fax_template_data(wh_json:object()) -> wh_proplist().
 build_fax_template_data(DataJObj) ->
-    FaxJObj = wh_json:get_value(<<"fax">>, DataJObj),
     props:filter_undefined(
       [{<<"id">>, wh_json:get_value(<<"fax_id">>, DataJObj)}
-       ,{<<"media">>, wh_json:get_value(<<"fax_name">>, DataJObj)}
-       | wh_json:to_proplist(wh_json:get_value(<<"rx_results">>, FaxJObj, wh_json:new()))
+       ,{<<"info">>, wh_json:get_value(<<"fax_info">>, DataJObj)}
+       ,{<<"box_id">>, wh_json:get_value(<<"faxbox_id">>, DataJObj)}
+       ,{<<"timestamp">>, wh_json:get_value(<<"fax_timestamp">>, DataJObj)}
+       ,{<<"notifications">>, wh_json:get_value(<<"fax_notifications">>, DataJObj)}
+       ,{<<"remote_station_id">>, wh_json:get_value(<<"fax_remote_station_id">>, DataJObj)}
       ]).

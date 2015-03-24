@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2014, 2600Hz
+%%% @copyright (C) 2013-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -32,8 +32,14 @@
                      ,{{'teletype_fax_inbound_to_email', 'handle_fax_inbound'}
                        ,[{<<"notification">>, <<"inbound_fax">>}]
                       }
+                     ,{{'teletype_fax_inbound_error_to_email', 'handle_fax_inbound_error'}
+                       ,[{<<"notification">>, <<"inbound_fax_error">>}]
+                      }
                      ,{{'teletype_fax_outbound_to_email', 'handle_fax_outbound'}
                        ,[{<<"notification">>, <<"outbound_fax">>}]
+                      }
+                     ,{{'teletype_fax_outbound_error_to_email', 'handle_fax_outbound_error'}
+                       ,[{<<"notification">>, <<"outbound_fax_error">>}]
                       }
                      ,{{'teletype_new_account', 'handle_new_account'}
                        ,[{<<"notification">>, <<"new_account">>}]
@@ -47,28 +53,34 @@
                      ,{{'teletype_deregister', 'handle_deregister'}
                        ,[{<<"notification">>, <<"deregister">>}]
                       }
+                     ,{{'teletype_transaction', 'handle_transaction'}
+                       ,[{<<"notification">>, <<"transaction">>}]
+                      }
                      ,{{'teletype_password_recovery', 'handle_password_recovery'}
                        ,[{<<"notification">>, <<"password_recovery">>}]
                       }
+                     ,{{'teletype_system_alert', 'handle_system_alert'}
+                       ,[{<<"notification">>, <<"system_alert">>}]
+                      }
+                     ,{{'teletype_topup', 'handle_topup'}
+                       ,[{<<"notification">>, <<"topup">>}]
+                      }
+                     ,{{'teletype_cnam_request', 'handle_cnam_request'}
+                       ,[{<<"notification">>, <<"cnam_request">>}]
+                      }
+                     ,{{'teletype_low_balance', 'handle_low_balance'}
+                       ,[{<<"notification">>, <<"low_balance">>}]
+                      }
+                     ,{'teletype_port_request'
+                       ,[{<<"notification">>, <<"port_request">>}]
+                      }
+                     ,{'teletype_port_cancel'
+                       ,[{<<"notification">>, <<"port_cancel">>}]
+                      }
+                     ,{'teletype_ported'
+                       ,[{<<"notification">>, <<"ported">>}]
+                      }
                     ]).
-%% -define(RESPONDERS, []}
-
-%%                      ,{'teletype_fax_outbound_to_email', [{<<"notification">>, <<"outbound_fax">>}]}
-%%                      ,{'teletype_fax_inbound_error_to_email', [{<<"notification">>, <<"inbound_fax_error">>}]}
-%%                      ,{'teletype_fax_outbound_error_to_email', [{<<"notification">>, <<"outbound_fax_error">>}]}
-
-
-%%                      ,{'teletype_new_account', [{<<"notification">>, <<"new_account">>}]}
-%%                      ,{'teletype_cnam_request', [{<<"notification">>, <<"cnam_request">>}]}
-%%                      ,{'teletype_port_request', [{<<"notification">>, <<"port_request">>}]}
-%%                      ,{'teletype_port_cancel', [{<<"notification">>, <<"port_cancel">>}]}
-%%                      ,{'teletype_ported', [{<<"notification">>, <<"ported">>}]}
-%%                      ,{'teletype_low_balance', [{<<"notification">>, <<"low_balance">>}]}
-%%                      ,{'teletype_transaction', [{<<"notification">>, <<"transaction">>}]}
-%%                      ,{'teletype_system_alert', [{<<"notification">>, <<"system_alert">>}]}
-%%                      ,{'teletype_topup', [{<<"notification">>, <<"topup">>}]}
-
-%%                     ]).
 
 -define(RESTRICT_TO, ['new_voicemail'
                       ,'voicemail_full'
@@ -76,17 +88,20 @@
                       ,'outbound_fax'
                       ,'new_account'
                       ,'new_user'
-                      %% ,'inbound_fax_error'
-                      %% ,'outbound_fax_error'
+                      ,'inbound_fax_error'
+                      ,'outbound_fax_error'
                       ,'deregister'
                       ,'pwd_recovery'
-                      %% ,'cnam_requests'
-                      %% ,'port_request'
-                      %% ,'port_cancel'
-                      %% ,'low_balance'
+                      ,'cnam_requests'
+                      ,'port_request'
+                      ,'port_cancel'
+                      ,'ported'
+                      ,'low_balance'
                       %% ,'transaction'
-                      %% ,'system_alerts'
+                      ,'system_alerts'
+                      ,'transaction'
                       %%,'skel'
+                      ,'topup'
                      ]).
 
 -define(BINDINGS, [{'notifications', [{'restrict_to', ?RESTRICT_TO}]}

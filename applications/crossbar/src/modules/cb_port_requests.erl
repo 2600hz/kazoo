@@ -427,7 +427,19 @@ post(Context, Id, ?PORT_SUBMITTED) ->
 post(Context, Id, ?PORT_SCHEDULED) ->
     do_post(Context, Id);
 post(Context, Id, ?PORT_COMPLETE) ->
-    do_post(Context, Id);
+    try send_ported_notification(Context, Id) of
+        _ ->
+            lager:debug("ported notification sent"),
+            do_post(Context, Id)
+    catch
+        _E:_R ->
+            lager:debug("failed to send the ported notification: ~s:~p", [_E, _R]),
+            cb_context:add_system_error(
+                'bad_gateway'
+                ,<<"failed to send ported email to system admins">>
+                ,Context
+            )
+    end;
 post(Context, Id, ?PORT_REJECT) ->
     _ = remove_from_phone_numbers_doc(Context),
     try send_port_cancel_notification(Context, Id) of
@@ -437,10 +449,11 @@ post(Context, Id, ?PORT_REJECT) ->
     catch
         _E:_R ->
             lager:debug("failed to send the port cancel notification: ~s:~p", [_E, _R]),
-            cb_context:add_system_error('bad_gateway'
-                                        ,<<"failed to send port cancel email to system admins">>
-                                        ,Context
-                                       )
+            cb_context:add_system_error(
+                'bad_gateway'
+                ,<<"failed to send port cancel email to system admins">>
+                ,Context
+            )
     end.
 
 -spec post_submitted(boolean(), cb_context:context(), ne_binary()) -> cb_context:context().
@@ -453,10 +466,11 @@ post_submitted('false', Context, Id) ->
     catch
         _E:_R ->
             lager:debug("failed to send the port request notification: ~s:~p", [_E, _R]),
-            cb_context:add_system_error('bad_gateway'
-                                        ,<<"failed to send port request email to system admins">>
-                                        ,Context
-                                       )
+            cb_context:add_system_error(
+                'bad_gateway'
+                ,<<"failed to send port request email to system admins">>
+                ,Context
+            )
     end;
 post_submitted('true', Context, Id) ->
     DryRunJObj = dry_run(Context),
@@ -1070,6 +1084,19 @@ send_port_cancel_notification(Context, Id) ->
           ],
     whapps_util:amqp_pool_send(Req, fun wapi_notifications:publish_port_cancel/1).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec send_ported_notification(cb_context:context(), ne_binary()) -> 'ok'.
+send_ported_notification(Context, Id) ->
+    Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
+           ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
+           ,{<<"Port-Request-ID">>, Id}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    whapps_util:amqp_pool_send(Req, fun wapi_notifications:publish_ported/1).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1103,7 +1130,7 @@ add_to_phone_numbers_doc(Context, JObj) ->
 -spec build_number_properties(ne_binary(), gregorian_seconds()) -> wh_json:object().
 build_number_properties(AccountId, Now) ->
     wh_json:from_list(
-      [{<<"state">>, <<"in_service">>}
+      [{<<"state">>, <<"port_in">>}
        ,{<<"features">>, []}
        ,{<<"assigned_to">>, AccountId}
        ,{<<"used_by">>, <<>>}
@@ -1139,7 +1166,7 @@ remove_from_phone_numbers_doc(Context, JObj) ->
     end.
 
 -spec remove_phone_number(wh_json:key(), wh_json:json_term(), {boolean(), wh_json:object()}) ->
-                                 {boolean(), wh_json:object()}.
+                                 {'true', wh_json:object()}.
 remove_phone_number(Number, _, {_, Acc}) ->
     {'true', wh_json:delete_key(Number, Acc)}.
 
@@ -1172,14 +1199,16 @@ get_phone_numbers_doc(Context) ->
 save_phone_numbers_doc(Context, JObj) ->
     AccountId = cb_context:account_id(Context),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+
     Context1 =
         cb_context:setters(
-            Context
-            ,[{fun cb_context:set_doc/2, JObj}
-              ,{fun cb_context:set_account_db/2, AccountDb}
-             ]
-        ),
+          Context
+          ,[{fun cb_context:set_doc/2, JObj}
+            ,{fun cb_context:set_account_db/2, AccountDb}
+           ]
+         ),
     Context2 = crossbar_doc:save(Context1),
+
     case cb_context:resp_status(Context2) of
         'success' -> 'ok';
         _Status ->
@@ -1193,23 +1222,24 @@ dry_run(Context) ->
     Numbers = wh_json:get_value(<<"numbers">>, JObj),
     PhoneNumbers =
         wh_json:foldl(
-            fun dry_run_foldl/3
-            ,wh_json:new()
-            ,Numbers
-        ),
+          fun dry_run_foldl/3
+          ,wh_json:new()
+          ,Numbers
+         ),
     AccountId = cb_context:account_id(Context),
     Services = wh_services:fetch(AccountId),
     UpdateServices = wh_service_phone_numbers:reconcile(PhoneNumbers, Services),
     wh_services:dry_run(UpdateServices).
 
--spec dry_run_foldl(ne_binary(), wh_json:object(), wh_json:object()) -> wh_json:object().
+-spec dry_run_foldl(ne_binary(), wh_json:object(), wh_json:object()) ->
+                           wh_json:object().
 dry_run_foldl(Number, NumberJObj, JObj) ->
     wh_json:set_value(
-        Number
-        ,wh_json:set_value(
-             <<"features">>
-             ,[<<"port">>]
-             ,NumberJObj
-         )
-        ,JObj
-    ).
+      Number
+      ,wh_json:set_value(
+         <<"features">>
+         ,[<<"port">>]
+         ,NumberJObj
+        )
+      ,JObj
+     ).

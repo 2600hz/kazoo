@@ -108,7 +108,7 @@
             "name": "Subject",
             "description": "Email subject",
             "minLength": 1,
-            "maxLength": 78
+            "maxLength": 200
         },
         "enabled": {
             "type": "boolean",

@@ -240,7 +240,7 @@ save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
     {'ok', FaxBoxDoc} = get_faxbox_doc(PrinterId),
 
     AccountId = wh_json:get_value(<<"pvt_account_id">>,FaxBoxDoc),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = ?WH_FAXES,
     ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, FaxBoxDoc, wh_services:find_reseller_id(AccountId)),
     OwnerId = wh_json:get_value(<<"ownerId">>, Job),
     FaxBoxUserEmail = wh_json:get_value(<<"owner_email">>, FaxBoxDoc),

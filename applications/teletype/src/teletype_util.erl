@@ -20,8 +20,9 @@
          ,find_addresses/3
          ,find_account_rep_email/1
          ,find_account_admin_email/1
+         ,find_account_admin/1
          ,find_account_id/1
-         ,find_account_db/1
+         ,find_account_db/1, find_account_db/2
          ,is_notice_enabled/3
          ,should_handle_notification/1
 
@@ -32,6 +33,11 @@
          ,is_preview/1
 
          ,public_proplist/2
+
+         ,add_account/1
+
+         ,get_balance_threshold/1
+         ,get_topup_amount/1
         ]).
 
 -include("teletype.hrl").
@@ -308,29 +314,24 @@ account_params(DataJObj) ->
 
 -spec find_account_params(wh_json:object(), ne_binary()) -> wh_proplist().
 find_account_params(DataJObj, AccountId) ->
-    case teletype_util:open_doc(<<"account">>, AccountId, DataJObj) of
-        {'ok', AccountJObj} -> build_account_params(AccountJObj);
+    case open_doc(<<"account">>, AccountId, DataJObj) of
+        {'ok', AccountJObj} ->
+            [{<<"name">>, kz_account:name(AccountJObj)}
+             ,{<<"realm">>, kz_account:realm(AccountJObj)}
+             ,{<<"id">>, kz_account:id(AccountJObj)}
+             ,{<<"language">>, kz_account:language(AccountJObj)}
+             ,{<<"timezone">>, kz_account:timezone(AccountJObj)}
+            ];
         {'error', _E} ->
             lager:debug("failed to find account doc for ~s: ~p", [AccountId, _E]),
             []
     end.
 
--spec build_account_params(wh_json:object()) -> wh_proplist().
-build_account_params(AccountJObj) ->
-    [{<<"name">>, kz_account:name(AccountJObj)}
-     ,{<<"realm">>, kz_account:realm(AccountJObj)}
-     ,{<<"id">>, kz_account:id(AccountJObj)}
-     ,{<<"language">>, kz_account:language(AccountJObj)}
-     ,{<<"timezone">>, kz_account:timezone(AccountJObj)}
-    ].
-
 -spec find_notification_settings(ne_binaries(), api_binary()) -> wh_json:object().
 find_notification_settings(_, 'undefined') -> wh_json:new();
 find_notification_settings([_, Module], AccountId) ->
-    case couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded')
-                                  ,AccountId
-                                 )
-    of
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
         {'error', _E} -> wh_json:new();
         {'ok', AccountJObj} ->
             lager:debug("looking for notifications '~s' service info in: ~s"
@@ -780,6 +781,13 @@ find_account_id(JObj) ->
                               ,JObj
                              ).
 
+-spec find_account_db(ne_binary(), wh_json:object()) -> api_binary().
+find_account_db(<<"account">>, JObj) -> find_account_db_from_id(JObj);
+find_account_db(<<"user">>, JObj) -> find_account_db_from_id(JObj);
+find_account_db(<<"fax">>, JObj) -> find_account_db(JObj);
+find_account_db(<<"port_request">>, _JObj) -> ?KZ_PORT_REQUESTS_DB;
+find_account_db(_, JObj) -> find_account_db_from_id(JObj).
+
 -spec find_account_db(wh_json:object()) -> api_binary().
 find_account_db(JObj) ->
     case wh_json:get_first_defined([<<"account_db">>
@@ -932,6 +940,40 @@ query_account_for_admin_emails(AccountId) ->
             []
     end.
 
+-spec find_account_admin(api_binary()) -> api_object().
+-spec find_account_admin(ne_binary(), ne_binary()) -> api_object().
+find_account_admin('undefined') -> 'undefined';
+find_account_admin(<<_/binary>> = AccountId) ->
+    find_account_admin(AccountId, wh_services:find_reseller_id(AccountId)).
+
+find_account_admin(AccountId, AccountId) ->
+    query_for_account_admin(AccountId);
+find_account_admin(AccountId, ResellerId) ->
+    case query_for_account_admin(AccountId) of
+        'undefined' -> find_account_admin(ResellerId);
+        Admin -> Admin
+    end.
+
+-spec query_for_account_admin(ne_binary()) -> api_object().
+query_for_account_admin(AccountId) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+
+    ViewOptions = [{'key', <<"user">>}
+                   ,'include_docs'
+                  ],
+
+    case couch_mgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
+        {'ok', []} -> 'undefined';
+        {'ok', Users} ->
+            case filter_for_admins(Users) of
+                [] -> 'undefined';
+                [Admin|_] -> Admin
+            end;
+        {'error', _E} ->
+            lager:debug("failed to find users in ~s: ~p", [AccountId, _E]),
+            'undefined'
+    end.
+
 -spec filter_for_admins(wh_json:objects()) -> wh_json:objects().
 filter_for_admins(Users) ->
     [User
@@ -949,11 +991,13 @@ should_handle_notification(DataJObj) ->
             should_handle_notification_for_account(AccountId, ResellerId)
     end.
 
--spec should_handle_notification_for_account(ne_binary(), ne_binary()) -> boolean().
+-spec should_handle_notification_for_account(api_binary(), ne_binary()) -> boolean().
+should_handle_notification_for_account('undefined', _ResellerId) ->
+    'true';
 should_handle_notification_for_account(AccountId, AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
-    kz_account:notification_preference(AccountJObj) =:= 'teletype';
+    kz_account:notification_preference(AccountJObj) =:= ?APP_NAME;
 should_handle_notification_for_account(AccountId, ResellerId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
@@ -1066,7 +1110,7 @@ find_default(ConfigCat, Key) ->
                       {'ok', wh_json:object()} |
                       {'error', _}.
 open_doc(Type, DocId, DataJObj) ->
-    AccountDb = find_account_db(DataJObj),
+    AccountDb = find_account_db(Type, DataJObj),
     case couch_mgr:open_cache_doc(AccountDb, DocId) of
         {'ok', _JObj}=OK -> OK;
         {'error', _E}=Error ->
@@ -1106,7 +1150,30 @@ is_preview(DataJObj) ->
 -spec public_proplist(wh_json:key(), wh_json:object()) -> wh_proplist().
 public_proplist(Key, JObj) ->
     wh_json:to_proplist(
-        wh_json:public_fields(
-            wh_json:get_value(Key, JObj, wh_json:new())
-        )
-    ).
+      wh_json:public_fields(
+        wh_json:get_value(Key, JObj, wh_json:new())
+       )
+     ).
+
+
+-spec add_account(wh_json:object()) -> wh_json:object().
+add_account(DataJObj) ->
+    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+    wh_json:set_value(<<"account">>, AccountJObj, DataJObj).
+
+
+-spec get_balance_threshold(wh_json:object()) -> float().
+get_balance_threshold(DataJObj) ->
+    Default = 5.00,
+    Key = [<<"account">>, <<"topup">>, <<"threshold">>],
+    Dollars = wh_json:get_float_value(Key, DataJObj, Default),
+    wht_util:pretty_print_dollars(Dollars).
+
+-spec get_topup_amount(wh_json:object()) -> ne_binary().
+get_topup_amount(DataJObj) ->
+    Default = 0.00,
+    Key = [<<"account">>, <<"topup">>, <<"amount">>],
+    Dollars = wh_json:get_float_value(Key, DataJObj, Default),
+    wht_util:pretty_print_dollars(Dollars).

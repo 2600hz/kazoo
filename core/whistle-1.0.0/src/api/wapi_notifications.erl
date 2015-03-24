@@ -281,8 +281,9 @@
 -define(PORT_CANCEL_TYPES, []).
 
 %% Notify Ported Request
--define(PORTED_HEADERS, [<<"Account-ID">>, <<"Number">>, <<"Port">>]).
+-define(PORTED_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_PORTED_HEADERS, [<<"Number-State">>, <<"Local-Number">>, <<"Authorized-By">>, <<"Request">>
+                                  ,<<"Port-Request-ID">>, <<"Number">>, <<"Port">>
                                   | ?DEFAULT_OPTIONAL_HEADERS
                                  ]).
 -define(PORTED_VALUES, [{<<"Event-Category">>, <<"notification">>}
@@ -312,7 +313,7 @@
 -define(TOPUP_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_TOPUP_HEADERS, ?DEFAULT_OPTIONAL_HEADERS).
 -define(TOPUP_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                       ,{<<"Event-Name">>, <<"low_balance">>}
+                       ,{<<"Event-Name">>, <<"topup">>}
                       ]).
 -define(TOPUP_TYPES, []).
 
@@ -373,18 +374,38 @@ headers(<<"voicemail_full">>) ->
     ?VOICEMAIL_FULL_HEADERS ++ ?OPTIONAL_VOICEMAIL_FULL_HEADERS;
 headers(<<"fax_inbound_to_email">>) ->
     ?FAX_INBOUND_HEADERS ++ ?OPTIONAL_FAX_INBOUND_HEADERS;
+headers(<<"fax_inbound_error_to_email">>) ->
+    ?FAX_INBOUND_ERROR_HEADERS ++ ?OPTIONAL_FAX_INBOUND_ERROR_HEADERS;
 headers(<<"fax_outbound_to_email">>) ->
     ?FAX_OUTBOUND_HEADERS ++ ?OPTIONAL_FAX_OUTBOUND_HEADERS;
+headers(<<"fax_outbound_error_to_email">>) ->
+    ?FAX_OUTBOUND_ERROR_HEADERS ++ ?OPTIONAL_FAX_OUTBOUND_ERROR_HEADERS;
+headers(<<"low_balance">>) ->
+    ?LOW_BALANCE_HEADERS ++ ?OPTIONAL_LOW_BALANCE_HEADERS;
 headers(<<"new_account">>) ->
     ?NEW_ACCOUNT_HEADERS ++ ?OPTIONAL_NEW_ACCOUNT_HEADERS;
 headers(<<"new_user">>) ->
     ?NEW_USER_HEADERS ++ ?OPTIONAL_NEW_USER_HEADERS;
 headers(<<"deregister">>) ->
     ?DEREGISTER_HEADERS ++ ?OPTIONAL_DEREGISTER_HEADERS;
+headers(<<"transaction">>) ->
+    ?TRANSACTION_HEADERS ++ ?OPTIONAL_TRANSACTION_HEADERS;
 headers(<<"password_recovery">>) ->
     ?PWD_RECOVERY_HEADERS ++ ?OPTIONAL_PWD_RECOVERY_HEADERS;
+headers(<<"system_alert">>) ->
+    ?SYSTEM_ALERT_HEADERS ++ ?OPTIONAL_SYSTEM_ALERT_HEADERS;
+headers(<<"cnam_request">>) ->
+    ?CNAM_REQUEST_HEADERS ++ ?OPTIONAL_CNAM_REQUEST_HEADERS;
 headers(<<"skel">>) ->
     ?SKEL_HEADERS ++ ?OPTIONAL_SKEL_HEADERS;
+headers(<<"topup">>) ->
+    ?TOPUP_HEADERS ++ ?OPTIONAL_TOPUP_HEADERS;
+headers(<<"port_request">>) ->
+    ?PORT_REQUEST_HEADERS ++ ?OPTIONAL_PORT_REQUEST_HEADERS;
+headers(<<"port_cancel">>) ->
+    ?PORT_CANCEL_HEADERS ++ ?OPTIONAL_PORT_CANCEL_HEADERS;
+headers(<<"ported">>) ->
+    ?PORTED_HEADERS ++ ?OPTIONAL_PORTED_HEADERS;
 headers(_Notification) ->
     lager:warning("no notification headers for ~s", [_Notification]),
     [].

@@ -76,7 +76,9 @@ handle_call({'render', _TemplateId, Template, TemplateData}, _From, TemplateModu
     lager:debug("trying to compile template ~s as ~s for ~p", [_TemplateId, TemplateModule, _From]),
     try erlydtl:compile_template(Template
                                  ,TemplateModule
-                                 ,[{'out_dir', 'false'}]
+                                 ,[{'out_dir', 'false'}
+                                   ,'return'
+                                  ]
                                 )
     of
         {'ok', TemplateModule} ->
@@ -100,10 +102,17 @@ handle_call({'render', _TemplateId, Template, TemplateData}, _From, TemplateModu
              ,TemplateModule
              ,'hibernate'
             };
+        'error' ->
+            lager:debug("failed to compile template"),
+            {'reply'
+             ,{'error', 'failed_to_compile'}
+             ,TemplateModule
+             ,'hibernate'
+            };
         {'error', Errors, Warnings} ->
             lager:debug("failed to compile template"),
-            lager:debug("errors: ~p", [Errors]),
-            lager:debug("warnings: ~p", [Warnings]),
+            log_errors(Errors),
+            log_warnings(Warnings),
             lager:debug("template: ~s", [Template]),
             {'reply'
              ,{'error', 'failed_to_compile'}
@@ -152,6 +161,34 @@ render_template(TemplateModule, TemplateData) ->
             wh_util:log_stacktrace(ST),
             {'error', 'undefined'};
         _E:R ->
+            ST = erlang:get_stacktrace(),
             lager:debug("crashed rendering template ~s: ~s: ~p", [TemplateModule, _E, R]),
+            wh_util:log_stacktrace(ST),
             {'error', R}
     end.
+
+log_errors([]) -> 'ok';
+log_errors(Es) ->
+    lager:debug("errors:"),
+    log_error_infos(Es).
+
+log_warnings([]) -> 'ok';
+log_warnings(Ws) ->
+    lager:debug("warnings:"),
+    log_error_infos(Ws).
+
+log_error_infos([]) -> 'ok';
+log_error_infos([{_File, Info}|Infos]) ->
+    [log_error_info(EI) || EI <- Info],
+    log_error_infos(Infos).
+
+log_error_info({Location, _Module, Desc}) ->
+    LocationLog = location_to_log(Location),
+    lager:debug("  at ~s: ~s", [LocationLog, Desc]).
+
+-spec location_to_log('non' | integer() | {integer(), integer()}) -> iolist().
+location_to_log('none') -> "pos:none";
+location_to_log({Line, Col}) ->
+    ["pos:{", wh_util:to_list(Line), ",", wh_util:to_list(Col), "}"];
+location_to_log(Pos) ->
+    ["pos:", wh_util:to_list(Pos)].
