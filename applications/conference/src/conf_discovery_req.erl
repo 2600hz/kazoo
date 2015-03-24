@@ -119,16 +119,16 @@ collect_conference_pin(Type, Conference, Call, Srv) ->
 
 -spec prepare_whapps_conference(whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
 prepare_whapps_conference(Conference, Call, Srv) ->
-    Routines = [{fun whapps_conference:set_application_version/2, <<"2.0.0">>}
-                ,{fun whapps_conference:set_application_name/2, <<"conferences">>}
-                ,fun(C) -> maybe_set_as_moderator(C, Srv) end
+    Routines = [{fun whapps_conference:set_application_version/2, ?APP_VERSION}
+                ,{fun whapps_conference:set_application_name/2, ?APP_NAME}
+                ,{fun maybe_set_as_moderator/2, Srv}
                ],
     C = whapps_conference:update(Routines, Conference),
     search_for_conference(C, Call, Srv).
 
--spec maybe_set_as_moderator(whapps_conference:conference(), pid()) ->
+-spec maybe_set_as_moderator(pid(), whapps_conference:conference()) ->
                                     whapps_conference:conference().
-maybe_set_as_moderator(Conference, Srv) ->
+maybe_set_as_moderator(Srv, Conference) ->
     {'ok', JObj} = conf_participant:discovery_event(Srv),
     case wh_json:is_true(<<"Moderator">>, JObj, 'false')
         orelse wh_json:is_true([<<"Conference-Doc">>, <<"moderator">>], JObj, 'undefined')

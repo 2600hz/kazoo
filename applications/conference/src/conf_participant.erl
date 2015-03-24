@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013 2600Hz Inc
+%%% @copyright (C) 2013-2015 2600Hz Inc
 %%% @doc
 %%% Conference participant process
 %%% @end
@@ -46,14 +46,14 @@
 -define('SERVER', ?MODULE).
 
 -define(RESPONDERS, [{{?MODULE, 'relay_amqp'}
-                     ,[{<<"call_event">>, <<"*">>}]
+                      ,[{<<"call_event">>, <<"*">>}]
                      }
-                    ,{{?MODULE, 'handle_participants_event'}
-                     ,[{<<"conference">>, <<"participants_event">>}]
-                     }
-                    ,{{?MODULE, 'handle_conference_error'}
-                     ,[{<<"conference">>, <<"error">>}]
-                     }
+                     ,{{?MODULE, 'handle_participants_event'}
+                       ,[{<<"conference">>, <<"participants_event">>}]
+                      }
+                     ,{{?MODULE, 'handle_conference_error'}
+                       ,[{<<"conference">>, <<"error">>}]
+                      }
                     ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
@@ -65,21 +65,16 @@
                       ,muted = 'false' :: boolean()
                       ,deaf = 'false' :: boolean()
                       ,waiting_for_mod = 'false' :: boolean()
-                      ,call_event_consumers = [] :: list()
+                      ,call_event_consumers = [] :: pids()
                       ,in_conference = 'false' :: boolean()
-                      ,join_attempts = 0 :: integer()
-                      ,conference = 'undefined'
-                      ,discovery_event = wh_json:new()
+                      ,join_attempts = 0 :: non_neg_integer()
+                      ,conference :: whapps_conference:conference()
+                      ,discovery_event = wh_json:new() :: wh_json:object()
                       ,last_dtmf = <<>> :: binary()
-                      ,queue :: api_binary()
                       ,server = self() :: pid()
-                      ,name_pronounced = 'undefined' :: conf_pronounced_name:name_pronounced()
+                      ,name_pronounced :: conf_pronounced_name:name_pronounced()
                      }).
 -type participant() :: #participant{}.
-
--define(DEFAULT_ENTRY_TONE, <<"tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)">>).
--define(ENTRY_TONE, whapps_config:get(?CONFIG_CAT, <<"entry_tone">>, ?DEFAULT_ENTRY_TONE)).
--define(MOD_ENTRY_TONE, whapps_config:get(?CONFIG_CAT, <<"moderator_entry_tone">>, ?DEFAULT_ENTRY_TONE)).
 
 %%%===================================================================
 %%% API
@@ -158,8 +153,8 @@ consume_call_events(Srv) -> gen_listener:cast(Srv, {'add_consumer', self()}).
 -spec relay_amqp(wh_json:object(), wh_proplist()) -> 'ok'.
 relay_amqp(JObj, Props) ->
     _ = [whapps_call_command:relay_event(Pid, JObj)
-         || Pid <- props:get_value('call_event_consumers', Props, [])
-                ,is_pid(Pid)
+         || Pid <- props:get_value('call_event_consumers', Props, []),
+            is_pid(Pid)
         ],
     Digit = wh_json:get_value(<<"DTMF-Digit">>, JObj),
     case is_binary(Digit) of
@@ -173,8 +168,8 @@ relay_amqp(JObj, Props) ->
 handle_participants_event(JObj, Props) ->
     'true' = wapi_conference:participants_event_v(JObj),
     _ = [whapps_call_command:relay_event(Pid, JObj)
-         || Pid <- props:get_value('call_event_consumers', Props, [])
-                ,is_pid(Pid)
+         || Pid <- props:get_value('call_event_consumers', Props, []),
+            is_pid(Pid)
         ],
     Srv = props:get_value('server', Props),
     gen_listener:cast(Srv, {'sync_participant', JObj}).
@@ -245,22 +240,23 @@ handle_call(_Request, _, P) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast('hungup', #participant{conference=Conference
-                                   ,in_conference=InConference
+handle_cast('hungup', #participant{in_conference='true'
+                                   ,call=Call
+                                   ,conference=Conference
+                                  }=Participant
+           ) ->
+    whapps_conference_command:play(?EXIT_TONE, Conference),
+    _ = whapps_call_command:hangup(Call),
+    {'stop', {'shutdown', 'hungup'}, Participant};
+handle_cast('hungup', #participant{in_conference='false'
                                    ,call=Call
                                   }=Participant) ->
-    _ = case InConference of
-            'true' ->
-                whapps_conference_command:play(<<"tone_stream://v=-7;>=2;+=.1;%(300,0,523,440);v=-7;>=3;+=.1;%(800,0,349,440)">>, Conference);
-            'false' -> 'ok'
-        end,
     _ = whapps_call_command:hangup(Call),
     {'stop', {'shutdown', 'hungup'}, Participant};
 handle_cast({'gen_listener', {'created_queue', Q}}, #participant{conference='undefined'
                                                                  ,call=Call
                                                                 }=P) ->
     {'noreply', P#participant{call=whapps_call:set_controller_queue(Q, Call)}};
-
 handle_cast({'gen_listener', {'created_queue', Q}}, #participant{conference=Conference
                                                                  ,call=Call
                                                                 }=P) ->
@@ -287,6 +283,9 @@ handle_cast({'set_discovery_event', DE}, #participant{}=Participant) ->
     {'noreply', Participant#participant{discovery_event=DE}};
 handle_cast({'set_name_pronounced', Name}, #participant{}=Participant) ->
     {'noreply', Participant#participant{name_pronounced = Name}};
+handle_cast({'gen_listener',{'is_consuming','true'}}, Participant) ->
+    lager:debug("now consuming messages"),
+    {'noreply', Participant};
 handle_cast(_Message, #participant{conference='undefined'}=Participant) ->
     %% ALL MESSAGES BELLOW THIS ARE CONSUMED HERE UNTIL THE CONFERENCE IS KNOWN
     lager:debug("ignoring message prior to conference discovery: ~p"
@@ -427,8 +426,10 @@ handle_event(JObj, #participant{call_event_consumers=Consumers
                 <<"conference">> -> gen_listener:cast(Srv, 'play_announce');
                 _ -> 'ok'
             end;
-        {_Else, _} ->
-            lager:debug("unhandled event: ~p", [_Else])
+        {_Else, CallId} ->
+            lager:debug("unhandled event: ~p", [_Else]);
+        {_Else, _OtherLeg} ->
+            lager:debug("unhandled event for other leg ~s: ~p", [_OtherLeg, _Else])
     end,
     {'reply', [{'call_event_consumers', Consumers}]}.
 
@@ -563,6 +564,7 @@ sync_member(JObj, Call, #participant{conference=Conference
                             ,participant_id=ParticipantId
                            }.
 
+-spec notify_requestor(ne_binary(), ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
 notify_requestor(MyQ, MyId, DiscoveryEvent, ConferenceId) ->
     case wh_json:get_value(<<"Server-ID">>, DiscoveryEvent) of
         'undefined' -> 'ok';
