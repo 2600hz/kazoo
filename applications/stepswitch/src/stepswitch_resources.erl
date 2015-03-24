@@ -360,7 +360,7 @@ maybe_resource_to_endpoints(#resrc{id=Id
                       ],
             EndpointList = [update_endpoint(Endpoint, Updates, CCVUpdates)
                  || Endpoint <- gateways_to_endpoints(Number_Match, Gateways, JObj, [])],
-            maybe_add_proxies(EndpointList, Proxies, []) ++ Endpoints;
+            maybe_add_proxies(EndpointList, Proxies, Endpoints);
         {'error','no_match'} -> Endpoints
     end.
 
@@ -370,7 +370,7 @@ update_endpoint(Endpoint, Updates, CCVUpdates) ->
 
 -spec maybe_add_proxies(wh_json:objects(), wh_proplist(), wh_json:objects()) -> wh_json:objects().
 maybe_add_proxies([], _, Acc) -> Acc;
-maybe_add_proxies(Endpoints, [], _) -> Endpoints;
+maybe_add_proxies(Endpoints, [], Acc) -> Acc ++ Endpoints;
 maybe_add_proxies([Endpoint | Endpoints], Proxies, Acc) ->
     EPs = [add_proxy(Endpoint, Proxy)  || Proxy <- Proxies],
     maybe_add_proxies(Endpoints, Proxies, Acc ++ EPs).
