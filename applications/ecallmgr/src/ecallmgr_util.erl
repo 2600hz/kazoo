@@ -717,6 +717,7 @@ get_sip_contact(#bridge_endpoint{ip_address=IPAddress}) -> IPAddress.
 
 -spec maybe_clean_contact(ne_binary(), bridge_endpoint()) -> ne_binary().
 maybe_clean_contact(<<"sip:", Contact/binary>>, _Endpoint) -> Contact;
+maybe_clean_contact(<<"sips:", Contact/binary>>, _Endpoint) -> Contact;
 maybe_clean_contact(Contact, #bridge_endpoint{invite_format = <<"route">>}) ->
     Contact;
 maybe_clean_contact(Contact, #bridge_endpoint{invite_format = <<"loopback">>}) ->
