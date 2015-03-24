@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @yright (C) 2011-2014 2600Hz INC
+%%% @yright (C) 2011-2015 2600Hz INC
 %%% @doc
 %%% Dialplan API definitions
 %%% @end
@@ -88,7 +88,8 @@
           ,<<"Custom-Channel-Vars">>
           ,<<"Auth-User">>, <<"Auth-Password">>, <<"Auth-Realm">>
           ,<<"Endpoint-Type">>, <<"Endpoint-Options">>, <<"Force-Fax">>
-          ,<<"Proxy-IP">>, <<"Forward-IP">>, <<"SIP-Transport">>
+          ,<<"Proxy-Zone">>, <<"Proxy-IP">>
+          ,<<"Forward-IP">>, <<"SIP-Transport">>
           ,<<"Ignore-Completed-Elsewhere">>
           ,<<"SIP-Interface">>
           ,<<"Enable-T38-Fax">>, <<"Enable-T38-Fax-Request">>

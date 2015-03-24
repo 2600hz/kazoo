@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014 2600Hz, INC
+%%% @copyright (C) 2011-2015 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -24,7 +24,8 @@ refresh_database() ->
     _ = couch_mgr:db_create(?WH_DEDICATED_IP_DB),
     _ = couch_mgr:revise_docs_from_folder(?WH_DEDICATED_IP_DB
                                           ,'kazoo_ips'
-                                          ,"views"),
+                                          ,"views"
+                                         ),
     'ok'.
 
 -spec refresh_database(function()) -> any().
@@ -44,6 +45,3 @@ refresh_database_retries() ->
         Count ->
             put('dedicated_ip_retries', Count + 1)
     end.
-
-
-

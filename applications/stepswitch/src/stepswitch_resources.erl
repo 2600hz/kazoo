@@ -63,6 +63,7 @@
            ,codecs = [] :: ne_binaries()
            ,bypass_media = 'false' :: boolean()
            ,formatters :: api_objects()
+           ,proxies = [] :: wh_proplist()
          }).
 
 -type resource() :: #resrc{}.
@@ -344,46 +345,72 @@ maybe_resource_to_endpoints(#resrc{id=Id
                                    ,gateways=Gateways
                                    ,global=Global
                                    ,weight=Weight
+                                   ,proxies=Proxies
                                   }
                             ,Number, JObj, Endpoints) ->
     CallerIdNumber = wh_json:get_value(<<"Outbound-Caller-ID-Number">>,JObj),
     case filter_resource_by_rules(Id, Number, Rules, CallerIdNumber, CallerIdRules) of
-        {'ok', Number_Match} ->
+        {'error','no_match'} -> Endpoints;
+        {'ok', NumberMatch} ->
             lager:debug("building resource ~s endpoints", [Id]),
-            Updates = [{<<"Global-Resource">>, wh_util:to_binary(Global)}
-                       ,{<<"Resource-ID">>, Id}
+            CCVUpdates = [{<<"Global-Resource">>, wh_util:to_binary(Global)}
+                          ,{<<"Resource-ID">>, Id}
+                         ],
+            Updates = [{<<"Name">>, Name}
+                       ,{<<"Weight">>, Weight}
                       ],
-            [wh_json:set_values([{<<"Name">>, Name}
-                                 ,{<<"Weight">>, Weight}
-                                ]
-                                ,update_ccvs(Endpoint, Updates)
-                               )
-             || Endpoint <- gateways_to_endpoints(Number_Match, Gateways, JObj, [])
-            ] ++ Endpoints;
-        {'error','no_match'} -> Endpoints
+            EndpointList = [update_endpoint(Endpoint, Updates, CCVUpdates)
+                            || Endpoint <- gateways_to_endpoints(NumberMatch, Gateways, JObj, [])
+                           ],
+            maybe_add_proxies(EndpointList, Proxies, Endpoints)
     end.
 
+-spec update_endpoint(wh_json:object(), wh_proplist(), wh_proplist()) -> wh_json:object().
+update_endpoint(Endpoint, Updates, CCVUpdates) ->
+    wh_json:set_values(Updates ,update_ccvs(Endpoint, CCVUpdates)).
+
+-spec maybe_add_proxies(wh_json:objects(), wh_proplist(), wh_json:objects()) -> wh_json:objects().
+maybe_add_proxies([], _, Acc) -> Acc;
+maybe_add_proxies(Endpoints, [], Acc) -> Acc ++ Endpoints;
+maybe_add_proxies([Endpoint | Endpoints], Proxies, Acc) ->
+    EPs = [add_proxy(Endpoint, Proxy)  || Proxy <- Proxies],
+    maybe_add_proxies(Endpoints, Proxies, Acc ++ EPs).
+
+-spec add_proxy(wh_json:object(), {binary(), binary()}) -> wh_json:object().
+add_proxy(Endpoint, {Zone, IP}) ->
+    Updates = [{<<"Proxy-Zone">>, Zone}
+               ,{<<"Proxy-IP">>, IP}
+              ],
+    wh_json:set_values(Updates ,Endpoint).
 
 -spec filter_resource_by_rules(ne_binary(), ne_binary(), re:mp(), ne_binary(), re:mp()) ->
-                            {'ok', ne_binary()} |
-                            {'error', 'no_match'}.
+                                      {'ok', ne_binary()} |
+                                      {'error', 'no_match'}.
 filter_resource_by_rules(Id, Number, Rules, CallerIdNumber, CallerIdRules) ->
     case evaluate_rules(Rules, Number) of
         {'error', 'no_match'} ->
             lager:debug("resource ~s does not match request, skipping", [Id]),
             {'error','no_match'};
         {'ok', Match} ->
-            case evaluate_cid_rules(CallerIdRules, CallerIdNumber) of
-                {'ok', 'empty_rules'} ->
-                    lager:debug("resource ~s match number: ~s with regex match: ~s, and dont have any caller id rules", [Id, Number, Match]),
-                    {'ok', Match};
-                {'ok', CIDMatch} ->
-                    lager:debug("resource ~s match number: ~s with regex match: ~s, and match caller id number rules: ~s", [Id, Number, Match, CIDMatch]),
-                    {'ok', Match};
-                {'error', 'no_match'} ->
-                    lager:debug("resource ~s does not match caller id number: ~s, skipping", [Id, CallerIdNumber]),
-                    {'error','no_match'}
-            end
+            filter_resource_by_match(Id, Number, CallerIdNumber, CallerIdRules, Match)
+    end.
+
+-spec filter_resource_by_match(ne_binary(), ne_binary(), ne_binary(), re:mp(), ne_binary()) ->
+                                      {'ok', ne_binary()} |
+                                      {'error', 'no_match'}.
+filter_resource_by_match(Id, Number, CallerIdNumber, CallerIdRules, Match) ->
+    case evaluate_cid_rules(CallerIdRules, CallerIdNumber) of
+        {'ok', 'empty_rules'} ->
+            lager:debug("resource ~s matches number '~s' with regex match '~s'", [Id, Number, Match]),
+            {'ok', Match};
+        {'ok', _CIDMatch} ->
+            lager:debug("resource ~s matches number '~s' with regex match '~s' and caller id match '~s'"
+                        ,[Id, Number, Match, _CIDMatch]
+                       ),
+            {'ok', Match};
+        {'error', 'no_match'} ->
+            lager:debug("resource ~s does not match caller id number '~s', skipping", [Id, CallerIdNumber]),
+            {'error','no_match'}
     end.
 
 -spec update_ccvs(wh_json:object(), wh_proplist()) -> wh_json:object().
@@ -413,7 +440,6 @@ evaluate_rules([Rule|Rules], Number) ->
                             {'error', 'no_match'}.
 evaluate_cid_rules([], _) -> {'ok','empty_rules'};
 evaluate_cid_rules(CIDRules, CIDNumber) -> evaluate_rules(CIDRules, CIDNumber).
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -554,7 +580,8 @@ fetch_global_resources() ->
             [];
         {'ok', JObjs} ->
             CacheProps = [{'origin', fetch_global_cache_origin(JObjs, [])}],
-            Resources = resources_from_jobjs([wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs]),
+            Docs = [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs],
+            Resources = resources_from_jobjs(Docs),
             wh_cache:store_local(?STEPSWITCH_CACHE, 'global_resources', Resources, CacheProps),
             Resources
     end.
@@ -582,18 +609,42 @@ fetch_local_resources(AccountId) ->
             lager:warning("unable to fetch local resources from ~s: ~p", [AccountId, _R]),
             [];
         {'ok', JObjs} ->
+            LocalResources = fetch_local_resources(AccountId, JObjs),
             CacheProps = [{'origin', fetch_local_cache_origin(JObjs, AccountDb, [])}],
-            Resources = resources_from_jobjs([wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs]),
-            LocalResources = [Resource#resrc{global='false'} || Resource <- Resources],
             wh_cache:store_local(?STEPSWITCH_CACHE, {'local_resources', AccountId}, LocalResources, CacheProps),
             LocalResources
     end.
+
+-spec fetch_local_resources(ne_binary(), wh_json:objects()) -> resources().
+fetch_local_resources(AccountId, JObjs) ->
+    Proxies = fetch_account_dedicated_proxies(AccountId),
+    [wh_json:set_values([{<<"Is-Global">>, 'false'}
+                         ,{<<"Proxies">>, wh_json:from_list(Proxies)}
+                        ]
+                        ,wh_json:get_value(<<"doc">>, JObj)
+                       )
+     || JObj <- JObjs
+    ].
 
 -spec fetch_local_cache_origin(wh_json:objects(), ne_binary(), wh_cache_props()) -> wh_cache_props().
 fetch_local_cache_origin([], _, Props) -> [{'type', <<"resource">>} | Props];
 fetch_local_cache_origin([JObj|JObjs], AccountDb, Props) ->
     Id = wh_json:get_value(<<"id">>, JObj),
     fetch_local_cache_origin(JObjs, AccountDb, [{'db', AccountDb, Id}|Props]).
+
+-spec fetch_account_dedicated_proxies(api_binary()) -> wh_proplist().
+fetch_account_dedicated_proxies('undefined') -> [];
+fetch_account_dedicated_proxies(AccountId) ->
+    case kz_ips:assigned(AccountId) of
+        {'ok', IPS} -> [build_account_dedicated_proxy(IP) || IP <- IPS];
+        _ -> []
+    end.
+
+-spec build_account_dedicated_proxy(wh_json:object()) -> {api_binary(), api_binary()}.
+build_account_dedicated_proxy(Proxy) ->
+    Zone = wh_json:get_value(<<"zone">>, Proxy),
+    ProxyIP = wh_json:get_value(<<"ip">>, Proxy),
+    {Zone, ProxyIP}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -602,9 +653,10 @@ fetch_local_cache_origin([JObj|JObjs], AccountDb, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec resources_from_jobjs(wh_json:objects()) -> resources().
-resources_from_jobjs(JObjs) -> resources_from_jobjs(JObjs, []).
-
 -spec resources_from_jobjs(wh_json:objects(), resources()) -> resources().
+resources_from_jobjs(JObjs) ->
+    resources_from_jobjs(JObjs, []).
+
 resources_from_jobjs([], Resources) -> Resources;
 resources_from_jobjs([JObj|JObjs], Resources) ->
     case wh_json:is_true(<<"enabled">>, JObj, 'true') of
@@ -618,11 +670,15 @@ create_resource(JObj, Resources) ->
         'undefined' -> [resource_from_jobj(JObj) | Resources];
         ResourceClassifiers ->
             ConfigClassifiers = wh_json:to_proplist(whapps_config:get(?CONFIG_CAT, <<"classifiers">>)),
-            create_resource(wh_json:to_proplist(ResourceClassifiers), ConfigClassifiers, JObj, Resources)
+            create_resource(wh_json:to_proplist(ResourceClassifiers)
+                            ,ConfigClassifiers
+                            ,JObj
+                            ,Resources
+                           )
     end.
 
 -spec create_resource(wh_proplist(), wh_proplist(), wh_json:object(), resources()) -> resources().
-create_resource([], _, _, Resources) -> Resources;
+create_resource([], _ConfigClassifiers, _JObj, Resources) -> Resources;
 create_resource([{Classifier, ClassifierJobj}|Cs], ConfigClassifiers, JObj, Resources) ->
     case (ConfigClassifier = props:get_value(Classifier, ConfigClassifiers)) =/= 'undefined'
         andalso wh_json:is_true(<<"enabled">>, ClassifierJobj, 'true')
@@ -671,9 +727,12 @@ resource_from_jobj(JObj) ->
                       ,codecs=resource_codecs(JObj)
                       ,bypass_media=resource_bypass_media(JObj)
                       ,formatters=resource_formatters(JObj)
+                      ,global=wh_json:is_true(<<"Is-Global">>, JObj, 'true')
+                      ,proxies=wh_json:to_proplist(<<"Proxies">>, JObj)
                      },
     Gateways = gateways_from_jobjs(wh_json:get_value(<<"gateways">>, JObj, [])
-                                   ,Resource),
+                                   ,Resource
+                                  ),
     Resource#resrc{gateways=Gateways}.
 
 -spec resource_bypass_media(wh_json:object()) -> boolean().

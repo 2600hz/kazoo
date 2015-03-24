@@ -491,7 +491,8 @@ endpoint_jobjs_to_records([], _, BridgeEndpoints) ->
 endpoint_jobjs_to_records([Endpoint|Endpoints], IncludeVars, BridgeEndpoints) ->
     Key = endpoint_key(Endpoint),
     case wapi_dialplan:bridge_endpoint_v(Endpoint)
-        andalso (not lists:keymember(Key, 1, BridgeEndpoints)) of
+        andalso (not lists:keymember(Key, 1, BridgeEndpoints))
+    of
         'false' ->
             lager:debug("skipping invalid or duplicate endpoint: ~-300p~n", [Key]),
             endpoint_jobjs_to_records(Endpoints, IncludeVars, BridgeEndpoints);
@@ -499,7 +500,8 @@ endpoint_jobjs_to_records([Endpoint|Endpoints], IncludeVars, BridgeEndpoints) ->
             lager:debug("building bridge endpoint: ~-300p~n", [Key]),
             BridgeEndpoint = endpoint_jobj_to_record(Endpoint, IncludeVars),
             endpoint_jobjs_to_records(Endpoints, IncludeVars
-                                      ,[{Key, BridgeEndpoint}|BridgeEndpoints])
+                                      ,[{Key, BridgeEndpoint}|BridgeEndpoints]
+                                     )
     end.
 
 -spec endpoint_key(wh_json:object()) -> api_binaries().
@@ -509,6 +511,8 @@ endpoint_key(Endpoint) ->
      ,wh_json:get_value(<<"To-Realm">>, Endpoint)
      ,wh_json:get_value(<<"To-DID">>, Endpoint)
      ,wh_json:get_value(<<"Route">>, Endpoint)
+     ,wh_json:get_value(<<"Proxy-Zone">>, Endpoint)
+     ,wh_json:get_value(<<"Proxy-IP">>, Endpoint)
     ].
 
 -spec endpoint_jobj_to_record(wh_json:object()) -> bridge_endpoint().
