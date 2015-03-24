@@ -63,7 +63,7 @@
            ,codecs = [] :: ne_binaries()
            ,bypass_media = 'false' :: boolean()
            ,formatters :: api_objects()
-          ,proxies = [] :: wh_proplist()
+           ,proxies = [] :: wh_proplist()
          }).
 
 -type resource() :: #resrc{}.
@@ -572,7 +572,8 @@ fetch_global_resources() ->
             [];
         {'ok', JObjs} ->
             CacheProps = [{'origin', fetch_global_cache_origin(JObjs, [])}],
-            Resources = resources_from_jobjs([wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs]),
+            Docs = [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs],
+            Resources = resources_from_jobjs(Docs),
             wh_cache:store_local(?STEPSWITCH_CACHE, 'global_resources', Resources, CacheProps),
             Resources
     end.
@@ -601,11 +602,14 @@ fetch_local_resources(AccountId) ->
             [];
         {'ok', JObjs} ->
             CacheProps = [{'origin', fetch_local_cache_origin(JObjs, AccountDb, [])}],
-            Resources = resources_from_jobjs([wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs]),
             Proxies = fetch_account_dedicated_proxies(AccountId),
-            LocalResources = [Resource#resrc{global='false', proxies=Proxies} || Resource <- Resources],
-            wh_cache:store_local(?STEPSWITCH_CACHE, {'local_resources', AccountId}, LocalResources, CacheProps),
-            LocalResources
+            Docs = [wh_json:set_values([{<<"IsGlobal">>, false}
+                                        ,{<<"Proxies">>, wh_json:from_list(Proxies)}
+                                       ], wh_json:get_value(<<"doc">>, JObj))  
+                      || JObj <- JObjs], 
+            Resources = resources_from_jobjs(Docs),
+            wh_cache:store_local(?STEPSWITCH_CACHE, {'local_resources', AccountId}, Resources, CacheProps),
+            Resources
     end.
 
 -spec fetch_local_cache_origin(wh_json:objects(), ne_binary(), wh_cache_props()) -> wh_cache_props().
@@ -704,6 +708,8 @@ resource_from_jobj(JObj) ->
                       ,codecs=resource_codecs(JObj)
                       ,bypass_media=resource_bypass_media(JObj)
                       ,formatters=resource_formatters(JObj)
+                      ,global=wh_json:is_true(<<"IsGlobal">>, JObj, 'true')
+                      ,proxies=wh_json:to_proplist(<<"Proxies">>, JObj)
                      },
     Gateways = gateways_from_jobjs(wh_json:get_value(<<"gateways">>, JObj, [])
                                    ,Resource),
