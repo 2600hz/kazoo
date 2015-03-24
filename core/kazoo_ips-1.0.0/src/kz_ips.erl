@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014 2600Hz, INC
+%%% @copyright (C) 2011-2015 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -24,13 +24,19 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec available() -> {'ok', wh_json:objects()} | {'error', _}.
+-spec available() -> {'ok', wh_json:objects()} |
+                     {'error', _}.
+-spec available(api_binary()) ->
+                       {'ok', wh_json:objects()} |
+                       {'error', _}.
+
 available() -> available('undefined').
 
--spec available(api_binary()) -> {'ok', wh_json:objects()} | {'error', _}.
 available(Zone) -> available(Zone, 1).
 
--spec available(api_binary(), non_neg_integer()) ->{'ok', wh_json:objects()} | {'error', _}.
+-spec available(api_binary(), non_neg_integer()) ->
+                       {'ok', wh_json:objects()} |
+                       {'error', _}.
 available(Zone, Quantity) ->
     ViewOptions = props:filter_undefined(
                     [{'key', Zone}
@@ -39,7 +45,8 @@ available(Zone, Quantity) ->
                    ),
     case couch_mgr:get_results(?WH_DEDICATED_IP_DB
                                ,<<"dedicated_ips/available_listing">>
-                               ,ViewOptions)
+                               ,ViewOptions
+                              )
     of
         {'error', 'not_found'} ->
             kz_ip_utils:refresh_database(
@@ -58,12 +65,16 @@ available(Zone, Quantity) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec assigned(ne_binary()) ->
+                      {'ok', wh_json:objects()} |
+                      {'error', _}.
 assigned(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     ViewOptions = [{'key', AccountId}],
     case couch_mgr:get_results(?WH_DEDICATED_IP_DB
                                ,<<"dedicated_ips/assigned_to_listing">>
-                               ,ViewOptions)
+                               ,ViewOptions
+                              )
     of
         {'error', 'not_found'} ->
             kz_ip_utils:refresh_database(
@@ -89,7 +100,8 @@ zones() ->
                   ],
     case couch_mgr:get_results(?WH_DEDICATED_IP_DB
                                ,<<"dedicated_ips/zone_listing">>
-                               ,ViewOptions)
+                               ,ViewOptions
+                              )
     of
         {'error', 'not_found'} ->
             kz_ip_utils:refresh_database(
@@ -117,7 +129,8 @@ hosts() ->
                   ],
     case couch_mgr:get_results(?WH_DEDICATED_IP_DB
                                ,<<"dedicated_ips/host_listing">>
-                               ,ViewOptions)
+                               ,ViewOptions
+                              )
     of
         {'error', 'not_found'} ->
             kz_ip_utils:refresh_database(
@@ -138,12 +151,15 @@ hosts() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec summary(api_binary()) -> wh_json:objects().
+-spec summary(api_binary()) ->
+                     {'ok', wh_json:objects()} |
+                     {'error', _}.
 summary(Host) ->
     ViewOptions = props:filter_undefined([{'key', Host}]),
     case couch_mgr:get_results(?WH_DEDICATED_IP_DB
                                ,<<"dedicated_ips/summary_listing">>
-                               ,ViewOptions)
+                               ,ViewOptions
+                              )
     of
         {'error', 'not_found'} ->
             kz_ip_utils:refresh_database(
