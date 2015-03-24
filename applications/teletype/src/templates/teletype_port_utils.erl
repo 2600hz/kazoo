@@ -38,7 +38,7 @@ get_attachments(DataJObj, 'false') ->
 -spec fix_email(wh_json:object()) -> wh_json:object().
 fix_email(ReqData) ->
     Email = wh_json:get_value([<<"port_request">>, <<"notifications">>, <<"email">>, <<"send_to">>], ReqData),
-    wh_json:set_value(<<"to">>, Email, ReqData).
+    wh_json:set_value(<<"to">>, [Email], ReqData).
 
 -spec fix_port_request_data(wh_json:object()) -> wh_json:object().
 fix_port_request_data(JObj) ->
