@@ -39,7 +39,7 @@ handle(Data, Call) ->
     Table = fields_to_check(),
 
     case  cf_util:check_value_of_fields(Table, 'false', Data, Call)
-        andalso maybe_correct_target(Target, Data, Call)
+        andalso maybe_correct_target(Target, wh_json:get_value(<<"group_id">>, Data), Call)
     of
         'true' ->
             Flow = wh_json:from_list([{<<"data">>, build_data(Target, Call)}
@@ -98,15 +98,23 @@ get_target_for_extension(Exten, Call) ->
             'error'
     end.
 
--spec maybe_correct_target(target(), wh_json:object(), whapps_call:call()) ->
+-spec maybe_correct_target(target(), api_binary(), whapps_call:call()) ->
                                   boolean().
-maybe_correct_target(Target, Data, Call) ->
-    case wh_json:get_value(<<"group_id">>, Data) of
-        'undefined' ->
-            'true';
-        GroupId ->
-            case Target of
-                {'ok', TargetId, _} -> cf_util:maybe_belongs_to_group(TargetId, GroupId, Call);
-                'error' -> 'false'
-            end
+maybe_correct_target(_Target, 'undefined', _Call) ->
+    'true';
+maybe_correct_target('error', _GroupId, _Call) ->
+    'false';
+maybe_correct_target({'ok', TargetId, _}, GroupId, Call) ->
+    lists:member(TargetId, find_group_members(GroupId, Call)).
+
+-spec find_group_members(ne_binary(), whapps_call:call()) -> ne_binaries().
+find_group_members(GroupId, Call) ->
+    GroupsJObj = cf_attributes:groups(Call),
+    case [wh_json:get_value(<<"value">>, JObj)
+          || JObj <- GroupsJObj,
+             wh_json:get_value(<<"id">>, JObj) =:= GroupId
+         ]
+    of
+        [] -> [];
+        [GroupEndpoints] -> wh_json:get_keys(GroupEndpoints)
     end.
