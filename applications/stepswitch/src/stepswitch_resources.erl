@@ -63,6 +63,7 @@
            ,codecs = [] :: ne_binaries()
            ,bypass_media = 'false' :: boolean()
            ,formatters :: api_objects()
+          ,proxies = [] :: wh_proplist()
          }).
 
 -type resource() :: #resrc{}.
@@ -344,25 +345,42 @@ maybe_resource_to_endpoints(#resrc{id=Id
                                    ,gateways=Gateways
                                    ,global=Global
                                    ,weight=Weight
+                                   ,proxies=Proxies
                                   }
                             ,Number, JObj, Endpoints) ->
     CallerIdNumber = wh_json:get_value(<<"Outbound-Caller-ID-Number">>,JObj),
     case filter_resource_by_rules(Id, Number, Rules, CallerIdNumber, CallerIdRules) of
         {'ok', Number_Match} ->
             lager:debug("building resource ~s endpoints", [Id]),
-            Updates = [{<<"Global-Resource">>, wh_util:to_binary(Global)}
+            CCVUpdates = [{<<"Global-Resource">>, wh_util:to_binary(Global)}
                        ,{<<"Resource-ID">>, Id}
                       ],
-            [wh_json:set_values([{<<"Name">>, Name}
-                                 ,{<<"Weight">>, Weight}
-                                ]
-                                ,update_ccvs(Endpoint, Updates)
-                               )
-             || Endpoint <- gateways_to_endpoints(Number_Match, Gateways, JObj, [])
-            ] ++ Endpoints;
+            Updates = [{<<"Name">>, Name}
+                       ,{<<"Weight">>, Weight}
+                      ],
+            EndpointList = [update_endpoint(Endpoint, Updates, CCVUpdates)
+                 || Endpoint <- gateways_to_endpoints(Number_Match, Gateways, JObj, [])],
+            maybe_add_proxies(EndpointList, Proxies, []) ++ Endpoints;
         {'error','no_match'} -> Endpoints
     end.
 
+-spec update_endpoint(wh_json:object(), wh_proplist(), wh_proplist()) -> wh_json:object().
+update_endpoint(Endpoint, Updates, CCVUpdates) ->
+    wh_json:set_values(Updates ,update_ccvs(Endpoint, CCVUpdates)).
+
+-spec maybe_add_proxies(wh_json:objects(), wh_proplist(), wh_json:objects()) -> wh_json:objects().
+maybe_add_proxies([], _, Acc) -> Acc;
+maybe_add_proxies(Endpoints, [], _) -> Endpoints;
+maybe_add_proxies([Endpoint | Endpoints], Proxies, Acc) ->
+    EPs = [add_proxy(Endpoint, Proxy)  || Proxy <- Proxies],
+    maybe_add_proxies(Endpoints, Proxies, Acc ++ EPs).
+
+-spec add_proxy(wh_json:object(), {binary(), binary()}) -> wh_json:object().
+add_proxy(Endpoint, {Zone, IP}) ->
+    Updates = [{<<"Proxy-Zone">>, Zone}
+               ,{<<"Proxy-IP">>, IP}
+              ],
+    wh_json:set_values(Updates ,Endpoint).
 
 -spec filter_resource_by_rules(ne_binary(), ne_binary(), re:mp(), ne_binary(), re:mp()) ->
                             {'ok', ne_binary()} |
@@ -584,7 +602,8 @@ fetch_local_resources(AccountId) ->
         {'ok', JObjs} ->
             CacheProps = [{'origin', fetch_local_cache_origin(JObjs, AccountDb, [])}],
             Resources = resources_from_jobjs([wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs]),
-            LocalResources = [Resource#resrc{global='false'} || Resource <- Resources],
+            Proxies = fetch_account_dedicated_proxies(AccountId),
+            LocalResources = [Resource#resrc{global='false', proxies=Proxies} || Resource <- Resources],
             wh_cache:store_local(?STEPSWITCH_CACHE, {'local_resources', AccountId}, LocalResources, CacheProps),
             LocalResources
     end.
@@ -594,6 +613,20 @@ fetch_local_cache_origin([], _, Props) -> [{'type', <<"resource">>} | Props];
 fetch_local_cache_origin([JObj|JObjs], AccountDb, Props) ->
     Id = wh_json:get_value(<<"id">>, JObj),
     fetch_local_cache_origin(JObjs, AccountDb, [{'db', AccountDb, Id}|Props]).
+
+-spec fetch_account_dedicated_proxies(api_binary()) -> wh_proplist().
+fetch_account_dedicated_proxies('undefined') -> [];
+fetch_account_dedicated_proxies(AccountId) ->
+    case kz_ips:assigned(AccountId) of
+        {'ok', IPS} -> [ build_account_dedicated_proxy(IP) || IP <- IPS];
+        _ -> []
+    end.
+
+-spec build_account_dedicated_proxy(wh_json:object()) -> {binary(), binary()}.
+build_account_dedicated_proxy(Proxy) ->
+    Zone = wh_json:get_value(<<"zone">>, Proxy),
+    ProxyIP = wh_json:get_value(<<"ip">>, Proxy),
+    {Zone , ProxyIP}.
 
 %%--------------------------------------------------------------------
 %% @private
