@@ -166,7 +166,10 @@ send_default_response(Call, Response) ->
 %%--------------------------------------------------------------------
 -spec get_response(ne_binary(), whapps_call:call()) -> api_object().
 get_response(Cause, Call) ->
-    Default = default_response(Cause),
+    Default = case default_response(Cause) of
+                  'undefined' -> 'undefined';
+                  Props -> wh_json:from_list(Props)
+              end,
     AccountId = whapps_call:account_id(Call),
     whapps_account_config:get_global(AccountId, ?CALL_RESPONSE_CONF, Cause, Default).
 
