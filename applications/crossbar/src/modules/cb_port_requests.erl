@@ -247,10 +247,10 @@ content_types_provided(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
 -spec content_types_provided_get(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
 content_types_provided_get(Context, Id, AttachmentId) ->
     cb_context:add_attachment_content_type(
-        cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
-        ,Id
-        ,AttachmentId
-    ).
+      cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
+      ,Id
+      ,AttachmentId
+     ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -349,7 +349,6 @@ validate_port_request(Context, Id, ?PORT_REJECT, ?HTTP_POST) ->
     maybe_move_state(Context, Id, ?PORT_REJECT);
 validate_port_request(Context, Id, ?PORT_CANCELED, ?HTTP_POST) ->
     maybe_move_state(Context, Id, ?PORT_CANCELED).
-
 
 -spec validate_attachments(cb_context:context(), ne_binary(), http_method()) ->
                                  cb_context:context().
@@ -473,10 +472,10 @@ post(Context, Id, ?PORT_CANCELED) ->
         _E:_R ->
             lager:debug("failed to send the port cancel notification: ~s:~p", [_E, _R]),
             cb_context:add_system_error(
-                'bad_gateway'
-                ,<<"failed to send port cancel email to system admins">>
-                ,Context
-            )
+              'bad_gateway'
+              ,<<"failed to send port cancel email to system admins">>
+              ,Context
+             )
     end.
 
 -spec post_submitted(boolean(), cb_context:context(), ne_binary()) -> cb_context:context().
@@ -929,13 +928,13 @@ maybe_move_state(Context, Id, PortState) ->
             cb_context:set_doc(Context1, PortRequest);
         {'error', 'invalid_state_transition'} ->
             cb_context:add_validation_error(
-                <<"port_state">>
-                ,<<"enum">>
-                ,wh_json:from_list([
-                    {<<"message">>, <<"Cannot move to new state from current state">>}
-                    ,{<<"cause">>, PortState}
-                 ])
-                ,Context
+              <<"port_state">>
+              ,<<"enum">>
+                  ,wh_json:from_list(
+                     [{<<"message">>, <<"Cannot move to new state from current state">>}
+                      ,{<<"cause">>, PortState}
+                     ])
+              ,Context
              )
     end.
 
