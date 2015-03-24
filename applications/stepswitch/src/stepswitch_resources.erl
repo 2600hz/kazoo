@@ -392,17 +392,25 @@ filter_resource_by_rules(Id, Number, Rules, CallerIdNumber, CallerIdRules) ->
             lager:debug("resource ~s does not match request, skipping", [Id]),
             {'error','no_match'};
         {'ok', Match} ->
-            case evaluate_cid_rules(CallerIdRules, CallerIdNumber) of
-                {'ok', 'empty_rules'} ->
-                    lager:debug("resource ~s match number: ~s with regex match: ~s, and dont have any caller id rules", [Id, Number, Match]),
-                    {'ok', Match};
-                {'ok', CIDMatch} ->
-                    lager:debug("resource ~s match number: ~s with regex match: ~s, and match caller id number rules: ~s", [Id, Number, Match, CIDMatch]),
-                    {'ok', Match};
-                {'error', 'no_match'} ->
-                    lager:debug("resource ~s does not match caller id number: ~s, skipping", [Id, CallerIdNumber]),
-                    {'error','no_match'}
-            end
+            filter_resource_by_match(Id, Number, CallerIdNumber, CallerIdRules, Match)
+    end.
+
+-spec filter_resource_by_match(ne_binary(), ne_binary(), ne_binary(), re:mp(), ne_binary()) ->
+                                      {'ok', ne_binary()} |
+                                      {'error', 'no_match'}.
+filter_resource_by_match(Id, Number, CallerIdNumber, CallerIdRules, Match) ->
+    case evaluate_cid_rules(CallerIdRules, CallerIdNumber) of
+        {'ok', 'empty_rules'} ->
+            lager:debug("resource ~s matches number '~s' with regex match '~s'", [Id, Number, Match]),
+            {'ok', Match};
+        {'ok', _CIDMatch} ->
+            lager:debug("resource ~s matches number '~s' with regex match '~s' and caller id match '~s'"
+                        ,[Id, Number, Match, _CIDMatch]
+                       ),
+            {'ok', Match};
+        {'error', 'no_match'} ->
+            lager:debug("resource ~s does not match caller id number '~s', skipping", [Id, CallerIdNumber]),
+            {'error','no_match'}
     end.
 
 -spec update_ccvs(wh_json:object(), wh_proplist()) -> wh_json:object().
@@ -432,7 +440,6 @@ evaluate_rules([Rule|Rules], Number) ->
                             {'error', 'no_match'}.
 evaluate_cid_rules([], _) -> {'ok','empty_rules'};
 evaluate_cid_rules(CIDRules, CIDNumber) -> evaluate_rules(CIDRules, CIDNumber).
-
 
 %%--------------------------------------------------------------------
 %% @private
