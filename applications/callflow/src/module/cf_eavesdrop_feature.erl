@@ -42,8 +42,8 @@ handle(Data, Call) ->
     Target = get_target_for_extension(Exten, Call),
     Table = fields_to_check(),
 
-    case cf_util:check_value_of_fields(Table, 'false', Data, Call)
-        andalso maybe_correct_target(Target, Data, Call)
+    case  cf_util:check_value_of_fields(Table, 'false', Data, Call)
+        andalso maybe_correct_target(Target, wh_json:get_value(<<"group_id">>, Data), Call)
     of
         'true' ->
             Flow = wh_json:from_list([{<<"data">>, build_data(Target, Call)}
@@ -100,28 +100,33 @@ get_target_for_extension(Exten, Call) ->
         {'error', _} -> 'error'
     end.
 
+-spec maybe_correct_target(target(), api_binary(), whapps_call:call()) ->
+                                  boolean().
+maybe_correct_target(_Target, 'undefined', _Call) ->
+    'true';
+maybe_correct_target('error', _GroupId, _Call) ->
+    'false';
+maybe_correct_target({'ok', TargetId, _}, GroupId, Call) ->
+    lists:member(TargetId, find_group_members(GroupId, Call)).
+
+-spec find_group_members(ne_binary(), whapps_call:call()) -> ne_binaries().
+find_group_members(GroupId, Call) ->
+    case whapps_call:open_cache_doc(whapps_call:account_db(Call), GroupId) of
+        {'error', _E} -> [];
+        {'ok', GroupJObj} ->
+            wh_json:get_keys(<<"endpoints">>, GroupJObj)
+    end.
+
 -spec lookup_endpoint(api_object()) -> target().
 -spec lookup_endpoint(wh_json:object(), api_binary()) -> target().
 lookup_endpoint('undefined') -> 'error';
-lookup_endpoint(Callflow) ->
-    lookup_endpoint(Callflow, wh_json:get_value(<<"module">>, Callflow)).
+lookup_endpoint(Flow) ->
+    lookup_endpoint(Flow, wh_json:get_value(<<"module">>, Flow)).
 
-lookup_endpoint(Callflow, <<"device">> = TargetType) ->
-    {'ok', wh_json:get_value([<<"data">>, <<"id">>], Callflow), TargetType};
-lookup_endpoint(Callflow, <<"user">> = TargetType) ->
-    {'ok', wh_json:get_value([<<"data">>, <<"id">>], Callflow), TargetType};
-lookup_endpoint(Callflow, _TargetType) ->
-    Child = wh_json:get_value([<<"children">>, <<"_">>], Callflow),
+lookup_endpoint(Flow, <<"device">> = TargetType) ->
+    {'ok', wh_json:get_value([<<"data">>, <<"id">>], Flow), TargetType};
+lookup_endpoint(Flow, <<"user">> = TargetType) ->
+    {'ok', wh_json:get_value([<<"data">>, <<"id">>], Flow), TargetType};
+lookup_endpoint(Flow, _TargetType) ->
+    Child = wh_json:get_value([<<"children">>, <<"_">>], Flow),
     lookup_endpoint(Child).
-
--spec maybe_correct_target(target(), wh_json:object(), whapps_call:call()) ->
-                                  boolean().
--spec maybe_correct_target(target(), wh_json:object(), whapps_call:call(), api_binary()) ->
-                                  boolean().
-maybe_correct_target(Target, Data, Call) ->
-    maybe_correct_target(Target, Data, Call, wh_json:get_value(<<"group_id">>, Data)).
-
-maybe_correct_target(_Target, _Data, _Call, 'undefined') -> 'true';
-maybe_correct_target('error', _Data, _Call, _GroupId) -> 'false';
-maybe_correct_target({'ok', TargetId, _}, _Data, Call, GroupId) ->
-    cf_util:maybe_belongs_to_group(TargetId, GroupId, Call).
