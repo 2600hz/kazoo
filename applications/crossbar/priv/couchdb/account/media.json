@@ -3,7 +3,7 @@
     ,"language":"javascript"
     ,"views": {
         "crossbar_listing":{
-            "map":"function(doc) { if (doc.pvt_type != 'media' || doc.pvt_deleted) return; var l = doc.language || ''; var is_prompt = false; if(doc.prompt_id) {is_prompt = true;} emit(doc._id, {'id': doc._id, 'name': doc.name, 'media_type': doc.media_type, 'language':l.toLowerCase(), 'is_prompt': is_prompt}); }"
+            "map":"function(doc) { if (doc.pvt_type != 'media' || doc.pvt_deleted) return; var l = doc.language || ''; var is_prompt = false; if(doc.prompt_id) {is_prompt = true;} emit(doc._id, {'id': doc._id, 'name': doc.name, 'media_type': doc.media_type, 'media_source': doc.media_source, 'language':l.toLowerCase(), 'is_prompt': is_prompt}); }"
         }
         ,"listing_private_media": {
             "map": "function(doc) { if (doc.pvt_type != 'private_media' || doc.pvt_deleted) return; emit([doc.media_type, doc._id], {'name': doc.name, 'media_type': doc.media_type}); }"
