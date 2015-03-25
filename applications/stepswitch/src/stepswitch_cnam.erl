@@ -48,15 +48,20 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
+-spec start_link(any()) -> startlink_ret().
 start_link(_) ->
     _ = ssl:start(),
     gen_server:start_link(?MODULE, [], []).
 
-lookup(Number) when is_binary(Number) ->
+-spec lookup(wh_json:object() | ne_binary()) -> wh_json:object().
+lookup(<<_/binary>> = Number) ->
     Num = wnm_util:normalize_number(Number),
     lookup(wh_json:set_values([{<<"phone_number">>, wh_util:uri_encode(Num)}
                                ,{<<"Caller-ID-Number">>, Num}
-                              ], wh_json:new()));
+                              ]
+                              ,wh_json:new()
+                             )
+          );
 lookup(JObj) ->
     CNAM =
         case get_cnam(JObj) of
@@ -68,6 +73,7 @@ lookup(JObj) ->
             ],
     wh_json:set_values(Props, JObj).
 
+-spec get_cnam(wh_json:object()) -> binary().
 get_cnam(JObj) ->
     Number = wh_json:get_value(<<"Caller-ID-Number">>, JObj, <<"0000000000">>),
     Num = wnm_util:normalize_number(Number),
@@ -200,8 +206,11 @@ json_to_template_props(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_proplist(wh_proplist()) -> wh_proplist().
-normalize_proplist(Props) -> [normalize_proplist_element(Elem) || Elem <- Props].
+normalize_proplist(Props) ->
+    [normalize_proplist_element(Elem) || Elem <- Props].
 
+-spec normalize_proplist_element({wh_proplist_key(), wh_proplist_value()}) ->
+                                        {wh_proplist_key(), wh_proplist_value()}.
 normalize_proplist_element({K, V}) when is_list(V) ->
     {normalize_value(K), normalize_proplist(V)};
 normalize_proplist_element({K, V}) when is_binary(V) ->
@@ -211,11 +220,14 @@ normalize_proplist_element({K, V}) ->
 normalize_proplist_element(Else) ->
     Else.
 
+-spec normalize_value(binary()) -> binary().
 normalize_value(Value) ->
     binary:replace(wh_util:to_lower_binary(Value), <<"-">>, <<"_">>, ['global']).
 
+-spec cache_key(ne_binary()) -> {'cnam', ne_binary()}.
 cache_key(Number) -> {'cnam', Number}.
 
+-spec fetch_cnam(ne_binary(), wh_json:object()) -> binary().
 fetch_cnam(Number, JObj) ->
     CNAM = make_request(Number, JObj),
     CacheProps = [{'expires', whapps_config:get_integer(?CONFIG_CAT, <<"cnam_expires">>, ?DEFAULT_EXPIRES)}
@@ -224,6 +236,7 @@ fetch_cnam(Number, JObj) ->
     wh_cache:store_local(?STEPSWITCH_CACHE, cache_key(Number), CNAM, CacheProps),
     CNAM.
 
+-spec make_request(ne_binary(), wh_json:object()) -> binary().
 make_request(Number, JObj) ->
     Url = wh_util:to_list(get_http_url(JObj)),
     Body = get_http_body(JObj),
@@ -273,12 +286,14 @@ get_http_body(JObj) ->
             lists:flatten(Body)
     end.
 
+-spec get_http_headers() -> wh_proplist().
 get_http_headers() ->
     [{"Accept", ?HTTP_ACCEPT_HEADER}
      ,{"User-Agent", ?HTTP_USER_AGENT}
      ,{"Content-Type", ?HTTP_CONTENT_TYPE}
     ].
 
+-spec get_http_options(string()) -> wh_proplist().
 get_http_options(Url) ->
     Defaults = [{'response_format', 'binary'}
                 ,{'connect_timeout', 500}
@@ -289,10 +304,12 @@ get_http_options(Url) ->
                ],
     lists:foldl(fun(F, P) -> F(Url, P) end, Defaults, Routines).
 
+-spec maybe_enable_ssl(ne_binary(), wh_proplist()) -> wh_proplist().
 maybe_enable_ssl(<<"https", _/binary>>, Props) ->
     [{'ssl', [{'verify', 0}]}|Props];
 maybe_enable_ssl(_, Props) -> Props.
 
+-spec maybe_enable_auth(_, wh_proplist()) -> wh_proplist().
 maybe_enable_auth(_, Props) ->
     Username = whapps_config:get_string(?CONFIG_CAT, <<"http_basic_auth_username">>, <<>>),
     Password = whapps_config:get_string(?CONFIG_CAT, <<"http_basic_auth_password">>, <<>>),
@@ -301,6 +318,7 @@ maybe_enable_auth(_, Props) ->
         'false' -> [{'basic_auth', {Username, Password}}|Props]
     end.
 
+-spec get_http_method() -> 'get' | 'put' | 'post'.
 get_http_method() ->
     case whapps_config:get_binary(?CONFIG_CAT, <<"http_method">>, ?DEFAULT_METHOD) of
         <<"post">> -> 'post';
