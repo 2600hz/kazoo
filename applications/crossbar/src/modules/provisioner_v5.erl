@@ -255,7 +255,8 @@ account_settings(AccountId, JObj) ->
                       'undefined' -> J;
                       TZ -> wh_json:set_value(KeyTZ, TZ, J)
                   end
-          end ],
+          end
+        ],
     Settings = lists:foldl(fun (F,J) -> F(J) end, wh_json:new(), Setters),
     wh_json:from_list(
       [{<<"provider_id">>, wh_services:find_reseller_id(AccountId)}
@@ -278,7 +279,8 @@ device_settings(JObj) ->
                             'undefined' -> J;
                             Timezone -> wh_json:set_value(KeyTZ, Timezone, J)
                         end
-                end ],
+                end
+              ],
     Settings = lists:foldl(fun (F,J) -> F(J) end, wh_json:new(), Setters),
     wh_json:from_list(
       [ {<<"brand">>, wh_json:get_binary_value([<<"provision">>, <<"endpoint_brand">>], JObj, <<>>)}
@@ -381,7 +383,7 @@ set_audio([Codec|Codecs], [Key|Keys], JObj) ->
 -spec send_req(atom(), wh_json:object() | 'none', ne_binary(), ne_binary(), 'none' | ne_binary()) -> 'ok'.
 
 send_req('devices_post', JObj, AuthToken, AccountId, MACAddress) ->
-    Data = wh_json:encode(payload(device, JObj)),
+    Data = wh_json:encode(device_payload(JObj)),
     Headers = req_headers(AuthToken),
     HTTPOptions = [],
     UrlString = req_uri('devices', AccountId, MACAddress),
@@ -403,7 +405,7 @@ send_req('accounts_delete', _, AuthToken, AccountId, _) ->
     Resp = ibrowse:send_req(UrlString, Headers, 'delete', [], HTTPOptions),
     handle_resp(Resp);
 send_req('accounts_update', JObj, AuthToken, AccountId, _) ->
-    Data = wh_json:encode(payload(account, JObj, AccountId)),
+    Data = wh_json:encode(account_payload(JObj, AccountId)),
     Headers = req_headers(AuthToken),
     HTTPOptions = [],
     UrlString = req_uri('accounts', AccountId),
@@ -411,20 +413,24 @@ send_req('accounts_update', JObj, AuthToken, AccountId, _) ->
     Resp = ibrowse:send_req(UrlString, Headers, 'post', Data, HTTPOptions),
     handle_resp(Resp).
 
-payload('account', JObj, AccountId) ->
+-spec account_payload(wh_json:object(), ne_binary()) -> wh_json:object().
+account_payload(JObj, AccountId) ->
     ResellerId = wh_services:find_reseller_id(AccountId),
-    wh_json:from_list([ {<<"create_if_missing">>, true}
+    wh_json:from_list([ {<<"create_if_missing">>, 'true'}
                       , {<<"reseller_id">>, ResellerId}
-                      , {<<"merge">>, true}
-                      , {<<"data">>, JObj} ]).
+                      , {<<"merge">>, 'true'}
+                      , {<<"data">>, JObj}
+                      ]).
 
-payload('device', JObj0) ->
+-spec device_payload(wh_json:object()) -> wh_json:object().
+device_payload(JObj0) ->
     KeyRealm = [<<"settings">>, <<"lines">>, <<"sip">>, <<"realm">>],
     JObj = wh_json:delete_key(KeyRealm, JObj0),
-    wh_json:from_list([ {<<"create_if_missing">>, true}
-                      , {<<"generate">>, true}
-                      , {<<"merge">>, true}
-                      , {<<"data">>, JObj} ]).
+    wh_json:from_list([ {<<"create_if_missing">>, 'true'}
+                      , {<<"generate">>, 'true'}
+                      , {<<"merge">>, 'true'}
+                      , {<<"data">>, JObj}
+                      ]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -457,7 +463,7 @@ req_headers(Token) ->
         [{"Content-Type", "application/json"}
          ,{"X-Auth-Token", wh_util:to_list(Token)}
          ,{"User-Agent", wh_util:to_list(erlang:node())}
-    ]).
+        ]).
 
 %%--------------------------------------------------------------------
 %% @private
