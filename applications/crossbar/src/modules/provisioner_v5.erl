@@ -104,66 +104,41 @@ update_user(AccountId, JObj, AuthToken) ->
     case wh_json:get_value(<<"pvt_type">>, JObj) of
         <<"user">> ->
             save_user(AccountId, JObj, AuthToken);
-        <<"device">> ->
-            save_user(AccountId, JObj, AuthToken);
         _ -> ok %% Gets rid of VMbox
     end.
 
 -spec save_user(ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
 save_user(AccountId, JObj, AuthToken) ->
-    Realm   = wh_json:get_value(<<"realm">>, set_realm(JObj)),
-    TZ      = wh_json:get_value(<<"timezone">>, JObj),
-    OwnerId = wh_json:get_value(<<"id">>, JObj),
-    maybe_save_account(Realm, TZ, AccountId, AuthToken),
+    update_account(AccountId, JObj, AuthToken),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    OwnerId = wh_json:get_value(<<"id">>, JObj),
     Devices = get_devices_by_owner(AccountDb, OwnerId),
+    TZ      = wh_json:get_value(<<"timezone">>, JObj),
     lists:foreach(
       fun (DeviceId) ->
               case cf_endpoint:get(DeviceId, AccountDb) of
                   {'error', _E} ->
                       lager:debug("no endpoint for device ~s: ~p", [DeviceId,_E]);
                   {'ok', Endpoint} ->
-                      catch save_device(Realm, TZ, Endpoint, AuthToken)
+                      catch save_device(TZ, Endpoint, AuthToken)
               end
       end, Devices).
 
 -spec get_devices_by_owner(ne_binary(), ne_binary()) -> ne_binaries().
 get_devices_by_owner(AccountDb, OwnerId) ->
-    ViewOptions = [{'startkey', [OwnerId]}
-                  ,{'endkey', [OwnerId,wh_json:new()]}],
+    ViewOptions = [{'key', [OwnerId, <<"device">>]}],
     case couch_mgr:get_results(AccountDb, <<"cf_attributes/owned">>, ViewOptions) of
-        {'ok', JObjs} -> select_only_devices(JObjs);
+        {'ok', JObjs} -> [wh_json:get_value(<<"value">>, JObj) || JObj <- JObjs];
         {'error', _R} ->
             lager:warning("unable to find documents owned by ~s: ~p", [OwnerId, _R]),
             []
     end.
 
--spec select_only_devices([wh_json:object()]) -> ne_binaries().
-select_only_devices(JObjs) ->
-    lists:foldl(
-      fun (JObj, Acc) ->
-              case wh_json:get_value(<<"key">>, JObj) of
-                  [_OwnerId, <<"device">>] ->
-                      [wh_json:get_value(<<"value">>, JObj) | Acc];
-                  _ -> Acc
-              end
-      end, [], JObjs).
-
--spec maybe_save_account(api_binary(), api_binary(), ne_binary(), ne_binary()) -> 'ok'.
-maybe_save_account('undefined', _, _, _) ->
-    laer:debug("cannot save account: realm is undefined");
-maybe_save_account(Realm, TZ, AccountId, AuthToken) ->
-    Setters = [ fun (J) -> wh_json:set_value(<<"realm">>, Realm, J) end
-              , fun (J) -> wh_json:set_value(<<"timezone">>, TZ, J) end ],
-    JObj = lists:foldl(fun (F,J) -> F(J) end, wh_json:new(), Setters),
-    update_account(AccountId, JObj, AuthToken).
-
--spec save_device(api_binary(), api_binary(), wh_json:object(), ne_binary()) -> 'ok'.
-save_device(Realm, TZ, Endpoint, AuthToken) ->
+-spec save_device(api_binary(), wh_json:object(), ne_binary()) -> 'ok'.
+save_device(TZ, Endpoint, AuthToken) ->
     MaybeSet =
         wh_json:from_list(
-          props:filter_undefined([{<<"realm">>, Realm}
-                                  ,{<<"timezone">>, TZ}])),
+          props:filter_undefined([{<<"timezone">>, TZ}])),
     Obj = wh_json:merge_jobjs(MaybeSet, Endpoint),
     update_device(Obj, AuthToken).
 
@@ -438,19 +413,18 @@ send_req('accounts_update', JObj, AuthToken, AccountId, _) ->
 
 payload('account', JObj, AccountId) ->
     ResellerId = wh_services:find_reseller_id(AccountId),
-    Setters = [ fun (J) -> wh_json:set_value(<<"create_if_missing">>, true, J) end
-              , fun (J) -> wh_json:set_value(<<"reseller_id">>, ResellerId, J) end
-              , fun (J) -> wh_json:set_value(<<"data">>, JObj, J) end ],
-    lists:foldl(fun (F,J) -> F(J) end, wh_json:new(), Setters).
+    wh_json:from_list([ {<<"create_if_missing">>, true}
+                      , {<<"reseller_id">>, ResellerId}
+                      , {<<"merge">>, true}
+                      , {<<"data">>, JObj} ]).
 
 payload('device', JObj0) ->
     KeyRealm = [<<"settings">>, <<"lines">>, <<"sip">>, <<"realm">>],
     JObj = wh_json:delete_key(KeyRealm, JObj0),
-    Setters = [ fun (J) -> wh_json:set_value(<<"create_if_missing">>, true, J) end
-              , fun (J) -> wh_json:set_value(<<"generate">>, true, J) end
-              , fun (J) -> wh_json:set_value(<<"merge">>, true, J) end
-              , fun (J) -> wh_json:set_value(<<"data">>, JObj, J) end ],
-    lists:foldl(fun (F,J) -> F(J) end, wh_json:new(), Setters).
+    wh_json:from_list([ {<<"create_if_missing">>, true}
+                      , {<<"generate">>, true}
+                      , {<<"merge">>, true}
+                      , {<<"data">>, JObj} ]).
 
 %%--------------------------------------------------------------------
 %% @private
