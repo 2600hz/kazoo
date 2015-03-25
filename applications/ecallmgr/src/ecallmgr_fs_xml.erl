@@ -543,7 +543,7 @@ get_channel_params_fold(Key, Val) ->
     case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
         'false' ->
             {list_to_binary([?CHANNEL_VAR_PREFIX, Key]), Val};
-        {_, Prefix} ->
+        {_Key, Prefix} ->
             {Prefix, ecallmgr_util:maybe_sanitize_fs_value(Key, Val)}
     end.
 
