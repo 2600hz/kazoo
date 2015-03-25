@@ -51,7 +51,7 @@
             "type": "integer",
             "required": false,
             "name": "Scheduled Date",
-            "description": "Requested scheduled date  in gregorain timestamp"
+            "description": "Requested scheduled date in gregorain timestamp"
         },
         "notifications": {
             "type": "object",
@@ -86,43 +86,43 @@
         "bill": {
             "type": "object",
             "required": false,
-            "description": "Billing information of the loosing carrier",
+            "description": "Billing information of the losing carrier",
             "properties": {
                 "name": {
                     "type": "string",
                     "required": false,
                     "name": "Account Name",
-                    "description": "The loosing carrier billing/account name"
+                    "description": "The losing carrier billing/account name"
                 },
                 "locality": {
                     "type": "string",
                     "required": false,
                     "name": "City",
-                    "description": "The locality (city) of the billing address the loosing carrier has on record"
+                    "description": "The locality (city) of the billing address the losing carrier has on record"
                 },
                 "region": {
                     "type": "string",
                     "required": false,
                     "name": "State",
-                    "description": "The region (state) of the billing address the loosing carrier has on record"
+                    "description": "The region (state) of the billing address the losing carrier has on record"
                 },
                 "street_address": {
                     "type": "string",
                     "required": false,
                     "name": "Address",
-                    "description": "The address of the billing address the loosing carrier has on record"
+                    "description": "The address of the billing address the losing carrier has on record"
                 },
                 "extended_address": {
                     "type": "string",
                     "required": false,
                     "name": "Address",
-                    "description": "The suite/floor/apt of the billing address the loosing carrier has on record"
+                    "description": "The suite/floor/apt of the billing address the losing carrier has on record"
                 },
                 "postal_code": {
                     "type": "string",
                     "required": false,
                     "name": "Zip Code",
-                    "description": "The zip/postal code of the billing address the loosing carrier has on record"
+                    "description": "The zip/postal code of the billing address the losing carrier has on record"
                 }
             }
         },
@@ -130,7 +130,7 @@
             "type": "array",
             "required": false,
             "name": "Comments",
-            "description": "An array of comments",
+            "description": "The history of comments made on a port request",
             "items": {
                 "type": "object",
                 "required": false
