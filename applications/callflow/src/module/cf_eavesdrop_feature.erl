@@ -42,7 +42,7 @@ handle(Data, Call) ->
     Target = get_target_for_extension(Exten, Call),
     Table = fields_to_check(),
 
-    case  cf_util:check_value_of_fields(Table, 'false', Data, Call)
+    case cf_util:check_value_of_fields(Table, 'false', Data, Call)
         andalso maybe_correct_target(Target, wh_json:get_value(<<"group_id">>, Data), Call)
     of
         'true' ->
@@ -111,7 +111,7 @@ maybe_correct_target({'ok', TargetId, _}, GroupId, Call) ->
 
 -spec find_group_members(ne_binary(), whapps_call:call()) -> ne_binaries().
 find_group_members(GroupId, Call) ->
-    case whapps_call:open_cache_doc(whapps_call:account_db(Call), GroupId) of
+    case couch_mgr:open_cache_doc(whapps_call:account_db(Call), GroupId) of
         {'error', _E} -> [];
         {'ok', GroupJObj} ->
             wh_json:get_keys(<<"endpoints">>, GroupJObj)
