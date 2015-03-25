@@ -249,7 +249,7 @@ execute_callflow(Call) ->
     lager:info("message has been setup, beginning to process the message"),
     doodle_exe_sup:new(Call).
 
--spec send_service_unavailable(wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec send_service_unavailable(wh_json:object(), whapps_call:call()) -> whapps_call:call().
 send_service_unavailable(_JObj, Call) ->
     Routines = [fun store_owner_id/1
                 ,fun update_ccvs/1

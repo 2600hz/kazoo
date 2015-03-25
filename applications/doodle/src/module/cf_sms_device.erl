@@ -26,7 +26,7 @@ handle(Data, Call1) ->
     case build_endpoint(EndpointId, Data, doodle_util:set_callee_id(EndpointId, Call1)) of
         {'error', _} = Reason -> maybe_handle_bridge_failure(Reason, Call1);
         {Endpoints, Call} ->
-            case whapps_sms_command:b_send_sms(Endpoints, Call) of 
+            case whapps_sms_command:b_send_sms(Endpoints, Call) of
                 {'ok', JObj} -> handle_result(JObj, Call);
                 {'error', _} = Reason -> maybe_handle_bridge_failure(Reason, Call)
             end
@@ -60,17 +60,21 @@ maybe_handle_bridge_failure(Reason, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec build_endpoint(ne_binary(), wh_json:object(), whapps_call:call()) ->
-                                {'error', atom() | wh_json:object()} |
-                                {'fail', ne_binary() | wh_json:object()} |
-                                {'ok', wh_json:object()}.
+                            {'error', atom() | wh_json:object()} |
+                            {'fail', ne_binary() | wh_json:object()} |
+                            {'ok', wh_json:object()}.
 build_endpoint(EndpointId, Data, Call) ->
     Params = wh_json:set_value(<<"source">>, ?MODULE, Data),
     case cf_endpoint:build(EndpointId, Params, Call) of
         {'error', _}=E -> E;
-        {'ok', [Endpoint]=Endpoints} ->
-            case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Owner-ID">>], Endpoint) of
-                'undefined' -> {Endpoints, Call};
-                OwnerId ->
-                    {Endpoints, whapps_call:kvs_store(<<"target_owner_id">>, OwnerId, Call)}
-            end
+        {'ok', Endpoints} -> maybe_note_owner(Endpoints, Call)
+    end.
+
+-spec maybe_note_owner(wh_json:objects(), whapps_call:call()) ->
+                              {wh_json:objects(), whapps_call:call()}.
+maybe_note_owner([Endpoint]=Endpoints, Call) ->
+    case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Owner-ID">>], Endpoint) of
+        'undefined' -> {Endpoints, Call};
+        OwnerId ->
+            {Endpoints, whapps_call:kvs_store(<<"target_owner_id">>, OwnerId, Call)}
     end.
