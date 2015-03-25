@@ -111,14 +111,10 @@ maybe_correct_target({'ok', TargetId, _}, GroupId, Call) ->
 
 -spec find_group_members(ne_binary(), whapps_call:call()) -> ne_binaries().
 find_group_members(GroupId, Call) ->
-    GroupsJObj = cf_attributes:groups(Call),
-    case [wh_json:get_value(<<"value">>, JObj)
-          || JObj <- GroupsJObj,
-             wh_json:get_value(<<"id">>, JObj) =:= GroupId
-         ]
-    of
-        [] -> [];
-        [GroupEndpoints] -> wh_json:get_keys(GroupEndpoints)
+    case whapps_call:open_cache_doc(whapps_call:account_db(Call), GroupId) of
+        {'error', _E} -> [];
+        {'ok', GroupJObj} ->
+            wh_json:get_keys(<<"endpoints">>, GroupJObj)
     end.
 
 -spec lookup_endpoint(api_object()) -> target().
