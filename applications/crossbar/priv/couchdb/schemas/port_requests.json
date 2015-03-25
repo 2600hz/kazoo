@@ -50,7 +50,7 @@
         "scheduled_date": {
             "type": "integer",
             "required": false,
-            "name": "Transfer Date",
+            "name": "Scheduled Date",
             "description": "Requested scheduled date  in gregorain timestamp"
         },
         "notifications": {
@@ -116,7 +116,7 @@
                     "type": "string",
                     "required": false,
                     "name": "Address",
-                    "description": "The suit/floor/apt of the billing address the loosing carrier has on record"
+                    "description": "The suite/floor/apt of the billing address the loosing carrier has on record"
                 },
                 "postal_code": {
                     "type": "string",
