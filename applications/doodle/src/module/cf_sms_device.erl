@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -23,10 +23,13 @@
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call1) ->
     EndpointId = wh_json:get_value(<<"id">>, Data),
-    Call = doodle_util:set_callee_id(EndpointId, Call1),
-    case bridge_to_endpoint(EndpointId, Data, Call) of
-        {'ok', JObj} -> handle_result(JObj, Call);
-        {'error', _} = Reason -> maybe_handle_bridge_failure(Reason, Call)
+    case build_endpoint(EndpointId, Data, doodle_util:set_callee_id(EndpointId, Call1)) of
+        {'error', _} = Reason -> maybe_handle_bridge_failure(Reason, Call1);
+        {Endpoints, Call} ->
+            case whapps_sms_command:b_send_sms(Endpoints, Call) of 
+                {'ok', JObj} -> handle_result(JObj, Call);
+                {'error', _} = Reason -> maybe_handle_bridge_failure(Reason, Call)
+            end
     end.
 
 -spec handle_result(wh_json:object(), whapps_call:call()) -> 'ok'.
@@ -53,17 +56,21 @@ maybe_handle_bridge_failure(Reason, Call) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Attempts to bridge to the endpoints created to reach this device
+%% Attempts to build the endpoints to reach this device
 %% @end
 %%--------------------------------------------------------------------
--spec bridge_to_endpoint(ne_binary(), wh_json:object(), whapps_call:call()) ->
+-spec build_endpoint(ne_binary(), wh_json:object(), whapps_call:call()) ->
                                 {'error', atom() | wh_json:object()} |
                                 {'fail', ne_binary() | wh_json:object()} |
                                 {'ok', wh_json:object()}.
-bridge_to_endpoint(EndpointId, Data, Call) ->
+build_endpoint(EndpointId, Data, Call) ->
     Params = wh_json:set_value(<<"source">>, ?MODULE, Data),
     case cf_endpoint:build(EndpointId, Params, Call) of
         {'error', _}=E -> E;
-        {'ok', Endpoints} ->
-            whapps_sms_command:b_send_sms(Endpoints, Call)
+        {'ok', [Endpoint]=Endpoints} ->
+            case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Owner-ID">>], Endpoint) of
+                'undefined' -> {Endpoints, Call};
+                OwnerId ->
+                    {Endpoints, whapps_call:kvs_store(<<"target_owner_id">>, OwnerId, Call)}
+            end
     end.
