@@ -186,6 +186,7 @@ send_route_response(Flow, JObj, Q, Call) ->
                                    ,{<<"Ringback-Media">>, get_ringback_media(Flow, JObj)}
                                    ,{<<"Pre-Park">>, pre_park_action(Call)}
                                    ,{<<"From-Realm">>, wh_util:get_account_realm(AccountId)}
+                                   ,{<<"Custom-Channel-Vars">>, whapps_call:custom_channel_vars(Call)}
                                    | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
                                   ]),
     ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
