@@ -10,7 +10,9 @@
 
 -export([resources/0]).
 -export([reverse_lookup/1]).
--export([flush/0]).
+-export([flush/0
+         ,cnam_flush/0
+        ]).
 -export([refresh/0]).
 -export([lookup_number/1
          ,number_tree/1
@@ -115,6 +117,10 @@ pretty_print_resource([{Key, Value}|Props]) ->
 %%--------------------------------------------------------------------
 -spec flush() -> 'ok'.
 flush() -> wh_cache:flush_local(?STEPSWITCH_CACHE).
+
+-spec cnam_flush() -> 'ok'.
+cnam_flush() ->
+    stepswitch_cnam:flush().
 
 %%--------------------------------------------------------------------
 %% @public
