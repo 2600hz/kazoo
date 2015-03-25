@@ -244,7 +244,7 @@ fetch_keys_local(Srv) ->
     ets:select(Srv, MatchSpec).
 
 -spec filter_erase_local(atom(), fun((term(), term()) -> boolean())) ->
-                          non_neg_integer().
+                                non_neg_integer().
 filter_erase_local(Srv, Pred) when is_function(Pred, 2) ->
     ets:foldl(fun(#cache_obj{key=K, value=V, type = 'normal'}, Count) ->
                       case Pred(K, V) of
