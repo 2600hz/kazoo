@@ -156,7 +156,7 @@ get_balance_from_previous(Account, ViewOptions, Retry) when Retry >= 0 ->
     lager:warning("could not find current balance trying previous month: ~p", [VOptions]),
     get_balance(Account, VOptions);
 get_balance_from_previous(Account, ViewOptions, _) ->
-    lager:error("3 attempt to find balance in previous modb getting from account", []),
+    lager:warning("3 attempt to find balance in previous modb getting from account", []),
     get_balance_from_account(Account, ViewOptions).
 
 -spec maybe_rollup(ne_binary(), wh_proplist(), integer()) -> integer().
