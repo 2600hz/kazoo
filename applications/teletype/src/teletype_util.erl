@@ -454,25 +454,28 @@ init_template(Id, Params) ->
 create_template(MasterAccountDb, DocId, Params) ->
     {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
     lager:debug("attempting to create template ~s", [DocId]),
+
     TemplateJObj =
         wh_doc:update_pvt_parameters(
           wh_json:from_list([{<<"_id">>, DocId}])
           ,MasterAccountDb
           ,[{'account_db', MasterAccountDb}
             ,{'account_id', MasterAccountId}
-            ,{'type', ?PVT_TYPE}
+            ,{'type', kz_notification:pvt_type()}
            ]),
 
     {'ok', UpdatedTemplateJObj} = save_template(MasterAccountDb, TemplateJObj),
+    lager:debug("created base template ~s(~s)", [DocId, wh_doc:revision(UpdatedTemplateJObj)]),
+
     case update_template(MasterAccountDb, UpdatedTemplateJObj, Params) of
-        {'ok', _} -> lager:debug("template created");
+        {'ok', _OK} -> lager:debug("template ~s(~s) created", [DocId, wh_doc:revision(_OK)]);
         {'error', _E} -> lager:debug("failed template update: ~p", [_E])
     end.
 
 -spec maybe_update_template(ne_binary(), wh_json:object(), init_params()) -> 'ok'.
 maybe_update_template(MasterAccountDb, TemplateJObj, Params) ->
     case wh_doc:is_soft_deleted(TemplateJObj) of
-        'true' -> lager:debug("template is currently soft-deleted");
+        'true' -> lager:warning("template is currently soft-deleted");
         'false' ->
             case update_template(MasterAccountDb, TemplateJObj, Params) of
                 'ok' -> 'ok';
@@ -501,7 +504,9 @@ save_template(MasterAccountDb, TemplateJObj) ->
 
     case couch_mgr:save_doc(MasterAccountDb, SaveJObj) of
         {'ok', _JObj}=OK ->
-            lager:debug("saved updated template to ~s", [MasterAccountDb]),
+            lager:debug("saved updated template ~s(~s) to ~s"
+                        ,[wh_doc:id(_JObj), wh_doc:revision(_JObj), MasterAccountDb]
+                       ),
             OK;
         {'error', _E}=E ->
             lager:debug("failed to save template to ~s: ~p", [MasterAccountDb, _E]),
@@ -514,6 +519,7 @@ save_template(MasterAccountDb, TemplateJObj) ->
                                          update_template_acc().
 update_template_from_params(MasterAccountDb, TemplateJObj, Params) ->
     lists:foldl(fun(Param, Acc) ->
+                        lager:debug("maybe updating param ~p", [Param]),
                         update_template_from_param(Param, Acc, MasterAccountDb)
                 end
                 ,{'false', TemplateJObj}
@@ -586,7 +592,7 @@ update_template_field('undefined', Acc, _GetFun, _SetFun) -> Acc;
 update_template_field(Value, {_IsUpdated, TemplateJObj}=Acc, GetFun, SetFun) ->
     case GetFun(TemplateJObj) of
         'undefined' ->
-            lager:debug("updating field to ~p: ~p", [Value, GetFun]),
+            lager:debug("updating field to ~p: ~p on ~s", [Value, GetFun, wh_doc:revision(TemplateJObj)]),
             {'true', SetFun(TemplateJObj, Value)};
         _V -> Acc
     end.
@@ -620,7 +626,7 @@ update_template_attachment(Contents, {_IsUpdated, TemplateJObj}=Acc, MasterAccou
 
 -spec update_template_attachment(binary(), update_template_acc(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) ->
                                         update_template_acc().
-update_template_attachment(Contents, {IsUpdated, _TemplateJObj}=Acc
+update_template_attachment(Contents, {IsUpdated, TemplateJObj}=Acc
                            ,MasterAccountDb, ContentType, Id, AName
                           ) ->
     lager:debug("attachment ~s doesn't exist for ~s", [AName, Id]),
@@ -628,7 +634,9 @@ update_template_attachment(Contents, {IsUpdated, _TemplateJObj}=Acc
         {'ok', AttachmentJObj} ->
             lager:debug("saved attachment: ~p", [AttachmentJObj]),
             {'ok', UpdatedJObj} = couch_mgr:open_doc(MasterAccountDb, Id),
-            {IsUpdated, UpdatedJObj};
+            Merged = wh_json:merge_jobjs(UpdatedJObj, TemplateJObj),
+
+            {IsUpdated, Merged};
         {'error', _E} ->
             lager:debug("failed to save attachment ~s: ~p", [AName, _E]),
             Acc

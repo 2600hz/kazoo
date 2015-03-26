@@ -12,6 +12,8 @@
          ,rm_responder/3
         ]).
 
+-include_lib("whistle/include/wh_log.hrl").
+
 -define(DEFAULT_CALLBACK, 'handle_req').
 
 %% { {Event-Category, Event-Name}, CallbackModule | {CallbackModule, Function} }
@@ -70,6 +72,14 @@ maybe_add_mapping(Mapping, Acc) ->
 
 -spec maybe_init_responder(responder_callback(), boolean()) -> 'ok'.
 maybe_init_responder({Responder, _Fun}, 'true') when is_atom(Responder) ->
-    catch Responder:init(), 'ok';
-maybe_init_responder(_,_) ->
-    'ok'.
+    try Responder:init() of
+        _Init ->
+            lager:debug("responder ~s init: ~p", [Responder, _Init])
+    catch
+        _E:_R ->
+            ST = erlang:get_stacktrace(),
+            lager:debug("responder ~s crashed: ~s: ~p", [_E, _R]),
+            wh_util:log_stacktrace(ST)
+    end;
+maybe_init_responder({_Responder, _Fun}, 'false') ->
+    lager:debug("ignoring init for responder ~s: ~p", [_Responder, _Fun]).

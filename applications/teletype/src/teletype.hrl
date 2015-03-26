@@ -6,7 +6,7 @@
 -define(APP_NAME, <<"teletype">>).
 -define(APP_VERSION, <<"0.0.1">> ).
 
--define(PVT_TYPE, <<"notification">>).
+-define(PVT_TYPE, kz_notification:pvt_type()).
 
 -define(NOTIFY_CONFIG_CAT, <<"notify">>).
 
