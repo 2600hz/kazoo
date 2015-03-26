@@ -21,6 +21,7 @@
 -export([maybe_send_contact_list/1]).
 -export([get_provision_defaults/1]).
 -export([delete_full_provision/2]).
+-export([is_mac_address_in_use/2]).
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".devices">>).
 -define(PROVISIONER_CONFIG, <<"provisioner">>).
@@ -306,6 +307,23 @@ get_provision_defaults(Context) ->
         {'error', _R} ->
             lager:debug("could not get provisioning template defaults: ~p", [_R]),
             crossbar_util:response('error', <<"Error retrieving content from external site">>, 500, Context)
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec is_mac_address_in_use(cb_context:context(), ne_binary()) -> boolean().
+is_mac_address_in_use(Context, MacAddress) ->
+    case cb_context:is_context(Context)
+        andalso get_provisioning_type()
+    of
+        <<"provisioner_v5">> ->
+            AuthToken = cb_context:auth_token(Context),
+            'false' =/= provisioner_v5:check_MAC(MacAddress, AuthToken);
+        _ -> 'false'
     end.
 
 %%--------------------------------------------------------------------

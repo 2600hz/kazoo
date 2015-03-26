@@ -300,8 +300,7 @@ changed_mac_address(Context) ->
 -spec check_mac_address(api_binary(), cb_context:context()) -> cb_context:context().
 check_mac_address(DeviceId, Context) ->
     MacAddress = cb_context:req_value(Context, <<"mac_address">>),
-    case unique_mac_address(MacAddress, Context)
-    of
+    case unique_mac_address(MacAddress, Context) of
         'true' ->
             prepare_outbound_flags(DeviceId, Context);
         'false' ->

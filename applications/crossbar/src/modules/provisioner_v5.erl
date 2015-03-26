@@ -15,6 +15,7 @@
 -export([delete_account/2]).
 -export([update_account/3]).
 -export([update_user/3]).
+-export([check_MAC/2]).
 
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_amqp.hrl").
@@ -197,6 +198,27 @@ save_device(AccountId, Device, Request, AuthToken) ->
                     ,AccountId
                     ,MacAddress
                     )
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Use before a POST or PUT to a device.
+%% Return the account id a MAC address belongs to, `false' otherwise.
+%% @end
+%%--------------------------------------------------------------------
+-spec check_MAC(ne_binary(), ne_binary()) -> ne_binary() | 'false'.
+check_MAC(MacAddress, AuthToken) ->
+    Headers = req_headers(AuthToken),
+    HTTPOptions = [],
+    UrlString = req_uri('devices', MacAddress),
+    lager:debug("pre-provisioning via ~s", [UrlString]),
+    Resp = ibrowse:send_req(UrlString, Headers, 'get', [], HTTPOptions),
+    case Resp of
+        {'ok', "200", _RespHeaders, JSONStr} ->
+            JObj = wh_json:decode(JSONStr),
+            wh_json:get_value([<<"data">>, <<"account_id">>], JObj);
+        _AnythingElse -> 'false'
     end.
 
 %%--------------------------------------------------------------------
