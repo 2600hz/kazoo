@@ -15,6 +15,7 @@
          ,validate/1, validate/2
          ,put/1
          ,post/2
+         ,patch/2
          ,delete/2
         ]).
 
@@ -31,6 +32,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.temporal_rules">>, ?MODULE, validate),
     _ = crossbar_bindings:bind(<<"*.execute.put.temporal_rules">>, ?MODULE, put),
     _ = crossbar_bindings:bind(<<"*.execute.post.temporal_rules">>, ?MODULE, post),
+    _ = crossbar_bindings:bind(<<"*.execute.patch.temporal_rules">>, ?MODULE, patch),
     crossbar_bindings:bind(<<"*.execute.delete.temporal_rules">>, ?MODULE, delete).
 
 %%--------------------------------------------------------------------
@@ -47,7 +49,7 @@ init() ->
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 allowed_methods(_) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -82,6 +84,8 @@ validate(#cb_context{req_verb = ?HTTP_GET}=Context, DocId) ->
     read(DocId, Context);
 validate(#cb_context{req_verb = ?HTTP_POST}=Context, DocId) ->
     update(DocId, Context);
+validate(#cb_context{req_verb = ?HTTP_PATCH}=Context, DocId) ->
+    validate_patch(DocId, Context);
 validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, DocId) ->
     read(DocId, Context).
 
@@ -91,6 +95,10 @@ post(Context, _) ->
 
 -spec put(#cb_context{}) -> #cb_context{}.
 put(Context) ->
+    crossbar_doc:save(Context).
+
+-spec patch(#cb_context{}, path_token()) -> #cb_context{}.
+patch(Context, _) ->
     crossbar_doc:save(Context).
 
 -spec delete(#cb_context{}, path_token()) -> #cb_context{}.
@@ -133,6 +141,28 @@ read(Id, Context) ->
 update(Id, #cb_context{}=Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
     cb_context:validate_request_data(<<"temporal_rules">>, Context, OnSuccess).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Update-merge an existing menu document partially with the data provided, if it is
+%% valid
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_patch(ne_binary(), #cb_context{}) -> #cb_context{}.
+validate_patch(Id, #cb_context{}=Context) ->
+    Context1 = crossbar_doc:load(Id, Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            PatchJObj = wh_doc:public_fields(cb_context:req_data(Context)),
+            TmpRulesJObj = wh_json:merge_jobjs(PatchJObj, cb_context:doc(Context1)),
+
+            lager:debug("patched doc, now validating"),
+            OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
+            cb_context:validate_request_data(<<"temporal_rules">>, cb_context:set_req_data(Context, TmpRulesJObj), OnSuccess);
+        _Status ->
+            Context1
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
