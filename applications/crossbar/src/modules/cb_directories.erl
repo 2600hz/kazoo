@@ -16,6 +16,7 @@
          ,validate/1, validate/2
          ,put/1
          ,post/2
+         ,patch/2
          ,delete/2
         ]).
 
@@ -34,6 +35,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.directories">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.directories">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.directories">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.patch.directories">>, ?MODULE, patch),
     crossbar_bindings:bind(<<"*.execute.delete.directories">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
@@ -50,7 +52,7 @@ init() ->
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 allowed_methods(_) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -87,6 +89,8 @@ validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id) ->
     read(Id, Context);
 validate(#cb_context{req_verb = ?HTTP_POST}=Context, Id) ->
     update(Id, Context);
+validate(#cb_context{req_verb = ?HTTP_PATCH}=Context, Id) ->
+    validate_patch(Id, Context);
 validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Id) ->
     read(Id, Context).
 
@@ -96,6 +100,10 @@ post(Context, _) ->
 
 -spec put(#cb_context{}) -> #cb_context{}.
 put(Context) ->
+    crossbar_doc:save(Context).
+
+-spec patch(#cb_context{}, path_token()) -> #cb_context{}.
+patch(Context, _) ->
     crossbar_doc:save(Context).
 
 -spec delete(#cb_context{}, path_token()) -> #cb_context{}.
@@ -149,6 +157,28 @@ load_directory_users(Id, #cb_context{resp_data=Directory}=Context) ->
 update(DocId, #cb_context{}=Context) ->
     OnSuccess = fun(C) -> on_successful_validation(DocId, C) end,
     cb_context:validate_request_data(<<"directories">>, Context, OnSuccess).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Update-merge an existing conference document partially with the data provided, if it is
+%% valid
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_patch(ne_binary(), #cb_context{}) -> #cb_context{}.
+validate_patch(DocId, #cb_context{}=Context) ->
+    Context1 = crossbar_doc:load(DocId, Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            PatchJObj = wh_doc:public_fields(cb_context:req_data(Context)),
+            DirsJObj = wh_json:merge_jobjs(PatchJObj, cb_context:doc(Context1)),
+
+            lager:debug("patched doc, now validating"),
+            OnSuccess = fun(C) -> on_successful_validation(DocId, C) end,
+            cb_context:validate_request_data(<<"directories">>, cb_context:set_req_data(Context, DirsJObj), OnSuccess);
+        _Status ->
+            Context1
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
