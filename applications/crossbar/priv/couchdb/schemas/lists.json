@@ -20,6 +20,5 @@
       "description": "Patterns used by match list",
       "default": {}
     }
-  },
-  "additionalProperties": false
+  }
 }
