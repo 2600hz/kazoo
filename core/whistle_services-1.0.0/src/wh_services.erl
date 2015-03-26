@@ -47,7 +47,7 @@
 
 -export([calculate_charges/2]).
 
--export([dry_run/2, dry_run/3]).
+-export([dry_run/1]).
 
 -include("whistle_services.hrl").
 
@@ -753,6 +753,7 @@ is_reseller(Account) ->
     Service = public_json(Account),
     wh_json:is_true(<<"reseller">>, Service).
 
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -762,22 +763,39 @@ is_reseller(Account) ->
 -spec calculate_charges(services(), wh_transaction:transactions()) ->
                                wh_json:object().
 calculate_charges(Services, Transactions) ->
-    TransactionCharges = calculate_transactions_charges(Transactions),
+
     case calculate_services_charges(Services) of
-        {'error', _} -> wh_json:new();
-        {'no_plan', _} -> wh_json:new();
+        {'error', _} ->
+            wh_json:new();
+                {'no_plan', _} -> wh_json:new();
         {'ok', PlansCharges} ->
-            wh_json:merge_jobjs(TransactionCharges, PlansCharges)
+            calculate_transactions_charges(PlansCharges, Transactions)
     end.
 
--spec calculate_services_charges(services()) ->
-                                        {'no_plan', wh_json:object()} |
-                                        {'error', wh_json:object()} |
-                                        {'ok', wh_json:object()}.
--spec calculate_services_charges(services(), wh_service_plans:plans()) ->
-                                        {'error', wh_json:object()} |
-                                        {'ok', wh_json:object()}.
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
 
+%% @end
+%%--------------------------------------------------------------------
+-spec dry_run(services()) -> wh_json:object().
+dry_run(Services) ->
+    ActivationsCharges = dry_run_activation_charges(Services),
+    calculate_charges(Services, ActivationsCharges).
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec calculate_services_charges(services()) ->
+                                        {'no_plan' | 'error' | 'ok', wh_json:object()}.
+-spec calculate_services_charges(services(), wh_service_plans:plans()) ->
+                                        {'error' | 'ok', wh_json:object()}.
 calculate_services_charges(#wh_services{jobj=ServiceJObj}=Services) ->
     case wh_service_plans:from_service_json(ServiceJObj) of
         [] -> {'no_plan', wh_json:new()};
@@ -794,56 +812,92 @@ calculate_services_charges(#wh_services{jobj=ServiceJObj}=Services, ServicePlans
             {'ok', wh_service_items:public_json(Changed)}
     end.
 
--spec calculate_transactions_charges(wh_transaction:transactions()) ->
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec calculate_transactions_charges(wh_json:object(), wh_transaction:transactions()) ->
                                             wh_json:object().
-calculate_transactions_charges(Transactions) ->
-    lists:foldl(fun calculate_transactions_charge_fold/2
-                ,wh_json:new()
-                ,Transactions
-               ).
+calculate_transactions_charges(PlansCharges, Transactions) ->
+    lists:foldl(
+      fun calculate_transactions_charge_fold/2
+      ,PlansCharges
+      ,Transactions
+     ).
 
 -spec calculate_transactions_charge_fold(wh_transaction:transaction(), wh_json:object()) ->
                                                 wh_json:object().
 calculate_transactions_charge_fold(Transaction, Acc) ->
-    Rate = value_or_default(wh_transaction:amount(Transaction), 0),
-    Description = value_or_default(wh_transaction:description(Transaction), <<>>),
-
-    wh_json:set_values(
-      [{<<"activation_charges">>, wht_util:units_to_dollars(Rate)}
-       ,{<<"activation_charges_description">>, Description}
-      ]
-      ,Acc
-     ).
-
--spec value_or_default('undefined' | Value, Default) -> Value | Default.
-value_or_default('undefined', Default) -> Default;
-value_or_default(Value, _Default) -> Value.
+    Amount = wht_util:units_to_dollars(wh_transaction:amount(Transaction)),
+    Total = wh_json:get_value(<<"activation_charges">>, Acc, 0),
+    case Total + Amount of
+        Zero when Zero == 0 ->
+            %% Works for 0.0 and 0. May compare to a threshold though#
+            Acc;
+        ActivationCharges ->
+            Props =
+                case wh_transaction:metadata(Transaction) of
+                    %% This is for phone numbers as they are not setting the metadata
+                    'undefined' ->
+                        [{<<"activation_charges">>, ActivationCharges}];
+                    MetaData ->
+                        Category = wh_json:get_value(<<"category">>, MetaData),
+                        Class    = wh_json:get_value(<<"class">>, MetaData),
+                        [{<<"activation_charges">>, ActivationCharges}
+                        ,{[Category, Class, <<"activation_charges">>], Amount}
+                        ]
+                end,
+            wh_json:set_values(Props, Acc)
+    end.
 
 %%--------------------------------------------------------------------
-%% @public
+%% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
--spec dry_run(ne_binary(), [{ne_binary(), ne_binary(), integer()}]) -> wh_json:object().
--spec dry_run(ne_binary(), [{ne_binary(), ne_binary(), integer()}], any()) -> wh_json:object().
-dry_run(Account, Updates) ->
-    dry_run(Account, Updates, []).
+-spec dry_run_activation_charges(services()) -> wh_transactions:transactions().
+-spec dry_run_activation_charges(ne_binary(), wh_json:object()
+                                 ,services(), wh_transactions:transactions()) -> wh_transactions:transactions().
+-spec dry_run_activation_charges(ne_binary(), ne_binary()
+                                 ,wh_json:object(), services()
+                                 ,wh_transactions:transactions()) -> wh_transactions:transactions().
+dry_run_activation_charges(#wh_services{updates=Updates}=Services) ->
+    wh_json:foldl(
+      fun(Category, CategoryJObj, Acc) ->
+              dry_run_activation_charges(Category, CategoryJObj, Services, Acc)
+      end
+      ,[]
+      ,Updates
+     ).
 
-dry_run(Account, Updates, Transactions) ->
-    Services = fetch(Account),
-    UpdatedServices = dry_run_update(Updates, Services),
-    calculate_charges(UpdatedServices, Transactions).
+dry_run_activation_charges(Category, CategoryJObj, Services, Transactions) ->
+    wh_json:foldl(
+      fun(Class, Quantity, Acc1) ->
+              dry_run_activation_charges(Category, Class, Quantity, Services, Acc1)
+      end
+      ,Transactions
+      ,CategoryJObj
+     ).
 
--spec dry_run_update([{ne_binary(), ne_binary(), integer()}], services()) -> services().
-dry_run_update([], Services) -> Services;
-dry_run_update([{Category, Classification, Quantity}|Updates], Services) ->
-    NewServices = wh_services:update(Category, Classification, Quantity, Services),
-    dry_run_update(Updates, NewServices).
-
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
+dry_run_activation_charges(Category, Class, Quantity, #wh_services{jobj=JObj}=Services, Transactions) ->
+    case wh_json:get_value([?QUANTITIES, Category, Class], JObj, 0) of
+        Quantity -> Transactions;
+        _OldQ ->
+            AccountId = wh_services:account_id(Services),
+            Amount = wht_util:dollars_to_units(activation_charges(Category, Class, Services)),
+            MetaData =
+                wh_json:from_list(
+                  [{<<"category">>, Category}
+                   ,{<<"class">>, Class}
+                  ]),
+            Transaction =
+                wh_transaction:set_metadata(
+                  MetaData
+                  ,wh_transaction:debit(AccountId, Amount*Quantity)
+                 ),
+            [Transaction|Transactions]
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
