@@ -18,7 +18,7 @@
 -spec prev_year_month(ne_binary()) -> {wh_year(), wh_month()}.
 -spec prev_year_month(wh_year(), wh_month()) -> {wh_year(), wh_month()}.
 prev_year_month(AccountMod) ->
-    {_AccountId, Year, Month} = kazoo_modb_util:split_account_mod(AccountMod),
+    {_AccountId, Year, Month} = ?MODULE:split_account_mod(AccountMod),
     prev_year_month(Year, Month).
 
 prev_year_month(Year, 1) -> {Year-1, 12};

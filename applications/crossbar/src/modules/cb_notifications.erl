@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -82,7 +82,6 @@ authorize(Context, AuthAccountId, [{<<"notifications">>, _Id}]) ->
     cb_context:req_verb(Context) =:= ?HTTP_GET
         orelse AuthAccountId =:= MasterAccountId;
 authorize(_Context, _AuthAccountId, _Nouns) ->
-    lager:debug("not authz ~s for ~p", [_AuthAccountId, _Nouns]),
     'false'.
 
 %%--------------------------------------------------------------------
@@ -149,7 +148,7 @@ content_types_provided(Context, _Id, _Verb) ->
 
 -spec maybe_set_content_types(cb_context:context()) -> cb_context:context().
 maybe_set_content_types(Context) ->
-    case wh_json:get_value(<<"_attachments">>, cb_context:doc(Context)) of
+    case wh_doc:attachments(cb_context:doc(Context)) of
         'undefined' -> Context;
         Attachments -> set_content_types(Context, Attachments)
     end.
@@ -268,7 +267,9 @@ post(Context, Id) ->
 do_post(Context) ->
     Context1 = crossbar_doc:save(Context),
     case cb_context:resp_status(Context1) of
-        'success' -> leak_doc_id(Context1);
+        'success' ->
+            maybe_note_notification_preference(Context1),
+            leak_doc_id(Context1);
         _Status -> Context1
     end.
 
@@ -277,7 +278,7 @@ post(Context, Id, ?PREVIEW) ->
 
     {API, _} = lists:foldl(fun preview_fold/2
                            ,{Preview, cb_context:doc(Context)}
-                           ,wapi_notifications:headers(Id)
+                           ,headers(Id)
                           ),
 
     case wh_amqp_worker:call(API
@@ -327,6 +328,12 @@ handle_preview_response(Context, Resp) ->
             crossbar_util:response_202(<<"Notification processing">>, Context)
     end.
 
+-spec headers(ne_binary()) -> wh_proplist().
+headers(<<"voicemail_to_email">>) ->
+    wapi_notifications:headers(<<"voicemail">>);
+headers(Id) ->
+    wapi_notifications:headers(Id).
+
 -spec publish_fun(ne_binary()) -> fun((api_terms()) -> 'ok').
 publish_fun(<<"voicemail_to_email">>) ->
     fun wapi_notifications:publish_voicemail/1;
@@ -334,6 +341,36 @@ publish_fun(<<"voicemail_full">>) ->
     fun wapi_notifications:publish_voicemail_full/1;
 publish_fun(<<"fax_inbound_to_email">>) ->
     fun wapi_notifications:publish_fax_inbound/1;
+publish_fun(<<"fax_inbound_error_to_email">>) ->
+    fun wapi_notifications:publish_fax_inbound_error/1;
+publish_fun(<<"fax_outbound_to_email">>) ->
+    fun wapi_notifications:publish_fax_outbound/1;
+publish_fun(<<"fax_outbound_error_to_email">>) ->
+    fun wapi_notifications:publish_fax_outbound_error/1;
+publish_fun(<<"low_balance">>) ->
+    fun wapi_notifications:publish_low_balance/1;
+publish_fun(<<"new_account">>) ->
+    fun wapi_notifications:publish_new_account/1;
+publish_fun(<<"new_user">>) ->
+    fun wapi_notifications:publish_new_user/1;
+publish_fun(<<"deregister">>) ->
+    fun wapi_notifications:publish_deregister/1;
+publish_fun(<<"transaction">>) ->
+    fun wapi_notifications:publish_transaction/1;
+publish_fun(<<"password_recovery">>) ->
+    fun wapi_notifications:publish_pwd_recovery/1;
+publish_fun(<<"system_alert">>) ->
+    fun wapi_notifications:publish_system_alert/1;
+publish_fun(<<"cnam_request">>) ->
+    fun wapi_notifications:publish_cnam_request/1;
+publish_fun(<<"topup">>) ->
+    fun wapi_notifications:publish_topup/1;
+publish_fun(<<"port_request">>) ->
+    fun wapi_notifications:publish_port_request/1;
+publish_fun(<<"port_cancel">>) ->
+    fun wapi_notifications:publish_port_cancel/1;
+publish_fun(<<"ported">>) ->
+    fun wapi_notifications:publish_ported/1;
 publish_fun(_Id) ->
     lager:debug("no wapi_notification:publish_~s/1 defined", [_Id]),
     fun(_Any) -> 'ok' end.
@@ -342,8 +379,10 @@ publish_fun(_Id) ->
                           {wh_proplist(), wh_json:object()}.
 preview_fold(Header, {Props, ReqData}) ->
     case wh_json:get_first_defined([Header, wh_json:normalize_key(Header)], ReqData) of
-        'undefined' -> {props:insert_value(Header, Header, Props), ReqData};
-        V -> {props:set_value(Header, V, Props), ReqData}
+        'undefined' ->
+            {props:insert_value(Header, Header, Props), ReqData};
+        V ->
+            {props:set_value(Header, V, Props), ReqData}
     end.
 
 %%--------------------------------------------------------------------
@@ -391,7 +430,11 @@ maybe_delete_template(Context, Id, ContentType, TemplateJObj) ->
     case wh_doc:attachment(TemplateJObj, AttachmentName) of
         'undefined' ->
             lager:debug("failed to find attachment ~s", [AttachmentName]),
-            cb_context:add_system_error('bad_identifier', [{'details', ContentType}],  Context);
+            cb_context:add_system_error(
+                'bad_identifier'
+                ,wh_json:from_list([{<<"cause">>, ContentType}])
+                , Context
+            );
         _Attachment ->
             lager:debug("attempting to delete attachment ~s", [AttachmentName]),
             crossbar_doc:delete_attachment(kz_notification:db_id(Id), AttachmentName, Context)
@@ -601,14 +644,15 @@ maybe_note_notification_preference(Context) ->
 maybe_note_notification_preference(AccountDb, AccountJObj) ->
     case kz_account:notification_preference(AccountJObj) of
         'undefined' -> note_notification_preference(AccountDb, AccountJObj);
-        _Pref -> lager:debug("account already prefers ~s", [_Pref])
+        <<"teletype">> -> lager:debug("account already prefers teletype");
+        _Pref -> note_notification_preference(AccountDb, AccountJObj)
     end.
 
 -spec note_notification_preference(ne_binary(), wh_json:object()) -> 'ok'.
 note_notification_preference(AccountDb, AccountJObj) ->
     case couch_mgr:save_doc(AccountDb
                             ,kz_account:set_notification_preference(AccountJObj
-                                                                    ,kz_notification:pvt_type()
+                                                                    ,<<"teletype">>
                                                                    )
                            )
     of
@@ -675,18 +719,18 @@ maybe_read_template(Context, Id, Accept) ->
 read_template(Context, Id, Accept) ->
     Doc = cb_context:fetch(Context, 'db_doc'),
     AttachmentName = attachment_name_by_media_type(Accept),
-    case wh_json:get_value([<<"_attachments">>, AttachmentName], Doc) of
+    case wh_doc:attachment(Doc, AttachmentName) of
         'undefined' ->
             lager:debug("failed to find attachment ~s in ~s", [AttachmentName, Id]),
             crossbar_util:response_faulty_request(Context);
-        Meta ->
+        _Meta ->
             lager:debug("found attachment ~s in ~s", [AttachmentName, Id]),
 
             cb_context:add_resp_headers(
               read_account_attachment(Context, Id, AttachmentName)
               ,[{<<"Content-Disposition">>, attachment_filename(Id, Accept)}
-                ,{<<"Content-Type">>, wh_json:get_value(<<"content_type">>, Meta)}
-                ,{<<"Content-Length">>, wh_json:get_value(<<"length">>, Meta)}
+                ,{<<"Content-Type">>, wh_doc:attachment_content_type(Doc, AttachmentName)}
+                ,{<<"Content-Length">>, wh_doc:attachment_length(Doc, AttachmentName)}
                ])
     end.
 

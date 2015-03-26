@@ -748,6 +748,7 @@ format_status(_Opt, [_PDict, #state{module=Module
                     }]
     end.
 
+
 -spec distribute_event(wh_json:object(), basic_deliver(), state()) -> 'ok'.
 distribute_event(JObj, BasicDeliver, State) ->
     case callback_handle_event(JObj, BasicDeliver, State) of

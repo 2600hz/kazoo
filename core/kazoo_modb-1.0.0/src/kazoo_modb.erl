@@ -17,6 +17,7 @@
 -export([maybe_archive_modb/1]).
 -export([refresh_views/1]).
 -export([create/1]).
+-export([maybe_delete/2]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -115,13 +116,13 @@ couch_open(AccountMODb, DocId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec save_doc(ne_binary(), ne_binary()) ->
+-spec save_doc(ne_binary(), wh_json:object()) ->
                       {'ok', wh_json:object()} |
                       {'error', atom()}.
--spec save_doc(ne_binary(), ne_binary(), integer()) ->
+-spec save_doc(ne_binary(), wh_json:object(), integer()) ->
                       {'ok', wh_json:object()} |
                       {'error', atom()}.
--spec save_doc(ne_binary(), ne_binary(), integer(), integer()) ->
+-spec save_doc(ne_binary(), wh_json:object(), integer(), integer()) ->
                       {'ok', wh_json:object()} |
                       {'error', atom()}.
 save_doc(Account, Doc) ->
@@ -136,7 +137,7 @@ save_doc(Account, Doc, Year, Month) ->
     AccountMODb = get_modb(Account, Year, Month),
     couch_save(AccountMODb, Doc, 3).
 
--spec couch_save(ne_binary(), ne_binary(), integer()) ->
+-spec couch_save(ne_binary(), wh_json:object(), integer()) ->
                         {'ok', wh_json:object()} |
                         {'error', atom()}.
 couch_save(AccountMODb, _Doc, 0) ->
@@ -286,3 +287,26 @@ should_archive(AccountMODb, Year, Month) ->
             ModbMonths = (ModbYear * 12) + ModbMonth,
             (Months - ModbMonths) > whapps_config:get_integer(?CONFIG_CAT, <<"active_modbs">>, 6)
     end.
+
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Delete an modb if it is no longer associated with its account.
+%% (That is: orphaned).
+%% AccountMODb must be 'encoded' otherwise couch_mgr:db_delete/1 will fail.
+%% AccountIds should be whapps_util:get_all_accounts('raw').
+%% Returns whether AccountMODb has been deleted.
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_delete(ne_binary(), [ne_binary()]) -> boolean().
+maybe_delete(AccountMODb, AccountIds) ->
+    AccountId = wh_util:format_account_id(AccountMODb, 'raw'),
+    IsOrphaned = not lists:member(AccountId, AccountIds),
+    delete_if_orphaned(AccountMODb, IsOrphaned).
+
+-spec delete_if_orphaned(ne_binary(), boolean()) -> boolean().
+delete_if_orphaned(_AccountMODb, 'false') -> 'false';
+delete_if_orphaned(AccountMODb, 'true') ->
+    Succeeded = couch_mgr:db_delete(AccountMODb),
+    lager:debug("cleanse orphaned modb ~p... ~p", [AccountMODb,Succeeded]),
+    Succeeded.

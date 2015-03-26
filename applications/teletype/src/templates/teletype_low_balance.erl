@@ -4,32 +4,32 @@
 %%%
 %%% @end
 %%% @contributors
-%%%   James Aimonetti
+%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
--module(teletype_template_skel).
+-module(teletype_low_balance).
 
 -export([init/0
-         ,handle_req/2
+         ,handle_low_balance/2
         ]).
 
 -include("../teletype.hrl").
 
--define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".skel">>).
+-define(TEMPLATE_ID, <<"low_balance">>).
+-define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
 
--define(TEMPLATE_ID, <<"skel">>).
 -define(TEMPLATE_MACROS
         ,wh_json:from_list(
            [?MACRO_VALUE(<<"user.first_name">>, <<"first_name">>, <<"First Name">>, <<"First Name">>)
             ,?MACRO_VALUE(<<"user.last_name">>, <<"last_name">>, <<"Last Name">>, <<"Last Name">>)
-            | ?SERVICE_MACROS
+            | ?SERVICE_MACROS ++ ?ACCOUNT_MACROS
            ])
        ).
 
--define(TEMPLATE_TEXT, <<"Hi {{user.first_name}} {{user.last_name}}.\n\nThis is the skeleton template\nBrought to you by {{service.name}}">>).
--define(TEMPLATE_HTML, <<"<p>Hi {{user.first_name}} {{user.last_name}}.</p><p>This is the skeleton template</p><p>Brought to you by {{service.name}}</p>">>).
--define(TEMPLATE_SUBJECT, <<"Skeleton Template">>).
--define(TEMPLATE_CATEGORY, <<"skel">>).
--define(TEMPLATE_NAME, <<"Skeleton">>).
+-define(TEMPLATE_TEXT, <<"The account \"{{account.name}}\" has less than {{threshold}} of credit remaining.\nIf the account runs out of credit it will not be able to make or receive per-minute calls.\nThe current balance is: {{current_balance}}\n\nAccount ID: {{account.id}}">>).
+-define(TEMPLATE_HTML, <<"<html><body><h2>The account \"{{account.name}}\" has less than {{threshold}} of credit remaining.</h2><p>Current Balance: {{current_balance}}</p><p>If the account runs out of credit it will not be able to make or receive per-minute calls.</body></html>">>).
+-define(TEMPLATE_SUBJECT, <<"Account {{account.name}} is running out of credit">>).
+-define(TEMPLATE_CATEGORY, <<"account">>).
+-define(TEMPLATE_NAME, <<"Low Balance">>).
 
 -define(TEMPLATE_TO, ?CONFIGURED_EMAILS(?EMAIL_ORIGINAL)).
 -define(TEMPLATE_FROM, teletype_util:default_from_address(?MOD_CONFIG_CAT)).
@@ -54,23 +54,48 @@ init() ->
                                                ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                               ]).
 
--spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_req(JObj, _Props) ->
-    'true' = wapi_notifications:skel_v(JObj),
+-spec handle_low_balance(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_low_balance(JObj, _Props) ->
+    'true' = wapi_notifications:low_balance_v(JObj),
     wh_util:put_callid(JObj),
 
     %% Gather data for template
-    DataJObj = wh_json:normalize(wh_api:remove_defaults(JObj)),
+    DataJObj = wh_json:normalize(JObj),
 
     case teletype_util:should_handle_notification(DataJObj) of
         'false' -> lager:debug("notification handling not configured for this account");
-        'true' -> handle_req(DataJObj)
+        'true' -> handle_req(add_account(DataJObj))
     end.
+
+-spec add_account(wh_json:object()) -> wh_json:object().
+add_account(DataJObj) ->
+    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+    wh_json:set_value(<<"account">>, AccountJObj, DataJObj).
+
+-spec get_balance_threshold(wh_json:object()) -> float().
+get_balance_threshold(DataJObj) ->
+    Default = 5.00,
+    Key = [<<"account">>, <<"topup">>, <<"threshold">>],
+    wh_json:get_float_value(Key, DataJObj, Default).
+
+-spec get_current_balance(wh_json:object()) -> float().
+get_current_balance(DataJObj) ->
+    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
+    Units = wht_util:current_balance(AccountId),
+    wht_util:units_to_dollars(Units).
 
 -spec handle_req(wh_json:object()) -> 'ok'.
 handle_req(DataJObj) ->
+    teletype_util:send_update(DataJObj, <<"pending">>),
+
     ServiceData = teletype_util:service_params(DataJObj, ?MOD_CONFIG_CAT),
-    Macros = [{<<"service">>, ServiceData} | build_macro_data(DataJObj)],
+    Macros = [{<<"service">>, ServiceData}
+             ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
+             ,{<<"current_balance">>, pretty_print_dollars(get_current_balance(DataJObj))}
+             ,{<<"threshold">>, pretty_print_dollars(get_balance_threshold(DataJObj))}
+              | build_macro_data(DataJObj)],
 
     %% Load templates
     Templates = teletype_util:fetch_templates(?TEMPLATE_ID, DataJObj),
@@ -99,6 +124,11 @@ handle_req(DataJObj) ->
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
+
+%% @private
+-spec pretty_print_dollars(float()) -> ne_binary().
+pretty_print_dollars(Amount) ->
+    wh_util:to_binary(io_lib:format("$~.2f", [Amount])).
 
 -spec build_macro_data(wh_json:object()) -> wh_proplist().
 build_macro_data(DataJObj) ->

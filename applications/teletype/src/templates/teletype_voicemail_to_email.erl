@@ -70,8 +70,11 @@ handle_new_voicemail(JObj, _Props) ->
 
     AccountDb = wh_json:get_value(<<"account_db">>, DataJObj),
 
-    {'ok', VMBox} = couch_mgr:open_cache_doc(AccountDb, wh_json:get_value(<<"voicemail_box">>, DataJObj)),
-    {'ok', UserJObj} = couch_mgr:open_cache_doc(AccountDb, wh_json:get_value(<<"owner_id">>, VMBox)),
+    VMBoxId = wh_json:get_value(<<"voicemail_box">>, DataJObj),
+    {'ok', VMBox} = teletype_util:open_doc(<<"voicemail">>, VMBoxId, DataJObj),
+
+    UserId = wh_json:get_value(<<"owner_id">>, VMBox),
+    {'ok', UserJObj} = teletype_util:open_doc(<<"user">>, UserId, DataJObj),
     Email = wh_json:get_ne_value(<<"email">>, UserJObj),
 
     case teletype_util:should_handle_notification(DataJObj)
@@ -87,19 +90,26 @@ handle_new_voicemail(JObj, _Props) ->
                         ,[wh_json:get_value(<<"owner_id">>, VMBox)]
                        ),
 
-            {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb
-                                                           ,wh_util:format_account_id(AccountDb, 'raw')
-                                                          ),
+            AccountId = wh_util:format_account_id(AccountDb, 'raw'),
+            {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
+
             Emails = [Email | wh_json:get_value(<<"notify_email_address">>, VMBox, [])],
-            process_req(
-              wh_json:set_values([{<<"voicemail">>, VMBox}
-                                  ,{<<"owner">>, UserJObj}
-                                  ,{<<"account">>, AccountJObj}
-                                  ,{<<"to">>, Emails}
-                                 ]
-                                 ,DataJObj
-                                )
-             )
+
+            ReqData =
+                wh_json:set_values(
+                    [{<<"voicemail">>, VMBox}
+                     ,{<<"owner">>, UserJObj}
+                     ,{<<"account">>, AccountJObj}
+                     ,{<<"to">>, Emails}
+                    ]
+                    ,DataJObj
+                ),
+
+            case teletype_util:is_preview(DataJObj) of
+                'false' -> process_req(ReqData);
+                'true' ->
+                    process_req(wh_json:merge_jobjs(DataJObj, ReqData))
+            end
     end.
 
 -spec process_req(wh_json:object()) -> 'ok'.
@@ -129,7 +139,6 @@ process_req(DataJObj) ->
                ),
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
-
     %% Send email
     case teletype_util:send_email(Emails
                                   ,Subject
@@ -188,7 +197,7 @@ get_extension(MediaJObj) ->
     case wh_json:get_value(<<"media_type">>, MediaJObj) of
         'undefined' ->
             lager:debug("getting extension from attachment mime"),
-            attachment_to_extension(wh_json:get_value(<<"_attachments">>, MediaJObj));
+            attachment_to_extension(wh_doc:attachments(MediaJObj));
         MediaType -> MediaType
     end.
 
@@ -250,7 +259,7 @@ build_callee_id_data(DataJObj) ->
 
 -spec build_date_called_data(wh_json:object()) -> wh_proplist().
 build_date_called_data(DataJObj) ->
-    DateCalled = wh_json:get_integer_value(<<"voicemail_timestamp">>, DataJObj),
+    DateCalled = date_called(DataJObj),
     DateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
 
     Timezone = wh_json:get_first_defined([[<<"voicemail">>, <<"timezone">>]
@@ -268,6 +277,12 @@ build_date_called_data(DataJObj) ->
       [{<<"utc">>, localtime:local_to_utc(DateTime, ClockTimezone)}
        ,{<<"local">>, localtime:local_to_local(DateTime, ClockTimezone, Timezone)}
       ]).
+
+-spec date_called(api_object() | gregorian_seconds()) -> gregorian_seconds().
+date_called(Timestamp) when is_integer(Timestamp) -> Timestamp;
+date_called('undefined') -> wh_util:current_tstamp();
+date_called(DataJObj) ->
+    date_called(wh_json:get_integer_value(<<"voicemail_timestamp">>, DataJObj)).
 
 -spec build_voicemail_data(wh_json:object()) -> wh_proplist().
 build_voicemail_data(DataJObj) ->

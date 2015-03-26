@@ -8,7 +8,9 @@
 %%%-------------------------------------------------------------------
 -module(teletype_fax_util).
 
--export([convert/3]).
+-export([convert/3
+         ,get_fax_doc/1
+        ]).
 
 -include("../teletype.hrl").
 
@@ -94,4 +96,33 @@ wait_for_results(Port, Acc) ->
             lager:debug("port info: ~p", [erlang:port_info(Port)]),
             catch erlang:port_close(Port),
             {'error', iolist_to_binary(Acc)}
+    end.
+
+-spec get_fax_doc(wh_json:object()) -> wh_json:object().
+-spec get_fax_doc(wh_json:object(), boolean()) -> wh_json:object().
+get_fax_doc(DataJObj) ->
+    get_fax_doc(DataJObj, teletype_util:is_preview(DataJObj)).
+
+get_fax_doc(DataJObj, 'true') ->
+    FaxId = wh_json:get_value(<<"fax_id">>, DataJObj),
+    case teletype_util:open_doc(<<"fax">>, FaxId, DataJObj) of
+        {'ok', JObj} -> JObj;
+        {'error', _E} -> wh_json:new()
+    end;
+get_fax_doc(DataJObj, 'false') ->
+    FaxId = wh_json:get_value(<<"fax_id">>, DataJObj),
+    case teletype_util:open_doc(<<"fax">>, FaxId, DataJObj) of
+        {'ok', JObj} -> JObj;
+        {'error', _E} -> get_fax_doc_from_modb(DataJObj, FaxId)
+    end.    
+
+-spec get_fax_doc_from_modb(wh_json:object(), ne_binary()) -> wh_json:object().
+get_fax_doc_from_modb(DataJObj, FaxId) ->
+    AccountId = teletype_util:find_account_id(DataJObj),
+    case kazoo_modb:open_doc(AccountId, FaxId) of
+        {'ok', FaxJObj} -> FaxJObj;
+        {'error', _E} ->
+            lager:debug("failed to find fax ~s: ~p", [FaxId, _E]),
+            teletype_util:send_update(DataJObj, <<"failed">>, <<"Fax-ID was invalid">>),
+            throw({'error', 'no_fax_id'})
     end.

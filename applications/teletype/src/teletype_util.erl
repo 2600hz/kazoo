@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014, 2600Hz INC
+%%% @copyright (C) 2014-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -15,20 +15,37 @@
          ,send_email/4, send_email/5
          ,render_subject/2, render/3
          ,service_params/2, service_params/3
+         ,account_params/1
          ,send_update/2, send_update/3
          ,find_addresses/3
          ,find_account_rep_email/1
          ,find_account_admin_email/1
+         ,find_account_admin/1
          ,find_account_id/1
-         ,find_account_db/1
+         ,find_account_db/1, find_account_db/2
          ,is_notice_enabled/3
          ,should_handle_notification/1
 
          ,default_from_address/1
          ,default_reply_to/1
+
+         ,open_doc/3
+         ,is_preview/1
+
+         ,public_proplist/2
+
+         ,add_account/1
+
+         ,get_balance_threshold/1
+         ,get_topup_amount/1
         ]).
 
 -include("teletype.hrl").
+
+-define(TEMPLATE_RENDERING_ORDER, [{<<"text/plain">>, 3}
+                                   ,{<<"text/html">>, 2}
+                                  ]).
+-define(PATH, <<"../applications/teletype/src/preview_data">>).
 
 -spec send_email(email_map(), ne_binary(), wh_proplist(), rendered_templates()) ->
                         'ok' | {'error', _}.
@@ -61,7 +78,7 @@ send_email(Emails, Subject, ServiceData, RenderedTemplates, Attachments) ->
 
     relay_email(To, From, Email).
 
--spec email_body(wh_proplist(), wh_proplist()) -> mimemail:mimetuple().
+-spec email_body(rendered_templates(), wh_proplist()) -> mimemail:mimetuple().
 email_body(RenderedTemplates, ServiceData) ->
     {<<"multipart">>
      ,<<"alternative">>
@@ -225,11 +242,11 @@ add_attachments([{ContentType, Filename, Content}|As], Acc) ->
     lager:debug("adding attachment ~s (~s)", [Filename, ContentType]),
     add_attachments(As, [Attachment | Acc]).
 
--spec add_rendered_templates_to_email(wh_proplist(), wh_proplist()) -> mime_tuples().
+-spec add_rendered_templates_to_email(rendered_templates(), wh_proplist()) -> mime_tuples().
 add_rendered_templates_to_email(RenderedTemplates, ServiceData) ->
-    add_rendered_templates_to_email(RenderedTemplates, service_charset(ServiceData), []).
+    add_rendered_templates_to_email(sort_templates(RenderedTemplates), service_charset(ServiceData), []).
 
--spec add_rendered_templates_to_email(wh_proplist(), binary(), mime_tuples()) -> mime_tuples().
+-spec add_rendered_templates_to_email(rendered_templates(), binary(), mime_tuples()) -> mime_tuples().
 add_rendered_templates_to_email([], _Charset, Acc) -> Acc;
 add_rendered_templates_to_email([{ContentType, Content}|Rs], Charset, Acc) ->
     [Type, SubType] = binary:split(ContentType, <<"/">>),
@@ -288,13 +305,33 @@ service_params(APIJObj, ConfigCat, AccountId) ->
      ,{<<"host">>, wh_util:to_binary(net_adm:localhost())}
     ].
 
+-spec account_params(wh_json:object()) -> wh_proplist().
+account_params(DataJObj) ->
+    case find_account_id(DataJObj) of
+        'undefined' -> [];
+        AccountId -> find_account_params(DataJObj, AccountId)
+    end.
+
+-spec find_account_params(wh_json:object(), ne_binary()) -> wh_proplist().
+find_account_params(DataJObj, AccountId) ->
+    case open_doc(<<"account">>, AccountId, DataJObj) of
+        {'ok', AccountJObj} ->
+            [{<<"name">>, kz_account:name(AccountJObj)}
+             ,{<<"realm">>, kz_account:realm(AccountJObj)}
+             ,{<<"id">>, kz_account:id(AccountJObj)}
+             ,{<<"language">>, kz_account:language(AccountJObj)}
+             ,{<<"timezone">>, kz_account:timezone(AccountJObj)}
+            ];
+        {'error', _E} ->
+            lager:debug("failed to find account doc for ~s: ~p", [AccountId, _E]),
+            []
+    end.
+
 -spec find_notification_settings(ne_binaries(), api_binary()) -> wh_json:object().
 find_notification_settings(_, 'undefined') -> wh_json:new();
 find_notification_settings([_, Module], AccountId) ->
-    case couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded')
-                                  ,AccountId
-                                 )
-    of
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
         {'error', _E} -> wh_json:new();
         {'ok', AccountJObj} ->
             lager:debug("looking for notifications '~s' service info in: ~s"
@@ -417,25 +454,28 @@ init_template(Id, Params) ->
 create_template(MasterAccountDb, DocId, Params) ->
     {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
     lager:debug("attempting to create template ~s", [DocId]),
+
     TemplateJObj =
         wh_doc:update_pvt_parameters(
           wh_json:from_list([{<<"_id">>, DocId}])
           ,MasterAccountDb
           ,[{'account_db', MasterAccountDb}
             ,{'account_id', MasterAccountId}
-            ,{'type', ?PVT_TYPE}
+            ,{'type', kz_notification:pvt_type()}
            ]),
 
     {'ok', UpdatedTemplateJObj} = save_template(MasterAccountDb, TemplateJObj),
+    lager:debug("created base template ~s(~s)", [DocId, wh_doc:revision(UpdatedTemplateJObj)]),
+
     case update_template(MasterAccountDb, UpdatedTemplateJObj, Params) of
-        {'ok', _} -> lager:debug("template created");
+        {'ok', _OK} -> lager:debug("template ~s(~s) created", [DocId, wh_doc:revision(_OK)]);
         {'error', _E} -> lager:debug("failed template update: ~p", [_E])
     end.
 
 -spec maybe_update_template(ne_binary(), wh_json:object(), init_params()) -> 'ok'.
 maybe_update_template(MasterAccountDb, TemplateJObj, Params) ->
-    case wh_json:is_true(<<"pvt_deleted">>, TemplateJObj) of
-        'true' -> lager:debug("template is currently soft-deleted");
+    case wh_doc:is_soft_deleted(TemplateJObj) of
+        'true' -> lager:warning("template is currently soft-deleted");
         'false' ->
             case update_template(MasterAccountDb, TemplateJObj, Params) of
                 'ok' -> 'ok';
@@ -464,7 +504,9 @@ save_template(MasterAccountDb, TemplateJObj) ->
 
     case couch_mgr:save_doc(MasterAccountDb, SaveJObj) of
         {'ok', _JObj}=OK ->
-            lager:debug("saved updated template to ~s", [MasterAccountDb]),
+            lager:debug("saved updated template ~s(~s) to ~s"
+                        ,[wh_doc:id(_JObj), wh_doc:revision(_JObj), MasterAccountDb]
+                       ),
             OK;
         {'error', _E}=E ->
             lager:debug("failed to save template to ~s: ~p", [MasterAccountDb, _E]),
@@ -477,6 +519,7 @@ save_template(MasterAccountDb, TemplateJObj) ->
                                          update_template_acc().
 update_template_from_params(MasterAccountDb, TemplateJObj, Params) ->
     lists:foldl(fun(Param, Acc) ->
+                        lager:debug("maybe updating param ~p", [Param]),
                         update_template_from_param(Param, Acc, MasterAccountDb)
                 end
                 ,{'false', TemplateJObj}
@@ -549,7 +592,7 @@ update_template_field('undefined', Acc, _GetFun, _SetFun) -> Acc;
 update_template_field(Value, {_IsUpdated, TemplateJObj}=Acc, GetFun, SetFun) ->
     case GetFun(TemplateJObj) of
         'undefined' ->
-            lager:debug("updating field to ~p: ~p", [Value, GetFun]),
+            lager:debug("updating field to ~p: ~p on ~s", [Value, GetFun, wh_doc:revision(TemplateJObj)]),
             {'true', SetFun(TemplateJObj, Value)};
         _V -> Acc
     end.
@@ -583,7 +626,7 @@ update_template_attachment(Contents, {_IsUpdated, TemplateJObj}=Acc, MasterAccou
 
 -spec update_template_attachment(binary(), update_template_acc(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) ->
                                         update_template_acc().
-update_template_attachment(Contents, {IsUpdated, _TemplateJObj}=Acc
+update_template_attachment(Contents, {IsUpdated, TemplateJObj}=Acc
                            ,MasterAccountDb, ContentType, Id, AName
                           ) ->
     lager:debug("attachment ~s doesn't exist for ~s", [AName, Id]),
@@ -591,7 +634,9 @@ update_template_attachment(Contents, {IsUpdated, _TemplateJObj}=Acc
         {'ok', AttachmentJObj} ->
             lager:debug("saved attachment: ~p", [AttachmentJObj]),
             {'ok', UpdatedJObj} = couch_mgr:open_doc(MasterAccountDb, Id),
-            {IsUpdated, UpdatedJObj};
+            Merged = wh_json:merge_jobjs(UpdatedJObj, TemplateJObj),
+
+            {IsUpdated, Merged};
         {'error', _E} ->
             lager:debug("failed to save attachment ~s: ~p", [AName, _E]),
             Acc
@@ -726,6 +771,15 @@ fetch_templates(TemplateId, AccountDb, Attachments) ->
        || Attachment <- wh_json:to_proplist(Attachments)
       ]).
 
+-spec sort_templates(rendered_templates()) -> rendered_templates().
+sort_templates(RenderedTemplates) ->
+    lists:sort(fun sort_templates/2, RenderedTemplates).
+
+-spec sort_templates({ne_binary(), _}, {ne_binary(), _}) -> boolean().
+sort_templates({K1, _}, {K2, _}) ->
+    props:get_value(K1, ?TEMPLATE_RENDERING_ORDER, 1) =<
+        props:get_value(K2, ?TEMPLATE_RENDERING_ORDER, 1).
+
 -spec find_account_id(wh_json:object()) -> api_binary().
 find_account_id(JObj) ->
     wh_json:get_first_defined([<<"account_id">>
@@ -734,9 +788,19 @@ find_account_id(JObj) ->
                               ]
                               ,JObj
                              ).
+
+-spec find_account_db(ne_binary(), wh_json:object()) -> api_binary().
+find_account_db(<<"account">>, JObj) -> find_account_db_from_id(JObj);
+find_account_db(<<"user">>, JObj) -> find_account_db_from_id(JObj);
+find_account_db(<<"fax">>, JObj) -> find_account_db(JObj);
+find_account_db(<<"port_request">>, _JObj) -> ?KZ_PORT_REQUESTS_DB;
+find_account_db(_, JObj) -> find_account_db_from_id(JObj).
+
+-spec find_account_db(wh_json:object()) -> api_binary().
 find_account_db(JObj) ->
     case wh_json:get_first_defined([<<"account_db">>
                                     ,<<"pvt_account_db">>
+                                    ,<<"Account-DB">>
                                    ]
                                    ,JObj
                                   )
@@ -744,6 +808,8 @@ find_account_db(JObj) ->
         'undefined' -> find_account_db_from_id(JObj);
         Db -> Db
     end.
+
+-spec find_account_db_from_id(wh_json:object()) -> api_binary().
 find_account_db_from_id(JObj) ->
     case find_account_id(JObj) of
         'undefined' -> 'undefined';
@@ -802,17 +868,14 @@ send_update(RespQ, MsgId, Status, Msg) ->
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     lager:debug("notification update (~s) sending to ~s", [Status, RespQ]),
-    wapi_notifications:publish_notify_update(RespQ, Prop).
+    wh_amqp_worker:cast(Prop, fun(P) -> wapi_notifications:publish_notify_update(RespQ, P) end).
 
 -spec find_account_rep_email(api_object() | ne_binary()) -> api_binaries().
 -spec find_account_rep_email(ne_binary(), api_binary()) -> api_binaries().
 -spec find_account_rep_email(ne_binary(), ne_binary(), wh_json:object()) -> api_binaries().
 find_account_rep_email('undefined') -> 'undefined';
 find_account_rep_email(<<_/binary>> = AccountId) ->
-    case wh_services:find_reseller_id(AccountId) of
-        AccountId -> 'undefined';
-        ResellerId -> find_account_rep_email(AccountId, ResellerId)
-    end;
+    find_account_rep_email(AccountId, wh_services:find_reseller_id(AccountId));
 find_account_rep_email(AccountJObj) ->
     find_account_rep_email(
       wh_json:get_first_defined([<<"_id">>, <<"id">>, <<"pvt_account_id">>]
@@ -885,6 +948,40 @@ query_account_for_admin_emails(AccountId) ->
             []
     end.
 
+-spec find_account_admin(api_binary()) -> api_object().
+-spec find_account_admin(ne_binary(), ne_binary()) -> api_object().
+find_account_admin('undefined') -> 'undefined';
+find_account_admin(<<_/binary>> = AccountId) ->
+    find_account_admin(AccountId, wh_services:find_reseller_id(AccountId)).
+
+find_account_admin(AccountId, AccountId) ->
+    query_for_account_admin(AccountId);
+find_account_admin(AccountId, ResellerId) ->
+    case query_for_account_admin(AccountId) of
+        'undefined' -> find_account_admin(ResellerId);
+        Admin -> Admin
+    end.
+
+-spec query_for_account_admin(ne_binary()) -> api_object().
+query_for_account_admin(AccountId) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+
+    ViewOptions = [{'key', <<"user">>}
+                   ,'include_docs'
+                  ],
+
+    case couch_mgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
+        {'ok', []} -> 'undefined';
+        {'ok', Users} ->
+            case filter_for_admins(Users) of
+                [] -> 'undefined';
+                [Admin|_] -> Admin
+            end;
+        {'error', _E} ->
+            lager:debug("failed to find users in ~s: ~p", [AccountId, _E]),
+            'undefined'
+    end.
+
 -spec filter_for_admins(wh_json:objects()) -> wh_json:objects().
 filter_for_admins(Users) ->
     [User
@@ -894,10 +991,32 @@ filter_for_admins(Users) ->
 
 -spec should_handle_notification(wh_json:object()) -> boolean().
 should_handle_notification(DataJObj) ->
-    AccountId = find_account_id(DataJObj),
-    AccountDb = find_account_db(DataJObj),
+    case wh_json:is_true(<<"preview">>, DataJObj, 'false') of
+        'true' -> 'true';
+        'false' ->
+            AccountId = find_account_id(DataJObj),
+            ResellerId = wh_services:find_reseller_id(AccountId),
+            should_handle_notification_for_account(AccountId, ResellerId)
+    end.
+
+-spec should_handle_notification_for_account(api_binary(), ne_binary()) -> boolean().
+should_handle_notification_for_account('undefined', _ResellerId) ->
+    'true';
+should_handle_notification_for_account(AccountId, AccountId) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
-    kz_account:notification_preference(AccountJObj) =/= 'undefined'.
+    kz_account:notification_preference(AccountJObj) =:= ?APP_NAME;
+should_handle_notification_for_account(AccountId, ResellerId) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
+    {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+    {'ok', ResellerJObj} = couch_mgr:open_cache_doc(ResellerDb, ResellerId),
+
+    kz_account:notification_preference(AccountJObj) =:= ?APP_NAME
+        orelse (kz_account:notification_preference(ResellerJObj) =:= ?APP_NAME
+                    andalso kz_account:notification_preference(AccountJObj) =:= 'undefined'
+               )
+        orelse should_handle_notification_for_account(ResellerId, wh_services:find_reseller_id(ResellerId)).
 
 -define(MOD_CONFIG_CAT(Key), <<(?NOTIFY_CONFIG_CAT)/binary, ".", Key/binary>>).
 
@@ -933,12 +1052,12 @@ find_addresses(DataJObj, TemplateMetaJObj, ConfigCat) ->
 find_addresses(_DataJObj, _TemplateMetaJObj, _ConfigCat, [], Acc) -> Acc;
 find_addresses(DataJObj, TemplateMetaJObj, ConfigCat, [Key|Keys], Acc) ->
     find_addresses(
-        DataJObj
-        ,TemplateMetaJObj
-        ,ConfigCat
-        ,Keys
-        ,[find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key)|Acc]
-    ).
+      DataJObj
+      ,TemplateMetaJObj
+      ,ConfigCat
+      ,Keys
+      ,[find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key)|Acc]
+     ).
 
 -spec find_address(wh_json:object(), wh_json:object(), ne_binary(), wh_json:key()) ->
                           {wh_json:key(), api_binaries()}.
@@ -946,16 +1065,18 @@ find_addresses(DataJObj, TemplateMetaJObj, ConfigCat, [Key|Keys], Acc) ->
                           {wh_json:key(), api_binaries()}.
 find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key) ->
     find_address(
-        DataJObj
-        ,TemplateMetaJObj
-        ,ConfigCat
-        ,Key
-        ,wh_json:find([Key, <<"type">>], [DataJObj, TemplateMetaJObj])
-    ).
+      DataJObj
+      ,TemplateMetaJObj
+      ,ConfigCat
+      ,Key
+      ,wh_json:find([Key, <<"type">>]
+                    ,[DataJObj, TemplateMetaJObj]
+                   )
+     ).
 
-find_address(_DataJObj, TemplateMetaJObj, _ConfigCat, Key, 'undefined') ->
+find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, 'undefined') ->
     lager:debug("email type for '~s' not defined in template, checking just the key", [Key]),
-    {Key, wh_json:get_ne_value(Key, TemplateMetaJObj)};
+    {Key, wh_json:find(Key, [DataJObj, TemplateMetaJObj])};
 find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, ?EMAIL_SPECIFIED) ->
     lager:debug("checking template for '~s' email addresses", [Key]),
     {Key, find_address([Key, <<"email_addresses">>], DataJObj, TemplateMetaJObj)};
@@ -979,7 +1100,9 @@ find_admin_emails(DataJObj, ConfigCat, Key) ->
            teletype_util:find_account_id(DataJObj)
           )
     of
-        'undefined' -> find_default(ConfigCat, Key);
+        'undefined' ->
+            lager:debug("didn't find account rep for '~s'", [Key]),
+            find_default(ConfigCat, Key);
         Emails -> Emails
     end.
 
@@ -990,3 +1113,75 @@ find_default(ConfigCat, Key) ->
         <<_/binary>> = Email -> [Email];
         Emails -> Emails
     end.
+
+-spec open_doc(ne_binary(), ne_binary(), wh_json:object()) ->
+                      {'ok', wh_json:object()} |
+                      {'error', _}.
+open_doc(Type, DocId, DataJObj) ->
+    AccountDb = find_account_db(Type, DataJObj),
+    case couch_mgr:open_cache_doc(AccountDb, DocId) of
+        {'ok', _JObj}=OK -> OK;
+        {'error', _E}=Error ->
+            maybe_load_preview(Type, Error, is_preview(DataJObj))
+    end.
+
+-type read_file_error() :: file:posix() | 'badarg' | 'terminated' | 'system_limit'.
+
+-spec maybe_load_preview(ne_binary(), {'error', _}, boolean()) ->
+                                {'ok', wh_json:object()} |
+                                {'error', read_file_error()}.
+maybe_load_preview(_Type, Error, 'false') ->
+    Error;
+maybe_load_preview(Type, _Error, 'true') ->
+    read_doc(Type).
+
+-spec read_doc(ne_binary()) ->
+                      {'ok', wh_json:object()} |
+                      {'error', read_file_error()}.
+read_doc(File) ->
+    AppDir = code:lib_dir('teletype'),
+    PreviewFile = filename:join([AppDir, "priv", "preview_data", <<File/binary, ".json">>]),
+
+    case file:read_file(PreviewFile) of
+        {'ok', JSON} ->
+            lager:debug("read preview data from ~s: ~s", [PreviewFile, JSON]),
+            {'ok', wh_json:decode(JSON)};
+        {'error', _Reason}=E ->
+            lager:debug("failed to read preview data from ~s: ~p", [PreviewFile, _Reason]),
+            E
+    end.
+
+-spec is_preview(wh_json:object()) -> boolean().
+is_preview(DataJObj) ->
+    wh_json:is_true(<<"preview">>, DataJObj, 'false').
+
+-spec public_proplist(wh_json:key(), wh_json:object()) -> wh_proplist().
+public_proplist(Key, JObj) ->
+    wh_json:to_proplist(
+      wh_json:public_fields(
+        wh_json:get_value(Key, JObj, wh_json:new())
+       )
+     ).
+
+
+-spec add_account(wh_json:object()) -> wh_json:object().
+add_account(DataJObj) ->
+    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+    wh_json:set_value(<<"account">>, AccountJObj, DataJObj).
+
+
+-spec get_balance_threshold(wh_json:object()) -> float().
+get_balance_threshold(DataJObj) ->
+    Default = 5.00,
+    Key = [<<"account">>, <<"topup">>, <<"threshold">>],
+    Dollars = wh_json:get_float_value(Key, DataJObj, Default),
+    wht_util:pretty_print_dollars(Dollars).
+
+-spec get_topup_amount(wh_json:object()) -> ne_binary().
+get_topup_amount(DataJObj) ->
+    Default = 0.00,
+    Key = [<<"account">>, <<"topup">>, <<"amount">>],
+    Dollars = wh_json:get_float_value(Key, DataJObj, Default),
+    wht_util:pretty_print_dollars(Dollars).

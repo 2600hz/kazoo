@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz
+%%% @copyright (C) 2011-2015, 2600Hz
 %%% @doc
 %%% Notification messages, like voicemail left
 %%% @end
@@ -23,6 +23,7 @@
          ,deregister/1, deregister_v/1
          ,pwd_recovery/1, pwd_recovery_v/1
          ,new_account/1, new_account_v/1
+         ,new_user/1, new_user_v/1
          ,port_request/1, port_request_v/1
          ,port_cancel/1, port_cancel_v/1
          ,ported/1, ported_v/1
@@ -50,6 +51,7 @@
          ,publish_deregister/1, publish_deregister/2
          ,publish_pwd_recovery/1, publish_pwd_recovery/2
          ,publish_new_account/1, publish_new_account/2
+         ,publish_new_user/1, publish_new_user/2
          ,publish_port_request/1, publish_port_request/2
          ,publish_port_cancel/1, publish_port_cancel/2
          ,publish_ported/1, publish_ported/2
@@ -86,6 +88,7 @@
 -define(NOTIFY_REGISTER, <<"notifications.sip.register">>).
 -define(NOTIFY_PWD_RECOVERY, <<"notifications.password.recovery">>).
 -define(NOTIFY_NEW_ACCOUNT, <<"notifications.account.new">>).
+-define(NOTIFY_NEW_USER, <<"notifications.user.new">>).
 %% -define(NOTIFY_DELETE_ACCOUNT, <<"notifications.account.delete">>).
 -define(NOTIFY_PORT_REQUEST, <<"notifications.number.port">>).
 -define(NOTIFY_PORT_CANCEL, <<"notifications.number.port_cancel">>).
@@ -165,7 +168,7 @@
 -define(FAX_INBOUND_ERROR_TYPES, []).
 
 -define(FAX_OUTBOUND_HEADERS, [<<"Caller-ID-Number">>, <<"Callee-ID-Number">>
-                               ,<<"Account-ID">>, <<"Fax-JobId">>
+                               ,<<"Account-ID">>, <<"Fax-JobId">>, <<"Fax-ID">>
                               ]).
 -define(OPTIONAL_FAX_OUTBOUND_HEADERS, [<<"Caller-ID-Name">>, <<"Callee-ID-Name">>
                                         ,<<"Call-ID">>, <<"Fax-Info">>
@@ -225,7 +228,8 @@
 
 %% Notify Password Recovery
 -define(PWD_RECOVERY_HEADERS, [<<"Email">>, <<"Password">>, <<"Account-ID">>]).
--define(OPTIONAL_PWD_RECOVERY_HEADERS, [<<"First-Name">>, <<"Last-Name">>, <<"Account-DB">>, <<"Request">>
+-define(OPTIONAL_PWD_RECOVERY_HEADERS, [<<"First-Name">>, <<"Last-Name">>
+                                        ,<<"Account-DB">>, <<"Request">>
                                         | ?DEFAULT_OPTIONAL_HEADERS
                                        ]).
 -define(PWD_RECOVERY_VALUES, [{<<"Event-Category">>, <<"notification">>}
@@ -235,13 +239,22 @@
 
 %% Notify New Account
 -define(NEW_ACCOUNT_HEADERS, [<<"Account-ID">>]).
--define(OPTIONAL_NEW_ACCOUNT_HEADERS, [<<"Account-DB">>, <<"Account-Name">>, <<"Account-API-Key">>, <<"Account-Realm">>
+-define(OPTIONAL_NEW_ACCOUNT_HEADERS, [<<"Account-DB">>, <<"Account-Name">>
+                                       ,<<"Account-API-Key">>, <<"Account-Realm">>
                                        | ?DEFAULT_OPTIONAL_HEADERS
                                       ]).
 -define(NEW_ACCOUNT_VALUES, [{<<"Event-Category">>, <<"notification">>}
                              ,{<<"Event-Name">>, <<"new_account">>}
                             ]).
 -define(NEW_ACCOUNT_TYPES, []).
+
+%% Notify New User
+-define(NEW_USER_HEADERS, [<<"Account-ID">>, <<"User-ID">>, <<"Password">>]).
+-define(OPTIONAL_NEW_USER_HEADERS, ?DEFAULT_OPTIONAL_HEADERS).
+-define(NEW_USER_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                             ,{<<"Event-Name">>, <<"new_user">>}
+                            ]).
+-define(NEW_USER_TYPES, []).
 
 %% Notify Port Request
 -define(PORT_REQUEST_HEADERS, [<<"Account-ID">>]).
@@ -268,8 +281,9 @@
 -define(PORT_CANCEL_TYPES, []).
 
 %% Notify Ported Request
--define(PORTED_HEADERS, [<<"Account-ID">>, <<"Number">>, <<"Port">>]).
+-define(PORTED_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_PORTED_HEADERS, [<<"Number-State">>, <<"Local-Number">>, <<"Authorized-By">>, <<"Request">>
+                                  ,<<"Port-Request-ID">>, <<"Number">>, <<"Port">>
                                   | ?DEFAULT_OPTIONAL_HEADERS
                                  ]).
 -define(PORTED_VALUES, [{<<"Event-Category">>, <<"notification">>}
@@ -299,7 +313,7 @@
 -define(TOPUP_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_TOPUP_HEADERS, ?DEFAULT_OPTIONAL_HEADERS).
 -define(TOPUP_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                       ,{<<"Event-Name">>, <<"low_balance">>}
+                       ,{<<"Event-Name">>, <<"topup">>}
                       ]).
 -define(TOPUP_TYPES, []).
 
@@ -360,10 +374,40 @@ headers(<<"voicemail_full">>) ->
     ?VOICEMAIL_FULL_HEADERS ++ ?OPTIONAL_VOICEMAIL_FULL_HEADERS;
 headers(<<"fax_inbound_to_email">>) ->
     ?FAX_INBOUND_HEADERS ++ ?OPTIONAL_FAX_INBOUND_HEADERS;
+headers(<<"fax_inbound_error_to_email">>) ->
+    ?FAX_INBOUND_ERROR_HEADERS ++ ?OPTIONAL_FAX_INBOUND_ERROR_HEADERS;
+headers(<<"fax_outbound_to_email">>) ->
+    ?FAX_OUTBOUND_HEADERS ++ ?OPTIONAL_FAX_OUTBOUND_HEADERS;
+headers(<<"fax_outbound_error_to_email">>) ->
+    ?FAX_OUTBOUND_ERROR_HEADERS ++ ?OPTIONAL_FAX_OUTBOUND_ERROR_HEADERS;
+headers(<<"low_balance">>) ->
+    ?LOW_BALANCE_HEADERS ++ ?OPTIONAL_LOW_BALANCE_HEADERS;
+headers(<<"new_account">>) ->
+    ?NEW_ACCOUNT_HEADERS ++ ?OPTIONAL_NEW_ACCOUNT_HEADERS;
+headers(<<"new_user">>) ->
+    ?NEW_USER_HEADERS ++ ?OPTIONAL_NEW_USER_HEADERS;
+headers(<<"deregister">>) ->
+    ?DEREGISTER_HEADERS ++ ?OPTIONAL_DEREGISTER_HEADERS;
+headers(<<"transaction">>) ->
+    ?TRANSACTION_HEADERS ++ ?OPTIONAL_TRANSACTION_HEADERS;
+headers(<<"password_recovery">>) ->
+    ?PWD_RECOVERY_HEADERS ++ ?OPTIONAL_PWD_RECOVERY_HEADERS;
+headers(<<"system_alert">>) ->
+    ?SYSTEM_ALERT_HEADERS ++ ?OPTIONAL_SYSTEM_ALERT_HEADERS;
+headers(<<"cnam_request">>) ->
+    ?CNAM_REQUEST_HEADERS ++ ?OPTIONAL_CNAM_REQUEST_HEADERS;
 headers(<<"skel">>) ->
     ?SKEL_HEADERS ++ ?OPTIONAL_SKEL_HEADERS;
+headers(<<"topup">>) ->
+    ?TOPUP_HEADERS ++ ?OPTIONAL_TOPUP_HEADERS;
+headers(<<"port_request">>) ->
+    ?PORT_REQUEST_HEADERS ++ ?OPTIONAL_PORT_REQUEST_HEADERS;
+headers(<<"port_cancel">>) ->
+    ?PORT_CANCEL_HEADERS ++ ?OPTIONAL_PORT_CANCEL_HEADERS;
+headers(<<"ported">>) ->
+    ?PORTED_HEADERS ++ ?OPTIONAL_PORTED_HEADERS;
 headers(_Notification) ->
-    lager:debug("no notification headers for ~s", [_Notification]),
+    lager:warning("no notification headers for ~s", [_Notification]),
     [].
 
 %%--------------------------------------------------------------------
@@ -552,6 +596,23 @@ new_account(JObj) -> new_account(wh_json:to_proplist(JObj)).
 new_account_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?NEW_ACCOUNT_HEADERS, ?NEW_ACCOUNT_VALUES, ?NEW_ACCOUNT_TYPES);
 new_account_v(JObj) -> new_account_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc New user notification - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+new_user(Prop) when is_list(Prop) ->
+    case new_user_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?NEW_USER_HEADERS, ?OPTIONAL_NEW_USER_HEADERS);
+        'false' -> {'error', "Proplist failed validation for new_user"}
+    end;
+new_user(JObj) -> new_user(wh_json:to_proplist(JObj)).
+
+-spec new_user_v(api_terms()) -> boolean().
+new_user_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?NEW_USER_HEADERS, ?NEW_USER_VALUES, ?NEW_USER_TYPES);
+new_user_v(JObj) -> new_user_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Port request notification - see wiki
@@ -789,6 +850,9 @@ bind_to_q(Q, ['pwd_recovery'|T]) ->
 bind_to_q(Q, ['new_account'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_NEW_ACCOUNT),
     bind_to_q(Q, T);
+bind_to_q(Q, ['new_user'|T]) ->
+    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_NEW_USER),
+    bind_to_q(Q, T);
 bind_to_q(Q, ['port_request'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PORT_REQUEST),
     bind_to_q(Q, T);
@@ -866,6 +930,9 @@ unbind_q_from(Q, ['pwd_recovery'|T]) ->
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['new_account'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_NEW_ACCOUNT),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, ['new_user'|T]) ->
+    'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_NEW_USER),
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['port_request'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PORT_REQUEST),
@@ -985,6 +1052,13 @@ publish_new_account(JObj) -> publish_new_account(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_new_account(API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?NEW_ACCOUNT_VALUES, fun ?MODULE:new_account/1),
     amqp_util:notifications_publish(?NOTIFY_NEW_ACCOUNT, Payload, ContentType).
+
+-spec publish_new_user(api_terms()) -> 'ok'.
+-spec publish_new_user(api_terms(), ne_binary()) -> 'ok'.
+publish_new_user(JObj) -> publish_new_user(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_new_user(API, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(API, ?NEW_USER_VALUES, fun ?MODULE:new_user/1),
+    amqp_util:notifications_publish(?NOTIFY_NEW_USER, Payload, ContentType).
 
 -spec publish_port_request(api_terms()) -> 'ok'.
 -spec publish_port_request(api_terms(), ne_binary()) -> 'ok'.
