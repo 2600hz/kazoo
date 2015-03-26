@@ -315,7 +315,7 @@ add_fax_document(FaxNumber, FaxBoxDoc, #state{docs=Docs
                                              }=State) ->
     FaxBoxId = wh_json:get_value(<<"_id">>, FaxBoxDoc),
     AccountId = wh_json:get_value(<<"pvt_account_id">>, FaxBoxDoc),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = ?WH_FAXES,
     ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, FaxBoxDoc, wh_services:find_reseller_id(AccountId)),
 
     FaxBoxEmailNotify = wh_json:get_value([<<"notifications">>
