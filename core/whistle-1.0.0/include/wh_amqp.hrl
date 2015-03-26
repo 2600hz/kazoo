@@ -1,31 +1,24 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2013, 2600Hz
+%%% @copyright (C) 2010-2015, 2600Hz
 %%% @doc
 %%% AMQP-specific things for Whistle
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
-
 -ifndef(WH_AMQP_HRL).
 
 -include_lib("rabbitmq_client/include/amqp_client.hrl").
 
--define(DEFAULT_CONTENT_TYPE, <<"application/json">>).
-
 -define(KEY_ORGN_RESOURCE_REQ, <<"orginate.resource.req">>). %% corresponds to originate_resource_req/1 api call
--define(KEY_OFFNET_RESOURCE_REQ, <<"offnet.resource.req">>). %% corresponds to offnet_resource_req/1 api call
 -define(RESOURCE_QUEUE_NAME, <<"resource.provider">>).
+
+-define(KEY_OFFNET_RESOURCE_REQ, <<"offnet.resource.req">>). %% corresponds to offnet_resource_req/1 api call
 
 -define(KEY_CALL_MEDIA_REQ, <<"call.media">>). %% corresponds to media_req/1
 -define(KEY_CALL_EVENT, <<"call.event.">>). %% corresponds to the call_event/1 api call
 -define(KEY_CALL_CDR, <<"call.cdr.">>). %% corresponds to the call_cdr/1 api call
 -define(KEY_PUBLISHER_USURP, <<"publisher.usurp.">>).
-
--define(KEY_REG_SUCCESS, <<"registration.success">>).
--define(KEY_REG_QUERY, <<"registration.query">>).
-
--define(KEY_ASR_REQ, <<"asr.req">>).
 
 -define(KEY_CONFERENCE_DISCOVERY, <<"conference.discovery">>).
 -define(KEY_CONFERENCE_COMMAND, <<"conference.command.">>).
@@ -218,7 +211,6 @@
 -type amqp_msg() :: #'amqp_msg'{}.
 
 -define(AMQP_HIDDEN_TAG, <<"hidden">>).
-
 
 -define(WH_AMQP_HRL, 'true').
 -endif.
