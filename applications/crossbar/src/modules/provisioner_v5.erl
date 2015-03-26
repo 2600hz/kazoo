@@ -397,15 +397,19 @@ send_req('accounts_update', JObj, AuthToken, AccountId, _) ->
 
 -spec req_uri('accounts', ne_binary()) -> ne_binary().
 req_uri('accounts', AccountId) ->
-    Url = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_url">>),
-    Uri = wh_util:uri(Url, [<<"accounts">>, AccountId]),
-    binary:bin_to_list(Uri).
+    provisioning_uri([<<"accounts">>, AccountId]);
+req_uri('devices', MacAddress) ->
+    provisioning_uri([<<"devices">>, MacAddress]).
 
 -spec req_uri('devices', ne_binary(), ne_binary()) -> ne_binary().
 req_uri('devices', AccountId, MACAddress) ->
-    Url = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_url">>),
     EncodedAddress = binary:replace(MACAddress, <<":">>, <<>>, ['global']),
-    Uri = wh_util:uri(Url, [<<"devices">>, AccountId, EncodedAddress]),
+    provisioning_uri([<<"devices">>, AccountId, EncodedAddress]).
+
+-spec provisioning_uri(iolist()) -> iolist().
+provisioning_uri(ExplodedPath) ->
+    Url = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_url">>),
+    Uri = wh_util:uri(Url, ExplodedPath),
     binary:bin_to_list(Uri).
 
 -spec account_payload(wh_json:object(), ne_binary()) -> wh_json:object().
