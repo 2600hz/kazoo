@@ -274,7 +274,7 @@ route_resp_xml(<<"park">>, _Routes, JObj) ->
              ,route_resp_ringback(JObj)
              ,route_resp_transfer_ringback(JObj)
              ,route_resp_pre_park_action(JObj)
-             ,action_el(<<"park">>)
+             | route_resp_ccvs(JObj) ++ [action_el(<<"park">>)]
             ],
     ParkExtEl = extension_el(<<"park">>, 'undefined', [condition_el(Exten)]),
     ContextEl = context_el(?DEFAULT_FREESWITCH_CONTEXT, [ParkExtEl]),
@@ -358,6 +358,18 @@ route_resp_ringback(JObj) ->
             Stream = ecallmgr_util:media_path(Media, 'extant', MsgId, JObj),
             action_el(<<"set">>, <<"ringback=", (wh_util:to_binary(Stream))/binary>>)
     end.
+
+-spec route_resp_ccvs(wh_json:object()) -> xml_els().
+route_resp_ccvs(JObj) ->
+    case wh_json:get_value(<<"Custom-Channel-Vars">>, JObj) of
+        'undefined' -> [];
+        CCVs ->
+            wh_json:foldl(fun route_resp_ccv/3, [], CCVs)
+    end.
+
+-spec route_resp_ccv(wh_json:key(), wh_json:json_term(), xml_els()) -> xml_els().
+route_resp_ccv(Key, Value, Els) ->
+    [action_el(<<"set">>, ecallmgr_util:get_fs_kv(Key, Value)) | Els].
 
 -spec route_resp_transfer_ringback(wh_json:object()) -> xml_el().
 route_resp_transfer_ringback(JObj) ->
@@ -531,7 +543,7 @@ get_channel_params_fold(Key, Val) ->
     case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
         'false' ->
             {list_to_binary([?CHANNEL_VAR_PREFIX, Key]), Val};
-        {_, Prefix} ->
+        {_Key, Prefix} ->
             {Prefix, ecallmgr_util:maybe_sanitize_fs_value(Key, Val)}
     end.
 

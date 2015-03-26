@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%% Lookup cnam
 %%% @end
@@ -19,7 +19,9 @@
          ,code_change/3
         ]).
 
--export([lookup/1]).
+-export([lookup/1
+         ,flush/0
+        ]).
 
 -include("stepswitch.hrl").
 
@@ -33,9 +35,20 @@
 -define(DEFAULT_USER_AGENT_HDR, <<"Kazoo Stepswitch CNAM">>).
 -define(DEFAULT_CONTENT_TYPE_HDR, <<"application/json">>).
 
--define(HTTP_ACCEPT_HEADER, whapps_config:get_string(?CONFIG_CAT, <<"http_accept_header">>, ?DEFAULT_ACCEPT_HDR)).
--define(HTTP_USER_AGENT, whapps_config:get_string(?CONFIG_CAT, <<"http_user_agent_header">>, ?DEFAULT_USER_AGENT_HDR)).
--define(HTTP_CONTENT_TYPE, whapps_config:get_string(?CONFIG_CAT, <<"http_content_type_header">>, ?DEFAULT_CONTENT_TYPE_HDR)).
+-define(HTTP_ACCEPT_HEADER
+        ,whapps_config:get_string(?CONFIG_CAT, <<"http_accept_header">>, ?DEFAULT_ACCEPT_HDR)
+       ).
+-define(HTTP_USER_AGENT
+        ,whapps_config:get_string(?CONFIG_CAT, <<"http_user_agent_header">>, ?DEFAULT_USER_AGENT_HDR)
+       ).
+-define(HTTP_CONTENT_TYPE
+        ,whapps_config:get_string(?CONFIG_CAT, <<"http_content_type_header">>, ?DEFAULT_CONTENT_TYPE_HDR)
+       ).
+-define(HTTP_CONNECT_TIMEOUT_MS
+        ,whapps_config:get_integer(?CONFIG_CAT, <<"http_connect_timeout_ms">>, 500)
+       ).
+
+-define(CACHE_KEY(Number), {'cnam', Number}).
 
 %%%===================================================================
 %%% API
@@ -48,34 +61,51 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
+-spec start_link(any()) -> startlink_ret().
 start_link(_) ->
     _ = ssl:start(),
     gen_server:start_link(?MODULE, [], []).
 
-lookup(Number) when is_binary(Number) ->
+-spec lookup(wh_json:object() | ne_binary()) -> wh_json:object().
+lookup(<<_/binary>> = Number) ->
     Num = wnm_util:normalize_number(Number),
     lookup(wh_json:set_values([{<<"phone_number">>, wh_util:uri_encode(Num)}
                                ,{<<"Caller-ID-Number">>, Num}
-                              ], wh_json:new()));
+                              ]
+                              ,wh_json:new()
+                             )
+          );
 lookup(JObj) ->
-    CNAM =
-        case get_cnam(JObj) of
-            <<>> -> wh_json:get_value(<<"Caller-ID-Name">>, JObj, <<"UNKNOWN">>);
-            Else -> Else
-        end,
-    Props = [{<<"Caller-ID-Name">>, CNAM}
-             ,{[<<"Custom-Channel-Vars">>, <<"Caller-ID-Name">>], CNAM}
-            ],
-    wh_json:set_values(Props, JObj).
-
-get_cnam(JObj) ->
     Number = wh_json:get_value(<<"Caller-ID-Number">>, JObj, <<"0000000000">>),
     Num = wnm_util:normalize_number(Number),
     case wh_cache:fetch_local(?STEPSWITCH_CACHE, cache_key(Num)) of
-        {'ok', CNAM} -> CNAM;
+        {'ok', CNAM} ->
+            update_request(JObj, CNAM, 'true');
         {'error', 'not_found'} ->
-            fetch_cnam(Num, wh_json:set_value(<<"phone_number">>, wh_util:uri_encode(Num), JObj))
+            update_request(JObj
+                           ,fetch_cnam(Num, wh_json:set_value(<<"phone_number">>, wh_util:uri_encode(Num), JObj))
+                           ,'false'
+                          )
     end.
+
+-spec update_request(wh_json:object(), api_binary(), boolean()) -> wh_json:object().
+update_request(JObj, 'undefined', FromCache) ->
+    update_request(JObj
+                   ,wh_json:get_value(<<"Caller-ID-Name">>, JObj, <<"UNKNOWN">>)
+                   ,FromCache
+                  );
+update_request(JObj, CNAM, FromCache) ->
+    Props = [{<<"Caller-ID-Name">>, CNAM}
+             ,{[<<"Custom-Channel-Vars">>, <<"Caller-ID-Name">>], CNAM}
+             ,{[<<"Custom-Channel-Vars">>, <<"CNAM-From-Cache">>], FromCache}
+            ],
+    wh_json:set_values(Props, JObj).
+
+flush() ->
+    wh_cache:filter_erase_local(?STEPSWITCH_CACHE, fun flush_entries/2).
+
+flush_entries(?CACHE_KEY(_), _) -> 'true';
+flush_entries(_, _) -> 'false'.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -200,8 +230,11 @@ json_to_template_props(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_proplist(wh_proplist()) -> wh_proplist().
-normalize_proplist(Props) -> [normalize_proplist_element(Elem) || Elem <- Props].
+normalize_proplist(Props) ->
+    [normalize_proplist_element(Elem) || Elem <- Props].
 
+-spec normalize_proplist_element({wh_proplist_key(), wh_proplist_value()}) ->
+                                        {wh_proplist_key(), wh_proplist_value()}.
 normalize_proplist_element({K, V}) when is_list(V) ->
     {normalize_value(K), normalize_proplist(V)};
 normalize_proplist_element({K, V}) when is_binary(V) ->
@@ -211,11 +244,14 @@ normalize_proplist_element({K, V}) ->
 normalize_proplist_element(Else) ->
     Else.
 
+-spec normalize_value(binary()) -> binary().
 normalize_value(Value) ->
     binary:replace(wh_util:to_lower_binary(Value), <<"-">>, <<"_">>, ['global']).
 
-cache_key(Number) -> {'cnam', Number}.
+-spec cache_key(ne_binary()) -> {'cnam', ne_binary()}.
+cache_key(Number) -> ?CACHE_KEY(Number).
 
+-spec fetch_cnam(ne_binary(), wh_json:object()) -> api_binary().
 fetch_cnam(Number, JObj) ->
     CNAM = make_request(Number, JObj),
     CacheProps = [{'expires', whapps_config:get_integer(?CONFIG_CAT, <<"cnam_expires">>, ?DEFAULT_EXPIRES)}
@@ -224,6 +260,7 @@ fetch_cnam(Number, JObj) ->
     wh_cache:store_local(?STEPSWITCH_CACHE, cache_key(Number), CNAM, CacheProps),
     CNAM.
 
+-spec make_request(ne_binary(), wh_json:object()) -> api_binary().
 make_request(Number, JObj) ->
     Url = wh_util:to_list(get_http_url(JObj)),
     Body = get_http_body(JObj),
@@ -232,15 +269,18 @@ make_request(Number, JObj) ->
     HTTPOptions = get_http_options(Url),
 
     case ibrowse:send_req(Url, Headers, Method, Body, HTTPOptions, 1500) of
+        {'ok', Status, _, <<>>} ->
+            lager:debug("cnam lookup for ~s returned as ~s and empty body", [Number, Status]),
+            'undefined';
         {'ok', Status, _, ResponseBody} when size (ResponseBody) > 18 ->
-            lager:debug("cnam lookup for ~p returned ~p: ~p", [Number, Status, ResponseBody]),
+            lager:debug("cnam lookup for ~s returned ~s: ~s", [Number, Status, ResponseBody]),
             binary:part(ResponseBody, 0, 18);
         {'ok', Status, _, ResponseBody} ->
-            lager:debug("cnam lookup for ~p returned ~p: ~p", [Number, Status, ResponseBody]),
+            lager:debug("cnam lookup for ~s returned ~s: ~s", [Number, Status, ResponseBody]),
             ResponseBody;
         {'error', _R} ->
-            lager:debug("cnam lookup for ~p failed: ~p", [Number, _R]),
-            <<>>
+            lager:debug("cnam lookup for ~s failed: ~p", [Number, _R]),
+            'undefined'
     end.
 
 -spec get_http_url(wh_json:object()) -> ne_binary().
@@ -273,15 +313,17 @@ get_http_body(JObj) ->
             lists:flatten(Body)
     end.
 
+-spec get_http_headers() -> wh_proplist().
 get_http_headers() ->
     [{"Accept", ?HTTP_ACCEPT_HEADER}
      ,{"User-Agent", ?HTTP_USER_AGENT}
      ,{"Content-Type", ?HTTP_CONTENT_TYPE}
     ].
 
+-spec get_http_options(string()) -> wh_proplist().
 get_http_options(Url) ->
     Defaults = [{'response_format', 'binary'}
-                ,{'connect_timeout', 500}
+                ,{'connect_timeout', ?HTTP_CONNECT_TIMEOUT_MS}
                 ,{'inactivity_timeout', 1500}
                ],
     Routines = [fun maybe_enable_ssl/2
@@ -289,10 +331,12 @@ get_http_options(Url) ->
                ],
     lists:foldl(fun(F, P) -> F(Url, P) end, Defaults, Routines).
 
+-spec maybe_enable_ssl(ne_binary(), wh_proplist()) -> wh_proplist().
 maybe_enable_ssl(<<"https", _/binary>>, Props) ->
     [{'ssl', [{'verify', 0}]}|Props];
 maybe_enable_ssl(_, Props) -> Props.
 
+-spec maybe_enable_auth(_, wh_proplist()) -> wh_proplist().
 maybe_enable_auth(_, Props) ->
     Username = whapps_config:get_string(?CONFIG_CAT, <<"http_basic_auth_username">>, <<>>),
     Password = whapps_config:get_string(?CONFIG_CAT, <<"http_basic_auth_password">>, <<>>),
@@ -301,6 +345,7 @@ maybe_enable_auth(_, Props) ->
         'false' -> [{'basic_auth', {Username, Password}}|Props]
     end.
 
+-spec get_http_method() -> 'get' | 'put' | 'post'.
 get_http_method() ->
     case whapps_config:get_binary(?CONFIG_CAT, <<"http_method">>, ?DEFAULT_METHOD) of
         <<"post">> -> 'post';

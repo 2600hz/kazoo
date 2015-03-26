@@ -12,7 +12,7 @@
 -module(ecallmgr_util).
 
 -export([send_cmd/4]).
--export([get_fs_kv/3]).
+-export([get_fs_kv/2, get_fs_kv/3]).
 -export([set/3]).
 -export([export/3, bridge_export/3]).
 -export([get_expires/1]).
@@ -285,7 +285,11 @@ is_node_up(Node, UUID) ->
 %% set channel and call variables in FreeSWITCH
 %% @end
 %%--------------------------------------------------------------------
--spec get_fs_kv(ne_binary(), ne_binary(), ne_binary()) -> binary().
+-spec get_fs_kv(ne_binary(), ne_binary()) -> binary().
+-spec get_fs_kv(ne_binary(), ne_binary(), api_binary()) -> binary().
+get_fs_kv(Key, Value) ->
+    get_fs_kv(Key, Value, 'undefined').
+
 get_fs_kv(<<"Hold-Media">>, Media, UUID) ->
     list_to_binary(["hold_music="
                     ,wh_util:to_list(media_path(Media, 'extant', UUID, wh_json:new()))
