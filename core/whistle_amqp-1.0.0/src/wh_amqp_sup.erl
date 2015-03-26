@@ -28,7 +28,7 @@
 
 %%% Move the section to whistle_apps or ecallmgr for per-vm control
 -define(POOL_SIZE, wh_config:get_integer(?CONFIG_SECTION, 'pool_size', ?DEFAULT_POOL_SIZE)).
--define(POOL_OVERFLOW, wh_config:get_integer(?CONFIG_SECTION, 'pool_size', ?DEFAULT_POOL_OVERFLOW)).
+-define(POOL_OVERFLOW, wh_config:get_integer(?CONFIG_SECTION, 'pool_overflow', ?DEFAULT_POOL_OVERFLOW)).
 -define(POOL_THRESHOLD, wh_config:get_integer(?CONFIG_SECTION, 'pool_threshold', ?DEFAULT_POOL_THRESHOLD)).
 -define(POOL_NAME, 'wh_amqp_pool').
 
