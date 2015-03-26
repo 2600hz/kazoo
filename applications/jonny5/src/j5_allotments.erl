@@ -126,9 +126,10 @@ reconcile_allotment(Seconds, Allotment, Request, Limits) ->
 %%--------------------------------------------------------------------
 -spec try_find_allotment(j5_request:request(), j5_limits:limits()) -> api_object().
 try_find_allotment(Request, Limits) ->
+    Direction = j5_request:call_direction(Request),
     case j5_request:classification(Request) of
         'undefined' -> 'undefined';
-        Classification -> try_find_allotment_classification(Classification, Limits)
+        Classification -> try_find_allotment_classification(<<Direction/binary, "_", Classification/binary>>, Limits)
     end.
 
 -spec try_find_allotment_classification(ne_binary(), j5_limits:limits()) -> api_object().
