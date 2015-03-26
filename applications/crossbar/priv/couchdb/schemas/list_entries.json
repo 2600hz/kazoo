@@ -4,7 +4,6 @@
   "type": "object",
   "required": true,
   "description": "Schema for a match list entries",
-  "additionalProperties": false,
   "properties": {
     "pattern": {
       "type": "string",
