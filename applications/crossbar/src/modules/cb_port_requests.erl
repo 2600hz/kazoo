@@ -524,10 +524,11 @@ post(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
                                 ).
 
 -spec do_post(cb_context:context(), path_token()) -> cb_context:context().
-do_post(Context, _Id) ->
+do_post(Context, Id) ->
     Context1 = crossbar_doc:save(cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)),
     case cb_context:resp_status(Context1) of
         'success' ->
+            _ = maybe_send_port_comment_notification(Context, Id),
             cb_context:set_resp_data(Context1, wh_port_request:public_fields(cb_context:doc(Context1)));
         _Status ->
             Context1
@@ -1078,6 +1079,63 @@ save_default_template() ->
     {'ok', _} =
         couch_mgr:put_attachment(?WH_CONFIG_DB, ?TEMPLATE_DOC_ID, ?TEMPLATE_ATTACHMENT_ID, Template),
     Template.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_send_port_comment_notification(cb_context:context(), ne_binary()) -> 'ok'.
+maybe_send_port_comment_notification(Context, Id) ->
+    DbDoc = cb_context:fetch(Context, 'db_doc'),
+    ReqData = cb_context:req_data(Context),
+    DbDocComments = wh_json:get_value(<<"comments">>, DbDoc),
+    ReqDataComments = wh_json:get_value(<<"comments">>, ReqData),
+    case has_new_comment(DbDocComments, ReqDataComments) of
+        'false' -> lager:debug("no new comments in ~s, ignoring", [Id]);
+        'true' ->
+            try send_port_comment_notification(Context, Id) of
+                _ -> lager:debug("port comment notification sent")
+            catch
+                _E:_R ->
+                    lager:error("failed to send the port comment notification: ~s:~p", [_E, _R])
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec has_new_comment('undefined' | wh_json:objects(), 'undefined' | wh_json:objects()) -> boolean().
+has_new_comment('undefined', [_|_]) -> 'true';
+has_new_comment(_, 'undefined') -> 'false';
+has_new_comment([], [_|_]) -> 'true';
+has_new_comment(_, []) -> 'false';
+has_new_comment(OldComments, NewComments) ->
+    OldTime = wh_json:get_value(<<"timestamp">>, lists:last(OldComments)),
+    NewTime = wh_json:get_value(<<"timestamp">>, lists:last(NewComments)),
+    case {OldTime, NewTime} of
+        {O, N} when O =:= N -> 'false';
+        {O, N} when O > N -> 'false';
+        {O, N} when O < N -> 'true'
+    end.
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec send_port_comment_notification(cb_context:context(), ne_binary()) -> 'ok'.
+send_port_comment_notification(Context, Id) ->
+    Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
+           ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
+           ,{<<"Port-Request-ID">>, Id}
+           ,{<<"Version">>, cb_context:api_version(Context)}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    whapps_util:amqp_pool_send(Req, fun wapi_notifications:publish_port_comment/1).
 
 %%--------------------------------------------------------------------
 %% @private

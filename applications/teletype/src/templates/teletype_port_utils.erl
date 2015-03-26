@@ -52,6 +52,7 @@ fix_email(ReqData, [_|_]=Emails) ->
 fix_port_request_data(JObj) ->
     Routines = [fun fix_numbers/1
                 ,fun fix_billing/1
+                ,fun fix_comments/1
                ],
     lists:foldl(fun(F, J) -> F(J) end, JObj, Routines).
 
@@ -79,3 +80,17 @@ fix_billing(JObj) ->
                               wh_json:object().
 fix_billing_fold(Key, Value, Acc) ->
     wh_json:set_value(<<"bill_", Key/binary>>, Value, Acc).
+
+-spec fix_comments(wh_json:object()) -> wh_json:object().
+fix_comments(JObj) ->
+    Comments =
+        lists:foldl(
+            fun fix_comment_fold/2
+            ,[]
+            ,wh_json:get_value(<<"comments">>, JObj)
+        ),
+    wh_json:set_value(<<"comments">>, Comments, JObj).
+
+-spec fix_comment_fold(wh_json:object(), [wh_proplist(), ...]) -> [wh_proplist(), ...].
+fix_comment_fold(JObj, Acc) ->
+    [wh_json:to_proplist(JObj)|Acc].

@@ -27,6 +27,7 @@
          ,port_request/1, port_request_v/1
          ,port_cancel/1, port_cancel_v/1
          ,ported/1, ported_v/1
+         ,port_comment/1, port_comment_v/1
          ,cnam_request/1, cnam_request_v/1
          ,low_balance/1, low_balance_v/1
          ,topup/1, topup_v/1
@@ -55,6 +56,7 @@
          ,publish_port_request/1, publish_port_request/2
          ,publish_port_cancel/1, publish_port_cancel/2
          ,publish_ported/1, publish_ported/2
+         ,publish_port_comment/1, publish_port_comment/2
          ,publish_cnam_request/1, publish_cnam_request/2
          ,publish_low_balance/1, publish_low_balance/2
          ,publish_topup/1, publish_topup/2
@@ -93,6 +95,7 @@
 -define(NOTIFY_PORT_REQUEST, <<"notifications.number.port">>).
 -define(NOTIFY_PORT_CANCEL, <<"notifications.number.port_cancel">>).
 -define(NOTIFY_PORTED, <<"notifications.number.ported">>).
+-define(NOTIFY_PORT_COMMENT, <<"notifications.number.port_comment">>).
 -define(NOTIFY_CNAM_REQUEST, <<"notifications.number.cnam">>).
 -define(NOTIFY_LOW_BALANCE, <<"notifications.account.low_balance">>).
 -define(NOTIFY_TOPUP, <<"notifications.account.topup">>).
@@ -291,6 +294,17 @@
                        ]).
 -define(PORTED_TYPES, []).
 
+%% Notify Ported Request
+-define(PORT_COMMENT_HEADERS, [<<"Account-ID">>]).
+-define(OPTIONAL_PORT_COMMENT_HEADERS, [<<"Number-State">>, <<"Local-Number">>, <<"Authorized-By">>, <<"Request">>
+                                        ,<<"Port-Request-ID">>, <<"Number">>, <<"Port">>
+                                        | ?DEFAULT_OPTIONAL_HEADERS
+                                       ]).
+-define(PORT_COMMENT_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                              ,{<<"Event-Name">>, <<"port_comment">>}
+                             ]).
+-define(PORT_COMMENT_TYPES, []).
+
 %% Notify Cnam Request
 -define(CNAM_REQUEST_HEADERS, [<<"Account-ID">>, <<"Number">>, <<"Cnam">>]).
 -define(OPTIONAL_CNAM_REQUEST_HEADERS, [<<"Number-State">>, <<"Local-Number">>, <<"Acquired-For">>, <<"Request">>
@@ -406,6 +420,8 @@ headers(<<"port_cancel">>) ->
     ?PORT_CANCEL_HEADERS ++ ?OPTIONAL_PORT_CANCEL_HEADERS;
 headers(<<"ported">>) ->
     ?PORTED_HEADERS ++ ?OPTIONAL_PORTED_HEADERS;
+headers(<<"port_comment">>) ->
+    ?PORT_COMMENT_HEADERS ++ ?OPTIONAL_PORT_COMMENT_HEADERS;
 headers(_Notification) ->
     lager:warning("no notification headers for ~s", [_Notification]),
     [].
@@ -666,6 +682,23 @@ ported_v(Prop) when is_list(Prop) ->
 ported_v(JObj) -> ported_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
+%% @doc Port comment request notification - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+port_comment(Prop) when is_list(Prop) ->
+    case port_comment_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?PORT_COMMENT_HEADERS, ?OPTIONAL_PORT_COMMENT_HEADERS);
+        'false' -> {'error', "Proplist failed validation for port_comment"}
+    end;
+port_comment(JObj) -> port_comment(wh_json:to_proplist(JObj)).
+
+-spec port_comment_v(api_terms()) -> boolean().
+port_comment_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?PORT_COMMENT_HEADERS, ?PORT_COMMENT_VALUES, ?PORT_COMMENT_TYPES);
+port_comment_v(JObj) -> port_comment_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
 %% @doc Cnam request notification - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
@@ -862,6 +895,9 @@ bind_to_q(Q, ['port_cancel'|T]) ->
 bind_to_q(Q, ['ported'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PORTED),
     bind_to_q(Q, T);
+bind_to_q(Q, ['port_comment'|T]) ->
+    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PORT_COMMENT),
+    bind_to_q(Q, T);
 bind_to_q(Q, ['cnam_requests'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_CNAM_REQUEST),
     bind_to_q(Q, T);
@@ -942,6 +978,9 @@ unbind_q_from(Q, ['port_cancel'|T]) ->
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['ported'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PORTED),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, ['port_comment'|T]) ->
+    'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PORT_COMMENT),
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['cnam_request'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_CNAM_REQUEST),
@@ -1080,6 +1119,13 @@ publish_ported(JObj) -> publish_ported(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_ported(API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?PORTED_VALUES, fun ?MODULE:ported/1),
     amqp_util:notifications_publish(?NOTIFY_PORTED, Payload, ContentType).
+
+-spec publish_port_comment(api_terms()) -> 'ok'.
+-spec publish_port_comment(api_terms(), ne_binary()) -> 'ok'.
+publish_port_comment(JObj) -> publish_port_comment(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_port_comment(API, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(API, ?PORT_COMMENT_VALUES, fun ?MODULE:port_comment/1),
+    amqp_util:notifications_publish(?NOTIFY_PORT_COMMENT, Payload, ContentType).
 
 -spec publish_cnam_request(api_terms()) -> 'ok'.
 -spec publish_cnam_request(api_terms(), ne_binary()) -> 'ok'.
