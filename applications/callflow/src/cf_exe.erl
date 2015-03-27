@@ -106,6 +106,13 @@ continue(Key, Call) ->
     Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     continue(Key, Srv).
 
+-spec continue_with_flow(wh_json:object(), whapps_call:call() | pid()) -> 'ok'.
+continue_with_flow(Flow, Srv) when is_pid(Srv) ->
+    gen_listener:cast(Srv, {'continue_with_flow', Flow});
+continue_with_flow(Flow, Call) ->
+    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
+    continue_with_flow(Flow, Srv).
+
 -spec branch(wh_json:object(), whapps_call:call() | pid()) -> 'ok'.
 branch(Flow, Srv) when is_pid(Srv) ->
     gen_listener:cast(Srv, {'branch', Flow});
@@ -353,6 +360,9 @@ handle_cast('transfer', State) ->
     {'stop', {'shutdown', 'transfer'}, State};
 handle_cast('control_usurped', State) ->
     {'stop', {'shutdown', 'control_usurped'}, State};
+handle_cast({'continue_with_flow', NewFlow}, #state{flow=Flow}=State) ->
+    lager:info("callflow has been reset"),
+    {'noreply', launch_cf_module(State#state{flow=NewFlow})};
 handle_cast({'branch', NewFlow}, #state{flow=Flow, flows=Flows}=State) ->
     lager:info("callflow has been branched"),
     NewFlows = [wh_json:get_value([<<"children">>, <<"_">>], Flow, wh_json:new())|Flows],
