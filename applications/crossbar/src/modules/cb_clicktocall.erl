@@ -23,6 +23,7 @@
          ,authorize/1
          ,put/1
          ,post/2, post/3
+         ,patch/2
          ,delete/2
          ,maybe_migrate_history/1
         ]).
@@ -48,6 +49,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.clicktocall">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.clicktocall">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.clicktocall">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.patch.clicktocall">>, ?MODULE, 'patch'),
     crossbar_bindings:bind(<<"*.execute.delete.clicktocall">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
@@ -65,7 +67,7 @@ init() ->
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 allowed_methods(_) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 allowed_methods(_, ?CONNECT_CALL) ->
     [?HTTP_GET, ?HTTP_POST];
 allowed_methods(_, ?HISTORY) ->
@@ -163,6 +165,8 @@ validate_c2c(Context, Id, ?HTTP_GET) ->
     load_c2c(Id, Context);
 validate_c2c(Context, Id, ?HTTP_POST) ->
     update_c2c(Id, Context);
+validate_c2c(Context, Id, ?HTTP_PATCH) ->
+    validate_patch_c2c(Id, Context);
 validate_c2c(Context, Id, ?HTTP_DELETE) ->
     load_c2c(Id, Context).
 
@@ -178,6 +182,10 @@ post(Context, _) ->
 post(Context, _, ?CONNECT_CALL) ->
     Context1 = crossbar_doc:save(Context),
     cb_context:set_resp_data(Context1, cb_context:resp_data(Context)).
+
+-spec patch(cb_context:context(), path_token()) -> cb_context:context().
+patch(Context, _) ->
+    crossbar_doc:save(Context).
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
@@ -232,6 +240,21 @@ create_c2c(Context) ->
 update_c2c(C2CId, Context) ->
     OnSuccess = fun(C) -> crossbar_doc:load_merge(C2CId, C) end,
     cb_context:validate_request_data(<<"clicktocall">>, Context, OnSuccess).
+
+-spec validate_patch_c2c(ne_binary(), cb_context:context()) -> cb_context:context().
+validate_patch_c2c(C2CId, Context) ->
+    Context1 = crossbar_doc:load(C2CId, Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            PatchJObj = wh_doc:public_fields(cb_context:req_data(Context)),
+            C2CJObj = wh_json:merge_jobjs(PatchJObj, cb_context:doc(Context1)),
+
+            lager:debug("patched doc, now validating"),
+            OnSuccess = fun(C) -> crossbar_doc:load_merge(C2CId, C) end,
+            cb_context:validate_request_data(<<"clicktocall">>, cb_context:set_req_data(Context, C2CJObj), OnSuccess);
+        _Status ->
+            Context1
+    end.
 
 -spec establish_c2c(ne_binary(), cb_context:context()) -> cb_context:context().
 establish_c2c(C2CId, Context) ->
