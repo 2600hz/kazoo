@@ -59,7 +59,6 @@ to_json({Req1, Context}) ->
                                      ,",\"auth_token\":\"", cb_context:auth_token(Context), "\""
                                      ,"}"
                                     ], Req3),
-            'ok' = cowboy_req:ensure_response(Req3, 200),
             {Req3, cb_context:store(Context1, 'is_chunked', 'true')}
     end.
 
@@ -93,7 +92,6 @@ to_csv({Req, Context}) ->
             {'ok', Req1} = cowboy_req:chunked_reply(200, Headers, Req),
             Context1 = cb_context:store(Context, 'is_csv', 'true'),
             {Req2, _} = send_chunked_cdrs({Req1, Context1}),
-            'ok' = cowboy_req:ensure_response(Req2, 200),
             {Req2, cb_context:store(Context1,'is_chunked', 'true')}
     end.
 
