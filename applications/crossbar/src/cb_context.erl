@@ -907,6 +907,9 @@ add_system_error(Error, Context) ->
 add_system_error(Error, <<_/binary>>=Message, Context) ->
     JObj = wh_json:from_list([{<<"message">>, Message}]),
     add_system_error(Error, JObj, Context);
+add_system_error(Error, Props, Context) when is_list(Props) ->
+    JObj = wh_json:from_list(Props),
+    add_system_error(Error, JObj, Context);
 add_system_error('bad_identifier'=Error, JObj, Context) ->
     J = wh_json:set_value(<<"message">>, <<"bad identifier">>, JObj),
     build_system_error(404, Error, J, Context);
