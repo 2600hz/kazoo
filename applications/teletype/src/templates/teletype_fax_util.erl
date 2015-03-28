@@ -84,6 +84,8 @@ wait_for_results(Port, Acc) ->
         {Port, {'exit_status', _Status}} ->
             lager:debug("port exit status: ~p", [_Status]),
             {'error', iolist_to_binary(Acc)};
+        {'EXIT', Port, 'epipe'} ->
+            {'ok', iolist_to_binary(Acc)};
         {'EXIT', Port, Reason} ->
             lager:debug("port exited: ~p", [Reason]),
             {'error', iolist_to_binary(Acc)};
