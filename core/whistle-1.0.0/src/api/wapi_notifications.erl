@@ -25,6 +25,7 @@
          ,new_account/1, new_account_v/1
          ,new_user/1, new_user_v/1
          ,port_request/1, port_request_v/1
+         ,port_pending/1, port_pending_v/1
          ,port_scheduled/1, port_scheduled_v/1
          ,port_cancel/1, port_cancel_v/1
          ,ported/1, ported_v/1
@@ -55,6 +56,7 @@
          ,publish_new_account/1, publish_new_account/2
          ,publish_new_user/1, publish_new_user/2
          ,publish_port_request/1, publish_port_request/2
+         ,publish_port_pending/1, publish_port_pending/2
          ,publish_port_scheduled/1, publish_port_scheduled/2
          ,publish_port_cancel/1, publish_port_cancel/2
          ,publish_ported/1, publish_ported/2
@@ -95,6 +97,7 @@
 -define(NOTIFY_NEW_USER, <<"notifications.user.new">>).
 %% -define(NOTIFY_DELETE_ACCOUNT, <<"notifications.account.delete">>).
 -define(NOTIFY_PORT_REQUEST, <<"notifications.number.port">>).
+-define(NOTIFY_PORT_PENDING, <<"notifications.number.port_pending">>).
 -define(NOTIFY_PORT_SCHEDULED, <<"notifications.number.port_scheduled">>).
 -define(NOTIFY_PORT_CANCEL, <<"notifications.number.port_cancel">>).
 -define(NOTIFY_PORTED, <<"notifications.number.ported">>).
@@ -274,6 +277,18 @@
                              ]).
 -define(PORT_REQUEST_TYPES, []).
 
+%% Notify Port Pending
+-define(PORT_PENDING_HEADERS, [<<"Account-ID">>]).
+-define(OPTIONAL_PORT_PENDING_HEADERS, [<<"Authorized-By">>, <<"Port-Request-ID">>
+                                        ,<<"Number-State">>, <<"Local-Number">>
+                                        ,<<"Number">>, <<"Port">>, <<"Version">>
+                                        | ?DEFAULT_OPTIONAL_HEADERS
+                                       ]).
+-define(PORT_PENDING_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                              ,{<<"Event-Name">>, <<"port_pending">>}
+                             ]).
+-define(PORT_PENDING_TYPES, []).
+
 %% Notify Port Scheduled
 -define(PORT_SCHEDULED_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_PORT_SCHEDULED_HEADERS, [<<"Authorized-By">>, <<"Port-Request-ID">>
@@ -430,6 +445,8 @@ headers(<<"topup">>) ->
     ?TOPUP_HEADERS ++ ?OPTIONAL_TOPUP_HEADERS;
 headers(<<"port_request">>) ->
     ?PORT_REQUEST_HEADERS ++ ?OPTIONAL_PORT_REQUEST_HEADERS;
+headers(<<"port_pending">>) ->
+    ?PORT_PENDING_HEADERS ++ ?OPTIONAL_PORT_PENDING_HEADERS;
 headers(<<"port_scheduled">>) ->
     ?PORT_SCHEDULED_HEADERS ++ ?OPTIONAL_PORT_SCHEDULED_HEADERS;
 headers(<<"port_cancel">>) ->
@@ -662,6 +679,23 @@ port_request(JObj) -> port_request(wh_json:to_proplist(JObj)).
 port_request_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?PORT_REQUEST_HEADERS, ?PORT_REQUEST_VALUES, ?PORT_REQUEST_TYPES);
 port_request_v(JObj) -> port_request_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Port pending notification - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+port_pending(Prop) when is_list(Prop) ->
+    case port_pending_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?PORT_PENDING_HEADERS, ?OPTIONAL_PORT_PENDING_HEADERS);
+        'false' -> {'error', "Proplist failed validation for port_pending"}
+    end;
+port_pending(JObj) -> port_pending(wh_json:to_proplist(JObj)).
+
+-spec port_pending_v(api_terms()) -> boolean().
+port_pending_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?PORT_PENDING_HEADERS, ?PORT_PENDING_VALUES, ?PORT_PENDING_TYPES);
+port_pending_v(JObj) -> port_pending_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Port scheduled notification - see wiki
@@ -922,6 +956,9 @@ bind_to_q(Q, ['new_user'|T]) ->
 bind_to_q(Q, ['port_request'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PORT_REQUEST),
     bind_to_q(Q, T);
+bind_to_q(Q, ['port_pending'|T]) ->
+    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PORT_PENDING),
+    bind_to_q(Q, T);
 bind_to_q(Q, ['port_scheduled'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PORT_SCHEDULED),
     bind_to_q(Q, T);
@@ -1008,6 +1045,9 @@ unbind_q_from(Q, ['new_user'|T]) ->
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['port_request'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PORT_REQUEST),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, ['port_pending'|T]) ->
+    'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PORT_PENDING),
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['port_scheduled'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PORT_SCHEDULED),
@@ -1144,6 +1184,13 @@ publish_port_request(JObj) -> publish_port_request(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_port_request(API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?PORT_REQUEST_VALUES, fun ?MODULE:port_request/1),
     amqp_util:notifications_publish(?NOTIFY_PORT_REQUEST, Payload, ContentType).
+
+-spec publish_port_pending(api_terms()) -> 'ok'.
+-spec publish_port_pending(api_terms(), ne_binary()) -> 'ok'.
+publish_port_pending(JObj) -> publish_port_pending(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_port_pending(API, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(API, ?PORT_PENDING_VALUES, fun ?MODULE:port_pending/1),
+    amqp_util:notifications_publish(?NOTIFY_PORT_PENDING, Payload, ContentType).
 
 -spec publish_port_scheduled(api_terms()) -> 'ok'.
 -spec publish_port_scheduled(api_terms(), ne_binary()) -> 'ok'.

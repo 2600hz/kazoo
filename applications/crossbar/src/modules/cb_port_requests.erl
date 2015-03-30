@@ -432,7 +432,19 @@ post(Context, Id, ?PORT_SUBMITTED) ->
     DryRun = not(cb_context:accepting_charges(Context)),
     post_submitted(DryRun, Context, Id);
 post(Context, Id, ?PORT_PENDING) ->
-    do_post(Context, Id);
+    try send_port_pending_notification(Context, Id) of
+        _ ->
+            lager:debug("port pending notification sent"),
+            do_post(Context, Id)
+    catch
+        _E:_R ->
+            lager:debug("failed to send the port pending notification: ~s:~p", [_E, _R]),
+            cb_context:add_system_error(
+              'bad_gateway'
+              ,<<"failed to send port pending email">>
+              ,Context
+             )
+    end;
 post(Context, Id, ?PORT_SCHEDULED) ->
     try send_port_scheduled_notification(Context, Id) of
         _ ->
@@ -443,7 +455,7 @@ post(Context, Id, ?PORT_SCHEDULED) ->
             lager:debug("failed to send the port scheduled notification: ~s:~p", [_E, _R]),
             cb_context:add_system_error(
               'bad_gateway'
-              ,<<"failed to send port scheduled email to system admins">>
+              ,<<"failed to send port scheduled email">>
               ,Context
              )
     end;
@@ -457,7 +469,7 @@ post(Context, Id, ?PORT_COMPLETE) ->
             lager:debug("failed to send the ported notification: ~s:~p", [_E, _R]),
             cb_context:add_system_error(
               'bad_gateway'
-              ,<<"failed to send ported email to system admins">>
+              ,<<"failed to send ported email">>
               ,Context
              )
     end;
@@ -472,7 +484,7 @@ post(Context, Id, ?PORT_REJECT) ->
             lager:debug("failed to send the port cancel notification: ~s:~p", [_E, _R]),
             cb_context:add_system_error(
               'bad_gateway'
-              ,<<"failed to send port cancel email to system admins">>
+              ,<<"failed to send port cancel email">>
               ,Context
              )
     end;
@@ -487,7 +499,7 @@ post(Context, Id, ?PORT_CANCELED) ->
             lager:debug("failed to send the port cancel notification: ~s:~p", [_E, _R]),
             cb_context:add_system_error(
               'bad_gateway'
-              ,<<"failed to send port cancel email to system admins">>
+              ,<<"failed to send port cancel email">>
               ,Context
              )
     end.
@@ -504,7 +516,7 @@ post_submitted('false', Context, Id) ->
             lager:debug("failed to send the port request notification: ~s:~p", [_E, _R]),
             cb_context:add_system_error(
               'bad_gateway'
-              ,<<"failed to send port request email to system admins">>
+              ,<<"failed to send port request email">>
               ,Context
              )
     end;
@@ -1162,6 +1174,21 @@ send_port_request_notification(Context, Id) ->
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     whapps_util:amqp_pool_send(Req, fun wapi_notifications:publish_port_request/1).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec send_port_pending_notification(cb_context:context(), ne_binary()) -> 'ok'.
+send_port_pending_notification(Context, Id) ->
+    Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
+           ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
+           ,{<<"Port-Request-ID">>, Id}
+           ,{<<"Version">>, cb_context:api_version(Context)}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    whapps_util:amqp_pool_send(Req, fun wapi_notifications:publish_port_pending/1).
 
 %%--------------------------------------------------------------------
 %% @private

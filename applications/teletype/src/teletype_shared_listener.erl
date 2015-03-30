@@ -74,6 +74,9 @@
                      ,{'teletype_port_request'
                        ,[{<<"notification">>, <<"port_request">>}]
                       }
+                     ,{'teletype_port_pending'
+                       ,[{<<"notification">>, <<"port_pending">>}]
+                      }
                      ,{'teletype_port_cancel'
                        ,[{<<"notification">>, <<"port_cancel">>}]
                       }
@@ -97,6 +100,7 @@
                       ,'pwd_recovery'
                       ,'cnam_requests'
                       ,'port_request'
+                      ,'port_pending'
                       ,'port_cancel'
                       ,'ported'
                       ,'port_comment'
