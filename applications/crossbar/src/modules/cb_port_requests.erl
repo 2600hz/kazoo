@@ -444,10 +444,10 @@ post(Context, Id, ?PORT_COMPLETE) ->
         _E:_R ->
             lager:debug("failed to send the ported notification: ~s:~p", [_E, _R]),
             cb_context:add_system_error(
-                'bad_gateway'
-                ,<<"failed to send ported email to system admins">>
-                ,Context
-            )
+              'bad_gateway'
+              ,<<"failed to send ported email to system admins">>
+              ,Context
+             )
     end;
 post(Context, Id, ?PORT_REJECT) ->
     _ = remove_from_phone_numbers_doc(Context),
@@ -459,10 +459,10 @@ post(Context, Id, ?PORT_REJECT) ->
         _E:_R ->
             lager:debug("failed to send the port cancel notification: ~s:~p", [_E, _R]),
             cb_context:add_system_error(
-                'bad_gateway'
-                ,<<"failed to send port cancel email to system admins">>
-                ,Context
-            )
+              'bad_gateway'
+              ,<<"failed to send port cancel email to system admins">>
+              ,Context
+             )
     end;
 post(Context, Id, ?PORT_CANCELED) ->
     _ = remove_from_phone_numbers_doc(Context),
@@ -491,10 +491,10 @@ post_submitted('false', Context, Id) ->
         _E:_R ->
             lager:debug("failed to send the port request notification: ~s:~p", [_E, _R]),
             cb_context:add_system_error(
-                'bad_gateway'
-                ,<<"failed to send port request email to system admins">>
-                ,Context
-            )
+              'bad_gateway'
+              ,<<"failed to send port request email to system admins">>
+              ,Context
+             )
     end;
 post_submitted('true', Context, Id) ->
     DryRunJObj = dry_run(Context),
@@ -502,7 +502,6 @@ post_submitted('true', Context, Id) ->
         'false' -> crossbar_util:response_402(DryRunJObj, Context);
         'true' -> post_submitted('false', Context, Id)
     end.
-
 
 post(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
     [{_Filename, FileJObj}] = cb_context:req_files(Context),
@@ -579,11 +578,12 @@ read(Context, Id) ->
     end.
 
 -spec read_descendants(cb_context:context()) -> cb_context:context().
+-spec read_descendants(cb_context:context(), ne_binaries()) -> cb_context:context().
 read_descendants(Context) ->
     Context1 = crossbar_doc:load_view(?AGG_VIEW_DESCENDANTS
-                                      , [{<<"startkey">>, [cb_context:account_id(Context)]}
-                                         ,{<<"endkey">>, [cb_context:account_id(Context), wh_json:new()]}
-                                        ]
+                                      ,[{<<"startkey">>, [cb_context:account_id(Context)]}
+                                        ,{<<"endkey">>, [cb_context:account_id(Context), wh_json:new()]}
+                                       ]
                                       ,cb_context:set_account_db(Context, ?WH_ACCOUNTS_DB)
                                      ),
     case cb_context:resp_status(Context1) of
@@ -595,24 +595,29 @@ read_descendants(Context, SubAccounts) ->
     AllPortRequests =
         lists:foldl(
           fun(Account, Acc) ->
-                  AccountId = wh_json:get_value(<<"id">>, Account),
-                  case read_descendant(Context, AccountId) of
-                      'undefined' -> Acc;
-                      PortRequests ->
-                          [wh_json:from_list(
-                             [{<<"account_id">>, AccountId}
-                              ,{<<"account_name">>, wh_json:get_value([<<"value">>, <<"name">>], Account)}
-                              ,{<<"port_requests">>, PortRequests}
-                             ]
-                            )
-                           |Acc
-                          ]
-                  end
+                  read_descendants_fold(Account, Acc, Context)
           end
           ,[]
           ,SubAccounts
          ),
     crossbar_doc:handle_json_success(AllPortRequests, Context).
+
+-spec read_descendants_fold(wh_json:object(), wh_json:objects(), cb_context:context()) ->
+                                   wh_json:objects().
+read_descendants_fold(Account, Acc, Context) ->
+    AccountId = wh_json:get_value(<<"id">>, Account),
+    case read_descendant(Context, AccountId) of
+        'undefined' -> Acc;
+        PortRequests ->
+            [wh_json:from_list(
+               [{<<"account_id">>, AccountId}
+                ,{<<"account_name">>, wh_json:get_value([<<"value">>, <<"name">>], Account)}
+                ,{<<"port_requests">>, PortRequests}
+               ]
+              )
+             |Acc
+            ]
+    end.
 
 -spec read_descendant(cb_context:context(), ne_binary()) -> api_object().
 read_descendant(Context, Id) ->
@@ -621,7 +626,6 @@ read_descendant(Context, Id) ->
         'success' -> cb_context:doc(Context1);
         _Status -> 'undefined'
     end.
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -634,7 +638,6 @@ read_descendant(Context, Id) ->
 update(Context, Id) ->
     OnSuccess = fun(C) -> on_successful_validation(C, Id) end,
     cb_context:validate_request_data(<<"port_requests">>, Context, OnSuccess).
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1107,20 +1110,16 @@ maybe_send_port_comment_notification(Context, Id) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec has_new_comment('undefined' | wh_json:objects(), 'undefined' | wh_json:objects()) -> boolean().
+-spec has_new_comment(api_objects(), api_objects()) -> boolean().
 has_new_comment('undefined', [_|_]) -> 'true';
-has_new_comment(_, 'undefined') -> 'false';
 has_new_comment([], [_|_]) -> 'true';
+has_new_comment(_, 'undefined') -> 'false';
 has_new_comment(_, []) -> 'false';
 has_new_comment(OldComments, NewComments) ->
     OldTime = wh_json:get_value(<<"timestamp">>, lists:last(OldComments)),
     NewTime = wh_json:get_value(<<"timestamp">>, lists:last(NewComments)),
-    case {OldTime, NewTime} of
-        {O, N} when O =:= N -> 'false';
-        {O, N} when O > N -> 'false';
-        {O, N} when O < N -> 'true'
-    end.
 
+    OldTime < NewTime.
 
 %%--------------------------------------------------------------------
 %% @private
