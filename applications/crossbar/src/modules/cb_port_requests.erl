@@ -792,27 +792,11 @@ check_number_portability(PortId, Number, Context) ->
         {'ok', [_|_]=_PortReqs} ->
             Message = <<"Number is currently on multiple port requests. Contact a system admin to rectify">>,
             lager:debug("number ~s(~s) exists on multiple port request docs. That's bad!", [E164, Number]),
-            cb_context:add_validation_error(
-                Number
-                ,<<"type">>
-                ,wh_json:from_list([
-                    {<<"message">>, Message}
-                    ,{<<"cause">>, Number}
-                 ])
-                ,Context
-            );
+            number_validation_error(Context, Number, Message);
         {'error', _E} ->
             Message = <<"Failed to query back-end services, cannot port at this time">>,
             lager:debug("failed to query the port request view: ~p", [_E]),
-            cb_context:add_validation_error(
-                Number
-                ,<<"type">>
-                ,wh_json:from_list([
-                    {<<"message">>, Message}
-                    ,{<<"cause">>, Number}
-                 ])
-                ,Context
-            )
+            number_validation_error(Context, Number, Message)
     end.
 
 check_number_portability(PortId, Number, Context, E164, PortReq) ->
@@ -832,30 +816,22 @@ check_number_portability(PortId, Number, Context, E164, PortReq) ->
                 ,[E164, Number, cb_context:account_id(Context), wh_json:get_value(<<"id">>, PortReq)]
             ),
             Message = <<"Number is on a port request already: ", (wh_json:get_value(<<"id">>, PortReq))/binary>>,
-            cb_context:add_validation_error(
-                Number
-                ,<<"type">>
-                ,wh_json:from_list([
-                    {<<"message">>, Message}
-                    ,{<<"cause">>, Number}
-                 ])
-                ,Context
-            );
+            number_validation_error(Context, Number, Message);
         {'false', _} ->
             lager:debug(
                 "number ~s(~s) is on existing port request for other account(~s)"
                 ,[E164, Number, wh_json:get_value(<<"value">>, PortReq)]
             ),
-            cb_context:add_validation_error(
-                Number
-                ,<<"type">>
-                ,wh_json:from_list([
-                    {<<"message">>, <<"Number is being ported for a different account">>}
-                    ,{<<"cause">>, Number}
-                 ])
-                ,Context
-            )
+            number_validation_error(Context, Number, <<"Number is being ported for a different account">>)
     end.
+
+-spec number_validation_error(cb_context:context(), ne_binary(), ne_binary()) ->
+                                     cb_context:context().
+number_validation_error(Context, Number, Message) ->
+    JObj = wh_json:from_list([{<<"message">>, Message}
+                              ,{<<"cause">>, Number}
+                             ]),
+    cb_context:add_validation_error(Number, <<"type">>, JObj, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -868,15 +844,7 @@ check_number_existence(E164, Number, Context) ->
     case wh_number_manager:lookup_account_by_number(E164) of
         {'ok', _AccountId, _} ->
             lager:debug("number ~s exists and belongs to ~s", [E164, _AccountId]),
-            cb_context:add_validation_error(
-                Number
-                ,<<"type">>
-                ,wh_json:from_list([
-                    {<<"message">>, <<"Number exists on the system already">>}
-                    ,{<<"cause">>, Number}
-                 ])
-                ,Context
-            );
+            number_validation_error(Context, Number, <<"Number exists on the system already">>);
         {'error', 'not_found'} ->
             lager:debug("number ~s not found in numbers db (portable!)", [E164]),
             cb_context:set_resp_status(Context, 'success');
@@ -885,15 +853,7 @@ check_number_existence(E164, Number, Context) ->
             cb_context:set_resp_status(Context, 'success');
         {'error', E} ->
             lager:debug("number ~s error-ed when looking up: ~p", [E164, E]),
-            cb_context:add_validation_error(
-                Number
-                ,<<"type">>
-                ,wh_json:from_list([
-                    {<<"message">>, wh_util:to_binary(E)}
-                    ,{<<"cause">>, Number}
-                 ])
-                ,Context
-            )
+            number_validation_error(Context, Number, wh_util:to_binary(E))
     end.
 
 %%--------------------------------------------------------------------
