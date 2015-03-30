@@ -54,6 +54,7 @@ fix_port_request_data(JObj) ->
     Routines = [fun fix_numbers/1
                 ,fun fix_billing/1
                 ,fun fix_comments/1
+                ,fun fix_dates/1
                ],
     lists:foldl(fun(F, J) -> F(J) end, JObj, Routines).
 
@@ -95,3 +96,21 @@ fix_comments(JObj) ->
 -spec fix_comment_fold(wh_json:object(), [wh_proplist(), ...]) -> [wh_proplist(), ...].
 fix_comment_fold(JObj, Acc) ->
     [wh_json:to_proplist(JObj)|Acc].
+
+-spec fix_dates(wh_json:object()) -> wh_json:object().
+fix_dates(JObj) ->
+    lists:foldl(
+        fun fix_date_fold/2
+        ,JObj
+        ,[<<"transfer_date">>, <<"scheduled_date">>]
+    ).
+
+-spec fix_date_fold(wh_json:object(), [wh_proplist(), ...]) -> [wh_proplist(), ...].
+fix_date_fold(Key, JObj) ->
+    case wh_json:get_integer_value(Key, JObj) of
+        'undefined' -> JObj;
+        Timestamp ->
+            {Date, _Time} = calendar:gregorian_seconds_to_datetime(Timestamp),
+            % Date = wh_util:gregorian_seconds_to_unix_seconds(Timestamp),
+            wh_json:set_value(Key, Date, JObj)
+    end.
