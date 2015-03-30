@@ -112,6 +112,7 @@
         ]).
 
 -export([default_helper_function/2]).
+-export([default_caller_id_number/0]).
 
 -define(DEFAULT_CALLER_ID_NAME, <<"Unknown">>).
 -define(DEFAULT_CALLER_ID_NUMBER, <<"0000000000">>).
@@ -176,6 +177,9 @@
 
 -spec default_helper_function(Field, call()) -> Field.
 default_helper_function(Field, #whapps_call{}) -> Field.
+
+-spec default_caller_id_number() -> binary().
+default_caller_id_number() -> ?DEFAULT_CALLER_ID_NUMBER.
 
 -spec clear_helpers(call()) -> call().
 clear_helpers(#whapps_call{}=Call) ->
