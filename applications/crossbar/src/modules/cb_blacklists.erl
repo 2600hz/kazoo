@@ -14,6 +14,7 @@
          ,validate/1, validate/2
          ,put/1
          ,post/2
+         ,patch/2
          ,delete/2
         ]).
 
@@ -30,6 +31,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.blacklists">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.blacklists">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.blacklists">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.patch.blacklists">>, ?MODULE, 'patch'),
     crossbar_bindings:bind(<<"*.execute.delete.blacklists">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
@@ -46,7 +48,7 @@ init() ->
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 allowed_methods(_) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -89,11 +91,17 @@ validate_set(Context, ?HTTP_GET, DocId) ->
     read(DocId, Context);
 validate_set(Context, ?HTTP_POST, DocId) ->
     update(DocId, Context);
+validate_set(Context, ?HTTP_PATCH, DocId) ->
+    validate_patch(DocId, Context);
 validate_set(Context, ?HTTP_DELETE, DocId) ->
     read(DocId, Context).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _) ->
+    crossbar_doc:save(Context).
+
+-spec patch(cb_context:context(), path_token()) -> cb_context:context().
+patch(Context, _) ->
     crossbar_doc:save(Context).
 
 -spec put(cb_context:context()) -> cb_context:context().
@@ -140,6 +148,28 @@ read(Id, Context) ->
 update(Id, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
     cb_context:validate_request_data(<<"blacklists">>, Context, OnSuccess).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Update-merge an existing menu document partially with the data provided, if it is
+%% valid
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_patch(ne_binary(), cb_context:context()) -> cb_context:context().
+validate_patch(Id, Context) ->
+    Context1 = crossbar_doc:load(Id, Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            PatchJObj = wh_doc:public_fields(cb_context:req_data(Context)),
+            BlacklistsJObj = wh_json:merge_jobjs(PatchJObj, cb_context:doc(Context1)),
+
+            lager:debug("patched doc, now validating"),
+            OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
+            cb_context:validate_request_data(<<"blacklists">>, cb_context:set_req_data(Context, BlacklistsJObj), OnSuccess);
+        _Status ->
+            Context1
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
