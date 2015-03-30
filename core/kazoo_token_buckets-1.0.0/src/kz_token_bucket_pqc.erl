@@ -82,11 +82,18 @@ correct() ->
 initial_state() -> 'ok'.
 
 command('ok') ->
-    {'call', ?SERVER, 'start_link', [?SERVER, pos_integer(), pos_integer(), 'true', 'second']};
+    frequency([{1, {'call'
+                    ,?SERVER
+                    ,'start_link'
+                    ,[?SERVER, pos_integer(), pos_integer(), 'true', 'second']
+                   }
+               }
+              ]);
 command(#state{}=_Model) ->
     oneof([{'call', ?SERVER, 'consume', [?SERVER, integer()]}
+           ,{'call', ?SERVER, 'consume_until', [?SERVER, integer()]}
            ,{'call', ?SERVER, 'tokens', [?SERVER]}
-           ,{'call', 'timer', 'sleep', [range(800,1200)]}
+           ,{'call', 'timer', 'sleep', [range(800,5200)]}
           ]).
 
 next_state('ok'
@@ -106,6 +113,13 @@ next_state(#state{}=Model
     tokens_consume(Ts
                    ,Model
                   );
+next_state(#state{}=Model
+           ,_V
+           ,{'call', _Server, 'consume_until', [_Server, Ts]}
+          ) ->
+    tokens_consume_until(Ts
+                         ,Model
+                        );
 next_state(#state{}=Model
            ,_V
            ,{'call', _Server, 'tokens', [_Server]}
@@ -129,19 +143,27 @@ postcondition('ok'
     {'ok', P} = Result,
     is_pid(P);
 postcondition(#state{}
-              ,{'call', _Server, 'consume', [_Server, Ts]}
+              ,{'call', _Server, Fun, [_Server, Ts]}
               ,Result
-             ) when Ts =< 0 ->
+             ) when Ts =< 0
+                    andalso (Fun == 'consume'
+                             orelse Fun == 'consume_until'
+                            ) ->
     'true' == Result;
 postcondition(#state{current=B}
-              ,{'call', _Server, 'consume', [_Server, Ts]}
+              ,{'call', _Server, Fun, [_Server, Ts]}
               ,Result
-             ) when Ts =< B ->
+             ) when Ts =< B
+                    andalso (Fun == 'consume'
+                             orelse Fun == 'consume_until'
+                            ) ->
     'true' == Result;
 postcondition(#state{}
-              ,{'call', _Server, 'consume', [_Server, _Ts]}
+              ,{'call', _Server, Fun, [_Server, _Ts]}
               ,Result
-             ) ->
+             ) when Fun == 'consume'
+                    orelse Fun == 'consume_until'
+                    ->
     'false' == Result;
 postcondition(#state{current=B
                      ,max=Max
@@ -173,6 +195,17 @@ tokens_consume(N, #state{current=T}=Model) when N > T ->
     Model;
 tokens_consume(N, #state{current=T}=Model) ->
     Model#state{current=T-N}.
+
+%% We want to consume N tokens if there are enough
+%% otherwise don't consume them
+%% if N is <= 0, leave the bucket alone
+tokens_consume_until(N, Model) when N =< 0 ->
+    Model;
+tokens_consume_until(N, #state{current=T}=Model) when N > T ->
+    Model#state{current=0};
+tokens_consume_until(N, #state{current=T}=Model) ->
+    Model#state{current=T-N}.
+
 
 maybe_add_tokens(#state{current=T
                         ,max=Max
