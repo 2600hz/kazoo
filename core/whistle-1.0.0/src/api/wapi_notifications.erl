@@ -258,8 +258,8 @@
 -define(NEW_USER_HEADERS, [<<"Account-ID">>, <<"User-ID">>, <<"Password">>]).
 -define(OPTIONAL_NEW_USER_HEADERS, ?DEFAULT_OPTIONAL_HEADERS).
 -define(NEW_USER_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                             ,{<<"Event-Name">>, <<"new_user">>}
-                            ]).
+                          ,{<<"Event-Name">>, <<"new_user">>}
+                         ]).
 -define(NEW_USER_TYPES, []).
 
 %% Notify Port Request
@@ -277,13 +277,13 @@
 %% Notify Port Scheduled
 -define(PORT_SCHEDULED_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_PORT_SCHEDULED_HEADERS, [<<"Authorized-By">>, <<"Port-Request-ID">>
-                                        ,<<"Number-State">>, <<"Local-Number">>
-                                        ,<<"Number">>, <<"Port">>, <<"Version">>
-                                        | ?DEFAULT_OPTIONAL_HEADERS
-                                       ]).
+                                          ,<<"Number-State">>, <<"Local-Number">>
+                                          ,<<"Number">>, <<"Port">>, <<"Version">>
+                                          | ?DEFAULT_OPTIONAL_HEADERS
+                                         ]).
 -define(PORT_SCHEDULED_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                              ,{<<"Event-Name">>, <<"port_scheduled">>}
-                             ]).
+                                ,{<<"Event-Name">>, <<"port_scheduled">>}
+                               ]).
 -define(PORT_SCHEDULED_TYPES, []).
 
 % Notify Port Cancel
@@ -374,7 +374,6 @@
                                   ]).
 -define(WEBHOOK_VALUES, [{<<"Event-Category">>, <<"notification">>}
                          ,{<<"Event-Name">>, <<"webhook">>}
-
                         ]).
 -define(WEBHOOK_TYPES, []).
 
