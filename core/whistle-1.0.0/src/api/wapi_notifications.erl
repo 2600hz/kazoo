@@ -25,6 +25,7 @@
          ,new_account/1, new_account_v/1
          ,new_user/1, new_user_v/1
          ,port_request/1, port_request_v/1
+         ,port_scheduled/1, port_scheduled_v/1
          ,port_cancel/1, port_cancel_v/1
          ,ported/1, ported_v/1
          ,port_comment/1, port_comment_v/1
@@ -54,6 +55,7 @@
          ,publish_new_account/1, publish_new_account/2
          ,publish_new_user/1, publish_new_user/2
          ,publish_port_request/1, publish_port_request/2
+         ,publish_port_scheduled/1, publish_port_scheduled/2
          ,publish_port_cancel/1, publish_port_cancel/2
          ,publish_ported/1, publish_ported/2
          ,publish_port_comment/1, publish_port_comment/2
@@ -93,6 +95,7 @@
 -define(NOTIFY_NEW_USER, <<"notifications.user.new">>).
 %% -define(NOTIFY_DELETE_ACCOUNT, <<"notifications.account.delete">>).
 -define(NOTIFY_PORT_REQUEST, <<"notifications.number.port">>).
+-define(NOTIFY_PORT_SCHEDULED, <<"notifications.number.port_scheduled">>).
 -define(NOTIFY_PORT_CANCEL, <<"notifications.number.port_cancel">>).
 -define(NOTIFY_PORTED, <<"notifications.number.ported">>).
 -define(NOTIFY_PORT_COMMENT, <<"notifications.number.port_comment">>).
@@ -271,6 +274,18 @@
                              ]).
 -define(PORT_REQUEST_TYPES, []).
 
+%% Notify Port Scheduled
+-define(PORT_SCHEDULED_HEADERS, [<<"Account-ID">>]).
+-define(OPTIONAL_PORT_SCHEDULED_HEADERS, [<<"Authorized-By">>, <<"Port-Request-ID">>
+                                        ,<<"Number-State">>, <<"Local-Number">>
+                                        ,<<"Number">>, <<"Port">>, <<"Version">>
+                                        | ?DEFAULT_OPTIONAL_HEADERS
+                                       ]).
+-define(PORT_SCHEDULED_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                              ,{<<"Event-Name">>, <<"port_scheduled">>}
+                             ]).
+-define(PORT_SCHEDULED_TYPES, []).
+
 % Notify Port Cancel
 -define(PORT_CANCEL_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_PORT_CANCEL_HEADERS, [<<"Authorized-By">>, <<"Port-Request-ID">>
@@ -416,6 +431,8 @@ headers(<<"topup">>) ->
     ?TOPUP_HEADERS ++ ?OPTIONAL_TOPUP_HEADERS;
 headers(<<"port_request">>) ->
     ?PORT_REQUEST_HEADERS ++ ?OPTIONAL_PORT_REQUEST_HEADERS;
+headers(<<"port_scheduled">>) ->
+    ?PORT_SCHEDULED_HEADERS ++ ?OPTIONAL_PORT_SCHEDULED_HEADERS;
 headers(<<"port_cancel">>) ->
     ?PORT_CANCEL_HEADERS ++ ?OPTIONAL_PORT_CANCEL_HEADERS;
 headers(<<"ported">>) ->
@@ -646,6 +663,23 @@ port_request(JObj) -> port_request(wh_json:to_proplist(JObj)).
 port_request_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?PORT_REQUEST_HEADERS, ?PORT_REQUEST_VALUES, ?PORT_REQUEST_TYPES);
 port_request_v(JObj) -> port_request_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Port scheduled notification - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+port_scheduled(Prop) when is_list(Prop) ->
+    case port_scheduled_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?PORT_SCHEDULED_HEADERS, ?OPTIONAL_PORT_SCHEDULED_HEADERS);
+        'false' -> {'error', "Proplist failed validation for port_scheduled"}
+    end;
+port_scheduled(JObj) -> port_scheduled(wh_json:to_proplist(JObj)).
+
+-spec port_scheduled_v(api_terms()) -> boolean().
+port_scheduled_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?PORT_SCHEDULED_HEADERS, ?PORT_SCHEDULED_VALUES, ?PORT_SCHEDULED_TYPES);
+port_scheduled_v(JObj) -> port_scheduled_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Port cancel notification - see wiki
@@ -889,6 +923,9 @@ bind_to_q(Q, ['new_user'|T]) ->
 bind_to_q(Q, ['port_request'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PORT_REQUEST),
     bind_to_q(Q, T);
+bind_to_q(Q, ['port_scheduled'|T]) ->
+    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PORT_SCHEDULED),
+    bind_to_q(Q, T);
 bind_to_q(Q, ['port_cancel'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PORT_CANCEL),
     bind_to_q(Q, T);
@@ -972,6 +1009,9 @@ unbind_q_from(Q, ['new_user'|T]) ->
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['port_request'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PORT_REQUEST),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, ['port_scheduled'|T]) ->
+    'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PORT_SCHEDULED),
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['port_cancel'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PORT_CANCEL),
@@ -1105,6 +1145,13 @@ publish_port_request(JObj) -> publish_port_request(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_port_request(API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?PORT_REQUEST_VALUES, fun ?MODULE:port_request/1),
     amqp_util:notifications_publish(?NOTIFY_PORT_REQUEST, Payload, ContentType).
+
+-spec publish_port_scheduled(api_terms()) -> 'ok'.
+-spec publish_port_scheduled(api_terms(), ne_binary()) -> 'ok'.
+publish_port_scheduled(JObj) -> publish_port_scheduled(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_port_scheduled(API, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(API, ?PORT_SCHEDULED_VALUES, fun ?MODULE:port_scheduled/1),
+    amqp_util:notifications_publish(?NOTIFY_PORT_SCHEDULED, Payload, ContentType).
 
 -spec publish_port_cancel(api_terms()) -> 'ok'.
 -spec publish_port_cancel(api_terms(), ne_binary()) -> 'ok'.
