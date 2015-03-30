@@ -25,11 +25,11 @@
           )
        ).
 
--define(TEMPLATE_TEXT, <<"Port request scheduled for {{port_request.scheduled_date}}.\n\n Request to port numbers: {% for number in port_request.numbers %} {{ number }} {% endfor %}.">>).
--define(TEMPLATE_HTML, <<"<p>Port request scheduled for {{port_request.scheduled_date}}.</p><p>Request to port numbers: {% for number in port_request.numbers %} {{ number }} {% endfor %}</p>">>).
--define(TEMPLATE_SUBJECT, <<"Port request scheduled for {{port_request.scheduled_date}}">>).
+-define(TEMPLATE_TEXT, <<"Port request scheduled for {{port_request.scheduled_date |date:\"D d M Y\"}}.\n\n Request to port numbers: {% for number in port_request.numbers %} {{ number }} {% endfor %}.">>).
+-define(TEMPLATE_HTML, <<"<p>Port request scheduled for {{port_request.scheduled_date |date:\"D d M Y\"}}.</p><p>Request to port numbers: {% for number in port_request.numbers %} {{ number }} {% endfor %}</p>">>).
+-define(TEMPLATE_SUBJECT, <<"Port request scheduled for {{port_request.scheduled_date |date:\"D d M Y\"}}">>).
 -define(TEMPLATE_CATEGORY, <<"port_request">>).
--define(TEMPLATE_NAME, <<"Port Request">>).
+-define(TEMPLATE_NAME, <<"Port Scheduled">>).
 
 -define(TEMPLATE_TO, ?CONFIGURED_EMAILS(?EMAIL_ORIGINAL)).
 -define(TEMPLATE_FROM, teletype_util:default_from_address(?MOD_CONFIG_CAT)).
@@ -55,7 +55,7 @@ init() ->
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
-    'true' = wapi_notifications:port_request_v(JObj),
+    'true' = wapi_notifications:port_scheduled_v(JObj),
     wh_util:put_callid(JObj),
     %% Gather data for template
     DataJObj = wh_json:normalize(JObj),
