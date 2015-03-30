@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2013, 2600Hz
+%%% @copyright (C) 2010-2015, 2600Hz
 %%% @doc
 %%% @end
 %%% @contributors
@@ -16,7 +16,9 @@
 -export([callid/1, callid/2]).
 -export([queue_name/1]).
 -export([control_queue/1, control_queue/2]).
--export([continue/1, continue/2]).
+-export([continue/1, continue/2
+         ,continue_with_flow/2
+        ]).
 -export([branch/2]).
 -export([stop/1]).
 -export([hard_stop/1]).
@@ -360,7 +362,7 @@ handle_cast('transfer', State) ->
     {'stop', {'shutdown', 'transfer'}, State};
 handle_cast('control_usurped', State) ->
     {'stop', {'shutdown', 'control_usurped'}, State};
-handle_cast({'continue_with_flow', NewFlow}, #state{flow=Flow}=State) ->
+handle_cast({'continue_with_flow', NewFlow}, State) ->
     lager:info("callflow has been reset"),
     {'noreply', launch_cf_module(State#state{flow=NewFlow})};
 handle_cast({'branch', NewFlow}, #state{flow=Flow, flows=Flows}=State) ->
