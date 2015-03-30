@@ -367,6 +367,8 @@ publish_fun(<<"topup">>) ->
     fun wapi_notifications:publish_topup/1;
 publish_fun(<<"port_request">>) ->
     fun wapi_notifications:publish_port_request/1;
+publish_fun(<<"port_scheduled">>) ->
+    fun wapi_notifications:publish_port_scheduled/1;
 publish_fun(<<"port_cancel">>) ->
     fun wapi_notifications:publish_port_cancel/1;
 publish_fun(<<"ported">>) ->

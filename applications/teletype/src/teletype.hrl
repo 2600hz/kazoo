@@ -123,6 +123,7 @@
           ,?MACRO_VALUE(<<"port_request.transfer_date">>, <<"transfer_date">>, <<"Transfer Date">>, <<"Transfer Date">>)
           ,?MACRO_VALUE(<<"port_request.numbers">>, <<"numbers">>, <<"Numbers">>, <<"Numbers">>)
           ,?MACRO_VALUE(<<"port_request.comments">>, <<"comments">>, <<"Comments">>, <<"Comments">>)
+          ,?MACRO_VALUE(<<"port_request.scheduled_date">>, <<"scheduled_date">>, <<"Scheduled Date">>, <<"Scheduled Date">>)
          ]).
 
 -define(DEFAULT_CALL_MACROS
