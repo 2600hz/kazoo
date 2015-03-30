@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   Peter Defebvre
 %%%-------------------------------------------------------------------
--module(teletype_port_request).
+-module(teletype_port_comment).
 
 -export([init/0
          ,handle_req/2
@@ -14,9 +14,9 @@
 
 -include("../teletype.hrl").
 
--define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".port_request">>).
+-define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".port_comment">>).
 
--define(TEMPLATE_ID, <<"port_request">>).
+-define(TEMPLATE_ID, <<"port_comment">>).
 -define(TEMPLATE_MACROS
         ,wh_json:from_list(
            ?PORT_REQUEST_MACROS
@@ -25,11 +25,11 @@
           )
        ).
 
--define(TEMPLATE_TEXT, <<"Port request submitted for {{account.name}}.\n\n Request to port numbers: {% for number in port_request.numbers %} {{ number }} {% endfor %}.">>).
--define(TEMPLATE_HTML, <<"<p>Port request submitted for {{account.name}}.</p><p>Request to port numbers: {% for number in port_request.numbers %} {{ number }} {% endfor %}</p>">>).
--define(TEMPLATE_SUBJECT, <<"Port request for {{account.name}}">>).
+-define(TEMPLATE_TEXT, <<"{% for comment in port_request.comments %} {{ comment.content }} \n {% endfor %}">>).
+-define(TEMPLATE_HTML, <<"{% for comment in port_request.comments %} <p> {{ comment.content }} </p> {% endfor %}">>).
+-define(TEMPLATE_SUBJECT, <<"New comment for {{port_request.name}}">>).
 -define(TEMPLATE_CATEGORY, <<"port_request">>).
--define(TEMPLATE_NAME, <<"Port Request">>).
+-define(TEMPLATE_NAME, <<"Port Comment">>).
 
 -define(TEMPLATE_TO, ?CONFIGURED_EMAILS(?EMAIL_ORIGINAL)).
 -define(TEMPLATE_FROM, teletype_util:default_from_address(?MOD_CONFIG_CAT)).
@@ -55,7 +55,7 @@ init() ->
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
-    'true' = wapi_notifications:port_request_v(JObj),
+    'true' = wapi_notifications:port_comment_v(JObj),
     wh_util:put_callid(JObj),
     %% Gather data for template
     DataJObj = wh_json:normalize(JObj),

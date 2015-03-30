@@ -1119,7 +1119,7 @@ find_default(ConfigCat, Key) ->
                       {'error', _}.
 open_doc(Type, DocId, DataJObj) ->
     AccountDb = find_account_db(Type, DataJObj),
-    case couch_mgr:open_cache_doc(AccountDb, DocId) of
+    case couch_mgr:open_doc(AccountDb, DocId) of
         {'ok', _JObj}=OK -> OK;
         {'error', _E}=Error ->
             maybe_load_preview(Type, Error, is_preview(DataJObj))

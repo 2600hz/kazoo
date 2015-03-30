@@ -14,6 +14,12 @@
             "send_to": "john.doe@test.com"
         }
     },
+    "comments": [{
+        "user_id": "df9274b450ea6795cdb381055c3f9b45",
+        "timestamp": 63594532177,
+        "content": "comment 1",
+        "superduper_comment": false
+    }],
     "transfer_date": 63594399600,
     "numbers": {
         "+14150000000": {}

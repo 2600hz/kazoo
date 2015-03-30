@@ -112,6 +112,19 @@
           ,?MACRO_VALUE(<<"service.from">>, <<"service_from">>, <<"Service Provider Email">>, <<"Service Provider's Email">>)
          ]).
 
+-define(PORT_REQUEST_MACROS
+        ,[?MACRO_VALUE(<<"port_request.carrier">>, <<"carrier">>, <<"Carrier">>, <<"Carrier">>)
+          ,?MACRO_VALUE(<<"port_request.name">>, <<"name">>, <<"Name">>, <<"Name">>)
+          ,?MACRO_VALUE(<<"port_request.bill_name">>, <<"bill_name">>, <<"Bill Name">>, <<"Name on the bill">>)
+          ,?MACRO_VALUE(<<"port_request.bill_address">>, <<"bill_address">>, <<"Bill Address">>, <<"Address on the bill">>)
+          ,?MACRO_VALUE(<<"port_request.bill_locality">>, <<"bill_locality">>, <<"Bill Locality">>, <<"City on the bill">>)
+          ,?MACRO_VALUE(<<"port_request.bill_region">>, <<"bill_region">>, <<"Bill Region">>, <<"Region on the bill">>)
+          ,?MACRO_VALUE(<<"port_request.bill_postal_code">>, <<"bill_postal_code">>, <<"Bill Postal Code">>, <<"Postal Code on the bill">>)
+          ,?MACRO_VALUE(<<"port_request.transfer_date">>, <<"transfer_date">>, <<"Transfer Date">>, <<"Transfer Date">>)
+          ,?MACRO_VALUE(<<"port_request.numbers">>, <<"numbers">>, <<"Numbers">>, <<"Numbers">>)
+          ,?MACRO_VALUE(<<"port_request.comments">>, <<"comments">>, <<"Comments">>, <<"Comments">>)
+         ]).
+
 -define(DEFAULT_CALL_MACROS
         ,?CALLER_ID_MACROS
         ++ ?CALLEE_ID_MACROS

@@ -444,10 +444,10 @@ post(Context, Id, ?PORT_COMPLETE) ->
         _E:_R ->
             lager:debug("failed to send the ported notification: ~s:~p", [_E, _R]),
             cb_context:add_system_error(
-                'bad_gateway'
-                ,<<"failed to send ported email to system admins">>
-                ,Context
-            )
+              'bad_gateway'
+              ,<<"failed to send ported email to system admins">>
+              ,Context
+             )
     end;
 post(Context, Id, ?PORT_REJECT) ->
     _ = remove_from_phone_numbers_doc(Context),
@@ -459,10 +459,10 @@ post(Context, Id, ?PORT_REJECT) ->
         _E:_R ->
             lager:debug("failed to send the port cancel notification: ~s:~p", [_E, _R]),
             cb_context:add_system_error(
-                'bad_gateway'
-                ,<<"failed to send port cancel email to system admins">>
-                ,Context
-            )
+              'bad_gateway'
+              ,<<"failed to send port cancel email to system admins">>
+              ,Context
+             )
     end;
 post(Context, Id, ?PORT_CANCELED) ->
     _ = remove_from_phone_numbers_doc(Context),
@@ -491,10 +491,10 @@ post_submitted('false', Context, Id) ->
         _E:_R ->
             lager:debug("failed to send the port request notification: ~s:~p", [_E, _R]),
             cb_context:add_system_error(
-                'bad_gateway'
-                ,<<"failed to send port request email to system admins">>
-                ,Context
-            )
+              'bad_gateway'
+              ,<<"failed to send port request email to system admins">>
+              ,Context
+             )
     end;
 post_submitted('true', Context, Id) ->
     DryRunJObj = dry_run(Context),
@@ -502,7 +502,6 @@ post_submitted('true', Context, Id) ->
         'false' -> crossbar_util:response_402(DryRunJObj, Context);
         'true' -> post_submitted('false', Context, Id)
     end.
-
 
 post(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
     [{_Filename, FileJObj}] = cb_context:req_files(Context),
@@ -524,10 +523,11 @@ post(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
                                 ).
 
 -spec do_post(cb_context:context(), path_token()) -> cb_context:context().
-do_post(Context, _Id) ->
+do_post(Context, Id) ->
     Context1 = crossbar_doc:save(cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)),
     case cb_context:resp_status(Context1) of
         'success' ->
+            _ = maybe_send_port_comment_notification(Context, Id),
             cb_context:set_resp_data(Context1, wh_port_request:public_fields(cb_context:doc(Context1)));
         _Status ->
             Context1
@@ -578,11 +578,12 @@ read(Context, Id) ->
     end.
 
 -spec read_descendants(cb_context:context()) -> cb_context:context().
+-spec read_descendants(cb_context:context(), ne_binaries()) -> cb_context:context().
 read_descendants(Context) ->
     Context1 = crossbar_doc:load_view(?AGG_VIEW_DESCENDANTS
-                                      , [{<<"startkey">>, [cb_context:account_id(Context)]}
-                                         ,{<<"endkey">>, [cb_context:account_id(Context), wh_json:new()]}
-                                        ]
+                                      ,[{<<"startkey">>, [cb_context:account_id(Context)]}
+                                        ,{<<"endkey">>, [cb_context:account_id(Context), wh_json:new()]}
+                                       ]
                                       ,cb_context:set_account_db(Context, ?WH_ACCOUNTS_DB)
                                      ),
     case cb_context:resp_status(Context1) of
@@ -594,24 +595,29 @@ read_descendants(Context, SubAccounts) ->
     AllPortRequests =
         lists:foldl(
           fun(Account, Acc) ->
-                  AccountId = wh_json:get_value(<<"id">>, Account),
-                  case read_descendant(Context, AccountId) of
-                      'undefined' -> Acc;
-                      PortRequests ->
-                          [wh_json:from_list(
-                             [{<<"account_id">>, AccountId}
-                              ,{<<"account_name">>, wh_json:get_value([<<"value">>, <<"name">>], Account)}
-                              ,{<<"port_requests">>, PortRequests}
-                             ]
-                            )
-                           |Acc
-                          ]
-                  end
+                  read_descendants_fold(Account, Acc, Context)
           end
           ,[]
           ,SubAccounts
          ),
     crossbar_doc:handle_json_success(AllPortRequests, Context).
+
+-spec read_descendants_fold(wh_json:object(), wh_json:objects(), cb_context:context()) ->
+                                   wh_json:objects().
+read_descendants_fold(Account, Acc, Context) ->
+    AccountId = wh_json:get_value(<<"id">>, Account),
+    case read_descendant(Context, AccountId) of
+        'undefined' -> Acc;
+        PortRequests ->
+            [wh_json:from_list(
+               [{<<"account_id">>, AccountId}
+                ,{<<"account_name">>, wh_json:get_value([<<"value">>, <<"name">>], Account)}
+                ,{<<"port_requests">>, PortRequests}
+               ]
+              )
+             |Acc
+            ]
+    end.
 
 -spec read_descendant(cb_context:context(), ne_binary()) -> api_object().
 read_descendant(Context, Id) ->
@@ -620,7 +626,6 @@ read_descendant(Context, Id) ->
         'success' -> cb_context:doc(Context1);
         _Status -> 'undefined'
     end.
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -633,7 +638,6 @@ read_descendant(Context, Id) ->
 update(Context, Id) ->
     OnSuccess = fun(C) -> on_successful_validation(C, Id) end,
     cb_context:validate_request_data(<<"port_requests">>, Context, OnSuccess).
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1078,6 +1082,59 @@ save_default_template() ->
     {'ok', _} =
         couch_mgr:put_attachment(?WH_CONFIG_DB, ?TEMPLATE_DOC_ID, ?TEMPLATE_ATTACHMENT_ID, Template),
     Template.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_send_port_comment_notification(cb_context:context(), ne_binary()) -> 'ok'.
+maybe_send_port_comment_notification(Context, Id) ->
+    DbDoc = cb_context:fetch(Context, 'db_doc'),
+    ReqData = cb_context:req_data(Context),
+    DbDocComments = wh_json:get_value(<<"comments">>, DbDoc),
+    ReqDataComments = wh_json:get_value(<<"comments">>, ReqData),
+    case has_new_comment(DbDocComments, ReqDataComments) of
+        'false' -> lager:debug("no new comments in ~s, ignoring", [Id]);
+        'true' ->
+            try send_port_comment_notification(Context, Id) of
+                _ -> lager:debug("port comment notification sent")
+            catch
+                _E:_R ->
+                    lager:error("failed to send the port comment notification: ~s:~p", [_E, _R])
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec has_new_comment(api_objects(), api_objects()) -> boolean().
+has_new_comment('undefined', [_|_]) -> 'true';
+has_new_comment([], [_|_]) -> 'true';
+has_new_comment(_, 'undefined') -> 'false';
+has_new_comment(_, []) -> 'false';
+has_new_comment(OldComments, NewComments) ->
+    OldTime = wh_json:get_value(<<"timestamp">>, lists:last(OldComments)),
+    NewTime = wh_json:get_value(<<"timestamp">>, lists:last(NewComments)),
+
+    OldTime < NewTime.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec send_port_comment_notification(cb_context:context(), ne_binary()) -> 'ok'.
+send_port_comment_notification(Context, Id) ->
+    Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
+           ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
+           ,{<<"Port-Request-ID">>, Id}
+           ,{<<"Version">>, cb_context:api_version(Context)}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    whapps_util:amqp_pool_send(Req, fun wapi_notifications:publish_port_comment/1).
 
 %%--------------------------------------------------------------------
 %% @private
