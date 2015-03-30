@@ -361,7 +361,7 @@ handle_cast('transfer', State) ->
     {'stop', {'shutdown', 'transfer'}, State};
 handle_cast('control_usurped', State) ->
     {'stop', {'shutdown', 'control_usurped'}, State};
-handle_cast({'continue_with_flow', NewFlow}, #state{flow=_Flow}=State) ->
+handle_cast({'continue_with_flow', NewFlow}, State) ->
     lager:info("callflow has been reset"),
     {'noreply', launch_cf_module(State#state{flow=NewFlow})};
 handle_cast({'branch', NewFlow}, #state{flow=Flow, flows=Flows}=State) ->
