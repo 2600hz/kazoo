@@ -43,7 +43,6 @@
                 ,max :: pos_integer()
                 ,fill_rate :: pos_integer()
                 ,fill_rate_time = 'second' :: 'second'
-                ,start = os:timestamp() :: wh_now()
                 ,handled_ms = 0 :: non_neg_integer()
                }).
 
@@ -54,7 +53,7 @@ proper_test_() ->
        ,[?_assertEqual('true'
                        ,proper:quickcheck(?MODULE:correct()
                                           ,[{'max_shrinks', 4}
-                                            ,{'numtests', 10}
+                                            ,{'numtests', 60}
                                             ,{'to_file', 'user'}
                                            ]
                                          )
@@ -87,7 +86,7 @@ command('ok') ->
 command(#state{}=_Model) ->
     oneof([{'call', ?SERVER, 'consume', [?SERVER, integer()]}
            ,{'call', ?SERVER, 'tokens', [?SERVER]}
-           ,{'call', 'timer', 'sleep', [range(1000,5000)]}
+           ,{'call', 'timer', 'sleep', [range(800,1200)]}
           ]).
 
 next_state('ok'
@@ -98,7 +97,6 @@ next_state('ok'
            ,max=Max
            ,fill_rate=FR
            ,fill_rate_time=FRT
-           ,start=os:timestamp()
            ,handled_ms=0
           };
 next_state(#state{}=Model
@@ -106,18 +104,18 @@ next_state(#state{}=Model
            ,{'call', _Server, 'consume', [_Server, Ts]}
           ) ->
     tokens_consume(Ts
-                   ,adjust_for_time(Model)
+                   ,Model
                   );
 next_state(#state{}=Model
            ,_V
            ,{'call', _Server, 'tokens', [_Server]}
           ) ->
-    adjust_for_time(Model);
+    Model;
 next_state(#state{}=Model
            ,_V
-           ,{'call', 'timer', 'sleep', [_Wait]}
+           ,{'call', 'timer', 'sleep', [Wait]}
           ) ->
-    adjust_for_time(Model).
+    adjust_for_time(Model, Wait).
 
 precondition('ok', {'call', ?SERVER, 'start_link', _Args}) ->
     'true';
@@ -145,11 +143,16 @@ postcondition(#state{}
               ,Result
              ) ->
     'false' == Result;
-postcondition(#state{current=B}
+postcondition(#state{current=B
+                     ,max=Max
+                     ,fill_rate=FR
+                    }
               ,{'call', _Server, 'tokens', [_Server]}
               ,Ts
              ) ->
-    B == Ts;
+    B == Ts
+        orelse (B+FR) == Ts
+        orelse Max == Ts;
 postcondition(#state{current=_B
                      ,max=_M
                      ,fill_rate=_FR
@@ -158,10 +161,6 @@ postcondition(#state{current=_B
               ,'ok'
              ) ->
     'true';
-    %% case wait_tokens(Wait, FR) + B of
-    %%     N when N > M -> ?SERVER:tokens(?SERVER) == M;
-    %%     N -> ?SERVER:tokens(?SERVER) == N
-    %% end;
 postcondition(#state{}=_Model, _Call, _Res) ->
     _Res.
 
@@ -175,7 +174,6 @@ tokens_consume(N, #state{current=T}=Model) when N > T ->
 tokens_consume(N, #state{current=T}=Model) ->
     Model#state{current=T-N}.
 
-maybe_add_tokens(Model, 0) -> Model;
 maybe_add_tokens(#state{current=T
                         ,max=Max
                        }=Model
@@ -186,32 +184,26 @@ maybe_add_tokens(#state{current=T
         N -> Model#state{current=N}
     end.
 
+adjust_for_time(#state{handled_ms=Handled
+                       ,fill_rate=FR
+                      }=Model
+                ,Wait
+               ) ->
+    case Handled + Wait of
+        N when N < 1000 -> Model#state{handled_ms=N};
+        N ->
+            adjust_for_time(Model, N, wait_tokens(N, FR))
+    end.
+
+adjust_for_time(Model
+                ,Elapsed
+                ,Tokens
+               ) ->
+    Model1 = maybe_add_tokens(Model, Tokens),
+    Model1#state{handled_ms=(Elapsed rem 1000)}.
+
 wait_tokens(Wait, FR) ->
     ((Wait div 1000) * FR).
-
-adjust_for_time(#state{start=TS, handled_ms=Hs}=Model) ->
-    case elapsed_ms(TS) of
-        N when (N-Hs) < 1000 -> Model;
-        N -> adjust_for_time(Model, N)
-    end.
-
-adjust_for_time(#state{fill_rate=FR
-                       ,handled_ms=Handled
-                      }=Model
-                ,Elapsed
-               ) ->
-    case wait_tokens(Elapsed-Handled, FR) of
-        0 -> Model;
-        ToAdd ->
-            Model1 = maybe_add_tokens(Model, ToAdd),
-            Model1#state{handled_ms=Elapsed+Handled}
-    end.
-
-elapsed_ms(Start) ->
-    elapsed_ms(Start, os:timestamp()).
-
-elapsed_ms({_,_,_}=Start, {_,_,_}=Now) ->
-    timer:now_diff(Now, Start) div 1000.
 
 %% We want to consume up to N tokens, or until T is 0
 %% tokens_consume_until(N, Model) when N =< 0 ->
