@@ -93,6 +93,7 @@ command(#state{}=_Model) ->
     oneof([{'call', ?SERVER, 'consume', [?SERVER, integer()]}
            ,{'call', ?SERVER, 'consume_until', [?SERVER, integer()]}
            ,{'call', ?SERVER, 'tokens', [?SERVER]}
+           ,{'call', ?SERVER, 'credit', [?SERVER, pos_integer()]}
            ,{'call', 'timer', 'sleep', [range(800,5200)]}
           ]).
 
@@ -120,6 +121,11 @@ next_state(#state{}=Model
     tokens_consume_until(Ts
                          ,Model
                         );
+next_state(#state{}=Model
+           ,_V
+           ,{'call', _Server, 'credit', [_Server, Ts]}
+          ) ->
+    tokens_credit(Ts, Model);
 next_state(#state{}=Model
            ,_V
            ,{'call', _Server, 'tokens', [_Server]}
@@ -165,6 +171,11 @@ postcondition(#state{}
                     orelse Fun == 'consume_until'
                     ->
     'false' == Result;
+postcondition(#state{}
+              ,{'call', _Server, 'credit', [_Server, _Ts]}
+              ,Result
+             ) ->
+    'ok' == Result;
 postcondition(#state{current=B
                      ,max=Max
                      ,fill_rate=FR
@@ -206,7 +217,6 @@ tokens_consume_until(N, #state{current=T}=Model) when N > T ->
 tokens_consume_until(N, #state{current=T}=Model) ->
     Model#state{current=T-N}.
 
-
 maybe_add_tokens(#state{current=T
                         ,max=Max
                        }=Model
@@ -238,12 +248,12 @@ adjust_for_time(Model
 wait_tokens(Wait, FR) ->
     ((Wait div 1000) * FR).
 
-%% We want to consume up to N tokens, or until T is 0
-%% tokens_consume_until(N, Model) when N =< 0 ->
-%%     Model;
-%% tokens_consume_until(N, {T, M, FR, FRT}) when N > T ->
-%%     {0, M, FR, FRT};
-%% tokens_consume_until(N, {T, M, FR, FRT}) ->
-%%     {T-N, M, FR, FRT}.
+tokens_credit(Credit, #state{current=T
+                             ,max=M
+                            }=Model) ->
+    case Credit + T of
+        N when N > M -> Model#state{current=M};
+        N -> Model#state{current=N}
+    end.
 
 -endif.
