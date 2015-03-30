@@ -77,6 +77,9 @@
                      ,{'teletype_port_pending'
                        ,[{<<"notification">>, <<"port_pending">>}]
                       }
+                     ,{'teletype_port_scheduled'
+                       ,[{<<"notification">>, <<"port_scheduled">>}]
+                      }
                      ,{'teletype_port_cancel'
                        ,[{<<"notification">>, <<"port_cancel">>}]
                       }
@@ -101,6 +104,7 @@
                       ,'cnam_requests'
                       ,'port_request'
                       ,'port_pending'
+                      ,'port_scheduled'
                       ,'port_cancel'
                       ,'ported'
                       ,'port_comment'
