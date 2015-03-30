@@ -785,12 +785,15 @@ send_fax(JobId, JObj, Q, ToDID) ->
     ToName = wh_util:to_binary(wh_json:get_value(<<"to_name">>, JObj, ToNumber)),
     CallId = wh_util:rand_hex_binary(8),
     ETimeout = wh_util:to_binary(whapps_config:get_integer(?CONFIG_CAT, <<"endpoint_timeout">>, 10)),
+    AccountId =  wh_json:get_value(<<"pvt_account_id">>, JObj),
+    AccountRealm = wh_util:get_account_realm(AccountId),
     Request = props:filter_undefined(
                 [{<<"Outbound-Caller-ID-Name">>, wh_json:get_value(<<"from_name">>, JObj)}
                  ,{<<"Outbound-Caller-ID-Number">>, wh_json:get_value(<<"from_number">>, JObj)}
                  ,{<<"Outbound-Callee-ID-Number">>, ToNumber}
                  ,{<<"Outbound-Callee-ID-Name">>, ToName }
-                 ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, JObj)}
+                 ,{<<"Account-ID">>, AccountId}
+                 ,{<<"Account-Realm">>, AccountRealm}
                  ,{<<"To-DID">>, ToDID}
                  ,{<<"Fax-Identity-Number">>, wh_json:get_value(<<"fax_identity_number">>, JObj)}
                  ,{<<"Fax-Identity-Name">>, wh_json:get_value(<<"fax_identity_name">>, JObj)}
