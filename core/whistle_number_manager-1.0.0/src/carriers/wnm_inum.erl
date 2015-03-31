@@ -45,8 +45,8 @@ find_numbers(Number, Quantity, Opts) ->
     find_numbers(<<"+",Number/binary>>, Quantity,Opts).
 
 find_numbers_in_account(Number, Quantity,AccountId) ->
-    ViewOptions = [{'startkey', [AccountId, <<"available">>, Number]}
-                   ,{'endkey', [AccountId, <<"available">>, <<Number/binary, "\ufff0">>]}
+    ViewOptions = [{'startkey', [AccountId, ?NUMBER_STATE_AVAILABLE, Number]}
+                   ,{'endkey', [AccountId, ?NUMBER_STATE_AVAILABLE, <<Number/binary, "\ufff0">>]}
                    ,{'limit', Quantity}
                    ,'include_docs'
                   ],
@@ -91,7 +91,7 @@ acquire_number(#number{number=Number
                        ,state=State
                       }=N) ->
     lager:debug("inum acquiring number ~p",[Number]),
-    _ = update_doc(Number,[{<<"pvt_number_state">>, State}
+    _ = update_doc(Number,[{?PVT_NUMBER_STATE, State}
                            ,{<<"pvt_assigned_to">>,AssignTo}
                           ]),
     N.
@@ -106,11 +106,11 @@ acquire_number(#number{number=Number
 -spec disconnect_number(wnm_number()) -> wnm_number().
 disconnect_number(#number{number=Number}=N) ->
     lager:debug("inum disconnect number ~p",[Number]),
-    update_doc(Number, [{<<"pvt_number_state">>, <<"available">>}
+    update_doc(Number, [{?PVT_NUMBER_STATE, ?NUMBER_STATE_AVAILABLE}
                         ,{<<"pvt_assigned_to">>,<<>>}
                        ]),
 
-    N#number{state = <<"released">>
+    N#number{state = ?NUMBER_STATE_RELEASED
              ,reserve_history=ordsets:new()
              ,hard_delete='true'
             }.
@@ -124,7 +124,7 @@ gen_numbers(AccountId, Number, Quantity) when Quantity > 0
                                               andalso is_integer(Quantity) ->
     JObj = wh_json:from_list([{<<"_id">>,<<"+",(wh_util:to_binary(Number))/binary>>}
                               ,{<<"pvt_account_id">>, AccountId}
-                              ,{<<"pvt_number_state">>, <<"available">>}
+                              ,{?PVT_NUMBER_STATE, ?NUMBER_STATE_AVAILABLE}
                               ,{<<"pvt_type">>, <<"number">>}
                              ]),
     _R = save_doc(JObj),

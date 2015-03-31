@@ -25,11 +25,11 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec save(wnm_number()) -> wnm_number().
-save(#number{state = <<"reserved">>} = Number) ->
+save(#number{state = ?NUMBER_STATE_RESERVED} = Number) ->
     update_cnam_features(Number);
-save(#number{state = <<"in_service">>} = Number) ->
+save(#number{state = ?NUMBER_STATE_IN_SERVICE} = Number) ->
     update_cnam_features(Number);
-save(#number{state = <<"port_in">>} = Number) ->
+save(#number{state = ?NUMBER_STATE_PORT_IN} = Number) ->
     update_cnam_features(Number);
 save(Number) -> Number.
 

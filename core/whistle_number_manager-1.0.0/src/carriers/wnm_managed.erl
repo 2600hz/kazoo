@@ -43,8 +43,8 @@ find_numbers_in_account(Number, Quantity, AccountId) ->
 -spec do_find_numbers_in_account(ne_binary(), pos_integer(), api_binary()) ->
           {'error', any()} | {'ok', wh_json:object()}.
 do_find_numbers_in_account(Number, Quantity, AccountId) ->
-    ViewOptions = [{'startkey', [AccountId, <<"available">>, Number]}
-                   ,{'endkey', [AccountId, <<"available">>, <<Number/binary, "\ufff0">>]}
+    ViewOptions = [{'startkey', [AccountId, ?NUMBER_STATE_AVAILABLE, Number]}
+                   ,{'endkey', [AccountId, ?NUMBER_STATE_AVAILABLE, <<Number/binary, "\ufff0">>]}
                    ,{'limit', Quantity}
                    ,'include_docs'
                   ],
@@ -89,7 +89,7 @@ acquire_number(#number{number=Number
                        ,state=State
                       }=N) ->
     lager:debug("acquiring number ~p in managed provider",[Number]),
-    _ = update_doc(Number,[{<<"pvt_number_state">>, State}
+    _ = update_doc(Number,[{?PVT_NUMBER_STATE, State}
                            ,{<<"pvt_assigned_to">>,AssignTo}
                           ]),
     N.
@@ -104,11 +104,11 @@ acquire_number(#number{number=Number
 -spec disconnect_number(wnm_number()) -> wnm_number().
 disconnect_number(#number{number=Number}=N) ->
     lager:debug("disconnect number ~p in managed provider",[Number]),
-    update_doc(Number, [{<<"pvt_number_state">>, <<"available">>}
+    update_doc(Number, [{?PVT_NUMBER_STATE, ?NUMBER_STATE_AVAILABLE}
                         ,{<<"pvt_assigned_to">>,<<>>}
                        ]),
 
-    N#number{state = <<"released">>
+    N#number{state = ?NUMBER_STATE_RELEASED
              ,reserve_history=ordsets:new()
              ,hard_delete='true'
             }.
@@ -118,8 +118,8 @@ disconnect_number(#number{number=Number}=N) ->
 generate_numbers(AccountId, Number, Quantity) when is_binary(Number) orelse is_binary(Quantity) ->
     generate_numbers(AccountId, wh_util:to_integer(Number), wh_util:to_integer(Quantity));
 generate_numbers(AccountId, Number, Quantity) when Quantity > 0
-                                              andalso is_integer(Number)
-                                              andalso is_integer(Quantity) ->
+                                                   andalso is_integer(Number)
+                                                   andalso is_integer(Quantity) ->
     save_doc(AccountId, Number),
     generate_numbers(AccountId, Number+1, Quantity-1);
 generate_numbers(_AccountId, _Number, 0) -> 'ok'.
@@ -142,11 +142,11 @@ import_numbers(AccountId, [Number | Numbers], JObj) ->
                       wh_json:set_value([<<"errors">>, Number],Error, JObj)
               end,
     import_numbers(AccountId, Numbers, NewJObj).
-                                                                                                   
+
 save_doc(AccountId, Number) ->
     JObj = wh_json:from_list([{<<"_id">>,<<"+",(wh_util:to_binary(Number))/binary>>}
                               ,{<<"pvt_account_id">>, AccountId}
-                              ,{<<"pvt_number_state">>, <<"available">>}
+                              ,{?PVT_NUMBER_STATE, ?NUMBER_STATE_AVAILABLE}
                               ,{<<"pvt_type">>, <<"number">>}
                              ]),
     save_doc(JObj).

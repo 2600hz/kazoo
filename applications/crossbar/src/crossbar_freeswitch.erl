@@ -327,7 +327,7 @@ maybe_export_numbers(Db, [Number|Numbers]) ->
     _ = case couch_mgr:open_doc(Db, Number) of
             {'ok', JObj} ->
                 maybe_export_number(Number
-                                    ,wh_json:get_value(<<"pvt_number_state">>, JObj)
+                                    ,wh_json:get_value(?PVT_NUMBER_STATE, JObj)
                                     ,wh_json:get_value(<<"pvt_assigned_to">>, JObj)
                                    );
             {'error', _R} ->
@@ -338,7 +338,7 @@ maybe_export_numbers(Db, [Number|Numbers]) ->
     maybe_export_numbers(Db, Numbers).
 
 -spec maybe_export_number(ne_binary(), api_binary(), api_binary()) -> 'ok'.
-maybe_export_number(Number, <<"in_service">>, AccountId) ->
+maybe_export_number(Number, ?NUMBER_STATE_IN_SERVICE, AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     ViewOptions = [{'key', Number}
                    ,'include_docs'

@@ -24,7 +24,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec save(wnm_number()) -> wnm_number().
-save(#number{state = <<"in_service">>} = Number) ->
+save(#number{state = ?NUMBER_STATE_IN_SERVICE} = Number) ->
     maybe_update_prepend(Number);
 save(Number) ->
     delete(Number).
@@ -71,8 +71,3 @@ maybe_update_prepend(#number{current_number_doc=CurrentJObj
                     wnm_number:activate_feature(?PREPEND_KEY, N)
             end
     end.
-
-
-
-
-
