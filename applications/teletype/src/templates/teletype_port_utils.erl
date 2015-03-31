@@ -23,7 +23,6 @@ get_attachments(_DataJObj, 'true') -> [];
 get_attachments(DataJObj, 'false') ->
     PortReqId = wh_json:get_value(<<"port_request_id">>, DataJObj),
     Doc = wh_json:get_value(<<"port_request">>, DataJObj),
-
     lists:foldl(fun(Name, Acc) -> get_attachment_fold(Name, Acc, PortReqId, Doc) end
                 ,[]
                 ,wh_doc:attachment_names(Doc)
@@ -89,7 +88,7 @@ fix_comments(JObj) ->
         lists:foldl(
             fun fix_comment_fold/2
             ,[]
-            ,wh_json:get_value(<<"comments">>, JObj)
+            ,wh_json:get_value(<<"comments">>, JObj, [])
         ),
     wh_json:set_value(<<"comments">>, Comments, JObj).
 
