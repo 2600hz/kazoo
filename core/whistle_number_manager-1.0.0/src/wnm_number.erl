@@ -623,7 +623,7 @@ released_maybe_disconnect(#number{prev_assigned_to=AssignedTo
                                  }=N) ->
     History = ordsets:del_element(AssignedTo, ReserveHistory),
     case ordsets:to_list(History) of
-        [] -> attempt_disconnect_number(N);
+        [] -> disconnect_or_delete(N);
         [PrevReservation|_] ->
             lager:debug("unwinding reservation history, reserving on account ~s"
                         ,[PrevReservation]
@@ -632,6 +632,28 @@ released_maybe_disconnect(#number{prev_assigned_to=AssignedTo
                      ,assigned_to=PrevReservation
                      ,state = ?NUMBER_STATE_RESERVED
                     }
+    end.
+
+-spec disconnect_or_delete(wnm_number()) -> wnm_number().
+-spec disconnect_or_delete(wnm_number(), boolean()) -> wnm_number().
+disconnect_or_delete(N) ->
+    disconnect_or_delete(N
+                         ,whapps_config:get_is_true(?WNM_CONFIG_CAT, <<"should_permanently_delete">>, 'false')
+                        ).
+
+disconnect_or_delete(N, 'false') ->
+    attempt_disconnect_number(N);
+disconnect_or_delete(N, 'true') ->
+    move_state(N, ?NUMBER_STATE_DELETED).
+
+-spec attempt_disconnect_number(wnm_number()) -> wnm_number().
+attempt_disconnect_number(#number{module_name=ModuleName}=Number) ->
+    try ModuleName:disconnect_number(Number) of
+        #number{}=N -> N#number{reserve_history=ordsets:new()}
+    catch
+        _E:_R ->
+            lager:debug("failed to disconnect via ~s: ~s: ~p", [ModuleName, _E, _R]),
+            error_carrier_fault(<<"Failed to disconnect number">>, Number)
     end.
 
 -spec released(wnm_number()) -> wnm_number().
@@ -653,16 +675,6 @@ released(#number{state = ?NUMBER_STATE_RELEASED}=Number) ->
     error_no_change_required(?NUMBER_STATE_RELEASED, Number);
 released(Number) ->
     error_invalid_state_transition(?NUMBER_STATE_RELEASED, Number).
-
--spec attempt_disconnect_number(wnm_number()) -> wnm_number().
-attempt_disconnect_number(#number{module_name=ModuleName}=Number) ->
-    try ModuleName:disconnect_number(Number) of
-        #number{}=N -> N#number{reserve_history=ordsets:new()}
-    catch
-        _E:_R ->
-            lager:debug("failed to disconnect via ~s: ~s: ~p", [ModuleName, _E, _R]),
-            error_carrier_fault(<<"Failed to disconnect number">>, Number)
-    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1341,16 +1353,24 @@ append_feature_debit(Feature, Units, #number{billing_id=Ledger
                 end
                 ,fun(T) -> wh_transaction:set_feature(Feature, T) end
                 ,fun(T) -> wh_transaction:set_number(Number, T) end
-                ,fun(T) ->
-                         wh_transaction:set_description(<<"number feature activation for "
-                                                          ,(wh_util:to_binary(Feature))/binary
-                                                        >>
-                                                        ,T)
-                 end
+                ,fun(T) -> set_feature_description(T, wh_util:to_binary(Feature)) end
                ],
     lager:debug("staging feature '~s' activation charge $~p for ~s via billing account ~s"
-                ,[Feature, wht_util:units_to_dollars(Units), AccountId, LedgerId]),
-    [lists:foldl(fun(F, T) -> F(T) end, wh_transaction:debit(Ledger, Units), Routines)|Activations].
+                ,[Feature, wht_util:units_to_dollars(Units), AccountId, LedgerId]
+               ),
+
+    [lists:foldl(fun(F, T) -> F(T) end
+                 ,wh_transaction:debit(Ledger, Units)
+                 ,Routines
+                )
+     |Activations
+    ].
+
+-spec set_feature_description(wh_transaction:transaction(), ne_binary()) ->
+                                     wh_transaction:transaction().
+set_feature_description(T, Feature) ->
+    Description = <<"number feature activation for ", Feature/binary>>,
+    wh_transaction:set_description(Description, T).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1375,11 +1395,14 @@ append_phone_number_debit(Units, #number{billing_id=Ledger
                         end
                 end
                 ,fun(T) -> wh_transaction:set_number(Number, T) end
-                ,fun(T) ->
-                         wh_transaction:set_description(<<"number activation for "
-                                                          ,(wh_util:to_binary(Number))/binary>>, T)
-                 end
+                ,fun(T) -> set_number_description(T, wh_util:to_binary(Number)) end
                ],
     lager:debug("staging number activation charge $~p for ~s via billing account ~s"
                 ,[wht_util:units_to_dollars(Units), AccountId, LedgerId]),
     [lists:foldl(fun(F, T) -> F(T) end, wh_transaction:debit(Ledger, Units), Routines)|Activations].
+
+-spec set_number_description(wh_transaction:transaction(), ne_binary()) ->
+                                    wh_transaction:transaction().
+set_number_description(T, Number) ->
+    Description = <<"number activation for ", Number/binary>>,
+    wh_transaction:set_description(Description, T).
