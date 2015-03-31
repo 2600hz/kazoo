@@ -475,34 +475,32 @@ store_url(Call, JObj) ->
     {'ok', URL} = wh_media_url:store(AccountDb, MediaId, MediaName),
     URL.
 
--type store_url() :: 'false' | {'true', 'local' | 'third_party'} | {'true', 'other', ne_binary()}.
+-type store_url() :: 'false' | {'true', 'local'} | {'true', 'other', ne_binary()}.
 
 -spec should_store_recording(api_binary()) -> store_url().
-should_store_recording('undefined') ->
-    case whapps_config:get_is_true(?CONFIG_CAT, <<"store_recordings">>, 'false') of
-        'true' -> {'true', 'local'};
-        'false' -> 'false'
-    end;
 should_store_recording(Url) ->
     case wh_util:is_empty(Url) of
-        'true' -> {'true', 'third_party'};
+        'true' ->
+            case whapps_config:get_is_true(?CONFIG_CAT, <<"store_recordings">>, 'false') of
+                'true' -> {'true', 'local'};
+                'false' -> 'false'
+            end;
         'false' -> {'true', 'other', Url}
     end.
 
 -spec save_recording(whapps_call:call(), ne_binary(), ne_binary(), store_url()) -> 'ok'.
-save_recording(_Call, _MediaName, _Format, 'false') ->
-    lager:debug("not configured to store recording ~s", [_MediaName]);
+save_recording(Call, MediaName, Format, 'false') ->
+    lager:debug("not configured to store recording ~s", [MediaName]),
+    case whapps_config:get_ne_binary(?CONFIG_CAT, <<"third_party_bigcouch_host">>) of
+        'undefined' -> lager:debug("no URL for call recording provided, third_party_bigcouch_host undefined");
+        BCHost -> store_recording_to_third_party_bigcouch(Call, MediaName, Format, BCHost)
+    end;
 save_recording(Call, MediaName, Format, {'true', 'local'}) ->
     {'ok', MediaJObj} = store_recording_meta(Call, MediaName, Format),
     lager:info("stored meta: ~p", [MediaJObj]),
     StoreUrl = store_url(Call, MediaJObj),
     lager:info("store local url: ~s", [StoreUrl]),
     store_recording(MediaName, StoreUrl, Call);
-save_recording(Call, MediaName, Format, {'true', 'third_party'}) ->
-    case whapps_config:get_ne_binary(?CONFIG_CAT, <<"third_party_bigcouch_host">>) of
-        'undefined' -> lager:debug("no URL for call recording provided, third_party_bigcouch_host undefined");
-        BCHost -> store_recording_to_third_party_bigcouch(Call, MediaName, Format, BCHost)
-    end;
 save_recording(Call, MediaName, _Format, {'true', 'other', Url}) ->
     lager:info("store remote url: ~s", [Url]),
     store_recording(MediaName, Url, Call).

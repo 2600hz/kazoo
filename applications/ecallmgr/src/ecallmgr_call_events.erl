@@ -1060,9 +1060,10 @@ usurp_other_publishers(#state{node=Node
                              [ecallmgr_util:send_cmd_ret(),...].
 store_recording(Props, CallId, Node) ->
     MediaName = props:get_value(?GET_CCV(<<"Media-Name">>), Props),
-    case props:get_value(?GET_CCV(<<"Media-Transfer-Destination">>), Props) of
-        'undefined' -> 'ok';
-        Destination ->
+    Destination = props:get_value(?GET_CCV(<<"Media-Transfer-Destination">>), Props),
+    case wh_util:is_empty(Destination) of
+        'true' -> 'ok';
+        'false' ->
             %% TODO: if you change this logic be sure it matches wh_media_util as well!
             Url = wh_util:strip_right_binary(Destination, $/),
             JObj = wh_json:from_list(
