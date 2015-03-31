@@ -79,7 +79,6 @@ init() ->
     _ = crossbar_bindings:bind(<<"v2_resource.execute.post.phone_numbers">>, ?MODULE, 'post'),
     crossbar_bindings:bind(<<"v2_resource.execute.delete.phone_numbers">>, ?MODULE, 'delete').
 
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
