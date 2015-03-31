@@ -155,7 +155,9 @@ get(Number, PublicFields) ->
                 ,fun maybe_correct_used_by/1
                ],
     lists:foldl(fun(F, N) -> F(N) end
-                ,#number{number=Num, number_db=wnm_util:number_to_db_name(Num)}
+                ,#number{number=Num
+                         ,number_db=wnm_util:number_to_db_name(Num)
+                        }
                 ,Routines
                ).
 
@@ -307,9 +309,12 @@ save_phone_number_docs(#number{phone_number_docs=PhoneNumberDocs}=Number) ->
     end.
 
 save_phone_number_docs([], Number) -> Number;
-save_phone_number_docs([{Account, JObj}|Props], #number{number=Num
-                                                        ,dry_run='true'
-                                                        ,module_name=ModuleName}=Number) ->
+save_phone_number_docs([{Account, JObj}|Props]
+                       ,#number{number=Num
+                                ,dry_run='true'
+                                ,module_name=ModuleName
+                               }=Number
+                      ) ->
     erlang:put({'phone_number_doc', Account}, wh_json:set_value([Num, <<"module_name">>], ModuleName, JObj)),
     save_phone_number_docs(Props, Number);
 save_phone_number_docs([{Account, JObj}|Props], #number{number=Num}=Number) ->
@@ -326,17 +331,6 @@ save_phone_number_docs([{Account, JObj}|Props], #number{number=Num}=Number) ->
         {'error', _R} ->
             lager:info("failed to update phone numbers doc in account ~s: ~p", [AccountDb, _R]),
             save_phone_number_docs(Props, Number)
-    end.
-
--spec set_locality(wh_json:object(), wnm_number()) -> wh_json:object().
-set_locality(JObj, #number{number=Num}) ->
-    case wh_json:get_first_defined([<<"locality">>
-                                    ,[<<"pvt_module_data">>, <<"locality">>]
-                                    ,[<<"pvt_module_data">>, Num, <<"locality">>]
-                                   ], JObj)
-    of
-        'undefined' -> JObj;
-        Loc -> wh_json:set_value(<<"locality">>, Loc, JObj)
     end.
 
 %%--------------------------------------------------------------------
@@ -396,18 +390,23 @@ port_in(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec available_authorize(wnm_number()) -> wnm_number().
+available_authorize(#number{auth_by='system'}=N) -> N;
+available_authorize(#number{auth_by=AuthBy}=N) ->
+    case wh_util:is_system_admin(AuthBy) of
+        'true' -> N;
+        'false' -> error_unauthorized(N)
+    end.
+
+-spec available_move_state(wnm_number()) -> wnm_number().
+available_move_state(N) ->
+    move_state(N, ?NUMBER_STATE_AVAILABLE).
+
+
 -spec available(wnm_number()) -> wnm_number().
 available(#number{state = ?NUMBER_STATE_RELEASED}=Number) ->
-    Routines = [fun(#number{auth_by=AuthBy}=N) ->
-                        %% Only the 'system' maintenance routines or a system admin can
-                        %% move a released (aging) number back to available.
-                        case AuthBy =:= 'system'
-                            orelse wh_util:is_system_admin(AuthBy)
-                        of
-                            'true' -> N#number{state = ?NUMBER_STATE_AVAILABLE};
-                            'false' -> error_unauthorized(N)
-                        end
-                end
+    Routines = [fun available_authorize/1
+                ,fun available_move_state/1
                ],
     lists:foldl(fun(F, N) -> F(N) end, Number, Routines);
 available(#number{state = ?NUMBER_STATE_AVAILABLE}=Number) ->
@@ -421,78 +420,44 @@ available(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec update_reserve_history(wnm_number()) -> wnm_number().
+update_reserve_history(#number{reserve_history=ReserveHistory
+                               ,assign_to=AssignTo
+                              }=N) ->
+    N#number{reserve_history=ordsets:add_element(AssignTo, ReserveHistory)}.
+
+-spec reserved_move_state(wnm_number()) -> wnm_number().
+reserved_move_state(N) ->
+    move_state(N, ?NUMBER_STATE_RESERVED).
+
+-spec reserved_from_reserved_authorize(wnm_number()) -> wnm_number().
+reserved_from_reserved_authorize(#number{auth_by=AuthBy
+                                         ,assigned_to=AssignedTo
+                                         ,assign_to=AssignTo
+                                        }=N) ->
+    case (not wh_util:is_empty(AssignTo))
+        andalso (wh_util:is_in_account_hierarchy(AssignedTo, AuthBy)
+                 orelse wh_util:is_in_account_hierarchy(AuthBy, AssignedTo)
+                )
+    of
+        'false' -> error_unauthorized(N);
+        'true' -> N
+    end.
+
 -spec reserved(wnm_number()) -> wnm_number().
 reserved(#number{state = ?NUMBER_STATE_DISCOVERY}=Number) ->
-    Routines = [fun(#number{assign_to=AssignTo
-                            ,auth_by=AuthBy
-                           }=N) ->
-                        case wh_util:is_in_account_hierarchy(AuthBy, AssignTo, 'true') of
-                            'false' -> error_unauthorized(N);
-                            'true' -> N
-                        end
-                end
-                ,fun(#number{reserve_history=ReserveHistory
-                             ,assign_to=AssignTo
-                            }=N) ->
-                         N#number{reserve_history=ordsets:add_element(AssignTo, ReserveHistory)}
-                 end
-                ,fun(#number{assigned_to='undefined'
-                             ,assign_to=AssignTo
-                            }=N) ->
-                         N#number{state = ?NUMBER_STATE_RESERVED, assigned_to=AssignTo};
-                    (#number{assigned_to=AssignedTo
-                             ,prev_assigned_to=AssignedTo
-                            }=N) ->
-                         N#number{state = ?NUMBER_STATE_RESERVED};
-                    (#number{assigned_to=AssignedTo
-                             ,assign_to=AssignTo
-                            }=N) ->
-                         N#number{state = ?NUMBER_STATE_RESERVED
-                                  ,assigned_to=AssignTo
-                                   ,prev_assigned_to=AssignedTo
-                                 }
-                 end
-                ,fun(#number{}=N) -> activate_phone_number(N) end
-                ,fun(#number{module_name='undefined'}=N) ->
-                         error_carrier_not_specified(N);
-                    (#number{module_name=Module}=N) ->
-                         Module:acquire_number(N)
-                 end
+    Routines = [fun simple_authorize/1
+                ,fun update_reserve_history/1
+                ,fun reserved_move_state/1
+                ,fun activate_phone_number/1
+                ,fun maybe_acquire_number/1
                ],
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines);
 reserved(#number{state = ?NUMBER_STATE_AVAILABLE}=Number) ->
-    Routines = [fun(#number{assign_to=AssignTo
-                            ,auth_by=AuthBy
-                           }=N) ->
-                        case wh_util:is_in_account_hierarchy(AuthBy, AssignTo, 'true') of
-                            'false' -> error_unauthorized(N);
-                            'true' -> N
-                        end
-                end
-                ,fun(#number{reserve_history=ReserveHistory
-                             ,assign_to=AssignTo
-                            }=N) ->
-                         N#number{reserve_history=ordsets:add_element(AssignTo, ReserveHistory)}
-                 end
-                ,fun(#number{assigned_to='undefined'
-                             ,assign_to=AssignTo
-                            }=N) ->
-                         N#number{state = ?NUMBER_STATE_RESERVED
-                                  ,assigned_to=AssignTo
-                                 };
-                    (#number{assigned_to=AssignedTo
-                             ,prev_assigned_to=AssignedTo
-                            }=N) ->
-                         N#number{state = ?NUMBER_STATE_RESERVED};
-                    (#number{assigned_to=AssignedTo
-                             ,assign_to=AssignTo
-                            }=N) ->
-                         N#number{state = ?NUMBER_STATE_RESERVED
-                                  ,assigned_to=AssignTo
-                                  ,prev_assigned_to=AssignedTo
-                                 }
-                 end
-                ,fun(#number{}=N) -> activate_phone_number(N) end
+    Routines = [fun simple_authorize/1
+                ,fun update_reserve_history/1
+                ,fun reserved_move_state/1
+                ,fun activate_phone_number/1
                ],
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines);
 reserved(#number{state = ?NUMBER_STATE_RESERVED
@@ -501,43 +466,14 @@ reserved(#number{state = ?NUMBER_STATE_RESERVED
                 }=Number) ->
     error_no_change_required(?NUMBER_STATE_RESERVED, Number);
 reserved(#number{state = ?NUMBER_STATE_RESERVED}=Number) ->
-    Routines = [fun(#number{auth_by=AuthBy
-                            ,assigned_to=AssignedTo
-                            ,assign_to=AssignTo
-                           }=N) ->
-                        case (not wh_util:is_empty(AssignTo))
-                            andalso (wh_util:is_in_account_hierarchy(AssignedTo, AuthBy)
-                                     orelse wh_util:is_in_account_hierarchy(AuthBy, AssignedTo))
-                        of
-                            'false' -> error_unauthorized(N);
-                            'true' -> N
-                        end
-                end
-                ,fun(#number{reserve_history=ReserveHistory
-                             ,assign_to=AssignTo
-                            }=N) ->
-                         N#number{reserve_history=ordsets:add_element(AssignTo, ReserveHistory)}
-                 end
-                ,fun(#number{assigned_to='undefined'
-                             ,assign_to=AssignTo
-                            }=N) ->
-                         N#number{state = ?NUMBER_STATE_RESERVED, assigned_to=AssignTo};
-                    (#number{assigned_to=AssignedTo, prev_assigned_to=AssignedTo}=N) ->
-                         N#number{state = ?NUMBER_STATE_RESERVED};
-                    (#number{assigned_to=AssignedTo, assign_to=AssignTo}=N) ->
-                         N#number{state = ?NUMBER_STATE_RESERVED, assigned_to=AssignTo, prev_assigned_to=AssignedTo}
-                 end
-                ,fun(#number{}=N) -> activate_phone_number(N) end
+    Routines = [fun reserved_from_reserved_authorize/1
+                ,fun update_reserve_history/1
+                ,fun reserved_move_state/1
+                ,fun activate_phone_number/1
                ],
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines);
 reserved(#number{state = ?NUMBER_STATE_IN_SERVICE}=Number) ->
-    Routines = [fun(#number{auth_by=AuthBy, assigned_to=AssignedTo}=N) ->
-                        case wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, true) of
-                            false -> error_unauthorized(N);
-                            true -> N#number{state = ?NUMBER_STATE_RESERVED}
-                        end
-                end
-               ],
+    Routines = [fun simple_authorize/1],
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines);
 reserved(Number) ->
     error_invalid_state_transition(?NUMBER_STATE_RESERVED, Number).
@@ -548,116 +484,98 @@ reserved(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
+-spec simple_authorize(wnm_number()) -> wnm_number().
+simple_authorize(#number{auth_by='system'}=N) -> N;
+simple_authorize(#number{assign_to=AssignTo
+                         ,auth_by=AuthBy
+                        }=N) ->
+    case wh_util:is_in_account_hierarchy(AuthBy, AssignTo, 'true') of
+        'false' -> error_unauthorized(N);
+        'true' -> N
+    end.
+
+-spec move_state(wnm_number(), ne_binary()) -> wnm_number().
+move_state(#number{assigned_to='undefined'
+                   ,assign_to=AssignTo
+                  }=N
+          ,State) ->
+    N#number{state = State
+             ,assigned_to=AssignTo
+            };
+move_state(#number{assigned_to=AssignedTo
+                   ,assign_to=AssignedTo
+                  }=N
+          ,State) ->
+    N#number{state = State};
+move_state(#number{assigned_to=AssignedTo
+                   ,assign_to=AssignTo
+                  }=N
+          ,State) ->
+    N#number{state = State
+             ,assigned_to=AssignTo
+             ,prev_assigned_to=AssignedTo
+            }.
+
+-spec in_service_move_state(wnm_number()) -> wnm_number().
+in_service_move_state(N) ->
+    move_state(N, ?NUMBER_STATE_IN_SERVICE).
+
+-spec maybe_acquire_number(wnm_number()) -> wnm_number().
+maybe_acquire_number(#number{module_name='undefined'}=N) ->
+    error_carrier_not_specified(N);
+maybe_acquire_number(#number{dry_run='true'}=N) -> N;
+maybe_acquire_number(#number{module_name=Module}=N) ->
+    Module:acquire_number(N).
+
+-spec in_service_from_reserved_authorize(wnm_number()) -> wnm_number().
+in_service_from_reserved_authorize(#number{assign_to=AssignTo
+                                           ,auth_by=AuthBy
+                                           ,assigned_to=AssignedTo
+                                          }=N) ->
+    case (wh_util:is_in_account_hierarchy(AssignedTo, AuthBy, 'true')
+          orelse wh_util:is_in_account_hierarchy(AuthBy, AssignedTo)
+         )
+        andalso wh_util:is_in_account_hierarchy(AssignedTo, AssignTo, 'true')
+    of
+        'false' -> error_unauthorized(N);
+        'true' -> N
+    end.
+
+-spec in_service_from_in_service_authorize(wnm_number()) -> wnm_number().
+in_service_from_in_service_authorize(#number{assign_to=AssignTo
+                                             ,auth_by=AuthBy
+                                            }=N) ->
+    case (wh_util:is_in_account_hierarchy(AssignTo, AuthBy, 'true')
+          orelse wh_util:is_in_account_hierarchy(AuthBy, AssignTo)
+         )
+    of
+        'false' -> error_unauthorized(N);
+        'true' -> N
+    end.
+
 -spec in_service(wnm_number()) -> wnm_number().
 in_service(#number{state = ?NUMBER_STATE_DISCOVERY}=Number) ->
-    Routines = [fun(#number{assign_to=AssignTo
-                            ,auth_by=AuthBy
-                           }=N) ->
-                        case AuthBy =:= 'system' orelse wh_util:is_in_account_hierarchy(AuthBy, AssignTo, 'true') of
-                            'false' -> error_unauthorized(N);
-                            'true' -> N
-                        end
-                end
-                ,fun(#number{assigned_to='undefined'
-                             ,assign_to=AssignTo
-                            }=N) ->
-                         N#number{state = ?NUMBER_STATE_IN_SERVICE
-                                  ,assigned_to=AssignTo
-                                 };
-                    (#number{assigned_to=AssignedTo
-                             ,assign_to=AssignedTo
-                            }=N) ->
-                         N#number{state = ?NUMBER_STATE_IN_SERVICE};
-                    (#number{assigned_to=AssignedTo
-                             ,assign_to=AssignTo
-                            }=N) ->
-                         N#number{state = ?NUMBER_STATE_IN_SERVICE
-                                  ,assigned_to=AssignTo
-                                  ,prev_assigned_to=AssignedTo
-                                 }
-                 end
-                ,fun(#number{}=N) -> activate_phone_number(N) end
-                ,fun(#number{module_name='undefined'}=N) ->
-                         error_carrier_not_specified(N);
-                    (#number{dry_run='true'}=N) -> N;
-                    (#number{module_name=Module}=N) ->
-                         Module:acquire_number(N)
-                 end
+    Routines = [fun simple_authorize/1
+                ,fun in_service_move_state/1
+                ,fun activate_phone_number/1
+                ,fun maybe_acquire_number/1
                ],
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines);
 in_service(#number{state = ?NUMBER_STATE_PORT_IN}=Number) ->
-    Routines = [fun(#number{assigned_to=AssignedTo
-                            ,auth_by=AuthBy
-                           }=N) ->
-                        case wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, 'true') of
-                            'false' -> error_unauthorized(N);
-                            'true' -> N#number{state = ?NUMBER_STATE_IN_SERVICE}
-                        end
-                end
+    Routines = [fun simple_authorize/1
+                ,fun in_service_move_state/1
                ],
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines);
 in_service(#number{state = ?NUMBER_STATE_AVAILABLE}=Number) ->
-    Routines = [fun(#number{assign_to=AssignTo
-                            ,auth_by=AuthBy
-                           }=N) ->
-                        case AuthBy =:= 'system' orelse wh_util:is_in_account_hierarchy(AuthBy, AssignTo, 'true') of
-                            'false' -> error_unauthorized(N);
-                            'true' -> N
-                        end
-                end
-                ,fun(#number{assigned_to='undefined'
-                             ,assign_to=AssignTo
-                            }=N) ->
-                         N#number{state = ?NUMBER_STATE_IN_SERVICE
-                                  ,assigned_to=AssignTo
-                                 };
-                    (#number{assigned_to=AssignedTo
-                             ,assign_to=AssignedTo
-                            }=N) ->
-                         N#number{state = ?NUMBER_STATE_IN_SERVICE};
-                    (#number{assigned_to=AssignedTo
-                             ,assign_to=AssignTo
-                            }=N) ->
-                         N#number{state = ?NUMBER_STATE_IN_SERVICE
-                                  ,assigned_to=AssignTo
-                                  ,prev_assigned_to=AssignedTo
-                                 }
-                 end
-                ,fun(#number{}=N) -> activate_phone_number(N) end
+    Routines = [fun simple_authorize/1
+                ,fun in_service_move_state/1
+                ,fun activate_phone_number/1
                ],
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines);
 in_service(#number{state = ?NUMBER_STATE_RESERVED}=Number) ->
-    Routines = [fun(#number{assign_to=AssignTo
-                            ,auth_by=AuthBy
-                            ,assigned_to=AssignedTo
-                           }=N) ->
-                        case (wh_util:is_in_account_hierarchy(AssignedTo, AuthBy, 'true')
-                              orelse wh_util:is_in_account_hierarchy(AuthBy, AssignedTo)
-                             )
-                            andalso wh_util:is_in_account_hierarchy(AssignedTo, AssignTo, 'true')
-                        of
-                            'false' -> error_unauthorized(N);
-                            'true' -> N
-                        end
-                end
-                ,fun(#number{assigned_to='undefined'
-                             ,assign_to=AssignTo
-                            }=N) ->
-                         N#number{state = ?NUMBER_STATE_IN_SERVICE
-                                  ,assigned_to=AssignTo
-                                 };
-                    (#number{assigned_to=AssignedTo
-                             ,assign_to=AssignedTo
-                            }=N) ->
-                         N#number{state = ?NUMBER_STATE_IN_SERVICE};
-                    (#number{assigned_to=AssignedTo
-                             ,assign_to=AssignTo
-                            }=N) ->
-                         N#number{state = ?NUMBER_STATE_IN_SERVICE
-                                  ,assigned_to=AssignTo
-                                  ,prev_assigned_to=AssignedTo
-                                 }
-                 end
+    Routines = [fun in_service_from_reserved_authorize/1
+                ,fun in_service_move_state/1
                ],
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines);
 in_service(#number{state = ?NUMBER_STATE_IN_SERVICE
@@ -666,31 +584,8 @@ in_service(#number{state = ?NUMBER_STATE_IN_SERVICE
                   }=Number) ->
     error_no_change_required(?NUMBER_STATE_IN_SERVICE, Number);
 in_service(#number{state = ?NUMBER_STATE_IN_SERVICE}=Number) ->
-    Routines = [fun(#number{assign_to=AssignTo
-                            ,auth_by=AuthBy
-                           }=N) ->
-                        case (wh_util:is_in_account_hierarchy(AssignTo, AuthBy, 'true')
-                              orelse wh_util:is_in_account_hierarchy(AuthBy, AssignTo)
-                             )
-                        of
-                            'false' -> error_unauthorized(N);
-                            'true' -> N
-                        end
-                end
-                ,fun(#number{assigned_to='undefined'
-                             ,assign_to=AssignTo
-                            }=N) ->
-                         N#number{state = ?NUMBER_STATE_IN_SERVICE
-                                  ,assigned_to=AssignTo
-                                 };
-                    (#number{assigned_to=AssignedTo
-                             ,assign_to=AssignTo
-                            }=N) ->
-                         N#number{state = ?NUMBER_STATE_IN_SERVICE
-                                  ,assigned_to=AssignTo
-                                  ,prev_assigned_to=AssignedTo
-                                 }
-                 end
+    Routines = [fun in_service_from_in_service_authorize/1
+                ,fun in_service_move_state/1
                ],
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines);
 in_service(Number) ->
@@ -877,6 +772,8 @@ number_from_port_doc(#number{number=N}=Number, JObj) ->
 %%--------------------------------------------------------------------
 -spec record_to_json(wnm_number()) -> wh_json:object().
 record_to_json(#number{number_doc=JObj}=N) ->
+    Now = wh_util:current_tstamp(),
+
     Updates = [{<<"_id">>, N#number.number}
                ,{?PVT_NUMBER_STATE, N#number.state}
                ,{<<"pvt_reserve_history">>, ordsets:to_list(N#number.reserve_history)}
@@ -886,14 +783,17 @@ record_to_json(#number{number_doc=JObj}=N) ->
                ,{<<"pvt_module_data">>, N#number.module_data}
                ,{<<"pvt_features">>, [wh_util:to_binary(F) || F <- sets:to_list(N#number.features)]}
                ,{<<"pvt_db_name">>, N#number.number_db}
-               ,{<<"pvt_modified">>, wh_util:current_tstamp()}
-               ,{<<"pvt_created">>, wh_json:get_value(<<"pvt_created">>, JObj, wh_util:current_tstamp())}
+               ,{<<"pvt_modified">>, Now}
+               ,{<<"pvt_created">>, wh_json:get_value(<<"pvt_created">>, JObj, Now)}
                ,{<<"used_by">>, N#number.used_by}
                ,{<<"pvt_type">>, <<"number">>}
               ],
-    lists:foldl(fun({K, 'undefined'}, J) -> wh_json:delete_key(K, J);
-                   ({K, V}, J) -> wh_json:set_value(K, V, J)
-                end, JObj, Updates).
+    lists:foldl(fun record_to_json_fold/2, JObj, Updates).
+
+-spec record_to_json_fold({wh_json:key(), 'undefined' | wh_json:json_term()}, wh_json:object()) ->
+                                 wh_json:object().
+record_to_json_fold({K, 'undefined'}, J) -> wh_json:delete_key(K, J);
+record_to_json_fold({K, V}, J) -> wh_json:set_value(K, V, J).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -922,7 +822,7 @@ save_number_doc(#number{number_db=Db
                         ,number=Num
                         ,number_doc=JObj
                        }=Number) ->
-    case couch_mgr:ensure_saved(Db, set_locality(JObj, Number)) of
+    case couch_mgr:ensure_saved(Db, maybe_set_locality(JObj, Number)) of
         {'error', 'not_found'} ->
             lager:debug("attempting to creating new database '~s' for number '~s'", [Db, Num]),
             'true' = couch_mgr:db_create(Db),
@@ -934,6 +834,17 @@ save_number_doc(#number{number_db=Db
         {'ok', J} ->
             lager:debug("saved '~s' in '~s'", [Num, Db]),
             Number#number{number_doc=J}
+    end.
+
+-spec maybe_set_locality(wh_json:object(), wnm_number()) -> wh_json:object().
+maybe_set_locality(JObj, #number{number=Num}) ->
+    case wh_json:get_first_defined([<<"locality">>
+                                    ,[<<"pvt_module_data">>, <<"locality">>]
+                                    ,[<<"pvt_module_data">>, Num, <<"locality">>]
+                                   ], JObj)
+    of
+        'undefined' -> JObj;
+        Loc -> wh_json:set_value(<<"locality">>, Loc, JObj)
     end.
 
 %%--------------------------------------------------------------------
