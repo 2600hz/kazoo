@@ -702,79 +702,55 @@ in_service(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec authorize_change(wnm_number()) -> wnm_number().
+authorize_change(#number{assigned_to=AssignedTo
+                         ,auth_by=AuthBy
+                         ,number_doc=JObj
+                        }=N) ->
+    case wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, 'true') of
+        'false' -> error_unauthorized(N);
+        'true' -> N#number{features=sets:new()
+                           ,number_doc=wh_json:private_fields(JObj)
+                          }
+    end.
+
+-spec move_states(wnm_number(), ne_binary()) -> wnm_number().
+move_states(#number{assigned_to=AssignedTo}=N, NewState) ->
+    N#number{state=NewState
+             ,assigned_to='undefined'
+             ,prev_assigned_to=AssignedTo
+            }.
+
+-spec maybe_disconnect(wnm_number()) -> wnm_number().
+maybe_disconnect(#number{prev_assigned_to=AssignedTo
+                         ,reserve_history=ReserveHistory
+                        }=N) ->
+    History = ordsets:del_element(AssignedTo, ReserveHistory),
+    case ordsets:to_list(History) of
+        [] -> attempt_disconnect_number(N);
+        [PrevReservation|_] ->
+            lager:debug("unwinding reservation history, reserving on account ~s"
+                        ,[PrevReservation]
+                       ),
+            N#number{reserve_history=History
+                     ,assigned_to=PrevReservation
+                     ,state = ?NUMBER_STATE_RESERVED
+                    }
+    end.
+
 -spec released(wnm_number()) -> wnm_number().
 released(#number{state = ?NUMBER_STATE_RESERVED}=Number) ->
     NewState = whapps_config:get_binary(?WNM_CONFIG_CAT, <<"released_state">>, ?NUMBER_STATE_AVAILABLE),
-    Routines = [fun(#number{assigned_to=AssignedTo
-                            ,auth_by=AuthBy
-                            ,number_doc=JObj
-                           }=N) ->
-                        case wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, 'true') of
-                            'false' -> error_unauthorized(N);
-                            'true' -> N#number{features=sets:new()
-                                               ,number_doc=wh_json:private_fields(JObj)
-                                              }
-                        end
-                end
-                ,fun(#number{assigned_to=AssignedTo}=N) ->
-                         N#number{state=NewState
-                                  ,assigned_to='undefined'
-                                  ,prev_assigned_to=AssignedTo
-                                 }
-                 end
-                ,fun(#number{prev_assigned_to=AssignedTo
-                             ,reserve_history=ReserveHistory
-                            }=N) ->
-                         History = ordsets:del_element(AssignedTo, ReserveHistory),
-                         case ordsets:to_list(History) of
-                             [] -> attempt_discconect_number(N);
-                             [PrevReservation|_] ->
-                                 lager:debug("unwinding reservation history, reserving on account ~s"
-                                             ,[PrevReservation]
-                                            ),
-                                 N#number{reserve_history=History
-                                          ,assigned_to=PrevReservation
-                                          ,state = ?NUMBER_STATE_RESERVED
-                                         }
-                         end
-                 end
+    Routines = [fun authorize_change/1
+                ,fun(N) -> move_states(N, NewState) end
+                ,fun maybe_disconnect/1
                ],
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines);
 released(#number{state = ?NUMBER_STATE_IN_SERVICE}=Number) ->
     NewState = whapps_config:get_binary(?WNM_CONFIG_CAT, <<"released_state">>, ?NUMBER_STATE_AVAILABLE),
-    Routines = [fun(#number{assigned_to=AssignedTo
-                            ,auth_by=AuthBy
-                            ,number_doc=JObj
-                           }=N) ->
-                        case wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, 'true') of
-                            'false' -> error_unauthorized(N);
-                            'true' -> N#number{features=sets:new()
-                                               ,number_doc=wh_json:private_fields(JObj)
-                                              }
-                        end
-                end
-                ,fun(#number{assigned_to=AssignedTo}=N) ->
-                         N#number{state=NewState
-                                  ,assigned_to='undefined'
-                                  ,prev_assigned_to=AssignedTo
-                                 }
-                 end
-                ,fun(#number{prev_assigned_to=AssignedTo
-                             ,reserve_history=ReserveHistory
-                            }=N) ->
-                         History = ordsets:del_element(AssignedTo, ReserveHistory),
-                         case ordsets:to_list(History) of
-                             [] -> attempt_discconect_number(N);
-                             [PrevReservation|_] ->
-                                 lager:debug("unwinding reservation history, reserving on account ~s"
-                                             ,[PrevReservation]
-                                            ),
-                                 N#number{reserve_history=History
-                                          ,assigned_to=PrevReservation
-                                          ,state = ?NUMBER_STATE_RESERVED
-                                         }
-                         end
-                 end
+    Routines = [fun authorize_change/1
+                ,fun(N) -> move_states(N, NewState) end
+                ,fun maybe_disconnect/1
                ],
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines);
 released(#number{state = ?NUMBER_STATE_RELEASED}=Number) ->
@@ -782,12 +758,14 @@ released(#number{state = ?NUMBER_STATE_RELEASED}=Number) ->
 released(Number) ->
     error_invalid_state_transition(?NUMBER_STATE_RELEASED, Number).
 
--spec attempt_discconect_number(wnm_number()) -> wnm_number().
-attempt_discconect_number(#number{module_name=ModuleName}=Number) ->
+-spec attempt_disconnect_number(wnm_number()) -> wnm_number().
+attempt_disconnect_number(#number{module_name=ModuleName}=Number) ->
     try ModuleName:disconnect_number(Number) of
         #number{}=N -> N#number{reserve_history=ordsets:new()}
     catch
-        _:_ -> error_carrier_fault(<<"Failed to disconnect number">>, Number)
+        _E:_R ->
+            lager:debug("failed to disconnect via ~s: ~s: ~p", [ModuleName, _E, _R]),
+            error_carrier_fault(<<"Failed to disconnect number">>, Number)
     end.
 
 %%--------------------------------------------------------------------
