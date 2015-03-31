@@ -643,7 +643,12 @@ disconnect_or_delete(N) ->
 disconnect_or_delete(N, 'false') ->
     attempt_disconnect_number(N);
 disconnect_or_delete(N, 'true') ->
-    move_state(N, ?NUMBER_STATE_DELETED).
+    try attempt_disconnect_number(N) of
+        N1 -> move_state(N1, ?NUMBER_STATE_DELETED)
+    catch
+        'throw':{'unknown_carrier', N1} ->
+            move_state(N1, ?NUMBER_STATE_DELETED)
+    end.
 
 -spec attempt_disconnect_number(wnm_number()) -> wnm_number().
 attempt_disconnect_number(#number{module_name=ModuleName}=Number) ->
@@ -1309,14 +1314,15 @@ activate_phone_number(#number{services=Services
                               ,number=Number
                              }=N) ->
     Units = wh_service_phone_numbers:phone_number_activation_charge(Number, Services),
-    activate_phone_number(Units, N).
+    activate_phone_number(N, Units).
 
-activate_phone_number(0, #number{number=Number}=N) ->
+activate_phone_number(#number{number=Number}=N, 0) ->
     lager:debug("no activation charge for ~s", [Number]),
     N;
-activate_phone_number(Units, #number{phone_number_activation_charges=Charges
-                                     ,billing_id=BillingId
-                                    }=N) ->
+activate_phone_number(#number{phone_number_activation_charges=Charges
+                              ,billing_id=BillingId
+                             }=N
+                     ,Units) ->
     Charge = Charges + Units,
     case wh_services:check_bookkeeper(BillingId, Charge) of
         'false' ->
