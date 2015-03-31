@@ -18,6 +18,7 @@
          ,validate/1, validate/2
          ,put/1
          ,post/2
+         ,patch/2
          ,delete/2
         ]).
 
@@ -35,6 +36,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.conferences">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.conferences">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.conferences">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.patch.conferences">>, ?MODULE, 'patch'),
     crossbar_bindings:bind(<<"*.execute.delete.conferences">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
@@ -51,7 +53,7 @@ init() ->
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 allowed_methods(_) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -92,11 +94,17 @@ validate_conference(Context, Id, ?HTTP_GET) ->
     load_conference(Id, Context);
 validate_conference(Context, Id, ?HTTP_POST) ->
     update_conference(Id, Context);
+validate_conference(Context, Id, ?HTTP_PATCH) ->
+    patch_conference(Id, Context);
 validate_conference(Context, Id, ?HTTP_DELETE) ->
     load_conference(Id, Context).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _) ->
+    crossbar_doc:save(Context).
+
+-spec patch(cb_context:context(), path_token()) -> cb_context:context().
+patch(Context, _) ->
     crossbar_doc:save(Context).
 
 -spec put(cb_context:context()) -> cb_context:context().
@@ -216,6 +224,28 @@ load_conference(DocId, Context) ->
 update_conference(DocId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(DocId, C) end,
     cb_context:validate_request_data(<<"conferences">>, Context, OnSuccess).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Update-merge an existing conference document partially with the data provided, if it is
+%% valid
+%% @end
+%%--------------------------------------------------------------------
+-spec patch_conference(ne_binary(), cb_context:context()) -> cb_context:context().
+patch_conference(DocId, Context) ->
+    Context1 = crossbar_doc:load(DocId, Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            PatchJObj = wh_doc:public_fields(cb_context:req_data(Context)),
+            ConfJObj = wh_json:merge_jobjs(PatchJObj, cb_context:doc(Context1)),
+
+            lager:debug("patched doc, now validating"),
+            OnSuccess = fun(C) -> on_successful_validation(DocId, C) end,
+            cb_context:validate_request_data(<<"conferences">>, cb_context:set_req_data(Context, ConfJObj), OnSuccess);
+        _Status ->
+            Context1
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
