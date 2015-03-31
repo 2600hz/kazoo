@@ -250,6 +250,15 @@ remove_number(AccountId, Number) ->
         {'error', _E} ->
             io:format("[~s] failed to open phone_numbers doc: ~p~n", [Number, _E]);
         {'ok', JObj} ->
+            maybe_remove_non_porting(AccountId, Number, AccountDb, JObj)
+    end.
+
+-spec maybe_remove_non_porting(ne_binary(), ne_binary(), ne_binary(), wh_json:object()) -> 'stop' | 'ok'.
+maybe_remove_non_porting(AccountId, Number, AccountDb, JObj) ->
+    case wh_json:get_value([Number, <<"state">>], JObj) of
+        ?NUMBER_STATE_PORT_IN ->
+            io:format("[~s] will not be removed as it is in 'port_in' state~n", [Number]);
+        _Else ->
             remove_number(AccountId, Number, AccountDb, JObj)
     end.
 

@@ -26,11 +26,11 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec save(wnm_number()) -> wnm_number().
-save(#number{state = <<"port_in">>} = Number) ->
+save(#number{state = ?NUMBER_STATE_PORT_IN} = Number) ->
     maybe_update_e911(Number);
-save(#number{state = <<"reserved">>} = Number) ->
+save(#number{state = ?NUMBER_STATE_RESERVED} = Number) ->
     maybe_update_e911(Number);
-save(#number{state = <<"in_service">>} = Number) ->
+save(#number{state = ?NUMBER_STATE_IN_SERVICE} = Number) ->
     maybe_update_e911(Number);
 save(Number) -> delete(Number).
 

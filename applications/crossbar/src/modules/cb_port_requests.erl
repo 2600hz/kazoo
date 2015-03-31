@@ -1052,7 +1052,7 @@ add_to_phone_numbers_doc(Context, JObj) ->
 -spec build_number_properties(ne_binary(), gregorian_seconds()) -> wh_json:object().
 build_number_properties(AccountId, Now) ->
     wh_json:from_list(
-      [{<<"state">>, <<"in_service">>}
+      [{<<"state">>, ?NUMBER_STATE_PORT_IN}
        ,{<<"features">>, []}
        ,{<<"assigned_to">>, AccountId}
        ,{<<"used_by">>, <<>>}
