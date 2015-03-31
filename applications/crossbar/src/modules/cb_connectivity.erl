@@ -17,6 +17,7 @@
          ,validate/1, validate/2
          ,put/1
          ,post/2
+         ,patch/2
          ,delete/2
         ]).
 
@@ -33,6 +34,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.connectivity">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.connectivity">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.connectivity">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.patch.connectivity">>, ?MODULE, 'patch'),
     crossbar_bindings:bind(<<"*.execute.delete.connectivity">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
@@ -49,7 +51,7 @@ init() ->
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 allowed_methods(_) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -91,6 +93,8 @@ validate_connectivity_pbx(Context, Id, ?HTTP_GET) ->
     read(Id, Context);
 validate_connectivity_pbx(Context, Id, ?HTTP_POST) ->
     update(Id, Context);
+validate_connectivity_pbx(Context, Id, ?HTTP_PATCH) ->
+    validate_patch(Id, Context);
 validate_connectivity_pbx(Context, Id, ?HTTP_DELETE) ->
     read(Id, Context).
 
@@ -103,6 +107,11 @@ post(Context, _) ->
             Context1;
         _Status -> Context1
     end.
+
+-spec patch(cb_context:context(), path_token()) -> cb_context:context().
+patch(Context, _) ->
+    'ok' = track_assignment('post', Context),
+    crossbar_doc:save(Context).
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
@@ -201,6 +210,28 @@ read(Id, Context) ->
 update(Id, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
     cb_context:validate_request_data(<<"connectivity">>, Context, OnSuccess).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Update-merge an existing instance partially with the data provided, if it is
+%% valid
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_patch(ne_binary(), cb_context:context()) -> cb_context:context().
+validate_patch(Id, Context) ->
+    Context1 = crossbar_doc:load(Id, Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            PatchJObj = wh_doc:public_fields(cb_context:req_data(Context)),
+            ConfigsJObj = wh_json:merge_jobjs(PatchJObj, cb_context:doc(Context1)),
+
+            lager:debug("patched doc, now validating"),
+            OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
+            cb_context:validate_request_data(<<"connectivity">>, cb_context:set_req_data(Context, ConfigsJObj), OnSuccess);
+        _Status ->
+            Context1
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
