@@ -376,7 +376,7 @@ decode_base64(Context, CT, Req0, Body) ->
         {'ok', Base64Data, Req1} ->
             Data = iolist_to_binary(lists:reverse([Base64Data | Body])),
 
-            {EncodedType, FileContents} = decode_base64(Data),
+            {EncodedType, FileContents} = kz_attachment:decode_base64(Data),
             ContentType = case EncodedType of
                               'undefined' -> CT;
                               <<"application/base64">> -> <<"application/octet-stream">>;
@@ -394,33 +394,6 @@ decode_base64(Context, CT, Req0, Body) ->
                        >>,
             {cb_context:set_req_files(Context, [{FileName, FileJObj}]), Req1}
     end.
-
--spec decode_base64(ne_binary()) -> {api_binary(), ne_binary()}.
-decode_base64(Base64) ->
-    case binary:split(Base64, <<",">>) of
-        %% http://tools.ietf.org/html/rfc4648
-        [Bin] ->
-            lager:debug("not split on ','"),
-            {'undefined', corrected_base64_decode(Bin)};
-        %% http://tools.ietf.org/rfc/rfc2397.txt
-        [<<"data:", CT/binary>>, Bin] ->
-            {ContentType, _Opts} = mochiweb_util:parse_header(wh_util:to_list(CT)),
-
-            {wh_util:to_binary(ContentType), corrected_base64_decode(Bin)};
-        [_SplitLeft, _SplitRight] ->
-            lager:debug("split unexpectedly: ~p/~p", [byte_size(_SplitLeft), byte_size(_SplitRight)]),
-            lager:debug("l: ~s", [binary:part(_SplitLeft, byte_size(_SplitLeft), -20)]),
-            lager:debug("r: ~s", [binary:part(_SplitRight, byte_size(_SplitRight), -10)]),
-            {'undefined', corrected_base64_decode(Base64)}
-    end.
-
--spec corrected_base64_decode(ne_binary()) -> ne_binary().
-corrected_base64_decode(Base64) when byte_size(Base64) rem 4 == 3 ->
-    base64:mime_decode(<<Base64/binary, "=">>);
-corrected_base64_decode(Base64) when byte_size(Base64) rem 4 == 2 ->
-    base64:mime_decode(<<Base64/binary, "==">>);
-corrected_base64_decode(Base64) ->
-    base64:mime_decode(Base64).
 
 -spec get_request_body(cowboy_req:req()) ->
                               {binary(), cowboy_req:req()}.
