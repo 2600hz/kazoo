@@ -420,7 +420,7 @@ get_timelimit(TL) ->
     end.
 
 -spec get_format(api_binary()) -> ne_binary().
-get_format('undefined') -> whapps_config:get(?WHS_CONFIG_CAT, [<<"call_recording">>, <<"extension">>], <<"mp3">>);
+get_format('undefined') -> whapps_config:get(?WHM_CONFIG_CAT, [<<"call_recording">>, <<"extension">>], <<"mp3">>);
 get_format(<<"mp3">> = MP3) -> MP3;
 get_format(<<"wav">> = WAV) -> WAV;
 get_format(_) -> get_format('undefined').
