@@ -5,7 +5,7 @@
 -include_lib("whistle/include/wh_databases.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 
--define(WHS_CONFIG_CAT, <<"media">>).
+-define(WHM_CONFIG_CAT, <<"media">>).
 
 -define(APP_NAME, <<"media_srv">>).
 -define(APP_VERSION, <<"0.2.0">>).
@@ -20,7 +20,7 @@
 -define(MAX_RESERVED_PORTS, 10).
 -define(MAX_WAIT_FOR_LISTENERS, 600000). %% 600 secs = 10 minutes
 
--define(CONFIG_CAT, ?WHS_CONFIG_CAT).
+-define(CONFIG_CAT, ?WHM_CONFIG_CAT).
 
 -define(PROMPT_LANGUAGE_KEY, <<"default_language">>).
 

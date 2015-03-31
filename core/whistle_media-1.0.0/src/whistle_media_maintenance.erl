@@ -19,11 +19,11 @@
 
 -spec migrate() -> 'no_return'.
 migrate() ->
-    io:format("migrating relevant settings from system_config/callflow to system_config/~s~n", [?WHS_CONFIG_CAT]),
+    io:format("migrating relevant settings from system_config/callflow to system_config/~s~n", [?WHM_CONFIG_CAT]),
 
     maybe_migrate_system_config(<<"callflow">>),
 
-    io:format("migrating relevant settings from system_config/media_mgr to system_config/~s~n", [?WHS_CONFIG_CAT]),
+    io:format("migrating relevant settings from system_config/media_mgr to system_config/~s~n", [?WHM_CONFIG_CAT]),
     maybe_migrate_system_config(<<"media_mgr">>),
 
     'no_return'.
@@ -39,7 +39,7 @@ set_account_language(Account, Language) ->
     OldLang = wh_media_util:prompt_language(AccountId),
 
     try whapps_account_config:set(AccountId
-                                  ,?WHS_CONFIG_CAT
+                                  ,?WHM_CONFIG_CAT
                                   ,?PROMPT_LANGUAGE_KEY
                                   ,wh_util:to_lower_binary(Language)
                                  )
@@ -224,9 +224,9 @@ migrate_system_config(ConfigJObj) ->
 
 -spec get_media_config_doc() -> {'ok', wh_json:object()}.
 get_media_config_doc() ->
-    case couch_mgr:open_doc(?WH_CONFIG_DB, ?WHS_CONFIG_CAT) of
+    case couch_mgr:open_doc(?WH_CONFIG_DB, ?WHM_CONFIG_CAT) of
         {'ok', _MediaJObj}=OK -> OK;
-        {'error', 'not_found'} -> {'ok', wh_json:from_list([{<<"_id">>, ?WHS_CONFIG_CAT}])}
+        {'error', 'not_found'} -> {'ok', wh_json:from_list([{<<"_id">>, ?WHM_CONFIG_CAT}])}
     end.
 
 -spec migrate_system_config_fold(ne_binary(), wh_json:json_term(), wh_json:object()) -> wh_json:object().
