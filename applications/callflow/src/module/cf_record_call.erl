@@ -49,6 +49,10 @@ handle(Data, Call, <<"start">>) ->
             case wh_media_recording:should_store_recording(Url) of
                 {'true', 'other', Url} ->
                     record_call(Data, Call);
+                'false' ->
+                    lager:error("misconfigured call record (missing url)"),
+                    wh_notify:system_alert("misconfigured call record (missing url in ~p)", [Call]),
+                    start_wh_media_recording(Data, Call);
                 _ ->
                     start_wh_media_recording(Data, Call)
             end
