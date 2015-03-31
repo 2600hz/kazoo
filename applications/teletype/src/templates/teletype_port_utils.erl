@@ -23,10 +23,11 @@ get_attachments(_DataJObj, 'true') -> [];
 get_attachments(DataJObj, 'false') ->
     PortReqId = wh_json:get_value(<<"port_request_id">>, DataJObj),
     Doc = wh_json:get_value(<<"port_request">>, DataJObj),
-    lists:foldl(fun(Name, Acc) -> get_attachment_fold(Name, Acc, PortReqId, Doc) end
-                ,[]
-                ,wh_doc:attachment_names(Doc)
-               ).
+    lists:foldl(
+      fun(Name, Acc) -> get_attachment_fold(Name, Acc, PortReqId, Doc) end
+      ,[]
+      ,wh_doc:attachment_names(Doc)
+     ).
 
 -spec get_attachment_fold(wh_json:key(), attachments(), ne_binary(), wh_json:object()) ->
                                  attachments().
@@ -59,10 +60,12 @@ fix_port_request_data(JObj) ->
 
 -spec fix_numbers(wh_json:object()) -> wh_json:object().
 fix_numbers(JObj) ->
-    Numbers =  wh_json:foldl(fun fix_number_fold/3
-                             ,[]
-                             ,wh_json:get_value(<<"numbers">>, JObj)
-                            ),
+    Numbers =
+        wh_json:foldl(
+          fun fix_number_fold/3
+          ,[]
+          ,wh_json:get_value(<<"numbers">>, JObj, wh_json:new())
+         ),
     wh_json:set_value(<<"numbers">>, Numbers, JObj).
 
 -spec fix_number_fold(wh_json:object(), _, wh_json:keys()) -> wh_json:keys().
@@ -86,10 +89,10 @@ fix_billing_fold(Key, Value, Acc) ->
 fix_comments(JObj) ->
     Comments =
         lists:foldl(
-            fun fix_comment_fold/2
-            ,[]
-            ,wh_json:get_value(<<"comments">>, JObj, [])
-        ),
+          fun fix_comment_fold/2
+          ,[]
+          ,wh_json:get_value(<<"comments">>, JObj, [])
+         ),
     wh_json:set_value(<<"comments">>, Comments, JObj).
 
 -spec fix_comment_fold(wh_json:object(), [wh_proplist(), ...]) -> [wh_proplist(), ...].
@@ -99,17 +102,16 @@ fix_comment_fold(JObj, Acc) ->
 -spec fix_dates(wh_json:object()) -> wh_json:object().
 fix_dates(JObj) ->
     lists:foldl(
-        fun fix_date_fold/2
-        ,JObj
-        ,[<<"transfer_date">>, <<"scheduled_date">>]
-    ).
+      fun fix_date_fold/2
+      ,JObj
+      ,[<<"transfer_date">>, <<"scheduled_date">>]
+     ).
 
--spec fix_date_fold(wh_json:object(), [wh_proplist(), ...]) -> [wh_proplist(), ...].
+-spec fix_date_fold(wh_json:key(), wh_json:object()) -> wh_json:object().
 fix_date_fold(Key, JObj) ->
     case wh_json:get_integer_value(Key, JObj) of
         'undefined' -> JObj;
         Timestamp ->
             {Date, _Time} = calendar:gregorian_seconds_to_datetime(Timestamp),
-            % Date = wh_util:gregorian_seconds_to_unix_seconds(Timestamp),
             wh_json:set_value(Key, Date, JObj)
     end.

@@ -32,7 +32,9 @@
 -type json_proplists() :: [json_proplist(),...].
 
 -type json_iolist() :: {'json', iolist()}.
--type json_term() :: boolean() | json_string() | json_number() | json_array() | object() | json_iolist() | <<>>.
+-type json_term() :: boolean() | json_string() | json_number() | json_array()
+                   | object() | json_iolist() | <<>>
+                   | wh_date().
 -type json_terms() :: [json_term()].
 
 -define(WH_JSON_HRL, 'true').
