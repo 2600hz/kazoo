@@ -702,11 +702,11 @@ in_service(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec authorize_change(wnm_number()) -> wnm_number().
-authorize_change(#number{assigned_to=AssignedTo
-                         ,auth_by=AuthBy
-                         ,number_doc=JObj
-                        }=N) ->
+-spec released_authorize_change(wnm_number()) -> wnm_number().
+released_authorize_change(#number{assigned_to=AssignedTo
+                                  ,auth_by=AuthBy
+                                  ,number_doc=JObj
+                                 }=N) ->
     case wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, 'true') of
         'false' -> error_unauthorized(N);
         'true' -> N#number{features=sets:new()
@@ -714,17 +714,17 @@ authorize_change(#number{assigned_to=AssignedTo
                           }
     end.
 
--spec move_states(wnm_number(), ne_binary()) -> wnm_number().
-move_states(#number{assigned_to=AssignedTo}=N, NewState) ->
+-spec released_move_states(wnm_number(), ne_binary()) -> wnm_number().
+released_move_states(#number{assigned_to=AssignedTo}=N, NewState) ->
     N#number{state=NewState
              ,assigned_to='undefined'
              ,prev_assigned_to=AssignedTo
             }.
 
--spec maybe_disconnect(wnm_number()) -> wnm_number().
-maybe_disconnect(#number{prev_assigned_to=AssignedTo
-                         ,reserve_history=ReserveHistory
-                        }=N) ->
+-spec released_maybe_disconnect(wnm_number()) -> wnm_number().
+released_maybe_disconnect(#number{prev_assigned_to=AssignedTo
+                                  ,reserve_history=ReserveHistory
+                                 }=N) ->
     History = ordsets:del_element(AssignedTo, ReserveHistory),
     case ordsets:to_list(History) of
         [] -> attempt_disconnect_number(N);
@@ -741,16 +741,16 @@ maybe_disconnect(#number{prev_assigned_to=AssignedTo
 -spec released(wnm_number()) -> wnm_number().
 released(#number{state = ?NUMBER_STATE_RESERVED}=Number) ->
     NewState = whapps_config:get_binary(?WNM_CONFIG_CAT, <<"released_state">>, ?NUMBER_STATE_AVAILABLE),
-    Routines = [fun authorize_change/1
-                ,fun(N) -> move_states(N, NewState) end
-                ,fun maybe_disconnect/1
+    Routines = [fun released_authorize_change/1
+                ,fun(N) -> released_move_states(N, NewState) end
+                ,fun released_maybe_disconnect/1
                ],
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines);
 released(#number{state = ?NUMBER_STATE_IN_SERVICE}=Number) ->
     NewState = whapps_config:get_binary(?WNM_CONFIG_CAT, <<"released_state">>, ?NUMBER_STATE_AVAILABLE),
-    Routines = [fun authorize_change/1
-                ,fun(N) -> move_states(N, NewState) end
-                ,fun maybe_disconnect/1
+    Routines = [fun released_authorize_change/1
+                ,fun(N) -> released_move_states(N, NewState) end
+                ,fun released_maybe_disconnect/1
                ],
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines);
 released(#number{state = ?NUMBER_STATE_RELEASED}=Number) ->
