@@ -117,10 +117,13 @@ is_number_billable(_Number) -> 'true'.
 -spec acquire_number/1 :: (wnm_number()) -> wnm_number().
 
 acquire_number(#number{dry_run='true'}=Number) -> Number;
-acquire_number(#number{auth_by=AuthBy, assigned_to=AssignedTo, module_data=Data}=N) ->
-    Debug = whapps_config:get_is_true(?WNM_BW_CONFIG_CAT, <<"sandbox_provisioning">>, true),
-    case whapps_config:get_is_true(?WNM_BW_CONFIG_CAT, <<"enable_provisioning">>, true) of
-        false when Debug ->
+acquire_number(#number{auth_by=AuthBy
+                       ,assigned_to=AssignedTo
+                       ,module_data=Data
+                      }=N) ->
+    Debug = whapps_config:get_is_true(?WNM_BW_CONFIG_CAT, <<"sandbox_provisioning">>, 'true'),
+    case whapps_config:get_is_true(?WNM_BW_CONFIG_CAT, <<"enable_provisioning">>, 'true') of
+        'false' when Debug ->
             lager:debug("allowing sandbox provisioning", []),
             N;
         'false' ->
