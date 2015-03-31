@@ -183,7 +183,7 @@ get_endpoint_id_from_sipdb(Realm, Username) ->
     case couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup">>, ViewOptions) of
         {'ok', [JObj]} ->
             EndpointId = wh_json:get_value(<<"id">>, JObj),
-            AccountDb = wh_json:get_value(<<"account_db">>, JObj),
+            AccountDb = wh_json:get_value([<<"value">>, <<"account_db">>], JObj),
             CacheProps = [{'origin', {'db', ?WH_SIP_DB, EndpointId}}],
             wh_cache:store_local(?DOODLE_CACHE, ?SIP_ENDPOINT_ID_KEY(Realm, Username), {AccountDb, EndpointId}, CacheProps),
             {'ok', EndpointId};
@@ -420,7 +420,7 @@ fetch_mdn_result(AccountId, Num) ->
         {'ok', []} -> {'error', 'not_found'};
         {'ok', [JObj]} ->
             Id = wh_json:get_value(<<"id">>, JObj),
-            OwnerId = wh_json:get_value(<<"owner_id">>, JObj),
+            OwnerId = wh_json:get_value([<<"value">>, <<"owner_id">>], JObj),
             lager:debug("~s is associated with mobile device ~s in account ~s", [Num, Id, AccountId]),
             cache_mdn_result(AccountDb, Id, OwnerId);
         {'error', _}=E -> E
