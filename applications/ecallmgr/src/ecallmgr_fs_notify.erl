@@ -216,14 +216,17 @@ register_overwrite(JObj, Props) ->
                   ,Node
                  ]).
 
--spec ensure_contact_user(#uri{} | ne_binary(), ne_binary()) -> ne_binary().
-ensure_contact_user(#uri{user = <<>>}=Uri, Username) ->
-    nksip_unparse:uri(Uri#uri{user=Username});
-ensure_contact_user(#uri{}=Uri, _) ->
-    nksip_unparse:uri(Uri);
+-spec ensure_contact_user(ne_binary(), ne_binary()) -> ne_binary().
 ensure_contact_user(Contact, Username) ->
-    [Uri] = nksip_parse_uri:uris(Contact),
-    ensure_contact_user(Uri, Username).
+    case nksip_parse_uri:uris(Contact) of
+        [#uri{user = <<>>}=Uri] ->
+            binary:replace(nksip_unparse:uri(Uri#uri{user=Username})
+                          ,[<<"<">>, <<">">>]
+                          ,<<>>
+                          ,['global']
+                          );
+        _Else -> Contact
+    end.
 
 %%%===================================================================
 %%% gen_server callbacks
