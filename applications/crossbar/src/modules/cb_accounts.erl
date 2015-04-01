@@ -1150,7 +1150,37 @@ create_new_account_db(Context) ->
             _ = wh_services:reconcile(AccountDb),
             _ = create_account_mod(cb_context:account_id(C)),
             _ = create_first_transaction(cb_context:account_id(C)),
+            _ = maybe_set_notification_preference(C),
             C
+    end.
+
+-spec maybe_set_notification_preference(cb_context:context()) -> 'ok'.
+maybe_set_notification_preference(Context) ->
+    AccountId = cb_context:account_id(Context),
+    ResellerId = wh_services:find_reseller_id(AccountId),
+    ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
+    case couch_mgr:open_cache_doc(ResellerDb, ResellerId) of
+        {'error', _E} ->
+            lager:error("failed to open reseller ~s", [ResellerId]);
+        {'ok', AccountJObj} ->
+            case kz_account:notification_preference(AccountJObj) of
+                'undefined' ->
+                    lager:debug("notification_preference not set for reseller ~s", [ResellerId]);
+                Preference ->
+                    set_notification_preference(Context, Preference)
+            end
+    end.
+
+-spec set_notification_preference(cb_context:context(), ne_binary()) -> 'ok'.
+set_notification_preference(Context, Preference) ->
+    AccountDb = cb_context:account_db(Context),
+    AccountDefinition = kz_account:set_notification_preference(cb_context:doc(Context), Preference),
+    case couch_mgr:save_doc(AccountDb, AccountDefinition) of
+        {'error', _R} ->
+            lager:error("failed to update account definition ~p", [_R]);
+        {'ok', AccountDef} ->
+            _ = replicate_account_definition(AccountDef),
+            lager:error("notification_preference set to ~s", [Preference])
     end.
 
 -spec create_account_mod(ne_binary()) -> any().
