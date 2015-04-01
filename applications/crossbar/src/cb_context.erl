@@ -311,10 +311,13 @@ set_resp_header(#cb_context{resp_headers=RespHeaders}=Context, K, V) ->
 set_resp_header_fold({K, V}, Hs) -> lists:keystore(K, 1, Hs, {K, V}).
 
 add_resp_headers(#cb_context{resp_headers=RespHeaders}=Context, Headers) ->
-    Context#cb_context{resp_headers=lists:foldl(fun add_resp_headers_fold/2, RespHeaders, Headers)}.
+    Context#cb_context{resp_headers=lists:foldl(fun add_resp_header_fold/2, RespHeaders, Headers)}.
+
 add_resp_header(#cb_context{resp_headers=RespHeaders}=Context, K, V) ->
-    Context#cb_context{resp_headers=[{wh_util:to_lower_binary(K), V} | RespHeaders]}.
-add_resp_headers_fold({K, V}, Hs) -> [{wh_util:to_lower_binary(K), V} | Hs].
+    Context#cb_context{resp_headers=add_resp_header_fold({K, V}, RespHeaders)}.
+
+-spec add_resp_header_fold({ne_binary(), _}, wh_proplist()) -> wh_proplist().
+add_resp_header_fold({K, V}, Hs) -> props:set_value(wh_util:to_lower_binary(K), V, Hs).
 
 set_validation_errors(#cb_context{}=Context, Errors) -> Context#cb_context{validation_errors=Errors}.
 
