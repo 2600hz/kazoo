@@ -316,11 +316,9 @@ originate_call(C2CId, Context, Contact) ->
     AccountId = cb_context:account_id(Context),
     AccountModb = cb_context:account_modb(Context),
 
-    JObj = cb_context:doc(Context),
-
     _Pid = spawn(fun() ->
                          put('callid', ReqId),
-                         Request = build_originate_req(Contact, JObj, AccountId),
+                         Request = build_originate_req(Contact, Context),
                          Status = exec_originate(Request),
                          lager:debug("got status ~p", [Status]),
 
@@ -391,20 +389,21 @@ handle_originate_resp({'timeout', _T}) ->
     lager:debug("timed out while originating: ~p", [_T]),
     {'error', <<"timed out">>}.
 
--spec build_originate_req(ne_binary(), wh_json:object(), ne_binary()) ->
-                                 api_terms().
-build_originate_req(Contact, JObj, AccountId) ->
-        Exten = wnm_util:to_e164(wh_json:get_binary_value(<<"extension">>, JObj)),
-
+-spec build_originate_req(ne_binary(), cb_context:context()) -> api_terms().
+build_originate_req(Contact, Context) ->
+    AccountId = cb_context:account_id(Context),
+    JObj = cb_context:doc(Context),
+    Exten = wnm_util:to_e164(wh_json:get_binary_value(<<"extension">>, JObj)),
     CalleeName = wh_json:get_binary_value(<<"outbound_callee_id_name">>, JObj, Exten),
     CalleeNumber = wnm_util:to_e164(wh_json:get_binary_value(<<"outbound_callee_id_number">>, JObj, Exten)),
     FriendlyName = wh_json:get_ne_value(<<"name">>, JObj, <<>>),
     OutboundNumber = wh_json:get_value(<<"caller_id_number">>, JObj, Contact),
+    AutoAnswer = wh_json:is_true(<<"auto_answer">>, cb_context:query_string(Context), 'true'),
 
     lager:debug("attempting clicktocall ~s in account ~s", [FriendlyName, AccountId]),
 
     CCVs = [{<<"Account-ID">>, AccountId}
-            ,{<<"Auto-Answer">>, <<"true">>}
+            ,{<<"Auto-Answer">>, AutoAnswer}
             ,{<<"Retain-CID">>, <<"true">>}
             ,{<<"Authorizing-ID">>, wh_json:get_value(<<"_id">>, JObj)}
             ,{<<"Inherit-Codec">>, <<"false">>}
