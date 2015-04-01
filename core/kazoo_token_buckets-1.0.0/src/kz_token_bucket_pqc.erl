@@ -35,6 +35,7 @@
          ,precondition/2
 
          ,correct/0
+         ,correct_parallel/0
         ]).
 
 -define(SERVER, 'kz_token_bucket').
@@ -46,19 +47,34 @@
                 ,handled_ms = 0 :: non_neg_integer()
                }).
 
-proper_test_() ->
-    {"Runs the module's PropEr tests during eunit testing"
+sequential_test_() ->
+    {"Running sequential PropEr tests"
      ,{'timeout'
-       ,15000
-       ,[?_assertEqual('true'
-                       ,proper:quickcheck(?MODULE:correct()
-                                          ,[{'max_shrinks', 4}
-                                            ,{'numtests', 60}
-                                            ,{'to_file', 'user'}
-                                           ]
-                                         )
-                      )
-        ]
+       ,50000
+       ,?_assertEqual('true'
+                      ,proper:quickcheck(?MODULE:correct()
+                                         ,[{'max_shrinks', 4}
+                                           ,{'numtests', 50}
+                                           ,{'to_file', 'user'}
+                                          ]
+                                        )
+                     )
+
+      }
+    }.
+
+parallel_test_() ->
+    {"Running parallel PropEr tests"
+     ,{'timeout'
+       ,50000
+       ,?_assertEqual('true'
+                      ,proper:quickcheck(?MODULE:correct_parallel()
+                                         ,[{'max_shrinks', 4}
+                                           ,{'numtests', 50}
+                                           ,{'to_file', 'user'}
+                                          ]
+                                        )
+                     )
       }
     }.
 
@@ -78,6 +94,20 @@ correct() ->
                 end
                )
            ).
+
+correct_parallel() ->
+    ?FORALL(Cmds
+            ,parallel_commands(?MODULE),
+            begin
+                {Sequential, Parallel, Result} = run_parallel_commands(?MODULE, Cmds),
+                ?SERVER:stop(?SERVER),
+                ?WHENFAIL(io:format('user'
+                                    ,"Failing Cmds: ~p\nS: ~p\nP: ~p\n"
+                                    ,[Cmds, Sequential, Parallel]
+                                   )
+                          ,aggregate(command_names(Cmds), Result =:= 'ok')
+                         )
+            end).
 
 initial_state() -> 'ok'.
 
