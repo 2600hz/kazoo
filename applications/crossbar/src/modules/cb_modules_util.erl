@@ -249,6 +249,7 @@ default_bleg_cid(Call, Context) ->
 
 -spec originate_quickcall(wh_json:objects(), whapps_call:call(), cb_context:context()) -> cb_context:context().
 originate_quickcall(Endpoints, Call, Context) ->
+    AutoAnswer = wh_json:is_true(<<"auto_answer">>, cb_context:query_string(Context), 'true'),
     CCVs = [{<<"Account-ID">>, cb_context:account_id(Context)}
             ,{<<"Retain-CID">>, <<"true">>}
             ,{<<"Inherit-Codec">>, <<"false">>}
@@ -262,7 +263,7 @@ originate_quickcall(Endpoints, Call, Context) ->
     Request = [{<<"Application-Name">>, <<"transfer">>}
                ,{<<"Application-Data">>, get_application_data(Context)}
                ,{<<"Msg-ID">>, MsgId}
-               ,{<<"Endpoints">>, maybe_auto_answer(Endpoints)}
+               ,{<<"Endpoints">>, maybe_auto_answer(Endpoints, AutoAnswer)}
                ,{<<"Timeout">>, get_timeout(Context)}
                ,{<<"Ignore-Early-Media">>, get_ignore_early_media(Context)}
                ,{<<"Media">>, get_media(Context)}
@@ -279,10 +280,10 @@ originate_quickcall(Endpoints, Call, Context) ->
     wapi_resource:publish_originate_req(props:filter_undefined(Request)),
     crossbar_util:response_202(<<"processing request">>, cb_context:set_resp_data(Context, Request)).
 
--spec maybe_auto_answer(wh_json:objects()) -> wh_json:objects().
-maybe_auto_answer([Endpoint]) ->
-    [wh_json:set_value([<<"Custom-Channel-Vars">>, <<"Auto-Answer">>], 'true', Endpoint)];
-maybe_auto_answer(Endpoints) ->
+-spec maybe_auto_answer(wh_json:objects(), boolean()) -> wh_json:objects().
+maybe_auto_answer([Endpoint], AutoAnswer) ->
+    [wh_json:set_value([<<"Custom-Channel-Vars">>, <<"Auto-Answer">>], AutoAnswer, Endpoint)];
+maybe_auto_answer(Endpoints, _) ->
     Endpoints.
 
 -spec get_application_data(cb_context:context()) -> wh_json:object().
