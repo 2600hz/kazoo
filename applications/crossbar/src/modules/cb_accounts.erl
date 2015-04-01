@@ -535,7 +535,7 @@ maybe_import_enabled(Context, JObj, IsEnabled) ->
     JObj1 =
         case wh_util:is_true(IsEnabled) of
             'true' -> kz_account:enable(JObj);
-            'false' -> kz_accuont:disable(JObj)
+            'false' -> kz_account:disable(JObj)
         end,
     cb_context:set_doc(Context
                        ,wh_json:delete_key(<<"enabled">>, JObj1)
@@ -592,6 +592,7 @@ leak_pvt_fields(Context, 'success') ->
                 ,fun leak_reseller_id/1
                 ,fun leak_is_reseller/1
                 ,fun leak_billing_mode/1
+                ,fun leak_notification_preference/1
                ],
     cb_context:setters(Context, Routines);
 leak_pvt_fields(Context, _Status) -> Context.
@@ -693,6 +694,13 @@ leak_billing_mode(Context) ->
                                      ,wh_json:set_value(<<"billing_mode">>, <<"manual">>, RespJObj)
                                     )
     end.
+
+-spec leak_notification_preference(cb_context:context()) -> cb_context:context().
+leak_notification_preference(Context) ->
+    RespJObj = cb_context:resp_data(Context),
+    NotifyPreference = kz_account:notification_preference(cb_context:doc(Context)),
+    UpdatedRespJObj = wh_json:set_value(<<"notification_preference">>, NotifyPreference, RespJObj),
+    cb_context:set_resp_data(Context, UpdatedRespJObj).
 
 %%--------------------------------------------------------------------
 %% @private
