@@ -635,15 +635,15 @@ released_maybe_disconnect(#number{prev_assigned_to=AssignedTo
     end.
 
 -spec disconnect_or_delete(wnm_number()) -> wnm_number().
--spec disconnect_or_delete(wnm_number(), boolean()) -> wnm_number().
+-spec should_permanently_delete(wnm_number(), boolean()) -> wnm_number().
 disconnect_or_delete(N) ->
-    disconnect_or_delete(N
-                         ,whapps_config:get_is_true(?WNM_CONFIG_CAT, <<"should_permanently_delete">>, 'false')
-                        ).
+    should_permanently_delete(N
+                              ,whapps_config:get_is_true(?WNM_CONFIG_CAT, <<"should_permanently_delete">>, 'false')
+                             ).
 
-disconnect_or_delete(N, 'false') ->
+should_permanently_delete(N, 'false') ->
     attempt_disconnect_number(N);
-disconnect_or_delete(N, 'true') ->
+should_permanently_delete(N, 'true') ->
     try attempt_disconnect_number(N) of
         N1 -> move_state(N1, ?NUMBER_STATE_DELETED)
     catch
