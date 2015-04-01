@@ -21,7 +21,7 @@
         ,wh_json:from_list(
            [?MACRO_VALUE(<<"user.first_name">>, <<"first_name">>, <<"First Name">>, <<"First Name">>)
             ,?MACRO_VALUE(<<"user.last_name">>, <<"last_name">>, <<"Last Name">>, <<"Last Name">>)
-            | ?SERVICE_MACROS ++ ?ACCOUNT_MACROS
+            | ?ACCOUNT_MACROS
            ])
        ).
 

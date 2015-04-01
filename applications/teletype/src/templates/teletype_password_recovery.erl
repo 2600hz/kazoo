@@ -20,13 +20,13 @@
 
 -define(TEMPLATE_MACROS
         ,wh_json:from_list([?MACRO_VALUE(<<"user.password">>, <<"user_password">>, <<"Password">>, <<"User's Password">>)
-                            | ?SERVICE_MACROS ++ ?ACCOUNT_MACROS ++ ?USER_MACROS
+                            | ?ACCOUNT_MACROS ++ ?USER_MACROS
                            ])
        ).
 
--define(TEMPLATE_TEXT, <<"Hello, {{user.first_name}} {{user.last_name}}.\n\nThis email is to inform you that the password for your {{service.provider}} {{service.name}} account \"{{account.name}}\" has been set to \"{{user.password}}\".\n\nTo login please vist {{service.url}} and use your normal username with the password \"{{user.password}}\".\n\nOnce you login you will be prompted to customize your password.">>).
--define(TEMPLATE_HTML, <<"<html></head><body><h3>Hello {{user.first_name}} {{user.last_name}}</h3><p>This email is to inform you that the password for your {{service.provider}} {{service.name}} account \"{{account.name}}\" has been set to \"{{user.password}}\".</p><p>To login please vist <a href=\"{{service.url}}\">{{service.url}}</a> and use your normal username with the password \"{{user.password}}\".</p><p>Once you login you will be prompted to customize your password.</p></body></html>">>).
--define(TEMPLATE_SUBJECT, <<"Password reset for your {{service.provider}} {{service.name}} account.">>).
+-define(TEMPLATE_TEXT, <<"Hello, {{user.first_name}} {{user.last_name}}.\n\nThis email is to inform you that the password for your 2600hz voip account \"{{account.name}}\" has been set to \"{{user.password}}\".\n\nTo login please vist 2600hz.com and use your normal username with the password \"{{user.password}}\".\n\nOnce you login you will be prompted to customize your password.">>).
+-define(TEMPLATE_HTML, <<"<html></head><body><h3>Hello {{user.first_name}} {{user.last_name}}</h3><p>This email is to inform you that the password for your 2600hz voip account \"{{account.name}}\" has been set to \"{{user.password}}\".</p><p>To login please vist <a href=\"2600hz.com\">2600hz.com</a> and use your normal username with the password \"{{user.password}}\".</p><p>Once you login you will be prompted to customize your password.</p></body></html>">>).
+-define(TEMPLATE_SUBJECT, <<"Password reset for your 2600hz voip account.">>).
 -define(TEMPLATE_CATEGORY, <<"user">>).
 -define(TEMPLATE_NAME, <<"Password Recovery">>).
 

@@ -20,7 +20,7 @@
 -define(TEMPLATE_MACROS
         ,wh_json:from_list(
            [?MACRO_VALUE(<<"user.password">>, <<"password">>, <<"Password">>, <<"Password">>)
-            | ?SERVICE_MACROS ++ ?USER_MACROS
+            | ?USER_MACROS
            ])
        ).
 

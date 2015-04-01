@@ -37,7 +37,6 @@
             ,?MACRO_VALUE(<<"last_registration.expires">>, <<"last_registration_expires">>, <<"Expires">>, <<"Expires">>)
             ,?MACRO_VALUE(<<"last_registration.authorizing_id">>, <<"last_registration_authorizing_id">>, <<"Authorizing ID">>, <<"Authorizing ID">>)
             | ?ACCOUNT_MACROS
-            ++ ?SERVICE_MACROS
            ])
        ).
 

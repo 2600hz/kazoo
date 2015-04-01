@@ -20,7 +20,6 @@
 -define(TEMPLATE_MACROS
         ,wh_json:from_list(
            ?PORT_REQUEST_MACROS
-           ++ ?SERVICE_MACROS
            ++ ?ACCOUNT_MACROS
           )
        ).
