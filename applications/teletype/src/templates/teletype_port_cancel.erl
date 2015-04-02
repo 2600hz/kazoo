@@ -95,9 +95,7 @@ handle_port_request(DataJObj) ->
 handle_port_request(_DataJObj, []) ->
     lager:debug("no templates to render for ~s", [?TEMPLATE_ID]);
 handle_port_request(DataJObj, Templates) ->
-    ServiceData = teletype_util:service_params(DataJObj, ?MOD_CONFIG_CAT),
-
-    Macros = [{<<"service">>, ServiceData}
+    Macros = [{<<"system">>, teletype_util:system_params(DataJObj, ?MOD_CONFIG_CAT)}
               ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
               ,{<<"port_request">>, teletype_util:public_proplist(<<"port_request">>, DataJObj)}
              ],
@@ -119,14 +117,8 @@ handle_port_request(DataJObj, Templates) ->
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
 
-    case teletype_util:send_email(
-           Emails
-           ,Subject
-           ,ServiceData
-           ,RenderedTemplates
-           ,teletype_port_utils:get_attachments(DataJObj)
-          )
-    of
+    EmailAttachements = teletype_port_utils:get_attachments(DataJObj),
+    case teletype_util:send_email(Emails, Subject, RenderedTemplates, EmailAttachements) of
         'ok' ->
             teletype_util:send_update(DataJObj, <<"completed">>);
         {'error', Reason} ->

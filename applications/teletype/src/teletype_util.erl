@@ -12,9 +12,9 @@
          ,init_template/2
          ,fetch_template_meta/2
          ,fetch_templates/1, fetch_templates/2
-         ,send_email/4, send_email/5
+         ,send_email/3, send_email/4
          ,render_subject/2, render/3
-         ,service_params/2, service_params/3
+         ,system_params/2, system_params/3
          ,account_params/1
          ,send_update/2, send_update/3
          ,find_addresses/3
@@ -47,13 +47,13 @@
                                   ]).
 -define(PATH, <<"../applications/teletype/src/preview_data">>).
 
--spec send_email(email_map(), ne_binary(), wh_proplist(), rendered_templates()) ->
+-spec send_email(email_map(), ne_binary(), rendered_templates()) ->
                         'ok' | {'error', _}.
--spec send_email(email_map(), ne_binary(), wh_proplist(), rendered_templates(), attachments()) ->
+-spec send_email(email_map(), ne_binary(), rendered_templates(), attachments()) ->
                         'ok' | {'error', _}.
-send_email(Emails, Subject, ServiceData, RenderedTemplates) ->
-    send_email(Emails, Subject, ServiceData, RenderedTemplates, []).
-send_email(Emails, Subject, ServiceData, RenderedTemplates, Attachments) ->
+send_email(Emails, Subject, RenderedTemplates) ->
+    send_email(Emails, Subject, RenderedTemplates, []).
+send_email(Emails, Subject, RenderedTemplates, Attachments) ->
     lager:debug("emails: ~p", [Emails]),
     To = props:get_value(<<"to">>, Emails),
     From = props:get_value(<<"from">>, Emails),
@@ -70,21 +70,20 @@ send_email(Emails, Subject, ServiceData, RenderedTemplates, Attachments) ->
                   ,{<<"Subject">>, Subject}
                  ]
                )
-             ,service_content_type_params(ServiceData)
-             ,[email_body(RenderedTemplates, ServiceData)
+             ,[{<<"content-type-params">>, [{<<"charset">>, <<"utf-8">>}]}]
+             ,[email_body(RenderedTemplates)
                | add_attachments(Attachments)
               ]
             },
-
     relay_email(To, From, Email).
 
--spec email_body(rendered_templates(), wh_proplist()) -> mimemail:mimetuple().
-email_body(RenderedTemplates, ServiceData) ->
+-spec email_body(rendered_templates()) -> mimemail:mimetuple().
+email_body(RenderedTemplates) ->
     {<<"multipart">>
      ,<<"alternative">>
      ,[] %% Headers
      ,[] %% ContentTypeParams
-     ,add_rendered_templates_to_email(RenderedTemplates, ServiceData)
+     ,add_rendered_templates_to_email(RenderedTemplates)
     }.
 
 -spec email_parameters(wh_proplist(), wh_proplist()) -> wh_proplist().
@@ -242,9 +241,9 @@ add_attachments([{ContentType, Filename, Content}|As], Acc) ->
     lager:debug("adding attachment ~s (~s)", [Filename, ContentType]),
     add_attachments(As, [Attachment | Acc]).
 
--spec add_rendered_templates_to_email(rendered_templates(), wh_proplist()) -> mime_tuples().
-add_rendered_templates_to_email(RenderedTemplates, ServiceData) ->
-    add_rendered_templates_to_email(sort_templates(RenderedTemplates), service_charset(ServiceData), []).
+-spec add_rendered_templates_to_email(rendered_templates()) -> mime_tuples().
+add_rendered_templates_to_email(RenderedTemplates) ->
+    add_rendered_templates_to_email(sort_templates(RenderedTemplates), <<";charset=utf-8">>, []).
 
 -spec add_rendered_templates_to_email(rendered_templates(), binary(), mime_tuples()) -> mime_tuples().
 add_rendered_templates_to_email([], _Charset, Acc) -> Acc;
@@ -264,45 +263,18 @@ add_rendered_templates_to_email([{ContentType, Content}|Rs], Charset, Acc) ->
     lager:debug("adding template ~s (encoding ~s)", [ContentType, CTEncoding]),
     add_rendered_templates_to_email(Rs, Charset, [Template | Acc]).
 
--spec service_content_type_params(wh_proplist()) -> wh_proplist().
-service_content_type_params(ServiceData) ->
-    case props:get_value(<<"template_charset">>, ServiceData) of
-        <<>> -> [];
-        <<_/binary>> = Charset ->
-            [{<<"content-type-params">> ,[{<<"charset">>, Charset}]}];
-        _ -> []
-    end.
+-spec system_params(wh_json:object(), ne_binary()) -> wh_proplist().
+-spec system_params(wh_json:object(), ne_binary(), api_binary()) -> wh_proplist().
+system_params(APIJObj, ConfigCat) ->
+    system_params(APIJObj, ConfigCat, find_account_id(APIJObj)).
 
--spec service_charset(wh_proplist()) -> binary().
-service_charset(ServiceData) ->
-    case props:get_value(<<"template_charset">>, ServiceData) of
-        <<>> -> <<>>;
-        <<_/binary>> = Charset ->  <<";charset=", Charset/binary>>;
-        _ -> <<>>
-    end.
-
--spec service_params(wh_json:object(), ne_binary()) -> wh_proplist().
--spec service_params(wh_json:object(), ne_binary(), api_binary()) -> wh_proplist().
-service_params(APIJObj, ConfigCat) ->
-    service_params(APIJObj, ConfigCat, find_account_id(APIJObj)).
-
-service_params(APIJObj, ConfigCat, AccountId) ->
-    {'ok', AccountJObj} = couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded')
-                                                   ,AccountId
+system_params(_APIJObj, ConfigCat, AccountId) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+    _NotificationJObj = find_notification_settings(binary:split(ConfigCat, <<".">>)
+                                                   ,kz_account:parent_account_id(AccountJObj)
                                                   ),
-
-    NotificationJObj = find_notification_settings(
-                         binary:split(ConfigCat, <<".">>)
-                         ,kz_account:parent_account_id(AccountJObj)
-                        ),
-    [{<<"url">>, wh_json:get_value(<<"service_url">>, NotificationJObj, default_service_url(APIJObj, ConfigCat))}
-     ,{<<"name">>, wh_json:get_value(<<"service_name">>, NotificationJObj, default_service_name(APIJObj, ConfigCat))}
-     ,{<<"provider">>, wh_json:get_value(<<"service_provider">>, NotificationJObj, default_service_provider(APIJObj, ConfigCat))}
-     ,{<<"support_number">>, wh_json:get_value(<<"support_number">>, NotificationJObj, default_support_number(APIJObj, ConfigCat))}
-     ,{<<"support_email">>, wh_json:get_value(<<"support_email">>, NotificationJObj, default_support_email(APIJObj, ConfigCat))}
-     ,{<<"from">>, wh_json:get_value(<<"send_from">>, NotificationJObj, default_from_address(APIJObj, ConfigCat))}
-     ,{<<"template_charset">>, wh_json:get_value(<<"template_charset">>, NotificationJObj, default_charset(APIJObj, ConfigCat))}
-     ,{<<"host">>, wh_util:to_binary(net_adm:localhost())}
+    [{<<"hostname">>, wh_util:to_binary(net_adm:localhost())}
     ].
 
 -spec account_params(wh_json:object()) -> wh_proplist().
@@ -354,36 +326,6 @@ maybe_find_deprecated_settings(<<"fax_inbound_error_to_email">>, JObj) ->
     wh_json:get_ne_value([<<"notifications">>, <<"fax_to_email">>], JObj, wh_json:new());
 maybe_find_deprecated_settings(_, _) -> wh_json:new().
 
--spec default_service_url(wh_json:object(), ne_binary()) -> ne_binary().
-default_service_url(JObj, ConfigCat) ->
-    default_service_value(JObj, ConfigCat
-                          ,<<"service_url">>, <<"default_service_url">>, <<"https://apps.2600hz.com">>
-                         ).
-
--spec default_service_name(wh_json:object(), ne_binary()) -> ne_binary().
-default_service_name(JObj, ConfigCat) ->
-    default_service_value(JObj, ConfigCat
-                          ,<<"service_name">>, <<"default_service_name">>, <<"VoIP Services">>
-                         ).
-
--spec default_service_provider(wh_json:object(), ne_binary()) -> ne_binary().
-default_service_provider(JObj, ConfigCat) ->
-    default_service_value(JObj, ConfigCat
-                          ,<<"service_provider">>, <<"default_service_provider">>, <<"2600Hz">>
-                         ).
-
--spec default_support_number(wh_json:object(), ne_binary()) -> ne_binary().
-default_support_number(JObj, ConfigCat) ->
-    default_service_value(JObj, ConfigCat
-                          ,<<"support_number">>, <<"default_support_number">>, <<"(415) 886-7900">>
-                         ).
-
--spec default_support_email(wh_json:object(), ne_binary()) -> ne_binary().
-default_support_email(JObj, ConfigCat) ->
-    default_service_value(JObj, ConfigCat
-                          ,<<"support_email">>, <<"default_support_email">>, <<"support@2600hz.com">>
-                         ).
-
 -spec default_from_address(ne_binary()) -> ne_binary().
 -spec default_from_address(wh_json:object(), ne_binary()) -> ne_binary().
 default_from_address(ConfigCat) ->
@@ -402,13 +344,6 @@ default_reply_to(JObj, ConfigCat) ->
     default_service_value(JObj, ConfigCat
                           ,<<"reply_to">>, <<"default_reply_to">>
                           ,'undefined'
-                         ).
-
--spec default_charset(wh_json:object(), ne_binary()) -> binary().
-default_charset(JObj, ConfigCat) ->
-    default_service_value(JObj, ConfigCat
-                          ,<<"template_charset">>, <<"default_template_charset">>
-                          ,<<>>
                          ).
 
 -spec default_service_value(wh_json:object(), ne_binary(), wh_json:key(), wh_json:key(), wh_json:json_term()) ->

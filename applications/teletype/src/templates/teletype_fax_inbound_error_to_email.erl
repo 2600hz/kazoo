@@ -131,14 +131,8 @@ handle_fax_inbound(DataJObj) ->
                                           ,?MOD_CONFIG_CAT
                                          ),
 
-    %% Send email
-    case teletype_util:send_email(Emails
-                                  ,Subject
-                                  ,props:get_value(<<"service">>, Macros)
-                                  ,RenderedTemplates
-                                  ,get_attachments(DataJObj, Macros)
-                                 )
-    of
+    EmailAttachements = get_attachments(DataJObj, Macros),
+    case teletype_util:send_email(Emails, Subject, RenderedTemplates, EmailAttachements) of
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
@@ -275,7 +269,7 @@ fax_db(DataJObj) ->
 build_template_data(DataJObj) ->
     [{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
      ,{<<"fax">>, build_fax_template_data(DataJObj)}
-     ,{<<"service">>, teletype_util:service_params(DataJObj, ?MOD_CONFIG_CAT)}
+     ,{<<"system">>, teletype_util:system_params(DataJObj, ?MOD_CONFIG_CAT)}
      ,{<<"caller_id">>, caller_id_data(DataJObj)}
      ,{<<"callee_id">>, callee_id_data(DataJObj)}
      ,{<<"date_called">>, date_called_data(DataJObj)}
@@ -313,7 +307,6 @@ date_called_data(DataJObj) ->
 -spec from_data(wh_json:object()) -> wh_proplist().
 from_data(DataJObj) ->
     FromE164 = wh_json:get_value(<<"from_user">>, DataJObj),
-
     props:filter_undefined(
       [{<<"from_user">>, wnm_util:pretty_print(FromE164)}
        ,{<<"from_realm">>, wh_json:get_value(<<"from_realm">>, DataJObj)}
