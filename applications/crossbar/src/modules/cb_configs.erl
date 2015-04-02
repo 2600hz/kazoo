@@ -18,6 +18,7 @@
          ,get/2
          ,put/2
          ,post/2
+         ,patch/2
          ,delete/2
         ]).
 
@@ -41,6 +42,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.get.configs">>, ?MODULE, get),
     _ = crossbar_bindings:bind(<<"*.execute.put.configs">>, ?MODULE, put),
     _ = crossbar_bindings:bind(<<"*.execute.post.configs">>, ?MODULE, post),
+    _ = crossbar_bindings:bind(<<"*.execute.patch.configs">>, ?MODULE, patch),
     _ = crossbar_bindings:bind(<<"*.execute.delete.configs">>, ?MODULE, delete).
 
 %%--------------------------------------------------------------------
@@ -52,7 +54,7 @@ init() ->
 %%--------------------------------------------------------------------
 -spec allowed_methods(path_token()) -> http_methods() | [].
 allowed_methods(_) ->
-    [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -85,6 +87,8 @@ validate(#cb_context{req_verb = ?HTTP_PUT}=Context, Config) ->
     create(Config, Context);
 validate(#cb_context{req_verb = ?HTTP_POST}=Context, Config) ->
     update(Config, Context);
+validate(#cb_context{req_verb = ?HTTP_PATCH}=Context, Config) ->
+    validate_patch(Config, Context);
 validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Config) ->
     read(Config, Context).
 
@@ -119,6 +123,17 @@ put(#cb_context{}=Context, _) ->
 %%--------------------------------------------------------------------
 -spec post(#cb_context{}, path_token()) -> #cb_context{}.
 post(#cb_context{}=Context, _) ->
+    crossbar_doc:save(Context).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% If the HTTP verib is PATCH, execute the actual action, usually a db save
+%% (after a merge).
+%% @end
+%%--------------------------------------------------------------------
+-spec patch(#cb_context{}, path_token()) -> #cb_context{}.
+patch(#cb_context{}=Context, _) ->
     crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
@@ -170,3 +185,26 @@ update(Config, #cb_context{}=Context) ->
     Id = <<(?WH_ACCOUNT_CONFIGS)/binary, Config/binary>>,
     OnSuccess = fun(C) -> crossbar_doc:load_merge(Id, C) end,
     cb_context:validate_request_data(<<"configs">>, Context, OnSuccess).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Update-merge partially an existing instance with the data provided, if it is
+%% valid
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_patch(ne_binary(), #cb_context{}) -> #cb_context{}.
+validate_patch(Config, #cb_context{}=Context) ->
+    Id = <<(?WH_ACCOUNT_CONFIGS)/binary, Config/binary>>,
+    Context1 = crossbar_doc:load(Id, Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            PatchJObj = wh_doc:public_fields(cb_context:req_data(Context)),
+            ConfigsJObj = wh_json:merge_jobjs(PatchJObj, cb_context:doc(Context1)),
+
+            lager:debug("patched doc, now validating"),
+            OnSuccess = fun(C) -> crossbar_doc:load_merge(Id, C) end,
+            cb_context:validate_request_data(<<"configs">>, cb_context:set_req_data(Context, ConfigsJObj), OnSuccess);
+        _Status ->
+            Context1
+    end.
