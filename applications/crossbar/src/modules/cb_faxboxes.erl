@@ -182,10 +182,10 @@ validate_patch(Context) ->
             end;
         'false' ->
             cb_context:add_validation_error(<<"custom_smtp_email_address">>
-                ,<<"unique">>
-                ,<<"email address must be unique">>
-                ,Context
-            )
+                                            ,<<"unique">>
+                                            ,<<"email address must be unique">>
+                                            ,Context
+                                           )
     end.
 
 %%--------------------------------------------------------------------
