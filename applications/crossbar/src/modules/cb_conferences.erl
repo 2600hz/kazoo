@@ -24,6 +24,7 @@
 -include("../crossbar.hrl").
 
 -define(CB_LIST, <<"conferences/crossbar_listing">>).
+-define(CB_LIST_BY_NUMBER, <<"conference/listing_by_number">>).
 
 %%%===================================================================
 %%% API
@@ -82,7 +83,7 @@ validate(Context) ->
 validate_conferences(Context, ?HTTP_GET) ->
     load_conference_summary(Context);
 validate_conferences(Context, ?HTTP_PUT) ->
-    create_conference(Context).
+    maybe_create_conference(Context).
 
 validate(Context, Id) ->
     validate_conference(Context, Id, cb_context:req_verb(Context)).
@@ -129,6 +130,58 @@ load_conference_summary(Context) ->
             crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
         _ ->
             cb_context:add_system_error('faulty_request', Context)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Create a new conference document with the data provided, if it is valid
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_create_conference(cb_context:context()) -> cb_context:context().
+maybe_create_conference(Context) ->
+    AccountDb = cb_context:account_db(Context),
+    case couch_mgr:get_all_results(AccountDb, ?CB_LIST_BY_NUMBER) of
+        {'error', _R} ->
+            cb_context:add_system_error('datastore_fault', Context);
+        {'ok', JObjs} ->
+            Numbers = couch_mgr:get_result_keys(JObjs),
+            ReqData = cb_context:req_data(Context),
+            MemberNumbers = wh_json:get_value([<<"member">>, <<"numbers">>], ReqData, []),
+            ModNumbers = wh_json:get_value([<<"moderator">>, <<"numbers">>], ReqData, []),
+            case is_number_already_used(Numbers, MemberNumbers ++ ModNumbers) of
+                'false' ->
+                    create_conference(Context);
+                {'true', Number} ->
+                    lager:error("number ~s is already used", [Number]),
+                    cb_context:add_validation_error(
+                        [<<"numbers">>]
+                        ,<<"unique">>
+                        ,wh_json:from_list([
+                            {<<"message">>, <<"Number already in use">>}
+                            ,{<<"cause">>, Number}
+                         ])
+                        ,Context
+                    )
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec is_number_already_used(ne_binaries(), ne_binaries()) -> 'false' | {'true', ne_binary()}.
+-spec is_number_already_used(ne_binaries(), ne_binaries(), 'false') -> 'false' | {'true', ne_binary()}.
+is_number_already_used(Numbers, NewNumbers) ->
+    is_number_already_used(Numbers, NewNumbers, 'false').
+
+is_number_already_used(_, [], Acc) -> Acc;
+is_number_already_used(Numbers, [Number|NewNumbers], Acc) ->
+    case lists:member(Number, Numbers) of
+        'true' -> {'true', Number};
+        'false' ->
+            is_number_already_used(Numbers, NewNumbers, Acc)
     end.
 
 %%--------------------------------------------------------------------
