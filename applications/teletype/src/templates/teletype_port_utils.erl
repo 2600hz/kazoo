@@ -97,7 +97,9 @@ fix_comments(JObj) ->
 
 -spec fix_comment_fold(wh_json:object(), [wh_proplist(), ...]) -> [wh_proplist(), ...].
 fix_comment_fold(JObj, Acc) ->
-    [wh_json:to_proplist(JObj)|Acc].
+     Timestamp = wh_json:get_integer_value(<<"timestamp">>, JObj),
+    {Date, _Time} = calendar:gregorian_seconds_to_datetime(Timestamp),
+    [wh_json:to_proplist(wh_json:set_value(<<"timestamp">>, Date, JObj))|Acc].
 
 -spec fix_dates(wh_json:object()) -> wh_json:object().
 fix_dates(JObj) ->
