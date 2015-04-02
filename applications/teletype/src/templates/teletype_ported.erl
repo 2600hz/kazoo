@@ -102,7 +102,7 @@ handle_port_request(DataJObj) ->
 handle_port_request(_DataJObj, []) ->
     lager:debug("no templates to render for ~s", [?TEMPLATE_ID]);
 handle_port_request(DataJObj, Templates) ->
-    Macros = [{<<"system">>, teletype_util:system_params(DataJObj, ?MOD_CONFIG_CAT)}
+    Macros = [{<<"system">>, teletype_util:system_params()}
               ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
               ,{<<"port_request">>, teletype_util:public_proplist(<<"port_request">>, DataJObj)}
              ],

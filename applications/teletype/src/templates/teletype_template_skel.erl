@@ -69,7 +69,7 @@ handle_req(JObj, _Props) ->
 
 -spec handle_req(wh_json:object()) -> 'ok'.
 handle_req(DataJObj) ->
-    Macros = [{<<"system">>, teletype_util:system_params(DataJObj, ?MOD_CONFIG_CAT)}
+    Macros = [{<<"system">>, teletype_util:system_params()}
               | build_macro_data(DataJObj)
              ],
 
@@ -134,7 +134,7 @@ get_user(DataJObj) ->
         {'ok', UserJObj} -> UserJObj;
         {'error', _E} ->
             lager:debug("failed to find user ~s in ~s: ~p", [UserId, AccountId, _E]),
-            case wh_json:is_true(<<"preview">>, DataJObj) of
+            case teletype_util:is_preview(DataJObj) of
                 'false' -> throw({'error', 'not_found'});
                 'true' -> wh_json:new()
             end

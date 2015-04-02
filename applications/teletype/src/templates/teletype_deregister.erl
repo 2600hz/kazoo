@@ -79,7 +79,7 @@ handle_deregister(JObj, _Props) ->
 
     teletype_util:send_update(DataJObj, <<"pending">>),
 
-    Macros = [{<<"system">>, teletype_util:system_params(DataJObj, ?MOD_CONFIG_CAT)}
+    Macros = [{<<"system">>, teletype_util:system_params()}
               ,{<<"account">>, teletype_util:account_params(DataJObj)}
               ,{<<"last_registration">>, wh_json:to_proplist(DataJObj)}
              ],

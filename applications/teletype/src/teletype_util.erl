@@ -14,7 +14,7 @@
          ,fetch_templates/1, fetch_templates/2
          ,send_email/3, send_email/4
          ,render_subject/2, render/3
-         ,system_params/2, system_params/3
+         ,system_params/0
          ,account_params/1
          ,send_update/2, send_update/3
          ,find_addresses/3
@@ -57,7 +57,6 @@ send_email(Emails, Subject, RenderedTemplates, Attachments) ->
     lager:debug("emails: ~p", [Emails]),
     To = props:get_value(<<"to">>, Emails),
     From = props:get_value(<<"from">>, Emails),
-
     Email = {<<"multipart">>
              ,<<"mixed">>
              ,email_parameters(
@@ -130,12 +129,11 @@ maybe_relay_to_bcc(From, Encoded, Bcc) ->
         'false' -> 'ok'
     end.
 
--spec relay_to_bcc(ne_binary(), ne_binary(), ne_binaries()) ->
-                          'ok' | {'error', _}.
+-spec relay_to_bcc(ne_binary(), ne_binary(), ne_binaries()) -> 'ok'.
 relay_to_bcc(From, Encoded, Bcc) ->
-    lists:foldl(fun(To, _Acc) ->
-                        relay_encoded_email(To, From, Encoded)
-                end, 'ok', Bcc).
+    lists:foreach(fun (To) ->
+                          relay_encoded_email(To, From, Encoded)
+                  end, Bcc).
 
 -spec relay_encoded_email(api_binaries(), ne_binary(), ne_binary()) ->
                                  'ok' | {'error', _}.
@@ -243,37 +241,28 @@ add_attachments([{ContentType, Filename, Content}|As], Acc) ->
 
 -spec add_rendered_templates_to_email(rendered_templates()) -> mime_tuples().
 add_rendered_templates_to_email(RenderedTemplates) ->
-    add_rendered_templates_to_email(sort_templates(RenderedTemplates), <<";charset=utf-8">>, []).
+    add_rendered_templates_to_email(sort_templates(RenderedTemplates), []).
 
--spec add_rendered_templates_to_email(rendered_templates(), binary(), mime_tuples()) -> mime_tuples().
-add_rendered_templates_to_email([], _Charset, Acc) -> Acc;
-add_rendered_templates_to_email([{ContentType, Content}|Rs], Charset, Acc) ->
+-spec add_rendered_templates_to_email(rendered_templates(), mime_tuples()) -> mime_tuples().
+add_rendered_templates_to_email([], Acc) -> Acc;
+add_rendered_templates_to_email([{ContentType, Content}|Rs], Acc) ->
     [Type, SubType] = binary:split(ContentType, <<"/">>),
     CTEncoding = whapps_config:get_ne_binary(?NOTIFY_CONFIG_CAT, <<SubType/binary, "_content_transfer_encoding">>),
 
     Template = {Type
                 ,SubType
                 ,props:filter_undefined(
-                   [{<<"Content-Type">>, iolist_to_binary([ContentType, Charset])}
+                   [{<<"Content-Type">>, iolist_to_binary([ContentType, <<";charset=utf-8">>])}
                     ,{<<"Content-Transfer-Encoding">>, CTEncoding}
                    ])
                 ,[]
                 ,iolist_to_binary(Content)
                },
     lager:debug("adding template ~s (encoding ~s)", [ContentType, CTEncoding]),
-    add_rendered_templates_to_email(Rs, Charset, [Template | Acc]).
+    add_rendered_templates_to_email(Rs, [Template | Acc]).
 
--spec system_params(wh_json:object(), ne_binary()) -> wh_proplist().
--spec system_params(wh_json:object(), ne_binary(), api_binary()) -> wh_proplist().
-system_params(APIJObj, ConfigCat) ->
-    system_params(APIJObj, ConfigCat, find_account_id(APIJObj)).
-
-system_params(_APIJObj, ConfigCat, AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
-    _NotificationJObj = find_notification_settings(binary:split(ConfigCat, <<".">>)
-                                                   ,kz_account:parent_account_id(AccountJObj)
-                                                  ),
+-spec system_params() -> wh_proplist().
+system_params() ->
     [{<<"hostname">>, wh_util:to_binary(net_adm:localhost())}
     ].
 
@@ -299,56 +288,29 @@ find_account_params(DataJObj, AccountId) ->
             []
     end.
 
--spec find_notification_settings(ne_binaries(), api_binary()) -> wh_json:object().
-find_notification_settings(_, 'undefined') -> wh_json:new();
-find_notification_settings([_, Module], AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {'error', _E} -> wh_json:new();
-        {'ok', AccountJObj} ->
-            lager:debug("looking for notifications '~s' service info in: ~s"
-                        ,[Module, AccountId]
-                       ),
-            case wh_json:get_ne_value([<<"notifications">>, Module], AccountJObj) of
-                'undefined' -> maybe_find_deprecated_settings(Module, AccountJObj);
-                Settings -> Settings
-            end
-    end.
-
--spec maybe_find_deprecated_settings(ne_binary(), wh_json:object()) -> wh_json:object().
-maybe_find_deprecated_settings(<<"fax_inbound_to_email">>, JObj) ->
-    wh_json:get_ne_value([<<"notifications">>, <<"fax_to_email">>], JObj, wh_json:new());
-maybe_find_deprecated_settings(<<"fax_outbound_to_email">>, JObj) ->
-    wh_json:get_ne_value([<<"notifications">>, <<"fax_to_email">>], JObj, wh_json:new());
-maybe_find_deprecated_settings(<<"fax_outbound_error_to_email">>, JObj) ->
-    wh_json:get_ne_value([<<"notifications">>, <<"fax_to_email">>], JObj, wh_json:new());
-maybe_find_deprecated_settings(<<"fax_inbound_error_to_email">>, JObj) ->
-    wh_json:get_ne_value([<<"notifications">>, <<"fax_to_email">>], JObj, wh_json:new());
-maybe_find_deprecated_settings(_, _) -> wh_json:new().
-
 -spec default_from_address(ne_binary()) -> ne_binary().
 -spec default_from_address(wh_json:object(), ne_binary()) -> ne_binary().
 default_from_address(ConfigCat) ->
     default_from_address(wh_json:new(), ConfigCat).
 default_from_address(JObj, ConfigCat) ->
-    default_service_value(JObj, ConfigCat
-                          ,<<"send_from">>, <<"default_from">>
-                          ,list_to_binary([<<"no_reply@">>, net_adm:localhost()])
-                         ).
+    default_system_value(JObj, ConfigCat
+                         ,<<"send_from">>, <<"default_from">>
+                         ,list_to_binary([<<"no_reply@">>, net_adm:localhost()])
+                        ).
 
 -spec default_reply_to(ne_binary()) -> api_binary().
 -spec default_reply_to(wh_json:object(), ne_binary()) -> api_binary().
 default_reply_to(ConfigCat) ->
     default_reply_to(wh_json:new(), ConfigCat).
 default_reply_to(JObj, ConfigCat) ->
-    default_service_value(JObj, ConfigCat
-                          ,<<"reply_to">>, <<"default_reply_to">>
-                          ,'undefined'
-                         ).
+    default_system_value(JObj, ConfigCat
+                         ,<<"reply_to">>, <<"default_reply_to">>
+                         ,'undefined'
+                        ).
 
--spec default_service_value(wh_json:object(), ne_binary(), wh_json:key(), wh_json:key(), wh_json:json_term()) ->
+-spec default_system_value(wh_json:object(), ne_binary(), wh_json:key(), wh_json:key(), wh_json:json_term()) ->
                                    wh_json:json_term().
-default_service_value(JObj, ConfigCat, JSONKey, ConfigKey, ConfigDefault) ->
+default_system_value(JObj, ConfigCat, JSONKey, ConfigKey, ConfigDefault) ->
     case wh_json:get_ne_value(JSONKey, JObj) of
         'undefined' ->
             whapps_config:get(ConfigCat, ConfigKey, ConfigDefault);
@@ -356,12 +318,13 @@ default_service_value(JObj, ConfigCat, JSONKey, ConfigKey, ConfigDefault) ->
     end.
 
 -spec render_subject(ne_binary(), wh_proplist()) -> api_binary().
-render_subject(Template, Macros) -> render(<<"subject">>, Template, Macros).
+render_subject(Template, Macros) ->
+    render(<<"subject">>, Template, Macros).
 
 -spec render(ne_binary(), binary(), wh_proplist()) -> api_binary().
 render(TemplateId, Template, Macros) ->
     case teletype_renderer:render(TemplateId, Template, Macros) of
-        {'ok', IOData} ->  iolist_to_binary(IOData);
+        {'ok', IOData} -> iolist_to_binary(IOData);
         {'error', _E} ->
             lager:debug("failed to render template ~s: ~p '~s'", [TemplateId, _E, Template]),
             throw({'error', 'template_error'})
@@ -375,7 +338,6 @@ template_doc_id(<<_/binary>> = ID) -> <<"notification.", ID/binary>>.
 init_template(Id, Params) ->
     DocId = template_doc_id(Id),
     {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
-
     lager:debug("looking for ~s", [DocId]),
     case couch_mgr:open_doc(MasterAccountDb, DocId) of
         {'ok', TemplateJObj} -> maybe_update_template(MasterAccountDb, TemplateJObj, Params);
@@ -436,7 +398,6 @@ update_template(MasterAccountDb, TemplateJObj, Params) ->
                            {'error', _}.
 save_template(MasterAccountDb, TemplateJObj) ->
     SaveJObj = wh_doc:update_pvt_parameters(TemplateJObj, MasterAccountDb),
-
     case couch_mgr:save_doc(MasterAccountDb, SaveJObj) of
         {'ok', _JObj}=OK ->
             lager:debug("saved updated template ~s(~s) to ~s"
@@ -552,7 +513,6 @@ update_template_text_attachment(Text, Acc, MasterAccountDb) ->
 update_template_attachment(Contents, {_IsUpdated, TemplateJObj}=Acc, MasterAccountDb, ContentType) ->
     AttachmentName = template_attachment_name(ContentType),
     Id = wh_json:get_first_defined([<<"_id">>, <<"id">>], TemplateJObj),
-
     case does_attachment_exist(MasterAccountDb, Id, AttachmentName) of
         'true' -> Acc;
         'false' ->
@@ -570,7 +530,6 @@ update_template_attachment(Contents, {IsUpdated, TemplateJObj}=Acc
             lager:debug("saved attachment: ~p", [AttachmentJObj]),
             {'ok', UpdatedJObj} = couch_mgr:open_doc(MasterAccountDb, Id),
             Merged = wh_json:merge_jobjs(UpdatedJObj, TemplateJObj),
-
             {IsUpdated, Merged};
         {'error', _E} ->
             lager:debug("failed to save attachment ~s: ~p", [AName, _E]),
@@ -733,13 +692,8 @@ find_account_db(_, JObj) -> find_account_db_from_id(JObj).
 
 -spec find_account_db(wh_json:object()) -> api_binary().
 find_account_db(JObj) ->
-    case wh_json:get_first_defined([<<"account_db">>
-                                    ,<<"pvt_account_db">>
-                                    ,<<"Account-DB">>
-                                   ]
-                                   ,JObj
-                                  )
-    of
+    PossibleDbs = [<<"account_db">>, <<"pvt_account_db">>, <<"Account-DB">>],
+    case wh_json:get_first_defined(PossibleDbs, JObj) of
         'undefined' -> find_account_db_from_id(JObj);
         Db -> Db
     end.
@@ -900,11 +854,9 @@ find_account_admin(AccountId, ResellerId) ->
 -spec query_for_account_admin(ne_binary()) -> api_object().
 query_for_account_admin(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-
     ViewOptions = [{'key', <<"user">>}
                    ,'include_docs'
                   ],
-
     case couch_mgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
         {'ok', []} -> 'undefined';
         {'ok', Users} ->
@@ -926,7 +878,7 @@ filter_for_admins(Users) ->
 
 -spec should_handle_notification(wh_json:object()) -> boolean().
 should_handle_notification(DataJObj) ->
-    case wh_json:is_true(<<"preview">>, DataJObj, 'false') of
+    case is_preview(DataJObj) of
         'true' -> 'true';
         'false' ->
             AccountId = find_account_id(DataJObj),
@@ -1076,7 +1028,6 @@ maybe_load_preview(Type, _Error, 'true') ->
 read_doc(File) ->
     AppDir = code:lib_dir('teletype'),
     PreviewFile = filename:join([AppDir, "priv", "preview_data", <<File/binary, ".json">>]),
-
     case file:read_file(PreviewFile) of
         {'ok', JSON} ->
             lager:debug("read preview data from ~s: ~s", [PreviewFile, JSON]),

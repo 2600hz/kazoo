@@ -104,15 +104,8 @@ handle_transaction(JObj, _Props) ->
 
     case teletype_util:should_handle_notification(DataJObj) of
         'false' -> lager:debug("notification handling not configured for this account");
-        'true' -> handle_req(add_account(DataJObj))
+        'true' -> handle_req(teletype_util:add_account(DataJObj))
     end.
-
--spec add_account(wh_json:object()) -> wh_json:object().
-add_account(DataJObj) ->
-    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
-    wh_json:set_value(<<"account">>, AccountJObj, DataJObj).
 
 -spec service_plan_data(wh_json:object()) -> wh_proplist().
 service_plan_data(DataJObj) ->
@@ -130,7 +123,7 @@ transaction_data(DataJObj) ->
 
 -spec handle_req(wh_json:object()) -> 'ok'.
 handle_req(DataJObj) ->
-    Macros = [{<<"system">>, teletype_util:system_params(DataJObj, ?MOD_CONFIG_CAT)}
+    Macros = [{<<"system">>, teletype_util:system_params()}
               ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
               ,{<<"plan">>, service_plan_data(DataJObj)}
               ,{<<"transaction">>, transaction_data(DataJObj)}
@@ -144,7 +137,8 @@ handle_req(DataJObj) ->
                          || {ContentType, Template} <- Templates
                         ],
 
-    {'ok', TemplateMetaJObj} = teletype_util:fetch_template_meta(?TEMPLATE_ID, teletype_util:find_account_id(DataJObj)),
+    AccountId = teletype_util:find_account_id(DataJObj),
+    {'ok', TemplateMetaJObj} = teletype_util:fetch_template_meta(?TEMPLATE_ID, AccountId),
 
     Subject = teletype_util:render_subject(
                 wh_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj])

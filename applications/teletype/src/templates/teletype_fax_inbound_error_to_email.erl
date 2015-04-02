@@ -163,7 +163,7 @@ get_owner_doc(FaxJObj, DataJObj) ->
 -spec get_attachments(wh_json:object(), wh_proplist()) -> attachments().
 -spec get_attachments(wh_json:object(), wh_proplist(), boolean()) -> attachments().
 get_attachments(DataJObj, Macros) ->
-    get_attachments(DataJObj, Macros, wh_json:is_true(<<"preview">>, DataJObj, 'false')).
+    get_attachments(DataJObj, Macros, teletype_util:is_preview(DataJObj)).
 
 get_attachments(_DataJObj, _Macros, 'true') -> [];
 get_attachments(DataJObj, Macros, 'false') ->
@@ -269,7 +269,7 @@ fax_db(DataJObj) ->
 build_template_data(DataJObj) ->
     [{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
      ,{<<"fax">>, build_fax_template_data(DataJObj)}
-     ,{<<"system">>, teletype_util:system_params(DataJObj, ?MOD_CONFIG_CAT)}
+     ,{<<"system">>, teletype_util:system_params()}
      ,{<<"caller_id">>, caller_id_data(DataJObj)}
      ,{<<"callee_id">>, callee_id_data(DataJObj)}
      ,{<<"date_called">>, date_called_data(DataJObj)}

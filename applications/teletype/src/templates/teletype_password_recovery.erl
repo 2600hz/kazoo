@@ -87,7 +87,7 @@ handle_password_recovery(JObj, _Props) ->
                   ,DataJObj
                  ),
 
-            case wh_json:is_true(<<"preview">>, DataJObj, 'false') of
+            case teletype_util:is_preview(DataJObj) of
                 'false' -> process_req(ReqData);
                 'true' ->
                     process_req(wh_json:merge_jobjs(DataJObj, ReqData))
@@ -116,7 +116,7 @@ process_req(DataJObj) ->
 process_req(_DataJObj, []) ->
     lager:debug("no templates to render for ~s", [?TEMPLATE_ID]);
 process_req(DataJObj, Templates) ->
-    Macros = [{<<"system">>, teletype_util:system_params(DataJObj, ?MOD_CONFIG_CAT)}
+    Macros = [{<<"system">>, teletype_util:system_params()}
               ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
               ,{<<"user">>, teletype_util:public_proplist(<<"user">>, DataJObj)}
              ],

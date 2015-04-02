@@ -115,7 +115,7 @@ handle_new_voicemail(JObj, _Props) ->
 process_req(DataJObj) ->
     teletype_util:send_update(DataJObj, <<"pending">>),
 
-    Macros = [{<<"system">>, teletype_util:system_params(DataJObj, ?MOD_CONFIG_CAT)}
+    Macros = [{<<"system">>, teletype_util:system_params()}
               | build_template_data(DataJObj)
              ],
 
@@ -129,7 +129,8 @@ process_req(DataJObj) ->
            || {ContentType, Template} <- Templates
           ]),
 
-    {'ok', TemplateMetaJObj} = teletype_util:fetch_template_meta(?TEMPLATE_ID, wh_json:get_value(<<"account_Id">>, DataJObj)),
+    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
+    {'ok', TemplateMetaJObj} = teletype_util:fetch_template_meta(?TEMPLATE_ID, AccountId),
 
     Subject = teletype_util:render_subject(
                 wh_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
@@ -137,7 +138,7 @@ process_req(DataJObj) ->
                ),
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
-    %% Send email
+
     EmailAttachements = email_attachments(DataJObj, Macros),
     case teletype_util:send_email(Emails, Subject, RenderedTemplates, EmailAttachements) of
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
@@ -147,7 +148,7 @@ process_req(DataJObj) ->
 -spec email_attachments(wh_json:object(), wh_proplist()) -> attachments().
 -spec email_attachments(wh_json:object(), wh_proplist(), boolean()) -> attachments().
 email_attachments(DataJObj, Macros) ->
-    email_attachments(DataJObj, Macros, wh_json:is_true(<<"preview">>, DataJObj, 'false')).
+    email_attachments(DataJObj, Macros, teletype_util:is_preview(DataJObj)).
 
 email_attachments(_DataJObj, _Macros, 'true') -> [];
 email_attachments(DataJObj, Macros, 'false') ->

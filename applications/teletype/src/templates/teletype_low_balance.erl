@@ -64,36 +64,24 @@ handle_low_balance(JObj, _Props) ->
 
     case teletype_util:should_handle_notification(DataJObj) of
         'false' -> lager:debug("notification handling not configured for this account");
-        'true' -> handle_req(add_account(DataJObj))
+        'true' -> handle_req(teletype_util:add_account(DataJObj))
     end.
-
--spec add_account(wh_json:object()) -> wh_json:object().
-add_account(DataJObj) ->
-    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
-    wh_json:set_value(<<"account">>, AccountJObj, DataJObj).
-
--spec get_balance_threshold(wh_json:object()) -> float().
-get_balance_threshold(DataJObj) ->
-    Default = 5.00,
-    Key = [<<"account">>, <<"topup">>, <<"threshold">>],
-    wh_json:get_float_value(Key, DataJObj, Default).
 
 -spec get_current_balance(wh_json:object()) -> float().
 get_current_balance(DataJObj) ->
     AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
     Units = wht_util:current_balance(AccountId),
-    wht_util:units_to_dollars(Units).
+    Dollars = wht_util:units_to_dollars(Units),
+    wht_util:pretty_print_dollars(Dollars).
 
 -spec handle_req(wh_json:object()) -> 'ok'.
 handle_req(DataJObj) ->
     teletype_util:send_update(DataJObj, <<"pending">>),
 
-    Macros = [{<<"system">>, teletype_util:system_params(DataJObj, ?MOD_CONFIG_CAT)}
+    Macros = [{<<"system">>, teletype_util:system_params()}
              ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
-             ,{<<"current_balance">>, pretty_print_dollars(get_current_balance(DataJObj))}
-             ,{<<"threshold">>, pretty_print_dollars(get_balance_threshold(DataJObj))}
+             ,{<<"current_balance">>, get_current_balance(DataJObj)}
+             ,{<<"threshold">>, teletype_util:get_balance_threshold(DataJObj)}
               | build_macro_data(DataJObj)],
 
     %% Load templates
@@ -117,11 +105,6 @@ handle_req(DataJObj) ->
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
-
-%% @private
--spec pretty_print_dollars(float()) -> ne_binary().
-pretty_print_dollars(Amount) ->
-    wh_util:to_binary(io_lib:format("$~.2f", [Amount])).
 
 -spec build_macro_data(wh_json:object()) -> wh_proplist().
 build_macro_data(DataJObj) ->
@@ -162,7 +145,7 @@ get_user(DataJObj) ->
         {'ok', UserJObj} -> UserJObj;
         {'error', _E} ->
             lager:debug("failed to find user ~s in ~s: ~p", [UserId, AccountId, _E]),
-            case wh_json:is_true(<<"preview">>, DataJObj) of
+            case teletype_util:is_preview(DataJObj) of
                 'false' -> throw({'error', 'not_found'});
                 'true' -> wh_json:new()
             end

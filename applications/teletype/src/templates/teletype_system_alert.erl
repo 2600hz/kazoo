@@ -103,7 +103,7 @@ handle_req_as_email(DataJObj) ->
                 wh_json:set_value(<<"account">>, AccountJObj, DataJObj)
         end,
 
-    case wh_json:is_true(<<"preview">>, DataJObj, 'false') of
+    case teletype_util:is_preview(DataJObj) of
         'false' -> process_req(ReqData);
         'true' ->
             process_req(wh_json:merge_jobjs(DataJObj, ReqData))
@@ -121,7 +121,7 @@ process_req(DataJObj, []) ->
     {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
     process_req(wh_json:set_value(<<"account_id">>, MasterAccountId, DataJObj));
 process_req(DataJObj, Templates) ->
-    Macros = [{<<"system">>, teletype_util:system_params(DataJObj, ?MOD_CONFIG_CAT)}
+    Macros = [{<<"system">>, teletype_util:system_params()}
               ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
               ,{<<"user">>, teletype_util:public_proplist(<<"user">>, DataJObj)}
               ,{<<"request">>, request_macros(DataJObj)}
