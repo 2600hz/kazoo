@@ -318,14 +318,9 @@ get_all_number_dbs() ->
     {'ok', Dbs} = couch_mgr:admin_all_docs(<<"dbs">>, [{'startkey', ?WNM_DB_PREFIX}
                                                        ,{'endkey', <<?WNM_DB_PREFIX_L, "\ufff0">>}
                                                       ]),
-    [cow_qs:urlencode(Db) || View <- Dbs,
-                             is_number_db((Db = wh_json:get_value(<<"id">>, View)))
+    [cow_qs:urlencode(wh_json:get_value(<<"id">>, View))
+     || View <- Dbs
     ].
-
-is_number_db(<<?WNM_DB_PREFIX_L, _/binary>>) -> 'true';
-is_number_db(<<"numbers%2f", _/binary>>) -> 'true';
-is_number_db(<<"numbers%2F", _/binary>>) -> 'true';
-is_number_db(_) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -370,7 +365,7 @@ to_e164(Number) ->
 -spec to_e164(ne_binary(), api_binary()) -> ne_binary().
 to_e164(<<$+, _/binary>> = N, _) -> N;
 to_e164(Number, 'undefined') -> to_e164(Number);
-to_e164(Number, Account) ->
+to_e164(Number, <<_/binary>> = Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     AccountId = wh_util:format_account_id(Account, 'raw'),
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
@@ -378,7 +373,7 @@ to_e164(Number, Account) ->
         {'error', _} -> to_account_e164(Number, AccountId)
     end.
 
--spec to_account_e164(ne_binary(), api_binary(), api_object()) -> ne_binary().
+-spec to_account_e164(ne_binary(), ne_binary(), api_object()) -> ne_binary().
 to_account_e164(Number, AccountId, 'undefined') ->
     to_account_e164(Number, AccountId);
 to_account_e164(Number, AccountId, DialPlan) ->
@@ -402,8 +397,8 @@ apply_dialplan([Regex|Regexes], DialPlan, Number) ->
             <<Prefix/binary, Root/binary, Suffix/binary>>
     end.
 
--spec to_account_e164(ne_binary(), api_binary()) -> ne_binary().
-to_account_e164(Number, AccountId) ->
+-spec to_account_e164(ne_binary(), ne_binary()) -> ne_binary().
+to_account_e164(Number, <<_/binary>> = AccountId) ->
     Converters = get_e164_converters(AccountId),
     Regexes = wh_json:get_keys(Converters),
     maybe_convert_to_e164(Regexes, Converters, Number).
@@ -447,8 +442,7 @@ get_e164_converters() ->
             Default
     end.
 
--spec get_e164_converters(api_binary()) -> wh_json:object().
-get_e164_converters('undefined') -> get_e164_converters();
+-spec get_e164_converters(ne_binary()) -> wh_json:object().
 get_e164_converters(AccountId) ->
     Default = wh_json:from_list(?DEFAULT_E164_CONVERTERS),
     try whapps_account_config:get_global(AccountId, ?WNM_CONFIG_CAT, <<"e164_converters">>, Default) of
