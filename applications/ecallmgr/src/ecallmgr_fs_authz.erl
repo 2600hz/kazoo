@@ -37,9 +37,9 @@ authorize(Props, CallId, Node) ->
 -spec kill_channel(ne_binary(), ne_binary(), ne_binary(), atom()) -> 'ok'.
 
 kill_channel(Props, Node) ->
-    Direction = props:get_value(<<"Call-Direction">>, Props),
-    ResourceType = props:get_value(<<"Resource-Type">>, Props, <<"audio">>),
-    CallId = props:get_value(<<"Unique-ID">>, Props),
+    Direction = kzd_freeswitch:call_direction(Props),
+    ResourceType = kzd_freeswitch:resource_type(Props, <<"audio">>),
+    CallId = kzd_freeswitch:call_id(Props),
     lager:debug("killing unauthorized channel"),
     kill_channel(Direction, ResourceType, CallId, Node).
 
@@ -55,9 +55,9 @@ kill_channel(<<"outbound">>, _, CallId, Node) ->
 
 -spec maybe_authorize_channel(wh_proplist(), atom()) -> boolean().
 maybe_authorize_channel(Props, Node) ->
-    CallId = props:get_value(<<"Unique-ID">>, Props),
+    CallId = kzd_freeswitch:call_id(Props),
 
-    case props:get_value(?GET_CCV(<<"Channel-Authorized">>), Props) of
+    case kzd_freeswitch:channel_authorized(Props) of
         <<"true">> ->
             wh_cache:store_local(?ECALLMGR_UTIL_CACHE
                                  ,?AUTHZ_RESPONSE_KEY(CallId)
@@ -71,7 +71,7 @@ maybe_authorize_channel(Props, Node) ->
                                 ),
             'false';
         _Else ->
-            case props:get_value(<<"Hunt-Destination-Number">>, Props) of
+            case kzd_freeswitch:hunt_destination_number(Props) of
                 <<"conference">> ->
                     wh_cache:store_local(?ECALLMGR_UTIL_CACHE
                                          ,?AUTHZ_RESPONSE_KEY(CallId)
@@ -85,7 +85,7 @@ maybe_authorize_channel(Props, Node) ->
 
 -spec maybe_channel_recovering(wh_proplist(), ne_binary(), atom()) -> boolean().
 maybe_channel_recovering(Props, CallId, Node) ->
-    case props:is_true(<<"variable_recovered">>, Props, 'false') of
+    case kzd_freeswitch:is_channel_recovering(Props, 'false') of
         'true' ->
             allow_call(Props, CallId, Node);
         'false' ->
@@ -103,7 +103,7 @@ is_authz_enabled(Props, CallId, Node) ->
 
 -spec is_global_resource(wh_proplist(), ne_binary(), atom()) -> boolean().
 is_global_resource(Props, CallId, Node) ->
-    case props:is_true(?GET_CCV(<<"Global-Resource">>), Props, 'true')
+    case kzd_freeswitch:is_consuming_global_resource(Props, 'true')
         orelse ecallmgr_config:is_true(<<"authz_local_resources">>, 'false')
     of
         'true' -> is_consuming_resource(Props, CallId, Node);
@@ -114,7 +114,7 @@ is_global_resource(Props, CallId, Node) ->
 
 -spec is_consuming_resource(wh_proplist(), ne_binary(), atom()) -> boolean().
 is_consuming_resource(Props, CallId, Node) ->
-    case props:get_value(<<"Call-Direction">>, Props) of
+    case kzd_freeswitch:call_direction(Props) of
         <<"outbound">> ->
             is_consuming_outbound_resource(Props, CallId, Node);
         <<"inbound">> ->
@@ -123,17 +123,17 @@ is_consuming_resource(Props, CallId, Node) ->
 
 -spec is_consuming_outbound_resource(wh_proplist(), ne_binary(), atom()) -> boolean().
 is_consuming_outbound_resource(Props, CallId, Node) ->
-    case props:get_value(?GET_CCV(<<"Resource-ID">>), Props) =/= 'undefined' of
-        'true' -> request_channel_authorization(Props, CallId, Node);
-        'false' ->
+    case kzd_freeswitch:resource_id(Props) of
+        'undefined' ->
             lager:debug("outbound channel is not consuming a resource"),
-            allow_call(Props, CallId, Node)
+            allow_call(Props, CallId, Node);
+        _ResourceId -> request_channel_authorization(Props, CallId, Node)
     end.
 
 -spec is_consuming_inbound_resource(wh_proplist(), ne_binary(), atom()) -> boolean().
 is_consuming_inbound_resource(Props, CallId, Node) ->
-    case props:get_value(?GET_CCV(<<"Authorizing-ID">>), Props) =:= 'undefined'
-        orelse props:get_value(?GET_CCV(<<"Authorizing-Type">>), Props) =:= <<"resource">>
+    case kzd_freeswitch:authorizing_id(Props) =:= 'undefined'
+        orelse kzd_freeswitch:authorizing_type(Props) =:= <<"resource">>
     of
         'true' -> request_channel_authorization(Props, CallId, Node);
         'false' ->
@@ -208,11 +208,11 @@ rate_call(Props, CallId, Node) ->
 allow_call(Props, CallId, Node) ->
     lager:debug("channel authorization succeeded, allowing call"),
     Vars = props:filter_undefined(
-             [{<<"Account-ID">>, props:get_value(?GET_CCV(<<"Account-ID">>), Props)}
-              ,{<<"Account-Billing">>, props:get_value(?GET_CCV(<<"Account-Billing">>), Props)}
-              ,{<<"Reseller-ID">>, props:get_value(?GET_CCV(<<"Reseller-ID">>), Props)}
-              ,{<<"Reseller-Billing">>, props:get_value(?GET_CCV(<<"Reseller-Billing">>), Props)}
-              ,{<<"Global-Resource">>, props:get_value(?GET_CCV(<<"Global-Resource">>), Props)}
+             [{<<"Account-ID">>, kzd_freeswitch:account_id(Props)}
+              ,{<<"Account-Billing">>, kzd_freeswitch:account_billing(Props)}
+              ,{<<"Reseller-ID">>, kzd_freeswitch:reseller_id(Props)}
+              ,{<<"Reseller-Billing">>, kzd_freeswitch:reseller_billing(Props)}
+              ,{<<"Global-Resource">>, kzd_freeswitch:is_consuming_global_resource(Props)}
               ,{<<"Channel-Authorized">>, <<"true">>}
              ]),
     wh_cache:store_local(?ECALLMGR_UTIL_CACHE
@@ -237,9 +237,9 @@ maybe_deny_call(Props, CallId, Node) ->
 
 -spec rate_channel(wh_proplist(), atom()) -> 'ok'.
 rate_channel(Props, Node) ->
-    CallId = props:get_value(<<"Unique-ID">>, Props),
-    put('callid', CallId),
-    Direction = call_direction(Props),
+    CallId = kzd_freeswitch:call_id(Props),
+    wh_util:put_callid(CallId),
+    Direction = kzd_freeswitch:call_direction(Props),
     ReqResp = wh_amqp_worker:call(rating_req(CallId, Props)
                                   ,fun wapi_rate:publish_req/1
                                   ,fun wapi_rate:resp_v/1
@@ -253,12 +253,10 @@ rate_channel_resp(Props, Node, {'ok', RespJObj}) ->
     maybe_set_rating_ccvs(Props, RespJObj, Node);
 rate_channel_resp(Props, Node, {'error', _R}) ->
     lager:debug("rate request lookup failed: ~p", [_R]),
-    %%  Disconnect only per_minute channels
-    AccountBilling = props:get_binary_value(?GET_CCV(<<"Account-Billing">>), Props),
-    ResellerBilling = props:get_binary_value(?GET_CCV(<<"Reseller-Billing">>), Props),
 
-    case AccountBilling =:= <<"per_minute">>
-        orelse ResellerBilling =:= <<"per_minute">>
+    %% disconnect only per_minute channels
+    case kzd_freeswitch:account_billing(Props) =:= <<"per_minute">>
+        orelse kzd_freeswitch:reseller_billing(Props) =:= <<"per_minute">>
     of
         'true' -> maybe_kill_unrated_channel(Props, Node);
         'false' -> 'ok'
@@ -266,7 +264,7 @@ rate_channel_resp(Props, Node, {'error', _R}) ->
 
 -spec maybe_kill_unrated_channel(wh_proplist(), atom()) -> 'ok'.
 maybe_kill_unrated_channel(Props, Node) ->
-    Direction = call_direction(Props),
+    Direction = kzd_freeswitch:call_direction(Props),
 
     case ecallmgr_config:is_true(<<Direction/binary, "_rate_required">>, 'false') of
         'false' -> 'ok';
@@ -292,11 +290,11 @@ maybe_set_rating_ccvs(Props, JObj, Node) ->
 
 -spec set_rating_ccvs(wh_json:object(), atom()) -> 'ok'.
 set_rating_ccvs(JObj, Node) ->
-    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    wh_util:put_callid(CallId),
     lager:debug("setting rating information"),
-    Props = get_rating_ccvs(JObj),
-    ecallmgr_util:set(Node, CallId, Props).
+    ecallmgr_util:set(Node
+                      ,wh_json:get_value(<<"Call-ID">>, JObj)
+                      ,get_rating_ccvs(JObj)
+                     ).
 
 -spec get_rating_ccvs(wh_json:object()) -> wh_proplist().
 get_rating_ccvs(JObj) ->
@@ -327,7 +325,8 @@ maybe_update_callee_id(JObj, Acc) ->
             [{<<"ignore_display_updates">>, <<"false">>}
              ,{<<"effective_callee_id_name">>, <<"$", ConvertedRate/binary
                                                  ," per min ${effective_callee_id_name}"
-                                               >>}
+                                               >>
+              }
              ,{<<"Rate">>, Rate}
              | Acc
             ];
@@ -340,15 +339,11 @@ authz_req(Props) ->
       [{<<"To">>, ecallmgr_util:get_sip_to(Props)}
        ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
        ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
-       ,{<<"Call-ID">>, props:get_value(<<"Unique-ID">>, Props)}
-       ,{<<"Call-Direction">>, call_direction(Props)}
-       ,{<<"Other-Leg-Call-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Props)}
-       ,{<<"Caller-ID-Name">>, props:get_first_defined([<<"variable_effective_caller_id_name">>
-                                                      ,<<"Caller-Caller-ID-Name">>
-                                                     ], Props, <<"Unknown">>)}
-       ,{<<"Caller-ID-Number">>, props:get_first_defined([<<"variable_effective_caller_id_number">>
-                                                        ,<<"Caller-Caller-ID-Number">>
-                                                     ], Props, <<"Unknown">>)}
+       ,{<<"Call-ID">>, kzd_freeswitch:call_id(Props)}
+       ,{<<"Call-Direction">>, kzd_freeswitch:call_direction(Props)}
+       ,{<<"Other-Leg-Call-ID">>, kzd_freeswitch:other_leg_call_id(Props)}
+       ,{<<"Caller-ID-Name">>, kzd_freeswitch:caller_id_name(Props, <<"Unknown">>)}
+       ,{<<"Caller-ID-Number">>, kzd_freeswitch:caller_id_number(Props, <<"Unknown">>)}
        ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
@@ -356,24 +351,11 @@ authz_req(Props) ->
 -spec rating_req(ne_binary(), wh_proplist()) -> wh_proplist().
 rating_req(CallId, Props) ->
     AccountId = props:get_value(?GET_CCV(<<"Account-ID">>), Props),
-    [{<<"To-DID">>, props:get_first_defined([?GET_CCV(<<"Original-Number">>)
-                                             ,<<"Caller-Destination-Number">>
-                                            ], Props
-                                           )
-     }
-     ,{<<"From-DID">>, props:get_first_defined([<<"variable_effective_caller_id_number">>
-                                                ,<<"Caller-Caller-ID-Number">>
-                                               ]
-                                               ,Props
-                                              )
-      }
+    [{<<"To-DID">>, kzd_freeswitch:to_did(Props)}
+     ,{<<"From-DID">>, kzd_freeswitch:caller_id_number(Props)}
      ,{<<"Call-ID">>, CallId}
      ,{<<"Account-ID">>, AccountId}
-     ,{<<"Direction">>, call_direction(Props)}
+     ,{<<"Direction">>, kzd_freeswitch:call_direction(Props)}
      ,{<<"Send-Empty">>, 'true'}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
-
--spec call_direction(wh_proplist()) -> api_binary().
-call_direction(Props) ->
-    props:get_binary_value(<<"Call-Direction">>, Props).
