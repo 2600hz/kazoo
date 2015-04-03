@@ -220,7 +220,7 @@ merge(DataJObj, JObj, Context) ->
     PrivJObj = wh_json:private_fields(JObj),
     handle_couch_mgr_success(wh_json:merge_jobjs(PrivJObj, DataJObj), Context).
 
--spec patch_and_validate(ne_binary(), cb_context:context(), any()) ->
+-spec patch_and_validate(ne_binary(), cb_context:context(), fun((ne_binary(), cb_context:context()) -> cb_context:context())) ->
     cb_context:context().
 patch_and_validate(Id, Context, ValidateFun) ->
     Context1 = crossbar_doc:load(Id, Context),
