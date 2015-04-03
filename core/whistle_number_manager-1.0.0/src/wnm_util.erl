@@ -298,7 +298,7 @@ get_carrier_module(JObj) ->
 -spec list_carrier_modules() -> atoms().
 list_carrier_modules() ->
     CarrierModules =
-        whapps_config:get(?WNM_CONFIG_CAT, <<"carrier_modules">>, ?WNM_DEAFULT_CARRIER_MODULES),
+        whapps_config:get(?WNM_CONFIG_CAT, <<"carrier_modules">>, ?WNM_DEFAULT_CARRIER_MODULES),
     [Module || M <- CarrierModules, (Module = wh_util:try_load_module(M)) =/= 'false'].
 
 %%--------------------------------------------------------------------
@@ -315,7 +315,9 @@ number_to_db_name(_) ->
 
 -spec get_all_number_dbs() -> ne_binaries().
 get_all_number_dbs() ->
-    {'ok', Dbs} = couch_mgr:admin_all_docs(<<"dbs">>),
+    {'ok', Dbs} = couch_mgr:admin_all_docs(<<"dbs">>, [{'startkey', ?WNM_DB_PREFIX}
+                                                       ,{'endkey', <<?WNM_DB_PREFIX_L, "\ufff0">>}
+                                                      ]),
     [cow_qs:urlencode(Db) || View <- Dbs,
                              is_number_db((Db = wh_json:get_value(<<"id">>, View)))
     ].
