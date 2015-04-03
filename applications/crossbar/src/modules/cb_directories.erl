@@ -167,18 +167,7 @@ update(DocId, #cb_context{}=Context) ->
 %%--------------------------------------------------------------------
 -spec validate_patch(ne_binary(), #cb_context{}) -> #cb_context{}.
 validate_patch(DocId, #cb_context{}=Context) ->
-    Context1 = crossbar_doc:load(DocId, Context),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            PatchJObj = wh_doc:public_fields(cb_context:req_data(Context)),
-            DirsJObj = wh_json:merge_jobjs(PatchJObj, cb_context:doc(Context1)),
-
-            lager:debug("patched doc, now validating"),
-            OnSuccess = fun(C) -> on_successful_validation(DocId, C) end,
-            cb_context:validate_request_data(<<"directories">>, cb_context:set_req_data(Context, DirsJObj), OnSuccess);
-        _Status ->
-            Context1
-    end.
+    crossbar_doc:patch_and_validate(DocId, Context, fun update/2).
 
 %%--------------------------------------------------------------------
 %% @private
