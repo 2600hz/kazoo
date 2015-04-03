@@ -16,6 +16,7 @@
          ,find_port_in_number/1
          ,get_number_in_ports/1
          ,number_from_port_doc/2
+         ,json_to_record/2
         ]).
 -export([get/1, get/2]).
 -export([save/1]).
