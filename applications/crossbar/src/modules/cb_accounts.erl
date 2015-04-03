@@ -696,10 +696,14 @@ leak_billing_mode(Context) ->
     end.
 
 -spec leak_notification_preference(cb_context:context()) -> cb_context:context().
+-spec leak_notification_preference(cb_context:context(), api_binary()) -> cb_context:context().
 leak_notification_preference(Context) ->
-    RespJObj = cb_context:resp_data(Context),
-    NotifyPreference = kz_account:notification_preference(cb_context:doc(Context)),
-    UpdatedRespJObj = wh_json:set_value(<<"notification_preference">>, NotifyPreference, RespJObj),
+    leak_notification_preference(Context, kz_account:notification_preference(cb_context:doc(Context))).
+
+leak_notification_preference(Context, 'undefined') ->
+    Context;
+leak_notification_preference(Context, Pref) ->
+    UpdatedRespJObj = wh_json:set_value(<<"notification_preference">>, Pref, cb_context:resp_data(Context)),
     cb_context:set_resp_data(Context, UpdatedRespJObj).
 
 %%--------------------------------------------------------------------
@@ -1117,10 +1121,10 @@ load_account_db(AccountId, Context) when is_binary(AccountId) ->
                                 ]);
         {'error', 'not_found'} ->
             cb_context:add_system_error(
-                'bad_identifier'
-                ,wh_json:from_list([{<<"cause">>, AccountId}])
-                ,Context
-            );
+              'bad_identifier'
+              ,wh_json:from_list([{<<"cause">>, AccountId}])
+              ,Context
+             );
         {'error', _R} -> crossbar_util:response_db_fatal(Context)
     end.
 
@@ -1159,13 +1163,14 @@ maybe_set_notification_preference(Context) ->
     AccountId = cb_context:account_id(Context),
     ResellerId = wh_services:find_reseller_id(AccountId),
     ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
+
     case couch_mgr:open_cache_doc(ResellerDb, ResellerId) of
         {'error', _E} ->
-            lager:error("failed to open reseller ~s", [ResellerId]);
+            lager:error("failed to open reseller '~s': ~p", [ResellerId, _E]);
         {'ok', AccountJObj} ->
             case kz_account:notification_preference(AccountJObj) of
                 'undefined' ->
-                    lager:debug("notification_preference not set for reseller ~s", [ResellerId]);
+                    lager:debug("notification preference not set on reseller '~s'", [ResellerId]);
                 Preference ->
                     set_notification_preference(Context, Preference)
             end
@@ -1175,12 +1180,13 @@ maybe_set_notification_preference(Context) ->
 set_notification_preference(Context, Preference) ->
     AccountDb = cb_context:account_db(Context),
     AccountDefinition = kz_account:set_notification_preference(cb_context:doc(Context), Preference),
+
     case couch_mgr:save_doc(AccountDb, AccountDefinition) of
         {'error', _R} ->
-            lager:error("failed to update account definition ~p", [_R]);
+            lager:error("failed to update account definition: ~p", [_R]);
         {'ok', AccountDef} ->
             _ = replicate_account_definition(AccountDef),
-            lager:error("notification_preference set to ~s", [Preference])
+            lager:info("notification_preference set to '~s'", [Preference])
     end.
 
 -spec create_account_mod(ne_binary()) -> any().
