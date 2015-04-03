@@ -43,7 +43,6 @@
 -define(TEMPLATE_RENDERING_ORDER, [{<<"text/plain">>, 3}
                                    ,{<<"text/html">>, 2}
                                   ]).
--define(PATH, <<"../applications/teletype/src/preview_data">>).
 
 -spec send_email(email_map(), ne_binary(), rendered_templates()) ->
                         'ok' | {'error', _}.
