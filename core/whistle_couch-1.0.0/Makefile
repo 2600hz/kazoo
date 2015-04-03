@@ -2,6 +2,7 @@ PROJECT = whistle_couch
 ROOT = ../..
 
 EBINS = $(shell find $(ROOT)/core/whistle-* -maxdepth 2 -name ebin -print) \
+	$(shell find $(ROOT)/core/whistle_number_manager-* -maxdepth 2 -name ebin -print) \
 	$(shell find $(ROOT)/deps/lager-* -maxdepth 2 -name ebin -print) \
 	$(shell find $(ROOT)/deps/couchbeam-* -maxdepth 2 -name ebin -print)
 PA = $(foreach EBIN,$(EBINS),-pa $(EBIN))
