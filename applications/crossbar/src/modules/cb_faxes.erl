@@ -16,6 +16,7 @@
          ,validate/1, validate/2, validate/3, validate/4
          ,put/1, put/2
          ,post/1, post/3
+         ,patch/1, patch/3
          ,delete/3
         ]).
 
@@ -60,6 +61,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.faxes">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.faxes">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.faxes">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.patch.faxes">>, ?MODULE, 'patch'),
     crossbar_bindings:bind(<<"*.execute.delete.faxes">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
@@ -89,7 +91,7 @@ allowed_methods(?SMTP_LOG, _Id) ->
 allowed_methods(?INCOMING, _Id) ->
     [?HTTP_GET];
 allowed_methods(?OUTGOING, _Id) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 allowed_methods(?INCOMING, _Id, ?ATTACHMENT) ->
     [?HTTP_GET].
@@ -196,6 +198,8 @@ validate_outgoing_fax(Context, Id, ?HTTP_GET) ->
     load_outgoing_fax_doc(Id, cb_context:set_account_db(Context, ?WH_FAXES_DB));
 validate_outgoing_fax(Context, Id, ?HTTP_POST) ->
     update(Id, cb_context:set_account_db(Context, ?WH_FAXES_DB));
+validate_outgoing_fax(Context, Id, ?HTTP_PATCH) ->
+    validate_patch(Id, cb_context:set_account_db(Context, ?WH_FAXES_DB));
 validate_outgoing_fax(Context, Id, ?HTTP_DELETE) ->
     read(Id, cb_context:set_account_db(Context, ?WH_FAXES_DB)).
 
@@ -227,6 +231,20 @@ put(Context, ?OUTGOING) ->
 post(Context) ->
     crossbar_doc:save(Context).
 post(Context, ?OUTGOING, _) ->
+    crossbar_doc:save(Context).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% If the HTTP verib is PATCH, execute the actual action, usually a db save
+%% (after a merge).
+%% @end
+%%--------------------------------------------------------------------
+-spec patch(cb_context:context()) -> cb_context:context().
+-spec patch(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+patch(Context) ->
+    crossbar_doc:save(Context).
+patch(Context, ?OUTGOING, _) ->
     crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
@@ -330,6 +348,17 @@ load_fax_meta(FaxId, Context) ->
 update(Id, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
     cb_context:validate_request_data(<<"faxes">>, Context, OnSuccess).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Update-merge an existing instance partially with the data provided, if it is
+%% valid
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_patch(ne_binary(), cb_context:context()) -> cb_context:context().
+validate_patch(Id, Context) ->
+    crossbar_doc:patch_and_validate(Id, Context).
 
 %%--------------------------------------------------------------------
 %% @private
