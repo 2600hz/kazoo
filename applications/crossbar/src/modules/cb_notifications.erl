@@ -274,13 +274,22 @@ do_post(Context) ->
     end.
 
 post(Context, Id, ?PREVIEW) ->
-    Preview = build_preview_payload(Context),
+    Notification = cb_context:doc(Context),
+    case wh_json:is_true(<<"enabled">>, Notification) of
+        'true' ->
+            handle_preview(Context, Id, Notification);
+        'false' ->
+            lager:debug("ending request: preview is disabled"),
+            crossbar_util:response_202(<<"Normally ending notification processing">>, Context)
+    end.
 
+-spec handle_preview(cb_context:context(), ne_binary(), wh_json:object()) -> cb_context:context().
+handle_preview(Context, Id, Notification) ->
+    Preview = build_preview_payload(Context, Notification),
     {API, _} = lists:foldl(fun preview_fold/2
-                           ,{Preview, cb_context:doc(Context)}
+                           ,{Preview, Notification}
                            ,headers(Id)
                           ),
-
     case wh_amqp_worker:call(API
                              ,publish_fun(Id)
                              ,fun wapi_notifications:notify_update_v/1
@@ -294,9 +303,8 @@ post(Context, Id, ?PREVIEW) ->
             crossbar_util:response('error', <<"Failed to process notification preview">>, Context)
     end.
 
--spec build_preview_payload(cb_context:context()) -> wh_proplist().
-build_preview_payload(Context) ->
-    Notification = cb_context:doc(Context),
+-spec build_preview_payload(cb_context:context(), wh_json:object()) -> wh_proplist().
+build_preview_payload(Context, Notification) ->
     props:filter_empty(
       [{<<"To">>, wh_json:get_value(<<"to">>, Notification)}
        ,{<<"From">>, wh_json:get_value(<<"from">>, Notification)}
@@ -966,7 +974,7 @@ on_successful_validation(Id, Context) ->
     end.
 
 -spec handle_missing_account_notification(cb_context:context(), ne_binary(), wh_proplist()) -> cb_context:context().
-handle_missing_account_notification(Context, Id, [{<<"notifications">>, [Id ,<<"preview">>]}|_]) ->
+handle_missing_account_notification(Context, Id, [{<<"notifications">>, [Id, ?PREVIEW]}|_]) ->
     lager:debug("preview request, ignoring if notification ~s is missing", [Id]),
     on_successful_validation(Id, Context);
 handle_missing_account_notification(Context, Id, _ReqNouns) ->

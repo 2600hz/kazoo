@@ -40,8 +40,8 @@
 
 -include("teletype.hrl").
 
--define(TEMPLATE_RENDERING_ORDER, [{<<"text/plain">>, 3}
-                                   ,{<<"text/html">>, 2}
+-define(TEMPLATE_RENDERING_ORDER, [{?TEXT_PLAIN, 3}
+                                   ,{?TEXT_HTML, 2}
                                   ]).
 
 -spec send_email(email_map(), ne_binary(), rendered_templates()) ->
@@ -647,8 +647,8 @@ fetch_templates(TemplateId, <<_/binary>> = AccountId) ->
     end;
 fetch_templates(TemplateId, DataJObj) ->
     case props:filter_undefined(
-           [{<<"text/html">>, maybe_decode_html(wh_json:get_value(<<"html">>, DataJObj))}
-            ,{<<"text/plain">>, wh_json:get_value(<<"text">>, DataJObj)}
+           [{?TEXT_HTML, maybe_decode_html(wh_json:get_value(<<"html">>, DataJObj))}
+            ,{?TEXT_PLAIN, wh_json:get_value(<<"text">>, DataJObj)}
            ])
     of
         [] -> fetch_templates(TemplateId, find_account_id(DataJObj));
