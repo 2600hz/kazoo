@@ -28,6 +28,7 @@ prepare_and_save(AccountId, Timestamp, JObj) ->
                 ,fun update_ccvs/3
                 ,fun set_doc_id/3
                 ,fun set_recording_url/3
+                ,fun is_conference/3
                 ,fun save_cdr/3
                ],
     lists:foldl(fun(F, J) ->
@@ -84,6 +85,13 @@ set_recording_url(_, _, JObj) ->
     case wh_json:get_value([<<"custom_channel_vars">>, <<"recording_url">>], JObj) of
         'undefined' -> JObj;
         Url -> wh_json:set_value(<<"recording_url">>, Url, JObj)
+    end.
+
+-spec is_conference(api_binary(), pos_integer(), wh_json:object()) -> wh_json:object().
+is_conference(_, _, JObj) ->
+    case wh_json:is_true([<<"custom_channel_vars">>, <<"is_conference">>], JObj, 'false') of
+        'true' -> wh_json:set_value(<<"is_conference">>, 'true', JObj);
+        'false' -> JObj
     end.
 
 -spec save_cdr(api_binary(), pos_integer(), wh_json:object()) -> wh_json:object().
