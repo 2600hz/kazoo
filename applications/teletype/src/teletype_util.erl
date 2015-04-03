@@ -34,8 +34,6 @@
 
          ,public_proplist/2
 
-         ,add_account/1
-
          ,get_balance_threshold/1
          ,get_topup_amount/1
         ]).
@@ -1048,14 +1046,6 @@ public_proplist(Key, JObj) ->
         wh_json:get_value(Key, JObj, wh_json:new())
        )
      ).
-
-
--spec add_account(wh_json:object()) -> wh_json:object().
-add_account(DataJObj) ->
-    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
-    wh_json:set_value(<<"account">>, AccountJObj, DataJObj).
 
 
 -spec get_balance_threshold(wh_json:object()) -> float().

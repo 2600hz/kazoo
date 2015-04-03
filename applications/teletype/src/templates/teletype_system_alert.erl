@@ -14,9 +14,9 @@
 
 -include("../teletype.hrl").
 
--define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".system_alert">>).
-
 -define(TEMPLATE_ID, <<"system_alert">>).
+-define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
+
 -define(TEMPLATE_MACROS
         ,wh_json:from_list(
            [?MACRO_VALUE(<<"message">>, <<"message">>, <<"Message">>, <<"System message">>)
@@ -81,32 +81,20 @@ handle_req_as_http(JObj, Url, UseEmail) ->
             handle_req_as_email(JObj, UseEmail)
     end.
 
--spec handle_req_as_email(wh_json:object(), boolean()) -> 'ok'.
+-spec handle_req_as_email(wh_json:object(), boolean() | wh_json:object()) -> 'ok'.
 handle_req_as_email(_JObj, 'false') ->
     lager:debug("email not enabled for system alerts");
 handle_req_as_email(JObj, 'true') ->
     %% Gather data for template
     DataJObj = wh_json:normalize(JObj),
+    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
+    {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
 
-    case teletype_util:should_handle_notification(DataJObj) of
+    case teletype_util:should_handle_notification(DataJObj)
+        andalso teletype_util:is_notice_enabled(AccountJObj, JObj, ?TEMPLATE_ID)
+    of
         'false' -> lager:debug("notification handling not configured for this account");
-        'true' -> handle_req_as_email(DataJObj)
-    end.
-
--spec handle_req_as_email(wh_json:object()) -> 'ok'.
-handle_req_as_email(DataJObj) ->
-    ReqData =
-        case teletype_util:find_account_id(DataJObj) of
-            'undefined' -> DataJObj;
-            AccountId ->
-                {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
-                wh_json:set_value(<<"account">>, AccountJObj, DataJObj)
-        end,
-
-    case teletype_util:is_preview(DataJObj) of
-        'false' -> process_req(ReqData);
-        'true' ->
-            process_req(wh_json:merge_jobjs(DataJObj, ReqData))
+        'true' -> process_req(wh_json:set_value(<<"account">>, AccountJObj, DataJObj))
     end.
 
 -spec process_req(wh_json:object()) -> 'ok'.

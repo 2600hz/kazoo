@@ -67,7 +67,8 @@ handle_new_voicemail(JObj, _Props) ->
     %% Gather data for template
     DataJObj = wh_json:normalize(JObj),
 
-    AccountDb = wh_json:get_value(<<"account_db">>, DataJObj),
+    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
+    {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
 
     VMBoxId = wh_json:get_value(<<"voicemail_box">>, DataJObj),
     {'ok', VMBox} = teletype_util:open_doc(<<"voicemail">>, VMBoxId, DataJObj),
@@ -75,22 +76,17 @@ handle_new_voicemail(JObj, _Props) ->
     UserId = wh_json:get_value(<<"owner_id">>, VMBox),
     {'ok', UserJObj} = teletype_util:open_doc(<<"user">>, UserId, DataJObj),
     Email = wh_json:get_ne_value(<<"email">>, UserJObj),
+    OwnerId = wh_json:get_value(<<"owner_id">>, VMBox),
 
     case teletype_util:should_handle_notification(DataJObj)
+        andalso teletype_util:is_notice_enabled(AccountJObj, JObj, ?TEMPLATE_ID)
         andalso wh_json:is_true(<<"vm_to_email_enabled">>, UserJObj)
         andalso Email =/= 'undefined'
     of
         'false' ->
-            lager:debug("sending voicemail to email not configured for owner ~s"
-                        ,[wh_json:get_value(<<"owner_id">>, VMBox)]
-                       );
+            lager:debug("sending voicemail to email not configured for owner ~s", [OwnerId]);
         'true' ->
-            lager:debug("voicemail->email enabled for owner ~s"
-                        ,[wh_json:get_value(<<"owner_id">>, VMBox)]
-                       ),
-
-            AccountId = wh_util:format_account_id(AccountDb, 'raw'),
-            {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
+            lager:debug("voicemail->email enabled for owner ~s", [OwnerId]),
 
             Emails = [Email | wh_json:get_value(<<"notify_email_address">>, VMBox, [])],
 

@@ -14,9 +14,9 @@
 
 -include("../teletype.hrl").
 
--define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".new_user">>).
-
 -define(TEMPLATE_ID, <<"new_user">>).
+-define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
+
 -define(TEMPLATE_MACROS
         ,wh_json:from_list(
            [?MACRO_VALUE(<<"user.password">>, <<"password">>, <<"Password">>, <<"Password">>)
@@ -56,21 +56,23 @@ init() ->
 handle_req(JObj, _Props) ->
     'true' = wapi_notifications:new_user_v(JObj),
     wh_util:put_callid(JObj),
+
     %% Gather data for template
     DataJObj = wh_json:normalize(JObj),
-    case teletype_util:should_handle_notification(DataJObj) of
-        'false' -> lager:debug("notification handling not configured for this account");
-        'true' -> handle_req(DataJObj)
-    end.
-
--spec handle_req(wh_json:object()) -> 'ok'.
-handle_req(DataJObj) ->
     AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
     {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
 
+    case teletype_util:should_handle_notification(DataJObj)
+        andalso teletype_util:is_notice_enabled(AccountJObj, JObj, ?TEMPLATE_ID)
+    of
+        'false' -> lager:debug("notification handling not configured for this account");
+        'true' -> do_handle_req(DataJObj, AccountJObj)
+    end.
+
+-spec do_handle_req(wh_json:object(), wh_json:object()) -> 'ok'.
+do_handle_req(DataJObj, AccountJObj) ->
     UserId = wh_json:get_value(<<"user_id">>, DataJObj),
     {'ok', UserJObj} = teletype_util:open_doc(<<"user">>, UserId, DataJObj),
-
     Password = wh_json:get_value(<<"password">>, DataJObj),
 
     ReqData =

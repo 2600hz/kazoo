@@ -14,9 +14,9 @@
 
 -include("../teletype.hrl").
 
--define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".cnam_request">>).
-
 -define(TEMPLATE_ID, <<"cnam_request">>).
+-define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
+
 -define(TEMPLATE_MACROS
         ,wh_json:from_list(
            [?MACRO_VALUE(<<"request.number">>, <<"request_number">>, <<"Number">>, <<"Number to add CNAM">>)
@@ -63,14 +63,6 @@ handle_cnam_request(JObj, _Props) ->
     wh_util:put_callid(JObj),
     %% Gather data for template
     DataJObj = wh_json:normalize(JObj),
-
-    case teletype_util:should_handle_notification(DataJObj) of
-        'false' -> lager:debug("notification handling not configured for this account");
-        'true' -> handle_req(DataJObj)
-    end.
-
--spec handle_req(wh_json:object()) -> 'ok'.
-handle_req(DataJObj) ->
     AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
     {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
 
@@ -81,28 +73,19 @@ handle_req(DataJObj) ->
           ]
           ,DataJObj
          ),
+    CNAMJObj =
+        wh_json:set_values([{<<"request">>, DataJObj}
+                            ,{<<"cnam">>, cnam_data(DataJObj)}
+                           ]
+                           ,wh_json:merge_jobjs(DataJObj, ReqData)
+                          ),
 
-    case teletype_util:is_preview(DataJObj) of
-        'false' ->
-            process_req(
-              wh_json:set_values([{<<"request">>, request_data(DataJObj)}
-                                  ,{<<"cnam">>, cnam_data(DataJObj)}
-                                 ]
-                                 ,ReqData
-                                )
-             );
-        'true' ->
-            process_req(
-              wh_json:set_values([{<<"request">>, request_data(DataJObj)}
-                                  ,{<<"cnam">>, cnam_data(DataJObj)}
-                                 ]
-                                 ,wh_json:merge_jobjs(DataJObj, ReqData)
-                                )
-             )
+    case teletype_util:should_handle_notification(DataJObj)
+        andalso teletype_util:is_notice_enabled(AccountJObj, JObj, ?TEMPLATE_ID)
+    of
+        'false' -> lager:debug("notification handling not configured for this account");
+        'true' -> process_req(CNAMJObj)
     end.
-
-request_data(DataJObj) ->
-    DataJObj.
 
 cnam_data(DataJObj) ->
     case teletype_util:is_preview(DataJObj) of
@@ -120,6 +103,8 @@ process_req(DataJObj) ->
 process_req(_DataJObj, []) ->
     lager:debug("no templates to render for ~s", [?TEMPLATE_ID]);
 process_req(DataJObj, Templates) ->
+    teletype_util:send_update(DataJObj, <<"pending">>),
+
     Macros = [{<<"system">>, teletype_util:system_params()}
               ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
               ,{<<"user">>, teletype_util:public_proplist(<<"user">>, DataJObj)}

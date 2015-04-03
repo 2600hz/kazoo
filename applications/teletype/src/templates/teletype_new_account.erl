@@ -14,9 +14,9 @@
 
 -include("../teletype.hrl").
 
--define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".new_account">>).
-
 -define(TEMPLATE_ID, <<"new_account">>).
+-define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
+
 -define(TEMPLATE_MACROS
         ,wh_json:from_list(
            [?MACRO_VALUE(<<"user.first_name">>, <<"first_name">>, <<"First Name">>, <<"First Name">>)
@@ -61,23 +61,22 @@ handle_new_account(JObj, _Props) ->
     wh_util:put_callid(JObj),
     %% Gather data for template
     DataJObj = wh_json:normalize(JObj),
-    case teletype_util:should_handle_notification(DataJObj) of
+    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
+    {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
+
+    case teletype_util:should_handle_notification(DataJObj)
+        andalso teletype_util:is_notice_enabled(AccountJObj, JObj, ?TEMPLATE_ID)
+    of
         'false' -> lager:debug("notification handling not configured for this account");
-        'true' -> handle_req(DataJObj)
+        'true' -> handle_req(DataJObj, AccountJObj)
     end.
 
--spec handle_req(wh_json:object()) -> 'ok'.
-handle_req(DataJObj) ->
-    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
-
+-spec handle_req(wh_json:object(), wh_json:object()) -> 'ok'.
+handle_req(DataJObj, AccountJObj) ->
     ReqData = wh_json:set_value(<<"account">>, AccountJObj, DataJObj),
-
     case teletype_util:is_preview(DataJObj) of
         'false' -> process_req(ReqData);
-        'true' ->
-            process_req(wh_json:merge_jobjs(DataJObj, ReqData))
+        'true' -> process_req(wh_json:merge_jobjs(DataJObj, ReqData))
     end.
 
 -spec process_req(wh_json:object()) -> 'ok'.

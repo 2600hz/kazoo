@@ -60,22 +60,19 @@ handle_password_recovery(JObj, _Props) ->
 
     %% Gather data for template
     DataJObj = wh_json:normalize(JObj),
-
-    AccountDb = wh_json:get_value(<<"account_db">>, DataJObj),
-    AccountId = wh_util:format_account_id(AccountDb, 'raw'),
-
-    {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
+    {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
 
     case teletype_util:should_handle_notification(DataJObj)
-        andalso is_notice_enabled_on_account(AccountJObj, JObj)
+        andalso teletype_util:is_notice_enabled(AccountJObj, JObj, ?TEMPLATE_ID)
     of
         'false' ->
             lager:debug("notification not enabled for account ~s: prefers ~s"
-                        ,[wh_util:format_account_id(AccountDb, 'raw')
+                        ,[AccountId
                           ,kz_account:notification_preference(AccountJObj)
                          ]);
         'true' ->
-            lager:debug("notification enabled for account ~s (~s)", [AccountId, AccountDb]),
+            lager:debug("notification enabled for account ~s", [AccountId]),
 
             User = get_user(DataJObj),
             ReqData =
@@ -86,12 +83,7 @@ handle_password_recovery(JObj, _Props) ->
                     ]
                   ,DataJObj
                  ),
-
-            case teletype_util:is_preview(DataJObj) of
-                'false' -> process_req(ReqData);
-                'true' ->
-                    process_req(wh_json:merge_jobjs(DataJObj, ReqData))
-            end
+            process_req(wh_json:merge_jobjs(DataJObj, ReqData))
     end.
 
 -spec get_user(wh_json:object()) -> wh_json:object().
@@ -142,7 +134,3 @@ process_req(DataJObj, Templates) ->
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
-
--spec is_notice_enabled_on_account(wh_json:object(), wh_json:object()) -> boolean().
-is_notice_enabled_on_account(AccountJObj, ApiJObj) ->
-    teletype_util:is_notice_enabled(AccountJObj, ApiJObj, ?TEMPLATE_ID).

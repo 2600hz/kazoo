@@ -14,10 +14,9 @@
 
 -include("../teletype.hrl").
 
--define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".fax_outbound_to_email">>).
--define(FAX_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".fax">>).
-
 -define(TEMPLATE_ID, <<"fax_outbound_to_email">>).
+-define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
+-define(FAX_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".fax">>).
 
 -define(TEMPLATE_MACROS
         ,wh_json:from_list(
@@ -74,27 +73,22 @@ handle_fax_outbound(JObj, _Props) ->
     lager:debug("processing fax outbound to email ~p", [JObj]),
 
     %% Gather data for template
-    DataJObj =
-        wh_json:set_values([{<<"server_id">>, wh_json:get_value(<<"Server-ID">>, JObj)}
-                            ,{<<"msg_id">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                           ]
-                           ,wh_json:normalize(
-                              wh_api:remove_defaults(JObj)
-                             )
-                          ),
-
-    case teletype_util:should_handle_notification(DataJObj) of
-        'true' -> handle_fax_outbound(DataJObj);
-        'false' -> lager:debug("notification handling not configured for this account")
-    end.
-
--spec handle_fax_outbound(wh_json:object()) -> 'ok'.
-handle_fax_outbound(DataJObj) ->
-    FaxJObj = teletype_fax_util:get_fax_doc(DataJObj),
-
-    AccountId = teletype_util:find_account_id(DataJObj),
+    DataJObj = wh_json:normalize(JObj),
+    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
     {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
 
+    case teletype_util:should_handle_notification(DataJObj)
+        andalso teletype_util:is_notice_enabled(AccountJObj, JObj, ?TEMPLATE_ID)
+    of
+        'false' -> lager:debug("notification handling not configured for this account");
+        'true' -> process_req(DataJObj, AccountJObj)
+    end.
+
+-spec process_req(wh_json:object(), wh_json:object()) -> 'ok'.
+process_req(DataJObj, AccountJObj) ->
+    teletype_util:send_update(DataJObj, <<"pending">>),
+
+    FaxJObj = teletype_fax_util:get_fax_doc(DataJObj),
     OwnerJObj = get_owner_doc(FaxJObj, DataJObj),
 
     Macros = build_template_data(
