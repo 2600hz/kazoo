@@ -128,7 +128,7 @@ maybe_relay_to_bcc(From, Encoded, Bcc) ->
 
 -spec relay_to_bcc(ne_binary(), ne_binary(), ne_binaries()) -> 'ok'.
 relay_to_bcc(From, Encoded, Bcc) ->
-    lists:foreach(fun (To) ->
+    lists:foreach(fun(To) ->
                           relay_encoded_email(To, From, Encoded)
                   end, Bcc).
 
@@ -152,7 +152,6 @@ relay_encoded_email(To, From, Encoded) ->
     %% identifier,  `{error, Type, Message}' or `{exit, ExitReason}', as the single argument.
     receive
         {'relay_response', {'ok', Receipt}} ->
-
             wh_cache:store_local(?CACHE_NAME
                                  ,{'receipt', Receipt}
                                  ,#email_receipt{to=To
