@@ -37,7 +37,7 @@ handle_job_notify(JObj, _Props) ->
     end,
 
     JobId = wh_json:get_value(<<"Fax-JobId">>, JObj),
-    {'ok', FaxJObj} = couch_mgr:open_doc(?WH_FAXES, JobId),
+    {'ok', FaxJObj} = couch_mgr:open_doc(?WH_FAXES_DB, JobId),
     lager:debug("Checking if JobId ~s is a cloud printer job",[JobId]),
     case wh_json:get_value(<<"cloud_job_id">>, FaxJObj) of
         'undefined' ->
@@ -240,7 +240,7 @@ save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
     {'ok', FaxBoxDoc} = get_faxbox_doc(PrinterId),
 
     AccountId = wh_json:get_value(<<"pvt_account_id">>,FaxBoxDoc),
-    AccountDb = ?WH_FAXES,
+    AccountDb = ?WH_FAXES_DB,
     ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, FaxBoxDoc, wh_services:find_reseller_id(AccountId)),
     OwnerId = wh_json:get_value(<<"ownerId">>, Job),
     FaxBoxUserEmail = wh_json:get_value(<<"owner_email">>, FaxBoxDoc),
@@ -291,7 +291,7 @@ save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
                              ]
                              ,wh_json_schema:add_defaults(wh_json:from_list(Props), <<"faxes">>)
                             ),
-    couch_mgr:save_doc(?WH_FAXES, Doc).
+    couch_mgr:save_doc(?WH_FAXES_DB, Doc).
 
 -spec get_faxbox_doc(ne_binary()) ->
                             {'ok', wh_json:object()} |
@@ -301,12 +301,12 @@ get_faxbox_doc(PrinterId) ->
         {'ok', _Doc}=OK -> OK;
         {'error', _} ->
             ViewOptions = [{'key', PrinterId}, 'include_docs'],
-            case couch_mgr:get_results(?WH_FAXES, <<"faxbox/cloud">>, ViewOptions) of
+            case couch_mgr:get_results(?WH_FAXES_DB, <<"faxbox/cloud">>, ViewOptions) of
                 {'ok', JObjs} ->
                     [Doc] = [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs],
                     FaxBoxDoc = maybe_get_faxbox_owner_email(Doc),
                     Id = wh_json:get_first_defined([<<"_id">>, <<"id">>], Doc),
-                    CacheProps = [{'origin', [{'db', ?WH_FAXES, Id}] }],
+                    CacheProps = [{'origin', [{'db', ?WH_FAXES_DB, Id}] }],
                     wh_cache:store_local(?FAX_CACHE, {'faxbox', PrinterId }, FaxBoxDoc, CacheProps),
                     {'ok', FaxBoxDoc};
                 {'error', _}=E -> E
@@ -358,7 +358,7 @@ handle_faxbox_edited(JObj, Props) ->
 handle_faxbox_created(JObj, _Props) ->
     'true' = wapi_conf:doc_update_v(JObj),
     ID = wh_json:get_value(<<"ID">>, JObj),
-    {'ok', Doc } = couch_mgr:open_doc(?WH_FAXES, ID),
+    {'ok', Doc } = couch_mgr:open_doc(?WH_FAXES_DB, ID),
     State = wh_json:get_value(<<"pvt_cloud_state">>, Doc),
     ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, Doc),
     AppId = whapps_account_config:get(ResellerId, ?CONFIG_CAT, <<"cloud_oauth_app">>),
@@ -445,7 +445,7 @@ process_registration_result('false', AppId, JObj, _Result) ->
 update_printer(JObj) ->
     AccountDb = wh_json:get_value(<<"pvt_account_db">>, JObj),
     couch_mgr:ensure_saved(AccountDb, JObj),
-    couch_mgr:ensure_saved(?WH_FAXES, JObj).
+    couch_mgr:ensure_saved(?WH_FAXES_DB, JObj).
     
 -spec handle_faxbox_deleted(wh_json:object(), wh_proplist()) -> any().
 handle_faxbox_deleted(JObj, _Props) ->

@@ -438,7 +438,7 @@ match(Address, Element) ->
 -spec maybe_faxbox(state()) -> state().
 maybe_faxbox(#state{faxbox_email=Domain}=State) ->
     ViewOptions = [{'key', Domain}, 'include_docs'],
-    case couch_mgr:get_results(?WH_FAXES, <<"faxbox/email_address">>, ViewOptions) of
+    case couch_mgr:get_results(?WH_FAXES_DB, <<"faxbox/email_address">>, ViewOptions) of
         {'ok', [JObj]} -> maybe_faxbox_owner(State#state{faxbox=wh_json:get_value(<<"doc">>,JObj)});
         _ -> State
     end.
@@ -469,7 +469,7 @@ add_fax_document(#state{docs=Docs
                        }=State) ->
     FaxBoxId = wh_json:get_value(<<"_id">>, FaxBoxDoc),
     AccountId = wh_json:get_value(<<"pvt_account_id">>, FaxBoxDoc),
-    AccountDb = ?WH_FAXES,
+    AccountDb = ?WH_FAXES_DB,
     ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, FaxBoxDoc, wh_services:find_reseller_id(AccountId)),
 
     FaxBoxEmailNotify = wh_json:get_value([<<"notifications">>

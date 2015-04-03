@@ -170,7 +170,7 @@ put(Context) ->
     Ctx2 = crossbar_doc:save(Ctx),
     Ctx3 = crossbar_doc:save(
              cb_context:set_doc(
-               cb_context:set_account_db(Ctx2, ?WH_FAXES),
+               cb_context:set_account_db(Ctx2, ?WH_FAXES_DB),
                wh_json:delete_key(<<"_rev">>, cb_context:doc(Ctx2))
               )),
     cb_context:set_resp_data(Ctx3, wh_json:public_fields(leak_private_fields(cb_context:doc(Ctx2)))).
@@ -188,7 +188,7 @@ post(Context, _Id) ->
     Ctx2 = crossbar_doc:save(Ctx),
     Ctx3 = crossbar_doc:ensure_saved(
              cb_context:set_doc(
-               cb_context:set_account_db(Ctx2, ?WH_FAXES),
+               cb_context:set_account_db(Ctx2, ?WH_FAXES_DB),
                wh_json:delete_key(<<"_rev">>, cb_context:doc(Ctx2))
               )),
     cb_context:set_resp_data(Ctx3, wh_json:public_fields(leak_private_fields(cb_context:doc(Ctx2)))).
@@ -203,7 +203,7 @@ post(Context, _Id) ->
 delete(Context, Id) ->
     Ctx2 = crossbar_doc:delete(Context),
     _ = crossbar_doc:delete(
-          read(Id, cb_context:set_account_db(Context, ?WH_FAXES))
+          read(Id, cb_context:set_account_db(Context, ?WH_FAXES_DB))
          ),
     Ctx2.
 
@@ -319,7 +319,7 @@ normalize_view_results(JObj, Acc) ->
 -spec is_faxbox_email_global_unique(ne_binary(), ne_binary()) -> boolean().
 is_faxbox_email_global_unique(Email, FaxBoxId) ->
     ViewOptions = [{'key', wh_util:to_lower_binary(Email)}],
-    case couch_mgr:get_results(?WH_FAXES, <<"faxbox/email_address">>, ViewOptions) of
+    case couch_mgr:get_results(?WH_FAXES_DB, <<"faxbox/email_address">>, ViewOptions) of
         {'ok', []} -> 'true';
         {'ok', [JObj]} -> wh_json:get_value(<<"id">>, JObj) =:= FaxBoxId;
         {'error', 'not_found'} -> 'true';
