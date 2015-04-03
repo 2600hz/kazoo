@@ -71,6 +71,7 @@
 -export([max_bulk_insert/0]).
 
 -include_lib("wh_couch.hrl").
+-include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 
 %% Throttle how many docs we bulk insert to BigCouch
 -define(MAX_BULK_INSERT, 2000).
@@ -82,7 +83,7 @@
 
 -type db_classifications() :: 'account' | 'modb' | 'acdc' |
                               'numbers' | 'aggregate' | 'system' |
-                              'depreciated' | 'undefined'.
+                              'deprecated' | 'undefined'.
 
 -export_type([db_create_options/0
               ,couchbeam_errors/0
@@ -105,41 +106,40 @@
 db_classification(Db) when not is_binary(Db) ->
     db_classification(wh_util:to_binary(Db));
 db_classification(<<"ts">>) -> 'depreciated';
-db_classification(<<"crossbar_schemas">>) -> 'depreciated';
-db_classification(<<"registrations">>) -> 'depreciated';
-db_classification(<<"crossbar%2Fsessions">>) -> 'depreciated';
-db_classification(<<"signups">>) -> 'system'; %% Soon to be depreciated
-db_classification(<<"gloabl_provisioner">>) -> 'system'; %% Soon to be depreciated
-db_classification(<<"accounts">>) -> 'aggregate';
-db_classification(<<"token_auth">>) -> 'aggregate';
-db_classification(<<"sip_auth">>) -> 'aggregate';
-db_classification(<<"faxes">>) -> 'aggregate';
-db_classification(<<"sms">>) -> 'aggregate';
-db_classification(<<"acdc">>) -> 'aggregate';
-db_classification(<<"services">>) -> 'aggregate';
-db_classification(<<"port_requests">>) -> 'aggregate';
-db_classification(<<"webhooks">>) -> 'aggregate';
-db_classification(<<"nubmers/", _Prefix:5/binary>>) -> 'numbers';
-db_classification(<<"nubmers%2F", _Prefix:5/binary>>) -> 'numbers';
-db_classification(<<"nubmers%2f", _Prefix:5/binary>>) -> 'numbers';
+db_classification(<<"crossbar_schemas">>) -> 'deprecated';
+db_classification(<<"registrations">>) -> 'deprecated';
+db_classification(<<"crossbar%2Fsessions">>) -> 'deprecated';
+db_classification(<<"sms">>) -> 'deprecated';
+db_classification(<<"signups">>) -> 'system'; %% Soon to be deprecated
+db_classification(?WH_PROVISIONER_DB) -> 'system'; %% Soon to be deprecated
+db_classification(?WH_ACCOUNTS_DB) -> 'aggregate';
+db_classification(?KZ_TOKEN_DB) -> 'aggregate';
+db_classification(?WH_SIP_DB) -> 'aggregate';
+db_classification(?WH_FAXES_DB) -> 'aggregate';
+db_classification(?KZ_ACDC_DB) -> 'aggregate';
+db_classification(?WH_SERVICES_DB) -> 'aggregate';
+db_classification(?KZ_PORT_REQUESTS_DB) -> 'aggregate';
+db_classification(?KZ_WEBHOOKS_DB) -> 'aggregate';
+db_classification(<<?WNM_DB_PREFIX_L, _Prefix:5/binary>>) -> 'numbers';
+db_classification(<<"numbers%2F", _Prefix:5/binary>>) -> 'numbers';
+db_classification(<<"numbers%2f", _Prefix:5/binary>>) -> 'numbers';
 db_classification(<<"account/", _AccountId:34/binary, "-", _Date:6/binary>>) -> 'modb';
 db_classification(<<"account%2F", _AccountId:38/binary, "-", _Date:6/binary>>) -> 'modb';
 db_classification(<<"account%2f", _AccountId:38/binary, "-", _Date:6/binary>>) -> 'modb';
 db_classification(<<"account/", _AccountId:34/binary>>) -> 'account';
 db_classification(<<"account%2f", _AccountId:38/binary>>) -> 'account';
 db_classification(<<"account%2F", _AccountId:38/binary>>) -> 'account';
-db_classification(<<"ratedeck">>) -> 'system';
-db_classification(<<"offnet">>) -> 'system';
-db_classification(<<"anonymous_cds">>) -> 'system';
-db_classification(<<"dedicated_ips">>) -> 'system';
-db_classification(<<"system_config">>) -> 'system';
-db_classification(<<"system_media">>) -> 'system';
-db_classification(<<"system_schemas">>) -> 'system';
-db_classification(Database) ->
-    case lists:member(Database, ?KZ_SYSTEM_DBS) of
-        'true' -> 'system';
-        'false' -> 'undefined'
-    end.
+db_classification(?WH_RATES_DB) -> 'system';
+db_classification(?WH_OFFNET_DB) -> 'system';
+db_classification(?WH_ANONYMOUS_CDR_DB) -> 'system';
+db_classification(?WH_DEDICATED_IP_DB) -> 'system';
+db_classification(?WH_CONFIG_DB) -> 'system';
+db_classification(?WH_MEDIA_DB) -> 'system';
+db_classification(?WH_SCHEMA_DB) -> 'system';
+db_classification(?KZ_OAUTH_DB) -> 'system';
+db_classification(_Database) ->
+    lager:debug("unknown type for database ~s", [_Database]),
+    'undefined'.
 
 %%------------------------------------------------------------------------------
 %% @public
