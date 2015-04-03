@@ -20,7 +20,9 @@
 -export([is_reconcilable/1, is_reconcilable/2]).
 -export([list_carrier_modules/0]).
 -export([get_carrier_module/1]).
--export([number_to_db_name/1]).
+-export([number_to_db_name/1
+         ,get_all_number_dbs/0
+        ]).
 -export([normalize_number/1, normalize_number/2]).
 -export([to_e164/1, to_e164/2
          ,to_npan/1, to_1npan/1
@@ -29,7 +31,6 @@
          ,is_npan/1, is_1npan/1
         ]).
 -export([find_account_id/1]).
--export([get_all_number_dbs/0]).
 -export([are_jobjs_identical/2]).
 
 -ifdef(TEST).
@@ -294,7 +295,7 @@ get_carrier_module(JObj) ->
 %% Create a list of all available carrier modules
 %% @end
 %%--------------------------------------------------------------------
--spec list_carrier_modules() -> [] | [atom(),...].
+-spec list_carrier_modules() -> atoms().
 list_carrier_modules() ->
     CarrierModules =
         whapps_config:get(?WNM_CONFIG_CAT, <<"carrier_modules">>, ?WNM_DEAFULT_CARRIER_MODULES),
@@ -308,15 +309,21 @@ list_carrier_modules() ->
 %%--------------------------------------------------------------------
 -spec number_to_db_name(binary()) -> api_binary().
 number_to_db_name(<<NumPrefix:5/binary, _/binary>>) ->
-    wh_util:to_binary(
-      http_uri:encode(
-        wh_util:to_list(
-          list_to_binary([?WNM_DB_PREFIX, NumPrefix])
-         )
-       )
-     );
+    cow_qs:urlencode(list_to_binary([?WNM_DB_PREFIX, NumPrefix]));
 number_to_db_name(_) ->
     'undefined'.
+
+-spec get_all_number_dbs() -> ne_binaries().
+get_all_number_dbs() ->
+    {'ok', Dbs} = couch_mgr:admin_all_docs(<<"dbs">>),
+    [cow_qs:urlencode(Db) || View <- Dbs,
+                             is_number_db((Db = wh_json:get_value(<<"id">>, View)))
+    ].
+
+is_number_db(<<?WNM_DB_PREFIX_L, _/binary>>) -> 'true';
+is_number_db(<<"numbers%2f", _/binary>>) -> 'true';
+is_number_db(<<"numbers%2F", _/binary>>) -> 'true';
+is_number_db(_) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -467,22 +474,6 @@ find_account_id(JObj) ->
                    end
                  ],
     lists:foldl(fun(F, A) -> F(A) end, 'undefined', SearchFuns).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function will return a list of all number database names
-%% @end
-%%--------------------------------------------------------------------
--spec get_all_number_dbs() -> ne_binaries().
-get_all_number_dbs() ->
-    {'ok', Databases} = couch_mgr:db_info(),
-    [Db || Db <- Databases, is_number_db(Db)].
-
-is_number_db(<<"numbers/", _/binary>>) -> 'true';
-is_number_db(<<"numbers%2f", _/binary>>) -> 'true';
-is_number_db(<<"numbers%2F", _/binary>>) -> 'true';
-is_number_db(_) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @public
