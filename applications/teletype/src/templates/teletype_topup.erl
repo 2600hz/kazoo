@@ -18,11 +18,7 @@
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
 
 -define(TEMPLATE_MACROS
-        ,wh_json:from_list(
-           [?MACRO_VALUE(<<"user.first_name">>, <<"first_name">>, <<"First Name">>, <<"First Name">>)
-            ,?MACRO_VALUE(<<"user.last_name">>, <<"last_name">>, <<"Last Name">>, <<"Last Name">>)
-            | ?SERVICE_MACROS ++ ?ACCOUNT_MACROS
-           ])
+        ,wh_json:from_list(?USER_MACROS ++ ?ACCOUNT_MACROS)
        ).
 
 -define(TEMPLATE_TEXT, <<"The account \"{{account.name}}\" has less than {{threshold}} of credit remaining.\n We are toping up the account for {{amount}}.">>).
@@ -61,20 +57,24 @@ handle_topup(JObj, _Props) ->
 
     %% Gather data for template
     DataJObj = wh_json:normalize(JObj),
+    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
+    {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
 
-    case teletype_util:should_handle_notification(DataJObj) of
+    case teletype_util:should_handle_notification(DataJObj)
+        andalso teletype_util:is_notice_enabled(AccountJObj, JObj, ?TEMPLATE_ID)
+    of
         'false' -> lager:debug("notification handling not configured for this account");
-        'true' -> handle_req(teletype_util:add_account(DataJObj))
+        'true' -> handle_req(wh_json:set_value(<<"account">>, AccountJObj, DataJObj))
     end.
 
 -spec handle_req(wh_json:object()) -> 'ok'.
 handle_req(DataJObj) ->
-    ServiceData = teletype_util:service_params(DataJObj, ?MOD_CONFIG_CAT),
-    Macros = [{<<"service">>, ServiceData}
-             ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
-             ,{<<"threshold">>, teletype_util:get_balance_threshold(DataJObj)}
-             ,{<<"amount">>, teletype_util:get_topup_amount(DataJObj)}
-              | build_macro_data(DataJObj)],
+    Macros = [{<<"system">>, teletype_util:system_params()}
+              ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
+              ,{<<"threshold">>, teletype_util:get_balance_threshold(DataJObj)}
+              ,{<<"amount">>, teletype_util:get_topup_amount(DataJObj)}
+              | build_macro_data(DataJObj)
+             ],
 
     %% Load templates
     Templates = teletype_util:fetch_templates(?TEMPLATE_ID, DataJObj),
@@ -93,13 +93,7 @@ handle_req(DataJObj) ->
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
 
-    %% Send email
-    case teletype_util:send_email(Emails
-                                  ,Subject
-                                  ,ServiceData
-                                  ,RenderedTemplates
-                                 )
-    of
+    case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
@@ -143,7 +137,7 @@ get_user(DataJObj) ->
         {'ok', UserJObj} -> UserJObj;
         {'error', _E} ->
             lager:debug("failed to find user ~s in ~s: ~p", [UserId, AccountId, _E]),
-            case wh_json:is_true(<<"preview">>, DataJObj) of
+            case teletype_util:is_preview(DataJObj) of
                 'false' -> throw({'error', 'not_found'});
                 'true' -> wh_json:new()
             end

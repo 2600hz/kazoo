@@ -14,22 +14,11 @@
 
 -include("../teletype.hrl").
 
--define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".ported">>).
-
 -define(TEMPLATE_ID, <<"ported">>).
+-define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
+
 -define(TEMPLATE_MACROS
-        ,wh_json:from_list(
-           [?MACRO_VALUE(<<"port_request.carrier">>, <<"carrier">>, <<"Carrier">>, <<"Carrier">>)
-            ,?MACRO_VALUE(<<"port_request.name">>, <<"name">>, <<"Name">>, <<"Name">>)
-            ,?MACRO_VALUE(<<"port_request.bill_name">>, <<"bill_name">>, <<"Bill Name">>, <<"Name on the bill">>)
-            ,?MACRO_VALUE(<<"port_request.bill_address">>, <<"bill_address">>, <<"Bill Address">>, <<"Address on the bill">>)
-            ,?MACRO_VALUE(<<"port_request.bill_locality">>, <<"bill_locality">>, <<"Bill Locality">>, <<"City on the bill">>)
-            ,?MACRO_VALUE(<<"port_request.bill_region">>, <<"bill_region">>, <<"Bill Region">>, <<"Region on the bill">>)
-            ,?MACRO_VALUE(<<"port_request.bill_postal_code">>, <<"bill_postal_code">>, <<"Bill Postal Code">>, <<"Postal Code on the bill">>)
-            ,?MACRO_VALUE(<<"port_request.transfer_date">>, <<"transfer_date">>, <<"Transfer Date">>, <<"Transfer Date">>)
-            ,?MACRO_VALUE(<<"port_request.numbers">>, <<"numbers">>, <<"Numbers">>, <<"Numbers">>)
-            | ?SERVICE_MACROS ++ ?ACCOUNT_MACROS
-           ])
+        ,wh_json:from_list(?PORT_REQUEST_MACROS ++ ?ACCOUNT_MACROS)
        ).
 
 -define(TEMPLATE_TEXT, <<"Port request successful for {{account.name}}.\n\n Numbers: {% for number in port_request.numbers %} {{ number }} {% endfor %}.">>).
@@ -64,18 +53,21 @@ init() ->
 handle_req(JObj, _Props) ->
     'true' = wapi_notifications:ported_v(JObj),
     wh_util:put_callid(JObj),
+
     %% Gather data for template
     DataJObj = wh_json:normalize(JObj),
-    case teletype_util:should_handle_notification(DataJObj) of
-        'false' -> lager:debug("notification handling not configured for this account");
-        'true' -> handle_req(DataJObj)
-    end.
-
--spec handle_req(wh_json:object()) -> 'ok'.
-handle_req(DataJObj) ->
     AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
     {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
 
+    case teletype_util:should_handle_notification(DataJObj)
+        andalso teletype_util:is_notice_enabled(AccountJObj, JObj, ?TEMPLATE_ID)
+    of
+        'false' -> lager:debug("notification handling not configured for this account");
+        'true' -> process_req(DataJObj, AccountJObj)
+    end.
+
+-spec process_req(wh_json:object(), wh_json:object()) -> 'ok'.
+process_req(DataJObj, AccountJObj) ->
     PortReqId = wh_json:get_value(<<"port_request_id">>, DataJObj),
     {'ok', PortReqJObj} = teletype_util:open_doc(<<"port_request">>, PortReqId, DataJObj),
 
@@ -102,9 +94,7 @@ handle_port_request(DataJObj) ->
 handle_port_request(_DataJObj, []) ->
     lager:debug("no templates to render for ~s", [?TEMPLATE_ID]);
 handle_port_request(DataJObj, Templates) ->
-    ServiceData = teletype_util:service_params(DataJObj, ?MOD_CONFIG_CAT),
-
-    Macros = [{<<"service">>, ServiceData}
+    Macros = [{<<"system">>, teletype_util:system_params()}
               ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
               ,{<<"port_request">>, teletype_util:public_proplist(<<"port_request">>, DataJObj)}
              ],
@@ -126,14 +116,8 @@ handle_port_request(DataJObj, Templates) ->
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
 
-    case teletype_util:send_email(
-           Emails
-           ,Subject
-           ,ServiceData
-           ,RenderedTemplates
-           ,teletype_port_utils:get_attachments(DataJObj)
-          )
-    of
+    EmailAttachements = teletype_port_utils:get_attachments(DataJObj),
+    case teletype_util:send_email(Emails, Subject, RenderedTemplates, EmailAttachements) of
         'ok' ->
             teletype_util:send_update(DataJObj, <<"completed">>);
         {'error', Reason} ->

@@ -14,19 +14,19 @@
 
 -include("../teletype.hrl").
 
--define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".skel">>).
-
 -define(TEMPLATE_ID, <<"skel">>).
+-define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
+
 -define(TEMPLATE_MACROS
         ,wh_json:from_list(
            [?MACRO_VALUE(<<"user.first_name">>, <<"first_name">>, <<"First Name">>, <<"First Name">>)
             ,?MACRO_VALUE(<<"user.last_name">>, <<"last_name">>, <<"Last Name">>, <<"Last Name">>)
-            | ?SERVICE_MACROS
+            | ?USER_MACROS
            ])
        ).
 
--define(TEMPLATE_TEXT, <<"Hi {{user.first_name}} {{user.last_name}}.\n\nThis is the skeleton template\nBrought to you by {{service.name}}">>).
--define(TEMPLATE_HTML, <<"<p>Hi {{user.first_name}} {{user.last_name}}.</p><p>This is the skeleton template</p><p>Brought to you by {{service.name}}</p>">>).
+-define(TEMPLATE_TEXT, <<"Hi {{user.first_name}} {{user.last_name}}.\n\nThis is the skeleton template\nBrought to you by VoIP Services">>).
+-define(TEMPLATE_HTML, <<"<p>Hi {{user.first_name}} {{user.last_name}}.</p><p>This is the skeleton template</p><p>Brought to you by VoIP Services</p>">>).
 -define(TEMPLATE_SUBJECT, <<"Skeleton Template">>).
 -define(TEMPLATE_CATEGORY, <<"skel">>).
 -define(TEMPLATE_NAME, <<"Skeleton">>).
@@ -60,17 +60,22 @@ handle_req(JObj, _Props) ->
     wh_util:put_callid(JObj),
 
     %% Gather data for template
-    DataJObj = wh_json:normalize(wh_api:remove_defaults(JObj)),
+    DataJObj = wh_json:normalize(JObj),
+    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
+    {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
 
-    case teletype_util:should_handle_notification(DataJObj) of
+    case teletype_util:should_handle_notification(DataJObj)
+        andalso teletype_util:is_notice_enabled(AccountJObj, JObj, ?TEMPLATE_ID)
+    of
         'false' -> lager:debug("notification handling not configured for this account");
-        'true' -> handle_req(DataJObj)
+        'true' -> process_req(DataJObj, AccountJObj)
     end.
 
--spec handle_req(wh_json:object()) -> 'ok'.
-handle_req(DataJObj) ->
-    ServiceData = teletype_util:service_params(DataJObj, ?MOD_CONFIG_CAT),
-    Macros = [{<<"service">>, ServiceData} | build_macro_data(DataJObj)],
+-spec process_req(wh_json:object(), wh_json:object()) -> 'ok'.
+process_req(DataJObj, _AccountJObj) ->
+    Macros = [{<<"system">>, teletype_util:system_params()}
+              | build_macro_data(DataJObj)
+             ],
 
     %% Load templates
     Templates = teletype_util:fetch_templates(?TEMPLATE_ID, DataJObj),
@@ -89,13 +94,7 @@ handle_req(DataJObj) ->
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
 
-    %% Send email
-    case teletype_util:send_email(Emails
-                                  ,Subject
-                                  ,ServiceData
-                                  ,RenderedTemplates
-                                 )
-    of
+    case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
@@ -139,7 +138,7 @@ get_user(DataJObj) ->
         {'ok', UserJObj} -> UserJObj;
         {'error', _E} ->
             lager:debug("failed to find user ~s in ~s: ~p", [UserId, AccountId, _E]),
-            case wh_json:is_true(<<"preview">>, DataJObj) of
+            case teletype_util:is_preview(DataJObj) of
                 'false' -> throw({'error', 'not_found'});
                 'true' -> wh_json:new()
             end

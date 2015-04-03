@@ -27,12 +27,11 @@
             ,?MACRO_VALUE(<<"owner.first_name">>, <<"first_name">>, <<"First Name">>, <<"First name of the owner of the voicemail box">>)
             ,?MACRO_VALUE(<<"owner.last_name">>, <<"last_name">>, <<"Last Name">>, <<"Last name of the owner of the voicemail box">>)
             | ?DEFAULT_CALL_MACROS
-            ++ ?SERVICE_MACROS
            ])
        ).
 
--define(TEMPLATE_TEXT, <<"New Voicemail Message\n\nCaller ID: {{caller_id.number}}\nCaller Name: {{caller_id.name}}\n\nCalled To: {{to.user}}   (Originally dialed number)\nCalled On: {{date_called.local|date:\"l, F j, Y \\a\\t H:i\"}}\n\nTranscription: {{voicemail.transcription|default:\"Not Enabled\"}}\n\n\nFor help or questions using your phone or voicemail, please contact support at {{service.support_number}} or email {{service.support_email}}.">>).
--define(TEMPLATE_HTML, <<"<html><body><h3>New Voicemail Message</h3><table><tr><td>Caller ID</td><td>{{caller_id.name}} ({{caller_id.number}})</td></tr><tr><td>Callee ID</td><td>{{to.user}} (originally dialed number)</td></tr><tr><td>Call received</td><td>{{date_called.local|date:\"l, F j, Y \\a\\t H:i\"}}</td></tr></table><p>For help or questions using your phone or voicemail, please contact {{service.support_number}} or email <a href=\"mailto:{{service.support_email}}\">Support</a></p><p style=\"font-size: 9px;color:#C0C0C0\">{{call_id}}</p><p>Transcription: {{voicemail.transcription|default:\"Not Enabled\"}}</p></body></html>">>).
+-define(TEMPLATE_TEXT, <<"New Voicemail Message\n\nCaller ID: {{caller_id.number}}\nCaller Name: {{caller_id.name}}\n\nCalled To: {{to.user}}   (Originally dialed number)\nCalled On: {{date_called.local|date:\"l, F j, Y \\a\\t H:i\"}}\n\nTranscription: {{voicemail.transcription|default:\"Not Enabled\"}}\n\n\nFor help or questions using your phone or voicemail, please contact support at (415) 886-7900 or email support@2600hz.com.">>).
+-define(TEMPLATE_HTML, <<"<html><body><h3>New Voicemail Message</h3><table><tr><td>Caller ID</td><td>{{caller_id.name}} ({{caller_id.number}})</td></tr><tr><td>Callee ID</td><td>{{to.user}} (originally dialed number)</td></tr><tr><td>Call received</td><td>{{date_called.local|date:\"l, F j, Y \\a\\t H:i\"}}</td></tr></table><p>For help or questions using your phone or voicemail, please contact (415) 886-7900 or email <a href=\"mailto:support@2600hz.com\">Support</a></p><p style=\"font-size: 9px;color:#C0C0C0\">{{call_id}}</p><p>Transcription: {{voicemail.transcription|default:\"Not Enabled\"}}</p></body></html>">>).
 -define(TEMPLATE_SUBJECT, <<"New voicemail from {{caller_id.name}} ({{caller_id.number}})">>).
 -define(TEMPLATE_CATEGORY, <<"voicemail">>).
 -define(TEMPLATE_NAME, <<"Voicemail To Email">>).
@@ -68,7 +67,8 @@ handle_new_voicemail(JObj, _Props) ->
     %% Gather data for template
     DataJObj = wh_json:normalize(JObj),
 
-    AccountDb = wh_json:get_value(<<"account_db">>, DataJObj),
+    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
+    {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
 
     VMBoxId = wh_json:get_value(<<"voicemail_box">>, DataJObj),
     {'ok', VMBox} = teletype_util:open_doc(<<"voicemail">>, VMBoxId, DataJObj),
@@ -76,22 +76,17 @@ handle_new_voicemail(JObj, _Props) ->
     UserId = wh_json:get_value(<<"owner_id">>, VMBox),
     {'ok', UserJObj} = teletype_util:open_doc(<<"user">>, UserId, DataJObj),
     Email = wh_json:get_ne_value(<<"email">>, UserJObj),
+    OwnerId = wh_json:get_value(<<"owner_id">>, VMBox),
 
     case teletype_util:should_handle_notification(DataJObj)
+        andalso teletype_util:is_notice_enabled(AccountJObj, JObj, ?TEMPLATE_ID)
         andalso wh_json:is_true(<<"vm_to_email_enabled">>, UserJObj)
         andalso Email =/= 'undefined'
     of
         'false' ->
-            lager:debug("sending voicemail to email not configured for owner ~s"
-                        ,[wh_json:get_value(<<"owner_id">>, VMBox)]
-                       );
+            lager:debug("sending voicemail to email not configured for owner ~s", [OwnerId]);
         'true' ->
-            lager:debug("voicemail->email enabled for owner ~s"
-                        ,[wh_json:get_value(<<"owner_id">>, VMBox)]
-                       ),
-
-            AccountId = wh_util:format_account_id(AccountDb, 'raw'),
-            {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
+            lager:debug("voicemail->email enabled for owner ~s", [OwnerId]),
 
             Emails = [Email | wh_json:get_value(<<"notify_email_address">>, VMBox, [])],
 
@@ -116,8 +111,7 @@ handle_new_voicemail(JObj, _Props) ->
 process_req(DataJObj) ->
     teletype_util:send_update(DataJObj, <<"pending">>),
 
-    ServiceData = teletype_util:service_params(DataJObj, ?MOD_CONFIG_CAT),
-    Macros = [{<<"service">>, ServiceData}
+    Macros = [{<<"system">>, teletype_util:system_params()}
               | build_template_data(DataJObj)
              ],
 
@@ -131,7 +125,8 @@ process_req(DataJObj) ->
            || {ContentType, Template} <- Templates
           ]),
 
-    {'ok', TemplateMetaJObj} = teletype_util:fetch_template_meta(?TEMPLATE_ID, wh_json:get_value(<<"account_Id">>, DataJObj)),
+    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
+    {'ok', TemplateMetaJObj} = teletype_util:fetch_template_meta(?TEMPLATE_ID, AccountId),
 
     Subject = teletype_util:render_subject(
                 wh_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
@@ -139,14 +134,9 @@ process_req(DataJObj) ->
                ),
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
-    %% Send email
-    case teletype_util:send_email(Emails
-                                  ,Subject
-                                  ,ServiceData
-                                  ,RenderedTemplates
-                                  ,email_attachments(DataJObj, Macros)
-                                 )
-    of
+
+    EmailAttachements = email_attachments(DataJObj, Macros),
+    case teletype_util:send_email(Emails, Subject, RenderedTemplates, EmailAttachements) of
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
@@ -154,7 +144,7 @@ process_req(DataJObj) ->
 -spec email_attachments(wh_json:object(), wh_proplist()) -> attachments().
 -spec email_attachments(wh_json:object(), wh_proplist(), boolean()) -> attachments().
 email_attachments(DataJObj, Macros) ->
-    email_attachments(DataJObj, Macros, wh_json:is_true(<<"preview">>, DataJObj, 'false')).
+    email_attachments(DataJObj, Macros, teletype_util:is_preview(DataJObj)).
 
 email_attachments(_DataJObj, _Macros, 'true') -> [];
 email_attachments(DataJObj, Macros, 'false') ->

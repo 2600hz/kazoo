@@ -14,9 +14,8 @@
 
 -include("../teletype.hrl").
 
--define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".deregister">>).
-
 -define(TEMPLATE_ID, <<"deregister">>).
+-define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
 
 -define(TEMPLATE_MACROS
         ,wh_json:from_list(
@@ -37,7 +36,6 @@
             ,?MACRO_VALUE(<<"last_registration.expires">>, <<"last_registration_expires">>, <<"Expires">>, <<"Expires">>)
             ,?MACRO_VALUE(<<"last_registration.authorizing_id">>, <<"last_registration_authorizing_id">>, <<"Authorizing ID">>, <<"Authorizing ID">>)
             | ?ACCOUNT_MACROS
-            ++ ?SERVICE_MACROS
            ])
        ).
 
@@ -77,14 +75,20 @@ handle_deregister(JObj, _Props) ->
 
     %% Gather data for template
     DataJObj = wh_json:normalize(JObj),
+    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
+    {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
 
-    teletype_util:send_update(DataJObj, <<"pending">>),
+    case teletype_util:should_handle_notification(DataJObj)
+        andalso teletype_util:is_notice_enabled(AccountJObj, JObj, ?TEMPLATE_ID)
+    of
+        'false' -> lager:debug("notification handling not configured for this account");
+        'true' -> handle_req(DataJObj)
+    end.
 
-    ServiceData = teletype_util:service_params(DataJObj, ?MOD_CONFIG_CAT),
-    AccountData = teletype_util:account_params(DataJObj),
-
-    Macros = [{<<"service">>, ServiceData}
-              ,{<<"account">>, AccountData}
+-spec handle_req(wh_json:object()) -> 'ok'.
+handle_req(DataJObj) ->
+    Macros = [{<<"system">>, teletype_util:system_params()}
+              ,{<<"account">>, teletype_util:account_params(DataJObj)}
               ,{<<"last_registration">>, wh_json:to_proplist(DataJObj)}
              ],
 
@@ -107,13 +111,7 @@ handle_deregister(JObj, _Props) ->
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
 
-    %% Send email
-    case teletype_util:send_email(Emails
-                                  ,Subject
-                                  ,ServiceData
-                                  ,RenderedTemplates
-                                 )
-    of
+    case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.

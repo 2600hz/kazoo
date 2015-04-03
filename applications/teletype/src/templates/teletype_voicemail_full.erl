@@ -14,9 +14,8 @@
 
 -include("../teletype.hrl").
 
--define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".voicemail_full">>).
-
 -define(TEMPLATE_ID, <<"voicemail_full">>).
+-define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
 
 -define(TEMPLATE_MACROS
         ,wh_json:from_list(
@@ -27,7 +26,6 @@
             ,?MACRO_VALUE(<<"owner.last_name">>, <<"last_name">>, <<"Last Name">>, <<"Last name of the owner of the voicemail box">>)
             ,?MACRO_VALUE(<<"voicemail.max_messages">>, <<"max_messages">>, <<"Maximum Messages">>, <<"The maximum number of messages this box can hold">>)
             ,?MACRO_VALUE(<<"voicemail.message_count">>, <<"message_count">>, <<"Message Count">>, <<"The current number of messages in the voicemail box">>)
-            | ?SERVICE_MACROS
            ])
        ).
 
@@ -67,19 +65,17 @@ handle_full_voicemail(JObj, _Props) ->
 
     %% Gather data for template
     DataJObj = wh_json:normalize(JObj),
-
-    AccountDb = wh_json:get_value(<<"account_db">>, DataJObj),
-    AccountId = wh_util:format_account_id(AccountDb, 'raw'),
+    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
     {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
 
     case teletype_util:should_handle_notification(DataJObj)
-        andalso is_notice_enabled_on_account(AccountJObj, JObj)
+        andalso teletype_util:is_notice_enabled(AccountJObj, JObj, ?TEMPLATE_ID)
     of
-        'false' -> lager:debug("notification not enabled for account ~s", [wh_util:format_account_id(AccountDb, 'raw')]);
+        'false' -> lager:debug("notification not enabled for account ~s", [AccountId]);
         'true' ->
-            lager:debug("notification enabled for account ~s (~s)", [AccountId, AccountDb]),
+            lager:debug("notification enabled for account ~s", [AccountId]),
 
-            VMBox = get_vm_box(AccountDb, DataJObj),
+            VMBox = get_vm_box(AccountId, DataJObj),
             User = get_vm_box_owner(VMBox, DataJObj),
             ReqData =
                 wh_json:set_values(
@@ -90,21 +86,16 @@ handle_full_voicemail(JObj, _Props) ->
                     ]
                     ,DataJObj
                 ),
-
-            case teletype_util:is_preview(DataJObj) of
-                'false' -> process_req(ReqData);
-                'true' ->
-                    process_req(wh_json:merge_jobjs(DataJObj, ReqData))
-            end
+            process_req(wh_json:merge_jobjs(DataJObj, ReqData))
     end.
 
 -spec get_vm_box(ne_binary(), wh_json:object()) -> wh_json:object().
-get_vm_box(AccountDb, JObj) ->
+get_vm_box(AccountId, JObj) ->
     VMBoxId = wh_json:get_value(<<"voicemail_box">>, JObj),
     case teletype_util:open_doc(<<"voicemail">>, VMBoxId, JObj) of
         {'ok', VMBox} -> VMBox;
         {'error', _E} ->
-            lager:debug("failed to load vm box ~s from ~s", [VMBoxId, AccountDb]),
+            lager:debug("failed to load vm box ~s from ~s", [VMBoxId, AccountId]),
             wh_json:new()
     end.
 
@@ -128,9 +119,7 @@ process_req(DataJObj) ->
 process_req(_DataJObj, []) ->
     lager:debug("no templates to render for ~s", [?TEMPLATE_ID]);
 process_req(DataJObj, Templates) ->
-    ServiceData = teletype_util:service_params(DataJObj, ?MOD_CONFIG_CAT),
-
-    Macros = [{<<"service">>, ServiceData}
+    Macros = [{<<"system">>, teletype_util:system_params()}
               ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
               ,{<<"owner">>, teletype_util:public_proplist(<<"owner">>, DataJObj)}
               | build_template_data(DataJObj)
@@ -153,13 +142,7 @@ process_req(DataJObj, Templates) ->
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
 
-    %% Send email
-    case teletype_util:send_email(Emails
-                                  ,Subject
-                                  ,ServiceData
-                                  ,RenderedTemplates
-                                 )
-    of
+    case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
@@ -179,7 +162,3 @@ build_voicemail_data(DataJObj) ->
        ,{<<"message_count">>, wh_json:get_binary_value(<<"message_count">>, DataJObj)}
        | props:delete(<<"pin">>, teletype_util:public_proplist(<<"voicemail">>, DataJObj))
       ]).
-
--spec is_notice_enabled_on_account(wh_json:object(), wh_json:object()) -> boolean().
-is_notice_enabled_on_account(AccountJObj, ApiJObj) ->
-    teletype_util:is_notice_enabled(AccountJObj, ApiJObj, <<"voicemail_full">>).

@@ -20,13 +20,13 @@
 
 -define(TEMPLATE_MACROS
         ,wh_json:from_list([?MACRO_VALUE(<<"user.password">>, <<"user_password">>, <<"Password">>, <<"User's Password">>)
-                            | ?SERVICE_MACROS ++ ?ACCOUNT_MACROS ++ ?USER_MACROS
+                            | ?ACCOUNT_MACROS ++ ?USER_MACROS
                            ])
        ).
 
--define(TEMPLATE_TEXT, <<"Hello, {{user.first_name}} {{user.last_name}}.\n\nThis email is to inform you that the password for your {{service.provider}} {{service.name}} account \"{{account.name}}\" has been set to \"{{user.password}}\".\n\nTo login please vist {{service.url}} and use your normal username with the password \"{{user.password}}\".\n\nOnce you login you will be prompted to customize your password.">>).
--define(TEMPLATE_HTML, <<"<html></head><body><h3>Hello {{user.first_name}} {{user.last_name}}</h3><p>This email is to inform you that the password for your {{service.provider}} {{service.name}} account \"{{account.name}}\" has been set to \"{{user.password}}\".</p><p>To login please vist <a href=\"{{service.url}}\">{{service.url}}</a> and use your normal username with the password \"{{user.password}}\".</p><p>Once you login you will be prompted to customize your password.</p></body></html>">>).
--define(TEMPLATE_SUBJECT, <<"Password reset for your {{service.provider}} {{service.name}} account.">>).
+-define(TEMPLATE_TEXT, <<"Hello, {{user.first_name}} {{user.last_name}}.\n\nThis email is to inform you that the password for your 2600hz VoIP Services account \"{{account.name}}\" has been set to \"{{user.password}}\".\n\nTo login please visit https://apps.2600hz.com/ and use your normal username with the password \"{{user.password}}\".\n\nOnce you login you will be prompted to customize your password.">>).
+-define(TEMPLATE_HTML, <<"<html></head><body><h3>Hello {{user.first_name}} {{user.last_name}}</h3><p>This email is to inform you that the password for your 2600hz VoIP Services account \"{{account.name}}\" has been set to \"{{user.password}}\".</p><p>To login please visit <a href=\"https://apps.2600hz.com/\">2600hz.com</a> and use your normal username with the password \"{{user.password}}\".</p><p>Once you login you will be prompted to customize your password.</p></body></html>">>).
+-define(TEMPLATE_SUBJECT, <<"Password reset for your 2600hz VoIP Services account.">>).
 -define(TEMPLATE_CATEGORY, <<"user">>).
 -define(TEMPLATE_NAME, <<"Password Recovery">>).
 
@@ -60,22 +60,19 @@ handle_password_recovery(JObj, _Props) ->
 
     %% Gather data for template
     DataJObj = wh_json:normalize(JObj),
-
-    AccountDb = wh_json:get_value(<<"account_db">>, DataJObj),
-    AccountId = wh_util:format_account_id(AccountDb, 'raw'),
-
-    {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
+    {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
 
     case teletype_util:should_handle_notification(DataJObj)
-        andalso is_notice_enabled_on_account(AccountJObj, JObj)
+        andalso teletype_util:is_notice_enabled(AccountJObj, JObj, ?TEMPLATE_ID)
     of
         'false' ->
             lager:debug("notification not enabled for account ~s: prefers ~s"
-                        ,[wh_util:format_account_id(AccountDb, 'raw')
+                        ,[AccountId
                           ,kz_account:notification_preference(AccountJObj)
                          ]);
         'true' ->
-            lager:debug("notification enabled for account ~s (~s)", [AccountId, AccountDb]),
+            lager:debug("notification enabled for account ~s", [AccountId]),
 
             User = get_user(DataJObj),
             ReqData =
@@ -86,12 +83,7 @@ handle_password_recovery(JObj, _Props) ->
                     ]
                   ,DataJObj
                  ),
-
-            case wh_json:is_true(<<"preview">>, DataJObj, 'false') of
-                'false' -> process_req(ReqData);
-                'true' ->
-                    process_req(wh_json:merge_jobjs(DataJObj, ReqData))
-            end
+            process_req(wh_json:merge_jobjs(DataJObj, ReqData))
     end.
 
 -spec get_user(wh_json:object()) -> wh_json:object().
@@ -109,16 +101,13 @@ get_user_fold(K, Acc, DataJObj) ->
 -spec process_req(wh_json:object()) -> 'ok'.
 -spec process_req(wh_json:object(), wh_proplist()) -> 'ok'.
 process_req(DataJObj) ->
-    teletype_util:send_update(DataJObj, <<"pending">>),
     %% Load templates
     process_req(DataJObj, teletype_util:fetch_templates(?TEMPLATE_ID, DataJObj)).
 
 process_req(_DataJObj, []) ->
     lager:debug("no templates to render for ~s", [?TEMPLATE_ID]);
 process_req(DataJObj, Templates) ->
-    ServiceData = teletype_util:service_params(DataJObj, ?MOD_CONFIG_CAT),
-
-    Macros = [{<<"service">>, ServiceData}
+    Macros = [{<<"system">>, teletype_util:system_params()}
               ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
               ,{<<"user">>, teletype_util:public_proplist(<<"user">>, DataJObj)}
              ],
@@ -140,17 +129,7 @@ process_req(DataJObj, Templates) ->
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
 
-    %% Send email
-    case teletype_util:send_email(Emails
-                                  ,Subject
-                                  ,ServiceData
-                                  ,RenderedTemplates
-                                 )
-    of
+    case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
-
--spec is_notice_enabled_on_account(wh_json:object(), wh_json:object()) -> boolean().
-is_notice_enabled_on_account(AccountJObj, ApiJObj) ->
-    teletype_util:is_notice_enabled(AccountJObj, ApiJObj, ?TEMPLATE_ID).

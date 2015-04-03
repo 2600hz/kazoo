@@ -57,16 +57,15 @@
             ,?MACRO_VALUE(<<"transaction.subscription_id">>, <<"transaction_subscription_id">>, <<"Subscription ID">>, <<"Subscription ID">>)
             ,?MACRO_VALUE(<<"transaction.addons">>, <<"transaction_addons">>, <<"Transaction Add Ons">>, <<"Transaction Add Ons">>)
             ,?MACRO_VALUE(<<"transaction.discounts">>, <<"transaction_discounts">>, <<"Transaction Discounts">>, <<"Transaction Discounts">>)
-
             ,?MACRO_VALUE(<<"transaction.is_api">>, <<"transaction_is_api">>, <<"Is API">>, <<"Is API">>)
             ,?MACRO_VALUE(<<"transaction.is_automatic">>, <<"transaction_is_automatic">>, <<"Is Automatic">>, <<"Is Automatic">>)
             ,?MACRO_VALUE(<<"transaction.is_recurring">>, <<"transaction_is_recurring">>, <<"Is Recurring">>, <<"Is Recurring">>)
-            | ?SERVICE_MACROS ++ ?ACCOUNT_MACROS
+            | ?ACCOUNT_MACROS
            ])
        ).
 
--define(TEMPLATE_TEXT, <<"KAZOO: transaction notice for {{account.name}} - ${{transaction.amount}} (ID #{{account.id}})\n\n{% if transaction %}Transaction\n{% for key, value in transaction %}{{ key }}: {{ value }}\n{% endfor %}\n{% endif %}{% if plan %}Service Plan\nID: {{plan.id}}\nCategory: {{plan.category}}\nItem: {{plan.item}}\nActivation-Charge: {{plan.activation_charge}}\n\n{% endif %}Account\nAccount ID: {{account.id}}\nAccount Name: {{account.name}}\nAccount Realm: {{account.realm}}\n\nService\nURL: {{service.url}}\nName: {{service.name}}\nService Provider: {{service.provider}}\n\nSent from {{service.host}}">>).
--define(TEMPLATE_HTML, <<"<html><head><meta charset=\"utf-8\" /></head><body><h1>KAZOO: transaction notice for {{account.name}} - ${{transaction.amount}} (ID #{{account.id}})</h1><br/>{% if transaction %}<h2>Transaction</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\">{% for key, value in transaction %}<tr><td>{{ key }}: </td><td>{{ value }}</td></tr>{% endfor %}</table>{% endif %}{% if plan %}<h2>Service Plan</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>ID: </td><td>{{plan.id}}</td></tr><tr><td>Category: </td><td>{{plan.category}}</td></tr><tr><td>Item: </td><td>{{plan.item}}</td></tr><tr><td>Activation-Charge: </td><td>{{plan.activation_charge}}</td></tr></table>{% endif %}<h2>Account</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>Account ID: </td><td>{{account.id}}</td></tr><tr><td>Account Name: </td><td>{{account.name}}</td></tr><tr><td>Account Realm: </td><td>{{account.realm}}</td></tr></table><h2>Service</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>URL: </td><td>{{service.url}}</td></tr><tr><td>Name: </td><td>{{service.name}}</td></tr><tr><td>Service Provider: </td><td>{{service.provider}}</td></tr></table><p style=\"font-size:9pt;color:#CCCCCC\">Sent from {{service.host}}</p></body></html>">>).
+-define(TEMPLATE_TEXT, <<"KAZOO: transaction notice for {{account.name}} - ${{transaction.amount}} (ID #{{account.id}})\n\n{% if transaction %}Transaction\n{% for key, value in transaction %}{{ key }}: {{ value }}\n{% endfor %}\n{% endif %}{% if plan %}Service Plan\nID: {{plan.id}}\nCategory: {{plan.category}}\nItem: {{plan.item}}\nActivation-Charge: {{plan.activation_charge}}\n\n{% endif %}Account\nAccount ID: {{account.id}}\nAccount Name: {{account.name}}\nAccount Realm: {{account.realm}}\n\nService\nURL: https://apps.2600hz.com/\nName: VoIP Services\nService Provider: 2600hz\n\nSent from {{system.hostname}}">>).
+-define(TEMPLATE_HTML, <<"<html><head><meta charset=\"utf-8\" /></head><body><h1>KAZOO: transaction notice for {{account.name}} - ${{transaction.amount}} (ID #{{account.id}})</h1><br/>{% if transaction %}<h2>Transaction</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\">{% for key, value in transaction %}<tr><td>{{ key }}: </td><td>{{ value }}</td></tr>{% endfor %}</table>{% endif %}{% if plan %}<h2>Service Plan</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>ID: </td><td>{{plan.id}}</td></tr><tr><td>Category: </td><td>{{plan.category}}</td></tr><tr><td>Item: </td><td>{{plan.item}}</td></tr><tr><td>Activation-Charge: </td><td>{{plan.activation_charge}}</td></tr></table>{% endif %}<h2>Account</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>Account ID: </td><td>{{account.id}}</td></tr><tr><td>Account Name: </td><td>{{account.name}}</td></tr><tr><td>Account Realm: </td><td>{{account.realm}}</td></tr></table><h2>Service</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>URL: </td><td>https://apps.2600hz.com/</td></tr><tr><td>Name: </td><td>VoIP Services</td></tr><tr><td>Service Provider: </td><td>2600hz</td></tr></table><p style=\"font-size:9pt;color:#CCCCCC\">Sent from {{system.hostname}}</p></body></html>">>).
 -define(TEMPLATE_SUBJECT, <<"KAZOO: transaction notice (account ID #{{account.id}})">>).
 -define(TEMPLATE_CATEGORY, <<"account">>).
 -define(TEMPLATE_NAME, <<"Transaction">>).
@@ -101,18 +100,15 @@ handle_transaction(JObj, _Props) ->
 
     %% Gather data for template
     DataJObj = wh_json:normalize(JObj),
-
-    case teletype_util:should_handle_notification(DataJObj) of
-        'false' -> lager:debug("notification handling not configured for this account");
-        'true' -> handle_req(add_account(DataJObj))
-    end.
-
--spec add_account(wh_json:object()) -> wh_json:object().
-add_account(DataJObj) ->
     AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
-    wh_json:set_value(<<"account">>, AccountJObj, DataJObj).
+    {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
+
+    case teletype_util:should_handle_notification(DataJObj)
+        andalso teletype_util:is_notice_enabled(AccountJObj, JObj, ?TEMPLATE_ID)
+    of
+        'false' -> lager:debug("notification handling not configured for this account");
+        'true' -> handle_req(wh_json:set_value(<<"account">>, AccountJObj, DataJObj))
+    end.
 
 -spec service_plan_data(wh_json:object()) -> wh_proplist().
 service_plan_data(DataJObj) ->
@@ -130,8 +126,7 @@ transaction_data(DataJObj) ->
 
 -spec handle_req(wh_json:object()) -> 'ok'.
 handle_req(DataJObj) ->
-    ServiceData = teletype_util:service_params(DataJObj, ?MOD_CONFIG_CAT),
-    Macros = [{<<"service">>, ServiceData}
+    Macros = [{<<"system">>, teletype_util:system_params()}
               ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
               ,{<<"plan">>, service_plan_data(DataJObj)}
               ,{<<"transaction">>, transaction_data(DataJObj)}
@@ -145,7 +140,8 @@ handle_req(DataJObj) ->
                          || {ContentType, Template} <- Templates
                         ],
 
-    {'ok', TemplateMetaJObj} = teletype_util:fetch_template_meta(?TEMPLATE_ID, teletype_util:find_account_id(DataJObj)),
+    AccountId = teletype_util:find_account_id(DataJObj),
+    {'ok', TemplateMetaJObj} = teletype_util:fetch_template_meta(?TEMPLATE_ID, AccountId),
 
     Subject = teletype_util:render_subject(
                 wh_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj])
@@ -154,13 +150,7 @@ handle_req(DataJObj) ->
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
 
-    %% Send email
-    case teletype_util:send_email(Emails
-                                  ,Subject
-                                  ,ServiceData
-                                  ,RenderedTemplates
-                                 )
-    of
+    case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
