@@ -76,6 +76,7 @@
               ,validate_fun/0
               ,collect_until/0
               ,timeout_or_until/0
+              ,request_return/0
              ]).
 
 -record(state, {current_msg_id :: ne_binary()
@@ -183,11 +184,13 @@ call(Req, PubFun, VFun, Timeout, Worker) ->
         checkin_worker(Worker)
     end.
 
--spec next_worker() -> pid() | {'error', any()}.
+-type pool_error() :: 'pool_full' | 'poolboy_fault'.
+
+-spec next_worker() -> pid() | {'error', pool_error()}.
+-spec next_worker(atom()) -> pid() | {'error', pool_error()}.
 next_worker() ->
     next_worker(wh_amqp_sup:pool_name()).
 
--spec next_worker(atom()) -> pid() | {'error', any()}.
 next_worker(Pool) ->
     try poolboy:checkout(Pool, 'false', default_timeout()) of
         'full' -> {'error', 'pool_full'};
@@ -198,11 +201,11 @@ next_worker(Pool) ->
             {'error', 'poolboy_fault'}
     end.
 
--spec checkout_worker() -> {'ok', pid()} | {'error', any()}.
+-spec checkout_worker() -> {'ok', pid()} | {'error', pool_error()}.
 checkout_worker() ->
     checkout_worker(wh_amqp_sup:pool_name()).
 
--spec checkout_worker(atom()) -> {'ok', pid()} | {'error', any()}.
+-spec checkout_worker(atom()) -> {'ok', pid()} | {'error', pool_error()}.
 checkout_worker(Pool) ->
     try poolboy:checkout(Pool, 'false', default_timeout()) of
         'full' -> {'error', 'pool_full'};
