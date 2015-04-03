@@ -212,36 +212,7 @@ validate_request(CallflowId, Context) ->
 %%--------------------------------------------------------------------
 -spec validate_patch(api_binary(), cb_context:context()) -> cb_context:context().
 validate_patch(CallflowId, Context) ->
-    Context1 = crossbar_doc:load(CallflowId, Context),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            PatchJObj = wh_doc:public_fields(cb_context:req_data(Context)),
-            CallflowsJObj = wh_json:merge_jobjs(PatchJObj, cb_context:doc(Context1)),
-            Context2 = cb_context:set_req_data(Context, CallflowsJObj),
-            JObj = cb_context:req_data(Context2),
-            try [wnm_util:to_e164(Number) || Number <- wh_json:get_ne_value(<<"numbers">>, JObj, [])] of
-                [] -> prepare_patterns(CallflowId, Context2);
-                Numbers ->
-                    C = cb_context:set_req_data(Context2
-                        ,wh_json:set_value(<<"numbers">>, Numbers, JObj)
-                    ),
-                    validate_unique_numbers(CallflowId, Numbers, C)
-            catch
-                _E:_R ->
-                    lager:debug("failed to convert all numbers to e164: ~s: ~p", [_E, _R]),
-                    C = cb_context:add_validation_error(<<"numbers">>
-                        ,<<"type">>
-                        ,<<"Value is not of type array">>
-                        ,Context2
-                    ),
-                    validate_unique_numbers(CallflowId
-                        ,[]
-                        ,cb_context:set_req_data(C, wh_json:set_value(<<"numbers">>, [], JObj))
-                    )
-            end;
-    _Status ->
-            Context1
-    end.
+    crossbar_doc:patch_and_validate(CallflowId, Context, fun validate_request/2).
 
 -spec prepare_patterns(api_binary(), cb_context:context()) -> cb_context:context().
 prepare_patterns(CallflowId, Context) ->
