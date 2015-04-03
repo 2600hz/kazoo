@@ -68,8 +68,8 @@
                            {'prepend', 'false' | api_binary()}.
 -type number_properties() :: [number_property(),...] | [].
 
--define(WNM_DEAFULT_CARRIER_MODULES, [<<"wnm_local">>]).
--define(WNM_DEAFULT_PROVIDER_MODULES, [<<"cnam_notifier">>, <<"port_notifier">>
+-define(WNM_DEFAULT_CARRIER_MODULES, [<<"wnm_local">>]).
+-define(WNM_DEFAULT_PROVIDER_MODULES, [<<"cnam_notifier">>, <<"port_notifier">>
                                        ,<<"failover">> ,<<"prepend">>
                                       ]).
 
