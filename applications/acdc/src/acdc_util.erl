@@ -30,6 +30,7 @@
                                   ,'CHANNEL_DESTROY'
                                   ,'DTMF'
                                   ,'CHANNEL_EXECUTE_COMPLETE'
+                                  ,'usurp_control'
                                  ]).
 
 -spec queue_presence_update(ne_binary(), ne_binary()) -> 'ok'.
