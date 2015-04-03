@@ -234,18 +234,7 @@ update_conference(DocId, Context) ->
 %%--------------------------------------------------------------------
 -spec patch_conference(ne_binary(), cb_context:context()) -> cb_context:context().
 patch_conference(DocId, Context) ->
-    Context1 = crossbar_doc:load(DocId, Context),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            PatchJObj = wh_doc:public_fields(cb_context:req_data(Context)),
-            ConfJObj = wh_json:merge_jobjs(PatchJObj, cb_context:doc(Context1)),
-
-            lager:debug("patched doc, now validating"),
-            OnSuccess = fun(C) -> on_successful_validation(DocId, C) end,
-            cb_context:validate_request_data(<<"conferences">>, cb_context:set_req_data(Context, ConfJObj), OnSuccess);
-        _Status ->
-            Context1
-    end.
+    crossbar_doc:patch_and_validate(DocId, Context, fun update_conference/2).
 
 %%--------------------------------------------------------------------
 %% @private
