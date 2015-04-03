@@ -179,7 +179,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 -spec start_all_printers() -> any().
 start_all_printers() ->
-    {'ok', Results} = couch_mgr:get_results(?WH_FAXES, <<"faxbox/cloud">>),
+    {'ok', Results} = couch_mgr:get_results(?WH_FAXES_DB, <<"faxbox/cloud">>),
     [ send_start_printer(Id, Jid)
        || {Id, Jid, <<"claimed">>}
               <- [{wh_json:get_value(<<"id">>, Result)

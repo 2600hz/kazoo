@@ -231,7 +231,7 @@ terminate(Reason, State) ->
                           {'error', string(), #state{}}.
 check_faxbox(To, State) ->
     [FaxNumber, Domain] = binary:split(wh_util:to_lower_binary(To), <<"@">>),
-    Number = fax_util:filter_numbers(FaxNumber), 
+    Number = fax_util:filter_numbers(FaxNumber),
     case wh_util:is_empty(Number) of
         'true' -> lager:debug("fax number is empty"),
                   {'error', "Not Found", State};
@@ -242,7 +242,7 @@ check_faxbox(To, State) ->
                           {'ok', #state{}} |
                           {'error', string(), #state{}}.
 check_faxbox_doc(FaxNumber, Domain, State) ->
-    
+
     ViewOptions = [{'key', Domain}, 'include_docs'],
     case couch_mgr:get_results(?WH_FAXES, <<"faxbox/email_address">>, ViewOptions) of
         {'ok', []} -> {'error', "Not Found", State};
@@ -254,14 +254,19 @@ check_faxbox_doc(FaxNumber, Domain, State) ->
 
 -spec match(binary(), binary()) -> boolean().
 match(Address, Element) ->
-    case re:run(Address, Element) of
-        'nomatch' -> 'false';
-        _Else -> 'true'
+    re:run(Address, Element) =/= 'nomatch'.
+
+-spec maybe_faxbox(state()) -> state().
+maybe_faxbox(#state{faxbox_email=Domain}=State) ->
+    ViewOptions = [{'key', Domain}, 'include_docs'],
+    case couch_mgr:get_results(?WH_FAXES_DB, <<"faxbox/email_address">>, ViewOptions) of
+        {'ok', [JObj]} -> maybe_faxbox_owner(State#state{faxbox=wh_json:get_value(<<"doc">>,JObj)});
+        _ -> State
     end.
 
 -spec maybe_get_faxbox_owner(binary(), wh_json:object(), #state{}) ->
                                       {'ok', #state{}} |
-                                      {'error', string(), #state{}}.		  
+                                      {'error', string(), #state{}}.
 maybe_get_faxbox_owner(FaxNumber, FaxBoxDoc, State) ->
     case wh_json:get_value(<<"owner_id">>, FaxBoxDoc) of
         'undefined' -> check_faxbox_permissions(FaxNumber, FaxBoxDoc, State);
@@ -278,7 +283,7 @@ maybe_get_faxbox_owner(FaxNumber, FaxBoxDoc, State) ->
                     check_faxbox_permissions(FaxNumber, FaxBoxDoc, State#state{owner_id=OwnerId})
             end
     end.
-	
+
 -spec check_faxbox_permissions(binary(), wh_json:object(), #state{}) ->
                                       {'ok', #state{}} |
                                       {'error', string(), #state{}}.
@@ -296,8 +301,8 @@ check_faxbox_permissions(FaxNumber, FaxBoxDoc, #state{from=From
                     {'error', "not allowed", State}
             end;
         Permissions ->
-            case lists:any(fun(A) -> match(From, A) end, Permissions) 
-                     orelse From =:= OwnerEmail 
+            case lists:any(fun(A) -> match(From, A) end, Permissions)
+                     orelse From =:= OwnerEmail
                 of
                 'true' -> add_fax_document(FaxNumber, FaxBoxDoc, State);
                 'false' ->
@@ -315,7 +320,7 @@ add_fax_document(FaxNumber, FaxBoxDoc, #state{docs=Docs
                                              }=State) ->
     FaxBoxId = wh_json:get_value(<<"_id">>, FaxBoxDoc),
     AccountId = wh_json:get_value(<<"pvt_account_id">>, FaxBoxDoc),
-    AccountDb = ?WH_FAXES,
+    AccountDb = ?WH_FAXES_DB,
     ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, FaxBoxDoc, wh_services:find_reseller_id(AccountId)),
 
     FaxBoxEmailNotify = wh_json:get_value([<<"notifications">>

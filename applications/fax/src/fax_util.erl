@@ -111,7 +111,7 @@ maybe_attach_extension(A, CT) ->
 -spec save_fax_docs(api_objects(), binary(), ne_binary())-> 'ok' | 'error'.
 save_fax_docs([],_FileContents, _CT) -> 'ok';
 save_fax_docs([Doc|Docs], FileContents, CT) ->
-    case couch_mgr:save_doc(?WH_FAXES, Doc) of
+    case couch_mgr:save_doc(?WH_FAXES_DB, Doc) of
         {'ok', JObj} ->
             save_fax_attachment(JObj, FileContents, CT),
             save_fax_docs(Docs, FileContents, CT);
@@ -135,7 +135,7 @@ save_fax_attachment(JObj, FileContents, CT, Count) ->
             ,{'rev', Rev}
            ],
     Name = attachment_name(<<>>, CT),
-    _ = couch_mgr:put_attachment(?WH_FAXES, DocId, Name, FileContents, Opts),
+    _ = couch_mgr:put_attachment(?WH_FAXES_DB, DocId, Name, FileContents, Opts),
     case check_fax_attachment(DocId, Name) of
         {'ok', J} -> save_fax_doc_completed(J);
         {'missing', J} ->
@@ -143,7 +143,7 @@ save_fax_attachment(JObj, FileContents, CT, Count) ->
             save_fax_attachment(J, FileContents, CT, Count-1);
         {'error', _R} ->
             lager:debug("Error ~p saving fax attachment on fax id ~s rev ~s",[_R, DocId, Rev]),
-            {'ok', J} = couch_mgr:open_doc(?WH_FAXES, DocId),
+            {'ok', J} = couch_mgr:open_doc(?WH_FAXES_DB, DocId),
             save_fax_attachment(J, FileContents, CT, Count-1)
     end.
 
@@ -152,7 +152,7 @@ save_fax_attachment(JObj, FileContents, CT, Count) ->
                                       | {'missing', wh_json:object()}
                                       | {'error', any()}.
 check_fax_attachment(DocId, Name) ->
-    case couch_mgr:open_doc(?WH_FAXES, DocId) of
+    case couch_mgr:open_doc(?WH_FAXES_DB, DocId) of
         {'ok', JObj} ->
             case wh_doc:attachment(JObj, Name) of
                 'undefined' -> {'missing', JObj};
@@ -164,7 +164,7 @@ check_fax_attachment(DocId, Name) ->
 -spec save_fax_doc_completed(wh_json:object())-> {'ok', wh_json:object()} | {'error', any()}.
 save_fax_doc_completed(JObj)->
     DocId = wh_json:get_value(<<"_id">>, JObj),
-    case couch_mgr:save_doc(?WH_FAXES, wh_json:set_values([{<<"pvt_job_status">>, <<"pending">>}], JObj)) of
+    case couch_mgr:save_doc(?WH_FAXES_DB, wh_json:set_values([{<<"pvt_job_status">>, <<"pending">>}], JObj)) of
         {'ok', Doc} ->
             lager:debug("fax jobid ~s set to pending", [DocId]),
             {'ok', Doc};
