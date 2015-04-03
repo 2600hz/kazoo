@@ -41,4 +41,4 @@ clean:
 test: clean compile-test eunit
 
 eunit: compile-test
-	erl -noshell -pa test -DTEST -eval "eunit:test([$(MODULES)], [verbose])" -s init stop
+	erl -noshell -pa test $(PA) -DTEST -eval "eunit:test([$(MODULES)], [verbose])" -s init stop
