@@ -158,6 +158,8 @@ call_event(FSM, <<"call_event">>, <<"CHANNEL_BRIDGE">>, JObj) ->
     gen_fsm:send_event(FSM, {'channel_bridged', callid(JObj)});
 call_event(FSM, <<"call_event">>, <<"CHANNEL_UNBRIDGE">>, JObj) ->
     gen_fsm:send_event(FSM, {'channel_unbridged', callid(JObj)});
+call_event(FSM, <<"call_event">>, <<"usurp_control">>, JObj) ->
+    gen_fsm:send_event(FSM, {'channel_unbridged', callid(JObj)});
 call_event(FSM, <<"call_event">>, <<"CHANNEL_DESTROY">>, JObj) ->
     gen_fsm:send_event(FSM, {'channel_hungup', callid(JObj), hangup_cause(JObj)});
 call_event(FSM, <<"call_event">>, <<"LEG_CREATED">>, JObj) ->
