@@ -183,8 +183,7 @@ read(Config, Context) ->
 -spec update(ne_binary(), #cb_context{}) -> #cb_context{}.
 update(Config, #cb_context{}=Context) ->
     Id = <<(?WH_ACCOUNT_CONFIGS)/binary, Config/binary>>,
-    OnSuccess = fun(C) -> crossbar_doc:load_merge(Id, C) end,
-    cb_context:validate_request_data(<<"configs">>, Context, OnSuccess).
+    validate_request_data(Id, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -196,15 +195,15 @@ update(Config, #cb_context{}=Context) ->
 -spec validate_patch(ne_binary(), #cb_context{}) -> #cb_context{}.
 validate_patch(Config, #cb_context{}=Context) ->
     Id = <<(?WH_ACCOUNT_CONFIGS)/binary, Config/binary>>,
-    Context1 = crossbar_doc:load(Id, Context),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            PatchJObj = wh_doc:public_fields(cb_context:req_data(Context)),
-            ConfigsJObj = wh_json:merge_jobjs(PatchJObj, cb_context:doc(Context1)),
+    crossbar_doc:patch_and_validate(Id, Context, fun validate_request_data/2).
 
-            lager:debug("patched doc, now validating"),
-            OnSuccess = fun(C) -> crossbar_doc:load_merge(Id, C) end,
-            cb_context:validate_request_data(<<"configs">>, cb_context:set_req_data(Context, ConfigsJObj), OnSuccess);
-        _Status ->
-            Context1
-    end.
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Validates existing instance
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_request_data(ne_binary(), #cb_context{}) -> #cb_context{}.
+validate_request_data(Id, #cb_context{}=Context) ->
+    OnSuccess = fun(C) -> crossbar_doc:load_merge(Id, C) end,
+    cb_context:validate_request_data(<<"configs">>, Context, OnSuccess).
