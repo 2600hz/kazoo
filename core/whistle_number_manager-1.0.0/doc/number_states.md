@@ -19,6 +19,8 @@ An internal number state used to temporarily hold numbers that are available for
 * Numbers in `discovery` do not participate in number hunting
 * No number can transition from another state to `discovery`
 * There are no public fields for `discovery` numbers
+* Numbers in `discovery` are automatically purged from the database after an aging period
+    * `system_config/number_manager.discovery_expiry_d`: How many days a number in the `discovery` state will remain before being deleted from the database.
 
 ### Port In
 
@@ -86,3 +88,6 @@ An internal state marking the number as archivable.
 ### Deleted
 
 An internal state marking the number as hard-deletable. A crawler will walk the number databases and remove these entries after an aging period.
+
+* Numbers in `deleted` are automatically purged from the database after an aging period
+    * `system_config/number_manager.deleted_expiry_d`: How many days a number in the `deleted` state will remain before being deleted from the database.

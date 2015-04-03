@@ -289,7 +289,6 @@ admin_db_exists(DbName) ->
                    couchbeam_error().
 -spec admin_db_info() -> {'ok', ne_binaries()} |
                          couchbeam_error().
-
 db_info() ->
     couch_util:db_info(wh_couch_connections:get_server()).
 
