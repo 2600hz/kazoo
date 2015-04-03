@@ -271,26 +271,28 @@ should_handle_system() ->
 
 -spec should_handle_account(ne_binary()) -> boolean().
 should_handle_account(Account) ->
-    lager:debug("should account ~s handle notification", [Account]),
     AccountId = wh_util:format_account_id(Account, 'raw'),
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
 
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {'error', _E} -> 'true';
+        {'error', _E} ->
+            lager:debug("teletype should handle account ~s", [AccountId]),
+            'true';
         {'ok', AccountJObj} ->
             should_handle_account(
-                Account
-                ,kz_account:notification_preference(AccountJObj)
-            )
+              Account
+              ,kz_account:notification_preference(AccountJObj)
+             )
     end.
-
 
 -spec should_handle_account(ne_binary(), api_binary()) -> boolean().
 should_handle_account(_Account, ?APP_NAME) -> 'true';
 should_handle_account(Account, 'undefined') ->
     should_handle_reseller(Account);
 should_handle_account(_Account, _Preference) ->
-    lager:debug("unknown notification preference ~s for ~s", [_Preference, _Account]).
+    lager:debug("not handling notification; unknown notification preference '~s' for '~s'"
+                ,[_Preference, _Account]
+               ).
 
 -spec should_handle_reseller(api_binary()) -> boolean().
 should_handle_reseller(Account) ->
