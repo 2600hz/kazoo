@@ -305,14 +305,9 @@ get_all_number_dbs() ->
     {'ok', Dbs} = couch_mgr:admin_all_docs(<<"dbs">>, [{'startkey', ?WNM_DB_PREFIX}
                                                        ,{'endkey', <<?WNM_DB_PREFIX_L, "\ufff0">>}
                                                       ]),
-    [cow_qs:urlencode(Db) || View <- Dbs,
-                             is_number_db((Db = wh_json:get_value(<<"id">>, View)))
+    [cow_qs:urlencode(wh_json:get_value(<<"id">>, View))
+     || View <- Dbs
     ].
-
-is_number_db(<<?WNM_DB_PREFIX_L, _/binary>>) -> 'true';
-is_number_db(<<"numbers%2f", _/binary>>) -> 'true';
-is_number_db(<<"numbers%2F", _/binary>>) -> 'true';
-is_number_db(_) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -344,8 +339,49 @@ is_1npan(DID) ->
 to_e164(<<$+, _/binary>> = N) -> N;
 to_e164(Number) ->
     Converters = get_e164_converters(),
-    Regexs = wh_json:get_keys(Converters),
-    maybe_convert_to_e164(Regexs, Converters, Number).
+    Regexes = wh_json:get_keys(Converters),
+    maybe_convert_to_e164(Regexes, Converters, Number).
+
+-spec to_e164(ne_binary(), api_binary()) -> ne_binary().
+to_e164(<<$+, _/binary>> = N, _) -> N;
+to_e164(Number, 'undefined') -> to_e164(Number);
+to_e164(Number, <<_/binary>> = Account) ->
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+        {'ok', JObj} -> to_account_e164(Number, AccountId, wh_json:get_value(<<"dial_plan">>, JObj));
+        {'error', _} -> to_account_e164(Number, AccountId)
+    end.
+
+-spec to_account_e164(ne_binary(), ne_binary(), api_object()) -> ne_binary().
+to_account_e164(Number, AccountId, 'undefined') ->
+    to_account_e164(Number, AccountId);
+to_account_e164(Number, AccountId, DialPlan) ->
+    case wh_json:get_keys(DialPlan) of
+        [] -> to_account_e164(Number, AccountId);
+        Regexes -> to_account_e164(apply_dialplan(Regexes, DialPlan, Number), AccountId)
+    end.
+
+-spec apply_dialplan(wh_json:keys(), wh_json:object(), ne_binary()) -> ne_binary().
+apply_dialplan([], _, Number) -> Number;
+apply_dialplan([Regex|Regexes], DialPlan, Number) ->
+    case re:run(Number, Regex, [{'capture', 'all', 'binary'}]) of
+        'nomatch' ->
+            apply_dialplan(Regexes, DialPlan, Number);
+        'match' ->
+            Number;
+        {'match', Captures} ->
+            Root = lists:last(Captures),
+            Prefix = wh_json:get_binary_value([Regex, <<"prefix">>], DialPlan, <<>>),
+            Suffix = wh_json:get_binary_value([Regex, <<"suffix">>], DialPlan, <<>>),
+            <<Prefix/binary, Root/binary, Suffix/binary>>
+    end.
+
+-spec to_account_e164(ne_binary(), ne_binary()) -> ne_binary().
+to_account_e164(Number, <<_/binary>> = AccountId) ->
+    Converters = get_e164_converters(AccountId),
+    Regexes = wh_json:get_keys(Converters),
+    maybe_convert_to_e164(Regexes, Converters, Number).
 
 maybe_convert_to_e164([], _, Number) -> Number;
 maybe_convert_to_e164([Regex|Regexs], Converters, Number) ->
@@ -378,6 +414,16 @@ to_1npan(Number) ->
 get_e164_converters() ->
     Default = wh_json:from_list(?DEFAULT_E164_CONVERTERS),
     try whapps_config:get(?WNM_CONFIG_CAT, <<"e164_converters">>, Default) of
+        Converters -> Converters
+    catch
+        _:_ ->
+            Default
+    end.
+
+-spec get_e164_converters(ne_binary()) -> wh_json:object().
+get_e164_converters(AccountId) ->
+    Default = wh_json:from_list(?DEFAULT_E164_CONVERTERS),
+    try whapps_account_config:get_global(AccountId, ?WNM_CONFIG_CAT, <<"e164_converters">>, Default) of
         Converters -> Converters
     catch
         _:_ ->
