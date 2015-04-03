@@ -10,7 +10,9 @@
 -export([init/1]).
 
 %% Helper macro for declaring children of supervisor
--define(CHILD(I, Type), {I, {I, start_link, []}, permanent, 5000, Type, [I]}).
+-define(CHILDREN, [?WORKER('wh_port_request_crawler')
+                   ,?WORKER('wnm_number_crawler')
+                  ]).
 
 %% ===================================================================
 %% API functions
@@ -24,5 +26,10 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
-    {ok, { {one_for_one, 5, 10}, []} }.
+    RestartStrategy = 'one_for_one',
+    MaxRestarts = 5,
+    MaxSecondsBetweenRestarts = 10,
 
+    SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
+
+    {'ok', {SupFlags, ?CHILDREN}}.
