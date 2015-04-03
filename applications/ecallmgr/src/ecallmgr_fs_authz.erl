@@ -247,16 +247,17 @@ rate_channel(Props, Node) ->
             case AccountBilling =:= <<"per_minute">>
                 orelse ResellerBilling =:= <<"per_minute">>
             of
-                'true' -> maybe_kill_unrated_channel(Props, Node, Direction);
+                'true' -> maybe_kill_unrated_channel(Props, Node);
                 _ -> 'ok'
             end;
-        {'ok', RespJObj} -> set_rating_ccvs(RespJObj, Node)
+        {'ok', RespJObj} -> maybe_set_rating_ccvs(Props, RespJObj, Node)
     end.
 
--spec maybe_kill_unrated_channel(wh_proplist(), atom(), ne_binary()) -> 'ok'.
-maybe_kill_unrated_channel(Props, Node, Direction) ->
+-spec maybe_kill_unrated_channel(wh_proplist(), atom()) -> 'ok'.
+maybe_kill_unrated_channel(Props, Node) ->
+    Direction = props:get_binary_value(<<"Call-Direction">>, Props),
     %% get inbound_rate_required or outbound_rate_required
-    case ecallmgr_config:get_boolean(<<Direction/binary, "_rate_required">>, 'false') of
+    case ecallmgr_config:is_true(<<Direction/binary, "_rate_required">>, 'false') of
         'true' ->
             lager:debug("rate is mandatory for ~s call, killing this channel", [Direction]),
             kill_channel(Props, Node);
@@ -269,6 +270,15 @@ authz_default(Props, CallId, Node) ->
     case ecallmgr_config:get(<<"authz_default_action">>, <<"deny">>) of
         <<"deny">> -> maybe_deny_call(Props, CallId, Node);
         _Else -> allow_call(Props, CallId, Node)
+    end.
+
+-spec maybe_set_rating_ccvs(wh_proplist(), wh_json:object(), atom()) -> 'ok'.
+maybe_set_rating_ccvs(Props, JObj, Node) ->
+    case wh_json:get_integer_value(<<"Rate">>, JObj) of
+        'undefined' -> 
+            lager:debug("empty rate response", []),
+            maybe_kill_unrated_channel(Props, Node);
+        _Rate -> set_rating_ccvs(JObj, Node)
     end.
 
 -spec set_rating_ccvs(wh_json:object(), atom()) -> 'ok'.
@@ -338,5 +348,6 @@ rating_req(CallId, Props) ->
      ,{<<"Call-ID">>, CallId}
      ,{<<"Account-ID">>, AccountId}
      ,{<<"Direction">>, props:get_value(<<"Call-Direction">>, Props)}
+     ,{<<"Send-Empty">>, 'true'}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
