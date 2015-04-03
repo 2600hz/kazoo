@@ -243,18 +243,7 @@ update_c2c(C2CId, Context) ->
 
 -spec validate_patch_c2c(ne_binary(), cb_context:context()) -> cb_context:context().
 validate_patch_c2c(C2CId, Context) ->
-    Context1 = crossbar_doc:load(C2CId, Context),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            PatchJObj = wh_doc:public_fields(cb_context:req_data(Context)),
-            C2CJObj = wh_json:merge_jobjs(PatchJObj, cb_context:doc(Context1)),
-
-            lager:debug("patched doc, now validating"),
-            OnSuccess = fun(C) -> crossbar_doc:load_merge(C2CId, C) end,
-            cb_context:validate_request_data(<<"clicktocall">>, cb_context:set_req_data(Context, C2CJObj), OnSuccess);
-        _Status ->
-            Context1
-    end.
+    crossbar_doc:patch_and_validate(C2CId, Context, fun update_c2c/2).
 
 -spec establish_c2c(ne_binary(), cb_context:context()) -> cb_context:context().
 establish_c2c(C2CId, Context) ->
