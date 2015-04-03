@@ -18,6 +18,7 @@
          ,validate/1, validate/2
          ,put/1
          ,post/2
+         ,patch/2
          ,delete/2
         ]).
 
@@ -103,6 +104,10 @@ put(Context) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _DocId) ->
+    crossbar_doc:save(Context).
+
+-spec patch(cb_context:context(), path_token()) -> cb_context:context().
+patch(Context, _DocId) ->
     crossbar_doc:save(Context).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
