@@ -92,7 +92,6 @@ process_req(DataJObj, AccountJObj) ->
 -spec handle_port_request(wh_json:object()) -> 'ok'.
 -spec handle_port_request(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_port_request(DataJObj) ->
-    teletype_util:send_update(DataJObj, <<"pending">>),
     handle_port_request(DataJObj, teletype_util:fetch_templates(?TEMPLATE_ID, DataJObj)).
 
 handle_port_request(_DataJObj, []) ->

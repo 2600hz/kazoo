@@ -305,7 +305,7 @@ default_reply_to(JObj, ConfigCat) ->
                         ).
 
 -spec default_system_value(wh_json:object(), ne_binary(), wh_json:key(), wh_json:key(), wh_json:json_term()) ->
-                                   wh_json:json_term().
+                                  wh_json:json_term().
 default_system_value(JObj, ConfigCat, JSONKey, ConfigKey, ConfigDefault) ->
     case wh_json:get_ne_value(JSONKey, JObj) of
         'undefined' ->

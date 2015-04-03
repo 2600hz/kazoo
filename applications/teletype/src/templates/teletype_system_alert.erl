@@ -100,7 +100,6 @@ handle_req_as_email(JObj, 'true') ->
 -spec process_req(wh_json:object()) -> 'ok'.
 -spec process_req(wh_json:object(), wh_proplist()) -> 'ok'.
 process_req(DataJObj) ->
-    _ = teletype_util:send_update(DataJObj, <<"pending">>),
     %% Load templates
     process_req(DataJObj, teletype_util:fetch_templates(?TEMPLATE_ID, DataJObj)).
 
@@ -116,8 +115,6 @@ process_req(DataJObj, Templates) ->
               ,{<<"details">>, details_macros(DataJObj)}
               ,{<<"message">>, wh_json:get_value(<<"message">>, DataJObj, <<>>)}
              ],
-
-    [lager:debug("m: ~p", [M]) || M <- Macros],
 
     %% Populate templates
     RenderedTemplates = [{ContentType, teletype_util:render(?TEMPLATE_ID, Template, Macros)}

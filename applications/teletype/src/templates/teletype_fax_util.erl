@@ -130,7 +130,6 @@ get_fax_doc_from_modb(DataJObj, FaxId) ->
             throw({'error', 'no_fax_id'})
     end.
 
-
 -spec get_attachments(wh_json:object(), wh_proplist()) -> attachments().
 get_attachments(DataJObj, Macros) ->
     maybe_get_attachments(DataJObj, Macros, teletype_util:is_preview(DataJObj)).

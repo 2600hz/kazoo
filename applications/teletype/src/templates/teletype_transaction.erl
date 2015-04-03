@@ -57,7 +57,6 @@
             ,?MACRO_VALUE(<<"transaction.subscription_id">>, <<"transaction_subscription_id">>, <<"Subscription ID">>, <<"Subscription ID">>)
             ,?MACRO_VALUE(<<"transaction.addons">>, <<"transaction_addons">>, <<"Transaction Add Ons">>, <<"Transaction Add Ons">>)
             ,?MACRO_VALUE(<<"transaction.discounts">>, <<"transaction_discounts">>, <<"Transaction Discounts">>, <<"Transaction Discounts">>)
-
             ,?MACRO_VALUE(<<"transaction.is_api">>, <<"transaction_is_api">>, <<"Is API">>, <<"Is API">>)
             ,?MACRO_VALUE(<<"transaction.is_automatic">>, <<"transaction_is_automatic">>, <<"Is Automatic">>, <<"Is Automatic">>)
             ,?MACRO_VALUE(<<"transaction.is_recurring">>, <<"transaction_is_recurring">>, <<"Is Recurring">>, <<"Is Recurring">>)
@@ -127,8 +126,6 @@ transaction_data(DataJObj) ->
 
 -spec handle_req(wh_json:object()) -> 'ok'.
 handle_req(DataJObj) ->
-    teletype_util:send_update(DataJObj, <<"pending">>),
-
     Macros = [{<<"system">>, teletype_util:system_params()}
               ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
               ,{<<"plan">>, service_plan_data(DataJObj)}

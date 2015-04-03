@@ -101,7 +101,6 @@ get_user_fold(K, Acc, DataJObj) ->
 -spec process_req(wh_json:object()) -> 'ok'.
 -spec process_req(wh_json:object(), wh_proplist()) -> 'ok'.
 process_req(DataJObj) ->
-    teletype_util:send_update(DataJObj, <<"pending">>),
     %% Load templates
     process_req(DataJObj, teletype_util:fetch_templates(?TEMPLATE_ID, DataJObj)).
 

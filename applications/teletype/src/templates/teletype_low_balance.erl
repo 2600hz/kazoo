@@ -80,13 +80,12 @@ get_current_balance(DataJObj) ->
 
 -spec handle_req(wh_json:object()) -> 'ok'.
 handle_req(DataJObj) ->
-    teletype_util:send_update(DataJObj, <<"pending">>),
-
     Macros = [{<<"system">>, teletype_util:system_params()}
-             ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
-             ,{<<"current_balance">>, get_current_balance(DataJObj)}
-             ,{<<"threshold">>, teletype_util:get_balance_threshold(DataJObj)}
-              | build_macro_data(DataJObj)],
+              ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
+              ,{<<"current_balance">>, get_current_balance(DataJObj)}
+              ,{<<"threshold">>, teletype_util:get_balance_threshold(DataJObj)}
+              | build_macro_data(DataJObj)
+             ],
 
     %% Load templates
     Templates = teletype_util:fetch_templates(?TEMPLATE_ID, DataJObj),

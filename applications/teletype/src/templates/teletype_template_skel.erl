@@ -73,8 +73,6 @@ handle_req(JObj, _Props) ->
 
 -spec process_req(wh_json:object(), wh_json:object()) -> 'ok'.
 process_req(DataJObj, _AccountJObj) ->
-    teletype_util:send_update(DataJObj, <<"pending">>),
-
     Macros = [{<<"system">>, teletype_util:system_params()}
               | build_macro_data(DataJObj)
              ],

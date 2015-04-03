@@ -103,8 +103,6 @@ process_req(DataJObj) ->
 process_req(_DataJObj, []) ->
     lager:debug("no templates to render for ~s", [?TEMPLATE_ID]);
 process_req(DataJObj, Templates) ->
-    teletype_util:send_update(DataJObj, <<"pending">>),
-
     Macros = [{<<"system">>, teletype_util:system_params()}
               ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
               ,{<<"user">>, teletype_util:public_proplist(<<"user">>, DataJObj)}

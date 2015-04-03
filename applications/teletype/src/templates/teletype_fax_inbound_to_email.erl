@@ -86,8 +86,6 @@ handle_fax_inbound(JObj, _Props) ->
 
 -spec process_req(wh_json:object(), wh_json:object()) -> 'ok'.
 process_req(DataJObj, AccountJObj) ->
-    teletype_util:send_update(DataJObj, <<"pending">>),
-
     FaxJObj = teletype_fax_util:get_fax_doc(DataJObj),
     OwnerJObj = get_owner_doc(FaxJObj, DataJObj),
 

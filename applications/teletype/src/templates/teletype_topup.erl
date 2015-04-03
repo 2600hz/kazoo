@@ -18,11 +18,7 @@
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
 
 -define(TEMPLATE_MACROS
-        ,wh_json:from_list(
-           [?MACRO_VALUE(<<"user.first_name">>, <<"first_name">>, <<"First Name">>, <<"First Name">>)
-            ,?MACRO_VALUE(<<"user.last_name">>, <<"last_name">>, <<"Last Name">>, <<"Last Name">>)
-            | ?ACCOUNT_MACROS
-           ])
+        ,wh_json:from_list(?USER_MACROS ++ ?ACCOUNT_MACROS)
        ).
 
 -define(TEMPLATE_TEXT, <<"The account \"{{account.name}}\" has less than {{threshold}} of credit remaining.\n We are toping up the account for {{amount}}.">>).
@@ -73,13 +69,12 @@ handle_topup(JObj, _Props) ->
 
 -spec handle_req(wh_json:object()) -> 'ok'.
 handle_req(DataJObj) ->
-    teletype_util:send_update(DataJObj, <<"pending">>),
-
     Macros = [{<<"system">>, teletype_util:system_params()}
-             ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
-             ,{<<"threshold">>, teletype_util:get_balance_threshold(DataJObj)}
-             ,{<<"amount">>, teletype_util:get_topup_amount(DataJObj)}
-              | build_macro_data(DataJObj)],
+              ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
+              ,{<<"threshold">>, teletype_util:get_balance_threshold(DataJObj)}
+              ,{<<"amount">>, teletype_util:get_topup_amount(DataJObj)}
+              | build_macro_data(DataJObj)
+             ],
 
     %% Load templates
     Templates = teletype_util:fetch_templates(?TEMPLATE_ID, DataJObj),
