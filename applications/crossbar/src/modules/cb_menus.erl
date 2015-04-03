@@ -34,6 +34,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.menus">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.menus">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.menus">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.patch.menus">>, ?MODULE, 'patch'),
     crossbar_bindings:bind(<<"*.execute.delete.menus">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
@@ -50,7 +51,7 @@ init() ->
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 allowed_methods(_) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -91,6 +92,8 @@ validate_menu(Context, DocId, ?HTTP_GET) ->
     load_menu(DocId, Context);
 validate_menu(Context, DocId, ?HTTP_POST) ->
     update_menu(DocId, Context);
+validate_menu(Context, DocId, ?HTTP_PATCH) ->
+    validate_patch(DocId, Context);
 validate_menu(Context, DocId, ?HTTP_DELETE) ->
     load_menu(DocId, Context).
 
@@ -152,6 +155,17 @@ load_menu(DocId, Context) ->
 update_menu(DocId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(DocId, C) end,
     cb_context:validate_request_data(<<"menus">>, Context, OnSuccess).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Update-merge an existing menu document with the data provided, if it is
+%% valid
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_patch(ne_binary(), cb_context:context()) -> cb_context:context().
+validate_patch(DocId, Context) ->
+    crossbar_doc:patch_and_validate(DocId, Context).
 
 %%--------------------------------------------------------------------
 %% @private
