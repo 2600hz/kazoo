@@ -517,10 +517,12 @@ should_create_endpoint([Routine|Routines], Endpoint, Properties, Call) when is_f
                                      'ok' |
                                      {'error', 'owner_called_self'}.
 maybe_owner_called_self(Endpoint, Properties, Call) ->
+    Source = wh_json:get_value(<<"source">>, Properties)
     CanCallSelf = wh_json:is_true(<<"can_call_self">>, Properties),
     EndpointOwnerId = wh_json:get_value(<<"owner_id">>, Endpoint),
-    OwnerId = whapps_call:kvs_fetch('owner_id', Call),
+    OwnerId = whapps_call:owner_id(Call),
     case CanCallSelf
+        orelse (Source =:= 'cf_sms_user')
         orelse (not is_binary(OwnerId))
         orelse (not is_binary(EndpointOwnerId))
         orelse EndpointOwnerId =/= OwnerId
