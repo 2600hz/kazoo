@@ -350,7 +350,7 @@ validate_upload(Context, MediaId, FileJObj) ->
 
     Props = [{<<"content_type">>, CT}
              ,{<<"content_length">>, Size}
-             ,{<<"media_source">>, <<"recording">>}
+             ,{<<"media_source">>, <<"upload">>}
             ],
     validate_request(MediaId
                      ,cb_context:set_req_data(Context
