@@ -226,9 +226,9 @@ patch_and_validate(Id, Context, ValidateFun) ->
     Context1 = crossbar_doc:load(Id, Context),
     Context2 = case cb_context:resp_status(Context1) of
         'success' ->
-            PatchJObj = wh_doc:public_fields(cb_context:req_data(Context)),
-            BlacklistsJObj = wh_json:merge_jobjs(PatchJObj, cb_context:doc(Context1)),
-            cb_context:set_req_data(Context, BlacklistsJObj);
+            PubJObj = wh_doc:public_fields(cb_context:req_data(Context)),
+            PatchedJObj = wh_json:merge_jobjs(PubJObj, cb_context:doc(Context1)),
+            cb_context:set_req_data(Context, PatchedJObj);
         _Status ->
             Context1
     end,
