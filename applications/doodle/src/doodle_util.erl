@@ -231,9 +231,26 @@ get_endpoint_from_sipdb(Realm, Username) ->
 replay_sms(AccountId, DocId) ->
     lager:debug("trying to replay sms ~s for account ~s",[DocId, AccountId]),
     {'ok', Doc} = kazoo_modb:open_doc(AccountId, DocId),
-    Flow = wh_json:get_value(<<"pvt_call">>, Doc),
+    JObj = wh_json:get_value(<<"pvt_call">>, Doc),
     Rev = wh_json:get_value(<<"_rev">>, Doc),
-    replay_sms_flow(AccountId, DocId, Rev, Flow).
+    replay_sms_flow_or_stop(AccountId, DocId, Rev, JObj).
+
+-spec replay_sms_flow_or_stop(ne_binary(), ne_binary(), ne_binary(), api_object()) -> any().
+replay_sms_flow_or_stop(AccountId, DocId, <<_:1/binary, "-", _/binary>> = Rev, JObj) ->
+    replay_sms_flow(AccountId, DocId, Rev, JObj);
+replay_sms_flow_or_stop(AccountId, DocId, <<_:2/binary, "-", _/binary>> = Rev, JObj) ->
+    replay_sms_flow(AccountId, DocId, Rev, JObj);
+replay_sms_flow_or_stop(_AccountId, _DocId, _Rev, JObj) ->
+    lager:info("Stopping overplayed SMS ~s with revision ~p",[_DocId, _Rev]),
+    stop_sms(JObj).
+
+-spec stop_sms(api_object()) -> whapps_call:call().
+stop_sms(JObj) ->
+    Routines = [
+        fun(C) -> set_flow_status(<<"stopped">>, C) end
+        ,fun save_sms/1
+    ],
+    whapps_call:exec(Routines, whapps_call:from_json(JObj)).  
 
 -spec replay_sms_flow(ne_binary(), ne_binary(), ne_binary(), api_object()) -> any().
 replay_sms_flow(_AccountId, _DocId, _Rev, 'undefined') -> 'ok';
