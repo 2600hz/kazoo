@@ -202,7 +202,7 @@ handle_conference_error(JObj, Props) ->
 %%--------------------------------------------------------------------
 init([Call]) ->
     process_flag('trap_exit', 'true'),
-    put('callid', whapps_call:call_id(Call)),
+    whapps_call:put_callid(Call),
     {'ok', #participant{call=Call}}.
 
 %%--------------------------------------------------------------------

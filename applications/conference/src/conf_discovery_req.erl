@@ -16,7 +16,7 @@ handle_req(JObj, _Options) ->
     'true' = wapi_conference:discovery_req_v(JObj),
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
     _ = whapps_call_command:set(wh_json:from_list([{<<"Is-Conference">>, <<"true">>}]), 'undefined', Call),
-    put('callid', whapps_call:call_id(Call)),
+    whapps_call:put_callid(Call),
     case conf_participant_sup:start_participant(Call) of
         {'ok', Srv} ->
             conf_participant:set_discovery_event(JObj, Srv),
