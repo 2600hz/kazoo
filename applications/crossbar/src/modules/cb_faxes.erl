@@ -1,8 +1,7 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
-%%% Listing of all expected v1 callbacks
 %%%
 %%% @end
 %%% @contributors:
@@ -140,18 +139,21 @@ content_types_provided(Context, _, _, _) ->
 content_types_provided_for_fax(Context, FaxId, ?HTTP_GET) ->
     Context1 = load_fax_meta(FaxId, Context),
     case cb_context:resp_status(Context1) of
-        'success' ->
-            case wh_doc:attachment_names(cb_context:doc(Context1)) of
-                [] -> Context;
-                [AttachmentId|_] ->
-                    CT = wh_doc:attachment_content_type(cb_context:doc(Context1), AttachmentId),
-                    [Type, SubType] = binary:split(CT, <<"/">>),
-                    cb_context:set_content_types_provided(Context, [{'to_binary', [{Type, SubType}]}])
-            end;
+        'success' -> content_types_provided_for_fax(Context1);
         _Status -> Context
     end;
 content_types_provided_for_fax(Context, _FaxId, _Verb) ->
     Context.
+
+-spec content_types_provided_for_fax(cb_context:context()) -> cb_context:context().
+content_types_provided_for_fax(Context) ->
+    case wh_doc:attachment_names(cb_context:doc(Context)) of
+        [] -> Context;
+        [AttachmentId|_] ->
+            CT = wh_doc:attachment_content_type(cb_context:doc(Context), AttachmentId),
+            [Type, SubType] = binary:split(CT, <<"/">>),
+            cb_context:set_content_types_provided(Context, [{'to_binary', [{Type, SubType}]}])
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -267,7 +269,7 @@ load_incoming_fax_doc(Id, Context) ->
 -spec load_smtp_log_doc(ne_binary(), cb_context:context()) -> cb_context:context().
 load_smtp_log_doc(Id, Context) ->
     read(Id, Context).
-  
+
 -spec load_outgoing_fax_doc(ne_binary(), cb_context:context()) -> cb_context:context().
 load_outgoing_fax_doc(Id, Context) ->
     Ctx = read(Id, Context),
@@ -410,10 +412,10 @@ smtp_summary(Context) ->
     case cb_modules_util:range_modb_view_options(Context) of
         {'ok', ViewOptions} ->
             crossbar_doc:load_view(?CB_LIST_SMTP_LOG
-                           ,['include_docs' | ViewOptions]
-                           ,Context
-                           ,fun normalize_view_results/2
-                          );
+                                   ,['include_docs' | ViewOptions]
+                                   ,Context
+                                   ,fun normalize_view_results/2
+                                  );
         Ctx -> Ctx
     end.
 
@@ -499,4 +501,3 @@ normalize_view_results(JObj, Acc) ->
 -spec normalize_incoming_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_incoming_view_results(JObj, Acc) ->
     [wh_json:public_fields(wh_json:get_value(<<"doc">>, JObj))|Acc].
-
