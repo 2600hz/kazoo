@@ -25,7 +25,7 @@
 
          ,range_view_options/1, range_view_options/2
 
-         ,range_modb_view_options/1, range_modb_view_options/2, range_modb_view_options/3        
+         ,range_modb_view_options/1, range_modb_view_options/2, range_modb_view_options/3
          ,range_modbs/3
         ]).
 
@@ -78,18 +78,21 @@ range_view_options(Context, MaxRange) ->
         _N -> {CreatedFrom, CreatedTo}
     end.
 
--spec range_modb_view_options(cb_context:context()) -> {'ok', wh_proplist()} |
-                                                       cb_context:context().
+-spec range_modb_view_options(cb_context:context()) ->
+                                     {'ok', wh_proplist()} |
+                                     cb_context:context().
 range_modb_view_options(Context) ->
     range_modb_view_options(Context, 'undefined', 'undefined').
 
--spec range_modb_view_options(cb_context:context(), api_binaries()) -> {'ok', wh_proplist()} |
-                                                                       cb_context:context().
+-spec range_modb_view_options(cb_context:context(), api_binaries()) ->
+                                     {'ok', wh_proplist()} |
+                                     cb_context:context().
 range_modb_view_options(Context, PrefixKeys) ->
     range_modb_view_options(Context, PrefixKeys, 'undefined').
 
--spec range_modb_view_options(cb_context:context(), api_binaries(), api_binaries()) -> {'ok', wh_proplist()} |
-                                                                                       cb_context:context().
+-spec range_modb_view_options(cb_context:context(), api_binaries(), api_binaries()) ->
+                                     {'ok', crossbar_doc:view_options()} |
+                                     cb_context:context().
 range_modb_view_options(Context, 'undefined', SuffixKeys) ->
     range_modb_view_options(Context, [], SuffixKeys);
 range_modb_view_options(Context, PrefixKeys, 'undefined') ->
@@ -97,7 +100,7 @@ range_modb_view_options(Context, PrefixKeys, 'undefined') ->
 range_modb_view_options(Context, PrefixKeys, SuffixKeys) ->
     case cb_modules_util:range_view_options(Context) of
         {CreatedFrom, CreatedTo} ->
-            case length(PrefixKeys) =:= 0 andalso length(SuffixKeys) =:= 0 of
+            case PrefixKeys =:= [] andalso SuffixKeys =:= [] of
                 'true' -> {'ok', [{'startkey', CreatedFrom}
                                   ,{'endkey', CreatedTo}
                                   | range_modbs(Context, CreatedFrom, CreatedTo)
@@ -110,13 +113,21 @@ range_modb_view_options(Context, PrefixKeys, SuffixKeys) ->
         Context1 -> Context1
     end.
 
--spec range_modbs(cb_context:context(), pos_integer(), pos_integer()) -> [{'databases', ne_binaries()}].
+-spec range_modbs(cb_context:context(), pos_integer(), pos_integer()) ->
+                         [{'databases', ne_binaries()}].
 range_modbs(Context, From, To) ->
     AccountId = cb_context:account_id(Context),
     {{FromYear, FromMonth, _}, _} = calendar:gregorian_seconds_to_datetime(From),
     {{ToYear, ToMonth, _}, _} = calendar:gregorian_seconds_to_datetime(To),
-    Range = crossbar_util:generate_year_month_sequence({FromYear, FromMonth}, {ToYear, ToMonth}, []),
-    [{'databases', [ wh_util:format_account_mod_id(AccountId, Year, Month) || {Year, Month} <- Range]}].
+
+    [{'databases', [wh_util:format_account_mod_id(AccountId, Year, Month)
+                    || {Year, Month} <- crossbar_util:generate_year_month_sequence({FromYear, FromMonth}
+                                                                                   ,{ToYear, ToMonth}
+                                                                                   ,[]
+                                                                                  )
+                   ]
+     }
+    ].
 
 -spec created_to(cb_context:context(), pos_integer()) -> pos_integer().
 created_to(Context, TStamp) ->
