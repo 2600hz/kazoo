@@ -27,6 +27,7 @@ prepare_and_save(AccountId, Timestamp, JObj) ->
                 ,fun update_ccvs/3
                 ,fun set_doc_id/3
                 ,fun set_recording_url/3
+                ,fun maybe_set_e164_destination/3
                 ,fun is_conference/3
                 ,fun save_cdr/3
                ],
@@ -81,17 +82,31 @@ set_doc_id(_, Timestamp, JObj) ->
     wh_json:set_value(<<"_id">>, DocId, JObj).
 
 -spec set_recording_url(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
-set_recording_url(_, _, JObj) ->
-    case wh_json:get_value([<<"custom_channel_vars">>, <<"recording_url">>], JObj) of
-        'undefined' -> JObj;
-        Url -> wh_json:set_value(<<"recording_url">>, Url, JObj)
-    end.
+set_recording_url(_AccountId, _Timestamp, JObj) ->
+    maybe_leak_ccv(JObj, <<"recording_url">>).
+
+-spec maybe_set_e164_destination(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
+maybe_set_e164_destination(_AccountId, _Timestamp, JObj) ->
+    maybe_leak_ccv(JObj, <<"e164_destination">>).
 
 -spec is_conference(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
-is_conference(_, _, JObj) ->
-    case wh_json:is_true([<<"custom_channel_vars">>, <<"is_conference">>], JObj, 'false') of
-        'true' -> wh_json:set_value(<<"is_conference">>, 'true', JObj);
-        'false' -> JObj
+is_conference(_AccountId, _Timestamp, JObj) ->
+    maybe_leak_ccv(JObj, <<"is_conference">>, {fun wh_json:is_true/3, 'false'}).
+
+-spec maybe_leak_ccv(wh_json:object(), wh_json:key()) -> wh_json:object().
+-spec maybe_leak_ccv(wh_json:object(), wh_json:key(), {fun(), term()}) -> wh_json:object().
+maybe_leak_ccv(JObj, Key) ->
+    maybe_leak_ccv(JObj, Key, {fun wh_json:get_value/3, 'undefined'}).
+
+maybe_leak_ccv(JObj, Key, {GetFun, Default}) ->
+    CCVKey = [<<"custom_channel_vars">>, Key],
+    case GetFun(CCVKey, JObj, Default) of
+        'undefined' -> JObj;
+        Default -> JObj;
+        Value -> wh_json:set_value(Key
+                                   ,Value
+                                   ,wh_json:delete_key(CCVKey, JObj)
+                                  )
     end.
 
 -spec save_cdr(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
