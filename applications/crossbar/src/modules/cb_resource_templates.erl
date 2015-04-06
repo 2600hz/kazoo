@@ -17,6 +17,7 @@
          ,validate/1, validate/2
          ,put/1
          ,post/2
+         ,patch/2
          ,delete/2
         ]).
 
@@ -34,6 +35,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.resource_templates">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.resource_templates">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.resource_templates">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.patch.resource_templates">>, ?MODULE, 'patch'),
     crossbar_bindings:bind(<<"*.execute.delete.resource_templates">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
@@ -50,7 +52,7 @@ init() ->
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 allowed_methods(_) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -99,6 +101,11 @@ validate_resource_templates(?HTTP_GET, Id, Context) ->
 validate_resource_templates(?HTTP_POST, Id, Context) ->
     case is_allowed_to_update(Context) of
         'true' -> validate_request(Id, Context);
+        'false' -> forbidden(Context)
+    end;
+validate_resource_templates(?HTTP_PATCH, Id, Context) ->
+    case is_allowed_to_update(Context) of
+        'true' -> validate_patch(Id, Context);
         'false' -> forbidden(Context)
     end;
 validate_resource_templates(?HTTP_DELETE, Id, Context) ->
@@ -188,6 +195,16 @@ validate_request(ResourceId, Context) ->
         'true' -> Context1;
         'false' -> on_successful_validation(ResourceId,Context1)
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_patch(api_binary(), cb_context:context()) -> cb_context:context().
+validate_patch(ResourceId, Context) ->
+    crossbar_doc:patch_and_validate(ResourceId, Context, fun validate_request/2).
 
 -spec check_template_name(cb_context:context()) -> cb_context:context().
 check_template_name(Context) ->
