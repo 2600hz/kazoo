@@ -17,6 +17,8 @@
          ,dtmf_digit/1
          ,event_name/1
          ,hangup_cause/1, hangup_code/1
+         ,account_id/1
+         ,timestamp/1
         ]).
 
 -include("kz_documents.hrl").
@@ -64,3 +66,11 @@ hangup_cause(JObj) ->
 -spec hangup_code(wh_json:object()) -> api_binary().
 hangup_code(JObj) ->
     wh_json:get_value(<<"Hangup-Code">>, JObj).
+
+-spec account_id(wh_json:object()) -> api_binary().
+account_id(JObj) ->
+    custom_channel_var(JObj, <<"Account-ID">>).
+
+-spec timestamp(wh_json:object()) -> api_integer().
+timestamp(JObj) ->
+    wh_json:get_integer_value(<<"Timestamp">>, JObj).
