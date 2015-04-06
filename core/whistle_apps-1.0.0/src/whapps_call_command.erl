@@ -78,6 +78,8 @@
 -export([record/2, record/3, record/4, record/5, record/6]).
 -export([record_call/2, record_call/3, record_call/4, record_call/5
          ,b_record_call/2, b_record_call/3, b_record_call/4, b_record_call/5
+         ,start_record_call/2, start_record_call/3, start_record_call/4
+         ,stop_record_call/2
         ]).
 -export([store/3, store/4, store/5
          ,store_fax/2, store_fax/3
@@ -1330,6 +1332,20 @@ b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, Call) ->
 b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call) ->
     record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call),
     wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, 'infinity').
+
+-spec start_record_call(wh_proplist(), whapps_call:call()) -> 'ok'.
+-spec start_record_call(wh_proplist(), api_binary() | pos_integer(), whapps_call:call()) -> 'ok'.
+-spec start_record_call(wh_proplist(), api_binary() | pos_integer(), ne_binaries(), whapps_call:call()) -> 'ok'.
+start_record_call(Media, Call) ->
+    record_call(Media, <<"start">>, Call).
+start_record_call(Media, TimeLimit, Call) ->
+    record_call(Media, <<"start">>, TimeLimit, Call).
+start_record_call(Media, TimeLimit, Terminators, Call) ->
+    record_call(Media, <<"start">>, TimeLimit, Terminators, Call).
+
+-spec stop_record_call(wh_proplist(), whapps_call:call()) -> 'ok'.
+stop_record_call(Media, Call) ->
+    record_call(Media, <<"stop">>, Call).
 
 -spec record_call(wh_proplist(), whapps_call:call()) -> 'ok'.
 -spec record_call(wh_proplist(), ne_binary(), whapps_call:call()) -> 'ok'.
