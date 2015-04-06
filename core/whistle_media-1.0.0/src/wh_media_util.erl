@@ -232,6 +232,9 @@ get_prompt(Name, Call) ->
     Lang = whapps_call:language(Call),
     get_prompt(Name, Lang, Call).
 
+get_prompt(<<"prompt://", _/binary>> = PromptId, _Lang, _Call) ->
+    lager:debug("prompt is already encoded: ~s", [PromptId]),
+    PromptId;
 get_prompt(<<"/system_media/", Name/binary>>, Lang, Call) ->
     get_prompt(Name, Lang, Call);
 get_prompt(PromptId, Lang, 'undefined') ->
@@ -241,9 +244,14 @@ get_prompt(PromptId, Lang, <<_/binary>> = AccountId) ->
 get_prompt(PromptId, Lang, Call) ->
     get_prompt(PromptId, Lang, whapps_call:account_id(Call)).
 
+get_prompt(<<"prompt://", _/binary>> = PromptId, _Lang, _AccountId, _UseOverride) ->
+    lager:debug("prompt is already encoded: ~s", [PromptId]),
+    PromptId;
 get_prompt(PromptId, Lang, AccountId, 'true') ->
+    lager:debug("using account override for ~s in account ~s", [PromptId, AccountId]),
     wh_util:join_binary([<<"prompt:/">>, AccountId, PromptId, Lang], <<"/">>);
 get_prompt(PromptId, Lang, _AccountId, 'false') ->
+    lager:debug("account overrides not enabled; ignoring account prompt for ~s", [PromptId]),
     wh_util:join_binary([<<"prompt:/">>, ?WH_MEDIA_DB, PromptId, Lang], <<"/">>).
 
 -spec get_account_prompt(ne_binary(), api_binary(), whapps_call:call()) -> api_binary().
