@@ -17,29 +17,28 @@
 handle_req(JObj, _Props) ->
     'true' = wapi_call:event_v(JObj),
     _ = wh_util:put_callid(JObj),
-    AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Account-ID">>], JObj),
-    Timestamp = wh_json:get_integer_value(<<"Timestamp">>, JObj),
+    AccountId = kz_call_event:account_id(JObj),
+    Timestamp = kz_call_event:timestamp(JObj),
     prepare_and_save(AccountId, Timestamp, JObj).
 
--spec prepare_and_save(account_id(), pos_integer(), wh_json:object()) -> wh_json:object().
+-spec prepare_and_save(account_id(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
 prepare_and_save(AccountId, Timestamp, JObj) ->
-    Routines = [fun normalize/3
-                ,fun update_pvt_parameters/3
+    Routines = [fun update_pvt_parameters/3
                 ,fun update_ccvs/3
                 ,fun set_doc_id/3
                 ,fun set_recording_url/3
                 ,fun is_conference/3
                 ,fun save_cdr/3
                ],
+
     lists:foldl(fun(F, J) ->
                         F(AccountId, Timestamp, J)
-                end, JObj, Routines).
+                end
+                ,wh_json:normalize_jobj(JObj)
+                ,Routines
+               ).
 
--spec normalize(api_binary(), pos_integer(), wh_json:object()) -> wh_json:object().
-normalize(_, _, JObj) ->
-    wh_json:normalize_jobj(JObj).
-
--spec update_pvt_parameters(api_binary(), pos_integer(), wh_json:object()) -> wh_json:object().
+-spec update_pvt_parameters(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
 update_pvt_parameters('undefined', _, JObj) ->
     Props = [{'type', 'cdr'}
              ,{'crossbar_doc_vsn', 2}
@@ -53,7 +52,7 @@ update_pvt_parameters(AccountId, Timestamp, JObj) ->
             ],
     wh_doc:update_pvt_parameters(JObj, AccountMODb, Props).
 
--spec update_ccvs(api_binary(), pos_integer(), wh_json:object()) -> wh_json:object().
+-spec update_ccvs(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
 update_ccvs(_, _, JObj) ->
     CCVs = wh_json:get_value(<<"custom_channel_vars">>, JObj, wh_json:new()),
     {UpdatedJobj, UpdatedCCVs} =
@@ -64,37 +63,38 @@ update_ccvs(_, _, JObj) ->
         ),
     wh_json:set_value(<<"custom_channel_vars">>, UpdatedCCVs, UpdatedJobj).
 
--spec update_ccvs_foldl(ne_binary(), any(), {wh_json:object(), wh_json:object()}) -> {wh_json:object(), wh_json:object()}.
+-spec update_ccvs_foldl(wh_json:key(), wh_json:json_term(), {wh_json:object(), wh_json:object()}) ->
+                               {wh_json:object(), wh_json:object()}.
 update_ccvs_foldl(Key, Value,  {JObj, CCVs}=Acc) ->
     case wh_json:is_private_key(Key) of
         'false' -> Acc;
         'true' ->
             {wh_json:set_value(Key, Value, JObj)
-             ,wh_json:delete_key(Key, CCVs)}
+             ,wh_json:delete_key(Key, CCVs)
+            }
     end.
 
-
--spec set_doc_id(api_binary(), pos_integer(), wh_json:object()) -> wh_json:object().
+-spec set_doc_id(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
 set_doc_id(_, Timestamp, JObj) ->
     CallId = wh_json:get_value(<<"call_id">>, JObj),
     DocId = cdr_util:get_cdr_doc_id(Timestamp, CallId),
     wh_json:set_value(<<"_id">>, DocId, JObj).
 
--spec set_recording_url(api_binary(), pos_integer(), wh_json:object()) -> wh_json:object().
+-spec set_recording_url(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
 set_recording_url(_, _, JObj) ->
     case wh_json:get_value([<<"custom_channel_vars">>, <<"recording_url">>], JObj) of
         'undefined' -> JObj;
         Url -> wh_json:set_value(<<"recording_url">>, Url, JObj)
     end.
 
--spec is_conference(api_binary(), pos_integer(), wh_json:object()) -> wh_json:object().
+-spec is_conference(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
 is_conference(_, _, JObj) ->
     case wh_json:is_true([<<"custom_channel_vars">>, <<"is_conference">>], JObj, 'false') of
         'true' -> wh_json:set_value(<<"is_conference">>, 'true', JObj);
         'false' -> JObj
     end.
 
--spec save_cdr(api_binary(), pos_integer(), wh_json:object()) -> wh_json:object().
+-spec save_cdr(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
 save_cdr(_, _, JObj) ->
     CDRDb = wh_json:get_value(<<"pvt_account_db">>, JObj),
     case cdr_util:save_cdr(CDRDb, JObj) of
@@ -102,4 +102,3 @@ save_cdr(_, _, JObj) ->
             lager:error("write failed to ~s, too many retries", [CDRDb]);
         'ok' -> 'ok'
     end.
-
