@@ -211,7 +211,11 @@ handle_cast('maybe_start_recording', #state{is_recording='false'
                                             ,sample_rate = SampleRate
                                            }=State) ->
     start_recording(Call, MediaName, TimeLimit, <<"wh_media_recording">>, SampleRate),
-    {'noreply', State};
+    {'noreply', State#state{
+                  channel_status_ref=start_check_call_timer()
+                  ,time_limit_ref=start_time_limit_timer(TimeLimit)
+                 }
+    };
 handle_cast('maybe_start_recording', #state{is_recording='false'
                                             ,record_on_answer='true'
                                             ,call=Call
@@ -244,7 +248,11 @@ handle_cast('maybe_start_recording_on_answer', #state{is_recording='false'
                                                       ,sample_rate = SampleRate
                                                      }=State) ->
     start_recording(Call, MediaName, TimeLimit, <<"wh_media_recording">>, SampleRate),
-    {'noreply', State};
+    {'noreply', State#state{
+                  channel_status_ref=start_check_call_timer()
+                  ,time_limit_ref=start_time_limit_timer(TimeLimit)
+                 }
+    };
 handle_cast('stop_call', #state{store_attempted='true'}=State) ->
     lager:debug("we've already sent a store attempt, waiting to hear back"),
     {'noreply', State};
