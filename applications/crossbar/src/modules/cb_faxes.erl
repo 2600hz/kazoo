@@ -1,8 +1,7 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
-%%% Listing of all expected v1 callbacks
 %%%
 %%% @end
 %%% @contributors:
@@ -24,6 +23,7 @@
 
 -define(OUTGOING, <<"outgoing">>).
 -define(INCOMING, <<"incoming">>).
+-define(SMTP_LOG, <<"smtplog">>).
 
 -define(ATTACHMENT, <<"attachment">>).
 
@@ -31,6 +31,7 @@
 -define(CB_LIST_BY_FAXBOX, <<"faxes/list_by_faxbox">>).
 -define(CB_LIST_BY_OWNERID, <<"faxes/list_by_ownerid">>).
 -define(CB_LIST_BY_ACCOUNT, <<"faxes/list_by_account">>).
+-define(CB_LIST_SMTP_LOG, <<"faxes/smtp_log">>).
 
 -define(FAX_FILE_TYPE, <<"tiff">>).
 
@@ -76,11 +77,15 @@ init() ->
 allowed_methods() ->
     [?HTTP_PUT].
 
+allowed_methods(?SMTP_LOG) ->
+    [?HTTP_GET];
 allowed_methods(?INCOMING) ->
     [?HTTP_GET];
 allowed_methods(?OUTGOING) ->
     [?HTTP_GET, ?HTTP_PUT].
 
+allowed_methods(?SMTP_LOG, _Id) ->
+    [?HTTP_GET];
 allowed_methods(?INCOMING, _Id) ->
     [?HTTP_GET];
 allowed_methods(?OUTGOING, _Id) ->
@@ -104,8 +109,10 @@ allowed_methods(?INCOMING, _Id, ?ATTACHMENT) ->
 -spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
 
 resource_exists() -> 'true'.
+resource_exists(?SMTP_LOG) -> 'true';
 resource_exists(?INCOMING) -> 'true';
 resource_exists(?OUTGOING) -> 'true'.
+resource_exists(?SMTP_LOG, _Id) -> 'true';
 resource_exists(?INCOMING, _Id) -> 'true';
 resource_exists(?OUTGOING, _Id) -> 'true'.
 resource_exists(?INCOMING, _Id, ?ATTACHMENT) -> 'true'.
@@ -132,18 +139,21 @@ content_types_provided(Context, _, _, _) ->
 content_types_provided_for_fax(Context, FaxId, ?HTTP_GET) ->
     Context1 = load_fax_meta(FaxId, Context),
     case cb_context:resp_status(Context1) of
-        'success' ->
-            case wh_doc:attachment_names(cb_context:doc(Context1)) of
-                [] -> Context;
-                [AttachmentId|_] ->
-                    CT = wh_doc:attachment_content_type(cb_context:doc(Context1), AttachmentId),
-                    [Type, SubType] = binary:split(CT, <<"/">>),
-                    cb_context:set_content_types_provided(Context, [{'to_binary', [{Type, SubType}]}])
-            end;
+        'success' -> content_types_provided_for_fax(Context1);
         _Status -> Context
     end;
 content_types_provided_for_fax(Context, _FaxId, _Verb) ->
     Context.
+
+-spec content_types_provided_for_fax(cb_context:context()) -> cb_context:context().
+content_types_provided_for_fax(Context) ->
+    case wh_doc:attachment_names(cb_context:doc(Context)) of
+        [] -> Context;
+        [AttachmentId|_] ->
+            CT = wh_doc:attachment_content_type(cb_context:doc(Context), AttachmentId),
+            [Type, SubType] = binary:split(CT, <<"/">>),
+            cb_context:set_content_types_provided(Context, [{'to_binary', [{Type, SubType}]}])
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -166,13 +176,17 @@ validate(Context) ->
 validate(Context, ?OUTGOING) ->
     validate_outgoing_fax(Context, cb_context:req_verb(Context));
 validate(Context, ?INCOMING) ->
-    incoming_summary(Context).
+    incoming_summary(Context);
+validate(Context, ?SMTP_LOG) ->
+    smtp_summary(Context).
 
 validate_outgoing_fax(Context, ?HTTP_GET) ->
     outgoing_summary(cb_context:set_account_db(Context, ?WH_FAXES));
 validate_outgoing_fax(Context, ?HTTP_PUT) ->
     create(cb_context:set_account_db(Context, ?WH_FAXES)).
 
+validate(Context, ?SMTP_LOG, Id) ->
+    load_smtp_log_doc(Id, Context);
 validate(Context, ?INCOMING, Id) ->
     load_incoming_fax_doc(Id, Context);
 validate(Context, ?OUTGOING, Id) ->
@@ -250,6 +264,10 @@ read(Id, Context) ->
 
 -spec load_incoming_fax_doc(ne_binary(), cb_context:context()) -> cb_context:context().
 load_incoming_fax_doc(Id, Context) ->
+    read(Id, Context).
+
+-spec load_smtp_log_doc(ne_binary(), cb_context:context()) -> cb_context:context().
+load_smtp_log_doc(Id, Context) ->
     read(Id, Context).
 
 -spec load_outgoing_fax_doc(ne_binary(), cb_context:context()) -> cb_context:context().
@@ -369,7 +387,7 @@ maybe_reset_job(Context, _Status) -> Context.
 incoming_summary(Context) ->
     JObj = cb_context:doc(Context),
     {View, PreFilter, PostFilter} = get_incoming_view_and_filter(JObj),
-    case get_incoming_view_options(Context, PreFilter, PostFilter) of
+    case cb_modules_util:range_modb_view_options(Context, PreFilter, PostFilter) of
         {'ok', ViewOptions} ->
             crossbar_doc:load_view(View
                            ,['include_docs' | ViewOptions]
@@ -389,6 +407,17 @@ get_incoming_view_and_filter(JObj) ->
         _Else -> {?CB_LIST_ALL, 'undefined', [wh_json:new()]}
     end.
 
+-spec smtp_summary(cb_context:context()) -> cb_context:context().
+smtp_summary(Context) ->
+    case cb_modules_util:range_modb_view_options(Context) of
+        {'ok', ViewOptions} ->
+            crossbar_doc:load_view(?CB_LIST_SMTP_LOG
+                                   ,['include_docs' | ViewOptions]
+                                   ,Context
+                                   ,fun normalize_view_results/2
+                                  );
+        Ctx -> Ctx
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -472,38 +501,3 @@ normalize_view_results(JObj, Acc) ->
 -spec normalize_incoming_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_incoming_view_results(JObj, Acc) ->
     [wh_json:public_fields(wh_json:get_value(<<"doc">>, JObj))|Acc].
-
--spec get_incoming_view_options(cb_context:context(), api_binaries(), api_binaries()) ->
-                                       {'ok', wh_proplist()} |
-                                       cb_context:context().
-
-get_incoming_view_options(Context, 'undefined', SuffixKey) ->
-    get_incoming_view_options(Context, [], SuffixKey);
-get_incoming_view_options(Context, PrefixKey, 'undefined') ->
-    get_incoming_view_options(Context, PrefixKey, []);
-get_incoming_view_options(Context, PrefixKey, SuffixKey) ->
-    MaxRange = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_range">>, (?SECONDS_IN_DAY * 31 + ?SECONDS_IN_HOUR)),
-    case cb_modules_util:range_view_options(Context, MaxRange) of
-        {CreatedFrom, CreatedTo} ->
-            case length(PrefixKey) =:= 0 andalso length(SuffixKey) =:= 0 of
-                'true' ->
-                    {'ok', [{'startkey', CreatedFrom}
-                            ,{'endkey', CreatedTo}
-                            | get_modbs(Context, CreatedFrom, CreatedTo)
-                           ]};
-                'false' ->
-                     {'ok', [{'startkey', [Key || Key <- PrefixKey ++ [CreatedFrom] ++ SuffixKey] }
-                             ,{'endkey', [Key || Key <- PrefixKey  ++ [CreatedTo]   ++ SuffixKey] }
-                             | get_modbs(Context, CreatedFrom, CreatedTo)
-                            ]}
-            end;
-        Context1 -> Context1
-    end.
-
--spec get_modbs(cb_context:context(), pos_integer(), pos_integer()) -> [{'databases', ne_binaries()}].
-get_modbs(Context, From, To) ->
-    AccountId = cb_context:account_id(Context),
-    {{FromYear, FromMonth, _}, _} = calendar:gregorian_seconds_to_datetime(From),
-    {{ToYear, ToMonth, _}, _} = calendar:gregorian_seconds_to_datetime(To),
-    Range = crossbar_util:generate_year_month_sequence({FromYear, FromMonth}, {ToYear, ToMonth}, []),
-    [{'databases', [ wh_util:format_account_mod_id(AccountId, Year, Month) || {Year, Month} <- Range]}].

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014, 2600Hz INC
+%%% @copyright (C) 2014-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -35,19 +35,26 @@
 -record(state, {
           options = [] :: list()
           ,from :: binary()
-          ,docs = [] :: list()
-          ,filename :: binary()
+          ,to :: binary()
+          ,docs = [] :: wh_json:objects()
+          ,filename :: api_binary()
           ,content_type :: binary()
-          ,peer_ip :: tuple()
-          ,proxy_ip :: tuple()
-		  ,owner_id = 'undefined' :: api_binary()
-          ,owner_email = 'undefined' :: api_binary()
+          ,peer_ip :: peer()
+          ,owner_id :: api_binary()
+          ,owner_email :: api_binary()
+          ,faxbox_email :: api_binary()
+          ,faxbox :: api_object()
+          ,errors = [] :: ne_binaries()
+          ,original_number :: api_binary()
+          ,number :: api_binary()
          }).
 
 -type state() :: #state{}.
 -type error_message() :: {'error', string(), #state{}}.
 
--spec init(ne_binary(), non_neg_integer(), tuple(), list()) ->
+-type peer() :: {inet:ip_address(), non_neg_integer()}.
+
+-spec init(ne_binary(), non_neg_integer(), peer(), wh_proplist()) ->
                   {'ok', string(), #state{}} |
                   {'stop', any(), string()}.
 init(Hostname, SessionCount, Address, Options) ->
@@ -57,13 +64,13 @@ init(Hostname, SessionCount, Address, Options) ->
             State = #state{options = Options, peer_ip = Address},
             {'ok', Banner, State};
         'true' ->
-            lager:debug("connection limit exceeded ~p", [Address]),
+            lager:warning("connection limit exceeded ~p", [Address]),
             {'stop', 'normal', ["421 ", Hostname, " is too busy to accept mail right now"]}
     end.
 
--spec handle_HELO(binary(), #state{}) ->
-                         {'ok', pos_integer(), #state{}} |
-                         {'ok', #state{}} |
+-spec handle_HELO(binary(), state()) ->
+                         {'ok', pos_integer(), state()} |
+                         {'ok', state()} |
                          error_message().
 handle_HELO(<<"invalid">>, State) ->
     %% contrived example
@@ -75,8 +82,8 @@ handle_HELO(Hostname, State) ->
     {'ok', 655360, State}. % 640kb of HELO should be enough for anyone.
 %% If {ok, State} was returned here, we'd use the default 10mb limit
 
--spec handle_EHLO(binary(), list(), #state{}) ->
-                         {'ok', list(), #state{}} |
+-spec handle_EHLO(binary(), list(), state()) ->
+                         {'ok', list(), state()} |
                          error_message().
 handle_EHLO(<<"invalid">>, _Extensions, State) ->
     %% contrived example
@@ -95,37 +102,37 @@ handle_EHLO(Hostname, Extensions, #state{options=Options}=State) ->
                    end,
     {'ok', MyExtensions, State}.
 
--spec handle_MAIL(binary(), #state{}) ->
-                         {'ok', #state{}} |
+-spec handle_MAIL(binary(), state()) ->
+                         {'ok', state()} |
                          error_message().
 handle_MAIL(From, State) ->
     lager:debug("Checking Mail from ~s", [From]),
     {'ok', State#state{from=From}}.
 
--spec handle_MAIL_extension(binary(), #state{}) ->
-                                   {'ok', #state{}} |
+-spec handle_MAIL_extension(binary(), state()) ->
+                                   {'ok', state()} |
                                    'error'.
 handle_MAIL_extension(Extension, _State) ->
     lager:debug("Unknown MAIL FROM extension ~s", [Extension]),
     'error'.
 
--spec handle_RCPT(binary(), #state{}) ->
-                         {'ok', #state{}} |
-                         {'error', string(), #state{}}.
+-spec handle_RCPT(binary(), state()) ->
+                         {'ok', state()} |
+                         {'error', string(), state()}.
 handle_RCPT(To, State) ->
     lager:debug("Checking Mail to ~s", [To]),
-    check_faxbox(To,State).
+    check_faxbox((reset(State))#state{to=To}).
 
--spec handle_RCPT_extension(binary(), #state{}) ->
-                                   {'ok', #state{}} |
+-spec handle_RCPT_extension(binary(), state()) ->
+                                   {'ok', state()} |
                                    'error'.
 handle_RCPT_extension(Extension, _State) ->
     lager:debug("Unknown RCPT TO extension ~s", [Extension]),
     'error'.
 
--spec handle_DATA(binary(), ne_binaries(), binary(), #state{}) ->
-                         {'ok', string(), #state{}} |
-                         {'error', string(), #state{}}.
+-spec handle_DATA(binary(), ne_binaries(), binary(), state()) ->
+                         {'ok', string(), state()} |
+                         {'error', string(), state()}.
 handle_DATA(From, To, <<>>, State) ->
     lager:debug("552 Message too small. From ~p to ~p", [From,To]),
     {'error', "552 Message too small", State};
@@ -163,60 +170,47 @@ handle_DATA(From, To, Data, #state{options=Options}=State) ->
             {'error', <<"Message decode failed">>, State}
     end.
 
--spec handle_RSET(#state{}) -> #state{}.
+-spec handle_RSET(state()) -> state().
 handle_RSET(State) ->
     lager:debug("RSET Called"),
     %% reset any relevant internal state
     State.
 
--spec handle_VRFY(binary(), #state{}) ->
-                         {'ok', string(), #state{}} |
-                         {'error', string(), #state{}}.
+-spec handle_VRFY(binary(), state()) ->
+                         {'ok', string(), state()} |
+                         {'error', string(), state()}.
 handle_VRFY(_Address, State) ->
     lager:debug("252 VRFY disabled by policy, just send some mail"),
     {'error', "252 VRFY disabled by policy, just send some mail", State}.
 
--spec handle_other(binary(), binary(), #state{}) ->
-                          {string(), #state{}} | {#state{}}.
+-spec handle_other(binary(), binary(), state()) ->
+                          {iolist(), state()} |
+                          {state()}.
 handle_other(<<"PROXY">>, Args, State) ->
     lager:debug("PROXY : ~p",[Args]),
     {State};
-
-
 handle_other(Verb, Args, State) ->
     %% You can implement other SMTP verbs here, if you need to
     lager:debug("500 Error: command not recognized : ~p / ~p",[Verb,Args]),
-    {["500 Error: command not recognized : '", Verb, "'"], State}.
+    {["500 Error: command not recognized : '", wh_util:to_list(Verb), "'"], State}.
 
--spec handle_AUTH('login' | 'plain' | 'cram-md5', binary(), binary() | {binary(), binary()}, #state{}) ->
-                         {'ok', #state{}} |
+-spec handle_AUTH('login' | 'plain' | 'cram-md5', binary(), binary() | {binary(), binary()}, state()) ->
                          'error'.
 handle_AUTH(_Type, _Username, _Password, _State) ->
     'error'.
 
--spec handle_STARTTLS(#state{}) -> #state{}.
+-spec handle_STARTTLS(state()) -> state().
 handle_STARTTLS(State) ->
     lager:debug("SMTP TLS Started"),
     State.
 
--spec code_change(any(), #state{}, any()) -> {'ok', #state{}}.
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
--spec terminate(any(), #state{}) ->
-                       {'ok', any(), #state{}}.
-terminate('normal', #state{filename=Filename
-                           ,content_type=CT
-                           ,docs=Docs
-                          }=State) ->
-    case wh_util:is_empty(Filename) of
-        'false' ->
-            lager:debug("terminate normal saving docs"),
-            {'ok', FileContents} = file:read_file(Filename),
-            fax_util:save_fax_docs(Docs, FileContents,CT),
-            file:delete(Filename);
-        _  -> 'ok'
-    end,
+-spec terminate(any(), state()) ->  {'ok', any(), state()}.
+terminate('normal', State) ->
+    spawn(fun()-> handle_message(State) end),
     {'ok', 'normal', State};
 terminate(Reason, State) ->
     lager:debug("terminate ~p", [Reason]),
@@ -224,112 +218,273 @@ terminate(Reason, State) ->
 
 %%% Internal Functions %%%
 
+-spec handle_message(state()) -> 'ok'.
+handle_message(#state{errors=[_Error | _Errors]
+                      ,faxbox='undefined'
+                     }=State) ->
+    maybe_system_report(State);
+handle_message(#state{errors = []
+                      ,faxbox='undefined'
+                     }=State) ->
+    maybe_system_report(State#state{errors=[<<"no faxbox">>]});
+handle_message(State) -> maybe_faxbox_save(State).
 
-
--spec check_faxbox(binary(), #state{}) ->
-                          {'ok', #state{}} |
-                          {'error', string(), #state{}}.
-check_faxbox(To, State) ->
-    [FaxNumber, Domain] = binary:split(wh_util:to_lower_binary(To), <<"@">>),
-    Number = fax_util:filter_numbers(FaxNumber), 
-    case wh_util:is_empty(Number) of
-        'true' -> lager:debug("fax number is empty"),
-                  {'error', "Not Found", State};
-        'false' -> check_faxbox_doc(Number, Domain, State)
+-spec maybe_faxbox_save(state()) -> 'ok'.
+maybe_faxbox_save(#state{errors=[_Error | _Errors]}=State) ->
+    maybe_faxbox_log(State);
+maybe_faxbox_save(#state{docs=[]}=State) ->
+    maybe_faxbox_log(State#state{errors=[<<"no fax documents to save">>]});
+maybe_faxbox_save(#state{filename='undefined'}=State) ->
+    maybe_faxbox_log(State);
+maybe_faxbox_save(#state{filename=Filename
+                         ,content_type=CT
+                         ,docs=Docs
+                         ,errors=[]
+                        }=State) ->
+    case file:read_file(Filename) of
+        {'ok', FileContents} ->
+            case fax_util:save_fax_docs(Docs, FileContents, CT) of
+                'ok' ->
+                    file:delete(Filename),
+                    'ok';
+                {'error', Error} ->
+                    maybe_faxbox_log(State#state{errors=[Error]})
+            end;
+        _Else ->
+            Error = wh_util:to_binary(io_lib:format("error reading attachment ~s", [Filename])),
+            maybe_faxbox_log(State#state{errors=[Error]})
     end.
 
--spec check_faxbox_doc(binary(), binary(), #state{}) ->
-                          {'ok', #state{}} |
-                          {'error', string(), #state{}}.
-check_faxbox_doc(FaxNumber, Domain, State) ->
-    
-    ViewOptions = [{'key', Domain}, 'include_docs'],
-    case couch_mgr:get_results(?WH_FAXES, <<"faxbox/email_address">>, ViewOptions) of
-        {'ok', []} -> {'error', "Not Found", State};
-        {'ok', [JObj]} -> maybe_get_faxbox_owner(FaxNumber, wh_json:get_value(<<"doc">>,JObj), State);
-        {'error', 'not_found'} -> {'error', "Not Found", State};
-        _ -> {'error', "Unknown Error", State}
+-spec maybe_system_report(state()) -> 'ok'.
+maybe_system_report(#state{faxbox='undefined'}=State) ->
+    case whapps_config:get(?CONFIG_CAT, <<"report_anonymous_system_errors">>, 'false') of
+        'true' -> system_report(State);
+        'false' -> 'ok'
+    end;
+maybe_system_report(State) ->
+    case whapps_config:get(?CONFIG_CAT, <<"report_faxbox_system_errors">>, 'true') of
+        'true' -> system_report(State);
+        'false' -> 'ok'
     end.
 
+-spec maybe_faxbox_log(state()) -> 'ok'.
+maybe_faxbox_log(#state{faxbox=JObj}=State) ->
+    AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
+    case wh_json:is_true(<<"log_errors">>, JObj, 'false')
+        orelse ( whapps_account_config:get(AccountId, ?CONFIG_CAT, <<"log_faxbox_errors">>, 'true')
+               andalso wh_json:is_true(<<"log_errors">>, JObj, 'true') )
+        of
+        'true' -> faxbox_log(State);
+        'false' -> maybe_system_report(State)
+    end.
+
+-spec system_report(state()) -> 'ok'.
+system_report(#state{errors=[Error | _]}=State) ->
+    Props = to_proplist(State),
+    Notify = props:filter_undefined(
+               [{<<"Subject">>, <<"fax smtp error">>}
+                ,{<<"Message">>, Error}
+                ,{<<"Details">>, wh_json:from_list(Props)}
+                ,{<<"Account-ID">>, props:get_value(<<"Account-ID">>, Props)}
+                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+               ]),
+    wh_amqp_worker:cast(Notify, fun wapi_notifications:publish_system_alert/1).
+
+-spec faxbox_log(state()) -> 'ok'.
+faxbox_log(#state{faxbox=JObj}=State) ->
+    AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
+    AccountDb = kazoo_modb:get_modb(AccountId),
+    Doc = wh_json:normalize(
+            wh_json:from_list(
+              [{<<"pvt_account_id">>, AccountId}
+               ,{<<"pvt_account_db">>, AccountDb}
+               ,{<<"pvt_type">>, <<"fax_smtp_log">>}
+               ,{<<"pvt_created">>, wh_util:current_tstamp()}
+               ,{<<"_id">>, error_doc()}
+               | to_proplist(State)
+              ]
+             )
+           ),
+    couch_mgr:save_doc(AccountDb, Doc),
+    maybe_system_report(State).
+
+-spec error_doc() -> binary().
+error_doc() ->
+    {Year, Month, _} = erlang:date(),
+    <<(wh_util:to_binary(Year))/binary,(wh_util:pad_month(Month))/binary
+      ,"-",(wh_util:rand_hex_binary(16))/binary
+    >>.
+
+-spec to_proplist(state() | api_object()) -> wh_proplist().
+to_proplist(#state{}=State) ->
+    props:filter_undefined(
+      [{<<"To">>, State#state.to}
+       ,{<<"From">>, State#state.from}
+       ,{<<"Original-Number">>, State#state.original_number}
+       ,{<<"Translated-Number">>, State#state.number}
+       ,{<<"FaxBox-Domain">>, State#state.faxbox_email}
+       ,{<<"FaxBox-Owner-ID">>, State#state.owner_id}
+       ,{<<"FaxBox-Owner-Email">>, State#state.owner_email}
+       ,{<<"Content-Type">>, State#state.content_type}
+       ,{<<"Filename">>, State#state.filename}
+       ,{<<"Errors">>, State#state.errors}
+       | to_proplist(State#state.faxbox)
+      ]);
+to_proplist('undefined') -> [];
+to_proplist(JObj) ->
+    props:filter_undefined(
+      [{<<"FaxBox-ID">>, wh_json:get_value(<<"_id">>, JObj)}
+       ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, JObj)}
+      ]
+     ).
+
+-spec reset(state()) -> state().
+reset(State) ->
+    State#state{owner_id = 'undefined'
+                ,owner_email = 'undefined'
+                ,faxbox_email = 'undefined'
+                ,faxbox = 'undefined'
+                ,original_number = 'undefined'
+                ,number = 'undefined'
+               }.
+
+-spec check_faxbox(state()) ->
+                          {'ok', state()} |
+                          {'error', string(), state()}.
+check_faxbox(#state{to=To}= State) ->
+    case binary:split(wh_util:to_lower_binary(To), <<"@">>) of
+        [FaxNumber, Domain] ->
+            Number = fax_util:filter_numbers(FaxNumber),
+            check_number(
+              maybe_faxbox(State#state{faxbox_email=Domain
+                                       ,original_number=FaxNumber
+                                       ,number=Number
+                                      }
+                          )
+             );
+        _ ->
+            lager:debug("invalid address"),
+            {'error', "Not Found", State#state{errors=[<<"invalid address">>]}}
+    end.
+
+-spec check_number(state()) ->
+                          {'ok', state()} |
+                          {'error', string(), state()}.
+check_number(#state{number= <<>>, original_number=Number, faxbox='undefined'}=State) ->
+    Error = wh_util:to_binary(
+              io_lib:format("fax number ~s is empty, no faxbox to report to", [Number])),
+    lager:debug(Error),
+    {'error', "Not Found", State#state{errors=[Error]}};
+check_number(#state{number= <<>>, original_number=Number, errors=Errors}=State) ->
+    Error = wh_util:to_binary(io_lib:format("fax number ~s is empty", [Number])),
+    lager:debug(Error),
+    {'error', "Not Found", State#state{errors=[ Error | Errors]}};
+check_number(#state{}=State) ->
+    check_permissions(State).
+
+-spec check_permissions(state()) ->
+                               {'ok', state()} |
+                               {'error', string(), state()}.
+-spec check_permissions(state(), ne_binaries()) ->
+                               {'ok', state()} |
+                               {'error', string(), state()}.
+check_permissions(#state{from=_From
+                         ,owner_email=OwnerEmail
+                         ,faxbox=FaxBoxDoc
+                        }=State) ->
+    lager:debug("checking if ~s can send to ~p."
+                ,[_From, wh_json:get_value(<<"name">>, FaxBoxDoc)]
+               ),
+    case wh_json:get_value(<<"smtp_permission_list">>, FaxBoxDoc, []) of
+        [] when OwnerEmail =:= 'undefined' ->
+            check_empty_permissions(State);
+        Permissions ->
+            check_permissions(State, Permissions)
+    end.
+
+check_permissions(#state{from=From
+                         ,owner_email=OwnerEmail
+                         ,faxbox=FaxBoxDoc
+                         ,errors=Errors
+                        }=State, Permissions) ->
+    case lists:any(fun(A) -> match(From, A) end, Permissions)
+        orelse From =:= OwnerEmail
+    of
+        'true' -> add_fax_document(State);
+        'false' ->
+            Error = wh_util:to_binary(
+                      io_lib:format("address ~s is not allowed on faxbox ~s",
+                                    [From, wh_json:get_value(<<"_id">>, FaxBoxDoc)])),
+            lager:debug(Error),
+            {'error', "not allowed", State#state{errors=[Error | Errors]}}
+    end.
+
+-spec check_empty_permissions(state()) ->
+                                     {'ok', state()} |
+                                     {'error', string(), state()}.
+check_empty_permissions(#state{errors=Errors}=State) ->
+    case whapps_config:get_is_true(<<"fax">>, <<"allow_all_addresses_when_empty">>, 'false') of
+        'true' -> add_fax_document(State);
+        'false' ->
+            Error = <<"faxbox permissions is empty and policy doesn't allow it">>,
+            lager:debug(Error),
+            {'error', "not allowed", State#state{errors=[Error | Errors]}}
+    end.
 
 -spec match(binary(), binary()) -> boolean().
 match(Address, Element) ->
-    case re:run(Address, Element) of
-        'nomatch' -> 'false';
-        _Else -> 'true'
+    re:run(Address, Element) =/= 'nomatch'.
+
+-spec maybe_faxbox(state()) -> state().
+maybe_faxbox(#state{faxbox_email=Domain}=State) ->
+    ViewOptions = [{'key', Domain}, 'include_docs'],
+    case couch_mgr:get_results(?WH_FAXES, <<"faxbox/email_address">>, ViewOptions) of
+        {'ok', [JObj]} -> maybe_faxbox_owner(State#state{faxbox=wh_json:get_value(<<"doc">>,JObj)});
+        _ -> State
     end.
 
--spec maybe_get_faxbox_owner(binary(), wh_json:object(), #state{}) ->
-                                      {'ok', #state{}} |
-                                      {'error', string(), #state{}}.		  
-maybe_get_faxbox_owner(FaxNumber, FaxBoxDoc, State) ->
+-spec maybe_faxbox_owner(state()) -> state().
+maybe_faxbox_owner(#state{faxbox=FaxBoxDoc}=State) ->
     case wh_json:get_value(<<"owner_id">>, FaxBoxDoc) of
-        'undefined' -> check_faxbox_permissions(FaxNumber, FaxBoxDoc, State);
+        'undefined' -> State;
         OwnerId ->
             AccountId = wh_json:get_value(<<"pvt_account_id">>, FaxBoxDoc),
             AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
             case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
                 {'ok', OwnerDoc} ->
                     OwnerEmail = wh_json:get_value(<<"email">>, OwnerDoc),
-                    check_faxbox_permissions(FaxNumber, FaxBoxDoc, State#state{owner_id=OwnerId
-                                                                               ,owner_email=OwnerEmail
-                                                                              });
-                _ ->
-                    check_faxbox_permissions(FaxNumber, FaxBoxDoc, State#state{owner_id=OwnerId})
-            end
-    end.
-	
--spec check_faxbox_permissions(binary(), wh_json:object(), #state{}) ->
-                                      {'ok', #state{}} |
-                                      {'error', string(), #state{}}.
-check_faxbox_permissions(FaxNumber, FaxBoxDoc, #state{from=From
-                                                      ,owner_email=OwnerEmail
-                                                     }=State) ->
-    lager:debug("checking if ~s can send to ~p."
-                ,[From,wh_json:get_value(<<"name">>, FaxBoxDoc)]),
-    case wh_json:get_value(<<"smtp_permission_list">>, FaxBoxDoc, []) of
-        [] when OwnerEmail =:= 'undefined' ->
-            case whapps_config:get_is_true(<<"fax">>, <<"allow_all_addresses_when_empty">>, 'false') of
-                'true' -> add_fax_document(FaxNumber, FaxBoxDoc, State);
-                'false' ->
-                    lager:debug("faxbox permissions is empty and policy doesn't allow it"),
-                    {'error', "not allowed", State}
-            end;
-        Permissions ->
-            case lists:any(fun(A) -> match(From, A) end, Permissions) 
-                     orelse From =:= OwnerEmail 
-                of
-                'true' -> add_fax_document(FaxNumber, FaxBoxDoc, State);
-                'false' ->
-                    lager:debug("address ~is not allowed on faxbox ~s",[From, wh_json:get_value(<<"_id">>,FaxBoxDoc)]),
-                    {'error', "not allowed", State}
+                    State#state{owner_id=OwnerId, owner_email=OwnerEmail};
+                _ -> State
             end
     end.
 
--spec add_fax_document(binary(), wh_json:object(), #state{}) ->
-                                      {'ok', #state{}} |
-                                      {'error', string(), #state{}}.
-add_fax_document(FaxNumber, FaxBoxDoc, #state{docs=Docs
-                                             ,from=From
-                                             ,owner_email=OwnerEmail
-                                             }=State) ->
+-spec add_fax_document(state()) ->
+                              {'ok', state()} |
+                              {'error', string(), state()}.
+add_fax_document(#state{docs=Docs
+                        ,from=From
+                        ,owner_email=OwnerEmail
+                        ,number=FaxNumber
+                        ,faxbox=FaxBoxDoc
+                       }=State) ->
     FaxBoxId = wh_json:get_value(<<"_id">>, FaxBoxDoc),
     AccountId = wh_json:get_value(<<"pvt_account_id">>, FaxBoxDoc),
     AccountDb = ?WH_FAXES,
     ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, FaxBoxDoc, wh_services:find_reseller_id(AccountId)),
 
     FaxBoxEmailNotify = wh_json:get_value([<<"notifications">>
-                                          ,<<"outbound">>
-                                          ,<<"email">>
-                                          ,<<"send_to">>
+                                           ,<<"outbound">>
+                                           ,<<"email">>
+                                           ,<<"send_to">>
                                           ], FaxBoxDoc, []),
     FaxBoxNotify = wh_json:set_value([<<"notifications">>
-                                     ,<<"outbound">>
-                                     ,<<"email">>
-                                     ,<<"send_to">>
+                                      ,<<"outbound">>
+                                      ,<<"email">>
+                                      ,<<"send_to">>
                                      ]
                                      ,fax_util:notify_email_list(From, OwnerEmail , FaxBoxEmailNotify)
-                                    ,FaxBoxDoc),
+                                     ,FaxBoxDoc
+                                    ),
     Notify = wh_json:get_value([<<"notifications">>, <<"outbound">>], FaxBoxNotify),
 
     Props = props:filter_undefined(
@@ -444,21 +599,21 @@ process_part_attachment(AttchFilename, Body, State) ->
             Filename = <<"/tmp/email_attachment_", (wh_util:to_binary(wh_util:current_tstamp()))/binary, ".pdf">>,
             file:write_file(Filename, Body),
             {'ok', State#state{filename=Filename
-                              ,content_type="application/pdf"
+                               ,content_type = <<"application/pdf">>
                               }};
         <<".tiff">> ->
             lager:debug("found tiff filename extension, set content-type to image/tiff"),
             Filename = <<"/tmp/email_attachment_", (wh_util:to_binary(wh_util:current_tstamp()))/binary, ".tiff">>,
             file:write_file(Filename, Body),
             {'ok', State#state{filename=Filename
-                              ,content_type="image/tiff"
+                               ,content_type = <<"image/tiff">>
                               }};
         <<".tif">> ->
             lager:debug("found tif filename extension, set content-type to image/tiff"),
             Filename = <<"/tmp/email_attachment_", (wh_util:to_binary(wh_util:current_tstamp()))/binary, ".tiff">>,
             file:write_file(Filename, Body),
             {'ok', State#state{filename=Filename
-                              ,content_type="image/tiff"
+                               ,content_type = <<"image/tiff">>
                               }};
         _Else ->
             lager:debug("not acceptable filename extension ~p", [_Else]),

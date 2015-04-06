@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -25,9 +25,7 @@
          ,code_change/3
         ]).
 
-
 -include("fax.hrl").
-
 
 -define(NOTIFY_RESTRICT, ['outbound_fax'
                           ,'outbound_fax_error'

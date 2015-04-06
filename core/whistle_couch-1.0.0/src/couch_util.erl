@@ -87,6 +87,7 @@
 -export_type([db_create_options/0
               ,couchbeam_errors/0
               ,db_classifications/0
+              ,view_options/0
              ]).
 
 -define(DELETE_KEYS, [<<"_rev">>, <<"id">>, <<"_attachments">>]).

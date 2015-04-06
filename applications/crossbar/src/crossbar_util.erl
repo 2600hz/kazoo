@@ -835,17 +835,23 @@ get_account_timezone(AccountId) ->
 -spec apply_response_map(cb_context:context(), wh_proplist()) -> cb_context:context().
 apply_response_map(Context, Map) ->
     JObj = cb_context:doc(Context),
-    Id = wh_json:get_first_defined([<<"_id">>,<<"Id">>], JObj),
-    RespJObj = cb_context:resp_data(Context),
-    RespData = lists:foldl(
-                 fun({Key, Fun}, J) when is_function(Fun,1) ->
-                         wh_json:set_value(Key,Fun(JObj),J);
-                    ({Key, Fun}, J) when is_function(Fun,2) ->
-                         wh_json:set_value(Key,Fun(Id, JObj),J);
-                    ({Key, ExistingKey}, J) ->
-                         wh_json:set_value(Key, wh_json:get_value(ExistingKey, JObj), J)
-                 end, RespJObj, Map),
+    RespData = lists:foldl(fun(MapItem, J) ->
+                                   apply_response_map_item(MapItem, J, JObj)
+                           end
+                           ,cb_context:resp_data(Context)
+                           ,Map
+                          ),
     cb_context:set_resp_data(Context, RespData).
+
+-spec apply_response_map_item({wh_json:key(), wh_json:key() | fun()}, wh_json:object(), wh_json:object()) ->
+                                     wh_json:object().
+apply_response_map_item({Key, Fun}, J, JObj) when is_function(Fun, 1) ->
+    wh_json:set_value(Key, Fun(JObj), J);
+apply_response_map_item({Key, Fun}, J, JObj) when is_function(Fun, 2) ->
+    Id = wh_json:get_first_defined([<<"_id">>,<<"Id">>], JObj),
+    wh_json:set_value(Key, Fun(Id, JObj), J);
+apply_response_map_item({Key, ExistingKey}, J, JObj) ->
+    wh_json:set_value(Key, wh_json:get_value(ExistingKey, JObj), J).
 
 -spec get_path(cowboy_req:req() | ne_binary(), ne_binary()) -> ne_binary().
 get_path(<<_/binary>> = RawPath, Relative) ->
