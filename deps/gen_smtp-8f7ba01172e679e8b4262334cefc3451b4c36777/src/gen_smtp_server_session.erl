@@ -91,7 +91,7 @@
 -callback handle_VRFY(Address :: binary(), State :: state()) ->
     {'ok', string(), state()} | {'error', string(), state()}.
 -callback handle_other(Verb :: binary(), Args :: binary(), state()) ->
-                          {string(), state()}.
+                          {iolist(), state()} | {state()}.
 
 
 
@@ -114,7 +114,7 @@ start(Socket, Module, Options) ->
 -spec(init/1 :: (Args :: list()) -> {'ok', #state{}, ?TIMEOUT} | {'stop', any()} | 'ignore').
 init([Socket, Module, Options]) ->
     case socket:peername(Socket) of
-        {ok, {PeerName, _Port}} ->    
+        {ok, {PeerName, _Port}} ->
             case Module:init(proplists:get_value(hostname, Options, smtp_util:guess_FQDN()), proplists:get_value(sessioncount, Options, 0), PeerName, proplists:get_value(callbackoptions, Options, [])) of
                 {ok, Banner, CallbackState} ->
                     socket:send(Socket, ["220 ", Banner, "\r\n"]),
@@ -2209,7 +2209,7 @@ stray_newline_test_() ->
 					?assertEqual(<<"fo\r\no\r\n\r">>, check_bare_crlf(<<"fo\ro\n\r">>, <<>>, fix, 0)),
 					?assertEqual(<<"foo\r\n">>, check_bare_crlf(<<"foo\r\n">>, <<>>, fix, 0))
 			end
-		},	
+		},
 		{"Stripping them should work",
 			fun() ->
 					?assertEqual(<<"foo">>, check_bare_crlf(<<"foo">>, <<>>, strip, 0)),
