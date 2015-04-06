@@ -350,11 +350,10 @@ authz_req(Props) ->
 
 -spec rating_req(ne_binary(), wh_proplist()) -> wh_proplist().
 rating_req(CallId, Props) ->
-    AccountId = props:get_value(?GET_CCV(<<"Account-ID">>), Props),
     [{<<"To-DID">>, kzd_freeswitch:to_did(Props)}
      ,{<<"From-DID">>, kzd_freeswitch:caller_id_number(Props)}
      ,{<<"Call-ID">>, CallId}
-     ,{<<"Account-ID">>, AccountId}
+     ,{<<"Account-ID">>, kzd_freeswitch:account_id(Props)}
      ,{<<"Direction">>, kzd_freeswitch:call_direction(Props)}
      ,{<<"Send-Empty">>, 'true'}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
