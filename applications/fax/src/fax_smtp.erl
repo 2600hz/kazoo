@@ -288,7 +288,7 @@ system_report(#state{errors=[Error | _]}=State) ->
     wh_amqp_worker:cast(Notify, fun wapi_notifications:publish_system_alert/1).
     
 -spec faxbox_log(#state{}) -> 'ok'.
-faxbox_log(#state{faxbox=JObj, errors=Errors}=State) ->
+faxbox_log(#state{faxbox=JObj}=State) ->
     AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
     AccountDb = kazoo_modb:get_modb(AccountId),
     Doc = wh_json:normalize(
@@ -376,11 +376,10 @@ check_number(#state{}=State) ->
 check_permissions(#state{from=From
                          ,owner_email=OwnerEmail
                          ,faxbox=FaxBoxDoc
-                         ,number=FaxNumber
                          ,errors=Errors
                         }=State) ->
     lager:debug("checking if ~s can send to ~p."
-                ,[From,wh_json:get_value(<<"name">>, FaxBoxDoc)]),
+                ,[From, wh_json:get_value(<<"name">>, FaxBoxDoc)]),
     case wh_json:get_value(<<"smtp_permission_list">>, FaxBoxDoc, []) of
         [] when OwnerEmail =:= 'undefined' ->
             case whapps_config:get_is_true(<<"fax">>, <<"allow_all_addresses_when_empty">>, 'false') of
