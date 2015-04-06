@@ -684,10 +684,7 @@ put_attachment(#server{}=Conn, DbName, DocId, AName, Contents) ->
     put_attachment(#server{}=Conn, DbName, DocId, AName, Contents, []).
 
 put_attachment(#server{}=Conn, DbName, DocId, AName, Contents, Options) ->
-    Db = get_db(Conn, DbName, [{'max_sessions', 10}
-                               ,{'max_pipeline_size', 10}
-                               ,{'connect_timeout', ?MILLISECONDS_IN_MINUTE}
-                              ]),
+    Db = get_db(Conn, DbName),
     do_put_attachment(Db, DocId, AName, Contents, maybe_add_rev(Db, DocId, Options)).
 
 -spec delete_attachment(server(), ne_binary(), ne_binary(), ne_binary()) ->
@@ -750,11 +747,8 @@ do_del_attachment(#db{}=Db, DocId, AName, Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_db(server(), ne_binary()) -> db().
--spec get_db(server(), ne_binary(), wh_proplist()) -> db().
 get_db(#server{}=Conn, DbName) ->
-    get_db(Conn, DbName, []).
-get_db(#server{}=Conn, DbName, Options) ->
-    {'ok', Db} = couchbeam:open_db(Conn, DbName, Options),
+    {'ok', Db} = couchbeam:open_db(Conn, DbName),
     Db.
 
 %%------------------------------------------------------------------------------
