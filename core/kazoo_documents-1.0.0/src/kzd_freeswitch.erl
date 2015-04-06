@@ -20,6 +20,11 @@
          ,is_consuming_global_resource/1, is_consuming_global_resource/2
          ,resource_id/1
 
+         ,hangup_code/1, hangup_cause/1
+         ,disposition/1
+
+         ,transfer_history/1
+
          ,authorizing_id/1
          ,authorizing_type/1
 
@@ -27,6 +32,11 @@
          ,reseller_id/1, reseller_billing/1
 
          ,to_did/1
+
+         ,application_name/1, raw_application_name/1
+         ,event_name/1
+
+         ,ccv/2, ccv/3
         ]).
 
 -include("kz_documents.hrl").
@@ -60,7 +70,14 @@ caller_id_number(Props, Default) ->
 
 -spec call_id(wh_proplist()) -> api_binary().
 call_id(Props) ->
-    props:get_first_defined([<<"Unique-ID">>, <<"Call-ID">>], Props).
+    props:get_first_defined([<<"Caller-Unique-ID">>
+                             ,<<"Unique-ID">>
+                             ,<<"Call-ID">>
+                             ,<<"variable_uuid">>
+                             ,<<"Channel-Call-UUID">>
+                             ,<<"variable_sip_call_id">>
+                             ,?RESIGNING_UUID
+                            ], Props).
 
 -spec other_leg_call_id(wh_proplist()) -> api_binary().
 other_leg_call_id(Props) ->
@@ -80,7 +97,7 @@ resource_type(Props, Default) ->
 
 -spec channel_authorized(wh_proplist()) -> api_binary().
 channel_authorized(Props) ->
-    props:get_value(?CCV(<<"Channel-Authorized">>), Props).
+    ccv(Props, <<"Channel-Authorized">>).
 
 -spec hunt_destination_number(wh_proplist()) -> api_binary().
 hunt_destination_number(Props) ->
@@ -100,35 +117,35 @@ is_consuming_global_resource(Props) ->
     is_consuming_global_resource(Props, 'undefined').
 
 is_consuming_global_resource(Props, Default) ->
-    props:is_true(?CCV(<<"Global-Resource">>), Props, Default).
+    wh_util:is_true(ccv(Props, <<"Global-Resource">>, Default)).
 
 -spec resource_id(wh_proplist()) -> api_binary().
 resource_id(Props) ->
-    props:get_value(?CCV(<<"Resource-ID">>), Props).
+    ccv(Props, <<"Resource-ID">>).
 
 -spec authorizing_id(wh_proplist()) -> api_binary().
 authorizing_id(Props) ->
-    props:get_value(?CCV(<<"Authorizing-ID">>), Props).
+    ccv(Props, <<"Authorizing-ID">>).
 
 -spec authorizing_type(wh_proplist()) -> api_binary().
 authorizing_type(Props) ->
-    props:get_value(?CCV(<<"Authorizing-Type">>), Props).
+    ccv(Props, <<"Authorizing-Type">>).
 
 -spec account_id(wh_proplist()) -> api_binary().
 account_id(Props) ->
-    props:get_value(?CCV(<<"Account-ID">>), Props).
+    ccv(Props, <<"Account-ID">>).
 
 -spec account_billing(wh_proplist()) -> api_binary().
 account_billing(Props) ->
-    props:get_binary_value(?CCV(<<"Account-Billing">>), Props).
+    ccv(Props, <<"Account-Billing">>).
 
 -spec reseller_id(wh_proplist()) -> api_binary().
 reseller_id(Props) ->
-    props:get_value(?CCV(<<"Reseller-ID">>), Props).
+    ccv(Props, <<"Reseller-ID">>).
 
 -spec reseller_billing(wh_proplist()) -> api_binary().
 reseller_billing(Props) ->
-    props:get_binary_value(?CCV(<<"Reseller-Billing">>), Props).
+    ccv(Props, <<"Reseller-Billing">>).
 
 -spec to_did(wh_proplist()) -> api_binary().
 to_did(Props) ->
@@ -137,3 +154,62 @@ to_did(Props) ->
                             ]
                             ,Props
                            ).
+
+-spec ccv(wh_proplist(), ne_binary()) -> api_binary().
+ccv(Props, Key) ->
+    ccv(Props, Key, 'undefined').
+
+-spec ccv(wh_proplist(), ne_binary(), Default) -> ne_binary() | Default.
+ccv(Props, Key, Default) ->
+    props:get_value(?CCV(Key), Props, Default).
+
+-spec hangup_code(wh_proplist()) -> api_binary().
+hangup_code(Props) ->
+    props:get_first_defined([<<"variable_proto_specific_hangup_cause">>
+                             ,<<"variable_last_bridge_proto_specific_hangup_cause">>
+                            ], Props).
+
+-spec disposition(wh_proplist()) -> api_binary().
+disposition(Props) ->
+    props:get_first_defined([<<"variable_originate_disposition">>
+                             ,<<"variable_endpoint_disposition">>
+                            ], Props).
+
+-spec hangup_cause(wh_proplist()) -> api_binary().
+hangup_cause(Props) ->
+    case props:get_value(<<"variable_current_application">>, Props) of
+        <<"bridge">> ->
+            props:get_first_defined([<<"variable_bridge_hangup_cause">>
+                                     ,<<"variable_hangup_cause">>
+                                     ,<<"Hangup-Cause">>
+                                    ], Props);
+        _Else ->
+            props:get_first_defined([<<"variable_hangup_cause">>
+                                     ,<<"variable_bridge_hangup_cause">>
+                                     ,<<"Hangup-Cause">>
+                                    ], Props)
+    end.
+
+-spec transfer_history(wh_proplist()) -> api_binary().
+transfer_history(Props) ->
+    props:get_value(<<"variable_transfer_history">>, Props).
+
+-spec raw_application_name(wh_proplist()) -> api_binary().
+raw_application_name(Props) ->
+    props:get_first_defined([<<"Application">>
+                             ,<<"whistle_application_name">>
+                             ,<<"Event-Subclass">>
+                            ], Props).
+
+-spec application_name(wh_proplist()) -> api_binary().
+application_name(Props) ->
+    props:get_first_defined([<<"whistle_application_name">>
+                             ,<<"Application">>
+                             ,<<"Event-Subclass">>
+                            ], Props).
+
+-spec event_name(wh_proplist()) -> api_binary().
+event_name(Props) ->
+    props:get_first_defined([<<"whistle_event_name">>
+                             ,<<"Event-Name">>
+                            ], Props).

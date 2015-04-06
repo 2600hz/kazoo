@@ -363,7 +363,7 @@ handle_info({'event', [CallId | Props]}, #state{node=Node
                     <<"wh_media_recording">> ->
                         lager:debug("wh_media_recording is handling call recording publishing record stop");
                     _ ->
-                        lager:debug("no one is handling call recording storing recording"),
+                        lager:debug("no one is handling call recording, storing recording"),
                         spawn(fun() -> store_recording(Props, CallId, Node) end)
                 end,
             process_channel_event(Props),
@@ -885,13 +885,7 @@ get_channel_moving(Props) ->
 
 -spec get_call_id(wh_proplist()) -> api_binary().
 get_call_id(Props) ->
-    props:get_first_defined([<<"Caller-Unique-ID">>
-                             ,<<"Unique-ID">>
-                             ,<<"variable_uuid">>
-                             ,<<"Channel-Call-UUID">>
-                             ,<<"variable_sip_call_id">>
-                             ,?RESIGNING_UUID
-                            ], Props).
+    kzd_freeswitch:call_id(Props).
 
 -spec get_other_leg(wh_proplist()) -> api_binary().
 get_other_leg(Props) ->
@@ -899,11 +893,7 @@ get_other_leg(Props) ->
 
 -spec get_event_name(wh_proplist()) -> api_binary().
 get_event_name(Props) ->
-    case props:get_first_defined([<<"whistle_application_name">>
-                                  ,<<"Application">>
-                                  ,<<"Event-Subclass">>
-                                 ], Props)
-    of
+    case kzd_freeswitch:application_name(Props) of
         <<"sofia::transferee">> -> <<"CHANNEL_TRANSFEREE">>;
         <<"sofia::transferor">> -> <<"CHANNEL_TRANSFEROR">>;
         <<"sofia::replaced">> -> <<"CHANNEL_REPLACED">>;
@@ -911,42 +901,34 @@ get_event_name(Props) ->
         <<"spandsp::txfax", _/binary>> -> <<"CHANNEL_FAX_STATUS">>;
         <<"spandsp::rxfax", _/binary>> -> <<"CHANNEL_FAX_STATUS">>;
         <<"loopback::bowout">> -> <<"CHANNEL_REPLACED">>;
-        _Else ->
-            case  props:get_first_defined([<<"whistle_event_name">>
-                                           ,<<"Event-Name">>
-                                          ], Props)
-            of
-                <<"DETECTED_TONE">> ->
-                    lager:debug("DETECTED TONE"),
-                    case props:get_value(<<"Detected-Fax-Tone">>, Props) of
-                        'undefined' -> <<"DETECTED_TONE">>;
-                        _FaxDetected -> <<"FAX_DETECTED">>
-                    end;
-                Event -> Event
-            end
+        _AppName -> get_fs_event_name(Props)
+    end.
+
+-spec get_fs_event_name(wh_proplist()) -> api_binary().
+get_fs_event_name(Props) ->
+    case kzd_freeswitch:event_name(Props) of
+        <<"DETECTED_TONE">> ->
+            case props:get_value(<<"Detected-Fax-Tone">>, Props) of
+                'undefined' -> <<"DETECTED_TONE">>;
+                _FaxDetected -> <<"FAX_DETECTED">>
+            end;
+        Event -> Event
     end.
 
 -spec get_application_name(wh_proplist()) -> api_binary().
 get_application_name(Props) ->
-    case props:get_first_defined([<<"whistle_application_name">>
-                                  ,<<"Application">>
-                                  ,<<"Event-Subclass">>
-                                 ], Props)
-    of
+    case kzd_freeswitch:application_name(Props) of
         <<"sofia::transferee">> -> <<"transfer">>;
         <<"sofia::transferor">> -> <<"transfer">>;
         <<"sofia::replaced">> -> <<"transfer">>;
         <<"spandsp::rxfax", Event/binary >> -> <<"rxfax",Event/binary>>;
         <<"spandsp::txfax", Event/binary >> -> <<"txfax", Event/binary>>;
-        Else -> Else
+        AppName -> AppName
     end.
 
 -spec get_raw_application_name(wh_proplist()) -> api_binary().
 get_raw_application_name(Props) ->
-    props:get_first_defined([<<"Application">>
-                             ,<<"whistle_application_name">>
-                             ,<<"Event-Subclass">>
-                            ], Props).
+    kzd_freeswitch:raw_application_name(Props).
 
 -spec get_fax_success(wh_proplist()) -> api_boolean().
 get_fax_success(Props) ->
@@ -964,7 +946,7 @@ get_fax_ecm_used(Props) ->
 
 -spec get_transfer_history(wh_proplist()) -> api_object().
 get_transfer_history(Props) ->
-    SerializedHistory = props:get_value(<<"variable_transfer_history">>, Props),
+    SerializedHistory = kzd_freeswitch:transfer_history(Props),
     case [HistJObj
           || Trnsf <- ecallmgr_util:unserialize_fs_array(SerializedHistory),
              (HistJObj = create_trnsf_history_object(binary:split(Trnsf, <<":">>, ['global']))) =/= 'undefined'
@@ -999,30 +981,15 @@ create_trnsf_history_object(_) ->
 
 -spec get_hangup_cause(wh_proplist()) -> api_binary().
 get_hangup_cause(Props) ->
-    case props:get_value(<<"variable_current_application">>, Props) of
-        <<"bridge">> ->
-            props:get_first_defined([<<"variable_bridge_hangup_cause">>
-                                     ,<<"variable_hangup_cause">>
-                                     ,<<"Hangup-Cause">>
-                                    ], Props);
-        _Else ->
-            props:get_first_defined([<<"variable_hangup_cause">>
-                                     ,<<"variable_bridge_hangup_cause">>
-                                     ,<<"Hangup-Cause">>
-                                    ], Props)
-    end.
+    kzd_freeswitch:hangup_cause(Props).
 
 -spec get_disposition(wh_proplist()) -> api_binary().
 get_disposition(Props) ->
-    props:get_first_defined([<<"variable_originate_disposition">>
-                             ,<<"variable_endpoint_disposition">>
-                            ], Props).
+    kzd_freeswitch:disposition(Props).
 
 -spec get_hangup_code(wh_proplist()) -> api_binary().
 get_hangup_code(Props) ->
-    props:get_first_defined([<<"variable_proto_specific_hangup_cause">>
-                             ,<<"variable_last_bridge_proto_specific_hangup_cause">>
-                            ], Props).
+    kzd_freeswitch:hangup_code(Props).
 
 -spec swap_call_legs(wh_proplist() | wh_json:object()) -> wh_proplist().
 -spec swap_call_legs(wh_proplist(), wh_proplist()) -> wh_proplist().
@@ -1059,24 +1026,35 @@ usurp_other_publishers(#state{node=Node
                              ecallmgr_util:send_cmd_ret() |
                              [ecallmgr_util:send_cmd_ret(),...].
 store_recording(Props, CallId, Node) ->
-    MediaName = props:get_value(?GET_CCV(<<"Media-Name">>), Props),
-    Destination = props:get_value(?GET_CCV(<<"Media-Transfer-Destination">>), Props),
-    case wh_util:is_empty(Destination) of
-        'true' -> 'ok';
-        'false' ->
+    case kzd_freeswitch:ccv(Props, <<"Media-Transfer-Destination">>) of
+        'undefined' -> 'ok';
+        <<>> -> 'ok';
+        <<_/binary>> = Destination ->
+            wh_util:put_callid(CallId),
+
+            MediaName = kzd_freeswitch:ccv(Props, <<"Media-Name">>),
             %% TODO: if you change this logic be sure it matches wh_media_util as well!
-            Url = wh_util:strip_right_binary(Destination, $/),
+            Url = wh_util:join_binary([wh_util:strip_right_binary(Destination, $/)
+                                       ,MediaName
+                                      ]
+                                      ,<<"/">>
+                                     ),
+
             JObj = wh_json:from_list(
                      [{<<"Call-ID">>, CallId}
-                     ,{<<"Msg-ID">>, CallId}
-                     ,{<<"Media-Name">>, MediaName}
-                     ,{<<"Media-Transfer-Destination">>, <<Url/binary, "/", MediaName/binary>>}
-                     ,{<<"Insert-At">>, props:get_value(?GET_CCV(<<"Insert-At">>), Props, <<"now">>)}
-                     ,{<<"Media-Transfer-Method">>, props:get_value(?GET_CCV(<<"Media-Transfer-Method">>), Props, <<"put">>)}
-                     ,{<<"Application-Name">>, <<"store">>}
-                     ,{<<"Event-Category">>, <<"call">>}
-                     ,{<<"Event-Name">>, <<"command">>}
+                      ,{<<"Msg-ID">>, CallId}
+                      ,{<<"Media-Name">>, MediaName}
+                      ,{<<"Media-Transfer-Destination">>, Url}
+                      ,{<<"Insert-At">>, kzd_freeswitch:ccv(Props, <<"Insert-At">>, <<"now">>)}
+                      ,{<<"Media-Transfer-Method">>, media_transfer_method(Props)}
+                      ,{<<"Application-Name">>, <<"store">>}
+                      ,{<<"Event-Category">>, <<"call">>}
+                      ,{<<"Event-Name">>, <<"command">>}
                       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                      ]),
             ecallmgr_call_command:exec_cmd(Node, CallId, JObj, 'undefined')
     end.
+
+-spec media_transfer_method(wh_proplist()) -> ne_binary().
+media_transfer_method(Props) ->
+    kzd_freeswitch:ccv(Props, <<"Media-Transfer-Method">>, <<"put">>).
