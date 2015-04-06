@@ -247,14 +247,18 @@ search_resources(IP, Realm, [#resrc{id=Id
                             ]) ->
     case search_gateways(IP, Realm, Gateways) of
         {'error', 'not_found'} -> search_resources(IP, Realm, Resources);
-        #gateway{}=Gateway ->
+        #gateway{realm=Realm
+                 ,username=Username
+                 ,password=Password
+                 ,fax_option=FaxOption
+                } ->
             Props = props:filter_undefined(
                       [{'resource_id', Id}
                        ,{'global', Global}
-                       ,{'realm', Gateway#gateway.realm}
-                       ,{'username', Gateway#gateway.username}
-                       ,{'password', Gateway#gateway.password}
-                       ,{'fax_option', Gateway#gateway.fax_option}
+                       ,{'realm', Realm}
+                       ,{'username', Username}
+                       ,{'password', Password}
+                       ,{'fax_option', FaxOption}
                       ]),
             {'ok', Props}
     end.
@@ -287,8 +291,9 @@ search_gateway(_, _, _) -> {'error', 'not_found'}.
 -spec filter_resources(ne_binaries(), resources()) -> resources().
 filter_resources([], Resources) ->
     lager:debug("no flags provided, filtering resources that require flags"),
-    [Resource || Resource <- Resources,
-                 not Resource#resrc.require_flags
+    [Resource
+     || #resrc{require_flags=RequireFlags}=Resource <- Resources,
+        not RequireFlags
     ];
 filter_resources(Flags, Resources) ->
     lager:debug("filtering resources by flags"),
@@ -303,18 +308,23 @@ filter_resources(Flags, [Resource|Resources], Filtered) ->
     end.
 
 -spec resource_has_flags(ne_binaries(), resource()) -> boolean().
-resource_has_flags(Flags, #resrc{flags=ResourceFlags, id=Id}) ->
-    lists:all(fun(Flag) ->
-                      case wh_util:is_empty(Flag)
-                          orelse lists:member(Flag, ResourceFlags)
-                      of
-                          'true' -> 'true';
-                          'false' ->
-                              lager:debug("resource ~s does not have the required flag: ~s"
-                                          ,[Id, Flag]),
-                              'false'
-                      end
-              end, Flags).
+resource_has_flags(Flags, Resource) ->
+    lists:all(fun(Flag) -> resource_has_flag(Flag, Resource) end
+              ,Flags
+             ).
+
+-spec resource_has_flag(ne_binary(), resource()) -> boolean().
+resource_has_flag(Flag, #resrc{flags=ResourceFlags, id=_Id}) ->
+    case wh_util:is_empty(Flag)
+        orelse lists:member(Flag, ResourceFlags)
+    of
+        'true' -> 'true';
+        'false' ->
+            lager:debug("resource ~s does not have the required flag: ~s"
+                        ,[_Id, Flag]
+                       ),
+            'false'
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -330,7 +340,6 @@ resources_to_endpoints(Resources, Number, JObj) ->
     resources_to_endpoints(Resources, Number, JObj, []).
 
 resources_to_endpoints([], _, _, Endpoints) ->
-    lager:debug("found ~p endpoints", [length(Endpoints)]),
     lists:reverse(Endpoints);
 resources_to_endpoints([Resource|Resources], Number, JObj, Endpoints) ->
     MoreEndpoints = maybe_resource_to_endpoints(Resource, Number, JObj, Endpoints),
@@ -355,6 +364,7 @@ maybe_resource_to_endpoints(#resrc{id=Id
             lager:debug("building resource ~s endpoints", [Id]),
             CCVUpdates = [{<<"Global-Resource">>, wh_util:to_binary(Global)}
                           ,{<<"Resource-ID">>, Id}
+                          ,{<<"E164-Destination">>, Number}
                          ],
             Updates = [{<<"Name">>, Name}
                        ,{<<"Weight">>, Weight}
@@ -457,11 +467,25 @@ gateways_to_endpoints(Number, [Gateway|Gateways], JObj, Endpoints) ->
 
 -spec gateway_to_endpoint(ne_binary(), gateway(), wh_json:object()) ->
                                 wh_json:object().
-gateway_to_endpoint(Number, Gateway, JObj) ->
+gateway_to_endpoint(Number
+                    ,#gateway{invite_format=InviteFormat
+                              ,caller_id_type=CallerIdType
+                              ,bypass_media=BypassMedia
+                              ,codecs=Codecs
+                              ,username=Username
+                              ,password=Password
+                              ,sip_headers=SipHeaders
+                              ,sip_interface=SipInterface
+                              ,endpoint_type=EndpointType
+                              ,endpoint_options=EndpointOptions
+                              ,progress_timeout=ProgressTimeout
+                             }=Gateway
+                    ,JObj
+                   ) ->
     CCVs = props:filter_empty(
              [{<<"Emergency-Resource">>, gateway_emergency_resource(Gateway)}
               ,{<<"Original-Number">>, Number}
-              |gateway_from_uri_settings(Gateway)
+              | gateway_from_uri_settings(Gateway)
              ]),
     wh_json:from_list(
       props:filter_empty(
@@ -469,17 +493,17 @@ gateway_to_endpoint(Number, Gateway, JObj) ->
          ,{<<"Callee-ID-Name">>, wh_util:to_binary(Number)}
          ,{<<"Callee-ID-Number">>, wh_util:to_binary(Number)}
          ,{<<"To-DID">>, wh_util:to_binary(Number)}
-         ,{<<"Invite-Format">>, Gateway#gateway.invite_format}
-         ,{<<"Caller-ID-Type">>, Gateway#gateway.caller_id_type}
-         ,{<<"Bypass-Media">>, Gateway#gateway.bypass_media}
-         ,{<<"Codecs">>, Gateway#gateway.codecs}
-         ,{<<"Auth-User">>, Gateway#gateway.username}
-         ,{<<"Auth-Password">>, Gateway#gateway.password}
-         ,{<<"Custom-SIP-Headers">>, Gateway#gateway.sip_headers}
-         ,{<<"SIP-Interface">>, Gateway#gateway.sip_interface}
-         ,{<<"Endpoint-Type">>, Gateway#gateway.endpoint_type}
-         ,{<<"Endpoint-Options">>, Gateway#gateway.endpoint_options}
-         ,{<<"Endpoint-Progress-Timeout">>, wh_util:to_binary(Gateway#gateway.progress_timeout)}
+         ,{<<"Invite-Format">>, InviteFormat}
+         ,{<<"Caller-ID-Type">>, CallerIdType}
+         ,{<<"Bypass-Media">>, BypassMedia}
+         ,{<<"Codecs">>, Codecs}
+         ,{<<"Auth-User">>, Username}
+         ,{<<"Auth-Password">>, Password}
+         ,{<<"Custom-SIP-Headers">>, SipHeaders}
+         ,{<<"SIP-Interface">>, SipInterface}
+         ,{<<"Endpoint-Type">>, EndpointType}
+         ,{<<"Endpoint-Options">>, EndpointOptions}
+         ,{<<"Endpoint-Progress-Timeout">>, wh_util:to_binary(ProgressTimeout)}
          ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
          | maybe_get_t38(Gateway, JObj)
         ])).
@@ -505,15 +529,15 @@ gateway_from_uri_settings(#gateway{format_from_uri='false'
     ].
 
 -spec maybe_get_t38(gateway(), wh_json:object()) -> wh_proplist().
-maybe_get_t38(Gateway, JObj) ->
+maybe_get_t38(#gateway{fax_option=FaxOption}, JObj) ->
     Flags = wh_json:get_value(<<"Flags">>, JObj, []),
     case lists:member(<<"fax">>, Flags) of
         'false' -> [];
         'true' ->
             whapps_call_command:get_outbound_t38_settings(
-                Gateway#gateway.fax_option
-                ,wh_json:get_value(<<"Fax-T38-Enabled">>, JObj)
-            )
+              FaxOption
+              ,wh_json:get_value(<<"Fax-T38-Enabled">>, JObj)
+             )
     end.
 
 -spec gateway_emergency_resource(gateway()) -> api_binary().
@@ -918,8 +942,8 @@ endpoint_options(JObj, <<"amqp">>) ->
 endpoint_options(JObj, <<"sip">>) ->
     wh_json:from_list(
       props:filter_undefined(
-        [{<<"Route-ID">>, wh_json:get_value(<<"route_id">>, JObj)}
-        ]));
+        [{<<"Route-ID">>, wh_json:get_value(<<"route_id">>, JObj)}]
+       ));
 endpoint_options(_, _) -> wh_json:new().
 
 %%--------------------------------------------------------------------
