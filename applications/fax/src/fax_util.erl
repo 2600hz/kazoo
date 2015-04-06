@@ -108,14 +108,16 @@ maybe_attach_extension(A, CT) ->
         'true' -> <<A/binary, ".", (content_type_to_extension(CT))/binary>>
     end.
 
--spec save_fax_docs(api_objects(), binary(), ne_binary())-> 'ok' | 'error'.
+-spec save_fax_docs(api_objects(), binary(), ne_binary())-> 'ok' | {'error', term()}.
 save_fax_docs([],_FileContents, _CT) -> 'ok';
 save_fax_docs([Doc|Docs], FileContents, CT) ->
     case couch_mgr:save_doc(?WH_FAXES, Doc) of
         {'ok', JObj} ->
-            save_fax_attachment(JObj, FileContents, CT),
-            save_fax_docs(Docs, FileContents, CT);
-        _Else -> 'error'
+            case save_fax_attachment(JObj, FileContents, CT) of
+                {'ok', _} -> save_fax_docs(Docs, FileContents, CT);
+                Error -> Error
+            end;
+        Else -> Else
     end.
 
 -spec save_fax_attachment(api_object(), binary(), ne_binary(), integer())-> {'ok', wh_json:object()} | {'error', any()}.
