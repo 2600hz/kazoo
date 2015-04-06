@@ -623,7 +623,10 @@ request_realm(#whapps_call{request_realm=RequestRealm}) ->
 -spec set_from(ne_binary(), call()) -> call().
 set_from(From, #whapps_call{}=Call) when is_binary(From) ->
     [FromUser, FromRealm] = binary:split(From, <<"@">>),
-    Call#whapps_call{from=From, from_user=FromUser, from_realm=FromRealm}.
+    Call#whapps_call{from=From
+                     ,from_user=FromUser
+                     ,from_realm=FromRealm
+                    }.
 
 -spec from(call()) -> ne_binary().
 from(#whapps_call{from=From}) ->
@@ -640,7 +643,10 @@ from_realm(#whapps_call{from_realm=FromRealm}) ->
 -spec set_to(ne_binary(), call()) -> call().
 set_to(To, #whapps_call{}=Call) when is_binary(To) ->
     [ToUser, ToRealm] = binary:split(To, <<"@">>),
-    Call#whapps_call{to=To, to_user=ToUser, to_realm=ToRealm}.
+    Call#whapps_call{to=To
+                     ,to_user=ToUser
+                     ,to_realm=ToRealm
+                    }.
 
 -spec to(call()) -> ne_binary().
 to(#whapps_call{to=To}) ->
