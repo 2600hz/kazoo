@@ -3,6 +3,7 @@
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_api.hrl").
+-include_lib("kazoo_documents/include/kazoo_documents.hrl").
 
 -define(ECALLMGR_UTIL_CACHE, 'ecallmgr_util_cache').
 -define(ECALLMGR_AUTH_CACHE, 'ecallmgr_auth_cache').
@@ -405,9 +406,6 @@
 
 -define(LOOPBACK_BOWOUT_REG(CallId), {'loopback_bowout', CallId}).
 -define(LOOPBACK_BOWOUT_MSG(Node, Props), {Node, Props}).
-
--define(ACQUIRED_UUID, <<"Acquired-UUID">>).
--define(RESIGNING_UUID, <<"Resigning-UUID">>).
 
 -define(FS_EVENT_REG_MSG(Node, EvtName), {'event', Node, EvtName}).
 -define(FS_CALL_EVENT_REG_MSG(Node, EvtName), {'call_event', Node, EvtName}).
