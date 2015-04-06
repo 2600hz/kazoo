@@ -36,7 +36,7 @@
           options = [] :: list()
           ,from :: binary()
           ,to :: binary()
-          ,docs = [] :: list()
+          ,docs = [] :: wh_json:objects()
           ,filename :: api_binary()
           ,content_type :: binary()
           ,peer_ip :: peer()
@@ -355,10 +355,13 @@ check_faxbox(#state{to=To}= State) ->
     case binary:split(wh_util:to_lower_binary(To), <<"@">>) of
         [FaxNumber, Domain] ->
             Number = fax_util:filter_numbers(FaxNumber),
-            check_number(maybe_faxbox(State#state{faxbox_email=Domain
-                                                  ,original_number=FaxNumber
-                                                  ,number=Number
-                                                 }));
+            check_number(
+              maybe_faxbox(State#state{faxbox_email=Domain
+                                       ,original_number=FaxNumber
+                                       ,number=Number
+                                      }
+                          )
+             );
         _ ->
             lager:debug("invalid address"),
             {'error', "Not Found", State#state{errors=[<<"invalid address">>]}}
@@ -382,34 +385,50 @@ check_number(#state{}=State) ->
 -spec check_permissions(state()) ->
                                {'ok', state()} |
                                {'error', string(), state()}.
+-spec check_permissions(state(), ne_binaries()) ->
+                               {'ok', state()} |
+                               {'error', string(), state()}.
+check_permissions(#state{from=_From
+                         ,owner_email=OwnerEmail
+                         ,faxbox=FaxBoxDoc
+                        }=State) ->
+    lager:debug("checking if ~s can send to ~p."
+                ,[_From, wh_json:get_value(<<"name">>, FaxBoxDoc)]
+               ),
+    case wh_json:get_value(<<"smtp_permission_list">>, FaxBoxDoc, []) of
+        [] when OwnerEmail =:= 'undefined' ->
+            check_empty_permissions(State);
+        Permissions ->
+            check_permissions(State, Permissions)
+    end.
+
 check_permissions(#state{from=From
                          ,owner_email=OwnerEmail
                          ,faxbox=FaxBoxDoc
                          ,errors=Errors
-                        }=State) ->
-    lager:debug("checking if ~s can send to ~p."
-                ,[From, wh_json:get_value(<<"name">>, FaxBoxDoc)]),
-    case wh_json:get_value(<<"smtp_permission_list">>, FaxBoxDoc, []) of
-        [] when OwnerEmail =:= 'undefined' ->
-            case whapps_config:get_is_true(<<"fax">>, <<"allow_all_addresses_when_empty">>, 'false') of
-                'true' -> add_fax_document(State);
-                'false' ->
-                    Error = <<"faxbox permissions is empty and policy doesn't allow it">>,
-                    lager:debug(Error),
-                    {'error', "not allowed", State#state{errors=[Error | Errors]}}
-            end;
-        Permissions ->
-            case lists:any(fun(A) -> match(From, A) end, Permissions)
-                     orelse From =:= OwnerEmail
-                of
-                'true' -> add_fax_document(State);
-                'false' ->
-                    Error = wh_util:to_binary(
-                              io_lib:format("address ~s is not allowed on faxbox ~s",
-                                            [From, wh_json:get_value(<<"_id">>, FaxBoxDoc)])),
-                    lager:debug(Error),
-                    {'error', "not allowed", State#state{errors=[Error | Errors]}}
-            end
+                        }=State, Permissions) ->
+    case lists:any(fun(A) -> match(From, A) end, Permissions)
+        orelse From =:= OwnerEmail
+    of
+        'true' -> add_fax_document(State);
+        'false' ->
+            Error = wh_util:to_binary(
+                      io_lib:format("address ~s is not allowed on faxbox ~s",
+                                    [From, wh_json:get_value(<<"_id">>, FaxBoxDoc)])),
+            lager:debug(Error),
+            {'error', "not allowed", State#state{errors=[Error | Errors]}}
+    end.
+
+-spec check_empty_permissions(state()) ->
+                                     {'ok', state()} |
+                                     {'error', string(), state()}.
+check_empty_permissions(#state{errors=Errors}=State) ->
+    case whapps_config:get_is_true(<<"fax">>, <<"allow_all_addresses_when_empty">>, 'false') of
+        'true' -> add_fax_document(State);
+        'false' ->
+            Error = <<"faxbox permissions is empty and policy doesn't allow it">>,
+            lager:debug(Error),
+            {'error', "not allowed", State#state{errors=[Error | Errors]}}
     end.
 
 -spec match(binary(), binary()) -> boolean().
@@ -464,7 +483,8 @@ add_fax_document(#state{docs=Docs
                                       ,<<"send_to">>
                                      ]
                                      ,fax_util:notify_email_list(From, OwnerEmail , FaxBoxEmailNotify)
-                                     ,FaxBoxDoc),
+                                     ,FaxBoxDoc
+                                    ),
     Notify = wh_json:get_value([<<"notifications">>, <<"outbound">>], FaxBoxNotify),
 
     Props = props:filter_undefined(
