@@ -33,7 +33,7 @@ handle(Data, Call1) ->
     of
         'false' ->
             lager:notice("user ~s has no endpoints", [UserId]),
-            doodle_exe:continue(doodle_util:set_flow_error(<<"error">>, "user has no endpoints", Call));
+            doodle_exe:continue(doodle_util:set_flow_error(<<"error">>, <<"user has no endpoints">>, Call));
         {'ok', JObj} ->
             handle_result(JObj, Call);
         {'error', _R}=Reason ->
