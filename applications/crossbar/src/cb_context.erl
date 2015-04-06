@@ -918,6 +918,8 @@ add_system_error(Error, Props, Context) when is_list(Props) ->
 add_system_error('bad_identifier'=Error, JObj, Context) ->
     J = wh_json:set_value(<<"message">>, <<"bad identifier">>, JObj),
     build_system_error(404, Error, J, Context);
+add_system_error('not_found', JObj, Context) ->
+    add_system_error('bad_identifier', JObj, Context);
 add_system_error('invalid_bulk_type'=Error, JObj, Context) ->
     %% TODO: JObj is expected to have a type key!!
     Type = wh_json:get_value(<<"type">>, JObj),

@@ -65,7 +65,6 @@ This API check if the numbers are still available for purchase.
 
 ## Fix Phone Numbers
 
-
 ### Request
 
 - Verb: `POST`
@@ -80,3 +79,8 @@ This API check if the numbers are still available for purchase.
     "status": "success"
 }
 ```
+
+## Activate a new phone number
+
+    curl -X PUT -H "Content-Type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://server:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{NUMBER}/activate -d '{}'

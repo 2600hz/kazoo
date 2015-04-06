@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle client requests for phone_number documents
@@ -35,6 +35,7 @@
 -define(PORT, <<"port">>).
 -define(ACTIVATE, <<"activate">>).
 -define(RESERVE, <<"reserve">>).
+
 -define(CLASSIFIERS, <<"classifiers">>).
 -define(IDENTIFY, <<"identify">>).
 -define(COLLECTION, <<"collection">>).
@@ -49,8 +50,36 @@
                      ,{<<"application">>, <<"base64">>}
                      ,{<<"application">>, <<"x-base64">>}
                     ]).
+
 -define(PHONE_NUMBERS_CONFIG_CAT, <<"crossbar.phone_numbers">>).
--define(FIND_NUMBER_SCHEMA, "{\"$schema\": \"http://json-schema.org/draft-03/schema#\", \"id\": \"http://json-schema.org/draft-03/schema#\", \"properties\": {\"prefix\": {\"required\": \"true\", \"type\": \"string\", \"minLength\": 3, \"maxLength\": 10}, \"quantity\": {\"default\": 1, \"type\": \"integer\", \"minimum\": 1}}}").
+
+-define(FIND_NUMBER_PREFIX
+        ,wh_json:from_list([{<<"required">>, 'true'}
+                            ,{<<"type">>, <<"string">>}
+                            ,{<<"minLength">>, 3}
+                            ,{<<"maxLength">>, 10}
+                           ])
+       ).
+-define(FIND_NUMBER_QUANTITY
+        ,wh_json:from_list([{<<"default">>, 1}
+                            ,{<<"type">>, <<"integer">>}
+                            ,{<<"minimum">>, 1}
+                           ])
+       ).
+
+-define(FIND_NUMBER_PROPERTIES
+        ,wh_json:from_list([{<<"prefix">>, ?FIND_NUMBER_PREFIX}
+                            ,{<<"quantity">>, ?FIND_NUMBER_QUANTITY}
+                           ])
+       ).
+
+-define(FIND_NUMBER_SCHEMA
+        ,wh_json:from_list([{<<"$schema">>, <<"http://json-schema.org/draft-03/schema#">>}
+                            ,{<<"id">>, <<"find_number">>}
+                            ,{<<"properties">>, ?FIND_NUMBER_PROPERTIES}
+                           ])
+       ).
+
 -define(DEFAULT_COUNTRY, <<"US">>).
 -define(FREE_URL, <<"phonebook_url">>).
 -define(PAYED_URL, <<"phonebook_url_premium">>).
@@ -75,7 +104,6 @@ init() ->
     _ = crossbar_bindings:bind(<<"v2_resource.execute.put.phone_numbers">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"v2_resource.execute.post.phone_numbers">>, ?MODULE, 'post'),
     crossbar_bindings:bind(<<"v2_resource.execute.delete.phone_numbers">>, ?MODULE, 'delete').
-
 
 %%--------------------------------------------------------------------
 %% @public
@@ -637,7 +665,8 @@ find_numbers(Context) ->
                                              ,{fun cb_context:set_resp_status/2, 'success'}
                                             ])
                 end,
-    cb_context:validate_request_data(wh_json:decode(?FIND_NUMBER_SCHEMA)
+
+    cb_context:validate_request_data(?FIND_NUMBER_SCHEMA
                                      ,cb_context:set_req_data(Context, JObj)
                                      ,OnSuccess
                                     ).
@@ -646,7 +675,7 @@ find_numbers(Context) ->
 get_find_numbers_req(Context) ->
     JObj = cb_context:query_string(Context),
     AccountId = cb_context:auth_account_id(Context),
-    Quantity = wh_json:get_integer_value(<<"quantity">>, JObj, 1),
+    Quantity = wh_util:to_integer(cb_context:req_value(Context, <<"quantity">>, 1)),
     wh_json:set_values([{<<"quantity">>, Quantity}
                        ,{<<"Account-ID">>, AccountId}
                        ], JObj).
@@ -1123,9 +1152,11 @@ set_response({'dry_run', ?COLLECTION, Doc}, _, Context, Fun) ->
         'false' -> crossbar_util:response_402(RespJObj, Context)
     end;
 set_response({'error', Data}, _, Context, _) ->
+    lager:debug("error: ~p", [Data]),
     crossbar_util:response_400(<<"client error">>, Data, Context);
 set_response({Error, Reason}, _, Context, _) ->
-    crossbar_util:response('error', wh_util:to_binary(Error), 500, Reason, Context);
+    lager:debug("~p: ~p", [Error, Reason]),
+    cb_context:add_system_error(Error, Reason, Context);
 set_response(_Else, _, Context, _) ->
     lager:debug("unexpected response: ~p", [_Else]),
     cb_context:add_system_error('unspecified_fault', Context).

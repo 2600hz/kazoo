@@ -60,13 +60,15 @@ find(Number, Quantity, Opts) ->
     AccountId = props:get_value(<<"Account-ID">>, Opts),
     Num = wnm_util:normalize_number(Number),
     lager:info("attempting to find ~p numbers with prefix '~s' for account ~p"
-              ,[Quantity, Number, AccountId]),
+               ,[Quantity, Number, AccountId]
+              ),
+
     Results = [{Module, catch(Module:find_numbers(Num, Quantity, Opts))}
                || Module <- wnm_util:list_carrier_modules()
               ],
     NewOpts = [{<<"classification">>, wnm_util:classify_number(Num)}
-              ,{<<"account-id">>, AccountId}
-              ,{<<"services">>, maybe_get_services(AccountId)}
+               ,{<<"account-id">>, AccountId}
+               ,{<<"services">>, maybe_get_services(AccountId)}
                | Opts
               ],
     prepare_find_results(Results, [], NewOpts).

@@ -259,7 +259,7 @@ remove_number(AccountId, Number) ->
 -spec maybe_remove_non_porting(ne_binary(), ne_binary(), ne_binary(), wh_json:object()) -> 'stop' | 'ok'.
 maybe_remove_non_porting(AccountId, Number, AccountDb, JObj) ->
     case wh_json:get_value([Number, <<"state">>], JObj) of
-        <<"port_in">> ->
+        ?NUMBER_STATE_PORT_IN ->
             io:format("[~s] will not be removed as it is in 'port_in' state~n", [Number]);
         _Else ->
             remove_number(AccountId, Number, AccountDb, JObj)

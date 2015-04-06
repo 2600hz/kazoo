@@ -154,6 +154,8 @@ validate_by_api_key(Context, ApiKey, []) ->
                 ,[ApiKey]
                ),
     crossbar_util:response_bad_identifier(ApiKey, Context);
+validate_by_api_key(Context, ApiKey, [Doc]) ->
+    validate_by_api_key(Context, ApiKey, Doc);
 validate_by_api_key(Context, ApiKey, [Doc|_]) ->
     lager:debug("found multiple accounts with api key '~s', using '~s'"
                 ,[ApiKey, wh_json:get_value(<<"id">>, Doc)]
@@ -176,5 +178,6 @@ consume_tokens(Context) ->
     of
         'true' -> cb_context:set_resp_status(Context, 'success');
         'false' ->
+            lager:debug("client has no tokens left"),
             cb_context:add_system_error('too_many_requests', Context)
     end.

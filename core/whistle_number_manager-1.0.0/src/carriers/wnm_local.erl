@@ -44,7 +44,7 @@ is_number_billable(_Number) -> 'false'.
 %% Acquire a given number from the carrier
 %% @end
 %%--------------------------------------------------------------------
--spec acquire_number/1 :: (wnm_number()) -> wnm_number().
+-spec acquire_number(wnm_number()) -> wnm_number().
 acquire_number(#number{dry_run='true'}=Number) -> Number;
 acquire_number(Number) -> Number.
 
@@ -57,7 +57,9 @@ acquire_number(Number) -> Number.
 
 -spec disconnect_number(wnm_number()) -> wnm_number().
 disconnect_number(Number) ->
-        Number#number{state = <<"released">>, hard_delete='true'}.
+        Number#number{state = ?NUMBER_STATE_RELEASED
+                      ,hard_delete='true'
+                     }.
 
 %%--------------------------------------------------------------------
 %% @private
