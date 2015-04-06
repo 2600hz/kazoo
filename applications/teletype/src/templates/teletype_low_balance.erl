@@ -62,13 +62,12 @@ handle_low_balance(JObj, _Props) ->
     %% Gather data for template
     DataJObj = wh_json:normalize(JObj),
     AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
-    {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
 
     case teletype_util:should_handle_notification(DataJObj)
-        andalso teletype_util:is_notice_enabled(AccountJObj, JObj, ?TEMPLATE_ID)
+        andalso teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID)
     of
         'false' -> lager:debug("notification handling not configured for this account");
-        'true' -> handle_req(wh_json:set_value(<<"account">>, AccountJObj, DataJObj))
+        'true' -> handle_req(DataJObj)
     end.
 
 -spec get_current_balance(wh_json:object()) -> float().
@@ -81,7 +80,7 @@ get_current_balance(DataJObj) ->
 -spec handle_req(wh_json:object()) -> 'ok'.
 handle_req(DataJObj) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
-              ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
+              ,{<<"account">>, teletype_util:account_params(DataJObj)}
               ,{<<"current_balance">>, get_current_balance(DataJObj)}
               ,{<<"threshold">>, teletype_util:get_balance_threshold(DataJObj)}
               | build_macro_data(DataJObj)

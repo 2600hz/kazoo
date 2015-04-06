@@ -60,35 +60,31 @@ handle_req(JObj, _Props) ->
     %% Gather data for template
     DataJObj = wh_json:normalize(JObj),
     AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
-    {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
 
     case teletype_util:should_handle_notification(DataJObj)
-        andalso teletype_util:is_notice_enabled(AccountJObj, JObj, ?TEMPLATE_ID)
+        andalso teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID)
     of
         'false' -> lager:debug("notification handling not configured for this account");
-        'true' -> do_handle_req(DataJObj, AccountJObj)
+        'true' -> do_handle_req(DataJObj)
     end.
 
--spec do_handle_req(wh_json:object(), wh_json:object()) -> 'ok'.
-do_handle_req(DataJObj, AccountJObj) ->
+-spec do_handle_req(wh_json:object()) -> 'ok'.
+do_handle_req(DataJObj) ->
     UserId = wh_json:get_value(<<"user_id">>, DataJObj),
     {'ok', UserJObj} = teletype_util:open_doc(<<"user">>, UserId, DataJObj),
     Password = wh_json:get_value(<<"password">>, DataJObj),
 
     ReqData =
         wh_json:set_values(
-          [{<<"account">>, AccountJObj}
-           ,{<<"user">>, wh_json:set_value(<<"password">>, Password, UserJObj)}
+          [{<<"user">>, wh_json:set_value(<<"password">>, Password, UserJObj)}
            ,{<<"to">>, [wh_json:get_ne_value(<<"email">>, UserJObj)]}
           ]
           ,DataJObj
          ),
 
     case teletype_util:is_preview(DataJObj) of
-        'false' ->
-            process_req(ReqData);
-        'true' ->
-            process_req(wh_json:merge_jobjs(DataJObj, ReqData))
+        'false' -> process_req(ReqData);
+        'true' -> process_req(wh_json:merge_jobjs(DataJObj, ReqData))
     end.
 
 -spec process_req(wh_json:object()) -> 'ok'.
@@ -101,7 +97,7 @@ process_req(_DataJObj, []) ->
     lager:debug("no templates to render for ~s", [?TEMPLATE_ID]);
 process_req(DataJObj, Templates) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
-              ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
+              ,{<<"account">>, teletype_util:account_params(DataJObj)}
               ,{<<"user">>, teletype_util:public_proplist(<<"user">>, DataJObj)}
              ],
 

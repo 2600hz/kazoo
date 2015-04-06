@@ -70,22 +70,21 @@ handle_fax_inbound_error(JObj, _Props) ->
     %% Gather data for template
     DataJObj = wh_json:normalize(JObj),
     AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
-    {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
 
     case teletype_util:should_handle_notification(DataJObj)
-        andalso teletype_util:is_notice_enabled(AccountJObj, JObj, ?TEMPLATE_ID)
+        andalso teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID)
     of
         'false' -> lager:debug("notification handling not configured for this account");
-        'true' -> handle_fax_inbound(DataJObj, AccountJObj)
+        'true' -> handle_fax_inbound(DataJObj)
     end.
 
--spec handle_fax_inbound(wh_json:object(), wh_json:object()) -> 'ok'.
-handle_fax_inbound(DataJObj, AccountJObj) ->
+-spec handle_fax_inbound(wh_json:object()) -> 'ok'.
+handle_fax_inbound(DataJObj) ->
     FaxJObj = teletype_fax_util:get_fax_doc(DataJObj),
     OwnerJObj = get_owner_doc(FaxJObj, DataJObj),
 
     Macros = build_template_data(
-               wh_json:set_values([{<<"account">>, wh_doc:public_fields(AccountJObj)}
+               wh_json:set_values([{<<"account">>, teletype_util:account_params(DataJObj)}
                                    ,{<<"fax">>, wh_doc:public_fields(FaxJObj)}
                                    ,{<<"owner">>, wh_doc:public_fields(OwnerJObj)}
                                    ,{<<"error">>, error_data(DataJObj)}

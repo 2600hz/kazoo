@@ -275,16 +275,6 @@ do_post(Context) ->
 
 post(Context, Id, ?PREVIEW) ->
     Notification = cb_context:doc(Context),
-    case wh_json:is_true(<<"enabled">>, Notification) of
-        'true' ->
-            handle_preview(Context, Id, Notification);
-        'false' ->
-            lager:debug("ending request: preview is disabled"),
-            cb_context:add_system_error('disabled', Context)
-    end.
-
--spec handle_preview(cb_context:context(), ne_binary(), wh_json:object()) -> cb_context:context().
-handle_preview(Context, Id, Notification) ->
     Preview = build_preview_payload(Context, Notification),
     {API, _} = lists:foldl(fun preview_fold/2
                            ,{Preview, Notification}

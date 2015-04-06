@@ -61,15 +61,14 @@ handle_password_recovery(JObj, _Props) ->
     %% Gather data for template
     DataJObj = wh_json:normalize(JObj),
     AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
-    {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
 
     case teletype_util:should_handle_notification(DataJObj)
-        andalso teletype_util:is_notice_enabled(AccountJObj, JObj, ?TEMPLATE_ID)
+        andalso teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID)
     of
         'false' ->
             lager:debug("notification not enabled for account ~s: prefers ~s"
                         ,[AccountId
-                          ,kz_account:notification_preference(AccountJObj)
+                          ,kz_account:notification_preference(DataJObj)
                          ]);
         'true' ->
             lager:debug("notification enabled for account ~s", [AccountId]),
@@ -78,7 +77,6 @@ handle_password_recovery(JObj, _Props) ->
             ReqData =
                 wh_json:set_values(
                     [{<<"user">>, User}
-                     ,{<<"account">>, AccountJObj}
                      ,{<<"to">>, [wh_json:get_ne_value(<<"email">>, User)]}
                     ]
                   ,DataJObj
@@ -108,7 +106,7 @@ process_req(_DataJObj, []) ->
     lager:debug("no templates to render for ~s", [?TEMPLATE_ID]);
 process_req(DataJObj, Templates) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
-              ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
+              ,{<<"account">>, teletype_util:account_params(DataJObj)}
               ,{<<"user">>, teletype_util:public_proplist(<<"user">>, DataJObj)}
              ],
 

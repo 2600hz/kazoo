@@ -903,15 +903,15 @@ should_handle_notification_for_account(AccountId, ResellerId) ->
 
 -define(MOD_CONFIG_CAT(Key), <<(?NOTIFY_CONFIG_CAT)/binary, ".", Key/binary>>).
 
--spec is_notice_enabled(wh_json:object(), wh_json:object(), ne_binary()) -> boolean().
-is_notice_enabled(AccountJObj, ApiJObj, NoticeKey) ->
-    case {wh_json:get_value([<<"notifications">>
-                             ,NoticeKey
-                             ,<<"enabled">>
-                            ], AccountJObj)
-          ,wh_json:is_true(<<"Preview">>, ApiJObj, 'false')
-         }
-    of
+-spec is_notice_enabled(ne_binary(), wh_json:object(), ne_binary()) -> boolean().
+is_notice_enabled(AccountId, ApiJObj, NoticeKey) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    NotifId = <<"notification.", NoticeKey/binary>>,
+    case couch_mgr:open_doc(AccountDb, NotifId) of
+        {'ok', NotifJObj} -> Enabled = wh_json:is_true(<<"enabled">>, NotifJObj);
+        _Otherwise ->        Enabled = 'undefined'
+    end,
+    case {Enabled, wh_json:is_true(<<"Preview">>, ApiJObj, 'false')} of
         {_Account, 'true'} -> 'true';
         {'undefined', 'false'} ->
             lager:debug("account is mute, checking system config"),
