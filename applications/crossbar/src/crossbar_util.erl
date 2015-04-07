@@ -1046,8 +1046,8 @@ maybe_refresh_fs_xml('true', 'user', Context) ->
     Doc = cb_context:doc(Context),
     AccountDb = cb_context:account_db(Context),
     Realm     = wh_util:get_account_realm(AccountDb),
-    OwnerId = wh_json:get_value(<<"owner_id">>, Doc),
-    Devices = get_devices_by_owner(AccountDb, OwnerId),
+    Id = wh_json:get_value(<<"_id">>, Doc),
+    Devices = get_devices_by_owner(AccountDb, Id),
     lists:foreach(fun (DevDoc) -> refresh_fs_xml(Realm, DevDoc) end, Devices);
 maybe_refresh_fs_xml(Precondition, 'device', Context) ->
     Doc   = cb_context:doc(Context),
@@ -1059,21 +1059,29 @@ maybe_refresh_fs_xml(Precondition, 'device', Context) ->
       or (wh_json:get_value(<<"owner_id">>, DbDoc) =/=
               wh_json:get_value(<<"owner_id">>, Doc))
     ) andalso
-        refresh_fs_xml(Realm, Doc),
+        refresh_fs_xml(Realm, DbDoc),
     'ok'.
 
 -spec refresh_fs_xml(ne_binary(), wh_json:object()) -> 'ok'.
 refresh_fs_xml(Realm, Doc) ->
-    Username = sip(<<"username">>, Doc),
-    lager:debug("flushing fs xml for user '~s' at '~s'", [Username,Realm]),
-    ecallmgr_fs_nodes:flush(Username, Realm).
+    case sip(<<"username">>, Doc) of
+        'undefined' -> 'ok';
+        Username ->
+            lager:debug("flushing fs xml for user '~s' at '~s'", [Username,Realm]),
+            Req = [{<<"Username">>, Username}
+                   ,{<<"Realm">>, Realm}
+                   | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                  ],
+            wh_amqp_worker:cast(Req, fun wapi_switch:publish_fs_xml_flush/1)
+    end.
 
 -spec sip(ne_binary(), wh_json:object()) -> api_binary().
 sip(Key, JObj) ->
     wh_json:get_value([<<"sip">>, Key], JObj).
 
 %% @public
--spec get_devices_by_owner(ne_binary(), ne_binary()) -> ne_binaries().
+-spec get_devices_by_owner(ne_binary(), api_binary()) -> ne_binaries().
+get_devices_by_owner(_AccountDb, 'undefined') -> [];
 get_devices_by_owner(AccountDb, OwnerId) ->
     ViewOptions = [{'key', [OwnerId, <<"device">>]},
                    'include_docs'

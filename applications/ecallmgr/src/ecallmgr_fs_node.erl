@@ -14,6 +14,7 @@
 -export([start_link/1, start_link/2]).
 -export([handle_reload_acls/2]).
 -export([handle_reload_gtws/2]).
+-export([handle_fs_xml_flush/2]).
 -export([sync_channels/1
          ,sync_interface/1
          ,sync_capabilities/1
@@ -132,14 +133,16 @@
 -define(RESPONDERS, [{{?MODULE, 'handle_reload_acls'}
                       ,[{<<"switch_event">>, <<"reload_acls">>}]
                      }
-                     ,{{?MODULE, 'handle_reload_gtws'}
-                       ,[{<<"switch_event">>, <<"reload_gateways">>}]
-                      }
+                    ,{{?MODULE, 'handle_reload_gtws'}
+                      ,[{<<"switch_event">>, <<"reload_gateways">>}]
+                     }
+                    ,{{?MODULE, 'handle_fs_xml_flush'}
+                      ,[{<<"switch_event">>, <<"fs_xml_flush">>}]
+                     }
                     ]).
 -define(BINDINGS, [{'switch', []}]).
--define(QUEUE_NAME, <<>>).
--define(QUEUE_OPTIONS, []).
--define(CONSUME_OPTIONS, []).
+-define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
+-define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 -define(SERVER, ?MODULE).
 
@@ -186,9 +189,13 @@
 
 start_link(Node) -> start_link(Node, []).
 start_link(Node, Options) ->
+    QueueName = <<(wh_util:to_binary(Node))/binary
+                  ,"-"
+                  ,(wh_util:to_binary(?MODULE))/binary
+                >>,
     gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
                                       ,{'bindings', ?BINDINGS}
-                                      ,{'queue_name', ?QUEUE_NAME}
+                                      ,{'queue_name', QueueName}
                                       ,{'queue_options', ?QUEUE_OPTIONS}
                                       ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], [Node, Options]).
@@ -248,6 +255,19 @@ handle_reload_gtws(_JObj, Props) ->
         {'ok', Job} -> lager:debug("sofia ~s command sent to ~s: JobID: ~s", [Args, Node, Job]);
         {'error', _E} -> lager:debug("sofia ~s failed with error: ~p", [Args, _E])
     end.
+
+-spec handle_fs_xml_flush(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_fs_xml_flush(JObj, Props) ->
+    'true' = wapi_switch:fs_xml_flush_v(JObj),
+    User  = wh_json:get_value(<<"Username">>, JObj),
+    Realm = wh_json:get_value(<<"Realm">>, JObj, <<>>),
+    Node = props:get_value('node', Props),
+    Args = <<"id "
+             ,User/binary, " "
+             ,Realm/binary
+           >>,
+    lager:debug("flushing xml cache ~s on ~p", [Args, Node]),
+    freeswitch:api(Node, 'xml_flush_cache', Args).
 
 -spec fs_node(fs_node()) -> atom().
 fs_node(Srv) ->

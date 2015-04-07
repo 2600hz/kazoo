@@ -213,7 +213,7 @@ get_authn_req_routing(Req) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec get_auth_user(wh_json:object()) -> api_binary().
-get_auth_user(ApiJObj) -> 
+get_auth_user(ApiJObj) ->
     case wh_json:get_value(<<"Auth-User">>, ApiJObj) of
         'undefined' -> 'undefined';
          Username -> wh_util:to_lower_binary(Username)
@@ -229,8 +229,8 @@ get_auth_user(ApiJObj) ->
 -spec get_auth_realm(wh_json:object() | wh_proplist()) -> ne_binary().
 get_auth_realm(ApiProp) when is_list(ApiProp) ->
     AuthRealm = props:get_value(<<"Auth-Realm">>, ApiProp, <<"missing.realm">>),
-    case wh_network_utils:is_ipv4(AuthRealm) 
-        orelse wh_network_utils:is_ipv6(AuthRealm) 
+    case wh_network_utils:is_ipv4(AuthRealm)
+        orelse wh_network_utils:is_ipv6(AuthRealm)
     of
         'false' -> wh_util:to_lower_binary(AuthRealm);
         'true' ->

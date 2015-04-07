@@ -434,7 +434,6 @@ handle_cast({'flush', Realm}, State) ->
     {'noreply', State};
 handle_cast({'flush', Username, Realm}, State) ->
     _ = ets:delete(?MODULE, registration_id(Username, Realm)),
-    ecallmgr_fs_nodes:flush(Username, Realm),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
