@@ -51,3 +51,5 @@ applications/*/priv/archive_data/*
 .project
 .settings
 /deps/rabbit_common-3.3.5/
+/deps/slex-*/src/slex_parser.erl
+/deps/slex-*/src/slex_scanner.erl
