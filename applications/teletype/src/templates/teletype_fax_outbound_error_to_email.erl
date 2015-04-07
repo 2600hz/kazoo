@@ -65,7 +65,7 @@ handle_fax_outbound_error(JObj, _Props) ->
     'true' = wapi_notifications:fax_outbound_error_v(JObj),
     wh_util:put_callid(JObj),
 
-    lager:debug("processing fax outbound to email"),
+    lager:debug("processing fax outbound error to email"),
 
     %% Gather data for template
     DataJObj = wh_json:normalize(JObj),
