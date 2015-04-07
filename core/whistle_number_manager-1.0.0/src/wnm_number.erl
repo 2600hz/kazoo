@@ -929,8 +929,11 @@ exec_providers([Provider|Providers], Action, Number) ->
             exec_providers(Providers, Action, Number);
         Mod ->
             case apply(Mod, Action, [Number]) of
-                #number{}=N -> exec_providers(Providers, Action, N);
+                #number{}=N ->
+                    lager:debug("successfully attempted ~s:~s/1", [Mod, Action]),
+                    exec_providers(Providers, Action, N);
                 {'error', Reason} ->
+                    lager:debug("failed attempting ~s:~s/1: ~p", [Mod, Action, Reason]),
                     Errors = wh_json:from_list([{Provider, Reason}]),
                     wnm_number:error_provider_fault(Errors, Number)
             end
