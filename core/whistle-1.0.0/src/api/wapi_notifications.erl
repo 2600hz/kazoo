@@ -190,7 +190,7 @@
                              ]).
 -define(FAX_OUTBOUND_TYPES, []).
 
--define(FAX_OUTBOUND_ERROR_HEADERS, [<<"Fax-JobId">>]).
+-define(FAX_OUTBOUND_ERROR_HEADERS, [<<"Fax-JobId">>, <<"Fax-ID">>]).
 -define(OPTIONAL_FAX_OUTBOUND_ERROR_HEADERS, [<<"Caller-ID-Name">>, <<"Callee-ID-Name">>
                                               ,<<"Caller-ID-Number">>, <<"Callee-ID-Number">>
                                               ,<<"Call-ID">>, <<"Fax-Info">>
