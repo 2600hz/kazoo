@@ -339,6 +339,10 @@ handle_cast(_Msg, State) ->
 handle_info('job_timeout', #state{job=JObj}=State) ->
     release_failed_job('job_timeout', 'undefined', JObj),
     {'noreply', reset(State)};
+handle_info({'EXIT', _, 'normal'}, State) ->
+    {'noreply', State};
+handle_info({'EXIT', _, 'shutdown'}, State) ->
+    {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("fax worker unhandled message: ~p", [_Info]),
     {'noreply', State}.
@@ -499,7 +503,7 @@ release_failed_job('fax_result', Resp, JObj) ->
     release_job(Result, JObj, Resp);
 release_failed_job('job_timeout', _Error, JObj) ->
     Result = [{<<"success">>, 'false'}
-              ,{<<"result_code">>, 0}
+              ,{<<"result_code">>, 500}
               ,{<<"result_text">>, <<"fax job timed out">>}
               ,{<<"pages_sent">>, 0}
               ,{<<"time_elapsed">>, elapsed_time(JObj)}
