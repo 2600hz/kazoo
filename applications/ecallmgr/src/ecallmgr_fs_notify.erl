@@ -223,7 +223,8 @@ register_overwrite(JObj, Props) ->
 -spec ensure_contact_user(ne_binary(), ne_binary()) -> ne_binary().
 ensure_contact_user(Contact, Username) ->
     case nksip_parse_uri:uris(Contact) of
-        [#uri{user = <<>>}=Uri] -> nksip_unparse:ruri(Uri#uri{user=Username});
+        [#uri{user = <<>>, ext_opts=Opts}=Uri] ->
+            nksip_unparse:ruri(Uri#uri{user=Username, opts=Opts});
         _Else -> Contact
     end.
 
