@@ -49,7 +49,7 @@ reconcile(Services, DeviceType) ->
         {'error', _R} ->
             lager:debug("unable to get current devices in service: ~p", [_R]),
             Services;
-        {'ok', []} -> wh_services:reset_category(<<"devices">>, Services);
+        {'ok', []} -> wh_services:update(<<"devices">>, DeviceType, 1, Services);
         {'ok', JObjs} ->
             S = lists:foldl(
                   fun(JObj, S) ->
