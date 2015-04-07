@@ -253,7 +253,7 @@ create_sms_doc_id() ->
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
     {View, PreFilter, PostFilter} = get_view_and_filter(Context),
-    case get_view_options(Context, PreFilter, PostFilter) of
+    case cb_modules_util:range_modb_view_options(Context, PreFilter, PostFilter) of
         {'ok', ViewOptions} ->
             crossbar_doc:load_view(View, ViewOptions, Context, fun normalize_view_results/2);
         Ctx -> Ctx
@@ -278,45 +278,6 @@ get_view_and_filter(Context) ->
         {Id , 'undefined'} -> {?CB_LIST_BY_DEVICE, [Id], 'undefined'};
         {Id, _} -> {?CB_LIST_BY_DEVICE, [Id], 'undefined'}
     end.
-
--spec get_view_options(cb_context:context(), api_binaries(), api_binaries()) ->
-                              {'ok', wh_proplist()} |
-                              cb_context:context().
-get_view_options(Context, 'undefined', SuffixKey) ->
-    get_view_options(Context, [], SuffixKey);
-get_view_options(Context, PrefixKey, 'undefined') ->
-    get_view_options(Context, PrefixKey, []);
-get_view_options(Context, PrefixKey, SuffixKey) ->
-    MaxRange = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_range">>, (?SECONDS_IN_DAY * 31 + ?SECONDS_IN_HOUR)),
-    case cb_modules_util:range_view_options(Context, MaxRange) of
-        {CreatedFrom, CreatedTo} ->
-            case PrefixKey =:= [] andalso SuffixKey =:= [] of
-                'true' ->
-                    {'ok', [{'startkey', CreatedFrom}
-                            ,{'endkey', CreatedTo}
-                            ,{'limit', pagination_page_size(Context)}
-                            | get_modbs(Context, CreatedFrom, CreatedTo)
-                           ]};
-                'false' ->
-                    {'ok', [{'startkey', [Key || Key <- PrefixKey ++ [CreatedFrom | SuffixKey]]}
-                            ,{'endkey', [Key || Key <- PrefixKey ++ [CreatedTo | SuffixKey]]}
-                            ,{'limit', pagination_page_size(Context)}
-                            | get_modbs(Context, CreatedFrom, CreatedTo)
-                           ]}
-            end;
-        Context1 -> Context1
-    end.
-
--spec get_modbs(cb_context:context(), pos_integer(), pos_integer()) -> [{'databases', ne_binaries()}].
-get_modbs(Context, From, To) ->
-    AccountId = cb_context:account_id(Context),
-    {{FromYear, FromMonth, _}, _} = calendar:gregorian_seconds_to_datetime(From),
-    {{ToYear, ToMonth, _}, _} = calendar:gregorian_seconds_to_datetime(To),
-    Range = crossbar_util:generate_year_month_sequence({FromYear, FromMonth}, {ToYear, ToMonth}, []),
-    [{'databases', [wh_util:format_account_mod_id(AccountId, Year, Month)
-                    || {Year, Month} <- Range
-                   ]
-     }].
 
 %%--------------------------------------------------------------------
 %% @private
