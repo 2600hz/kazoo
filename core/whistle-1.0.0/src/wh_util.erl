@@ -949,7 +949,7 @@ remove_white_spaces(Bin, Opts) ->
 
 -spec remove_white_spaces(binary()) -> binary().
 remove_white_spaces(Bin) ->
-    << <<X>> || <<X>> <= Bin, X =/= $ >>. %"$ " is 32
+    << <<X>> || <<X>> <= Bin, X =/= $\s >>.
 
 -spec binary_md5(text()) -> ne_binary().
 binary_md5(Text) -> to_hex_binary(erlang:md5(to_binary(Text))).

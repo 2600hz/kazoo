@@ -249,6 +249,7 @@ validate(Context, UserId, ?QUICKCALL, _) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _) ->
+    _ = crossbar_util:maybe_refresh_fs_xml('user', Context),
     crossbar_doc:save(Context).
 
 -spec put(cb_context:context()) -> cb_context:context().

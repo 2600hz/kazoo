@@ -73,6 +73,9 @@
 
 -export([format_emergency_caller_id_number/1]).
 
+-export([get_devices_by_owner/2]).
+-export([maybe_refresh_fs_xml/2]).
+
 -include("crossbar.hrl").
 
 -define(DEFAULT_LANGUAGE
@@ -1023,6 +1026,63 @@ format_emergency_caller_id_number(Context) ->
                         ,wh_json:set_value(<<"caller_id">>, NCallerId, cb_context:req_data(Context))
                     )
             end
+    end.
+
+%% @public
+-spec maybe_refresh_fs_xml('user' | 'device', cb_context:context()) -> 'ok'.
+maybe_refresh_fs_xml(Kind, Context) ->
+    DbDoc = cb_context:fetch(Context, 'db_doc'),
+    Doc = cb_context:doc(Context),
+    Precondition =
+        (wh_json:get_value(<<"presence_id">>, DbDoc) =/=
+             wh_json:get_value(<<"presence_id">>, Doc))
+        or (wh_json:get_value([<<"media">>, <<"encryption">>, <<"enforce_security">>], DbDoc) =/=
+                wh_json:get_value([<<"media">>, <<"encryption">>, <<"enforce_security">>], Doc)),
+    maybe_refresh_fs_xml(Precondition, Kind, Context).
+
+-spec maybe_refresh_fs_xml(boolean(), 'user' | 'device', cb_context:context()) -> 'ok'.
+maybe_refresh_fs_xml('false', 'user', _Context) -> 'ok';
+maybe_refresh_fs_xml('true', 'user', Context) ->
+    Doc = cb_context:doc(Context),
+    AccountDb = cb_context:account_db(Context),
+    Realm     = wh_util:get_account_realm(AccountDb),
+    OwnerId = wh_json:get_value(<<"owner_id">>, Doc),
+    Devices = get_devices_by_owner(AccountDb, OwnerId),
+    lists:foreach(fun (DevDoc) -> refresh_fs_xml(Realm, DevDoc) end, Devices);
+maybe_refresh_fs_xml(Precondition, 'device', Context) ->
+    Doc   = cb_context:doc(Context),
+    DbDoc = cb_context:fetch(Context, 'db_doc'),
+    Realm = wh_util:get_account_realm(cb_context:account_db(Context)),
+    ( Precondition
+      or (sip(<<"username">>, DbDoc) =/= sip(<<"username">>, Doc))
+      or (sip(<<"password">>, DbDoc) =/= sip(<<"password">>, Doc))
+      or (wh_json:get_value(<<"owner_id">>, DbDoc) =/=
+              wh_json:get_value(<<"owner_id">>, Doc))
+    ) andalso
+        refresh_fs_xml(Realm, Doc),
+    'ok'.
+
+-spec refresh_fs_xml(ne_binary(), wh_json:object()) -> 'ok'.
+refresh_fs_xml(Realm, Doc) ->
+    Username = sip(<<"username">>, Doc),
+    lager:debug("flushing fs xml for user '~s' at '~s'", [Username,Realm]),
+    ecallmgr_fs_nodes:flush(Username, Realm).
+
+-spec sip(ne_binary(), wh_json:object()) -> api_binary().
+sip(Key, JObj) ->
+    wh_json:get_value([<<"sip">>, Key], JObj).
+
+%% @public
+-spec get_devices_by_owner(ne_binary(), ne_binary()) -> ne_binaries().
+get_devices_by_owner(AccountDb, OwnerId) ->
+    ViewOptions = [{'key', [OwnerId, <<"device">>]},
+                   'include_docs'
+                  ],
+    case couch_mgr:get_results(AccountDb, <<"cf_attributes/owned">>, ViewOptions) of
+        {'ok', JObjs} -> [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs];
+        {'error', _R} ->
+            lager:warning("unable to find documents owned by ~s: ~p", [OwnerId, _R]),
+            []
     end.
 
 %%--------------------------------------------------------------------
