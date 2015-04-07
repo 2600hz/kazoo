@@ -277,55 +277,6 @@ handle_call_stat(JObj, Props) ->
             lager:debug("recv unknown call stat type ~s: ~p", [_Name, JObj])
     end.
 
--spec handle_status_stat(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_status_stat(JObj, Props) ->
-    'true' = case (EventName = wh_json:get_value(<<"Event-Name">>, JObj)) of
-                 <<"ready">> -> wapi_acdc_stats:status_ready_v(JObj);
-                 <<"logged_in">> -> wapi_acdc_stats:status_logged_in_v(JObj);
-                 <<"logged_out">> -> wapi_acdc_stats:status_logged_out_v(JObj);
-                 <<"connecting">> -> wapi_acdc_stats:status_connecting_v(JObj);
-                 <<"connected">> -> wapi_acdc_stats:status_connected_v(JObj);
-                 <<"wrapup">> -> wapi_acdc_stats:status_wrapup_v(JObj);
-                 <<"paused">> -> wapi_acdc_stats:status_paused_v(JObj);
-                 <<"outbound">> -> wapi_acdc_stats:status_outbound_v(JObj);
-                 _Name ->
-                     lager:debug("recv unknown status stat type ~s: ~p", [_Name, JObj]),
-                     'false'
-             end,
-
-    AgentId = wh_json:get_value(<<"Agent-ID">>, JObj),
-    Timestamp = wh_json:get_integer_value(<<"Timestamp">>, JObj),
-
-    gen_listener:cast(props:get_value('server', Props)
-                      ,{'create_status', #status_stat{id=status_stat_id(AgentId, Timestamp, EventName)
-                                                      ,agent_id=AgentId
-                                                      ,acct_id=wh_json:get_value(<<"Account-ID">>, JObj)
-                                                      ,status=EventName
-                                                      ,timestamp=Timestamp
-                                                      ,callid=wh_json:get_value(<<"Call-ID">>, JObj)
-                                                      ,wait_time=wait_time(EventName, JObj)
-                                                      ,pause_time=pause_time(EventName, JObj)
-                                                      ,caller_id_name=caller_id_name(EventName, JObj)
-                                                      ,caller_id_number=caller_id_number(EventName, JObj)
-                                                     }}).
-
--spec wait_time(ne_binary(), wh_json:object()) -> api_integer().
-wait_time(<<"paused">>, _) -> 'undefined';
-wait_time(_, JObj) -> wh_json:get_integer_value(<<"Wait-Time">>, JObj).
-
--spec pause_time(ne_binary(), wh_json:object()) -> api_integer().
-pause_time(<<"paused">>, JObj) ->
-    case wh_json:get_integer_value(<<"Pause-Time">>, JObj) of
-        'undefined' -> wh_json:get_integer_value(<<"Wait-Time">>, JObj);
-        PT -> PT
-    end;
-pause_time(_, _JObj) -> 'undefined'.
-
-caller_id_name(_, JObj) ->
-    wh_json:get_value(<<"Caller-ID-Name">>, JObj).
-caller_id_number(_, JObj) ->
-    wh_json:get_value(<<"Caller-ID-Number">>, JObj).
-
 -spec handle_call_query(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_call_query(JObj, _Prop) ->
     'true' = wapi_acdc_stats:current_calls_req_v(JObj),
