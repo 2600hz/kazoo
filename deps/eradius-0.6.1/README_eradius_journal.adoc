@@ -1,0 +1,194 @@
+= Structured RADIUS Logging
+
+New RADIUS logging based on lager, ejournal and journald.
+
+== Classic RADIUS logging
+
+RADIUS logging has this roots in the RADIUS implementation MERIT, Linvingston, and lately FreeRADIUS etc.
+The RADIUS log output was always block structured.
+
+The intention of this block structure was to write parser for batch based reporting i.e. for billing purposes.
+
+Examples (simplified) for block based multiline RADIUS logs look like this
+
+Access-Request:
+
+[source, RADIUS log]
+----
+
+Mon Feb 02 10:15:25 2015 10.38.0.1:24208 [240] Access-Request # <1>
+        Calling-Station-Id = "447721218119" <2>
+        User-Name = "web"
+        NAS-IP-Address = 10.38.0.1
+        Service-Type = Framed-User
+        Framed-Protocol = GPRS-PDP-Context
+        NAS-Port-Type = Wireless-Other
+        X_3GPP-IMSI = "123456789876543" <3>
+
+----
+
+<1> Timestamp and RADIUS Request Type
+<2> for Standard RADIUS attributes consult the RADIUS RFCs
+<3> for vendor specific attributes consult the coresponding documentations
+
+Accounting-Start:
+
+[source, RADIUS log]
+----
+
+Mon Feb 02 10:15:25 2015 10.38.0.1:24208 [195] Accounting-Request
+    User-Name = "web"
+    Calling-Station-Id = "447721218119"
+    NAS-IP-Address = 10.38.0.1
+    Acct-Status-Type = Start
+    Service-Type = Framed-User
+    Framed-Protocol = GPRS-PDP-Context
+    NAS-Port-Type = Wireless-Other
+    X_3GPP-IMSI = "123456789876543"
+    Acct-Session-Id = "A123B456C789D123"
+    Acct-Authentic = RADIUS
+    Acct-Multi-Session-Id = "A123B456C789D321"
+    Framed-MTU = 1500
+    Event-Timestamp = 2015-02-02T10:15:25
+    Framed-IP-Address = 12.34.56.101
+    NAS-Port = 12345
+----
+
+If you want to analyse the this logfiles with classic line based console tools like
+
+[listing]
+----
+cat radius.log | grep 123456789876543
+----
+
+you run quickly in trouble as the command will find the appropiate log line in the radius.log file but you loose all the context due
+the multiline nature of the log format. You dont know the other attributes of the request and also the context of the session ID is lost.
+
+In contrast typical syslogging has all the context in a single line log format
+
+[source, syslog]
+----
+Feb  5 12:46:29 mba002-hwi-2.local com.apple.authd[39]: Succeeded authorizing right 'com.apple.ServiceManagement.daemons.modify' by client '/usr/libexec/UserEventAgent' [11] for authorization created by '/usr/libexec/UserEventAgent' [11] (12,0)
+----
+
+a grep on a single line logformat always find the logmessage including the context. How ever the single line format is very limted in space
+
+
+== Structured logging to journal
+
+To eliminate this problem we introduce structured logging based on the systemd-journald project. The journal can receive structured log messages and adds
+many meta data to the particular log messages.
+The whole journal is indexed by field and can be searched with the journalctl tool.
+
+An admin will replace
+
+[listing]
+----
+tail -f /var/log/message
+----
+
+with
+
+[listing]
+----
+journalctl -f
+----
+
+for more command see: http://0pointer.de/blog/projects/journalctl.html
+
+
+a typical journal log message will look like this
+
+
+[source, journal]
+----
+Tue 2012-10-23 23:51:38 CEST [s=ac9e9c423355411d87bf0ba1a9b424e8;i=4301;b=5335e9cf5d954633bb99aefc0ec38c25;m=882ee28d2;t=4ccc0f98326e6;x=f21e8b1b0994d7ee]
+        PRIORITY=6
+        SYSLOG_FACILITY=3
+        _MACHINE_ID=a91663387a90b89f185d4e860000001a
+        _HOSTNAME=epsilon <1>
+        _TRANSPORT=syslog
+        SYSLOG_IDENTIFIER=avahi-daemon
+        _COMM=avahi-daemon
+        _EXE=/usr/sbin/avahi-daemon
+        _SYSTEMD_CGROUP=/system/avahi-daemon.service
+        _SYSTEMD_UNIT=avahi-daemon.service
+        _SELINUX_CONTEXT=system_u:system_r:avahi_t:s0
+        _UID=70
+        _GID=70
+        _CMDLINE=avahi-daemon: registering [epsilon.local]
+        MESSAGE=Joining mDNS multicast group on interface wlan0.IPv4 with address 172.31.0.53. <2>
+        _BOOT_ID=5335e9cf5d954633bb99aefc0ec38c25
+        _PID=27937
+        SYSLOG_PID=27937 <3>
+        _SOURCE_REALTIME_TIMESTAMP=1351029098747042
+----
+
+<1> trusted meta data about the hostname added by `systemd-journald`
+<2> human readable log message
+<3> fields added from the specific application
+
+
+This kind of log message combines the two approaches of multiline logging and a single line log message.
+The Value of the log entries are structured in journal fields. 
+A loggin application can define its own fields.
+Fields added by `journald` are prefixed with _ and are trusted. 
+An application can't define _ prefixed fields and can't overwrite them. 
+The Field `MESSAGE` contains the human readable log message known from single line logging.
+
+== Structured logging for TPOSS RADIUS
+
+Given the underlying CAROS which is used for the TPOSS application relies on the journal logging infratructure the logging
+for the RADIUS applicaions make use of this infrastructrue now.
+
+This approach delivers the following advantages
+
+* the Log is searchable by any attribute put in a journal field
+* the log is searchable by any meta data in the journal (hostname, bootid, time etc)
+* the log entry will always conain the whole context of the message
+* further - the log can be forwarded to a remote location (GELF) without loosing structure
+
+based on the Information present in a classic RADIUS log message a journal log message will look like this
+[source, journal]
+----
+Fr, 2015-02-13 12:02:44.995819 CET [s=587acfdc7ec6473492726d96355d56c2;i=eff;b=785b135f2e98423bb79e3a6251a40e02;m=24f4457602;t=50ef62d1a511d;x=17b4070d22c4f03]
+        PRIORITY=6
+        _SYSTEMD_CGROUP=/user.slice/user-1000.slice/session-c2.scope
+        _SYSTEMD_SESSION=c2
+        _SYSTEMD_OWNER_UID=1000
+        _SYSTEMD_UNIT=session-c2.scope
+        _SYSTEMD_SLICE=user-1000.slice
+        _SELINUX_CONTEXT=unconfined
+        _BOOT_ID=785b135f2e98423bb79e3a6251a40e02
+        _MACHINE_ID=86285c8215a0eba64932e991548ff251
+        _HOSTNAME=tpiadmin-HP-EliteBook-8470p
+        SYSLOG_IDENTIFIER=beam.smp
+        _TRANSPORT=journal
+        _UID=1000
+        _GID=1000
+        _COMM=beam.smp
+        _EXE=/usr/lib/erlang/erts-6.1/bin/beam.smp
+        _CMDLINE=/home/tpiadmin/dev/tetrapak/ebin -user tetrapak_io -smp auto -s tetrapak cli_main  start <3>
+        _CAP_EFFECTIVE=0
+        USER_NAME="test"
+        NAS_IP_ADDRESS="88.88.88.88"
+        NAS_PORT=8888
+        X_3GPP_IMSI="123456789123" <2>
+        CALLING_STATION_ID="001122334455"
+        SERVICE_TYPE="Framed-User"
+        FRAMED_PROTOCOL="GPRS-PDP-Context"
+        CALLED_STATION_ID="m2m.cellubi.co.uk"
+        NAS_PORT_TYPE="Wireless-Other"
+        ERL_NODE=nonode@nohost <1>
+        ERL_MODULE=eradius_server
+        ERL_FUNCTION=handle_request
+        ERL_LINE=278
+        ERL_APPLICATION=eradius
+        ERL_PID="<0.143.0>"
+        _PID=11790
+        MESSAGE=127.0.0.1:39534 [0]: Access-Request
+        _SOURCE_REALTIME_TIMESTAMP=1423825364995819
+----
+<1> Erlang specific fields
+<2> Application specific fields
+<3> Journals trusted fields

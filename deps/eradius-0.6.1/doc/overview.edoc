@@ -1,0 +1,55 @@
+@title eradius -- pwning your modem banks since 2002
+
+@doc
+== Overview ==
+
+Eradius is a generic RADIUS server for Erlang.
+Originally submitted to the jungerl collection by Martin Bjorklund in 2002,
+numerous people have hacked the codebase over the years. This has resulted in a number of copies of eradius
+floating around the internet. This version of eradius has been picked up by
+the fine folks at Travelping GmbH in 2008 and has since become the de facto RADIUS implementation
+used by Travelping.
+
+== Configuration ==
+Eradius is configured through its application environment.
+The individual parameters and their semantics are described below.
+
+=== logfile ===
+
+Path to the RADIUS log file. There is no rotation, use logrotate or similar tools to do that.
+
+=== tables ===
+
+A list of RADIUS dictionaries to be loaded at startup. The atoms in this list are resolved to files in
+the ``priv'' directory of the eradius application.
+
+Example:
+
+```
+    [dictionary, dictionary_cisco, dictionary_travelping]
+'''
+
+=== client_ports ===
+
+The number of ports that are used by the RADIUS client. The client will open UDP
+sockets on (OS-assigned) ports lazily when it sends requests. The client_ports setting
+limits the number of sockets that are used.
+
+=== servers ===
+
+A list of servers, each server block contains a list of NAS desctipions.
+A NAS description contains the NAS's IP address, the RADIUS secret, a node list, the handler module and a parameter
+that is passed on to the handler module for every request.
+
+The node list can be them atom ``local'', which means request handler processes will be spawned on the local node,
+or a list of node names. If a list of node names is given, eradius will spawn each request handler processe on a
+randomly chosen node from the list.
+
+Example (one server, two NASs):
+
+```
+   [{"78.78.22.1:1812", [
+       {"72.66.2.2", "s3cr3t", local, my_fancy_handler_module, []},
+       {"72.66.2.1", "RealSecret", ['radius@node1', 'radius@node2'], my_other_handler_module, []}
+   ]}]
+'''

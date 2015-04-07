@@ -1,0 +1,94 @@
+%% vim: ft=erlang
+{application, eradius, [
+   {description, "Erlang RADIUS server"},
+   {registered, [eradius_dict, eradius_sup, eradius_server_top_sup, eradius_server_sup, eradius_server_mon]},
+   {applications, [kernel, stdlib, crypto, lager]},
+   {mod, {eradius, []}},
+   {env, [
+      {servers, []},
+      {logging, true},
+      {logfile, "./radius.log"},
+      {tables, [dictionary]},
+      {client_ip, undefined},
+      {client_ports, 20},
+      {resend_timeout, 30000}
+    %% RADIUS server configuration:
+
+    %% Note:
+    %% Square brackets ([]) denote an array that consists of n comma-separated objects.
+    %% Curly brackets ({}) denote a tuple that consists of a defined number of objects.
+
+    %% Servers in this configuration are endpoints consisting of an IPv4 address and one or more ports.
+    %% 'servers' is a list ([]) of said endpoints:
+    %%   servers == { servers, [<Server>] }
+    %% Each server is tuple ({}):
+    %%   Server == { <SymbolicName>, { <IP>, [<Ports>] } } | { <SymbolicName>, { <IP>, [<Ports>] }, <ExtraServerOptions> }
+    %%   ExtraServerOptions == [<ServerOption>]
+    %%   ServerOption == {rate_config, <SymbolicNameLimit> | <RateConfigList>}
+
+    %% Rate configuration can be configurated per server, in extra configuration, with a symbolic name or directly in server
+    %% {SymbolicNameLimit, RateConfigList}
+    %% RateConfigList == [<RateOption>]
+    %% RateOption == { limit | max_size | max_time, integer() | undefined }
+    %%
+
+    %% Each server is assigned a list of handlers. This list defines the NASs that are allowed to send RADIUS requests to a server and
+    %% which handler is to process the request.
+    %%
+    %% Handler assignment: {<SymbolicName>, [<Handlers>]}
+    %%   SymbolicName == Reference to a previously defined server.
+    %%   Handler == { <HandlerDefinition>, [<Sources>] }
+    %% If only one handler module is used, it can be defined globally as {radius_callback, <HandlerMod>}.
+    %% If more than one handler modules are used, they have to be given in the HandlerDefinition:
+    %%   HandlerDefinition == {<HandlerMod>, <NasId>, <HandlerArgs>} | {<NasId>, <HandlerArgs>}
+    %%   HandlerMod == Handler module to process the received requests.
+    %%   NasId == String describing the Source.
+    %%   HandlerArgs == List of arguments givent the handler module.
+    %%   Source == {<IP>, <Secret>} | {<IP>, <Secret>, [<SourceOption>]}
+    %%   SourceOption == {group, <GroupName>} | {nas_id, <NasId> }
+
+    %%   IP == IPv4 source address.
+    %%   Secret == Binary. Passphrase, the NAS authenticates with.
+    %%   GroupName:
+    %%   RADIUS requests received by a server are forwarded to lists of nodes.
+    %%   The lists are assigned to handlers, so the RADIUS requests of every handler can be forwarded to different nodes, if necessary.
+    %%   The lists are referenced by a GroupName. If only one group is defined, the GroupName can be omitted.
+    %%   In this case, all handlers forward their requests to the same list of nodes.
+    %%   Session nodes == {session_nodes, ['node@host', ...]} | {session_nodes, [{<GroupName>, ['node@host', ...]}]}
+
+    %% Example 1:
+    %% All requests are forwarded to the same globally defined list of nodes.
+    %% Only one handler module is used.
+
+    %%  ,{session_nodes, ['node1@host1', 'node2@host2']},
+    %%  {radius_callback, tposs_pcrf_radius},
+    %%  {servers, [
+    %%                {root, {"127.0.0.1", [1812, 1813]}}
+    %%            ]},
+    %%  {root, [
+    %%            { {"NAS1", [handler_arg1, handler_arg2]},
+    %%                [{"10.18.14.2", <<"secret1">>}]},
+    %%            { {"NAS2", [handler_arg1, handler_arg2]},
+    %%                [{"10.18.14.3", <<"secret2">>, [{nas_id, <<"name">>}]}]}
+    %%         ]}
+
+    %% Example 2:
+    %% Requests of different sources are forwarded to different nodes.
+    %% Different handlers are used for the sources.
+
+    %%    ,{session_nodes, [
+    %%                     {"NodeGroup1", ['node1@host1', 'node2@host2']},
+    %%                     {"NodeGroup2", ['node3@host3', 'node4@host4']}
+    %%                    ]
+    %%    },
+    %%    {servers, [
+    %%                  {root, {"127.0.0.1", [1812, 1813]}}
+    %%              ]},
+    %%    {root, [
+    %%              { {tposs_pcrf_handler1, "NAS1", [handler_arg1, handler_arg2]},
+    %%                  [ {"10.18.14.2", <<"secret1">>, [{group, "NodeGroup1"}]} ] },
+    %%              { {tposs_pcrf_handler2, "NAS2", [handler_arg3, handler_arg4]},
+    %%                  [ {"10.18.14.3", <<"secret2">>, [{group, "NodeGroup2"}]} ] }
+    %%         ]}
+   ]}
+]}.
