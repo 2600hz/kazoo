@@ -572,7 +572,6 @@ build_simple_channels(Endpoints) ->
 -spec build_bridge_channels(wh_json:objects()) -> bridge_channels().
 build_bridge_channels(Endpoints) ->
     CWEP = maybe_apply_call_waiting(Endpoints),
-    lager:info("Endpoints: ~p", [CWEP]),
     EPs = endpoint_jobjs_to_records(CWEP),
     build_bridge_channels(EPs, []).
 
@@ -594,6 +593,7 @@ call_waiting_map(Endpoint) ->
 maybe_add_respond_header(Endpoint, OwnerId) ->
     case ecallmgr_fs_channels:has_channels_for_owner(OwnerId) of
         'true' ->
+            lager:debug("Channel must be busy!"),
             wh_json:set_value([<<"Custom-SIP-Headers">>, <<"X-KAZOO-Respond-With">>], <<"486 User Busy">>, Endpoint);
         'false' ->
             Endpoint
