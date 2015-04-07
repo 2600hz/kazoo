@@ -226,6 +226,17 @@ merge_attributes([<<"caller_id">> = Key|Keys], Account, Endpoint, Owner) ->
             CallerId = wh_json:set_value([<<"emergency">>, <<"number">>], Number, Merged),
             merge_attributes(Keys, Account, wh_json:set_value(Key, CallerId, Endpoint), Owner)
     end;
+merge_attributes([<<"do_not_disturb">> = Key|Keys], Account, Endpoint, Owner) ->
+    AccountAttr = wh_json:is_true([Key, <<"enabled">>], Account, 'false'),
+    EndpointAttr = wh_json:is_true([Key, <<"enabled">>], Endpoint, 'false'),
+    OwnerAttr = wh_json:is_true([Key, <<"enabled">>], Owner, 'false'),
+    Dnd = case {AccountAttr, OwnerAttr, EndpointAttr} of        
+              {'true', _, _} -> 'true';
+              {_, 'true', _} -> 'true';
+              {_, _, 'true'} -> 'true';
+              _ -> 'false'
+          end,
+    merge_attributes(Keys, Account, wh_json:set_value([Key, <<"enabled">>], Dnd, Endpoint), Owner);
 merge_attributes([<<"language">>|_]=Keys, Account, Endpoint, Owner) ->
     merge_value(Keys, Account, Endpoint, Owner);
 merge_attributes([<<"presence_id">>|_]=Keys, Account, Endpoint, Owner) ->
