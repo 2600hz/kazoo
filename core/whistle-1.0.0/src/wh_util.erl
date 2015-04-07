@@ -318,7 +318,7 @@ is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
             lager:debug("account ~s is the same as the account to fetch the hierarchy from", [CheckId]),
             'true';
         {'ok', JObj} ->
-            Tree = wh_json:get_value(<<"pvt_tree">>, JObj, []),
+            Tree = kz_account:tree(JObj),
             case lists:member(CheckId, Tree) of
                 'true' ->
                     lager:debug("account ~s is in the account hierarchy of ~s", [CheckId, AccountId]),
@@ -344,7 +344,7 @@ is_system_admin(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {'ok', JObj} -> wh_json:is_true(<<"pvt_superduper_admin">>, JObj);
+        {'ok', JObj} -> kz_account:is_superduper_admin(JObj);
         {'error', _R} ->
             lager:debug("unable to open account definition for ~s: ~p", [Account, _R]),
             'false'
@@ -373,7 +373,7 @@ is_account_enabled(Account) ->
             lager:error("could not open account ~p in ~p", [AccountId, AccountDb]),
             'false';
         {'ok', JObj} ->
-            wh_json:is_true(<<"pvt_enabled">>, JObj, 'true')
+            kz_account:is_enabled(JObj)
                 andalso wh_json:is_true(<<"enabled">>, JObj, 'true')
 
     end.
@@ -410,7 +410,7 @@ get_account_realm(AccountId) ->
 get_account_realm('undefined', _) -> 'undefined';
 get_account_realm(Db, AccountId) ->
     case couch_mgr:open_cache_doc(Db, AccountId) of
-        {'ok', JObj} -> wh_json:get_ne_value(<<"realm">>, JObj);
+        {'ok', JObj} -> kz_account:realm(JObj);
         {'error', _R} ->
             lager:debug("error while looking up account realm in ~s: ~p", [AccountId, _R]),
             'undefined'

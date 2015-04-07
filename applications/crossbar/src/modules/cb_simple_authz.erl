@@ -110,7 +110,7 @@ account_is_descendant('false', Context, AuthAccountId) ->
                 %% if the requested account exists, the second component of the key
                 %% is the parent tree, make sure the authorized account id is in that tree
                 {'ok', JObj} ->
-                    Tree = wh_json:get_value(<<"pvt_tree">>, JObj, []),
+                    Tree = kz_account:tree(JObj),
                     case lists:member(AuthAccountId, Tree) of
                         'true' ->
                             lager:debug("authorizing requested account is a descendant of the auth token"),
