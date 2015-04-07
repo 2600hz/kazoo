@@ -319,21 +319,19 @@ create_device(JObj, Iteration, Context, {Pass, Fail}) ->
                            end
                    end
                   ,fun(J) ->
-                           case wh_json:get_ne_value([<<"sip">>, <<"username">>], J) of
+                           case kz_device:sip_username(J) of
                                'undefined' ->
                                    Strength = whapps_config:get_integer(?OB_CONFIG_CAT, <<"device_username_strength">>, 3),
-                                   wh_json:set_value([<<"sip">>, <<"username">>]
-                                                     ,list_to_binary(["user_", wh_util:rand_hex_binary(Strength)]), J);
+                                   kz_device:set_sip_username(J, list_to_binary(["user_", wh_util:rand_hex_binary(Strength)]), J);
                                _ ->
                                    J
                            end
                    end
                   ,fun(J) ->
-                           case wh_json:get_ne_value([<<"sip">>, <<"password">>], J) of
+                           case kz_device:sip_password(J) of
                                'undefined' ->
                                    Strength = whapps_config:get_integer(?OB_CONFIG_CAT, <<"device_pwd_strength">>, 6),
-                                   wh_json:set_value([<<"sip">>, <<"password">>]
-                                                     ,wh_util:rand_hex_binary(Strength), J);
+                                   kz_device:set_sip_password(J, wh_util:rand_hex_binary(Strength));
                                _ ->
                                    J
                            end

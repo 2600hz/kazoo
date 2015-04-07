@@ -177,7 +177,7 @@ sip_user_of_endpoint(EndpointId, Call) ->
     case cf_endpoint:get(EndpointId, Call) of
         {'error', _} -> 'undefined';
         {'ok', Endpoint} ->
-            wh_json:get_value([<<"sip">>, <<"username">>], Endpoint)
+            kz_device:sip_username(Endpoint)
     end.
 
 -spec no_users(whapps_call:call()) -> any().

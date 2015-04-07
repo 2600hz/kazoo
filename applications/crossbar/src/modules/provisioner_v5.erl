@@ -296,9 +296,9 @@ settings_sip(JObj) ->
               ], JObj
              ),
     Props = props:filter_undefined(
-              [{<<"username">>, wh_json:get_value([<<"sip">>, <<"username">>], JObj)},
-               {<<"password">>, wh_json:get_value([<<"sip">>, <<"password">>], JObj)},
-               {<<"realm">>, Realm}
+              [{<<"username">>, kz_device:sip_username(JObj)}
+               ,{<<"password">>, kz_device:sip_password(JObj)}
+               ,{<<"realm">>, Realm}
               ]
              ),
     wh_json:from_list(Props).

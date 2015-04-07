@@ -349,8 +349,8 @@ do_simple_provision(MACAddress, Context) ->
             Body = [{"device[mac]", MACAddress}
                     ,{"device[label]", wh_json:get_string_value(<<"name">>, JObj)}
                     ,{"sip[realm]", wh_json:get_string_value([<<"sip">>, <<"realm">>], JObj, AccountRealm)}
-                    ,{"sip[username]", wh_json:get_string_value([<<"sip">>, <<"username">>], JObj)}
-                    ,{"sip[password]", wh_json:get_string_value([<<"sip">>, <<"password">>], JObj)}
+                    ,{"sip[username]", kz_device:sip_username(JObj)}
+                    ,{"sip[password]", kz_device:sip_password(JObj)}
                     ,{"submit", "true"}
                    ],
             Encoded = mochiweb_util:urlencode(Body),
@@ -638,19 +638,19 @@ set_account_line_defaults(Context) ->
 set_device_line_defaults(Context) ->
     Device = cb_context:doc(Context),
     [fun(J) ->
-             case wh_json:get_ne_value([<<"sip">>, <<"username">>], Device) of
+             case kz_device:sip_username(Device) of
                  'undefined' -> J;
                  Value -> wh_json:set_value([<<"authname">>, <<"value">>], Value, J)
              end
      end
      ,fun(J) ->
-              case wh_json:get_ne_value([<<"sip">>, <<"username">>], Device) of
+              case kz_device:sip_username(Device) of
                   'undefined' -> J;
                   Value -> wh_json:set_value([<<"username">>, <<"value">>], Value, J)
               end
       end
      ,fun(J) ->
-              case wh_json:get_ne_value([<<"sip">>, <<"password">>], Device) of
+              case kz_device:sip_password(Device) of
                   'undefined' -> J;
                   Value -> wh_json:set_value([<<"secret">>, <<"value">>], Value, J)
               end

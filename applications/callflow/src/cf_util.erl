@@ -228,7 +228,7 @@ unsolicited_owner_mwi_update(AccountDb, OwnerId) ->
             lists:foreach(
               fun(JObj) ->
                       J = wh_json:get_value(<<"doc">>, JObj),
-                      Username = wh_json:get_value([<<"sip">>, <<"username">>], J),
+                      Username = kz_device:sip_username(J),
                       Realm = get_sip_realm(J, AccountId),
                       OwnerId = get_endpoint_owner(J),
                       case wh_json:get_value([<<"sip">>, <<"method">>], J) =:= <<"password">>
@@ -263,7 +263,7 @@ unsolicited_endpoint_mwi_update(AccountDb, EndpointId) ->
                                             'ok' | {'error', 'not_appropriate'}.
 maybe_send_endpoint_mwi_update(JObj, AccountDb) ->
     AccountId = wh_util:format_account_id(AccountDb, 'raw'),
-    Username = wh_json:get_value([<<"sip">>, <<"username">>], JObj),
+    Username = kz_device:sip_username(JObj),
     Realm = get_sip_realm(JObj, AccountId),
     OwnerId = get_endpoint_owner(JObj),
     case wh_json:get_value([<<"sip">>, <<"method">>], JObj) =:= <<"password">>
@@ -865,7 +865,7 @@ sip_user_from_device_id(EndpointId, Call) ->
     case cf_endpoint:get(EndpointId, Call) of
         {'error', _} -> 'undefined';
         {'ok', Endpoint} ->
-            wh_json:get_value([<<"sip">>, <<"username">>], Endpoint)
+            kz_device:sip_username(Endpoint)
     end.
 
 -spec wait_for_noop(whapps_call:call(), ne_binary()) ->
