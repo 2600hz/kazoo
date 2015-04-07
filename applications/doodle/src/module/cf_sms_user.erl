@@ -26,14 +26,17 @@
 handle(Data, Call1) ->
     UserId = wh_json:get_ne_value(<<"id">>, Data),
     Call = doodle_util:set_callee_id(UserId, Call1),
-    Endpoints = get_endpoints(UserId, Data, Call),
+    {Endpoints, Dnd} = get_endpoints(UserId, Data, Call),
     Strategy = wh_json:get_binary_value(<<"sms_strategy">>, Data, <<"single">>),
     case Endpoints =/= []
         andalso whapps_sms_command:b_send_sms(Endpoints, Strategy, Call)
     of
-        'false' ->
+        'false' when Dnd =:= 0 ->
             lager:notice("user ~s has no endpoints", [UserId]),
             doodle_exe:continue(doodle_util:set_flow_error(<<"error">>, <<"user has no endpoints">>, Call));
+        'false' when Dnd > 0 ->
+            lager:notice("do not disturb user ~s", [UserId]),
+            maybe_handle_bridge_failure({'error', 'do_not_disturb'}, Call);
         {'ok', JObj} ->
             handle_result(JObj, Call);
         {'error', _R}=Reason ->
@@ -55,11 +58,11 @@ handle_result_status(Call, _Status) ->
     doodle_exe:continue(Call).
 
 -spec maybe_handle_bridge_failure(_, whapps_call:call()) -> 'ok'.
-maybe_handle_bridge_failure(Reason, Call) ->
+maybe_handle_bridge_failure({_ , R}=Reason, Call) ->
     case doodle_util:handle_bridge_failure(Reason, Call) of
         'not_found' ->
             doodle_util:maybe_reschedule_sms(
-              doodle_util:set_flow_status(<<"pending">>, wh_util:to_binary(Reason), Call)
+              doodle_util:set_flow_status(<<"pending">>, wh_util:to_binary(R), Call)
               );
         'ok' -> 'ok'
     end.
@@ -77,12 +80,13 @@ maybe_handle_bridge_failure(Reason, Call) ->
 get_endpoints('undefined', _, _) -> [];
 get_endpoints(UserId, Data, Call) ->
     Params = wh_json:set_value(<<"source">>, ?MODULE, Data),
-    lists:foldr(fun(EndpointId, Acc) ->
+    lists:foldr(fun(EndpointId, {Acc, Dnd}) ->
                         case cf_endpoint:build(EndpointId, Params, Call) of
-                            {'ok', Endpoint} -> Endpoint ++ Acc;
-                            {'error', _E} -> Acc
+                            {'ok', Endpoint} -> {Endpoint ++ Acc, Dnd};
+                            {'error', 'do_not_disturb'} -> {Acc, Dnd+1};  
+                            {'error', _E} -> {Acc, Dnd}
                         end
                 end
-                ,[]
+                ,{[], 0}
                 ,cf_attributes:owned_by(UserId, <<"device">>, Call)
                ).
