@@ -145,3 +145,8 @@ vm-setup_intro: Welcome to your mailbox. Together we will personalise the settin
 vm-setup_rec_greeting: Now lets record the greeting that callers will hear when they reach your mailbox.
 vm-thank_you: Thank you for calling.  Good bye.
 vm-you_have: You have
+
+cw-activated: Call waiting feature is enabled. You'll get all calls.
+cw-deactivated: Call waiting feature is disabled. Calls will not be sent to you while you talk.
+cw-not_available: Call waiting is not supported from this phone. Please contact support if you beleive this is in error.
+
