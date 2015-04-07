@@ -1054,8 +1054,8 @@ maybe_refresh_fs_xml(Precondition, 'device', Context) ->
     DbDoc = cb_context:fetch(Context, 'db_doc'),
     Realm = wh_util:get_account_realm(cb_context:account_db(Context)),
     ( Precondition
-      or (sip(<<"username">>, DbDoc) =/= sip(<<"username">>, Doc))
-      or (sip(<<"password">>, DbDoc) =/= sip(<<"password">>, Doc))
+      or (kz_device:sip_username(DbDoc) =/= kz_device:sip_username(Doc))
+      or (kz_device:sip_password(DbDoc) =/= kz_device:sip_password(Doc))
       or (wh_json:get_value(<<"owner_id">>, DbDoc) =/=
               wh_json:get_value(<<"owner_id">>, Doc))
     ) andalso
@@ -1064,7 +1064,7 @@ maybe_refresh_fs_xml(Precondition, 'device', Context) ->
 
 -spec refresh_fs_xml(ne_binary(), wh_json:object()) -> 'ok'.
 refresh_fs_xml(Realm, Doc) ->
-    case sip(<<"username">>, Doc) of
+    case kz_device:sip_username(Doc) of
         'undefined' -> 'ok';
         Username ->
             lager:debug("flushing fs xml for user '~s' at '~s'", [Username,Realm]),
@@ -1074,10 +1074,6 @@ refresh_fs_xml(Realm, Doc) ->
                   ],
             wh_amqp_worker:cast(Req, fun wapi_switch:publish_fs_xml_flush/1)
     end.
-
--spec sip(ne_binary(), wh_json:object()) -> api_binary().
-sip(Key, JObj) ->
-    wh_json:get_value([<<"sip">>, Key], JObj).
 
 %% @public
 -spec get_devices_by_owner(ne_binary(), api_binary()) -> ne_binaries().
