@@ -103,7 +103,7 @@ maybe_add_number_info(JObj) ->
 -spec build_account_tree(ne_binary()) -> wh_json:object().
 build_account_tree(AccountId) ->
     {'ok', AccountDoc} = couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId),
-    Tree = wh_json:get_value(<<"pvt_tree">>, AccountDoc, []),
+    Tree = kz_account:tree(AccountDoc),
     build_account_tree(Tree, []).
 
 -spec build_account_tree(ne_binaries(), wh_proplist()) -> wh_json:object().

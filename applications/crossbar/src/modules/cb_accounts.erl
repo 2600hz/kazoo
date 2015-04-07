@@ -201,7 +201,7 @@ validate_account_path(Context, AccountId, ?API_KEY, ?HTTP_GET) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             JObj = cb_context:doc(Context1),
-            ApiKey = wh_json:get_value(<<"pvt_api_key">>, JObj),
+            ApiKey = kz_account:api_key(JObj),
             RespJObj = wh_json:from_list([{<<"api_key">>, ApiKey}]),
             cb_context:set_resp_data(Context1, RespJObj);
         _Else -> Context1
@@ -275,7 +275,7 @@ put(Context) ->
     AccountId = wh_json:get_value(<<"_id">>, JObj, couch_mgr:get_uuid()),
     try create_new_account_db(prepare_context(AccountId, Context)) of
         C ->
-            Tree = wh_json:get_value(<<"pvt_tree">>, JObj),
+            Tree = kz_account:tree(JObj),
             _ = maybe_update_descendants_count(Tree),
             leak_pvt_fields(C)
     catch
@@ -969,7 +969,7 @@ find_accounts_from_tree([AccountId|Tree], JObjs, AuthAccountId, Acc) ->
 -spec account_from_tree(wh_json:object()) -> wh_json:object().
 account_from_tree(JObj) ->
     wh_json:from_list([{<<"id">>, wh_json:get_value(<<"id">>, JObj)}
-                       ,{<<"name">>, wh_json:get_value(<<"name">>, JObj)}
+                       ,{<<"name">>, kz_account:name(JObj)}
                       ]).
 
 %%--------------------------------------------------------------------
@@ -1012,22 +1012,16 @@ add_pvt_vsn(Context) ->
 -spec add_pvt_enabled(cb_context:context()) -> cb_context:context().
 add_pvt_enabled(Context) ->
     JObj = cb_context:doc(Context),
-    case lists:reverse(wh_json:get_value(<<"pvt_tree">>, JObj, [])) of
+    case lists:reverse(kz_account:tree(JObj)) of
         [ParentId | _] ->
             ParentDb = wh_util:format_account_id(ParentId, 'encoded'),
             case (not wh_util:is_empty(ParentId))
                 andalso couch_mgr:open_doc(ParentDb, ParentId)
             of
                 {'ok', Parent} ->
-                    case wh_json:is_true(<<"pvt_enabled">>, Parent, 'true') of
-                        'true' ->
-                            cb_context:set_doc(Context
-                                               ,wh_json:set_value(<<"pvt_enabled">>, 'true', JObj)
-                                              );
-                        'false' ->
-                            cb_context:set_doc(Context
-                                               ,wh_json:set_value(<<"pvt_enabled">>, 'false', JObj)
-                                              )
+                    case kz_account:is_enabled(Parent) of
+                        'true'  -> cb_context:set_doc(Context, kz_account:enable(JObj));
+                        'false' -> cb_context:set_doc(Context, kz_account:disable(JObj))
                     end;
                 _Else -> Context
             end;
@@ -1038,12 +1032,10 @@ add_pvt_enabled(Context) ->
 -spec maybe_add_pvt_api_key(cb_context:context()) -> cb_context:context().
 maybe_add_pvt_api_key(Context) ->
     JObj = cb_context:doc(Context),
-    case wh_json:get_value(<<"pvt_api_key">>, JObj) of
+    case kz_account:api_key(JObj) of
         'undefined' ->
             APIKey = wh_util:to_hex_binary(crypto:rand_bytes(32)),
-            cb_context:set_doc(Context
-                               ,wh_json:set_value(<<"pvt_api_key">>, APIKey, JObj)
-                              );
+            cb_context:set_doc(Context, kz_account:set_api_key(JObj, APIKey));
         _Else -> Context
     end.
 
@@ -1060,9 +1052,7 @@ add_pvt_tree(Context) ->
         'error' ->
             cb_context:add_system_error('empty_tree_accounts_exist', Context);
         Tree ->
-            cb_context:set_doc(Context
-                               ,wh_json:set_value(<<"pvt_tree">>, Tree, cb_context:doc(Context))
-                              )
+            cb_context:set_doc(Context, kz_account:set_tree(cb_context:doc(Context), Tree))
     end.
 
 -spec create_new_tree(cb_context:context() | api_binary()) -> ne_binaries() | 'error'.
@@ -1081,7 +1071,7 @@ create_new_tree(Parent) when is_binary(Parent) ->
     case couch_mgr:open_doc(ParentDb, ParentId) of
         {'error', _} -> create_new_tree('undefined');
         {'ok', JObj} ->
-            wh_json:get_value(<<"pvt_tree">>, JObj, []) ++ [ParentId]
+            kz_account:tree(JObj) ++ [ParentId]
     end;
 create_new_tree(Context) ->
     create_new_tree(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
@@ -1163,7 +1153,6 @@ maybe_set_notification_preference(Context) ->
     AccountId = cb_context:account_id(Context),
     ResellerId = wh_services:find_reseller_id(AccountId),
     ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
-
     case couch_mgr:open_cache_doc(ResellerDb, ResellerId) of
         {'error', _E} ->
             lager:error("failed to open reseller '~s': ~p", [ResellerId, _E]);
@@ -1180,7 +1169,6 @@ maybe_set_notification_preference(Context) ->
 set_notification_preference(Context, Preference) ->
     AccountDb = cb_context:account_db(Context),
     AccountDefinition = kz_account:set_notification_preference(cb_context:doc(Context), Preference),
-
     case couch_mgr:save_doc(AccountDb, AccountDefinition) of
         {'error', _R} ->
             lager:error("failed to update account definition: ~p", [_R]);
@@ -1341,9 +1329,9 @@ notify_new_account(Context) ->
 notify_new_account(_Context, 'undefined') -> 'ok';
 notify_new_account(Context, _AuthDoc) ->
     JObj = cb_context:doc(Context),
-    Notify = [{<<"Account-Name">>, wh_json:get_value(<<"name">>, JObj)}
-              ,{<<"Account-Realm">>, wh_json:get_value(<<"realm">>, JObj)}
-              ,{<<"Account-API-Key">>, wh_json:get_value(<<"pvt_api_key">>, JObj)}
+    Notify = [{<<"Account-Name">>, kz_account:name(JObj)}
+              ,{<<"Account-Realm">>, kz_account:realm(JObj)}
+              ,{<<"Account-API-Key">>, kz_account:api_key(JObj)}
               ,{<<"Account-ID">>, cb_context:account_id(Context)}
               ,{<<"Account-DB">>, cb_context:account_db(Context)}
               | wh_api:default_headers(?APP_VERSION, ?APP_NAME)

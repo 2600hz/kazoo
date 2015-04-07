@@ -452,7 +452,7 @@ account_can_create_number(Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
 
     {'ok', JObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
-    wh_json:is_true(<<"pvt_wnm_allow_additions">>, JObj).
+    kz_account:allow_number_additions(JObj).
 
 %%--------------------------------------------------------------------
 %% @public
