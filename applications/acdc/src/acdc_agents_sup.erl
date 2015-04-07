@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -20,6 +20,7 @@
          ,find_acct_supervisors/1
          ,find_agent_supervisor/2
          ,status/0
+         ,agents_running/0
          ,restart_acct/1
          ,restart_agent/2
         ]).
@@ -43,9 +44,13 @@ start_link() -> supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
 -spec status() -> 'ok'.
 status() ->
+    LogId = get('callid'),
     lager:info("ACDc Agents Status"),
     Ws = workers(),
-    _ = spawn(fun() -> [acdc_agent_sup:status(Sup) || Sup <- Ws] end),
+    _ = spawn(fun() ->
+                      put('callid', LogId),
+                      [acdc_agent_sup:status(Sup) || Sup <- Ws]
+              end),
     'ok'.
 
 -spec new(wh_json:object()) -> sup_startchild_ret().
@@ -96,6 +101,10 @@ is_agent_in_acct(Super, AcctId) ->
         {AcctId, _, _} -> 'true';
         _ -> 'false'
     end.
+
+-spec agents_running() -> [{pid(), acdc_agent_listener:config()},...] | [].
+agents_running() ->
+    [{W, catch acdc_agent_listener:config(acdc_agent_sup:listener(W))} || W <- workers()].
 
 -spec find_agent_supervisor(api_binary(), api_binary()) -> api_pid().
 -spec find_agent_supervisor(api_binary(), api_binary(), pids()) -> api_pid().

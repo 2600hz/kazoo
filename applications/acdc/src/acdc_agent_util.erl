@@ -39,7 +39,7 @@ update_status(?NE_BINARY = AccountId, AgentId, Status, Options) ->
            ,{<<"Timestamp">>, wh_util:current_tstamp()}
            | Options ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    wapi_acdc_stats:publish_status_update(API).
+    whapps_util:amqp_pool_send(API, fun wapi_acdc_stats:publish_status_update/1).
 
 -spec most_recent_status(ne_binary(), ne_binary()) ->
                                 {'ok', ne_binary()} |
@@ -119,7 +119,7 @@ most_recent_statuses(AccountId, AgentId, Options) ->
     maybe_reduce_statuses(AgentId, receive_statuses([ETS, DB])).
 
 -spec maybe_start_db_lookup(atom(), ne_binary(), api_binary(), list(), pid()) ->
-                                   {pid(), reference()} | 'undefined'.
+                                   pid_ref() | 'undefined'.
 maybe_start_db_lookup(F, AccountId, AgentId, Options, Self) ->
     case wh_cache:fetch_local(?ACDC_CACHE, db_fetch_key(F, AccountId, AgentId)) of
         {'ok', _} -> 'undefined';
@@ -236,8 +236,8 @@ most_recent_ets_statuses(AccountId, AgentId, Options) ->
     end.
 
 -spec most_recent_db_statuses(ne_binary()) ->
-                                      statuses_return() |
-                                      {'error', _}.
+                                     statuses_return() |
+                                     {'error', _}.
 -spec most_recent_db_statuses(ne_binary(), api_binary(), wh_proplist()) ->
                                       statuses_return() |
                                       {'error', _}.

@@ -19,6 +19,16 @@
 
          ,find_call/1
          ,call_stat_to_json/1
+         ,agent_ready/2
+         ,agent_logged_in/2
+         ,agent_logged_out/2
+         ,agent_connecting/3, agent_connecting/5
+         ,agent_connected/3, agent_connected/5
+         ,agent_wrapup/3
+         ,agent_paused/3
+         ,agent_outbound/3
+
+         ,agent_statuses/0
         ]).
 
 %% ETS config
@@ -106,6 +116,105 @@ call_processed(AccountId, QueueId, AgentId, CallId) ->
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_call_processed/1).
+
+agent_ready(AcctId, AgentId) ->
+    Prop = props:filter_undefined(
+             [{<<"Account-ID">>, AcctId}
+              ,{<<"Agent-ID">>, AgentId}
+              ,{<<"Timestamp">>, wh_util:current_tstamp()}
+              ,{<<"Status">>, <<"ready">>}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]),
+    whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_ready/1).
+
+agent_logged_in(AcctId, AgentId) ->
+    Prop = props:filter_undefined(
+             [{<<"Account-ID">>, AcctId}
+              ,{<<"Agent-ID">>, AgentId}
+              ,{<<"Timestamp">>, wh_util:current_tstamp()}
+              ,{<<"Status">>, <<"logged_in">>}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]),
+    whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_logged_in/1).
+
+agent_logged_out(AcctId, AgentId) ->
+    Prop = props:filter_undefined(
+             [{<<"Account-ID">>, AcctId}
+              ,{<<"Agent-ID">>, AgentId}
+              ,{<<"Timestamp">>, wh_util:current_tstamp()}
+              ,{<<"Status">>, <<"logged_out">>}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]),
+    whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_logged_out/1).
+
+agent_connecting(AcctId, AgentId, CallId) ->
+    agent_connecting(AcctId, AgentId, CallId, 'undefined', 'undefined').
+agent_connecting(AcctId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
+    Prop = props:filter_undefined(
+             [{<<"Account-ID">>, AcctId}
+              ,{<<"Agent-ID">>, AgentId}
+              ,{<<"Timestamp">>, wh_util:current_tstamp()}
+              ,{<<"Status">>, <<"connecting">>}
+              ,{<<"Call-ID">>, CallId}
+              ,{<<"Caller-ID-Name">>, CallerIDName}
+              ,{<<"Caller-ID-Number">>, CallerIDNumber}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]),
+    whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_connecting/1).
+
+agent_connected(AcctId, AgentId, CallId) ->
+    agent_connected(AcctId, AgentId, CallId, 'undefined', 'undefined').
+agent_connected(AcctId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
+    Prop = props:filter_undefined(
+             [{<<"Account-ID">>, AcctId}
+              ,{<<"Agent-ID">>, AgentId}
+              ,{<<"Timestamp">>, wh_util:current_tstamp()}
+              ,{<<"Status">>, <<"connected">>}
+              ,{<<"Call-ID">>, CallId}
+              ,{<<"Caller-ID-Name">>, CallerIDName}
+              ,{<<"Caller-ID-Number">>, CallerIDNumber}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]),
+    whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_connected/1).
+
+agent_wrapup(AcctId, AgentId, WaitTime) ->
+    Prop = props:filter_undefined(
+             [{<<"Account-ID">>, AcctId}
+              ,{<<"Agent-ID">>, AgentId}
+              ,{<<"Timestamp">>, wh_util:current_tstamp()}
+              ,{<<"Status">>, <<"wrapup">>}
+              ,{<<"Wait-Time">>, WaitTime}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]),
+    whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_wrapup/1).
+
+agent_paused(AcctId, AgentId, 'undefined') ->
+    lager:debug("undefined pause time for ~s(~s)", [AgentId, AcctId]);
+agent_paused(AcctId, AgentId, PauseTime) ->
+    Prop = props:filter_undefined(
+             [{<<"Account-ID">>, AcctId}
+              ,{<<"Agent-ID">>, AgentId}
+              ,{<<"Timestamp">>, wh_util:current_tstamp()}
+              ,{<<"Status">>, <<"paused">>}
+              ,{<<"Pause-Time">>, PauseTime}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]),
+    whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_paused/1).
+
+agent_outbound(AcctId, AgentId, CallId) ->
+    Prop = props:filter_undefined(
+             [{<<"Account-ID">>, AcctId}
+              ,{<<"Agent-ID">>, AgentId}
+              ,{<<"Timestamp">>, wh_util:current_tstamp()}
+              ,{<<"Status">>, <<"outbound">>}
+              ,{<<"Call-ID">>, CallId}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]),
+    whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_outbound/1).
+
+-spec agent_statuses() -> ne_binaries().
+agent_statuses() ->
+    ?STATUS_STATUSES.
 
 %% ETS config
 call_table_id() -> 'acdc_stats_call'.

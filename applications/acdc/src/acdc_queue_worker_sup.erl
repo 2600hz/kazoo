@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -36,7 +36,8 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link(pid(), ne_binary(), ne_binary()) -> startlink_ret().
-start_link(MgrPid, AcctId, QueueId) -> supervisor:start_link(?MODULE, [MgrPid, AcctId, QueueId]).
+start_link(MgrPid, AcctId, QueueId) ->
+    supervisor:start_link(?MODULE, [MgrPid, AcctId, QueueId]).
 
 -spec stop(pid()) -> 'ok' | {'error', 'not_found'}.
 stop(WorkerSup) -> supervisor:terminate_child('acdc_queues_sup', WorkerSup).
