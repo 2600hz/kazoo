@@ -903,7 +903,9 @@ should_handle_notification_for_account(AccountId, ResellerId) ->
 
 -define(MOD_CONFIG_CAT(Key), <<(?NOTIFY_CONFIG_CAT)/binary, ".", Key/binary>>).
 
--spec is_notice_enabled(ne_binary(), wh_json:object(), ne_binary()) -> boolean().
+-spec is_notice_enabled(api_binary(), wh_json:object(), ne_binary()) -> boolean().
+is_notice_enabled('undefined', _ApiJObj, NoticeKey) ->
+    is_notice_enabled_default(NoticeKey);
 is_notice_enabled(AccountId, ApiJObj, NoticeKey) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     NotifId = <<"notification.", NoticeKey/binary>>,
