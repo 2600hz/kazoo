@@ -40,7 +40,7 @@ conf-unmuted: Microphone un-muted, dial star one to mute.
 conf-welcome: Welcome to the conference.
 conf-your_announcment: You will be announced as
 
-dir-confirm_menu: Press 1. To start over press 3. 
+dir-confirm_menu: Press 1. To start over press 3.
 dir-enter_person_firstname: Please enter the first few letters of the persons first name.
 dir-enter_person_lastname: Please enter the first few letters of the persons last name.
 dir-enter_person: Please enter the first few letters of the persons
@@ -51,7 +51,7 @@ dir-last_name: last name
 dir-letters_of_person_name: letters of the persons name.
 dir-no_more_results: No more results.
 dir-no_results_found: No match found.
-dir-result_menu: Press 1. For the next result press 2.  To start over press 3. 
+dir-result_menu: Press 1. For the next result press 2.  To start over press 3.
 dir-result_number: to call
 dir-specify_minimum: You need to specify a minimum of 2 digits.
 
@@ -65,7 +65,7 @@ dnd-deactivated: Do not disturb is now disabled.  Receieving calls including cal
 dnd-not_available: Do not disturb is not supported from this phone.  Contact your system administrator if you beleive this is in error.
 
 dynamic-cid-enter_cid: Enter your Caller-ID, folowed by pound
-dynamic-cid-invalid_using_default: Invalid entry. This call will use default Caller-ID   
+dynamic-cid-invalid_using_default: Invalid entry. This call will use default Caller-ID
 
 eavesdrop-no_channels: No channels
 
@@ -146,9 +146,6 @@ vm-setup_rec_greeting: Now lets record the greeting that callers will hear when 
 vm-thank_you: Thank you for calling.  Good bye.
 vm-you_have: You have
 
-
 cw-activated: Call waiting is now enabled, you will receive a new incoming call even when you are currently on another call.
-cw-deactivated: Call waiting is now disabled, when you are already on a call new incoming calls will not be sent to you. 
-
+cw-deactivated: Call waiting is now disabled, when you are already on a call new incoming calls will not be sent to you.
 cw-not_available: Call waiting is not supported from this phone. Please contact support if you beleive this is in error.
-
