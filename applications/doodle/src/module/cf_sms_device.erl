@@ -24,7 +24,8 @@
 handle(Data, Call1) ->
     EndpointId = wh_json:get_value(<<"id">>, Data),
     case build_endpoint(EndpointId, Data, doodle_util:set_callee_id(EndpointId, Call1)) of
-        {'error', _} = Reason -> maybe_handle_bridge_failure(Reason, Call1);
+        {'error', _} = Reason ->
+            doodle_exe:continue(doodle_util:set_flow_error(<<"error">>, wh_util:to_binary(Reason), Call1));
         {Endpoints, Call} ->
             case whapps_sms_command:b_send_sms(Endpoints, Call) of
                 {'ok', JObj} -> handle_result(JObj, Call);
@@ -40,7 +41,7 @@ handle_result(JObj, Call) ->
 
 -spec handle_result_status(whapps_call:call(), ne_binary()) -> 'ok'.
 handle_result_status(Call, <<"pending">>) ->
-    doodle_exe:stop(Call);
+    doodle_util:maybe_reschedule_sms(Call);
 handle_result_status(Call, _Status) ->
     lager:info("completed successful message to the device"),
     doodle_exe:continue(Call).
@@ -49,7 +50,8 @@ handle_result_status(Call, _Status) ->
 maybe_handle_bridge_failure(Reason, Call) ->
     case doodle_util:handle_bridge_failure(Reason, Call) of
         'not_found' ->
-            doodle_exe:stop(doodle_util:set_flow_status(<<"pending">>, Call));
+            doodle_util:maybe_reschedule_sms(
+              doodle_util:set_flow_status(<<"pending">>, wh_util:to_binary(Reason), Call));
         'ok' -> 'ok'
     end.
 

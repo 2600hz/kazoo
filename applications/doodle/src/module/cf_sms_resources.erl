@@ -35,7 +35,7 @@ handle(Data, Call1) ->
             handle_result(Res, Call);
         {'error', E} ->
             lager:debug("error executing offnet action : ~p",[E]),
-            doodle_exe:continue(doodle_util:set_flow_error(E, Call))
+            doodle_util:maybe_reschedule_sms(doodle_util:set_flow_error(E, Call))
     end.
 
 -spec handle_result(wh_json:object(), whapps_call:call()) -> 'ok'.
@@ -58,7 +58,7 @@ handle_result(Message, Code, _Response, _JObj, Call) ->
 
 -spec handle_result_status(whapps_call:call(), ne_binary()) -> 'ok'.
 handle_result_status(Call, <<"pending">>) ->
-    doodle_exe:stop(Call);
+    doodle_util:maybe_reschedule_sms(Call);
 handle_result_status(Call, _Status) ->
     lager:info("completed successful message to the device"),
     doodle_exe:continue(Call).
@@ -70,7 +70,7 @@ handle_bridge_failure(Cause, Code, Call) ->
         'ok' ->
             lager:debug("found bridge failure child");
         'not_found' ->
-            doodle_exe:stop(doodle_util:set_flow_error(<<"error">>, Cause, Call))
+            doodle_util:maybe_reschedule_sms(Code, Cause, Call)
     end.
 
 %%--------------------------------------------------------------------

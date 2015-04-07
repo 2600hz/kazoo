@@ -49,7 +49,7 @@ handle_result(JObj, Call1) ->
 
 -spec handle_result_status(whapps_call:call(), ne_binary()) -> 'ok'.
 handle_result_status(Call, <<"pending">>) ->
-    doodle_exe:stop(Call);
+    doodle_util:maybe_reschedule_sms(Call);
 handle_result_status(Call, _Status) ->
     lager:info("completed successful message to the user"),
     doodle_exe:continue(Call).
@@ -58,7 +58,9 @@ handle_result_status(Call, _Status) ->
 maybe_handle_bridge_failure(Reason, Call) ->
     case doodle_util:handle_bridge_failure(Reason, Call) of
         'not_found' ->
-            doodle_exe:stop(doodle_util:set_flow_status(<<"pending">>, Call));
+            doodle_util:maybe_reschedule_sms(
+              doodle_util:set_flow_status(<<"pending">>, wh_util:to_binary(Reason), Call)
+              );
         'ok' -> 'ok'
     end.
 
