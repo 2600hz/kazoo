@@ -211,6 +211,8 @@ on_successful_validation(Context) ->
                              ,{<<"from_user">>, FromUser}
                              ,{<<"from_realm">>, Realm}
                              ,{<<"_id">>, SmsDocId}
+                             ,{<<"pvt_created">>, wh_util:current_tstamp()}
+                             ,{<<"pvt_modified">>, wh_util:current_tstamp()}
                             ])
                           ,JObj
                          )).
