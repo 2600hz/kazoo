@@ -247,7 +247,7 @@ search_resources(IP, Realm, [#resrc{id=Id
                             ]) ->
     case search_gateways(IP, Realm, Gateways) of
         {'error', 'not_found'} -> search_resources(IP, Realm, Resources);
-        #gateway{realm=Realm
+        #gateway{realm=GatewayRealm
                  ,username=Username
                  ,password=Password
                  ,fax_option=FaxOption
@@ -255,7 +255,7 @@ search_resources(IP, Realm, [#resrc{id=Id
             Props = props:filter_undefined(
                       [{'resource_id', Id}
                        ,{'global', Global}
-                       ,{'realm', Realm}
+                       ,{'realm', GatewayRealm}
                        ,{'username', Username}
                        ,{'password', Password}
                        ,{'fax_option', FaxOption}
