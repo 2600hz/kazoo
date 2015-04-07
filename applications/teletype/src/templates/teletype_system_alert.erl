@@ -88,13 +88,12 @@ handle_req_as_email(JObj, 'true') ->
     %% Gather data for template
     DataJObj = wh_json:normalize(JObj),
     AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
-    {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
 
     case teletype_util:should_handle_notification(DataJObj)
-        andalso teletype_util:is_notice_enabled(AccountJObj, JObj, ?TEMPLATE_ID)
+        andalso teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID)
     of
         'false' -> lager:debug("notification handling not configured for this account");
-        'true' -> process_req(wh_json:set_value(<<"account">>, AccountJObj, DataJObj))
+        'true' -> process_req(DataJObj)
     end.
 
 -spec process_req(wh_json:object()) -> 'ok'.
@@ -109,7 +108,7 @@ process_req(DataJObj, []) ->
     process_req(wh_json:set_value(<<"account_id">>, MasterAccountId, DataJObj));
 process_req(DataJObj, Templates) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
-              ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
+              ,{<<"account">>, teletype_util:account_params(DataJObj)}
               ,{<<"user">>, teletype_util:public_proplist(<<"user">>, DataJObj)}
               ,{<<"request">>, request_macros(DataJObj)}
               ,{<<"details">>, details_macros(DataJObj)}

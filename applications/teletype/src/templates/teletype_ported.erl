@@ -57,33 +57,27 @@ handle_req(JObj, _Props) ->
     %% Gather data for template
     DataJObj = wh_json:normalize(JObj),
     AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
-    {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
 
     case teletype_util:should_handle_notification(DataJObj)
-        andalso teletype_util:is_notice_enabled(AccountJObj, JObj, ?TEMPLATE_ID)
+        andalso teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID)
     of
         'false' -> lager:debug("notification handling not configured for this account");
-        'true' -> process_req(DataJObj, AccountJObj)
+        'true' -> process_req(DataJObj)
     end.
 
--spec process_req(wh_json:object(), wh_json:object()) -> 'ok'.
-process_req(DataJObj, AccountJObj) ->
+-spec process_req(wh_json:object()) -> 'ok'.
+process_req(DataJObj) ->
     PortReqId = wh_json:get_value(<<"port_request_id">>, DataJObj),
     {'ok', PortReqJObj} = teletype_util:open_doc(<<"port_request">>, PortReqId, DataJObj),
 
-    ReqData =
-        wh_json:set_values(
-          [{<<"account">>, AccountJObj}
-           ,{<<"port_request">>, teletype_port_utils:fix_port_request_data(PortReqJObj)}
-          ]
-          ,DataJObj
-         ),
+    ReqData = wh_json:set_value(<<"port_request">>
+                                ,teletype_port_utils:fix_port_request_data(PortReqJObj)
+                                ,DataJObj
+                               ),
 
     case teletype_util:is_preview(DataJObj) of
-        'false' ->
-            handle_port_request(teletype_port_utils:fix_email(ReqData));
-        'true' ->
-            handle_port_request(wh_json:merge_jobjs(DataJObj, ReqData))
+        'false' -> handle_port_request(teletype_port_utils:fix_email(ReqData));
+        'true' -> handle_port_request(wh_json:merge_jobjs(DataJObj, ReqData))
     end.
 
 -spec handle_port_request(wh_json:object()) -> 'ok'.
@@ -95,7 +89,7 @@ handle_port_request(_DataJObj, []) ->
     lager:debug("no templates to render for ~s", [?TEMPLATE_ID]);
 handle_port_request(DataJObj, Templates) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
-              ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
+              ,{<<"account">>, teletype_util:account_params(DataJObj)}
               ,{<<"port_request">>, teletype_util:public_proplist(<<"port_request">>, DataJObj)}
              ],
 

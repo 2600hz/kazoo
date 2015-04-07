@@ -64,15 +64,9 @@ handle_cnam_request(JObj, _Props) ->
     %% Gather data for template
     DataJObj = wh_json:normalize(JObj),
     AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
-    {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
 
     ReqData =
-        wh_json:set_values(
-          [{<<"account">>, AccountJObj}
-           ,{<<"user">>, teletype_util:find_account_admin(AccountId)}
-          ]
-          ,DataJObj
-         ),
+        wh_json:set_value(<<"user">>, teletype_util:find_account_admin(AccountId), DataJObj),
     CNAMJObj =
         wh_json:set_values([{<<"request">>, DataJObj}
                             ,{<<"cnam">>, cnam_data(DataJObj)}
@@ -81,7 +75,7 @@ handle_cnam_request(JObj, _Props) ->
                           ),
 
     case teletype_util:should_handle_notification(DataJObj)
-        andalso teletype_util:is_notice_enabled(AccountJObj, JObj, ?TEMPLATE_ID)
+        andalso teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID)
     of
         'false' -> lager:debug("notification handling not configured for this account");
         'true' -> process_req(CNAMJObj)
@@ -104,7 +98,7 @@ process_req(_DataJObj, []) ->
     lager:debug("no templates to render for ~s", [?TEMPLATE_ID]);
 process_req(DataJObj, Templates) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
-              ,{<<"account">>, teletype_util:public_proplist(<<"account">>, DataJObj)}
+              ,{<<"account">>, teletype_util:account_params(DataJObj)}
               ,{<<"user">>, teletype_util:public_proplist(<<"user">>, DataJObj)}
               ,{<<"request">>, teletype_util:public_proplist(<<"request">>, DataJObj)}
               ,{<<"cnam">>, teletype_util:public_proplist(<<"cnam">>, DataJObj)}

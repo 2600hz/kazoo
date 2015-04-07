@@ -79,7 +79,7 @@ handle_new_voicemail(JObj, _Props) ->
     OwnerId = wh_json:get_value(<<"owner_id">>, VMBox),
 
     case teletype_util:should_handle_notification(DataJObj)
-        andalso teletype_util:is_notice_enabled(AccountJObj, JObj, ?TEMPLATE_ID)
+        andalso teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID)
         andalso wh_json:is_true(<<"vm_to_email_enabled">>, UserJObj)
         andalso Email =/= 'undefined'
     of

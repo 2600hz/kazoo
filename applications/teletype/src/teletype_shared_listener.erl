@@ -109,7 +109,6 @@
                       ,'ported'
                       ,'port_comment'
                       ,'low_balance'
-                      %% ,'transaction'
                       ,'system_alerts'
                       ,'transaction'
                       %%,'skel'

@@ -40,8 +40,8 @@
 
 -include("teletype.hrl").
 
--define(TEMPLATE_RENDERING_ORDER, [{<<"text/plain">>, 3}
-                                   ,{<<"text/html">>, 2}
+-define(TEMPLATE_RENDERING_ORDER, [{?TEXT_PLAIN, 3}
+                                   ,{?TEXT_HTML, 2}
                                   ]).
 
 -spec send_email(email_map(), ne_binary(), rendered_templates()) ->
@@ -647,8 +647,8 @@ fetch_templates(TemplateId, <<_/binary>> = AccountId) ->
     end;
 fetch_templates(TemplateId, DataJObj) ->
     case props:filter_undefined(
-           [{<<"text/html">>, maybe_decode_html(wh_json:get_value(<<"html">>, DataJObj))}
-            ,{<<"text/plain">>, wh_json:get_value(<<"text">>, DataJObj)}
+           [{?TEXT_HTML, maybe_decode_html(wh_json:get_value(<<"html">>, DataJObj))}
+            ,{?TEXT_PLAIN, wh_json:get_value(<<"text">>, DataJObj)}
            ])
     of
         [] -> fetch_templates(TemplateId, find_account_id(DataJObj));
@@ -903,15 +903,17 @@ should_handle_notification_for_account(AccountId, ResellerId) ->
 
 -define(MOD_CONFIG_CAT(Key), <<(?NOTIFY_CONFIG_CAT)/binary, ".", Key/binary>>).
 
--spec is_notice_enabled(wh_json:object(), wh_json:object(), ne_binary()) -> boolean().
-is_notice_enabled(AccountJObj, ApiJObj, NoticeKey) ->
-    case {wh_json:get_value([<<"notifications">>
-                             ,NoticeKey
-                             ,<<"enabled">>
-                            ], AccountJObj)
-          ,wh_json:is_true(<<"Preview">>, ApiJObj, 'false')
-         }
-    of
+-spec is_notice_enabled(api_binary(), wh_json:object(), ne_binary()) -> boolean().
+is_notice_enabled('undefined', _ApiJObj, NoticeKey) ->
+    is_notice_enabled_default(NoticeKey);
+is_notice_enabled(AccountId, ApiJObj, NoticeKey) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    NotifId = <<"notification.", NoticeKey/binary>>,
+    case couch_mgr:open_doc(AccountDb, NotifId) of
+        {'ok', NotifJObj} -> Enabled = wh_json:is_true(<<"enabled">>, NotifJObj);
+        _Otherwise ->        Enabled = 'undefined'
+    end,
+    case {Enabled, wh_json:is_true(<<"Preview">>, ApiJObj, 'false')} of
         {_Account, 'true'} -> 'true';
         {'undefined', 'false'} ->
             lager:debug("account is mute, checking system config"),

@@ -274,13 +274,12 @@ do_post(Context) ->
     end.
 
 post(Context, Id, ?PREVIEW) ->
-    Preview = build_preview_payload(Context),
-
+    Notification = cb_context:doc(Context),
+    Preview = build_preview_payload(Context, Notification),
     {API, _} = lists:foldl(fun preview_fold/2
-                           ,{Preview, cb_context:doc(Context)}
+                           ,{Preview, Notification}
                            ,headers(Id)
                           ),
-
     case wh_amqp_worker:call(API
                              ,publish_fun(Id)
                              ,fun wapi_notifications:notify_update_v/1
@@ -294,9 +293,8 @@ post(Context, Id, ?PREVIEW) ->
             crossbar_util:response('error', <<"Failed to process notification preview">>, Context)
     end.
 
--spec build_preview_payload(cb_context:context()) -> wh_proplist().
-build_preview_payload(Context) ->
-    Notification = cb_context:doc(Context),
+-spec build_preview_payload(cb_context:context(), wh_json:object()) -> wh_proplist().
+build_preview_payload(Context, Notification) ->
     props:filter_empty(
       [{<<"To">>, wh_json:get_value(<<"to">>, Notification)}
        ,{<<"From">>, wh_json:get_value(<<"from">>, Notification)}
@@ -433,10 +431,10 @@ maybe_delete_template(Context, Id, ContentType, TemplateJObj) ->
         'undefined' ->
             lager:debug("failed to find attachment ~s", [AttachmentName]),
             cb_context:add_system_error(
-                'bad_identifier'
-                ,wh_json:from_list([{<<"cause">>, ContentType}])
-                , Context
-            );
+              'bad_identifier'
+              ,wh_json:from_list([{<<"cause">>, ContentType}])
+              , Context
+             );
         _Attachment ->
             lager:debug("attempting to delete attachment ~s", [AttachmentName]),
             crossbar_doc:delete_attachment(kz_notification:db_id(Id), AttachmentName, Context)
@@ -966,7 +964,7 @@ on_successful_validation(Id, Context) ->
     end.
 
 -spec handle_missing_account_notification(cb_context:context(), ne_binary(), wh_proplist()) -> cb_context:context().
-handle_missing_account_notification(Context, Id, [{<<"notifications">>, [Id ,<<"preview">>]}|_]) ->
+handle_missing_account_notification(Context, Id, [{<<"notifications">>, [Id, ?PREVIEW]}|_]) ->
     lager:debug("preview request, ignoring if notification ~s is missing", [Id]),
     on_successful_validation(Id, Context);
 handle_missing_account_notification(Context, Id, _ReqNouns) ->
