@@ -88,4 +88,5 @@ route_req_ccvs(FetchId, JObj) ->
        ,{<<"Owner-ID">>, wh_json:get_value(<<"pvt_owner_id">>, JObj)}
        ,{<<"Channel-Authorized">>, 'true'}
        ,{<<"Doc-Revision">>, wh_json:get_value(<<"_rev">>, JObj)}
+       ,{<<"Scheduled-Delivery">>, wh_json:get_value(<<"scheduled">>, JObj)}
       ]).
