@@ -21,9 +21,10 @@
 -define(DEFAULT_UNAVAILABLE_MESSAGE, <<"sms service unavailable">>).
 -define(DEFAULT_UNAVAILABLE_MESSAGE_NODE, wh_json:from_list([{?DEFAULT_LANGUAGE, ?DEFAULT_UNAVAILABLE_MESSAGE}])).
 -define(RESTRICTED_MSG, <<"endpoint is restricted from making this call">>).
+-define(SCHEDULED(Call), whapps_call:custom_channel_var(<<"Scheduled-Delivery">>, 0, Call)).
 
 -export([handle_req/2
-         ,maybe_restrict_call/2
+         ,maybe_replay_sms/2
         ]).
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> any().
@@ -32,13 +33,43 @@ handle_req(JObj, _Options) ->
     put('callid', CallId),
     lager:info("doodle has received a route win, taking control of the call"),
     case whapps_call:retrieve(CallId) of
-        {'ok', Call} -> maybe_restrict_call(JObj, Call);
+        {'ok', Call} -> maybe_scheduled_delivery(JObj, Call);
         {'error', R} ->
             lager:info("unable to find callflow during second lookup (HUH?) ~p", [R])
     end.
 
--spec maybe_restrict_call(wh_json:object(), whapps_call:call()) -> 'ok' | {'ok', pid()}.
-maybe_restrict_call(JObj, Call) ->
+-spec maybe_scheduled_delivery(wh_json:object(), whapps_call:call()) -> 'ok' | {'ok', pid()}.
+maybe_scheduled_delivery(JObj, Call) ->
+    case should_restrict_call(Call) of
+        'true' ->
+            lager:debug("endpoint is restricted from making this call, terminate", []),
+            _ = send_service_unavailable(JObj, Call),
+            doodle_util:save_sms(doodle_util:set_flow_error(<<"error">>, ?RESTRICTED_MSG, Call)),
+            'ok';
+        'false' ->
+            maybe_scheduled_delivery(JObj, Call, ?SCHEDULED(Call) , wh_util:current_tstamp())
+    end.        
+
+-spec maybe_scheduled_delivery(wh_json:object(), whapps_call:call(), integer(), integer() ) -> whapps_call:call() | {'ok', pid()}.
+maybe_scheduled_delivery(_JObj, Call, DeliveryAt, Now)
+  when DeliveryAt > Now ->
+    lager:info("scheduling sms delivery"),
+    Schedule = [{<<"First">>, DeliveryAt}
+                ,{<<"Current">>, DeliveryAt}
+                ,{<<"Elapsed">>, 0}
+                ,{<<"After">>, 0}
+                ,{<<"Attempts">>, 0}
+                ,{<<"Total-Attempts">>, 0}
+                ,{<<"Total-Elapsed">>, 0}
+               ],
+    Call1 = whapps_call:kvs_store(<<"flow_schedule">>, wh_json:from_list(Schedule), Call),
+    doodle_util:save_sms(doodle_util:set_flow_status(<<"pending">>, <<"scheduled">>, Call1));
+maybe_scheduled_delivery(JObj, Call, _, _) ->
+    lager:info("setting initial information about the call"),
+    bootstrap_callflow_executer(JObj, Call).
+
+-spec maybe_replay_sms(wh_json:object(), whapps_call:call()) -> 'ok' | {'ok', pid()}.
+maybe_replay_sms(JObj, Call) ->
     case should_restrict_call(Call) of
         'true' ->
             lager:debug("endpoint is restricted from making this call, terminate", []),
