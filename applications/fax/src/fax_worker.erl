@@ -393,7 +393,7 @@ code_change(_OldVsn, State, _Extra) ->
                                     {'ok', wh_json:object()} |
                                     {'error', term()}.
 attempt_to_acquire_job(Id, Q) ->
-    case couch_mgr:open_doc(?WH_FAXES, Id) of
+    case couch_mgr:open_doc(?WH_FAXES_DB, Id) of
         {'error', _}=E -> E;
         {'ok', JObj} ->
             attempt_to_acquire_job(wh_json:set_value(<<"pvt_queue">>, Q, JObj))
@@ -402,7 +402,7 @@ attempt_to_acquire_job(Id, Q) ->
 attempt_to_acquire_job(JObj) ->
     case wh_json:get_value(<<"pvt_job_status">>, JObj) of
         <<"pending">> ->
-            couch_mgr:save_doc(?WH_FAXES
+            couch_mgr:save_doc(?WH_FAXES_DB
                                ,wh_json:set_values([{<<"pvt_job_status">>, <<"processing">>}
                                                     ,{<<"pvt_job_node">>, wh_util:to_binary(node())}
                                                     ,{<<"pvt_modified">>, wh_util:current_tstamp()}
@@ -562,7 +562,7 @@ release_job(Result, JObj, Resp) ->
                  end
                ],
     Update = lists:foldr(fun(F, J) -> F(J) end, JObj, Updaters),
-    couch_mgr:ensure_saved(?WH_FAXES, Update),
+    couch_mgr:ensure_saved(?WH_FAXES_DB, Update),
     maybe_notify(Result, JObj, Resp, wh_json:get_value(<<"pvt_job_status">>, Update)),
     case Success of 'true' -> 'ok'; 'false' -> 'failure' end.
 
@@ -695,7 +695,7 @@ fetch_document_from_attachment(JObj, [AttachmentName|_]) ->
                   end,
 
     Props = [{"Content-Type", ContentType}],
-    {'ok', Contents} = couch_mgr:fetch_attachment(?WH_FAXES, JobId, AttachmentName),
+    {'ok', Contents} = couch_mgr:fetch_attachment(?WH_FAXES_DB, JobId, AttachmentName),
     {'ok', "200", Props, Contents}.
 
 -spec fetch_document_from_url(wh_json:object()) ->

@@ -211,10 +211,10 @@ refresh(?WH_ACCOUNTS_DB) ->
             ],
     whapps_util:update_views(?WH_ACCOUNTS_DB, Views, 'true'),
     'ok';
-refresh(?WH_FAXES) ->
-    couch_mgr:db_create(?WH_FAXES),
-    _ = couch_mgr:revise_doc_from_file(?WH_FAXES, 'fax', ?FAXES_VIEW_FILE),
-    _ = couch_mgr:revise_doc_from_file(?WH_FAXES, 'fax', ?FAXBOX_VIEW_FILE),
+refresh(?WH_FAXES_DB) ->
+    couch_mgr:db_create(?WH_FAXES_DB),
+    _ = couch_mgr:revise_doc_from_file(?WH_FAXES_DB, 'fax', ?FAXES_VIEW_FILE),
+    _ = couch_mgr:revise_doc_from_file(?WH_FAXES_DB, 'fax', ?FAXBOX_VIEW_FILE),
     'ok';
 refresh(?KZ_PORT_REQUESTS_DB) ->
     couch_mgr:db_create(?KZ_PORT_REQUESTS_DB),

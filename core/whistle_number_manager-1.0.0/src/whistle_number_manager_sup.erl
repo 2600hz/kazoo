@@ -12,7 +12,9 @@
 -include("wnm.hrl").
 
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?WORKER('wh_port_request_crawler')]).
+-define(CHILDREN, [?WORKER('wh_port_request_crawler')
+                   ,?WORKER('wnm_number_crawler')
+                  ]).
 
 %% ===================================================================
 %% API functions
@@ -33,4 +35,3 @@ init([]) ->
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
     {'ok', {SupFlags, ?CHILDREN}}.
-

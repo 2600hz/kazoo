@@ -7,7 +7,7 @@
 -define(WH_ACCOUNTS_DB, <<"accounts">>).
 -define(WH_RATES_DB, <<"ratedeck">>).
 -define(WH_PROVISIONER_DB, <<"global_provisioner">>).
--define(WH_FAXES, <<"faxes">>).
+-define(WH_FAXES_DB, <<"faxes">>).
 -define(WH_SERVICES_DB, <<"services">>).
 -define(WH_OFFNET_DB, <<"offnet">>).
 -define(WH_DEDICATED_IP_DB, <<"dedicated_ips">>).
@@ -32,7 +32,7 @@
                         ,?WH_ACCOUNTS_DB
                         ,?WH_RATES_DB
                         ,?WH_PROVISIONER_DB
-                        ,?WH_FAXES
+                        ,?WH_FAXES_DB
                         ,?WH_SERVICES_DB
                         ,?WH_OFFNET_DB
                         ,?WH_ANONYMOUS_CDR_DB

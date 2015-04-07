@@ -16,6 +16,7 @@
          ,find_port_in_number/1
          ,get_number_in_ports/1
          ,number_from_port_doc/2
+         ,json_to_record/2
         ]).
 -export([get/1, get/2]).
 -export([save/1]).
@@ -917,7 +918,7 @@ resolve_account_phone_numbers_conflict(JObj, Num, AccountDb) ->
 -spec exec_providers(ne_binaries(), atom(), wnm_number()) -> wnm_number().
 
 exec_providers(Number, Action) ->
-    Providers = whapps_config:get(?WNM_CONFIG_CAT, <<"providers">>, ?WNM_DEAFULT_PROVIDER_MODULES),
+    Providers = whapps_config:get(?WNM_CONFIG_CAT, <<"providers">>, ?WNM_DEFAULT_PROVIDER_MODULES),
     exec_providers(Providers, Action, Number).
 
 exec_providers([], _, Number) -> Number;

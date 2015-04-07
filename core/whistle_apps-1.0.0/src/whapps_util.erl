@@ -221,8 +221,13 @@ find_oldest_doc([First|Docs]) ->
 get_all_accounts() -> get_all_accounts(?REPLICATE_ENCODING).
 
 get_all_accounts(Encoding) ->
-    {'ok', Databases} = couch_mgr:db_info(),
-    [wh_util:format_account_id(Db, Encoding) || Db <- Databases, is_account_db(Db)].
+    {'ok', Dbs} = couch_mgr:admin_all_docs(<<"dbs">>, [{'startkey', <<"account/">>}
+                                                       ,{'endkey', <<"account/\ufff0">>}
+                                                      ]),
+    [wh_util:format_account_id(Id, Encoding)
+     || Db <- Dbs,
+        is_account_db((Id = wh_json:get_value(<<"id">>, Db)))
+    ].
 
 -spec get_all_accounts_and_mods() -> ne_binaries().
 -spec get_all_accounts_and_mods('unencoded' | 'encoded' | 'raw') -> ne_binaries().

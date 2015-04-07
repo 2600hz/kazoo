@@ -171,7 +171,7 @@ content_types_provided_for_fax(Context) ->
 -spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 
 validate(Context) ->
-    create(cb_context:set_account_db(Context, ?WH_FAXES)).
+    create(cb_context:set_account_db(Context, ?WH_FAXES_DB)).
 
 validate(Context, ?OUTGOING) ->
     validate_outgoing_fax(Context, cb_context:req_verb(Context));
@@ -181,9 +181,9 @@ validate(Context, ?SMTP_LOG) ->
     smtp_summary(Context).
 
 validate_outgoing_fax(Context, ?HTTP_GET) ->
-    outgoing_summary(cb_context:set_account_db(Context, ?WH_FAXES));
+    outgoing_summary(cb_context:set_account_db(Context, ?WH_FAXES_DB));
 validate_outgoing_fax(Context, ?HTTP_PUT) ->
-    create(cb_context:set_account_db(Context, ?WH_FAXES)).
+    create(cb_context:set_account_db(Context, ?WH_FAXES_DB)).
 
 validate(Context, ?SMTP_LOG, Id) ->
     load_smtp_log_doc(Id, Context);
@@ -193,11 +193,11 @@ validate(Context, ?OUTGOING, Id) ->
     validate_outgoing_fax(Context, Id, cb_context:req_verb(Context)).
 
 validate_outgoing_fax(Context, Id, ?HTTP_GET) ->
-    load_outgoing_fax_doc(Id, cb_context:set_account_db(Context, ?WH_FAXES));
+    load_outgoing_fax_doc(Id, cb_context:set_account_db(Context, ?WH_FAXES_DB));
 validate_outgoing_fax(Context, Id, ?HTTP_POST) ->
-    update(Id, cb_context:set_account_db(Context, ?WH_FAXES));
+    update(Id, cb_context:set_account_db(Context, ?WH_FAXES_DB));
 validate_outgoing_fax(Context, Id, ?HTTP_DELETE) ->
-    read(Id, cb_context:set_account_db(Context, ?WH_FAXES)).
+    read(Id, cb_context:set_account_db(Context, ?WH_FAXES_DB)).
 
 validate(Context, ?INCOMING, Id, ?ATTACHMENT) ->
     load_fax_binary(Id, Context).

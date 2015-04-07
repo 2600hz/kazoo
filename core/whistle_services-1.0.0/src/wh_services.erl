@@ -93,28 +93,15 @@ empty() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec new(ne_binary()) -> services().
-new(AccountId) ->
+new(<<_/binary>> = AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     Account = get_account_definition(AccountDb, AccountId),
-    ResellerId = get_reseller_id(AccountId),
-    IsReseller = depreciated_is_reseller(Account),
-    BillingId = depreciated_billing_id(Account),
-    PvtTree = wh_json:get_value(<<"pvt_tree">>, Account, []),
-    Props = [{<<"_id">>, AccountId}
-             ,{<<"pvt_created">>, wh_util:current_tstamp()}
-             ,{<<"pvt_modified">>, wh_util:current_tstamp()}
-             ,{<<"pvt_type">>, <<"service">>}
-             ,{<<"pvt_vsn">>, <<"1">>}
-             ,{<<"pvt_account_id">>, AccountId}
-             ,{<<"pvt_account_db">>, AccountDb}
-             ,{<<"pvt_status">>, <<"good_standing">>}
-             ,{<<"pvt_reseller">>, IsReseller}
-             ,{<<"pvt_reseller_id">>, ResellerId}
-             ,{<<"pvt_tree">>, PvtTree}
-             ,{?QUANTITIES, wh_json:new()}
-             ,{<<"billing_id">>, BillingId}
-             ,{<<"plans">>, populate_service_plans(Account, ResellerId)}
-            ],
+
+    Props = base_service_props(AccountId, AccountDb, Account),
+
+    BillingId = props:get_value(<<"billing_id">>, Props),
+    IsReseller = props:get_value(<<"pvt_reseller">>, Props),
+
     #wh_services{account_id=AccountId
                  ,jobj=wh_json:from_list(Props)
                  ,cascade_quantities=cascade_quantities(AccountId, IsReseller)
@@ -123,6 +110,34 @@ new(AccountId) ->
                  ,current_billing_id=BillingId
                  ,deleted=wh_doc:is_soft_deleted(Account)
                 }.
+
+-spec base_service_props(ne_binary(), ne_binary(), wh_json:object()) ->
+                                wh_proplist().
+base_service_props(AccountId, AccountDb, Account) ->
+    ResellerId = get_reseller_id(AccountId),
+    PvtTree = wh_json:get_value(<<"pvt_tree">>, Account, []),
+
+    IsReseller = depreciated_is_reseller(Account),
+    BillingId = depreciated_billing_id(Account),
+
+    Now = wh_util:current_tstamp(),
+
+    [{<<"_id">>, AccountId}
+     ,{<<"pvt_created">>, Now}
+     ,{<<"pvt_modified">>, Now}
+     ,{<<"pvt_type">>, <<"service">>}
+     ,{<<"pvt_vsn">>, <<"1">>}
+     ,{<<"pvt_account_id">>, AccountId}
+     ,{<<"pvt_account_db">>, AccountDb}
+     ,{<<"pvt_status">>, <<"good_standing">>}
+     ,{<<"pvt_reseller">>, IsReseller}
+     ,{<<"pvt_reseller_id">>, ResellerId}
+     ,{<<"pvt_tree">>, PvtTree}
+     ,{?QUANTITIES, wh_json:new()}
+     ,{<<"billing_id">>, BillingId}
+     ,{<<"plans">>, populate_service_plans(Account, ResellerId)}
+    ].
+
 
 %%--------------------------------------------------------------------
 %% @public

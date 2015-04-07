@@ -64,7 +64,7 @@ handle_call(_Request, _From, State) ->
   {reply, ok, State}.
 
 handle_cast('start', #state{faxbox_id=FaxBoxId} = State) ->
-    case couch_mgr:open_doc(?WH_FAXES, FaxBoxId) of
+    case couch_mgr:open_doc(?WH_FAXES_DB, FaxBoxId) of
         {'ok', JObj} ->
             JID = wh_json:get_value(<<"pvt_cloud_xmpp_jid">>, JObj),
             PrinterId = wh_json:get_value(<<"pvt_cloud_printer_id">>, JObj),
