@@ -16,6 +16,8 @@
 -define(MDN_VIEW, <<"mobile/listing_by_mdn">>).
 -define(CONVERT_MDN, 'true').
 
+-define(DEFAULT_SCHEDULE, ).
+
 -export([endpoint_id_from_sipdb/2, get_endpoint_id_from_sipdb/2]).
 -export([endpoint_from_sipdb/2, get_endpoint_from_sipdb/2]).
 -export([save_sms/1, save_sms/2]).
@@ -30,6 +32,7 @@
 -export([lookup_number/1]).
 -export([get_inbound_destination/1]).
 -export([lookup_mdn/1]).
+-export([maybe_reschedule_sms/1, maybe_reschedule_sms/2, maybe_reschedule_sms/3]).
 
 %% ====================================================================
 %% API functions
@@ -123,9 +126,12 @@ save_sms(JObj, DocId, Doc, Call) ->
     [FromUser, FromRealm] = binary:split(From, <<"@">>),
     [RequestUser, RequestRealm] = binary:split(Request, <<"@">>),
     MessageId = wh_json:get_value(<<"Message-ID">>, JObj),
-    Status = whapps_call:kvs_fetch(<<"flow_status">>, <<"queued">>, Call),
     Rev = get_sms_revision(Call),
     Opts = props:filter_undefined([{'rev', Rev}]),
+    Created = wh_json:get_value(<<"pvt_created">>, JObj, wh_util:current_tstamp()),
+    Modified = wh_util:current_tstamp(),
+    Status = whapps_call:kvs_fetch(<<"flow_status">>, <<"queued">>, Call),
+    Schedule = whapps_call:kvs_fetch(<<"flow_schedule">>, Call),
     Props = props:filter_empty(
               [{<<"_id">>, DocId}
                ,{<<"pvt_type">>, <<"sms">> }
@@ -149,7 +155,9 @@ save_sms(JObj, DocId, Doc, Call) ->
                ,{<<"request_realm">>, RequestRealm }
                ,{<<"body">>, Body }
                ,{<<"message_id">>, MessageId}
-               ,{<<"pvt_modified">>, wh_util:current_tstamp()}
+               ,{<<"pvt_created">>, Created}
+               ,{<<"pvt_modified">>, Modified}
+               ,{<<"pvt_schedule">>, Schedule}
                ,{<<"pvt_status">>, Status}
                ,{<<"call_id">>, whapps_call:call_id_direct(Call)}
                ,{<<"pvt_call">>, whapps_call:to_json(whapps_call:kvs_erase(<<"_rev">>, Call))}
@@ -165,6 +173,20 @@ save_sms(JObj, DocId, Doc, Call) ->
             Call
     end.
 
+-spec maybe_reschedule_sms(whapps_call:call()) -> whapps_call:call().
+maybe_reschedule_sms(Call) ->
+    maybe_reschedule_sms('undefined', Call).
+    
+-spec maybe_reschedule_sms(api_binary(), whapps_call:call()) -> whapps_call:call().
+maybe_reschedule_sms(_Code, Call) ->
+    Call.
+
+-spec maybe_reschedule_sms(api_binary(), api_binary(), whapps_call:call()) -> whapps_call:call().
+maybe_reschedule_sms(Code, 'undefined', Call) ->
+    maybe_reschedule_sms(Code, set_flow_error(<<"unknown error">>, Call));
+maybe_reschedule_sms(Code, Message, Call) ->
+    maybe_reschedule_sms(Code, set_flow_error(Message, Call)).
+    
 -spec endpoint_id_from_sipdb(ne_binary(), ne_binary()) ->
                                     {'ok', ne_binary()} |
                                     {'error', _}.
@@ -249,7 +271,7 @@ replay_sms_flow(AccountId, <<_:7/binary, CallId/binary>> = DocId, Rev, JObj) ->
     whapps_call:put_callid(Call),
 
     lager:info("doodle received sms resume for ~s of account ~s, taking control", [DocId, AccountId]),
-    doodle_route_win:maybe_restrict_call(JObj, Call).
+    doodle_route_win:maybe_replay_sms(JObj, Call).
 
 -spec sms_status(api_object()) -> binary().
 sms_status('undefined') -> <<"pending">>;
