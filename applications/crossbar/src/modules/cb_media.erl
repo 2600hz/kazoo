@@ -753,7 +753,17 @@ prompt_start_key(Context, PromptId) ->
 
 -spec normalize_prompt_results(wh_json:object(), ne_binaries()) -> ne_binaries().
 normalize_prompt_results(JObj, Acc) ->
-    [wh_json:get_value(<<"id">>, JObj) | Acc].
+    HasAttachments =
+        case wh_doc:attachments(wh_json:get_value(<<"doc">>, JObj)) of
+            'undefined' -> 'false';
+            As -> not wh_json:is_empty(As)
+        end,
+    [wh_json:from_list(
+       [{<<"id">>, wh_json:get_value(<<"id">>, JObj)}
+        ,{<<"has_attachments">>, HasAttachments}
+       ])
+     | Acc
+    ].
 
 -spec fix_prompt_start_keys(cb_context:context()) -> cb_context:context().
 fix_prompt_start_keys(Context) ->
