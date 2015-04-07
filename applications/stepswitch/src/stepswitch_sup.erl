@@ -15,12 +15,6 @@
 -export([start_link/0]).
 -export([init/1]).
 
--define(ORIGIN_BINDINGS, [[{'type', <<"resource">>}]]).
--define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}
-                      ,'new_node_flush'
-                      ,'channel_reconnect_flush'
-                     ]).
-
 -define(POOL(N), {N, {'poolboy', 'start_link', [[{'worker_module', 'stepswitch_cnam'}
                                                  ,{'name', {'local', N}}
                                                  ,{'size', 10}
