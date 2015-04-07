@@ -439,8 +439,9 @@ emergency_cid_number(JObj) ->
         {'ok', PhoneNumbers} ->
             Numbers = wh_json:get_keys(wh_json:public_fields(PhoneNumbers)),
             E911Enabled = [Number
-                           || Number <- Numbers
-                                  ,dash_e911_enabled(Number, PhoneNumbers)
+                           || Number <- Numbers,
+                              dash_e911_enabled(Number, PhoneNumbers)
+                                  orelse vitelity_e911_enabled(Number, PhoneNumbers)
                           ],
             emergency_cid_number(Requested, Candidates, E911Enabled);
         {'error', _R} ->
@@ -450,7 +451,11 @@ emergency_cid_number(JObj) ->
 
 -spec dash_e911_enabled(ne_binary(), wh_json:object()) -> boolean().
 dash_e911_enabled(Number, PhoneNumbers) ->
-    lists:member(<<"dash_e911">>, wh_json:get_value([Number, <<"features">>], PhoneNumbers, [])).
+    lists:member(?DASH_KEY, wh_json:get_value([Number, <<"features">>], PhoneNumbers, [])).
+
+-spec vitelity_e911_enabled(ne_binary(), wh_json:object()) -> boolean().
+vitelity_e911_enabled(Number, PhoneNumbers) ->
+    lists:member(?VITELITY_KEY, wh_json:get_value([Number, <<"features">>], PhoneNumbers, [])).
 
 -spec emergency_cid_number(ne_binary(), api_binaries(), ne_binaries()) -> ne_binary().
 %% if there are no e911 enabled numbers then either use the global system default

@@ -753,7 +753,6 @@ content_type_matches(CTA, {CT, SubCT, _}) when is_binary(CTA) ->
 content_type_matches(CTA, CT) when is_binary(CTA), is_binary(CT) ->
     CTA =:= CT;
 content_type_matches(_CTA, _CTAs) ->
-    lager:debug("ct: ~p, cts: ~p", [_CTA, _CTAs]),
     'false'.
 
 -spec ensure_content_type(content_type() | 'undefined') -> content_type().

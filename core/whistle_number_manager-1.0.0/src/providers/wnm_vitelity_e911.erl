@@ -47,13 +47,13 @@ delete(#number{features=Features
                ,current_number_doc=CurrentDoc
                ,number_doc=Doc
               }=Number) ->
-    case wh_json:get_ne_value(<<"dash_e911">>, CurrentDoc) of
+    case wh_json:get_ne_value(?VITELITY_KEY, CurrentDoc) of
         'undefined' -> Number;
         _Else ->
             lager:debug("removing e911 information"),
             _ = remove_number(Num),
-            Number#number{features=sets:del_element(<<"dash_e911">>, Features)
-                          ,number_doc=wh_json:delete_key(<<"dash_e911">>, Doc)
+            Number#number{features=sets:del_element(?VITELITY_KEY, Features)
+                          ,number_doc=wh_json:delete_key(?VITELITY_KEY, Doc)
                          }
     end.
 
@@ -63,38 +63,38 @@ maybe_update_e911(#number{current_number_doc=CurrentJObj
                           ,number_doc=JObj
                           ,dry_run='true'
                          }=N) ->
-    CurrentE911 = wh_json:get_ne_value(<<"dash_e911">>, CurrentJObj),
-    E911 = wh_json:get_ne_value(<<"dash_e911">>, JObj),
+    CurrentE911 = wh_json:get_ne_value(?VITELITY_KEY, CurrentJObj),
+    E911 = wh_json:get_ne_value(?VITELITY_KEY, JObj),
     NotChanged = wnm_util:are_jobjs_identical(CurrentE911, E911),
     case wh_util:is_empty(E911) of
         'true' ->
             lager:debug("dry run: remove vitelity e911 information"),
-            N#number{features=sets:del_element(<<"dash_e911">>, Features)};
+            N#number{features=sets:del_element(?VITELITY_KEY, Features)};
         'false' when NotChanged  ->
-            N#number{features=sets:add_element(<<"dash_e911">>, Features)};
+            N#number{features=sets:add_element(?VITELITY_KEY, Features)};
         'false' ->
             lager:debug("dry run: change vitelity e911 information: ~s", [wh_json:encode(E911)]),
-            wnm_number:activate_feature(<<"dash_e911">>, N)
+            wnm_number:activate_feature(?VITELITY_KEY, N)
     end;
 maybe_update_e911(#number{current_number_doc=CurrentJObj
                           ,features=Features
                           ,number=Number
                           ,number_doc=JObj
                          }=N) ->
-    CurrentE911 = wh_json:get_ne_value(<<"dash_e911">>, CurrentJObj),
-    E911 = wh_json:get_ne_value(<<"dash_e911">>, JObj),
+    CurrentE911 = wh_json:get_ne_value(?VITELITY_KEY, CurrentJObj),
+    E911 = wh_json:get_ne_value(?VITELITY_KEY, JObj),
     NotChanged = wnm_util:are_jobjs_identical(CurrentE911, E911),
     case wh_util:is_empty(E911) of
         'true' ->
             lager:debug("vitelity e911 information has been removed, updating vitelity"),
             _ = remove_number(Number),
-            N#number{features=sets:del_element(<<"dash_e911">>, Features)};
+            N#number{features=sets:del_element(?VITELITY_KEY, Features)};
         'false' when NotChanged  ->
-            N#number{features=sets:add_element(<<"dash_e911">>, Features)};
+            N#number{features=sets:add_element(?VITELITY_KEY, Features)};
         'false' ->
             lager:debug("vitelity e911 information has been changed: ~s", [wh_json:encode(E911)]),
-            N1 = wnm_number:activate_feature(<<"dash_e911">>, N),
-            N1#number{number_doc=wh_json:set_value(<<"dash_e911">>, update_e911(N1, E911), JObj)}
+            N1 = wnm_number:activate_feature(?VITELITY_KEY, N),
+            N1#number{number_doc=wh_json:set_value(?VITELITY_KEY, update_e911(N1, E911), JObj)}
     end.
 
 -spec remove_number(ne_binary()) ->

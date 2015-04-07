@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz, INC
+%%% @copyright (C) 2012-2015, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -21,7 +21,9 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec feature_activation_charge(ne_binary(), wh_services:services()) -> integer().
-feature_activation_charge(<<"dash_e911">>, Services) ->
+feature_activation_charge(?DASH_KEY, Services) ->
+    feature_activation_charge(<<"e911">>, Services);
+feature_activation_charge(?VITELITY_KEY, Services) ->
     feature_activation_charge(<<"e911">>, Services);
 feature_activation_charge(Feature, Services) ->
     Charge = wh_services:activation_charges(<<"number_services">>, Feature, Services),
@@ -147,9 +149,9 @@ is_number_billable(DID, Module) ->
 -spec update_feature_quantities(ne_binaries(), wh_services:services()) -> wh_services:services().
 update_feature_quantities([], Services) ->
     Services;
-update_feature_quantities([<<"dash_e911">>|Features], Services) ->
+update_feature_quantities([?DASH_KEY|Features], Services) ->
     update_feature_quantities([<<"e911">>|Features], Services);
-update_feature_quantities([<<"vitelity_e911">>|Features], Services) ->
+update_feature_quantities([?VITELITY_KEY|Features], Services) ->
     update_feature_quantities([<<"e911">>|Features], Services);
 update_feature_quantities([Feature|Features], Services) ->
     Quantity = wh_services:update_quantity(<<"number_services">>, Feature, Services),

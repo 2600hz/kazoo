@@ -116,5 +116,8 @@
 %%% deleted      - Number has been permanently deleted (and will be removed from
 %%%                the system after the number has been aged properly
 
+-define(DASH_KEY, <<"dash_e911">>).
+-define(VITELITY_KEY, <<"vitelity_e911">>).
+
 -define(WH_NUMBER_MANAGER_HRL, 'true').
 -endif.

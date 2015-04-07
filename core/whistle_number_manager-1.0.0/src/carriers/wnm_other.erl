@@ -19,7 +19,6 @@
 
 -include("../wnm.hrl").
 
-
 -define(DEFAULT_COUNTRY, <<"US">>).
 -define(WNM_OTHER_CONFIG_CAT, <<"number_manager.other">>).
 

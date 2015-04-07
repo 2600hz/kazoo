@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle e911 provisioning
@@ -59,13 +59,13 @@ delete(#number{features=Features
                ,current_number_doc=CurrentDoc
                ,number_doc=Doc
               }=Number) ->
-    case wh_json:get_ne_value(<<"dash_e911">>, CurrentDoc) of
+    case wh_json:get_ne_value(?DASH_KEY, CurrentDoc) of
         'undefined' -> Number;
         _Else ->
-            lager:debug("removing e911 information"),
+            lager:debug("removing e911 information from ~s", [Num]),
             _ = remove_number(Num),
-            Number#number{features=sets:del_element(<<"dash_e911">>, Features)
-                          ,number_doc=wh_json:delete_key(<<"dash_e911">>, Doc)
+            Number#number{features=sets:del_element(?DASH_KEY, Features)
+                          ,number_doc=wh_json:delete_key(?DASH_KEY, Doc)
                          }
     end.
 
@@ -81,18 +81,18 @@ maybe_update_dash_e911(#number{current_number_doc=CurrentJObj
                                ,features=Features
                                ,number=Number
                               }=N) ->
-    CurrentE911 = wh_json:get_ne_value(<<"dash_e911">>, CurrentJObj),
-    E911 = wh_json:get_ne_value(<<"dash_e911">>, JObj),
+    CurrentE911 = wh_json:get_ne_value(?DASH_KEY, CurrentJObj),
+    E911 = wh_json:get_ne_value(?DASH_KEY, JObj),
     NotChanged = wnm_util:are_jobjs_identical(CurrentE911, E911),
     case wh_util:is_empty(E911) of
         'true' ->
             lager:debug("dash e911 information has been removed, updating dash"),
             _ = remove_number(Number),
-            N#number{features=sets:del_element(<<"dash_e911">>, Features)};
-        'false' when NotChanged  -> N#number{features=sets:add_element(<<"dash_e911">>, Features)};
+            N#number{features=sets:del_element(?DASH_KEY, Features)};
+        'false' when NotChanged  -> N#number{features=sets:add_element(?DASH_KEY, Features)};
         'false' ->
             lager:debug("e911 information has been changed: ~s", [wh_json:encode(E911)]),
-            N1 = wnm_number:activate_feature(<<"dash_e911">>, N),
+            N1 = wnm_number:activate_feature(?DASH_KEY, N),
             case update_e911(Number, E911, JObj) of
                 {'error', _}=E -> E;
                 {'ok', J} -> N1#number{number_doc=J}
@@ -117,16 +117,16 @@ update_e911(Number, Address, JObj) ->
             E;
         {'provisioned', E911} ->
             lager:debug("provisioned dash e911 address"),
-            {'ok', wh_json:set_value(<<"dash_e911">>, E911, JObj)};
+            {'ok', wh_json:set_value(?DASH_KEY, E911, JObj)};
         {'geocoded', E911} ->
             lager:debug("added location to dash e911, attempting to provision new location"),
             case provision_location(wh_json:get_value(<<"location_id">>, E911)) of
                 'undefined' ->
                     lager:debug("provisioning attempt moved location to status: undefined"),
-                    {'ok', wh_json:set_value(<<"dash_e911">>, E911, JObj)};
+                    {'ok', wh_json:set_value(?DASH_KEY, E911, JObj)};
                 Status ->
                     lager:debug("provisioning attempt moved location to status: ~s", [Status]),
-                    {'ok', wh_json:set_value(<<"dash_e911">>, wh_json:set_value(<<"status">>, Status, E911), JObj)}
+                    {'ok', wh_json:set_value(?DASH_KEY, wh_json:set_value(<<"status">>, Status, E911), JObj)}
             end
     end.
 

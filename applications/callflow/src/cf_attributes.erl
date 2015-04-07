@@ -554,8 +554,9 @@ valid_emergency_numbers(Call) ->
     case couch_mgr:open_cache_doc(AccountDb, <<"phone_numbers">>) of
         {'ok', JObj} ->
             [Number
-             || Number <- wh_json:get_keys(JObj)
-                    ,lists:member(<<"dash_e911">>, wh_json:get_value([Number, <<"features">>], JObj, []))
+             || Number <- wh_json:get_keys(JObj),
+                lists:member(?DASH_KEY, (Features = wh_json:get_value([Number, <<"features">>], JObj, [])))
+                    orelse lists:member(?VITELITY_KEY, Features)
             ];
         {'error', _} ->
             []
