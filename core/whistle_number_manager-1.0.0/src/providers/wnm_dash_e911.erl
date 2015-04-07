@@ -112,8 +112,8 @@ update_e911(Number, Address, JObj) ->
     Location = json_address_to_xml_location(Address),
     CallerName = wh_json:get_ne_value(<<"caller_name">>, Address, <<"Valued Customer">>),
     case add_location(Number, Location, CallerName) of
-        {'error', R}=E ->
-            lager:debug("error provisioning dash e911 address: ~p", [R]),
+        {'error', _R}=E ->
+            lager:debug("error provisioning dash e911 address: ~p", [_R]),
             E;
         {'provisioned', E911} ->
             lager:debug("provisioned dash e911 address"),
@@ -242,8 +242,10 @@ is_valid_location(Location) ->
                           {'error', binary()}.
 add_location(Number, Location, CallerName) ->
     Props = [{'uri', [{'uri', [wh_util:to_list(<<"tel:", (wnm_util:to_1npan(Number))/binary>>)]}
-                      ,{'callername', [wh_util:to_list(CallerName)]}]}
-             |Location
+                      ,{'callername', [wh_util:to_list(CallerName)]}
+                     ]
+             }
+             | Location
             ],
     case emergency_provisioning_request('addLocation', Props) of
         {'error', Reason} -> {'error', wh_util:to_binary(Reason)};
