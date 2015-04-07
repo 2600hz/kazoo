@@ -27,14 +27,16 @@
 
 -define(BINDINGS, [{'sms', [{'restrict_to', ['delivery','resume']}]}
                    ,{'registration', [{'restrict_to', ['reg_success']}]}
-                   ,{'conf',[{'action', 'created'}
-                             ,{'doc_type', <<"sms">>}
-                            ]}
+                   ,{'conf',[{'keys', [ [{'action', 'created'}, {'doc_type', <<"sms">>}]
+                                        ,[{'doc_type', <<"device">>}]
+                                        ,[{'doc_type', <<"user">>}]
+                                      ]}]}
                    ,{'self', []}
                   ]).
 -define(RESPONDERS, [{'doodle_delivery_handler', [{<<"message">>, <<"delivery">>}]}
                      ,{'doodle_notify_handler', [{<<"directory">>, <<"reg_success">>}]}
-                     ,{'doodle_api_handler', [{<<"configuration">>, <<"doc_created">>}]}
+                     ,{'doodle_doc_handler', [{<<"configuration">>, <<"doc_created">>}]}
+                     ,{'doodle_doc_handler', [{<<"configuration">>, <<"doc_edited">>}]}
                     ]).
 -define(QUEUE_NAME, <<"doodle_shared_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
