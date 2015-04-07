@@ -118,6 +118,7 @@
 
 -define(DASH_KEY, <<"dash_e911">>).
 -define(VITELITY_KEY, <<"vitelity_e911">>).
+-define(E911_KEY, <<"e911">>).
 
 -define(WH_NUMBER_MANAGER_HRL, 'true').
 -endif.
