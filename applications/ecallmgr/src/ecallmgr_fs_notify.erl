@@ -29,7 +29,7 @@
          }).
 
 -define(SERVER, ?MODULE).
--define(MWI_BODY, "Messages-Waiting: ~s\r\nMessage-Account: sip:~s\r\nVoice-Message: ~b/~b (~b/~b)\r\n\r\n").
+-define(MWI_BODY, "Messages-Waiting: ~s\r\nMessage-Account: ~s\r\nVoice-Message: ~b/~b (~b/~b)\r\n\r\n").
 
 -define(BINDINGS, [{'presence', [{'restrict_to', ['mwi_update'
                                                   ,'register_overwrite'
@@ -143,25 +143,29 @@ mwi_update(JObj, Props) ->
 
 -spec send_mwi_update(wh_json:object(), ne_binary(), ne_binary(), atom(), wh_json:object()) -> 'ok'.
 send_mwi_update(JObj, Username, Realm, Node, Registration) ->
-    To = nksip_unparse:uri(#uri{user=wh_json:get_value(<<"To-User">>, Registration, Username)
-                               ,domain=wh_json:get_value(<<"To-Host">>, Registration, Realm)
-                               }),
+    ToURI = #uri{user=wh_json:get_value(<<"To-User">>, Registration, Username)
+                 ,domain=wh_json:get_value(<<"To-Host">>, Registration, Realm)
+                },
+    To = nksip_unparse:uri(ToURI),
+    ToAccount = nksip_unparse:ruri(ToURI),
     From = nksip_unparse:uri(#uri{user=wh_json:get_value(<<"From-User">>, Registration, Username)
                                  ,domain=wh_json:get_value(<<"From-Host">>, Registration, Realm)
                                  }),
     NewMessages = wh_json:get_integer_value(<<"Messages-New">>, JObj, 0),
     Body = io_lib:format(?MWI_BODY, [case NewMessages of 0 -> "no"; _ -> "yes" end
-                                     ,To
+                                     ,ToAccount
                                      ,NewMessages
                                      ,wh_json:get_integer_value(<<"Messages-Waiting">>, JObj, 0)
                                      ,wh_json:get_integer_value(<<"Messages-Urgent">>, JObj, 0)
                                      ,wh_json:get_integer_value(<<"Messages-Urgent-Waiting">>, JObj, 0)
                                     ]),
-    RegistrationContact = wh_json:get_value(<<"Contact">>, Registration),
+    RegistrationContact = wh_json:get_first_defined([<<"Bridge-RURI">>, <<"Contact">>], Registration),
     Contact = ensure_contact_user(RegistrationContact, Username),
+    SIPHeaders = <<"X-KAZOO-AOR : ", ToAccount/binary, "\r\n">>,
     Headers = [{"profile", ?DEFAULT_FS_PROFILE}
-               ,{"contact", Contact}
                ,{"contact-uri", Contact}
+               ,{"extra-headers", SIPHeaders}
+               ,{"no-sub-state", <<"true">>}
                ,{"to-uri", To}
                ,{"from-uri", From}
                ,{"event-str", "message-summary"}
@@ -219,12 +223,7 @@ register_overwrite(JObj, Props) ->
 -spec ensure_contact_user(ne_binary(), ne_binary()) -> ne_binary().
 ensure_contact_user(Contact, Username) ->
     case nksip_parse_uri:uris(Contact) of
-        [#uri{user = <<>>}=Uri] ->
-            binary:replace(nksip_unparse:uri(Uri#uri{user=Username})
-                          ,[<<"<">>, <<">">>]
-                          ,<<>>
-                          ,['global']
-                          );
+        [#uri{user = <<>>}=Uri] -> nksip_unparse:ruri(Uri#uri{user=Username});
         _Else -> Contact
     end.
 

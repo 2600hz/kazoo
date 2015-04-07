@@ -809,7 +809,7 @@ bridge_uri(Contact, Proxy, Username, Realm) ->
                      ,domain=Realm
                      ,opts=props:filter_undefined(
                              [{<<"transport">>, Transport}
-                              ,{<<"fs_path">>, <<"'", (nksip_unparse:ruri(UriProxy))/binary, "'">>}
+                              ,{<<"fs_path">>, nksip_unparse:ruri(UriProxy)}
                              ])
                     },
     nksip_unparse:ruri(BridgeUri).
@@ -1038,6 +1038,7 @@ to_props(Reg) ->
      ,{<<"Owner-ID">>, Reg#registration.owner_id}
      ,{<<"Registrar-Node">>, Reg#registration.registrar_node}
      ,{<<"Registrar-Hostname">>, Reg#registration.registrar_hostname}
+     ,{<<"Bridge-RURI">>, Reg#registration.bridge_uri}
     ].
 
 -spec filter(wh_json:keys(), wh_json:object()) -> wh_json:object().
