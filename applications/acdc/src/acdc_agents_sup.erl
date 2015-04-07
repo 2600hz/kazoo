@@ -102,9 +102,9 @@ is_agent_in_acct(Super, AcctId) ->
         _ -> 'false'
     end.
 
--spec agents_running() -> [{pid(), acdc_agent:config()},...] | [].
+-spec agents_running() -> [{pid(), acdc_agent_listener:config()},...] | [].
 agents_running() ->
-    [{W, catch acdc_agent:config(acdc_agent_sup:agent(W))} || W <- workers()].
+    [{W, catch acdc_agent_listener:config(acdc_agent_sup:listener(W))} || W <- workers()].
 
 -spec find_agent_supervisor(api_binary(), api_binary()) -> api_pid().
 -spec find_agent_supervisor(api_binary(), api_binary(), pids()) -> api_pid().

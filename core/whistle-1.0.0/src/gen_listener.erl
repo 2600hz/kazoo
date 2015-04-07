@@ -157,6 +157,7 @@
 -export_type([handle_event_return/0
               ,binding/0
               ,bindings/0
+              ,basic_deliver/0
              ]).
 
 %%%===================================================================

@@ -75,12 +75,12 @@ start_link(FSMPid, AcctId, QueueId) ->
                             ,[FSMPid]
                            ).
 
--spec ack(server_ref(), gen_listener:basic_delivery()) -> 'ok'.
+-spec ack(server_ref(), gen_listener:basic_deliver()) -> 'ok'.
 ack(Srv, Delivery) ->
     gen_listener:ack(Srv, Delivery),
     gen_listener:cast(Srv, {'ack', Delivery}).
 
--spec nack(server_ref(), gen_listener:basic_delivery()) -> 'ok'.
+-spec nack(server_ref(), gen_listener:basic_deliver()) -> 'ok'.
 nack(Srv, Delivery) ->
     gen_listener:nack(Srv, Delivery),
     gen_listener:cast(Srv, {'noack', Delivery}).
