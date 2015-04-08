@@ -464,13 +464,8 @@ normalize_and_send('csv', [JObj|JObjs], {Req, Context}) ->
 normalize_cdr(JObj, Context) ->
     Duration = wh_json:get_integer_value(<<"duration_seconds">>, JObj, 0),
     Timestamp = wh_json:get_integer_value(<<"timestamp">>, JObj, 0) - Duration,
-    maybe_reseller_cdr(
-      wh_json:from_list(
-        lists:map(fun(K, F) -> {K, F(JObj, Timestamp)} end
-                  ,?CSV
-                 )
-       )
-      ,Context
+    wh_json:from_list(
+      [{K, F(JObj, Timestamp)} || {K, F} <- csv_rows(Context)]
      ).
 
 -spec normalize_cdr_to_csv(wh_json:object(), cb_context:context()) -> ne_binary().
@@ -478,9 +473,7 @@ normalize_cdr_to_csv(JObj, Context) ->
     Timestamp = wh_json:get_integer_value(<<"timestamp">>, JObj, 0),
 
     CSV = wh_util:join_binary(
-            wh_json:map(fun(_, F) -> F(JObj, Timestamp) end
-                        ,csv_rows(Context)
-                       )
+            [F(JObj, Timestamp) || {_, F} <- csv_rows(Context)]
             ,<<",">>
            ),
     <<CSV/binary, "\r">>.
@@ -488,13 +481,12 @@ normalize_cdr_to_csv(JObj, Context) ->
 -spec normalize_cdr_to_csv_header(wh_json:object(), cb_context:context()) -> ne_binary().
 normalize_cdr_to_csv_header(_JObj, Context) ->
     CSV =
-        lists:foldl(fun({K, _Fun}, Acc) ->
-                            <<Acc/binary, ",", K/binary>>
-                    end
-                    ,<<>>
-                    ,csv_rows(Context)
-                   ),
-    <<CSV, "\r">>.
+        wh_util:join_binary(
+          [K || {K, _Fun} <- csv_rows(Context)]
+          ,<<",">>
+         ),
+
+    <<CSV/binary, "\r">>.
 
 -spec csv_rows(cb_context:context()) -> [{ne_binary(), fun((wh_json:object(), gregorian_seconds()) -> ne_binary())}].
 csv_rows(Context) ->
@@ -526,8 +518,8 @@ csv_dialed_number(JObj, _Timestamp) -> dialed_number(JObj).
 csv_calling_from(JObj, _Timestamp) -> calling_from(JObj).
 csv_pretty_print(_JObj, Timestamp) -> pretty_print_datetime(Timestamp).
 csv_unix_timestamp(_JObj, Timestamp) -> wh_util:to_binary(wh_util:gregorian_seconds_to_unix_seconds(Timestamp)).
-csv_rfc1036(_JObj, Timestamp) -> wh_util:rfc1036(Timestamp).
-csv_iso8601(_JObj, Timestamp) -> wh_util:iso8601(Timestamp).
+csv_rfc1036(_JObj, Timestamp) -> list_to_binary([$", wh_util:rfc1036(Timestamp), $"]).
+csv_iso8601(_JObj, Timestamp) -> list_to_binary([$", wh_util:iso8601(Timestamp), $"]).
 csv_account_call_type(JObj, _Timestamp) -> wh_json:get_value([<<"custom_channel_vars">>, <<"account_billing">>], JObj, <<>>).
 csv_rate(JObj, _Timestamp) -> wh_util:to_binary(wht_util:units_to_dollars(wh_json:get_value([<<"custom_channel_vars">>, <<"rate">>], JObj, 0))).
 csv_rate_name(JObj, _Timestamp) -> wh_json:get_value([<<"custom_channel_vars">>, <<"rate_name">>], JObj, <<>>).
@@ -564,19 +556,6 @@ calling_from(JObj) ->
             [Num|_] = binary:split(wh_json:get_value(<<"from_uri">>, JObj, <<>>), <<"@">>),
             Num
     end.
-
--spec maybe_reseller_cdr(wh_json:object(), cb_context:context()) -> wh_json:object().
-maybe_reseller_cdr(JObj, Context) ->
-    case cb_context:fetch(Context, 'is_reseller') of
-        'false' -> JObj;
-        'true' -> reseller_cdr(JObj)
-    end.
-
--spec reseller_cdr(wh_json:object()) -> wh_json:object().
-reseller_cdr(JObj) ->
-    wh_json:set_values([{<<"reseller_cost">>, reseller_cost(JObj)}
-                        ,{<<"reseller_call_type">>, wh_json:get_value([<<"custom_channel_vars">>, <<"reseller_billing">>], JObj, <<>>)}
-                       ], JObj).
 
 -spec customer_cost(wh_json:object()) -> pos_integer().
 customer_cost(JObj) ->
