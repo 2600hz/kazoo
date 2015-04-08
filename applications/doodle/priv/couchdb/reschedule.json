@@ -1,0 +1,29 @@
+{
+    "first deliver":{
+        "error":{
+            "reason":[
+                "NO_ROUTE_DESTINATION",
+                ""
+            ],
+            "code":[
+                "404",
+                ""
+            ]
+        },
+        "number":5,
+        "interval":{
+            "minute":3
+        },
+        "report":{
+            
+        }
+    },
+    "second deliver":{
+        "time":{
+            "day":3
+        },
+        "interval":{
+            "minute":30
+        }
+    }
+}

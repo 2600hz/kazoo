@@ -16,7 +16,6 @@
 -define(MDN_VIEW, <<"mobile/listing_by_mdn">>).
 -define(CONVERT_MDN, 'true').
 
--define(DEFAULT_SCHEDULE, ).
 -define(RESCHEDULE_COUNTERS, [<<"attempts">>, <<"total_attempts">>]).
 
 
