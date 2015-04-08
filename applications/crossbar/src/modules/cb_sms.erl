@@ -280,15 +280,3 @@ get_view_and_filter(Context) ->
         {Id , 'undefined'} -> {?CB_LIST_BY_DEVICE, [Id], 'undefined'};
         {Id, _} -> {?CB_LIST_BY_DEVICE, [Id], 'undefined'}
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec pagination_page_size(cb_context:context()) -> pos_integer().
-pagination_page_size(Context) ->
-    case crossbar_doc:pagination_page_size(Context) of
-        'undefined' -> 'undefined';
-        PageSize -> PageSize + 1
-    end.
