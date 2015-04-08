@@ -63,7 +63,7 @@ should_delete(AccountModb, Months) ->
 
 -spec delete_modb(ne_binary()) -> 'ok'.
 delete_modb(<<_:42/binary, "-", _:4/binary, _:2/binary>> = AccountModb) ->
-    kazoo_modb:archive_modbs(AccountModb),
+    'ok' = couch_util:archive(AccountModb),
     _Deleted = couch_mgr:db_delete(AccountModb),
     io:format("    deleted: ~p~n", [_Deleted]),
     timer:sleep(5000).
@@ -78,7 +78,7 @@ archive_modbs(AccountId) ->
 -spec do_archive_modbs(ne_binaries(), api_binary()) -> 'no_return'.
 do_archive_modbs(MODbs, AccountId) ->
     wh_util:put_callid(?MODULE),
-    _ = [kazoo_modb:maybe_archive_modb(MODb) || MODb <- MODbs],
+    _ = [couch_util:archive(MODb) || MODb <- MODbs],
     Keep = whapps_config:get_integer(?CONFIG_CAT, <<"active_modbs">>, 6),
     From = case AccountId =:= 'undefined' of 'true' -> <<"all">>; 'false' -> AccountId end,
     io:format("archived ~s MODbs more than ~b months old~n", [From, Keep]),
@@ -172,4 +172,3 @@ rollup_balance(JObj) ->
         <<"credit">> -> Balance;
         <<"debit">> -> Balance * -1
     end.
-

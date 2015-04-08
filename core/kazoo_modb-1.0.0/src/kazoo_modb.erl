@@ -14,9 +14,7 @@
 -export([open_doc/2, open_doc/3, open_doc/4]).
 -export([save_doc/2, save_doc/3, save_doc/4]).
 -export([get_modb/1, get_modb/2, get_modb/3]).
--export([maybe_archive_modb/1
-         ,archive_modb/1
-        ]).
+-export([maybe_archive_modb/1]).
 -export([refresh_views/1]).
 -export([create/1]).
 -export([maybe_delete/2]).
@@ -316,7 +314,3 @@ delete_if_orphaned(AccountMODb, 'true') ->
     Succeeded = couch_mgr:db_delete(AccountMODb),
     lager:debug("cleanse orphaned modb ~p... ~p", [AccountMODb,Succeeded]),
     Succeeded.
-
-  -spec archive_modb(ne_binary()) -> 'ok'.
-archive_modb(AccountMODb) ->
-    'ok' = couch_util:archive(AccountMODb).

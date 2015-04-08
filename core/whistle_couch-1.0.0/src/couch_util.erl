@@ -186,7 +186,7 @@ archive(Db, File, MaxDocs, N, Pos) when N =< MaxDocs ->
             io:format("    archived ~p docs~n", [N]);
         {'error', _E} ->
             io:format("    error ~p asking for ~p docs from pos ~p~n"
-                        ,[_E, N, Pos]),
+                     ,[_E, N, Pos]),
             timer:sleep(500),
             archive(Db, File, MaxDocs, N, Pos)
     end;
@@ -203,7 +203,7 @@ archive(Db, File, MaxDocs, N, Pos) ->
             archive(Db, File, MaxDocs, N - MaxDocs, Pos + MaxDocs);
         {'error', _E} ->
             io:format("    error ~p asking for ~p docs from pos ~p~n"
-                        ,[_E, N, Pos]),
+                     ,[_E, N, Pos]),
             timer:sleep(500),
             archive(Db, File, MaxDocs, N, Pos)
     end.

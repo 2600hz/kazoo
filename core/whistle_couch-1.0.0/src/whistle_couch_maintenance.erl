@@ -81,9 +81,11 @@ test_connection() ->
 test_admin_connection() ->
     wh_couch_connections:test_admin_conn().
 
+-spec archive(ne_binary()) -> 'ok'.
 archive(Db) ->
     couch_util:archive(Db).
 
+-spec archive(ne_binary(), ne_binary()) -> 'ok'.
 archive(Db, Filename) ->
     couch_util:archive(Db, Filename).
 
