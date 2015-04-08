@@ -74,6 +74,8 @@
 -export([current_tstamp/0, current_unix_tstamp/0
          ,gregorian_seconds_to_unix_seconds/1, unix_seconds_to_gregorian_seconds/1
          ,pretty_print_datetime/1
+         ,rfc1036/1, rfc1036/2
+         ,iso8601/1
          ,pretty_print_elapsed_s/1
          ,decr_timeout/2
         ]).
@@ -447,6 +449,11 @@ try_load_module(Name) ->
 pad_binary(Bin, Size, Value) when size(Bin) < Size ->
     pad_binary(<<Bin/binary, Value/binary>>, Size, Value);
 pad_binary(Bin, _, _) -> Bin.
+
+-spec pad_binary_left(binary(), non_neg_integer(), binary()) -> binary().
+pad_binary_left(Bin, Size, Value) when size(Bin) < Size ->
+    pad_binary_left(<<Value/binary, Bin/binary>>, Size, Value);
+pad_binary_left(Bin, _Size, _Value) -> Bin.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1041,6 +1048,58 @@ pretty_print_datetime({{Y,Mo,D},{H,Mi,S}}) ->
                                    ,[Y, Mo, D, H, Mi, S]
                                   )).
 
+-spec rfc1036(calendar:datetime() | gregorian_seconds()) -> ne_binary().
+-spec rfc1036(calendar:datetime() | gregorian_seconds(), ne_binary()) -> ne_binary().
+rfc1036(DateTime) ->
+    rfc1036(DateTime, <<"GMT">>).
+
+rfc1036({Date = {Y, Mo, D}, {H, Mi, S}}, TZ) ->
+    Wday = calendar:day_of_the_week(Date),
+    <<(weekday(Wday))/binary, ", ",
+      (pad_binary_left(to_binary(D), 2, <<"0">>))/binary, " ",
+      (month(Mo))/binary, " ",
+      (to_binary(Y))/binary, " ",
+      (pad_binary_left(to_binary(H), 2, <<"0">>))/binary, ":",
+      (pad_binary_left(to_binary(Mi), 2, <<"0">>))/binary, ":",
+      (pad_binary_left(to_binary(S), 2, <<"0">>))/binary,
+      " ", TZ/binary
+    >>;
+rfc1036(Timestamp, TZ) when is_integer(Timestamp) ->
+    rfc1036(calendar:gregorian_seconds_to_datetime(Timestamp), TZ).
+
+-spec iso8601(calendar:datetime() | gregorian_seconds()) -> ne_binary().
+iso8601({{Y,M,D},_}) ->
+    <<(to_binary(Y))/binary, "-"
+      ,(pad_binary_left(to_binary(M), 2, <<"0">>))/binary, "-"
+      ,(pad_binary_left(to_binary(D), 2, <<"0">>))/binary
+    >>;
+iso8601(Timestamp) when is_integer(Timestamp) ->
+    iso8601(calendar:gregorian_seconds_to_datetime(Timestamp)).
+
+%% borrowed from cow_date.erl
+-spec weekday(1..7) -> <<_:24>>.
+weekday(1) -> <<"Mon">>;
+weekday(2) -> <<"Tue">>;
+weekday(3) -> <<"Wed">>;
+weekday(4) -> <<"Thu">>;
+weekday(5) -> <<"Fri">>;
+weekday(6) -> <<"Sat">>;
+weekday(7) -> <<"Sun">>.
+
+-spec month(1..12) -> <<_:24>>.
+month( 1) -> <<"Jan">>;
+month( 2) -> <<"Feb">>;
+month( 3) -> <<"Mar">>;
+month( 4) -> <<"Apr">>;
+month( 5) -> <<"May">>;
+month( 6) -> <<"Jun">>;
+month( 7) -> <<"Jul">>;
+month( 8) -> <<"Aug">>;
+month( 9) -> <<"Sep">>;
+month(10) -> <<"Oct">>;
+month(11) -> <<"Nov">>;
+month(12) -> <<"Dec">>.
+
 -spec pretty_print_elapsed_s(non_neg_integer()) -> ne_binary().
 pretty_print_elapsed_s(0) -> <<"0s">>;
 pretty_print_elapsed_s(Seconds) ->
@@ -1215,25 +1274,6 @@ prop_pretty_print_elapsed_s() ->
                  Result =:= iolist_to_binary(lists:reverse(Expected))
              end).
 
-prop_pretty_print_elapsed_s() ->
-    ?FORALL({D, H, M, S}
-            ,{non_neg_integer(), range(0,23), range(0, 59), range(0,59)}
-            ,begin
-                 Seconds = (D * ?SECONDS_IN_DAY) + (H * ?SECONDS_IN_HOUR) + (M * ?SECONDS_IN_MINUTE) + S,
-                 Expected = lists:foldl(fun({0, "s"}, "") -> ["s", <<"0">>];
-                                           ({0, _}, Acc) -> Acc;
-                                           ({N, Unit}, Acc) -> [Unit, to_binary(N) | Acc]
-                                        end
-                                        ,[]
-                                        ,[{D, "d"}
-                                          ,{H, "h"}
-                                          ,{M, "m"}
-                                          ,{S, "s"}
-                                         ]),
-                 Result = pretty_print_elapsed_s(Seconds),
-                 Result =:= iolist_to_binary(lists:reverse(Expected))
-             end).
-
 proper_test_() ->
     {"Runs the module's PropEr tests during eunit testing",
      {'timeout', 15000,
@@ -1380,5 +1420,23 @@ resolve_uri_test() ->
 
     ?assertEqual(RawPathList, resolve_uri_path(RawPath, Relative)),
     ?assertEqual(RawPathList, resolve_uri_path(RawPath, <<"/", Relative/binary>>)).
+
+rfc1036_test() ->
+    Tests = [{ {{2015,4,7},{1,3,2}}, <<"Tue, 07 Apr 2015 01:03:02 GMT">>}
+             ,{ {{2015,12,12},{12,13,12}}, <<"Sat, 12 Dec 2015 12:13:12 GMT">>}
+             ,{ 63595733389, <<"Wed, 08 Apr 2015 17:29:49 GMT">>}
+            ],
+    lists:foreach(fun({Date, Expected}) ->
+                          ?assertEqual(Expected, rfc1036(Date))
+                  end, Tests).
+
+iso8601_test() ->
+    Tests = [{ {{2015,4,7},{1,3,2}}, <<"2015-04-07">>}
+             ,{ {{2015,12,12},{12,13,12}}, <<"2015-12-12">>}
+             ,{ 63595733389, <<"2015-04-08">>}
+            ],
+    lists:foreach(fun({Date, Expected}) ->
+                          ?assertEqual(Expected, iso8601(Date))
+                  end, Tests).
 
 -endif.
