@@ -485,6 +485,7 @@ maybe_reschedule_sms(Code, Message, Call) ->
 
 -spec maybe_reschedule_sms(api_binary(), api_binary(), ne_binary(), whapps_call:call()) -> whapps_call:call().
 maybe_reschedule_sms(Code, Message, AccountId, Call) ->
+    put('call', Call),
     Rules = whapps_account_config:get_global(AccountId, ?CONFIG_CAT, <<"reschedule">>, wh_json:new()),
     Schedule = wh_json:set_values(
                  [{<<"code">>, Code}
@@ -493,15 +494,11 @@ maybe_reschedule_sms(Code, Message, AccountId, Call) ->
     case apply_reschedule_logic(wh_json:get_values(Rules), Schedule) of
         'no_rule' ->
             lager:debug("no rules configured for accountid ~s", [AccountId]),
-%            maybe_system_alert(),
-            doodle_exe:stop(Call);
+            doodle_exe:stop(set_flow_status(<<"error">>, Call));
         'end_rules' ->
             lager:debug("end rules configured for accountid ~s", [AccountId]),
-%            maybe_system_alert(),
-            doodle_exe:stop(Call);
+            doodle_exe:stop(set_flow_status(<<"error">>,Call));
         NewSchedule ->
-            lager:debug("NEW SCHED ~p", [NewSchedule]),
-%            maybe_system_alert(),
             doodle_exe:stop(whapps_call:kvs_store(<<"flow_schedule">>, NewSchedule, Call))
     end.
 
@@ -546,9 +543,7 @@ apply_reschedule_rules({[Rule | Rules], [Key | Keys]}, JObj, Step) ->
 apply_reschedule_step({[], []}, JObj) -> JObj;
 apply_reschedule_step({[Value | Values], [Key | Keys]}, JObj) ->
     case apply_reschedule_rule(Key, Value, JObj) of
-        'no_match' ->
-%            maybe_system_error(),
-            'no_match';
+        'no_match' -> 'no_match';
         Schedule -> apply_reschedule_step({Values, Keys}, Schedule)
     end.
 
@@ -587,7 +582,20 @@ apply_reschedule_rule(<<"interval">>, IntervalJObj, JObj) ->
     {[Value], [Key]} = wh_json:get_values(IntervalJObj),
     Next = time_rule(Key, Value, wh_util:current_tstamp()),
     wh_json:set_value(<<"start_time">>, Next, JObj);    
-apply_reschedule_rule(<<"report">>, _Value, JObj) ->
+apply_reschedule_rule(<<"report">>, _, JObj) ->
+    Call = get('call'),
+    Props = props:filter_undefined(
+      [{<<"To">>, whapps_call:to_user(Call)}
+       ,{<<"From">>, whapps_call:from_user(Call)}
+       ,{<<"Account-ID">>, whapps_call:account_id(Call)}
+       ]),    
+    Notify = [{<<"Subject">>, <<"sms_error">>}
+              ,{<<"Message">>, "undelivered sms"}
+              ,{<<"Details">>, wh_json:set_values(Props, JObj)}
+              ,{<<"Account-ID">>, whapps_call:account_id(Call)}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ],
+    wh_amqp_worker:cast(Notify, fun wapi_notifications:publish_system_alert/1),    
     JObj;
 apply_reschedule_rule(_, _, JObj) -> JObj.
 
