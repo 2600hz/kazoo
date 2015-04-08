@@ -117,6 +117,9 @@ validate_resource_templates(?HTTP_DELETE, Id, Context) ->
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _) -> crossbar_doc:save(Context).
 
+-spec patch(cb_context:context(), path_token()) -> cb_context:context().
+patch(Context, _) -> crossbar_doc:save(Context).
+
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) -> crossbar_doc:save(Context).
 
