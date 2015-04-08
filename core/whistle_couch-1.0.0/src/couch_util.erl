@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz
+%%% @copyright (C) 2011-2015, 2600Hz
 %%% @doc
 %%% Util functions used by whistle_couch
 %%% @end
@@ -153,11 +153,11 @@ db_classification(_Database) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec archive(ne_binary()) -> 'ok'.
+-spec archive(ne_binary(), ne_binary()) -> 'ok'.
 archive(Db) ->
     Folder = whapps_config:get(?CONFIG_CAT, <<"default_archive_folder">>, <<"/tmp">>),
     archive(Db, filename:join([<<Folder/binary, "/", Db/binary, ".json">>])).
 
--spec archive(ne_binary(), ne_binary()) -> 'ok'.
 archive(Db, Filename) ->
     {'ok', DbInfo} = couch_mgr:db_info(Db),
     {'ok', File} = file:open(Filename, ['write']),
@@ -186,7 +186,8 @@ archive(Db, File, MaxDocs, N, Pos) when N =< MaxDocs ->
             io:format("    archived ~p docs~n", [N]);
         {'error', _E} ->
             io:format("    error ~p asking for ~p docs from pos ~p~n"
-                     ,[_E, N, Pos]),
+                      ,[_E, N, Pos]
+                     ),
             timer:sleep(500),
             archive(Db, File, MaxDocs, N, Pos)
     end;
@@ -203,7 +204,8 @@ archive(Db, File, MaxDocs, N, Pos) ->
             archive(Db, File, MaxDocs, N - MaxDocs, Pos + MaxDocs);
         {'error', _E} ->
             io:format("    error ~p asking for ~p docs from pos ~p~n"
-                     ,[_E, N, Pos]),
+                      ,[_E, N, Pos]
+                     ),
             timer:sleep(500),
             archive(Db, File, MaxDocs, N, Pos)
     end.

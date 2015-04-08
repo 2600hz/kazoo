@@ -197,30 +197,32 @@ maybe_rollup_previous_month(Account, Balance) ->
     end.
 
 -spec get_rollup_from_previous(ne_binary()) ->
-                                      {'ok', integer()} | {'error', _}.
+                                      {'ok', integer()} |
+                                      {'error', _}.
 get_rollup_from_previous(Account) ->
     {Y, M, _} = erlang:date(),
     {Year, Month} = kazoo_modb_util:prev_year_month(Y, M),
-    ViewOptions = [{'year', wh_util:to_binary(Year)}
-                ,{'month', wh_util:pad_month(Month)}
-               ],
-    case kazoo_modb:open_doc(Account, <<"monthly_rollup">>, ViewOptions) of
+    ModbOptions = [{'year', wh_util:to_binary(Year)}
+                   ,{'month', wh_util:pad_month(Month)}
+                  ],
+    case kazoo_modb:open_doc(Account, <<"monthly_rollup">>, ModbOptions) of
         {'ok', _} ->
             %% NOTE: the previous modb had a rollup, use its balance as
             %%  the value for the current rollup.
-            get_rollup_balance(Account, ViewOptions);
+            get_rollup_balance(Account, ModbOptions);
         {'error', 'not_found'} ->
             %% NOTE: the previous modb did not have a rollup, this must be
             %%   the first rollup of this series, move the balance from the
             %%   account
-            {'ok', get_balance_from_account(Account, ViewOptions)};
+            {'ok', get_balance_from_account(Account, ModbOptions)};
         {'error', _R}=E ->
             lager:warning("unable to get previous monthly_rollup: ~p", [_R]),
             E
     end.
 
 -spec get_rollup_balance(ne_binary(), wh_proplist()) ->
-                                {'ok', integer()} | {'error', _}.
+                                {'ok', integer()} |
+                                {'error', _}.
 get_rollup_balance(Account, ViewOptions) ->
     View = <<"transactions/credit_remaining">>,
     case kazoo_modb:get_results(Account, View, ViewOptions) of
@@ -229,7 +231,8 @@ get_rollup_balance(Account, ViewOptions) ->
             {'ok', wh_json:get_integer_value(<<"value">>, ViewRes, 0)};
         {'error', _R}=E ->
             lager:warning("unable to get rollup balance for ~s: ~p"
-                          ,[Account, _R]),
+                          ,[Account, _R]
+                         ),
             E
     end.
 

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600HZ, INC
+%%% @copyright (C) 2011-2015, 2600HZ, INC
 %%% @doc
 %%%
 %%% @end
@@ -77,7 +77,7 @@ get_results_missing_db(Account, View, ViewOptions, Retry) ->
 -spec open_doc(ne_binary(), ne_binary()) ->
                       {'ok', wh_json:object()} |
                       {'error', atom()}.
--spec open_doc(ne_binary(), ne_binary(), integer()) ->
+-spec open_doc(ne_binary(), ne_binary(), integer() | wh_proplist()) ->
                       {'ok', wh_json:object()} |
                       {'error', atom()}.
 -spec open_doc(ne_binary(), ne_binary(), integer(), integer()) ->
@@ -171,16 +171,15 @@ get_modb(Account) ->
     get_modb(Account, Year, Month).
 
 get_modb(Account, Props) when is_list(Props) ->
-    case props:get_value('month', Props) of
-        'undefined' -> get_modb(Account);
-        Month ->
-            case props:get_value('year', Props) of
-                'undefined' ->
-                    {Year, _, _} = erlang:date(),
-                    get_modb(Account, Year, Month);
-                Year ->
-                    get_modb(Account, Year, Month)
-            end
+    case {props:get_value('month', Props)
+          ,props:get_value('year', Props)
+         }
+    of
+        {'undefined', _Year} -> get_modb(Account);
+        {Month, 'undefined'} ->
+            {Year, _, _} = erlang:date(),
+            get_modb(Account, Year, Month);
+        {Month, Year} -> get_modb(Account, Year, Month)
     end;
 get_modb(Account, Timestamp) ->
     wh_util:format_account_mod_id(Account, Timestamp).
@@ -201,7 +200,7 @@ maybe_create(<<_:32/binary, "-", Year:4/binary, Month:2/binary>>=AccountMODb) ->
         {Year, Month} ->
             create(AccountMODb),
             'true';
-        _ -> 'false'
+        {_Year, _Month} -> 'false'
     end;
 maybe_create(<<"account/", AccountId/binary>>) ->
     maybe_create(binary:replace(AccountId, <<"/">>, <<>>, ['global']));
