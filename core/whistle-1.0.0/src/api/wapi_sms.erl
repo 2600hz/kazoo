@@ -120,19 +120,20 @@
 
 %% Inbound
 -define(INBOUND_REQ_EVENT_NAME, <<"inbound">>).
--define(INBOUND_HEADERS, [<<"Message-ID">>]).
+-define(INBOUND_HEADERS, [<<"Message-ID">>, <<"Body">>,<<"Route-ID">>
+                          ,<<"Caller-ID-Number">>, <<"Callee-ID-Number">>
+                         ]).
 -define(OPTIONAL_INBOUND_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>
                                    ,<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
                                    ,<<"From-Network-Addr">>
                                    ,<<"Switch-Hostname">>, <<"Switch-Nodename">>
-                                   ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-                                   ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
+                                   ,<<"Caller-ID-Name">>, <<"Callee-ID-Name">>
                                    ,<<"Contact">>, <<"User-Agent">>
                                    ,<<"Contact-IP">>, <<"Contact-Port">>, <<"Contact-Username">>
                                    ,<<"To">>, <<"From">>, <<"Request">>
-                                   ,<<"Body">>, <<"Account-ID">>
+                                   ,<<"Account-ID">>
                                    ,<<"Delivery-Result-Code">>, <<"Delivery-Failure">>, <<"Status">>
-                                   ,<<"Route-ID">>, <<"Route-Type">>, <<"System-ID">>
+                                   ,<<"Route-Type">>, <<"System-ID">>
                                   ]).
 -define(INBOUND_TYPES, [{<<"To">>, fun is_binary/1}
                         ,{<<"From">>, fun is_binary/1}
@@ -158,19 +159,20 @@
 
 %% Outbound
 -define(OUTBOUND_REQ_EVENT_NAME, <<"outbound">>).
--define(OUTBOUND_HEADERS, [<<"Message-ID">>]).
+-define(OUTBOUND_HEADERS, [<<"Message-ID">>, <<"Body">>, <<"Route-ID">>
+                          ,<<"Caller-ID-Number">>, <<"Callee-ID-Number">>
+                          ]).
 -define(OPTIONAL_OUTBOUND_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>
                                     ,<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
                                     ,<<"From-Network-Addr">>
                                     ,<<"Switch-Hostname">>, <<"Switch-Nodename">>
-                                    ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-                                    ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
+                                    ,<<"Caller-ID-Name">>, <<"Callee-ID-Name">>
                                     ,<<"Contact">>, <<"User-Agent">>
                                     ,<<"Contact-IP">>, <<"Contact-Port">>, <<"Contact-Username">>
                                     ,<<"To">>, <<"From">>, <<"Request">>
-                                    ,<<"Body">>, <<"Account-ID">>
+                                    ,<<"Account-ID">>
                                     ,<<"Delivery-Result-Code">>, <<"Delivery-Failure">>, <<"Status">>
-                                    ,<<"Route-ID">>, <<"Route-Type">>, <<"System-ID">>
+                                    ,<<"Route-Type">>, <<"System-ID">>
                                    ]).
 -define(OUTBOUND_TYPES, [{<<"To">>, fun is_binary/1}
                          ,{<<"From">>, fun is_binary/1}
