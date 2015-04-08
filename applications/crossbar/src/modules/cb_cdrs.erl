@@ -488,13 +488,16 @@ normalize_cdr_to_csv_header(_JObj, Context) ->
 
     <<CSV/binary, "\r">>.
 
--spec csv_rows(cb_context:context()) -> [{ne_binary(), fun((wh_json:object(), gregorian_seconds()) -> ne_binary())}].
+-type csv_column_fun() :: fun((wh_json:object(), gregorian_seconds()) -> ne_binary()).
+
+-spec csv_rows(cb_context:context()) -> [{ne_binary(), csv_column_fun()}].
 csv_rows(Context) ->
     case cb_context:fetch(Context, 'is_reseller') of
         'false' -> ?CSV;
         'true' -> ?CSV ++ ?CSV_RESELLER
     end.
 
+%% see csv_column_fun() for specs for each function here
 csv_id(JObj, _Timestamp) -> wh_doc:id(JObj, <<>>).
 csv_call_id(JObj, _Timestamp) -> wh_json:get_value(<<"call_id">>, JObj, <<>>).
 csv_caller_id_number(JObj, _Timestamp) -> wh_json:get_value(<<"caller_id_number">>, JObj, <<>>).
