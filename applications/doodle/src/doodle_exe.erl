@@ -677,8 +677,8 @@ send_amqp_message(API, PubFun, Q) ->
     PubFun(add_server_id(API, Q)).
 
 -spec send_command(wh_proplist(), api_binary(), api_binary()) -> 'ok'.
-send_command(_, 'undefined', _) -> lager:debug("no control queue to send command to");
-send_command(_, _, 'undefined') -> lager:debug("no call id to send command to");
+send_command(_, 'undefined', _) -> 'ok';
+send_command(_, _, 'undefined') -> 'ok';
 send_command(Command, ControlQ, CallId) ->
     Props = Command ++ [{<<"Call-ID">>, CallId}
                        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)

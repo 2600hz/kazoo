@@ -17,6 +17,8 @@
 -define(CONVERT_MDN, 'true').
 
 -define(DEFAULT_SCHEDULE, ).
+-define(RESCHEDULE_COUNTERS, [<<"attempts">>, <<"total_attempts">>]).
+
 
 -export([endpoint_id_from_sipdb/2, get_endpoint_id_from_sipdb/2]).
 -export([endpoint_from_sipdb/2, get_endpoint_from_sipdb/2]).
@@ -160,7 +162,7 @@ save_sms(JObj, DocId, Doc, Call) ->
                ,{<<"pvt_schedule">>, Schedule}
                ,{<<"pvt_status">>, Status}
                ,{<<"call_id">>, whapps_call:call_id_direct(Call)}
-               ,{<<"pvt_call">>, whapps_call:to_json(whapps_call:kvs_erase(<<"_rev">>, Call))}
+               ,{<<"pvt_call">>, whapps_call:to_json(remove_keys(Call))}
                ,{<<"_rev">>, Rev}
               ]),
     JObjDoc = wh_json:set_values(Props, Doc),
@@ -173,20 +175,16 @@ save_sms(JObj, DocId, Doc, Call) ->
             Call
     end.
 
--spec maybe_reschedule_sms(whapps_call:call()) -> whapps_call:call().
-maybe_reschedule_sms(Call) ->
-    maybe_reschedule_sms('undefined', Call).
-    
--spec maybe_reschedule_sms(api_binary(), whapps_call:call()) -> whapps_call:call().
-maybe_reschedule_sms(_Code, Call) ->
-    Call.
+-define(REMOVE_KEYS, [<<"_rev">>, <<"flow_schedule">>]).
 
--spec maybe_reschedule_sms(api_binary(), api_binary(), whapps_call:call()) -> whapps_call:call().
-maybe_reschedule_sms(Code, 'undefined', Call) ->
-    maybe_reschedule_sms(Code, set_flow_error(<<"unknown error">>, Call));
-maybe_reschedule_sms(Code, Message, Call) ->
-    maybe_reschedule_sms(Code, set_flow_error(Message, Call)).
-    
+-spec remove_keys(whapps_call:call()) -> whapps_call:call().
+remove_keys(Call) ->
+    remove_keys(Call, ?REMOVE_KEYS).
+
+-spec remove_keys(whapps_call:call(), list()) -> whapps_call:call().
+remove_keys(Call, Keys) ->
+    lists:foldl(fun whapps_call:kvs_erase/2, Call, Keys).
+        
 -spec endpoint_id_from_sipdb(ne_binary(), ne_binary()) ->
                                     {'ok', ne_binary()} |
                                     {'error', _}.
@@ -254,17 +252,18 @@ replay_sms(AccountId, DocId) ->
     lager:debug("trying to replay sms ~s for account ~s",[DocId, AccountId]),
     {'ok', Doc} = kazoo_modb:open_doc(AccountId, DocId),
     Flow = wh_json:get_value(<<"pvt_call">>, Doc),
+    Schedule = wh_json:get_value(<<"pvt_schedule">>, Doc),
     Rev = wh_json:get_value(<<"_rev">>, Doc),
-    replay_sms_flow(AccountId, DocId, Rev, Flow).
+    replay_sms_flow(AccountId, DocId, Rev, Flow, Schedule).
 
--spec replay_sms_flow(ne_binary(), ne_binary(), ne_binary(), api_object()) -> any().
-replay_sms_flow(_AccountId, _DocId, _Rev, 'undefined') -> 'ok';
-replay_sms_flow(AccountId, <<_:7/binary, CallId/binary>> = DocId, Rev, JObj) ->
+-spec replay_sms_flow(ne_binary(), ne_binary(), ne_binary(), api_object(), api_object()) -> any().
+replay_sms_flow(_AccountId, _DocId, _Rev, 'undefined', _) -> 'ok';
+replay_sms_flow(AccountId, <<_:7/binary, CallId/binary>> = DocId, Rev, JObj, Schedule) ->
     lager:debug("replaying sms ~s for account ~s",[DocId, AccountId]),
     Routines = [{fun whapps_call:set_call_id/2, CallId}
                 ,fun(C) -> set_sms_revision(Rev, C) end
                 ,fun(C) -> set_flow_status(<<"resumed">>, C) end
-                ,fun save_sms/1
+                ,{fun whapps_call:kvs_store/3, <<"flow_schedule">>, Schedule}
                ],
 
     Call = whapps_call:exec(Routines, whapps_call:from_json(JObj)),
@@ -465,3 +464,133 @@ cache_key_mdn(Number) ->
 mdn_from_e164(<<"+1", Number/binary>>) -> Number;
 mdn_from_e164(<<"1", Number/binary>>) -> Number;
 mdn_from_e164(Number) -> Number.
+
+-spec maybe_reschedule_sms(whapps_call:call()) -> whapps_call:call().
+maybe_reschedule_sms(Call) ->
+    maybe_reschedule_sms(<<>>, <<>>, Call).
+    
+-spec maybe_reschedule_sms(api_binary(), whapps_call:call()) -> whapps_call:call().
+maybe_reschedule_sms(<<"sip:", Code/binary>>, Call) ->
+    maybe_reschedule_sms(Code, <<>>, Call);
+maybe_reschedule_sms(Code, Call) ->
+    maybe_reschedule_sms(Code, <<>>, Call).
+
+-spec maybe_reschedule_sms(api_binary(), api_binary(), whapps_call:call()) -> whapps_call:call().
+maybe_reschedule_sms(Code, 'undefined', Call) ->
+    maybe_reschedule_sms(Code, set_flow_error(<<"unknown error">>, Call));
+maybe_reschedule_sms(<<"sip:", Code/binary>>, Message, Call) ->
+    maybe_reschedule_sms(Code, Message, Call);
+maybe_reschedule_sms(Code, Message, Call) ->
+    maybe_reschedule_sms(Code, Message, whapps_call:account_id(Call), set_flow_error(Message, Call)).
+
+-spec maybe_reschedule_sms(api_binary(), api_binary(), ne_binary(), whapps_call:call()) -> whapps_call:call().
+maybe_reschedule_sms(Code, Message, AccountId, Call) ->
+    Rules = whapps_account_config:get_global(AccountId, ?CONFIG_CAT, <<"reschedule">>, wh_json:new()),
+    Schedule = wh_json:set_values(
+                 [{<<"code">>, Code}
+                  ,{<<"reason">>, Message}
+                 ], whapps_call:kvs_fetch(<<"flow_schedule">>, wh_json:new(), Call)),
+    case apply_reschedule_logic(wh_json:get_values(Rules), Schedule) of
+        'no_rule' ->
+            lager:debug("no rules configured for accountid ~s", [AccountId]),
+%            maybe_system_alert(),
+            doodle_exe:stop(Call);
+        'end_rules' ->
+            lager:debug("end rules configured for accountid ~s", [AccountId]),
+%            maybe_system_alert(),
+            doodle_exe:stop(Call);
+        NewSchedule ->
+            lager:debug("NEW SCHED ~p", [NewSchedule]),
+%            maybe_system_alert(),
+            doodle_exe:stop(whapps_call:kvs_store(<<"flow_schedule">>, NewSchedule, Call))
+    end.
+
+-spec inc_counters(wh_json:object(), list()) -> wh_json:object().
+inc_counters(JObj, Counters) ->
+    lists:foldl(fun inc_counter/2, JObj, Counters).
+
+-spec inc_counter(binary(), wh_json:object()) -> wh_json:object().
+inc_counter(Key, JObj) ->
+    wh_json:set_value(Key, wh_json:get_integer_value(Key, JObj, 0) + 1, JObj).
+
+-spec apply_reschedule_logic({wh_json:json_terms(), wh_json:keys()}, wh_json:object()) -> 
+                 'no_rule' | 'end_rules' | wh_json:object().
+apply_reschedule_logic({[], []}, JObj) -> 'no_rule';
+apply_reschedule_logic(Rules, JObj) ->
+    Step = wh_json:get_integer_value(<<"rule">>, JObj, 1),
+    apply_reschedule_logic(Rules, inc_counters(JObj, ?RESCHEDULE_COUNTERS), Step).
+    
+apply_reschedule_logic({_V, K}, _JObj, Step)
+  when Step > length(K) -> 'end_rules';
+apply_reschedule_logic({V, K}, JObj, Step) ->
+    Rules = {lists:sublist(V, Step, length(V)), lists:sublist(K, Step, length(K))},
+    apply_reschedule_rules(Rules, JObj, Step).
+
+-spec apply_reschedule_rules({wh_json:json_terms(), wh_json:keys()}, wh_json:object(), integer()) ->
+                                    wh_json:object() | 'end_rules'.
+apply_reschedule_rules({[], _}, JObj, _Step) -> 'end_rules';
+apply_reschedule_rules({[Rule | Rules], [Key | Keys]}, JObj, Step) ->
+    case apply_reschedule_step(wh_json:get_values(Rule), JObj) of
+        'no_match' ->
+            NewObj = wh_json:set_values(
+                       [{<<"rule_start_time">>,wh_util:current_tstamp()}
+                        ,{<<"attempts">>, 0}
+                       ], JObj),
+            apply_reschedule_rules({Rules, Keys}, NewObj, Step+1);
+        Schedule -> wh_json:set_value(<<"rule">>, Step, Schedule)
+    end.
+
+apply_reschedule_step({[], []}, JObj) -> JObj;
+apply_reschedule_step({[Value | Values], [Key | Keys]}, JObj) ->
+    case apply_reschedule_rule(Key, Value, JObj) of
+        'no_match' ->
+%            maybe_system_error(),
+            'no_match';
+        Schedule -> apply_reschedule_step({Values, Keys}, Schedule)
+    end.
+
+-spec apply_reschedule_rule(binary(), term(), wh_json:object()) -> 'no_match' | wh_json:object().
+apply_reschedule_rule(<<"error">>, ErrorObj, JObj) ->
+    Codes = wh_json:get_value(<<"code">>, ErrorObj, []),
+    XCodes = wh_json:get_value(<<"xcode">>, ErrorObj, []),
+    Reasons = wh_json:get_value(<<"reason">>, ErrorObj, []),
+    XReasons = wh_json:get_value(<<"xreason">>, ErrorObj, []),
+    Code = wh_json:get_value(<<"code">>, JObj, <<>>),
+    Reason = wh_json:get_value(<<"reason">>, JObj, <<>>),
+    case    (lists:member(Code, Codes) orelse Codes =:= []) 
+    andalso (lists:member(Reason, Reasons) orelse Reasons =:= [])
+    andalso ((not lists:member(Code, XCodes)) orelse XCodes =:= [])
+    andalso ((not lists:member(Reason, XReasons)) orelse XReasons =:= [])
+    of             
+        'true' -> JObj;
+        'false' -> 'no_match'
+    end;
+apply_reschedule_rule(<<"number">>, Value, JObj) ->
+    Attempts = wh_json:get_integer_value(<<"attempts">>, JObj, 0), 
+    case Attempts > Value of
+        'true' -> 'no_match';
+        'false' -> JObj
+    end;
+apply_reschedule_rule(<<"time">>, IntervalJObj, JObj) ->
+    {[Value], [Key]} = wh_json:get_values(IntervalJObj),
+    Start = wh_json:get_value(<<"rule_start_time">>, JObj),
+    Until = time_rule(Key, Value, Start),
+    Now = wh_util:current_tstamp(),
+    case Until > Now of
+        'true' -> JObj;
+        'false' -> 'no_match'
+    end;
+apply_reschedule_rule(<<"interval">>, IntervalJObj, JObj) ->
+    {[Value], [Key]} = wh_json:get_values(IntervalJObj),
+    Next = time_rule(Key, Value, wh_util:current_tstamp()),
+    wh_json:set_value(<<"start_time">>, Next, JObj);    
+apply_reschedule_rule(<<"report">>, Value, JObj) ->
+    JObj;
+apply_reschedule_rule(_, _, JObj) -> JObj.
+
+-spec time_rule(binary(), integer(), integer()) -> integer().
+time_rule(<<"week">>, N, Base) -> Base + N * ?SECONDS_IN_WEEK;
+time_rule(<<"day">>, N, Base) -> Base + N * ?SECONDS_IN_DAY;
+time_rule(<<"hour">>, N, Base) -> Base + N * ?SECONDS_IN_HOUR;
+time_rule(<<"minute">>, N, Base) -> Base + N * ?SECONDS_IN_MINUTE;
+time_rule(_, _N, Base) -> Base.

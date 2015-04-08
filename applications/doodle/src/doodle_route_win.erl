@@ -54,16 +54,14 @@ maybe_scheduled_delivery(JObj, Call) ->
 maybe_scheduled_delivery(_JObj, Call, DeliveryAt, Now)
   when DeliveryAt > Now ->
     lager:info("scheduling sms delivery"),
-    Schedule = [{<<"First">>, DeliveryAt}
-                ,{<<"Current">>, DeliveryAt}
-                ,{<<"Elapsed">>, 0}
-                ,{<<"After">>, 0}
-                ,{<<"Attempts">>, 0}
-                ,{<<"Total-Attempts">>, 0}
-                ,{<<"Total-Elapsed">>, 0}
+    Schedule = [{<<"rule">>, 1}
+                ,{<<"rule_start_time">>, DeliveryAt}
+                ,{<<"start_time">>, DeliveryAt}
+                ,{<<"attempts">>, 0}
+                ,{<<"total_attempts">>, 0}
                ],
     Call1 = whapps_call:kvs_store(<<"flow_schedule">>, wh_json:from_list(Schedule), Call),
-    doodle_util:save_sms(doodle_util:set_flow_status(<<"pending">>, <<"scheduled">>, Call1));
+    doodle_util:save_sms(doodle_util:set_flow_status(<<"pending">>, Call1));
 maybe_scheduled_delivery(JObj, Call, _, _) ->
     lager:info("setting initial information about the call"),
     bootstrap_callflow_executer(JObj, Call).
