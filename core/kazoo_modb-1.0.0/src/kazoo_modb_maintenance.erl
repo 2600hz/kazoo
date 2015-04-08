@@ -78,7 +78,7 @@ archive_modbs(AccountId) ->
 -spec do_archive_modbs(ne_binaries(), api_binary()) -> 'no_return'.
 do_archive_modbs(MODbs, AccountId) ->
     wh_util:put_callid(?MODULE),
-    _ = [couch_util:archive(MODb) || MODb <- MODbs],
+    _ = [kazoo_modb:maybe_archive_modb(MODb) || MODb <- MODbs],
     Keep = whapps_config:get_integer(?CONFIG_CAT, <<"active_modbs">>, 6),
     From = case AccountId =:= 'undefined' of 'true' -> <<"all">>; 'false' -> AccountId end,
     io:format("archived ~s MODbs more than ~b months old~n", [From, Keep]),
