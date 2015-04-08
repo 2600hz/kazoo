@@ -24,7 +24,7 @@ migrate() ->
     maybe_migrate_system_config(<<"callflow">>),
 
     io:format("migrating relevant settings from system_config/media_mgr to system_config/~s~n", [?WHM_CONFIG_CAT]),
-    maybe_migrate_system_config(<<"media_mgr">>),
+    maybe_migrate_system_config(<<"media_mgr">>, 'true'),
 
     'no_return'.
 
@@ -207,11 +207,23 @@ refresh() ->
     'ok'.
 
 -spec maybe_migrate_system_config(ne_binary()) -> 'ok'.
+-spec maybe_migrate_system_config(ne_binary(), boolean()) -> 'ok'.
 maybe_migrate_system_config(ConfigId) ->
+    maybe_migrate_system_config(ConfigId, 'false').
+
+maybe_migrate_system_config(ConfigId, DeleteAfter) ->
     case couch_mgr:open_doc(?WH_CONFIG_DB, ConfigId) of
-        {'ok', JObj} -> migrate_system_config(wh_doc:public_fields(JObj));
-        {'error', 'not_found'} -> 'ok'
+        {'error', 'not_found'} -> 'ok';
+        {'ok', JObj} ->
+            migrate_system_config(wh_doc:public_fields(JObj)),
+            maybe_delete_system_config(ConfigId, DeleteAfter)
     end.
+
+-spec maybe_delete_system_config(ne_binary(), boolean()) -> 'ok'.
+maybe_delete_system_config(_ConfigId, 'false') -> 'ok';
+maybe_delete_system_config(ConfigId, 'true') ->
+    {'ok', _} = couch_mgr:del_doc(?WH_CONFIG_DB, ConfigId),
+    io:format("deleted ~s from ~s", [ConfigId, ?WH_CONFIG_DB]).
 
 -spec migrate_system_config(wh_json:object()) -> 'ok'.
 migrate_system_config(ConfigJObj) ->
