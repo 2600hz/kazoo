@@ -170,7 +170,7 @@ update_menu(DocId, Context) ->
 %%--------------------------------------------------------------------
 -spec validate_patch(ne_binary(), cb_context:context()) -> cb_context:context().
 validate_patch(DocId, Context) ->
-    crossbar_doc:patch_and_validate(DocId, Context).
+    crossbar_doc:patch_and_validate(DocId, Context, fun update_menu/2).
 
 %%--------------------------------------------------------------------
 %% @private
