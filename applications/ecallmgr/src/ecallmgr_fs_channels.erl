@@ -38,7 +38,7 @@
 -export([handle_query_channels/2]).
 -export([handle_channel_status/2]).
 
--export([has_channels_for_owner/1, find_by_authorizing_id/1]).
+-export([has_channels_for_owner/1]).
 
 -export([init/1
          ,handle_call/3
