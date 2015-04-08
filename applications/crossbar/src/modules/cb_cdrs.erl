@@ -30,42 +30,42 @@
 -define(CB_LIST_BY_USER, <<"cdrs/listing_by_owner">>).
 -define(CB_LIST, <<"cdrs/crossbar_listing">>).
 
--define(CSV
-        ,[{<<"id">>, fun csv_id/2}
-          ,{<<"call_id">>, fun csv_call_id/2}
-          ,{<<"caller_id_number">>, fun csv_caller_id_number/2}
-          ,{<<"caller_id_name">>, fun csv_caller_id_name/2}
-          ,{<<"callee_id_number">>, fun csv_callee_id_number/2}
-          ,{<<"callee_id_name">>, fun csv_callee_id_name/2}
-          ,{<<"duration_seconds">>, fun csv_duration_seconds/2}
-          ,{<<"billing_seconds">>, fun csv_billing_seconds/2}
-          ,{<<"timestamp">>, fun csv_timestamp/2}
-          ,{<<"hangup_cause">>, fun csv_hangup_cause/2}
-          ,{<<"other_leg_call_id">>, fun csv_other_leg_call_id/2}
-          ,{<<"owner_id">>, fun csv_owner_id/2}
-          ,{<<"to">>, fun csv_to/2}
-          ,{<<"from">>, fun csv_from/2}
-          ,{<<"direction">>, fun csv_call_direction/2}
-          ,{<<"request">>, fun csv_request/2}
-          ,{<<"authorizing_id">>, fun csv_authorizing_id/2}
-          ,{<<"cost">>, fun csv_customer_cost/2}
+-define(COLUMNS
+        ,[{<<"id">>, fun col_id/2}
+          ,{<<"call_id">>, fun col_call_id/2}
+          ,{<<"caller_id_number">>, fun col_caller_id_number/2}
+          ,{<<"caller_id_name">>, fun col_caller_id_name/2}
+          ,{<<"callee_id_number">>, fun col_callee_id_number/2}
+          ,{<<"callee_id_name">>, fun col_callee_id_name/2}
+          ,{<<"duration_seconds">>, fun col_duration_seconds/2}
+          ,{<<"billing_seconds">>, fun col_billing_seconds/2}
+          ,{<<"timestamp">>, fun col_timestamp/2}
+          ,{<<"hangup_cause">>, fun col_hangup_cause/2}
+          ,{<<"other_leg_call_id">>, fun col_other_leg_call_id/2}
+          ,{<<"owner_id">>, fun col_owner_id/2}
+          ,{<<"to">>, fun col_to/2}
+          ,{<<"from">>, fun col_from/2}
+          ,{<<"direction">>, fun col_call_direction/2}
+          ,{<<"request">>, fun col_request/2}
+          ,{<<"authorizing_id">>, fun col_authorizing_id/2}
+          ,{<<"cost">>, fun col_customer_cost/2}
           %% New fields
-          ,{<<"dialed_number">>, fun csv_dialed_number/2}
-          ,{<<"calling_from">>, fun csv_calling_from/2}
-          ,{<<"datetime">>, fun csv_pretty_print/2}
-          ,{<<"unix_timestamp">>, fun csv_unix_timestamp/2}
-          ,{<<"rfc_1036">>, fun csv_rfc1036/2}
-          ,{<<"iso_8601">>, fun csv_iso8601/2}
-          ,{<<"call_type">>, fun csv_account_call_type/2}
-          ,{<<"rate">>, fun csv_rate/2}
-          ,{<<"rate_name">>, fun csv_rate_name/2}
-          ,{<<"bridge_id">>, fun csv_bridge_id/2}
-          ,{<<"recording_url">>, fun csv_recording_url/2}
+          ,{<<"dialed_number">>, fun col_dialed_number/2}
+          ,{<<"calling_from">>, fun col_calling_from/2}
+          ,{<<"datetime">>, fun col_pretty_print/2}
+          ,{<<"unix_timestamp">>, fun col_unix_timestamp/2}
+          ,{<<"rfc_1036">>, fun col_rfc1036/2}
+          ,{<<"iso_8601">>, fun col_iso8601/2}
+          ,{<<"call_type">>, fun col_account_call_type/2}
+          ,{<<"rate">>, fun col_rate/2}
+          ,{<<"rate_name">>, fun col_rate_name/2}
+          ,{<<"bridge_id">>, fun col_bridge_id/2}
+          ,{<<"recording_url">>, fun col_recording_url/2}
          ]).
 
--define(CSV_RESELLER
-        ,[{<<"reseller_cost">>, fun csv_reseller_cost/2}
-          ,{<<"reseller_call_type">>, fun csv_reseller_call_type/2}
+-define(COLUMNS_RESELLER
+        ,[{<<"reseller_cost">>, fun col_reseller_cost/2}
+          ,{<<"reseller_call_type">>, fun col_reseller_call_type/2}
          ]).
 
 -type payload() :: {cowboy_req:req(), cb_context:context()}.
@@ -493,44 +493,44 @@ normalize_cdr_to_csv_header(_JObj, Context) ->
 -spec csv_rows(cb_context:context()) -> [{ne_binary(), csv_column_fun()}].
 csv_rows(Context) ->
     case cb_context:fetch(Context, 'is_reseller') of
-        'false' -> ?CSV;
-        'true' -> ?CSV ++ ?CSV_RESELLER
+        'false' -> ?COLUMNS;
+        'true' -> ?COLUMNS ++ ?COLUMNS_RESELLER
     end.
 
 %% see csv_column_fun() for specs for each function here
-csv_id(JObj, _Timestamp) -> wh_doc:id(JObj, <<>>).
-csv_call_id(JObj, _Timestamp) -> wh_json:get_value(<<"call_id">>, JObj, <<>>).
-csv_caller_id_number(JObj, _Timestamp) -> wh_json:get_value(<<"caller_id_number">>, JObj, <<>>).
-csv_caller_id_name(JObj, _Timestamp) -> wh_json:get_value(<<"caller_id_name">>, JObj, <<>>).
-csv_callee_id_number(JObj, _Timestamp) -> wh_json:get_value(<<"callee_id_number">>, JObj, <<>>).
-csv_callee_id_name(JObj, _Timestamp) -> wh_json:get_value(<<"callee_id_name">>, JObj, <<>>).
-csv_duration_seconds(JObj, _Timestamp) -> wh_json:get_value(<<"duration_seconds">>, JObj, <<>>).
-csv_billing_seconds(JObj, _Timestamp) -> wh_json:get_value(<<"billing_seconds">>, JObj, <<>>).
-csv_timestamp(_JObj, Timestamp) -> wh_util:to_binary(Timestamp).
-csv_hangup_cause(JObj, _Timestamp) -> wh_json:get_value(<<"hangup_cause">>, JObj, <<>>).
-csv_other_leg_call_id(JObj, _Timestamp) -> wh_json:get_value(<<"other_leg_call_id">>, JObj, <<>>).
-csv_owner_id(JObj, _Timestamp) -> wh_json:get_value([<<"custom_channel_vars">>, <<"owner_id">>], JObj, <<>>).
-csv_to(JObj, _Timestamp) -> wh_json:get_value(<<"to">>, JObj, <<>>).
-csv_from(JObj, _Timestamp) -> wh_json:get_value(<<"from">>, JObj, <<>>).
-csv_call_direction(JObj, _Timestamp) -> wh_json:get_value(<<"call_direction">>, JObj, <<>>).
-csv_request(JObj, _Timestamp) -> wh_json:get_value(<<"request">>, JObj, <<>>).
-csv_authorizing_id(JObj, _Timestamp) -> wh_json:get_value([<<"custom_channel_vars">>, <<"authorizing_id">>], JObj, <<>>).
-csv_customer_cost(JObj, _Timestamp) -> wh_util:to_binary(customer_cost(JObj)).
+col_id(JObj, _Timestamp) -> wh_doc:id(JObj, <<>>).
+col_call_id(JObj, _Timestamp) -> wh_json:get_value(<<"call_id">>, JObj, <<>>).
+col_caller_id_number(JObj, _Timestamp) -> wh_json:get_value(<<"caller_id_number">>, JObj, <<>>).
+col_caller_id_name(JObj, _Timestamp) -> wh_json:get_value(<<"caller_id_name">>, JObj, <<>>).
+col_callee_id_number(JObj, _Timestamp) -> wh_json:get_value(<<"callee_id_number">>, JObj, <<>>).
+col_callee_id_name(JObj, _Timestamp) -> wh_json:get_value(<<"callee_id_name">>, JObj, <<>>).
+col_duration_seconds(JObj, _Timestamp) -> wh_json:get_value(<<"duration_seconds">>, JObj, <<>>).
+col_billing_seconds(JObj, _Timestamp) -> wh_json:get_value(<<"billing_seconds">>, JObj, <<>>).
+col_timestamp(_JObj, Timestamp) -> wh_util:to_binary(Timestamp).
+col_hangup_cause(JObj, _Timestamp) -> wh_json:get_value(<<"hangup_cause">>, JObj, <<>>).
+col_other_leg_call_id(JObj, _Timestamp) -> wh_json:get_value(<<"other_leg_call_id">>, JObj, <<>>).
+col_owner_id(JObj, _Timestamp) -> wh_json:get_value([<<"custom_channel_vars">>, <<"owner_id">>], JObj, <<>>).
+col_to(JObj, _Timestamp) -> wh_json:get_value(<<"to">>, JObj, <<>>).
+col_from(JObj, _Timestamp) -> wh_json:get_value(<<"from">>, JObj, <<>>).
+col_call_direction(JObj, _Timestamp) -> wh_json:get_value(<<"call_direction">>, JObj, <<>>).
+col_request(JObj, _Timestamp) -> wh_json:get_value(<<"request">>, JObj, <<>>).
+col_authorizing_id(JObj, _Timestamp) -> wh_json:get_value([<<"custom_channel_vars">>, <<"authorizing_id">>], JObj, <<>>).
+col_customer_cost(JObj, _Timestamp) -> wh_util:to_binary(customer_cost(JObj)).
 
-csv_dialed_number(JObj, _Timestamp) -> dialed_number(JObj).
-csv_calling_from(JObj, _Timestamp) -> calling_from(JObj).
-csv_pretty_print(_JObj, Timestamp) -> pretty_print_datetime(Timestamp).
-csv_unix_timestamp(_JObj, Timestamp) -> wh_util:to_binary(wh_util:gregorian_seconds_to_unix_seconds(Timestamp)).
-csv_rfc1036(_JObj, Timestamp) -> list_to_binary([$", wh_util:rfc1036(Timestamp), $"]).
-csv_iso8601(_JObj, Timestamp) -> list_to_binary([$", wh_util:iso8601(Timestamp), $"]).
-csv_account_call_type(JObj, _Timestamp) -> wh_json:get_value([<<"custom_channel_vars">>, <<"account_billing">>], JObj, <<>>).
-csv_rate(JObj, _Timestamp) -> wh_util:to_binary(wht_util:units_to_dollars(wh_json:get_value([<<"custom_channel_vars">>, <<"rate">>], JObj, 0))).
-csv_rate_name(JObj, _Timestamp) -> wh_json:get_value([<<"custom_channel_vars">>, <<"rate_name">>], JObj, <<>>).
-csv_bridge_id(JObj, _Timestamp) -> wh_json:get_value([<<"custom_channel_vars">>, <<"bridge_id">>], JObj, <<>>).
-csv_recording_url(JObj, _Timestamp) -> wh_json:get_value([<<"custom_channel_vars">>, <<"recording_url">>], JObj, <<>>).
+col_dialed_number(JObj, _Timestamp) -> dialed_number(JObj).
+col_calling_from(JObj, _Timestamp) -> calling_from(JObj).
+col_pretty_print(_JObj, Timestamp) -> pretty_print_datetime(Timestamp).
+col_unix_timestamp(_JObj, Timestamp) -> wh_util:to_binary(wh_util:gregorian_seconds_to_unix_seconds(Timestamp)).
+col_rfc1036(_JObj, Timestamp) -> list_to_binary([$", wh_util:rfc1036(Timestamp), $"]).
+col_iso8601(_JObj, Timestamp) -> list_to_binary([$", wh_util:iso8601(Timestamp), $"]).
+col_account_call_type(JObj, _Timestamp) -> wh_json:get_value([<<"custom_channel_vars">>, <<"account_billing">>], JObj, <<>>).
+col_rate(JObj, _Timestamp) -> wh_util:to_binary(wht_util:units_to_dollars(wh_json:get_value([<<"custom_channel_vars">>, <<"rate">>], JObj, 0))).
+col_rate_name(JObj, _Timestamp) -> wh_json:get_value([<<"custom_channel_vars">>, <<"rate_name">>], JObj, <<>>).
+col_bridge_id(JObj, _Timestamp) -> wh_json:get_value([<<"custom_channel_vars">>, <<"bridge_id">>], JObj, <<>>).
+col_recording_url(JObj, _Timestamp) -> wh_json:get_value([<<"custom_channel_vars">>, <<"recording_url">>], JObj, <<>>).
 
-csv_reseller_cost(JObj, _Timestamp) -> wh_util:to_binary(reseller_cost(JObj)).
-csv_reseller_call_type(JObj, _Timestamp) -> wh_json:get_value([<<"custom_channel_vars">>, <<"reseller_billing">>], JObj, <<>>).
+col_reseller_cost(JObj, _Timestamp) -> wh_util:to_binary(reseller_cost(JObj)).
+col_reseller_call_type(JObj, _Timestamp) -> wh_json:get_value([<<"custom_channel_vars">>, <<"reseller_billing">>], JObj, <<>>).
 
 -spec pretty_print_datetime(wh_datetime() | integer()) -> ne_binary().
 pretty_print_datetime(Timestamp) when is_integer(Timestamp) ->
