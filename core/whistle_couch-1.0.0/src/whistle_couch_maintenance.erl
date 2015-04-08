@@ -26,6 +26,9 @@
 
          ,test_connection/0
          ,test_admin_connection/0
+
+         ,archive/1
+         ,archive/2
         ]).
 
 -export([change_api_url/2, change_api_url/3]).
@@ -77,6 +80,14 @@ test_connection() ->
 
 test_admin_connection() ->
     wh_couch_connections:test_admin_conn().
+
+-spec archive(ne_binary()) -> 'ok'.
+archive(Db) ->
+    couch_util:archive(Db).
+
+-spec archive(ne_binary(), ne_binary()) -> 'ok'.
+archive(Db, Filename) ->
+    couch_util:archive(Db, Filename).
 
 %%
 %% Change app's urls in bulk
