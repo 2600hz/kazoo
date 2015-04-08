@@ -583,15 +583,18 @@ apply_reschedule_rule(<<"interval">>, IntervalJObj, JObj) ->
     wh_json:set_value(<<"start_time">>, Next, JObj);    
 apply_reschedule_rule(<<"report">>, V, JObj) ->
     Call = get('call'),
+    Error = <<(wh_json:get_value(<<"code">>, JObj, <<>>))/binary, " "
+                        ,(wh_json:get_value(<<"reason">>, JObj, <<>>))/binary>>,
     Props = props:filter_undefined(
       [{<<"To">>, whapps_call:to_user(Call)}
        ,{<<"From">>, whapps_call:from_user(Call)}
-       ,{<<"Account-ID">>, whapps_call:account_id(Call)}
+       ,{<<"Error">>, wh_util:strip_binary(Error)}
+       ,{<<"Attempts">>, wh_json:get_value(<<"attempts">>, JObj)}
        | safe_to_proplist(V)
        ]),    
     Notify = [{<<"Subject">>, <<"sms_error">>}
               ,{<<"Message">>, "undelivered sms"}
-              ,{<<"Details">>, wh_json:set_values(Props, JObj)}
+              ,{<<"Details">>, wh_json:set_values(Props, wh_json:new())}
               ,{<<"Account-ID">>, whapps_call:account_id(Call)}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ],
