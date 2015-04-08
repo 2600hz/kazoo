@@ -19,12 +19,11 @@
 %%--------------------------------------------------------------------
 -spec maybe_dry_run(cb_context:context(), function()) -> any().
 maybe_dry_run(Context, Callback) ->
-    DryRun = not(cb_context:accepting_charges(Context)),
-    case DryRun of
-        'false' ->
+    case cb_context:accepting_charges(Context) of
+        'true' ->
             lager:debug("accepting charges"),
             Callback();
-        'true' ->
+        'false' ->
             lager:debug("not accepting charges"),
             Doc = cb_context:doc(Context),
             Type = wh_json:get_value(<<"pvt_type">>, Doc),
