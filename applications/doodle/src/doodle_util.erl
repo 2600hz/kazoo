@@ -515,7 +515,7 @@ inc_counter(Key, JObj) ->
 
 -spec apply_reschedule_logic({wh_json:json_terms(), wh_json:keys()}, wh_json:object()) -> 
                  'no_rule' | 'end_rules' | wh_json:object().
-apply_reschedule_logic({[], []}, JObj) -> 'no_rule';
+apply_reschedule_logic({[], []}, _JObj) -> 'no_rule';
 apply_reschedule_logic(Rules, JObj) ->
     Step = wh_json:get_integer_value(<<"rule">>, JObj, 1),
     apply_reschedule_logic(Rules, inc_counters(JObj, ?RESCHEDULE_COUNTERS), Step).
@@ -528,7 +528,7 @@ apply_reschedule_logic({V, K}, JObj, Step) ->
 
 -spec apply_reschedule_rules({wh_json:json_terms(), wh_json:keys()}, wh_json:object(), integer()) ->
                                     wh_json:object() | 'end_rules'.
-apply_reschedule_rules({[], _}, JObj, _Step) -> 'end_rules';
+apply_reschedule_rules({[], _}, _JObj, _Step) -> 'end_rules';
 apply_reschedule_rules({[Rule | Rules], [Key | Keys]}, JObj, Step) ->
     case apply_reschedule_step(wh_json:get_values(Rule), JObj) of
         'no_match' ->
@@ -537,7 +537,10 @@ apply_reschedule_rules({[Rule | Rules], [Key | Keys]}, JObj, Step) ->
                         ,{<<"attempts">>, 0}
                        ], JObj),
             apply_reschedule_rules({Rules, Keys}, NewObj, Step+1);
-        Schedule -> wh_json:set_value(<<"rule">>, Step, Schedule)
+        Schedule -> wh_json:set_values(
+                      [{<<"rule">>, Step}
+                       ,{<<"rule_name">>, Key}
+                      ], Schedule)
     end.
 
 apply_reschedule_step({[], []}, JObj) -> JObj;
@@ -584,7 +587,7 @@ apply_reschedule_rule(<<"interval">>, IntervalJObj, JObj) ->
     {[Value], [Key]} = wh_json:get_values(IntervalJObj),
     Next = time_rule(Key, Value, wh_util:current_tstamp()),
     wh_json:set_value(<<"start_time">>, Next, JObj);    
-apply_reschedule_rule(<<"report">>, Value, JObj) ->
+apply_reschedule_rule(<<"report">>, _Value, JObj) ->
     JObj;
 apply_reschedule_rule(_, _, JObj) -> JObj.
 

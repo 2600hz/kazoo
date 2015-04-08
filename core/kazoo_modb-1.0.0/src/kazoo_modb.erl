@@ -166,7 +166,7 @@ couch_save(AccountMODb, Doc, Retry) ->
                       ne_binary().
 -spec get_modb(ne_binary(), integer(), integer()) ->
                       ne_binary().
-get_modb(<<_:32/binary, "-", Year:4/binary, Month:2/binary>>=AccountMODb) ->
+get_modb(<<_:32/binary, "-", _:4/binary, _:2/binary>>=AccountMODb) ->
     AccountMODb;
 get_modb(Account) ->
     {Year, Month, _} = erlang:date(),
@@ -189,7 +189,7 @@ get_modb(Account, Props) when is_list(Props) ->
 get_modb(Account, Timestamp) ->
     wh_util:format_account_mod_id(Account, Timestamp).
 
-get_modb(<<_:32/binary, "-", _:4/binary, _:2/binary>>=AccountMODb, Year, Month) ->
+get_modb(<<_:32/binary, "-", _:4/binary, _:2/binary>>=AccountMODb, _Year, _Month) ->
     AccountMODb;    
 get_modb(Account, Year, Month) ->
     wh_util:format_account_mod_id(Account, Year, Month).
