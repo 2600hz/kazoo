@@ -22,16 +22,16 @@ maybe_dry_run(Context, Callback) ->
     DryRun = not(cb_context:accepting_charges(Context)),
     case DryRun of
         'false' ->
-            lager:warning("accepting charges"),
+            lager:debug("accepting charges"),
             Callback();
         'true' ->
-            lager:warning("not accepting charges"),
+            lager:debug("not accepting charges"),
             Doc = cb_context:doc(Context),
             Type = wh_json:get_value(<<"pvt_type">>, Doc),
             RespJObj = dry_run(Context, Type),
             case wh_json:is_empty(RespJObj) of
                 'true' ->
-                    lager:warning("no charges"),
+                    lager:debug("no charges"),
                     Callback();
                 'false' -> crossbar_util:response_402(RespJObj, Context)
             end
@@ -131,10 +131,10 @@ fetch_service(Context) ->
     AuthAccountId = cb_context:auth_account_id(Context),
     case wh_services:is_reseller(AuthAccountId) of
         'false' ->
-            lager:warning("auth account is not a reseller, loading service account ~s", [AccountId]),
+            lager:debug("auth account is not a reseller, loading service account ~s", [AccountId]),
             wh_services:fetch(AccountId);
         'true' ->
-            lager:warning("auth account is a reseller, loading service from reseller ~s", [AuthAccountId]),
+            lager:debug("auth account is a reseller, loading service from reseller ~s", [AuthAccountId]),
             wh_services:fetch(AuthAccountId)
     end.
 
