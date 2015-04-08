@@ -173,9 +173,22 @@ create(<<"voicefabric">> = Engine, Text, Voice, <<"wav">> = _Format, Options) ->
                                       <<$&, Body_/binary>> = iolist_to_binary([[$&, Key, $=, Val] || {Key, Val} <- Data]),
                                       {Headers_, Body_};
                                   <<"multipart">> ->
-                                      Boundary = iolist_to_binary([<<"--boundary--">>, couch_mgr:get_uuid(), <<"--boundary--">>]),
-                                      Headers_ = [{"Content-Type", "multipart/form-data; charset=UTF-8; boundary=" ++ erlang:binary_to_list(Boundary)}],
-                                      Body_ = iolist_to_binary([<<Boundary/binary, "\r\nContent-Disposition: form-data; name=", Key/binary, "\r\n\r\n", Val/binary, "\r\n">> || {Key, Val} <- Data]),
+                                      Boundary = iolist_to_binary([<<"--boundary--">>
+                                                                   ,couch_mgr:get_uuid(),
+                                                                   <<"--boundary--">>
+                                                                  ]),
+                                      Headers_ = [{"Content-Type"
+                                                   , "multipart/form-data;"
+                                                   " charset=UTF-8;"
+                                                   " boundary="
+                                                   ++ erlang:binary_to_list(Boundary)
+                                                  }],
+                                      Body_ = iolist_to_binary([<<Boundary/binary,
+                                                                  "\r\nContent-Disposition: form-data;"
+                                                                  " name=", Key/binary
+                                                                  , "\r\n\r\n", Val/binary, "\r\n">>
+                                                                || {Key, Val} <- Data
+                                                               ]),
                                       {Headers_, Body_};
                                   _Else ->
                                       lager:warning("voice fabric unknown args encode method: ~p", [_Else]),
@@ -345,22 +358,21 @@ create_response(<<"voicefabric">> = _Engine, {'ok', "200", Headers, Content}) ->
     _ = file:write_file(RawFile, Content),
     From = "raw -r 8000 -e signed-integer -b 16",
     To = "wav",
-    Cmd = binary_to_list(iolist_to_binary(["sox -t ", From, " ", RawFile, " -t ", To, " ", WavFile,  " 2>/dev/null 1>/dev/null"])),
+    Cmd = binary_to_list(iolist_to_binary(["sox -t ", From, " ", RawFile, " -t ", To, " ", WavFile])),
     lager:debug("os cmd: ~ts", [Cmd]),
-    _ = file:delete(RawFile),
+    CmdOut = os:cmd(Cmd),
+    CmdOut =:= [] orelse lager:debug("cmd out: ~ts", [CmdOut]),
+%    _ = file:delete(RawFile),
     lager:debug("reading file"),
     case file:read_file(WavFile) of
         {'ok', WavContent} ->
             file:delete(WavFile),
             lager:debug("media converted"),
-            NewHeaders = [{"Content-Type", "audio/wav"}
-                          ,{"Content-Length", integer_to_list(byte_size(WavContent))}
-                          | [{K, V}
-                             || {K, V}
-                                <- Headers
-                                ,K /= "Content-Type"
-                                ,K /= "Content-Length"
-                            ]],
+            NewHeaders = props:set_values([{"Content-Type", "audio/wav"}
+                                           ,{"Content-Length", integer_to_list(byte_size(WavContent))}
+                                          ]
+                                          ,Headers
+                                         ),
             lager:debug("corrected headers"),
             create_response('ok', {'ok', "200", NewHeaders, WavContent});
         {'error', Reason} ->
