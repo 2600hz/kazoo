@@ -429,8 +429,24 @@ post(Context, Id) ->
     do_post(Context, Id).
 
 post(Context, Id, ?PORT_SUBMITTED) ->
-    DryRun = not(cb_context:accepting_charges(Context)),
-    post_submitted(DryRun, Context, Id);
+    Callback =
+        fun() ->
+            _  = add_to_phone_numbers_doc(Context),
+            try send_port_request_notification(Context, Id) of
+                _ ->
+                    lager:debug("port request notification sent"),
+                    do_post(Context, Id)
+            catch
+                _E:_R ->
+                    lager:debug("failed to send the port request notification: ~s:~p", [_E, _R]),
+                    cb_context:add_system_error(
+                      'bad_gateway'
+                      ,<<"failed to send port request email">>
+                      ,Context
+                     )
+            end
+        end,
+    crossbar_services:maybe_dry_run(Context, Callback);
 post(Context, Id, ?PORT_PENDING) ->
     try send_port_pending_notification(Context, Id) of
         _ ->
@@ -502,29 +518,6 @@ post(Context, Id, ?PORT_CANCELED) ->
               ,<<"failed to send port cancel email">>
               ,Context
              )
-    end.
-
--spec post_submitted(boolean(), cb_context:context(), ne_binary()) -> cb_context:context().
-post_submitted('false', Context, Id) ->
-    _  = add_to_phone_numbers_doc(Context),
-    try send_port_request_notification(Context, Id) of
-        _ ->
-            lager:debug("port request notification sent"),
-            do_post(Context, Id)
-    catch
-        _E:_R ->
-            lager:debug("failed to send the port request notification: ~s:~p", [_E, _R]),
-            cb_context:add_system_error(
-              'bad_gateway'
-              ,<<"failed to send port request email">>
-              ,Context
-             )
-    end;
-post_submitted('true', Context, Id) ->
-    DryRunJObj = dry_run(Context),
-    case wh_json:is_empty(DryRunJObj) of
-        'false' -> crossbar_util:response_402(DryRunJObj, Context);
-        'true' -> post_submitted('false', Context, Id)
     end.
 
 post(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
@@ -1309,31 +1302,3 @@ save_phone_numbers_doc(Context, JObj) ->
             lager:error("failed to save phone_numbers doc in ~s : ~p", [AccountId, _Status]),
             'error'
     end.
-
--spec dry_run(cb_context:context()) -> wh_json:object().
-dry_run(Context) ->
-    JObj = cb_context:doc(Context),
-    Numbers = wh_json:get_value(<<"numbers">>, JObj),
-    PhoneNumbers =
-        wh_json:foldl(
-          fun dry_run_foldl/3
-          ,wh_json:new()
-          ,Numbers
-         ),
-    AccountId = cb_context:account_id(Context),
-    Services = wh_services:fetch(AccountId),
-    UpdateServices = wh_service_phone_numbers:reconcile(PhoneNumbers, Services),
-    wh_services:dry_run(UpdateServices).
-
--spec dry_run_foldl(ne_binary(), wh_json:object(), wh_json:object()) ->
-                           wh_json:object().
-dry_run_foldl(Number, NumberJObj, JObj) ->
-    wh_json:set_value(
-      Number
-      ,wh_json:set_value(
-         <<"features">>
-         ,[<<"port">>]
-         ,NumberJObj
-        )
-      ,JObj
-     ).

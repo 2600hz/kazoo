@@ -236,8 +236,17 @@ post(Context, _) ->
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    DryRun = (not wh_json:is_true(<<"accept_charges">>, cb_context:req_json(Context), 'false')),
-    put_resp(DryRun, Context).
+    Callback =
+        fun() ->
+            Context1 = crossbar_doc:save(Context),
+            case cb_context:resp_status(Context1) of
+                'success' ->
+                    _ = maybe_send_email(Context1),
+                    Context1;
+                _ -> Context1
+            end
+        end,
+    crossbar_services:maybe_dry_run(Context, Callback).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _Id) ->
@@ -246,29 +255,6 @@ delete(Context, _Id) ->
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
 patch(Context, _Id) ->
     crossbar_doc:save(Context).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec put_resp(boolean(), cb_context:context()) -> cb_context:context().
-put_resp('true', Context) ->
-    RespJObj = dry_run(Context),
-    case wh_json:is_empty(RespJObj) of
-        'false' -> crossbar_util:response_402(RespJObj, Context);
-        'true' ->
-            NewReqJObj = wh_json:set_value(<<"accept_charges">>, 'true', cb_context:req_json(Context)),
-            ?MODULE:put(cb_context:set_req_json(Context, NewReqJObj))
-    end;
-put_resp('false', Context) ->
-    Context1 = crossbar_doc:save(Context),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            _ = maybe_send_email(Context1),
-            Context1;
-        _ -> Context1
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -310,21 +296,6 @@ send_email(Context) ->
         {'error', _E} ->
             lager:debug("failed to publish new user notification: ~p", [_E])
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec dry_run(cb_context:context()) -> wh_json:object().
-dry_run(Context) ->
-    JObj = cb_context:doc(Context),
-    AccountId = cb_context:account_id(Context),
-    UserType = wh_json:get_value(<<"priv_level">>, JObj),
-    Services = wh_services:fetch(AccountId),
-    UpdateServices = wh_service_users:reconcile(Services, UserType),
-    wh_services:dry_run(UpdateServices).
-
 
 %%--------------------------------------------------------------------
 %% @private
