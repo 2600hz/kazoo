@@ -582,12 +582,13 @@ apply_reschedule_rule(<<"interval">>, IntervalJObj, JObj) ->
     {[Value], [Key]} = wh_json:get_values(IntervalJObj),
     Next = time_rule(Key, Value, wh_util:current_tstamp()),
     wh_json:set_value(<<"start_time">>, Next, JObj);    
-apply_reschedule_rule(<<"report">>, _, JObj) ->
+apply_reschedule_rule(<<"report">>, V, JObj) ->
     Call = get('call'),
     Props = props:filter_undefined(
       [{<<"To">>, whapps_call:to_user(Call)}
        ,{<<"From">>, whapps_call:from_user(Call)}
        ,{<<"Account-ID">>, whapps_call:account_id(Call)}
+       | safe_to_proplist(V)
        ]),    
     Notify = [{<<"Subject">>, <<"sms_error">>}
               ,{<<"Message">>, "undelivered sms"}
@@ -599,6 +600,15 @@ apply_reschedule_rule(<<"report">>, _, JObj) ->
     JObj;
 apply_reschedule_rule(_, _, JObj) -> JObj.
 
+-spec safe_to_proplist(term()) -> wh_proplist().
+safe_to_proplist(JObj) ->
+    safe_to_proplist(wh_json:is_json_object(JObj), JObj).
+
+-spec safe_to_proplist(boolean(), term()) -> wh_proplist().
+safe_to_proplist('true', JObj) ->
+    wh_json:to_proplist(JObj);
+safe_to_proplist(_, _) -> [].
+    
 -spec time_rule(binary(), integer(), integer()) -> integer().
 time_rule(<<"week">>, N, Base) -> Base + N * ?SECONDS_IN_WEEK;
 time_rule(<<"day">>, N, Base) -> Base + N * ?SECONDS_IN_DAY;
