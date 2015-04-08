@@ -31,7 +31,7 @@ start_check_sms_by_owner_id(AccountId, OwnerId) ->
 -spec check_sms_by_device_id(ne_binary(), ne_binary()) -> 'ok'.
 check_sms_by_device_id(_AccountId, 'undefined') -> 'ok';
 check_sms_by_device_id(AccountId, DeviceId) ->
-    ViewOptions = [{'key', DeviceId}],
+    ViewOptions = [{'endkey', [DeviceId, wh_util:current_tstamp()]}],
     case kazoo_modb:get_results(AccountId, <<"sms/deliver_to_device">>, ViewOptions) of
         {'ok', []} -> 'ok';
         {'ok', JObjs} -> replay_sms(AccountId, JObjs);
@@ -42,7 +42,7 @@ check_sms_by_device_id(AccountId, DeviceId) ->
 -spec check_sms_by_owner_id(ne_binary(), ne_binary()) -> 'ok'.
 check_sms_by_owner_id(_AccountId, 'undefined') -> 'ok';
 check_sms_by_owner_id(AccountId, OwnerId) ->
-    ViewOptions = [{'key', OwnerId}],
+    ViewOptions = [{'endkey', [OwnerId, wh_util:current_tstamp()]}],
     case kazoo_modb:get_results(AccountId, <<"sms/deliver_to_owner">>, ViewOptions) of
         {'ok', []} -> 'ok';
         {'ok', JObjs} -> replay_sms(AccountId, JObjs);
@@ -83,7 +83,9 @@ replay_queue_sms(AccountId, JObjs) ->
 
 -spec check_pending_sms_for_offnet_delivery(ne_binary()) -> any().
 check_pending_sms_for_offnet_delivery(AccountId) ->
-    ViewOptions = [{'limit', 100}],
+    ViewOptions = [{'limit', 100}
+                  ,{'endkey', wh_util:current_tstamp()}
+                  ],
     case kazoo_modb:get_results(AccountId, <<"sms/deliver_to_offnet">>, ViewOptions) of
         {'ok', []} -> 'ok';
         {'ok', JObjs} -> replay_sms(AccountId, JObjs);
