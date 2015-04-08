@@ -528,6 +528,12 @@ should_create_endpoint([Routine|Routines], Endpoint, Properties, Call) when is_f
                                      'ok' |
                                      {'error', 'owner_called_self'}.
 maybe_owner_called_self(Endpoint, Properties, Call) ->
+    maybe_owner_called_self(Endpoint, Properties, whapps_call:resource_type(Call), Call).
+
+-spec maybe_owner_called_self(wh_json:object(), wh_json:object(),  binary(), whapps_call:call()) ->
+                                     'ok' |
+                                     {'error', 'owner_called_self'}.
+maybe_owner_called_self(Endpoint, Properties, <<"audio">>, Call) ->
     CanCallSelf = wh_json:is_true(<<"can_call_self">>, Properties),
     EndpointOwnerId = wh_json:get_value(<<"owner_id">>, Endpoint),
     OwnerId = whapps_call:kvs_fetch('owner_id', Call),
@@ -540,12 +546,34 @@ maybe_owner_called_self(Endpoint, Properties, Call) ->
         'false' ->
             lager:info("owner ~s stop calling your self...stop calling your self...", [OwnerId]),
             {'error', 'owner_called_self'}
+    end;
+maybe_owner_called_self(Endpoint, Properties, <<"sms">>, Call) ->
+    AccountId = whapps_call:account_id(Call),
+    DefTextSelf = whapps_account_config:get_global(AccountId, ?CF_CONFIG_CAT, <<"default_can_text_self">>, 'true'),
+    CanCallSelf = wh_json:is_true(<<"can_text_self">>, Properties, DefTextSelf),
+    EndpointOwnerId = wh_json:get_value(<<"owner_id">>, Endpoint),
+    OwnerId = whapps_call:kvs_fetch('owner_id', Call),
+    case CanCallSelf
+        orelse (not is_binary(OwnerId))
+        orelse (not is_binary(EndpointOwnerId))
+        orelse EndpointOwnerId =/= OwnerId
+    of
+        'true' -> 'ok';
+        'false' ->
+            lager:info("owner ~s stop texting your self...stop texting your self...", [OwnerId]),
+            {'error', 'owner_called_self'}
     end.
 
 -spec maybe_endpoint_called_self(wh_json:object(), wh_json:object(),  whapps_call:call()) ->
                                         'ok' |
                                         {'error', 'endpoint_called_self'}.
 maybe_endpoint_called_self(Endpoint, Properties, Call) ->
+    maybe_endpoint_called_self(Endpoint, Properties, whapps_call:resource_type(Call), Call).
+    
+-spec maybe_endpoint_called_self(wh_json:object(), wh_json:object(), binary(), whapps_call:call()) ->
+                                        'ok' |
+                                        {'error', 'endpoint_called_self'}.
+maybe_endpoint_called_self(Endpoint, Properties, <<"audio">>, Call) ->
     CanCallSelf = wh_json:is_true(<<"can_call_self">>, Properties),
     AuthorizingId = whapps_call:authorizing_id(Call),
     EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
@@ -557,6 +585,22 @@ maybe_endpoint_called_self(Endpoint, Properties, Call) ->
         'true' -> 'ok';
         'false' ->
             lager:info("endpoint ~s is calling self", [EndpointId]),
+            {'error', 'endpoint_called_self'}
+    end;
+maybe_endpoint_called_self(Endpoint, Properties, <<"sms">>, Call) ->
+    AccountId = whapps_call:account_id(Call),
+    DefTextSelf = whapps_account_config:get_global(AccountId, ?CF_CONFIG_CAT, <<"default_can_text_self">>, 'true'),
+    CanCallSelf = wh_json:is_true(<<"can_text_self">>, Properties, DefTextSelf),
+    AuthorizingId = whapps_call:authorizing_id(Call),
+    EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
+    case CanCallSelf
+        orelse (not is_binary(AuthorizingId))
+        orelse (not is_binary(EndpointId))
+        orelse AuthorizingId =/= EndpointId
+    of
+        'true' -> 'ok';
+        'false' ->
+            lager:info("endpoint ~s is texting self", [EndpointId]),
             {'error', 'endpoint_called_self'}
     end.
 
