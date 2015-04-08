@@ -362,7 +362,7 @@ create_response(<<"voicefabric">> = _Engine, {'ok', "200", Headers, Content}) ->
     lager:debug("os cmd: ~ts", [Cmd]),
     CmdOut = os:cmd(Cmd),
     CmdOut =:= [] orelse lager:debug("cmd out: ~ts", [CmdOut]),
-%    _ = file:delete(RawFile),
+    _ = file:delete(RawFile),
     lager:debug("reading file"),
     case file:read_file(WavFile) of
         {'ok', WavContent} ->
