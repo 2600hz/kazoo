@@ -12,7 +12,8 @@
 %%%
 %%% /queues/QID
 %%%   GET: queue details
-%%%   POST: edit queue details
+%%%   POST: replace queue details
+%%%   PATCH: patch queue details
 %%%   DELETE: delete a queue
 %%%
 %%% /queues/QID/stats
@@ -43,6 +44,7 @@
          ,validate/1, validate/2, validate/3
          ,put/1, put/2, put/3
          ,post/2, post/3
+         ,patch/2
          ,delete/2, delete/3
          ,delete_account/2
         ]).
@@ -99,6 +101,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.queues">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.queues">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.queues">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.patch.queues">>, ?MODULE, 'patch'),
 
     _ = crossbar_bindings:bind(<<"*.execute.delete.accounts">>, ?MODULE, 'delete_account'),
 
@@ -122,7 +125,7 @@ allowed_methods(?STATS_PATH_TOKEN) ->
 allowed_methods(?EAVESDROP_PATH_TOKEN) ->
     [?HTTP_PUT];
 allowed_methods(_QID) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 allowed_methods(_QID, ?ROSTER_PATH_TOKEN) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE];
@@ -199,6 +202,8 @@ validate_queue(Context, Id, ?HTTP_GET) ->
     read(Id, Context);
 validate_queue(Context, Id, ?HTTP_POST) ->
     validate_request(Id, Context);
+validate_queue(Context, Id, ?HTTP_PATCH) ->
+    validate_patch(Id, Context);
 validate_queue(Context, Id, ?HTTP_DELETE) ->
     read(Id, Context).
 
@@ -450,6 +455,15 @@ post(Context, Id, ?ROSTER_PATH_TOKEN) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec patch(cb_context:context(), path_token()) -> cb_context:context().
+patch(Context, Id) ->
+    post(Context, Id).
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
 %% If the HTTP verib is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
@@ -495,6 +509,16 @@ read(Id, Context) ->
 -spec validate_request(api_binary(), cb_context:context()) -> cb_context:context().
 validate_request(QueueId, Context) ->
     check_queue_schema(QueueId, Context).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_patch(api_binary(), cb_context:context()) -> cb_context:context().
+validate_patch(QueueId, Context) ->
+    crossbar_doc:patch_and_validate(QueueId, Context, fun validate_request/2).
 
 check_queue_schema(QueueId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(QueueId, C) end,

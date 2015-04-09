@@ -13,6 +13,7 @@
          ,load_from_file/2
          ,load_merge/2, load_merge/3
          ,merge/3
+         ,patch_and_validate/3
          ,load_view/3, load_view/4, load_view/5, load_view/6
          ,load_attachment/3, load_docs/2
          ,save/1, save/2
@@ -219,6 +220,19 @@ merge(DataJObj, JObj, Context) ->
     PrivJObj = wh_json:private_fields(JObj),
     handle_couch_mgr_success(wh_json:merge_jobjs(PrivJObj, DataJObj), Context).
 
+-spec patch_and_validate(ne_binary(), cb_context:context(), fun((ne_binary(), cb_context:context()) -> cb_context:context())) ->
+    cb_context:context().
+patch_and_validate(Id, Context, ValidateFun) ->
+    Context1 = crossbar_doc:load(Id, Context),
+    Context2 = case cb_context:resp_status(Context1) of
+        'success' ->
+            PubJObj = wh_doc:public_fields(cb_context:req_data(Context)),
+            PatchedJObj = wh_json:merge_jobjs(PubJObj, cb_context:doc(Context1)),
+            cb_context:set_req_data(Context, PatchedJObj);
+        _Status ->
+            Context1
+    end,
+    ValidateFun(Id, Context2).
 %%--------------------------------------------------------------------
 %% @public
 %% @doc

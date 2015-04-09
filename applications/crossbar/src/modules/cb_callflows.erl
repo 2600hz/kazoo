@@ -16,6 +16,7 @@
          ,validate/1, validate/2
          ,put/1
          ,post/2
+         ,patch/2
          ,delete/2
         ]).
 
@@ -37,6 +38,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.callflows">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.callflows">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.callflows">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.patch.callflows">>, ?MODULE, 'patch'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.callflows">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
@@ -53,7 +55,7 @@ init() ->
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 allowed_methods(_MediaID) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -94,6 +96,8 @@ validate_callflow(Context, DocId, ?HTTP_GET) ->
     load_callflow(DocId, Context);
 validate_callflow(Context, DocId, ?HTTP_POST) ->
     validate_request(DocId, Context);
+validate_callflow(Context, DocId, ?HTTP_PATCH) ->
+    validate_patch(DocId, Context);
 validate_callflow(Context, DocId, ?HTTP_DELETE) ->
     load_callflow(DocId, Context).
 
@@ -106,6 +110,11 @@ post(Context, _DocId) ->
             maybe_reconcile_numbers(Context1);
         _Status -> Context1
     end.
+
+-spec patch(cb_context:context(), path_token()) -> cb_context:context().
+patch(Context, _DocId) ->
+    'ok' = track_assignment('post', Context),
+    maybe_reconcile_numbers(crossbar_doc:save(Context)).
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
@@ -194,6 +203,16 @@ validate_request(CallflowId, Context) ->
                 ,cb_context:set_req_data(C, wh_json:set_value(<<"numbers">>, [], JObj))
             )
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_patch(api_binary(), cb_context:context()) -> cb_context:context().
+validate_patch(CallflowId, Context) ->
+    crossbar_doc:patch_and_validate(CallflowId, Context, fun validate_request/2).
 
 -spec prepare_patterns(api_binary(), cb_context:context()) -> cb_context:context().
 prepare_patterns(CallflowId, Context) ->

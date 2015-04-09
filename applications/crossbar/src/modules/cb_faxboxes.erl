@@ -16,6 +16,7 @@
          ,validate/1, validate/2
          ,put/1
          ,post/2
+         ,patch/2
          ,delete/2
         ]).
 
@@ -70,6 +71,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.faxboxes">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.faxboxes">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.faxboxes">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.patch.faxboxes">>, ?MODULE, 'patch'),
     crossbar_bindings:bind(<<"*.execute.delete.faxboxes">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
@@ -86,7 +88,7 @@ allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 
 allowed_methods(_BoxId) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -131,6 +133,8 @@ validate_faxbox(Context, Id, ?HTTP_GET) ->
     read(Id, Context);
 validate_faxbox(Context, Id, ?HTTP_POST) ->
     validate_email_address(update_faxbox(Id, remove_private_fields(Context)));
+validate_faxbox(Context, Id, ?HTTP_PATCH) ->
+    validate_patch(update_faxbox(Id, remove_private_fields(Context)));
 validate_faxbox(Context, Id, ?HTTP_DELETE) ->
     delete_faxbox(Id, Context).
 
@@ -156,6 +160,32 @@ validate_email_address(Context) ->
                  ])
                 ,Context
             )
+    end.
+
+-spec validate_patch(cb_context:context()) -> cb_context:context().
+validate_patch(Context) ->
+    DocId = wh_json:get_value(<<"_id">>, cb_context:doc(Context)),
+    IsValid = case wh_json:get_value(<<"custom_smtp_email_address">>, cb_context:doc(Context)) of
+                  'undefined' -> 'true';
+                  CustomEmail -> is_faxbox_email_global_unique(CustomEmail, DocId)
+              end,
+    case IsValid of
+        'true' ->
+            Context1 = crossbar_doc:load(DocId, Context),
+            case cb_context:resp_status(Context1) of
+                'success' ->
+                    PatchJObj = cb_context:req_data(Context),
+                    ConfigsJObj = wh_json:merge_jobjs(PatchJObj, cb_context:doc(Context1)),
+                    cb_context:set_doc(Context, ConfigsJObj);
+                _Status ->
+                    Context1
+            end;
+        'false' ->
+            cb_context:add_validation_error(<<"custom_smtp_email_address">>
+                                            ,<<"unique">>
+                                            ,<<"email address must be unique">>
+                                            ,Context
+                                           )
     end.
 
 %%--------------------------------------------------------------------
@@ -192,6 +222,17 @@ post(Context, _Id) ->
                wh_json:delete_key(<<"_rev">>, cb_context:doc(Ctx2))
               )),
     cb_context:set_resp_data(Ctx3, wh_json:public_fields(leak_private_fields(cb_context:doc(Ctx2)))).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% If the HTTP verb is PATCH, execute the actual action, usually a db save
+%% (after a merge).
+%% @end
+%%--------------------------------------------------------------------
+-spec patch(cb_context:context(), path_token()) -> cb_context:context().
+patch(Context, Id) ->
+    post(Context, Id).
 
 %%--------------------------------------------------------------------
 %% @public

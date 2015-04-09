@@ -15,6 +15,7 @@
          ,validate/1, validate/2
          ,put/1
          ,post/2
+         ,patch/2
          ,delete/2
         ]).
 
@@ -31,6 +32,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.temporal_rules_sets">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.temporal_rules_sets">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.temporal_rules_sets">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.patch.temporal_rules_sets">>, ?MODULE, 'patch'),
     crossbar_bindings:bind(<<"*.execute.delete.temporal_rules_sets">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
@@ -47,7 +49,7 @@ init() ->
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 allowed_methods(_) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -90,6 +92,8 @@ validate_set(Context, ?HTTP_GET, DocId) ->
     read(DocId, Context);
 validate_set(Context, ?HTTP_POST, DocId) ->
     update(DocId, Context);
+validate_set(Context, ?HTTP_PATCH, DocId) ->
+    validate_patch(DocId, Context);
 validate_set(Context, ?HTTP_DELETE, DocId) ->
     read(DocId, Context).
 
@@ -99,6 +103,10 @@ post(Context, _) ->
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
+    crossbar_doc:save(Context).
+
+-spec patch(cb_context:context(), path_token()) -> cb_context:context().
+patch(Context, _) ->
     crossbar_doc:save(Context).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
@@ -141,6 +149,17 @@ read(Id, Context) ->
 update(Id, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
     cb_context:validate_request_data(<<"temporal_rules_sets">>, Context, OnSuccess).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Update-merge an existing menu document partially with the data provided, if it is
+%% valid
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_patch(ne_binary(), cb_context:context()) -> cb_context:context().
+validate_patch(Id, Context) ->
+    crossbar_doc:patch_and_validate(Id, Context, fun update/2).
 
 %%--------------------------------------------------------------------
 %% @private
