@@ -395,7 +395,7 @@ send_req('accounts_update', JObj, AuthToken, AccountId, _) ->
     Resp = ibrowse:send_req(UrlString, Headers, 'post', Data, HTTPOptions),
     handle_resp(Resp).
 
--spec req_uri('accounts', ne_binary()) -> ne_binary().
+-spec req_uri('accounts' | 'devices', ne_binary()) -> iolist().
 req_uri('accounts', AccountId) ->
     provisioning_uri([<<"accounts">>, AccountId]);
 req_uri('devices', MacAddress) ->
