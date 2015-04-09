@@ -120,7 +120,7 @@
 
 %% Inbound
 -define(INBOUND_REQ_EVENT_NAME, <<"inbound">>).
--define(INBOUND_HEADERS, [<<"Message-ID">>, <<"Body">>,<<"Route-ID">>
+-define(INBOUND_HEADERS, [<<"Message-ID">>, <<"Body">>, <<"Route-ID">>
                           ,<<"Caller-ID-Number">>, <<"Callee-ID-Number">>
                          ]).
 -define(OPTIONAL_INBOUND_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>
@@ -147,6 +147,7 @@
                         ,{<<"Callee-ID-Number">>, fun is_binary/1}
                         ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
                         ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
+                        ,{<<"Body">>, fun is_binary/1}
                        ]).
 -define(INBOUND_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                              ,{<<"Event-Name">>, ?INBOUND_REQ_EVENT_NAME}
@@ -186,6 +187,7 @@
                          ,{<<"Callee-ID-Number">>, fun is_binary/1}
                          ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
                          ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
+                         ,{<<"Body">>, fun is_binary/1}
                         ]).
 -define(OUTBOUND_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                               ,{<<"Event-Name">>, ?OUTBOUND_REQ_EVENT_NAME}
