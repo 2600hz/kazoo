@@ -77,7 +77,7 @@ get_outbound_destination(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec lookup_number(ne_binary()) ->
-                           {'ok', ne_binary(), wh_number_manager:number_properties()} |
+                           {'ok', ne_binary(), number_properties()} |
                            {'error', term()}.
 lookup_number(Number) ->
     Num = wnm_util:normalize_number(Number),
@@ -89,7 +89,7 @@ lookup_number(Number) ->
     end.
 
 -spec fetch_number(ne_binary()) ->
-                          {'ok', ne_binary(), wh_proplist()} |
+                          {'ok', ne_binary(), number_properties()} |
                           {'error', term()}.
 fetch_number(Num) ->
     case wh_number_manager:lookup_account_by_number(Num) of
