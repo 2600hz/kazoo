@@ -147,13 +147,15 @@ create_items(ServiceJObj) ->
 
 create_items(Services, ServicePlans) ->
     Plans = [Plan
-             || ServicePlan <- ServicePlans
-                    ,Plan <- ServicePlan#wh_service_plans.plans
+             || #wh_service_plans{plans=Plans} <- ServicePlans,
+                Plan <- Plans
             ],
     lists:foldl(fun(Plan, Items) ->
                         wh_service_plan:create_items(Plan, Items, Services)
-                end, wh_service_items:empty(), Plans).
-
+                end
+                ,wh_service_items:empty()
+                ,Plans
+               ).
 
 %%--------------------------------------------------------------------
 %% @public
