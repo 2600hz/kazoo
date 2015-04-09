@@ -301,10 +301,8 @@ crawl_numbers_db(NumberDb) ->
             maybe_export_numbers(Db, Numbers);
         {'error', _R} ->
             lager:debug("error getting number docs from ~s: ~p"
-                        ,[NumberDb, _R]);
-        _Else ->
-            lager:debug("unexpected return getting number docs from ~s: ~p"
-                        ,[NumberDb, _Else])
+                        ,[NumberDb, _R]
+                       )
     catch
          _E:_R ->
             lager:debug("~s getting number docs from ~s: ~p"

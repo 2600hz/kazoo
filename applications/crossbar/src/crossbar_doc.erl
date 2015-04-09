@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz
+%%% @copyright (C) 2011-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -13,6 +13,7 @@
          ,load_from_file/2
          ,load_merge/2, load_merge/3
          ,merge/3
+         ,patch_and_validate/3
          ,load_view/3, load_view/4, load_view/5, load_view/6
          ,load_attachment/3, load_docs/2
          ,save/1, save/2
@@ -31,10 +32,12 @@
 
 -export([handle_json_success/2]).
 -export([handle_couch_mgr_success/2
-        ,handle_couch_mgr_errors/3
+         ,handle_couch_mgr_errors/3
         ]).
 
--export_type([view_options/0]).
+-export_type([view_options/0
+              ,startkey/0
+             ]).
 
 -include("crossbar.hrl").
 
@@ -56,14 +59,21 @@
 
 -type direction() :: 'ascending' | 'descending'.
 
--type view_options() :: couch_util:view_options() |
-                        [{'databases', ne_binaries()}].
+-type startkey() :: wh_json:json_term() | 'undefined'.
 
+-type startkey_fun() :: 'undefined' |
+                        fun((cb_context:context()) -> startkey()) |
+                        fun((wh_proplist(), cb_context:context()) -> startkey()).
+
+-type view_options() :: couch_util:view_options() |
+                        [{'databases', ne_binaries()} |
+                         {'startkey_fun', startkey_fun()}
+                        ].
 
 -record(load_view_params, {view :: api_binary()
                            ,view_options = [] :: view_options()
                            ,context :: cb_context:context()
-                           ,start_key :: wh_json:json_term()
+                           ,start_key :: startkey()
                            ,page_size :: non_neg_integer() | api_binary()
                            ,filter_fun :: filter_fun()
                            ,dbs = [] :: ne_binaries()
@@ -218,6 +228,22 @@ load_merge(_DocId, _DataJObj, Context, BypassJObj) ->
 merge(DataJObj, JObj, Context) ->
     PrivJObj = wh_json:private_fields(JObj),
     handle_couch_mgr_success(wh_json:merge_jobjs(PrivJObj, DataJObj), Context).
+
+-type validate_fun() :: fun((ne_binary(), cb_context:context()) -> cb_context:context()).
+
+-spec patch_and_validate(ne_binary(), cb_context:context(), validate_fun()) ->
+                                cb_context:context().
+patch_and_validate(Id, Context, ValidateFun) ->
+    Context1 = crossbar_doc:load(Id, Context),
+    Context2 = case cb_context:resp_status(Context1) of
+                   'success' ->
+                       PubJObj = wh_doc:public_fields(cb_context:req_data(Context)),
+                       PatchedJObj = wh_json:merge_jobjs(PubJObj, cb_context:doc(Context1)),
+                       cb_context:set_req_data(Context, PatchedJObj);
+                   _Status ->
+                       Context1
+               end,
+    ValidateFun(Id, Context2).
 
 %%--------------------------------------------------------------------
 %% @public

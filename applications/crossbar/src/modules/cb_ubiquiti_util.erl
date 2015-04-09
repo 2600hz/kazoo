@@ -28,7 +28,7 @@ create_api_token(ProviderId) ->
 
 create_api_token(ProviderId, <<_/binary>> = Secret) ->
     Salt = wh_util:rand_hex_binary(?SALT_LENGTH),
-    ExpireTime = wh_util:current_unix_timestamp() + ?EXPIRES,
+    ExpireTime = wh_util:current_unix_tstamp() + ?EXPIRES,
     make_api_token(ProviderId, ExpireTime, Salt, Secret);
 create_api_token(_ProviderId, 'undefined') ->
     throw({'error', 'no_api_secret'}).

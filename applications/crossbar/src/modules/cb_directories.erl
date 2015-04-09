@@ -16,6 +16,7 @@
          ,validate/1, validate/2
          ,put/1
          ,post/2
+         ,patch/2
          ,delete/2
         ]).
 
@@ -34,6 +35,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.directories">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.directories">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.directories">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.patch.directories">>, ?MODULE, 'patch'),
     crossbar_bindings:bind(<<"*.execute.delete.directories">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
@@ -50,7 +52,7 @@ init() ->
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 allowed_methods(_) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -62,10 +64,8 @@ allowed_methods(_) ->
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
-resource_exists() ->
-    true.
-resource_exists(_) ->
-    true.
+resource_exists() -> 'true'.
+resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -76,29 +76,41 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate(#cb_context{}) -> #cb_context{}.
--spec validate(#cb_context{}, path_token()) -> #cb_context{}.
-validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
+-spec validate(cb_context:context()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
+validate(Context) ->
+    validate_directories(Context, cb_context:req_verb(Context)).
+
+validate_directories(Context, ?HTTP_GET) ->
     summary(Context);
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
+validate_directories(Context, ?HTTP_PUT) ->
     create(Context).
 
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id) ->
+validate(Context, Id) ->
+    validate_directory(Context, Id, cb_context:req_verb(Context)).
+
+validate_directory(Context, Id, ?HTTP_GET) ->
     read(Id, Context);
-validate(#cb_context{req_verb = ?HTTP_POST}=Context, Id) ->
+validate_directory(Context, Id, ?HTTP_POST) ->
     update(Id, Context);
-validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Id) ->
+validate_directory(Context, Id, ?HTTP_PATCH) ->
+    validate_patch(Id, Context);
+validate_directory(Context, Id, ?HTTP_DELETE) ->
     read(Id, Context).
 
--spec post(#cb_context{}, path_token()) -> #cb_context{}.
+-spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _) ->
     crossbar_doc:save(Context).
 
--spec put(#cb_context{}) -> #cb_context{}.
+-spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
     crossbar_doc:save(Context).
 
--spec delete(#cb_context{}, path_token()) -> #cb_context{}.
+-spec patch(cb_context:context(), path_token()) -> cb_context:context().
+patch(Context, _) ->
+    crossbar_doc:save(Context).
+
+-spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _) ->
     crossbar_doc:delete(Context).
 
@@ -112,9 +124,9 @@ delete(Context, _) ->
 %% Create a new instance with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec create(#cb_context{}) -> #cb_context{}.
-create(#cb_context{}=Context) ->
-    OnSuccess = fun(C) -> on_successful_validation(undefined, C) end,
+-spec create(cb_context:context()) -> cb_context:context().
+create(Context) ->
+    OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
     cb_context:validate_request_data(<<"directories">>, Context, OnSuccess).
 
 %%--------------------------------------------------------------------
@@ -123,19 +135,28 @@ create(#cb_context{}=Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read(ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
-    case crossbar_doc:load(Id, Context) of
-        #cb_context{resp_status=success}=Context1 ->
+    Context1 = crossbar_doc:load(Id, Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
             load_directory_users(Id, Context1);
-        Context1 -> Context1
+        _Status -> Context1
     end.
 
-load_directory_users(Id, #cb_context{resp_data=Directory}=Context) ->
-    case crossbar_doc:load_view(?CB_USERS_LIST, [{<<"key">>, Id}], Context, fun normalize_users_results/2) of
-        #cb_context{resp_status=success, resp_data=Users} ->
-            Context#cb_context{resp_data=wh_json:set_value(<<"users">>, Users, Directory)};
-        _ -> Context
+-spec load_directory_users(ne_binary(), cb_context:context()) -> cb_context:context().
+load_directory_users(Id, Context) ->
+    Context1 = crossbar_doc:load_view(?CB_USERS_LIST
+                                      ,[{<<"key">>, Id}]
+                                      ,Context
+                                      ,fun normalize_users_results/2
+                                     ),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            Users = cb_context:resp_data(Context1),
+            Directory = cb_context:resp_data(Context),
+            cb_context:set_resp_data(Context1, wh_json:set_value(<<"users">>, Users, Directory));
+        _Status -> Context
     end.
 
 %%--------------------------------------------------------------------
@@ -145,21 +166,34 @@ load_directory_users(Id, #cb_context{resp_data=Directory}=Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec update(ne_binary(), #cb_context{}) -> #cb_context{}.
-update(DocId, #cb_context{}=Context) ->
+-spec update(ne_binary(), cb_context:context()) -> cb_context:context().
+update(DocId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(DocId, C) end,
     cb_context:validate_request_data(<<"directories">>, Context, OnSuccess).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%% Update-merge an existing conference document partially with the data provided, if it is
+%% valid
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.
-on_successful_validation(undefined, #cb_context{doc=JObj}=Context) ->
-    Context#cb_context{doc=wh_json:set_value(<<"pvt_type">>, <<"directory">>, JObj)};
-on_successful_validation(DocId, #cb_context{}=Context) ->
+-spec validate_patch(ne_binary(), cb_context:context()) -> cb_context:context().
+validate_patch(DocId, Context) ->
+    crossbar_doc:patch_and_validate(DocId, Context, fun update/2).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
+on_successful_validation('undefined', Context) ->
+    cb_context:set_doc(Context
+                       ,wh_json:set_value(<<"pvt_type">>, <<"directory">>, cb_context:doc(Context))
+                      );
+on_successful_validation(DocId, Context) ->
     crossbar_doc:load_merge(DocId, Context).
 
 %%--------------------------------------------------------------------
@@ -169,7 +203,7 @@ on_successful_validation(DocId, #cb_context{}=Context) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec summary(#cb_context{}) -> #cb_context{}.
+-spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
@@ -185,7 +219,8 @@ normalize_view_results(JObj, Acc) ->
 
 -spec normalize_users_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_users_results(JObj, Acc) ->
-    [wh_json:set_values([{<<"user_id">>, wh_json:get_value(<<"id">>, JObj)}
-                         ,{<<"callflow_id">>, wh_json:get_value(<<"value">>, JObj)}
-                        ], wh_json:new())
-     | Acc].
+    [wh_json:from_list([{<<"user_id">>, wh_json:get_value(<<"id">>, JObj)}
+                        ,{<<"callflow_id">>, wh_json:get_value(<<"value">>, JObj)}
+                       ])
+     | Acc
+    ].

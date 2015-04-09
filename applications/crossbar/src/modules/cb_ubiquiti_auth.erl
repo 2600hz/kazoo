@@ -127,7 +127,7 @@ validate(Context) ->
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    crossbar_util:create_auth_token(Context, wh_util:to_binary(?MODULE)).
+    crossbar_util:create_auth_token(Context, ?MODULE).
 
 %%%===================================================================
 %%% Internal functions

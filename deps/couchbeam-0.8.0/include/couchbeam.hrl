@@ -65,12 +65,15 @@
 
 -type stale() :: ok | update_after.
 
--type view_option() :: {key, binary()}
-                     | {keys, list(binary())}
-                     | {startkey_docid, binary()}
+-type view_key() :: binary() | integer() | 'null' | {[]}.
+-type view_keys() :: [view_key()].
+
+-type view_option() :: {key, view_key()}
+                     | {keys, view_keys()}
+                     | {startkey_docid, binary() | []}
                      | {endkey_docid, binary()}
-                     | {startkey, binary()}
-                     | {endkey, binary()}
+                     | {startkey, view_key() | view_keys()}
+                     | {endkey, view_key() | view_keys()}
                      | {limit, integer()}
                      | {stale, stale()}
                      | descending

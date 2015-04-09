@@ -235,7 +235,7 @@ validate_user('undefined', _) ->
     lager:debug("signup did not contain an user definition"),
     {[<<"user">>], 'undefined'};
 validate_user(User, Context) ->
-    case cb_users:create_user(Context#cb_context{req_data=User}) of
+    case cb_users_v1:create_user(Context#cb_context{req_data=User}) of
         #cb_context{resp_status='success', doc=Usr} ->
             lager:debug("signup user is valid"),
             {[], Usr};

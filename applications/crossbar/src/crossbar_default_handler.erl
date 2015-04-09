@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz
+%%% @copyright (C) 2012-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -77,7 +77,6 @@ get_magic_token_from_path([]) -> 'undefined';
 get_magic_token_from_path([<<>>|Paths]) -> get_magic_token_from_path(Paths);
 get_magic_token_from_path([Path|Paths]) ->
     try whapps_util:from_magic_hash(Path) of
-        'undefined' -> get_magic_token_from_path(Paths);
         Token -> Token
     catch
         _:_ -> get_magic_token_from_path(Paths)

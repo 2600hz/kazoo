@@ -16,6 +16,7 @@
          ,validate/1, validate/2, validate/3
          ,put/1
          ,post/1, post/2
+         ,patch/2
          ,delete/2
         ]).
 
@@ -49,6 +50,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.content_types_accepted.rates">>, ?MODULE, 'content_types_accepted'),
     _ = crossbar_bindings:bind(<<"*.execute.put.rates">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.rates">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.patch.rates">>, ?MODULE, 'patch'),
     crossbar_bindings:bind(<<"*.execute.delete.rates">>, ?MODULE, 'delete').
 
 init_db() ->
@@ -79,7 +81,7 @@ allowed_methods() ->
 
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(_) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 -spec allowed_methods(path_token(),path_token()) -> http_methods().
 allowed_methods(?NUMBER,_) ->
@@ -142,6 +144,8 @@ validate_rate(Context, Id, ?HTTP_GET) ->
     read(Id, cb_context:set_account_db(Context, ?WH_RATES_DB));
 validate_rate(Context, Id, ?HTTP_POST) ->
     update(Id, cb_context:set_account_db(Context, ?WH_RATES_DB));
+validate_rate(Context, Id, ?HTTP_PATCH) ->
+    validate_patch(Id, cb_context:set_account_db(Context, ?WH_RATES_DB));
 validate_rate(Context, Id, ?HTTP_DELETE) ->
     read(Id, cb_context:set_account_db(Context, ?WH_RATES_DB)).
 
@@ -152,6 +156,9 @@ post(Context) ->
     spawn(fun() -> upload_csv(Context) end),
     crossbar_util:response_202(<<"attempting to insert rates from the uploaded document">>, Context).
 post(Context, _RateId) ->
+    crossbar_doc:save(Context).
+
+patch(Context, _RateId) ->
     crossbar_doc:save(Context).
 
 -spec put(cb_context:context()) -> cb_context:context().
@@ -211,6 +218,17 @@ read(Id, Context) ->
 update(Id, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
     cb_context:validate_request_data(<<"rates">>, Context, OnSuccess).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Update-merge an existing menu document with the data provided, if it is
+%% valid
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_patch(ne_binary(), cb_context:context()) -> cb_context:context().
+validate_patch(Id, Context) ->
+    crossbar_doc:patch_and_validate(Id, Context, fun update/2).
 
 %%--------------------------------------------------------------------
 %% @private

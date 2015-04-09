@@ -154,7 +154,7 @@ normalize_account_name(AccountName) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_authenticate_user(cb_context:context()) -> cb_context:context().
--spec maybe_authenticate_user(cb_context:context(), ne_binary(), ne_binary(), wh_json:key() | wh_json:keys()) ->
+-spec maybe_authenticate_user(cb_context:context(), ne_binary(), ne_binary(), ne_binary() | ne_binaries()) ->
                                      cb_context:context().
 
 maybe_authenticate_user(Context) ->
@@ -168,20 +168,13 @@ maybe_authenticate_user(Context) ->
         {'error', _} ->
             lager:debug("failed to find account DB from realm ~s", [AccountRealm]),
             cb_context:add_system_error('invalid_credentials', Context);
-        {'ok', Account} ->
-            maybe_account_is_enabled(Context, Credentials, Method, Account)
+        {'ok', <<_/binary>> = Account} ->
+            maybe_account_is_enabled(Context, Credentials, Method, Account);
+        {'ok', Accounts} ->
+            maybe_accounts_are_enabled(Context, Credentials, Method, Accounts)
     end.
 
-maybe_authenticate_user(Context, _, _, []) ->
-    lager:debug("no account(s) specified"),
-    cb_context:add_system_error('invalid_credentials', Context);
-maybe_authenticate_user(Context, Credentials, Method, [Account|Accounts]) ->
-    Context1 = maybe_authenticate_user(Context, Credentials, Method, Account),
-    case cb_context:resp_status(Context1) of
-        'success' -> Context1;
-        _ -> maybe_authenticate_user(Context1, Credentials, Method, Accounts)
-    end;
-maybe_authenticate_user(Context, Credentials, <<"md5">>, Account) when is_binary(Account) ->
+maybe_authenticate_user(Context, Credentials, <<"md5">>, <<_/binary>> = Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
 
     Context1 = crossbar_doc:load_view(?ACCT_MD5_LIST
@@ -194,7 +187,7 @@ maybe_authenticate_user(Context, Credentials, <<"md5">>, Account) when is_binary
             lager:debug("credentials do not belong to any user: ~s: ~p", [_Status, cb_context:doc(Context1)]),
             cb_context:add_system_error('invalid_credentials', Context1)
     end;
-maybe_authenticate_user(Context, Credentials, <<"sha">>, Account) ->
+maybe_authenticate_user(Context, Credentials, <<"sha">>, <<_/binary>> = Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     Context1 = crossbar_doc:load_view(?ACCT_SHA1_LIST
                                       ,[{'key', Credentials}]
@@ -204,15 +197,25 @@ maybe_authenticate_user(Context, Credentials, <<"sha">>, Account) ->
         'success' -> load_sha1_results(Context1, cb_context:doc(Context1));
         _Status ->
             lager:debug("credentials do not belong to any user"),
-
             cb_context:add_system_error('invalid_credentials', Context)
     end;
-maybe_authenticate_user(Context, _, _, _) ->
-    lager:debug("invalid creds"),
-
+maybe_authenticate_user(Context, _Creds, _Method, _Account) ->
+    lager:debug("invalid creds by method ~s", [_Method]),
     cb_context:add_system_error('invalid_credentials', Context).
 
--spec maybe_account_is_enabled(cb_context:context(), ne_binary(), ne_binary(), wh_json:key() | wh_json:keys()) ->
+-spec maybe_accounts_are_enabled(cb_context:context(), ne_binary(), ne_binary(), ne_binaries()) ->
+                                        cb_context:context().
+maybe_accounts_are_enabled(Context, _, _, []) ->
+    lager:debug("no account(s) specified"),
+    cb_context:add_system_error('invalid_credentials', Context);
+maybe_accounts_are_enabled(Context, Credentials, Method, [Account|Accounts]) ->
+    Context1 = maybe_account_is_enabled(Context, Credentials, Method, Account),
+    case cb_context:resp_status(Context1) of
+        'success' -> Context1;
+        _Status -> maybe_accounts_are_enabled(Context, Credentials, Method, Accounts)
+    end.
+
+-spec maybe_account_is_enabled(cb_context:context(), ne_binary(), ne_binary(), ne_binary()) ->
                                       cb_context:context().
 maybe_account_is_enabled(Context, Credentials, Method, Account) ->
     case wh_util:is_account_enabled(Account) of
@@ -366,18 +369,6 @@ find_account('undefined', 'undefined', 'undefined', Context) ->
     {'error', Context};
 find_account('undefined', 'undefined', AccountName, Context) ->
     case whapps_util:get_accounts_by_name(AccountName) of
-        {'ok', 'undefined'} ->
-            lager:debug("failed to find account ~s by name", [AccountName]),
-            C = cb_context:add_validation_error(
-                    <<"account_name">>
-                    ,<<"not_found">>
-                    ,wh_json:from_list([
-                        {<<"message">>, <<"The provided account name could not be found">>}
-                        ,{<<"cause">>, AccountName}
-                     ])
-                    ,Context
-                ),
-            find_account('undefined', 'undefined', 'undefined', C);
         {'ok', AccountDb} ->
             lager:debug("found account by name '~s': ~s", [AccountName, AccountDb]),
             {'ok', AccountDb};
@@ -386,14 +377,14 @@ find_account('undefined', 'undefined', AccountName, Context) ->
             {'ok', AccountDbs};
         {'error', _} ->
             C = cb_context:add_validation_error(
-                    <<"account_name">>
-                    ,<<"not_found">>
-                    ,wh_json:from_list([
-                        {<<"message">>, <<"The provided account name could not be found">>}
-                        ,{<<"cause">>, AccountName}
+                  <<"account_name">>
+                  ,<<"not_found">>
+                  ,wh_json:from_list(
+                     [{<<"message">>, <<"The provided account name could not be found">>}
+                      ,{<<"cause">>, AccountName}
                      ])
-                    ,Context
-                ),
+                  ,Context
+                 ),
             find_account('undefined', 'undefined', 'undefined', C)
     end;
 find_account('undefined', AccountRealm, AccountName, Context) ->
@@ -401,14 +392,14 @@ find_account('undefined', AccountRealm, AccountName, Context) ->
         {'ok', 'undefined'} ->
             lager:debug("failed to find account ~s by name", [AccountName]),
             C = cb_context:add_validation_error(
-                    <<"account_name">>
-                    ,<<"not_found">>
-                    ,wh_json:from_list([
-                        {<<"message">>, <<"The provided account name could not be found">>}
-                        ,{<<"cause">>, AccountName}
+                  <<"account_name">>
+                  ,<<"not_found">>
+                  ,wh_json:from_list(
+                     [{<<"message">>, <<"The provided account name could not be found">>}
+                      ,{<<"cause">>, AccountName}
                      ])
-                    ,Context
-                ),
+                  ,Context
+                 ),
             find_account('undefined', 'undefined', 'undefined', C);
         {'ok', AccountDb} ->
             lager:debug("found account by realm '~s': ~s", [AccountRealm, AccountDb]),
@@ -418,14 +409,14 @@ find_account('undefined', AccountRealm, AccountName, Context) ->
             {'ok', AccountDbs};
         {'error', _} ->
             C = cb_context:add_validation_error(
-                    <<"account_realm">>
-                    ,<<"not_found">>
-                    ,wh_json:from_list([
-                        {<<"message">>, <<"The provided account realm could not be found">>}
-                        ,{<<"cause">>, AccountRealm}
+                  <<"account_realm">>
+                  ,<<"not_found">>
+                  ,wh_json:from_list(
+                     [{<<"message">>, <<"The provided account realm could not be found">>}
+                      ,{<<"cause">>, AccountRealm}
                      ])
-                    ,Context
-                ),
+                  ,Context
+                 ),
             find_account('undefined', 'undefined', AccountName, C)
     end;
 find_account(PhoneNumber, AccountRealm, AccountName, Context) ->
@@ -436,14 +427,14 @@ find_account(PhoneNumber, AccountRealm, AccountName, Context) ->
             {'ok', AccountDb};
         {'error', _} ->
             C = cb_context:add_validation_error(
-                    <<"phone_number">>
-                    ,<<"not_found">>
-                    ,wh_json:from_list([
-                        {<<"message">>, <<"The provided phone number could not be found">>}
-                        ,{<<"cause">>, PhoneNumber}
+                  <<"phone_number">>
+                  ,<<"not_found">>
+                  ,wh_json:from_list(
+                     [{<<"message">>, <<"The provided phone number could not be found">>}
+                      ,{<<"cause">>, PhoneNumber}
                      ])
-                    ,Context
-                ),
+                  ,Context
+                 ),
             find_account('undefined', AccountRealm, AccountName, C)
     end.
 

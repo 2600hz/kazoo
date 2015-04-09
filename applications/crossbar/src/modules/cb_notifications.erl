@@ -403,10 +403,7 @@ maybe_delete(Context, Id, [?MEDIA_VALUE(<<"application">>, <<"json">>, _, _, _)]
 maybe_delete(Context, Id, [?MEDIA_VALUE(<<"application">>, <<"x-json">>, _, _, _)]) ->
     delete_doc(Context, Id);
 maybe_delete(Context, Id, [?MEDIA_VALUE(Type, SubType, _, _, _)]) ->
-    maybe_delete_template(Context, Id, <<Type/binary, "/", SubType/binary>>);
-maybe_delete(Context, Id, []) ->
-    lager:debug("no content-type headers, using json"),
-    delete_doc(Context, Id).
+    maybe_delete_template(Context, Id, <<Type/binary, "/", SubType/binary>>).
 
 -spec delete_doc(cb_context:context(), ne_binary()) -> cb_context:context().
 delete_doc(Context, Id) ->
@@ -471,7 +468,7 @@ media_values(Media) ->
 
 media_values('undefined', 'undefined') ->
     lager:debug("no accept headers, assuming JSON"),
-    ?MEDIA_VALUE(<<"application">>, <<"json">>);
+    [?MEDIA_VALUE(<<"application">>, <<"json">>)];
 media_values(AcceptValue, 'undefined') ->
     case cb_modules_util:parse_media_type(AcceptValue) of
         {'error', 'badarg'} -> media_values('undefined', 'undefined');

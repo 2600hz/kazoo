@@ -340,17 +340,7 @@ validate_request(UserId, Context) ->
 
 -spec validate_patch(api_binary(), cb_context:context()) -> cb_context:context().
 validate_patch(UserId, Context) ->
-    Context1 = load_user(UserId, Context),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            PatchJObj = wh_doc:public_fields(cb_context:req_data(Context)),
-            UserJObj = wh_json:merge_jobjs(PatchJObj, cb_context:doc(Context1)),
-
-            lager:debug("patched doc, now validating"),
-            prepare_username(UserId, cb_context:set_req_data(Context, UserJObj));
-        _Status ->
-            Context1
-    end.
+    crossbar_doc:patch_and_validate(UserId, Context, fun validate_request/2).
 
 -spec prepare_username(api_binary(), cb_context:context()) -> cb_context:context().
 prepare_username(UserId, Context) ->
