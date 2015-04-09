@@ -171,39 +171,36 @@ create(<<"voicefabric">> = Engine, Text, Voice, <<"wav">> = _Format, Options) ->
                     ,{<<"text">>, Text}
                    ],
             ArgsEncode = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_args_encode">>, <<"urlencode">>),
-            {Headers, Body} = case ArgsEncode of
-                                  <<"urlencode">> ->
-                                      Headers_ = [{"Content-Type", "application/x-www-form-urlencoded"}],
-                                      <<$&, Body_/binary>> = iolist_to_binary([[$&, Key, $=, Val] || {Key, Val} <- Data]),
-                                      {Headers_, Body_};
-                                  <<"multipart">> ->
-                                      Boundary = iolist_to_binary([<<"--boundary--">>
-                                                                   ,couch_mgr:get_uuid(),
-                                                                   <<"--boundary--">>
-                                                                  ]),
-                                      Headers_ = [{"Content-Type"
-                                                   , "multipart/form-data;"
-                                                   " charset=UTF-8;"
-                                                   " boundary="
-                                                   ++ erlang:binary_to_list(Boundary)
-                                                  }],
-                                      Body_ = iolist_to_binary([<<Boundary/binary,
-                                                                  "\r\nContent-Disposition: form-data;"
-                                                                  " name=", Key/binary
-                                                                  , "\r\n\r\n", Val/binary, "\r\n">>
-                                                                || {Key, Val} <- Data
-                                                               ]),
-                                      {Headers_, Body_};
-                                  _Else ->
-                                      lager:warning("voice fabric unknown args encode method: ~p", [_Else]),
-                                      {[], []}
-                              end,
+            {Headers, Body} = voicefabric_request_body(ArgsEncode, Data),
             HTTPOptions = [{'response_format', 'binary'} | Options],
             Response = ibrowse:send_req(BaseUrl, Headers, 'post', Body, HTTPOptions),
             create_response(Engine, Response)
     end;
 create(_, _, _, _, _) ->
     {'error', 'unknown_provider'}.
+
+voicefabric_request_body(<<"urlencode">>, Data) ->
+    Headers_ = [{"Content-Type", "application/x-www-form-urlencoded"}],
+    <<$&, Body_/binary>> = iolist_to_binary([[$&, Key, $=, Val] || {Key, Val} <- Data]),
+    {Headers_, Body_};
+voicefabric_request_body(<<"multipart">>, Data) ->
+    Boundary = iolist_to_binary([<<"--boundary--">>
+                                 ,couch_mgr:get_uuid(),
+                                 <<"--boundary--">>
+                                ]),
+    Headers_ = [{"Content-Type"
+                 ,"multipart/form-data; charset=UTF-8; boundary=" ++ erlang:binary_to_list(Boundary)
+                }],
+    Body_ = iolist_to_binary([<<Boundary/binary,
+                                "\r\nContent-Disposition: form-data;"
+                                " name=", Key/binary
+                                , "\r\n\r\n", Val/binary, "\r\n">>
+                              || {Key, Val} <- Data
+                             ]),
+    {Headers_, Body_};
+voicefabric_request_body(ArgsEncode, _Data) ->
+    lager:warning("voice fabric unknown args encode method: ~p", [ArgsEncode]),
+    {[], []}.
 
 %%------------------------------------------------------------------------------
 %% Transcribe the audio binary
