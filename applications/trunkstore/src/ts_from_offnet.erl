@@ -133,6 +133,9 @@ try_failover_sip(State, SIPUri) ->
     wait_for_bridge(ts_callflow:set_failover(State, wh_json:new())).
 
 try_failover_e164(State, ToDID) ->
+    RouteReq = ts_callflow:get_request_data(State),
+    OriginalCIdNumber = wh_json:get_value(<<"Caller-ID-Number">>, RouteReq),
+    OriginalCIdName = wh_json:get_value(<<"Caller-ID-Name">>, RouteReq),
     CallID = ts_callflow:get_aleg_id(State),
     AcctID = ts_callflow:get_account_id(State),
     EP = ts_callflow:get_endpoint_data(State),
@@ -148,8 +151,8 @@ try_failover_e164(State, ToDID) ->
            ,{<<"Flags">>, wh_json:get_value(<<"flags">>, EP)}
            ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, EP)}
            ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, EP)}
-           ,{<<"Outbound-Caller-ID-Name">>, wh_json:get_value(<<"Outbound-Caller-ID-Name">>, EP)}
-           ,{<<"Outbound-Caller-ID-Number">>, wh_json:get_value(<<"Outbound-Caller-ID-Number">>, EP)}
+           ,{<<"Outbound-Caller-ID-Name">>, wh_json:get_value(<<"Outbound-Caller-ID-Name">>, EP, OriginalCIdName)}
+           ,{<<"Outbound-Caller-ID-Number">>, wh_json:get_value(<<"Outbound-Caller-ID-Number">>, EP, OriginalCIdNumber)}
            ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, EP)}
            ,{<<"Hunt-Account-ID">>, wh_json:get_value(<<"Hunt-Account-ID">>, EP)}
            ,{<<"Custom-SIP-Headers">>, ts_callflow:get_custom_sip_headers(State)}
