@@ -172,18 +172,18 @@ debug_read(Context, CallId) ->
     AccountModb = get_modb(Context),
     Context1 =
         crossbar_doc:load_view(
-            ?CB_DEBUG_LIST
-            ,[{'endkey', [CallId, wh_json:new()]}
-              ,{'startkey', [CallId]}
-            ]
-            ,cb_context:set_account_db(Context, AccountModb)
-            ,fun normalize_debug_read/2
-        ),
+          ?CB_DEBUG_LIST
+          ,[{'endkey', [CallId, wh_json:new()]}
+            ,{'startkey', [CallId]}
+           ]
+          ,cb_context:set_account_db(Context, AccountModb)
+          ,fun normalize_debug_read/2
+         ),
     case cb_context:resp_status(Context1) of
         'success' ->
             RespData = cb_context:resp_data(Context1),
             cb_context:set_resp_data(Context1, lists:reverse(RespData));
-        _ -> Context1
+        _Status -> Context1
     end.
 
 %%--------------------------------------------------------------------

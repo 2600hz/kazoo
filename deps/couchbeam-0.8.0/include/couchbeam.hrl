@@ -67,9 +67,9 @@
 
 -type view_option() :: {key, binary()}
                      | {keys, list(binary())}
-                     | {startkey_docid, binary()}
+                     | {startkey_docid, binary() | [binary() | integer()]}
                      | {endkey_docid, binary()}
-                     | {startkey, binary()}
+                     | {startkey, binary() | [binary() | integer()]}
                      | {endkey, binary()}
                      | {limit, integer()}
                      | {stale, stale()}

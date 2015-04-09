@@ -80,7 +80,7 @@ get_family(JObj) ->
         Family -> Family
     end.
 
--spec get_model(wh_json:object()) -> wh_json:object().
+-spec get_model(wh_json:object()) -> ne_binary().
 get_model(JObj) ->
     Family = wh_json:get_binary_value([<<"provision">>, <<"endpoint_model">>], JObj, <<>>),
     case wh_util:to_lower_binary(Family) of
@@ -401,7 +401,7 @@ req_uri('accounts', AccountId) ->
 req_uri('devices', MacAddress) ->
     provisioning_uri([<<"devices">>, MacAddress]).
 
--spec req_uri('devices', ne_binary(), ne_binary()) -> ne_binary().
+-spec req_uri('devices', ne_binary(), ne_binary()) -> iolist().
 req_uri('devices', AccountId, MACAddress) ->
     EncodedAddress = binary:replace(MACAddress, <<":">>, <<>>, ['global']),
     provisioning_uri([<<"devices">>, AccountId, EncodedAddress]).

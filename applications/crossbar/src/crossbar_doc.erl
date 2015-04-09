@@ -35,7 +35,9 @@
          ,handle_couch_mgr_errors/3
         ]).
 
--export_type([view_options/0]).
+-export_type([view_options/0
+              ,startkey/0
+             ]).
 
 -include("crossbar.hrl").
 
@@ -57,14 +59,21 @@
 
 -type direction() :: 'ascending' | 'descending'.
 
--type view_options() :: couch_util:view_options() |
-                        [{'databases', ne_binaries()}].
+-type startkey() :: wh_json:json_term() | 'undefined'.
 
+-type startkey_fun() :: 'undefined' |
+                        fun((cb_context:context()) -> startkey()) |
+                        fun((wh_proplist(), cb_context:context()) -> startkey()).
+
+-type view_options() :: couch_util:view_options() |
+                        [{'databases', ne_binaries()} |
+                         {'startkey_fun', startkey_fun()}
+                        ].
 
 -record(load_view_params, {view :: api_binary()
                            ,view_options = [] :: view_options()
                            ,context :: cb_context:context()
-                           ,start_key :: wh_json:json_term()
+                           ,start_key :: startkey()
                            ,page_size :: non_neg_integer() | api_binary()
                            ,filter_fun :: filter_fun()
                            ,dbs = [] :: ne_binaries()

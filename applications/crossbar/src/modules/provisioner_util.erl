@@ -404,6 +404,8 @@ do_full_provision(MACAddress, JObj) ->
                  >>,
     maybe_send_to_full_provisioner(PartialURL, JObj).
 
+-spec maybe_send_to_full_provisioner(ne_binary()) -> boolean().
+-spec maybe_send_to_full_provisioner(ne_binary(), wh_json:object()) -> boolean().
 maybe_send_to_full_provisioner(PartialURL) ->
     case whapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_url">>) of
         'undefined' -> 'false';
@@ -422,7 +424,7 @@ maybe_send_to_full_provisioner(PartialURL, JObj) ->
                          ,{"User-Agent", wh_util:to_list(erlang:node())}
                          ,{"Content-Type", "application/json"}
                         ]),
-            FullUrl = wh_util:to_list(<<Url/binary, "/", PartialURL/binary>>),
+            FullUrl = wh_util:to_lower_string(<<Url/binary, "/", PartialURL/binary>>),
             {'ok', _, _, RawJObj} = ibrowse:send_req(FullUrl, Headers, 'get', "", [{'inactivity_timeout', 10000}]),
             case wh_json:get_integer_value([<<"error">>, <<"code">>], wh_json:decode(RawJObj)) of
                 'undefined' -> send_to_full_provisioner('post', FullUrl, JObj);
@@ -431,7 +433,7 @@ maybe_send_to_full_provisioner(PartialURL, JObj) ->
             end
     end.
 
--spec send_to_full_provisioner(ne_binary()) -> boolean().
+-spec send_to_full_provisioner(string()) -> boolean().
 send_to_full_provisioner(FullUrl) ->
     Headers = props:filter_undefined(
                 [{"Host", whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_host">>)}
@@ -444,7 +446,7 @@ send_to_full_provisioner(FullUrl) ->
     lager:debug("response from server: ~p", [Res]),
     'true'.
 
--spec send_to_full_provisioner('put' | 'post', ne_binary(), wh_json:object()) -> boolean().
+-spec send_to_full_provisioner('put' | 'post', string(), wh_json:object()) -> boolean().
 send_to_full_provisioner('put', FullUrl, JObj) ->
     Headers = props:filter_undefined(
                 [{"Host", whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_host">>)}

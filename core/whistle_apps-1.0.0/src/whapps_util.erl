@@ -309,8 +309,8 @@ get_account_by_realm(RawRealm) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_accounts_by_name(ne_binary()) ->
-                                  {'ok', wh_json:key()} |
-                                  {'multiples', wh_json:key()} |
+                                  {'ok', ne_binary()} |
+                                  {'multiples', ne_binaries()} |
                                   {'error', 'not_found'}.
 get_accounts_by_name(Name) ->
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_LIST_BY_NAME, [{'key', Name}]) of

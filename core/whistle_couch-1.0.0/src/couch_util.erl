@@ -883,12 +883,13 @@ maybe_add_pvt_type(Db, DocId, JObj) ->
 %% until 3 failed retries occur.
 %% @end
 %%------------------------------------------------------------------------------
--type retry504_ret() :: 'ok' | ne_binary() |
-                        {'ok', wh_json:object() | wh_json:objects() |
-                         binary() | ne_binaries() | boolean() | integer()
-                        } |
-                        couchbeam_error() |
-                        {'error', 'timeout'}.
+-type retry504_ret() :: any().
+%% 'ok' | ne_binary() |
+%% {'ok', wh_json:object() | wh_json:objects() |
+%%  binary() | ne_binaries() | boolean() | integer()
+%% } |
+%% couchbeam_error() |
+%% {'error', 'timeout'}.
 
 -spec retry504s(fun(() -> retry504_ret())) -> retry504_ret().
 -spec retry504s(fun(() -> retry504_ret()), 0..3) -> retry504_ret().

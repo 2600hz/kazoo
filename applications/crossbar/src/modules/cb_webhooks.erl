@@ -258,7 +258,7 @@ summary_attempts(Context, 'undefined') ->
                    ,'descending'
                   ],
     summary_attempts_fetch(Context, ViewOptions, ?ATTEMPTS_BY_ACCOUNT);
-summary_attempts(Context, HookId) ->
+summary_attempts(Context, <<_/binary>> = HookId) ->
     ViewOptions = [{'endkey', [HookId, 0]}
                    ,{'startkey', [HookId, get_attempts_start_key(Context)]}
                    ,'include_docs'
@@ -281,6 +281,8 @@ get_start_key(Context, Default, Formatter) ->
         V -> Formatter(V)
     end.
 
+-spec summary_attempts_fetch(cb_context:context(), crossbar_doc:view_options(), ne_binary()) ->
+                                    cb_context:context().
 summary_attempts_fetch(Context, ViewOptions, View) ->
     Db = wh_util:format_account_mod_id(cb_context:account_id(Context), wh_util:current_tstamp()),
 
@@ -293,6 +295,8 @@ summary_attempts_fetch(Context, ViewOptions, View) ->
                             )
      ).
 
+-spec normalize_attempt_results(wh_json:object(), wh_json:objects()) ->
+                                       wh_json:objects().
 normalize_attempt_results(JObj, Acc) ->
     Doc = wh_json:get_value(<<"doc">>, JObj),
     Timestamp = wh_json:get_value(<<"pvt_created">>, Doc),
