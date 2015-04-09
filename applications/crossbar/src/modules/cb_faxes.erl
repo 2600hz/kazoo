@@ -358,7 +358,7 @@ update(Id, Context) ->
 %%--------------------------------------------------------------------
 -spec validate_patch(ne_binary(), cb_context:context()) -> cb_context:context().
 validate_patch(Id, Context) ->
-    crossbar_doc:patch_and_validate(Id, Context).
+    crossbar_doc:patch_and_validate(Id, Context, fun update/2).
 
 %%--------------------------------------------------------------------
 %% @private
