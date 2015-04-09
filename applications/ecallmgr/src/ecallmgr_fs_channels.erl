@@ -38,6 +38,8 @@
 -export([handle_query_channels/2]).
 -export([handle_channel_status/2]).
 
+-export([has_channels_for_owner/1]).
+
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -535,6 +537,19 @@ find_by_auth_id(AuthorizingId) ->
                             || Channel <- Channels
                            ]}
     end.
+
+-spec has_channels_for_owner(ne_binary()) -> boolean().
+has_channels_for_owner(OwnerId) ->
+    MatchSpec = [{#channel{owner_id = '$1'
+                           ,_ = '_'
+                          }
+                  ,[]
+                  ,[{'=:=', '$1', {const, OwnerId}}]
+                 }
+                ],
+    Count = ets:select_count(?CHANNELS_TBL, MatchSpec),
+    lager:info("Found ~p channels", [Count]),
+    Count > 0.
 
 -spec find_by_authorizing_id(ne_binaries()) -> [] | wh_proplist().
 -spec find_by_authorizing_id(ne_binaries(), wh_proplist()) -> [] | wh_proplist().
