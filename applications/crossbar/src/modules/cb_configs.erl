@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% Listing of all expected v1 callbacks
@@ -36,14 +36,14 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.configs">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.configs">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"*.validate.configs">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"*.execute.get.configs">>, ?MODULE, get),
-    _ = crossbar_bindings:bind(<<"*.execute.put.configs">>, ?MODULE, put),
-    _ = crossbar_bindings:bind(<<"*.execute.post.configs">>, ?MODULE, post),
-    _ = crossbar_bindings:bind(<<"*.execute.patch.configs">>, ?MODULE, patch),
-    _ = crossbar_bindings:bind(<<"*.execute.delete.configs">>, ?MODULE, delete).
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.configs">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.configs">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.validate.configs">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.get.configs">>, ?MODULE, 'get'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.configs">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"*.execute.post.configs">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.patch.configs">>, ?MODULE, 'patch'),
+    _ = crossbar_bindings:bind(<<"*.execute.delete.configs">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -52,7 +52,7 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods(path_token()) -> http_methods() | [].
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
@@ -80,7 +80,7 @@ resource_exists(_) -> true.
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
--spec validate(#cb_context{}, path_token()) -> #cb_context{}.
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, Config) ->
     read(Config, Context);
 validate(#cb_context{req_verb = ?HTTP_PUT}=Context, Config) ->
@@ -100,8 +100,8 @@ validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Config) ->
 %% the resource into the resp_data, resp_headers, etc...
 %% @end
 %%--------------------------------------------------------------------
--spec get(#cb_context{}, path_token()) -> #cb_context{}.
-get(#cb_context{}=Context, _) ->
+-spec get(cb_context:context(), path_token()) -> cb_context:context().
+get(Context, _) ->
     Context.
 
 %%--------------------------------------------------------------------
@@ -110,8 +110,8 @@ get(#cb_context{}=Context, _) ->
 %% If the HTTP verib is PUT, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
--spec put(#cb_context{}, path_token()) -> #cb_context{}.
-put(#cb_context{}=Context, _) ->
+-spec put(cb_context:context(), path_token()) -> cb_context:context().
+put(Context, _) ->
     crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
@@ -121,8 +121,8 @@ put(#cb_context{}=Context, _) ->
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
--spec post(#cb_context{}, path_token()) -> #cb_context{}.
-post(#cb_context{}=Context, _) ->
+-spec post(cb_context:context(), path_token()) -> cb_context:context().
+post(Context, _) ->
     crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
@@ -132,8 +132,8 @@ post(#cb_context{}=Context, _) ->
 %% (after a merge).
 %% @end
 %%--------------------------------------------------------------------
--spec patch(#cb_context{}, path_token()) -> #cb_context{}.
-patch(#cb_context{}=Context, _) ->
+-spec patch(cb_context:context(), path_token()) -> cb_context:context().
+patch(Context, _) ->
     crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
@@ -142,8 +142,8 @@ patch(#cb_context{}=Context, _) ->
 %% If the HTTP verib is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
--spec delete(#cb_context{}, path_token()) -> #cb_context{}.
-delete(#cb_context{}=Context, _) ->
+-spec delete(cb_context:context(), path_token()) -> cb_context:context().
+delete(Context, _) ->
     crossbar_doc:delete(Context).
 
 %%--------------------------------------------------------------------
@@ -152,7 +152,7 @@ delete(#cb_context{}=Context, _) ->
 %% Create a new instance with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec create(ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec create(ne_binary(), cb_context:context()) -> cb_context:context().
 create(Config, #cb_context{req_data=JObj, db_name=Db}=Context) ->
     Id = <<(?WH_ACCOUNT_CONFIGS)/binary, Config/binary>>,
     case couch_mgr:lookup_doc_rev(Db, Id) of
@@ -168,7 +168,7 @@ create(Config, #cb_context{req_data=JObj, db_name=Db}=Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read(ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Config, Context) ->
     Id = <<(?WH_ACCOUNT_CONFIGS)/binary, Config/binary>>,
     crossbar_doc:load(Id, Context).
@@ -180,8 +180,8 @@ read(Config, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec update(ne_binary(), #cb_context{}) -> #cb_context{}.
-update(Config, #cb_context{}=Context) ->
+-spec update(ne_binary(), cb_context:context()) -> cb_context:context().
+update(Config, Context) ->
     Id = <<(?WH_ACCOUNT_CONFIGS)/binary, Config/binary>>,
     validate_request_data(Id, Context).
 
@@ -192,8 +192,8 @@ update(Config, #cb_context{}=Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec validate_patch(ne_binary(), #cb_context{}) -> #cb_context{}.
-validate_patch(Config, #cb_context{}=Context) ->
+-spec validate_patch(ne_binary(), cb_context:context()) -> cb_context:context().
+validate_patch(Config, Context) ->
     Id = <<(?WH_ACCOUNT_CONFIGS)/binary, Config/binary>>,
     crossbar_doc:patch_and_validate(Id, Context, fun validate_request_data/2).
 
@@ -203,7 +203,7 @@ validate_patch(Config, #cb_context{}=Context) ->
 %% Validates existing instance
 %% @end
 %%--------------------------------------------------------------------
--spec validate_request_data(ne_binary(), #cb_context{}) -> #cb_context{}.
-validate_request_data(Id, #cb_context{}=Context) ->
+-spec validate_request_data(ne_binary(), cb_context:context()) -> cb_context:context().
+validate_request_data(Id, Context) ->
     OnSuccess = fun(C) -> crossbar_doc:load_merge(Id, C) end,
     cb_context:validate_request_data(<<"configs">>, Context, OnSuccess).
