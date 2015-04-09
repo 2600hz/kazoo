@@ -122,7 +122,7 @@ feature(#wh_transaction{feature=Feature}) ->
 bookkeeper_info(#wh_transaction{bookkeeper_info=BookkeeperInfo}) ->
     BookkeeperInfo.
 
--spec metadata(transaction()) -> wh_json:object().
+-spec metadata(transaction()) -> api_object().
 metadata(#wh_transaction{metadata=MetaData}) ->
     MetaData.
 

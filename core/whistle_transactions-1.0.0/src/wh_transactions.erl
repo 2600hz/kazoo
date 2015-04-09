@@ -20,7 +20,7 @@
 -export([to_json/1]).
 -export([to_public_json/1]).
 
--include("../include/whistle_transactions.hrl").
+-include_lib("whistle_transactions/include/whistle_transactions.hrl").
 
 -type wh_transactions() :: wh_transaction:transactions().
 -export_type([wh_transactions/0]).
@@ -35,9 +35,7 @@
 call_charges(Ledger, CallId) ->
     call_charges(Ledger, CallId, 'true').
 
--spec call_charges(ne_binary(), ne_binary(), 'true') -> integer();
-                  (ne_binary(), ne_binary(), 'false') -> wh_transactions();
-                  (ne_binary(), ne_binary(), ne_binary()) -> integer().
+-spec call_charges(ne_binary(), ne_binary(), ne_binary() | boolean()) -> integer() | wh_transactions().
 call_charges(Ledger, CallId, 'true') ->
     LedgerDb = wh_util:format_account_id(Ledger, 'encoded'),
     ViewOptions = ['reduce'
@@ -74,8 +72,7 @@ call_charges(Ledger, CallId, 'false') ->
 call_charges(Ledger, CallId, Event) ->
     call_charges(Ledger, CallId, Event, 'true').
 
--spec call_charges(ne_binary(), ne_binary(), ne_binary(), 'true') -> integer();
-                  (ne_binary(), ne_binary(), ne_binary(), 'false') -> wh_transactions().
+-spec call_charges(ne_binary(), ne_binary(), ne_binary(), boolean()) -> integer() | wh_transactions().
 call_charges(Ledger, CallId, Event, 'true') ->
     LedgerDb = wh_util:format_account_id(Ledger, 'encoded'),
     ViewOptions = ['reduce'
