@@ -1,5 +1,5 @@
  %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% Fax Box API
@@ -152,14 +152,14 @@ validate_email_address(Context) ->
         'true' -> Context;
         'false' ->
             cb_context:add_validation_error(
-                <<"custom_smtp_email_address">>
-                ,<<"unique">>
-                ,wh_json:from_list([
-                    {<<"message">>, <<"email address must be unique">>}
-                    ,{<<"cause">>, Email}
+              <<"custom_smtp_email_address">>
+              ,<<"unique">>
+              ,wh_json:from_list(
+                 [{<<"message">>, <<"email address must be unique">>}
+                  ,{<<"cause">>, Email}
                  ])
-                ,Context
-            )
+              ,Context
+             )
     end.
 
 -spec validate_patch(cb_context:context()) -> cb_context:context().
