@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz
+%%% @copyright (C) 2011-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -32,7 +32,7 @@
 
 -export([handle_json_success/2]).
 -export([handle_couch_mgr_success/2
-        ,handle_couch_mgr_errors/3
+         ,handle_couch_mgr_errors/3
         ]).
 
 -export_type([view_options/0]).
@@ -220,19 +220,22 @@ merge(DataJObj, JObj, Context) ->
     PrivJObj = wh_json:private_fields(JObj),
     handle_couch_mgr_success(wh_json:merge_jobjs(PrivJObj, DataJObj), Context).
 
--spec patch_and_validate(ne_binary(), cb_context:context(), fun((ne_binary(), cb_context:context()) -> cb_context:context())) ->
-    cb_context:context().
+-type validate_fun() :: fun((ne_binary(), cb_context:context()) -> cb_context:context()).
+
+-spec patch_and_validate(ne_binary(), cb_context:context(), validate_fun()) ->
+                                cb_context:context().
 patch_and_validate(Id, Context, ValidateFun) ->
     Context1 = crossbar_doc:load(Id, Context),
     Context2 = case cb_context:resp_status(Context1) of
-        'success' ->
-            PubJObj = wh_doc:public_fields(cb_context:req_data(Context)),
-            PatchedJObj = wh_json:merge_jobjs(PubJObj, cb_context:doc(Context1)),
-            cb_context:set_req_data(Context, PatchedJObj);
-        _Status ->
-            Context1
-    end,
+                   'success' ->
+                       PubJObj = wh_doc:public_fields(cb_context:req_data(Context)),
+                       PatchedJObj = wh_json:merge_jobjs(PubJObj, cb_context:doc(Context1)),
+                       cb_context:set_req_data(Context, PatchedJObj);
+                   _Status ->
+                       Context1
+               end,
     ValidateFun(Id, Context2).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
