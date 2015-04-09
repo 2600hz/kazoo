@@ -41,14 +41,24 @@
                             {'error', ne_binary()}.
 -spec normalize_media(ne_binary(), ne_binary(), binary()) ->
                              normalized_media().
+-spec normalize_media(ne_binary(), ne_binary(), binary(), wh_proplist()) ->
+                             normalized_media().
 normalize_media(FromFormat, FromFormat, FileContents) ->
     {'ok', FileContents};
 normalize_media(FromFormat, ToFormat, FileContents) ->
+    normalize_media(FromFormat, ToFormat, FileContents, []).
+
+normalize_media(FromFormat, ToFormat, FileContents, Options) ->
     OldFlag = process_flag('trap_exit', 'true'),
 
+    FromArgs = props:get_value('from_args', Options, ?NORMALIZE_SOURCE_ARGS),
+    ToArgs = props:get_value('to_args', Options, ?NORMALIZE_DEST_ARGS),
+    ExtraArgs = props:get_value('extra_args', Options, ""),
+
     Command = iolist_to_binary([?NORMALIZE_EXE
-                                ," -t ", FromFormat, " ", ?NORMALIZE_SOURCE_ARGS, " - "
-                                ," -t ", ToFormat, " ", ?NORMALIZE_DEST_ARGS, " - "
+                                ," ", ExtraArgs
+                                ," -t ", FromFormat, " ", FromArgs, " - "
+                                ," -t ", ToFormat, " ", ToArgs, " - "
                                ]),
     PortOptions = ['binary'
                    ,'exit_status'
@@ -59,7 +69,7 @@ normalize_media(FromFormat, ToFormat, FileContents) ->
         try open_port({'spawn', wh_util:to_list(Command)}, PortOptions) of
             Port ->
                 lager:debug("opened port ~p to sox with '~s'", [Port, Command]),
-                normalize_media(FileContents, Port)
+                do_normalize_media(FileContents, Port, props:get_integer_value('timeout', Options, 20000))
         catch
             _E:_R ->
                 lager:debug("failed to open port with '~s': ~s: ~p", [Command, _E, _R]),
@@ -68,13 +78,13 @@ normalize_media(FromFormat, ToFormat, FileContents) ->
     process_flag('trap_exit', OldFlag),
     Response.
 
--spec normalize_media(binary(), port()) ->
+-spec do_normalize_media(binary(), port(), pos_integer()) ->
                              normalized_media().
-normalize_media(FileContents, Port) ->
+do_normalize_media(FileContents, Port, Timeout) ->
     try erlang:port_command(Port, FileContents) of
         'true' ->
             lager:debug("sent data to port"),
-            wait_for_results(Port)
+            wait_for_results(Port, Timeout)
     catch
         _E:_R ->
             lager:debug("failed to send data to port: ~s: ~p", [_E, _R]),
@@ -82,14 +92,14 @@ normalize_media(FileContents, Port) ->
             {'error', <<"failed to communicate with conversion utility">>}
     end.
 
--spec wait_for_results(port()) ->  normalized_media().
--spec wait_for_results(port(), iolist()) -> normalized_media().
-wait_for_results(Port) ->
-    wait_for_results(Port, []).
-wait_for_results(Port, Response) ->
+-spec wait_for_results(port(), pos_integer()) ->  normalized_media().
+-spec wait_for_results(port(), pos_integer(), iolist()) -> normalized_media().
+wait_for_results(Port, Timeout) ->
+    wait_for_results(Port, Timeout, []).
+wait_for_results(Port, Timeout, Response) ->
     receive
         {Port, {'data', Msg}} ->
-            wait_for_results(Port, [Response | [Msg]]);
+            wait_for_results(Port, Timeout, [Response | [Msg]]);
         {Port, {'exit_status', 0}} ->
             lager:debug("process exited successfully"),
             {'ok', Response};
@@ -99,7 +109,7 @@ wait_for_results(Port, Response) ->
         {'EXIT', Port, _Reason} ->
             lager:debug("port closed unexpectedly: ~p", [_Reason]),
             {'error', iolist_to_binary(Response)}
-    after 20000 ->
+    after Timeout ->
             lager:debug("timeout, sending error response: ~p", [Response]),
             catch erlang:port_close(Port),
             {'error', iolist_to_binary(Response)}
