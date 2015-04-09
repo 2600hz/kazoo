@@ -249,71 +249,83 @@ all_true(Fs) ->
                    (_, Acc) -> Acc
                 end, 'true', Fs).
 
+-spec is_valid_mode(cb_context:context(), wh_json:object()) ->
+                           'true' |
+                           {'false', cb_context:context()}.
 is_valid_mode(Context, Data) ->
     Mode = wh_json:get_value(<<"mode">>, Data, <<"listen">>),
-    case wapi_resource:is_valid_mode() of
+    case wapi_resource:is_valid_mode(Mode) of
         'true' -> 'true';
         'false' ->
             {'false'
              ,cb_context:add_validation_error(
-                 <<"mode">>
-                 ,<<"enum">>
-                 ,wh_json:from_list([
-                    {<<"message">>, <<"Value not found in enumerated list of values">>}
+                <<"mode">>
+                ,<<"enum">>
+                ,wh_json:from_list(
+                   [{<<"message">>, <<"Value not found in enumerated list of values">>}
                     ,{<<"cause">>, Mode}
-                 ])
-                 ,Context
-              )
+                   ])
+                ,Context
+               )
             }
     end.
 
+-spec is_valid_call(cb_context:context(), wh_json:object()) ->
+                           'true' |
+                           {'false', cb_context:context()}.
 is_valid_call(Context, Data) ->
     case wh_json:get_binary_value(<<"call_id">>, Data) of
         'undefined' ->
             {'false'
              ,cb_context:add_validation_error(
-                  <<"call_id">>
-                  ,<<"required">>
-                  ,wh_json:from_list([
-                       {<<"message">>, <<"Field is required but missing">>}
-                   ])
-                  ,Context
-              )
+                <<"call_id">>
+                ,<<"required">>
+                ,wh_json:from_list(
+                   [{<<"message">>, <<"Field is required but missing">>}]
+                  )
+                ,Context
+               )
             };
         CallId ->
-            case whapps_call_command:b_channel_status(CallId) of
-                {'error', _E} ->
-                    lager:debug("is not valid call: ~p", [_E]),
-                    {'false'
-                     ,cb_context:add_validation_error(
-                          <<"call_id">>
-                          ,<<"not_found">>
-                          ,wh_json:from_list([
-                               {<<"message">>, <<"Call was not found">>}
-                               ,{<<"cause">>, CallId}
-                           ])
-                          ,Context
-                      )
-                    };
-                {'ok', _} -> 'true'
-            end
+            is_active_call(Context, CallId)
     end.
 
-is_valid_queue(Context, ?NE_BINARY = QueueId) ->
+-spec is_active_call(cb_context:context(), ne_binary()) ->
+                            'true' |
+                            {'false', cb_context:context()}.
+is_active_call(Context, CallId) ->
+    case whapps_call_command:b_channel_status(CallId) of
+        {'error', _E} ->
+            lager:debug("is not valid call: ~p", [_E]),
+            {'false'
+             ,cb_context:add_validation_error(
+                <<"call_id">>
+                ,<<"not_found">>
+                ,wh_json:from_list(
+                   [{<<"message">>, <<"Call was not found">>}
+                    ,{<<"cause">>, CallId}
+                   ])
+                ,Context
+               )
+            };
+        {'ok', _} -> 'true'
+    end.
+
+is_valid_queue(Context, <<_/binary>> = QueueId) ->
     AcctDb = cb_context:account_db(Context),
     case couch_mgr:open_cache_doc(AcctDb, QueueId) of
         {'ok', QueueJObj} -> is_valid_queue(Context, QueueJObj);
         {'error', _} ->
             {'false'
              ,cb_context:add_validation_error(
-                  <<"queue_id">>
-                  ,<<"not_found">>
-                  ,wh_json:from_list([
-                       {<<"message">>, <<"Queue was not found">>}
-                       ,{<<"cause">>, QueueId}
-                  ])
-                  ,Context
-              )
+                <<"queue_id">>
+                ,<<"not_found">>
+                ,wh_json:from_list(
+                   [{<<"message">>, <<"Queue was not found">>}
+                    ,{<<"cause">>, QueueId}
+                   ])
+                ,Context
+               )
             }
     end;
 is_valid_queue(Context, QueueJObj) ->
@@ -322,13 +334,11 @@ is_valid_queue(Context, QueueJObj) ->
         _ ->
             {'false'
              ,cb_context:add_validation_error(
-                  <<"queue_id">>
-                  ,<<"type">>
-                  ,wh_json:from_list([
-                       {<<"message">>, <<"Id did not represent a queue">>}
-                   ])
-                  ,Context
-              )
+                <<"queue_id">>
+                ,<<"type">>
+                ,wh_json:from_list([{<<"message">>, <<"Id did not represent a queue">>}])
+                ,Context
+               )
             }
     end.
 
@@ -340,30 +350,31 @@ is_valid_endpoint(Context, DataJObj) ->
         {'error', _} ->
             {'false'
              ,cb_context:add_validation_error(
-                  <<"id">>
-                  ,<<"not_found">>
-                  ,wh_json:from_list([
-                       {<<"message">>, <<"Id was not found">>}
-                       ,{<<"cause">>, Id}
+                <<"id">>
+                ,<<"not_found">>
+                ,wh_json:from_list(
+                   [{<<"message">>, <<"Id was not found">>}
+                    ,{<<"cause">>, Id}
                    ])
-                  ,Context
-              )
+                ,Context
+               )
             }
     end.
+
 is_valid_endpoint_type(Context, CallMeJObj) ->
     case wh_json:get_value(<<"pvt_type">>, CallMeJObj) of
         <<"device">> -> 'true';
         Type ->
             {'false'
              ,cb_context:add_validation_error(
-                  <<"id">>
-                  ,<<"type">>
-                  ,wh_json:from_list([
-                       {<<"message">>, <<"Id did not represent a valid endpoint">>}
-                       ,{<<"cause">>, Type}
+                <<"id">>
+                ,<<"type">>
+                ,wh_json:from_list(
+                   [{<<"message">>, <<"Id did not represent a valid endpoint">>}
+                    ,{<<"cause">>, Type}
                    ])
-                  ,Context
-              )
+                ,Context
+               )
             }
     end.
 
@@ -416,10 +427,10 @@ eavesdrop_req(Context, Prop) ->
         {'ok', Resp} -> crossbar_util:response(filter_response_fields(Resp), Context);
         {'error', 'timeout'} ->
             cb_context:add_system_error(
-                'timeout'
-                ,wh_json:from_list([{<<"cause">>, <<"eavesdrop failed to start">>}])
-                ,Context
-            );
+              'timeout'
+              ,wh_json:from_list([{<<"cause">>, <<"eavesdrop failed to start">>}])
+              ,Context
+             );
         {'error', E} -> crossbar_util:response('error', <<"error">>, 500, E, Context)
     end.
 

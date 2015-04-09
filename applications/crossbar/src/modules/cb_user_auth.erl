@@ -364,18 +364,6 @@ find_account('undefined', 'undefined', 'undefined', Context) ->
     {'error', Context};
 find_account('undefined', 'undefined', AccountName, Context) ->
     case whapps_util:get_accounts_by_name(AccountName) of
-        {'ok', 'undefined'} ->
-            lager:debug("failed to find account ~s by name", [AccountName]),
-            C = cb_context:add_validation_error(
-                    <<"account_name">>
-                    ,<<"not_found">>
-                    ,wh_json:from_list([
-                        {<<"message">>, <<"The provided account name could not be found">>}
-                        ,{<<"cause">>, AccountName}
-                     ])
-                    ,Context
-                ),
-            find_account('undefined', 'undefined', 'undefined', C);
         {'ok', AccountDb} ->
             lager:debug("found account by name '~s': ~s", [AccountName, AccountDb]),
             {'ok', AccountDb};
@@ -384,14 +372,14 @@ find_account('undefined', 'undefined', AccountName, Context) ->
             {'ok', AccountDbs};
         {'error', _} ->
             C = cb_context:add_validation_error(
-                    <<"account_name">>
-                    ,<<"not_found">>
-                    ,wh_json:from_list([
-                        {<<"message">>, <<"The provided account name could not be found">>}
-                        ,{<<"cause">>, AccountName}
+                  <<"account_name">>
+                  ,<<"not_found">>
+                  ,wh_json:from_list(
+                     [{<<"message">>, <<"The provided account name could not be found">>}
+                      ,{<<"cause">>, AccountName}
                      ])
-                    ,Context
-                ),
+                  ,Context
+                 ),
             find_account('undefined', 'undefined', 'undefined', C)
     end;
 find_account('undefined', AccountRealm, AccountName, Context) ->
@@ -399,14 +387,14 @@ find_account('undefined', AccountRealm, AccountName, Context) ->
         {'ok', 'undefined'} ->
             lager:debug("failed to find account ~s by name", [AccountName]),
             C = cb_context:add_validation_error(
-                    <<"account_name">>
-                    ,<<"not_found">>
-                    ,wh_json:from_list([
-                        {<<"message">>, <<"The provided account name could not be found">>}
-                        ,{<<"cause">>, AccountName}
+                  <<"account_name">>
+                  ,<<"not_found">>
+                  ,wh_json:from_list(
+                     [{<<"message">>, <<"The provided account name could not be found">>}
+                      ,{<<"cause">>, AccountName}
                      ])
-                    ,Context
-                ),
+                  ,Context
+                 ),
             find_account('undefined', 'undefined', 'undefined', C);
         {'ok', AccountDb} ->
             lager:debug("found account by realm '~s': ~s", [AccountRealm, AccountDb]),
@@ -416,14 +404,14 @@ find_account('undefined', AccountRealm, AccountName, Context) ->
             {'ok', AccountDbs};
         {'error', _} ->
             C = cb_context:add_validation_error(
-                    <<"account_realm">>
-                    ,<<"not_found">>
-                    ,wh_json:from_list([
-                        {<<"message">>, <<"The provided account realm could not be found">>}
-                        ,{<<"cause">>, AccountRealm}
+                  <<"account_realm">>
+                  ,<<"not_found">>
+                  ,wh_json:from_list(
+                     [{<<"message">>, <<"The provided account realm could not be found">>}
+                      ,{<<"cause">>, AccountRealm}
                      ])
-                    ,Context
-                ),
+                  ,Context
+                 ),
             find_account('undefined', 'undefined', AccountName, C)
     end;
 find_account(PhoneNumber, AccountRealm, AccountName, Context) ->
@@ -434,14 +422,14 @@ find_account(PhoneNumber, AccountRealm, AccountName, Context) ->
             {'ok', AccountDb};
         {'error', _} ->
             C = cb_context:add_validation_error(
-                    <<"phone_number">>
-                    ,<<"not_found">>
-                    ,wh_json:from_list([
-                        {<<"message">>, <<"The provided phone number could not be found">>}
-                        ,{<<"cause">>, PhoneNumber}
+                  <<"phone_number">>
+                  ,<<"not_found">>
+                  ,wh_json:from_list(
+                     [{<<"message">>, <<"The provided phone number could not be found">>}
+                      ,{<<"cause">>, PhoneNumber}
                      ])
-                    ,Context
-                ),
+                  ,Context
+                 ),
             find_account('undefined', AccountRealm, AccountName, C)
     end.
 

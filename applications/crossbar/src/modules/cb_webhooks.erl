@@ -266,11 +266,11 @@ summary_attempts(Context, <<_/binary>> = HookId) ->
                   ],
     summary_attempts_fetch(Context, ViewOptions, ?ATTEMPTS_BY_HOOK).
 
--spec get_summary_start_key(cb_context:context()) -> ne_binary() | wh_json:object().
+-spec get_summary_start_key(cb_context:context()) -> ne_binary() | integer().
 get_summary_start_key(Context) ->
     get_start_key(Context, 0, fun wh_util:identity/1).
 
--spec get_attempts_start_key(cb_context:context()) -> integer() | wh_json:object().
+-spec get_attempts_start_key(cb_context:context()) -> integer() | ?EMPTY_JSON_OBJECT.
 get_attempts_start_key(Context) ->
     get_start_key(Context, wh_json:new(), fun wh_util:to_integer/1).
 

@@ -259,10 +259,10 @@ import_missing_data(RemoteData) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec import_missing_account(api_binary(), api_object()) -> boolean().
-import_missing_account('undefined', _) ->
+import_missing_account('undefined', _Account) ->
     lager:debug("shared auth reply did not define an account id"),
     'false';
-import_missing_account(_, 'undefined') ->
+import_missing_account(_AccountId, 'undefined') ->
     lager:debug("shared auth reply did not define an account definition"),
     'false';
 import_missing_account(AccountId, Account) ->

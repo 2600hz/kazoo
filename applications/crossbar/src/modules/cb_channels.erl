@@ -153,8 +153,8 @@ read(Context, CallId) ->
                 Channel ->
                     crossbar_util:response(normalize_channel(Channel), Context)
             end;
-        {'returned', JObj} ->
-            lager:debug("return: ~p", [JObj]),
+        {'returned', JObj, _BR} ->
+            lager:debug("return: ~p", [_BR]),
             crossbar_util:response(JObj, Context);
         {'timeout', _Resp} ->
             lager:debug("timeout: ~p", [_Resp]),
