@@ -131,8 +131,8 @@
         }
       }
     },
-    "disable_call_waiting":{
-      "$ref":"call_waiting_description"
+    "call_waiting":{
+      "$ref":"call_waiting"
     },
     "ringtones": {
       "type": "object",
