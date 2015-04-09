@@ -362,6 +362,9 @@ route_req(CallId, FetchId, Props, Node) ->
      ,{<<"From-Network-Addr">>, props:get_first_defined([<<"variable_sip_h_X-AUTH-IP">>
                                                          ,<<"variable_sip_received_ip">>
                                                         ], Props)}
+     ,{<<"From-Network-Port">>, props:get_first_defined([<<"variable_sip_h_X-AUTH-PORT">>
+                                                         ,<<"variable_sip_received_port">>
+                                                        ], Props)}
      ,{<<"User-Agent">>, props:get_first_defined([<<"variable_sip_user_agent">>
                                                   ,<<"sip_user_agent">>
                                                  ], Props)}

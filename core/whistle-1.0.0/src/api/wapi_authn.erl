@@ -34,7 +34,7 @@
                             ,<<"Auth-User">>, <<"Auth-Realm">>
                            ]).
 -define(OPTIONAL_AUTHN_REQ_HEADERS, [<<"Method">>, <<"Switch-Hostname">>
-                                     ,<<"Orig-IP">>, <<"Call-ID">>
+                                     ,<<"Orig-IP">>, <<"Orig-Port">>, <<"Call-ID">>
                                      ,<<"Auth-Nonce">>, <<"Auth-Response">>
                                      ,<<"User-Agent">>, <<"Expires">>
                                      ,<<"Custom-SIP-Headers">>
@@ -45,6 +45,7 @@
 -define(AUTHN_REQ_TYPES, [{<<"To">>, fun is_binary/1}
                           ,{<<"From">>, fun is_binary/1}
                           ,{<<"Orig-IP">>, fun is_binary/1}
+                          ,{<<"Orig-Port">>, fun is_binary/1}
                           ,{<<"Auth-User">>, fun is_binary/1}
                           ,{<<"Auth-Realm">>, fun is_binary/1}
                           ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
