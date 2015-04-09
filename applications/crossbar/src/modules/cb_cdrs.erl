@@ -30,6 +30,44 @@
 -define(CB_LIST_BY_USER, <<"cdrs/listing_by_owner">>).
 -define(CB_LIST, <<"cdrs/crossbar_listing">>).
 
+-define(COLUMNS
+        ,[{<<"id">>, fun col_id/2}
+          ,{<<"call_id">>, fun col_call_id/2}
+          ,{<<"caller_id_number">>, fun col_caller_id_number/2}
+          ,{<<"caller_id_name">>, fun col_caller_id_name/2}
+          ,{<<"callee_id_number">>, fun col_callee_id_number/2}
+          ,{<<"callee_id_name">>, fun col_callee_id_name/2}
+          ,{<<"duration_seconds">>, fun col_duration_seconds/2}
+          ,{<<"billing_seconds">>, fun col_billing_seconds/2}
+          ,{<<"timestamp">>, fun col_timestamp/2}
+          ,{<<"hangup_cause">>, fun col_hangup_cause/2}
+          ,{<<"other_leg_call_id">>, fun col_other_leg_call_id/2}
+          ,{<<"owner_id">>, fun col_owner_id/2}
+          ,{<<"to">>, fun col_to/2}
+          ,{<<"from">>, fun col_from/2}
+          ,{<<"direction">>, fun col_call_direction/2}
+          ,{<<"request">>, fun col_request/2}
+          ,{<<"authorizing_id">>, fun col_authorizing_id/2}
+          ,{<<"cost">>, fun col_customer_cost/2}
+          %% New fields
+          ,{<<"dialed_number">>, fun col_dialed_number/2}
+          ,{<<"calling_from">>, fun col_calling_from/2}
+          ,{<<"datetime">>, fun col_pretty_print/2}
+          ,{<<"unix_timestamp">>, fun col_unix_timestamp/2}
+          ,{<<"rfc_1036">>, fun col_rfc1036/2}
+          ,{<<"iso_8601">>, fun col_iso8601/2}
+          ,{<<"call_type">>, fun col_account_call_type/2}
+          ,{<<"rate">>, fun col_rate/2}
+          ,{<<"rate_name">>, fun col_rate_name/2}
+          ,{<<"bridge_id">>, fun col_bridge_id/2}
+          ,{<<"recording_url">>, fun col_recording_url/2}
+         ]).
+
+-define(COLUMNS_RESELLER
+        ,[{<<"reseller_cost">>, fun col_reseller_cost/2}
+          ,{<<"reseller_call_type">>, fun col_reseller_call_type/2}
+         ]).
+
 -type payload() :: {cowboy_req:req(), cb_context:context()}.
 
 %%%===================================================================
@@ -426,113 +464,73 @@ normalize_and_send('csv', [JObj|JObjs], {Req, Context}) ->
 normalize_cdr(JObj, Context) ->
     Duration = wh_json:get_integer_value(<<"duration_seconds">>, JObj, 0),
     Timestamp = wh_json:get_integer_value(<<"timestamp">>, JObj, 0) - Duration,
-    maybe_reseller_cdr(
-      wh_json:from_list([{<<"id">>, wh_json:get_value(<<"_id">>, JObj, <<>>)}
-                         ,{<<"call_id">>, wh_json:get_value(<<"call_id">>, JObj, <<>>)}
-                         ,{<<"caller_id_number">>, wh_json:get_value(<<"caller_id_number">>, JObj, <<>>)}
-                         ,{<<"caller_id_name">>, wh_json:get_value(<<"caller_id_name">>, JObj, <<>>)}
-                         ,{<<"callee_id_number">>, wh_json:get_value(<<"callee_id_number">>, JObj, <<>>)}
-                         ,{<<"callee_id_name">>, wh_json:get_value(<<"callee_id_name">>, JObj, <<>>)}
-                         ,{<<"duration_seconds">>, wh_json:get_value(<<"duration_seconds">>, JObj, <<>>)}
-                         ,{<<"billing_seconds">>, wh_json:get_value(<<"billing_seconds">>, JObj, <<>>)}
-                         ,{<<"timestamp">>, Timestamp}
-                         ,{<<"hangup_cause">>, wh_json:get_value(<<"hangup_cause">>, JObj, <<>>)}
-                         ,{<<"other_leg_call_id">>, wh_json:get_value(<<"other_leg_call_id">>, JObj, <<>>)}
-                         ,{<<"owner_id">>, wh_json:get_value([<<"custom_channel_vars">>, <<"owner_id">>], JObj, <<>>)}
-                         ,{<<"to">>, wh_json:get_value(<<"to">>, JObj, <<>>)}
-                         ,{<<"from">>, wh_json:get_value(<<"from">>, JObj, <<>>)}
-                         ,{<<"direction">>, wh_json:get_value(<<"call_direction">>, JObj, <<>>)}
-                         ,{<<"request">>, wh_json:get_value(<<"request">>, JObj, <<>>)}
-                         ,{<<"authorizing_id">>, wh_json:get_value([<<"custom_channel_vars">>, <<"authorizing_id">>], JObj, <<>>)}
-                         ,{<<"cost">>, customer_cost(JObj)}
-                         %% New fields
-                         ,{<<"dialed_number">>, dialed_number(JObj)}
-                         ,{<<"calling_from">>, calling_from(JObj)}
-                         ,{<<"datetime">>, pretty_print_datetime(Timestamp)}
-                         ,{<<"unix_timestamp">>, wh_util:gregorian_seconds_to_unix_seconds(Timestamp)}
-                         ,{<<"call_type">>, wh_json:get_value([<<"custom_channel_vars">>, <<"account_billing">>], JObj, <<>>)}
-                         ,{<<"rate">>, wht_util:units_to_dollars(wh_json:get_value([<<"custom_channel_vars">>, <<"rate">>], JObj, 0))}
-                         ,{<<"rate_name">>, wh_json:get_value([<<"custom_channel_vars">>, <<"rate_name">>], JObj, <<>>)}
-                         ,{<<"bridge_id">>, wh_json:get_value([<<"custom_channel_vars">>, <<"bridge_id">>], JObj, <<>>)}
-                         ,{<<"recording_url">>, wh_json:get_value([<<"custom_channel_vars">>, <<"recording_url">>], JObj, <<>>)}
-                        ])
-      ,Context
+    wh_json:from_list(
+      [{K, F(JObj, Timestamp)} || {K, F} <- csv_rows(Context)]
      ).
 
 -spec normalize_cdr_to_csv(wh_json:object(), cb_context:context()) -> ne_binary().
 normalize_cdr_to_csv(JObj, Context) ->
     Timestamp = wh_json:get_integer_value(<<"timestamp">>, JObj, 0),
-    CSV = wh_util:join_binary([wh_json:get_value(<<"_id">>, JObj, <<>>)
-                               ,wh_json:get_value(<<"call_id">>, JObj, <<>>)
-                               ,wh_json:get_value(<<"caller_id_number">>, JObj, <<>>)
-                               ,wh_json:get_value(<<"caller_id_name">>, JObj, <<>>)
-                               ,wh_json:get_value(<<"callee_id_number">>, JObj, <<>>)
-                               ,wh_json:get_value(<<"callee_id_name">>, JObj, <<>>)
-                               ,wh_json:get_value(<<"duration_seconds">>, JObj, <<>>)
-                               ,wh_json:get_value(<<"billing_seconds">>, JObj, <<>>)
-                               ,wh_util:to_binary(Timestamp)
-                               ,wh_json:get_value(<<"hangup_cause">>, JObj, <<>>)
-                               ,wh_json:get_value(<<"other_leg_call_id">>, JObj, <<>>)
-                               ,wh_json:get_value([<<"custom_channel_vars">>, <<"owner_id">>], JObj, <<>>)
-                               ,wh_json:get_value(<<"to">>, JObj, <<>>)
-                               ,wh_json:get_value(<<"from">>, JObj, <<>>)
-                               ,wh_json:get_value(<<"call_direction">>, JObj, <<>>)
-                               ,wh_json:get_value(<<"request">>, JObj, <<>>)
-                               ,wh_json:get_value([<<"custom_channel_vars">>, <<"authorizing_id">>], JObj, <<>>)
-                               ,wh_util:to_binary(customer_cost(JObj))
-                               %% New fields
-                               ,dialed_number(JObj)
-                               ,calling_from(JObj)
-                               ,pretty_print_datetime(Timestamp)
-                               ,wh_util:to_binary(wh_util:gregorian_seconds_to_unix_seconds(Timestamp))
-                               ,wh_json:get_value([<<"custom_channel_vars">>, <<"account_billing">>], JObj, <<>>)
-                               ,wh_util:to_binary(wht_util:units_to_dollars(wh_json:get_value([<<"custom_channel_vars">>, <<"rate">>], JObj, 0)))
-                               ,wh_json:get_value([<<"custom_channel_vars">>, <<"rate_name">>], JObj, <<>>)
-                               ,wh_json:get_value([<<"custom_channel_vars">>, <<"bridge_id">>], JObj, <<>>)
-                              ], <<",">>),
-    case cb_context:fetch(Context, 'is_reseller') of
-        'false' -> <<CSV/binary, "\r">>;
-        'true' -> <<CSV/binary
-                    ,(wh_util:to_binary(reseller_cost(JObj)))/binary, ","
-                    ,(wh_json:get_value([<<"custom_channel_vars">>, <<"reseller_billing">>], JObj, <<>>))/binary
-                    ,"\r"
-                  >>
-    end.
+
+    CSV = wh_util:join_binary(
+            [F(JObj, Timestamp) || {_, F} <- csv_rows(Context)]
+            ,<<",">>
+           ),
+    <<CSV/binary, "\r">>.
 
 -spec normalize_cdr_to_csv_header(wh_json:object(), cb_context:context()) -> ne_binary().
 normalize_cdr_to_csv_header(_JObj, Context) ->
-    CSV = <<"id,"
-            ,"call_id,"
-            ,"caller_id_number,"
-            ,"caller_id_name,"
-            ,"callee_id_number,"
-            ,"callee_id_name,"
-            ,"duration_seconds,"
-            ,"billing_seconds,"
-            ,"timestamp,"
-            ,"hangup_cause,"
-            ,"other_leg_call_id,"
-            ,"owner_id,"
-            ,"to,"
-            ,"from,"
-            ,"direction,"
-            ,"request,"
-            ,"authorizing_id,"
-            ,"cost,"
-            % New fields
-            ,"dialed_number,"
-            ,"calling_from,"
-            ,"datetime,"
-            ,"unix_timestamp,"
-            ,"call_type,"
-            ,"rate,"
-            ,"rate_name"
-            ,"bridge_id"
-          >>,
+    CSV =
+        wh_util:join_binary(
+          [K || {K, _Fun} <- csv_rows(Context)]
+          ,<<",">>
+         ),
+
+    <<CSV/binary, "\r">>.
+
+-type csv_column_fun() :: fun((wh_json:object(), gregorian_seconds()) -> ne_binary()).
+
+-spec csv_rows(cb_context:context()) -> [{ne_binary(), csv_column_fun()}].
+csv_rows(Context) ->
     case cb_context:fetch(Context, 'is_reseller') of
-        'false' -> <<CSV/binary, "\r">>;
-        'true' -> <<CSV/binary, ",reseller_cost,reseller_call_type\r">>
+        'false' -> ?COLUMNS;
+        'true' -> ?COLUMNS ++ ?COLUMNS_RESELLER
     end.
+
+%% see csv_column_fun() for specs for each function here
+col_id(JObj, _Timestamp) -> wh_doc:id(JObj, <<>>).
+col_call_id(JObj, _Timestamp) -> wh_json:get_value(<<"call_id">>, JObj, <<>>).
+col_caller_id_number(JObj, _Timestamp) -> wh_json:get_value(<<"caller_id_number">>, JObj, <<>>).
+col_caller_id_name(JObj, _Timestamp) -> wh_json:get_value(<<"caller_id_name">>, JObj, <<>>).
+col_callee_id_number(JObj, _Timestamp) -> wh_json:get_value(<<"callee_id_number">>, JObj, <<>>).
+col_callee_id_name(JObj, _Timestamp) -> wh_json:get_value(<<"callee_id_name">>, JObj, <<>>).
+col_duration_seconds(JObj, _Timestamp) -> wh_json:get_value(<<"duration_seconds">>, JObj, <<>>).
+col_billing_seconds(JObj, _Timestamp) -> wh_json:get_value(<<"billing_seconds">>, JObj, <<>>).
+col_timestamp(_JObj, Timestamp) -> wh_util:to_binary(Timestamp).
+col_hangup_cause(JObj, _Timestamp) -> wh_json:get_value(<<"hangup_cause">>, JObj, <<>>).
+col_other_leg_call_id(JObj, _Timestamp) -> wh_json:get_value(<<"other_leg_call_id">>, JObj, <<>>).
+col_owner_id(JObj, _Timestamp) -> wh_json:get_value([<<"custom_channel_vars">>, <<"owner_id">>], JObj, <<>>).
+col_to(JObj, _Timestamp) -> wh_json:get_value(<<"to">>, JObj, <<>>).
+col_from(JObj, _Timestamp) -> wh_json:get_value(<<"from">>, JObj, <<>>).
+col_call_direction(JObj, _Timestamp) -> wh_json:get_value(<<"call_direction">>, JObj, <<>>).
+col_request(JObj, _Timestamp) -> wh_json:get_value(<<"request">>, JObj, <<>>).
+col_authorizing_id(JObj, _Timestamp) -> wh_json:get_value([<<"custom_channel_vars">>, <<"authorizing_id">>], JObj, <<>>).
+col_customer_cost(JObj, _Timestamp) -> wh_util:to_binary(customer_cost(JObj)).
+
+col_dialed_number(JObj, _Timestamp) -> dialed_number(JObj).
+col_calling_from(JObj, _Timestamp) -> calling_from(JObj).
+col_pretty_print(_JObj, Timestamp) -> pretty_print_datetime(Timestamp).
+col_unix_timestamp(_JObj, Timestamp) -> wh_util:to_binary(wh_util:gregorian_seconds_to_unix_seconds(Timestamp)).
+col_rfc1036(_JObj, Timestamp) -> list_to_binary([$", wh_util:rfc1036(Timestamp), $"]).
+col_iso8601(_JObj, Timestamp) -> list_to_binary([$", wh_util:iso8601(Timestamp), $"]).
+col_account_call_type(JObj, _Timestamp) -> wh_json:get_value([<<"custom_channel_vars">>, <<"account_billing">>], JObj, <<>>).
+col_rate(JObj, _Timestamp) -> wh_util:to_binary(wht_util:units_to_dollars(wh_json:get_value([<<"custom_channel_vars">>, <<"rate">>], JObj, 0))).
+col_rate_name(JObj, _Timestamp) -> wh_json:get_value([<<"custom_channel_vars">>, <<"rate_name">>], JObj, <<>>).
+col_bridge_id(JObj, _Timestamp) -> wh_json:get_value([<<"custom_channel_vars">>, <<"bridge_id">>], JObj, <<>>).
+col_recording_url(JObj, _Timestamp) -> wh_json:get_value([<<"custom_channel_vars">>, <<"recording_url">>], JObj, <<>>).
+
+col_reseller_cost(JObj, _Timestamp) -> wh_util:to_binary(reseller_cost(JObj)).
+col_reseller_call_type(JObj, _Timestamp) -> wh_json:get_value([<<"custom_channel_vars">>, <<"reseller_billing">>], JObj, <<>>).
 
 -spec pretty_print_datetime(wh_datetime() | integer()) -> ne_binary().
 pretty_print_datetime(Timestamp) when is_integer(Timestamp) ->
@@ -562,19 +560,6 @@ calling_from(JObj) ->
             Num
     end.
 
--spec maybe_reseller_cdr(wh_json:object(), cb_context:context()) -> wh_json:object().
-maybe_reseller_cdr(JObj, Context) ->
-    case cb_context:fetch(Context, 'is_reseller') of
-        'false' -> JObj;
-        'true' -> reseller_cdr(JObj)
-    end.
-
--spec reseller_cdr(wh_json:object()) -> wh_json:object().
-reseller_cdr(JObj) ->
-    wh_json:set_values([{<<"reseller_cost">>, reseller_cost(JObj)}
-                        ,{<<"reseller_call_type">>, wh_json:get_value([<<"custom_channel_vars">>, <<"reseller_billing">>], JObj, <<>>)}
-                       ], JObj).
-
 -spec customer_cost(wh_json:object()) -> pos_integer().
 customer_cost(JObj) ->
     case wh_json:get_value([<<"custom_channel_vars">>, <<"account_billing">>], JObj) of
@@ -596,11 +581,13 @@ reseller_cost(JObj) ->
 %%--------------------------------------------------------------------
 -spec remove_qs_keys(cb_context:context()) -> cb_context:context().
 remove_qs_keys(Context) ->
-    cb_context:set_query_string(Context, wh_json:delete_keys([<<"created_from">>
-                                                              ,<<"created_to">>
-                                                             ]
-                                                             ,cb_context:query_string(Context)
-                                                            )).
+    cb_context:set_query_string(Context
+                                ,wh_json:delete_keys([<<"created_from">>
+                                                      ,<<"created_to">>
+                                                     ]
+                                                     ,cb_context:query_string(Context)
+                                                    )
+                               ).
 
 %%--------------------------------------------------------------------
 %% @private

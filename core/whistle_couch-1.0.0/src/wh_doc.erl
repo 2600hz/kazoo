@@ -24,7 +24,7 @@
          ,attachment_property/3
          ,delete_attachments/1, delete_attachment/2
          ,maybe_remove_attachments/1, maybe_remove_attachments/2
-         ,id/1
+         ,id/1, id/2
          ,revision/1, set_revision/2, delete_revision/1
          ,created/1
          ,modified/1
@@ -238,8 +238,12 @@ delete_revision(JObj) ->
     wh_json:delete_key(<<"_rev">>, JObj).
 
 -spec id(wh_json:object()) -> api_binary().
+-spec id(wh_json:object(), Default) -> ne_binary() | Default.
 id(JObj) ->
-    wh_json:get_value(<<"_id">>, JObj).
+    id(JObj, 'undefined').
+
+id(JObj, Default) ->
+    wh_json:get_value(<<"_id">>, JObj, Default).
 
 -spec set_soft_deleted(wh_json:object(), boolean()) -> wh_json:object().
 set_soft_deleted(JObj, IsSoftDeleted) ->
