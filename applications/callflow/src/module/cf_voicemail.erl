@@ -613,50 +613,50 @@ message_count_prompts(0, 0) ->
     [{'prompt', <<"vm-no_messages">>}];
 message_count_prompts(1, 0) ->
     [{'prompt', <<"vm-you_have">>}
-     ,{'say', <<"1">>}
+     ,{'say', <<"1">>, <<"messages">>}
      ,{'prompt', <<"vm-new_message">>}
     ];
 message_count_prompts(0, 1) ->
     [{'prompt', <<"vm-you_have">>}
-     ,{'say', <<"1">>}
+     ,{'say', <<"1">>, <<"messages">>}
      ,{'prompt', <<"vm-saved_message">>}
     ];
 message_count_prompts(1, 1) ->
     [{'prompt', <<"vm-you_have">>}
-     ,{'say', <<"1">>}
+     ,{'say', <<"1">>, <<"messages">>}
      ,{'prompt', <<"vm-new_and">>}
-     ,{'say', <<"1">>}
+     ,{'say', <<"1">>, <<"messages">>}
      ,{'prompt', <<"vm-saved_message">>}
     ];
 message_count_prompts(New, 0) ->
     [{'prompt', <<"vm-you_have">>}
-     ,{'say', wh_util:to_binary(New), <<"number">>}
+     ,{'say', wh_util:to_binary(New), <<"messages">>}
      ,{'prompt', <<"vm-new_messages">>}
     ];
 message_count_prompts(New, 1) ->
     [{'prompt', <<"vm-you_have">>}
-     ,{'say', wh_util:to_binary(New), <<"number">>}
+     ,{'say', wh_util:to_binary(New), <<"messages">>}
      ,{'prompt', <<"vm-new_and">>}
-     ,{'say', <<"1">>}
+     ,{'say', <<"1">>, <<"messages">>}
      ,{'prompt', <<"vm-saved_message">>}
     ];
 message_count_prompts(0, Saved) ->
     [{'prompt', <<"vm-you_have">>}
-     ,{'say', wh_util:to_binary(Saved), <<"number">>}
+     ,{'say', wh_util:to_binary(Saved), <<"messages">>}
      ,{'prompt', <<"vm-saved_messages">>}
     ];
 message_count_prompts(1, Saved) ->
     [{'prompt', <<"vm-you_have">>}
-     ,{'say', <<"1">>}
+     ,{'say', <<"1">>, <<"messages">>}
      ,{'prompt', <<"vm-new_and">>}
-     ,{'say', wh_util:to_binary(Saved), <<"number">>}
+     ,{'say', wh_util:to_binary(Saved), <<"messages">>}
      ,{'prompt', <<"vm-saved_messages">>}
     ];
 message_count_prompts(New, Saved) ->
     [{'prompt', <<"vm-you_have">>}
-     ,{'say', wh_util:to_binary(New), <<"number">>}
+     ,{'say', wh_util:to_binary(New), <<"messages">>}
      ,{'prompt', <<"vm-new_and">>}
-     ,{'say', wh_util:to_binary(Saved), <<"number">>}
+     ,{'say', wh_util:to_binary(Saved), <<"messages">>}
      ,{'prompt', <<"vm-saved_messages">>}
     ].
 
