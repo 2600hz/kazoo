@@ -138,8 +138,69 @@ create(<<"ispeech">> = Engine, Text, Voice, Format, Options) ->
             Response = ibrowse:send_req(BaseUrl, Headers, 'post', Body, HTTPOptions),
             create_response(Engine, Response)
     end;
+create(<<"voicefabric">> = Engine, Text, Voice, <<"wav">> = _Format, Options) ->
+    lager:debug("getting ~ts from VoiceFabric", [Text]),
+    VoiceMappings = [ %% Владимир8000
+                     {<<"male/ru-ru">>, <<208,146,208,187,208,176,208,180,208,184,208,188,208,184,209,128,56,48,48,48>>}
+                     %% Юлия8000
+                     ,{<<"female/ru-ru">>, <<208,174,208,187,208,184,209,143,56,48,48,48>>}
+                      %% Владимир8000
+                     ,{<<"male/ru-ru/vladimir">>, <<208,146,208,187,208,176,208,180,208,184,208,188,208,184,209,128,56,48,48,48>>}
+                     %% Юлия8000
+                     ,{<<"female/ru-ru/julia">>, <<208,174,208,187,208,184,209,143,56,48,48,48>>}
+                     %% Анна8000
+                     ,{<<"female/ru-ru/anna">>, <<208,144,208,189,208,189,208,176,56,48,48,48>>}
+                     %% Виктория8000
+                     ,{<<"female/ru-ru/viktoria">>, <<208,146,208,184,208,186,209,130,208,190,209,128,208,184,209,143,56,48,48,48>>}
+                     %% Александр8000
+                     ,{<<"male/ru-ru/alexander">>, <<208,144,208,187,208,181,208,186,209,129,208,176,208,189,208,180,209,128,56,48,48,48>>}
+                     %% Мария8000
+                     ,{<<"female/ru-ru/maria">>, <<208,156,208,176,209,128,208,184,209,143,56,48,48,48>>}
+                     %% Лидия8000
+                     ,{<<"female/ru-ru/lidia">>, <<208,155,208,184,208,180,208,184,209,143,56,48,48,48>>}
+                    ],
+    case props:get_value(wh_util:to_lower_binary(Voice), VoiceMappings) of
+        'undefined' ->
+            {'error', 'invalid_voice'};
+        VFabricVoice ->
+            BaseUrl = whapps_config:get_string(?MOD_CONFIG_CAT, <<"tts_url">>, <<"https://voicefabric.ru/WSServer/ws/tts">>),
+            ApiKey = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_api_key">>, <<>>),
+            Data = [{<<"apikey">>, ApiKey}
+                    ,{<<"ttsVoice">>, VFabricVoice}
+                    ,{<<"textFormat">>, <<"text/plain">>}
+                    ,{<<"text">>, Text}
+                   ],
+            ArgsEncode = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_args_encode">>, <<"urlencode">>),
+            {Headers, Body} = voicefabric_request_body(ArgsEncode, Data),
+            HTTPOptions = [{'response_format', 'binary'} | Options],
+            Response = ibrowse:send_req(BaseUrl, Headers, 'post', Body, HTTPOptions),
+            create_response(Engine, Response)
+    end;
 create(_, _, _, _, _) ->
     {'error', 'unknown_provider'}.
+
+voicefabric_request_body(<<"urlencode">>, Data) ->
+    Headers_ = [{"Content-Type", "application/x-www-form-urlencoded"}],
+    <<$&, Body_/binary>> = iolist_to_binary([[$&, Key, $=, Val] || {Key, Val} <- Data]),
+    {Headers_, Body_};
+voicefabric_request_body(<<"multipart">>, Data) ->
+    Boundary = iolist_to_binary([<<"--boundary--">>
+                                 ,couch_mgr:get_uuid(),
+                                 <<"--boundary--">>
+                                ]),
+    Headers_ = [{"Content-Type"
+                 ,"multipart/form-data; charset=UTF-8; boundary=" ++ erlang:binary_to_list(Boundary)
+                }],
+    Body_ = iolist_to_binary([<<Boundary/binary,
+                                "\r\nContent-Disposition: form-data;"
+                                " name=", Key/binary
+                                , "\r\n\r\n", Val/binary, "\r\n">>
+                              || {Key, Val} <- Data
+                             ]),
+    {Headers_, Body_};
+voicefabric_request_body(ArgsEncode, _Data) ->
+    lager:warning("voice fabric unknown args encode method: ~p", [ArgsEncode]),
+    {[], []}.
 
 %%------------------------------------------------------------------------------
 %% Transcribe the audio binary
@@ -290,6 +351,37 @@ create_response(_Engine, {'error', _R}) ->
 create_response(_Engine, {'ibrowse_req_id', ReqID}) ->
     lager:debug("speech file streaming as ~p", [ReqID]),
     {'ok', ReqID};
+create_response(<<"voicefabric">> = _Engine, {'ok', "200", Headers, Content}) ->
+    [lager:debug("hdr: ~p", [H]) || H <- Headers],
+    lager:debug("converting media"),
+    RawFile = tmp_file_name(<<"raw">>),
+    WavFile = tmp_file_name(<<"wav">>),
+    _ = file:write_file(RawFile, Content),
+    From = "raw -r 8000 -e signed-integer -b 16",
+    To = "wav",
+    Cmd = binary_to_list(iolist_to_binary(["sox -t ", From, " ", RawFile, " -t ", To, " ", WavFile])),
+    lager:debug("os cmd: ~ts", [Cmd]),
+    CmdOut = os:cmd(Cmd),
+    CmdOut =:= [] orelse lager:debug("cmd out: ~ts", [CmdOut]),
+    _ = file:delete(RawFile),
+    lager:debug("reading file"),
+    case file:read_file(WavFile) of
+        {'ok', WavContent} ->
+            file:delete(WavFile),
+            lager:debug("media converted"),
+            NewHeaders = props:set_values([{"Content-Type", "audio/wav"}
+                                           ,{"Content-Length", integer_to_list(byte_size(WavContent))}
+                                          ]
+                                          ,Headers
+                                         ),
+            lager:debug("corrected headers"),
+            create_response('ok', {'ok', "200", NewHeaders, WavContent});
+        {'error', Reason} ->
+            lager:debug("failed: ~p", [Reason]),
+            {'error', 'tts_provider_failure', <<"converting failed">>};
+        _Error ->
+            lager:debug("unknown ~p", [_Error])
+    end;
 create_response(_Engine, {'ok', "200", Headers, Content}) ->
     ContentType = props:get_value("Content-Type", Headers),
     ContentLength = props:get_value("Content-Length", Headers),

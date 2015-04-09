@@ -96,7 +96,14 @@
                         "female/hu-HU",
                         "female/cs-CZ",
                         "female/tr-TR",
-                        "male/tr-TR"
+                        "male/tr-TR",
+                        "male/ru-RU/Vladimir",
+                        "female/ru-RU/Julia",
+                        "female/ru-RU/Anna",
+                        "female/ru-RU/Viktoria",
+                        "male/ru-RU/Alexander",
+                        "female/ru-RU/Maria",
+                        "female/ru-RU/Lidia"
                     ],
                     "default": "female/en-US"
                 }
