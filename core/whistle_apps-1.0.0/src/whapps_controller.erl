@@ -89,6 +89,8 @@ restart_app(App) when is_atom(App) ->
           ,'webseq'
           ,'whistle_amqp','whistle_apps','whistle_couch','whistle_stats'
           ,'xmerl'
+          ,'goldrush'
+          ,'compiler', 'syntax_tools'
          ]).
 
 -spec running_apps() -> atoms() | string().
