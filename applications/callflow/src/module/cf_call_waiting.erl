@@ -19,18 +19,19 @@
 
 -export([handle/2]).
 
--record(call_waiting, {disabled = 'false' :: boolean()
+-record(call_waiting, {enabled = 'true' :: boolean()
                        ,jobj = wh_json:new() :: wh_json:object()
                        ,account_db :: api_binary()
+                       ,action :: ne_binary()
                       }).
 -type call_waiting() :: #call_waiting{}.
 
 -type switch_fun() :: fun((boolean()) -> boolean()).
 -spec actions() -> wh_proplist_kv(ne_binary(), switch_fun()).
 actions() ->
-    [{<<"toggle">>, fun (Bool) -> not Bool end}
-     ,{<<"activate">>, fun (_Bool) -> 'false' end}
-     ,{<<"deactivate">>, fun (_Bool) -> 'true' end}
+    [{<<"toggle">>, fun (Enabled) -> not Enabled end}
+     ,{<<"activate">>, fun (_Enabled) -> 'true' end}
+     ,{<<"deactivate">>, fun (_Enabled) -> 'false' end}
     ].
 
 %%--------------------------------------------------------------------
@@ -45,13 +46,12 @@ actions() ->
 handle(Data, Call) ->
     case maybe_build_call_waiting_record(Data, Call) of
         {'error', _} ->
-            lager:info("unable to determine what document to apply dnd against", []),
+            lager:warning("unable to determine what document to apply call waiting against", []),
             _ = whapps_call_command:b_prompt(<<"cw-not_available">>, Call),
             cf_exe:stop(Call);
         {'ok', #call_waiting{} = CW} ->
             _ = whapps_call_command:answer(Call),
-            Action = wh_json:get_value(<<"action">>, Data, <<"toggle">>),
-            _ = maybe_execute_action(Action, CW, Call),
+            _ = maybe_execute_action(CW, Call),
             cf_exe:continue(Call)
     end.
 
@@ -64,11 +64,15 @@ maybe_build_call_waiting_record(Data, Call) ->
     case maybe_get_doc(AccountDb, DocId) of
         {'error', _}= _E -> _E;
         {'ok', JObj} ->
-            lager:info("changing call waiting settings on document ~s", [wh_json:get_value(<<"_id">>, JObj)]),
-            {'ok', #call_waiting{disabled = wh_json:is_true(<<"disable_call_waiting">>, JObj, 'false')
-                                 ,jobj = JObj
-                                 ,account_db = AccountDb
-                                }}
+            lager:info("changing call waiting settings on document ~s"
+                      ,[wh_json:get_value(<<"_id">>, JObj)]
+                      ),
+            {'ok', #call_waiting{enabled = wh_json:is_true([<<"call_waiting">>, <<"enabled">>], JObj, 'true')
+                                ,jobj = JObj
+                                ,account_db = AccountDb
+                                ,action = wh_json:get_value(<<"action">>, Data, <<"toggle">>)
+                                }
+            }
     end.
 
 -spec get_doc_id(ne_binary(), wh_json:object()) -> ne_binary().
@@ -83,41 +87,81 @@ maybe_get_doc(_, 'undefined') ->
 maybe_get_doc('undefined', _) ->
     {'error', 'no_account_db'};
 maybe_get_doc(AccountDb, Id) ->
-    case couch_mgr:open_doc(AccountDb, Id) of
-        {'ok', _} = Ok -> Ok;
-        {'error', _R} = E ->
-            lager:error("unable to open ~s: ~p", [Id, _R]),
-            E
+    couch_mgr:open_doc(AccountDb, Id).
+
+-spec maybe_execute_action(call_waiting(), whapps_call:call()) -> 'ok' | 'error'.
+maybe_execute_action(#call_waiting{action = Action}=CW, Call) ->
+    case props:get_value(Action, actions()) of
+        'undefined' ->
+            lager:info("unsupported call forwaring action ~s", [Action]),
+            whapps_call_command:b_prompt(<<"cw-not_available">>, Call);
+        ActionFun -> execute_action(ActionFun, CW, Call)
     end.
 
--spec maybe_execute_action(ne_binary(), call_waiting(), whapps_call:call()) -> any().
-maybe_execute_action(Action, #call_waiting{disabled = CWFlag, jobj = JObj, account_db = AccountDB}, Call) ->
-    SwitchFun = props:get_value(Action, actions(), fun wh_util:identity/1),
-    NewCWFlag = SwitchFun(CWFlag),
-    lager:debug("Switch `disable_call_waiting` from ~p to ~p with action ~p", [CWFlag, NewCWFlag, Action]),
-    maybe_update_doc(NewCWFlag, JObj, AccountDB),
-    play_related_media(NewCWFlag, Call).
+-spec execute_action(switch_fun(), call_waiting(), whapps_call:call()) -> 'ok' | 'error'.
+execute_action(ActionFun, #call_waiting{enabled = Enabled}=CW, Call) ->
+    NewEnabled = ActionFun(Enabled),
+    _ = play_related_media(NewEnabled, Call),
+    maybe_update_doc(NewEnabled, CW).
 
 -spec play_related_media(boolean(), whapps_call:call()) -> any().
 play_related_media('true', Call) ->
-    lager:info("Call waiting disabled"),
-    whapps_call_command:b_prompt(<<"cw-deactivated">>, Call);
+    lager:debug("call waiting enabled"),
+    whapps_call_command:b_prompt(<<"cw-activated">>, Call);
 play_related_media('false', Call) ->
-    lager:info("Call waiting enabled"),
-    whapps_call_command:b_prompt(<<"cw-activated">>, Call).
+    lager:debug("call waiting disabled"),
+    whapps_call_command:b_prompt(<<"cw-deactivated">>, Call).
 
--spec maybe_update_doc(boolean(), wh_json:object(), ne_binary()) -> wh_jobj_return().
-maybe_update_doc(Flag, JObj, AccountDb) ->
-    Updated = wh_json:set_value(<<"disable_call_waiting">>, Flag, JObj),
+-spec maybe_update_doc(boolean(), call_waiting()) -> 'ok' | 'error'.
+maybe_update_doc(Enabled, CW) ->
+    maybe_update_doc(0, Enabled, CW).
+
+-spec maybe_update_doc(boolean(), call_waiting(), 0..3) -> 'ok' | 'error'.
+maybe_update_doc(_, Enabled, #call_waiting{enabled = Enabled}) -> 'ok';
+maybe_update_doc(Retries, Enabled, #call_waiting{jobj = JObj
+                                                ,account_db = AccountDb
+                                                }=CW) ->
+    Updated = wh_json:set_value([<<"call_waiting">>, <<"enabled">>], Enabled, JObj),
     case couch_mgr:save_doc(AccountDb, Updated) of
-        {'ok', _}=Ok ->
-            lager:debug("`disable_call_waiting` set to ~s on document ~s"
-                        ,[Flag, wh_json:get_value(<<"_id">>, JObj)]),
-            Ok;
+        {'ok', _} ->
+            lager:info("call_waiting.enabled set to ~s on ~s ~s"
+                      ,[Enabled
+                       ,wh_json:get_value(<<"pvt_type">>, JObj)
+                       ,wh_json:get_value(<<"_id">>, JObj)
+                       ]
+                      );
         {'error', 'conflict'} ->
-            case couch_mgr:open_doc(AccountDb, wh_json:get_value(<<"_id">>, JObj)) of
-                {'error', _}=E -> E;
-                {'ok', NewJObj} -> maybe_update_doc(Flag, NewJObj, AccountDb)
-            end;
-        {'error', _}=E -> E
+            retry_update_doc(Retries, Enabled, CW);
+        {'error', _R} ->
+            lager:debug("unabled to update call_waiting.enabled on ~s ~s: ~p"
+                       ,[wh_json:get_value(<<"pvt_type">>, JObj)
+                        ,wh_json:get_value(<<"_id">>, JObj)
+                        ,_R
+                        ]
+                       ),
+            'error'
+    end.
+
+-spec retry_update_doc(0..3, boolean(), call_waiting()) -> 'ok' | 'error'.
+retry_update_doc(Retries, _, #call_waiting{jobj = JObj}) when Retries >= 3 ->
+    lager:info("to many attempts to update call_waiting for ~s ~s: ~p"
+              ,[wh_json:get_value(<<"pvt_type">>, JObj)
+               ,wh_json:get_value(<<"_id">>, JObj)
+               ]
+              ),
+    'error';
+retry_update_doc(Retries, Enabled, #call_waiting{jobj = JObj
+                                                ,account_db = AccountDb
+                                                }=CW) ->
+    case couch_mgr:open_doc(AccountDb, wh_json:get_value(<<"_id">>, JObj)) of
+        {'ok', NewJObj} ->
+            maybe_update_doc(Retries + 1, Enabled, CW#call_waiting{jobj = NewJObj});
+        {'error', _R} ->
+            lager:info("unable to retry call_waiting update for ~s ~s: ~p"
+                      ,[wh_json:get_value(<<"pvt_type">>, JObj)
+                       ,wh_json:get_value(<<"_id">>, JObj)
+                       ,_R
+                       ]
+                      ),
+            'error'
     end.

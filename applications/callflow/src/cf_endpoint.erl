@@ -43,8 +43,6 @@
                                                        ,{<<"Exchange-Type">>, ?DEFAULT_MOBILE_SMS_EXCHANGE_TYPE}
                                                       ])).
 
--define(DISABLE_CALL_WAITING, <<"disable_call_waiting">>).
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -154,8 +152,8 @@ merge_attributes(Endpoint, Type) ->
             ,<<"record_call">>
             ,<<"mobile">>
             ,<<"presence_id">>
+            ,<<"call_waiting">>
             ,?CF_ATTR_LOWER_KEY
-            ,?DISABLE_CALL_WAITING
            ],
     merge_attributes(Endpoint, Type, Keys).
 
@@ -217,6 +215,15 @@ merge_attributes([<<"call_forward">> = Key|Keys], Account, Endpoint, Owner) ->
             Merged = wh_json:merge_recursive([AccountAttr, EndpointAttr, OwnerAttr]),
             merge_attributes(Keys, Account, wh_json:set_value(Key, Merged, Endpoint), Owner)
     end;
+merge_attributes([<<"call_waiting">> = Key|Keys], Account, Endpoint, Owner) ->
+    AccountAttr = wh_json:get_ne_value(Key, Account, wh_json:new()),
+    EndpointAttr = wh_json:get_ne_value(Key, Endpoint, wh_json:new()),
+    OwnerAttr = wh_json:get_ne_value(Key, Owner, wh_json:new()),
+    %% allow the device to override the owner preference (and vice versa) so
+    %%  endpoints such as mobile device can disable call_waiting while sip phone
+    %%  might still have it enabled
+    Merged = wh_json:merge_recursive([AccountAttr, OwnerAttr, EndpointAttr]),
+    merge_attributes(Keys, Account, wh_json:set_value(Key, Merged, Endpoint), Owner);
 merge_attributes([<<"caller_id">> = Key|Keys], Account, Endpoint, Owner) ->
     AccountAttr = wh_json:get_ne_value(Key, Account, wh_json:new()),
     EndpointAttr = wh_json:get_ne_value(Key, Endpoint, wh_json:new()),
@@ -239,12 +246,6 @@ merge_attributes([<<"record_call">> = Key|Keys], Account, Endpoint, Owner) ->
     OwnerAttr = get_record_call_properties(Owner),
     Merged = wh_json:merge_recursive([AccountAttr, OwnerAttr, EndpointAttr]),
     merge_attributes(Keys, Account, wh_json:set_value(Key, Merged, Endpoint), Owner);
-merge_attributes([?DISABLE_CALL_WAITING | Keys], Account, Endpoint, Owner) ->
-    EndpointAttr = wh_json:is_true(?DISABLE_CALL_WAITING, Endpoint, 'false'),
-    OwnerAttr = wh_json:is_true(?DISABLE_CALL_WAITING, Owner, 'false'),
-    Merged = EndpointAttr orelse OwnerAttr,
-    Endpoint1 = wh_json:set_value(?DISABLE_CALL_WAITING, Merged, Endpoint),
-    merge_attributes(Keys, Account, Endpoint1, Owner);
 merge_attributes([Key|Keys], Account, Endpoint, Owner) ->
     AccountAttr = wh_json:get_ne_value(Key, Account, wh_json:new()),
     EndpointAttr = wh_json:get_ne_value(Key, Endpoint, wh_json:new()),
@@ -1257,9 +1258,9 @@ set_sip_invite_domain({Endpoint, Call, CallFwd, JObj}) ->
 
 -spec maybe_set_call_waiting(ccv_acc()) -> ccv_acc().
 maybe_set_call_waiting({Endpoint, Call, CallFwd, JObj}) ->
-    NewJobj = case wh_json:is_true(?DISABLE_CALL_WAITING, Endpoint, 'false') of
-                  'false' -> JObj;
-                  'true' -> wh_json:set_value(<<"Call-Waiting-Disabled">>, 'true', JObj)
+    NewJobj = case wh_json:is_true([<<"call_waiting">>, <<"enabled">>], Endpoint, 'true') of
+                  'true' -> JObj;
+                  'false' -> wh_json:set_value(<<"Call-Waiting-Disabled">>, 'true', JObj)
               end,
     {Endpoint, Call, CallFwd, NewJobj}.
 
