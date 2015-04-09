@@ -174,7 +174,9 @@ print_status(Nodes) ->
                          status_list(Whapps, 0)
                  end,
              _ = case lists:sort(Node#node.media_servers) of
-                     []-> 'ok';
+                     [] when Node#node.registrations =:= 0 -> 'ok';
+                     [] when Node#node.registrations > 0 ->
+                         io:format("Registrations : ~B~n", [Node#node.registrations]);                         
                      [{Server, Started}|Servers] ->
                          io:format("Channels      : ~B~n", [Node#node.channels]),
                          io:format("Registrations : ~B~n", [Node#node.registrations]),
@@ -547,12 +549,12 @@ from_json(JObj, State) ->
     Node = wh_json:get_value(<<"Node">>, JObj),
     #node{node=wh_util:to_atom(Node, 'true')
           ,expires=wh_util:to_integer(wh_json:get_integer_value(<<"Expires">>, JObj, 0) * ?FUDGE_FACTOR)
-          ,whapps=whapps_from_json(wh_json:get_value(<<"WhApps">>, JObj))
+          ,whapps=whapps_from_json(wh_json:get_value(<<"WhApps">>, JObj, []))
           ,media_servers=wh_json:get_value(<<"Media-Servers">>, JObj, [])
           ,used_memory=wh_json:get_integer_value(<<"Used-Memory">>, JObj, 0)
           ,processes=wh_json:get_integer_value(<<"Processes">>, JObj, 0)
           ,ports=wh_json:get_integer_value(<<"Ports">>, JObj, 0)
-          ,version=wh_json:get_value(<<"Version">>, JObj, <<"unknown">>)
+          ,version=wh_json:get_first_defined([<<"Version">>, <<"App-Version">>], JObj, <<"unknown">>)
           ,channels=wh_json:get_integer_value(<<"Channels">>, JObj, 0)
           ,registrations=wh_json:get_integer_value(<<"Registrations">>, JObj, 0)
           ,zone=get_zone(JObj, State)
@@ -573,7 +575,14 @@ whapp_from_json(Key, JObj) ->
     {Key, whapp_info_from_json(wh_json:get_value(Key, JObj))}.
 
 whapp_info_from_json(JObj) ->
-    #whapp_info{startup=wh_json:get_value(<<"Startup">>, JObj)}.
+    case wh_json:get_value(<<"Startup">>, JObj) of
+        'undefined' ->
+            #whapp_info{};
+        V when V < ?UNIX_EPOCH_IN_GREGORIAN ->
+            #whapp_info{startup=wh_util:unix_seconds_to_gregorian_seconds(V)};
+        V ->
+            #whapp_info{startup=V}
+    end.
 
 -spec whapps_to_json(whapps_info()) -> wh_json:object().
 -spec whapp_to_json({ne_binary(), whapp_info()}) -> {ne_binary(), wh_json:object()}.
