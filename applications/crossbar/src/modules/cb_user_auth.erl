@@ -168,19 +168,12 @@ maybe_authenticate_user(Context) ->
         {'error', _} ->
             lager:debug("failed to find account DB from realm ~s", [AccountRealm]),
             cb_context:add_system_error('invalid_credentials', Context);
-        {'ok', Account} ->
-            maybe_account_is_enabled(Context, Credentials, Method, Account)
+        {'ok', <<_/binary>> = Account} ->
+            maybe_account_is_enabled(Context, Credentials, Method, Account);
+        {'ok', Accounts} ->
+            maybe_accounts_are_enabled(Context, Credentials, Method, Accounts)
     end.
 
-maybe_authenticate_user(Context, _, _, []) ->
-    lager:debug("no account(s) specified"),
-    cb_context:add_system_error('invalid_credentials', Context);
-maybe_authenticate_user(Context, Credentials, Method, [Account|Accounts]) ->
-    Context1 = maybe_authenticate_user(Context, Credentials, Method, Account),
-    case cb_context:resp_status(Context1) of
-        'success' -> Context1;
-        _Status -> maybe_authenticate_user(Context1, Credentials, Method, Accounts)
-    end;
 maybe_authenticate_user(Context, Credentials, <<"md5">>, <<_/binary>> = Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
 
@@ -206,11 +199,23 @@ maybe_authenticate_user(Context, Credentials, <<"sha">>, <<_/binary>> = Account)
             lager:debug("credentials do not belong to any user"),
             cb_context:add_system_error('invalid_credentials', Context)
     end;
-maybe_authenticate_user(Context, _Creds, _Method, _Accounts) ->
+maybe_authenticate_user(Context, _Creds, _Method, _Account) ->
     lager:debug("invalid creds by method ~s", [_Method]),
     cb_context:add_system_error('invalid_credentials', Context).
 
--spec maybe_account_is_enabled(cb_context:context(), ne_binary(), ne_binary(), wh_json:key() | wh_json:keys()) ->
+-spec maybe_accounts_are_enabled(cb_context:context(), ne_binary(), ne_binary(), ne_binaries()) ->
+                                        cb_context:context().
+maybe_accounts_are_enabled(Context, _, _, []) ->
+    lager:debug("no account(s) specified"),
+    cb_context:add_system_error('invalid_credentials', Context);
+maybe_accounts_are_enabled(Context, Credentials, Method, [Account|Accounts]) ->
+    Context1 = maybe_account_is_enabled(Context, Credentials, Method, Account),
+    case cb_context:resp_status(Context1) of
+        'success' -> Context1;
+        _Status -> maybe_accounts_are_enabled(Context, Credentials, Method, Accounts)
+    end.
+
+-spec maybe_account_is_enabled(cb_context:context(), ne_binary(), ne_binary(), ne_binary()) ->
                                       cb_context:context().
 maybe_account_is_enabled(Context, Credentials, Method, Account) ->
     case wh_util:is_account_enabled(Account) of
