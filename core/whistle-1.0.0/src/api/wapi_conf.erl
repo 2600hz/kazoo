@@ -94,13 +94,19 @@ doc_update_v(JObj) ->
 
 -spec bind_q(binary(), wh_proplist()) -> 'ok'.
 bind_q(Q, Props) ->
-    RoutingKey = get_routing_key(Props),
-    amqp_util:bind_q_to_configuration(Q, RoutingKey).
+    case props:get_value('keys', Props) of
+        'undefined' -> amqp_util:bind_q_to_configuration(Q, get_routing_key(Props));
+        List -> [amqp_util:bind_q_to_configuration(Q, get_routing_key(KeyProps)) 
+                ||  KeyProps <- List]
+    end.
 
 -spec unbind_q(binary(), wh_proplist()) -> 'ok'.
 unbind_q(Q, Props) ->
-    RoutingKey = get_routing_key(Props),
-    amqp_util:unbind_q_from_configuration(Q, RoutingKey).
+    case props:get_value('keys', Props) of
+        'undefined' -> amqp_util:unbind_q_from_configuration(Q, get_routing_key(Props));
+        List -> [amqp_util:unbind_q_from_configuration(Q, get_routing_key(KeyProps)) 
+                ||  KeyProps <- List]
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc

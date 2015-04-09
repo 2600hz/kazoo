@@ -26,5 +26,11 @@
             "minLength": 1,
             "maxLength": 700
         }
+        "scheduled": {
+		    "type": "integer",
+		    "required": false,
+		    "name": "Scheduled Delivery Date",
+		    "description": "The timestamp to start delivering the message"
+        }
     }
 }

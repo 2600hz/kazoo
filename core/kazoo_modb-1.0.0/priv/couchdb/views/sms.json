@@ -16,13 +16,13 @@
        "map": "function(doc) { if (doc.pvt_type != 'sms' || doc.pvt_deleted) return; if(doc.pvt_authorization_type != 'device' || doc.pvt_call['Key-Value-Store'].cf_flow.module != 'device' ) return; if(doc.pvt_call['Key-Value-Store'].cf_flow.module == 'device' ) emit([doc.pvt_call['Key-Value-Store'].cf_flow.data.id, doc.pvt_created], {'id' : doc._id, 'from' : doc.from_user, 'to' : doc.to_user, 'created' : doc.pvt_created, 'direction' : 'inbound' , 'status' : doc.pvt_status, 'body' : doc.Body}); if(doc.pvt_authorization_type == 'device' ) emit([doc.pvt_authorization_id, doc.pvt_created], {'id' : doc._id, 'from' : doc.from_user, 'to' : doc.to_user, 'created' : doc.pvt_created, 'direction' : 'outbound' , 'status' : doc.pvt_status, 'body' : doc.Body});}"
    },
    "deliver_to_device": {
-       "map": "function(doc) { if (doc.pvt_type != 'sms' || doc.pvt_deleted || doc.pvt_call['Key-Value-Store'].cf_flow.module != 'device' || doc.pvt_status != 'pending') return; emit(doc.pvt_call['Key-Value-Store'].cf_flow.data.id, {'id': doc._id}); }"
+       "map": "function(doc) { if (doc.pvt_type != 'sms' || doc.pvt_deleted || doc.pvt_call['Key-Value-Store'].cf_flow.module != 'device' || doc.pvt_status != 'pending') return; emit([doc.pvt_call['Key-Value-Store'].cf_flow.data.id, doc.pvt_schedule.start_time], {'id': doc._id}); }"
    },
    "deliver_to_owner": {
-       "map": "function(doc) { if (doc.pvt_type != 'sms' || doc.pvt_deleted || doc.pvt_call['Key-Value-Store'].cf_flow.module != 'user' || doc.pvt_status != 'pending') return; emit(doc.pvt_call['Key-Value-Store'].cf_flow.data.id, {'id': doc._id}); }"
+       "map": "function(doc) { if (doc.pvt_type != 'sms' || doc.pvt_deleted || doc.pvt_call['Key-Value-Store'].cf_flow.module != 'user' || doc.pvt_status != 'pending') return; emit([doc.pvt_call['Key-Value-Store'].cf_flow.data.id, doc.pvt_schedule.start_time], {'id': doc._id}); }"
    },
    "deliver_to_offnet": {
-       "map": "function(doc) { if (doc.pvt_type != 'sms' || doc.pvt_deleted || doc.pvt_status != 'pending' || (doc.pvt_call['Key-Value-Store'].cf_flow.module != 'offnet' && doc.pvt_call['Key-Value-Store'].cf_flow.module != 'resources')) return; emit([doc.pvt_created, doc._id], {'id': doc._id}); }"
+       "map": "function(doc) { if (doc.pvt_type != 'sms' || doc.pvt_deleted || doc.pvt_status != 'pending' || (doc.pvt_call['Key-Value-Store'].cf_flow.module != 'offnet' && doc.pvt_call['Key-Value-Store'].cf_flow.module != 'resources')) return; emit( doc.pvt_schedule.start_time, {'id': doc._id}); }"
    }
 }
 }

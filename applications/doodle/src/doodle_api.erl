@@ -1,24 +1,16 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2013, 2600Hz
 %%% @doc
-%%% Handlers for various AMQP payloads
+%%% Handle sms api docs
 %%% @end
 %%% @contributors
 %%%
 %%%-------------------------------------------------------------------
--module(doodle_api_handler).
+-module(doodle_api).
 
--export([handle_req/2]).
 -export([handle_api_sms/2]).
 
 -include("doodle.hrl").
-
--spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_req(JObj, _Props) ->
-    'true' = wapi_conf:doc_update_v(JObj),
-    Id = wh_json:get_value(<<"ID">>, JObj),
-    Db = wh_json:get_value(<<"Database">>, JObj),
-    handle_api_sms(Db, Id).
 
 -spec handle_api_sms(binary(), binary()) -> 'ok'.
 handle_api_sms(Db, Id) ->
@@ -88,4 +80,5 @@ route_req_ccvs(FetchId, JObj) ->
        ,{<<"Owner-ID">>, wh_json:get_value(<<"pvt_owner_id">>, JObj)}
        ,{<<"Channel-Authorized">>, 'true'}
        ,{<<"Doc-Revision">>, wh_json:get_value(<<"_rev">>, JObj)}
+       ,{<<"Scheduled-Delivery">>, wh_json:get_value(<<"scheduled">>, JObj)}
       ]).
