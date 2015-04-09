@@ -48,7 +48,7 @@ reconcile(Services, UserType) ->
         {'error', _R} ->
             lager:debug("unable to get current users in service: ~p", [_R]),
             Services;
-        {'ok', []} -> wh_services:reset_category(<<"users">>, Services);
+        {'ok', []} -> wh_services:update(<<"users">>, UserType, 1, Services);
         {'ok', JObjs} ->
             S = lists:foldl(
                     fun(JObj, S) ->

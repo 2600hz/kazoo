@@ -223,31 +223,14 @@ post(Context, DeviceId) ->
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    DryRun = not(cb_context:accepting_charges(Context)),
-    put_resp(DryRun, Context).
-
-put_resp('true', Context) ->
-    RespJObj = dry_run(Context),
-    case wh_json:is_empty(RespJObj) of
-        'false' -> crossbar_util:response_402(RespJObj, Context);
-        'true' ->
-            NewReqJObj = wh_json:set_value(<<"accept_charges">>, <<"true">>, cb_context:req_json(Context)),
-            ?MODULE:put(cb_context:set_req_json(Context, NewReqJObj))
-    end;
-put_resp('false', Context) ->
-    Context1 = crossbar_doc:save(Context),
-    _ = maybe_aggregate_device('undefined', Context1),
-    _ = provisioner_util:maybe_provision(Context1),
-    Context1.
-
--spec dry_run(cb_context:context()) -> wh_json:object().
-dry_run(Context) ->
-    JObj = cb_context:doc(Context),
-    AccountId = cb_context:account_id(Context),
-    DeviceType = wh_json:get_value(<<"device_type">>, JObj),
-    Services = wh_services:fetch(AccountId),
-    UpdateServices = wh_service_devices:reconcile(Services, DeviceType),
-    wh_services:dry_run(UpdateServices).
+    Callback =
+        fun() ->
+            Context1 = crossbar_doc:save(Context),
+            _ = maybe_aggregate_device('undefined', Context1),
+            _ = provisioner_util:maybe_provision(Context1),
+            Context1
+        end,
+    crossbar_services:maybe_dry_run(Context, Callback).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, DeviceId) ->

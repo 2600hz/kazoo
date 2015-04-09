@@ -73,7 +73,7 @@ set_timezone(JObj, Timezone) ->
 
 -spec parent_account_id(wh_json:object()) -> api_binary().
 parent_account_id(JObj) ->
-    case wh_json:get_value(?TREE, JObj) of
+    case tree(JObj) of
         [] -> 'undefined';
         Ancestors -> lists:last(Ancestors)
     end.

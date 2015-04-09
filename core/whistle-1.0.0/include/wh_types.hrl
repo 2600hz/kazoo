@@ -75,7 +75,7 @@
 
 -type wh_proplist_value() :: any().
 -type wh_proplist_values() :: [wh_proplist_value(),...] | [].
--type wh_proplist_key() :: binary() | atom() | number() | string() | function() | ne_binaries().
+-type wh_proplist_key() :: ne_binary() | atom() | number() | string() | function() | ne_binaries().
 -type wh_proplist_keys() :: [wh_proplist_key(),...] | [].
 -type wh_proplist_kv(K, V) :: [{K, V} | atom(),...] | [].
 -type wh_proplist_k(K) :: wh_proplist_kv(K, wh_proplist_value()).

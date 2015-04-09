@@ -397,7 +397,7 @@ all_docs(#server{}=Conn, DbName, Options) ->
     do_fetch_results(Db, 'all_docs', Options).
 
 -spec get_results(server(), ne_binary(), ne_binary(), view_options()) ->
-                         {'ok', wh_json:objects() | ne_binaries()} |
+                         {'ok', wh_json:objects() | wh_json:keys()} |
                          couchbeam_error().
 get_results(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->
     Db = get_db(Conn, DbName),

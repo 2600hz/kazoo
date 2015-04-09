@@ -131,7 +131,11 @@ validate_limits(Context, ?HTTP_POST) ->
 
 -spec post(cb_context:context()) -> cb_context:context().
 post(Context) ->
-    maybe_update_limits(Context).
+    Callback =
+        fun() ->
+            crossbar_doc:save(Context)
+        end,
+    crossbar_services:maybe_dry_run(Context, Callback).
 
 %%%===================================================================
 %%% Internal functions
@@ -184,56 +188,3 @@ maybe_handle_load_failure(Context, 404) ->
                          ,{fun cb_context:set_doc/2, crossbar_doc:update_pvt_parameters(JObj, Context)}
                         ]);
 maybe_handle_load_failure(Context, _RespCode) -> Context.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec maybe_update_limits(cb_context:context()) -> cb_context:context().
-maybe_update_limits(Context) ->
-    case not(cb_context:accepting_charges(Context)) of
-        'false' -> update_limits(Context);
-        'true' -> maybe_dry_run(Context)
-    end.
-
--spec maybe_dry_run(cb_context:context()) -> cb_context:context().
-maybe_dry_run(Context) ->
-    RespJObj = dry_run(Context),
-    case wh_json:is_empty(RespJObj) of
-        'false' -> crossbar_util:response_402(RespJObj, Context);
-        'true' ->
-            NewReqJObj = wh_json:set_value(<<"accept_charges">>, <<"true">>, cb_context:req_json(Context)),
-            maybe_update_limits(cb_context:set_req_json(Context, NewReqJObj))
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec update_limits(cb_context:context()) -> cb_context:context().
-update_limits(Context) ->
-    crossbar_doc:save(Context).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec dry_run(cb_context:context()) -> wh_json:object().
-dry_run(Context) ->
-    AccountId = cb_context:account_id(Context),
-    Services = wh_services:fetch(AccountId),
-    ReqData = cb_context:req_data(Context),
-    Updates =
-        wh_json:from_list(
-          [{<<"twoway_trunks">>, wh_json:get_integer_value(<<"twoway_trunks">>, ReqData, 0)}
-           ,{<<"inbound_trunks">>, wh_json:get_integer_value(<<"inbound_trunks">>, ReqData, 0)}
-           ,{<<"outbound_trunks">>, wh_json:get_integer_value(<<"outbound_trunks">>, ReqData, 0)}
-          ]),
-    UpdateServices = wh_service_limits:reconcile(Services, Updates),
-    wh_services:dry_run(UpdateServices).

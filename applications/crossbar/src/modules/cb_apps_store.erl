@@ -222,7 +222,12 @@ validate_app(Context, Id, ?HTTP_GET) ->
 validate_app(Context, Id, ?HTTP_PUT) ->
     Context1 = validate_modification(Context, Id),
     case cb_context:resp_status(Context1) of
-        'success' -> maybe_modify(Context1, Id, fun install/2);
+        'success' ->
+            Callback =
+                fun() ->
+                    install(Context, Id)
+                end,
+            crossbar_services:maybe_dry_run(Context, Callback);
         _ -> Context1
     end;
 validate_app(Context, Id, ?HTTP_DELETE) ->
@@ -234,7 +239,12 @@ validate_app(Context, Id, ?HTTP_DELETE) ->
 validate_app(Context, Id, ?HTTP_POST) ->
     Context1 = validate_modification(Context, Id),
     case cb_context:resp_status(Context1) of
-        'success' -> maybe_modify(Context1, Id, fun update/2);
+        'success' ->
+            Callback =
+                fun() ->
+                    update(Context, Id)
+                end,
+            crossbar_services:maybe_dry_run(Context, Callback);
         _ -> Context1
     end.
 
@@ -334,39 +344,6 @@ load_app(Context, AppId) ->
                 ,{fun cb_context:set_resp_status/2, 'success'}
                ]
              )
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% maybe_install a new app on the account
-%% @end
-%%--------------------------------------------------------------------
--type modify_fun() :: fun((cb_context:context(), ne_binary()) -> cb_context:context()).
--spec maybe_modify(cb_context:context(), ne_binary(), modify_fun()) -> cb_context:context().
-maybe_modify(Context, Id, Fun) ->
-    case not(wh_service_ui_apps:is_in_use(cb_context:req_data(Context)))
-        orelse cb_context:accepting_charges(Context)
-    of
-        'true' -> Fun(Context, Id);
-        'false' -> dry_run(Context, Id, Fun)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec dry_run(cb_context:context(), ne_binary(), modify_fun()) -> cb_context:context().
-dry_run(Context, Id, Fun) ->
-    AccountId = cb_context:account_id(Context),
-    AppName = wh_json:get_value(<<"name">>, cb_context:fetch(Context, Id)),
-    Services = wh_services:fetch(AccountId),
-    UpdatedServices = wh_service_ui_apps:reconcile(Services, AppName),
-    RespJObj = wh_services:dry_run(UpdatedServices),
-    case wh_json:is_empty(RespJObj) of
-        'true' -> Fun(Context, Id);
-        'false' -> crossbar_util:response_402(RespJObj, Context)
     end.
 
 %%--------------------------------------------------------------------
