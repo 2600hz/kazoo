@@ -140,9 +140,9 @@ authenticate(Context) ->
                       ).
 
 -spec maybe_authenticate(http_method(), req_nouns()) -> boolean().
-maybe_authenticate(?HTTP_GET, [{<<"phone_numbers">>, []}]) ->
+maybe_authenticate(?HTTP_GET, [{?WNM_PHONE_NUMBER_DOC, []}]) ->
     'true';
-maybe_authenticate(?HTTP_GET, [{<<"phone_numbers">>, [?PREFIX]}]) ->
+maybe_authenticate(?HTTP_GET, [{?WNM_PHONE_NUMBER_DOC, [?PREFIX]}]) ->
     'true';
 maybe_authenticate(_Verb, _Nouns) ->
     'false'.
@@ -160,9 +160,9 @@ authorize(Context) ->
                     ,cb_context:req_nouns(Context)
                    ).
 
-maybe_authorize(?HTTP_GET, [{<<"phone_numbers">>,[]}]) ->
+maybe_authorize(?HTTP_GET, [{?WNM_PHONE_NUMBER_DOC,[]}]) ->
     'true';
-maybe_authorize(?HTTP_GET, [{<<"phone_numbers">>, [?PREFIX]}]) ->
+maybe_authorize(?HTTP_GET, [{?WNM_PHONE_NUMBER_DOC, [?PREFIX]}]) ->
     'true';
 maybe_authorize(_Verb, _Nouns) ->
     'false'.
@@ -259,9 +259,9 @@ billing(Context) ->
     maybe_allow_updates(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
 
 -spec maybe_allow_updates(cb_context:context(), req_nouns(), http_method()) -> cb_context:context().
-maybe_allow_updates(Context, [{<<"phone_numbers">>, _}|_], ?HTTP_GET) ->
+maybe_allow_updates(Context, [{?WNM_PHONE_NUMBER_DOC, _}|_], ?HTTP_GET) ->
     Context;
-maybe_allow_updates(Context, [{<<"phone_numbers">>, _}|_], _Verb) ->
+maybe_allow_updates(Context, [{?WNM_PHONE_NUMBER_DOC, _}|_], _Verb) ->
     try wh_services:allow_updates(cb_context:account_id(Context)) of
         'true' -> Context
     catch
@@ -639,7 +639,7 @@ clean_summary(Context) ->
                 ,fun(JObj) -> wh_json:set_value(<<"numbers">>, JObj, wh_json:new()) end
                 ,fun(JObj) ->
                          Service = wh_services:fetch(AccountId),
-                         Quantity = wh_services:cascade_category_quantity(<<"phone_numbers">>, [], Service),
+                         Quantity = wh_services:cascade_category_quantity(?WNM_PHONE_NUMBER_DOC, [], Service),
                          wh_json:set_value(<<"casquade_quantity">>, Quantity, JObj)
                  end
                ],
@@ -912,7 +912,7 @@ update_context_locality_fold(Key, Value, JObj) ->
                                            {'error', _}.
 update_phone_numbers_locality(Context, Localities) ->
     AccountDb = cb_context:account_db(Context),
-    DocId = wh_json:get_value(<<"_id">>, cb_context:doc(Context), <<"phone_numbers">>),
+    DocId = wh_json:get_value(<<"_id">>, cb_context:doc(Context), ?WNM_PHONE_NUMBER_DOC),
     case couch_mgr:open_doc(AccountDb, DocId) of
         {'ok', JObj} ->
             J = wh_json:foldl(fun update_phone_numbers_locality_fold/3, JObj, Localities),
@@ -1053,7 +1053,7 @@ add_porting_email(Context) ->
     end.
 
 check_phone_number_schema(Context) ->
-    cb_context:validate_request_data(<<"phone_numbers">>, Context).
+    cb_context:validate_request_data(?WNM_PHONE_NUMBER_DOC, Context).
 
 get_auth_user_email(Context) ->
     JObj = cb_context:auth_doc(Context),

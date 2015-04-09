@@ -4,6 +4,7 @@
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
+-include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 
 -define(APP_NAME, <<"trunkstore">>).
 -define(APP_VERSION, <<"0.9.0">>).
