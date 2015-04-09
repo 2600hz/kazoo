@@ -17,7 +17,7 @@
 -export([export/3, bridge_export/3]).
 -export([get_expires/1]).
 -export([get_interface_properties/1, get_interface_properties/2]).
--export([get_sip_to/1, get_sip_from/1, get_sip_request/1, get_orig_ip/1]).
+-export([get_sip_to/1, get_sip_from/1, get_sip_request/1, get_orig_ip/1, get_orig_port/1]).
 -export([custom_channel_vars/1, custom_channel_vars/2]).
 -export([eventstr_to_proplist/1, varstr_to_proplist/1, get_setting/1, get_setting/2]).
 -export([is_node_up/1, is_node_up/2]).
@@ -210,6 +210,14 @@ get_sip_request(Props) ->
 -spec get_orig_ip(wh_proplist()) -> api_binary().
 get_orig_ip(Prop) ->
     props:get_first_defined([<<"X-AUTH-IP">>, <<"ip">>], Prop).
+
+-spec get_orig_port(wh_proplist()) -> api_binary().
+get_orig_port(Prop) ->
+    case props:get_first_defined([<<"X-AUTH-PORT">>, <<"port">>], Prop) of
+        <<>> -> 'undefined';
+        <<"0">> -> 'undefined';
+        Port -> Port
+    end.
 
 %% Extract custom channel variables to include in the event
 -spec custom_channel_vars(wh_proplist()) -> wh_proplist().

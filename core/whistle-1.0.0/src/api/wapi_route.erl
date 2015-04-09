@@ -36,12 +36,13 @@
 -define(ROUTE_REQ_HEADERS, [<<"To">>, <<"From">>, <<"Request">>, <<"Call-ID">>
                             ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
                            ]).
--define(OPTIONAL_ROUTE_REQ_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>
+-define(OPTIONAL_ROUTE_REQ_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>, <<"Orig-Port">>
                                      ,<<"Max-Call-Length">>, <<"Media">>
                                      ,<<"Transcode">>, <<"Codecs">>
                                      ,<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
                                      ,<<"Resource-Type">>, <<"Cost-Parameters">>
-                                     ,<<"From-Network-Addr">>, <<"User-Agent">>
+                                     ,<<"From-Network-Addr">>, <<"From-Network-Port">>
+                                     ,<<"User-Agent">>
                                      ,<<"Switch-Hostname">>, <<"Switch-Nodename">>
                                      ,<<"Switch-URL">>, <<"Switch-URI">>
                                      ,<<"Ringback-Media">>, <<"Transfer-Media">>

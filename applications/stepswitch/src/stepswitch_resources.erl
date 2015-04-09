@@ -21,6 +21,7 @@
 
 -record(gateway, {
            server :: api_binary()
+           ,port :: api_binary()
            ,realm :: api_binary()
            ,username :: api_binary()
            ,password :: api_binary()
@@ -40,6 +41,7 @@
            ,format_from_uri = 'false' :: boolean()
            ,from_uri_realm :: api_binary()
            ,is_emergency = 'false' :: boolean()
+           ,force_port = 'false' :: boolean()
          }).
 
 -record(resrc, {
@@ -195,12 +197,19 @@ reverse_lookup(JObj) ->
     IP = wh_json:get_first_defined([<<"From-Network-Addr">>
                                     ,<<"Orig-IP">>
                                    ], JObj),
-    case maybe_find_global(IP, Realm) of
+    Port = find_port(JObj),
+    case maybe_find_global(IP, Port, Realm) of
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} ->
             AccountId = find_account_id(Realm, JObj),
-            maybe_find_local(IP, Realm, AccountId)
+            maybe_find_local(IP, Port, Realm, AccountId)
     end.
+
+-spec find_port(wh_json:object()) -> api_integer().
+find_port(JObj) ->
+    wh_json:get_first_defined([<<"From-Network-Port">>
+                                    ,<<"Orig-Port">>
+                                   ], JObj).
 
 -spec find_account_id(api_binary(), wh_json:object()) -> api_binary().
 find_account_id(Realm, JObj) ->
@@ -220,33 +229,33 @@ find_account_id(Realm) ->
         {'ok', AccountId} -> AccountId
     end.
 
--spec maybe_find_global(api_binary(), api_binary()) ->
+-spec maybe_find_global(api_binary(), api_binary(), api_binary()) ->
                                {'ok', wh_proplist()} |
                                {'error', 'not_found'}.
-maybe_find_global(IP, Realm) ->
-    search_resources(IP, Realm, get()).
+maybe_find_global(IP, Port, Realm) ->
+    search_resources(IP, Port, Realm, get()).
 
--spec maybe_find_local(api_binary(), api_binary(), api_binary()) ->
+-spec maybe_find_local(api_binary(), api_binary(), api_binary(), api_binary()) ->
                               {'ok', wh_proplist()} |
                               {'error', 'not_found'}.
-maybe_find_local(_, _, 'undefined') -> {'error', 'not_found'};
-maybe_find_local(IP, Realm, AccountId) ->
-    search_resources(IP, Realm, get(AccountId)).
+maybe_find_local(_, _, _, 'undefined') -> {'error', 'not_found'};
+maybe_find_local(IP, Port, Realm, AccountId) ->
+    search_resources(IP, Port, Realm, get(AccountId)).
 
--spec search_resources(api_binary(), api_binary(), resources()) ->
+-spec search_resources(api_binary(), api_binary(), api_binary(), resources()) ->
                               {'ok', wh_proplist()} |
                               {'error', 'not_found'}.
-search_resources(_IP, _Realm, []) ->
-    lager:debug("failed to find matching resource for ~s(~s)", [_IP, _Realm]),
+search_resources(_IP, _Port, _Realm, []) ->
+    lager:debug("failed to find matching resource for ~s:~s(~s)", [_IP, _Port, _Realm]),
     {'error', 'not_found'};
-search_resources(IP, Realm, [#resrc{id=Id
+search_resources(IP, Port, Realm, [#resrc{id=Id
                                     ,gateways=Gateways
                                     ,global=Global
                                    }
                              | Resources
                             ]) ->
-    case search_gateways(IP, Realm, Gateways) of
-        {'error', 'not_found'} -> search_resources(IP, Realm, Resources);
+    case search_gateways(IP, Port, Realm, Gateways) of
+        {'error', 'not_found'} -> search_resources(IP, Port, Realm, Resources);
         #gateway{realm=GatewayRealm
                  ,username=Username
                  ,password=Password
@@ -263,24 +272,25 @@ search_resources(IP, Realm, [#resrc{id=Id
             {'ok', Props}
     end.
 
--spec search_gateways(api_binary(), api_binary(), gateways()) ->
+-spec search_gateways(api_binary(), api_binary(), api_binary(), gateways()) ->
                              gateway() |
                              {'error', 'not_found'}.
-search_gateways(_, _, []) -> {'error', 'not_found'};
-search_gateways(IP, Realm, [Gateway | Gateways]) ->
-    case search_gateway(IP, Realm, Gateway) of
-        {'error', 'not_found'} -> search_gateways(IP, Realm, Gateways);
+search_gateways(_, _, _, []) -> {'error', 'not_found'};
+search_gateways(IP, Port, Realm, [Gateway | Gateways]) ->
+    case search_gateway(IP, Port, Realm, Gateway) of
+        {'error', 'not_found'} -> search_gateways(IP, Port, Realm, Gateways);
         #gateway{}=Gateway -> Gateway
     end.
 
--spec search_gateway(api_binary(), api_binary(), gateway()) ->
+-spec search_gateway(api_binary(), api_binary(), api_binary(), gateway()) ->
                             gateway() |
                             {'error', 'not_found'}.
-search_gateway(IP, _, #gateway{realm=IP}=Gateway) when IP =/= 'undefined' -> Gateway;
-search_gateway(IP, _, #gateway{server=IP}=Gateway) when IP =/= 'undefined' -> Gateway;
-search_gateway(_, Realm, #gateway{realm=Realm}=Gateway) when Realm =/= 'undefined' -> Gateway;
-search_gateway(_, Realm, #gateway{server=Realm}=Gateway) when Realm =/= 'undefined' -> Gateway;
-search_gateway(_, _, _) -> {'error', 'not_found'}.
+search_gateway(IP, Port, _, #gateway{server=IP, port=Port, force_port='true'}=Gateway) when IP =/= 'undefined' andalso Port =/= 'undefined' -> Gateway;
+search_gateway(IP, _, _, #gateway{server=IP, force_port='false'}=Gateway) when IP =/= 'undefined' -> Gateway;
+search_gateway(IP, _, _, #gateway{realm=IP, force_port='false'}=Gateway) when IP =/= 'undefined' -> Gateway;
+search_gateway(_, _, Realm, #gateway{realm=Realm, force_port='false'}=Gateway) when Realm =/= 'undefined' -> Gateway;
+search_gateway(_, _, Realm, #gateway{server=Realm, force_port='false'}=Gateway) when Realm =/= 'undefined' -> Gateway;
+search_gateway(_, _, _, _) -> {'error', 'not_found'}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -868,7 +878,8 @@ gateway_from_jobj(JObj, #resrc{is_emergency=IsEmergency
     EndpointType = wh_json:get_ne_value(<<"endpoint_type">>, JObj, <<"sip">>),
     #gateway{endpoint_type=EndpointType
              ,server=wh_json:get_value(<<"server">>, JObj)
-             ,realm=wh_json:get_ne_value(<<"realm">>, JObj)
+             ,port=wh_json:get_binary_value(<<"port">>, JObj)
+             ,realm=wh_json:get_value(<<"realm">>, JObj)
              ,username=wh_json:get_value(<<"username">>, JObj)
              ,password=wh_json:get_value(<<"password">>, JObj)
              ,sip_headers=wh_json:get_ne_value(<<"custom_sip_headers">>, JObj)
@@ -880,6 +891,7 @@ gateway_from_jobj(JObj, #resrc{is_emergency=IsEmergency
              ,fax_option=wh_json:is_true([<<"media">>, <<"fax_option">>], JObj, T38)
              ,codecs=wh_json:get_value(<<"codecs">>, JObj, Codecs)
              ,bypass_media=wh_json:is_true(<<"bypass_media">>, JObj, BypassMedia)
+             ,force_port=wh_json:is_true(<<"force_port">>, JObj)
              ,route=gateway_route(JObj)
              ,prefix=gateway_prefix(JObj)
              ,suffix=gateway_suffix(JObj)
@@ -957,13 +969,19 @@ gateway_dialstring(#gateway{route='undefined'
                             ,prefix=Prefix
                             ,suffix=Suffix
                             ,server=Server
+                            ,port=Port
                            }, Number) ->
+    DialStringPort = case wh_util:is_not_empty(Port) andalso Port =/= <<"5060">> of
+        'true' -> <<":", Port/binary>>;
+        'false' -> <<>>
+    end,
     Route = list_to_binary(["sip:"
                             ,wh_util:to_binary(Prefix)
                             ,Number
                             ,wh_util:to_binary(Suffix)
                             ,"@"
                             ,wh_util:to_binary(Server)
+                            ,DialStringPort
                            ]),
     lager:debug("created gateway route ~s", [Route]),
     Route;

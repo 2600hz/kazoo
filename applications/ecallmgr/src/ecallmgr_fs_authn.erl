@@ -255,6 +255,7 @@ query_registrar(Realm, Username, Node, Id, Method, Props) ->
            ,{<<"To">>, ecallmgr_util:get_sip_to(Props)}
            ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
            ,{<<"Orig-IP">>, ecallmgr_util:get_orig_ip(Props)}
+           ,{<<"Orig-Port">>, ecallmgr_util:get_orig_port(Props)}
            ,{<<"Method">>, Method}
            ,{<<"Auth-User">>, Username}
            ,{<<"Auth-Realm">>, Realm}

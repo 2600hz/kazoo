@@ -199,6 +199,13 @@
                         "minLength": 1,
                         "maxLength": 64
                     },
+                    "port": {
+                        "type": "integer",
+                        "required": false,
+                        "name": "Port",
+                        "description": "This resource gateway port",
+                        "default": 5060
+                    },
                     "realm": {
                         "type": "string",
                         "required": false,
@@ -389,6 +396,13 @@
                         "required": false,
                         "name": "Is Emergency?",
                         "description": "Determines if the resource gateway represents emergency services",
+                        "default": false
+                    },
+                    "force_port": {
+                        "type": "boolean",
+                        "required": false,
+                        "name": "Force port",
+                        "description": "Allow request only from this port",
                         "default": false
                     }
                 },
