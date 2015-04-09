@@ -1,5 +1,5 @@
 %%%----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Callflow gen server for CRUD
 %%%
@@ -189,19 +189,19 @@ validate_request(CallflowId, Context) ->
         _E:_R ->
             lager:debug("failed to convert all numbers to e164: ~s: ~p", [_E, _R]),
             C = cb_context:add_validation_error(
-                    <<"numbers">>
-                    ,<<"type">>
-                    ,wh_json:from_list([
-                        {<<"message">>, <<"Value is not of type array">>}
-                        ,{<<"cause">>, OriginalNumbers}
-                     ])
-                    ,Context
-                ),
+                  <<"numbers">>
+                  ,<<"type">>
+                      ,wh_json:from_list(
+                         [{<<"message">>, <<"Value is not of type array">>}
+                          ,{<<"cause">>, OriginalNumbers}
+                         ])
+                  ,Context
+                 ),
             validate_unique_numbers(
-                CallflowId
-                ,[]
-                ,cb_context:set_req_data(C, wh_json:set_value(<<"numbers">>, [], JObj))
-            )
+              CallflowId
+              ,[]
+              ,cb_context:set_req_data(C, wh_json:set_value(<<"numbers">>, [], JObj))
+             )
     end.
 
 %%--------------------------------------------------------------------
@@ -220,13 +220,13 @@ prepare_patterns(CallflowId, Context) ->
     case wh_json:get_value(<<"patterns">>, JObj, []) of
         [] ->
             C = cb_context:add_validation_error(
-                    <<"numbers">>
-                    ,<<"required">>
-                    ,wh_json:from_list([
-                        {<<"message">>, <<"Callflows must be assigned at least one number">>}
-                     ])
-                    ,Context
-                ),
+                  <<"numbers">>
+                  ,<<"required">>
+                  ,wh_json:from_list(
+                     [{<<"message">>, <<"Callflows must be assigned at least one number">>}]
+                    )
+                  ,Context
+                 ),
             check_callflow_schema(CallflowId, C);
         _Else ->
             check_callflow_schema(CallflowId, Context)
@@ -306,32 +306,32 @@ validate_callflow_element(Context, <<"record_call">>, Data) ->
     Max = wh_media_util:max_recording_time_limit(),
     TimeLimit = wh_json:get_integer_value(<<"time_limit">>, Data),
     try wh_json:get_value(<<"action">>, Data) =:= <<"start">> andalso
-        TimeLimit > Max
+             TimeLimit > Max
     of
         'true' ->
             lager:debug("the requested time limit is too damn high"),
             cb_context:add_validation_error(
-                <<"time_limit">>
-                ,<<"maximum">>
-                ,wh_json:from_list([
-                    {<<"message">>, <<"Exceeds system limit of ", (wh_util:to_binary(Max))/binary, " seconds">>}
-                    ,{<<"cause">>, TimeLimit}
+              <<"time_limit">>
+              ,<<"maximum">>
+              ,wh_json:from_list(
+                 [{<<"message">>, <<"Exceeds system limit of ", (wh_util:to_binary(Max))/binary, " seconds">>}
+                  ,{<<"cause">>, TimeLimit}
                  ])
-                ,Context
-            );
+              ,Context
+             );
         'false' -> Context
     catch
         _E:_R ->
             lager:debug("failed to get integer from data: ~s: ~p", [_E, _R]),
             cb_context:add_validation_error(
-                <<"time_limit">>
-                ,<<"type">>
-                ,wh_json:from_list([
-                    {<<"message">>, <<"Must be an integer">>}
-                    ,{<<"cause">>, TimeLimit}
-                 ])
-                ,Context
-            )
+              <<"time_limit">>
+              ,<<"type">>
+                  ,wh_json:from_list(
+                     [{<<"message">>, <<"Must be an integer">>}
+                      ,{<<"cause">>, TimeLimit}
+                     ])
+              ,Context
+             )
     end;
 validate_callflow_element(Context, _Module, _Data) ->
     Context.
@@ -427,14 +427,9 @@ check_uniqueness(Numbers, JObjs, Context) ->
                                       cb_context:context().
 check_numbers_uniqueness([], _, Context) -> Context;
 check_numbers_uniqueness([Number|Numbers], JObjs, Context) ->
-    case
-        lists:dropwhile(
-            fun(J) ->
-                N = wh_json:get_ne_value([<<"doc">>, <<"numbers">>], J, []),
-                (not lists:member(Number, N))
-            end
-            ,JObjs
-        )
+    case lists:dropwhile(fun(J) -> is_number_unique(J, Number) end
+                         ,JObjs
+                        )
     of
         [] -> check_numbers_uniqueness(Numbers, JObjs, Context);
         [JObj|_] ->
@@ -442,24 +437,29 @@ check_numbers_uniqueness([Number|Numbers], JObjs, Context) ->
             check_numbers_uniqueness(Numbers, JObjs, C)
     end.
 
+-spec is_number_unique(wh_json:object(), ne_binary()) -> boolean().
+is_number_unique(J, Number) ->
+    N = wh_json:get_ne_value([<<"doc">>, <<"numbers">>], J, []),
+    (not lists:member(Number, N)).
+
 -spec check_patterns_uniqueness(ne_binaries(), wh_json:objects(), cb_context:context()) ->
                                        cb_context:context().
 check_patterns_uniqueness([], _, Context) -> Context;
 check_patterns_uniqueness([Number|Numbers], JObjs, Context) ->
-    case
-        lists:dropwhile(
-            fun(J) ->
-                Patterns = wh_json:get_ne_value([<<"doc">>, <<"patterns">>], J, []),
-                patterns_dont_match(Number, Patterns)
-            end
-            ,JObjs
-        )
+    case lists:dropwhile(fun(J) -> is_pattern_unique(J, Number) end
+                         ,JObjs
+                        )
     of
         [] -> check_patterns_uniqueness(Numbers, JObjs, Context);
         [JObj|_] ->
             C = add_number_conflict(Number, JObj, Context),
             check_patterns_uniqueness(Numbers, JObjs, C)
     end.
+
+-spec is_pattern_unique(wh_json:object(), ne_binary()) -> boolean().
+is_pattern_unique(J, Number) ->
+    Patterns = wh_json:get_ne_value([<<"doc">>, <<"patterns">>], J, []),
+    patterns_dont_match(Number, Patterns).
 
 -spec filter_callflow_list(api_binary(), wh_json:objects()) -> wh_json:objects().
 filter_callflow_list('undefined', JObjs) -> JObjs;
@@ -482,24 +482,24 @@ add_number_conflict(Number, JObj, Context) ->
     case wh_json:get_ne_value([<<"doc">>, <<"featurecode">>, <<"name">>], JObj) of
         'undefined' ->
             cb_context:add_validation_error(
-                <<"numbers">>
-                ,<<"unique">>
-                ,wh_json:from_list([
-                    {<<"message">>, <<"Number ", Number/binary, " exists in callflow ", Id/binary>>}
-                    ,{<<"cause">>, Number}
+              <<"numbers">>
+              ,<<"unique">>
+              ,wh_json:from_list(
+                 [{<<"message">>, <<"Number ", Number/binary, " exists in callflow ", Id/binary>>}
+                  ,{<<"cause">>, Number}
                  ])
-                ,Context
-            );
+              ,Context
+             );
         _Else ->
             cb_context:add_validation_error(
-                <<"numbers">>
-                ,<<"unique">>
-                ,wh_json:from_list([
-                    {<<"message">>, <<"Number ", Number/binary, " conflicts with featurecode callflow ", Id/binary>>}
-                    ,{<<"cause">>, Number}
+              <<"numbers">>
+              ,<<"unique">>
+              ,wh_json:from_list(
+                 [{<<"message">>, <<"Number ", Number/binary, " conflicts with featurecode callflow ", Id/binary>>}
+                  ,{<<"cause">>, Number}
                  ])
-                ,Context
-            )
+              ,Context
+             )
     end.
 
 %%--------------------------------------------------------------------
@@ -514,7 +514,7 @@ get_metadata('undefined', _, JObj) -> JObj;
 get_metadata(Flow, Db, JObj) ->
     JObj1 = case wh_json:get_first_defined(
                    [[<<"data">>, <<"id">>]
-                   ,[<<"data">>, <<"faxbox_id">>]
+                    ,[<<"data">>, <<"faxbox_id">>]
                    ], Flow)
             of
                 %% this node has no id, dont change the metadata

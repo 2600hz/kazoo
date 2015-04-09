@@ -150,7 +150,8 @@ persist_module(Module, Mods) ->
     crossbar_config:set_default_autoload_modules(
       [wh_util:to_binary(Module)
        | lists:delete(wh_util:to_binary(Module), Mods)
-      ]).
+      ]),
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -794,10 +795,10 @@ save_old_ring_group(JObj, NewCallflow) ->
 -spec init_apps(ne_binary(), ne_binary()) -> 'ok'.
 init_apps(AppsPath, AppUrl) ->
     Apps = find_apps(AppsPath),
-    InitApp = fun (App) -> init_app(App, AppUrl) end,
+    InitApp = fun(App) -> init_app(App, AppUrl) end,
     lists:foreach(InitApp, Apps).
 
--spec find_apps(ne_binary()) -> {'ok', ne_binaries()}.
+-spec find_apps(ne_binary()) -> ne_binaries().
 find_apps(AppsPath) ->
     AccFun =
         fun (AppJSONPath, Acc) ->
