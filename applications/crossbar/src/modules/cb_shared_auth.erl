@@ -258,51 +258,51 @@ import_missing_data(RemoteData) ->
 %% an account and user, ensure the account exists (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec import_missing_account(api_binary(), 'undefined' | wh_json:object()) -> boolean().
-import_missing_account(undefined, _) ->
+-spec import_missing_account(api_binary(), api_object()) -> boolean().
+import_missing_account('undefined', _) ->
     lager:debug("shared auth reply did not define an account id"),
-    false;
-import_missing_account(_, undefined) ->
+    'false';
+import_missing_account(_, 'undefined') ->
     lager:debug("shared auth reply did not define an account definition"),
-    false;
+    'false';
 import_missing_account(AccountId, Account) ->
     %% check if the acount datbase exists
-    Db = wh_util:format_account_id(AccountId, encoded),
+    Db = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:db_exists(Db) of
         %% if the account database exists make sure it has the account
         %% definition, because when couch is acting up it can skip this
-        true ->
+        'true' ->
             lager:debug("remote account db ~s alread exists locally", [AccountId]),
             %% make sure the account definition is in the account, if not
             %% use the one we got from shared auth
             case couch_mgr:open_cache_doc(Db, AccountId) of
-                {error, not_found} ->
+                {'error', 'not_found'} ->
                     lager:debug("missing local account definition, creating from shared auth response"),
                     Doc = wh_json:delete_key(<<"_rev">>, Account),
                     Event = <<"*.execute.post.accounts">>,
                     case crossbar_bindings:fold(Event, [#cb_context{doc=Doc, db_name=Db}, AccountId]) of
-                        #cb_context{resp_status=success} ->
+                        #cb_context{resp_status='success'} ->
                             lager:debug("udpated account definition"),
-                            true;
+                            'true';
                         _ ->
                             lager:debug("could not update account definition"),
-                            false
+                            'false'
                     end;
-                {ok, _} ->
+                {'ok', _} ->
                     lager:debug("account definition exists locally"),
-                    true
+                    'true'
             end;
-        false ->
+        'false' ->
             lager:debug("remote account db ~s does not exist locally, creating", [AccountId]),
             Doc = wh_json:delete_key(<<"_rev">>, Account),
             Event = <<"*.execute.put.accounts">>,
             case crossbar_bindings:fold(Event, [#cb_context{doc=Doc}]) of
-                #cb_context{resp_status=success} ->
+                #cb_context{resp_status='success'} ->
                     lager:debug("imported account"),
-                    true;
+                    'true';
                 _ ->
                     lager:debug("could not import account"),
-                    false
+                    'false'
             end
     end.
 
@@ -313,28 +313,28 @@ import_missing_account(AccountId, Account) ->
 %% an account and user, ensure the user exists locally (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec import_missing_user(api_binary(), api_binary(), 'undefined' | wh_json:object()) -> boolean().
-import_missing_user(_, undefined, _) ->
+-spec import_missing_user(api_binary(), api_binary(), api_object()) -> boolean().
+import_missing_user(_, 'undefined', _) ->
     lager:debug("shared auth reply did not define an user id"),
-    false;
-import_missing_user(_, _, undefined) ->
+    'false';
+import_missing_user(_, _, 'undefined') ->
     lager:debug("shared auth reply did not define an user object"),
-    false;
+    'false';
 import_missing_user(AccountId, UserId, User) ->
-    Db = wh_util:format_account_id(AccountId, encoded),
+    Db = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:lookup_doc_rev(Db, UserId) of
-        {ok, _} ->
+        {'ok', _} ->
             lager:debug("remote user ~s already exists locally in account ~s", [UserId, AccountId]),
-            true;
+            'true';
         _Else ->
             Doc = wh_json:delete_key(<<"_rev">>, User),
             Event = <<"*.execute.put.users">>,
             case crossbar_bindings:fold(Event, [#cb_context{doc=Doc, db_name=Db}]) of
-                #cb_context{resp_status=success} ->
+                #cb_context{resp_status='success'} ->
                     lager:debug("imported user ~s in account ~s", [UserId, AccountId]),
-                    true;
+                    'true';
                 _ ->
                     lager:debug("could not import user ~s in account ~s", [UserId, AccountId]),
-                    false
+                    'false'
             end
     end.
