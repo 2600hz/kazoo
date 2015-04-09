@@ -551,12 +551,11 @@ get_cid_or_default(Attribute, Property, Endpoint) ->
 -spec valid_emergency_numbers(whapps_call:call()) -> ne_binaries().
 valid_emergency_numbers(Call) ->
     AccountDb = whapps_call:account_db(Call),
-    case couch_mgr:open_cache_doc(AccountDb, <<"phone_numbers">>) of
+    case couch_mgr:open_cache_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
         {'ok', JObj} ->
             [Number
              || Number <- wh_json:get_keys(JObj),
-                lists:member(?DASH_KEY, (Features = wh_json:get_value([Number, <<"features">>], JObj, [])))
-                    orelse lists:member(?VITELITY_KEY, Features)
+                wnm_util:is_e911_configured(Number, JObj)
             ];
         {'error', _} ->
             []
