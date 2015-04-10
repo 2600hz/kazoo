@@ -220,7 +220,7 @@ set_pvt_fields(Context) ->
 query_name(<<"account">>, JObj) ->
     wh_json:get_value(<<"realm">>, JObj);
 query_name(<<"device">>, JObj) ->
-    wh_json:get_value([<<"sip">>, <<"username">>], JObj).
+    kz_device:sip_username(JObj).
 
 %%--------------------------------------------------------------------
 %% @public

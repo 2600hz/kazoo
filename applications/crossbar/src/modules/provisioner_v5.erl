@@ -290,15 +290,14 @@ settings_basic(JObj) ->
 -spec settings_sip(wh_json:object()) -> wh_json:object().
 settings_sip(JObj) ->
     Realm = wh_json:get_first_defined(
-              [
-               [<<"sip">>, <<"realm">>],
+              [[<<"sip">>, <<"realm">>],
                <<"realm">>
               ], JObj
              ),
     Props = props:filter_undefined(
-              [{<<"username">>, wh_json:get_value([<<"sip">>, <<"username">>], JObj)},
-               {<<"password">>, wh_json:get_value([<<"sip">>, <<"password">>], JObj)},
-               {<<"realm">>, Realm}
+              [{<<"username">>, kz_device:sip_username(JObj)}
+               ,{<<"password">>, kz_device:sip_password(JObj)}
+               ,{<<"realm">>, Realm}
               ]
              ),
     wh_json:from_list(Props).
@@ -333,8 +332,8 @@ settings_time(JObj) ->
 -spec settings_codecs(wh_json:object()) -> wh_json:object().
 settings_codecs(JObj) ->
     case props:filter_empty(
-              [{<<"audio">>, settings_audio(JObj)}]
-             )
+           [{<<"audio">>, settings_audio(JObj)}]
+          )
     of
         [] -> wh_json:new();
         Props ->
@@ -362,7 +361,7 @@ settings_audio([Codec|Codecs], [Key|Keys], JObj) ->
 %% Send provisioning request
 %% @end
 %%--------------------------------------------------------------------
--spec send_req(atom(), wh_json:object() | 'undefined', ne_binary(), ne_binary(), api_binary()) -> 'ok'.
+-spec send_req(atom(), api_object(), ne_binary(), ne_binary(), api_binary()) -> 'ok'.
 
 send_req('devices_post', JObj, AuthToken, AccountId, MACAddress) ->
     Data = wh_json:encode(device_payload(JObj)),

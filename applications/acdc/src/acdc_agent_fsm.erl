@@ -1501,7 +1501,7 @@ missed_reason(Reason) -> Reason.
 
 -spec find_username(wh_json:object()) -> api_binary().
 find_username(EP) ->
-    find_sip_username(EP, wh_json:get_value([<<"sip">>, <<"username">>], EP)).
+    find_sip_username(EP, kz_device:sip_username(EP)).
 
 -spec find_sip_username(wh_json:object(), api_binary()) -> api_binary().
 find_sip_username(EP, 'undefined') -> wh_json:get_value(<<"To-User">>, EP);
