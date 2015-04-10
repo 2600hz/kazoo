@@ -21,9 +21,6 @@
 -spec reconcile(wh_services:services()) -> wh_services:services().
 -spec reconcile(wh_services:services(), api_binary()) -> wh_services:services().
 reconcile(Services) ->
-    reconcile(Services, 'undefined').
-
-reconcile(Services, DeviceType) ->
     AccountId = wh_services:account_id(Services),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     ViewOptions = ['reduce'
@@ -33,31 +30,18 @@ reconcile(Services, DeviceType) ->
         {'error', _R} ->
             lager:debug("unable to get current devices in service: ~p", [_R]),
             Services;
-        {'ok', []} when DeviceType =:= 'undefined' -> wh_services:reset_category(<<"devices">>, Services);
-        {'ok', []} ->
-            wh_services:update(<<"devices">>, DeviceType, 1, Services);
+        {'ok', []} -> wh_services:reset_category(<<"devices">>, Services);
         {'ok', JObjs} ->
-            reconcile_devices(Services, DeviceType, JObjs)
+            lists:foldl(fun(JObj, S) ->
+                                Item = wh_json:get_value(<<"key">>, JObj),
+                                Quantity = wh_json:get_integer_value(<<"value">>, JObj, 0),
+                                wh_services:update(<<"devices">>, Item, Quantity, S)
+                        end, wh_services:reset_category(<<"devices">>, Services), JObjs)
     end.
 
--spec reconcile_devices(wh_services:services(), api_binary(), wh_json:objects()) ->
-                               wh_services:services().
-reconcile_devices(Services, DeviceType, JObjs) ->
-    S = lists:foldl(fun(JObj, S) -> reconcile_devices_fold(JObj, S, DeviceType) end
-                    ,wh_services:reset_category(<<"devices">>, Services)
-                    ,JObjs
-                   ),
-    Keys = couch_mgr:get_result_keys(JObjs),
-    case lists:member(DeviceType, Keys) of
-        'false' -> wh_services:update(<<"devices">>, DeviceType, 1, S);
-        'true' -> S
-    end.
+reconcile(Services, 'undefined') -> Services;
+reconcile(Services0, DeviceType) ->
+    Services1 = reconcile(Services0),
+    Quantity = wh_services:update_quantity(Services1),
+    wh_services:update(<<"devices">>, DeviceType, Quantity+1, Services1).
 
--spec reconcile_devices_fold(wh_json:object(), wh_services:services(), ne_binary()) ->
-                                    wh_services:services().
-reconcile_devices_fold(JObj, S, DeviceType) ->
-    Quantity = wh_json:get_integer_value(<<"value">>, JObj, 0),
-    case wh_json:get_value(<<"key">>, JObj) of
-        DeviceType -> wh_services:update(<<"devices">>, DeviceType, Quantity+1, S);
-        Item -> wh_services:update(<<"devices">>, Item, Quantity, S)
-    end.
