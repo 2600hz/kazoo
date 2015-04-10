@@ -164,43 +164,52 @@ create(<<"voicefabric">> = Engine, Text, Voice, <<"wav">> = _Format, Options) ->
             {'error', 'invalid_voice'};
         VFabricVoice ->
             BaseUrl = whapps_config:get_string(?MOD_CONFIG_CAT, <<"tts_url">>, <<"https://voicefabric.ru/WSServer/ws/tts">>),
-            ApiKey = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_api_key">>, <<>>),
+            ApiKey = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_api_key">>, <<"urlencode">>),
             Data = [{<<"apikey">>, ApiKey}
                     ,{<<"ttsVoice">>, VFabricVoice}
                     ,{<<"textFormat">>, <<"text/plain">>}
                     ,{<<"text">>, Text}
                    ],
             ArgsEncode = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_args_encode">>, <<"urlencode">>),
-            {Headers, Body} = voicefabric_request_body(ArgsEncode, Data),
-            HTTPOptions = [{'response_format', 'binary'} | Options],
-            Response = ibrowse:send_req(BaseUrl, Headers, 'post', Body, HTTPOptions),
-            create_response(Engine, Response)
+            case voicefabric_request_body(ArgsEncode, Data) of
+                {'ok', Headers, Body} ->
+                    HTTPOptions = [{'response_format', 'binary'} | Options],
+                    lager:debug("sending ~ts", [Body]),
+                    Response = ibrowse:send_req(BaseUrl, Headers, 'post', Body, HTTPOptions),
+                    create_response(Engine, Response);
+                {'error', Reason} ->
+                    lager:warning(Reason),
+                    {'error', 'tts_provider_failure', Reason}
+            end
     end;
 create(_, _, _, _, _) ->
     {'error', 'unknown_provider'}.
 
+-spec voicefabric_request_body(ne_binary(), list()) ->
+    {'ok', list(), ne_binary()}
+    | {'error', ne_binary()}.
 voicefabric_request_body(<<"urlencode">>, Data) ->
-    Headers_ = [{"Content-Type", "application/x-www-form-urlencoded"}],
-    <<$&, Body_/binary>> = iolist_to_binary([[$&, Key, $=, Val] || {Key, Val} <- Data]),
-    {Headers_, Body_};
+    Headers = [{"Content-Type", "application/x-www-form-urlencoded"}],
+    Body = props:to_querystring(Data),
+    {'ok', Headers, Body};
 voicefabric_request_body(<<"multipart">>, Data) ->
-    Boundary = iolist_to_binary([<<"--boundary--">>
-                                 ,couch_mgr:get_uuid(),
-                                 <<"--boundary--">>
+    Boundary = iolist_to_binary([<<"--bound--">>
+                                 ,couch_mgr:get_uuid()
+                                 ,<<"--bound--">>
                                 ]),
-    Headers_ = [{"Content-Type"
+    Headers = [{"Content-Type"
                  ,"multipart/form-data; charset=UTF-8; boundary=" ++ erlang:binary_to_list(Boundary)
                 }],
-    Body_ = iolist_to_binary([<<Boundary/binary,
+    Body = iolist_to_binary([[<<Boundary/binary,
                                 "\r\nContent-Disposition: form-data;"
-                                " name=", Key/binary
-                                , "\r\n\r\n", Val/binary, "\r\n">>
+                                " name=\"", Key/binary
+                                , "\"\r\n\r\n", Val/binary, "\r\n">>
                               || {Key, Val} <- Data
-                             ]),
-    {Headers_, Body_};
+                             ]
+                             ,Boundary]),
+    {'ok', Headers, Body};
 voicefabric_request_body(ArgsEncode, _Data) ->
-    lager:warning("voice fabric unknown args encode method: ~p", [ArgsEncode]),
-    {[], []}.
+    {'error', <<"voicefabric: unknown args encode method: ", ArgsEncode/binary>>}.
 
 %%------------------------------------------------------------------------------
 %% Transcribe the audio binary
