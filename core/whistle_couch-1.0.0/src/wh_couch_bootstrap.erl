@@ -60,7 +60,7 @@ init([]) ->
     wh_couch_connections:add(create_admin_connection(Config)),
     [AutoCmpt|_] = wh_config:get('bigcouch', 'compact_automatically', ['true']),
     CacheProps = [{'expires', 'infinity'}
-                  ,{'origin', {'db', ?WH_CONFIG_DB, <<"whistle_couch">>}}
+                  ,{'origin', {'db', ?WH_CONFIG_DB, ?CONFIG_CAT}}
                  ],
     wh_cache:store_local(?WH_COUCH_CACHE, <<"compact_automatically">>, AutoCmpt, CacheProps),
     [Cookie|_] = wh_config:get_atom('bigcouch', 'cookie', ['monster']),

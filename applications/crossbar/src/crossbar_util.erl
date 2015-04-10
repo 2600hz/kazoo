@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2014, 2600Hz
+%%% @copyright (C) 2010-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -957,7 +957,7 @@ generate_year_month_sequence({FromYear, FromMonth}, {ToYear, ToMonth}, Range) ->
 -spec descendants_count() -> 'ok'.
 -spec descendants_count(wh_proplist() | ne_binary()) -> 'ok'.
 descendants_count() ->
-    Limit = whapps_config:get_integer(<<"whistle_couch">>, <<"default_chunk_size">>, 1000),
+    Limit = whapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, 1000),
     ViewOptions = [{'limit', Limit}
                    ,{'skip', 0}
                   ],

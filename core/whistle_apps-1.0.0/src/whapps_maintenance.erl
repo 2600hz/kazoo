@@ -905,7 +905,7 @@ is_audio_content(_) -> 'false'.
 %%--------------------------------------------------------------------
 -spec maybe_delete_db(ne_binary()) -> 'ok'.
 maybe_delete_db(Database) ->
-    case whapps_config:get_is_true(<<"whistle_couch">>, <<"allow_maintenance_db_delete">>, 'false') of
+    case whapps_config:get_is_true(?SYSCONFIG_COUCH, <<"allow_maintenance_db_delete">>, 'false') of
         'true' ->
             lager:warning("deleting database ~s", [Database]),
             couch_mgr:db_delete(Database);
@@ -930,16 +930,26 @@ maybe_delete_db(Database) ->
 purge_doc_type([], _Account) -> 'ok';
 purge_doc_type([Type|Types], Account) ->
     _ = purge_doc_type(Type, Account),
-    purge_doc_type(Types, Account, whapps_config:get_integer(<<"whistle_couch">>, <<"default_chunk_size">>, 1000));
+    purge_doc_type(Types
+                   ,Account
+                   ,whapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, 1000)
+                  );
 purge_doc_type(Type, Account) when not is_binary(Type) ->
-    purge_doc_type(wh_util:to_binary(Type), Account, whapps_config:get_integer(<<"whistle_couch">>, <<"default_chunk_size">>, 1000));
+    purge_doc_type(wh_util:to_binary(Type)
+                   ,Account
+                   ,whapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, 1000)
+                  );
 purge_doc_type(Type, Account) when not is_binary(Account) ->
-    purge_doc_type(Type, wh_util:to_binary(Account), whapps_config:get_integer(<<"whistle_couch">>, <<"default_chunk_size">>, 1000)).
+    purge_doc_type(Type
+                   ,wh_util:to_binary(Account)
+                   ,whapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, 1000)
+                  ).
+
 purge_doc_type(Type, Account, ChunkSize) ->
     Db = wh_util:format_account_id(Account, 'encoded'),
     Opts = [{'key', Type}
-           ,{'limit', ChunkSize}
-           ,'include_docs'
+            ,{'limit', ChunkSize}
+            ,'include_docs'
            ],
     case couch_mgr:get_results(Db, <<"maintenance/listing_by_type">>, Opts) of
         {'error', _}=E -> E;
@@ -969,6 +979,7 @@ call_id_status(CallId, Verbose) ->
             lager:info("failed to get status of '~s': '~p'", [CallId, _E])
     end.
 
+-spec show_status(ne_binary(), boolean(), api_terms()) -> 'ok'.
 show_status(CallId, 'false', Resp) ->
     lager:info("channel '~s' has status '~s'", [CallId, wapi_call:get_status(Resp)]);
 show_status(CallId, 'true', Resp) ->

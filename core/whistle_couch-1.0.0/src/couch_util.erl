@@ -982,7 +982,7 @@ publish(Action, Db, Doc) ->
          ,{<<"Date-Created">>, wh_json:get_binary_value(<<"pvt_modified">>, Doc)}
          | wh_api:default_headers(<<"configuration">>
                                   ,<<"doc_", (wh_util:to_binary(Action))/binary>>
-                                  ,<<"whistle_couch">>
+                                  ,?CONFIG_CAT
                                   ,<<"1.0.0">>
                                  )
         ],

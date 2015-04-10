@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz
+%%% @copyright (C) 2012-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -53,7 +53,6 @@
         ]).
 
 -include("wh_couch.hrl").
--include_lib("whistle/include/wh_databases.hrl").
 
 -define(SLEEP_BETWEEN_COMPACTION
         ,whapps_config:get_integer(?CONFIG_CAT, <<"sleep_between_compaction">>, 60000)
@@ -1508,7 +1507,7 @@ get_node_connections(Host, Port, User, Pass, AdminPort, Retries) ->
             lager:warning("connection refused when connecting to ~s (on either ~p or ~p)"
                           ,[Host, Port, AdminPort]
                          ),
-            BCCookie = whapps_config:get(<<"whistle_couch">>, <<"bigcouch_cookie">>),
+            BCCookie = whapps_config:get(?CONFIG_CAT, <<"bigcouch_cookie">>),
             lager:warning("check that those ports are correct and the bigcouch_cookie(~s) is correct"
                           ,[BCCookie]
                          ),
@@ -1525,7 +1524,7 @@ get_ports(Node, Cookie) ->
     case net_adm:ping(Node) =:= 'pong' andalso get_ports(Node) of
         'false' ->
             lager:warning("failed to ping '~s' using cookie '~s'", [Node, Cookie]),
-            BCCookie = whapps_config:get(<<"whistle_couch">>, <<"bigcouch_cookie">>),
+            BCCookie = whapps_config:get(?CONFIG_CAT, <<"bigcouch_cookie">>),
             lager:warning("check that the configured bigcouch_cookie(~s) is correct"
                           ,[BCCookie]
                          ),
@@ -1616,7 +1615,7 @@ compact_automatically() ->
 compact_automatically(Boolean) ->
     _ = (catch whapps_config:set(?CONFIG_CAT, <<"compact_automatically">>, Boolean)),
     CacheProps = [{'expires', 'infinity'}
-                  ,{'origin', {'db', ?WH_CONFIG_DB, <<"whistle_couch">>}}
+                  ,{'origin', {'db', ?WH_CONFIG_DB, ?CONFIG_CAT}}
                  ],
     wh_cache:store_local(?WH_COUCH_CACHE, <<"compact_automatically">>, Boolean, CacheProps).
 

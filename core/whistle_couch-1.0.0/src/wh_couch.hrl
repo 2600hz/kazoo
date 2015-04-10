@@ -2,6 +2,7 @@
 -include_lib("whistle/include/wh_types.hrl"). % get the whistle types
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
+-include_lib("whistle/include/kz_system_config.hrl").
 -include_lib("couchbeam/include/couchbeam.hrl").
 
 -define(TIMEOUT, 1000 * 60 * 60). %% check every hour
@@ -19,7 +20,7 @@
 
 -define(FIXTURES_FOLDER, "fixtures").
 
--define(CONFIG_CAT, <<"whistle_couch">>).
+-define(CONFIG_CAT, ?SYSCONFIG_COUCH).
 
 -type couchbeam_errors() :: 'not_found' | 'conflict' | 'failed' |
                             'precondition_failed' | 'db_not_reachable' |
