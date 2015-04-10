@@ -110,7 +110,7 @@ disable(JObj) ->
 api_key(JObj) ->
     wh_json:get_value(?API_KEY, JObj).
 
--spec set_api_key(wh_json:object(), ne_binary()) -> api_binary().
+-spec set_api_key(wh_json:object(), ne_binary()) -> wh_json:object().
 set_api_key(JObj, ApiKey) ->
     wh_json:set_value(?API_KEY, ApiKey, JObj).
 
