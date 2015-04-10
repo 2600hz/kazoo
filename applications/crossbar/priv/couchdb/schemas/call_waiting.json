@@ -1,0 +1,16 @@
+{
+    "_id": "call_waiting",
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "type": "object",
+    "required": false,
+    "name": "Call waiting",
+    "description": "Parameters for server-side call waiting",
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "required": false,
+        "name": "Is Enabled?",
+        "description": "Determines if server side call waiting is enabled/disabled"
+      }
+  }
+}
