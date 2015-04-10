@@ -140,7 +140,7 @@ maybe_get_owner_presence_id(AccountDb, DeviceId, OwnerId) ->
         {'ok', JObj} ->
             case wh_json:get_ne_value(<<"presence_id">>, JObj) of
                 'undefined' -> get_device_presence_id(AccountDb, DeviceId);
-                PresenceId -> PresenceId
+                PresenceId -> wh_util:to_binary(PresenceId)
             end
     end.
 
@@ -148,7 +148,11 @@ maybe_get_owner_presence_id(AccountDb, DeviceId, OwnerId) ->
 get_device_presence_id(AccountDb, DeviceId) ->
     case couch_mgr:open_cache_doc(AccountDb, DeviceId) of
         {'error', _} -> 'undefined';
-        {'ok', JObj} -> wh_json:get_ne_value(<<"presence_id">>, JObj)
+        {'ok', JObj} ->
+            case wh_json:get_ne_value(<<"presence_id">>, JObj) of
+                'undefined' -> 'undefined';
+                PresenceId -> wh_util:to_binary(PresenceId)
+            end
     end.
 
 -spec create_specific_ccvs(auth_user(), ne_binary()) -> wh_proplist().
@@ -617,12 +621,12 @@ maybe_enforce_security({#auth_user{doc=JObj}=User, Acc}) ->
     case wh_json:is_true([<<"media">>
                           ,<<"encryption">>
                           ,<<"enforce_security">>
-                         ], JObj, 'false') 
-    of        
+                         ], JObj, 'false')
+    of
         'true' -> {User, [{<<"Media-Encryption-Enforce-Security">>, 'true'} | Acc]};
         'false' -> {User, Acc}
     end.
-        
+
 -spec maybe_set_encryption_flags({auth_user(), wh_proplist()}) -> {auth_user(), wh_proplist()}.
 maybe_set_encryption_flags({#auth_user{doc=JObj}=User, Acc}) ->
     {User, encryption_method_map(Acc, JObj)}.

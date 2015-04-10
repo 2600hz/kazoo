@@ -54,7 +54,10 @@
                       ,[{<<"switch_event">>, <<"fs_xml_flush">>}]
                      }
                     ]).
--define(BINDINGS, [{'switch', [{'restrict_to', ['fs_xml_flush']}]}]).
+-define(BINDINGS, [{'switch', [{'restrict_to', ['fs_xml_flush']}
+                               ,'federate'
+                              ]}
+                  ]).
 -define(QUEUE_NAME, <<"fs_nodes_shared_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
@@ -312,9 +315,10 @@ capability_to_json(#capability{node=Node
 -spec handle_fs_xml_flush(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_fs_xml_flush(JObj, _Props) ->
     'true' = wapi_switch:fs_xml_flush_v(JObj),
-    User  = wh_json:get_value(<<"Username">>, JObj),
+    Username  = wh_json:get_value(<<"Username">>, JObj),
     Realm = wh_json:get_value(<<"Realm">>, JObj, <<>>),
-    flush(User, Realm).
+    _ = wh_cache:erase_local(?ECALLMGR_AUTH_CACHE, ?CREDS_KEY(Realm, Username)),
+    flush(Username, Realm).
 
 %%%===================================================================
 %%% gen_server callbacks

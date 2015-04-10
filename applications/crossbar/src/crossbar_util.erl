@@ -74,7 +74,9 @@
 -export([format_emergency_caller_id_number/1]).
 
 -export([get_devices_by_owner/2]).
--export([maybe_refresh_fs_xml/2]).
+-export([maybe_refresh_fs_xml/2
+         ,refresh_fs_xml/1
+        ]).
 
 -include("crossbar.hrl").
 
@@ -1054,15 +1056,26 @@ maybe_refresh_fs_xml('user', Context, 'true') ->
 maybe_refresh_fs_xml('device', Context, Precondition) ->
     Doc   = cb_context:doc(Context),
     DbDoc = cb_context:fetch(Context, 'db_doc'),
-    Realm = wh_util:get_account_realm(cb_context:account_db(Context)),
     ( Precondition
       or (kz_device:sip_username(DbDoc) =/= kz_device:sip_username(Doc))
       or (kz_device:sip_password(DbDoc) =/= kz_device:sip_password(Doc))
       or (wh_json:get_value(<<"owner_id">>, DbDoc) =/=
               wh_json:get_value(<<"owner_id">>, Doc))
+      or (wh_json:is_true(<<"enabled">>, DbDoc) andalso
+          not wh_json:is_true(<<"enabled">>, Doc)
+         )
     ) andalso
-        refresh_fs_xml(Realm, DbDoc),
+        refresh_fs_xml(
+          wh_util:get_account_realm(cb_context:account_db(Context))
+          ,DbDoc
+         ),
     'ok'.
+
+-spec refresh_fs_xml(cb_context:context()) -> 'ok'.
+refresh_fs_xml(Context) ->
+    Realm = wh_util:get_account_realm(cb_context:account_db(Context)),
+    DbDoc = cb_context:fetch(Context, 'db_doc'),
+    refresh_fs_xml(Realm, DbDoc).
 
 -spec refresh_fs_xml(ne_binary(), wh_json:object()) -> 'ok'.
 refresh_fs_xml(Realm, Doc) ->
