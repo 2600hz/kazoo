@@ -40,12 +40,9 @@
 
 -define(MAX_UPLOAD_SIZE, whapps_config:get_integer(?CONFIG_CAT, <<"max_upload_size">>, 8000000)).
 
--type cowboy_multipart_response() :: {{'headers', cowboy:http_headers()} |
-                                      {'data', binary()} |
-                                      'end_of_part' |
-                                      'eof'
-                                      ,cowboy_req:req()
-                                     }.
+-type cowboy_multipart_response() :: {'ok', cow_multipart:headers(), cowboy_req:req()} | {'done', cowboy_req:req()} | cowboy_req:req().
+
+-type cowboy_multipart_body() :: {'ok', binary(), cowboy_req:req()} | {'more', binary(), cowboy_req:req()} | cowboy_req:req().
 
 -type halt_return() :: {'halt', cowboy_req:req(), cb_context:context()}.
 
@@ -270,31 +267,51 @@ try_json(ReqBody, QS, Context, Req) ->
 get_url_encoded_body(ReqBody) ->
     wh_json:from_list(cowboy_http:x_www_form_urlencoded(ReqBody)).
 
--spec extract_multipart(cb_context:context(), cowboy_req:req()) ->
-                               {cb_context:context(), cowboy_req:req()}.
-extract_multipart(Context, Req0) ->
-    MPData = cowboy_req:multipart_data(Req0),
 
-    case extract_multipart_content(MPData, wh_json:new()) of
-        {'eof', Req1} -> {Context, Req1};
-        {'end_of_part', JObj, Req1} ->
-            extract_multipart(cb_context:set_req_files(Context, [JObj|cb_context:req_files(Context)]), Req1)
-    end.
+-spec extract_multipart(cb_context:context(), cowboy_multipart_response()) -> {cb_context:context(), cowboy_req:req()}.
+extract_multipart(Context, {'done', Req}) ->
+    {Context, Req};
+extract_multipart(Context, {'ok', Headers, Req}) ->
+    JObj = wh_json:from_list([{<<"headers">>, Headers}
+                               ,{<<"data">>, <<>>}
+                              ]),
+    {R, J} = extract_multipart_body(Context, Req, JObj),
+    Files = [J|cb_context:req_files(Context)],
+    extract_multipart(
+        cb_context:set_req_files(Context, Files)
+        ,cowboy_req:part(R)
+    );
+extract_multipart(Context, Req) ->
+    extract_multipart(
+        Context
+        ,cowboy_req:part(Req)
+    ).
 
--spec extract_multipart_content(cowboy_multipart_response(), wh_json:object()) ->
-                                       {'end_of_part', wh_json:object(), cowboy_req:req()} |
-                                       {'eof', cowboy_req:req()}.
-extract_multipart_content({'eof', _Req}=EOF, _JObj) -> EOF;
-extract_multipart_content({'end_of_part', Req}, JObj) -> {'end_of_part', JObj, Req};
-extract_multipart_content({'headers', Headers, Req}, JObj) ->
-    lager:debug("setting multipart headers: ~p", [Headers]),
-    MPData = cowboy_req:multipart_data(Req),
-    extract_multipart_content(MPData, wh_json:set_value(<<"headers">>, Headers, JObj));
-extract_multipart_content({'body', Datum, Req}, JObj) ->
+-spec extract_multipart_body(cb_context:context(), cowboy_multipart_body(), wh_json:object()) -> {cb_context:context(), cowboy_req:req()}.
+extract_multipart_body(_Context, {'ok', Datum, Req}, JObj) ->
     Data = wh_json:get_value(<<"data">>, JObj, <<>>),
-    extract_multipart_content(cowboy_req:multipart_data(Req)
-                              ,wh_json:set_value(<<"data">>, <<Data/binary, Datum/binary>>, JObj)
-                             ).
+    {Req, wh_json:set_value(<<"data">>, <<Data/binary, Datum/binary>>, JObj)};
+extract_multipart_body(Context, {'more', Datum, Req}, JObj) ->
+    Data = <<(wh_json:get_value(<<"data">>, JObj, <<>>))/binary
+              ,Datum/binary
+           >>,
+    case erlang:byte_size(Data) > ?MAX_UPLOAD_SIZE of
+        'true' ->
+            lager:error("file size exceeded, max is ~p", [?MAX_UPLOAD_SIZE]),
+            ?MODULE:halt(Req
+                         ,cb_context:add_validation_error(<<"file">>, <<"maxLength">>
+                                                          ,?MAX_UPLOAD_SIZE
+                                                          ,Context
+                                                         ));
+        'false' ->
+            extract_multipart_body(
+                Context
+                ,cowboy_req:part_body(Req)
+                ,wh_json:set_value(<<"data">>, Data, JObj)
+            )
+    end;
+extract_multipart_body(Context, Req, JObj) ->
+    extract_multipart_body(Context, cowboy_req:part_body(Req), JObj).
 
 -spec extract_file(cb_context:context(), ne_binary(), cowboy_req:req()) ->
                           {cb_context:context(), cowboy_req:req()} |
