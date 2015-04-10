@@ -1035,21 +1035,23 @@ maybe_refresh_fs_xml(Kind, Context) ->
     Doc = cb_context:doc(Context),
     Precondition =
         (wh_json:get_value(<<"presence_id">>, DbDoc) =/=
-             wh_json:get_value(<<"presence_id">>, Doc))
+             wh_json:get_value(<<"presence_id">>, Doc)
+        )
         or (wh_json:get_value([<<"media">>, <<"encryption">>, <<"enforce_security">>], DbDoc) =/=
-                wh_json:get_value([<<"media">>, <<"encryption">>, <<"enforce_security">>], Doc)),
-    maybe_refresh_fs_xml(Precondition, Kind, Context).
+                wh_json:get_value([<<"media">>, <<"encryption">>, <<"enforce_security">>], Doc)
+           ),
+    maybe_refresh_fs_xml(Kind, Context, Precondition).
 
--spec maybe_refresh_fs_xml(boolean(), 'user' | 'device', cb_context:context()) -> 'ok'.
-maybe_refresh_fs_xml('false', 'user', _Context) -> 'ok';
-maybe_refresh_fs_xml('true', 'user', Context) ->
+-spec maybe_refresh_fs_xml('user' | 'device', cb_context:context(), boolean()) -> 'ok'.
+maybe_refresh_fs_xml('user', _Context, 'false') -> 'ok';
+maybe_refresh_fs_xml('user', Context, 'true') ->
     Doc = cb_context:doc(Context),
     AccountDb = cb_context:account_db(Context),
     Realm     = wh_util:get_account_realm(AccountDb),
     Id = wh_json:get_value(<<"_id">>, Doc),
     Devices = get_devices_by_owner(AccountDb, Id),
     lists:foreach(fun (DevDoc) -> refresh_fs_xml(Realm, DevDoc) end, Devices);
-maybe_refresh_fs_xml(Precondition, 'device', Context) ->
+maybe_refresh_fs_xml('device', Context, Precondition) ->
     Doc   = cb_context:doc(Context),
     DbDoc = cb_context:fetch(Context, 'db_doc'),
     Realm = wh_util:get_account_realm(cb_context:account_db(Context)),
