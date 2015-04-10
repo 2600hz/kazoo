@@ -554,10 +554,10 @@ print_account_info(AccountDb, AccountId) ->
     case couch_mgr:open_doc(AccountDb, AccountId) of
         {'ok', JObj} ->
             io:format("Account ID: ~s (~s)~n", [AccountId, AccountDb]),
-            io:format("  Name: ~s~n", [wh_json:get_value(<<"name">>, JObj)]),
-            io:format("  Realm: ~s~n", [wh_json:get_value(<<"realm">>, JObj)]),
-            io:format("  Enabled: ~s~n", [not wh_json:is_false(<<"pvt_enabled">>, JObj)]),
-            io:format("  System Admin: ~s~n", [wh_json:is_true(<<"pvt_superduper_admin">>, JObj)]);
+            io:format("  Name: ~s~n", [kz_account:name(JObj)]),
+            io:format("  Realm: ~s~n", [kz_account:realm(JObj)]),
+            io:format("  Enabled: ~s~n", [kz_account:is_enabled(JObj)]),
+            io:format("  System Admin: ~s~n", [kz_account:is_superduper_admin(JObj)]);
         {'error', _} ->
             io:format("Account ID: ~s (~s)~n", [AccountId, AccountDb])
     end,

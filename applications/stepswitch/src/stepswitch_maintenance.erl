@@ -68,8 +68,7 @@ number_tree(DID) ->
 -spec number_tree(ne_binary(), wh_json:object()) -> 'ok'.
 number_tree(DID, AccountDoc) ->
     io:format("~s tree ", [DID]),
-    Tree = wh_json:get_value(<<"pvt_tree">>, AccountDoc, []),
-    print_tree(Tree),
+    print_tree(kz_account:tree(AccountDoc)),
     io:format(" ~s(~s)~n", [wh_json:get_value(<<"name">>, AccountDoc), wh_json:get_value(<<"_id">>, AccountDoc)]).
 
 -spec print_tree(ne_binaries()) -> 'ok'.

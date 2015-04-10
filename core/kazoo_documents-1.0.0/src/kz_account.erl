@@ -14,10 +14,10 @@
          ,timezone/1, set_timezone/2
          ,id/1
          ,parent_account_id/1
-         ,tree/1
+         ,set_tree/2, tree/1
          ,notification_preference/1, set_notification_preference/2
          ,is_enabled/1, enable/1, disable/1
-         ,api_key/1
+         ,set_api_key/2, api_key/1
          ,is_superduper_admin/1
          ,allow_number_additions/1
         ]).
@@ -82,6 +82,10 @@ parent_account_id(JObj) ->
 tree(JObj) ->
     wh_json:get_value(?TREE, JObj, []).
 
+-spec set_tree(wh_json:object(), ne_binaries()) -> wh_json:object().
+set_tree(JObj, Tree) ->
+    wh_json:set_value(?TREE, Tree, JObj).
+
 -spec notification_preference(wh_json:object()) -> api_binary().
 notification_preference(JObj) ->
     wh_json:get_value(?NOTIFY_PREF, JObj).
@@ -105,6 +109,10 @@ disable(JObj) ->
 -spec api_key(wh_json:object()) -> api_binary().
 api_key(JObj) ->
     wh_json:get_value(?API_KEY, JObj).
+
+-spec set_api_key(wh_json:object(), ne_binary()) -> api_binary().
+set_api_key(JObj, ApiKey) ->
+    wh_json:set_value(?API_KEY, ApiKey, JObj).
 
 -spec is_superduper_admin(wh_json:object()) -> boolean().
 is_superduper_admin(JObj) ->

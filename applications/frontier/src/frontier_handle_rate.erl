@@ -253,7 +253,7 @@ fetch_from_parents(AccountDb, MethodList, Realm) ->
     AccountId = wh_util:format_account_id(AccountDb, 'raw'),
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
         {'ok', JObj} ->
-            Tree = lists:reverse(wh_json:get_value(<<"pvt_tree">>, JObj)),
+            Tree = lists:reverse(kz_account:tree(JObj)),
             check_fallbacks(Tree, MethodList, Realm);
         {'error', _Reason} ->
             lager:info("Cant't access to db: ~p", [_Reason])

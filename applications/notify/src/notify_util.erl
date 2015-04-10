@@ -237,7 +237,7 @@ get_service_props(Request, Account, ConfigCat) ->
                                        ,whapps_config:get(ConfigCat, <<"default_template_charset">>, <<>>)),
     JObj = find_notification_settings(
              binary:split(ConfigCat, <<".">>)
-             ,wh_json:get_value(<<"pvt_tree">>, Account, [])
+             ,kz_account:tree(Account)
             ),
     [{<<"url">>, wh_json:get_value(<<"service_url">>, JObj, DefaultUrl)}
      ,{<<"name">>, wh_json:get_value(<<"service_name">>, JObj, DefaultName)}
@@ -290,7 +290,7 @@ maybe_find_deprecated_settings(_, _) -> wh_json:new().
 -spec get_rep_email(wh_json:object()) -> api_binary().
 get_rep_email(JObj) ->
     AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
-    case wh_json:get_value(<<"pvt_tree">>, JObj, []) of
+    case kz_account:tree(JObj) of
         [] -> 'undefined';
         Tree -> get_rep_email(lists:reverse(Tree), AccountId)
     end.
@@ -334,7 +334,7 @@ find_admin(Account) when is_binary(Account) ->
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
         {'error', _} -> find_admin([AccountId]);
         {'ok', JObj} ->
-            Tree = wh_json:get_value(<<"pvt_tree">>, JObj, []),
+            Tree = kz_account:tree(JObj),
             find_admin([AccountId | lists:reverse(Tree)])
     end;
 find_admin([AcctId|Tree]) ->
@@ -359,7 +359,7 @@ find_admin([AcctId|Tree]) ->
     end;
 find_admin(Account) ->
     find_admin([ wh_json:get_value(<<"pvt_account_id">>, Account)
-                 | lists:reverse(wh_json:get_value(<<"pvt_tree">>, Account, []))
+                 | lists:reverse(kz_account:tree(Account))
                ]).
 
 %%--------------------------------------------------------------------

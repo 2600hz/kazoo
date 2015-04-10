@@ -404,7 +404,7 @@ is_superduper_admin(AccountId, AccountDb) ->
     lager:debug("checking for superduper admin: ~s (~s)", [AccountId, AccountDb]),
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
         {'ok', JObj} ->
-            case wh_json:is_true(<<"pvt_superduper_admin">>, JObj) of
+            case kz_account:is_superduper_admin(JObj) of
                 'true' ->
                     lager:debug("the requestor is a superduper admin"),
                     'true';
