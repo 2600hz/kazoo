@@ -749,9 +749,10 @@ reset_category(Category, #wh_services{updates=JObj}=Services) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec is_reseller(ne_binary() | services()) -> boolean().
-is_reseller(Account) ->
-    Service = public_json(Account),
-    wh_json:is_true(<<"reseller">>, Service).
+is_reseller(#wh_services{jobj=ServicesJObj}) ->
+    wh_json:is_true(<<"pvt_reseller">>, ServicesJObj);
+is_reseller(<<_/binary>> = Account) ->
+    is_reseller(fetch(Account)).
 
 
 %%--------------------------------------------------------------------
