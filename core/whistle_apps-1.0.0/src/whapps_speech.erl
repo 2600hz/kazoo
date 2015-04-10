@@ -139,12 +139,19 @@ create(<<"ispeech">> = Engine, Text, Voice, Format, Options) ->
             create_response(Engine, Response)
     end;
 create(<<"voicefabric">> = Engine, Text, Voice, <<"wav">> = _Format, Options) ->
+    create_voicefabric(Engine, Text, Voice, Options);
+create(_, _, _, _, _) ->
+    {'error', 'unknown_provider'}.
+
+-spec create_voicefabric(ne_binary(), binary(), ne_binary(), wh_proplist()) ->
+                                create_resp().
+create_voicefabric(Engine, Text, Voice, Options) ->
     lager:debug("getting ~ts from VoiceFabric", [Text]),
-    VoiceMappings = [ %% Владимир8000
+    VoiceMappings = [%% Владимир8000
                      {<<"male/ru-ru">>, <<208,146,208,187,208,176,208,180,208,184,208,188,208,184,209,128,56,48,48,48>>}
                      %% Юлия8000
                      ,{<<"female/ru-ru">>, <<208,174,208,187,208,184,209,143,56,48,48,48>>}
-                      %% Владимир8000
+                     %% Владимир8000
                      ,{<<"male/ru-ru/vladimir">>, <<208,146,208,187,208,176,208,180,208,184,208,188,208,184,209,128,56,48,48,48>>}
                      %% Юлия8000
                      ,{<<"female/ru-ru/julia">>, <<208,174,208,187,208,184,209,143,56,48,48,48>>}
@@ -181,9 +188,7 @@ create(<<"voicefabric">> = Engine, Text, Voice, <<"wav">> = _Format, Options) ->
                     lager:warning(Reason),
                     {'error', 'tts_provider_failure', Reason}
             end
-    end;
-create(_, _, _, _, _) ->
-    {'error', 'unknown_provider'}.
+    end.
 
 -spec voicefabric_request_body(ne_binary(), list()) ->
     {'ok', list(), ne_binary()}
@@ -384,12 +389,10 @@ create_response(<<"voicefabric">> = _Engine, {'ok', "200", Headers, Content}) ->
                                           ,Headers
                                          ),
             lager:debug("corrected headers"),
-            create_response('ok', {'ok', "200", NewHeaders, WavContent});
-        {'error', Reason} ->
-            lager:debug("failed: ~p", [Reason]),
-            {'error', 'tts_provider_failure', <<"converting failed">>};
-        _Error ->
-            lager:debug("unknown ~p", [_Error])
+            create_response(<<"default">>, {'ok', "200", NewHeaders, WavContent});
+        {'error', _Reason} ->
+            lager:debug("failed: ~p", [_Reason]),
+            {'error', 'tts_provider_failure', <<"converting failed">>}
     end;
 create_response(_Engine, {'ok', "200", Headers, Content}) ->
     ContentType = props:get_value("Content-Type", Headers),
