@@ -433,14 +433,9 @@ presence_id(EndpointId, Call) when is_binary(EndpointId) ->
         {'error', _} -> 'undefined'
     end;
 presence_id(Endpoint, Call) ->
-    Username = case kz_device:sip_username(Endpoint) of
-                   'undefined' -> whapps_call:request_user(Call);
-                   Name -> Name
-               end,
-    PresenceId = case wh_json:get_ne_value(<<"presence_id">>, Endpoint) of
-                     'undefined' -> Username;
-                     Else -> Else
-                 end,
+    Username = kz_device:sip_username(Endpoint, whapps_call:request_user(Call)),
+    PresenceId = kz_device:presence_id(Endpoint, Username),
+
     case binary:match(PresenceId, <<"@">>) of
         'nomatch' ->
             Realm = cf_util:get_sip_realm(

@@ -226,24 +226,27 @@ unsolicited_owner_mwi_update(AccountDb, OwnerId) ->
             {New, Saved} = vm_count_by_owner(AccountDb, OwnerId),
             AccountId = wh_util:format_account_id(AccountDb, 'raw'),
             lists:foreach(
-              fun(JObj) ->
-                      J = wh_json:get_value(<<"doc">>, JObj),
-                      Username = kz_device:sip_username(J),
-                      Realm = get_sip_realm(J, AccountId),
-                      OwnerId = get_endpoint_owner(J),
-                      case wh_json:get_value([<<"sip">>, <<"method">>], J) =:= <<"password">>
-                          andalso Username =/= 'undefined'
-                          andalso Realm =/= 'undefined'
-                          andalso OwnerId =/= 'undefined'
-                      of
-                          'true' -> send_mwi_update(New, Saved, Username, Realm);
-                          'false' -> 'ok'
-                      end
-              end, JObjs),
-            'ok';
+              fun(JObj) -> maybe_send_mwi_update(JObj, AccountId, New, Saved) end
+              ,JObjs
+             );
         {'error', _R}=E ->
             lager:warning("failed to find devices owned by ~s: ~p", [OwnerId, _R]),
             E
+    end.
+
+-spec maybe_send_mwi_update(wh_json:object(), ne_binary(), integer(), integer()) -> 'ok'.
+maybe_send_mwi_update(JObj, AccountId, New, Saved) ->
+    J = wh_json:get_value(<<"doc">>, JObj),
+    Username = kz_device:sip_username(J),
+    Realm = get_sip_realm(J, AccountId),
+    OwnerId = get_endpoint_owner(J),
+    case kz_device:sip_method(J) =:= <<"password">>
+        andalso Username =/= 'undefined'
+        andalso Realm =/= 'undefined'
+        andalso OwnerId =/= 'undefined'
+    of
+        'true' -> send_mwi_update(New, Saved, Username, Realm);
+        'false' -> 'ok'
     end.
 
 -spec unsolicited_endpoint_mwi_update(api_binary(), api_binary()) ->
@@ -266,7 +269,7 @@ maybe_send_endpoint_mwi_update(JObj, AccountDb) ->
     Username = kz_device:sip_username(JObj),
     Realm = get_sip_realm(JObj, AccountId),
     OwnerId = get_endpoint_owner(JObj),
-    case wh_json:get_value([<<"sip">>, <<"method">>], JObj) =:= <<"password">>
+    case kz_device:sip_method(JObj) =:= <<"password">>
         andalso Username =/= 'undefined'
         andalso Realm =/= 'undefined'
     of
@@ -545,13 +548,16 @@ get_sip_realm(SIPJObj, AccountId) ->
 
 -spec get_sip_realm(wh_json:object(), ne_binary(), Default) -> Default | ne_binary().
 get_sip_realm(SIPJObj, AccountId, Default) ->
-    case wh_json:get_ne_value([<<"sip">>, <<"realm">>], SIPJObj) of
-        'undefined' ->
-            case wh_util:get_account_realm(AccountId) of
-                'undefined' -> Default;
-                Else -> Else
-            end;
+    case kz_device:sip_realm(SIPJObj) of
+        'undefined' -> get_account_realm(AccountId, Default);
         Realm -> Realm
+    end.
+
+-spec get_account_realm(ne_binary(), api_binary()) -> api_binary().
+get_account_realm(AccountId, Default) ->
+    case wh_util:get_account_realm(AccountId) of
+        'undefined' -> Default;
+        Else -> Else
     end.
 
 %%-----------------------------------------------------------------------------

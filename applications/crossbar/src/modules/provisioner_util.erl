@@ -210,7 +210,8 @@ maybe_send_contact_list(Context, 'success') ->
             <<"provisioner_v5">> ->
                 spawn('provisioner_v5', 'update_user', [cb_context:account_id(Context)
                                                         ,cb_context:doc(Context)
-                                                        ,cb_context:auth_token(Context)]);
+                                                        ,cb_context:auth_token(Context)
+                                                       ]);
             _ -> 'ok'
         end,
     Context;
@@ -347,8 +348,8 @@ do_simple_provision(MACAddress, Context) ->
                         ]),
             HTTPOptions = [],
             Body = [{"device[mac]", MACAddress}
-                    ,{"device[label]", wh_json:get_string_value(<<"name">>, JObj)}
-                    ,{"sip[realm]", wh_json:get_string_value([<<"sip">>, <<"realm">>], JObj, AccountRealm)}
+                    ,{"device[label]", wh_json:get_value(<<"name">>, JObj)}
+                    ,{"sip[realm]", kz_device:sip_realm(JObj, AccountRealm)}
                     ,{"sip[username]", kz_device:sip_username(JObj)}
                     ,{"sip[password]", kz_device:sip_password(JObj)}
                     ,{"submit", "true"}
@@ -656,13 +657,13 @@ set_device_line_defaults(Context) ->
               end
       end
      ,fun(J) ->
-              case wh_json:get_ne_value([<<"sip">>, <<"realm">>], Device) of
+              case kz_device:sip_realm(Device) of
                   'undefined' -> J;
                   Value -> wh_json:set_value([<<"server_host">>, <<"value">>], Value, J)
               end
       end
      ,fun(J) ->
-              case wh_json:get_ne_value(<<"name">>, Device) of
+              case kz_device:name(Device) of
                   'undefined' -> J;
                   Value -> wh_json:set_value([<<"displayname">>, <<"value">>], Value, J)
               end
