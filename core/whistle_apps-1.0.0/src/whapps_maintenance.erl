@@ -793,20 +793,9 @@ maybe_add_extension({A, CT}) ->
 %% @end
 %%--------------------------------------------------------------------
 -type attachment_and_content() :: {ne_binary(), ne_binary()}.
-
--spec try_load_attachment(ne_binary(), ne_binary(), ne_binary()) ->
-                                 binary().
-try_load_attachment(AccountDb, Id, OrigAttach) ->
-    case couch_mgr:fetch_attachment(AccountDb, Id, OrigAttch) of
-        {'ok', Content} -> Content;
-        {'error', _R}=E ->
-            io:format("unable to fetch attachment ~s/~s/~s: ~p~n", [AccountDb, Id, OrigAttch, _R]),
-            throw(E)
-    end.
-
 -spec maybe_update_attachment(ne_binary(), ne_binary(), attachment_and_content(), attachment_and_content()) -> 'ok'.
 maybe_update_attachment(_, _, {Attachment, CT}, {Attachment, CT}) -> 'ok';
-maybe_update_attachment(AccountDb, Id, {OrigAttch, _CT1}, {NewAttch, CT}) ->
+maybe_update_attachment(AccountDb, Id, {OrigAttach, _CT1}, {NewAttach, CT}) ->
     %% this preforms the following:
     %% 1. Get the current attachment
     %% 2. Fix the name and content type then put the new attachment on the doc
@@ -814,51 +803,66 @@ maybe_update_attachment(AccountDb, Id, {OrigAttch, _CT1}, {NewAttch, CT}) ->
     %% 4. Remove the original (erronous) attachment
     %% However, if it failes at any of those stages it will leave the media doc with multiple
     %%    attachments and require manual intervention
-    Updaters = [fun(_) -> try_load_attachment(AccountDb, Id, OrigAttch) end
+    Updaters = [fun(_) -> try_load_attachment(AccountDb, Id, OrigAttach) end
                 ,fun(Content1) ->
-                         {'ok', Rev} = couch_mgr:lookup_doc_rev(AccountDb, Id),
-                         Options = [{'headers', [{'content_type', wh_util:to_list(CT)}]}
-                                    ,{'rev', Rev}
-                                   ],
-                         %% bigcouch is awesome in that it sometimes returns 409 (conflict) but does the work anyway..
-                         %%   so rather than check the put return fetch the new attachment and compare it to the old
-                         Result = couch_mgr:put_attachment(AccountDb, Id, NewAttch, Content1, Options),
-                         {'ok', JObj} = couch_mgr:open_doc(AccountDb, Id),
-
-                         case wh_doc:attachment_length(JObj, OrigAttch)
-                             =:= wh_doc:attachment_length(JObj, NewAttch)
-                         of
-                             'false' ->
-                                 io:format("unable to put new attachment ~s/~s/~s: ~p~n", [AccountDb, Id, NewAttch, Result]),
-                                 {'error', 'length_mismatch'};
-                             'true' ->
-                                 Filename = wh_util:to_list(<<"/tmp/media_", Id/binary, "_", OrigAttch/binary>>),
-                                 case file:write_file(Filename, Content1) of
-                                     'ok' -> 'ok';
-                                     {'error', _}=E2 ->
-                                         io:format("unable to backup attachment ~s/~s/~s: ~p~n", [AccountDb, Id, NewAttch, E2]),
-                                         E2
-                                 end
-                         end
+                         maybe_resave_attachment(Content1, AccountDb, Id, OrigAttach, NewAttach, CT)
                  end
-                ,fun('ok') ->
-                         case OrigAttch =/= NewAttch of
-                             'true' ->
-                                 case couch_mgr:delete_attachment(AccountDb, Id, OrigAttch) of
-                                     {'ok', _} ->
-                                         io:format("updated attachment name ~s/~s/~s~n", [AccountDb, Id, NewAttch]),
-                                         'ok';
-                                     {'error', _}=E ->
-                                         io:format("unable to remove original attachment ~s/~s/~s: ~p~n", [AccountDb, Id, OrigAttch, E]),
-                                         'error'
-                                 end;
-                             'false' ->
-                                 io:format("updated content type for ~s/~s/~s~n", [AccountDb, Id, NewAttch]),
-                                 'ok'
-                         end
+                ,fun(_) ->
+                         maybe_cleanup_old_attachment(AccountDb, Id, OrigAttach, NewAttach)
                  end
                ],
-    lists:foldl(fun(F, A) -> F(A) end, [], Updaters).
+    lists:foldl(fun(F, Acc) -> F(Acc) end, [], Updaters).
+
+-spec try_load_attachment(ne_binary(), ne_binary(), ne_binary()) ->
+                                 binary().
+try_load_attachment(AccountDb, Id, OrigAttach) ->
+    case couch_mgr:fetch_attachment(AccountDb, Id, OrigAttach) of
+        {'ok', Content} -> Content;
+        {'error', _R}=E ->
+            io:format("unable to fetch attachment ~s/~s/~s: ~p~n", [AccountDb, Id, OrigAttach, _R]),
+            throw(E)
+    end.
+
+-spec maybe_resave_attachment(binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) ->
+                                     'ok'.
+maybe_resave_attachment(Content1, AccountDb, Id, OrigAttach, NewAttach, CT) ->
+    {'ok', Rev} = couch_mgr:lookup_doc_rev(AccountDb, Id),
+    Options = [{'headers', [{'content_type', wh_util:to_list(CT)}]}
+               ,{'rev', Rev}
+              ],
+    %% bigcouch is awesome in that it sometimes returns 409 (conflict) but does the work anyway..
+    %%   so rather than check the put return fetch the new attachment and compare it to the old
+    Result = couch_mgr:put_attachment(AccountDb, Id, NewAttach, Content1, Options),
+    {'ok', JObj} = couch_mgr:open_doc(AccountDb, Id),
+
+    case wh_doc:attachment_length(JObj, OrigAttach)
+        =:= wh_doc:attachment_length(JObj, NewAttach)
+    of
+        'false' ->
+            io:format("unable to put new attachment ~s/~s/~s: ~p~n", [AccountDb, Id, NewAttach, Result]),
+            throw({'error', 'length_mismatch'});
+        'true' ->
+            Filename = wh_util:to_list(<<"/tmp/media_", Id/binary, "_", OrigAttach/binary>>),
+            case file:write_file(Filename, Content1) of
+                'ok' -> 'ok';
+                {'error', _R}=E2 ->
+                    io:format("unable to backup attachment ~s/~s/~s: ~p~n", [AccountDb, Id, NewAttach, _R]),
+                    throw(E2)
+            end
+    end.
+
+-spec maybe_cleanup_old_attachment(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+maybe_cleanup_old_attachment(_AccountDb, _Id, NewAttach, NewAttach) ->
+    io:format("updated content type for ~s/~s/~s~n", [_AccountDb, _Id, NewAttach]);
+maybe_cleanup_old_attachment(AccountDb, Id, OrigAttach, NewAttach) ->
+    case couch_mgr:delete_attachment(AccountDb, Id, OrigAttach) of
+        {'ok', _} ->
+            io:format("updated attachment name ~s/~s/~s~n", [AccountDb, Id, NewAttach]),
+            'ok';
+        {'error', _R}=E ->
+            io:format("unable to remove original attachment ~s/~s/~s: ~p~n", [AccountDb, Id, OrigAttach, _R]),
+            throw(E)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
