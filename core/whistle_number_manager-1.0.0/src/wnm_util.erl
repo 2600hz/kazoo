@@ -18,7 +18,7 @@
 -export([available_classifiers/0]).
 -export([classify_number/1]).
 -export([is_reconcilable/1, is_reconcilable/2
-         ,is_e911_configured/2
+         ,emergency_services_configured/2
          ,is_dash_e911_configured/2
          ,is_vitelity_e911_configured/2
         ]).
@@ -490,8 +490,8 @@ are_jobjs_identical(JObj1, JObj2) ->
         =:=
     [KV || {_, V}=KV <- wh_json:to_proplist(JObj2), (not wh_util:is_empty(V))].
 
--spec is_e911_configured(ne_binary(), wh_json:object()) -> boolean().
-is_e911_configured(Number, PhoneNumbersJObj) ->
+-spec emergency_services_configured(ne_binary(), wh_json:object()) -> boolean().
+emergency_services_configured(Number, PhoneNumbersJObj) ->
     Features = wh_json:get_value([Number, <<"features">>], PhoneNumbersJObj, []),
     is_dash_e911_configured(Features)
         orelse is_vitelity_e911_configured(Features).

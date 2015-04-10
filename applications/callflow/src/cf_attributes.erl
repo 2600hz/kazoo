@@ -555,7 +555,7 @@ valid_emergency_numbers(Call) ->
         {'ok', JObj} ->
             [Number
              || Number <- wh_json:get_keys(JObj),
-                wnm_util:is_e911_configured(Number, JObj)
+                wnm_util:emergency_services_configured(Number, JObj)
             ];
         {'error', _} ->
             []

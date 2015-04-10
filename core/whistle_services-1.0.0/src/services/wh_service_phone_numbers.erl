@@ -22,9 +22,9 @@
 %%--------------------------------------------------------------------
 -spec feature_activation_charge(ne_binary(), wh_services:services()) -> integer().
 feature_activation_charge(?DASH_KEY, Services) ->
-    feature_activation_charge(?E911_KEY, Services);
+    feature_activation_charge(?EMERGENCY_SERVICES_KEY, Services);
 feature_activation_charge(?VITELITY_KEY, Services) ->
-    feature_activation_charge(?E911_KEY, Services);
+    feature_activation_charge(?EMERGENCY_SERVICES_KEY, Services);
 feature_activation_charge(Feature, Services) ->
     Charge = wh_services:activation_charges(<<"number_services">>, Feature, Services),
     wht_util:dollars_to_units(Charge).
@@ -150,9 +150,9 @@ is_number_billable(DID, Module) ->
 update_feature_quantities([], Services) ->
     Services;
 update_feature_quantities([?DASH_KEY|Features], Services) ->
-    update_feature_quantities([?E911_KEY|Features], Services);
+    update_feature_quantities([?EMERGENCY_SERVICES_KEY|Features], Services);
 update_feature_quantities([?VITELITY_KEY|Features], Services) ->
-    update_feature_quantities([?E911_KEY|Features], Services);
+    update_feature_quantities([?EMERGENCY_SERVICES_KEY|Features], Services);
 update_feature_quantities([Feature|Features], Services) ->
     Quantity = wh_services:update_quantity(<<"number_services">>, Feature, Services),
     UpdatedServices = wh_services:update(<<"number_services">>, Feature, Quantity + 1, Services),
