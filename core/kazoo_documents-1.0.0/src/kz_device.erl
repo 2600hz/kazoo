@@ -61,7 +61,7 @@ sip_realm(DeviceJObj) ->
     sip_realm(DeviceJObj, 'undefined').
 
 sip_realm(DeviceJObj, Default) ->
-    wh_json:get_value(?METHOD, DeviceJObj, Default).
+    wh_json:get_value(?REALM, DeviceJObj, Default).
 
 -spec sip_settings(wh_json:object()) -> api_object().
 -spec sip_settings(wh_json:object(), Default) -> wh_json:object() | Default.
