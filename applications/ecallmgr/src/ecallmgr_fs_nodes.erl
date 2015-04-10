@@ -315,9 +315,8 @@ capability_to_json(#capability{node=Node
 -spec handle_fs_xml_flush(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_fs_xml_flush(JObj, _Props) ->
     'true' = wapi_switch:fs_xml_flush_v(JObj),
-    Username  = wh_json:get_value(<<"Username">>, JObj),
+    Username = wh_json:get_value(<<"Username">>, JObj),
     Realm = wh_json:get_value(<<"Realm">>, JObj, <<>>),
-    _ = wh_cache:erase_local(?ECALLMGR_AUTH_CACHE, ?CREDS_KEY(Realm, Username)),
     flush(Username, Realm).
 
 %%%===================================================================
