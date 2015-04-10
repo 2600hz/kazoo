@@ -12,6 +12,7 @@
          ,sip_password/1, sip_password/2, set_sip_password/2
          ,sip_method/1, sip_method/2, set_sip_method/2
          ,sip_realm/1, sip_realm/2, set_sip_realm/2
+         ,sip_ip/1, sip_ip/2, set_sip_ip/2
 
          ,sip_settings/1, sip_settings/2, set_sip_settings/2
 
@@ -27,6 +28,7 @@
 -define(PASSWORD, [?SIP, <<"password">>]).
 -define(METHOD, [?SIP, <<"method">>]).
 -define(REALM, [?SIP, <<"realm">>]).
+-define(IP, [?SIP, <<"ip">>]).
 
 -define(PRESENCE_ID, <<"presence_id">>).
 -define(NAME, <<"name">>).
@@ -63,6 +65,14 @@ sip_realm(DeviceJObj) ->
 sip_realm(DeviceJObj, Default) ->
     wh_json:get_value(?REALM, DeviceJObj, Default).
 
+-spec sip_ip(wh_json:object()) -> api_binary().
+-spec sip_ip(wh_json:object(), Default) -> ne_binary() | Default.
+sip_ip(DeviceJObj) ->
+    sip_ip(DeviceJObj, 'undefined').
+
+sip_ip(DeviceJObj, Default) ->
+    wh_json:get_value(?IP, DeviceJObj, Default).
+
 -spec sip_settings(wh_json:object()) -> api_object().
 -spec sip_settings(wh_json:object(), Default) -> wh_json:object() | Default.
 sip_settings(DeviceJObj) ->
@@ -86,6 +96,10 @@ set_sip_method(DeviceJObj, Method) ->
 -spec set_sip_realm(wh_json:object(), ne_binary()) -> wh_json:object().
 set_sip_realm(DeviceJObj, Realm) ->
     wh_json:set_value(?REALM, Realm, DeviceJObj).
+
+-spec set_sip_ip(wh_json:object(), ne_binary()) -> wh_json:object().
+set_sip_ip(DeviceJObj, Ip) ->
+    wh_json:set_value(?IP, Ip, DeviceJObj).
 
 -spec set_sip_settings(wh_json:object(), wh_json:object()) -> wh_json:object().
 set_sip_settings(DeviceJObj, SipJObj) ->

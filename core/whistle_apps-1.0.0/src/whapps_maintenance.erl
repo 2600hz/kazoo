@@ -648,19 +648,27 @@ ensure_aggregate_device(Account) ->
 refresh_account_devices(AccountDb, AccountRealm, Devices) ->
     [whapps_util:add_aggregate_device(AccountDb, wh_json:get_value(<<"doc">>, Device))
      || Device <- Devices,
-        wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"realm">>], Device, AccountRealm) =/= AccountRealm
-            orelse wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"ip">>], Device, 'undefined') =/= 'undefined'
+        should_aggregate_device(AccountRealm, wh_json:get_value(<<"doc">>, Device))
     ],
     'ok'.
+
+-spec should_aggregate_device(ne_binary(), wh_json:object()) -> boolean().
+should_aggregate_device(AccountRealm, Device) ->
+    kz_device:sip_realm(Device, AccountRealm) =/= AccountRealm
+        orelse kz_device:sip_ip(Device) =/= 'undefined'.
 
 -spec remove_aggregate_devices(ne_binary(), ne_binary(), wh_json:objects()) -> 'ok'.
 remove_aggregate_devices(AccountDb, AccountRealm, Devices) ->
     [whapps_util:rm_aggregate_device(AccountDb, wh_json:get_value(<<"doc">>, Device))
      || Device <- Devices,
-        wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"realm">>], Device, AccountRealm) =:= AccountRealm
-            andalso wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"ip">>], Device, 'undefined') =:= 'undefined'
+        should_remove_aggregate(AccountRealm, wh_json:get_value(<<"doc">>, Device))
     ],
     'ok'.
+
+-spec should_remove_aggregate(ne_binary(), wh_json:object()) -> boolean().
+should_remove_aggregate(AccountRealm, Device) ->
+    kz_device:sip_realm(Device, AccountRealm) =:= AccountRealm
+        andalso kz_device:sip_ip(Device) =:= 'undefined'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -743,29 +751,40 @@ remove_deprecated_attachment_properties(AccountDb, Id, JObj) ->
 migrate_attachment(AccountDb, JObj, Attachment, MetaData) ->
     DocCT = wh_json:get_value(<<"content_type">>, JObj),
     MetaCT = wh_json:get_value(<<"content_type">>, MetaData),
-    Migrations = [fun({A, _CT}) ->
-                          case {is_audio_content(DocCT), is_audio_content(MetaCT)} of
-                              {_, 'true'} -> {A, MetaCT};
-                              {'true', _} -> {A, DocCT};
-                              {_, _} ->
-                                  Ext = wh_util:to_list(filename:extension(A)),
-                                  case mochiweb_mime:from_extension(Ext) of
-                                      'undefined' -> {A, <<"audio/mpeg">>};
-                                      MIME -> {A, wh_util:to_binary(MIME)}
-                                  end
-                          end
-                  end
-                  ,fun({A, CT}) ->
-                           case wh_util:is_empty(filename:extension(A)) of
-                               'false' -> {A, CT};
-                               'true' -> {add_extension(A, CT), CT}
-                           end
-                   end],
+    Migrations = [fun({A, MCT}) -> maybe_update_attachment_content_type(A, MCT, DocCT) end
+                  ,fun maybe_add_extension/1
+                 ],
+
     Migrate = lists:foldl(fun(F, Acc) -> F(Acc) end
                           ,{Attachment, MetaCT}
-                          ,Migrations),
+                          ,Migrations
+                         ),
+
     Id = wh_json:get_value(<<"_id">>, JObj),
     maybe_update_attachment(AccountDb, Id, {Attachment, MetaCT}, Migrate).
+
+maybe_update_attachment_content_type(A, MCT, DocCT) ->
+    case {is_audio_content(DocCT), is_audio_content(MCT)} of
+        {_, 'true'} -> {A, MCT};
+        {'true', 'false'} -> {A, DocCT};
+        {'false', 'false'} ->
+            {A, find_attachment_content_type(A)}
+    end.
+
+-spec find_attachment_content_type(ne_binary()) -> ne_binary().
+find_attachment_content_type(A) ->
+    try cow_mimetypes:all(A) of
+        {Type, SubType, _Options} -> wh_util:join_binary([Type, SubType], <<"/">>)
+    catch
+        'error':'function_clause' -> <<"audio/mpeg">>
+    end.
+
+-spec maybe_add_extension({ne_binary(), ne_binary()}) -> {ne_binary(), ne_binary()}.
+maybe_add_extension({A, CT}) ->
+    case wh_util:is_empty(filename:extension(A)) of
+        'false' -> {A, CT};
+        'true' -> {add_extension(A, CT), CT}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -774,9 +793,19 @@ migrate_attachment(AccountDb, JObj, Attachment, MetaData) ->
 %% @end
 %%--------------------------------------------------------------------
 -type attachment_and_content() :: {ne_binary(), ne_binary()}.
+
+-spec try_load_attachment(ne_binary(), ne_binary(), ne_binary()) ->
+                                 binary().
+try_load_attachment(AccountDb, Id, OrigAttach) ->
+    case couch_mgr:fetch_attachment(AccountDb, Id, OrigAttch) of
+        {'ok', Content} -> Content;
+        {'error', _R}=E ->
+            io:format("unable to fetch attachment ~s/~s/~s: ~p~n", [AccountDb, Id, OrigAttch, _R]),
+            throw(E)
+    end.
+
 -spec maybe_update_attachment(ne_binary(), ne_binary(), attachment_and_content(), attachment_and_content()) -> 'ok'.
-maybe_update_attachment(_, _, {Attachment, CT}, {Attachment, CT}) ->
-    'ok';
+maybe_update_attachment(_, _, {Attachment, CT}, {Attachment, CT}) -> 'ok';
 maybe_update_attachment(AccountDb, Id, {OrigAttch, _CT1}, {NewAttch, CT}) ->
     %% this preforms the following:
     %% 1. Get the current attachment
@@ -785,15 +814,8 @@ maybe_update_attachment(AccountDb, Id, {OrigAttch, _CT1}, {NewAttch, CT}) ->
     %% 4. Remove the original (erronous) attachment
     %% However, if it failes at any of those stages it will leave the media doc with multiple
     %%    attachments and require manual intervention
-    Updaters = [fun(_) ->
-                        case couch_mgr:fetch_attachment(AccountDb, Id, OrigAttch) of
-                            {'ok', _}=Ok -> Ok;
-                            {'error', _}=E ->
-                                io:format("unable to fetch attachment ~s/~s/~s: ~p~n", [AccountDb, Id, OrigAttch, E]),
-                                E
-                        end
-                end
-                ,fun({'ok', Content1}) ->
+    Updaters = [fun(_) -> try_load_attachment(AccountDb, Id, OrigAttch) end
+                ,fun(Content1) ->
                          {'ok', Rev} = couch_mgr:lookup_doc_rev(AccountDb, Id),
                          Options = [{'headers', [{'content_type', wh_util:to_list(CT)}]}
                                     ,{'rev', Rev}
