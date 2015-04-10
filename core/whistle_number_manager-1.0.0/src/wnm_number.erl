@@ -929,8 +929,11 @@ exec_providers([Provider|Providers], Action, Number) ->
             exec_providers(Providers, Action, Number);
         Mod ->
             case apply(Mod, Action, [Number]) of
-                #number{}=N -> exec_providers(Providers, Action, N);
+                #number{}=N ->
+                    lager:debug("successfully attempted ~s:~s/1", [Mod, Action]),
+                    exec_providers(Providers, Action, N);
                 {'error', Reason} ->
+                    lager:debug("failed attempting ~s:~s/1: ~p", [Mod, Action, Reason]),
                     Errors = wh_json:from_list([{Provider, Reason}]),
                     wnm_number:error_provider_fault(Errors, Number)
             end
@@ -1279,16 +1282,20 @@ activate_feature(Feature, 0, #number{features=Features}=N) ->
 activate_feature(Feature, Units, #number{feature_activation_charges=Charges
                                          ,billing_id=BillingId
                                          ,features=Features
+                                         ,number=_Number
                                         }=N) ->
     Charge = Charges + Units,
     case wh_services:check_bookkeeper(BillingId, Charge) of
         'false' ->
-            Reason = io_lib:format("not enough credit to activate feature '~s' for $~p", [Feature, wht_util:units_to_dollars(Units)]),
+            Reason = io_lib:format("not enough credit to activate feature '~s' for $~p"
+                                   ,[Feature, wht_util:units_to_dollars(Units)]
+                                  ),
             lager:debug("~s", [Reason]),
             error_service_restriction([{<<"target">>, wht_util:units_to_dollars(Charge)}
                                        ,{<<"message">>, <<"not enough credit to activate feature">>}
                                       ], N);
         'true' ->
+            lager:debug("adding feature ~s to ~s", [Feature, _Number]),
             N#number{activations=append_feature_debit(Feature, Units, N)
                      ,features=sets:add_element(Feature, Features)
                      ,feature_activation_charges=Charge

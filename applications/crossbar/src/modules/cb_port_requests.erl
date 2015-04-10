@@ -1268,7 +1268,7 @@ remove_phone_number(Number, _, {_, Acc}) ->
 get_phone_numbers_doc(Context) ->
     AccountId = cb_context:account_id(Context),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    Context1 = crossbar_doc:load(<<"phone_numbers">>, cb_context:set_account_db(Context, AccountDb)),
+    Context1 = crossbar_doc:load(?WNM_PHONE_NUMBER_DOC, cb_context:set_account_db(Context, AccountDb)),
     case cb_context:resp_status(Context1) of
         'success' ->
             {'ok', cb_context:doc(Context1)};

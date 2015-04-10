@@ -44,7 +44,7 @@ fix_account_numbers(<<_/binary>> = Account) ->
     fix_numbers(PhoneNumbers),
 
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    couch_mgr:flush_cache_doc(AccountDb, ?PHONE_NUMBERS).
+    couch_mgr:flush_cache_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC).
 
 %%--------------------------------------------------------------------
 %% @private

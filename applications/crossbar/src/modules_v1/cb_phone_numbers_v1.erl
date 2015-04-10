@@ -163,9 +163,9 @@ resource_exists(_, _, _) -> 'false'.
 %% Ensure we will be able to bill for phone_numbers
 %% @end
 %%--------------------------------------------------------------------
-billing(#cb_context{req_nouns=[{<<"phone_numbers">>, _}|_], req_verb= ?HTTP_GET}=Context) ->
+billing(#cb_context{req_nouns=[{?WNM_PHONE_NUMBER_DOC, _}|_], req_verb= ?HTTP_GET}=Context) ->
     Context;
-billing(#cb_context{req_nouns=[{<<"phone_numbers">>, _}|_]}=Context) ->
+billing(#cb_context{req_nouns=[{?WNM_PHONE_NUMBER_DOC, _}|_]}=Context) ->
     try wh_services:allow_updates(cb_context:account_id(Context)) of
         'true' -> Context
     catch
@@ -182,7 +182,7 @@ billing(Context) -> Context.
 %% @end
 %%--------------------------------------------------------------------
 -spec authenticate(cb_context:context()) -> 'true'.
-authenticate(#cb_context{req_nouns=[{<<"phone_numbers">>, []}]
+authenticate(#cb_context{req_nouns=[{?WNM_PHONE_NUMBER_DOC, []}]
                          ,req_verb = ?HTTP_GET
                         }) ->
     'true'.
@@ -195,7 +195,7 @@ authenticate(#cb_context{req_nouns=[{<<"phone_numbers">>, []}]
 %% @end
 %%--------------------------------------------------------------------
 -spec authorize(cb_context:context()) -> 'true'.
-authorize(#cb_context{req_nouns=[{<<"phone_numbers">>,[]}]
+authorize(#cb_context{req_nouns=[{?WNM_PHONE_NUMBER_DOC,[]}]
                       ,req_verb = ?HTTP_GET
                      }) ->
     'true'.
@@ -400,7 +400,7 @@ clean_summary(Context) ->
                 ,fun(J) -> wh_json:set_value(<<"numbers">>, J, wh_json:new()) end
                 ,fun(J) ->
                     Service =  wh_services:fetch(AccountId),
-                    Quantity = wh_services:cascade_category_quantity(<<"phone_numbers">>, [], Service),
+                    Quantity = wh_services:cascade_category_quantity(?WNM_PHONE_NUMBER_DOC, [], Service),
                     wh_json:set_value(<<"casquade_quantity">>, Quantity, J)
                 end
                ],
@@ -523,7 +523,7 @@ add_porting_email(Context) ->
     end.
 
 check_phone_number_schema(Context) ->
-    cb_context:validate_request_data(<<"phone_numbers">>, Context).
+    cb_context:validate_request_data(?WNM_PHONE_NUMBER_DOC, Context).
 
 get_auth_user_email(Context) ->
     JObj = cb_context:auth_doc(Context),

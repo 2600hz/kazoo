@@ -434,45 +434,41 @@ emergency_cid_number(JObj) ->
     Requested = wh_json:get_first_defined([<<"Emergency-Caller-ID-Number">>
                                            ,<<"Outbound-Caller-ID-Number">>
                                           ], JObj),
-    lager:debug("ensuring requested CID is e911 enabled: ~s", [Requested]),
+    lager:debug("ensuring requested CID is emergency enabled: ~s", [Requested]),
     case couch_mgr:open_cache_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
         {'ok', PhoneNumbers} ->
             Numbers = wh_json:get_keys(wh_json:public_fields(PhoneNumbers)),
-            E911Enabled = [Number
-                           || Number <- Numbers
-                                  ,dash_e911_enabled(Number, PhoneNumbers)
-                          ],
-            emergency_cid_number(Requested, Candidates, E911Enabled);
+            EmergencyEnabled = [Number
+                                || Number <- Numbers,
+                                   wnm_util:emergency_services_configured(Number, PhoneNumbers)
+                               ],
+            emergency_cid_number(Requested, Candidates, EmergencyEnabled);
         {'error', _R} ->
             lager:error("unable to fetch the ~s from account ~s: ~p", [?WNM_PHONE_NUMBER_DOC, Account, _R]),
             emergency_cid_number(Requested, Candidates, [])
     end.
 
--spec dash_e911_enabled(ne_binary(), wh_json:object()) -> boolean().
-dash_e911_enabled(Number, PhoneNumbers) ->
-    lists:member(<<"dash_e911">>, wh_json:get_value([Number, <<"features">>], PhoneNumbers, [])).
-
 -spec emergency_cid_number(ne_binary(), api_binaries(), ne_binaries()) -> ne_binary().
-%% if there are no e911 enabled numbers then either use the global system default
+%% if there are no emergency enabled numbers then either use the global system default
 %% or the requested (if there isnt one)
 emergency_cid_number(Requested, _, []) ->
     case whapps_config:get_non_empty(<<"stepswitch">>, <<"default_emergency_cid_number">>) of
         'undefined' -> Requested;
-        DefaultE911 -> DefaultE911
+        DefaultEmergencyCID -> DefaultEmergencyCID
     end;
-%% If neither their emergency cid or outgoung cid is e911 enabled but their account
-%% has other numbers with e911 then use the first...
-emergency_cid_number(_, [], [E911Enabled|_]) -> E911Enabled;
+%% If neither their emergency cid or outgoung cid is emergency enabled but their account
+%% has other numbers with emergency then use the first...
+emergency_cid_number(_, [], [EmergencyEnabled|_]) -> EmergencyEnabled;
 %% due to the way we built the candidates list it can contain the atom 'undefined'
 %% handle that condition (ignore)
-emergency_cid_number(Requested, ['undefined'|Candidates], E911Enabled) ->
-    emergency_cid_number(Requested, Candidates, E911Enabled);
+emergency_cid_number(Requested, ['undefined'|Candidates], EmergencyEnabled) ->
+    emergency_cid_number(Requested, Candidates, EmergencyEnabled);
 %% check if the first non-atom undefined element in the list is in the list of
-%% e911 enabled numbers, if so use it otherwise keep checking.
-emergency_cid_number(Requested, [Candidate|Candidates], E911Enabled) ->
-    case lists:member(Candidate, E911Enabled) of
+%% emergency enabled numbers, if so use it otherwise keep checking.
+emergency_cid_number(Requested, [Candidate|Candidates], EmergencyEnabled) ->
+    case lists:member(Candidate, EmergencyEnabled) of
         'true' -> Candidate;
-        'false' -> emergency_cid_number(Requested, Candidates, E911Enabled)
+        'false' -> emergency_cid_number(Requested, Candidates, EmergencyEnabled)
     end.
 
 -spec contains_emergency_endpoints(wh_json:objects()) -> boolean().

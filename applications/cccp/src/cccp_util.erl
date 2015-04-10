@@ -97,7 +97,9 @@ legalize_outbound_cid(OutboundCID, AccountId) ->
 -spec ensure_valid_caller_id(ne_binary(), ne_binary()) -> ne_binary().
 ensure_valid_caller_id(OutboundCID, AccountId) ->
     {'ok', AccountPhoneNumbersList} =
-        couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded'), <<"phone_numbers">>),
+        couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded')
+                                 ,?WNM_PHONE_NUMBER_DOC
+                                ),
     case lists:member(wnm_util:normalize_number(OutboundCID)
                       ,wh_json:get_keys(AccountPhoneNumbersList)
                      )
@@ -233,4 +235,3 @@ cccp_allowed_callee(Number) ->
             lager:debug("number '~s' is allowed to call through cccp, proceeding", [Number]),
             'true'
     end.
-
