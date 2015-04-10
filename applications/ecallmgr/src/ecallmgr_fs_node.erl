@@ -13,7 +13,7 @@
 
 -export([start_link/1, start_link/2]).
 -export([handle_reload_acls/2]).
--export([handle_reload_gtws/2]).
+-export([handle_reload_gateways/2]).
 -export([sync_channels/1
          ,sync_interface/1
          ,sync_capabilities/1
@@ -132,7 +132,7 @@
 -define(RESPONDERS, [{{?MODULE, 'handle_reload_acls'}
                       ,[{<<"switch_event">>, <<"reload_acls">>}]
                      }
-                    ,{{?MODULE, 'handle_reload_gtws'}
+                    ,{{?MODULE, 'handle_reload_gateways'}
                       ,[{<<"switch_event">>, <<"reload_gateways">>}]
                      }
                     ]).
@@ -234,15 +234,19 @@ sip_external_ip(Srv) ->
     gen_server:call(find_srv(Srv), 'sip_external_ip').
 
 -spec handle_reload_acls(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_reload_acls(_JObj, Props) ->
+handle_reload_acls(JObj, Props) ->
+    'true' = wapi_switch:reload_acls_v(JObj),
+
     Node = props:get_value('node', Props),
     case freeswitch:bgapi(Node, 'reloadacl', "") of
         {'ok', Job} -> lager:debug("reloadacl command sent to ~s: JobID: ~s", [Node, Job]);
         {'error', _E} -> lager:debug("reloadacl failed with error: ~p", [_E])
     end.
 
--spec handle_reload_gtws(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_reload_gtws(_JObj, Props) ->
+-spec handle_reload_gateways(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_reload_gateways(JObj, Props) ->
+    'true' = wapi_switch:reload_gateways_v(JObj),
+
     Node = props:get_value('node', Props),
     Args = ["profile "
             ,?DEFAULT_FS_PROFILE
