@@ -10,12 +10,14 @@
 
 -export([reload_acls/1, reload_acls_v/1]).
 -export([reload_gateways/1, reload_gateways_v/1]).
+-export([fs_xml_flush/1, fs_xml_flush_v/1]).
 
 -export([bind_q/2, unbind_q/2]).
 -export([declare_exchanges/0]).
 
 -export([publish_reload_acls/0]).
 -export([publish_reload_gateways/0]).
+-export([publish_fs_xml_flush/1]).
 
 -include_lib("whistle/include/wh_api.hrl").
 
@@ -36,6 +38,15 @@
                                 ]).
 -define(RELOAD_GATEWAYS_TYPES, []).
 -define(RELOAD_GATEWAYS_KEY, <<"switch.reload_gateways">>).
+
+%% request to flush fs xml cache
+-define(FS_XML_FLUSH_HEADERS, [<<"Username">>]).
+-define(OPTIONAL_FS_XML_FLUSH_HEADERS, [<<"Realm">>]).
+-define(FS_XML_FLUSH_VALUES, [{<<"Event-Name">>, <<"fs_xml_flush">>}
+                              ,{<<"Event-Category">>, <<"switch_event">>}
+                             ]).
+-define(FS_XML_FLUSH_TYPES, []).
+-define(FS_XML_FLUSH_KEY, <<"switch.fs_xml_flush">>).
 
 %% Request a reload_acls
 -spec reload_acls(api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -69,6 +80,22 @@ reload_gateways_v(Prop) when is_list(Prop) ->
 reload_gateways_v(JObj) ->
     reload_gateways_v(wh_json:to_proplist(JObj)).
 
+%% Request a fs_xml_flush
+-spec fs_xml_flush(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+fs_xml_flush(Prop) when is_list(Prop) ->
+    case fs_xml_flush_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?FS_XML_FLUSH_HEADERS, ?OPTIONAL_FS_XML_FLUSH_HEADERS);
+        'false' -> {'error', "Proplist failed validation for switch event fs_xml_flush req"}
+    end;
+fs_xml_flush(JObj) ->
+    fs_xml_flush(wh_json:to_proplist(JObj)).
+
+-spec fs_xml_flush_v(api_terms()) -> boolean().
+fs_xml_flush_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?FS_XML_FLUSH_HEADERS, ?FS_XML_FLUSH_VALUES, ?FS_XML_FLUSH_TYPES);
+fs_xml_flush_v(JObj) ->
+    fs_xml_flush_v(wh_json:to_proplist(JObj)).
+
 -spec bind_q(ne_binary(), proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     bind_to_q(Queue, props:get_value('restrict_to', Props)).
@@ -80,6 +107,9 @@ bind_to_q(Q, ['reload_acls'|T]) ->
     bind_to_q(Q, T);
 bind_to_q(Q, ['reload_gateways'|T]) ->
     'ok' = amqp_util:bind_q_to_configuration(Q, ?RELOAD_GATEWAYS_KEY),
+    bind_to_q(Q, T);
+bind_to_q(Q, ['fs_xml_flush'|T]) ->
+    'ok' = amqp_util:bind_q_to_configuration(Q, ?FS_XML_FLUSH_KEY),
     bind_to_q(Q, T);
 bind_to_q(_Q, []) -> 'ok'.
 
@@ -94,6 +124,9 @@ unbind_q_from(Q, ['reload_acls'|T]) ->
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['reload_gateways'|T]) ->
     'ok' = amqp_util:unbind_q_from_configuration(Q, ?RELOAD_GATEWAYS_KEY),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, ['fs_xml_flush'|T]) ->
+    'ok' = amqp_util:unbind_q_from_configuration(Q, ?FS_XML_FLUSH_KEY),
     unbind_q_from(Q, T);
 unbind_q_from(_Q, []) -> 'ok'.
 
@@ -117,3 +150,11 @@ publish_reload_gateways() ->
     Defaults = wh_api:default_headers(<<"switch_event">>, wh_util:to_binary(?MODULE)),
     {'ok', Payload} = wh_api:prepare_api_payload(Defaults, ?RELOAD_GATEWAYS_VALUES, fun ?MODULE:reload_gateways/1),
     amqp_util:configuration_publish(?RELOAD_GATEWAYS_KEY, Payload, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_fs_xml_flush(api_terms()) -> 'ok'.
+-spec publish_fs_xml_flush(api_terms(), binary()) -> 'ok'.
+publish_fs_xml_flush(JObj) ->
+    publish_fs_xml_flush(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_fs_xml_flush(Req, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(Req, ?FS_XML_FLUSH_VALUES, fun ?MODULE:fs_xml_flush/1),
+    amqp_util:configuration_publish(?FS_XML_FLUSH_KEY, Payload, ContentType).

@@ -434,7 +434,6 @@ handle_cast({'flush', Realm}, State) ->
     {'noreply', State};
 handle_cast({'flush', Username, Realm}, State) ->
     _ = ets:delete(?MODULE, registration_id(Username, Realm)),
-    ecallmgr_fs_nodes:flush(Username, Realm),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
@@ -925,8 +924,13 @@ query_authn(#registration{username=Username
             AccountId = wh_json:get_value(<<"Account-ID">>, CCVs),
             AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
             AuthorizingId = wh_json:get_value(<<"Authorizing-ID">>, CCVs),
+            OwnerIdProp = case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Owner-ID">>], JObj) of
+                              'undefined' -> [];
+                              OwnerId -> [{'db', AccountDb, OwnerId}]
+                          end,
             CacheProps = [{'origin', [{'db', AccountDb, AuthorizingId}
                                       ,{'db', AccountDb, AccountId}
+                                      | OwnerIdProp
                                      ]}
                          ],
             wh_cache:store_local(?ECALLMGR_AUTH_CACHE

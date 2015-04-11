@@ -159,7 +159,7 @@
 -define(GET_CCV(Key), <<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>).
 -define(SET_CCV(Key, Value), <<?CHANNEL_VAR_PREFIX, Key/binary, "=", Value/binary>>).
 
--define(CREDS_KEY(Realm, Username), {?MODULE, 'authn', Username, Realm}).
+-define(CREDS_KEY(Realm, Username), {'authn', Username, Realm}).
 
 %% Call and Channel Vars that have a special prefix instead of the standard CHANNEL_VAR_PREFIX prefix
 %% [{AMQP-Header, FS-var-name}]

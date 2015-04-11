@@ -179,6 +179,7 @@ validate(Context, DeviceId, ?QUICKCALL_PATH_TOKEN, _) ->
 post(Context, DeviceId) ->
     case changed_mac_address(Context) of
         'true' ->
+            _ = crossbar_util:maybe_refresh_fs_xml('device', Context),
             Context1 = crossbar_doc:save(Context),
             _ = maybe_aggregate_device(DeviceId, Context1),
             _ = registration_update(Context),
@@ -197,6 +198,7 @@ put(Context) ->
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, DeviceId) ->
+    _ = crossbar_util:refresh_fs_xml(Context),
     Context1 = crossbar_doc:delete(Context),
     _ = registration_update(Context),
     _ = provisioner_util:maybe_delete_provision(Context),

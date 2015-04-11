@@ -160,7 +160,7 @@ save_user(AccountId, JObj, AuthToken) ->
     _ = update_account(AccountId, AuthToken),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     OwnerId = wh_json:get_value(<<"id">>, JObj),
-    Devices = get_devices_by_owner(AccountDb, OwnerId),
+    Devices = crossbar_util:get_devices_by_owner(AccountDb, OwnerId),
     Settings = settings(JObj),
     lists:foreach(
       fun (Device) ->
@@ -174,18 +174,6 @@ save_user(AccountId, JObj, AuthToken) ->
                          ),
               catch save_device(AccountId, Device, Request, AuthToken)
       end, Devices).
-
--spec get_devices_by_owner(ne_binary(), ne_binary()) -> ne_binaries().
-get_devices_by_owner(AccountDb, OwnerId) ->
-    ViewOptions = [{'key', [OwnerId, <<"device">>]},
-                   'include_docs'
-                  ],
-    case couch_mgr:get_results(AccountDb, <<"cf_attributes/owned">>, ViewOptions) of
-        {'ok', JObjs} -> [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs];
-        {'error', _R} ->
-            lager:warning("unable to find documents owned by ~s: ~p", [OwnerId, _R]),
-            []
-    end.
 
 -spec save_device(ne_binary(), wh_json:object(), wh_json:object(), ne_binary()) -> 'ok'.
 save_device(AccountId, Device, Request, AuthToken) ->
