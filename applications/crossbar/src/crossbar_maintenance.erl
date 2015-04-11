@@ -391,8 +391,8 @@ create_account(AccountName, Realm, Username, Password) ->
         {'ok', C3} = validate_user(User, C2),
         {'ok', _} = create_user(C3),
 
-        AccountDb = cb_context:account_db(C1),
-        AccountId = cb_context:account_id(C1),
+        AccountDb = cb_context:account_db(C3),
+        AccountId = cb_context:account_id(C3),
 
         case whapps_util:get_all_accounts() of
             [AccountDb] ->
