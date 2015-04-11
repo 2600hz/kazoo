@@ -141,8 +141,8 @@
                                                ]}
                               ]}
                   ]).
--define(QUEUE_OPTIONS, []).
--define(CONSUME_OPTIONS, []).
+-define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
+-define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 -define(SERVER, ?MODULE).
 
