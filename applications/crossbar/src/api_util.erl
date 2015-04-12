@@ -40,10 +40,6 @@
 
 -define(MAX_UPLOAD_SIZE, whapps_config:get_integer(?CONFIG_CAT, <<"max_upload_size">>, 8000000)).
 
--type cowboy_multipart_response() :: {'ok', cow_multipart:headers(), cowboy_req:req()} | {'done', cowboy_req:req()} | cowboy_req:req().
-
--type cowboy_multipart_body() :: {'ok', binary(), cowboy_req:req()} | {'more', binary(), cowboy_req:req()} | cowboy_req:req().
-
 -type halt_return() :: {'halt', cowboy_req:req(), cb_context:context()}.
 
 %%--------------------------------------------------------------------
@@ -265,35 +261,42 @@ try_json(ReqBody, QS, Context, Req) ->
 
 -spec get_url_encoded_body(ne_binary()) -> wh_json:object().
 get_url_encoded_body(ReqBody) ->
-    wh_json:from_list(cowboy_http:x_www_form_urlencoded(ReqBody)).
+    wh_json:from_list(cow_qs:parse_qs(ReqBody)).
 
+-type cowboy_multipart_response() :: {'ok', cow_multipart:headers(), cowboy_req:req()} | {'done', cowboy_req:req()} | cowboy_req:req().
 
--spec extract_multipart(cb_context:context(), cowboy_multipart_response()) -> {cb_context:context(), cowboy_req:req()}.
+-type cowboy_multipart_body() :: {'ok', binary(), cowboy_req:req()} | {'more', binary(), cowboy_req:req()} | cowboy_req:req().
+
+-spec extract_multipart(cb_context:context(), cowboy_multipart_response()) ->
+                               {cb_context:context(), cowboy_req:req()} |
+                               halt_return().
 extract_multipart(Context, {'done', Req}) ->
     {Context, Req};
 extract_multipart(Context, {'ok', Headers, Req}) ->
     JObj = wh_json:from_list([{<<"headers">>, Headers}
-                               ,{<<"data">>, <<>>}
-                              ]),
+                              ,{<<"data">>, <<>>}
+                             ]),
     {R, J} = extract_multipart_body(Context, Req, JObj),
     Files = [J|cb_context:req_files(Context)],
     extract_multipart(
-        cb_context:set_req_files(Context, Files)
-        ,cowboy_req:part(R)
-    );
+      cb_context:set_req_files(Context, Files)
+      ,cowboy_req:part(R)
+     );
 extract_multipart(Context, Req) ->
     extract_multipart(
-        Context
-        ,cowboy_req:part(Req)
-    ).
+      Context
+      ,cowboy_req:part(Req)
+     ).
 
--spec extract_multipart_body(cb_context:context(), cowboy_multipart_body(), wh_json:object()) -> {cb_context:context(), cowboy_req:req()}.
+-spec extract_multipart_body(cb_context:context(), cowboy_multipart_body(), wh_json:object()) ->
+                                    {cb_context:context(), cowboy_req:req()} |
+                                    halt_return().
 extract_multipart_body(_Context, {'ok', Datum, Req}, JObj) ->
     Data = wh_json:get_value(<<"data">>, JObj, <<>>),
     {Req, wh_json:set_value(<<"data">>, <<Data/binary, Datum/binary>>, JObj)};
 extract_multipart_body(Context, {'more', Datum, Req}, JObj) ->
     Data = <<(wh_json:get_value(<<"data">>, JObj, <<>>))/binary
-              ,Datum/binary
+             ,Datum/binary
            >>,
     case erlang:byte_size(Data) > ?MAX_UPLOAD_SIZE of
         'true' ->
@@ -302,13 +305,14 @@ extract_multipart_body(Context, {'more', Datum, Req}, JObj) ->
                          ,cb_context:add_validation_error(<<"file">>, <<"maxLength">>
                                                           ,?MAX_UPLOAD_SIZE
                                                           ,Context
-                                                         ));
+                                                         )
+                        );
         'false' ->
             extract_multipart_body(
-                Context
-                ,cowboy_req:part_body(Req)
-                ,wh_json:set_value(<<"data">>, Data, JObj)
-            )
+              Context
+              ,cowboy_req:part_body(Req)
+              ,wh_json:set_value(<<"data">>, Data, JObj)
+             )
     end;
 extract_multipart_body(Context, Req, JObj) ->
     extract_multipart_body(Context, cowboy_req:part_body(Req), JObj).
@@ -327,7 +331,8 @@ extract_file(Context, ContentType, Req0) ->
                          ,cb_context:add_validation_error(<<"file">>, <<"maxLength">>
                                                           ,?MAX_UPLOAD_SIZE
                                                           ,Context
-                                                          ));
+                                                         )
+                        );
         {'ok', FileContents, Req1} ->
             %% http://tools.ietf.org/html/rfc2045#page-17
             case cowboy_req:header(<<"content-transfer-encoding">>, Req1) of
