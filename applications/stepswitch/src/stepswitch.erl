@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2013, 2600Hz
+%%% @copyright (C) 2010-2015, 2600Hz
 %%% @doc
 %%% stepswitch routing WhApp
 %%% @end
@@ -45,7 +45,7 @@ start() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec stop() -> 'ok'.
-stop() -> 
+stop() ->
     exit(whereis('stepswitch_sup'), 'shutdown'),
     'ok'.
 
