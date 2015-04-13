@@ -265,7 +265,7 @@ maybe_get_assigned_number(_, Name, Call) ->
                        || Num <- wh_json:get_keys(PublicJObj)
                               ,Num =/= <<"id">>
                               ,(not wh_json:is_true([Num, <<"on_subaccount">>], JObj))
-                              ,(wh_json:get_value([Num, <<"state">>], JObj) =:= ?NUMBER_STATE_AVAILABLE)
+                              ,(wh_json:get_value([Num, <<"state">>], JObj) =:= ?NUMBER_STATE_IN_SERVICE)
                       ],
             maybe_get_assigned_numbers(Numbers, Name, Call)
     end.
