@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% Common functions for the provisioner modules
@@ -17,10 +17,7 @@
 -export([update_user/3]).
 -export([check_MAC/2]).
 
--include_lib("whistle/include/wh_types.hrl").
--include_lib("whistle/include/wh_amqp.hrl").
--include_lib("whistle/include/wh_log.hrl").
--include_lib("whistle/include/wh_databases.hrl").
+-include("../crossbar.hrl").
 
 -define(MOD_CONFIG_CAT, <<"provisioner">>).
 -define(SCHEMA, <<"provisioner_v5">>).
@@ -42,7 +39,7 @@ update_device(JObj, AuthToken) ->
                      ,Data
                      ,AuthToken
                      ,AccountId
-                     ,wh_json:get_value(<<"mac_address">>, JObj)
+                     ,kz_device:mac_address(JObj)
                     );
         {'error', Errors} ->
             handle_validation_error(Errors, AccountId)
@@ -54,17 +51,17 @@ delete_device(JObj, AuthToken) ->
              ,'undefined'
              ,AuthToken
              ,wh_json:get_value(<<"pvt_account_id">>, JObj)
-             ,wh_json:get_value(<<"mac_address">>, JObj)
+             ,kz_device:mac_address(JObj)
             ).
 
 -spec device_settings(wh_json:object()) -> wh_json:object().
 device_settings(JObj) ->
     wh_json:from_list(
       [{<<"brand">>, get_brand(JObj)}
-      ,{<<"family">>, get_family(JObj)}
-      ,{<<"model">>, get_model(JObj)}
-      ,{<<"name">>, wh_json:get_value(<<"name">>, JObj)}
-      ,{<<"settings">>, settings(JObj)}
+       ,{<<"family">>, get_family(JObj)}
+       ,{<<"model">>, get_model(JObj)}
+       ,{<<"name">>, wh_json:get_value(<<"name">>, JObj)}
+       ,{<<"settings">>, settings(JObj)}
       ]
      ).
 
@@ -163,28 +160,33 @@ save_user(AccountId, JObj, AuthToken) ->
     Devices = crossbar_util:get_devices_by_owner(AccountDb, OwnerId),
     Settings = settings(JObj),
     lists:foreach(
-      fun (Device) ->
-              Request = wh_json:from_list(
-                          [{<<"brand">>, get_brand(Device)}
-                          ,{<<"family">>, get_family(Device)}
-                          ,{<<"model">>, get_model(Device)}
-                          ,{<<"name">>, wh_json:get_value(<<"name">>, Device)}
-                          ,{<<"settings">>, Settings}
-                          ]
-                         ),
-              catch save_device(AccountId, Device, Request, AuthToken)
+      fun(Device) ->
+              maybe_save_device(Device, Settings, AccountId, AuthToken)
       end, Devices).
+
+-spec maybe_save_device(wh_json:object(), wh_json:object(), ne_binary(), ne_binary()) ->
+                               'ok' | {'EXIT', _}.
+maybe_save_device(Device, Settings, AccountId, AuthToken) ->
+    Request = wh_json:from_list(
+                [{<<"brand">>, get_brand(Device)}
+                 ,{<<"family">>, get_family(Device)}
+                 ,{<<"model">>, get_model(Device)}
+                 ,{<<"name">>, kz_device:name(Device)}
+                 ,{<<"settings">>, Settings}
+                ]
+               ),
+    catch save_device(AccountId, Device, Request, AuthToken).
 
 -spec save_device(ne_binary(), wh_json:object(), wh_json:object(), ne_binary()) -> 'ok'.
 save_device(AccountId, Device, Request, AuthToken) ->
-    case wh_json:get_ne_value(<<"mac_address">>, Device) of
+    case kz_device:mac_address(Device) of
         'undefined' -> 'ok';
         MacAddress ->
             send_req('devices_post'
-                    ,Request
-                    ,AuthToken
-                    ,AccountId
-                    ,MacAddress
+                     ,Request
+                     ,AuthToken
+                     ,AccountId
+                     ,MacAddress
                     )
     end.
 
@@ -251,11 +253,10 @@ settings(JObj) ->
 -spec settings_lines(wh_json:object()) -> wh_json:object().
 settings_lines(JObj) ->
     case props:filter_empty(
-              [{<<"basic">>, settings_basic(JObj)},
-               {<<"sip">>, settings_sip(JObj)},
-               {<<"advanced">>, settings_advanced(JObj)}
-              ]
-             )
+           [{<<"basic">>, settings_basic(JObj)},
+            {<<"sip">>, settings_sip(JObj)},
+            {<<"advanced">>, settings_advanced(JObj)}
+           ])
     of
         [] -> wh_json:new();
         Props ->
@@ -270,7 +271,7 @@ settings_basic(JObj) ->
               end,
     Props = props:filter_undefined(
               [{<<"display_name">>, wh_json:get_ne_value(<<"name">>, JObj)}
-              ,{<<"enable">>, Enabled}
+               ,{<<"enable">>, Enabled}
               ]
              ),
     wh_json:from_list(Props).
@@ -297,10 +298,9 @@ settings_advanced(JObj) ->
                _Else -> 'true'
            end,
     Props = props:filter_undefined(
-              [{<<"expire">>, wh_json:get_integer_value([<<"sip">>, <<"expire_seconds">>], JObj)},
-               {<<"srtp">>, SRTP}
-              ]
-             ),
+              [{<<"expire">>, wh_json:get_integer_value([<<"sip">>, <<"expire_seconds">>], JObj)}
+               ,{<<"srtp">>, SRTP}
+              ]),
     wh_json:from_list(Props).
 
 -spec settings_datetime(wh_json:object()) -> wh_json:object().
@@ -358,7 +358,7 @@ send_req('devices_post', JObj, AuthToken, AccountId, MACAddress) ->
     UrlString = req_uri('devices', AccountId, MACAddress),
     lager:debug("provisioning via ~s: ~s", [UrlString, Data]),
     Resp = ibrowse:send_req(UrlString, Headers, 'post', Data, HTTPOptions),
-    handle_resp(Resp);
+    handle_device_resp(JObj, Resp);
 send_req('devices_delete', _, AuthToken, AccountId, MACAddress) ->
     Headers = req_headers(AuthToken),
     HTTPOptions = [],
@@ -414,13 +414,40 @@ account_payload(JObj, AccountId) ->
 device_payload(JObj) ->
     wh_json:from_list(
       [{<<"create_if_missing">>, 'true'}
-      ,{<<"generate">>, 'true'}
-      ,{<<"merge">>, 'true'}
-      ,{<<"data">>, JObj}
+       ,{<<"generate">>, 'true'}
+       ,{<<"merge">>, 'true'}
+       ,{<<"data">>, JObj}
       ]
      ).
 
--spec handle_resp(any()) -> 'ok'.
+-spec handle_device_resp(wh_json:object(), ibrowse_ret()) -> 'ok'.
+handle_device_resp(Req, {'ok', "200", _, _}=Resp) ->
+    Lines = wh_json:get_value([<<"data">>, <<"settings">>, <<"lines">>], Req, wh_json:new()),
+    wh_json:foreach(fun(_Line, LineData) -> maybe_publish_check_sync(LineData) end
+                    ,Lines
+                   ),
+    handle_resp(Resp);
+handle_device_resp(_Req, Resp) ->
+    handle_resp(Resp).
+
+-spec maybe_publish_check_sync(wh_json:object()) -> 'ok'.
+-spec maybe_publish_check_sync(api_binary(), api_binary()) -> 'ok'.
+maybe_publish_check_sync(LineData) ->
+    maybe_publish_check_sync(
+      wh_json:get_value([<<"sip">>, <<"realm">>], LineData)
+      ,wh_json:get_value([<<"sip">>, <<"username">>], LineData)
+     ).
+
+maybe_publish_check_sync('undefined', _Username) -> 'ok';
+maybe_publish_check_sync(_Realm, 'undefined') -> 'ok';
+maybe_publish_check_sync(Realm, Username) ->
+    Req = [{<<"Realm">>, Realm}
+           ,{<<"Username">>, Username}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    wh_amqp_worker:cast(Req, fun wapi_switch:publish_check_sync/1).
+
+-spec handle_resp(ibrowse_ret()) -> 'ok'.
 handle_resp({'ok', "200", _, Resp}) ->
     lager:debug("provisioning success ~s", [decode(Resp)]);
 handle_resp({'ok', Code, _, Resp}) ->
