@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz
+%%% @copyright (C) 2012-2015, 2600Hz
 %%% @doc
 %%% Moved util functions out of v1_resource so only REST-related calls
 %%% are in there.
@@ -14,7 +14,7 @@
 -export([is_cors_preflight/1
          ,is_cors_request/1
          ,add_cors_headers/2
-         ,allow_methods/4
+         ,allow_methods/3
          ,parse_path_tokens/2
          ,get_req_data/2
          ,get_http_verb/2
@@ -580,22 +580,27 @@ is_cb_module_version(#cb_context{api_version=ApiVersion}, Elem) ->
 %% 'POST' from the allowed methods.
 %% @end
 %%--------------------------------------------------------------------
--spec allow_methods([http_methods(),...], http_methods(), ne_binary(), http_method()) -> http_methods().
-allow_methods(Responses, Available, ReqVerb, HttpVerb) ->
+-spec allow_methods([http_methods(),...], ne_binary(), http_method()) -> http_methods().
+allow_methods(Responses, ReqVerb, HttpVerb) ->
     case crossbar_bindings:succeeded(Responses) of
         [] -> [];
         Succeeded ->
-            AllowedSet = lists:foldr(fun(Response, Acc) ->
-                                             sets:union(Acc, sets:from_list(uppercase_all(Response)))
-                                     end, sets:from_list(Available), Succeeded),
+            AllowedSet = lists:foldr(fun allow_methods_fold/2, sets:new(), Succeeded),
             maybe_add_post_method(ReqVerb, HttpVerb, sets:to_list(AllowedSet))
     end.
 
+-spec allow_methods_fold(http_methods(), set()) -> set().
+allow_methods_fold(Response, Acc) ->
+    sets:union(Acc, sets:from_list(uppercase_all(Response))).
+
+-spec uppercase_all(ne_binaries() | atoms()) -> ne_binaries().
 uppercase_all(L) when is_list(L) ->
     [wh_util:to_upper_binary(wh_util:to_binary(I)) || I <- L].
 
 %% insert 'POST' if Verb is in Allowed; otherwise remove 'POST'.
 -spec maybe_add_post_method(ne_binary(), http_method(), http_methods()) -> http_methods().
+maybe_add_post_method(?HTTP_POST, ?HTTP_POST, Allowed) ->
+    Allowed;
 maybe_add_post_method(Verb, ?HTTP_POST, Allowed) ->
     BigVerb = wh_util:to_upper_binary(Verb),
     case lists:member(BigVerb, Allowed) of
