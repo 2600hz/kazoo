@@ -206,23 +206,26 @@ publish_check_sync(JObj) ->
 publish_check_sync(Req, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?CHECK_SYNC_VALUES, fun ?MODULE:check_sync/1),
 
-    Realm = check_sync_realm(Req),
-    Username = check_sync_username(Req),
+    Realm = amqp_util:encode(check_sync_realm(Req)),
+    Username = amqp_util:encode(check_sync_username(Req)),
 
     amqp_util:configuration_publish(?CHECK_SYNC_KEY(Realm, Username)
                                     ,Payload
                                     ,ContentType
                                    ).
 
+-spec check_sync_realm(api_terms()) -> api_binary().
 check_sync_realm(Props) when is_list(Props) ->
     check_sync_value(Props, <<"Realm">>, fun props:get_value/2);
 check_sync_realm(JObj) ->
     check_sync_value(JObj, <<"Realm">>, fun wh_json:get_value/2).
 
+-spec check_sync_username(api_terms()) -> api_binary().
 check_sync_username(Props) when is_list(Props) ->
     check_sync_value(Props, <<"Username">>, fun props:get_value/2);
 check_sync_username(JObj) ->
     check_sync_value(JObj, <<"Username">>, fun wh_json:get_value/2).
 
+-spec check_sync_value(api_terms(), ne_binary(), fun()) -> api_binary().
 check_sync_value(API, Key, Get) ->
     Get(Key, API).

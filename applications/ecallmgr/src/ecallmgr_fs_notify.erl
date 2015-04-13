@@ -109,8 +109,9 @@ resp_to_probe(State, User, Realm) ->
 
 -spec check_sync_api(wh_json:object(), wh_proplist()) -> 'ok'.
 check_sync_api(JObj, _Props) ->
-    check_sync(wapi_switch:check_sync_realm(JObj)
-               ,wapi_switch:check_sync_username(JObj)
+    wh_util:put_callid(JObj),
+    check_sync(wapi_switch:check_sync_username(JObj)
+               ,wapi_switch:check_sync_realm(JObj)
               ).
 
 -spec check_sync(ne_binary(), ne_binary()) -> 'ok'.
