@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz
+%%% @copyright (C) 2012-2015, 2600Hz
 %%% @doc
 %%% Notify-type requests, like MWI updates, received and processed here
 %%% @end
@@ -9,9 +9,10 @@
 -module(ecallmgr_fs_notify).
 
 -behaviour(gen_listener).
+
 -export([start_link/1, start_link/2]).
 -export([presence_probe/2]).
--export([check_sync/2]).
+-export([check_sync_api/2, check_sync/2]).
 -export([mwi_update/2]).
 -export([register_overwrite/2]).
 -export([init/1
@@ -35,17 +36,21 @@
                                                   ,'register_overwrite'
                                                   ,'probe'
                                                  ]}
-                                 ,{'probe-type', <<"presence">>}
+                                 ,{'probe_type', <<"presence">>}
                                 ]}
+                   ,{'switch', [{'restrict_to', ['check_sync']}]}
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'presence_probe'}
                       ,[{<<"presence">>, <<"probe">>}]
                      }
                      ,{{?MODULE, 'mwi_update'}
-                      ,[{<<"presence">>, <<"mwi_update">>}]
-                     }
+                       ,[{<<"presence">>, <<"mwi_update">>}]
+                      }
                      ,{{?MODULE, 'register_overwrite'}
                        ,[{<<"presence">>, <<"register_overwrite">>}]
+                      }
+                     ,{{?MODULE, 'check_sync_api'}
+                       ,[{<<"switch_event">>, <<"check_sync">>}]
                       }
                     ]).
 -define(QUEUE_NAME, <<"ecallmgr_fs_notify">>).
@@ -101,6 +106,12 @@ resp_to_probe(State, User, Realm) ->
                       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                      ],
     wh_amqp_worker:cast(PresenceUpdate, fun wapi_presence:publish_update/1).
+
+-spec check_sync_api(wh_json:object(), wh_proplist()) -> 'ok'.
+check_sync_api(JObj, _Props) ->
+    check_sync(wapi_switch:check_sync_realm(JObj)
+               ,wapi_switch:check_sync_username(JObj)
+              ).
 
 -spec check_sync(ne_binary(), ne_binary()) -> 'ok'.
 check_sync(Username, Realm) ->
@@ -182,12 +193,12 @@ register_overwrite(JObj, Props) ->
     Username = wh_json:get_binary_value(<<"Username">>, JObj, <<"unknown">>),
     Realm = wh_json:get_binary_value(<<"Realm">>, JObj, <<"unknown">>),
     PrevContact = ensure_contact_user(
-                    wh_json:get_value(<<"Previous-Contact">>, JObj),
-                    Username
+                    wh_json:get_value(<<"Previous-Contact">>, JObj)
+                    ,Username
                    ),
     NewContact = ensure_contact_user(
-                   wh_json:get_value(<<"Contact">>, JObj),
-                   Username
+                   wh_json:get_value(<<"Contact">>, JObj)
+                   ,Username
                   ),
     SipUri = nksip_unparse:uri(#uri{user=Username, domain=Realm}),
     PrevBody = wh_util:to_list(<<"Replaced-By:", NewContact/binary>>),
