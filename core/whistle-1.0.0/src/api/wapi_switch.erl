@@ -59,7 +59,12 @@
                            ]).
 -define(CHECK_SYNC_TYPES, []).
 -define(CHECK_SYNC_KEY(Realm, Username)
-        ,wh_util:join_binary([<<"switch.check_sync">>, Realm, Username], <<".">>)
+        ,wh_util:join_binary([<<"switch.check_sync">>
+                              ,amqp_util:encode(Realm)
+                              ,amqp_util:encode(Username)
+                             ]
+                             ,<<".">>
+                            )
        ).
 
 %% Request a reload_acls
@@ -206,8 +211,8 @@ publish_check_sync(JObj) ->
 publish_check_sync(Req, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?CHECK_SYNC_VALUES, fun ?MODULE:check_sync/1),
 
-    Realm = amqp_util:encode(check_sync_realm(Req)),
-    Username = amqp_util:encode(check_sync_username(Req)),
+    Realm = check_sync_realm(Req),
+    Username = check_sync_username(Req),
 
     amqp_util:configuration_publish(?CHECK_SYNC_KEY(Realm, Username)
                                     ,Payload
