@@ -234,8 +234,8 @@ get_attachment_binary(_Db, _Id, 0) ->
     throw({'error', 'no_attachment'});
 get_attachment_binary(Db, Id, Retries) ->
     case couch_mgr:open_cache_doc(Db, Id) of
-        {'error', 'not_found'} when Db =/= ?WH_FAXES ->
-            get_attachment_binary(?WH_FAXES, Id, Retries);
+        {'error', 'not_found'} when Db =/= ?WH_FAXES_DB ->
+            get_attachment_binary(?WH_FAXES_DB, Id, Retries);
         {'error', 'not_found'} ->
             lager:debug("no attachment binary to send"),
             {'ok', <<"dev/null">>, <<"fax attachment">>};
