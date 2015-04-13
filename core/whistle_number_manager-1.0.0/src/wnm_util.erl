@@ -321,12 +321,18 @@ normalize_number(Number) when is_binary(Number) ->
 normalize_number(Number) ->
     normalize_number(wh_util:to_binary(Number)).
 
+-spec normalize_number(binary(), api_binary()) -> binary().
+normalize_number(Number, 'undefined') -> to_e164(Number);
+normalize_number(Number, AccountId) -> to_e164(Number, AccountId).
+
 -spec is_e164(ne_binary()) -> boolean().
 -spec is_npan(ne_binary()) -> boolean().
 -spec is_1npan(ne_binary()) -> boolean().
 
 is_e164(DID) ->
     DID =:= to_e164(DID).
+is_e164(DID, AccountId) ->
+    DID =:= to_e164(DID, AccountId).
 
 is_npan(DID) ->
     re:run(DID, <<"^[2-9][0-9]{2}[2-9][0-9]{6}$">>) =/= 'nomatch'.

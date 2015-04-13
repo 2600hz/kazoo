@@ -40,7 +40,7 @@
           ,content_type :: binary()
           ,peer_ip :: tuple()
           ,proxy_ip :: tuple()
-		  ,owner_id = 'undefined' :: api_binary()
+	  ,owner_id = 'undefined' :: api_binary()
           ,owner_email = 'undefined' :: api_binary()
          }).
 
@@ -244,7 +244,7 @@ check_faxbox(To, State) ->
 check_faxbox_doc(FaxNumber, Domain, State) ->
 
     ViewOptions = [{'key', Domain}, 'include_docs'],
-    case couch_mgr:get_results(?WH_FAXES, <<"faxbox/email_address">>, ViewOptions) of
+    case couch_mgr:get_results(?WH_FAXES_DB, <<"faxbox/email_address">>, ViewOptions) of
         {'ok', []} -> {'error', "Not Found", State};
         {'ok', [JObj]} -> maybe_get_faxbox_owner(FaxNumber, wh_json:get_value(<<"doc">>,JObj), State);
         {'error', 'not_found'} -> {'error', "Not Found", State};
@@ -255,14 +255,6 @@ check_faxbox_doc(FaxNumber, Domain, State) ->
 -spec match(binary(), binary()) -> boolean().
 match(Address, Element) ->
     re:run(Address, Element) =/= 'nomatch'.
-
--spec maybe_faxbox(state()) -> state().
-maybe_faxbox(#state{faxbox_email=Domain}=State) ->
-    ViewOptions = [{'key', Domain}, 'include_docs'],
-    case couch_mgr:get_results(?WH_FAXES_DB, <<"faxbox/email_address">>, ViewOptions) of
-        {'ok', [JObj]} -> maybe_faxbox_owner(State#state{faxbox=wh_json:get_value(<<"doc">>,JObj)});
-        _ -> State
-    end.
 
 -spec maybe_get_faxbox_owner(binary(), wh_json:object(), #state{}) ->
                                       {'ok', #state{}} |

@@ -1,4 +1,3 @@
-
 -module(whistle_number_manager_sup).
 
 -behaviour(supervisor).
@@ -8,6 +7,8 @@
 
 %% Supervisor callbacks
 -export([init/1]).
+
+-include("wnm.hrl").
 
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?WORKER('wh_port_request_crawler')
