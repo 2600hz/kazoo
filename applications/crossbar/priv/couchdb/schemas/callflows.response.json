@@ -6,7 +6,7 @@
     "description": "Validator for the Response callflow action",
     "properties": {
         "code": {
-            "type": "string",
+            "type":"integer",
             "required": true,
             "name": "Code",
             "description": "The SIP Hangup code to respond with"
