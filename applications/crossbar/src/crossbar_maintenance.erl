@@ -35,6 +35,7 @@
 -export([init_apps/2, init_app/2]).
 
 -include_lib("crossbar.hrl").
+-include_lib("whistle/include/wh_system_config.hrl").
 
 -type input_term() :: atom() | string() | ne_binary().
 
@@ -400,6 +401,7 @@ create_account(AccountName, Realm, Username, Password) ->
                 _ = promote_account(AccountId),
                 _ = allow_account_number_additions(AccountId),
                 _ = whistle_services_maintenance:make_reseller(AccountId),
+                _ = update_system_config(AccountId),
                 'ok';
             _Else -> 'ok'
         end,
@@ -411,6 +413,11 @@ create_account(AccountName, Realm, Username, Password) ->
             wh_util:log_stacktrace(ST),
             'failed'
     end.
+
+-spec update_system_config(ne_binary()) -> 'ok'.
+update_system_config(AccountId) ->
+    whapps_config:set(?WH_SYSTEM_CONFIG_ACCOUNT, <<"master_account_id">>, AccountId),
+    io:format("updating master account id in system_config.~s~n", [?WH_SYSTEM_CONFIG_ACCOUNT]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -860,7 +867,7 @@ create_app(AppPath, MetaData, MasterAccountDb) ->
                                                    ]),
             maybe_add_icons(AppPath, wh_doc:id(JObj), MasterAccountDb);
         {'error', _E} ->
-            io:format(" failed to save app ~s: ~p", [wh_json:get_value(<<"name">>, MetaData), _E])
+            io:format(" failed to save app ~s to ~s: ~p~n", [wh_json:get_value(<<"name">>, MetaData), MasterAccountDb, _E])
     end.
 
 -spec maybe_add_icons(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
