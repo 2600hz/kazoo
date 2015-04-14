@@ -68,13 +68,12 @@ This is located on the account document.
         },
         "{{application_id}}": {
             "allowed_users": "specific",
-            "users": [
-                "{{user_id_1}}",
-                "{{user_id_2}}"
-            ]
+            "users": [{
+                "id": {{user_id}}
+            }]
         },
         "{{application_id}}": {
-            "allowed_users": "admin"
+            "allowed_users": "admins"
         },
         "{{application_id}}": {
             "allowed_users": "all"
@@ -83,12 +82,12 @@ This is located on the account document.
 }
 ```
 
-| Allowed Users  | To |
-| ------------- | ------------- |
-| Specific with **no user**  | No one  |
-| Specific with **user(s)**  | Only listed users  |
-| All  | Everyone in the account  |
-| Admin | Only Admins  |
+| Allowed Users  | To | key |
+| ------------- | ------------- | ------------- |
+| Specific with **no user**  | No one  | specific
+| Specific with **user(s)**  | Only listed users  | specific
+| All  | Everyone in the account  | all
+| Admins | Only Admins  | admins
 
 ## Crossbar
 

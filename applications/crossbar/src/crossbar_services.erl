@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(crossbar_services).
 
--export([maybe_dry_run/2]).
+-export([maybe_dry_run/2, maybe_dry_run/3]).
 
 -include("crossbar.hrl").
 
@@ -18,15 +18,19 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_dry_run(cb_context:context(), function()) -> any().
+-spec maybe_dry_run(cb_context:context(), function(), ne_binary()) -> any().
 maybe_dry_run(Context, Callback) ->
+    Doc = cb_context:doc(Context),
+    Type = wh_json:get_value(<<"pvt_type">>, Doc),
+    maybe_dry_run(Context, Callback, Type).
+
+maybe_dry_run(Context, Callback, Type) ->
     case cb_context:accepting_charges(Context) of
         'true' ->
             lager:debug("accepting charges"),
             Callback();
         'false' ->
             lager:debug("not accepting charges"),
-            Doc = cb_context:doc(Context),
-            Type = wh_json:get_value(<<"pvt_type">>, Doc),
             RespJObj = dry_run(Context, Type),
             case wh_json:is_empty(RespJObj) of
                 'true' ->
@@ -48,21 +52,21 @@ maybe_dry_run(Context, Callback) ->
 %%--------------------------------------------------------------------
 -spec dry_run(cb_context:context(), ne_binary()) -> wh_json:object().
 dry_run(Context, <<"device">>) ->
-    lager:error("dry run device"),
+    lager:debug("dry run device"),
     Services = fetch_service(Context),
     JObj = cb_context:doc(Context),
     DeviceType = wh_json:get_value(<<"device_type">>, JObj),
     UpdatedServices = wh_service_devices:reconcile(Services, DeviceType),
     wh_services:dry_run(UpdatedServices);
 dry_run(Context, <<"user">>) ->
-    lager:error("dry run user"),
+    lager:debug("dry run user"),
     Services = fetch_service(Context),
     JObj = cb_context:doc(Context),
     UserType = wh_json:get_value(<<"priv_level">>, JObj),
     UpdatedServices = wh_service_users:reconcile(Services, UserType),
     wh_services:dry_run(UpdatedServices);
 dry_run(Context, <<"limits">>) ->
-    lager:error("dry run limits"),
+    lager:debug("dry run limits"),
     Services = fetch_service(Context),
     ReqData = cb_context:req_data(Context),
     Updates =
@@ -74,7 +78,7 @@ dry_run(Context, <<"limits">>) ->
     UpdatedServices = wh_service_limits:reconcile(Services, Updates),
     wh_services:dry_run(UpdatedServices);
 dry_run(Context, <<"port_request">>) ->
-    lager:error("dry run port_request"),
+    lager:debug("dry run port_request"),
     Services = fetch_service(Context),
     JObj = cb_context:doc(Context),
     Numbers = wh_json:get_value(<<"numbers">>, JObj),
@@ -87,7 +91,7 @@ dry_run(Context, <<"port_request">>) ->
     UpdatedServices = wh_service_phone_numbers:reconcile(PhoneNumbers, Services),
     wh_services:dry_run(UpdatedServices);
 dry_run(Context, <<"app">>) ->
-    lager:error("dry run app"),
+    lager:debug("dry run app"),
     [{<<"apps_store">>, [Id]} | _] = cb_context:req_nouns(Context),
     case wh_service_ui_apps:is_in_use(cb_context:req_data(Context)) of
         'false' -> wh_json:new();
@@ -98,7 +102,7 @@ dry_run(Context, <<"app">>) ->
             wh_services:dry_run(UpdatedServices)
     end;
 dry_run(_Context, _Type) ->
-    lager:error("unknown type ~p, cannot execute dry run", [_Type]),
+    lager:warning("unknown type ~p, cannot execute dry run", [_Type]),
     wh_json:new().
 
 
