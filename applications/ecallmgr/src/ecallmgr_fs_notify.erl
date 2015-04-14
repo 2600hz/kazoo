@@ -118,10 +118,11 @@ check_sync_api(JObj, _Props) ->
 -spec check_sync(ne_binary(), ne_binary()) -> 'ok'.
 check_sync(Username, Realm) ->
     lager:info("looking up registration information for ~s@~s", [Username, Realm]),
-    case ecallmgr_registrar:lookup_contact(Realm, Username) of
+    case ecallmgr_registrar:lookup_registration(Realm, Username) of
         {'error', 'not_found'} ->
             lager:warning("failed to find contact for ~s@~s, not sending check-sync", [Username, Realm]);
-        {'ok', Contact} ->
+        {'ok', Registration} ->
+            Contact = wh_json:get_first_defined([<<"Bridge-RURI">>, <<"Contact">>], Registration),
             [Node|_] = wh_util:shuffle_list(ecallmgr_fs_nodes:connected()),
             lager:info("calling check sync on ~s for ~s@~s and contact ~s", [Node, Username, Realm, Contact]),
             send_check_sync(Node, Username, Realm, ensure_contact_user(Contact, Username))
@@ -131,9 +132,11 @@ check_sync(Username, Realm) ->
 send_check_sync(Node, Username, Realm, Contact) ->
     To = nksip_unparse:uri(#uri{user=Username, domain=Realm}),
     From = nksip_unparse:uri(#uri{user=Username, domain=Realm}),
+    AOR = nksip_unparse:ruri(#uri{user=Username, domain=Realm}),
+    SIPHeaders = <<"X-KAZOO-AOR : ", AOR/binary, "\r\n">>,
     Headers = [{"profile", ?DEFAULT_FS_PROFILE}
-               ,{"contact", Contact}
                ,{"contact-uri", Contact}
+               ,{"extra-headers", SIPHeaders}
                ,{"to-uri", To}
                ,{"from-uri", From}
                ,{"event-string", "check-sync"}
@@ -178,10 +181,9 @@ send_mwi_update(JObj, Username, Realm, Node, Registration) ->
     Headers = [{"profile", ?DEFAULT_FS_PROFILE}
                ,{"contact-uri", Contact}
                ,{"extra-headers", SIPHeaders}
-               ,{"no-sub-state", <<"true">>}
                ,{"to-uri", To}
                ,{"from-uri", From}
-               ,{"event-str", "message-summary"}
+               ,{"event-string", "message-summary"}
                ,{"content-type", "application/simple-message-summary"}
                ,{"content-length", wh_util:to_list(length(Body))}
                ,{"body", lists:flatten(Body)}
