@@ -323,27 +323,19 @@ load_view(#load_view_params{view=View
                             ,context=Context
                             ,start_key=StartKey
                             ,page_size=PageSize
-                            ,filter_fun=FilterFun
                             ,dbs=[Db|Dbs]
                             ,direction=_Direction
                            }=LVPs) ->
-    HasFilter = is_function(FilterFun, 2) orelse has_qs_filter(Context),
     Limit = limit_by_page_size(Context, PageSize),
 
     lager:debug("limit: ~p page_size: ~p dir: ~p", [Limit, PageSize, _Direction]),
 
-    DefaultOptions =
+    IncludeOptions =
         props:filter_undefined(
           [{'startkey', StartKey}
            ,{'limit', Limit}
            | props:delete_keys(['startkey', 'limit'], Options)
           ]),
-
-    IncludeOptions =
-        case HasFilter of
-            'true' -> ['include_docs' | props:delete('include_docs', DefaultOptions)];
-            'false' -> DefaultOptions
-        end,
 
     ViewOptions =
         case props:get_first_defined(['reduce', 'group', 'group_level'], IncludeOptions) of
