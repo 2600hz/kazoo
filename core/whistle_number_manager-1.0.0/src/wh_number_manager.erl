@@ -263,12 +263,12 @@ should_lookup_cnam(Module) ->
     end.
 
 -spec should_force_outbound(wnm_number()) -> boolean().
-should_force_outbound(#number{module_name='wnm_local'}) ->
-    whapps_config:get_is_true(?WNM_CONFIG_CAT, <<"force_wnm_local_outbound">>, 'true');
 should_force_outbound(#number{state = ?NUMBER_STATE_PORT_IN}) ->
     whapps_config:get_is_true(?WNM_CONFIG_CAT, <<"force_port_in_outbound">>, 'true');
 should_force_outbound(#number{state = ?NUMBER_STATE_PORT_OUT}) ->
     whapps_config:get_is_true(?WNM_CONFIG_CAT, <<"force_port_out_outbound">>, 'true');
+should_force_outbound(#number{module_name='wnm_local'}) ->
+    whapps_config:get_is_true(?WNM_CONFIG_CAT, <<"force_wnm_local_outbound">>, 'true');
 should_force_outbound(#number{number_doc=JObj}) ->
     case wh_json:get_ne_value(<<"force_outbound">>, JObj) of
         'undefined' -> default_force_outbound();
