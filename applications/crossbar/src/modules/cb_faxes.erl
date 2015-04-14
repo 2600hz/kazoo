@@ -419,10 +419,10 @@ incoming_summary(Context) ->
     case cb_modules_util:range_modb_view_options(Context, PreFilter, PostFilter) of
         {'ok', ViewOptions} ->
             crossbar_doc:load_view(View
-                           ,['include_docs' | ViewOptions]
-                           ,Context
-                           ,fun normalize_incoming_view_results/2
-                          );
+                                   ,['include_docs' | ViewOptions]
+                                   ,Context
+                                   ,fun normalize_incoming_view_results/2
+                                  );
         Ctx -> Ctx
     end.
 

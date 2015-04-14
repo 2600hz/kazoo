@@ -111,11 +111,11 @@ validate(Context, ?DEBUG_PATH_TOKEN, CallId) ->
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
     crossbar_doc:load_view(
-        ?CB_LIST
-        ,[]
-        ,Context
-        ,fun normalize_view_results/2
-    ).
+      ?CB_LIST
+      ,[]
+      ,Context
+      ,fun normalize_view_results/2
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -127,18 +127,18 @@ summary(Context) ->
 debug_summary(Context) ->
     AccountModb = get_modb(Context),
     maybe_normalize_debug_results(
-        crossbar_doc:load_view(
-            ?CB_FIRST_ITERATION
-            ,[]
-            ,cb_context:setters(
-                Context
-                ,[{fun cb_context:set_account_db/2, AccountModb}
-                  ,fun fix_req_pagination/1
-                ]
-            )
-            ,fun normalize_view_results/2
-        )
-    ).
+      crossbar_doc:load_view(
+        ?CB_FIRST_ITERATION
+        ,[]
+        ,cb_context:setters(
+           Context
+           ,[{fun cb_context:set_account_db/2, AccountModb}
+             ,fun fix_req_pagination/1
+            ]
+          )
+        ,fun normalize_view_results/2
+       )
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -175,6 +175,7 @@ debug_read(Context, CallId) ->
           ?CB_DEBUG_LIST
           ,[{'endkey', [CallId, wh_json:new()]}
             ,{'startkey', [CallId]}
+            ,'include_docs'
            ]
           ,cb_context:set_account_db(Context, AccountModb)
           ,fun normalize_debug_read/2
@@ -231,17 +232,17 @@ maybe_normalize_debug_results(Context) ->
 normalize_debug_results(Context) ->
     Dict =
         lists:foldl(
-            fun normalize_debug_results_fold/2
-            ,dict:new()
-            ,lists:reverse(cb_context:resp_data(Context))
-        ),
+          fun normalize_debug_results_fold/2
+          ,dict:new()
+          ,lists:reverse(cb_context:resp_data(Context))
+         ),
     RespData = normalize_debug_results(Context, dict:to_list(Dict)),
     cb_context:setters(
-        Context
-        ,[{fun cb_context:set_resp_data/2, RespData}
-          ,fun fix_page_size/1
-        ]
-    ).
+      Context
+      ,[{fun cb_context:set_resp_data/2, RespData}
+        ,fun fix_page_size/1
+       ]
+     ).
 
 normalize_debug_results(Context, List) ->
     Size = wh_util:to_integer((crossbar_doc:pagination_page_size(Context)-1)/2),
@@ -279,9 +280,9 @@ fix_page_size(Context) ->
     RespData = cb_context:resp_data(Context),
     Size = erlang:length(RespData),
     cb_context:set_resp_envelope(
-        Context
-        ,wh_json:set_value(<<"page_size">>, Size, RespEnv)
-    ).
+      Context
+      ,wh_json:set_value(<<"page_size">>, Size, RespEnv)
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -290,7 +291,7 @@ fix_page_size(Context) ->
 %%--------------------------------------------------------------------
 -spec normalize_debug_read(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_debug_read(JObj, Acc) ->
-    [leak_pvt_field(JObj) | Acc].
+    [leak_pvt_field(wh_json:get_value(<<"doc">>, JObj)) | Acc].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -303,17 +304,17 @@ leak_pvt_field(JObj) ->
                 ,fun leak_pvt_node/2
                ],
     lists:foldl(
-        fun(F, Acc) -> F(JObj, Acc) end
-        ,wh_json:get_value(<<"doc">>, JObj)
-        ,Routines
-    ).
+      fun(F, Acc) -> F(JObj, Acc) end
+      ,JObj
+      ,Routines
+     ).
 
 -spec leak_pvt_created(wh_json:object(), wh_json:object()) -> wh_json:object().
 leak_pvt_created(JObj, Acc) ->
-    Created = wh_json:get_value([<<"doc">>, <<"pvt_created">>], JObj),
+    Created = wh_json:get_value([<<"pvt_created">>], JObj),
     wh_json:set_value(<<"created">>, Created, Acc).
 
 -spec leak_pvt_node(wh_json:object(), wh_json:object()) -> wh_json:object().
 leak_pvt_node(JObj, Acc) ->
-    Node = wh_json:get_value([<<"doc">>, <<"pvt_node">>], JObj),
+    Node = wh_json:get_value([<<"pvt_node">>], JObj),
     wh_json:set_value(<<"node">>, Node, Acc).

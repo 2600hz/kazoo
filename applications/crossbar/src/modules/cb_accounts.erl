@@ -761,9 +761,13 @@ load_descendants(AccountId, Context, _Version) ->
 
 -spec load_descendants_v1(ne_binary(), cb_context:context()) -> cb_context:context().
 load_descendants_v1(AccountId, Context) ->
-    crossbar_doc:load_view(?AGG_VIEW_DESCENDANTS, [{'startkey', [AccountId]}
-                                                   ,{'endkey', [AccountId, wh_json:new()]}
-                                                  ], Context, fun normalize_view_results/2).
+    crossbar_doc:load_view(?AGG_VIEW_DESCENDANTS
+                           ,[{'startkey', [AccountId]}
+                             ,{'endkey', [AccountId, wh_json:new()]}
+                            ]
+                           ,Context
+                           ,fun normalize_view_results/2
+                          ).
 
 -spec load_paginated_descendants(ne_binary(), cb_context:context()) -> cb_context:context().
 load_paginated_descendants(AccountId, Context) ->
@@ -776,7 +780,8 @@ load_paginated_descendants(AccountId, Context) ->
                               ]
                              ,Context
                              ,fun normalize_view_results/2
-                            )).
+                            )
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -796,9 +801,12 @@ load_siblings(AccountId, Context, _Version) ->
 
 -spec load_siblings_v1(ne_binary(), cb_context:context()) -> cb_context:context().
 load_siblings_v1(AccountId, Context) ->
-    Context1 = crossbar_doc:load_view(?AGG_VIEW_PARENT, [{'startkey', AccountId}
-                                                         ,{'endkey', AccountId}
-                                                        ], Context),
+    Context1 = crossbar_doc:load_view(?AGG_VIEW_PARENT
+                                      ,[{'startkey', AccountId}
+                                        ,{'endkey', AccountId}
+                                       ]
+                                      ,Context
+                                     ),
     case cb_context:resp_status(Context1) of
         'success' ->
             load_siblings_results(AccountId, Context1, cb_context:doc(Context1));

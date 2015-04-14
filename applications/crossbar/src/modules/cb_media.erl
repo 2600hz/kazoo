@@ -902,7 +902,7 @@ load_media_binary(Context, MediaId) ->
                       crossbar_doc:load_attachment(cb_context:doc(Context1), Attachment, Context1)
                       ,[{<<"Content-Disposition">>, <<"attachment; filename=", Attachment/binary>>}
                         ,{<<"Content-Type">>, wh_doc:attachment_content_type(cb_context:doc(Context1), Attachment)}
-                        ,{<<"Content-Type">>, wh_doc:attachment_length(cb_context:doc(Context1), Attachment)}
+                        ,{<<"Content-Length">>, wh_doc:attachment_length(cb_context:doc(Context1), Attachment)}
                        ])
             end;
         _Status -> Context1

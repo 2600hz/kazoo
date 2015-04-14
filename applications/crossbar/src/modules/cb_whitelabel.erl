@@ -414,7 +414,10 @@ delete(Context) ->
                              cb_context:context().
 find_whitelabel(Context, Domain) ->
     ViewOptions = [{'key', wh_util:to_lower_binary(Domain)}],
-    Context1 = crossbar_doc:load_view(?AGG_VIEW_WHITELABEL_DOMAIN, ViewOptions, cb_context:set_account_db(Context, ?WH_ACCOUNTS_DB)),
+    Context1 = crossbar_doc:load_view(?AGG_VIEW_WHITELABEL_DOMAIN
+                                      ,ViewOptions
+                                      ,cb_context:set_account_db(Context, ?WH_ACCOUNTS_DB)
+                                     ),
     case cb_context:resp_status(Context1) of
         'success' ->
             case cb_context:doc(Context1) of
@@ -424,13 +427,13 @@ find_whitelabel(Context, Domain) ->
                     cb_context:setters(Context1
                                        ,[{fun cb_context:set_account_db/2, Db}
                                          ,{fun cb_context:set_account_id/2, Id}
-                                       ]);
+                                        ]);
                 _Doc ->
                     cb_context:add_system_error(
-                        'bad_identifier'
-                        ,wh_json:from_list([{<<"cause">>, Domain}])
-                        ,Context1
-                    )
+                      'bad_identifier'
+                      ,wh_json:from_list([{<<"cause">>, Domain}])
+                      ,Context1
+                     )
             end;
         _Status -> Context1
     end.
