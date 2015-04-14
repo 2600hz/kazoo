@@ -225,9 +225,9 @@ validate_app(Context, Id, ?HTTP_PUT) ->
         'success' ->
             Callback =
                 fun() ->
-                    install(Context, Id)
+                    install(Context1, Id)
                 end,
-            crossbar_services:maybe_dry_run(Context, Callback);
+            crossbar_services:maybe_dry_run(Context1, Callback, <<"app">>);
         _ -> Context1
     end;
 validate_app(Context, Id, ?HTTP_DELETE) ->
@@ -242,9 +242,9 @@ validate_app(Context, Id, ?HTTP_POST) ->
         'success' ->
             Callback =
                 fun() ->
-                    update(Context, Id)
+                    update(Context1, Id)
                 end,
-            crossbar_services:maybe_dry_run(Context, Callback);
+            crossbar_services:maybe_dry_run(Context1, Callback, <<"app">>);
         _ -> Context1
     end.
 
