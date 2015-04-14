@@ -252,7 +252,10 @@ normalize_view_results(JObj, Acc) ->
 is_allowed(Context) ->
     ResellerId = wh_services:find_reseller_id(cb_context:account_id(Context)),
     AuthAccountId = cb_context:auth_account_id(Context),
-    (AuthAccountId =:= ResellerId orelse wh_util:is_system_admin(AuthAccountId)) andalso {'ok', ResellerId}.
+    (AuthAccountId =:= ResellerId
+     orelse wh_util:is_system_admin(AuthAccountId)
+    )
+        andalso {'ok', ResellerId}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -299,8 +302,8 @@ is_service_plan(Context, PlanId, JObj) ->
         'true' -> cb_context:set_resp_status(Context, 'success');
         'false' ->
             cb_context:add_system_error(
-                'bad_identifier'
-                ,wh_json:from_list([{<<"cause">>, PlanId}])
-                ,Context
-            )
+              'bad_identifier'
+              ,wh_json:from_list([{<<"cause">>, PlanId}])
+              ,Context
+             )
     end.
