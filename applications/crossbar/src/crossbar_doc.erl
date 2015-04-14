@@ -330,12 +330,18 @@ load_view(#load_view_params{view=View
 
     lager:debug("limit: ~p page_size: ~p dir: ~p", [Limit, PageSize, _Direction]),
 
-    IncludeOptions =
+    DefaultOptions =
         props:filter_undefined(
           [{'startkey', StartKey}
            ,{'limit', Limit}
            | props:delete_keys(['startkey', 'limit'], Options)
           ]),
+
+    IncludeOptions =
+        case has_qs_filter(Context) of
+            'true' -> props:insert_value('include_docs', DefaultOptions);
+            'false' -> DefaultOptions
+        end,
 
     ViewOptions =
         case props:get_first_defined(['reduce', 'group', 'group_level'], IncludeOptions) of
