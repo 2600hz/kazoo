@@ -992,7 +992,14 @@ show_status(CallId, 'true', Resp) ->
 -spec delete_system_media_references() -> 'ok'.
 delete_system_media_references() ->
     DocId = wh_call_response:config_doc_id(),
-    {'ok', CallResponsesDoc} = couch_mgr:open_doc(?WH_CONFIG_DB, DocId),
+    case couch_mgr:open_doc(?WH_CONFIG_DB, DocId) of
+        {'ok', CallResponsesDoc} ->
+            delete_system_media_references(DocId, CallResponsesDoc);
+        {'error', 'not_found'} -> ok
+    end.
+
+-spec delete_system_media_references(ne_binary(), wh_json:object()) -> 'ok'.
+delete_system_media_references(DocId, CallResponsesDoc) ->
     TheKey = <<"default">>,
     Default = wh_json:get_value(TheKey, CallResponsesDoc),
 
@@ -1001,9 +1008,9 @@ delete_system_media_references() ->
         NewDefault ->
            io:format("updating ~s with stripped system_media references~n", [DocId]),
             NewCallResponsesDoc = wh_json:set_value(TheKey, NewDefault, CallResponsesDoc),
-            _Resp = couch_mgr:save_doc(?WH_CONFIG_DB, NewCallResponsesDoc)
-    end,
-    'ok'.
+            _Resp = couch_mgr:save_doc(?WH_CONFIG_DB, NewCallResponsesDoc),
+            'ok'
+    end.
 
 -spec remove_system_media_refs(wh_json:key(), wh_json:json_term()) ->
                                       {wh_json:key(), wh_json:json_term()}.
