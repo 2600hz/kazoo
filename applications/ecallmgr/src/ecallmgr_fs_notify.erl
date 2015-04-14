@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz
+%%% @copyright (C) 2012-2015, 2600Hz
 %%% @doc
 %%% Notify-type requests, like MWI updates, received and processed here
 %%% @end
@@ -9,9 +9,10 @@
 -module(ecallmgr_fs_notify).
 
 -behaviour(gen_listener).
+
 -export([start_link/1, start_link/2]).
 -export([presence_probe/2]).
--export([check_sync/2]).
+-export([check_sync_api/2, check_sync/2]).
 -export([mwi_update/2]).
 -export([register_overwrite/2]).
 -export([init/1
@@ -35,17 +36,21 @@
                                                   ,'register_overwrite'
                                                   ,'probe'
                                                  ]}
-                                 ,{'probe-type', <<"presence">>}
+                                 ,{'probe_type', <<"presence">>}
                                 ]}
+                   ,{'switch', [{'restrict_to', ['check_sync']}]}
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'presence_probe'}
                       ,[{<<"presence">>, <<"probe">>}]
                      }
                      ,{{?MODULE, 'mwi_update'}
-                      ,[{<<"presence">>, <<"mwi_update">>}]
-                     }
+                       ,[{<<"presence">>, <<"mwi_update">>}]
+                      }
                      ,{{?MODULE, 'register_overwrite'}
                        ,[{<<"presence">>, <<"register_overwrite">>}]
+                      }
+                     ,{{?MODULE, 'check_sync_api'}
+                       ,[{<<"switch_event">>, <<"check_sync">>}]
                       }
                     ]).
 -define(QUEUE_NAME, <<"ecallmgr_fs_notify">>).
@@ -102,13 +107,22 @@ resp_to_probe(State, User, Realm) ->
                      ],
     wh_amqp_worker:cast(PresenceUpdate, fun wapi_presence:publish_update/1).
 
+-spec check_sync_api(wh_json:object(), wh_proplist()) -> 'ok'.
+check_sync_api(JObj, _Props) ->
+    'true' = wapi_switch:check_sync_v(JObj),
+    wh_util:put_callid(JObj),
+    check_sync(wapi_switch:check_sync_username(JObj)
+               ,wapi_switch:check_sync_realm(JObj)
+              ).
+
 -spec check_sync(ne_binary(), ne_binary()) -> 'ok'.
 check_sync(Username, Realm) ->
     lager:info("looking up registration information for ~s@~s", [Username, Realm]),
-    case ecallmgr_registrar:lookup_contact(Realm, Username) of
+    case ecallmgr_registrar:lookup_registration(Realm, Username) of
         {'error', 'not_found'} ->
             lager:warning("failed to find contact for ~s@~s, not sending check-sync", [Username, Realm]);
-        {'ok', Contact} ->
+        {'ok', Registration} ->
+            Contact = wh_json:get_first_defined([<<"Bridge-RURI">>, <<"Contact">>], Registration),
             [Node|_] = wh_util:shuffle_list(ecallmgr_fs_nodes:connected()),
             lager:info("calling check sync on ~s for ~s@~s and contact ~s", [Node, Username, Realm, Contact]),
             send_check_sync(Node, Username, Realm, ensure_contact_user(Contact, Username))
@@ -118,9 +132,11 @@ check_sync(Username, Realm) ->
 send_check_sync(Node, Username, Realm, Contact) ->
     To = nksip_unparse:uri(#uri{user=Username, domain=Realm}),
     From = nksip_unparse:uri(#uri{user=Username, domain=Realm}),
+    AOR = nksip_unparse:ruri(#uri{user=Username, domain=Realm}),
+    SIPHeaders = <<"X-KAZOO-AOR : ", AOR/binary, "\r\n">>,
     Headers = [{"profile", ?DEFAULT_FS_PROFILE}
-               ,{"contact", Contact}
                ,{"contact-uri", Contact}
+               ,{"extra-headers", SIPHeaders}
                ,{"to-uri", To}
                ,{"from-uri", From}
                ,{"event-string", "check-sync"}
@@ -165,10 +181,9 @@ send_mwi_update(JObj, Username, Realm, Node, Registration) ->
     Headers = [{"profile", ?DEFAULT_FS_PROFILE}
                ,{"contact-uri", Contact}
                ,{"extra-headers", SIPHeaders}
-               ,{"no-sub-state", <<"true">>}
                ,{"to-uri", To}
                ,{"from-uri", From}
-               ,{"event-str", "message-summary"}
+               ,{"event-string", "message-summary"}
                ,{"content-type", "application/simple-message-summary"}
                ,{"content-length", wh_util:to_list(length(Body))}
                ,{"body", lists:flatten(Body)}
@@ -182,12 +197,12 @@ register_overwrite(JObj, Props) ->
     Username = wh_json:get_binary_value(<<"Username">>, JObj, <<"unknown">>),
     Realm = wh_json:get_binary_value(<<"Realm">>, JObj, <<"unknown">>),
     PrevContact = ensure_contact_user(
-                    wh_json:get_value(<<"Previous-Contact">>, JObj),
-                    Username
+                    wh_json:get_value(<<"Previous-Contact">>, JObj)
+                    ,Username
                    ),
     NewContact = ensure_contact_user(
-                   wh_json:get_value(<<"Contact">>, JObj),
-                   Username
+                   wh_json:get_value(<<"Contact">>, JObj)
+                   ,Username
                   ),
     SipUri = nksip_unparse:uri(#uri{user=Username, domain=Realm}),
     PrevBody = wh_util:to_list(<<"Replaced-By:", NewContact/binary>>),

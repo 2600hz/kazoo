@@ -2,7 +2,7 @@
 Section: Crossbar
 Title: Devices
 Language: en-US
-Version: 3.18
+Version: 3.20
 */
 
 # Kazoo Devices
@@ -33,3 +33,9 @@ Above are all the options of QuickCall (As Far as I can tell) They should be add
 Also under Resource Parameters add "cid-name" info to the "cid-number" info
 
 esoare
+
+## Sync
+
+Some devices support receiving SIP NOTIFY packets with `event` = `check-sync`. This is typically used to reboot the phone if the configuration has changed. Kazoo will generate the NOTIFY packet if the device is registered.
+
+    curl -v -X POST -H "X-Auth-Token:{AUTH_TOKEN}" http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/sync

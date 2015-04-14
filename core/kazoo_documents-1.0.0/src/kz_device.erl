@@ -17,8 +17,8 @@
          ,sip_settings/1, sip_settings/2, set_sip_settings/2
 
          ,presence_id/1, presence_id/2, set_presence_id/2
-
          ,name/1, name/2, set_name/2
+         ,mac_address/1, mac_address/2, set_mac_address/2
         ]).
 
 -include("kz_documents.hrl").
@@ -32,6 +32,7 @@
 
 -define(PRESENCE_ID, <<"presence_id">>).
 -define(NAME, <<"name">>).
+-define(MAC_ADDRESS, <<"mac_address">>).
 
 -spec sip_username(wh_json:object()) -> api_binary().
 -spec sip_username(wh_json:object(), Default) -> ne_binary() | Default.
@@ -126,3 +127,14 @@ name(DeviceJObj, Default) ->
 -spec set_name(wh_json:object(), ne_binary()) -> wh_json:object().
 set_name(DeviceJObj, Name) ->
     wh_json:set_value(?NAME, Name, DeviceJObj).
+
+-spec mac_address(wh_json:object()) -> api_binary().
+-spec mac_address(wh_json:object(), Default) -> ne_binary() | Default.
+mac_address(DeviceJObj) ->
+    mac_address(DeviceJObj, 'undefined').
+mac_address(DeviceJObj, Default) ->
+    wh_json:get_value(?MAC_ADDRESS, DeviceJObj, Default).
+
+-spec set_mac_address(wh_json:object(), ne_binary()) -> wh_json:object().
+set_mac_address(DeviceJObj, MacAddress) ->
+    wh_json:set_value(?MAC_ADDRESS, MacAddress, DeviceJObj).

@@ -14,11 +14,14 @@
 -export([subscribe/1, subscribe_v/1]).
 -export([update/1, update_v/1]).
 -export([probe/1, probe_v/1]).
--export([mwi_update/1, mwi_update_v/1]).
--export([mwi_query/1, mwi_query_v/1]).
+-export([mwi_update/1, mwi_update_v/1
+         ,mwi_query/1, mwi_query_v/1
+         ,sync/1, sync_v/1
+        ]).
 -export([register_overwrite/1, register_overwrite_v/1]).
 -export([flush/1, flush_v/1]).
 -export([reset/1, reset_v/1]).
+
 -export([publish_search_req/1
          ,publish_search_resp/2
          ,publish_subscribe/1, publish_subscribe/2
@@ -29,15 +32,18 @@
          ,publish_register_overwrite/1, publish_register_overwrite/2
          ,publish_flush/1, publish_flush/2
          ,publish_reset/1
+         ,publish_sync/1, publish_sync/2
         ]).
+
 -export([subscribe_routing_key/1]).
 -export([presence_states/0]).
 -export([is_valid_state/1]).
+
 -export([bind_q/2
          ,unbind_q/2
         ]).
+
 -export([declare_exchanges/0]).
--export([sync/1, sync_v/1, publish_sync/1, publish_sync/2]).
 
 -include_lib("whistle/include/wh_api.hrl").
 
@@ -151,7 +157,7 @@
                       ]).
 -define(RESET_TYPES, []).
 
-%% Sync presence 
+%% Sync presence
 -define(SYNC_HEADERS, [<<"Action">>]).
 -define(OPTIONAL_SYNC_HEADERS, [<<"Queue">>, <<"Event-Package">>]).
 -define(SYNC_VALUES, [{<<"Event-Category">>, <<"presence">>}
@@ -563,7 +569,7 @@ bind_q(Queue, ['update'|Restrict], Props) ->
     amqp_util:bind_q_to_presence(Queue, RoutingKey),
     bind_q(Queue, Restrict, Props);
 bind_q(Queue, ['probe'|Restrict], Props) ->
-    ProbeType = props:get_value('probe-type', Props, <<"*">>),
+    ProbeType = props:get_value('probe_type', Props, <<"*">>),
     RoutingKey = probe_routing_key(ProbeType),
     amqp_util:bind_q_to_presence(Queue, RoutingKey),
     bind_q(Queue, Restrict, Props);
@@ -623,7 +629,7 @@ unbind_q(Queue, ['update'|Restrict], Props) ->
     amqp_util:unbind_q_from_presence(Queue, RoutingKey),
     unbind_q(Queue, Restrict, Props);
 unbind_q(Queue, ['probe'|Restrict], Props) ->
-    ProbeType = props:get_value('probe-type', Props, <<"*">>),
+    ProbeType = props:get_value('probe_type', Props, <<"*">>),
     RoutingKey = probe_routing_key(ProbeType),
     amqp_util:unbind_q_from_presence(Queue, RoutingKey),
     unbind_q(Queue, Restrict, Props);

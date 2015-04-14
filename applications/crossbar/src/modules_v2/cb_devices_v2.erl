@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz
+%%% @copyright (C) 2011-2015, 2600Hz
 %%% @doc
 %%% Devices module
 %%%
@@ -13,15 +13,15 @@
 -module(cb_devices_v2).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/3
-         ,resource_exists/0, resource_exists/1, resource_exists/3
+         ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
+         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
          ,validate_resource/1, validate_resource/2
          ,billing/1
          ,authenticate/1
          ,authorize/1
-         ,validate/1, validate/2, validate/4
+         ,validate/1, validate/2, validate/3, validate/4
          ,put/1
-         ,post/2
+         ,post/2, post/3
          ,delete/2
          ,lookup_regs/1
         ]).
@@ -32,6 +32,9 @@
 -define(QUICKCALL_URL, [{<<"devices">>, [_, ?QUICKCALL_PATH_TOKEN, _]}
                         ,{?WH_ACCOUNTS_DB, [_]}
                        ]).
+
+-define(STATUS_PATH_TOKEN, <<"status">>).
+-define(CHECK_SYNC_PATH_TOKEN, <<"sync">>).
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".devices">>).
 
@@ -63,17 +66,24 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
-
+-spec allowed_methods() ->
+                             http_methods().
+-spec allowed_methods(path_token()) ->
+                             http_methods().
+-spec allowed_methods(path_token(), path_token()) ->
+                             http_methods().
+-spec allowed_methods(path_token(), path_token(), path_token()) ->
+                             http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 
-allowed_methods(<<"status">>) ->
+allowed_methods(?STATUS_PATH_TOKEN) ->
     [?HTTP_GET];
 allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+
+allowed_methods(_DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
+    [?HTTP_POST].
 
 allowed_methods(_, ?QUICKCALL_PATH_TOKEN, _) ->
     [?HTTP_GET].
@@ -88,10 +98,12 @@ allowed_methods(_, ?QUICKCALL_PATH_TOKEN, _) ->
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 -spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
 
 resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
+resource_exists(_DeviceId, ?CHECK_SYNC_PATH_TOKEN) -> 'true'.
 resource_exists(_, ?QUICKCALL_PATH_TOKEN, _) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -153,7 +165,7 @@ authorize(_Verb, _Nouns) ->
 validate_resource(Context) -> Context.
 
 -spec validate_resource(cb_context:context(), path_token()) -> cb_context:context().
-validate_resource(Context, <<"status">>) -> Context;
+validate_resource(Context, ?STATUS_PATH_TOKEN) -> Context;
 validate_resource(Context, DeviceId) -> validate_device_id(Context, DeviceId).
 
 -spec validate_device_id(cb_context:context(), api_binary()) -> cb_context:context().
@@ -162,10 +174,10 @@ validate_device_id(Context, DeviceId) ->
         {'ok', _} -> cb_context:set_device_id(Context, DeviceId);
         {'error', 'not_found'} ->
             cb_context:add_system_error(
-                'bad_identifier'
-                ,wh_json:from_list([{<<"cause">>, DeviceId}])
-                ,Context
-            );
+              'bad_identifier'
+              ,wh_json:from_list([{<<"cause">>, DeviceId}])
+              ,Context
+             );
         {'error', _R} -> crossbar_util:response_db_fatal(Context)
     end.
 
@@ -180,6 +192,8 @@ validate_device_id(Context, DeviceId) ->
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_devices(Context, cb_context:req_verb(Context)).
 
@@ -191,7 +205,7 @@ validate_devices(Context, ?HTTP_PUT) ->
 validate(Context, PathToken) ->
     validate_device(Context, PathToken, cb_context:req_verb(Context)).
 
-validate_device(Context, <<"status">>, ?HTTP_GET) ->
+validate_device(Context, ?STATUS_PATH_TOKEN, ?HTTP_GET) ->
     load_device_status(Context);
 validate_device(Context, DeviceId, ?HTTP_GET) ->
     load_device(DeviceId, Context);
@@ -200,7 +214,10 @@ validate_device(Context, DeviceId, ?HTTP_POST) ->
 validate_device(Context, DeviceId, ?HTTP_DELETE) ->
     load_device(DeviceId, Context).
 
-validate(Context, DeviceId, ?QUICKCALL_PATH_TOKEN, _) ->
+validate(Context, DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
+    load_device(DeviceId, Context).
+
+validate(Context, DeviceId, ?QUICKCALL_PATH_TOKEN, _ToDial) ->
     Context1 = maybe_validate_quickcall(load_device(DeviceId, Context)),
     case cb_context:has_errors(Context1) of
         'true' -> Context1;
@@ -209,6 +226,7 @@ validate(Context, DeviceId, ?QUICKCALL_PATH_TOKEN, _) ->
     end.
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
+-spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, DeviceId) ->
     case changed_mac_address(Context) of
         'true' ->
@@ -221,6 +239,17 @@ post(Context, DeviceId) ->
         'false' ->
             error_used_mac_address(Context)
     end.
+
+post(Context, DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
+    lager:debug("publishing check_sync for ~s", [DeviceId]),
+
+    Req = [{<<"Realm">>, crossbar_util:get_account_realm(Context)}
+           ,{<<"Username">>, kz_device:sip_username(cb_context:doc(Context))}
+           ,{<<"Msg-ID">>, cb_context:req_id(Context)}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    wh_amqp_worker:cast(Req, fun wapi_switch:publish_check_sync/1),
+    crossbar_util:response_202(<<"sync request sent">>, Context).
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
