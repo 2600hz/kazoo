@@ -15,6 +15,8 @@
 -define(MAINTENANCE_VIEW_FILE, <<"views/maintenance.json">>).
 -define(ACCOUNTS_AGG_VIEW_FILE, <<"views/accounts.json">>).
 
+-define(CB_APPS_STORE_LIST, <<"apps_store/crossbar_listing">>).
+
 -define(APP_NAME, <<"crossbar">>).
 -define(APP_VERSION, <<"0.8.0">>).
 

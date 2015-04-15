@@ -11,6 +11,7 @@
 -export([allowed_apps/1]).
 -export([allowed_app/2]).
 -export([is_authorized/3]).
+-export([load_default_apps/0]).
 
 -include("crossbar.hrl").
 
@@ -79,7 +80,7 @@ is_authorized(AccountDoc, UserId, App) ->
 load_default_apps() ->
     {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
     lager:debug("loading default apps from master account : ~s", [MasterAccountDb]),
-    case couch_mgr:get_results(MasterAccountDb, <<"apps_store/crossbar_listing">>, ['include_docs']) of
+    case couch_mgr:get_results(MasterAccountDb, ?CB_APPS_STORE_LIST, ['include_docs']) of
         {'error', _E} ->
             lager:error("failed to lookup apps in ~s", [MasterAccountDb]),
             [];

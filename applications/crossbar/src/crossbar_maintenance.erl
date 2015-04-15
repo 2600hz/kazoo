@@ -842,7 +842,7 @@ maybe_create_app(AppPath, MetaData, MasterAccountDb) ->
 -spec find_app(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} |
                                             {'error', _}.
 find_app(Db, Name) ->
-    case couch_mgr:get_results(Db, <<"apps_store/crossbar_listing">>, [{'key', Name}]) of
+    case couch_mgr:get_results(Db, ?CB_APPS_STORE_LIST, [{'key', Name}]) of
         {'ok', []} -> {'error', 'not_found'};
         {'ok', [View]} -> {'ok', View};
         {'error', _}=E -> E

@@ -382,24 +382,18 @@ load_app(Context, AppId) ->
 load_app_from_master_account(Context, AppId) ->
     {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
     {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
-    try
-        {'ok', JObjs} = couch_mgr:get_results(MasterAccountDb
-                                              ,<<"apps_store/crossbar_listing">>
-                                              ,['include_docs']
-                                             ),
-        [_JObj] = [JObj || JObj <- JObjs, wh_json:get_value(<<"id">>, JObj) == AppId]
-    of
-        [JObj] ->
-            AppJObj = wh_json:get_value(<<"doc">>, JObj),
+    DefaultApps = cb_apps_util:load_default_apps(),
+    case [JObj || JObj <- DefaultApps, wh_doc:id(JObj) == AppId] of
+        [AppJObj] ->
             cb_context:setters(Context
                               ,[{fun cb_context:set_account_id/2, MasterAccountId}
                                 ,{fun cb_context:set_account_db/2, MasterAccountDb}
                                 ,{fun cb_context:set_doc/2, AppJObj}
                                 ,{fun cb_context:set_resp_status/2, 'success'}
                                ]
-                              )
-    catch
-        'error':{'badmatch',_} -> bad_app_error(Context, AppId)
+                              );
+        _Else ->
+            bad_app_error(Context, AppId)
     end.
 
 %% @private
