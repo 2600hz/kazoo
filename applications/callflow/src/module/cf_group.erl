@@ -10,6 +10,7 @@
 -module(cf_group).
 
 -include("../callflow.hrl").
+-include_lib("whistle/src/api/wapi_dialplan.hrl").
 
 -export([handle/2]).
 
@@ -33,7 +34,7 @@ handle(Data, Call) ->
 -spec attempt_endpoints(wh_json:objects(), wh_json:object(), whapps_call:call()) -> 'ok'.
 attempt_endpoints(Endpoints, Data, Call) ->
     Timeout = wh_json:get_integer_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT_S),
-    Strategy = wh_json:get_binary_value(<<"strategy">>, Data, <<"simultaneous">>),
+    Strategy = wh_json:get_binary_value(<<"strategy">>, Data, ?DIAL_METHOD_SIMUL),
     Ringback = wh_json:get_value(<<"ringback">>, Data),
     lager:info("attempting group of ~b members with strategy ~s", [length(Endpoints), Strategy]),
     whapps_call_command:b_answer(Call),
@@ -98,19 +99,26 @@ resolve_endpoint_ids([Member|Members], EndpointIds, Call) ->
             resolve_endpoint_ids(Members, [{Type, Id, 'undefined'}|Ids], Call);
         <<"user">> ->
             lager:info("member ~s is a user, get all the user's endpoints", [Id]),
-            Ids = lists:foldr(fun(EndpointId, Acc) ->
-                                      case lists:keymember(EndpointId, 2, Acc) of
-                                          'true' -> Acc;
-                                          'false' ->
-                                              [{<<"device">>, EndpointId, Member}|Acc]
-                                      end
-                              end
-                              ,[{Type, Id, 'undefined'} | EndpointIds]
-                              ,cf_attributes:owned_by(Id, <<"device">>, Call)),
+            Ids = get_user_endpoint_ids(Member, EndpointIds, Id, Call),
             resolve_endpoint_ids(Members, Ids, Call);
         <<"device">> ->
             resolve_endpoint_ids(Members, [{Type, Id, Member}|EndpointIds], Call)
     end.
+
+-spec get_user_endpoint_ids(wh_json:object(), endpoint_intermediates(), ne_binary(), whapps_call:call()) ->
+                                   endpoint_intermediates().
+get_user_endpoint_ids(Member, EndpointIds, Id, Call) ->
+    lists:foldr(
+      fun(EndpointId, Acc) ->
+              case lists:keymember(EndpointId, 2, Acc) of
+                  'true' -> Acc;
+                  'false' ->
+                      [{<<"device">>, EndpointId, Member} | Acc]
+              end
+      end
+      ,[{<<"user">>, Id, 'undefined'} | EndpointIds]
+      ,cf_attributes:owned_by(Id, <<"device">>, Call)
+     ).
 
 -spec get_group_members(wh_json:object(), ne_binary(), whapps_call:call()) ->
                                wh_json:objects().

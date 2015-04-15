@@ -93,9 +93,9 @@ start_builder(EndpointId, Member, Call) ->
 resolve_endpoint_ids(Data, Call) ->
     Members = wh_json:get_value(<<"endpoints">>, Data, []),
     [{Id, wh_json:set_value(<<"source">>, ?MODULE, Member)}
-     || {Type, Id, Member} <- resolve_endpoint_ids(Members, [], Data, Call),
-        Type =:= <<"device">>,
-        Id =/= whapps_call:authorizing_id(Call)
+     || {Type, Id, Member} <- resolve_endpoint_ids(Members, [], Data, Call)
+            ,Type =:= <<"device">>
+            ,Id =/= whapps_call:authorizing_id(Call)
     ].
 
 -type endpoint_intermediate() :: {ne_binary(), ne_binary(), api_object()}.

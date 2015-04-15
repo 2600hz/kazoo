@@ -943,7 +943,7 @@ bridge_command(Endpoints, Call) ->
 bridge_command(Endpoints, Timeout, Call) ->
     bridge_command(Endpoints, Timeout, wapi_dialplan:dial_method_single(), Call).
 bridge_command(Endpoints, Timeout, Strategy, Call) ->
-    bridge_command(Endpoints, Timeout, Strategy, 'true', Call).
+    bridge_command(Endpoints, Timeout, Strategy, <<"true">>, Call).
 bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
     bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, 'undefined', Call).
 bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
