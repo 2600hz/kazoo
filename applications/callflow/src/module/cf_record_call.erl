@@ -49,7 +49,7 @@ handle(Data, Call, <<"start">>) ->
             case wh_media_recording:should_store_recording(Url) of
                 {'true', 'other', 'third_party'} ->
                     lager:debug("call will be stored to 3rd party CouchDB", []),
-                    record_call(Data, Call);
+                    start_wh_media_recording(Data, Call);
                 {'true', 'other', Url} ->
                     lager:debug("call will be stored to 3rd party url '~s'", [Url]),
                     record_call(Data, Call);
