@@ -246,6 +246,7 @@ settings(JObj) ->
               [{<<"lines">>, settings_lines(JObj)}
                ,{<<"codecs">>, settings_codecs(JObj)}
                ,{<<"datetime">>, settings_datetime(JObj)}
+               ,{<<"feature_keys">>, settings_feature_keys(JObj)}
               ]
              ),
     wh_json:from_list(Props).
@@ -309,6 +310,10 @@ settings_datetime(JObj) ->
               [{<<"time">>, settings_time(JObj)}]
              ),
     wh_json:from_list(Props).
+
+-spec settings_feature_keys(wh_json:object()) -> wh_json:object().
+settings_feature_keys(JObj) ->
+    wh_json:get_value([<<"provision">>, <<"feature_keys">>], JObj, wh_json:new()).
 
 -spec settings_time(wh_json:object()) -> wh_json:object().
 settings_time(JObj) ->
