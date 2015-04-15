@@ -508,10 +508,10 @@ save_recording(Call, MediaName, Format, {'true', 'local'}) ->
     lager:info("stored meta: ~p", [MediaJObj]),
     StoreUrl = store_url(Call, MediaJObj),
     lager:info("store local url: ~s", [StoreUrl]),
-    store_recording(MediaName, StoreUrl, Call);
+    store_recording(MediaName, StoreUrl, Call, 'local');
 save_recording(Call, MediaName, _Format, {'true', 'other', Url}) ->
     lager:info("store remote url: ~s", [Url]),
-    store_recording(MediaName, Url, Call).
+    store_recording(MediaName, Url, Call, 'other').
 
 -spec store_recording_to_third_party_bigcouch(whapps_call:call(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 store_recording_to_third_party_bigcouch(Call, MediaName, Format, BCHost) ->
@@ -547,10 +547,13 @@ store_recording_to_third_party_bigcouch(Call, MediaName, Format, BCHost) ->
     lager:info("store to third-party modb url: ~s", [StoreUrl]),
     'ok' = whapps_call_command:store(MediaName, StoreUrl, Call).
 
--spec store_recording(ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
-store_recording(MediaName, Url, Call) ->
+-spec store_recording(ne_binary(), ne_binary(), whapps_call:call(), ne_binary()) -> 'ok'.
+store_recording(MediaName, Url, Call, 'other') ->
     StoreUrl = append_path(Url, MediaName),
     lager:debug("appending filename to url: ~s", [StoreUrl]),
+    'ok' = whapps_call_command:store(MediaName, StoreUrl, Call);
+
+store_recording(MediaName, StoreUrl, Call, 'local') ->
     'ok' = whapps_call_command:store(MediaName, StoreUrl, Call).
 
 -spec append_path(ne_binary(), ne_binary()) -> ne_binary().
