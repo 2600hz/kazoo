@@ -9,6 +9,7 @@
 -module(hon_rater).
 
 -export([init/0, handle_req/2]).
+-export([get_rate_data/1]).
 
 -include("hotornot.hrl").
 
@@ -18,7 +19,6 @@ init() -> whapps_maintenance:refresh(?WH_RATES_DB).
 handle_req(JObj, _Props) ->
     'true' = wapi_rate:req_v(JObj),
     _ = wh_util:put_callid(JObj),
-    lager:debug("valid rating request"),
     case get_rate_data(JObj) of
         {'error', 'no_rate_found'} ->
             maybe_publish_no_rate_found(JObj);
@@ -51,9 +51,11 @@ publish_no_rate_found(JObj) ->
                            {'ok', wh_proplist()} |
                            {'error', 'no_rate_found'}.
 get_rate_data(JObj) ->
+    AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     ToDID = wh_json:get_value(<<"To-DID">>, JObj),
     FromDID = wh_json:get_value(<<"From-DID">>, JObj),
-    case hon_util:candidate_rates(ToDID, FromDID) of
+    Direction = wh_json:get_value(<<"Direction">>, JObj),
+    case hon_util:candidate_rates(AccountId, Direction, ToDID, FromDID) of
         {'ok', []} ->
             wh_notify:system_alert("no rate found for ~s to ~s", [FromDID, ToDID]),
             lager:debug("no rates found for ~s to ~s", [FromDID, ToDID]),
@@ -72,11 +74,8 @@ get_rate_data(JObj) ->
                            {'ok', api_terms()} |
                            {'error', 'no_rate_found'}.
 get_rate_data(JObj, ToDID, FromDID, Rates) ->
-    lager:debug("candidate rates found, filtering"),
     RouteOptions = wh_json:get_value(<<"Options">>, JObj, []),
-    Direction = wh_json:get_value(<<"Direction">>, JObj),
-    Matching = hon_util:matching_rates(Rates, ToDID, Direction, RouteOptions),
-
+    Matching = hon_util:matching_rates(Rates, ToDID, RouteOptions),
     case hon_util:sort_rates(Matching) of
         [] ->
             wh_notify:system_alert("no rate found after filter/sort for ~s to ~s", [FromDID, ToDID]),
