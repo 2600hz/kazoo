@@ -256,7 +256,11 @@ handle_cast('maybe_start_recording_on_answer', #state{is_recording='false'
 handle_cast('stop_call', #state{store_attempted='true'}=State) ->
     lager:debug("we've already sent a store attempt, waiting to hear back"),
     {'noreply', State};
-handle_cast('stop_call', #state{media_name=MediaName
+handle_cast('stop_call', #state{is_recording='false'}=State) ->
+    lager:debug("recv stop_call event, but recording is not started, ignoring event"),
+    {'noreply', State};
+handle_cast('stop_call', #state{is_recording='true'
+                                ,media_name=MediaName
                                 ,format=Format
                                 ,call=Call
                                 ,should_store=Store
