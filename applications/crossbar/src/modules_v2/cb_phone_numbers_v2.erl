@@ -1154,6 +1154,9 @@ set_response({'dry_run', ?COLLECTION, Doc}, _, Context, Fun) ->
 set_response({'error', Data}, _, Context, _) ->
     lager:debug("error: ~p", [Data]),
     crossbar_util:response_400(<<"client error">>, Data, Context);
+set_response({'invalid', Reason}, _, Context, _) ->
+    lager:debug("~p", [Reason]),
+    cb_context:add_validation_error(<<"address">>, <<"invalid">>, Reason, Context);
 set_response({Error, Reason}, _, Context, _) ->
     lager:debug("~p: ~p", [Error, Reason]),
     cb_context:add_system_error(Error, Reason, Context);

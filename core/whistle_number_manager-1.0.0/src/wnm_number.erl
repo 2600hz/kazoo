@@ -46,6 +46,8 @@
 -export([error_number_not_found/1]).
 -export([error_service_restriction/2]).
 -export([error_provider_fault/2]).
+-export([error_provider_update/2]).
+-export([error_user_fault/2]).
 -export([error_carrier_fault/2]).
 -export([error_number_is_porting/1]).
 
@@ -934,8 +936,16 @@ exec_providers([Provider|Providers], Action, Number) ->
                     exec_providers(Providers, Action, N);
                 {'error', Reason} ->
                     lager:debug("failed attempting ~s:~s/1: ~p", [Mod, Action, Reason]),
-                    Errors = wh_json:from_list([{Provider, Reason}]),
-                    wnm_number:error_provider_fault(Errors, Number)
+                    Error = wh_json:from_list([{Provider, Reason}]),
+                    wnm_number:error_provider_fault(Error, Number);
+                {'invalid', Data} ->
+                    lager:debug("failed attempting ~s:~s/1: ~p", [Mod, Action, Data]),
+                    Error = wh_json:set_value(<<"provider">>, Provider, Data),
+                    wnm_number:error_user_fault(Error, Number);
+                {'multiple_choice', Update} ->
+                    lager:debug("update sent by ~s", [Mod]),
+                    Error = wh_json:from_list([{Provider, Update}]),
+                    wnm_number:error_provider_update(Error, Number)
             end
     end.
 
@@ -1020,6 +1030,20 @@ error_provider_fault(Reason, N) ->
     lager:debug("feature provider(s) fault: ~p", [wh_json:encode(Reason)]),
     throw({'provider_fault'
            ,N#number{error_jobj=wh_json:from_list([{<<"provider_fault">>, Reason}])}
+          }).
+
+-spec error_provider_update(wh_json:json_term(), wnm_number()) -> no_return().
+error_provider_update(Data, N) ->
+    lager:debug("feature provider(s) update"),
+    throw({'multiple_choice'
+           ,N#number{error_jobj=wh_json:from_list([{<<"multiple_choice">>, Data}])}
+          }).
+
+-spec error_user_fault(wh_json:json_term(), wnm_number()) -> no_return().
+error_user_fault(Data, N) ->
+    lager:debug("feature user fault: ~p", [wh_json:encode(Data)]),
+    throw({'invalid'
+           ,N#number{error_jobj=Data}
           }).
 
 -spec error_carrier_fault(wh_json:json_term(), wnm_number()) -> no_return().

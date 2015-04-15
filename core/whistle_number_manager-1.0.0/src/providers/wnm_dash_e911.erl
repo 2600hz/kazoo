@@ -12,7 +12,6 @@
 
 -export([save/1]).
 -export([delete/1]).
--export([is_valid_location/1]).
 
 -include("../wnm.hrl").
 
@@ -75,7 +74,17 @@ delete(#number{features=Features
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_update_dash_e911(wnm_number()) -> wnm_number().
+-spec maybe_update_dash_e911(wnm_number()) ->
+                        wnm_number()
+                        | {'ok', wh_json:object()}
+                        | {'error', _}
+                        | {'invalid', _}
+                        | {'multiple_choice', wh_json:object()}.
+-spec maybe_update_dash_e911(ne_binary(), wh_json:object(), wh_json:object()) ->
+                        {'ok', wh_json:object()}
+                        | {'error', _}
+                        | {'invalid', _}
+                        | {'multiple_choice', wh_json:object()}.
 maybe_update_dash_e911(#number{current_number_doc=CurrentJObj
                                ,number_doc=JObj
                                ,features=Features
@@ -93,11 +102,44 @@ maybe_update_dash_e911(#number{current_number_doc=CurrentJObj
         'false' ->
             lager:debug("e911 information has been changed: ~s", [wh_json:encode(E911)]),
             N1 = wnm_number:activate_feature(?DASH_KEY, N),
-            case update_e911(Number, E911, JObj) of
-                {'error', _}=E -> E;
-                {'ok', J} -> N1#number{number_doc=J}
+            case maybe_update_dash_e911(Number, E911, JObj) of
+                {'ok', J} ->
+                    N1#number{number_doc=J};
+                Else -> Else
             end
     end.
+
+maybe_update_dash_e911(Number, Address, JObj) ->
+    Location = json_address_to_xml_location(Address),
+    case is_valid_location(Location) of
+        {'error', _R}=Error->
+            lager:error("error while checking location ~p", [_R]),
+            Error;
+        {'invalid', Reason}->
+            lager:error("error while checking location ~p", [Reason]),
+            Error =
+                wh_json:from_list([
+                    {<<"cause">>, Address}
+                    ,{<<"message">>, Reason}
+                ]),
+            {'invalid', Error};
+        {'provisioned', _} ->
+            lager:warning("location seems already provisioned"),
+            update_e911(Number, Address, JObj);
+        {'geocoded', [_Loc]} ->
+            lager:warning("location seems geocoded to only one address"),
+            update_e911(Number, Address, JObj);
+        {'geocoded', [_|_]=Addresses} ->
+            lager:warning("location could correspond to multiple addresses"),
+            Update =
+                wh_json:from_list([
+                    {<<"cause">>, Address}
+                    ,{<<"details">>, Addresses}
+                    ,{<<"message">>, <<"more than one address found">>}
+                ]),
+            {'multiple_choice', Update}
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -209,8 +251,9 @@ emergency_provisioning_request(Verb, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec is_valid_location(term()) ->
-                               {'geocoded', wh_json:object()} |
-                               {'provisioned', wh_json:object()} |
+                               {'geocoded', wh_json:object() | wh_json:objects()} |
+                               {'provisioned', wh_json:object() | wh_json:objects()} |
+                               {'invalid', binary()} |
                                {'error', binary()}.
 is_valid_location(Location) ->
     case emergency_provisioning_request('validateLocation', Location) of
@@ -222,7 +265,7 @@ is_valid_location(Location) ->
                 <<"PROVISIONED">> ->
                     {'provisioned', location_xml_to_json_address(xmerl_xpath:string("//Location", Response))};
                 <<"INVALID">> ->
-                    {'error', wh_util:get_xml_value("//Location/status/description/text()", Response)};
+                    {'invalid', wh_util:get_xml_value("//Location/status/description/text()", Response)};
                 <<"ERROR">> ->
                     {'error', wh_util:get_xml_value("//Location/status/description/text()", Response)};
                 Else ->
@@ -330,7 +373,7 @@ json_address_to_xml_location(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec location_xml_to_json_address(term()) -> wh_json:object().
+-spec location_xml_to_json_address(term()) -> wh_json:object() | wh_json:objects().
 location_xml_to_json_address([]) ->
     wh_json:new();
 location_xml_to_json_address([Xml]) ->
