@@ -42,6 +42,6 @@ reconcile(Services) ->
 reconcile(Services, 'undefined') -> Services;
 reconcile(Services0, DeviceType) ->
     Services1 = reconcile(Services0),
-    Quantity = wh_services:update_quantity(Services1),
+    Quantity = wh_services:update_quantity(<<"devices">>, DeviceType, Services1),
     wh_services:update(<<"devices">>, DeviceType, Quantity+1, Services1).
 
