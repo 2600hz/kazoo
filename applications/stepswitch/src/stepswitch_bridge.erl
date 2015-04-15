@@ -550,7 +550,8 @@ get_diversions(JObj) ->
     Diversion = wh_json:get_value([<<"Custom-SIP-Headers">>, <<"Diversion">>], JObj),
     get_diversions(Inception, Diversion).
 
--spec get_diversions(api_binary(), wh_json:object()) -> 'undefined' | kzsip_diversion:diversion().
+-spec get_diversions(api_binary(), wh_json:object()) ->
+                            'undefined' | kzsip_diversion:diversion().
 get_diversions('undefined', _Diversion) -> 'undefined';
 get_diversions(_Inception, 'undefined') -> 'undefined';
 get_diversions(Inception, <<_/binary>> = Diversion) ->
@@ -564,7 +565,10 @@ get_diversions(Inception, Diversion) ->
                 ,Fs
                ).
 
--spec find_diversion_count(wh_json:objects()) -> non_neg_integer().
+-spec find_diversion_count(wh_json:object() |wh_json:objects()) ->
+                                  non_neg_integer().
 find_diversion_count([]) -> 0;
-find_diversion_count(Diversions) ->
-    lists:max([kzsip_diversion:counter(Diversion) || Diversion <- Diversions]).
+find_diversion_count(Diversions) when is_list(Diversions) ->
+    lists:max([kzsip_diversion:counter(Diversion) || Diversion <- Diversions]);
+find_diversion_count(Diversion) ->
+    kzsip_diversion:counter(Diversion).
