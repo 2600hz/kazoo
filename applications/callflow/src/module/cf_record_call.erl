@@ -47,13 +47,15 @@ handle(Data, Call, <<"start">>) ->
         'false' ->
             Url = wh_json:get_value(<<"url">>, Data),
             case wh_media_recording:should_store_recording(Url) of
+                {'true', 'other', 'third_party'} ->
+                    lager:debug("call will be stored to 3rd party CouchDB", [l]),
+                    record_call(Data, Call);
                 {'true', 'other', Url} ->
                     lager:debug("call will be stored to 3rd party url '~s'", [Url]),
                     record_call(Data, Call);
                 'false' ->
-                    lager:error("misconfigured call record (missing url)"),
-                    wh_notify:system_alert("misconfigured call record (missing url in ~p)", [Call]),
-                    start_wh_media_recording(Data, Call);
+                    lager:error("misconfigured call record (missing url and disabled store_recordings)"),
+                    wh_notify:system_alert("misconfigured call record (missing url in ~p)", [Call]);
                 {'true', 'local'} ->
                     lager:debug("call will be store to account"),
                     start_wh_media_recording(Data, Call)
