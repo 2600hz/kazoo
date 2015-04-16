@@ -63,7 +63,7 @@ authorize(Context) ->
     AuthId = cb_context:auth_account_id(Context),
     authorize(cb_context:req_verb(Context), AccId, AuthId).
 
--spec authorize(http_methods(), ne_binary(), ne_binary()) -> boolean().
+-spec authorize(http_method(), ne_binary(), ne_binary()) -> boolean().
 authorize(?HTTP_GET, AccId, AccId) ->
     'true';
 authorize(_, AccId, AuthId) ->
@@ -288,20 +288,21 @@ summary(Context, DBs) ->
                    _ ->
                        Context1
                end,
-    Data = lists:foldl(fun({K, Val}, Acc) ->
-                              UnDef = case Val of
-                                          'undefined' -> 'null';
-                                          _ -> 'undefined'
-                                      end,
-                              case props:get_value(K, Acc, UnDef) of
-                                  UnDef -> [{K, Val} | Acc];
-                                  _ -> Acc
-                              end
-                      end
+    Data = lists:foldl(fun merge_acc/2
                       ,[]
                       ,cb_context:resp_data(Context2)),
     Data1 = [Val || {_K, Val} <- Data],
     cb_context:set_resp_data(Context2, Data1).
+
+merge_acc({K, Val}, Acc) ->
+    UnDef = case Val of
+                'undefined' -> 'null';
+                _ -> 'undefined'
+            end,
+    case props:get_value(K, Acc, UnDef) of
+        UnDef -> [{K, Val} | Acc];
+        _ -> Acc
+    end.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -618,7 +619,7 @@ account_rates_db(AccountId) ->
 -spec account_parents(cb_context:context()) -> list().
 account_parents(Context) ->
     AccId = cb_context:account_id(Context),
-    wh_json:get_value(<<"pvt_tree">>, cb_context:doc(crossbar_doc:load(AccId, Context)), []).
+    kz_account:tree(cb_context:doc(crossbar_doc:load(AccId, Context))).
 
 -spec init_db(ne_binary()) -> 'ok'.
 init_db(DbName) ->
