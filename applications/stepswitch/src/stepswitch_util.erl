@@ -11,6 +11,7 @@
 -export([get_outbound_destination/1]).
 -export([lookup_number/1]).
 -export([correct_shortdial/2]).
+-export([get_sip_headers/1]).
 
 -include("stepswitch.hrl").
 
@@ -132,3 +133,55 @@ correct_shortdial(Number, JObj) ->
                         ,[Number, CIDNum]),
             'undefined'
     end.
+
+-spec get_sip_headers(wh_json:object()) -> api_object().
+get_sip_headers(JObj) ->
+    SIPHeaders = wh_json:get_value(<<"Custom-SIP-Headers">>, JObj, wh_json:new()),
+    case get_diversions(SIPHeaders) of
+        'undefined' ->
+            maybe_remove_diversions(SIPHeaders);
+        Diversions ->
+            wh_json:set_value(<<"Diversions">>
+                              ,Diversions
+                              ,SIPHeaders
+                             )
+    end.
+
+-spec maybe_remove_diversions(api_object()) -> api_object().
+maybe_remove_diversions('undefined') -> 'undefined';
+maybe_remove_diversions(JObj) ->
+    wh_json:delete_key(<<"Diversions">>, JObj).
+
+-spec get_diversions(wh_json:object()) ->
+                            'undefined' |
+                            ne_binaries().
+-spec get_diversions(api_binary(), ne_binaries()) ->
+                            'undefined' |
+                            ne_binaries().
+
+get_diversions(JObj) ->
+    Inception = wh_json:get_value(<<"Inception">>, JObj),
+    Diversions = wh_json:get_value(<<"Diversions">>, JObj, []),
+    get_diversions(Inception, Diversions).
+
+get_diversions('undefined', _Diversion) -> 'undefined';
+get_diversions(_Inception, []) -> 'undefined';
+get_diversions(Inception, Diversions) ->
+    Fs = [{fun kzsip_diversion:set_address/2, <<"sip:", Inception/binary>>}
+          ,{fun kzsip_diversion:set_counter/2, find_diversion_count(Diversions) + 1}
+         ],
+    [kzsip_diversion:to_binary(
+       lists:foldl(fun({F, V}, D) -> F(D, V) end
+                   ,kzsip_diversion:new()
+                   ,Fs
+                  )
+      )
+    ].
+
+-spec find_diversion_count(ne_binaries()) -> non_neg_integer().
+find_diversion_count(Diversions) ->
+    lists:max([kzsip_diversion:counter(
+                 kszip_diversion:from_binary(Diversion)
+                )
+               || Diversion <- Diversions
+              ]).

@@ -311,14 +311,17 @@ get_fs_kv(Key, Val, _) ->
             list_to_binary([Prefix, "=", wh_util:to_list(V), ""])
     end.
 
--spec get_fs_key_and_value(ne_binary(), ne_binary() | wh_json:object(), ne_binary()) ->
+-spec get_fs_key_and_value(ne_binary()
+                           ,ne_binary() | ne_binaries() | wh_json:object()
+                           ,ne_binary()
+                          ) ->
                                   {ne_binary(), binary()} |
+                                  [{ne_binary(), binary()},...] | [] |
                                   'skip'.
 get_fs_key_and_value(<<"Hold-Media">>, Media, UUID) ->
     {<<"hold_music">>, media_path(Media, 'extant', UUID, wh_json:new())};
-get_fs_key_and_value(<<"Diversion">>, DiversionJObj, _UUID) ->
-    lager:debug("setting diversion header to ~s", [kzsip_diversion:to_binary(DiversionJObj)]),
-    {<<"sip_h_Diversion">>, kzsip_diversion:to_binary(DiversionJObj)};
+get_fs_key_and_value(<<"Diversions">>, Diversions, _UUID) ->
+    [{<<"sip_h_Diversion">>, D} || D <- Diversions];
 get_fs_key_and_value(Key, Val, _UUID) when is_binary(Val) ->
     case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
         'false' ->
@@ -447,16 +450,29 @@ export(Node, UUID, Props) ->
                     ecallmgr_util:send_cmd_ret().
 bridge_export(_, _, []) -> 'ok';
 bridge_export(Node, UUID, [{<<"Auto-Answer", _/binary>> = K, V} | Props]) ->
-    BridgeExports = [get_fs_key_and_value(Key, Val, UUID)
-                     || {Key, Val} <- Props
-                    ],
+    BridgeExports = get_fs_keys_and_values(UUID, Props),
     ecallmgr_fs_command:bridge_export(Node, UUID, [{<<"alert_info">>, <<"intercom">>}
                                                    ,get_fs_key_and_value(K, V, UUID)
-                                                   | props:filter(BridgeExports, 'skip')
-                                                  ]);
+                                                   | BridgeExports
+                                                  ]
+                                     );
 bridge_export(Node, UUID, Props) ->
-    BridgeExports = [get_fs_key_and_value(Key, Val, UUID) || {Key, Val} <- Props],
-    ecallmgr_fs_command:bridge_export(Node, UUID, props:filter(BridgeExports, 'skip')).
+    BridgeExports = get_fs_keys_and_values(UUID, Props),
+    ecallmgr_fs_command:bridge_export(Node, UUID, BridgeExports).
+
+-spec get_fs_keys_and_values(ne_binary(), wh_proplist()) -> wh_proplist().
+get_fs_keys_and_values(UUID, Props) ->
+    lists:foldl(fun(P, A) -> get_fs_kvs_fold(P, A, UUID) end, [], Props).
+
+-spec get_fs_kvs_fold({ne_binary(), wh_json:json_term()}, wh_proplist(), ne_binary()) ->
+                             wh_proplist().
+get_fs_kvs_fold({K, V}, Acc, UUID) ->
+    case get_fs_key_and_value(K, V, UUID) of
+        'skip' -> Acc;
+        {_FSKey, _FSVal}=T -> [T | Acc];
+        [] -> Acc;
+        [_|_]=L -> L ++ Acc
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1057,9 +1073,22 @@ maybe_flush_node_of_media(_MediaUrl, _Node) ->
 
 -spec custom_sip_headers(wh_proplist()) -> wh_proplist().
 custom_sip_headers(Props) ->
-    lists:map(fun normalize_custom_sip_header_name/1
-              ,props:filter(fun is_custom_sip_header/1, Props)
-             ).
+    lists:foldl(fun maybe_aggregate_headers/2
+                ,[]
+                ,props:filter(fun is_custom_sip_header/1, Props)
+               ).
+
+-spec maybe_aggregate_headers({ne_binary(), ne_binary()}, wh_proplist()) ->
+                                     wh_proplist().
+maybe_aggregate_headers(KV, Acc) ->
+    {K, V} = normalize_custom_sip_header_name(KV),
+    maybe_aggregate_headers(K, V, Acc).
+
+maybe_aggregate_headers(<<"Diversion">>, Diversion, Acc) ->
+    Diversions = props:get_value(<<"Diversions">>, Acc, []),
+    props:set_value(<<"Diversions">>, [Diversion | Diversions], Acc);
+maybe_aggregate_headers(K, V, Acc) ->
+    [{K,V} | Acc].
 
 -spec normalize_custom_sip_header_name(term()) -> term().
 normalize_custom_sip_header_name({<<"variable_sip_h_", K/binary>>, V}) -> {K, V};

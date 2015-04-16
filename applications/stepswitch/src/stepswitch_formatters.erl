@@ -135,9 +135,9 @@ maybe_match_invite_format(JObj, Key, Value, [Formatter|_]=Formatters) ->
 
 -spec match_invite_format(wh_json:object(), wh_json:key(), wh_json:json_term()) ->
                                  wh_json:object().
-match_invite_format(JObj, <<"Diversion">> = Key, <<_/binary>> = Value) ->
+match_invite_format(JObj, <<"Diversions">> = Key, [<<_/binary>> = Value|_]) ->
     match_invite_format(JObj, Key, kzsip_diversion:from_binary(Value));
-match_invite_format(JObj, <<"Diversion">> = Key, Value) ->
+match_invite_format(JObj, <<"Diversions">> = Key, Value) ->
     FormatFun = invite_format_fun(JObj),
 
     Address = kzsip_diversion:address(Value),
@@ -158,9 +158,9 @@ should_strip_key(Formatter) ->
 
 -spec maybe_match(wh_json:object(), wh_json:key(), wh_json:json_term(), wh_json:objects()) ->
                          wh_json:object().
-maybe_match(JObj, <<"Diversion">> = Key, <<_/binary>> = Value, Formatters) ->
+maybe_match(JObj, <<"Diversions">> = Key, [<<_/binary>> = Value|_], Formatters) ->
     maybe_match(JObj, Key, kzsip_diversion:from_binary(Value), Formatters);
-maybe_match(JObj, <<"Diversion">> = Key, Value, [Formatter|Formatters]) ->
+maybe_match(JObj, <<"Diversions">> = Key, Value, [Formatter|Formatters]) ->
     case maybe_match(wh_json:get_value(<<"regex">>, Formatter), kzsip_diversion:user(Value)) of
         {'match', Captured} ->
             User = apply_formatter(Captured, Formatter),
@@ -280,10 +280,8 @@ apply_formatter(JObj, Key, Captured, Realm, Formatter) ->
 -ifdef(TEST).
 
 -define(OFFNET_REQ, wh_json:from_list([{<<"Custom-SIP-Headers">>
-                                        ,wh_json:from_list([{<<"Diversion">>
-                                                             ,wh_json:from_list([{<<"address">>,<<"sip:+14158867900@1.2.3.4">>}
-                                                                                 ,{<<"counter">>,1}
-                                                                                ])
+                                        ,wh_json:from_list([{<<"Diversions">>
+                                                             ,[<<"sip:14158867900@1.2.3.4;counter=1">>]
                                                             }
                                                            ])
                                        }
@@ -361,7 +359,7 @@ strip_inbound_test() ->
     ?assertEqual('undefined', wh_json:get_value(<<"Caller-ID-Number">>, Route)).
 
 diversion_match_invite_test() ->
-    Formatter = wh_json:from_list([{<<"diversion">>
+    Formatter = wh_json:from_list([{<<"diversions">>
                                     ,[wh_json:from_list([{<<"match_invite_format">>, 'true'}])]
                                    }
                                   ]),
@@ -369,19 +367,19 @@ diversion_match_invite_test() ->
 
     ?assertEqual(<<"sip:4158867900@1.2.3.4">>
                  ,kzsip_diversion:address(
-                    wh_json:get_value([<<"Custom-SIP-Headers">>, <<"Diversion">>], Bridge)
-                    )
+                    wh_json:get_value([<<"Custom-SIP-Headers">>, <<"Diversions">>], Bridge)
+                   )
                 ).
 
-diverstion_strip_test() ->
-    Formatter = wh_json:from_list([{<<"diversion">>
+diversion_strip_test() ->
+    Formatter = wh_json:from_list([{<<"diversions">>
                                     ,[wh_json:from_list([{<<"strip">>, 'true'}])]
                                    }
                                   ]),
     Bridge = ?MODULE:apply(?OFFNET_REQ, Formatter, 'outbound'),
 
     ?assertEqual('undefined'
-                 ,wh_json:get_value([<<"Custom-SIP-Headers">>, <<"Diversion">>], Bridge)
+                 ,wh_json:get_value([<<"Custom-SIP-Headers">>, <<"Diversions">>], Bridge)
                 ).
 
 -endif.

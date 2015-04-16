@@ -190,9 +190,9 @@ get_sip_headers(Data, Call) ->
                ],
     CustomHeaders = wh_json:get_value(<<"custom_sip_headers">>, Data, wh_json:new()),
 
-    Diversion = whapps_call:custom_sip_header(<<"Diversion">>, Call),
+    Diversions = whapps_call:custom_sip_header(<<"Diversions">>, Call),
 
-    Headers = wh_json:set_value(<<"Diversion">>, Diversion, CustomHeaders),
+    Headers = wh_json:set_value(<<"Diversions">>, Diversions, CustomHeaders),
 
     JObj = lists:foldl(fun(F, J) -> F(J) end, Headers, Routines),
     case wh_util:is_empty(JObj) of

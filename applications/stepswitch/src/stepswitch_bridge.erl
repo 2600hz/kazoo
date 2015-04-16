@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2014, 2600Hz
+%%% @copyright (C) 2013-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -279,7 +279,7 @@ build_bridge(#state{endpoints=Endpoints
 -spec format_endpoints(wh_json:objects(), api_binary(), wh_json:object(), api_binary()) ->
                               wh_json:objects().
 format_endpoints(Endpoints, CIDNum, JObj, AccountId) ->
-    SIPHeaders = get_sip_headers(JObj),
+    SIPHeaders = stepswitch_util:get_sip_headers(JObj),
 
     DefaultRealm = wh_json:get_first_defined([<<"From-URI-Realm">>
                                               ,<<"Account-Realm">>
@@ -526,49 +526,3 @@ bridge_failure(JObj, Request) ->
      ,{<<"Resource-Response">>, JObj}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
-
--spec get_sip_headers(wh_json:object()) -> api_object().
-get_sip_headers(JObj) ->
-    case get_diversions(JObj) of
-        'undefined' ->
-            maybe_remove_diversion(wh_json:get_value(<<"Custom-SIP-Headers">>, JObj));
-        Diversion ->
-            wh_json:set_value(<<"Diversion">>
-                              ,Diversion
-                              ,wh_json:get_value(<<"Custom-SIP-Headers">>, JObj, wh_json:new())
-                             )
-    end.
-
--spec maybe_remove_diversion(api_object()) -> api_object().
-maybe_remove_diversion('undefined') -> 'undefined';
-maybe_remove_diversion(JObj) ->
-    wh_json:delete_key(<<"Diversion">>, JObj).
-
--spec get_diversions(wh_json:object()) -> api_object().
-get_diversions(JObj) ->
-    Inception = wh_json:get_value(<<"Inception">>, JObj),
-    Diversion = wh_json:get_value([<<"Custom-SIP-Headers">>, <<"Diversion">>], JObj),
-    get_diversions(Inception, Diversion).
-
--spec get_diversions(api_binary(), wh_json:object()) ->
-                            'undefined' | kzsip_diversion:diversion().
-get_diversions('undefined', _Diversion) -> 'undefined';
-get_diversions(_Inception, 'undefined') -> 'undefined';
-get_diversions(Inception, <<_/binary>> = Diversion) ->
-    get_diversions(Inception, kzsip_diversion:from_binary(Diversion));
-get_diversions(Inception, Diversion) ->
-    Fs = [{fun kzsip_diversion:set_address/2, <<"sip:", Inception/binary>>}
-          ,{fun kzsip_diversion:set_counter/2, find_diversion_count(Diversion) + 1}
-         ],
-    lists:foldl(fun({F, V}, D) -> F(D, V) end
-                ,kzsip_diversion:new()
-                ,Fs
-               ).
-
--spec find_diversion_count(wh_json:object() |wh_json:objects()) ->
-                                  non_neg_integer().
-find_diversion_count([]) -> 0;
-find_diversion_count(Diversions) when is_list(Diversions) ->
-    lists:max([kzsip_diversion:counter(Diversion) || Diversion <- Diversions]);
-find_diversion_count(Diversion) ->
-    kzsip_diversion:counter(Diversion).
