@@ -26,6 +26,7 @@ run("build_dicts") ->
     lists:foreach(fun ({InFQN, _InF, _OutFQN, OutF}) -> mk_dict(InFQN, OutF) end, get_all_dict_files());
 run("clean_dicts") ->
     filelib:fold_files(?PRIV_DIR, "\\.map$", false, fun(F, _) -> file:delete(F) end, []),
+    filelib:fold_files(?PRIV_DIR, "\\.json$", false, fun(F, _) -> file:delete(F) end, []),
     filelib:fold_files(?INCLUDE_DIR, "dictionary.*\\.hrl", false, fun(F, _) -> file:delete(F) end, []).
 
 %%% --------------------------------------------------------------------
@@ -37,27 +38,55 @@ mk_dict(InFile, OutFile) ->
     mk_outfiles(Res, ?CURR_DIR, o2u(OutFile)).
 
 mk_outfiles(Res, Dir, File) ->
-    {Hrl, Map} = open_files(Dir, File),
-    emit(Res, Hrl, Map),
+    {Hrl, Map, Json} = open_files(Dir, File),
+    io:format(Json, "[\n", []),
+    emit(Res, Hrl, Map, Json),
+    io:format(Json, "]\n", []),
     close_files(Hrl, Map).
 
-emit([A|T], Hrl, Map) when is_record(A, attribute) ->
+add_comma([_|_]) ->
+    ',';
+add_comma([_]) ->
+    ',';
+add_comma([]) ->
+    "".
+
+emit([A|T], Hrl, Map, Json) when is_record(A, attribute) ->
+    io:format("attr-emit1:~n", []),
     io:format(Hrl, "-define( ~s , ~w ).~n",
 	      [d2u(A#attribute.name), A#attribute.id]),
     io:format(Map, "~w.~n", [A]),
-    emit(T, Hrl, Map);
+    case A#attribute.id of
+        {Vid, Id} ->
+            io:format(Json, "  {\"attr\": {\"vid\":~w, \"id\":~w, \"type\":\"~p\", \"name\":~p, \"enc\":\"~p\"}}~s~n",
+                [Vid, Id, A#attribute.type, d2u(A#attribute.name), A#attribute.enc, add_comma(T)]);
+        Id ->
+            io:format(Json, "  {\"attr\": {\"id\":~w, \"type\":\"~p\", \"name\":~p, \"enc\":\"~p\"}}~s~n",
+                [Id, A#attribute.type, d2u(A#attribute.name), A#attribute.enc, add_comma(T)])
+    end,
+    emit(T, Hrl, Map, Json);
 
-emit([V|T], Hrl, Map) when is_record(V, vendor) ->
+emit([V|T], Hrl, Map, Json) when is_record(V, vendor) ->
+    io:format("vendor-emit1:~n", []),
     io:format(Hrl, "-define( ~s , ~w ).~n",
 	      [d2u(V#vendor.name), V#vendor.type]),
     io:format(Map, "~w.~n", [V]),
-    emit(T, Hrl, Map);
-emit([V|T], Hrl, Map) when is_record(V, value) ->
+    io:format(Json, "  {\"vendor\": {~p:~w}}~s~n", [d2u(V#vendor.name), V#vendor.type, add_comma(T)]),
+    emit(T, Hrl, Map, Json);
+emit([V|T], Hrl, Map, Json) when is_record(V, value) ->
+    io:format("value-emit1:~n", []),
+    io:format("emit1: ~p~n", [V#value.id]),
     io:format(Map, "~w.~n", [V]),
-    emit(T, Hrl, Map);
-emit([_|T], Hrl, Map) ->
-    emit(T, Hrl, Map);
-emit([], _, _) ->
+    case V#value.id of
+        {{Vid, Id}, Val} ->
+            io:format(Json, "  {\"val\": {\"vid\":~w, \"id\":~w, \"val\":~w, \"name\":~p}}~s~n", [Vid, Id, Val, V#value.name, add_comma(T)]);
+        {Id, Val} ->
+            io:format(Json, "  {\"val\": {\"id\":~w, \"val\":~w, \"name\":~p}}~s~n", [Id, Val, V#value.name, add_comma(T)])
+    end,
+    emit(T, Hrl, Map, Json);
+emit([_|T], Hrl, Map, Json) ->
+    emit(T, Hrl, Map, Json);
+emit([], _, _, _) ->
     true.
 
 open_files(Dir, File) ->
@@ -66,8 +95,10 @@ open_files(Dir, File) ->
     {ok,Hrl} = file:open(Hfile, [write]),
     Mfile = Dir ++ "/priv/" ++ Name ++ ".map",
     {ok,Map} = file:open(Mfile, [write]),
-    io:format("Creating files: ~n  <~s>~n  <~s>~n", [Hfile, Mfile]),
-    {Hrl, Map}.
+    JSfile = Dir ++ "/priv/" ++ Name ++ ".json",
+    {ok,Json} = file:open(JSfile, [write]),
+    io:format("Creating files: ~n  <~s>~n  <~s>~n  <~s>~n", [Hfile, Mfile, JSfile]),
+    {Hrl, Map, Json}.
 
 close_files(Hrl, Map) ->
     file:close(Hrl),
