@@ -29,7 +29,7 @@
         "interval":{
             "minute":180
         }
-    }
+    },
     "third deliver":{
         "time":{
             "day":3
@@ -37,10 +37,10 @@
         "interval":{
             "hour":12
         }
-    }
+    },
     "last deliver":{
         "number":1,
         "report":{
         }
-    },
+    }
 }
