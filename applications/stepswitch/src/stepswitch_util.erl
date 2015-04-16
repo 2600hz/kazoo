@@ -141,6 +141,7 @@ get_sip_headers(JObj) ->
         'undefined' ->
             maybe_remove_diversions(SIPHeaders);
         Diversions ->
+            lager:debug("setting diversions ~p", [Diversions]),
             wh_json:set_value(<<"Diversions">>
                               ,Diversions
                               ,SIPHeaders
