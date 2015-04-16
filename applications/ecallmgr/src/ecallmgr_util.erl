@@ -323,6 +323,7 @@ get_fs_kv(Key, Val, _) ->
 get_fs_key_and_value(<<"Hold-Media">>, Media, UUID) ->
     {<<"hold_music">>, media_path(Media, 'extant', UUID, wh_json:new())};
 get_fs_key_and_value(<<"Diversions">>, Diversions, _UUID) ->
+    lager:debug("setting diversions ~p on the channel", [Diversions]),
     [{<<"sip_h_Diversion">>, D} || D <- Diversions];
 get_fs_key_and_value(Key, Val, _UUID) when is_binary(Val) ->
     case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
@@ -1058,6 +1059,7 @@ maybe_aggregate_headers(KV, Acc) ->
     maybe_aggregate_headers(K, V, Acc).
 
 maybe_aggregate_headers(<<"Diversion">>, Diversion, Acc) ->
+    lager:debug("adding diversion ~s to SIP headers", [Diversion]),
     Diversions = props:get_value(<<"Diversions">>, Acc, []),
     props:set_value(<<"Diversions">>, [Diversion | Diversions], Acc);
 maybe_aggregate_headers(K, V, Acc) ->

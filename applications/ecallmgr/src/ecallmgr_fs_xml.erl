@@ -488,6 +488,7 @@ diversion_headers_fold(Vs, Vars0) ->
 
 -spec diversion_header_fold(ne_binary(), iolist()) -> iolist().
 diversion_header_fold(<<_/binary>> = V, Vars0) ->
+    lager:debug("setting diversion ~s on the channel", [V]),
     [list_to_binary(["sip_h_Diversion=", V]) | Vars0].
 
 -spec get_channel_vars_fold(wh_json:key(), wh_json:json_term(), iolist()) -> iolist().
