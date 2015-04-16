@@ -34,6 +34,7 @@
          ,from_hex_binary/1, from_hex_string/1
          ,to_list/1, to_binary/1
          ,to_atom/1, to_atom/2
+         ,error_to_binary/1
         ]).
 -export([to_boolean/1, is_boolean/1
          ,is_true/1, is_false/1
@@ -784,6 +785,16 @@ to_boolean('true') -> 'true';
 to_boolean(<<"false">>) -> 'false';
 to_boolean("false") -> 'false';
 to_boolean('false') -> 'false'.
+
+-spec error_to_binary({'error', binary()} | binary()) -> binary().
+error_to_binary({'error', Reason}) ->
+    error_to_binary(Reason);
+error_to_binary(Reason) ->
+    try to_binary(Reason) of
+        Message -> Message
+    catch
+       _:_ -> <<"Unknown Error">>
+    end.
 
 -spec is_true(binary() | string() | atom()) -> boolean().
 is_true(<<"true">>) -> 'true';

@@ -270,7 +270,7 @@ send(<<"amqp">>, Endpoint, API) ->
             DeliveryProps = [{<<"Delivery-Result-Code">>, <<"sip:500">> }
                              ,{<<"Delivery-Failure">>, true}
                              ,{<<"Error-Code">>, 500}
-                             ,{<<"Error-Message">>, wh_util:to_binary(Reason)}
+                             ,{<<"Error-Message">>, wh_util:error_to_binary(Reason)}
                              ,{<<"Status">>, <<"Failed">>}
                              ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, API) }
                              ,{<<"Call-ID">>, CallId }
