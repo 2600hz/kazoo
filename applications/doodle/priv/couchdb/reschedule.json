@@ -1,21 +1,25 @@
 {
-    "first deliver":{
+    "fast deliver":{
+        "number":3,
+        "interval":{
+            "second":5
+        }
+    },
+    "no_route":{
         "error":{
-            "reason":[
-                "NO_ROUTE_DESTINATION",
-                ""
-            ],
-            "code":[
-                "404",
-                ""
-            ]
+            "reason":["NO_ROUTE_DESTINATION"]
         },
         "number":5,
         "interval":{
             "minute":3
         },
         "report":{
-            
+        }
+    },
+    "first deliver":{
+        "number":5,
+        "interval":{
+            "minute":30
         }
     },
     "second deliver":{
@@ -23,7 +27,20 @@
             "day":3
         },
         "interval":{
-            "minute":30
+            "minute":180
         }
     }
+    "third deliver":{
+        "time":{
+            "day":3
+        },
+        "interval":{
+            "hour":12
+        }
+    }
+    "last deliver":{
+        "number":1,
+        "report":{
+        }
+    },
 }
