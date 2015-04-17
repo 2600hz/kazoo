@@ -333,6 +333,10 @@ toke_string(DF, <<$\\, $u, A, B, C, D, Rest/binary>>, Acc)
             toke_string(DF, Rest, lists:reverse(Chars) ++ Acc);
         _ -> toke_string(DF, Rest, [<<16#fffd/utf8>>] ++ Acc)
     end;
+toke_string(DF, <<$\\, $u, Rest/binary>>, Acc)
+        when byte_size(Rest) < 4 ->
+    {Data, DF2} = must_df(DF, bad_escape_utf8_character_cdoe),
+    toke_string(DF2, <<$\\, $u, Rest/binary, Data/binary>>, Acc);
 toke_string(DF, <<$\\>>, Acc) ->
     {Data, DF2} = must_df(DF, unterminated_string),
     toke_string(DF2, <<$\\,Data/binary>>, Acc);
