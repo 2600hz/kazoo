@@ -120,6 +120,7 @@ save_sms(JObj, DocId, Doc, Call) ->
     AuthType = whapps_call:authorizing_type(Call),
     AuthId = whapps_call:authorizing_id(Call),
     Body = get_sms_body(Call),
+    Bits = bit_size(Body),
     To = whapps_call:to(Call),
     From = whapps_call:from(Call),
     Request = whapps_call:request(Call),
@@ -155,6 +156,7 @@ save_sms(JObj, DocId, Doc, Call) ->
                ,{<<"request_user">>, RequestUser }
                ,{<<"request_realm">>, RequestRealm }
                ,{<<"body">>, Body }
+               ,{<<"bits">>, Bits }
                ,{<<"message_id">>, MessageId}
                ,{<<"pvt_created">>, Created}
                ,{<<"pvt_modified">>, Modified}
