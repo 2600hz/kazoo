@@ -14,7 +14,9 @@
 -export([flush/0]).
 -export([check_sms_by_device_id/2, check_sms_by_owner_id/2]).
 -export([start_check_sms_by_device_id/2, start_check_sms_by_owner_id/2]).
--export([check_pending_sms_for_outbound_delivery/1, start_check_sms_by_account/2]).
+-export([start_check_sms_by_account/2]).
+-export([check_pending_sms_for_outbound_delivery/1]).
+-export([check_pending_sms_for_delivery/1]).
 
 -spec flush() -> 'ok'.
 flush() ->
@@ -51,13 +53,30 @@ check_sms_by_owner_id(AccountId, OwnerId) ->
     end.
 
 -spec start_check_sms_by_account(ne_binary(), wh_json:object()) -> pid().
-start_check_sms_by_account(AccountId, _JObj) ->
-    spawn(?MODULE, 'check_pending_sms_for_outbound_delivery', [AccountId]).
+start_check_sms_by_account(AccountId, JObj) ->
+     case wh_json:is_true(<<"pvt_deleted">>, JObj, 'false') orelse
+              wh_json:is_false(<<"enabled">>, JObj, 'true') of
+         'true' -> 'ok';
+         'false' -> spawn(?MODULE, 'check_pending_sms_for_delivery', [AccountId])
+     end.
+%    spawn(?MODULE, 'check_pending_sms_for_outbound_delivery', [AccountId]).
 
 -spec check_pending_sms_for_outbound_delivery(ne_binary()) -> any().
 check_pending_sms_for_outbound_delivery(AccountId) ->
     spawn(fun() -> check_pending_sms_for_offnet_delivery(AccountId) end),
     spawn(fun() -> check_queued_sms(AccountId) end).
+
+-spec check_pending_sms_for_delivery(ne_binary()) -> any().
+check_pending_sms_for_delivery(AccountId) ->
+    ViewOptions = [{'limit', 100}
+                  ,{'endkey', wh_util:current_tstamp()}
+                  ],
+    case kazoo_modb:get_results(AccountId, <<"sms/deliver">>, ViewOptions) of
+        {'ok', []} -> 'ok';
+        {'ok', JObjs} -> replay_sms(AccountId, JObjs);
+        {'error', _R} ->
+            lager:debug("unable to get sms list for delivery in account ~s : ~p", [AccountId, _R])
+    end.
 
 -spec check_queued_sms(ne_binary()) -> any().
 check_queued_sms(AccountId) ->

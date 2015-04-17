@@ -23,6 +23,9 @@
    },
    "deliver_to_offnet": {
        "map": "function(doc) { if (doc.pvt_type != 'sms' || doc.pvt_deleted || doc.pvt_status != 'pending' || (doc.pvt_call['Key-Value-Store'].cf_flow.module != 'offnet' && doc.pvt_call['Key-Value-Store'].cf_flow.module != 'resources')) return; emit( doc.pvt_schedule.start_time, {'id': doc._id}); }"
-   }
+   },
+   "deliver": {
+       "map": "function(doc) { if (doc.pvt_type != 'sms' || doc.pvt_deleted || (doc.pvt_status != 'queued' && doc.pvt_status != 'pending')) return;  emit( (doc.pvt_schedule.start_time ? doc.pvt_schedule.start_time : doc.pvt_created), {'id' : doc._id} ); }"
+   }   
 }
 }
