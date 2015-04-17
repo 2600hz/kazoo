@@ -42,7 +42,7 @@ allowed_apps(AccountId)
 -spec allowed_app(ne_binary(), ne_binary()) -> api_object().
 allowed_app(AccountId, AppId)
   when is_binary(AccountId), is_binary(AppId) ->
-    FindApp = fun (App) -> AppId == wh_doc:id(App) end,
+    FindApp = fun(App) -> AppId == wh_doc:id(App) end,
     case lists:filter(FindApp, allowed_apps(AccountId)) of
         [App] -> App;
         [] -> 'undefined'
@@ -70,7 +70,6 @@ is_authorized(AccountDoc, UserId, App) ->
             lager:error("unknown data ~p : ~p", [_A, _U]),
             'false'
     end.
-
 
 %%%===================================================================
 %%% Internal functions
@@ -115,6 +114,7 @@ set_account(Account, JObj) ->
         {'ok', Doc} -> Doc
     end.
 
+-spec get_plan_apps(wh_json:object()) -> wh_json:object().
 get_plan_apps(ServicePlan) ->
     JObjs = wh_json:get_value(<<"ui_apps">>, ServicePlan),
     wh_json:delete_key(<<"_all">>, JObjs).
@@ -125,16 +125,26 @@ find_enabled_apps([PlanApp|PlanApps], DefaultApps, Acc) ->
     [AppName] = wh_json:get_keys(PlanApp),
     AppId     = wh_json:get_value(<<"app_id">>, PlanApp),
     case wh_json:is_false(<<"enabled">>, PlanApp)
-        orelse find_app({AppName,AppId}, DefaultApps)
+        orelse find_app(AppName, AppId, DefaultApps)
     of
         'true' -> find_enabled_apps(PlanApps, DefaultApps, Acc);
         AppJObj -> find_enabled_apps(PlanApps, DefaultApps, [AppJObj|Acc])
     end.
 
-find_app(AppDescr, [AppJObj|DefaultApps]) ->
-    AppId   = wh_doc:id(AppJObj),
-    AppName = wh_json:get_value(<<"name">>, AppJObj),
-    case AppDescr == {AppName,AppId} of
-        'true' -> AppJObj;
-        'false' -> find_app(AppDescr, DefaultApps)
-    end.
+-spec find_app(ne_binary(), ne_binary(), wh_json:objects()) ->
+                      wh_json:object().
+-spec find_app(ne_binary(), ne_binary(), wh_json:objects()
+               ,ne_binary(), ne_binary(), wh_json:object()
+              ) ->
+                      wh_json:object().
+find_app(AppName, AppId, [AppJObj|DefaultApps]) ->
+    find_app(AppName, AppId, DefaultApps
+             ,wh_doc:id(AppJObj)
+             ,wh_json:get_value(<<"name">>, AppJObj)
+             ,AppJObj
+            ).
+
+find_app(AppName, AppId, _DefaultApps, AppId, AppName, AppJObj) ->
+    AppJObj;
+find_app(AppName, AppId, DefaultApps, _Id, _Name, _JObj) ->
+    find_app(AppName, AppId, DefaultApps).
