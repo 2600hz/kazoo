@@ -661,14 +661,8 @@ load_apps(AccountId, UserId) ->
     FilteredApps = filter_apps(Apps, AccountId, UserId),
     format_apps(AccountId, UserId, FilteredApps).
 
-%%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec filter_apps(wh_json:objects(), ne_binary(), ne_binary()) ->
-                         wh_json:objects().
--spec filter_apps(wh_json:objects(), wh_json:object(), ne_binary(), wh_json:objects()) ->
                          wh_json:objects().
 filter_apps(Apps, AccountId, UserId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
@@ -677,16 +671,10 @@ filter_apps(Apps, AccountId, UserId) ->
             lager:error("failed to load account ~s", [AccountId]),
             Apps;
         {'ok', AccountDoc} ->
-            filter_apps(Apps, AccountDoc, UserId, [])
-    end.
-
-filter_apps([], _, _, Acc) -> Acc;
-filter_apps([App|Apps], AccountDoc, UserId, Acc) ->
-    case is_authorized(AccountDoc, UserId, App) of
-        'false' ->
-            filter_apps(Apps, AccountDoc, UserId, Acc);
-        'true' ->
-            filter_apps(Apps, AccountDoc, UserId, [App|Acc])
+            OnlyAuthorized = fun(App) ->
+                                     cb_apps_util:is_authorized(AccountDoc, UserId, App)
+                             end,
+            lists:filter(OnlyAuthorized, Apps)
     end.
 
 %%--------------------------------------------------------------------
@@ -694,30 +682,8 @@ filter_apps([App|Apps], AccountDoc, UserId, Acc) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec is_authorized(wh_json:object(), ne_binary(), wh_json:object()) -> boolean().
-is_authorized(AccountDoc, UserId, App) ->
-    AppId = wh_doc:id(App),
-    JObj = wh_json:get_value([<<"apps">>, AppId], AccountDoc),
-    Allowed = wh_json:get_value(<<"allowed_users">>, JObj, <<"specific">>),
-    Users = wh_json:get_value(<<"users">>, JObj, []),
-    case {Allowed, Users} of
-        {<<"all">>, _} -> 'true';
-        {<<"specific">>, []} -> 'false';
-        {<<"specific">>, Users} when is_list(Users)->
-            lists:member(UserId, Users);
-        {<<"admins">>, _} ->
-            wh_util:is_system_admin(wh_doc:id(AccountDoc));
-        {_A, _U} ->
-            lager:error("unknown data ~p : ~p", [_A, _U]),
-            'false'
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec format_apps(wh_json:objects() | ne_binary(), ne_binary(), wh_json:objects()) -> wh_json:objects().
+-spec format_apps(wh_json:objects() | ne_binary(), ne_binary(), wh_json:objects()) ->
+                         wh_json:objects().
 format_apps([], _, Acc) -> Acc;
 format_apps(AccountId, UserId, JObjs) when is_binary(AccountId) ->
     Lang = get_language(AccountId, UserId),

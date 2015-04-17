@@ -13,6 +13,8 @@
 -export([init/0
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
          ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
+         ,authenticate/1
+         ,authorize/1
          ,validate/1, validate/2, validate/3, validate/4
          ,content_types_provided/3 ,content_types_provided/4
          ,put/2
@@ -40,6 +42,8 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.content_types_provided.apps_store">>, ?MODULE, 'content_types_provided'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.apps_store">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.apps_store">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
+    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.validate.apps_store">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.apps_store">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.apps_store">>, ?MODULE, 'post'),
@@ -90,7 +94,7 @@ resource_exists(_, _, _) -> 'true'.
 -spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token()) ->
                                     cb_context:context().
 content_types_provided(Context, Id, ?ICON) ->
-    Context1 = load_app(Context, Id),
+    Context1 = load_app_from_master_account(Context, Id),
     case cb_context:resp_status(Context1) of
         'success' ->
             JObj = cb_context:doc(Context1),
@@ -106,7 +110,7 @@ content_types_provided(Context, Id, ?ICON) ->
 content_types_provided(Context, _, _) -> Context.
 
 content_types_provided(Context, Id, ?SCREENSHOT, Number) ->
-    Context1 = load_app(Context, Id),
+    Context1 = load_app_from_master_account(Context, Id),
     case cb_context:resp_status(Context1) of
         'success' ->
             case maybe_get_screenshot(Context1, Number) of
@@ -119,6 +123,40 @@ content_types_provided(Context, Id, ?SCREENSHOT, Number) ->
         _Status -> Context1
     end;
 content_types_provided(Context, _, _, _) -> Context.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec authenticate(cb_context:context()) -> boolean().
+-spec authenticate(http_method(), req_nouns()) -> boolean().
+authenticate(Context) ->
+    authenticate(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+
+authenticate(?HTTP_GET, [{<<"apps_store">>,[_Id,?ICON]}]) ->
+    lager:debug("authenticating request"),
+    'true';
+authenticate(?HTTP_GET, [{<<"apps_store">>,[_Id,?SCREENSHOT,_Number]}]) ->
+    lager:debug("authenticating request"),
+    'true';
+authenticate(_Verb, _Nouns) ->
+    'false'.
+
+-spec authorize(cb_context:context()) -> boolean().
+-spec authorize(http_method(), req_nouns()) -> boolean().
+authorize(Context) ->
+    authorize(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+
+authorize(?HTTP_GET, [{<<"apps_store">>,[_Id,?ICON]}]) ->
+    lager:debug("authorizing request"),
+    'true';
+authorize(?HTTP_GET, [{<<"apps_store">>,[_Id,?SCREENSHOT,_Number]}]) ->
+    lager:debug("authorizing request"),
+    'true';
+authorize(_Verb, _Nouns) ->
+    'false'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -136,14 +174,14 @@ validate(Context, Id) ->
     validate_app(Context, Id, cb_context:req_verb(Context)).
 
 validate(Context, Id, ?ICON) ->
-    Context1 = load_app(Context, Id),
+    Context1 = load_app_from_master_account(Context, Id),
     case cb_context:resp_status(Context1) of
         'success' -> get_icon(Context1);
         _ -> Context1
     end.
 
 validate(Context, Id, ?SCREENSHOT, Number) ->
-    Context1 = load_app(Context, Id),
+    Context1 = load_app_from_master_account(Context, Id),
     case cb_context:resp_status(Context1) of
         'success' -> get_screenshot(Context1, Number);
         _ -> Context1
@@ -331,12 +369,7 @@ normalize_apps_result([App|Apps], Acc) ->
 load_app(Context, AppId) ->
     AccountId = cb_context:account_id(Context),
     case cb_apps_util:allowed_app(AccountId, AppId) of
-        'undefined' ->
-            cb_context:add_system_error(
-              'bad_identifier'
-              ,wh_json:from_list([{'details', AppId}])
-              ,Context
-             );
+        'undefined' -> bad_app_error(Context, AppId);
         App ->
             cb_context:setters(
               Context
@@ -345,6 +378,34 @@ load_app(Context, AppId) ->
                ]
              )
     end.
+
+%% @private
+-spec load_app_from_master_account(cb_context:context(), ne_binary()) -> cb_context:context().
+load_app_from_master_account(Context, AppId) ->
+    {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
+    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
+    DefaultApps = cb_apps_util:load_default_apps(),
+    case [JObj || JObj <- DefaultApps, wh_doc:id(JObj) == AppId] of
+        [AppJObj] ->
+            cb_context:setters(Context
+                               ,[{fun cb_context:set_account_id/2, MasterAccountId}
+                                 ,{fun cb_context:set_account_db/2, MasterAccountDb}
+                                 ,{fun cb_context:set_doc/2, AppJObj}
+                                 ,{fun cb_context:set_resp_status/2, 'success'}
+                                ]
+                              );
+        _Else ->
+            bad_app_error(Context, AppId)
+    end.
+
+%% @private
+-spec bad_app_error(cb_context:context(), ne_binary()) -> cb_context:context().
+bad_app_error(Context, AppId) ->
+    cb_context:add_system_error(
+      'bad_identifier'
+      ,wh_json:from_list([{'details', AppId}])
+      ,Context
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -491,7 +552,7 @@ get_attachment(Context, Id) ->
     JObj = cb_context:doc(Context),
     case wh_doc:attachment(JObj, Id) of
         'undefined' ->
-            AppId = wh_json:get_value(<<"_id">>, JObj),
+            AppId = wh_doc:id(JObj),
             crossbar_util:response_bad_identifier(AppId, Context);
         Attachment ->
             get_attachment(Context, Id, JObj, Attachment)
@@ -499,8 +560,7 @@ get_attachment(Context, Id) ->
 
 get_attachment(Context, Id, JObj, Attachment) ->
     Db = wh_json:get_value(<<"pvt_account_db">>, JObj),
-    AppId = wh_json:get_value(<<"_id">>, JObj),
-
+    AppId = wh_doc:id(JObj),
     case couch_mgr:fetch_attachment(Db, AppId, Id) of
         {'error', R} ->
             Reason = wh_util:to_binary(R),
