@@ -191,10 +191,7 @@ refresh(?WH_MEDIA_DB) ->
     'ok';
 refresh(?WH_RATES_DB) ->
     couch_mgr:db_create(?WH_RATES_DB),
-    couch_mgr:revise_docs_from_folder(?WH_RATES_DB, 'hotornot', "views"),
-    _ = couch_mgr:revise_doc_from_file(?WH_RATES_DB, 'crossbar', <<"views/rates.json">>),
-    couch_mgr:load_fixtures_from_folder(?WH_RATES_DB, 'hotornot'),
-    'ok';
+    refresh_ratedeck_db(?WH_RATES_DB);
 refresh(?WH_ANONYMOUS_CDR_DB) ->
     couch_mgr:db_create(?WH_ANONYMOUS_CDR_DB),
     _ = couch_mgr:revise_doc_from_file(?WH_ANONYMOUS_CDR_DB, 'cdr', <<"cdr.json">>),
@@ -232,6 +229,7 @@ refresh(Database) when is_binary(Database) ->
     case couch_util:db_classification(Database) of
         'account' -> refresh_account_db(Database);
         'modb' -> kazoo_modb:refresh_views(Database);
+        'ratedeck' -> refresh_ratedeck_db(Database);
         'system' ->
             couch_mgr:db_create(Database),
             'ok';
@@ -252,6 +250,16 @@ refresh_account_db(Database) ->
     Views = get_all_account_views(),
     _ = whapps_util:update_views(AccountDb, Views, 'true'),
     crossbar_util:descendants_count(AccountId).
+
+-spec refresh_ratedeck_db(ne_binary()) -> 'ok'.
+refresh_ratedeck_db(Database) ->
+    Db = case Database of
+             ?WH_RATES_DB -> ?WH_RATES_DB;
+             _ -> wh_util:format_account_id(Database, 'encoded')
+         end,
+    _ = couch_mgr:revise_doc_from_file(Db, 'crossbar', <<"views/rates.json">>),
+    couch_mgr:load_fixtures_from_folder(Db, 'hotornot'),
+    'ok'.
 
 -spec remove_depreciated_account_views(ne_binary()) -> 'ok'.
 remove_depreciated_account_views(AccountDb) ->
