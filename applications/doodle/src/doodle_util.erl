@@ -47,7 +47,12 @@ set_sms_body(Body, Call) ->
 get_sms_body(Call) ->
     whapps_call:kvs_fetch(<<"Body">>, Call).
 
--spec set_flow_status(ne_binary(), whapps_call:call()) -> whapps_call:call().
+-spec set_flow_status(ne_binary() | {binary(), binary()}, whapps_call:call()) -> whapps_call:call().
+set_flow_status({Status, Message}, Call) ->
+    Props = [{<<"flow_status">>, Status}
+             ,{<<"flow_message">>, Message}
+            ],
+    whapps_call:kvs_store_proplist(Props, Call);
 set_flow_status(Status, Call) ->
     whapps_call:kvs_store(<<"flow_status">>, Status, Call).
 
@@ -58,7 +63,12 @@ set_flow_status(Status, Message, Call) ->
             ],
     whapps_call:kvs_store_proplist(Props, Call).
 
--spec set_flow_error(ne_binary(), whapps_call:call()) -> whapps_call:call().
+-spec set_flow_error(ne_binary() | {binary(), binary()}, whapps_call:call()) -> whapps_call:call().
+set_flow_error({Status, Error}, Call) ->
+    Props = [{<<"flow_status">>, Status}
+             ,{<<"flow_error">>, Error}
+            ],
+    whapps_call:kvs_store_proplist(Props, Call);
 set_flow_error(Error, Call) ->
     set_flow_error(<<"pending">>, Error, Call).
 
@@ -591,7 +601,7 @@ apply_reschedule_rule(<<"report">>, V, JObj) ->
        ,{<<"Error">>, wh_util:strip_binary(Error)}
        ,{<<"Attempts">>, wh_json:get_value(<<"attempts">>, JObj)}
        | safe_to_proplist(V)
-       ]),    
+       ]),
     Notify = [{<<"Subject">>, <<"sms_error">>}
               ,{<<"Message">>, "undelivered sms"}
               ,{<<"Details">>, wh_json:set_values(Props, wh_json:new())}
@@ -616,4 +626,5 @@ time_rule(<<"week">>, N, Base) -> Base + N * ?SECONDS_IN_WEEK;
 time_rule(<<"day">>, N, Base) -> Base + N * ?SECONDS_IN_DAY;
 time_rule(<<"hour">>, N, Base) -> Base + N * ?SECONDS_IN_HOUR;
 time_rule(<<"minute">>, N, Base) -> Base + N * ?SECONDS_IN_MINUTE;
+time_rule(<<"second">>, N, Base) -> Base + N * 1;
 time_rule(_, _N, Base) -> Base.
