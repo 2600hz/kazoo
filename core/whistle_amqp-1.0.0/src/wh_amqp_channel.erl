@@ -184,6 +184,9 @@ command(Command) ->
 -spec command(wh_amqp_assignment(), wh_amqp_command()) -> command_ret().
 command(#wh_amqp_assignment{channel=Pid}, #'basic.ack'{}=BasicAck) ->
     amqp_channel:cast(Pid, BasicAck);
+command(#wh_amqp_assignment{channel=Channel}=Assignment, #'confirm.select'{}=Command) ->
+    Result = amqp_channel:call(Channel, Command),
+    handle_command_result(Result, Command, Assignment);
 command(#wh_amqp_assignment{channel=Pid}, #'basic.nack'{}=BasicNack) ->
     amqp_channel:cast(Pid, BasicNack);
 command(#wh_amqp_assignment{consumer=Consumer
@@ -311,8 +314,12 @@ handle_command_result(#'basic.cancel_ok'{consumer_tag=CTag}
     'ok';
 handle_command_result(#'confirm.select_ok'{}
                       ,Command
-                      ,#wh_amqp_assignment{channel=Channel}=Assignment) ->
+                      ,#wh_amqp_assignment{channel=Channel
+                                           ,consumer=Consumer
+                                          }=Assignment) ->
     lager:debug("publisher confirms activated on channel ~p", [Channel]),
+    Consumer ! {'$server_confirms', 'true'},
+    amqp_channel:register_confirm_handler(Channel, Consumer),
     _ = wh_amqp_history:add_command(Assignment, Command),
     'ok';
 handle_command_result('ok', Command, #wh_amqp_assignment{channel=Channel}=Assignment) ->

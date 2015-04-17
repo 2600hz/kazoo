@@ -95,6 +95,7 @@
                 ,pool_ref :: server_ref()
                 ,defer_response :: api_object()
                 ,queue :: api_binary()
+                ,confirms = 'false' :: boolean()
                }).
 
 %%%===================================================================
@@ -116,6 +117,7 @@ start_link(Args) ->
                                       ,{'consume_options', ?CONSUME_OPTIONS}
                                       | maybe_broker(Args)
                                       ++ maybe_exchanges(Args)
+                                      ++ maybe_server_confirms(Args)
                                      ], [Args]).
 
 -spec maybe_broker(wh_proplist()) -> wh_proplist().
@@ -144,6 +146,13 @@ maybe_exchanges(Args) ->
     case props:get_value('amqp_exchanges', Args) of
         'undefined' -> [];
         Exchanges -> [{'declare_exchanges', Exchanges}]
+    end.
+
+-spec maybe_server_confirms(wh_proplist()) -> wh_proplist().
+maybe_server_confirms(Args) ->
+    case props:get_value('amqp_server_confirms', Args) of
+        'undefined' -> [];
+        Confirms -> [{'server_confirms', Confirms}]
     end.
 
 -spec default_timeout() -> 2000.
@@ -513,30 +522,38 @@ handle_call({'call_collect', ReqProp, PublishFun, UntilFun, Timeout}
 handle_call({'publish', ReqProp, _}, _From, #state{queue='undefined'}=State) ->
     lager:debug("unable to publish message prior to queue creation: ~p", [ReqProp]),
     {'reply', {'error', 'not_ready'}, reset(State), 'hibernate'};
-handle_call({'publish', ReqProp, PublishFun}, _From, State) ->
-    Resp =
-        try PublishFun(ReqProp) of
-            'ok' -> 'ok';
-            Other ->
-                lager:debug("publisher fun returned ~p instead of 'ok'", [Other]),
-                {'error', Other}
-        catch
-            'error':'badarg' ->
-                ST = erlang:get_stacktrace(),
-                lager:debug("badarg error when publishing:"),
-                wh_util:log_stacktrace(ST),
-                {'error', 'badarg'};
-            'error':'function_clause' ->
-                ST = erlang:get_stacktrace(),
-                lager:debug("function clause error when publishing:"),
-                wh_util:log_stacktrace(ST),
-                lager:debug("pub fun: ~p", [PublishFun]),
-                {'error', 'function_clause'};
-            _E:R ->
-                lager:debug("failed to publish request: ~s:~p", [_E, R]),
-                {'error', R}
-        end,
-    {'reply', Resp, reset(State)};
+handle_call({'publish', ReqProp, PublishFun}, {Pid, _}=From, #state{confirms=C}=State) ->
+    try PublishFun(ReqProp) of
+        'ok' when C =:= 'true' ->
+            {'noreply', State#state{client_pid = Pid
+                                    ,client_ref = erlang:monitor('process', Pid)
+                                    ,client_from = From
+                                    ,req_timeout_ref = start_req_timeout(default_timeout())
+                                    ,req_start_time = os:timestamp()
+                                   }
+             ,'hibernate'};
+        'ok' ->  {'reply', 'ok', reset(State)};
+        {'error', _}=Err ->
+            {'reply', Err, reset(State)};                
+        Other ->
+            lager:debug("publisher fun returned ~p instead of 'ok'", [Other]),
+            {'reply', {'error', Other}, reset(State)}
+    catch
+        'error':'badarg' ->
+            ST = erlang:get_stacktrace(),
+            lager:debug("badarg error when publishing:"),
+            wh_util:log_stacktrace(ST),
+            {'reply', {'error', 'badarg'}, reset(State)};
+        'error':'function_clause' ->
+            ST = erlang:get_stacktrace(),
+            lager:debug("function clause error when publishing:"),
+            wh_util:log_stacktrace(ST),
+            lager:debug("pub fun: ~p", [PublishFun]),
+            {'reply', {'error', 'function_clause'}, reset(State)};
+        _E:R ->
+            lager:debug("failed to publish request: ~s:~p", [_E, R]),
+            {'reply', {'error', R}, reset(State)}
+    end;
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State, 'hibernate'}.
 
@@ -558,10 +575,15 @@ handle_cast({'set_negative_threshold', NegThreshold}, State) ->
 handle_cast({'gen_listener', {'return', JObj, BasicReturn}}
             ,#state{current_msg_id = MsgId
                     ,client_from = From
+                    ,confirms=Confirms
                    }=State) ->
     _ = wh_util:put_callid(JObj),
     case wh_json:get_value(<<"Msg-ID">>, JObj) of
         MsgId ->
+            lager:debug("published message was returned from the broker"),
+            gen_server:reply(From, {'returned', JObj, BasicReturn}),
+            {'noreply', reset(State), 'hibernate'};
+        _MsgId when Confirms =:= 'true' ->
             lager:debug("published message was returned from the broker"),
             gen_server:reply(From, {'returned', JObj, BasicReturn}),
             {'noreply', reset(State), 'hibernate'};
@@ -571,6 +593,17 @@ handle_cast({'gen_listener', {'return', JObj, BasicReturn}}
             lager:debug("return: ~p", [BasicReturn]),
             {'noreply', State, 'hibernate'}
     end;
+handle_cast({'gen_listener', {'confirm', _Msg}}, #state{client_from='undefined'}=State) ->
+    lager:debug("confirm message was returned from the broker but it was too late : ~p",[_Msg]),
+    {'noreply', reset(State), 'hibernate'};
+handle_cast({'gen_listener', {'confirm', #'basic.ack'{}}}, #state{client_from=From}=State) ->
+    lager:debug("ack message was returned from the broker"),
+    gen_server:reply(From, 'ok'),
+    {'noreply', reset(State), 'hibernate'};
+handle_cast({'gen_listener', {'confirm', #'basic.nack'{}}}, #state{client_from=From}=State) ->
+    lager:debug("nack message was returned from the broker"),
+    gen_server:reply(From, {'error', <<"server nack">>}),
+    {'noreply', reset(State), 'hibernate'};
 handle_cast({'event', MsgId, JObj}, #state{current_msg_id = MsgId
                                            ,client_from = From
                                            ,client_vfun = VFun
@@ -627,6 +660,9 @@ handle_cast({'event', _MsgId, JObj}, #state{current_msg_id=_CurrMsgId}=State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
+handle_cast({'gen_listener',{'server_confirms',ServerConfirms}}, State) ->
+    lager:debug("Server confirms status : ~p", [ServerConfirms]),
+    {'noreply', State#state{confirms=ServerConfirms}};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State, 'hibernate'}.

@@ -110,6 +110,7 @@
 -export([queue_delete/1, queue_delete/2]).
 -export([new_exchange/2, new_exchange/3]).
 -export([declare_exchange/2, declare_exchange/3]).
+-export([confirm_select/0]).
 
 -export([access_request/0, access_request/1, basic_ack/1, basic_nack/1, basic_qos/1]).
 
@@ -910,6 +911,15 @@ basic_consume(Queue, Options) ->
 -spec basic_cancel(ne_binary()) -> 'ok'.
 basic_cancel() -> wh_amqp_channel:command(#'basic.cancel'{}).
 basic_cancel(ConsumerTag) -> wh_amqp_channel:command(#'basic.cancel'{consumer_tag=ConsumerTag}).
+
+%%------------------------------------------------------------------------------
+%% @public
+%% @doc
+%% This method sets confirmation from server
+%% @end
+%%------------------------------------------------------------------------------
+-spec confirm_select() -> 'ok'.
+confirm_select() -> wh_amqp_channel:command(#'confirm.select'{}).
 
 %%------------------------------------------------------------------------------
 %% @public
