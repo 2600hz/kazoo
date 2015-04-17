@@ -396,7 +396,9 @@ publish_outbound(Req, ContentType) ->
     MessageId = props:get_value(<<"Message-ID">>, Req),
     RouteId = props:get_value(<<"Route-ID">>, Req, <<"*">>),
     Exchange = props:get_value(<<"Exchange-ID">>, Req, ?SMS_EXCHANGE),
-    amqp_util:basic_publish(Exchange, ?OUTBOUND_ROUTING_KEY(RouteId, MessageId), Payload, ContentType).
+    RK = ?OUTBOUND_ROUTING_KEY(RouteId, MessageId),
+    Opts = whapps_config:get(<<"sms">>, [<<"outbound">>, <<"options">>], []),
+    amqp_util:basic_publish(Exchange, RK, Payload, ContentType, Opts).
 
 -spec publish_delivery(api_terms()) -> 'ok'.
 -spec publish_delivery(api_terms(), binary()) -> 'ok'.
