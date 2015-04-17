@@ -18,9 +18,7 @@
 -export([check_MAC/2]).
 
 -include("../crossbar.hrl").
-
--define(MOD_CONFIG_CAT, <<"provisioner">>).
--define(SCHEMA, <<"provisioner_v5">>).
+-include("provisioner_v5.hrl").
 
 %%--------------------------------------------------------------------
 %% @public
@@ -313,7 +311,64 @@ settings_datetime(JObj) ->
 
 -spec settings_feature_keys(wh_json:object()) -> wh_json:object().
 settings_feature_keys(JObj) ->
-    wh_json:get_value([<<"provision">>, <<"feature_keys">>], JObj, wh_json:new()).
+    FeatureKeys = wh_json:get_value([<<"provision">>, <<"feature_keys">>], JObj, wh_json:new()),
+    Brand = get_brand(JObj),
+    Family = get_family(JObj),
+    AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
+    wh_json:foldl(
+        fun(Key, Value, Acc) ->
+            Type = wh_json:get_binary_value(<<"type">>, Value),
+            V = wh_json:get_binary_value(<<"value">>, Value),
+            FeatureKey = get_feature_key(Type, V, Brand, Family, AccountId),
+            wh_json:set_value(
+                Key
+                ,wh_json:from_list([{<<"keys">>, FeatureKey}])
+                ,Acc
+            )
+        end
+        ,wh_json:new()
+        ,FeatureKeys
+    ).
+
+get_feature_key(<<"presence">> = Type, Value, Brand, Family, AccountId) ->
+    {'ok', UserJObj} = get_user(AccountId, Value),
+    First = wh_json:get_value(<<"first_name">>, UserJObj),
+    Last = wh_json:get_value(<<"last_name">>, UserJObj),
+    Presence = wh_json:get_value(<<"presence_id">>, UserJObj),
+    wh_json:from_list([
+        {<<"label">>, <<First/binary, " ", Last/binary>>}
+        ,{<<"value">>, Presence}
+        ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
+    ]);
+get_feature_key(<<"speed_dial">> = Type, Value, Brand, Family, _AccountId) ->
+    wh_json:from_list([
+        {<<"label">>, Value}
+        ,{<<"value">>, Value}
+        ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
+    ]);
+get_feature_key(<<"personal_parking">> = Type, Value, Brand, Family, AccountId) ->
+    {'ok', UserJObj} = get_user(AccountId, Value),
+    First = wh_json:get_value(<<"first_name">>, UserJObj),
+    Last = wh_json:get_value(<<"last_name">>, UserJObj),
+    Presence = wh_json:get_value(<<"presence_id">>, UserJObj),
+    wh_json:from_list([
+        {<<"label">>, <<"Park ", First/binary, " ", Last/binary>>}
+        ,{<<"value">>, <<"*3", Presence/binary>>}
+        ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
+    ]);
+get_feature_key(<<"parking">> = Type, Value, Brand, Family, _AccountId) ->
+    wh_json:from_list([
+        {<<"label">>, <<"Park ", Value/binary>>}
+        ,{<<"value">>, <<"*3", Value/binary>>}
+        ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
+    ]).
+
+get_feature_key_type(Type, Brand, Family) ->
+    wh_json:get_first_defined([[Brand, Family, Type], [Brand, <<"_">>, Type]], ?FEATURE_KEYS).
+
+get_user(AccountId, UserId) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    couch_mgr:open_doc(AccountDb, UserId).
 
 -spec settings_time(wh_json:object()) -> wh_json:object().
 settings_time(JObj) ->
@@ -428,9 +483,14 @@ device_payload(JObj) ->
 -spec handle_device_resp(wh_json:object(), ibrowse_ret()) -> 'ok'.
 handle_device_resp(Req, {'ok', "200", _, _}=Resp) ->
     Lines = wh_json:get_value([<<"data">>, <<"settings">>, <<"lines">>], Req, wh_json:new()),
-    wh_json:foreach(fun(_Line, LineData) -> maybe_publish_check_sync(LineData) end
-                    ,Lines
-                   ),
+    wh_json:foldl(
+        fun(_Line, LineData, Acc) ->
+            maybe_publish_check_sync(LineData),
+            Acc
+        end
+        ,'ok'
+        ,Lines
+    ),
     handle_resp(Resp);
 handle_device_resp(_Req, Resp) ->
     handle_resp(Resp).
@@ -443,9 +503,12 @@ maybe_publish_check_sync(LineData) ->
       ,wh_json:get_value([<<"sip">>, <<"username">>], LineData)
      ).
 
-maybe_publish_check_sync('undefined', _Username) -> 'ok';
-maybe_publish_check_sync(_Realm, 'undefined') -> 'ok';
+maybe_publish_check_sync('undefined', _Username) ->
+    lager:warning("did not send check sync realm is undefined");
+maybe_publish_check_sync(_Realm, 'undefined') ->
+    lager:warning("did not send check sync username is undefined");
 maybe_publish_check_sync(Realm, Username) ->
+    lager:debug("sending check sync for ~s @ ~s", [Username, Realm]),
     Req = [{<<"Realm">>, Realm}
            ,{<<"Username">>, Username}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)

@@ -526,20 +526,26 @@
                             "type": "object",
                             "required": false,
                             "properties": {
-                                "type": {
-                                    "type": "string",
+                                "keys": {
+                                    "type": "object",
                                     "required": true,
-                                    "name": "Type",
-                                    "description": "Feature key type"
-                                },
-                                "value": {
-                                    "type": ["string", "integer"],
-                                    "required": true,
-                                    "minimum": 1,
-                                    "maximum": 10,
-                                    "name": "Value",
-                                    "description": "Feature key value"
+                                    "type": {
+                                        "type": "string",
+                                        "required": true,
+                                        "name": "Type",
+                                        "description": "Feature key type",
+                                        "enum": ["presence", "parking", "personal_parking", "speed_dial"]
+                                    },
+                                    "value": {
+                                        "type": ["string", "integer"],
+                                        "required": true,
+                                        "minimum": 1,
+                                        "maximum": 10,
+                                        "name": "Value",
+                                        "description": "Feature key value"
+                                    }
                                 }
+
                             }
                         }
                     }
