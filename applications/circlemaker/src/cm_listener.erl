@@ -21,6 +21,7 @@
     , handle_authz_req/3]).
 
 -include("circlemaker.hrl").
+-include_lib("whistle/src/wh_json.hrl").
 -include_lib("rabbitmq_client/include/amqp_client.hrl").
 
 -record(state, {}).
@@ -55,6 +56,8 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
+    [{ok, _} = cm_config:init_aaa_doc(AccId) || AccId <- whapps_util:get_all_accounts()],
+    {ok, _Doc} = cm_config:init_aaa_doc(system_config),
     gen_listener:start_link({'local', ?SERVER}, ?MODULE, [{'bindings', ?BINDINGS}
                                                           ,{'responders', ?RESPONDERS}
                                                           ,{'queue_name', ?QUEUE_NAME}

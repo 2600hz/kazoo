@@ -73,29 +73,23 @@ new_default_aaa_doc(system) ->
     (ne_binary()) -> wh_json:object();
     (system_config) -> wh_json:object().
 init_aaa_doc(AccId) when is_binary(AccId) ->
-    io:format("Init account ~p circlemaker document...~n", [AccId]),
-    ok = couch_mgr:revise_views_from_folder(AccId, ?APP_NAME),
+    ok = couch_mgr:revise_views_from_folder(AccId, circlemaker),
     case couch_mgr:get_results(AccId, <<"aaa/fetch_doc">>) of
         {ok, [{[{<<"id">>, DocId},
                 {<<"key">>, _},
                 {<<"value">>, _}]}]} ->
-            io:format("Open existing account ~p circlemaker document...~n", [AccId]),
             couch_mgr:open_cache_doc(AccId, DocId);
         {ok, []} ->
-            Doc = wh_json:insert_value(<<"account_id">>, <<"aaa">>, new_default_aaa_doc(account)),
-            io:format("Create new account ~p circlemaker document...~n", [AccId]),
-            couch_mgr:save_doc(?WH_CONFIG_DB, Doc);
+            Doc = wh_json:insert_value(<<"account_id">>, AccId, new_default_aaa_doc(account)),
+            couch_mgr:save_doc(AccId, Doc);
         {error, Reason} ->
             {error, Reason}
     end;
 init_aaa_doc(system_config) ->
-    io:format("Init system_config circlemaker document...~n"),
     case couch_mgr:open_cache_doc(?WH_CONFIG_DB, ?APP_NAME) of
         {ok, Doc} ->
-            io:format("Open existing system_config circlemaker document...~n"),
             {ok, Doc};
         {error, not_found} ->
-            io:format("Create new system_config circlemaker document...~n"),
             Doc = new_default_aaa_doc(system),
             couch_mgr:save_doc(?WH_CONFIG_DB, Doc)
     end.
