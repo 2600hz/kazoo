@@ -26,7 +26,6 @@
 -export([json_to_record/1]).
 -export([record_to_json/1]).
 
--import('braintree_util', [make_doc_xml/2]).
 -import('wh_util', [get_xml_value/2]).
 
 -include_lib("braintree/include/braintree.hrl").
@@ -76,7 +75,7 @@ new_subscription(PlanId, Customer) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Given a cutomer record find (if any) the default payment token
+%% Given a customer record find (if any) the default payment token
 %% @end
 %%--------------------------------------------------------------------
 -spec default_payment_token(ne_binary() | customer()) -> api_binary().
@@ -164,6 +163,7 @@ all() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec find(ne_binary() | nonempty_string()) -> customer().
+find(#bt_customer{id = CustomerId}) -> find(CustomerId);
 find(CustomerId) ->
     Url = url(CustomerId),
     Xml = braintree_request:get(Url),
@@ -191,11 +191,28 @@ create(CustomerId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update(customer()) -> customer().
-update(#bt_customer{id=CustomerId}=Customer) ->
+update(#bt_customer{id = CustomerId}=Customer) ->
     Url = url(CustomerId),
     Request = record_to_xml(Customer, 'true'),
     Xml = braintree_request:put(Url, Request),
-    xml_to_record(Xml).
+    R = xml_to_record(Xml),
+    LatestCC = braintree_card:delete_unused_cards(get_cards(R)),
+    NewPT = braintree_card:default_payment_token(LatestCC),
+    NewSubs = lists:map(fun (Sub) -> maybe_update_subscription(NewPT, Sub) end, get_subscriptions(R)),
+    R#bt_customer{credit_cards = LatestCC
+                  ,subscriptions = NewSubs
+                 }.
+
+-spec maybe_update_subscription(api_binary(), braintree_subscription:subscription()) ->
+                                       braintree_subscription:subscription().
+maybe_update_subscription(NewPT, Sub) ->
+    case braintree_subscription:get_payment_token(Sub) of
+        NewPT when NewPT =/= 'undefined' -> Sub;
+        _OldPT ->
+            %% Card updated -> Subscription has been cancelled
+            NewSub = braintree_subscription:new(Sub, NewPT),
+            braintree_subscription:update(NewSub)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -274,7 +291,7 @@ record_to_xml(Customer, ToString) ->
               ]
             ],
     case ToString of
-        'true' -> make_doc_xml(Props, 'customer');
+        'true' -> braintree_util:make_doc_xml(Props, 'customer');
         'false' -> Props
     end.
 

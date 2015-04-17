@@ -14,7 +14,7 @@
 -export([find/1]).
 -export([create/1, create/2]).
 -export([update/1]).
--export([delete/1]).
+-export([delete/1, delete_unused_cards/1]).
 -export([expired/0
          ,expired/1
          ,expiring/2
@@ -48,7 +48,7 @@ url() ->
     "/payment_methods/".
 
 url(Token) ->
-    lists:append(["/payment_methods/", wh_util:to_list(Token)]).
+    "/payment_methods/" ++ wh_util:to_list(Token).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -123,6 +123,23 @@ delete(#bt_card{token=Token}) -> delete(Token);
 delete(Token) ->
     _ = braintree_request:delete(url(Token)),
     #bt_card{}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Deletes non-default cards
+%% @end
+%%--------------------------------------------------------------------
+-spec delete_unused_cards([card()]) -> [card()].
+delete_unused_cards(Cards) ->
+    Deleter = fun
+                  (#bt_card{default = 'true'}=Card, Acc) ->
+                      [Card|Acc];
+                  (#bt_card{default = 'false'}=Card, Acc) ->
+                      delete(Card),
+                      Acc
+              end,
+    lists:foldl(Deleter, [], Cards).
 
 %%--------------------------------------------------------------------
 %% @public

@@ -84,47 +84,50 @@ do_request(Method, Path, Body) ->
     case ibrowse:send_req(Url, Headers, Method, Body, HTTPOptions) of
         {ok, "401", _, _Response} ->
             verbose_debug("Response:~n401~n~s~n", [_Response]),
-            lager:debug("braintree error response(~pms): 401 Unauthenticated", [timer:now_diff(erlang:now(), StartTime) div 1000]),
+            lager:debug("braintree error response(~pms): 401 Unauthenticated", [elapsed(StartTime)]),
             braintree_util:error_authentication();
         {ok, "403", _, _Response} ->
             verbose_debug("Response:~n403~n~s~n", [_Response]),
-            lager:debug("braintree error response(~pms): 403 Unauthorized", [timer:now_diff(erlang:now(), StartTime) div 1000]),
+            lager:debug("braintree error response(~pms): 403 Unauthorized", [elapsed(StartTime)]),
             braintree_util:error_authorization();
         {ok, "404", _, _Response} ->
             verbose_debug("Response:~n404~n~s~n", [_Response]),
-            lager:debug("braintree error response(~pms): 404 Not Found", [timer:now_diff(erlang:now(), StartTime) div 1000]),
+            lager:debug("braintree error response(~pms): 404 Not Found", [elapsed(StartTime)]),
             braintree_util:error_not_found(<<>>);
         {ok, "426", _, _Response} ->
             verbose_debug("Response:~n426~n~s~n", [_Response]),
-            lager:debug("braintree error response(~pms): 426 Upgrade Required", [timer:now_diff(erlang:now(), StartTime) div 1000]),
+            lager:debug("braintree error response(~pms): 426 Upgrade Required", [elapsed(StartTime)]),
             braintree_util:error_upgrade_required();
         {ok, "500", _, _Response} ->
             verbose_debug("Response:~n500~n~s~n", [_Response]),
-            lager:debug("braintree error response(~pms): 500 Server Error", [timer:now_diff(erlang:now(), StartTime) div 1000]),
+            lager:debug("braintree error response(~pms): 500 Server Error", [elapsed(StartTime)]),
             braintree_util:error_server_error();
         {ok, "503", _, _Response} ->
             verbose_debug("Response:~n503~n~s~n", [_Response]),
-            lager:debug("braintree error response(~pms): 503 Maintenance", [timer:now_diff(erlang:now(), StartTime) div 1000]),
+            lager:debug("braintree error response(~pms): 503 Maintenance", [elapsed(StartTime)]),
             braintree_util:error_maintenance();
         {ok, Code, _, [$<,$?,$x,$m,$l|_]=Response} ->
             verbose_debug("Response:~n~p~n~s~n", [Code, Response]),
             {Xml, _} = xmerl_scan:string(Response),
-            lager:debug("braintree xml response(~pms)", [timer:now_diff(erlang:now(), StartTime) div 1000]),
+            lager:debug("braintree xml response(~pms)", [elapsed(StartTime)]),
             verify_response(Xml);
         {ok, Code, _, [$<,$s,$e,$a,$r,$c,$h|_]=Response} ->
             verbose_debug("Response:~n~p~n~s~n", [Code, Response]),
             {Xml, _} = xmerl_scan:string(Response),
-            lager:debug("braintree xml response(~pms)", [timer:now_diff(erlang:now(), StartTime) div 1000]),
+            lager:debug("braintree xml response(~pms)", [elapsed(StartTime)]),
             verify_response(Xml);
         {ok, Code, _, _Response} ->
             verbose_debug("Response:~n~p~n~s~n", [Code, _Response]),
-            lager:debug("braintree empty response(~pms): ~p", [timer:now_diff(erlang:now(), StartTime) div 1000, Code]),
+            lager:debug("braintree empty response(~pms): ~p", [elapsed(StartTime), Code]),
             ?BT_EMPTY_XML;
         {error, _R} ->
             verbose_debug("Response:~nerror~n~p~n", [_R]),
-            lager:debug("braintree request error(~pms): ~p", [timer:now_diff(erlang:now(), StartTime) div 1000, _R]),
+            lager:debug("braintree request error(~pms): ~p", [elapsed(StartTime), _R]),
             braintree_util:error_io_fault()
     end.
+
+elapsed(StartTime) ->
+    timer:now_diff(erlang:now(), StartTime) div 1000.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -132,13 +135,13 @@ do_request(Method, Path, Body) ->
 %% If braintree verbose debuging is enabled write the log line to the file
 %% @end
 %%--------------------------------------------------------------------
--spec verbose_debug/2 :: (string(), [term()]) -> 'ok'.
+-spec verbose_debug(string(), [term()]) -> 'ok'.
 verbose_debug(Format, Args) ->
     case ?BT_DEBUG of
-        false -> ok;
-        true -> 
-            _ = file:write_file("/tmp/braintree.xml", io_lib:format(Format, Args), [append]),
-            ok
+        'false' -> 'ok';
+        'true' ->
+            _ = file:write_file("/tmp/braintree.xml", io_lib:format(Format, Args), ['append']),
+            'ok'
     end.
 
 %%--------------------------------------------------------------------
@@ -147,7 +150,7 @@ verbose_debug(Format, Args) ->
 %% Get the base URL for the braintree service
 %% @end
 %%--------------------------------------------------------------------
--spec braintree_server_url/1 :: (string()) -> string().
+-spec braintree_server_url(string()) -> string().
 braintree_server_url(Env) ->
     proplists:get_value(Env, ?BT_SERVER_URL).
 
@@ -157,7 +160,7 @@ braintree_server_url(Env) ->
 %% Determine if the response was valid
 %% @end
 %%--------------------------------------------------------------------
--spec verify_response/1 :: (bt_xml()) -> bt_xml().
+-spec verify_response(bt_xml()) -> bt_xml().
 verify_response(Xml) ->
     case xmerl_xpath:string("/api-error-response", Xml) of
         [] -> Xml;

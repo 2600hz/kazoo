@@ -19,6 +19,7 @@
 -export([update_addon_amount/3]).
 -export([get_discount/2]).
 -export([update_discount_amount/3]).
+-export([get_payment_token/1]).
 -export([find/1]).
 -export([create/1, create/2]).
 -export([update/1]).
@@ -31,7 +32,6 @@
 -export([update_discount_quantity/3]).
 -export([increment_discount_quantity/2]).
 
--import('braintree_util', [make_doc_xml/2]).
 -import('wh_util', [get_xml_value/2]).
 
 -include_lib("braintree/include/braintree.hrl").
@@ -76,6 +76,11 @@ url(SubscriptionId, Options) ->
 -spec new(ne_binary(), ne_binary()) -> subscription().
 -spec new(ne_binary(), ne_binary(), ne_binary()) -> subscription().
 
+new(#bt_subscription{}=Subscription, PaymentToken) ->
+    Subscription#bt_subscription{id = wh_util:rand_hex_binary(16)
+                                 ,payment_token = PaymentToken
+                                 ,create = 'true'
+                                };
 new(PlanId, PaymentToken) ->
     new(wh_util:rand_hex_binary(16), PlanId, PaymentToken).
 
@@ -192,6 +197,10 @@ update_discount_amount(#bt_subscription{discounts=Discounts}=Subscription, Disco
                                             },
             Subscription#bt_subscription{discounts=lists:keyreplace(DiscountId, #bt_discount.id, Discounts, Discount1)}
     end.
+
+%% @public
+-spec get_payment_token(subscription()) -> api_binary().
+get_payment_token(#bt_subscription{payment_token = PT}) -> PT.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -494,7 +503,7 @@ record_to_xml(#bt_subscription{}=Subscription, ToString) ->
                    ],
     Props1 = lists:foldr(fun(F, P) -> F(Subscription, P) end, Props, Conditionals),
     case ToString of
-        'true' -> make_doc_xml(Props1, 'subscription');
+        'true' -> braintree_util:make_doc_xml(Props1, 'subscription');
         'false' -> Props1
     end.
 
