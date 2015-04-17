@@ -93,10 +93,14 @@ menu_loop(#cf_menu_data{retries=Retries
     case whapps_call_command:collect_digits(MaxLength, Timeout, Interdigit, NoopId, Call) of
         {'ok', <<>>} ->
             lager:info("menu entry timeout"),
-            case cf_exe:attempt(<<"timeout">>, Call) of
-                {'attempt_resp', 'ok'} -> 'ok';
-                {'attempt_resp', {'error', _}} ->
-                    menu_loop(Menu#cf_menu_data{retries=Retries - 1}, Call)
+            case try_match_digits(<<"timeout">>, Menu, Call) of
+                'true' -> lager:debug("timeout hunt callflow found");
+                'false' ->
+                    case cf_exe:attempt(<<"timeout">>, Call) of
+                        {'attempt_resp', 'ok'} -> 'ok';
+                        {'attempt_resp', {'error', _}} ->
+                            menu_loop(Menu#cf_menu_data{retries=Retries - 1}, Call)
+                    end
             end;
         {'ok', Digits} ->
             %% this try_match_digits calls hunt_for_callflow() based on the digits dialed
