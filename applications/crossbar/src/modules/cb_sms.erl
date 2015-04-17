@@ -269,7 +269,12 @@ summary(Context) ->
 %%--------------------------------------------------------------------
 -spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].
+    [normalize_view_result_value(wh_json:get_value(<<"value">>, JObj))|Acc].
+
+-spec normalize_view_result_value(wh_json:object()) -> wh_json:object().
+normalize_view_result_value(JObj) ->
+    Date = wh_util:rfc1036(wh_json:get_value(<<"created">>, JObj)),
+    wh_json:set_value(<<"date">>, Date, JObj).
 
 -spec get_view_and_filter(cb_context:context()) ->
                                  {ne_binary(), api_binaries(), api_binaries()}.
