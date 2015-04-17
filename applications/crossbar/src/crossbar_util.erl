@@ -662,7 +662,8 @@ load_apps(AccountId, UserId) ->
     format_apps(AccountId, UserId, FilteredApps).
 
 %% @private
--spec filter_apps(wh_json:objects(), ne_binary(), ne_binary()) -> wh_json:objects().
+-spec filter_apps(wh_json:objects(), ne_binary(), ne_binary()) ->
+                         wh_json:objects().
 filter_apps(Apps, AccountId, UserId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_doc(AccountDb, AccountId) of
@@ -670,7 +671,9 @@ filter_apps(Apps, AccountId, UserId) ->
             lager:error("failed to load account ~s", [AccountId]),
             Apps;
         {'ok', AccountDoc} ->
-            OnlyAuthorized = fun (App) -> cb_apps_util:is_authorized(AccountDoc, UserId, App) end,
+            OnlyAuthorized = fun(App) ->
+                                     cb_apps_util:is_authorized(AccountDoc, UserId, App)
+                             end,
             lists:filter(OnlyAuthorized, Apps)
     end.
 
@@ -679,7 +682,8 @@ filter_apps(Apps, AccountId, UserId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec format_apps(wh_json:objects() | ne_binary(), ne_binary(), wh_json:objects()) -> wh_json:objects().
+-spec format_apps(wh_json:objects() | ne_binary(), ne_binary(), wh_json:objects()) ->
+                         wh_json:objects().
 format_apps([], _, Acc) -> Acc;
 format_apps(AccountId, UserId, JObjs) when is_binary(AccountId) ->
     Lang = get_language(AccountId, UserId),

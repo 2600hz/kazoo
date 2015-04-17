@@ -131,6 +131,7 @@ content_types_provided(Context, _, _, _) -> Context.
 %% @end
 %%--------------------------------------------------------------------
 -spec authenticate(cb_context:context()) -> boolean().
+-spec authenticate(http_method(), req_nouns()) -> boolean().
 authenticate(Context) ->
     authenticate(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
@@ -144,6 +145,7 @@ authenticate(_Verb, _Nouns) ->
     'false'.
 
 -spec authorize(cb_context:context()) -> boolean().
+-spec authorize(http_method(), req_nouns()) -> boolean().
 authorize(Context) ->
     authorize(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
@@ -386,11 +388,11 @@ load_app_from_master_account(Context, AppId) ->
     case [JObj || JObj <- DefaultApps, wh_doc:id(JObj) == AppId] of
         [AppJObj] ->
             cb_context:setters(Context
-                              ,[{fun cb_context:set_account_id/2, MasterAccountId}
-                                ,{fun cb_context:set_account_db/2, MasterAccountDb}
-                                ,{fun cb_context:set_doc/2, AppJObj}
-                                ,{fun cb_context:set_resp_status/2, 'success'}
-                               ]
+                               ,[{fun cb_context:set_account_id/2, MasterAccountId}
+                                 ,{fun cb_context:set_account_db/2, MasterAccountDb}
+                                 ,{fun cb_context:set_doc/2, AppJObj}
+                                 ,{fun cb_context:set_resp_status/2, 'success'}
+                                ]
                               );
         _Else ->
             bad_app_error(Context, AppId)
