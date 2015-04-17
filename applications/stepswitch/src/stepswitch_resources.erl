@@ -950,6 +950,8 @@ endpoint_options(JObj, <<"amqp">>) ->
          ,{<<"Exchange-Type">>, wh_json:get_value(<<"amqp_exchange_type">>, JObj)}
          ,{<<"Route-ID">>, wh_json:get_value(<<"route_id">>, JObj)}
          ,{<<"System-ID">>, wh_json:get_value(<<"system_id">>, JObj)}
+         ,{<<"Broker-Name">>, wh_json:get_value(<<"broker_name">>, JObj, wh_util:rand_hex_binary(6))}
+         ,{<<"Exchange-Options">>, wh_json:get_value(<<"amqp_exchange_options">>, JObj, ?DEFAULT_AMQP_EXCHANGE_OPTIONS)}        
         ]));
 endpoint_options(JObj, <<"sip">>) ->
     wh_json:from_list(
