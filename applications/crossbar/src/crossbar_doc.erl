@@ -349,9 +349,12 @@ load_view(#load_view_params{view=View
             'false' -> IncludeOptions;
             _V -> props:delete('include_docs', IncludeOptions)
         end,
-
     case couch_mgr:get_results(Db, View, ViewOptions) of
-        {'error', Error} ->
+        % There were more dbs, so move to the next one
+        {'error', 'not_found'} ->
+            lager:debug("results not_found for Db '~s', moving on to the next Dbs", [Db]),
+            load_view(LVPs#load_view_params{dbs=Dbs});
+        {'error', Error} -> 
             handle_couch_mgr_errors(Error, View, Context);
         {'ok', JObjs} ->
             lager:debug("paginating view '~s' from '~s', starting at '~p'", [View, Db, StartKey]),
