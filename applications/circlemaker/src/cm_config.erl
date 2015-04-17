@@ -28,7 +28,7 @@
 -spec new_default_aaa_doc() -> wh_json:object().
 new_default_aaa_doc() ->
     Servers = [
-        {<<"enabled">>, false},
+        {<<"enabled">>, 'false'},
         {<<"name">>, <<"unique_server_name">>},
         {<<"address">>, <<"127.0.0.1">>},
         {<<"port">>, 1812},
@@ -54,10 +54,10 @@ new_default_aaa_doc() ->
 %% Returns AAA configuration document for system_config or an account.
 %% @end
 %%--------------------------------------------------------------------
--spec new_default_aaa_doc(account) -> wh_json:object(); (system) -> wh_json:object().
-new_default_aaa_doc(account) ->
+-spec new_default_aaa_doc('account') -> wh_json:object(); ('system') -> wh_json:object().
+new_default_aaa_doc('account') ->
     wh_json:insert_value(<<"pvt_type">>, <<"aaa">>, new_default_aaa_doc());
-new_default_aaa_doc(system) ->
+new_default_aaa_doc('system') ->
     Fields = [{<<"pvt_type">>, <<"config">>}, {<<"_id">>, <<"circlemaker">>}, {<<"id">>, <<"circlemaker">>}],
     wh_json:set_values(Fields, new_default_aaa_doc()).
 
@@ -73,24 +73,24 @@ new_default_aaa_doc(system) ->
     (ne_binary()) -> wh_json:object();
     (system_config) -> wh_json:object().
 init_aaa_doc(AccId) when is_binary(AccId) ->
-    ok = couch_mgr:revise_views_from_folder(AccId, circlemaker),
+    'ok' = couch_mgr:revise_views_from_folder(AccId, 'circlemaker'),
     case couch_mgr:get_results(AccId, <<"aaa/fetch_doc">>) of
-        {ok, [{[{<<"id">>, DocId},
+        {'ok', [{[{<<"id">>, DocId},
                 {<<"key">>, _},
                 {<<"value">>, _}]}]} ->
             couch_mgr:open_cache_doc(AccId, DocId);
-        {ok, []} ->
-            Doc = wh_json:insert_value(<<"account_id">>, AccId, new_default_aaa_doc(account)),
+        {'ok', []} ->
+            Doc = wh_json:insert_value(<<"account_id">>, AccId, new_default_aaa_doc('account')),
             couch_mgr:save_doc(AccId, Doc);
-        {error, Reason} ->
-            {error, Reason}
+        {'error', Reason} ->
+            {'error', Reason}
     end;
-init_aaa_doc(system_config) ->
+init_aaa_doc('system_config') ->
     case couch_mgr:open_cache_doc(?WH_CONFIG_DB, ?APP_NAME) of
-        {ok, Doc} ->
-            {ok, Doc};
-        {error, not_found} ->
-            Doc = new_default_aaa_doc(system),
+        {'ok', Doc} ->
+            {'ok', Doc};
+        {'error', 'not_found'} ->
+            Doc = new_default_aaa_doc('system'),
             couch_mgr:save_doc(?WH_CONFIG_DB, Doc)
     end.
 
@@ -100,7 +100,7 @@ init_aaa_doc(system_config) ->
 %% Get AAA-mode from document.
 %% @end
 %%--------------------------------------------------------------------
--spec get_aaa_mode(wh_json:object()) -> on|off|inherit.
+-spec get_aaa_mode(wh_json:object()) -> ne_binary().
 get_aaa_mode(Doc) ->
     wh_json:get_json_value(<<"aaa_mode">>, Doc, <<"off">>).
 
@@ -110,6 +110,6 @@ get_aaa_mode(Doc) ->
 %% Get servers list.
 %% @end
 %%--------------------------------------------------------------------
--spec get_servers_list(wh_json:object()) -> on|off|inherit.
+-spec get_servers_list(wh_json:object()) -> ne_binary().
 get_servers_list(Doc) ->
-    wh_json:get_json_value(<<"servers">>, Doc, <<"off">>).
+    wh_json:get_json_value(<<"servers">>, Doc).

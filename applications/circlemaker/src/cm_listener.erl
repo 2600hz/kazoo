@@ -56,8 +56,8 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    [{ok, _} = cm_config:init_aaa_doc(AccId) || AccId <- whapps_util:get_all_accounts()],
-    {ok, _Doc} = cm_config:init_aaa_doc(system_config),
+    [{'ok', _} = cm_config:init_aaa_doc(AccId) || AccId <- whapps_util:get_all_accounts()],
+    {'ok', _Doc} = cm_config:init_aaa_doc('system_config'),
     gen_listener:start_link({'local', ?SERVER}, ?MODULE, [{'bindings', ?BINDINGS}
                                                           ,{'responders', ?RESPONDERS}
                                                           ,{'queue_name', ?QUEUE_NAME}
@@ -93,7 +93,7 @@ handle_authz_req(JObj, _Props, #'basic.deliver'{'routing_key' = Key}) ->
             cm_radius:add_request_stop(JObj, wh_api:validate(wh_json:to_proplist(JObj),
                 ?SYNC_REQ_HEADERS_ON_AUTHZ, ?SYNC_REQ_VALUES_ON_AUTHZ, ?SYNC_REQ_TYPES_ON_AUTHZ));
         _ ->
-            ok
+            'ok'
     end.
 
 

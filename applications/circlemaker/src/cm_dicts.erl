@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2010-2015, 2600Hz
 %%% @doc
-%%%  The module is interface for accessing to CouchDB table consist
+%%%  The module is interface for accessing to CouchDB document consist
 %%%  RADIUS dictionaries filled by the eradius
 %%% @end
 %%% @contributors

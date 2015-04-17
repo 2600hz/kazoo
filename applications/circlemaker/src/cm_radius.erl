@@ -18,8 +18,8 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec add_request_authz(wh_json:object(), boolean()) -> any().
-add_request_authz(_JObj, true) ->
-    not_implemented.
+add_request_authz(_JObj, 'true') ->
+    'not_implemented'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -28,8 +28,8 @@ add_request_authz(_JObj, true) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec add_request_start(wh_json:object(), boolean()) -> any().
-add_request_start(_JObj, true) ->
-    not_implemented.
+add_request_start(_JObj, 'true') ->
+    'not_implemented'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -38,5 +38,5 @@ add_request_start(_JObj, true) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec add_request_stop(wh_json:object(), boolean()) -> any().
-add_request_stop(_JObj, true) ->
-    not_implemented.
+add_request_stop(_JObj, 'true') ->
+    'not_implemented'.
