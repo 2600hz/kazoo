@@ -186,11 +186,10 @@ amqp_exchange_options(JObj) ->
 
 -spec send_amqp_sms(wh_proplist(), atom()) -> 'ok' | {'error', term()}.
 send_amqp_sms(Payload, Pool) ->
-    put('$amqp_pool', Pool),
-    case wh_amqp_worker:cast(Payload, fun wapi_sms:publish_outbound/1)
+    case wh_amqp_worker:cast(Payload, fun wapi_sms:publish_outbound/1, Pool)
     of
         {'returned', _JObj, Deliver} ->
-            {'error', wh_json:get_value(<<"message">>, Deliver, <<"HELP!">>)};
+            {'error', wh_json:get_value(<<"message">>, Deliver, <<"unknown">>)};
         {'timeout',_} -> {'error', 'timeout'};
         Else -> Else
     end.
@@ -202,7 +201,6 @@ maybe_add_broker(Broker, Exchange, RouteId, ExchangeType, ExchangeOptions, Broke
 
 -spec maybe_add_broker(binary(), binary(), binary(), binary(), binary(), binary(), 'undefined' | pid()) -> 'ok'.
 maybe_add_broker(Broker, Exchange, RouteId, ExchangeType, ExchangeOptions, BrokerName, 'undefined') ->
-%    wh_amqp_connections:add(Broker, ?SMS_POOL(Exchange, RouteId, BrokerName), [<<"hidden">>, Exchange]),
     Exchanges = [{Exchange, ExchangeType, ExchangeOptions}],
     wh_amqp_sup:add_amqp_pool(?SMS_POOL(Exchange, RouteId, BrokerName), Broker, 5, 5, [], Exchanges, 'true'),
     'ok';
