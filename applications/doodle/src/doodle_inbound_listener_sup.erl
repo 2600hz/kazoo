@@ -75,7 +75,7 @@ init([]) ->
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    {'ok', {SupFlags, [?WORKER('doodle_inbound_listener')]}}.
+    {'ok', {SupFlags, [?WORKER_TYPE('doodle_inbound_listener', 'temporary')]}}.
 
 -spec default_connection() -> amqp_listener_connection().
 default_connection() ->

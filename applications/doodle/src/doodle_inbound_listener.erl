@@ -17,6 +17,8 @@
          ,handle_event/2
          ,terminate/2
          ,code_change/3
+         ,format_status/2
+         ,handle_debug/3
         ]).
 
 -include("doodle.hrl").
@@ -70,7 +72,7 @@ start_link(#amqp_listener_connection{broker=Broker
                               ,{'broker', Broker}
                              ]
                             ,[C]
-                            ,[]
+                            ,[{debug,[{install,{fun handle_debug/3, mystate}}]}]
                            ).
 
 %%%===================================================================
@@ -123,6 +125,7 @@ handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
     {'noreply', State};
 handle_cast(_Msg, State) ->
+    lager:debug("inbound listener unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -139,6 +142,7 @@ handle_info({'send_outbound', Payload}, State) ->
     wapi_sms:publish_outbound(Payload),
     {'noreply', State};
 handle_info(_Info, State) ->
+    lager:debug("inbound listener unhandled info: ~p", [_Info]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -163,8 +167,14 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+terminate({{'shutdown',{'server_initiated_close', Code, Msg}}, _},  #state{connection=Connection}) ->
+    lager:error("inbound listener terminated by server : ~p - ~s", [Code, Msg]),
+    spawn(fun()-> 
+                  timer:sleep(10000),
+                  doodle_inbound_listener_sup:start_inbound_listener(Connection)
+          end);
 terminate(_Reason, _State) ->
-    lager:debug("listener terminating: ~p", [_Reason]).
+    lager:debug("inbound listener terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -176,6 +186,9 @@ terminate(_Reason, _State) ->
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
+
+format_status(_Opt, [_PDict, _State]) -> [].
+handle_debug(FuncState, _Event, _ProcState) ->  FuncState.
 
 %%%===================================================================
 %%% Internal functions
