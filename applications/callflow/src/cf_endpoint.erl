@@ -37,6 +37,8 @@
 -define(DEFAULT_MOBILE_SMS_BROKER, wh_amqp_connections:primary_broker()).
 -define(DEFAULT_MOBILE_SMS_EXCHANGE, <<"sms">>).
 -define(DEFAULT_MOBILE_SMS_EXCHANGE_TYPE, <<"topic">>).
+-define(DEFAULT_MOBILE_SMS_EXCHANGE_OPTIONS, 
+        wh_json:from_list([{'passive', 'true'}])).
 -define(DEFAULT_MOBILE_SMS_ROUTE, <<"sprint">>).
 -define(DEFAULT_MOBILE_SMS_OPTIONS, wh_json:from_list([{<<"Route-ID">>, ?DEFAULT_MOBILE_SMS_ROUTE}
                                                        ,{<<"System-ID">>, wh_util:node_name()}
@@ -48,6 +50,7 @@
            ,{<<"route">>, ?DEFAULT_MOBILE_SMS_ROUTE}
            ,{<<"exchange">>, ?DEFAULT_MOBILE_SMS_EXCHANGE}
            ,{<<"type">>, ?DEFAULT_MOBILE_SMS_EXCHANGE_TYPE}
+           ,{<<"options">>, ?DEFAULT_MOBILE_SMS_EXCHANGE_OPTIONS}
           ])).
 -define(DEFAULT_MOBILE_AMQP_CONNECTIONS, 
         wh_json:from_list([{<<"default">>, ?DEFAULT_MOBILE_AMQP_CONNECTION }])).
@@ -1483,4 +1486,5 @@ build_mobile_sms_amqp_route_options(JObj) ->
     [{<<"Route-ID">>, wh_json:get_value(<<"route">>, JObj, ?DEFAULT_MOBILE_SMS_ROUTE)}
      ,{<<"Exchange-ID">>, wh_json:get_value(<<"exchange">>, JObj, ?DEFAULT_MOBILE_SMS_EXCHANGE)}
      ,{<<"Exchange-Type">>, wh_json:get_value(<<"type">>, JObj, ?DEFAULT_MOBILE_SMS_EXCHANGE_TYPE)}
+     ,{<<"Exchange-Options">>, wh_json:get_value(<<"options">>, JObj, ?DEFAULT_MOBILE_SMS_EXCHANGE_OPTIONS)}
     ].
