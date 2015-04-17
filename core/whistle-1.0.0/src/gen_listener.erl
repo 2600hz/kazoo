@@ -607,18 +607,27 @@ handle_info(#'basic.cancel_ok'{consumer_tag=CTag}, #state{consumer_tags=CTags}=S
     lager:debug("recv a basic.cancel_ok for tag ~s", [CTag]),
     gen_server:cast(self(), {'gen_listener', {'is_consuming', 'false'}}),
     {'noreply', State#state{is_consuming='false', consumer_tags=lists:delete(CTag, CTags)}};
+handle_info(#'basic.ack'{}=Ack, #state{}=State) ->
+    lager:debug("recv a basic.ack ~p", [Ack]),
+    handle_confirm(Ack, State);
+handle_info(#'basic.nack'{}=Nack, #state{}=State) ->
+    lager:debug("recv a basic.nack ~p", [Nack]),
+    handle_confirm(Nack, State);
 handle_info('$is_gen_listener_consuming'
             ,#state{is_consuming='false'
                     ,bindings=ExistingBindings
                     ,params=Params
                    }=State) ->
     _ = (catch wh_amqp_channel:release()),
-    _ = wh_amqp_channel:requisition(),
+    _ = channel_requisition(Params),
     {'noreply', State#state{queue='undefined'
                             ,bindings=[]
                             ,params=props:set_value('bindings', ExistingBindings, Params)
                            }};
 handle_info('$is_gen_listener_consuming', State) ->
+    {'noreply', State};
+handle_info({'$server_confirms', ServerConfirms}, State) ->
+    gen_server:cast(self(), {'gen_listener',{'server_confirms',ServerConfirms}}),
     {'noreply', State};
 handle_info(?CALLBACK_TIMEOUT_MSG, State) ->
     handle_callback_info('timeout', State);
@@ -679,6 +688,11 @@ basic_return_to_jobj(#'basic.return'{reply_code=Code
                        ,{<<"exchange">>, wh_util:to_binary(Exchange)}
                        ,{<<"routing_key">>, wh_util:to_binary(RoutingKey)}
                       ]).
+
+-spec handle_confirm(#'basic.ack'{} | #'basic.nack'{}, state()) -> handle_cast_return().
+handle_confirm(Confirm, State) ->
+    Msg = {'gen_listener', {'confirm', Confirm}},
+    handle_module_cast(Msg, State).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1064,12 +1078,20 @@ handle_amqp_channel_available(#state{params=Params}=State) ->
     {'ok', Q} = start_amqp(Params),
 
     State1 = start_initial_bindings(State#state{queue=Q}, Params),
+    
+    maybe_server_confirms(props:get_value('server_confirms', Params, 'false')),
 
     _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), '$is_gen_listener_consuming'),
 
     gen_server:cast(self(), {'gen_listener', {'created_queue', Q}}),
 
     State1#state{is_consuming='false'}.
+
+-spec maybe_server_confirms(boolean()) -> 'ok'.
+maybe_server_confirms('true') ->
+    amqp_util:confirm_select();
+maybe_server_confirms(_) -> 'ok'.
+    
 
 -spec maybe_declare_exchanges(wh_proplist()) -> 'ok'.
 maybe_declare_exchanges([]) -> 'ok';
@@ -1122,9 +1144,9 @@ maybe_add_broker_connection(Broker) ->
 
 maybe_add_broker_connection(Broker, Count) when Count =:= 0 ->
     wh_amqp_connections:add(Broker, wh_util:rand_hex_binary(6), [<<"hidden">>]),
-    wh_amqp_channel:requisition(Broker);
+    wh_amqp_channel:requisition(self(), Broker);
 maybe_add_broker_connection(Broker, _Count) ->
-    wh_amqp_channel:requisition(Broker).
+    wh_amqp_channel:requisition(self(), Broker).
 
 
 -spec start_listener(pid(), wh_proplist()) -> 'ok'.
