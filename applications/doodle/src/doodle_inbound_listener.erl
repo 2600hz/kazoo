@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -30,7 +30,10 @@
                                ]}
                        ,{'self', []}
                       ]).
--define(RESPONDERS, [{'doodle_inbound_handler',[{<<"message">>, <<"inbound">>}]}]).
+-define(RESPONDERS, [{'doodle_inbound_handler'
+                      ,[{<<"message">>, <<"inbound">>}]
+                     }
+                    ]).
 
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}
                         ,{'durable', 'true'}
@@ -72,7 +75,9 @@ start_link(#amqp_listener_connection{broker=Broker
                               ,{'broker', Broker}
                              ]
                             ,[C]
-                            ,[{debug,[{install,{fun handle_debug/3, mystate}}]}]
+                            ,[{'debug', [{'install', {fun handle_debug/3, 'mystate'}}]
+                              }
+                             ]
                            ).
 
 %%%===================================================================
@@ -167,9 +172,11 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate({{'shutdown',{'server_initiated_close', Code, Msg}}, _},  #state{connection=Connection}) ->
+terminate({{'shutdown',{'server_initiated_close', Code, Msg}}, _}
+          ,#state{connection=Connection}
+         ) ->
     lager:error("inbound listener terminated by server : ~p - ~s", [Code, Msg]),
-    spawn(fun()-> 
+    spawn(fun()->
                   timer:sleep(10000),
                   doodle_inbound_listener_sup:start_inbound_listener(Connection)
           end);
@@ -188,6 +195,7 @@ code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
 format_status(_Opt, [_PDict, _State]) -> [].
+
 handle_debug(FuncState, _Event, _ProcState) ->  FuncState.
 
 %%%===================================================================
