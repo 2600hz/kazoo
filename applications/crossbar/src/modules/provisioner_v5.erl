@@ -322,7 +322,7 @@ settings_feature_keys(JObj) ->
             FeatureKey = get_feature_key(Type, V, Brand, Family, AccountId),
             wh_json:set_value(
                 Key
-                ,wh_json:from_list([{<<"keys">>, FeatureKey}])
+                ,wh_json:from_list([{<<"key">>, FeatureKey}])
                 ,Acc
             )
         end
@@ -418,7 +418,7 @@ send_req('devices_post', JObj, AuthToken, AccountId, MACAddress) ->
     UrlString = req_uri('devices', AccountId, MACAddress),
     lager:debug("provisioning via ~s: ~s", [UrlString, Data]),
     Resp = ibrowse:send_req(UrlString, Headers, 'post', Data, HTTPOptions),
-    handle_device_resp(JObj, Resp);
+    handle_device_resp(JObj, Resp, AccountId);
 send_req('devices_delete', _, AuthToken, AccountId, MACAddress) ->
     Headers = req_headers(AuthToken),
     HTTPOptions = [],
@@ -480,34 +480,38 @@ device_payload(JObj) ->
       ]
      ).
 
--spec handle_device_resp(wh_json:object(), ibrowse_ret()) -> 'ok'.
-handle_device_resp(Req, {'ok', "200", _, _}=Resp) ->
-    Lines = wh_json:get_value([<<"data">>, <<"settings">>, <<"lines">>], Req, wh_json:new()),
+-spec handle_device_resp(wh_json:object(), ibrowse_ret(), ne_binary()) -> 'ok'.
+handle_device_resp(Req, {'ok', "200", _, _}=Resp, AccountId) ->
+    Lines = wh_json:get_value([<<"settings">>, <<"lines">>], Req, wh_json:new()),
     wh_json:foldl(
         fun(_Line, LineData, Acc) ->
-            maybe_publish_check_sync(LineData),
+            maybe_publish_check_sync(LineData, AccountId),
             Acc
         end
         ,'ok'
         ,Lines
     ),
     handle_resp(Resp);
-handle_device_resp(_Req, Resp) ->
+handle_device_resp(_Req, Resp, _AccountId) ->
     handle_resp(Resp).
 
--spec maybe_publish_check_sync(wh_json:object()) -> 'ok'.
--spec maybe_publish_check_sync(api_binary(), api_binary()) -> 'ok'.
-maybe_publish_check_sync(LineData) ->
+-spec maybe_publish_check_sync(wh_json:object(), ne_binary()) -> 'ok'.
+-spec maybe_publish_check_sync(api_binary(), api_binary(), ne_binary()) -> 'ok'.
+maybe_publish_check_sync(LineData, AccountId) ->
+    lager:debug("maybe sending check sync"),
     maybe_publish_check_sync(
       wh_json:get_value([<<"sip">>, <<"realm">>], LineData)
       ,wh_json:get_value([<<"sip">>, <<"username">>], LineData)
+      ,AccountId
      ).
 
-maybe_publish_check_sync('undefined', _Username) ->
-    lager:warning("did not send check sync realm is undefined");
-maybe_publish_check_sync(_Realm, 'undefined') ->
+maybe_publish_check_sync('undefined', Username, AccountId) ->
+    Realm = crossbar_util:get_account_realm(AccountId),
+    lager:debug("using account realm ~s", [Realm]),
+    maybe_publish_check_sync(Realm, Username, AccountId);
+maybe_publish_check_sync(_Realm, 'undefined', _) ->
     lager:warning("did not send check sync username is undefined");
-maybe_publish_check_sync(Realm, Username) ->
+maybe_publish_check_sync(Realm, Username, _) ->
     lager:debug("sending check sync for ~s @ ~s", [Username, Realm]),
     Req = [{<<"Realm">>, Realm}
            ,{<<"Username">>, Username}

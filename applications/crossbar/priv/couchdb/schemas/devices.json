@@ -526,26 +526,21 @@
                             "type": "object",
                             "required": false,
                             "properties": {
-                                "keys": {
-                                    "type": "object",
+                                "type": {
+                                    "type": "string",
                                     "required": true,
-                                    "type": {
-                                        "type": "string",
-                                        "required": true,
-                                        "name": "Type",
-                                        "description": "Feature key type",
-                                        "enum": ["presence", "parking", "personal_parking", "speed_dial"]
-                                    },
-                                    "value": {
-                                        "type": ["string", "integer"],
-                                        "required": true,
-                                        "minimum": 1,
-                                        "maximum": 10,
-                                        "name": "Value",
-                                        "description": "Feature key value"
-                                    }
+                                    "name": "Type",
+                                    "description": "Feature key type",
+                                    "enum": ["presence", "parking", "personal_parking", "speed_dial"]
+                                },
+                                "value": {
+                                    "type": ["string", "integer"],
+                                    "required": true,
+                                    "minimum": 1,
+                                    "maximum": 10,
+                                    "name": "Value",
+                                    "description": "Feature key value"
                                 }
-
                             }
                         }
                     }
