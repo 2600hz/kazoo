@@ -505,7 +505,9 @@ maybe_reschedule_sms(Code, Message, AccountId, Call) ->
     Schedule = wh_json:set_values(
                  [{<<"code">>, Code}
                   ,{<<"reason">>, Message}
-                 ], whapps_call:kvs_fetch(<<"flow_schedule">>, wh_json:new(), Call)),
+                 ]
+                 ,whapps_call:kvs_fetch(<<"flow_schedule">>, wh_json:new(), Call)
+                ),
     case apply_reschedule_logic(wh_json:get_values(Rules), Schedule) of
         'no_rule' ->
             lager:debug("no rules configured for accountid ~s", [AccountId]),
