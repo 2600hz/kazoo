@@ -19,6 +19,8 @@
          ,bridge_to_member/6
          ,monitor_call/4
          ,channel_hungup/2
+         ,rebind_events/3
+         ,unbind_from_events/2
          ,originate_execute/2
          ,originate_uuid/3
          ,outbound_call/2
@@ -237,6 +239,14 @@ monitor_call(Srv, Call, CDRUrl, RecordingUrl) ->
 -spec channel_hungup(pid(), ne_binary()) -> 'ok'.
 channel_hungup(Srv, CallId) ->
     gen_listener:cast(Srv, {'channel_hungup', CallId}).
+
+-spec unbind_from_events(pid(), ne_binary()) -> 'ok'.
+unbind_from_events(Srv, CallId) ->
+    gen_listener:cast(Srv, {'unbind_from_events', CallId}).
+
+-spec rebind_events(pid(), ne_binary(), ne_binary()) -> 'ok'.
+rebind_events(Srv, OldCallId, NewCallId) ->
+    gen_listener:cast(Srv, {'rebind_events', OldCallId, NewCallId}).
 
 originate_execute(Srv, JObj) ->
     gen_listener:cast(Srv, {'originate_execute', JObj}).
@@ -465,6 +475,15 @@ handle_cast('bind_to_member_reqs', #state{agent_queues=Qs
                                          }=State) ->
     lager:debug("binding to queues: ~p", [Qs]),
     _ = [login_to_queue(AcctId, AgentId, Q) || Q <- Qs],
+    {'noreply', State};
+
+handle_cast({'rebind_events', OldCallId, NewCallId}, State) ->
+    acdc_util:unbind_from_call_events(OldCallId),
+    acdc_util:bind_to_call_events(NewCallId),
+    {'noreply', State};
+
+handle_cast({'unbind_from_events', CallId}, State) ->
+    acdc_util:unbind_from_call_events(CallId),
     {'noreply', State};
 
 handle_cast({'channel_hungup', CallId}, #state{call=Call
