@@ -172,16 +172,14 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate({{'shutdown',{'server_initiated_close', Code, Msg}}, _}
-          ,#state{connection=Connection}
-         ) ->
-    lager:error("inbound listener terminated by server : ~p - ~s", [Code, Msg]),
+terminate('shutdown', _State) ->
+    lager:debug("inbound listener terminating");
+terminate(Reason, #state{connection=Connection}) ->
+    lager:error("inbound listener unexpected termination : ~p", [Reason]),
     spawn(fun()->
                   timer:sleep(10000),
                   doodle_inbound_listener_sup:start_inbound_listener(Connection)
-          end);
-terminate(_Reason, _State) ->
-    lager:debug("inbound listener terminating: ~p", [_Reason]).
+          end).
 
 %%--------------------------------------------------------------------
 %% @private
