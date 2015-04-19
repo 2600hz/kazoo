@@ -239,7 +239,13 @@ command(#wh_amqp_assignment{channel=Channel
             lager:debug("queue ~s is not bound to ~s(~s)", [QueueName, Exchange, RoutingKey])
     end;
 command(#wh_amqp_assignment{channel=Channel}=Assignment, Command) ->
-    Result = amqp_channel:call(Channel, Command),
+    Result = try amqp_channel:call(Channel, Command) of
+                 R -> R
+             catch
+                 E:R ->
+                     lager:debug("amqp command exception ~p : ~p", [E, R]),
+                     {'error', R}
+             end,
     handle_command_result(Result, Command, Assignment).
 
 -spec handle_command_result(command_ret(), wh_amqp_command(), wh_amqp_assignment()) -> command_ret().
