@@ -32,7 +32,7 @@
 -include("amqp_util.hrl").
 
 -define(TAB, ?MODULE).
-
+-define(SERVER_RETRY_PERIOD, 30000).
 -record(state, {brokers = ordsets:new()}).
 
 %%%===================================================================
@@ -566,6 +566,7 @@ assign_channel(#wh_amqp_assignment{timestamp=Timestamp
                                                  }),
     lager:debug("assigned consumer ~p new channel ~p on ~s after ~pus"
                 ,[Consumer, Channel, Broker, wh_util:elapsed_us(Timestamp)]),
+    amqp_channel:register_return_handler(Channel, Consumer),
     _ = maybe_reconnect(Assigment),
     _ = send_notifications(Assigment),
     'true'.
@@ -597,6 +598,7 @@ maybe_reconnect(#wh_amqp_assignment{consumer=Consumer
 reconnect(_, []) -> 'ok';
 reconnect(Assignment, [Command|Commands]) ->
     try wh_amqp_channel:command(Assignment, Command) of
+        {'error', E} -> lager:info("replayed command failed: ~p", [E]);
         _ -> reconnect(Assignment, Commands)
     catch
         _:_R -> lager:info("replayed command failed: ~p", [_R])
@@ -729,9 +731,9 @@ handle_down_match({'channel', #wh_amqp_assignment{timestamp=Timestamp
              ,{#wh_amqp_assignment.reconnect, 'true'}
             ],
     ets:update_element(?TAB, Timestamp, Props),
-    gen_server:cast(?MODULE, {'maybe_reassign', Consumer}),
     lager:debug("floating channel ~p on ~s went down while still assigned to consumer ~p: ~p"
-                ,[Channel, Broker, Consumer, Reason]);
+                ,[Channel, Broker, Consumer, Reason]),
+    maybe_defer_reassign(Consumer, Reason);
 handle_down_match({'channel', #wh_amqp_assignment{timestamp=Timestamp
                                                   ,channel=Channel
                                                   ,type='sticky'
@@ -744,9 +746,19 @@ handle_down_match({'channel', #wh_amqp_assignment{timestamp=Timestamp
              ,{#wh_amqp_assignment.reconnect, 'true'}
             ],
     ets:update_element(?TAB, Timestamp, Props),
-    gen_server:cast(?MODULE, {'maybe_reassign', Consumer}),
     lager:debug("sticky channel ~p on ~s went down while still assigned to consumer ~p: ~p"
-                ,[Channel, Broker, Consumer, Reason]).
+                ,[Channel, Broker, Consumer, Reason]),
+    maybe_defer_reassign(Consumer, Reason).
+
+-spec maybe_defer_reassign(pid(), term()) -> 'ok'.
+maybe_defer_reassign(Consumer, {shutdown,{server_initiated_close, _Code, _Msg}}) ->
+    lager:debug("defer channel reassign for ~p ms", [?SERVER_RETRY_PERIOD]),
+    spawn(fun() ->
+                  timer:sleep(?SERVER_RETRY_PERIOD),
+                  gen_server:cast(?MODULE, {'maybe_reassign', Consumer})
+          end);
+maybe_defer_reassign(Consumer, _) ->
+    gen_server:cast(?MODULE, {'maybe_reassign', Consumer}).
 
 %%--------------------------------------------------------------------
 %% @private
