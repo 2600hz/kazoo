@@ -63,11 +63,11 @@ device_settings(JObj) ->
       ]
      ).
 
--spec get_brand(wh_json:object()) -> wh_json:object().
+-spec get_brand(wh_json:object()) -> binary().
 get_brand(JObj) ->
     wh_json:get_binary_value([<<"provision">>, <<"endpoint_brand">>], JObj, <<>>).
 
--spec get_family(wh_json:object()) -> wh_json:object().
+-spec get_family(wh_json:object()) -> binary().
 get_family(JObj) ->
     case wh_json:get_binary_value([<<"provision">>, <<"endpoint_family">>], JObj, <<>>) of
         %% Temporary hack to fix family names till a script can clean the database
@@ -326,7 +326,7 @@ settings_feature_keys(JObj) ->
         ,FeatureKeys
     ).
 
--spec get_feature_key(ne_binary(), wh_json:object(), ne_binary(), ne_binary(), ne_binary()) -> wh_json:object().
+-spec get_feature_key(ne_binary(), wh_json:object(), api_binary(), binary(), binary()) -> wh_json:object().
 get_feature_key(<<"presence">> = Type, Value, Brand, Family, AccountId) ->
     {'ok', UserJObj} = get_user(AccountId, Value),
     First = wh_json:get_value(<<"first_name">>, UserJObj),
@@ -371,7 +371,7 @@ get_feature_key(<<"parking">> = Type, Value, Brand, Family, _AccountId) ->
 get_feature_key_type(Type, Brand, Family) ->
     wh_json:get_first_defined([[Brand, Family, Type], [Brand, <<"_">>, Type]], ?FEATURE_KEYS).
 
--spec get_user(ne_binary(), ne_binary()) -> wh_json:object().
+-spec get_user(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} | {'error', any()}.
 get_user(AccountId, UserId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     couch_mgr:open_doc(AccountDb, UserId).
