@@ -13,7 +13,7 @@
 -include_lib("whistle/src/wh_json.hrl").
 
 %% API
--export([get_aaa_mode/1, get_servers_list/1, init_aaa_doc/1]).
+-export([get_aaa_mode/1, get_servers_list/1, init_aaa_doc/1, get_aaa_doc/1, save_aaa_doc/2]).
 
 %% ===================================================================
 %% API functions
@@ -71,7 +71,7 @@ new_default_aaa_doc('system') ->
 %%--------------------------------------------------------------------
 -spec init_aaa_doc
     (ne_binary()) -> wh_json:object();
-    (system_config) -> wh_json:object().
+    ('system_config') -> wh_json:object().
 init_aaa_doc(AccId) when is_binary(AccId) ->
     'ok' = couch_mgr:revise_views_from_folder(AccId, 'circlemaker'),
     case couch_mgr:get_results(AccId, <<"aaa/fetch_doc">>) of
@@ -113,3 +113,34 @@ get_aaa_mode(Doc) ->
 -spec get_servers_list(wh_json:object()) -> ne_binary().
 get_servers_list(Doc) ->
     wh_json:get_json_value(<<"servers">>, Doc).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Get AAA configuration document from a database
+%% @end
+%%--------------------------------------------------------------------
+-spec get_aaa_doc(wh_json:object()) -> ne_binary(); (atom()) -> ne_binary().
+get_aaa_doc(AccId) when is_binary(AccId) ->
+    case couch_mgr:get_results(AccId, <<"aaa/fetch_doc">>) of
+        {'ok', [{[{<<"id">>, DocId},
+            {<<"key">>, _},
+            {<<"value">>, _}]}]} ->
+            couch_mgr:open_cache_doc(AccId, DocId);
+        {'error', Reason} ->
+            {'error', Reason}
+    end;
+get_aaa_doc('system_config') ->
+    couch_mgr:open_cache_doc(?WH_CONFIG_DB, ?APP_NAME).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Save AAA configuration document to a database
+%% @end
+%%--------------------------------------------------------------------
+-spec save_aaa_doc(ne_binary(), wh_json:object()) -> wh_json:object(); (atom(), wh_json:object()) -> wh_json:object().
+save_aaa_doc(AccId, Doc) when is_binary(AccId) ->
+    couch_mgr:save_doc(AccId, Doc);
+save_aaa_doc('system_config', Doc) ->
+    couch_mgr:save_doc(?WH_CONFIG_DB, Doc).

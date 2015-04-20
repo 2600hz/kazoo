@@ -52,7 +52,6 @@ add_comma([]) ->
     "".
 
 emit([A|T], Hrl, Map, Json) when is_record(A, attribute) ->
-    io:format("attr-emit1:~n", []),
     io:format(Hrl, "-define( ~s , ~w ).~n",
 	      [d2u(A#attribute.name), A#attribute.id]),
     io:format(Map, "~w.~n", [A]),
@@ -67,15 +66,12 @@ emit([A|T], Hrl, Map, Json) when is_record(A, attribute) ->
     emit(T, Hrl, Map, Json);
 
 emit([V|T], Hrl, Map, Json) when is_record(V, vendor) ->
-    io:format("vendor-emit1:~n", []),
     io:format(Hrl, "-define( ~s , ~w ).~n",
 	      [d2u(V#vendor.name), V#vendor.type]),
     io:format(Map, "~w.~n", [V]),
     io:format(Json, "  {\"vendor\": {~p:~w}}~s~n", [d2u(V#vendor.name), V#vendor.type, add_comma(T)]),
     emit(T, Hrl, Map, Json);
 emit([V|T], Hrl, Map, Json) when is_record(V, value) ->
-    io:format("value-emit1:~n", []),
-    io:format("emit1: ~p~n", [V#value.id]),
     io:format(Map, "~w.~n", [V]),
     case V#value.id of
         {{Vid, Id}, Val} ->
