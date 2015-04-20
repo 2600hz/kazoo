@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz
+%%% @copyright (C) 2011-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -162,7 +162,7 @@ all() ->
 %% Find a customer by id
 %% @end
 %%--------------------------------------------------------------------
--spec find(ne_binary() | nonempty_string()) -> customer().
+-spec find(ne_binary() | customer()) -> customer().
 find(#bt_customer{id = CustomerId}) -> find(CustomerId);
 find(CustomerId) ->
     Url = url(CustomerId),
@@ -191,17 +191,22 @@ create(CustomerId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update(customer()) -> customer().
-update(#bt_customer{id = CustomerId}=Customer) ->
+update(#bt_customer{id=CustomerId}=Customer) ->
     Url = url(CustomerId),
     Request = record_to_xml(Customer, 'true'),
     Xml = braintree_request:put(Url, Request),
-    R = xml_to_record(Xml),
-    LatestCC = braintree_card:delete_unused_cards(get_cards(R)),
+    UpdateRecord = xml_to_record(Xml),
+
+    LatestCC = braintree_card:delete_unused_cards(get_cards(UpdateRecord)),
     NewPT = braintree_card:default_payment_token(LatestCC),
-    NewSubs = lists:map(fun (Sub) -> maybe_update_subscription(NewPT, Sub) end, get_subscriptions(R)),
-    R#bt_customer{credit_cards = LatestCC
-                  ,subscriptions = NewSubs
-                 }.
+
+    NewSubs = [maybe_update_subscription(NewPT, Sub)
+               || Sub <- get_subscriptions(UpdateRecord)
+              ],
+
+    UpdateRecord#bt_customer{credit_cards = LatestCC
+                             ,subscriptions = NewSubs
+                            }.
 
 -spec maybe_update_subscription(api_binary(), braintree_subscription:subscription()) ->
                                        braintree_subscription:subscription().
@@ -220,7 +225,7 @@ maybe_update_subscription(NewPT, Sub) ->
 %% Deletes a customer id from braintree's system
 %% @end
 %%--------------------------------------------------------------------
--spec delete(customer() | text()) -> customer().
+-spec delete(customer() | ne_binary()) -> customer().
 delete(#bt_customer{id=CustomerId}) ->
     delete(CustomerId);
 delete(CustomerId) ->
@@ -286,9 +291,10 @@ record_to_xml(Customer, ToString) ->
              ,{'phone', Customer#bt_customer.phone}
              ,{'fax', Customer#bt_customer.fax}
              ,{'website', Customer#bt_customer.website}
-             |[{'credit-card', braintree_card:record_to_xml(Card)}
-               || Card <- Customer#bt_customer.credit_cards, Card =/= 'undefined'
-              ]
+             |
+             [{'credit-card', braintree_card:record_to_xml(Card)}
+              || Card <- Customer#bt_customer.credit_cards, Card =/= 'undefined'
+             ]
             ],
     case ToString of
         'true' -> braintree_util:make_doc_xml(Props, 'customer');
