@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -21,10 +21,15 @@
 
 -define(CONFIG_CAT, <<"sms_command">>).
 
--define(DEFAULT_COLLECT_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"collect_timeout">>, 60000)).
+-define(DEFAULT_COLLECT_TIMEOUT
+        ,whapps_config:get_integer(?CONFIG_CAT, <<"collect_timeout">>, 60 * ?MILLISECONDS_IN_SECOND)
+       ).
 
--define(DEFAULT_MESSAGE_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"message_timeout">>, 60000)).
--define(DEFAULT_APPLICATION_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"application_timeout">>, 500000)).
+-define(DEFAULT_MESSAGE_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"message_timeout">>, 60 * ?MILLISECONDS_IN_SECOND)).
+
+-define(DEFAULT_APPLICATION_TIMEOUT
+        ,whapps_config:get_integer(?CONFIG_CAT, <<"application_timeout">>, 500 * ?MILLISECONDS_IN_SECOND)
+       ).
 -define(DEFAULT_STRATEGY, <<"single">>).
 
 -define(ATOM(X), wh_util:to_atom(X, 'true')).
@@ -69,7 +74,6 @@ b_send_sms(EndpointList, Strategy, Timeout, Call) ->
     Endpoints = create_sms_endpoints(EndpointList, []),
     API = create_sms(Call),
     send_and_wait(Strategy, API, Endpoints, Timeout).
-
 
 send(<<"single">>, _API, []) ->
     {'error', <<"no endpoints available">>};
@@ -136,6 +140,7 @@ send(<<"amqp">>, API, Endpoint, _Timeout) ->
     BrokerName = wh_json:get_value([<<"Endpoint-Options">>, <<"Broker-Name">>], Endpoint, <<"noname">>),
     FailOver = wh_json:get_value(<<"Failover">>, Endpoint),
     maybe_add_broker(Broker, Exchange, RouteId, ExchangeType, ExchangeOptions, BrokerName),
+
     Payload = props:set_values(Props, API),
     case send_amqp_sms(Payload, ?SMS_POOL(Exchange, RouteId, BrokerName)) of
         'ok' ->
@@ -194,22 +199,22 @@ send_amqp_sms(Payload, Pool) ->
         Else -> Else
     end.
 
--spec maybe_add_broker(binary(), binary(), binary(), binary(), binary(), binary()) -> 'ok'.
+-spec maybe_add_broker(api_binary(), api_binary(), api_binary(), ne_binary(), wh_proplist(), ne_binary()) -> 'ok'.
+-spec maybe_add_broker(api_binary(), api_binary(), api_binary(), ne_binary(), wh_proplist(), ne_binary(), api_pid()) -> 'ok'.
 maybe_add_broker(Broker, Exchange, RouteId, ExchangeType, ExchangeOptions, BrokerName) ->
     PoolPid = wh_amqp_sup:pool_pid(?SMS_POOL(Exchange, RouteId, BrokerName)),
     maybe_add_broker(Broker, Exchange, RouteId, ExchangeType, ExchangeOptions, BrokerName, PoolPid).
 
--spec maybe_add_broker(binary(), binary(), binary(), binary(), binary(), binary(), 'undefined' | pid()) -> 'ok'.
 maybe_add_broker(Broker, Exchange, RouteId, ExchangeType, ExchangeOptions, BrokerName, 'undefined') ->
     Exchanges = [{Exchange, ExchangeType, ExchangeOptions}],
     wh_amqp_sup:add_amqp_pool(?SMS_POOL(Exchange, RouteId, BrokerName), Broker, 5, 5, [], Exchanges, 'true'),
     'ok';
-maybe_add_broker(_Broker, _Exchange, _RouteId, _ExchangeType, _ExchangeOptions, _BrokerName, _) -> 'ok'.
+maybe_add_broker(_Broker, _Exchange, _RouteId, _ExchangeType, _ExchangeOptions, _BrokerName, _Pid) -> 'ok'.
 
 -spec create_sms(whapps_call:call()) -> wh_proplist().
 create_sms(Call) ->
     AccountId = whapps_call:account_id(Call),
-    AccountRealm =  whapps_call:to_realm(Call),
+    AccountRealm = whapps_call:to_realm(Call),
     CCVUpdates = props:filter_undefined(
                    [{<<"Ignore-Display-Updates">>, <<"true">>}
                     ,{<<"Account-ID">>, AccountId}
