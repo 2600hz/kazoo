@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% "data":{
 %%%   "id":"menu_id"
@@ -81,53 +81,64 @@ menu_loop(#cf_menu_data{retries=Retries}=Menu, Call) when Retries =< 0 ->
                 end,
             cf_exe:continue(Call)
     end;
-menu_loop(#cf_menu_data{retries=Retries
-                        ,max_length=MaxLength
+menu_loop(#cf_menu_data{max_length=MaxLength
                         ,timeout=Timeout
-                        ,record_pin=RecordPin
-                        ,record_from_offnet=RecOffnet
                         ,interdigit_timeout=Interdigit
                        }=Menu, Call) ->
     NoopId = whapps_call_command:play(get_prompt(Menu, Call), Call),
 
     case whapps_call_command:collect_digits(MaxLength, Timeout, Interdigit, NoopId, Call) of
         {'ok', <<>>} ->
-            lager:info("menu entry timeout"),
-            case try_match_digits(<<"timeout">>, Menu, Call) of
-                'true' -> lager:debug("timeout hunt callflow found");
-                'false' ->
-                    case cf_exe:attempt(<<"timeout">>, Call) of
-                        {'attempt_resp', 'ok'} -> 'ok';
-                        {'attempt_resp', {'error', _}} ->
-                            menu_loop(Menu#cf_menu_data{retries=Retries - 1}, Call)
-                    end
-            end;
+            menu_handle_no_digits(Menu, Call);
         {'ok', Digits} ->
-            %% this try_match_digits calls hunt_for_callflow() based on the digits dialed
-            %% if it finds a callflow, the main CFPid will move on to it and try_match_digits
-            %% will return true, matching here, and causing menu_loop to exit; this is
-            %% expected behaviour as CFPid has moved on from this invocation
-            AllowRecord = RecOffnet orelse whapps_call:inception(Call) =:= 'undefined',
-            case try_match_digits(Digits, Menu, Call) of
-                'true' -> lager:debug("hunt callflow found");
-                'false' when Digits =:= RecordPin, AllowRecord ->
-                    lager:info("selection matches recording pin"),
-                    case record_greeting(tmp_file(), Menu, Call) of
-                        {'ok', M} ->
-                            lager:info("returning caller to menu"),
-                            _ = whapps_call_command:b_prompt(<<"menu-return">>, Call),
-                            menu_loop(M, Call);
-                        {'error', _} ->
-                            cf_exe:stop(Call)
-                    end;
-                'false' ->
-                    lager:info("invalid selection ~w", [Digits]),
-                    _ = play_invalid_prompt(Menu, Call),
-                    menu_loop(Menu#cf_menu_data{retries=Retries - 1}, Call)
-            end;
+            menu_handle_digits(Menu, Call, Digits);
         {'error', _} ->
             lager:info("caller hungup while in the menu"),
             cf_exe:stop(Call)
+    end.
+
+menu_handle_digits(#cf_menu_data{retries=Retries
+                                 ,record_from_offnet=RecOffnet
+                                 ,record_pin=RecordPin
+                                }=Menu, Call, Digits) ->
+    %% this try_match_digits calls hunt_for_callflow() based on the digits dialed
+    %% if it finds a callflow, the main CFPid will move on to it and try_match_digits
+    %% will return true, matching here, and causing menu_loop to exit; this is
+    %% expected behaviour as CFPid has moved on from this invocation
+    AllowRecord = (RecOffnet orelse whapps_call:inception(Call) =:= 'undefined'),
+    case try_match_digits(Digits, Menu, Call) of
+        'true' -> lager:debug("hunt callflow found");
+        'false' when Digits =:= RecordPin, AllowRecord ->
+            menu_handle_record(Menu, Call);
+        'false' ->
+            lager:info("invalid selection ~w", [Digits]),
+            _ = play_invalid_prompt(Menu, Call),
+            menu_loop(Menu#cf_menu_data{retries=Retries - 1}, Call)
+    end.
+
+-spec menu_handle_record(menu(), whapps_call:call()) -> 'ok'.
+menu_handle_record(Menu, Call) ->
+    lager:info("selection matches recording pin"),
+    case record_greeting(tmp_file(), Menu, Call) of
+        {'ok', M} ->
+            lager:info("returning caller to menu"),
+            _ = whapps_call_command:b_prompt(<<"menu-return">>, Call),
+            menu_loop(M, Call);
+        {'error', _} ->
+            cf_exe:stop(Call)
+    end.
+
+-spec menu_handle_no_digits(menu(), whapps_call:call()) -> 'ok'.
+menu_handle_no_digits(#cf_menu_data{retries=Retries}=Menu, Call) ->
+    lager:info("menu entry timeout"),
+    case try_match_digits(<<"timeout">>, Menu, Call) of
+        'true' -> lager:debug("timeout hunt callflow found");
+        'false' ->
+            case cf_exe:attempt(<<"timeout">>, Call) of
+                {'attempt_resp', 'ok'} -> 'ok';
+                {'attempt_resp', {'error', _}} ->
+                    menu_loop(Menu#cf_menu_data{retries=Retries - 1}, Call)
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -373,7 +384,7 @@ store_recording(AttachmentName, MediaId, Call) ->
 -spec get_new_attachment_url(binary(), binary(), whapps_call:call()) -> ne_binary().
 get_new_attachment_url(AttachmentName, MediaId, Call) ->
     AccountDb = whapps_call:account_db(Call),
-    _ = case couch_mgr:open_doc(AccountDb, MediaId) of
+    _ = case couch_mgr:open_cache_doc(AccountDb, MediaId) of
             {'ok', JObj} ->
                 maybe_delete_attachments(AccountDb, MediaId, JObj);
             {'error', _} -> 'ok'
@@ -381,6 +392,7 @@ get_new_attachment_url(AttachmentName, MediaId, Call) ->
     {'ok', URL} = wh_media_url:store(AccountDb, MediaId, AttachmentName),
     URL.
 
+-spec maybe_delete_attachments(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 maybe_delete_attachments(AccountDb, _MediaId, JObj) ->
     case wh_doc:maybe_remove_attachments(JObj) of
         {'false', _} -> 'ok';
