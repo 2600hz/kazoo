@@ -111,6 +111,7 @@
 -export([new_exchange/2, new_exchange/3]).
 -export([declare_exchange/2, declare_exchange/3]).
 -export([confirm_select/0]).
+-export([flow_control/0, flow_control/1, flow_control_reply/1]). 
 
 -export([access_request/0, access_request/1, basic_ack/1, basic_nack/1, basic_qos/1]).
 
@@ -920,6 +921,20 @@ basic_cancel(ConsumerTag) -> wh_amqp_channel:command(#'basic.cancel'{consumer_ta
 %%------------------------------------------------------------------------------
 -spec confirm_select() -> 'ok'.
 confirm_select() -> wh_amqp_channel:command(#'confirm.select'{}).
+
+%%------------------------------------------------------------------------------
+%% @public
+%% @doc
+%% This method sets flow control
+%% @end
+%%------------------------------------------------------------------------------
+-spec flow_control() -> 'ok'.
+-spec flow_control(boolean()) -> 'ok'.
+flow_control() -> flow_control('true').
+flow_control(Active) -> wh_amqp_channel:command(#'channel.flow'{active=Active}).
+
+-spec flow_control_reply(boolean()) -> 'ok'.
+flow_control_reply(Active) -> wh_amqp_channel:command(#'channel.flow_ok'{active=Active}).
 
 %%------------------------------------------------------------------------------
 %% @public

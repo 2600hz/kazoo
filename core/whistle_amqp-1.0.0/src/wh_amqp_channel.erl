@@ -182,6 +182,8 @@ command(Command) ->
     command(wh_amqp_assignments:get_channel(), Command).
 
 -spec command(wh_amqp_assignment(), wh_amqp_command()) -> command_ret().
+command(#wh_amqp_assignment{channel=Pid}, #'channel.flow_ok'{}=FlowCtl) ->
+    amqp_channel:cast(Pid, FlowCtl);
 command(#wh_amqp_assignment{channel=Pid}, #'basic.ack'{}=BasicAck) ->
     amqp_channel:cast(Pid, BasicAck);
 command(#wh_amqp_assignment{channel=Channel}=Assignment, #'confirm.select'{}=Command) ->
@@ -325,7 +327,15 @@ handle_command_result(#'confirm.select_ok'{}
                                           }=Assignment) ->
     lager:debug("publisher confirms activated on channel ~p", [Channel]),
     Consumer ! {'$server_confirms', 'true'},
-    amqp_channel:register_confirm_handler(Channel, Consumer),
+    _ = wh_amqp_history:add_command(Assignment, Command),
+    'ok';
+handle_command_result(#'channel.flow_ok'{active=Active}
+                      ,Command
+                      ,#wh_amqp_assignment{channel=Channel
+                                           ,consumer=Consumer
+                                          }=Assignment) ->
+    lager:debug("channel flow ~p on channel ~p", [Active, Channel]),
+    Consumer ! {'$channel_flow', Active},
     _ = wh_amqp_history:add_command(Assignment, Command),
     'ok';
 handle_command_result('ok', Command, #wh_amqp_assignment{channel=Channel}=Assignment) ->

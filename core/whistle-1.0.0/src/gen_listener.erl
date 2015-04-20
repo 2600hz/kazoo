@@ -614,6 +614,11 @@ handle_info(#'basic.ack'{}=Ack, #state{}=State) ->
 handle_info(#'basic.nack'{}=Nack, #state{}=State) ->
     lager:debug("recv a basic.nack ~p", [Nack]),
     handle_confirm(Nack, State);
+handle_info(#'channel.flow'{active=Active}, State) ->
+    lager:debug("received channel flow (~s)", [Active]),
+    amqp_util:flow_control_reply(Active),
+    gen_server:cast(self(), {'gen_listener',{'channel_flow_control', Active}}),
+    {'noreply', State};
 handle_info('$is_gen_listener_consuming'
             ,#state{is_consuming='false'
                     ,bindings=ExistingBindings
@@ -629,6 +634,9 @@ handle_info('$is_gen_listener_consuming', State) ->
     {'noreply', State};
 handle_info({'$server_confirms', ServerConfirms}, State) ->
     gen_server:cast(self(), {'gen_listener',{'server_confirms',ServerConfirms}}),
+    {'noreply', State};
+handle_info({'$channel_flow', Active}, State) ->
+    gen_server:cast(self(), {'gen_listener',{'channel_flow', Active}}),
     {'noreply', State};
 handle_info(?CALLBACK_TIMEOUT_MSG, State) ->
     handle_callback_info('timeout', State);
@@ -1101,6 +1109,7 @@ handle_amqp_started(#state{params=Params}=State, Q) ->
     State1 = start_initial_bindings(State#state{queue=Q}, Params),
     gen_server:cast(self(), {'gen_listener', {'created_queue', Q}}),
     maybe_server_confirms(props:get_value('server_confirms', Params, 'false')),
+    maybe_channel_flow(props:get_value('channel_flow', Params, 'false')),
     erlang:send_after(?TIMEOUT_RETRY_CONN, self(), '$is_gen_listener_consuming'),
     State1#state{is_consuming='false'}.
 
@@ -1126,6 +1135,11 @@ handle_exchanges_failed(#state{params=Params}=State) ->
 maybe_server_confirms('true') ->
     amqp_util:confirm_select();
 maybe_server_confirms(_) -> 'ok'.
+
+-spec maybe_channel_flow(boolean()) -> 'ok'.
+maybe_channel_flow('true') ->
+    amqp_util:flow_control();
+maybe_channel_flow(_) -> 'ok'.
 
 -spec maybe_declare_exchanges(wh_proplist()) ->
                                      command_ret().

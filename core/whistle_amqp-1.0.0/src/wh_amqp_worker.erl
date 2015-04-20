@@ -96,6 +96,7 @@
                 ,defer_response :: api_object()
                 ,queue :: api_binary()
                 ,confirms = 'false' :: boolean()
+                ,flow = 'undefined' :: boolean() | 'undefined'
                }).
 
 %%%===================================================================
@@ -445,8 +446,11 @@ init([Args]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({'request', ReqProp, _, _, _}, _, #state{queue='undefined'}=State) ->
-    lager:debug("unable to publish request prior to queue creation: ~p", [ReqProp]),
+handle_call({'request', _ReqProp, _, _, _}, _, #state{flow='false'}=State) ->
+    lager:debug("flow control is active and server put us in waiting"),
+    {'reply', {'error', 'flow_control'}, reset(State)};
+handle_call({'request', _ReqProp, _, _, _}, _, #state{queue='undefined'}=State) ->
+    lager:debug("unable to publish request prior to queue creation"),
     {'reply', {'error', 'timeout'}, reset(State)};
 handle_call({'request', ReqProp, PublishFun, VFun, Timeout}
             ,{ClientPid, _}=From
@@ -482,8 +486,11 @@ handle_call({'request', ReqProp, PublishFun, VFun, Timeout}
             lager:debug("failed to send request: ~p", [Err]),
             {'reply', {'error', Err}, reset(State), 'hibernate'}
     end;
-handle_call({'call_collect', ReqProp, _, _, _}, _, #state{queue='undefined'}=State) ->
-    lager:debug("unable to publish collect request prior to queue creation: ~p", [ReqProp]),
+handle_call({'call_collect', _ReqProp, _, _, _}, _, #state{flow='false'}=State) ->
+    lager:debug("flow control is active and server put us in waiting"),
+    {'reply', {'error', 'flow_control'}, reset(State)};
+handle_call({'call_collect', _ReqProp, _, _, _}, _, #state{queue='undefined'}=State) ->
+    lager:debug("unable to publish collect request prior to queue creation"),
     {'reply', {'error', 'timeout'}, reset(State)};
 handle_call({'call_collect', ReqProp, PublishFun, UntilFun, Timeout}
             ,{ClientPid, _}=From
@@ -519,8 +526,11 @@ handle_call({'call_collect', ReqProp, PublishFun, UntilFun, Timeout}
             lager:debug("failed to send request: ~p", [Err]),
             {'reply', {'error', Err}, reset(State), 'hibernate'}
     end;
-handle_call({'publish', ReqProp, _}, _From, #state{queue='undefined'}=State) ->
-    lager:debug("unable to publish message prior to queue creation: ~p", [ReqProp]),
+handle_call({'publish', _ReqProp, _, _, _}, _, #state{flow='false'}=State) ->
+    lager:debug("flow control is active and server put us in waiting"),
+    {'reply', {'error', 'flow_control'}, reset(State)};
+handle_call({'publish', _ReqProp, _}, _From, #state{queue='undefined'}=State) ->
+    lager:debug("unable to publish message prior to queue creation"),
     {'reply', {'error', 'not_ready'}, reset(State), 'hibernate'};
 handle_call({'publish', ReqProp, PublishFun}, {Pid, _}=From, #state{confirms=C}=State) ->
     try PublishFun(ReqProp) of
@@ -663,6 +673,15 @@ handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
 handle_cast({'gen_listener',{'server_confirms',ServerConfirms}}, State) ->
     lager:debug("Server confirms status : ~p", [ServerConfirms]),
     {'noreply', State#state{confirms=ServerConfirms}};
+handle_cast({'gen_listener',{'channel_flow', 'true'}}, State) ->
+    lager:debug("channel flow enabled"),
+    {'noreply', State#state{flow='true'}};
+handle_cast({'gen_listener',{'channel_flow', 'false'}}, State) ->
+    lager:debug("channel flow disabled"),
+    {'noreply', State#state{flow='undefined'}};
+handle_cast({'gen_listener',{'channel_flow_control', Active}}, State) ->
+    lager:debug("channel flow is ~p", [Active]),
+    {'noreply', State#state{flow=Active}};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State, 'hibernate'}.

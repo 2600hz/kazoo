@@ -420,8 +420,7 @@ move_channel_to_consumer(#wh_amqp_assignment{timestamp=Timestamp
     lager:debug("assigned existing consumer ~p an available channel ~p on ~s"
                 ,[Consumer, Channel, Broker]),
 
-    amqp_channel:register_return_handler(Channel, Consumer),
-    lager:debug("registered return handler for channel ~p to ~p", [Channel, Consumer]),
+    register_channel_handlers(Channel, Consumer),
 
     _ = maybe_reconnect(Assignment),
     send_notifications(Assignment).
@@ -451,8 +450,7 @@ add_consumer_to_channel(#wh_amqp_assignment{channel=Channel
     lager:debug("assigned existing channel ~p on ~s to new consumer ~p"
                 ,[Channel, _Broker, Consumer]),
 
-    amqp_channel:register_return_handler(Channel, Consumer),
-    lager:debug("registered return handler for channel ~p to ~p", [Channel, Consumer]),
+    register_channel_handlers(Channel, Consumer),
 
     send_notifications(Assignment).
 
@@ -566,7 +564,7 @@ assign_channel(#wh_amqp_assignment{timestamp=Timestamp
                                                  }),
     lager:debug("assigned consumer ~p new channel ~p on ~s after ~pus"
                 ,[Consumer, Channel, Broker, wh_util:elapsed_us(Timestamp)]),
-    amqp_channel:register_return_handler(Channel, Consumer),
+    register_channel_handlers(Channel, Consumer),
     _ = maybe_reconnect(Assigment),
     _ = send_notifications(Assigment),
     'true'.
@@ -837,3 +835,11 @@ log_short_lived(#wh_amqp_assignment{assigned=Timestamp}=Assignment) ->
             lager:warning("short lived assignment (~ps): ~p"
                           ,[Duration, Assignment])
     end.
+
+-spec register_channel_handlers(pid(), pid()) -> 'ok'.
+register_channel_handlers(Channel, Consumer) ->
+    amqp_channel:register_return_handler(Channel, Consumer),
+    amqp_channel:register_confirm_handler(Channel, Consumer),
+    amqp_channel:register_flow_handler(Channel, Consumer),
+    lager:debug("registered handlers for channel ~p to ~p", [Channel, Consumer]).
+
