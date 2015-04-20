@@ -99,7 +99,6 @@ send(<<"single">>, API, [Endpoint | Others]) ->
 send(Strategy, _API, _Endpoints) ->
     lager:debug("Strategy ~s not implemented", [Strategy]).
 
-
 send_and_wait(<<"single">>, _API, [], _Timeout) ->
     {'error', <<"no endpoints available">>};
 send_and_wait(<<"single">>, API, [Endpoint| Others], Timeout) ->
@@ -155,7 +154,7 @@ send(<<"amqp">>, API, Endpoint, _Timeout) ->
         {'error', {'timeout', _Reason}} when FailOver =:= 'undefined' ->
             DeliveryProps = props:filter_undefined(
                               [{<<"Delivery-Result-Code">>, <<"sip:500">> }
-                               ,{<<"Delivery-Failure">>, true}
+                               ,{<<"Delivery-Failure">>, 'true'}
                                ,{<<"Error-Code">>, 500}
                                ,{<<"Error-Message">>, <<"timeout">>}
                                ,{<<"Status">>, <<"Failed">>}
@@ -167,7 +166,7 @@ send(<<"amqp">>, API, Endpoint, _Timeout) ->
         {'error', Reason} when FailOver =:= 'undefined' ->
             DeliveryProps = props:filter_undefined(
                               [{<<"Delivery-Result-Code">>, <<"sip:500">> }
-                               ,{<<"Delivery-Failure">>, true}
+                               ,{<<"Delivery-Failure">>, 'true'}
                                ,{<<"Error-Code">>, 500}
                                ,{<<"Error-Message">>, wh_util:to_binary(Reason)}
                                ,{<<"Status">>, <<"Failed">>}
