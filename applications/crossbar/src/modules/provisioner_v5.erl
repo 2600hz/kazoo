@@ -316,62 +316,70 @@ settings_feature_keys(JObj) ->
     Family = get_family(JObj),
     AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
     wh_json:foldl(
-        fun(Key, Value, Acc) ->
-            Type = wh_json:get_binary_value(<<"type">>, Value),
-            V = wh_json:get_binary_value(<<"value">>, Value),
-            FeatureKey = get_feature_key(Type, V, Brand, Family, AccountId),
-            maybe_add_feature_key(Key, FeatureKey, Acc)
-        end
-        ,wh_json:new()
-        ,FeatureKeys
-    ).
+      fun(Key, Value, Acc) ->
+              Type = wh_json:get_binary_value(<<"type">>, Value),
+              V = wh_json:get_binary_value(<<"value">>, Value),
+              FeatureKey = get_feature_key(Type, V, Brand, Family, AccountId),
+              maybe_add_feature_key(Key, FeatureKey, Acc)
+      end
+      ,wh_json:new()
+      ,FeatureKeys
+     ).
 
--spec get_feature_key(ne_binary(), wh_json:object(), api_binary(), binary(), binary()) -> wh_json:object().
+-spec get_feature_key(ne_binary(), ne_binary(), wh_json:object(), wh_json:object(), ne_binary()) ->
+                             api_object().
 get_feature_key(<<"presence">> = Type, Value, Brand, Family, AccountId) ->
     {'ok', UserJObj} = get_user(AccountId, Value),
-    First = wh_json:get_value(<<"first_name">>, UserJObj),
-    Last = wh_json:get_value(<<"last_name">>, UserJObj),
     case wh_json:get_value(<<"presence_id">>, UserJObj) of
         'undefined' -> 'undefined';
         Presence ->
-            wh_json:from_list([
-                {<<"label">>, <<First/binary, " ", Last/binary>>}
-                ,{<<"value">>, Presence}
-                ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
-            ])
+            First = wh_json:get_value(<<"first_name">>, UserJObj),
+            Last = wh_json:get_value(<<"last_name">>, UserJObj),
+
+            wh_json:from_list(
+              [{<<"label">>, <<First/binary, " ", Last/binary>>}
+               ,{<<"value">>, Presence}
+               ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
+              ])
     end;
 get_feature_key(<<"speed_dial">> = Type, Value, Brand, Family, _AccountId) ->
-    wh_json:from_list([
-        {<<"label">>, Value}
-        ,{<<"value">>, Value}
-        ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
-    ]);
+    wh_json:from_list(
+      [{<<"label">>, Value}
+       ,{<<"value">>, Value}
+       ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
+      ]);
 get_feature_key(<<"personal_parking">> = Type, Value, Brand, Family, AccountId) ->
     {'ok', UserJObj} = get_user(AccountId, Value),
-    First = wh_json:get_value(<<"first_name">>, UserJObj),
-    Last = wh_json:get_value(<<"last_name">>, UserJObj),
     Presence = wh_json:get_value(<<"presence_id">>, UserJObj),
     case wh_json:get_value(<<"presence_id">>, UserJObj) of
         'undefined' -> 'undefined';
         Presence ->
-            wh_json:from_list([
-                {<<"label">>, <<"Park ", First/binary, " ", Last/binary>>}
-                ,{<<"value">>, <<"*3", Presence/binary>>}
-                ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
-            ])
+            First = wh_json:get_value(<<"first_name">>, UserJObj),
+            Last = wh_json:get_value(<<"last_name">>, UserJObj),
+
+            wh_json:from_list(
+              [{<<"label">>, <<"Park ", First/binary, " ", Last/binary>>}
+               ,{<<"value">>, <<"*3", Presence/binary>>}
+               ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
+              ])
     end;
 get_feature_key(<<"parking">> = Type, Value, Brand, Family, _AccountId) ->
-    wh_json:from_list([
-        {<<"label">>, <<"Park ", Value/binary>>}
-        ,{<<"value">>, <<"*3", Value/binary>>}
-        ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
-    ]).
+    wh_json:from_list(
+      [{<<"label">>, <<"Park ", Value/binary>>}
+       ,{<<"value">>, <<"*3", Value/binary>>}
+       ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
+      ]).
 
--spec get_feature_key_type(ne_binary(), ne_binary(), ne_binary()) -> wh_json:object().
+-spec get_feature_key_type(ne_binary(), wh_json:object(), wh_json:object()) -> api_object().
 get_feature_key_type(Type, Brand, Family) ->
-    wh_json:get_first_defined([[Brand, Family, Type], [Brand, <<"_">>, Type]], ?FEATURE_KEYS).
+    wh_json:get_first_defined([[Brand, Family, Type]
+                               ,[Brand, <<"_">>, Type]
+                              ]
+                              ,?FEATURE_KEYS
+                             ).
 
--spec get_user(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} | {'error', any()}.
+-spec get_user(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} |
+                                            {'error', _}.
 get_user(AccountId, UserId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     couch_mgr:open_doc(AccountDb, UserId).
@@ -380,10 +388,10 @@ get_user(AccountId, UserId) ->
 maybe_add_feature_key(_, 'undefined', JObj) -> JObj;
 maybe_add_feature_key(Key, FeatureKey, JObj) ->
     wh_json:set_value(
-        Key
-        ,wh_json:from_list([{<<"key">>, FeatureKey}])
-        ,JObj
-    ).
+      Key
+      ,wh_json:from_list([{<<"key">>, FeatureKey}])
+      ,JObj
+     ).
 
 -spec settings_time(wh_json:object()) -> wh_json:object().
 settings_time(JObj) ->
