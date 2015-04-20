@@ -326,7 +326,7 @@ settings_feature_keys(JObj) ->
       ,FeatureKeys
      ).
 
--spec get_feature_key(ne_binary(), ne_binary(), wh_json:object(), wh_json:object(), ne_binary()) ->
+-spec get_feature_key(ne_binary(), ne_binary(), binary(), binary(), ne_binary()) ->
                              api_object().
 get_feature_key(<<"presence">> = Type, Value, Brand, Family, AccountId) ->
     {'ok', UserJObj} = get_user(AccountId, Value),
@@ -370,7 +370,7 @@ get_feature_key(<<"parking">> = Type, Value, Brand, Family, _AccountId) ->
        ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
       ]).
 
--spec get_feature_key_type(ne_binary(), wh_json:object(), wh_json:object()) -> api_object().
+-spec get_feature_key_type(ne_binary(), binary(), binary()) -> api_object().
 get_feature_key_type(Type, Brand, Family) ->
     wh_json:get_first_defined([[Brand, Family, Type]
                                ,[Brand, <<"_">>, Type]
@@ -382,10 +382,10 @@ get_feature_key_type(Type, Brand, Family) ->
                                             {'error', _}.
 get_user(AccountId, UserId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    couch_mgr:open_doc(AccountDb, UserId).
+    couch_mgr:open_cache_doc(AccountDb, UserId).
 
 -spec maybe_add_feature_key(ne_binary(), api_object(), wh_json:object()) -> wh_json:object().
-maybe_add_feature_key(_, 'undefined', JObj) -> JObj;
+maybe_add_feature_key(_Key, 'undefined', JObj) -> JObj;
 maybe_add_feature_key(Key, FeatureKey, JObj) ->
     wh_json:set_value(
       Key
