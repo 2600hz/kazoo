@@ -1211,6 +1211,13 @@ load_phone_number_doc(Account, 'false') ->
 -spec update_service_plans(wnm_number()) -> wnm_number().
 update_service_plans(#number{billing_id='undefined'
                              ,assigned_to='undefined'
+                             ,prev_assigned_to='undefined'
+                             ,number=Number
+                            }=N) ->
+    lager:error("failed to update services_plan for ~p account is undefined", [Number]),
+    N;
+update_service_plans(#number{billing_id='undefined'
+                             ,assigned_to='undefined'
                              ,prev_assigned_to=Account
                             }=N) ->
     update_service_plans(N#number{billing_id=wh_services:get_billing_id(Account)});
