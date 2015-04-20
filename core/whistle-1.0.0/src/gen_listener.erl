@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz
+%%% @copyright (C) 2011-2015, 2600Hz
 %%% @doc
 %%%
 %%% Behaviour for setting up an AMQP listener.
@@ -1077,50 +1077,66 @@ handle_amqp_channel_available(#state{params=Params}=State) ->
     lager:debug("channel started, let's connect"),
     case maybe_declare_exchanges(props:get_value('declare_exchanges', Params, [])) of
         'ok' ->
-            case start_amqp(Params) of
-                {'ok', Q} ->
-                    State1 = start_initial_bindings(State#state{queue=Q}, Params),
-                    gen_server:cast(self(), {'gen_listener', {'created_queue', Q}}),
-                    maybe_server_confirms(props:get_value('server_confirms', Params, 'false')),
-                    erlang:send_after(?TIMEOUT_RETRY_CONN, self(), '$is_gen_listener_consuming'),
-                    State1#state{is_consuming='false'};
-                {'error', Reason} ->
-                    lager:error("start amqp error ~p", [Reason]),
-                    #wh_amqp_assignment{channel=Channel} = wh_amqp_assignments:get_channel(),
-                    _ = (catch wh_amqp_channel:release()),
-                    wh_amqp_channel:close(Channel),
-                    timer:sleep(?SERVER_RETRY_PERIOD),
-                    _ = channel_requisition(Params),
-                    State#state{is_consuming='false'}
-            end;
+            handle_exchanges_ready(State);
         {'error', _E} ->
             lager:debug("error declaring exchanges : ~p", [_E]),
-            #wh_amqp_assignment{channel=Channel} = wh_amqp_assignments:get_channel(),
-            _ = (catch wh_amqp_channel:release()),
-            wh_amqp_channel:close(Channel),
-            timer:sleep(?SERVER_RETRY_PERIOD),
-            _ = channel_requisition(Params),
-            State#state{is_consuming='false'}
+            handle_exchanges_failed(State)
     end.
-            
+
+-spec handle_exchanges_ready(state()) -> state().
+handle_exchanges_ready(#state{params=Params}=State) ->
+    case start_amqp(Params) of
+        {'ok', Q} ->
+            handle_amqp_started(State, Q);
+        {'error', Reason} ->
+            lager:error("start amqp error ~p", [Reason]),
+            handle_amqp_errored(State)
+    end.
+
+-spec handle_amqp_started(state(), ne_binary()) -> state().
+handle_amqp_started(#state{params=Params}=State, Q) ->
+    State1 = start_initial_bindings(State#state{queue=Q}, Params),
+    gen_server:cast(self(), {'gen_listener', {'created_queue', Q}}),
+    maybe_server_confirms(props:get_value('server_confirms', Params, 'false')),
+    erlang:send_after(?TIMEOUT_RETRY_CONN, self(), '$is_gen_listener_consuming'),
+    State1#state{is_consuming='false'}.
+
+-spec handle_amqp_errored(state()) -> state().
+handle_amqp_errored(#state{params=Params}=State) ->
+    #wh_amqp_assignment{channel=Channel} = wh_amqp_assignments:get_channel(),
+    _ = (catch wh_amqp_channel:release()),
+    wh_amqp_channel:close(Channel),
+    timer:sleep(?SERVER_RETRY_PERIOD),
+    _ = channel_requisition(Params),
+    State#state{is_consuming='false'}.
+
+-spec handle_exchanges_failed(state()) -> state().
+handle_exchanges_failed(#state{params=Params}=State) ->
+    #wh_amqp_assignment{channel=Channel} = wh_amqp_assignments:get_channel(),
+    _ = (catch wh_amqp_channel:release()),
+    wh_amqp_channel:close(Channel),
+    timer:sleep(?SERVER_RETRY_PERIOD),
+    _ = channel_requisition(Params),
+    State#state{is_consuming='false'}.
 
 -spec maybe_server_confirms(boolean()) -> 'ok'.
 maybe_server_confirms('true') ->
     amqp_util:confirm_select();
 maybe_server_confirms(_) -> 'ok'.
 
--spec maybe_declare_exchanges(wh_proplist()) -> 'ok'.
+-spec maybe_declare_exchanges(wh_proplist()) ->
+                                     command_ret().
+-spec maybe_declare_exchanges(wh_amqp_assignment(), wh_proplist()) ->
+                                     command_ret().
 maybe_declare_exchanges([]) -> 'ok';
 maybe_declare_exchanges(Exchanges) ->
     maybe_declare_exchanges(wh_amqp_assignments:get_channel(), Exchanges).
 
--spec maybe_declare_exchanges(wh_amqp_assignment(), wh_proplist()) -> 'ok'.
 maybe_declare_exchanges(_Channel, []) -> 'ok';
-maybe_declare_exchanges(Channel, [Exchange | Exchanges]) ->
-    case Exchange of
-        {Ex, Type, Opts} -> declare_exchange(Channel, amqp_util:declare_exchange(Ex, Type, Opts), Exchanges);
-        {Ex, Type} -> declare_exchange(Channel, amqp_util:declare_exchange(Ex, Type), Exchanges)
-    end.
+maybe_declare_exchanges(Channel, [{Ex, Type, Opts} | Exchanges]) ->
+    declare_exchange(Channel, amqp_util:declare_exchange(Ex, Type, Opts), Exchanges);
+maybe_declare_exchanges(Channel, [{Ex, Type} | Exchanges]) ->
+    declare_exchange(Channel, amqp_util:declare_exchange(Ex, Type), Exchanges).
 
 -spec declare_exchange(wh_amqp_assignment(), wh_amqp_exchange(), wh_proplist()) -> command_ret().
 declare_exchange(Channel, Exchange, Exchanges) ->
@@ -1165,7 +1181,6 @@ maybe_add_broker_connection(Broker, Count) when Count =:= 0 ->
     wh_amqp_channel:requisition(self(), Broker);
 maybe_add_broker_connection(Broker, _Count) ->
     wh_amqp_channel:requisition(self(), Broker).
-
 
 -spec start_listener(pid(), wh_proplist()) -> 'ok'.
 start_listener(Srv, Params) ->
