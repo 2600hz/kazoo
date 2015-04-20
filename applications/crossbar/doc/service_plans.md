@@ -177,6 +177,31 @@ Useful for resellers.
 }
 ```
 
+### Adding service plan to an account.
+
+Useful for resellers.
+
+#### Request
+
+- Verb: `POST`
+- Url: `/v2/accounts/{{ACCOUNT_ID}}/service_plans/{{SERVICE_PLAN_ID}}`
+- Payload: {"data":{"id":"service_plan_id"}}
+
+`curl -X POST -H "X-Auth-Token:{AUTH_TOKEN}"  http://{SERVER_IP}/v2/accounts/{{ACCOUNT_ID}}/service_plans/{{SERVICE_PLAN_ID}} -d '{"data":{"id":"service_plan_id"}}'`
+
+### Removing service plan from an account.
+
+Useful for resellers.
+
+#### Request
+
+- Verb: `DELETE`
+- Url: `/v2/accounts/{{ACCOUNT_ID}}/service_plans/{{SERVICE_PLAN_ID}}`
+- Payload: None
+
+`curl -X DELETE -H "X-Auth-Token:{AUTH_TOKEN}"  http://{SERVER_IP}/v2/accounts/{{ACCOUNT_ID}}/service_plans/{{SERVICE_PLAN_ID}}`
+
+
 ### Retreiving your current plan
 
 This will retreive the service plan currenlty applied on your account.
