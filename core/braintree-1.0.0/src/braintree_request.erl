@@ -185,7 +185,7 @@ verify_response(Xml) ->
         _ -> error_response(Xml)
     end.
 
--spec error_response(bt_xml()) -> bt_xml().
+-spec error_response(bt_xml()) -> no_return().
 error_response(Xml) ->
     lager:debug("braintree api error response"),
     Errors = [#bt_error{code = wh_util:get_xml_value("/error/code/text()", Error)
