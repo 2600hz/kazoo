@@ -352,9 +352,9 @@ load_view(#load_view_params{view=View
     case couch_mgr:get_results(Db, View, ViewOptions) of
         % There were more dbs, so move to the next one
         {'error', 'not_found'} ->
-            lager:debug("results not_found for Db '~s', moving on to the next Dbs", [Db]),
+            lager:debug("either the db ~s or view ~s was not found", [Db, View]),
             load_view(LVPs#load_view_params{dbs=Dbs});
-        {'error', Error} -> 
+        {'error', Error} ->
             handle_couch_mgr_errors(Error, View, Context);
         {'ok', JObjs} ->
             lager:debug("paginating view '~s' from '~s', starting at '~p'", [View, Db, StartKey]),
@@ -363,7 +363,8 @@ load_view(#load_view_params{view=View
                                                 ,cb_context:api_version(Context)
                                                 ,LVPs#load_view_params{dbs=Dbs
                                                                        ,context=cb_context:set_resp_status(Context, 'success')
-                                                                      })
+                                                                      }
+                                               )
     end.
 
 -spec limit_by_page_size(api_binary() | pos_integer()) ->
