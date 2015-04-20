@@ -315,13 +315,11 @@ patch(Context, _Id) ->
 %%--------------------------------------------------------------------
 -spec get_channels(cb_context:context()) -> cb_context:context().
 get_channels(Context) ->
-    Realm = crossbar_util:get_account_realm(cb_context:account_id(Context)),
+    Realm = wh_util:get_account_realm(cb_context:account_id(Context)),
     Usernames = [Username
                  || JObj <- cb_context:doc(Context),
-                    (Username = wh_json:get_value([<<"doc">>
-                                                   ,<<"sip">>
-                                                   ,<<"username">>
-                                                  ], JObj))
+                    (Username = kz_device:sip_username(
+                                  wh_json:get_value(<<"doc">>, JObj)))
                         =/= 'undefined'
                 ],
     Req = [{<<"Realm">>, Realm}

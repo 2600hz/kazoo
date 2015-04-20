@@ -561,7 +561,7 @@ maybe_publish_check_sync(LineData, AccountId) ->
      ).
 
 maybe_publish_check_sync('undefined', Username, AccountId) ->
-    Realm = crossbar_util:get_account_realm(AccountId),
+    Realm = wh_util:get_account_realm(AccountId),
     lager:debug("using account realm ~s", [Realm]),
     maybe_publish_check_sync(Realm, Username, AccountId);
 maybe_publish_check_sync(_Realm, 'undefined', _) ->

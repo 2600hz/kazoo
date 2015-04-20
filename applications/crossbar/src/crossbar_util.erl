@@ -37,9 +37,6 @@
          ,response_auth/2
          ,response_auth/3
         ]).
--export([get_account_realm/1
-         ,get_account_realm/2
-        ]).
 -export([flush_registrations/1
          ,flush_registration/2
         ]).
@@ -326,32 +323,6 @@ response_db_missing(Context) ->
 response_db_fatal(Context) ->
     response('fatal', <<"datastore fatal error">>, 503, Context).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Retrieves the account realm
-%% @end
-%%--------------------------------------------------------------------
--spec get_account_realm(ne_binary() | cb_context:context()) -> api_binary().
--spec get_account_realm(api_binary(), ne_binary()) -> api_binary().
-
-get_account_realm(AccountId) when is_binary(AccountId) ->
-    get_account_realm(wh_util:format_account_id(AccountId, 'encoded'), AccountId);
-get_account_realm(Context) ->
-    Db = cb_context:account_db(Context),
-    AccountId = cb_context:account_id(Context),
-    get_account_realm(Db, AccountId).
-
-get_account_realm('undefined', _) -> 'undefined';
-get_account_realm(Db, AccountId) ->
-    case couch_mgr:open_cache_doc(Db, AccountId) of
-        {'ok', JObj} ->
-            kz_account:realm(JObj);
-        {'error', R} ->
-            lager:debug("error while looking up account realm: ~p", [R]),
-            'undefined'
-    end.
-
 -spec flush_registrations(ne_binary() | cb_context:context()) -> 'ok'.
 flush_registrations(<<_/binary>> = Realm) ->
     FlushCmd = [{<<"Realm">>, Realm}
@@ -359,7 +330,7 @@ flush_registrations(<<_/binary>> = Realm) ->
                ],
     whapps_util:amqp_pool_send(FlushCmd, fun wapi_registration:publish_flush/1);
 flush_registrations(Context) ->
-    flush_registrations(crossbar_util:get_account_realm(Context)).
+    flush_registrations(wh_util:get_account_realm(cb_context:account_id(Context))).
 
 -spec flush_registration(api_binary(), ne_binary() | cb_context:context()) -> 'ok'.
 flush_registration('undefined', _Realm) -> 'ok';
@@ -370,7 +341,8 @@ flush_registration(Username, <<_/binary>> = Realm) ->
                ],
     whapps_util:amqp_pool_send(FlushCmd, fun wapi_registration:publish_flush/1);
 flush_registration(Username, Context) ->
-    flush_registration(Username, get_account_realm(Context)).
+    Realm = wh_util:get_account_realm(cb_context:account_id(Context)),
+    flush_registration(Username, Realm).
 
 %%--------------------------------------------------------------------
 %% @public

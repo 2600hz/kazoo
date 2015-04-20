@@ -341,7 +341,7 @@ do_simple_provision(MACAddress, Context) ->
     case whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_url">>) of
         'undefined' -> 'false';
         Url ->
-            AccountRealm = crossbar_util:get_account_realm(Context),
+            AccountRealm = wh_util:get_account_realm(cb_context:account_id(Context)),
             Headers = props:filter_undefined(
                         [{"Host", whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_host">>)}
                          ,{"Referer", whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_referer">>)}

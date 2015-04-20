@@ -243,7 +243,7 @@ post(Context, DeviceId) ->
 post(Context, DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
     lager:debug("publishing check_sync for ~s", [DeviceId]),
 
-    Req = [{<<"Realm">>, crossbar_util:get_account_realm(Context)}
+    Req = [{<<"Realm">>, wh_util:get_account_realm(cb_context:account_id(Context))}
            ,{<<"Username">>, kz_device:sip_username(cb_context:doc(Context))}
            ,{<<"Msg-ID">>, cb_context:req_id(Context)}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -365,7 +365,7 @@ prepare_outbound_flags(DeviceId, Context) ->
 
 -spec prepare_device_realm(api_binary(), cb_context:context()) -> cb_context:context().
 prepare_device_realm(DeviceId, Context) ->
-    AccountRealm = crossbar_util:get_account_realm(Context),
+    AccountRealm = wh_util:get_account_realm(cb_context:account_id(Context)),
     Realm = cb_context:req_value(Context, [<<"sip">>, <<"realm">>], AccountRealm),
     case AccountRealm =:= Realm of
         'true' ->
@@ -516,7 +516,7 @@ load_device(DeviceId, Context) ->
 %%--------------------------------------------------------------------
 -spec load_device_status(cb_context:context()) -> cb_context:context().
 load_device_status(Context) ->
-    AccountRealm = crossbar_util:get_account_realm(Context),
+    AccountRealm = wh_util:get_account_realm(cb_context:account_id(Context)),
     RegStatuses = lookup_regs(AccountRealm),
     lager:debug("reg statuses: ~p", [RegStatuses]),
     crossbar_util:response(RegStatuses, Context).
