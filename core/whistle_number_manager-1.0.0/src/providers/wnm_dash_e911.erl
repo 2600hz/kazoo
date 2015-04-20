@@ -20,9 +20,12 @@
 -define(DASH_XML_PROLOG, "<?xml version=\"1.0\"?>").
 -define(DASH_AUTH_USERNAME, whapps_config:get_string(?WNM_DASH_CONFIG_CAT, <<"auth_username">>, <<>>)).
 -define(DASH_AUTH_PASSWORD, whapps_config:get_string(?WNM_DASH_CONFIG_CAT, <<"auth_password">>, <<>>)).
--define(DASH_EMERG_URL, whapps_config:get_string(?WNM_DASH_CONFIG_CAT
-                                                 ,<<"emergency_provisioning_url">>
-                                                 ,<<"https://service.dashcs.com/dash-api/xml/emergencyprovisioning/v1">>)).
+-define(DASH_EMERG_URL
+        ,whapps_config:get_string(?WNM_DASH_CONFIG_CAT
+                                  ,<<"emergency_provisioning_url">>
+                                  ,<<"https://service.dashcs.com/dash-api/xml/emergencyprovisioning/v1">>
+                                 )
+       ).
 
 -define(DASH_DEBUG, whapps_config:get_is_true(?WNM_DASH_CONFIG_CAT, <<"debug">>, 'false')).
 -define(DASH_DEBUG(Fmt, Args), ?DASH_DEBUG
@@ -98,13 +101,13 @@ maybe_update_dash_e911(#number{current_number_doc=CurrentJObj
             lager:debug("dash e911 information has been removed, updating dash"),
             _ = remove_number(Number),
             N#number{features=sets:del_element(?DASH_KEY, Features)};
-        'false' when NotChanged  -> N#number{features=sets:add_element(?DASH_KEY, Features)};
+        'false' when NotChanged  ->
+            N#number{features=sets:add_element(?DASH_KEY, Features)};
         'false' ->
             lager:debug("e911 information has been changed: ~s", [wh_json:encode(E911)]),
             N1 = wnm_number:activate_feature(?DASH_KEY, N),
             case maybe_update_dash_e911(Number, E911, JObj) of
-                {'ok', J} ->
-                    N1#number{number_doc=J};
+                {'ok', J} -> N1#number{number_doc=J};
                 Else -> Else
             end
     end.
@@ -118,10 +121,10 @@ maybe_update_dash_e911(Number, Address, JObj) ->
         {'invalid', Reason}->
             lager:error("error while checking location ~p", [Reason]),
             Error =
-                wh_json:from_list([
-                    {<<"cause">>, Address}
-                    ,{<<"message">>, Reason}
-                ]),
+                wh_json:from_list(
+                  [{<<"cause">>, Address}
+                   ,{<<"message">>, Reason}
+                  ]),
             {'invalid', Error};
         {'provisioned', _} ->
             lager:warning("location seems already provisioned"),
@@ -132,14 +135,13 @@ maybe_update_dash_e911(Number, Address, JObj) ->
         {'geocoded', [_|_]=Addresses} ->
             lager:warning("location could correspond to multiple addresses"),
             Update =
-                wh_json:from_list([
-                    {<<"cause">>, Address}
-                    ,{<<"details">>, Addresses}
-                    ,{<<"message">>, <<"more than one address found">>}
-                ]),
+                wh_json:from_list(
+                  [{<<"cause">>, Address}
+                   ,{<<"details">>, Addresses}
+                   ,{<<"message">>, <<"more than one address found">>}
+                  ]),
             {'multiple_choice', Update}
     end.
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -161,15 +163,19 @@ update_e911(Number, Address, JObj) ->
             lager:debug("provisioned dash e911 address"),
             {'ok', wh_json:set_value(?DASH_KEY, E911, JObj)};
         {'geocoded', E911} ->
-            lager:debug("added location to dash e911, attempting to provision new location"),
-            case provision_location(wh_json:get_value(<<"location_id">>, E911)) of
-                'undefined' ->
-                    lager:debug("provisioning attempt moved location to status: undefined"),
-                    {'ok', wh_json:set_value(?DASH_KEY, E911, JObj)};
-                Status ->
-                    lager:debug("provisioning attempt moved location to status: ~s", [Status]),
-                    {'ok', wh_json:set_value(?DASH_KEY, wh_json:set_value(<<"status">>, Status, E911), JObj)}
-            end
+            provision_geocoded(JObj, E911)
+    end.
+
+-spec provision_geocoded(wh_json:object(), wh_json:object()) -> {'ok', wh_json:object()}.
+provision_geocoded(JObj, E911) ->
+    lager:debug("added location to dash e911, attempting to provision new location"),
+    case provision_location(wh_json:get_value(<<"location_id">>, E911)) of
+        'undefined' ->
+            lager:debug("provisioning attempt moved location to status: undefined"),
+            {'ok', wh_json:set_value(?DASH_KEY, E911, JObj)};
+        Status ->
+            lager:debug("provisioning attempt moved location to status: ~s", [Status]),
+            {'ok', wh_json:set_value(?DASH_KEY, wh_json:set_value(<<"status">>, Status, E911), JObj)}
     end.
 
 %%--------------------------------------------------------------------

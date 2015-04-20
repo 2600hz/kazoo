@@ -1155,7 +1155,7 @@ set_response({'error', Data}, _, Context, _) ->
     lager:debug("error: ~p", [Data]),
     crossbar_util:response_400(<<"client error">>, Data, Context);
 set_response({'invalid', Reason}, _, Context, _) ->
-    lager:debug("~p", [Reason]),
+    lager:debug("invalid: ~p", [Reason]),
     cb_context:add_validation_error(<<"address">>, <<"invalid">>, Reason, Context);
 set_response({Error, Reason}, _, Context, _) ->
     lager:debug("~p: ~p", [Error, Reason]),
@@ -1244,6 +1244,8 @@ collection_process(Context, ?ACTIVATE) ->
     Result = collection_process(Context, Numbers, ?ACTIVATE),
     collection_process_result(Context, Result).
 
+-spec collection_process(cb_context:context(), ne_binaries(), api_binary()) ->
+                                wh_json:object().
 collection_process(Context, Numbers, Action) ->
     lists:foldl(
       fun(Number, Acc) ->
@@ -1262,8 +1264,8 @@ collection_process(Context, Numbers, Action) ->
      ).
 
 -spec collection_process_result(cb_context:context(), wh_json:object()) ->
-                                operation_return() |
-                                {'dry_run', ne_binary(), wh_json:object()}.
+                                       operation_return() |
+                                       {'dry_run', ne_binary(), wh_json:object()}.
 collection_process_result(Context, JObj) ->
     ReqJObj = cb_context:req_json(Context),
     case wh_json:get_value(<<"error">>, JObj) of
