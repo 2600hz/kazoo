@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2014, 2600Hz
+%%% @copyright (C) 2013-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -250,7 +250,7 @@ send(<<"amqp">>, Endpoint, API) ->
     CallId = props:get_value(<<"Call-ID">>, API),
     Options = wh_json:to_proplist(wh_json:get_value(<<"Endpoint-Options">>, Endpoint, [])),
     Props = wh_json:to_proplist(Endpoint) ++ Options,
-    Payload = props:set_values( Props, API),
+    Payload = props:set_values(Props, API),
     Broker = wh_json:get_value([<<"Endpoint-Options">>, <<"AMQP-Broker">>], Endpoint),
     BrokerName = wh_json:get_value([<<"Endpoint-Options">>, <<"Broker-Name">>], Endpoint),
     Exchange = wh_json:get_value([<<"Endpoint-Options">>, <<"Exchange-ID">>], Endpoint),
@@ -258,39 +258,52 @@ send(<<"amqp">>, Endpoint, API) ->
     ExchangeType = wh_json:get_value([<<"Endpoint-Options">>, <<"Exchange-Type">>], Endpoint, <<"topic">>),
     ExchangeOptions = amqp_exchange_options(wh_json:get_value([<<"Endpoint-Options">>, <<"Exchange-Options">>], Endpoint)),
     maybe_add_broker(Broker, Exchange, RouteId, ExchangeType, ExchangeOptions, BrokerName),
+
     lager:debug("sending sms and not waiting for response ~s", [CallId]),
     case send_amqp_sms(Payload, ?SMS_POOL(Exchange, RouteId, BrokerName)) of
         'ok' ->
-            DeliveryProps = [{<<"Delivery-Result-Code">>, <<"sip:200">> }
-                             ,{<<"Status">>, <<"Success">>}
-                             ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, API) }
-                             ,{<<"Call-ID">>, CallId }
-                             | wh_api:default_headers(<<"message">>, <<"delivery">>, ?APP_NAME, ?APP_VERSION)
-                            ],
-            gen_listener:cast(self(), {'sms_success', wh_json:set_values(DeliveryProps, wh_json:new())});
-        {'error', {'timeout', _Reason}} ->
-            DeliveryProps = [{<<"Delivery-Result-Code">>, <<"sip:500">> }
-                             ,{<<"Delivery-Failure">>, true}
-                             ,{<<"Error-Code">>, 500}
-                             ,{<<"Error-Message">>, <<"timeout">>}
-                             ,{<<"Status">>, <<"Failed">>}
-                             ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, API) }
-                             ,{<<"Call-ID">>, CallId }
-                             | wh_api:default_headers(<<"message">>, <<"delivery">>, ?APP_NAME, ?APP_VERSION)
-                            ],
-            gen_listener:cast(self(), {'sms_error', wh_json:set_values(DeliveryProps, wh_json:new())});
+            send_success(API, CallId);
+        {'error', 'timeout'} ->
+            send_timeout_error(API, CallId);
         {'error', Reason} ->
-            DeliveryProps = [{<<"Delivery-Result-Code">>, <<"sip:500">> }
-                             ,{<<"Delivery-Failure">>, true}
-                             ,{<<"Error-Code">>, 500}
-                             ,{<<"Error-Message">>, wh_util:to_binary(Reason)}
-                             ,{<<"Status">>, <<"Failed">>}
-                             ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, API) }
-                             ,{<<"Call-ID">>, CallId }
-                             | wh_api:default_headers(<<"message">>, <<"delivery">>, ?APP_NAME, ?APP_VERSION)
-                            ],
-            gen_listener:cast(self(), {'sms_error', wh_json:set_values(DeliveryProps, wh_json:new())})
+            send_error(API, CallId, Reason)
     end.
+
+-spec send_success(wh_proplist(), ne_binary()) -> 'ok'.
+send_success(API, CallId) ->
+    DeliveryProps = [{<<"Delivery-Result-Code">>, <<"sip:200">>}
+                     ,{<<"Status">>, <<"Success">>}
+                     ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, API)}
+                     ,{<<"Call-ID">>, CallId}
+                     | wh_api:default_headers(<<"message">>, <<"delivery">>, ?APP_NAME, ?APP_VERSION)
+                    ],
+    gen_listener:cast(self(), {'sms_success', wh_json:from_list(DeliveryProps)}).
+
+-spec send_timeout_error(wh_proplist(), ne_binary()) -> 'ok'.
+send_timeout_error(API, CallId) ->
+    DeliveryProps = [{<<"Delivery-Result-Code">>, <<"sip:500">>}
+                     ,{<<"Delivery-Failure">>, 'true'}
+                     ,{<<"Error-Code">>, 500}
+                     ,{<<"Error-Message">>, <<"timeout">>}
+                     ,{<<"Status">>, <<"Failed">>}
+                     ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, API)}
+                     ,{<<"Call-ID">>, CallId}
+                     | wh_api:default_headers(<<"message">>, <<"delivery">>, ?APP_NAME, ?APP_VERSION)
+                    ],
+    gen_listener:cast(self(), {'sms_error', wh_json:from_list(DeliveryProps)}).
+
+-spec send_error(wh_proplist(), ne_binary(), ne_binary()) -> 'ok'.
+send_error(API, CallId, Reason) ->
+    DeliveryProps = [{<<"Delivery-Result-Code">>, <<"sip:500">>}
+                     ,{<<"Delivery-Failure">>, 'true'}
+                     ,{<<"Error-Code">>, 500}
+                     ,{<<"Error-Message">>, wh_util:to_binary(Reason)}
+                     ,{<<"Status">>, <<"Failed">>}
+                     ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, API)}
+                     ,{<<"Call-ID">>, CallId}
+                     | wh_api:default_headers(<<"message">>, <<"delivery">>, ?APP_NAME, ?APP_VERSION)
+                    ],
+    gen_listener:cast(self(), {'sms_error', wh_json:from_list(DeliveryProps)}).
 
 -spec amqp_exchange_options(api_object()) -> wh_proplist().
 amqp_exchange_options('undefined') -> [];
@@ -299,7 +312,9 @@ amqp_exchange_options(JObj) ->
      || {K, V} <- wh_json:to_proplist(JObj)
     ].
 
--spec send_amqp_sms(wh_proplist(), atom()) -> 'ok' | {'error', term()}.
+-spec send_amqp_sms(wh_proplist(), atom()) ->
+                           'ok' |
+                           {'error', ne_binary() | 'timeout'}.
 send_amqp_sms(Payload, Pool) ->
     case wh_amqp_worker:cast(Payload, fun wapi_sms:publish_outbound/1, Pool)
     of
@@ -309,13 +324,12 @@ send_amqp_sms(Payload, Pool) ->
         Else -> Else
     end.
 
--spec maybe_add_broker(binary(), binary(), binary(), binary(), binary(), binary()) -> 'ok'.
+-spec maybe_add_broker(api_binary(), api_binary(), api_binary(), ne_binary(), wh_proplist(), api_binary()) -> 'ok'.
+-spec maybe_add_broker(api_binary(), api_binary(), api_binary(), ne_binary(), wh_proplist(), api_binary(), boolean()) -> 'ok'.
 maybe_add_broker(Broker, Exchange, RouteId, ExchangeType, ExchangeOptions, BrokerName) ->
     PoolExists = wh_amqp_sup:pool_pid(?SMS_POOL(Exchange, RouteId, BrokerName)) =/= 'undefined',
     maybe_add_broker(Broker, Exchange, RouteId, ExchangeType, ExchangeOptions, BrokerName, PoolExists).
 
-
--spec maybe_add_broker(binary(), binary(), binary(), binary(), binary(), binary(), boolean()) -> 'ok'.
 maybe_add_broker(_Broker, _Exchange, _RouteId, _ExchangeType, _ExchangeOptions, _BrokerName, 'true') -> 'ok';
 maybe_add_broker(Broker, Exchange, RouteId, ExchangeType, ExchangeOptions, BrokerName, 'false') ->
     Exchanges = [{Exchange, ExchangeType, ExchangeOptions}],
