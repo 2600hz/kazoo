@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2014, 2600Hz INC
+%%% @copyright (C) 2010-2015, 2600Hz INC
 %%% @doc
 %%% Various utilities - a veritable cornicopia
 %%% @end
@@ -50,7 +50,6 @@
          ,strip_left_binary/2, strip_right_binary/2
          ,suffix_binary/2
         ]).
-
 
 -export([clean_binary/1, clean_binary/2
          ,remove_white_spaces/1
@@ -800,7 +799,7 @@ error_to_binary(Reason) ->
     try to_binary(Reason) of
         Message -> Message
     catch
-       _:_ -> <<"Unknown Error">>
+        _:_ -> <<"Unknown Error">>
     end.
 
 -spec is_true(binary() | string() | atom()) -> boolean().
