@@ -112,9 +112,7 @@ bind_to_call_events(Call) ->
 -spec bind_to_call_events(api_binary() | {api_binary(), _} | whapps_call:call(), pid()) -> 'ok'.
 bind_to_call_events('undefined', _) -> 'ok';
 bind_to_call_events(?NE_BINARY = CallId, Pid) ->
-    gen_listener:add_binding(Pid, 'call', [{'callid', CallId}
-%                                           ,{'restrict_to', ?CALL_EVENT_RESTRICTIONS}
-                                          ]);
+    gen_listener:add_binding(Pid, 'call', [{'callid', CallId}]);
 bind_to_call_events({CallId, _}, Pid) -> bind_to_call_events(CallId, Pid);
 bind_to_call_events(Call, Pid) -> bind_to_call_events(whapps_call:call_id(Call), Pid).
 
@@ -125,9 +123,7 @@ unbind_from_call_events(Call) ->
 -spec unbind_from_call_events(api_binary() | {api_binary(), _} | whapps_call:call(), pid()) -> 'ok'.
 unbind_from_call_events('undefined', _Pid) -> 'ok';
 unbind_from_call_events(?NE_BINARY = CallId, Pid) ->
-    gen_listener:rm_binding(Pid, 'call', [{'callid', CallId}
-%                                          ,{'restrict_to', ?CALL_EVENT_RESTRICTIONS}
-                                         ]);
+    gen_listener:rm_binding(Pid, 'call', [{'callid', CallId}]);
 unbind_from_call_events({CallId, _}, Pid) -> unbind_from_call_events(CallId, Pid);
 unbind_from_call_events(Call, Pid) -> unbind_from_call_events(whapps_call:call_id(Call), Pid).
 

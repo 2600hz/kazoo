@@ -112,7 +112,7 @@
                 ,fsm_call_id :: api_binary() % used when no call-ids are available
                 ,endpoints = [] :: wh_json:objects()
                 ,outbound_call_id :: api_binary()
-                ,max_connect_failures :: pos_integer() | 'infinity'
+                ,max_connect_failures :: wh_timeout()
                 ,connect_failures = 0 :: non_neg_integer()
                }).
 -type fsm_state() :: #state{}.
@@ -155,24 +155,24 @@ agent_timeout(FSM, JObj) ->
 %%--------------------------------------------------------------------
 -spec call_event(pid(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 call_event(FSM, <<"call_event">>, <<"CHANNEL_BRIDGE">>, JObj) ->
-    gen_fsm:send_event(FSM, {'channel_bridged', callid(JObj)});
+    gen_fsm:send_event(FSM, {'channel_bridged', call_id(JObj)});
 call_event(FSM, <<"call_event">>, <<"CHANNEL_UNBRIDGE">>, JObj) ->
-    lager:info("Send CHANNEL_UNBRIDGE to ~p with ci: ~s, olci: ~s",
+    lager:info("send CHANNEL_UNBRIDGE to ~p with ci: ~s, olci: ~s",
                [FSM
-                ,callid(JObj)
+                ,call_id(JObj)
                 ,kz_call_event:other_leg_call_id(JObj)
                ]),
-    gen_fsm:send_event(FSM, {'channel_unbridged', callid(JObj)});
+    gen_fsm:send_event(FSM, {'channel_unbridged', call_id(JObj)});
 call_event(FSM, <<"call_event">>, <<"usurp_control">>, JObj) ->
-    gen_fsm:send_event(FSM, {'usurp_control', callid(JObj)});
+    gen_fsm:send_event(FSM, {'usurp_control', call_id(JObj)});
 call_event(FSM, <<"call_event">>, <<"CHANNEL_DESTROY">>, JObj) ->
-    gen_fsm:send_event(FSM, {'channel_hungup', callid(JObj), hangup_cause(JObj)});
+    gen_fsm:send_event(FSM, {'channel_hungup', call_id(JObj), hangup_cause(JObj)});
 call_event(FSM, <<"call_event">>, <<"LEG_CREATED">>, JObj) ->
-    gen_fsm:send_event(FSM, {'leg_created', callid(JObj)});
+    gen_fsm:send_event(FSM, {'leg_created', call_id(JObj)});
 call_event(FSM, <<"call_event">>, <<"LEG_DESTROYED">>, JObj) ->
-    gen_fsm:send_event(FSM, {'leg_destroyed', callid(JObj)});
+    gen_fsm:send_event(FSM, {'leg_destroyed', call_id(JObj)});
 call_event(FSM, <<"call_event">>, <<"CHANNEL_ANSWER">>, JObj) ->
-    gen_fsm:send_event(FSM, {'channel_answered', callid(JObj)});
+    gen_fsm:send_event(FSM, {'channel_answered', call_id(JObj)});
 call_event(FSM, <<"call_event">>, <<"DTMF">>, EvtJObj) ->
     gen_fsm:send_event(FSM, {'dtmf_pressed', wh_json:get_value(<<"DTMF-Digit">>, EvtJObj)});
 call_event(FSM, <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, JObj) ->
@@ -187,7 +187,7 @@ call_event(FSM, <<"error">>, <<"dialplan">>, JObj) ->
 call_event(FSM, <<"call_event">>, <<"CHANNEL_REPLACED">>, JObj) ->
     lager:info("send CHANNEL_REPLACED to ~p witch ci: ~s, rb: ~s, olci: ~s",
                [FSM
-                ,callid(JObj)
+                ,call_id(JObj)
                 ,kz_call_event:replaced_by(JObj)
                 ,kz_call_event:other_leg_call_id(JObj)
                ]),
@@ -195,10 +195,10 @@ call_event(FSM, <<"call_event">>, <<"CHANNEL_REPLACED">>, JObj) ->
 call_event(FSM, <<"call_event">>, <<"CHANNEL_TRANSFEREE">>, JObj) ->
     lager:info("Send CHANNEL_TRANSFEREE to ~p with ci: ~s, olci: ~s",
                [FSM
-                ,callid(JObj)
+                ,call_id(JObj)
                 ,kz_call_event:other_leg_call_id(JObj)
                ]),
-    gen_fsm:send_event(FSM, {'channel_unbridged', callid(JObj)});
+    gen_fsm:send_event(FSM, {'channel_unbridged', call_id(JObj)});
 call_event(_, _C, _E, _) ->
     lager:info("Unhandled combo: ~s/~s", [_C, _E]).
 
@@ -210,12 +210,12 @@ call_event(_, _C, _E, _) ->
 maybe_send_execute_complete(FSM, <<"bridge">>, JObj) ->
     lager:info("Send EXECUTE_COMPLETE,bridge to ~p with ci: ~s, olci: ~s",
                [FSM
-                ,callid(JObj)
+                ,call_id(JObj)
                 ,kz_call_event:other_leg_call_id(JObj)
                ]),
-    gen_fsm:send_event(FSM, {'channel_unbridged', callid(JObj)});
+    gen_fsm:send_event(FSM, {'channel_unbridged', call_id(JObj)});
 maybe_send_execute_complete(FSM, <<"call_pickup">>, JObj) ->
-    gen_fsm:send_event(FSM, {'channel_bridged', callid(JObj)});
+    gen_fsm:send_event(FSM, {'channel_bridged', call_id(JObj)});
 maybe_send_execute_complete(_, _, _) -> 'ok'.
 
 %%--------------------------------------------------------------------
@@ -919,9 +919,8 @@ answered({'channel_bridged', CallId}, #state{agent_call_id=CallId
     acdc_agent_listener:member_connect_accepted(AgentListener, CallId),
     maybe_notify(Ns, ?NOTIFY_PICKUP, State),
     {'next_state', 'answered', State};
-answered({'channel_replaced', JObj}, #state{agent_listener=AgentListener
-                                           }=State) ->
-    CallId = callid(JObj),
+answered({'channel_replaced', JObj}, #state{agent_listener=AgentListener}=State) ->
+    CallId = call_id(JObj),
     ReplacedBy = kz_call_event:replaced_by(JObj),
     acdc_agent_listener:rebind_events(AgentListener, CallId, ReplacedBy),
     wh_util:put_callid(ReplacedBy),
@@ -946,12 +945,10 @@ answered({'sync_req', JObj}, #state{agent_listener=AgentListener
     lager:debug("recv sync_req from ~s", [wh_json:get_value(<<"Process-ID">>, JObj)]),
     acdc_agent_listener:send_sync_resp(AgentListener, 'answered', JObj, [{<<"Call-ID">>, CallId}]),
     {'next_state', 'answered', State};
-answered({'channel_unbridged', CallId}, #state{member_call_id = CallId
-                                              }=State) ->
+answered({'channel_unbridged', CallId}, #state{member_call_id=CallId}=State) ->
     lager:info("caller channel ~s unbridged", [CallId]),
     {'next_state', 'wrapup', State#state{wrapup_ref=wrapup_timer(State)}};
-answered({'channel_unbridged', CallId}, #state{agent_call_id = CallId
-                                              }=State) ->
+answered({'channel_unbridged', CallId}, #state{agent_call_id=CallId}=State) ->
     lager:info("agent channel unbridged"),
     {'next_state', 'wrapup', State#state{wrapup_ref=hangup_call(State)}};
 answered({'channel_answered', MemberCallId}, #state{member_call_id=MemberCallId}=State) ->
@@ -1379,8 +1376,8 @@ start_pause_timer(0) -> 'undefined';
 start_pause_timer(Timeout) ->
     gen_fsm:start_timer(Timeout * 1000, ?PAUSE_MESSAGE).
 
--spec callid(wh_json:object()) -> api_binary().
-callid(JObj) ->
+-spec call_id(wh_json:object()) -> api_binary().
+call_id(JObj) ->
     case wh_json:get_value(<<"Call-ID">>, JObj) of
         'undefined' -> wh_json:get_value([<<"Call">>, <<"Call-ID">>], JObj);
         CallId -> CallId
@@ -1394,6 +1391,7 @@ hangup_cause(JObj) ->
     end.
 
 %% returns time left in seconds
+-spec time_left(reference() | 'false' | api_integer()) -> api_integer().
 time_left(Ref) when is_reference(Ref) ->
     time_left(erlang:read_timer(Ref));
 time_left('false') -> 'undefined';
@@ -1457,10 +1455,11 @@ current_call(Call, AgentState, QueueId, Start) ->
                        ,{<<"queue_id">>, QueueId}
                       ]).
 
+-spec elapsed('undefined' | wh_now()) -> api_integer().
 elapsed('undefined') -> 'undefined';
 elapsed(Start) -> wh_util:elapsed_s(Start).
 
--spec wrapup_timer(#state{}) -> reference().
+-spec wrapup_timer(fsm_state()) -> reference().
 wrapup_timer(#state{agent_listener=AgentListener
                     ,wrapup_timeout = WrapupTimeout
                     ,account_id = AccountId
@@ -1474,7 +1473,7 @@ wrapup_timer(#state{agent_listener=AgentListener
     acdc_agent_stats:agent_wrapup(AccountId, AgentId, WrapupTimeout),
     start_wrapup_timer(WrapupTimeout).
 
--spec hangup_call(#state{}) -> reference().
+-spec hangup_call(fsm_state()) -> reference().
 hangup_call(#state{agent_listener=AgentListener
                    ,member_call_id=CallId
                    ,member_call_queue_id=QueueId
