@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -73,7 +73,7 @@ url(SubscriptionId, Options) ->
 %% Creates a new subscription record
 %% @end
 %%--------------------------------------------------------------------
--spec new(ne_binary(), ne_binary()) -> subscription().
+-spec new(subscription() | ne_binary(), ne_binary()) -> subscription().
 -spec new(ne_binary(), ne_binary(), ne_binary()) -> subscription().
 
 new(#bt_subscription{}=Subscription, PaymentToken) ->
