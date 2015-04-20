@@ -1022,13 +1022,15 @@ update_federated_bindings(#state{bindings=[{Binding, Props}|_]
             State#state{federators=NewListeners ++ Fs}
     end.
 
--spec broker_connections(federator_listeners(), ne_binaries()) -> {ne_binaries(), ne_binaries()}.
+-spec broker_connections(federator_listeners(), ne_binaries()) ->
+                                {ne_binaries(), ne_binaries()}.
 broker_connections(Listeners, Brokers) ->
     lists:partition(fun(Broker) ->
                             props:get_value(Broker, Listeners) =/= 'undefined'
                     end, Brokers).
 
--spec start_new_listeners(ne_binaries(), binding_module(), wh_proplist(), state()) -> {'ok', federator_listeners()}.
+-spec start_new_listeners(ne_binaries(), binding_module(), wh_proplist(), state()) ->
+                                 {'ok', federator_listeners()}.
 start_new_listeners(Brokers, Binding, Props, State) ->
     {'ok', [start_new_listener(Broker, Binding, Props, State)
             || Broker <- Brokers
@@ -1053,7 +1055,8 @@ update_existing_listener_bindings({_Broker, Pid}, Binding, Props) ->
     lager:debug("updating listener ~p with ~s", [Pid, Binding]),
     gen_listener:add_binding(Pid, Binding, Props).
 
--spec create_federated_params({binding_module(), wh_proplist()}, wh_proplist()) -> wh_proplist().
+-spec create_federated_params({binding_module(), wh_proplist()}, wh_proplist()) ->
+                                     wh_proplist().
 create_federated_params(FederateBindings, Params) ->
     [{'responders', []}
      ,{'bindings', [FederateBindings]}
