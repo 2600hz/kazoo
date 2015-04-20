@@ -25,7 +25,10 @@
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call1) ->
     UserId = wh_json:get_ne_value(<<"id">>, Data),
-    Call = doodle_util:set_callee_id(UserId, Call1),
+    Funs = [{fun doodle_util:set_callee_id/2, UserId}
+            ,{fun whapps_call:kvs_store/3, <<"target_owner_id">>, UserId}
+           ],
+    Call = whapps_call:exec(Funs, Call1),
     {Endpoints, Dnd} = get_endpoints(UserId, Data, Call),
     Strategy = wh_json:get_binary_value(<<"sms_strategy">>, Data, <<"single">>),
     case Endpoints =/= []

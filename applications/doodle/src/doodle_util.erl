@@ -159,6 +159,8 @@ save_sms(JObj, DocId, Doc, Call) ->
                ,{<<"authorization_id">>, AuthId }
                ,{<<"pvt_authorization_type">>, AuthType }
                ,{<<"pvt_authorization_id">>, AuthId }
+               ,{<<"pvt_target_device_id">>, whapps_call:kvs_fetch(<<"target_device_id">>, Call)}
+               ,{<<"pvt_target_owner_id">>, whapps_call:kvs_fetch(<<"target_owner_id">>, Call) }
                ,{<<"to">>, To }
                ,{<<"to_user">>, ToUser }
                ,{<<"to_realm">>, ToRealm }
