@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz
+%%% @copyright (C) 2012-2015, 2600Hz
 %%% @doc
 %%% Handles starting/stopping a call recording
 %%%
@@ -45,27 +45,31 @@ handle(Data, Call, <<"start">>) ->
         'true' ->
             start_wh_media_recording(Data, Call);
         'false' ->
-            Url = wh_json:get_value(<<"url">>, Data),
-            case wh_media_recording:should_store_recording(Url) of
-                {'true', 'other', 'third_party'} ->
-                    lager:debug("call will be stored to 3rd party CouchDB", []),
-                    start_wh_media_recording(Data, Call);
-                {'true', 'other', Url} ->
-                    lager:debug("call will be stored to 3rd party url '~s'", [Url]),
-                    record_call(Data, Call);
-                'false' ->
-                    lager:error("misconfigured call record (missing url and disabled store_recordings)"),
-                    wh_notify:system_alert("misconfigured call record (missing url in ~p)", [Call]);
-                {'true', 'local'} ->
-                    lager:debug("call will be store to account"),
-                    start_wh_media_recording(Data, Call)
-            end
+            handle_immediate_start(Data, Call)
     end;
 handle(Data, Call, <<"stop">> = Action) ->
     Format = wh_media_recording:get_format(wh_json:get_value(<<"format">>, Data)),
     MediaName = wh_media_recording:get_media_name(whapps_call:call_id(Call), Format),
     _ = whapps_call_command:record_call([{<<"Media-Name">>, MediaName}], Action, Call),
     lager:debug("send command to stop recording").
+
+-spec handle_immediate_start(wh_json:object(), whapps_call:call()) -> 'ok'.
+handle_immediate_start(Data, Call) ->
+    Url = wh_json:get_value(<<"url">>, Data),
+    case wh_media_recording:should_store_recording(Url) of
+        {'true', 'other', 'third_party'} ->
+            lager:debug("call will be stored to 3rd party CouchDB", []),
+            start_wh_media_recording(Data, Call);
+        {'true', 'other', Url} ->
+            lager:debug("call will be stored to 3rd party url '~s'", [Url]),
+            record_call(Data, Call);
+        'false' ->
+            lager:error("misconfigured call record (missing url and disabled store_recordings)"),
+            wh_notify:system_alert("misconfigured call record (missing url in ~p)", [Data]);
+        {'true', 'local'} ->
+            lager:debug("call will be store to account"),
+            start_wh_media_recording(Data, Call)
+    end.
 
 -spec start_wh_media_recording(wh_json:object(), whapps_call:call()) -> 'ok'.
 start_wh_media_recording(Data, Call) ->
