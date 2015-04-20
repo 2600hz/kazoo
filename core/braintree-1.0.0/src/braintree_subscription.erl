@@ -91,6 +91,7 @@ new(SubscriptionId, PlanId, PaymentToken) ->
                      ,create='true'
                     }.
 
+-spec new_subscription_id() -> ne_binary().
 new_subscription_id() ->
     wh_util:rand_hex_binary(16).
 
