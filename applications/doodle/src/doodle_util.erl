@@ -150,29 +150,29 @@ save_sms(JObj, DocId, Doc, Call) ->
     Schedule = whapps_call:kvs_fetch(<<"flow_schedule">>, Call),
     Props = props:filter_empty(
               [{<<"_id">>, DocId}
-               ,{<<"pvt_type">>, <<"sms">> }
-               ,{<<"account_id">>, AccountId }
-               ,{<<"pvt_account_id">>, AccountId }
-               ,{<<"pvt_account_db">>, AccountDb }
-               ,{<<"owner_id">>, OwnerId }
-               ,{<<"pvt_owner_id">>, OwnerId }
-               ,{<<"authorization_type">>, AuthType }
-               ,{<<"authorization_id">>, AuthId }
-               ,{<<"pvt_authorization_type">>, AuthType }
-               ,{<<"pvt_authorization_id">>, AuthId }
+               ,{<<"pvt_type">>, <<"sms">>}
+               ,{<<"account_id">>, AccountId}
+               ,{<<"pvt_account_id">>, AccountId}
+               ,{<<"pvt_account_db">>, AccountDb}
+               ,{<<"owner_id">>, OwnerId}
+               ,{<<"pvt_owner_id">>, OwnerId}
+               ,{<<"authorization_type">>, AuthType}
+               ,{<<"authorization_id">>, AuthId}
+               ,{<<"pvt_authorization_type">>, AuthType}
+               ,{<<"pvt_authorization_id">>, AuthId}
                ,{<<"pvt_target_device_id">>, whapps_call:kvs_fetch(<<"target_device_id">>, Call)}
-               ,{<<"pvt_target_owner_id">>, whapps_call:kvs_fetch(<<"target_owner_id">>, Call) }
-               ,{<<"to">>, To }
-               ,{<<"to_user">>, ToUser }
-               ,{<<"to_realm">>, ToRealm }
-               ,{<<"from">>, From }
-               ,{<<"from_user">>, FromUser }
-               ,{<<"from_realm">>, FromRealm }
-               ,{<<"request">>, Request }
-               ,{<<"request_user">>, RequestUser }
-               ,{<<"request_realm">>, RequestRealm }
-               ,{<<"body">>, Body }
-               ,{<<"bits">>, Bits }
+               ,{<<"pvt_target_owner_id">>, whapps_call:kvs_fetch(<<"target_owner_id">>, Call)}
+               ,{<<"to">>, To}
+               ,{<<"to_user">>, ToUser}
+               ,{<<"to_realm">>, ToRealm}
+               ,{<<"from">>, From}
+               ,{<<"from_user">>, FromUser}
+               ,{<<"from_realm">>, FromRealm}
+               ,{<<"request">>, Request}
+               ,{<<"request_user">>, RequestUser}
+               ,{<<"request_realm">>, RequestRealm}
+               ,{<<"body">>, Body}
+               ,{<<"bits">>, Bits}
                ,{<<"message_id">>, MessageId}
                ,{<<"pvt_created">>, Created}
                ,{<<"pvt_modified">>, Modified}
