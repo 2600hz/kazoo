@@ -23,10 +23,11 @@
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call1) ->
     EndpointId = wh_json:get_value(<<"id">>, Data),
-    case build_endpoint(EndpointId, Data, doodle_util:set_callee_id(EndpointId, Call1)) of
+    Call2 = whapps_call:kvs_store(<<"target_device_id">>, EndpointId, Call1),
+    case build_endpoint(EndpointId, Data, doodle_util:set_callee_id(EndpointId, Call2)) of
         {'error', 'do_not_disturb'} = Reason ->
             maybe_handle_bridge_failure(Reason, Call1);
-        {'error', _} = Reason ->
+        {'error', Reason} ->
             doodle_exe:continue(doodle_util:set_flow_error(<<"error">>, wh_util:to_binary(Reason), Call1));
         {Endpoints, Call} ->
             case whapps_sms_command:b_send_sms(Endpoints, Call) of

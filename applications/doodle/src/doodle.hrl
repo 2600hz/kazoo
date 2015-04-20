@@ -24,5 +24,8 @@
 -type amqp_listener_connection() :: #amqp_listener_connection{}.
 -type amqp_listener_connections() :: [amqp_listener_connection(),...].
 
+-define(ATOM(X), wh_util:to_atom(X, 'true')).
+-define(APP, ?ATOM(?APP_NAME)).
+
 -define(DOODLE_HRL, 'true').
 -endif.

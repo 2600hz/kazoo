@@ -23,5 +23,9 @@
 
 -type direction() :: 'inbound' | 'outbound' | 'both'.
 
+-define(DEFAULT_AMQP_EXCHANGE_OPTIONS
+        ,wh_json:from_list([{'passive', 'true'}])
+       ).
+
 -define(STEPSWITCH_HRL, 'true').
 -endif.

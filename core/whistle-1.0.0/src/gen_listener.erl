@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz
+%%% @copyright (C) 2011-2015, 2600Hz
 %%% @doc
 %%%
 %%% Behaviour for setting up an AMQP listener.
@@ -98,6 +98,7 @@
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 
+-define(SERVER_RETRY_PERIOD, 30000).
 -define(TIMEOUT_RETRY_CONN, 5000).
 -define(CALLBACK_TIMEOUT_MSG, 'callback_timeout').
 
@@ -607,18 +608,35 @@ handle_info(#'basic.cancel_ok'{consumer_tag=CTag}, #state{consumer_tags=CTags}=S
     lager:debug("recv a basic.cancel_ok for tag ~s", [CTag]),
     gen_server:cast(self(), {'gen_listener', {'is_consuming', 'false'}}),
     {'noreply', State#state{is_consuming='false', consumer_tags=lists:delete(CTag, CTags)}};
+handle_info(#'basic.ack'{}=Ack, #state{}=State) ->
+    lager:debug("recv a basic.ack ~p", [Ack]),
+    handle_confirm(Ack, State);
+handle_info(#'basic.nack'{}=Nack, #state{}=State) ->
+    lager:debug("recv a basic.nack ~p", [Nack]),
+    handle_confirm(Nack, State);
+handle_info(#'channel.flow'{active=Active}, State) ->
+    lager:debug("received channel flow (~s)", [Active]),
+    amqp_util:flow_control_reply(Active),
+    gen_server:cast(self(), {'gen_listener',{'channel_flow_control', Active}}),
+    {'noreply', State};
 handle_info('$is_gen_listener_consuming'
             ,#state{is_consuming='false'
                     ,bindings=ExistingBindings
                     ,params=Params
                    }=State) ->
     _ = (catch wh_amqp_channel:release()),
-    _ = wh_amqp_channel:requisition(),
+    _ = channel_requisition(Params),
     {'noreply', State#state{queue='undefined'
                             ,bindings=[]
                             ,params=props:set_value('bindings', ExistingBindings, Params)
                            }};
 handle_info('$is_gen_listener_consuming', State) ->
+    {'noreply', State};
+handle_info({'$server_confirms', ServerConfirms}, State) ->
+    gen_server:cast(self(), {'gen_listener',{'server_confirms',ServerConfirms}}),
+    {'noreply', State};
+handle_info({'$channel_flow', Active}, State) ->
+    gen_server:cast(self(), {'gen_listener',{'channel_flow', Active}}),
     {'noreply', State};
 handle_info(?CALLBACK_TIMEOUT_MSG, State) ->
     handle_callback_info('timeout', State);
@@ -679,6 +697,11 @@ basic_return_to_jobj(#'basic.return'{reply_code=Code
                        ,{<<"exchange">>, wh_util:to_binary(Exchange)}
                        ,{<<"routing_key">>, wh_util:to_binary(RoutingKey)}
                       ]).
+
+-spec handle_confirm(#'basic.ack'{} | #'basic.nack'{}, state()) -> handle_cast_return().
+handle_confirm(Confirm, State) ->
+    Msg = {'gen_listener', {'confirm', Confirm}},
+    handle_module_cast(Msg, State).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1007,13 +1030,15 @@ update_federated_bindings(#state{bindings=[{Binding, Props}|_]
             State#state{federators=NewListeners ++ Fs}
     end.
 
--spec broker_connections(federator_listeners(), ne_binaries()) -> {ne_binaries(), ne_binaries()}.
+-spec broker_connections(federator_listeners(), ne_binaries()) ->
+                                {ne_binaries(), ne_binaries()}.
 broker_connections(Listeners, Brokers) ->
     lists:partition(fun(Broker) ->
                             props:get_value(Broker, Listeners) =/= 'undefined'
                     end, Brokers).
 
--spec start_new_listeners(ne_binaries(), binding_module(), wh_proplist(), state()) -> {'ok', federator_listeners()}.
+-spec start_new_listeners(ne_binaries(), binding_module(), wh_proplist(), state()) ->
+                                 {'ok', federator_listeners()}.
 start_new_listeners(Brokers, Binding, Props, State) ->
     {'ok', [start_new_listener(Broker, Binding, Props, State)
             || Broker <- Brokers
@@ -1038,7 +1063,8 @@ update_existing_listener_bindings({_Broker, Pid}, Binding, Props) ->
     lager:debug("updating listener ~p with ~s", [Pid, Binding]),
     gen_listener:add_binding(Pid, Binding, Props).
 
--spec create_federated_params({binding_module(), wh_proplist()}, wh_proplist()) -> wh_proplist().
+-spec create_federated_params({binding_module(), wh_proplist()}, wh_proplist()) ->
+                                     wh_proplist().
 create_federated_params(FederateBindings, Params) ->
     [{'responders', []}
      ,{'bindings', [FederateBindings]}
@@ -1060,34 +1086,81 @@ federated_queue_name(Params) ->
 -spec handle_amqp_channel_available(state()) -> state().
 handle_amqp_channel_available(#state{params=Params}=State) ->
     lager:debug("channel started, let's connect"),
-    maybe_declare_exchanges(props:get_value('declare_exchanges', Params, [])),
-    {'ok', Q} = start_amqp(Params),
+    case maybe_declare_exchanges(props:get_value('declare_exchanges', Params, [])) of
+        'ok' ->
+            handle_exchanges_ready(State);
+        {'error', _E} ->
+            lager:debug("error declaring exchanges : ~p", [_E]),
+            handle_exchanges_failed(State)
+    end.
 
+-spec handle_exchanges_ready(state()) -> state().
+handle_exchanges_ready(#state{params=Params}=State) ->
+    case start_amqp(Params) of
+        {'ok', Q} ->
+            handle_amqp_started(State, Q);
+        {'error', Reason} ->
+            lager:error("start amqp error ~p", [Reason]),
+            handle_amqp_errored(State)
+    end.
+
+-spec handle_amqp_started(state(), ne_binary()) -> state().
+handle_amqp_started(#state{params=Params}=State, Q) ->
     State1 = start_initial_bindings(State#state{queue=Q}, Params),
-
-    _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), '$is_gen_listener_consuming'),
-
     gen_server:cast(self(), {'gen_listener', {'created_queue', Q}}),
-
+    maybe_server_confirms(props:get_value('server_confirms', Params, 'false')),
+    maybe_channel_flow(props:get_value('channel_flow', Params, 'false')),
+    erlang:send_after(?TIMEOUT_RETRY_CONN, self(), '$is_gen_listener_consuming'),
     State1#state{is_consuming='false'}.
 
--spec maybe_declare_exchanges(wh_proplist()) -> 'ok'.
+-spec handle_amqp_errored(state()) -> state().
+handle_amqp_errored(#state{params=Params}=State) ->
+    #wh_amqp_assignment{channel=Channel} = wh_amqp_assignments:get_channel(),
+    _ = (catch wh_amqp_channel:release()),
+    wh_amqp_channel:close(Channel),
+    timer:sleep(?SERVER_RETRY_PERIOD),
+    _ = channel_requisition(Params),
+    State#state{is_consuming='false'}.
+
+-spec handle_exchanges_failed(state()) -> state().
+handle_exchanges_failed(#state{params=Params}=State) ->
+    #wh_amqp_assignment{channel=Channel} = wh_amqp_assignments:get_channel(),
+    _ = (catch wh_amqp_channel:release()),
+    wh_amqp_channel:close(Channel),
+    timer:sleep(?SERVER_RETRY_PERIOD),
+    _ = channel_requisition(Params),
+    State#state{is_consuming='false'}.
+
+-spec maybe_server_confirms(boolean()) -> 'ok'.
+maybe_server_confirms('true') ->
+    amqp_util:confirm_select();
+maybe_server_confirms(_) -> 'ok'.
+
+-spec maybe_channel_flow(boolean()) -> 'ok'.
+maybe_channel_flow('true') ->
+    amqp_util:flow_control();
+maybe_channel_flow(_) -> 'ok'.
+
+-spec maybe_declare_exchanges(wh_proplist()) ->
+                                     command_ret().
+-spec maybe_declare_exchanges(wh_amqp_assignment(), wh_proplist()) ->
+                                     command_ret().
 maybe_declare_exchanges([]) -> 'ok';
 maybe_declare_exchanges(Exchanges) ->
     maybe_declare_exchanges(wh_amqp_assignments:get_channel(), Exchanges).
 
--spec maybe_declare_exchanges(wh_amqp_assignment(), wh_proplist()) -> 'ok'.
 maybe_declare_exchanges(_Channel, []) -> 'ok';
-maybe_declare_exchanges(Channel, [Exchange | Exchanges]) ->
-    case Exchange of
-        {Ex, Type, Opts} -> declare_exchange(Channel, amqp_util:declare_exchange(Ex, Type, Opts));
-        {Ex, Type} -> declare_exchange(Channel, amqp_util:declare_exchange(Ex, Type))
-    end,
-    maybe_declare_exchanges(Channel, Exchanges).
+maybe_declare_exchanges(Channel, [{Ex, Type, Opts} | Exchanges]) ->
+    declare_exchange(Channel, amqp_util:declare_exchange(Ex, Type, Opts), Exchanges);
+maybe_declare_exchanges(Channel, [{Ex, Type} | Exchanges]) ->
+    declare_exchange(Channel, amqp_util:declare_exchange(Ex, Type), Exchanges).
 
--spec declare_exchange(wh_amqp_assignment(), wh_amqp_exchange()) -> command_ret().
-declare_exchange(Channel, Exchange) ->
-    wh_amqp_channel:command(Channel, Exchange).
+-spec declare_exchange(wh_amqp_assignment(), wh_amqp_exchange(), wh_proplist()) -> command_ret().
+declare_exchange(Channel, Exchange, Exchanges) ->
+    case wh_amqp_channel:command(Channel, Exchange) of
+        {'ok', _} -> maybe_declare_exchanges(Channel, Exchanges);
+        E -> E
+    end.
 
 -spec start_initial_bindings(state(), wh_proplist()) -> state().
 start_initial_bindings(State, Params) ->
@@ -1122,10 +1195,9 @@ maybe_add_broker_connection(Broker) ->
 
 maybe_add_broker_connection(Broker, Count) when Count =:= 0 ->
     wh_amqp_connections:add(Broker, wh_util:rand_hex_binary(6), [<<"hidden">>]),
-    wh_amqp_channel:requisition(Broker);
+    wh_amqp_channel:requisition(self(), Broker);
 maybe_add_broker_connection(Broker, _Count) ->
-    wh_amqp_channel:requisition(Broker).
-
+    wh_amqp_channel:requisition(self(), Broker).
 
 -spec start_listener(pid(), wh_proplist()) -> 'ok'.
 start_listener(Srv, Params) ->

@@ -12,7 +12,7 @@
 -export([start_link/0
          ,stop_bootstrap/0
          ,pool_name/0
-         ,add_amqp_pool/4, add_amqp_pool/5, add_amqp_pool/6
+         ,add_amqp_pool/4, add_amqp_pool/5, add_amqp_pool/6, add_amqp_pool/7
          ,pool_pid/1
         ]).
 
@@ -49,7 +49,7 @@
 
 -define(ATOM(X), wh_util:to_atom(X, 'true')).
 
--define(ADD_POOL_ARGS(Pool, Broker, Size, Overflow, Bindings, Exchanges),
+-define(ADD_POOL_ARGS(Pool, Broker, Size, Overflow, Bindings, Exchanges, ServerAck),
         [[{'worker_module', 'wh_amqp_worker'}
           ,{'name', {'local', Pool}}
           ,{'size', Size}
@@ -59,11 +59,12 @@
           ,{'amqp_queuename_start', Pool}
           ,{'amqp_bindings', Bindings}
           ,{'amqp_exchanges', Exchanges}
+          ,{'amqp_server_confirms', ServerAck}
          ]]).
--define(POOL_SPEC(UUID, Broker, PoolSize, PoolOverflow, Bindings, Exchanges),
+-define(POOL_SPEC(UUID, Broker, PoolSize, PoolOverflow, Bindings, Exchanges, ServerAck),
            ?WORKER_NAME_ARGS('poolboy'
                  ,UUID
-                 ,?ADD_POOL_ARGS(UUID, Broker, PoolSize, PoolOverflow, Bindings, Exchanges))).
+                 ,?ADD_POOL_ARGS(UUID, Broker, PoolSize, PoolOverflow, Bindings, Exchanges, ServerAck))).
 
 
 %% ===================================================================
@@ -85,8 +86,12 @@ start_link() ->
 stop_bootstrap() ->
     _ = supervisor:terminate_child(?SERVER, 'wh_amqp_bootstrap').
 
--spec pool_name() -> ?POOL_NAME.
-pool_name() -> ?POOL_NAME.
+-spec pool_name() -> atom().
+pool_name() ->
+    case get('$amqp_pool') of
+        'undefined' -> ?POOL_NAME;
+        Name -> Name
+    end.
 
 -spec add_amqp_pool(atom() | binary(), binary(), integer(), integer()) -> sup_startchild_ret().
 add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow) ->
@@ -109,7 +114,18 @@ add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, Bindings) ->
     Bindings :: wh_proplist(),
     Exchanges :: wh_proplist().
 add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, Bindings, Exchanges) ->
-    supervisor:start_child(?MODULE, ?POOL_SPEC(?ATOM(UUID), Broker, PoolSize, PoolOverflow, Bindings, Exchanges)).
+    add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, Bindings, Exchanges, 'false').
+
+-spec add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, Bindings, Exchanges, ServerAck) -> sup_startchild_ret() when
+    UUID :: atom() | binary(),
+    Broker :: binary(),
+    PoolSize :: integer(),
+    PoolOverflow :: integer(),
+    Bindings :: wh_proplist(),
+    Exchanges :: wh_proplist(),
+    ServerAck :: boolean().
+add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, Bindings, Exchanges, ServerAck) ->
+    supervisor:start_child(?MODULE, ?POOL_SPEC(?ATOM(UUID), Broker, PoolSize, PoolOverflow, Bindings, Exchanges, ServerAck)).
 
 -spec pool_pid(atom() | binary()) -> 'undefined' | pid().
 pool_pid(Pool) ->

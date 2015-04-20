@@ -27,7 +27,7 @@ start_link() ->
     _ = declare_exchanges(),
     case whapps_config:get(?CONFIG_CAT, <<"reschedule">>) of
         'undefined' ->
-            case  wh_json:load_fixture_from_file(?APP_NAME, <<"reschedule.json">>) of
+            case  wh_json:load_fixture_from_file(?APP, <<"reschedule.json">>) of
                 {'error', Err} -> 
                     lager:error("default sms is 'undefined' and cannot read default from file : ~p", [Err]);
                 JObj -> 

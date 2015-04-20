@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -37,11 +37,32 @@
 -define(DEFAULT_MOBILE_SMS_BROKER, wh_amqp_connections:primary_broker()).
 -define(DEFAULT_MOBILE_SMS_EXCHANGE, <<"sms">>).
 -define(DEFAULT_MOBILE_SMS_EXCHANGE_TYPE, <<"topic">>).
--define(DEFAULT_MOBILE_SMS_OPTIONS, wh_json:from_list([{<<"Route-ID">>, <<"sprint">>}
-                                                       ,{<<"System-ID">>, wh_util:node_name()}
-                                                       ,{<<"Exchange-ID">>, ?DEFAULT_MOBILE_SMS_EXCHANGE}
-                                                       ,{<<"Exchange-Type">>, ?DEFAULT_MOBILE_SMS_EXCHANGE_TYPE}
-                                                      ])).
+-define(DEFAULT_MOBILE_SMS_EXCHANGE_OPTIONS
+        ,wh_json:from_list([{'passive', 'true'}])
+       ).
+-define(DEFAULT_MOBILE_SMS_ROUTE, <<"sprint">>).
+-define(DEFAULT_MOBILE_SMS_OPTIONS
+        ,wh_json:from_list([{<<"Route-ID">>, ?DEFAULT_MOBILE_SMS_ROUTE}
+                            ,{<<"System-ID">>, wh_util:node_name()}
+                            ,{<<"Exchange-ID">>, ?DEFAULT_MOBILE_SMS_EXCHANGE}
+                            ,{<<"Exchange-Type">>, ?DEFAULT_MOBILE_SMS_EXCHANGE_TYPE}
+                           ])
+       ).
+-define(DEFAULT_MOBILE_AMQP_CONNECTION
+        ,wh_json:from_list(
+           [{<<"broker">>, ?DEFAULT_MOBILE_SMS_BROKER}
+            ,{<<"route">>, ?DEFAULT_MOBILE_SMS_ROUTE}
+            ,{<<"exchange">>, ?DEFAULT_MOBILE_SMS_EXCHANGE}
+            ,{<<"type">>, ?DEFAULT_MOBILE_SMS_EXCHANGE_TYPE}
+            ,{<<"options">>, ?DEFAULT_MOBILE_SMS_EXCHANGE_OPTIONS}
+           ])
+       ).
+-define(DEFAULT_MOBILE_AMQP_CONNECTIONS,
+        wh_json:from_list([{<<"default">>, ?DEFAULT_MOBILE_AMQP_CONNECTION}])
+       ).
+
+-type sms_route() :: {binary(), wh_proplist() }.
+-type sms_routes() :: [sms_route(), ...].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -574,7 +595,7 @@ maybe_owner_called_self(Endpoint, Properties, <<"sms">>, Call) ->
                                         {'error', 'endpoint_called_self'}.
 maybe_endpoint_called_self(Endpoint, Properties, Call) ->
     maybe_endpoint_called_self(Endpoint, Properties, whapps_call:resource_type(Call), Call).
-    
+
 -spec maybe_endpoint_called_self(wh_json:object(), wh_json:object(), binary(), whapps_call:call()) ->
                                         'ok' |
                                         {'error', 'endpoint_called_self'}.
@@ -725,7 +746,8 @@ maybe_create_endpoint(UnknownType, _, _, _) ->
     {'error', <<"unknown endpoint type ", (wh_util:to_binary(UnknownType))/binary>>}.
 
 -spec maybe_create_mobile_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
-                                   wh_json:object() | {'error', ne_binary()}.
+                                          wh_json:object() |
+                                          {'error', ne_binary()}.
 maybe_create_mobile_endpoint(Endpoint, Properties, Call) ->
     case whapps_config:get_is_true(?CF_MOBILE_CONFIG_CAT, <<"create_sip_endpoint">>, 'false') of
         'true' ->
@@ -1064,7 +1086,8 @@ create_call_fwd_endpoint(Endpoint, Properties, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_mobile_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
-                                    wh_json:object().
+                                    wh_json:object() |
+                                    {'error', ne_binary()}.
 create_mobile_endpoint(Endpoint, Properties, Call) ->
     case whapps_call:resource_type(Call) of
         ?RESOURCE_TYPE_SMS -> create_mobile_sms_endpoint(Endpoint, Properties, Call);
@@ -1072,7 +1095,8 @@ create_mobile_endpoint(Endpoint, Properties, Call) ->
     end.
 
 -spec create_mobile_audio_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
-                                    wh_json:object().
+                                          wh_json:object() |
+                                          {'error', ne_binary()}.
 create_mobile_audio_endpoint(Endpoint, Properties, Call) ->
     case maybe_build_mobile_route(Endpoint) of
         {'error', _R}=Error ->
@@ -1094,7 +1118,9 @@ create_mobile_audio_endpoint(Endpoint, Properties, Call) ->
             wh_json:from_list(props:filter_undefined(Prop))
     end.
 
--spec maybe_build_mobile_route(wh_json:object()) -> ne_binary() | {'error', 'mdn_missing'}.
+-spec maybe_build_mobile_route(wh_json:object()) ->
+                                      ne_binary() |
+                                      {'error', 'mdn_missing'}.
 maybe_build_mobile_route(Endpoint) ->
     case wh_json:get_ne_value([<<"mobile">>, <<"mdn">>], Endpoint) of
         'undefined' ->
@@ -1103,7 +1129,9 @@ maybe_build_mobile_route(Endpoint) ->
         MDN -> build_mobile_route(MDN)
     end.
 
--spec build_mobile_route(ne_binary()) -> ne_binary() | {'error', 'invalid_mdn'}.
+-spec build_mobile_route(ne_binary()) ->
+                                ne_binary() |
+                                {'error', 'invalid_mdn'}.
 build_mobile_route(MDN) ->
     Regex = whapps_config:get_binary(?CF_MOBILE_CONFIG_CAT, <<"formatter">>, ?DEFAULT_MOBILE_FORMATER),
     case re:run(MDN, Regex, [{'capture', 'all', 'binary'}]) of
@@ -1404,29 +1432,44 @@ is_sms(Call) ->
     whapps_call:resource_type(Call) =:= <<"sms">>.
 
 -spec create_mobile_sms_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
-                                    wh_json:object().
+                                        wh_json:object() |
+                                        {'error', ne_binary()}.
 create_mobile_sms_endpoint(Endpoint, Properties, Call) ->
     case maybe_build_mobile_sms_route(Endpoint) of
         {'error', _R}=Error ->
             lager:info("unable to build mobile sms endpoint: ~s", [_R]),
             Error;
-        {Type, Route, Options} ->
+        {Type, [{Route, Options} | Failover]} ->
             Clid = get_clid(Endpoint, Properties, Call),
-            Prop = [{<<"Invite-Format">>, <<"route">>}
-                    ,{<<"Endpoint-Type">>, Type}
-                    ,{<<"Route">>, Route}
-                    ,{<<"Endpoint-Options">>, Options}
-                    ,{<<"To-DID">>, get_to_did(Endpoint, Call)}
-                    ,{<<"Callee-ID-Name">>, Clid#clid.callee_name}
-                    ,{<<"Callee-ID-Number">>, Clid#clid.callee_number}
-                    ,{<<"Presence-ID">>, cf_attributes:presence_id(Endpoint, Call)}
-                    ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
-                    ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call, wh_json:new())}
-                   ],
-            wh_json:from_list(props:filter_undefined(Prop))
+            Prop = props:filter_undefined(
+                     [{<<"Invite-Format">>, <<"route">>}
+                      ,{<<"Endpoint-Type">>, Type}
+                      ,{<<"Route">>, Route}
+                      ,{<<"Endpoint-Options">>, wh_json:from_list(Options)}
+                      ,{<<"To-DID">>, get_to_did(Endpoint, Call)}
+                      ,{<<"Callee-ID-Name">>, Clid#clid.callee_name}
+                      ,{<<"Callee-ID-Number">>, Clid#clid.callee_number}
+                      ,{<<"Presence-ID">>, cf_attributes:presence_id(Endpoint, Call)}
+                      ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
+                      ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call, wh_json:new())}
+                     ]),
+            EP = create_mobile_sms_endpoint_failover(Prop, Failover),
+            wh_json:from_list(EP)
     end.
 
--spec maybe_build_mobile_sms_route(wh_json:object()) -> ne_binary() | {'error', 'mdn_missing'}.
+-spec create_mobile_sms_endpoint_failover(wh_proplist(), sms_routes()) -> wh_proplist().
+create_mobile_sms_endpoint_failover(Endpoint, []) -> Endpoint;
+create_mobile_sms_endpoint_failover(Endpoint, [{Route, Options} | Failover]) ->
+    EP = props:set_values(
+                      [{<<"Route">>, Route}
+                       ,{<<"Endpoint-Options">>, wh_json:from_list(Options)}
+                      ], Endpoint),
+    props:set_value(<<"Failover">>, wh_json:from_list(create_mobile_sms_endpoint_failover(EP, Failover)), Endpoint).
+
+
+-spec maybe_build_mobile_sms_route(wh_json:object()) ->
+                                          ne_binary() |
+                                          {'error', 'mdn_missing'}.
 maybe_build_mobile_sms_route(Endpoint) ->
     case wh_json:get_ne_value([<<"mobile">>, <<"mdn">>], Endpoint) of
         'undefined' ->
@@ -1435,13 +1478,31 @@ maybe_build_mobile_sms_route(Endpoint) ->
         MDN -> build_mobile_sms_route(MDN)
     end.
 
--spec build_mobile_sms_route(ne_binary()) -> {ne_binary(), ne_binary(), api_object()}
-                                             | {'error', 'invalid_mdn'}.
+-spec build_mobile_sms_route(ne_binary()) ->
+                                    {ne_binary(), sms_routes()} |
+                                    {'error', 'invalid_mdn'}.
 build_mobile_sms_route(MDN) ->
     Type = whapps_config:get(?CF_MOBILE_CONFIG_CAT, <<"sms_interface">>, ?DEFAULT_MOBILE_SMS_INTERFACE),
-    Route = case Type of
-                <<"amqp">> -> whapps_config:get(?CF_MOBILE_CONFIG_CAT, <<"sms_broker">>, ?DEFAULT_MOBILE_SMS_BROKER);
-                <<"sip">> -> build_mobile_route(MDN)
-            end,
-    Options = whapps_config:get(?CF_MOBILE_CONFIG_CAT, <<"sms_route_options">>, ?DEFAULT_MOBILE_SMS_OPTIONS),
-    {Type, Route, Options}.
+    build_mobile_sms_route(Type, MDN).
+
+-spec build_mobile_sms_route(ne_binary(), ne_binary()) ->
+                                    {ne_binary(), sms_routes()} |
+                                    {'error', 'invalid_mdn'}.
+build_mobile_sms_route(<<"sip">>, MDN) ->
+    {<<"sip">>, [{build_mobile_route(MDN), 'undefined'}]};
+build_mobile_sms_route(<<"amqp">>, _MDN) ->
+    Connections = whapps_config:get(?CF_MOBILE_CONFIG_CAT, [<<"sms">>, <<"connections">>], ?DEFAULT_MOBILE_AMQP_CONNECTIONS),
+    {<<"amqp">>, wh_json:foldl(fun build_mobile_sms_amqp_route/3 , [], Connections)}.
+
+-spec build_mobile_sms_amqp_route(wh_json:key(), wh_json:json_term(), wh_proplist()) -> sms_routes().
+build_mobile_sms_amqp_route(K, JObj, Acc) ->
+    Broker = wh_json:get_value(<<"broker">>, JObj),
+    Acc ++ [{Broker, [{<<"Broker-Name">>, K} | build_mobile_sms_amqp_route_options(JObj)]}].
+
+-spec build_mobile_sms_amqp_route_options(wh_json:object()) -> wh_proplist().
+build_mobile_sms_amqp_route_options(JObj) ->
+    [{<<"Route-ID">>, wh_json:get_value(<<"route">>, JObj, ?DEFAULT_MOBILE_SMS_ROUTE)}
+     ,{<<"Exchange-ID">>, wh_json:get_value(<<"exchange">>, JObj, ?DEFAULT_MOBILE_SMS_EXCHANGE)}
+     ,{<<"Exchange-Type">>, wh_json:get_value(<<"type">>, JObj, ?DEFAULT_MOBILE_SMS_EXCHANGE_TYPE)}
+     ,{<<"Exchange-Options">>, wh_json:get_value(<<"options">>, JObj, ?DEFAULT_MOBILE_SMS_EXCHANGE_OPTIONS)}
+    ].
