@@ -1,0 +1,12 @@
+{application, circlemaker,
+ [
+  {description, "Circlemaker - support of the RADIUS protocol"},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { circlemaker_app, []}},
+  {env, []}
+ ]}.
