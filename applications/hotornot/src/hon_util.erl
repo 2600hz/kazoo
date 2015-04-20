@@ -62,7 +62,7 @@ rate_dbs(AccountId) ->
 
 -spec acc_rate_dbs(ne_binary(), list()) -> list().
 acc_rate_dbs(AccountId, Acc) ->
-    Db = wh_util:format_account_id(<<AccountId/binary, "-", ?WH_RATES_DB/binary>>, 'encoded'),
+    Db = wh_util:format_account_db(<<AccountId/binary, "-", ?WH_RATES_DB/binary>>),
     case couch_mgr:db_exists(Db) of
         true -> [Db | Acc];
         false -> Acc

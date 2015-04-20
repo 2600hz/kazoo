@@ -613,8 +613,8 @@ normalize_field(K, V) ->
 
 -spec account_rates_db(ne_binary()) -> ne_binary().
 account_rates_db(AccountId) ->
-    FormatedAccountId = wh_util:format_account_id(AccountId, 'encoded'),
-    <<FormatedAccountId/binary, "-", ?WH_RATES_DB/binary>>.
+    FormatedAccountDb = wh_util:format_account_db(AccountId),
+    <<FormatedAccountDb/binary, "-", ?WH_RATES_DB/binary>>.
 
 -spec account_parents(cb_context:context()) -> list().
 account_parents(Context) ->
