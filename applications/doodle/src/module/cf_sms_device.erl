@@ -27,7 +27,7 @@ handle(Data, Call1) ->
     case build_endpoint(EndpointId, Data, doodle_util:set_callee_id(EndpointId, Call2)) of
         {'error', 'do_not_disturb'} = Reason ->
             maybe_handle_bridge_failure(Reason, Call1);
-        {'error', _} = Reason ->
+        {'error', Reason} ->
             doodle_exe:continue(doodle_util:set_flow_error(<<"error">>, wh_util:to_binary(Reason), Call1));
         {Endpoints, Call} ->
             case whapps_sms_command:b_send_sms(Endpoints, Call) of

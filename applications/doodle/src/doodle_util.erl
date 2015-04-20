@@ -66,7 +66,7 @@ set_flow_status(Status, Message, Call) ->
             ],
     whapps_call:kvs_store_proplist(Props, Call).
 
--spec set_flow_error(ne_binary() | {binary(), binary()}, whapps_call:call()) -> whapps_call:call().
+-spec set_flow_error(api_binary() | {binary(), binary()}, whapps_call:call()) -> whapps_call:call().
 set_flow_error({Status, Error}, Call) ->
     Props = [{<<"flow_status">>, Status}
              ,{<<"flow_error">>, Error}
@@ -75,7 +75,7 @@ set_flow_error({Status, Error}, Call) ->
 set_flow_error(Error, Call) ->
     set_flow_error(<<"pending">>, Error, Call).
 
--spec set_flow_error(ne_binary(), ne_binary(), whapps_call:call()) -> whapps_call:call().
+-spec set_flow_error(ne_binary(), api_binary(), whapps_call:call()) -> whapps_call:call().
 set_flow_error(Status, Error, Call) ->
     Props = [{<<"flow_status">>, Status}
              ,{<<"flow_error">>, Error}
@@ -482,17 +482,17 @@ mdn_from_e164(<<"+1", Number/binary>>) -> Number;
 mdn_from_e164(<<"1", Number/binary>>) -> Number;
 mdn_from_e164(Number) -> Number.
 
--spec maybe_reschedule_sms(whapps_call:call()) -> whapps_call:call().
+-spec maybe_reschedule_sms(whapps_call:call()) -> 'ok'.
 maybe_reschedule_sms(Call) ->
     maybe_reschedule_sms(<<>>, <<>>, Call).
 
--spec maybe_reschedule_sms(api_binary(), whapps_call:call()) -> whapps_call:call().
+-spec maybe_reschedule_sms(api_binary(), whapps_call:call()) -> 'ok'.
 maybe_reschedule_sms(<<"sip:", Code/binary>>, Call) ->
     maybe_reschedule_sms(Code, <<>>, Call);
 maybe_reschedule_sms(Code, Call) ->
     maybe_reschedule_sms(Code, <<>>, Call).
 
--spec maybe_reschedule_sms(api_binary(), api_binary(), whapps_call:call()) -> whapps_call:call().
+-spec maybe_reschedule_sms(api_binary(), api_binary(), whapps_call:call()) -> 'ok'.
 maybe_reschedule_sms(Code, 'undefined', Call) ->
     maybe_reschedule_sms(Code, set_flow_error(<<"unknown error">>, Call));
 maybe_reschedule_sms(<<"sip:", Code/binary>>, Message, Call) ->
@@ -500,7 +500,7 @@ maybe_reschedule_sms(<<"sip:", Code/binary>>, Message, Call) ->
 maybe_reschedule_sms(Code, Message, Call) ->
     maybe_reschedule_sms(Code, Message, whapps_call:account_id(Call), set_flow_error(Message, Call)).
 
--spec maybe_reschedule_sms(api_binary(), api_binary(), ne_binary(), whapps_call:call()) -> whapps_call:call().
+-spec maybe_reschedule_sms(api_binary(), api_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
 maybe_reschedule_sms(Code, Message, AccountId, Call) ->
     put('call', Call),
     Rules = whapps_account_config:get_global(AccountId, ?CONFIG_CAT, <<"reschedule">>, wh_json:new()),
@@ -530,16 +530,18 @@ inc_counter(Key, JObj) ->
     wh_json:set_value(Key, wh_json:get_integer_value(Key, JObj, 0) + 1, JObj).
 
 -spec apply_reschedule_logic({wh_json:json_terms(), wh_json:keys()}, wh_json:object()) ->
-                 'no_rule' | 'end_rules' | wh_json:object().
+                                    'no_rule' | 'end_rules' | wh_json:object().
 apply_reschedule_logic({[], []}, _JObj) -> 'no_rule';
 apply_reschedule_logic(Rules, JObj) ->
     Step = wh_json:get_integer_value(<<"rule">>, JObj, 1),
     apply_reschedule_logic(Rules, inc_counters(JObj, ?RESCHEDULE_COUNTERS), Step).
 
-apply_reschedule_logic({_V, K}, _JObj, Step)
-  when Step > length(K) -> 'end_rules';
-apply_reschedule_logic({V, K}, JObj, Step) ->
-    Rules = {lists:sublist(V, Step, length(V)), lists:sublist(K, Step, length(K))},
+-spec apply_reschedule_logic({wh_json:json_terms(), wh_json:keys()}, wh_json:object(), integer()) ->
+                                    'no_rule' | 'end_rules' | wh_json:object().
+apply_reschedule_logic({_Vs, Ks}, _JObj, Step)
+  when Step > length(Ks) -> 'end_rules';
+apply_reschedule_logic({Vs, Ks}, JObj, Step) ->
+    Rules = {lists:sublist(Vs, Step, length(Vs)), lists:sublist(Ks, Step, length(Ks))},
     apply_reschedule_rules(Rules, JObj, Step).
 
 -spec apply_reschedule_rules({wh_json:json_terms(), wh_json:keys()}, wh_json:object(), integer()) ->
@@ -559,6 +561,8 @@ apply_reschedule_rules({[Rule | Rules], [Key | Keys]}, JObj, Step) ->
                       ], Schedule)
     end.
 
+-spec apply_reschedule_step({wh_json:json_terms(), wh_json:keys()}, wh_json:object()) ->
+                                   'no_match' | wh_json:object().
 apply_reschedule_step({[], []}, JObj) -> JObj;
 apply_reschedule_step({[Value | Values], [Key | Keys]}, JObj) ->
     case apply_reschedule_rule(Key, Value, JObj) of
@@ -566,7 +570,7 @@ apply_reschedule_step({[Value | Values], [Key | Keys]}, JObj) ->
         Schedule -> apply_reschedule_step({Values, Keys}, Schedule)
     end.
 
--spec apply_reschedule_rule(binary(), term(), wh_json:object()) -> 'no_match' | wh_json:object().
+-spec apply_reschedule_rule(ne_binary(), term(), wh_json:object()) -> 'no_match' | wh_json:object().
 apply_reschedule_rule(<<"error">>, ErrorObj, JObj) ->
     Codes = wh_json:get_value(<<"code">>, ErrorObj, []),
     XCodes = wh_json:get_value(<<"xcode">>, ErrorObj, []),
@@ -604,16 +608,17 @@ apply_reschedule_rule(<<"interval">>, IntervalJObj, JObj) ->
 apply_reschedule_rule(<<"report">>, V, JObj) ->
     Call = get('call'),
     Error = <<(wh_json:get_value(<<"code">>, JObj, <<>>))/binary, " "
-                        ,(wh_json:get_value(<<"reason">>, JObj, <<>>))/binary>>,
+              ,(wh_json:get_value(<<"reason">>, JObj, <<>>))/binary
+            >>,
     Props = props:filter_undefined(
-      [{<<"To">>, whapps_call:to_user(Call)}
-       ,{<<"From">>, whapps_call:from_user(Call)}
-       ,{<<"Error">>, wh_util:strip_binary(Error)}
-       ,{<<"Attempts">>, wh_json:get_value(<<"attempts">>, JObj)}
-       | safe_to_proplist(V)
-       ]),
+              [{<<"To">>, whapps_call:to_user(Call)}
+               ,{<<"From">>, whapps_call:from_user(Call)}
+               ,{<<"Error">>, wh_util:strip_binary(Error)}
+               ,{<<"Attempts">>, wh_json:get_value(<<"attempts">>, JObj)}
+               | safe_to_proplist(V)
+              ]),
     Notify = [{<<"Subject">>, <<"sms_error">>}
-              ,{<<"Message">>, "undelivered sms"}
+              ,{<<"Message">>, <<"undelivered sms">>}
               ,{<<"Details">>, wh_json:set_values(Props, wh_json:new())}
               ,{<<"Account-ID">>, whapps_call:account_id(Call)}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -631,7 +636,7 @@ safe_to_proplist('true', JObj) ->
     wh_json:to_proplist(JObj);
 safe_to_proplist(_, _) -> [].
 
--spec time_rule(binary(), integer(), integer()) -> integer().
+-spec time_rule(ne_binary(), integer(), integer()) -> integer().
 time_rule(<<"week">>, N, Base) -> Base + N * ?SECONDS_IN_WEEK;
 time_rule(<<"day">>, N, Base) -> Base + N * ?SECONDS_IN_DAY;
 time_rule(<<"hour">>, N, Base) -> Base + N * ?SECONDS_IN_HOUR;

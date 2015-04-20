@@ -120,7 +120,7 @@ get_from_uri_realm(Data, Call) ->
 -spec maybe_get_call_from_realm(whapps_call:call()) -> api_binary().
 maybe_get_call_from_realm(Call) ->
     case whapps_call:from_realm(Call) of
-        'undefined' -> get_account_realm(Call);
+        <<"norealm">> -> get_account_realm(Call);
         Realm -> Realm
     end.
 

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -79,14 +79,14 @@ maybe_handle_bridge_failure({_ , R}=Reason, Call) ->
 %%--------------------------------------------------------------------
 
 -spec get_endpoints(api_binary(), wh_json:object(), whapps_call:call()) ->
-                           wh_json:objects().
-get_endpoints('undefined', _, _) -> [];
+                           {wh_json:objects(), non_neg_integer()}.
+get_endpoints('undefined', _, _) -> {[], 0};
 get_endpoints(UserId, Data, Call) ->
     Params = wh_json:set_value(<<"source">>, ?MODULE, Data),
     lists:foldr(fun(EndpointId, {Acc, Dnd}) ->
                         case cf_endpoint:build(EndpointId, Params, Call) of
                             {'ok', Endpoint} -> {Endpoint ++ Acc, Dnd};
-                            {'error', 'do_not_disturb'} -> {Acc, Dnd+1};  
+                            {'error', 'do_not_disturb'} -> {Acc, Dnd+1};
                             {'error', _E} -> {Acc, Dnd}
                         end
                 end
