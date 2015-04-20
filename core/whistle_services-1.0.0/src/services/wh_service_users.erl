@@ -38,34 +38,9 @@ reconcile(Services) ->
                         end, wh_services:reset_category(<<"users">>, Services), JObjs)
     end.
 
-reconcile(Services, UserType) ->
-    AccountId = wh_services:account_id(Services),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    ViewOptions = ['reduce'
-                   ,'group'
-                  ],
-    case couch_mgr:get_results(AccountDb, <<"services/users">>, ViewOptions) of
-        {'error', _R} ->
-            lager:debug("unable to get current users in service: ~p", [_R]),
-            Services;
-        {'ok', []} -> wh_services:update(<<"users">>, UserType, 1, Services);
-        {'ok', JObjs} ->
-            S = lists:foldl(
-                    fun(JObj, S) ->
-                        Item = wh_json:get_value(<<"key">>, JObj),
-                        Quantity = wh_json:get_integer_value(<<"value">>, JObj, 0),
-                        case Item =:= UserType of
-                            'false' -> wh_services:update(<<"users">>, Item, Quantity, S);
-                            'true' -> wh_services:update(<<"users">>, Item, Quantity+1, S)
-                        end
-                    end
-                    ,wh_services:reset_category(<<"users">>, Services)
-                    ,JObjs
-                ),
-            Keys = couch_mgr:get_result_keys(JObjs),
-            case lists:member(UserType, Keys) of
-                'false' -> wh_services:update(<<"users">>, UserType, 1, S);
-                'true' -> S
-            end
-    end.
+reconcile(Services, 'undefined') -> Services;
+reconcile(Services0, UserType) ->
+    Services1 = reconcile(Services0),
+    Quantity = wh_services:update_quantity(<<"users">>, UserType, Services1),
+    wh_services:update(<<"users">>, UserType, Quantity+1, Services1).
 
