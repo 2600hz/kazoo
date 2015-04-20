@@ -30,6 +30,7 @@
 update_device(JObj, AuthToken) ->
     AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
     Request = device_settings(set_owner(JObj)),
+    maybe_sync_sip_username(JObj),
     case check_request(Request) of
         {'ok', Data} ->
             _ = update_account(AccountId, AuthToken),
@@ -95,6 +96,16 @@ get_model(JObj) ->
         <<"t48">> -> <<"t48g">>;
         Else -> Else
     end.
+
+-spec maybe_sync_sip_username(wh_json:object()) -> 'ok'.
+maybe_sync_sip_username(JObj) ->
+    OldUsername = wh_json:get_value(<<"old_sip_username">>, JObj),
+    AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
+    case kz_device:sip_username(JObj) =/= OldUsername of
+        'true' -> maybe_publish_check_sync('undefined', OldUsername, AccountId);
+        'false' -> 'ok'
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @public

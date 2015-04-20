@@ -983,9 +983,7 @@ maybe_refresh_fs_xml(Kind, Context) ->
     DbDoc = cb_context:fetch(Context, 'db_doc'),
     Doc = cb_context:doc(Context),
     Precondition =
-        (wh_json:get_value(<<"presence_id">>, DbDoc) =/=
-             wh_json:get_value(<<"presence_id">>, Doc)
-        )
+        (kz_device:presence_id(DbDoc) =/= kz_device:presence_id(Doc))
         or (wh_json:get_value([<<"media">>, <<"encryption">>, <<"enforce_security">>], DbDoc) =/=
                 wh_json:get_value([<<"media">>, <<"encryption">>, <<"enforce_security">>], Doc)
            ),
@@ -1073,6 +1071,7 @@ map_server(Server, Acc) ->
     Name = wh_json:get_value(<<"server_name">>, Server),
     wh_json:set_value(Name, Server, Acc).
 
+%% @public
 -spec refresh_fs_xml(cb_context:context()) -> 'ok'.
 refresh_fs_xml(Context) ->
     Realm = wh_util:get_account_realm(cb_context:account_db(Context)),

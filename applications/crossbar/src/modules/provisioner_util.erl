@@ -105,15 +105,17 @@ maybe_provision(_Context, _Status) -> 'false'.
 
 -spec maybe_provision_v5(cb_context:context(), ne_binary()) -> 'ok'.
 maybe_provision_v5(Context, ?HTTP_PUT) ->
-    JObj = cb_context:doc(Context),
-    AuthToken =  cb_context:auth_token(Context),
+    AuthToken = cb_context:auth_token(Context),
+    OldSIPUsername = kz_device:sip_username(cb_context:fetch(Context, 'db_doc')),
+    JObj = wh_json:set_value(<<"old_sip_username">>, OldSIPUsername, cb_context:doc(Context)),
     _ = spawn('provisioner_v5', 'update_device', [JObj, AuthToken]),
     'ok';
 maybe_provision_v5(Context, ?HTTP_POST) ->
-    JObj = cb_context:doc(Context),
-    AuthToken =  cb_context:auth_token(Context),
+    AuthToken = cb_context:auth_token(Context),
     NewAddress = cb_context:req_value(Context, <<"mac_address">>),
     OldAddress = wh_json:get_ne_value(<<"mac_address">>, cb_context:fetch(Context, 'db_doc')),
+    OldSIPUsername = kz_device:sip_username(cb_context:fetch(Context, 'db_doc')),
+    JObj = wh_json:set_value(<<"old_sip_username">>, OldSIPUsername, cb_context:doc(Context)),
     case NewAddress =:= OldAddress of
         'true' ->
             _ = spawn('provisioner_v5', 'update_device', [JObj, AuthToken]);
