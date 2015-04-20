@@ -507,7 +507,7 @@ save_recording(_Call, MediaName, _Format, 'false') ->
     lager:info("not configured to store recording ~s", [MediaName]);
 save_recording(Call, MediaName, Format, {'true', 'other', 'third_party'}) ->
     case whapps_config:get_ne_binary(?CONFIG_CAT, <<"third_party_bigcouch_host">>) of
-        'undefined' -> 
+        'undefined' ->
             lager:error("no URL for call recording provided, third_party_bigcouch_host undefined");
         BCHost -> store_recording_to_third_party_bigcouch(Call, MediaName, Format, BCHost)
     end;
@@ -555,7 +555,7 @@ store_recording_to_third_party_bigcouch(Call, MediaName, Format, BCHost) ->
     lager:info("store to third-party modb url: ~s", [StoreUrl]),
     'ok' = whapps_call_command:store(MediaName, StoreUrl, Call).
 
--spec store_recording(ne_binary(), ne_binary(), whapps_call:call(), ne_binary()) -> 'ok'.
+-spec store_recording(ne_binary(), ne_binary(), whapps_call:call(), 'local' | 'other') -> 'ok'.
 store_recording(MediaName, Url, Call, 'other') ->
     StoreUrl = append_path(Url, MediaName),
     lager:debug("appending filename to url: ~s", [StoreUrl]),
