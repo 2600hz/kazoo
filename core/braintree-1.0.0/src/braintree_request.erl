@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
-%%% Created : 22 Sep 2011 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(braintree_request).
 
@@ -23,9 +23,9 @@
 %% Preform a get request to braintree's system
 %% @end
 %%--------------------------------------------------------------------
--spec get/1 :: (nonempty_string()) -> bt_xml().
+-spec get(nonempty_string()) -> bt_xml().
 get(Path) ->
-    do_request(get, Path, <<>>).
+    do_request('get', Path, <<>>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -33,9 +33,9 @@ get(Path) ->
 %% Preform a post request to braintree's system
 %% @end
 %%--------------------------------------------------------------------
--spec post/2 :: (nonempty_string(), binary()) -> bt_xml().
+-spec post(nonempty_string(), binary()) -> bt_xml().
 post(Path, Request) ->
-    do_request(post, Path, Request).
+    do_request('post', Path, Request).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -43,9 +43,9 @@ post(Path, Request) ->
 %% Preform a put request to braintree's system
 %% @end
 %%--------------------------------------------------------------------
--spec put/2 :: (nonempty_string(), binary()) -> bt_xml().
+-spec put(nonempty_string(), binary()) -> bt_xml().
 put(Path, Request) ->
-    do_request(put, Path, Request).
+    do_request('put', Path, Request).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -53,9 +53,9 @@ put(Path, Request) ->
 %% Preform a delete request to braintree's system
 %% @end
 %%--------------------------------------------------------------------
--spec delete/1 :: (nonempty_string()) -> bt_xml().
+-spec delete(nonempty_string()) -> bt_xml().
 delete(Path) ->
-    do_request(delete, Path, <<>>).
+    do_request('delete', Path, <<>>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -63,71 +63,89 @@ delete(Path) ->
 %% Preform a request to the braintree service
 %% @end
 %%--------------------------------------------------------------------
--spec do_request/3 :: (http_verb(), nonempty_string(), binary()) -> bt_xml().
+-spec do_request(http_verb(), nonempty_string(), binary()) -> bt_xml().
 do_request(Method, Path, Body) ->
-    StartTime = erlang:now(),
+    StartTime = os:timestamp(),
+
     lager:debug("making ~s request to braintree ~s", [Method, Path]),
-    Url = lists:flatten(["https://"
-                         ,braintree_server_url(whapps_config:get_string(<<"braintree">>, <<"default_environment">>, <<>>))
-                         ,"/merchants/", whapps_config:get_string(<<"braintree">>, <<"default_merchant_id">>, <<>>)
-                         ,Path
-                        ]),
-    Headers = [{"Accept", "application/xml"}
-               ,{"User-Agent", "Braintree Erlang Library 1"}
-               ,{"X-ApiVersion", wh_util:to_list(?BT_API_VERSION)}
-               ,{"Content-Type", "application/xml"}],
-    HTTPOptions = [{ssl,[{verify,0}]}
-                   ,{basic_auth, {whapps_config:get_string(<<"braintree">>, <<"default_public_key">>, <<>>)
-                                  ,whapps_config:get_string(<<"braintree">>, <<"default_private_key">>, <<>>)}}
-                  ],
+    Url = build_url(Path),
+
+    Headers = request_headers(),
+    HTTPOptions = http_options(),
     verbose_debug("Request:~n~s ~s~n~s~n", [Method, Url, Body]),
+
     case ibrowse:send_req(Url, Headers, Method, Body, HTTPOptions) of
-        {ok, "401", _, _Response} ->
+        {'ok', "401", _, _Response} ->
             verbose_debug("Response:~n401~n~s~n", [_Response]),
-            lager:debug("braintree error response(~pms): 401 Unauthenticated", [elapsed(StartTime)]),
+            lager:debug("braintree error response(~pms): 401 Unauthenticated", [wh_util:elapsed_ms(StartTime)]),
             braintree_util:error_authentication();
-        {ok, "403", _, _Response} ->
+        {'ok', "403", _, _Response} ->
             verbose_debug("Response:~n403~n~s~n", [_Response]),
-            lager:debug("braintree error response(~pms): 403 Unauthorized", [elapsed(StartTime)]),
+            lager:debug("braintree error response(~pms): 403 Unauthorized", [wh_util:elapsed_ms(StartTime)]),
             braintree_util:error_authorization();
-        {ok, "404", _, _Response} ->
+        {'ok', "404", _, _Response} ->
             verbose_debug("Response:~n404~n~s~n", [_Response]),
-            lager:debug("braintree error response(~pms): 404 Not Found", [elapsed(StartTime)]),
+            lager:debug("braintree error response(~pms): 404 Not Found", [wh_util:elapsed_ms(StartTime)]),
             braintree_util:error_not_found(<<>>);
-        {ok, "426", _, _Response} ->
+        {'ok', "426", _, _Response} ->
             verbose_debug("Response:~n426~n~s~n", [_Response]),
-            lager:debug("braintree error response(~pms): 426 Upgrade Required", [elapsed(StartTime)]),
+            lager:debug("braintree error response(~pms): 426 Upgrade Required", [wh_util:elapsed_ms(StartTime)]),
             braintree_util:error_upgrade_required();
-        {ok, "500", _, _Response} ->
+        {'ok', "500", _, _Response} ->
             verbose_debug("Response:~n500~n~s~n", [_Response]),
-            lager:debug("braintree error response(~pms): 500 Server Error", [elapsed(StartTime)]),
+            lager:debug("braintree error response(~pms): 500 Server Error", [wh_util:elapsed_ms(StartTime)]),
             braintree_util:error_server_error();
-        {ok, "503", _, _Response} ->
+        {'ok', "503", _, _Response} ->
             verbose_debug("Response:~n503~n~s~n", [_Response]),
-            lager:debug("braintree error response(~pms): 503 Maintenance", [elapsed(StartTime)]),
+            lager:debug("braintree error response(~pms): 503 Maintenance", [wh_util:elapsed_ms(StartTime)]),
             braintree_util:error_maintenance();
-        {ok, Code, _, [$<,$?,$x,$m,$l|_]=Response} ->
+        {'ok', Code, _, [$<,$?,$x,$m,$l|_]=Response} ->
             verbose_debug("Response:~n~p~n~s~n", [Code, Response]),
             {Xml, _} = xmerl_scan:string(Response),
-            lager:debug("braintree xml response(~pms)", [elapsed(StartTime)]),
+            lager:debug("braintree xml response(~pms)", [wh_util:elapsed_ms(StartTime)]),
             verify_response(Xml);
-        {ok, Code, _, [$<,$s,$e,$a,$r,$c,$h|_]=Response} ->
+        {'ok', Code, _, [$<,$s,$e,$a,$r,$c,$h|_]=Response} ->
             verbose_debug("Response:~n~p~n~s~n", [Code, Response]),
             {Xml, _} = xmerl_scan:string(Response),
-            lager:debug("braintree xml response(~pms)", [elapsed(StartTime)]),
+            lager:debug("braintree xml response(~pms)", [wh_util:elapsed_ms(StartTime)]),
             verify_response(Xml);
-        {ok, Code, _, _Response} ->
+        {'ok', Code, _, _Response} ->
             verbose_debug("Response:~n~p~n~s~n", [Code, _Response]),
-            lager:debug("braintree empty response(~pms): ~p", [elapsed(StartTime), Code]),
+            lager:debug("braintree empty response(~pms): ~p", [wh_util:elapsed_ms(StartTime), Code]),
             ?BT_EMPTY_XML;
-        {error, _R} ->
+        {'error', _R} ->
             verbose_debug("Response:~nerror~n~p~n", [_R]),
-            lager:debug("braintree request error(~pms): ~p", [elapsed(StartTime), _R]),
+            lager:debug("braintree request error(~pms): ~p", [wh_util:elapsed_ms(StartTime), _R]),
             braintree_util:error_io_fault()
     end.
 
-elapsed(StartTime) ->
-    timer:now_diff(erlang:now(), StartTime) div 1000.
+-spec build_url(text()) -> text().
+build_url(Path) ->
+    lists:flatten(["https://"
+                   ,braintree_server_url(whapps_config:get_string(<<"braintree">>, <<"default_environment">>, <<>>))
+                   ,"/merchants/", whapps_config:get_string(<<"braintree">>, <<"default_merchant_id">>, <<>>)
+                   ,Path
+                  ]).
+
+-spec request_headers() -> [{string(), string()}].
+request_headers() ->
+    [{"Accept", "application/xml"}
+     ,{"User-Agent", "Braintree Erlang Library 1"}
+     ,{"X-ApiVersion", wh_util:to_list(?BT_API_VERSION)}
+     ,{"Content-Type", "application/xml"}
+    ].
+
+-type ssl_option() :: {'ssl', wh_proplist()}.
+-type basic_auth_option() :: {'basic_auth', {string(), string()}}.
+
+-spec http_options() -> [ssl_option() | basic_auth_option()].
+http_options() ->
+    [{'ssl',[{'verify', 0}]}
+     ,{'basic_auth', {whapps_config:get_string(<<"braintree">>, <<"default_public_key">>, <<>>)
+                      ,whapps_config:get_string(<<"braintree">>, <<"default_private_key">>, <<>>)
+                     }
+      }
+    ].
 
 %%--------------------------------------------------------------------
 %% @private
