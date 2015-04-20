@@ -403,7 +403,7 @@ agent_summary(AcctId, AgentId) ->
             AAgentId =:= AgentId
       ]).
 
--spec show_agents_summary([{pid(), acdc_agent:config()},...] | []) -> 'ok'.
+-spec show_agents_summary([{pid(), acdc_agent_listener:config()},...] | []) -> 'ok'.
 show_agents_summary([]) -> 'ok';
 show_agents_summary([{P, {AcctId, QueueId, _AMQPQueue}}|Qs]) ->
     lager:info("  Supervisor: ~p Acct: ~s Agent: ~s", [P, AcctId, QueueId]),
