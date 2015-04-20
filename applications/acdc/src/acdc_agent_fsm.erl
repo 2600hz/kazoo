@@ -157,11 +157,6 @@ agent_timeout(FSM, JObj) ->
 call_event(FSM, <<"call_event">>, <<"CHANNEL_BRIDGE">>, JObj) ->
     gen_fsm:send_event(FSM, {'channel_bridged', call_id(JObj)});
 call_event(FSM, <<"call_event">>, <<"CHANNEL_UNBRIDGE">>, JObj) ->
-    lager:info("send CHANNEL_UNBRIDGE to ~p with ci: ~s, olci: ~s",
-               [FSM
-                ,call_id(JObj)
-                ,kz_call_event:other_leg_call_id(JObj)
-               ]),
     gen_fsm:send_event(FSM, {'channel_unbridged', call_id(JObj)});
 call_event(FSM, <<"call_event">>, <<"usurp_control">>, JObj) ->
     gen_fsm:send_event(FSM, {'usurp_control', call_id(JObj)});
@@ -185,19 +180,8 @@ call_event(FSM, <<"error">>, <<"dialplan">>, JObj) ->
 
     gen_fsm:send_event(FSM, {'dialplan_error', wh_json:get_value(<<"Application-Name">>, Req)});
 call_event(FSM, <<"call_event">>, <<"CHANNEL_REPLACED">>, JObj) ->
-    lager:info("send CHANNEL_REPLACED to ~p witch ci: ~s, rb: ~s, olci: ~s",
-               [FSM
-                ,call_id(JObj)
-                ,kz_call_event:replaced_by(JObj)
-                ,kz_call_event:other_leg_call_id(JObj)
-               ]),
     gen_fsm:send_event(FSM, {'channel_replaced', JObj});
 call_event(FSM, <<"call_event">>, <<"CHANNEL_TRANSFEREE">>, JObj) ->
-    lager:info("Send CHANNEL_TRANSFEREE to ~p with ci: ~s, olci: ~s",
-               [FSM
-                ,call_id(JObj)
-                ,kz_call_event:other_leg_call_id(JObj)
-               ]),
     gen_fsm:send_event(FSM, {'channel_unbridged', call_id(JObj)});
 call_event(_, _C, _E, _) ->
     lager:info("Unhandled combo: ~s/~s", [_C, _E]).
@@ -920,7 +904,7 @@ answered({'channel_bridged', CallId}, #state{agent_call_id=CallId
     maybe_notify(Ns, ?NOTIFY_PICKUP, State),
     {'next_state', 'answered', State};
 answered({'channel_replaced', JObj}, #state{agent_listener=AgentListener}=State) ->
-    CallId = call_id(JObj),
+    CallId = kz_call_event:call_id(JObj),
     ReplacedBy = kz_call_event:replaced_by(JObj),
     acdc_agent_listener:rebind_events(AgentListener, CallId, ReplacedBy),
     wh_util:put_callid(ReplacedBy),
