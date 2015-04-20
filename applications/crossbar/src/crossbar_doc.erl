@@ -594,7 +594,7 @@ save_attachment(DocId, Name, Contents, Context, Options) ->
                     {'ok', Rev} = couch_mgr:lookup_doc_rev(cb_context:account_db(Context), DocId),
                     lager:debug("looking up rev for ~s: ~s", [DocId, Rev]),
                     [{'rev', Rev} | Options];
-                O -> O
+                _O -> Options
             end,
 
     AName = wh_util:clean_binary(Name),
