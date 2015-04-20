@@ -936,6 +936,8 @@ add_system_error('invalid_method'=Error, JObj, Context) ->
 add_system_error('bad_gateway'=Error, JObj, Context) ->
     J = wh_json:set_value(<<"message">>, <<"bad gateway">>, JObj),
     build_system_error(502, Error, J, Context);
+add_system_error('multiple_choice'=Error, JObj, Context) ->
+    build_system_error(400, Error, JObj, Context);
 add_system_error(Error, JObj, Context) ->
     case wh_json:get_ne_value(<<"message">>, JObj) of
         'undefined' ->
@@ -1013,6 +1015,9 @@ add_validation_error(Property, <<"not_found">> = C, Message, Context) ->
 add_validation_error(Property, <<"patternProperties">> = C, Message, Context) ->
     add_depreciated_validation_error(Property, C, Message, Context);
 add_validation_error(Property, <<"disabled">> = C, Message, Context) ->
+    add_depreciated_validation_error(Property, C, Message, Context);
+% Generic
+add_validation_error(Property, <<"invalid">> = C, Message, Context) ->
     add_depreciated_validation_error(Property, C, Message, Context);
 
 add_validation_error(Property, Code, Message, Context) ->

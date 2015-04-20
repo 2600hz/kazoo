@@ -99,6 +99,7 @@
                         api_binary().
 
 -type operation_return() :: {'ok', wh_json:object()} |
+                            {'dry_run', wh_proplist()} |
                             {wnm_failures(), api_object()}.
 
 %%% NUMBER STATES
