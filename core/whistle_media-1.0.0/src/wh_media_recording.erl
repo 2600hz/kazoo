@@ -487,19 +487,25 @@ store_url(Call, JObj) ->
     {'ok', URL} = wh_media_url:store(AccountDb, MediaId, MediaName),
     URL.
 
--type store_url() :: 'false' | {'true', 'local'} | {'true', 'other', 'third_party'} | {'true', 'other', ne_binary()}.
+-type store_url() :: 'false' |
+                     {'true', 'local'} |
+                     {'true', 'other', 'third_party'} |
+                     {'true', 'other', ne_binary()}.
 
+-spec should_store_recording() -> store_url().
 -spec should_store_recording(api_binary()) -> store_url().
 should_store_recording(Url) ->
     case wh_util:is_empty(Url) of
-        'true' ->
-            BCHost = whapps_config:get_ne_binary(?CONFIG_CAT, <<"third_party_bigcouch_host">>),
-            case whapps_config:get_is_true(?CONFIG_CAT, <<"store_recordings">>, 'false') of
-                'true' when BCHost =/= 'undefined' -> {'true', 'other', 'third_party'};
-                'true' -> {'true', 'local'};
-                'false' -> 'false'
-            end;
+        'true' -> should_store_recording();
         'false' -> {'true', 'other', Url}
+    end.
+
+should_store_recording() ->
+    BCHost = whapps_config:get_ne_binary(?CONFIG_CAT, <<"third_party_bigcouch_host">>),
+    case whapps_config:get_is_true(?CONFIG_CAT, <<"store_recordings">>, 'false') of
+        'true' when BCHost =/= 'undefined' -> {'true', 'other', 'third_party'};
+        'true' -> {'true', 'local'};
+        'false' -> 'false'
     end.
 
 -spec save_recording(whapps_call:call(), ne_binary(), ne_binary(), store_url()) -> 'ok'.
