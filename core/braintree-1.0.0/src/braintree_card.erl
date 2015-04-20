@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -130,16 +130,16 @@ delete(Token) ->
 %% Deletes non-default cards
 %% @end
 %%--------------------------------------------------------------------
--spec delete_unused_cards([card()]) -> [card()].
+-spec delete_unused_cards(cards()) -> cards().
 delete_unused_cards(Cards) ->
-    Deleter = fun
-                  (#bt_card{default = 'true'}=Card, Acc) ->
-                      [Card|Acc];
-                  (#bt_card{default = 'false'}=Card, Acc) ->
-                      delete(Card),
-                      Acc
-              end,
-    lists:foldl(Deleter, [], Cards).
+    lists:foldl(fun delete_unused_card/2, [], Cards).
+
+-spec delete_unused_card(card(), cards()) -> cards().
+delete_unused_card(#bt_card{default = 'true'}=Card, Acc) ->
+    [Card|Acc];
+delete_unused_card(#bt_card{default = 'false'}=Card, Acc) ->
+    delete(Card),
+    Acc.
 
 %%--------------------------------------------------------------------
 %% @public
