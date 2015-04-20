@@ -77,12 +77,12 @@ url(SubscriptionId, Options) ->
 -spec new(ne_binary(), ne_binary(), ne_binary()) -> subscription().
 
 new(#bt_subscription{}=Subscription, PaymentToken) ->
-    Subscription#bt_subscription{id = wh_util:rand_hex_binary(16)
+    Subscription#bt_subscription{id = new_subscription_id()
                                  ,payment_token = PaymentToken
                                  ,create = 'true'
                                 };
 new(PlanId, PaymentToken) ->
-    new(wh_util:rand_hex_binary(16), PlanId, PaymentToken).
+    new(new_subscription_id(), PlanId, PaymentToken).
 
 new(SubscriptionId, PlanId, PaymentToken) ->
     #bt_subscription{id=SubscriptionId
@@ -90,6 +90,9 @@ new(SubscriptionId, PlanId, PaymentToken) ->
                      ,plan_id=PlanId
                      ,create='true'
                     }.
+
+new_subscription_id() ->
+    wh_util:rand_hex_binary(16).
 
 %%--------------------------------------------------------------------
 %% @public
