@@ -114,7 +114,7 @@ set_account(Account, JObj) ->
         {'ok', Doc} -> Doc
     end.
 
--spec get_plan_apps(wh_json:object()) -> wh_json:object().
+-spec get_plan_apps(wh_json:object()) -> wh_json:objects().
 get_plan_apps(ServicePlan) ->
     JObjs = wh_json:get_value(<<"ui_apps">>, ServicePlan),
     wh_json:delete_key(<<"_all">>, JObjs).
