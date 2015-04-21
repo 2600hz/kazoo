@@ -235,8 +235,12 @@ validate(Context, UserId, ?QUICKCALL, _) ->
 post(Context, _) ->
     _ = crossbar_util:maybe_refresh_fs_xml('user', Context),
     Context1 = crossbar_doc:save(Context),
-    _  = maybe_update_devices_presence(Context),
-    Context1.
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            maybe_update_devices_presence(Context1),
+            Context1;
+        _ -> Context1
+    end.
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
