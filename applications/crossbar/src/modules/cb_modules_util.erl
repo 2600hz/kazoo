@@ -222,6 +222,7 @@ create_call_from_context(Context) ->
         props:filter_undefined(
           [{fun whapps_call:set_account_db/2, cb_context:account_db(Context)}
            ,{fun whapps_call:set_account_id/2, cb_context:account_id(Context)}
+           ,{fun whapps_call:set_resource_type/2, <<"audio">>}
            ,{fun whapps_call:set_owner_id/2, wh_json:get_ne_value(<<"owner_id">>, cb_context:doc(Context))}
            | request_specific_extraction_funs(Context)
           ]),
@@ -314,6 +315,7 @@ originate_quickcall(Endpoints, Call, Context) ->
                 'true' -> wh_util:rand_hex_binary(16);
                 'false' -> cb_context:req_id(Context)
             end,
+    CallId = <<(wh_util:rand_hex_binary(18))/binary, "-quickcall">>,
     Request = [{<<"Application-Name">>, <<"transfer">>}
                ,{<<"Application-Data">>, get_application_data(Context)}
                ,{<<"Msg-ID">>, MsgId}
@@ -325,6 +327,7 @@ originate_quickcall(Endpoints, Call, Context) ->
                ,{<<"Outbound-Caller-ID-Number">>, whapps_call:request_user(Call)}
                ,{<<"Outbound-Callee-ID-Name">>, get_caller_id_name(Context)}
                ,{<<"Outbound-Callee-ID-Number">>, get_caller_id_number(Context)}
+               ,{<<"Outbound-Call-ID">>, CallId}
                ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
                ,{<<"Continue-On-Fail">>, 'false'}
                ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
@@ -332,7 +335,7 @@ originate_quickcall(Endpoints, Call, Context) ->
                | wh_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
               ],
     wapi_resource:publish_originate_req(props:filter_undefined(Request)),
-    crossbar_util:response_202(<<"processing request">>, cb_context:set_resp_data(Context, Request)).
+    crossbar_util:response_202(wh_json:from_list(Request), cb_context:set_resp_data(Context, Request)).
 
 -spec maybe_auto_answer(wh_json:objects(), boolean()) -> wh_json:objects().
 maybe_auto_answer([Endpoint], AutoAnswer) ->
