@@ -37,7 +37,7 @@ rates_for_did(AccountId, DID, Direction, RouteOptions) when is_list(RouteOptions
             ?LOCAL_SUMMARY_HEADER,
             _ = [print_rate(R) || R <- Rates],
 
-            print_matching(hon_util:matching_rates(Rates, DID, Direction, RouteOptions))
+            print_matching(hon_util:matching_rates(Rates, DID, RouteOptions))
     end;
 rates_for_did(AccountId, DID, Direction, Opt) ->
     rates_for_did(AccountId, DID, Direction, [Opt]).
