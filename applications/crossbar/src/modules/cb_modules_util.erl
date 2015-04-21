@@ -335,7 +335,8 @@ originate_quickcall(Endpoints, Call, Context) ->
                | wh_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
               ],
     wapi_resource:publish_originate_req(props:filter_undefined(Request)),
-    crossbar_util:response_202(wh_json:from_list(Request), cb_context:set_resp_data(Context, Request)).
+    JObj = wh_json:normalize(wh_json:from_list(wh_api:remove_defaults(Request))),
+    crossbar_util:response_202(JObj, cb_context:set_resp_data(Context, Request)).
 
 -spec maybe_auto_answer(wh_json:objects(), boolean()) -> wh_json:objects().
 maybe_auto_answer([Endpoint], AutoAnswer) ->
