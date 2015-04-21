@@ -63,12 +63,12 @@ init_db() ->
 
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->
-    AccId = cb_context:account_id(Context),
+    AccountId = cb_context:account_id(Context),
     AuthId = cb_context:auth_account_id(Context),
-    authorize(cb_context:req_verb(Context), AccId, AuthId).
+    authorize(cb_context:req_verb(Context), AccountId, AuthId).
 
 -spec authorize(http_method(), ne_binary(), ne_binary()) -> boolean().
-authorize(?HTTP_GET, AccId, AccId) ->
+authorize(?HTTP_GET, AccountId, AccountId) ->
     'true';
 authorize(_, AccountId, AuthId) ->
     (
@@ -146,10 +146,10 @@ validate(Context, ?NUMBER, Phonenumber) ->
 
 -spec validate_rates(cb_context:context(), http_method()) -> cb_context:context().
 validate_rates(Context, ?HTTP_GET) ->
-    AccId = wh_util:format_account_id(cb_context:account_id(Context), 'raw'),
+    AccountId = wh_util:format_account_id(cb_context:account_id(Context), 'raw'),
     AuthId = wh_util:format_account_id(cb_context:auth_account_id(Context), 'raw'),
     Parents = account_parents(Context),
-    summary(Context, AccId, AuthId, Parents);
+    summary(Context, AccountId, AuthId, Parents);
 validate_rates(Context, ?HTTP_PUT) ->
     create(set_account_db(Context));
 validate_rates(Context, ?HTTP_POST) ->
@@ -269,20 +269,20 @@ on_successful_validation(Id, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec summary(cb_context:context(), ne_binary(), ne_binary(), ne_binaries()) -> cb_context:context().
-summary(Context, _AccId, _AuthId, []) ->
+summary(Context, _AccountId, _AuthId, []) ->
     lager:debug("loading global rates"),
     summary(Context, [?WH_RATES_DB]);
-summary(Context, AccId, AccId, Parents) ->
+summary(Context, AccountId, AccountId, Parents) ->
     lager:debug("loading self rates"),
     DBs = [?WH_RATES_DB
            | lists:map(
                fun account_rates_db/1
-               ,Parents ++ [AccId]
+               ,Parents ++ [AccountId]
               )],
     summary(Context, DBs);
-summary(Context, AccId, _AuthId, _Parents) ->
+summary(Context, AccountId, _AuthId, _Parents) ->
     lager:debug("loading client rates"),
-    summary(Context, [account_rates_db(AccId)]).
+    summary(Context, [account_rates_db(AccountId)]).
 
 -spec summary(cb_context:context(), ne_binaries()) -> cb_context:context().
 summary(Context, DBs) ->
@@ -624,8 +624,8 @@ account_rates_db(AccountId) ->
 
 -spec account_parents(cb_context:context()) -> ne_binaries().
 account_parents(Context) ->
-    AccId = cb_context:account_id(Context),
-    kz_account:tree(cb_context:doc(crossbar_doc:load(AccId, Context))).
+    AccountId = cb_context:account_id(Context),
+    kz_account:tree(cb_context:doc(crossbar_doc:load(AccountId, Context))).
 
 -spec init_db(ne_binary()) -> 'ok'.
 init_db(DbName) ->
