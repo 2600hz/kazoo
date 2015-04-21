@@ -56,7 +56,8 @@ build_keys(_, <<>>, _, Acc) -> Acc.
 
 -spec rate_dbs(ne_binary()) -> list().
 rate_dbs(AccountId) ->
-    {ok, A} = couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId),
+    AccountDb = wh_util:format_account_db(AccountId),
+    {'ok', A} = couch_mgr:open_doc(AccountDb, AccountId),
     lists:foldl(fun acc_rate_dbs/2, [], lists:reverse([AccountId | kz_account:tree(A)]))
     ++ [?WH_RATES_DB].
 
@@ -64,8 +65,8 @@ rate_dbs(AccountId) ->
 acc_rate_dbs(AccountId, Acc) ->
     Db = wh_util:format_account_db(<<AccountId/binary, "-", ?WH_RATES_DB/binary>>),
     case couch_mgr:db_exists(Db) of
-        true -> [Db | Acc];
-        false -> Acc
+        'true' -> [Db | Acc];
+        'false' -> Acc
     end.
 
 -spec acc_candidate_rates(ne_binary(), {'ok', list(), integer(), list()} | {'error', any()}) ->

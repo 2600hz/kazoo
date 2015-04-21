@@ -9,7 +9,7 @@
 -module(hotornot_maintenance).
 
 -export([local_summary/0
-         ,rates_for_did/1, rates_for_did/3
+         ,rates_for_did/3, rates_for_did/4
          ,rates_between/2
         ]).
 
@@ -24,12 +24,12 @@
 local_summary() ->
     io:format("use rates_for_did/1 to see what rates would be used for a DID").
 
--spec rates_for_did(ne_binary()) -> 'ok'.
--spec rates_for_did(ne_binary(), api_binary(), trunking_options()) -> 'ok'.
-rates_for_did(DID) ->
-    rates_for_did(DID, 'undefined', []).
-rates_for_did(DID, Direction, RouteOptions) when is_list(RouteOptions) ->
-    case hon_util:candidate_rates(DID) of
+-spec rates_for_did(ne_binary(), ne_binary(), api_binary()) -> 'ok'.
+-spec rates_for_did(ne_binary(), ne_binary(), api_binary(), trunking_options()) -> 'ok'.
+rates_for_did(AccountId, DID, Direction) ->
+    rates_for_did(AccountId, DID, Direction, []).
+rates_for_did(AccountId, DID, Direction, RouteOptions) when is_list(RouteOptions) ->
+    case hon_util:candidate_rates(AccountId, Direction, DID) of
         {'ok', []} -> io:format("rate lookup had no results~n");
         {'error', _E} -> io:format("rate lookup error: ~p~n", [_E]);
         {'ok', Rates} ->
@@ -39,8 +39,8 @@ rates_for_did(DID, Direction, RouteOptions) when is_list(RouteOptions) ->
 
             print_matching(hon_util:matching_rates(Rates, DID, Direction, RouteOptions))
     end;
-rates_for_did(DID, Direction, Opt) ->
-    rates_for_did(DID, Direction, [Opt]).
+rates_for_did(AccountId, DID, Direction, Opt) ->
+    rates_for_did(AccountId, DID, Direction, [Opt]).
 
 -spec print_matching(wh_json:objects()) -> 'ok'.
 print_matching([]) ->

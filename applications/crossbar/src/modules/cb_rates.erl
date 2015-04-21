@@ -38,6 +38,10 @@
                              ,<<"E164-Number">>
                             ]).
 
+-type view_result_key() :: {api_binary(), ne_binaries(), api_binary(), ne_binaries()}.
+-type view_result_value() :: wh_json:json_term().
+-type view_result() :: {view_result_key(), view_result_value()}.
+-type view_results() :: [view_result(),...] | [].
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -66,12 +70,12 @@ authorize(Context) ->
 -spec authorize(http_method(), ne_binary(), ne_binary()) -> boolean().
 authorize(?HTTP_GET, AccId, AccId) ->
     'true';
-authorize(_, AccId, AuthId) ->
+authorize(_, AccountId, AuthId) ->
     (
-     wh_util:is_in_account_hierarchy(AuthId, AccId, 'true')
+     wh_util:is_in_account_hierarchy(AuthId, AccountId, 'true')
      andalso wh_services:is_reseller(AuthId)
     )
-    orelse cb_modules_utils:is_superduper_admin(AuthId).
+    orelse cb_modules_util:is_superduper_admin(AuthId).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -264,7 +268,7 @@ on_successful_validation(Id, Context) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec summary(cb_context:context(), ne_binary(), ne_binary(), list()) -> cb_context:context().
+-spec summary(cb_context:context(), ne_binary(), ne_binary(), ne_binaries()) -> cb_context:context().
 summary(Context, _AccId, _AuthId, []) ->
     lager:debug("loading global rates"),
     summary(Context, [?WH_RATES_DB]);
@@ -280,8 +284,9 @@ summary(Context, AccId, _AuthId, _Parents) ->
     lager:debug("loading client rates"),
     summary(Context, [account_rates_db(AccId)]).
 
+-spec summary(cb_context:context(), ne_binaries()) -> cb_context:context().
 summary(Context, DBs) ->
-    Context1 = crossbar_doc:load_view(?CB_LIST, [{databases, DBs}], Context, fun normalize_view_results/2),
+    Context1 = crossbar_doc:load_view(?CB_LIST, [{'databases', DBs}, 'include_docs'], Context, fun normalize_view_results/2),
     Context2 = case cb_context:resp_status(Context1) of
                    'fatal' ->
                        cb_context:set_resp_status(cb_context:set_resp_data(Context1, []), 'success');
@@ -294,6 +299,7 @@ summary(Context, DBs) ->
     Data1 = [Val || {_K, Val} <- Data],
     cb_context:set_resp_data(Context2, Data1).
 
+-spec merge_acc({ne_binary(), ne_binary()}, list()) -> list().
 merge_acc({K, Val}, Acc) ->
     UnDef = case Val of
                 'undefined' -> 'null';
@@ -346,7 +352,7 @@ check_uploaded_file(Context, _ReqFiles) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec normalize_view_results(wh_json:object(), view_results()) -> view_results().
 normalize_view_results(JObj, Acc) when is_list(Acc) ->
     JDoc = wh_json:get_value(<<"doc">>, JObj),
     JVal = wh_json:get_value(<<"value">>, JObj),
@@ -616,7 +622,7 @@ account_rates_db(AccountId) ->
     FormatedAccountDb = wh_util:format_account_db(AccountId),
     <<FormatedAccountDb/binary, "-", ?WH_RATES_DB/binary>>.
 
--spec account_parents(cb_context:context()) -> list().
+-spec account_parents(cb_context:context()) -> ne_binaries().
 account_parents(Context) ->
     AccId = cb_context:account_id(Context),
     kz_account:tree(cb_context:doc(crossbar_doc:load(AccId, Context))).
