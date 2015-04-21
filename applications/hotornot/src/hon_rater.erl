@@ -54,7 +54,7 @@ get_rate_data(JObj) ->
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     ToDID = wh_json:get_value(<<"To-DID">>, JObj),
     FromDID = wh_json:get_value(<<"From-DID">>, JObj),
-    Direction = wh_json:get_value(<<"Direction">>, JObj),
+    Direction = wh_json:get_value(<<"Direction">>, JObj, <<"any">>),
     case hon_util:candidate_rates(AccountId, Direction, ToDID, FromDID) of
         {'ok', []} ->
             wh_notify:system_alert("no rate found for ~s to ~s", [FromDID, ToDID]),

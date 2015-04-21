@@ -562,6 +562,7 @@ save_processed_rates(Context, Count) ->
 rate_for_number(Phonenumber, Context) ->
     case wh_amqp_worker:call([{<<"To-DID">>, Phonenumber}
                               ,{<<"Send-Empty">>, 'true'}
+                              ,{<<"Account-ID">>, cb_context:account_id(Context)}
                               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                              ]
                              ,fun wapi_rate:publish_req/1
