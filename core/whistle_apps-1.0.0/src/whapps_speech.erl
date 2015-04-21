@@ -205,13 +205,13 @@ voicefabric_request_body(<<"multipart">>, Data) ->
     Headers = [{"Content-Type"
                  ,"multipart/form-data; charset=UTF-8; boundary=" ++ erlang:binary_to_list(Boundary)
                 }],
-    Body = iolist_to_binary([[<<Boundary/binary,
+    Body = iolist_to_binary([[<<"--", Boundary/binary,
                                 "\r\nContent-Disposition: form-data;"
                                 " name=\"", Key/binary
                                 , "\"\r\n\r\n", Val/binary, "\r\n">>
                               || {Key, Val} <- Data
                              ]
-                             ,Boundary]),
+                             ,"--", Boundary, "--"]),
     {'ok', Headers, Body};
 voicefabric_request_body(ArgsEncode, _Data) ->
     {'error', <<"voicefabric: unknown args encode method: ", ArgsEncode/binary>>}.
