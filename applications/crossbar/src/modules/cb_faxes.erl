@@ -40,8 +40,7 @@
 -define(ACCEPTED_MIME_TYPES, [{<<"application">>, <<"json">>}
                               ,{<<"application">>, <<"pdf">>}
                               ,{<<"image">>, <<"tiff">>}
-                              ,{<<"multipart">>, <<"form-data">>}
-                              ,{<<"multipart">>, <<"mixed">>}
+                              | ?MULTIPART_CONTENT_TYPES
                              ]).
 -define(ACCEPTED_TYPES, [{'from_binary', ?ACCEPTED_MIME_TYPES}]).
 
@@ -417,7 +416,7 @@ on_successful_validation('undefined', Context) ->
 on_successful_validation(DocId, Context) ->
     maybe_reset_job(crossbar_doc:load_merge(DocId, Context), cb_context:resp_status(Context)).
 
--spec initial_job_status(req_files()) -> binary().
+-spec initial_job_status(req_files()) -> ne_binary().
 initial_job_status([]) -> <<"pending">>;
 initial_job_status(_) -> <<"attaching_docs">>.
 
@@ -581,11 +580,13 @@ save_attachment(Context, Filename, FileJObj) ->
             ,{'rev', wh_doc:revision(JObj)}
            ],
     set_pending(crossbar_doc:save_attachment(DocId
-                                 ,cb_modules_util:attachment_name(Filename, CT)
-                                 ,Contents
-                                 ,Context
-                                 ,Opts
-                                ), DocId).
+                                             ,cb_modules_util:attachment_name(Filename, CT)
+                                             ,Contents
+                                             ,Context
+                                             ,Opts
+                                            )
+                ,DocId
+               ).
 
 -spec set_pending(cb_context:context(), binary()) -> cb_context:context().
 set_pending(Context, DocId) ->
