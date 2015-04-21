@@ -32,6 +32,7 @@
 -define(SERVER, ?MODULE).
 -define(CB_LIST, <<"users/crossbar_listing">>).
 -define(LIST_BY_USERNAME, <<"users/list_by_username">>).
+-define(LIST_BY_PRESENCE, <<"devices/listing_by_presence_id">>).
 -define(QUICKCALL, <<"quickcall">>).
 
 %%%===================================================================
@@ -233,7 +234,13 @@ validate(Context, UserId, ?QUICKCALL, _) ->
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _) ->
     _ = crossbar_util:maybe_refresh_fs_xml('user', Context),
-    crossbar_doc:save(Context).
+    Context1 = crossbar_doc:save(Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            maybe_update_devices_presence(Context1),
+            Context1;
+        _ -> Context1
+    end.
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
@@ -256,6 +263,47 @@ delete(Context, _Id) ->
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
 patch(Context, _Id) ->
     crossbar_doc:save(Context).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_update_devices_presence(cb_context:context()) -> 'ok'.
+maybe_update_devices_presence(Context) ->
+    DbDoc = cb_context:fetch(Context, 'db_doc'),
+    Doc = cb_context:doc(Context),
+    case wh_json:get_value(<<"presence_id">>, DbDoc) =:= wh_json:get_value(<<"presence_id">>, Doc) of
+        'true' ->
+            lager:debug("presence_id did not change, ignoring");
+        'false' ->
+            update_devices_presence(Context)
+    end.
+
+-spec update_devices_presence(cb_context:context()) -> 'ok'.
+update_devices_presence(Context) ->
+    Doc = cb_context:doc(Context),
+    UserId = wh_json:get_value(<<"id">>, Doc),
+    AccountDb = wh_json:get_value(<<"pvt_account_db">>, Doc),
+    Options = [{'key', UserId}, 'include_docs'],
+    case couch_mgr:get_results(AccountDb, ?LIST_BY_PRESENCE, Options) of
+        {'error', _R} ->
+            lager:error("failed to query view ~s in ~s : ~p", [?LIST_BY_PRESENCE, AccountDb, _R]);
+        {'ok', []} ->
+            lager:debug("no device found attached to ~s", [UserId]);
+        {'ok', JObjs} ->
+            AuthToken = cb_context:auth_token(Context),
+            lists:foreach(
+                fun(JObj) ->
+                    DeviceDoc = wh_json:get_value(<<"doc">>, JObj),
+                    _DeviceId = wh_json:get_value(<<"id">>, JObj),
+                    lager:debug("re-provisioning device ~s", [_DeviceId]),
+                    spawn('provisioner_v5', 'update_device', [DeviceDoc, AuthToken])
+                end
+                ,JObjs
+            )
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @private
