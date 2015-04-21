@@ -210,33 +210,46 @@ get_req_data(Context, {ContentType, Req1}, QS) ->
                                      {cb_context:context(), cowboy_req:req()} |
                                      halt_return().
 maybe_extract_multipart(Context, Req0, QS) ->
-    case catch extract_multipart(Context, Req0, QS) of
-        {'EXIT', _} ->
-            lager:debug("failed to extract multipart"),
-            {ReqBody, Req1} = get_request_body(Req0),
-
-            try get_url_encoded_body(ReqBody) of
-                JObj ->
-                    case wh_json:get_values(JObj) of
-                        {['true'], [JSON]} ->
-                            lager:debug("failed to parse url-encoded request body, but we'll give json a go on ~p", [JSON]),
-                            try_json(JSON, QS, Context, Req1);
-                        _ ->
-                            lager:debug("was able to parse request body as url-encoded: ~p", [JObj]),
-                            Setters = [{fun cb_context:set_req_json/2, JObj}
-                                       ,{fun cb_context:set_req_data/2, wh_json:get_value(<<"data">>, JObj, wh_json:new())}
-                                       ,{fun cb_context:set_query_string/2, QS}
-                                      ],
-                            {lists:foldl(fun({F, D}, C) -> F(C, D) end, Context, Setters)
-                             ,Req1
-                            }
-                    end
-            catch
-                _:_ ->
-                    lager:debug("failed to extract url-encoded request body"),
-                    try_json(ReqBody, QS, Context, Req1)
-            end;
+    try extract_multipart(Context, Req0, QS) of
         Resp -> Resp
+    catch
+        _E:_R ->
+            lager:debug("failed to extract multipart ~s: ~p", [_E, _R]),
+            handle_failed_multipart(Context, Req0, QS)
+    end.
+
+-spec handle_failed_multipart(cb_context:context(), cowboy_req:req(), wh_json:object()) ->
+                                     {cb_context:context(), cowboy_req:req()} |
+                                     halt_return().
+handle_failed_multipart(Context, Req0, QS) ->
+    {ReqBody, Req1} = get_request_body(Req0),
+
+    try get_url_encoded_body(ReqBody) of
+        JObj ->
+            handle_url_encoded_body(Context, Req1, QS, JObj)
+    catch
+        _E:_R ->
+            lager:debug("failed to extract url-encoded request body: ~s: ~p", [_E, _R]),
+            try_json(ReqBody, QS, Context, Req1)
+    end.
+
+-spec handle_url_encoded_body(cb_context:context(), cowboy_req:req(), wh_json:object(), wh_json:object()) ->
+                                     {cb_context:context(), cowboy_req:req()} |
+                                     halt_return().
+handle_url_encoded_body(Context, Req, QS, JObj) ->
+    case wh_json:get_values(JObj) of
+        {['true'], [JSON]} ->
+            lager:debug("failed to parse url-encoded request body, but we'll give json a go on ~p", [JSON]),
+            try_json(JSON, QS, Context, Req);
+        _Vs ->
+            lager:debug("was able to parse request body as url-encoded: ~p", [JObj]),
+            Setters = [{fun cb_context:set_req_json/2, JObj}
+                       ,{fun cb_context:set_req_data/2, wh_json:get_value(<<"data">>, JObj, wh_json:new())}
+                       ,{fun cb_context:set_query_string/2, QS}
+                      ],
+            {lists:foldl(fun({F, D}, C) -> F(C, D) end, Context, Setters)
+             ,Req
+            }
     end.
 
 -spec try_json(ne_binary(), wh_json:object(), cb_context:context(), cowboy_req:req()) ->
@@ -293,37 +306,51 @@ extract_multipart(Context, Req, QS) ->
                           halt_return().
 extract_file(Context, ContentType, Req0) ->
     case cowboy_req:part_body(Req0, [{'length', ?MAX_UPLOAD_SIZE}]) of
-        {'error', _} ->
-            lager:debug("failed to extract file body"),
-            {Context, Req0};
         {'more', _, Req1} ->
-            lager:error("file size exceeded, max is ~p", [?MAX_UPLOAD_SIZE]),
-            ?MODULE:halt(Req1
-                         ,cb_context:add_validation_error(<<"file">>, <<"maxLength">>
-                                                          ,?MAX_UPLOAD_SIZE
-                                                          ,Context
-                                                         )
-                        );
+            handle_max_filesize_exceeded(Context, Req1);
         {'ok', FileContents, Req1} ->
-            %% http://tools.ietf.org/html/rfc2045#page-17
-            case cowboy_req:header(<<"content-transfer-encoding">>, Req1) of
-                {<<"base64">>, Req2} ->
-                    lager:debug("base64 encoded request coming in"),
-                    decode_base64(Context, ContentType, Req2);
-                {_Else, Req2} ->
-                    lager:debug("unexpected transfer encoding: '~s'", [_Else]),
-                    {ContentLength, Req3} = cowboy_req:header(<<"content-length">>, Req2),
-                    Headers = wh_json:from_list([{<<"content_type">>, ContentType}
-                                                 ,{<<"content_length">>, ContentLength}
-                                                ]),
-                    FileJObj = wh_json:from_list([{<<"headers">>, Headers}
-                                                  ,{<<"contents">>, FileContents}
-                                                 ]),
-                    lager:debug("request is a file upload of type: ~s", [ContentType]),
+            handle_file_contents(Context, ContentType, Req1, FileContents)
+    end.
 
-                    Filename = uploaded_filename(Context),
-                    {cb_context:set_req_files(Context, [{Filename, FileJObj}]), Req3}
-            end
+-spec handle_max_filesize_exceeded(cb_context:context(), cowboy_req:req()) ->
+                                          halt_return().
+handle_max_filesize_exceeded(Context, Req1) ->
+    Maximum = ?MAX_UPLOAD_SIZE,
+    MaxLen = wh_util:to_binary(Maximum),
+    lager:error("file size exceeded, max is ~p", [Maximum]),
+    ?MODULE:halt(Req1
+                 ,cb_context:add_validation_error(<<"file">>
+                                                  ,<<"maxLength">>
+                                                  ,wh_json:from_list(
+                                                     [{<<"message">>, <<"String must not be more than ", MaxLen/binary, " characters">>}
+                                                      ,{<<"target">>, Maximum}
+                                                     ])
+                                                  ,Context
+                                                 )
+                ).
+
+-spec handle_file_contents(cb_context:context(), ne_binary(), cowboy_req:req(), binary()) ->
+                                  {cb_context:context(), cowboy_req:req()} |
+                                  halt_return().
+handle_file_contents(Context, ContentType, Req1, FileContents) ->
+    %% http://tools.ietf.org/html/rfc2045#page-17
+    case cowboy_req:header(<<"content-transfer-encoding">>, Req1) of
+        {<<"base64">>, Req2} ->
+            lager:debug("base64 encoded request coming in"),
+            decode_base64(Context, ContentType, Req2);
+        {_Else, Req2} ->
+            lager:debug("unexpected transfer encoding: '~s'", [_Else]),
+            {ContentLength, Req3} = cowboy_req:header(<<"content-length">>, Req2),
+            Headers = wh_json:from_list([{<<"content_type">>, ContentType}
+                                         ,{<<"content_length">>, ContentLength}
+                                        ]),
+            FileJObj = wh_json:from_list([{<<"headers">>, Headers}
+                                          ,{<<"contents">>, FileContents}
+                                         ]),
+            lager:debug("request is a file upload of type: ~s", [ContentType]),
+
+            Filename = uploaded_filename(Context),
+            {cb_context:set_req_files(Context, [{Filename, FileJObj}]), Req3}
     end.
 
 -spec uploaded_filename(cb_context:context()) -> ne_binary().
@@ -360,12 +387,7 @@ decode_base64(Context, CT, Req0, Body) ->
                             ,'fatal'
                            ));
         {'more', _, Req1} ->
-            lager:error("file size exceeded, max is ~p", [?MAX_UPLOAD_SIZE]),
-            ?MODULE:halt(Req1
-                         ,cb_context:add_validation_error(<<"file">>, <<"maxLength">>
-                                                          ,?MAX_UPLOAD_SIZE
-                                                          ,Context
-                                                          ));
+            handle_max_filesize_exceeded(Context, Req1);
         {'ok', Base64Data, Req1} ->
             Data = iolist_to_binary(lists:reverse([Base64Data | Body])),
 
@@ -395,31 +417,32 @@ decode_base64(Context, CT, Req0, Body) ->
 get_request_body(Req) ->
     get_request_body(Req, []).
 get_request_body(Req0, Body) ->
-    try get_request_body(Req0, Body, cowboy_req:part_body(Req0))
-     catch
+    try get_request_body(Req0, Body, cowboy_req:part_body(Req0)) of
+        Resp -> Resp
+    catch
         'error':{'badmatch', _} ->
             get_request_body(Req0, Body, cowboy_req:body(Req0))
      end.
 
+-type body_return() :: {'more', binary(), cowboy_req:req()} |
+                       {'error', atom()} |
+                       {'ok', binary(), cowboy_req:req()}.
+
+-spec get_request_body(cowboy_req:req(), iolist(), body_return()) ->
+                              {binary(), cowboy_req:req()}.
 get_request_body(Req0, _Body, {'error', _E}) ->
     lager:debug("request body had no payload: ~p", [_E]),
     {<<>>, Req0};
 get_request_body(_Req0, _Body, {'more', _, Req1}) ->
     lager:error("file size exceeded, max is ~p", [?MAX_UPLOAD_SIZE]),
-     {<<>>, Req1};
-get_request_body(Req0, Body, {'ok', 'undefined', _Req1}) ->
-    lager:debug("ERROR UNDEFINED"),
-    get_request_body(Req0, Body, cowboy_req:body(Req0));
+    {<<>>, Req1};
 get_request_body(_Req0, Body, {'ok', Data, Req1}) ->
-    {iolist_to_binary([Body, Data]), Req1};
-get_request_body(Req0, _Body, C) ->
-    lager:debug("ERROR ~p", [C]),
-    {<<>>, Req0}.
+    {iolist_to_binary([Body, Data]), Req1}.
 
 -type get_json_return() :: {wh_json:object(), cowboy_req:req()} |
                            {{'malformed', ne_binary()}, cowboy_req:req()}.
 -spec get_json_body(cowboy_req:req()) -> get_json_return().
--spec decode_json_body(ne_binary(), cowboy_req:req()) -> get_json_return().
+-spec decode_json_body(binary(), cowboy_req:req()) -> get_json_return().
 
 get_json_body(Req0) ->
     {Body, Req1} = get_request_body(Req0),
