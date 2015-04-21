@@ -1000,23 +1000,13 @@ current_unix_tstamp() ->
 %% fetch and cache the whistle version from the VERSION file in whistle's root folder
 -spec whistle_version() -> ne_binary().
 whistle_version() ->
-    case wh_cache:fetch(?WHISTLE_VERSION_CACHE_KEY) of
-        {'ok', Version} ->  Version;
-        {'error', _} ->
-            VersionFile = filename:join([code:lib_dir('whistle'), "..", "..", "VERSION"]),
-            whistle_version(VersionFile)
-    end.
-
--spec whistle_version(ne_binary() | nonempty_string()) -> ne_binary().
-whistle_version(FileName) ->
-    case file:read_file(FileName) of
-        {'ok', Version} ->
-            wh_cache:store(?WHISTLE_VERSION_CACHE_KEY, Version),
-            list_to_binary(string:strip(binary_to_list(Version), 'right', $\n));
-        _ ->
-            Version = <<"not available">>,
-            wh_cache:store(?WHISTLE_VERSION_CACHE_KEY, Version),
-            Version
+    VersionFile = filename:join([code:lib_dir('whistle'), "..", "..", "VERSION"]),
+    case file:open(VersionFile, ['read']) of
+        {'ok', File} ->
+            {'ok', Line} = file:read_line(File),
+            file:close(File),
+            wh_util:to_binary(string:strip(Line, 'right', $\n));
+        _ -> <<"unknown">>
     end.
 
 -spec write_pid(ne_binary() | nonempty_string() | iolist()) -> 'ok' | {'error', atom()}.

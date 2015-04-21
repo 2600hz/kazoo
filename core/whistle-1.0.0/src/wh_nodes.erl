@@ -58,6 +58,7 @@
                 ,notify_expire = sets:new() :: set()
                 ,node :: ne_binary()
                 ,zone = 'local' :: atom()
+                ,version :: ne_binary()
                }).
 -type nodes_state() :: #state{}.
 
@@ -176,7 +177,7 @@ print_status(Nodes) ->
              _ = case lists:sort(Node#node.media_servers) of
                      [] when Node#node.registrations =:= 0 -> 'ok';
                      [] when Node#node.registrations > 0 ->
-                         io:format("Registrations : ~B~n", [Node#node.registrations]);                         
+                         io:format("Registrations : ~B~n", [Node#node.registrations]);
                      [{Server, Started}|Servers] ->
                          io:format("Channels      : ~B~n", [Node#node.channels]),
                          io:format("Registrations : ~B~n", [Node#node.registrations]),
@@ -281,7 +282,13 @@ init([]) ->
     lager:debug("created node: ~p", [Node]),
     ets:insert(Tab, Node),
     lager:debug("inserted node"),
-    {'ok', State#state{node=wh_util:to_binary(Node#node.node)}}.
+    Version = <<(wh_util:whistle_version())/binary
+                ," - "
+                ,(wh_util:to_binary(erlang:system_info('otp_release')))/binary
+              >>,
+    {'ok', State#state{node=wh_util:to_binary(Node#node.node)
+                       ,version=Version
+                      }}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -440,13 +447,13 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 -spec create_node('undefined' | 5000..15000, nodes_state()) -> wh_node().
-create_node(Heartbeat, #state{zone=Zone}) ->
+create_node(Heartbeat, #state{zone=Zone, version=Version}) ->
     maybe_add_whapps_data(#node{expires=Heartbeat
                                 ,broker=wh_amqp_connections:primary_broker()
                                 ,used_memory=erlang:memory('total')
                                 ,processes=erlang:system_info('process_count')
                                 ,ports=length(erlang:ports())
-                                ,version=wh_util:to_binary(erlang:system_info('otp_release'))
+                                ,version=Version
                                 ,zone=wh_util:to_binary(Zone)
                                }).
 
