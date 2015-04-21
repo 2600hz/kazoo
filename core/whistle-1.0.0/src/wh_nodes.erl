@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -42,7 +42,8 @@
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_advertise'}
                       ,[{<<"nodes">>, <<"advertise">>}]
-                     }]).
+                     }
+                    ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, [{'no_local', 'true'}]).
@@ -447,7 +448,9 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 -spec create_node('undefined' | 5000..15000, nodes_state()) -> wh_node().
-create_node(Heartbeat, #state{zone=Zone, version=Version}) ->
+create_node(Heartbeat, #state{zone=Zone
+                              ,version=Version
+                             }) ->
     maybe_add_whapps_data(#node{expires=Heartbeat
                                 ,broker=wh_amqp_connections:primary_broker()
                                 ,used_memory=erlang:memory('total')
