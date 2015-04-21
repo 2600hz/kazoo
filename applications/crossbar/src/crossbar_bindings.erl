@@ -40,6 +40,7 @@
 -include("crossbar.hrl").
 
 -type payload() :: path_tokens() | % mapping over path tokens in URI
+                   ne_binary() | % crossbar_cleanup
                    [cb_context:context() | path_token() | 'undefined',...] |
                    cb_context:context() |
                    {cb_context:context(), wh_proplist()} | % v1_resource:rest_init/2

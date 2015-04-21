@@ -322,7 +322,7 @@ create_device(JObj, Iteration, Context, {Pass, Fail}) ->
                            case kz_device:sip_username(J) of
                                'undefined' ->
                                    Strength = whapps_config:get_integer(?OB_CONFIG_CAT, <<"device_username_strength">>, 3),
-                                   kz_device:set_sip_username(J, list_to_binary(["user_", wh_util:rand_hex_binary(Strength)]), J);
+                                   kz_device:set_sip_username(J, list_to_binary(["user_", wh_util:rand_hex_binary(Strength)]));
                                _ ->
                                    J
                            end

@@ -119,7 +119,7 @@ get_plan_apps(ServicePlan) ->
     JObjs = wh_json:get_value(<<"ui_apps">>, ServicePlan),
     wh_json:delete_key(<<"_all">>, JObjs).
 
--spec find_enabled_apps(wh_json:object(), wh_json:objects(), wh_json:objects()) -> wh_json:objects().
+-spec find_enabled_apps(wh_json:objects(), wh_json:objects(), wh_json:objects()) -> wh_json:objects().
 find_enabled_apps([], _DefaultApps, Acc) -> Acc;
 find_enabled_apps([PlanApp|PlanApps], DefaultApps, Acc) ->
     [AppName] = wh_json:get_keys(PlanApp),

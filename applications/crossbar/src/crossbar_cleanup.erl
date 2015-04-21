@@ -240,6 +240,7 @@ start_cleanup_pass(Ref) ->
     lager:debug("pass completed for ~p", [Ref]),
     gen_server:cast(?MODULE, {'cleanup_finished', Ref}).
 
+-spec db_routing_key(ne_binary()) -> ne_binary().
 db_routing_key(Db) ->
     Classifiers = [{fun whapps_util:is_account_db/1, fun binding_account/0}
                    ,{fun whapps_util:is_account_mod/1, fun binding_account_mod/0}
