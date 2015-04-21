@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Users module
 %%%
@@ -32,7 +32,7 @@
 -define(SERVER, ?MODULE).
 -define(CB_LIST, <<"users/crossbar_listing">>).
 -define(LIST_BY_USERNAME, <<"users/list_by_username">>).
--define(LIST_BY_PRESENCE, <<"devices/listing_by_presence_id">>).
+-define(LIST_BY_PRESENCE_ID, <<"devices/listing_by_presence_id">>).
 -define(QUICKCALL, <<"quickcall">>).
 
 %%%===================================================================
@@ -281,29 +281,40 @@ maybe_update_devices_presence(Context) ->
     end.
 
 -spec update_devices_presence(cb_context:context()) -> 'ok'.
+-spec update_devices_presence(cb_context:context(), wh_json:objects()) -> 'ok'.
 update_devices_presence(Context) ->
     Doc = cb_context:doc(Context),
     UserId = wh_json:get_value(<<"id">>, Doc),
     AccountDb = wh_json:get_value(<<"pvt_account_db">>, Doc),
     Options = [{'key', UserId}, 'include_docs'],
-    case couch_mgr:get_results(AccountDb, ?LIST_BY_PRESENCE, Options) of
+    case couch_mgr:get_results(AccountDb, ?LIST_BY_PRESENCE_ID, Options) of
         {'error', _R} ->
-            lager:error("failed to query view ~s in ~s : ~p", [?LIST_BY_PRESENCE, AccountDb, _R]);
+            lager:error("failed to query view ~s in ~s : ~p", [?LIST_BY_PRESENCE_ID, AccountDb, _R]);
         {'ok', []} ->
             lager:debug("no device found attached to ~s", [UserId]);
         {'ok', JObjs} ->
-            AuthToken = cb_context:auth_token(Context),
-            lists:foreach(
-                fun(JObj) ->
-                    DeviceDoc = wh_json:get_value(<<"doc">>, JObj),
-                    _DeviceId = wh_json:get_value(<<"id">>, JObj),
-                    lager:debug("re-provisioning device ~s", [_DeviceId]),
-                    spawn('provisioner_v5', 'update_device', [DeviceDoc, AuthToken])
-                end
-                ,JObjs
-            )
+            update_devices_presence(Context, JObjs)
     end.
 
+update_devices_presence(Context, JObjs) ->
+    lists:foreach(
+      fun(JObj) -> update_device_presence(Context, JObj) end
+      ,JObjs
+     ).
+
+-spec update_device_presence(cb_context:context(), wh_json:object()) -> pid().
+update_device_presence(Context, JObj) ->
+    AuthToken = cb_context:auth_token(Context),
+    ReqId = cb_context:req_id(Context),
+
+    DeviceDoc = wh_json:get_value(<<"doc">>, JObj),
+
+    lager:debug("re-provisioning device ~s", [wh_json:get_value(<<"id">>, JObj)]),
+
+    spawn(fun() ->
+                  wh_util:put_callid(ReqId),
+                  provisioner_v5:update_device(DeviceDoc, AuthToken)
+          end).
 
 %%--------------------------------------------------------------------
 %% @private
