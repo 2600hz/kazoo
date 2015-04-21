@@ -71,19 +71,19 @@ acc_rate_dbs(AccountId, Acc) ->
 
 -spec acc_candidate_rates(ne_binary(), {'ok', list(), integer(), list()} | {'error', any()}) ->
     {'ok', list(), integer(), list()} | {'error', any()}.
-acc_candidate_rates(RateDb, {'ok', Keys, Lvl, Acc}) ->
+acc_candidate_rates(RateDb, {'ok', Keys, Relevance, Acc}) ->
     case couch_mgr:get_results(RateDb, <<"rates/lookup">>, [{'keys', Keys}, 'include_docs']) of
         {'ok', ViewRows} ->
-            {'ok', Keys, Lvl + 1, Acc ++ [normalize_rate(Rate, Lvl) || Rate <- ViewRows]};
+            {'ok', Keys, Relevance + 1, Acc ++ [normalize_rate(Rate, Relevance) || Rate <- ViewRows]};
         {'error', _}=E -> E
     end;
 acc_candidate_rates(_Db, State) ->
     State.
 
-normalize_rate(Rate, Lvl) ->
+normalize_rate(Rate, Relevance) ->
     Rate1 = wh_json:get_value(<<"value">>, Rate),
     Rate2 = wh_json:merge_jobjs(Rate1, wh_json:get_value(<<"doc">>, Rate)),
-    wh_json:set_value(<<"lvl">>, Lvl, Rate2).
+    wh_json:set_value(<<"relevance">>, Relevance, Rate2).
 
 %% Given a list of rates, return the list of rates whose routes regexes match the given E164
 %% Optionally include direction of the call and options from the client to match against the rate
@@ -102,7 +102,7 @@ matching_rates(Rates, DID, RouteOptions) ->
 
 -spec sort_rates(wh_json:objects()) -> wh_json:objects().
 sort_rates(Rates) ->
-    lists:usort(fun sort_rate/2, Rates).
+    lists:usort(fun compare_rates/2, Rates).
 
 %% Private helper functions
 
@@ -121,25 +121,30 @@ matching_routes(Rate, E164) ->
              ).
 
 %% Return true if RateA has lower weight than RateB
--spec sort_rate(wh_json:object(), wh_json:object()) -> boolean().
-sort_rate(RateA, RateB) ->
+-spec compare_rates(wh_json:object(), wh_json:object()) -> boolean().
+compare_rates(RateA, RateB) ->
     PrefixA = byte_size(wh_json:get_binary_value(<<"prefix">>, RateA)),
     PrefixB = byte_size(wh_json:get_binary_value(<<"prefix">>, RateB)),
-
     case PrefixA =:= PrefixB of
         'true' ->
-            LvlA = wh_json:get_integer_value(<<"lvl">>, RateA),
-            LvlB = wh_json:get_integer_value(<<"lvl">>, RateB),
-            case LvlA =:= LvlB of
-                'true' ->
-                    wh_json:get_integer_value(<<"weight">>, RateA, 100) >
-                        wh_json:get_integer_value(<<"weight">>, RateB, 100);
-                'false' ->
-                    LvlA < LvlB
-            end;
+            compare_rates_relevance(RateA, RateB);
         'false' ->
             PrefixA > PrefixB
     end.
+
+compare_rates_relevance(RateA, RateB) ->
+    RelevanceA = wh_json:get_integer_value(<<"relevance">>, RateA),
+    RelevanceB = wh_json:get_integer_value(<<"relevance">>, RateB),
+    case RelevanceA =:= RelevanceB of
+        'true' ->
+            compare_rates_weight(RateA, RateB);
+        'false' ->
+            RelevanceA < RelevanceB
+    end.
+
+compare_rates_weight(RateA, RateB) ->
+    wh_json:get_integer_value(<<"weight">>, RateA, 100) >
+        wh_json:get_integer_value(<<"weight">>, RateB, 100).
 
 %% Route options come from the client device
 %% Rate options come from the carrier providing the trunk
