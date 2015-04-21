@@ -32,7 +32,7 @@
 -define(SERVER, ?MODULE).
 -define(CB_LIST, <<"users/crossbar_listing">>).
 -define(LIST_BY_USERNAME, <<"users/list_by_username">>).
--define(LIST_BY_PRESENCE, <<"devices/listing_by_presence">>).
+-define(LIST_BY_PRESENCE, <<"devices/listing_by_presence_id">>).
 -define(QUICKCALL, <<"quickcall">>).
 
 %%%===================================================================
@@ -276,7 +276,7 @@ maybe_update_devices_presence(Context) ->
             update_devices_presence(Context)
     end.
 
-
+-spec update_devices_presence(cb_context:context()) -> 'ok'.
 update_devices_presence(Context) ->
     Doc = cb_context:doc(Context),
     UserId = wh_json:get_value(<<"id">>, Doc),
