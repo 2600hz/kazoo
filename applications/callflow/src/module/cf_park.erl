@@ -41,7 +41,7 @@ update_presence(SlotNumber, _PresenceId, AccountDb) ->
 update_parked_call_presence(SlotNumber, ParkedCalls, ParkedCallId) ->
     Slot = wh_json:get_value([<<"slots">>, SlotNumber], ParkedCalls),
     case whapps_call_command:b_channel_status(ParkedCallId) of
-        {'ok', _Status} -> update_presence(<<"early">>, Slot);
+        {'ok', _Status} -> update_presence(<<"confirmed">>, Slot);
         {'error', _} -> update_presence(<<"terminated">>, Slot)
     end.
 
@@ -219,7 +219,7 @@ park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Call) ->
         {_, {'ok', _}} ->
             ParkedCallId = wh_json:get_value(<<"Call-ID">>, Slot),
             lager:info("call ~s parked in slot ~s", [ParkedCallId, SlotNumber]),
-            update_presence(<<"early">>, Slot),
+            update_presence(<<"confirmed">>, Slot),
             wait_for_pickup(SlotNumber, Slot, Call)
     end.
 
@@ -374,7 +374,7 @@ update_call_id(Replaces, ParkedCalls, Call, Loops) ->
             JObj = wh_json:set_value([<<"slots">>, SlotNumber], UpdatedSlot, ParkedCalls),
             case couch_mgr:save_doc(whapps_call:account_db(Call), JObj) of
                 {'ok', _} ->
-                    update_presence(<<"early">>, UpdatedSlot),
+                    update_presence(<<"confirmed">>, UpdatedSlot),
                     {'ok', SlotNumber, UpdatedSlot};
                 {'error', 'conflict'} ->
                     AccountDb = whapps_call:account_db(Call),
