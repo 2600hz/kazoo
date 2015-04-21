@@ -30,7 +30,8 @@
 
 -define(CONTENT_PROVIDED, [{'to_json', ?JSON_CONTENT_TYPES}]).
 -define(CONTENT_ACCEPTED, [{'from_json', ?JSON_CONTENT_TYPES}
-                           ,{'from_form', [{<<"application">>, <<"x-www-form-urlencoded">>}]}
+                           ,{'from_form', [{<<"application">>, <<"x-www-form-urlencoded">>}
+                                           ,{<<"multipart">>, <<"mixed">>}]}
                            ,{'from_binary', ?CSV_CONTENT_TYPES}
                           ]).
 -define(ALLOWED_METHODS, [?HTTP_GET

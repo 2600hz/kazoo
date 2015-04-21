@@ -13,6 +13,7 @@
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
          ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
          ,content_types_provided/4
+         ,content_types_accepted/1, content_types_accepted/2
          ,validate/1, validate/2, validate/3, validate/4
          ,put/1, put/2
          ,post/1, post/3
@@ -36,6 +37,15 @@
 
 -define(FAX_FILE_TYPE, <<"tiff">>).
 
+-define(ACCEPTED_MIME_TYPES, [{<<"application">>, <<"json">>}
+                              ,{<<"application">>, <<"pdf">>}
+                              ,{<<"image">>, <<"tiff">>}
+                              ,{<<"multipart">>, <<"form-data">>}
+                              ,{<<"multipart">>, <<"mixed">>}
+                             ]).
+-define(ACCEPTED_TYPES, [{'from_binary', ?ACCEPTED_MIME_TYPES}]).
+
+
 -define(OUTGOING_FAX_DOC_MAP, [{<<"created">>, <<"pvt_created">>}
                                ,{<<"delivered">>, fun get_delivered_date/1}
                                ,{<<"status">>, fun get_execution_status/2}
@@ -58,6 +68,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.faxes">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.faxes">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.content_types_provided.faxes">>, ?MODULE, 'content_types_provided'),
+    _ = crossbar_bindings:bind(<<"*.content_types_accepted.faxes">>, ?MODULE, 'content_types_accepted'),
     _ = crossbar_bindings:bind(<<"*.validate.faxes">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.faxes">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.faxes">>, ?MODULE, 'post'),
@@ -118,6 +129,21 @@ resource_exists(?SMTP_LOG, _Id) -> 'true';
 resource_exists(?INCOMING, _Id) -> 'true';
 resource_exists(?OUTGOING, _Id) -> 'true'.
 resource_exists(?INCOMING, _Id, ?ATTACHMENT) -> 'true'.
+
+-spec content_types_accepted(cb_context:context()) -> cb_context:context().
+content_types_accepted(Context) ->
+    maybe_add_types_accepted(Context, cb_context:req_verb(Context)).
+
+-spec content_types_accepted(cb_context:context(), path_token()) ->
+                                    cb_context:context().
+content_types_accepted(Context, ?OUTGOING) ->
+    maybe_add_types_accepted(Context, cb_context:req_verb(Context));
+content_types_accepted(Context, _) -> Context.
+
+-spec maybe_add_types_accepted(cb_context:context(), ne_binary()) -> cb_context:context().
+maybe_add_types_accepted(Context, ?HTTP_PUT) ->
+    cb_context:add_content_types_accepted(Context, ?ACCEPTED_TYPES);
+maybe_add_types_accepted(Context, _) -> Context.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -215,9 +241,9 @@ validate(Context, ?INCOMING, Id, ?ATTACHMENT) ->
 -spec put(cb_context:context()) -> cb_context:context().
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context) ->
-    crossbar_doc:save(Context).
+    maybe_save_attachment(crossbar_doc:save(Context)).
 put(Context, ?OUTGOING) ->
-    crossbar_doc:save(Context).
+    maybe_save_attachment(crossbar_doc:save(Context)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -374,10 +400,11 @@ on_successful_validation('undefined', Context) ->
     AuthDoc = cb_context:auth_doc(Context),
     OwnerId = wh_json:get_value(<<"owner_id">>, AuthDoc),
     Timezone = crossbar_util:get_user_timezone(AccountId, OwnerId),
+    JobStatus = initial_job_status(cb_context:req_files(Context)),
 
     cb_context:set_doc(Context
                        ,wh_json:set_values([{<<"pvt_type">>, <<"fax">>}
-                                            ,{<<"pvt_job_status">>, <<"pending">>}
+                                            ,{<<"pvt_job_status">>, JobStatus}
                                             ,{<<"attempts">>, 0}
                                             ,{<<"pvt_account_id">>, AccountId}
                                             ,{<<"pvt_account_db">>, AccountDb}
@@ -389,6 +416,10 @@ on_successful_validation('undefined', Context) ->
                        );
 on_successful_validation(DocId, Context) ->
     maybe_reset_job(crossbar_doc:load_merge(DocId, Context), cb_context:resp_status(Context)).
+
+-spec initial_job_status(req_files()) -> binary().
+initial_job_status([]) -> <<"pending">>;
+initial_job_status(_) -> <<"attaching_docs">>.
 
 -spec maybe_reset_job(cb_context:context(), crossbar_status()) -> cb_context:context().
 maybe_reset_job(Context, 'success') ->
@@ -530,3 +561,34 @@ normalize_view_results(JObj, Acc) ->
 -spec normalize_incoming_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_incoming_view_results(JObj, Acc) ->
     [wh_json:public_fields(wh_json:get_value(<<"doc">>, JObj))|Acc].
+
+-spec maybe_save_attachment(cb_context:context()) -> cb_context:context().
+maybe_save_attachment(Context) ->
+    maybe_save_attachment(Context, cb_context:req_files(Context)).
+
+-spec maybe_save_attachment(cb_context:context(), req_files()) -> cb_context:context().
+maybe_save_attachment(Context, []) -> Context;
+maybe_save_attachment(Context, [{Filename, FileJObj} | _Others]) ->
+    save_attachment(Context, Filename, FileJObj).
+
+-spec save_attachment(cb_context:context(), binary(), wh_json:object()) -> cb_context:context().
+save_attachment(Context, Filename, FileJObj) ->
+    JObj = cb_context:doc(Context),
+    DocId = wh_doc:id(JObj),
+    Contents = wh_json:get_value(<<"contents">>, FileJObj),
+    CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileJObj),
+    Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]}
+            ,{'rev', wh_doc:revision(JObj)}
+           ],
+    set_pending(crossbar_doc:save_attachment(DocId
+                                 ,cb_modules_util:attachment_name(Filename, CT)
+                                 ,Contents
+                                 ,Context
+                                 ,Opts
+                                ), DocId).
+
+-spec set_pending(cb_context:context(), binary()) -> cb_context:context().
+set_pending(Context, DocId) ->
+    Ctx1 = crossbar_doc:load(DocId, Context),
+    KVs = [{<<"pvt_job_status">>, <<"pending">>}],
+    crossbar_doc:save(cb_context:set_doc(Ctx1, wh_json:set_values(KVs, cb_context:doc(Ctx1)))).

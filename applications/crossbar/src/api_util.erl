@@ -199,15 +199,18 @@ get_req_data(Context, {<<"application/base64">>, Req1}, QS) ->
 get_req_data(Context, {<<"application/x-base64">>, Req1}, QS) ->
     lager:debug("application/x-base64 content type when getting req data"),
     decode_base64(cb_context:set_query_string(Context, QS), <<"application/base64">>, Req1);
+get_req_data(Context, {<<"multipart/", C/binary>>, Req}, QS) ->
+    lager:debug("multipart ~s content type when getting req data", [C]),
+    maybe_extract_multipart(cb_context:set_query_string(Context, QS), Req, QS);
 get_req_data(Context, {ContentType, Req1}, QS) ->
-    lager:debug("unknown content-type: ~s", [ContentType]),
+    lager:debug("unknown content-type: ~p", [ContentType]),
     extract_file(cb_context:set_query_string(Context, QS), ContentType, Req1).
 
 -spec maybe_extract_multipart(cb_context:context(), cowboy_req:req(), wh_json:object()) ->
                                      {cb_context:context(), cowboy_req:req()} |
                                      halt_return().
 maybe_extract_multipart(Context, Req0, QS) ->
-    case catch extract_multipart(Context, Req0) of
+    case catch extract_multipart(Context, Req0, QS) of
         {'EXIT', _} ->
             lager:debug("failed to extract multipart"),
             {ReqBody, Req1} = get_request_body(Req0),
@@ -265,63 +268,31 @@ get_url_encoded_body(ReqBody) ->
 
 -type cowboy_multipart_response() :: {'ok', cow_multipart:headers(), cowboy_req:req()} | {'done', cowboy_req:req()} | cowboy_req:req().
 
--type cowboy_multipart_body() :: {'ok', binary(), cowboy_req:req()} | {'more', binary(), cowboy_req:req()} | cowboy_req:req().
 
--spec extract_multipart(cb_context:context(), cowboy_multipart_response()) ->
+-spec extract_multipart(cb_context:context(), cowboy_multipart_response(), wh_json:object()) ->
                                {cb_context:context(), cowboy_req:req()} |
                                halt_return().
-extract_multipart(Context, {'done', Req}) ->
+extract_multipart(Context, {'done', Req}, _QS) ->
     {Context, Req};
-extract_multipart(Context, {'ok', Headers, Req}) ->
-    JObj = wh_json:from_list([{<<"headers">>, Headers}
-                              ,{<<"data">>, <<>>}
-                             ]),
-    {R, J} = extract_multipart_body(Context, Req, JObj),
-    Files = [J|cb_context:req_files(Context)],
+extract_multipart(Context, {'ok', Headers, Req}, QS) ->
+    {Ctx, R} = get_req_data(Context, {props:get_value(<<"content-type">>, Headers), Req}, QS),
     extract_multipart(
-      cb_context:set_req_files(Context, Files)
-      ,cowboy_req:part(R)
-     );
-extract_multipart(Context, Req) ->
+        Ctx
+        ,cowboy_req:part(R)
+        ,QS
+    );
+extract_multipart(Context, Req, QS) ->
     extract_multipart(
       Context
       ,cowboy_req:part(Req)
+      ,QS
      ).
-
--spec extract_multipart_body(cb_context:context(), cowboy_multipart_body(), wh_json:object()) ->
-                                    {cb_context:context(), cowboy_req:req()} |
-                                    halt_return().
-extract_multipart_body(_Context, {'ok', Datum, Req}, JObj) ->
-    Data = wh_json:get_value(<<"data">>, JObj, <<>>),
-    {Req, wh_json:set_value(<<"data">>, <<Data/binary, Datum/binary>>, JObj)};
-extract_multipart_body(Context, {'more', Datum, Req}, JObj) ->
-    Data = <<(wh_json:get_value(<<"data">>, JObj, <<>>))/binary
-             ,Datum/binary
-           >>,
-    case erlang:byte_size(Data) > ?MAX_UPLOAD_SIZE of
-        'true' ->
-            lager:error("file size exceeded, max is ~p", [?MAX_UPLOAD_SIZE]),
-            ?MODULE:halt(Req
-                         ,cb_context:add_validation_error(<<"file">>, <<"maxLength">>
-                                                          ,?MAX_UPLOAD_SIZE
-                                                          ,Context
-                                                         )
-                        );
-        'false' ->
-            extract_multipart_body(
-              Context
-              ,cowboy_req:part_body(Req)
-              ,wh_json:set_value(<<"data">>, Data, JObj)
-             )
-    end;
-extract_multipart_body(Context, Req, JObj) ->
-    extract_multipart_body(Context, cowboy_req:part_body(Req), JObj).
 
 -spec extract_file(cb_context:context(), ne_binary(), cowboy_req:req()) ->
                           {cb_context:context(), cowboy_req:req()} |
                           halt_return().
 extract_file(Context, ContentType, Req0) ->
-    case cowboy_req:body(Req0, [{'length', ?MAX_UPLOAD_SIZE}]) of
+    case cowboy_req:part_body(Req0, [{'length', ?MAX_UPLOAD_SIZE}]) of
         {'error', _} ->
             lager:debug("failed to extract file body"),
             {Context, Req0};
@@ -424,16 +395,26 @@ decode_base64(Context, CT, Req0, Body) ->
 get_request_body(Req) ->
     get_request_body(Req, []).
 get_request_body(Req0, Body) ->
-    case cowboy_req:body(Req0) of
-        {'error', _E} ->
-            lager:debug("request body had no payload: ~p", [_E]),
-            {<<>>, Req0};
-        {'more', _, Req1} ->
-            lager:error("file size exceeded, max is ~p", [?MAX_UPLOAD_SIZE]),
-            {<<>>, Req1};
-        {'ok', Data, Req1} ->
-            {iolist_to_binary([Body, Data]), Req1}
-    end.
+    try get_request_body(Req0, Body, cowboy_req:part_body(Req0))
+     catch
+        'error':{'badmatch', _} ->
+            get_request_body(Req0, Body, cowboy_req:body(Req0))
+     end.
+
+get_request_body(Req0, _Body, {'error', _E}) ->
+    lager:debug("request body had no payload: ~p", [_E]),
+    {<<>>, Req0};
+get_request_body(_Req0, _Body, {'more', _, Req1}) ->
+    lager:error("file size exceeded, max is ~p", [?MAX_UPLOAD_SIZE]),
+     {<<>>, Req1};
+get_request_body(Req0, Body, {'ok', 'undefined', _Req1}) ->
+    lager:debug("ERROR UNDEFINED"),
+    get_request_body(Req0, Body, cowboy_req:body(Req0));
+get_request_body(_Req0, Body, {'ok', Data, Req1}) ->
+    {iolist_to_binary([Body, Data]), Req1};
+get_request_body(Req0, _Body, C) ->
+    lager:debug("ERROR ~p", [C]),
+    {<<>>, Req0}.
 
 -type get_json_return() :: {wh_json:object(), cowboy_req:req()} |
                            {{'malformed', ne_binary()}, cowboy_req:req()}.
