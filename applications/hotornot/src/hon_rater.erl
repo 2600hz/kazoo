@@ -138,7 +138,7 @@ rate_resp(Rate, JObj) ->
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec get_surcharge(wh_json:object()) -> ne_binary().
+-spec get_surcharge(wh_json:object()) -> integer().
 get_surcharge(Rate) ->
     Surcharge = wh_json:get_float_value(<<"rate_surcharge">>, Rate, 0.0),
     wht_util:dollars_to_units(Surcharge).
