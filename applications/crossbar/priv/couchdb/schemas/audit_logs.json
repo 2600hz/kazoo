@@ -1,0 +1,67 @@
+{
+    "_id": "audit_logs",
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "type": "object",
+    "required": false,
+    "name": "Audit Log",
+    "description": "Audit log of what caused a billing event to occur",
+    "properties": {
+        "audit": {
+            "type":"object"
+            ,"description":"Contains the accounts involved in the billable event (initial account and resellers)"
+            ,"required":true
+            ,"patternProperties":{
+                "^[0-9a-zA-Z]{32}$":{
+                    "type":"object"
+                    ,"description":"The account's quantity changes for the billing event"
+                    ,"properties":{
+                        "account_quantities":{
+                            "type":"object"
+                            ,"description":"The account's quantities as a result of the billing event"
+                        }
+                        ,"cascade_quantities":{
+                            "type":"object"
+                            ,"description":"The account's cascaded quantities as a result of the billing event"
+                        }
+                        ,"account_name":{
+                            "type":"string"
+                            ,"description":"The name of the account (for historical purposes)"
+                            ,"required":true
+                        }
+                    }
+                }
+            }
+        }
+        ,"tree":{
+            "type":"array"
+            ,"description":"The account's tree (including the account), ordered from ancestor to account"
+            ,"items":{
+                "type":"string"
+            }
+            ,"required":true
+        }
+        ,"authenticating_user":{
+            "type":"object"
+            ,"description":"Information about the requestor who caused the billing event"
+            ,"properties":{
+                "user_id":{
+                    "type":"string"
+                }
+                ,"user_first_name":{
+                    "type":"string"
+                }
+                ,"user_last_name":{
+                    "type":"string"
+                }
+                ,"account_id":{
+                    "type":"string"
+                    ,"required":true
+                }
+                ,"account_name":{
+                    "type":"string"
+                    ,"required":true
+                }
+            }
+        }
+    }
+}
