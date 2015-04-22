@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%% For TTS (Text To Speech), use the create/* methods
 %%% To do ASR (Automatic Speech Recognition), there are two options:
@@ -191,8 +191,8 @@ create_voicefabric(Engine, Text, Voice, Options) ->
     end.
 
 -spec voicefabric_request_body(ne_binary(), list()) ->
-    {'ok', list(), ne_binary()}
-    | {'error', ne_binary()}.
+                                      {'ok', list(), ne_binary()} |
+                                      {'error', ne_binary()}.
 voicefabric_request_body(<<"urlencode">>, Data) ->
     Headers = [{"Content-Type", "application/x-www-form-urlencoded"}],
     Body = props:to_querystring(Data),
@@ -203,15 +203,20 @@ voicefabric_request_body(<<"multipart">>, Data) ->
                                  ,<<"--bound--">>
                                 ]),
     Headers = [{"Content-Type"
-                 ,"multipart/form-data; charset=UTF-8; boundary=" ++ erlang:binary_to_list(Boundary)
-                }],
+                ,"multipart/form-data; charset=UTF-8; boundary=" ++ erlang:binary_to_list(Boundary)
+               }
+              ],
     Body = iolist_to_binary([[<<"--", Boundary/binary,
                                 "\r\nContent-Disposition: form-data;"
                                 " name=\"", Key/binary
-                                , "\"\r\n\r\n", Val/binary, "\r\n">>
+                                , "\"\r\n\r\n", Val/binary, "\r\n"
+                              >>
                               || {Key, Val} <- Data
                              ]
-                             ,"--", Boundary, "--"]),
+                             ,"--"
+                             ,Boundary
+                             ,"--"
+                            ]),
     {'ok', Headers, Body};
 voicefabric_request_body(ArgsEncode, _Data) ->
     {'error', <<"voicefabric: unknown args encode method: ", ArgsEncode/binary>>}.
