@@ -100,7 +100,9 @@
                          ]}
          ]).
 -define(SECONDARY_QUEUE_NAME(QueueId), <<"acdc.queue.manager.", QueueId/binary>>).
--define(SECONDARY_QUEUE_OPTIONS, [{'exclusive', 'false'}]).
+-define(SECONDARY_QUEUE_OPTIONS(MaxPriority), [{'exclusive', 'false'}
+                                               ,{'arguments',[{<<"x-max-priority">>, MaxPriority}]}
+                                              ]).
 -define(SECONDARY_CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 %%%===================================================================
@@ -565,14 +567,23 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 start_secondary_queue(AccountId, QueueId) ->
     Self = self(),
+    AccountDb = wh_util:format_account_db(AccountId),
+    Priority = lookup_priority_levels(AccountDb, QueueId),
     _ = spawn(fun() -> gen_listener:add_queue(Self
                                               ,?SECONDARY_QUEUE_NAME(QueueId)
-                                              ,[{'queue_options', ?SECONDARY_QUEUE_OPTIONS}
+                                              ,[{'queue_options', ?SECONDARY_QUEUE_OPTIONS(Priority)}
                                                 ,{'consume_options', ?SECONDARY_CONSUME_OPTIONS}
                                                ]
                                               ,?SECONDARY_BINDINGS(AccountId, QueueId)
                                              )
               end).
+
+-spec lookup_priority_levels(ne_binary(), ne_binary()) -> api_integer().
+lookup_priority_levels(AccountDB, QueueId) ->
+    case couch_mgr:open_cache_doc(AccountDB, QueueId) of
+        {'ok', JObj} -> wh_json:get_value(<<"max_priority">>, JObj);
+        _ -> 'undefined'
+    end.
 
 make_ignore_key(AccountId, QueueId, CallId) ->
     {AccountId, QueueId, CallId}.
