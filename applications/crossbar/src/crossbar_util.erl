@@ -37,6 +37,9 @@
          ,response_auth/2
          ,response_auth/3
         ]).
+-export([get_account_realm/1, get_account_realm/2
+         ,get_account_doc/1, get_account_doc/2
+        ]).
 -export([flush_registrations/1
          ,flush_registration/1, flush_registration/2
         ]).
@@ -323,6 +326,44 @@ response_db_missing(Context) ->
 -spec response_db_fatal(cb_context:context()) -> cb_context:context().
 response_db_fatal(Context) ->
     response('fatal', <<"datastore fatal error">>, 503, Context).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Retrieves the account realm
+%% @end
+%%--------------------------------------------------------------------
+-spec get_account_realm(ne_binary() | cb_context:context()) -> api_binary().
+-spec get_account_realm(api_binary(), ne_binary()) -> api_binary().
+
+get_account_realm(AccountId) when is_binary(AccountId) ->
+    get_account_realm(wh_util:format_account_id(AccountId, 'encoded'), AccountId);
+get_account_realm(Context) ->
+    Db = cb_context:account_db(Context),
+    AccountId = cb_context:account_id(Context),
+    get_account_realm(Db, AccountId).
+
+get_account_realm('undefined', _) -> 'undefined';
+get_account_realm(Db, AccountId) ->
+    case get_account_doc(Db, AccountId) of
+        'undefined' -> 'undefined';
+        JObj -> kz_account:realm(JObj)
+    end.
+
+-spec get_account_doc(ne_binary()) -> api_object().
+-spec get_account_doc(ne_binary(), ne_binary()) -> api_object().
+get_account_doc(<<_/binary>> = Id) ->
+    get_account_doc(wh_util:format_account_id(Id, 'encoded')
+                    ,wh_util:format_account_id(Id, 'raw')
+                   ).
+
+get_account_doc(<<_/binary>> = Db, <<_/binary>> = Id) ->
+    case couch_mgr:open_cache_doc(Db, Id) of
+        {'ok', JObj} -> JObj;
+        {'error', R} ->
+            lager:warning("error while looking up account realm: ~p", [R]),
+            'undefined'
+    end.
 
 -spec flush_registrations(ne_binary() | cb_context:context()) -> 'ok'.
 flush_registrations(<<_/binary>> = Realm) ->
