@@ -1,5 +1,8 @@
 ROOT = .
 
+KAZOODIRS = core/Makefile \
+	    applications/Makefile
+
 MAKEDIRS = deps/Makefile \
 	   core/Makefile \
 	   applications/Makefile
@@ -16,13 +19,11 @@ $(MAKEDIRS):
 
 clean : ACTION = clean
 clean : $(MAKEDIRS)
-	rm -f test/*.beam
 	rm -f *crash.dump
+	rm scripts/log/*
 
-test : clean app eunit
-
-eunit :
-	@$(REBAR) eunit skip_deps=true
+test: ACTION = test
+test: $(KAZOODIRS)
 
 core:
 	$(MAKE) -C core all
