@@ -38,15 +38,12 @@ test/$(PROJECT).app: src/*.erl src/carriers/*.erl src/providers/*.erl
 
 clean:
 	rm -f ebin/*
-	rm -f test/*.beam test/$(PROJECT).app
 	rm -f erl_crash.dump
 
-test: clean compile-test eunit
+clean-test:
+	rm -f test/*.beam test/$(PROJECT).app
+
+test: clean-test compile-test eunit
 
 eunit: compile-test
-	erl -noshell $(PA) \
-	-pa test -eval "eunit:test([$(MODULES),$(CARRIERS),$(PROVIDERS)], [verbose])" -s init stop
-
-dialyze:
-	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) \
-                $(PA) --plt $(ROOT)/.platform_dialyzer.plt \
+	erl -noshell $(PA) -pa test -eval "case eunit:test([$(MODULES),$(CARRIERS),$(PROVIDERS)], [verbose]) of 'ok' -> init:stop(); _ -> init:stop(1) end."
