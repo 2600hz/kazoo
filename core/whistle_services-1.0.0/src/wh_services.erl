@@ -571,7 +571,7 @@ public_json(#wh_services{jobj=ServicesJObj
                      catch
                          'throw':_ -> 'false'
                      end,
-    Props = [{<<"account_quantities">>, wh_json:get_value(?QUANTITIES, ServicesJObj, wh_json:new())}
+    Props = [{<<"account_quantities">>, current_quantities(ServicesJObj)}
              ,{<<"cascade_quantities">>, CascadeQuantities}
              ,{<<"plans">>, wh_service_plans:plan_summary(ServicesJObj)}
              ,{<<"billing_id">>, wh_json:get_value(<<"billing_id">>, ServicesJObj, AccountId)}
