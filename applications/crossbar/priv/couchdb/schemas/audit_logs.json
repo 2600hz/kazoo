@@ -47,10 +47,10 @@
                 "user_id":{
                     "type":"string"
                 }
-                ,"user_first_name":{
+                ,"first_name":{
                     "type":"string"
                 }
-                ,"user_last_name":{
+                ,"last_name":{
                     "type":"string"
                 }
                 ,"account_id":{
