@@ -6,7 +6,7 @@
       "map": "function(doc) { if (doc.pvt_type != 'aaa' || doc.pvt_deleted) return; emit(doc._id, null); }"
     },
     "fetch_dicts": {
-      "map": "function(doc) { if (doc.pvt_type != 'aaa' || doc.pvt_deleted) return; emit(doc._id, null); }"
+      "map": "function(doc) { if (doc.pvt_type != 'aaa_dict' || doc.pvt_deleted) return; emit(doc._id, null); }"
     }
   }
 }

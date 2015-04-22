@@ -107,7 +107,7 @@ get_aaa_mode(Doc) ->
 %% Get servers list.
 %% @end
 %%--------------------------------------------------------------------
--spec get_servers_list(wh_json:object()) -> ne_binary().
+-spec get_servers_list(wh_json:object()) -> wh_json:object().
 get_servers_list(Doc) ->
     wh_json:get_json_value(<<"servers">>, Doc).
 
@@ -117,7 +117,9 @@ get_servers_list(Doc) ->
 %% Get AAA configuration document from a database
 %% @end
 %%--------------------------------------------------------------------
--spec get_aaa_doc(wh_json:object() | atom()) -> ne_binary().
+-spec get_aaa_doc(wh_json:object() | atom()) ->
+                    {'ok', wh_json:object()} |
+                    {'error', any()}.
 get_aaa_doc(AccId) when is_binary(AccId) ->
     AccountDb = wh_util:format_account_id(AccId, 'encoded'),
     case couch_mgr:get_results(AccountDb, <<"aaa/fetch_doc">>) of
