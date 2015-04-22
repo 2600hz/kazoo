@@ -666,6 +666,7 @@ subscribe(#omnip_subscription{user=_U
                               ,expires=_E1
                               ,timestamp=_T1
                               ,stalker=_S
+                              ,call_id=CallId
                              }=S) ->
     case find_subscription(S) of
         {'ok', #omnip_subscription{timestamp=_T
@@ -674,7 +675,7 @@ subscribe(#omnip_subscription{user=_U
             lager:debug("re-subscribe ~s/~s expires in ~ps(prior remaing ~ps)"
                         ,[_U, _F, _E1, _E2 - wh_util:elapsed_s(_T)]),
             ets:delete_object(table_id(), O),
-            ets:insert(table_id(), O#omnip_subscription{timestamp=_T1, expires=_E1, stalker=_S}),
+            ets:insert(table_id(), O#omnip_subscription{timestamp=_T1, expires=_E1, stalker=_S, call_id=CallId}),
             {'resubscribe', O};
         {'error', 'not_found'} ->
             lager:debug("subscribe ~s/~s expires in ~ps", [_U, _F, _E1]),

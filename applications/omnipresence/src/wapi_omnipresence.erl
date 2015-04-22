@@ -44,6 +44,7 @@
                                  ,<<"Messages-Urgent-Saved">>, <<"Message-Account">>
                                  ,<<"Expires">>, <<"Flush-Level">>
                                  ,<<"Presentity">>, <<"Presentity-User">>, <<"Presentity-Realm">>
+                                 ,<<"Target-Call-ID">>, <<"Switch-URI">>, <<"Call-Cookie">>
                                  ]).
 -define(UPDATE_VALUES, [{<<"Event-Category">>, <<"presence">>}
                        ,{<<"Event-Name">>, <<"update">>}

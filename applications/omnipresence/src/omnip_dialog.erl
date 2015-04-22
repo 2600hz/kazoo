@@ -255,6 +255,9 @@ handle_update(JObj, State, From, To, Expires) ->
     [FromUsername, FromRealm] = binary:split(From, <<"@">>),
 
     CallId = wh_json:get_value(<<"Call-ID">>, JObj, ?FAKE_CALLID(From)),
+    TargetCallId = wh_json:get_value(<<"Target-Call-ID">>, JObj, CallId),
+    SwitchURI = wh_json:get_value(<<"Switch-URI">>, JObj),
+    Cookie = wh_util:rand_hex_binary(6),
 
     {User, Props} =
         case wh_json:get_lower_binary(<<"Call-Direction">>, JObj) of
@@ -273,6 +276,9 @@ handle_update(JObj, State, From, To, Expires) ->
                           ,{<<"Flush-Level">>, wh_json:get_value(<<"Flush-Level">>, JObj)}
                           ,{<<"Direction">>, <<"initiator">>}
                           ,{<<"Call-ID">>, CallId}
+                          ,{<<"Target-Call-ID">>, TargetCallId}
+                          ,{<<"Switch-URI">>, SwitchURI}
+                          ,{<<"Call-Cookie">>, Cookie}
                           ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                           ,{<<"Event-Package">>, <<"dialog">>}
                           ,{<<"destination">>, ToUsername}
@@ -284,10 +290,7 @@ handle_update(JObj, State, From, To, Expires) ->
                 };
             _Direction ->
                 App = wh_json:get_value(<<"App-Name">>, JObj),
-                SwitchURI = wh_json:get_value(<<"Switch-URI">>, JObj), 
-                TargetCallId = wh_json:get_value(<<"Target-Call-ID">>, JObj, CallId),
-                ToURI = build_update_to_uri(State, App, From, TargetCallId, SwitchURI),
-
+                ToURI = build_update_to_uri(State, App, From, Cookie),
                 {To, props:filter_undefined(
                        [{<<"From">>, <<"sip:", To/binary>>}
                         ,{<<"From-User">>, ToUsername}
@@ -303,33 +306,27 @@ handle_update(JObj, State, From, To, Expires) ->
                         ,{<<"Flush-Level">>, wh_json:get_value(<<"Flush-Level">>, JObj)}
                         ,{<<"Direction">>, <<"recipient">>}
                         ,{<<"Call-ID">>, CallId}
+                        ,{<<"Target-Call-ID">>, TargetCallId}
+                        ,{<<"Switch-URI">>, SwitchURI}
+                        ,{<<"Call-Cookie">>, Cookie}
                         ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                         ,{<<"Event-Package">>, <<"dialog">>}
                         ,{<<"destination">>, FromUsername}
                         ,{<<"uuid">>, wh_json:get_value(<<"Call-ID">>, JObj)}
                         ,{<<"user">>, ToUsername}
                         ,{<<"realm">>, ToRealm}
-                        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                        | wh_api:default_headers(App, ?APP_VERSION)
                        ])
                 }
         end,
     maybe_send_update(User, Props).
 
--spec build_update_to_uri(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
-build_update_to_uri(?PRESENCE_RINGING, <<"park">>, From, CallId, 'undefined') ->
-    <<"sip:", From/binary,";kazoo-id=", (wh_util:uri_encode(CallId))/binary, ";kazoo-pickup=true">>;
-build_update_to_uri(?PRESENCE_RINGING, <<"park">>, From, CallId, SwitchURI) ->
-    <<"sip:", From/binary,
-      ";kazoo-id=", (wh_util:uri_encode(CallId))/binary,
-      ";kazoo-switch=", (wh_util:uri_encode(SwitchURI))/binary,
-      ";kazoo-pickup=true">>;
-build_update_to_uri(?PRESENCE_RINGING, _, From, CallId, 'undefined') ->
-    <<"sip:", From/binary,";kazoo-id=", (wh_util:uri_encode(CallId))/binary>>;
-build_update_to_uri(?PRESENCE_RINGING, _, From, CallId, SwitchURI) ->
-    <<"sip:", From/binary,
-      ";kazoo-id=", (wh_util:uri_encode(CallId))/binary,
-      ";kazoo-switch=", (wh_util:uri_encode(SwitchURI))/binary>>;
-build_update_to_uri(_State, _App, From, _CallId, _) ->
+-spec build_update_to_uri(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
+build_update_to_uri(?PRESENCE_RINGING, <<"park">>, _From, Cookie) ->
+    <<"kfp+", Cookie/binary>>;
+build_update_to_uri(?PRESENCE_RINGING, _, _From, Cookie) ->
+    <<"kfp+", Cookie/binary>>;
+build_update_to_uri(_State, _App, From, _Cookie) ->
     <<"sip:", From/binary>>.
 
 -spec maybe_send_update(ne_binary(), wh_proplist()) -> 'ok'.
