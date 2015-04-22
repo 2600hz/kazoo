@@ -34,14 +34,16 @@ compile-test: test/$(PROJECT).app
 
 test/$(PROJECT).app: src/*.erl src/module/*.erl
 	@mkdir -p test/
-	erlc -v $(ERLC_OPTS) -DTEST -o test/ -pa test/ $(PA) $?
+	erlc -v $(ERLC_OPTS) -DTEST -o test/ -pa test/ $?
 
 clean:
 	rm -f ebin/*
-	rm -f test/*.beam test/$(PROJECT).app
 	rm -f erl_crash.dump
 
-test: clean compile-test eunit
+clean-test:
+	rm -f test/*.beam test/$(PROJECT).app
+
+test: clean-test compile-test eunit
 
 eunit: compile-test
-	erl -noshell -pa test $(PA) -eval "eunit:test([$(MODULES),$(CF_MODULES)], [verbose])" -s init stop
+	erl -noshell $(PA) -pa test -eval "case eunit:test([$(MODULES),$(CF_MODULES)], [verbose]) of 'ok' -> init:stop(); _ -> init:stop(1) end."
