@@ -55,6 +55,8 @@ build_keys(Direction, <<D:1/binary, Rest/binary>>, Prefix, Acc) ->
 build_keys(_, <<>>, _, Acc) -> Acc.
 
 -spec rate_dbs(ne_binary()) -> list().
+rate_dbs(?WH_RATES_DB) ->
+    [?WH_RATES_DB];
 rate_dbs(AccountId) ->
     AccountDb = wh_util:format_account_db(AccountId),
     {'ok', A} = couch_mgr:open_doc(AccountDb, AccountId),

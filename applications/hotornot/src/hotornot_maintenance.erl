@@ -9,6 +9,7 @@
 -module(hotornot_maintenance).
 
 -export([local_summary/0
+         ,rates_for_did/1, rates_for_did/2
          ,rates_for_did/3, rates_for_did/4
          ,rates_between/2
         ]).
@@ -24,8 +25,14 @@
 local_summary() ->
     io:format("use rates_for_did/1 to see what rates would be used for a DID").
 
+-spec rates_for_did(ne_binary()) -> 'ok'.
+-spec rates_for_did(ne_binary(), api_binary()) -> 'ok'.
 -spec rates_for_did(ne_binary(), ne_binary(), api_binary()) -> 'ok'.
 -spec rates_for_did(ne_binary(), ne_binary(), api_binary(), trunking_options()) -> 'ok'.
+rates_for_did(DID) ->
+    rates_for_did(DID, <<"any">>).
+rates_for_did(DID, Direction) ->
+    rates_for_did(?WH_RATES_DB, DID, Direction).
 rates_for_did(AccountId, DID, Direction) ->
     rates_for_did(AccountId, DID, Direction, []).
 rates_for_did(AccountId, DID, Direction, RouteOptions) when is_list(RouteOptions) ->
