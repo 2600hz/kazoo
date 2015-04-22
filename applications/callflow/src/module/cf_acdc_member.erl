@@ -42,6 +42,7 @@ handle(Data, Call) ->
                    [{<<"Account-ID">>, whapps_call:account_id(Call)}
                     ,{<<"Queue-ID">>, QueueId}
                     ,{<<"Call">>, whapps_call:to_json(Call)}
+                    ,{<<"Member-Priority">>, wh_json:get_value(<<"priority">>, Data)}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ]),
 

@@ -60,11 +60,13 @@
 %% Member Call
 %%------------------------------------------------------------------------------
 -define(MEMBER_CALL_HEADERS, [<<"Account-ID">>, <<"Queue-ID">>, <<"Call">>]).
--define(OPTIONAL_MEMBER_CALL_HEADERS, []).
+-define(OPTIONAL_MEMBER_CALL_HEADERS, [<<"Member-Priority">>]).
 -define(MEMBER_CALL_VALUES, [{<<"Event-Category">>, <<"member">>}
                              ,{<<"Event-Name">>, <<"call">>}
                             ]).
--define(MEMBER_CALL_TYPES, [{<<"Queue-ID">>, fun erlang:is_binary/1}]).
+-define(MEMBER_CALL_TYPES, [{<<"Queue-ID">>, fun erlang:is_binary/1}
+                            ,{<<"Member-Priority">>, fun is_integer/1}
+                           ]).
 
 -spec member_call(api_terms()) ->
                          {'ok', iolist()} |
@@ -615,8 +617,10 @@ declare_exchanges() ->
 publish_member_call(JObj) ->
     publish_member_call(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_member_call(API, ContentType) ->
+    Priority = wh_json:get_value(<<"Member-Priority">>, API),
+    Props = props:filter_undefined([{'priority', Priority}]),
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?MEMBER_CALL_VALUES, fun member_call/1),
-    amqp_util:callmgr_publish(Payload, ContentType, member_call_routing_key(API)).
+    amqp_util:callmgr_publish(Payload, ContentType, member_call_routing_key(API), Props).
 
 -spec publish_member_call_cancel(api_terms()) -> 'ok'.
 -spec publish_member_call_cancel(api_terms(), ne_binary()) -> 'ok'.
