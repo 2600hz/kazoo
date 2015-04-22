@@ -106,23 +106,29 @@ maybe_provision(_Context, _Status) -> 'false'.
 -spec maybe_provision_v5(cb_context:context(), ne_binary()) -> 'ok'.
 maybe_provision_v5(Context, ?HTTP_PUT) ->
     AuthToken = cb_context:auth_token(Context),
-    OldSIPUsername = kz_device:sip_username(cb_context:fetch(Context, 'db_doc')),
-    JObj = wh_json:set_value(<<"old_sip_username">>, OldSIPUsername, cb_context:doc(Context)),
-    _ = spawn('provisioner_v5', 'update_device', [JObj, AuthToken]),
+    NewDevice = cb_context:doc(Context),
+    _ = spawn(fun () ->
+                      _ = provisioner_v5:update_device(NewDevice, AuthToken),
+                      _ = maybe_sync_sip_data(Context)
+              end),
     'ok';
+
 maybe_provision_v5(Context, ?HTTP_POST) ->
     AuthToken = cb_context:auth_token(Context),
+    NewDevice = cb_context:doc(Context),
     NewAddress = cb_context:req_value(Context, <<"mac_address">>),
-    OldAddress = wh_json:get_ne_value(<<"mac_address">>, cb_context:fetch(Context, 'db_doc')),
-    OldSIPUsername = kz_device:sip_username(cb_context:fetch(Context, 'db_doc')),
-    JObj = wh_json:set_value(<<"old_sip_username">>, OldSIPUsername, cb_context:doc(Context)),
+    OldDevice = cb_context:fetch(Context, 'db_doc'),
+    OldAddress = wh_json:get_ne_value(<<"mac_address">>, OldDevice),
     case NewAddress =:= OldAddress of
         'true' ->
-            _ = spawn('provisioner_v5', 'update_device', [JObj, AuthToken]);
+            _ = spawn(fun () ->
+                              _ = provisioner_v5:update_device(NewDevice, AuthToken),
+                              _ = maybe_sync_sip_data(Context)
+                      end);
         'false' ->
-            JObj1 = wh_json:set_value(<<"mac_address">>, OldAddress, JObj),
-            _ = spawn('provisioner_v5', 'delete_device', [JObj1, AuthToken]),
-            _ = spawn('provisioner_v5', 'update_device', [JObj, AuthToken])
+            NewDevice1 = wh_json:set_value(<<"mac_address">>, OldAddress, NewDevice),
+            _ = spawn('provisioner_v5', 'delete_device', [NewDevice1, AuthToken]),
+            _ = spawn('provisioner_v5', 'update_device', [NewDevice, AuthToken])
     end,
     'ok'.
 
@@ -798,3 +804,30 @@ get_provisioning_type() ->
             lager:debug("using ~p for provisioner_type", [?MOD_CONFIG_CAT]),
             Result
     end.
+
+%% @private
+-spec maybe_sync_sip_data(cb_context:context()) -> 'ok'.
+maybe_sync_sip_data(Context) ->
+    NewDevice = cb_context:doc(Context),
+    OldDevice = cb_context:fetch(Context, 'db_doc'),
+    AccountId = cb_context:account_id(Context),
+    OldUsername = kz_device:sip_username(OldDevice),
+    case kz_device:sip_username(NewDevice) =/= OldUsername of
+        'true' -> maybe_publish_check_sync('undefined', OldUsername, AccountId);
+        'false' -> 'ok'
+    end.
+
+%% @private
+maybe_publish_check_sync('undefined', Username, AccountId) ->
+    Realm = wh_util:get_account_realm(AccountId),
+    lager:debug("using account realm ~s", [Realm]),
+    maybe_publish_check_sync(Realm, Username, AccountId);
+maybe_publish_check_sync(_Realm, 'undefined', _) ->
+    lager:warning("did not send check sync username is undefined");
+maybe_publish_check_sync(Realm, Username, _) ->
+    lager:debug("sending check sync for ~s @ ~s", [Username, Realm]),
+    Req = [{<<"Realm">>, Realm}
+           ,{<<"Username">>, Username}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    wh_amqp_worker:cast(Req, fun wapi_switch:publish_check_sync/1).

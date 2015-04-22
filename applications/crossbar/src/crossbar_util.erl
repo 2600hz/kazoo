@@ -38,6 +38,7 @@
          ,response_auth/3
         ]).
 -export([flush_registrations/1
+         ,flush_registration/1
          ,flush_registration/2
         ]).
 -export([move_account/2]).
@@ -343,6 +344,34 @@ flush_registration(Username, <<_/binary>> = Realm) ->
 flush_registration(Username, Context) ->
     Realm = wh_util:get_account_realm(cb_context:account_id(Context)),
     flush_registration(Username, Realm).
+
+%% @public
+-spec flush_registration(cb_context:context()) -> 'ok'.
+flush_registration(Context) ->
+    OldDevice = cb_context:fetch(Context, 'db_doc'),
+    NewDevice = cb_context:doc(Context),
+    AccountId = cb_context:account_id(Context),
+    Realm = wh_util:get_account_realm(AccountId),
+    maybe_flush_registration_on_password(Realm, OldDevice, NewDevice).
+
+-spec maybe_flush_registration_on_password(api_binary(), wh_json:object(), wh_json:object()) -> 'ok'.
+maybe_flush_registration_on_password(Realm, OldDevice, NewDevice) ->
+    case kz_device:sip_password(OldDevice) =:= kz_device:sip_password(NewDevice) of
+        'true' -> maybe_flush_registration_on_username(Realm, OldDevice, NewDevice);
+        'false' ->
+            lager:debug("the SIP password has changed, sending a registration flush"),
+            flush_registration(kz_device:sip_username(OldDevice), Realm)
+    end.
+
+-spec maybe_flush_registration_on_username(api_binary(), wh_json:object(), wh_json:object()) -> 'ok'.
+maybe_flush_registration_on_username(Realm, OldDevice, NewDevice) ->
+    case kz_device:sip_username(OldDevice) =:= kz_device:sip_username(NewDevice) of
+        'true' -> 'ok';
+        'false' ->
+            lager:debug("the SIP username has changed, sending a registration flush for both"),
+            flush_registration(kz_device:sip_username(OldDevice), Realm),
+            flush_registration(kz_device:sip_username(NewDevice), Realm)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
