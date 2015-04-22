@@ -32,7 +32,9 @@
          ,set_soft_deleted/2
 
          ,is_soft_deleted/1
+         ,pvt_type/1
         ]).
+
 -export([update_pvt_modified/1]).
 
 -define(PVT_FUNS, [fun add_pvt_vsn/3
@@ -45,6 +47,7 @@
                   ]).
 
 -define(KEY_ATTACHMENTS, <<"_attachments">>).
+-define(KEY_PVT_TYPE, <<"pvt_type">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -101,7 +104,7 @@ add_pvt_account_id(JObj, DBName, Opts) ->
 add_pvt_type(JObj, _, Options) ->
     case props:get_value('type', Options) of
         'undefined' -> JObj;
-        Type -> wh_json:set_value(<<"pvt_type">>, Type, JObj)
+        Type -> wh_json:set_value(?KEY_PVT_TYPE, Type, JObj)
     end.
 
 -spec add_pvt_node(wh_json:object(), api_binary(), wh_proplist()) -> wh_json:object().
@@ -268,3 +271,6 @@ created(JObj) ->
 -spec modified(wh_json:object()) -> api_integer().
 modified(JObj) ->
     wh_json:get_integer_value(<<"pvt_modified">>, JObj).
+
+-spec pvt_type(wh_json:object()) -> api_binary().
+pvt_type(JObj) -> wh_json:get_value(?KEY_PVT_TYPE, JObj).
