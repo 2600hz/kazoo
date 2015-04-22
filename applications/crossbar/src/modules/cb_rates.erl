@@ -299,7 +299,7 @@ summary(Context, DBs) ->
     Data1 = [Val || {_K, Val} <- Data],
     cb_context:set_resp_data(Context2, Data1).
 
--spec merge_acc({ne_binary(), ne_binary()}, list()) -> list().
+-spec merge_acc({ne_binary(), wh_json:object()}, view_results()) -> view_results().
 merge_acc({K, Val}, Acc) ->
     UnDef = case Val of
                 'undefined' -> 'null';
