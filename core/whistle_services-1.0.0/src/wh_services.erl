@@ -18,7 +18,7 @@
 -export([from_service_json/1]).
 -export([reconcile/1, reconcile/2
          ,reconcile_only/1, reconcile_only/2
-         ,save_as_dirty/1
+         ,save_as_dirty/2
         ]).
 -export([fetch/1]).
 -export([update/4]).
@@ -218,16 +218,17 @@ delete_service_plan(PlanId, #wh_services{jobj=JObj}=Services) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec save_as_dirty(ne_binary() | services()) -> services().
--spec save_as_dirty(ne_binary() | services(), pos_integer()) -> services().
-save_as_dirty(<<_/binary>> = Account) ->
-    save_as_dirty(fetch(Account));
-save_as_dirty(#wh_services{}=Services) ->
-    save_as_dirty(Services, ?BASE_BACKOFF).
+-spec save_as_dirty(ne_binary() | services(), kzd_audit_log:doc()) -> services().
+-spec save_as_dirty(ne_binary() | services(), kzd_audit_log:doc(), pos_integer()) -> services().
+save_as_dirty(<<_/binary>> = Account, AuditLog) ->
+    save_as_dirty(fetch(Account), AuditLog);
+save_as_dirty(#wh_services{}=Services, AuditLog) ->
+    save_as_dirty(Services, AuditLog, ?BASE_BACKOFF).
 
 save_as_dirty(#wh_services{jobj=JObj
                            ,account_id = <<_/binary>> = AccountId
                           }=Services
+              ,AuditLog
               ,BackOff
              ) ->
     Props = [{<<"_id">>, AccountId}
@@ -238,11 +239,14 @@ save_as_dirty(#wh_services{jobj=JObj
     case couch_mgr:save_doc(?WH_SERVICES_DB, UpdatedJObj) of
         {'ok', SavedJObj} ->
             lager:debug("marked services as dirty for account ~s", [AccountId]),
-            Services#wh_services{jobj=JObj
-                                 ,status=wh_json:get_ne_value(<<"pvt_status">>, SavedJObj, <<"good_standing">>)
-                                 ,deleted=wh_doc:is_soft_deleted(SavedJObj)
-                                 ,dirty='true'
-                                };
+
+            Services1 = Services#wh_services{jobj=JObj
+                                             ,status=wh_json:get_ne_value(<<"pvt_status">>, SavedJObj, <<"good_standing">>)
+                                             ,deleted=wh_doc:is_soft_deleted(SavedJObj)
+                                             ,dirty='true'
+                                            },
+            _ = save_audit_logs(Services1, AuditLog),
+            Services1;
         {'error', 'not_found'} ->
             lager:debug("service database does not exist, attempting to create"),
             'true' = couch_mgr:db_create(?WH_SERVICES_DB),
@@ -267,6 +271,78 @@ save_conflicting_as_dirty(#wh_services{account_id=AccountId}, BackOff) ->
             save_as_dirty(NewServices, BackOff*2)
     end.
 
+-spec save_audit_logs(services(), kzd_audit_log:doc()) -> 'ok'.
+-spec save_audit_logs(services(), kzd_audit_log:doc(), ne_binary()) -> 'ok'.
+save_audit_logs(Services, AuditLog) ->
+    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
+    save_audit_logs(Services, AuditLog, MasterAccountId).
+
+save_audit_logs(#wh_services{account_id=MasterAccountId}, _AuditLog, MasterAccountId) ->
+    lager:debug("reached master account");
+save_audit_logs(#wh_services{jobj=JObj}=Services
+                ,AuditLog
+                ,MasterAccountId
+               ) ->
+    case wh_json:get_value(<<"pvt_reseller_id">>, JObj) of
+        MasterAccountId ->
+            maybe_save_master_audit_log(Services, AuditLog, MasterAccountId);
+        ResellerId ->
+            AuditLog1 = save_audit_log(Services, AuditLog, ResellerId),
+            save_audit_logs(fetch(ResellerId), AuditLog1, MasterAccountId)
+    end.
+
+-spec maybe_save_master_audit_log(services(), kzd_audit_log:doc(), ne_binary()) -> 'ok'.
+-spec maybe_save_master_audit_log(services(), kzd_audit_log:doc(), ne_binary(), boolean()) -> 'ok'.
+maybe_save_master_audit_log(Services, AuditLog, MasterAccountId) ->
+    maybe_save_master_audit_log(Services, AuditLog, MasterAccountId
+                                ,whapps_config:get_is_true(?WHS_CONFIG_CAT, <<"should_save_master_audit_logs">>, 'false')
+                               ).
+
+maybe_save_master_audit_log(_Services, _AuditLog, _MasterAccountId, 'false') ->
+    lager:debug("reached master account, not saving audit log");
+maybe_save_master_audit_log(Services, AuditLog, MasterAccountId, 'true') ->
+    save_audit_log(Services, AuditLog, MasterAccountId),
+    lager:debug("reached master account, saved audit log").
+
+-spec save_audit_log(services(), kzd_audit_log:doc(), ne_binary()) -> kzd_audit_log:doc().
+save_audit_log(Services, AuditLog, ResellerId) ->
+    AuditLog1 = update_audit_log(Services, AuditLog),
+
+    MODb = kazoo_modb:get_modb(ResellerId),
+    ResellerAuditLog = wh_doc:update_pvt_parameters(AuditLog1, MODb, [{'account_id', ResellerId}]),
+    {'ok', _} = kazoo_modb:save_doc(MODb, ResellerAuditLog),
+    lager:debug("saved audit log to ~s", [ResellerId]),
+    AuditLog1.
+
+-spec update_audit_log(services(), kzd_audit_log:doc()) -> kzd_audit_log:doc().
+update_audit_log(#wh_services{jobj=JObj
+                              ,account_id=AccountId
+                             }=Services
+                 ,AuditLog
+                ) ->
+    AccountAudit = wh_json:from_list(
+                     props:filter_empty(
+                       [{<<"cascase_quantities">>, cascade_quantities(AccountId, is_reseller(Services))}
+                        ,{<<"account_quantities">>, current_quantities(JObj)}
+                        ,{<<"account_name">>, account_name(AccountId)}
+                       ])
+                    ),
+    kzd_audit_log:set_audit_account(AuditLog, AccountId, AccountAudit).
+
+-spec account_name(ne_binary()) -> api_binary().
+account_name(AccountId) ->
+    case couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded')
+                                  ,AccountId
+                                 )
+    of
+        {'ok', JObj} -> kz_account:name(JObj);
+        {'error', _} -> 'undefined'
+    end.
+
+-spec current_quantities(wh_json:object()) -> wh_json:object().
+current_quantities(JObj) ->
+    wh_json:get_value(?QUANTITIES, JObj, wh_json:new()).
+
 -spec save(services()) -> services().
 -spec save(services(), pos_integer()) -> services().
 save(#wh_services{}=Services) ->
@@ -279,7 +355,7 @@ save(#wh_services{jobj=JObj
                  }=Services
      ,BackOff
     ) ->
-    CurrentQuantities = wh_json:get_value(?QUANTITIES, JObj, wh_json:new()),
+    CurrentQuantities = current_quantities(JObj),
     Dirty = have_quantities_changed(UpdatedQuantities, CurrentQuantities) orelse ForceDirty,
     Props = [{<<"_id">>, AccountId}
              ,{<<"pvt_dirty">>, Dirty}
