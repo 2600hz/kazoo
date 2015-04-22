@@ -40,7 +40,7 @@ compile-test: test/$(PROJECT).app
 		> test/$(PROJECT).app
 	-@$(MAKE) test/$(PROJECT).app
 
-test/$(PROJECT).app: src/*.erl src/modules/*.erl
+test/$(PROJECT).app: src/*.erl src/*/*.erl
 	@mkdir -p test/
 	ERL_LIBS=$(ERL_LIBS) erlc -v $(ERLC_OPTS) -DTEST -o test/ -pa test/ $?
 
