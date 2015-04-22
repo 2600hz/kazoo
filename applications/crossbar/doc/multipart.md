@@ -28,4 +28,4 @@ JSON file
 
 Curl request
 
-`curl --insecure -H "Content-Type: multipart/mixed" -F "content=@{{FILE}}.json; type=application/json" -F "content=@{{FILE}}.pdf; type=application/pdf" -H 'X-Auth-Token: {{TOKEN_AUTH}}' {{SERVER}}/v2/accounts/{{ACCOUNT_ID}}/faxes/outgoing -i -v -X PUT`
+`curl -H "Content-Type: multipart/mixed" -F "content=@{{FILE}}.json; type=application/json" -F "content=@{{FILE}}.pdf; type=application/pdf" -H 'X-Auth-Token: {{TOKEN_AUTH}}' {{SERVER}}/v2/accounts/{{ACCOUNT_ID}}/faxes/outgoing -i -v -X PUT`
