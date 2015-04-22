@@ -470,7 +470,7 @@ process_row(Row, {Count, JObjs}=Acc) ->
                        ,{<<"rate_cost">>, get_row_rate(Row)}
                        ,{<<"pvt_rate_surcharge">>, get_row_internal_surcharge(Row)}
                        ,{<<"routes">>, [<<"^\\+", (wh_util:to_binary(Prefix))/binary, "(\\d*)$">>]}
-                       ,{?HTTP_OPTIONS, []}
+                       ,{<<"options">>, []}
                       ]),
 
             {Count + 1, [wh_json:from_list(Props) | JObjs]}
