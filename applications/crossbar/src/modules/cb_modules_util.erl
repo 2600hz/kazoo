@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Functions shared between crossbar modules
 %%% @end
@@ -152,15 +152,36 @@ reconcile_services(Context) ->
         'false' -> Context;
         'true' ->
             lager:debug("maybe reconciling services for account ~s"
-                       ,[cb_context:account_id(Context)]),
-            _ = wh_services:save_as_dirty(cb_context:account_id(Context))
+                        ,[cb_context:account_id(Context)]
+                       ),
+            _ = wh_services:save_as_dirty(cb_context:account_id(Context), base_audit_log(Context))
     end.
+
+-spec base_audit_log(cb_context:context()) -> wh_json:object().
+base_audit_log(Context) ->
+    AccountJObj = cb_context:account_doc(Context),
+    Tree = kz_account:tree(AccountJObj) ++ [cb_context:account_id(Context)],
+
+    lists:foldl(fun({F, V}, Acc) -> F(Acc, V) end
+                ,kzd_audit_log:new()
+                ,[{fun kzd_audit_log:set_tree/2, Tree}
+                  ,{fun kzd_audit_log:set_authenticating_user/2, base_auth_user(Context, AccountJObj)}
+                 ]
+               ).
+
+-spec base_auth_user(cb_context:context(), wh_json:object()) -> wh_json:object().
+base_auth_user(Context, AccountJObj) ->
+    AuthJObj = cb_context:auth_doc(Context),
+
+    AccountName = kz_account:name(AccountJObj),
+
+    wh_json:set_value(<<"account_name">>, AccountName, AuthJObj).
 
 -spec pass_hashes(ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
 pass_hashes(Username, Password) ->
     Creds = list_to_binary([Username, ":", Password]),
-    SHA1 = wh_util:to_hex_binary(crypto:hash(sha, Creds)),
-    MD5 = wh_util:to_hex_binary(crypto:hash(md5, Creds)),
+    SHA1 = wh_util:to_hex_binary(crypto:hash('sha', Creds)),
+    MD5 = wh_util:to_hex_binary(crypto:hash('md5', Creds)),
     {MD5, SHA1}.
 
 -spec update_mwi(api_binary(), ne_binary()) -> pid().
