@@ -734,21 +734,27 @@ fold_processor(Routing, Payload, Bindings) ->
 -spec binding_matches(ne_binary(), ne_binary()) -> boolean().
 binding_matches(B, R) when erlang:byte_size(B) > 0 andalso erlang:byte_size(R) > 0 ->
     matches(lists:reverse(binary:split(B, <<".">>, ['global']))
-            ,lists:reverse(binary:split(R, <<".">>, ['global']))).
+            ,lists:reverse(binary:split(R, <<".">>, ['global']))
+           ).
 
--define(ROUTINGS, [ <<"foo.bar.zot">>, <<"foo.quux.zot">>, <<"foo.bar.quux.zot">>, <<"foo.zot">>, <<"foo">>, <<"xap">>]).
+-define(ROUTINGS, [<<"foo.bar.zot">>
+                   ,<<"foo.quux.zot">>
+                   ,<<"foo.bar.quux.zot">>
+                   ,<<"foo.zot">>
+                   ,<<"foo">>
+                   ,<<"xap">>
+                  ]).
 
--define(BINDINGS, [
-                   {<<"#">>, [true, true, true, true, true, true]}
-                   ,{<<"foo.*.zot">>, [true, true, false, false, false, false]}
-                   ,{<<"foo.#.zot">>, [true, true, true, true, false, false]}
-                   ,{<<"*.bar.#">>, [true, false, true, false, false, false]}
-                   ,{<<"*">>, [false, false, false, false, true, true]}
-                   ,{<<"#.tow">>, [false, false, false, false, false, false]}
-                   ,{<<"#.quux.zot">>, [false, true, true, false, false, false]}
-                   ,{<<"xap.#">>, [false, false, false, false, false, true]}
-                   ,{<<"#.*">>, [true, true, true, true, true, true]}
-                   ,{<<"#.bar.*">>, [true, false, false, false, false, false]}
+-define(BINDINGS, [{<<"#">>, ['true', 'true', 'true', 'true', 'true', 'true']}
+                   ,{<<"foo.*.zot">>, ['true', 'true', 'false', 'false', 'false', 'false']}
+                   ,{<<"foo.#.zot">>, ['true', 'true', 'true', 'true', 'false', 'false']}
+                   ,{<<"*.bar.#">>, ['true', 'false', 'true', 'false', 'false', 'false']}
+                   ,{<<"*">>, ['false', 'false', 'false', 'false', 'true', 'true']}
+                   ,{<<"#.tow">>, ['false', 'false', 'false', 'false', 'false', 'false']}
+                   ,{<<"#.quux.zot">>, ['false', 'true', 'true', 'false', 'false', 'false']}
+                   ,{<<"xap.#">>, ['false', 'false', 'false', 'false', 'false', 'true']}
+                   ,{<<"#.*">>, ['true', 'true', 'true', 'true', 'true', 'true']}
+                   ,{<<"#.bar.*">>, ['true', 'false', 'false', 'false', 'false', 'false']}
                   ]).
 
 bindings_match_test() ->
@@ -758,17 +764,30 @@ bindings_match_test() ->
                   end, ?BINDINGS).
 
 weird_bindings_test() ->
-    ?assertEqual(true, binding_matches(<<"#.A.*">>,<<"A.a.A.a">>)),
-    ?assertEqual(true, binding_matches(<<"#.*">>, <<"foo">>)),
-    ?assertEqual(true, binding_matches(<<"#.*">>, <<"foo.bar">>)),
-    ?assertEqual(false, binding_matches(<<"foo.#.*">>, <<"foo">>)),
-    %% ?assertEqual(false, binding_matches(<<"#.*">>, <<>>)),
-    ?assertEqual(true, binding_matches(<<"#.6.*.1.4.*">>,<<"6.a.a.6.a.1.4.a">>)),
+    ?assertEqual('true', binding_matches(<<"#.A.*">>,<<"A.a.A.a">>)),
+    ?assertEqual('true', binding_matches(<<"#.*">>, <<"foo">>)),
+    ?assertEqual('true', binding_matches(<<"#.*">>, <<"foo.bar">>)),
+    ?assertEqual('false', binding_matches(<<"foo.#.*">>, <<"foo">>)),
+    %% ?assertEqual('false', binding_matches(<<"#.*">>, <<>>)),
+    ?assertEqual('true', binding_matches(<<"#.6.*.1.4.*">>,<<"6.a.a.6.a.1.4.a">>)),
     ok.
 
 %%% PropEr tests
 %% Checks that the patterns for paths (a.#.*.c) match or do not
 %% match a given expanded path.
+
+expands_test_() ->
+    {"Running PropEr tests"
+     ,{'timeout'
+       ,50000
+       ,?_assertEqual('true'
+                      ,proper:quickcheck(?MODULE:prop_expands()
+                                         ,[{'numtests', 1000}]
+                                        )
+                     )
+      }
+    }.
+
 prop_expands() ->
     ?FORALL(Paths, expanded_paths(),
             ?WHENFAIL(io:format("Failed on ~p~n",[Paths]),
@@ -796,13 +815,13 @@ expanded_paths() ->
 %%
 %% Returns {Str, ShouldMatchOriginal}.
 wrong(Path) ->
-    ?LET(P, Path, wrong(P, true, [])).
+    ?LET(P, Path, wrong(P, 'true', [])).
 
 %% Will expand the patterns according to the rules so they should always match
 %%
 %% Returns {Str, ShouldMatchOriginal}.
 right(Path) ->
-    ?LET(P, Path, {right1(P), true}).
+    ?LET(P, Path, {right1(P), 'true'}).
 
 %% Here's why some patterns will always succeed even if we try to make them
 %% wrong. In a given strign S, we could add segments, but some subpatterns
@@ -820,9 +839,9 @@ wrong("*.#." ++ Rest, Bool, Acc) -> %% the # messes stuff up, can't invalidate
 wrong("*.#", Bool, Acc) ->  %% same as above, end of string
     {lists:reverse(Acc), Bool};
 wrong("*." ++ Rest, _Bool, Acc) ->
-    wrong(Rest, false, Acc);
+    wrong(Rest, 'false', Acc);
 wrong(".*", _Bool, Acc) ->
-    {lists:reverse(Acc), false};
+    {lists:reverse(Acc), 'false'};
 wrong(".#." ++ Rest, Bool, Acc) -> %% can't make this one wrong
     wrong(Rest, Bool, [$.|Acc]);
 wrong("#." ++ Rest, Bool, Acc) -> %% same, start of string
