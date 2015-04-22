@@ -41,7 +41,7 @@ test/$(PROJECT).app: src/kazoo_transform.erl src/*.erl src/api/*.erl
 	@mkdir -p test/
 	ERL_LIBS=$(ERL_LIBS) erlc -v $(ERLC_OPTS) $(TEST_PA) -DTEST -o test/ -pa test/ $?
 
-clean: clean-test
+clean:
 	rm -f ebin/*
 	rm -f erl_crash.dump
 
@@ -51,5 +51,4 @@ clean-test:
 test: clean-test compile-test eunit
 
 eunit: compile-test
-	erl -noshell $(PA) $(TEST_PA) \
-	-pa test -eval "eunit:test([$(MODULES),$(API_MODULES)], [verbose])" -s init stop
+	erl -noshell $(PA) $(TEST_PA) -pa test -eval "case eunit:test([$(MODULES),$(API_MODULES)], [verbose]) of 'ok' -> init:stop(); _ -> init:stop(1) end."
