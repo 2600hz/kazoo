@@ -46,10 +46,12 @@ test/$(PROJECT).app: src/*.erl src/modules/*.erl
 
 clean:
 	rm -f ebin/*
-	rm -f test/*.beam test/$(PROJECT).app
 	rm -f erl_crash.dump
 
-test: clean compile-test eunit
+clean-test:
+	rm -f test/*.beam test/$(PROJECT).app
+
+test: clean-test compile-test eunit
 
 eunit: compile-test
-	erl -noshell $(PA) -pa test -eval "eunit:test([$(MODULES),$(CB_MODULES),$(CB_MODULES_V1),$(CB_MODULES_V2)], [verbose])" -s init stop
+	erl -noshell $(PA) -pa test -eval "case eunit:test([$(MODULES),$(CB_MODULES),$(CB_MODULES_V1),$(CB_MODULES_V2)], [verbose]) of 'ok' -> init:stop(); _ -> init:stop(1) end."
