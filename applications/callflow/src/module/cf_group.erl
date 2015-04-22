@@ -36,9 +36,10 @@ attempt_endpoints(Endpoints, Data, Call) ->
     Timeout = wh_json:get_integer_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT_S),
     Strategy = wh_json:get_binary_value(<<"strategy">>, Data, ?DIAL_METHOD_SIMUL),
     Ringback = wh_json:get_value(<<"ringback">>, Data),
+    AllowForward = wh_json:get_binary_boolean(<<"allow_forward">>, Data, <<"false">>),
     lager:info("attempting group of ~b members with strategy ~s", [length(Endpoints), Strategy]),
     whapps_call_command:b_answer(Call),
-    case whapps_call_command:b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Ringback, Call) of
+    case whapps_call_command:b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Ringback, AllowForward, Call) of
         {'ok', _} ->
             lager:info("completed successful bridge to the group - call finished normally"),
             cf_exe:stop(Call);
