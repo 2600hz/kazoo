@@ -14,7 +14,7 @@ TEST_EBINS = $(shell find $(ROOT)/deps/mochiweb-* -maxdepth 2 -name ebin -print)
 	$(shell find $(ROOT)/deps/ejson-* -maxdepth 2 -name ebin -print)
 TEST_PA = $(foreach EBIN,$(TEST_EBINS),-pa $(EBIN))
 
-.PHONY: all compile clean
+.PHONY: all compile clean clean-test
 
 all: compile
 
@@ -41,12 +41,14 @@ test/$(PROJECT).app: src/kazoo_transform.erl src/*.erl src/api/*.erl
 	@mkdir -p test/
 	ERL_LIBS=$(ERL_LIBS) erlc -v $(ERLC_OPTS) $(TEST_PA) -DTEST -o test/ -pa test/ $?
 
-clean:
+clean: clean-test
 	rm -f ebin/*
-	rm -f test/*.beam test/$(PROJECT).app
 	rm -f erl_crash.dump
 
-test: clean compile-test eunit
+clean-test:
+	rm -f test/*.beam test/$(PROJECT).app
+
+test: clean-test compile-test eunit
 
 eunit: compile-test
 	erl -noshell $(PA) $(TEST_PA) \
