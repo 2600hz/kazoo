@@ -32,6 +32,7 @@ compile-test: test/$(PROJECT).app
 		| sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' \
 		> test/$(PROJECT).app
 	-@$(MAKE) test/$(PROJECT).app
+	-@$(MAKE) priv/comp128.so
 
 test/$(PROJECT).app: src/*.erl
 	@mkdir -p test/
@@ -40,10 +41,12 @@ test/$(PROJECT).app: src/*.erl
 clean:
 	rm -f ebin/*
 	rm -f priv/*.so
-	rm -f test/*.beam test/$(PROJECT).app
 	rm -f erl_crash.dump
 
-test: clean compile-test eunit
+clean-test:
+	rm -f test/*.beam test/$(PROJECT).app
+
+test: clean-test compile-test eunit
 
 eunit: compile-test
-	erl -noshell -pa test -eval "eunit:test([$(MODULES)], [verbose])" -s init stop
+	erl -noshell $(PA) -pa test -eval "case eunit:test([$(MODULES)], [verbose]) of 'ok' -> init:stop(); _ -> init:stop(1) end."
