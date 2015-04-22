@@ -63,6 +63,11 @@
                              ,{<<"application">>, <<"x-json">>}
                             ]).
 
+-define(MULTIPART_CONTENT_TYPES, [{<<"application">>, <<"x-www-form-urlencoded">>}
+                                  ,{<<"multipart">>, <<"form-data">>}
+                                  ,{<<"multipart">>, <<"mixed">>}
+                                 ]).
+
 -define(JSONP_CONTENT_TYPE, <<"application/javascript">>).
 
 -define(CROSSBAR_TYPES_INCLUDED, 'true').
