@@ -251,13 +251,13 @@ save_as_dirty(#wh_services{jobj=JObj
             lager:debug("service database does not exist, attempting to create"),
             'true' = couch_mgr:db_create(?WH_SERVICES_DB),
             timer:sleep(BackOff),
-            save_as_dirty(Services, BackOff);
+            save_as_dirty(Services, AuditLog, BackOff);
         {'error', 'conflict'} ->
-            save_conflicting_as_dirty(Services, BackOff)
+            save_conflicting_as_dirty(Services, AuditLog, BackOff)
     end.
 
--spec save_conflicting_as_dirty(services(), pos_integer()) -> services().
-save_conflicting_as_dirty(#wh_services{account_id=AccountId}, BackOff) ->
+-spec save_conflicting_as_dirty(services(), kzd_audit_log:doc(), pos_integer()) -> services().
+save_conflicting_as_dirty(#wh_services{account_id=AccountId}, AuditLog, BackOff) ->
     {'ok', Existing} = couch_mgr:open_doc(?WH_SERVICES_DB, AccountId),
     NewServices = from_service_json(Existing),
 
@@ -268,7 +268,7 @@ save_conflicting_as_dirty(#wh_services{account_id=AccountId}, BackOff) ->
         'false' ->
             lager:debug("new services doc for ~s not dirty, marking it as so", [AccountId]),
             timer:sleep(BackOff + random:uniform(?BASE_BACKOFF)),
-            save_as_dirty(NewServices, BackOff*2)
+            save_as_dirty(NewServices, AuditLog, BackOff*2)
     end.
 
 -spec save_audit_logs(services(), kzd_audit_log:doc()) -> 'ok'.
@@ -590,7 +590,7 @@ to_json(#wh_services{jobj=JObj
                     ,updates=UpdatedQuantities
                     }
        ) ->
-    CurrentQuantities = wh_json:get_value(?QUANTITIES, JObj, wh_json:new()),
+    CurrentQuantities = current_quantities(JObj),
     Props = [{?QUANTITIES, wh_json:merge_jobjs(UpdatedQuantities, CurrentQuantities)}],
     wh_json:set_values(props:filter_undefined(Props), JObj).
 
@@ -780,7 +780,7 @@ quantity(_, _, #wh_services{deleted='true'}) -> 0;
 quantity(Category, Item, #wh_services{updates=UpdatedQuantities
                                       ,jobj=JObj
                                      }) ->
-    CurrentQuantities = wh_json:get_value(?QUANTITIES, JObj, wh_json:new()),
+    CurrentQuantities = current_quantities(JObj),
     Quantities = wh_json:merge_jobjs(UpdatedQuantities, CurrentQuantities),
     wh_json:get_integer_value([Category, Item], Quantities, 0).
 
@@ -806,7 +806,7 @@ category_quantity(_, _, #wh_services{deleted='true'}) -> 0;
 category_quantity(Category, Exceptions, #wh_services{updates=UpdatedQuantities
                                                      ,jobj=JObj
                                                     }) ->
-    CurrentQuantities = wh_json:get_value(?QUANTITIES, JObj, wh_json:new()),
+    CurrentQuantities = current_quantities(JObj),
     Quantities = wh_json:merge_jobjs(UpdatedQuantities, CurrentQuantities),
     lists:foldl(fun(Item, Sum) ->
                         case lists:member(Item, Exceptions) of
@@ -1242,7 +1242,7 @@ maybe_save('false') -> 'false';
 maybe_save(#wh_services{jobj=JObj
                         ,updates=UpdatedQuantities
                        }=Services) ->
-    CurrentQuantities = wh_json:get_value(?QUANTITIES, JObj, wh_json:new()),
+    CurrentQuantities = current_quantities(JObj),
     case have_quantities_changed(UpdatedQuantities, CurrentQuantities) of
         'true' ->
             lager:debug("quantities have changed, saving dirty services"),
