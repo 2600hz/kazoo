@@ -633,8 +633,25 @@ new_queue_name() ->
 queue_arguments(Arguments) ->
     Routines = [fun max_length/2
                 ,fun message_ttl/2
+                ,fun max_priority/2
                ],
     lists:foldl(fun(F, Acc) -> F(Arguments, Acc) end, Arguments, Routines).
+
+-spec max_priority(wh_proplist(), amqp_properties()) -> amqp_properties().
+max_priority(Args, Acc) ->
+    Property = props:get_value(<<"x-max-priority">>, Args),
+    Acc1 = props:delete(<<"x-max-priority">>, Acc),
+    case Property of
+        Val when is_integer(Val) ->
+            AMQPValue = trim(0, 255, Val),
+            [{<<"x-max-priority">>, 'byte', AMQPValue}|Acc1];
+        _Else -> Acc1
+    end.
+
+-spec trim(integer(), integer(), integer()) -> integer().
+trim(Min, _  , Val) when Val < Min -> Min;
+trim(_  , Max, Val) when Val > Max -> Max;
+trim(_  , _  , Val)                -> Val.
 
 -spec max_length(wh_proplist(), amqp_properties()) -> amqp_properties().
 max_length(Args, Acc) ->
