@@ -476,7 +476,7 @@ normalize_cdr_to_csv(JObj, Context) ->
             [F(JObj, Timestamp) || {_, F} <- csv_rows(Context)]
             ,<<",">>
            ),
-    <<CSV/binary, "\r">>.
+    <<CSV/binary, "\r\n">>.
 
 -spec normalize_cdr_to_csv_header(wh_json:object(), cb_context:context()) -> ne_binary().
 normalize_cdr_to_csv_header(_JObj, Context) ->
@@ -486,7 +486,7 @@ normalize_cdr_to_csv_header(_JObj, Context) ->
           ,<<",">>
          ),
 
-    <<CSV/binary, "\r">>.
+    <<CSV/binary, "\r\n">>.
 
 -type csv_column_fun() :: fun((wh_json:object(), gregorian_seconds()) -> ne_binary()).
 
