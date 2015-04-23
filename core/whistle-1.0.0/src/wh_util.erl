@@ -74,6 +74,7 @@
 -export([current_tstamp/0, current_unix_tstamp/0
          ,gregorian_seconds_to_unix_seconds/1, unix_seconds_to_gregorian_seconds/1
          ,pretty_print_datetime/1
+         ,rfc1036/1, rfc1036/2
          ,pretty_print_elapsed_s/1
          ,decr_timeout/2
         ]).
@@ -447,6 +448,11 @@ try_load_module(Name) ->
 pad_binary(Bin, Size, Value) when size(Bin) < Size ->
     pad_binary(<<Bin/binary, Value/binary>>, Size, Value);
 pad_binary(Bin, _, _) -> Bin.
+
+-spec pad_binary_left(binary(), non_neg_integer(), binary()) -> binary().
+pad_binary_left(Bin, Size, Value) when size(Bin) < Size ->
+    pad_binary_left(<<Value/binary, Bin/binary>>, Size, Value);
+pad_binary_left(Bin, _Size, _Value) -> Bin.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1040,6 +1046,49 @@ pretty_print_datetime({{Y,Mo,D},{H,Mi,S}}) ->
     iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0w_~2..0w-~2..0w-~2..0w"
                                    ,[Y, Mo, D, H, Mi, S]
                                   )).
+
+-spec rfc1036(calendar:datetime() | gregorian_seconds()) -> ne_binary().
+-spec rfc1036(calendar:datetime() | gregorian_seconds(), ne_binary()) -> ne_binary().
+rfc1036(DateTime) ->
+    rfc1036(DateTime, <<"GMT">>).
+
+rfc1036({Date = {Y, Mo, D}, {H, Mi, S}}, TZ) ->
+    Wday = calendar:day_of_the_week(Date),
+    <<(weekday(Wday))/binary, ", ",
+      (pad_binary_left(to_binary(D), 2, <<"0">>))/binary, " ",
+      (month(Mo))/binary, " ",
+      (to_binary(Y))/binary, " ",
+      (pad_binary_left(to_binary(H), 2, <<"0">>))/binary, ":",
+      (pad_binary_left(to_binary(Mi), 2, <<"0">>))/binary, ":",
+      (pad_binary_left(to_binary(S), 2, <<"0">>))/binary,
+      " ", TZ/binary
+    >>;
+rfc1036(Timestamp, TZ) when is_integer(Timestamp) ->
+    rfc1036(calendar:gregorian_seconds_to_datetime(Timestamp), TZ).
+
+%% borrowed from cow_date.erl
+-spec weekday(1..7) -> <<_:24>>.
+weekday(1) -> <<"Mon">>;
+weekday(2) -> <<"Tue">>;
+weekday(3) -> <<"Wed">>;
+weekday(4) -> <<"Thu">>;
+weekday(5) -> <<"Fri">>;
+weekday(6) -> <<"Sat">>;
+weekday(7) -> <<"Sun">>.
+
+-spec month(1..12) -> <<_:24>>.
+month( 1) -> <<"Jan">>;
+month( 2) -> <<"Feb">>;
+month( 3) -> <<"Mar">>;
+month( 4) -> <<"Apr">>;
+month( 5) -> <<"May">>;
+month( 6) -> <<"Jun">>;
+month( 7) -> <<"Jul">>;
+month( 8) -> <<"Aug">>;
+month( 9) -> <<"Sep">>;
+month(10) -> <<"Oct">>;
+month(11) -> <<"Nov">>;
+month(12) -> <<"Dec">>.
 
 -spec pretty_print_elapsed_s(non_neg_integer()) -> ne_binary().
 pretty_print_elapsed_s(0) -> <<"0s">>;
