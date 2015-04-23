@@ -127,10 +127,10 @@ maybe_update_dash_e911(Number, Address, JObj) ->
                   ]),
             {'invalid', Error};
         {'provisioned', _} ->
-            lager:warning("location seems already provisioned"),
+            lager:debug("location seems already provisioned"),
             update_e911(Number, Address, JObj);
         {'geocoded', [_Loc]} ->
-            lager:warning("location seems geocoded to only one address"),
+            lager:debug("location seems geocoded to only one address"),
             update_e911(Number, Address, JObj);
         {'geocoded', [_|_]=Addresses} ->
             lager:warning("location could correspond to multiple addresses"),
@@ -140,7 +140,10 @@ maybe_update_dash_e911(Number, Address, JObj) ->
                    ,{<<"details">>, Addresses}
                    ,{<<"message">>, <<"more than one address found">>}
                   ]),
-            {'multiple_choice', Update}
+            {'multiple_choice', Update};
+        {'geocoded', _Loc} ->
+            lager:debug("location seems geocoded to only one address"),
+            update_e911(Number, Address, JObj)
     end.
 
 %%--------------------------------------------------------------------
