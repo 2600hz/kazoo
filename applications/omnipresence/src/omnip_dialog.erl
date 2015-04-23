@@ -323,9 +323,9 @@ handle_update(JObj, State, From, To, Expires) ->
 
 -spec build_update_to_uri(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
 build_update_to_uri(?PRESENCE_RINGING, <<"park">>, _From, Cookie) ->
-    <<"kfp+", Cookie/binary>>;
+    <<"sip:kfp+", Cookie/binary>>;
 build_update_to_uri(?PRESENCE_RINGING, _, _From, Cookie) ->
-    <<"kfp+", Cookie/binary>>;
+    <<"sip:kfp+", Cookie/binary>>;
 build_update_to_uri(_State, _App, From, _Cookie) ->
     <<"sip:", From/binary>>.
 
