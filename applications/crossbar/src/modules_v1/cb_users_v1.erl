@@ -15,6 +15,7 @@
 -export([create_user/1]).
 -export([init/0
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
+         ,content_types_provided/1, content_types_provided/2, content_types_provided/3, content_types_provided/4
          ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
          ,validate_resource/1, validate_resource/2, validate_resource/3, validate_resource/4
          ,authenticate/1
@@ -22,7 +23,7 @@
          ,billing/1
          ,validate/1, validate/2, validate/3, validate/4
          ,put/1
-         ,post/2
+         ,post/2, post/3
          ,delete/2
          ,patch/2
         ]).
@@ -34,6 +35,8 @@
 -define(LIST_BY_USERNAME, <<"users/list_by_username">>).
 -define(CHANNELS, <<"channels">>).
 -define(QUICKCALL, <<"quickcall">>).
+-define(VCARD, <<"vcard">>).
+-define(PHOTO, <<"photo">>).
 
 %%%===================================================================
 %%% API
@@ -50,6 +53,7 @@ create_user(Context) ->
 
 init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.users">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.users">>, ?MODULE, 'content_types_provided'),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.users">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"v1_resource.validate_resource.users">>, ?MODULE, 'validate_resource'),
     _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, 'authenticate'),
@@ -82,11 +86,34 @@ allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE, ?HTTP_PATCH].
 
 allowed_methods(_, ?CHANNELS) ->
+    [?HTTP_GET];
+allowed_methods(_, ?PHOTO) ->
+    [?HTTP_POST];
+allowed_methods(_, ?VCARD) ->
     [?HTTP_GET].
 
 allowed_methods(_, ?QUICKCALL, _) ->
     [?HTTP_GET].
 
+-spec content_types_provided(cb_context:context()) ->
+                                    cb_context:context().
+-spec content_types_provided(cb_context:context(), path_token()) ->
+                                    cb_context:context().
+-spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
+                                    cb_context:context().
+-spec content_types_provided(cb_context:context(), path_token(), path_token(), http_method()) ->
+                                    cb_context:context().
+content_types_provided(Context) ->
+    Context.
+content_types_provided(Context, _) ->
+    Context.
+content_types_provided(Context, _, ?VCARD) ->
+    cb_context:set_content_types_provided(Context, [{'to_binary', [{<<"text">>, <<"x-vcard">>}
+                                                                   ,{<<"text">>, <<"directory">>}]}]);
+content_types_provided(Context, _, _) ->
+    Context.
+content_types_provided(Context, _, _, _) ->
+    Context.
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -101,7 +128,8 @@ allowed_methods(_, ?QUICKCALL, _) ->
 
 resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
-resource_exists(_, ?CHANNELS) -> 'true'.
+resource_exists(_, ?CHANNELS) -> 'true';
+resource_exists(_, ?VCARD) -> 'true'.
 resource_exists(_, ?QUICKCALL, _) -> 'true'.
 
 
@@ -223,8 +251,13 @@ validate(Context, UserId, ?CHANNELS) ->
     case cb_context:has_errors(Context1) of
         'true' -> Context1;
         'false' -> get_channels(Context1)
+    end;
+validate(Context, UserId, ?VCARD) ->
+    Context1 = load_user(UserId, Context),
+    case cb_context:has_errors(Context1) of
+        'true' -> Context1;
+        'false' -> convert_to_vcard(Context1)
     end.
-
 validate(Context, UserId, ?QUICKCALL, _) ->
     Context1 = maybe_validate_quickcall(load_user(UserId, Context)),
     case cb_context:has_errors(Context1) of
@@ -307,6 +340,180 @@ get_channels(Context) ->
             Channels = merge_user_channels_jobjs(Resp),
             crossbar_util:response(Channels, Context)
     end.
+
+%% Card related code should be placed somewhere else.
+%% We also want to extend 'lists' to be vcard-compatible.
+%% And we want to use it for XMPP (for xCards).
+-spec convert_to_vcard(cb_context:context()) -> cb_context:context().
+convert_to_vcard(Context) ->
+    JObj = cb_context:doc(Context),
+    JProfile = wh_json:get_value(<<"profile">>, JObj, wh_json:new()),
+    JObj1 = wh_json:merge_jobjs(JObj, JProfile),
+    JObj2 = set_photo(JObj1, Context),
+    JObj3 = set_org(JObj2, Context),
+    %% TODO add SOUND, AGENT (X-ASSISTANT), X-MANAGER
+    Fields = [
+              <<"BEGIN">>
+              ,<<"VERSION">>
+              ,<<"FN">>
+              ,<<"N">>
+              ,<<"ORG">>
+              ,<<"PHOTO">>
+              ,<<"EMAIL">>
+              ,<<"BDAY">>
+              ,<<"NOTE">>
+              ,<<"TITLE">>
+              ,<<"ROLE">>
+              ,<<"TZ">>
+              ,<<"NICKNAME">>
+              ,<<"TEL">>
+              ,<<"ADR">>
+              ,<<"END">>
+             ],
+    NotEmptyFields = lists:foldl(fun vcard_fields_acc/2, [], [card_field(Key, JObj3) || Key <- Fields]),
+    PackedFields = lists:reverse([iolist_join(<<":">>, [X, Y]) || {X, Y} <- NotEmptyFields]),
+    DividedFields = lists:reverse(lists:foldl(fun vcard_field_divide_by_length/2, [], PackedFields)),
+    RespData = iolist_join(<<"\n">>, DividedFields),
+    cb_context:set_resp_data(Context, [RespData, <<"\n">>]).
+
+-spec set_photo(wh_json:object(), cb_context:context()) -> wh_json:object().
+set_photo(JObj, Context) ->
+    UserId = wh_json:get_value(<<"id">>, cb_context:doc(Context)),
+    Attach = crossbar_doc:load_attachment(UserId, ?PHOTO, Context),
+    case cb_context:resp_status(Attach) of
+        'error' -> JObj;
+        'success' ->
+            Data = cb_context:resp_data(Attach),
+            CT = wh_json:get_value(<<"content_type">>
+                                   ,wh_json:get_value(?PHOTO
+                                                      ,wh_json:get_value(<<"_attachments">>
+                                                                         ,cb_context:doc(Context)
+                                                                        ))),
+            wh_json:set_value(?PHOTO, wh_json:from_list([{CT, Data}]), JObj)
+    end.
+
+-spec set_org(wh_json:object(), cb_context:context()) -> wh_json:object().
+set_org(JObj, Context) ->
+    case wh_json:get_value(<<"org">>
+                           ,cb_context:doc(crossbar_doc:load(cb_context:account_id(Context)
+                                                             ,Context)))
+    of
+        'undefined' -> JObj;
+        Val -> wh_json:set_value(<<"org">>, Val, JObj)
+    end.
+
+-spec vcard_escape_chars(binary()) -> binary().
+vcard_escape_chars(Val) ->
+    Val1 = re:replace(Val, "(:|;|,)", "\\\\&", [global, {return, binary}]),
+    re:replace(Val1, "\n", "\\\\n", [global, {return, binary}]).
+
+vcard_fields_acc({_, Val}, Acc) when Val =:= 'undefined'; Val =:= []; Val =:= <<>> ->
+    Acc;
+vcard_fields_acc({Type, Val}, Acc) ->
+    case vcard_normalize_val(Val) of
+        <<>> -> Acc;
+        ValN ->
+            TypeN = vcard_normalize_type(Type),
+            [{TypeN, ValN} | Acc]
+    end;
+vcard_fields_acc([X | Rest], Acc) ->
+    vcard_fields_acc(Rest, vcard_fields_acc(X, Acc));
+vcard_fields_acc([], Acc) ->
+    Acc.
+
+-spec vcard_normalize_val(binary() | {char(), binaries()}) -> binary().
+vcard_normalize_val({Divider, Vals}) when is_list(Vals) ->
+    iolist_join(Divider, [vcard_escape_chars(X) || X <- Vals, X =/= 'undefined', X =/= [], X =/= <<>>]);
+vcard_normalize_val(Val) when is_binary(Val) ->
+    vcard_escape_chars(Val).
+
+-spec vcard_normalize_type(list() | {ne_binary(), ne_binary()} | ne_binary()) -> ne_binary().
+vcard_normalize_type(T) when is_list(T) -> iolist_join(<<";">>, [vcard_normalize_type(X) || X <- T]);
+vcard_normalize_type({T, V}) -> iolist_join(<<"=">>, [T, V]);
+vcard_normalize_type(T) -> T.
+
+%-spec card_field(ne_binary(), wh_json:object()) -> {vcard_type_spec(), vcard_val()}.
+card_field(Key, _)
+  when Key =:= <<"BEGIN">> ->
+    {Key, <<"VCARD">>};
+card_field(Key, _)
+  when Key =:= <<"VERSION">> ->
+    {Key, <<"3.0">>};
+card_field(Key, _)
+  when Key =:= <<"END">> ->
+    {Key, <<"VCARD">>};
+card_field(Key, JObj)
+  when Key =:= <<"FN">> ->
+    FirstName = wh_json:get_value(<<"first_name">>, JObj),
+    LastName = wh_json:get_value(<<"last_name">>, JObj),
+    MiddleName = wh_json:get_value(<<"middle_name">>, JObj),
+    {Key, iolist_join(<<" ">>, [X || X <- [FirstName, MiddleName, LastName], X =/= undefined, X =/= [], X =/= <<>>])};
+card_field(Key, JObj) when Key =:= <<"N">> ->
+    FirstName = wh_json:get_value(<<"first_name">>, JObj),
+    LastName = wh_json:get_value(<<"last_name">>, JObj),
+    MiddleName = wh_json:get_value(<<"middle_name">>, JObj),
+    {Key, {$;, [LastName, FirstName, MiddleName]}};
+card_field(Key, JObj) when Key =:= <<"ORG">> ->
+    {Key, element(2, card_field(<<"org">>, JObj))};
+card_field(Key, JObj) when Key =:= <<"PHOTO">> ->
+    case card_field(?PHOTO, JObj) of
+        {?PHOTO, 'undefined'} -> {Key, 'undefined'};
+        {?PHOTO, PhotoJObj} ->
+            [{CT, PhotoBin}] = wh_json:to_proplist(PhotoJObj),
+            TypeType = case CT of
+                           <<"image/jpeg">> -> <<"JPEG">>
+                       end,
+            Data = base64:encode(PhotoBin),
+            {[Key, {<<"ENCODING">>, <<"B">>}, {<<"TYPE">>, TypeType}], Data}
+    end;
+card_field(Key, JObj) when Key =:= <<"ADR">> ->
+    Addresses = wh_json:get_value(<<"addresses">>, JObj, []),
+    [{Key, X} || X <- Addresses];
+card_field(Key, JObj) when Key =:= <<"TEL">> ->
+    CallerId = wh_json:get_value(<<"caller_id">>, JObj, wh_json:new()),
+    Internal = wh_json:get_value(<<"internal">>, CallerId),
+    External = wh_json:get_value(<<"external">>, CallerId),
+    [
+     {Key, Internal}
+     ,{Key, External}
+    ];
+card_field(Key = <<"EMAIL">>, JObj) ->
+    {Key, element(2, card_field(<<"email">>, JObj))};
+card_field(Key = <<"BDAY">>, JObj) ->
+    {Key, element(2, card_field(<<"birthday">>, JObj))};
+card_field(Key = <<"NOTE">>, JObj) ->
+    {Key, element(2, card_field(<<"note">>, JObj))};
+card_field(Key = <<"TITLE">>, JObj) ->
+    {Key, element(2, card_field(<<"title">>, JObj))};
+card_field(Key = <<"ROLE">>, JObj) ->
+    {Key, element(2, card_field(<<"role">>, JObj))};
+card_field(Key = <<"TZ">>, JObj) ->
+    {Key, element(2, card_field(<<"timezone">>, JObj))};
+card_field(Key = <<"NICKNAME">>, JObj) ->
+    Val = case element(2, card_field(<<"nicknames">>, JObj)) of
+              'undefined' -> [];
+              V -> V
+          end,
+    {Key, {$,, Val}};
+card_field(Key, JObj) ->
+    {Key, wh_json:get_value(Key, JObj)}.
+
+-spec iolist_join(char() | binary(), binaries()) -> binary().
+iolist_join(Divider, List) ->
+    case lists:foldl(fun iolist_join_acc/2, {Divider, []}, List) of
+        {_, [_ | Reversed]} -> iolist_to_binary(lists:reverse(Reversed));
+        {_, []} -> <<>>
+    end.
+
+-spec iolist_join_acc(binary(), {char() | binary(), binaries()}) -> {char() | binary(), binaries()}.
+iolist_join_acc(E, {Divider, Acc}) ->
+    {Divider, [Divider, E | Acc]}.
+
+-spec vcard_field_divide_by_length(binary(), binaries()) -> binaries().
+vcard_field_divide_by_length(<<Row:75/binary, Rest/binary>>, Acc) ->
+    vcard_field_divide_by_length(Rest, [Row | Acc]);
+vcard_field_divide_by_length(Row, Acc) ->
+    [Row | Acc].
 
 -spec merge_user_channels_jobjs(wh_json:objects()) -> wh_json:objects().
 merge_user_channels_jobjs(JObjs) ->
