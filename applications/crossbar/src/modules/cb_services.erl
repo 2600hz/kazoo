@@ -20,9 +20,15 @@
 
 -include("../crossbar.hrl").
 
+-define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".services">>).
+
 -define(PVT_TYPE, <<"service">>).
 -define(PVT_FUNS, [fun add_pvt_type/2]).
 -define(CB_LIST, <<"services/crossbar_listing">>).
+-define(AUDIT_LOG_LIST, <<"services/audit_logs">>).
+
+-define(PATH_PLAN, <<"plan">>).
+-define(PATH_AUDIT, <<"audit">>).
 
 %%%===================================================================
 %%% API
@@ -57,7 +63,9 @@ init() ->
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_POST].
 
-allowed_methods(<<"plan">>) ->
+allowed_methods(?PATH_PLAN) ->
+    [?HTTP_GET];
+allowed_methods(?PATH_AUDIT) ->
     [?HTTP_GET];
 allowed_methods(_) ->
     [].
@@ -75,7 +83,8 @@ allowed_methods(_) ->
 -spec resource_exists(path_token()) -> boolean().
 resource_exists() -> 'true'.
 
-resource_exists(<<"plan">>) -> 'true';
+resource_exists(?PATH_PLAN) -> 'true';
+resource_exists(?PATH_AUDIT) -> 'true';
 resource_exists(_) -> 'false'.
 
 %%--------------------------------------------------------------------
@@ -116,8 +125,10 @@ validate_services(Context, ?HTTP_POST) ->
             crossbar_util:response('error', wh_util:to_binary(Error), 400, R, Context)
     end.
 
-validate(Context, <<"plan">>) ->
-    crossbar_util:response(wh_services:service_plan_json(cb_context:account_id(Context)), Context).
+validate(Context, ?PATH_PLAN) ->
+    crossbar_util:response(wh_services:service_plan_json(cb_context:account_id(Context)), Context);
+validate(Context, ?PATH_AUDIT) ->
+    load_audit_logs(Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -133,7 +144,9 @@ validate(Context, <<"plan">>) ->
 get(Context) ->
     Context.
 
-get(Context, <<"plan">>) ->
+get(Context, ?PATH_PLAN) ->
+    Context;
+get(Context, ?PATH_AUDIT) ->
     Context.
 
 %%--------------------------------------------------------------------
@@ -156,3 +169,67 @@ post(Context, Services) ->
         'throw':{Error, Reason} ->
             crossbar_util:response('error', wh_util:to_binary(Error), 500, Reason, Context)
     end.
+
+-spec load_audit_logs(cb_context:context()) -> cb_context:context().
+load_audit_logs(Context) ->
+    case create_view_options(Context) of
+        {'ok', ViewOptions} ->
+            crossbar_doc:load_view(?AUDIT_LOG_LIST
+                                   ,ViewOptions
+                                   ,Context
+                                  );
+        Context1 -> Context1
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec pagination_page_size(cb_context:context()) ->pos_integer().
+pagination_page_size(Context) ->
+    case crossbar_doc:pagination_page_size(Context) of
+        'undefined' -> 'undefined';
+        PageSize -> PageSize + 1
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec create_view_options(cb_context:context()) ->
+                                 {'ok', wh_proplist()} |
+                                 cb_context:context().
+create_view_options(Context) ->
+    MaxRange = whapps_config:get_integer(?MOD_CONFIG_CAT
+                                         ,<<"maximum_range">>
+                                         ,(?SECONDS_IN_DAY * 31  + ?SECONDS_IN_HOUR)
+                                        ),
+    case cb_modules_util:range_view_options(Context, MaxRange) of
+        {CreatedFrom, CreatedTo} ->
+            create_view_options(Context, CreatedFrom, CreatedTo);
+        Context1 -> Context1
+    end.
+
+-spec create_view_options(cb_context:context(), gregorian_seconds(), gregorian_seconds()) ->
+                                 {'ok', wh_proplist()}.
+create_view_options(Context, CreatedFrom, CreatedTo) ->
+    {'ok', [{'startkey', CreatedTo}
+            ,{'endkey', CreatedFrom}
+            ,{'limit', pagination_page_size(Context)}
+            ,{'databases', ranged_modbs(Context, CreatedFrom, CreatedTo)}
+           ,'descending'
+           ]}.
+
+-spec ranged_modbs(cb_context:context(), gregorian_seconds(), gregorian_seconds()) ->
+                          ne_binaries().
+ranged_modbs(Context, From, To) ->
+    {{FromYear, FromMonth, _}, _} = calendar:gregorian_seconds_to_datetime(From),
+    {{ToYear, ToMonth, _}, _} = calendar:gregorian_seconds_to_datetime(To),
+
+    Seq = crossbar_util:generate_year_month_sequence({FromYear, FromMonth}
+                                                     ,{ToYear, ToMonth}
+                                                    ),
+    AccountId = cb_context:account_id(Context),
+    [kazoo_modb:get_modb(AccountId, Year, Month) || {Year, Month} <- Seq].
