@@ -50,13 +50,15 @@ attempt_endpoints(JObj, Data, Call) ->
     Strategy = wh_util:to_binary(
                  wh_json:find(<<"strategy">>, [JObj, Data], ?DIAL_METHOD_SIMUL)
                 ),
+    IgnoreForward = wh_util:to_binary(
+                      wh_json:find(<<"ignore_forward">>, [JObj, Data], <<"true">>)
+                     ),
     Ringback = wh_util:to_binary(
                  wh_json:find(<<"ringback">>, [JObj, Data])
                 ),
-    io:format("~p~n", [Endpoints]),
     lager:info("attempting group of ~b members with strategy ~s", [length(Endpoints), Strategy]),
     whapps_call_command:b_answer(Call),
-    case whapps_call_command:b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Ringback, Call) of
+    case whapps_call_command:b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Ringback, IgnoreForward, Call) of
         {'ok', _} ->
             lager:info("completed successful bridge to the group - call finished normally"),
             cf_exe:stop(Call);
