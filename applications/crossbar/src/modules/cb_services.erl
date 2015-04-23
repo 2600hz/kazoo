@@ -13,7 +13,7 @@
 -export([init/0
          ,allowed_methods/0, allowed_methods/1
          ,resource_exists/0, resource_exists/1
-         ,content_types_provided/1
+         ,content_types_provided/2
          ,validate/1, validate/2
          ,get/1, get/2
          ,post/1
@@ -89,8 +89,8 @@ resource_exists(?PATH_PLAN) -> 'true';
 resource_exists(?PATH_AUDIT) -> 'true';
 resource_exists(_) -> 'false'.
 
--spec content_types_provided(cb_context:context()) -> cb_context:context().
-content_types_provided(Context) ->
+-spec content_types_provided(cb_context:context(), path_token()) -> cb_context:context().
+content_types_provided(Context, ?PATH_AUDIT) ->
     CTPs = [{'to_json', ?JSON_CONTENT_TYPES}
             ,{'to_csv', ?CSV_CONTENT_TYPES}
            ],
@@ -186,9 +186,14 @@ load_audit_logs(Context) ->
             crossbar_doc:load_view(?AUDIT_LOG_LIST
                                    ,ViewOptions
                                    ,Context
+                                   ,fun normalize_audit_logs/2
                                   );
         Context1 -> Context1
     end.
+
+-spec normalize_audit_logs(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+normalize_audit_logs(JObj, Acc) ->
+    [wh_json:get_value(<<"doc">>, JObj) || Acc].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -228,7 +233,8 @@ create_view_options(Context, CreatedFrom, CreatedTo) ->
             ,{'endkey', CreatedFrom}
             ,{'limit', pagination_page_size(Context)}
             ,{'databases', ranged_modbs(Context, CreatedFrom, CreatedTo)}
-           ,'descending'
+            ,'descending'
+            ,'include_docs'
            ]}.
 
 -spec ranged_modbs(cb_context:context(), gregorian_seconds(), gregorian_seconds()) ->
