@@ -13,6 +13,7 @@
 -export([init/0
          ,allowed_methods/0, allowed_methods/1
          ,resource_exists/0, resource_exists/1
+         ,content_types_provided/1
          ,validate/1, validate/2
          ,get/1, get/2
          ,post/1
@@ -44,6 +45,7 @@
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.services">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.services">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.content_types_provided.services">>, ?MODULE, 'content_types_provided'),
     _ = crossbar_bindings:bind(<<"*.validate.services">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.get.services">>, ?MODULE, 'get'),
     _ = crossbar_bindings:bind(<<"*.execute.put.services">>, ?MODULE, 'put'),
@@ -86,6 +88,13 @@ resource_exists() -> 'true'.
 resource_exists(?PATH_PLAN) -> 'true';
 resource_exists(?PATH_AUDIT) -> 'true';
 resource_exists(_) -> 'false'.
+
+-spec content_types_provided(cb_context:context()) -> cb_context:context().
+content_types_provided(Context) ->
+    CTPs = [{'to_json', ?JSON_CONTENT_TYPES}
+            ,{'to_csv', ?CSV_CONTENT_TYPES}
+           ],
+    cb_context:add_content_types_provided(Context, CTPs).
 
 %%--------------------------------------------------------------------
 %% @public
