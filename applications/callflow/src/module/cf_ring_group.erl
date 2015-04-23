@@ -36,8 +36,9 @@ attempt_endpoints(Endpoints, Data, Call) ->
     Timeout = wh_json:get_integer_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT_S),
     Strategy = wh_json:get_binary_value(<<"strategy">>, Data, ?DIAL_METHOD_SIMUL),
     Ringback = wh_json:get_value(<<"ringback">>, Data),
+    IgnoreForward = wh_json:get_binary_boolean(<<"ignore_forward">>, Data, <<"true">>),
     lager:info("attempting ring group of ~b members with strategy ~s", [length(Endpoints), Strategy]),
-    case whapps_call_command:b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Ringback, Call) of
+    case whapps_call_command:b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Ringback, IgnoreForward, Call) of
         {'ok', _} ->
             lager:info("completed successful bridge to the ring group - call finished normally"),
             cf_exe:stop(Call);
@@ -93,9 +94,9 @@ start_builder(EndpointId, Member, Call) ->
 resolve_endpoint_ids(Data, Call) ->
     Members = wh_json:get_value(<<"endpoints">>, Data, []),
     [{Id, wh_json:set_value(<<"source">>, ?MODULE, Member)}
-     || {Type, Id, Member} <- resolve_endpoint_ids(Members, [], Data, Call),
-        Type =:= <<"device">>,
-        Id =/= whapps_call:authorizing_id(Call)
+     || {Type, Id, Member} <- resolve_endpoint_ids(Members, [], Data, Call)
+            ,Type =:= <<"device">>
+            ,Id =/= whapps_call:authorizing_id(Call)
     ].
 
 -type endpoint_intermediate() :: {ne_binary(), ne_binary(), api_object()}.

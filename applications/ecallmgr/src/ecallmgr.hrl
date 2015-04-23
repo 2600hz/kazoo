@@ -185,7 +185,7 @@
                                ,{<<"Endpoint-Timeout">>, <<"leg_timeout">>}
                                ,{<<"Endpoint-Progress-Timeout">>, <<"leg_progress_timeout">>}
                                ,{<<"Endpoint-Delay">>, <<"leg_delay_start">>}
-                               ,{<<"Endpoint-Ignore-Forward">>, <<"outbound_redirect_fatal">>}
+                               ,{<<"Ignore-Forward">>, <<"outbound_redirect_fatal">>}
                                ,{<<"Overwrite-Channel-Vars">>, <<"local_var_clobber">>}
                                ,{<<"Confirm-File">>, <<"group_confirm_file">>}
                                ,{<<"Confirm-Key">>, <<"group_confirm_key">>}

@@ -54,6 +54,7 @@
           ,<<"Enable-T38-Fax">>, <<"Enable-T38-Fax-Request">>
           ,<<"Enable-T38-Passthrough">>, <<"Enable-T38-Gateway">>
           ,<<"B-Leg-Events">>
+          ,<<"Ignore-Forward">>
          ]).
 -define(BRIDGE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                             ,{<<"Event-Name">>, <<"command">>}

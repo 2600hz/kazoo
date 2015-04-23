@@ -943,12 +943,14 @@ bridge_command(Endpoints, Call) ->
 bridge_command(Endpoints, Timeout, Call) ->
     bridge_command(Endpoints, Timeout, wapi_dialplan:dial_method_single(), Call).
 bridge_command(Endpoints, Timeout, Strategy, Call) ->
-    bridge_command(Endpoints, Timeout, Strategy, 'true', Call).
+    bridge_command(Endpoints, Timeout, Strategy, <<"true">>, Call).
 bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
     bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, 'undefined', Call).
 bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
     bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, 'undefined', Call).
 bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call) ->
+    bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, <<"false">>, Call).
+bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreFoward, Call) ->
     [{<<"Application-Name">>, <<"bridge">>}
      ,{<<"Endpoints">>, Endpoints}
      ,{<<"Timeout">>, Timeout}
@@ -956,6 +958,7 @@ bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHead
      ,{<<"Ringback">>, wh_media_util:media_path(Ringback, Call)}
      ,{<<"Dial-Endpoint-Method">>, Strategy}
      ,{<<"Custom-SIP-Headers">>, SIPHeaders}
+     ,{<<"Ignore-Forward">>, IgnoreFoward}
     ].
 
 bridge(Endpoints, Call) ->
