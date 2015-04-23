@@ -200,4 +200,4 @@ send_start_printer(PrinterId, JID) ->
                  ,{<<"JID">>, JID}
                  | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ]),
-    wapi_xmpp:publish_event(Payload).
+    wh_amqp_worker:cast(Payload, fun wapi_xmpp:publish_event/1).
