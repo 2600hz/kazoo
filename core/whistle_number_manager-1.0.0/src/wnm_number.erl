@@ -264,7 +264,11 @@ get_number_in_ports(#number{number=Number}=N) ->
 %%--------------------------------------------------------------------
 -spec save(wnm_number()) -> wnm_number().
 save(#number{}=Number) ->
-    maybe_update_service_plans(simple_save(Number)).
+    maybe_update_service_plans(
+      simple_save(
+        exec_providers(Number, 'save')
+       )
+     ).
 
 -spec simple_save(wnm_number()) -> wnm_number().
 simple_save(#number{}=Number) ->
