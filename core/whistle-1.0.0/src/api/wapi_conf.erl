@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz
+%%% @copyright (C) 2011-2015, 2600Hz
 %%% @doc
 %%% Configuration updates (like DB doc changes) can be communicated across
 %%% the AMQP bus so WhApps can flush cache entries, update settings, etc.
@@ -96,16 +96,20 @@ doc_update_v(JObj) ->
 bind_q(Q, Props) ->
     case props:get_value('keys', Props) of
         'undefined' -> amqp_util:bind_q_to_configuration(Q, get_routing_key(Props));
-        List -> [amqp_util:bind_q_to_configuration(Q, get_routing_key(KeyProps)) 
-                ||  KeyProps <- List]
+        List ->
+            [amqp_util:bind_q_to_configuration(Q, get_routing_key(KeyProps))
+             || KeyProps <- List
+            ]
     end.
 
 -spec unbind_q(binary(), wh_proplist()) -> 'ok'.
 unbind_q(Q, Props) ->
     case props:get_value('keys', Props) of
         'undefined' -> amqp_util:unbind_q_from_configuration(Q, get_routing_key(Props));
-        List -> [amqp_util:unbind_q_from_configuration(Q, get_routing_key(KeyProps)) 
-                ||  KeyProps <- List]
+        List ->
+            [amqp_util:unbind_q_from_configuration(Q, get_routing_key(KeyProps))
+             || KeyProps <- List
+            ]
     end.
 
 %%--------------------------------------------------------------------
@@ -122,9 +126,11 @@ get_routing_key(Props) ->
     Action = props:get_binary_value('action', Props, <<"*">>),
     Db = props:get_binary_value('db', Props, <<"*">>),
     Type = props:get_binary_value('doc_type', Props
-                                  ,props:get_value('type', Props, <<"*">>)),
+                                  ,props:get_value('type', Props, <<"*">>)
+                                 ),
     Id = props:get_binary_value('doc_id', Props
-                                ,props:get_value('id', Props, <<"*">>)),
+                                ,props:get_value('id', Props, <<"*">>)
+                               ),
     amqp_util:document_routing_key(Action, Db, Type, Id).
 
 -spec publish_doc_update(action(), ne_binary(), ne_binary(), ne_binary(), api_terms()) -> 'ok'.

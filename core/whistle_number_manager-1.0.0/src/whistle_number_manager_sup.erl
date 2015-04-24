@@ -1,3 +1,12 @@
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2013-2015, 2600Hz
+%%% @doc
+%%%
+%%% @end
+%%% @contributors
+%%%   Karl Anderson
+%%%   James Aimonetti
+%%%-------------------------------------------------------------------
 -module(whistle_number_manager_sup).
 
 -behaviour(supervisor).
@@ -10,9 +19,7 @@
 
 -include("wnm.hrl").
 
--define(ORIGIN_BINDINGS, [[{'type', <<"number">>}
-                          ]
-                         ]).
+-define(ORIGIN_BINDINGS, [[{'type', <<"number">>}]]).
 
 -define(CACHE_NUMBER_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
 
