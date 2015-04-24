@@ -53,9 +53,7 @@ flatten([JObj|JObjs], Results) ->
     Metadata = wh_json:get_ne_value(<<"metadata">>, JObj),
     case wh_json:is_json_object(Metadata) of
         'true' ->
-            Props = wh_json:to_proplist(
-                      wh_json:delete_key(<<"account_id">>, Metadata)
-                     ),
+            Props = wh_json:to_proplist(Metadata),
             flatten(JObjs, [wh_json:set_values(Props, JObj)|Results]);
         'false' ->
             flatten(JObjs, [JObj|Results])
