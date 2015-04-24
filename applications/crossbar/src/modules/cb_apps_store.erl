@@ -416,7 +416,7 @@ bad_app_error(Context, AppId) ->
 -spec install(cb_context:context(), ne_binary()) -> cb_context:context().
 install(Context, Id) ->
     Doc = cb_context:doc(Context),
-    Apps = wh_json:get_value(<<"apps">>, Doc),
+    Apps = wh_json:get_value(<<"apps">>, Doc, wh_json:new()),
     case wh_json:get_value(Id, Apps) of
         'undefined' ->
             Data = cb_context:req_data(Context),
