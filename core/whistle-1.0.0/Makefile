@@ -52,4 +52,4 @@ clean-test:
 test: clean-test compile-test eunit
 
 eunit: compile-test
-	erl -noshell $(PA) $(TEST_PA) -pa test -eval "case eunit:test([$(TEST_MODULES)], [verbose]) of 'ok' -> init:stop(); _ -> init:stop(1) end."
+	erl -noshell $(PA) $(TEST_PA) -pa test -eval "case eunit:test([$(MODULES),$(TEST_MODULES)], [verbose]) of 'ok' -> init:stop(); _ -> init:stop(1) end."
