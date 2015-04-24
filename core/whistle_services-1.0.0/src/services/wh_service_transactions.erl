@@ -29,12 +29,8 @@ current_billing_period(AccountId, 'subscriptions') ->
                                     {'error', 'unknown_error'} |
                                     {'ok', wh_transaction:transactions()}.
 current_billing_period(AccountId, 'transactions', {Min, Max}) ->
-    Options = [
-        {'from', Min}
-        ,{'to', Max}
-        ,{'prorated', 'false'}
-    ],
-    wh_bookkeeper_braintree:transactions(AccountId, Options).
+        %% ,{'prorated', 'false'}
+    wh_bookkeeper_braintree:transactions(AccountId, Min, Max).
 
 %%--------------------------------------------------------------------
 %% @public
