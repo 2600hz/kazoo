@@ -114,14 +114,15 @@ fetch(IP) ->
 -spec assign(ne_binary(), ne_binary() | ip()) ->
                     {'ok', ip()} |
                     {'error', _}.
-assign(Account, <<_/binary>> = IP) ->
-    case couch_mgr:open_cache_doc(?WH_DEDICATED_IP_DB, IP) of
-        {'ok', JObj} -> assign(Account, from_json(JObj));
+assign(Account, <<_/binary>> = Ip) ->
+    case fetch(Ip) of
+        {'ok', IP} -> assign(Account, IP);
         {'error', _}=E -> E
     end;
 assign(Account, IP) ->
     'true' = is_dedicated_ip(IP),
     case is_available(IP) of
+        {'error', _}=E -> E;
         'false' -> {'error', 'already_assigned'};
         'true' ->
             JObj = to_json(IP),
@@ -131,7 +132,7 @@ assign(Account, IP) ->
                      ,{<<"pvt_status">>, ?ASSIGNED}
                     ],
             save(wh_json:set_values(Props, JObj)
-                 ,wh_json:get_value(<<"pvt_assigned_to">>, JObj)
+                 ,wh_json:get_ne_binary_value(<<"pvt_assigned_to">>, JObj)
                 )
     end.
 
@@ -144,9 +145,9 @@ assign(Account, IP) ->
 -spec release(ne_binary() | ip()) ->
                      {'ok', ip()} |
                      {'error', _}.
-release(<<_/binary>> = IP) ->
-    case couch_mgr:open_doc(?WH_DEDICATED_IP_DB, IP) of
-        {'ok', JObj} -> release(from_json(JObj));
+release(<<_/binary>> = Ip) ->
+    case fetch(Ip) of
+        {'ok', IP} -> release(IP);
         {'error', _}=E -> E
     end;
 release(IP) ->
@@ -157,7 +158,7 @@ release(IP) ->
             ],
     JObj = to_json(IP),
     save(wh_json:delete_keys(RemoveKeys, wh_json:set_values(Props, JObj))
-         ,wh_json:get_value(<<"pvt_assigned_to">>, JObj)
+         ,wh_json:get_ne_binary_value(<<"pvt_assigned_to">>, JObj)
         ).
 
 %%--------------------------------------------------------------------
@@ -248,7 +249,12 @@ is_dedicated_ip(IP) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_available(ip()) -> boolean().
+-spec is_available(ip() | ne_binary()) -> boolean() | {'error', any()}.
+is_available(Ip) when is_binary(Ip) ->
+    case fetch(Ip) of
+        {'ok', IP} -> is_available(IP);
+        {'error', _}=E -> E
+    end;
 is_available(IP) ->
     wh_json:get_value(<<"pvt_status">>, IP) =:= ?AVAILABLE.
 
