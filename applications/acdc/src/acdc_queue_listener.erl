@@ -260,12 +260,13 @@ handle_cast({'start_friends', QueueJObj}, #state{worker_sup=WorkerSup
                                                  ,acct_id=AcctId
                                                  ,queue_id=QueueId
                                                 }=State) ->
+    Priority = wh_json:get_integer_value(<<"max_priority">>, QueueJObj),
     case find_pid_from_supervisor(acdc_queue_worker_sup:start_fsm(WorkerSup, MgrPid, QueueJObj)) of
         {'ok', FSMPid} ->
             lager:debug("started queue FSM: ~p", [FSMPid]),
             {'ok', SharedPid} =
                 find_pid_from_supervisor(
-                  acdc_queue_worker_sup:start_shared_queue(WorkerSup, FSMPid, AcctId, QueueId)
+                  acdc_queue_worker_sup:start_shared_queue(WorkerSup, FSMPid, AcctId, QueueId, Priority)
                  ),
             lager:debug("started shared queue listener: ~p", [SharedPid]),
 
@@ -280,7 +281,12 @@ handle_cast({'start_friends', QueueJObj}, #state{worker_sup=WorkerSup
                 FSMPid when is_pid(FSMPid) ->
                     lager:debug("found queue FSM pid: ~p", [FSMPid]),
                     {'ok', SharedPid} = find_pid_from_supervisor(
-                                          acdc_queue_worker_sup:start_shared_queue(WorkerSup, FSMPid, AcctId, QueueId)
+                                          acdc_queue_worker_sup:start_shared_queue(WorkerSup
+                                                                                   ,FSMPid
+                                                                                   ,AcctId
+                                                                                   ,QueueId
+                                                                                   ,Priority
+                                                                                  )
                                          ),
                     lager:debug("started shared queue listener: ~p", [SharedPid]),
 

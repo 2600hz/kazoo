@@ -11,7 +11,7 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/3
+-export([start_link/4
          ,ack/2
          ,nack/2
          ,deliveries/1
@@ -33,18 +33,19 @@
                 ,deliveries = [] :: deliveries()
                }).
 
--define(SHARED_BINDING_OPTIONS, [{'consume_options', [{'no_ack', 'false'}
-                                                      ,{'exclusive', 'false'}
-                                                     ]}
-                                 ,{'basic_qos', 1}
-                                 ,{'queue_options', [{'exclusive', 'false'}
-                                                     ,{'arguments', [{<<"x-message-ttl">>, ?MILLISECONDS_IN_DAY}
-                                                                     ,{<<"x-max-length">>, 1000}
-                                                                    ]
-                                                      }
-                                                    ]
-                                  }
-                                ]).
+-define(SHARED_BINDING_OPTIONS(Priority), [{'consume_options', [{'no_ack', 'false'}
+                                                                ,{'exclusive', 'false'}
+                                                               ]}
+                                           ,{'basic_qos', 1}
+                                           ,{'queue_options', [{'exclusive', 'false'}
+                                                               ,{'arguments', [{<<"x-message-ttl">>, ?MILLISECONDS_IN_DAY}
+                                                                               ,{<<"x-max-length">>, 1000}
+                                                                               ,{<<"x-max-priority">>, Priority}
+                                                                              ]
+                                                                }
+                                                              ]
+                                            }
+                                          ]).
 
 -define(SHARED_QUEUE_BINDINGS(AcctId, QueueId), [{'self', []}]).
 
@@ -64,13 +65,13 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link(server_ref(), ne_binary(), ne_binary()) -> startlink_ret().
-start_link(FSMPid, AcctId, QueueId) ->
+-spec start_link(server_ref(), ne_binary(), ne_binary(), api_integer()) -> startlink_ret().
+start_link(FSMPid, AcctId, QueueId, Priority) ->
     gen_listener:start_link(?MODULE
                             ,[{'bindings', ?SHARED_QUEUE_BINDINGS(AcctId, QueueId)}
                               ,{'responders', ?RESPONDERS}
                               ,{'queue_name', wapi_acdc_queue:shared_queue_name(AcctId, QueueId)}
-                              | ?SHARED_BINDING_OPTIONS
+                              | ?SHARED_BINDING_OPTIONS(Priority)
                              ]
                             ,[FSMPid]
                            ).
