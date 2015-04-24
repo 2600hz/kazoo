@@ -13,6 +13,7 @@ ERLC_OPTS = -Werror +debug_info +warn_export_all $(PA)
 all: compile
 
 MODULES = $(shell ls src/*.erl | sed 's/src\///;s/\.erl/,/' | sed '$$s/.$$//')
+TEST_MODULES = $(shell ls test/*.erl | sed 's/test\///;s/\.erl/,/' | sed '$$s/.$$//')
 CARRIERS = $(shell ls src/carriers/*.erl | sed 's/src\/carriers\///;s/\.erl/,/' | sed '$$s/.$$//')
 PROVIDERS = $(shell ls src/providers/*.erl | sed 's/src\/providers\///;s/\.erl/,/' | sed '$$s/.$$//')
 
@@ -28,11 +29,11 @@ ebin/$(PROJECT).app: src/*.erl src/carriers/*.erl src/providers/*.erl
 
 compile-test: test/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
-		| sed 's/{modules, \[\]}/{modules, \[$(MODULES),$(CARRIERS),$(PROVIDERS)\]}/' \
+		| sed 's/{modules, \[\]}/{modules, \[$(MODULES),$(CARRIERS),$(PROVIDERS),$(TEST_MODULES)\]}/' \
 		> test/$(PROJECT).app
 	-@$(MAKE) test/$(PROJECT).app
 
-test/$(PROJECT).app: src/*.erl src/carriers/*.erl src/providers/*.erl
+test/$(PROJECT).app: src/*.erl src/carriers/*.erl src/providers/*.erl test/*.erl
 	@mkdir -p test/
 	erlc -v $(ERLC_OPTS) -DTEST -o test/ -pa test/ $?
 
@@ -46,4 +47,4 @@ clean-test:
 test: clean-test compile-test eunit
 
 eunit: compile-test
-	erl -noshell $(PA) -pa test -eval "case eunit:test([$(MODULES),$(CARRIERS),$(PROVIDERS)], [verbose]) of 'ok' -> init:stop(); _ -> init:stop(1) end."
+	erl -noshell $(PA) -pa test -eval "case eunit:test([$(TEST_MODULES),$(MODULES),$(CARRIERS),$(PROVIDERS)], [verbose]) of 'ok' -> init:stop(); _ -> init:stop(1) end."
