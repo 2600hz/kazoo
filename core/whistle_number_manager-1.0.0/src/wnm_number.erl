@@ -264,14 +264,7 @@ get_number_in_ports(#number{number=Number}=N) ->
 %%--------------------------------------------------------------------
 -spec save(wnm_number()) -> wnm_number().
 save(#number{}=Number) ->
-    Routines = [%%n(#number{}=N) -> exec_providers(N, 'save') end
-                 fun(#number{}=N) -> io:format("another marker~n", []), N#number{number_doc=record_to_json(N)} end
-                ,fun maybe_get_updated_phone_number_docs/1
-                ,fun maybe_save_number_doc/1
-                ,fun maybe_save_phone_number_docs/1
-                ,fun maybe_update_service_plans/1
-               ],
-    lists:foldl(fun(F, J) -> F(J) end, Number, Routines).
+    maybe_update_service_plans(simple_save(Number)).
 
 -spec simple_save(wnm_number()) -> wnm_number().
 simple_save(#number{}=Number) ->
