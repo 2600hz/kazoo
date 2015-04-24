@@ -38,10 +38,12 @@
 
 -define(WAIT_FOR_WIN_TIMEOUT, 5000). %% 5 seconds
 
--type ts_state() :: #ts_callflow_state{}.
+-type state() :: #ts_callflow_state{}.
+
+-export_type([state/0]).
 
 -spec init(wh_json:object(), api_binary()) ->
-                  ts_state() | {'error', 'not_ts_account'}.
+                  state() | {'error', 'not_ts_account'}.
 init(RouteReqJObj, Type) ->
     CallID = wh_json:get_value(<<"Call-ID">>, RouteReqJObj),
     put('callid', CallID),
@@ -59,7 +61,7 @@ init(RouteReqJObj, Type) ->
               }
     end.
 
--spec start_amqp(ts_state()) -> ts_state().
+-spec start_amqp(state()) -> state().
 start_amqp(#ts_callflow_state{}=State) ->
     %% Trunkstore is pre-gen_listener so do it
     %% manually till it can be refactored
@@ -69,7 +71,7 @@ start_amqp(#ts_callflow_state{}=State) ->
     lager:info("started AMQP with queue ~s", [Q]),
     State#ts_callflow_state{my_q=Q}.
 
--spec send_park(ts_state()) -> ts_state().
+-spec send_park(state()) -> state().
 send_park(#ts_callflow_state{my_q=Q
                              ,route_req_jobj=JObj
                              ,acctid=AccountId}=State) ->
@@ -85,7 +87,7 @@ send_park(#ts_callflow_state{my_q=Q
     wapi_route:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp),
     State.
 
--spec wait_for_win(ts_state()) -> {'won' | 'lost', ts_state()}.
+-spec wait_for_win(state()) -> {'won' | 'lost', state()}.
 wait_for_win(#ts_callflow_state{aleg_callid=CallID
                                 ,my_q=Q}=State) ->
     receive
@@ -104,7 +106,7 @@ wait_for_win(#ts_callflow_state{aleg_callid=CallID
             {'lost', State}
     end.
 
--spec wait_for_bridge(ts_state()) -> {'hangup' | 'error', ts_state()}.
+-spec wait_for_bridge(state()) -> {'hangup' | 'error', state()}.
 wait_for_bridge(State) ->
     receive
         #'basic.consume_ok'{} -> wait_for_bridge(State);
@@ -120,8 +122,8 @@ wait_for_bridge(State) ->
             wait_for_bridge(State)
     end.
 
--spec process_event_for_bridge(ts_state(), wh_json:object()) ->
-                                      'ignore' | {'hangup' | 'error', ts_state()}.
+-spec process_event_for_bridge(state(), wh_json:object()) ->
+                                      'ignore' | {'hangup' | 'error', state()}.
 process_event_for_bridge(#ts_callflow_state{aleg_callid=ALeg
                                             ,callctl_q=CtlQ
                                            }=State, JObj) ->
@@ -191,7 +193,7 @@ get_app(JObj) ->
         App -> App
     end.
 
--spec send_hangup(ts_state()) -> 'ok'.
+-spec send_hangup(state()) -> 'ok'.
 send_hangup(#ts_callflow_state{callctl_q = <<>>}) -> 'ok';
 send_hangup(#ts_callflow_state{callctl_q = 'undefined'}) -> 'ok';
 send_hangup(#ts_callflow_state{callctl_q=CtlQ
@@ -215,46 +217,46 @@ send_hangup(#ts_callflow_state{callctl_q=CtlQ
 %%%-----------------------------------------------------------------------------
 %%% Data access functions
 %%%-----------------------------------------------------------------------------
--spec get_request_data(ts_state()) -> wh_json:object().
+-spec get_request_data(state()) -> wh_json:object().
 get_request_data(#ts_callflow_state{route_req_jobj=JObj}) -> JObj.
 
--spec get_custom_channel_vars(ts_state()) -> wh_json:object().
+-spec get_custom_channel_vars(state()) -> wh_json:object().
 get_custom_channel_vars(#ts_callflow_state{route_req_jobj=JObj}) ->
     wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()).
 
--spec get_custom_sip_headers(ts_state()) -> api_object().
+-spec get_custom_sip_headers(state()) -> api_object().
 get_custom_sip_headers(#ts_callflow_state{route_req_jobj=JObj}) ->
     wh_json:get_value(<<"Custom-SIP-Headers">>, JObj).
 
--spec set_endpoint_data(ts_state(), wh_json:object()) -> ts_state().
+-spec set_endpoint_data(state(), wh_json:object()) -> state().
 set_endpoint_data(State, Data) -> State#ts_callflow_state{ep_data=Data}.
 
--spec get_endpoint_data(ts_state()) -> wh_json:object().
+-spec get_endpoint_data(state()) -> wh_json:object().
 get_endpoint_data(#ts_callflow_state{ep_data=EP}) -> EP.
 
--spec set_account_id(ts_state(), ne_binary()) -> ts_state().
+-spec set_account_id(state(), ne_binary()) -> state().
 set_account_id(State, ID) -> State#ts_callflow_state{acctid=ID}.
 
--spec get_account_id(ts_state()) -> ne_binary().
+-spec get_account_id(state()) -> ne_binary().
 get_account_id(#ts_callflow_state{acctid=ID}) -> ID.
 
--spec get_my_queue(ts_state()) -> ne_binary().
--spec get_control_queue(ts_state()) -> ne_binary().
+-spec get_my_queue(state()) -> ne_binary().
+-spec get_control_queue(state()) -> ne_binary().
 get_my_queue(#ts_callflow_state{my_q=Q}) -> Q.
 get_control_queue(#ts_callflow_state{callctl_q=CtlQ}) -> CtlQ.
 
--spec get_aleg_id(ts_state()) -> api_binary().
--spec get_bleg_id(ts_state()) -> api_binary().
+-spec get_aleg_id(state()) -> api_binary().
+-spec get_bleg_id(state()) -> api_binary().
 get_aleg_id(#ts_callflow_state{aleg_callid=ALeg}) -> ALeg.
 get_bleg_id(#ts_callflow_state{bleg_callid=ALeg}) -> ALeg.
 
--spec get_call_cost(ts_state()) -> float().
+-spec get_call_cost(state()) -> float().
 get_call_cost(#ts_callflow_state{call_cost=Cost}) -> Cost.
 
--spec set_failover(ts_state(), wh_json:object()) -> ts_state().
+-spec set_failover(state(), wh_json:object()) -> state().
 set_failover(State, Failover) -> State#ts_callflow_state{failover=Failover}.
 
--spec get_failover(ts_state()) -> wh_json:object() | 'undefined'.
+-spec get_failover(state()) -> wh_json:object() | 'undefined'.
 get_failover(#ts_callflow_state{failover=Fail}) -> Fail.
 
 -spec is_trunkstore_acct(wh_json:object(), api_binary()) -> boolean().

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2014, 2600Hz INC
+%%% @copyright (C) 2010-2015, 2600Hz INC
 %%% @doc
 %%% utility functions for Trunkstore
 %%%
@@ -192,7 +192,7 @@ lookup_user_flags(Name, Realm, AccountId, _) ->
                     E;
                 {'ok', []} ->
                     lager:info("cache miss for ~s@~s, no results", [Name, Realm]),
-                                        {'ok', wh_json:new()};
+                    {'ok', wh_json:new()};
                 {'ok', [User|_]} ->
                     lager:info("cache miss, found view result for ~s@~s with id ~s", [Name, Realm, wh_json:get_value(<<"id">>, User)]),
                     ValJObj = wh_json:get_value(<<"value">>, User),
@@ -381,12 +381,12 @@ valid_emergency_numbers(AccountId) ->
         {'ok', JObj} ->
             [Number
              || Number <- wh_json:get_keys(JObj),
-                lists:member(<<"dash_e911">>, wh_json:get_value([Number, <<"features">>], JObj, []))
+                wnm_util:emergency_services_configured(Number, JObj)
             ];
         {'error', _} ->
             DefaultECID = whapps_config:get_non_empty(<<"trunkstore">>, <<"default_emergency_number">>, <<>>),
             lager:info("No valid caller id identified! Will use default trunkstore caller id: ~p",[DefaultECID]),
-           DefaultECID
+            DefaultECID
     end.
 
 -spec valid_emergency_number(ne_binary()) -> ne_binary().
@@ -394,7 +394,11 @@ valid_emergency_number(AccountId) ->
     [H|_] = valid_emergency_numbers(AccountId),
     H.
 
-maybe_restrict_call(#ts_callflow_state{acctid=AccountId, route_req_jobj=RRObj}, Command) ->
+-spec maybe_restrict_call(ts_callflow:state(), wh_proplist()) -> boolean().
+maybe_restrict_call(#ts_callflow_state{acctid=AccountId
+                                       ,route_req_jobj=RRObj
+                                      }
+                    ,Command) ->
     Number = props:get_value(<<"To-DID">>, Command),
     Classification = wnm_util:classify_number(Number),
     lager:debug("Trunkstore classified number as ~p", [Classification]),
