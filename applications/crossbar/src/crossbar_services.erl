@@ -18,13 +18,13 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_dry_run(cb_context:context(), function()) -> any().
--spec maybe_dry_run(cb_context:context(), function(), ne_binary()) -> any().
+-spec maybe_dry_run(cb_context:context(), function(), ne_binary() | wh_proplist()) -> any().
 maybe_dry_run(Context, Callback) ->
     Doc = cb_context:doc(Context),
     Type = wh_json:get_value(<<"pvt_type">>, Doc),
     maybe_dry_run(Context, Callback, Type).
 
-maybe_dry_run(Context, Callback, Type) ->
+maybe_dry_run(Context, Callback, Type) when is_binary(Type) ->
     case cb_context:accepting_charges(Context) of
         'true' ->
             lager:debug("accepting charges"),
@@ -32,6 +32,22 @@ maybe_dry_run(Context, Callback, Type) ->
         'false' ->
             lager:debug("not accepting charges"),
             RespJObj = dry_run(Context, Type),
+            case wh_json:is_empty(RespJObj) of
+                'true' ->
+                    lager:debug("no charges"),
+                    Callback();
+                'false' -> crossbar_util:response_402(RespJObj, Context)
+            end
+    end;
+maybe_dry_run(Context, Callback, Props) ->
+    case cb_context:accepting_charges(Context) of
+        'true' ->
+            lager:debug("accepting charges"),
+            Callback();
+        'false' ->
+            lager:debug("not accepting charges"),
+            Type = props:get_ne_binary_value(<<"type">>, Props),
+            RespJObj = dry_run(Context, Type, props:delete(<<"type">>, Props)),
             case wh_json:is_empty(RespJObj) of
                 'true' ->
                     lager:debug("no charges"),
@@ -51,6 +67,7 @@ maybe_dry_run(Context, Callback, Type) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec dry_run(cb_context:context(), ne_binary()) -> wh_json:object().
+-spec dry_run(cb_context:context(), ne_binary(), wh_proplist()) -> wh_json:object().
 dry_run(Context, <<"device">>) ->
     lager:debug("dry run device"),
     Services = fetch_service(Context),
@@ -101,7 +118,22 @@ dry_run(Context, <<"app">>) ->
             UpdatedServices = wh_service_ui_apps:reconcile(Services, AppName),
             wh_services:dry_run(UpdatedServices)
     end;
+dry_run(Context, <<"ips">>) ->
+    lager:debug("dry run dedicated"),
+    Services = fetch_service(Context),
+    UpdatedServices = wh_service_ips:reconcile(Services, <<"dedicated">>),
+    wh_services:dry_run(UpdatedServices);
 dry_run(_Context, _Type) ->
+    lager:warning("unknown type ~p, cannot execute dry run", [_Type]),
+    wh_json:new().
+
+
+dry_run(Context, <<"ips">>, Props) ->
+    lager:debug("dry run dedicated"),
+    Services = fetch_service(Context),
+    UpdatedServices = wh_service_ips:reconcile(Services, Props),
+    wh_services:dry_run(UpdatedServices);
+dry_run(_Context, _Type, _Props) ->
     lager:warning("unknown type ~p, cannot execute dry run", [_Type]),
     wh_json:new().
 
