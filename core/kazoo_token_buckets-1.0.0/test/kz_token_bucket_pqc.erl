@@ -19,9 +19,7 @@
 %%%-------------------------------------------------------------------
 -module(kz_token_bucket_pqc).
 
--ifdef(TEST).
-
--include("kz_buckets.hrl").
+%% -include_lib("kazoo_token_buckets/src/kz_buckets.hrl").
 
 -include_lib("proper/include/proper.hrl").
 -include_lib("eunit/include/eunit.hrl").
@@ -285,5 +283,3 @@ tokens_credit(Credit, #state{current=T
         N when N > M -> Model#state{current=M};
         N -> Model#state{current=N}
     end.
-
--endif.
