@@ -616,6 +616,8 @@ declare_exchanges() ->
 -spec publish_member_call(api_terms(), ne_binary()) -> 'ok'.
 publish_member_call(JObj) ->
     publish_member_call(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_member_call(Props, ContentType) when is_list(Props) ->
+    publish_member_call(wh_json:from_list(Props), ContentType);
 publish_member_call(API, ContentType) ->
     Priority = wh_json:get_value(<<"Member-Priority">>, API),
     Props = props:filter_undefined([{'priority', Priority}]),
