@@ -19,7 +19,9 @@
          ,json_to_record/2
         ]).
 -export([get/1, get/2]).
--export([save/1]).
+-export([save/1
+         ,simple_save/1
+        ]).
 -export([save_phone_number_docs/1]).
 -export([delete/1]).
 -export([activate_feature/2]).
@@ -262,12 +264,18 @@ get_number_in_ports(#number{number=Number}=N) ->
 %%--------------------------------------------------------------------
 -spec save(wnm_number()) -> wnm_number().
 save(#number{}=Number) ->
-    Routines = [fun(#number{}=N) -> exec_providers(N, 'save') end
-                ,fun(#number{}=N) -> N#number{number_doc=record_to_json(N)} end
+    maybe_update_service_plans(
+      simple_save(
+        exec_providers(Number, 'save')
+       )
+     ).
+
+-spec simple_save(wnm_number()) -> wnm_number().
+simple_save(#number{}=Number) ->
+    Routines = [fun(#number{}=N) -> N#number{number_doc=record_to_json(N)} end
                 ,fun maybe_get_updated_phone_number_docs/1
                 ,fun maybe_save_number_doc/1
                 ,fun maybe_save_phone_number_docs/1
-                ,fun maybe_update_service_plans/1
                ],
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines).
 

@@ -308,14 +308,16 @@ find_transfer_ringback(#number{number_doc=JObj}) ->
     wh_json:get_ne_value([<<"ringback">>, <<"transfer">>], JObj).
 
 -spec prepend(wnm_number()) -> api_binary().
-prepend(#number{number_doc=JObj, features=Features}) ->
+prepend(#number{number_doc=JObj
+                ,features=Features
+               }) ->
     case
         sets:is_element(<<"prepend">>, Features)
         andalso wh_json:is_true([<<"prepend">>, <<"enabled">>], JObj)
     of
         'false' -> 'undefined';
         'true' ->
-             wh_json:get_ne_value([<<"prepend">>, <<"name">>], JObj)
+            wh_json:get_ne_value([<<"prepend">>, <<"name">>], JObj)
     end.
 
 %%--------------------------------------------------------------------
@@ -330,9 +332,13 @@ ported(Number) ->
                         lager:debug("number ~s not found, checking ports", [Number]),
                         check_ports(N);
                    ({_, #number{}}=E) -> E;
-                   (#number{state = ?NUMBER_STATE_PORT_IN, assigned_to=AssignedTo}=N) ->
+                   (#number{state = ?NUMBER_STATE_PORT_IN
+                            ,assigned_to=AssignedTo
+                           }=N) ->
                         lager:debug("attempting to move port_in number ~s to in_service for account ~s", [Number, AssignedTo]),
-                        N#number{auth_by=AssignedTo};
+                        N#number{auth_by='system'
+                                 ,assign_to=AssignedTo
+                                };
                    (#number{}=N) ->
                         wnm_number:error_unauthorized(N)
                 end
@@ -340,13 +346,13 @@ ported(Number) ->
                     (#number{}=N) -> wnm_number:in_service(N)
                  end
                 ,fun({_, #number{}}=E) -> E;
-                    (#number{}=N) -> wnm_number:save(N)
+                    (#number{}=N) -> wnm_number:simple_save(N)
                  end
                 ,fun({E, #number{error_jobj=Reason}}) ->
-                         lager:debug("create number prematurely ended: ~p", [E]),
+                         lager:debug("ported number update prematurely ended: ~p", [E]),
                          {E, Reason};
                     (#number{number_doc=JObj}) ->
-                         lager:debug("reserve successfully completed"),
+                         lager:debug("ported number update successfully completed"),
                          {'ok', wh_json:public_fields(JObj)}
                  end
                ],
