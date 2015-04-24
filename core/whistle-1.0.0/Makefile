@@ -20,6 +20,7 @@ all: compile
 
 MODULES = $(shell ls src/*.erl | sed 's/src\///;s/\.erl/,/' | sed '$$s/.$$//')
 API_MODULES = $(shell ls src/api/*.erl | sed 's/src\/api\///;s/\.erl/,/' | sed '$$s/.$$//')
+TEST_MODULES = $(shell ls test/*.erl | sed 's/test\///;s/\.erl/,/' | sed '$$s/.$$//')
 
 compile: ebin/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
@@ -33,11 +34,11 @@ ebin/$(PROJECT).app: src/kazoo_transform.erl src/*.erl src/api/*.erl
 
 compile-test: test/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
-		| sed 's/{modules, \[\]}/{modules, \[$(MODULES),$(API_MODULES)\]}/' \
+		| sed 's/{modules, \[\]}/{modules, \[$(MODULES),$(API_MODULES),$(TEST_MODULES)\]}/' \
 		> test/$(PROJECT).app
 	-@$(MAKE) test/$(PROJECT).app
 
-test/$(PROJECT).app: src/kazoo_transform.erl src/*.erl src/api/*.erl
+test/$(PROJECT).app: src/kazoo_transform.erl src/*.erl src/api/*.erl test/*.erl
 	@mkdir -p test/
 	ERL_LIBS=$(ERL_LIBS) erlc -v $(ERLC_OPTS) $(TEST_PA) -DTEST -o test/ -pa test/ $?
 
@@ -51,4 +52,4 @@ clean-test:
 test: clean-test compile-test eunit
 
 eunit: compile-test
-	erl -noshell $(PA) $(TEST_PA) -pa test -eval "case eunit:test([$(MODULES),$(API_MODULES)], [verbose]) of 'ok' -> init:stop(); _ -> init:stop(1) end."
+	erl -noshell $(PA) $(TEST_PA) -pa test -eval "case eunit:test([$(TEST_MODULES)], [verbose]) of 'ok' -> init:stop(); _ -> init:stop(1) end."

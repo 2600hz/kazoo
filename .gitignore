@@ -11,7 +11,8 @@
 *.o
 *.pid
 *.dump
-core/*/test
+core/*/test/*.beam
+core/*/test/*.app
 deps/*/test
 applications/*/test
 deps/erlydtl-*/src/erlydtl_parser.erl
