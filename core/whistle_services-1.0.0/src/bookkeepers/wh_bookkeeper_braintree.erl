@@ -259,6 +259,7 @@ convert_transaction(BTTransaction) ->
                 ,fun set_reason/2
                 ,fun set_status/2
                 ,fun set_amount/2
+                ,fun set_type/2  %% Make sure type is set /after/ amount
                 ,fun set_created/2
                 ,fun set_modified/2
                 ,fun set_account_id/2
@@ -306,6 +307,13 @@ set_reason(BTTransaction, Transaction) ->
             wh_transaction:set_reason(<<"manual_addition">>, Transaction);
         'true' ->
             wh_transaction:set_reason(<<"unknown">>, Transaction)
+    end.
+
+-spec set_type(wh_json:object(), wh_transaction:transaction()) -> wh_transaction:transaction().
+set_type(BTTransaction, Transaction) ->
+    case wh_json:get_ne_value(<<"type">>, BTTransaction) =:= ?BT_TRANS_SALE of
+        'true'  -> wh_transaction:set_type(<<"debit">>, Transaction);
+        'false' -> wh_transaction:set_type(<<"credit">>, Transaction)
     end.
 
 -spec set_status(wh_json:object(), wh_transaction:transaction()) -> wh_transaction:transaction().
