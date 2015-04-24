@@ -27,12 +27,10 @@ ebin/$(PROJECT).app: src/*.erl
 	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $?
 
 compile-dicts:
-	mkdir -p priv/couchdb/dicts
 	escript scripts/eradius_compile_dicts.erl build_dicts
 
 clean-dicts:
 	escript scripts/eradius_compile_dicts.erl clean_dicts
-	rm -rf priv/couchdb
 
 compile-test: test/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \

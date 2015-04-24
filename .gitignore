@@ -55,6 +55,6 @@ applications/*/priv/archive_data/*
 /deps/rabbit_common-3.3.5/
 /deps/slex-*/src/slex_parser.erl
 /deps/slex-*/src/slex_scanner.erl
-deps/eradius-*/priv/couchdb/dicts
+deps/eradius-*/priv/*.json
 deps/eradius-*/priv/*.map
 deps/eradius-*/include/dictionary*.hrl

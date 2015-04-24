@@ -26,7 +26,7 @@ run("build_dicts") ->
     lists:foreach(fun ({InFQN, _InF, _OutFQN, OutF}) -> mk_dict(InFQN, OutF) end, get_all_dict_files());
 run("clean_dicts") ->
     filelib:fold_files(?PRIV_DIR, "\\.map$", false, fun(F, _) -> file:delete(F) end, []),
-    filelib:fold_files("priv/couchdb/dicts", "\\.json$", false, fun(F, _) -> file:delete(F) end, []),
+    filelib:fold_files(?PRIV_DIR, "\\.json$", false, fun(F, _) -> file:delete(F) end, []),
     filelib:fold_files(?INCLUDE_DIR, "dictionary.*\\.hrl", false, fun(F, _) -> file:delete(F) end, []).
 
 %%% --------------------------------------------------------------------
@@ -91,7 +91,7 @@ open_files(Dir, File) ->
     {ok,Hrl} = file:open(Hfile, [write]),
     Mfile = Dir ++ "/priv/" ++ Name ++ ".map",
     {ok,Map} = file:open(Mfile, [write]),
-    JSfile = Dir ++ "/priv/couchdb/dicts/" ++ Name ++ ".json",
+    JSfile = Dir ++ "/priv/" ++ Name ++ ".json",
     {ok,Json} = file:open(JSfile, [write]),
     io:format("Creating files: ~n  <~s>~n  <~s>~n  <~s>~n", [Hfile, Mfile, JSfile]),
     {Hrl, Map, Json}.

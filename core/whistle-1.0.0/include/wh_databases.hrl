@@ -12,6 +12,7 @@
 -define(WH_OFFNET_DB, <<"offnet">>).
 -define(WH_DEDICATED_IP_DB, <<"dedicated_ips">>).
 -define(WH_ANONYMOUS_CDR_DB, <<"anonymous_cdrs">>).
+-define(WH_AAA_DICTS_DB, <<"aaa_dicts">>).
 
 -define(KZ_TOKEN_DB, <<"token_auth">>).
 

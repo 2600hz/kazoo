@@ -10,6 +10,7 @@ EBINS = $(shell find $(ROOT)/core/whistle-* -maxdepth 2 -name ebin -print) \
 	$(shell find $(ROOT)/deps/lager-* -maxdepth 2 -name ebin -print) \
 	$(shell find $(ROOT)/deps/cowboy-* -maxdepth 2 -name ebin -print) \
 	$(shell find $(ROOT)/deps/ejson-* -maxdepth 2 -name ebin -print) \
+	$(shell find $(ROOT)/applications/circlemaker -maxdepth 2 -name ebin -print) \
 	$(shell find $(ROOT)/deps/rabbitmq_client-* -maxdepth 2 -name ebin -print)
 PA = $(foreach EBIN,$(EBINS),-pa $(EBIN))
 

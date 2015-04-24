@@ -56,8 +56,8 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    [{'ok', _} = cm_config:init_aaa_doc(AccId) || AccId <- whapps_util:get_all_accounts()],
-    {'ok', _Doc} = cm_config:init_aaa_doc('system_config'),
+    {'ok', _Doc} = cm_config:init_aaa_doc(),
+    'ok' = cm_dicts:init_dicts(),
     gen_listener:start_link({'local', ?SERVER}, ?MODULE, [{'bindings', ?BINDINGS}
                                                           ,{'responders', ?RESPONDERS}
                                                           ,{'queue_name', ?QUEUE_NAME}
