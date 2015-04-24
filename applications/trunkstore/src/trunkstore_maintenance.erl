@@ -204,7 +204,6 @@ set_classifier_action(Action, Classifier, UserR) ->
             {'ok', Opts} = ts_util:lookup_user_flags(User, Realm, AcctID),
             TSDocId = wh_json:get_first_defined([<<"_id">>, <<"id">>], Opts),
             couch_mgr:update_doc(AcctDB, TSDocId, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
-            wh_cache:flush(),
             io:format("Success\n");
         'false' ->
             io:format("Failed: account with realm ~p does not exist\n", [Realm])
