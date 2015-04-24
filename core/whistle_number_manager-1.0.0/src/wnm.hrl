@@ -7,5 +7,7 @@
 -define(APP_VERSION, <<"1.0.0">>).
 -define(APP_NAME, <<"whistle_number_manager">>).
 
+-define(WNM_NUMBER_CACHE, 'wnm_number_cache').
+
 -define(WNM_HRL, 'true').
 -endif.

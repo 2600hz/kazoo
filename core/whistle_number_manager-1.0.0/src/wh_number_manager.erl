@@ -136,12 +136,16 @@ lookup_account_by_number('undefined') ->
     {'error', 'not_reconcilable'};
 lookup_account_by_number(Num) ->
     Number = wnm_util:to_e164(Num),
-    case wh_cache:peek({'account_lookup', Number}) of
+    Key = {'account_lookup', Number},
+    case wh_cache:peek_local(?WNM_NUMBER_CACHE, Key) of
         {'ok', Ok} -> Ok;
         {'error', 'not_found'} ->
             case fetch_account_by_number(Number) of
                 {'ok', _, _}=Ok ->
-                    wh_cache:store({'account_lookup', Number}, Ok),
+                    CacheProps = [{'origin', [{'db', wnm_util:number_to_db_name(Number), Number}
+                                              ,{'type', <<"number">>}
+                                             ]}],
+                    wh_cache:store_local(?WNM_NUMBER_CACHE, Key, Ok, CacheProps),
                     Ok;
                 Else -> Else
             end
