@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz
+%%% @copyright (C) 2012-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -52,10 +52,6 @@
          ,set_advertise/2, get_advertise/1
          ,set_chat_permissions/2, get_chat_permissions/1
         ]).
-
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
--endif.
 
 -include("kzt.hrl").
 
@@ -314,7 +310,3 @@ get_request_vars(Call) ->
          ,{<<"QueueSid">>, get_queue_sid(Call)}
          ,{<<"CallStatus">>, get_call_status(Call)}
         ])).
-
--ifdef(TEST).
-
--endif.

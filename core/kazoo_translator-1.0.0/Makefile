@@ -13,6 +13,7 @@ all: compile
 
 MODULES = $(shell ls src/*.erl | sed 's/src\///;s/\.erl/,/' | sed '$$s/.$$//')
 CONVERTORS_MODULES = $(shell ls src/convertors/*.erl | sed 's/src\/convertors\///;s/\.erl/,/' | sed '$$s/.$$//')
+TEST_MODULES = $(shell ls test/*.erl | sed 's/test\///;s/\.erl/,/' | sed '$$s/.$$//')
 
 compile: ebin/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
@@ -26,11 +27,11 @@ ebin/$(PROJECT).app: src/*.erl src/convertors/*.erl
 
 compile-test: test/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
-		| sed 's/{modules, \[\]}/{modules, \[$(MODULES),$(CONVERTORS_MODULES)\]}/' \
+		| sed 's/{modules, \[\]}/{modules, \[$(MODULES),$(CONVERTORS_MODULES),$(TEST_MODULES)\]}/' \
 		> test/$(PROJECT).app
 	-@$(MAKE) test/$(PROJECT).app
 
-test/$(PROJECT).app: src/*.erl src/convertors/*.erl
+test/$(PROJECT).app: src/*.erl src/convertors/*.erl test/*.erl
 	@mkdir -p test/
 	erlc -v $(ERLC_OPTS) -DTEST -o test/ -pa test/ $?
 
@@ -44,4 +45,4 @@ clean-test:
 test: clean-test compile-test eunit
 
 eunit: compile-test
-	erl -noshell $(PA) -pa test -eval "case eunit:test([$(MODULES),$(CONVERTORS_MODULES)], [verbose]) of 'ok' -> init:stop(); _ -> init:stop(1) end."
+	erl -noshell $(PA) -pa test -eval "case eunit:test([$(TEST_MODULES),$(MODULES),$(CONVERTORS_MODULES)], [verbose]) of 'ok' -> init:stop(); _ -> init:stop(1) end."

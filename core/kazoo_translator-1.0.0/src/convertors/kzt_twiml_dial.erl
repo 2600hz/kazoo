@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2014, 2600Hz
+%%% @copyright (C) 2013-2015, 2600Hz
 %%% @doc
 %%% Handle the emulation of the Dial verb
 %%% @end
@@ -11,8 +11,7 @@
 -export([exec/3]).
 
 -ifdef(TEST).
--export([test/0]).
--include_lib("eunit/include/eunit.hrl").
+-export([cleanup_dial_me/1]).
 -endif.
 
 -include("../kzt.hrl").
@@ -431,14 +430,3 @@ conference_member_flags(ConfProps) ->
         'true' -> <<"endconf">>;
         'false' -> 'undefined'
     end.
-
--ifdef(TEST).
-
--spec test() -> 'ok'.
-test() -> 'ok'.
-
--spec cleanup_dial_me_test() -> any().
-cleanup_dial_me_test() ->
-    ?assertEqual(<<"+14158867900">>, cleanup_dial_me(<<"+1 (415) 886-7900">>)).
-
--endif.
