@@ -25,13 +25,14 @@ maybe_dry_run(Context, Callback) ->
     maybe_dry_run(Context, Callback, Type).
 
 maybe_dry_run(Context, Callback, Type) when is_binary(Type) ->
+    RespJObj = dry_run(Context, Type),
     case cb_context:accepting_charges(Context) of
         'true' ->
             lager:debug("accepting charges"),
+            _ = accepting_charges(Context, RespJObj),
             Callback();
         'false' ->
             lager:debug("not accepting charges"),
-            RespJObj = dry_run(Context, Type),
             case wh_json:is_empty(RespJObj) of
                 'true' ->
                     lager:debug("no charges"),
@@ -40,14 +41,15 @@ maybe_dry_run(Context, Callback, Type) when is_binary(Type) ->
             end
     end;
 maybe_dry_run(Context, Callback, Props) ->
+    Type = props:get_ne_binary_value(<<"type">>, Props),
+    RespJObj = dry_run(Context, Type, props:delete(<<"type">>, Props)),
     case cb_context:accepting_charges(Context) of
         'true' ->
             lager:debug("accepting charges"),
+            _ = accepting_charges(Context, RespJObj),
             Callback();
         'false' ->
             lager:debug("not accepting charges"),
-            Type = props:get_ne_binary_value(<<"type">>, Props),
-            RespJObj = dry_run(Context, Type, props:delete(<<"type">>, Props)),
             case wh_json:is_empty(RespJObj) of
                 'true' ->
                     lager:debug("no charges"),
@@ -60,6 +62,91 @@ maybe_dry_run(Context, Callback, Props) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+-spec accepting_charges(cb_context:context(), wh_json:object()) -> atom().
+accepting_charges(Context, JObj) ->
+    Services = fetch_service(Context),
+    Items = extract_items(wh_json:delete_key(<<"activation_charges">>, JObj)),
+    Transactions =
+        lists:foldl(
+            fun(Item, Acc) ->
+                create_transactions(Context, Item, Acc)
+            end
+            ,[]
+            ,Items
+        ),
+    wh_services:commit_transactions(Services, Transactions).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec extract_items(wh_json:object()) -> wh_json:objects().
+extract_items(JObj) ->
+    wh_json:foldl(
+        fun(_, CategoryJObj, Acc) ->
+            wh_json:foldl(
+                fun(_, ItemJObj, Acc1) ->
+                    [ItemJObj|Acc1]
+                end
+                ,Acc
+                ,CategoryJObj
+            )
+        end
+        ,[]
+        ,JObj
+    ).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec create_transactions(cb_context:context()
+                          ,wh_json:object()
+                          ,wh_transaction:transactions()) -> wh_transaction:transactions().
+-spec create_transactions(cb_context:context()
+                          ,wh_json:object()
+                          ,wh_transaction:transactions()
+                          ,integer()) -> wh_transaction:transactions().
+create_transactions(Context, Item, Acc) ->
+    Quantity = wh_json:get_value(<<"quantity">>, Item),
+    create_transactions(Context, Item, Acc, Quantity).
+
+create_transactions(_Context, _Item, Acc, 0) -> Acc;
+create_transactions(Context, Item, Acc, Quantity) ->
+    AccountId = cb_context:account_id(Context),
+    Amount = wh_json:get_value(<<"activation_charges">>, Item),
+    Routines = [
+        fun set_meta_data/3
+        ,fun set_event/3
+    ],
+    Transaction =
+        lists:foldl(
+            fun(F, T) -> F(Context, Item, T) end
+            ,wh_transaction:debit(AccountId, Amount)
+            ,Routines
+        ),
+    create_transactions(Context, Item, [Transaction|Acc], Quantity-1).
+
+-spec set_meta_data(cb_context:context() ,wh_json:object()
+                    ,wh_transaction:transaction()) -> wh_transaction:transaction().
+set_meta_data(Context, _Item, Transaction) ->
+    MetaData =
+        wh_json:from_list([
+            {<<"auth_account_id">>, cb_context:auth_account_id(Context)}
+        ]),
+    wh_transaction:set_metadata(MetaData, Transaction).
+
+-spec set_event(cb_context:context() ,wh_json:object()
+                ,wh_transaction:transaction()) -> wh_transaction:transaction().
+set_event(_Context, Item, Transaction) ->
+    Category = wh_json:get_value(<<"category">>, Item, <<>>),
+    ItemValue = wh_json:get_value(<<"item">>, Item, <<>>),
+    Event = <<Category/binary, ".", ItemValue/binary>>,
+    wh_transaction:set_event(Event, Transaction).
+
 
 %%--------------------------------------------------------------------
 %% @private
