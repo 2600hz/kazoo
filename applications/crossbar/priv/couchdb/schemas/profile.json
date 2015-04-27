@@ -1,0 +1,81 @@
+{
+    "_id": "profile",
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "type": "object",
+    "required": false,
+    "name": "User extended properties",
+    "description": "Defines user extended properties",
+    "properties": {
+        "nicknames": {
+            "type": "array",
+            "required": false,
+            "name": "Nicknames",
+            "description": "To specify the text corresponding to the nickname of the user",
+            "items": {
+                "type": "string"
+            }
+        },
+        "birthday": {
+            "type": "string",
+            "required": false,
+            "name": "Birthday",
+            "description": "To specify the birth date of the user"
+        },
+        "addresses": {
+            "type": "array",
+            "required": false,
+            "name": "Addresses",
+            "description": "To specify the components of the addresses",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "types": {
+                        "type": "array",
+                        "required": false,
+                        "name": "Address type",
+                        "description": "To specify types of the address",
+                        "items": {
+                            "enum": ["dom", "postal", "intl", "parcel", "home", "work", "pref"]
+                        }
+                    },
+                    "address": {
+                        "type": "string",
+                        "required": false,
+                        "name": "Address",
+                        "description": "To specify the address"
+                    }
+                }
+            }
+        },
+        "note": {
+            "type": "string",
+            "required": false,
+            "name": "Note",
+            "description": "To specify supplemental information or a comment that is associated with the user"
+        },
+        "sort-string": {
+            "type": "string",
+            "required": false,
+            "name": "Sort string",
+            "description": "To specify the family name or given name text to be used for national-language-specific sorting of the FN and N types"
+        },
+        "assistant": {
+            "type": "string",
+            "required": false,
+            "name": "Assistant",
+            "description": "To specify the user's assistant"
+        },
+        "title": {
+            "type": "string",
+            "required": false,
+            "name": "Title",
+            "description": "To specify the position or job of the user"
+        },
+        "role": {
+            "type": "string",
+            "required": false,
+            "name": "Role",
+            "description": "To specify the function or part played in a particular situation by the user"
+        }
+    }
+}

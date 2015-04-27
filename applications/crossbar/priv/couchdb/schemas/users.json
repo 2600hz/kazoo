@@ -494,6 +494,13 @@
             "required": false,
             "name": "Timezone",
             "description": "User's timezone"
+        },
+        "profile": {
+            "type": "object",
+            "required": false,
+            "description": "User's profile data",
+            "$ref":"profile",
+            "default": {}
         }
     }
 }

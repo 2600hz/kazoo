@@ -175,12 +175,18 @@
       },
       "default": {}
     },
-        "language": {
-            "type": "string",
-            "required": false,
-            "name": "Language",
-            "description": "The language for this account",
-            "default":"en-us"
-        }
+    "language": {
+      "type": "string",
+      "required": false,
+      "name": "Language",
+      "description": "The language for this account",
+      "default":"en-us"
+    },
+    "org": {
+      "type": "string",
+      "required": false,
+      "name": "Organizational name",
+      "description": "Full legal name of the organization"
+    }
   }
 }
