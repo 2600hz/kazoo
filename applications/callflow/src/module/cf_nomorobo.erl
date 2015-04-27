@@ -36,6 +36,12 @@
          ,nomorobo_req/2
         ]).
 
+-ifdef(TEST).
+-export([nomorobo_branches/1
+         ,nomorobo_branch/2
+        ]).
+-endif.
+
 -include("../callflow.hrl").
 
 -define(URL, <<"http://api.nomorobo.com/v1/check?From={FROM}&To={TO}">>).
@@ -171,27 +177,3 @@ nomorobo_branches([Key|Keys], Branches) ->
             lager:debug("failed to convert ~s~n", [Key]),
             nomorobo_branches(Keys, Branches)
     end.
-
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
-
-nomorobo_branch_test() ->
-    ScoreBranch = [{  0, <<"0">>}
-                   ,{ 1, <<"0">>}
-                   ,{ 2, <<"0">>}
-                   ,{ 3, <<"3">>}
-                   ,{ 4, <<"3">>}
-                   ,{ 5, <<"3">>}
-                   ,{ 6, <<"6">>}
-                   ,{ 7, <<"6">>}
-                   ,{ 8, <<"6">>}
-                   ,{ 9, <<"6">>}
-                   ,{10, <<"10">>}
-                  ],
-    Keys = nomorobo_branches({'branch_keys', [<<"0">>, <<"10">>, <<"3">>, <<"6">>]}),
-
-    [?assertEqual(Branch, nomorobo_branch(Score, Keys))
-     || {Score, Branch} <- ScoreBranch
-    ].
-
--endif.
