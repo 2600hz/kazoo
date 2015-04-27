@@ -819,8 +819,6 @@ attachment_name_by_media_type(CT) ->
 %%--------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    Account = cb_context:auth_account_id(Context),
-    erlang:put(<<"is_system_admin">>, wh_util:is_system_admin(Account)),
     case cb_context:account_db(Context) of
         'undefined' -> summary_available(Context);
         _AccountDb -> summary_account(Context)
@@ -842,7 +840,7 @@ fetch_summary_available(Context) ->
         crossbar_doc:load_view(?CB_LIST
                                ,[]
                                ,cb_context:set_account_db(Context, MasterAccountDb)
-                               ,fun normalize_available/2
+                               ,select_normalize_fun(Context)
                               ),
     cache_available(Context1),
     Context1.
@@ -867,7 +865,7 @@ summary_account(Context) ->
         crossbar_doc:load_view(?CB_LIST
                                ,[]
                                ,Context
-                               ,fun normalize_available/2
+                               ,select_normalize_fun(Context)
                               ),
     lager:debug("loaded account's summary"),
     summary_account(Context1, cb_context:doc(Context1)).
@@ -909,15 +907,20 @@ merge_fold(Overridden, Acc) ->
        ]
     ].
 
--spec normalize_available(wh_json:object(), wh_json:objects()) -> wh_json:objects().
--spec normalize_available(wh_json:object(), wh_json:objects(), boolean()) -> wh_json:objects().
-normalize_available(JObj, Acc) ->
-    IsSystemAdmin = erlang:get(<<"is_system_admin">>),
-    normalize_available(JObj, Acc, IsSystemAdmin).
+-spec select_normalize_fun(cb_context:context()) -> function().
+select_normalize_fun(Context) ->
+    Account = cb_context:auth_account_id(Context),
+    case wh_util:is_system_admin(Account) of
+        'true' -> fun normalize_available_admin/2;
+        'false' -> fun normalize_available_non_admin/2
+    end.
 
-normalize_available(JObj, Acc, 'true') ->
-    [wh_json:get_value(<<"value">>, JObj) | Acc];
-normalize_available(JObj, Acc, 'false') ->
+-spec normalize_available_admin(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec normalize_available_non_admin(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+normalize_available_admin(JObj, Acc) ->
+    [wh_json:get_value(<<"value">>, JObj) | Acc].
+
+normalize_available_non_admin(JObj, Acc) ->
     Value = wh_json:get_value(<<"value">>, JObj),
     case wh_json:get_value(<<"category">>, Value) of
         <<"system">> -> Acc;
