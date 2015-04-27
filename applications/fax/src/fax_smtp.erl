@@ -482,7 +482,7 @@ maybe_faxbox_by_owner_email(AccountId, #state{from=From}=State) ->
         {'ok', [JObj]} -> 
             OwnerId = wh_json:get_value([<<"value">>, <<"owner_id">>], JObj),
             maybe_faxbox_by_owner_id(AccountId, OwnerId, State);
-        {'ok', [JObj | JObjs]} -> 
+        {'ok', [_JObj | _JObjs]} -> 
             lager:debug("more then one user with email ~s in account ~s, trying by rules", [From, AccountId]),
             maybe_faxbox_by_rules(AccountId, State);
         {'error', _E} -> 
@@ -528,7 +528,7 @@ maybe_faxbox_by_rules([], #state{account_id=AccountId, from=From}=State) ->
     Error = <<"no mathing rules in account ", AccountId/binary, " for ", From/binary >>,
     lager:debug(Error),
     {'error', "not allowed", State#state{errors=[Error]}};
-maybe_faxbox_by_rules([JObj | JObjs], #state{account_id=AccountId, from=From}=State) ->
+maybe_faxbox_by_rules([JObj | JObjs], #state{from=From}=State) ->
     Key = wh_json:get_value(<<"key">>, JObj),
     case match(From, Key) of
         'true' -> State#state{faxbox=wh_json:get_value(<<"doc">>, JObj)};
