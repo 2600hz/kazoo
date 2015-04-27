@@ -1145,14 +1145,3 @@ update_descendants_count(AccountId, JObj, NewCount) ->
             io:format("updated descendant count for ~s~n", [AccountId]),
             'ok'
     end.
-
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
-
-year_month_sequence_test() ->
-    ?assertEqual([{2013, 11}, {2013, 12}, {2014, 1}]
-                 ,generate_year_month_sequence({2013, 11}
-                                               ,{2014, 1}
-                                              )).
-
--endif.
