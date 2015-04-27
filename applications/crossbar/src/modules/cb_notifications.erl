@@ -907,7 +907,9 @@ merge_fold(Overridden, Acc) ->
        ]
     ].
 
--spec select_normalize_fun(cb_context:context()) -> function().
+-type normalize_fun() :: fun((wh_json:object(), wh_json:objects()) -> wh_json:objects()).
+
+-spec select_normalize_fun(cb_context:context()) -> normalize_fun().
 select_normalize_fun(Context) ->
     Account = cb_context:auth_account_id(Context),
     case wh_util:is_system_admin(Account) of
