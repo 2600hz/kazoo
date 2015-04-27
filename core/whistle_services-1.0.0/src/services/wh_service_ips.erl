@@ -43,8 +43,12 @@ reconcile(Services, Props) ->
       ,Props
      ).
 
-reconcile_foldl({Type, Quantity}, Services) when is_integer(Quantity) ->
-    OldQuantity = wh_services:update_quantity(<<"ips">>, Type, Services),
-    wh_services:update(<<"ips">>, Type, OldQuantity+Quantity, Services);
+-spec reconcile_foldl({ne_binary(), integer() | ne_binary()}, wh_services:services()) ->
+                             wh_services:services().
 reconcile_foldl({Type, Quantity}, Services) ->
-    reconcile_foldl({Type, wh_util:to_integer(Quantity)}, Services).
+    OldQuantity = wh_services:update_quantity(<<"ips">>, Type, Services),
+    wh_services:update(<<"ips">>
+                       ,Type
+                       ,OldQuantity + wh_util:to_integer(Quantity)
+                       ,Services
+                      ).
