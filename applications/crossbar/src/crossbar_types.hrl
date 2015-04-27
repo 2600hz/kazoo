@@ -8,7 +8,7 @@
 -type path_token() :: ne_binary().
 -type path_tokens() :: [path_token(),...] | [].
 
--type resp_data() :: wh_json:object() | wh_json:objects() | api_binary() | wh_json:json_term().
+-type resp_data() :: wh_json:object() | wh_json:objects() | api_binary() | wh_json:json_term() | ne_binaries().
 
  %% {file_name, {"contents":<<bin>>, "headers":{"content-type":"", "content-length":1}}}
 -type req_file() :: {ne_binary(), wh_json:object()}.
