@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP, INC
+%%% @copyright (C) 2012-2015, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -18,7 +18,8 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec reconcile(wh_services:services()) -> wh_services:services().
--spec reconcile(wh_services:services(), api_binary()) -> wh_services:services().
+-spec reconcile(wh_services:services(), api_binary() | wh_proplist()) ->
+                       wh_services:services().
 reconcile(Services) ->
     AccountId = wh_services:account_id(Services),
     case kz_ips:assigned(AccountId) of
@@ -37,10 +38,10 @@ reconcile(Services0, IpType) when is_binary(IpType) ->
     wh_services:update(<<"ips">>, IpType, Quantity+1, Services1);
 reconcile(Services, Props) ->
     lists:foldl(
-        fun reconcile_foldl/2
-        ,reconcile(Services)
-        ,Props
-    ).
+      fun reconcile_foldl/2
+      ,reconcile(Services)
+      ,Props
+     ).
 
 reconcile_foldl({Type, Quantity}, Services) when is_integer(Quantity) ->
     OldQuantity = wh_services:update_quantity(<<"ips">>, Type, Services),

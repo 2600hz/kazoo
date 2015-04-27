@@ -851,10 +851,10 @@ calculate_services_charges(#wh_services{jobj=ServiceJObj}=Services, ServicePlans
 -spec calculate_transactions_charges(wh_json:object(), wh_json:objects()) -> wh_json:object().
 calculate_transactions_charges(PlansCharges, JObjs) ->
     lists:foldl(
-        fun calculate_transactions_charge_fold/2
-        ,PlansCharges
-        ,JObjs
-    ).
+      fun calculate_transactions_charge_fold/2
+      ,PlansCharges
+      ,JObjs
+     ).
 
 -spec calculate_transactions_charge_fold(wh_json:object(), wh_json:object()) -> wh_json:object().
 calculate_transactions_charge_fold(JObj, Acc) ->
@@ -868,10 +868,9 @@ calculate_transactions_charge_fold(JObj, Acc) ->
         Total ->
             Category = wh_json:get_value(<<"category">>, JObj),
             Item = wh_json:get_value(<<"item">>, JObj),
-            Props = [
-                {<<"activation_charges">>, Total}
-                ,{[Category, Item, <<"activation_charges">>], Amount}
-            ],
+            Props = [{<<"activation_charges">>, Total}
+                     ,{[Category, Item, <<"activation_charges">>], Amount}
+                    ],
             wh_json:set_values(Props, Acc)
     end.
 
@@ -890,21 +889,21 @@ calculate_transactions_charge_fold(JObj, Acc) ->
                                 ) -> wh_json:objects().
 dry_run_activation_charges(#wh_services{updates=Updates}=Services) ->
     wh_json:foldl(
-        fun(Category, CategoryJObj, Acc) ->
-            dry_run_activation_charges(Category, CategoryJObj, Services, Acc)
-        end
-        ,[]
-        ,Updates
-    ).
+      fun(Category, CategoryJObj, Acc) ->
+              dry_run_activation_charges(Category, CategoryJObj, Services, Acc)
+      end
+      ,[]
+      ,Updates
+     ).
 
 dry_run_activation_charges(Category, CategoryJObj, Services, JObjs) ->
     wh_json:foldl(
-        fun(Item, Quantity, Acc1) ->
-            dry_run_activation_charges(Category, Item, Quantity, Services, Acc1)
-        end
-        ,JObjs
-        ,CategoryJObj
-    ).
+      fun(Item, Quantity, Acc1) ->
+              dry_run_activation_charges(Category, Item, Quantity, Services, Acc1)
+      end
+      ,JObjs
+      ,CategoryJObj
+     ).
 
 dry_run_activation_charges(Category, Item, Quantity, #wh_services{jobj=JObj}=Services, JObjs) ->
     case wh_json:get_value([?QUANTITIES, Category, Item], JObj, 0) of
@@ -916,12 +915,14 @@ dry_run_activation_charges(Category, Item, Quantity, #wh_services{jobj=JObj}=Ser
             ItemPlan = wh_json:get_first_defined([[Category, Item], [Category, <<"_all">>]], ServicePlan),
             As = wh_json:get_ne_value(<<"as">>, ItemPlan, Item),
 
-            [wh_json:from_list([
-                {<<"category">>, Category}
+            [wh_json:from_list(
+               [{<<"category">>, Category}
                 ,{<<"item">>, As}
                 ,{<<"amount">>, activation_charges(Category, Item, Services)}
                 ,{<<"quantity">>, Quantity-OldQuantity}
-            ])|JObjs]
+               ])
+             |JObjs
+            ]
     end.
 
 %%--------------------------------------------------------------------
