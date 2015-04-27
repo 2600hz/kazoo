@@ -57,7 +57,6 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     {'ok', _Doc} = cm_config:init_aaa_doc(),
-    'ok' = cm_dicts:init_dicts(),
     gen_listener:start_link({'local', ?SERVER}, ?MODULE, [{'bindings', ?BINDINGS}
                                                           ,{'responders', ?RESPONDERS}
                                                           ,{'queue_name', ?QUEUE_NAME}

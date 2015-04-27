@@ -227,6 +227,7 @@ refresh(?KZ_ACDC_DB) ->
 refresh(?WH_AAA_DICTS_DB) ->
     couch_mgr:db_create(?WH_AAA_DICTS_DB),
     _ = couch_mgr:revise_doc_from_file(?WH_AAA_DICTS_DB, 'circlemaker', <<"views/aaa.json">>),
+    _ = init_dicts(),
     'ok';
 refresh(?KZ_TOKEN_DB) ->
     _ = couch_mgr:db_create(?KZ_TOKEN_DB),
@@ -1032,3 +1033,45 @@ remove_system_media_refs(HangupCause, Config) ->
                                      wh_json:object().
 remove_system_media_ref(Key, <<"/system_media/", Value/binary>>, Acc) -> wh_json:set_value(Key, Value, Acc);
 remove_system_media_ref(Key, Value, Acc) -> wh_json:set_value(Key, Value, Acc).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec add_data_as_dict(string(), list()) -> 'ok' | {'error', any()}.
+add_data_as_dict(File, ExisingDictList) ->
+    DocName = filename:basename(File, ".json"),
+    % filtering function
+    IsAnythingFound = lists:any(fun({Name, Owner} = _Elem) ->
+                                    (Owner =:= <<"system_config">>) and (Name =:= wh_util:to_binary(DocName))
+                                end, ExisingDictList),
+    if IsAnythingFound ->
+        {'error', 'already_exist'};
+        true ->
+            {'ok', Bin} = file:read_file(File),
+            JObj = wh_json:decode(Bin),
+            Doc = wh_json:from_list(
+                [{<<"name">>, wh_util:to_binary(DocName)}
+                    ,{<<"owner">>, <<"system_config">>}
+                    ,{<<"value">>, JObj}
+                    ,{<<"pvt_type">>, <<"aaa_dict">>}
+                ]),
+            {'ok', _} = couch_mgr:save_doc(?WH_AAA_DICTS_DB, Doc)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Load transformed dictionaries as JSON documents into the system_config database
+%% @end
+%%--------------------------------------------------------------------
+-spec init_dicts() -> 'ok' | {'error', any()}.
+init_dicts() ->
+    (couch_mgr:db_exists(?WH_AAA_DICTS_DB) == false) andalso couch_mgr:db_create(?WH_AAA_DICTS_DB),
+    Files = filelib:wildcard([code:priv_dir('eradius'), "/*.json"]),
+    {'ok', Results} = couch_mgr:get_results(?WH_AAA_DICTS_DB, <<"aaa/fetch_dicts">>),
+    Results1 = [wh_json:get_value(<<"value">>, Elem) || Elem <- Results],
+    ExisingDictList = [{wh_json:get_value(<<"name">>, Elem), wh_json:get_value(<<"owner">>, Elem)} || Elem <- Results1],
+    [add_data_as_dict(File, ExisingDictList) || File <- Files].

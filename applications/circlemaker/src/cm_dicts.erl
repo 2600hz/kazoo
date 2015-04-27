@@ -13,44 +13,11 @@
 -include_lib("whistle/src/wh_json.hrl").
 
 %% API
--export([init_dicts/0, get_dicts/1, save_dict/2, delete_dict/2]).
+-export([get_dicts/1, save_dict/2, delete_dict/2]).
 
 %% ===================================================================
 %% API functions
 %% ===================================================================
-
--spec add_data_as_dict(string()) -> 'ok' | {'error', any()}.
-add_data_as_dict(File) ->
-    DocName = filename:basename(File, ".json"),
-    {'ok', Bin} = file:read_file(File),
-    JObj = wh_json:decode(Bin),
-    Doc = wh_json:from_list(
-        [{<<"name">>, wh_util:to_binary(DocName)}
-        ,{<<"owner">>, <<"system_config">>}
-        ,{<<"value">>, JObj}
-        ,{<<"pvt_type">>, <<"aaa_dict">>}
-        ]),
-    case couch_mgr:save_doc(?WH_AAA_DICTS_DB, Doc) of
-        {'ok', _} -> 'ok';
-        {'error', 'conflict'} ->
-            % the dictionary already exists
-            {'error', 'conflict'};
-        {'error', Reason} ->
-            lager:debug("Error when saving RADIUS dictionary ~p. Reason: ~p~n", [DocName, Reason]),
-            {'error', Reason}
-    end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Load transformed dictionaries as JSON documents into the system_config or an account database
-%% @end
-%%--------------------------------------------------------------------
--spec init_dicts() -> 'ok' | {'error', any()}.
-init_dicts() ->
-    (couch_mgr:db_exists(?WH_AAA_DICTS_DB) == false) andalso couch_mgr:db_create(?WH_AAA_DICTS_DB),
-    Files = filelib:wildcard([code:priv_dir('eradius'), "/*.json"]),
-    [add_data_as_dict(F) || F <- Files].
 
 %%--------------------------------------------------------------------
 %% @public
