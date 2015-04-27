@@ -819,6 +819,8 @@ attachment_name_by_media_type(CT) ->
 %%--------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
+    Account = cb_context:auth_account_id(Context),
+    erlang:put(<<"is_system_admin">>, wh_util:is_system_admin(Account)),
     case cb_context:account_db(Context) of
         'undefined' -> summary_available(Context);
         _AccountDb -> summary_account(Context)
@@ -908,8 +910,20 @@ merge_fold(Overridden, Acc) ->
     ].
 
 -spec normalize_available(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec normalize_available(wh_json:object(), wh_json:objects(), boolean()) -> wh_json:objects().
 normalize_available(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj) | Acc].
+    IsSystemAdmin = erlang:get(<<"is_system_admin">>),
+    normalize_available(JObj, Acc, IsSystemAdmin).
+
+normalize_available(JObj, Acc, 'true') ->
+    [wh_json:get_value(<<"value">>, JObj) | Acc];
+normalize_available(JObj, Acc, 'false') ->
+    Value = wh_json:get_value(<<"value">>, JObj),
+    case wh_json:get_value(<<"category">>, Value) of
+        <<"system">> -> Acc;
+        <<"skel">> -> Acc;
+        _Category -> [Value | Acc]
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
