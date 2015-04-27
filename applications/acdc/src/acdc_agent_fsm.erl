@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz
+%%% @copyright (C) 2012-2015, 2600Hz
 %%% @doc
 %%% Tracks the agent's state, responds to messages from the corresponding
 %%% acdc_agent gen_listener process.
@@ -10,8 +10,6 @@
 -module(acdc_agent_fsm).
 
 -behaviour(gen_fsm).
-
--include_lib("eunit/include/eunit.hrl").
 
 %% API
 -export([start_link/2, start_link/3, start_link/4, start_link/5
@@ -64,6 +62,10 @@
          ,paused/3
          ,outbound/3
         ]).
+
+-ifdef(TEST).
+-export([changed_endpoints/2]).
+-endif.
 
 -include("acdc.hrl").
 
@@ -1741,27 +1743,3 @@ uri(URI, QueryString) ->
         {Scheme, Host, Path, QS, Fragment} ->
             mochiweb_util:urlunsplit({Scheme, Host, Path, [QS, "&", QueryString], Fragment})
     end.
-
--ifdef(TEST).
-
-changed_endpoints_test() ->
-    X = wh_json:from_list([{<<"_id">>, <<"x">>}]),
-    Y = wh_json:from_list([{<<"_id">>, <<"y">>}]),
-
-    ?assertEqual({[], []}, changed_endpoints([], [])),
-    ?assertEqual({[], []}, changed_endpoints([X], [X])),
-
-    ?assertEqual({[], []}, changed_endpoints([X, Y], [X, Y])),
-    ?assertEqual({[], []}, changed_endpoints([X, Y], [Y, X])),
-
-    ?assertEqual({[X], []}, changed_endpoints([], [X])),
-    ?assertEqual({[], [X]}, changed_endpoints([X], [])),
-
-    ?assertEqual({[X, Y], []}, changed_endpoints([], [X, Y])),
-    ?assertEqual({[], [X, Y]}, changed_endpoints([X, Y], [])),
-
-    ?assertEqual({[Y], []}, changed_endpoints([X], [X, Y])),
-    ?assertEqual({[], [X]}, changed_endpoints([X, Y], [Y])),
-
-    ?assertEqual({[X], [Y]}, changed_endpoints([Y], [X])).
--endif.
