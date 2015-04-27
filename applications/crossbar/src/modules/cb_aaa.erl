@@ -225,9 +225,14 @@ validate_patch(Context, DictId)  when is_binary(DictId) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec filter_view(ne_binary(), wh_json:object()) -> boolean().
-filter_view(AccId, JObj) ->
-    AccId == wh_json:get_value(<<"owner">>, wh_json:get_value(<<"value">>, JObj)).
+-spec normalize_filter_view(ne_binary()) -> cb_context:context().
+normalize_filter_view(AccountId) ->
+    fun(JObj, Acc) ->
+        case wh_json:get_value(<<"owner">>, wh_json:get_value(<<"value">>, JObj)) of
+            AccountId -> [JObj|Acc];
+            _ -> Acc
+        end
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -238,10 +243,7 @@ filter_view(AccId, JObj) ->
 -spec load_dict_list(cb_context:context()) -> cb_context:context().
 load_dict_list(Context) ->
     Context1 = cb_context:set_account_db(Context, ?WH_AAA_DICTS_DB),
-    Context2 = crossbar_doc:load_view(?CB_LIST_DICTS, [], Context1),
-    Doc = cb_context:doc(Context2),
-    Doc1 = lists:filter(fun(Elem) -> filter_view(cb_context:account_id(Context), Elem) end, Doc),
-    cb_context:set_resp_data(cb_context:set_doc(Context2, Doc1), Doc1).
+    crossbar_doc:load_view(?CB_LIST_DICTS, [], Context1, normalize_filter_view(cb_context:account_id(Context))).
 
 %%--------------------------------------------------------------------
 %% @private
