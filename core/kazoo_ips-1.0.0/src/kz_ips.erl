@@ -93,7 +93,9 @@ assigned(Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec zones() -> ne_binaries().
+-spec zones() ->
+                   {'ok', ne_binaries()} |
+                   {'error', _}.
 zones() ->
     ViewOptions = [{'group', 'true'}
                    ,{'group_level', 1}
@@ -122,7 +124,9 @@ zones() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec hosts() -> ne_binaries().
+-spec hosts() ->
+                   {'ok', ne_binaries()} |
+                   {'error', _}.
 hosts() ->
     ViewOptions = [{'group', 'true'}
                    ,{'group_level', 1}
