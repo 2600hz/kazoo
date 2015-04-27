@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP, INC
+%%% @copyright (C) 2012-2015, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -12,7 +12,6 @@
 -export ([charge_transactions/2]).
 
 -include("../whistle_services.hrl").
-
 
 %%--------------------------------------------------------------------
 %% @public
@@ -28,7 +27,7 @@ sync(_Items, _AccountId) -> 'ok'.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec commit_transactions(ne_binary(), wh_transactions:wh_transactions()) -> ok.
+-spec commit_transactions(ne_binary(), wh_transactions:wh_transactions()) -> 'ok'.
 commit_transactions(_BillingId, Transactions) ->
     wh_transactions:save(Transactions),
     'ok'.
@@ -39,5 +38,5 @@ commit_transactions(_BillingId, Transactions) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec charge_transactions(ne_binary(), wh_transactions:wh_transactions()) -> wh_transactions:wh_transactions() | [].
+-spec charge_transactions(ne_binary(), wh_transactions:wh_transactions()) -> [].
 charge_transactions(_BillingId, _Transactions) -> [].

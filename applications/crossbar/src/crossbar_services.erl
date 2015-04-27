@@ -25,56 +25,61 @@ maybe_dry_run(Context, Callback) ->
     maybe_dry_run(Context, Callback, Type).
 
 maybe_dry_run(Context, Callback, Type) when is_binary(Type) ->
-    RespJObj = dry_run(Context, Type),
-    case cb_context:accepting_charges(Context) of
-        'true' ->
-            lager:debug("accepting charges"),
-            _ = accepting_charges(Context, RespJObj),
-            Callback();
-        'false' ->
-            lager:debug("not accepting charges"),
-            case wh_json:is_empty(RespJObj) of
-                'true' ->
-                    lager:debug("no charges"),
-                    Callback();
-                'false' -> crossbar_util:response_402(RespJObj, Context)
-            end
-    end;
+    maybe_dry_run_by_type(Context, Callback, Type, cb_context:accepting_charges(Context));
 maybe_dry_run(Context, Callback, Props) ->
+    maybe_dry_run_by_props(Context, Callback, Props, cb_context:accepting_charges(Context)).
+
+-spec maybe_dry_run_by_props(cb_context:context(), function(), wh_proplist(), boolean()) ->
+                                    any().
+maybe_dry_run_by_props(Context, Callback, Props, 'true') ->
     Type = props:get_ne_binary_value(<<"type">>, Props),
     RespJObj = dry_run(Context, Type, props:delete(<<"type">>, Props)),
-    case cb_context:accepting_charges(Context) of
+    lager:debug("accepting charges"),
+    _ = accepting_charges(Context, RespJObj),
+    Callback();
+maybe_dry_run_by_props(Context, Callback, Props, 'false') ->
+    Type = props:get_ne_binary_value(<<"type">>, Props),
+    RespJObj = dry_run(Context, Type, props:delete(<<"type">>, Props)),
+    lager:debug("not accepting charges"),
+    case wh_json:is_empty(RespJObj) of
         'true' ->
-            lager:debug("accepting charges"),
-            _ = accepting_charges(Context, RespJObj),
+            lager:debug("no charges"),
             Callback();
-        'false' ->
-            lager:debug("not accepting charges"),
-            case wh_json:is_empty(RespJObj) of
-                'true' ->
-                    lager:debug("no charges"),
-                    Callback();
-                'false' -> crossbar_util:response_402(RespJObj, Context)
-            end
+        'false' -> crossbar_util:response_402(RespJObj, Context)
     end.
 
+-spec maybe_dry_run_by_type(cb_context:context(), function(), ne_binary(), boolean()) ->
+                                   any().
+maybe_dry_run_by_type(Context, Callback, Type, 'true') ->
+    RespJObj = dry_run(Context, Type),
+    lager:debug("accepting charges"),
+    _ = accepting_charges(Context, RespJObj),
+    Callback();
+maybe_dry_run_by_type(Context, Callback, Type, 'false') ->
+    RespJObj = dry_run(Context, Type),
+    lager:debug("not accepting charges"),
+    case wh_json:is_empty(RespJObj) of
+        'true' ->
+            lager:debug("no charges"),
+            Callback();
+        'false' -> crossbar_util:response_402(RespJObj, Context)
+    end.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
--spec accepting_charges(cb_context:context(), wh_json:object()) -> atom().
+-spec accepting_charges(cb_context:context(), wh_json:object()) -> 'ok' | 'error'.
 accepting_charges(Context, JObj) ->
     Services = fetch_service(Context),
     Items = extract_items(wh_json:delete_key(<<"activation_charges">>, JObj)),
     Transactions =
         lists:foldl(
-            fun(Item, Acc) ->
-                create_transactions(Context, Item, Acc)
-            end
-            ,[]
-            ,Items
-        ),
+          fun(Item, Acc) ->
+                  create_transactions(Context, Item, Acc)
+          end
+          ,[]
+          ,Items
+         ),
     wh_services:commit_transactions(Services, Transactions).
 
 %%--------------------------------------------------------------------
@@ -84,19 +89,23 @@ accepting_charges(Context, JObj) ->
 %%--------------------------------------------------------------------
 -spec extract_items(wh_json:object()) -> wh_json:objects().
 extract_items(JObj) ->
-    wh_json:foldl(
-        fun(_, CategoryJObj, Acc) ->
-            wh_json:foldl(
-                fun(_, ItemJObj, Acc1) ->
-                    [ItemJObj|Acc1]
-                end
-                ,Acc
-                ,CategoryJObj
-            )
-        end
-        ,[]
-        ,JObj
-    ).
+    wh_json:foldl(fun extract_items_from_category/3
+                  ,[]
+                  ,JObj
+                 ).
+
+-spec extract_items_from_category(wh_json:key(), wh_json:object(), wh_json:objects()) ->
+                                         wh_json:objects().
+extract_items_from_category(_, CategoryJObj, Acc) ->
+    wh_json:foldl(fun extract_item_from_category/3
+                  ,Acc
+                  ,CategoryJObj
+                 ).
+
+-spec extract_item_from_category(wh_json:key(), wh_json:object(), wh_json:objects()) ->
+                                         wh_json:objects().
+extract_item_from_category(_, ItemJObj, Acc) ->
+    [ItemJObj|Acc].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -118,25 +127,26 @@ create_transactions(_Context, _Item, Acc, 0) -> Acc;
 create_transactions(Context, Item, Acc, Quantity) ->
     AccountId = cb_context:account_id(Context),
     Amount = wh_json:get_value(<<"activation_charges">>, Item),
-    Routines = [
-        fun set_meta_data/3
-        ,fun set_event/3
-    ],
+    Routines = [fun set_meta_data/3
+                ,fun set_event/3
+               ],
     Transaction =
         lists:foldl(
-            fun(F, T) -> F(Context, Item, T) end
-            ,wh_transaction:debit(AccountId, Amount)
-            ,Routines
-        ),
+          fun(F, T) -> F(Context, Item, T) end
+          ,wh_transaction:debit(AccountId, Amount)
+          ,Routines
+         ),
     create_transactions(Context, Item, [Transaction|Acc], Quantity-1).
 
--spec set_meta_data(cb_context:context() ,wh_json:object()
-                    ,wh_transaction:transaction()) -> wh_transaction:transaction().
+-spec set_meta_data(cb_context:context()
+                    ,wh_json:object()
+                    ,wh_transaction:transaction()
+                   ) -> wh_transaction:transaction().
 set_meta_data(Context, _Item, Transaction) ->
     MetaData =
-        wh_json:from_list([
-            {<<"auth_account_id">>, cb_context:auth_account_id(Context)}
-        ]),
+        wh_json:from_list(
+          [{<<"auth_account_id">>, cb_context:auth_account_id(Context)}]
+         ),
     wh_transaction:set_metadata(MetaData, Transaction).
 
 -spec set_event(cb_context:context() ,wh_json:object()
@@ -146,7 +156,6 @@ set_event(_Context, Item, Transaction) ->
     ItemValue = wh_json:get_value(<<"item">>, Item, <<>>),
     Event = <<Category/binary, ".", ItemValue/binary>>,
     wh_transaction:set_event(Event, Transaction).
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -214,7 +223,6 @@ dry_run(_Context, _Type) ->
     lager:warning("unknown type ~p, cannot execute dry run", [_Type]),
     wh_json:new().
 
-
 dry_run(Context, <<"ips">>, Props) ->
     lager:debug("dry run dedicated"),
     Services = fetch_service(Context),
@@ -224,7 +232,6 @@ dry_run(_Context, _Type, _Props) ->
     lager:warning("unknown type ~p, cannot execute dry run", [_Type]),
     wh_json:new().
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -233,14 +240,14 @@ dry_run(_Context, _Type, _Props) ->
 -spec port_request_foldl(ne_binary(), wh_json:object(), wh_json:object()) -> wh_json:object().
 port_request_foldl(Number, NumberJObj, JObj) ->
     wh_json:set_value(
-        Number
-        ,wh_json:set_value(
-            <<"features">>
-            ,[<<"port">>]
-            ,NumberJObj
+      Number
+      ,wh_json:set_value(
+         <<"features">>
+         ,[<<"port">>]
+         ,NumberJObj
         )
-        ,JObj
-    ).
+      ,JObj
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -259,5 +266,3 @@ fetch_service(Context) ->
             lager:debug("auth account is a reseller, loading service from reseller ~s", [AuthAccountId]),
             wh_services:fetch(AuthAccountId)
     end.
-
-

@@ -280,7 +280,7 @@ save(JObj, PrevAccountId) ->
             E
     end.
 
--spec reconcile_services(api_binary(), api_binary()) -> 'ok'.
+-spec reconcile_services(api_binary(), api_binary()) -> 'false' | wh_services:services().
 reconcile_services('undefined', AccountId) ->
     wh_services:reconcile(AccountId, <<"ips">>);
 reconcile_services(AccountId, 'undefined') ->
