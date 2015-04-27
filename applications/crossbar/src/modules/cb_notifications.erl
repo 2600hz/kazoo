@@ -922,7 +922,7 @@ normalize_available_admin(JObj, Acc) ->
 
 normalize_available_non_admin(JObj, Acc) ->
     Value = wh_json:get_value(<<"value">>, JObj),
-    case wh_json:get_value(<<"category">>, Value) of
+    case kz_notification:category(Value) of
         <<"system">> -> Acc;
         <<"skel">> -> Acc;
         _Category -> [Value | Acc]
