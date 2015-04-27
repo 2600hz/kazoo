@@ -13,6 +13,10 @@
 
 -export([exec_cmd/4]).
 
+-ifdef(TEST).
+-export([get_conference_flags/1]).
+-endif.
+
 -include("ecallmgr.hrl").
 
 -spec exec_cmd(atom(), ne_binary(), wh_json:object(), api_pid()) ->
@@ -1293,29 +1297,3 @@ get_sample_rate(JObj) ->
         'undefined' -> ?DEFAULT_SAMPLE_RATE;
         SampleRate -> SampleRate
     end.
-
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
-
-all_conference_flags_test() ->
-    JObj = wh_json:from_list([{<<"Mute">>, 'true'}
-                              ,{<<"Deaf">>, 'true'}
-                              ,{<<"Moderator">>, 'true'}
-                             ]),
-    ?assertEqual(<<"+flags{mute,moderator,deaf}">>, get_conference_flags(JObj)).
-
-two_conference_flags_test() ->
-    JObj = wh_json:from_list([{<<"Mute">>, 'true'}
-                              ,{<<"Moderator">>, 'true'}
-                             ]),
-    ?assertEqual(<<"+flags{mute,moderator}">>, get_conference_flags(JObj)).
-
-one_conference_flag_test() ->
-    JObj = wh_json:from_list([{<<"Mute">>, 'true'}]),
-    ?assertEqual(<<"+flags{mute}">>, get_conference_flags(JObj)).
-
-no_conference_flags_test() ->
-    JObj = wh_json:new(),
-    ?assertEqual(<<>>, get_conference_flags(JObj)).
-
--endif.
