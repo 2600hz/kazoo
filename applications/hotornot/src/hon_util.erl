@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -13,11 +13,11 @@
          ,sort_rates/1
         ]).
 
--include("hotornot.hrl").
-
 -ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
+-export([build_keys/1]).
 -endif.
+
+-include("hotornot.hrl").
 
 -define(MIN_PREFIX_LEN, 1). % how many chars to strip off the e164 DID
 -define(BOTH_DIRECTIONS, [<<"inbound">>, <<"outbound">>]).
@@ -135,11 +135,3 @@ options_match(RateOptions, RouteOptions) ->
               end
               ,RouteOptions
              ).
-
--ifdef(TEST).
-build_keys_test() ->
-    ?assertEqual([1], build_keys(<<"1">>)),
-    ?assertEqual([12, 1], build_keys(<<"12">>)),
-    ?assertEqual([123, 12, 1], build_keys(<<"123">>)).
-
--endif.
