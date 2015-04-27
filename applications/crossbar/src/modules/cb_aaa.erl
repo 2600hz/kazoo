@@ -198,7 +198,15 @@ check_aaa_schema(Context, DictId) ->
 -spec on_successful_validation(cb_context:context(), atom()) -> cb_context:context(); (cb_context:context(), ne_binary()) -> cb_context:context().
 on_successful_validation(Context, 'undefined') ->
     Doc1 = wh_json:set_values([{<<"pvt_type">>, ?AAA_DICT_RESOURCE}], cb_context:doc(Context)),
-    cb_context:set_doc(Context, Doc1);
+    
+    View = cb_context:doc(crossbar_doc:load_view(?CB_LIST_DICTS, [], Context, normalize_filter_view(cb_context:account_id(Context)))),
+    DictNameList = [wh_json:get_value(<<"name">>, wh_json:get_value(<<"value">>, Elem)) || Elem <- View],
+    case lists:member(wh_json:get_value(<<"name">>, Doc1), DictNameList) of
+        true ->
+            Context;
+        false ->
+            cb_context:set_doc(Context, Doc1)
+    end;
 on_successful_validation(Context, DictId) when is_binary(DictId) ->
     crossbar_doc:load_merge(DictId, Context).
 

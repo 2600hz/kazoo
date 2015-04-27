@@ -1047,9 +1047,10 @@ add_data_as_dict(File, ExisingDictList) ->
     IsAnythingFound = lists:any(fun({Name, Owner} = _Elem) ->
                                     (Owner =:= <<"system_config">>) and (Name =:= wh_util:to_binary(DocName))
                                 end, ExisingDictList),
-    if IsAnythingFound ->
-        {'error', 'already_exist'};
+    case IsAnythingFound of
         true ->
+            {'error', 'already_exist'};
+        false ->
             {'ok', Bin} = file:read_file(File),
             JObj = wh_json:decode(Bin),
             Doc = wh_json:from_list(
