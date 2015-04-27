@@ -25,8 +25,7 @@ add_data_as_dict(File) ->
     {'ok', Bin} = file:read_file(File),
     JObj = wh_json:decode(Bin),
     Doc = wh_json:from_list(
-        [{<<"_id">>, wh_util:to_binary(DocName)}
-        ,{<<"id">>, wh_util:to_binary(DocName)}
+        [{<<"name">>, wh_util:to_binary(DocName)}
         ,{<<"owner">>, <<"system_config">>}
         ,{<<"value">>, JObj}
         ,{<<"pvt_type">>, <<"aaa_dict">>}

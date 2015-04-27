@@ -1,0 +1,28 @@
+{
+    "_id": "aaa_dict",
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "type": "object",
+    "required": false,
+    "name": "AAA dictionary configuration",
+    "description": "Schema for an AAA dictionary",
+    "properties": {
+        "name": {
+            "type": "string",
+            "required": true,
+            "name": "Dictionary name",
+            "description": "Dictionary name, should be unique for an account or system_config"
+        },
+        "owner": {
+            "type": "string",
+            "required": true,
+            "name": "Owner of the dictionary",
+            "description": "ID of the dictionary's owner"
+        },
+        "value": {
+            "type": "array",
+            "required": true,
+            "name": "List of the AVP",
+            "description": "List of the Attribute-Value pairs"
+        }
+    }
+}
