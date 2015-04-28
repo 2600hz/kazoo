@@ -100,9 +100,9 @@
 response(JTerm, Context) ->
     create_response('success', 'undefined', 'undefined', JTerm, Context).
 
--spec response_202(wh_json:key(), cb_context:context()) ->
+-spec response_202(wh_json:json_term(), cb_context:context()) ->
                           cb_context:context().
--spec response_202(wh_json:key(), wh_json:json_term(), cb_context:context()) ->
+-spec response_202(wh_json:json_term(), wh_json:json_term(), cb_context:context()) ->
                           cb_context:context().
 response_202(Msg, Context) ->
     response_202(Msg, Msg, Context).
