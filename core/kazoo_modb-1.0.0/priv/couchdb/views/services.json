@@ -3,7 +3,7 @@
    "language": "javascript",
    "views": {
        "audit_logs":{
-           "map":"function(doc) { if ( doc.pvt_deleted || doc != 'audit_log') return; emit(doc.pvt_created, null); }"
+           "map":"function(doc) { if ( doc.pvt_deleted || doc.pvt_type != 'audit_log') return; emit(doc.pvt_created, null); }"
        }
    }
 }
