@@ -120,7 +120,7 @@ extract_item_from_category(_, ItemJObj, Acc) ->
                           ,wh_transaction:transactions()
                           ,integer()) -> wh_transaction:transactions().
 create_transactions(Context, Item, Acc) ->
-    Quantity = wh_json:get_integer_value(<<"quantity">>, Item),
+    Quantity = wh_json:get_integer_value(<<"quantity">>, Item, 0),
     create_transactions(Context, Item, Acc, Quantity).
 
 create_transactions(_Context, _Item, Acc, 0) -> Acc;
