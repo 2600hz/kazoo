@@ -9,7 +9,7 @@
 -module(kzd_audit_log).
 
 -export([audit_account_ids/1
-         ,audit_account_id/2
+         ,audit_account_id/2, audit_account_id/3
          ,audit_account_quantities/2
          ,audit_cascase_quantities/2
          ,audit_account_name/2
@@ -50,8 +50,11 @@ audit_account_ids(JObj) ->
     wh_json:get_keys(?KEY_AUDIT, JObj).
 
 -spec audit_account_id(doc(), ne_binary()) -> api_object().
+-spec audit_account_id(doc(), ne_binary(), Default) -> wh_json:object() | Default.
 audit_account_id(JObj, AccountId) ->
-    wh_json:get_json_value([?KEY_AUDIT, AccountId], JObj).
+    audit_account_id(JObj, AccountId, 'undefined').
+audit_account_id(JObj, AccountId, Default) ->
+    wh_json:get_json_value([?KEY_AUDIT, AccountId], JObj, Default).
 
 -spec audit_account_quantities(doc(), ne_binary()) -> api_object().
 audit_account_quantities(JObj, AccountId) ->
@@ -109,4 +112,6 @@ set_authenticating_user(JObj, User) ->
 
 -spec set_audit_account(doc(), ne_binary(), wh_json:object()) -> doc().
 set_audit_account(JObj, AccountId, AuditJObj) ->
-    wh_json:set_value([?KEY_AUDIT, AccountId], AuditJObj, JObj).
+    OldAudit = audit_account_id(JObj, AccountId, wh_json:new()),
+    NewAudit = wh_json:merge_recurzive(OldAudit, AuditJObj),
+    wh_json:set_value([?KEY_AUDIT, AccountId], NewAudit, JObj).
