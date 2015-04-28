@@ -71,7 +71,7 @@ handle_printer_start(JObj, _Props) ->
     PrinterId = wh_json:get_value(<<"Application-Data">>, JObj),
     fax_xmpp_sup:start_printer(PrinterId).
 
--spec handle_printer_stop(wh_json:object(), wh_proplist()) -> sup_startchild_ret().
+-spec handle_printer_stop(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_printer_stop(JObj, _Props) ->
     'true' = wapi_xmpp:event_v(JObj),
     PrinterId = wh_json:get_value(<<"Application-Data">>, JObj),
