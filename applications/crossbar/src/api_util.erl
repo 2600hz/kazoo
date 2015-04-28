@@ -305,7 +305,7 @@ extract_multipart(Context, Req, QS) ->
                           {cb_context:context(), cowboy_req:req()} |
                           halt_return().
 extract_file(Context, ContentType, Req0) ->
-    case cowboy_req:part_body(Req0, [{'length', ?MAX_UPLOAD_SIZE}]) of
+    case cowboy_req:body(Req0, [{'length', ?MAX_UPLOAD_SIZE}]) of
         {'more', _, Req1} ->
             handle_max_filesize_exceeded(Context, Req1);
         {'ok', FileContents, Req1} ->
