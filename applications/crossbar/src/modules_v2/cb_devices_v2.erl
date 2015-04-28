@@ -50,7 +50,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"v2_resource.execute.put.devices">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"v2_resource.execute.post.devices">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"v2_resource.execute.delete.devices">>, ?MODULE, 'delete'),
-    crossbar_bindings:bind(<<"v1_resource.finish_request.*.devices">>, 'cb_modules_util', 'reconcile_services').
+    crossbar_bindings:bind(<<"v2_resource.finish_request.*.devices">>, 'cb_modules_util', 'reconcile_services').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -112,11 +112,19 @@ billing(Context) ->
 
 billing(Context, ?HTTP_GET, [{<<"devices">>, _}|_]) ->
     Context;
-billing(Context, _ReqVerb, [{<<"devices">>, _}|_]) ->
+billing(Context, _ReqVerb, [{<<"devices">>, _}|_Nouns]) ->
     try wh_services:allow_updates(cb_context:account_id(Context)) of
-        'true' -> Context
+        'true' ->
+            lager:debug("allowing service updates"),
+            Context
     catch
         'throw':{Error, Reason} ->
+            lager:debug("account ~s is not allowed to make billing updates: ~s: ~p"
+                        ,[props:get_value(<<"accounts">>, _Nouns)
+                          ,Error
+                          ,Reason
+                         ]
+                       ),
             crossbar_util:response('error', wh_util:to_binary(Error), 500, Reason, Context)
     end;
 billing(Context, _ReqVerb, _Nouns) -> Context.
