@@ -128,7 +128,7 @@ validate_transaction(Context, <<"monthly_recurring">>, ?HTTP_GET) ->
         Context1 -> Context1
     end;
 validate_transaction(Context, <<"subscriptions">>, ?HTTP_GET) ->
-    filter_braintree_subscriptions(Context);
+    filter_subscriptions(Context);
 validate_transaction(Context, _PathToken, _Verb) ->
     cb_context:add_system_error('bad_identifier',  Context).
 
@@ -186,8 +186,8 @@ maybe_filter_by_reason(Reason, Transactions) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec filter_braintree_subscriptions(cb_context:context()) -> cb_context:context().
-filter_braintree_subscriptions(Context) ->
+-spec filter_subscriptions(cb_context:context()) -> cb_context:context().
+filter_subscriptions(Context) ->
     AccountId = cb_context:account_id(Context),
     case wh_service_transactions:current_billing_period(AccountId, 'subscriptions') of
         'not_found' ->
@@ -195,7 +195,7 @@ filter_braintree_subscriptions(Context) ->
         'unknow_error' ->
             send_resp({'error', <<"unknown braintree error">>}, Context);
         BSubscriptions ->
-            JObjs = [filter_braintree_subscription(BSub) || BSub <- BSubscriptions],
+            JObjs = [filter_subscription(BSub) || BSub <- BSubscriptions],
             send_resp({'ok', JObjs}, Context)
     end.
 
@@ -205,8 +205,8 @@ filter_braintree_subscriptions(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec filter_braintree_subscription(wh_json:object()) -> wh_json:object().
-filter_braintree_subscription(BSubscription) ->
+-spec filter_subscription(wh_json:object()) -> wh_json:object().
+filter_subscription(BSubscription) ->
     Routines = [fun clean_braintree_subscription/1
                 ,fun correct_date_braintree_subscription/1
                ],
