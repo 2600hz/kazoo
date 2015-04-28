@@ -38,7 +38,7 @@ attempt_endpoints(Endpoints, Data, Call) ->
     Ringback = wh_json:get_value(<<"ringback">>, Data),
     IgnoreForward = wh_json:get_binary_boolean(<<"ignore_forward">>, Data, <<"true">>),
     lager:info("attempting ring group of ~b members with strategy ~s", [length(Endpoints), Strategy]),
-    case whapps_call_command:b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Ringback, IgnoreForward, Call) of
+    case whapps_call_command:b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Ringback, 'undefined', IgnoreForward, Call) of
         {'ok', _} ->
             lager:info("completed successful bridge to the ring group - call finished normally"),
             cf_exe:stop(Call);
