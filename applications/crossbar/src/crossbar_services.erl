@@ -300,7 +300,5 @@ base_audit_log(Context) ->
 -spec base_auth_user(cb_context:context(), wh_json:object()) -> wh_json:object().
 base_auth_user(Context, AccountJObj) ->
     AuthJObj = cb_context:auth_doc(Context),
-
     AccountName = kz_account:name(AccountJObj),
-
     wh_json:set_value(<<"account_name">>, AccountName, AuthJObj).
