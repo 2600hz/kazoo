@@ -69,6 +69,7 @@
         ]).
 
 -export([set_custom_channel_var/3
+         ,insert_custom_channel_var/3
          ,set_custom_channel_vars/2
          ,update_custom_channel_vars/2
          ,custom_channel_var/3
@@ -818,6 +819,10 @@ from_tag(#whapps_call{from_tag=FromTag}) ->
 -spec set_custom_channel_var(term(), term(), call()) -> call().
 set_custom_channel_var(Key, Value, #whapps_call{ccvs=CCVs}=Call) ->
     whapps_call_command:set(wh_json:set_value(Key, Value, wh_json:new()), 'undefined', Call),
+    handle_ccvs_update(wh_json:set_value(Key, Value, CCVs), Call).
+
+-spec insert_custom_channel_var(term(), term(), call()) -> call().
+insert_custom_channel_var(Key, Value, #whapps_call{ccvs=CCVs}=Call) ->
     handle_ccvs_update(wh_json:set_value(Key, Value, CCVs), Call).
 
 -spec set_custom_channel_vars(wh_proplist(), call()) -> call().
