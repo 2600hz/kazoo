@@ -280,7 +280,9 @@ save_audit_logs(Services, AuditLog) ->
 
 save_audit_logs(#wh_services{account_id=MasterAccountId}, _AuditLog, MasterAccountId) ->
     lager:debug("reached master account");
-save_audit_logs(#wh_services{jobj=JObj}=Services
+save_audit_logs(#wh_services{jobj=JObj
+                             ,account_id=_AccountId
+                            }=Services
                 ,AuditLog
                 ,MasterAccountId
                ) ->
@@ -288,6 +290,7 @@ save_audit_logs(#wh_services{jobj=JObj}=Services
         MasterAccountId ->
             maybe_save_master_audit_log(Services, AuditLog, MasterAccountId);
         ResellerId ->
+            lager:debug("saving audit log for account ~s's reseller ~s", [_AccountId, ResellerId]),
             AuditLog1 = save_audit_log(Services, AuditLog, ResellerId),
             save_audit_logs(fetch(ResellerId), AuditLog1, MasterAccountId)
     end.
