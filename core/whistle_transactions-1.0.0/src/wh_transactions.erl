@@ -131,13 +131,9 @@ filter_by_reason(<<"only_calls">>, Transactions) ->
               end
       end, [], Transactions);
 filter_by_reason(Reason, Transactions) ->
-    lists:foldr(
-      fun(Transaction, Acc) ->
-              case wh_transaction:is_reason(Reason, Transaction) of
-                  'true' -> [Transaction | Acc];
-                  'false' -> Acc
-              end
-      end, [], Transactions).
+    [Tr || Tr <- Transactions
+               , wh_transaction:is_reason(Reason, Tr)
+    ].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -285,27 +281,12 @@ de_duplicate_transactions(Transactions, BookkeeperTransactions) ->
 de_duplicate_transactions([], BookkeeperTransactions, Acc) ->
     [Tr || {_, Tr} <- BookkeeperTransactions] ++ Acc;
 de_duplicate_transactions([{Key, Value}|Transactions], BookkeeperTransactions, Acc) ->
-    case props:is_defined(Key, BookkeeperTransactions) of
-        'true' ->
-            de_duplicate_transactions(
-              Transactions
-              ,props:delete(Key, BookkeeperTransactions)
-              ,[Value|Acc]
-             );
-        'false' ->
-            de_duplicate_transactions(
-              Transactions
-              ,BookkeeperTransactions
-              ,[Value|Acc]
-             )
-    end.
+    de_duplicate_transactions( Transactions
+                             , props:delete(Key, BookkeeperTransactions)
+                             , [Value | Acc]
+                             ).
 
-%%--------------------------------------------------------------------
 %% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
 -spec transactions_to_props(wh_transactions()) -> wh_proplist().
 transactions_to_props(Transactions) ->
     lists:foldl(fun transaction_to_prop_fold/2, [], Transactions).

@@ -21,6 +21,7 @@
         ]).
 
 -include("../crossbar.hrl").
+-include_lib("whistle_transactions/include/whistle_transactions.hrl").
 -include_lib("braintree/include/braintree.hrl").
 
 -define(CUSTOMER_PATH_TOKEN, <<"customer">>).
@@ -220,7 +221,8 @@ validate(#cb_context{req_verb = ?HTTP_PUT
                 ,Context
             );
         'false' ->
-            maybe_charge_billing_id(Amount, Context)
+            Context1 = cb_context:store(Context, 'bt_order_id', wh_util:rand_hex_binary(16)),
+            maybe_charge_billing_id(Amount, Context1)
     end.
 
 validate(#cb_context{req_verb = ?HTTP_GET
@@ -342,7 +344,8 @@ put(#cb_context{req_data=ReqData
                                   ,[?CUSTOMER_PATH_TOKEN, <<"credit_cards">>]
                                   ,[?CUSTOMER_PATH_TOKEN, ?ADDRESSES_PATH_TOKEN]
                                  ], RespData),
-    case add_credit_to_account(BTData, Units, AccountId, AuthAccountId) of
+    OrderId = cb_context:fetch(Context, 'bt_order_id'),
+    case add_credit_to_account(BTData, Units, AccountId, AuthAccountId, OrderId) of
         {'ok', Transaction} ->
             wapi_money:publish_credit([{<<"Amount">>, Units}
                                        ,{<<"Account-ID">>, wh_transaction:account_id(Transaction)}
@@ -357,6 +360,7 @@ put(#cb_context{req_data=ReqData
         {'error', Reason} ->
             crossbar_util:response('error', <<"transaction error">>, 500, Reason, Context)
     end;
+
 put(Context, ?ADDRESSES_PATH_TOKEN) ->
     try braintree_address:create(cb_context:fetch(Context, 'braintree')) of
         #bt_address{}=Address ->
@@ -441,17 +445,17 @@ current_account_dollars(Account) ->
 
 -spec maybe_charge_billing_id(float(), cb_context:context()) -> cb_context:context().
 maybe_charge_billing_id(Amount, #cb_context{auth_account_id=AuthAccountId, account_id=AccountId}=Context) ->
-    {'ok', MasterAccount} = whapps_util:get_master_account_id(),
+    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
     case wh_services:find_reseller_id(AccountId) of
-        AuthAccountId ->
-            lager:debug("allowing reseller to apply credit without invoking a bookkeeper", []),
+        MasterAccountId ->
+            lager:debug("invoking a bookkeeper to acquire requested credit"),
+            charge_billing_id(Amount, Context);
+        AuthAccountId when AuthAccountId =/= MasterAccountId ->
+            lager:debug("allowing reseller to apply credit without invoking a bookkeeper"),
             Resp = wh_json:from_list([{<<"amount">>, Amount}]),
             crossbar_util:response(Resp, Context);
-        MasterAccount ->
-            lager:debug("invoking a bookkeeper to acquire requested credit", []),
-            charge_billing_id(Amount, Context);
         Else ->
-            lager:debug("sub-accounts of non-master resellers must contact the reseller to change their credit", []),
+            lager:debug("sub-accounts of non-master resellers must contact the reseller to change their credit"),
             Message = <<"Please contact your phone provider to add credit.">>,
             cb_context:add_validation_error(
                 <<"amount">>
@@ -467,7 +471,15 @@ maybe_charge_billing_id(Amount, #cb_context{auth_account_id=AuthAccountId, accou
 -spec charge_billing_id(float(), cb_context:context()) -> cb_context:context().
 charge_billing_id(Amount, #cb_context{account_id=AccountId, req_data=JObj}=Context) ->
     BillingId = wh_json:get_value(<<"billing_account_id">>, JObj, AccountId),
-    try braintree_transaction:quick_sale(BillingId, wh_util:to_binary(Amount)) of
+    Props = case BillingId =/= AccountId of
+                'false' -> [ {<<"purchase_order">>, ?CODE_MANUAL_ADDITION}
+                           , {<<"order_id">>, cb_context:fetch(Context, 'bt_order_id')}
+                           ];
+                'true'  -> [ {<<"purchase_order">>, ?CODE_SUB_ACCOUNT_MANUAL_ADDITION}
+                           , {<<"order_id">>, cb_context:fetch(Context, 'bt_order_id')}
+                           ]
+            end,
+    try braintree_transaction:quick_sale(BillingId, wh_util:to_binary(Amount), Props) of
         #bt_transaction{}=Transaction ->
             wh_notify:transaction(AccountId, braintree_transaction:record_to_json(Transaction)),
             crossbar_util:response(braintree_transaction:record_to_json(Transaction), Context)
@@ -478,16 +490,16 @@ charge_billing_id(Amount, #cb_context{account_id=AccountId, req_data=JObj}=Conte
             crossbar_util:response('error', wh_util:to_binary(Error), 500, Reason, Context)
     end.
 
--spec add_credit_to_account(wh_json:object(), integer(), ne_binary(), ne_binary()) ->
+-spec add_credit_to_account(wh_json:object(), integer(), ne_binary(), ne_binary(), api_binary()) ->
                                    {'ok', wh_transaction:transaction()} |
                                    {'error', _}.
-add_credit_to_account(BraintreeData, Units, LedgerId, AccountId) ->
+add_credit_to_account(BraintreeData, Units, LedgerId, AccountId, OrderId) ->
     lager:debug("putting ~p units", [Units]),
     Routines = [fun(T) ->
                         case LedgerId =/= AccountId of
                             'false' ->
                                 wh_transaction:set_reason(<<"manual_addition">>, T);
-                            'true' ->
+                            'true'  ->
                                 T1 = wh_transaction:set_sub_account_info(AccountId, T),
                                 wh_transaction:set_reason(<<"sub_account_manual_addition">>, T1)
                         end
@@ -496,6 +508,7 @@ add_credit_to_account(BraintreeData, Units, LedgerId, AccountId) ->
                 ,fun(T) ->
                          wh_transaction:set_description(<<"credit addition from credit card">>, T)
                  end
+                ,fun (T) -> wh_transaction:set_order_id(OrderId, T) end
                ],
     Transaction = lists:foldl(fun(F, T) -> F(T) end, wh_transaction:credit(LedgerId, Units), Routines),
     wh_transaction:save(Transaction).
