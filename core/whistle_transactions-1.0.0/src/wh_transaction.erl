@@ -30,6 +30,7 @@
 -export([account_db/1, set_account_db/2]).
 -export([version/1, set_version/2]).
 -export([status/1, set_status/2]).
+-export([order_id/1, set_order_id/2]).
 
 -export([new/0]).
 -export([debit/2]).
@@ -68,6 +69,7 @@
                          ,pvt_account_id :: ne_binary()
                          ,pvt_account_db :: ne_binary()
                          ,pvt_vsn = 2 :: integer()
+                         ,order_id :: api_binary()
                         }).
 
 -type transaction() :: #wh_transaction{}.
@@ -169,6 +171,10 @@ account_db(#wh_transaction{pvt_account_db=AccountDb}) ->
 -spec version(transaction()) -> integer().
 version(#wh_transaction{pvt_vsn=Version}) ->
     Version.
+
+-spec order_id(transaction()) -> api_binary().
+order_id(#wh_transaction{order_id=OrderId}) ->
+    OrderId.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -319,6 +325,9 @@ set_account_db(AccountDb, Transaction) ->
 set_version(Vsn, Transaction) ->
     Transaction#wh_transaction{pvt_vsn=Vsn}.
 
+-spec set_order_id(api_binary(), transaction()) -> transaction().
+set_order_id(OrderId, Transaction) ->
+    Transaction#wh_transaction{order_id=OrderId}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -363,6 +372,7 @@ to_json(#wh_transaction{}=T) ->
              ,{<<"pvt_account_id">>, T#wh_transaction.pvt_account_id}
              ,{<<"pvt_account_db">>, T#wh_transaction.pvt_account_db}
              ,{<<"pvt_vsn">>, T#wh_transaction.pvt_vsn}
+             ,{<<"order_id">>, T#wh_transaction.order_id}
             ],
     Transaction = wh_json:from_list(props:filter_undefined(Props)),
     maybe_correct_transaction(Transaction).
@@ -465,6 +475,7 @@ from_json(JObj) ->
                     ,pvt_account_id = wh_json:get_ne_value(<<"pvt_account_id">>, JObj)
                     ,pvt_account_db = wh_json:get_ne_value(<<"pvt_account_db">>, JObj)
                     ,pvt_vsn = wh_json:get_integer_value(<<"pvt_vsn">>, JObj, 1)
+                    ,order_id = wh_json:get_ne_value(<<"order_id">>, JObj)
                    }.
 
 %%--------------------------------------------------------------------
