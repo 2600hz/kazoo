@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz
+%%% @copyright (C) 2012-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -306,22 +306,32 @@ active_jobs() ->
 
 -spec restart_job(binary()) -> 'no_return'.
 restart_job(JobID) ->
-    update_job(JobID, <<"pending">>).
+    update_job(JobID, <<"pending">>),
+    'no_return'.
 
--spec update_job(binary(), binary()) -> 'ok' | {'error', any()}.
+-spec update_job(binary(), binary()) -> 'ok' | {'error', _}.
+-spec update_job(binary(), binary(), wh_json:object()) -> 'ok' | {'error', _}.
 update_job(JobID, State) ->
     case couch_mgr:open_doc(?WH_FAXES_DB, JobID) of
         {'error', _}=E -> E;
         {'ok', JObj} ->
-            case wh_json:get_value(<<"pvt_job_status">>, JObj) of
-                State ->
-                    lager:debug("job already in state ~s", [State]),
-                    {'error', 'job_not_already_in_state'};
-                _Other ->
-                    Opts = [{'rev', wh_json:get_first_defined([<<"_rev">>, <<"rev">>], JObj)}],
-                    couch_mgr:save_doc(?WH_FAXES_DB, wh_json:set_values([{<<"pvt_job_status">>, State}
-                                                                      ,{<<"pvt_modified">>, wh_util:current_tstamp()}
-                                                                     ],JObj), Opts),
-                    'ok'
-            end
+            update_job(JobID, State, JObj)
+    end.
+
+update_job(JobID, State, JObj) ->
+    case wh_json:get_value(<<"pvt_job_status">>, JObj) of
+        State ->
+            lager:debug("job ~s already in state ~s", [JobID, State]),
+            {'error', 'job_not_already_in_state'};
+        _Other ->
+            Opts = [{'rev', wh_doc:revision(JObj)}],
+            couch_mgr:save_doc(?WH_FAXES_DB
+                               ,wh_json:set_values([{<<"pvt_job_status">>, State}
+                                                    ,{<<"pvt_modified">>, wh_util:current_tstamp()}
+                                                   ]
+                                                   ,JObj
+                                                  )
+                               ,Opts
+                              ),
+            'ok'
     end.
