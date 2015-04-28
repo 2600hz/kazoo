@@ -120,13 +120,17 @@ extract_item_from_category(_, ItemJObj, Acc) ->
                           ,wh_transaction:transactions()
                           ,integer()) -> wh_transaction:transactions().
 create_transactions(Context, Item, Acc) ->
-    Quantity = wh_json:get_value(<<"quantity">>, Item),
+    Quantity = wh_json:get_integer_value(<<"quantity">>, Item),
     create_transactions(Context, Item, Acc, Quantity).
 
 create_transactions(_Context, _Item, Acc, 0) -> Acc;
 create_transactions(Context, Item, Acc, Quantity) ->
+    Amount = wh_json:get_integer_value(<<"activation_charges">>, Item, 0),
+    create_transactions(Context, Item, Acc, Quantity, Amount).
+
+create_transactions(_Context, _Item, Acc, _Quantity, 0) -> Acc;
+create_transactions(Context, Item, Acc, Quantity, Amount) ->
     AccountId = cb_context:account_id(Context),
-    Amount = wh_json:get_value(<<"activation_charges">>, Item),
     Routines = [fun set_meta_data/3
                 ,fun set_event/3
                ],
