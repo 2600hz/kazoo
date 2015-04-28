@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz, INC
+%%% @copyright (C) 2012-2015, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -11,6 +11,8 @@
 -export([reconcile/2]).
 
 -include("../whistle_services.hrl").
+
+-define(CATEGORY, <<"devices">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -30,18 +32,28 @@ reconcile(Services) ->
         {'error', _R} ->
             lager:debug("unable to get current devices in service: ~p", [_R]),
             Services;
-        {'ok', []} -> wh_services:reset_category(<<"devices">>, Services);
+        {'ok', []} ->
+            wh_services:reset_category(?CATEGORY, Services);
         {'ok', JObjs} ->
-            lists:foldl(fun(JObj, S) ->
-                                Item = wh_json:get_value(<<"key">>, JObj),
-                                Quantity = wh_json:get_integer_value(<<"value">>, JObj, 0),
-                                wh_services:update(<<"devices">>, Item, Quantity, S)
-                        end, wh_services:reset_category(<<"devices">>, Services), JObjs)
+            lists:foldl(fun reconcile_device/2
+                        ,wh_services:reset_category(?CATEGORY, Services)
+                        ,JObjs
+                       )
     end.
 
-reconcile(Services, 'undefined') -> Services;
+reconcile(Services, 'undefined') ->
+    Services;
 reconcile(Services0, DeviceType) ->
     Services1 = reconcile(Services0),
-    Quantity = wh_services:update_quantity(<<"devices">>, DeviceType, Services1),
-    wh_services:update(<<"devices">>, DeviceType, Quantity+1, Services1).
+    Quantity = wh_services:update_quantity(?CATEGORY, DeviceType, Services1),
 
+    wh_services:update(?CATEGORY, DeviceType, Quantity+1, Services1).
+
+-spec reconcile_device(wh_json:object(), wh_services:services()) -> wh_services:services().
+reconcile_device(JObj, Services) ->
+    Item = wh_json:get_value(<<"key">>, JObj),
+    Quantity = wh_json:get_integer_value(<<"value">>, JObj, 0),
+
+    CurrentQuantity = wh_services:quantity(?CATEGORY, Item, Services),
+
+    wh_services:update(?CATEGORY, Item, Quantity+CurrentQuantity, Services).
