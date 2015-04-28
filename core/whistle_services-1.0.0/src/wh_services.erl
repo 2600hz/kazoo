@@ -50,13 +50,15 @@
 
 -include("whistle_services.hrl").
 
+-define(STATUS_GOOD, <<"good_standing">>).
+
 -record(wh_services, {account_id :: api_binary()
                       ,billing_id :: api_binary()
                       ,current_billing_id :: api_binary()
                       ,new_billing_id = 'false' :: boolean()
                       ,dirty = 'false' :: boolean()
                       ,deleted = 'false' :: boolean()
-                      ,status = <<"good_standing">> :: ne_binary()
+                      ,status = ?STATUS_GOOD :: ne_binary()
                       ,jobj = wh_json:new() :: wh_json:object()
                       ,updates = wh_json:new() :: wh_json:object()
                       ,cascade_quantities = wh_json:new() :: wh_json:object()
@@ -128,7 +130,7 @@ base_service_props(AccountId, AccountDb, AccountJObj) ->
      ,{<<"pvt_vsn">>, <<"1">>}
      ,{<<"pvt_account_id">>, AccountId}
      ,{<<"pvt_account_db">>, AccountDb}
-     ,{<<"pvt_status">>, <<"good_standing">>}
+     ,{<<"pvt_status">>, ?STATUS_GOOD}
      ,{<<"pvt_reseller">>, IsReseller}
      ,{<<"pvt_reseller_id">>, ResellerId}
      ,{<<"pvt_tree">>, PvtTree}
@@ -152,10 +154,11 @@ from_service_json(JObj) ->
     #wh_services{account_id=AccountId
                  ,jobj=JObj
                  ,cascade_quantities=cascade_quantities(AccountId, IsReseller)
-                 ,status=wh_json:get_ne_value(<<"pvt_status">>, JObj, <<"good_standing">>)
+                 ,status=wh_json:get_ne_value(<<"pvt_status">>, JObj, ?STATUS_GOOD)
                  ,billing_id=BillingId
                  ,current_billing_id=BillingId
                  ,deleted=wh_doc:is_soft_deleted(JObj)
+                 ,dirty=wh_json:is_true(<<"pvt_dirty">>, JObj)
                 }.
 
 %%--------------------------------------------------------------------
@@ -184,7 +187,7 @@ handle_fetch_result(AccountId, JObj) ->
     #wh_services{account_id=AccountId
                  ,jobj=JObj
                  ,cascade_quantities=cascade_quantities(AccountId, IsReseller)
-                 ,status=wh_json:get_ne_value(<<"pvt_status">>, JObj, <<"good_standing">>)
+                 ,status=wh_json:get_ne_value(<<"pvt_status">>, JObj, ?STATUS_GOOD)
                  ,billing_id=BillingId
                  ,current_billing_id=BillingId
                  ,deleted=wh_doc:is_soft_deleted(JObj)
@@ -226,6 +229,7 @@ save_as_dirty(#wh_services{}=Services, AuditLog) ->
     save_as_dirty(Services, AuditLog, ?BASE_BACKOFF).
 
 save_as_dirty(#wh_services{jobj=JObj
+                           ,updates=_Updates
                            ,account_id = <<_/binary>> = AccountId
                           }=Services
               ,AuditLog
@@ -238,13 +242,11 @@ save_as_dirty(#wh_services{jobj=JObj
     UpdatedJObj = wh_json:set_values(props:filter_undefined(Props), JObj),
     case couch_mgr:save_doc(?WH_SERVICES_DB, UpdatedJObj) of
         {'ok', SavedJObj} ->
-            lager:debug("marked services as dirty for account ~s", [AccountId]),
+            lager:debug("marked services as dirty for account ~s: ~s", [AccountId, wh_json:encode(SavedJObj)]),
+            lager:debug("updates: ~s", [wh_json:encode(_Updates)]),
 
-            Services1 = Services#wh_services{jobj=JObj
-                                             ,status=wh_json:get_ne_value(<<"pvt_status">>, SavedJObj, <<"good_standing">>)
-                                             ,deleted=wh_doc:is_soft_deleted(SavedJObj)
-                                             ,dirty='true'
-                                            },
+            Services1 = from_service_json(SavedJObj),
+
             _ = save_audit_logs(Services1, AuditLog),
             Services1;
         {'error', 'not_found'} ->
@@ -291,8 +293,33 @@ save_audit_logs(#wh_services{jobj=JObj
             maybe_save_master_audit_log(Services, AuditLog, MasterAccountId);
         ResellerId ->
             lager:debug("saving audit log for account ~s's reseller ~s", [_AccountId, ResellerId]),
-            AuditLog1 = save_audit_log(Services, AuditLog, ResellerId),
-            save_audit_logs(fetch(ResellerId), AuditLog1, MasterAccountId)
+            ResellerServices = fetch(ResellerId),
+            AuditLog1 = maybe_save_audit_log(Services, AuditLog, ResellerId),
+            save_audit_logs(ResellerServices, AuditLog1, MasterAccountId)
+    end.
+
+-spec base_audit_log(services() | ne_binary()) -> kzd_audit_log:doc().
+base_audit_log(#wh_services{account_id=AccountId}) ->
+    base_audit_log(AccountId);
+base_audit_log(<<_/binary>> = AccountId) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    AccountJObj = get_account_definition(AccountDb, AccountId),
+
+    Tree = kz_account:tree(AccountJObj) ++ [AccountId],
+
+    lists:foldl(fun({F, V}, Acc) -> F(Acc, V) end
+                ,kzd_audit_log:new()
+                ,[{fun kzd_audit_log:set_tree/2, Tree}]
+               ).
+
+-spec maybe_save_audit_log(services(), wh_json:object(), ne_binary()) -> 'ok'.
+maybe_save_audit_log(#wh_services{jobj=JObj
+                                  ,updates=UpdatedQuantities
+                                 }=Services, AuditLog, ResellerId) ->
+    CurrentQuantities = current_quantities(JObj),
+    case have_quantities_changed(UpdatedQuantities, CurrentQuantities) of
+        'true' -> save_audit_log(Services, AuditLog, ResellerId);
+        'false' -> lager:debug("nothing has changed, ignoring audit log")
     end.
 
 -spec maybe_save_master_audit_log(services(), kzd_audit_log:doc(), ne_binary()) -> 'ok'.
@@ -315,18 +342,20 @@ save_audit_log(Services, AuditLog, ResellerId) ->
     MODb = kazoo_modb:get_modb(ResellerId),
     ResellerAuditLog = wh_doc:update_pvt_parameters(AuditLog1, MODb, [{'account_id', ResellerId}]),
     {'ok', _Saved} = kazoo_modb:save_doc(MODb, ResellerAuditLog),
-    lager:debug("saved audit log to ~s: ~p", [ResellerId, _Saved]),
+    lager:debug("saved audit log to ~s: ~s", [ResellerId, wh_json:encode(_Saved)]),
     AuditLog1.
 
 -spec update_audit_log(services(), kzd_audit_log:doc()) -> kzd_audit_log:doc().
 update_audit_log(#wh_services{jobj=JObj
                               ,account_id=AccountId
-                             }=Services
+                              ,cascade_quantities=CascadeQuantities
+                             }
                  ,AuditLog
                 ) ->
+    lager:debug("account ~s cascade quantities ~s", [AccountId, wh_json:encode(CascadeQuantities)]),
     AccountAudit = wh_json:from_list(
                      props:filter_empty(
-                       [{<<"cascase_quantities">>, cascade_quantities(AccountId, is_reseller(Services))}
+                       [{<<"cascase_quantities">>, CascadeQuantities}
                         ,{<<"account_quantities">>, current_quantities(JObj)}
                         ,{<<"account_name">>, account_name(AccountId)}
                        ])
@@ -348,15 +377,20 @@ current_quantities(JObj) ->
     wh_json:get_value(?QUANTITIES, JObj, wh_json:new()).
 
 -spec save(services()) -> services().
--spec save(services(), pos_integer()) -> services().
+-spec save(services(), kzd_audit_log:doc()) -> services().
+-spec save(services(), kzd_audit_log:doc(), pos_integer()) -> services().
 save(#wh_services{}=Services) ->
-    save(Services, ?BASE_BACKOFF).
+    save(Services, base_audit_log(Services), ?BASE_BACKOFF).
+
+save(#wh_services{}=Services, AuditLog) ->
+    save(Services, AuditLog, ?BASE_BACKOFF).
 
 save(#wh_services{jobj=JObj
                   ,updates=UpdatedQuantities
                   ,account_id=AccountId
                   ,dirty=ForceDirty
                  }=Services
+     ,_AuditLog
      ,BackOff
     ) ->
     CurrentQuantities = current_quantities(JObj),
@@ -375,7 +409,7 @@ save(#wh_services{jobj=JObj
             BillingId = wh_json:get_value(<<"billing_id">>, NewJObj, AccountId),
             Services#wh_services{jobj=NewJObj
                                  ,cascade_quantities=cascade_quantities(AccountId, IsReseller)
-                                 ,status=wh_json:get_ne_value(<<"pvt_status">>, NewJObj, <<"good_stainding">>)
+                                 ,status=wh_json:get_ne_value(<<"pvt_status">>, NewJObj, ?STATUS_GOOD)
                                  ,billing_id=BillingId
                                  ,current_billing_id=BillingId
                                  ,deleted=wh_doc:is_soft_deleted(NewJObj)
@@ -665,7 +699,7 @@ maybe_allow_updates(AccountId, ServicesJObj) ->
         'true' ->
             lager:debug("allowing request for account with no service plans"),
             'true';
-        <<"good_standing">> ->
+        ?STATUS_GOOD ->
             lager:debug("allowing request for account in good standing"),
             'true';
         Status ->
@@ -707,7 +741,7 @@ spawn_move_to_good_standing(<<_/binary>> = AccountId) ->
 -spec move_to_good_standing(ne_binary()) -> services().
 move_to_good_standing(<<_/binary>> = AccountId) ->
     #wh_services{jobj=JObj}=Services = fetch(AccountId),
-    save(Services#wh_services{jobj=wh_json:set_value(<<"pvt_status">>, <<"good_standing">>, JObj)}).
+    save(Services#wh_services{jobj=wh_json:set_value(<<"pvt_status">>, ?STATUS_GOOD, JObj)}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -715,14 +749,16 @@ move_to_good_standing(<<_/binary>> = AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile_only(api_binary()) -> 'false' | services().
--spec reconcile(api_binary()) -> 'false' | services().
+-spec reconcile_only(api_binary() | services()) -> 'false' | services().
+-spec reconcile(api_binary() | services()) -> 'false' | services().
 
 reconcile_only('undefined') -> 'false';
 reconcile_only(<<_/binary>> = Account) ->
-    lager:debug("reconcile all services for ~s", [Account]),
+    reconcile_only(fetch(Account));
+reconcile_only(#wh_services{account_id=AccountId}=Services) ->
+    lager:debug("reconcile all services for ~s", [AccountId]),
     lists:foldl(fun reconcile_module/2
-                ,fetch(Account)
+                ,Services
                 ,get_service_modules()
                ).
 
@@ -732,7 +768,9 @@ reconcile_module(M, Services) ->
 
 reconcile('undefined') -> 'false';
 reconcile(<<_/binary>> = Account) ->
-    save(reconcile_only(Account)).
+    save(reconcile_only(Account));
+reconcile(#wh_services{}=Services) ->
+    save(reconcile_only(Services)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -740,22 +778,26 @@ reconcile(<<_/binary>> = Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile_only(api_binary(), text()) -> 'false' | services().
+-spec reconcile_only(api_binary() | services(), text()) -> 'false' | services().
 reconcile_only('undefined', _Module) -> 'false';
 reconcile_only(<<_/binary>> = Account, Module) ->
-    lager:debug("reconcile ~s services for ~s", [Module, Account]),
+    reconcile_only(fetch(Account), Module);
+reconcile_only(#wh_services{account_id=AccountId}=CurrentServices, Module) ->
+    lager:debug("reconcile ~s services for ~s", [Module, AccountId]),
     case get_service_module(Module) of
         'false' -> 'false';
         ServiceModule ->
-            CurrentServices = fetch(Account),
             ServiceModule:reconcile(CurrentServices)
     end.
 
--spec reconcile(api_binary(), text()) -> 'false' | services().
+-spec reconcile(api_binary() | services(), text()) -> 'false' | services().
 reconcile('undefined', _Module) -> 'false';
 reconcile(<<_/binary>> = Account, Module) ->
     timer:sleep(?MILLISECONDS_IN_SECOND),
-    maybe_save(reconcile_only(Account, Module)).
+    maybe_save(reconcile_only(Account, Module));
+reconcile(#wh_services{}=Services, Module) ->
+    timer:sleep(?MILLISECONDS_IN_SECOND),
+    maybe_save(reconcile_only(Services, Module)).
 
 %%%===================================================================
 %%% Access functions
