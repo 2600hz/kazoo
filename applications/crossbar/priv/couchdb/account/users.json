@@ -16,7 +16,10 @@
        },
        "creds_by_sha": {
            "map": "function(doc) { if(!doc.pvt_sha1_auth || (doc.pvt_type != 'user' || doc.pvt_deleted)) return; emit( doc.pvt_sha1_auth, {'owner_id': doc._id, 'account_id': doc.pvt_account_id} ); }"
-       }
+       },
+       "list_by_email": {
+            "map": "function(doc) { if( doc.pvt_type != 'user' || doc.pvt_deleted) return; if( !doc.email || doc.email == '' ) return ;emit( doc.email, null ); }"
+       }       
     }
     ,"filters": {
         "export":"function(doc, req) { return ( doc.pvt_type == 'user' ); }"

@@ -42,7 +42,7 @@ start_link() ->
 start_printer(PrinterId) ->
     supervisor:start_child(?MODULE, ?XMPP_PRINTER(PrinterId)).
 
--spec stop_printer(ne_binary()) -> any().
+-spec stop_printer(ne_binary()) -> 'ok'.
 stop_printer(PrinterId) ->
     [begin
          supervisor:terminate_child(?MODULE, Id),
@@ -50,7 +50,8 @@ stop_printer(PrinterId) ->
      end
      || {Id, _Pid, 'worker', [_]} <- supervisor:which_children(?MODULE),
         (Id == wh_util:to_atom(PrinterId, 'true'))
-    ].
+    ],
+    'ok'.
 
 -spec printers() -> [{ne_binary(), pid()},...].
 printers() ->
