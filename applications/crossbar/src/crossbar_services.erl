@@ -25,8 +25,7 @@
 -spec maybe_dry_run(cb_context:context(), callback(), ne_binary() | wh_proplist()) ->
                            cb_context:context().
 maybe_dry_run(Context, Callback) ->
-    Doc = cb_context:doc(Context),
-    Type = wh_json:get_value(<<"pvt_type">>, Doc),
+    Type = wh_doc:pvt_type(cb_context:doc(Context)),
     maybe_dry_run(Context, Callback, Type).
 
 maybe_dry_run(Context, Callback, Type) when is_binary(Type) ->
@@ -273,7 +272,6 @@ fetch_service(Context) ->
     end.
 
 reconcile(Context) ->
-
     case cb_context:resp_status(Context) =:= 'success'
         andalso cb_context:req_verb(Context) =/= ?HTTP_GET
     of
@@ -290,12 +288,36 @@ base_audit_log(Context) ->
     AccountJObj = cb_context:account_doc(Context),
     Tree = kz_account:tree(AccountJObj) ++ [cb_context:account_id(Context)],
 
-    lists:foldl(fun({F, V}, Acc) -> F(Acc, V) end
+    lists:foldl(fun base_audit_log_fold/2
                 ,kzd_audit_log:new()
                 ,[{fun kzd_audit_log:set_tree/2, Tree}
                   ,{fun kzd_audit_log:set_authenticating_user/2, base_auth_user(Context, AccountJObj)}
+                  ,{fun kzd_audit_log:set_audit_account/3
+                    ,cb_context:account_id(Context)
+                    ,base_audit_account(Context)
+                   }
                  ]
                ).
+
+-type audit_log_fun_2() :: {fun((kzd_audit_log:doc(), Term) -> kzd_audit_log:doc()), Term}.
+-type audit_log_fun_3() :: {fun((kzd_audit_log:doc(), Term1, Term2) -> kzd_audit_log:doc()), Term1, Term2}.
+-type audit_log_fun() ::  audit_log_fun_2() | audit_log_fun_3().
+
+-spec base_audit_log_fold(audit_log_fun(), kzd_audit_log:doc()) -> kzd_audit_log:doc().
+base_audit_log_fold({F, V}, Acc) -> F(Acc, V);
+base_audit_log_fold({F, V1, V2}, Acc) -> F(Acc, V1, V2).
+
+base_audit_account(Context) ->
+    Type = wh_json:get_value(<<"pvt_type">>, cb_context:doc(Context)),
+    DryRunChanges = dry_run(Context, Type),
+
+    AccountName = kz_account:name(cb_context:account_doc(Context)),
+
+    wh_json:from_list(
+      props:filter_empty(
+        [{<<"changes">>, DryRunChanges}
+         ,{<<"account_name">>, AccountName}
+        ])).
 
 -spec base_auth_user(cb_context:context(), wh_json:object()) -> wh_json:object().
 base_auth_user(Context, AccountJObj) ->
