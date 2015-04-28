@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz, INC
+%%% @copyright (C) 2012-2015, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -21,7 +21,7 @@
 
 -include("whistle_services.hrl").
 
--record(wh_service_plans, {vendor_id = 'undefined' :: api_binary()
+-record(wh_service_plans, {vendor_id :: api_binary()
                            ,plans = [] :: wh_json:objects()
                           }).
 
