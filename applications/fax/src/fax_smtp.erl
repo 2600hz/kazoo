@@ -480,7 +480,7 @@ maybe_faxbox_by_owner_email(AccountId, #state{from=From}=State) ->
             lager:debug("user ~s does not exist in account ~s, trying by rules",[From, AccountId]),
             maybe_faxbox_by_rules(AccountId, State);
         {'ok', [JObj]} -> 
-            OwnerId = wh_json:get_value([<<"value">>, <<"owner_id">>], JObj),
+            OwnerId = wh_json:get_value(<<"id">>, JObj),
             maybe_faxbox_by_owner_id(AccountId, OwnerId, State);
         {'ok', [_JObj | _JObjs]} -> 
             lager:debug("more then one user with email ~s in account ~s, trying by rules", [From, AccountId]),
