@@ -17,8 +17,11 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_dry_run(cb_context:context(), function()) -> any().
--spec maybe_dry_run(cb_context:context(), function(), ne_binary() | wh_proplist()) -> any().
+-type callback() :: fun(() -> cb_context:context()).
+
+-spec maybe_dry_run(cb_context:context(), callback()) -> cb_context:context().
+-spec maybe_dry_run(cb_context:context(), callback(), ne_binary() | wh_proplist()) ->
+                           cb_context:context().
 maybe_dry_run(Context, Callback) ->
     Doc = cb_context:doc(Context),
     Type = wh_json:get_value(<<"pvt_type">>, Doc),
@@ -29,8 +32,8 @@ maybe_dry_run(Context, Callback, Type) when is_binary(Type) ->
 maybe_dry_run(Context, Callback, Props) ->
     maybe_dry_run_by_props(Context, Callback, Props, cb_context:accepting_charges(Context)).
 
--spec maybe_dry_run_by_props(cb_context:context(), function(), wh_proplist(), boolean()) ->
-                                    any().
+-spec maybe_dry_run_by_props(cb_context:context(), callback(), wh_proplist(), boolean()) ->
+                                    cb_context:context().
 maybe_dry_run_by_props(Context, Callback, Props, 'true') ->
     Type = props:get_ne_binary_value(<<"type">>, Props),
     RespJObj = dry_run(Context, Type, props:delete(<<"type">>, Props)),
@@ -40,16 +43,16 @@ maybe_dry_run_by_props(Context, Callback, Props, 'true') ->
 maybe_dry_run_by_props(Context, Callback, Props, 'false') ->
     Type = props:get_ne_binary_value(<<"type">>, Props),
     RespJObj = dry_run(Context, Type, props:delete(<<"type">>, Props)),
-    lager:debug("not accepting charges"),
+    lager:debug("request isn't accepting charges, maybe dry run the request"),
     case wh_json:is_empty(RespJObj) of
         'true' ->
-            lager:debug("no charges"),
+            lager:debug("nothing to be charged for, continuing : ~p", [RespJObj]),
             Callback();
         'false' -> crossbar_util:response_402(RespJObj, Context)
     end.
 
--spec maybe_dry_run_by_type(cb_context:context(), function(), ne_binary(), boolean()) ->
-                                   any().
+-spec maybe_dry_run_by_type(cb_context:context(), callback(), ne_binary(), boolean()) ->
+                                   cb_context:context().
 maybe_dry_run_by_type(Context, Callback, Type, 'true') ->
     RespJObj = dry_run(Context, Type),
     lager:debug("accepting charges"),
@@ -60,7 +63,7 @@ maybe_dry_run_by_type(Context, Callback, Type, 'false') ->
     lager:debug("not accepting charges"),
     case wh_json:is_empty(RespJObj) of
         'true' ->
-            lager:debug("no charges"),
+            lager:debug("no charges: ~p", [RespJObj]),
             Callback();
         'false' -> crossbar_util:response_402(RespJObj, Context)
     end.
@@ -167,21 +170,20 @@ set_event(_Context, Item, Transaction) ->
 -spec dry_run(cb_context:context(), ne_binary()) -> wh_json:object().
 -spec dry_run(cb_context:context(), ne_binary(), wh_proplist()) -> wh_json:object().
 dry_run(Context, <<"device">>) ->
-    lager:debug("dry run device"),
     Services = fetch_service(Context),
     JObj = cb_context:doc(Context),
     DeviceType = wh_json:get_value(<<"device_type">>, JObj),
+
     UpdatedServices = wh_service_devices:reconcile(Services, DeviceType),
+
     wh_services:dry_run(UpdatedServices);
 dry_run(Context, <<"user">>) ->
-    lager:debug("dry run user"),
     Services = fetch_service(Context),
     JObj = cb_context:doc(Context),
     UserType = wh_json:get_value(<<"priv_level">>, JObj),
     UpdatedServices = wh_service_users:reconcile(Services, UserType),
     wh_services:dry_run(UpdatedServices);
 dry_run(Context, <<"limits">>) ->
-    lager:debug("dry run limits"),
     Services = fetch_service(Context),
     ReqData = cb_context:req_data(Context),
     Updates =
@@ -193,7 +195,6 @@ dry_run(Context, <<"limits">>) ->
     UpdatedServices = wh_service_limits:reconcile(Services, Updates),
     wh_services:dry_run(UpdatedServices);
 dry_run(Context, <<"port_request">>) ->
-    lager:debug("dry run port_request"),
     Services = fetch_service(Context),
     JObj = cb_context:doc(Context),
     Numbers = wh_json:get_value(<<"numbers">>, JObj),
@@ -206,7 +207,6 @@ dry_run(Context, <<"port_request">>) ->
     UpdatedServices = wh_service_phone_numbers:reconcile(PhoneNumbers, Services),
     wh_services:dry_run(UpdatedServices);
 dry_run(Context, <<"app">>) ->
-    lager:debug("dry run app"),
     [{<<"apps_store">>, [Id]} | _] = cb_context:req_nouns(Context),
     case wh_service_ui_apps:is_in_use(cb_context:req_data(Context)) of
         'false' -> wh_json:new();
@@ -217,7 +217,6 @@ dry_run(Context, <<"app">>) ->
             wh_services:dry_run(UpdatedServices)
     end;
 dry_run(Context, <<"ips">>) ->
-    lager:debug("dry run dedicated"),
     Services = fetch_service(Context),
     UpdatedServices = wh_service_ips:reconcile(Services, <<"dedicated">>),
     wh_services:dry_run(UpdatedServices);
@@ -231,7 +230,6 @@ dry_run(_Context, _Type) ->
     wh_json:new().
 
 dry_run(Context, <<"ips">>, Props) ->
-    lager:debug("dry run dedicated"),
     Services = fetch_service(Context),
     UpdatedServices = wh_service_ips:reconcile(Services, Props),
     wh_services:dry_run(UpdatedServices);
