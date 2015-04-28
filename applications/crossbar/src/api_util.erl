@@ -627,6 +627,9 @@ maybe_add_post_method(_, _, Allowed) ->
 is_authentic(Req, Context) ->
     is_authentic(Req, Context, cb_context:req_verb(Context)).
 
+-spec is_authentic(cowboy_req:req(), cb_context:context(), http_method()) ->
+                          {{'false', <<>>} | 'true', cowboy_req:req(), cb_context:context()} |
+                          halt_return().
 is_authentic(Req, Context, ?HTTP_OPTIONS) ->
     %% all OPTIONS, they are harmless (I hope) and required for CORS preflight
     {'true', Req, Context};
@@ -635,8 +638,7 @@ is_authentic(Req0, Context0, _ReqVerb) ->
     {Req1, Context1} = get_auth_token(Req0, Context0),
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Context1)) of
         [] ->
-            lager:debug("failed to authenticate"),
-            ?MODULE:halt(Req0, cb_context:add_system_error('invalid_credentials', Context0));
+            is_authentic(Req1, Context1, _ReqVerb, cb_context:req_nouns(Context1));
         ['true'|T] ->
             prefer_new_context(T, Req1, Context1);
         [{'true', Context2}|_] ->
@@ -644,6 +646,29 @@ is_authentic(Req0, Context0, _ReqVerb) ->
         [{'halt', Context2}|_] ->
             lager:debug("authn halted"),
             ?MODULE:halt(Req1, Context2)
+    end.
+
+-spec is_authentic(cowboy_req:req(), cb_context:context(), http_method(), list()) ->
+                          {{'false', <<>>} | 'true', cowboy_req:req(), cb_context:context()} |
+                          halt_return().
+
+is_authentic(Req, Context, _ReqVerb, []) ->
+    lager:debug("failed to authenticate"),
+    ?MODULE:halt(Req, cb_context:add_system_error('invalid_credentials', Context));
+is_authentic(Req, Context, _ReqVerb, [{Mod, Params} | ReqNouns]) ->
+    Event = api_util:create_event_name(Context, <<"authenticate.", Mod/binary>>),
+    Payload = [Context | Params],
+    case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Payload)) of
+        [] ->
+            lager:debug("failed to authenticate : ~p", [Mod]),
+            is_authentic(Req, Context, _ReqVerb, ReqNouns);
+        ['true'|T]=_Y ->
+            prefer_new_context(T, Req, Context);
+        [{'true', Context2}|_]=_Y ->
+            {'true', Req, Context2};
+        [{'halt', Context2}|_] ->
+            lager:debug("authn halted"),
+            ?MODULE:halt(Req, Context2)
     end.
 
 -spec prefer_new_context(wh_proplist(), cowboy_req:req(), cb_context:context()) ->
@@ -697,23 +722,38 @@ is_permitted_verb(Req, Context, ?HTTP_OPTIONS) ->
     lager:debug("options requests are permitted by default"),
     %% all all OPTIONS, they are harmless (I hope) and required for CORS preflight
     {'true', Req, Context};
-is_permitted_verb(Req, Context, _ReqVerb) ->
-    is_permitted_nouns(Req, Context, cb_context:req_nouns(Context)).
-
--spec is_permitted_nouns(cowboy_req:req(), cb_context:context(), list()) ->
-                                {'true', cowboy_req:req(), cb_context:context()} |
-                                halt_return().
-is_permitted_nouns(Req, Context, [{<<"404">>, []}]) ->
-    ?MODULE:halt(Req, cb_context:add_system_error('not_found', Context));
-is_permitted_nouns(Req, Context0, _Nouns) ->
+is_permitted_verb(Req, Context0, _ReqVerb) ->
     Event = api_util:create_event_name(Context0, <<"authorize">>),
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Context0)) of
         [] ->
-            lager:debug("no one authz'd the request"),
-            ?MODULE:halt(Req, cb_context:add_system_error('forbidden', Context0));
+            is_permitted_nouns(Req, Context0, _ReqVerb,cb_context:req_nouns(Context0));
         ['true'|_] ->
             {'true', Req, Context0};
         [{'true', Context1}|_] ->
+            {'true', Req, Context1};
+        [{'halt', Context1}|_] ->
+            lager:debug("authz halted"),
+            ?MODULE:halt(Req, Context1)
+    end.
+
+-spec is_permitted_nouns(cowboy_req:req(), cb_context:context(), http_method(), list()) ->
+                                {'true', cowboy_req:req(), cb_context:context()} |
+                                halt_return().
+is_permitted_nouns(Req, Context, _ReqVerb, [{<<"404">>, []}]) ->
+    ?MODULE:halt(Req, cb_context:add_system_error('not_found', Context));
+is_permitted_nouns(Req, Context, _ReqVerb, []) ->
+    lager:debug("no one authz'd the request"),
+    ?MODULE:halt(Req, cb_context:add_system_error('forbidden', Context));
+is_permitted_nouns(Req, Context0, _ReqVerb, [{Mod, Params} | ReqNouns]) ->
+    Event = api_util:create_event_name(Context0, <<"authorize.", Mod/binary>>),
+    Payload = [Context0 | Params],
+    case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Payload)) of
+        [] ->
+            lager:debug("failed to authorize : ~p", [Mod]),
+            is_permitted_nouns(Req, Context0, _ReqVerb, ReqNouns);
+        ['true'|_]=_Y ->
+            {'true', Req, Context0};
+        [{'true', Context1}|_]=_Y ->
             {'true', Req, Context1};
         [{'halt', Context1}|_] ->
             lager:debug("authz halted"),
