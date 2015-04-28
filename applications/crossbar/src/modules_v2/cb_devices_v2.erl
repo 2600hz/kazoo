@@ -50,7 +50,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"v2_resource.execute.put.devices">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"v2_resource.execute.post.devices">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"v2_resource.execute.delete.devices">>, ?MODULE, 'delete'),
-    crossbar_bindings:bind(<<"v2_resource.finish_request.*.devices">>, 'cb_modules_util', 'reconcile_services').
+    crossbar_bindings:bind(<<"v2_resource.finish_request.*.devices">>, 'crossbar_services', 'reconcile').
 
 %%--------------------------------------------------------------------
 %% @public

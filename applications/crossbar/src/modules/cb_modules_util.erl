@@ -20,7 +20,6 @@
 
          ,bucket_name/1
          ,token_cost/1, token_cost/2, token_cost/3
-         ,reconcile_services/1
          ,bind/2
 
          ,range_view_options/1, range_view_options/2
@@ -137,45 +136,6 @@ bind(Module, Bindings) ->
          || {Binding, Function} <- Bindings
         ],
     'ok'.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Bill for devices
-%% @end
-%%--------------------------------------------------------------------
--spec reconcile_services(cb_context:context()) -> cb_context:context().
-reconcile_services(Context) ->
-    case cb_context:resp_status(Context) =:= 'success'
-        andalso cb_context:req_verb(Context) =/= <<"GET">>
-    of
-        'false' -> Context;
-        'true' ->
-            lager:debug("maybe reconciling services for account ~s"
-                        ,[cb_context:account_id(Context)]
-                       ),
-            _ = wh_services:save_as_dirty(cb_context:account_id(Context), base_audit_log(Context))
-    end.
-
--spec base_audit_log(cb_context:context()) -> wh_json:object().
-base_audit_log(Context) ->
-    AccountJObj = cb_context:account_doc(Context),
-    Tree = kz_account:tree(AccountJObj) ++ [cb_context:account_id(Context)],
-
-    lists:foldl(fun({F, V}, Acc) -> F(Acc, V) end
-                ,kzd_audit_log:new()
-                ,[{fun kzd_audit_log:set_tree/2, Tree}
-                  ,{fun kzd_audit_log:set_authenticating_user/2, base_auth_user(Context, AccountJObj)}
-                 ]
-               ).
-
--spec base_auth_user(cb_context:context(), wh_json:object()) -> wh_json:object().
-base_auth_user(Context, AccountJObj) ->
-    AuthJObj = cb_context:auth_doc(Context),
-
-    AccountName = kz_account:name(AccountJObj),
-
-    wh_json:set_value(<<"account_name">>, AccountName, AuthJObj).
 
 -spec pass_hashes(ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
 pass_hashes(Username, Password) ->

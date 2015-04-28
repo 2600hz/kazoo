@@ -8,7 +8,9 @@
 %%%-------------------------------------------------------------------
 -module(crossbar_services).
 
--export([maybe_dry_run/2, maybe_dry_run/3]).
+-export([maybe_dry_run/2, maybe_dry_run/3
+         ,reconcile/1
+        ]).
 
 -include("crossbar.hrl").
 
@@ -37,13 +39,13 @@ maybe_dry_run(Context, Callback, Props) ->
 maybe_dry_run_by_props(Context, Callback, Props, 'true') ->
     Type = props:get_ne_binary_value(<<"type">>, Props),
     RespJObj = dry_run(Context, Type, props:delete(<<"type">>, Props)),
-    lager:debug("accepting charges"),
+    lager:debug("accepting charges: ~s", [wh_json:encode(RespJObj)]),
     _ = accepting_charges(Context, RespJObj),
     Callback();
 maybe_dry_run_by_props(Context, Callback, Props, 'false') ->
     Type = props:get_ne_binary_value(<<"type">>, Props),
     RespJObj = dry_run(Context, Type, props:delete(<<"type">>, Props)),
-    lager:debug("request isn't accepting charges, maybe dry run the request"),
+    lager:debug("request isn't accepting charges, maybe dry run the request: ~s", [wh_json:encode(RespJObj)]),
     case wh_json:is_empty(RespJObj) of
         'true' ->
             lager:debug("nothing to be charged for, continuing : ~p", [RespJObj]),
@@ -55,16 +57,14 @@ maybe_dry_run_by_props(Context, Callback, Props, 'false') ->
                                    cb_context:context().
 maybe_dry_run_by_type(Context, Callback, Type, 'true') ->
     RespJObj = dry_run(Context, Type),
-    lager:debug("accepting charges"),
+    lager:debug("accepting charges: ~s", [wh_json:encode(RespJObj)]),
     _ = accepting_charges(Context, RespJObj),
     Callback();
 maybe_dry_run_by_type(Context, Callback, Type, 'false') ->
     RespJObj = dry_run(Context, Type),
-    lager:debug("not accepting charges"),
+    lager:debug("not accepting charges: ~s", [wh_json:encode(RespJObj)]),
     case wh_json:is_empty(RespJObj) of
-        'true' ->
-            lager:debug("no charges: ~p", [RespJObj]),
-            Callback();
+        'true' -> Callback();
         'false' -> crossbar_util:response_402(RespJObj, Context)
     end.
 
@@ -271,3 +271,36 @@ fetch_service(Context) ->
             lager:debug("auth account is a reseller, loading service from reseller ~s", [AuthAccountId]),
             wh_services:fetch(AuthAccountId)
     end.
+
+reconcile(Context) ->
+
+    case cb_context:resp_status(Context) =:= 'success'
+        andalso cb_context:req_verb(Context) =/= ?HTTP_GET
+    of
+        'false' -> Context;
+        'true' ->
+            lager:debug("maybe reconciling services for account ~s"
+                        ,[cb_context:account_id(Context)]
+                       ),
+            _ = wh_services:save_as_dirty(cb_context:account_id(Context), base_audit_log(Context))
+    end.
+
+-spec base_audit_log(cb_context:context()) -> wh_json:object().
+base_audit_log(Context) ->
+    AccountJObj = cb_context:account_doc(Context),
+    Tree = kz_account:tree(AccountJObj) ++ [cb_context:account_id(Context)],
+
+    lists:foldl(fun({F, V}, Acc) -> F(Acc, V) end
+                ,kzd_audit_log:new()
+                ,[{fun kzd_audit_log:set_tree/2, Tree}
+                  ,{fun kzd_audit_log:set_authenticating_user/2, base_auth_user(Context, AccountJObj)}
+                 ]
+               ).
+
+-spec base_auth_user(cb_context:context(), wh_json:object()) -> wh_json:object().
+base_auth_user(Context, AccountJObj) ->
+    AuthJObj = cb_context:auth_doc(Context),
+
+    AccountName = kz_account:name(AccountJObj),
+
+    wh_json:set_value(<<"account_name">>, AccountName, AuthJObj).

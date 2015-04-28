@@ -64,7 +64,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"v2_resource.execute.post.users">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"v2_resource.execute.delete.users">>, ?MODULE, 'delete'),
     _ = crossbar_bindings:bind(<<"v2_resource.execute.patch.users">>, ?MODULE, 'patch'),
-    crossbar_bindings:bind(<<"v2_resource.finish_request.*.users">>, 'cb_modules_util', 'reconcile_services').
+    crossbar_bindings:bind(<<"v2_resource.finish_request.*.users">>, 'crossbar_services', 'reconcile').
 
 %%--------------------------------------------------------------------
 %% @public
