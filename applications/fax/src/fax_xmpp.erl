@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -23,145 +23,149 @@
 -export([start/1, start_link/1, stop/1]).
 
 %% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-  terminate/2, code_change/3]).
+-export([init/1
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,terminate/2
+         ,code_change/3
+        ]).
 
 -export([send_notify/2]).
 
-
--record(state,
-        {
-         faxbox_id :: ne_binary(),
-         printer_id = 'undefined' :: api_binary(),
-         oauth_app_id = 'undefined' :: api_binary(),
-         refresh_token = 'undefined' :: api_binary(),
-         connected = 'false' :: boolean(),
-         session :: pid(),
-         jid :: exmpp_jid:jid(),
-         full_jid = 'undefined' :: api_binary(),
-         monitor :: reference()
-        }).
+-record(state, {faxbox_id :: ne_binary()
+                ,printer_id :: ne_binary()
+                ,oauth_app_id :: ne_binary()
+                ,refresh_token :: oauth_refresh_token()
+                ,connected = 'false' :: boolean()
+                ,session :: pid()
+                ,jid :: jid()
+                ,full_jid :: ne_binary()
+                ,monitor :: reference()
+               }).
 
 -type state() :: #state{}.
 -type packet() :: #received_packet{}.
+-type jid() :: #jid{}.
 
 start(PrinterId) ->
-  gen_server:start({local, wh_util:to_atom(PrinterId, 'true')}, ?MODULE, [PrinterId], []).
+  gen_server:start({'local', wh_util:to_atom(PrinterId, 'true')}, ?MODULE, [PrinterId], []).
 
 start_link(PrinterId) ->
-  gen_server:start_link({local, wh_util:to_atom(PrinterId, 'true')}, ?MODULE, [PrinterId], []).
+  gen_server:start_link({'local', wh_util:to_atom(PrinterId, 'true')}, ?MODULE, [PrinterId], []).
 
 stop(PrinterId) ->
-  gen_server:cast({local, wh_util:to_atom(PrinterId, 'true')}, stop).
+  gen_server:cast({'local', wh_util:to_atom(PrinterId, 'true')}, 'stop').
 
 init([PrinterId]) ->
-    process_flag(trap_exit, 'true'),
+    process_flag('trap_exit', 'true'),
     gen_server:cast(self(), 'start'),
-    {ok, #state{faxbox_id=PrinterId}, ?POLLING_INTERVAL}.
-
+    {'ok', #state{faxbox_id=PrinterId}, ?POLLING_INTERVAL}.
 
 handle_call(_Request, _From, State) ->
-  {reply, ok, State}.
+  {'reply', 'ok', State}.
 
 handle_cast('start', #state{faxbox_id=FaxBoxId} = State) ->
     case couch_mgr:open_doc(?WH_FAXES_DB, FaxBoxId) of
         {'ok', JObj} ->
-            JID = wh_json:get_value(<<"pvt_cloud_xmpp_jid">>, JObj),
-            PrinterId = wh_json:get_value(<<"pvt_cloud_printer_id">>, JObj),
-            UID = <<JID/binary,"/",PrinterId/binary>>,
-            AppId = wh_json:get_value(<<"pvt_cloud_oauth_app">>, JObj),
-            RefreshToken=#oauth_refresh_token{token=wh_json:get_value(<<"pvt_cloud_refresh_token">>, JObj)},
-            gen_server:cast(self(), 'connect'),
-            {noreply, State#state{printer_id=PrinterId,
-                                  oauth_app_id=AppId,
-                                  full_jid=UID,
-                                  refresh_token=RefreshToken}
-            , ?POLLING_INTERVAL
-            };
-          E ->
-              {stop, E, State}
+            {'noreply', handle_start(State, JObj), ?POLLING_INTERVAL};
+        E ->
+            {'stop', E, State}
     end;
 
-handle_cast('connect', #state{oauth_app_id=AppId, full_jid=JID, refresh_token=RefreshToken}=State) ->
+handle_cast('connect', #state{oauth_app_id=AppId
+                              ,full_jid=JID
+                              ,refresh_token=RefreshToken
+                             }=State) ->
     {'ok', App} = kazoo_oauth_util:get_oauth_app(AppId),
     {'ok', #oauth_token{token=Token}} = kazoo_oauth_util:token(App, RefreshToken),
     case connect(wh_util:to_list(JID), wh_util:to_list(Token)) of
-        {ok, {MySession, MyJID}} ->
+        {'ok', {MySession, MyJID}} ->
             Monitor = erlang:monitor('process', MySession),
             gen_server:cast(self(), 'subscribe'),
-            {noreply, State#state{monitor=Monitor
-                                 ,session=MySession
-                                 ,jid=MyJID
-                                 ,connected='true'}
-            , ?POLLING_INTERVAL};
+            {'noreply', State#state{monitor=Monitor
+                                    ,session=MySession
+                                    ,jid=MyJID
+                                    ,connected='true'
+                                   }
+             ,?POLLING_INTERVAL
+            };
         _ ->
-            {stop, <<"Error connecting to xmpp server">>, State}
+            {'stop', <<"Error connecting to xmpp server">>, State}
     end;
 
 handle_cast('status', State) ->
-    {noreply, State, ?POLLING_INTERVAL};
+    {'noreply', State, ?POLLING_INTERVAL};
 
-handle_cast('subscribe', #state{jid=#jid{raw=JFull}=MyJID, session=MySession}=State) ->
+handle_cast('subscribe', #state{jid=#jid{raw=JFull}=MyJID
+                                ,session=MySession
+                               }=State) ->
     lager:debug("xmpp subscribe ~s",[JFull]),
     IQ = get_sub_msg(MyJID),
     _PacketId = exmpp_session:send_packet(MySession, IQ),
-    {noreply, State, ?POLLING_INTERVAL};
+    {'noreply', State, ?POLLING_INTERVAL};
 
-handle_cast(stop, State) -> {stop, normal, State};
-handle_cast(_Msg, State) -> {noreply, State}.
+handle_cast('stop', State) -> {'stop', 'normal', State};
+handle_cast(_Msg, State) -> {'noreply', State}.
 
 handle_info(#received_packet{packet_type='message'}=Packet, State) ->
     process_received_packet(Packet, State),
-    {noreply, State, ?POLLING_INTERVAL};
+    {'noreply', State, ?POLLING_INTERVAL};
 handle_info(#received_packet{packet_type='iq'
-                            ,raw_packet=Packet}, State) ->
+                             ,raw_packet=Packet
+                            }, State) ->
     lager:debug("xmpp received iq packet ~s",[exmpp_xml:document_to_binary(Packet)]),
-    {noreply, State, ?POLLING_INTERVAL};
+    {'noreply', State, ?POLLING_INTERVAL};
 handle_info(#received_packet{}=Packet, State) ->
     lager:debug("xmpp received unknown packet type : ~p",[Packet]),
-    {noreply, State, ?POLLING_INTERVAL};
-handle_info(timeout, State) ->
+    {'noreply', State, ?POLLING_INTERVAL};
+handle_info('timeout', State) ->
     gen_server:cast(self(), 'subscribe'),
-    {noreply, State, ?POLLING_INTERVAL};
+    {'noreply', State, ?POLLING_INTERVAL};
 handle_info({'DOWN', MonitorRef, _Type, _Object, _Info}=A, #state{monitor=MonitorRef}=State) ->
   lager:debug("xmpp session down ~p",[A]),
   gen_server:cast(self(), 'start'),
-  {noreply, State, ?POLLING_INTERVAL};
+  {'noreply', State, ?POLLING_INTERVAL};
 handle_info(_Info, State) ->
     lager:debug("xmpp handle_info ~p",[_Info]),
-    {noreply, State, ?POLLING_INTERVAL}.
+    {'noreply', State, ?POLLING_INTERVAL}.
 
 terminate(_Reason, #state{jid=#jid{raw=JFull}
-                         ,session=MySession
-                         ,monitor=MonitorRef
-                         ,connected='true'}) ->
-
+                          ,session=MySession
+                          ,monitor=MonitorRef
+                          ,connected='true'
+                         }) ->
     lager:debug("terminating xmpp session ~s",[JFull]),
     erlang:demonitor(MonitorRef, ['flush']),
-    disconnect(MySession),
-    'ok';
+    disconnect(MySession);
 terminate(_Reason, _State) ->
-    lager:debug("terminate xmpp module with reason ~p",[_Reason]),
-    'ok'.
+    lager:debug("terminate xmpp module with reason ~p",[_Reason]).
 
-code_change(_OldVsn, State, _Extra) -> {ok, State}.
+code_change(_OldVsn, State, _Extra) -> {'ok', State}.
 
--spec get_sub_msg(exmpp_jid:jid()) -> ne_binary().
-get_sub_msg( #jid{raw=JFull, node=JUser, domain=JDomain}) ->
+-spec get_sub_msg(jid()) -> ne_binary().
+get_sub_msg(#jid{raw=JFull
+                 ,node=JUser
+                 ,domain=JDomain
+                }) ->
     BareJID = <<JUser/binary,"@",JDomain/binary>>,
     Document = <<"<iq type='set' from='", JFull/binary, "' to='",BareJID/binary,"'>"
                  ,   "<subscribe xmlns='google:push'>"
                  ,      "<item channel='cloudprint.google.com' from='cloudprint.google.com'/>"
                  ,   "</subscribe>"
-                 ,"</iq>">>,
-     Document.
+                 ,"</iq>"
+               >>,
+    Document.
 
 -define(NS_PUSH, 'google:push').
--define(XML_CTX_OPTIONS,[{namespace, [{"g", "google:push"}]}]).
+-define(XML_CTX_OPTIONS,[{'namespace', [{"g", "google:push"}]}]).
 
 -spec process_received_packet(packet(), state()) -> any().
 process_received_packet(#received_packet{raw_packet=Packet}
-                       ,#state{jid=#jid{node=JUser,domain=JDomain}}) ->
+                        ,#state{jid=#jid{node=JUser
+                                         ,domain=JDomain
+                                        }
+                               }) ->
     BareJID = <<JUser/binary,"@",JDomain/binary>>,
     case exmpp_xml:get_element(Packet, ?NS_PUSH, 'push') of
         'undefined' -> 'undefined';
@@ -176,43 +180,62 @@ process_received_packet(#received_packet{raw_packet=Packet}
 send_notify(PrinterId, JID) ->
     Payload = props:filter_undefined(
                 [{<<"Event-Name">>, <<"push">>}
-                ,{<<"Application-Name">>, <<"GCP">>}
-                ,{<<"Application-Event">>, <<"Queued-Job">>}
-                ,{<<"Application-Data">>, PrinterId}
-                ,{<<"JID">>, JID}
-                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                 ,{<<"Application-Name">>, <<"GCP">>}
+                 ,{<<"Application-Event">>, <<"Queued-Job">>}
+                 ,{<<"Application-Data">>, PrinterId}
+                 ,{<<"JID">>, JID}
+                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ]),
     wapi_xmpp:publish_event(Payload).
 
--spec connect(ne_binary(), ne_binary()) -> {'ok', tuple()} | {'error', any()}.
+-spec connect(string(), string()) ->
+                     {'ok', {pid(), jid()}} |
+                     {'error', any()}.
 connect(JID, Password) ->
     Session = exmpp_session:start({1,0}),
     Jid = exmpp_jid:parse(JID),
     exmpp_session:auth(Session, Jid, Password, "X-OAUTH2"),
     _StreamId  = exmpp_session:connect_TCP(Session, ?XMPP_SERVER, 5222,[{'starttls', 'enabled'}]),
 
-    try init_session(Session, Password)
+    try init_session(Session, Password) of
+        _ -> {'ok', {Session, Jid}}
     catch
-      _:Error -> lager:debug("error connecting xmpp session: ~p", [Error]),
-         {error, Error}
-    end,
-    {ok, {Session, Jid}}.
+        _:Error ->
+            lager:debug("error connecting xmpp session: ~p", [Error]),
+            {'error', Error}
+    end.
 
--spec init_session(pid(), ne_binary()) -> any().
+-spec init_session(pid(), string()) -> 'ok'.
 init_session(Session, Password) ->
-  try exmpp_session:login(Session,"X-OAUTH2")
-  catch
-    throw:{auth_error, 'not-authorized'} ->
-    exmpp_session:register_account(Session, Password),
-    exmpp_session:login(Session)
-  end,
-  exmpp_session:send_packet(Session, exmpp_presence:set_status(exmpp_presence:available(), "Pubsubber Ready")),
-  ok.
+    try
+        exmpp_session:login(Session, "X-OAUTH2")
+    catch
+        'throw':{'auth_error', 'not-authorized'} ->
+            exmpp_session:register_account(Session, Password),
+            exmpp_session:login(Session)
+    end,
+    exmpp_session:send_packet(Session, exmpp_presence:set_status(exmpp_presence:available(), "Pubsubber Ready")),
+    'ok'.
 
+-spec disconnect(pid()) -> any().
 disconnect(MySession) ->
-  try
+    try
         exmpp_session:stop(MySession)
-  catch
-    E:R ->
-        lager:debug("exception closing xmpp session ~p : ~p",[E,R])
-  end.
+    catch
+        _E:_R ->
+            lager:debug("exception closing xmpp session ~p : ~p", [_E, _R])
+    end.
+
+-spec handle_start(state(), wh_json:object()) -> state().
+handle_start(State, JObj) ->
+    JID = wh_json:get_value(<<"pvt_cloud_xmpp_jid">>, JObj),
+    PrinterId = wh_json:get_value(<<"pvt_cloud_printer_id">>, JObj),
+    UID = <<JID/binary, "/", PrinterId/binary>>,
+    AppId = wh_json:get_value(<<"pvt_cloud_oauth_app">>, JObj),
+    RefreshToken = #oauth_refresh_token{token=wh_json:get_value(<<"pvt_cloud_refresh_token">>, JObj)},
+    gen_server:cast(self(), 'connect'),
+    State#state{printer_id=PrinterId
+                ,oauth_app_id=AppId
+                ,full_jid=UID
+                ,refresh_token=RefreshToken
+               }.
