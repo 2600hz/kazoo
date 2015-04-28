@@ -15,7 +15,7 @@
     , validate/1, validate/2, validate/3
     , put/1, put/2
     , post/3
-    , patch/2
+    , patch/1
     , delete/3
     , load_dict_list/1, load_dict/3]).
 
@@ -54,11 +54,11 @@ init() ->
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 
 allowed_methods() ->
-    [?HTTP_GET, ?HTTP_PUT].
+    [?HTTP_GET, ?HTTP_PUT, ?HTTP_PATCH].
 allowed_methods(?DICT_RESOURCE) ->
     [?HTTP_GET, ?HTTP_PUT].
 allowed_methods(?DICT_RESOURCE, _DictID) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE, ?HTTP_PATCH].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -97,7 +97,9 @@ validate(Context) ->
 validate_config(Context, ?HTTP_GET) ->
     load_aaa_config(Context);
 validate_config(Context, ?HTTP_PUT) ->
-    validate_request(Context).
+    validate_request(Context);
+validate_config(Context, ?HTTP_PATCH) ->
+    validate_patch(Context).
 
 validate(Context, ?DICT_RESOURCE) ->
     validate_dict(Context, ?DICT_RESOURCE, cb_context:req_verb(Context)).
@@ -114,8 +116,6 @@ validate_dict(Context, ?DICT_RESOURCE, DictId, ?HTTP_GET) ->
     load_dict(Context, ?DICT_RESOURCE, DictId);
 validate_dict(Context, ?DICT_RESOURCE, DictId, ?HTTP_POST) ->
     validate_request(Context, ?DICT_RESOURCE, DictId);
-validate_dict(Context, ?DICT_RESOURCE, DictId, ?HTTP_PATCH) ->
-    validate_patch(load_dict(Context, ?DICT_RESOURCE, DictId), ?DICT_RESOURCE);
 validate_dict(Context, ?DICT_RESOURCE, DictId, ?HTTP_DELETE) ->
     load_dict(Context, ?DICT_RESOURCE, DictId).
 
@@ -135,8 +135,8 @@ put(Context, ?DICT_RESOURCE) ->
 delete(Context, ?DICT_RESOURCE, _DocID) ->
     crossbar_doc:delete(Context).
 
--spec patch(cb_context:context(), path_token()) -> cb_context:context().
-patch(Context, _DocID) ->
+-spec patch(cb_context:context()) -> cb_context:context().
+patch(Context) ->
     crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
@@ -162,7 +162,7 @@ validate_request(Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Validate request for an dictionary of an account 
+%% Validate request for an dictionary of an account
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_request(cb_context:context(), path_token(), path_token()) -> cb_context:context().
@@ -213,19 +213,17 @@ on_successful_validation(Context, DictId) when is_binary(DictId) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%  Support PATCH - merge vmbox document with request data
+%%  Support PATCH - merge AAA settings with request data
 %% @end
 %%--------------------------------------------------------------------
--spec validate_patch(cb_context:context(), ne_binary()) -> cb_context:context().
-validate_patch(Context, DictId)  when is_binary(DictId) ->
-    case cb_context:resp_status(Context) of
-        'success' ->
-            PatchJObj = wh_doc:public_fields(cb_context:req_data(Context)),
-            VmJObj = wh_json:merge_jobjs(PatchJObj, cb_context:doc(Context)),
-            OnValidateReqDataSuccess = fun(C) -> crossbar_doc:load_merge(DictId, C) end,
-            cb_context:validate_request_data(?AAA_RESOURCE, cb_context:set_req_data(Context, VmJObj), OnValidateReqDataSuccess);
-        _Status -> Context
-    end.
+-spec validate_request_patch(ne_binary(), cb_context:context()) -> cb_context:context().
+validate_request_patch(_DocId, Context) ->
+    OnSuccess = fun(C) -> on_successful_validation(C) end,
+    cb_context:validate_request_data(?AAA_RESOURCE, Context, OnSuccess).
+
+-spec validate_patch(cb_context:context()) -> cb_context:context().
+validate_patch(Context) ->
+    crossbar_doc:patch_and_validate(?AAA_RESOURCE, Context, fun validate_request_patch/2).
 
 %%--------------------------------------------------------------------
 %% @private
