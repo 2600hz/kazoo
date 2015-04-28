@@ -14,6 +14,8 @@
          ,allowed_methods/0
          ,resource_exists/0
          ,validate/1
+         ,authenticate/1
+         ,authorize/1
         ]).
 
 -include("../crossbar.hrl").
@@ -37,6 +39,8 @@
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.search">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.search">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
+    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.validate.search">>, ?MODULE, 'validate').
 
 %%--------------------------------------------------------------------
@@ -61,6 +65,12 @@ allowed_methods() ->
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
+
+-spec authenticate(cb_context:context()) -> 'true'.
+authenticate(Context) -> 'true'.
+
+-spec authorize(cb_context:context()) -> 'true'.
+authorize(Context) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
