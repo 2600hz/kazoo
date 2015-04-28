@@ -463,11 +463,19 @@ maybe_faxbox_owner(#state{faxbox=FaxBoxDoc}=State) ->
 maybe_faxbox_domain(#state{faxbox_email=Domain}=State) ->
     ViewOptions = [{'key', Domain}],
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_realm">>, ViewOptions) of
-        {'ok', [JObj]} -> AccountId = wh_json:get_value([<<"value">>, <<"account_id">>], JObj),
-                          maybe_faxbox_by_owner_email(AccountId, State);
-        _ -> 
-            Error = <<"faxbox ", Domain/binary, " not found ">>,
+        {'ok', []} ->
+            Error = <<"realm ", Domain/binary, " not found in accounts db">>,
             lager:debug(Error),
+            {'error', "not allowed", State#state{errors=[Error]}};
+        {'ok', [JObj]} -> AccountId = wh_json:get_value(<<"id">>, JObj),
+                          maybe_faxbox_by_owner_email(AccountId, State);
+        {'ok', [_JObj | _JObjs]} ->
+            Error = <<"accounts query by realm ", Domain/binary, " return more than one document">>,
+            lager:debug(Error),
+            {'error', "not allowed", State#state{errors=[Error]}};
+        {'error', _E} -> 
+            Error = <<"error searching realm ", Domain/binary>>,
+            lager:debug("error ~p querying realm in accounts database",[_E]),
             {'error', "not allowed", State#state{errors=[Error]}}
     end.
 
