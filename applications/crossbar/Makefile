@@ -20,6 +20,7 @@ ERL_LIBS = $(subst $(eval) ,:,$(wildcard $(ROOT)/deps/rabbitmq_client-*/deps))
 all: compile
 
 MODULES = $(shell ls src/*.erl | sed 's/src\///;s/\.erl/,/' | sed '$$s/.$$//')
+TEST_MODULES = $(shell ls test/*.erl | sed 's/test\///;s/\.erl/,/' | sed '$$s/.$$//')
 CB_MODULES = $(shell ls src/modules/*.erl | sed 's/src\/modules\///;s/\.erl/,/' | sed '$$s/.$$//')
 CB_MODULES_V1 = $(shell ls src/modules_v1/*.erl | sed 's/src\/modules_v1\///;s/\.erl/,/' | sed '$$s/.$$//')
 CB_MODULES_V2 = $(shell ls src/modules_v2/*.erl | sed 's/src\/modules_v2\///;s/\.erl/,/' | sed '$$s/.$$//')
@@ -36,20 +37,22 @@ ebin/$(PROJECT).app: src/*.erl src/*/*.erl
 
 compile-test: test/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
-		| sed 's/{modules, \[\]}/{modules, \[$(MODULES),$(CB_MODULES,$(CB_MODULES_V1),$(CB_MODULES_V2))\]}/' \
+		| sed 's/{modules, \[\]}/{modules, \[$(MODULES),$(CB_MODULES,$(CB_MODULES_V1),$(CB_MODULES_V2)),$(TEST_MODULES)\]}/' \
 		> test/$(PROJECT).app
 	-@$(MAKE) test/$(PROJECT).app
 
-test/$(PROJECT).app: src/*.erl src/modules/*.erl
+test/$(PROJECT).app: src/*.erl src/*/*.erl test/*.erl
 	@mkdir -p test/
 	ERL_LIBS=$(ERL_LIBS) erlc -v $(ERLC_OPTS) -DTEST -o test/ -pa test/ $?
 
 clean:
 	rm -f ebin/*
-	rm -f test/*.beam test/$(PROJECT).app
 	rm -f erl_crash.dump
 
-test: clean compile-test eunit
+clean-test:
+	rm -f test/*.beam test/$(PROJECT).app
+
+test: clean-test compile-test eunit
 
 eunit: compile-test
-	erl -noshell $(PA) -pa test -eval "eunit:test([$(MODULES),$(CB_MODULES),$(CB_MODULES_V1),$(CB_MODULES_V2)], [verbose])" -s init stop
+	erl -noshell $(PA) -pa test -eval "case eunit:test([$(TEST_MODULES),$(MODULES),$(CB_MODULES),$(CB_MODULES_V1),$(CB_MODULES_V2)], [verbose]) of 'ok' -> init:stop(); _ -> init:stop(1) end."

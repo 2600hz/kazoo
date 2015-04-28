@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @Copyright (C) 2010-2014, 2600Hz
+%%% @Copyright (C) 2010-2015, 2600Hz
 %%% @doc
 %%% Whistle API Helpers
 %%%
@@ -51,6 +51,10 @@
 
 -include("../include/wh_api.hrl").
 -include("../include/wh_log.hrl").
+
+-ifdef(TEST).
+-export([has_any/2, has_all/2]).
+-endif.
 
 %%%===================================================================
 %%% API
@@ -480,29 +484,3 @@ type_check_all(Prop, {Key, Fun}) ->
                     'false'
             end
     end.
-
-%% EUNIT TESTING
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
-
-has_all_test() ->
-    Prop = [{<<"k1">>, <<"v1">>}
-            ,{<<"k2">>, <<"v2">>}
-            ,{<<"k3">>, <<"v3">>}
-           ],
-    Headers = [<<"k1">>, <<"k2">>, <<"k3">>],
-    ?assertEqual(true, has_all(Prop, Headers)),
-    ?assertEqual(false, has_all(Prop, [<<"k4">> | Headers])),
-    ok.
-
-has_any_test() ->
-    Prop = [{<<"k1">>, <<"v1">>}
-            ,{<<"k2">>, <<"v2">>}
-            ,{<<"k3">>, <<"v3">>}
-           ],
-    Headers = [<<"k1">>, <<"k2">>, <<"k3">>],
-    ?assertEqual(true, has_any(Prop, Headers)),
-    ?assertEqual(false, has_any(Prop, [<<"k4">>])),
-    ok.
-
--endif.

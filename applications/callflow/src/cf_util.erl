@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz
+%%% @copyright (C) 2011-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -927,14 +927,3 @@ account_timezone(Call) ->
         {'error', _E} ->
             whapps_config:get(<<"accounts">>, <<"timezone">>, ?DEFAULT_TIMEZONE)
     end.
-
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
-
-alpha_to_dialpad_test() ->
-    ?assertEqual(<<"222">>, alpha_to_dialpad(<<"abc">>)),
-    ?assertEqual(<<"23456789">>, alpha_to_dialpad(<<"behknqux">>)),
-    ?assertEqual(<<"23456789">>, alpha_to_dialpad(<<"BeHkNqUx">>)),
-    ?assertEqual(<<"23456789">>, alpha_to_dialpad(<<"1BeH@k(N$q-u+x=">>)).
-
--endif.

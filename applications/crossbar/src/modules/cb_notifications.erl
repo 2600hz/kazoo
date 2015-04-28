@@ -21,6 +21,10 @@
          ,delete/2
         ]).
 
+-ifdef(TEST).
+-export([merge_available/2]).
+-endif.
+
 -include("../crossbar.hrl").
 
 -define(NOTIFICATION_MIME_TYPES, [{<<"text">>, <<"html">>}
@@ -1052,18 +1056,3 @@ leak_attachments_fold(_Attachment, Props, Acc) ->
                       ,wh_json:from_list([{<<"length">>, wh_json:get_integer_value(<<"length">>, Props)}])
                       ,Acc
                      ).
-
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
-
-merge_available_test() ->
-    Available = wh_json:decode(<<"[{\"id\":\"o1\",\"k1\":\"v1\"},{\"id\":\"o2\",\"k2\":\"v2\"},{\"id\":\"o3\",\"k3\":\"v3\"}]">>),
-    AccountAvailable = wh_json:decode(<<"[{\"id\":\"o1\",\"k1\":\"a1\"},{\"id\":\"o2\",\"k2\":\"a2\"}]">>),
-
-    Merged = merge_available(AccountAvailable, Available),
-
-    ?assertEqual(<<"a1">>, wh_json:get_value([2,<<"k1">>], Merged)),
-    ?assertEqual(<<"a2">>, wh_json:get_value([1,<<"k2">>], Merged)),
-    ?assertEqual(<<"v3">>, wh_json:get_value([3,<<"k3">>], Merged)).
-
--endif.

@@ -1462,8 +1462,3 @@ delete_remove_from_accounts(Context) ->
         {'error', _R} ->
             crossbar_util:response('error', <<"unable to remove account definition">>, 500, Context)
     end.
-
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
-
--endif.

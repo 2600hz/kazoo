@@ -12,5 +12,8 @@ compile: $(MAKEDIRS)
 clean: ACTION = clean
 clean: $(MAKEDIRS)
 
+test: ACTION = test
+test: $(MAKEDIRS)
+
 $(MAKEDIRS):
 	$(MAKE) -C $(@D) $(ACTION)

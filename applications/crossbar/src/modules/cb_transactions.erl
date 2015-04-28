@@ -18,10 +18,6 @@
 -include("../crossbar.hrl").
 -include_lib("whistle_transactions/include/whistle_transactions.hrl").
 
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
--endif.
-
 -type payload() :: {cowboy_req:req(), cb_context:context()}.
 
 %%%===================================================================
@@ -172,8 +168,8 @@ fetch_monthly_recurring(Context, Options) ->
         {'error', _}=E -> send_resp(E, Context);
         {'ok', Transactions} ->
             JObjs = [JObj
-                     || JObj <- maybe_filter_by_reason(Transactions, Options)
-                            ,wh_json:get_integer_value(<<"code">>, JObj) =:= ?CODE_MONTHLY_RECURRING
+                     || JObj <- maybe_filter_by_reason(Transactions, Options),
+                        wh_json:get_integer_value(<<"code">>, JObj) =:= ?CODE_MONTHLY_RECURRING
                     ],
             send_resp({'ok', JObjs}, Context)
     end.
@@ -244,8 +240,8 @@ filter_braintree_subscriptions(Context) ->
 %%--------------------------------------------------------------------
 -spec filter_braintree_subscription(wh_json:object()) -> wh_json:object().
 filter_braintree_subscription(BSubscription) ->
-    Routines = [fun(BSub) -> clean_braintree_subscription(BSub) end
-                ,fun(BSub) -> correct_date_braintree_subscription(BSub) end
+    Routines = [fun clean_braintree_subscription/1
+                ,fun correct_date_braintree_subscription/1
                ],
     lists:foldl(fun(F, BSub) -> F(BSub) end, BSubscription, Routines).
 
@@ -315,7 +311,7 @@ send_resp({'ok', JObj}, Context) ->
                         ]);
 send_resp({'error', Details}, Context) ->
     cb_context:add_system_error(
-        'bad_identifier'
-        ,wh_json:from_list([{<<"cause">>, Details}])
-        ,Context
-    ).
+      'bad_identifier'
+      ,wh_json:from_list([{<<"cause">>, Details}])
+      ,Context
+     ).

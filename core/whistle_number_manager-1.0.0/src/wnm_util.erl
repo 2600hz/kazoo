@@ -10,9 +10,7 @@
 -module(wnm_util).
 
 -ifndef(TEST).
--export([pretty_print/1
-         ,pretty_print/2
-        ]).
+-export([pretty_print/1, pretty_print/2]).
 -endif.
 
 -export([available_classifiers/0]).
@@ -36,11 +34,6 @@
         ]).
 -export([find_account_id/1]).
 -export([are_jobjs_identical/2]).
-
--ifdef(TEST).
--include_lib("proper/include/proper.hrl").
--include_lib("eunit/include/eunit.hrl").
--endif.
 
 -include("wnm.hrl").
 
@@ -513,71 +506,3 @@ is_vitelity_e911_configured(Features) ->
 is_vitelity_e911_configured(Number, PhoneNumbersJObj) ->
     Features = wh_json:get_value([Number, <<"features">>], PhoneNumbersJObj, []),
     is_vitelity_e911_configured(Number, Features).
-
--ifdef(TEST).
-%% PROPER TESTING
-%%
-%%% 1000000000
-%% (AAABBBCCCC, 1AAABBBCCCC) -> AAABBBCCCCCC.
-prop_to_npan() ->
-    ?FORALL(Number, range(2002000000,19999999999),
-            begin
-                BinNum = wh_util:to_binary(Number),
-                NPAN = to_npan(BinNum),
-                case byte_size(BinNum) of
-                    11 -> BinNum =:= <<"1", NPAN/binary>>;
-                    _ -> NPAN =:= BinNum
-                end
-            end).
-
-%% (AAABBBCCCC, 1AAABBBCCCC) -> 1AAABBBCCCCCC.
-prop_to_1npan() ->
-    ?FORALL(Number, range(2002000000,19999999999),
-            begin
-                BinNum = wh_util:to_binary(Number),
-                OneNPAN = to_1npan(BinNum),
-                case byte_size(BinNum) of
-                    11 -> OneNPAN =:= BinNum;
-                    _ -> OneNPAN =:= <<"1", BinNum/binary>>
-                end
-            end).
-
-%% (AAABBBCCCC, 1AAABBBCCCC) -> +1AAABBBCCCCCC.
-prop_to_e164() ->
-    ?FORALL(Number, range(2002000000,19999999999),
-            begin
-                BinNum = wh_util:to_binary(Number),
-                E164 = to_e164(BinNum),
-                case byte_size(BinNum) of
-                    11 -> E164 =:= <<$+, BinNum/binary>>;
-                    10 -> E164 =:= <<$+, $1, BinNum/binary>>;
-                    _ -> E164 =:= BinNum
-                end
-            end).
-
-%% EUNIT TESTING
-%%
-
-proper_test_() ->
-    {"Runs the module's PropEr tests during eunit testing",
-     {'timeout', 15000,
-      [
-       ?_assertEqual([], proper:module(?MODULE, [{'max_shrinks', 0}]))
-      ]}}.
-
-to_e164_test() ->
-    Ns = [<<"+12234567890">>, <<"12234567890">>, <<"2234567890">>],
-    Ans = <<"+12234567890">>,
-    lists:foreach(fun(N) -> ?assertEqual(to_e164(N), Ans) end, Ns).
-
-to_npan_test() ->
-    Ns = [<<"+12234567890">>, <<"12234567890">>, <<"2234567890">>],
-    Ans = <<"2234567890">>,
-    lists:foreach(fun(N) -> ?assertEqual(to_npan(N), Ans) end, Ns).
-
-to_1npan_test() ->
-    Ns = [<<"+12234567890">>, <<"12234567890">>, <<"2234567890">>],
-    Ans = <<"12234567890">>,
-    lists:foreach(fun(N) -> ?assertEqual(to_1npan(N), Ans) end, Ns).
-
--endif.

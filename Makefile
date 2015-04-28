@@ -1,10 +1,13 @@
 ROOT = .
 
+KAZOODIRS = core/Makefile \
+	    applications/Makefile
+
 MAKEDIRS = deps/Makefile \
 	   core/Makefile \
 	   applications/Makefile
 
-.PHONY: $(MAKEDIRS)
+.PHONY: $(MAKEDIRS) core deps apps
 
 all : compile
 
@@ -16,13 +19,20 @@ $(MAKEDIRS):
 
 clean : ACTION = clean
 clean : $(MAKEDIRS)
-	rm -f test/*.beam
 	rm -f *crash.dump
+	rm scripts/log/*
 
-test : clean app eunit
+test: ACTION = test
+test: $(KAZOODIRS)
 
-eunit :
-	@$(REBAR) eunit skip_deps=true
+core:
+	$(MAKE) -C core all
+deps:
+	$(MAKE) -C deps all
+apps:
+	$(MAKE) -C applications all
+
+kazoo: core apps
 
 build-plt :
 	@$(DIALYZER) --build_plt --output_plt $(ROOT)/.platform_dialyzer.plt \

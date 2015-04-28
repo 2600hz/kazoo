@@ -6,7 +6,7 @@ PALIBS = $(foreach LIB,$(LIBS),-pa $(LIB)/ebin)
 
 EBINS = $(shell find $(ROOT)/core/whistle-* -maxdepth 2 -name ebin -print) \
 	$(shell find $(ROOT)/deps/lager-* -maxdepth 2 -name ebin -print) \
-	$(shell find $(ROOT)/deps/nksip-* -maxdepth 2 -name ebin -print) 
+	$(shell find $(ROOT)/deps/nksip-* -maxdepth 2 -name ebin -print)
 PA = $(foreach EBIN,$(EBINS),-pa $(EBIN))
 
 ERLC_OPTS = -Werror +debug_info +warn_export_all +warn_missing_spec $(PA) $(PALIBS)
@@ -36,16 +36,19 @@ compile-test: test/$(PROJECT).app
 	-@$(MAKE) test/$(PROJECT).app
 
 test/$(PROJECT).app: src/*.erl src/modules/*.erl
+	$(MAKE) -C lib/ all
 	@mkdir -p test/
 	erlc -v $(ERLC_OPTS) -DTEST -o test/ -pa test/ $?
 
 clean:
 	$(MAKE) -C lib/ clean
 	rm -f ebin/*
-	rm -f test/*.beam test/$(PROJECT).app
 	rm -f erl_crash.dump
 
-test: clean compile-test eunit
+clean-test:
+	rm -f test/*.beam test/$(PROJECT).app
+
+test: clean-test compile-test eunit
 
 eunit: compile-test
-	erl -noshell -pa test -eval "eunit:test([$(MODULES)], [verbose])" -s init stop
+	erl -noshell $(PA) -pa test -eval "case eunit:test([$(MODULES),$(K_MODULES)], [verbose]) of 'ok' -> init:stop(); _ -> init:stop(1) end."
