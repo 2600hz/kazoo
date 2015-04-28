@@ -253,6 +253,7 @@ save_as_dirty(#wh_services{jobj=JObj
             timer:sleep(BackOff),
             save_as_dirty(Services, AuditLog, BackOff);
         {'error', 'conflict'} ->
+            lager:debug("conflict when saving, attempting mitigation"),
             save_conflicting_as_dirty(Services, AuditLog, BackOff)
     end.
 
@@ -310,8 +311,8 @@ save_audit_log(Services, AuditLog, ResellerId) ->
 
     MODb = kazoo_modb:get_modb(ResellerId),
     ResellerAuditLog = wh_doc:update_pvt_parameters(AuditLog1, MODb, [{'account_id', ResellerId}]),
-    {'ok', _} = kazoo_modb:save_doc(MODb, ResellerAuditLog),
-    lager:debug("saved audit log to ~s", [ResellerId]),
+    {'ok', _Saved} = kazoo_modb:save_doc(MODb, ResellerAuditLog),
+    lager:debug("saved audit log to ~s: ~p", [ResellerId, _Saved]),
     AuditLog1.
 
 -spec update_audit_log(services(), kzd_audit_log:doc()) -> kzd_audit_log:doc().
@@ -479,7 +480,9 @@ get_billing_id(Account) ->
 -spec update(ne_binary(), ne_binary(), integer(), services()) -> services().
 update(Category, Item, Quantity, Services) when not is_integer(Quantity) ->
     update(Category, Item, wh_util:to_integer(Quantity), Services);
-update(Category, Item, Quantity, #wh_services{updates=JObj}=Services) when is_binary(Category), is_binary(Item) ->
+update(Category, Item, Quantity, #wh_services{updates=JObj}=Services)
+  when is_binary(Category),
+       is_binary(Item) ->
     Services#wh_services{updates=wh_json:set_value([Category, Item], Quantity, JObj)}.
 
 %%--------------------------------------------------------------------
@@ -632,12 +635,12 @@ find_reseller_id(Account) ->
 -spec allow_updates(ne_binary()) -> 'true'.
 allow_updates(<<_/binary>> = Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
-    lager:debug("determining if account ~s is able to make updates", [AccountId]),
     case couch_mgr:open_cache_doc(?WH_SERVICES_DB, AccountId) of
         {'error', _R} ->
-            lager:debug("unable to open account ~s services: ~p", [AccountId, _R]),
+            lager:debug("can't determine if account ~s can make updates: ~p", [AccountId, _R]),
             default_maybe_allow_updates(AccountId);
         {'ok', ServicesJObj} ->
+            lager:debug("determining if account ~s is able to make updates", [AccountId]),
             maybe_follow_billling_id(AccountId, ServicesJObj)
     end.
 
@@ -808,13 +811,21 @@ category_quantity(Category, Exceptions, #wh_services{updates=UpdatedQuantities
                                                     }) ->
     CurrentQuantities = current_quantities(JObj),
     Quantities = wh_json:merge_jobjs(UpdatedQuantities, CurrentQuantities),
+
     lists:foldl(fun(Item, Sum) ->
-                        case lists:member(Item, Exceptions) of
-                            'true' -> Sum;
-                            'false' ->
-                                wh_json:get_integer_value([Category, Item], Quantities, 0) + Sum
-                        end
-                end, 0, wh_json:get_keys(Category, Quantities)).
+                        maybe_exclude_item(Category, Item, Sum, Exceptions, Quantities)
+                end
+                ,0
+                ,wh_json:get_keys(Category, Quantities)
+               ).
+
+-spec maybe_exclude_item(ne_binary(), ne_binary(), integer(), ne_binaries(), wh_json:object()) -> integer().
+maybe_exclude_item(Category, Item, Sum, Exceptions, Quantities) ->
+    case lists:member(Item, Exceptions) of
+        'true' -> Sum;
+        'false' ->
+            wh_json:get_integer_value([Category, Item], Quantities, 0) + Sum
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -838,13 +849,11 @@ cascade_quantity(Category, Item, #wh_services{cascade_quantities=JObj}=Services)
 cascade_category_quantity(_, _, #wh_services{deleted='true'}) -> 0;
 cascade_category_quantity(Category, Exceptions, #wh_services{cascade_quantities=Quantities}=Services) ->
     lists:foldl(fun(Item, Sum) ->
-                        case lists:member(Item, Exceptions) of
-                            'true' -> Sum;
-                            'false' ->
-                                wh_json:get_integer_value([Category, Item], Quantities, 0) + Sum
-                        end
-                end, category_quantity(Category, Exceptions, Services)
-                ,wh_json:get_keys(Category, Quantities)).
+                        maybe_exclude_item(Category, Item, Sum, Exceptions, Quantities)
+                end
+                ,category_quantity(Category, Exceptions, Services)
+                ,wh_json:get_keys(Category, Quantities)
+               ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -893,8 +902,10 @@ dry_run(Services) ->
 -spec calculate_charges(services(), wh_json:objects()) -> wh_json:object().
 calculate_charges(Services, JObjs) ->
     case calculate_services_charges(Services) of
-        {'error', _} -> wh_json:new();
-        {'no_plan', _} -> wh_json:new();
+        {'error', _E} ->
+            wh_json:new();
+        {'no_plan', _NP} ->
+            wh_json:new();
         {'ok', PlansCharges} ->
             calculate_transactions_charges(PlansCharges, JObjs)
     end.
@@ -910,14 +921,18 @@ calculate_charges(Services, JObjs) ->
                                         {'error' | 'ok', wh_json:object()}.
 calculate_services_charges(#wh_services{jobj=ServiceJObj}=Services) ->
     case wh_service_plans:from_service_json(ServiceJObj) of
-        [] -> {'no_plan', wh_json:new()};
+        [] ->
+            {'no_plan', wh_json:new()};
         ServicePlans ->
             calculate_services_charges(Services, ServicePlans)
     end.
 
 calculate_services_charges(#wh_services{jobj=ServiceJObj}=Services, ServicePlans) ->
+    lager:debug("service jobj: ~p", [ServiceJObj]),
     case wh_service_plans:create_items(ServiceJObj) of
-        {'error', _} -> {'error', wh_json:new()};
+        {'error', _E} ->
+            lager:debug("failed to create items from service plans: ~p", [_E]),
+            {'error', wh_json:new()};
         {'ok', ServiceItems} ->
             PlanItems = wh_service_plans:create_items(Services, ServicePlans),
             Changed = wh_service_items:get_updated_items(PlanItems, ServiceItems),
@@ -929,7 +944,8 @@ calculate_services_charges(#wh_services{jobj=ServiceJObj}=Services, ServicePlans
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec calculate_transactions_charges(wh_json:object(), wh_json:objects()) -> wh_json:object().
+-spec calculate_transactions_charges(wh_json:object(), wh_json:objects()) ->
+                                            wh_json:object().
 calculate_transactions_charges(PlansCharges, JObjs) ->
     lists:foldl(
       fun calculate_transactions_charge_fold/2
@@ -937,22 +953,24 @@ calculate_transactions_charges(PlansCharges, JObjs) ->
       ,JObjs
      ).
 
--spec calculate_transactions_charge_fold(wh_json:object(), wh_json:object()) -> wh_json:object().
-calculate_transactions_charge_fold(JObj, Acc) ->
+-spec calculate_transactions_charge_fold(wh_json:object(), wh_json:object()) ->
+                                                wh_json:object().
+calculate_transactions_charge_fold(JObj, PlanCharges) ->
     Amount = wh_json:get_value(<<"amount">>, JObj, 0),
     Quantity = wh_json:get_value(<<"quantity">>, JObj, 0),
-    SubTotal = wh_json:get_value(<<"activation_charges">>, Acc, 0),
-    case SubTotal + (Amount*Quantity) of
+    SubTotal = wh_json:get_value(<<"activation_charges">>, PlanCharges, 0),
+
+    case SubTotal + (Amount * Quantity) of
         Zero when Zero == 0 ->
             %% Works for 0.0 and 0. May compare to a threshold though…
-            Acc;
+            PlanCharges;
         Total ->
             Category = wh_json:get_value(<<"category">>, JObj),
             Item = wh_json:get_value(<<"item">>, JObj),
             Props = [{<<"activation_charges">>, Total}
                      ,{[Category, Item, <<"activation_charges">>], Amount}
                     ],
-            wh_json:set_values(Props, Acc)
+            wh_json:set_values(Props, PlanCharges)
     end.
 
 %%--------------------------------------------------------------------
@@ -993,18 +1011,32 @@ dry_run_activation_charges(Category, Item, Quantity, #wh_services{jobj=JObj}=Ser
             ServicesJObj = wh_services:to_json(Services),
             Plans = wh_service_plans:from_service_json(ServicesJObj),
             ServicePlan = wh_service_plans:public_json(Plans),
-            ItemPlan = wh_json:get_first_defined([[Category, Item], [Category, <<"_all">>]], ServicePlan),
+            ItemPlan = get_item_plan(Category, Item, ServicePlan),
+
             As = wh_json:get_ne_value(<<"as">>, ItemPlan, Item),
+
+            Charges = activation_charges(Category, Item, Services),
 
             [wh_json:from_list(
                [{<<"category">>, Category}
                 ,{<<"item">>, As}
-                ,{<<"amount">>, activation_charges(Category, Item, Services)}
+                ,{<<"amount">>, Charges}
                 ,{<<"quantity">>, Quantity-OldQuantity}
                ])
              |JObjs
             ]
     end.
+
+-spec get_item_plan(ne_binary(), ne_binary(), wh_json:object()) -> wh_json:object().
+get_item_plan(Category, Item, ServicePlan) ->
+    case wh_json:get_value([Category, Item], ServicePlan) of
+        'undefined' -> get_catchall_item_plan(Category, ServicePlan);
+        Plan -> Plan
+    end.
+
+-spec get_catchall_item_plan(ne_binary(), wh_json:object()) -> wh_json:object().
+get_catchall_item_plan(Category, ServicePlan) ->
+    wh_json:get_value([Category, <<"_all">>], ServicePlan, wh_json:new()).
 
 %%--------------------------------------------------------------------
 %% @private
