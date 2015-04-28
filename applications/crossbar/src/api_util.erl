@@ -655,16 +655,16 @@ is_authentic(Req0, Context0, _ReqVerb) ->
 is_authentic(Req, Context, _ReqVerb, []) ->
     lager:debug("failed to authenticate"),
     ?MODULE:halt(Req, cb_context:add_system_error('invalid_credentials', Context));
-is_authentic(Req, Context, _ReqVerb, [{Mod, Params} | ReqNouns]) ->
+is_authentic(Req, Context, _ReqVerb, [{Mod, Params} | _ReqNouns]) ->
     Event = api_util:create_event_name(Context, <<"authenticate.", Mod/binary>>),
     Payload = [Context | Params],
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Payload)) of
         [] ->
             lager:debug("failed to authenticate : ~p", [Mod]),
-            is_authentic(Req, Context, _ReqVerb, ReqNouns);
-        ['true'|T]=_Y ->
+            ?MODULE:halt(Req, cb_context:add_system_error('invalid_credentials', Context));
+        ['true'|T] ->
             prefer_new_context(T, Req, Context);
-        [{'true', Context2}|_]=_Y ->
+        [{'true', Context2}|_] ->
             {'true', Req, Context2};
         [{'halt', Context2}|_] ->
             lager:debug("authn halted"),
@@ -744,16 +744,16 @@ is_permitted_nouns(Req, Context, _ReqVerb, [{<<"404">>, []}]) ->
 is_permitted_nouns(Req, Context, _ReqVerb, []) ->
     lager:debug("no one authz'd the request"),
     ?MODULE:halt(Req, cb_context:add_system_error('forbidden', Context));
-is_permitted_nouns(Req, Context0, _ReqVerb, [{Mod, Params} | ReqNouns]) ->
+is_permitted_nouns(Req, Context0, _ReqVerb, [{Mod, Params} | _ReqNouns]) ->
     Event = api_util:create_event_name(Context0, <<"authorize.", Mod/binary>>),
     Payload = [Context0 | Params],
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Payload)) of
         [] ->
             lager:debug("failed to authorize : ~p", [Mod]),
-            is_permitted_nouns(Req, Context0, _ReqVerb, ReqNouns);
-        ['true'|_]=_Y ->
+            ?MODULE:halt(Req, cb_context:add_system_error('forbidden', Context0));
+        ['true'|_] ->
             {'true', Req, Context0};
-        [{'true', Context1}|_]=_Y ->
+        [{'true', Context1}|_] ->
             {'true', Req, Context1};
         [{'halt', Context1}|_] ->
             lager:debug("authz halted"),
