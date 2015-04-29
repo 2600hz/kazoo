@@ -47,7 +47,7 @@
 -spec billing_id(doc()) -> api_binary().
 -spec billing_id(doc(), Default) -> ne_binary() | Default.
 billing_id(JObj) ->
-    billing_id(JObj, 'undefined').
+    billing_id(JObj, wh_doc:account_id(JObj)).
 billing_id(JObj, Default) ->
     wh_json:get_value(?BILLING_ID, JObj, Default).
 
