@@ -830,7 +830,7 @@ get_clid(Endpoint, Properties, Call, Type) ->
         'false' ->
             {Number, Name} = cf_attributes:caller_id(Type, Call),
             CallerNumber = case whapps_call:caller_id_number(Call) of
-                               Number -> get_presence_id_number(Endpoint, Call);
+                               Number -> 'undefined';
                                _Number -> Number
                            end,
             CallerName = case whapps_call:caller_id_name(Call) of
@@ -843,17 +843,6 @@ get_clid(Endpoint, Properties, Call, Type) ->
                   ,callee_number=CalleeNumber
                   ,callee_name=CalleeName
                  }
-    end.
-
--spec get_presence_id_number(wh_json:object(), whapps_call:call()) -> api_binary().
-get_presence_id_number(Endpoint, Call) ->
-    case cf_attributes:presence_id(Endpoint, Call) of
-        'undefined' -> 'undefined';
-        PresenceId ->
-            case binary:split(PresenceId, <<"@">>) of
-                [PresenceNumber, _] -> PresenceNumber;
-                [_Else] -> PresenceId
-            end
     end.
 
 -spec maybe_record_call(wh_json:object(), whapps_call:call()) -> 'ok'.

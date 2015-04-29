@@ -98,8 +98,17 @@ maybe_get_endpoint_cid(Validate, Attribute, Call) ->
         {'ok', JObj} ->
             Number = get_cid_or_default(Attribute, <<"number">>, JObj),
             Name = get_cid_or_default(Attribute, <<"name">>, JObj),
-            maybe_normalize_cid(Number, Name, Validate, Attribute, Call)
+            maybe_use_presence_number(Number, Name, JObj, Validate, Attribute, Call)
     end.
+
+-spec maybe_use_presence_number(api_binary(), api_binary(), wh_json:object(), boolean(), ne_binary(), whapps_call:call()) ->
+                                 {api_binary(), api_binary()}.
+maybe_use_presence_number('undefined', Name, Endpoint, Validate, <<"internal">> = Attribute, Call) ->
+    Number = maybe_get_presence_number(Endpoint, Call),
+    lager:debug("presence number is ~s", [Number]),
+    maybe_normalize_cid(Number, Name, Validate, Attribute, Call);
+maybe_use_presence_number(Number, Name, _Endpoint, Validate, Attribute, Call) ->
+    maybe_normalize_cid(Number, Name, Validate, Attribute, Call).
 
 -spec maybe_normalize_cid(api_binary(), api_binary(), boolean(), ne_binary(), whapps_call:call()) ->
                                  {api_binary(), api_binary()}.
@@ -289,6 +298,17 @@ is_valid_caller_id(Number, Call) ->
     case wh_number_manager:lookup_account_by_number(Number) of
         {'ok', AccountId, _} -> 'true';
         _Else -> 'false'
+    end.
+
+-spec maybe_get_presence_number(wh_json:object(), whapps_call:call()) -> api_binary().
+maybe_get_presence_number(Endpoint, Call) ->
+    case cf_attributes:presence_id(Endpoint, Call) of
+        'undefined' -> 'undefined';
+        PresenceId ->
+            case binary:split(PresenceId, <<"@">>) of
+                [PresenceNumber, _] -> PresenceNumber;
+                [_Else] -> PresenceId
+            end
     end.
 
 %%-----------------------------------------------------------------------------
