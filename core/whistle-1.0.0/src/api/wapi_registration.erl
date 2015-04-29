@@ -106,7 +106,7 @@
 -define(REG_QUERY_ERR_TYPES, []).
 
 %% Registration Sync
--define(REG_SYNC_HEADERS, [<<"Queue">>]).
+-define(REG_SYNC_HEADERS, []).
 -define(OPTIONAL_REG_SYNC_HEADERS, []).
 -define(REG_SYNC_VALUES, [{<<"Event-Category">>, <<"directory">>}
                            ,{<<"Event-Name">>, <<"reg_sync">>}

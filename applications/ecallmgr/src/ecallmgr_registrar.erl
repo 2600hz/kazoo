@@ -440,10 +440,7 @@ handle_cast({'flush', Username, Realm}, State) ->
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
     {'noreply', State#state{queue=Q}};
 handle_cast({'gen_listener',{'is_consuming', 'true'}}, #state{queue=Q}=State) ->
-    wapi_registration:publish_sync(
-      [{<<"Queue">>, Q}
-       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-      ]),
+    wapi_registration:publish_sync(wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
