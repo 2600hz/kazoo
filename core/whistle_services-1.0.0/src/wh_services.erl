@@ -180,13 +180,27 @@ maybe_calc_updates(Services, 'false') ->
 fetch(<<_/binary>> = Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     %% TODO: if reseller populate cascade via merchant id
-    case couch_mgr:open_cache_doc(?WH_SERVICES_DB, AccountId) of
+    case fetch_services_doc(AccountId) of
         {'ok', JObj} ->
             handle_fetch_result(AccountId, JObj);
         {'error', _R} ->
             lager:debug("unable to open account ~s services doc (creating new): ~p", [Account, _R]),
             new(AccountId)
     end.
+
+-spec fetch_services_doc(ne_binary()) ->
+                                {'ok', wh_json:object()} |
+                                {'error', _}.
+-spec fetch_services_doc(ne_binary(), boolean()) ->
+                                {'ok', wh_json:object()} |
+                                {'error', _}.
+fetch_services_doc(AccountId) ->
+    fetch_services_doc(AccountId, 'false').
+
+fetch_services_doc(AccountId, 'false') ->
+    couch_mgr:open_cache_doc(?WH_SERVICES_DB, AccountId);
+fetch_services_doc(AccountId, 'true') ->
+    couch_mgr:open_doc(?WH_SERVICES_DB, AccountId).
 
 -spec handle_fetch_result(ne_binary(), wh_json:object()) -> services().
 handle_fetch_result(AccountId, JObj) ->
@@ -274,7 +288,7 @@ save_as_dirty(#wh_services{jobj=JObj
 
 -spec save_conflicting_as_dirty(services(), kzd_audit_log:doc(), pos_integer()) -> services().
 save_conflicting_as_dirty(#wh_services{account_id=AccountId}, AuditLog, BackOff) ->
-    {'ok', Existing} = couch_mgr:open_doc(?WH_SERVICES_DB, AccountId),
+    {'ok', Existing} = fetch_services_doc(AccountId, 'true'),
     NewServices = from_service_json(Existing),
 
     case is_dirty(NewServices) of
@@ -519,7 +533,7 @@ set_billing_id(BillingId, <<_/binary>> = AccountId) ->
 get_billing_id(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     lager:debug("determining if account ~s is able to make updates", [AccountId]),
-    case couch_mgr:open_cache_doc(?WH_SERVICES_DB, AccountId) of
+    case fetch_services_doc(AccountId) of
         {'error', _R} ->
             lager:debug("unable to open account ~s services: ~p", [AccountId, _R]),
             AccountId;
@@ -672,7 +686,7 @@ find_reseller_id('undefined') ->
     end;
 find_reseller_id(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
-    case couch_mgr:open_cache_doc(?WH_SERVICES_DB, AccountId) of
+    case fetch_services_doc(AccountId) of
         {'ok', JObj} ->
             case wh_json:get_ne_value(<<"pvt_reseller_id">>, JObj) of
                 'undefined' -> get_reseller_id(Account);
@@ -696,7 +710,7 @@ find_reseller_id(Account) ->
 -spec allow_updates(ne_binary()) -> 'true'.
 allow_updates(<<_/binary>> = Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
-    case couch_mgr:open_cache_doc(?WH_SERVICES_DB, AccountId) of
+    case fetch_services_doc(AccountId) of
         {'error', _R} ->
             lager:debug("can't determine if account ~s can make updates: ~p", [AccountId, _R]),
             default_maybe_allow_updates(AccountId);
