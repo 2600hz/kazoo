@@ -10,17 +10,17 @@
 -module(cb_aaa).
 
 -export([init/0
-    , allowed_methods/0, allowed_methods/1, allowed_methods/2
-    , resource_exists/0, resource_exists/1, resource_exists/2
-    , validate/1, validate/2, validate/3
-    , put/1, put/2
-    , post/3
-    , patch/1
-    , delete/3
-    , load_dict_list/1, load_dict/3]).
+         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
+         ,resource_exists/0, resource_exists/1, resource_exists/2
+         ,validate/1, validate/2, validate/3
+         ,put/1, put/2
+         ,post/3
+         ,patch/1
+         ,delete/3
+         ,load_dict_list/1, load_dict/3
+        ]).
 
 -include("../crossbar.hrl").
--include_lib("circlemaker/src/circlemaker_defs.hrl").
 
 -define(CB_LIST_DICTS, <<"aaa/fetch_dicts">>).
 
@@ -90,6 +90,9 @@ resource_exists(?DICT_RESOURCE, _) ->
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+-spec validate_config(cb_context:context(), path_token()) -> cb_context:context().
+-spec validate_dict(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+-spec validate_dict(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 
 validate(Context) ->
     validate_config(Context, cb_context:req_verb(Context)).
@@ -182,7 +185,9 @@ on_successful_validation(Context) ->
         {'success', _} ->
             Res;
         {'error', 404} ->
-            cb_context:set_doc(Context, wh_json:set_values([{<<"pvt_type">>, ?AAA_RESOURCE}, {<<"_id">>, ?AAA_RESOURCE}, {<<"id">>, ?AAA_RESOURCE}], Doc));
+            cb_context:set_doc(Context, wh_json:set_values([{<<"pvt_type">>, ?AAA_RESOURCE},
+                                                            {<<"_id">>, ?AAA_RESOURCE},
+                                                            {<<"id">>, ?AAA_RESOURCE}], Doc));
         {_, _} ->
             Context
     end.
@@ -192,14 +197,15 @@ check_aaa_schema(Context, DictId) ->
     OnSuccess = fun(C) -> on_successful_validation(C, DictId) end,
     NewReqData = wh_json:set_values([{<<"owner">>, cb_context:account_id(Context)}], cb_context:req_data(Context)),
     Context1 = cb_context:set_req_data(Context, NewReqData),
-    Context2 = cb_context:set_account_db(Context1, ?WH_AAA_DICTS_DB),
+    Context2 = cb_context:set_account_db(Context1, ?KZ_AAA_DICTS_DB),
     cb_context:validate_request_data(?AAA_DICT_RESOURCE, Context2, OnSuccess).
 
--spec on_successful_validation(cb_context:context(), atom()) -> cb_context:context(); (cb_context:context(), ne_binary()) -> cb_context:context().
+-spec on_successful_validation(cb_context:context(), atom()) -> cb_context:context();
+                              (cb_context:context(), ne_binary()) -> cb_context:context().
 on_successful_validation(Context, 'undefined') ->
     Doc1 = wh_json:set_values([{<<"pvt_type">>, ?AAA_DICT_RESOURCE}], cb_context:doc(Context)),
-    
-    View = cb_context:doc(crossbar_doc:load_view(?CB_LIST_DICTS, [], Context, normalize_filter_view(cb_context:account_id(Context)))),
+    View = cb_context:doc(crossbar_doc:load_view(?CB_LIST_DICTS, [], Context,
+                                                 normalize_filter_view(cb_context:account_id(Context)))),
     DictNameList = [wh_json:get_value(<<"name">>, wh_json:get_value(<<"value">>, Elem)) || Elem <- View],
     case lists:member(wh_json:get_value(<<"name">>, Doc1), DictNameList) of
         true ->
@@ -248,7 +254,7 @@ normalize_filter_view(AccountId) ->
 %%--------------------------------------------------------------------
 -spec load_dict_list(cb_context:context()) -> cb_context:context().
 load_dict_list(Context) ->
-    Context1 = cb_context:set_account_db(Context, ?WH_AAA_DICTS_DB),
+    Context1 = cb_context:set_account_db(Context, ?KZ_AAA_DICTS_DB),
     crossbar_doc:load_view(?CB_LIST_DICTS, [], Context1, normalize_filter_view(cb_context:account_id(Context))).
 
 %%--------------------------------------------------------------------
@@ -259,5 +265,5 @@ load_dict_list(Context) ->
 %%--------------------------------------------------------------------
 -spec load_dict(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
 load_dict(Context, ?DICT_RESOURCE, DictId) when is_binary(DictId) ->
-    Context1 = cb_context:set_account_db(Context, ?WH_AAA_DICTS_DB),
+    Context1 = cb_context:set_account_db(Context, ?KZ_AAA_DICTS_DB),
     crossbar_doc:load(DictId, Context1).

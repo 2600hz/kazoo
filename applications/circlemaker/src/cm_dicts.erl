@@ -22,7 +22,7 @@
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Get all dictionaries of an account or system_config as list of its IDs
+%% Get all dictionaries of an account or system_config-related as list of its IDs
 %% @end
 %%--------------------------------------------------------------------
 -spec get_dicts(ne_binary() | 'system_config') -> {'ok', ne_binaries()} | {error, any()}.
@@ -35,7 +35,7 @@ get_dicts(AccId) when is_binary(AccId) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Get all dictionaries of an account or system_config as list of its IDs
+%% Get all dictionaries of an account or system_config-related as list of its IDs
 %% @end
 %%--------------------------------------------------------------------
 -spec get_dicts_priv(ne_binary() | 'system_config') -> {'ok', ne_binaries()} | {error, any()}.

@@ -14,7 +14,7 @@
 -include_lib("whistle/src/wh_json.hrl").
 
 %% API
--export([get_aaa_mode/1, get_servers_list/1, init_aaa_doc/0, get_aaa_doc/0, save_aaa_doc/1]).
+-export([get_aaa_doc_value/1, get_aaa_doc/0, save_aaa_doc/1]).
 
 %% ===================================================================
 %% API functions
@@ -46,39 +46,15 @@ new_default_aaa_doc('system') ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Initialize AAA configuration document in the system_config database.
-%% Returns resulted document.
+%% Get a value of AAA configuration document (circlemaker) in the system_config database.
+%% Returns value for the key.
 %% @end
 %%--------------------------------------------------------------------
--spec init_aaa_doc() -> {'ok', wh_json:object()} | {'error', any()}.
-init_aaa_doc() ->
-    case couch_mgr:open_cache_doc(?WH_CONFIG_DB, ?APP_NAME) of
-        {'ok', Doc} ->
-            {'ok', Doc};
-        {'error', 'not_found'} ->
-            Doc = new_default_aaa_doc('system'),
-            couch_mgr:save_doc(?WH_CONFIG_DB, Doc)
-    end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Get AAA-mode from document.
-%% @end
-%%--------------------------------------------------------------------
--spec get_aaa_mode(wh_json:object()) -> ne_binary().
-get_aaa_mode(Doc) ->
-    wh_json:get_json_value(<<"aaa_mode">>, Doc, <<"off">>).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Get servers list.
-%% @end
-%%--------------------------------------------------------------------
--spec get_servers_list(wh_json:object()) -> wh_json:object().
-get_servers_list(Doc) ->
-    wh_json:get_json_value(<<"servers">>, Doc).
+-spec get_aaa_doc_value(ne_binary()) -> term() | 'undefined'.
+get_aaa_doc_value(Key) ->
+    DefaultDoc = new_default_aaa_doc('system'),
+    DefaultValue = wh_json:get_value(Key, DefaultDoc),
+    whapps_config:get(?APP_NAME, Key, DefaultValue).
 
 %%--------------------------------------------------------------------
 %% @public
