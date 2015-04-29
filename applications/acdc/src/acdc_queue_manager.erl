@@ -170,6 +170,7 @@ start_queue_call(JObj, Props, Call) ->
                             ,whapps_call:call_id(Call)
                             ,whapps_call:caller_id_name(Call)
                             ,whapps_call:caller_id_number(Call)
+                            ,wh_json:get_integer_value(<<"Member-Priority">>, JObj)
                            ),
 
     lager:debug("answering call"),

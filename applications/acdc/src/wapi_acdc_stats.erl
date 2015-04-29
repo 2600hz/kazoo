@@ -76,7 +76,7 @@
                                ]).
 
 -define(WAITING_HEADERS, [<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-                          ,<<"Entered-Timestamp">>
+                          ,<<"Entered-Timestamp">>, <<"Caller-Priority">>
                          ]).
 -define(WAITING_VALUES, ?CALL_REQ_VALUES(<<"waiting">>)).
 -define(WAITING_TYPES, []).
