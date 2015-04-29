@@ -208,7 +208,7 @@ handle_disconnected_channel(JObj) ->
         _Else ->
             lager:info("call '~s' is no longer active, sending hangup", [CallId]),
             handle_destroyed_channel(JObj)
-    end.            
+    end.
 
 -spec handle_connected_channel(wh_json:object()) -> 'ok'.
 handle_connected_channel(_JObj) ->
