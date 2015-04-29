@@ -242,12 +242,12 @@ save_as_dirty(#wh_services{jobj=JObj
     UpdatedJObj = wh_json:set_values(props:filter_undefined(Props), JObj),
     case couch_mgr:save_doc(?WH_SERVICES_DB, UpdatedJObj) of
         {'ok', SavedJObj} ->
-            lager:debug("marked services as dirty for account ~s: ~s", [AccountId, wh_json:encode(SavedJObj)]),
-            lager:debug("updates: ~s", [wh_json:encode(_Updates)]),
+            lager:debug("marked services as dirty for account ~s", [AccountId]),
 
             Services1 = from_service_json(SavedJObj),
 
             _ = save_audit_logs(Services1, AuditLog),
+
             Services1;
         {'error', 'not_found'} ->
             lager:debug("service database does not exist, attempting to create"),
@@ -278,6 +278,7 @@ save_conflicting_as_dirty(#wh_services{account_id=AccountId}, AuditLog, BackOff)
 -spec save_audit_logs(services(), kzd_audit_log:doc(), ne_binary()) -> 'ok'.
 save_audit_logs(Services, AuditLog) ->
     {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
+    lager:debug("saving base audit log ~s", [wh_json:encode(AuditLog)]),
     save_audit_logs(Services, AuditLog, MasterAccountId).
 
 save_audit_logs(#wh_services{account_id=MasterAccountId}, _AuditLog, MasterAccountId) ->
@@ -338,17 +339,22 @@ maybe_save_master_audit_log(Services, AuditLog, MasterAccountId, 'true') ->
 -spec save_audit_log(services(), kzd_audit_log:doc(), ne_binary()) -> kzd_audit_log:doc().
 save_audit_log(Services, AuditLog, ResellerId) ->
     AuditLog1 = update_audit_log(Services, AuditLog),
-
-    MODb = kazoo_modb:get_modb(ResellerId),
-    ResellerAuditLog = wh_doc:update_pvt_parameters(AuditLog1, MODb, [{'account_id', ResellerId}]),
-    {'ok', _Saved} = kazoo_modb:save_doc(MODb, ResellerAuditLog),
-    lager:debug("saved audit log to ~s: ~s", [ResellerId, wh_json:encode(_Saved)]),
+    case kzd_audit_log:audit_account_ids(AuditLog1) of
+        [] ->
+            lager:debug("no audit log to save");
+        _Ids ->
+            MODb = kazoo_modb:get_modb(ResellerId),
+            ResellerAuditLog = wh_doc:update_pvt_parameters(AuditLog1, MODb, [{'account_id', ResellerId}]),
+            {'ok', _Saved} = kazoo_modb:save_doc(MODb, ResellerAuditLog),
+            lager:debug("saved audit log to ~s: ~s", [ResellerId, wh_json:encode(_Saved)])
+    end,
     AuditLog1.
 
 -spec update_audit_log(services(), kzd_audit_log:doc()) -> kzd_audit_log:doc().
 update_audit_log(#wh_services{jobj=JObj
                               ,account_id=AccountId
                               ,cascade_quantities=CascadeQuantities
+                              ,updates=UpdatedQuantities
                              }
                  ,AuditLog
                 ) ->
@@ -357,6 +363,7 @@ update_audit_log(#wh_services{jobj=JObj
                      props:filter_empty(
                        [{<<"cascase_quantities">>, CascadeQuantities}
                         ,{<<"account_quantities">>, current_quantities(JObj)}
+                        ,{<<"updated_quantities">>, UpdatedQuantities}
                         ,{<<"account_name">>, account_name(AccountId)}
                        ])
                     ),
@@ -390,11 +397,13 @@ save(#wh_services{jobj=JObj
                   ,account_id=AccountId
                   ,dirty=ForceDirty
                  }=Services
-     ,_AuditLog
+     ,AuditLog
      ,BackOff
     ) ->
     CurrentQuantities = current_quantities(JObj),
+
     Dirty = have_quantities_changed(UpdatedQuantities, CurrentQuantities) orelse ForceDirty,
+
     Props = [{<<"_id">>, AccountId}
              ,{<<"pvt_dirty">>, Dirty}
              ,{<<"pvt_modified">>, wh_util:current_tstamp()}
@@ -407,13 +416,15 @@ save(#wh_services{jobj=JObj
             IsReseller = wh_json:is_true(<<"pvt_reseller">>, JObj),
             _ = maybe_clean_old_billing_id(Services),
             BillingId = wh_json:get_value(<<"billing_id">>, NewJObj, AccountId),
-            Services#wh_services{jobj=NewJObj
-                                 ,cascade_quantities=cascade_quantities(AccountId, IsReseller)
-                                 ,status=wh_json:get_ne_value(<<"pvt_status">>, NewJObj, ?STATUS_GOOD)
-                                 ,billing_id=BillingId
-                                 ,current_billing_id=BillingId
-                                 ,deleted=wh_doc:is_soft_deleted(NewJObj)
-                                };
+            Services1 = Services#wh_services{jobj=NewJObj
+                                             ,cascade_quantities=cascade_quantities(AccountId, IsReseller)
+                                             ,status=wh_json:get_ne_value(<<"pvt_status">>, NewJObj, ?STATUS_GOOD)
+                                             ,billing_id=BillingId
+                                             ,current_billing_id=BillingId
+                                             ,deleted=wh_doc:is_soft_deleted(NewJObj)
+                                            },
+            save_audit_logs(Services1, AuditLog),
+            Services1;
         {'error', 'not_found'} ->
             lager:debug("service database does not exist, attempting to create"),
             'true' = couch_mgr:db_create(?WH_SERVICES_DB),
