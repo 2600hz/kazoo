@@ -2753,6 +2753,9 @@ wait_for_unparked_call(Call, Timeout) ->
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
                     lager:debug("channel was destroyed while waiting for unparked call"),
                     {'error', 'channel_destroy'};
+                {<<"call_event">>, <<"CHANNEL_DISCONNECTED">>, _} ->
+                    lager:debug("channel was disconnected while waiting for unparked call"),
+                    {'error', 'channel_disconnected'};
                 {<<"call_event">>, <<"CHANNEL_INTERCEPTED">>, _} ->
                     lager:debug("channel was intercepted while waiting for unparked call"),
                     {'ok', JObj};
