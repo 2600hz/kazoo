@@ -201,7 +201,14 @@ handle_disconnected_channel(JObj) ->
     'true' = wapi_call:event_v(JObj),
     wh_util:put_callid(JObj),
     lager:debug("channel has been disconnected, checking status of channel on the cluster"),
-    handle_destroyed_channel(JObj).
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+    case whapps_call_command:b_channel_status(CallId) of
+        {'ok', _} ->
+            lager:info("call '~s' is still active, ignoring disconnect", [CallId]);
+        _Else ->
+            lager:info("call '~s' is no longer active, sending hangup", [CallId]),
+            handle_destroyed_channel(JObj)
+    end.
 
 -spec handle_connected_channel(wh_json:object()) -> 'ok'.
 handle_connected_channel(_JObj) ->
