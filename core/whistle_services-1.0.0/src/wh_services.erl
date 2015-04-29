@@ -529,8 +529,9 @@ set_billing_id(BillingId, <<_/binary>> = AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_billing_id(ne_binary()) -> ne_binary().
-get_billing_id(Account) ->
+-spec get_billing_id(ne_binary() | services()) -> ne_binary().
+get_billing_id(#wh_services{billing_id=BillingId}) -> BillingId;
+get_billing_id(<<_/binary>> = Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     lager:debug("determining if account ~s is able to make updates", [AccountId]),
     case fetch_services_doc(AccountId) of
@@ -612,12 +613,11 @@ select_bookkeeper(BillingId) ->
 %%--------------------------------------------------------------------
 -spec check_bookkeeper(ne_binary(), integer()) -> boolean().
 check_bookkeeper(BillingId, Amount) ->
-    Bookkeeper = select_bookkeeper(BillingId),
-    case Bookkeeper of
+    case select_bookkeeper(BillingId) of
         'wh_bookkeeper_local' ->
             Balance = wht_util:current_balance(BillingId),
             Balance - Amount =< 0;
-        _Else -> Bookkeeper:is_good_standing(BillingId)
+        Bookkeeper -> Bookkeeper:is_good_standing(BillingId)
     end.
 
 %%--------------------------------------------------------------------
