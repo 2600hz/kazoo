@@ -56,12 +56,12 @@ services_json_to_record(#state{services=Services
                                ,services_jobj=JObj
                               }) ->
     [{"Verify account id is set properly"
-      ,?_assertEqual(wh_json:get_value(<<"pvt_account_id">>, JObj)
+      ,?_assertEqual(wh_doc:account_id(JObj)
                      ,wh_services:account_id(Services)
                     )
      }
      ,{"Verify the dirty flag is set properly"
-       ,?_assertEqual(wh_json:is_true(<<"pvt_dirty">>, JObj)
+       ,?_assertEqual(kzd_services:is_dirty(JObj)
                       ,wh_services:is_dirty(Services)
                      )
       }
@@ -71,7 +71,7 @@ services_json_to_record(#state{services=Services
 quantity_checks(Services, JObj) ->
     {Tests, _} = wh_json:foldl(fun category_checks/3
                                ,{[], Services}
-                               ,wh_json:get_value(<<"quantities">>, JObj)
+                               ,kzd_services:quantities(JObj)
                               ),
     Tests.
 
