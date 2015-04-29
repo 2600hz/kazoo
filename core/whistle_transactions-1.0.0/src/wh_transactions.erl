@@ -281,10 +281,10 @@ de_duplicate_transactions(Transactions, BookkeeperTransactions) ->
 de_duplicate_transactions([], BookkeeperTransactions, Acc) ->
     [Tr || {_, Tr} <- BookkeeperTransactions] ++ Acc;
 de_duplicate_transactions([{Key, Value}|Transactions], BookkeeperTransactions, Acc) ->
-    de_duplicate_transactions( Transactions
-                             , props:delete(Key, BookkeeperTransactions)
-                             , [Value | Acc]
-                             ).
+    case props:is_defined(Key, BookkeeperTransactions) of
+        'true'  -> de_duplicate_transactions(Transactions, BookkeeperTransactions, Acc);
+        'false' -> de_duplicate_transactions(Transactions, BookkeeperTransactions, [Value|Acc])
+    end.
 
 %% @private
 -spec transactions_to_props(wh_transactions()) -> wh_proplist().
