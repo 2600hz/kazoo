@@ -110,12 +110,7 @@ find_by_customer(CustomerId, Min, Max) ->
 -spec create(ne_binary(), bt_transaction()) -> bt_transaction().
 
 create(#bt_transaction{amount=Amount}=Transaction) ->
-    MinAmount = whapps_config:get_float(<<"braintree">>, <<"min_amount">>, 5.00),
     MaxAmount = whapps_config:get_float(<<"braintree">>, <<"max_amount">>, 200.00),
-    case wh_util:to_float(Amount) <  MinAmount of
-        'true' -> braintree_util:error_min_amount(MinAmount);
-        'false' -> 'ok'
-    end,
     case wh_util:to_float(Amount) >  MaxAmount of
         'true' -> braintree_util:error_max_amount(MaxAmount);
         'false' -> 'ok'
@@ -146,11 +141,20 @@ sale(CustomerId, Transaction) ->
     create(Transaction#bt_transaction{type=?BT_TRANS_SALE, customer_id=CustomerId}).
 
 quick_sale(CustomerId, Amount) ->
-    sale(CustomerId, #bt_transaction{amount=wh_util:to_binary(Amount)}).
+    MinAmount = whapps_config:get_float(<<"braintree">>, <<"min_amount">>, 5.00),
+    case wh_util:to_float(Amount) <  MinAmount of
+        'true' -> braintree_util:error_min_amount(MinAmount);
+        'false' -> sale(CustomerId, #bt_transaction{amount=wh_util:to_binary(Amount)})
+    end.
 
 quick_sale(CustomerId, Amount, Props) ->
-    Transaction = json_to_record(wh_json:from_list(Props)),
-    sale(CustomerId, Transaction#bt_transaction{amount=wh_util:to_binary(Amount)}).
+    MinAmount = whapps_config:get_float(<<"braintree">>, <<"min_amount">>, 5.00),
+    case wh_util:to_float(Amount) <  MinAmount of
+        'true' -> braintree_util:error_min_amount(MinAmount);
+        'false' ->
+            Transaction = json_to_record(wh_json:from_list(Props)),
+            sale(CustomerId, Transaction#bt_transaction{amount=wh_util:to_binary(Amount)})
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
