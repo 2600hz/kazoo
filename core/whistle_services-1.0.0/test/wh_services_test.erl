@@ -65,6 +65,11 @@ services_json_to_record(#state{services=Services
                       ,wh_services:is_dirty(Services)
                      )
       }
+     ,{"Verify the billing id"
+       ,?_assertEqual(kzd_services:billing_id(JObj)
+                      ,wh_services:get_billing_id(Services)
+                     )
+      }
      | quantity_checks(Services, JObj)
     ].
 
