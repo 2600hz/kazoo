@@ -26,11 +26,12 @@ allowed_apps(AccountId)
   when is_binary(AccountId) ->
     ServicePlan = wh_services:service_plan_json(AccountId),
     DefaultApps = load_default_apps(),
+    Apps = filter_apps(AccountId, DefaultApps),
     case 'undefined' == wh_json:get_value(<<"ui_apps">>, ServicePlan)
         orelse wh_json:is_true([<<"ui_apps">>, <<"_all">>, <<"enabled">>], ServicePlan)
     of
-        'true' -> DefaultApps;
-        'false' -> find_enabled_apps(get_plan_apps(ServicePlan), DefaultApps, [])
+        'true' -> Apps;
+        'false' -> find_enabled_apps(get_plan_apps(ServicePlan), Apps, [])
     end.
 
 %%--------------------------------------------------------------------
@@ -74,6 +75,41 @@ is_authorized(AccountDoc, UserId, App) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec filter_apps(ne_binary(), wh_json:objects()) -> wh_json:objects().
+filter_apps(AccountId, Apps) ->
+    lists:foldl(
+        fun(App, Acc) ->
+            Name = wh_json:get_value(<<"name">>, App),
+            Filtered = filter_app(AccountId, App, Name),
+            case wh_json:is_empty(Filtered) of
+                'true' -> Acc;
+                'false' -> [Filtered|Acc]
+            end
+        end
+        ,[]
+        ,Apps
+    ).
+
+-spec filter_app(ne_binary(), wh_json:object(), ne_binary()) -> wh_json:object().
+filter_app(AccountId, App, <<"port">>) ->
+    lager:debug("filtering port application"),
+    ResellerId = wh_services:find_reseller_id(AccountId),
+    MaybeHide =
+        case kz_whitelabel:fetch(ResellerId) of
+            {'error', _R} ->
+                lager:error("failed to load whitelabel doc for ~s: ~p", [ResellerId, _R]),
+                'false';
+            {'ok', JObj} ->
+                kz_whitelabel:port_hide(JObj)
+        end,
+    lager:debug("hiding port application: ~p", [MaybeHide]),
+    case MaybeHide of
+        'true' -> wh_json:new();
+        'false' -> App
+    end;
+filter_app(_AccountId, App, _Name) ->
+    lager:debug("not filtering ~s", [_Name]),
+    App.
 
 -spec load_default_apps() -> wh_json:objects().
 load_default_apps() ->
