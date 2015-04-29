@@ -564,6 +564,17 @@ wait_for_pickup(SlotNumber, Slot, Call) ->
                     _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), whapps_call:account_db(Call)),
                     cf_exe:stop(Call)
             end;
+        {'error', 'channel_disconnected'} ->
+            lager:info("parked caller has disconnected, checking status"),
+            case whapps_call_command:b_channel_status(cf_exe:callid(Call)) of
+                {'ok', _} ->
+                    lager:info("call '~s' is still active", [cf_exe:callid(Call)]),
+                    wait_for_pickup(SlotNumber, Slot, Call);
+                _Else ->
+                    lager:info("call '~s' is no longer active, ", [cf_exe:callid(Call)]),
+                    _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), whapps_call:account_db(Call)),
+                    cf_exe:transfer(Call)
+            end;            
         {'error', _} ->
             lager:info("parked caller has hungup"),
             _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), whapps_call:account_db(Call)),
