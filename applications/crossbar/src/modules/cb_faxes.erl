@@ -215,7 +215,7 @@ validate_outgoing_fax(Context, ?HTTP_PUT) ->
 validate(Context, ?SMTP_LOG, Id) ->
     load_smtp_log_doc(Id, Context);
 validate(Context, ?INCOMING, Id) ->
-    validate_incoming_fax(Context, Id, cb_context:req_verb(Context));
+    load_incoming_fax_doc(Id, Context);
 validate(Context, ?OUTGOING, Id) ->
     validate_outgoing_fax(Context, Id, cb_context:req_verb(Context)).
 
@@ -227,11 +227,6 @@ validate_outgoing_fax(Context, Id, ?HTTP_PATCH) ->
     validate_patch(Id, cb_context:set_account_db(Context, ?WH_FAXES_DB));
 validate_outgoing_fax(Context, Id, ?HTTP_DELETE) ->
     read(Id, cb_context:set_account_db(Context, ?WH_FAXES_DB)).
-
-validate_incoming_fax(Context, Id, ?HTTP_GET) ->
-    load_incoming_fax_doc(Id, Context);
-validate_incoming_fax(Context, Id, ?HTTP_DELETE) ->
-    load_incoming_fax_doc(Id, Context).
 
 validate(Context, ?INCOMING, Id, ?ATTACHMENT) ->
     validate_incoming_fax_attachment(Context, Id, cb_context:req_verb(Context)).
