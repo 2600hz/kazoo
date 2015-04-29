@@ -43,11 +43,21 @@ reconcile(Services) ->
 
 reconcile(Services, 'undefined') ->
     Services;
-reconcile(Services0, DeviceType) ->
-    Services1 = reconcile(Services0),
-    Quantity = wh_services:update_quantity(?CATEGORY, DeviceType, Services1),
+reconcile(Services, DeviceType) ->
+    case wh_services:is_dirty(Services) of
+        'true' ->
+            lager:debug("doing full reconcile"),
+            do_reconcile(reconcile(Services), DeviceType);
+        'false' ->
+            lager:debug("doing partial reconcile"),
+            do_reconcile(Services, DeviceType)
+    end.
 
-    wh_services:update(?CATEGORY, DeviceType, Quantity+1, Services1).
+-spec do_reconcile(wh_services:services(), ne_binary()) -> wh_services:services().
+do_reconcile(Services, DeviceType) ->
+    Quantity = wh_services:update_quantity(?CATEGORY, DeviceType, Services),
+    lager:debug("increment ~s.~s to ~p+1", [?CATEGORY, DeviceType, Quantity]),
+    wh_services:update(?CATEGORY, DeviceType, Quantity+1, Services).
 
 -spec reconcile_device(wh_json:object(), wh_services:services()) -> wh_services:services().
 reconcile_device(JObj, Services) ->
