@@ -18,7 +18,7 @@
          ,put/1, put/2
          ,post/1, post/3
          ,patch/1, patch/3
-         ,delete/3
+         ,delete/3, delete/4
         ]).
 
 -include("../crossbar.hrl").
@@ -99,12 +99,12 @@ allowed_methods(?OUTGOING) ->
 allowed_methods(?SMTP_LOG, _Id) ->
     [?HTTP_GET];
 allowed_methods(?INCOMING, _Id) ->
-    [?HTTP_GET];
+    [?HTTP_GET, ?HTTP_DELETE];
 allowed_methods(?OUTGOING, _Id) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 allowed_methods(?INCOMING, _Id, ?ATTACHMENT) ->
-    [?HTTP_GET].
+    [?HTTP_GET, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -229,7 +229,13 @@ validate_outgoing_fax(Context, Id, ?HTTP_DELETE) ->
     read(Id, cb_context:set_account_db(Context, ?WH_FAXES_DB)).
 
 validate(Context, ?INCOMING, Id, ?ATTACHMENT) ->
-    load_fax_binary(Id, Context).
+    validate_incoming_fax_attachment(Context, Id, cb_context:req_verb(Context)).
+
+validate_incoming_fax_attachment(Context, Id, ?HTTP_GET) ->
+    load_fax_binary(Id, Context);
+validate_incoming_fax_attachment(Context, Id, ?HTTP_DELETE) ->
+    load_incoming_fax_doc(Id, Context).
+    
 
 %%--------------------------------------------------------------------
 %% @public
@@ -280,8 +286,18 @@ patch(Context, ?OUTGOING, _) ->
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 delete(Context, ?OUTGOING, _Id) ->
+    crossbar_doc:delete(Context);
+delete(Context, ?INCOMING, _Id) ->
     crossbar_doc:delete(Context).
 
+-spec delete(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
+delete(Context, ?INCOMING, Id, ?ATTACHMENT) ->
+    ANames = wh_doc:attachment_names(cb_context:doc(Context)),
+    lists:foldl(fun(AName, Ctx) ->
+                        crossbar_doc:delete_attachment(Id, AName, Ctx)
+                end
+               , Context, ANames).
+    
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
