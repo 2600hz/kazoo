@@ -822,17 +822,20 @@ guess_endpoint_type(Endpoint, []) ->
 
 -spec get_clid(wh_json:object(), wh_json:object(), whapps_call:call()) -> clid().
 get_clid(Endpoint, Properties, Call) ->
+    get_clid(Endpoint, Properties, Call, <<"internal">>).
+
+get_clid(Endpoint, Properties, Call, Type) ->
     case wh_json:is_true(<<"suppress_clid">>, Properties) of
         'true' -> #clid{};
         'false' ->
-            {InternalNumber, InternalName} = cf_attributes:caller_id(<<"internal">>, Call),
+            {Number, Name} = cf_attributes:caller_id(Type, Call),
             CallerNumber = case whapps_call:caller_id_number(Call) of
-                               InternalNumber -> 'undefined';
-                               _Number -> InternalNumber
+                               Number -> get_presence_id_number(Endpoint, Call);
+                               _Number -> Number
                            end,
             CallerName = case whapps_call:caller_id_name(Call) of
-                             InternalName -> 'undefined';
-                             _Name -> InternalName
+                             Name -> 'undefined';
+                             _Name -> Name
                          end,
             {CalleeNumber, CalleeName} = cf_attributes:callee_id(Endpoint, Call),
             #clid{caller_number=CallerNumber
@@ -840,6 +843,17 @@ get_clid(Endpoint, Properties, Call) ->
                   ,callee_number=CalleeNumber
                   ,callee_name=CalleeName
                  }
+    end.
+
+-spec get_presence_id_number(wh_json:object(), whapps_call:call()) -> api_binary().
+get_presence_id_number(Endpoint, Call) ->
+    case cf_attributes:presence_id(Endpoint, Call) of
+        'undefined' -> 'undefined';
+        PresenceId ->
+            case binary:split(PresenceId, <<"@">>) of
+                [PresenceNumber, _] -> PresenceNumber;
+                [_Else] -> PresenceId
+            end
     end.
 
 -spec maybe_record_call(wh_json:object(), whapps_call:call()) -> 'ok'.
@@ -1065,6 +1079,10 @@ create_call_fwd_endpoint(Endpoint, Properties, Call) ->
                            'true' -> <<"true">>;
                            'false' -> wh_json:get_binary_boolean(<<"ignore_early_media">>, CallForward)
                        end,
+    Clid = case whapps_call:inception(Call) of
+               'undefined' -> get_clid(Endpoint, Properties, Call, <<"external">>);
+               _Else -> #clid{}
+           end,
     Prop = [{<<"Invite-Format">>, <<"route">>}
             ,{<<"To-DID">>, wh_json:get_value(<<"number">>, Endpoint, whapps_call:request_user(Call))}
             ,{<<"Route">>, <<"loopback/", (wh_json:get_value(<<"number">>, CallForward, <<"unknown">>))/binary, "/context_2">>}
@@ -1074,6 +1092,12 @@ create_call_fwd_endpoint(Endpoint, Properties, Call) ->
             ,{<<"Endpoint-Timeout">>, get_timeout(Properties)}
             ,{<<"Endpoint-Delay">>, get_delay(Properties)}
             ,{<<"Presence-ID">>, cf_attributes:presence_id(Endpoint, Call)}
+            ,{<<"Callee-ID-Name">>, Clid#clid.callee_name}
+            ,{<<"Callee-ID-Number">>, Clid#clid.callee_number}
+            ,{<<"Outbound-Callee-ID-Name">>, Clid#clid.callee_name}
+            ,{<<"Outbound-Callee-ID-Number">>, Clid#clid.callee_number}
+            ,{<<"Outbound-Caller-ID-Number">>, Clid#clid.caller_number}
+            ,{<<"Outbound-Caller-ID-Name">>, Clid#clid.caller_name}
             ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
             ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call, CallForward)}
            ],
@@ -1241,12 +1265,14 @@ maybe_retain_caller_id({_Endpoint, _Call, 'undefined', _JObj}=Acc) ->
     Acc;
 maybe_retain_caller_id({Endpoint, Call, CallFwd, JObj}) ->
     {Endpoint, Call, CallFwd
-     ,case wh_json:is_true(<<"keep_caller_id">>, CallFwd) of
-          'false' -> JObj;
-          'true' ->
-              lager:info("call forwarding configured to keep the caller id"),
-              wh_json:set_value(<<"Retain-CID">>, <<"true">>, JObj)
-      end
+    ,case whapps_call:inception(Call) =:= 'undefined'
+         orelse wh_json:is_true(<<"keep_caller_id">>, CallFwd)
+     of
+         'true' ->
+             lager:info("call forwarding will keep set retain caller id"),
+             wh_json:set_value(<<"Retain-CID">>, <<"true">>, JObj);
+         'false' -> JObj
+     end
     }.
 
 -spec maybe_set_endpoint_id(ccv_acc()) -> ccv_acc().
