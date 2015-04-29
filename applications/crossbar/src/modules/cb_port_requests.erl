@@ -623,7 +623,7 @@ read_descendants(Context, SubAccounts) ->
                                    wh_json:objects().
 read_descendants_fold(Account, Acc, Context) ->
     AccountId = wh_json:get_value(<<"id">>, Account),
-    case read_descendant(Context, AccountId) of
+    case maybe_read_descendant(Context, AccountId) of
         'undefined' -> Acc;
         PortRequests ->
             [wh_json:from_list(
@@ -634,6 +634,44 @@ read_descendants_fold(Account, Acc, Context) ->
               )
              |Acc
             ]
+    end.
+
+-spec maybe_read_descendant(cb_context:context(), ne_binary()) -> api_object().
+-spec maybe_read_descendant(cb_context:context(), ne_binary(), boolean()) -> api_object().
+maybe_read_descendant(Context, AccountId) ->
+    maybe_read_descendant(Context, AccountId, wh_services:is_reseller(AccountId)).
+
+maybe_read_descendant(Context, AccountId, 'true') ->
+    Authority =
+        case kz_whitelabel:fetch(AccountId) of
+            {'error', _R} -> 'undefined';
+            {'ok', JObj} ->
+                kz_whitelabel:port_authority(JObj)
+        end,
+    case Authority of
+        'undefined' -> read_descendant(Context, AccountId);
+        AccountId ->
+            lager:debug("~s is managed by itself: ~s", [AccountId, Authority]),
+            'undefined';
+        _OtherAccountId ->
+            lager:warning("~s is managed by unknown: ~s", [AccountId, Authority]),
+            read_descendant(Context, AccountId)
+    end;
+maybe_read_descendant(Context, AccountId, 'false') ->
+    ResellerId = wh_services:find_reseller_id(AccountId),
+    AuthAccountId = cb_context:auth_account_id(Context),
+    Authority =
+        case kz_whitelabel:fetch(ResellerId) of
+            {'error', _R} -> 'undefined';
+            {'ok', JObj} ->
+                kz_whitelabel:port_authority(JObj)
+        end,
+    case Authority of
+        'undefined' -> read_descendant(Context, AccountId);
+        AuthAccountId -> read_descendant(Context, AccountId);
+        _OtherAccountId ->
+            lager:debug("~s is managed by reseller: ~s", [AccountId, Authority]),
+            'undefined'
     end.
 
 -spec read_descendant(cb_context:context(), ne_binary()) -> api_object().
