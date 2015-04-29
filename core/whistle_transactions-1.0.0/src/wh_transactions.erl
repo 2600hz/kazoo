@@ -130,6 +130,13 @@ filter_by_reason(<<"only_calls">>, Transactions) ->
                   'false' -> Acc
               end
       end, [], Transactions);
+filter_by_reason(<<"only_bookkeeper">>, Transactions) ->
+    Dichotomy = fun (Tr) -> wh_transaction:description(Tr) =:= <<"braintree transaction">> end,
+    {BTTrs, Trs} = lists:partition(Dichotomy, Transactions),
+    case whapps_config:get_atom(<<"services">>, <<"master_account_bookkeeper">>) of
+        'wh_bookkeeper_braintree' -> BTTrs;
+        'wh_bookkeeper_local'     -> Trs
+    end;
 filter_by_reason(Reason, Transactions) ->
     [Tr || Tr <- Transactions
                , wh_transaction:is_reason(Reason, Tr)
