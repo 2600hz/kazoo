@@ -15,7 +15,7 @@
 
 -export([empty/0]).
 -export([allow_updates/1]).
--export([from_service_json/1]).
+-export([from_service_json/1, from_service_json/2]).
 -export([reconcile/1, reconcile/2
          ,reconcile_only/1, reconcile_only/2
          ,save_as_dirty/2
@@ -51,6 +51,9 @@
 -include("whistle_services.hrl").
 
 -define(STATUS_GOOD, <<"good_standing">>).
+-define(QUANTITIES_ACCOUNT, <<"account_quantities">>).
+-define(QUANTITIES_CASCADE, <<"cascade_quantities">>).
+-define(PLANS, <<"plans">>).
 
 -record(wh_services, {account_id :: api_binary()
                       ,billing_id :: api_binary()
@@ -98,13 +101,13 @@ new(<<_/binary>> = AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     AccountJObj = get_account_definition(AccountDb, AccountId),
 
-    Props = base_service_props(AccountId, AccountDb, AccountJObj),
+    JObj = base_service_object(AccountId, AccountDb, AccountJObj),
 
-    BillingId = props:get_value(<<"billing_id">>, Props),
-    IsReseller = props:get_value(<<"pvt_reseller">>, Props),
+    BillingId = kzd_services:billing_id(JObj),
+    IsReseller = kzd_services:is_reseller(JObj),
 
     #wh_services{account_id=AccountId
-                 ,jobj=wh_json:from_list(Props)
+                 ,jobj=JObj
                  ,cascade_quantities=cascade_quantities(AccountId, IsReseller)
                  ,dirty='true'
                  ,billing_id=BillingId
@@ -112,32 +115,29 @@ new(<<_/binary>> = AccountId) ->
                  ,deleted=wh_doc:is_soft_deleted(AccountJObj)
                 }.
 
--spec base_service_props(ne_binary(), ne_binary(), wh_json:object()) ->
-                                wh_proplist().
-base_service_props(AccountId, AccountDb, AccountJObj) ->
+-spec base_service_object(ne_binary(), ne_binary(), wh_json:object()) ->
+                                kzd_services:doc().
+base_service_object(AccountId, AccountDb, AccountJObj) ->
     ResellerId = get_reseller_id(AccountId),
-    PvtTree = kz_account:tree(AccountJObj),
+    BaseJObj = wh_doc:update_pvt_parameters(wh_json:new()
+                                            ,AccountDb
+                                            ,[{'account_id', AccountId}
+                                              ,{'crossbar_doc_vsn', <<"1">>}
+                                              ,{'id', AccountId}
+                                              ,{'type', kzd_services:type()}
+                                             ]
+                                           ),
 
-    IsReseller = depreciated_is_reseller(AccountJObj),
-    BillingId = depreciated_billing_id(AccountJObj),
-
-    Now = wh_util:current_tstamp(),
-
-    [{<<"_id">>, AccountId}
-     ,{<<"pvt_created">>, Now}
-     ,{<<"pvt_modified">>, Now}
-     ,{<<"pvt_type">>, <<"service">>}
-     ,{<<"pvt_vsn">>, <<"1">>}
-     ,{<<"pvt_account_id">>, AccountId}
-     ,{<<"pvt_account_db">>, AccountDb}
-     ,{<<"pvt_status">>, ?STATUS_GOOD}
-     ,{<<"pvt_reseller">>, IsReseller}
-     ,{<<"pvt_reseller_id">>, ResellerId}
-     ,{<<"pvt_tree">>, PvtTree}
-     ,{?QUANTITIES, wh_json:new()}
-     ,{<<"billing_id">>, BillingId}
-     ,{<<"plans">>, populate_service_plans(AccountJObj, ResellerId)}
-    ].
+    lists:foldl(fun({F, V}, J) -> F(J, V) end
+                ,BaseJObj
+                ,[{fun kzd_services:set_status/2, ?STATUS_GOOD}
+                  ,{fun kzd_services:set_is_reseller/2, depreciated_is_reseller(AccountJObj)}
+                  ,{fun kzd_services:set_reseller_id/2, ResellerId}
+                  ,{fun kzd_services:set_tree/2, kz_account:tree(AccountJObj)}
+                  ,{fun kzd_services:set_billing_id/2, depreciated_billing_id(AccountJObj)}
+                  ,{fun kzd_services:set_quantities/2, wh_json:new()}
+                  ,{fun kzd_services:set_plans/2, populate_service_plans(AccountJObj, ResellerId)}
+                 ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -147,19 +147,28 @@ base_service_props(AccountId, AccountDb, AccountJObj) ->
 %%--------------------------------------------------------------------
 -spec from_service_json(wh_json:object()) -> services().
 from_service_json(JObj) ->
-    AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
-    IsReseller = wh_json:is_true(<<"pvt_reseller">>, JObj),
-    BillingId = wh_json:get_value(<<"billing_id">>, JObj, AccountId),
+    from_service_json(JObj, 'true').
 
-    #wh_services{account_id=AccountId
-                 ,jobj=JObj
-                 ,cascade_quantities=cascade_quantities(AccountId, IsReseller)
-                 ,status=wh_json:get_ne_value(<<"pvt_status">>, JObj, ?STATUS_GOOD)
-                 ,billing_id=BillingId
-                 ,current_billing_id=BillingId
-                 ,deleted=wh_doc:is_soft_deleted(JObj)
-                 ,dirty=wh_json:is_true(<<"pvt_dirty">>, JObj)
-                }.
+from_service_json(JObj, CalcUpdates) ->
+    AccountId = wh_doc:account_id(JObj),
+    BillingId = kzd_services:billing_id(JObj, AccountId),
+
+    Services = #wh_services{account_id=AccountId
+                            ,jobj=JObj
+                            ,status=kzd_services:status(JObj)
+                            ,billing_id=BillingId
+                            ,current_billing_id=BillingId
+                            ,deleted=wh_doc:is_soft_deleted(JObj)
+                            ,dirty=kzd_services:is_dirty(JObj)
+                           },
+    maybe_calc_updates(Services, CalcUpdates).
+
+maybe_calc_updates(Services, 'true') ->
+    Services#wh_services{cascade_quantities=
+                             cascade_quantities(account_id(Services), is_reseller(Services))
+                        };
+maybe_calc_updates(Services, 'false') ->
+    Services.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -182,16 +191,17 @@ fetch(<<_/binary>> = Account) ->
 -spec handle_fetch_result(ne_binary(), wh_json:object()) -> services().
 handle_fetch_result(AccountId, JObj) ->
     lager:debug("loaded account service doc ~s", [AccountId]),
-    IsReseller = wh_json:is_true(<<"pvt_reseller">>, JObj),
-    BillingId = wh_json:get_value(<<"billing_id">>, JObj, AccountId),
+    IsReseller = kzd_services:is_reseller(JObj),
+    BillingId = kzd_services:billing_id(JObj, AccountId),
+
     #wh_services{account_id=AccountId
                  ,jobj=JObj
                  ,cascade_quantities=cascade_quantities(AccountId, IsReseller)
-                 ,status=wh_json:get_ne_value(<<"pvt_status">>, JObj, ?STATUS_GOOD)
+                 ,status=kzd_services:status(JObj)
                  ,billing_id=BillingId
                  ,current_billing_id=BillingId
                  ,deleted=wh_doc:is_soft_deleted(JObj)
-                 ,dirty=wh_json:is_true(<<"pvt_dirty">>, JObj)
+                 ,dirty=kzd_services:is_dirty(JObj)
                 }.
 
 %%--------------------------------------------------------------------
@@ -202,7 +212,7 @@ handle_fetch_result(AccountId, JObj) ->
 %%--------------------------------------------------------------------
 -spec add_service_plan(ne_binary(), services()) -> services().
 add_service_plan(PlanId, #wh_services{jobj=JObj}=Services) ->
-    ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, JObj),
+    ResellerId = kzd_services:reseller_id(JObj),
     Services#wh_services{jobj=wh_service_plans:add_service_plan(PlanId, ResellerId, JObj)}.
 
 %%--------------------------------------------------------------------
@@ -235,11 +245,14 @@ save_as_dirty(#wh_services{jobj=JObj
               ,AuditLog
               ,BackOff
              ) ->
-    Props = [{<<"_id">>, AccountId}
-             ,{<<"pvt_dirty">>, 'true'}
-             ,{<<"pvt_modified">>, wh_util:current_tstamp()}
-            ],
-    UpdatedJObj = wh_json:set_values(props:filter_undefined(Props), JObj),
+    UpdatedJObj =
+        lists:foldl(fun({F, V}, J) -> F(J, V) end
+                    ,JObj
+                    ,[{fun wh_doc:set_id/2, AccountId}
+                      ,{fun kzd_services:set_is_dirty/2, 'true'}
+                      ,{fun wh_doc:set_modified/2, wh_util:current_tstamp()}
+                     ]
+                   ),
     case couch_mgr:save_doc(?WH_SERVICES_DB, UpdatedJObj) of
         {'ok', SavedJObj} ->
             lager:debug("marked services as dirty for account ~s", [AccountId]),
@@ -362,7 +375,7 @@ update_audit_log(#wh_services{jobj=JObj
     AccountAudit = wh_json:from_list(
                      props:filter_empty(
                        [{<<"cascase_quantities">>, CascadeQuantities}
-                        ,{<<"account_quantities">>, current_quantities(JObj)}
+                        ,{?QUANTITIES_ACCOUNT, current_quantities(JObj)}
                         ,{<<"updated_quantities">>, UpdatedQuantities}
                         ,{<<"account_name">>, account_name(AccountId)}
                        ])
@@ -622,9 +635,9 @@ public_json(#wh_services{jobj=ServicesJObj
                      catch
                          'throw':_ -> 'false'
                      end,
-    Props = [{<<"account_quantities">>, current_quantities(ServicesJObj)}
-             ,{<<"cascade_quantities">>, CascadeQuantities}
-             ,{<<"plans">>, wh_service_plans:plan_summary(ServicesJObj)}
+    Props = [{?QUANTITIES_ACCOUNT, current_quantities(ServicesJObj)}
+             ,{?QUANTITIES_CASCADE, CascadeQuantities}
+             ,{?PLANS, wh_service_plans:plan_summary(ServicesJObj)}
              ,{<<"billing_id">>, wh_json:get_value(<<"billing_id">>, ServicesJObj, AccountId)}
              ,{<<"reseller">>, wh_json:is_true(<<"pvt_reseller">>, ServicesJObj)}
              ,{<<"reseller_id">>, wh_json:get_ne_value(<<"pvt_reseller_id">>, ServicesJObj)}
@@ -638,7 +651,7 @@ public_json(<<_/binary>> = Account) ->
 
 -spec to_json(services()) -> wh_json:object().
 to_json(#wh_services{jobj=JObj
-                    ,updates=UpdatedQuantities
+                     ,updates=UpdatedQuantities
                     }
        ) ->
     CurrentQuantities = current_quantities(JObj),
