@@ -14,6 +14,7 @@
          ,query_resp/1, query_resp_v/1
          ,query_err/1, query_err_v/1
          ,flush/1, flush_v/1
+         ,sync/1, sync_v/1
         ]).
 
 -export([bind_q/2, unbind_q/2]).
@@ -26,6 +27,7 @@
          ,publish_query_resp/2, publish_query_resp/3
          ,publish_query_err/2, publish_query_err/3
          ,publish_flush/1, publish_flush/2
+         ,publish_sync/1, publish_sync/2
         ]).
 
 -include_lib("whistle/include/wh_api.hrl").
@@ -103,6 +105,15 @@
                               ]).
 -define(REG_QUERY_ERR_TYPES, []).
 
+%% Registration Sync
+-define(REG_SYNC_HEADERS, [<<"Queue">>]).
+-define(OPTIONAL_REG_SYNC_HEADERS, []).
+-define(REG_SYNC_VALUES, [{<<"Event-Category">>, <<"directory">>}
+                           ,{<<"Event-Name">>, <<"reg_sync">>}
+                          ]).
+-define(REG_SYNC_TYPES, []).
+-define(REG_SYNC_RK, <<"registration.sync">>).
+
 %%--------------------------------------------------------------------
 %% @doc Registration Success - see wiki
 %% Takes proplist, creates JSON string or error
@@ -142,6 +153,22 @@ flush(JObj) -> flush(wh_json:to_proplist(JObj)).
 flush_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?REG_FLUSH_HEADERS, ?REG_FLUSH_VALUES, ?REG_FLUSH_TYPES);
 flush_v(JObj) -> flush_v(wh_json:to_proplist(JObj)).
+
+
+-spec sync(api_terms()) ->
+                   {'ok', iolist()} |
+                   {'error', string()}.
+sync(Prop) when is_list(Prop) ->
+    case sync_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?REG_SYNC_HEADERS, ?OPTIONAL_REG_SYNC_HEADERS);
+        'false' -> {'error', "Proplist failed validation for reg_sync"}
+    end;
+sync(JObj) -> sync(wh_json:to_proplist(JObj)).
+
+-spec sync_v(api_terms()) -> boolean().
+sync_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?REG_SYNC_HEADERS, ?REG_SYNC_VALUES, ?REG_SYNC_TYPES);
+sync_v(JObj) -> sync_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Registration Query - see wiki
@@ -303,6 +330,14 @@ publish_query_err(Queue, JObj) ->
 publish_query_err(Queue, Resp, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Resp, ?REG_QUERY_ERR_VALUES, fun ?MODULE:query_err/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
+
+-spec publish_sync(api_terms()) -> 'ok'.
+-spec publish_sync(api_terms(), ne_binary()) -> 'ok'.
+publish_sync(JObj) ->
+    publish_sync(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_sync(API, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(API, ?REG_SYNC_VALUES, fun ?MODULE:sync/1),
+    amqp_util:callmgr_publish(Payload, ContentType, ?REG_SYNC_RK).
 
 %%--------------------------------------------------------------------
 %% @doc Special access to the API keys

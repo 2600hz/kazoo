@@ -61,7 +61,9 @@
 -define(REG_QUEUE_OPTIONS, []).
 -define(REG_CONSUME_OPTIONS, []).
 
--record(state, {started = wh_util:current_tstamp()}).
+-record(state, {started = wh_util:current_tstamp()
+                ,queue :: api_binary()
+               }).
 
 -record(registration, {id :: {ne_binary(), ne_binary()} | '_' | '$1'
                        ,username :: ne_binary() | '_'
@@ -434,6 +436,14 @@ handle_cast({'flush', Realm}, State) ->
     {'noreply', State};
 handle_cast({'flush', Username, Realm}, State) ->
     _ = ets:delete(?MODULE, registration_id(Username, Realm)),
+    {'noreply', State};
+handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
+    {'noreply', State#state{queue=Q}};
+handle_cast({'gen_listener',{'is_consuming', 'true'}}, #state{queue=Q}=State) ->
+    wapi_registration:publish_sync(
+      [{<<"Queue">>, Q}
+       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+      ]),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
