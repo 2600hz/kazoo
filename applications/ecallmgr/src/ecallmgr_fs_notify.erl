@@ -23,7 +23,7 @@
          ,terminate/2
          ,code_change/3
         ]).
-
+  
 -record(state, {
           node :: atom()
           ,options :: wh_proplist()
@@ -125,7 +125,11 @@ check_sync(Username, Realm) ->
             Contact = wh_json:get_first_defined([<<"Bridge-RURI">>, <<"Contact">>], Registration),
             [Node|_] = wh_util:shuffle_list(ecallmgr_fs_nodes:connected()),
             lager:info("calling check sync on ~s for ~s@~s and contact ~s", [Node, Username, Realm, Contact]),
-            send_check_sync(Node, Username, Realm, ensure_contact_user(Contact, Username))
+            case ensure_contact_user(Contact, Username, Realm) of
+                'undefined' ->
+                    lager:error("invalid contact : ~p : ~p", [Contact, Registration]);
+                Valid -> send_check_sync(Node, Username, Realm, Valid)
+            end
     end.
 
 -spec send_check_sync(atom(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
@@ -165,7 +169,7 @@ send_mwi_update(JObj, Username, Realm, Node, Registration) ->
     To = nksip_unparse:uri(ToURI),
     ToAccount = nksip_unparse:ruri(ToURI),
     From = nksip_unparse:uri(#uri{user=wh_json:get_value(<<"From-User">>, Registration, Username)
-                                 ,domain=wh_json:get_value(<<"From-Host">>, Registration, Realm)
+                                  ,domain=wh_json:get_value(<<"From-Host">>, Registration, Realm)
                                  }),
     NewMessages = wh_json:get_integer_value(<<"Messages-New">>, JObj, 0),
     Body = io_lib:format(?MWI_BODY, [case NewMessages of 0 -> "no"; _ -> "yes" end
@@ -176,20 +180,24 @@ send_mwi_update(JObj, Username, Realm, Node, Registration) ->
                                      ,wh_json:get_integer_value(<<"Messages-Urgent-Waiting">>, JObj, 0)
                                     ]),
     RegistrationContact = wh_json:get_first_defined([<<"Bridge-RURI">>, <<"Contact">>], Registration),
-    Contact = ensure_contact_user(RegistrationContact, Username),
-    SIPHeaders = <<"X-KAZOO-AOR : ", ToAccount/binary, "\r\n">>,
-    Headers = [{"profile", ?DEFAULT_FS_PROFILE}
-               ,{"contact-uri", Contact}
-               ,{"extra-headers", SIPHeaders}
-               ,{"to-uri", To}
-               ,{"from-uri", From}
-               ,{"event-string", "message-summary"}
-               ,{"content-type", "application/simple-message-summary"}
-               ,{"content-length", wh_util:to_list(length(Body))}
-               ,{"body", lists:flatten(Body)}
-              ],
-    Resp = freeswitch:sendevent(Node, 'NOTIFY', Headers),
-    lager:debug("sent MWI update to '~s' via ~s: ~p", [Contact, Node, Resp]).
+    case ensure_contact_user(RegistrationContact, Username, Realm) of
+        'undefined' -> 
+            lager:error("invalid contact : ~p : ~p", [RegistrationContact, Registration]);
+        Contact ->
+            SIPHeaders = <<"X-KAZOO-AOR : ", ToAccount/binary, "\r\n">>,
+            Headers = [{"profile", ?DEFAULT_FS_PROFILE}
+                       ,{"contact-uri", Contact}
+                       ,{"extra-headers", SIPHeaders}
+                       ,{"to-uri", To}
+                       ,{"from-uri", From}
+                       ,{"event-string", "message-summary"}
+                       ,{"content-type", "application/simple-message-summary"}
+                       ,{"content-length", wh_util:to_list(length(Body))}
+                       ,{"body", lists:flatten(Body)}
+                      ],
+            Resp = freeswitch:sendevent(Node, 'NOTIFY', Headers),
+            lager:debug("sent MWI update to '~s' via ~s: ~p", [Contact, Node, Resp])
+    end.
 
 -spec register_overwrite(wh_json:object(), wh_proplist()) -> no_return().
 register_overwrite(JObj, Props) ->
@@ -199,10 +207,12 @@ register_overwrite(JObj, Props) ->
     PrevContact = ensure_contact_user(
                     wh_json:get_value(<<"Previous-Contact">>, JObj)
                     ,Username
+                    ,Realm
                    ),
     NewContact = ensure_contact_user(
                    wh_json:get_value(<<"Contact">>, JObj)
                    ,Username
+                   ,Realm
                   ),
     SipUri = nksip_unparse:uri(#uri{user=Username, domain=Realm}),
     PrevBody = wh_util:to_list(<<"Replaced-By:", NewContact/binary>>),
@@ -227,20 +237,37 @@ register_overwrite(JObj, Props) ->
                          ,{"content-length", wh_util:to_list(length(NewBody))}
                          ,{"body", NewBody}
                         ],
-    _ = freeswitch:sendevent(Node, 'NOTIFY', PrevContactHeaders),
-    _ = freeswitch:sendevent(Node, 'NOTIFY', NewContactHeaders),
+    case PrevContact of
+        'undefined' -> 
+            lager:error("previous contact is invalid : ~p : ~p", [PrevContact, JObj]);
+        _ ->
+            freeswitch:sendevent(Node, 'NOTIFY', PrevContactHeaders)
+    end,
+    case NewContact of
+        'undefined' -> 
+            lager:error("new contact is invalid : ~p : ~p", [NewContact, JObj]);
+        _ ->
+            freeswitch:sendevent(Node, 'NOTIFY', NewContactHeaders)
+    end,
     lager:debug("sent registration overwrite update of old '~s' new '~s' via '~s'"
                 ,[PrevContact
                   ,NewContact
                   ,Node
                  ]).
 
--spec ensure_contact_user(ne_binary(), ne_binary()) -> ne_binary().
-ensure_contact_user(Contact, Username) ->
+-spec ensure_contact_user(ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
+ensure_contact_user(Contact, Username, Realm) ->
     case nksip_parse_uri:uris(Contact) of
+        [#uri{user = <<>>, domain = <<>>, ext_opts=Opts}=Uri] ->
+            nksip_unparse:ruri(Uri#uri{user=Username, domain=Realm, opts=Opts});
         [#uri{user = <<>>, ext_opts=Opts}=Uri] ->
             nksip_unparse:ruri(Uri#uri{user=Username, opts=Opts});
-        _Else -> Contact
+        [#uri{domain = <<>>, ext_opts=Opts}=Uri] ->
+            nksip_unparse:ruri(Uri#uri{domain=Realm, opts=Opts});
+        [#uri{ext_opts=Opts}=Uri] ->
+            nksip_unparse:ruri(Uri#uri{opts=Opts});
+        [] -> 'undefined';
+        _Else -> 'undefined'
     end.
 
 %%%===================================================================
