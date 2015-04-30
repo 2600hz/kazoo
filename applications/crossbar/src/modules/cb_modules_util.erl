@@ -38,10 +38,10 @@
        ).
 
 -spec range_view_options(cb_context:context()) ->
-                                {pos_integer(), pos_integer()} |
+                                {gregorian_seconds(), gregorian_seconds()} |
                                 cb_context:context().
 -spec range_view_options(cb_context:context(), pos_integer()) ->
-                                {pos_integer(), pos_integer()} |
+                                {gregorian_seconds(), gregorian_seconds()} |
                                 cb_context:context().
 range_view_options(Context) ->
     range_view_options(Context, ?MAX_RANGE).
@@ -53,28 +53,28 @@ range_view_options(Context, MaxRange) ->
     case CreatedTo - CreatedFrom of
         N when N < 0 ->
             cb_context:add_validation_error(
-                <<"created_from">>
-                ,<<"date_range">>
-                ,wh_json:from_list([
-                    {<<"message">>, <<"created_from is prior to created_to">>}
-                    ,{<<"cause">>, CreatedFrom}
+              <<"created_from">>
+              ,<<"date_range">>
+              ,wh_json:from_list(
+                 [{<<"message">>, <<"created_from is prior to created_to">>}
+                  ,{<<"cause">>, CreatedFrom}
                  ])
-                ,Context
-            );
+              ,Context
+             );
         N when N > MaxRange ->
             Message = <<"created_to is more than "
                         ,(wh_util:to_binary(MaxRange))/binary
                         ," seconds from created_from"
                       >>,
             cb_context:add_validation_error(
-                <<"created_from">>
-                ,<<"date_range">>
-                ,wh_json:from_list([
-                    {<<"message">>, Message}
-                    ,{<<"cause">>, CreatedTo}
+              <<"created_from">>
+              ,<<"date_range">>
+              ,wh_json:from_list(
+                 [{<<"message">>, Message}
+                  ,{<<"cause">>, CreatedTo}
                  ])
-                ,Context
-            );
+              ,Context
+             );
         _N -> {CreatedFrom, CreatedTo}
     end.
 

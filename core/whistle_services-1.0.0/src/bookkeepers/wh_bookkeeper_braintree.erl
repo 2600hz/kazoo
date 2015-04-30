@@ -109,7 +109,9 @@ sync([ServiceItem|ServiceItems], AccountId, Updates) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec transactions(ne_binary(), ne_binary(), ne_binary()) ->
+-type api_seconds() :: 'undefined' | gregorian_seconds().
+
+-spec transactions(ne_binary(), api_seconds(), api_seconds()) ->
                           {'error', 'not_found'} |
                           {'error', 'unknown_error'} |
                           {'ok', wh_transaction:transactions()}.
@@ -356,7 +358,7 @@ set_account_db(BTTransaction, Transaction) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec timestamp_to_braintree('undefined' | gregorian_seconds()) -> ne_binary().
+-spec timestamp_to_braintree(api_seconds()) -> ne_binary().
 timestamp_to_braintree('undefined') ->
     lager:debug("timestamp undefined using current_tstamp"),
     timestamp_to_braintree(wh_util:current_tstamp());
@@ -373,9 +375,10 @@ timestamp_to_braintree(Timestamp) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec utc_to_gregorian_seconds(ne_binary()) -> 'undefined' | gregorian_seconds().
+-spec utc_to_gregorian_seconds(ne_binary()) -> api_seconds().
 utc_to_gregorian_seconds(<<Y:4/binary, "-", M:2/binary, "-", D:2/binary, "T"
-                          ,H:2/binary, ":", Mi:2/binary, ":", S:2/binary, _/binary>>
+                           ,H:2/binary, ":", Mi:2/binary, ":", S:2/binary, _/binary
+                         >>
                         ) ->
     Date = {
       {wh_util:to_integer(Y), wh_util:to_integer(M), wh_util:to_integer(D)}
@@ -554,22 +557,29 @@ fetch_bt_customer(AccountId, NewItems) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch_or_create_subscription(ne_binary(), updates()) -> braintree_subscription:subscription().
+fetch_or_create_subscription(PlanId, #wh_service_updates{bt_subscriptions=[]
+                                                         ,bt_customer=Customer
+                                                        }) ->
+    fetch_or_create_subscription(PlanId, Customer);
 fetch_or_create_subscription(PlanId, #wh_service_updates{bt_subscriptions=Subscriptions
                                                          ,bt_customer=Customer
                                                         }) ->
     case lists:keyfind(PlanId, #wh_service_update.plan_id, Subscriptions) of
         'false' ->
-            try braintree_customer:get_subscription(PlanId, Customer) of
-                Subscription ->
-                    lager:debug("found subscription ~s for plan id ~s"
-                                ,[braintree_subscription:get_id(Subscription), PlanId]),
-                    braintree_subscription:reset(Subscription)
-            catch
-                'throw':{'not_found', _} ->
-                    lager:debug("creating new subscription for plan id ~s", [PlanId]),
-                    braintree_customer:new_subscription(PlanId, Customer)
-            end;
+            fetch_or_create_subscription(PlanId, Customer);
         #wh_service_update{bt_subscription=Subscription} -> Subscription
+    end;
+fetch_or_create_subscription(PlanId, #bt_customer{}=Customer) ->
+    try braintree_customer:get_subscription(PlanId, Customer) of
+        Subscription ->
+            lager:debug("found subscription ~s for plan id ~s"
+                        ,[braintree_subscription:get_id(Subscription), PlanId]
+                       ),
+            braintree_subscription:reset(Subscription)
+    catch
+        'throw':{'not_found', _} ->
+            lager:debug("creating new subscription for plan id ~s", [PlanId]),
+            braintree_customer:new_subscription(PlanId, Customer)
     end.
 
 %% @private

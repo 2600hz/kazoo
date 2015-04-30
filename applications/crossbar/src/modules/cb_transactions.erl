@@ -134,7 +134,7 @@ validate_transaction(Context, _PathToken, _Verb) ->
 
 
 %% @private
--spec fetch_transactions(cb_context:context(), ne_binary(), ne_binary(), api_binary()) ->
+-spec fetch_transactions(cb_context:context(), gregorian_seconds(), gregorian_seconds(), api_binary()) ->
                                 cb_context:context().
 
 fetch_transactions(Context, From, To, 'undefined') ->
@@ -144,7 +144,6 @@ fetch_transactions(Context, From, To, 'undefined') ->
             JObjs = wh_transactions:to_public_json(Transactions),
             send_resp({'ok', JObjs}, Context)
     end;
-
 fetch_transactions(Context, From, To, <<"only_calls">>) ->
     case wh_transactions:fetch_local(cb_context:account_id(Context), From, To) of
         {'error', _R}=Error -> send_resp(Error, Context);
@@ -154,7 +153,6 @@ fetch_transactions(Context, From, To, <<"only_calls">>) ->
                     ],
             send_resp({'ok', JObjs}, Context)
     end;
-
 fetch_transactions(Context, From, To, Reason)
   when Reason =:= <<"only_bookkeeper">>; Reason =:= <<"no_calls">> ->
     case wh_transactions:fetch_bookkeeper(cb_context:account_id(Context), From, To) of
@@ -164,7 +162,6 @@ fetch_transactions(Context, From, To, Reason)
             JObjs = wh_transactions:to_public_json(Filtered),
             send_resp({'ok', JObjs}, Context)
     end;
-
 fetch_transactions(Context, From, To, Reason) ->
     case wh_transactions:fetch(cb_context:account_id(Context), From, To) of
         {'error', _R}=Error -> send_resp(Error, Context);
