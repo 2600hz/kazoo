@@ -15,6 +15,9 @@
          ,tree/1, tree/2
          ,type/0, type/1
          ,plans/1, plans/2
+         ,plan/2, plan/3
+         ,plan_account_id/2, plan_account_id/3
+         ,plan_overrides/2, plan_overrides/3
          ,quantities/1, quantities/2
         ]).
 
@@ -26,12 +29,14 @@
          ,set_tree/2
          ,set_type/1
          ,set_plans/2
+         ,set_plan/3
          ,set_quantities/2
         ]).
 
 -include("kz_documents.hrl").
 
 -type doc() :: wh_json:object().
+-export_type([doc/0]).
 
 -define(BILLING_ID, <<"billing_id">>).
 -define(IS_RESELLER, <<"pvt_reseller">>).
@@ -97,6 +102,27 @@ plans(JObj) ->
 plans(JObj, Default) ->
     wh_json:get_json_value(?PLANS, JObj, Default).
 
+-spec plan(doc(), ne_binary()) -> wh_json:object().
+-spec plan(doc(), ne_binary(), Default) -> wh_json:object() | Default.
+plan(JObj, PlanId) ->
+    plan(JObj, PlanId, wh_json:new()).
+plan(JObj, PlanId, Default) ->
+    wh_json:get_json_value([?PLANS, PlanId], JObj, Default).
+
+-spec plan_account_id(doc(), ne_binary()) -> api_binary().
+-spec plan_account_id(doc(), ne_binary(), Default) -> api_binary() | Default.
+plan_account_id(JObj, PlanId) ->
+    plan_account_id(JObj, PlanId, 'undefined').
+plan_account_id(JObj, PlanId, Default) ->
+    kzd_service_plan:account_id(plan(JObj, PlanId), Default).
+
+-spec plan_overrides(doc(), ne_binary()) -> wh_json:object().
+-spec plan_overrides(doc(), ne_binary(), Default) -> wh_json:object() | Default.
+plan_overrides(JObj, PlanId) ->
+    plan_overrides(JObj, PlanId, wh_json:new()).
+plan_overrides(JObj, PlanId, Default) ->
+    kzd_service_plan:overrides(plan(JObj, PlanId), Default).
+
 -spec quantities(doc()) -> wh_json:object().
 -spec quantities(doc(), Default) -> wh_json:object() | Default.
 quantities(JObj) ->
@@ -135,6 +161,12 @@ set_type(JObj) ->
 -spec set_plans(doc(), wh_json:object()) -> doc().
 set_plans(JObj, Plans) ->
     wh_json:set_value(?PLANS, Plans, JObj).
+
+-spec set_plan(doc(), ne_binary(), api_object()) -> doc().
+set_plan(JObj, PlanId, 'undefined') ->
+    wh_json:delete_key([?PLANS, PlanId], JObj);
+set_plan(JObj, PlanId, Plan) ->
+    wh_json:set_value([?PLANS, PlanId], Plan, JObj).
 
 -spec set_quantities(doc(), wh_json:object()) -> wh_json:object().
 set_quantities(JObj, Quantities) ->
