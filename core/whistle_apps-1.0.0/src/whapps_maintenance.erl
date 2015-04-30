@@ -1045,9 +1045,9 @@ add_data_as_dict(File, ExisingDictList) ->
     DocName = filename:basename(File, ".json"),
     % filtering function
     case lists:member(wh_util:to_binary(DocName), ExisingDictList) of
-        true ->
+        'true' ->
             {'error', 'already_exist'};
-        false ->
+        'false' ->
             {'ok', Bin} = file:read_file(File),
             JObj = wh_json:decode(Bin),
             Doc = wh_json:from_list(
@@ -1067,9 +1067,9 @@ add_data_as_dict(File, ExisingDictList) ->
 %%--------------------------------------------------------------------
 -spec init_dicts() -> list('ok' | {'error', 'already_exists'}).
 init_dicts() ->
-    couch_mgr:db_exists(?KZ_AAA_DICTS_DB) andalso couch_mgr:db_create(?KZ_AAA_DICTS_DB),
+    (not couch_mgr:db_exists(?KZ_AAA_DICTS_DB)) andalso couch_mgr:db_create(?KZ_AAA_DICTS_DB),
     case couch_mgr:db_exists(?KZ_AAA_DICTS_DB) of
-        true ->
+        'true' ->
             Files = filelib:wildcard([code:priv_dir('eradius'), "/*.json"]),
             {'ok', Results} = couch_mgr:get_results(?KZ_AAA_DICTS_DB, <<"aaa/fetch_system_dicts">>),
             ExisingDictList = [wh_json:get_value(<<"name">>, wh_json:get_value(<<"value">>, Elem)) || Elem <- Results],

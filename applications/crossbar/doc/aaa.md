@@ -30,7 +30,7 @@ The structure of AAA configuration document is next:
                 "name":"server2",
                 "address":"127.0.0.1",
                 "port":1812,
-                "secret":"secret2" 
+                "secret":"secret2",
                 "aaa_engine":"radius",
                 "dicts":["dictionary_3gpp", "dictionary", "dictionary1"],
                 "avp":"strict",
@@ -85,7 +85,7 @@ The structure of AAA configuration document is next:
                    "id": 5,
                    "type": "string",
                    "name": "Juniper_Deny_Configuration",
-                   "enc": "no" 
+                   "enc": "no"
                }
            },
            {
@@ -94,7 +94,7 @@ The structure of AAA configuration document is next:
                    "id": 4,
                    "type": "string",
                    "name": "Juniper_Allow_Configuration",
-                   "enc": "no" 
+                   "enc": "no"
                }
            },
            {
@@ -103,7 +103,7 @@ The structure of AAA configuration document is next:
                    "id": 3,
                    "type": "string",
                    "name": "Juniper_Deny_Commands",
-                   "enc": "no" 
+                   "enc": "no"
                }
            },
            {
@@ -112,7 +112,7 @@ The structure of AAA configuration document is next:
                    "id": 2,
                    "type": "string",
                    "name": "Juniper_Allow_Commands",
-                   "enc": "no" 
+                   "enc": "no"
                }
            },
            {
@@ -121,7 +121,7 @@ The structure of AAA configuration document is next:
                    "id": 1,
                    "type": "string",
                    "name": "Juniper_Local_User_Name",
-                   "enc": "no" 
+                   "enc": "no"
                }
            },
            {
@@ -157,7 +157,7 @@ Using Crossbar to work with AAA documents and AAA dictionaries is very simple:
 
 #### PATCH - Updates the AAA document partially:
 
-    curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/accounts/{ACCOUNT_ID}/aaa
+    curl -v -X PATCH -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/accounts/{ACCOUNT_ID}/aaa  -d '<dicts data>'
 
 
 ## For the AAA dictionaries:
