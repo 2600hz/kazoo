@@ -251,7 +251,7 @@ get_default_value(Category, Keys, Default, JObj) ->
     case wh_json:get_value([<<"default">> | Keys], JObj) of
         'undefined' ->
             lager:debug("setting default for ~s ~p: ~p", [Category, Keys, Default]),
-            _ = set(Category, Keys, Default),
+            _ = set_default(Category, Keys, Default),
             Default;
         Else -> Else
     end.
