@@ -193,7 +193,7 @@ fetch_last(Account, Count) ->
 %% fetch last transactions from From to To
 %% @end
 %%--------------------------------------------------------------------
--spec fetch(ne_binary(), api_seconds(), api_seconds()) ->
+-spec fetch(ne_binary(), gregorian_seconds(), gregorian_seconds()) ->
                    {'ok', wh_transactions()} |
                    {'error', _}.
 fetch(Account, From, To) ->
@@ -244,7 +244,7 @@ check_range(Account, From, To) ->
 %% fetch last local transactions from From to To
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_local(ne_binary(), api_seconds(), api_seconds()) ->
+-spec fetch_local(ne_binary(), gregorian_seconds(), gregorian_seconds()) ->
                          {'ok', wh_transactions()} |
                          {'error', _}.
 fetch_local(Account, From, To) ->

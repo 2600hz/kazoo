@@ -109,7 +109,7 @@ sync([ServiceItem|ServiceItems], AccountId, Updates) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec transactions(ne_binary(), api_seconds(), api_seconds()) ->
+-spec transactions(ne_binary(), gregorian_seconds(), gregorian_seconds()) ->
                           {'ok', wh_transaction:transactions()} |
                           {'error', 'not_found'} |
                           {'error', 'unknown_error'}.
