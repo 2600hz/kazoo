@@ -31,10 +31,10 @@
 -define(GPC_PROXY_HEADER,{"X-CloudPrint-Proxy","kazoo-cloud-fax-printer-proxy"}).
 -define(DEFAULT_FAX_SMTP_DOMAIN, <<"fax.kazoo.io">>).
 
--define(CLOUD_STATE_FIELD, <<"pvt_cloud_state">> ).
--define(CLOUD_CLAIM_URL_FIELD, <<"pvt_cloud_connector_claim_url">> ).
--define(CLOUD_PRINTER_ID_FIELD, <<"pvt_cloud_printer_id">> ).
--define(SMTP_EMAIL_FIELD, <<"pvt_smtp_email_address">> ).
+-define(CLOUD_STATE_FIELD, <<"pvt_cloud_state">>).
+-define(CLOUD_CLAIM_URL_FIELD, <<"pvt_cloud_connector_claim_url">>).
+-define(CLOUD_PRINTER_ID_FIELD, <<"pvt_cloud_printer_id">>).
+-define(SMTP_EMAIL_FIELD, <<"pvt_smtp_email_address">>).
 
 -define(LEAKED_FIELDS, [?CLOUD_STATE_FIELD
                         ,?CLOUD_CLAIM_URL_FIELD
@@ -281,7 +281,7 @@ leak_private_fields(JObj) ->
     J = wh_json:set_value(<<"id">>, wh_json:get_value(<<"_id">>, JObj), JObj),
     lists:foldl(fun leak_private_field/2, J, ?LEAKED_FIELDS).
 
--spec leak_private_field(binary(), wh_json:object()) -> wh_json:object().
+-spec leak_private_field(ne_binary(), wh_json:object()) -> wh_json:object().
 leak_private_field(<<"pvt_", K1/binary>> = K, Acc) ->
     case wh_json:get_value(K, Acc) of
         'undefined' -> Acc;
@@ -289,7 +289,8 @@ leak_private_field(<<"pvt_", K1/binary>> = K, Acc) ->
     end;
 leak_private_field(_K, Acc) -> Acc.
 
--spec leak_private_field_value(binary(), binary(), term(), wh_json:object()) -> wh_json:object().
+-spec leak_private_field_value(ne_binary(), ne_binary(), wh_json:json_term(), wh_json:object()) ->
+                                      wh_json:object().
 leak_private_field_value(?CLOUD_CLAIM_URL_FIELD, K1, V, Acc) ->
     case wh_json:get_value(?CLOUD_STATE_FIELD, Acc) of
         <<"registered">> ->  wh_json:set_value(K1, V, Acc);
