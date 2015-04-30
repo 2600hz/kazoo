@@ -225,7 +225,6 @@ maybe_sync_subscriptions('false', _) -> 'ok';
 maybe_sync_subscriptions('true', Queue) ->
     Payload = wh_json:from_list(
                 [{<<"Action">>, <<"Request">>}
-                 ,{<<"Queue">>, Queue}
-                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                 | wh_api:default_headers(Queue, ?APP_NAME, ?APP_VERSION)
                 ]),
     wapi_presence:publish_sync(Payload).

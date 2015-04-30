@@ -159,7 +159,7 @@
 
 %% Sync presence
 -define(SYNC_HEADERS, [<<"Action">>]).
--define(OPTIONAL_SYNC_HEADERS, [<<"Queue">>, <<"Event-Package">>]).
+-define(OPTIONAL_SYNC_HEADERS, [<<"Event-Package">>]).
 -define(SYNC_VALUES, [{<<"Event-Category">>, <<"presence">>}
                       ,{<<"Event-Name">>, <<"sync">>}
                       ,{<<"Action">>, [<<"Request">>, <<"Start">>, <<"End">>]}
