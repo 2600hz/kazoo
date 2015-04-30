@@ -10,8 +10,13 @@
 -export([account_id/1, account_id/2
          ,overrides/1, overrides/2
          ,merge_overrides/2
+
+         ,item_plan/3
+
          ,item_activation_charge/3, item_activation_charge/4
          ,category_activation_charge/2, category_activation_charge/3
+
+         ,item_minimum/3, item_minimum/4
 
          ,categories/1, category/2
          ,items/2, item/3
@@ -94,3 +99,17 @@ bookkeeper_ids(Plan) ->
 -spec bookkeeper(doc(), ne_binary()) -> wh_json:object().
 bookkeeper(Plan, BookkeeperId) ->
     wh_json:get_json_value(BookkeeperId, bookkeepers(Plan), wh_json:new()).
+
+-spec item_minimum(doc(), ne_binary(), ne_binary()) -> integer().
+-spec item_minimum(doc(), ne_binary(), ne_binary(), Default) -> integer() | Default.
+item_minimum(Plan, CategoryId, ItemId) ->
+    item_minimum(Plan, CategoryId, ItemId, 0).
+item_minimum(Plan, CategoryId, ItemId, Default) ->
+    wh_json:get_integer_value([?PLAN, CategoryId, ItemId, <<"minimum">>]
+                              ,Plan
+                              ,Default
+                             ).
+
+-spec item_plan(doc(), ne_binary(), ne_binary()) -> wh_json:object().
+item_plan(Plan, CategoryId, ItemId) ->
+    wh_json:get_json_value([?PLAN, CategoryId, ItemId], Plan, wh_json:object()).

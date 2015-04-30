@@ -54,7 +54,9 @@ activation_charges(Category, Item, ServicePlan) ->
 %%--------------------------------------------------------------------
 -spec create_items(kzd_service_plan:doc(), wh_service_items:items(), wh_services:services()) ->
                           wh_service_items:items().
--spec create_items(ne_binary(), ne_binary(), wh_service_items:items(), wh_json:object(), wh_services:services()) ->
+-spec create_items(kzd_service_plan:doc(), wh_service_items:items(), wh_services:services()
+                   ,ne_binary(), ne_binary()
+                  ) ->
                           wh_service_items:items().
 
 create_items(ServicePlan, ServiceItems, Services) ->
@@ -62,15 +64,16 @@ create_items(ServicePlan, ServiceItems, Services) ->
              || Category <- kzd_service_plan:categories(ServicePlan),
                 Item <- kzd_service_plan:items(ServicePlan, Category)
             ],
-    lists:foldl(fun({Category, Item}, I) ->
-                        create_items(Category, Item, I, ServicePlan, Services)
+    lists:foldl(fun({Category, Item}, SIs) ->
+                        create_items(ServicePlan, SIs, Services, Category, Item)
                 end
                 ,ServiceItems
                 ,Plans
                ).
 
-create_items(Category, Item, ServiceItems, ServicePlan, Services) ->
+create_items(ServicePlan, ServiceItems, Services, Category, Item) ->
     ItemPlan = kzd_service_plan:item(ServicePlan, Category, Item),
+
     {Rate, Quantity} = get_rate_at_quantity(Category, Item, ItemPlan, Services),
     %% allow service plans to re-map item names (IE: softphone items "as" sip_device)
     As = wh_json:get_ne_value(<<"as">>, ItemPlan, Item),
@@ -170,7 +173,7 @@ bookkeeper_jobj(Category, Item, ServicePlan) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_rate_at_quantity(ne_binary(), ne_binary(), wh_json:object(), wh_services:services()) ->
+-spec get_rate_at_quantity(ne_binary(), ne_binary(), kzd_service_plan:doc(), wh_services:services()) ->
                                   {float(), integer()}.
 get_rate_at_quantity(Category, Item, ItemPlan, Services) ->
     Quantity = get_quantity(Category, Item, ItemPlan, Services),
@@ -186,10 +189,10 @@ get_rate_at_quantity(Category, Item, ItemPlan, Services) ->
 %% current quantity.
 %% @end
 %%--------------------------------------------------------------------
--spec get_quantity(ne_binary(), ne_binary(), wh_json:object(), wh_services:services()) -> integer().
+-spec get_quantity(ne_binary(), ne_binary(), kzd_service_plan:doc(), wh_services:services()) -> integer().
 get_quantity(Category, Item, ItemPlan, Services) ->
     ItemQuantity = get_item_quantity(Category, Item, ItemPlan, Services),
-    case wh_json:get_integer_value(<<"minimum">>, ItemPlan, 0) of
+    case kzd_service_plan:item_minimum(ItemPlan, Category, ItemPlan) of
         Min when Min > ItemQuantity ->
             lager:debug("minimum '~s/~s' not met with ~p, enforcing quantity ~p"
                         ,[Category, Item, ItemQuantity, Min]
@@ -206,8 +209,8 @@ get_quantity(Category, Item, ItemPlan, Services) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_flat_rate(non_neg_integer(), wh_json:object()) -> api_float().
-get_flat_rate(Quantity, JObj) ->
-    Rates = wh_json:get_value(<<"flat_rates">>, JObj, wh_json:new()),
+get_flat_rate(Quantity, ItemPlan) ->
+    Rates = wh_json:get_value(<<"flat_rates">>, ItemPlan, wh_json:new()),
     L1 = [wh_util:to_integer(K) || K <- wh_json:get_keys(Rates)],
     case lists:dropwhile(fun(K) -> Quantity > K end, lists:sort(L1)) of
         [] -> 'undefined';
@@ -223,12 +226,12 @@ get_flat_rate(Quantity, JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_quantity_rate(non_neg_integer(), wh_json:object()) -> api_float().
-get_quantity_rate(Quantity, JObj) ->
-    Rates = wh_json:get_value(<<"rates">>, JObj, wh_json:new()),
+get_quantity_rate(Quantity, ItemPlan) ->
+    Rates = wh_json:get_value(<<"rates">>, ItemPlan, wh_json:new()),
     L1 = [wh_util:to_integer(K) || K <- wh_json:get_keys(Rates)],
     case lists:dropwhile(fun(K) -> Quantity > K end, lists:sort(L1)) of
         [] ->
-            wh_json:get_float_value(<<"rate">>, JObj);
+            wh_json:get_float_value(<<"rate">>, ItemPlan);
         Range ->
             wh_json:get_float_value(wh_util:to_binary(hd(Range)), Rates)
     end.
