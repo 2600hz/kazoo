@@ -23,6 +23,8 @@
 -export([record_to_json/1]).
 -export([json_to_record/1]).
 
+-define(MIN_AMOUNT, whapps_config:get_float(<<"braintree">>, <<"min_amount">>, 5.00)).
+
 -import('braintree_util', [make_doc_xml/2]).
 -import('wh_util', [get_xml_value/2]).
 
@@ -141,16 +143,14 @@ sale(CustomerId, Transaction) ->
     create(Transaction#bt_transaction{type=?BT_TRANS_SALE, customer_id=CustomerId}).
 
 quick_sale(CustomerId, Amount) ->
-    MinAmount = whapps_config:get_float(<<"braintree">>, <<"min_amount">>, 5.00),
-    case wh_util:to_float(Amount) <  MinAmount of
-        'true' -> braintree_util:error_min_amount(MinAmount);
+    case wh_util:to_float(Amount) <  ?MIN_AMOUNT of
+        'true' -> braintree_util:error_min_amount(?MIN_AMOUNT);
         'false' -> sale(CustomerId, #bt_transaction{amount=wh_util:to_binary(Amount)})
     end.
 
 quick_sale(CustomerId, Amount, Props) ->
-    MinAmount = whapps_config:get_float(<<"braintree">>, <<"min_amount">>, 5.00),
-    case wh_util:to_float(Amount) <  MinAmount of
-        'true' -> braintree_util:error_min_amount(MinAmount);
+    case wh_util:to_float(Amount) <  ?MIN_AMOUNT of
+        'true' -> braintree_util:error_min_amount(?MIN_AMOUNT);
         'false' ->
             Transaction = json_to_record(wh_json:from_list(Props)),
             sale(CustomerId, Transaction#bt_transaction{amount=wh_util:to_binary(Amount)})
