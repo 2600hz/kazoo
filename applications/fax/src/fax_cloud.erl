@@ -436,7 +436,7 @@ process_registration_result('true', AppId, JObj, Result) ->
 process_registration_result('false', AppId, JObj, _Result) ->
     PrinterId = wh_json:get_value(<<"pvt_cloud_printer_id">>, JObj),
     TokenDuration = wh_json:get_integer_value(<<"pvt_cloud_token_duration">>, JObj),
-    CreatedTime = wh_json:get_integer_value(<<"pvt_created">>, JObj),
+    CreatedTime = wh_json:get_integer_value(<<"pvt_cloud_created_time">>, JObj),
     InviteUrl = wh_json:get_value(<<"pvt_cloud_connector_claim_url">>, JObj),
     Elapsed = wh_util:elapsed_s(CreatedTime),
 

@@ -31,10 +31,15 @@
 -define(GPC_PROXY_HEADER,{"X-CloudPrint-Proxy","kazoo-cloud-fax-printer-proxy"}).
 -define(DEFAULT_FAX_SMTP_DOMAIN, <<"fax.kazoo.io">>).
 
--define(LEAKED_FIELDS, [<<"pvt_smtp_email_address">>
-                        ,<<"pvt_cloud_state">>
-                        ,<<"pvt_cloud_printer_id">>
-                        ,<<"pvt_cloud_connector_claim_url">>
+-define(CLOUD_STATE_FIELD, <<"pvt_cloud_state">>).
+-define(CLOUD_CLAIM_URL_FIELD, <<"pvt_cloud_connector_claim_url">>).
+-define(CLOUD_PRINTER_ID_FIELD, <<"pvt_cloud_printer_id">>).
+-define(SMTP_EMAIL_FIELD, <<"pvt_smtp_email_address">>).
+
+-define(LEAKED_FIELDS, [?CLOUD_STATE_FIELD
+                        ,?CLOUD_CLAIM_URL_FIELD
+                        ,?CLOUD_PRINTER_ID_FIELD
+                        ,?SMTP_EMAIL_FIELD
                        ]).
 
 -define(CLOUD_PROPERTIES, [<<"printer">>
@@ -274,12 +279,25 @@ read(Id, Context) ->
 -spec leak_private_fields(wh_json:object()) -> wh_json:object().
 leak_private_fields(JObj) ->
     J = wh_json:set_value(<<"id">>, wh_json:get_value(<<"_id">>, JObj), JObj),
-    lists:foldl(fun(<<"pvt_", K1/binary>> = K, Acc) ->
-                        case wh_json:get_value(K, Acc) of
-                            'undefined' -> Acc;
-                            Value -> wh_json:set_value(K1, Value , Acc)
-                        end
-                end, J, ?LEAKED_FIELDS).
+    lists:foldl(fun leak_private_field/2, J, ?LEAKED_FIELDS).
+
+-spec leak_private_field(ne_binary(), wh_json:object()) -> wh_json:object().
+leak_private_field(<<"pvt_", K1/binary>> = K, Acc) ->
+    case wh_json:get_value(K, Acc) of
+        'undefined' -> Acc;
+        Value -> leak_private_field_value(K, K1, Value, Acc)
+    end;
+leak_private_field(_K, Acc) -> Acc.
+
+-spec leak_private_field_value(ne_binary(), ne_binary(), wh_json:json_term(), wh_json:object()) ->
+                                      wh_json:object().
+leak_private_field_value(?CLOUD_CLAIM_URL_FIELD, K1, V, Acc) ->
+    case wh_json:get_value(?CLOUD_STATE_FIELD, Acc) of
+        <<"registered">> ->  wh_json:set_value(K1, V, Acc);
+        _ -> Acc
+    end;
+leak_private_field_value(_K, K1, V, Acc) ->
+    wh_json:set_value(K1, V, Acc).
 
 -spec remove_private_fields(cb_context:context()) -> cb_context:context().
 remove_private_fields(Context) ->
@@ -366,6 +384,27 @@ is_faxbox_email_global_unique(Email, FaxBoxId) ->
         {'error', 'not_found'} -> 'true';
         _ -> 'false'
     end.
+
+-spec maybe_reregister_cloud_printer(cb_context:context()) -> cb_context:context().
+-spec maybe_reregister_cloud_printer(api_binary(), cb_context:context()) -> cb_context:context().
+maybe_reregister_cloud_printer(Context) ->
+    CurrentState = wh_json:get_value(<<"pvt_cloud_state">>, cb_context:doc(Context)),
+    Ctx = maybe_reregister_cloud_printer(CurrentState, Context),
+    Ctx1 = case wh_json:get_value(<<"pvt_cloud_state">>, cb_context:doc(Ctx)) of
+               CurrentState -> cb_context:set_resp_status(Context, 'success');
+               _ -> crossbar_doc:save(Ctx)
+           end,
+    case cb_context:resp_status(Ctx1) of
+        'success' ->
+            cb_context:set_resp_data(Ctx1, wh_doc:public_fields(leak_private_fields(cb_context:doc(Ctx1))));
+        _ -> Ctx1
+    end.
+
+maybe_reregister_cloud_printer('undefined', Context) ->
+    maybe_register_cloud_printer(Context);
+maybe_reregister_cloud_printer(<<"expired">>, Context) ->
+    maybe_register_cloud_printer(Context);
+maybe_reregister_cloud_printer(_, Context) -> Context.
 
 -spec maybe_register_cloud_printer(cb_context:context()) -> cb_context:context().
 maybe_register_cloud_printer(Context) ->
@@ -508,8 +547,8 @@ join_formdata_fold(Bin, Acc) ->
     string:join([binary_to_list(Bin), Acc], "\r\n").
 
 -spec maybe_oauth_req(wh_json:object(), api_binary(), cb_context:context()) -> cb_context:context().
-maybe_oauth_req(Doc, 'undefined', Context) ->
-    cb_context:set_resp_data(Context, wh_doc:public_fields(leak_private_fields(Doc)));
+maybe_oauth_req(_Doc, 'undefined', Context) ->
+    maybe_reregister_cloud_printer(Context);
 maybe_oauth_req(Doc, _, Context) ->
     oauth_req(Doc, wh_json:get_value(<<"pvt_cloud_refresh_token">>, Doc), Context).
 
