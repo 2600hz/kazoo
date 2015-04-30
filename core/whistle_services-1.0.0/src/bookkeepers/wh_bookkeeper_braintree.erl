@@ -109,12 +109,10 @@ sync([ServiceItem|ServiceItems], AccountId, Updates) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--type api_seconds() :: 'undefined' | gregorian_seconds().
-
 -spec transactions(ne_binary(), api_seconds(), api_seconds()) ->
+                          {'ok', wh_transaction:transactions()} |
                           {'error', 'not_found'} |
-                          {'error', 'unknown_error'} |
-                          {'ok', wh_transaction:transactions()}.
+                          {'error', 'unknown_error'}.
 transactions(AccountId, From0, To0) ->
     From = timestamp_to_braintree(From0),
     To   = timestamp_to_braintree(To0),

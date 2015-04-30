@@ -18,6 +18,7 @@
 -export([refresh_views/1]).
 -export([create/1]).
 -export([maybe_delete/2]).
+-export([get_range/3]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -189,7 +190,7 @@ get_modb(Account, Timestamp) ->
     wh_util:format_account_mod_id(Account, Timestamp).
 
 get_modb(<<_:32/binary, "-", _:4/binary, _:2/binary>>=AccountMODb, _Year, _Month) ->
-    AccountMODb;    
+    AccountMODb;
 get_modb(Account, Year, Month) ->
     wh_util:format_account_mod_id(Account, Year, Month).
 
@@ -319,3 +320,20 @@ delete_if_orphaned(AccountMODb, 'true') ->
     Succeeded = couch_mgr:db_delete(AccountMODb),
     lager:debug("cleanse orphaned modb ~p... ~p", [AccountMODb,Succeeded]),
     Succeeded.
+
+
+%% @public
+-spec get_range(ne_binary(), gregorian_seconds(), gregorian_seconds()) ->
+                       ne_binaries().
+get_range(AccountId, From, To) ->
+    {{FromYear, FromMonth, _}, _} = calendar:gregorian_seconds_to_datetime(From),
+    {{ToYear, ToMonth, _}, _} = calendar:gregorian_seconds_to_datetime(To),
+    Seq = crossbar_util:generate_year_month_sequence({FromYear, FromMonth}
+                                                     ,{ToYear, ToMonth}
+                                                    ),
+    [MODb || {Year, Month} <- Seq
+                 , begin
+                       MODb = get_modb(AccountId, Year, Month),
+                       couch_mgr:db_exists(MODb)
+                   end
+    ].

@@ -290,21 +290,7 @@ load_view(View, ViewOptions, Context) ->
 chunked_dbs(AccountId, ViewOptions) ->
     To = view_option('startkey',ViewOptions),
     From = view_option('endkey',  ViewOptions),
-
-    [MODb || MODb <- ranged_modbs(AccountId, From, To),
-             couch_mgr:db_exists(MODb)
-    ].
-
--spec ranged_modbs(ne_binary(), gregorian_seconds(), gregorian_seconds()) ->
-                          ne_binaries().
-ranged_modbs(AccountId, From, To) ->
-    {{FromYear, FromMonth, _}, _} = calendar:gregorian_seconds_to_datetime(From),
-    {{ToYear, ToMonth, _}, _} = calendar:gregorian_seconds_to_datetime(To),
-
-    Seq = crossbar_util:generate_year_month_sequence({FromYear, FromMonth}
-                                                     ,{ToYear, ToMonth}
-                                                    ),
-    [kazoo_modb:get_modb(AccountId, Year, Month) || {Year, Month} <- Seq].
+    kazoo_modb:get_range(AccountId, From, To).
 
 -spec view_option('endkey' | 'startkey', wh_proplist()) -> pos_integer().
 view_option(Key, ViewOptions) ->
