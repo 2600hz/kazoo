@@ -390,10 +390,14 @@ maybe_reregister_cloud_printer(Context) ->
     CurrentState = wh_json:get_value(<<"pvt_cloud_state">>, cb_context:doc(Context)),
     Ctx = maybe_reregister_cloud_printer(CurrentState, Context),
     Ctx1 = case wh_json:get_value(<<"pvt_cloud_state">>, cb_context:doc(Ctx)) of
-               CurrentState -> Ctx;
+               CurrentState -> cb_context:set_resp_status(Context, 'success');
                _ -> crossbar_doc:save(Ctx)
            end,
-    cb_context:set_resp_data(Ctx1, wh_doc:public_fields(leak_private_fields(cb_context:doc(Ctx1)))).
+    case cb_context:resp_status(Ctx1) of
+        'success' ->
+            cb_context:set_resp_data(Ctx1, wh_doc:public_fields(leak_private_fields(cb_context:doc(Ctx1))));
+        _ -> Ctx1
+    end.
 
 maybe_reregister_cloud_printer('undefined', Context) ->
     maybe_register_cloud_printer(Context);
