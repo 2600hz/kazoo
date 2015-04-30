@@ -642,7 +642,7 @@ fetch_or_create_subscription(PlanId, #bt_customer{}=Customer) ->
     end.
 
 %% @private
--spec prepare_subscription(wh_service:item(), ne_binary(), ne_binary(), updates()) ->
+-spec prepare_subscription(wh_service_item:item(), ne_binary(), ne_binary(), updates()) ->
                                   braintree_subscription:subscription().
 prepare_subscription(ServiceItem, AddOnId, PlanId, Updates) ->
     Routines = [fun(S) ->
