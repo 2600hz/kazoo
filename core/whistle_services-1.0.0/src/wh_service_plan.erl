@@ -20,13 +20,13 @@
 %% Merge any plan overrides into the plan property.
 %% @end
 %%--------------------------------------------------------------------
--spec fetch(ne_binary(), ne_binary(), wh_json:object()) -> api_object().
+-spec fetch(ne_binary(), ne_binary(), wh_json:object()) -> kzd_service_plan:api_doc().
 fetch(PlanId, VendorId, Overrides) ->
     VendorDb = wh_util:format_account_id(VendorId, 'encoded'),
     case couch_mgr:open_cache_doc(VendorDb, PlanId) of
         {'ok', JObj} ->
             lager:debug("found service plan ~s/~s", [VendorDb, PlanId]),
-            wh_json:merge_recursive(JObj, wh_json:from_list([{<<"plan">>, Overrides}]));
+            kzd_service_plan:merge_overrides(JObj, Overrides);
         {'error', _R} ->
             lager:debug("unable to open service plan ~s/~s: ~p", [VendorDb, PlanId, _R]),
             'undefined'
@@ -38,17 +38,12 @@ fetch(PlanId, VendorId, Overrides) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec activation_charges(ne_binary(), ne_binary(), wh_json:object()) -> float().
+-spec activation_charges(ne_binary(), ne_binary(), kzd_service_plan:doc()) -> float().
 activation_charges(Category, Item, ServicePlan) ->
-    Keys = [<<"plan">>, Category, Item, <<"activation_charge">>],
-    case wh_json:get_value(Keys, ServicePlan) of
+    case kzd_service_plan:item_activation_charge(ServicePlan, Category, Item) of
         'undefined' ->
-            wh_json:get_float_value([<<"plan">>
-                                     ,Category
-                                     ,<<"_all">>
-                                     ,<<"activation_charge">>
-                                    ], ServicePlan, 0.0);
-        Else -> wh_util:to_float(Else)
+            kzd_service_plan:category_activation_charge(ServicePlan, Category, 0.0);
+        Charge -> Charge
     end.
 
 %%--------------------------------------------------------------------
@@ -57,23 +52,25 @@ activation_charges(Category, Item, ServicePlan) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec create_items(wh_json:object(), wh_service_items:items(), wh_services:services()) ->
+-spec create_items(kzd_service_plan:doc(), wh_service_items:items(), wh_services:services()) ->
                           wh_service_items:items().
 -spec create_items(ne_binary(), ne_binary(), wh_service_items:items(), wh_json:object(), wh_services:services()) ->
                           wh_service_items:items().
 
 create_items(ServicePlan, ServiceItems, Services) ->
-    Plan = wh_json:get_value(<<"plan">>, ServicePlan, wh_json:new()),
     Plans = [{Category, Item}
-             || Category <- wh_json:get_keys(Plan)
-                    ,Item <- wh_json:get_keys(Category, Plan)
+             || Category <- kzd_service_plan:categories(ServicePlan),
+                Item <- kzd_service_plan:items(ServicePlan, Category)
             ],
     lists:foldl(fun({Category, Item}, I) ->
                         create_items(Category, Item, I, ServicePlan, Services)
-                end, ServiceItems, Plans).
+                end
+                ,ServiceItems
+                ,Plans
+               ).
 
 create_items(Category, Item, ServiceItems, ServicePlan, Services) ->
-    ItemPlan = wh_json:get_value([<<"plan">>, Category, Item], ServicePlan),
+    ItemPlan = kzd_service_plan:item(ServicePlan, Category, Item),
     {Rate, Quantity} = get_rate_at_quantity(Category, Item, ItemPlan, Services),
     %% allow service plans to re-map item names (IE: softphone items "as" sip_device)
     As = wh_json:get_ne_value(<<"as">>, ItemPlan, Item),
