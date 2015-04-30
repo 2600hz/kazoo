@@ -793,7 +793,8 @@ maybe_add_ccvs(CCVs, Reg) ->
                      ,account_name = wh_json:get_value(<<"Account-Name">>, CCVs)
                     }.
 
--spec fix_contact(ne_binary()) -> ne_binary().
+-spec fix_contact(api_binary()) -> api_binary().
+fix_contact('undefined') -> 'undefined';
 fix_contact(Contact) ->
     binary:replace(Contact
                    ,[<<"<">>, <<">">>]
