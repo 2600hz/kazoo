@@ -579,9 +579,17 @@ connecting({'timeout', ConnRef, ?CONNECTION_TIMEOUT_MESSAGE}, #state{queue_proc=
                                                                      ,account_id=AccountId
                                                                      ,queue_id=QueueId
                                                                      ,member_call=Call
+                                                                     ,member_call_winner=Winner
                                                                     }=State) ->
     lager:debug("connection timeout occurred, bounce the caller out of the queue"),
-    acdc_queue_listener:timeout_member_call(Srv),
+
+    case Winner of
+    	undefined ->
+    		acdc_queue_listener:timeout_member_call(Srv);
+    	_ ->
+    		acdc_queue_listener:timeout_member_call(Srv, Winner)
+    end,
+
     acdc_stats:call_abandoned(AccountId, QueueId, whapps_call:call_id(Call), ?ABANDON_TIMEOUT),
 
     webseq:evt(?WSD_ID, self(), whapps_call:call_id(Call), <<"member call finish - timeout">>),
