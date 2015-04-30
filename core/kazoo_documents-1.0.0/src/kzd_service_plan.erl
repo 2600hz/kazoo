@@ -105,11 +105,14 @@ bookkeeper(Plan, BookkeeperId) ->
 item_minimum(Plan, CategoryId, ItemId) ->
     item_minimum(Plan, CategoryId, ItemId, 0).
 item_minimum(Plan, CategoryId, ItemId, Default) ->
-    wh_json:get_integer_value([?PLAN, CategoryId, ItemId, <<"minimum">>]
-                              ,Plan
-                              ,Default
-                             ).
+    kzd_item_plan:minimum(
+      wh_json:get_json_value([?PLAN, CategoryId, ItemId]
+                             ,Plan
+                             ,wh_json:new()
+                            )
+      ,Default
+     ).
 
 -spec item_plan(doc(), ne_binary(), ne_binary()) -> wh_json:object().
 item_plan(Plan, CategoryId, ItemId) ->
-    wh_json:get_json_value([?PLAN, CategoryId, ItemId], Plan, wh_json:object()).
+    wh_json:get_json_value([?PLAN, CategoryId, ItemId], Plan, wh_json:new()).
