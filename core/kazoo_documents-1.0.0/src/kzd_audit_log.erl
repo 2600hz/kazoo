@@ -113,5 +113,5 @@ set_authenticating_user(JObj, User) ->
 -spec set_audit_account(doc(), ne_binary(), wh_json:object()) -> doc().
 set_audit_account(JObj, AccountId, AuditJObj) ->
     OldAudit = audit_account_id(JObj, AccountId, wh_json:new()),
-    NewAudit = wh_json:merge_recurzive(OldAudit, AuditJObj),
+    NewAudit = wh_json:merge_recursive(OldAudit, AuditJObj),
     wh_json:set_value([?KEY_AUDIT, AccountId], NewAudit, JObj).
