@@ -125,19 +125,16 @@ create_transactions(Context, Item, Acc) ->
 
 create_transactions(_Context, _Item, Acc, 0) -> Acc;
 create_transactions(Context, Item, Acc, Quantity) ->
-    Amount = wh_json:get_integer_value(<<"activation_charges">>, Item, 0),
-    create_transactions(Context, Item, Acc, Quantity, Amount).
-
-create_transactions(_Context, _Item, Acc, _Quantity, 0) -> Acc;
-create_transactions(Context, Item, Acc, Quantity, Amount) ->
     AccountId = cb_context:account_id(Context),
+    Amount = wh_json:get_integer_value(<<"activation_charges">>, Item, 0),
+    Units = wht_util:dollars_to_units(Amount),
     Routines = [fun set_meta_data/3
                 ,fun set_event/3
                ],
     Transaction =
         lists:foldl(
           fun(F, T) -> F(Context, Item, T) end
-          ,wh_transaction:debit(AccountId, Amount)
+          ,wh_transaction:debit(AccountId, Units)
           ,Routines
          ),
     create_transactions(Context, Item, [Transaction|Acc], Quantity-1).
@@ -146,19 +143,20 @@ create_transactions(Context, Item, Acc, Quantity, Amount) ->
                     ,wh_json:object()
                     ,wh_transaction:transaction()
                    ) -> wh_transaction:transaction().
-set_meta_data(Context, _Item, Transaction) ->
+set_meta_data(Context, Item, Transaction) ->
     MetaData =
         wh_json:from_list(
-          [{<<"auth_account_id">>, cb_context:auth_account_id(Context)}]
-         ),
+          [{<<"auth_account_id">>, cb_context:auth_account_id(Context)}
+           ,{<<"category">>, wh_json:get_value(<<"category">>, Item)}
+           ,{<<"item">>, wh_json:get_value(<<"item">>, Item)}
+          ]),
     wh_transaction:set_metadata(MetaData, Transaction).
 
 -spec set_event(cb_context:context() ,wh_json:object()
                 ,wh_transaction:transaction()) -> wh_transaction:transaction().
 set_event(_Context, Item, Transaction) ->
-    Category = wh_json:get_value(<<"category">>, Item, <<>>),
     ItemValue = wh_json:get_value(<<"item">>, Item, <<>>),
-    Event = <<Category/binary, ".", ItemValue/binary>>,
+    Event = <<"Activation charges for ", ItemValue/binary>>,
     wh_transaction:set_event(Event, Transaction).
 
 %%--------------------------------------------------------------------
