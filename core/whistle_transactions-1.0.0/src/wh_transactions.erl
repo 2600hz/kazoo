@@ -12,8 +12,14 @@
          ,call_charges/3
          ,call_charges/4
         ]).
--export([filter_by_reason/2]).
+-export([filter_by_reason/2
+         ,filter_for_per_minute/1
+        ]).
 -export([fetch_since/3]).
+-export([fetch/3
+         ,fetch_local/3
+         ,fetch_bookkeeper/3
+        ]).
 -export([fetch_last/2]).
 -export([save/1]).
 -export([remove/1]).
@@ -112,7 +118,14 @@ call_charges(Ledger, CallId, Event, 'false') ->
 %% @end
 %%--------------------------------------------------------------------
 -spec filter_by_reason(ne_binary(), wh_transactions()) -> wh_transactions().
-filter_by_reason(<<"no_calls">>, Transactions) ->
+filter_by_reason(<<"only_bookkeeper">>, Transactions) ->
+    Dichotomy = fun (Tr) -> wh_transaction:description(Tr) =:= <<"braintree transaction">> end,
+    {BTTrs, Trs} = lists:partition(Dichotomy, Transactions),
+    case whapps_config:get_atom(<<"services">>, <<"master_account_bookkeeper">>) of
+        'wh_bookkeeper_braintree' -> BTTrs;
+        'wh_bookkeeper_local'     -> Trs
+    end;
+filter_by_reason(<<"no_calls">>, Transactions) -> %% Legacy of only_bookkeeper
     lists:foldr(
       fun(Transaction, Acc) ->
               Code = wh_transaction:code(Transaction),
@@ -130,17 +143,31 @@ filter_by_reason(<<"only_calls">>, Transactions) ->
                   'false' -> Acc
               end
       end, [], Transactions);
-filter_by_reason(<<"only_bookkeeper">>, Transactions) ->
-    Dichotomy = fun (Tr) -> wh_transaction:description(Tr) =:= <<"braintree transaction">> end,
-    {BTTrs, Trs} = lists:partition(Dichotomy, Transactions),
-    case whapps_config:get_atom(<<"services">>, <<"master_account_bookkeeper">>) of
-        'wh_bookkeeper_braintree' -> BTTrs;
-        'wh_bookkeeper_local'     -> Trs
-    end;
 filter_by_reason(Reason, Transactions) ->
-    [Tr || Tr <- Transactions
-               , wh_transaction:is_reason(Reason, Tr)
+    [Transaction || Transaction <- Transactions
+                        , wh_transaction:is_reason(Reason, Transaction)
     ].
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Keep only per minute transactions
+%% @end
+%%--------------------------------------------------------------------
+-spec filter_for_per_minute(wh_transactions()) -> wh_transactions().
+filter_for_per_minute(Transactions) ->
+    [Transaction || Transaction <- Transactions
+                        , is_per_minute(Transaction)
+    ].
+
+%% @private
+-spec is_per_minute(wh_transaction:transaction()) -> boolean().
+is_per_minute(Transaction) ->
+    case wh_transaction:code(Transaction) of
+        ?CODE_PER_MINUTE_CALL -> 'true';
+        ?CODE_SUB_ACCOUNT_PER_MINUTE_CALL -> 'true';
+        _Code -> 'false'
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -212,58 +239,80 @@ check_range(From, To) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %%
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch(ne_binary(), 'undefined' | wh_proplist(), wh_proplist()) ->
                    {'ok', wh_transactions()} |
-                   {'error', any()}.
+                   {'error', _}.
 fetch(Account, ViewOptionsFrom, ViewOptionsTo) ->
-    case {fetch_local(Account, ViewOptionsFrom)
-          ,fetch_local(Account, ViewOptionsTo)
+    case {fetch_local(Account, ViewOptionsFrom, ViewOptionsTo)
           ,fetch_bookkeeper(Account, ViewOptionsTo)
          }
     of
-        {{'error', _R}=Error, _, _} -> Error;
-        {_, {'error', _R}=Error, _} -> Error;
-        {_, _, {'error', _R}=Error} -> Error;
-        {{'ok', Local1}, {'ok', Local2}, {'ok', Bookkeeper}} ->
-            {'ok', de_duplicate_transactions(Local1 ++ Local2, Bookkeeper)}
+        {{'error', _R}=Error, _} -> Error;
+        {_, {'error', _R}=Error} -> Error;
+        {{'ok', Local}, {'ok', Bookkeeper}} ->
+            {'ok', de_duplicate_transactions(Local, Bookkeeper)}
     end.
 
-%%--------------------------------------------------------------------
 %% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
 -spec fetch_local(ne_binary(), 'undefined' | wh_proplist()) ->
                          {'ok', wh_transactions()} |
-                         {'error', any()}.
-fetch_local(_, 'undefined') -> {'ok', []};
+                         {'error', _}.
+fetch_local(_Account, 'undefined') -> {'ok', []};
 fetch_local(Account, ViewOptions) ->
     case kazoo_modb:get_results(Account, <<"transactions/by_timestamp">>, ViewOptions) of
         {'error', _}=Error -> Error;
         {'ok', []}=R -> R;
-        {'ok', ViewRes} ->
-            {'ok', viewres_to_recordlist(ViewRes)}
+        {'ok', ViewRes} -> {'ok', viewres_to_recordlist(ViewRes)}
     end.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec fetch_local(ne_binary(), 'undefined' | wh_proplist(), 'undefined' | wh_proplist()) ->
+                         {'ok', wh_transactions()} |
+                         {'error', _}.
+fetch_local(Account, 'undefined', ViewOptionsTo) ->
+    fetch_local(Account, ViewOptionsTo);
+fetch_local(Account, ViewOptionsFrom, 'undefined') ->
+    fetch_local(Account, ViewOptionsFrom);
+fetch_local(Account, ViewOptionsFrom, ViewOptionsTo) ->
+    case {fetch_local(Account, ViewOptionsFrom)
+          ,fetch_local(Account, ViewOptionsTo)
+         }
+    of
+        {{'error', _R}=Error, _} -> Error;
+        {_, {'error', _R}=Error} -> Error;
+        {{'ok', LocalFrom}, {'ok', LocalTo}} -> {'ok', LocalFrom ++ LocalTo}
+    end.
+
+%% @private
 -spec fetch_bookkeeper(ne_binary(), wh_proplist()) ->
                               {'ok', wh_transactions()} |
-                              {'error', any()}.
+                              {'error', _}.
 fetch_bookkeeper(Account, ViewOptions) ->
-    Bookkeeper = whapps_config:get_atom(<<"services">>, <<"master_account_bookkeeper">>),
     From = props:get_value('startkey', ViewOptions),
     To   = props:get_value('endkey', ViewOptions),
+    fetch_bookkeeper(Account, From, To).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec fetch_bookkeeper(ne_binary(), integer(), integer()) ->
+                              {'ok', wh_transactions()} |
+                              {'error', _}.
+fetch_bookkeeper(Account, From, To) ->
+    Bookkeeper = whapps_config:get_atom(<<"services">>, <<"master_account_bookkeeper">>),
     try Bookkeeper:transactions(Account, From, To) of
         {'ok', _}=R -> R;
         {'error', _}=Error -> Error
@@ -286,7 +335,7 @@ de_duplicate_transactions(Transactions, BookkeeperTransactions) ->
     de_duplicate_transactions(PropsTr, PropsBTr, []).
 
 de_duplicate_transactions([], BookkeeperTransactions, Acc) ->
-    [Tr || {_, Tr} <- BookkeeperTransactions] ++ Acc;
+    [Transaction || {_, Transaction} <- BookkeeperTransactions] ++ Acc;
 de_duplicate_transactions([{Key, Value}|Transactions], BookkeeperTransactions, Acc) ->
     case props:is_defined(Key, BookkeeperTransactions) of
         'true'  -> de_duplicate_transactions(Transactions, BookkeeperTransactions, Acc);

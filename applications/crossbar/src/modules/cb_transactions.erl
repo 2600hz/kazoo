@@ -107,7 +107,7 @@ validate_transactions(Context, ?HTTP_GET) ->
     case cb_modules_util:range_view_options(Context) of
         {CreatedFrom, CreatedTo} ->
             Reason = cb_context:req_value(Context, <<"reason">>),
-            fetch(Context, CreatedFrom, CreatedTo, Reason);
+            fetch_transactions(Context, CreatedFrom, CreatedTo, Reason);
         Context1 -> Context1
     end.
 
@@ -132,19 +132,45 @@ validate_transaction(Context, <<"subscriptions">>, ?HTTP_GET) ->
 validate_transaction(Context, _PathToken, _Verb) ->
     cb_context:add_system_error('bad_identifier',  Context).
 
-%%--------------------------------------------------------------------
+
 %% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec fetch(cb_context:context(), ne_binary(), ne_binary(), api_binary()) ->
-                   cb_context:context().
-fetch(Context, From, To, Reason) ->
-    case wh_transactions:fetch_since(cb_context:account_id(Context), From, To) of
+-spec fetch_transactions(cb_context:context(), ne_binary(), ne_binary(), api_binary()) ->
+                                cb_context:context().
+
+fetch_transactions(Context, From, To, 'undefined') ->
+    case wh_transactions:fetch(cb_context:account_id(Context), From, To) of
         {'error', _R}=Error -> send_resp(Error, Context);
         {'ok', Transactions} ->
-            JObjs = maybe_filter_by_reason(Reason, Transactions),
+            JObjs = wh_transactions:to_public_json(Transactions),
+            send_resp({'ok', JObjs}, Context)
+    end;
+
+fetch_transactions(Context, From, To, <<"only_calls">>) ->
+    case wh_transactions:fetch_local(cb_context:account_id(Context), From, To) of
+        {'error', _R}=Error -> send_resp(Error, Context);
+        {'ok', Transactions} ->
+            JObjs = [wh_transaction:to_public_json(Transaction)
+                     || Transaction <- wh_transactions:filter_for_per_minute(Transactions)
+                    ],
+            send_resp({'ok', JObjs}, Context)
+    end;
+
+fetch_transactions(Context, From, To, Reason)
+  when Reason =:= <<"only_bookkeeper">>; Reason =:= <<"no_calls">> ->
+    case wh_transactions:fetch_bookkeeper(cb_context:account_id(Context), From, To) of
+        {'error', _R}=Error -> send_resp(Error, Context);
+        {'ok', Transactions} ->
+            Filtered = wh_transactions:filter_by_reason(Reason, Transactions),
+            JObjs = wh_transactions:to_public_json(Filtered),
+            send_resp({'ok', JObjs}, Context)
+    end;
+
+fetch_transactions(Context, From, To, Reason) ->
+    case wh_transactions:fetch(cb_context:account_id(Context), From, To) of
+        {'error', _R}=Error -> send_resp(Error, Context);
+        {'ok', Transactions} ->
+            Filtered = wh_transactions:filter_by_reason(Reason, Transactions),
+            JObjs = wh_transactions:to_public_json(Filtered),
             send_resp({'ok', JObjs}, Context)
     end.
 
@@ -160,25 +186,12 @@ fetch_monthly_recurring(Context, From, To, Reason) ->
     case wh_bookkeeper_braintree:transactions(cb_context:account_id(Context), From, To) of
         {'error', _}=E -> send_resp(E, Context);
         {'ok', Transactions} ->
-            JObjs = [JObj
-                     || JObj <- maybe_filter_by_reason(Reason, Transactions),
-                        wh_json:get_integer_value(<<"code">>, JObj) =:= ?CODE_MONTHLY_RECURRING
+            JObjs = [wh_transaction:to_public_json(Transaction)
+                     || Transaction <- wh_transactions:filter_by_reason(Reason, Transactions),
+                        wh_transaction:code(Transaction) =:= ?CODE_MONTHLY_RECURRING
                     ],
             send_resp({'ok', JObjs}, Context)
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec maybe_filter_by_reason(api_binary(), wh_transaction:transactions()) -> wh_json:objects().
-maybe_filter_by_reason('undefined', Transactions) ->
-    wh_transactions:to_public_json(Transactions);
-maybe_filter_by_reason(Reason, Transactions) ->
-    Filtered = wh_transactions:filter_by_reason(Reason, Transactions),
-    wh_transactions:to_public_json(Filtered).
 
 %%--------------------------------------------------------------------
 %% @private

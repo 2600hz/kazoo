@@ -135,7 +135,9 @@ transactions(AccountId, From0, To0) ->
 subscriptions(AccountId) ->
     try braintree_customer:find(AccountId) of
         Customer ->
-            [braintree_subscription:record_to_json(Sub) || Sub <-  braintree_customer:get_subscriptions(Customer)]
+            [braintree_subscription:record_to_json(Sub)
+             || Sub <- braintree_customer:get_subscriptions(Customer)
+            ]
     catch
         'throw':{'not_found', _} -> 'not_found';
         _:_ -> 'unknow_error'
