@@ -556,7 +556,8 @@ fetch_bt_customer(AccountId, NewItems) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_or_create_subscription(ne_binary(), updates()) -> braintree_subscription:subscription().
+-spec fetch_or_create_subscription(ne_binary(), updates() | braintree_customer:customer()) ->
+                                          braintree_subscription:subscription().
 fetch_or_create_subscription(PlanId, #wh_service_updates{bt_subscriptions=[]
                                                          ,bt_customer=Customer
                                                         }) ->
