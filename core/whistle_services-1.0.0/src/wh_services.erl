@@ -65,6 +65,7 @@
                       ,jobj = wh_json:new() :: wh_json:object()
                       ,updates = wh_json:new() :: wh_json:object()
                       ,cascade_quantities = wh_json:new() :: wh_json:object()
+                      ,audit_log :: api_object()
                      }).
 
 -define(QUANTITIES, <<"quantities">>).
@@ -340,14 +341,20 @@ base_audit_log(<<_/binary>> = AccountId) ->
                 ,[{fun kzd_audit_log:set_tree/2, Tree}]
                ).
 
--spec maybe_save_audit_log(services(), wh_json:object(), ne_binary()) -> 'ok'.
+-spec maybe_save_audit_log(services(), wh_json:object(), ne_binary()) -> kzd_audit_log:doc().
 maybe_save_audit_log(#wh_services{jobj=JObj
                                   ,updates=UpdatedQuantities
-                                 }=Services, AuditLog, ResellerId) ->
+                                 }=Services
+                     ,AuditLog
+                     ,ResellerId
+                    ) ->
     CurrentQuantities = current_quantities(JObj),
     case have_quantities_changed(UpdatedQuantities, CurrentQuantities) of
-        'true' -> save_audit_log(Services, AuditLog, ResellerId);
-        'false' -> lager:debug("nothing has changed, ignoring audit log")
+        'true' ->
+            save_audit_log(Services, AuditLog, ResellerId);
+        'false' ->
+            lager:debug("nothing has changed, ignoring audit log"),
+            AuditLog
     end.
 
 -spec maybe_save_master_audit_log(services(), kzd_audit_log:doc(), ne_binary()) -> 'ok'.
@@ -411,13 +418,9 @@ current_quantities(JObj) ->
     wh_json:get_value(?QUANTITIES, JObj, wh_json:new()).
 
 -spec save(services()) -> services().
--spec save(services(), kzd_audit_log:doc()) -> services().
 -spec save(services(), kzd_audit_log:doc(), pos_integer()) -> services().
 save(#wh_services{}=Services) ->
     save(Services, base_audit_log(Services), ?BASE_BACKOFF).
-
-save(#wh_services{}=Services, AuditLog) ->
-    save(Services, AuditLog, ?BASE_BACKOFF).
 
 save(#wh_services{jobj=JObj
                   ,updates=UpdatedQuantities
@@ -456,12 +459,12 @@ save(#wh_services{jobj=JObj
             lager:debug("service database does not exist, attempting to create"),
             'true' = couch_mgr:db_create(?WH_SERVICES_DB),
             timer:sleep(BackOff),
-            save(Services, BackOff);
+            save(Services, AuditLog, BackOff);
         {'error', 'conflict'} ->
             lager:debug("services for ~s conflicted, merging changes and retrying", [AccountId]),
             timer:sleep(BackOff + random:uniform(?BASE_BACKOFF)),
             {'ok', Existing} = couch_mgr:open_doc(?WH_SERVICES_DB, AccountId),
-            save(Services#wh_services{jobj=Existing}, BackOff*2)
+            save(Services#wh_services{jobj=Existing}, AuditLog, BackOff*2)
     end.
 
 %%--------------------------------------------------------------------
@@ -707,7 +710,7 @@ find_reseller_id(Account) ->
 %% accounting issues.
 %% @end
 %%--------------------------------------------------------------------
--spec allow_updates(ne_binary()) -> 'true'.
+-spec allow_updates(ne_binary() | services()) -> 'true'.
 allow_updates(<<_/binary>> = Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     case fetch_services_doc(AccountId) of
@@ -717,7 +720,12 @@ allow_updates(<<_/binary>> = Account) ->
         {'ok', ServicesJObj} ->
             lager:debug("determining if account ~s is able to make updates", [AccountId]),
             maybe_follow_billling_id(AccountId, ServicesJObj)
-    end.
+    end;
+allow_updates(#wh_services{jobj=ServicesJObj
+                           ,account_id=AccountId
+                          }) ->
+    lager:debug("determining if account ~s is able to make updates", [AccountId]),
+    maybe_follow_billling_id(AccountId, ServicesJObj).
 
 -spec maybe_follow_billling_id(ne_binary(), wh_json:object()) -> 'true'.
 maybe_follow_billling_id(AccountId, ServicesJObj) ->

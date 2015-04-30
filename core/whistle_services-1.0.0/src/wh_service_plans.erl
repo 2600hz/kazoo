@@ -43,13 +43,18 @@ empty() -> [].
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec from_service_json(wh_json:object()) -> plans().
+-spec from_service_json(kzd_services:doc()) -> plans().
 from_service_json(ServicesJObj) ->
-    PlanIds = wh_json:get_keys(<<"plans">>, ServicesJObj),
-    ResellerId = wh_json:get_first_defined([<<"pvt_reseller_id">>
-                                            ,<<"reseller_id">>
-                                           ], ServicesJObj),
+    PlanIds = wh_json:get_keys(kzd_services:plans(ServicesJObj)),
+    ResellerId = find_reseller_id(ServicesJObj),
     get_plans(PlanIds, ResellerId, ServicesJObj).
+
+-spec find_reseller_id(kzd_services:doc()) -> api_binary().
+find_reseller_id(ServicesJObj) ->
+    case kzd_services:reseller_id(ServicesJObj) of
+        'undefined' -> wh_json:get_value(<<"reseller_id">>, ServicesJObj);
+        ResellerId -> ResellerId
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -75,10 +80,10 @@ public_json([#wh_service_plans{plans=Plans}|ServicePlans], JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec add_service_plan(ne_binary(), ne_binary(), wh_json:object()) -> wh_json:object().
+-spec add_service_plan(ne_binary(), ne_binary(), kzd_services:doc()) -> kzd_services:doc().
 add_service_plan(PlanId, ResellerId, ServicesJObj) ->
     Plan = wh_json:from_list([{<<"account_id">>, ResellerId}]),
-    wh_json:set_value([<<"plans">>, PlanId], Plan, ServicesJObj).
+    kzd_services:set_plan(ServicesJObj, PlanId, Plan).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -86,9 +91,9 @@ add_service_plan(PlanId, ResellerId, ServicesJObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec delete_service_plan(ne_binary(), wh_json:object()) -> wh_json:object().
+-spec delete_service_plan(ne_binary(), kzd_services:doc()) -> kzd_services:doc().
 delete_service_plan(PlanId, ServicesJObj) ->
-    wh_json:delete_key([<<"plans">>, PlanId], ServicesJObj).
+    kzd_services:set_plan(ServicesJObj, PlanId, 'undefined').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -96,16 +101,19 @@ delete_service_plan(PlanId, ServicesJObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec plan_summary(wh_json:object()) -> wh_json:object().
+-spec plan_summary(kzd_services:doc()) -> wh_json:object().
 plan_summary(ServicesJObj) ->
-    ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, ServicesJObj),
+    ResellerId = kzd_services:reseller_id(ServicesJObj),
     lists:foldl(fun(PlanId, J) ->
-                        Plan = wh_json:get_value([<<"plans">>, PlanId], ServicesJObj, wh_json:new()),
-                        case wh_json:get_value(<<"account_id">>, Plan) of
+                        Plan = kzd_services:plan(ServicesJObj, PlanId),
+                        case kzd_service_plan:account_id(Plan) of
                             ResellerId -> wh_json:set_value(PlanId, Plan, J);
                             _Else -> J
                         end
-                end, wh_json:new(), wh_json:get_keys(<<"plans">>, ServicesJObj)).
+                end
+                ,wh_json:new()
+                ,wh_json:get_keys(kzd_services:plans(ServicesJObj))
+               ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -132,7 +140,7 @@ activation_charges(Category, Item, ServicePlans) ->
 %% suitable for use with the bookkeepers.
 %% @end
 %%--------------------------------------------------------------------
--spec create_items(wh_json:object()) ->
+-spec create_items(kzd_services:doc()) ->
                           {'ok', wh_service_items:items()} |
                           {'error', 'no_plans'}.
 -spec create_items(wh_services:services(), plans()) -> wh_service_items:items().
@@ -163,7 +171,7 @@ create_items(Services, ServicePlans) ->
 %% Return a json object with all the items for an account
 %% @end
 %%--------------------------------------------------------------------
--spec public_json_items(wh_json:object()) -> wh_json:object().
+-spec public_json_items(kzd_services:doc()) -> wh_json:object().
 public_json_items(ServiceJObj) ->
     case create_items(ServiceJObj) of
         {'ok', Items} ->
@@ -179,17 +187,18 @@ public_json_items(ServiceJObj) ->
 %% in the vendors #wh_service_plans data structure.
 %% @end
 %%--------------------------------------------------------------------
--spec get_plans(ne_binaries(), ne_binary(), wh_json:object()) -> plans().
--spec get_plans(ne_binaries(), ne_binary(), wh_json:object(), plans()) -> plans().
+-spec get_plans(ne_binaries(), ne_binary(), kzd_services:doc()) -> plans().
+-spec get_plans(ne_binaries(), ne_binary(), kzd_services:doc(), plans()) -> plans().
 
-get_plans(PlanIds, ResellerId, Sevices) ->
-    get_plans(PlanIds, ResellerId, Sevices, empty()).
+get_plans(PlanIds, ResellerId, Services) ->
+    get_plans(PlanIds, ResellerId, Services, empty()).
 
 get_plans([], _, _, ServicePlans) ->
     ServicePlans;
 get_plans([PlanId|PlanIds], ResellerId, Services, ServicePlans) ->
-    VendorId = wh_json:get_value([<<"plans">>, PlanId, <<"account_id">>], Services, ResellerId),
-    Overrides = wh_json:get_value([<<"plans">>, PlanId, <<"overrides">>], Services, wh_json:new()),
+    VendorId = kzd_services:plan_account_id(Services, PlanId, ResellerId),
+    Overrides = kzd_services:plan_overrides(Services, PlanId),
+
     case maybe_fetch_vendor_plan(PlanId, VendorId, ResellerId, Overrides) of
         'undefined' -> get_plans(PlanIds, ResellerId, Services, ServicePlans);
         Plan -> get_plans(PlanIds, ResellerId, Services, append_vendor_plan(Plan, VendorId, ServicePlans))
