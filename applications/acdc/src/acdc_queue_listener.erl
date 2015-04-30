@@ -24,7 +24,7 @@
          ,member_connect_req/4
          ,member_connect_re_req/1
          ,member_connect_win/3
-         ,timeout_member_call/1
+         ,timeout_member_call/1, timeout_member_call/2
          ,timeout_agent/2
          ,exit_member_call/1
          ,finish_member_call/1, finish_member_call/2
@@ -139,7 +139,11 @@ timeout_agent(Srv, RespJObj) ->
 
 -spec timeout_member_call(pid()) -> 'ok'.
 timeout_member_call(Srv) ->
-    gen_listener:cast(Srv, {'timeout_member_call'}).
+    timeout_member_call(Srv, undefined).
+-spec timeout_member_call(pid(), wh_json:object()) -> ok.
+timeout_member_call(Srv, JObj) ->
+	gen_listener:cast(Srv, {timeout_member_call, JObj}).
+
 exit_member_call(Srv) ->
     gen_listener:cast(Srv, {'exit_member_call'}).
 
@@ -339,7 +343,7 @@ handle_cast({'timeout_agent', RespJObj}, #state{queue_id=QueueId
     lager:debug("timing out winning agent"),
     send_agent_timeout(RespJObj, Call, QueueId),
     {'noreply', State#state{agent_id='undefined'}, 'hibernate'};
-handle_cast({'timeout_member_call'}, #state{delivery=Delivery
+handle_cast({'timeout_member_call', JObj}, #state{delivery=Delivery
                                             ,call=Call
                                             ,shared_pid=Pid
                                             ,member_call_queue=Q
@@ -352,6 +356,14 @@ handle_cast({'timeout_member_call'}, #state{delivery=Delivery
 
     acdc_util:unbind_from_call_events(Call),
     lager:debug("unbound from call events for ~s", [whapps_call:call_id(Call)]),
+
+    case AgentId of
+    	undefined ->
+    		ok;
+    	_ ->
+    		lager:debug("timing out winning agent because they should not be able to pick up after the queue timeout"),
+    		send_agent_timeout(JObj, Call, QueueId)
+    end,
 
     acdc_queue_shared:ack(Pid, Delivery),
     send_member_call_failure(Q, AcctId, QueueId, whapps_call:call_id(Call), MyId, AgentId),
