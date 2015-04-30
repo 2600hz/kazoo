@@ -201,14 +201,11 @@ validate_patch(Context) ->
 %%--------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    Ctx = maybe_register_cloud_printer(Context),
-    Ctx2 = crossbar_doc:save(Ctx),
-    Ctx3 = crossbar_doc:save(
-             cb_context:set_doc(
-               cb_context:set_account_db(Ctx2, ?WH_FAXES_DB),
-               wh_json:delete_key(<<"_rev">>, cb_context:doc(Ctx2))
-              )),
-    cb_context:set_resp_data(Ctx3, wh_json:public_fields(leak_private_fields(cb_context:doc(Ctx2)))).
+    Ctx = faxbox_doc_save(maybe_register_cloud_printer(Context)),
+    case cb_context:resp_status(Ctx) of
+        'success' -> cb_context:set_resp_data(Ctx, wh_json:public_fields(leak_private_fields(cb_context:doc(Ctx))));
+        _ -> Ctx
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -219,14 +216,11 @@ put(Context) ->
 %%--------------------------------------------------------------------
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _Id) ->
-    Ctx = maybe_register_cloud_printer(Context),
-    Ctx2 = crossbar_doc:save(Ctx),
-    Ctx3 = crossbar_doc:ensure_saved(
-             cb_context:set_doc(
-               cb_context:set_account_db(Ctx2, ?WH_FAXES_DB),
-               wh_json:delete_key(<<"_rev">>, cb_context:doc(Ctx2))
-              )),
-    cb_context:set_resp_data(Ctx3, wh_json:public_fields(leak_private_fields(cb_context:doc(Ctx2)))).
+    Ctx = faxbox_doc_save(maybe_register_cloud_printer(Context)),
+    case cb_context:resp_status(Ctx) of
+        'success' -> cb_context:set_resp_data(Ctx, wh_json:public_fields(leak_private_fields(cb_context:doc(Ctx))));
+        _ -> Ctx
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -247,11 +241,7 @@ patch(Context, Id) ->
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, Id) ->
-    Ctx2 = crossbar_doc:delete(Context),
-    _ = crossbar_doc:delete(
-          read(Id, cb_context:set_account_db(Context, ?WH_FAXES_DB))
-         ),
-    Ctx2.
+    faxbox_doc_delete(Context, Id).
 
 -spec create_faxbox(cb_context:context()) -> cb_context:context().
 create_faxbox(Context) ->
@@ -392,7 +382,7 @@ maybe_reregister_cloud_printer(Context) ->
     Ctx = maybe_reregister_cloud_printer(CurrentState, Context),
     Ctx1 = case wh_json:get_value(<<"pvt_cloud_state">>, cb_context:doc(Ctx)) of
                CurrentState -> cb_context:set_resp_status(Context, 'success');
-               _ -> crossbar_doc:save(Ctx)
+               _ -> faxbox_doc_save(Ctx)
            end,
     case cb_context:resp_status(Ctx1) of
         'success' ->
@@ -563,3 +553,24 @@ oauth_req(Doc, OAuthRefresh, Context) ->
     cb_context:set_resp_data(Context, wh_json:set_values([{<<"expires">>, Expires}
                                                           ,{<<"token">>, TokenString}
                                                          ], wh_json:new())).
+
+-spec faxbox_doc_save(cb_context:context()) -> cb_context:context().
+faxbox_doc_save(Context) ->
+    Ctx2 = crossbar_doc:save(Context),
+    Ctx3 = crossbar_doc:ensure_saved(
+             cb_context:set_doc(
+               cb_context:set_account_db(Ctx2, ?WH_FAXES_DB),
+               wh_json:delete_key(<<"_rev">>, cb_context:doc(Ctx2))
+              )),
+    case cb_context:resp_status(Ctx3) of
+        'success' -> Ctx2;
+        _ -> Ctx3
+    end.
+
+-spec faxbox_doc_delete(cb_context:context(), ne_binary()) -> cb_context:context().
+faxbox_doc_delete(Context, Id) ->
+    Ctx2 = crossbar_doc:delete(Context),
+    _ = crossbar_doc:delete(
+          read(Id, cb_context:set_account_db(Context, ?WH_FAXES_DB))
+         ),
+    Ctx2.

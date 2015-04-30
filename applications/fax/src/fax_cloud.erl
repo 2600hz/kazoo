@@ -436,7 +436,8 @@ process_registration_result('true', AppId, JObj, Result) ->
 process_registration_result('false', AppId, JObj, _Result) ->
     PrinterId = wh_json:get_value(<<"pvt_cloud_printer_id">>, JObj),
     TokenDuration = wh_json:get_integer_value(<<"pvt_cloud_token_duration">>, JObj),
-    CreatedTime = wh_json:get_integer_value(<<"pvt_cloud_created_time">>, JObj),
+    UnixTS = wh_json:get_integer_value(<<"pvt_cloud_created_time">>, JObj),
+    CreatedTime = wh_util:unix_timestamp_to_gregorian_seconds(UnixTS),
     InviteUrl = wh_json:get_value(<<"pvt_cloud_connector_claim_url">>, JObj),
     Elapsed = wh_util:elapsed_s(CreatedTime),
 
@@ -452,8 +453,8 @@ process_registration_result('false', AppId, JObj, _Result) ->
              );
         'false' ->
             SleepTime = whapps_config:get_integer(?CONFIG_CAT, <<"cloud_registration_pool_interval">>, ?DEFAULT_CLOUD_REG_SLEEP),
-            lager:debug("Printer ~s not claimed at ~s. sleeping for ~p seconds, Elapsed/Duration (~p/~p)."
-                        ,[PrinterId,InviteUrl,SleepTime, Elapsed, TokenDuration]
+            lager:debug("Printer ~s not claimed at ~s. sleeping for ~B seconds, Elapsed/Duration (~p/~p)."
+                        ,[PrinterId,InviteUrl, SleepTime div 1000 , Elapsed, TokenDuration]
                        ),
             timer:sleep(SleepTime),
             check_registration(AppId, <<"registered">>, JObj)
@@ -470,7 +471,6 @@ update_printer(JObj) ->
 handle_faxbox_deleted(JObj, _Props) ->
     lager:debug("faxbox_deleted ~p",[JObj]),
     'true' = wapi_conf:doc_update_v(JObj),
-    lager:debug("faxbox_deleted ~p",[JObj]),
     ID = wh_json:get_value(<<"ID">>, JObj),
     Payload = props:filter_undefined(
                 [{<<"Event-Name">>, <<"stop">>}

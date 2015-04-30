@@ -72,6 +72,7 @@
 
 -export([current_tstamp/0, current_unix_tstamp/0
          ,gregorian_seconds_to_unix_seconds/1, unix_seconds_to_gregorian_seconds/1
+         ,unix_timestamp_to_gregorian_seconds/1
          ,pretty_print_datetime/1
          ,rfc1036/1, rfc1036/2
          ,iso8601/1
@@ -1023,6 +1024,10 @@ gregorian_seconds_to_unix_seconds(GregorianSeconds) ->
 -spec unix_seconds_to_gregorian_seconds(integer() | string() | binary()) -> integer().
 unix_seconds_to_gregorian_seconds(UnixSeconds) ->
     to_integer(UnixSeconds) + ?UNIX_EPOCH_IN_GREGORIAN.
+
+-spec unix_timestamp_to_gregorian_seconds(integer() | string() | binary()) -> integer().
+unix_timestamp_to_gregorian_seconds(UnixTimestamp) ->
+    ?UNIX_EPOCH_IN_GREGORIAN + (to_integer(UnixTimestamp) div 1000).
 
 -spec pretty_print_datetime(wh_datetime() | integer()) -> ne_binary().
 pretty_print_datetime(Timestamp) when is_integer(Timestamp) ->
