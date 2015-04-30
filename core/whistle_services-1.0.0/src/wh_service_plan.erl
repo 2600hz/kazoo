@@ -151,15 +151,18 @@ cumulative_quantity(Item, CumulativeDiscount, Quantity) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec bookkeeper_jobj(ne_binary(), ne_binary(), wh_json:object()) -> wh_json:object().
+-spec bookkeeper_jobj(ne_binary(), ne_binary(), kzd_service_plan:doc()) -> wh_json:object().
 bookkeeper_jobj(Category, Item, ServicePlan) ->
     lists:foldl(fun(Bookkeeper, J) ->
-                        Mapping = wh_json:get_value([<<"bookkeepers">>, Bookkeeper, Category, Item]
-                                                    ,ServicePlan
+                        Mapping = wh_json:get_value([Category, Item]
+                                                    ,kzd_service_plan:bookkeeper(ServicePlan, Bookkeeper)
                                                     ,wh_json:new()
                                                    ),
                         wh_json:set_value(Bookkeeper, Mapping, J)
-                end, wh_json:new(), wh_json:get_keys(<<"bookkeepers">>, ServicePlan)).
+                end
+                ,wh_json:new()
+                ,kzd_service_plan:bookkeeper_ids(ServicePlan)
+               ).
 
 %%--------------------------------------------------------------------
 %% @private

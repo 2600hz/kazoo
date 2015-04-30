@@ -15,6 +15,8 @@
 
          ,categories/1, category/2
          ,items/2, item/3
+
+         ,bookkeepers/1, bookkeeper/2, bookkeeper_ids/1
         ]).
 
 -include("kz_documents.hrl").
@@ -28,6 +30,7 @@
 -define(PLAN, <<"plan">>).
 -define(ACTIVATION_CHARGE, <<"activation_charge">>).
 -define(ALL, <<"_all">>).
+-define(BOOKKEEPERS, <<"bookkeepers">>).
 
 -spec account_id(doc()) -> api_binary().
 -spec account_id(doc(), Default) -> ne_binary() | Default.
@@ -79,3 +82,15 @@ items(Plan, Category) ->
 -spec item(doc(), ne_binary(), ne_binary()) -> api_object().
 item(Plan, CategoryId, ItemId) ->
     wh_json:get_json_value([?PLAN, CategoryId, ItemId], Plan).
+
+-spec bookkeepers(doc()) -> wh_json:object().
+bookkeepers(Plan) ->
+    wh_json:get_json_value(?BOOKKEEPERS, Plan, wh_json:new()).
+
+-spec bookkeeper_ids(doc()) -> ne_binaries().
+bookkeeper_ids(Plan) ->
+    wh_json:get_keys(?BOOKKEEPERS, Plan).
+
+-spec bookkeeper(doc(), ne_binary()) -> wh_json:object().
+bookkeeper(Plan, BookkeeperId) ->
+    wh_json:get_json_value(BookkeeperId, bookkeepers(Plan), wh_json:new()).
