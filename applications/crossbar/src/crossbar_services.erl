@@ -145,11 +145,11 @@ create_transactions(Context, Item, Acc, Quantity) ->
                    ) -> wh_transaction:transaction().
 set_meta_data(Context, Item, Transaction) ->
     MetaData =
-        wh_json:from_list([
-            {<<"auth_account_id">>, cb_context:auth_account_id(Context)}
-            ,{<<"category">>, wh_json:get_value(<<"category">>, Item)}
-            ,{<<"item">>, wh_json:get_value(<<"item">>, Item)}
-        ]),
+        wh_json:from_list(
+          [{<<"auth_account_id">>, cb_context:auth_account_id(Context)}
+           ,{<<"category">>, wh_json:get_value(<<"category">>, Item)}
+           ,{<<"item">>, wh_json:get_value(<<"item">>, Item)}
+          ]),
     wh_transaction:set_metadata(MetaData, Transaction).
 
 -spec set_event(cb_context:context() ,wh_json:object()
