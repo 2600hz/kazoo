@@ -19,6 +19,7 @@ services_test_() ->
      ,fun init/0
      ,fun stop/1
      ,[fun services_json_to_record/1
+       ,fun services_record_to_json/1
       ]
     }.
 
@@ -55,6 +56,26 @@ read_json(Path) ->
 services_json_to_record(#state{services=Services
                                ,services_jobj=JObj
                               }) ->
+    [{"Verify account id is set properly"
+      ,?_assertEqual(wh_doc:account_id(JObj)
+                     ,wh_services:account_id(Services)
+                    )
+     }
+     ,{"Verify the dirty flag is set properly"
+       ,?_assertEqual(kzd_services:is_dirty(JObj)
+                      ,wh_services:is_dirty(Services)
+                     )
+      }
+     ,{"Verify the billing id"
+       ,?_assertEqual(kzd_services:billing_id(JObj)
+                      ,wh_services:get_billing_id(Services)
+                     )
+      }
+     | quantity_checks(Services, JObj)
+    ].
+
+services_record_to_json(#state{services=Services}) ->
+    JObj = wh_services:to_json(Services),
     [{"Verify account id is set properly"
       ,?_assertEqual(wh_doc:account_id(JObj)
                      ,wh_services:account_id(Services)
