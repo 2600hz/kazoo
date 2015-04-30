@@ -39,15 +39,39 @@ get_attachment_fold(Name, Acc, PortReqId, Doc) ->
 
 -spec fix_email(wh_json:object()) -> wh_json:object().
 fix_email(ReqData) ->
-    fix_email(ReqData
-              ,wh_json:get_value([<<"port_request">>, <<"notifications">>, <<"email">>, <<"send_to">>], ReqData)
-             ).
-
--spec fix_email(wh_json:object(), ne_binary() | ne_binaries()) -> wh_json:object().
-fix_email(ReqData, <<_/binary>> = Email) ->
-    wh_json:set_value(<<"to">>, [Email], ReqData);
-fix_email(ReqData, [_|_]=Emails) ->
+    AccountId = wh_json:get_value(<<"account_id">>, ReqData),
+    Emails = get_emails(ReqData, AccountId),
     wh_json:set_value(<<"to">>, Emails, ReqData).
+
+-spec get_emails(wh_json:object(), api_binary()) -> ne_binaries().
+get_emails(ReqData, AccountId) ->
+    ResellerId = wh_services:find_reseller_id(AccountId),
+
+    ResellerEmail = find_reseller_port_email(ResellerId),
+    AdminEmails = teletype_util:find_account_admin_email(ResellerId),
+    PortReqEmail = get_port_req_email(ReqData),
+
+    case {ResellerEmail, AdminEmails} of
+        {'undefined', 'undefined'} -> [PortReqEmail];
+        {'undefined', [_|_]} -> AdminEmails ++ PortReqEmail;
+        {ResellerEmail, _} -> [ResellerEmail] ++ PortReqEmail
+    end.
+
+-spec find_reseller_port_email(api_binary()) -> api_binary().
+find_reseller_port_email(AccountId) ->
+    case kz_whitelabel:fetch(AccountId) of
+        {'error', _R} -> 'undefined';
+        {'ok', JObj} ->
+            kz_whitelabel:port_email(JObj)
+    end.
+
+-spec get_port_req_email(wh_json:object()) -> ne_binaries().
+get_port_req_email(ReqData) ->
+    Key = [<<"port_request">>, <<"notifications">>, <<"email">>, <<"send_to">>],
+    case wh_json:get_value(Key, ReqData) of
+        <<_/binary>> =Email -> [Email];
+        [_|_]=Emails -> Emails
+    end.
 
 -spec fix_port_request_data(wh_json:object()) -> wh_json:object().
 fix_port_request_data(JObj) ->
