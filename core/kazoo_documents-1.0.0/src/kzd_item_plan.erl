@@ -14,6 +14,9 @@
          ,exceptions/1, exceptions/2
          ,should_cascade/1, should_cascade/2
          ,masquerade_as/1, masquerade_as/2
+         ,discounts/1, discounts/2
+         ,single_discount/1, single_discount/2
+         ,cumulative_discount/1, cumulative_discount/2
         ]).
 
 -include("kz_documents.hrl").
@@ -32,6 +35,9 @@
 -define(EXCEPTIONS, <<"exceptions">>).
 -define(CASCADE, <<"cascade">>).
 -define(MASQUERADE, <<"as">>).
+-define(DISCOUNTS, <<"discounts">>).
+-define(SINGLE, <<"single">>).
+-define(CUMULATIVE, <<"cumulative">>).
 
 -spec minimum(doc()) -> integer().
 -spec minimum(doc(), Default) -> integer() | Default.
@@ -81,3 +87,24 @@ masquerade_as(ItemPlan) ->
     masquerade_as(ItemPlan, 'undefined').
 masquerade_as(ItemPlan, Default) ->
     wh_json:get_value(?MASQUERADE, ItemPlan, Default).
+
+-spec discounts(doc()) -> wh_json:object().
+-spec discounts(doc(), Default) -> wh_json:object() | Default.
+discounts(ItemPlan) ->
+    discounts(ItemPlan, wh_json:new()).
+discounts(ItemPlan, Default) ->
+    wh_json:get_json_value(?DISCOUNTS, ItemPlan, Default).
+
+-spec single_discount(doc()) -> api_object().
+-spec single_discount(doc(), Default) -> wh_json:object() | Default.
+single_discount(ItemPlan) ->
+    single_discount(ItemPlan, 'undefined').
+single_discount(ItemPlan, Default) ->
+    wh_json:get_json_value([?DISCOUNTS, ?SINGLE], ItemPlan, Default).
+
+-spec cumulative_discount(doc()) -> api_object().
+-spec cumulative_discount(doc(), Default) -> wh_json:object() | Default.
+cumulative_discount(ItemPlan) ->
+    cumulative_discount(ItemPlan, 'undefined').
+cumulative_discount(ItemPlan, Default) ->
+    wh_json:get_json_value([?DISCOUNTS, ?CUMULATIVE], ItemPlan, Default).

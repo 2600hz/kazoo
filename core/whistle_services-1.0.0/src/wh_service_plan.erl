@@ -91,7 +91,8 @@ create_items(ServicePlan, ServiceItems, Services, CategoryId, ItemId) ->
                              ),
     wh_service_items:update(ServiceItem, ServiceItems).
 
--spec maybe_set_discounts(wh_service_item:item(), wh_json:object()) -> wh_service_item:item().
+-spec maybe_set_discounts(wh_service_item:item(), kzd_item_plan:doc()) ->
+                                 wh_service_item:item().
 maybe_set_discounts(Item, ItemPlan) ->
     lists:foldl(fun(F, I) -> F(I, ItemPlan) end
                 ,Item
@@ -100,9 +101,10 @@ maybe_set_discounts(Item, ItemPlan) ->
                  ]
                ).
 
--spec maybe_set_single_discount(wh_service_item:item(), wh_json:object()) -> wh_service_item:item().
+-spec maybe_set_single_discount(wh_service_item:item(), kzd_item_plan:doc()) ->
+                                       wh_service_item:item().
 maybe_set_single_discount(Item, ItemPlan) ->
-    case wh_json:get_value([<<"discounts">>, <<"single">>], ItemPlan) of
+    case kzd_item_plan:single_discount(ItemPlan) of
         'undefined' -> Item;
         SingleDiscount ->
             SingleRate = wh_json:get_float_value(<<"rate">>, SingleDiscount, wh_service_item:rate(Item)),
@@ -110,15 +112,17 @@ maybe_set_single_discount(Item, ItemPlan) ->
             wh_service_item:set_single_discount_rate(SingleRate, Item)
     end.
 
--spec maybe_set_cumulative_discount(wh_service_item:item(), wh_json:object()) -> wh_service_item:item().
+-spec maybe_set_cumulative_discount(wh_service_item:item(), kzd_item_plan:doc()) ->
+                                           wh_service_item:item().
 maybe_set_cumulative_discount(Item, ItemPlan) ->
-    case wh_json:get_value([<<"discounts">>, <<"cumulative">>], ItemPlan) of
+    case kzd_item_plan:cumulative_discount(ItemPlan) of
         'undefined' -> Item;
         CumulativeDiscount ->
             set_cumulative_discount(Item, CumulativeDiscount)
     end.
 
--spec set_cumulative_discount(wh_service_item:item(), wh_json:object()) -> wh_service_item:item().
+-spec set_cumulative_discount(wh_service_item:item(), wh_json:object()) ->
+                                     wh_service_item:item().
 set_cumulative_discount(Item, CumulativeDiscount) ->
     Quantity = wh_service_item:quantity(Item),
 
