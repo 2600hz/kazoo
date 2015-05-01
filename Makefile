@@ -22,6 +22,9 @@ clean : $(MAKEDIRS)
 	rm -f *crash.dump
 	rm scripts/log/*
 
+clean-test : ACTION = clean-test
+clean-test : $(KAZOODIRS)
+
 test: ACTION = test
 test: $(KAZOODIRS)
 
