@@ -627,7 +627,7 @@ check_bookkeeper(BillingId, Amount) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec service_plan_json(ne_binary() | services()) -> wh_json:object().
+-spec service_plan_json(ne_binary() | services()) -> kzd_service_plan:doc().
 service_plan_json(#wh_services{jobj=ServicesJObj}) ->
     Plans = wh_service_plans:from_service_json(ServicesJObj),
     wh_service_plans:public_json(Plans);

@@ -22,7 +22,7 @@
 -include("whistle_services.hrl").
 
 -record(wh_service_plans, {vendor_id :: api_binary()
-                           ,plans = [] :: wh_json:objects()
+                           ,plans = [] :: kzd_service_plan:docs()
                           }).
 
 -type plans() :: [#wh_service_plans{},...] | [].
@@ -45,7 +45,7 @@ empty() -> [].
 %%--------------------------------------------------------------------
 -spec from_service_json(kzd_services:doc()) -> plans().
 from_service_json(ServicesJObj) ->
-    PlanIds = wh_json:get_keys(kzd_services:plans(ServicesJObj)),
+    PlanIds = kzd_services:plan_ids(ServicesJObj),
     ResellerId = find_reseller_id(ServicesJObj),
     get_plans(PlanIds, ResellerId, ServicesJObj).
 
@@ -67,7 +67,8 @@ public_json(ServicePlans) ->
     public_json(ServicePlans, wh_json:new()).
 
 -spec public_json(plans(), wh_json:object()) -> kzd_service_plan:doc().
-public_json([], JObj) -> kzd_service_plan:set_plan(kzd_service_plan:new(), JObj);
+public_json([], JObj) ->
+    kzd_service_plan:set_plan(kzd_service_plan:new(), JObj);
 public_json([#wh_service_plans{plans=Plans}|ServicePlans], JObj) ->
     NewJObj = lists:foldl(fun merge_plans/2, JObj, Plans),
     public_json(ServicePlans, NewJObj).

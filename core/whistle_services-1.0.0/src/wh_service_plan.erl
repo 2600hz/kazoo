@@ -24,9 +24,9 @@
 fetch(PlanId, VendorId, Overrides) ->
     VendorDb = wh_util:format_account_id(VendorId, 'encoded'),
     case couch_mgr:open_cache_doc(VendorDb, PlanId) of
-        {'ok', JObj} ->
+        {'ok', ServicePlan} ->
             lager:debug("found service plan ~s/~s", [VendorDb, PlanId]),
-            kzd_service_plan:merge_overrides(JObj, Overrides);
+            kzd_service_plan:merge_overrides(ServicePlan, Overrides);
         {'error', _R} ->
             lager:debug("unable to open service plan ~s/~s: ~p", [VendorDb, PlanId, _R]),
             'undefined'
@@ -58,7 +58,6 @@ activation_charges(CategoryId, ItemId, ServicePlan) ->
                    ,ne_binary(), ne_binary()
                   ) ->
                           wh_service_items:items().
-
 create_items(ServicePlan, ServiceItems, Services) ->
     Plans = [{CategoryId, ItemId}
              || CategoryId <- kzd_service_plan:categories(ServicePlan),
@@ -252,7 +251,11 @@ get_quantity_rate(Quantity, ItemPlan) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_item_quantity(ne_binary(), ne_binary(), kzd_item_plan:doc(), wh_services:services()) -> integer().
-get_item_quantity(CategoryId, <<"_all">>, ItemPlan, Services) ->
+
+get_item_quantity(CategoryId, ItemId, ItemPlan, Services) ->
+    get_item_quantity(CategoryId, ItemId, ItemPlan, Services, kzd_service_plan:all_items_key()).
+
+get_item_quantity(CategoryId, AllItems, ItemPlan, Services, AllItems) ->
     Exceptions = kzd_item_plan:exceptions(ItemPlan),
 
     case kzd_item_plan:should_cascade(ItemPlan) of
@@ -261,7 +264,7 @@ get_item_quantity(CategoryId, <<"_all">>, ItemPlan, Services) ->
             lager:debug("collecting '~s' as a cascaded sum", [CategoryId]),
             wh_services:cascade_category_quantity(CategoryId, Exceptions, Services)
     end;
-get_item_quantity(CategoryId, ItemId, ItemPlan, Services) ->
+get_item_quantity(CategoryId, ItemId, ItemPlan, Services, _AllItems) ->
     case kzd_item_plan:should_cascade(ItemPlan) of
         'false' -> wh_services:quantity(CategoryId, ItemId, Services);
         'true' ->
