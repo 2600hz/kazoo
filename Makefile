@@ -43,4 +43,4 @@ build-plt :
 
 xref: EBINS = $(shell find $(ROOT) -name ebin -print)
 xref:
-	$(ROOT)/scripts/check-xref.escript $(EBINS) #$(PWD)/{core,applications,deps} # $(PWD)/deps/lager-*
+	@$(ROOT)/scripts/check-xref.escript $(EBINS)
