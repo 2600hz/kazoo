@@ -182,7 +182,7 @@ get_diversions(Inception, Diversions) ->
 -spec find_diversion_count(ne_binaries()) -> non_neg_integer().
 find_diversion_count(Diversions) ->
     lists:max([kzsip_diversion:counter(
-                 kszip_diversion:from_binary(Diversion)
+                 kzsip_diversion:from_binary(Diversion)
                 )
                || Diversion <- Diversions
               ]).

@@ -16,8 +16,10 @@
 
 -include("kazoo_bindings.hrl").
 
+-define(ID, 'kazoo_bindings').
+
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?WORKER('kazoo_bindings')
+-define(CHILDREN, [?WORKER(?ID)
                    ,?WORKER_ARGS('kazoo_etsmgr_srv', [[{'table_id', kazoo_bindings:table_id()}
                                                        ,{'table_options', kazoo_bindings:table_options()}
                                                        ,{'find_me_function', fun kazoo_bindings:find_me_function/0}
@@ -41,7 +43,7 @@ start_link() ->
 
 -spec stop() -> 'ok' | {'error', 'not_found'}.
 stop() ->
-    supervisor:terminate_child(?MODULE).
+    supervisor:terminate_child(?MODULE, ?ID).
 
 %% ===================================================================
 %% Supervisor callbacks

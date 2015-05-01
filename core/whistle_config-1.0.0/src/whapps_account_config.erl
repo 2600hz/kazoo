@@ -172,5 +172,5 @@ account_db_from_call(Obj, 'false') ->
 account_db_from_jobj(JObj, 'true') ->
     wh_json:get_first_defined([<<"Account-DB">>, <<"account_db">>], JObj);
 account_db_from_jobj(_Obj, 'false') ->
-    lager:dxebug("unable to find account db from ~p", [_Obj]),
+    lager:debug("unable to find account db from ~p", [_Obj]),
     throw({'error', 'unknown_object'}).

@@ -263,10 +263,10 @@ should_handle(JObj, 'false') ->
 -spec should_handle_system() -> boolean().
 should_handle_system() ->
     lager:debug("should system handle notification"),
-    whapps_config:get_value(?NOTIFY_CONFIG_CAT
-                            ,<<"notification_app">>
-                            ,?APP_NAME
-                           ) =:= ?APP_NAME.
+    whapps_config:get(?NOTIFY_CONFIG_CAT
+                     ,<<"notification_app">>
+                     ,?APP_NAME
+                     ) =:= ?APP_NAME.
 
 -spec should_handle_account(ne_binary()) -> boolean().
 should_handle_account(Account) ->
