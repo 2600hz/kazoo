@@ -70,6 +70,10 @@ filter('undefined_function_calls', Results) ->
                  ({{_,_,_}, {sub_package_message_summary,_,_}}) -> 'false';
                  ({{_,_,_}, {sub_package_presence,_,_}}) -> 'false';
 
+                 %% False positives due to RabbitMQ clashing with EVERYTHING
+                 ({{_,_,_}, {cowboy,start_http,4}}) -> 'false';
+                 ({{_,_,_}, {cowboy,start_https,4}}) -> 'false';
+
                  (_) -> 'true'
              end,
     lists:filter(ToKeep, Results);
