@@ -14,7 +14,7 @@
          ,timezone/1, set_timezone/2
          ,id/1
          ,parent_account_id/1
-         ,set_tree/2, tree/1
+         ,set_tree/2, tree/1, tree/2
          ,notification_preference/1, set_notification_preference/2
          ,is_enabled/1, enable/1, disable/1
          ,set_api_key/2, api_key/1
@@ -41,6 +41,7 @@
 -type doc() :: wh_json:object().
 -export_type([doc/0]).
 
+-spec id(doc()) -> api_binary().
 id(JObj) ->
     wh_doc:id(JObj).
 
