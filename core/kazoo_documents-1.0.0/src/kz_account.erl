@@ -84,8 +84,11 @@ parent_account_id(JObj) ->
     end.
 
 -spec tree(doc()) -> ne_binaries().
+-spec tree(doc(), Default) -> ne_binaries() | Default.
 tree(JObj) ->
-    wh_json:get_value(?TREE, JObj, []).
+    tree(JObj, []).
+tree(JObj, Default) ->
+    wh_json:get_list_value(?TREE, JObj, Default).
 
 -spec set_tree(doc(), ne_binaries()) -> doc().
 set_tree(JObj, Tree) ->
