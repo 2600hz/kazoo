@@ -10,7 +10,9 @@
 
 %% API
 
-main([]) -> usage();
+main([]) ->
+    usage(),
+    halt(-1);
 main(Paths) ->
     'ok' = code:add_pathsa(Paths),
     AllPaths = code:get_path(),
@@ -39,14 +41,19 @@ main(Paths) ->
               %% Want moar? http://www.erlang.org/doc/man/xref.html
             ],
     io:format("Running xref analysis...\n"),
-    lists:foreach( fun (Xref) ->
-                           {'ok', Res} = xref:analyze(?SERVER, Xref),
-                           Filtered = filter(Xref, Res),
-                           print(Xref, Filtered)
-                   end
-                 , Xrefs ),
+    ErrorsCount =
+        lists:sum(
+          lists:map( fun (Xref) ->
+                             {'ok', Res} = xref:analyze(?SERVER, Xref),
+                             Filtered = filter(Xref, Res),
+                             print(Xref, Filtered),
+                             length(Filtered)
+                     end
+                   , Xrefs )
+         ),
     'stopped' = xref:stop(?SERVER),
-    io:format("Done\n").
+    io:format("Done\n"),
+    halt(ErrorsCount).
 
 %% Internals
 
@@ -82,8 +89,7 @@ print(Xref, Results) ->
 usage() ->
     %% ok = io:setopts([{encoding, unicode}]),
     Arg0 = escript:script_name(),
-    io:format("Usage: ~s  <path to ebin/>+\n", [filename:basename(Arg0)]),
-    halt(1).
+    io:format("Usage: ~s  <path to ebin/>+\n", [filename:basename(Arg0)]).
 
 show_error('add_directory', {'module_clash', {Module, BEAM1, BEAM2}}) ->
     io:format( "Module clash: ~s (~s & ~s)\n"
