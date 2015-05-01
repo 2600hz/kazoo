@@ -15,4 +15,4 @@ otp_release:
 before_install:
     - sudo apt-get install -qq xsltproc
 script: "make compile"
-after script: "make eunit"
+after script: "make xref eunit"
