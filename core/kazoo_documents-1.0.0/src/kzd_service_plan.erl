@@ -7,11 +7,16 @@
 %%%-------------------------------------------------------------------
 -module(kzd_service_plan).
 
--export([account_id/1, account_id/2
+-export([new/0
+         ,account_id/1, account_id/2
          ,overrides/1, overrides/2
          ,merge_overrides/2
 
-         ,item_plan/3
+         ,plan/1, plan/2
+         ,set_plan/2
+
+         ,item_plan/3, item_plan/4
+         ,category_plan/2, category_plan/3
 
          ,item_activation_charge/3, item_activation_charge/4
          ,category_activation_charge/2, category_activation_charge/3
@@ -36,6 +41,10 @@
 -define(ACTIVATION_CHARGE, <<"activation_charge">>).
 -define(ALL, <<"_all">>).
 -define(BOOKKEEPERS, <<"bookkeepers">>).
+
+-spec new() -> doc().
+new() ->
+    wh_json:new().
 
 -spec account_id(doc()) -> api_binary().
 -spec account_id(doc(), Default) -> ne_binary() | Default.
@@ -114,5 +123,26 @@ item_minimum(Plan, CategoryId, ItemId, Default) ->
      ).
 
 -spec item_plan(doc(), ne_binary(), ne_binary()) -> wh_json:object().
+-spec item_plan(doc(), ne_binary(), ne_binary(), Default) -> wh_json:object() | Default.
 item_plan(Plan, CategoryId, ItemId) ->
-    wh_json:get_json_value([?PLAN, CategoryId, ItemId], Plan, wh_json:new()).
+    item_plan(Plan, CategoryId, ItemId, wh_json:new()).
+item_plan(Plan, CategoryId, ItemId, Default) ->
+    wh_json:get_json_value([?PLAN, CategoryId, ItemId], Plan, Default).
+
+-spec category_plan(doc(), ne_binary()) -> wh_json:object().
+-spec category_plan(doc(), ne_binary(), Default) -> wh_json:object() | Default.
+category_plan(Plan, CategoryId) ->
+    category_plan(Plan, CategoryId, wh_json:new()).
+category_plan(Plan, CategoryId, Default) ->
+    item_plan(Plan, CategoryId, ?ALL, Default).
+
+-spec plan(doc()) -> wh_json:object().
+-spec plan(doc(), Default) -> wh_json:object() | Default.
+plan(Plan) ->
+    plan(Plan, wh_json:new()).
+plan(Plan, Default) ->
+    wh_json:get_json_value(?PLAN, Plan, Default).
+
+-spec set_plan(doc(), wh_json:object()) -> doc().
+set_plan(Plan, P) ->
+    wh_json:set_value(?PLAN, Plan, P).
