@@ -25,7 +25,9 @@
 -export([get_ne_binary_value/2, get_ne_binary_value/3]).
 -export([get_lower_binary/2, get_lower_binary/3]).
 -export([get_atom_value/2, get_atom_value/3]).
--export([get_string_value/2, get_string_value/3]).
+-export([get_string_value/2, get_string_value/3
+         ,get_list_value/2, get_list_value/3
+        ]).
 -export([get_json_value/2, get_json_value/3]).
 -export([is_true/2, is_true/3, is_false/2, is_false/3, is_empty/1]).
 
@@ -344,6 +346,17 @@ get_string_value(Key, JObj, Default) ->
         Value -> safe_cast(Value, Default, fun wh_util:to_list/1)
     end.
 
+-spec get_list_value(key(), object() | objects()) -> 'undefined' | list().
+-spec get_list_value(key(), object() | objects(), Default) -> Default | list().
+get_list_value(Key, JObj) ->
+    get_list_value(Key, JObj, 'undefined').
+get_list_value(Key, JObj, Default) ->
+    case get_value(Key, JObj) of
+        'undefined' -> Default;
+        List when is_list(List) -> List;
+        _Else -> Default
+    end.
+
 -spec get_binary_value(key(), object() | objects()) -> 'undefined' | binary().
 -spec get_binary_value(key(), object() | objects(), Default) -> binary() | Default.
 get_binary_value(Key, JObj) ->
@@ -595,9 +608,18 @@ get_values(Key, JObj) ->
     get_values(get_value(Key, JObj, new())).
 
 %% Figure out how to set the current key among a list of objects
--spec set_values(json_proplist(), object()) -> object().
+-type set_value_fun() :: {fun((object(), json_term()) -> object()), json_term()}.
+-type set_value_funs() :: [set_value_fun(),...].
+
+-spec set_values(json_proplist() | set_value_funs(), object()) -> object().
 set_values(KVs, JObj) when is_list(KVs) ->
-    lists:foldr(fun({K,V}, JObj0) -> set_value(K, V, JObj0) end, JObj, KVs).
+    lists:foldr(fun set_value_fold/2, JObj, KVs).
+
+-spec set_value_fold(set_value_fun() | {key(), json_term()}, object()) -> object().
+set_value_fold({F, V}, JObj) when is_function(F, 2) ->
+    F(JObj, V);
+set_value_fold({K, V}, JObj) ->
+    set_value(K, V, JObj).
 
 -spec insert_value(key(), json_term(), object()) -> object().
 insert_value(Key, Value, JObj) ->
