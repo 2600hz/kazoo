@@ -14,7 +14,7 @@
          ,status/1, status/2
          ,tree/1, tree/2
          ,type/0, type/1
-         ,plans/1, plans/2
+         ,plans/1, plans/2, plan_ids/1
          ,plan/2, plan/3
          ,plan_account_id/2, plan_account_id/3
          ,plan_overrides/2, plan_overrides/3
@@ -102,6 +102,10 @@ plans(JObj) ->
     plans(JObj, wh_json:new()).
 plans(JObj, Default) ->
     wh_json:get_json_value(?PLANS, JObj, Default).
+
+-spec plan_ids(doc()) -> ne_binaries().
+plan_ids(JObj) ->
+    wh_json:get_keys(plans(JObj)).
 
 -spec plan(doc(), ne_binary()) -> wh_json:object().
 -spec plan(doc(), ne_binary(), Default) -> wh_json:object() | Default.

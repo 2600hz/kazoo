@@ -23,18 +23,22 @@
 
          ,item_minimum/3, item_minimum/4
 
-         ,categories/1, category/2
+         ,categories/1, category/2, category/3
          ,items/2, item/3
 
          ,bookkeepers/1, bookkeeper/2, bookkeeper_ids/1
+
+         ,all_items_key/0
         ]).
 
 -include("kz_documents.hrl").
 
 -type doc() :: wh_json:object().
+-type docs() :: [doc(),...] | [].
 -type api_doc() :: api_object().
 -export_type([doc/0
               ,api_doc/0
+              ,docs/0
              ]).
 
 -define(PLAN, <<"plan">>).
@@ -43,8 +47,10 @@
 -define(BOOKKEEPERS, <<"bookkeepers">>).
 
 -spec new() -> doc().
-new() ->
-    wh_json:new().
+new() -> wh_json:new().
+
+-spec all_items_key() -> ne_binary().
+all_items_key() -> ?ALL.
 
 -spec account_id(doc()) -> api_binary().
 -spec account_id(doc(), Default) -> ne_binary() | Default.
@@ -86,8 +92,11 @@ categories(Plan) ->
     wh_json:get_keys(?PLAN, Plan).
 
 -spec category(doc(), ne_binary()) -> api_object().
+-spec category(doc(), ne_binary(), Default) -> api_object() | Default.
 category(Plan, CategoryId) ->
-    wh_json:get_json_value([?PLAN, CategoryId], Plan).
+    category(Plan, CategoryId, 'undefined').
+category(Plan, CategoryId, Default) ->
+    wh_json:get_json_value([?PLAN, CategoryId], Plan, Default).
 
 -spec items(doc(), ne_binary()) -> ne_binaries().
 items(Plan, Category) ->
@@ -145,4 +154,4 @@ plan(Plan, Default) ->
 
 -spec set_plan(doc(), wh_json:object()) -> doc().
 set_plan(Plan, P) ->
-    wh_json:set_value(?PLAN, Plan, P).
+    wh_json:set_value(?PLAN, P, Plan).

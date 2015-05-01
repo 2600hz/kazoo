@@ -17,6 +17,8 @@
          ,discounts/1, discounts/2
          ,single_discount/1, single_discount/2
          ,cumulative_discount/1, cumulative_discount/2
+         ,is_enabled/1
+         ,keys/1
         ]).
 
 -include("kz_documents.hrl").
@@ -38,6 +40,11 @@
 -define(DISCOUNTS, <<"discounts">>).
 -define(SINGLE, <<"single">>).
 -define(CUMULATIVE, <<"cumulative">>).
+-define(ENABLED, <<"enabled">>).
+
+-spec keys(doc()) -> wh_json:keys().
+keys(ItemPlan) ->
+    wh_json:get_keys(ItemPlan).
 
 -spec minimum(doc()) -> integer().
 -spec minimum(doc(), Default) -> integer() | Default.
@@ -108,3 +115,7 @@ cumulative_discount(ItemPlan) ->
     cumulative_discount(ItemPlan, 'undefined').
 cumulative_discount(ItemPlan, Default) ->
     wh_json:get_json_value([?DISCOUNTS, ?CUMULATIVE], ItemPlan, Default).
+
+-spec is_enabled(doc()) -> boolean().
+is_enabled(ItemPlan) ->
+    wh_json:is_true(?ENABLED, ItemPlan).
