@@ -2,7 +2,7 @@
 %%% @author Stephen Gibberd <stephen.gibberd@2600hz.com>
 %%% This process runs on each node in the Kazoo cluster. It collects information
 %%% on each node, and regularly sends the information the stats application.
-%%% For ecallmgr nodes, it also collects ecallmgr information, and 
+%%% For ecallmgr nodes, it also collects ecallmgr information, and
 %%% sip events statistics.
 %%%-------------------------------------------------------------------
 -module(whistle_stats).
@@ -25,7 +25,9 @@
          ,getdb/0
         ]).
 
--define(SERVER, ?MODULE). 
+-include_lib("whistle/include/wh_log.hrl").
+
+-define(SERVER, ?MODULE).
 -define(SEND_INTERVAL, 10000).
 
 -record(state, {variables=[]

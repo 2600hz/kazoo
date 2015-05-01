@@ -40,9 +40,7 @@ get_content_type(MediaType, _) ->
     case cowboy_http:nonempty_list(MediaType, fun cowboy_http:media_range/2) of
         [{{Type, SubType, _Options}, _, _}] ->
             wh_util:join_binary([Type, SubType], <<"/">>);
-        {'error', 'badarg'} ->
-            lager:warning("failed to extract content type from ~s", [MediaType]),
-            'undefined'
+        {'error', 'badarg'} -> 'undefined'
     end.
 
 -spec corrected_base64_decode(ne_binary()) -> ne_binary().

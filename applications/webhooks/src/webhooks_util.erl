@@ -21,6 +21,7 @@
          ,hook_event/1
          ,load_hooks/1
          ,load_hook/2
+         ,hook_id/1
          ,hook_id/2
 
          ,account_expires_time/1

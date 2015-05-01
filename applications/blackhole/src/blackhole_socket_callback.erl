@@ -19,9 +19,8 @@ open(SessionPid, SessionId, _Opts) ->
     lager:debug("opening socket ~p", [SessionId]),
     {'ok', bh_context:new(SessionPid, SessionId)}.
 
-recv(SessionPid, SessionId, {message, <<>>, Message}, State) ->
+recv(_SessionPid, SessionId, {message, <<>>, Message}, State) ->
     lager:debug("received message ~p on socket ~p", [Message, SessionId]),
-    blackhole_resource:handle_message(Message, SessionId, SessionPid),
     {'ok', State};
 
 recv(_SessionPid, _SessionId, {'event', _Ignore, <<"subscribe">>, SubscriptionJObj}, Context) ->

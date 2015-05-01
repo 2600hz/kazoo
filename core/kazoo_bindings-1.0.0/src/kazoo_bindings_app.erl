@@ -31,4 +31,6 @@ start(_Type, _Args) -> kazoo_bindings_sup:start_link().
 %% @end
 %%--------------------------------------------------------------------
 -spec stop(term()) -> 'ok'.
-stop(_State) -> kazoo_bindings_sup:stop().
+stop(_State) ->
+    _ = exit(whereis('kazoo_bindings_sup'), 'shutdown'),
+    'ok'.

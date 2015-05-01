@@ -67,7 +67,7 @@ update_status(Call, AgentId, Status) ->
              ,{<<"method">>, <<"callflow">>}
             ],
 
-    {'ok', _D} = acdc_util:update_agent_status(whapps_call:account_id(Call), AgentId, Status, Extra).
+    {'ok', _D} = acdc_agent_util:update_status(whapps_call:account_id(Call), AgentId, Status, Extra).
 
 send_agent_message(Call, AgentId, QueueId, PubFun) ->
     Prop = props:filter_undefined(

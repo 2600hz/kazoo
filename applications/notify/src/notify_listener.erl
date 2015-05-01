@@ -204,10 +204,10 @@ should_handle(JObj) ->
 
 -spec should_handle_system() -> boolean().
 should_handle_system() ->
-    whapps_config:get_value(?NOTIFY_CONFIG_CAT
-                            ,<<"notification_app">>
-                            ,?APP_NAME
-                           ) =:= ?APP_NAME.
+    whapps_config:get(?NOTIFY_CONFIG_CAT
+                      ,<<"notification_app">>
+                      ,?APP_NAME
+                     ) =:= ?APP_NAME.
 
 -spec should_handle_account(ne_binary()) -> boolean().
 should_handle_account(Account) ->
