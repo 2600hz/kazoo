@@ -37,12 +37,33 @@ main(Paths) ->
     io:format("Running xref analysis...\n"),
     lists:foreach( fun (Xref) ->
                            {'ok', Res} = xref:analyze(?SERVER, Xref),
-                           print(Xref, Res)
+                           Filtered = filter(Xref, Res),
+                           print(Xref, Filtered)
                    end
                  , Xrefs ),
     'stopped' = xref:stop(?SERVER).
 
 %% Internals
+
+filter('undefined_function_calls', Results) ->
+    ToKeep = fun
+                 %% apns:start/0 calls the fun only if it exists
+                 ({{apns,start,0}, {application,ensure_all_started,1}}) -> 'false';
+
+                 %% OTP Xref errors
+                 ({{eunit_test,_,_}, {_,_,_}}) -> 'false';
+
+                 %% DTL modules that only exist at runtime
+                 ({{_,_,_}, {sub_package_dialog,_,_}}) -> 'false';
+                 ({{_,_,_}, {sub_package_message_summary,_,_}}) -> 'false';
+                 ({{_,_,_}, {sub_package_presence,_,_}}) -> 'false';
+
+                 %% ({{,,}, {,,}}) -> 'false';
+                 (_) -> 'true'
+             end,
+    lists:filter(ToKeep, Results);
+filter(_Xref, Results) ->
+    Results.
 
 print('undefined_function_calls'=Xref, Results) ->
     io:format("Xref: ~p\n", [Xref]),
