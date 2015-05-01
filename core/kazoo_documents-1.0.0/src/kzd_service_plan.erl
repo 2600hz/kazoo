@@ -68,7 +68,7 @@ overrides(Plan, Default) ->
 
 -spec merge_overrides(doc(), wh_json:object()) -> doc().
 merge_overrides(Plan, Overrides) ->
-    wh_json:merge_recursive(Plan, wh_json:from_list([{?PLAN, Overrides}])).
+    wh_json:merge_recursive(wh_json:from_list([{?PLAN, Overrides}]), Plan).
 
 -spec item_activation_charge(doc(), ne_binary(), ne_binary()) -> api_float().
 -spec item_activation_charge(doc(), ne_binary(), ne_binary(), Default) -> float() | Default.
