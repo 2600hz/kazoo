@@ -19,6 +19,7 @@
          ,plan_account_id/2, plan_account_id/3
          ,plan_overrides/2, plan_overrides/3
          ,quantities/1, quantities/2
+         ,item_quantity/3, item_quantity/4
         ]).
 
 -export([set_billing_id/2
@@ -129,6 +130,13 @@ quantities(JObj) ->
     quantities(JObj, wh_json:new()).
 quantities(JObj, Default) ->
     wh_json:get_json_value(?QUANTITIES, JObj, Default).
+
+-spec item_quantity(doc(), ne_binary(), ne_binary()) -> integer().
+-spec item_quantity(doc(), ne_binary(), ne_binary(), Default) -> integer() | Default.
+item_quantity(JObj, Category, Item) ->
+    item_quantity(JObj, Category, Item, 0).
+item_quantity(JObj, Category, Item, Default) ->
+    wh_json:get_integer_value([?QUANTITIES, Category, Item], JObj, Default).
 
 -spec set_billing_id(doc(), api_binary()) -> doc().
 set_billing_id(JObj, BillingId) ->
