@@ -599,10 +599,10 @@ add_attachment(Context, Id, Attachment, AttachBin) ->
                                           {'ok', wh_json:object()} |
                                           {'error', _}.
 replicate_account_definition(JObj) ->
-    AccountId = wh_json:get_value(<<"_id">>, JObj),
+    AccountId = wh_doc:id(JObj),
     case couch_mgr:lookup_doc_rev(?WH_ACCOUNTS_DB, AccountId) of
         {'ok', Rev} ->
-            couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_json:set_value(<<"_rev">>, Rev, JObj));
+            couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_doc:set_revision(JObj, Rev));
         _Else ->
-            couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_json:delete_key(<<"_rev">>, JObj))
+            couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_doc:delete_revision(JObj))
     end.
