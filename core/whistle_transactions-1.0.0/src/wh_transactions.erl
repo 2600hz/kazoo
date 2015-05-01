@@ -197,10 +197,8 @@ fetch_last(Account, Count) ->
                    {'ok', wh_transactions()} |
                    {'error', _}.
 fetch(Account, From, To) ->
-    case check_range(Account, From, To) of
-        {'error', _R}=Error -> Error;
-        {'ok', ViewOptionsList} -> fetch(Account, ViewOptionsList)
-    end.
+    ViewOptionsList = get_range(Account, From, To),
+    fetch(Account, ViewOptionsList).
 
 %% @private
 -spec fetch(ne_binary(), wh_proplists()) ->
@@ -218,25 +216,19 @@ fetch(Account, ViewOptionsList) ->
     end.
 
 %% @private
--spec check_range(ne_binary(), gregorian_seconds(), gregorian_seconds()) ->
-                         {'ok', wh_proplists()} |
-                         {'error', ne_binary()}.
-check_range(Account, From, To) ->
-    ViewOptionsList =
-        [ begin
-              {Account, Year, Month} = kazoo_modb_util:split_account_mod(MODb),
-              [{'startkey', From}
-               ,{'endkey', To}
-               ,{'year', Year}
-               ,{'month', Month}
-               ,'include_docs'
-              ]
-          end || MODb <- kazoo_modb:get_range(Account, From, To)
-        ],
-    case length(ViewOptionsList) =< 3 of
-        'true' -> {'ok', ViewOptionsList};
-        'false' -> {'error', <<"max range: 3 consecutive months">>}
-    end.
+-spec get_range(ne_binary(), gregorian_seconds(), gregorian_seconds()) ->
+                         ViewOptionsList :: wh_proplists().
+get_range(Account, From, To) ->
+    [ begin
+          {Account, Year, Month} = kazoo_modb_util:split_account_mod(MODb),
+          [{'startkey', From}
+           ,{'endkey', To}
+           ,{'year', Year}
+           ,{'month', Month}
+           ,'include_docs'
+          ]
+      end || MODb <- kazoo_modb:get_range(Account, From, To)
+    ].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -248,10 +240,8 @@ check_range(Account, From, To) ->
                          {'ok', wh_transactions()} |
                          {'error', _}.
 fetch_local(Account, From, To) ->
-    case check_range(Account, From, To) of
-        {'error', _R}=Error -> Error;
-        {'ok', ViewOptionsList} -> fetch_local(Account, ViewOptionsList)
-    end.
+    ViewOptionsList = get_range(Account, From, To),
+    fetch_local(Account, ViewOptionsList).
 
 %% @private
 -spec fetch_local(ne_binary(), wh_proplists()) ->
