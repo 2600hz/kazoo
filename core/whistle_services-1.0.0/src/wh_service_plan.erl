@@ -7,7 +7,7 @@
 %%%-------------------------------------------------------------------
 -module(wh_service_plan).
 
--export([fetch/3]).
+-export([fetch/2]).
 -export([activation_charges/3]).
 -export([create_items/3]).
 
@@ -20,13 +20,13 @@
 %% Merge any plan overrides into the plan property.
 %% @end
 %%--------------------------------------------------------------------
--spec fetch(ne_binary(), ne_binary(), wh_json:object()) -> kzd_service_plan:api_doc().
-fetch(PlanId, VendorId, Overrides) ->
+-spec fetch(ne_binary(), ne_binary()) -> kzd_service_plan:api_doc().
+fetch(PlanId, VendorId) ->
     VendorDb = wh_util:format_account_id(VendorId, 'encoded'),
     case couch_mgr:open_cache_doc(VendorDb, PlanId) of
         {'ok', ServicePlan} ->
             lager:debug("found service plan ~s/~s", [VendorDb, PlanId]),
-            kzd_service_plan:merge_overrides(ServicePlan, Overrides);
+            ServicePlan;
         {'error', _R} ->
             lager:debug("unable to open service plan ~s/~s: ~p", [VendorDb, PlanId, _R]),
             'undefined'
