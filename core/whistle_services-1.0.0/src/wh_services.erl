@@ -508,7 +508,7 @@ set_billing_id(BillingId, #wh_services{account_id=BillingId
                          ,dirty='true'
                         };
 set_billing_id(BillingId, #wh_services{jobj=ServicesJObj}=Services) ->
-    PvtTree = wh_doc:tree(ServicesJObj, [BillingId]),
+    PvtTree = kz_account:tree(ServicesJObj, [BillingId]),
     try lists:last(PvtTree) of
         BillingId ->
             Services#wh_services{jobj=kzd_services:set_billing_id(ServicesJObj, BillingId)
@@ -644,7 +644,7 @@ service_plan_json(<<_/binary>> = Account) ->
 public_json(#wh_services{jobj=ServicesJObj
                          ,cascade_quantities=CascadeQuantities
                         }) ->
-    AccountId = wh_json:get_value(<<"pvt_account_id">>, ServicesJObj),
+    AccountId = wh_doc:account_id(ServicesJObj),
     InGoodStanding = try maybe_follow_billling_id(AccountId, ServicesJObj) of
                          'true' -> 'true'
                      catch
@@ -653,10 +653,10 @@ public_json(#wh_services{jobj=ServicesJObj
     Props = [{?QUANTITIES_ACCOUNT, current_quantities(ServicesJObj)}
              ,{?QUANTITIES_CASCADE, CascadeQuantities}
              ,{?PLANS, wh_service_plans:plan_summary(ServicesJObj)}
-             ,{<<"billing_id">>, wh_json:get_value(<<"billing_id">>, ServicesJObj, AccountId)}
-             ,{<<"reseller">>, wh_json:is_true(<<"pvt_reseller">>, ServicesJObj)}
-             ,{<<"reseller_id">>, wh_json:get_ne_value(<<"pvt_reseller_id">>, ServicesJObj)}
-             ,{<<"dirty">>, wh_json:is_true(<<"pvt_dirty">>, ServicesJObj)}
+             ,{<<"billing_id">>, kzd_services:billing_id(ServicesJObj, AccountId)}
+             ,{<<"reseller">>, kzd_services:is_reseller(ServicesJObj)}
+             ,{<<"reseller_id">>, kzd_services:reseller_id(ServicesJObj)}
+             ,{<<"dirty">>, kzd_services:is_dirty(ServicesJObj)}
              ,{<<"in_good_standing">>, InGoodStanding}
              ,{<<"items">>, wh_service_plans:public_json_items(ServicesJObj)}
             ],
@@ -689,7 +689,7 @@ find_reseller_id(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     case fetch_services_doc(AccountId) of
         {'ok', JObj} ->
-            case wh_json:get_ne_value(<<"pvt_reseller_id">>, JObj) of
+            case kzd_services:reseller_id(JObj) of
                 'undefined' -> get_reseller_id(Account);
                 ResellerId -> ResellerId
             end;
@@ -727,7 +727,7 @@ allow_updates(#wh_services{jobj=ServicesJObj
 
 -spec maybe_follow_billling_id(ne_binary(), wh_json:object()) -> 'true'.
 maybe_follow_billling_id(AccountId, ServicesJObj) ->
-    case wh_json:get_ne_value(<<"billing_id">>, ServicesJObj, AccountId) of
+    case kzd_services:billing_id(ServicesJObj, AccountId) of
         AccountId -> maybe_allow_updates(AccountId, ServicesJObj);
         BillingId ->
             lager:debug("following billing id ~s", [BillingId]),
@@ -738,7 +738,7 @@ maybe_follow_billling_id(AccountId, ServicesJObj) ->
 maybe_allow_updates(AccountId, ServicesJObj) ->
     Plans = wh_service_plans:plan_summary(ServicesJObj),
     case wh_util:is_empty(Plans)
-        orelse wh_json:get_value(<<"pvt_status">>, ServicesJObj)
+        orelse kzd_services:status(ServicesJObj)
     of
         'true' ->
             lager:debug("allowing request for account with no service plans"),
@@ -870,8 +870,8 @@ is_dirty(#wh_services{dirty=IsDirty}) ->
 -spec quantity(ne_binary(), ne_binary(), services()) -> integer().
 quantity(_, _, #wh_services{deleted='true'}) -> 0;
 quantity(CategoryId, ItemId, #wh_services{updates=UpdatedQuantities
-                                      ,jobj=JObj
-                                     }) ->
+                                          ,jobj=JObj
+                                         }) ->
     CurrentQuantities = current_quantities(JObj),
     Quantities = wh_json:merge_jobjs(UpdatedQuantities, CurrentQuantities),
     wh_json:get_integer_value([CategoryId, ItemId], Quantities, 0).
@@ -896,8 +896,8 @@ update_quantity(CategoryId, ItemId, #wh_services{updates=JObj}) ->
 -spec category_quantity(ne_binary(), ne_binaries(), services()) -> integer().
 category_quantity(_, _, #wh_services{deleted='true'}) -> 0;
 category_quantity(CategoryId, Exceptions, #wh_services{updates=UpdatedQuantities
-                                                     ,jobj=JObj
-                                                    }) ->
+                                                       ,jobj=JObj
+                                                      }) ->
     CurrentQuantities = current_quantities(JObj),
     Quantities = wh_json:merge_jobjs(UpdatedQuantities, CurrentQuantities),
 
@@ -1017,7 +1017,6 @@ calculate_services_charges(#wh_services{jobj=ServiceJObj}=Services) ->
     end.
 
 calculate_services_charges(#wh_services{jobj=ServiceJObj}=Services, ServicePlans) ->
-    lager:debug("service jobj: ~p", [ServiceJObj]),
     case wh_service_plans:create_items(ServiceJObj) of
         {'error', _E} ->
             lager:debug("failed to create items from service plans: ~p", [_E]),
@@ -1114,16 +1113,12 @@ dry_run_activation_charges(CategoryId, ItemId, Quantity, #wh_services{jobj=JObj}
             ]
     end.
 
--spec get_item_plan(ne_binary(), ne_binary(), wh_json:object()) -> wh_json:object().
+-spec get_item_plan(ne_binary(), ne_binary(), kzd_service_plan:doc()) -> wh_json:object().
 get_item_plan(CategoryId, ItemId, ServicePlan) ->
-    case wh_json:get_value([CategoryId, ItemId], ServicePlan) of
-        'undefined' -> get_catchall_item_plan(CategoryId, ServicePlan);
+    case kzd_service_plan:item_plan(ServicePlan, CategoryId, ItemId, 'undefined') of
+        'undefined' -> kzd_service_plan:category_plan(ServicePlan, CategoryId);
         Plan -> Plan
     end.
-
--spec get_catchall_item_plan(ne_binary(), wh_json:object()) -> wh_json:object().
-get_catchall_item_plan(CategoryId, ServicePlan) ->
-    wh_json:get_value([CategoryId, <<"_all">>], ServicePlan, wh_json:new()).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1298,7 +1293,7 @@ maybe_augment_with_plan(ResellerId, JObj, PlanId) ->
 -spec incorporate_depreciated_service_plans(wh_json:object(), wh_json:object()) -> wh_json:object().
 incorporate_depreciated_service_plans(Plans, JObj) ->
     PlanIds = wh_json:get_value(<<"pvt_service_plans">>, JObj),
-    ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, JObj),
+    ResellerId = kzd_services:reseller_id(JObj),
     case wh_util:is_empty(PlanIds)
         orelse wh_util:is_empty(ResellerId)
     of
@@ -1402,7 +1397,7 @@ any_changed(KeyNotSameFun, Quantities) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_account_definition(ne_binary(), ne_binary()) -> wh_json:object().
+-spec get_account_definition(ne_binary(), ne_binary()) -> kz_account:doc().
 get_account_definition(<<_/binary>> = AccountDb, <<_/binary>> = AccountId) ->
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
         {'error', _R} ->
