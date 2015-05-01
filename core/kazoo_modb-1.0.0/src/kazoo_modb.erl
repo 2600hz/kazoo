@@ -19,6 +19,7 @@
 -export([create/1]).
 -export([maybe_delete/2]).
 -export([get_range/3]).
+-export([get_year_month_sequence/3, get_year_month_sequence/4]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -327,13 +328,26 @@ delete_if_orphaned(AccountMODb, 'true') ->
                        ne_binaries().
 get_range(AccountId, From, To) ->
     {{FromYear, FromMonth, _}, _} = calendar:gregorian_seconds_to_datetime(From),
-    {{ToYear, ToMonth, _}, _} = calendar:gregorian_seconds_to_datetime(To),
-    Seq = crossbar_util:generate_year_month_sequence({FromYear, FromMonth}
-                                                     ,{ToYear, ToMonth}
-                                                    ),
-    [MODb || {Year, Month} <- Seq
-                 , begin
-                       MODb = get_modb(AccountId, Year, Month),
-                       couch_mgr:db_exists(MODb)
-                   end
+    {{ToYear,   ToMonth,   _}, _} = calendar:gregorian_seconds_to_datetime(To),
+    [MODb
+     || MODb <- get_year_month_sequence(AccountId, {FromYear,FromMonth}, {ToYear,ToMonth})
+            , couch_mgr:db_exists(MODb)
     ].
+
+%% @public
+-spec get_year_month_sequence(ne_binary(), year_month_tuple(), year_month_tuple()) ->
+                                     ne_binaries().
+get_year_month_sequence(Account, From, To) ->
+    get_year_month_sequence(Account, From, To, []).
+
+%% @public
+-spec get_year_month_sequence(ne_binary(), year_month_tuple(), year_month_tuple(), wh_proplist()) ->
+                                     ne_binaries().
+get_year_month_sequence(Account, Tuple, Tuple, Range) ->
+    ToMODbId = fun ({Year,Month}, Acc) -> [get_modb(Account, Year, Month)|Acc] end,
+    lists:foldl(ToMODbId, [], [Tuple|Range]);
+get_year_month_sequence(Account, {FromYear,13}, To, Range) ->
+    get_year_month_sequence(Account, {FromYear+1,1}, To, Range);
+get_year_month_sequence(Account, {FromYear,FromMonth}=From, {ToYear,ToMonth}=To, Range) ->
+        'true' = (FromYear * 12 + FromMonth) =< (ToYear * 12 + ToMonth),
+    get_year_month_sequence(Account, {FromYear,FromMonth+1}, To, [From|Range]).

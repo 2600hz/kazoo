@@ -26,7 +26,6 @@
          ,range_view_options/1, range_view_options/2
 
          ,range_modb_view_options/1, range_modb_view_options/2, range_modb_view_options/3
-         ,range_modbs/3
         ]).
 
 -include("../crossbar.hrl").
@@ -100,34 +99,19 @@ range_modb_view_options(Context, PrefixKeys, 'undefined') ->
 range_modb_view_options(Context, PrefixKeys, SuffixKeys) ->
     case cb_modules_util:range_view_options(Context) of
         {CreatedFrom, CreatedTo} ->
+            AccountId = cb_context:account_id(Context),
             case PrefixKeys =:= [] andalso SuffixKeys =:= [] of
                 'true' -> {'ok', [{'startkey', CreatedFrom}
                                   ,{'endkey', CreatedTo}
-                                  | range_modbs(Context, CreatedFrom, CreatedTo)
+                                  ,{'databases', kazoo_modb:get_range(AccountId, CreatedFrom, CreatedTo)}
                                  ]};
                 'false' -> {'ok', [{'startkey', [Key || Key <- PrefixKeys ++ [CreatedFrom] ++ SuffixKeys] }
                                    ,{'endkey', [Key || Key <- PrefixKeys  ++ [CreatedTo]   ++ SuffixKeys] }
-                                   | range_modbs(Context, CreatedFrom, CreatedTo)
+                                   ,{'databases', kazoo_modb:get_range(AccountId, CreatedFrom, CreatedTo)}
                                   ]}
             end;
         Context1 -> Context1
     end.
-
--spec range_modbs(cb_context:context(), pos_integer(), pos_integer()) ->
-                         [{'databases', ne_binaries()}].
-range_modbs(Context, From, To) ->
-    AccountId = cb_context:account_id(Context),
-    {{FromYear, FromMonth, _}, _} = calendar:gregorian_seconds_to_datetime(From),
-    {{ToYear, ToMonth, _}, _} = calendar:gregorian_seconds_to_datetime(To),
-
-    [{'databases', [wh_util:format_account_mod_id(AccountId, Year, Month)
-                    || {Year, Month} <- crossbar_util:generate_year_month_sequence({FromYear, FromMonth}
-                                                                                   ,{ToYear, ToMonth}
-                                                                                   ,[]
-                                                                                  )
-                   ]
-     }
-    ].
 
 -spec created_to(cb_context:context(), pos_integer()) -> pos_integer().
 created_to(Context, TStamp) ->

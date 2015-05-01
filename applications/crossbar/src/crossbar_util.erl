@@ -65,9 +65,6 @@
 -export([maybe_remove_attachments/1]).
 
 -export([create_auth_token/2]).
--export([generate_year_month_sequence/2
-         ,generate_year_month_sequence/3
-        ]).
 
 -export([descendants_count/0, descendants_count/1]).
 
@@ -85,7 +82,6 @@
        ).
 
 -type fails() :: 'error' | 'fatal'.
--type year_month_tuple() :: {pos_integer(),pos_integer()}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -899,25 +895,6 @@ create_auth_token(Context, Method, JObj) ->
             lager:debug("could not create new local auth token, ~p", [R]),
             cb_context:add_system_error('invalid_credentials', Context)
     end.
-
--spec generate_year_month_sequence(year_month_tuple(), year_month_tuple(), wh_proplist()) ->
-                                          wh_proplist().
-generate_year_month_sequence(From, To) ->
-    generate_year_month_sequence(From, To, []).
-
-generate_year_month_sequence({Year, Month}, {Year, Month}, Range) ->
-    lists:reverse([{Year, Month} | Range]);
-generate_year_month_sequence({FromYear, 13}, {ToYear, ToMonth}, Range) ->
-    generate_year_month_sequence({FromYear+1, 1}
-                                 ,{ToYear, ToMonth}
-                                 ,Range
-                                );
-generate_year_month_sequence({FromYear, FromMonth}, {ToYear, ToMonth}, Range) ->
-    'true' = (FromYear * 12 + FromMonth) =< (ToYear * 12 + ToMonth),
-    generate_year_month_sequence({FromYear, FromMonth+1}
-                                 ,{ToYear, ToMonth}
-                                 ,[{FromYear, FromMonth} | Range]
-                                ).
 
 %%--------------------------------------------------------------------
 %% @public

@@ -38,3 +38,12 @@ split_account_mod_test() ->
 
     ?assertEqual(<<"0a936fc79bdb4a8c38e6089ab44ad030">>, DbAccountId),
     ?assertEqual(DbAccountId, IdAccountId).
+
+get_year_month_sequence_test() ->
+    AccountId = <<"a05ced59126846892856c1fecbc3d5d9">>,
+    AccountDb = wh_util:format_account_db(AccountId),
+    ?assertEqual( [ <<AccountDb/binary, "-201311">>
+                  , <<AccountDb/binary, "-201312">>
+                  , <<AccountDb/binary, "-201401">>
+                  ]
+                , kazoo_modb:get_year_month_sequence(AccountId, {2013, 11}, {2014, 1})).
