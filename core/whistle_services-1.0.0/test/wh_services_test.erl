@@ -9,7 +9,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--record(state, {service_plan :: wh_json:object()
+-record(state, {service_plan_jobj :: kzd_service_plan:plan()
                 ,services :: wh_services:services()
                 ,services_jobj :: wh_json:object()
                }).
@@ -20,6 +20,8 @@ services_test_() ->
      ,fun stop/1
      ,[fun services_json_to_record/1
        ,fun services_record_to_json/1
+       ,fun service_plan_json_to_plans/1
+       ,fun service_plans_to_json/1
       ]
     }.
 
@@ -38,8 +40,9 @@ stop(#state{}=_State) ->
 
 read_service_plan(State) ->
     ServicePlan1 = filename:join([priv_dir(), "example_service_plan_1.json"]),
+    JObj = read_json(ServicePlan1),
 
-    State#state{service_plan=read_json(ServicePlan1)}.
+    State#state{service_plan_jobj=JObj}.
 
 read_services(State) ->
     Services = filename:join([priv_dir(), "example_account_services.json"]),
@@ -48,6 +51,10 @@ read_services(State) ->
     State#state{services_jobj=JObj
                 ,services=wh_services:from_service_json(JObj, 'false')
                }.
+
+priv_dir() ->
+    {'ok', AppDir} = file:get_cwd(),
+    filename:join([AppDir, "priv"]).
 
 read_json(Path) ->
     {'ok', JSON} = file:read_file(Path),
@@ -119,6 +126,33 @@ item_check(Category, Item, Quantity, Services) ->
      ,?_assertEqual(Quantity, wh_services:quantity(Category, Item, Services))
     }.
 
-priv_dir() ->
-    {'ok', AppDir} = file:get_cwd(),
-    filename:join([AppDir, "priv"]).
+service_plan_json_to_plans(#state{service_plan_jobj=ServicePlan
+                                  ,services_jobj=Services
+                                 }) ->
+    Overrides = kzd_services:plan_overrides(Services, wh_doc:id(ServicePlan)),
+    Plan = kzd_service_plan:merge_overrides(ServicePlan, Overrides),
+
+    [{"Verify plan from file matches services plan"
+      ,?_assertEqual(wh_doc:account_id(ServicePlan)
+                     ,kzd_service_plan:account_id(Plan)
+                    )
+     }
+     ,{"Verify cumulative discount rate was overridden"
+       ,?_assertEqual(5.0, rate(cumulative_discount(did_us_item(Plan))))
+      }
+     ,{"Verify cumulative discount rate from service plan"
+       ,?_assertEqual(0.5, rate(cumulative_discount(did_us_item(ServicePlan))))
+      }
+    ].
+
+service_plans_to_json(_State) ->
+    [].
+
+did_us_item(Plan) ->
+    kzd_service_plan:item(Plan, <<"phone_numbers">>, <<"did_us">>).
+
+cumulative_discount(Item) ->
+    kzd_item_plan:cumulative_discount(Item).
+
+rate(JObj) ->
+    wh_json:get_float_value(<<"rate">>, JObj).
