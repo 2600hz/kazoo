@@ -17,4 +17,4 @@ before_install:
 script:
   - make compile
   - make xref
-  - make eunit
+  - make test
