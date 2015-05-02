@@ -14,4 +14,7 @@ otp_release:
   - R15B
 before_install:
     - sudo apt-get install -qq xsltproc
-script: "make compile xref eunit"
+script:
+  - make compile
+  - make xref
+  - make eunit
