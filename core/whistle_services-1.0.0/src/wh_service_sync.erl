@@ -237,7 +237,7 @@ maybe_sync_services(AccountId, ServiceJObj) ->
     case wh_service_plans:create_items(ServiceJObj) of
         {'error', 'no_plans'} ->
             lager:debug("no services plans found"),
-            _ = mark_clean_and_status(<<"good_standing">>, ServiceJObj),
+            _ = mark_clean_and_status(kzd_services:status_good(), ServiceJObj),
             maybe_sync_reseller(AccountId, ServiceJObj);
         {'ok', ServiceItems} ->
             sync_services(AccountId, ServiceJObj, ServiceItems)
@@ -247,8 +247,8 @@ maybe_sync_services(AccountId, ServiceJObj) ->
 sync_services(AccountId, ServiceJObj, ServiceItems) ->
     try sync_services_bookkeeper(AccountId, ServiceJObj, ServiceItems) of
         'ok' ->
-            _ = mark_clean_and_status(<<"good_standing">>, ServiceJObj),
-            io:format("synchronization with bookkeeper complete\n"),
+            _ = mark_clean_and_status(kzd_services:status_good(), ServiceJObj),
+            io:format("synchronization with bookkeeper complete~n"),
             lager:debug("synchronization with bookkeeper complete"),
             maybe_sync_reseller(AccountId, ServiceJObj)
     catch

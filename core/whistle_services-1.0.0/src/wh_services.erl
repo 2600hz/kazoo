@@ -50,7 +50,7 @@
 
 -include("whistle_services.hrl").
 
--define(STATUS_GOOD, <<"good_standing">>).
+-define(STATUS_GOOD, kzd_services:status_good()).
 -define(QUANTITIES_ACCOUNT, <<"account_quantities">>).
 -define(QUANTITIES_CASCADE, <<"cascade_quantities">>).
 -define(PLANS, <<"plans">>).
@@ -736,6 +736,7 @@ maybe_follow_billling_id(AccountId, ServicesJObj) ->
 
 -spec maybe_allow_updates(ne_binary(), wh_json:object()) -> 'true'.
 maybe_allow_updates(AccountId, ServicesJObj) ->
+    StatusGood = ?STATUS_GOOD,
     Plans = wh_service_plans:plan_summary(ServicesJObj),
     case wh_util:is_empty(Plans)
         orelse kzd_services:status(ServicesJObj)
@@ -743,7 +744,7 @@ maybe_allow_updates(AccountId, ServicesJObj) ->
         'true' ->
             lager:debug("allowing request for account with no service plans"),
             'true';
-        ?STATUS_GOOD ->
+        StatusGood ->
             lager:debug("allowing request for account in good standing"),
             'true';
         Status ->
