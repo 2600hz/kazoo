@@ -107,7 +107,6 @@
 -type gregorian_seconds() :: pos_integer().
 -type unix_seconds() :: pos_integer().
 -type api_seconds() :: 'undefined' | gregorian_seconds().
--type year_month_tuple() :: {wh_year(), wh_month()}.
 
 -type wh_timeout() :: non_neg_integer() | 'infinity'.
 

@@ -334,6 +334,8 @@ get_range(AccountId, From, To) ->
             , couch_mgr:db_exists(MODb)
     ].
 
+-type year_month_tuple() :: {wh_year(), wh_month()}.
+
 %% @public
 -spec get_year_month_sequence(ne_binary(), year_month_tuple(), year_month_tuple()) ->
                                      ne_binaries().
