@@ -106,6 +106,7 @@
 -type wh_iso_week() :: calendar:yearweeknum(). %%{wh_year(), wh_weeknum()}.
 -type gregorian_seconds() :: pos_integer().
 -type unix_seconds() :: pos_integer().
+-type api_seconds() :: 'undefined' | gregorian_seconds().
 
 -type wh_timeout() :: non_neg_integer() | 'infinity'.
 

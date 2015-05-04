@@ -84,7 +84,7 @@ default_payment_token(#bt_customer{}=Customer) ->
 default_payment_token(CustomerId) ->
     default_payment_token(find(CustomerId)).
 
--spec default_payment_card(ne_binary() | customer()) -> braintree_card:card().
+-spec default_payment_card(ne_binary() | customer()) -> bt_card().
 default_payment_card(#bt_customer{}=Customer) ->
     braintree_card:default_payment_card(get_cards(Customer));
 default_payment_card(CustomerId) ->
@@ -106,7 +106,7 @@ get_id(#bt_customer{id=CustomerId}) ->
 %% Get credit cards
 %% @end
 %%--------------------------------------------------------------------
--spec get_cards(customer()) -> braintree_card:cards().
+-spec get_cards(customer()) -> bt_cards().
 get_cards(#bt_customer{credit_cards=Cards}) ->
     Cards.
 

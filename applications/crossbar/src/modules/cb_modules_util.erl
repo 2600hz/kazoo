@@ -26,7 +26,6 @@
          ,range_view_options/1, range_view_options/2
 
          ,range_modb_view_options/1, range_modb_view_options/2, range_modb_view_options/3
-         ,range_modbs/3
         ]).
 
 -include("../crossbar.hrl").
@@ -38,10 +37,10 @@
        ).
 
 -spec range_view_options(cb_context:context()) ->
-                                {pos_integer(), pos_integer()} |
+                                {gregorian_seconds(), gregorian_seconds()} |
                                 cb_context:context().
 -spec range_view_options(cb_context:context(), pos_integer()) ->
-                                {pos_integer(), pos_integer()} |
+                                {gregorian_seconds(), gregorian_seconds()} |
                                 cb_context:context().
 range_view_options(Context) ->
     range_view_options(Context, ?MAX_RANGE).
@@ -53,28 +52,28 @@ range_view_options(Context, MaxRange) ->
     case CreatedTo - CreatedFrom of
         N when N < 0 ->
             cb_context:add_validation_error(
-                <<"created_from">>
-                ,<<"date_range">>
-                ,wh_json:from_list([
-                    {<<"message">>, <<"created_from is prior to created_to">>}
-                    ,{<<"cause">>, CreatedFrom}
+              <<"created_from">>
+              ,<<"date_range">>
+              ,wh_json:from_list(
+                 [{<<"message">>, <<"created_from is prior to created_to">>}
+                  ,{<<"cause">>, CreatedFrom}
                  ])
-                ,Context
-            );
+              ,Context
+             );
         N when N > MaxRange ->
             Message = <<"created_to is more than "
                         ,(wh_util:to_binary(MaxRange))/binary
                         ," seconds from created_from"
                       >>,
             cb_context:add_validation_error(
-                <<"created_from">>
-                ,<<"date_range">>
-                ,wh_json:from_list([
-                    {<<"message">>, Message}
-                    ,{<<"cause">>, CreatedTo}
+              <<"created_from">>
+              ,<<"date_range">>
+              ,wh_json:from_list(
+                 [{<<"message">>, Message}
+                  ,{<<"cause">>, CreatedTo}
                  ])
-                ,Context
-            );
+              ,Context
+             );
         _N -> {CreatedFrom, CreatedTo}
     end.
 
@@ -100,34 +99,19 @@ range_modb_view_options(Context, PrefixKeys, 'undefined') ->
 range_modb_view_options(Context, PrefixKeys, SuffixKeys) ->
     case cb_modules_util:range_view_options(Context) of
         {CreatedFrom, CreatedTo} ->
+            AccountId = cb_context:account_id(Context),
             case PrefixKeys =:= [] andalso SuffixKeys =:= [] of
                 'true' -> {'ok', [{'startkey', CreatedFrom}
                                   ,{'endkey', CreatedTo}
-                                  | range_modbs(Context, CreatedFrom, CreatedTo)
+                                  ,{'databases', kazoo_modb:get_range(AccountId, CreatedFrom, CreatedTo)}
                                  ]};
                 'false' -> {'ok', [{'startkey', [Key || Key <- PrefixKeys ++ [CreatedFrom] ++ SuffixKeys] }
                                    ,{'endkey', [Key || Key <- PrefixKeys  ++ [CreatedTo]   ++ SuffixKeys] }
-                                   | range_modbs(Context, CreatedFrom, CreatedTo)
+                                   ,{'databases', kazoo_modb:get_range(AccountId, CreatedFrom, CreatedTo)}
                                   ]}
             end;
         Context1 -> Context1
     end.
-
--spec range_modbs(cb_context:context(), pos_integer(), pos_integer()) ->
-                         [{'databases', ne_binaries()}].
-range_modbs(Context, From, To) ->
-    AccountId = cb_context:account_id(Context),
-    {{FromYear, FromMonth, _}, _} = calendar:gregorian_seconds_to_datetime(From),
-    {{ToYear, ToMonth, _}, _} = calendar:gregorian_seconds_to_datetime(To),
-
-    [{'databases', [wh_util:format_account_mod_id(AccountId, Year, Month)
-                    || {Year, Month} <- crossbar_util:generate_year_month_sequence({FromYear, FromMonth}
-                                                                                   ,{ToYear, ToMonth}
-                                                                                   ,[]
-                                                                                  )
-                   ]
-     }
-    ].
 
 -spec created_to(cb_context:context(), pos_integer()) -> pos_integer().
 created_to(Context, TStamp) ->
@@ -336,7 +320,7 @@ originate_quickcall(Endpoints, Call, Context) ->
               ],
     wapi_resource:publish_originate_req(props:filter_undefined(Request)),
     JObj = wh_json:normalize(wh_json:from_list(wh_api:remove_defaults(Request))),
-    crossbar_util:response_202(JObj, cb_context:set_resp_data(Context, Request)).
+    crossbar_util:response_202(<<"quickcall initiated">>, JObj, cb_context:set_resp_data(Context, Request)).
 
 -spec maybe_auto_answer(wh_json:objects(), boolean()) -> wh_json:objects().
 maybe_auto_answer([Endpoint], AutoAnswer) ->

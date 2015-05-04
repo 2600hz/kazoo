@@ -7,9 +7,10 @@
 %%%-------------------------------------------------------------------
 -module(wh_bookkeeper_local).
 
--export ([sync/2]).
+-export([sync/2]).
+-export([transactions/3]).
 -export([commit_transactions/2]).
--export ([charge_transactions/2]).
+-export([charge_transactions/2]).
 
 -include("../whistle_services.hrl").
 
@@ -40,3 +41,18 @@ commit_transactions(_BillingId, Transactions) ->
 %%--------------------------------------------------------------------
 -spec charge_transactions(ne_binary(), wh_transactions:wh_transactions()) -> [].
 charge_transactions(_BillingId, _Transactions) -> [].
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec transactions(ne_binary(), gregorian_seconds(), gregorian_seconds()) ->
+                          {'ok', wh_transaction:transactions()} |
+                          {'error', _}.
+transactions(AccountId, From, To) ->
+    case wh_transactions:fetch_local(AccountId, From, To) of
+        {'error', _Reason}=Error -> Error;
+        {'ok', _Transactions}=Res -> Res
+    end.

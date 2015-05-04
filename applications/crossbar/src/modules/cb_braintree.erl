@@ -363,7 +363,7 @@ put(#cb_context{req_data=ReqData
 
 put(Context, ?ADDRESSES_PATH_TOKEN) ->
     try braintree_address:create(cb_context:fetch(Context, 'braintree')) of
-        #bt_address{}=Address ->
+        Address ->
             Resp = braintree_address:record_to_json(Address),
             crossbar_util:response(Resp, Context)
     catch
@@ -374,7 +374,7 @@ put(Context, ?ADDRESSES_PATH_TOKEN) ->
     end;
 put(Context, ?CARDS_PATH_TOKEN) ->
     try braintree_card:create(cb_context:fetch(Context, 'braintree')) of
-        #bt_card{}=Card ->
+        Card ->
             Resp = braintree_card:record_to_json(Card),
             _ = sync(Context),
             crossbar_util:response(Resp, Context)
@@ -388,7 +388,7 @@ put(Context, ?CARDS_PATH_TOKEN) ->
 -spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 delete(Context, ?CARDS_PATH_TOKEN, CardId) ->
     try braintree_card:delete(CardId) of
-        #bt_card{}=Card ->
+        Card ->
             crossbar_util:response(braintree_card:record_to_json(Card), Context)
     catch
         'throw':{'api_error', Reason} ->
@@ -398,7 +398,7 @@ delete(Context, ?CARDS_PATH_TOKEN, CardId) ->
     end;
 delete(Context, ?ADDRESSES_PATH_TOKEN, AddressId) ->
     try braintree_address:delete(cb_context:account_id(Context), AddressId) of
-        #bt_address{}=Address ->
+        Address ->
             Resp = braintree_address:record_to_json(Address),
             crossbar_util:response(Resp, Context)
     catch
