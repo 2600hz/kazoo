@@ -210,7 +210,7 @@ merge_recursive([?JSON_WRAPPER(_)=J|JObjs], Pred) when is_function(Pred, 2) ->
                         merge_recursive(JObjAcc, JObj2, Pred)
                 end, J, JObjs);
 merge_recursive(?JSON_WRAPPER(_)=JObj1, ?JSON_WRAPPER(_)=JObj2) ->
-    merge_recursive([JObj1, JObj2], fun merge_true/2).
+    merge_recursive(JObj1, JObj2, fun merge_true/2).
 
 -spec merge_recursive(object(), object() | json_term(), merge_pred()) -> object().
 merge_recursive(JObj1, JObj2, Pred) when is_function(Pred, 2) ->
@@ -218,10 +218,13 @@ merge_recursive(JObj1, JObj2, Pred) when is_function(Pred, 2) ->
 
 %% inserts values from JObj2 into JObj1
 -spec merge_recursive(object(), object() | json_term(), merge_pred(), keys()) -> object().
-merge_recursive(?JSON_WRAPPER(_)=JObj1, ?JSON_WRAPPER(Prop2), Pred, Keys) when is_function(Pred, 2) ->
-    lists:foldr(fun(Key, J) ->
-                        merge_recursive(J, props:get_value(Key, Prop2), Pred, [Key|Keys])
-                end, JObj1, props:get_keys(Prop2));
+merge_recursive(?JSON_WRAPPER(_)=JObj1, ?JSON_WRAPPER(_)=JObj2, Pred, Keys) when is_function(Pred, 2) ->
+    foldl(fun(Key2, Value2, JObj1Acc) ->
+                  merge_recursive(JObj1Acc, Value2, Pred, [Key2|Keys])
+          end
+          ,JObj1
+          ,JObj2
+         );
 merge_recursive(?JSON_WRAPPER(_)=JObj1, Value, Pred, Keys) when is_function(Pred, 2) ->
     Syek = lists:reverse(Keys),
     case Pred(get_value(Syek, JObj1), Value) of
