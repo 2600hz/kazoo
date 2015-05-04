@@ -33,22 +33,22 @@ fetch(Account) ->
     AccoundDb = wh_util:format_account_id(Account, 'encoded'),
     couch_mgr:open_doc(AccoundDb, ?ID).
 
--spec port_hide(wh_json:obect()) -> boolean().
+-spec port_hide(wh_json:object()) -> boolean().
 port_hide(JObj) ->
     wh_json:is_true(?PORT_HIDE, JObj).
 
--spec port_email(wh_json:obect()) -> api_binary().
+-spec port_email(wh_json:object()) -> api_binary().
 port_email(JObj) ->
     wh_json:get_ne_binary_value(?PORT_EMAIL, JObj).
 
--spec port_authority(wh_json:obect()) -> api_binary().
+-spec port_authority(wh_json:object()) -> api_binary().
 port_authority(JObj) ->
     wh_json:get_ne_binary_value(?PORT_AUTHORITY, JObj).
 
--spec port_loa(wh_json:obect()) -> api_binary().
+-spec port_loa(wh_json:object()) -> api_binary().
 port_loa(JObj) ->
     wh_json:get_ne_binary_value(?PORT_LOA, JObj).
 
--spec port_resporg(wh_json:obect()) -> api_binary().
+-spec port_resporg(wh_json:object()) -> api_binary().
 port_resporg(JObj) ->
     wh_json:get_ne_binary_value(?PORT_RESPORG, JObj).
