@@ -1,10 +1,10 @@
 language: erlang
 notifications:
-  email: 
+  email:
     - engineering@2600hz.com
     - operations@2600hz.com
-  irc: 
-    channels: 
+  irc:
+    channels:
       - "irc.freenode.org#2600hz-dev"
 otp_release:
   - R16B
@@ -14,7 +14,7 @@ otp_release:
   - R15B
 before_install:
     - sudo apt-get install -qq xsltproc
-script:
-  - make compile
+script: make compile
+after_success:
   - make xref
   - make test

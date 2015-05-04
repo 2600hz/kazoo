@@ -9,13 +9,17 @@
 %%%-------------------------------------------------------------------
 -module(wh_json_test).
 
--include_lib("proper/include/proper.hrl").
+-ifdef(PROPER).
+- include_lib("proper/include/proper.hrl").
+-endif.
 -include_lib("eunit/include/eunit.hrl").
 
 -include_lib("whistle/src/wh_json.hrl").
 
 
 %% PropEr Testing
+-ifdef(PROPER).
+
 prop_is_object() ->
     ?FORALL(JObj
             ,wh_json:object()
@@ -65,6 +69,8 @@ prop_to_proplist() ->
                 end)
            ).
 
+-endif.
+
 -define(D1, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}
                            ,{<<"d1k2">>, 'd1v2'}
                            ,{<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}
@@ -80,9 +86,11 @@ prop_to_proplist() ->
                          )).
 -define(D7, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}])).
 
+-ifdef(PROPER).
 is_json_object_proper_test_() ->
     {"Runs wh_json PropEr tests for is_json_object/1",
      {'timeout', 10000, [?_assertEqual([], proper:module(?MODULE))]}}.
+-endif.
 
 is_empty_test() ->
     ?assertEqual('true', wh_json:is_empty(wh_json:new())),

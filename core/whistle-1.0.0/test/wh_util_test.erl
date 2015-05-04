@@ -9,12 +9,16 @@
 %%%-------------------------------------------------------------------
 -module(wh_util_test).
 
--include_lib("proper/include/proper.hrl").
+-ifdef(PROPER).
+- include_lib("proper/include/proper.hrl").
+-endif.
 -include_lib("eunit/include/eunit.hrl").
 
 -include_lib("whistle/include/wh_types.hrl").
 
 %% PROPER TESTING
+-ifdef(PROPER).
+
 prop_to_integer() ->
     ?FORALL({F, I}
             ,{float(), integer()}
@@ -118,6 +122,8 @@ proper_test_() ->
                                                  ,{'to_file', 'user'}
                                                 ]))
       ]}}.
+
+-endif.
 
 pad_binary_test() ->
     ?assertEqual(<<"1234500000">>, wh_util:pad_binary(<<"12345">>, 10, <<"0">>)).

@@ -20,7 +20,9 @@
 %%%-------------------------------------------------------------------
 -module(kazoo_bindings_test).
 
--include_lib("proper/include/proper.hrl").
+-ifdef(PROPER).
+- include_lib("proper/include/proper.hrl").
+-endif.
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("whistle/include/wh_types.hrl").
 
@@ -70,6 +72,7 @@ weird_bindings_test() ->
 %%% PropEr tests
 %% Checks that the patterns for paths (a.#.*.c) match or do not
 %% match a given expanded path.
+-ifdef(PROPER).
 
 expands_test_() ->
     {"Running PropEr tests"
@@ -201,3 +204,5 @@ segment() ->
 
 markers() ->
     ?LET(S, ?LAZY(union([[$#, $., c()], [$*, $., b()]])), lists:flatten(S)).
+
+-endif.

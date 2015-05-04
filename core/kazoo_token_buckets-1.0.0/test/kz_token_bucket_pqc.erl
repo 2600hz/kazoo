@@ -21,6 +21,8 @@
 
 %% -include_lib("kazoo_token_buckets/src/kz_buckets.hrl").
 
+-ifdef(PROPER).
+
 -include_lib("proper/include/proper.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
@@ -57,7 +59,6 @@ sequential_test_() ->
                                           ]
                                         )
                      )
-
       }
     }.
 
@@ -283,3 +284,5 @@ tokens_credit(Credit, #state{current=T
         N when N > M -> Model#state{current=M};
         N -> Model#state{current=N}
     end.
+
+-endif.

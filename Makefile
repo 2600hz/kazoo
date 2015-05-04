@@ -28,6 +28,9 @@ clean-test : $(KAZOODIRS)
 test: ACTION = test
 test: $(KAZOODIRS)
 
+proper: ACTION = test
+proper: ERLC_OPTS += -DPROPER
+
 core:
 	$(MAKE) -C core all
 deps:
