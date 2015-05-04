@@ -130,18 +130,18 @@ service_plan_json_to_plans(#state{service_plan_jobj=ServicePlan
                                   ,services_jobj=Services
                                  }) ->
     Overrides = kzd_services:plan_overrides(Services, wh_doc:id(ServicePlan)),
-    Plan = kzd_service_plan:merge_overrides(ServicePlan, Overrides),
+    AccountPlan = kzd_service_plan:merge_overrides(ServicePlan, Overrides),
 
     [{"Verify plan from file matches services plan"
       ,?_assertEqual(wh_doc:account_id(ServicePlan)
-                     ,kzd_service_plan:account_id(Plan)
+                     ,kzd_service_plan:account_id(AccountPlan)
                     )
      }
-     ,{"Verify cumulative discount rate was overridden"
-       ,?_assertEqual(5.0, rate(cumulative_discount(did_us_item(Plan))))
-      }
      ,{"Verify cumulative discount rate from service plan"
        ,?_assertEqual(0.5, rate(cumulative_discount(did_us_item(ServicePlan))))
+      }
+     ,{"Verify cumulative discount rate was overridden"
+       ,?_assertEqual(5.0, rate(cumulative_discount(did_us_item(AccountPlan))))
       }
     ].
 
