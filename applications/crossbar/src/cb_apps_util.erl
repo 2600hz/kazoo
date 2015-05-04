@@ -96,9 +96,10 @@ filter_app(AccountId, App, <<"port">>) ->
     ResellerId = wh_services:find_reseller_id(AccountId),
     MaybeHide =
         case kz_whitelabel:fetch(ResellerId) of
+            {'error', 'not_found'} -> 'false';
             {'error', _R} ->
                 lager:error("failed to load whitelabel doc for ~s: ~p", [ResellerId, _R]),
-                'false';
+                'true';
             {'ok', JObj} ->
                 kz_whitelabel:port_hide(JObj)
         end,

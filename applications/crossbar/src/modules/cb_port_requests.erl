@@ -642,37 +642,33 @@ maybe_read_descendant(Context, AccountId) ->
     maybe_read_descendant(Context, AccountId, wh_services:is_reseller(AccountId)).
 
 maybe_read_descendant(Context, AccountId, 'true') ->
-    Authority =
-        case kz_whitelabel:fetch(AccountId) of
-            {'error', _R} -> 'undefined';
-            {'ok', JObj} ->
-                kz_whitelabel:port_authority(JObj)
-        end,
-    case Authority of
+    case authority(AccountId) of
         'undefined' -> read_descendant(Context, AccountId);
         AccountId ->
-            lager:debug("~s is managed by itself: ~s", [AccountId, Authority]),
+            lager:debug("~s is managed by itself", [AccountId]),
             'undefined';
         _OtherAccountId ->
-            lager:warning("~s is managed by unknown: ~s", [AccountId, Authority]),
+            lager:warning("~s is managed by unknown: ~s", [AccountId, _OtherAccountId]),
             read_descendant(Context, AccountId)
     end;
 maybe_read_descendant(Context, AccountId, 'false') ->
     ResellerId = wh_services:find_reseller_id(AccountId),
     AuthAccountId = cb_context:auth_account_id(Context),
-    Authority =
-        case kz_whitelabel:fetch(ResellerId) of
-            {'error', _R} -> 'undefined';
-            {'ok', JObj} ->
-                kz_whitelabel:port_authority(JObj)
-        end,
-    case Authority of
+    case authority(ResellerId) of
         'undefined' -> read_descendant(Context, AccountId);
         AuthAccountId -> read_descendant(Context, AccountId);
         _OtherAccountId ->
-            lager:debug("~s is managed by reseller: ~s", [AccountId, Authority]),
+            lager:debug("~s is managed by reseller: ~s", [AccountId, _OtherAccountId]),
             'undefined'
     end.
+
+-spec authority(ne_binary()) -> api_binary().
+authority(AccountId) ->
+  case kz_whitelabel:fetch(AccountId) of
+      {'error', _R} -> 'undefined';
+      {'ok', JObj} ->
+          kz_whitelabel:port_authority(JObj)
+  end.
 
 -spec read_descendant(cb_context:context(), ne_binary()) -> api_object().
 read_descendant(Context, Id) ->
