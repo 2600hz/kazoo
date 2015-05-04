@@ -13,7 +13,10 @@
          ,is_dirty/1, is_dirty/2
          ,status/1, status/2
          ,tree/1, tree/2
+
          ,type/0, type/1
+         ,status_good/0
+
          ,plans/1, plans/2, plan_ids/1
          ,plan/2, plan/3
          ,plan_account_id/2, plan_account_id/3
@@ -95,6 +98,10 @@ tree(JObj, Default) ->
 type() -> ?TYPE.
 type(JObj) ->
     wh_doc:pvt_type(JObj, ?TYPE).
+
+-spec status_good() -> ne_binary().
+status_good() ->
+    ?STATUS_GOOD.
 
 -spec plans(doc()) -> wh_json:object().
 -spec plans(doc(), Default) -> wh_json:object() | Default.
