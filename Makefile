@@ -41,9 +41,6 @@ build-plt :
 	@$(DIALYZER) --build_plt --output_plt $(ROOT)/.platform_dialyzer.plt \
 		--apps erts kernel stdlib crypto public_key ssl
 
-
-EBINS = $(shell find $(ROOT) -name ebin -print)
-PA = $(foreach EBIN,$(EBINS), -pa $(EBIN))
-
-xref: kazoo
+xref: EBINS = $(shell find $(ROOT) -name ebin -print)
+xref:
 	@$(ROOT)/scripts/check-xref.escript $(EBINS)
