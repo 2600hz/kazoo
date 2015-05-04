@@ -13,8 +13,14 @@ otp_release:
   - R15B01
   - R15B
 before_install:
-    - sudo apt-get install -qq xsltproc
+  - set -e
+  - sudo apt-get install -qq xsltproc
+  - cd $HOME
+  - git clone --depth=50 --branch=master https://github.com/manopapad/proper.git proper
+  - cd proper
+  - make fast
+  - cd $TRAVIS_BUILD_DIR
 script: make compile
 after_success:
   - make xref
-  - make test
+  - ERL_LIBS="$HOME/proper" make test

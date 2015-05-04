@@ -25,11 +25,17 @@ clean : $(MAKEDIRS)
 clean-test : ACTION = clean-test
 clean-test : $(KAZOODIRS)
 
-test: ACTION = test
-test: $(KAZOODIRS)
+eunit: ACTION = test
+eunit: ERLC_OPTS += -DTEST
+eunit: $(KAZOODIRS)
 
 proper: ACTION = test
 proper: ERLC_OPTS += -DPROPER
+proper: $(KAZOODIRS)
+
+test: ACTION = test
+test: ERLC_OPTS += -DTEST -DPROPER
+test: $(KAZOODIRS)
 
 core:
 	$(MAKE) -C core all
