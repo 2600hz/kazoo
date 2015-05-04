@@ -35,8 +35,8 @@
 
 -export([account_id/1]).
 -export([is_dirty/1]).
--export([quantity/3]).
--export([update_quantity/3]).
+-export([quantity/3, diff_quantity/3]).
+-export([updated_quantity/3]).
 -export([category_quantity/3]).
 -export([cascade_quantity/3]).
 -export([cascade_category_quantity/3]).
@@ -870,12 +870,19 @@ is_dirty(#wh_services{dirty=IsDirty}) ->
 %%--------------------------------------------------------------------
 -spec quantity(ne_binary(), ne_binary(), services()) -> integer().
 quantity(_, _, #wh_services{deleted='true'}) -> 0;
-quantity(CategoryId, ItemId, #wh_services{updates=UpdatedQuantities
+quantity(CategoryId, ItemId, #wh_services{updates=Updates
                                           ,jobj=JObj
                                          }) ->
-    CurrentQuantities = current_quantities(JObj),
-    Quantities = wh_json:merge_jobjs(UpdatedQuantities, CurrentQuantities),
-    wh_json:get_integer_value([CategoryId, ItemId], Quantities, 0).
+    ItemQuantity = kzd_services:item_quantity(JObj, CategoryId, ItemId),
+    wh_json:get_integer_value([CategoryId, ItemId], Updates, ItemQuantity).
+
+diff_quantity(_, _, #wh_services{deleted='true'}) -> 0;
+diff_quantity(CategoryId, ItemId, #wh_services{jobj=JObj
+                                               ,updates=Updates
+                                              }) ->
+    ItemQuantity = kzd_services:item_quantity(JObj, CategoryId, ItemId),
+    UpdateQuantity = wh_json:get_integer_value([CategoryId, ItemId], Updates, 0),
+    UpdateQuantity - ItemQuantity.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -883,9 +890,9 @@ quantity(CategoryId, ItemId, #wh_services{updates=UpdatedQuantities
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_quantity(ne_binary(), ne_binary(), services()) -> integer().
-update_quantity(_, _, #wh_services{deleted='true'}) -> 0;
-update_quantity(CategoryId, ItemId, #wh_services{updates=JObj}) ->
+-spec updated_quantity(ne_binary(), ne_binary(), services()) -> integer().
+updated_quantity(_, _, #wh_services{deleted='true'}) -> 0;
+updated_quantity(CategoryId, ItemId, #wh_services{updates=JObj}) ->
     wh_json:get_integer_value([CategoryId, ItemId], JObj, 0).
 
 %%--------------------------------------------------------------------

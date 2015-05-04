@@ -55,7 +55,7 @@ reconcile(Services, DeviceType) ->
 
 -spec do_reconcile(wh_services:services(), ne_binary()) -> wh_services:services().
 do_reconcile(Services, DeviceType) ->
-    Quantity = wh_services:update_quantity(?CATEGORY, DeviceType, Services),
+    Quantity = wh_services:updated_quantity(?CATEGORY, DeviceType, Services),
     lager:debug("increment ~s.~s to ~p+1", [?CATEGORY, DeviceType, Quantity]),
     wh_services:update(?CATEGORY, DeviceType, Quantity+1, Services).
 

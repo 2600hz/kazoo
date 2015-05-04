@@ -12,6 +12,8 @@
 
 -include("../whistle_services.hrl").
 
+-define(SERVICE_CATEGORY, <<"users">>).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -30,18 +32,17 @@ reconcile(Services) ->
         {'error', _R} ->
             lager:debug("unable to get current users in service: ~p", [_R]),
             Services;
-        {'ok', []} -> wh_services:reset_category(<<"users">>, Services);
+        {'ok', []} -> wh_services:reset_category(?SERVICE_CATEGORY, Services);
         {'ok', JObjs} ->
             lists:foldl(fun(JObj, S) ->
                                 Item = wh_json:get_value(<<"key">>, JObj),
                                 Quantity = wh_json:get_integer_value(<<"value">>, JObj, 0),
-                                wh_services:update(<<"users">>, Item, Quantity, S)
-                        end, wh_services:reset_category(<<"users">>, Services), JObjs)
+                                wh_services:update(?SERVICE_CATEGORY, Item, Quantity, S)
+                        end, wh_services:reset_category(?SERVICE_CATEGORY, Services), JObjs)
     end.
 
 reconcile(Services, 'undefined') -> Services;
 reconcile(Services0, UserType) ->
     Services1 = reconcile(Services0),
-    Quantity = wh_services:update_quantity(<<"users">>, UserType, Services1),
-    wh_services:update(<<"users">>, UserType, Quantity+1, Services1).
-
+    Quantity = wh_services:updated_quantity(?SERVICE_CATEGORY, UserType, Services1),
+    wh_services:update(?SERVICE_CATEGORY, UserType, Quantity+1, Services1).
