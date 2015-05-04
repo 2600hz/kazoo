@@ -9,9 +9,13 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+-define(CAT, <<"phone_numbers">>).
+-define(ITEM, <<"did_us">>).
+
 -record(state, {service_plan_jobj :: kzd_service_plan:plan()
                 ,services :: wh_services:services()
                 ,services_jobj :: wh_json:object()
+                ,account_plan :: kzd_service_plan:plan()
                }).
 
 services_test_() ->
@@ -21,7 +25,7 @@ services_test_() ->
      ,[fun services_json_to_record/1
        ,fun services_record_to_json/1
        ,fun service_plan_json_to_plans/1
-       ,fun service_plans_to_json/1
+       ,fun increase_quantities/1
       ]
     }.
 
@@ -44,12 +48,19 @@ read_service_plan(State) ->
 
     State#state{service_plan_jobj=JObj}.
 
-read_services(State) ->
-    Services = filename:join([priv_dir(), "example_account_services.json"]),
+read_services(#state{service_plan_jobj=ServicePlan}=State) ->
+    ServicesPath = filename:join([priv_dir(), "example_account_services.json"]),
 
-    JObj = read_json(Services),
+    JObj = read_json(ServicesPath),
+
+    Services = wh_services:from_service_json(JObj, 'false'),
+
+    Overrides = kzd_services:plan_overrides(JObj, wh_doc:id(ServicePlan)),
+    AccountPlan = kzd_service_plan:merge_overrides(ServicePlan, Overrides),
+
     State#state{services_jobj=JObj
-                ,services=wh_services:from_service_json(JObj, 'false')
+                ,services=Services
+                ,account_plan=AccountPlan
                }.
 
 priv_dir() ->
@@ -127,10 +138,8 @@ item_check(Category, Item, Quantity, Services) ->
     }.
 
 service_plan_json_to_plans(#state{service_plan_jobj=ServicePlan
-                                  ,services_jobj=Services
+                                  ,account_plan=AccountPlan
                                  }) ->
-    Overrides = kzd_services:plan_overrides(Services, wh_doc:id(ServicePlan)),
-    AccountPlan = kzd_service_plan:merge_overrides(ServicePlan, Overrides),
 
     [{"Verify plan from file matches services plan"
       ,?_assertEqual(wh_doc:account_id(ServicePlan)
@@ -145,14 +154,35 @@ service_plan_json_to_plans(#state{service_plan_jobj=ServicePlan
       }
     ].
 
-service_plans_to_json(_State) ->
-    [].
-
 did_us_item(Plan) ->
-    kzd_service_plan:item(Plan, <<"phone_numbers">>, <<"did_us">>).
+    kzd_service_plan:item(Plan, ?CAT, ?ITEM).
 
 cumulative_discount(Item) ->
     kzd_item_plan:cumulative_discount(Item).
 
 rate(JObj) ->
     wh_json:get_float_value(<<"rate">>, JObj).
+
+increase_quantities(#state{account_plan=_AccountPlan
+                           ,services=Services
+                          }) ->
+    Quantity = wh_services:quantity(?CAT, ?ITEM, Services),
+
+    Increment = random:uniform(10),
+
+    Services1 = wh_services:update(?CAT, ?ITEM, Quantity+Increment, Services),
+
+    UpdatedQuantity = wh_services:quantity(?CAT, ?ITEM, Services1),
+
+    DiffQuantity = wh_services:diff_quantity(?CAT, ?ITEM, Services1),
+
+    [{"Verify base quantity on the services doc"
+      ,?_assertEqual(9, Quantity)
+     }
+     ,{"Verify incrementing the quantity"
+       ,?_assertEqual(Quantity+Increment, UpdatedQuantity)
+      }
+     ,{"Verify the diff of the quantity"
+       ,?_assertEqual(Increment, DiffQuantity)
+      }
+    ].
