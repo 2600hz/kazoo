@@ -875,12 +875,25 @@ create_auth_token(Context, Method, JObj) ->
     AccountId = wh_json:get_value(<<"account_id">>, JObj),
     OwnerId = wh_json:get_value(<<"owner_id">>, JObj),
 
+    Restrictions = case get_forced_restrictions(Method, AccountId, OwnerId) of
+        'undefined' ->
+            case wh_json:get_ne_value(<<"restrictions">>, Data) of
+                'undefined' -> 'undefined';
+                ReqRestrictions -> ReqRestrictions
+            end;
+        MethodRestrictions -> MethodRestrictions
+    end,
+    
+    RestrictionsExpandMacros = [{<<"{ACCOUNT_ID}">>, AccountId}
+                                ,{<<"{USER_ID}">>, OwnerId}
+                               ],
+
     Token = props:filter_undefined(
               [{<<"account_id">>, AccountId}
                ,{<<"owner_id">>, OwnerId}
                ,{<<"as">>, wh_json:get_value(<<"as">>, Data)}
                ,{<<"api_key">>, wh_json:get_value(<<"api_key">>, Data)}
-               ,{<<"restrictions">>, wh_json:get_value(<<"restrictions">>, Data)}
+               ,{<<"restrictions">>, replace_restriction_macros(Restrictions, RestrictionsExpandMacros)}
                ,{<<"method">>, wh_util:to_binary(Method)}
               ]),
     JObjToken = wh_doc:update_pvt_parameters(wh_json:from_list(Token)
@@ -902,6 +915,64 @@ create_auth_token(Context, Method, JObj) ->
         {'error', R} ->
             lager:debug("could not create new local auth token, ~p", [R]),
             cb_context:add_system_error('invalid_credentials', Context)
+    end.
+
+-spec get_forced_restrictions(atom(), ne_binary(), ne_binary()) -> api_object().
+get_forced_restrictions(Method, AccountId, OwnerId) -> 
+    PrivLevel = get_priv_level(AccountId, OwnerId, Method),
+    case get_default_restrictions(wh_util:to_binary(Method)) of
+        'undefined' -> 'undefined';
+        Restrictions -> get_priv_level_restrictions(Restrictions, PrivLevel)
+    end.
+
+-spec get_priv_level(ne_binary(), ne_binary(), atom()) -> ne_binary().
+%%
+%% for api_auth tokens we force "admin" priv_level
+%%
+get_priv_level(_AccountId, 'undefined', 'cb_api_auth') -> <<"admin">>;
+
+get_priv_level(AccountId, OwnerId, _Method) ->
+    AccountDB = wh_util:format_account_db(AccountId),
+    {'ok', Doc} = couch_mgr:open_cache_doc(AccountDB, OwnerId),
+    wh_json:get_ne_value(<<"priv_level">>, Doc).
+
+-spec get_default_restrictions(ne_binary()) -> api_object().
+get_default_restrictions(Method) -> 
+    Key = <<Method/binary, "_restrictions">>,
+    case whapps_config:get(<<(?CONFIG_CAT)/binary, ".token_restrictions">>, Key) of
+        'undefined' ->  whapps_config:get(<<(?CONFIG_CAT)/binary, ".token_restrictions">>, <<"restrictions">>);
+        MethodRestrictions -> MethodRestrictions
+    end.
+
+-spec get_priv_level_restrictions(api_object(), ne_binary()) -> api_object().
+get_priv_level_restrictions(Restrictions, PrivLevel) ->
+    RestrictionLevels = wh_json:get_keys(Restrictions),
+    case lists:member(PrivLevel, RestrictionLevels) of
+        'true' -> wh_json:get_ne_value(PrivLevel, Restrictions);
+        'false' -> wh_json:get_ne_value(<<"*">>, Restrictions)
+    end.
+
+-spec replace_restriction_macros(api_object(), wh_proplist()) -> api_object().
+replace_restriction_macros(Restrictions, ReplaceMacros) ->
+    Fun = fun(Key, Value, Acc) -> 
+                  wh_json:set_value(Key,replace_with_macros(ReplaceMacros, Value, []), Acc)
+          end,
+    wh_json:foldl(Fun, wh_json:new(), Restrictions).
+
+-spec replace_with_macros(binaries(), wh_proplists(), binaries()) -> binaries().
+replace_with_macros(_ReplaceMacros, [], Acc) -> lists:reverse(Acc);
+replace_with_macros(ReplaceMacros, [H|T], Acc) ->
+    List = binary:split(H, <<"/">>, [global]),
+    Replaced = expand_macros(ReplaceMacros, List, []),
+    Result = wh_util:join_binary(Replaced, <<"/">>),
+    replace_with_macros(ReplaceMacros, T, [Result | Acc]).
+
+-spec expand_macros(wh_proplists(), binaries(), binaries()) -> binaries().
+expand_macros(_ReplaceMacros, [], Acc) -> lists:reverse(Acc);
+expand_macros(ReplaceMacros, [H|T], Acc) ->
+    case lists:keyfind(H, 1, ReplaceMacros) of
+        'false' -> expand_macros(ReplaceMacros, T, [H | Acc]);
+        {_Key, Value} -> expand_macros(ReplaceMacros, T, [Value | Acc])
     end.
 
 %%--------------------------------------------------------------------
