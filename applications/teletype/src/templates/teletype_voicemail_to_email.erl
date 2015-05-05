@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014, 2600Hz Inc
+%%% @copyright (C) 2014-2015, 2600Hz Inc
 %%% @doc
 %%%
 %%% @end
@@ -22,7 +22,7 @@
         ,wh_json:from_list(
            [?MACRO_VALUE(<<"voicemail.box">>, <<"voicemail_box">>, <<"Voicemail Box">>, <<"Which voicemail box was the message left in">>)
             ,?MACRO_VALUE(<<"voicemail.name">>, <<"voicemail_name">>, <<"Voicemail Name">>, <<"Name of the voicemail file">>)
-            ,?MACRO_VALUE(<<"voicemail.length">>, <<"voicemail_name">>, <<"Voicemail Name">>, <<"Name of the voicemail file">>)
+            ,?MACRO_VALUE(<<"voicemail.length">>, <<"voicemail_length">>, <<"Voicemail Length">>, <<"Length of the voicemail file">>)
             ,?MACRO_VALUE(<<"call_id">>, <<"call_id">>, <<"Call ID">>, <<"Call ID of the caller">>)
             ,?MACRO_VALUE(<<"owner.first_name">>, <<"first_name">>, <<"First Name">>, <<"First name of the owner of the voicemail box">>)
             ,?MACRO_VALUE(<<"owner.last_name">>, <<"last_name">>, <<"Last Name">>, <<"Last name of the owner of the voicemail box">>)
@@ -148,9 +148,9 @@ email_attachments(DataJObj, Macros) ->
 
 email_attachments(_DataJObj, _Macros, 'true') -> [];
 email_attachments(DataJObj, Macros, 'false') ->
-    VMId = wh_json:get_value(<<"voicemail_box">>, DataJObj),
+    VMId = wh_json:get_value(<<"voicemail_name">>, DataJObj),
     AccountDb = wh_json:get_value(<<"account_db">>, DataJObj),
-    {'ok', VMJObj} = couch_mgr:open_cache_doc(AccountDb, VMId),
+    {'ok', VMJObj} = couch_mgr:open_doc(AccountDb, VMId),
 
     {[AttachmentMeta], [AttachmentId]} = wh_json:get_values(wh_doc:attachments(VMJObj)),
     {'ok', AttachmentBin} = couch_mgr:fetch_attachment(AccountDb, VMId, AttachmentId),

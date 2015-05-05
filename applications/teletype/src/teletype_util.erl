@@ -1046,7 +1046,6 @@ public_proplist(Key, JObj) ->
        )
      ).
 
-
 -spec get_balance_threshold(wh_json:object()) -> float().
 get_balance_threshold(DataJObj) ->
     Default = 5.00,
