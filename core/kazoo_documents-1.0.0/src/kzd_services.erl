@@ -22,6 +22,7 @@
          ,plan_account_id/2, plan_account_id/3
          ,plan_overrides/2, plan_overrides/3
          ,quantities/1, quantities/2
+         ,category_quantities/2, category_quantities/3
          ,item_quantity/3, item_quantity/4
         ]).
 
@@ -142,12 +143,19 @@ quantities(JObj) ->
 quantities(JObj, Default) ->
     wh_json:get_json_value(?QUANTITIES, JObj, Default).
 
+-spec category_quantities(doc(), ne_binary()) -> wh_json:object().
+-spec category_quantities(doc(), ne_binary(), Default) -> wh_json:object() | Default.
+category_quantities(JObj, CategoryId) ->
+    category_quantities(JObj, CategoryId, wh_json:new()).
+category_quantities(JObj, CategoryId, Default) ->
+    wh_json:get_json_value([?QUANTITIES, CategoryId], JObj, Default).
+
 -spec item_quantity(doc(), ne_binary(), ne_binary()) -> integer().
 -spec item_quantity(doc(), ne_binary(), ne_binary(), Default) -> integer() | Default.
-item_quantity(JObj, Category, Item) ->
-    item_quantity(JObj, Category, Item, 0).
-item_quantity(JObj, Category, Item, Default) ->
-    wh_json:get_integer_value([?QUANTITIES, Category, Item], JObj, Default).
+item_quantity(JObj, CategoryId, ItemId) ->
+    item_quantity(JObj, CategoryId, ItemId, 0).
+item_quantity(JObj, CategoryId, ItemId, Default) ->
+    wh_json:get_integer_value([?QUANTITIES, CategoryId, ItemId], JObj, Default).
 
 -spec set_billing_id(doc(), api_binary()) -> doc().
 set_billing_id(JObj, BillingId) ->
