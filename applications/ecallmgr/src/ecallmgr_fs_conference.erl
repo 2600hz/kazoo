@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012 VoIP INC
+%%% @copyright (C) 2011-2015 2600Hz INC
 %%% @doc
 %%% Execute conference commands
 %%% @end
@@ -362,9 +362,7 @@ process_conference_event(<<"play-file-done">> = Event, Props, _) ->
                  ]};
 process_conference_event(<<"lock">>, _, _) -> 'continue';
 process_conference_event(<<"unlock">>, _, _) -> 'continue';
-process_conference_event(<<"speak-text">>, _, _) ->
-    %% Test = props:get_value(<<"Text">>, Props),
-    'stop';
+process_conference_event(<<"speak-text">>, _, _) -> 'stop';
 process_conference_event(<<"exit-sounds-on">>, _, _) -> 'stop';
 process_conference_event(<<"exit-sounds-off">>, _, _) -> 'stop';
 process_conference_event(<<"exit-sound-file-changed">>, _, _) -> 'stop';
@@ -378,14 +376,8 @@ process_conference_event(<<"start-recording">> = Event, Props, _) ->
                   ,{<<"whistle_application_name">>, Event}
                   ,{<<"Application-Data">>, props:get_value(<<"Path">>, Props)}
                  ]};
-process_conference_event(<<"pause-recording">>, _, _) ->
-    %% Path = props:get_value(<<"Path">>, Props),
-    %% OtherRecordings = props:get_is_true(<<"Other-Recordings">>, Props),
-    'stop';
-process_conference_event(<<"resume-recording">>, _, _) ->
-    %% Path = props:get_value(<<"Path">>, Props),
-    %% OtherRecordings = props:get_is_true(<<"Other-Recordings">>, Props),
-    'stop';
+process_conference_event(<<"pause-recording">>, _, _) -> 'stop';
+process_conference_event(<<"resume-recording">>, _, _) -> 'stop';
 process_conference_event(<<"stop-recording">> = Event, Props, _) ->
     {'continue', [{<<"Event-Name">>, <<"CHANNEL_EXECUTE_COMPLETE">>}
                   ,{<<"whistle_event_name">>, <<"CHANNEL_EXECUTE_COMPLETE">>}
@@ -394,10 +386,7 @@ process_conference_event(<<"stop-recording">> = Event, Props, _) ->
                   ,{<<"Application-Data">>, props:get_value(<<"Path">>, Props)}
                   ,{<<"Other-Recordings">>, props:get_is_true(<<"Other-Recordings">>, Props)}
                  ]};
-process_conference_event(<<"bgdial-result">>, _, _) ->
-    %% Result = props:get_value(<<"Result">>, Props),
-    %% JobUUID = props:get_value(<<"Job-UUID">>, Props),
-    'stop';
+process_conference_event(<<"bgdial-result">>, _, _) -> 'stop';
 process_conference_event(_, _, _) -> 'stop'.
 
 -spec send_conference_event(ne_binary(), wh_proplist()) -> 'ok'.
@@ -413,8 +402,6 @@ send_conference_event(Action, Props, CustomProps) ->
              ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
-    Publisher = fun(P) -> wapi_conference:publish_conference_event(ConferenceName, P) end,
-    _ = wh_amqp_worker:cast(Event, Publisher),
     %% TODO: After KAZOO-27 is accepted the relay should not be necessary
     relay_event(Event ++ CustomProps ++ props:delete_keys([<<"Event-Name">>, <<"Event-Subclass">>], Props)).
 
@@ -445,10 +432,6 @@ send_participant_event(Action, CallId, Props, CustomProps) ->
              %% NOTE: Participant-ID is depreciated, use call-id instead
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
-    %% TODO: After KAZOO-27 is accepted the relay should not be necessary and we can
-    %%    use publish_participant_event
-    %% Publisher = fun(P) -> wapi_conference:publish_participant_event(ConferenceName, P) end,
-    %% _ = wh_amqp_worker:cast(Event, Publisher),
     relay_event(Event ++ CustomProps ++ props:delete_keys([<<"Event-Name">>, <<"Event-Subclass">>], Props)).
 
 -spec exec(atom(), ne_binary(), wh_json:object()) -> 'ok'.
