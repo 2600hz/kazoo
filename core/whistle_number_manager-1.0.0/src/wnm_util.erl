@@ -65,14 +65,14 @@
                                                                  ])}
                              ]).
 -define(DEFAULT_E164_CONVERTERS, [{<<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$">>
-                                    ,wh_json:from_list([{<<"prefix">>, <<"+1">>}])
+                                   ,wh_json:from_list([{<<"prefix">>, <<"+1">>}])
                                   }
                                   ,{<<"^011(\\d*)$|^00(\\d*)$">>
                                     ,wh_json:from_list([{<<"prefix">>, <<"+">>}])
                                    }
                                   ,{<<"^[2-9]\\d{7,}$">>
                                     ,wh_json:from_list([{<<"prefix">>, <<"+">>}])
-                                  }
+                                   }
                                  ]).
 -define(DEFAULT_RECONCILE_REGEX, <<"^\\+?1?\\d{10}$|^\\+[2-9]\\d{7,}$|^011\\d*$|^00\\d*$">>).
 
