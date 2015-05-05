@@ -11,9 +11,6 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
-
 make_api_token_test() ->
     ProviderId = <<"2600hz">>,
     Secret     = <<"f1986434eb540c8c956eb0a21094c38c6f9f12bf">>,
@@ -42,5 +39,3 @@ split_api_token_test() ->
     ?assertEqual(Salt, Salt1),
     ?assertEqual(Timestamp, Timestamp1),
     ?assertEqual(Auth, Auth1).
-
--endif.

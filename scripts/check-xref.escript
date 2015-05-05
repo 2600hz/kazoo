@@ -70,6 +70,14 @@ filter('undefined_function_calls', Results) ->
                  ({{_,_,_}, {sub_package_message_summary,_,_}}) -> 'false';
                  ({{_,_,_}, {sub_package_presence,_,_}}) -> 'false';
 
+                 %% False positives due to RabbitMQ clashing with EVERYTHING
+                 ({{_,_,_}, {cowboy,start_http,4}}) -> 'false';
+                 ({{_,_,_}, {cowboy,start_https,4}}) -> 'false';
+
+                 %% Missing deps of an old-deprecated app: pusher
+                 ({{_,_,_}, {qdate,to_unixtime,1}}) -> 'false';
+                 ({{_,_,_}, {qdate,unixtime,0}}) -> 'false';
+
                  (_) -> 'true'
              end,
     lists:filter(ToKeep, Results);

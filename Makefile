@@ -17,15 +17,24 @@ compile: $(MAKEDIRS)
 $(MAKEDIRS):
 	$(MAKE) -C $(@D) $(ACTION)
 
-clean : ACTION = clean
-clean : $(MAKEDIRS)
+clean: ACTION = clean
+clean: $(MAKEDIRS)
 	rm -f *crash.dump
-	rm scripts/log/*
+	rm -rf scripts/log/*
 
 clean-test : ACTION = clean-test
 clean-test : $(KAZOODIRS)
 
+eunit: ACTION = test
+eunit: ERLC_OPTS += -DTEST
+eunit: $(KAZOODIRS)
+
+proper: ACTION = test
+proper: ERLC_OPTS += -DPROPER
+proper: $(KAZOODIRS)
+
 test: ACTION = test
+test: ERLC_OPTS += -DTEST -DPROPER
 test: $(KAZOODIRS)
 
 core:

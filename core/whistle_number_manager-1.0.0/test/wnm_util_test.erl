@@ -9,10 +9,13 @@
 %%%-------------------------------------------------------------------
 -module(wnm_util_test).
 
+-ifdef(PROPER).
 -include_lib("proper/include/proper.hrl").
+-endif.
 -include_lib("eunit/include/eunit.hrl").
 
 %% PROPER TESTING
+-ifdef(PROPER).
 %%
 %%% 1000000000
 %% (AAABBBCCCC, 1AAABBBCCCC) -> AAABBBCCCCCC.
@@ -58,15 +61,17 @@ prop_to_e164() ->
              end
            ).
 
-%% EUNIT TESTING
-%%
-
 proper_test_() ->
     {"Runs the module's PropEr tests during eunit testing",
      {'timeout', 15000,
       [
        ?_assertEqual([], proper:module(?MODULE, [{'max_shrinks', 0}]))
       ]}}.
+
+-endif.
+
+%% EUNIT TESTING
+%%
 
 to_e164_test() ->
     Ns = [<<"+12234567890">>, <<"12234567890">>, <<"2234567890">>],
