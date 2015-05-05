@@ -35,6 +35,11 @@
 
 -define(MACROS, <<"macros">>).
 
+-define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".notifications">>).
+-define(NOTIFICATION_TIMEOUT
+        ,whapps_config:get_integer(?MOD_CONFIG_CAT, <<"notification_timeout_ms">>, 5 * ?MILLISECONDS_IN_SECOND)
+       ).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -287,6 +292,7 @@ post(Context, Id, ?PREVIEW) ->
     case wh_amqp_worker:call(API
                              ,publish_fun(Id)
                              ,fun wapi_notifications:notify_update_v/1
+                             ,?NOTIFICATION_TIMEOUT
                             )
     of
         {'ok', Resp} ->
