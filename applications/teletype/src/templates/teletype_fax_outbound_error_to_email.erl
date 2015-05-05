@@ -84,8 +84,7 @@ process_req(DataJObj) ->
     OwnerJObj = get_owner_doc(FaxJObj, DataJObj),
 
     Macros = build_template_data(
-               wh_json:set_values([{<<"account">>, teletype_util:account_params(DataJObj)}
-                                   ,{<<"fax">>, wh_doc:public_fields(FaxJObj)}
+               wh_json:set_values([{<<"fax">>, wh_doc:public_fields(FaxJObj)}
                                    ,{<<"owner">>, wh_doc:public_fields(OwnerJObj)}
                                    ,{<<"error">>, error_data(DataJObj)}
                                   ]
@@ -153,7 +152,7 @@ get_owner_doc(FaxJObj, DataJObj) ->
 
 -spec build_template_data(wh_json:object()) -> wh_proplist().
 build_template_data(DataJObj) ->
-    [{<<"account">>, wh_json:get_value(<<"account">>, DataJObj)}
+    [{<<"account">>, teletype_util:account_params(DataJObj)}
      ,{<<"fax">>, build_fax_template_data(DataJObj)}
      ,{<<"system">>, teletype_util:system_params()}
      ,{<<"caller_id">>, caller_id_data(DataJObj)}
