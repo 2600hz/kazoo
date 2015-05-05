@@ -17,10 +17,10 @@ compile: $(MAKEDIRS)
 $(MAKEDIRS):
 	$(MAKE) -C $(@D) $(ACTION)
 
-clean : ACTION = clean
-clean : $(MAKEDIRS)
+clean: ACTION = clean
+clean: $(MAKEDIRS)
 	rm -f *crash.dump
-	rm scripts/log/*
+	rm -rf scripts/log/*
 
 clean-test : ACTION = clean-test
 clean-test : $(KAZOODIRS)
