@@ -36,22 +36,22 @@ handle(Data, Call) ->
         <<"menu">> ->
             lager:info("temporal rules main menu"),
             Rules = wh_json:get_value(<<"rules">>, Data, []),
-            {'ok', _} = temporal_route_menu(Temporal, Rules, Call),
+            _ = temporal_route_menu(Temporal, Rules, Call),
             cf_exe:stop(Call);
         <<"enable">> ->
             lager:info("force temporal rules to enable"),
             Rules = wh_json:get_value(<<"rules">>, Data, []),
-            {'ok', _} = enable_temporal_rules(Temporal, Rules, Call),
+            _ = enable_temporal_rules(Temporal, Rules, Call),
             cf_exe:stop(Call);
         <<"disable">> ->
             lager:info("force temporal rules to disable"),
             Rules = wh_json:get_value(<<"rules">>, Data, []),
-            {'ok', _} = disable_temporal_rules(Temporal, Rules, Call),
+            _ = disable_temporal_rules(Temporal, Rules, Call),
             cf_exe:stop(Call);
         <<"reset">> ->
             lager:info("resume normal temporal rule operation"),
             Rules = wh_json:get_value(<<"rules">>, Data, []),
-            {'ok', _} = reset_temporal_rules(Temporal, Rules, Call),
+            _ = reset_temporal_rules(Temporal, Rules, Call),
             cf_exe:stop(Call);
         _ ->
             Rules = get_temporal_rules(Temporal, Call),
