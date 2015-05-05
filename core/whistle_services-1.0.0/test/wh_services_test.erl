@@ -166,23 +166,49 @@ rate(JObj) ->
 increase_quantities(#state{account_plan=_AccountPlan
                            ,services=Services
                           }) ->
-    Quantity = wh_services:quantity(?CAT, ?ITEM, Services),
+    ItemQuantity = wh_services:quantity(?CAT, ?ITEM, Services),
 
+    random:seed(os:timestamp()),
     Increment = random:uniform(10),
 
-    Services1 = wh_services:update(?CAT, ?ITEM, Quantity+Increment, Services),
+    UpdatedServices = wh_services:update(?CAT, ?ITEM, ItemQuantity+Increment, Services),
 
-    UpdatedQuantity = wh_services:quantity(?CAT, ?ITEM, Services1),
+    UpdatedItemQuantity = wh_services:quantity(?CAT, ?ITEM, UpdatedServices),
 
-    DiffQuantity = wh_services:diff_quantity(?CAT, ?ITEM, Services1),
+    DiffItemQuantity = wh_services:diff_quantity(?CAT, ?ITEM, UpdatedServices),
 
     [{"Verify base quantity on the services doc"
-      ,?_assertEqual(9, Quantity)
+      ,?_assertEqual(9, ItemQuantity)
      }
      ,{"Verify incrementing the quantity"
-       ,?_assertEqual(Quantity+Increment, UpdatedQuantity)
+       ,?_assertEqual(ItemQuantity+Increment, UpdatedItemQuantity)
       }
      ,{"Verify the diff of the quantity"
-       ,?_assertEqual(Increment, DiffQuantity)
+       ,?_assertEqual(Increment, DiffItemQuantity)
+      }
+     | category_quantities(Services, UpdatedServices, Increment)
+    ].
+
+category_quantities(CurrentServices, UpdatedServices, Increment) ->
+    CategoryQuantity = wh_services:category_quantity(?CAT, CurrentServices),
+    UpdatedCategoryQuantity = wh_services:category_quantity(?CAT, UpdatedServices),
+
+    TollFreeQuantity = wh_services:quantity(?CAT, <<"toll_free">>, UpdatedServices),
+    DIDUSQuantity = wh_services:quantity(?CAT, ?ITEM, UpdatedServices),
+
+    MinusTollFree = wh_services:category_quantity(?CAT, [<<"toll_free">>], UpdatedServices),
+    MinusDIDUS = wh_services:category_quantity(?CAT, [?ITEM], UpdatedServices),
+
+    [{"Verify base category quantities"
+      ,?_assertEqual(10, CategoryQuantity)
+     }
+     ,{"Verify updated category quantities"
+       ,?_assertEqual(CategoryQuantity + Increment, UpdatedCategoryQuantity)
+      }
+     ,{"Verify updated category quantities minus toll_free numbers"
+       ,?_assertEqual(MinusTollFree, UpdatedCategoryQuantity-TollFreeQuantity)
+      }
+     ,{"Verify updated category quantities minus did_us numbers"
+       ,?_assertEqual(MinusDIDUS, UpdatedCategoryQuantity-DIDUSQuantity)
       }
     ].
