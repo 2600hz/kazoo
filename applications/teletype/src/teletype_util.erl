@@ -259,8 +259,7 @@ add_rendered_templates_to_email([{ContentType, Content}|Rs], Acc) ->
 
 -spec system_params() -> wh_proplist().
 system_params() ->
-    [{<<"hostname">>, wh_util:to_binary(net_adm:localhost())}
-    ].
+    [{<<"hostname">>, wh_util:to_binary(net_adm:localhost())}].
 
 -spec account_params(wh_json:object()) -> wh_proplist().
 account_params(DataJObj) ->
@@ -274,11 +273,11 @@ find_account_params(DataJObj, AccountId) ->
     case open_doc(<<"account">>, AccountId, DataJObj) of
         {'ok', AccountJObj} ->
             props:filter_undefined([{<<"name">>, kz_account:name(AccountJObj)}
-             ,{<<"realm">>, kz_account:realm(AccountJObj)}
-             ,{<<"id">>, kz_account:id(AccountJObj)}
-             ,{<<"language">>, kz_account:language(AccountJObj)}
-             ,{<<"timezone">>, kz_account:timezone(AccountJObj)}
-            ]);
+                                    ,{<<"realm">>, kz_account:realm(AccountJObj)}
+                                    ,{<<"id">>, kz_account:id(AccountJObj)}
+                                    ,{<<"language">>, kz_account:language(AccountJObj)}
+                                    ,{<<"timezone">>, kz_account:timezone(AccountJObj)}
+                                   ]);
         {'error', _E} ->
             lager:debug("failed to find account doc for ~s: ~p", [AccountId, _E]),
             []
