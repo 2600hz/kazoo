@@ -37,9 +37,9 @@
 -export([is_dirty/1]).
 -export([quantity/3, diff_quantity/3]).
 -export([updated_quantity/3]).
--export([category_quantity/3]).
+-export([category_quantity/2, category_quantity/3]).
 -export([cascade_quantity/3]).
--export([cascade_category_quantity/3]).
+-export([cascade_category_quantity/2, cascade_category_quantity/3]).
 -export([reset_category/2]).
 -export([get_service_module/1]).
 
@@ -901,28 +901,30 @@ updated_quantity(CategoryId, ItemId, #wh_services{updates=JObj}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec category_quantity(ne_binary(), services()) -> integer().
 -spec category_quantity(ne_binary(), ne_binaries(), services()) -> integer().
-category_quantity(_, _, #wh_services{deleted='true'}) -> 0;
-category_quantity(CategoryId, Exceptions, #wh_services{updates=UpdatedQuantities
-                                                       ,jobj=JObj
-                                                      }) ->
-    CurrentQuantities = current_quantities(JObj),
-    Quantities = wh_json:merge_jobjs(UpdatedQuantities, CurrentQuantities),
+category_quantity(CategoryId, Services) ->
+    category_quantity(CategoryId, [], Services).
 
-    lists:foldl(fun(ItemId, Sum) ->
-                        maybe_exclude_item(CategoryId, ItemId, Sum, Exceptions, Quantities)
-                end
-                ,0
-                ,wh_json:get_keys(CategoryId, Quantities)
-               ).
+category_quantity(_CategoryId, _ItemExceptions, #wh_services{deleted='true'}) -> 0;
+category_quantity(CategoryId, ItemExceptions, #wh_services{updates=UpdatedQuantities
+                                                           ,jobj=JObj
+                                                          }) ->
+    CatQuantities = kzd_services:category_quantities(JObj, CategoryId),
+    CatUpdates = wh_json:get_value(CategoryId, UpdatedQuantities, wh_json:new()),
 
--spec maybe_exclude_item(ne_binary(), ne_binary(), integer(), ne_binaries(), wh_json:object()) -> integer().
-maybe_exclude_item(CategoryId, ItemId, Sum, Exceptions, Quantities) ->
-    case lists:member(ItemId, Exceptions) of
-        'true' -> Sum;
-        'false' ->
-            wh_json:get_integer_value([CategoryId, ItemId], Quantities, 0) + Sum
-    end.
+    %% replaces CatQs values with CatUpdate
+    Quantities = wh_json:merge_recursive(CatQuantities, CatUpdates),
+
+    %% Removes ItemExceptions, if any
+    QsMinusEx = wh_json:delete_keys(ItemExceptions, Quantities),
+
+    wh_json:foldl(fun(_ItemId, ItemQuantity, Sum) ->
+                          ItemQuantity + Sum
+                  end
+                  ,0
+                  ,QsMinusEx
+                 ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -942,15 +944,22 @@ cascade_quantity(CategoryId, ItemId, #wh_services{cascade_quantities=JObj}=Servi
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec cascade_category_quantity(ne_binary(), services()) -> integer().
 -spec cascade_category_quantity(ne_binary(), ne_binaries(), services()) -> integer().
+cascade_category_quantity(CategoryId, Services) ->
+    cascade_category_quantity(CategoryId, [], Services).
+
 cascade_category_quantity(_, _, #wh_services{deleted='true'}) -> 0;
-cascade_category_quantity(CategoryId, Exceptions, #wh_services{cascade_quantities=Quantities}=Services) ->
-    lists:foldl(fun(ItemId, Sum) ->
-                        maybe_exclude_item(CategoryId, ItemId, Sum, Exceptions, Quantities)
-                end
-                ,category_quantity(CategoryId, Exceptions, Services)
-                ,wh_json:get_keys(CategoryId, Quantities)
-               ).
+cascade_category_quantity(CategoryId, ItemExceptions, #wh_services{cascade_quantities=Quantities}=Services) ->
+    CatQuantiies = wh_json:get_value(CategoryId, Quantities, wh_json:new()),
+    QsMinusEx = wh_json:delete_keys(ItemExceptions, CatQuantiies),
+
+    wh_json:foldl(fun(_ItemId, ItemQuantity, Sum) ->
+                          ItemQuantity + Sum
+                  end
+                  ,category_quantity(CategoryId, ItemExceptions, Services)
+                  ,QsMinusEx
+                 ).
 
 %%--------------------------------------------------------------------
 %% @public
