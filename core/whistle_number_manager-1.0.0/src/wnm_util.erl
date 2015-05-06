@@ -13,7 +13,7 @@
 -export([pretty_print/1, pretty_print/2]).
 -endif.
 
--export([available_classifiers/0]).
+-export([available_classifiers/0, available_classifiers/1]).
 -export([classify_number/1]).
 -export([is_reconcilable/1, is_reconcilable/2
          ,emergency_services_configured/2
@@ -177,6 +177,13 @@ maybe_use_us_default(_) ->
 available_classifiers() ->
     Default = wh_json:from_list(?DEFAULT_CLASSIFIERS),
     Classifiers = whapps_config:get(?WNM_CONFIG_CAT, <<"classifiers">>, Default),
+    correct_depreciated_classifiers(wh_json:to_proplist(Classifiers)).
+
+-spec available_classifiers(api_binary()) -> wh_json:object().
+available_classifiers('undefined') -> available_classifiers();
+available_classifiers(AccountId) ->
+    Default = wh_json:from_list(?DEFAULT_CLASSIFIERS),
+    Classifiers = whapps_account_config:get_global(AccountId, ?WNM_CONFIG_CAT, <<"classifiers">>, Default),
     correct_depreciated_classifiers(wh_json:to_proplist(Classifiers)).
 
 -spec correct_depreciated_classifiers(wh_proplist()) -> wh_json:object().
