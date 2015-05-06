@@ -263,7 +263,7 @@ maybe_faxbox_save(#state{filename=Filename
     end.
 
 -spec maybe_system_report(state()) -> 'ok'.
-maybe_system_report(#state{faxbox='undefined'}=State) ->
+maybe_system_report(#state{faxbox='undefined', account_id='undefined'}=State) ->
     case whapps_config:get(?CONFIG_CAT, <<"report_anonymous_system_errors">>, 'false') of
         'true' -> system_report(State);
         'false' -> 'ok'
@@ -275,8 +275,17 @@ maybe_system_report(State) ->
     end.
 
 -spec maybe_faxbox_log(state()) -> 'ok'.
+maybe_faxbox_log(#state{faxbox='undefined', account_id='undefined'}=State) ->
+     maybe_system_report(State);
+maybe_faxbox_log(#state{faxbox='undefined', account_id=AccountId}=State) ->
+     maybe_faxbox_log(AccountId, wh_json:new(), State);
 maybe_faxbox_log(#state{faxbox=JObj}=State) ->
     AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
+     maybe_faxbox_log(AccountId, JObj, State).
+
+-spec maybe_faxbox_log(api_binary(), wh_json:object(), state()) -> 'ok'.
+maybe_faxbox_log('undefined', _, State) -> maybe_system_report(State);
+maybe_faxbox_log(AccountId, JObj, State) ->
     case wh_json:is_true(<<"log_errors">>, JObj, 'false')
         orelse ( whapps_account_config:get_global(AccountId, ?CONFIG_CAT, <<"log_faxbox_errors">>, 'true')
                  andalso wh_json:is_true(<<"log_errors">>, JObj, 'true') )
@@ -393,6 +402,8 @@ check_number(#state{number= <<>>
     Error = wh_util:to_binary(io_lib:format("fax number ~s is empty", [Number])),
     lager:debug(Error),
     {'error', "554 Not Found", State#state{errors=[Error | Errors]}};
+check_number(#state{faxbox='undefined'}=State) ->
+    {'error', "554 Not Found", State};
 check_number(#state{}=State) ->
     check_permissions(State).
 
@@ -484,7 +495,7 @@ maybe_faxbox_domain(#state{faxbox_email=Domain}=State) ->
             State#state{errors=[Error]};
         {'ok', [JObj]} ->
             AccountId = wh_json:get_value(<<"id">>, JObj),
-            maybe_faxbox_by_owner_email(AccountId, State);
+            maybe_faxbox_by_owner_email(AccountId, State#state{account_id=AccountId});
         {'ok', [_JObj | _JObjs]} ->
             Error = <<"accounts query by realm ", Domain/binary, " return more than one document">>,
             lager:debug(Error),
