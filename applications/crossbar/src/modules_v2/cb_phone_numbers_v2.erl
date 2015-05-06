@@ -1186,41 +1186,16 @@ dry_run_response(?COLLECTION, JObj) ->
     end.
 
 -spec accumulate_resp(wh_json:object()) -> wh_json:object().
--spec accumulate_resp(wh_json:objects(), {integer(), ne_binaries()}) -> wh_json:object().
 accumulate_resp(JObj) ->
-    L = wh_json:foldl(
-        fun(_, Value, Acc) ->
-            [dry_run_response(Value)|Acc]
-        end
-        ,[]
-        ,JObj
-    ),
-    accumulate_resp(lists:reverse(L), {0, []}).
-
-accumulate_resp([JObj], {0, D}) ->
-    case wh_json:is_empty(JObj) of
-        'true' -> wh_json:new();
-        'false' ->
-            ActivationCharges = wh_json:get_value(<<"activation_charges">>, JObj, 0),
-            Description = wh_json:get_value(<<"activation_charges_description">>, JObj, 0),
-            wh_json:set_values([{<<"activation_charges">>, ActivationCharges}
-                                ,{<<"activation_charges_description">>, [Description|D]}
-                       ], JObj)
-    end;
-accumulate_resp([JObj], {AC, D}) ->
-    ActivationCharges = wh_json:get_value(<<"activation_charges">>, JObj, 0),
-    Description = wh_json:get_value(<<"activation_charges_description">>, JObj, 0),
-    wh_json:set_values([{<<"activation_charges">>, ActivationCharges+AC}
-                        ,{<<"activation_charges_description">>, [Description|D]}
-                       ], JObj);
-accumulate_resp([JObj|JObjs], {AC, D}=Acc) ->
-    case wh_json:is_empty(JObj) of
-        'true' -> accumulate_resp(JObjs, Acc);
-        'false' ->
-            ActivationCharges = wh_json:get_value(<<"activation_charges">>, JObj, 0),
-            Description = wh_json:get_value(<<"activation_charges_description">>, JObj, 0),
-            accumulate_resp(JObjs, {ActivationCharges+AC, [Description|D]})
-    end.
+    [Resp|_] =
+        wh_json:foldl(
+            fun(_, Value, Acc) ->
+                [dry_run_response(Value)|Acc]
+            end
+            ,[]
+            ,JObj
+        ),
+    Resp.
 
 %%--------------------------------------------------------------------
 %% @private
