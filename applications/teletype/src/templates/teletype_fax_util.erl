@@ -140,17 +140,22 @@ maybe_get_attachments(DataJObj, Macros, 'false') ->
     FaxId = props:get_first_defined([<<"id">>, <<"fax_jobid">>, <<"fax_id">>], FaxMacros),
     Db = fax_db(DataJObj),
     lager:debug("accessing fax at ~s / ~s", [Db, FaxId]),
-    {'ok', ContentType, Bin} = get_attachment_binary(Db, FaxId),
-    ToFormat = whapps_config:get(?FAX_CONFIG_CAT, <<"attachment_format">>, <<"pdf">>),
-    FromFormat = from_format_from_content_type(ContentType),
-    lager:debug("converting from ~s to ~s", [FromFormat, ToFormat]),
-    {'ok', Converted} = teletype_fax_util:convert(FromFormat, ToFormat, Bin),
-    Filename = get_file_name(Macros, ToFormat),
-    lager:debug("adding attachment as ~s", [Filename]),
-    [{content_type_from_extension(Filename)
-      ,Filename
-      ,Converted
-     }].
+    case get_attachment_binary(Db, FaxId) of
+        {'error', 'no_attachment'} -> [];
+        {'ok', ContentType, Bin} ->
+        ToFormat = whapps_config:get(?FAX_CONFIG_CAT, <<"attachment_format">>, <<"pdf">>),
+        FromFormat = from_format_from_content_type(ContentType),
+        lager:debug("converting from ~s to ~s", [FromFormat, ToFormat]),
+        case teletype_fax_util:convert(FromFormat, ToFormat, Bin) of        
+            {'ok', Converted} ->            
+                Filename = get_file_name(Macros, ToFormat),
+                lager:debug("adding attachment as ~s", [Filename]),
+                [{content_type_from_extension(Filename), Filename, Converted}];
+            {'error', Reason} ->
+                lager:debug("error converting atachment with reason : ~p", [Reason]),
+                []
+        end
+    end.
 
 -spec from_format_from_content_type(ne_binary()) -> ne_binary().
 from_format_from_content_type(<<"application/pdf">>) ->
@@ -185,34 +190,23 @@ get_file_name(Macros, Ext) ->
 -spec get_attachment_binary(ne_binary(), api_binary()) ->
                                    {'ok', ne_binary(), binary()}.
 get_attachment_binary(Db, Id) ->
-    get_attachment_binary(Db, Id, 2).
-
-get_attachment_binary(_Db, _Id, 0) ->
-    lager:debug("failed to find ~s in ~s, retries expired", [_Id, _Db]),
-    throw({'error', 'no_attachment'});
-get_attachment_binary(Db, Id, Retries) ->
     case couch_mgr:open_cache_doc(Db, Id) of
         {'error', 'not_found'} when Db =/= ?WH_FAXES_DB ->
-            get_attachment_binary(?WH_FAXES_DB, Id, Retries);
+            get_attachment_binary(?WH_FAXES_DB, Id);
         {'error', 'not_found'} ->
             lager:debug("no attachment binary to send"),
-            {'ok', <<"dev/null">>, <<"fax attachment">>};
+            {'error', 'no_attachment'};
         {'ok', FaxJObj} ->
             case wh_doc:attachment(FaxJObj) of
-                'undefined' -> delayed_retry(Db, Id, Retries);
+                'undefined' ->
+                    {'error', 'no_attachment'};
                 AttachmentJObj ->
-                    get_attachment_binary(Db, Id, Retries, AttachmentJObj)
+                    get_attachment_binary(Db, Id, AttachmentJObj)
             end
     end.
 
--spec delayed_retry(ne_binary(), ne_binary(), 1..2) -> {'ok', ne_binary(), binary()}.
-delayed_retry(Db, Id, Retries) ->
-    lager:debug("waiting to query fax doc ~s for attachment", [Id]),
-    timer:sleep(?MILLISECONDS_IN_MINUTE * 5),
-    get_attachment_binary(Db, Id, Retries-1).
-
--spec get_attachment_binary(ne_binary(), ne_binary(), 1..2) -> {'ok', ne_binary(), binary()}.
-get_attachment_binary(Db, Id, Retries, AttachmentJObj) ->
+-spec get_attachment_binary(ne_binary(), ne_binary(), wh_json:object()) -> {'ok', ne_binary(), binary()}.
+get_attachment_binary(Db, Id, AttachmentJObj) ->
     [AttachmentName] = wh_json:get_keys(AttachmentJObj),
     ContentType = wh_json:get_value([AttachmentName, <<"content_type">>], AttachmentJObj, <<"image/tiff">>),
 
@@ -220,7 +214,7 @@ get_attachment_binary(Db, Id, Retries, AttachmentJObj) ->
         {'ok', Bin} -> {'ok', ContentType, Bin};
         {'error', _E} ->
             lager:debug("failed to fetch attachment ~s: ~p", [AttachmentName, _E]),
-            delayed_retry(Db, Id, Retries-1)
+             {'error', 'no_attachment'}
     end.
 
 -spec fax_db(wh_json:object()) -> ne_binary().
