@@ -539,7 +539,7 @@ read(Context, Id, LoadFrom) ->
     Context1 =
         case cb_context:account_db(Context) of
             'undefined' when LoadFrom =:= 'system'; LoadFrom =:= 'system_migrate' ->
-                lager:debug("no account id, loading ~ from system", [Id]),
+                lager:debug("no account id, loading ~s from system", [Id]),
                 read_system(Context, Id);
             _AccountDb ->
                 lager:debug("reading ~s from account first", [Id]),

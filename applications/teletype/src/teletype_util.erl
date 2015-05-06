@@ -906,19 +906,31 @@ should_handle_notification_for_account(AccountId, ResellerId) ->
 is_notice_enabled('undefined', _ApiJObj, NoticeKey) ->
     is_notice_enabled_default(NoticeKey);
 is_notice_enabled(AccountId, ApiJObj, NoticeKey) ->
+    case wh_json:is_true(<<"Preview">>, ApiJObj, 'false') of
+        'true' -> 'true';
+        'false' ->
+            {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
+            is_account_notice_enabled(AccountId, NoticeKey, MasterAccountId)
+    end.
+
+-spec is_account_notice_enabled(api_binary(), ne_binary(), ne_binary()) -> boolean().
+is_account_notice_enabled('undefined', _NoticeKey, _MasterAccountId) ->
+    'false';
+is_account_notice_enabled(MasterAccountId, NoticeKey, MasterAccountId) ->
+    lager:debug("reached master account ~s, checking sytem config for ~s"
+                ,[MasterAccountId, NoticeKey]
+               ),
+    is_notice_enabled_default(NoticeKey);
+is_account_notice_enabled(AccountId, NoticeKey, MasterAccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    NotifId = <<"notification.", NoticeKey/binary>>,
-    case couch_mgr:open_doc(AccountDb, NotifId) of
-        {'ok', NotifJObj} -> Enabled = wh_json:is_true(<<"enabled">>, NotifJObj);
-        _Otherwise ->        Enabled = 'undefined'
-    end,
-    case {Enabled, wh_json:is_true(<<"Preview">>, ApiJObj, 'false')} of
-        {_Account, 'true'} -> 'true';
-        {'undefined', 'false'} ->
-            lager:debug("account is mute, checking system config"),
-            is_notice_enabled_default(NoticeKey);
-        {Value, 'false'} ->
-            wh_util:is_true(Value)
+    NoticeId = <<"notification.", NoticeKey/binary>>,
+
+    case couch_mgr:open_cache_doc(AccountDb, NoticeId) of
+        {'ok', NoticeJObj} ->
+            wh_json:is_true(<<"enabled">>, NoticeJObj);
+        _Otherwise ->
+            lager:debug("account ~s is mute, checking reseller", [AccountId]),
+            is_notice_enabled(wh_services:reseller_id(AccountId), NoticeKey)
     end.
 
 -spec is_notice_enabled_default(ne_binary()) -> boolean().
