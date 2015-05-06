@@ -69,6 +69,7 @@
 -define(COUNT_PAGES_CMD, <<"echo -n `tiffinfo ~s | grep 'Page Number' | grep -c 'P'`">>).
 -define(CONVERT_PDF_CMD, <<"/usr/bin/gs -q -r204x98 -g1728x1078 -dNOPAUSE -dBATCH -dSAFER -sDEVICE=tiffg3 -sOutputFile=~s -- ~s &> /dev/null && echo -n \"success\"">>).
 
+-define(CALLFLOW_LIST, <<"callflow/listing_by_number">>).
 
 %%%===================================================================
 %%% API
@@ -804,6 +805,7 @@ send_fax(JobId, JObj, Q, ToDID) ->
                  ,{<<"Fax-Timezone">>, wh_json:get_value(<<"fax_timezone">>, JObj)}
                  ,{<<"Flags">>, [<<"fax">> | wh_json:get_value(<<"flags">>, JObj, [])]}
                  ,{<<"Resource-Type">>, <<"originate">>}
+                 ,{<<"Hunt-Account-ID">>, get_hunt_account_id(AccountId)}
                  ,{<<"Msg-ID">>, JobId}
                  ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
                  ,{<<"Custom-Channel-Vars">>, resource_ccvs(JobId)}
@@ -820,6 +822,27 @@ send_fax(JobId, JObj, Q, ToDID) ->
                                               ,{'restrict_to', [<<"CHANNEL_FAX_STATUS">>]}
                                              ]),
     wapi_offnet_resource:publish_req(Request).
+
+-spec get_hunt_account_id(ne_binary()) -> api_binary().
+get_hunt_account_id(AccountId) ->
+    AccountDb = wh_util:format_account_db(AccountId),
+    Options = [{'key', <<"no_match">>}, 'include_docs'],
+    case couch_mgr:get_results(AccountDb, ?CALLFLOW_LIST, Options) of
+        {'ok', [JObj]} -> maybe_hunt_account_id(wh_json:get_value(<<"doc">>, JObj)); 
+        _ -> 'undefined'
+    end.
+
+-spec maybe_hunt_account_id(api_object()) -> api_binary().
+maybe_hunt_account_id('undefined') -> 'undefined';
+maybe_hunt_account_id(JObj) ->
+    case wh_json:get_value([<<"flow">>, <<"module">>], JObj) of
+        <<"resources">> ->
+            case wh_json:get_value([<<"flow">>, <<"data">>, <<"hunt_account_id">>], JObj) of                
+                'undefined' -> wh_json:get_value(<<"pvt_account_id">>, JObj);
+                HuntAccountID -> HuntAccountID
+            end;
+        _ -> 'undefined'
+    end.
 
 -spec resource_ccvs(ne_binary()) -> wh_json:object().
 resource_ccvs(JobId) ->
