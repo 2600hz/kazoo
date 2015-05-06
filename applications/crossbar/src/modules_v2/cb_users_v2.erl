@@ -16,12 +16,13 @@
 -export([create_user/1]).
 -export([init/0
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
-         ,resource_exists/0, resource_exists/1, resource_exists/3
+         ,content_types_provided/1, content_types_provided/2, content_types_provided/3, content_types_provided/4
+         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
          ,validate_resource/1, validate_resource/2, validate_resource/3, validate_resource/4
          ,billing/1
          ,authenticate/1
          ,authorize/1
-         ,validate/1, validate/2, validate/4
+         ,validate/1, validate/2, validate/3, validate/4
          ,put/1
          ,post/2, post/3
          ,delete/2
@@ -35,6 +36,7 @@
 -define(LIST_BY_USERNAME, <<"users/list_by_username">>).
 -define(LIST_BY_PRESENCE_ID, <<"devices/listing_by_presence_id">>).
 -define(QUICKCALL, <<"quickcall">>).
+-define(VCARD, <<"vcard">>).
 -define(PHOTO, <<"photo">>).
 
 %%%===================================================================
@@ -52,6 +54,7 @@ create_user(Context) ->
 
 init() ->
     _ = crossbar_bindings:bind(<<"v2_resource.allowed_methods.users">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"v2_resource.content_types_provided.users">>, ?MODULE, 'content_types_provided'),
     _ = crossbar_bindings:bind(<<"v2_resource.resource_exists.users">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"v2_resource.authenticate">>, ?MODULE, 'authenticate'),
     _ = crossbar_bindings:bind(<<"v2_resource.authorize">>, ?MODULE, 'authorize'),
@@ -84,11 +87,32 @@ allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE, ?HTTP_PATCH].
 
 allowed_methods(_, ?PHOTO) ->
-    [?HTTP_POST].
+    [?HTTP_POST];
+allowed_methods(_, ?VCARD) ->
+    [?HTTP_GET].
 
 allowed_methods(_, ?QUICKCALL, _) ->
     [?HTTP_GET].
 
+-spec content_types_provided(cb_context:context()) ->
+                                    cb_context:context().
+-spec content_types_provided(cb_context:context(), path_token()) ->
+                                    cb_context:context().
+-spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
+                                    cb_context:context().
+-spec content_types_provided(cb_context:context(), path_token(), path_token(), http_method()) ->
+                                    cb_context:context().
+content_types_provided(Context) ->
+    Context.
+content_types_provided(Context, _) ->
+    Context.
+content_types_provided(Context, _, ?VCARD) ->
+    cb_context:set_content_types_provided(Context, [{'to_binary', [{<<"text">>, <<"x-vcard">>}
+                                                                   ,{<<"text">>, <<"directory">>}]}]);
+content_types_provided(Context, _, _) ->
+    Context.
+content_types_provided(Context, _, _, _) ->
+    Context.
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -99,10 +123,12 @@ allowed_methods(_, ?QUICKCALL, _) ->
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 -spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
 
 resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
+resource_exists(_, ?VCARD) -> 'true'.
 resource_exists(_, ?QUICKCALL, _) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -207,6 +233,7 @@ validate_user_id(UserId, Context, Doc) ->
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 
 validate(Context) ->
@@ -214,6 +241,13 @@ validate(Context) ->
 
 validate(Context, UserId) ->
     validate_user(Context, UserId, cb_context:req_verb(Context)).
+
+validate(Context, UserId, ?VCARD) ->
+    Context1 = load_user(UserId, Context),
+    case cb_context:has_errors(Context1) of
+        'true' -> Context1;
+        'false' -> convert_to_vcard(Context1)
+    end.
 
 validate(Context, UserId, ?QUICKCALL, _) ->
     Context1 = maybe_validate_quickcall(load_user(UserId, Context)),
@@ -629,3 +663,41 @@ username_doc_id(Username, Context, _AccountDb) ->
 %%--------------------------------------------------------------------
 -spec(normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects()).
 normalize_view_results(JObj, Acc) -> [wh_json:get_value(<<"value">>, JObj)|Acc].
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Converts context to vcard
+%% @end
+%%--------------------------------------------------------------------
+-spec convert_to_vcard(cb_context:context()) -> cb_context:context().
+convert_to_vcard(Context) ->
+    JObj = cb_context:doc(Context),
+    JProfile = wh_json:get_value(<<"profile">>, JObj, wh_json:new()),
+    JObj1 = wh_json:merge_jobjs(JObj, JProfile),
+    JObj2 = set_photo(JObj1, Context),
+    JObj3 = set_org(JObj2, Context),
+    RespData = kzd_users:to_vcard(JObj3),
+    cb_context:set_resp_data(Context, [RespData, <<"\n">>]).
+
+-spec set_photo(wh_json:object(), cb_context:context()) -> wh_json:object().
+set_photo(JObj, Context) ->
+    UserId = wh_json:get_value(<<"id">>, cb_context:doc(Context)),
+    Attach = crossbar_doc:load_attachment(UserId, ?PHOTO, Context),
+    case cb_context:resp_status(Attach) of
+        'error' -> JObj;
+        'success' ->
+            Data = cb_context:resp_data(Attach),
+            CT = wh_doc:attachment_content_type(cb_context:doc(Context), ?PHOTO),
+            wh_json:set_value(?PHOTO, wh_json:from_list([{CT, Data}]), JObj)
+    end.
+
+-spec set_org(wh_json:object(), cb_context:context()) -> wh_json:object().
+set_org(JObj, Context) ->
+    case wh_json:get_value(<<"org">>
+                           ,cb_context:doc(crossbar_doc:load(cb_context:account_id(Context)
+                                                             ,Context)))
+    of
+        'undefined' -> JObj;
+        Val -> wh_json:set_value(<<"org">>, Val, JObj)
+    end.
