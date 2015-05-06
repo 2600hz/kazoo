@@ -704,13 +704,20 @@ create_resource(JObj, Resources) ->
     case wh_json:get_value(<<"classifiers">>, JObj) of
         'undefined' -> [resource_from_jobj(JObj) | Resources];
         ResourceClassifiers ->
-            ConfigClassifiers = wh_json:to_proplist(whapps_config:get(?CONFIG_CAT, <<"classifiers">>)),
+            AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
+            ConfigClassifiers = maybe_account_classifiers(AccountId),
             create_resource(wh_json:to_proplist(ResourceClassifiers)
                             ,ConfigClassifiers
                             ,JObj
                             ,Resources
                            )
     end.
+
+-spec maybe_account_classifiers(api_binary()) -> wh_proplist().
+maybe_account_classifiers('undefined') ->
+    wh_json:to_proplist(whapps_config:get(?CONFIG_CAT, <<"classifiers">>));
+maybe_account_classifiers(AccountId) ->
+    wh_json:to_proplist(whapps_account_config:get_global(AccountId, ?CONFIG_CAT, <<"classifiers">>)).
 
 -spec create_resource(wh_proplist(), wh_proplist(), wh_json:object(), resources()) -> resources().
 create_resource([], _ConfigClassifiers, _JObj, Resources) -> Resources;
@@ -722,7 +729,8 @@ create_resource([{Classifier, ClassifierJobj}|Cs], ConfigClassifiers, JObj, Reso
         'true' ->
             Id = wh_json:get_value(<<"_id">>, JObj),
             Name = wh_json:get_value(<<"name">>, JObj),
-            Props = [{<<"rules">>, [wh_json:get_value(<<"regex">>, ConfigClassifier)]}
+            DefaultRegex = wh_json:get_value(<<"regex">>, ConfigClassifier), 
+            Props = [{<<"rules">>, [wh_json:get_value(<<"regex">>, ClassifierJobj, DefaultRegex)]}
                      ,{<<"weight_cost">>, wh_json:get_value(<<"weight_cost">>, ClassifierJobj)}
                      ,{<<"_id">>, <<Id/binary, "-", Classifier/binary>>}
                      ,{<<"name">>, <<Name/binary, " - ", Classifier/binary>>}
