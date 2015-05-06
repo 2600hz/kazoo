@@ -31,6 +31,7 @@
 -export([increment_addon_quantity/2]).
 -export([update_discount_quantity/3]).
 -export([increment_discount_quantity/2]).
+-export([update_payment_token/2]).
 
 -import('wh_util', [get_xml_value/2]).
 
@@ -73,14 +74,9 @@ url(SubscriptionId, Options) ->
 %% Creates a new subscription record
 %% @end
 %%--------------------------------------------------------------------
--spec new(subscription() | ne_binary(), ne_binary()) -> subscription().
+-spec new(ne_binary(), ne_binary()) -> subscription().
 -spec new(ne_binary(), ne_binary(), ne_binary()) -> subscription().
 
-new(#bt_subscription{}=Subscription, PaymentToken) ->
-    Subscription#bt_subscription{id = new_subscription_id()
-                                 ,payment_token = PaymentToken
-                                 ,create = 'true'
-                                };
 new(PlanId, PaymentToken) ->
     new(new_subscription_id(), PlanId, PaymentToken).
 
@@ -91,6 +87,7 @@ new(SubscriptionId, PlanId, PaymentToken) ->
                      ,create='true'
                     }.
 
+%% @private
 -spec new_subscription_id() -> ne_binary().
 new_subscription_id() ->
     wh_util:rand_hex_binary(16).
@@ -230,7 +227,7 @@ find(SubscriptionId) ->
 -spec create(ne_binary(), ne_binary()) -> subscription().
 
 create(#bt_subscription{id='undefined'}=Subscription) ->
-    create(Subscription#bt_subscription{id=wh_util:rand_hex_binary(16)});
+    create(Subscription#bt_subscription{id=new_subscription_id()});
 create(#bt_subscription{}=Subscription) ->
     Url = url(),
     Request = record_to_xml(Subscription, 'true'),
@@ -421,6 +418,24 @@ increment_discount_quantity(SubscriptionId, DiscountId) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Update payment token and reset fields to be able to push update back
+%% @end
+%%--------------------------------------------------------------------
+-spec update_payment_token(subscription(), ne_binary()) -> subscription().
+update_payment_token(#bt_subscription{}=Subscription, PaymentToken) ->
+    Date = Subscription#bt_subscription.next_bill_date,
+    Subscription#bt_subscription{payment_token = PaymentToken
+                                 ,start_immediately = 'undefined'
+                                 ,billing_first_date = Date
+                                 ,billing_dom = 'undefined'
+                                 ,billing_end_date = 'undefined'
+                                 ,billing_start_date = 'undefined'
+                                 ,billing_cycle = 'undefined'
+                                }.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
 %% Contert the given XML to a subscription record
 %% @end
 %%--------------------------------------------------------------------
@@ -481,13 +496,15 @@ record_to_xml(#bt_subscription{}=Subscription, ToString) ->
     Props = [{'id', Subscription#bt_subscription.id}
              ,{'merchant-account-id', Subscription#bt_subscription.merchant_account_id}
              ,{'never-expires', Subscription#bt_subscription.never_expires}
+             ,{'billing-day-of-month', [{'type',"integer"}], Subscription#bt_subscription.billing_dom}
+             ,{'first-billing-date', [{'type',"date"}], Subscription#bt_subscription.billing_first_date}
+             ,{'billing-period-end-date', [{'type',"date"}], Subscription#bt_subscription.billing_end_date}
+             ,{'billing-period-start-date', [{'type',"date"}], Subscription#bt_subscription.billing_start_date}
+             ,{'current-billing-cycle', [{'type',"integer"}], Subscription#bt_subscription.billing_cycle}
              ,{'number-of-billing-cycles', Subscription#bt_subscription.number_of_cycles}
              ,{'payment-method-token', Subscription#bt_subscription.payment_token}
              ,{'plan-id', Subscription#bt_subscription.plan_id}
              ,{'price', Subscription#bt_subscription.price}
-             ,{'trial-duration', Subscription#bt_subscription.trial_duration}
-             ,{'trial-duration-unit', Subscription#bt_subscription.trial_duration_unit}
-             ,{'trial-period', Subscription#bt_subscription.trial_period}
              ,{'add-ons', create_addon_changes(Subscription#bt_subscription.add_ons)}
              ,{'discounts', create_discount_changes(Subscription#bt_subscription.discounts)}
             ],
@@ -503,6 +520,17 @@ record_to_xml(#bt_subscription{}=Subscription, ToString) ->
                      end
                     ,fun(#bt_subscription{start_immediately=Value}, P) ->
                         update_options('start-immediately', Value, P)
+                     end
+                    ,fun (S, P) ->
+                             case S#bt_subscription.trial_period of
+                                 <<"false">> -> P;
+                                 _ ->
+                                     [{'trial-duration', S#bt_subscription.trial_duration}
+                                      ,{'trial-duration-unit', S#bt_subscription.trial_duration_unit}
+                                      ,{'trial-period', S#bt_subscription.trial_period}
+                                      | P
+                                     ]
+                             end
                      end
                    ],
     Props1 = lists:foldr(fun(F, P) -> F(Subscription, P) end, Props, Conditionals),
