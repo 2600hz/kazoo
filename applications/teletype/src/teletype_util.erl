@@ -930,7 +930,7 @@ is_account_notice_enabled(AccountId, NoticeKey, MasterAccountId) ->
             wh_json:is_true(<<"enabled">>, NoticeJObj);
         _Otherwise ->
             lager:debug("account ~s is mute, checking reseller", [AccountId]),
-            is_notice_enabled(wh_services:reseller_id(AccountId), NoticeKey)
+            is_account_notice_enabled(wh_services:find_reseller_id(AccountId), NoticeKey, MasterAccountId)
     end.
 
 -spec is_notice_enabled_default(ne_binary()) -> boolean().
