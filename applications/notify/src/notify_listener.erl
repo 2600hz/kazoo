@@ -1,5 +1,5 @@
   %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Handle updating devices and emails about voicemails
 %%% @end
@@ -216,6 +216,23 @@ should_handle_account(Account) ->
 
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
         {'ok', AccountJObj} ->
-            kz_account:notification_preference(AccountJObj) =:= 'undefined';
-        {'error', _E} -> 'true'
+            kz_account:notification_preference(AccountJObj) =:= 'undefined'
+                andalso should_handle_reseller(wh_services:find_reseller_id(AccountId));
+        {'error', _E} -> 'false'
+    end.
+
+should_handle_reseller(ResellerId) ->
+    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
+    should_handle_reseller(ResellerId, MasterAccountId).
+
+should_handle_reseller(MasterAccountId, MasterAccountId) ->
+    lager:debug("reached master account, checking system"),
+    should_handle_system();
+should_handle_reseller(ResellerId, _MasterAccountId) ->
+    ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
+
+    case couch_mgr:open_cache_doc(ResellerDb, ResellerId) of
+        {'ok', ResellerJObj} ->
+            kz_account:notification_preference(ResellerJObj) =:= 'undefined';
+        {'error', _E} -> 'false'
     end.
