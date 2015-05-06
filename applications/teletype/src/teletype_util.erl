@@ -334,7 +334,7 @@ init_template(Id, Params) ->
     DocId = template_doc_id(Id),
     {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
     lager:debug("looking for ~s", [DocId]),
-    case couch_mgr:open_doc(MasterAccountDb, DocId) of
+    case couch_mgr:open_cache_doc(MasterAccountDb, DocId) of
         {'ok', TemplateJObj} -> maybe_update_template(MasterAccountDb, TemplateJObj, Params);
         {'error', 'not_found'} -> create_template(MasterAccountDb, DocId, Params);
         {'error', _E} -> lager:warning("failed to find template ~s", [DocId])
@@ -917,11 +917,6 @@ is_notice_enabled(AccountId, ApiJObj, TemplateKey) ->
 is_account_notice_enabled('undefined', TemplateKey, _MasterAccountId) ->
     lager:debug("no account id to check, checking system config for ~s", [TemplateKey]),
     is_notice_enabled_default(TemplateKey);
-is_account_notice_enabled(MasterAccountId, TemplateKey, MasterAccountId) ->
-    lager:debug("reached master account ~s, checking sytem config for ~s"
-                ,[MasterAccountId, TemplateKey]
-               ),
-    is_notice_enabled_default(TemplateKey);
 is_account_notice_enabled(AccountId, TemplateKey, MasterAccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     TemplateId = template_doc_id(TemplateKey),
@@ -930,18 +925,22 @@ is_account_notice_enabled(AccountId, TemplateKey, MasterAccountId) ->
         {'ok', TemplateJObj} ->
             lager:debug("account ~s has ~s, checking if enabled", [AccountId, TemplateId]),
             kz_notification:is_enabled(TemplateJObj);
-        _Otherwise ->
+        _Otherwise when AccountId =/= MasterAccountId ->
             lager:debug("account ~s is mute, checking reseller", [AccountId]),
             is_account_notice_enabled(
               wh_services:find_reseller_id(AccountId)
               ,TemplateId
               ,MasterAccountId
-             )
+             );
+        _Otherwise ->
+            lager:debug("master account is mute, ~s not enabled", [TemplateId]),
+            'false'
     end.
 
 -spec is_notice_enabled_default(ne_binary()) -> boolean().
 is_notice_enabled_default(Key) ->
-    whapps_config:get_is_true(?MOD_CONFIG_CAT(Key), <<"default_enabled">>, 'false').
+    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
+    is_account_notice_enabled(MasterAccountId, Key, MasterAccountId).
 
 -spec find_addresses(wh_json:object(), wh_json:object(), ne_binary()) ->
                             email_map().
