@@ -903,34 +903,40 @@ should_handle_notification_for_account(AccountId, ResellerId) ->
 -define(MOD_CONFIG_CAT(Key), <<(?NOTIFY_CONFIG_CAT)/binary, ".", Key/binary>>).
 
 -spec is_notice_enabled(api_binary(), wh_json:object(), ne_binary()) -> boolean().
-is_notice_enabled('undefined', _ApiJObj, NoticeKey) ->
-    is_notice_enabled_default(NoticeKey);
-is_notice_enabled(AccountId, ApiJObj, NoticeKey) ->
+is_notice_enabled('undefined', _ApiJObj, TemplateKey) ->
+    is_notice_enabled_default(TemplateKey);
+is_notice_enabled(AccountId, ApiJObj, TemplateKey) ->
     case wh_json:is_true(<<"Preview">>, ApiJObj, 'false') of
         'true' -> 'true';
         'false' ->
             {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
-            is_account_notice_enabled(AccountId, NoticeKey, MasterAccountId)
+            is_account_notice_enabled(AccountId, TemplateKey, MasterAccountId)
     end.
 
 -spec is_account_notice_enabled(api_binary(), ne_binary(), ne_binary()) -> boolean().
-is_account_notice_enabled('undefined', _NoticeKey, _MasterAccountId) ->
-    'false';
-is_account_notice_enabled(MasterAccountId, NoticeKey, MasterAccountId) ->
+is_account_notice_enabled('undefined', TemplateKey, _MasterAccountId) ->
+    lager:debug("no account id to check, checking system config for ~s", [TemplateKey]),
+    is_notice_enabled_default(TemplateKey);
+is_account_notice_enabled(MasterAccountId, TemplateKey, MasterAccountId) ->
     lager:debug("reached master account ~s, checking sytem config for ~s"
-                ,[MasterAccountId, NoticeKey]
+                ,[MasterAccountId, TemplateKey]
                ),
-    is_notice_enabled_default(NoticeKey);
-is_account_notice_enabled(AccountId, NoticeKey, MasterAccountId) ->
+    is_notice_enabled_default(TemplateKey);
+is_account_notice_enabled(AccountId, TemplateKey, MasterAccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    NoticeId = <<"notification.", NoticeKey/binary>>,
+    TemplateId = template_doc_id(TemplateKey),
 
-    case couch_mgr:open_cache_doc(AccountDb, NoticeId) of
-        {'ok', NoticeJObj} ->
-            wh_json:is_true(<<"enabled">>, NoticeJObj);
+    case couch_mgr:open_cache_doc(AccountDb, TemplateId) of
+        {'ok', TemplateJObj} ->
+            lager:debug("account ~s has ~s, checking if enabled", [AccountId, TemplateId]),
+            kz_notification:is_enabled(TemplateJObj);
         _Otherwise ->
             lager:debug("account ~s is mute, checking reseller", [AccountId]),
-            is_account_notice_enabled(wh_services:find_reseller_id(AccountId), NoticeKey, MasterAccountId)
+            is_account_notice_enabled(
+              wh_services:find_reseller_id(AccountId)
+              ,TemplateId
+              ,MasterAccountId
+             )
     end.
 
 -spec is_notice_enabled_default(ne_binary()) -> boolean().
