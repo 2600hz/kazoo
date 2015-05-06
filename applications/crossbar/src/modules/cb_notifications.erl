@@ -237,7 +237,36 @@ validate_notification(Context, Id, ?HTTP_GET) ->
 validate_notification(Context, Id, ?HTTP_POST) ->
     maybe_update(Context, Id);
 validate_notification(Context, Id, ?HTTP_DELETE) ->
+    validate_delete_notification(Context, Id).
+
+-spec validate_delete_notification(cb_context:context(), path_token()) ->
+                                          cb_context:context().
+-spec validate_delete_notification(cb_context:context(), path_token(), ne_binary(), ne_binary()) ->
+                                          cb_context:context().
+validate_delete_notification(Context, Id) ->
+    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
+    validate_delete_notification(Context, Id, MasterAccountId, cb_context:account_id(Context)).
+
+validate_delete_notification(Context, Id, MasterAccountId, MasterAccountId) ->
+    disallow_delete(Context, kz_notification:resp_id(Id));
+validate_delete_notification(Context, Id, _MasterAccountId, 'undefined') ->
+    disallow_delete(Context, kz_notification:resp_id(Id));
+validate_delete_notification(Context, Id, _MasterAccuontId, _AccountId) ->
+    lager:debug("trying to remove notification from account ~s", [_AccountId]),
     read(Context, Id, 'account').
+
+-spec disallow_delete(cb_context:context(), path_token()) -> cb_context:context().
+disallow_delete(Context, Id) ->
+    lager:debug("deleting the master template is disallowed"),
+    cb_context:add_validation_error(Id
+                                    ,<<"disallow">>
+                                    ,wh_json:from_list(
+                                       [{<<"message">>, <<"Top-level notification template cannot be deleted">>}
+                                        ,{<<"target">>, Id}
+                                       ]
+                                      )
+                                    ,Context
+                                   ).
 
 %%--------------------------------------------------------------------
 %% @public
