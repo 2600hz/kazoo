@@ -192,20 +192,24 @@ create(CustomerId) ->
 %%--------------------------------------------------------------------
 -spec update(customer()) -> customer().
 update(#bt_customer{id=CustomerId}=Customer) ->
+    %% Note: coming from cb_braintree, Customer only has (unsynced) card data
+    OldSubscriptions = get_subscriptions(find(Customer)),
+
     Url = url(CustomerId),
     Request = record_to_xml(Customer, 'true'),
     Xml = braintree_request:put(Url, Request),
     UpdateRecord = xml_to_record(Xml),
 
-    LatestCC = braintree_card:delete_unused_cards(get_cards(UpdateRecord)),
-    NewPT = braintree_card:default_payment_token(LatestCC),
-
-    NewSubs = [maybe_update_subscription(NewPT, Sub)
-               || Sub <- get_subscriptions(UpdateRecord)
-              ],
+    LatestCC = braintree_card:default_payment_token(get_cards(UpdateRecord)),
+    NewPaymentToken = braintree_card:default_payment_token(LatestCC),
+    NewSubscriptions = [maybe_update_subscription(NewPaymentToken, Sub)
+                        || Sub <- OldSubscriptions
+                       ],
+    %% Note: delete unused cards *after* updating transactions
+    braintree_card:delete_unused_cards(get_cards(UpdateRecord)),
 
     UpdateRecord#bt_customer{credit_cards = LatestCC
-                             ,subscriptions = NewSubs
+                             ,subscriptions = NewSubscriptions
                             }.
 
 -spec maybe_update_subscription(api_binary(), braintree_subscription:subscription()) ->
@@ -214,9 +218,9 @@ maybe_update_subscription(NewPT, Sub) ->
     case braintree_subscription:get_payment_token(Sub) of
         NewPT when NewPT =/= 'undefined' -> Sub;
         _OldPT ->
-            %% Card updated -> Subscription has been cancelled
-            NewSub = braintree_subscription:new(Sub, NewPT),
-            braintree_subscription:update(NewSub)
+            NewSub = braintree_subscription:update_payment_token(Sub, NewPT),
+            FirstBillingDate = braintree_subscription:get_next_billing_date(Sub),
+            braintree_subscription:update(NewSub, FirstBillingDate)
     end.
 
 %%--------------------------------------------------------------------

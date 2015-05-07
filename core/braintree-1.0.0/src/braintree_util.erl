@@ -53,6 +53,8 @@ props_to_xml([], Xml) ->
     Xml;
 props_to_xml([{_, 'undefined'}|T], Xml) ->
     props_to_xml(T, Xml);
+props_to_xml([{_, _, 'undefined'}|T], Xml) ->
+    props_to_xml(T, Xml);
 props_to_xml([{_, []}|T], Xml) ->
     props_to_xml(T, Xml);
 
