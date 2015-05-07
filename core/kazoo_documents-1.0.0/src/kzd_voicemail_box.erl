@@ -20,6 +20,7 @@
 -export_type([doc/0]).
 
 -define(KEY_NOTIFY_EMAILS, <<"notify_email_addresses">>).
+-define(KEY_OLD_NOTIFY_EMAILS, <<"notify_email_address">>).
 -define(KEY_OWNER_ID, <<"owner_id">>).
 
 -spec notification_emails(doc()) -> ne_binaries().
@@ -27,7 +28,10 @@
 notification_emails(Box) ->
     notification_emails(Box, []).
 notification_emails(Box, Default) ->
-    wh_json:get_value(?KEY_NOTIFY_EMAILS, Box, Default).
+    case wh_json:get_value(?KEY_NOTIFY_EMAILS, Box) of
+        'undefined' -> wh_json:get_value(?KEY_OLD_NOTIFY_EMAILS, Box, Default);
+        Emails -> Emails
+    end.
 
 -spec set_notification_emails(doc(), api_binaries()) -> doc().
 set_notification_emails(Box, 'undefined') ->
