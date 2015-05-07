@@ -320,18 +320,40 @@ test_for_low_balance(AccountId, AccountDb, JObj) ->
         'false' ->
             maybe_reset_low_balance(AccountId, AccountDb, JObj);
         'true' ->
-            case wh_topup:init(AccountId, CurrentBalance) of
+            topup_account(AccountId, AccountDb, JObj, CurrentBalance)
+    end.
+
+-spec topup_account(ne_binary(), ne_binary()
+                    ,wh_json:object(), integer()) -> 'ok'.
+topup_account(AccountId, AccountDb, JObj, CurrentBalance) ->
+    case wh_topup:init(AccountId, CurrentBalance) of
+        'ok' ->
+            lager:debug("topup successful for ~s", [AccountId]),
+            Props = [{<<"Account-ID">>, AccountId}
+                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                    ],
+            case
+                whapps_util:amqp_pool_send(
+                    Props
+                    , fun wapi_notifications:publish_topup/1
+                )
+            of
                 'ok' ->
-                    Props = [{<<"Account-ID">>, AccountId}],
-                    whapps_util:amqp_pool_request(
-                        Props
-                       ,fun wapi_notifications:publish_topup/1
-                       ,fun wapi_notifications:topup_v/1
-                    ),
-                    'ok';
-                'error' ->
-                    maybe_handle_low_balance(CurrentBalance, AccountId, AccountDb, JObj)
-            end
+                    lager:debug("topup notification sent for ~s", [AccountId]);
+                {'error', _R} ->
+                    lager:error(
+                        "failed to send topup notification for ~s : ~p"
+                        ,[AccountId, _R]
+                    )
+            end;
+        'error' ->
+            lager:error("topup failed for ~s", [AccountId]),
+            maybe_handle_low_balance(
+                CurrentBalance
+                ,AccountId
+                ,AccountDb
+                ,JObj
+            )
     end.
 
 -spec maybe_reset_low_balance(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
