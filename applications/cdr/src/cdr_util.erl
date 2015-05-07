@@ -49,7 +49,7 @@ save_cdr(AccountMODb, Doc, Retries) ->
     case couch_mgr:save_doc(AccountMODb, Doc) of
         {'ok', _}-> 'ok';
         {'error', 'not_found'} ->
-            _ = couch_mgr:db_create(AccountMODb),
+            _ = kazoo_modb:create(AccountMODb),
             save_cdr(AccountMODb, Doc, Retries + 1);
         {'error', 'conflict'} -> 'ok';
         {'error', _E} ->
