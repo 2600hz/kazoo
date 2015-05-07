@@ -38,11 +38,13 @@ handle(Data, Call) ->
     QueueId = wh_json:get_value(<<"id">>, Data),
     lager:info("sending call to queue ~s", [QueueId]),
 
+    Priority = lookup_priority(Data, Call),
+
     MemberCall = props:filter_undefined(
                    [{<<"Account-ID">>, whapps_call:account_id(Call)}
                     ,{<<"Queue-ID">>, QueueId}
                     ,{<<"Call">>, whapps_call:to_json(Call)}
-                    ,{<<"Member-Priority">>, wh_json:get_value(<<"priority">>, Data)}
+                    ,{<<"Member-Priority">>, Priority}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ]),
 
@@ -65,6 +67,16 @@ handle(Data, Call) ->
                                   }
                       ,is_queue_full(MaxQueueSize, CurrQueueSize)
                      ).
+
+-spec lookup_priority(wh_json:object(), whapps_call:call()) -> api_binary().
+lookup_priority(Data, Call) ->
+    FromData = wh_json:get_ne_binary_value(<<"priority">>, Data),
+    FromCall = whapps_call:custom_channel_var(<<"Call-Priority">>, Call),
+    case {FromData, FromCall} of
+        {FromData, _} when is_binary(FromData) -> FromData;
+        {_, FromCall} when is_binary(FromCall) -> FromCall;
+        _ -> 'undefined'
+    end.
 
 -spec maybe_enter_queue(member_call(), boolean()) -> any().
 maybe_enter_queue(#member_call{call=Call}, 'true') ->
