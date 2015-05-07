@@ -61,14 +61,16 @@ handle_system_alert(JObj, _Props) ->
     case wh_json:get_value([<<"Details">>, <<"Format">>], JObj) of
         'undefined' -> handle_req_as_email(JObj, 'true');
         _Format ->
-            lager:debug("using format ~s", [_Format]),
+            lager:debug("using format string '~s'", [_Format]),
             UseEmail = whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"enable_email_alerts">>, 'true'),
             Url = whapps_config:get_string(?MOD_CONFIG_CAT, <<"subscriber_url">>),
             handle_req_as_email(JObj, UseEmail),
             handle_req_as_http(JObj, Url, UseEmail)
     end.
 
--spec handle_req_as_http(wh_json:object(), ne_binary(), boolean()) -> 'ok'.
+-spec handle_req_as_http(wh_json:object(), api_binary(), boolean()) -> 'ok'.
+handle_req_as_http(JObj, 'undefined', UseEmail) ->
+    handle_req_as_email(JObj, UseEmail);
 handle_req_as_http(JObj, Url, UseEmail) ->
     Headers = [{"Content-Type", "application/json"}],
     Encoded = wh_json:encode(JObj),
@@ -87,18 +89,27 @@ handle_req_as_email(_JObj, 'false') ->
 handle_req_as_email(JObj, 'true') ->
     %% Gather data for template
     DataJObj = wh_json:normalize(JObj),
-    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
+    AccountId = find_account_id(DataJObj),
 
-    case teletype_util:should_handle_notification(DataJObj)
-        andalso teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID)
+    case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID)
     of
-        'false' -> lager:debug("notification handling not configured for this account");
-        'true' -> process_req(DataJObj)
+        'false' -> lager:debug("notification handling not configured for this account ~s", [AccountId]);
+        'true' -> process_req(wh_json:set_value(<<"account_id">>, AccountId, DataJObj))
+    end.
+
+-spec find_account_id(wh_json:object()) -> ne_binary().
+find_account_id(DataJObj) ->
+    case wh_json:get_value(<<"account_id">>, DataJObj) of
+        'undefined' ->
+            {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
+            MasterAccountId;
+        AccountId -> AccountId
     end.
 
 -spec process_req(wh_json:object()) -> 'ok'.
 -spec process_req(wh_json:object(), wh_proplist()) -> 'ok'.
 process_req(DataJObj) ->
+    lager:debug("template is enabled for account, fetching templates for rendering"),
     %% Load templates
     process_req(DataJObj, teletype_util:fetch_templates(?TEMPLATE_ID, DataJObj)).
 

@@ -632,6 +632,9 @@ fetch_templates(_TemplateId, 'undefined') ->
 fetch_templates(TemplateId, <<_/binary>> = AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     DocId = template_doc_id(TemplateId),
+
+    lager:debug("searching account ~s for template ~s", [AccountId, DocId]),
+
     case couch_mgr:open_cache_doc(AccountDb, DocId) of
         {'ok', TemplateJObj} ->
             fetch_templates(DocId
@@ -639,6 +642,7 @@ fetch_templates(TemplateId, <<_/binary>> = AccountId) ->
                             ,wh_doc:attachments(TemplateJObj, wh_json:new())
                            );
         {'error', 'not_found'} ->
+            lager:debug("didn't find ~s in account ~s, checking reseller", [DocId, AccountId]),
             maybe_fetch_reseller_templates(TemplateId, AccountId);
         {'error', _E} ->
             lager:debug("failed to fetch template ~s from ~s", [TemplateId, AccountId]),
@@ -651,7 +655,9 @@ fetch_templates(TemplateId, DataJObj) ->
            ])
     of
         [] -> fetch_templates(TemplateId, find_account_id(DataJObj));
-        Templates -> Templates
+        Templates ->
+            lager:debug("preview API has templates defined"),
+            Templates
     end.
 
 fetch_templates(TemplateId, AccountDb, Attachments) ->
@@ -674,6 +680,7 @@ find_account_id(JObj) ->
     wh_json:get_first_defined([<<"account_id">>
                                ,[<<"account">>, <<"_id">>]
                                ,<<"pvt_account_id">>
+                               ,<<"Account-ID">>
                               ]
                               ,JObj
                              ).
@@ -724,6 +731,7 @@ maybe_fetch_reseller_templates(TemplateId, AccountId) ->
 fetch_template(TemplateId, AccountDb, {AName, Properties}) ->
     case couch_mgr:fetch_attachment(AccountDb, TemplateId, AName) of
         {'ok', Contents} ->
+            lager:debug("found template attachment ~s.~s", [TemplateId, AName]),
             {wh_json:get_value(<<"content_type">>, Properties), Contents};
         {'error', _E} ->
             lager:debug("failed to load attachment ~s from ~s(~s): ~p", [AName, TemplateId, AccountDb, _E]),
