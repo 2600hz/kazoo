@@ -82,7 +82,7 @@ handle_full_voicemail(JObj, _Props) ->
            ,{<<"owner">>, User}
            ,{<<"to">>, Emails}
           ]
-                  ,DataJObj
+          ,DataJObj
          ),
     process_req(wh_json:merge_jobjs(DataJObj, ReqData)).
 
