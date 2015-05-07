@@ -36,6 +36,8 @@
 
          ,get_balance_threshold/1
          ,get_topup_amount/1
+
+         ,stop_processing/2
         ]).
 
 -include("teletype.hrl").
@@ -999,7 +1001,7 @@ find_address(DataJObj, _TemplateMetaJObj, ConfigCat, Key, ?EMAIL_ADMINS) ->
 -spec find_address(wh_json:key(), wh_json:object(), wh_json:object()) -> api_binaries().
 find_address(Key, DataJObj, TemplateMetaJObj) ->
     case wh_json:get_ne_value(Key, DataJObj) of
-        'undefined' -> wh_json:get_value(Key, TemplateMetaJObj);
+        'undefined' -> wh_json:get_ne_value(Key, TemplateMetaJObj);
         Emails -> Emails
     end.
 
@@ -1023,9 +1025,11 @@ find_default(ConfigCat, Key) ->
         Emails -> Emails
     end.
 
--spec open_doc(ne_binary(), ne_binary(), wh_json:object()) ->
+-spec open_doc(ne_binary(), api_binary(), wh_json:object()) ->
                       {'ok', wh_json:object()} |
                       {'error', _}.
+open_doc(Type, 'undefined', DataJObj) ->
+    maybe_load_preview(Type, {'error', 'empty_doc_id'}, is_preview(DataJObj));
 open_doc(Type, DocId, DataJObj) ->
     AccountDb = find_account_db(Type, DataJObj),
     case couch_mgr:open_doc(AccountDb, DocId) of
@@ -1036,9 +1040,9 @@ open_doc(Type, DocId, DataJObj) ->
 
 -type read_file_error() :: file:posix() | 'badarg' | 'terminated' | 'system_limit'.
 
--spec maybe_load_preview(ne_binary(), {'error', _}, boolean()) ->
+-spec maybe_load_preview(ne_binary(), E, boolean()) ->
                                 {'ok', wh_json:object()} |
-                                {'error', read_file_error()}.
+                                {'error', read_file_error()} | E.
 maybe_load_preview(_Type, Error, 'false') ->
     Error;
 maybe_load_preview(Type, _Error, 'true') ->
@@ -1084,3 +1088,8 @@ get_topup_amount(DataJObj) ->
     Key = [<<"account">>, <<"topup">>, <<"amount">>],
     Dollars = wh_json:get_float_value(Key, DataJObj, Default),
     wht_util:pretty_print_dollars(Dollars).
+
+-spec stop_processing(string(), list()) -> no_return().
+stop_processing(Format, Args) ->
+    lager:debug(Format, Args),
+    throw('stop').

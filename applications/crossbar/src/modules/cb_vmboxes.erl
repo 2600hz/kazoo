@@ -22,6 +22,8 @@
          ,patch/2
          ,delete/2, delete/4
          ,cleanup_heard_voicemail/1
+
+         ,migrate/1
         ]).
 
 -include("../crossbar.hrl").
@@ -244,8 +246,25 @@ validate_unique_vmbox(VMBoxId, Context, _AccountDb) ->
 
 -spec check_vmbox_schema(api_binary(), cb_context:context()) -> cb_context:context().
 check_vmbox_schema(VMBoxId, Context) ->
+    Context1 = maybe_migrate_notification_emails(Context),
     OnSuccess = fun(C) -> on_successful_validation(VMBoxId, C) end,
-    cb_context:validate_request_data(<<"vmboxes">>, Context, OnSuccess).
+    cb_context:validate_request_data(<<"vmboxes">>, Context1, OnSuccess).
+
+-spec maybe_migrate_notification_emails(cb_context:context()) -> cb_context:context().
+maybe_migrate_notification_emails(Context) ->
+    ReqData = cb_context:req_data(Context),
+    case maybe_migrate_vm_box(ReqData) of
+        {'true', ReqData1} ->
+            cb_context:setters(Context
+                               ,[{fun cb_context:set_req_data/2, ReqData1}
+                                 ,{fun cb_context:add_resp_header/3
+                                   ,<<"Warning">>
+                                   ,<<"214 Transformation applied: attribute notify_email_address replaced">>
+                                  }
+                                ]
+                              );
+        'false' -> Context
+    end.
 
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
@@ -593,3 +612,49 @@ delete_media(AccountDb, MediaId) ->
     couch_mgr:ensure_saved(AccountDb
                            ,wh_doc:set_soft_deleted(JObj, 'true')
                           ).
+
+-spec maybe_migrate_vm_box(kzd_voicemail_box:doc()) ->
+                                  {'true', kzd_voicemail_box:doc()} |
+                                  'false'.
+maybe_migrate_vm_box(Box) ->
+    case wh_json:get_value(<<"notify_email_address">>, Box) of
+        'undefined' -> 'false';
+        Emails ->
+            {'true', kzd_voicemail_box:set_notification_emails(Box, Emails)}
+    end.
+
+-spec migrate(ne_binary()) -> 'ok'.
+migrate(Account) ->
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    case couch_mgr:get_results(AccountDb, ?CB_LIST, ['include_docs']) of
+        {'ok', []} -> 'ok';
+        {'error', _E} -> io:format("failed to check account ~s for voicemail boxes: ~p~n", [Account, _E]);
+        {'ok', Boxes} ->
+            maybe_migrate_boxes(AccountDb, Boxes)
+    end.
+
+-spec maybe_migrate_boxes(ne_binary(), wh_json:objects()) -> 'ok'.
+maybe_migrate_boxes(AccountDb, Boxes) ->
+    ToUpdate =
+        lists:foldl(fun(View, Acc) ->
+                            Box = wh_json:get_value(<<"doc">>, View),
+                            case maybe_migrate_vm_box(Box) of
+                                'false' -> Acc;
+                                {'true', Box1} -> [Box1 | Acc]
+                            end
+                    end
+                    ,[]
+                    ,Boxes
+                   ),
+
+    io:format("migrating ~p out of ~p boxes~n", [length(ToUpdate), length(Boxes)]),
+
+    maybe_update_boxes(AccountDb, ToUpdate).
+
+-spec maybe_update_boxes(ne_binary(), wh_json:objects()) -> 'ok'.
+maybe_update_boxes(_AccountDb, []) -> 'ok';
+maybe_update_boxes(AccountDb, Boxes) ->
+    case couch_mgr:save_docs(AccountDb, Boxes) of
+        {'ok', _Saved} -> io:format("  updated ~p boxes in ~s~n", [length(_Saved), AccountDb]);
+        {'error', _E}-> io:format("  failed to update boxes: ~p~n", [_E])
+    end.

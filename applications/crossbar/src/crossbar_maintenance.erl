@@ -91,6 +91,7 @@ migrate_accounts_data([Account|Accounts]) ->
 migrate_account_data(Account) ->
     _ = cb_clicktocall:maybe_migrate_history(Account),
     _ = migrate_ring_group_callflow(Account),
+    _ = cb_vmboxes:migrate(Account),
     'no_return'.
 
 -spec add_missing_modules(atoms(), atoms()) -> 'no_return'.

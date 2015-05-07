@@ -67,18 +67,53 @@ send(JObj, Account) ->
     CustomSubjectTemplate = wh_json:get_value([<<"notifications">>, <<"vm_full">>, <<"email_subject_template">>], Account),
     {'ok', Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
 
-    case get_vm_owner_email(JObj) of
-        'undefined' ->
-            case notify_util:get_rep_email(Account) of
-                'undefined' ->
-                    SysAdminEmail = whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<"">>),
-                    build_and_send_email(TxtBody, HTMLBody, Subject, SysAdminEmail, Props);
-                RepEmail ->
-                    build_and_send_email(TxtBody, HTMLBody, Subject, RepEmail, Props)
-            end;
-        Email ->
-            build_and_send_email(TxtBody, HTMLBody, Subject, Email, Props)
+    AccountDb = wh_json:get_value(<<"Account-DB">>, JObj),
+
+    VMBoxId = wh_json:get_value(<<"Voicemail-Box">>, JObj),
+    lager:debug("loading vm box ~s", [VMBoxId]),
+    {'ok', VMBox} = couch_mgr:open_cache_doc(AccountDb, VMBoxId),
+
+    {'ok', UserJObj} = get_owner(AccountDb, VMBox),
+
+    BoxEmails = kzd_voicemail_box:notification_emails(VMBox),
+    Emails = maybe_add_user_email(BoxEmails
+                                  ,get_user_email(UserJObj, Account)
+                                 ),
+
+    build_and_send_email(TxtBody, HTMLBody, Subject, Emails, Props).
+
+-spec get_user_email(wh_json:object(), wh_json:object()) -> api_binary().
+get_user_email(UserJObj, Account) ->
+    case wh_json:get_first_defined([<<"email">>, <<"username">>], UserJObj) of
+        'undefined' -> get_rep_email(Account);
+        Email -> Email
     end.
+
+-spec get_rep_email(wh_json:object()) -> api_binary().
+get_rep_email(Account) ->
+    case notify_util:get_rep_email(Account) of
+        'undefined' -> get_sys_admin_email();
+        RepEmail -> RepEmail
+    end.
+
+-spec get_sys_admin_email() -> api_binary().
+get_sys_admin_email() ->
+    whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>).
+
+-spec get_owner(ne_binary(), kzd_voicemail_box:doc(), api_binary()) ->
+                       {'ok', kzd_user:doc()}.
+get_owner(AccountDb, VMBox) ->
+    get_owner(AccountDb, VMBox, kzd_voicemail_box:owner_id(VMBox)).
+get_owner(_AccountDb, _VMBox, 'undefined') ->
+    lager:debug("no owner of voicemail box ~s, using empty owner", [wh_doc:id(_VMBox)]),
+    {'ok', wh_json:new()};
+get_owner(AccountDb, _VMBox, OwnerId) ->
+    lager:debug("attempting to load owner: ~s", [OwnerId]),
+    {'ok', _} = couch_mgr:open_cache_doc(AccountDb, OwnerId).
+
+-spec maybe_add_user_email(ne_binaries(), api_binary()) -> ne_binaries().
+maybe_add_user_email(BoxEmails, 'undefined') -> BoxEmails;
+maybe_add_user_email(BoxEmails, UserEmail) -> [UserEmail | BoxEmails].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -100,22 +135,6 @@ create_template_props(JObj) ->
                         ]}
      ,{<<"custom">>, notify_util:json_to_template_props(JObj)}
     ].
-
--spec get_vm_owner_email(wh_json:object()) -> api_binary().
-get_vm_owner_email(JObj) ->
-    case get_vm_doc(JObj) of
-        'error' -> 'undefined';
-        VMDoc ->
-            AccoundDB = wh_json:get_value(<<"Account-DB">>, JObj),
-            OwnerId = wh_json:get_value(<<"owner_id">>, VMDoc),
-            case couch_mgr:open_cache_doc(AccoundDB, OwnerId) of
-                {'ok', UserDoc} ->
-                    wh_json:get_first_defined([<<"email">>, <<"username">>], UserDoc);
-                {'error', _E} ->
-                    lager:info("could not open doc ~p in ~p", [OwnerId, AccoundDB]),
-                    'undefined'
-            end
-    end.
 
 -spec get_vm_name(wh_json:object()) -> binary().
 get_vm_name(JObj) ->
