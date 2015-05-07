@@ -187,5 +187,16 @@
       },
       "default": []
     }
+      ,"notify_email_addresses":{
+          "type":"array"
+          ,"items":{
+              "type":"string"
+              ,"format":"email"
+          }
+          ,"required":false
+          ,"default":[]
+          ,"description":"List of email addresses to send notifications to (in addition to owner's email, if any)"
+          ,"name":"Email Addresses"
+      }
   }
 }
