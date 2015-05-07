@@ -226,24 +226,15 @@ terminate(Reason, State) ->
 %%% Internal Functions %%%
 
 -spec handle_message(state()) -> 'ok'.
-handle_message(#state{errors=[_Error | _Errors]
-                      ,faxbox='undefined'
-                     }=State) ->
-    maybe_system_report(State);
-handle_message(#state{errors = []
-                      ,faxbox='undefined'
-                     }=State) ->
-    maybe_system_report(State#state{errors=[<<"no faxbox">>]});
-handle_message(State) -> maybe_faxbox_save(State).
-
--spec maybe_faxbox_save(state()) -> 'ok'.
-maybe_faxbox_save(#state{errors=[_Error | _Errors]}=State) ->
+handle_message(#state{errors=[_Error | _Errors]}=State) ->
     maybe_faxbox_log(State);
-maybe_faxbox_save(#state{docs=[]}=State) ->
+handle_message(#state{docs=[]}=State) ->
     maybe_faxbox_log(State#state{errors=[<<"no fax documents to save">>]});
-maybe_faxbox_save(#state{filename='undefined'}=State) ->
+handle_message(#state{filename='undefined'}=State) ->
     maybe_faxbox_log(State#state{errors=[<<"no fax attachment to save">>]});
-maybe_faxbox_save(#state{filename=Filename
+handle_message(#state{errors=[], faxbox='undefined'}=State) ->
+    maybe_faxbox_log(State#state{errors=[<<"no previous errors but no faxbox doc">>]});
+handle_message(#state{filename=Filename
                          ,content_type=CT
                          ,docs=Docs
                          ,errors=[]
