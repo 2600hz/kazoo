@@ -67,25 +67,28 @@ handle_full_voicemail(JObj, _Props) ->
     DataJObj = wh_json:normalize(JObj),
     AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
 
-    case teletype_util:should_handle_notification(DataJObj)
-        andalso teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID)
-    of
-        'false' -> lager:debug("notification not enabled for account ~s", [AccountId]);
-        'true' ->
-            lager:debug("notification enabled for account ~s", [AccountId]),
+    teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID)
+        orelse teletype_util:stop_processing("template ~s not enabled for account ~s", [?TEMPLATE_ID, AccountId]),
 
-            VMBox = get_vm_box(AccountId, DataJObj),
-            User = get_vm_box_owner(VMBox, DataJObj),
-            ReqData =
-                wh_json:set_values(
-                    [{<<"voicemail">>, VMBox}
-                      ,{<<"owner">>, User}
-                      ,{<<"to">>, [wh_json:get_ne_value(<<"email">>, User)]}
-                    ]
-                    ,DataJObj
-                ),
-            process_req(wh_json:merge_jobjs(DataJObj, ReqData))
-    end.
+    VMBox = get_vm_box(AccountId, DataJObj),
+    User = get_vm_box_owner(VMBox, DataJObj),
+
+    BoxEmails = kzd_voicemail_box:notification_emails(VMBox),
+    Emails = maybe_add_user_email(BoxEmails, kzd_user:email(User)),
+
+    ReqData =
+        wh_json:set_values(
+          [{<<"voicemail">>, VMBox}
+           ,{<<"owner">>, User}
+           ,{<<"to">>, Emails}
+          ]
+                  ,DataJObj
+         ),
+    process_req(wh_json:merge_jobjs(DataJObj, ReqData)).
+
+-spec maybe_add_user_email(ne_binaries(), api_binary()) -> ne_binaries().
+maybe_add_user_email(BoxEmails, 'undefined') -> BoxEmails;
+maybe_add_user_email(BoxEmails, UserEmail) -> [UserEmail | BoxEmails].
 
 -spec get_vm_box(ne_binary(), wh_json:object()) -> wh_json:object().
 get_vm_box(AccountId, JObj) ->
