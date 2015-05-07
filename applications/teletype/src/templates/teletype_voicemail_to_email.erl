@@ -59,11 +59,6 @@ init() ->
                                                ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                               ]).
 
--spec stop_processing(string(), list()) -> no_return().
-stop_processing(Format, Args) ->
-    lager:debug(Format, Args),
-    throw('stop').
-
 -spec handle_new_voicemail(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_new_voicemail(JObj, _Props) ->
     'true' = wapi_notifications:voicemail_v(JObj),
@@ -75,7 +70,7 @@ handle_new_voicemail(JObj, _Props) ->
     AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
 
     teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID)
-        orelse stop_processing("template ~s not enabled for account ~s", [?TEMPLATE_ID, AccountId]),
+        orelse teletype_util:stop_processing("template ~s not enabled for account ~s", [?TEMPLATE_ID, AccountId]),
 
     {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
 
@@ -90,7 +85,7 @@ handle_new_voicemail(JObj, _Props) ->
     %% or If the voicemail notification is enabled on the user, continue processing
     %% otherwise stop processing
     (BoxEmails =/= [] orelse kzd_user:voicemail_notification_enabled(UserJObj))
-        orelse stop_processing("box ~s has no emails or owner doesn't want emails", [VMBoxId]),
+        orelse teletype_util:stop_processing("box ~s has no emails or owner doesn't want emails", [VMBoxId]),
 
     Emails = maybe_add_user_email(BoxEmails, kzd_user:email(UserJObj)),
 

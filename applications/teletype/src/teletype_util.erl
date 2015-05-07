@@ -36,6 +36,8 @@
 
          ,get_balance_threshold/1
          ,get_topup_amount/1
+
+         ,stop_processing/2
         ]).
 
 -include("teletype.hrl").
@@ -1078,3 +1080,8 @@ get_topup_amount(DataJObj) ->
     Key = [<<"account">>, <<"topup">>, <<"amount">>],
     Dollars = wh_json:get_float_value(Key, DataJObj, Default),
     wht_util:pretty_print_dollars(Dollars).
+
+-spec stop_processing(string(), list()) -> no_return().
+stop_processing(Format, Args) ->
+    lager:debug(Format, Args),
+    throw('stop').
