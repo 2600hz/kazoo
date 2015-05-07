@@ -100,8 +100,13 @@ deregister(LastReg, Endpoint, Account) ->
              ],
     wh_amqp_worker:cast(Notify, fun wapi_notifications:publish_deregister/1).
 
-low_balance(_Account, _Credit) ->
-    'ok'.
+-spec low_balance(ne_binary(), float() | integer() | ne_binary()) -> 'ok'.
+low_balance(AccountId, Credit) ->
+    Req = [{<<"Account-ID">>, AccountId}
+           ,{<<"Current-Balance">>, Credit}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    wh_amqp_worker:cast(Req, fun wapi_notifications:publish_low_balance/1).
 
 new_account(_User, _Account) ->
     'ok'.
