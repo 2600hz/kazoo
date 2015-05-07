@@ -275,16 +275,14 @@ maybe_system_report(State) ->
     end.
 
 -spec maybe_faxbox_log(state()) -> 'ok'.
-maybe_faxbox_log(#state{faxbox='undefined', account_id='undefined'}=State) ->
-     maybe_system_report(State);
+maybe_faxbox_log(#state{account_id='undefined'}=State) ->
+    maybe_system_report(State);
 maybe_faxbox_log(#state{faxbox='undefined', account_id=AccountId}=State) ->
-     maybe_faxbox_log(AccountId, wh_json:new(), State);
-maybe_faxbox_log(#state{faxbox=JObj}=State) ->
-    AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
-     maybe_faxbox_log(AccountId, JObj, State).
+    maybe_faxbox_log(AccountId, wh_json:new(), State);
+maybe_faxbox_log(#state{faxbox=JObj, account_id=AccountId}=State) ->    
+    maybe_faxbox_log(AccountId, JObj, State).
 
--spec maybe_faxbox_log(api_binary(), wh_json:object(), state()) -> 'ok'.
-maybe_faxbox_log('undefined', _, State) -> maybe_system_report(State);
+-spec maybe_faxbox_log(ne_binary(), wh_json:object(), state()) -> 'ok'.
 maybe_faxbox_log(AccountId, JObj, State) ->
     case wh_json:is_true(<<"log_errors">>, JObj, 'false')
         orelse ( whapps_account_config:get_global(AccountId, ?CONFIG_CAT, <<"log_faxbox_errors">>, 'true')
@@ -307,8 +305,7 @@ system_report(#state{errors=[Error | _]}=State) ->
     wh_amqp_worker:cast(Notify, fun wapi_notifications:publish_system_alert/1).
 
 -spec faxbox_log(state()) -> 'ok'.
-faxbox_log(#state{faxbox=JObj}=State) ->
-    AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
+faxbox_log(#state{account_id=AccountId}=State) ->
     AccountDb = kazoo_modb:get_modb(AccountId),
     Doc = wh_json:normalize(
             wh_json:from_list(
@@ -344,13 +341,13 @@ to_proplist(#state{}=State) ->
        ,{<<"Content-Type">>, State#state.content_type}
        ,{<<"Filename">>, State#state.filename}
        ,{<<"Errors">>, State#state.errors}
+       ,{<<"Account-ID">>, State#state.account_id}
        | to_proplist(State#state.faxbox)
       ]);
 to_proplist('undefined') -> [];
 to_proplist(JObj) ->
     props:filter_undefined(
       [{<<"FaxBox-ID">>, wh_json:get_value(<<"_id">>, JObj)}
-       ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, JObj)}
       ]
      ).
 
@@ -362,6 +359,7 @@ reset(State) ->
                 ,faxbox = 'undefined'
                 ,original_number = 'undefined'
                 ,number = 'undefined'
+                ,account_id = 'undefined'
                }.
 
 -spec check_faxbox(state()) ->
@@ -466,7 +464,10 @@ match(Address, Element) ->
 maybe_faxbox(#state{faxbox_email=Domain}=State) ->
     ViewOptions = [{'key', Domain}, 'include_docs'],
     case couch_mgr:get_results(?WH_FAXES_DB, <<"faxbox/email_address">>, ViewOptions) of
-        {'ok', [JObj]} -> maybe_faxbox_owner(State#state{faxbox=wh_json:get_value(<<"doc">>,JObj)});
+        {'ok', [JObj]} ->
+            FaxBoxDoc= wh_json:get_value(<<"doc">>,JObj),
+            AccountId = wh_json:get_value(<<"pvt_account_id">>,JObj),
+            maybe_faxbox_owner(State#state{faxbox=FaxBoxDoc, account_id=AccountId});
         _ -> maybe_faxbox_domain(State)
     end.
 
