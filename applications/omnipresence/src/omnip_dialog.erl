@@ -297,7 +297,7 @@ handle_update(JObj, State, From, To, Expires) ->
                 };
             _Direction ->
                 App = wh_json:get_value(<<"App-Name">>, JObj),
-                ToURI = build_update_to_uri(State, App, From, Cookie),
+                ToURI = build_update_to_uri(State, App, From, ToRealm, Cookie),
                 {To, props:filter_undefined(
                        [{<<"From">>, <<"sip:", To/binary>>}
                         ,{<<"From-User">>, ToUsername}
@@ -328,12 +328,12 @@ handle_update(JObj, State, From, To, Expires) ->
         end,
     maybe_send_update(User, Props).
 
--spec build_update_to_uri(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
-build_update_to_uri(?PRESENCE_RINGING, <<"park">>, _From, Cookie) ->
-    <<"sip:kfp+", Cookie/binary>>;
-build_update_to_uri(?PRESENCE_RINGING, _, _From, Cookie) ->
-    <<"sip:kfp+", Cookie/binary>>;
-build_update_to_uri(_State, _App, From, _Cookie) ->
+-spec build_update_to_uri(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
+build_update_to_uri(?PRESENCE_RINGING, <<"park">>, _From, Realm, Cookie) ->
+    <<"sip:kfp+", Cookie/binary, "@", Realm/binary>>;
+build_update_to_uri(?PRESENCE_RINGING, _, _From, Realm, Cookie) ->
+    <<"sip:kfp+", Cookie/binary, "@", Realm/binary>>;
+build_update_to_uri(_State, _App, From, _Realm, _Cookie) ->
     <<"sip:", From/binary>>.
 
 -spec maybe_send_update(ne_binary(), wh_proplist()) -> 'ok'.
