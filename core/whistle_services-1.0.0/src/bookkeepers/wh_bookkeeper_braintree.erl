@@ -294,7 +294,12 @@ set_metadata(BTTransaction, Transaction) ->
     wh_transaction:set_metadata(BTTransaction, Transaction).
 
 -spec set_reason(wh_json:object(), wh_transaction:transaction()) -> wh_transaction:transaction().
+-spec set_reason(wh_json:object(), wh_transaction:transaction(), pos_integer() | 'undefined') -> wh_transaction:transaction().
 set_reason(BTTransaction, Transaction) ->
+    Code = wh_json:get_integer_value(<<"purchase_order">>, BTTransaction),
+    set_reason(BTTransaction, Transaction, Code).
+
+set_reason(BTTransaction, Transaction, 'undefined') ->
     IsApi = wh_json:is_true(<<"is_api">>, BTTransaction),
     IsAutomatic = wh_json:is_true(<<"is_automatic">>, BTTransaction),
     IsRecurring = wh_json:is_true(<<"is_recurring">>, BTTransaction),
@@ -309,7 +314,9 @@ set_reason(BTTransaction, Transaction) ->
             wh_transaction:set_reason(<<"manual_addition">>, Transaction);
         'true' ->
             wh_transaction:set_reason(<<"unknown">>, Transaction)
-    end.
+    end;
+set_reason(_BTTransaction, Transaction, Code) ->
+    wh_transaction:set_code(Code, Transaction).
 
 -spec set_type(wh_json:object(), wh_transaction:transaction()) -> wh_transaction:transaction().
 set_type(BTTransaction, Transaction) ->
