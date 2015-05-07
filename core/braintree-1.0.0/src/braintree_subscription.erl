@@ -20,9 +20,10 @@
 -export([get_discount/2]).
 -export([update_discount_amount/3]).
 -export([get_payment_token/1]).
+-export([update_payment_token/2]).
 -export([find/1]).
 -export([create/1, create/2]).
--export([update/1]).
+-export([update/1, update/2]).
 -export([cancel/1]).
 -export([xml_to_record/1, xml_to_record/2]).
 -export([record_to_xml/1]).
@@ -31,7 +32,7 @@
 -export([increment_addon_quantity/2]).
 -export([update_discount_quantity/3]).
 -export([increment_discount_quantity/2]).
--export([update_payment_token/2]).
+-export([get_next_billing_date/1]).
 
 -import('wh_util', [get_xml_value/2]).
 
@@ -246,9 +247,14 @@ create(Plan, Token) ->
 -spec update(subscription()) -> subscription().
 update(#bt_subscription{create='true'}=Subscription) ->
     create(Subscription);
-update(#bt_subscription{id=SubscriptionId}=Subscription) ->
+update(#bt_subscription{}=Subscription) ->
+    update(Subscription, 'undefined').
+
+-spec update(subscription(), api_binary()) -> subscription().
+update(#bt_subscription{id=SubscriptionId}=Subscription, FirstBillingDate) ->
     Url = url(SubscriptionId),
-    Request = record_to_xml(Subscription, 'true'),
+    Prepared = Subscription#bt_subscription{billing_first_date = FirstBillingDate},
+    Request = record_to_xml(Prepared, 'true'),
     Xml = braintree_request:put(Url, Request),
     xml_to_record(Xml).
 
@@ -427,11 +433,17 @@ update_payment_token(#bt_subscription{}=Subscription, PaymentToken) ->
     Subscription#bt_subscription{payment_token = PaymentToken
                                  ,start_immediately = 'undefined'
                                  ,billing_first_date = Date
-                                 ,billing_dom = 'undefined'
-                                 ,billing_end_date = 'undefined'
-                                 ,billing_start_date = 'undefined'
-                                 ,billing_cycle = 'undefined'
                                 }.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Get the next billing date from a subscription record
+%% @end
+%%--------------------------------------------------------------------
+-spec get_next_billing_date(subscription()) -> api_binary().
+get_next_billing_date(#bt_subscription{next_bill_date=Date}) ->
+    Date.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -496,11 +508,7 @@ record_to_xml(#bt_subscription{}=Subscription, ToString) ->
     Props = [{'id', Subscription#bt_subscription.id}
              ,{'merchant-account-id', Subscription#bt_subscription.merchant_account_id}
              ,{'never-expires', Subscription#bt_subscription.never_expires}
-             ,{'billing-day-of-month', [{'type',"integer"}], Subscription#bt_subscription.billing_dom}
              ,{'first-billing-date', [{'type',"date"}], Subscription#bt_subscription.billing_first_date}
-             ,{'billing-period-end-date', [{'type',"date"}], Subscription#bt_subscription.billing_end_date}
-             ,{'billing-period-start-date', [{'type',"date"}], Subscription#bt_subscription.billing_start_date}
-             ,{'current-billing-cycle', [{'type',"integer"}], Subscription#bt_subscription.billing_cycle}
              ,{'number-of-billing-cycles', Subscription#bt_subscription.number_of_cycles}
              ,{'payment-method-token', Subscription#bt_subscription.payment_token}
              ,{'plan-id', Subscription#bt_subscription.plan_id}

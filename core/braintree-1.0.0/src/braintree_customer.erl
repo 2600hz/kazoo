@@ -219,7 +219,8 @@ maybe_update_subscription(NewPT, Sub) ->
         NewPT when NewPT =/= 'undefined' -> Sub;
         _OldPT ->
             NewSub = braintree_subscription:update_payment_token(Sub, NewPT),
-            braintree_subscription:update(NewSub)
+            FirstBillingDate = braintree_subscription:get_next_billing_date(Sub),
+            braintree_subscription:update(NewSub, FirstBillingDate)
     end.
 
 %%--------------------------------------------------------------------
