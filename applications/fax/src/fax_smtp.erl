@@ -309,7 +309,7 @@ faxbox_log(#state{account_id=AccountId}=State) ->
               ]
              )
            ),
-    couch_mgr:save_doc(AccountDb, Doc),
+    kazoo_modb:save_doc(AccountId, Doc),
     maybe_system_report(State).
 
 -spec error_doc() -> binary().
