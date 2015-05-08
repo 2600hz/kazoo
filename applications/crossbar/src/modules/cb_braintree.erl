@@ -344,36 +344,8 @@ post(Context, ?ADDRESSES_PATH_TOKEN, AddressId) ->
     end.
 
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
-put(#cb_context{req_data=ReqData
-                ,resp_data=RespData
-                ,account_id=AccountId
-                ,auth_account_id=AuthAccountId
-               }=Context, ?CREDITS_PATH_TOKEN) ->
-    Amount = wh_json:get_float_value(<<"amount">>, ReqData, 0.0),
-    Units = wht_util:dollars_to_units(Amount),
-    BTData = wh_json:delete_keys([<<"billing_address">>
-                                  ,<<"shipping_address">>
-                                  ,[<<"card">>, <<"billing_address">>]
-                                  ,[?CUSTOMER_PATH_TOKEN, <<"credit_cards">>]
-                                  ,[?CUSTOMER_PATH_TOKEN, ?ADDRESSES_PATH_TOKEN]
-                                 ], RespData),
-    OrderId = cb_context:fetch(Context, 'bt_order_id'),
-    case add_credit_to_account(BTData, Units, AccountId, AuthAccountId, OrderId) of
-        {'ok', Transaction} ->
-            wapi_money:publish_credit([{<<"Amount">>, Units}
-                                       ,{<<"Account-ID">>, wh_transaction:account_id(Transaction)}
-                                       ,{<<"Transaction-ID">>, wh_transaction:id(Transaction)}
-                                       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                                      ]),
-            JObj = wh_transaction:to_json(Transaction),
-            Context#cb_context{resp_status='success'
-                               ,doc=JObj
-                               ,resp_data=wh_json:public_fields(JObj)
-                              };
-        {'error', Reason} ->
-            crossbar_util:response('error', <<"transaction error">>, 500, Reason, Context)
-    end;
-
+put(Context, ?CREDITS_PATH_TOKEN) ->
+    create_credits(Context);
 put(Context, ?ADDRESSES_PATH_TOKEN) ->
     try braintree_address:create(cb_context:fetch(Context, 'braintree')) of
         Address ->
@@ -396,6 +368,41 @@ put(Context, ?CARDS_PATH_TOKEN) ->
             crossbar_util:response('error', <<"braintree api error">>, 400, Reason, Context);
         'throw':{Error, Reason} ->
             crossbar_util:response('error', wh_util:to_binary(Error), 500, Reason, Context)
+    end.
+
+-spec create_credits(cb_context:context()) -> cb_context:context().
+create_credits(Context) ->
+    AccountId = cb_context:account_id(Context),
+    AuthAccountId = cb_context:auth_account_id(Context),
+
+    Units = wht_util:dollars_to_units(
+               wh_json:get_float_value(<<"amount">>, cb_context:req_data(Context), 0.0)
+             ),
+    BTData = wh_json:delete_keys([<<"billing_address">>
+                                  ,<<"shipping_address">>
+                                  ,[<<"card">>, <<"billing_address">>]
+                                  ,[?CUSTOMER_PATH_TOKEN, <<"credit_cards">>]
+                                  ,[?CUSTOMER_PATH_TOKEN, ?ADDRESSES_PATH_TOKEN]
+                                 ]
+                                 ,cb_context:resp_data(Context)
+                                ),
+    OrderId = cb_context:fetch(Context, 'bt_order_id'),
+
+    case add_credit_to_account(BTData, Units, AccountId, AuthAccountId, OrderId) of
+        {'ok', Transaction} ->
+            wapi_money:publish_credit([{<<"Amount">>, Units}
+                                       ,{<<"Account-ID">>, wh_transaction:account_id(Transaction)}
+                                       ,{<<"Transaction-ID">>, wh_transaction:id(Transaction)}
+                                       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                      ]),
+            JObj = wh_transaction:to_json(Transaction),
+            cb_context:setters(Context
+                               ,[{fun cb_context:set_resp_status/2, 'success'}
+                                 ,{fun cb_context:set_doc/2, JObj}
+                                 ,{fun cb_context:set_resp_data/2, wh_json:public_fields(JObj)}
+                                ]);
+        {'error', Reason} ->
+            crossbar_util:response('error', <<"transaction error">>, 500, Reason, Context)
     end.
 
 -spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
@@ -457,9 +464,11 @@ current_account_dollars(Account) ->
     wht_util:units_to_dollars(Units).
 
 -spec maybe_charge_billing_id(float(), cb_context:context()) -> cb_context:context().
-maybe_charge_billing_id(Amount, #cb_context{auth_account_id=AuthAccountId, account_id=AccountId}=Context) ->
+maybe_charge_billing_id(Amount, Context) ->
+    AuthAccountId = cb_context:auth_account_id(Context),
     {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
-    case wh_services:find_reseller_id(AccountId) of
+
+    case wh_services:find_reseller_id(cb_context:account_id(Context)) of
         MasterAccountId ->
             lager:debug("invoking a bookkeeper to acquire requested credit"),
             charge_billing_id(Amount, Context);
@@ -482,16 +491,21 @@ maybe_charge_billing_id(Amount, #cb_context{auth_account_id=AuthAccountId, accou
     end.
 
 -spec charge_billing_id(float(), cb_context:context()) -> cb_context:context().
-charge_billing_id(Amount, #cb_context{account_id=AccountId, req_data=JObj}=Context) ->
-    BillingId = wh_json:get_value(<<"billing_account_id">>, JObj, AccountId),
-    Props = case BillingId =/= AccountId of
-                'false' -> [{<<"purchase_order">>, ?CODE_MANUAL_ADDITION}
-                            ,{<<"order_id">>, cb_context:fetch(Context, 'bt_order_id')}
-                           ];
-                'true'  -> [{<<"purchase_order">>, ?CODE_SUB_ACCOUNT_MANUAL_ADDITION}
-                            ,{<<"order_id">>, cb_context:fetch(Context, 'bt_order_id')}
-                           ]
+charge_billing_id(Amount, Context) ->
+    AccountId = cb_context:account_id(Context),
+    BillingId = wh_json:get_value(<<"billing_account_id">>, cb_context:req_data(Context), AccountId),
+
+    Props = case BillingId of
+                AccountId ->
+                    [{<<"purchase_order">>, ?CODE_MANUAL_ADDITION}
+                     ,{<<"order_id">>, cb_context:fetch(Context, 'bt_order_id')}
+                    ];
+                _Id ->
+                    [{<<"purchase_order">>, ?CODE_SUB_ACCOUNT_MANUAL_ADDITION}
+                     ,{<<"order_id">>, cb_context:fetch(Context, 'bt_order_id')}
+                    ]
             end,
+
     try braintree_transaction:quick_sale(BillingId, wh_util:to_binary(Amount), Props) of
         #bt_transaction{}=Transaction ->
             wh_notify:transaction(AccountId, braintree_transaction:record_to_json(Transaction)),
