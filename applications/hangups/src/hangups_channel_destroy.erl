@@ -13,6 +13,9 @@
 -include("hangups.hrl").
 
 -export([handle_req/2]).
+-export([start_meters/1
+         ,start_meters/2
+        ]).
 
 -define(IGNORE, whapps_config:get(?APP_NAME
                                   ,<<"ignore_hangup_causes">>
@@ -176,17 +179,11 @@ find_source(JObj) ->
 find_direction(JObj) ->
     wh_json:get_value(<<"Call-Direction">>, JObj, <<"unknown">>).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
+%% @public
 -spec start_meters(ne_binary()) -> 'ok'.
 -spec start_meters(ne_binary(), ne_binary()) -> 'ok'.
 start_meters(HangupCause) ->
     folsom_metrics:new_meter(hangups_util:meter_name(HangupCause)).
-
 start_meters(AccountId, HangupCause) ->
     folsom_metrics:new_meter(hangups_util:meter_name(HangupCause, AccountId)).
 
