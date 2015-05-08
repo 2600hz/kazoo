@@ -32,7 +32,7 @@
 -define(
    YEALINK_FEATURE_KEYS
    ,wh_json:from_list(
-      [{<<"_">>, ?FEATURE_KEYS_FUN(<<"16">>, <<"13">>, <<"16">>, <<"16">>)}]
+      [{<<"_">>, ?FEATURE_KEYS_FUN(<<"16">>, <<"13">>, <<"10">>, <<"10">>)}]
      )
   ).
 

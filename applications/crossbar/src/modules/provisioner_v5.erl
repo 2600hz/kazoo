@@ -245,9 +245,27 @@ settings(JObj) ->
                ,{<<"codecs">>, settings_codecs(JObj)}
                ,{<<"datetime">>, settings_datetime(JObj)}
                ,{<<"feature_keys">>, settings_feature_keys(JObj)}
+               ,{<<"line_keys">>, settings_line_keys(JObj)}
               ]
              ),
     wh_json:from_list(Props).
+
+-spec settings_line_keys(wh_json:object()) -> wh_json:object().
+settings_line_keys(JObj) ->
+    Brand = get_brand(JObj),
+    Family = get_family(JObj),
+    settings_line_keys(Brand, Family).
+
+-spec settings_line_keys(ne_binary(), ne_binary()) -> wh_json:object().
+settings_line_keys(<<"yealink">>, _) ->
+    Props = props:filter_empty(
+              [{<<"account">>, <<"1">>}
+              ,{<<"type">>, <<"15">>}
+              ]
+             ),
+    Key = wh_json:from_list([{<<"key">>, wh_json:from_list(Props)}]),
+    wh_json:from_list([{<<"0">>, Key}]);
+settings_line_keys(_, _) -> 'undefined'.
 
 -spec settings_lines(wh_json:object()) -> wh_json:object().
 settings_lines(JObj) ->
@@ -340,6 +358,7 @@ get_feature_key(<<"presence">> = Type, Value, Brand, Family, AccountId) ->
               [{<<"label">>, <<First/binary, " ", Last/binary>>}
                ,{<<"value">>, Presence}
                ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
+               ,{<<"account">>, <<"1">>}
               ])
     end;
 get_feature_key(<<"speed_dial">> = Type, Value, Brand, Family, _AccountId) ->
@@ -347,6 +366,7 @@ get_feature_key(<<"speed_dial">> = Type, Value, Brand, Family, _AccountId) ->
       [{<<"label">>, Value}
        ,{<<"value">>, Value}
        ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
+       ,{<<"account">>, <<"1">>}
       ]);
 get_feature_key(<<"personal_parking">> = Type, Value, Brand, Family, AccountId) ->
     {'ok', UserJObj} = get_user(AccountId, Value),
@@ -361,6 +381,7 @@ get_feature_key(<<"personal_parking">> = Type, Value, Brand, Family, AccountId) 
               [{<<"label">>, <<"Park ", First/binary, " ", Last/binary>>}
                ,{<<"value">>, <<"*3", Presence/binary>>}
                ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
+               ,{<<"account">>, <<"1">>}
               ])
     end;
 get_feature_key(<<"parking">> = Type, Value, Brand, Family, _AccountId) ->
@@ -368,6 +389,7 @@ get_feature_key(<<"parking">> = Type, Value, Brand, Family, _AccountId) ->
       [{<<"label">>, <<"Park ", Value/binary>>}
        ,{<<"value">>, <<"*3", Value/binary>>}
        ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
+       ,{<<"account">>, <<"1">>}
       ]).
 
 -spec get_feature_key_type(ne_binary(), binary(), binary()) -> api_object().
