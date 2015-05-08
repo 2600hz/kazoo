@@ -192,32 +192,25 @@ create(CustomerId) ->
 %%--------------------------------------------------------------------
 -spec update(customer()) -> customer().
 update(#bt_customer{id=CustomerId}=Customer) ->
+    %% Note: coming from cb_braintree, Customer only has (unsynced) card data
     Url = url(CustomerId),
     Request = record_to_xml(Customer, 'true'),
     Xml = braintree_request:put(Url, Request),
+    %% Gives back the altered subscriptions
     UpdateRecord = xml_to_record(Xml),
 
-    LatestCC = braintree_card:delete_unused_cards(get_cards(UpdateRecord)),
-    NewPT = braintree_card:default_payment_token(LatestCC),
+    NewCards = braintree_card:delete_unused_cards(get_cards(UpdateRecord)),
+    NewPaymentToken = braintree_card:default_payment_token(NewCards),
+    NewSubscriptions =
+        [braintree_subscription:create(
+           braintree_subscription:update_payment_token(Sub, NewPaymentToken))
+         || Sub <- get_subscriptions(UpdateRecord)
+                , not braintree_subscription:is_cancelled(Sub)
+        ],
 
-    NewSubs = [maybe_update_subscription(NewPT, Sub)
-               || Sub <- get_subscriptions(UpdateRecord)
-              ],
-
-    UpdateRecord#bt_customer{credit_cards = LatestCC
-                             ,subscriptions = NewSubs
+    UpdateRecord#bt_customer{credit_cards = NewCards
+                             ,subscriptions = NewSubscriptions
                             }.
-
--spec maybe_update_subscription(api_binary(), braintree_subscription:subscription()) ->
-                                       braintree_subscription:subscription().
-maybe_update_subscription(NewPT, Sub) ->
-    case braintree_subscription:get_payment_token(Sub) of
-        NewPT when NewPT =/= 'undefined' -> Sub;
-        _OldPT ->
-            %% Card updated -> Subscription has been cancelled
-            NewSub = braintree_subscription:new(Sub, NewPT),
-            braintree_subscription:update(NewSub)
-    end.
 
 %%--------------------------------------------------------------------
 %% @public

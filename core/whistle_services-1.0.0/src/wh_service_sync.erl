@@ -245,7 +245,7 @@ sync_services(AccountId, ServiceJObj, ServiceItems) ->
     try sync_services_bookkeeper(AccountId, ServiceJObj, ServiceItems) of
         'ok' ->
             _ = mark_clean_and_status(<<"good_standing">>, ServiceJObj),
-            io:format("synchronization with bookkeeper complete~n", []),
+            io:format("synchronization with bookkeeper complete\n"),
             lager:debug("synchronization with bookkeeper complete"),
             maybe_sync_reseller(AccountId, ServiceJObj)
     catch
