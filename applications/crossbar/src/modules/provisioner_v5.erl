@@ -423,6 +423,7 @@ settings_audio(JObj) ->
 
 -spec settings_audio(ne_binaries(), ne_binaries(), wh_json:object()) -> wh_json:object().
 settings_audio([], _, JObj) -> JObj;
+settings_audio(_, [], JObj) -> JObj;
 settings_audio([Codec|Codecs], [Key|Keys], JObj) ->
     settings_audio(Codecs, Keys, wh_json:set_value(Key, Codec, JObj)).
 
