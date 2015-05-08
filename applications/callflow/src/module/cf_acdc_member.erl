@@ -71,11 +71,11 @@ handle(Data, Call) ->
 
 -spec lookup_priority(wh_json:object(), whapps_call:call()) -> api_binary().
 lookup_priority(Data, Call) ->
-    FromData = wh_json:get_ne_binary_value(<<"priority">>, Data),
+    FromData = wh_json:get_integer_value(<<"priority">>, Data),
     FromCall = whapps_call:custom_channel_var(<<"Call-Priority">>, Call),
     case {FromData, FromCall} of
-        {FromData, _} when is_binary(FromData) -> FromData;
-        {_, FromCall} when is_binary(FromCall) -> FromCall;
+        {FromData, _} when is_integer(FromData) -> FromData;
+        {_, FromCall} when is_binary(FromCall) -> wh_util:to_integer(FromCall);
         _ -> 'undefined'
     end.
 

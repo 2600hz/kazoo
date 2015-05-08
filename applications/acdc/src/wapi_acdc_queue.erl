@@ -620,7 +620,7 @@ publish_member_call(JObj) ->
 publish_member_call(Props, ContentType) when is_list(Props) ->
     publish_member_call(wh_json:from_list(Props), ContentType);
 publish_member_call(API, ContentType) ->
-    Priority = wh_json:get_value(<<"Member-Priority">>, API),
+    Priority = wh_json:get_integer_value(<<"Member-Priority">>, API),
     Props = props:filter_undefined([{'priority', Priority}]),
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?MEMBER_CALL_VALUES, fun member_call/1),
     amqp_util:callmgr_publish(Payload, ContentType, member_call_routing_key(API), Props).
@@ -646,7 +646,7 @@ publish_shared_member_call(AcctId, QueueId, JObj) ->
 publish_shared_member_call(AcctId, QueueId, Props, ContentType) when is_list(Props) ->
     publish_shared_member_call(AcctId, QueueId, wh_json:from_list(Props), ContentType);
 publish_shared_member_call(AcctId, QueueId, JObj, ContentType) ->
-    Priority = wh_json:get_value(<<"Member-Priority">>, JObj),
+    Priority = wh_json:get_integer_value(<<"Member-Priority">>, JObj),
     Props = props:filter_undefined([{'priority', Priority}
                                     ,{'mandatory', 'true'}
                                    ]),
