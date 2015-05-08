@@ -20,6 +20,7 @@
 -export([get_discount/2]).
 -export([update_discount_amount/3]).
 -export([get_payment_token/1]).
+-export([update_payment_token/2]).
 -export([find/1]).
 -export([create/1, create/2]).
 -export([update/1]).
@@ -31,7 +32,7 @@
 -export([increment_addon_quantity/2]).
 -export([update_discount_quantity/3]).
 -export([increment_discount_quantity/2]).
--export([update_payment_token/2]).
+-export([is_cancelled/1]).
 
 -import('wh_util', [get_xml_value/2]).
 
@@ -246,9 +247,17 @@ create(Plan, Token) ->
 -spec update(subscription()) -> subscription().
 update(#bt_subscription{create='true'}=Subscription) ->
     create(Subscription);
-update(#bt_subscription{id=SubscriptionId}=Subscription) ->
+update(#bt_subscription{}=Subscription) ->
+    update(Subscription, 'false').
+
+-spec update(subscription(), boolean()) -> subscription().
+update(#bt_subscription{id=SubscriptionId}=Subscription, ShouldSetFirstBillingDate) ->
     Url = url(SubscriptionId),
-    Request = record_to_xml(Subscription, 'true'),
+    Prepared = case ShouldSetFirstBillingDate of
+                   'false' -> Subscription#bt_subscription{billing_first_date = 'undefined'};
+                   'true'  -> Subscription
+               end,
+    Request = record_to_xml(Prepared, 'true'),
     Xml = braintree_request:put(Url, Request),
     xml_to_record(Xml).
 
@@ -362,8 +371,7 @@ increment_addon_quantity(SubscriptionId, AddOnId) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Really ugly function to update an discount for a given subscription
-%% or subscription id
+%% Really ugly function to update a discount for a given subscription
 %% @end
 %%--------------------------------------------------------------------
 -spec update_discount_quantity(subscription() | ne_binary(), ne_binary(), api_integer()) -> subscription().
@@ -391,8 +399,7 @@ update_discount_quantity(SubscriptionId, DiscountId, Quantity) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Really ugly function to increment an discount for a given subscription
-%% or subscription id
+%% Really ugly function to increment a discount for a given subscription
 %% @end
 %%--------------------------------------------------------------------
 -spec increment_discount_quantity(subscription() | ne_binary(), ne_binary()) -> subscription().
@@ -423,15 +430,22 @@ increment_discount_quantity(SubscriptionId, DiscountId) ->
 %%--------------------------------------------------------------------
 -spec update_payment_token(subscription(), ne_binary()) -> subscription().
 update_payment_token(#bt_subscription{}=Subscription, PaymentToken) ->
-    Date = Subscription#bt_subscription.next_bill_date,
-    Subscription#bt_subscription{payment_token = PaymentToken
-                                 ,start_immediately = 'undefined'
-                                 ,billing_first_date = Date
-                                 ,billing_dom = 'undefined'
-                                 ,billing_end_date = 'undefined'
-                                 ,billing_start_date = 'undefined'
-                                 ,billing_cycle = 'undefined'
+    NextBillingDate = Subscription#bt_subscription.next_bill_date,
+    Subscription#bt_subscription{ id = 'undefined'
+                                , start_immediately = 'false'
+                                , payment_token = PaymentToken
+                                , billing_first_date = NextBillingDate
                                 }.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Update payment token and reset fields to be able to push update back
+%% @end
+%%--------------------------------------------------------------------
+-spec is_cancelled(subscription()) -> boolean().
+is_cancelled(#bt_subscription{status= <<"Canceled">>}) -> 'true';
+is_cancelled(_Subscription) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -496,11 +510,7 @@ record_to_xml(#bt_subscription{}=Subscription, ToString) ->
     Props = [{'id', Subscription#bt_subscription.id}
              ,{'merchant-account-id', Subscription#bt_subscription.merchant_account_id}
              ,{'never-expires', Subscription#bt_subscription.never_expires}
-             ,{'billing-day-of-month', [{'type',"integer"}], Subscription#bt_subscription.billing_dom}
-             ,{'first-billing-date', [{'type',"date"}], Subscription#bt_subscription.billing_first_date}
-             ,{'billing-period-end-date', [{'type',"date"}], Subscription#bt_subscription.billing_end_date}
-             ,{'billing-period-start-date', [{'type',"date"}], Subscription#bt_subscription.billing_start_date}
-             ,{'current-billing-cycle', [{'type',"integer"}], Subscription#bt_subscription.billing_cycle}
+             ,{'first-billing-date', Subscription#bt_subscription.billing_first_date}
              ,{'number-of-billing-cycles', Subscription#bt_subscription.number_of_cycles}
              ,{'payment-method-token', Subscription#bt_subscription.payment_token}
              ,{'plan-id', Subscription#bt_subscription.plan_id}
