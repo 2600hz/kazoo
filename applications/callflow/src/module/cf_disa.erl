@@ -1,5 +1,5 @@
 %%%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%% "data":{
 %%%   "pin":"1234"
@@ -70,7 +70,10 @@ try_collect_pin(Call, Pin, Retries, Interdigit) ->
         {'ok', _Digits} ->
             lager:info("caller entered bad pin: '~s'", [_Digits]),
             _ = whapps_call_command:b_prompt(<<"disa-invalid_pin">>, Call),
-            try_collect_pin(Call, Pin, Retries - 1, Interdigit)
+            try_collect_pin(Call, Pin, Retries - 1, Interdigit);
+        {'error', 'channel_hungup'} ->
+            lager:info("channel has hungup, we're done"),
+            'fail'
     end.
 
 %%--------------------------------------------------------------------
