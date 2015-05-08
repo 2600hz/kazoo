@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% "data":{
 %%%   "action":"compose"|"check"
@@ -460,7 +460,7 @@ setup_mailbox(Box, Call) ->
     {'ok', _} = whapps_call_command:b_prompt(<<"vm-setup_rec_greeting">>, Call),
     lager:info("prompting caller to record an unavailable greeting"),
 
-    Box1 = record_unavailable_greeting(tmp_file(), Box, Call),
+    #mailbox{}=Box1 = record_unavailable_greeting(tmp_file(), Box, Call),
     'ok' = update_doc(<<"is_setup">>, 'true', Box1, Call),
     lager:info("voicemail configuration wizard is complete"),
 
@@ -476,7 +476,12 @@ setup_mailbox(Box, Call) ->
 -spec main_menu(mailbox(), whapps_call:call()) -> 'ok'.
 -spec main_menu(mailbox(), whapps_call:call(), non_neg_integer()) -> 'ok'.
 main_menu(#mailbox{is_setup='false'}=Box, Call) ->
-    main_menu(setup_mailbox(Box, Call), Call, 1);
+    try setup_mailbox(Box, Call) of
+        #mailbox{}=Box1 -> main_menu(Box1, Call, 1)
+    catch
+        _E:_R ->
+            lager:debug("failed to setup mailbox: ~s: ~p", [_E, _R])
+    end;
 main_menu(Box, Call) -> main_menu(Box, Call, 1).
 
 main_menu(#mailbox{owner_id=OwnerId}, Call, Loop) when Loop > 4 ->
