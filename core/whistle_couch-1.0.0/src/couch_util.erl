@@ -432,17 +432,20 @@ format_error({'failure', 400}) -> 'client_error';
 format_error({'http_error', {'status', 504}}) -> 'gateway_timeout';
 format_error({'conn_failed', {'error', 'timeout'}}) -> 'connection_timeout';
 format_error({'conn_failed', {'error', 'enetunreach'}}) -> 'network_unreachable';
+format_error({'conn_failed', {'error', 'system_limit'}}) ->
+    lager:critical("system limit reached for database operations!!"),
+    'system_limit';
 format_error({'ok', "500", _Headers, Body}) ->
     JObj = wh_json:decode(Body),
     case wh_json:get_value(<<"error">>, JObj) of
         <<"timeout">> ->
             'server_timeout';
         _Error ->
-            lager:debug("server error: ~s", [Body]),
+            lager:warning("server error: ~s", [Body]),
             'server_error'
     end;
 format_error(E) ->
-    lager:debug("unformatted error: ~p", [E]),
+    lager:warning("unformatted error: ~p", [E]),
     E.
 
 -spec do_fetch_results_count(couchbeam_db(), ddoc(), view_options()) ->
