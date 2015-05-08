@@ -303,7 +303,7 @@ handle_update(JObj, State, From, To, Expires) ->
                         ,{<<"From-User">>, ToUsername}
                         ,{<<"From-Realm">>, ToRealm}
                         ,{<<"From-Tag">>, wh_json:get_value(<<"From-Tag">>, JObj)}
-                        ,{<<"To">>, ToURI}
+                        ,{<<"To">>, <<"sip:", From/binary>>}
                         ,{<<"To-URI">>, ToURI}
                         ,{<<"To-User">>, FromUsername}
                         ,{<<"To-Realm">>, FromRealm}
@@ -329,11 +329,22 @@ handle_update(JObj, State, From, To, Expires) ->
     maybe_send_update(User, Props).
 
 -spec build_update_to_uri(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
-build_update_to_uri(?PRESENCE_RINGING, <<"park">>, _From, Realm, Cookie) ->
+build_update_to_uri(State, App, From, Realm, Cookie) ->
+    case whapps_config:get(<<"omnipresence">>, <<"use_fast_pickup_cookies">>, 'true') of
+        'true' -> to_uri_cookie(State, App, From, Realm, Cookie);
+        _Other -> to_uri(State, App, From, Realm, Cookie)
+    end.
+
+-spec to_uri(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
+to_uri(?PRESENCE_RINGING, <<"park">>, From, _, _) ->
+    <<"sip:", From/binary,";kazoo-pickup=true">>;
+to_uri(_State, _, From, _, _) ->
+    <<"sip:", From/binary>>.
+
+-spec to_uri_cookie(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
+to_uri_cookie(?PRESENCE_RINGING, _, _, Realm, Cookie) ->
     <<"sip:kfp+", Cookie/binary, "@", Realm/binary>>;
-build_update_to_uri(?PRESENCE_RINGING, _, _From, Realm, Cookie) ->
-    <<"sip:kfp+", Cookie/binary, "@", Realm/binary>>;
-build_update_to_uri(_State, _App, From, _Realm, _Cookie) ->
+to_uri_cookie(_State, _, From, _, _) ->
     <<"sip:", From/binary>>.
 
 -spec maybe_send_update(ne_binary(), wh_proplist()) -> 'ok'.
