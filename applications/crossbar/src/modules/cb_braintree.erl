@@ -232,9 +232,15 @@ validate_credits(Context, ?HTTP_PUT) ->
             maybe_charge_billing_id(Amount, Context1)
     end.
 
-validate(#cb_context{req_verb = ?HTTP_GET
-                     ,account_id=AccountId
-                    }=Context, ?CARDS_PATH_TOKEN, CardId) ->
+validate(Context, ?CARDS_PATH_TOKEN, CardId) ->
+    validate_card(Context, CardId, cb_context:http_method(Context));
+validate(Context, ?ADDRESSES_PATH_TOKEN, AddressId) ->
+    validate_address(Context, AddressId, cb_context:http_method(Context));
+validate(Context, ?TRANSACTIONS_PATH_TOKEN, TransactionId) ->
+    validate_transaction(Context, TransactionId, cb_context:http_method(Context)).
+
+validate_card(Context, CardId, ?HTTP_GET) ->
+    AccountId = cb_context:account_id(Context),
     try braintree_card:find(CardId) of
         #bt_card{customer_id=AccountId}=Card ->
             Resp = braintree_card:record_to_json(Card),
@@ -245,20 +251,19 @@ validate(#cb_context{req_verb = ?HTTP_GET
         'throw':{Error, Reason} ->
             crossbar_util:response('error', wh_util:to_binary(Error), 500, Reason, Context)
     end;
-validate(#cb_context{req_verb = ?HTTP_POST
-                     ,req_data=JObj
-                     ,account_id=AccountId
-                    }=Context, ?CARDS_PATH_TOKEN, CardId) ->
+validate_card(Context, CardId, ?HTTP_POST) ->
+    JObj = cb_context:req_data(Context),
+    AccountId = cb_context:account_id(Context),
     Card0 = braintree_card:json_to_record(JObj),
     Card = Card0#bt_card{customer_id=AccountId
                          ,token=CardId
                         },
     crossbar_util:response(wh_json:new(), cb_context:store(Context, 'braintree', Card));
-validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, ?CARDS_PATH_TOKEN, _) ->
-    crossbar_util:response(wh_json:new(), Context);
-validate(#cb_context{req_verb = ?HTTP_GET
-                     ,account_id=AccountId
-                    }=Context, ?ADDRESSES_PATH_TOKEN, AddressId) ->
+validate_card(Context, _CardId, ?HTTP_DELETE) ->
+    crossbar_util:response(wh_json:new(), Context).
+
+validate_address(Context, AddressId, ?HTTP_GET) ->
+    AccountId = cb_context:account_id(Context),
     try braintree_address:find(AccountId, AddressId) of
         #bt_address{customer_id=AccountId}=Address ->
             Resp = braintree_address:record_to_json(Address),
@@ -269,16 +274,17 @@ validate(#cb_context{req_verb = ?HTTP_GET
         'throw':{Error, Reason} ->
             crossbar_util:response('error', wh_util:to_binary(Error), 500, Reason, Context)
     end;
-validate(#cb_context{req_verb = ?HTTP_POST
-                     ,req_data=JObj
-                     ,account_id=AccountId
-                    }=Context, ?ADDRESSES_PATH_TOKEN, AddressId) ->
-    Address = (braintree_address:json_to_record(JObj))#bt_address{customer_id=AccountId, id=AddressId},
+validate_address(Context, AddressId, ?HTTP_POST) ->
+    JObj = cb_context:req_data(Context),
+    AccountId = cb_context:account_id(Context),
+    Address = (braintree_address:json_to_record(JObj))#bt_address{customer_id=AccountId
+                                                                  ,id=AddressId
+                                                                 },
     crossbar_util:response(wh_json:new(), cb_context:store(Context, 'braintree', Address));
-validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, ?ADDRESSES_PATH_TOKEN, _) ->
-    crossbar_util:response(wh_json:new(), Context);
+validate_address(Context, _AddressId, ?HTTP_DELETE) ->
+    crossbar_util:response(wh_json:new(), Context).
 
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, ?TRANSACTIONS_PATH_TOKEN, TransactionId) ->
+validate_transaction(Context, TransactionId, ?HTTP_GET) ->
     try braintree_transaction:find(TransactionId) of
         #bt_transaction{}=Transaction ->
             Resp = braintree_transaction:record_to_json(Transaction),
