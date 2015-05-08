@@ -34,9 +34,6 @@
 
          ,public_proplist/2
 
-         ,get_balance_threshold/1
-         ,get_topup_amount/1
-
          ,stop_processing/2
         ]).
 
@@ -1048,20 +1045,6 @@ public_proplist(Key, JObj) ->
         wh_json:get_value(Key, JObj, wh_json:new())
        )
      ).
-
--spec get_balance_threshold(wh_json:object()) -> float().
-get_balance_threshold(DataJObj) ->
-    Default = 5.00,
-    Key = [<<"account">>, <<"topup">>, <<"threshold">>],
-    Dollars = wh_json:get_float_value(Key, DataJObj, Default),
-    wht_util:pretty_print_dollars(Dollars).
-
--spec get_topup_amount(wh_json:object()) -> ne_binary().
-get_topup_amount(DataJObj) ->
-    Default = 0.00,
-    Key = [<<"account">>, <<"topup">>, <<"amount">>],
-    Dollars = wh_json:get_float_value(Key, DataJObj, Default),
-    wht_util:pretty_print_dollars(Dollars).
 
 -spec stop_processing(string(), list()) -> no_return().
 stop_processing(Format, Args) ->

@@ -355,7 +355,9 @@
 
 %% Notify Top Up
 -define(TOPUP_HEADERS, [<<"Account-ID">>]).
--define(OPTIONAL_TOPUP_HEADERS, ?DEFAULT_OPTIONAL_HEADERS).
+-define(OPTIONAL_TOPUP_HEADERS, [<<"Amount">>, <<"Response">>, <<"Success">>
+                                 | ?DEFAULT_OPTIONAL_HEADERS
+                                ]).
 -define(TOPUP_VALUES, [{<<"Event-Category">>, <<"notification">>}
                        ,{<<"Event-Name">>, <<"topup">>}
                       ]).

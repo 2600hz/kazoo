@@ -17,12 +17,19 @@
 -define(TEMPLATE_ID, <<"topup">>).
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
 
+-define(TOPUP_MACROS
+       ,[?MACRO_VALUE(<<"amount">>, <<"amount">>, <<"Amount">>, <<"The top up amount">>)
+         ,?MACRO_VALUE(<<"success">>, <<"success">>, <<"Success">>, <<"Whether or not the top up was successful">>)
+         ,?MACRO_VALUE(<<"reason">>, <<"reason">>, <<"Reason">>, <<"Transaction processor response">>)
+         ,?MACRO_VALUE(<<"balance">>, <<"balance">>, <<"Balance">>, <<"The resulting account balance">>)
+        ]).
+
 -define(TEMPLATE_MACROS
-        ,wh_json:from_list(?USER_MACROS ++ ?ACCOUNT_MACROS)
+        ,wh_json:from_list(?USER_MACROS ++ ?ACCOUNT_MACROS ++ ?TOPUP_MACROS)
        ).
 
--define(TEMPLATE_TEXT, <<"The account \"{{account.name}}\" has less than {{threshold}} of credit remaining.\n We are toping up the account for {{amount}}.">>).
--define(TEMPLATE_HTML, <<"<html><body><h2>The account \"{{account.name}}\" has less than {{threshold}} of credit remaining.</h2><p> We are toping up the account for {{amount}}.</p></body></html>">>).
+-define(TEMPLATE_TEXT, <<"Attempted to top-up account \"{{account.name}}\" for {{amount}}.  The transaction processor response was {{reason}} resulting in a new balance of {{balance}}.">>).
+-define(TEMPLATE_HTML, <<"<html><body><h2>Attempted to top-up account \"{{account.name}}\" for {{amount}}</h2><p>The transaction processor response was {{reason}} resulting in a new balance of {{balance}}.</p></body></html>">>).
 -define(TEMPLATE_SUBJECT, <<"Account {{account.name}} has been topped up">>).
 -define(TEMPLATE_CATEGORY, <<"account">>).
 -define(TEMPLATE_NAME, <<"Top Up">>).
@@ -70,8 +77,10 @@ handle_topup(JObj, _Props) ->
 handle_req(DataJObj) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
               ,{<<"account">>, teletype_util:account_params(DataJObj)}
-              ,{<<"threshold">>, teletype_util:get_balance_threshold(DataJObj)}
-              ,{<<"amount">>, teletype_util:get_topup_amount(DataJObj)}
+              ,{<<"amount">>, get_topup_amount(DataJObj)}
+              ,{<<"balance">>, get_balance(DataJObj)}
+              ,{<<"success">>, wh_json:is_true(<<"success">>, DataJObj)}
+              ,{<<"reason">>, wh_json:get_value(<<"reason">>, DataJObj, <<>>)}
               | build_macro_data(DataJObj)
              ],
 
@@ -96,6 +105,19 @@ handle_req(DataJObj) ->
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
+
+-spec get_balance(wh_json:object()) -> ne_binary().
+get_balance(DataJObj) ->
+    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
+    Amount = wht_util:units_to_dollars(wht_util:current_balance(AccountId)),
+    wht_util:pretty_print_dollars(Amount).
+
+-spec get_topup_amount(wh_json:object()) -> ne_binary().
+get_topup_amount(DataJObj) ->
+    Amount = wht_util:units_to_dollars(
+               wh_json:get_integer_value(<<"amount">>, DataJObj)
+              ),
+    wht_util:pretty_print_dollars(Amount).
 
 -spec build_macro_data(wh_json:object()) -> wh_proplist().
 build_macro_data(DataJObj) ->
@@ -136,8 +158,5 @@ get_user(DataJObj) ->
         {'ok', UserJObj} -> UserJObj;
         {'error', _E} ->
             lager:debug("failed to find user ~s in ~s: ~p", [UserId, AccountId, _E]),
-            case teletype_util:is_preview(DataJObj) of
-                'false' -> throw({'error', 'not_found'});
-                'true' -> wh_json:new()
-            end
+            wh_json:new()
     end.

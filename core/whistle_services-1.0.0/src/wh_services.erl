@@ -427,7 +427,11 @@ activation_charges(Category, Item, <<_/binary>> = Account) ->
 -spec commit_transactions(services(), wh_transactions:wh_transactions()) -> atom().
 commit_transactions(#wh_services{billing_id=BillingId}, Activations) ->
     Bookkeeper = select_bookkeeper(BillingId),
-    Bookkeeper:commit_transactions(BillingId, Activations).
+    Transactions = [Activation
+                    || Activation <- Activations
+                           ,wh_transaction:amount(Activation) > 0
+                   ],
+    Bookkeeper:commit_transactions(BillingId, Transactions).
 
 %%--------------------------------------------------------------------
 %% @public

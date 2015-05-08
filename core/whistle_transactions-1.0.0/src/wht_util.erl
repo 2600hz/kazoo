@@ -382,9 +382,9 @@ is_valid_reason(Reason) ->
 %%--------------------------------------------------------------------
 -spec reason_code(ne_binary()) -> pos_integer().
 reason_code(Reason) ->
-    case lists:keyfind(Reason, 2, ?REASONS) of
+    case lists:keyfind(Reason, 1, ?REASONS) of
         'false' -> ?CODE_UNKNOWN;
-        {Code, _} -> Code
+        {_, Code} -> Code
     end.
 
 %%--------------------------------------------------------------------

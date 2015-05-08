@@ -223,7 +223,7 @@ handle_charged_transactions(BillingId, Code, JObjs) ->
            ,wht_util:units_to_dollars(Amount)
            ,Props
           ),
-    handle_quick_sale_response(BT).
+    handle_quick_sale_response(BillingId, BT).
 
 -spec handle_topup(ne_binary(), wh_json:objects()) -> boolean().
 handle_topup(BillingId, []) ->
@@ -240,7 +240,7 @@ handle_topup(BillingId, JObjs) ->
                    ,wht_util:units_to_dollars(Amount)
                    ,Props
                   ),
-            handle_quick_sale_response(BT)
+            handle_quick_sale_response(BillingId, BT)
     end.
 
 %%--------------------------------------------------------------------
@@ -413,12 +413,37 @@ calculate_amount(JObjs) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_quick_sale_response(bt_transaction()) -> boolean().
-handle_quick_sale_response(BtTransaction) ->
+-spec handle_quick_sale_response(ne_binary(), bt_transaction()) -> boolean().
+handle_quick_sale_response(BillingId, BtTransaction) ->
     Transaction = braintree_transaction:record_to_json(BtTransaction),
     RespCode = wh_json:get_value(<<"processor_response_code">>, Transaction, ?CODE_UNKNOWN),
     %% https://www.braintreepayments.com/docs/ruby/reference/processor_responses
-    wh_util:to_integer(RespCode) < 2000.
+    send_topup_notification(wh_util:to_integer(RespCode) < 2000, BillingId, Transaction).
+
+-spec send_topup_notification(boolean(), ne_binary(), wh_json:object()) -> boolean().
+send_topup_notification(Success, BillingId, Transaction) ->
+    Amount = wht_util:dollars_to_units(wh_json:get_value(<<"amount">>, Transaction)),
+    Props = [{<<"Account-ID">>, BillingId}
+             ,{<<"Amount">>, Amount}
+             ,{<<"Success">>, Success}
+             ,{<<"Response">>, wh_json:get_value(<<"processor_response_text">>, Transaction)}
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ],
+    _ = case
+            whapps_util:amqp_pool_send(
+              Props
+              ,fun wapi_notifications:publish_topup/1
+             )
+        of
+            'ok' ->
+                lager:debug("topup notification sent for ~s", [BillingId]);
+            {'error', _R} ->
+                lager:error(
+                  "failed to send topup notification for ~s : ~p"
+                           ,[BillingId, _R]
+                 )
+        end,
+    Success.
 
 %%--------------------------------------------------------------------
 %% @private

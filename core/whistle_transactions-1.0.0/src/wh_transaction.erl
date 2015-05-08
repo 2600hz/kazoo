@@ -550,7 +550,10 @@ service_save_transaction(#wh_transaction{pvt_account_id=AccountId}=Transaction) 
             Error;
         {'ok', JObj} ->
             Transactions = wh_json:get_value(<<"transactions">>, JObj, []),
-            JObj1 = wh_json:set_value(<<"transactions">>, [TransactionJObj|Transactions], JObj),
+            JObj1 = wh_json:set_values(
+                      [{<<"transactions">>, [TransactionJObj|Transactions]}
+                      ,{<<"pvt_dirty">>, <<"true">>}
+                      ], JObj),
             couch_mgr:save_doc(?WH_SERVICES_DB, JObj1)
     end.
 

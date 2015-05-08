@@ -328,24 +328,7 @@ test_for_low_balance(AccountId, AccountDb, JObj) ->
 topup_account(AccountId, AccountDb, JObj, CurrentBalance) ->
     case wh_topup:init(AccountId, CurrentBalance) of
         'ok' ->
-            lager:debug("topup successful for ~s", [AccountId]),
-            Props = [{<<"Account-ID">>, AccountId}
-                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                    ],
-            case
-                whapps_util:amqp_pool_send(
-                    Props
-                    , fun wapi_notifications:publish_topup/1
-                )
-            of
-                'ok' ->
-                    lager:debug("topup notification sent for ~s", [AccountId]);
-                {'error', _R} ->
-                    lager:error(
-                        "failed to send topup notification for ~s : ~p"
-                        ,[AccountId, _R]
-                    )
-            end;
+            lager:debug("topup successful for ~s", [AccountId]);
         'error' ->
             lager:error("topup failed for ~s", [AccountId]),
             maybe_handle_low_balance(
