@@ -10,7 +10,7 @@
 %%%
 %%% @end
 %%% @contributors
-%%%   SIPLABS, LLC (Maksim Krzhemenevskiy)
+%%%   KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
 %%%-------------------------------------------------------------------
 -module(cf_branch_variable).
 

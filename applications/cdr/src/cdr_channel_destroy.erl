@@ -7,6 +7,7 @@
 %%%   James Aimonetti
 %%%   Edouard Swiac
 %%%   Ben Wann
+%%%   KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
 %%%-------------------------------------------------------------------
 -module(cdr_channel_destroy).
 

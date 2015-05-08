@@ -11,6 +11,7 @@
 %%%   James Aimonetti
 %%%   Karl Anderson
 %%%   Ben Wann
+%%%   KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
 %%%-------------------------------------------------------------------
 -module(cb_cdrs).
 

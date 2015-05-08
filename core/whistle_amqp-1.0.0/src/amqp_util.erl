@@ -7,6 +7,7 @@
 %%%   James Aimonetti
 %%%   Karl Anderson
 %%%   Edouard Swiac
+%%%   KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
 %%%-------------------------------------------------------------------
 -module(amqp_util).
 
