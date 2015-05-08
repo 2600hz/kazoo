@@ -37,7 +37,7 @@ handle(Data, Call) ->
 handle_noop_recv(_OldCall, {'ok', Call}) ->
     cf_exe:set_call(Call),
     cf_exe:continue(Call);
-handle_noop_recv(Call, {'error', 'channel_destroy'}) ->
+handle_noop_recv(Call, {'error', 'channel_hungup'}) ->
     cf_exe:hard_stop(Call);
 handle_noop_recv(Call, {'error', _E}) ->
     lager:debug("failure playing: ~p", [_E]),

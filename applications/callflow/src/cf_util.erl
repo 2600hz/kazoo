@@ -876,7 +876,7 @@ sip_user_from_device_id(EndpointId, Call) ->
 
 -spec wait_for_noop(whapps_call:call(), ne_binary()) ->
                            {'ok', whapps_call:call()} |
-                           {'error', 'channel_destroy' | wh_json:object()}.
+                           {'error', 'channel_hungup' | wh_json:object()}.
 wait_for_noop(Call, NoopId) ->
     case whapps_call_command:receive_event(?MILLISECONDS_IN_DAY) of
         {'ok', JObj} ->
@@ -893,7 +893,7 @@ process_event(Call, NoopId, JObj) ->
     case whapps_call_command:get_event_type(JObj) of
         {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
             lager:debug("channel was destroyed"),
-            {'error', 'channel_destroy'};
+            {'error', 'channel_hungup'};
         {<<"error">>, _, <<"noop">>} ->
             lager:debug("channel execution error while waiting for ~s: ~s", [NoopId, wh_json:encode(JObj)]),
             {'error', JObj};
