@@ -2142,7 +2142,7 @@ wait_for_message(Call, Application, Event, Type, Timeout) ->
             case get_event_type(JObj) of
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
                     lager:debug("channel was destroyed while waiting for ~s", [Application]),
-                    {'error', 'channel_destroy'};
+                    {'error', 'channel_hungup'};
                 {<<"error">>, _, Application} ->
                     lager:debug("channel execution error while waiting for ~s: ~s", [Application, wh_json:encode(JObj)]),
                     {'error', JObj};
@@ -2491,7 +2491,7 @@ wait_for_application_or_dtmf(Application, Timeout) ->
             case get_event_type(JObj) of
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
                     lager:debug("channel was destroyed while waiting for ~s or DTMF", [Application]),
-                    {'error', 'channel_destroy'};
+                    {'error', 'channel_hungup'};
                 {<<"error">>, _, Application} ->
                     lager:debug("channel execution error while waiting ~s or DTMF: ~s", [Application, wh_json:encode(JObj)]),
                     {'error', JObj};
@@ -2789,7 +2789,7 @@ wait_for_unparked_call(Call, Timeout) ->
             case get_event_type(JObj) of
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
                     lager:debug("channel was destroyed while waiting for unparked call"),
-                    {'error', 'channel_destroy'};
+                    {'error', 'channel_hungup'};
                 {<<"call_event">>, <<"CHANNEL_DISCONNECTED">>, _} ->
                     lager:debug("channel was disconnected while waiting for unparked call"),
                     {'error', 'channel_disconnected'};

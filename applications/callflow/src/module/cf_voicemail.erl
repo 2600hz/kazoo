@@ -135,18 +135,24 @@ handle(Data, Call) ->
     case wh_json:get_value(<<"action">>, Data, <<"compose">>) of
         <<"compose">> ->
             whapps_call_command:answer(Call),
+            lager:debug("answered the call and composing the voicemail"),
             case compose_voicemail(get_mailbox_profile(Data, Call), Call) of
                 'ok' ->
                     lager:info("compose voicemail complete"),
                     cf_exe:continue(Call);
                 {'branch', Flow} ->
                     lager:info("compose voicemail complete, branch to operator"),
-                    cf_exe:branch(Flow, Call)
+                    cf_exe:branch(Flow, Call);
+                {'error', 'channel_hungup'} ->
+                    lager:info("channel has hungup, stopping the compose"),
+                    cf_exe:stop(Call)
             end;
         <<"check">> ->
             whapps_call_command:answer(Call),
-            check_mailbox(get_mailbox_profile(Data, Call), Call),
-            cf_exe:continue(Call);
+            case check_mailbox(get_mailbox_profile(Data, Call), Call) of
+                'ok' ->  cf_exe:continue(Call);
+                {'error', 'channel_hungup'} -> cf_exe:stop(Call)
+            end;
         _ ->
             cf_exe:continue(Call)
     end.
@@ -157,9 +163,12 @@ handle(Data, Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec check_mailbox(mailbox(), whapps_call:call()) -> 'ok'.
--spec check_mailbox(mailbox(), whapps_call:call(), non_neg_integer()) -> 'ok'.
--spec check_mailbox(mailbox(), boolean(), whapps_call:call(), non_neg_integer()) -> 'ok'.
+-spec check_mailbox(mailbox(), whapps_call:call()) ->
+                           'ok' | {'error', 'channel_hungup'}.
+-spec check_mailbox(mailbox(), whapps_call:call(), non_neg_integer()) ->
+                           'ok' | {'error', 'channel_hungup'}.
+-spec check_mailbox(mailbox(), boolean(), whapps_call:call(), non_neg_integer()) ->
+                           'ok' | {'error', 'channel_hungup'}.
 
 check_mailbox(#mailbox{owner_id=OwnerId}=Box, Call) ->
     %% Wrapper to initalize the attempt counter
@@ -281,9 +290,11 @@ find_mailbox(#mailbox{interdigit_timeout=Interdigit}=Box, Call, Loop) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec compose_voicemail(mailbox(), whapps_call:call()) ->
-                               'ok' | {'branch', _}.
+                               'ok' | {'branch', _} |
+                               {'error', 'channel_hungup'}.
 -spec compose_voicemail(mailbox(), boolean(), whapps_call:call()) ->
-                               'ok' | {'branch', _}.
+                               'ok' | {'branch', _} |
+                               {'error', 'channel_hungup'}.
 compose_voicemail(#mailbox{owner_id=OwnerId}=Box, Call) ->
     IsOwner = is_owner(Call, OwnerId),
     compose_voicemail(Box, IsOwner, Call).
@@ -455,7 +466,7 @@ setup_mailbox(Box, Call) ->
     {'ok', _} = whapps_call_command:b_prompt(<<"vm-setup_intro">>, Call),
 
     lager:info("prompting caller to set a pin"),
-    _ = change_pin(Box, Call),
+    #mailbox{} = change_pin(Box, Call),
 
     {'ok', _} = whapps_call_command:b_prompt(<<"vm-setup_rec_greeting">>, Call),
     lager:info("prompting caller to record an unavailable greeting"),
@@ -473,12 +484,17 @@ setup_mailbox(Box, Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec main_menu(mailbox(), whapps_call:call()) -> 'ok'.
--spec main_menu(mailbox(), whapps_call:call(), non_neg_integer()) -> 'ok'.
+-spec main_menu(mailbox(), whapps_call:call()) ->
+                       'ok' | {'error', 'channel_hungup'}.
+-spec main_menu(mailbox(), whapps_call:call(), non_neg_integer()) ->
+                       'ok' | {'error', 'channel_hungup'}.
 main_menu(#mailbox{is_setup='false'}=Box, Call) ->
     try setup_mailbox(Box, Call) of
         #mailbox{}=Box1 -> main_menu(Box1, Call, 1)
     catch
+        'error':{'badmatch',{'error','channel_hungup'}} ->
+            lager:debug("channel has hungup while setting up mailbox"),
+            {'error', 'channel_hungup'};
         _E:_R ->
             lager:debug("failed to setup mailbox: ~s: ~p", [_E, _R])
     end;
@@ -567,7 +583,7 @@ main_menu(#mailbox{owner_id=OwnerId
     NoopId = whapps_call_command:audio_macro(message_count_prompts(New, Saved)
                                              ++ [{'prompt', <<"vm-main_menu">>}]
                                              ,Call),
-    put('cf_voicemail', ?LINE),
+
     case whapps_call_command:collect_digits(?KEY_LENGTH
                                             ,whapps_call_command:default_collect_timeout()
                                             ,Interdigit
@@ -601,7 +617,10 @@ main_menu(#mailbox{owner_id=OwnerId
             lager:info("caller choose to change their mailbox configuration"),
             case config_menu(Box, Call) of
                 'ok' -> 'ok';
-                Else -> main_menu(Else, Call)
+                {'error', 'channel_hungup'}=E ->
+                    lager:debug("channel has hungup, done trying to setup mailbox"),
+                    E;
+                #mailbox{}=Box1 -> main_menu(Box1, Call)
             end;
         _ ->
             main_menu(Box, Call, Loop + 1)
@@ -759,11 +778,12 @@ message_menu(Prompt, #mailbox{keys=#keys{replay=Replay
 %% @end
 %%--------------------------------------------------------------------
 -spec config_menu(mailbox(), whapps_call:call()) ->
-                         'ok' | mailbox().
+                         'ok' | mailbox() | {'error', 'channel_hungup'}.
 -spec config_menu(mailbox(), whapps_call:call(), pos_integer()) ->
-                         'ok' | mailbox().
+                         'ok' | mailbox() | {'error', 'channel_hungup'}.
 
-config_menu(Box, Call) -> config_menu(Box, Call, 1).
+config_menu(Box, Call) ->
+    config_menu(Box, Call, 1).
 
 config_menu(#mailbox{keys=#keys{rec_unavailable=RecUnavailable
                                 ,rec_name=RecName
@@ -800,8 +820,14 @@ config_menu(#mailbox{keys=#keys{rec_unavailable=RecUnavailable
         {'ok', SetPin} ->
             lager:info("caller choose to change their pin"),
             case change_pin(Box, Call) of
-                'ok' -> 'ok';
-                _Else -> config_menu(Box, Call)
+                {'error', 'channel_hungup'}=E ->
+                    lager:debug("channel has hungup, done trying to setup mailbox"),
+                    E;
+                {'error', _E} ->
+                    lager:debug("changing pin failed: ~p", [_E]),
+                    config_menu(Box, Call);
+                #mailbox{}=Box1 ->
+                    config_menu(Box1, Call)
             end;
         {'ok', ReturnMain} ->
             lager:info("caller choose to return to the main menu"),
@@ -931,16 +957,16 @@ record_name(AttachmentName, #mailbox{name_media_id=MediaId}=Box, Call, DocId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec change_pin(mailbox(), whapps_call:call()) -> 'ok' | mailbox().
+-spec change_pin(mailbox(), whapps_call:call()) ->
+                        mailbox() | {'error', _}.
 change_pin(#mailbox{mailbox_id=Id
                     ,interdigit_timeout=Interdigit
                    }=Box, Call) ->
     lager:info("requesting new mailbox pin number"),
     try
-        put('cf_voicemail', ?LINE),
         {'ok', Pin} = get_new_pin(Interdigit, Call),
         lager:info("collected first pin"),
-        put('cf_voicemail', ?LINE),
+
         {'ok', Pin} = confirm_new_pin(Interdigit, Call),
         lager:info("collected second pin"),
 
@@ -949,7 +975,7 @@ change_pin(#mailbox{mailbox_id=Id
 
         AccountDb = whapps_call:account_db(Call),
 
-        {'ok', JObj} = couch_mgr:open_doc(AccountDb, Id),
+        {'ok', JObj} = couch_mgr:open_cache_doc(AccountDb, Id),
 
         case validate_box_schema(wh_json:set_value(<<"pin">>, Pin, JObj)) of
             {'ok', PublicJObj} ->
@@ -966,16 +992,29 @@ change_pin(#mailbox{mailbox_id=Id
                 invalid_pin(Box, Call)
         end
     catch
+        'error':{'badmatch',{'error','channel_hungup'}} ->
+            lager:debug("channel hungup while configuring pin"),
+            {'error', 'channel_hungup'};
+        'error':{'badmatch',{'ok',_ConfirmPin}} ->
+            lager:debug("new pin was invalid, try again"),
+            invalid_pin(Box, Call);
         _E:_R ->
-            lager:info("new pin was invalid, trying again"),
+            lager:debug("failed to get new pin: ~s: ~p", [_E, _R]),
             invalid_pin(Box, Call)
     end.
 
--spec invalid_pin(mailbox(), whapps_call:call()) -> 'ok' | mailbox().
+-spec invalid_pin(mailbox(), whapps_call:call()) ->
+                         mailbox() |
+                         {'error', _}.
 invalid_pin(Box, Call) ->
     case whapps_call_command:b_prompt(<<"vm-pin_invalid">>, Call) of
         {'ok', _} -> change_pin(Box, Call);
-        _ -> 'ok'
+        {'error', 'channel_hungup'}=E ->
+            lager:debug("channel hungup after bad pin"),
+            E;
+        {'error', _E}=E ->
+            lager:debug("invalid pin prompt interrupted: ~p", [_E]),
+            E
     end.
 
 -spec validate_box_schema(wh_json:object()) ->
@@ -991,19 +1030,22 @@ validate_box_schema(JObj) ->
     end.
 
 -spec get_new_pin(pos_integer(), whapps_call:call()) ->
-                         {'ok', binary()}.
+                         {'ok', binary()} |
+                         {'error', _}.
 get_new_pin(Interdigit, Call) ->
     NoopId = whapps_call_command:prompt(<<"vm-enter_new_pin">>, Call),
     collect_pin(Interdigit, Call, NoopId).
 
 -spec confirm_new_pin(pos_integer(), whapps_call:call()) ->
-                         {'ok', binary()}.
+                             {'ok', binary()} |
+                             {'error', _}.
 confirm_new_pin(Interdigit, Call) ->
     NoopId = whapps_call_command:prompt(<<"vm-enter_new_pin_confirm">>, Call),
     collect_pin(Interdigit, Call, NoopId).
 
 -spec collect_pin(pos_integer(), whapps_call:call(), ne_binary()) ->
-                         {'ok', binary()}.
+                         {'ok', binary()} |
+                         {'error', _}.
 collect_pin(Interdigit, Call, NoopId) ->
     whapps_call_command:collect_digits(?DEFAULT_MAX_PIN_LENGTH
                                        ,whapps_call_command:default_collect_timeout()
