@@ -105,15 +105,15 @@ resource_exists(?TRANSACTIONS_PATH_TOKEN, _) -> 'true'.
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 %% CUSTOMER API
 validate(Context, ?CUSTOMER_PATH_TOKEN) ->
-    validate_customer(Context, cb_context:http_verb(Context));
+    validate_customer(Context, cb_context:req_verb(Context));
 validate(Context, ?CARDS_PATH_TOKEN) ->
-    validate_cards(Context, cb_context:http_verb(Context));
+    validate_cards(Context, cb_context:req_verb(Context));
 validate(Context, ?ADDRESSES_PATH_TOKEN) ->
-    validate_addresses(Context, cb_context:http_verb(Context));
+    validate_addresses(Context, cb_context:req_verb(Context));
 validate(Context, ?TRANSACTIONS_PATH_TOKEN) ->
-    validate_transactions(Context, cb_context:http_verb(Context));
+    validate_transactions(Context, cb_context:req_verb(Context));
 validate(Context, ?CREDITS_PATH_TOKEN) ->
-    validate_credits(Context, cb_context:http_verb(Context)).
+    validate_credits(Context, cb_context:req_verb(Context)).
 
 validate_customer(Context, ?HTTP_GET) ->
     AccountId = cb_context:account_id(Context),
@@ -233,11 +233,11 @@ validate_credits(Context, ?HTTP_PUT) ->
     end.
 
 validate(Context, ?CARDS_PATH_TOKEN, CardId) ->
-    validate_card(Context, CardId, cb_context:http_method(Context));
+    validate_card(Context, CardId, cb_context:req_verb(Context));
 validate(Context, ?ADDRESSES_PATH_TOKEN, AddressId) ->
-    validate_address(Context, AddressId, cb_context:http_method(Context));
+    validate_address(Context, AddressId, cb_context:req_verb(Context));
 validate(Context, ?TRANSACTIONS_PATH_TOKEN, TransactionId) ->
-    validate_transaction(Context, TransactionId, cb_context:http_method(Context)).
+    validate_transaction(Context, TransactionId, cb_context:req_verb(Context)).
 
 validate_card(Context, CardId, ?HTTP_GET) ->
     AccountId = cb_context:account_id(Context),
