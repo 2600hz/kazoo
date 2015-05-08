@@ -181,7 +181,11 @@ on_successful_validation(Context) ->
                 {<<"user">>, UserId, UserId}
         end,
 
-    ToUser = wh_json:get_value(<<"to">>, JObj),
+    Num = wh_json:get_value(<<"to">>, JObj),
+    ToUser = case wnm_util:is_reconcilable(filter_number(Num), AccountId) of
+                 'true' -> wnm_util:to_e164(filter_number(Num), AccountId);
+                 'false' -> Num
+             end,
     To = <<ToUser/binary, "@", Realm/binary>>,
 
     FromUser = wh_json:get_value(<<"from">>, JObj, get_default_caller_id(Context, OwnerId)),
@@ -285,3 +289,10 @@ get_view_and_filter(Context) ->
         {Id , 'undefined'} -> {?CB_LIST_BY_DEVICE, [Id], 'undefined'};
         {Id, _} -> {?CB_LIST_BY_DEVICE, [Id], 'undefined'}
     end.
+
+-spec filter_number(binary()) -> binary().
+filter_number(Number) ->
+    << <<X>> || <<X>> <= Number, is_digit(X)>>.
+
+-spec is_digit(integer()) -> boolean().
+is_digit(N) -> N >= $0 andalso N =< $9.
