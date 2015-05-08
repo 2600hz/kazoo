@@ -290,32 +290,17 @@ maybe_find_deprecated_settings(_, _) -> wh_json:new().
 -spec get_rep_email(wh_json:object()) -> api_binary().
 get_rep_email(JObj) ->
     AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
-    case kz_account:tree(JObj) of
-        [] -> 'undefined';
-        Tree -> get_rep_email(lists:reverse(Tree), AccountId)
-    end.
 
-get_rep_email([], _) -> 'undefined';
-get_rep_email([Parent|Parents], AccountId) ->
-    ParentDb = wh_util:format_account_id(Parent, 'encoded'),
-    ViewOptions = ['include_docs'
-                   ,{'key', AccountId}
-                  ],
-    lager:debug("attempting to find sub account rep for ~s in parent account ~s", [AccountId, Parent]),
-    case couch_mgr:get_results(ParentDb, <<"sub_account_reps/find_assignments">>, ViewOptions) of
-        {'ok', [Result|_]} ->
-            case wh_json:get_value([<<"doc">>, <<"email">>], Result) of
-                'undefined' ->
-                    lager:debug("found rep but they have no email, attempting to get email of admin"),
-                    wh_json:get_value(<<"email">>, find_admin(ParentDb));
-                Else ->
-                    lager:debug("found rep but email: ~s", [Else]),
-                    Else
-            end;
-        _E ->
-            lager:debug("failed to find rep for sub account, attempting next parent"),
-            get_rep_email(Parents, Parents)
-    end.
+    Admin =
+        case wh_services:is_reseller(AccountId) of
+            'true' ->
+                lager:debug("finding admins for reseller account ~s", [AccountId]),
+                find_admin(AccountId);
+            'false' ->
+                lager:debug("finding admins for reseller of account ~s", [AccountId]),
+                find_admin(wh_services:find_reseller_id(AccountId))
+        end,
+    kzd_user:email(Admin).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -345,9 +330,9 @@ find_admin([AcctId|Tree]) ->
     case couch_mgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
         {'ok', Users} ->
             case [User
-                  || User <- Users
-                         ,wh_json:get_value([<<"doc">>, <<"priv_level">>], User) =:= <<"admin">>
-                         ,wh_json:get_ne_value([<<"doc">>, <<"email">>], User) =/= 'undefined'
+                  || User <- Users,
+                     wh_json:get_value([<<"doc">>, <<"priv_level">>], User) =:= <<"admin">>,
+                     wh_json:get_ne_value([<<"doc">>, <<"email">>], User) =/= 'undefined'
                  ]
             of
                 [] -> find_admin(Tree);
@@ -358,8 +343,8 @@ find_admin([AcctId|Tree]) ->
             find_admin(Tree)
     end;
 find_admin(Account) ->
-    find_admin([ wh_json:get_value(<<"pvt_account_id">>, Account)
-                 | lists:reverse(kz_account:tree(Account))
+    find_admin([wh_json:get_value(<<"pvt_account_id">>, Account)
+                | lists:reverse(kz_account:tree(Account))
                ]).
 
 %%--------------------------------------------------------------------

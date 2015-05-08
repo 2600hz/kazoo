@@ -682,6 +682,7 @@ find_account_id(JObj) ->
     wh_json:get_first_defined([<<"account_id">>
                                ,[<<"account">>, <<"_id">>]
                                ,<<"pvt_account_id">>
+                               ,<<"_id">>, <<"id">>
                                ,<<"Account-ID">>
                               ]
                               ,JObj
@@ -765,47 +766,20 @@ send_update(RespQ, MsgId, Status, Msg) ->
     wh_amqp_worker:cast(Prop, fun(P) -> wapi_notifications:publish_notify_update(RespQ, P) end).
 
 -spec find_account_rep_email(api_object() | ne_binary()) -> api_binaries().
--spec find_account_rep_email(ne_binary(), api_binary()) -> api_binaries().
--spec find_account_rep_email(ne_binary(), ne_binary(), wh_json:object()) -> api_binaries().
 find_account_rep_email('undefined') -> 'undefined';
 find_account_rep_email(<<_/binary>> = AccountId) ->
-    find_account_rep_email(AccountId, wh_services:find_reseller_id(AccountId));
+    case wh_services:is_reseller(AccountId) of
+        'true' ->
+            lager:debug("finding admin email for reseller account ~s", [AccountId]),
+            find_account_admin_email(AccountId);
+        'false' ->
+            lager:debug("finding admin email for reseller of account ~s", [AccountId]),
+            find_account_admin_email(wh_services:find_reseller_id(AccountId))
+    end;
 find_account_rep_email(AccountJObj) ->
     find_account_rep_email(
-      wh_json:get_first_defined([<<"_id">>, <<"id">>, <<"pvt_account_id">>]
-                                ,AccountJObj
-                               )
+      find_account_id(AccountJObj)
      ).
-
-find_account_rep_email(AccountId, 'undefined') ->
-    lager:debug("no reseller id for ~s, finding admin email", [AccountId]),
-    find_account_admin_email(AccountId);
-find_account_rep_email(AccountId, AccountId) ->
-    lager:debug("account is own reseller, checking for admins"),
-    find_account_admin_email(AccountId);
-find_account_rep_email(AccountId, ResellerId) ->
-    lager:debug("checking reseller ~s for rep for ~s", [ResellerId, AccountId]),
-    ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
-    ViewOptions = ['include_docs', {'key', AccountId}],
-    case couch_mgr:get_results(ResellerDb, <<"sub_account_reps/find_assignments">>, ViewOptions) of
-        {'ok', [View|_]} ->
-            find_account_rep_email(AccountId, ResellerId, View);
-        {'ok', []} ->
-            lager:debug("no rep for ~s, checking for rep of reseller", [AccountId]),
-            find_account_rep_email(ResellerId, wh_services:find_reseller_id(ResellerId));
-        {'error', _E} ->
-            lager:debug("querying view failed: ~p", [_E]),
-            find_account_rep_email(ResellerId, wh_services:find_reseller_id(ResellerId))
-    end.
-
-find_account_rep_email(_AccountId, ResellerId, View) ->
-    lager:debug("found rep for ~s in ~s: ~p", [_AccountId, ResellerId, View]),
-    case wh_json:get_value([<<"doc">>, <<"email">>], View) of
-        'undefined' ->
-            lager:debug("rep has no email, looking for admin email for ~s", [ResellerId]),
-            find_account_admin_email(ResellerId);
-        Email -> [Email]
-    end.
 
 -spec find_account_admin_email(api_binary()) -> api_binaries().
 -spec find_account_admin_email(ne_binary(), api_binary()) -> api_binaries().
