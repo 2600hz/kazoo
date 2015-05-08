@@ -181,14 +181,18 @@ on_successful_validation(Context) ->
                 {<<"user">>, UserId, UserId}
         end,
 
-    Num = wh_json:get_value(<<"to">>, JObj),
-    ToUser = case wnm_util:is_reconcilable(filter_number(Num), AccountId) of
-                 'true' -> wnm_util:to_e164(filter_number(Num), AccountId);
-                 'false' -> Num
+    ToNum = wh_json:get_value(<<"to">>, JObj),
+    ToUser = case wnm_util:is_reconcilable(filter_number(ToNum), AccountId) of
+                 'true' -> wnm_util:to_e164(filter_number(ToNum), AccountId);
+                 'false' -> ToNum
              end,
     To = <<ToUser/binary, "@", Realm/binary>>,
 
-    FromUser = wh_json:get_value(<<"from">>, JObj, get_default_caller_id(Context, OwnerId)),
+    FromNum = wh_json:get_value(<<"from">>, JObj, get_default_caller_id(Context, OwnerId)),
+    FromUser = case wnm_util:is_reconcilable(filter_number(FromNum), AccountId) of
+                 'true' -> wnm_util:to_e164(filter_number(FromNum), AccountId);
+                 'false' -> FromNum
+             end,
     From = <<FromUser/binary, "@", Realm/binary>>,
 
     SmsDocId = create_sms_doc_id(),
