@@ -32,17 +32,19 @@ is_ip_unique(IP, DeviceId) ->
 -spec is_ip_acl_unique(ne_binary(), ne_binary()) -> boolean().
 is_ip_acl_unique(IP, DeviceId) ->
     lists:all(
-        fun(JObj) ->
-            CIDR = wh_json:get_value(<<"ip">>, JObj),
-            AuthorizingId = wh_json:get_value(<<"authorizing_id">>, JObj),
-            case AuthorizingId =:= DeviceId of
-                'true' -> 'true';
-                'false' ->
-                    not (wh_network_utils:verify_cidr(IP, CIDR))
-            end
-        end
-        ,get_all_acl_ips()
-    ).
+      fun(JObj) -> is_ip_unique(JObj, IP, DeviceId) end
+      ,get_all_acl_ips()
+     ).
+
+-spec is_ip_unique(wh_json:object(), ne_binary(), ne_binary()) -> boolean().
+is_ip_unique(JObj, IP, DeviceId) ->
+    CIDR = wh_json:get_value(<<"ip">>, JObj),
+    AuthorizingId = wh_json:get_value(<<"authorizing_id">>, JObj),
+    case AuthorizingId =:= DeviceId of
+        'true' -> 'true';
+        'false' ->
+            not (wh_network_utils:verify_cidr(IP, CIDR))
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -60,15 +62,13 @@ is_ip_sip_auth_unique(IP, DeviceId) ->
         _ -> 'false'
     end.
 
-
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_all_acl_ips() -> ne_binaries().
+-spec get_all_acl_ips() -> wh_json:objects().
 get_all_acl_ips() ->
     Req = [{<<"Category">>, <<"ecallmgr">>}
            ,{<<"Key">>, <<"acls">>}
@@ -94,22 +94,19 @@ get_all_acl_ips() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec extract_all_ips(wh_json:object()) -> ne_binaries().
+-spec extract_all_ips(wh_json:object()) -> wh_json:objects().
 extract_all_ips(JObj) ->
-    wh_json:foldl(
-        fun(_Key, Value, Acc) ->
-            case wh_json:get_value(<<"cidr">>, Value) of
-                'undefined' -> Acc;
-                CIDR ->
-                    [wh_json:from_list([
-                        {<<"ip">>, CIDR}
-                        ,{<<"authorizing_id">>, wh_json:get_value(<<"authorizing_id">>, Value)}
-                     ])|Acc]
-            end
-        end
-        ,[]
-        ,JObj
-    ).
+    wh_json:foldl(fun extract_ip/3, [], JObj).
 
-
-
+-spec extract_ip(wh_json:key(), wh_json:object(), wh_json:objects()) ->
+                        wh_json:objects().
+extract_ip(_Key, Value, Acc) ->
+    case wh_json:get_value(<<"cidr">>, Value) of
+        'undefined' -> Acc;
+        CIDR ->
+            [wh_json:from_list([{<<"ip">>, CIDR}
+                                ,{<<"authorizing_id">>, wh_json:get_value(<<"authorizing_id">>, Value)}
+                               ])
+             |Acc
+            ]
+    end.

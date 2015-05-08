@@ -439,14 +439,14 @@ validate_device_ip_unique(IP, DeviceId, Context) ->
             check_emergency_caller_id(DeviceId, cb_context:store(Context, 'aggregate_device', 'true'));
         'false' ->
             C = cb_context:add_validation_error(
-                    [<<"sip">>, <<"ip">>]
-                    ,<<"unique">>
-                    ,wh_json:from_list([
-                        {<<"message">>, <<"SIP IP already in use">>}
-                        ,{<<"cause">>, IP}
+                  [<<"sip">>, <<"ip">>]
+                  ,<<"unique">>
+                  ,wh_json:from_list(
+                     [{<<"message">>, <<"SIP IP already in use">>}
+                      ,{<<"cause">>, IP}
                      ])
-                    ,Context
-                ),
+                  ,Context
+                 ),
             check_emergency_caller_id(DeviceId, C)
     end.
 
