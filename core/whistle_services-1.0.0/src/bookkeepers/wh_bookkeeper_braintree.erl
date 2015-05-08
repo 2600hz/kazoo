@@ -301,15 +301,15 @@ set_reason(BTTransaction, Transaction) ->
 
 set_reason(BTTransaction, Transaction, 'undefined') ->
     IsApi = wh_json:is_true(<<"is_api">>, BTTransaction),
-    IsAutomatic = wh_json:is_true(<<"is_automatic">>, BTTransaction),
     IsRecurring = wh_json:is_true(<<"is_recurring">>, BTTransaction),
+    IsProrated = transaction_is_prorated(BTTransaction),
     if
+        IsProrated ->
+            wh_transaction:set_reason(<<"recurring_prorate">>, Transaction);
         IsApi, IsRecurring ->
             wh_transaction:set_reason(<<"recurring_prorate">>, Transaction);
-        IsAutomatic, IsRecurring ->
-            wh_transaction:set_reason(<<"monthly_recurring">>, Transaction);
         IsRecurring ->
-            wh_transaction:set_reason(<<"recurring">>, Transaction);
+            wh_transaction:set_reason(<<"monthly_recurring">>, Transaction);
         IsApi ->
             wh_transaction:set_reason(<<"manual_addition">>, Transaction);
         'true' ->
@@ -356,6 +356,31 @@ set_account_db(BTTransaction, Transaction) ->
     CustormerId = wh_json:get_value([<<"customer">>, <<"id">>], BTTransaction),
     AccountDb = wh_util:format_account_id(CustormerId, 'encoded'),
     wh_transaction:set_account_db(AccountDb, Transaction).
+
+-spec transaction_is_prorated(wh_json:object()) -> boolean().
+transaction_is_prorated(BTransaction) ->
+    Addon = calculate_addon(BTransaction),
+    Discount = calculate_discount(BTransaction),
+    Amount = wh_json:get_number_value(<<"amount">>, BTransaction, 0),
+    (Addon - Discount) =/= Amount.
+
+-spec calculate_addon(wh_json:object()) -> number().
+calculate_addon(BTransaction) ->
+    Addons = wh_json:get_value(<<"add_ons">>, BTransaction, []),
+    calculate(Addons, 0).
+
+-spec calculate_discount(wh_json:object()) -> number().
+calculate_discount(BTransaction) ->
+    Addons = wh_json:get_value(<<"discounts">>, BTransaction, []),
+    calculate(Addons, 0).
+
+-spec calculate(wh_json:objects(), number()) -> number().
+calculate([], Acc) ->
+    Acc/100;
+calculate([Addon|Addons], Acc) ->
+    Amount = wh_json:get_number_value(<<"amount">>, Addon, 0)*100,
+    Quantity = wh_json:get_number_value(<<"quantity">>, Addon, 0),
+    calculate(Addons, (Amount*Quantity+Acc)).
 
 %%--------------------------------------------------------------------
 %% @private
