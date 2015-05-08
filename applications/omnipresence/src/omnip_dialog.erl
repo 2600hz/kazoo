@@ -303,7 +303,7 @@ handle_update(JObj, State, From, To, Expires) ->
                         ,{<<"From-User">>, ToUsername}
                         ,{<<"From-Realm">>, ToRealm}
                         ,{<<"From-Tag">>, wh_json:get_value(<<"From-Tag">>, JObj)}
-                        ,{<<"To">>, <<"sip:", From/binary>>}
+                        ,{<<"To">>, ToURI}
                         ,{<<"To-URI">>, ToURI}
                         ,{<<"To-User">>, FromUsername}
                         ,{<<"To-Realm">>, FromRealm}
