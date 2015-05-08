@@ -423,7 +423,9 @@ maybe_get_ringback_id(Call) ->
     ReOptions = [{'capture', [1], 'binary'}],
     case catch(re:run(Referred, <<".*sip:(.*)@.*">>, ReOptions)) of
         {'match', [Match]} -> get_endpoint_id(Match, Call);
-        _ -> 'undefined'
+        _ -> 
+            FromUser = whapps_call:from_user(Call),
+            get_endpoint_id(FromUser, Call)
     end.
 
 %%--------------------------------------------------------------------
