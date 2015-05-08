@@ -422,7 +422,7 @@ handle_quick_sale_response(BillingId, BtTransaction) ->
 
 -spec send_topup_notification(boolean(), ne_binary(), wh_json:object()) -> boolean().
 send_topup_notification(Success, BillingId, Transaction) ->
-    Amount = wht_util:dollars_to_units(wh_json:get_value(<<"amount">>, Transaction)),
+    Amount = wht_util:dollars_to_units(wh_json:get_float_value(<<"amount">>, Transaction, 0.0)),
     Props = [{<<"Account-ID">>, BillingId}
              ,{<<"Amount">>, Amount}
              ,{<<"Success">>, Success}
