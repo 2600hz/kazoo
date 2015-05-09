@@ -351,14 +351,11 @@ get_feature_key(<<"presence">> = Type, Value, Brand, Family, AccountId) ->
     case wh_json:get_value(<<"presence_id">>, UserJObj) of
         'undefined' -> 'undefined';
         Presence ->
-            First = wh_json:get_value(<<"first_name">>, UserJObj),
-            Last = wh_json:get_value(<<"last_name">>, UserJObj),
-
             wh_json:from_list(
-              [{<<"label">>, <<First/binary, " ", Last/binary>>}
+              [{<<"label">>, <<>>}
                ,{<<"value">>, Presence}
                ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
-               ,{<<"account">>, <<"1">>}
+               ,{<<"account">>, get_line_key(Brand, Family)}
               ])
     end;
 get_feature_key(<<"speed_dial">> = Type, Value, Brand, Family, _AccountId) ->
@@ -366,7 +363,7 @@ get_feature_key(<<"speed_dial">> = Type, Value, Brand, Family, _AccountId) ->
       [{<<"label">>, Value}
        ,{<<"value">>, Value}
        ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
-       ,{<<"account">>, <<"1">>}
+       ,{<<"account">>, get_line_key(Brand, Family)}
       ]);
 get_feature_key(<<"personal_parking">> = Type, Value, Brand, Family, AccountId) ->
     {'ok', UserJObj} = get_user(AccountId, Value),
@@ -374,23 +371,24 @@ get_feature_key(<<"personal_parking">> = Type, Value, Brand, Family, AccountId) 
     case wh_json:get_value(<<"presence_id">>, UserJObj) of
         'undefined' -> 'undefined';
         Presence ->
-            First = wh_json:get_value(<<"first_name">>, UserJObj),
-            Last = wh_json:get_value(<<"last_name">>, UserJObj),
-
             wh_json:from_list(
-              [{<<"label">>, <<"Park ", First/binary, " ", Last/binary>>}
+              [{<<"label">>, <<>>}
                ,{<<"value">>, <<"*3", Presence/binary>>}
                ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
-               ,{<<"account">>, <<"1">>}
+               ,{<<"account">>, get_line_key(Brand, Family)}
               ])
     end;
 get_feature_key(<<"parking">> = Type, Value, Brand, Family, _AccountId) ->
     wh_json:from_list(
-      [{<<"label">>, <<"Park ", Value/binary>>}
+      [{<<"label">>, <<>>}
        ,{<<"value">>, <<"*3", Value/binary>>}
        ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
-       ,{<<"account">>, <<"1">>}
+       ,{<<"account">>, get_line_key(Brand, Family)}
       ]).
+
+-spec get_line_key(ne_binary(), ne_binary()) -> api_binary().
+get_line_key(<<"yealink">>, _) -> <<"0">>;
+get_line_key(_, _) -> 'undefined'.
 
 -spec get_feature_key_type(ne_binary(), binary(), binary()) -> api_object().
 get_feature_key_type(Type, Brand, Family) ->
