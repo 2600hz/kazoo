@@ -912,7 +912,6 @@ dry_run_activation_charges(Category, CategoryJObj, Services, JObjs) ->
 dry_run_activation_charges(Category, Item, Quantity, #wh_services{jobj=JObj}=Services, JObjs) ->
     case wh_json:get_value([?QUANTITIES, Category, Item], JObj, 0) of
         Quantity -> JObjs;
-        NewQ when NewQ < Quantity -> JObjs;
         OldQuantity ->
             ServicesJObj = wh_services:to_json(Services),
             Plans = wh_service_plans:from_service_json(ServicesJObj),
