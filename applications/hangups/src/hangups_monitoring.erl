@@ -17,6 +17,7 @@
 -export([start_link/0
          ,check_stats/0
         ]).
+-export([hangups_to_monitor/0]).
 
 %% gen_server callbacks
 -export([init/1
@@ -30,16 +31,6 @@
 -include("hangups.hrl").
 
 -define(STAT_CHECK_MSG, 'stat_check').
--define(HANGUPS_TO_MONITOR
-        ,whapps_config:get(?APP_NAME
-                           ,<<"hangups_to_monitor">>
-                           ,[<<"WRONG_CALL_STATE">>
-                             ,<<"NO_ROUTE_DESTINATION">>
-                             ,<<"CALL_REJECT">>
-                             ,<<"MANDATORY_IE_MISSING">>
-                             ,<<"PROGRESS_TIMEOUT">>
-                             ,<<"RECOVERY_ON_TIMER_EXPIRE">>
-                            ])).
 
 
 -record(state, {stat_timer_ref :: reference()}).
@@ -151,6 +142,19 @@ terminate(_Reason, #state{stat_timer_ref=Ref}) ->
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
+%% @public
+-spec hangups_to_monitor() -> ne_binaries().
+hangups_to_monitor() ->
+    whapps_config:get(?APP_NAME
+                     ,<<"hangups_to_monitor">>
+                     ,[<<"WRONG_CALL_STATE">>
+                       ,<<"NO_ROUTE_DESTINATION">>
+                       ,<<"CALL_REJECT">>
+                       ,<<"MANDATORY_IE_MISSING">>
+                       ,<<"PROGRESS_TIMEOUT">>
+                       ,<<"RECOVERY_ON_TIMER_EXPIRE">>
+                      ]).
+
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
@@ -161,7 +165,7 @@ start_timer() ->
 -spec check_stats() -> 'ok'.
 check_stats() ->
     wh_util:put_callid(?MODULE),
-    lists:foreach(fun check_stats/1, ?HANGUPS_TO_MONITOR).
+    lists:foreach(fun check_stats/1, hangups_to_monitor()).
 
 check_stats(HC) ->
     MeterName = hangups_util:meter_name(HC),
@@ -183,16 +187,17 @@ maybe_alert(HangupCause, Stats) ->
 -spec maybe_alert(ne_binary(), list(), atom()) -> boolean().
 maybe_alert(_HangupCause, _Stats, 'acceleration') -> 'false';
 maybe_alert(_HangupCause, _Stats, 'count') -> 'false';
+maybe_alert(_HangupCause, _Stats, 'mean') -> 'false';
 maybe_alert(HangupCause, Stats, Key) ->
     ConfigName = hangups_util:meter_name(HangupCause),
     Threshold  = whapps_config:get_float(ConfigName, folsom_field(Key)),
     Value      = props:get_value(Key, Stats),
-    maybe_alert_on_threshold(Value, Threshold).
+    maybe_alert_on_threshold(Value, Threshold, Key).
 
--spec maybe_alert_on_threshold(number(), number() | 'undefined') -> boolean().
-maybe_alert_on_threshold(_Value, 'undefined') -> 'false';
-maybe_alert_on_threshold(Value, Threshold) ->
-    Value > Threshold.
+-spec maybe_alert_on_threshold(number(), number() | 'undefined', atom()) -> boolean().
+maybe_alert_on_threshold(_Value, 'undefined', _Key) -> 'false';
+maybe_alert_on_threshold(Value, Threshold, Key) ->
+    Value > Threshold * folsom_minutes(Key).
 
 -spec send_alert(ne_binary()) -> 'ok'.
 send_alert(HangupCause) ->
@@ -203,9 +208,14 @@ send_alert(HangupCause) ->
                             , hangups_query_listener:meter_resp(Meter)
                             ).
 
+-spec folsom_minutes(atom()) -> pos_integer().
+folsom_minutes('one') -> 1;
+folsom_minutes('five') -> 5;
+folsom_minutes('fifteen') -> 15;
+folsom_minutes('day') -> 1440.
+
 -spec folsom_field(atom()) -> ne_binary().
 folsom_field('one') -> <<"one">>;
 folsom_field('five') -> <<"five">>;
 folsom_field('fifteen') -> <<"fifteen">>;
-folsom_field('day') -> <<"day">>;
-folsom_field('mean') -> <<"mean">>.
+folsom_field('day') -> <<"day">>.

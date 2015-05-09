@@ -12,6 +12,7 @@
 -export([hangups_summary/0
          ,hangup_summary/1, hangup_summary/2
          ,account_summary/1
+         ,activate_monitor/2, activate_monitors/2
          ,set_monitor_threshold/2, set_monitor_threshold/3
         ]).
 
@@ -56,14 +57,14 @@ account_summary(AccountId) ->
     print_stats(Hangups).
 
 -define(STAT_SUMMARY_FORMAT
-        ," ~-30s | ~-32s | ~-10s | ~-10s | ~-10s |~n"
+        ," ~-30s | ~-32s | ~-10s | ~-10s | ~-10s | ~-10s |~n"
        ).
 
 -spec print_stats(wh_proplist()) -> 'ok'.
-print_stats([]) -> io:format("No data found for request~n", []);
+print_stats([]) -> io:format("No data found for request\n");
 print_stats(Stats) ->
     io:format(?STAT_SUMMARY_FORMAT
-              ,["Hangup Cause", "AccountId", "One", "Five", "Fifteen"]
+              ,["Hangup Cause", "AccountId", "One", "Five", "Fifteen", "Thr. One"]
              ),
     lists:foreach(fun print_stat/1, lists:keysort(1, Stats)).
 
@@ -74,6 +75,8 @@ print_stat({Name, Stats}) ->
                     ID -> ID
                 end,
     HangupCause = hangups_util:meter_hangup_cause(Name),
+    ConfigName = hangups_util:meter_name(HangupCause),
+    Threshold = whapps_config:get_float(ConfigName, <<"one">>),
 
     io:format(?STAT_SUMMARY_FORMAT
               ,[HangupCause
@@ -81,8 +84,30 @@ print_stat({Name, Stats}) ->
                 ,props:get_binary_value(<<"one">>, Stats)
                 ,props:get_binary_value(<<"five">>, Stats)
                 ,props:get_binary_value(<<"fifteen">>, Stats)
+                ,io_lib:format("~e", [Threshold])
                ]).
 
+%% @public
+-spec activate_monitor(ne_binary(), ne_binary()) -> 'ok'.
+activate_monitor(AccountId, HangupCause) ->
+    hangups_channel_destroy:start_meters(HangupCause),
+    hangups_channel_destroy:start_meters(AccountId, HangupCause).
+
+%% @public
+-spec activate_monitors(ne_binary(), ne_binary()) -> 'ok'.
+activate_monitors(AccountId, ThresholdOneMinute) ->
+    F =
+        fun (HangupCause) ->
+                ConfigName = hangups_util:meter_name(HangupCause),
+                case whapps_config:get_float(ConfigName, <<"one">>) of
+                    'undefined' -> set_monitor_threshold(HangupCause, ThresholdOneMinute);
+                    _ThresholdAlreadySet -> 'true'
+                end
+                    andalso activate_monitor(AccountId, HangupCause)
+        end,
+    lists:foreach(F, hangups_monitoring:hangups_to_monitor()).
+
+%% @public
 -spec set_monitor_threshold(text(), text()) -> boolean().
 set_monitor_threshold(HangupCause, TOM) ->
     ThresholdOnMinute = wh_util:to_float(TOM),
@@ -105,6 +130,7 @@ update_monitor_thresholds(HangupCause, ThresholdOnMinute) ->
                 ,Scales
                ).
 
+%% @public
 -spec set_monitor_threshold(ne_binary(), ne_binary(), float()) -> boolean().
 -spec set_monitor_threshold(ne_binary(), ne_binary(), float(), boolean()) -> boolean().
 set_monitor_threshold(HangupCause, ThresholdName, T) ->
@@ -123,7 +149,7 @@ set_monitor_threshold(HangupCause, ThresholdName, Threshold, 'true') ->
     case whapps_config:get_float(ConfigName, ThresholdName) of
         'undefined' ->
             whapps_config:set_default(ConfigName, ThresholdName, Threshold),
-            io:format("Set ~s for ~s to ~p~n", [ThresholdName, ConfigName, Threshold]);
+            io:format("setting ~s for ~s to ~p~n", [ThresholdName, ConfigName, Threshold]);
         _OldValue ->
             whapps_config:set_default(ConfigName, ThresholdName, Threshold),
             io:format("updating ~s for ~s to ~p from ~p~n", [ThresholdName, ConfigName, Threshold, _OldValue])
