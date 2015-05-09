@@ -22,9 +22,7 @@
 -spec init(api_binary(), integer()) -> 'ok' | 'error'.
 init(Account, Balance) ->
     case get_top_up(Account) of
-        {'error', 'topup_undefined'} ->
-            lager:debug("top up settings undefined for ~s", [Account]),
-            'error';
+        {'error', 'topup_undefined'} -> 'error';
         {'error', 'topup_disabled'} ->
             lager:debug("trying to top up account ~s but top up is disabled", [Account]),
             'error';

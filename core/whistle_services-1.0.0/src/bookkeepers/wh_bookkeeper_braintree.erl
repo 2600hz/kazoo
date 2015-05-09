@@ -223,7 +223,7 @@ handle_charged_transactions(BillingId, Code, JObjs) ->
            ,wht_util:units_to_dollars(Amount)
            ,Props
           ),
-    handle_quick_sale_response(BillingId, BT).
+    handle_quick_sale_response(BT).
 
 -spec handle_topup(ne_binary(), wh_json:objects()) -> boolean().
 handle_topup(BillingId, []) ->
@@ -240,8 +240,36 @@ handle_topup(BillingId, JObjs) ->
                    ,wht_util:units_to_dollars(Amount)
                    ,Props
                   ),
-            handle_quick_sale_response(BillingId, BT)
+            Success = handle_quick_sale_response(BT),
+            _ = send_topup_notification(Success, BillingId, BT),
+            Success
     end.
+
+-spec send_topup_notification(boolean(), ne_binary(), bt_transaction()) -> boolean().
+send_topup_notification(Success, BillingId, BtTransaction) ->
+    Transaction = braintree_transaction:record_to_json(BtTransaction),
+    Amount = wht_util:dollars_to_units(wh_json:get_float_value(<<"amount">>, Transaction, 0.0)),
+    Props = [{<<"Account-ID">>, BillingId}
+             ,{<<"Amount">>, Amount}
+             ,{<<"Success">>, Success}
+             ,{<<"Response">>, wh_json:get_value(<<"processor_response_text">>, Transaction)}
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ],
+    _ = case
+            whapps_util:amqp_pool_send(
+              Props
+              ,fun wapi_notifications:publish_topup/1
+             )
+        of
+            'ok' ->
+                lager:debug("topup notification sent for ~s", [BillingId]);
+            {'error', _R} ->
+                lager:error(
+                  "failed to send topup notification for ~s : ~p"
+                           ,[BillingId, _R]
+                 )
+        end,
+    Success.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -304,7 +332,7 @@ set_reason(BTTransaction, Transaction, 'undefined') ->
     IsRecurring = wh_json:is_true(<<"is_recurring">>, BTTransaction),
     IsProrated = transaction_is_prorated(BTTransaction),
     if
-        IsProrated ->
+        IsProrated, IsRecurring ->
             wh_transaction:set_reason(<<"recurring_prorate">>, Transaction);
         IsApi, IsRecurring ->
             wh_transaction:set_reason(<<"recurring_prorate">>, Transaction);
@@ -438,37 +466,12 @@ calculate_amount(JObjs) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_quick_sale_response(ne_binary(), bt_transaction()) -> boolean().
-handle_quick_sale_response(BillingId, BtTransaction) ->
+-spec handle_quick_sale_response(bt_transaction()) -> boolean().
+handle_quick_sale_response(BtTransaction) ->
     Transaction = braintree_transaction:record_to_json(BtTransaction),
     RespCode = wh_json:get_value(<<"processor_response_code">>, Transaction, ?CODE_UNKNOWN),
     %% https://www.braintreepayments.com/docs/ruby/reference/processor_responses
-    send_topup_notification(wh_util:to_integer(RespCode) < 2000, BillingId, Transaction).
-
--spec send_topup_notification(boolean(), ne_binary(), wh_json:object()) -> boolean().
-send_topup_notification(Success, BillingId, Transaction) ->
-    Amount = wht_util:dollars_to_units(wh_json:get_float_value(<<"amount">>, Transaction, 0.0)),
-    Props = [{<<"Account-ID">>, BillingId}
-             ,{<<"Amount">>, Amount}
-             ,{<<"Success">>, Success}
-             ,{<<"Response">>, wh_json:get_value(<<"processor_response_text">>, Transaction)}
-             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-            ],
-    _ = case
-            whapps_util:amqp_pool_send(
-              Props
-              ,fun wapi_notifications:publish_topup/1
-             )
-        of
-            'ok' ->
-                lager:debug("topup notification sent for ~s", [BillingId]);
-            {'error', _R} ->
-                lager:error(
-                  "failed to send topup notification for ~s : ~p"
-                           ,[BillingId, _R]
-                 )
-        end,
-    Success.
+    wh_util:to_integer(RespCode) < 2000.
 
 %%--------------------------------------------------------------------
 %% @private

@@ -112,6 +112,7 @@ maybe_update_dash_e911(#number{current_number_doc=CurrentJObj
             end
     end.
 
+maybe_update_dash_e911(#number{dry_run='true', number_doc=JObj}, _, _) -> {'ok', JObj};
 maybe_update_dash_e911(Number, Address, JObj) ->
     Location = json_address_to_xml_location(Address),
     case is_valid_location(Location) of

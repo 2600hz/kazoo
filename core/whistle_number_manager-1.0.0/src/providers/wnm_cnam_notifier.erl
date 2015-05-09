@@ -122,6 +122,7 @@ remove_all_cnam_features(Features) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec publish_cnam_update(wnm_number()) -> 'ok'.
+publish_cnam_update(#number{dry_run='true'}) -> 'ok';
 publish_cnam_update(#number{number=Number
                             ,state=State
                             ,assigned_to=AssignedTo

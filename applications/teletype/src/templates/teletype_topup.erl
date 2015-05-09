@@ -20,7 +20,7 @@
 -define(TOPUP_MACROS
        ,[?MACRO_VALUE(<<"amount">>, <<"amount">>, <<"Amount">>, <<"The top up amount">>)
          ,?MACRO_VALUE(<<"success">>, <<"success">>, <<"Success">>, <<"Whether or not the top up was successful">>)
-         ,?MACRO_VALUE(<<"reason">>, <<"reason">>, <<"Reason">>, <<"Transaction processor response">>)
+         ,?MACRO_VALUE(<<"response">>, <<"response">>, <<"Response">>, <<"Transaction processor response">>)
          ,?MACRO_VALUE(<<"balance">>, <<"balance">>, <<"Balance">>, <<"The resulting account balance">>)
         ]).
 
@@ -28,8 +28,8 @@
         ,wh_json:from_list(?USER_MACROS ++ ?ACCOUNT_MACROS ++ ?TOPUP_MACROS)
        ).
 
--define(TEMPLATE_TEXT, <<"Attempted to top-up account \"{{account.name}}\" for {{amount}}.  The transaction processor response was {{reason}} resulting in a new balance of {{balance}}.">>).
--define(TEMPLATE_HTML, <<"<html><body><h2>Attempted to top-up account \"{{account.name}}\" for {{amount}}</h2><p>The transaction processor response was {{reason}} resulting in a new balance of {{balance}}.</p></body></html>">>).
+-define(TEMPLATE_TEXT, <<"Attempted to top-up account \"{{account.name}}\" for {{amount}}.  The transaction processor response was {{response}} resulting in a new balance of {{balance}}.">>).
+-define(TEMPLATE_HTML, <<"<html><body><h2>Attempted to top-up account \"{{account.name}}\" for {{amount}}</h2><p>The transaction processor response was {{response}} resulting in a new balance of {{balance}}.</p></body></html>">>).
 -define(TEMPLATE_SUBJECT, <<"Account {{account.name}} has been topped up">>).
 -define(TEMPLATE_CATEGORY, <<"account">>).
 -define(TEMPLATE_NAME, <<"Top Up">>).
@@ -80,7 +80,7 @@ handle_req(DataJObj) ->
               ,{<<"amount">>, get_topup_amount(DataJObj)}
               ,{<<"balance">>, get_balance(DataJObj)}
               ,{<<"success">>, wh_json:is_true(<<"success">>, DataJObj)}
-              ,{<<"reason">>, wh_json:get_value(<<"reason">>, DataJObj, <<>>)}
+              ,{<<"response">>, wh_json:get_value(<<"response">>, DataJObj, <<>>)}
               | build_macro_data(DataJObj)
              ],
 

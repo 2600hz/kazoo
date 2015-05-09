@@ -315,7 +315,9 @@ maybe_test_for_low_balance(AccountId, AccountDb, JObj) ->
 test_for_low_balance(AccountId, AccountDb, JObj) ->
     Threshold = low_balance_threshold(AccountId),
     CurrentBalance = wht_util:current_balance(AccountId),
-    lager:debug("checking if account ~s balance is below $~w", [AccountId, Threshold]),
+    lager:debug("checking if account ~s balance $~w is below $~w"
+               ,[AccountId, wht_util:units_to_dollars(CurrentBalance), Threshold]
+               ),
     case CurrentBalance < wht_util:dollars_to_units(Threshold) of
         'false' ->
             maybe_reset_low_balance(AccountId, AccountDb, JObj);
