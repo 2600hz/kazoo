@@ -445,10 +445,12 @@ create_braintree_customer(Context) ->
             #bt_customer{}=Customer ->
                 C = braintree_customer:create(Customer),
                 Resp = braintree_customer:record_to_json(C),
+                _ = sync(Context),
                 crossbar_util:response(Resp, Context);
             _Else ->
                 C = braintree_customer:create(cb_context:account_id(Context)),
                 Resp = braintree_customer:record_to_json(C),
+                _ = sync(Context),
                 crossbar_util:response(Resp, Context)
         end
     catch
