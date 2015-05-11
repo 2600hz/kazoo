@@ -22,7 +22,7 @@
 -define(TR_DESCRIPTION, <<"braintree transaction">>).
 
 -record(wh_service_update, {bt_subscription :: braintree_subscription:subscription()
-                            ,plan_id :: api_binary()
+                            ,plan_id :: ne_binary()
                            }).
 
 -record(wh_service_updates, {bt_subscriptions = [] :: [update(),...] | []
