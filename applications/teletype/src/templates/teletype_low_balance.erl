@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014, 2600Hz Inc
+%%% @copyright (C) 2014-2015, 2600Hz Inc
 %%% @doc
 %%%
 %%% @end
@@ -76,7 +76,7 @@ handle_req(DataJObj) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
               ,{<<"account">>, teletype_util:account_params(DataJObj)}
               ,{<<"current_balance">>, get_current_balance(DataJObj)}
-              ,{<<"threshold">>, teletype_util:get_balance_threshold(DataJObj)}
+              ,{<<"threshold">>, teletype_topup:get_balance(DataJObj)}
               | build_macro_data(DataJObj)
              ],
 
