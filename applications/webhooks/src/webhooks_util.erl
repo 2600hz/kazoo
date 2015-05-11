@@ -8,8 +8,6 @@
 %%%-------------------------------------------------------------------
 -module(webhooks_util).
 
--include("webhooks.hrl").
-
 -export([from_json/1
          ,to_json/1
         ]).
@@ -31,11 +29,28 @@
 %% ETS Management
 -export([table_id/0
          ,table_options/0
-         ,find_me/0
          ,gift_data/0
         ]).
 
+-include("webhooks.hrl").
+
 -define(TABLE, 'webhooks_listener').
+
+-define(CONNECT_TIMEOUT_MS
+        ,whapps_config:get_integer(?APP_NAME, <<"connect_timeout_ms">>, 10 * ?MILLISECONDS_IN_SECOND)
+       ).
+-define(IBROWSE_OPTS, [{'connect_timeout', ?CONNECT_TIMEOUT_MS}
+                       ,{'response_format', 'binary'}
+                      ]).
+
+-define(IBROWSE_TIMEOUT_MS
+        ,whapps_config:get_integer(?APP_NAME, <<"request_timeout_ms">>, 10 * ?MILLISECONDS_IN_SECOND)
+       ).
+
+-define(IBROWSE_REQ_HEADERS(Hook)
+        ,[{<<"X-Hook-ID">>, Hook#webhook.hook_id}
+          ,{<<"X-Account-ID">>, Hook#webhook.account_id}
+         ]).
 
 -spec table_id() -> ?TABLE.
 table_id() -> ?TABLE.
@@ -46,9 +61,6 @@ table_options() -> ['set'
                     ,{'keypos', #webhook.id}
                     ,'named_table'
                    ].
-
--spec find_me() -> api_pid().
-find_me() -> whereis(?MODULE).
 
 -spec gift_data() -> 'ok'.
 gift_data() -> 'ok'.
@@ -126,26 +138,24 @@ fire_hook(JObj, Hook, URI, 'get', Retries) ->
     lager:debug("sending event via 'get'(~b): ~s", [Retries, URI]),
     fire_hook(JObj, Hook, URI, 'get', Retries
               ,ibrowse:send_req(URI ++ [$?|wh_json:to_querystring(JObj)]
-                                ,[]
+                                ,?IBROWSE_REQ_HEADERS(Hook)
                                 ,'get'
                                 ,[]
-                                ,[{'connect_timeout', 1000}
-                                  ,{'response_format', 'binary'}
-                                 ]
-                                ,1000
+                                ,?IBROWSE_OPTS
+                                ,?IBROWSE_TIMEOUT_MS
                                ));
 fire_hook(JObj, Hook, URI, 'post', Retries) ->
     lager:debug("sending event via 'post'(~b): ~s", [Retries, URI]),
 
     fire_hook(JObj, Hook, URI, 'post', Retries
               ,ibrowse:send_req(URI
-                                ,[{"Content-Type", "application/x-www-form-urlencoded"}]
+                                ,[{"Content-Type", "application/x-www-form-urlencoded"}
+                                  | ?IBROWSE_REQ_HEADERS(Hook)
+                                 ]
                                 ,'post'
                                 ,wh_json:to_querystring(JObj)
-                                ,[{'connect_timeout', 1000}
-                                  ,{'response_format', 'binary'}
-                                 ]
-                                ,1000
+                                ,?IBROWSE_OPTS
+                                ,?IBROWSE_TIMEOUT_MS
                                )).
 
 -spec fire_hook(wh_json:object(), webhook(), string(), http_verb(), hook_retries(), ibrowse_ret()) -> 'ok'.
