@@ -186,7 +186,7 @@
       "type": "string",
       "required": false,
       "name": "Organizational name",
-      "description": ""
+      "description": "Full legal name of the organization"
     }
   }
 }

@@ -51,7 +51,7 @@
             "type": "string",
             "required": false,
             "name": "Note",
-            "description": "To specify supplemental information or a comment that is associated with the"
+            "description": "To specify supplemental information or a comment that is associated with the user"
         },
         "sort-string": {
             "type": "string",
