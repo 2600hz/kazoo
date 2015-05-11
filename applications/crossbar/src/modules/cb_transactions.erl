@@ -198,13 +198,7 @@ validate_transaction(Context, ?MONTHLY, ?HTTP_GET) ->
 validate_transaction(Context, ?SUBSCRIPTIONS, ?HTTP_GET) ->
     filter_subscriptions(Context);
 validate_transaction(Context, ?DEBIT, ?HTTP_DELETE) ->
-    case cb_modules_util:is_superduper_admin(Context) of
-        'false' -> cb_context:add_system_error('forbidden', Context);
-        'true' ->
-            JObj = cb_context:req_data(Context),
-            Amount = wh_json:get_float_value(<<"amount">>, JObj),
-            validate_debit(Context, Amount)
-    end;
+    validate_debit(Context);
 validate_transaction(Context, _PathToken, _Verb) ->
     cb_context:add_system_error('bad_identifier',  Context).
 
@@ -215,6 +209,23 @@ validate_transaction(Context, _PathToken, _Verb) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec validate_debit(cb_context:context()) -> cb_context:context().
+-spec validate_debit(cb_context:context(), 'undefined' | float()) -> cb_context:context().
+validate_debit(Context) ->
+    JObj = cb_context:req_data(Context),
+    Amount = wh_json:get_float_value(<<"amount">>, JObj),
+
+    AuthAccountId = cb_context:auth_account_id(Context),
+
+    case cb_modules_util:is_superduper_admin(Context) of
+        'true' -> validate_debit(Context, Amount);
+        'false' ->
+            case wh_services:is_reseller(AuthAccountId) of
+                'true' -> validate_debit(Context, Amount);
+                'false' -> cb_context:add_system_error('forbidden', Context)
+            end
+    end.
+
 validate_debit(Context, 'undefined') ->
     Message = <<"Amount is required">>,
     cb_context:add_validation_error(

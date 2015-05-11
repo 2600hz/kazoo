@@ -71,7 +71,7 @@ Version: 3.20
 
 ## Debit an account
 
-Only for super duper admins
+Only for super duper admins and resellers.
 
 ### Request
 
