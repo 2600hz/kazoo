@@ -31,10 +31,10 @@
 
 -include("../crossbar.hrl").
 
--define(SERVER, ?MODULE).
 -define(CB_LIST, <<"users/crossbar_listing">>).
 -define(LIST_BY_USERNAME, <<"users/list_by_username">>).
 -define(LIST_BY_PRESENCE_ID, <<"devices/listing_by_presence_id">>).
+
 -define(QUICKCALL, <<"quickcall">>).
 -define(VCARD, <<"vcard">>).
 -define(PHOTO, <<"photo">>).
@@ -677,7 +677,7 @@ convert_to_vcard(Context) ->
     JObj1 = wh_json:merge_jobjs(JObj, JProfile),
     JObj2 = set_photo(JObj1, Context),
     JObj3 = set_org(JObj2, Context),
-    RespData = kzd_users:to_vcard(JObj3),
+    RespData = kzd_user:to_vcard(JObj3),
     cb_context:set_resp_data(Context, [RespData, <<"\n">>]).
 
 -spec set_photo(wh_json:object(), cb_context:context()) -> wh_json:object().
