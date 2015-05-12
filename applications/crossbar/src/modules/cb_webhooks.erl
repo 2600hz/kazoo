@@ -38,13 +38,15 @@ init() ->
     _ = couch_mgr:revise_doc_from_file(?KZ_WEBHOOKS_DB, 'crossbar', <<"views/webhooks.json">>),
     _ = couch_mgr:revise_doc_from_file(?WH_SCHEMA_DB, 'crossbar', <<"schemas/webhooks.json">>),
 
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.webhooks">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.webhooks">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"*.validate.webhooks">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.execute.put.webhooks">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"*.execute.post.webhooks">>, ?MODULE, 'post'),
-    _ = crossbar_bindings:bind(<<"*.execute.patch.webhooks">>, ?MODULE, 'patch'),
-    crossbar_bindings:bind(<<"*.execute.delete.webhooks">>, ?MODULE, 'delete').
+    Bindings = [{<<"*.allowed_methods.webhooks">>, 'allowed_methods'}
+                ,{<<"*.resource_exists.webhooks">>, 'resource_exists'}
+                ,{<<"*.validate.webhooks">>, 'validate'}
+                ,{<<"*.execute.put.webhooks">>, 'put'}
+                ,{<<"*.execute.post.webhooks">>, 'post'}
+                ,{<<"*.execute.patch.webhooks">>, 'patch'}
+                ,{<<"*.execute.delete.webhooks">>, 'delete'}
+               ],
+    cb_modules_util:bind(?MODULE, Bindings).
 
 %%--------------------------------------------------------------------
 %% @public
