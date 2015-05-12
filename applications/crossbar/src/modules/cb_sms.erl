@@ -182,24 +182,28 @@ on_successful_validation(Context) ->
         end,
 
     {ToNum, ToOptions} = build_number(wh_json:get_value(<<"to">>, JObj)),
-    ToUser = case whapps_account_config:get_global(AccountId, ?MOD_CONFIG_CAT, <<"api_e164_convert_to">>, 'false') andalso                      
-                      wnm_util:is_reconcilable(filter_number(ToNum), AccountId) of
-                 'true' -> wnm_util:to_e164(filter_number(ToNum), AccountId);
-                 'false' -> ToNum
-             end,
+    ToUser =
+        case whapps_account_config:get_global(AccountId, ?MOD_CONFIG_CAT, <<"api_e164_convert_to">>, 'false')
+            andalso wnm_util:is_reconcilable(filter_number(ToNum), AccountId)
+        of
+            'true' -> wnm_util:to_e164(filter_number(ToNum), AccountId);
+            'false' -> ToNum
+        end,
     To = <<ToUser/binary, "@", Realm/binary>>,
 
     {FromNum, FromOptions} = build_number(wh_json:get_value(<<"from">>, JObj, get_default_caller_id(Context, OwnerId))),
-    FromUser = case whapps_account_config:get_global(AccountId, ?MOD_CONFIG_CAT, <<"api_e164_convert_from">>, 'false') andalso
-                        wnm_util:is_reconcilable(filter_number(FromNum), AccountId) of
-                 'true' -> wnm_util:to_e164(filter_number(FromNum), AccountId);
-                 'false' -> FromNum
-             end,
+    FromUser =
+        case whapps_account_config:get_global(AccountId, ?MOD_CONFIG_CAT, <<"api_e164_convert_from">>, 'false')
+            andalso wnm_util:is_reconcilable(filter_number(FromNum), AccountId)
+        of
+            'true' -> wnm_util:to_e164(filter_number(FromNum), AccountId);
+            'false' -> FromNum
+        end,
     From = <<FromUser/binary, "@", Realm/binary>>,
 
-    AddrOpts = [{<<"SMPP-Address-From-", K/binary>>, V} || {K, V} <- FromOptions] ++
-               [{<<"SMPP-Address-To-", K/binary>>, V} || {K, V} <- ToOptions],
-    
+    AddrOpts = [{<<"SMPP-Address-From-", K/binary>>, V} || {K, V} <- FromOptions]
+        ++ [{<<"SMPP-Address-To-", K/binary>>, V} || {K, V} <- ToOptions],
+
     SmsDocId = create_sms_doc_id(),
 
     cb_context:set_doc(cb_context:set_account_db(Context, AccountDb)
@@ -257,7 +261,8 @@ create_sms_doc_id() ->
       io_lib:format("~B~s-~s",[Year
                                ,wh_util:pad_month(Month)
                                ,wh_util:rand_hex_binary(16)
-                              ])).
+                              ])
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -307,13 +312,16 @@ filter_number(Number) ->
 -spec is_digit(integer()) -> boolean().
 is_digit(N) -> N >= $0 andalso N =< $9.
 
+-spec build_number(ne_binary()) -> {api_binary(), wh_proplist()}.
 build_number(Number) ->
     N = binary:split(Number, <<",">>, ['global']),
     case length(N) of
         1 -> {Number, []};
         _ -> lists:foldl(fun parse_number/2, {'undefined', []}, N)
     end.
-    
+
+-spec parse_number(ne_binary(), {api_binary(), wh_proplist()}) ->
+                          {api_binary(), wh_proplist()}.
 parse_number(<<"TON=", N/binary>>, {Num, Options}) ->
     {Num, [{<<"TON">>, wh_util:to_integer(N) } | Options]};
 parse_number(<<"NPI=", N/binary>>, {Num, Options}) ->
