@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -295,6 +295,7 @@ start_day_timer() ->
 
 -spec cleanup_soft_deletes(ne_binary()) -> any().
 cleanup_soft_deletes(Account) ->
+    couch_mgr:suppress_change_notice(),
     case whapps_util:is_account_db(Account) of
         'true' -> cleanup_account_soft_deletes(Account);
         'false' -> 'ok' % no longer checking other dbs for soft deletes
