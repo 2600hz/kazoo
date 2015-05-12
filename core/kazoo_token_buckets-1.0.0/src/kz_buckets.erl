@@ -19,6 +19,8 @@
          ,start_bucket/1, start_bucket/2, start_bucket/3, start_bucket/4, start_bucket/5
          ,exists/1, exists/2
          ,tokens/0
+
+         ,get_bucket/2, get_bucket/3
         ]).
 
 %% ETS related
@@ -53,7 +55,7 @@
                }).
 
 -record(bucket, {key :: {ne_binary(), ne_binary()} | '_'
-                 ,srv :: pid() | '$1' | '_'
+                 ,srv :: pid() | '$1' | '$2' | '_'
                  ,ref :: reference() | '$2' | '_'
                  ,accessed = wh_util:now_s(os:timestamp()) :: gregorian_seconds() | '$1' | '_'
                 }).
