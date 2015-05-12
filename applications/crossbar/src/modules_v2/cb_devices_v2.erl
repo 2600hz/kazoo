@@ -604,7 +604,7 @@ is_creds_locally_unique(AccountDb, Username, DeviceId) ->
 
 is_creds_global_unique(Realm, Username, DeviceId) ->
     ViewOptions = [{<<"key">>, [wh_util:to_lower_binary(Realm)
-                                , wh_util:to_lower_binary(Username)
+                                ,wh_util:to_lower_binary(Username)
                                ]
                    }],
     case couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup">>, ViewOptions) of

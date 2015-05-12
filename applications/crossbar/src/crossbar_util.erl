@@ -75,6 +75,10 @@
          ,refresh_fs_xml/1
         ]).
 
+-ifdef(TEST).
+-export([trunkstore_servers_changed/2]).
+-endif.
+
 -include("crossbar.hrl").
 
 -define(DEFAULT_LANGUAGE
@@ -1012,7 +1016,62 @@ maybe_refresh_fs_xml('device', Context, Precondition) ->
           wh_util:get_account_realm(cb_context:account_db(Context))
           ,DbDoc
          ),
-    'ok'.
+    'ok';
+maybe_refresh_fs_xml('sys_info', Context, Precondition) ->
+    Doc = cb_context:doc(Context),
+    Servers = wh_json:get_value(<<"servers">>, Doc, []),
+
+    DbDoc = cb_context:fetch(Context, 'db_doc'),
+    DbServers = wh_json:get_value(<<"servers">>, DbDoc, []),
+
+    ( Precondition
+      or trunkstore_servers_changed(Servers, DbServers)
+    ).
+
+-spec trunkstore_servers_changed(wh_json:objects(), wh_json:objects()) -> boolean().
+trunkstore_servers_changed([], []) -> 'false';
+trunkstore_servers_changed([], _DbServers) -> 'true';
+trunkstore_servers_changed(_Servers, []) -> 'true';
+trunkstore_servers_changed(Servers, DbServers) ->
+    MappedServers = map_servers(Servers),
+    DbMappedServers = map_servers(DbServers),
+
+    servers_changed(MappedServers, DbMappedServers)
+        orelse servers_changed(DbMappedServers, MappedServers).
+
+-spec servers_changed(wh_json:object(), wh_json:object()) -> boolean().
+servers_changed(Servers1, Servers2) ->
+    wh_json:any(fun({Name, S}) ->
+                        server_changed(S, wh_json:get_value(Name, Servers2))
+                end
+                ,Servers1
+               ).
+
+-spec server_changed(wh_json:object(), api_object()) -> boolean().
+server_changed(_Server, 'undefined') ->
+    lager:debug("server ~s existence has changed", [wh_json:get_value(<<"server_name">>, _Server)]),
+    'true';
+server_changed(Server1, Server2) ->
+    Keys = [ [<<"auth">>, <<"auth_method">>]
+             ,[<<"auth">>, <<"ip">>]
+             ,[<<"auth">>, <<"auth_user">>]
+             ,[<<"auth">>, <<"auth_password">>]
+             ,[<<"options">>, <<"enabled">>]
+           ],
+    lists:any(fun(K) ->
+                      wh_json:get_value(K, Server1) =/= wh_json:get_value(K, Server2)
+              end
+              ,Keys
+             ).
+
+-spec map_servers(wh_json:objects()) -> wh_json:object().
+map_servers(Servers) ->
+    lists:foldl(fun map_server/2, wh_json:new(), Servers).
+
+-spec map_server(wh_json:object(), wh_json:object()) -> wh_json:object().
+map_server(Server, Acc) ->
+    Name = wh_json:get_value(<<"server_name">>, Server),
+    wh_json:set_value(Name, Server, Acc).
 
 -spec refresh_fs_xml(cb_context:context()) -> 'ok'.
 refresh_fs_xml(Context) ->

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014, 2600Hz Inc
+%%% @copyright (C) 2014-2015, 2600Hz Inc
 %%% @doc
 %%%
 %%% @end
@@ -71,12 +71,19 @@ get_current_balance(DataJObj) ->
     Dollars = wht_util:units_to_dollars(Units),
     wht_util:pretty_print_dollars(Dollars).
 
+-spec get_balance_threshold(wh_json:object()) -> float().
+get_balance_threshold(DataJObj) ->
+    Default = 5.00,
+    Key = [<<"account">>, <<"topup">>, <<"threshold">>],
+    Dollars = wh_json:get_float_value(Key, DataJObj, Default),
+    wht_util:pretty_print_dollars(Dollars).
+
 -spec handle_req(wh_json:object()) -> 'ok'.
 handle_req(DataJObj) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
               ,{<<"account">>, teletype_util:account_params(DataJObj)}
               ,{<<"current_balance">>, get_current_balance(DataJObj)}
-              ,{<<"threshold">>, teletype_util:get_balance_threshold(DataJObj)}
+              ,{<<"threshold">>, get_balance_threshold(DataJObj)}
               | build_macro_data(DataJObj)
              ],
 

@@ -104,14 +104,14 @@ post(Context, _) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             'ok' = track_assignment('post', Context),
+            _ = crossbar_util:maybe_refresh_fs_xml('sys_info', Context),
             Context1;
         _Status -> Context1
     end.
 
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
-patch(Context, _) ->
-    'ok' = track_assignment('post', Context),
-    crossbar_doc:save(Context).
+patch(Context, Id) ->
+    post(Context, Id).
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
@@ -130,6 +130,7 @@ delete(Context, _) ->
         'success' ->
             registration_update(Context),
             'ok' = track_assignment('delete', Context),
+            _ = crossbar_util:maybe_refresh_fs_xml('sys_info', Context),
             Context1;
         _Status -> Context1
     end.

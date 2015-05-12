@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014, 2600Hz Inc
+%%% @copyright (C) 2014-2015, 2600Hz Inc
 %%% @doc
 %%%
 %%% @end
@@ -10,6 +10,7 @@
 
 -export([init/0
          ,handle_topup/2
+         ,get_balance/1
         ]).
 
 -include("../teletype.hrl").
