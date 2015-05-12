@@ -12,6 +12,8 @@
          ,set_failure_expiry/1, set_failure_expiry/2
          ,set_disable_threshold/1, set_disable_threshold/2
          ,failure_status/0, failure_status/1
+         ,enable_account_hooks/1
+         ,enable_descendant_hooks/1
         ]).
 
 -include("webhooks.hrl").
@@ -103,3 +105,69 @@ print_failure_footer() ->
 
 print_failure_count(AccountId, HookId, Count) ->
     io:format(?FORMAT_FAILURE_STRING, [AccountId, HookId, wh_util:to_binary(Count)]).
+
+-spec enable_account_hooks(ne_binary()) -> 'ok'.
+enable_account_hooks(Account) ->
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+
+    case couch_mgr:get_results(?KZ_WEBHOOKS_DB
+                               ,<<"webhooks/accounts_listing">>
+                               ,[{'key', AccountId}
+                                 ,{'reduce', 'false'}
+                                 ,'include_docs'
+                                ]
+                              )
+    of
+        {'ok', []} -> io:format("account ~s has no webhooks configured~n", [AccountId]);
+        {'ok', Hooks} -> enable_hooks(Hooks);
+        {'error', _E} -> io:format("failed to load hooks for account ~s: ~p~n", [AccountId, _E])
+    end.
+
+-spec enable_hooks(wh_json:objects()) -> 'ok'.
+enable_hooks(Hooks) ->
+    case hooks_to_reenable(Hooks) of
+        [] -> io:format("no hooks to re-enable~n", []);
+        Reenable ->
+            {'ok', Saved} = couch_mgr:save_docs(?KZ_WEBHOOKS_DB, Reenable),
+            io:format("re-enabled ~p hooks~nIDs: ", [length(Saved)]),
+            Ids = wh_util:join_binary([wh_doc:id(D) || D <- Saved], <<", ">>),
+            io:format("~s~n", [Ids])
+    end.
+
+-spec hooks_to_reenable(wh_json:objects()) -> wh_json:objects().
+hooks_to_reenable(Hooks) ->
+    [kzd_webhook:enable(Hook)
+     || View <- Hooks,
+        not(kzd_webhook:is_enabled(Hook = wh_json:get_value(<<"doc">>, View)))
+    ].
+
+-spec enable_descendant_hooks(ne_binary()) -> 'ok'.
+enable_descendant_hooks(Account) ->
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    case couch_mgr:get_results(?WH_ACCOUNTS_DB
+                               ,<<"accounts/listing_by_descendants">>
+                               ,[{'startkey', [AccountId]}
+                                 ,{'endkey', [AccountId, wh_json:new()]}
+                                ]
+                              )
+    of
+        {'ok', []} ->
+            maybe_enable_descendants_hooks([AccountId]);
+        {'ok', Descendants} ->
+            maybe_enable_descendants_hooks([AccountId
+                                           | [wh_json:get_value([<<"value">>, <<"id">>], D) || D <- Descendants]
+                                          ]
+                                         );
+        {'error', _E} ->
+            io:format("failed to find descendants for account ~s: ~p~n", [AccountId, _E])
+    end.
+
+-spec maybe_enable_descendants_hooks(ne_binaries()) -> 'ok'.
+maybe_enable_descendants_hooks(Accounts) ->
+    [maybe_enable_descendant_hooks(Account) || Account <- Accounts],
+    'ok'.
+
+-spec maybe_enable_descendant_hooks(ne_binary()) -> 'ok'.
+maybe_enable_descendant_hooks(Account) ->
+    io:format("## checking account ~s for hooks to enable ##~n", [Account]),
+    enable_account_hooks(Account).
