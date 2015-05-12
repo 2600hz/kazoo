@@ -274,7 +274,7 @@ maybe_test_for_initial_call(AccountId, AccountDb, JObj) ->
 -spec test_for_initial_call(ne_binary(), ne_binary()) -> 'ok'.
 test_for_initial_call(AccountId, AccountDb) ->
     ViewOptions = [{'key', <<"cdr">>}
-                   ,{'limit', <<"1">>}
+                   ,{'limit', 1}
                   ],
     case couch_mgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
         {'ok', [_|_]} ->
