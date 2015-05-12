@@ -283,8 +283,8 @@ is_account_db(Db) -> couch_util:db_classification(Db) =:= 'account'.
 %% @end
 %%--------------------------------------------------------------------
 -spec get_account_by_realm(ne_binary()) ->
-                                  {'ok', wh_json:key()} |
-                                  {'multiples', wh_json:key()} |
+                                  {'ok', ne_binary()} |
+                                  {'multiples', ne_binaries()} |
                                   {'error', 'not_found'}.
 get_account_by_realm(RawRealm) ->
     Realm = wh_util:to_lower_binary(RawRealm),
