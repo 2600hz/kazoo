@@ -181,20 +181,25 @@ on_successful_validation(Context) ->
                 {<<"user">>, UserId, UserId}
         end,
 
-    ToNum = wh_json:get_value(<<"to">>, JObj),
-    ToUser = case wnm_util:is_reconcilable(filter_number(ToNum), AccountId) of
+    {ToNum, ToOptions} = build_number(wh_json:get_value(<<"to">>, JObj)),
+    ToUser = case whapps_account_config:get_global(AccountId, ?MOD_CONFIG_CAT, <<"api_e164_convert_to">>, 'false') andalso                      
+                      wnm_util:is_reconcilable(filter_number(ToNum), AccountId) of
                  'true' -> wnm_util:to_e164(filter_number(ToNum), AccountId);
                  'false' -> ToNum
              end,
     To = <<ToUser/binary, "@", Realm/binary>>,
 
-    FromNum = wh_json:get_value(<<"from">>, JObj, get_default_caller_id(Context, OwnerId)),
-    FromUser = case wnm_util:is_reconcilable(filter_number(FromNum), AccountId) of
+    {FromNum, FromOptions} = build_number(wh_json:get_value(<<"from">>, JObj, get_default_caller_id(Context, OwnerId))),
+    FromUser = case whapps_account_config:get_global(AccountId, ?MOD_CONFIG_CAT, <<"api_e164_convert_from">>, 'false') andalso
+                        wnm_util:is_reconcilable(filter_number(FromNum), AccountId) of
                  'true' -> wnm_util:to_e164(filter_number(FromNum), AccountId);
                  'false' -> FromNum
              end,
     From = <<FromUser/binary, "@", Realm/binary>>,
 
+    AddrOpts = [{<<"SMPP-Address-From-", K/binary>>, V} || {K, V} <- FromOptions] ++
+               [{<<"SMPP-Address-To-", K/binary>>, V} || {K, V} <- ToOptions],
+    
     SmsDocId = create_sms_doc_id(),
 
     cb_context:set_doc(cb_context:set_account_db(Context, AccountDb)
@@ -209,6 +214,7 @@ on_successful_validation(Context) ->
                              ,{<<"pvt_authorization_type">>, AuthorizationType}
                              ,{<<"pvt_authorization">>, Authorization}
                              ,{<<"pvt_origin">>, <<"api">>}
+                             ,{<<"pvt_address_options">>, wh_json:from_list(AddrOpts)}
                              ,{<<"request">>, To}
                              ,{<<"request_user">>, ToUser}
                              ,{<<"request_realm">>, Realm}
@@ -300,3 +306,17 @@ filter_number(Number) ->
 
 -spec is_digit(integer()) -> boolean().
 is_digit(N) -> N >= $0 andalso N =< $9.
+
+build_number(Number) ->
+    N = binary:split(Number, <<",">>, ['global']),
+    case length(N) of
+        1 -> {Number, []};
+        _ -> lists:foldl(fun parse_number/2, {'undefined', []}, N)
+    end.
+    
+parse_number(<<"TON=", N/binary>>, {Num, Options}) ->
+    {Num, [{<<"TON">>, wh_util:to_integer(N) } | Options]};
+parse_number(<<"NPI=", N/binary>>, {Num, Options}) ->
+    {Num, [{<<"NPI">>, wh_util:to_integer(N) } | Options]};
+parse_number(N, {_, Options}) ->
+    {N, Options}.
