@@ -77,7 +77,10 @@
                           ,'cb_webhooks', 'cb_whitelabel'
                          ]).
 
--define(DEPRECATED_MODULES, ['cb_local_resources', 'cb_global_resources']).
+-define(DEPRECATED_MODULES, ['cb_local_resources'
+                             ,'cb_global_resources'
+                             ,'cb_signup'
+                            ]).
 
 -record(cb_context, {
            content_types_provided = [] :: crossbar_content_handlers()
