@@ -119,15 +119,17 @@ clean_expired() ->
     CreatedBefore = wh_util:current_tstamp() - ?LOOP_TIMEOUT, % gregorian seconds - Expiry time
     ViewOpts = [{'startkey', 0}
                 ,{'endkey', CreatedBefore}
-                ,{'limit', 5000}
+                ,{'limit', couch_util:max_bulk_insert()}
                ],
 
     case couch_mgr:get_results(?KZ_TOKEN_DB, <<"token_auth/listing_by_mtime">>, ViewOpts) of
         {'ok', []} -> lager:debug("no expired tokens found");
         {'ok', L} ->
+            couch_mgr:supress_change_notice(),
             lager:debug("removing ~b expired tokens", [length(L)]),
             _ = couch_mgr:del_docs(?KZ_TOKEN_DB, L),
             couch_compactor_fsm:compact_db(?KZ_TOKEN_DB),
+            couch_mgr:enable_change_notice(),
             'ok';
         {'error', _E} ->
             lager:debug("failed to lookup expired tokens: ~p", [_E])

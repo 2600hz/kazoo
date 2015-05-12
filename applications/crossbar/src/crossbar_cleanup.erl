@@ -308,7 +308,10 @@ cleanup_db_soft_deletes(_Db) ->
 
 -spec do_cleanup(ne_binary()) -> 'ok'.
 do_cleanup(Db) ->
-    case couch_mgr:get_results(Db, <<"maintenance/soft_deletes">>, [{'limit', 1000}]) of
+    case couch_mgr:get_results(Db
+                               ,<<"maintenance/soft_deletes">>
+                               ,[{'limit', couch_util:max_bulk_insert()}]
+                              ) of
         {'ok', []} -> 'ok';
         {'ok', L} ->
             lager:debug("removing ~b soft-deleted docs from ~s", [length(L), Db]),
