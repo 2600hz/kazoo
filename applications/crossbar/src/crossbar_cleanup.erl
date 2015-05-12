@@ -45,7 +45,9 @@
 -type state() :: #state{}.
 
 %% How long to pause before attempting to delete the next chunk of soft-deleted docs
--define(SOFT_DELETE_PAUSE, <<"soft_delete_pause_ms">>, 10 * ?MILLISECONDS_IN_SECOND).
+-define(SOFT_DELETE_PAUSE
+        ,whapps_config:get(?CONFIG_CAT, <<"soft_delete_pause_ms">>, 10 * ?MILLISECONDS_IN_SECOND)
+       ).
 
 %%%===================================================================
 %%% API
