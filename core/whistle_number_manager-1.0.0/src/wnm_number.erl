@@ -196,7 +196,7 @@ maybe_correct_used_by(#number{assigned_to=Account}=N) ->
         {'ok', JObj} ->
             maybe_correct_used_by(N, JObj);
         {'error', _R} ->
-            lager:warning("failed to get phone number doc for correction: ~p", [_R]),
+            lager:warning("failed to get phone number doc for used_by correction: ~p", [_R]),
             N
     end.
 
@@ -609,6 +609,13 @@ in_service(Number) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec released_authorize_change(wnm_number()) -> wnm_number().
+released_authorize_change(#number{auth_by='system'
+                                  ,number_doc=JObj
+                                 }=N) ->
+    N#number{
+        features=sets:new()
+        ,number_doc=wh_json:private_fields(JObj)
+    };
 released_authorize_change(#number{assigned_to=AssignedTo
                                   ,auth_by=AuthBy
                                   ,number_doc=JObj
@@ -680,6 +687,13 @@ released(#number{state = ?NUMBER_STATE_RESERVED}=Number) ->
                ],
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines);
 released(#number{state = ?NUMBER_STATE_IN_SERVICE}=Number) ->
+    NewState = whapps_config:get_binary(?WNM_CONFIG_CAT, <<"released_state">>, ?NUMBER_STATE_AVAILABLE),
+    Routines = [fun released_authorize_change/1
+                ,fun(N) -> released_move_states(N, NewState) end
+                ,fun released_maybe_disconnect/1
+               ],
+    lists:foldl(fun(F, J) -> F(J) end, Number, Routines);
+released(#number{state = ?NUMBER_STATE_PORT_IN}=Number) ->
     NewState = whapps_config:get_binary(?WNM_CONFIG_CAT, <<"released_state">>, ?NUMBER_STATE_AVAILABLE),
     Routines = [fun released_authorize_change/1
                 ,fun(N) -> released_move_states(N, NewState) end
