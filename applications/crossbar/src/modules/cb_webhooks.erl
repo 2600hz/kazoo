@@ -337,7 +337,6 @@ on_successful_validation(Id, Context) ->
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -349,10 +348,7 @@ normalize_view_results(JObj, Acc) ->
 maybe_update_hook(Context) ->
     Doc = cb_context:doc(Context),
 
-    case wh_json:is_true(<<"enabled">>, Doc)
+    case kzd_webhook:is_enabled(Doc) of
         'false' -> Context;
-        'true' ->
-            cb_context:set_doc(Context
-                               ,wh_json:delete_keys([<<"pvt_disabled_message">>], Doc)
-                              )
+        'true' -> cb_context:set_doc(Context, kzd_webhook:enable(Doc))
     end.
