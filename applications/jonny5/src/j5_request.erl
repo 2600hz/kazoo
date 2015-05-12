@@ -44,6 +44,7 @@
 -export([timestamp/1]).
 -export([message_id/1]).
 -export([server_id/1]).
+-export([node/1]).
 -export([classification/1]).
 -export([number/1]).
 -export([per_minute_cost/1]).
@@ -66,6 +67,7 @@
                   ,sip_request :: api_binary()
                   ,message_id :: api_binary()
                   ,server_id :: api_binary()
+                  ,node :: api_binary()                  
                   ,classification :: api_binary()
                   ,number :: api_binary()
                   ,billing_seconds = 0 :: non_neg_integer()
@@ -102,6 +104,7 @@ from_jobj(JObj) ->
              ,sip_request = Request
              ,message_id = wh_json:get_value(<<"Msg-ID">>, JObj)
              ,server_id = wh_json:get_value(<<"Server-ID">>, JObj)
+             ,node = wh_json:get_value(<<"Node">>, JObj)             
              ,billing_seconds = wh_json:get_integer_value(<<"Billing-Seconds">>, JObj, 0)
              ,answered_time = wh_json:get_integer_value(<<"Answered-Seconds">>, JObj, 0)
              ,timestamp = wh_json:get_integer_value(<<"Timestamp">>, JObj, wh_util:current_tstamp())
@@ -385,6 +388,15 @@ message_id(#request{message_id=MessageId}) -> MessageId.
 %%--------------------------------------------------------------------
 -spec server_id(request()) -> api_binary().
 server_id(#request{server_id=ServerId}) -> ServerId.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec node(request()) -> api_binary().
+node(#request{node=NodeId}) -> NodeId.
 
 %%--------------------------------------------------------------------
 %% @public
