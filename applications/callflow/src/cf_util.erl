@@ -179,11 +179,11 @@ notification_register(JObj, _Props) ->
 
 -spec mwi_query(wh_json:object()) -> 'ok'.
 mwi_query(JObj) ->
-    Username = wh_json:get_value(<<"Username">>, JObj),
     Realm = wh_json:get_value(<<"Realm">>, JObj),
     case whapps_util:get_account_by_realm(Realm) of
         {'ok', AccountDb} ->
             lager:debug("replying to mwi query"),
+            Username = wh_json:get_value(<<"Username">>, JObj),
             mwi_resp(Username, Realm, AccountDb, JObj);
         _Else -> 'ok'
     end.
@@ -307,8 +307,8 @@ send_mwi_update(New, Waiting, Username, Realm, JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec vm_count_by_owner(ne_binary(), api_binary()) -> {non_neg_integer(), non_neg_integer()}.
-vm_count_by_owner(_, 'undefined') -> {0, 0};
-vm_count_by_owner(AccountDb, OwnerId) ->
+vm_count_by_owner(_AccountDb, 'undefined') -> {0, 0};
+vm_count_by_owner(<<_/binary>> = AccountDb, <<_/binary>> = OwnerId) ->
     ViewOptions = [{'reduce', 'true'}
                    ,{'group', 'true'}
                    ,{'group_level', 2}
@@ -317,10 +317,14 @@ vm_count_by_owner(AccountDb, OwnerId) ->
                   ],
     case couch_mgr:get_results(AccountDb, <<"cf_attributes/vm_count_by_owner">>, ViewOptions) of
         {'ok', MessageCounts} ->
-            Props = [{wh_json:get_value([<<"key">>, 2], MessageCount), wh_json:get_value(<<"value">>, MessageCount)}
+            Props = [{wh_json:get_integer_value([<<"key">>, 2], MessageCount)
+                      ,wh_json:get_integer_value(<<"value">>, MessageCount)
+                     }
                      || MessageCount <- MessageCounts
                     ],
-            {props:get_value(<<"new">>, Props, 0), props:get_value(<<"saved">>, Props, 0)};
+            {props:get_integer_value(<<"new">>, Props, 0)
+             ,props:get_integer_value(<<"saved">>, Props, 0)
+            };
         {'error', _R} ->
             lager:info("unable to lookup vm counts by owner: ~p", [_R]),
             {0, 0}
