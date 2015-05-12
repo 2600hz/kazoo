@@ -775,8 +775,6 @@ create_registration(JObj) ->
                                                                                 ,<<"Node">>
                                                                                ], JObj)
                                      ,registrar_hostname=wh_json:get_value(<<"Hostname">>, JObj)
-                                     ,suppress_unregister = wh_json:is_true(<<"Suppress-Unregister-Notifications">>, JObj)
-                                     ,register_overwrite_notify = wh_json:is_true(<<"Register-Overwrite-Notify">>, JObj)
                                      ,initial = wh_json:is_true(<<"First-Registration">>, JObj, Initial)
                                      ,proxy=Proxy
                                      ,bridge_uri=bridge_uri(OriginalContact, Proxy, Username, Realm)
@@ -795,6 +793,8 @@ maybe_add_ccvs(CCVs, Reg) ->
                      ,owner_id = wh_json:get_value(<<"Owner-ID">>, CCVs)
                      ,account_realm = wh_json:get_value(<<"Account-Realm">>, CCVs)
                      ,account_name = wh_json:get_value(<<"Account-Name">>, CCVs)
+                     ,suppress_unregister = wh_json:is_true(<<"Suppress-Unregister-Notifications">>, CCVs)
+                     ,register_overwrite_notify = wh_json:is_true(<<"Register-Overwrite-Notify">>, CCVs)
                     }.
 
 -spec fix_contact(api_binary()) -> api_binary().
