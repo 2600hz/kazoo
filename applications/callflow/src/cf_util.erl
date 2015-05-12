@@ -188,9 +188,8 @@ mwi_query(JObj) ->
         _Else -> 'ok'
     end.
 
--spec mwi_resp(api_binary(), api_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+-spec mwi_resp(api_binary(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 mwi_resp('undefined', _Realm, _AccountDb, _JObj) -> 'ok';
-mwi_resp(_Username, 'undefined', _AccountDb, _JObj) -> 'ok';
 mwi_resp(Username, Realm, AccountDb, JObj) ->
     case owner_ids_by_sip_username(AccountDb, Username) of
         {'ok', [OwnerId]} ->

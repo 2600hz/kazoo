@@ -166,7 +166,7 @@ couch_save(AccountMODb, Doc, Retry) ->
 -spec get_modb(ne_binary()) -> ne_binary().
 -spec get_modb(ne_binary(), wh_proplist() | gregorian_seconds() | wh_now()) ->
                       ne_binary().
--spec get_modb(ne_binary(), integer(), integer()) ->
+-spec get_modb(ne_binary(), wh_year() | ne_binary(), wh_month() | ne_binary()) ->
                       ne_binary().
 get_modb(<<_:32/binary, "-", _:4/binary, _:2/binary>>=AccountMODb) ->
     AccountMODb;

@@ -188,7 +188,7 @@ change_syslog_log_level(L) ->
 -type account_format() :: 'unencoded' | 'encoded' | 'raw'.
 -spec format_account_id(ne_binaries() | api_binary() | wh_json:object()) -> api_binary().
 -spec format_account_id(ne_binaries() | api_binary() | wh_json:object(), account_format()) -> api_binary().
--spec format_account_id(ne_binaries() | api_binary(), wh_year(), wh_month()) -> api_binary().
+-spec format_account_id(ne_binaries() | api_binary(), wh_year() | ne_binary(), wh_month() | ne_binary()) -> api_binary().
 
 format_account_id(Doc) -> format_account_id(Doc, 'unencoded').
 
@@ -245,7 +245,8 @@ format_account_id(AccountId, Year, Month) when not is_integer(Year) ->
     format_account_id(AccountId, to_integer(Year), Month);
 format_account_id(AccountId, Year, Month) when not is_integer(Month) ->
     format_account_id(AccountId, Year, to_integer(Month));
-format_account_id(Account, Year, Month) when is_integer(Year), is_integer(Month) ->
+format_account_id(Account, Year, Month) when is_integer(Year),
+                                             is_integer(Month) ->
     AccountId = format_account_id(Account, 'raw'),
     <<(format_account_id(AccountId, 'encoded'))/binary
       ,"-"
@@ -255,7 +256,7 @@ format_account_id(Account, Year, Month) when is_integer(Year), is_integer(Month)
 
 -spec format_account_mod_id(ne_binary()) -> ne_binary().
 -spec format_account_mod_id(ne_binary(), gregorian_seconds() | wh_now()) -> ne_binary().
--spec format_account_mod_id(ne_binary(), wh_year(), wh_month()) -> ne_binary().
+-spec format_account_mod_id(ne_binary(), wh_year() | ne_binary(), wh_month() | ne_binary()) -> ne_binary().
 format_account_mod_id(Account) ->
     format_account_mod_id(Account, os:timestamp()).
 

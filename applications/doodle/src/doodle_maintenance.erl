@@ -91,16 +91,19 @@ check_queued_sms(AccountId) ->
 -spec replay_queue_sms(ne_binary(), wh_json:objects()) -> 'ok'.
 replay_queue_sms(AccountId, JObjs) ->
     lager:debug("starting queued sms for account ~s", [AccountId]),
-    [begin
-         DocId = wh_json:get_value(<<"id">>, JObj),
-         <<Year:4/binary, Month:2/binary, "-", _/binary>> = DocId,
-         AccountDb = kazoo_modb:get_modb(AccountId, Year, Month),
-         spawn('doodle_api', 'handle_api_sms', [AccountDb, DocId]),
-         timer:sleep(200)
-     end
+    [spawn_handler(AccountId, JObj)
      || JObj <- JObjs
     ],
     'ok'.
+
+-spec spawn_handler(ne_binary(), wh_json:object()) -> 'ok'.
+spawn_handler(AccountId, JObj) ->
+    DocId = wh_json:get_value(<<"id">>, JObj),
+    <<Year:4/binary, Month:2/binary, "-", _/binary>> = DocId,
+    AccountDb = kazoo_modb:get_modb(AccountId, Year, Month),
+
+    spawn('doodle_api', 'handle_api_sms', [AccountDb, DocId]),
+    timer:sleep(200).
 
 -spec check_pending_sms_for_offnet_delivery(ne_binary()) -> 'ok'.
 check_pending_sms_for_offnet_delivery(AccountId) ->
