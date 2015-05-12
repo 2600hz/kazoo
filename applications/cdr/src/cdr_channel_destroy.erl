@@ -17,6 +17,9 @@
 handle_req(JObj, _Props) ->
     'true' = wapi_call:event_v(JObj),
     _ = wh_util:put_callid(JObj),
+
+    couch_mgr:suppress_change_notice(),
+
     AccountId = kz_call_event:account_id(JObj),
     Timestamp = kz_call_event:timestamp(JObj),
     prepare_and_save(AccountId, Timestamp, JObj).
