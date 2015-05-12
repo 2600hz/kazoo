@@ -44,6 +44,9 @@
                }).
 -type state() :: #state{}.
 
+%% How long to pause before attempting to delete the next chunk of soft-deleted docs
+-define(SOFT_DELETE_PAUSE, <<"soft_delete_pause_ms">>, 10 * ?MILLISECONDS_IN_SECOND).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -294,17 +297,13 @@ start_day_timer() ->
 cleanup_soft_deletes(Account) ->
     case whapps_util:is_account_db(Account) of
         'true' -> cleanup_account_soft_deletes(Account);
-        'false' -> cleanup_db_soft_deletes(Account)
+        'false' -> 'ok' % no longer checking other dbs for soft deletes
     end.
 
 -spec cleanup_account_soft_deletes(ne_binary()) -> 'ok'.
 cleanup_account_soft_deletes(Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     do_cleanup(AccountDb).
-
--spec cleanup_db_soft_deletes(ne_binary()) -> 'ok'.
-cleanup_db_soft_deletes(_Db) ->
-    'ok'. %% no longer checking other dbs for soft deletes
 
 -spec do_cleanup(ne_binary()) -> 'ok'.
 do_cleanup(Db) ->
@@ -316,7 +315,8 @@ do_cleanup(Db) ->
         {'ok', L} ->
             lager:debug("removing ~b soft-deleted docs from ~s", [length(L), Db]),
             _ = couch_mgr:del_docs(Db, L),
-            'ok';
+            'ok' = timer:sleep(?SOFT_DELETE_PAUSE),
+            do_cleanup(Db);
         {'error', 'not_found'} ->
             lager:warning("db ~s or view 'maintenance/soft_deletes' not found", [Db]);
         {'error', _E} ->
