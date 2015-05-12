@@ -231,8 +231,6 @@ handle_message_delivery(JObj, Props) ->
         'false' -> gen_listener:cast(Server, {'sms_success', JObj})
     end.
 
-
-
 -spec send(wh_json:object(), wh_proplist()) -> no_return().
 send(Endpoint, API) ->
     Type = wh_json:get_value(<<"Endpoint-Type">>, Endpoint, <<"sip">>),
@@ -252,7 +250,7 @@ send(<<"amqp">>, Endpoint, API) ->
     CCVs = wh_json:merge_jobjs(
              wh_json:get_value(<<"Custom-Channel-Vars">>, Endpoint, wh_json:new())
              ,wh_json:filter(fun filter_smpp/1, props:get_value(<<"Custom-Channel-Vars">>, API, wh_json:new()))
-             ),
+            ),
     Props = wh_json:to_proplist(Endpoint) ++ Options,
     Payload = props:set_value(<<"Custom-Channel-Vars">>, CCVs, props:set_values(Props, API)),
     Broker = wh_json:get_value([<<"Endpoint-Options">>, <<"AMQP-Broker">>], Endpoint),
@@ -273,7 +271,7 @@ send(<<"amqp">>, Endpoint, API) ->
             send_error(API, CallId, Reason)
     end.
 
--spec filter_smpp(tuple()) -> boolean().
+-spec filter_smpp({ne_binary(), _}) -> boolean().
 filter_smpp({<<"SMPP-", _/binary>>, _}) -> 'true';
 filter_smpp(_) -> 'false'.
 
