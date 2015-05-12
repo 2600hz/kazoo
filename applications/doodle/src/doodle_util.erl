@@ -445,7 +445,7 @@ cache_key_number(Number) ->
 lookup_mdn(Number) ->
     Num = wnm_util:normalize_number(Number),
     case wh_cache:fetch_local(?DOODLE_CACHE, cache_key_mdn(Num)) of
-        {'ok', Id, OwnerId} ->
+        {'ok', {Id, OwnerId}} ->
             lager:debug("cached number ~s is associated with ~s/~s", [Num, OwnerId, Id]),
             {'ok', Id, OwnerId};
         {'error', 'not_found'} -> fetch_mdn(Num)
