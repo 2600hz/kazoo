@@ -1053,6 +1053,7 @@ to_props(Reg) ->
      ,{<<"Authorizing-ID">>, Reg#registration.authorizing_id}
      ,{<<"Authorizing-Type">>, Reg#registration.authorizing_type}
      ,{<<"Suppress-Unregister-Notify">>, Reg#registration.suppress_unregister}
+     ,{<<"Register-Overwrite-Notify">>, Reg#registration.register_overwrite_notify}
      ,{<<"Owner-ID">>, Reg#registration.owner_id}
      ,{<<"Registrar-Node">>, Reg#registration.registrar_node}
      ,{<<"Registrar-Hostname">>, Reg#registration.registrar_hostname}
