@@ -444,6 +444,7 @@ format_error({'ok', "500", _Headers, Body}) ->
             lager:warning("server error: ~s", [Body]),
             'server_error'
     end;
+format_error('timeout') -> 'timeout';
 format_error(E) ->
     lager:warning("unformatted error: ~p", [E]),
     E.
