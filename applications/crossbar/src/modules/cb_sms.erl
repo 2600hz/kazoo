@@ -197,8 +197,8 @@ on_successful_validation(Context) ->
              end,
     From = <<FromUser/binary, "@", Realm/binary>>,
 
-    AddrOpts = [{<<"SMPP-Address-From-", K/binary>>, V} || {K, V} <- FromOptions] ++
-               [{<<"SMPP-Address-To-", K/binary>>, V} || {K, V} <- ToOptions],
+    AddrOpts = [{<<"SMPP-Address-From-", K/binary>>, V} || {K, V} <- FromOptions]
+               ++ [{<<"SMPP-Address-To-", K/binary>>, V} || {K, V} <- ToOptions],
     
     SmsDocId = create_sms_doc_id(),
 
