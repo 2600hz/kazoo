@@ -104,6 +104,8 @@ create_ccvs(#auth_user{}=AuthUser) ->
              ,{<<"Account-Realm">>, AuthUser#auth_user.account_normalized_realm}
              ,{<<"Account-Name">>, AuthUser#auth_user.account_name}
              ,{<<"Presence-ID">>, maybe_get_presence_id(AuthUser)}
+             ,{<<"Suppress-Unregister-Notifications">>, AuthUser#auth_user.suppress_unregister_notifications}
+             ,{<<"Register-Overwrite-Notify">>, AuthUser#auth_user.register_overwrite_notify}
              | (create_specific_ccvs(AuthUser, AuthUser#auth_user.method)
                  ++ generate_security_ccvs(AuthUser))
             ],
