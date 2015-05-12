@@ -421,7 +421,9 @@ verify_aggregated_device(AccountDb, AccountId, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec cleanup_voicemail_media(ne_binary()) -> {'ok', wh_json:objects()} | {'error', any()}.
+-spec cleanup_voicemail_media(ne_binary()) ->
+                                     {'ok', wh_json:objects()} |
+                                     {'error', any()}.
 cleanup_voicemail_media(Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     Medias = get_medias(Account),

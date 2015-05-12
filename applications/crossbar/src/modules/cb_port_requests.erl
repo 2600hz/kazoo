@@ -114,7 +114,7 @@ cleanup(?KZ_PORT_REQUESTS_DB = Db) ->
     ModifiedBefore = wh_util:current_tstamp() - ?UNFINISHED_PORT_REQUEST_LIFETIME,
     ViewOpts = [{'startkey', [0]}
                 ,{'endkey', [ModifiedBefore]}
-                ,{'limit', 5000}
+                ,{'limit', couch_util:max_bulk_insert()}
                 ,'include_docs'
                ],
     case couch_mgr:get_results(Db, <<"port_requests/listing_by_modified">>, ViewOpts) of
