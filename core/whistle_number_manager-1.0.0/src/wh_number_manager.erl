@@ -142,9 +142,7 @@ lookup_account_by_number(Num) ->
         {'error', 'not_found'} ->
             case fetch_account_by_number(Number) of
                 {'ok', _, _}=Ok ->
-                    CacheProps = [{'origin', [{'db', wnm_util:number_to_db_name(Number), Number}
-                                              ,{'type', <<"number">>}
-                                             ]}],
+                    CacheProps = [{'origin', [{'db', wnm_util:number_to_db_name(Number), Number}]}],
                     wh_cache:store_local(?WNM_NUMBER_CACHE, Key, Ok, CacheProps),
                     Ok;
                 Else -> Else
