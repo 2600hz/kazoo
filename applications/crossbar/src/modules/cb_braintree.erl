@@ -204,7 +204,7 @@ validate_credits(Context, ?HTTP_GET) ->
     AccountId = cb_context:account_id(Context),
     JObj = cb_context:doc(Context),
     crossbar_util:response(
-      wh_json:from_list([{<<"amount">>, current_account_dollars(AccountId)}
+      wh_json:from_list([{<<"amount">>, wht_util:current_account_dollars(AccountId)}
                          ,{<<"billing_account_id">>, wh_json:get_integer_value(<<"billing_account_id">>, JObj, AccountId)}
                         ])
       ,Context
@@ -214,7 +214,7 @@ validate_credits(Context, ?HTTP_PUT) ->
     JObj = cb_context:req_data(Context),
     Amount = wh_json:get_float_value(<<"amount">>, JObj),
     MaxCredit = whapps_config:get_float(?MOD_CONFIG_CAT, <<"max_account_credit">>, 500.00),
-    FuturAmount = current_account_dollars(AccountId) + Amount,
+    FuturAmount = wht_util:current_account_dollars(AccountId) + Amount,
     case FuturAmount > MaxCredit of
         'true' ->
             Message = <<"Available credit can not exceed $", (wh_util:to_binary(MaxCredit))/binary>>,
@@ -459,11 +459,6 @@ create_braintree_customer(Context) ->
         'throw':{Error, Reason} ->
             crossbar_util:response('error', wh_util:to_binary(Error), 500, Reason, Context)
     end.
-
--spec current_account_dollars(ne_binary()) -> float().
-current_account_dollars(Account) ->
-    Units = wht_util:current_balance(Account),
-    wht_util:units_to_dollars(Units).
 
 -spec maybe_charge_billing_id(float(), cb_context:context()) -> cb_context:context().
 maybe_charge_billing_id(Amount, Context) ->

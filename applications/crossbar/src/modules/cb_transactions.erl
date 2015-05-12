@@ -124,26 +124,32 @@ validate(Context, PathToken) ->
 delete(Context, ?DEBIT) ->
     case cb_context:resp_status(Context) of
         'success' ->
-            case create_debit_tansaction(Context) of
-                {'error', _R}=Error ->
-                    lager:error("failed to create debit transaction : ~p", [_R]),
-                    cb_context:add_system_error(
-                        'transaction_failed'
-                        ,wh_json:from_list([
-                            {<<"message">>, <<"failed to create debit transaction">>}
-                            ,{<<"cause">>, wh_util:error_to_binary(Error)}
-                        ])
-                        ,Context
-                    );
-                {'ok', Transaction} ->
-                    cb_context:set_resp_data(
-                        Context
-                        ,wh_transaction:to_public_json(Transaction)
-                    )
-            end;
+           maybe_create_debit_tansaction(Context);
         _RespStatus -> Context
     end.
 
+
+-spec maybe_create_debit_tansaction(cb_context:context()) -> cb_context:context().
+maybe_create_debit_tansaction(Context) ->
+    case create_debit_tansaction(Context) of
+        {'error', _R}=Error ->
+            lager:error("failed to create debit transaction : ~p", [_R]),
+            cb_context:add_system_error(
+                'transaction_failed'
+                ,wh_json:from_list([
+                    {<<"message">>, <<"failed to create debit transaction">>}
+                    ,{<<"cause">>, wh_util:error_to_binary(Error)}
+                ])
+                ,Context
+            );
+        {'ok', Transaction} ->
+            cb_context:set_resp_data(
+                Context
+                ,wh_transaction:to_public_json(Transaction)
+            )
+    end.
+
+-spec create_debit_tansaction(cb_context:context()) -> {'ok', wh_transaction:transaction()} | {'error', _}.
 create_debit_tansaction(Context) ->
     AccountId = cb_context:account_id(Context),
     JObj = cb_context:req_data(Context),
@@ -156,14 +162,13 @@ create_debit_tansaction(Context) ->
     Routines = [
         fun(Tr) -> wh_transaction:set_reason(<<"admin_discretion">>, Tr) end
         ,fun(Tr) -> wh_transaction:set_metadata(Meta, Tr) end
-        ,fun(Tr) -> wh_transaction:save(Tr) end
+        ,fun wh_transaction:save/1
     ],
     lists:foldl(
         fun(F, Tr) -> F(Tr) end
         ,wh_transaction:debit(AccountId, Units)
         ,Routines
     ).
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -248,7 +253,7 @@ validate_debit(Context, Amount) when Amount =< 0 ->
     );
 validate_debit(Context, Amount) ->
     AccountId = cb_context:account_id(Context),
-    FuturAmount = current_account_dollars(AccountId) - Amount,
+    FuturAmount = wht_util:current_account_dollars(AccountId) - Amount,
     case FuturAmount < 0 of
         'false' ->
             cb_context:set_resp_status(Context, 'success');
@@ -264,12 +269,6 @@ validate_debit(Context, Amount) ->
                 ,Context
             )
     end.
-
--spec current_account_dollars(ne_binary()) -> float().
-current_account_dollars(Account) ->
-    Units = wht_util:current_balance(Account),
-    wht_util:units_to_dollars(Units).
-
 
 %%--------------------------------------------------------------------
 %% @private

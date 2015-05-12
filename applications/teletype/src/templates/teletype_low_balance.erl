@@ -67,8 +67,7 @@ handle_low_balance(JObj, _Props) ->
 -spec get_current_balance(wh_json:object()) -> float().
 get_current_balance(DataJObj) ->
     AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
-    Units = wht_util:current_balance(AccountId),
-    Dollars = wht_util:units_to_dollars(Units),
+    Dollars = wht_util:current_account_dollars(AccountId),
     wht_util:pretty_print_dollars(Dollars).
 
 -spec get_balance_threshold(wh_json:object()) -> float().
