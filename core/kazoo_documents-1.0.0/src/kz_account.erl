@@ -20,6 +20,8 @@
          ,set_api_key/2, api_key/1
          ,is_superduper_admin/1
          ,allow_number_additions/1
+
+         ,fetch/1
         ]).
 
 -define(ID, <<"_id">>).
@@ -36,88 +38,99 @@
 
 -include("kz_documents.hrl").
 
+-type doc() :: wh_json:object().
+-export_type([doc/0]).
+
 id(JObj) ->
     wh_doc:id(JObj).
 
--spec name(wh_json:object()) -> api_binary().
+-spec name(doc()) -> api_binary().
 name(JObj) ->
     wh_json:get_value(?NAME, JObj).
 
--spec set_name(wh_json:object(), ne_binary()) -> wh_json:object().
+-spec set_name(doc(), ne_binary()) -> doc().
 set_name(JObj, Name) ->
     wh_json:set_value(?NAME, Name, JObj).
 
--spec realm(wh_json:object()) -> api_binary().
+-spec realm(doc()) -> api_binary().
 realm(JObj) ->
     wh_json:get_ne_value(?REALM, JObj).
 
--spec set_realm(wh_json:object(), ne_binary()) -> wh_json:object().
+-spec set_realm(doc(), ne_binary()) -> doc().
 set_realm(JObj, Realm) ->
     wh_json:set_value(?REALM, Realm, JObj).
 
--spec language(wh_json:object()) -> api_binary().
+-spec language(doc()) -> api_binary().
 language(JObj) ->
     wh_json:get_value(?LANGUAGE, JObj).
 
--spec set_language(wh_json:object(), ne_binary()) -> wh_json:object().
+-spec set_language(doc(), ne_binary()) -> doc().
 set_language(JObj, Language) ->
     wh_json:set_value(?LANGUAGE, Language, JObj).
 
--spec timezone(wh_json:object()) -> api_binary().
+-spec timezone(doc()) -> api_binary().
 timezone(JObj) ->
     wh_json:get_value(?TIMEZONE, JObj).
 
--spec set_timezone(wh_json:object(), ne_binary()) -> wh_json:object().
+-spec set_timezone(doc(), ne_binary()) -> doc().
 set_timezone(JObj, Timezone) ->
     wh_json:set_value(?TIMEZONE, Timezone, JObj).
 
--spec parent_account_id(wh_json:object()) -> api_binary().
+-spec parent_account_id(doc()) -> api_binary().
 parent_account_id(JObj) ->
     case tree(JObj) of
         [] -> 'undefined';
         Ancestors -> lists:last(Ancestors)
     end.
 
--spec tree(wh_json:object()) -> ne_binaries().
+-spec tree(doc()) -> ne_binaries().
 tree(JObj) ->
     wh_json:get_value(?TREE, JObj, []).
 
--spec set_tree(wh_json:object(), ne_binaries()) -> wh_json:object().
+-spec set_tree(doc(), ne_binaries()) -> doc().
 set_tree(JObj, Tree) ->
     wh_json:set_value(?TREE, Tree, JObj).
 
--spec notification_preference(wh_json:object()) -> api_binary().
+-spec notification_preference(doc()) -> api_binary().
 notification_preference(JObj) ->
     wh_json:get_value(?NOTIFY_PREF, JObj).
 
--spec set_notification_preference(wh_json:object(), ne_binary()) -> wh_json:object().
+-spec set_notification_preference(doc(), ne_binary()) -> doc().
 set_notification_preference(JObj, Pref) ->
     wh_json:set_value(?NOTIFY_PREF, Pref, JObj).
 
--spec is_enabled(wh_json:object()) -> boolean().
+-spec is_enabled(doc()) -> boolean().
 is_enabled(JObj) ->
     wh_json:is_true(?IS_ENABLED, JObj, 'true').
 
--spec enable(wh_json:object()) -> wh_json:object().
+-spec enable(doc()) -> doc().
 enable(JObj) ->
     wh_json:set_value(?IS_ENABLED, 'true', JObj).
 
--spec disable(wh_json:object()) -> wh_json:object().
+-spec disable(doc()) -> doc().
 disable(JObj) ->
     wh_json:set_value(?IS_ENABLED, 'false', JObj).
 
--spec api_key(wh_json:object()) -> api_binary().
+-spec api_key(doc()) -> api_binary().
 api_key(JObj) ->
     wh_json:get_value(?API_KEY, JObj).
 
--spec set_api_key(wh_json:object(), ne_binary()) -> wh_json:object().
+-spec set_api_key(doc(), ne_binary()) -> doc().
 set_api_key(JObj, ApiKey) ->
     wh_json:set_value(?API_KEY, ApiKey, JObj).
 
--spec is_superduper_admin(wh_json:object()) -> boolean().
+-spec is_superduper_admin(doc()) -> boolean().
 is_superduper_admin(JObj) ->
     wh_json:is_true(?IS_SUPERDUPER_ADMIN, JObj).
 
--spec allow_number_additions(wh_json:object()) -> boolean().
+-spec allow_number_additions(doc()) -> boolean().
 allow_number_additions(JObj) ->
     wh_json:is_true(?ALLOW_NUMBER_ADDITIONS, JObj).
+
+-spec fetch(ne_binary()) -> {'ok', doc()} |
+                            {'error', _}.
+fetch(<<_/binary>> = Account) ->
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+
+    couch_mgr:open_cache_doc(AccountDb, AccountId).
