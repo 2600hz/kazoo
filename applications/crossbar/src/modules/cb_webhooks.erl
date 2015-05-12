@@ -140,16 +140,17 @@ validate_patch(Context, Id) ->
     end.
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
-post(Context, _) ->
-    crossbar_doc:save(cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB)).
+post(Context, _Id) ->
+    Context1 = maybe_update_hook(Context),
+    crossbar_doc:save(cb_context:set_account_db(Context1, ?KZ_WEBHOOKS_DB)).
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
     crossbar_doc:save(cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB)).
 
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
-patch(Context, _Id) ->
-    crossbar_doc:save(cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB)).
+patch(Context, Id) ->
+    post(Context, Id).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _) ->
@@ -319,7 +320,9 @@ on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context
                        ,wh_json:set_values([{<<"pvt_type">>, <<"webhook">>}
                                             ,{<<"pvt_account_id">>, cb_context:account_id(Context)}
-                                           ], cb_context:doc(Context))
+                                           ]
+                                           ,cb_context:doc(Context)
+                                          )
                       );
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context).
@@ -333,3 +336,23 @@ on_successful_validation(Id, Context) ->
 -spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% If a hook was auto-disabled and is being re-enabled, cleanup the private
+%% fields related to the auto-disabling
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_update_hook(cb_context:context()) -> cb_context:context().
+maybe_update_hook(Context) ->
+    Doc = cb_context:doc(Context),
+
+    case wh_json:is_true(<<"enabled">>, Doc)
+        'false' -> Context;
+        'true' ->
+            cb_context:set_doc(Context
+                               ,wh_json:delete_keys([<<"pvt_disabled_message">>], Doc)
+                              )
+    end.
