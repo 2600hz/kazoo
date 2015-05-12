@@ -126,12 +126,13 @@ clean_expired() ->
         {'error', _E} -> lager:debug("failed to lookup expired tokens: ~p", [_E]);
         {'ok', []} -> lager:debug("no expired tokens found");
         {'ok', L} ->
-            couch_mgr:suppress_change_notice(),
             lager:debug("removing ~b expired tokens", [length(L)]),
+
+            couch_mgr:suppress_change_notice(),
             _ = couch_mgr:del_docs(?KZ_TOKEN_DB, L),
-            couch_compactor_fsm:compact_db(?KZ_TOKEN_DB),
             couch_mgr:enable_change_notice(),
-            'ok'
+
+            lager:debug("removed tokens")
     end.
 
 %%--------------------------------------------------------------------
