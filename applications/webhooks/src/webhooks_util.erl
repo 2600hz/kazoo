@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2014, 2600Hz
+%%% @copyright (C) 2013-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -367,6 +367,7 @@ jobj_to_rec(Hook) ->
 
 -spec init_mods() -> 'ok'.
 -spec init_mods(wh_json:objects()) -> 'ok'.
+-spec init_mods(wh_json:objects(), wh_year(), wh_month()) -> 'ok'.
 init_mods() ->
     case couch_mgr:get_results(?KZ_WEBHOOKS_DB
                                ,<<"webhooks/accounts_listing">>
@@ -385,9 +386,9 @@ init_mods(Accts) ->
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(wh_util:current_tstamp()),
     init_mods(Accts, Year, Month).
 init_mods([], _, _) -> 'ok';
-init_mods([Acct|Accts], Year, Month) ->
-    init_mod(Acct, Year, Month),
-    init_mods(Accts, Year, Month).
+init_mods(Accts, Year, Month) ->
+    [init_mod(Acct, Year, Month) || Acct <- Accts],
+    'ok'.
 
 -spec init_mod(wh_json:object(), wh_year(), wh_month()) -> 'ok'.
 init_mod(Acct, Year, Month) ->
