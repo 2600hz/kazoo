@@ -82,7 +82,7 @@ get_results_missing_db(Account, View, ViewOptions, Retry) ->
 -spec open_doc(ne_binary(), ne_binary(), integer() | wh_proplist()) ->
                       {'ok', wh_json:object()} |
                       {'error', atom()}.
--spec open_doc(ne_binary(), ne_binary(), integer(), integer()) ->
+-spec open_doc(ne_binary(), ne_binary(), wh_year() | ne_binary(), wh_month() | ne_binary()) ->
                       {'ok', wh_json:object()} |
                       {'error', atom()}.
 open_doc(Account, <<Year:4/binary, Month:2/binary, "-", _/binary>> = DocId) ->
@@ -166,7 +166,7 @@ couch_save(AccountMODb, Doc, Retry) ->
 -spec get_modb(ne_binary()) -> ne_binary().
 -spec get_modb(ne_binary(), wh_proplist() | gregorian_seconds() | wh_now()) ->
                       ne_binary().
--spec get_modb(ne_binary(), integer(), integer()) ->
+-spec get_modb(ne_binary(), wh_year() | ne_binary(), wh_month() | ne_binary()) ->
                       ne_binary().
 get_modb(<<_:32/binary, "-", _:4/binary, _:2/binary>>=AccountMODb) ->
     AccountMODb;
