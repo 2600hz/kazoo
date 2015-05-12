@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Token auth module
 %%%
@@ -20,7 +20,7 @@
          ,delete/1
          ,authenticate/1
          ,finish_request/1
-         ,clean_expired/0
+         ,clean_expired/0, clean_expired/1
         ]).
 
 -include("../crossbar.hrl").
@@ -115,8 +115,11 @@ maybe_save_auth_doc(OldAuthDoc) ->
     end.
 
 -spec clean_expired() -> 'ok'.
+-spec clean_expired(gregorian_seconds()) -> 'ok'.
 clean_expired() ->
-    CreatedBefore = wh_util:current_tstamp() - ?LOOP_TIMEOUT, % gregorian seconds - Expiry time
+    clean_expired(wh_util:current_tstamp() - ?LOOP_TIMEOUT).
+
+clean_expired(CreatedBefore) ->
     ViewOpts = [{'startkey', 0}
                 ,{'endkey', CreatedBefore}
                 ,{'limit', couch_util:max_bulk_insert()}
