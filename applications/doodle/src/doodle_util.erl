@@ -219,7 +219,10 @@ endpoint_id_from_sipdb(Realm, Username) ->
                                         {'ok', ne_binary(), ne_binary()} |
                                         {'error', _}.
 get_endpoint_id_from_sipdb(Realm, Username) ->
-    ViewOptions = [{'key', [wh_util:to_lower_binary(Realm), wh_util:to_lower_binary(Username)]}],
+    ViewOptions = [{'key', [wh_util:to_lower_binary(Realm)
+                            ,wh_util:to_lower_binary(Username)
+                           ]
+                   }],
     case couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup">>, ViewOptions) of
         {'ok', [JObj]} ->
             EndpointId = wh_json:get_value(<<"id">>, JObj),

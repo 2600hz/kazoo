@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -13,8 +13,6 @@
 
 -export([handle/2]).
 
--define(DEFAULT_EVENT_WAIT, 10000).
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -24,8 +22,8 @@
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call1) ->
     AccountId = whapps_call:account_id(Call1),
-    Call = case whapps_call:custom_channel_var(<<"API-Call">>, 'false', Call1) andalso
-                    whapps_account_config:get_global(AccountId, ?CONFIG_CAT, <<"api_preserve_caller_id">>, 'true')
+    Call = case whapps_call:custom_channel_var(<<"API-Call">>, 'false', Call1)
+               andalso whapps_account_config:get_global(AccountId, ?CONFIG_CAT, <<"api_preserve_caller_id">>, 'true')
            of
                'true' -> doodle_util:set_caller_id(whapps_call:from_user(Call1), Call1);
                'false' -> doodle_util:set_caller_id(Data, Call1)
@@ -34,13 +32,13 @@ handle(Data, Call1) ->
            build_offnet_request(Data, Call)
            ,fun wapi_offnet_resource:publish_req/1
            ,fun wapi_offnet_resource:resp_v/1
-           ,30000
+           ,30 * ?MILLISECONDS_IN_SECOND
           )
     of
         {'ok', Res} ->
             handle_result(Res, Call);
         {'error', E} ->
-            lager:debug("error executing offnet action : ~p",[E]),
+            lager:debug("error executing offnet action : ~p", [E]),
             doodle_util:maybe_reschedule_sms(doodle_util:set_flow_error(E, Call))
     end.
 
