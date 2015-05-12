@@ -249,8 +249,12 @@ send(<<"sip">>, Endpoint, API) ->
 send(<<"amqp">>, Endpoint, API) ->
     CallId = props:get_value(<<"Call-ID">>, API),
     Options = wh_json:to_proplist(wh_json:get_value(<<"Endpoint-Options">>, Endpoint, [])),
+    CCVs = wh_json:merge_jobjs(
+             wh_json:get_value(<<"Custom-Channel-Vars">>, Endpoint, wh_json:new())
+             ,wh_json:filter(fun filter_smpp/1, props:get_value(<<"Custom-Channel-Vars">>, API, wh_json:new()))
+             ),
     Props = wh_json:to_proplist(Endpoint) ++ Options,
-    Payload = props:set_values(Props, API),
+    Payload = props:set_value(<<"Custom-Channel-Vars">>, CCVs, props:set_values(Props, API)),
     Broker = wh_json:get_value([<<"Endpoint-Options">>, <<"AMQP-Broker">>], Endpoint),
     BrokerName = wh_json:get_value([<<"Endpoint-Options">>, <<"Broker-Name">>], Endpoint),
     Exchange = wh_json:get_value([<<"Endpoint-Options">>, <<"Exchange-ID">>], Endpoint),
@@ -268,6 +272,10 @@ send(<<"amqp">>, Endpoint, API) ->
         {'error', Reason} ->
             send_error(API, CallId, Reason)
     end.
+
+-spec filter_smpp(tuple()) -> boolean().
+filter_smpp({<<"SMPP-", _/binary>>, _}) -> 'true';
+filter_smpp(_) -> 'false'.
 
 -spec send_success(wh_proplist(), ne_binary()) -> 'ok'.
 send_success(API, CallId) ->

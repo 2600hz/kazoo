@@ -32,7 +32,8 @@
 -export([handle_bridge_failure/2, handle_bridge_failure/3]).
 -export([sms_status/1, sms_status/2]).
 -export([get_callee_id/2 , set_callee_id/2]).
--export([get_caller_id/2 , get_caller_id/3, set_caller_id/2]).
+-export([get_caller_id/2 , get_caller_id/3]).
+-export([set_caller_id/2, set_caller_id/3]).
 -export([lookup_number/1]).
 -export([get_inbound_destination/1]).
 -export([lookup_mdn/1]).
@@ -100,11 +101,13 @@ set_sms_revision(Rev, Call) ->
 
 -spec save_sms(whapps_call:call()) -> whapps_call:call().
 save_sms(Call) ->
-    save_sms(wh_json:new(), whapps_call:kvs_fetch('sms_docid', Call), Call).
+    Id = whapps_call:kvs_fetch('sms_docid', whapps_call:custom_channel_var(<<"Doc-ID">>, Call), Call),
+    save_sms(wh_json:new(), Id, Call).
 
 -spec save_sms(wh_json:object(), whapps_call:call()) -> whapps_call:call().
 save_sms(JObj, Call) ->
-    save_sms(JObj, whapps_call:kvs_fetch('sms_docid', Call), Call).
+    Id = whapps_call:kvs_fetch('sms_docid', whapps_call:custom_channel_var(<<"Doc-ID">>, Call), Call),
+    save_sms(JObj, Id, Call).
 
 -spec save_sms(wh_json:object(), api_binary(), whapps_call:call()) -> whapps_call:call().
 save_sms(JObj, 'undefined', Call) ->
@@ -348,9 +351,16 @@ get_caller_id(Data, Default, Call) ->
     Type = wh_json:get_value(<<"caller_id_type">>, Data, Default),
     cf_attributes:caller_id(Type, Call).
 
--spec set_caller_id(wh_json:object(), whapps_call:call()) -> whapps_call:call().
+-spec set_caller_id(wh_json:object() | binary(), whapps_call:call()) -> whapps_call:call().
+set_caller_id(CIDNumber, Call)
+  when is_binary(CIDNumber) ->
+    set_caller_id(CIDNumber, CIDNumber, Call);
 set_caller_id(Data, Call) ->
     {CIDNumber, CIDName} = get_caller_id(Data, Call),
+    set_caller_id(CIDNumber, CIDName, Call).
+
+-spec set_caller_id(binary(), binary(), whapps_call:call()) -> whapps_call:call().
+set_caller_id(CIDNumber, CIDName, Call) ->
     Props = props:filter_empty(
               [{<<"Caller-ID-Name">>, CIDName}
                ,{<<"Caller-ID-Number">>, CIDNumber}

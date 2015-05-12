@@ -23,7 +23,13 @@
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call1) ->
-    Call = doodle_util:set_caller_id(Data, Call1),
+    AccountId = whapps_call:account_id(Call1),
+    Call = case whapps_call:custom_channel_var(<<"API-Call">>, 'false', Call1) andalso
+                    whapps_account_config:get_global(AccountId, ?CONFIG_CAT, <<"api_preserve_caller_id">>, 'true')
+           of
+               'true' -> doodle_util:set_caller_id(whapps_call:from_user(Call1), Call1);
+               'false' -> doodle_util:set_caller_id(Data, Call1)
+           end,
     case whapps_util:amqp_pool_request(
            build_offnet_request(Data, Call)
            ,fun wapi_offnet_resource:publish_req/1
@@ -96,6 +102,7 @@ build_offnet_request(Data, Call) ->
        ,{<<"Hunt-Account-ID">>, get_hunt_account_id(Data, Call)}
        ,{<<"Flags">>, get_flags(Data, Call)}
        ,{<<"Custom-SIP-Headers">>, get_sip_headers(Data, Call)}
+       ,{<<"Custom-Channel-Vars">>, whapps_call:custom_channel_vars(Call)}
        ,{<<"To-DID">>, get_to_did(Data, Call)}
        ,{<<"From-URI-Realm">>, get_from_uri_realm(Data, Call)}
        ,{<<"Bypass-E164">>, get_bypass_e164(Data)}
