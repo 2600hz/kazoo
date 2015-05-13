@@ -18,6 +18,7 @@
 -export([base_call_cost/3]).
 -export([current_balance/1
          ,previous_balance/3
+         ,current_account_dollars/1
         ]).
 -export([get_balance_from_account/2]).
 -export([call_cost/1]).
@@ -235,6 +236,17 @@ get_rollup_balance(Account, ViewOptions) ->
                          ),
             E
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec current_account_dollars(ne_binary()) -> float().
+current_account_dollars(Account) ->
+    Units = wht_util:current_balance(Account),
+    wht_util:units_to_dollars(Units).
 
 %%--------------------------------------------------------------------
 %% @public

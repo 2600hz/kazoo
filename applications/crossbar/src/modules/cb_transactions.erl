@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2014, 2600Hz INC
+%%% @copyright (C) 2013-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -13,10 +13,16 @@
          ,resource_exists/0, resource_exists/1
          ,validate/1, validate/2
          ,to_csv/1
+         ,delete/2
         ]).
 
 -include("../crossbar.hrl").
 -include_lib("whistle_transactions/include/whistle_transactions.hrl").
+
+-define(CURRENT_BALANCE, <<"current_balance">>).
+-define(MONTHLY, <<"monthly_recurring">>).
+-define(SUBSCRIPTIONS, <<"subscriptions">>).
+-define(DEBIT, <<"debit">>).
 
 -type payload() :: {cowboy_req:req(), cb_context:context()}.
 
@@ -35,6 +41,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.transactions">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.transactions">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.transactions">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.delete.transactions">>, ?MODULE, 'delete'),
     _ = crossbar_bindings:bind(<<"*.to_csv.get.transactions">>, ?MODULE, 'to_csv').
 
 -spec to_csv(payload()) -> payload().
@@ -67,6 +74,11 @@ flatten(Else, _) -> Else.
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET].
+
+allowed_methods(?CURRENT_BALANCE) ->
+    [?HTTP_GET];
+allowed_methods(?DEBIT) ->
+    [?HTTP_DELETE];
 allowed_methods(_) ->
     [?HTTP_GET].
 
@@ -101,8 +113,71 @@ validate(Context) ->
 validate(Context, PathToken) ->
     validate_transaction(Context, PathToken, cb_context:req_verb(Context)).
 
--spec validate_transactions(cb_context:context(), http_method()) ->
-                                   cb_context:context().
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec delete(cb_context:context(), path_token()) -> cb_context:context().
+delete(Context, ?DEBIT) ->
+    case cb_context:resp_status(Context) of
+        'success' ->
+           maybe_create_debit_tansaction(Context);
+        _RespStatus -> Context
+    end.
+
+-spec maybe_create_debit_tansaction(cb_context:context()) -> cb_context:context().
+maybe_create_debit_tansaction(Context) ->
+    case create_debit_tansaction(Context) of
+        {'error', _R}=Error ->
+            lager:error("failed to create debit transaction : ~p", [_R]),
+            cb_context:add_system_error(
+              'transaction_failed'
+              ,wh_json:from_list(
+                 [{<<"message">>, <<"failed to create debit transaction">>}
+                  ,{<<"cause">>, wh_util:error_to_binary(Error)}
+                 ])
+              ,Context
+             );
+        {'ok', Transaction} ->
+            cb_context:set_resp_data(
+              Context
+              ,wh_transaction:to_public_json(Transaction)
+             )
+    end.
+
+-spec create_debit_tansaction(cb_context:context()) ->
+                                     {'ok', wh_transaction:transaction()} |
+                                     {'error', _}.
+create_debit_tansaction(Context) ->
+    AccountId = cb_context:account_id(Context),
+    JObj = cb_context:req_data(Context),
+    Amount = wh_json:get_float_value(<<"amount">>, JObj),
+    Units = wht_util:dollars_to_units(Amount),
+    Meta =
+        wh_json:from_list(
+          [{<<"auth_account_id">>, cb_context:auth_account_id(Context)}]
+         ),
+    Routines = [fun(Tr) -> wh_transaction:set_reason(<<"admin_discretion">>, Tr) end
+                ,fun(Tr) -> wh_transaction:set_metadata(Meta, Tr) end
+                ,fun wh_transaction:save/1
+               ],
+    lists:foldl(
+      fun(F, Tr) -> F(Tr) end
+      ,wh_transaction:debit(AccountId, Units)
+      ,Routines
+     ).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_transactions(cb_context:context(), http_method()) -> cb_context:context().
+-spec validate_transaction(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_transactions(Context, ?HTTP_GET) ->
     case cb_modules_util:range_view_options(Context) of
         {CreatedFrom, CreatedTo} ->
@@ -111,29 +186,89 @@ validate_transactions(Context, ?HTTP_GET) ->
         Context1 -> Context1
     end.
 
--spec validate_transaction(cb_context:context(), path_token(), http_method()) ->
-                                  cb_context:context().
-validate_transaction(Context, <<"current_balance">>, ?HTTP_GET) ->
+validate_transaction(Context, ?CURRENT_BALANCE, ?HTTP_GET) ->
     Balance = wht_util:units_to_dollars(wht_util:current_balance(cb_context:account_id(Context))),
     JObj = wh_json:from_list([{<<"balance">>, Balance}]),
     cb_context:setters(Context
                        ,[{fun cb_context:set_resp_status/2, 'success'}
                          ,{fun cb_context:set_resp_data/2, JObj}
                         ]);
-validate_transaction(Context, <<"monthly_recurring">>, ?HTTP_GET) ->
+validate_transaction(Context, ?MONTHLY, ?HTTP_GET) ->
     case cb_modules_util:range_view_options(Context) of
         {CreatedFrom, CreatedTo} ->
             Reason = cb_context:req_value(Context, <<"reason">>),
             fetch_monthly_recurring(Context, CreatedFrom, CreatedTo, Reason);
         Context1 -> Context1
     end;
-validate_transaction(Context, <<"subscriptions">>, ?HTTP_GET) ->
+validate_transaction(Context, ?SUBSCRIPTIONS, ?HTTP_GET) ->
     filter_subscriptions(Context);
+validate_transaction(Context, ?DEBIT, ?HTTP_DELETE) ->
+    validate_debit(Context);
 validate_transaction(Context, _PathToken, _Verb) ->
     cb_context:add_system_error('bad_identifier',  Context).
 
 
+%%--------------------------------------------------------------------
 %% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_debit(cb_context:context()) -> cb_context:context().
+-spec validate_debit(cb_context:context(), api_float()) -> cb_context:context().
+validate_debit(Context) ->
+    Amount = wh_json:get_float_value(<<"amount">>, cb_context:req_data(Context)),
+
+    case cb_modules_util:is_superduper_admin(Context) of
+        'true' -> validate_debit(Context, Amount);
+        'false' ->
+            case wh_services:is_reseller(cb_context:auth_account_id(Context)) of
+                'true' -> validate_debit(Context, Amount);
+                'false' -> cb_context:add_system_error('forbidden', Context)
+            end
+    end.
+
+validate_debit(Context, 'undefined') ->
+    Message = <<"Amount is required">>,
+    cb_context:add_validation_error(
+      <<"amount">>
+      ,<<"required">>
+      ,wh_json:from_list([{<<"message">>, Message}])
+      ,Context
+     );
+validate_debit(Context, Amount) when Amount =< 0 ->
+    Message = <<"Amount must be more than 0">>,
+    cb_context:add_validation_error(
+      <<"amount">>
+      ,<<"minimum">>
+      ,wh_json:from_list([{<<"message">>, Message}])
+      ,Context
+     );
+validate_debit(Context, Amount) ->
+    AccountId = cb_context:account_id(Context),
+    FuturAmount = wht_util:current_account_dollars(AccountId) - Amount,
+    case FuturAmount < 0 of
+        'false' ->
+            cb_context:set_resp_status(Context, 'success');
+        'true' ->
+            Message = <<"Available credit can not be less than 0">>,
+            cb_context:add_validation_error(
+              <<"amount">>
+              ,<<"minimum">>
+              ,wh_json:from_list(
+                 [{<<"message">>, Message}
+                  ,{<<"cause">>, FuturAmount}
+                 ])
+              ,Context
+             )
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec fetch_transactions(cb_context:context(), gregorian_seconds(), gregorian_seconds(), api_binary()) ->
                                 cb_context:context().
 

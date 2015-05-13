@@ -110,7 +110,7 @@ handle_req(DataJObj) ->
 -spec get_balance(wh_json:object()) -> ne_binary().
 get_balance(DataJObj) ->
     AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
-    Amount = wht_util:units_to_dollars(wht_util:current_balance(AccountId)),
+    Amount = wht_util:current_account_dollars(AccountId),
     wht_util:pretty_print_dollars(Amount).
 
 -spec get_topup_amount(wh_json:object()) -> ne_binary().
