@@ -52,7 +52,7 @@
 
 -record(state, {
           queue_id :: ne_binary()
-          ,acct_id :: ne_binary()
+          ,account_id :: ne_binary()
 
            %% PIDs of the gang
           ,worker_sup :: pid()
@@ -105,17 +105,17 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link(pid(), pid(), ne_binary(), ne_binary()) -> startlink_ret().
-start_link(WorkerSup, MgrPid, AcctId, QueueId) ->
+start_link(WorkerSup, MgrPid, AccountId, QueueId) ->
     gen_listener:start_link(?MODULE
                             ,[{'bindings', [{'acdc_queue', [{'restrict_to', ['sync_req']}
-                                                            ,{'account_id', AcctId}
+                                                            ,{'account_id', AccountId}
                                                             ,{'queue_id', QueueId}
                                                            ]}
                                             | ?BINDINGS
                                            ]}
                               ,{'responders', ?RESPONDERS}
                              ]
-                            ,[WorkerSup, MgrPid, AcctId, QueueId]
+                            ,[WorkerSup, MgrPid, AccountId, QueueId]
                            ).
 
 -spec accept_member_calls(pid()) -> 'ok'.
@@ -196,12 +196,12 @@ delivery(Srv) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([WorkerSup, MgrPid, AcctId, QueueId]) ->
+init([WorkerSup, MgrPid, AccountId, QueueId]) ->
     put('callid', QueueId),
 
     lager:debug("starting queue ~s", [QueueId]),
 
-    {'ok', QueueJObj} = couch_mgr:open_cache_doc(wh_util:format_account_id(AcctId, 'encoded')
+    {'ok', QueueJObj} = couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded')
                                                  ,QueueId
                                                 ),
 
@@ -209,7 +209,7 @@ init([WorkerSup, MgrPid, AcctId, QueueId]) ->
 
     {'ok', #state{
        queue_id = QueueId
-       ,acct_id = AcctId
+       ,account_id = AccountId
        ,my_id = acdc_util:proc_id()
 
        ,worker_sup = WorkerSup
@@ -232,10 +232,10 @@ init([WorkerSup, MgrPid, AcctId, QueueId]) ->
 %%--------------------------------------------------------------------
 handle_call('delivery', _From, #state{delivery=D}=State) ->
     {'reply', D, State};
-handle_call('config', _From, #state{acct_id=AcctId
+handle_call('config', _From, #state{account_id=AccountId
                                     ,queue_id=QueueId
                                    }=State) ->
-    {'reply', {AcctId, QueueId}, State};
+    {'reply', {AccountId, QueueId}, State};
 handle_call(_Request, _From, State) ->
     lager:debug("unhandled call from ~p: ~p", [_From, _Request]),
     {'reply', {'error', 'unhandled_call'}, State}.
@@ -257,13 +257,13 @@ find_pid_from_supervisor({'error', {'already_started', P}}) when is_pid(P) ->
 find_pid_from_supervisor(E) -> E.
 
 -spec start_shared_queue(state(), pid(), api_integer()) -> {'noreply', state()}.
-start_shared_queue(#state{acct_id=AcctId
+start_shared_queue(#state{account_id=AccountId
                           ,queue_id=QueueId
                           ,worker_sup=WorkerSup
                          }=State, FSMPid, Priority) ->
     {'ok', SharedPid} =
         find_pid_from_supervisor(
-          acdc_queue_worker_sup:start_shared_queue(WorkerSup, FSMPid, AcctId, QueueId, Priority)
+          acdc_queue_worker_sup:start_shared_queue(WorkerSup, FSMPid, AccountId, QueueId, Priority)
          ),
     lager:debug("started shared queue listener: ~p", [SharedPid]),
 
@@ -298,7 +298,7 @@ handle_cast({'gen_listener', {'created_queue', Q}}, #state{my_q='undefined'}=Sta
 handle_cast({'member_connect_req', MemberCallJObj, Delivery, _Url}
             ,#state{my_q=MyQ
                     ,my_id=MyId
-                    ,acct_id=AcctId
+                    ,account_id=AccountId
                     ,queue_id=QueueId
                    }=State) ->
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, MemberCallJObj)),
@@ -307,7 +307,7 @@ handle_cast({'member_connect_req', MemberCallJObj, Delivery, _Url}
 
     acdc_util:bind_to_call_events(Call),
     lager:debug("bound to call events for ~s", [whapps_call:call_id(Call)]),
-    send_member_connect_req(whapps_call:call_id(Call), AcctId, QueueId, MyQ, MyId),
+    send_member_connect_req(whapps_call:call_id(Call), AccountId, QueueId, MyQ, MyId),
 
     {'noreply', State#state{call=Call
                             ,delivery=Delivery
@@ -316,11 +316,11 @@ handle_cast({'member_connect_req', MemberCallJObj, Delivery, _Url}
      ,'hibernate'};
 handle_cast({'member_connect_re_req'}, #state{my_q=MyQ
                                               ,my_id=MyId
-                                              ,acct_id=AcctId
+                                              ,account_id=AccountId
                                               ,queue_id=QueueId
                                               ,call=Call
                                              }=State) ->
-    send_member_connect_req(whapps_call:call_id(Call), AcctId, QueueId, MyQ, MyId),
+    send_member_connect_req(whapps_call:call_id(Call), AccountId, QueueId, MyQ, MyId),
     {'noreply', State};
 handle_cast({'member_connect_win', RespJObj, QueueOpts}, #state{my_q=MyQ
                                                                 ,my_id=MyId
@@ -341,7 +341,7 @@ handle_cast({'timeout_member_call'}, #state{delivery=Delivery
                                             ,call=Call
                                             ,shared_pid=Pid
                                             ,member_call_queue=Q
-                                            ,acct_id=AcctId
+                                            ,account_id=AccountId
                                             ,queue_id=QueueId
                                             ,my_id=MyId
                                             ,agent_id=AgentId
@@ -352,7 +352,7 @@ handle_cast({'timeout_member_call'}, #state{delivery=Delivery
     lager:debug("unbound from call events for ~s", [whapps_call:call_id(Call)]),
 
     acdc_queue_shared:ack(Pid, Delivery),
-    send_member_call_failure(Q, AcctId, QueueId, whapps_call:call_id(Call), MyId, AgentId),
+    send_member_call_failure(Q, AccountId, QueueId, whapps_call:call_id(Call), MyId, AgentId),
 
     {'noreply', clear_call_state(State), 'hibernate'};
 handle_cast({'ignore_member_call', Call, Delivery}, #state{shared_pid=Pid}=State) ->
@@ -365,7 +365,7 @@ handle_cast({'exit_member_call'}, #state{delivery=Delivery
                                          ,call=Call
                                          ,shared_pid=Pid
                                          ,member_call_queue=Q
-                                         ,acct_id=AcctId
+                                         ,account_id=AccountId
                                          ,queue_id=QueueId
                                          ,my_id=MyId
                                          ,agent_id=AgentId
@@ -375,7 +375,7 @@ handle_cast({'exit_member_call'}, #state{delivery=Delivery
     acdc_util:unbind_from_call_events(Call),
     lager:debug("unbound from call events for ~s", [whapps_call:call_id(Call)]),
     acdc_queue_shared:ack(Pid, Delivery),
-    send_member_call_failure(Q, AcctId, QueueId, whapps_call:call_id(Call), MyId, AgentId, <<"Caller exited the queue via DTMF">>),
+    send_member_call_failure(Q, AccountId, QueueId, whapps_call:call_id(Call), MyId, AgentId, <<"Caller exited the queue via DTMF">>),
 
     {'noreply', clear_call_state(State), 'hibernate'};
 handle_cast({'finish_member_call'}, #state{call='undefined'}=State) ->
@@ -384,7 +384,7 @@ handle_cast({'finish_member_call'}, #state{delivery=Delivery
                                            ,call=Call
                                            ,shared_pid=Pid
                                            ,member_call_queue=Q
-                                           ,acct_id=AcctId
+                                           ,account_id=AccountId
                                            ,queue_id=QueueId
                                            ,my_id=MyId
                                            ,agent_id=AgentId
@@ -394,14 +394,14 @@ handle_cast({'finish_member_call'}, #state{delivery=Delivery
     acdc_util:unbind_from_call_events(Call),
     lager:debug("unbound from call events for ~s", [whapps_call:call_id(Call)]),
     acdc_queue_shared:ack(Pid, Delivery),
-    send_member_call_success(Q, AcctId, QueueId, MyId, AgentId, whapps_call:call_id(Call)),
+    send_member_call_success(Q, AccountId, QueueId, MyId, AgentId, whapps_call:call_id(Call)),
 
     {'noreply', clear_call_state(State), 'hibernate'};
 handle_cast({'finish_member_call', _AcceptJObj}, #state{delivery=Delivery
                                                         ,call=Call
                                                         ,shared_pid=Pid
                                                         ,member_call_queue=Q
-                                                        ,acct_id=AcctId
+                                                        ,account_id=AccountId
                                                         ,queue_id=QueueId
                                                         ,my_id=MyId
                                                         ,agent_id=AgentId
@@ -411,7 +411,7 @@ handle_cast({'finish_member_call', _AcceptJObj}, #state{delivery=Delivery
     acdc_util:unbind_from_call_events(Call),
     lager:debug("unbound from call events for ~s", [whapps_call:call_id(Call)]),
     acdc_queue_shared:ack(Pid, Delivery),
-    send_member_call_success(Q, AcctId, QueueId, MyId, AgentId, whapps_call:call_id(Call)),
+    send_member_call_success(Q, AccountId, QueueId, MyId, AgentId, whapps_call:call_id(Call)),
 
     {'noreply', clear_call_state(State), 'hibernate'};
 handle_cast({'cancel_member_call'}, #state{delivery='undefined'}=State) ->
@@ -442,10 +442,10 @@ handle_cast({'cancel_member_call', _MemberCallJObj, Delivery}, #state{shared_pid
     {'noreply', State};
 handle_cast({'send_sync_req', Type}, #state{my_q=MyQ
                                             ,my_id=MyId
-                                            ,acct_id=AcctId
+                                            ,account_id=AccountId
                                             ,queue_id=QueueId
                                            }=State) ->
-    send_sync_req(MyQ, MyId, AcctId, QueueId, Type),
+    send_sync_req(MyQ, MyId, AccountId, QueueId, Type),
     {'noreply', State};
 handle_cast({'send_sync_resp', Strategy, StrategyState, ReqJObj}, #state{my_id=Id}=State) ->
     publish_sync_resp(Strategy, StrategyState, ReqJObj, Id),
@@ -511,9 +511,9 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 -spec send_member_connect_req(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-send_member_connect_req(CallId, AcctId, QueueId, MyQ, MyId) ->
+send_member_connect_req(CallId, AccountId, QueueId, MyQ, MyId) ->
     Req = props:filter_undefined(
-            [{<<"Account-ID">>, AcctId}
+            [{<<"Account-ID">>, AccountId}
              ,{<<"Queue-ID">>, QueueId}
              ,{<<"Process-ID">>, MyId}
              ,{<<"Server-ID">>, MyQ}
@@ -546,9 +546,9 @@ send_agent_timeout(RespJObj, Call, QueueId) ->
             ,fun wapi_acdc_queue:publish_agent_timeout/2
            ).
 
-send_member_call_success(Q, AcctId, QueueId, MyId, AgentId, CallId) ->
+send_member_call_success(Q, AccountId, QueueId, MyId, AgentId, CallId) ->
     Resp = props:filter_undefined(
-             [{<<"Account-ID">>, AcctId}
+             [{<<"Account-ID">>, AccountId}
               ,{<<"Queue-ID">>, QueueId}
               ,{<<"Process-ID">>, MyId}
               ,{<<"Agent-ID">>, AgentId}
@@ -557,11 +557,11 @@ send_member_call_success(Q, AcctId, QueueId, MyId, AgentId, CallId) ->
              ]),
     publish(Q, Resp, fun wapi_acdc_queue:publish_member_call_success/2).
 
-send_member_call_failure(Q, AcctId, QueueId, CallId, MyId, AgentId) ->
-    send_member_call_failure(Q, AcctId, QueueId, CallId, MyId, AgentId, 'undefined').
-send_member_call_failure(Q, AcctId, QueueId, CallId, MyId, AgentId, Reason) ->
+send_member_call_failure(Q, AccountId, QueueId, CallId, MyId, AgentId) ->
+    send_member_call_failure(Q, AccountId, QueueId, CallId, MyId, AgentId, 'undefined').
+send_member_call_failure(Q, AccountId, QueueId, CallId, MyId, AgentId, Reason) ->
     Resp = props:filter_undefined(
-             [{<<"Account-ID">>, AcctId}
+             [{<<"Account-ID">>, AccountId}
               ,{<<"Queue-ID">>, QueueId}
               ,{<<"Process-ID">>, MyId}
               ,{<<"Agent-ID">>, AgentId}
@@ -571,9 +571,9 @@ send_member_call_failure(Q, AcctId, QueueId, CallId, MyId, AgentId, Reason) ->
              ]),
     publish(Q, Resp, fun wapi_acdc_queue:publish_member_call_failure/2).
 
-send_sync_req(MyQ, MyId, AcctId, QueueId, Type) ->
+send_sync_req(MyQ, MyId, AccountId, QueueId, Type) ->
     Resp = props:filter_undefined(
-             [{<<"Account-ID">>, AcctId}
+             [{<<"Account-ID">>, AccountId}
               ,{<<"Queue-ID">>, QueueId}
               ,{<<"Process-ID">>, MyId}
               ,{<<"Current-Strategy">>, Type}
@@ -623,10 +623,10 @@ is_call_alive(Call) ->
     end.
 
 -spec clear_call_state(state()) -> state().
-clear_call_state(#state{acct_id=AcctId
+clear_call_state(#state{account_id=AccountId
                         ,queue_id=QueueId
                        }=State) ->
-    _ = acdc_util:queue_presence_update(AcctId, QueueId),
+    _ = acdc_util:queue_presence_update(AccountId, QueueId),
 
     put('callid', QueueId),
     State#state{call='undefined'
