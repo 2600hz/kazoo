@@ -818,9 +818,9 @@ from_tag(#whapps_call{from_tag=FromTag}) ->
     FromTag.
 
 -spec set_custom_channel_var(term(), term(), call()) -> call().
-set_custom_channel_var(Key, Value, #whapps_call{ccvs=CCVs}=Call) ->
+set_custom_channel_var(Key, Value, Call) ->
     whapps_call_command:set(wh_json:set_value(Key, Value, wh_json:new()), 'undefined', Call),
-    handle_ccvs_update(wh_json:set_value(Key, Value, CCVs), Call).
+    insert_custom_channel_var(Key, Value, Call).
 
 -spec insert_custom_channel_var(term(), term(), call()) -> call().
 insert_custom_channel_var(Key, Value, #whapps_call{ccvs=CCVs}=Call) ->
