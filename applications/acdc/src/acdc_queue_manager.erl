@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz
+%%% @copyright (C) 2012-2015, 2600Hz
 %%% @doc
 %%% Manages queue processes:
 %%%   starting when a queue is created
@@ -562,7 +562,7 @@ terminate(_Reason, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions
@@ -676,7 +676,7 @@ update_strategy_with_agent('mi', _, As, _, _) ->
 maybe_update_strategy('mi', StrategyState, _AgentId) -> StrategyState;
 maybe_update_strategy('rr', StrategyState, AgentId) ->
     case queue:out(StrategyState) of
-        {{value, AgentId}, StrategyState1} ->
+        {{'value', AgentId}, StrategyState1} ->
             lager:debug("agent ~s was front of queue, moving", [AgentId]),
             queue:in(AgentId, StrategyState1);
         _ -> StrategyState
