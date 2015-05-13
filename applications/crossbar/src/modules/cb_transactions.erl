@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2014, 2600Hz INC
+%%% @copyright (C) 2013-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -128,47 +128,47 @@ delete(Context, ?DEBIT) ->
         _RespStatus -> Context
     end.
 
-
 -spec maybe_create_debit_tansaction(cb_context:context()) -> cb_context:context().
 maybe_create_debit_tansaction(Context) ->
     case create_debit_tansaction(Context) of
         {'error', _R}=Error ->
             lager:error("failed to create debit transaction : ~p", [_R]),
             cb_context:add_system_error(
-                'transaction_failed'
-                ,wh_json:from_list([
-                    {<<"message">>, <<"failed to create debit transaction">>}
-                    ,{<<"cause">>, wh_util:error_to_binary(Error)}
-                ])
-                ,Context
-            );
+              'transaction_failed'
+              ,wh_json:from_list(
+                 [{<<"message">>, <<"failed to create debit transaction">>}
+                  ,{<<"cause">>, wh_util:error_to_binary(Error)}
+                 ])
+              ,Context
+             );
         {'ok', Transaction} ->
             cb_context:set_resp_data(
-                Context
-                ,wh_transaction:to_public_json(Transaction)
-            )
+              Context
+              ,wh_transaction:to_public_json(Transaction)
+             )
     end.
 
--spec create_debit_tansaction(cb_context:context()) -> {'ok', wh_transaction:transaction()} | {'error', _}.
+-spec create_debit_tansaction(cb_context:context()) ->
+                                     {'ok', wh_transaction:transaction()} |
+                                     {'error', _}.
 create_debit_tansaction(Context) ->
     AccountId = cb_context:account_id(Context),
     JObj = cb_context:req_data(Context),
     Amount = wh_json:get_float_value(<<"amount">>, JObj),
     Units = wht_util:dollars_to_units(Amount),
     Meta =
-        wh_json:from_list([
-            {<<"auth_account_id">>, cb_context:auth_account_id(Context)}
-        ]),
-    Routines = [
-        fun(Tr) -> wh_transaction:set_reason(<<"admin_discretion">>, Tr) end
-        ,fun(Tr) -> wh_transaction:set_metadata(Meta, Tr) end
-        ,fun wh_transaction:save/1
-    ],
+        wh_json:from_list(
+          [{<<"auth_account_id">>, cb_context:auth_account_id(Context)}]
+         ),
+    Routines = [fun(Tr) -> wh_transaction:set_reason(<<"admin_discretion">>, Tr) end
+                ,fun(Tr) -> wh_transaction:set_metadata(Meta, Tr) end
+                ,fun wh_transaction:save/1
+               ],
     lists:foldl(
-        fun(F, Tr) -> F(Tr) end
-        ,wh_transaction:debit(AccountId, Units)
-        ,Routines
-    ).
+      fun(F, Tr) -> F(Tr) end
+      ,wh_transaction:debit(AccountId, Units)
+      ,Routines
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -215,17 +215,14 @@ validate_transaction(Context, _PathToken, _Verb) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_debit(cb_context:context()) -> cb_context:context().
--spec validate_debit(cb_context:context(), 'undefined' | float()) -> cb_context:context().
+-spec validate_debit(cb_context:context(), api_float()) -> cb_context:context().
 validate_debit(Context) ->
-    JObj = cb_context:req_data(Context),
-    Amount = wh_json:get_float_value(<<"amount">>, JObj),
-
-    AuthAccountId = cb_context:auth_account_id(Context),
+    Amount = wh_json:get_float_value(<<"amount">>, cb_context:req_data(Context)),
 
     case cb_modules_util:is_superduper_admin(Context) of
         'true' -> validate_debit(Context, Amount);
         'false' ->
-            case wh_services:is_reseller(AuthAccountId) of
+            case wh_services:is_reseller(cb_context:auth_account_id(Context)) of
                 'true' -> validate_debit(Context, Amount);
                 'false' -> cb_context:add_system_error('forbidden', Context)
             end
@@ -234,23 +231,19 @@ validate_debit(Context) ->
 validate_debit(Context, 'undefined') ->
     Message = <<"Amount is required">>,
     cb_context:add_validation_error(
-        <<"amount">>
-        ,<<"required">>
-        ,wh_json:from_list(
-            [{<<"message">>, Message}]
-        )
-        ,Context
-    );
+      <<"amount">>
+      ,<<"required">>
+      ,wh_json:from_list([{<<"message">>, Message}])
+      ,Context
+     );
 validate_debit(Context, Amount) when Amount =< 0 ->
-    Message = <<"Amount is must be more than $0">>,
+    Message = <<"Amount must be more than 0">>,
     cb_context:add_validation_error(
-        <<"amount">>
-        ,<<"minimum">>
-        ,wh_json:from_list(
-            [{<<"message">>, Message}]
-        )
-        ,Context
-    );
+      <<"amount">>
+      ,<<"minimum">>
+      ,wh_json:from_list([{<<"message">>, Message}])
+      ,Context
+     );
 validate_debit(Context, Amount) ->
     AccountId = cb_context:account_id(Context),
     FuturAmount = wht_util:current_account_dollars(AccountId) - Amount,
@@ -258,16 +251,16 @@ validate_debit(Context, Amount) ->
         'false' ->
             cb_context:set_resp_status(Context, 'success');
         'true' ->
-            Message = <<"Available credit can not be less than $0">>,
+            Message = <<"Available credit can not be less than 0">>,
             cb_context:add_validation_error(
-                <<"amount">>
-                ,<<"minimum">>
-                ,wh_json:from_list([
-                    {<<"message">>, Message}
-                    ,{<<"cause">>, FuturAmount}
-                ])
-                ,Context
-            )
+              <<"amount">>
+              ,<<"minimum">>
+              ,wh_json:from_list(
+                 [{<<"message">>, Message}
+                  ,{<<"cause">>, FuturAmount}
+                 ])
+              ,Context
+             )
     end.
 
 %%--------------------------------------------------------------------
