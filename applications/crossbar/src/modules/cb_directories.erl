@@ -155,7 +155,12 @@ load_directory_users(Id, Context) ->
         'success' ->
             Users = cb_context:resp_data(Context1),
             Directory = cb_context:resp_data(Context),
-            cb_context:set_resp_data(Context1, wh_json:set_value(<<"users">>, Users, Directory));
+            cb_context:setters(
+                Context1
+                ,[{fun cb_context:set_resp_data/2, wh_json:set_value(<<"users">>, Users, Directory)}
+                  ,{fun cb_context:set_doc/2, cb_context:doc(Context)}
+                 ]
+            );
         _Status -> Context
     end.
 
