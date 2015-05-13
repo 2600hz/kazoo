@@ -177,7 +177,7 @@ validate(Context, DeviceId, ?QUICKCALL_PATH_TOKEN, _) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, DeviceId) ->
-    case changed_mac_address(Context) of
+    case changed_mac_address(crossbar_doc:load_merge(DeviceId, Context)) of
         'true' ->
             _ = crossbar_util:maybe_refresh_fs_xml('device', Context),
             Context1 = crossbar_doc:save(Context),
