@@ -232,7 +232,7 @@ post(Context, DeviceId) ->
             _ = crossbar_util:maybe_refresh_fs_xml('device', Context),
             Context1 = crossbar_doc:save(Context),
             _ = maybe_aggregate_device(DeviceId, Context1),
-            _ = provisioner_util:maybe_provision(Context1),
+            _ = spawn('provisioner_util', 'maybe_provision', [Context1]),
             _ = crossbar_util:flush_registration(Context),
             Context1;
         'false' ->
@@ -256,7 +256,7 @@ put(Context) ->
         fun() ->
             Context1 = crossbar_doc:save(Context),
             _ = maybe_aggregate_device('undefined', Context1),
-            _ = provisioner_util:maybe_provision(Context1),
+            _ = spawn('provisioner_util', 'maybe_provision', [Context1]),
             Context1
         end,
     crossbar_services:maybe_dry_run(Context, Callback).
@@ -266,7 +266,7 @@ delete(Context, DeviceId) ->
     _ = crossbar_util:refresh_fs_xml(Context),
     Context1 = crossbar_doc:delete(Context),
     _ = crossbar_util:flush_registration(Context),
-    _ = provisioner_util:maybe_delete_provision(Context),
+    _ = spawn('provisioner_util', 'maybe_delete_provision', [Context]),
     _ = maybe_remove_aggregate(DeviceId, Context),
     Context1.
 
