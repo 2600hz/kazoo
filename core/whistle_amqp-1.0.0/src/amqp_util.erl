@@ -119,6 +119,10 @@
 -export([is_json/1, is_host_available/0]).
 -export([encode/1]).
 
+-ifdef(TEST).
+-export([trim/3]).
+-endif.
+
 -define(KEY_SAFE(C), ((C >= $a andalso C =< $z) orelse
                      (C >= $A andalso C =< $Z) orelse
                      (C >= $0 andalso C =< $9) orelse
