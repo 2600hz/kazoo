@@ -317,7 +317,7 @@ vm_count_by_owner(<<_/binary>> = AccountDb, <<_/binary>> = OwnerId) ->
                   ],
     case couch_mgr:get_results(AccountDb, <<"cf_attributes/vm_count_by_owner">>, ViewOptions) of
         {'ok', MessageCounts} ->
-            Props = [{wh_json:get_integer_value([<<"key">>, 2], MessageCount)
+            Props = [{wh_json:get_value([<<"key">>, 2], MessageCount)
                       ,wh_json:get_integer_value(<<"value">>, MessageCount)
                      }
                      || MessageCount <- MessageCounts
