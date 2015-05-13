@@ -598,7 +598,7 @@ free_numbers(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
         {'ok', JObj} ->
-            _ = [release_number(Key, AccountId)
+            _ = [release_number(Key, 'system')
                  || Key <- wh_json:get_keys(wh_json:public_fields(JObj))
                         ,wnm_util:is_reconcilable(Key)
                 ],
