@@ -613,18 +613,19 @@ released_authorize_change(#number{auth_by='system'
                                   ,number_doc=JObj
                                  }=N) ->
     N#number{
-        features=sets:new()
-        ,number_doc=wh_json:private_fields(JObj)
-    };
+      features=sets:new()
+      ,number_doc=wh_json:private_fields(JObj)
+     };
 released_authorize_change(#number{assigned_to=AssignedTo
                                   ,auth_by=AuthBy
                                   ,number_doc=JObj
                                  }=N) ->
     case wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, 'true') of
         'false' -> error_unauthorized(N);
-        'true' -> N#number{features=sets:new()
-                           ,number_doc=wh_json:private_fields(JObj)
-                          }
+        'true' ->
+            N#number{features=sets:new()
+                     ,number_doc=wh_json:private_fields(JObj)
+                    }
     end.
 
 -spec released_move_states(wnm_number(), ne_binary()) -> wnm_number().
