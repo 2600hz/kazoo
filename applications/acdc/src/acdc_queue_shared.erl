@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -34,19 +34,20 @@
                 ,deliveries = [] :: deliveries()
                }).
 
--define(SHARED_BINDING_OPTIONS(Priority), [{'consume_options', [{'no_ack', 'false'}
-                                                                ,{'exclusive', 'false'}
-                                                               ]}
-                                           ,{'basic_qos', 1}
-                                           ,{'queue_options', [{'exclusive', 'false'}
-                                                               ,{'arguments', [{<<"x-message-ttl">>, ?MILLISECONDS_IN_DAY}
-                                                                               ,{<<"x-max-length">>, 1000}
-                                                                               ,{<<"x-max-priority">>, Priority}
-                                                                              ]
-                                                                }
-                                                              ]
-                                            }
-                                          ]).
+-define(SHARED_BINDING_OPTIONS(Priority)
+        ,[{'consume_options', [{'no_ack', 'false'}
+                               ,{'exclusive', 'false'}
+                              ]}
+          ,{'basic_qos', 1}
+          ,{'queue_options', [{'exclusive', 'false'}
+                              ,{'arguments', [{<<"x-message-ttl">>, ?MILLISECONDS_IN_DAY}
+                                              ,{<<"x-max-length">>, 1000}
+                                              ,{<<"x-max-priority">>, Priority}
+                                             ]
+                               }
+                             ]
+           }
+         ]).
 
 -define(SHARED_QUEUE_BINDINGS(AcctId, QueueId), [{'self', []}]).
 
