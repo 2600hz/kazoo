@@ -5,13 +5,14 @@
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
+%%%   KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
 %%%-------------------------------------------------------------------
 -module(acdc_stats).
 
 -behaviour(gen_listener).
 
 %% Public API
--export([call_waiting/5
+-export([call_waiting/6
          ,call_abandoned/4
          ,call_handled/4
          ,call_missed/5
@@ -60,7 +61,14 @@
 -include("acdc_stats.hrl").
 
 %% Public API
-call_waiting(AccountId, QueueId, CallId, CallerIdName, CallerIdNumber) ->
+-spec call_waiting(api_binary()
+                   ,api_binary()
+                   ,api_binary()
+                   ,api_binary()
+                   ,api_binary()
+                   ,api_binary()
+                  ) -> 'ok' | {'error', any()}.
+call_waiting(AccountId, QueueId, CallId, CallerIdName, CallerIdNumber, CallerPriority) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
               ,{<<"Queue-ID">>, QueueId}
@@ -68,6 +76,7 @@ call_waiting(AccountId, QueueId, CallId, CallerIdName, CallerIdNumber) ->
               ,{<<"Caller-ID-Name">>, CallerIdName}
               ,{<<"Caller-ID-Number">>, CallerIdNumber}
               ,{<<"Entered-Timestamp">>, wh_util:current_tstamp()}
+              ,{<<"Caller-Priority">>, CallerPriority}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_call_waiting/1).
@@ -648,6 +657,7 @@ call_stat_to_doc(#call_stat{id=Id
                             ,status=Status
                             ,caller_id_name=CallerIdName
                             ,caller_id_number=CallerIdNumber
+                            ,caller_priority=CallerPriority
                            }) ->
     wh_doc:update_pvt_parameters(
       wh_json:from_list(
@@ -665,6 +675,7 @@ call_stat_to_doc(#call_stat{id=Id
            ,{<<"status">>, Status}
            ,{<<"caller_id_name">>, CallerIdName}
            ,{<<"caller_id_number">>, CallerIdNumber}
+           ,{<<"caller_priority">>, CallerPriority}
            ,{<<"wait_time">>, wait_time(EnteredT, AbandonedT, HandledT)}
            ,{<<"talk_time">>, talk_time(HandledT, ProcessedT)}
           ]))
@@ -851,6 +862,7 @@ create_call_stat(Id, JObj, Props) ->
                                           ,status = <<"waiting">>
                                           ,caller_id_name = wh_json:get_value(<<"Caller-ID-Name">>, JObj)
                                           ,caller_id_number = wh_json:get_value(<<"Caller-ID-Number">>, JObj)
+                                          ,caller_priority = wh_json:get_value(<<"Caller-Priority">>, JObj)
                                          }
                        }).
 

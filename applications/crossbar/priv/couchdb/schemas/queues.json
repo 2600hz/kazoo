@@ -124,6 +124,14 @@
       "name": "Recording Url",
       "description": "An optional HTTP URL to PUT the call recording after the call ends (and should respond to GET for retrieving the audio data)",
       "format": "uri"
+    },
+    "max_priority": {
+      "type": "integer",
+      "required":false,
+      "name": "Maximum possible priority level",
+      "description": "Maximum possible priority level queue will support. Can not be redefined for existing queue.",
+      "minimum":0,
+      "maximum":255
     }
   }
 }

@@ -5,6 +5,7 @@
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
+%%%   KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
 %%%-------------------------------------------------------------------
 -module(wapi_acdc_stats).
 
@@ -76,7 +77,7 @@
                                ]).
 
 -define(WAITING_HEADERS, [<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-                          ,<<"Entered-Timestamp">>
+                          ,<<"Entered-Timestamp">>, <<"Caller-Priority">>
                          ]).
 -define(WAITING_VALUES, ?CALL_REQ_VALUES(<<"waiting">>)).
 -define(WAITING_TYPES, []).

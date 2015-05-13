@@ -8,6 +8,7 @@
 %%%   and more!!!
 %%% @end
 %%% @contributors
+%%%   KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
 %%%-------------------------------------------------------------------
 -module(acdc_queue_manager).
 
@@ -100,7 +101,9 @@
                          ]}
          ]).
 -define(SECONDARY_QUEUE_NAME(QueueId), <<"acdc.queue.manager.", QueueId/binary>>).
--define(SECONDARY_QUEUE_OPTIONS, [{'exclusive', 'false'}]).
+-define(SECONDARY_QUEUE_OPTIONS(MaxPriority), [{'exclusive', 'false'}
+                                               ,{'arguments',[{<<"x-max-priority">>, MaxPriority}]}
+                                              ]).
 -define(SECONDARY_CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 %%%===================================================================
@@ -168,6 +171,7 @@ start_queue_call(JObj, Props, Call) ->
                             ,whapps_call:call_id(Call)
                             ,whapps_call:caller_id_name(Call)
                             ,whapps_call:caller_id_number(Call)
+                            ,wh_json:get_integer_value(<<"Member-Priority">>, JObj)
                            ),
 
     lager:debug("answering call"),
@@ -565,14 +569,23 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 start_secondary_queue(AccountId, QueueId) ->
     Self = self(),
+    AccountDb = wh_util:format_account_db(AccountId),
+    Priority = lookup_priority_levels(AccountDb, QueueId),
     _ = spawn(fun() -> gen_listener:add_queue(Self
                                               ,?SECONDARY_QUEUE_NAME(QueueId)
-                                              ,[{'queue_options', ?SECONDARY_QUEUE_OPTIONS}
+                                              ,[{'queue_options', ?SECONDARY_QUEUE_OPTIONS(Priority)}
                                                 ,{'consume_options', ?SECONDARY_CONSUME_OPTIONS}
                                                ]
                                               ,?SECONDARY_BINDINGS(AccountId, QueueId)
                                              )
               end).
+
+-spec lookup_priority_levels(ne_binary(), ne_binary()) -> api_integer().
+lookup_priority_levels(AccountDB, QueueId) ->
+    case couch_mgr:open_cache_doc(AccountDB, QueueId) of
+        {'ok', JObj} -> wh_json:get_value(<<"max_priority">>, JObj);
+        _ -> 'undefined'
+    end.
 
 make_ignore_key(AccountId, QueueId, CallId) ->
     {AccountId, QueueId, CallId}.

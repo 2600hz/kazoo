@@ -7,6 +7,7 @@
 %%%   James Aimonetti
 %%%   Edouard Swiac
 %%%   Ben Wann
+%%%   KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
 %%%-------------------------------------------------------------------
 -module(cdr_channel_destroy).
 
@@ -30,6 +31,7 @@ prepare_and_save(AccountId, Timestamp, JObj) ->
                 ,fun update_ccvs/3
                 ,fun set_doc_id/3
                 ,fun set_recording_url/3
+                ,fun set_call_priority/3
                 ,fun maybe_set_e164_destination/3
                 ,fun is_conference/3
                 ,fun save_cdr/3
@@ -83,6 +85,10 @@ set_doc_id(_, Timestamp, JObj) ->
     CallId = wh_json:get_value(<<"call_id">>, JObj),
     DocId = cdr_util:get_cdr_doc_id(Timestamp, CallId),
     wh_json:set_value(<<"_id">>, DocId, JObj).
+
+-spec set_call_priority(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
+set_call_priority(_AccountId, _Timestamp, JObj) ->
+    maybe_leak_ccv(JObj, <<"call_priority">>).
 
 -spec set_recording_url(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
 set_recording_url(_AccountId, _Timestamp, JObj) ->

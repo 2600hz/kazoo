@@ -5,6 +5,7 @@
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
+%%%   KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
 %%%-------------------------------------------------------------------
 -module(acdc_queue_worker_sup).
 
@@ -16,7 +17,7 @@
 -export([start_link/3
          ,stop/1
          ,listener/1
-         ,shared_queue/1, start_shared_queue/4
+         ,shared_queue/1, start_shared_queue/5
          ,fsm/1, start_fsm/3
          ,status/1
         ]).
@@ -56,9 +57,9 @@ shared_queue(WorkerSup) ->
         [P] -> P
     end.
 
--spec start_shared_queue(pid(), pid(), ne_binary(), ne_binary()) -> sup_startchild_ret().
-start_shared_queue(WorkerSup, FSMPid, AcctId, QueueId) ->
-    supervisor:start_child(WorkerSup, ?WORKER_ARGS('acdc_queue_shared', [FSMPid, AcctId, QueueId])).
+-spec start_shared_queue(pid(), pid(), ne_binary(), ne_binary(), api_integer()) -> sup_startchild_ret().
+start_shared_queue(WorkerSup, FSMPid, AcctId, QueueId, Priority) ->
+    supervisor:start_child(WorkerSup, ?WORKER_ARGS('acdc_queue_shared', [FSMPid, AcctId, QueueId, Priority])).
 
 -spec fsm(pid()) -> pid() | 'undefined'.
 fsm(WorkerSup) ->
