@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz
+%%% @copyright (C) 2012-2015, 2600Hz
 %%% @doc
 %%% Collector of stats
 %%% @end
@@ -862,7 +862,7 @@ create_call_stat(Id, JObj, Props) ->
                                           ,status = <<"waiting">>
                                           ,caller_id_name = wh_json:get_value(<<"Caller-ID-Name">>, JObj)
                                           ,caller_id_number = wh_json:get_value(<<"Caller-ID-Number">>, JObj)
-                                          ,caller_priority = wh_json:get_value(<<"Caller-Priority">>, JObj)
+                                          ,caller_priority = wh_json:get_integer_value(<<"Caller-Priority">>, JObj)
                                          }
                        }).
 
