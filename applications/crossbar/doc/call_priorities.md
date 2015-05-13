@@ -1,6 +1,6 @@
 /*
 Section: Crossbar
-Title: Blacklists
+Title: Call Priorities
 Language: en-US
 */
 
@@ -59,17 +59,18 @@ Usage example for `cf_branch_variable` module:
 Call priority support in ACDC
 --------------------------------
 
-ACDC application respects call_priority value in calls and "pushes" the call through the queue until it matches queued call with higher priority (in fact, RabbitMQ queue priorities are used).
+ACDC application respects call\_priority value in calls and "pushes" the call through the queue until it matches queued call with higher priority (in fact, RabbitMQ queue priorities are used).
 
 There are two ways to process a prioritized call with ACD queue:
-	* set the `priority` attribute in `cf_acdc_member` callflow module. The call will be put to the queue with set priority
-	* Use `cf_set_variable` module to set `call_priority` variable and then use `cf_acdc_member`. It will process the `call_priority` value automatically.
+
+* set the `priority` attribute in `cf_acdc_member` callflow module. The call will be put to the queue with set priority
+* Use `cf_set_variable` module to set `call_priority` variable and then use `cf_acdc_member`. It will process the `call_priority` value automatically.
 
 Some installation requirements exist for call priorities to work with ACDC:
 
- - Re-assure twice that  `rabbitmq_priority_queue` plugin is enabled in RabbitMQ (prior to 3.5.0). For 3.5.0 and later it is provided as part of the broker itself. 
+ - Re-assure twice that  `rabbitmq_priority_queue` plugin is enabled in RabbitMQ (prior to 3.5.0). For 3.5.0 and later it is provided as part of the broker itself.
 	 - execute `rabbitmq-plugins list` and make sure the plugin is included.
-	 - make sure that there are no prioritized queues in the broker before the `rabbitmq_priority_queue` plugin is enabled. . 
+	 - make sure that there are no prioritized queues in the broker before the `rabbitmq_priority_queue` plugin is enabled. .
 	 - shutdown the broker
 	 - execute `rabbitmq-plugins enable rabbitmq_priority_queue`
 	 - start the broker
@@ -86,12 +87,13 @@ For example:
 
 Configuration example for broker with enabled `rabbitmq_priority_queue`:
 
-> [root@... ~]# cat /etc/kazoo/rabbitmq/enabled_plugins 
-> [rabbitmq_management,rabbitmq_priority_queue].
+    [root@... ~]# cat /etc/kazoo/rabbitmq/enabled_plugins
+    [rabbitmq_management,rabbitmq_priority_queue].
 
 WARNING
 --------------
 The following things are really **DANGEROUS** and should be avoided:
+
 * Creating prioritized queues before priorities are enabled in the broker.
 * Change number of priorities in existing queue
 * Disable priorities in the broker while prioritized queues exist
