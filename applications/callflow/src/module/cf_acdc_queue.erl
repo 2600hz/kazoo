@@ -78,36 +78,30 @@ send_agent_message(Call, AgentId, QueueId, PubFun) ->
              ]),
     PubFun(Prop).
 
+-spec update_queues(whapps_call:call(), ne_binary(), ne_binary(), ne_binary()) ->
+                    {'ok', wh_json:object()}
+                    | couch_mgr:couchbeam_error().
 update_queues(Call, AgentId, QueueId, <<"login">>) ->
-    case couch_mgr:open_cache_doc(whapps_call:account_db(Call), AgentId) of
-        {'error', _} -> 'ok';
-        {'ok', AgentJObj} ->
-            maybe_add_queue(Call, AgentJObj, QueueId)
-    end;
+    couch_mgr:with_cache_doc(whapps_call:account_db(Call)
+                             ,AgentId
+                             ,fun (JObj) -> maybe_add_queue(JObj, QueueId) end
+                            );
 update_queues(Call, AgentId, QueueId, <<"logout">>) ->
-    case couch_mgr:open_cache_doc(whapps_call:account_db(Call), AgentId) of
-        {'error', _} -> 'ok';
-        {'ok', AgentJObj} ->
-            maybe_rm_queue(Call, AgentJObj, QueueId)
-    end.
+    couch_mgr:with_cache_doc(whapps_call:account_db(Call)
+                             ,AgentId
+                             ,fun (JObj) -> maybe_rm_queue(JObj, QueueId) end
+                            ).
 
-maybe_add_queue(Call, AgentJObj, QueueId) ->
+maybe_add_queue(AgentJObj, QueueId) ->
     Qs = wh_json:get_value(<<"queues">>, AgentJObj, []),
     case lists:member(QueueId, Qs) of
-        'false' ->
-            save_agent(Call, wh_json:set_value(<<"queues">>, [QueueId | Qs], AgentJObj));
-        'true' -> 'ok'
+        'false' -> wh_json:set_value(<<"queues">>, [QueueId | Qs], AgentJObj);
+        'true' -> 'skip'
     end.
 
-maybe_rm_queue(Call, AgentJObj, QueueId) ->
+maybe_rm_queue(AgentJObj, QueueId) ->
     Qs = wh_json:get_value(<<"queues">>, AgentJObj, []),
     case lists:member(QueueId, Qs) of
-        'true' ->
-            Qs1 = lists:delete(QueueId, Qs),
-            QRemoved = wh_json:set_value(<<"queues">>, Qs1, AgentJObj),
-            save_agent(Call, QRemoved);
-        'false' -> 'ok'
+        'true' -> wh_json:set_value(<<"queues">>, lists:delete(QueueId, Qs), AgentJObj);
+        'false' -> 'skip'
     end.
-
-save_agent(Call, AgentJObj) ->
-    couch_mgr:save_doc(whapps_call:account_db(Call), AgentJObj).

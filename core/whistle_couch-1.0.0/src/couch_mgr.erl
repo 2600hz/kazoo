@@ -33,6 +33,7 @@
 -export([save_doc/2, save_doc/3
          ,save_docs/2, save_docs/3
          ,open_cache_doc/2, open_cache_doc/3
+         ,with_cache_doc/3
          ,flush_cache_doc/2, flush_cache_doc/3
          ,flush_cache_docs/0, flush_cache_docs/1
          ,cache_db_doc/3
@@ -527,6 +528,27 @@ cache_db_doc(DbName, DocId, Doc) ->
         {'ok', Db} -> cache_db_doc(Db, DocId, Doc);
         {'error', _}=E -> E
     end.
+
+-spec with_cache_doc(text(), ne_binary(), fun((wh_json:object()) -> wh_json:object() | 'skip')) ->
+                      {'ok', wh_json:object()}
+                      | couchbeam_error().
+with_cache_doc(DbName, DocId, Fun) when is_function(Fun, 1) ->
+    case open_cache_doc(DbName, DocId) of
+        {'ok', JObj} ->
+            NewJObj = Fun(JObj),
+            maybe_save_doc(DbName, NewJObj, JObj);
+        {'error', _Reason} = Else ->
+            lager:error("Can't open doc ~s/~s coz ~p", [DbName, DocId, _Reason]),
+            Else
+    end.
+
+-spec maybe_save_doc(text(), wh_json:object() | 'skip', wh_json:object()) ->
+                      {'ok', wh_json:object() | wh_json:objects()} |
+                      couchbeam_error().
+maybe_save_doc(_DbName, 'skip', Jobj) ->
+    {'ok', Jobj};
+maybe_save_doc(DbName, JObj, _OldJobj) ->
+    save_doc(DbName, JObj).
 
 -spec flush_cache_doc(ne_binary(), ne_binary() | wh_json:object()) ->
                              'ok' |
