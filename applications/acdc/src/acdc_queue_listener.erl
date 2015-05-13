@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% The queue process manages two queues
@@ -256,46 +256,37 @@ find_pid_from_supervisor({'error', {'already_started', P}}) when is_pid(P) ->
     {'ok', P};
 find_pid_from_supervisor(E) -> E.
 
+-spec start_shared_queue(state(), pid(), api_integer()) -> {'noreply', state()}.
+start_shared_queue(#state{acct_id=AcctId
+                          ,queue_id=QueueId
+                          ,worker_sup=WorkerSup
+                         }=State, FSMPid, Priority) ->
+    {'ok', SharedPid} =
+        find_pid_from_supervisor(
+          acdc_queue_worker_sup:start_shared_queue(WorkerSup, FSMPid, AcctId, QueueId, Priority)
+         ),
+    lager:debug("started shared queue listener: ~p", [SharedPid]),
+
+    {'noreply', State#state{
+                  fsm_pid = FSMPid
+                  ,shared_pid = SharedPid
+                  ,my_id = acdc_util:proc_id(FSMPid)
+                 }}.
+
 handle_cast({'start_friends', QueueJObj}, #state{worker_sup=WorkerSup
                                                  ,mgr_pid=MgrPid
-                                                 ,acct_id=AcctId
-                                                 ,queue_id=QueueId
                                                 }=State) ->
     Priority = wh_json:get_integer_value(<<"max_priority">>, QueueJObj),
     case find_pid_from_supervisor(acdc_queue_worker_sup:start_fsm(WorkerSup, MgrPid, QueueJObj)) of
         {'ok', FSMPid} ->
             lager:debug("started queue FSM: ~p", [FSMPid]),
-            {'ok', SharedPid} =
-                find_pid_from_supervisor(
-                  acdc_queue_worker_sup:start_shared_queue(WorkerSup, FSMPid, AcctId, QueueId, Priority)
-                 ),
-            lager:debug("started shared queue listener: ~p", [SharedPid]),
-
-            {'noreply', State#state{
-                          fsm_pid = FSMPid
-                          ,shared_pid = SharedPid
-                          ,my_id = acdc_util:proc_id(FSMPid)
-                         }};
+            start_shared_queue(State, FSMPid, Priority);
         {'error', 'already_present'} ->
             lager:debug("queue FSM is already present"),
             case acdc_queue_worker_sup:fsm(WorkerSup) of
                 FSMPid when is_pid(FSMPid) ->
                     lager:debug("found queue FSM pid: ~p", [FSMPid]),
-                    {'ok', SharedPid} = find_pid_from_supervisor(
-                                          acdc_queue_worker_sup:start_shared_queue(WorkerSup
-                                                                                   ,FSMPid
-                                                                                   ,AcctId
-                                                                                   ,QueueId
-                                                                                   ,Priority
-                                                                                  )
-                                         ),
-                    lager:debug("started shared queue listener: ~p", [SharedPid]),
-
-                    {'noreply', State#state{
-                                  fsm_pid = FSMPid
-                                  ,shared_pid = SharedPid
-                                  ,my_id = acdc_util:proc_id(FSMPid)
-                                 }};
+                    start_shared_queue(State, FSMPid, Priority);
                 'undefined' ->
                     lager:debug("no queue FSM pid found"),
                     {'stop', 'failed_fsm', State}
