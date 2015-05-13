@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz
+%%% @copyright (C) 2011-2015, 2600Hz
 %%% @doc
 %%%
 %%% Handle CRUD operations for Directories
@@ -155,7 +155,7 @@ load_directory_users(Id, Context) ->
         'success' ->
             Users = cb_context:resp_data(Context1),
             Directory = cb_context:resp_data(Context),
-            cb_context:set_resp_data(Context1, wh_json:set_value(<<"users">>, Users, Directory));
+            cb_context:set_resp_data(Context, wh_json:set_value(<<"users">>, Users, Directory));
         _Status -> Context
     end.
 
