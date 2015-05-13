@@ -61,7 +61,7 @@ shared_queue(WorkerSup) ->
 start_shared_queue(WorkerSup, FSMPid, AcctId, QueueId, Priority) ->
     supervisor:start_child(WorkerSup, ?WORKER_ARGS('acdc_queue_shared', [FSMPid, AcctId, QueueId, Priority])).
 
--spec fsm(pid()) -> pid() | 'undefined'.
+-spec fsm(pid()) -> api_pid().
 fsm(WorkerSup) ->
     case child_of_type(WorkerSup, 'acdc_queue_fsm') of
         [] -> 'undefined';
