@@ -1671,9 +1671,9 @@ store_recording(AttachmentName, DocId, Call, #mailbox{owner_id=OwnerId}, Storage
 -spec try_store_recording(ne_binary(), ne_binary(), whapps_call:call()) -> 'ok' | {'error', whapps_call:call()}.
 -spec try_store_recording(ne_binary(), ne_binary(), integer(), whapps_call:call()) -> 'ok' | {'error', whapps_call:call()}.
 try_store_recording(AttachmentName, Url, Call) ->
-    _Tries = ?MAILBOX_RETRY_STORAGE_TIMES(whapps_call:account_id(Call)),
+    Tries = ?MAILBOX_RETRY_STORAGE_TIMES(whapps_call:account_id(Call)),
     Funs = [{fun whapps_call:kvs_store/3, 'media_url', Url}],
-    try_store_recording(AttachmentName, Url, 1, whapps_call:exec(Funs, Call)).
+    try_store_recording(AttachmentName, Url, Tries, whapps_call:exec(Funs, Call)).
 try_store_recording(_, _, 0, Call) -> {'error', Call};
 try_store_recording(AttachmentName, Url, Tries, Call) ->
     case whapps_call_command:b_store(AttachmentName, Url, <<"put">>, [wh_json:new()], 'true', Call) of
