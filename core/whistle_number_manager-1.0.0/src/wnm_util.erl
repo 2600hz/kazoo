@@ -14,7 +14,7 @@
 -endif.
 
 -export([available_classifiers/0, available_classifiers/1]).
--export([classify_number/1]).
+-export([classify_number/1, classify_number/2]).
 -export([is_reconcilable/1, is_reconcilable/2
          ,emergency_services_configured/2
          ,is_dash_e911_configured/2
@@ -26,7 +26,7 @@
          ,get_all_number_dbs/0
         ]).
 -export([normalize_number/1, normalize_number/2]).
--export([to_e164/1, to_e164/2
+-export([to_e164/1, to_e164/2, to_e164/3
          ,to_npan/1, to_1npan/1
         ]).
 -export([is_e164/1, is_e164/2
@@ -214,7 +214,7 @@ correct_depreciated_classifiers([{Classifier, J}|Classifiers], JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec classify_number(ne_binary()) -> api_binary().
--spec classify_number(ne_binary(), wh_proplist()) -> api_binary().
+-spec classify_number(ne_binary(), wh_proplist() | ne_binary()) -> api_binary().
 
 classify_number(Number) ->
     Default = wh_json:from_list(?DEFAULT_CLASSIFIERS),
@@ -231,7 +231,10 @@ classify_number(Num, [{Classification, Classifier}|Classifiers]) ->
         _ ->
             lager:debug("number '~s' is classified as ~s", [Num, Classification]),
             wh_util:to_binary(Classification)
-    end.
+    end;
+classify_number(Num, <<_/binary>> = AccountId) ->
+    AccountClassifiers = wh_json:to_proplist(available_classifiers(AccountId)),
+    classify_number(to_e164(Num, AccountId), AccountClassifiers).
 
 -spec get_classifier_regex(ne_binary() | wh_json:object()) -> ne_binary().
 get_classifier_regex(Classifier) when is_binary(Classifier) ->
@@ -379,6 +382,12 @@ to_e164(Number, <<_/binary>> = Account) ->
         {'ok', JObj} -> to_account_e164(Number, AccountId, wh_json:get_value(<<"dial_plan">>, JObj));
         {'error', _} -> to_account_e164(Number, AccountId)
     end.
+
+-spec to_e164(ne_binary(), api_binary(), api_object()) -> ne_binary().
+to_e164(<<$+, _/binary>> = N, _, _) -> N;
+to_e164(Number, 'undefined', _) -> to_e164(Number);
+to_e164(Number, AccountId, 'undefined') -> to_account_e164(Number, AccountId);
+to_e164(Number, AccountId, DialPlan) -> to_account_e164(Number, AccountId, DialPlan).
 
 -spec to_account_e164(ne_binary(), ne_binary(), api_object()) -> ne_binary().
 to_account_e164(Number, AccountId, 'undefined') ->

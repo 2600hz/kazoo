@@ -93,8 +93,11 @@ maybe_closed_group_restriction(JObj, Call) ->
 
 -spec maybe_classification_restriction(wh_json:object(), whapps_call:call()) -> boolean().
 maybe_classification_restriction(JObj, Call) ->
-    Number = whapps_call:request_user(Call),
-    Classification = wnm_util:classify_number(Number),
+    Request = whapps_call:request_user(Call),
+    AccountId = whapps_call:account_id(Call),
+    DialPlan = wh_json:get_value(<<"dial_plan">>, JObj, wh_json:new()),
+    Number = wnm_util:to_e164(Request, AccountId, DialPlan),
+    Classification = wnm_util:classify_number(Number, AccountId),
     lager:debug("classified number as ~s, testing for call restrictions", [Classification]),
     wh_json:get_value([<<"call_restriction">>, Classification, <<"action">>], JObj) =:= <<"deny">>.
 
