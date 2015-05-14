@@ -1142,7 +1142,7 @@ get_reseller_id(<<_/binary>> = Account) ->
             Tree = lists:reverse(kz_account:tree(AccountJObj)),
             get_reseller_id(Tree);
         {'error', _R} ->
-            lager:info("unable to open account defintion for ~s: ~p", [AccountId, _R]),
+            lager:info("unable to open account definition for ~s: ~p", [AccountId, _R]),
             get_reseller_id([])
     end.
 
