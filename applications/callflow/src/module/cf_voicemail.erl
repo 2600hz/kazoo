@@ -1680,12 +1680,12 @@ try_store_recording(AttachmentName, Url, Tries, Call) ->
         {'ok', JObj} ->
             case wh_json:get_value(<<"Application-Response">>, JObj) of
                 <<"success">> -> 'ok';
-                _ -> lager:error("error trying to store voicemail media, retying"), 
-                     timer:sleep(1000),
+                _ -> lager:error("error trying to store voicemail media, retrying ~b more times", [Tries - 1]), 
+                     timer:sleep(2000),
                      try_store_recording(AttachmentName, Url, Tries - 1, whapps_call:kvs_store('error_details', JObj, Call))
             end;
-        _Other -> lager:error("error trying to store voicemail media, retying"),
-             timer:sleep(1000),
+        _Other -> lager:error("error trying to store voicemail media, retrying ~b more times", [Tries - 1]),
+             timer:sleep(2000),
              try_store_recording(AttachmentName, Url, Tries - 1, whapps_call:kvs_store('error_details', _Other, Call))
     end.
 
