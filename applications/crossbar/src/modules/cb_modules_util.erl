@@ -26,6 +26,8 @@
          ,range_view_options/1, range_view_options/2
 
          ,range_modb_view_options/1, range_modb_view_options/2, range_modb_view_options/3
+
+         ,take_sync_field/1
         ]).
 
 -include("../crossbar.hrl").
@@ -535,3 +537,13 @@ get_token_cost(JObj, Default, Keys) ->
         'undefined' -> Default;
         V -> wh_util:to_integer(V)
     end.
+
+%% @public
+-spec take_sync_field(cb_context:context()) -> cb_context:context().
+take_sync_field(Context) ->
+    Doc = cb_context:doc(Context),
+    ShouldSync = wh_json:is_true(<<"sync">>, Doc, 'false'),
+    CleansedDoc = wh_json:delete_key(<<"sync">>, Doc),
+    cb_context:setters(Context, [{fun cb_context:store/3, 'sync', ShouldSync}
+                                 ,{fun cb_context:set_doc/2, CleansedDoc}
+                                ]).

@@ -44,7 +44,9 @@ get_old_mac_address(Context) ->
 -spec cleanse_mac_address(api_binary()) -> api_binary().
 cleanse_mac_address('undefined') -> 'undefined';
 cleanse_mac_address(MACAddress) ->
-    binary:replace(MACAddress, <<":">>, <<"">>, ['global']).
+    re:replace(MACAddress, <<"[^0-9a-fA-F]">>, <<>>, ['global'
+                                                      ,{'return','binary'}
+                                                     ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -772,7 +774,7 @@ get_provisioning_type() ->
 -spec maybe_sync_sip_data(cb_context:context(), 'user' | 'device') -> 'ok'.
 -spec maybe_sync_sip_data(cb_context:context(), 'user' | 'device', boolean()) -> 'ok'.
 maybe_sync_sip_data(Context, Type) ->
-    ShouldSync = wh_json:is_true(<<"sync">>, cb_context:doc(Context), 'false'),
+    ShouldSync = cb_context:fetch(Context, 'sync'),
     maybe_sync_sip_data(Context, Type, ShouldSync).
 maybe_sync_sip_data(_Context, _Type, 'false') -> 'ok';
 maybe_sync_sip_data(Context, 'device', 'true') ->

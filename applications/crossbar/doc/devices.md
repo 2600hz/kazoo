@@ -45,8 +45,10 @@ One can also attempt `check-sync` while updating a device (in the same request) 
 
     curl -v -X POST -H "X-Auth-Token:{AUTH_TOKEN}" http://{SERVER}:8000/v{API version}/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID} -d '
     {
-      "sync": true,
-      "data": { … }
+      "data": {
+          "sync": true,
+          …
+      }
     }'
 
 If `"sync"` is set to `false` or is not defined, no `check-sync` will be attempted.

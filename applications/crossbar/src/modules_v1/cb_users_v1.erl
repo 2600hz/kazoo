@@ -285,8 +285,9 @@ validate_user(Context, UserId, ?HTTP_PATCH) ->
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _) ->
     _ = crossbar_util:maybe_refresh_fs_xml('user', Context),
-    _ = provisioner_util:maybe_sync_sip_data(Context, 'user'),
-    crossbar_doc:save(Context).
+    Context1 = cb_modules_util:take_sync_field(Context),
+    _ = provisioner_util:maybe_sync_sip_data(Context1, 'user'),
+    crossbar_doc:save(Context1).
 
 -spec post(cb_context:context(), ne_binary(), path_token()) -> cb_context:context().
 post(Context, UserId, ?PHOTO) ->
