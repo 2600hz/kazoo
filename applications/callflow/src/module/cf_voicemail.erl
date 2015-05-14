@@ -183,10 +183,10 @@ handle(Data, Call) ->
 
 check_mailbox(#mailbox{owner_id=OwnerId}=Box, Call) ->
     %% Wrapper to initalize the attempt counter
-    check_mailbox(Box, Call, 1),
+    Resp = check_mailbox(Box, Call, 1),
     AccountDb = whapps_call:account_db(Call),
     _ = cf_util:unsolicited_owner_mwi_update(AccountDb, OwnerId),
-    'ok'.
+    Resp.
 
 check_mailbox(#mailbox{owner_id=OwnerId}=Box, Call, Loop) ->
     IsOwner = is_owner(Call, OwnerId),
@@ -1077,8 +1077,9 @@ new_message(AttachmentName, Length, #mailbox{mailbox_id=Id}=Box, Call) ->
     case store_recording(AttachmentName, MediaId, Call, Box, ?MAILBOX_DEFAULT_STORAGE) of
         'true' -> update_mailbox(Box, Call, MediaId, Length);
         {'error', Call1} ->
-            Msg = io_lib:format("failed to store media ~s in voicemailbox ~s of account ~s",
-                                [MediaId, Id, whapps_call:account_id(Call1)]),
+            Msg = io_lib:format("failed to store media ~s in voicemailbox ~s of account ~s"
+                                ,[MediaId, Id, whapps_call:account_id(Call1)]
+                               ),
             lager:critical(Msg),
             Funs = [{fun whapps_call:kvs_store/3, 'mailbox_id', Id}
                     ,{fun whapps_call:kvs_store/3, 'attachment_name', AttachmentName}
@@ -1091,11 +1092,11 @@ new_message(AttachmentName, Length, #mailbox{mailbox_id=Id}=Box, Call) ->
             couch_mgr:del_doc(whapps_call:account_db(Call), MediaId)
     end.
 
--spec system_report(ne_binary(), whapps_call:call()) -> 'ok'.
+-spec system_report(text(), whapps_call:call()) -> 'ok'.
 system_report(Msg, Call) ->
     Notify = props:filter_undefined(
                [{<<"Subject">>, <<"failed to store voicemail recorded media">>}
-                ,{<<"Message">>, Msg}
+                ,{<<"Message">>, iolist_to_binary(Msg)}
                 ,{<<"Details">>, whapps_call:to_json(Call)}
                 ,{<<"Account-ID">>, whapps_call:account_id(Call)}
                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -1647,7 +1648,7 @@ store_recording(AttachmentName, DocId, Call) ->
                     is_integer(AttachmentLength) andalso AttachmentLength > MinLength;
                 {'error', _}=Err -> {'error', whapps_call:kvs_store('error_details', Err, Call) }
             end;
-        {'error', _}=Err -> Err     
+        {'error', _}=Err -> Err
     end.
 
 store_recording(AttachmentName, DocId, Call, _Box, 'undefined') ->
@@ -1684,7 +1685,7 @@ try_store_recording(AttachmentName, UrlFun, Tries, Call) ->
         {'ok', JObj} ->
             case wh_json:get_value(<<"Application-Response">>, JObj) of
                 <<"success">> -> 'ok';
-                _ -> lager:error("error trying to store voicemail media, retrying ~B more times", [Tries - 1]), 
+                _ -> lager:error("error trying to store voicemail media, retrying ~B more times", [Tries - 1]),
                      timer:sleep(2000),
                      try_store_recording(AttachmentName, UrlFun, Tries - 1, whapps_call:kvs_store('error_details', JObj, Call))
             end;
