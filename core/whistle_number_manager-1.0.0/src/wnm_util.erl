@@ -383,7 +383,7 @@ to_e164(Number, <<_/binary>> = Account) ->
         {'error', _} -> to_account_e164(Number, AccountId)
     end.
 
--spec to_e164(ne_binary(), api_binary(), api_binary()) -> ne_binary().
+-spec to_e164(ne_binary(), api_binary(), api_object()) -> ne_binary().
 to_e164(<<$+, _/binary>> = N, _, _) -> N;
 to_e164(Number, 'undefined', _) -> to_e164(Number);
 to_e164(Number, AccountId, 'undefined') -> to_account_e164(Number, AccountId);
