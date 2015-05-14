@@ -19,6 +19,7 @@
 -include_lib("whistle/src/wh_json.hrl").
 
 -export([handle/2]).
+-export([new_message/4]).
 
 -define(FOLDER_NEW, <<"new">>).
 -define(FOLDER_SAVED, <<"saved">>).
@@ -62,6 +63,16 @@
                            ,'false'
                           )
        ).
+-define(MAILBOX_RETRY_STORAGE_TIMES(AccountId)
+        ,whapps_account_config:get_global(AccountId, ?CF_CONFIG_CAT
+                                   ,[<<"voicemail">>, <<"storage_retry_times">>]
+                                   ,5
+                                  )).
+-define(MAILBOX_RETRY_LOCAL_STORAGE_REMOTE_FAILS(AccountId)
+        ,whapps_account_config:get_global(AccountId, ?CF_CONFIG_CAT
+                                   ,[<<"voicemail">>, <<"storage_retry_local_on_remote_failure">>]
+                                   ,'true'
+                                  )).
 
 -record(keys, {
           %% Compose Voicemail
@@ -436,20 +447,20 @@ record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength}=B
     case whapps_call_command:b_record(AttachmentName, ?ANY_DIGIT, wh_util:to_binary(MaxMessageLength), Call) of
         {'ok', Msg} ->
             Length = wh_json:get_integer_value(<<"Length">>, Msg, 0),
-            case review_recording(AttachmentName, 'true', Box, Call) of
+            IsCallUp = wh_json:get_value(<<"Hangup-Cause">>, Msg) =:= 'undefined',
+            case IsCallUp andalso review_recording(AttachmentName, 'true', Box, Call) of
+                'false' -> cf_util:start_task(fun new_message/4, [AttachmentName, Length, Box], Call);
                 {'ok', 'record'} ->
                     record_voicemail(tmp_file(), Box, Call);
                 {'ok', _Selection} ->
-                    _ = new_message(AttachmentName, Length, Box, Call),
+                    cf_util:start_task(fun new_message/4, [AttachmentName, Length, Box], Call),
                     _ = whapps_call_command:prompt(<<"vm-saved">>, Call),
                     _ = whapps_call_command:prompt(<<"vm-thank_you">>, Call),
-                    _ = timer:sleep(8000),
-                    cf_exe:continue(Call);
+                    'ok';
                 {'branch', Flow} ->
                     _ = new_message(AttachmentName, Length, Box, Call),
                     _ = whapps_call_command:prompt(<<"vm-saved">>, Call),
-                    _ = timer:sleep(8000),
-                    cf_exe:branch(Flow, Call)
+                    {'branch', Flow}
             end;
         {'error', _R} ->
             lager:info("error while attempting to record a new message: ~p", [_R])
@@ -1060,15 +1071,36 @@ collect_pin(Interdigit, Call, NoopId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec new_message(ne_binary(), pos_integer(), mailbox(), whapps_call:call()) -> any().
-new_message(AttachmentName, Length, Box, Call) ->
+new_message(AttachmentName, Length, #mailbox{mailbox_id=Id}=Box, Call) ->
     lager:debug("saving new ~bms voicemail message and metadata", [Length]),
     MediaId = message_media_doc(whapps_call:account_db(Call), Box, AttachmentName),
     case store_recording(AttachmentName, MediaId, Call, Box, ?MAILBOX_DEFAULT_STORAGE) of
         'true' -> update_mailbox(Box, Call, MediaId, Length);
+        {'error', Call1} ->
+            Msg = io_lib:format("failed to store media ~s in voicemailbox ~s of account ~s",
+                                [MediaId, Id, whapps_call:account_id(Call1)]),
+            lager:critical(Msg),
+            Funs = [{fun whapps_call:kvs_store/3, 'mailbox_id', Id}
+                    ,{fun whapps_call:kvs_store/3, 'attachment_name', AttachmentName}
+                    ,{fun whapps_call:kvs_store/3, 'media_id', MediaId}
+                    ,{fun whapps_call:kvs_store/3, 'media_length', Length}
+                   ],
+            system_report(Msg, whapps_call:exec(Funs, Call1));
         'false' ->
             lager:warning("failed to store media: ~p", [MediaId]),
             couch_mgr:del_doc(whapps_call:account_db(Call), MediaId)
     end.
+
+-spec system_report(ne_binary(), whapps_call:call()) -> 'ok'.
+system_report(Msg, Call) ->
+    Notify = props:filter_undefined(
+               [{<<"Subject">>, <<"failed to store voicemail recorded media">>}
+                ,{<<"Message">>, Msg}
+                ,{<<"Details">>, whapps_call:to_json(Call)}
+                ,{<<"Account-ID">>, whapps_call:account_id(Call)}
+                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+               ]),
+    wh_amqp_worker:cast(Notify, fun wapi_notifications:publish_system_alert/1).
 
 -spec update_mailbox(mailbox(), whapps_call:call(), ne_binary(), integer()) ->
                             'ok'.
@@ -1115,7 +1147,6 @@ update_mailbox(#mailbox{mailbox_id=Id
                 lager:debug("notification error: ~p", [_E]),
                 save_meta(Length, Box, Call, MediaId)
         end,
-    timer:sleep(2500),
     _ = cf_util:unsolicited_owner_mwi_update(whapps_call:account_db(Call), OwnerId),
     'ok'.
 
@@ -1586,8 +1617,10 @@ review_recording(AttachmentName, AllowOperator
                 {'ok', Flow} -> {'branch', Flow};
                 {'error',_R} -> review_recording(AttachmentName, AllowOperator, Box, Call, Loop + 1)
             end;
-        {'error', _} ->
-            lager:info("error while waiting for review selection"),
+        {'error', 'channel_hungup'} ->
+            {'ok', 'no_selection'};
+        {'error', _E} ->
+            lager:info("error while waiting for review selection ~p", [_E]),
             {'ok', 'no_selection'};
         _ ->
             review_recording(AttachmentName, AllowOperator, Box, Call, Loop + 1)
@@ -1598,23 +1631,23 @@ review_recording(AttachmentName, AllowOperator
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec store_recording(ne_binary(), ne_binary(), whapps_call:call()) -> boolean().
--spec store_recording(ne_binary(), ne_binary(), whapps_call:call(), mailbox(), api_binary()) -> boolean().
+-spec store_recording(ne_binary(), ne_binary(), whapps_call:call()) -> boolean() | 'error'.
+-spec store_recording(ne_binary(), ne_binary(), whapps_call:call(), mailbox(), api_binary()) -> boolean() | 'error'.
 store_recording(AttachmentName, DocId, Call) ->
     lager:debug("storing recording ~s in doc ~s", [AttachmentName, DocId]),
-    _ = whapps_call_command:b_store(AttachmentName
-                                    ,get_new_attachment_url(AttachmentName, DocId, Call)
-                                    ,Call
-                                   ),
-    timer:sleep(5000),
     AccountDb = whapps_call:account_db(Call),
-    case couch_mgr:open_doc(AccountDb, DocId) of
-        {'ok', JObj} ->
-            MinLength = min_recording_length(Call),
-            AttachmentLength = wh_doc:attachment_length(JObj, AttachmentName),
-            lager:info("attachment length is ~B and must be larger than ~B to be stored", [AttachmentLength, MinLength]),
-            is_integer(AttachmentLength) andalso AttachmentLength > MinLength;
-        _Else -> 'false'
+    MinLength = min_recording_length(Call),
+    Url = <<(get_new_attachment_url(AttachmentName, DocId, Call))/binary, "ERR">>,
+    case try_store_recording(AttachmentName, Url, Call) of
+        'ok' ->
+            case couch_mgr:open_doc(AccountDb, DocId) of
+                {'ok', JObj} ->
+                    AttachmentLength = wh_doc:attachment_length(JObj, AttachmentName),
+                    lager:info("attachment length is ~B and must be larger than ~B to be stored", [AttachmentLength, MinLength]),
+                    is_integer(AttachmentLength) andalso AttachmentLength > MinLength;
+                {'error', _}=Err -> {'error', whapps_call:kvs_store('error_details', Err, Call) }
+            end;
+        {'error', _}=Err -> Err     
     end.
 
 store_recording(AttachmentName, DocId, Call, _Box, 'undefined') ->
@@ -1622,16 +1655,38 @@ store_recording(AttachmentName, DocId, Call, _Box, 'undefined') ->
 store_recording(AttachmentName, DocId, Call, #mailbox{owner_id=OwnerId}, StorageUrl) ->
     Url = get_media_url(AttachmentName, DocId, Call, OwnerId, StorageUrl),
     lager:debug("storing recording ~s at ~s", [AttachmentName, Url]),
+    case try_store_recording(AttachmentName, Url, Call) of
+        'ok' ->
+            case update_doc(<<"external_media_url">>, Url, DocId, Call) of
+                'ok' -> 'true';
+                {'error', _}=Err -> Err
+            end;
+        {'error', _}=Err ->
+            case ?MAILBOX_RETRY_LOCAL_STORAGE_REMOTE_FAILS(whapps_call:account_id(Call)) of
+                'true' -> store_recording(AttachmentName, DocId, Call);
+                'false' -> Err
+            end
+    end.
 
-    whapps_call_command:b_store(AttachmentName
-                                ,Url
-                                ,Call
-                               ),
-    timer:sleep(5000),
-
-    case update_doc(<<"external_media_url">>, Url, DocId, Call) of
-        'ok' -> 'true';
-        {'error', _} -> 'false'
+-spec try_store_recording(ne_binary(), ne_binary(), whapps_call:call()) -> 'ok' | {'error', whapps_call:call()}.
+-spec try_store_recording(ne_binary(), ne_binary(), integer(), whapps_call:call()) -> 'ok' | {'error', whapps_call:call()}.
+try_store_recording(AttachmentName, Url, Call) ->
+    _Tries = ?MAILBOX_RETRY_STORAGE_TIMES(whapps_call:account_id(Call)),
+    Funs = [{fun whapps_call:kvs_store/3, 'media_url', Url}],
+    try_store_recording(AttachmentName, Url, 1, whapps_call:exec(Funs, Call)).
+try_store_recording(_, _, 0, Call) -> {'error', Call};
+try_store_recording(AttachmentName, Url, Tries, Call) ->
+    case whapps_call_command:b_store(AttachmentName, Url, <<"put">>, [wh_json:new()], 'true', Call) of
+        {'ok', JObj} ->
+            case wh_json:get_value(<<"Application-Response">>, JObj) of
+                <<"success">> -> 'ok';
+                _ -> lager:error("error trying to store voicemail media, retying"), 
+                     timer:sleep(1000),
+                     try_store_recording(AttachmentName, Url, Tries - 1, whapps_call:kvs_store('error_details', JObj, Call))
+            end;
+        _Other -> lager:error("error trying to store voicemail media, retying"),
+             timer:sleep(1000),
+             try_store_recording(AttachmentName, Url, Tries - 1, whapps_call:kvs_store('error_details', _Other, Call))
     end.
 
 -spec get_media_url(ne_binary(), ne_binary(), whapps_call:call(), api_binary(), ne_binary()) -> ne_binary().
@@ -1955,7 +2010,7 @@ find_max_message_length([JObj | T]) ->
 
 -spec is_owner(whapps_call:call(), ne_binary()) -> boolean().
 is_owner(Call, OwnerId) ->
-    case whapps_call:kvs_fetch('owner_id', Call) of
+    case whapps_call:owner_id(Call) of
         <<>> -> 'false';
         'undefined' -> 'false';
         OwnerId -> 'true';
