@@ -938,9 +938,8 @@ get_priv_level(AccountId, OwnerId, _Method) ->
 
 -spec get_default_restrictions(ne_binary()) -> api_object().
 get_default_restrictions(Method) -> 
-    Key = <<Method/binary, "_restrictions">>,
-    case whapps_config:get(<<(?CONFIG_CAT)/binary, ".token_restrictions">>, Key) of
-        'undefined' ->  whapps_config:get(<<(?CONFIG_CAT)/binary, ".token_restrictions">>, <<"restrictions">>);
+    case whapps_config:get(<<(?CONFIG_CAT)/binary, ".token_restrictions">>, Method) of
+        'undefined' ->  whapps_config:get(<<(?CONFIG_CAT)/binary, ".token_restrictions">>, <<"_">>);
         MethodRestrictions -> MethodRestrictions
     end.
 
