@@ -1,6 +1,6 @@
 %% @doc Main module of the eradius application.
 -module(eradius).
--export([load_tables/1, load_tables/2,
+-export([load_tables/0,
 	 modules_ready/1, modules_ready/2,
 	 statistics/1]).
 
@@ -11,15 +11,11 @@
 
 -include("eradius_lib.hrl").
 
-%% @doc Load RADIUS dictionaries from the default directory.
--spec load_tables(list(eradius_dict:table_name())) -> ok | {error, {consult, eradius_dict:table_name()}}.
-load_tables(Tables) ->
-    eradius_dict:load_tables(Tables).
-
+% TODO: need change the spec
 %% @doc Load RADIUS dictionaries from a certain directory.
--spec load_tables(file:filename(), list(eradius_dict:table_name())) -> ok | {error, {consult, eradius_dict:table_name()}}.
-load_tables(Dir, Tables) ->
-    eradius_dict:load_tables(Dir, Tables).
+-spec load_tables() -> ok | {error, {consult, eradius_dict:table_name()}}.
+load_tables() ->
+    eradius_dict:load_tables().
 
 %% @equiv modules_ready(self(), Modules)
 modules_ready(Modules) ->
