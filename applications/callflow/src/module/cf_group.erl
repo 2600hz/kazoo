@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -74,23 +74,27 @@ attempt_endpoints(JObj, Data, Call) ->
             cf_exe:continue(Call)
     end.
 
--spec build_endpoints(wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec build_endpoints(wh_json:object(), whapps_call:call()) -> wh_json:objects().
 build_endpoints(JObj, Call) ->
     Members = wh_json:to_proplist(<<"endpoints">>, JObj),
     Routines = [fun build_device_endpoints/3
-               ,fun build_user_endpoints/3
+                ,fun build_user_endpoints/3
                ],
     lists:flatten(
       [Endpoint
        || {_, {'ok', Endpoint}} <-
               lists:foldl(
                 fun(F, E) -> F(E, Members, Call) end
-                         ,[]
-                         ,Routines)
+                ,[]
+                ,Routines
+               )
       ]
      ).
 
--spec build_device_endpoints(wh_proplist(), wh_json:object(), whapps_call:call()) -> wh_proplist().
+-type endpoints_acc() :: [{ne_binary(), {'ok', wh_json:objects()}},...] | [].
+
+-spec build_device_endpoints(endpoints_acc(), wh_proplist(), whapps_call:call()) ->
+                                    endpoints_acc().
 build_device_endpoints(Endpoints, [], _) -> Endpoints;
 build_device_endpoints(Endpoints, [{MemberId, Member} | Members], Call) ->
     case wh_json:get_value(<<"type">>, Member, <<"device">>) =:= <<"device">>
@@ -104,18 +108,18 @@ build_device_endpoints(Endpoints, [{MemberId, Member} | Members], Call) ->
         'false' -> build_device_endpoints(Endpoints, Members, Call)
     end.
 
--spec build_user_endpoints(wh_proplist(), wh_json:object(), whapps_call:call()) -> wh_proplist().
+-spec build_user_endpoints(endpoints_acc(), wh_proplist(), whapps_call:call()) -> endpoints_acc().
 build_user_endpoints(Endpoints, [], _) -> Endpoints;
 build_user_endpoints(Endpoints, [{MemberId, Member} | Members], Call) ->
     case wh_json:get_value(<<"type">>, Member, <<"user">>) =:= <<"user">> of
         'true' ->
             DeviceIds = cf_attributes:owned_by(MemberId, <<"device">>, Call),
             M = wh_json:set_values([{<<"source">>, ?MODULE}
-                                   ,{<<"type">>, <<"device">>}
+                                    ,{<<"type">>, <<"device">>}
                                    ], Member),
             E = build_device_endpoints(Endpoints
-                                      ,[{DeviceId, M} || DeviceId <- DeviceIds]
-                                      ,Call
+                                       ,[{DeviceId, M} || DeviceId <- DeviceIds]
+                                       ,Call
                                       ),
             build_user_endpoints(E, Members, Call);
         'false' -> build_user_endpoints(Endpoints, Members, Call)

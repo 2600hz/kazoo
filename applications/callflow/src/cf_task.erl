@@ -33,7 +33,7 @@
 -type state() :: #state{}.
 
 %% By convention, we put the options here in macros, but not required.
--define(BINDINGS(CallID), [{'call', [{'callid', CallID}]}
+-define(BINDINGS(CallId), [{'call', [{'callid', CallId}]}
                            ,{'self', []}
                           ]).
 -define(RESPONDERS, [{{?MODULE, 'relay_amqp'}
@@ -51,12 +51,15 @@
 %%--------------------------------------------------------------------
 -spec start_link(whapps_call:call(), fun(), list()) -> startlink_ret().
 start_link(Call, Fun, Args) ->
-    gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS(whapps_call:call_id(Call))}
-                                      ,{'responders', ?RESPONDERS}
-                                      ,{'queue_name', ?QUEUE_NAME}       % optional to include
-                                      ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
-                                      ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
-                                     ], [Call, Fun, Args]).
+    gen_listener:start_link(?MODULE
+                            ,[{'bindings', ?BINDINGS(whapps_call:call_id(Call))}
+                              ,{'responders', ?RESPONDERS}
+                              ,{'queue_name', ?QUEUE_NAME}       % optional to include
+                              ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
+                              ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
+                             ]
+                            ,[Call, Fun, Args]
+                           ).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -82,7 +85,10 @@ relay_amqp(JObj, Props) ->
 -spec init([fun()]) -> {'ok', state()}.
 init([Call, Callback, Args]) ->
     lager:debug("started event listener for cf_task"),
-    {'ok', #state{call=Call, callback=Callback, args=Args}}.
+    {'ok', #state{call=Call
+                  ,callback=Callback
+                  ,args=Args
+                 }}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -101,8 +107,9 @@ handle_call(_Request, _From, State) ->
 %% Handle cast messages
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(term(), state()) -> {'noreply', state()} |
-                                      {'stop', 'normal', state()}.
+-spec handle_cast(term(), state()) ->
+                         {'noreply', state()} |
+                         {'stop', 'normal', state()}.
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
     {'noreply', State#state{queue=Q}};
 handle_cast({'gen_listener', {'is_consuming', 'true'}}, State) ->
@@ -121,7 +128,11 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(term(), state()) -> {'noreply', state()}.
-handle_info({'DOWN', Ref, process, Pid, Reason}, #state{ref=Ref,pid=Pid}=State) ->
+handle_info({'DOWN', Ref, 'process', Pid, Reason}
+            ,#state{ref=Ref
+                    ,pid=Pid
+                   }=State
+           ) ->
     lager:debug("task exit reason: ~p", [Reason]),
     {'stop', 'normal', State};
 handle_info(Info, State) ->
@@ -134,7 +145,7 @@ handle_info(Info, State) ->
 %% Allows listener to pass options to handlers
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(wh_json:object(), state()) -> {'reply', []}.
+-spec handle_event(wh_json:object(), state()) -> {'reply', wh_proplist()}.
 handle_event(_JObj, #state{pid=Pid}) ->
     {'reply', [{'cf_task_pid', Pid}]}.
 
@@ -161,12 +172,17 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
-launch_task(#state{queue=Q, call=Call, callback=Callback, args=Args}=State) ->
+-spec launch_task(state()) -> state().
+launch_task(#state{queue=Q
+                   ,call=Call
+                   ,callback=Callback
+                   ,args=Args
+                  }=State) ->
     Self = self(),
     {Pid, Ref} = spawn_monitor(
                    fun() -> wh_amqp_channel:consumer_pid(Self),
                             Funs = [{fun whapps_call:kvs_store/3, 'consumer_pid', Self}
-                                   ,{fun whapps_call:set_controller_queue/2, Q}
+                                    ,{fun whapps_call:set_controller_queue/2, Q}
                                    ],
                             apply(Callback, Args ++ [whapps_call:exec(Funs, Call)])
                    end),
