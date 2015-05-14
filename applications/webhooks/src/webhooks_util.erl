@@ -188,9 +188,16 @@ retry_hook(JObj, Hook, URI, Method, Retries) ->
     fire_hook(JObj, Hook, URI, Method, Retries-1).
 
 -spec successful_hook(webhook()) -> 'ok'.
+-spec successful_hook(webhook(), boolean()) -> 'ok'.
+successful_hook(Hook) ->
+    successful_hook(Hook, whapps_config:get_is_true(?APP_NAME, <<"log_successful_attempts">>, 'false')).
+
+successful_hook(_Hook, 'false') -> 'ok';
 successful_hook(#webhook{hook_id=HookId
                          ,account_id=AccountId
-                        }) ->
+                        }
+               ,'true'
+               ) ->
     Attempt = wh_json:from_list([{<<"hook_id">>, HookId}
                                  ,{<<"result">>, <<"success">>}
                                 ]),
@@ -219,7 +226,7 @@ failed_hook(#webhook{hook_id=HookId
                                  ,{<<"reason">>, <<"bad response code">>}
                                  ,{<<"response_code">>, wh_util:to_binary(RespCode)}
                                  ,{<<"response_body">>, wh_util:to_binary(RespBody)}
-                                 ,{<<"retries left">>, Retries-1}
+                                 ,{<<"retries_left">>, Retries-1}
                                 ]),
     save_attempt(Attempt, AccountId).
 
@@ -238,7 +245,7 @@ failed_hook(#webhook{hook_id=HookId
     Attempt = wh_json:from_list([{<<"hook_id">>, HookId}
                                  ,{<<"result">>, <<"failure">>}
                                  ,{<<"reason">>, <<"kazoo http client error">>}
-                                 ,{<<"retries left">>, Retries-1}
+                                 ,{<<"retries_left">>, Retries-1}
                                  ,{<<"client_error">>, Error}
                                 ]),
     save_attempt(Attempt, AccountId).
