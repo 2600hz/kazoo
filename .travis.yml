@@ -21,4 +21,5 @@ before_install:
 script: make compile
 after_success:
   - make xref
+  - make dialyze
   - ERL_LIBS="$HOME/proper" make test
