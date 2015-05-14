@@ -59,6 +59,7 @@
         ]).
 
 -export([wait_for_noop/2]).
+-export([start_task/3]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -930,3 +931,8 @@ account_timezone(Call) ->
         {'error', _E} ->
             whapps_config:get(<<"accounts">>, <<"timezone">>, ?DEFAULT_TIMEZONE)
     end.
+
+-spec start_task(fun(), list(), whapps_call:call()) -> 'ok'.
+start_task(Fun, Args, Call) ->
+    SpawnInfo = {'cf_task', [Fun, Args]},
+    cf_exe:add_event_listener(Call, SpawnInfo).
