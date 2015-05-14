@@ -5,7 +5,6 @@
 *.log*
 *.sasl
 *.plt
-!kazoo.plt
 *.app
 *.beam
 *.so

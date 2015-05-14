@@ -46,16 +46,18 @@ apps:
 
 kazoo: core apps
 
-PLT = $(ROOT)/.kazoo.plt
-build-plt: DIALYZER ?= dialyzer
-build-plt: DEPS_DIRS = $(wildcard $(ROOT)/deps/*-*/)
-build-plt:
+DIALYZER ?= dialyzer
+PLT ?= $(ROOT)/.kazoo.plt
+$(PLT): DEPS_DIRS ?= $(shell find $(ROOT)/deps -name src -print)
+$(PLT):
 	$(DIALYZER) --no_native --build_plt --output_plt $(PLT) \
-	    --apps erts kernel stdlib crypto public_key ssl -r $(DEPS_DIRS)
-dialyze: DIALYZER_DIRS = $(wildcard $(ROOT)/applications/*/) $(wildcard $(ROOT)/core/*/)
-dialyze: DIALYZER_OPTS ?= -Werror_handling -Wrace_conditions -Wunmatched_returns # -Wunderspecs
-dialyze:
-	$(DIALYZER) --no_native --plt $(PLT) -r $(DIALYZER_DIRS) $(DIALYZER_OPTS)
+	    --apps erts kernel stdlib crypto public_key ssl \
+	    -r $(DEPS_DIRS)
+build-plt: $(PLT)
+
+dialyze: TO_DIALYZE ?= $(shell find $(ROOT)/applications -name ebin -print)
+dialyze: $(PLT)
+	$(ROOT)/scripts/check-dialyzer.escript $(TO_DIALYZE)
 
 xref: EBINS = $(shell find $(ROOT) -name ebin -print)
 xref:
