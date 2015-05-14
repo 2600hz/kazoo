@@ -242,11 +242,13 @@ add_rendered_templates_to_email(RenderedTemplates) ->
 add_rendered_templates_to_email([], Acc) -> Acc;
 add_rendered_templates_to_email([{ContentType, Content}|Rs], Acc) ->
     [Type, SubType] = binary:split(ContentType, <<"/">>),
-    CTEncoding = whapps_config:get_ne_binary(?NOTIFY_CONFIG_CAT, 
+    CTEncoding = whapps_config:get_ne_binary(?NOTIFY_CONFIG_CAT,
                                              [<<"mime-encoding">>
                                               ,ContentType
                                               ,<<"content_transfer_encoding">>
-                                             ],default_content_transfer_encoding(ContentType)),
+                                             ]
+                                             ,default_content_transfer_encoding(ContentType)
+                                            ),
     Template = {Type
                 ,SubType
                 ,props:filter_undefined(
