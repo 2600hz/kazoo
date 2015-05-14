@@ -31,3 +31,11 @@ Above are all the options of QuickCall (As Far as I can tell) They should be add
 Also under Resource Parameters add "cid-name" info to the "cid-number" info
 
 esoare
+
+
+## Sync
+
+See [the documentation on devices](../devices.md) for more info on `check-sync`.
+
+One can add the field `"sync": true` to the JSON blob of a POST request to `/users/`,
+in order to attempt a `check-sync` on every registered device this user has.
