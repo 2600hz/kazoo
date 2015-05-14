@@ -232,8 +232,11 @@ post(Context, DeviceId) ->
             _ = crossbar_util:maybe_refresh_fs_xml('device', Context),
             Context1 = crossbar_doc:save(Context),
             _ = maybe_aggregate_device(DeviceId, Context1),
-            _ = spawn('provisioner_util', 'maybe_provision', [Context1]),
-            _ = crossbar_util:flush_registration(Context),
+            _ = spawn(fun () ->
+                              _ = provisioner_util:maybe_provision(Context1),
+                              _ = provisioner_util:maybe_sync_sip_data(Context, 'device'),
+                              _ = crossbar_util:flush_registration(Context)
+                      end),
             Context1;
         'false' ->
             error_used_mac_address(Context)
@@ -242,12 +245,7 @@ post(Context, DeviceId) ->
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
     lager:debug("publishing check_sync for ~s", [DeviceId]),
-    Req = [{<<"Realm">>, wh_util:get_account_realm(cb_context:account_id(Context))}
-           ,{<<"Username">>, kz_device:sip_username(cb_context:doc(Context))}
-           ,{<<"Msg-ID">>, cb_context:req_id(Context)}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    wh_amqp_worker:cast(Req, fun wapi_switch:publish_check_sync/1),
+    _ = provisioner_util:maybe_sync_sip_data(Context, 'device'),
     crossbar_util:response_202(<<"sync request sent">>, Context).
 
 -spec put(cb_context:context()) -> cb_context:context().

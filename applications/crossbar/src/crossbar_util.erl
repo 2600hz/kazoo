@@ -334,7 +334,8 @@ flush_registrations(Context) ->
     flush_registrations(wh_util:get_account_realm(cb_context:account_id(Context))).
 
 -spec flush_registration(api_binary(), ne_binary() | cb_context:context()) -> 'ok'.
-flush_registration('undefined', _Realm) -> 'ok';
+flush_registration('undefined', _Realm) ->
+    lager:debug("did not flush registration: username is undefined");
 flush_registration(Username, <<_/binary>> = Realm) ->
     FlushCmd = [{<<"Realm">>, Realm}
                 ,{<<"Username">>, Username}
@@ -365,12 +366,14 @@ maybe_flush_registration_on_password(Realm, OldDevice, NewDevice) ->
 
 -spec maybe_flush_registration_on_username(api_binary(), wh_json:object(), wh_json:object()) -> 'ok'.
 maybe_flush_registration_on_username(Realm, OldDevice, NewDevice) ->
-    case kz_device:sip_username(OldDevice) =:= kz_device:sip_username(NewDevice) of
+    OldUsername = kz_device:sip_username(OldDevice),
+    NewUsername = kz_device:sip_username(NewDevice),
+    case OldUsername =:= NewUsername of
         'true' -> 'ok';
         'false' ->
             lager:debug("the SIP username has changed, sending a registration flush for both"),
-            flush_registration(kz_device:sip_username(OldDevice), Realm),
-            flush_registration(kz_device:sip_username(NewDevice), Realm)
+            flush_registration(OldUsername, Realm),
+            flush_registration(NewUsername, Realm)
     end.
 
 %%--------------------------------------------------------------------
@@ -380,10 +383,10 @@ maybe_flush_registration_on_username(Realm, OldDevice, NewDevice) ->
 %%--------------------------------------------------------------------
 -spec move_account(ne_binary(), ne_binary()) ->
                           {'ok', wh_json:object()} |
-                          {'error',any()}.
+                          {'error', _}.
 -spec move_account(ne_binary(), ne_binary(), wh_json:object(), ne_binaries()) ->
                           {'ok', wh_json:object()} |
-                          {'error',any()}.
+                          {'error', _}.
 move_account(<<_/binary>> = AccountId, <<_/binary>> = ToAccount) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case validate_move(AccountId, ToAccount, AccountDb) of

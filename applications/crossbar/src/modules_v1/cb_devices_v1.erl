@@ -181,8 +181,11 @@ post(Context, DeviceId) ->
             _ = crossbar_util:maybe_refresh_fs_xml('device', Context),
             Context1 = crossbar_doc:save(Context),
             _ = maybe_aggregate_device(DeviceId, Context1),
-            _ = spawn('provisioner_util', 'maybe_provision', [Context1]),
-            _ = crossbar_util:flush_registration(Context),
+            _ = spawn(fun () ->
+                              _ = provisioner_util:maybe_provision(Context1),
+                              _ = provisioner_util:maybe_sync_sip_data(Context, 'device'),
+                              _ = crossbar_util:flush_registration(Context)
+                      end),
             Context1;
         'false' ->
             error_used_mac_address(Context)

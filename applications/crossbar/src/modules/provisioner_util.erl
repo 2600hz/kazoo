@@ -19,6 +19,7 @@
 -export([maybe_send_contact_list/1]).
 -export([get_provision_defaults/1]).
 -export([is_mac_address_in_use/2]).
+-export([maybe_sync_sip_data/2]).
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".devices">>).
 -define(PROVISIONER_CONFIG, <<"provisioner">>).
@@ -82,7 +83,6 @@ maybe_provision_v5(Context, ?HTTP_PUT) ->
     AuthToken = cb_context:auth_token(Context),
     NewDevice = cb_context:doc(Context),
     _ = provisioner_v5:update_device(NewDevice, AuthToken),
-    _ = maybe_sync_sip_data(Context),
     'ok';
 
 maybe_provision_v5(Context, ?HTTP_POST) ->
@@ -93,8 +93,7 @@ maybe_provision_v5(Context, ?HTTP_POST) ->
     OldAddress = wh_json:get_ne_value(<<"mac_address">>, OldDevice),
     case NewAddress =:= OldAddress of
         'true' ->
-            _ = provisioner_v5:update_device(NewDevice, AuthToken),
-            _ = maybe_sync_sip_data(Context);
+            _ = provisioner_v5:update_device(NewDevice, AuthToken);
         'false' ->
             NewDevice1 = wh_json:set_value(<<"mac_address">>, OldAddress, NewDevice),
             _ = provisioner_v5:delete_device(NewDevice1, AuthToken),
@@ -769,29 +768,60 @@ get_provisioning_type() ->
             Result
     end.
 
-%% @private
--spec maybe_sync_sip_data(cb_context:context()) -> 'ok'.
-maybe_sync_sip_data(Context) ->
+%% @public
+-spec maybe_sync_sip_data(cb_context:context(), 'user' | 'device') -> 'ok'.
+-spec maybe_sync_sip_data(cb_context:context(), 'user' | 'device', boolean()) -> 'ok'.
+maybe_sync_sip_data(Context, Type) ->
+    ShouldSync = wh_json:is_true(<<"sync">>, cb_context:doc(Context), 'false'),
+    maybe_sync_sip_data(Context, Type, ShouldSync).
+maybe_sync_sip_data(_Context, _Type, 'false') -> 'ok';
+maybe_sync_sip_data(Context, 'device', 'true') ->
     NewDevice = cb_context:doc(Context),
     OldDevice = cb_context:fetch(Context, 'db_doc'),
-    AccountId = cb_context:account_id(Context),
     OldUsername = kz_device:sip_username(OldDevice),
-    case kz_device:sip_username(NewDevice) =/= OldUsername of
-        'true' -> maybe_publish_check_sync('undefined', OldUsername, AccountId);
-        'false' -> 'ok'
+    case kz_device:sip_username(NewDevice) =/= OldUsername
+        orelse kz_device:sip_password(NewDevice) =/= kz_device:sip_password(OldDevice)
+    of
+        'false' -> 'ok';
+        'true' ->
+            Realm = wh_util:get_account_realm(cb_context:account_id(Context)),
+            send_check_sync(OldUsername, Realm, cb_context:req_id(Context))
+    end;
+maybe_sync_sip_data(Context, 'user', 'true') ->
+    Realm = wh_util:get_account_realm(cb_context:account_id(Context)),
+    Req = [{<<"Realm">>, Realm}
+           ,{<<"Fields">>, [<<"Username">>]}
+          ],
+    ReqResp = whapps_util:amqp_pool_request(Req
+                                            ,fun wapi_registration:publish_query_req/1
+                                            ,fun wapi_registration:query_resp_v/1
+                                           ),
+    case ReqResp of
+        {'error', _E} -> lager:debug("no devices to send check sync to for realm ~s", [Realm]);
+        {'timeout', _} -> lager:debug("timed out query for fetching devices for ~s", [Realm]);
+        {'ok', JObj} ->
+            lists:foreach(fun (J) ->
+                                  Username = wh_json:get_value(<<"Username">>, J),
+                                  send_check_sync(Username, Realm, 'undefined')
+                          end
+                          ,wh_json:get_value(<<"Fields">>, JObj)
+                         )
     end.
 
 %% @private
-maybe_publish_check_sync('undefined', Username, AccountId) ->
-    Realm = wh_util:get_account_realm(AccountId),
-    lager:debug("using account realm ~s", [Realm]),
-    maybe_publish_check_sync(Realm, Username, AccountId);
-maybe_publish_check_sync(_Realm, 'undefined', _) ->
-    lager:warning("did not send check sync username is undefined");
-maybe_publish_check_sync(Realm, Username, _) ->
+-spec send_check_sync(api_binary(), api_binary(), api_binary()) -> 'ok'.
+send_check_sync('undefined', _Realm, _MsgID) ->
+    lager:warning("did not send check sync: username is undefined");
+send_check_sync(_Username, 'undefined', _MsgID) ->
+    lager:warning("did not send check sync: realm is undefined");
+send_check_sync(Username, Realm, MsgID) ->
     lager:debug("sending check sync for ~s @ ~s", [Username, Realm]),
-    Req = [{<<"Realm">>, Realm}
-           ,{<<"Username">>, Username}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
+    Req = case MsgID of
+              'undefined' -> [];
+              _ -> [{<<"Msg-ID">>, MsgID}]
+          end
+        ++ [{<<"Realm">>, Realm}
+            ,{<<"Username">>, Username}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
     wh_amqp_worker:cast(Req, fun wapi_switch:publish_check_sync/1).
