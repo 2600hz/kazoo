@@ -1637,8 +1637,8 @@ store_recording(AttachmentName, DocId, Call) ->
     lager:debug("storing recording ~s in doc ~s", [AttachmentName, DocId]),
     AccountDb = whapps_call:account_db(Call),
     MinLength = min_recording_length(Call),
-    Url = <<(get_new_attachment_url(AttachmentName, DocId, Call))/binary, "ERR">>,
-    case try_store_recording(AttachmentName, Url, Call) of
+    Fun = fun() -> get_new_attachment_url(AttachmentName, DocId, Call) end,
+    case try_store_recording(AttachmentName, Fun, Call) of
         'ok' ->
             case couch_mgr:open_doc(AccountDb, DocId) of
                 {'ok', JObj} ->
@@ -1668,25 +1668,29 @@ store_recording(AttachmentName, DocId, Call, #mailbox{owner_id=OwnerId}, Storage
             end
     end.
 
--spec try_store_recording(ne_binary(), ne_binary(), whapps_call:call()) -> 'ok' | {'error', whapps_call:call()}.
--spec try_store_recording(ne_binary(), ne_binary(), integer(), whapps_call:call()) -> 'ok' | {'error', whapps_call:call()}.
+-spec try_store_recording(ne_binary(), ne_binary() | fun(), whapps_call:call()) -> 'ok' | {'error', whapps_call:call()}.
+-spec try_store_recording(ne_binary(), ne_binary() | fun(), integer(), whapps_call:call()) -> 'ok' | {'error', whapps_call:call()}.
 try_store_recording(AttachmentName, Url, Call) ->
     Tries = ?MAILBOX_RETRY_STORAGE_TIMES(whapps_call:account_id(Call)),
     Funs = [{fun whapps_call:kvs_store/3, 'media_url', Url}],
     try_store_recording(AttachmentName, Url, Tries, whapps_call:exec(Funs, Call)).
 try_store_recording(_, _, 0, Call) -> {'error', Call};
-try_store_recording(AttachmentName, Url, Tries, Call) ->
+try_store_recording(AttachmentName, UrlFun, Tries, Call) ->
+    Url = case is_function(UrlFun) of
+              'true' -> UrlFun();
+              'false' -> UrlFun
+          end,
     case whapps_call_command:b_store(AttachmentName, Url, <<"put">>, [wh_json:new()], 'true', Call) of
         {'ok', JObj} ->
             case wh_json:get_value(<<"Application-Response">>, JObj) of
                 <<"success">> -> 'ok';
                 _ -> lager:error("error trying to store voicemail media, retrying ~B more times", [Tries - 1]), 
                      timer:sleep(2000),
-                     try_store_recording(AttachmentName, Url, Tries - 1, whapps_call:kvs_store('error_details', JObj, Call))
+                     try_store_recording(AttachmentName, UrlFun, Tries - 1, whapps_call:kvs_store('error_details', JObj, Call))
             end;
         _Other -> lager:error("error trying to store voicemail media, retrying ~B more times", [Tries - 1]),
              timer:sleep(2000),
-             try_store_recording(AttachmentName, Url, Tries - 1, whapps_call:kvs_store('error_details', _Other, Call))
+             try_store_recording(AttachmentName, UrlFun, Tries - 1, whapps_call:kvs_store('error_details', _Other, Call))
     end.
 
 -spec get_media_url(ne_binary(), ne_binary(), whapps_call:call(), api_binary(), ne_binary()) -> ne_binary().
