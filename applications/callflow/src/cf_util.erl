@@ -193,7 +193,7 @@ mwi_query(JObj) ->
 mwi_resp('undefined', _Realm, _AccountDb, _JObj) -> 'ok';
 mwi_resp(Username, Realm, AccountDb, JObj) ->
     case owner_ids_by_sip_username(AccountDb, Username) of
-        {'ok', [OwnerId]} ->
+        {'ok', [<<_/binary>> = OwnerId]} ->
             mwi_resp(Username, Realm, OwnerId, AccountDb, JObj);
         _Else -> 'ok'
     end.
@@ -310,11 +310,11 @@ send_mwi_update(New, Waiting, Username, Realm, JObj) ->
 -spec vm_count_by_owner(ne_binary(), api_binary()) -> {non_neg_integer(), non_neg_integer()}.
 vm_count_by_owner(_AccountDb, 'undefined') -> {0, 0};
 vm_count_by_owner(<<_/binary>> = AccountDb, <<_/binary>> = OwnerId) ->
-    ViewOptions = [{'reduce', 'true'}
-                   ,{'group', 'true'}
+    ViewOptions = ['reduce'
+                   ,'group'
                    ,{'group_level', 2}
                    ,{'startkey', [OwnerId]}
-                   ,{'endkey', [OwnerId, "\ufff0"]}
+                   ,{'endkey', [OwnerId, wh_json:new()]}
                   ],
     case couch_mgr:get_results(AccountDb, <<"cf_attributes/vm_count_by_owner">>, ViewOptions) of
         {'ok', MessageCounts} ->
@@ -707,12 +707,10 @@ maybe_get_endpoint_hotdesk_owner(JObj) ->
         [OwnerId] -> OwnerId;
         [_|_] -> 'undefined'
     end.
+
 -spec maybe_get_endpoint_assigned_owner(wh_json:object()) -> api_binary().
 maybe_get_endpoint_assigned_owner(JObj) ->
-    case wh_json:get_ne_value(<<"owner_id">>, JObj) of
-        'undefined' -> 'undefined';
-        OwnerId -> OwnerId
-    end.
+    wh_json:get_ne_value(<<"owner_id">>, JObj).
 
 -spec apply_dialplan(ne_binary(), api_object()) -> ne_binary().
 apply_dialplan(N, 'undefined') -> N;
