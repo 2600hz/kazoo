@@ -242,8 +242,11 @@ add_rendered_templates_to_email(RenderedTemplates) ->
 add_rendered_templates_to_email([], Acc) -> Acc;
 add_rendered_templates_to_email([{ContentType, Content}|Rs], Acc) ->
     [Type, SubType] = binary:split(ContentType, <<"/">>),
-    CTEncoding = whapps_config:get_ne_binary(?NOTIFY_CONFIG_CAT, <<SubType/binary, "_content_transfer_encoding">>),
-
+    CTEncoding = whapps_config:get_ne_binary(?NOTIFY_CONFIG_CAT, 
+                                             [<<"mime-encoding">>
+                                              ,ContentType
+                                              ,<<"content_transfer_encoding">>
+                                             ],default_content_transfer_encoding(ContentType)),
     Template = {Type
                 ,SubType
                 ,props:filter_undefined(
@@ -255,6 +258,10 @@ add_rendered_templates_to_email([{ContentType, Content}|Rs], Acc) ->
                },
     lager:debug("adding template ~s (encoding ~s)", [ContentType, CTEncoding]),
     add_rendered_templates_to_email(Rs, [Template | Acc]).
+
+-spec default_content_transfer_encoding(binary()) -> binary().
+default_content_transfer_encoding(<<"text/html">>) -> <<"base64">>;
+default_content_transfer_encoding(_) -> <<>>.
 
 -spec system_params() -> wh_proplist().
 system_params() ->

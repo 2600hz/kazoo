@@ -929,17 +929,18 @@ stream_over_http(Node, UUID, File, Method, Type, JObj) ->
     ecallmgr_util:set(Node, UUID, [{<<"Recording-URL">>, Url}]),
     Args = list_to_binary([Url, <<" ">>, File]),
     lager:debug("execute on node ~s: http_put(~s)", [Node, Args]),
+    SendAlert = wh_json:is_true(<<"Suppress-Error-Report">>, JObj, 'false'),
     Result = case send_fs_store(Node, Args, Method) of
                  {'ok', <<"+OK", _/binary>>} ->
                      lager:debug("successfully stored media for ~s", [Type]),
                      <<"success">>;
                  {'ok', Err} ->
                      lager:debug("store media failed for ~s: ~s", [Type, Err]),
-                     send_detailed_alert(Node, UUID, File, Type, Err),
+                     maybe_send_detailed_alert(SendAlert, Node, UUID, File, Type, Err),
                      <<"failure">>;
                  {'error', E} ->
                      lager:debug("error executing http_put for ~s: ~p", [Type, E]),
-                     send_detailed_alert(Node, UUID, File, Type, E),
+                     maybe_send_detailed_alert(SendAlert, Node, UUID, File, Type, E),
                      <<"failure">>
              end,
     case Type of
@@ -947,6 +948,11 @@ stream_over_http(Node, UUID, File, Method, Type, JObj) ->
         'fax' -> send_store_fax_call_event(UUID, Result)
     end.
 
+-spec maybe_send_detailed_alert(boolean(), atom(), ne_binary(), ne_binary(), 'store' | 'fax', term()) -> any().
+maybe_send_detailed_alert('true', _, _, _, _, _) -> 'ok';
+maybe_send_detailed_alert(_, Node, UUID, File, Type, Reason) ->
+    send_detailed_alert(Node, UUID, File, Type, Reason).
+                                                                      
 -spec send_detailed_alert(atom(), ne_binary(), ne_binary(), 'store' | 'fax', term()) -> any().
 send_detailed_alert(Node, UUID, File, Type, Reason) ->
     wh_notify:detailed_alert("Failed to store ~s: media file ~s for call ~s on ~s "

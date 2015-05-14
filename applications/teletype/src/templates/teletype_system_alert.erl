@@ -24,8 +24,75 @@
            ])
        ).
 
--define(TEMPLATE_TEXT, <<"Alert\n{{message}}\n\nProducer:\n{% for key, value in request %}{{ key }}: {{ value }}\n{% endfor %}\n{% if details %}Details\n{% for key, value in details %}{{ key }}: {{ value }}\n{% endfor %}\n{% endif %}{% if account %}Account\nAccount ID: {{account.id}}\nAccount Name: {{account.name}}\nAccount Realm: {{account.realm}}\n\n{% endif %}{% if user %}Admin\nName: {{user.first_name}} {{user.last_name}}\nEmail: {{user.email}}\nTimezone: {{user.timezone}}\n\n{% endif %}{% if account.pvt_wnm_numbers %}Phone Numbers\n{% for number in account.pvt_wnm_numbers %}{{number}}\n{% endfor %}\n{% endif %}Service\nURL: https://apps.2600hz.com/\nName: VoIP Services\nService Provider: 2600hz\n\nSent from {{system.hostname}}">>).
--define(TEMPLATE_HTML, <<"<html><head><meta charset=\"utf-8\" /></head><body><h2>Alert</h2><p>{{message}}</p><h2>Producer</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\">{% for key, value in request %}<tr><td>{{ key }}: </td><td>{{ value }}</td></tr>{% endfor %}</table>{% if details %}<h2>Details</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\">{% for key, value in details %}<tr><td>{{ key }}: </td><td>{{ value }}</td></tr>{% endfor %}</table>{% endif %}{% if account %}<h2>Account</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>Account ID: </td><td>{{account.id}}</td></tr><tr><td>Account Name: </td><td>{{account.name}}</td></tr><tr><td>Account Realm: </td><td>{{account.realm}}</td></tr></table>{% endif %}{% if user %}<h2>Admin</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>Name: </td><td>{{user.first_name}} {{user.last_name}}</td></tr><tr><td>Email: </td><td>{{user.email}}</td></tr><tr><td>Timezone: </td><td>{{user.timezone}}</td></tr></table>{% endif %}{% if account.pvt_wnm_numbers %}<h2>Phone Numbers</h2><ul>{% for number in account.pvt_wnm_numbers %}<li>{{number}}</li>{% endfor %}</ul>{% endif %}<h2>Service</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>URL: </td><td>https://apps.2600hz.com/</td></tr><tr><td>Name: </td><td>VoIP Services</td></tr><tr><td>Service Provider: </td><td>2600hz</td></tr></table><p style=\"font-size:9pt;color:#CCCCCC\">Sent from {{system.hostname}}</p></body></html>">>).
+-define(TEMPLATE_HTML_HEAD, "<html><head><meta charset=\"utf-8\" /></head><body>").
+-define(TEMPLATE_HTML_TAIL, "</body></html>").
+-define(TEMPLATE_HTML_ALERT, "<h2>Alert</h2><p>{{message}}</p>").
+-define(TEMPLATE_HTML_GROUP(T,C), io_lib:format("{% if ~s %}<h2>~s</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\">{% for key, value in ~s %}<tr><td>{{ key }}: </td><td>{{ value }}</td></tr>{% endfor %}</table>{% endif %}", [C, T, C]) ).
+
+-define(TEMPLATE_HTML_PRODUCER, ?TEMPLATE_HTML_GROUP("Producer", "request")).
+-define(TEMPLATE_HTML_DETAILS, ?TEMPLATE_HTML_GROUP("Details", "details")).
+-define(TEMPLATE_HTML_CCVS, ?TEMPLATE_HTML_GROUP("Channel Vars", "channel_vars")).
+-define(TEMPLATE_HTML_SIPHDR, ?TEMPLATE_HTML_GROUP("SIP Headers", "sip_headers")).
+-define(TEMPLATE_HTML_KVS, ?TEMPLATE_HTML_GROUP("Key Value Store", "key_store")).
+-define(TEMPLATE_HTML_ERROR, ?TEMPLATE_HTML_GROUP("Error Details", "error_details")).
+-define(TEMPLATE_HTML_FLOW, ?TEMPLATE_HTML_GROUP("Callflow", "callflow")).
+
+
+-define(TEMPLATE_HTML_ACCOUNT, "{% if account %}<h2>Account</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>Account ID: </td><td>{{account.id}}</td></tr><tr><td>Account Name: </td><td>{{account.name}}</td></tr><tr><td>Account Realm: </td><td>{{account.realm}}</td></tr></table>{% endif %}").
+-define(TEMPLATE_HTML_USER, "{% if user %}<h2>Admin</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>Name: </td><td>{{user.first_name}} {{user.last_name}}</td></tr><tr><td>Email: </td><td>{{user.email}}</td></tr><tr><td>Timezone: </td><td>{{user.timezone}}</td></tr></table>{% endif %}").
+-define(TEMPLATE_HTML_NUMBERS, "{% if account.pvt_wnm_numbers %}<h2>Phone Numbers</h2><ul>{% for number in account.pvt_wnm_numbers %}<li>{{number}}</li>{% endfor %}</ul>{% endif %}").
+-define(TEMPLATE_HTML_SERVICE, "<h2>Service</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>URL: </td><td>https://apps.2600hz.com/</td></tr><tr><td>Name: </td><td>VoIP Services</td></tr><tr><td>Service Provider: </td><td>2600hz</td></tr></table><p style=\"font-size:9pt;color:#CCCCCC\">Sent from {{system.hostname}}</p>").
+
+-define(TEMPLATE_HTML, wh_util:to_binary(lists:flatten(
+          [?TEMPLATE_HTML_HEAD
+           ,?TEMPLATE_HTML_ALERT
+           ,?TEMPLATE_HTML_PRODUCER
+           ,?TEMPLATE_HTML_DETAILS
+           ,?TEMPLATE_HTML_FLOW
+           ,?TEMPLATE_HTML_ERROR
+           ,?TEMPLATE_HTML_KVS
+           ,?TEMPLATE_HTML_CCVS
+           ,?TEMPLATE_HTML_SIPHDR
+           ,?TEMPLATE_HTML_ACCOUNT
+           ,?TEMPLATE_HTML_USER
+           ,?TEMPLATE_HTML_NUMBERS
+           ,?TEMPLATE_HTML_SERVICE
+           ,?TEMPLATE_HTML_TAIL
+           ]))).
+
+
+-define(TEMPLATE_TEXT_ALERT, "Alert\n{{message}}\n").
+-define(TEMPLATE_TEXT_GROUP(T,C), io_lib:format("{% if ~s %}~s\n{% for key, value in ~s %}{{ key }}: {{ value }}\n{% endfor %}\n{% endif %}", [C, T, C])).
+
+-define(TEMPLATE_TEXT_PRODUCER, ?TEMPLATE_TEXT_GROUP("Producer", "request")).
+-define(TEMPLATE_TEXT_DETAILS, ?TEMPLATE_TEXT_GROUP("Details", "details")).
+-define(TEMPLATE_TEXT_CCVS, ?TEMPLATE_TEXT_GROUP("Channel Vars", "channel_vars")).
+-define(TEMPLATE_TEXT_SIPHDR, ?TEMPLATE_TEXT_GROUP("SIP Headers", "sip_headers")).
+-define(TEMPLATE_TEXT_KVS, ?TEMPLATE_TEXT_GROUP("Key Value Store", "key_store")).
+-define(TEMPLATE_TEXT_ERROR, ?TEMPLATE_TEXT_GROUP("Error Details", "error_details")).
+-define(TEMPLATE_TEXT_FLOW, ?TEMPLATE_TEXT_GROUP("Callflow", "callflow")).
+
+-define(TEMPLATE_TEXT_ACCOUNT, "{% if account %}Account\nAccount ID: {{account.id}}\nAccount Name: {{account.name}}\nAccount Realm: {{account.realm}}\n\n{% endif %}").
+-define(TEMPLATE_TEXT_USER, "{% if user %}Admin\nName: {{user.first_name}} {{user.last_name}}\nEmail: {{user.email}}\nTimezone: {{user.timezone}}\n\n{% endif %}").
+-define(TEMPLATE_TEXT_NUMBERS, "{% if account.pvt_wnm_numbers %}Phone Numbers\n{% for number in account.pvt_wnm_numbers %}{{number}}\n{% endfor %}\n{% endif %}").
+-define(TEMPLATE_TEXT_SERVICE, "Service\nURL: https://apps.2600hz.com/\nName: VoIP Services\nService Provider: 2600hz\n\nSent from {{system.hostname}}").
+
+-define(TEMPLATE_TEXT, wh_util:to_binary(lists:flatten(
+          [?TEMPLATE_TEXT_ALERT
+           ,?TEMPLATE_TEXT_PRODUCER
+           ,?TEMPLATE_TEXT_DETAILS
+           ,?TEMPLATE_TEXT_FLOW
+           ,?TEMPLATE_TEXT_ERROR
+           ,?TEMPLATE_TEXT_KVS
+           ,?TEMPLATE_TEXT_CCVS
+           ,?TEMPLATE_TEXT_SIPHDR
+           ,?TEMPLATE_TEXT_ACCOUNT
+           ,?TEMPLATE_TEXT_USER
+           ,?TEMPLATE_TEXT_NUMBERS
+           ,?TEMPLATE_TEXT_SERVICE
+           ]))).
+
+
 -define(TEMPLATE_SUBJECT, <<"VoIP Services: {{request.level}} from {{request.node}}">>).
 -define(TEMPLATE_CATEGORY, <<"system">>).
 -define(TEMPLATE_NAME, <<"System Notifications">>).
@@ -122,8 +189,8 @@ process_req(DataJObj, Templates) ->
               ,{<<"account">>, teletype_util:account_params(DataJObj)}
               ,{<<"user">>, teletype_util:public_proplist(<<"user">>, DataJObj)}
               ,{<<"request">>, request_macros(DataJObj)}
-              ,{<<"details">>, details_macros(DataJObj)}
               ,{<<"message">>, wh_json:get_value(<<"message">>, DataJObj, <<>>)}
+              | details_macros(DataJObj)
              ],
 
     %% Populate templates
@@ -153,10 +220,39 @@ process_req(DataJObj, Templates) ->
 details_macros(DataJObj) ->
     case wh_json:get_value(<<"details">>, DataJObj) of
         'undefined' -> [];
-        <<_/binary>> = Details -> [{<<"message">>, Details}];
-        Details when is_list(Details) -> Details;
-        Details -> wh_json:recursive_to_proplist(Details)
+        <<_/binary>> = Details -> [{<<"details">>, [{<<"message">>, Details}]}];
+        Details when is_list(Details) -> details_groups(Details);
+        Details -> details_groups(wh_json:recursive_to_proplist(Details))
     end.
+
+-spec details_groups(list()) -> list().
+details_groups(Details) ->
+    details_groups(Details, {<<"details">>, []}).
+
+details_groups([], {_, Acc}) -> Acc;
+details_groups([{<<"key_value_store">>, V} | KS], {Group, Acc}) ->
+    details_groups(KS, {Group, details_groups(V, {<<"key_store">>, Acc})});
+details_groups([{<<"custom_channel_vars">>, V} | KS], {Group, Acc}) ->
+    details_groups(KS, {Group, details_groups(V, {<<"channel_vars">>, Acc})});
+details_groups([{<<"custom_sip_headers">>, V} | KS], {Group, Acc}) ->
+    details_groups(KS, {Group, details_groups(V, {<<"sip_headers">>, Acc})});
+details_groups([{<<"cf_flow">>, V} | KS], {Group, Acc}) ->
+    details_groups(KS, {Group, details_groups(V, {<<"callflow">>, Acc})});
+details_groups([{<<"error_details">>, V} | KS], {Group, Acc}) ->
+    details_groups(KS, {Group, details_groups(V, {<<"error_details">>, Acc})});
+details_groups([{<<"cf_", _/binary>>,_}=KV | KS], {Group, Acc}) ->
+    details_groups(KS, {Group, add_to_group(<<"callflow">>, KV, Acc)});
+details_groups([KV | KS], {Group, Acc}) ->
+    details_groups(KS, {Group, add_to_group(Group, KV, Acc)}).
+    
+add_to_group(K, KV, Acc) ->
+    case props:get_value(K, Acc) of
+        'undefined' -> props:set_value(K, [KV], Acc);
+        Props -> props:set_value(K, props:insert_value(KV, Props), Acc)
+    end.
+        
+ 
+
 
 -spec request_macros(wh_json:object()) -> wh_proplist().
 request_macros(DataJObj) ->

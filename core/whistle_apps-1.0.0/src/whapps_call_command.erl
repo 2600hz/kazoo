@@ -81,7 +81,7 @@
          ,start_record_call/2, start_record_call/3, start_record_call/4
          ,stop_record_call/2
         ]).
--export([store/3, store/4, store/5
+-export([store/3, store/4, store/5, store/6
          ,store_fax/2, store_fax/3
         ]).
 -export([tones/2]).
@@ -125,7 +125,7 @@
 
 -export([b_prompt/2, b_prompt/3]).
 -export([b_record/2, b_record/3, b_record/4, b_record/5, b_record/6]).
--export([b_store/3, b_store/4, b_store/5
+-export([b_store/3, b_store/4, b_store/5, b_store/6
          ,b_store_fax/2
         ]).
 -export([b_prompt_and_collect_digit/2]).
@@ -1427,22 +1427,27 @@ b_record_call(MediaName, Action, TimeLimit, Terminators, Call) ->
 -spec store(ne_binary(), api_binary(), whapps_call:call()) -> 'ok'.
 -spec store(ne_binary(), api_binary(), api_binary(), whapps_call:call()) -> 'ok'.
 -spec store(ne_binary(), api_binary(), api_binary(), wh_json:objects(), whapps_call:call()) -> 'ok'.
+-spec store(ne_binary(), api_binary(), api_binary(), wh_json:objects(), boolean(), whapps_call:call()) -> 'ok'.
 
 -spec b_store(ne_binary(), ne_binary(), whapps_call:call()) -> b_store_return().
 -spec b_store(ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> b_store_return().
 -spec b_store(ne_binary(), ne_binary(), ne_binary(), wh_json:objects(), whapps_call:call()) -> b_store_return().
+-spec b_store(ne_binary(), ne_binary(), ne_binary(), wh_json:objects(), boolean(), whapps_call:call()) -> b_store_return().
 
 store(MediaName, Transfer, Call) ->
     store(MediaName, Transfer, <<"put">>, Call).
 store(MediaName, Transfer, Method, Call) ->
     store(MediaName, Transfer, Method, [wh_json:new()], Call).
 store(MediaName, Transfer, Method, Headers, Call) ->
+    store(MediaName, Transfer, Method, Headers, 'false', Call).
+store(MediaName, Transfer, Method, Headers, SuppressReport, Call) ->
     Command = [{<<"Application-Name">>, <<"store">>}
                ,{<<"Media-Name">>, MediaName}
                ,{<<"Media-Transfer-Method">>, Method}
                ,{<<"Media-Transfer-Destination">>, Transfer}
                ,{<<"Additional-Headers">>, Headers}
                ,{<<"Insert-At">>, <<"now">>}
+               ,{<<"Suppress-Error-Report">>, SuppressReport}
               ],
     send_command(Command, Call).
 
@@ -1451,7 +1456,9 @@ b_store(MediaName, Transfer, Call) ->
 b_store(MediaName, Transfer, Method, Call) ->
     b_store(MediaName, Transfer, Method, [wh_json:new()], Call).
 b_store(MediaName, Transfer, Method, Headers, Call) ->
-    store(MediaName, Transfer, Method, Headers, Call),
+    b_store(MediaName, Transfer, Method, Headers, 'false', Call).
+b_store(MediaName, Transfer, Method, Headers, SuppressReport, Call) ->
+    store(MediaName, Transfer, Method, Headers, SuppressReport, Call),
     wait_for_headless_application(<<"store">>).
 
 %%--------------------------------------------------------------------
