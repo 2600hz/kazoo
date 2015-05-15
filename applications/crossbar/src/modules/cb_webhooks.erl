@@ -440,9 +440,10 @@ send_reenable_req(Context, AccountId, Action) ->
 handle_resp(Context, {'ok', _Resp}) ->
     lager:debug("received resp from update: ~p", [_Resp]),
     crossbar_util:response(<<"hooks updated">>, Context);
-handle_resp(Context, {'returned', _Returned, _BasicReturn}) ->
-    lager:debug("no webhook apps running: ~p ~p", [_Returned, _BasicReturn]),
-    crossbar_util:response('error', <<"The backend is not configured for this request">>, 500, Context);
+handle_resp(Context, {'returned', _Request, BasicReturn}) ->
+    lager:debug("no webhook apps running: ~p", [BasicReturn]),
+    Resp = wh_json:delete_keys([<<"exchange">>, <<"routing_key">>], BasicReturn),
+    crossbar_util:response('error', <<"The backend is not configured for this request">>, 500, Resp, Context);
 handle_resp(Context, {'timeout', _Timeout}) ->
     lager:debug("timed out waiting for a response: ~p", [_Timeout]),
     crossbar_util:response_datastore_timeout(Context);
