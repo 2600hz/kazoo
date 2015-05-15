@@ -9,7 +9,6 @@
 %%%   ,"terminators":["#","*"] // what DTMFs stop collection (and aren't included)
 %%%   ,"interdigit_timeout":2000 // milliseconds, how long to wait for the next DTMF
 %%%   ,"collection_name":"your_name_here" // name the collection for later processing
-%%%   ,"reset_collection":"true" // already collected DTMF in the collection are purged if this is set to true
 %%% }
 %%% @end
 %%% @contributors
