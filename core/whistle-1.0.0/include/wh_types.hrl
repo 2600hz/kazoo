@@ -38,6 +38,7 @@
 -type api_objects() :: wh_json:objects() | 'undefined'.
 -type api_boolean() :: boolean() | 'undefined'.
 -type api_atom() :: atom() | 'undefined'.
+-type api_atoms() :: atoms() | 'undefined'.
 -type api_string() :: string() | 'undefined'.
 -type api_reference() :: reference() | 'undefined'.
 -type api_pid() :: pid() | 'undefined'.
