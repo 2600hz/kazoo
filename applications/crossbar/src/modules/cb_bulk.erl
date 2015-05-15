@@ -67,7 +67,7 @@ resource_exists() -> true.
 %% @doc
 %% Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /bulk mights load a list of bulk_update objects
+%% /bulk might load a list of bulk_update objects
 %% /bulk/123 might load the bulk_update object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
@@ -78,8 +78,8 @@ validate(#cb_context{}=Context) ->
 
 -spec maybe_load_docs/1 :: (cb_context:context()) -> cb_context:context().
 maybe_load_docs(#cb_context{req_data=JObj}=Context) ->
-    Ids = sets:from_list(wh_json:get_value(<<"ids">>, JObj, [])),
-    case crossbar_doc:load(sets:to_list(Ids), Context) of
+    Ids = lists:usort(wh_json:get_value(<<"ids">>, JObj, [])),
+    case crossbar_doc:load(Ids, Context) of
         #cb_context{resp_status=success}=C ->
             maybe_follow_groups(Ids, C);
         Else -> Else
@@ -125,7 +125,7 @@ follow_group(JObj, JObjs, Ids, Context) ->
 maybe_update_docs(Context) ->
     case get_doc_updates(Context) of
         undefined ->
-            lager:debug("no update provided, returing docs", []),
+            lager:debug("no update provided, returning docs"),
             Context;
         Updates ->
             revalidate_docs(update_docs(Updates, Context))
@@ -192,16 +192,18 @@ maybe_save_docs([], Context) ->
 maybe_save_docs([JObj|JObjs], Context) ->
     maybe_save_docs(JObjs, maybe_save_doc(JObj, Context)).
 
--spec maybe_save_doc/2 :: (wh_json:object(), cb_context:context()) -> cb_context:context().
-maybe_save_doc(JObj, Context) ->
+-spec maybe_save_doc({wh_json:object(), wh_json:object()}, cb_context:context()) ->
+                            cb_context:context().
+maybe_save_doc({JObj,DbDoc}, Context) ->
     case wh_json:get_value(<<"_id">>, JObj) of
         undefined -> Context;
         Id ->
-            maybe_save_doc(Id, JObj, Context)
+            maybe_save_doc(Id, JObj, DbDoc, Context)
     end.
 
--spec maybe_save_doc/3 :: (ne_binary(), wh_json:object(), cb_context:context()) -> cb_context:context().
-maybe_save_doc(Id, JObj, Context) ->
+-spec maybe_save_doc(ne_binary(), wh_json:object(), wh_json:object(), cb_context:context()) ->
+                            cb_context:context().
+maybe_save_doc(Id, JObj, DbDoc, Context) ->
     case get_post_binding(JObj) of
         undefined ->
             Details = [{type, wh_json:get_value(<<"pvt_type">>, JObj)}],
@@ -210,7 +212,8 @@ maybe_save_doc(Id, JObj, Context) ->
                                                          ,#cb_context{}),
             import_results(Id, InterimContext, Context);
         Binding ->
-            Payload = [#cb_context{req_verb = ?HTTP_POST
+            Payload = [cb_context:store(
+                         #cb_context{req_verb = ?HTTP_POST
                                    ,method = ?HTTP_POST
                                    ,auth_token = Context#cb_context.auth_token
                                    ,auth_account_id = Context#cb_context.auth_account_id
@@ -222,6 +225,7 @@ maybe_save_doc(Id, JObj, Context) ->
                                    ,doc=JObj
                                    ,req_data=JObj
                                    ,resp_status='success'}
+                                       ,db_doc, DbDoc)
                        | [Id]
                       ],
             run_binding(Binding, Payload, Id, Context)
@@ -237,16 +241,18 @@ maybe_delete_docs([], Context) ->
 maybe_delete_docs([JObj|JObjs], Context) ->
     maybe_delete_docs(JObjs, maybe_delete_doc(JObj, Context)).
 
--spec maybe_delete_doc/2 :: (wh_json:object(), cb_context:context()) -> cb_context:context().
-maybe_delete_doc(JObj, Context) ->
+-spec maybe_delete_doc({wh_json:object(), wh_json:object()}, cb_context:context()) ->
+                              cb_context:context().
+maybe_delete_doc({JObj,DbDoc}, Context) ->
     case wh_json:get_value(<<"_id">>, JObj) of
         undefined -> Context;
         Id ->
-            maybe_delete_doc(Id, JObj, Context)
+            maybe_delete_doc(Id, JObj, DbDoc, Context)
     end.
 
--spec maybe_delete_doc/3 :: (ne_binary(), wh_json:object(), cb_context:context()) -> cb_context:context().
-maybe_delete_doc(Id, JObj, Context) ->
+-spec maybe_delete_doc(ne_binary(), wh_json:object(), wh_json:object(), cb_context:context()) ->
+                              cb_context:context().
+maybe_delete_doc(Id, JObj, DbDoc, Context) ->
     lager:debug("try to delete ~p", [Id]),
     case get_delete_binding(JObj) of
         undefined ->
@@ -256,7 +262,8 @@ maybe_delete_doc(Id, JObj, Context) ->
                                                          ,#cb_context{}),
             import_results(Id, InterimContext, Context);
         Binding ->
-            Payload = [#cb_context{req_verb = ?HTTP_DELETE
+            Payload = [cb_context:store(
+                       #cb_context{req_verb = ?HTTP_DELETE
                                    ,method = ?HTTP_DELETE
                                    ,auth_token = Context#cb_context.auth_token
                                    ,auth_account_id = Context#cb_context.auth_account_id
@@ -267,6 +274,7 @@ maybe_delete_doc(Id, JObj, Context) ->
                                    ,query_json = Context#cb_context.query_json
                                    ,doc=JObj
                                    ,req_data=JObj}
+                                       ,db_doc, DbDoc)
                        | [Id]
                       ],
             run_binding(Binding, Payload, Id, Context)
@@ -281,9 +289,10 @@ run_binding(Binding, Payload, Id, Context) ->
 -spec import_results/3 :: (ne_binary(), cb_context:context(), cb_context:context()) -> cb_context:context().
 import_results(Id, #cb_context{resp_status=success, doc=Doc}
                ,#cb_context{resp_data=JObj, doc=Docs}=Context) ->
+    DbDoc = select_doc(Id, cb_context:fetch(Context, db_doc)),
     Resp = wh_json:from_list([{<<"status">>, <<"success">>}]),
     Context#cb_context{resp_data=wh_json:set_value(Id, Resp, JObj)
-                       ,doc=[Doc|Docs]};
+                       ,doc=[{Doc,DbDoc}|Docs]};
 import_results(Id, #cb_context{resp_status=Status, resp_error_code=ErrorCode
                                ,resp_error_msg=ErrorMsg, resp_data=Errors}
                ,#cb_context{resp_data=JObj}=Context) ->
@@ -293,6 +302,13 @@ import_results(Id, #cb_context{resp_status=Status, resp_error_code=ErrorCode
                              ,{<<"data">>, Errors}
                              ]),
     Context#cb_context{resp_data=wh_json:set_value(Id, Resp, JObj)}.
+
+select_doc(_Id, []) -> 'undefined';
+select_doc(Id, [JObj|JObjs]) ->
+    case wh_json:get_value(<<"_id">>, JObj) of
+        Id -> JObj;
+        _ -> select_doc(Id, JObjs)
+    end.
 
 -spec get_doc_updates/1 :: (cb_context:context()) -> 'undefined' | wh_json:object().
 get_doc_updates(#cb_context{req_data=JObj}) ->

@@ -155,6 +155,8 @@ validate_devices(Context, ?HTTP_GET) ->
 validate_devices(Context, ?HTTP_PUT) ->
     validate_request('undefined', Context).
 
+validate(Context, ?STATUS_PATH_TOKEN) ->
+    validate_device(Context, ?STATUS_PATH_TOKEN, cb_context:req_verb(Context));
 validate(Context, DeviceId) ->
     validate_device(Context, DeviceId, cb_context:req_verb(Context)).
 

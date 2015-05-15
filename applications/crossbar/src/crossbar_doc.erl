@@ -133,11 +133,11 @@ load(DocId, Context, Options) ->
 
 load(_DocId, Context, _Options, 'error') -> Context;
 load(DocId, Context, Opts, _RespStatus) when is_binary(DocId) ->
-    OpenFun = case props:get_is_true('use_cache', Opts, 'true') of
-                  'true' -> fun couch_mgr:open_cache_doc/3;
-                  'false' -> fun couch_mgr:open_doc/3
-              end,
-    case OpenFun(cb_context:account_db(Context), DocId, Opts) of
+    Opener = case props:get_is_true('use_cache', Opts, 'true') of
+                 'true' ->  'open_cache_doc';
+                 'false' -> 'open_doc'
+             end,
+    case couch_mgr:Opener(cb_context:account_db(Context), DocId, Opts) of
         {'error', Error} ->
             handle_couch_mgr_errors(Error, DocId, Context);
         {'ok', JObj} ->
@@ -149,7 +149,12 @@ load([_|_]=IDs, Context, Opts, _RespStatus) ->
     Opts1 = [{'keys', IDs}, 'include_docs' | Opts],
     case couch_mgr:all_docs(cb_context:account_db(Context), Opts1) of
         {'error', Error} -> handle_couch_mgr_errors(Error, IDs, Context);
-        {'ok', JObjs} -> handle_couch_mgr_success(extract_included_docs(JObjs), Context)
+        {'ok', JObjs} ->
+            Docs = extract_included_docs(JObjs),
+            cb_context:store(handle_couch_mgr_success(Docs, Context)
+                             ,'db_doc'
+                             ,Docs
+                            )
     end.
 
 -spec handle_successful_load(cb_context:context(), wh_json:object()) -> cb_context:context().
