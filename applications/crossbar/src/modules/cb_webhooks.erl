@@ -413,20 +413,21 @@ reenable_hooks(Context) ->
 reenable_hooks(Context, [AccountId]) ->
     handle_resp(
       Context
-      ,send_reenable_req(AccountId, <<"account">>)
+      ,send_reenable_req(Context, AccountId, <<"account">>)
      );
 reenable_hooks(Context, [AccountId, ?DESCENDANTS]) ->
     handle_resp(
       Context
-      ,send_reenable_req(AccountId, ?DESCENDANTS)
+      ,send_reenable_req(Context, AccountId, ?DESCENDANTS)
      ).
 
--spec send_reenable_req(ne_binary(), ne_binary()) ->
+-spec send_reenable_req(cb_context:context(), ne_binary(), ne_binary()) ->
                                wh_amqp_worker:request_return().
-send_reenable_req(AccountId, Action) ->
+send_reenable_req(Context, AccountId, Action) ->
     Req = [{<<"Type">>, kzd_webhook:type()}
            ,{<<"Action">>, Action}
            ,{<<"Account-ID">>, AccountId}
+           ,{<<"Msg-ID">>, cb_context:req_id(Context)}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     wh_amqp_worker:call(Req
@@ -444,6 +445,9 @@ handle_resp(Context, {'returned', _Returned, _BasicReturn}) ->
     crossbar_util:response('error', <<"The backend is not configured for this request">>, 500, Context);
 handle_resp(Context, {'timeout', _Timeout}) ->
     lager:debug("timed out waiting for a response: ~p", [_Timeout]),
+    crossbar_util:response_datastore_timeout(Context);
+handle_resp(Context, {'error', 'timeout'}) ->
+    lager:debug("timed out waiting for a response"),
     crossbar_util:response_datastore_timeout(Context);
 handle_resp(Context, {'error', _E}) ->
     lager:debug("error with request: ~p", [_E]),
