@@ -15,6 +15,7 @@
          ,maybe_handle_channel_event/3
          ,hooks_configured/0
          ,hooks_configured/1
+         ,handle_doc_type_update/2
         ]).
 -export([init/1
          ,handle_call/3
@@ -46,6 +47,10 @@
                             ]}
                    ,{'notifications', [{'restrict_to', ?FAX_NOTIFY_RESTRICT_TO}]}
                    ,{'notifications', [{'restrict_to', ?WEBHOOKS_NOTIFY_RESTRICT_TO}]}
+                   ,{'conf', [{'restrict_to', ['doc_type_updates']}
+                              ,{'type', kzd_webhook:type()}
+                             ]
+                    }
                   ]).
 
 -define(RESPONDERS, [{{?MODULE, 'handle_config'}
@@ -61,6 +66,9 @@
                       }
                      ,{{'webhooks_callflow', 'handle_req'}
                        ,[{<<"notification">>, <<"webhook">>}]
+                      }
+                     ,{{?MODULE, 'handle_doc_type_update'}
+                       ,[{<<"configuration">>, <<"doc_type_update">>}]
                       }
                     ]).
 -define(QUEUE_NAME, <<"webhooks_shared_listener">>).
@@ -111,6 +119,17 @@ maybe_handle_channel_event(AccountId, HookEvent, JObj) ->
         [] -> lager:debug("no hooks to handle ~s for ~s", [HookEvent, AccountId]);
         Hooks -> webhooks_util:fire_hooks(format_event(JObj, AccountId, HookEvent), Hooks)
     end.
+
+handle_doc_type_update(JObj, _Props) ->
+    'true' = wapi_conf:doc_type_update_v(JObj),
+    webhooks_util:reenable(wapi_conf:get_account_id(JObj)
+                           ,wapi_conf:get_action(JObj)
+                          ),
+
+    ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
+    wh_amqp_worker:cast([{<<"status">>, <<"success">>}]
+                        ,fun(P) -> wapi_self:publish_message(ServerId, P) end
+                       ).
 
 -spec hook_event_name(ne_binary()) -> ne_binary().
 hook_event_name(<<"CHANNEL_DISCONNECTED">>) -> <<"CHANNEL_DESTROY">>;
