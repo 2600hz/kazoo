@@ -490,7 +490,7 @@ maybe_validate_quickcall(Context, 'success') ->
 
 -spec maybe_allow_quickcalls(cb_context:context()) -> cb_context:context().
 maybe_allow_quickcalls(Context) ->
-    case (not wh_util:is_empty(cb_context:auth_token(Context)))
+    case cb_context:is_authenticated(Context)
         orelse wh_util:is_true(cb_context:req_value(Context, <<"allow_anonymous_quickcalls">>))
     of
         'false' -> cb_context:add_system_error('invalid_credentials', Context);
