@@ -502,7 +502,8 @@ get_whapp_info(Master) when is_pid(Master) ->
     get_whapp_info(application_master:get_child(Master));
 get_whapp_info({Pid, _Module}) when is_pid(Pid) ->
     get_whapp_process_info(erlang:process_info(Pid));
-get_whapp_info(_) ->
+get_whapp_info(_Arg) ->
+    lager:debug("can't get info for ~p", [_Arg]),
     #whapp_info{}.
 
 -spec get_whapp_process_info(wh_proplist() | 'undefined') -> whapp_info().
