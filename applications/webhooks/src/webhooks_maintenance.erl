@@ -138,7 +138,7 @@ enable_hooks(Hooks) ->
 hooks_to_reenable(Hooks) ->
     [kzd_webhook:enable(Hook)
      || View <- Hooks,
-        not(kzd_webhook:is_enabled(Hook = wh_json:get_value(<<"doc">>, View)))
+        kzd_webhook:is_auto_disabled(Hook = wh_json:get_value(<<"doc">>, View))
     ].
 
 -spec enable_descendant_hooks(ne_binary()) -> 'ok'.
