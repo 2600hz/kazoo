@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% Common functions for the provisioner modules
@@ -802,7 +802,7 @@ maybe_sync_sip_data(Context, 'user', 'true') ->
         {'error', _E} -> lager:debug("no devices to send check sync to for realm ~s", [Realm]);
         {'timeout', _} -> lager:debug("timed out query for fetching devices for ~s", [Realm]);
         {'ok', JObj} ->
-            lists:foreach(fun (J) ->
+            lists:foreach(fun(J) ->
                                   Username = wh_json:get_value(<<"Username">>, J),
                                   send_check_sync(Username, Realm, 'undefined')
                           end
@@ -812,18 +812,23 @@ maybe_sync_sip_data(Context, 'user', 'true') ->
 
 %% @private
 -spec send_check_sync(api_binary(), api_binary(), api_binary()) -> 'ok'.
-send_check_sync('undefined', _Realm, _MsgID) ->
+send_check_sync('undefined', _Realm, _MsgId) ->
     lager:warning("did not send check sync: username is undefined");
-send_check_sync(_Username, 'undefined', _MsgID) ->
+send_check_sync(_Username, 'undefined', _MsgId) ->
     lager:warning("did not send check sync: realm is undefined");
-send_check_sync(Username, Realm, MsgID) ->
+send_check_sync(Username, Realm, MsgId) ->
     lager:debug("sending check sync for ~s @ ~s", [Username, Realm]),
-    Req = case MsgID of
-              'undefined' -> [];
-              _ -> [{<<"Msg-ID">>, MsgID}]
-          end
-        ++ [{<<"Realm">>, Realm}
-            ,{<<"Username">>, Username}
-            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-           ],
+    publish_check_sync(MsgId, [{<<"Realm">>, Realm}
+                               ,{<<"Username">>, Username}
+                               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                              ]).
+
+-spec publish_check_sync(wh_proplist()) -> 'ok'.
+-spec publish_check_sync(api_binary(), wh_proplist()) -> 'ok'.
+publish_check_sync('undefined', Req) ->
+    publish_check_sync(Req);
+publish_check_sync(MsgId, Req) ->
+    publish_check_sync([{<<"Msg-ID">>, MsgId} | Req]).
+
+publish_check_sync(Req) ->
     wh_amqp_worker:cast(Req, fun wapi_switch:publish_check_sync/1).

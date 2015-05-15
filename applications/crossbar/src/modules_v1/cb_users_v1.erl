@@ -321,7 +321,9 @@ get_channels(Context) ->
     Usernames = [Username
                  || JObj <- cb_context:doc(Context),
                     (Username = kz_device:sip_username(
-                                  wh_json:get_value(<<"doc">>, JObj)))
+                                  wh_json:get_value(<<"doc">>, JObj)
+                                 )
+                    )
                         =/= 'undefined'
                 ],
     Req = [{<<"Realm">>, Realm}
