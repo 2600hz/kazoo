@@ -84,6 +84,7 @@ app_version(JObj) ->
 node(JObj) ->
     wh_json:get_value(<<"Node">>, JObj).
 
+-spec msg_id(api_terms()) -> api_binary().
 msg_id(Props) when is_list(Props) ->
     props:get_value(<<"Msg-ID">>, Props);
 msg_id(JObj) ->
