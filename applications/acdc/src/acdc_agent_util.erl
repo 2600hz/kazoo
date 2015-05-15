@@ -82,17 +82,8 @@ most_recent_db_status(AccountId, AgentId) ->
     case couch_mgr:get_results(acdc_stats_util:db_name(AccountId), <<"agent_stats/status_log">>, Opts) of
         {'ok', [StatusJObj]} -> {'ok', wh_json:get_value(<<"value">>, StatusJObj)};
         {'ok', []} ->
-        	lager:debug("Could not find a recent status for agent ~p, checking previous modb", [AgentId]),
-        	case couch_mgr:get_results(acdc_stats_util:prev_modb(AccountId), <<"agent_stats/status_log">>, Opts) of
-        		{'ok', [StatusJObj2]} -> {'ok', wh_json:get_value(<<"value">>, StatusJObj2)};
-        		{'ok', []} -> {'ok', <<"unknown">>};
-			{'error', 'not_found'} ->
-				lager:debug("No previous modb found, returning unknown status"),
-				{'ok', <<"unknown">>};
-		        {'error', _E} ->
-		            lager:debug("error querying view: ~p", [_E]),
-		            {'ok', <<"unknown">>}
-		    end;
+        	lager:debug("could not find a recent status for agent ~s, checking previous modb", [AgentId]),
+        	prev_month_recent_db_status(AccountId, AgentId);
         {'error', 'not_found'} ->
             acdc_maintenance:refresh_account(AccountId),
             timer:sleep(150),
@@ -101,6 +92,20 @@ most_recent_db_status(AccountId, AgentId) ->
             lager:debug("error querying view: ~p", [_E]),
             {'ok', <<"unknown">>}
     end.
+
+-spec prev_month_recent_db_status(ne_binary(), ne_binary()) ->
+                                         {'ok', ne_binary()}.
+prev_month_recent_db_status(AccountId, AgentId) ->
+    case couch_mgr:get_results(acdc_stats_util:prev_modb(AccountId), <<"agent_stats/status_log">>, Opts) of
+        {'ok', [StatusJObj]} -> {'ok', wh_json:get_value(<<"value">>, StatusJObj)};
+        {'ok', []} -> {'ok', <<"unknown">>};
+        {'error', 'not_found'} ->
+            lager:debug("no previous modb found, returning unknown status"),
+            {'ok', <<"unknown">>};
+        {'error', _E} ->
+            lager:debug("error querying view: ~p", [_E]),
+            {'ok', <<"unknown">>}
+    end;
 
 -type statuses_return() :: {'ok', wh_json:object()}.
 -spec most_recent_statuses(ne_binary()) ->
