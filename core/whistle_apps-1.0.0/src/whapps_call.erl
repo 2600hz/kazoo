@@ -154,7 +154,7 @@
                       ,sip_headers = wh_json:new() :: wh_json:object()                   %% Custom SIP Headers
                       ,kvs = orddict:new() :: orddict:orddict()           %% allows callflows to set values that propogate to children
                       ,other_leg_call_id :: api_binary()
-                      ,resource_type :: api_binary()                      %% from route_req
+                      ,resource_type = <<"audio">> :: api_binary()        %% from route_req
                       ,to_tag :: api_binary()
                       ,from_tag :: api_binary()
                      }).
