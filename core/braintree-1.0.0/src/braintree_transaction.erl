@@ -491,7 +491,6 @@ json_to_record(JObj) ->
        ,descriptor = wh_json:get_binary_value(<<"descriptor">>, JObj)
        ,store_in_vault = wh_json:get_value(<<"store_in_vault">>, JObj, 'false')
        ,store_on_success = wh_json:get_value(<<"store_on_success">>, JObj, 'false')
-       ,settle = wh_json:get_value(<<"tax_exempt">>, JObj, 'false')
        ,change_billing_address = wh_json:get_value(<<"change_billing_address">>, JObj, 'false')
        ,store_shipping_address = wh_json:get_value(<<"store_shipping_address">>, JObj, 'false')
        ,is_api = wh_json:is_true(<<"is_api">>, JObj)
