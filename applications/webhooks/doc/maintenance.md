@@ -45,3 +45,15 @@ You can see the current failure counts for each hook:
     | Account                          | Hook                             | Count |
     | {ACCOUNT_ID}                     | {HOOK_ID}                        |     4 |
     | -------------------------------- | -------------------------------- | ----- |
+
+### Re-enable hooks
+
+If hooks are disabled in an account due to failures, an admin can bulk-update the hooks to be enabled again.
+
+    sup webhooks_maintenance enable_account_hooks {ACCOUNT_ID}
+
+Similarly, enable all hooks for an account and its descendants:
+
+    sup webhooks_maintenance enable_descendant_hooks {ACCOUNT_ID}
+
+Note: this will only enable those hooks which have been auto-disabled by the system, not manually disabled via API.
