@@ -123,6 +123,7 @@ maybe_handle_channel_event(AccountId, HookEvent, JObj) ->
         Hooks -> webhooks_util:fire_hooks(format_event(JObj, AccountId, HookEvent), Hooks)
     end.
 
+-spec handle_doc_type_update(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_doc_type_update(JObj, _Props) ->
     'true' = wapi_conf:doc_type_update_v(JObj),
     wh_util:put_callid(JObj),
