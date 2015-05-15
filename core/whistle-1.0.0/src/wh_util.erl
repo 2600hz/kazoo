@@ -87,6 +87,7 @@
         ]).
 
 -export([put_callid/1, get_callid/0
+         ,spawn/1, spawn/3
          ,set_startup/0, startup/0
         ]).
 -export([get_event_type/1]).
@@ -523,6 +524,20 @@ callid(Prop) when is_list(Prop) ->
     props:get_first_defined([<<"Call-ID">>, <<"Msg-ID">>], Prop, ?LOG_SYSTEM_ID);
 callid(JObj) ->
     wh_json:get_first_defined([<<"Call-ID">>, <<"Msg-ID">>], JObj, ?LOG_SYSTEM_ID).
+
+%% @public
+spawn(Module, Function, Arguments) ->
+    CallId = get_callid(),
+    erlang:spawn(fun () ->
+                         put_callid(CallId),
+                         erlang:apply(Module, Function, Arguments)
+                 end).
+spawn(Fun) ->
+    CallId = get_callid(),
+    erlang:spawn(fun () ->
+                         put_callid(CallId),
+                         Fun()
+                 end).
 
 -spec set_startup() -> 'undefined' | gregorian_seconds().
 set_startup() ->

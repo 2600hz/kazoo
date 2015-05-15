@@ -245,7 +245,7 @@ post(Context, AccountId) ->
     Context1 = crossbar_doc:save(Context),
     case cb_context:resp_status(Context1) of
         'success' ->
-            _ = spawn('provisioner_util', 'maybe_update_account', [Context1]),
+            _ = wh_util:spawn('provisioner_util', 'maybe_update_account', [Context1]),
             JObj = cb_context:doc(Context1),
             _ = replicate_account_definition(JObj),
             support_depreciated_billing_id(wh_json:get_value(<<"billing_id">>, JObj)
@@ -321,7 +321,7 @@ delete(Context, Account) ->
 -spec maybe_update_descendants_count(ne_binaries()) -> 'ok'.
 maybe_update_descendants_count([]) -> 'ok';
 maybe_update_descendants_count(Tree) ->
-    _ = spawn('crossbar_util', 'descendants_count', [lists:last(Tree)]),
+    _ = wh_util:spawn('crossbar_util', 'descendants_count', [lists:last(Tree)]),
     'ok'.
 
 %%--------------------------------------------------------------------
@@ -1450,7 +1450,7 @@ delete_mod_dbs(AccountId, Year, Month) ->
 delete_remove_from_accounts(Context) ->
     case couch_mgr:open_doc(?WH_ACCOUNTS_DB, cb_context:account_id(Context)) of
         {'ok', JObj} ->
-            _ = spawn('provisioner_util', 'maybe_delete_account', [Context]),
+            _ = wh_util:spawn('provisioner_util', 'maybe_delete_account', [Context]),
             crossbar_doc:delete(
               cb_context:setters(Context
                                  ,[{fun cb_context:set_account_db/2, ?WH_ACCOUNTS_DB}
