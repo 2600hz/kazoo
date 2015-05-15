@@ -96,6 +96,10 @@ most_recent_db_status(AccountId, AgentId) ->
 -spec prev_month_recent_db_status(ne_binary(), ne_binary()) ->
                                          {'ok', ne_binary()}.
 prev_month_recent_db_status(AccountId, AgentId) ->
+    Opts = [{'startkey', [AgentId, wh_util:current_tstamp()]}
+            ,{'limit', 1}
+            ,'descending'
+           ],
     case couch_mgr:get_results(kazoo_modb_util:prev_year_month_mod(acdc_stats_util:db_name(AccountId)), <<"agent_stats/status_log">>, Opts) of
         {'ok', [StatusJObj]} -> {'ok', wh_json:get_value(<<"value">>, StatusJObj)};
         {'ok', []} -> {'ok', <<"unknown">>};
@@ -105,7 +109,7 @@ prev_month_recent_db_status(AccountId, AgentId) ->
         {'error', _E} ->
             lager:debug("error querying view: ~p", [_E]),
             {'ok', <<"unknown">>}
-    end;
+    end.
 
 -type statuses_return() :: {'ok', wh_json:object()}.
 -spec most_recent_statuses(ne_binary()) ->
