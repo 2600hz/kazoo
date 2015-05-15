@@ -54,7 +54,10 @@
                   ]).
 
 -define(RESPONDERS, [{{?MODULE, 'handle_config'}
-                      ,[{<<"configuration">>, <<"*">>}]
+                      ,[{<<"configuration">>, <<"doc_created">>}
+                        ,{<<"configuration">>, <<"doc_updated">>}
+                        ,{<<"configuration">>, <<"doc_deleted">>}
+                       ]
                      }
                      ,{{?MODULE, 'handle_channel_event'}
                        ,[{<<"call_event">>, <<"*">>}]
@@ -122,12 +125,24 @@ maybe_handle_channel_event(AccountId, HookEvent, JObj) ->
 
 handle_doc_type_update(JObj, _Props) ->
     'true' = wapi_conf:doc_type_update_v(JObj),
+    wh_util:put_callid(JObj),
+
+    lager:debug("re-enabling hooks for ~s: ~s"
+                ,[wapi_conf:get_account_id(JObj)
+                  ,wapi_conf:get_action(JObj)
+                 ]),
     webhooks_util:reenable(wapi_conf:get_account_id(JObj)
                            ,wapi_conf:get_action(JObj)
                           ),
 
-    ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
-    wh_amqp_worker:cast([{<<"status">>, <<"success">>}]
+    ServerId = wh_api:server_id(JObj),
+    lager:debug("publishing resp to ~s", [ServerId]),
+    wh_amqp_worker:cast([{<<"status">>, <<"success">>}
+                         ,{<<"Event-Category">>, <<"configuration">>}
+                         ,{<<"Event-Name">>, <<"doc_type_updated">>}
+                         ,{<<"Msg-ID">>, wh_api:msg_id(JObj)}
+                         | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                        ]
                         ,fun(P) -> wapi_self:publish_message(ServerId, P) end
                        ).
 
