@@ -23,6 +23,8 @@
 
          ,is_context/1
 
+         ,is_authenticated/1
+        
          %% Getters / Setters
          ,setters/2
          ,new/0
@@ -161,6 +163,9 @@ account_doc(Context) ->
     {'ok', Doc} =
         couch_mgr:open_cache_doc(account_db(Context), account_id(Context)),
     Doc.
+
+is_authenticated(#cb_context{auth_doc='undefined'}) -> 'false';
+is_authenticated(#cb_context{}) -> 'true'.
 
 auth_token(#cb_context{auth_token=AuthToken}) -> AuthToken.
 auth_doc(#cb_context{auth_doc=AuthDoc}) -> AuthDoc.
