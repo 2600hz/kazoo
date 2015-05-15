@@ -155,9 +155,9 @@ enable_descendant_hooks(Account) ->
             maybe_enable_descendants_hooks([AccountId]);
         {'ok', Descendants} ->
             maybe_enable_descendants_hooks([AccountId
-                                           | [wh_json:get_value([<<"value">>, <<"id">>], D) || D <- Descendants]
-                                          ]
-                                         );
+                                            | [wh_json:get_value([<<"value">>, <<"id">>], D) || D <- Descendants]
+                                           ]
+                                          );
         {'error', _E} ->
             io:format("failed to find descendants for account ~s: ~p~n", [AccountId, _E])
     end.
