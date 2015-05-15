@@ -80,10 +80,11 @@ most_recent_db_status(AccountId, AgentId) ->
             ,'descending'
            ],
     case couch_mgr:get_results(acdc_stats_util:db_name(AccountId), <<"agent_stats/status_log">>, Opts) of
-        {'ok', [StatusJObj]} -> {'ok', wh_json:get_value(<<"value">>, StatusJObj)};
+        {'ok', [StatusJObj]} ->
+            {'ok', wh_json:get_value(<<"value">>, StatusJObj)};
         {'ok', []} ->
-        	lager:debug("could not find a recent status for agent ~s, checking previous modb", [AgentId]),
-        	prev_month_recent_db_status(AccountId, AgentId);
+            lager:debug("could not find a recent status for agent ~s, checking previous modb", [AgentId]),
+            prev_month_recent_db_status(AccountId, AgentId);
         {'error', 'not_found'} ->
             acdc_maintenance:refresh_account(AccountId),
             timer:sleep(150),
@@ -100,9 +101,12 @@ prev_month_recent_db_status(AccountId, AgentId) ->
             ,{'limit', 1}
             ,'descending'
            ],
-    case couch_mgr:get_results(kazoo_modb_util:prev_year_month_mod(acdc_stats_util:db_name(AccountId)), <<"agent_stats/status_log">>, Opts) of
-        {'ok', [StatusJObj]} -> {'ok', wh_json:get_value(<<"value">>, StatusJObj)};
-        {'ok', []} -> {'ok', <<"unknown">>};
+    Db = kazoo_modb_util:prev_year_month_mod(acdc_stats_util:db_name(AccountId)),
+    case couch_mgr:get_results(Db, <<"agent_stats/status_log">>, Opts) of
+        {'ok', [StatusJObj]} ->
+            {'ok', wh_json:get_value(<<"value">>, StatusJObj)};
+        {'ok', []} ->
+            {'ok', <<"unknown">>};
         {'error', 'not_found'} ->
             lager:debug("no previous modb found, returning unknown status"),
             {'ok', <<"unknown">>};
