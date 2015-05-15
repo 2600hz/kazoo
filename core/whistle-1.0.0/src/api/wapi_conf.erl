@@ -47,7 +47,6 @@
 -define(OPTIONAL_DOC_TYPE_UPDATE_HEADERS
         ,[<<"Action">>
           ,<<"Account-ID">>
-          ,<<"Details">>
          ]
        ).
 -define(DOC_TYPE_UPDATE_VALUES, [{<<"Event-Category">>, <<"configuration">>}
