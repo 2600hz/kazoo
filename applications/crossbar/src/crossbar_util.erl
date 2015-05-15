@@ -982,7 +982,9 @@ format_emergency_caller_id_number(Context) ->
     end.
 
 %% @public
--spec maybe_refresh_fs_xml('user' | 'device', cb_context:context()) -> 'ok'.
+-type refresh_type() :: 'user' | 'device' | 'sys_info'.
+
+-spec maybe_refresh_fs_xml(refresh_type(), cb_context:context()) -> 'ok'.
 maybe_refresh_fs_xml(Kind, Context) ->
     DbDoc = cb_context:fetch(Context, 'db_doc'),
     Doc = cb_context:doc(Context),
@@ -993,7 +995,7 @@ maybe_refresh_fs_xml(Kind, Context) ->
            ),
     maybe_refresh_fs_xml(Kind, Context, Precondition).
 
--spec maybe_refresh_fs_xml('user' | 'device', cb_context:context(), boolean()) -> 'ok'.
+-spec maybe_refresh_fs_xml(refresh_type(), cb_context:context(), boolean()) -> 'ok'.
 maybe_refresh_fs_xml('user', _Context, 'false') -> 'ok';
 maybe_refresh_fs_xml('user', Context, 'true') ->
     Doc = cb_context:doc(Context),
