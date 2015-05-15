@@ -240,7 +240,7 @@ publish_doc_type_update(JObj) ->
     publish_doc_type_update(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_doc_type_update(API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?DOC_TYPE_UPDATE_VALUES, fun ?MODULE:doc_type_update/1),
-    amqp_util:configuration_publish(doc_type_update_routing_key(API), Payload, ContentType).
+    amqp_util:configuration_publish(doc_type_update_routing_key(API), Payload, ContentType, [{'mandatory', 'true'}]).
 
 -spec doc_type_update_routing_key(api_terms() | ne_binary()) -> ne_binary().
 doc_type_update_routing_key(<<_/binary>> = Type) ->
