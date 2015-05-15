@@ -583,12 +583,7 @@ connecting({'timeout', ConnRef, ?CONNECTION_TIMEOUT_MESSAGE}, #state{queue_proc=
                                                                     }=State) ->
     lager:debug("connection timeout occurred, bounce the caller out of the queue"),
 
-    case Winner of
-    	undefined ->
-    		acdc_queue_listener:timeout_member_call(Srv);
-    	_ ->
-    		acdc_queue_listener:timeout_member_call(Srv, Winner)
-    end,
+    maybe_timeout_winner(Srv, Winner),
 
     acdc_stats:call_abandoned(AccountId, QueueId, whapps_call:call_id(Call), ?ABANDON_TIMEOUT),
 
@@ -738,6 +733,12 @@ maybe_stop_timer('undefined') -> 'ok';
 maybe_stop_timer(ConnRef) ->
     _ = gen_fsm:cancel_timer(ConnRef),
     'ok'.
+
+-spec maybe_timeout_winner(pid(), api_object()) -> 'ok'.
+maybe_timeout_winner(Srv, 'undefined') ->
+    acdc_queue_listener:timeout_member_call(Srv);
+maybe_timeout_winner(Srv, Winner) ->
+    acdc_queue_listener:timeout_member_call(Srv, Winner).
 
 -spec clear_member_call(queue_fsm_state()) -> queue_fsm_state().
 clear_member_call(#state{connection_timer_ref=ConnRef
