@@ -953,10 +953,12 @@ confirm_select() -> wh_amqp_channel:command(#'confirm.select'{}).
 -spec flow_control() -> 'ok'.
 -spec flow_control(boolean()) -> 'ok'.
 flow_control() -> flow_control('true').
-flow_control(Active) -> wh_amqp_channel:command(#'channel.flow'{active=Active}).
+flow_control(Active) ->
+    wh_amqp_channel:command(#'channel.flow'{active=Active}).
 
 -spec flow_control_reply(boolean()) -> 'ok'.
-flow_control_reply(Active) -> wh_amqp_channel:command(#'channel.flow_ok'{active=Active}).
+flow_control_reply(Active) ->
+    wh_amqp_channel:command(#'channel.flow_ok'{active=Active}).
 
 %%------------------------------------------------------------------------------
 %% @public
