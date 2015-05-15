@@ -16,7 +16,7 @@
          ,validate/1, validate/2, validate/3
          ,put/1
          ,post/2
-         ,patch/2
+         ,patch/1, patch/2
          ,delete/2
         ]).
 
@@ -29,6 +29,9 @@
 
 -define(ATTEMPTS_BY_ACCOUNT, <<"webhooks/attempts_by_time_listing">>).
 -define(ATTEMPTS_BY_HOOK, <<"webhooks/attempts_by_hook_listing">>).
+
+-define(DESCENDANTS, <<"descendants">>).
+-define(REENABLE, <<"re-enable">>).
 
 %%%===================================================================
 %%% API
@@ -61,7 +64,7 @@ init() ->
 -spec allowed_methods(path_token()) -> http_methods().
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
-    [?HTTP_GET, ?HTTP_PUT].
+    [?HTTP_GET, ?HTTP_PUT, ?HTTP_PATCH].
 allowed_methods(?PATH_TOKEN_ATTEMPTS) ->
     [?HTTP_GET];
 allowed_methods(_) ->
@@ -105,7 +108,9 @@ validate(Context) ->
 validate_webhooks(Context, ?HTTP_GET) ->
     summary(Context);
 validate_webhooks(Context, ?HTTP_PUT) ->
-    create(Context).
+    create(Context);
+validate_webhooks(Context, ?HTTP_PATCH) ->
+    validate_collection_patch(Context).
 
 validate(Context, ?PATH_TOKEN_ATTEMPTS) ->
     summary_attempts(Context);
@@ -148,7 +153,11 @@ post(Context, _Id) ->
 put(Context) ->
     crossbar_doc:save(cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB)).
 
+-spec patch(cb_context:context()) -> cb_context:context().
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
+patch(Context) ->
+    reenable_hooks(Context).
+
 patch(Context, Id) ->
     post(Context, Id).
 
@@ -170,6 +179,35 @@ delete(Context, _) ->
 create(Context) ->
     OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
     cb_context:validate_request_data(<<"webhooks">>, Context, OnSuccess).
+
+-spec validate_collection_patch(cb_context:context()) -> cb_context:context().
+-spec validate_collection_patch(cb_context:context(), api_boolean()) ->
+                                       cb_context:context().
+validate_collection_patch(Context) ->
+    validate_collection_patch(Context, cb_context:req_value(Context, ?REENABLE)).
+validate_collection_patch(Context, 'undefined') ->
+    cb_context:add_validation_error(
+      ?REENABLE
+      ,<<"required">>
+      ,wh_json:from_list(
+         [{<<"message">>, <<"re-enable is required to patch collections">>}]
+        )
+      ,Context
+     );
+validate_collection_patch(Context, ReEnable) ->
+    case wh_util:is_true(ReEnable) of
+        'true' -> cb_context:set_resp_status(Context, 'success');
+        'false' ->
+            cb_context:add_validation_error(
+              ?REENABLE
+              ,<<"enum">>
+              ,wh_json:from_list(
+                 [{<<"message">>, <<"value not found in enumerated list of values">>}
+                  ,{<<"target">>, ['true']}
+                 ])
+              ,Context
+             )
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -331,7 +369,7 @@ normalize_attempt_results(JObj, Acc) ->
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context
-                       ,wh_json:set_values([{<<"pvt_type">>, <<"webhook">>}
+                       ,wh_json:set_values([{<<"pvt_type">>, kzd_webhook:type()}
                                             ,{<<"pvt_account_id">>, cb_context:account_id(Context)}
                                            ]
                                            ,cb_context:doc(Context)
@@ -365,3 +403,48 @@ maybe_update_hook(Context) ->
         'false' -> Context;
         'true' -> cb_context:set_doc(Context, kzd_webhook:enable(Doc))
     end.
+
+-spec reenable_hooks(cb_context:context()) -> cb_context:context().
+-spec reenable_hooks(cb_context:context(), ne_binaries()) ->
+                            cb_context:context().
+reenable_hooks(Context) ->
+    reenable_hooks(Context, props:get_value(<<"accounts">>, cb_context:req_nouns(Context))).
+
+reenable_hooks(Context, [AccountId]) ->
+    handle_resp(
+      Context
+      ,send_reenable_req(AccountId, <<"account">>)
+     );
+reenable_hooks(Context, [AccountId, ?DESCENDANTS]) ->
+    handle_resp(
+      Context
+      ,send_reenable_req(AccountId, ?DESCENDANTS)
+     ).
+
+-spec send_reenable_req(ne_binary(), ne_binary()) ->
+                               wh_amqp_worker:request_return().
+send_reenable_req(AccountId, Action) ->
+    Req = [{<<"Type">>, kzd_webhook:type()}
+           ,{<<"Action">>, Action}
+           ,{<<"Account-ID">>, AccountId}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    wh_amqp_worker:call(Req
+                        ,fun wapi_conf:publish_doc_type_update/1
+                        ,fun wh_util:always_true/1
+                       ).
+
+-spec handle_resp(cb_context:context(), wh_amqp_worker:request_return()) ->
+                         cb_context:context().
+handle_resp(Context, {'ok', _Resp}) ->
+    lager:debug("received resp from update: ~p", [_Resp]),
+    crossbar_util:response(<<"hooks updated">>, Context);
+handle_resp(Context, {'returned', _Returned, _BasicReturn}) ->
+    lager:debug("no webhook apps running: ~p ~p", [_Returned, _BasicReturn]),
+    crossbar_util:response('error', <<"The backend is not configured for this request">>, 500, Context);
+handle_resp(Context, {'timeout', _Timeout}) ->
+    lager:debug("timed out waiting for a response: ~p", [_Timeout]),
+    crossbar_util:response_datastore_timeout(Context);
+handle_resp(Context, {'error', _E}) ->
+    lager:debug("error with request: ~p", [_E]),
+    crossbar_util:response('error', <<"Request failed on the backend">>, 500, Context).
