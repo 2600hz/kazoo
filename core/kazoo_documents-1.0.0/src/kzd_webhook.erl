@@ -15,6 +15,7 @@
          ,enable/1
          ,disable/1, disable/2
          ,disabled_message/1, disabled_message/2
+         ,type/0, type/1
         ]).
 
 -include("kz_documents.hrl").
@@ -24,6 +25,7 @@
 
 -define(IS_ENABLED, <<"enabled">>).
 -define(DISABLED_MESSAGE, <<"pvt_disabled_message">>).
+-define(TYPE, <<"webhook">>).
 
 -spec is_enabled(doc()) -> boolean().
 -spec is_enabled(doc(), Default) -> boolean() | Default.
@@ -63,3 +65,10 @@ disabled_message(Hook, Default) ->
 is_auto_disabled(Hook) ->
     is_enabled(Hook) =:= 'false'
         andalso disabled_message(Hook) =/= 'undefined'.
+
+-spec type() -> ne_binary().
+-spec type(doc()) -> api_binary().
+type() -> ?TYPE.
+
+type(Hook) ->
+    wh_json:get_value(<<"pvt_type">>, Hook).
