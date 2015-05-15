@@ -135,6 +135,7 @@
                            #'basic.qos'{} |
                            #'exchange.declare'{} |
                            #'confirm.select'{} |
+                           #'channel.flow'{} | #'channel.flow_ok'{} |
                            '_' | 'undefined'.
 -type wh_amqp_commands() :: [wh_amqp_command(),...] | [].
 
@@ -201,7 +202,7 @@
                               ,zone='local' :: atom() | '$1' | '_'
                               ,manager=self() :: pid() | '_'
                               ,tags = [] :: list() | '_'
-                              ,hidden = 'false' :: boolean() | '_'
+                              ,hidden = 'false' :: boolean() | '$3' | '_'
                              }).
 -type wh_amqp_connections() :: #wh_amqp_connections{}.
 -type wh_amqp_connections_list() :: [wh_amqp_connections(), ...] | [].
