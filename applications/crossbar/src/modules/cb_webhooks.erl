@@ -179,7 +179,19 @@ create(Context) ->
 %%--------------------------------------------------------------------
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
-    crossbar_doc:load(Id, Context).
+    Context1 = crossbar_doc:load(Id, Context),
+    case cb_context:resp_status(Context1) of
+        'success' -> maybe_leak_pvt_fields(Context1);
+        _Status -> Context1
+    end.
+
+-spec maybe_leak_pvt_fields(cb_context:context()) -> cb_context:context().
+maybe_leak_pvt_fields(Context) ->
+    Doc = cb_context:doc(Context),
+    wh_json:set_values([{<<"disable_reason">>, kzd_webhook:disabled_message(Doc)}]
+                       ,Doc
+                      ),
+    cb_context:set_doc(Context, Doc).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -254,6 +266,7 @@ fix_key_fold(Key, Envelope) ->
 -spec summary_attempts(cb_context:context(), api_binary()) -> cb_context:context().
 summary_attempts(Context) ->
     summary_attempts(Context, 'undefined').
+
 summary_attempts(Context, 'undefined') ->
     ViewOptions = [{'endkey', 0}
                    ,{'startkey', get_attempts_start_key(Context)}
