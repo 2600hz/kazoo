@@ -28,6 +28,7 @@
          ,device_classifier_deny/2
          ,list_account_restrictions/1
         ]).
+-export([update_feature_codes/0, update_feature_codes/1]).
 
 -include("callflow.hrl").
 
@@ -469,3 +470,50 @@ print_trunkstore_call_restrictions(DbName) ->
         {'error', E} ->
             io:format("An error occurred: ~p", [E])
     end.
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Update certain patterns matching feature codes (see KAZOO-3122)
+%% @end
+%%--------------------------------------------------------------------
+
+-spec update_feature_codes() -> 'ok'.
+update_feature_codes() ->
+    lists:foreach(fun update_feature_codes/1, whapps_util:get_all_accounts()).
+
+-spec update_feature_codes(ne_binary()) -> 'ok'.
+update_feature_codes(Account)
+  when not is_binary(Account) ->
+    update_feature_codes(wh_util:to_binary(Account));
+update_feature_codes(Account) ->
+    AccountDb = wh_util:format_account_db(Account),
+    case couch_mgr:get_results(AccountDb, ?LIST_BY_PATTERN, ['include_docs']) of
+        {'error', _Reason} ->
+            io:format("error listing feature code patterns: ~p\n", [_Reason]);
+        {'ok', Patterns} ->
+            AccountId = wh_util:format_account_id(Account, 'raw'),
+            io:format("~s : looking through patterns...\n", [AccountId]),
+            maybe_update_feature_codes(AccountDb, Patterns)
+    end.
+
+maybe_update_feature_codes(Db, []) ->
+    io:format("~s : feature codes up to date\n", [wh_util:format_account_id(Db, 'raw')]);
+maybe_update_feature_codes(Db, [Pattern|Patterns]) ->
+    DocId = wh_json:get_value(<<"id">>, Pattern),
+    Regex = wh_json:get_value(<<"key">>, Pattern),
+    case Regex of
+        <<"^\\*5([0-9]*)$">> ->
+            NewRegex = <<"^\\*5(|[0-9]{2,})$">>,
+            case couch_mgr:update_doc(Db, DocId, [{<<"patterns">>, [NewRegex]}]) of
+                {'error', _Reason} ->
+                    io:format("failed to update doc ~s with new patterns\n", [DocId]);
+                {'ok', _} ->
+                    io:format("successfully updated patterns for doc ~s (~p -> ~p)\n",
+                              [DocId, Regex, NewRegex])
+            end;
+        _OtherRegex ->
+            io:format("skipping pattern ~p\n", [_OtherRegex])
+    end,
+    maybe_update_feature_codes(Db, Patterns).

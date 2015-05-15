@@ -632,7 +632,7 @@ is_digit(_) -> 'false'.
 %% @end
 %%-----------------------------------------------------------------------------
 -spec lookup_callflow_patterns(ne_binary(), ne_binary()) ->
-                                      {'ok', {wh_json:object(), ne_binary()}} |
+                                      {'ok', {wh_json:object(), api_binary()}} |
                                       {'error', term()}.
 lookup_callflow_patterns(Number, Db) ->
     lager:info("lookup callflow patterns for ~s in ~s", [Number, Db]),
@@ -663,7 +663,6 @@ test_callflow_patterns([Pattern|T], Number, {_, Capture}=Result) ->
     Regex = wh_json:get_value(<<"key">>, Pattern),
     case re:run(Number, Regex) of
         {'match', [{Start,End}]} ->
-            Match = binary:part(Number, Start, End),
             Flow = wh_json:get_value(<<"doc">>, Pattern),
             case binary:part(Number, Start, End) of
                 <<>> when Capture =:= <<>> ->
