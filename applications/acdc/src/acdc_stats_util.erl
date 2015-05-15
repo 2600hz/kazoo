@@ -15,7 +15,6 @@
 
          ,get_query_limit/1
          ,db_name/1
-         ,prev_modb/1
         ]).
 
 -include("acdc.hrl").
@@ -51,14 +50,3 @@ get_query_limit(JObj) ->
 -spec db_name(ne_binary()) -> ne_binary().
 db_name(Account) ->
     wh_util:format_account_mod_id(Account).
-
--spec prev_modb(ne_binary()) -> ne_binary().
-prev_modb(Account) ->
-	{{Year, Month, _}, _} = calendar:now_to_universal_time(os:timestamp()),
-	prev_modb(Account, Year, Month-1).
-
--spec prev_modb(ne_binary(), calendar:year(), integer()) -> ne_binary().
-prev_modb(Account, Year, 0) ->
-	prev_modb(Account, Year-1, 12);
-prev_modb(Account, Year, Month) ->
-	wh_util:format_account_id(Account, Year, Month).
