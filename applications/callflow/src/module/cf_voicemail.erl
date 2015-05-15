@@ -1678,21 +1678,19 @@ store_recording(AttachmentName, DocId, Call, #mailbox{owner_id=OwnerId}, Storage
             end
     end.
 
--type url_fun() :: fun(() -> ne_binary()).
+-type store_url() :: ne_binary() | fun(() -> ne_binary()).
 
--spec try_store_recording(ne_binary(), ne_binary() | url_fun(), whapps_call:call()) ->
+-spec try_store_recording(ne_binary(), store_url(), whapps_call:call()) ->
                                  'ok' | {'error', whapps_call:call()}.
--spec try_store_recording(ne_binary(), ne_binary() | url_fun(), integer(), whapps_call:call()) ->
+-spec try_store_recording(ne_binary(), store_url(), integer(), whapps_call:call()) ->
                                  'ok' | {'error', whapps_call:call()}.
 try_store_recording(AttachmentName, Url, Call) ->
     Tries = ?MAILBOX_RETRY_STORAGE_TIMES(whapps_call:account_id(Call)),
     Funs = [{fun whapps_call:kvs_store/3, 'media_url', Url}],
     try_store_recording(AttachmentName, Url, Tries, whapps_call:exec(Funs, Call)).
 try_store_recording(_, _, 0, Call) -> {'error', Call};
-try_store_recording(AttachmentName, UrlFun, Tries, Call) when is_function(UrlFun) ->
-    try_store_recording(AttachmentName, UrlFun(), Tries, Call);
 try_store_recording(AttachmentName, Url, Tries, Call) ->
-    case whapps_call_command:b_store(AttachmentName, Url, <<"put">>, [wh_json:new()], 'true', Call) of
+    case whapps_call_command:b_store(AttachmentName, store_url(Url), <<"put">>, [wh_json:new()], 'true', Call) of
         {'ok', JObj} ->
             verify_stored_recording(AttachmentName, Url, Tries, Call, JObj);
         Other ->
@@ -1700,7 +1698,11 @@ try_store_recording(AttachmentName, Url, Tries, Call) ->
             retry_store(AttachmentName, Url, Tries, Call, Other)
     end.
 
--spec retry_store(ne_binary(), ne_binary(), pos_integer(), whapps_call:call(), any()) ->
+-spec store_url(store_url()) -> ne_binary().
+store_url(UrlFun) when is_function(UrlFun) -> UrlFun();
+store_url(Url) -> Url.
+
+-spec retry_store(ne_binary(), store_url(), pos_integer(), whapps_call:call(), any()) ->
                          'ok' | {'error', whapps_call:call()}.
 retry_store(AttachmentName, Url, Tries, Call, Error) ->
     timer:sleep(2000),
@@ -1710,7 +1712,7 @@ retry_store(AttachmentName, Url, Tries, Call, Error) ->
                         ,whapps_call:kvs_store('error_details', Error, Call)
                        ).
 
--spec verify_stored_recording(ne_binary(), ne_binary(), pos_integer(), whapps_call:call(), wh_json:object()) ->
+-spec verify_stored_recording(ne_binary(), store_url(), pos_integer(), whapps_call:call(), wh_json:object()) ->
                                      'ok' |
                                      {'error', whapps_call:call()}.
 verify_stored_recording(AttachmentName, Url, Tries, Call, JObj) ->
