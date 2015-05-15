@@ -96,7 +96,7 @@ most_recent_db_status(AccountId, AgentId) ->
 -spec prev_month_recent_db_status(ne_binary(), ne_binary()) ->
                                          {'ok', ne_binary()}.
 prev_month_recent_db_status(AccountId, AgentId) ->
-    case couch_mgr:get_results(acdc_stats_util:prev_modb(AccountId), <<"agent_stats/status_log">>, Opts) of
+    case couch_mgr:get_results(kazoo_modb_util:prev_year_month_mod(acdc_stats_util:db_name(AccountId)), <<"agent_stats/status_log">>, Opts) of
         {'ok', [StatusJObj]} -> {'ok', wh_json:get_value(<<"value">>, StatusJObj)};
         {'ok', []} -> {'ok', <<"unknown">>};
         {'error', 'not_found'} ->
