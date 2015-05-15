@@ -20,6 +20,7 @@
 
          ,get_account_id/1, get_account_db/1
          ,get_type/1, get_doc/1, get_id/1
+         ,get_action/1
         ]).
 
 -type action() :: 'created' | 'edited' | 'deleted'.
@@ -59,6 +60,12 @@ get_account_id(Prop) when is_list(Prop) ->
     props:get_value(<<"Account-ID">>, Prop);
 get_account_id(JObj) ->
     wh_json:get_value(<<"Account-ID">>, JObj).
+
+-spec get_action(api_terms()) -> api_binary().
+get_action(Prop) when is_list(Prop) ->
+    props:get_value(<<"Action">>, Prop);
+get_action(JObj) ->
+    wh_json:get_value(<<"Action">>, JObj).
 
 -spec get_account_db(api_terms()) -> api_binary().
 get_account_db(Prop) when is_list(Prop) ->
