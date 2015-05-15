@@ -133,11 +133,11 @@ load(DocId, Context, Options) ->
 
 load(_DocId, Context, _Options, 'error') -> Context;
 load(DocId, Context, Opts, _RespStatus) when is_binary(DocId) ->
-    Opener = case props:get_is_true('use_cache', Opts, 'true') of
-                 'true' ->  'open_cache_doc';
-                 'false' -> 'open_doc'
-             end,
-    case couch_mgr:Opener(cb_context:account_db(Context), DocId, Opts) of
+    OpenFun = case props:get_is_true('use_cache', Opts, 'true') of
+                  'true' ->  fun couch_mgr:open_cache_doc/3;
+                  'false' -> fun couch_mgr:open_doc/3
+              end,
+    case OpenFun(cb_context:account_db(Context), DocId, Opts) of
         {'error', Error} ->
             handle_couch_mgr_errors(Error, DocId, Context);
         {'ok', JObj} ->
