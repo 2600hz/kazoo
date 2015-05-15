@@ -438,7 +438,7 @@ send_reenable_req(Context, AccountId, Action) ->
 -spec handle_resp(cb_context:context(), wh_amqp_worker:request_return()) ->
                          cb_context:context().
 handle_resp(Context, {'ok', _Resp}) ->
-    lager:debug("received resp from update: ~p", [_Resp]),
+    lager:debug("received resp from update"),
     crossbar_util:response(<<"hooks updated">>, Context);
 handle_resp(Context, {'returned', _Request, BasicReturn}) ->
     lager:debug("no webhook apps running: ~p", [BasicReturn]),
