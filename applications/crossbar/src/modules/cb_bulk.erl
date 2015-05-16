@@ -80,10 +80,10 @@ validate(#cb_context{}=Context) ->
 maybe_load_docs(Context) ->
     JObj = cb_context:req_data(Context),
     Ids = sets:from_list(wh_json:get_value(<<"ids">>, JObj, [])),
-    case crossbar_doc:load(sets:to_list(Ids), Context) of
-        #cb_context{resp_status='success'}=C ->
-            maybe_follow_groups(Ids, C);
-        Else -> Else
+    Context1 = crossbar_doc:load(sets:to_list(Ids), Context),
+    case cb_context:resp_status(Context1) of
+        'success' -> maybe_follow_groups(Ids, Context1);
+        _Else -> Context1
     end.
 
 -spec maybe_follow_groups(set(), cb_context:context()) -> cb_context:context().
@@ -116,9 +116,10 @@ follow_group(JObj, JObjs, Ids, Context) ->
                                       'false' -> sets:add_element(Id, S)
                                   end
                           end, sets:new(), wh_json:get_keys(<<"endpoints">>, JObj)),
-    case crossbar_doc:load(sets:to_list(Members), Context) of
-        #cb_context{resp_status='success'}=C ->
-            NewJObjs = cb_context:doc(C),
+    Context1 = crossbar_doc:load(sets:to_list(Members), Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            NewJObjs = cb_context:doc(Context1),
             maybe_follow_groups(NewJObjs ++ JObjs
                                 ,sets:union(Ids, Members)
                                 ,Context);
@@ -302,7 +303,15 @@ run_binding(Binding, Payload, Id, Context) ->
 
 -spec import_results(ne_binary(), cb_context:context(), cb_context:context()) ->
                             cb_context:context().
-import_results(Id, #cb_context{resp_status='success'}=C, Context) ->
+import_results(Id, C, Context) ->
+    case cb_context:resp_status(C) of
+        'success' -> import_results_success(Id, C, Context);
+        _Error ->    import_results_error(Id, C, Context)
+    end.
+
+-spec import_results_success(ne_binary(), cb_context:context(), cb_context:context()) ->
+                                    cb_context:context().
+import_results_success(Id, C, Context) ->
     Doc  = cb_context:doc(C),
     Docs = cb_context:doc(Context),
     JObj = cb_context:resp_data(Context),
@@ -311,8 +320,11 @@ import_results(Id, #cb_context{resp_status='success'}=C, Context) ->
     cb_context:setters(Context
                        ,[{fun cb_context:set_resp_data/2, wh_json:set_value(Id, Resp, JObj)}
                          ,{fun cb_context:set_doc/2, [{Doc, DbDoc} | Docs]}
-                        ]);
-import_results(Id, C, Context) ->
+                        ]).
+
+-spec import_results_error(ne_binary(), cb_context:context(), cb_context:context()) ->
+                                  cb_context:context().
+import_results_error(Id, C, Context) ->
     Status    = cb_context:resp_status(C),
     ErrorCode = cb_context:resp_error_code(C),
     ErrorMsg  = cb_context:resp_error_msg(C),
