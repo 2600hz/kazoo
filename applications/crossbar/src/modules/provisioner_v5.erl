@@ -462,7 +462,7 @@ send_req('devices_post', JObj, AuthToken, AccountId, MACAddress) ->
     UrlString = req_uri('devices', AccountId, MACAddress),
     lager:debug("provisioning via ~s: ~s", [UrlString, Data]),
     Resp = ibrowse:send_req(UrlString, Headers, 'post', Data, HTTPOptions),
-    handle_device_resp(JObj, Resp, AccountId);
+    handle_resp(Resp);
 send_req('devices_delete', _, AuthToken, AccountId, MACAddress) ->
     Headers = req_headers(AuthToken),
     HTTPOptions = [],
@@ -523,45 +523,6 @@ device_payload(JObj) ->
        ,{<<"data">>, JObj}
       ]
      ).
-
--spec handle_device_resp(wh_json:object(), ibrowse_ret(), ne_binary()) -> 'ok'.
-handle_device_resp(Req, {'ok', "200", _, _}=Resp, AccountId) ->
-    Lines = wh_json:get_value([<<"settings">>, <<"lines">>], Req, wh_json:new()),
-    wh_json:foldl(
-        fun(_Line, LineData, Acc) ->
-            maybe_publish_check_sync(LineData, AccountId),
-            Acc
-        end
-        ,'ok'
-        ,Lines
-    ),
-    handle_resp(Resp);
-handle_device_resp(_Req, Resp, _AccountId) ->
-    handle_resp(Resp).
-
--spec maybe_publish_check_sync(wh_json:object(), ne_binary()) -> 'ok'.
--spec maybe_publish_check_sync(api_binary(), api_binary(), ne_binary()) -> 'ok'.
-maybe_publish_check_sync(LineData, AccountId) ->
-    lager:debug("maybe sending check sync"),
-    maybe_publish_check_sync(
-      wh_json:get_value([<<"sip">>, <<"realm">>], LineData)
-      ,wh_json:get_value([<<"sip">>, <<"username">>], LineData)
-      ,AccountId
-     ).
-
-maybe_publish_check_sync('undefined', Username, AccountId) ->
-    Realm = crossbar_util:get_account_realm(AccountId),
-    lager:debug("using account realm ~s", [Realm]),
-    maybe_publish_check_sync(Realm, Username, AccountId);
-maybe_publish_check_sync(_Realm, 'undefined', _) ->
-    lager:warning("did not send check sync username is undefined");
-maybe_publish_check_sync(Realm, Username, _) ->
-    lager:debug("sending check sync for ~s @ ~s", [Username, Realm]),
-    Req = [{<<"Realm">>, Realm}
-           ,{<<"Username">>, Username}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    wh_amqp_worker:cast(Req, fun wapi_switch:publish_check_sync/1).
 
 -spec handle_resp(ibrowse_ret()) -> 'ok'.
 handle_resp({'ok', "200", _, Resp}) ->

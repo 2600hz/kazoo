@@ -39,3 +39,16 @@ esoare
 Some devices support receiving SIP NOTIFY packets with `event` = `check-sync`. This is typically used to reboot the phone if the configuration has changed. Kazoo will generate the NOTIFY packet if the device is registered.
 
     curl -v -X POST -H "X-Auth-Token:{AUTH_TOKEN}" http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/sync
+
+
+One can also attempt `check-sync` while updating a device (in the same request) setting `"sync": true`:
+
+    curl -v -X POST -H "X-Auth-Token:{AUTH_TOKEN}" http://{SERVER}:8000/v{API version}/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID} -d '
+    {
+      "data": {
+          "sync": true,
+          …
+      }
+    }'
+
+If `"sync"` is set to `false` or is not defined, no `check-sync` will be attempted.

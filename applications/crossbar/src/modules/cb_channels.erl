@@ -297,7 +297,7 @@ account_summary(Context) ->
 %%--------------------------------------------------------------------
 -spec get_channels(cb_context:context(), wh_json:objects(), function()) -> cb_context:context().
 get_channels(Context, Devices, PublisherFun) ->
-    Realm = crossbar_util:get_account_realm(cb_context:account_id(Context)),
+    Realm = wh_util:get_account_realm(cb_context:account_id(Context)),
 
     Usernames = [Username
                  || JObj <- Devices,

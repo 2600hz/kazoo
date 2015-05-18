@@ -516,21 +516,23 @@ save(Context, [_|_]=JObjs, Options) ->
     JObjs0 = update_pvt_parameters(JObjs, Context),
     case couch_mgr:save_docs(cb_context:account_db(Context), JObjs0, Options) of
         {'error', Error} ->
-            IDs = [wh_json:get_value(<<"_id">>, J) || J <- JObjs],
+            IDs = [wh_doc:id(JObj) || JObj <- JObjs],
             handle_couch_mgr_errors(Error, IDs, Context);
         {'ok', JObj1} ->
             Context1 = handle_couch_mgr_success(JObj1, Context),
-            provisioner_util:maybe_send_contact_list(Context1)
+            _ = spawn('provisioner_util', 'maybe_send_contact_list', [Context1]),
+            Context1
     end;
 save(Context, JObj, Options) ->
     JObj0 = update_pvt_parameters(JObj, Context),
     case couch_mgr:save_doc(cb_context:account_db(Context), JObj0, Options) of
         {'error', Error} ->
-            DocId = wh_json:get_value(<<"_id">>, JObj0),
+            DocId = wh_doc:id(JObj0),
             handle_couch_mgr_errors(Error, DocId, Context);
         {'ok', JObj1} ->
             Context1 = handle_couch_mgr_success(JObj1, Context),
-            provisioner_util:maybe_send_contact_list(Context1)
+            _ = spawn('provisioner_util', 'maybe_send_contact_list', [Context1]),
+            Context1
     end.
 
 %%--------------------------------------------------------------------
@@ -563,7 +565,8 @@ ensure_saved(Context, JObj, Options) ->
             handle_couch_mgr_errors(Error, DocId, Context);
         {'ok', JObj1} ->
             Context1 = handle_couch_mgr_success(JObj1, Context),
-            provisioner_util:maybe_send_contact_list(Context1)
+            _ = spawn('provisioner_util', 'maybe_send_contact_list', [Context1]),
+            Context1
     end.
 
 %%--------------------------------------------------------------------
@@ -716,7 +719,8 @@ do_delete(Context, JObj, CouchFun) ->
                         ,[wh_doc:id(JObj), cb_context:account_db(Context)]
                        ),
             Context1 = handle_couch_mgr_success(JObj, Context),
-            provisioner_util:maybe_send_contact_list(Context1)
+            _ = spawn('provisioner_util', 'maybe_send_contact_list', [Context1]),
+            Context1
     end.
 
 %%--------------------------------------------------------------------

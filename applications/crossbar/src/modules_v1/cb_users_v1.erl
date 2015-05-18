@@ -285,7 +285,9 @@ validate_user(Context, UserId, ?HTTP_PATCH) ->
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _) ->
     _ = crossbar_util:maybe_refresh_fs_xml('user', Context),
-    crossbar_doc:save(Context).
+    Context1 = cb_modules_util:take_sync_field(Context),
+    _ = provisioner_util:maybe_sync_sip_data(Context1, 'user'),
+    crossbar_doc:save(Context1).
 
 -spec post(cb_context:context(), ne_binary(), path_token()) -> cb_context:context().
 post(Context, UserId, ?PHOTO) ->
@@ -315,13 +317,13 @@ patch(Context, _Id) ->
 %%--------------------------------------------------------------------
 -spec get_channels(cb_context:context()) -> cb_context:context().
 get_channels(Context) ->
-    Realm = crossbar_util:get_account_realm(cb_context:account_id(Context)),
+    Realm = wh_util:get_account_realm(cb_context:account_id(Context)),
     Usernames = [Username
                  || JObj <- cb_context:doc(Context),
-                    (Username = wh_json:get_value([<<"doc">>
-                                                   ,<<"sip">>
-                                                   ,<<"username">>
-                                                  ], JObj))
+                    (Username = kz_device:sip_username(
+                                  wh_json:get_value(<<"doc">>, JObj)
+                                 )
+                    )
                         =/= 'undefined'
                 ],
     Req = [{<<"Realm">>, Realm}

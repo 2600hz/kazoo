@@ -274,12 +274,14 @@ validate_user(Context, UserId, ?HTTP_PATCH) ->
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _) ->
     _ = crossbar_util:maybe_refresh_fs_xml('user', Context),
-    Context1 = crossbar_doc:save(Context),
-    case cb_context:resp_status(Context1) of
+    Context1 = cb_modules_util:take_sync_field(Context),
+    _ = provisioner_util:maybe_sync_sip_data(Context1, 'user'),
+    Context2 = crossbar_doc:save(Context1),
+    case cb_context:resp_status(Context2) of
         'success' ->
-            maybe_update_devices_presence(Context1),
-            Context1;
-        _ -> Context1
+            _ = maybe_update_devices_presence(Context2),
+            Context2;
+        _ -> Context2
     end.
 
 -spec post(cb_context:context(), ne_binary(), path_token()) -> cb_context:context().

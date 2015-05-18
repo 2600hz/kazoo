@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% Common functions for the provisioner modules
@@ -12,64 +12,41 @@
 
 -include("../crossbar.hrl").
 
--export([get_mac_address/1]).
--export([get_old_mac_address/1]).
 -export([maybe_provision/1]).
 -export([maybe_delete_provision/1]).
 -export([maybe_update_account/1]).
 -export([maybe_delete_account/1]).
 -export([maybe_send_contact_list/1]).
 -export([get_provision_defaults/1]).
--export([delete_full_provision/2]).
 -export([is_mac_address_in_use/2]).
+-export([maybe_sync_sip_data/2]).
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".devices">>).
 -define(PROVISIONER_CONFIG, <<"provisioner">>).
 -define(TEMPLATE_ATTCH, <<"template">>).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec get_mac_address(cb_context:context()) -> 'undefined' | string().
-get_mac_address(Context) ->
-    case wh_json:get_ne_value(<<"mac_address">>, cb_context:doc(Context)) of
-        'undefined' -> 'undefined';
-        MACAddress ->
-            re:replace(wh_util:to_list(MACAddress)
-                       ,"[^0-9a-fA-F]"
-                       ,""
-                       ,[{'return', 'list'}
-                         ,'global'
-                        ]
-                      )
-    end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec get_old_mac_address(cb_context:context()) -> 'undefined' | string().
+-spec get_mac_address(cb_context:context()) -> api_binary().
+get_mac_address(Context) ->
+    MACAddress = wh_json:get_ne_binary_value(<<"mac_address">>, cb_context:doc(Context)),
+    cleanse_mac_address(MACAddress).
+
+-spec get_old_mac_address(cb_context:context()) -> api_binary().
 get_old_mac_address(Context) ->
-    case cb_context:fetch(Context, 'db_doc') of
-        'undefined' -> 'undefined';
-        JObj ->
-            case wh_json:get_ne_value(<<"mac_address">>, JObj) of
-                'undefined' -> 'undefined';
-                MACAddress ->
-                    re:replace(wh_util:to_list(MACAddress)
-                               ,"[^0-9a-fA-F]"
-                               ,""
-                               ,[{'return', 'list'}
-                                 ,'global'
-                                ]
-                              )
-            end
-    end.
+    MACAddress =
+        case cb_context:fetch(Context, 'db_doc') of
+            'undefined' -> 'undefined';
+            JObj ->
+                wh_json:get_ne_value(<<"mac_address">>, JObj)
+        end,
+    cleanse_mac_address(MACAddress).
+
+-spec cleanse_mac_address(api_binary()) -> api_binary().
+cleanse_mac_address('undefined') -> 'undefined';
+cleanse_mac_address(MACAddress) ->
+    re:replace(MACAddress, <<"[^0-9a-fA-F]">>, <<>>, ['global'
+                                                      ,{'return','binary'}
+                                                     ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -83,21 +60,21 @@ maybe_provision(Context) ->
     maybe_provision(Context, cb_context:resp_status(Context)).
 maybe_provision(Context, 'success') ->
     MACAddress = get_mac_address(Context),
-    case MACAddress =/= 'undefined' andalso get_provisioning_type() of
+    case MACAddress =/= 'undefined'
+        andalso get_provisioning_type()
+    of
         <<"super_awesome_provisioner">> ->
-            _ = spawn(fun() ->
-                              do_full_provisioner_provider(MACAddress, Context),
-                              do_full_provision(MACAddress, Context)
-                      end),
+            _ = do_full_provisioner_provider(Context),
+            _ = do_full_provision(MACAddress, Context),
             'true';
         <<"awesome_provisioner">> ->
-            _ = spawn(fun() -> do_awesome_provision(MACAddress, Context) end),
+            _ = do_awesome_provision(Context),
             'true';
         <<"simple_provisioner">>  ->
-            _ = spawn(fun() -> do_simple_provision(MACAddress, Context) end),
+            _ = do_simple_provision(MACAddress, Context),
             'true';
         <<"provisioner_v5">>  ->
-            maybe_provision_v5(Context, cb_context:req_verb(Context)),
+            _ = maybe_provision_v5(Context, cb_context:req_verb(Context)),
             'true';
         _ -> 'false'
     end;
@@ -105,22 +82,24 @@ maybe_provision(_Context, _Status) -> 'false'.
 
 -spec maybe_provision_v5(cb_context:context(), ne_binary()) -> 'ok'.
 maybe_provision_v5(Context, ?HTTP_PUT) ->
-    JObj = cb_context:doc(Context),
-    AuthToken =  cb_context:auth_token(Context),
-    _ = spawn('provisioner_v5', 'update_device', [JObj, AuthToken]),
+    AuthToken = cb_context:auth_token(Context),
+    NewDevice = cb_context:doc(Context),
+    _ = provisioner_v5:update_device(NewDevice, AuthToken),
     'ok';
+
 maybe_provision_v5(Context, ?HTTP_POST) ->
-    JObj = cb_context:doc(Context),
-    AuthToken =  cb_context:auth_token(Context),
+    AuthToken = cb_context:auth_token(Context),
+    NewDevice = cb_context:doc(Context),
     NewAddress = cb_context:req_value(Context, <<"mac_address">>),
-    OldAddress = wh_json:get_ne_value(<<"mac_address">>, cb_context:fetch(Context, 'db_doc')),
+    OldDevice = cb_context:fetch(Context, 'db_doc'),
+    OldAddress = wh_json:get_ne_value(<<"mac_address">>, OldDevice),
     case NewAddress =:= OldAddress of
         'true' ->
-            _ = spawn('provisioner_v5', 'update_device', [JObj, AuthToken]);
+            _ = provisioner_v5:update_device(NewDevice, AuthToken);
         'false' ->
-            JObj1 = wh_json:set_value(<<"mac_address">>, OldAddress, JObj),
-            _ = spawn('provisioner_v5', 'delete_device', [JObj1, AuthToken]),
-            _ = spawn('provisioner_v5', 'update_device', [JObj, AuthToken])
+            NewDevice1 = wh_json:set_value(<<"mac_address">>, OldAddress, NewDevice),
+            _ = provisioner_v5:delete_device(NewDevice1, AuthToken),
+            _ = provisioner_v5:update_device(NewDevice, AuthToken)
     end,
     'ok'.
 
@@ -136,17 +115,16 @@ maybe_delete_provision(Context) ->
     maybe_delete_provision(Context, cb_context:resp_status(Context)).
 maybe_delete_provision(Context, 'success') ->
     MACAddress = get_mac_address(Context),
-
     case MACAddress =/= 'undefined'
         andalso get_provisioning_type()
     of
         <<"super_awesome_provisioner">> ->
-            _ = spawn(?MODULE, 'delete_full_provision', [MACAddress, Context]),
+            _ = delete_full_provision(MACAddress, Context),
             'true';
         <<"provisioner_v5">>  ->
-            _ = spawn('provisioner_v5', 'delete_device', [cb_context:doc(Context)
-                                                          ,cb_context:auth_token(Context)
-                                                         ]),
+            _ = provisioner_v5:delete_device(cb_context:doc(Context)
+                                             ,cb_context:auth_token(Context)
+                                            ),
             'true';
         _ ->
             'false'
@@ -166,10 +144,10 @@ maybe_update_account(Context) ->
     of
         'false' -> 'false';
         <<"provisioner_v5">> ->
-            _ = spawn('provisioner_v5', 'update_account', [cb_context:account_id(Context)
-                                                           ,cb_context:doc(Context)
-                                                           ,cb_context:auth_token(Context)
-                                                          ]),
+            _ = provisioner_v5:update_account(cb_context:account_id(Context)
+                                              ,cb_context:doc(Context)
+                                              ,cb_context:auth_token(Context)
+                                             ),
             'true';
         _ -> 'false'
     end.
@@ -187,39 +165,39 @@ maybe_delete_account(Context) ->
     of
         'false' -> 'false';
         <<"super_awesome_provisioner">> ->
-            _ = spawn(fun() -> delete_account(Context) end),
+            _ = delete_account(Context),
             'true';
         <<"provisioner_v5">> ->
-            _ = spawn('provisioner_v5', 'delete_account', [cb_context:account_id(Context)
-                                                           ,cb_context:auth_token(Context)
-                                                          ]),
+            _ = provisioner_v5:delete_account(cb_context:account_id(Context)
+                                              ,cb_context:auth_token(Context)
+                                             ),
             'true';
         _ -> 'false'
     end.
 
--spec maybe_send_contact_list(cb_context:context()) -> cb_context:context().
--spec maybe_send_contact_list(cb_context:context(), crossbar_status()) -> cb_context:context().
+-spec maybe_send_contact_list(cb_context:context()) -> 'ok'.
+-spec maybe_send_contact_list(cb_context:context(), crossbar_status()) -> 'ok'.
 maybe_send_contact_list(Context) ->
     maybe_send_contact_list(Context, cb_context:resp_status(Context)).
 maybe_send_contact_list(Context, 'success') ->
-    _ = case cb_context:is_context(Context)
-            andalso get_provisioning_type()
-        of
-            <<"super_awesome_provisioner">> ->
-                spawn(fun() -> do_full_provision_contact_list(Context) end);
-            <<"provisioner_v5">> ->
-                spawn('provisioner_v5', 'update_user', [cb_context:account_id(Context)
-                                                        ,cb_context:doc(Context)
-                                                        ,cb_context:auth_token(Context)
-                                                       ]);
-            _ -> 'ok'
-        end,
-    Context;
-maybe_send_contact_list(Context, _Status) ->
-    Context.
+    case cb_context:is_context(Context)
+        andalso get_provisioning_type()
+    of
+        <<"super_awesome_provisioner">> ->
+            _ = do_full_provision_contact_list(Context),
+            'ok';
+        <<"provisioner_v5">> ->
+            _ = provisioner_v5:update_user(cb_context:account_id(Context)
+                                           ,cb_context:doc(Context)
+                                           ,cb_context:auth_token(Context)
+                                          ),
+            'ok';
+        _ -> 'ok'
+    end;
+maybe_send_contact_list(_Context, _Status) -> 'ok'.
 
--spec do_full_provisioner_provider(any(), cb_context:context()) -> boolean().
-do_full_provisioner_provider(_, Context) ->
+-spec do_full_provisioner_provider(cb_context:context()) -> boolean().
+do_full_provisioner_provider(Context) ->
     do_full_provision_contact_list(cb_context:account_id(Context), cb_context:account_db(Context)).
 
 -spec do_full_provision_contact_list(cb_context:context()) -> boolean().
@@ -323,6 +301,7 @@ is_mac_address_in_use(Context, MacAddress) ->
     of
         <<"provisioner_v5">> ->
             AuthToken = cb_context:auth_token(Context),
+            %% Note: following call will take a "long" time
             'false' =/= provisioner_v5:check_MAC(MacAddress, AuthToken);
         _ -> 'false'
     end.
@@ -333,13 +312,13 @@ is_mac_address_in_use(Context, MacAddress) ->
 %% post data to a provisiong server
 %% @end
 %%--------------------------------------------------------------------
--spec do_simple_provision(string(), cb_context:context()) -> boolean().
+-spec do_simple_provision(ne_binary(), cb_context:context()) -> boolean().
 do_simple_provision(MACAddress, Context) ->
     JObj = cb_context:doc(Context),
     case whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_url">>) of
         'undefined' -> 'false';
         Url ->
-            AccountRealm = crossbar_util:get_account_realm(Context),
+            AccountRealm = wh_util:get_account_realm(cb_context:account_id(Context)),
             Headers = props:filter_undefined(
                         [{"Host", whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_host">>)}
                          ,{"Referer", whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_referer">>)}
@@ -374,7 +353,7 @@ delete_account(Context) ->
     delete_account(cb_context:account_id(Context)).
 
 
--spec delete_full_provision(string(), cb_context:context() | wh_json:object()) -> boolean().
+-spec delete_full_provision(ne_binary(), cb_context:context() | wh_json:object()) -> boolean().
 delete_full_provision(MACAddress, #cb_context{}=Context) ->
     case get_merged_device(MACAddress, Context) of
         {'ok', Context1} ->
@@ -382,15 +361,15 @@ delete_full_provision(MACAddress, #cb_context{}=Context) ->
     end;
 delete_full_provision(MACAddress, JObj) ->
     PartialURL = <<(wh_json:get_binary_value(<<"account_id">>, JObj))/binary
-                   ,"/", (wh_util:to_binary(MACAddress))/binary
+                   ,"/", MACAddress/binary
                  >>,
     maybe_send_to_full_provisioner(PartialURL).
 
--spec do_full_provision(string(), cb_context:context() | wh_json:object()) -> boolean().
+-spec do_full_provision(ne_binary(), cb_context:context() | wh_json:object()) -> boolean().
 do_full_provision(MACAddress, #cb_context{}=Context) ->
     case get_merged_device(MACAddress, Context) of
         {'ok', Context1} ->
-            OldMACAddress = provisioner_util:get_old_mac_address(Context),
+            OldMACAddress = get_old_mac_address(Context),
             case OldMACAddress =/= MACAddress
                 andalso OldMACAddress =/= 'undefined'
             of
@@ -401,7 +380,7 @@ do_full_provision(MACAddress, #cb_context{}=Context) ->
     end;
 do_full_provision(MACAddress, JObj) ->
     PartialURL = <<(wh_json:get_binary_value(<<"account_id">>, JObj))/binary
-                   ,"/", (wh_util:to_binary(MACAddress))/binary
+                   ,"/", MACAddress/binary
                  >>,
     maybe_send_to_full_provisioner(PartialURL, JObj).
 
@@ -478,14 +457,8 @@ send_to_full_provisioner('post', FullUrl, JObj) ->
     lager:debug("response from server: ~p", [Res]),
     'true'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec do_awesome_provision(string(), cb_context:context()) -> boolean().
-do_awesome_provision(_MACAddress, Context) ->
+-spec do_awesome_provision(cb_context:context()) -> boolean().
+do_awesome_provision(Context) ->
     case get_template(Context) of
         {'error', _} -> 'false';
         {'ok', JObj} ->
@@ -499,19 +472,19 @@ do_awesome_provision(_MACAddress, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_merged_device(string(), cb_context:context()) ->
+-spec get_merged_device(ne_binary(), cb_context:context()) ->
                                {'ok', cb_context:context()}.
 get_merged_device(MACAddress, Context) ->
     {'ok', Data} = merge_device(MACAddress, Context),
     {'ok', cb_context:set_doc(Context, Data)}.
 
--spec merge_device(string(), cb_context:context()) ->
+-spec merge_device(ne_binary(), cb_context:context()) ->
                           {'ok', wh_json:object()}.
 merge_device(MACAddress, Context) ->
     JObj = cb_context:doc(Context),
     AccountId = cb_context:account_id(Context),
 
-    Routines = [fun(J) -> wh_json:set_value(<<"mac_address">>, wh_util:to_binary(MACAddress), J) end
+    Routines = [fun(J) -> wh_json:set_value(<<"mac_address">>, MACAddress, J) end
                 ,fun(J) ->
                          OwnerId = wh_json:get_ne_value(<<"owner_id">>, JObj),
                          Owner = get_owner(OwnerId, AccountId),
@@ -796,3 +769,66 @@ get_provisioning_type() ->
             lager:debug("using ~p for provisioner_type", [?MOD_CONFIG_CAT]),
             Result
     end.
+
+%% @public
+-spec maybe_sync_sip_data(cb_context:context(), 'user' | 'device') -> 'ok'.
+-spec maybe_sync_sip_data(cb_context:context(), 'user' | 'device', boolean()) -> 'ok'.
+maybe_sync_sip_data(Context, Type) ->
+    ShouldSync = cb_context:fetch(Context, 'sync'),
+    maybe_sync_sip_data(Context, Type, ShouldSync).
+maybe_sync_sip_data(_Context, _Type, 'false') -> 'ok';
+maybe_sync_sip_data(Context, 'device', 'true') ->
+    NewDevice = cb_context:doc(Context),
+    OldDevice = cb_context:fetch(Context, 'db_doc'),
+    OldUsername = kz_device:sip_username(OldDevice),
+    case kz_device:sip_username(NewDevice) =/= OldUsername
+        orelse kz_device:sip_password(NewDevice) =/= kz_device:sip_password(OldDevice)
+    of
+        'false' -> 'ok';
+        'true' ->
+            Realm = wh_util:get_account_realm(cb_context:account_id(Context)),
+            send_check_sync(OldUsername, Realm, cb_context:req_id(Context))
+    end;
+maybe_sync_sip_data(Context, 'user', 'true') ->
+    Realm = wh_util:get_account_realm(cb_context:account_id(Context)),
+    Req = [{<<"Realm">>, Realm}
+           ,{<<"Fields">>, [<<"Username">>]}
+          ],
+    ReqResp = whapps_util:amqp_pool_request(Req
+                                            ,fun wapi_registration:publish_query_req/1
+                                            ,fun wapi_registration:query_resp_v/1
+                                           ),
+    case ReqResp of
+        {'error', _E} -> lager:debug("no devices to send check sync to for realm ~s", [Realm]);
+        {'timeout', _} -> lager:debug("timed out query for fetching devices for ~s", [Realm]);
+        {'ok', JObj} ->
+            lists:foreach(fun(J) ->
+                                  Username = wh_json:get_value(<<"Username">>, J),
+                                  send_check_sync(Username, Realm, 'undefined')
+                          end
+                          ,wh_json:get_value(<<"Fields">>, JObj)
+                         )
+    end.
+
+%% @private
+-spec send_check_sync(api_binary(), api_binary(), api_binary()) -> 'ok'.
+send_check_sync('undefined', _Realm, _MsgId) ->
+    lager:warning("did not send check sync: username is undefined");
+send_check_sync(_Username, 'undefined', _MsgId) ->
+    lager:warning("did not send check sync: realm is undefined");
+send_check_sync(Username, Realm, MsgId) ->
+    lager:debug("sending check sync for ~s @ ~s", [Username, Realm]),
+    publish_check_sync(MsgId, [{<<"Realm">>, Realm}
+                               ,{<<"Username">>, Username}
+                               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                              ]).
+
+-spec publish_check_sync(wh_proplist()) -> 'ok'.
+-spec publish_check_sync(api_binary(), wh_proplist()) -> 'ok'.
+publish_check_sync('undefined', Req) ->
+    publish_check_sync(Req);
+publish_check_sync(MsgId, Req) ->
+    publish_check_sync([{<<"Msg-ID">>, MsgId} | Req]).
+
+publish_check_sync(Req) ->
+    wh_amqp_worker:cast(Req, fun wapi_switch:publish_check_sync/1).

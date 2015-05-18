@@ -23,7 +23,6 @@
          ,post/2
          ,delete/2
          ,lookup_regs/1
-         ,registration_update/1
         ]).
 
 -include("../crossbar.hrl").
@@ -180,11 +179,15 @@ post(Context, DeviceId) ->
     case changed_mac_address(crossbar_doc:load_merge(DeviceId, Context)) of
         'true' ->
             _ = crossbar_util:maybe_refresh_fs_xml('device', Context),
-            Context1 = crossbar_doc:save(Context),
-            _ = maybe_aggregate_device(DeviceId, Context1),
-            _ = registration_update(Context),
-            _ = provisioner_util:maybe_provision(Context1),
-            Context1;
+            Context1 = cb_modules_util:take_sync_field(Context),
+            Context2 = crossbar_doc:save(Context1),
+            _ = maybe_aggregate_device(DeviceId, Context2),
+            _ = spawn(fun () ->
+                              _ = provisioner_util:maybe_provision(Context2),
+                              _ = provisioner_util:maybe_sync_sip_data(Context1, 'device'),
+                              _ = crossbar_util:flush_registration(Context)
+                      end),
+            Context2;
         'false' ->
             error_used_mac_address(Context)
     end.
@@ -193,52 +196,21 @@ post(Context, DeviceId) ->
 put(Context) ->
     Context1 = crossbar_doc:save(Context),
     _ = maybe_aggregate_device('undefined', Context1),
-    _ = provisioner_util:maybe_provision(Context1),
+    _ = spawn('provisioner_util', 'maybe_provision', [Context1]),
     Context1.
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, DeviceId) ->
     _ = crossbar_util:refresh_fs_xml(Context),
     Context1 = crossbar_doc:delete(Context),
-    _ = registration_update(Context),
-    _ = provisioner_util:maybe_delete_provision(Context),
+    _ = crossbar_util:flush_registration(Context),
+    _ = spawn('provisioner_util', 'maybe_delete_provision', [Context]),
     _ = maybe_remove_aggregate(DeviceId, Context),
     Context1.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec registration_update(cb_context:context()) -> 'ok'.
-registration_update(Context) ->
-    OldDevice = cb_context:fetch(Context, 'db_doc'),
-    NewDevice = cb_context:doc(Context),
-
-    maybe_flush_registration_on_password(Context, OldDevice, NewDevice).
-
--spec maybe_flush_registration_on_password(cb_context:context(), wh_json:object(), wh_json:object()) ->
-                                                  'ok'.
-maybe_flush_registration_on_password(Context, OldDevice, NewDevice) ->
-    case kz_device:sip_password(OldDevice) =:= kz_device:sip_password(NewDevice) of
-        'true' -> maybe_flush_registration_on_username(Context, OldDevice, NewDevice);
-        'false' ->
-            lager:debug("the SIP password has changed, sending a registration flush"),
-            flush_registration(Context, kz_device:sip_username(OldDevice))
-    end.
-
--spec maybe_flush_registration_on_username(cb_context:context(), wh_json:object(), wh_json:object()) ->
-                                                  'ok'.
-maybe_flush_registration_on_username(Context, OldDevice, NewDevice) ->
-    case kz_device:sip_username(OldDevice) =:= kz_device:sip_username(NewDevice) of
-        'true' -> 'ok';
-        'false' ->
-            lager:debug("the SIP username has changed, sending a registration flush for both"),
-            flush_registration(Context, kz_device:sip_username(OldDevice)),
-            flush_registration(Context, kz_device:sip_username(NewDevice))
-    end.
-
--spec flush_registration(cb_context:context(), ne_binary()) -> 'ok'.
-flush_registration(Context, Username) ->
-    crossbar_util:flush_registration(Username, crossbar_util:get_account_realm(Context)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -327,7 +299,7 @@ prepare_outbound_flags(DeviceId, Context) ->
 
 -spec prepare_device_realm(api_binary(), cb_context:context()) -> cb_context:context().
 prepare_device_realm(DeviceId, Context) ->
-    AccountRealm = crossbar_util:get_account_realm(Context),
+    AccountRealm = wh_util:get_account_realm(cb_context:account_id(Context)),
     Realm = cb_context:req_value(Context, [<<"sip">>, <<"realm">>], AccountRealm),
     case AccountRealm =:= Realm of
         'true' ->
@@ -467,7 +439,7 @@ load_device(DeviceId, Context) ->
 %%--------------------------------------------------------------------
 -spec load_device_status(cb_context:context()) -> cb_context:context().
 load_device_status(Context) ->
-    AccountRealm = crossbar_util:get_account_realm(Context),
+    AccountRealm = wh_util:get_account_realm(cb_context:account_id(Context)),
     RegStatuses = lookup_regs(AccountRealm),
     lager:debug("reg statuses: ~p", [RegStatuses]),
     crossbar_util:response(RegStatuses, Context).

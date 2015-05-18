@@ -637,8 +637,7 @@ ensure_aggregate_devices(Accounts).
 -spec ensure_aggregate_device(ne_binary()) -> 'ok'.
 ensure_aggregate_device(Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-    AccountRealm = crossbar_util:get_account_realm(AccountDb, AccountId),
+    AccountRealm = wh_util:get_account_realm(AccountDb),
     case couch_mgr:get_results(AccountDb, ?DEVICES_CB_LIST, ['include_docs']) of
         {'ok', Devices} ->
             _ = remove_aggregate_devices(AccountDb, AccountRealm, Devices),

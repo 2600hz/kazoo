@@ -37,11 +37,8 @@
          ,response_auth/2
          ,response_auth/3
         ]).
--export([get_account_realm/1
-         ,get_account_realm/2
-        ]).
 -export([flush_registrations/1
-         ,flush_registration/2
+         ,flush_registration/1, flush_registration/2
         ]).
 -export([move_account/2]).
 -export([get_descendants/1]).
@@ -326,32 +323,6 @@ response_db_missing(Context) ->
 response_db_fatal(Context) ->
     response('fatal', <<"datastore fatal error">>, 503, Context).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Retrieves the account realm
-%% @end
-%%--------------------------------------------------------------------
--spec get_account_realm(ne_binary() | cb_context:context()) -> api_binary().
--spec get_account_realm(api_binary(), ne_binary()) -> api_binary().
-
-get_account_realm(AccountId) when is_binary(AccountId) ->
-    get_account_realm(wh_util:format_account_id(AccountId, 'encoded'), AccountId);
-get_account_realm(Context) ->
-    Db = cb_context:account_db(Context),
-    AccountId = cb_context:account_id(Context),
-    get_account_realm(Db, AccountId).
-
-get_account_realm('undefined', _) -> 'undefined';
-get_account_realm(Db, AccountId) ->
-    case couch_mgr:open_cache_doc(Db, AccountId) of
-        {'ok', JObj} ->
-            kz_account:realm(JObj);
-        {'error', R} ->
-            lager:debug("error while looking up account realm: ~p", [R]),
-            'undefined'
-    end.
-
 -spec flush_registrations(ne_binary() | cb_context:context()) -> 'ok'.
 flush_registrations(<<_/binary>> = Realm) ->
     FlushCmd = [{<<"Realm">>, Realm}
@@ -359,10 +330,11 @@ flush_registrations(<<_/binary>> = Realm) ->
                ],
     whapps_util:amqp_pool_send(FlushCmd, fun wapi_registration:publish_flush/1);
 flush_registrations(Context) ->
-    flush_registrations(crossbar_util:get_account_realm(Context)).
+    flush_registrations(wh_util:get_account_realm(cb_context:account_id(Context))).
 
 -spec flush_registration(api_binary(), ne_binary() | cb_context:context()) -> 'ok'.
-flush_registration('undefined', _Realm) -> 'ok';
+flush_registration('undefined', _Realm) ->
+    lager:debug("did not flush registration: username is undefined");
 flush_registration(Username, <<_/binary>> = Realm) ->
     FlushCmd = [{<<"Realm">>, Realm}
                 ,{<<"Username">>, Username}
@@ -370,7 +342,38 @@ flush_registration(Username, <<_/binary>> = Realm) ->
                ],
     whapps_util:amqp_pool_send(FlushCmd, fun wapi_registration:publish_flush/1);
 flush_registration(Username, Context) ->
-    flush_registration(Username, get_account_realm(Context)).
+    Realm = wh_util:get_account_realm(cb_context:account_id(Context)),
+    flush_registration(Username, Realm).
+
+%% @public
+-spec flush_registration(cb_context:context()) -> 'ok'.
+flush_registration(Context) ->
+    OldDevice = cb_context:fetch(Context, 'db_doc'),
+    NewDevice = cb_context:doc(Context),
+    AccountId = cb_context:account_id(Context),
+    Realm = wh_util:get_account_realm(AccountId),
+    maybe_flush_registration_on_password(Realm, OldDevice, NewDevice).
+
+-spec maybe_flush_registration_on_password(api_binary(), wh_json:object(), wh_json:object()) -> 'ok'.
+maybe_flush_registration_on_password(Realm, OldDevice, NewDevice) ->
+    case kz_device:sip_password(OldDevice) =:= kz_device:sip_password(NewDevice) of
+        'true' -> maybe_flush_registration_on_username(Realm, OldDevice, NewDevice);
+        'false' ->
+            lager:debug("the SIP password has changed, sending a registration flush"),
+            flush_registration(kz_device:sip_username(OldDevice), Realm)
+    end.
+
+-spec maybe_flush_registration_on_username(api_binary(), wh_json:object(), wh_json:object()) -> 'ok'.
+maybe_flush_registration_on_username(Realm, OldDevice, NewDevice) ->
+    OldUsername = kz_device:sip_username(OldDevice),
+
+    case kz_device:sip_username(NewDevice) of
+        OldUsername -> 'ok';
+        NewUsername ->
+            lager:debug("the SIP username has changed, sending a registration flush for both"),
+            flush_registration(OldUsername, Realm),
+            flush_registration(NewUsername, Realm)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -379,10 +382,10 @@ flush_registration(Username, Context) ->
 %%--------------------------------------------------------------------
 -spec move_account(ne_binary(), ne_binary()) ->
                           {'ok', wh_json:object()} |
-                          {'error',any()}.
+                          {'error', _}.
 -spec move_account(ne_binary(), ne_binary(), wh_json:object(), ne_binaries()) ->
                           {'ok', wh_json:object()} |
-                          {'error',any()}.
+                          {'error', _}.
 move_account(<<_/binary>> = AccountId, <<_/binary>> = ToAccount) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case validate_move(AccountId, ToAccount, AccountDb) of
@@ -978,20 +981,20 @@ format_emergency_caller_id_number(Context) ->
     end.
 
 %% @public
--spec maybe_refresh_fs_xml('user' | 'device', cb_context:context()) -> 'ok'.
+-type refresh_type() :: 'user' | 'device' | 'sys_info'.
+
+-spec maybe_refresh_fs_xml(refresh_type(), cb_context:context()) -> 'ok'.
 maybe_refresh_fs_xml(Kind, Context) ->
     DbDoc = cb_context:fetch(Context, 'db_doc'),
     Doc = cb_context:doc(Context),
     Precondition =
-        (wh_json:get_value(<<"presence_id">>, DbDoc) =/=
-             wh_json:get_value(<<"presence_id">>, Doc)
-        )
+        (kz_device:presence_id(DbDoc) =/= kz_device:presence_id(Doc))
         or (wh_json:get_value([<<"media">>, <<"encryption">>, <<"enforce_security">>], DbDoc) =/=
                 wh_json:get_value([<<"media">>, <<"encryption">>, <<"enforce_security">>], Doc)
            ),
     maybe_refresh_fs_xml(Kind, Context, Precondition).
 
--spec maybe_refresh_fs_xml('user' | 'device', cb_context:context(), boolean()) -> 'ok'.
+-spec maybe_refresh_fs_xml(refresh_type(), cb_context:context(), boolean()) -> 'ok'.
 maybe_refresh_fs_xml('user', _Context, 'false') -> 'ok';
 maybe_refresh_fs_xml('user', Context, 'true') ->
     Doc = cb_context:doc(Context),
@@ -1073,6 +1076,7 @@ map_server(Server, Acc) ->
     Name = wh_json:get_value(<<"server_name">>, Server),
     wh_json:set_value(Name, Server, Acc).
 
+%% @public
 -spec refresh_fs_xml(cb_context:context()) -> 'ok'.
 refresh_fs_xml(Context) ->
     Realm = wh_util:get_account_realm(cb_context:account_db(Context)),
