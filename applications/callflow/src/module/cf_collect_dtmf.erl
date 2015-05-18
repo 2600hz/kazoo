@@ -47,7 +47,7 @@ maybe_collect_more_digits(Data, Call, AlreadyCollected) ->
     maybe_collect_more_digits(Data, Call, AlreadyCollected, AlreadyCollectedSize, MaxDigits),
     cf_exe:continue(Call).
 
--spec maybe_collect_more_digits(wh_json:object(), whapps_call:call(), binary(), non_neg_integer(), non_neg_integer()) -> 'ok'.
+-spec maybe_collect_more_digits(wh_json:object(), whapps_call:call(), binary(), non_neg_integer(), pos_integer()) -> 'ok'.
 maybe_collect_more_digits(Data, Call, AlreadyCollected, ACS, Max) when ACS >= Max ->
     lager:debug("early DTMF met collection criteria, not collecting any more digits"),
     <<Head:Max/binary, _/binary>> = AlreadyCollected,
@@ -57,7 +57,7 @@ maybe_collect_more_digits(Data, Call, AlreadyCollected, ACS, Max) when ACS >= Ma
 maybe_collect_more_digits(Data, Call, AlreadyCollected, ACS, Max) ->
     collect_more_digits(Data, Call, AlreadyCollected, Max-ACS).
 
--spec collect_more_digits(wh_json:object(), whapps_call:call(), pos_integer(), binary()) -> 'ok'.
+-spec collect_more_digits(wh_json:object(), whapps_call:call(), binary(), pos_integer()) -> 'ok'.
 collect_more_digits(Data, Call, AlreadyCollected, MaxDigits) ->
     case whapps_call_command:collect_digits(MaxDigits
                                             ,collect_timeout(Data)
