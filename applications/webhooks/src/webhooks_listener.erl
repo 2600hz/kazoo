@@ -86,7 +86,7 @@ handle_config(JObj, Srv, <<"doc_edited">>) ->
         'undefined' -> find_and_update_hook(JObj, Srv);
         HookId ->
             {'ok', Hook} = couch_mgr:open_cache_doc(?KZ_WEBHOOKS_DB, HookId),
-            case wh_json:is_true(<<"enabled">>, Hook, 'true') of
+            case kzd_webhook:is_enabled(Hook) of
                 'true' ->
                     gen_listener:cast(Srv, {'update_hook', webhooks_util:jobj_to_rec(Hook)});
                 'false' ->
@@ -180,12 +180,7 @@ check_failure(AccountId, HookId, Count) ->
 disable_hook(AccountId, HookId) ->
     case couch_mgr:open_cache_doc(?KZ_WEBHOOKS_DB, HookId) of
         {'ok', HookJObj} ->
-            Disabled =
-                wh_json:set_values([{<<"enabled">>, 'false'}
-                                    ,{<<"pvt_disabled_message">>, <<"too many failed attempts">>}
-                                   ]
-                                   ,HookJObj
-                                  ),
+            Disabled = kzd_webhook:disable(HookJObj, <<"too many failed attempts">>),
             _ = couch_mgr:ensure_saved(?KZ_WEBHOOKS_DB, Disabled),
             filter_cache(AccountId, HookId),
             lager:debug("disabled and saved ~s/~s", [AccountId, HookId]);

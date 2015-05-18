@@ -16,7 +16,7 @@
          ,validate/1, validate/2, validate/3
          ,put/1
          ,post/2
-         ,patch/2
+         ,patch/1, patch/2
          ,delete/2
         ]).
 
@@ -30,6 +30,9 @@
 -define(ATTEMPTS_BY_ACCOUNT, <<"webhooks/attempts_by_time_listing">>).
 -define(ATTEMPTS_BY_HOOK, <<"webhooks/attempts_by_hook_listing">>).
 
+-define(DESCENDANTS, <<"descendants">>).
+-define(REENABLE, <<"re-enable">>).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -38,13 +41,15 @@ init() ->
     _ = couch_mgr:revise_doc_from_file(?KZ_WEBHOOKS_DB, 'crossbar', <<"views/webhooks.json">>),
     _ = couch_mgr:revise_doc_from_file(?WH_SCHEMA_DB, 'crossbar', <<"schemas/webhooks.json">>),
 
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.webhooks">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.webhooks">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"*.validate.webhooks">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.execute.put.webhooks">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"*.execute.post.webhooks">>, ?MODULE, 'post'),
-    _ = crossbar_bindings:bind(<<"*.execute.patch.webhooks">>, ?MODULE, 'patch'),
-    crossbar_bindings:bind(<<"*.execute.delete.webhooks">>, ?MODULE, 'delete').
+    Bindings = [{<<"*.allowed_methods.webhooks">>, 'allowed_methods'}
+                ,{<<"*.resource_exists.webhooks">>, 'resource_exists'}
+                ,{<<"*.validate.webhooks">>, 'validate'}
+                ,{<<"*.execute.put.webhooks">>, 'put'}
+                ,{<<"*.execute.post.webhooks">>, 'post'}
+                ,{<<"*.execute.patch.webhooks">>, 'patch'}
+                ,{<<"*.execute.delete.webhooks">>, 'delete'}
+               ],
+    cb_modules_util:bind(?MODULE, Bindings).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -59,7 +64,7 @@ init() ->
 -spec allowed_methods(path_token()) -> http_methods().
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
-    [?HTTP_GET, ?HTTP_PUT].
+    [?HTTP_GET, ?HTTP_PUT, ?HTTP_PATCH].
 allowed_methods(?PATH_TOKEN_ATTEMPTS) ->
     [?HTTP_GET];
 allowed_methods(_) ->
@@ -103,7 +108,9 @@ validate(Context) ->
 validate_webhooks(Context, ?HTTP_GET) ->
     summary(Context);
 validate_webhooks(Context, ?HTTP_PUT) ->
-    create(Context).
+    create(Context);
+validate_webhooks(Context, ?HTTP_PATCH) ->
+    validate_collection_patch(Context).
 
 validate(Context, ?PATH_TOKEN_ATTEMPTS) ->
     summary_attempts(Context);
@@ -138,16 +145,21 @@ validate_patch(Context, Id) ->
     end.
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
-post(Context, _) ->
-    crossbar_doc:save(cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB)).
+post(Context, _Id) ->
+    Context1 = maybe_update_hook(Context),
+    crossbar_doc:save(cb_context:set_account_db(Context1, ?KZ_WEBHOOKS_DB)).
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
     crossbar_doc:save(cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB)).
 
+-spec patch(cb_context:context()) -> cb_context:context().
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
-patch(Context, _Id) ->
-    crossbar_doc:save(cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB)).
+patch(Context) ->
+    reenable_hooks(Context).
+
+patch(Context, Id) ->
+    post(Context, Id).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _) ->
@@ -168,6 +180,35 @@ create(Context) ->
     OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
     cb_context:validate_request_data(<<"webhooks">>, Context, OnSuccess).
 
+-spec validate_collection_patch(cb_context:context()) -> cb_context:context().
+-spec validate_collection_patch(cb_context:context(), api_boolean()) ->
+                                       cb_context:context().
+validate_collection_patch(Context) ->
+    validate_collection_patch(Context, cb_context:req_value(Context, ?REENABLE)).
+validate_collection_patch(Context, 'undefined') ->
+    cb_context:add_validation_error(
+      ?REENABLE
+      ,<<"required">>
+      ,wh_json:from_list(
+         [{<<"message">>, <<"re-enable is required to patch collections">>}]
+        )
+      ,Context
+     );
+validate_collection_patch(Context, ReEnable) ->
+    case wh_util:is_true(ReEnable) of
+        'true' -> cb_context:set_resp_status(Context, 'success');
+        'false' ->
+            cb_context:add_validation_error(
+              ?REENABLE
+              ,<<"enum">>
+              ,wh_json:from_list(
+                 [{<<"message">>, <<"value not found in enumerated list of values">>}
+                  ,{<<"target">>, ['true']}
+                 ])
+              ,Context
+             )
+    end.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -176,7 +217,19 @@ create(Context) ->
 %%--------------------------------------------------------------------
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
-    crossbar_doc:load(Id, Context).
+    Context1 = crossbar_doc:load(Id, Context),
+    case cb_context:resp_status(Context1) of
+        'success' -> maybe_leak_pvt_fields(Context1);
+        _Status -> Context1
+    end.
+
+-spec maybe_leak_pvt_fields(cb_context:context()) -> cb_context:context().
+maybe_leak_pvt_fields(Context) ->
+    Doc = cb_context:doc(Context),
+    wh_json:set_values([{<<"disable_reason">>, kzd_webhook:disabled_message(Doc)}]
+                       ,Doc
+                      ),
+    cb_context:set_doc(Context, Doc).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -251,6 +304,7 @@ fix_key_fold(Key, Envelope) ->
 -spec summary_attempts(cb_context:context(), api_binary()) -> cb_context:context().
 summary_attempts(Context) ->
     summary_attempts(Context, 'undefined').
+
 summary_attempts(Context, 'undefined') ->
     ViewOptions = [{'endkey', 0}
                    ,{'startkey', get_attempts_start_key(Context)}
@@ -315,9 +369,11 @@ normalize_attempt_results(JObj, Acc) ->
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context
-                       ,wh_json:set_values([{<<"pvt_type">>, <<"webhook">>}
+                       ,wh_json:set_values([{<<"pvt_type">>, kzd_webhook:type()}
                                             ,{<<"pvt_account_id">>, cb_context:account_id(Context)}
-                                           ], cb_context:doc(Context))
+                                           ]
+                                           ,cb_context:doc(Context)
+                                          )
                       );
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context).
@@ -331,3 +387,69 @@ on_successful_validation(Id, Context) ->
 -spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% If a hook was auto-disabled and is being re-enabled, cleanup the private
+%% fields related to the auto-disabling
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_update_hook(cb_context:context()) -> cb_context:context().
+maybe_update_hook(Context) ->
+    Doc = cb_context:doc(Context),
+
+    case kzd_webhook:is_enabled(Doc) of
+        'false' -> Context;
+        'true' -> cb_context:set_doc(Context, kzd_webhook:enable(Doc))
+    end.
+
+-spec reenable_hooks(cb_context:context()) -> cb_context:context().
+-spec reenable_hooks(cb_context:context(), ne_binaries()) ->
+                            cb_context:context().
+reenable_hooks(Context) ->
+    reenable_hooks(Context, props:get_value(<<"accounts">>, cb_context:req_nouns(Context))).
+
+reenable_hooks(Context, [AccountId]) ->
+    handle_resp(
+      Context
+      ,send_reenable_req(Context, AccountId, <<"account">>)
+     );
+reenable_hooks(Context, [AccountId, ?DESCENDANTS]) ->
+    handle_resp(
+      Context
+      ,send_reenable_req(Context, AccountId, ?DESCENDANTS)
+     ).
+
+-spec send_reenable_req(cb_context:context(), ne_binary(), ne_binary()) ->
+                               wh_amqp_worker:request_return().
+send_reenable_req(Context, AccountId, Action) ->
+    Req = [{<<"Type">>, kzd_webhook:type()}
+           ,{<<"Action">>, Action}
+           ,{<<"Account-ID">>, AccountId}
+           ,{<<"Msg-ID">>, cb_context:req_id(Context)}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    wh_amqp_worker:call(Req
+                        ,fun wapi_conf:publish_doc_type_update/1
+                        ,fun wh_util:always_true/1
+                       ).
+
+-spec handle_resp(cb_context:context(), wh_amqp_worker:request_return()) ->
+                         cb_context:context().
+handle_resp(Context, {'ok', _Resp}) ->
+    lager:debug("received resp from update"),
+    crossbar_util:response(<<"hooks updated">>, Context);
+handle_resp(Context, {'returned', _Request, BasicReturn}) ->
+    lager:debug("no webhook apps running: ~p", [BasicReturn]),
+    Resp = wh_json:delete_keys([<<"exchange">>, <<"routing_key">>], BasicReturn),
+    crossbar_util:response('error', <<"The backend is not configured for this request">>, 500, Resp, Context);
+handle_resp(Context, {'timeout', _Timeout}) ->
+    lager:debug("timed out waiting for a response: ~p", [_Timeout]),
+    crossbar_util:response_datastore_timeout(Context);
+handle_resp(Context, {'error', 'timeout'}) ->
+    lager:debug("timed out waiting for a response"),
+    crossbar_util:response_datastore_timeout(Context);
+handle_resp(Context, {'error', _E}) ->
+    lager:debug("error with request: ~p", [_E]),
+    crossbar_util:response('error', <<"Request failed on the backend">>, 500, Context).

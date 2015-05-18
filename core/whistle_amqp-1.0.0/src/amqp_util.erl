@@ -93,8 +93,14 @@
 
 -export([offnet_resource_publish/1, offnet_resource_publish/2]).
 
--export([configuration_exchange/0, configuration_publish/2, configuration_publish/3, document_change_publish/5, document_change_publish/6]).
--export([document_routing_key/0, document_routing_key/1, document_routing_key/2, document_routing_key/3, document_routing_key/4]).
+-export([configuration_exchange/0
+         ,configuration_publish/2, configuration_publish/3, configuration_publish/4
+         ,document_change_publish/5, document_change_publish/6
+        ]).
+-export([document_routing_key/0, document_routing_key/1
+         ,document_routing_key/2, document_routing_key/3
+         ,document_routing_key/4
+        ]).
 -export([bind_q_to_configuration/2, unbind_q_from_configuration/2]).
 -export([new_configuration_queue/1, new_configuration_queue/2, delete_configuration_queue/1]).
 
@@ -209,10 +215,13 @@ callmgr_publish(Payload, ContentType, RoutingKey, Opts) ->
 
 -spec configuration_publish(ne_binary(), amqp_payload()) -> 'ok'.
 -spec configuration_publish(ne_binary(), amqp_payload(), ne_binary()) -> 'ok'.
+-spec configuration_publish(ne_binary(), amqp_payload(), ne_binary(), wh_proplist()) -> 'ok'.
 configuration_publish(RoutingKey, Payload) ->
     configuration_publish(RoutingKey, Payload, ?DEFAULT_CONTENT_TYPE).
 configuration_publish(RoutingKey, Payload, ContentType) ->
-    basic_publish(?EXCHANGE_CONFIGURATION, RoutingKey, Payload, ContentType).
+    configuration_publish(RoutingKey, Payload, ContentType, []).
+configuration_publish(RoutingKey, Payload, ContentType, Props) ->
+    basic_publish(?EXCHANGE_CONFIGURATION, RoutingKey, Payload, ContentType, Props).
 
 -spec document_change_publish(Action, Db, Type, Id, Payload) -> 'ok' when
       Action :: atom(), %% edited | created | deleted
@@ -953,10 +962,12 @@ confirm_select() -> wh_amqp_channel:command(#'confirm.select'{}).
 -spec flow_control() -> 'ok'.
 -spec flow_control(boolean()) -> 'ok'.
 flow_control() -> flow_control('true').
-flow_control(Active) -> wh_amqp_channel:command(#'channel.flow'{active=Active}).
+flow_control(Active) ->
+    wh_amqp_channel:command(#'channel.flow'{active=Active}).
 
 -spec flow_control_reply(boolean()) -> 'ok'.
-flow_control_reply(Active) -> wh_amqp_channel:command(#'channel.flow_ok'{active=Active}).
+flow_control_reply(Active) ->
+    wh_amqp_channel:command(#'channel.flow_ok'{active=Active}).
 
 %%------------------------------------------------------------------------------
 %% @public

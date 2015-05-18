@@ -328,14 +328,14 @@ unique_mac_address(MacAddress, Context) ->
 error_used_mac_address(Context) ->
     MacAddress = cb_context:req_value(Context, <<"mac_address">>),
     cb_context:add_validation_error(
-        <<"mac_address">>
-        ,<<"unique">>
-        ,wh_json:from_list([
-            {<<"message">>, <<"Mac address already in use">>}
-            ,{<<"cause">>, MacAddress}
+      <<"mac_address">>
+      ,<<"unique">>
+      ,wh_json:from_list(
+         [{<<"message">>, <<"Mac address already in use">>}
+          ,{<<"cause">>, MacAddress}
          ])
-        ,Context
-    ).
+      ,Context
+     ).
 
 -spec get_mac_addresses(ne_binary()) -> ne_binaries().
 get_mac_addresses(DbName) ->

@@ -26,6 +26,7 @@
          ,default_headers/4
          ,default_headers/5
 
+         ,msg_id/1
          ,server_id/1
          ,event_category/1
          ,event_name/1
@@ -82,6 +83,12 @@ app_version(JObj) ->
 -spec node(wh_json:object()) -> api_binary().
 node(JObj) ->
     wh_json:get_value(<<"Node">>, JObj).
+
+-spec msg_id(api_terms()) -> api_binary().
+msg_id(Props) when is_list(Props) ->
+    props:get_value(<<"Msg-ID">>, Props);
+msg_id(JObj) ->
+    wh_json:get_value(<<"Msg-ID">>, JObj).
 
 %%--------------------------------------------------------------------
 %% @doc Default Headers in all messages - see wiki

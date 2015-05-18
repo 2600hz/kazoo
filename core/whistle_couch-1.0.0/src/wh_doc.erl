@@ -243,7 +243,7 @@ id(JObj) ->
     id(JObj, 'undefined').
 
 id(JObj, Default) ->
-    wh_json:get_value(<<"_id">>, JObj, Default).
+    wh_json:get_first_defined([<<"_id">>, <<"id">>], JObj, Default).
 
 -spec set_soft_deleted(wh_json:object(), boolean()) -> wh_json:object().
 set_soft_deleted(JObj, IsSoftDeleted) ->

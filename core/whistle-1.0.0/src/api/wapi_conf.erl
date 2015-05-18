@@ -10,11 +10,17 @@
 -module(wapi_conf).
 
 -export([doc_update/1, doc_update_v/1
+         ,doc_type_update/1, doc_type_update_v/1
+
          ,bind_q/2, unbind_q/2
          ,declare_exchanges/0
+
          ,publish_doc_update/5, publish_doc_update/6
+         ,publish_doc_type_update/1, publish_doc_type_update/2
+
          ,get_account_id/1, get_account_db/1
          ,get_type/1, get_doc/1, get_id/1
+         ,get_action/1
         ]).
 
 -type action() :: 'created' | 'edited' | 'deleted'.
@@ -38,33 +44,50 @@
                                 ,{<<"Rev">>, fun is_binary/1}
                                ]).
 
--spec get_account_id(api_terms()) -> wh_json:json_term() | 'undefined'.
+-define(DOC_TYPE_UPDATE_HEADERS, [<<"Type">>]).
+-define(OPTIONAL_DOC_TYPE_UPDATE_HEADERS
+        ,[<<"Action">>
+          ,<<"Account-ID">>
+         ]
+       ).
+-define(DOC_TYPE_UPDATE_VALUES, [{<<"Event-Category">>, <<"configuration">>}
+                                 ,{<<"Event-Name">>, <<"doc_type_update">>}
+                                ]).
+-define(DOC_TYPE_UPDATE_TYPES, []).
+
+-spec get_account_id(api_terms()) -> api_binary().
 get_account_id(Prop) when is_list(Prop) ->
     props:get_value(<<"Account-ID">>, Prop);
 get_account_id(JObj) ->
     wh_json:get_value(<<"Account-ID">>, JObj).
 
--spec get_account_db(api_terms()) -> wh_json:json_term() | 'undefined'.
+-spec get_action(api_terms()) -> api_binary().
+get_action(Prop) when is_list(Prop) ->
+    props:get_value(<<"Action">>, Prop);
+get_action(JObj) ->
+    wh_json:get_value(<<"Action">>, JObj).
+
+-spec get_account_db(api_terms()) -> api_binary().
 get_account_db(Prop) when is_list(Prop) ->
     props:get_value(<<"Account-DB">>, Prop);
 get_account_db(JObj) ->
     wh_json:get_value(<<"Account-DB">>, JObj).
 
 %% returns the public fields of the document
--spec get_doc(api_terms()) -> wh_json:json_term() | 'undefined'.
+-spec get_doc(api_terms()) -> api_object().
 get_doc(Prop) when is_list(Prop) ->
     props:get_value(<<"Doc">>, Prop);
 get_doc(JObj) ->
     wh_json:get_value(<<"Doc">>, JObj).
 
--spec get_id(api_terms()) -> wh_json:json_term() | 'undefined'.
+-spec get_id(api_terms()) -> api_binary().
 get_id(Prop) when is_list(Prop) ->
     props:get_value(<<"ID">>, Prop);
 get_id(JObj) ->
     wh_json:get_value(<<"ID">>, JObj).
 
 %% returns the pvt_type field
--spec get_type(api_terms()) -> wh_json:json_term() | 'undefined'.
+-spec get_type(api_terms()) -> api_binary().
 get_type(Prop) when is_list(Prop) ->
     props:get_value(<<"Type">>, Prop);
 get_type(JObj) ->
@@ -92,24 +115,100 @@ doc_update_v(Prop) when is_list(Prop) ->
 doc_update_v(JObj) ->
     doc_update_v(wh_json:to_proplist(JObj)).
 
+%%--------------------------------------------------------------------
+%% @doc Format a call event from the switch for the listener
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec doc_type_update(api_terms()) ->
+                        {'ok', iolist()} |
+                        {'error', string()}.
+doc_type_update(Prop) when is_list(Prop) ->
+    case doc_type_update_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?DOC_TYPE_UPDATE_HEADERS, ?OPTIONAL_DOC_TYPE_UPDATE_HEADERS);
+        'false' -> {'error', "Proplist failed validation for document_change"}
+    end;
+doc_type_update(JObj) ->
+    doc_type_update(wh_json:to_proplist(JObj)).
+
+-spec doc_type_update_v(api_terms()) -> boolean().
+doc_type_update_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?DOC_TYPE_UPDATE_HEADERS, ?DOC_TYPE_UPDATE_VALUES, ?DOC_TYPE_UPDATE_TYPES);
+doc_type_update_v(JObj) ->
+    doc_type_update_v(wh_json:to_proplist(JObj)).
+
 -spec bind_q(binary(), wh_proplist()) -> 'ok'.
+-spec bind_q(binary(), wh_proplist(), api_atoms()) -> 'ok'.
 bind_q(Q, Props) ->
+    bind_q(Q, Props, props:get_value('restrict_to', Props)).
+
+bind_q(Q, Props, 'undefined') ->
+    bind_for_doc_changes(Q, Props);
+bind_q(Q, Props, ['doc_updates'|Restrict]) ->
+    bind_for_doc_changes(Q, Props),
+    bind_q(Q, Props, Restrict);
+bind_q(Q, Props, ['doc_type_updates'|Restrict]) ->
+    bind_for_doc_type_changes(Q, Props),
+    bind_q(Q, Props, Restrict);
+bind_q(Q, Props, [_|Restrict]) ->
+    bind_q(Q, Props, Restrict);
+bind_q(_Q, _Props, []) -> 'ok'.
+
+-spec bind_for_doc_changes(ne_binary(), wh_proplist()) -> 'ok'.
+bind_for_doc_changes(Q, Props) ->
     case props:get_value('keys', Props) of
-        'undefined' -> amqp_util:bind_q_to_configuration(Q, get_routing_key(Props));
+        'undefined' ->
+            amqp_util:bind_q_to_configuration(Q, get_routing_key(Props));
         List ->
             [amqp_util:bind_q_to_configuration(Q, get_routing_key(KeyProps))
              || KeyProps <- List
             ]
+    end,
+    'ok'.
+
+-spec bind_for_doc_type_changes(ne_binary(), wh_proplist()) -> 'ok'.
+bind_for_doc_type_changes(Q, Props) ->
+    case props:get_value('type', Props) of
+        'undefined' -> 'ok';
+        Type ->
+            amqp_util:bind_q_to_configuration(Q, doc_type_update_routing_key(Type))
     end.
 
 -spec unbind_q(binary(), wh_proplist()) -> 'ok'.
+-spec unbind_q(binary(), wh_proplist(), api_atoms()) -> 'ok'.
 unbind_q(Q, Props) ->
+    unbind_q(Q, Props, props:get_value('restrict_to', Props)).
+
+unbind_q(Q, Props, 'undefined') ->
+    unbind_for_doc_changes(Q, Props);
+unbind_q(Q, Props, ['doc_updates'|Restrict]) ->
+    unbind_for_doc_changes(Q, Props),
+    unbind_q(Q, Props, Restrict);
+unbind_q(Q, Props, ['doc_type_updates'|Restrict]) ->
+    unbind_for_doc_type_changes(Q, Props),
+    unbind_q(Q, Props, Restrict);
+unbind_q(Q, Props, [_|Restrict]) ->
+    unbind_q(Q, Props, Restrict);
+unbind_q(_Q, _Props, []) -> 'ok'.
+
+-spec unbind_for_doc_changes(ne_binary(), wh_proplist()) -> 'ok'.
+unbind_for_doc_changes(Q, Props) ->
     case props:get_value('keys', Props) of
-        'undefined' -> amqp_util:unbind_q_from_configuration(Q, get_routing_key(Props));
+        'undefined' ->
+            amqp_util:unbind_q_from_configuration(Q, get_routing_key(Props));
         List ->
             [amqp_util:unbind_q_from_configuration(Q, get_routing_key(KeyProps))
              || KeyProps <- List
             ]
+    end,
+    'ok'.
+
+-spec unbind_for_doc_type_changes(ne_binary(), wh_proplist()) -> 'ok'.
+unbind_for_doc_type_changes(Q, Props) ->
+    case props:get_value('type', Props) of
+        'undefined' -> 'ok';
+        Type ->
+            amqp_util:unbind_q_from_configuration(Q, doc_type_update_routing_key(Type))
     end.
 
 %%--------------------------------------------------------------------
@@ -140,3 +239,17 @@ publish_doc_update(Action, Db, Type, Id, JObj) ->
 publish_doc_update(Action, Db, Type, Id, Change, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Change, ?CONF_DOC_UPDATE_VALUES, fun ?MODULE:doc_update/1),
     amqp_util:document_change_publish(Action, Db, Type, Id, Payload, ContentType).
+
+-spec publish_doc_type_update(api_terms()) -> 'ok'.
+-spec publish_doc_type_update(api_terms(), ne_binary()) -> 'ok'.
+publish_doc_type_update(JObj) ->
+    publish_doc_type_update(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_doc_type_update(API, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(API, ?DOC_TYPE_UPDATE_VALUES, fun ?MODULE:doc_type_update/1),
+    amqp_util:configuration_publish(doc_type_update_routing_key(API), Payload, ContentType, [{'mandatory', 'true'}]).
+
+-spec doc_type_update_routing_key(api_terms() | ne_binary()) -> ne_binary().
+doc_type_update_routing_key(<<_/binary>> = Type) ->
+    <<"configuration.doc_type_update.", Type/binary>>;
+doc_type_update_routing_key(API) ->
+    doc_type_update_routing_key(get_type(API)).

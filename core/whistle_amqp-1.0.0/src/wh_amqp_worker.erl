@@ -535,6 +535,7 @@ handle_call({'publish', _ReqProp, _}, _From, #state{queue='undefined'}=State) ->
 handle_call({'publish', ReqProp, PublishFun}, {Pid, _}=From, #state{confirms=C}=State) ->
     try PublishFun(ReqProp) of
         'ok' when C =:= 'true' ->
+            lager:debug("published message ~s for ~p", [wh_api:msg_id(ReqProp), Pid]),
             {'noreply', State#state{client_pid = Pid
                                     ,client_ref = erlang:monitor('process', Pid)
                                     ,client_from = From
@@ -542,9 +543,12 @@ handle_call({'publish', ReqProp, PublishFun}, {Pid, _}=From, #state{confirms=C}=
                                     ,req_start_time = os:timestamp()
                                    }
              ,'hibernate'};
-        'ok' ->  {'reply', 'ok', reset(State)};
-        {'error', _}=Err ->
-            {'reply', Err, reset(State)};                
+        'ok' ->
+            lager:debug("published message ~s for ~p", [wh_api:msg_id(ReqProp), Pid]),
+            {'reply', 'ok', reset(State)};
+        {'error', _E}=Err ->
+            lager:debug("failed to publish message ~s for ~p: ~p", [wh_api:msg_id(ReqProp), Pid, _E]),
+            {'reply', Err, reset(State)};
         Other ->
             lager:debug("publisher fun returned ~p instead of 'ok'", [Other]),
             {'reply', {'error', Other}, reset(State)}
@@ -623,6 +627,7 @@ handle_cast({'event', MsgId, JObj}, #state{current_msg_id = MsgId
                                            ,neg_resp_threshold = NegThreshold
                                           }=State) when NegCount < NegThreshold ->
     _ = wh_util:put_callid(JObj),
+
     case VFun(JObj) of
         'true' ->
             case wh_json:is_true(<<"Defer-Response">>, JObj) of
@@ -653,7 +658,7 @@ handle_cast({'event', MsgId, JObj}, #state{current_msg_id = MsgId
                                            ,req_start_time = StartTime
                                           }=State) when is_list(Resps) ->
     _ = wh_util:put_callid(JObj),
-    lager:debug("recv a response"),
+    lager:debug("recv message ~s", [MsgId]),
     Responses = [JObj | Resps],
     case UntilFun(Responses) of
         'true' ->

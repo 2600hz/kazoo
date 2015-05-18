@@ -12,6 +12,8 @@
          ,set_failure_expiry/1, set_failure_expiry/2
          ,set_disable_threshold/1, set_disable_threshold/2
          ,failure_status/0, failure_status/1
+         ,enable_account_hooks/1
+         ,enable_descendant_hooks/1
         ]).
 
 -include("webhooks.hrl").
@@ -103,3 +105,9 @@ print_failure_footer() ->
 
 print_failure_count(AccountId, HookId, Count) ->
     io:format(?FORMAT_FAILURE_STRING, [AccountId, HookId, wh_util:to_binary(Count)]).
+
+enable_account_hooks(AccountId) ->
+    webhooks_util:reenable(AccountId, <<"account">>).
+
+enable_descendant_hooks(AccountId) ->
+    webhooks_util:reenable(AccountId, <<"descendants">>).
