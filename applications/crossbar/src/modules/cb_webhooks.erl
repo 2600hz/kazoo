@@ -177,6 +177,7 @@ delete_account_webhooks(AccountId) ->
     case couch_mgr:get_results(?KZ_WEBHOOKS_DB
                                ,<<"webhooks/accounts_listing">>
                                ,[{'key', AccountId}
+                                 ,{'reduce', 'false'}
                                  ,'include_docs'
                                 ]
                               )
