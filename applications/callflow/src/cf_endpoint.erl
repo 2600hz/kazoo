@@ -532,7 +532,7 @@ build(Endpoint, Properties, Call) ->
 -spec should_create_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
                                           'ok' | {'error', _}.
 should_create_endpoint(Endpoint, Properties, Call) ->
-    Routines = [fun maybe_owner_called_self/3
+    Routines = [fun maybe_missing_resource_type/3
                 ,fun maybe_owner_called_self/3
                 ,fun maybe_endpoint_called_self/3
                 ,fun maybe_endpoint_disabled/3
