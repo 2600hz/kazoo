@@ -575,9 +575,6 @@ maybe_owner_called_self(Endpoint, Properties, Call) ->
 -spec maybe_owner_called_self(wh_json:object(), wh_json:object(), api_binary(), whapps_call:call()) ->
                                      'ok' |
                                      {'error', 'owner_called_self'}.
-maybe_owner_called_self(_Endpoint, _Properties, 'undefined', _Call) ->
-    lager:error("whapps_call resource type is undefined"),
-    wh_util:log_stacktrace();
 maybe_owner_called_self(Endpoint, Properties, <<"audio">>, Call) ->
     CanCallSelf = wh_json:is_true(<<"can_call_self">>, Properties),
     EndpointOwnerId = wh_json:get_value(<<"owner_id">>, Endpoint),
