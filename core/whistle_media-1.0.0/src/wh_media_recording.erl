@@ -566,7 +566,6 @@ store_recording(MediaName, Url, Call, 'other') ->
     StoreUrl = append_path(Url, MediaName),
     lager:debug("appending filename to url: ~s", [StoreUrl]),
     'ok' = whapps_call_command:store(MediaName, StoreUrl, Call);
-
 store_recording(MediaName, StoreUrl, Call, 'local') ->
     'ok' = whapps_call_command:store(MediaName, StoreUrl, Call).
 
