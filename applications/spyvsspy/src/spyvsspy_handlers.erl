@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%% Handlers for various AMQP payloads
 %%% @end
@@ -17,28 +17,27 @@
 -spec handle_eavesdrop_req(wh_json:object(), wh_proplist()) -> any().
 handle_eavesdrop_req(JObj, _Props) ->
     'true' = wapi_resource:eavesdrop_req_v(JObj),
-    AcctId = wh_json:get_value(<<"Account-ID">>, JObj),
+    AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
 
-    case get_endpoints(AcctId
-                      ,wh_json:get_value(<<"Endpoint-ID">>, JObj)
-                     )
+    case get_endpoints(AccountId
+                       ,wh_json:get_value(<<"Endpoint-ID">>, JObj)
+                      )
     of
-        {'ok', EPs} -> send_eavesdrop(JObj, EPs, AcctId);
+        {'ok', EPs} -> send_eavesdrop(JObj, EPs, AccountId);
         {'error', E} -> respond_error(JObj, E)
     end.
 
 -spec get_endpoints(ne_binary(), ne_binary()) ->
                            {'ok', wh_json:objects()} |
                            {'error', _}.
-get_endpoints(AcctId, EndpointId) ->
-    cf_endpoint:build(EndpointId, new_call(AcctId)).
+get_endpoints(AccountId, EndpointId) ->
+    cf_endpoint:build(EndpointId, new_call(AccountId)).
 
 -spec new_call(ne_binary()) -> whapps_call:call().
-new_call(AcctId) ->
+new_call(AccountId) ->
     whapps_call:from_json(wh_json:from_list(
-                            [{<<"Account-ID">>, AcctId}
-                             ,{<<"Account-DB">>, wh_util:format_account_id(AcctId, 'encoded')}
-                             ,{<<"Resource-Type">>, ?RESOURCE_TYPE_AUDIO}
+                            [{<<"Account-ID">>, AccountId}
+                             ,{<<"Account-DB">>, wh_util:format_account_id(AccountId, 'encoded')}
                             ])).
 
 -spec get_group_and_call_id(wh_json:object()) -> {api_binary(), api_binary()}.
@@ -49,10 +48,10 @@ get_group_and_call_id(JObj) ->
     end.
 
 -spec send_eavesdrop(wh_json:object(), wh_json:objects(), ne_binary()) -> 'ok'.
-send_eavesdrop(JObj, EPs, AcctId) ->
+send_eavesdrop(JObj, EPs, AccountId) ->
     {GroupId, CallId} = get_group_and_call_id(JObj),
 
-    CCVs = props:filter_undefined([{<<"Account-ID">>, AcctId}]),
+    CCVs = props:filter_undefined([{<<"Account-ID">>, AccountId}]),
     Timeout = wh_json:get_integer_value(<<"Endpoint-Timeout">>, JObj, 20),
 
     {CallerIdName, CallerIdNumber} = find_caller_id(JObj),
@@ -65,21 +64,22 @@ send_eavesdrop(JObj, EPs, AcctId) ->
                                                       ,{<<"Outbound-Caller-ID-Name">>, CallerIdName}
                                                       ,{<<"Outbound-Caller-ID-Number">>, CallerIdNumber}
                                                      ]
-                                                     ,EP)
-                                    || EP <- EPs
+                                                     ,EP
+                                                    )
+                                  || EP <- EPs
                                  ]}
               ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>
                                                    ,<<"Retain-CID">>
                                                    ,<<"Authorizing-ID">>
                                                    ,<<"Authorizing-Type">>
                                                   ]}
-              ,{<<"Account-ID">>, AcctId}
+              ,{<<"Account-ID">>, AccountId}
               ,{<<"Resource-Type">>, <<"originate">>}
               ,{<<"Application-Name">>, <<"eavesdrop">>}
               ,{<<"Eavesdrop-Call-ID">>, CallId}
               ,{<<"Eavesdrop-Group-ID">>, GroupId}
               ,{<<"Eavesdrop-Mode">>, wh_json:get_value(<<"Eavesdrop-Mode">>, JObj)}
-                  | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
 
     lager:debug("sending eavesdrop request for ~s:~s", [CallerIdName, CallerIdNumber]),
@@ -87,8 +87,9 @@ send_eavesdrop(JObj, EPs, AcctId) ->
     case whapps_util:amqp_pool_collect(Prop
                                        ,fun wapi_resource:publish_originate_req/1
                                        ,fun until_callback/1
-                                       ,5000
-                                      ) of
+                                       ,5 * ?MILLISECONDS_IN_SECOND
+                                      )
+    of
         {'ok', [OrigJObj|_]} ->
             lager:debug("originate is ready to execute"),
             send_originate_execute(OrigJObj, wh_json:get_value(<<"Server-ID">>, OrigJObj)),

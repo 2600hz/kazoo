@@ -572,9 +572,12 @@ maybe_missing_resource_type(_) -> 'ok'.
 maybe_owner_called_self(Endpoint, Properties, Call) ->
     maybe_owner_called_self(Endpoint, Properties, whapps_call:resource_type(Call), Call).
 
--spec maybe_owner_called_self(wh_json:object(), wh_json:object(),  api_binary(), whapps_call:call()) ->
+-spec maybe_owner_called_self(wh_json:object(), wh_json:object(), api_binary(), whapps_call:call()) ->
                                      'ok' |
                                      {'error', 'owner_called_self'}.
+maybe_owner_called_self(_Endpoint, _Properties, 'undefined', _Call) ->
+    lager:error("whapps_call resource type is undefined"),
+    wh_util:log_stacktrace();
 maybe_owner_called_self(Endpoint, Properties, <<"audio">>, Call) ->
     CanCallSelf = wh_json:is_true(<<"can_call_self">>, Properties),
     EndpointOwnerId = wh_json:get_value(<<"owner_id">>, Endpoint),
@@ -615,6 +618,9 @@ maybe_endpoint_called_self(Endpoint, Properties, Call) ->
 -spec maybe_endpoint_called_self(wh_json:object(), wh_json:object(), api_binary(), whapps_call:call()) ->
                                         'ok' |
                                         {'error', 'endpoint_called_self'}.
+maybe_endpoint_called_self(_Endpoint, _Properties, 'undefined', _Call) ->
+    lager:error("whapps_call resource type is undefined"),
+    wh_util:log_stacktrace();
 maybe_endpoint_called_self(Endpoint, Properties, <<"audio">>, Call) ->
     CanCallSelf = wh_json:is_true(<<"can_call_self">>, Properties),
     AuthorizingId = whapps_call:authorizing_id(Call),
