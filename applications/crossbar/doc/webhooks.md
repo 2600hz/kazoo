@@ -108,9 +108,9 @@ Webhooks tracks attempts to send the hook payloads to your URIs. You can get a l
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://server.com:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}/attempts
 
-### Re-enable hooks in bulk
+### Re-enable auto-disabled hooks in bulk
 
-Webhooks will auto-disable failing hooks (if Kazoo can't reach your server, or you take too long to respond with `200 OK`, for instance). Especially if you're a reseller with webhooks in your client accounts, it can be tedious to have to interate through all your accounts and re-enable each hook. Fortunately, you can perform this bulk-enable action against an account or an account and its descendants.
+Webhooks will auto-disable failing hooks (if Kazoo can't reach your server, or you take too long to respond with `200 OK`, for instance). Especially if you're a reseller with webhooks in your client accounts, it can be tedious to have to iterate through all your accounts and re-enable each hook. Fortunately, you can perform this bulk-enable action against an account or an account and its descendants.
 
 #### Enable an account's hooks
 
