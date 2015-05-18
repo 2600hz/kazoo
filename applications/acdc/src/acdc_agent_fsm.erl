@@ -365,9 +365,9 @@ init([AccountId, AgentId, Supervisor, Props, IsThief]) ->
 
 -spec max_failures(ne_binary(), ne_binary()) -> non_neg_integer().
 -spec max_failures(wh_json:object()) -> non_neg_integer().
-max_failures(AcctDb, AcctId) ->
-    case couch_mgr:open_cache_doc(AcctDb, AcctId) of
-        {'ok', AcctJObj} -> max_failures(AcctJObj);
+max_failures(AccountDb, AccountId) ->
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+        {'ok', AccountJObj} -> max_failures(AccountJObj);
         {'error', _} -> ?MAX_FAILURES
     end.
 
