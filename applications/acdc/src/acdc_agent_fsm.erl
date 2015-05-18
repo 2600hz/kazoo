@@ -89,6 +89,8 @@
 -define(NOTIFY_RECORDING, <<"recording">>).
 -define(NOTIFY_ALL, <<"all">>).
 
+-define(RESOURCE_TYPE_AUDIO, <<"audio">>).
+
 -record(state, {account_id :: ne_binary()
                 ,account_db :: ne_binary()
                 ,agent_id :: ne_binary()
@@ -363,9 +365,9 @@ init([AccountId, AgentId, Supervisor, Props, IsThief]) ->
 
 -spec max_failures(ne_binary(), ne_binary()) -> non_neg_integer().
 -spec max_failures(wh_json:object()) -> non_neg_integer().
-max_failures(AcctDb, AcctId) ->
-    case couch_mgr:open_cache_doc(AcctDb, AcctId) of
-        {'ok', AcctJObj} -> max_failures(AcctJObj);
+max_failures(AccountDb, AccountId) ->
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+        {'ok', AccountJObj} -> max_failures(AccountJObj);
         {'error', _} -> ?MAX_FAILURES
     end.
 
@@ -1205,6 +1207,7 @@ handle_event('load_endpoints', StateName, #state{agent_id=AgentId
     Setters = [fun(C) -> whapps_call:set_account_id(AccountId, C) end
                ,fun(C) -> whapps_call:set_account_db(AccountDb, C) end
                ,fun(C) -> whapps_call:set_owner_id(AgentId, C) end
+               ,fun(C) -> whapps_call:set_resource_type(?RESOURCE_TYPE_AUDIO, C) end
               ],
 
     Call = lists:foldl(fun(F, C) -> F(C) end
