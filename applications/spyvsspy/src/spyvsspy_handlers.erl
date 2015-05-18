@@ -54,33 +54,30 @@ send_eavesdrop(JObj, EPs, AcctId) ->
 
     {CallerIdName, CallerIdNumber} = find_caller_id(JObj),
 
-    Prop = wh_json:set_values(
-             props:filter_undefined(
-               [{<<"Msg-ID">>, wh_util:rand_hex_binary(6)}
-                ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
-                ,{<<"Timeout">>, Timeout}
-                ,{<<"Endpoints">>, [wh_json:set_values([{<<"Endpoint-Timeout">>, Timeout}
-                                                        ,{<<"Outbound-Caller-ID-Name">>, CallerIdName}
-                                                        ,{<<"Outbound-Caller-ID-Number">>, CallerIdNumber}
-                                                       ]
-                                                       ,EP)
+    Prop = props:filter_undefined(
+             [{<<"Msg-ID">>, wh_util:rand_hex_binary(6)}
+              ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
+              ,{<<"Timeout">>, Timeout}
+              ,{<<"Endpoints">>, [wh_json:set_values([{<<"Endpoint-Timeout">>, Timeout}
+                                                      ,{<<"Outbound-Caller-ID-Name">>, CallerIdName}
+                                                      ,{<<"Outbound-Caller-ID-Number">>, CallerIdNumber}
+                                                     ]
+                                                     ,EP)
                                     || EP <- EPs
-                                   ]}
-                ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>
-                                                     ,<<"Retain-CID">>
-                                                     ,<<"Authorizing-ID">>
-                                                     ,<<"Authorizing-Type">>
-                                                    ]}
-                ,{<<"Account-ID">>, AcctId}
-                ,{<<"Resource-Type">>, <<"originate">>}
-                ,{<<"Application-Name">>, <<"eavesdrop">>}
-                ,{<<"Eavesdrop-Call-ID">>, CallId}
-                ,{<<"Eavesdrop-Group-ID">>, GroupId}
-                ,{<<"Eavesdrop-Mode">>, wh_json:get_value(<<"Eavesdrop-Mode">>, JObj)}
-                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-               ]
-              )
-             ,wh_json:delete_key(<<"Event-Name">>, JObj)),
+                                 ]}
+              ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>
+                                                   ,<<"Retain-CID">>
+                                                   ,<<"Authorizing-ID">>
+                                                   ,<<"Authorizing-Type">>
+                                                  ]}
+              ,{<<"Account-ID">>, AcctId}
+              ,{<<"Resource-Type">>, <<"originate">>}
+              ,{<<"Application-Name">>, <<"eavesdrop">>}
+              ,{<<"Eavesdrop-Call-ID">>, CallId}
+              ,{<<"Eavesdrop-Group-ID">>, GroupId}
+              ,{<<"Eavesdrop-Mode">>, wh_json:get_value(<<"Eavesdrop-Mode">>, JObj)}
+                  | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]),
 
     lager:debug("sending eavesdrop request for ~s:~s", [CallerIdName, CallerIdNumber]),
 
