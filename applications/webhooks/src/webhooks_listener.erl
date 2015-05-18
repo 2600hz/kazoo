@@ -120,12 +120,7 @@ find_and_update_hook(JObj, Srv) ->
 
 -spec find_and_remove_hook(wh_json:object(), pid()) -> 'ok'.
 find_and_remove_hook(JObj, Srv) ->
-    case find_hook(JObj) of
-        {'ok', Hook} ->
-            gen_listener:cast(Srv, {'remove_hook', webhooks_util:jobj_to_rec(Hook)});
-        {'error', _E} ->
-            lager:debug("failed to remove hook ~s: ~p", [webhooks_util:hook_id(JObj), _E])
-    end.
+    gen_listener:cast(Srv, {'remove_hook', webhooks_util:hook_id(JObj)}).
 
 -spec find_hook(wh_json:object()) ->
                        {'ok', wh_json:object()} |
@@ -254,6 +249,8 @@ handle_cast({'update_hook', #webhook{id=_Id}=Hook}, State) ->
     _ = ets:insert(webhooks_util:table_id(), Hook),
     {'noreply', State};
 handle_cast({'remove_hook', #webhook{id=Id}}, State) ->
+    handle_cast({'remove_hook', Id}, State);
+handle_cast({'remove_hook', <<_/binary>> = Id}, State) ->
     lager:debug("removing hook ~s", [Id]),
     ets:delete(webhooks_util:table_id(), Id),
     {'noreply', State};
