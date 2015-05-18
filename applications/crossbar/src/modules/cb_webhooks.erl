@@ -17,7 +17,8 @@
          ,put/1
          ,post/2
          ,patch/1, patch/2
-         ,delete/2
+         ,delete/2, delete_account/2
+         ,cleanup/1
         ]).
 
 -include("../crossbar.hrl").
@@ -48,6 +49,8 @@ init() ->
                 ,{<<"*.execute.post.webhooks">>, 'post'}
                 ,{<<"*.execute.patch.webhooks">>, 'patch'}
                 ,{<<"*.execute.delete.webhooks">>, 'delete'}
+                ,{<<"*.execute.delete.accounts">>, 'delete_account'}
+                ,{crossbar_cleanup:binding_system(), 'cleanup'}
                ],
     cb_modules_util:bind(?MODULE, Bindings).
 
@@ -164,6 +167,31 @@ patch(Context, Id) ->
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _) ->
     crossbar_doc:delete(cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB)).
+
+-spec delete_account(cb_context:context(), ne_binary()) -> cb_context:context().
+delete_account(Context, AccountId) ->
+    lager:debug("account ~s deleted, removing any webhooks", [AccountId]),
+    wh_util:spawn(fun() -> delete_account_webhooks(AccountId) end),
+    Context.
+
+-spec delete_account_webhooks(ne_binary()) -> 'ok'.
+delete_account_webhooks(AccountId) ->
+    case couch_mgr:get_results(?KZ_WEBHOOKS_DB
+                               ,<<"webhooks/accounts_listing">>
+                               ,[{'key', AccountId}
+                                 ,{'reduce', 'false'}
+                                 ,'include_docs'
+                                ]
+                              )
+    of
+        {'ok', []} -> 'ok';
+        {'error', _E} -> lager:debug("failed to fetch webhooks for account ~s: ~p", [AccountId, _E]);
+        {'ok', ViewJObjs} ->
+            _Res = couch_mgr:del_docs(?KZ_WEBHOOKS_DB
+                                      ,[wh_json:get_value(<<"doc">>, ViewJObj) || ViewJObj <- ViewJObjs]
+                                     ),
+            lager:debug("deleted ~p hooks from account ~s", [length(ViewJObjs), AccountId])
+    end.
 
 %%%===================================================================
 %%% Internal functions
@@ -453,3 +481,34 @@ handle_resp(Context, {'error', 'timeout'}) ->
 handle_resp(Context, {'error', _E}) ->
     lager:debug("error with request: ~p", [_E]),
     crossbar_util:response('error', <<"Request failed on the backend">>, 500, Context).
+
+-spec cleanup(ne_binary()) -> 'ok'.
+cleanup(?KZ_WEBHOOKS_DB) ->
+    lager:debug("checking ~s for abandoned accounts", [?KZ_WEBHOOKS_DB]),
+    cleanup_orphaned_hooks();
+cleanup(_SystemDb) -> 'ok'.
+
+-spec cleanup_orphaned_hooks() -> 'ok'.
+cleanup_orphaned_hooks() ->
+    case couch_mgr:get_results(?KZ_WEBHOOKS_DB
+                               ,<<"webhooks/accounts_listing">>
+                               ,['group']
+                              )
+    of
+        {'ok', []} -> lager:debug("no hooks configured");
+        {'error', _E} ->
+            lager:debug("failed to lookup accounts in ~s: ~p", [?KZ_WEBHOOKS_DB, _E]);
+        {'ok', Accounts} ->
+            _Rm = [begin
+                       delete_account_webhooks(AccountId),
+                       timer:sleep(5 * ?MILLISECONDS_IN_SECOND)
+                   end
+                   || Account <- Accounts,
+                      begin
+                          AccountId = wh_json:get_value(<<"key">>, Account),
+                          not couch_mgr:db_exists(wh_util:format_account_id(AccountId, 'encoded'))
+                      end
+                  ],
+            _Rm =/= [] andalso lager:debug("removed ~p accounts' webhooks", [length(_Rm)]),
+            'ok'
+    end.
