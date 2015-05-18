@@ -722,6 +722,9 @@ do_save_docs(#db{}=Db, Docs, Options, Acc) ->
             end
     end.
 
+-spec perform_save_docs(couchbeam_db(), wh_json:objects(), wh_proplist()) ->
+                               {'ok', wh_json:objects()} |
+                               couchbeam_error().
 perform_save_docs(Db, Docs, Options) ->
     PreparedDocs = [maybe_set_docid(D) || D <- Docs],
     _ = flush_cache_docs(Db, PreparedDocs),
