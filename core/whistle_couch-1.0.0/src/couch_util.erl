@@ -638,10 +638,13 @@ prepare_doc_for_del(Conn, #db{name=DbName}, Doc) ->
                      Rev;
                  Rev -> Rev
              end,
-    wh_json:from_list([{<<"_id">>, Id}
-                       ,{<<"_rev">>, DocRev}
-                       ,{<<"_deleted">>, 'true'}
-                      ]).
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"_id">>, Id}
+         ,{<<"_rev">>, DocRev}
+         ,{<<"_deleted">>, 'true'}
+         ,{<<"pvt_type">>, wh_json:get_value(<<"pvt_type">>, Doc)}
+        ])).
 
 -spec do_ensure_saved(couchbeam_db(), wh_json:object(), wh_proplist()) ->
                              {'ok', wh_json:object()} |
@@ -957,7 +960,8 @@ publish_doc(#db{name=DbName}, Doc, JObj) ->
     case wh_doc:is_soft_deleted(Doc)
         orelse wh_json:is_true(<<"_deleted">>, Doc)
     of
-        'true' -> publish('deleted', wh_util:to_binary(DbName), Doc);
+        'true' ->
+            publish('deleted', wh_util:to_binary(DbName), Doc);
         'false' ->
             case doc_rev(JObj) of
                 <<"1-", _/binary>> ->
