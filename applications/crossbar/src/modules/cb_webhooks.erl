@@ -190,7 +190,7 @@ delete_account_webhooks(AccountId) ->
             _Res = couch_mgr:del_docs(?KZ_WEBHOOKS_DB
                                       ,[wh_json:get_value(<<"doc">>, ViewJObj) || ViewJObj <- ViewJObjs]
                                      ),
-            lager:debug("deleting ~p docs resulted in ~p", [length(ViewJObjs), _Res])
+            lager:debug("deleted ~p hooks from account ~s", [length(ViewJObjs), AccountId])
     end.
 
 %%%===================================================================
@@ -499,12 +499,16 @@ cleanup_orphaned_hooks() ->
         {'error', _E} ->
             lager:debug("failed to lookup accounts in ~s: ~p", [?KZ_WEBHOOKS_DB, _E]);
         {'ok', Accounts} ->
-            _Rm = [delete_account_webhooks(AccountId)
+            _Rm = [begin
+                       delete_account_webhooks(AccountId),
+                       timer:sleep(5 * ?MILLISECONDS_IN_SECOND)
+                   end
                    || Account <- Accounts,
                       begin
                           AccountId = wh_json:get_value(<<"key">>, Account),
-                          couch_mgr:db_exists(wh_util:format_account_id(AccountId, 'encoded'))
+                          not couch_mgr:db_exists(wh_util:format_account_id(AccountId, 'encoded'))
                       end
                   ],
-            _Rm =/= [] andalso lager:debug("removed ~p accounts' webhooks", [length(_Rm)])
+            _Rm =/= [] andalso lager:debug("removed ~p accounts' webhooks", [length(_Rm)]),
+            'ok'
     end.
