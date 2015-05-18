@@ -89,6 +89,8 @@
 -define(NOTIFY_RECORDING, <<"recording">>).
 -define(NOTIFY_ALL, <<"all">>).
 
+-define(RESOURCE_TYPE_AUDIO, <<"audio">>).
+
 -record(state, {account_id :: ne_binary()
                 ,account_db :: ne_binary()
                 ,agent_id :: ne_binary()
@@ -1205,6 +1207,7 @@ handle_event('load_endpoints', StateName, #state{agent_id=AgentId
     Setters = [fun(C) -> whapps_call:set_account_id(AccountId, C) end
                ,fun(C) -> whapps_call:set_account_db(AccountDb, C) end
                ,fun(C) -> whapps_call:set_owner_id(AgentId, C) end
+               ,fun(C) -> whapps_call:set_resource_type(?RESOURCE_TYPE_AUDIO, C) end
               ],
 
     Call = lists:foldl(fun(F, C) -> F(C) end
