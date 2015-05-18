@@ -526,6 +526,8 @@ callid(JObj) ->
     wh_json:get_first_defined([<<"Call-ID">>, <<"Msg-ID">>], JObj, ?LOG_SYSTEM_ID).
 
 %% @public
+-spec spawn(fun(() -> any())) -> pid().
+-spec spawn(atom(), atom(), list()) -> pid().
 spawn(Module, Function, Arguments) ->
     CallId = get_callid(),
     erlang:spawn(fun () ->
@@ -534,7 +536,7 @@ spawn(Module, Function, Arguments) ->
                  end).
 spawn(Fun) ->
     CallId = get_callid(),
-    erlang:spawn(fun () ->
+    erlang:spawn(fun() ->
                          put_callid(CallId),
                          Fun()
                  end).
