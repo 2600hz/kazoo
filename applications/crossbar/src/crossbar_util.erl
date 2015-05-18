@@ -38,8 +38,7 @@
          ,response_auth/3
         ]).
 -export([flush_registrations/1
-         ,flush_registration/1
-         ,flush_registration/2
+         ,flush_registration/1, flush_registration/2
         ]).
 -export([move_account/2]).
 -export([get_descendants/1]).
@@ -367,10 +366,10 @@ maybe_flush_registration_on_password(Realm, OldDevice, NewDevice) ->
 -spec maybe_flush_registration_on_username(api_binary(), wh_json:object(), wh_json:object()) -> 'ok'.
 maybe_flush_registration_on_username(Realm, OldDevice, NewDevice) ->
     OldUsername = kz_device:sip_username(OldDevice),
-    NewUsername = kz_device:sip_username(NewDevice),
-    case OldUsername =:= NewUsername of
-        'true' -> 'ok';
-        'false' ->
+
+    case kz_device:sip_username(NewDevice) of
+        OldUsername -> 'ok';
+        NewUsername ->
             lager:debug("the SIP username has changed, sending a registration flush for both"),
             flush_registration(OldUsername, Realm),
             flush_registration(NewUsername, Realm)
