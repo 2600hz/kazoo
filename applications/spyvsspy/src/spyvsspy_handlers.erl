@@ -12,6 +12,8 @@
 
 -include("spyvsspy.hrl").
 
+-define(RESOURCE_TYPE_AUDIO, <<"audio">>).
+
 -spec handle_eavesdrop_req(wh_json:object(), wh_proplist()) -> any().
 handle_eavesdrop_req(JObj, _Props) ->
     'true' = wapi_resource:eavesdrop_req_v(JObj),
@@ -36,6 +38,7 @@ new_call(AcctId) ->
     whapps_call:from_json(wh_json:from_list(
                             [{<<"Account-ID">>, AcctId}
                              ,{<<"Account-DB">>, wh_util:format_account_id(AcctId, 'encoded')}
+                             ,{<<"Resource-Type">>, ?RESOURCE_TYPE_AUDIO}
                             ])).
 
 -spec get_group_and_call_id(wh_json:object()) -> {api_binary(), api_binary()}.
