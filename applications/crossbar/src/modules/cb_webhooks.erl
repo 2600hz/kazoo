@@ -17,7 +17,7 @@
          ,put/1
          ,post/2
          ,patch/1, patch/2
-         ,delete/2
+         ,delete/2, delete_account/2
         ]).
 
 -include("../crossbar.hrl").
@@ -48,6 +48,7 @@ init() ->
                 ,{<<"*.execute.post.webhooks">>, 'post'}
                 ,{<<"*.execute.patch.webhooks">>, 'patch'}
                 ,{<<"*.execute.delete.webhooks">>, 'delete'}
+                ,{<<"*.execute.delete.accounts">>, 'delete_account'}
                ],
     cb_modules_util:bind(?MODULE, Bindings).
 
@@ -164,6 +165,30 @@ patch(Context, Id) ->
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _) ->
     crossbar_doc:delete(cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB)).
+
+-spec delete_account(cb_context:context(), ne_binary()) -> cb_context:context().
+delete_account(Context, AccountId) ->
+    lager:debug("account ~s deleted, removing any webhooks", [AccountId]),
+    wh_util:spawn(fun() -> delete_account_webhooks(AccountId) end),
+    Context.
+
+-spec delete_account_webhooks(ne_binary()) -> 'ok'.
+delete_account_webhooks(AccountId) ->
+    case couch_mgr:get_results(?KZ_WEBHOOKS_DB
+                               ,<<"webhooks/accounts_listing">>
+                               ,[{'key', AccountId}
+                                 ,'include_docs'
+                                ]
+                              )
+    of
+        {'ok', []} -> 'ok';
+        {'error', _E} -> lager:debug("failed to fetch webhooks for account ~s: ~p", [AccountId, _E]);
+        {'ok', ViewJObjs} ->
+            _Res = couch_mgr:del_docs(?KZ_WEBHOOKS_DB
+                                      ,[wh_json:get_value(<<"doc">>, ViewJObj) || ViewJObj <- ViewJObjs]
+                                     ),
+            lager:debug("deleting ~p docs resulted in ~p", [length(ViewJObjs), _Res])
+    end.
 
 %%%===================================================================
 %%% Internal functions
