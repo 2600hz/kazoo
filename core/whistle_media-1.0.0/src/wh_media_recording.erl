@@ -50,6 +50,7 @@
                 ,record_on_answer          :: boolean()
                 ,should_store              :: store_url()
                 ,time_limit                :: pos_integer()
+                ,record_min_sec            :: pos_integer()
                 ,store_attempted = 'false' :: boolean()
                 ,is_recording = 'false'    :: boolean()
                 ,channel_status_ref        :: reference() | 'undefined'
@@ -144,6 +145,7 @@ init([Call, Data]) ->
     TimeLimit = get_timelimit(wh_json:get_integer_value(<<"time_limit">>, Data)),
     RecordOnAnswer = wh_json:is_true(<<"record_on_answer">>, Data, 'false'),
     SampleRate = wh_json:get_integer_value(<<"record_sample_rate">>, Data),
+    RecordMinSec = wh_json:get_integer_value(<<"record_min_sec">>, Data,  whapps_config:get_integer(?WHM_CONFIG_CAT, <<"record_min_sec">>, 0)),
 
     Url = get_url(Data),
 
@@ -155,6 +157,7 @@ init([Call, Data]) ->
                   ,record_on_answer=RecordOnAnswer
                   ,should_store=should_store_recording(Url)
                   ,sample_rate = SampleRate
+                  ,record_min_sec = RecordMinSec
                  }}.
 
 %%--------------------------------------------------------------------
@@ -199,8 +202,9 @@ handle_cast('maybe_start_recording', #state{is_recording='false'
                                             ,time_limit=TimeLimit
                                             ,should_store={'true', 'other', _}
                                             ,sample_rate = SampleRate
+                                            ,record_min_sec = RecordMinSec
                                            }=State) ->
-    start_recording(Call, MediaName, TimeLimit, SampleRate),
+    start_recording(Call, MediaName, TimeLimit, SampleRate, RecordMinSec),
     lager:debug("statred recording shutting down"),
     {'stop', 'normal', State};
 handle_cast('maybe_start_recording', #state{is_recording='false'
@@ -209,8 +213,9 @@ handle_cast('maybe_start_recording', #state{is_recording='false'
                                             ,media_name=MediaName
                                             ,time_limit=TimeLimit
                                             ,sample_rate = SampleRate
+                                            ,record_min_sec = RecordMinSec
                                            }=State) ->
-    start_recording(Call, MediaName, TimeLimit, <<"wh_media_recording">>, SampleRate),
+    start_recording(Call, MediaName, TimeLimit, <<"wh_media_recording">>, SampleRate, RecordMinSec),
     {'noreply', State#state{
                   channel_status_ref=start_check_call_timer()
                   ,time_limit_ref=start_time_limit_timer(TimeLimit)
@@ -223,8 +228,9 @@ handle_cast('maybe_start_recording', #state{is_recording='false'
                                             ,time_limit=TimeLimit
                                             ,should_store={'true', 'other', _}
                                             ,sample_rate = SampleRate
+                                            ,record_min_sec = RecordMinSec
                                            }=State) ->
-    start_recording(Call, MediaName, TimeLimit, SampleRate),
+    start_recording(Call, MediaName, TimeLimit, SampleRate, RecordMinSec),
     {'stop', 'normal', State};
 handle_cast('maybe_start_recording_on_answer', #state{is_recording='true'}=State) ->
     lager:debug("we've already starting a recording for this call"),
@@ -236,8 +242,9 @@ handle_cast('maybe_start_recording_on_answer', #state{is_recording='false'
                                                       ,time_limit=TimeLimit
                                                       ,should_store={'true', 'other', _}
                                                       ,sample_rate = SampleRate
+                                                      ,record_min_sec = RecordMinSec
                                                      }=State) ->
-    start_recording(Call, MediaName, TimeLimit, SampleRate),
+    start_recording(Call, MediaName, TimeLimit, SampleRate, RecordMinSec),
     lager:debug("statred recording on answer shutting down"),
     {'stop', 'normal', State};
 handle_cast('maybe_start_recording_on_answer', #state{is_recording='false'
@@ -246,8 +253,9 @@ handle_cast('maybe_start_recording_on_answer', #state{is_recording='false'
                                                       ,media_name=MediaName
                                                       ,time_limit=TimeLimit
                                                       ,sample_rate = SampleRate
+                                                      ,record_min_sec = RecordMinSec
                                                      }=State) ->
-    start_recording(Call, MediaName, TimeLimit, <<"wh_media_recording">>, SampleRate),
+    start_recording(Call, MediaName, TimeLimit, <<"wh_media_recording">>, SampleRate, RecordMinSec),
     {'noreply', State#state{
                   channel_status_ref=start_check_call_timer()
                   ,time_limit_ref=start_time_limit_timer(TimeLimit)
@@ -318,8 +326,9 @@ handle_cast({'gen_listener',{'is_consuming', 'true'}}, #state{record_on_answer='
                                                               ,media_name=MediaName
                                                               ,time_limit=TimeLimit
                                                               ,sample_rate = SampleRate
+                                                              ,record_min_sec = RecordMinSec
                                                              }=State) ->
-    start_recording(Call, MediaName, TimeLimit, <<"wh_media_recording">>, SampleRate),
+    start_recording(Call, MediaName, TimeLimit, <<"wh_media_recording">>, SampleRate, RecordMinSec),
     lager:debug("started the recording"),
     {'noreply', State};
 
@@ -580,18 +589,20 @@ append_path(Url, MediaName) ->
         _ -> <<Url/binary, "/", Encoded/binary>>
     end.
 
--spec start_recording(whapps_call:call(), ne_binary(), pos_integer(), ne_binary(), api_integer()) -> 'ok'.
--spec start_recording(whapps_call:call(), ne_binary(), pos_integer(), api_integer()) -> 'ok'.
-start_recording(Call, MediaName, TimeLimit, SampleRate) ->
+-spec start_recording(whapps_call:call(), ne_binary(), pos_integer(), ne_binary(), api_integer(), api_integer()) -> 'ok'.
+-spec start_recording(whapps_call:call(), ne_binary(), pos_integer(), api_integer(), api_integer()) -> 'ok'.
+start_recording(Call, MediaName, TimeLimit, SampleRate, RecordMinSec) ->
     lager:debug("starting recording of ~s", [MediaName]),
     Props = [{<<"Media-Name">>, MediaName}
              ,{<<"Record-Sample-Rate">>, SampleRate}
+             ,{<<"Record-Min-Sec">>, wh_util:to_binary(RecordMinSec)}
             ],
     whapps_call_command:start_record_call(Props, TimeLimit, Call).
-start_recording(Call, MediaName, TimeLimit, MediaRecorder, SampleRate) ->
+start_recording(Call, MediaName, TimeLimit, MediaRecorder, SampleRate, RecordMinSec) ->
     lager:debug("starting recording of ~s", [MediaName]),
     Call1 = whapps_call:set_custom_channel_var(<<"Media-Recorder">>, MediaRecorder, Call),
     Props = [{<<"Media-Name">>, MediaName}
              ,{<<"Record-Sample-Rate">>, SampleRate}
+             ,{<<"Record-Min-Sec">>, wh_util:to_binary(RecordMinSec)}
             ],
     whapps_call_command:start_record_call(Props, TimeLimit, Call1).

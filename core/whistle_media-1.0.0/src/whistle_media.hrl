@@ -50,6 +50,7 @@
                      ,{<<"ssl_key">>, 'undefined'}
                      ,{<<"ssl_port">>, 'undefined'}
                      ,{<<"ssl_password">>, 'undefined'}
+                     ,{<<"record_min_sec">>, 0}
                     ]).
 
 -define(WH_MEDIA_HRL, 'true').
