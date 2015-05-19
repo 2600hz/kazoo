@@ -171,8 +171,8 @@ get_default_template(Category, Key) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec render_template(api_binary(), atom(), wh_proplist()) ->
-                                   {'ok', iolist()} |
-                                   {'error', term()}.
+                                   {'ok', string()} |
+                                   {'error', _}.
 render_template(Template, DefaultTemplate, Props) ->
     case do_render_template(Template, DefaultTemplate, Props) of
         {'ok', R} -> {'ok', binary_to_list(iolist_to_binary(R))};
@@ -180,8 +180,8 @@ render_template(Template, DefaultTemplate, Props) ->
     end.
 
 -spec do_render_template(api_binary(), atom(), wh_proplist()) ->
-                                   {'ok', iolist()} |
-                                   {'error', term()}.
+                                   {'ok', string()} |
+                                   {'error', _}.
 do_render_template('undefined', DefaultTemplate, Props) ->
     lager:debug("rendering default ~s template", [DefaultTemplate]),
     DefaultTemplate:render(Props);
@@ -432,7 +432,7 @@ qr_code_image(Text) ->
             'undefined'
     end.
 
--spec get_charset_params(term()) -> tuple().
+-spec get_charset_params(proplist()) -> {proplist(), binary()}.
 get_charset_params(Service) ->
         case props:get_value(<<"template_charset">>, Service) of
             <<>> -> {[], <<>>};

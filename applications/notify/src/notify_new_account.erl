@@ -74,7 +74,7 @@ handle_req(JObj, _Props) ->
     To = wh_json:get_value(<<"email">>, Admin, whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<"">>)),
     RepEmail = notify_util:get_rep_email(Account),
 
-    build_and_send_email(TxtBody, HTMLBody, Subject, To, Props),
+    _ = build_and_send_email(TxtBody, HTMLBody, Subject, To, Props),
     build_and_send_email(TxtBody, HTMLBody, Subject, RepEmail, Props).
 
 %%--------------------------------------------------------------------

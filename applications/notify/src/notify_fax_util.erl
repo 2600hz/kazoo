@@ -55,14 +55,11 @@ get_attachment(Category, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec raw_attachment_binary(wh_proplist()) ->
-                                   {'ok', ne_binary(), ne_binary()} |
-                                   {'error', _}.
+                                   {'ok', ne_binary(), ne_binary()}.
 -spec raw_attachment_binary(ne_binary(), ne_binary()) ->
-                                   {'ok', ne_binary(), ne_binary()} |
-                                   {'error', _}.
+                                   {'ok', ne_binary(), ne_binary()}.
 -spec raw_attachment_binary(ne_binary(), ne_binary(), non_neg_integer()) ->
-                                   {'ok', ne_binary(), ne_binary()} |
-                                   {'error', _}.
+                                   {'ok', ne_binary(), ne_binary()}.
 raw_attachment_binary(Props) ->
     Fax = props:get_value(<<"fax">>, Props),
     FaxId = props:get_first_defined([<<"fax_jobid">>, <<"fax_id">>], Fax),

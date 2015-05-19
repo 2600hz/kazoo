@@ -33,7 +33,7 @@
 %% Returns whether an account's initial call notification has been sent
 %% @end
 %%--------------------------------------------------------------------
--spec check_initial_call(text()) -> 'ok'.
+-spec check_initial_call(ne_binary()) -> 'ok'.
 check_initial_call(Account) when is_binary(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     case couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId) of
@@ -52,7 +52,7 @@ check_initial_call(Account) when is_binary(Account) ->
 %% Returns wether the initial_registration notification has been sent
 %% @end
 %%--------------------------------------------------------------------
--spec check_initial_registration(text()) -> 'ok'.
+-spec check_initial_registration(ne_binary()) -> 'ok'.
 check_initial_registration(Account) when is_binary(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     case couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId) of
