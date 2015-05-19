@@ -884,16 +884,12 @@ create_auth_token(Context, Method, JObj) ->
         MethodRestrictions -> MethodRestrictions
     end,
     
-    RestrictionsExpandMacros = [{<<"{ACCOUNT_ID}">>, AccountId}
-                                ,{<<"{USER_ID}">>, OwnerId}
-                               ],
-
     Token = props:filter_undefined(
               [{<<"account_id">>, AccountId}
                ,{<<"owner_id">>, OwnerId}
                ,{<<"as">>, wh_json:get_value(<<"as">>, Data)}
                ,{<<"api_key">>, wh_json:get_value(<<"api_key">>, Data)}
-               ,{<<"restrictions">>, replace_restriction_macros(Restrictions, RestrictionsExpandMacros)}
+               ,{<<"restrictions">>, Restrictions}
                ,{<<"method">>, wh_util:to_binary(Method)}
               ]),
     JObjToken = wh_doc:update_pvt_parameters(wh_json:from_list(Token)
@@ -948,30 +944,7 @@ get_priv_level_restrictions(Restrictions, PrivLevel) ->
     RestrictionLevels = wh_json:get_keys(Restrictions),
     case lists:member(PrivLevel, RestrictionLevels) of
         'true' -> wh_json:get_ne_value(PrivLevel, Restrictions);
-        'false' -> wh_json:get_ne_value(<<"*">>, Restrictions)
-    end.
-
--spec replace_restriction_macros(api_object(), wh_proplist()) -> api_object().
-replace_restriction_macros(Restrictions, ReplaceMacros) ->
-    Fun = fun(Key, Value, Acc) -> 
-                  wh_json:set_value(Key,replace_with_macros(ReplaceMacros, Value, []), Acc)
-          end,
-    wh_json:foldl(Fun, wh_json:new(), Restrictions).
-
--spec replace_with_macros(binaries(), wh_proplists(), binaries()) -> binaries().
-replace_with_macros(_ReplaceMacros, [], Acc) -> lists:reverse(Acc);
-replace_with_macros(ReplaceMacros, [H|T], Acc) ->
-    List = binary:split(H, <<"/">>, [global]),
-    Replaced = expand_macros(ReplaceMacros, List, []),
-    Result = wh_util:join_binary(Replaced, <<"/">>),
-    replace_with_macros(ReplaceMacros, T, [Result | Acc]).
-
--spec expand_macros(wh_proplists(), binaries(), binaries()) -> binaries().
-expand_macros(_ReplaceMacros, [], Acc) -> lists:reverse(Acc);
-expand_macros(ReplaceMacros, [H|T], Acc) ->
-    case lists:keyfind(H, 1, ReplaceMacros) of
-        'false' -> expand_macros(ReplaceMacros, T, [H | Acc]);
-        {_Key, Value} -> expand_macros(ReplaceMacros, T, [Value | Acc])
+        'false' -> wh_json:get_ne_value(<<"_">>, Restrictions)
     end.
 
 %%--------------------------------------------------------------------
