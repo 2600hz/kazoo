@@ -435,6 +435,9 @@ format_error({'conn_failed', {'error', 'enetunreach'}}) -> 'network_unreachable'
 format_error({'conn_failed', {'error', 'system_limit'}}) ->
     lager:critical("system limit reached for database operations!!"),
     'system_limit';
+format_error({'conn_failed',{'error','econnrefused'}}) ->
+    lager:warning("connection is being refused"),
+    'econnrefused';
 format_error({'ok', "500", _Headers, Body}) ->
     JObj = wh_json:decode(Body),
     case wh_json:get_value(<<"error">>, JObj) of
