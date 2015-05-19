@@ -287,15 +287,8 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='Sip'
     _Props = kz_xml:attributes_to_proplist(Attrs),
 
     try wnm_sip:parse(kz_xml:texts_to_binary(Number)) of
-        Uri ->
-            lager:debug("maybe add SIP ~s", [wnm_sip:encode(Uri)]),
-            SipJObj = wh_json:from_list([{<<"invite_format">>, <<"route">>}
-                                         ,{<<"route">>, wnm_sip:encode(Uri)}
-                                        ]),
-            Device = wh_json:from_list([{<<"sip">>, SipJObj}]),
-            EP = cf_endpoint:create_sip_endpoint(Device, wh_json:new(), Call),
-
-            xml_elements_to_endpoints(Call, EPs, [EP|Acc])
+        URI ->
+            xml_elements_to_endpoints(Call, EPs, [sip_uri(Call, URI)|Acc])
     catch
         'throw':_E ->
             lager:debug("failed to parse SIP uri: ~p", [_E]),
@@ -305,6 +298,20 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='Sip'
 xml_elements_to_endpoints(Call, [_Xml|EPs], Acc) ->
     lager:debug("unknown endpoint, skipping: ~p", [_Xml]),
     xml_elements_to_endpoints(Call, EPs, Acc).
+
+-spec sip_uri(whapps_call:call(), ne_binary()) -> wh_json:object().
+sip_uri(Call, URI) ->
+    lager:debug("maybe adding SIP endpoint: ~s", [wnm_sip:encode(URI)]),
+    SIPDevice = sip_device(URI),
+    cf_endpoint:create_sip_endpoint(SIPDevice, wh_json:new(), Call).
+
+-spec sip_device(ne_binary()) -> kz_device:doc().
+sip_device(URI) ->
+    lists:foldl(fun({F, V}, D) -> F(D, V) end
+                ,kz_device:new()
+                ,[{fun kz_device:set_sip_invite_format/2, <<"route">>}
+                  ,{fun kz_device:set_sip_route/2, wnm_sip:encode(URI)}
+                 ]).
 
 request_id(N, Call) -> iolist_to_binary([N, <<"@">>, whapps_call:from_realm(Call)]).
 
