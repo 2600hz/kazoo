@@ -52,4 +52,5 @@ init([]) ->
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
+
     {'ok', {SupFlags, ?CHILDREN}}.
