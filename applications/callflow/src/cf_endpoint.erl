@@ -1203,34 +1203,42 @@ generate_sip_headers(Endpoint, Call) ->
                                   wh_json:object().
 generate_sip_headers(Endpoint, Acc, Call) ->
     Inception = whapps_call:inception(Call),
-    SIP = wh_json:get_value(<<"sip">>, Endpoint),
 
-    Realm = wh_json:get_value(<<"realm">>, SIP, whapps_call:account_realm(Call)),
-    Username = wh_json:get_value(<<"username">>, SIP),
-
-    HeaderFuns = [fun(J) ->
-                          case wh_json:get_value(<<"custom_sip_headers">>, SIP) of
-                              'undefined' -> J;
-                              CustomHeaders ->
-                                  wh_json:merge_jobjs(CustomHeaders, J)
-                          end
-                  end
-                  ,fun (J) when Inception =:= 'undefined' ->
-                           case wh_json:get_value([<<"ringtones">>, <<"internal">>], Endpoint) of
-                               'undefined' -> J;
-                               Ringtone -> wh_json:set_value(<<"Alert-Info">>, Ringtone, J)
-                           end;
-                       (J) ->
-                           case wh_json:get_value([<<"ringtones">>, <<"external">>], Endpoint) of
-                               'undefined' -> J;
-                               Ringtone -> wh_json:set_value(<<"Alert-Info">>, Ringtone, J)
-                           end
-                   end
-                  ,fun(J) ->
-                          wh_json:set_value(<<"X-KAZOO-AOR">>, <<"sip:", Username/binary, "@", Realm/binary>> , J)
-                   end
+    HeaderFuns = [fun maybe_add_sip_headers/1
+                  ,fun(J) -> maybe_add_alert_info(J, Endpoint, Inception) end
+                  ,fun(J) -> maybe_add_aor(J, Call) end
                  ],
     lists:foldr(fun(F, JObj) -> F(JObj) end, Acc, HeaderFuns).
+
+-spec maybe_add_sip_headers(wh_json:object()) -> wh_json:object().
+maybe_add_sip_headers(JObj) ->
+    case kz_device:custom_sip_headers(JObj) of
+        'undefined' -> JObj;
+        CustomHeaders -> wh_json:merge_jobjs(CustomHeaders, JObj)
+    end.
+
+-spec maybe_add_alert_info(wh_json:object(), wh_json:object(), api_binary()) -> wh_json:object().
+maybe_add_alert_info(JObj, Endpoint, 'undefined') ->
+    case wh_json:get_value([<<"ringtones">>, <<"internal">>], Endpoint) of
+        'undefined' -> JObj;
+        Ringtone -> wh_json:set_value(<<"Alert-Info">>, Ringtone, JObj)
+    end;
+maybe_add_alert_info(JObj, Endpoint, _Inception) ->
+    case wh_json:get_value([<<"ringtones">>, <<"external">>], Endpoint) of
+        'undefined' -> JObj;
+        Ringtone -> wh_json:set_value(<<"Alert-Info">>, Ringtone, JObj)
+    end.
+
+-spec maybe_add_aor(wh_json:object(), whapps_call:call()) -> wh_json:object().
+-spec maybe_add_aor(wh_json:object(), api_binary(), ne_binary()) -> wh_json:object().
+maybe_add_aor(JObj, Call) ->
+    Realm = kz_device:sip_realm(JObj, whapps_call:account_realm(Call)),
+    Username = kz_device:sip_username(JObj),
+    maybe_add_aor(JObj, Username, Realm).
+
+maybe_add_aor(JObj, 'undefined', _Realm) -> JObj;
+maybe_add_aor(JObj, Username, Realm) ->
+    wh_json:set_value(<<"X-KAZOO-AOR">>, <<"sip:", Username/binary, "@", Realm/binary>> , JObj).
 
 %%--------------------------------------------------------------------
 %% @private
