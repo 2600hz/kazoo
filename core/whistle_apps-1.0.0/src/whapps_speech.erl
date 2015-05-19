@@ -135,6 +135,9 @@ create(<<"ispeech">> = Engine, Text, Voice, Format, Options) ->
             Headers = [{"Content-Type", "application/json; charset=UTF-8"}],
             HTTPOptions = [{'response_format', 'binary'} | Options],
             Body = wh_json:encode(wh_json:from_list(Props)),
+
+            lager:debug("sending TTS request to ~s", [BaseUrl]),
+
             Response = ibrowse:send_req(BaseUrl, Headers, 'post', Body, HTTPOptions),
             create_response(Engine, Response)
     end;

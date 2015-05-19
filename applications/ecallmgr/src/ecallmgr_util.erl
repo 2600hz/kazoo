@@ -879,7 +879,7 @@ create_masquerade_event(Application, EventName, Boolean) ->
 -spec media_path(ne_binary(), ne_binary(), wh_json:object()) -> ne_binary().
 media_path(MediaName, UUID, JObj) -> media_path(MediaName, 'new', UUID, JObj).
 
--spec media_path(ne_binary(), media_types(), ne_binary(), wh_json:object()) -> ne_binary().
+-spec media_path(api_binary(), media_types(), ne_binary(), wh_json:object()) -> ne_binary().
 media_path('undefined', _Type, _UUID, _) -> <<"silence_stream://5">>;
 media_path(MediaName, Type, UUID, JObj) when not is_binary(MediaName) ->
     media_path(wh_util:to_binary(MediaName), Type, UUID, JObj);
@@ -1020,7 +1020,8 @@ request_media_url(MediaName, CallId, JObj, Type) ->
                    ,{<<"Msg-ID">>, wh_util:to_binary(wh_util:current_tstamp())}
                    | wh_api:default_headers(<<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
                   ])
-                ,JObj),
+                ,JObj
+               ),
     ReqResp = wh_amqp_worker:call(Request
                                   ,fun wapi_media:publish_req/1
                                   ,fun wapi_media:resp_v/1
@@ -1053,9 +1054,16 @@ media_url_cache_props(<<"/", _/binary>> = MediaName) ->
             [{'origin', {'db', AccountDb, MediaId}}
              | ?DEFAULT_MEDIA_CACHE_PROPS
             ];
-        _ -> ?DEFAULT_MEDIA_CACHE_PROPS
+        _Parts ->
+            ?DEFAULT_MEDIA_CACHE_PROPS
     end;
-media_url_cache_props(_MediaName) -> ?DEFAULT_MEDIA_CACHE_PROPS.
+media_url_cache_props(<<"tts://", Text/binary>>) ->
+    Id = wh_util:binary_md5(Text),
+    [{'origin', {'db', <<"tts">>, Id}}
+     | ?DEFAULT_MEDIA_CACHE_PROPS
+    ];
+media_url_cache_props(_MediaName) ->
+    ?DEFAULT_MEDIA_CACHE_PROPS.
 
 -spec cached_media_expelled(?ECALLMGR_PLAYBACK_MEDIA_KEY(ne_binary()), ne_binary(), atom()) -> 'ok'.
 cached_media_expelled(?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName), MediaUrl, _Reason) ->

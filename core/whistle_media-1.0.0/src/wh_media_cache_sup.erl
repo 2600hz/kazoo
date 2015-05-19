@@ -71,15 +71,25 @@ start_file_server(Id, Doc, Attachment, Name) ->
         {'error', _}=E -> E
     end.
 
+-spec find_tts_server(term()) ->
+                             {'ok', pid()} |
+                             {'error', 'no_file_server'}.
 find_tts_server(Id) ->
     case [P||{N,P,_,_} <- supervisor:which_children(?MODULE), N =:= Id, is_pid(P)] of
         [] -> {'error', 'no_file_server'};
         [P] -> {'ok', P}
     end.
 
+-spec find_tts_server(ne_binary(), wh_json:object()) ->
+                             {'ok', pid()} |
+                             {'error', _}.
+-spec find_tts_server(ne_binary(), wh_json:object(), ne_binary()) ->
+                             {'ok', pid()} |
+                             {'error', _}.
 find_tts_server(Text, JObj) ->
-    Id =  wh_util:binary_md5(Text),    
+    Id = wh_util:binary_md5(Text),
     find_tts_server(Text, JObj, Id).
+
 find_tts_server(Text, JObj, Id) ->
     case supervisor:start_child(?MODULE, ?CHILD(Id, Text, JObj)) of
         {'ok', _Pid}=OK -> OK;
