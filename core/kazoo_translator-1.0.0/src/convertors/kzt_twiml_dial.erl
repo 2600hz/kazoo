@@ -233,9 +233,6 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='Device'
     DeviceId = kz_xml:texts_to_binary(DeviceIdTxt),
     lager:debug("maybe adding device ~s to ring group", [DeviceId]),
     case cf_endpoint:build(DeviceId, Call) of
-        {'ok', []} ->
-            lager:debug("no device endpoint built for ~s, skipping", [DeviceId]),
-            xml_elements_to_endpoints(Call, EPs, Acc);
         {'ok', DeviceEPs} -> xml_elements_to_endpoints(Call, EPs, DeviceEPs ++ Acc);
         {'error', _E} ->
             lager:debug("failed to add device ~s: ~p", [DeviceId, _E]),
