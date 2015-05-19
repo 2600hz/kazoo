@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -151,6 +151,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec send_error_resp(wh_json:object(), ne_binary()) -> 'ok'.
 send_error_resp(JObj, ErrMsg) ->
     MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
     Error = [{<<"Media-Name">>, MediaName}
@@ -164,6 +165,7 @@ send_error_resp(JObj, ErrMsg) ->
     Publisher = fun(P) -> wapi_media:publish_error(ServerId, P) end,
     whapps_util:amqp_pool_send(Error, Publisher).
 
+-spec send_media_resp(wh_json:object(), ne_binary()) -> 'ok'.
 send_media_resp(JObj, StreamURL) ->
     lager:debug("media stream URL: ~s", [StreamURL]),
     Resp = [{<<"Media-Name">>, wh_json:get_value(<<"Media-Name">>, JObj)}
