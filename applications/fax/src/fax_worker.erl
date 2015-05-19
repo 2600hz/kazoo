@@ -469,7 +469,7 @@ release_failed_job('fetch_error', {Cause, _}, JObj) ->
              ],
     release_job(Result, JObj);
 release_failed_job('tx_resp', Resp, JObj) ->
-    Msg = wh_json:get_value(<<"Error-Message">>, Resp),
+    Msg = wh_json:get_first_defined([<<"Error-Message">>, <<"Response-Message">>], Resp),
     <<"sip:", Code/binary>> = wh_json:get_value(<<"Response-Code">>, Resp, <<"sip:500">>),
     Result = [{<<"success">>, 'false'}
               ,{<<"result_code">>, wh_util:to_integer(Code)}
@@ -477,7 +477,8 @@ release_failed_job('tx_resp', Resp, JObj) ->
               ,{<<"pages_sent">>, 0}
               ,{<<"time_elapsed">>, elapsed_time(JObj)}
              ],
-    release_job(Result, JObj, Resp);
+    KVs = [{[<<"Application-Data">>, <<"Fax-Result-Text">>], Msg}],
+    release_job(Result, JObj, wh_json:set_values(KVs, Resp));
 release_failed_job('invalid_number', Number, JObj) ->
     Msg = wh_util:to_binary(io_lib:format("invalid fax number: ~s", [Number])),
     Result = [{<<"success">>, 'false'}
@@ -625,17 +626,25 @@ maybe_notify(_Result, JObj, Resp, <<"completed">>) ->
     Message = notify_fields(JObj, Resp),
     wapi_notifications:publish_fax_outbound(Message);
 maybe_notify(_Result, JObj, Resp, <<"failed">>) ->
-    Message = notify_fields(JObj, Resp),
-    wapi_notifications:publish_fax_outbound_error(Message);
+    Message = [{<<"Fax-Error">>, fax_error(Resp)}
+                | notify_fields(JObj, Resp)
+              ],
+    wapi_notifications:publish_fax_outbound_error(props:filter_undefined(Message));
 maybe_notify(_Result, _JObj, _Resp, Status) ->
     lager:debug("notify Status ~p not handled",[Status]).
+
+-spec fax_error(wh_json:object()) -> api_binary().
+fax_error(JObj) ->
+    wh_json:get_value([<<"Application-Data">>
+                       ,<<"Fax-Result-Text">>
+                      ], JObj).
 
 -spec notify_fields(wh_json:object(), wh_json:object()) -> wh_proplist().
 notify_fields(JObj, Resp) ->
     <<"sip:", HangupCode/binary>> = wh_json:get_value(<<"Hangup-Code">>, Resp, <<"sip:0">>),
     HangupCause = wh_json:get_value(<<"Hangup-Cause">>, Resp),
-    FaxFields = [{"Fax-Hangup-Code", wh_util:to_integer(HangupCode)}
-                 ,{"Fax-Hangup-Cause", HangupCause}
+    FaxFields = [{<<"Fax-Hangup-Code">>, wh_util:to_integer(HangupCode)}
+                 ,{<<"Fax-Hangup-Cause">>, HangupCause}
                  | fax_fields(wh_json:get_value(<<"Application-Data">>, Resp))
                 ],
 
