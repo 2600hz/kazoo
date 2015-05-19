@@ -21,7 +21,7 @@ Example resource document:
            "^\\+7(\\d{10})$"
        ],
        "cid_rules": [
-           "^(\\+749[59]\\d{7}))$"
+           "^(\\+749[59]\\d{7})$"
        ],
        "gateways": [
            {
