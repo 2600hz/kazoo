@@ -339,7 +339,7 @@ init_webhooks() ->
 
 -spec load_hooks(pid(), wh_json:objects()) -> 'ok'.
 load_hooks(Srv, WebHooks) ->
-    [load_hook(Srv, wh_json:get_value(<<"doc">>, Hook)) || Hook <- WebHooks],
+    _ = [load_hook(Srv, wh_json:get_value(<<"doc">>, Hook)) || Hook <- WebHooks],
     lager:debug("sent hooks into server ~p", [Srv]).
 
 -spec load_hook(pid(), wh_json:object()) -> 'ok'.

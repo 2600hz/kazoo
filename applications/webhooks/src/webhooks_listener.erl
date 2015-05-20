@@ -150,9 +150,9 @@ process_failed_key(_Key, Dict) ->
 
 -spec check_failures(list()) -> 'ok'.
 check_failures(Failures) ->
-    [check_failure(AccountId, HookId, Count)
-     || {{AccountId, HookId}, Count} <- Failures
-    ],
+    _ = [check_failure(AccountId, HookId, Count)
+         || {{AccountId, HookId}, Count} <- Failures
+        ],
     'ok'.
 
 -spec check_failure(ne_binary(), ne_binary(), pos_integer()) -> 'ok'.

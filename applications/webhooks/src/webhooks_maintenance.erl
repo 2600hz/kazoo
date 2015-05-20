@@ -79,18 +79,16 @@ set_disable_threshold(Account, Count) ->
 failure_status() ->
     Failed = webhooks_listener:find_failures(),
     Sorted = lists:keysort(1, Failed),
-
     print_failure_header(),
-    [print_failure_count(AccountId, HookId, Count) || {{AccountId, HookId}, Count} <- Sorted],
+    _ = [print_failure_count(AccountId, HookId, Count) || {{AccountId, HookId}, Count} <- Sorted],
     print_failure_footer().
 
 failure_status(Account) ->
     AccountId = wh_util:format_account_id(Account),
     Failed = webhooks_listener:find_failures(),
     Sorted = lists:keysort(1, Failed),
-
     print_failure_header(),
-    [print_failure_count(AID, HookId, Count) || {{AID, HookId}, Count} <- Sorted, AccountId =:= AID],
+    _ = [print_failure_count(AID, HookId, Count) || {{AID, HookId}, Count} <- Sorted, AccountId =:= AID],
     print_failure_footer().
 
 -define(FORMAT_FAILURE_STRING, "| ~-32s | ~-32s | ~5s |~n").
