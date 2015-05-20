@@ -50,8 +50,8 @@
        ).
 
 -define(IBROWSE_REQ_HEADERS(Hook)
-        ,[{<<"X-Hook-ID">>, Hook#webhook.hook_id}
-          ,{<<"X-Account-ID">>, Hook#webhook.account_id}
+        ,[{"X-Hook-ID", Hook#webhook.hook_id}
+          ,{"X-Account-ID", Hook#webhook.account_id}
          ]).
 
 -spec table_id() -> ?TABLE.
