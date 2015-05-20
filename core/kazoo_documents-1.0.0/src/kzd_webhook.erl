@@ -16,6 +16,9 @@
          ,disable/1, disable/2
          ,disabled_message/1, disabled_message/2
          ,type/0, type/1
+         ,name/1, name/2, set_name/2
+         ,uri/1, uri/2, set_uri/2
+         ,event/1, event/2, set_event/2
         ]).
 
 -include("kz_documents.hrl").
@@ -26,6 +29,9 @@
 -define(IS_ENABLED, <<"enabled">>).
 -define(DISABLED_MESSAGE, <<"pvt_disabled_message">>).
 -define(TYPE, <<"webhook">>).
+-define(NAME, <<"name">>).
+-define(URI, <<"uri">>).
+-define(EVENT, <<"hook">>).
 
 -spec is_enabled(doc()) -> boolean().
 -spec is_enabled(doc(), Default) -> boolean() | Default.
@@ -72,3 +78,36 @@ type() -> ?TYPE.
 
 type(Hook) ->
     wh_json:get_value(<<"pvt_type">>, Hook).
+
+-spec name(doc()) -> api_binary().
+-spec name(doc(), Default) -> ne_binary() | Default.
+name(Hook) ->
+    name(Hook, 'undefined').
+name(Hook, Default) ->
+    wh_json:get_value(?NAME, Hook, Default).
+
+-spec set_name(doc(), ne_binary()) -> doc().
+set_name(Hook, Name) ->
+    wh_json:set_value(?NAME, Name, Hook).
+
+-spec uri(doc()) -> api_binary().
+-spec uri(doc(), Default) -> ne_binary() | Default.
+uri(Hook) ->
+    uri(Hook, 'undefined').
+uri(Hook, Default) ->
+    wh_json:get_value(?URI, Hook, Default).
+
+-spec set_uri(doc(), ne_binary()) -> doc().
+set_uri(Hook, Uri) ->
+    wh_json:set_value(?URI, Uri, Hook).
+
+-spec event(doc()) -> api_binary().
+-spec event(doc(), Default) -> ne_binary() | Default.
+event(Hook) ->
+    event(Hook, 'undefined').
+event(Hook, Default) ->
+    wh_json:get_value(?EVENT, Hook, Default).
+
+-spec set_event(doc(), ne_binary()) -> doc().
+set_event(Hook, Event) ->
+    wh_json:set_value(?EVENT, Event, Hook).
