@@ -503,7 +503,7 @@ fetch_parked_calls(AccountDb, AccountId) ->
 %%--------------------------------------------------------------------
 -spec cleanup_slot(ne_binary(), ne_binary(), ne_binary()) ->
                           {'ok', wh_json:object()} |
-                          {'error', term()}.
+                          {'error', _}.
 cleanup_slot(SlotNumber, ParkedCallId, AccountDb) ->
     case couch_mgr:open_doc(AccountDb, ?DB_DOC_NAME) of
         {'ok', JObj} ->
