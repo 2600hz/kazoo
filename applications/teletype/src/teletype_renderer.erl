@@ -179,7 +179,7 @@ log_warnings(Ws) ->
 
 log_error_infos([]) -> 'ok';
 log_error_infos([{_File, Info}|Infos]) ->
-    [log_error_info(EI) || EI <- Info],
+    _ = [log_error_info(EI) || EI <- Info],
     log_error_infos(Infos).
 
 log_error_info({Location, _Module, Desc}) ->

@@ -226,7 +226,7 @@ get_attachment_binary(Db, Id, FaxJObj) ->
             get_attachment(wh_doc:attachment_content_type(FaxJObj, AttachmentName), Bin);
         {'error', _E} ->
             lager:debug("failed to fetch attachment ~s: ~p", [AttachmentName, _E]),
-            []
+            {'error', 'no_attachment'}
     end.
 
 -spec get_attachment(api_binary(), binary()) -> {'ok', ne_binary(), binary()}.

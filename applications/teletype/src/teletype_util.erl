@@ -115,8 +115,7 @@ relay_email(To, From, {_Type
             throw({'error', 'email_encoding_failed'})
     end.
 
--spec maybe_relay_to_bcc(ne_binary(), ne_binary(), api_binaries()) ->
-                                'ok' | {'error', _}.
+-spec maybe_relay_to_bcc(ne_binary(), ne_binary(), api_binaries()) -> 'ok'.
 maybe_relay_to_bcc(_From, _Encoded, 'undefined') -> 'ok';
 maybe_relay_to_bcc(_From, _Encoded, []) -> 'ok';
 maybe_relay_to_bcc(From, Encoded, Bcc) ->
@@ -320,11 +319,11 @@ default_system_value(JObj, ConfigCat, JSONKey, ConfigKey, ConfigDefault) ->
         Value -> Value
     end.
 
--spec render_subject(ne_binary(), wh_proplist()) -> api_binary().
+-spec render_subject(ne_binary(), wh_proplist()) -> binary().
 render_subject(Template, Macros) ->
     render(<<"subject">>, Template, Macros).
 
--spec render(ne_binary(), binary(), wh_proplist()) -> api_binary().
+-spec render(ne_binary(), binary(), wh_proplist()) -> binary().
 render(TemplateId, Template, Macros) ->
     case teletype_renderer:render(TemplateId, Template, Macros) of
         {'ok', IOData} -> iolist_to_binary(IOData);
