@@ -457,7 +457,7 @@ maybe_faxbox(#state{faxbox_email=Domain}=State) ->
     case couch_mgr:get_results(?WH_FAXES_DB, <<"faxbox/email_address">>, ViewOptions) of
         {'ok', [JObj]} ->
             FaxBoxDoc= wh_json:get_value(<<"doc">>,JObj),
-            AccountId = wh_json:get_value(<<"pvt_account_id">>,JObj),
+            AccountId = wh_json:get_value(<<"pvt_account_id">>,FaxBoxDoc),
             maybe_faxbox_owner(State#state{faxbox=FaxBoxDoc, account_id=AccountId});
         _ -> maybe_faxbox_domain(State)
     end.
