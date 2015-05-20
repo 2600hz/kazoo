@@ -1020,18 +1020,14 @@ request_media_url(MediaName, CallId, JObj, Type) ->
                    ,{<<"Msg-ID">>, wh_util:to_binary(wh_util:current_tstamp())}
                    | wh_api:default_headers(<<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
                   ])
-                ,JObj
-               ),
-    ReqResp = wh_amqp_worker:call(Request
-                                  ,fun wapi_media:publish_req/1
-                                  ,fun wapi_media:resp_v/1
-                                 ),
-    case ReqResp of
-        {'error', _E}=E ->
-            lager:debug("error get media url from amqp ~p", [E]),
-            E;
+                ,JObj),
+    case wh_amqp_worker:call_collect(Request
+                                     ,fun wapi_media:publish_req/1
+                                     ,{'media_mgr', fun wapi_media:resp_v/1}
+                                    )
+    of
         {'ok', MediaResp} ->
-            MediaUrl = wh_json:get_value(<<"Stream-URL">>, MediaResp, <<>>),
+            MediaUrl = wh_json:find(<<"Stream-URL">>, MediaResp, <<>>),
             CacheProps = media_url_cache_props(MediaName),
             _ = wh_cache:store_local(?ECALLMGR_UTIL_CACHE
                                      ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName)
@@ -1039,7 +1035,16 @@ request_media_url(MediaName, CallId, JObj, Type) ->
                                      ,CacheProps
                                     ),
             lager:debug("media ~s stored to playback cache : ~s", [MediaName, MediaUrl]),
-            {'ok', MediaUrl}
+            {'ok', MediaUrl};
+        {'returned', _JObj, _BR} ->
+            lager:debug("no media manager available", []),
+            {'error', 'timeout'};
+        {'timeout', _Resp} ->
+            lager:debug("timeout when getting media url from amqp", []),
+            {'error', 'timeout'};
+        {'error', _R}=E ->
+            lager:debug("error when getting media url from amqp ~p", [_R]),
+            E
     end.
 
 -define(DEFAULT_MEDIA_CACHE_PROPS

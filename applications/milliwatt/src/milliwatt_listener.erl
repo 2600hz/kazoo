@@ -6,7 +6,7 @@
 %%% @contributors
 %%% Peter Defebvre
 %%%-------------------------------------------------------------------
--module(milliwatt_shared_listener).
+-module(milliwatt_listener).
 
 -behaviour(gen_listener).
 
@@ -24,15 +24,15 @@
 
 -record(state, {}).
 
--define(BINDINGS, [{route, []}
-                   ,{self, []}
+-define(BINDINGS, [{'route', []}
+                   ,{'self', []}
                   ]).
--define(RESPONDERS, [{milliwatt_route_req, [{<<"dialplan">>, <<"route_req">>}]}
-                     ,{milliwatt_route_win, [{<<"dialplan">>, <<"route_win">>}]}
+-define(RESPONDERS, [{'milliwatt_route_req', [{<<"dialplan">>, <<"route_req">>}]}
+                     ,{'milliwatt_route_win', [{<<"dialplan">>, <<"route_win">>}]}
                     ]).
--define(QUEUE_NAME, <<"milliwatt_listener">>).
--define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
--define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
+-define(QUEUE_NAME, <<>>).
+-define(QUEUE_OPTIONS, []).
+-define(CONSUME_OPTIONS, []).
 
 %%%===================================================================
 %%% API
@@ -46,11 +46,11 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link(?MODULE, [{bindings, ?BINDINGS}
-                                      ,{responders, ?RESPONDERS}
-                                      ,{queue_name, ?QUEUE_NAME}       % optional to include
-                                      ,{queue_options, ?QUEUE_OPTIONS} % optional to include
-                                      ,{consume_options, ?CONSUME_OPTIONS} % optional to include
+    gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS}
+                                      ,{'responders', ?RESPONDERS}
+                                      ,{'queue_name', ?QUEUE_NAME}
+                                      ,{'queue_options', ?QUEUE_OPTIONS}
+                                      ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], []).
 
 %%%===================================================================
@@ -69,7 +69,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, #state{}}.
+    {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -86,7 +86,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    {reply, {error, not_implemented}, State}.
+    {'reply', {'error', 'not_implemented'}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -99,7 +99,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -112,7 +112,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -123,7 +123,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, _State) ->
-    {reply, []}.
+    {'reply', []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -148,7 +148,7 @@ terminate(_Reason, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions
