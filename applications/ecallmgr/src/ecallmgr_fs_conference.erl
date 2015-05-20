@@ -743,9 +743,9 @@ safe_integer_get(Key, Props, Default) ->
 -spec relay_event(wh_proplist()) -> 'ok'.
 relay_event(Props) ->
     ConferenceName = props:get_value(<<"Conference-Name">>, Props),
-    [relay_event(UUID, Node, Props)
-     || #participant{uuid=UUID, node=Node} <- ecallmgr_fs_conferences:participants(ConferenceName)
-    ],
+    _ = [relay_event(UUID, Node, Props)
+         || #participant{uuid=UUID, node=Node} <- ecallmgr_fs_conferences:participants(ConferenceName)
+        ],
     'ok'.
 
 -spec relay_event(ne_binary(), atom(), wh_proplist()) -> 'ok'.

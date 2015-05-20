@@ -310,7 +310,7 @@ update_events(Node, CallId, Fun) ->
             ,?FS_EVENT_REG_MSG(Node, ?CHANNEL_MOVE_RELEASED_EVENT_BIN)
             ,?LOOPBACK_BOWOUT_REG(CallId)
            ],
-    [update_event(Fun, Reg) || Reg <- Regs],
+    _ = [update_event(Fun, Reg) || Reg <- Regs],
     'true'.
 
 -spec update_event(fun(), tuple() | atom()) -> 'true'.

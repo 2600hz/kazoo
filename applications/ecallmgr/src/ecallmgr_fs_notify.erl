@@ -181,7 +181,7 @@ send_mwi_update(JObj, Username, Realm, Node, Registration) ->
                                     ]),
     RegistrationContact = wh_json:get_first_defined([<<"Bridge-RURI">>, <<"Contact">>], Registration),
     case ensure_contact_user(RegistrationContact, Username, Realm) of
-        'undefined' -> 
+        'undefined' ->
             lager:error("invalid contact : ~p : ~p", [RegistrationContact, Registration]);
         Contact ->
             SIPHeaders = <<"X-KAZOO-AOR : ", ToAccount/binary, "\r\n">>,
@@ -238,13 +238,13 @@ register_overwrite(JObj, Props) ->
                          ,{"body", NewBody}
                         ],
     case PrevContact of
-        'undefined' -> 
+        'undefined' ->
             lager:error("previous contact is invalid : ~p : ~p", [PrevContact, JObj]);
         _ ->
             freeswitch:sendevent(Node, 'NOTIFY', PrevContactHeaders)
     end,
     case NewContact of
-        'undefined' -> 
+        'undefined' ->
             lager:error("new contact is invalid : ~p : ~p", [NewContact, JObj]);
         _ ->
             freeswitch:sendevent(Node, 'NOTIFY', NewContactHeaders)
@@ -255,7 +255,7 @@ register_overwrite(JObj, Props) ->
                   ,Node
                  ]).
 
--spec ensure_contact_user(ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
+-spec ensure_contact_user(ne_binary(), ne_binary(), ne_binary()) -> api_binary().
 ensure_contact_user(Contact, Username, Realm) ->
     case nksip_parse_uri:uris(Contact) of
         [#uri{user = <<>>, domain = <<>>, ext_opts=Opts}=Uri] ->
@@ -266,7 +266,6 @@ ensure_contact_user(Contact, Username, Realm) ->
             nksip_unparse:ruri(Uri#uri{domain=Realm, opts=Opts});
         [#uri{ext_opts=Opts}=Uri] ->
             nksip_unparse:ruri(Uri#uri{opts=Opts});
-        [] -> 'undefined';
         _Else -> 'undefined'
     end.
 

@@ -621,7 +621,7 @@ create_uuid(Endpoint, JObj, Node) ->
         CallId -> {'api', CallId}
     end.
 
--spec get_unset_vars(wh_json:object()) -> string().
+-spec get_unset_vars(wh_json:object()) -> iolist().
 get_unset_vars(JObj) ->
     %% Refactor (Karl wishes he had unit tests here for you to use)
     ExportProps = [{K, <<>>} || K <- wh_json:get_value(<<"Export-Custom-Channel-Vars">>, JObj, [])],

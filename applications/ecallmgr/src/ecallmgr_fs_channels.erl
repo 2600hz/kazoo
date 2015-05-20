@@ -263,7 +263,6 @@ handle_query_channels(JObj, _Props) ->
     'true' = wapi_call:query_channels_req_v(JObj),
     Fields = wh_json:get_value(<<"Fields">>, JObj, []),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-
     maybe_send_query_channels_resp(JObj, query_channels(Fields, CallId)).
 
 -spec maybe_send_query_channels_resp(wh_json:object(), wh_json:object()) -> 'ok'.
@@ -847,7 +846,7 @@ cleanup_old_channels(MaxAge) ->
 
 -spec hangup_old_channels(old_channels()) -> 'ok'.
 hangup_old_channels(OldChannels) ->
-    [hangup_old_channel(C) || C <- OldChannels],
+    _ = [hangup_old_channel(C) || C <- OldChannels],
     'ok'.
 
 -spec hangup_old_channel(old_channel()) -> 'ok'.

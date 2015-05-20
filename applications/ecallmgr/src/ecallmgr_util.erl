@@ -1074,7 +1074,7 @@ media_url_cache_props(_MediaName) ->
 cached_media_expelled(?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName), MediaUrl, _Reason) ->
     lager:debug("media ~s was expelled(~p), flushing from media servers", [MediaName, _Reason]),
     Nodes = ecallmgr_fs_nodes:connected(),
-    [maybe_flush_node_of_media(MediaUrl, N) || N <- Nodes],
+    _ = [maybe_flush_node_of_media(MediaUrl, N) || N <- Nodes],
     'ok'.
 
 -spec maybe_flush_node_of_media(ne_binary(), atom()) -> 'ok'.
