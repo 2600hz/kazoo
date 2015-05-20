@@ -79,7 +79,7 @@ handle_push_event(_JID, <<"GCP">>, <<"Queued-Job">>, PrinterId) ->
                     lager:debug("maybe processing job in ~p", [_P]);
                 {'ok', "403", _RespHeaders, _RespBody} ->
                     lager:debug("something wrong with oauth credentials"),
-                    [lager:debug("resp header: ~p", [_RespHeader]) || _RespHeader <- _RespHeaders],
+                    _ = [lager:debug("resp header: ~p", [_RespHeader]) || _RespHeader <- _RespHeaders],
                     lager:debug("body: ~s", [_RespBody]);
                 _Other ->
                     lager:debug("unexpected response from gcp ~p", [_Other])
@@ -189,22 +189,30 @@ send_update_job_status(JobId, Status, Authorization) ->
 
 -spec download_file(ne_binary(), ne_binary()) ->
                            {'ok', ne_binary(), ne_binary()} |
-                           {'error', any()}.
+                           {'error', _}.
 download_file(URL, Authorization) ->
     Headers = [?GPC_PROXY_HEADER , {"Authorization",Authorization}],
     case ibrowse:send_req(wh_util:to_list(URL), Headers, 'get') of
         {'ok', "200", RespHeaders, RespBody} ->
             CT = wh_util:to_binary(props:get_value("Content-Type", RespHeaders)),
             Ext = fax_util:content_type_to_extension(CT),
-            FileName = <<"/tmp/fax_printer_",(wh_util:to_binary(wh_util:current_tstamp()))/binary,".",Ext/binary>>,
-            file:write_file(FileName,RespBody),
-            {'ok', CT, RespBody};
+            FileName = <<"/tmp/fax_printer_"
+                         ,(wh_util:to_binary(wh_util:current_tstamp()))/binary
+                         ,"."
+                         ,Ext/binary
+                       >>,
+            case file:write_file(FileName,RespBody) of
+                'ok' -> {'ok', CT, RespBody};
+                {'error', _}=Error ->
+                    lager:debug("error writing file ~s from ~s : ~p", [URL, FileName, Error]),
+                    Error
+            end;
         Response ->
             lager:debug("error downloading file ~s : ~p",[URL, Response]),
             {'error', Response}
     end.
 
--spec maybe_save_fax_document(wh_json:object(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> any().
+-spec maybe_save_fax_document(wh_json:object(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> _.
 maybe_save_fax_document(Job, JobId, PrinterId, FaxNumber, FileURL ) ->
     case save_fax_document(Job, JobId, PrinterId, FaxNumber) of
         {'ok', JObj} ->

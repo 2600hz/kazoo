@@ -692,8 +692,7 @@ fetch_document(JObj) ->
     end.
 
 -spec fetch_document_from_attachment(wh_json:object(), ne_binaries()) ->
-                                            {'ok', string(), wh_proplist(), ne_binary()} |
-                                            {'error', term()}.
+                                            {'ok', string(), wh_proplist(), ne_binary()}.
 fetch_document_from_attachment(JObj, [AttachmentName|_]) ->
     JobId = wh_json:get_value(<<"_id">>, JObj),
     Extension = filename:extension(AttachmentName),
@@ -881,19 +880,19 @@ reset(State) ->
                 ,page=0
                }.
 
--spec send_status(state(), ne_binary()) -> any().
+-spec send_status(state(), ne_binary()) -> _.
 send_status(State, Status) ->
     send_status(State, Status, ?FAX_SEND, 'undefined').
 
--spec send_error_status(state(), text()) -> any().
+-spec send_error_status(state(), text()) -> _.
 send_error_status(State, Status) ->
     send_status(State, Status, ?FAX_ERROR, 'undefined').
 
--spec send_status(state(), text(), api_object()) -> any().
+-spec send_status(state(), text(), api_object()) -> _.
 send_status(State, Status, FaxInfo) ->
     send_status(State, Status, ?FAX_SEND, FaxInfo).
 
--spec send_status(state(), text(), ne_binary(), api_object()) -> any().
+-spec send_status(state(), text(), ne_binary(), api_object()) -> _.
 send_status(#state{job=JObj
                    ,page=Page
                    ,job_id=JobId

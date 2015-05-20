@@ -105,9 +105,7 @@ handle_EHLO(Hostname, Extensions, #state{options=Options}=State) ->
                    end,
     {'ok', MyExtensions, State}.
 
--spec handle_MAIL(binary(), state()) ->
-                         {'ok', state()} |
-                         error_message().
+-spec handle_MAIL(binary(), state()) -> {'ok', state()}.
 handle_MAIL(From, State) ->
     lager:debug("Checking Mail from ~s", [From]),
     {'ok', State#state{from=From}}.
@@ -184,7 +182,6 @@ handle_RSET(State) ->
     State.
 
 -spec handle_VRFY(binary(), state()) ->
-                         {'ok', string(), state()} |
                          {'error', string(), state()}.
 handle_VRFY(_Address, State) ->
     lager:debug("252 VRFY disabled by policy, just send some mail"),
@@ -243,8 +240,7 @@ handle_message(#state{filename=Filename
         {'ok', FileContents} ->
             case fax_util:save_fax_docs(Docs, FileContents, CT) of
                 'ok' ->
-                    file:delete(Filename),
-                    'ok';
+                    'ok' = file_delete(Filename);
                 {'error', Error} ->
                     maybe_faxbox_log(State#state{errors=[Error]})
             end;
@@ -252,6 +248,14 @@ handle_message(#state{filename=Filename
             Error = wh_util:to_binary(io_lib:format("error reading attachment ~s", [Filename])),
             maybe_faxbox_log(State#state{errors=[Error]})
     end.
+
+-spec file_delete(api_binary()) -> 'ok'.
+file_delete(Filename) ->
+     case file:delete(Filename) of
+         'ok' -> 'ok';
+         {'error', _}=_E ->
+             lager:debug("error deleting ~s : ~p", [Filename, _E])
+     end.
 
 -spec maybe_system_report(state()) -> 'ok'.
 maybe_system_report(#state{faxbox='undefined', account_id='undefined'}=State) ->
@@ -312,7 +316,7 @@ faxbox_log(#state{account_id=AccountId}=State) ->
     kazoo_modb:save_doc(AccountId, Doc),
     maybe_system_report(State).
 
--spec error_doc() -> binary().
+-spec error_doc() -> ne_binary().
 error_doc() ->
     {Year, Month, _} = erlang:date(),
     <<(wh_util:to_binary(Year))/binary,(wh_util:pad_month(Month))/binary
@@ -672,14 +676,14 @@ process_parts([{Type, SubType, Headers, Parameters, BodyPart}
 process_part(<<"application/pdf">>=CT, _Headers, _Parameters, Body, State) ->
     lager:debug("part is application/pdf"),
     Filename = <<"/tmp/email_attachment_", (wh_util:to_binary(wh_util:current_tstamp()))/binary, ".pdf">>,
-    file:write_file(Filename, Body),
+    'ok' = write_file(Filename, Body),
     {'ok', State#state{filename=Filename
                        ,content_type=CT
                       }};
 process_part(<<"image/tiff">>=CT, _Headers, _Parameters, Body, State) ->
     lager:debug("Part is image/tiff"),
     Filename = <<"/tmp/email_attachment_", (wh_util:to_binary(wh_util:current_tstamp()))/binary, ".tiff">>,
-    file:write_file(Filename, Body),
+    'ok' = write_file(Filename, Body),
     {'ok', State#state{filename=Filename
                        ,content_type=CT
                       }};
@@ -697,6 +701,14 @@ process_part(_ContentType, _Headers, _Parameters, _Body, State) ->
     lager:debug("ignoring Part ~s",[_ContentType]),
     {'ok', State}.
 
+-spec write_file(ne_binary(), binary() | mimemail:mimetuple()) -> 'ok'.
+write_file(Filename, Body) ->
+    case file:write_file(Filename, Body) of
+        'ok' -> 'ok';
+        {'error', _}=_Error ->
+            lager:debug("error writing file ~s : ~p", [Filename, _Error])
+    end.
+
 -spec maybe_process_part_attachment(wh_proplist(), iolist(), state()) -> {'ok', state()}.
 maybe_process_part_attachment(Props, Body, State) ->
     case props:get_value(<<"filename">>, Props) of
@@ -712,21 +724,21 @@ process_part_attachment(AttchFilename, Body, State) ->
         <<".pdf">> ->
             lager:debug("found pdf filename extension, set content-type to application/pdf"),
             Filename = <<"/tmp/email_attachment_", (wh_util:to_binary(wh_util:current_tstamp()))/binary, ".pdf">>,
-            file:write_file(Filename, Body),
+            'ok' = write_file(Filename, Body),
             {'ok', State#state{filename=Filename
                                ,content_type = <<"application/pdf">>
                               }};
         <<".tiff">> ->
             lager:debug("found tiff filename extension, set content-type to image/tiff"),
             Filename = <<"/tmp/email_attachment_", (wh_util:to_binary(wh_util:current_tstamp()))/binary, ".tiff">>,
-            file:write_file(Filename, Body),
+            'ok' = write_file(Filename, Body),
             {'ok', State#state{filename=Filename
                                ,content_type = <<"image/tiff">>
                               }};
         <<".tif">> ->
             lager:debug("found tif filename extension, set content-type to image/tiff"),
             Filename = <<"/tmp/email_attachment_", (wh_util:to_binary(wh_util:current_tstamp()))/binary, ".tiff">>,
-            file:write_file(Filename, Body),
+            'ok' = write_file(Filename, Body),
             {'ok', State#state{filename=Filename
                                ,content_type = <<"image/tiff">>
                               }};

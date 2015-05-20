@@ -177,7 +177,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec start_all_printers() -> any().
 start_all_printers() ->
     {'ok', Results} = couch_mgr:get_results(?WH_FAXES_DB, <<"faxbox/cloud">>),
     [ send_start_printer(Id, Jid)
@@ -190,7 +189,7 @@ start_all_printers() ->
                  ]
     ].
 
--spec send_start_printer(ne_binary(), ne_binary()) -> any().
+-spec send_start_printer(ne_binary(), ne_binary()) -> _.
 send_start_printer(PrinterId, JID) ->
     Payload = props:filter_undefined(
                 [{<<"Event-Name">>, <<"start">>}
