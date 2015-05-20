@@ -120,10 +120,10 @@ convert_to_pdf(AttachmentBin, Props, _ContentType) ->
     Cmd = io_lib:format(ConvertCmd, [PDFFile, TiffFile]),
     lager:debug("running command: ~s", [Cmd]),
     _ = os:cmd(Cmd),
-    wh_util:delete(TiffFile),
+    wh_util:delete_file(TiffFile),
     case file:read_file(PDFFile) of
         {'ok', PDFBin} ->
-            wh_util:delete(PDFFile),
+            wh_util:delete_file(PDFFile),
             {<<"application/pdf">>, get_file_name(Props, "pdf"), PDFBin};
         {'error', _R}=E ->
             lager:debug("unable to convert tiff: ~p", [_R]),

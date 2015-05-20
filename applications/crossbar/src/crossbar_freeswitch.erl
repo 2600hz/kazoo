@@ -147,7 +147,7 @@ handle_cast({'delete', 'undefined'}, State) ->
 handle_cast({'delete', File}, State) ->
     lager:debug("removing prior freeswitch offline configuration ~s"
                 ,[File]),
-    wh_util:delete(File),
+    wh_util:delete_file(File),
     {'noreply', State};
 handle_cast('reset', #state{config=Config}=State) ->
     lager:debug("resetting freeswitch state"),

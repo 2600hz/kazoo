@@ -214,7 +214,7 @@ start_ssl(Dispatch) ->
         SSLOpts ->
             lager:debug("trying to start SSL API server"),
             _SslStarted = ssl:start(),
-            lager:debug("starting SSL : ~p"),
+            lager:debug("starting SSL : ~p", [_SslStarted]),
             ReqTimeout = whapps_config:get_integer(?CONFIG_CAT, <<"request_timeout_ms">>, 10000),
             Workers = whapps_config:get_integer(?CONFIG_CAT, <<"ssl_workers">>, 100),
 
