@@ -235,7 +235,7 @@ validate_incoming_fax_attachment(Context, Id, ?HTTP_GET) ->
     load_fax_binary(Id, Context);
 validate_incoming_fax_attachment(Context, Id, ?HTTP_DELETE) ->
     load_incoming_fax_doc(Id, Context).
-    
+
 
 %%--------------------------------------------------------------------
 %% @public
@@ -281,7 +281,7 @@ patch(Context, ?OUTGOING, _) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% If the HTTP verib is DELETE, execute the actual action, usually a db delete
+%% If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
@@ -297,7 +297,7 @@ delete(Context, ?INCOMING, Id, ?ATTACHMENT) ->
                         crossbar_doc:delete_attachment(Id, AName, Ctx)
                 end
                , Context, ANames).
-    
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc

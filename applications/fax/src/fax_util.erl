@@ -14,6 +14,7 @@
 -export([content_type_to_extension/1, extension_to_content_type/1]).
 -export([notify_email_list/3]).
 -export([filter_numbers/1]).
+-export([is_valid_caller_id/2]).
 
 -include("fax.hrl").
 
@@ -199,5 +200,13 @@ notify_email_list(From, OwnerEmail, List) ->
 filter_numbers(Number) ->
     << <<X>> || <<X>> <= Number, is_digit(X)>>.
 
--spec is_digit(byte()) -> boolean().
+-spec is_valid_caller_id(api_binary(), ne_binary()) -> boolean().
+is_valid_caller_id('undefined', _) -> 'false';
+is_valid_caller_id(Number, AccountId) ->
+    case wh_number_manager:lookup_account_by_number(Number) of
+        {'ok', AccountId, _} -> 'true';
+        _Else -> 'false'
+    end.
+
+-spec is_digit(integer()) -> boolean().
 is_digit(N) -> N >= $0 andalso N =< $9.
