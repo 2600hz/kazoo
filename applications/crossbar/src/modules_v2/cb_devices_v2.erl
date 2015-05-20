@@ -28,11 +28,6 @@
 
 -include("../crossbar.hrl").
 
--define(QUICKCALL_PATH_TOKEN, <<"quickcall">>).
--define(QUICKCALL_URL, [{<<"devices">>, [_, ?QUICKCALL_PATH_TOKEN, _]}
-                        ,{?WH_ACCOUNTS_DB, [_]}
-                       ]).
-
 -define(STATUS_PATH_TOKEN, <<"status">>).
 -define(CHECK_SYNC_PATH_TOKEN, <<"sync">>).
 
@@ -218,7 +213,7 @@ validate(Context, DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
     load_device(DeviceId, Context).
 
 validate(Context, DeviceId, ?QUICKCALL_PATH_TOKEN, _ToDial) ->
-    Context1 = maybe_validate_quickcall(load_device(DeviceId, Context)),
+    Context1 = crossbar_util:maybe_validate_quickcall(load_device(DeviceId, Context)),
     case cb_context:has_errors(Context1) of
         'true' -> Context1;
         'false' ->
@@ -465,33 +460,6 @@ on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context, wh_json:set_values(Props, cb_context:doc(Context)));
 on_successful_validation(DeviceId, Context) ->
     crossbar_doc:load_merge(DeviceId, Context).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
-maybe_validate_quickcall(Context) ->
-    maybe_validate_quickcall(Context, cb_context:resp_status(Context)).
-maybe_validate_quickcall(Context, 'success') ->
-    case kz_buckets:consume_tokens(?APP_NAME
-                                   ,cb_modules_util:bucket_name(Context)
-                                   ,cb_modules_util:token_cost(Context, 1, [?QUICKCALL_PATH_TOKEN])
-                                  )
-    of
-        'true' -> maybe_allow_quickcalls(Context);
-        'false' -> cb_context:add_system_error('too_many_requests', Context)
-    end.
-
--spec maybe_allow_quickcalls(cb_context:context()) -> cb_context:context().
-maybe_allow_quickcalls(Context) ->
-    case cb_context:is_authenticated(Context)
-        orelse wh_util:is_true(cb_context:req_value(Context, <<"allow_anonymous_quickcalls">>))
-    of
-        'false' -> cb_context:add_system_error('invalid_credentials', Context);
-        'true' -> Context
-    end.
 
 %%--------------------------------------------------------------------
 %% @private

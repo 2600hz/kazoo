@@ -71,6 +71,7 @@
 -export([maybe_refresh_fs_xml/2
          ,refresh_fs_xml/1
         ]).
+-export([maybe_validate_quickcall/1]).
 
 -ifdef(TEST).
 -export([trunkstore_servers_changed/2]).
@@ -1185,3 +1186,38 @@ update_descendants_count(AccountId, JObj, NewCount) ->
             io:format("updated descendant count for ~s~n", [AccountId]),
             'ok'
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_validate_quickcall(cb_context:context()) -> cb_context:context().
+-spec maybe_validate_quickcall(cb_context:context(), crossbar_status()) -> cb_context:context().
+maybe_validate_quickcall(Context) ->
+    case
+        kz_buckets:consume_tokens(?APP_NAME
+                                 ,cb_modules_util:bucket_name(Context)
+                                 ,cb_modules_util:token_cost(Context, 1, [?QUICKCALL_PATH_TOKEN])
+                                 )
+    of
+        'false' -> cb_context:add_system_error('too_many_requests', Context);
+        'true' ->
+            maybe_validate_quickcall(Context, cb_context:resp_status(Context))
+    end.
+
+maybe_validate_quickcall(Context, 'success') ->
+    case wh_json:is_true(<<"allow_anoymous_quickcalls">>, cb_context:doc(Context))
+        orelse cb_context:is_authenticated(Context)
+        orelse
+        (wh_json:get_value(<<"allow_anoymous_quickcalls">>, cb_context:doc(Context)) =:= 'undefined'
+         andalso
+         whapps_config:get_is_true(?CONFIG_CAT, <<"default_allow_anoymous_quickcalls">>, 'true')
+        )
+    of
+        'false' ->
+            cb_context:add_system_error('invalid_credentials', Context);
+        'true' -> Context
+    end;
+maybe_validate_quickcall(Context, _) -> Context.

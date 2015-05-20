@@ -27,11 +27,6 @@
 
 -include("../crossbar.hrl").
 
--define(QUICKCALL_PATH_TOKEN, <<"quickcall">>).
--define(QUICKCALL_URL, [{<<"devices">>, [_, ?QUICKCALL_PATH_TOKEN, _]}
-                        ,{?WH_ACCOUNTS_DB, [_]}
-                       ]).
-
 -define(STATUS_PATH_TOKEN, <<"status">>).
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".devices">>).
@@ -169,7 +164,7 @@ validate_device(Context, DeviceId, ?HTTP_DELETE) ->
     load_device(DeviceId, Context).
 
 validate(Context, DeviceId, ?QUICKCALL_PATH_TOKEN, _) ->
-    Context1 = maybe_validate_quickcall(load_device(DeviceId, Context)),
+    Context1 = crossbar_util:maybe_validate_quickcall(load_device(DeviceId, Context)),
     case cb_context:has_errors(Context1) of
         'true' -> Context1;
         'false' ->
@@ -402,25 +397,6 @@ on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context, wh_json:set_values(Props, cb_context:doc(Context)));
 on_successful_validation(DeviceId, Context) ->
     crossbar_doc:load_merge(DeviceId, Context).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec maybe_validate_quickcall(cb_context:context()) -> cb_context:context().
--spec maybe_validate_quickcall(cb_context:context(), crossbar_status()) -> cb_context:context().
-maybe_validate_quickcall(Context) ->
-    maybe_validate_quickcall(Context, cb_context:resp_status(Context)).
-
-maybe_validate_quickcall(Context, 'success') ->
-    case cb_context:is_authenticated(Context)
-        orelse wh_util:is_true(cb_context:req_value(Context, <<"allow_anoymous_quickcalls">>))
-    of
-        'false' -> cb_context:add_system_error('invalid_credentials', Context);
-        'true' -> Context
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
