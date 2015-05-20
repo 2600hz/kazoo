@@ -23,7 +23,7 @@
          ,find_account_admin/1
          ,find_account_id/1
          ,find_account_db/1, find_account_db/2
-         ,is_notice_enabled/3
+         ,is_notice_enabled/3, is_notice_enabled_default/1
          ,should_handle_notification/1
 
          ,default_from_address/1
@@ -242,7 +242,7 @@ add_rendered_templates_to_email(RenderedTemplates) ->
 add_rendered_templates_to_email([], Acc) -> Acc;
 add_rendered_templates_to_email([{ContentType, Content}|Rs], Acc) ->
     [Type, SubType] = binary:split(ContentType, <<"/">>),
-    CTEncoding = whapps_config:get_ne_binary(?NOTIFY_CONFIG_CAT, 
+    CTEncoding = whapps_config:get_ne_binary(?NOTIFY_CONFIG_CAT,
                                              [<<"mime-encoding">>
                                               ,ContentType
                                               ,<<"content_transfer_encoding">>

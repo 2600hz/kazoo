@@ -156,21 +156,9 @@ handle_req_as_email(_JObj, 'false') ->
 handle_req_as_email(JObj, 'true') ->
     %% Gather data for template
     DataJObj = wh_json:normalize(JObj),
-    AccountId = find_account_id(DataJObj),
-
-    case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID)
-    of
-        'false' -> lager:debug("notification handling not configured for this account ~s", [AccountId]);
-        'true' -> process_req(wh_json:set_value(<<"account_id">>, AccountId, DataJObj))
-    end.
-
--spec find_account_id(wh_json:object()) -> ne_binary().
-find_account_id(DataJObj) ->
-    case wh_json:get_value(<<"account_id">>, DataJObj) of
-        'undefined' ->
-            {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
-            MasterAccountId;
-        AccountId -> AccountId
+    case teletype_util:is_notice_enabled_default(?TEMPLATE_ID) of
+        'false' -> lager:debug("notification handling not configured");
+        'true' -> process_req(DataJObj)
     end.
 
 -spec process_req(wh_json:object()) -> 'ok'.
@@ -180,10 +168,6 @@ process_req(DataJObj) ->
     %% Load templates
     process_req(DataJObj, teletype_util:fetch_templates(?TEMPLATE_ID, DataJObj)).
 
-process_req(DataJObj, []) ->
-    lager:debug("no templates to render for ~s", [?TEMPLATE_ID]),
-    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
-    process_req(wh_json:set_value(<<"account_id">>, MasterAccountId, DataJObj));
 process_req(DataJObj, Templates) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
               ,{<<"account">>, teletype_util:account_params(DataJObj)}
@@ -205,11 +189,16 @@ process_req(DataJObj, Templates) ->
 
     Subject =
         teletype_util:render_subject(
-            wh_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
-            ,Macros
-        ),
+          wh_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
+          ,Macros
+         ),
 
-    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
+    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
+    Emails = teletype_util:find_addresses(
+               wh_json:set_value(<<"account_id">>, MasterAccountId, DataJObj)
+               ,TemplateMetaJObj
+               ,?MOD_CONFIG_CAT
+              ),
 
     case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
@@ -244,15 +233,12 @@ details_groups([{<<"cf_", _/binary>>,_}=KV | KS], {Group, Acc}) ->
     details_groups(KS, {Group, add_to_group(<<"callflow">>, KV, Acc)});
 details_groups([KV | KS], {Group, Acc}) ->
     details_groups(KS, {Group, add_to_group(Group, KV, Acc)}).
-    
+
 add_to_group(K, KV, Acc) ->
     case props:get_value(K, Acc) of
         'undefined' -> props:set_value(K, [KV], Acc);
         Props -> props:set_value(K, props:insert_value(KV, Props), Acc)
     end.
-        
- 
-
 
 -spec request_macros(wh_json:object()) -> wh_proplist().
 request_macros(DataJObj) ->
