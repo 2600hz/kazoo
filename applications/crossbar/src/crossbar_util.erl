@@ -876,11 +876,7 @@ create_auth_token(Context, Method, JObj) ->
     OwnerId = wh_json:get_value(<<"owner_id">>, JObj),
 
     Restrictions = case get_forced_restrictions(Method, AccountId, OwnerId) of
-        'undefined' ->
-            case wh_json:get_ne_value(<<"restrictions">>, Data) of
-                'undefined' -> 'undefined';
-                ReqRestrictions -> ReqRestrictions
-            end;
+        'undefined' -> wh_json:get_ne_value(<<"restrictions">>, Data);
         MethodRestrictions -> MethodRestrictions
     end,
     

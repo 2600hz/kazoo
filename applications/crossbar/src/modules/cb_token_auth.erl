@@ -238,24 +238,26 @@ maybe_check_restrictions(Context) ->
             check_restrictions(Context, Rs)
     end.
 
--spec check_restrictions(cb_context:context(), wh_json:object()) -> boolean().
+-spec check_restrictions(cb_context:context(), wh_json:objects()) -> boolean().
 check_restrictions(Context, Rs) ->
     MatchFuns = [fun match_endpoint/2
                 ,fun match_account/2
                 ,fun match_param/2
                 ,fun match_verb/2
                 ],
-    R1 = lists:foldl(fun(F, R) -> 
-                             F(Context, R) 
+    Result = lists:foldl(fun(F, R) -> 
+                             case wh_util:is_not_empty(R) of
+                                 'true' -> F(Context, R);
+                                 'false' -> 'undefined'
+                             end
                      end, 
                      Rs,
                      MatchFuns
                     ),
-    lager:debug("result matching restriction rules: ~p",[R1]),
-    lists:member('true', R1).
+    lager:debug("result matching restriction rules: ~p",[Result]),
+    wh_util:is_not_empty(Result).
 
--spec match_endpoint(cb_context:context(), wh_json:object() | 'undefined') -> wh_json:object() | 'undefined'.
-match_endpoint(_Context, 'undefined') -> 'undefined';
+-spec match_endpoint(cb_context:context(), wh_json:object() | 'undefined') -> wh_json:objects() | 'undefined'.
 match_endpoint(Context, Rs) -> 
     [{ReqEndpoint, _}|_] = cb_context:req_nouns(Context),
     case wh_json:get_value(ReqEndpoint, Rs) of
@@ -263,14 +265,12 @@ match_endpoint(Context, Rs) ->
         R -> R
     end.
 
--spec match_account(cb_context:context(), wh_json:object() | 'undefined') -> wh_json:object() | 'undefined'.
-match_account(_Context, 'undefined') -> 'undefined';
+-spec match_account(cb_context:context(), wh_json:objects()) -> wh_json:objects() | 'undefined'.
 match_account(Context, Rs) -> 
     Accounts = allowed_accounts(Context),
     match_accounts(Accounts, Rs, []).
 
-match_accounts(_Accounts, [], []) -> 'undefined';
-match_accounts(_Accounts, [], Acc) -> lists:reverse(Acc);
+match_accounts(_Accounts, [], Acc) -> Acc;
 match_accounts(Accounts, [R|Rs], Acc) ->
     case wh_json:get_value(<<"accounts">>, R) of
         'undefined' -> 
@@ -283,10 +283,9 @@ match_accounts(Accounts, [R|Rs], Acc) ->
             SetsMatch = sets:intersection(SetsAccounts, SetsRsAccounts),
             case sets:to_list(SetsMatch) of
                 [] -> match_accounts(Accounts, Rs, Acc);
-                Match ->
-                    lager:debug("DEBUG found match: ~p", [Match]),
+                _Match ->
                     Params = wh_json:get_value(<<"params">>, R),
-                    match_accounts(Accounts, Rs, Params ++ Acc)
+                    match_accounts(Accounts, Rs, [Params | Acc])
             end
     end.
 
@@ -313,40 +312,35 @@ allowed_accounts(Context) ->
             end
     end.
 
--spec match_param(cb_context:context(), wh_json:object() | 'undefined') -> wh_json:object() | 'undefined'.
-match_param(_Context, 'undefined') -> 'undefined';
+-spec match_param(cb_context:context(), wh_json:objects()) -> wh_json:object() | 'undefined'.
 match_param(Context, Rs) -> 
     [{_, ReqParam}|_] = cb_context:req_nouns(Context),
     match_params(ReqParam, Rs, []).
 
-match_params(_ReqParam, [], []) -> 'undefined';
-match_params(_ReqParam, [], Acc) -> lists:reverse(Acc);
+match_params(_ReqParam, [], Acc) -> lists:flatten(Acc);
 match_params(ReqParam, [R|Rs], Acc) ->
-    Fun = fun(K, V, A) ->
-                  Rule = binary:split(K, <<"/">>, [global]),
-                  case kazoo_bindings:matches(Rule, ReqParam) of
-                      'true' -> [ V | A ];
-                      'false' -> A
-                  end
-          end,
-    Result = lists:reverse(wh_json:foldl(Fun, [], R)),
+    Keys = wh_json:get_keys(R),
+    MatchKeys = match_rules(ReqParam, Keys, []),
+    Result = [ wh_json:get_value(K, R) || K <- MatchKeys ],
     case wh_util:is_empty(Result) of
-        'true' -> match_params(ReqParam, Rs, Acc);
-        'false' -> match_params(ReqParam, Rs, Result ++ Acc)
+        'false' -> match_params(ReqParam, Rs, Result ++ Acc);
+        'true' -> match_params(ReqParam, Rs, Acc)
     end.
 
+match_rules(_ReqParam, [], Acc) -> Acc;
+match_rules(ReqParam, [K|Keys], Acc) ->
+    Rule = binary:split(K, <<"/">>, [global, trim]),
+    case kazoo_bindings:matches(Rule, ReqParam) of
+        'true' -> match_rules(ReqParam, Keys, [K | Acc]);
+        'false' -> match_rules(ReqParam, Keys, Acc)
+    end.
 
+-spec match_verb(cb_context:context(), list()) -> boolean().
 match_verb(Context, Rs) ->
     Verb = cb_context:req_verb(Context),
-    match_verbs(Verb, Rs, []).
-
-match_verbs(_Verb, [], Acc) -> Acc;
-match_verbs(Verb, [R|Rs], Acc) ->
-    Result = case wh_json:get_value(Verb, R) of
-        'undefined' -> wh_json:get_value(<<"_">>, R);
-        Res -> Res
-    end,
-    match_verbs(Verb, Rs, [Result | Acc]).
+    lager:debug("request verb: ~p", [Verb]),
+    lager:debug("verbs from rules: ~p", [Rs]),
+    lists:member(Verb, Rs) orelse lists:member(<<"_">>, Rs).
 
 -spec check_as(cb_context:context(), wh_json:object()) ->
                       boolean() |
