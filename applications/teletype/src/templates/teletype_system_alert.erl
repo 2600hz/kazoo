@@ -166,7 +166,7 @@ handle_req_as_email(JObj, 'true') ->
 process_req(DataJObj) ->
     lager:debug("template is enabled for account, fetching templates for rendering"),
     %% Load templates
-    process_req(DataJObj, teletype_util:fetch_templates(?TEMPLATE_ID, DataJObj)).
+    process_req(DataJObj, teletype_util:fetch_templates(?TEMPLATE_ID)).
 
 process_req(DataJObj, Templates) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
