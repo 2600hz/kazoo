@@ -734,12 +734,20 @@ do_save_docs(#db{}=Db, Docs, Options, Acc) ->
 perform_save_docs(Db, Docs, Options) ->
     PreparedDocs = [maybe_set_docid(D) || D <- Docs],
     _ = flush_cache_docs(Db, PreparedDocs),
-    case ?RETRY_504(couchbeam:save_docs(Db, PreparedDocs, Options)) of
+    case ?RETRY_504(couchbeam:save_docs(Db, maybe_tombstones(PreparedDocs), Options)) of
         {'ok', JObjs} ->
             _ = maybe_publish_docs(Db, PreparedDocs, JObjs),
             {'ok', JObjs};
         {'error', _}=E -> E
     end.
+
+-spec maybe_tombstones(wh_json:objects()) -> wh_json:objects().
+maybe_tombstones(Docs) ->
+    [ maybe_tombstone(wh_json:get_value(<<"_deleted">>, Doc), Doc) || Doc  <- Docs ].
+
+maybe_tombstone('true', JObj) ->
+    wh_json:delete_keys(?PUBLISH_FIELDS, JObj);
+maybe_tombstone(_Else, JObj) -> JObj.
 
 -spec maybe_set_docid(wh_json:object()) -> wh_json:object().
 maybe_set_docid(Doc) ->
