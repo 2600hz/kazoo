@@ -49,22 +49,21 @@ start_v3_migrator() ->
 get_v3_migrator_status() ->
     cdr_sup:get_v3_migrate_status().
 
--spec create_test_migrate_accounts() -> 'ok' | wh_std_return().
+-spec create_test_migrate_accounts() -> 'ok'.
 create_test_migrate_accounts() ->
     create_test_migrate_accounts(?DFLT_NUM_TEST_ACCOUNTS
                                  ,?DFLT_NUM_MONTHS_LGCY_DATA
                                  ,?DFLT_NUM_CDR_PER_DAY
                                 ).
 
--spec create_test_migrate_accounts(input_term()) -> 'ok' | wh_std_return().
+-spec create_test_migrate_accounts(input_term()) -> 'ok'.
 create_test_migrate_accounts(NumTestAccounts) ->
     create_test_migrate_accounts(NumTestAccounts
                                  ,?DFLT_NUM_MONTHS_LGCY_DATA
                                  ,?DFLT_NUM_CDR_PER_DAY
                                 ).
 
--spec create_test_migrate_accounts(input_term(), input_term()) ->
-                                          'ok' | wh_std_return().
+-spec create_test_migrate_accounts(input_term(), input_term()) -> 'ok'.
 create_test_migrate_accounts(NumTestAccounts
                              ,NumMonthsLgcyData) ->
     create_test_migrate_accounts(NumTestAccounts
@@ -72,8 +71,7 @@ create_test_migrate_accounts(NumTestAccounts
                                  ,?DFLT_NUM_CDR_PER_DAY
                                 ).
 
--spec create_test_migrate_accounts(input_term(), input_term(), input_term()) ->
-                                          'ok' | wh_std_return().
+-spec create_test_migrate_accounts(input_term(), input_term(), input_term()) -> 'ok'.
 create_test_migrate_accounts(NumTestAccounts
                              ,NumMonthsLgcyData
                              ,NumCdrsPerDay) ->

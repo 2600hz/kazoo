@@ -142,7 +142,7 @@ delete_test_accounts() ->
         {'error', _E} -> lager:debug("error retrieving accounts: ~p", [_E]);
         [] -> 'ok';
         Accounts ->
-            [maybe_delete_test_account(AccountDb) || AccountDb <- Accounts],
+            _ = [maybe_delete_test_account(AccountDb) || AccountDb <- Accounts],
             'ok'
     end.
 
@@ -175,8 +175,8 @@ maybe_delete_test_account(AccountDb) ->
             {{CurrentYear, CurrentMonth, _}, _} = calendar:universal_time(),
             Months = get_prev_n_months(CurrentYear, CurrentMonth, NumMonthsToShard),
             AccountId = wh_util:format_account_id(AccountDb, 'raw'),
-            [delete_account_database(AccountId, {Year, Month})
-             || {Year, Month} <- Months],
+            _ = [delete_account_database(AccountId, {Year, Month})
+                 || {Year, Month} <- Months],
             couch_mgr:del_doc(<<"accounts">>, AccountId),
             couch_mgr:db_delete(AccountDb)
     end.

@@ -66,9 +66,8 @@ maybe_save_csv(FileName, CsvData) ->
     case filelib:ensure_dir(TestPath) of
         'ok' ->
             FilePath = list_to_binary([TestPath, FileName]),
-            case file:write_file(FilePath, CsvData) of
-                {'error', _E} -> lager:error("Error writing file: ~p", [_E]);
-                'ok' -> 'ok'
-            end;
-        {'error', _E} -> lager:error("Error creating directory: ~p", [_E])
+            wh_util:write_file(FilePath, CsvData);
+        {'error', _}=Error ->
+            lager:error("Error creating directory: ~p", [Error]),
+            Error
     end.
