@@ -170,7 +170,7 @@ handle_DATA_exception(Options, Reference, Data) ->
             %% optionally dump the failed email somewhere for analysis
             File = "/tmp/"++Reference,
             case filelib:ensure_dir(File) of
-                'ok' -> file:write_file(File, Data);
+                'ok' -> wh_util:write_file(File, Data);
                 _ -> 'ok'
             end
     end.

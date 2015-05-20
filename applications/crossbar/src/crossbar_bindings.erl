@@ -164,7 +164,7 @@ bind(Binding, Module, Fun) when is_binary(Binding) ->
 
 -spec flush() -> 'ok'.
 flush() ->
-    [kazoo_bindings:flush_mod(Mod) || Mod <- modules_loaded()],
+    _ = [kazoo_bindings:flush_mod(Mod) || Mod <- modules_loaded()],
     'ok'.
 
 -spec flush(ne_binary()) -> 'ok'.

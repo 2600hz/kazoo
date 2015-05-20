@@ -22,6 +22,7 @@
 -export([is_call/1]).
 
 -export([exec/2]).
+-export_type([exec_funs/0]).
 
 -export([set_application_name/2, application_name/1]).
 -export([set_application_version/2, application_version/1]).
@@ -465,13 +466,13 @@ to_proplist(#whapps_call{}=Call) ->
      ,{<<"From-Tag">>, from_tag(Call)}
     ].
 
--spec is_call(term()) -> boolean().
+-spec is_call(_) -> boolean().
 is_call(#whapps_call{}) -> 'true';
 is_call(_) -> 'false'.
 
 -type exec_fun_1() :: fun((call()) -> call()).
--type exec_fun_2() :: {fun((term(), call()) -> call()), term()}.
--type exec_fun_3() :: {fun((term(), term(), call()) -> call()), term(), term()}.
+-type exec_fun_2() :: {fun((_, call()) -> call()), _}.
+-type exec_fun_3() :: {fun((_, _, call()) -> call()), _, _}.
 -type exec_fun() :: exec_fun_1() | exec_fun_2() | exec_fun_3().
 -type exec_funs() :: [exec_fun(),...].
 

@@ -232,7 +232,7 @@ start_recovery() ->
 
 -spec maybe_recover_jobs(wh_year(), wh_month(), ne_binaries()) -> 'ok'.
 maybe_recover_jobs(Year, Month, Accounts) ->
-    [catch maybe_recover_account_jobs(Year, Month, AccountId) || AccountId <- Accounts],
+    _ = [catch maybe_recover_account_jobs(Year, Month, AccountId) || AccountId <- Accounts],
     lager:debug("finished recovering account jobs").
 
 -spec maybe_recover_account_jobs(wh_year(), wh_month(), ne_binary()) -> 'ok'.
@@ -252,7 +252,7 @@ maybe_recover_account_jobs(Year, Month, AccountId) ->
 
 -spec maybe_recover_incomplete_jobs(wh_json:objects()) -> 'ok'.
 maybe_recover_incomplete_jobs(IncompleteJobs) ->
-    [maybe_recover_incomplete_job(wh_json:get_value(<<"doc">>, Job)) || Job <- IncompleteJobs],
+    _ = [maybe_recover_incomplete_job(wh_json:get_value(<<"doc">>, Job)) || Job <- IncompleteJobs],
     'ok'.
 
 -spec maybe_recover_incomplete_job(wh_json:object()) -> 'ok'.

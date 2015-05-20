@@ -147,7 +147,7 @@ handle_cast({'delete', 'undefined'}, State) ->
 handle_cast({'delete', File}, State) ->
     lager:debug("removing prior freeswitch offline configuration ~s"
                 ,[File]),
-    file:delete(File),
+    wh_util:delete(File),
     {'noreply', State};
 handle_cast('reset', #state{config=Config}=State) ->
     lager:debug("resetting freeswitch state"),
@@ -218,23 +218,23 @@ setup_directory() ->
     TopDir = wh_util:rand_hex_binary(8),
     WorkRootDir = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"work_dir">>, <<"/tmp/">>),
     WorkDir = filename:join([WorkRootDir, TopDir]),
-    file:make_dir(WorkDir),
+    wh_util:make_dir(WorkDir),
     Files = [{<<"directory">>, ?FS_DIRECTORY}
              ,{<<"chatplan">>, ?FS_CHATPLAN}
              ,{<<"dialplan">>, ?FS_DIALPLAN}
             ],
     Filter = whapps_config:get(?MOD_CONFIG_CAT, <<"files_to_include">>, ?DEFAULT_FS_INCLUDE_DIRECTORY_FILES),
-    _ = [file:make_dir(filename:join([WorkDir, Dir])) || {Dir, _} <- Files],
-    _ = [file:write_file(
-           filename:join([WorkDir, D, xml_file_name(T)])
-           ,xml_file_from_config(T))
+    _ = [wh_util:make_dir(filename:join([WorkDir, Dir])) || {Dir, _} <- Files],
+    _ = [wh_util:write_file(filename:join([WorkDir, D, xml_file_name(T)])
+                            ,xml_file_from_config(T)
+                           )
          || {D, T} <- Files, lists:member(wh_util:to_binary(T), Filter)
         ],
     put(<<"WorkDir">>,WorkDir),
     put(<<"Realms">>,[]),
     WorkDir.
 
--spec process_realms() -> any().
+-spec process_realms() -> 'ok'.
 process_realms() ->
     Realms = get(<<"Realms">>),
     Templates = [{<<"directory">>, ?FS_DIRECTORY_REALM}
@@ -242,10 +242,11 @@ process_realms() ->
                  ,{<<"dialplan">>, ?FS_DIALPLAN_REALM}
                 ],
     Filter = whapps_config:get(?MOD_CONFIG_CAT, <<"realm_templates_to_process">>, ?FS_REALM_TEMPLATES),
-    [process_realms(Realms, D, T)
-     || {D, T} <- Templates,
-        lists:member(wh_util:to_binary(T), Filter)
-    ].
+    _ = [process_realms(Realms, D, T)
+         || {D, T} <- Templates,
+            lists:member(wh_util:to_binary(T), Filter)
+        ],
+    'ok'.
 
 -spec process_realms(api_binaries(), ne_binary(), atom()) -> 'ok'.
 process_realms('undefined', _Dir, _Module) -> 'ok';
@@ -259,12 +260,12 @@ process_realm(Realm, Dir, Module) ->
     Props = [{<<"realm">>, Realm}],
     WorkDir = get(<<"WorkDir">>),
     OutDir = filename:join([WorkDir, Dir]),
-    file:make_dir(OutDir),
+    wh_util:make_dir(OutDir),
     XMLFile = filename:join([OutDir, <<Realm/binary,".xml">>]),
 
     case render(Module, Props) of
         {'ok', Result} ->
-            file:write_file(XMLFile, Result),
+            wh_util:write_file(XMLFile, Result),
             lager:debug("wrote file ~s", [XMLFile]);
         {'error', E} ->
             lager:debug("error rendering template ~s for realm ~s: ~p"
@@ -383,8 +384,7 @@ process_callflow(Number, AccountId, Flow) ->
                           _ -> Children
                       end).
 
--spec process_callflow(ne_binary(), ne_binary(), ne_binary(), api_binary()) ->
-                              'ok' | {'error', _}.
+-spec process_callflow(ne_binary(), ne_binary(), ne_binary(), api_binary()) -> 'ok'.
 process_callflow(_, _, _, 'undefined') -> 'ok';
 process_callflow(Number, AccountId, <<"device">>, DeviceId) ->
     lager:debug("found device ~s associated with ~s"
@@ -419,8 +419,7 @@ process_callflow(Number, AccountId, <<"user">>, UserId) ->
     end;
 process_callflow(_, _, _, _) -> 'ok'.
 
--spec process_device(ne_binary(), ne_binary(), wh_json:object()) ->
-                            'ok' | {'error', _}.
+-spec process_device(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 process_device(Number, AccountId, JObj) ->
     AccountRealm = wh_util:get_account_realm(AccountId),
     Realm = kz_device:sip_realm(JObj, AccountRealm),
@@ -468,27 +467,27 @@ normalize(JObj) ->
                            ], JObj)
                       )).
 
--spec render_templates(ne_binary(), ne_binary(), ne_binary(), ne_binary(), wh_proplist()) -> wh_proplist().
+-spec render_templates(ne_binary(), ne_binary(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
 render_templates(Number, AccountId, Username, Realm, Props) ->
     Templates = [{"directory", ?FS_DIRECTORY}
                  ,{"chatplan", ?FS_CHATPLAN}
                  ,{"dialplan", ?FS_DIALPLAN}
                 ],
     Filter = whapps_config:get(?MOD_CONFIG_CAT, <<"templates_to_process">>, ?DEFAULT_FS_TEMPLATES),
-    [render_template(Number, AccountId, Username, Realm, Props, D, T)
-     || {D, T} <- Templates, lists:member(wh_util:to_binary(T), Filter)
-    ].
+    _ = [render_template(Number, AccountId, Username, Realm, Props, D, T)
+         || {D, T} <- Templates, lists:member(wh_util:to_binary(T), Filter)
+        ],
+    'ok'.
 
--spec render_template(ne_binary(), ne_binary(), ne_binary(), ne_binary(), wh_proplist(), file:name_all(), atom()) ->
-                             'ok' | {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'}.
+-spec render_template(ne_binary(), ne_binary(), ne_binary(), ne_binary(), wh_proplist(), file:name_all(), atom()) -> 'ok'.
 render_template(Number, AccountId, Username, Realm, Props, Dir, Module) ->
     maybe_accumulate_realm(lists:member(Realm, get(<<"Realms">>)), Realm),
     WorkDir = get(<<"WorkDir">>),
     OutDir = filename:join([WorkDir, Dir, Realm]),
-    file:make_dir(OutDir),
+    wh_util:make_dir(OutDir),
     XMLFile = filename:join([OutDir, <<Username/binary,".xml">>]),
     case render(Module, Props) of
-        {'ok', Result} -> file:write_file(XMLFile, Result);
+        {'ok', Result} -> wh_util:write_file(XMLFile, Result);
         {'error', _R} ->
             lager:debug("unable to render template ~s for ~s in account ~s: ~p"
                         ,[Module, Number, AccountId, _R])
@@ -522,7 +521,7 @@ template_file(Module) ->
                   ,template_file_name(Module)
                   ]).
 
--spec template_file_name(atom()) -> string().
+-spec template_file_name(?FS_CHATPLAN | ?FS_DIALPLAN | ?FS_DIRECTORY | ?FS_DIRECTORY_REALM) -> string().
 template_file_name(?FS_DIALPLAN) -> "dialplan_template.xml";
 template_file_name(?FS_CHATPLAN) -> "chatplan_template.xml";
 template_file_name(?FS_DIRECTORY) -> "directory_template.xml";
@@ -567,13 +566,13 @@ xml_file(Module) ->
                   ,xml_file_name(Module)
                   ]).
 
--spec xml_file_name(atom()) -> string().
+-spec xml_file_name(?FS_CHATPLAN | ?FS_DIALPLAN | ?FS_DIRECTORY) -> string().
 xml_file_name(?FS_DIALPLAN) -> "dialplan.xml";
 xml_file_name(?FS_CHATPLAN) -> "chatplan.xml";
 xml_file_name(?FS_DIRECTORY) -> "directory.xml".
 
--spec xml_file_from_config(atom()) -> any().
--spec xml_file_from_config(atom(), ne_binary()) -> any().
+-spec xml_file_from_config(?FS_CHATPLAN | ?FS_DIALPLAN | ?FS_DIRECTORY) -> ne_binary().
+-spec xml_file_from_config(?FS_CHATPLAN | ?FS_DIALPLAN | ?FS_DIRECTORY, ne_binary()) -> ne_binary().
 xml_file_from_config(Module) ->
     KeyName = <<(wh_util:to_binary(Module))/binary,"_top_dir_file_content">>,
     xml_file_from_config(Module, KeyName).

@@ -734,14 +734,12 @@ prepare_contents(JobId, RespHeaders, RespContent) ->
     case normalize_content_type(props:get_value("Content-Type", RespHeaders, <<"application/octet-stream">>)) of
         <<"image/tiff">> ->
             OutputFile = list_to_binary([TmpDir, JobId, ".tiff"]),
-            R = file:write_file(OutputFile, RespContent),
-            lager:debug("result of tmp file write: ~s", [R]),
+            wh_util:write_file(OutputFile, RespContent),
             {'ok', OutputFile};
         <<"application/pdf">> ->
             InputFile = list_to_binary([TmpDir, JobId, ".pdf"]),
             OutputFile = list_to_binary([TmpDir, JobId, ".tiff"]),
-            R = file:write_file(InputFile, RespContent),
-            lager:debug("result of tmp file write: ~s", [R]),
+            wh_util:write_file(InputFile, RespContent),
             ConvertCmd = whapps_config:get_binary(<<"fax">>, <<"conversion_command">>, ?CONVERT_PDF_CMD),
             Cmd = io_lib:format(ConvertCmd, [OutputFile, InputFile]),
             lager:debug("attempting to convert pdf: ~s", [Cmd]),

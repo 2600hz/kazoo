@@ -127,7 +127,7 @@ flush() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec start_module(text()) -> 'ok' | {'error', _}.
+-spec start_module(text()) -> 'ok'.
 start_module(Module) ->
     try crossbar:start_mod(Module) of
         _ -> maybe_autoload_module(wh_util:to_binary(Module))
@@ -161,7 +161,7 @@ persist_module(Module, Mods) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec stop_module(text()) -> 'ok' | {'error', _}.
+-spec stop_module(text()) -> 'ok'.
 stop_module(Module) ->
     try crossbar:stop_mod(Module) of
         _ ->
@@ -800,7 +800,7 @@ save_old_ring_group(JObj, NewCallflow) ->
             io:format("  saved ring group callflow: ~s~n", [wh_json:encode(_OldJObj)])
     end.
 
--spec init_apps(ne_binary(), ne_binary()) -> 'ok'.
+-spec init_apps(filelib:dirname(), ne_binary()) -> 'ok'.
 init_apps(AppsPath, AppUrl) ->
     Apps = find_apps(AppsPath),
     InitApp = fun(App) -> init_app(App, AppUrl) end,
@@ -884,7 +884,7 @@ maybe_add_icons(AppPath, AppId, MasterAccountDb) ->
 
 -spec add_icons(ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
 add_icons(AppId, MasterAccountDb, Icons) ->
-    [add_icon(AppId, MasterAccountDb, IconId, IconData) || {IconId, IconData} <- Icons],
+    _ = [add_icon(AppId, MasterAccountDb, IconId, IconData) || {IconId, IconData} <- Icons],
     'ok'.
 
 -spec add_icon(ne_binary(), ne_binary(), ne_binary(), binary()) -> 'ok'.

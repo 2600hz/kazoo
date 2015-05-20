@@ -115,15 +115,15 @@ convert_to_pdf(AttachmentBin, Props, <<"application/pdf">>) ->
 convert_to_pdf(AttachmentBin, Props, _ContentType) ->
     TiffFile = tmp_file_name(<<"tiff">>),
     PDFFile = tmp_file_name(<<"pdf">>),
-    _ = file:write_file(TiffFile, AttachmentBin),
+    wh_util:write_file(TiffFile, AttachmentBin),
     ConvertCmd = whapps_config:get_binary(<<"notify.fax">>, <<"tiff_to_pdf_conversion_command">>, ?TIFF_TO_PDF_CMD),
     Cmd = io_lib:format(ConvertCmd, [PDFFile, TiffFile]),
     lager:debug("running command: ~s", [Cmd]),
     _ = os:cmd(Cmd),
-    _ = file:delete(TiffFile),
+    wh_util:delete(TiffFile),
     case file:read_file(PDFFile) of
         {'ok', PDFBin} ->
-            _ = file:delete(PDFFile),
+            wh_util:delete(PDFFile),
             {<<"application/pdf">>, get_file_name(Props, "pdf"), PDFBin};
         {'error', _R}=E ->
             lager:debug("unable to convert tiff: ~p", [_R]),
