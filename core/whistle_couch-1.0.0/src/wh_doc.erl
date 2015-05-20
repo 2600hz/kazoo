@@ -25,6 +25,7 @@
          ,delete_attachments/1, delete_attachment/2
          ,maybe_remove_attachments/1, maybe_remove_attachments/2
          ,id/1, id/2
+         ,type/1, type/2
          ,revision/1, set_revision/2, delete_revision/1
          ,created/1
          ,modified/1
@@ -244,6 +245,13 @@ id(JObj) ->
 
 id(JObj, Default) ->
     wh_json:get_first_defined([<<"_id">>, <<"id">>], JObj, Default).
+
+-spec type(wh_json:object()) -> api_binary().
+-spec type(wh_json:object(), Default) -> ne_binary() | Default.
+type(JObj) ->
+    type(JObj, 'undefined').
+type(JObj, Default) ->
+    wh_json:get_value(<<"pvt_type">>, JObj, Default).
 
 -spec set_soft_deleted(wh_json:object(), boolean()) -> wh_json:object().
 set_soft_deleted(JObj, IsSoftDeleted) ->

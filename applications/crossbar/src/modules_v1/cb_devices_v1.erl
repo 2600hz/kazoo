@@ -154,6 +154,8 @@ validate_devices(Context, ?HTTP_GET) ->
 validate_devices(Context, ?HTTP_PUT) ->
     validate_request('undefined', Context).
 
+validate(Context, ?STATUS_PATH_TOKEN) ->
+    validate_device(Context, ?STATUS_PATH_TOKEN, cb_context:req_verb(Context));
 validate(Context, DeviceId) ->
     validate_device(Context, DeviceId, cb_context:req_verb(Context)).
 
@@ -176,7 +178,7 @@ validate(Context, DeviceId, ?QUICKCALL_PATH_TOKEN, _) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, DeviceId) ->
-    case changed_mac_address(crossbar_doc:load_merge(DeviceId, Context)) of
+    case changed_mac_address(Context) of
         'true' ->
             _ = crossbar_util:maybe_refresh_fs_xml('device', Context),
             Context1 = cb_modules_util:take_sync_field(Context),
