@@ -14,14 +14,16 @@
 
 -define(CONFLICT_ACTION, 'tone').
 
--define(TONE, wh_json:from_list([
-                    {<<"caller_id">>,[]}
-                    ,{<<"number">>,[<<"5555555551">>]}
-                ])).
--define(ECHO, wh_json:from_list([
-                    {<<"caller_id">>,[]}
-                    ,{<<"number">>,[<<"5555555552">>]}
-                ])).
+-define(TONE, wh_json:from_list(
+                [{<<"caller_id">>,[]}
+                ,{<<"number">>,[<<"5555555551">>]}
+                ])
+       ).
+-define(ECHO, wh_json:from_list(
+                [{<<"caller_id">>,[]}
+                ,{<<"number">>,[<<"5555555552">>]}
+                ])
+       ).
 
 
 handle_req(JObj, Props) ->
@@ -106,9 +108,3 @@ rule_exist(JObj, To, From) ->
         {'false', 'false'} -> 'false';
         _ -> 'true'
     end.
-
-
-
-
-
-
