@@ -43,7 +43,7 @@ print_subscriptions(Ss) ->
     io:format(?SUBSCRIPTION_FORMAT_STR
               ,[<<"Username@Realm">>, <<"From">>, <<"Expires">>, <<"Event">>]
              ),
-    [print_subscription(S, Now) || S <- Ss],
+    _ = [print_subscription(S, Now) || S <- Ss],
     'ok'.
 
 print_subscription(JObj, Now) ->

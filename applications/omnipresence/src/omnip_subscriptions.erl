@@ -455,7 +455,7 @@ subscription_to_json(#omnip_subscription{user=User
 start_expire_ref() ->
     erlang:start_timer(?EXPIRE_SUBSCRIPTIONS, self(), ?EXPIRE_MESSAGE).
 
--spec expire_old_subscriptions() -> integer().
+-spec expire_old_subscriptions() -> non_neg_integer().
 expire_old_subscriptions() ->
     Now = wh_util:current_tstamp(),
     ets:select_delete(table_id(), [{#omnip_subscription{timestamp='$1'
