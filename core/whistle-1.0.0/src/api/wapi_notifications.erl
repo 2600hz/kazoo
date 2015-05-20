@@ -468,6 +468,8 @@ headers(<<"ported">>) ->
     ?PORTED_HEADERS ++ ?OPTIONAL_PORTED_HEADERS;
 headers(<<"port_comment">>) ->
     ?PORT_COMMENT_HEADERS ++ ?OPTIONAL_PORT_COMMENT_HEADERS;
+headers(<<"webhook_disabled">>) ->
+    ?WEBHOOK_DISABLED_HEADERS ++ ?OPTIONAL_WEBHOOK_DISABLED_HEADERS;
 headers(_Notification) ->
     lager:warning("no notification headers for ~s", [_Notification]),
     [].

@@ -89,6 +89,9 @@
                      ,{'teletype_port_comment'
                        ,[{<<"notification">>, <<"port_comment">>}]
                       }
+                     ,{{'teletype_webhook_disabled', 'handle_webhook_disabled'}
+                       ,[{<<"notification">>, <<"webhook_disabled">>}]
+                      }
                     ]).
 
 -define(RESTRICT_TO, ['new_voicemail'
@@ -111,6 +114,7 @@
                       ,'low_balance'
                       ,'system_alerts'
                       ,'transaction'
+                      ,'webhook_disabled'
                       %%,'skel'
                       ,'topup'
                      ]).
