@@ -735,22 +735,28 @@ do_save_docs(#db{}=Db, Docs, Options, Acc) ->
                                {'ok', wh_json:objects()} |
                                couchbeam_error().
 perform_save_docs(Db, Docs, Options) ->
-    PreparedDocs = [maybe_set_docid(D) || D <- Docs],
+    {PreparedDocs, Publish} = lists:unzip([prepare_doc_for_save(D) || D <- Docs]),
     _ = flush_cache_docs(Db, PreparedDocs),
-    case ?RETRY_504(couchbeam:save_docs(Db, maybe_tombstones(PreparedDocs), Options)) of
+    case ?RETRY_504(couchbeam:save_docs(Db, PreparedDocs, Options)) of
         {'ok', JObjs} ->
-            _ = maybe_publish_docs(Db, PreparedDocs, JObjs),
+            _ = maybe_publish_docs(Db, Publish, JObjs),
             {'ok', JObjs};
         {'error', _}=E -> E
     end.
 
--spec maybe_tombstones(wh_json:objects()) -> wh_json:objects().
-maybe_tombstones(Docs) ->
-    [ maybe_tombstone(wh_json:get_value(<<"_deleted">>, Doc), Doc) || Doc  <- Docs ].
+prepare_doc_for_save(JObj) ->
+    prepare_publish(maybe_set_docid(JObj)).
+
+prepare_publish(JObj) ->
+    { maybe_tombstone(JObj), publish_fields(JObj) }.
+
+maybe_tombstone(JObj) ->
+    maybe_tombstone(wh_json:is_true(<<"_deleted">>, JObj, 'false'), JObj).
 
 maybe_tombstone('true', JObj) ->
-    wh_json:delete_keys(?PUBLISH_FIELDS, JObj);
-maybe_tombstone(_Else, JObj) -> JObj.
+    {wh_json:delete_keys(?PUBLISH_FIELDS, JObj), publish_fields(JObj)};
+maybe_tombstone('false', JObj) ->
+    {JObj, publish_fields(JObj)}.
 
 -spec maybe_set_docid(wh_json:object()) -> wh_json:object().
 maybe_set_docid(Doc) ->
