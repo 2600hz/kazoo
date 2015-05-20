@@ -381,9 +381,9 @@ maybe_archive_status_data(Srv, Match) ->
         Stats ->
             couch_mgr:suppress_change_notice(),
             ToSave = lists:foldl(fun archive_status_fold/2, dict:new(), Stats),
-            [couch_mgr:save_docs(acdc_stats_util:db_name(Acct), Docs)
-             || {Acct, Docs} <- dict:to_list(ToSave)
-            ],
+            _ = [couch_mgr:save_docs(acdc_stats_util:db_name(Acct), Docs)
+                 || {Acct, Docs} <- dict:to_list(ToSave)
+                ],
             [gen_listener:cast(Srv, {'update_status', Id, [{#status_stat.is_archived, 'true'}]})
              || #status_stat{id=Id} <- Stats
             ]

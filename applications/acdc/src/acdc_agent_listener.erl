@@ -411,9 +411,8 @@ handle_cast({'refresh_config', Qs}, #state{agent_queues=Queues}=State) ->
     {Add, Rm} = acdc_agent_util:changed(Queues, Qs),
 
     Self = self(),
-    [gen_listener:cast(Self, {'queue_login', A}) || A <- Add],
-    [gen_listener:cast(Self, {'queue_logout', R}) || R <- Rm],
-
+    _ = [gen_listener:cast(Self, {'queue_login', A}) || A <- Add],
+    _ = [gen_listener:cast(Self, {'queue_logout', R}) || R <- Rm],
     {'noreply', State};
 handle_cast({'stop_agent', Req}, #state{supervisor=Supervisor}=State) ->
     lager:debug("stop agent requested by ~p", [Req]),
@@ -557,7 +556,7 @@ handle_cast({'member_connect_retry', CallId}, #state{my_id=MyId
             lager:debug("need to retry member connect, agent isn't able to take it"),
             send_member_connect_retry(Server, CallId, MyId, AgentId),
 
-            [acdc_util:unbind_from_call_events(ACallId) || ACallId <- ACallIds],
+            _ = [acdc_util:unbind_from_call_events(ACallId) || ACallId <- ACallIds],
             acdc_util:unbind_from_call_events(CallId),
 
             put('callid', AgentId),
