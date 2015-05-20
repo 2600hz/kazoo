@@ -36,6 +36,7 @@
          ,transaction/1, transaction_v/1
          ,system_alert/1, system_alert_v/1
          ,webhook/1, webhook_v/1
+         ,webhook_disabled/1, webhook_disabled_v/1
          %% published on completion of notification
          ,notify_update/1, notify_update_v/1
          ,skel/1, skel_v/1
@@ -67,6 +68,7 @@
          ,publish_transaction/1, publish_transaction/2
          ,publish_system_alert/1, publish_system_alert/2
          ,publish_webhook/1, publish_webhook/2
+         ,publish_webhook_disabled/1, publish_webhook_disabled/2
          ,publish_notify_update/2, publish_notify_update/3
          ,publish_skel/1, publish_skel/2
         ]).
@@ -108,6 +110,7 @@
 -define(NOTIFY_TRANSACTION, <<"notifications.account.transaction">>).
 -define(NOTIFY_SYSTEM_ALERT, <<"notifications.system.alert">>).
 -define(NOTIFY_WEBHOOK_CALLFLOW, <<"notifications.webhook.callflow">>).
+-define(NOTIFY_WEBHOOK_DISABLED, <<"notifications.webhook.disabled">>).
 -define(NOTIFY_SKEL, <<"notifications.skel">>).
 
 %% Notify New Voicemail or Voicemail Saved
@@ -393,6 +396,14 @@
                          ,{<<"Event-Name">>, <<"webhook">>}
                         ]).
 -define(WEBHOOK_TYPES, []).
+
+%% Notify webhook
+-define(WEBHOOK_DISABLED_HEADERS, [<<"Hook-ID">>, <<"Account-ID">>]).
+-define(OPTIONAL_WEBHOOK_DISABLED_HEADERS, ?DEFAULT_OPTIONAL_HEADERS).
+-define(WEBHOOK_DISABLED_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                         ,{<<"Event-Name">>, <<"webhook_disabled">>}
+                        ]).
+-define(WEBHOOK_DISABLED_TYPES, []).
 
 -define(NOTIFY_UPDATE_HEADERS, [<<"Status">>]).
 -define(OPTIONAL_NOTIFY_UPDATE_HEADERS, [<<"Failure-Message">>
@@ -871,6 +882,23 @@ webhook_v(Prop) when is_list(Prop) ->
 webhook_v(JObj) -> webhook_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
+%% @doc webhook notification - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+webhook_disabled(Prop) when is_list(Prop) ->
+    case webhook_disabled_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?WEBHOOK_DISABLED_HEADERS, ?OPTIONAL_WEBHOOK_DISABLED_HEADERS);
+        'false' -> {'error', "Proplist failed validation for webhook_disabled"}
+    end;
+webhook_disabled(JObj) -> webhook_disabled(wh_json:to_proplist(JObj)).
+
+-spec webhook_disabled_v(api_terms()) -> boolean().
+webhook_disabled_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?WEBHOOK_DISABLED_HEADERS, ?WEBHOOK_DISABLED_VALUES, ?WEBHOOK_DISABLED_TYPES);
+webhook_disabled_v(JObj) -> webhook_disabled_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
 %% @doc System alert notification - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
@@ -888,7 +916,7 @@ notify_update_v(Prop) when is_list(Prop) ->
 notify_update_v(JObj) -> notify_update_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc webhook notification - see wiki
+%% @doc skel notification - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -904,11 +932,43 @@ skel_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?SKEL_HEADERS, ?SKEL_VALUES, ?SKEL_TYPES);
 skel_v(JObj) -> skel_v(wh_json:to_proplist(JObj)).
 
+-type restriction() :: 'new_voicemail' |
+                       'voicemail_saved' |
+                       'voicemail_full' |
+                       'inbound_fax' |
+                       'outbound_fax' |
+                       'new_fax' |
+                       'inbound_fax_error' |
+                       'outbound_fax_error' |
+                       'fax_error' |
+                       'register' |
+                       'deregister' |
+                       'pwd_recovery' |
+                       'new_account' |
+                       'new_user' |
+                       'port_request' |
+                       'port_pending' |
+                       'port_scheduled' |
+                       'port_cancel' |
+                       'ported' |
+                       'port_comment' |
+                       'cnam_requests' |
+                       'low_balance' |
+                       'topup' |
+                       'transaction' |
+                       'system_alerts' |
+                       'webhook' |
+                       'webhook_disabled' |
+                       'skel'.
+-type restrictions() :: [restriction(),...] | [].
+-type option() :: {'restrict_to', restrictions()}.
+-type options() :: [option(),...] | [].
 
--spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
+-spec bind_q(ne_binary(), options()) -> 'ok'.
 bind_q(Queue, Props) ->
     bind_to_q(Queue, props:get_value('restrict_to', Props)).
 
+-spec bind_to_q(ne_binary(), restrictions() | 'undefined') -> 'ok'.
 bind_to_q(Q, 'undefined') ->
     'ok' = amqp_util:bind_q_to_notifications(Q, <<"notifications.*.*">>);
 bind_to_q(Q, ['new_voicemail'|T]) ->
@@ -991,17 +1051,20 @@ bind_to_q(Q, ['system_alerts'|T]) ->
 bind_to_q(Q, ['webhook'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_WEBHOOK_CALLFLOW),
     bind_to_q(Q, T);
+bind_to_q(Q, ['webhook_disabled'|T]) ->
+    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_WEBHOOK_DISABLED),
+    bind_to_q(Q, T);
 bind_to_q(Q, ['skel'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_SKEL),
     bind_to_q(Q, T);
 bind_to_q(_Q, []) ->
     'ok'.
 
--spec unbind_q(ne_binary(), wh_proplist()) -> 'ok'.
-
+-spec unbind_q(ne_binary(), options()) -> 'ok'.
 unbind_q(Queue, Props) ->
     unbind_q_from(Queue, props:get_value('restrict_to', Props)).
 
+-spec unbind_q_from(ne_binary(), restrictions() | 'undefined') -> 'ok'.
 unbind_q_from(Q, 'undefined') ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, <<"notifications.*.*">>);
 unbind_q_from(Q, ['new_voicemail'|T]) ->
@@ -1080,6 +1143,9 @@ unbind_q_from(Q, ['system_alert'|T]) ->
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['webhook'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_WEBHOOK_CALLFLOW),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, ['webhook_disabled'|T]) ->
+    'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_WEBHOOK_DISABLED),
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['skel'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_SKEL),
@@ -1263,6 +1329,14 @@ publish_webhook(JObj) -> publish_webhook(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_webhook(API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?WEBHOOK_VALUES, fun ?MODULE:webhook/1),
     amqp_util:notifications_publish(?NOTIFY_WEBHOOK_CALLFLOW, Payload, ContentType).
+
+-spec publish_webhook_disabled(api_terms()) -> 'ok'.
+-spec publish_webhook_disabled(api_terms(), ne_binary()) -> 'ok'.
+publish_webhook_disabled(JObj) -> publish_webhook_disabled(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_webhook_disabled(API, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(API, ?WEBHOOK_DISABLED_VALUES, fun ?MODULE:webhook_disabled/1),
+    amqp_util:notifications_publish(?NOTIFY_WEBHOOK_DISABLED, Payload, ContentType).
+
 
 -spec publish_notify_update(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_notify_update(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
