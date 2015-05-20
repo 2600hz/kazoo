@@ -35,8 +35,8 @@
                 ,status :: binary()
                 ,fax_status :: api_object()
                 ,pages  :: integer()
-                ,page = 0  ::integer()
-                ,file :: api_binary()
+                ,page = 0  :: integer()
+                ,file :: ne_binary()
                }).
 -type state() :: #state{}.
 
@@ -755,13 +755,13 @@ prepare_contents(JobId, RespHeaders, RespContent) ->
             {'error', list_to_binary(["file type '", Else, "' is unsupported"])}
     end.
 
--spec get_sizes(ne_binary()) -> {integer(), integer()}.
-get_sizes(OutputFile) ->
+-spec get_sizes(ne_binary()) -> {integer(), non_neg_integer()}.
+get_sizes(OutputFile) when is_binary(OutputFile) ->
     CmdCount = whapps_config:get_binary(<<"fax">>, <<"count_pages_command">>, ?COUNT_PAGES_CMD),
     Cmd = io_lib:format(CmdCount, [OutputFile]),
     Result = os:cmd(wh_util:to_list(Cmd)),
     NumberOfPages = wh_util:to_integer(Result),
-    FileSize = filelib:file_size(OutputFile),
+    FileSize = filelib:file_size(wh_util:to_list(OutputFile)),
     {NumberOfPages, FileSize}.
 
 -spec normalize_content_type(text()) -> ne_binary().

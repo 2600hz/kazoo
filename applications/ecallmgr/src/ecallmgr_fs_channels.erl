@@ -263,10 +263,7 @@ handle_query_channels(JObj, _Props) ->
     'true' = wapi_call:query_channels_req_v(JObj),
     Fields = wh_json:get_value(<<"Fields">>, JObj, []),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    maybe_send_query_channels_resp(JObj, query_channels(Fields, CallId)).
-
--spec maybe_send_query_channels_resp(wh_json:object(), wh_json:object()) -> 'ok'.
-maybe_send_query_channels_resp(JObj, Channels) ->
+    Channels = query_channels(Fields, CallId),
     case wh_util:is_empty(Channels) and
         wh_json:is_true(<<"Active-Only">>, JObj, 'false')
     of
@@ -653,7 +650,7 @@ query_channels(Fields, CallId) ->
                    ,wh_json:new()
                   ).
 
--spec query_channels({[channel()], ets:continuation()}, ne_binary() | ne_binaries(), wh_json:object()) ->
+-spec query_channels({[channel()], ets:continuation()} | '$end_of_table', ne_binary() | ne_binaries(), wh_json:object()) ->
                             wh_json:object().
 query_channels('$end_of_table', _, Channels) -> Channels;
 query_channels({[#channel{uuid=CallId}=Channel], Continuation}

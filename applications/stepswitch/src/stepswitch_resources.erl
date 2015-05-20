@@ -205,11 +205,15 @@ reverse_lookup(JObj) ->
             maybe_find_local(IP, Port, Realm, AccountId)
     end.
 
--spec find_port(wh_json:object()) -> api_integer().
+-spec find_port(wh_json:object()) -> api_binary().
 find_port(JObj) ->
-    wh_json:get_first_defined([<<"From-Network-Port">>
+    case wh_json:get_first_defined([<<"From-Network-Port">>
                                     ,<<"Orig-Port">>
-                                   ], JObj).
+                                   ], JObj)
+    of
+        'undefined' -> 'undefined';
+        Port -> wh_util:to_binary(Port)
+    end.
 
 -spec find_account_id(api_binary(), wh_json:object()) -> api_binary().
 find_account_id(Realm, JObj) ->
@@ -975,7 +979,7 @@ endpoint_options(_, _) -> wh_json:new().
 gateway_dialstring(#gateway{route='undefined'
                             ,prefix=Prefix
                             ,suffix=Suffix
-                            ,server=Server
+                           ,server=Server
                             ,port=Port
                            }, Number) ->
     DialStringPort = case wh_util:is_not_empty(Port) andalso Port =/= <<"5060">> of

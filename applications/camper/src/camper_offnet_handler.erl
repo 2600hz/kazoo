@@ -195,14 +195,14 @@ handle_cast({'parked', <<_/binary>> = CallId}, #state{moh=MOH
     {'noreply', State#state{parked_call = CallId}};
 handle_cast('wait', #state{try_after = Time} = State) ->
     lager:debug("wait before next try"),
-    timer:apply_after(Time, 'gen_listener', 'cast', [self(), 'count']),
+    {'ok', _TimerRef} = timer:apply_after(Time, 'gen_listener', 'cast', [self(), 'count']),
     {'noreply', State};
 handle_cast('stop_campering', #state{stop_timer = 'undefined'} = State) ->
     lager:debug("stopping"),
     {'stop', 'normal', State};
 handle_cast('stop_campering', #state{stop_timer = Timer} = State) ->
     lager:debug("stopping"),
-    timer:cancel(Timer),
+    _ = timer:cancel(Timer),
     {'stop', 'normal', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),

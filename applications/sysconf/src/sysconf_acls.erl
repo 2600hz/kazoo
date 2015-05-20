@@ -179,7 +179,7 @@ offnet_resources(Collector) ->
 
 -spec handle_resource_results(pid(), wh_json:objects()) -> 'ok'.
 handle_resource_results(Collector, JObjs) ->
-    [handle_resource_result(Collector, JObj) || JObj <- JObjs],
+    _ = [handle_resource_result(Collector, JObj) || JObj <- JObjs],
     'ok'.
 
 -spec handle_resource_result(pid(), wh_json:object()) -> 'ok'.

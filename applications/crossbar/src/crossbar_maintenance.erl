@@ -806,7 +806,7 @@ init_apps(AppsPath, AppUrl) ->
     InitApp = fun(App) -> init_app(App, AppUrl) end,
     lists:foreach(InitApp, Apps).
 
--spec find_apps(ne_binary()) -> ne_binaries().
+-spec find_apps(filelib:dirname()) -> [file:name()].
 find_apps(AppsPath) ->
     AccFun =
         fun (AppJSONPath, Acc) ->
@@ -816,7 +816,7 @@ find_apps(AppsPath) ->
         end,
     filelib:fold_files(AppsPath, "app\\.json", 'true', AccFun, []).
 
--spec init_app(ne_binary(), ne_binary()) -> 'ok'.
+-spec init_app(file:filename(), ne_binary()) -> 'ok'.
 init_app(AppPath, AppUrl) ->
     io:format("trying to init app from ~s~n", [AppPath]),
     try find_metadata(AppPath) of
@@ -833,8 +833,8 @@ init_app(AppPath, AppUrl) ->
             io:format("  failed to find metadata in ~s: ~p~n", [AppPath, _E])
     end.
 
--spec maybe_create_app(ne_binary(), wh_json:object()) -> 'ok'.
--spec maybe_create_app(ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
+-spec maybe_create_app(file:filename(), wh_json:object()) -> 'ok'.
+-spec maybe_create_app(file:filename(), wh_json:object(), ne_binary()) -> 'ok'.
 maybe_create_app(AppPath, MetaData) ->
     {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
     maybe_create_app(AppPath, MetaData, MasterAccountDb).
@@ -856,7 +856,7 @@ find_app(Db, Name) ->
         {'error', _}=E -> E
     end.
 
--spec create_app(ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
+-spec create_app(file:filename(), wh_json:object(), ne_binary()) -> 'ok'.
 create_app(AppPath, MetaData, MasterAccountDb) ->
     Doc = wh_json:delete_keys([<<"source_url">>]
                               ,wh_doc:update_pvt_parameters(MetaData, MasterAccountDb, [{'type', <<"app">>}])
@@ -871,7 +871,7 @@ create_app(AppPath, MetaData, MasterAccountDb) ->
             io:format(" failed to save app ~s to ~s: ~p~n", [wh_json:get_value(<<"name">>, MetaData), MasterAccountDb, _E])
     end.
 
--spec maybe_add_icons(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec maybe_add_icons(file:filename(), ne_binary(), ne_binary()) -> 'ok'.
 maybe_add_icons(AppPath, AppId, MasterAccountDb) ->
     try find_icons(AppPath) of
         {'ok', Icons} -> add_icons(AppId, MasterAccountDb, Icons)
@@ -887,32 +887,32 @@ add_icons(AppId, MasterAccountDb, Icons) ->
     _ = [add_icon(AppId, MasterAccountDb, IconId, IconData) || {IconId, IconData} <- Icons],
     'ok'.
 
--spec add_icon(ne_binary(), ne_binary(), ne_binary(), binary()) -> 'ok'.
+-spec add_icon(ne_binary(), ne_binary(), file:filename(), binary()) -> 'ok'.
 add_icon(AppId, MasterAccountDb, IconId, IconData) ->
     case couch_mgr:put_attachment(MasterAccountDb, AppId, IconId, IconData) of
-        {'ok', _} -> io:format("   saved ~s to ~s~n", [IconId, AppId]);
+        {'ok', _} ->     io:format("   saved ~s to ~s~n", [IconId, AppId]);
         {'error', _E} -> io:format("   failed to save ~s to ~s: ~p~n", [IconId, AppId, _E])
     end.
 
--spec find_icons(ne_binary()) -> {'ok', wh_proplist()}.
+-spec find_icons(file:filename()) -> {'ok', [{file:filename(), binary()}]}.
 find_icons(AppPath) ->
     {'ok', Dirs} = file:list_dir(AppPath),
     case lists:member("icon", Dirs) of
-        'true' -> read_icons(filename:join([AppPath, <<"icon">>]));
+        'true' ->  read_icons(filename:join([AppPath, <<"icon">>]));
         'false' -> read_icons(filename:join([AppPath, <<"metadata">>, <<"icon">>]))
     end.
 
--spec read_icons(ne_binary()) -> {'ok', wh_proplist()}.
+-spec read_icons(file:filename()) -> {'ok', [{file:filename(), binary()}]}.
 read_icons(IconPath) ->
     {'ok', Icons} = file:list_dir(IconPath),
     {'ok', [{Icon, read_icon(IconPath, Icon)} || Icon <- Icons]}.
 
--spec read_icon(ne_binary(), ne_binary()) -> binary().
+-spec read_icon(file:filename(), file:filename()) -> binary().
 read_icon(Path, File) ->
     {'ok', IconData} = file:read_file(filename:join([Path, File])),
     IconData.
 
--spec find_metadata(ne_binary()) -> {'ok', wh_json:object()} | {'invalid_data', wh_proplist()}.
+-spec find_metadata(file:filename()) -> {'ok', wh_json:object()} | {'invalid_data', wh_proplist()}.
 find_metadata(AppPath) ->
     AppJSONPath = filename:join([AppPath, <<"metadata">>, <<"app.json">>]),
     {'ok', JSON} = file:read_file(AppJSONPath),
@@ -923,9 +923,3 @@ find_metadata(AppPath) ->
         {'error', Errors} ->
             {'invalid_data', [Error || {'data_invalid', _, Error, _, _} <- Errors]}
     end.
-
--ifdef(TEST).
-
--include_lib("eunit/include/eunit.hrl").
-
--endif.

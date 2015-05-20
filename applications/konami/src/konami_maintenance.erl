@@ -140,7 +140,7 @@ builder_menu(Default, SaveFun, #builder_action{builders=Builders
                                               }=BA) ->
     io:format("~s Builders:~n", [wh_util:ucfirst_binary(Key)]),
 
-    print_builders(Builders),
+    _ = print_builders(Builders),
     io:format("  0. Return to Menu~n~n", []),
 
     {'ok', [Option]} = io:fread("Which builder to add: ", "~d"),

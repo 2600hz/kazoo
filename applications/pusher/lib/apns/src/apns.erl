@@ -49,7 +49,7 @@
 %% @doc Starts the application
 -spec start() -> ok | {error, {already_started, apns}}.
 start() ->
-  application:load(apns),
+    _ = application:load(apns),
   case erlang:function_exported(application, ensure_all_started, 1) of
     false ->
       _ = application:start(crypto),
