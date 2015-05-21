@@ -57,7 +57,7 @@ handle(Data, Call, <<"stop">> = Action) ->
 handle_immediate_start(Data, Call) ->
     Url = wh_json:get_value(<<"url">>, Data),
     case wh_media_recording:should_store_recording(Url) of
-        {'true', 'other', 'third_party'} ->
+        {'true', 'third_party'} ->
             lager:debug("call will be stored to 3rd party CouchDB", []),
             start_wh_media_recording(Data, Call);
         {'true', 'other', Url} ->
