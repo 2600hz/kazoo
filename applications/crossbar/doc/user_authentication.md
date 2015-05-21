@@ -51,3 +51,46 @@ Sometimes it is necessary to recover a password.
     curl -v -X PUT -H "content-type: application/json" 'http://{SERVER}:8000/v2/user_auth' -d '{"data":{"username":"API_USERNAME", "account_realm":"ACCOUNT_REALM"}}'
 
 Similar to user authentication, you can supply the account realm, the account name, or a phone number associated with the account to send a password reset to the user's email.
+
+# Getting token auth info
+
+## Request
+
+- Verb: `GET`
+- Url: `accounts/{ACCOUNT_ID}/token/{AUTH_TOKEN}`
+- Payload: None
+
+## Response
+
+```
+{
+    "data": {
+        "account_id": "{ACCOUNT_ID}",
+        "owner_id": "{USER_ID}",
+        "method": "cb_user_auth",
+        "id": "{AUTH_TOKEN}",
+        "reseller_id": "{RESELLER_ID}",
+        "is_reseller": false,
+        "account_name": "{ACCOUNT_NAME}",
+        "language": "en-us",
+        "apps": [{
+            "id": "8bda62bf7ccf8f8acc219d5d2c515376",
+            "name": "accounts",
+            "api_url": "http://192.168.0.2:8000/v2/",
+            "label": "Accounts Manager"
+        }, {
+            "id": "99d5f033f0a4176640f9bf1c4e81abed",
+            "name": "numbers",
+            "api_url": "http://192.168.0.2:8000/v2/",
+            "label": "Number Manager"
+        }, {
+            "id": "0306d5162bad2c7a951b6842483f73cd",
+            "name": "voip",
+            "api_url": "http://192.168.0.2:8000/v2/",
+            "label": "Smart PBX"
+        }]
+    },
+    "auth_token": "{AUTH_TOKEN}",
+    "status": "success"
+}
+```
