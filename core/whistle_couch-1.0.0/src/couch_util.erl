@@ -694,10 +694,10 @@ do_fetch_doc(#db{}=Db, DocId, Options) ->
 do_save_doc(#db{}=Db, Docs, Options) when is_list(Docs) ->
     do_save_docs(Db, Docs, Options);
 do_save_doc(#db{}=Db, Doc, Options) ->
-    {PreparedDoc, Publish} = prepare_doc_for_save(Db, Doc),
+    {PreparedDoc, PublishDoc} = prepare_doc_for_save(Db, Doc),
     case ?RETRY_504(couchbeam:save_doc(Db, PreparedDoc, Options)) of
         {'ok', JObj}=Ok ->
-            _ = maybe_publish_doc(Db, Publish, JObj),
+            _ = maybe_publish_doc(Db, PublishDoc, JObj),
             Ok;
         Else -> Else
     end.
@@ -739,28 +739,31 @@ perform_save_docs(Db, Docs, Options) ->
         {'error', _}=E -> E
     end.
 
--spec prepare_doc_for_save(couchbeam_db(), wh_json:object()) -> {wh_json:object(), wh_json:object()}.
--spec prepare_doc_for_save(boolean(), couchbeam_db(), wh_json:object()) -> {wh_json:object(), wh_json:object()}.
+-spec prepare_doc_for_save(couchbeam_db(), wh_json:object()) ->
+                                  {wh_json:object(), wh_json:object()}.
+-spec prepare_doc_for_save(couchbeam_db(), wh_json:object(), boolean()) ->
+                                  {wh_json:object(), wh_json:object()}.
 prepare_doc_for_save(Db, JObj) ->
-    prepare_doc_for_save(wh_util:is_empty(doc_id(JObj)), Db, JObj).
-prepare_doc_for_save('true', _Db, JObj) ->
+    prepare_doc_for_save(Db, JObj, wh_util:is_empty(doc_id(JObj))).
+prepare_doc_for_save(_Db, JObj, 'true') ->
     prepare_publish(maybe_set_docid(JObj));
-prepare_doc_for_save('false', Db, JObj) ->
+prepare_doc_for_save(Db, JObj, 'false') ->
     flush_cache_doc(Db, JObj),
     prepare_publish(JObj).
 
--spec prepare_publish(wh_json:object()) -> {wh_json:object(), wh_json:object()}.
+-spec prepare_publish(wh_json:object()) ->
+                             {wh_json:object(), wh_json:object()}.
 prepare_publish(JObj) ->
-    { maybe_tombstone(JObj), wh_json:from_list(publish_fields(JObj)) }.
+    {maybe_tombstone(JObj), wh_json:from_list(publish_fields(JObj))}.
 
 -spec maybe_tombstone(wh_json:object()) -> wh_json:object().
--spec maybe_tombstone(boolean(), wh_json:object()) -> wh_json:object().
+-spec maybe_tombstone(wh_json:object(), boolean()) -> wh_json:object().
 maybe_tombstone(JObj) ->
-    maybe_tombstone(wh_json:is_true(<<"_deleted">>, JObj, 'false'), JObj).
+    maybe_tombstone(JObj, wh_json:is_true(<<"_deleted">>, JObj, 'false')).
 
-maybe_tombstone('true', JObj) ->
+maybe_tombstone(JObj, 'true') ->
     wh_json:delete_keys(?PUBLISH_FIELDS, JObj);
-maybe_tombstone('false', JObj) -> JObj.
+maybe_tombstone(JObj, 'false') -> JObj.
 
 -spec maybe_set_docid(wh_json:object()) -> wh_json:object().
 maybe_set_docid(Doc) ->
@@ -1003,9 +1006,11 @@ publish_doc(#db{name=DbName}, Doc, JObj) ->
 -spec publish_fields(wh_json:object()) -> wh_proplist().
 -spec publish_fields(wh_json:object(), wh_json:object()) -> wh_json:object().
 publish_fields(Doc) ->
-    [ {Key, V} || Key <- ?PUBLISH_FIELDS,
-                  wh_util:is_not_empty(V = wh_json:get_value(Key, Doc))
+    [{Key, V} ||
+        Key <- ?PUBLISH_FIELDS,
+        wh_util:is_not_empty(V = wh_json:get_value(Key, Doc))
     ].
+
 publish_fields(Doc, JObj) ->
     wh_json:set_values(publish_fields(Doc), JObj).
 
