@@ -106,7 +106,7 @@
 
 -export([node_name/0, node_hostname/0]).
 
--export([write_file/2
+-export([write_file/2, write_file/3
          ,delete_file/1
          ,make_dir/1
         ]).
@@ -1224,7 +1224,12 @@ node_hostname() ->
 %% @public
 -spec write_file(file:name(), iodata()) -> 'ok'.
 write_file(Filename, Bytes) ->
-    case file:write_file(Filename, Bytes) of
+    write_file(Filename, Bytes, []).
+
+%% @public
+-spec write_file(file:name(), iodata(), [file:mode()]) -> 'ok'.
+write_file(Filename, Bytes, Modes) ->
+    case file:write_file(Filename, Bytes, Modes) of
         'ok' -> 'ok';
         {'error', _}=_E ->
             lager:debug("writing file ~s failed : ~p", [Filename, _E])
