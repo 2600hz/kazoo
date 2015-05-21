@@ -23,7 +23,7 @@
 -export([update_payment_token/2]).
 -export([find/1]).
 -export([create/1, create/2]).
--export([update/1]).
+-export([update/1, update/2]).
 -export([cancel/1]).
 -export([xml_to_record/1, xml_to_record/2]).
 -export([record_to_xml/1]).

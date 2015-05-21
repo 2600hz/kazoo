@@ -132,7 +132,7 @@ delete_unused_cards(Cards) ->
 delete_unused_card(#bt_card{default = 'true'}=Card, Acc) ->
     [Card|Acc];
 delete_unused_card(#bt_card{default = 'false'}=Card, Acc) ->
-    delete(Card),
+    _ = delete(Card),
     Acc.
 
 %%--------------------------------------------------------------------
