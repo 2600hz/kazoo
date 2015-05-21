@@ -43,12 +43,13 @@
                           ,?HTTP_OPTIONS
                          ]).
 
+-define(QUICKCALL_PATH_TOKEN, <<"quickcall">>).
 -define(DEVICES_QCALL_NOUNS(DeviceId, Number)
-        ,[{<<"devices">>, [DeviceId, <<"quickcall">>, Number]}
+        ,[{<<"devices">>, [DeviceId, ?QUICKCALL_PATH_TOKEN, Number]}
           ,{?WH_ACCOUNTS_DB, [_]}
          ]).
 -define(USERS_QCALL_NOUNS(UserId, Number)
-        ,[{<<"users">>, [UserId, <<"quickcall">>, Number]}
+        ,[{<<"users">>, [UserId, ?QUICKCALL_PATH_TOKEN , Number]}
           ,{?WH_ACCOUNTS_DB, [_]}
          ]).
 
