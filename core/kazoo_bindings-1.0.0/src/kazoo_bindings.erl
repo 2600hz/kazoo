@@ -487,8 +487,8 @@ filter_bindings(Predicate) ->
     filter_bindings(Predicate, ets:first(table_id()), [], []).
 
 filter_bindings(_Predicate, '$end_of_table', Updates, Deletes) ->
-    [ets:delete(table_id(), DeleteKey) || DeleteKey <- Deletes],
-    [ets:update_element(table_id(), Key, Update) || {Key, Update} <- Updates],
+    _ = [ets:delete(table_id(), DeleteKey) || DeleteKey <- Deletes],
+    _ = [ets:update_element(table_id(), Key, Update) || {Key, Update} <- Updates],
     'ok';
 filter_bindings(Predicate, Key, Updates, Deletes) ->
     [#kz_binding{binding=Binding
