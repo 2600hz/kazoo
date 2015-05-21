@@ -60,7 +60,7 @@ stop() ->
     case gproc:select('n', [{MatchHead, Guard, [Result]}]) of
         [] -> 'ok';
         Pids ->
-            [stop_pid(Pid) || Pid <- Pids],
+            _ = [stop_pid(Pid) || Pid <- Pids],
             'ok'
     end.
 
@@ -79,7 +79,7 @@ stop_pid([Pid, Type]) ->
     catch gproc:unreg(?GPROC_KEY(Type)),
     'ok'.
 
--spec running() -> wh_proplist().
+-spec running() -> [{pid(),_}].
 running() ->
     %% {{'n', 'l', Key}, PidToMatch, ValueToMatch}
     MatchHead = {?GPROC_KEY('$2'), '_', '$1'},

@@ -260,7 +260,7 @@ rotate_db(Database, Name) ->
     case get_docs_by_name(Database, Name, ['include_docs']) of
         {'ok', []} -> 'ok';
         {'ok', Docs} ->
-            rotate_db(Database, Name, Docs),
+            _ = rotate_db(Database, Name, Docs),
             lager:debug("rotated ~s in ~s", [Name, Database]);
         {'error', 'not_found'} ->
             init_db(Database),
