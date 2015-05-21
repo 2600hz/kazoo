@@ -274,9 +274,9 @@ init([]) ->
                            ]),
     lager:debug("started ETS ~p", [Tab]),
     _ = erlang:send_after(?EXPIRE_PERIOD, self(), 'expire_nodes'),
-    net_kernel:monitor_nodes('true', ['nodedown_reason'
-                                      ,{'node_type', 'all'}
-                                     ]),
+    _ = net_kernel:monitor_nodes('true', ['nodedown_reason'
+                                          ,{'node_type', 'all'}
+                                         ]),
     lager:debug("monitoring nodes"),
     State = #state{tab=Tab},
     Node = create_node('undefined', State),
@@ -392,14 +392,14 @@ handle_info({'DOWN', Ref, 'process', Pid, _}, #state{notify_new=NewSet
 
 handle_info({'nodedown', Node, InfoList}, State) ->
     lager:info("VM ~s is no longer connected:", [Node]),
-    [lager:info(" ~p: ~p", [K, V]) || {K, V} <- InfoList],
+    _ = [lager:info(" ~p: ~p", [K, V]) || {K, V} <- InfoList],
     {'noreply', State};
 handle_info({'nodedown', Node}, State) ->
     lager:info("VM ~s is no longer connected", [Node]),
     {'noreply', State};
 handle_info({'nodeup', Node, InfoList}, State) ->
     lager:info("VM ~s is now connected:", [Node]),
-    [lager:info(" ~p: ~p", [K, V]) || {K, V} <- InfoList],
+    _ = [lager:info(" ~p: ~p", [K, V]) || {K, V} <- InfoList],
     {'noreply', State};
 handle_info({'nodeup', Node}, State) ->
     lager:info("VM ~s is now connected", [Node]),

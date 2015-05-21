@@ -141,7 +141,7 @@ log_stacktrace_mfa(M, F, Arity, Info) when is_integer(Arity) ->
     lager:info("st: ~s:~s/~b at (~b)", [M, F, Arity, props:get_value('line', Info, 0)]);
 log_stacktrace_mfa(M, F, Args, Info) ->
     lager:info("st: ~s:~s at ~p", [M, F, props:get_value('line', Info, 0)]),
-    [lager:info("args: ~p", [Arg]) || Arg <- Args],
+    _ = [lager:info("args: ~p", [Arg]) || Arg <- Args],
     'ok'.
 
 -define(LOG_LEVELS, ['emergency'
@@ -1023,7 +1023,7 @@ whistle_version() ->
     case file:open(VersionFile, ['read']) of
         {'ok', File} ->
             {'ok', Line} = file:read_line(File),
-            file:close(File),
+            _ = file:close(File),
             wh_util:to_binary(string:strip(Line, 'right', $\n));
         _ -> <<"unknown">>
     end.

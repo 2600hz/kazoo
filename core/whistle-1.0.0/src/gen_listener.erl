@@ -554,7 +554,7 @@ handle_cast({'start_listener', _Params}, State) ->
     {'noreply', State};
 
 handle_cast({'pause_consumers'}, #state{is_consuming='true', consumer_tags=Tags}=State) ->
-    [amqp_util:basic_cancel(Tag) || Tag <- Tags],
+    _ = [amqp_util:basic_cancel(Tag) || Tag <- Tags],
     {'noreply', State};
 
 handle_cast({'resume_consumers'}, #state{queue='undefined'}=State) ->
@@ -564,8 +564,8 @@ handle_cast({'resume_consumers'}, #state{is_consuming='false'
                                          ,queue=Q
                                          ,other_queues=OtherQueues}=State) ->
     start_consumer(Q, props:get_value('consume_options', Params)),
-    [start_consumer(Q1, props:get_value('consume_options', P))
-                   || {Q1, {_, P}} <- OtherQueues],
+    _ = [start_consumer(Q1, props:get_value('consume_options', P))
+         || {Q1, {_, P}} <- OtherQueues],
     {'noreply', State};
 
 handle_cast(Message, State) ->
@@ -965,7 +965,7 @@ handle_module_cast(Msg, #state{module=Module
                                ,module_state=ModuleState
                                ,module_timeout_ref=OldRef
                               }=State) ->
-    stop_timer(OldRef),
+    _ = stop_timer(OldRef),
     try Module:handle_cast(Msg, ModuleState) of
         {'noreply', ModuleState1} ->
             {'noreply', State#state{module_state=ModuleState1}, 'hibernate'};
@@ -1053,9 +1053,9 @@ start_new_listener(Broker, Binding, Props, #state{params=Ps}) ->
 
 -spec update_existing_listeners_bindings(federator_listeners(), binding_module(), wh_proplist()) -> 'ok'.
 update_existing_listeners_bindings(Listeners, Binding, Props) ->
-    [update_existing_listener_bindings(Listener, Binding, Props)
-     || Listener <- Listeners
-    ],
+    _ = [update_existing_listener_bindings(Listener, Binding, Props)
+         || Listener <- Listeners
+        ],
     'ok'.
 
 -spec update_existing_listener_bindings(federator_listener(), binding_module(), wh_proplist()) -> 'ok'.
