@@ -952,7 +952,7 @@ stream_over_http(Node, UUID, File, Method, Type, JObj) ->
 maybe_send_detailed_alert('true', _, _, _, _, _) -> 'ok';
 maybe_send_detailed_alert(_, Node, UUID, File, Type, Reason) ->
     send_detailed_alert(Node, UUID, File, Type, Reason).
-                                                                      
+
 -spec send_detailed_alert(atom(), ne_binary(), ne_binary(), 'store' | 'fax', term()) -> any().
 send_detailed_alert(Node, UUID, File, Type, Reason) ->
     wh_notify:detailed_alert("Failed to store ~s: media file ~s for call ~s on ~s "

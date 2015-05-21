@@ -1395,6 +1395,7 @@ record_call(Media, Action, TimeLimit, Terminators, Call) ->
                  ,{<<"Record-Sample-Rate">>, SampleRate}
                  ,{<<"Record-Min-Sec">>, RecordMinSec}
                 ]),
+
     send_command(Command, Call).
 
 -spec b_record_call(wh_proplist(), whapps_call:call()) ->
