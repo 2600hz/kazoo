@@ -226,6 +226,7 @@
                                ,{<<"Record-Sample-Rate">>, <<"record_sample_rate">>}
                                ,{<<"recording_follow_transfer">>, <<"recording_follow_transfer">>}
                                ,{<<"recording_follow_attxfer">>, <<"recording_follow_attxfer">>}
+                               ,{<<"Record-Min-Sec">>, <<"record_min_sec">>}
                                ,{<<"enable_file_write_buffering">>, <<"enable_file_write_buffering">>}
                                ,{<<"RECORD_APPEND">>, <<"RECORD_APPEND">>}
                                ,{<<"fax_enable_t38_request">>, <<"fax_enable_t38_request">>}

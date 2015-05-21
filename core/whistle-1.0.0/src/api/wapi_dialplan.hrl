@@ -490,6 +490,7 @@
 -define(OPTIONAL_RECORD_CALL_REQ_HEADERS, [<<"Time-Limit">>, <<"Insert-At">>, <<"Follow-Transfer">>
                                            ,<<"Media-Transfer-Method">> ,<<"Media-Transfer-Destination">>
                                            ,<<"Additional-Headers">>, <<"Record-Sample-Rate">>
+                                           ,<<"Record-Min-Sec">>
                                           ]).
 -define(RECORD_CALL_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                                  ,{<<"Event-Name">>, <<"command">>}

@@ -1275,10 +1275,12 @@ maybe_get_terminators(Acc, JObj) ->
 -spec start_record_call_args(atom(), ne_binary(), wh_json:object(), ne_binary()) -> ne_binary().
 start_record_call_args(Node, UUID, JObj, RecordingName) ->
     FollowTransfer = wh_json:get_binary_boolean(<<"Follow-Transfer">>, JObj, <<"true">>),
+    RecordMinSec = wh_json:get_binary_value(<<"Record-Min-Sec">>, JObj),
     SampleRate = get_sample_rate(JObj),
 
     _ = ecallmgr_util:set(Node, UUID, [{<<"recording_follow_transfer">>, FollowTransfer}
                                        ,{<<"recording_follow_attxfer">>, FollowTransfer}
+                                       ,{<<"Record-Min-Sec">>, RecordMinSec}
                                        ,{<<"record_sample_rate">>, wh_util:to_binary(SampleRate)}
                                       ]),
     _ = ecallmgr_util:export(

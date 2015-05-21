@@ -43,6 +43,13 @@
             "required":false,
             "name":"Sample Rate",
             "description":"Sampling rate of the recording, in Hz"
+        },
+        "record_min_sec":{
+            "type":"integer",
+            "required":false,
+            "name":"Recording minmum seconds",
+            "description":"Minimal record time, in seconds, to store recordings",
+            "minimum":0
         }
     }
 }
