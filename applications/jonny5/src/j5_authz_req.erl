@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%% Handlers for various AMQP payloads
 %%% @end
@@ -43,26 +43,43 @@ determine_account_id(Request) ->
 
 -spec maybe_local_resource(ne_binary(), wh_proplist(), j5_request:request()) -> 'ok'.
 maybe_local_resource(AccountId, Props, Request) ->
-    %% TODO: we need to check system_config to determine if we authz local
     case wh_number_properties:is_local_number(Props) of
+        'true' -> maybe_authz_local_resource(AccountId, Request);
+        'false' -> allow_local_resource(AccountId, Request)
+    end.
+
+-spec maybe_authz_local_resource(ne_binary(), j5_request:request()) -> 'ok'.
+maybe_authz_local_resource(AccountId, Request) ->
+    case should_authz_local(Request) of
         'false' ->
+            allow_local_resource(AccountId, Request);
+        'true' ->
+            lager:debug("authz_local_resources enabled, applying limits for local numbers"),
             maybe_account_limited(
               j5_request:set_account_id(AccountId, Request)
-             );
-        'true' ->
-            Number = j5_request:number(Request),
-            lager:debug("number ~s is a local number for account ~s, allowing"
-                       ,[Number, AccountId]),
-            Routines = [fun(R) -> j5_request:authorize_account(<<"limits_disabled">>, R) end
-                       ,fun(R) -> j5_request:authorize_reseller(<<"limits_disabled">>, R) end
-                       ,fun(R) -> j5_request:set_account_id(AccountId, R) end
-                       ,fun(R) ->
-                                ResellerId = wh_services:find_reseller_id(AccountId),
-                                j5_request:set_reseller_id(ResellerId, R)
-                        end
-                       ],
-            send_response(lists:foldl(fun(F, R) -> F(R) end, Request, Routines))
+             )
     end.
+
+-spec allow_local_resource(ne_binary(), j5_request:request()) -> 'ok'.
+allow_local_resource(AccountId, Request) ->
+    Number = j5_request:number(Request),
+    lager:debug("number ~s is a local number for account ~s, allowing"
+                ,[Number, AccountId]
+               ),
+    Routines = [fun(R) -> j5_request:authorize_account(<<"limits_disabled">>, R) end
+                ,fun(R) -> j5_request:authorize_reseller(<<"limits_disabled">>, R) end
+                ,fun(R) -> j5_request:set_account_id(AccountId, R) end
+                ,fun(R) ->
+                         ResellerId = wh_services:find_reseller_id(AccountId),
+                         j5_request:set_reseller_id(ResellerId, R)
+                 end
+                       ],
+    send_response(lists:foldl(fun(F, R) -> F(R) end, Request, Routines)).
+
+-spec should_authz_local(j5_request:request()) -> boolean().
+should_authz_local(Request) ->
+    Node = j5_request:node(Request),
+    whapps_config:get_is_true(<<"ecallmgr">>, <<"authz_local_resources">>, 'false', Node).
 
 -spec maybe_account_limited(j5_request:request()) -> 'ok'.
 maybe_account_limited(Request) ->

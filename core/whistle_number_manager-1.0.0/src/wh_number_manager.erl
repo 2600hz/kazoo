@@ -728,7 +728,7 @@ assign_number_to_account(Number, AssignTo, AuthBy, PublicFields, DryRun) ->
 %% recycled or cancled after a buffer period
 %% @end
 %%--------------------------------------------------------------------
--spec release_number(ne_binary(), ne_binary()) -> operation_return().
+-spec release_number(ne_binary(), 'system' | ne_binary()) -> operation_return().
 release_number(Number, AuthBy) ->
     lager:debug("attempting to release ~s", [Number]),
     Routines = [fun(_) -> wnm_number:get(Number) end
