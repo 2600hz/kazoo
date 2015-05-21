@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%% Handlers for various AMQP payloads
 %%% @end
@@ -44,8 +44,8 @@ determine_account_id(Request) ->
 -spec maybe_local_resource(ne_binary(), wh_proplist(), j5_request:request()) -> 'ok'.
 maybe_local_resource(AccountId, Props, Request) ->
     Node = j5_request:node(Request),
-    case wh_number_properties:is_local_number(Props) 
-       andalso whapps_config:get_is_false(<<"ecallmgr">>, 'authz_local_resources', 'false', Node) 
+    case wh_number_properties:is_local_number(Props)
+        andalso whapps_config:get_is_false(<<"ecallmgr">>, <<"authz_local_resources">>, 'false', Node)
     of
         'false' ->
             lager:debug("authz_local_resources enabled, applying limits for local numbers"),
@@ -55,14 +55,15 @@ maybe_local_resource(AccountId, Props, Request) ->
         'true' ->
             Number = j5_request:number(Request),
             lager:debug("number ~s is a local number for account ~s, allowing"
-                       ,[Number, AccountId]),
+                        ,[Number, AccountId]
+                       ),
             Routines = [fun(R) -> j5_request:authorize_account(<<"limits_disabled">>, R) end
-                       ,fun(R) -> j5_request:authorize_reseller(<<"limits_disabled">>, R) end
-                       ,fun(R) -> j5_request:set_account_id(AccountId, R) end
-                       ,fun(R) ->
-                                ResellerId = wh_services:find_reseller_id(AccountId),
-                                j5_request:set_reseller_id(ResellerId, R)
-                        end
+                        ,fun(R) -> j5_request:authorize_reseller(<<"limits_disabled">>, R) end
+                        ,fun(R) -> j5_request:set_account_id(AccountId, R) end
+                        ,fun(R) ->
+                                 ResellerId = wh_services:find_reseller_id(AccountId),
+                                 j5_request:set_reseller_id(ResellerId, R)
+                         end
                        ],
             send_response(lists:foldl(fun(F, R) -> F(R) end, Request, Routines))
     end.
