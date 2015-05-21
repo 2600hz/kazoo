@@ -91,7 +91,7 @@ do_archive_modbs(MODbs, AccountId) ->
 verify_rollups() ->
     Accounts = whapps_util:get_all_accounts(),
     Total = erlang:length(Accounts),
-    lists:foldr(fun verify_db_rollup/2, {1, Total}, Accounts),
+    _ = lists:foldr(fun verify_db_rollup/2, {1, Total}, Accounts),
     'ok'.
 
 -spec verify_db_rollup(ne_binary(), {pos_integer(), pos_integer()}) ->
@@ -151,7 +151,7 @@ fix_rollup(Account) ->
 rollup_accounts() ->
     Accounts = whapps_util:get_all_accounts(),
     Total = length(Accounts),
-    lists:foldr(fun rollup_account_fold/2, {1, Total}, Accounts),
+    _ = lists:foldr(fun rollup_account_fold/2, {1, Total}, Accounts),
     'ok'.
 
 -spec rollup_account_fold(ne_binary(), {pos_integer(), pos_integer()}) ->
