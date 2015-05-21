@@ -731,7 +731,7 @@ specific_call_event_props(<<"CHANNEL_DESTROY">>, _, Props) ->
      ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
      ,{<<"From-Uri">>, props:get_value(<<"variable_sip_from_uri">>, Props)}
      ,{<<"Remote-SDP">>, props:get_value(<<"variable_switch_r_sdp">>, Props)}
-     ,{<<"Local-SDP">>, props:get_value(<<"variable_sip_local_sdp_str">>, Props)}
+     ,{<<"Local-SDP">>, props:get_value(<<"variable_rtp_local_sdp_str">>, Props)}
      ,{<<"Duration-Seconds">>, props:get_value(<<"variable_duration">>, Props)}
      ,{<<"Billing-Seconds">>, props:get_value(<<"variable_billsec">>, Props)}
      ,{<<"Ringing-Seconds">>, props:get_value(<<"variable_progresssec">>, Props)}
