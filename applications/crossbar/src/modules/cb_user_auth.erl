@@ -52,8 +52,7 @@ init() ->
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() -> [?HTTP_PUT].
-allowed_methods(?RECOVERY) -> [?HTTP_PUT];
-allowed_methods(_) -> [?HTTP_GET].
+allowed_methods(?RECOVERY) -> [?HTTP_PUT].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -67,7 +66,7 @@ allowed_methods(_) -> [?HTTP_GET].
 -spec resource_exists(path_tokens()) -> boolean().
 resource_exists() -> 'true'.
 resource_exists(?RECOVERY) -> 'true';
-resource_exists(_) -> 'true'.
+resource_exists(_) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -92,7 +91,6 @@ authenticate(Context) ->
 
 authenticate_nouns([{<<"user_auth">>, _}]) -> 'true';
 authenticate_nouns([{<<"user_auth">>, [?RECOVERY]}]) -> 'true';
-authenticate_nouns([{<<"user_auth">>, [_]}]) -> 'true';
 authenticate_nouns(_Nouns) -> 'false'.
 
 %%--------------------------------------------------------------------
@@ -115,9 +113,7 @@ validate(Context) ->
     end.
 
 validate(Context, ?RECOVERY) ->
-    cb_context:validate_request_data(<<"user_auth_recovery">>, Context, fun maybe_recover_user_password/1);
-validate(Context, Token) ->
-    maybe_get_auth_token(Context, Token).
+    cb_context:validate_request_data(<<"user_auth_recovery">>, Context, fun maybe_recover_user_password/1).
 
 -spec put(cb_context:context()) -> cb_context:context().
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
@@ -132,35 +128,6 @@ put(Context, ?RECOVERY) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec maybe_get_auth_token(cb_context:context(), ne_binary()) -> cb_context:context().
-maybe_get_auth_token(Context, Token) ->
-    Context1 = cb_context:set_account_db(Context, ?KZ_TOKEN_DB),
-    create_auth_resp(crossbar_doc:load(Token, Context1), Token).
-
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec create_auth_resp(cb_context:context(), ne_binary()) -> cb_context:context().
-create_auth_resp(Context, Token) ->
-    case cb_context:resp_status(Context) of
-        'success' ->
-            RespData = cb_context:resp_data(Context),
-            crossbar_util:response(
-                crossbar_util:response_auth(RespData)
-                ,cb_context:set_auth_token(Context, Token)
-            );
-        _Status -> Context
-    end.
-
 
 %%--------------------------------------------------------------------
 %% @private
