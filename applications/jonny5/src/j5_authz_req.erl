@@ -43,9 +43,12 @@ determine_account_id(Request) ->
 
 -spec maybe_local_resource(ne_binary(), wh_proplist(), j5_request:request()) -> 'ok'.
 maybe_local_resource(AccountId, Props, Request) ->
-    %% TODO: we need to check system_config to determine if we authz local
-    case wh_number_properties:is_local_number(Props) of
+    Node = j5_request:node(Request),
+    case wh_number_properties:is_local_number(Props) 
+       andalso whapps_config:get_is_false(<<"ecallmgr">>, 'authz_local_resources', 'false', Node) 
+    of
         'false' ->
+            lager:debug("authz_local_resources enabled, applying limits for local numbers"),
             maybe_account_limited(
               j5_request:set_account_id(AccountId, Request)
              );
