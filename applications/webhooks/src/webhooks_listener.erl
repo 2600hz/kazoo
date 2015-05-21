@@ -130,10 +130,16 @@ find_hook(JObj) ->
                              ,wapi_conf:get_id(JObj)
                             ).
 
+-spec check_failed_attempts() -> 'ok'.
 check_failed_attempts() ->
     Failures = find_failures(),
     check_failures(Failures).
 
+-type failure() :: {{ne_binary(), ne_binary()}, integer()}.
+-type failures() :: [failure(),...] | [].
+
+-spec find_failures() -> failures().
+-spec find_failures([tuple()]) -> failures().
 find_failures() ->
     Keys = wh_cache:fetch_keys_local(?CACHE_NAME),
     find_failures(Keys).
@@ -141,6 +147,7 @@ find_failures() ->
 find_failures(Keys) ->
     dict:to_list(lists:foldl(fun process_failed_key/2, dict:new(), Keys)).
 
+-spec process_failed_key(tuple(), dict()) -> dict().
 process_failed_key(?FAILURE_CACHE_KEY(AccountId, HookId, _Timestamp)
                    ,Dict
                   ) ->
@@ -148,7 +155,7 @@ process_failed_key(?FAILURE_CACHE_KEY(AccountId, HookId, _Timestamp)
 process_failed_key(_Key, Dict) ->
     Dict.
 
--spec check_failures(list()) -> 'ok'.
+-spec check_failures(failures()) -> 'ok'.
 check_failures(Failures) ->
     _ = [check_failure(AccountId, HookId, Count)
          || {{AccountId, HookId}, Count} <- Failures
@@ -178,7 +185,8 @@ disable_hook(AccountId, HookId) ->
             Disabled = kzd_webhook:disable(HookJObj, <<"too many failed attempts">>),
             _ = couch_mgr:ensure_saved(?KZ_WEBHOOKS_DB, Disabled),
             filter_cache(AccountId, HookId),
-            lager:debug("disabled and saved ~s/~s", [AccountId, HookId]);
+            send_notification(AccountId, HookId),
+            lager:debug("auto-disabled and saved hook ~s/~s", [AccountId, HookId]);
         {'error', _E} ->
             lager:debug("failed to find ~s/~s to disable: ~p", [AccountId, HookId, _E])
     end.
@@ -192,6 +200,14 @@ filter_cache(AccountId, HookId) ->
                                     (_K, _V) -> 'false'
                                  end
                                ).
+
+-spec send_notification(ne_binary(), ne_binary()) -> 'ok'.
+send_notification(AccountId, HookId) ->
+    API = [{<<"Account-ID">>, AccountId}
+           ,{<<"Hook-ID">>, HookId}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    wh_amqp_worker:cast(API, fun wapi_notifications:publish_webhook_disabled/1).
 
 %%%===================================================================
 %%% gen_server callbacks
