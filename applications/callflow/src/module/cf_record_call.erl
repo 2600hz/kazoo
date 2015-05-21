@@ -3,14 +3,6 @@
 %%% @doc
 %%% Handles starting/stopping a call recording
 %%%
-%%% "data":{
-%%%   "action":["start","stop"] // one of these
-%%%   ,"time_limit":600 // in seconds, how long to record the call
-%%%   ,"format":["mp3","wav"] // what format to store the recording in
-%%%   ,"url":"http://server.com/path/to/dump/file" // what URL to PUT the file to
-%%%   ,"record_on_answer": boolean() // whether to delay the start of the recording
-%%%   ,"record_sample_rate": integer() // sample rate to record at, in Hz
-%%% }
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
@@ -88,6 +80,7 @@ record_call(Data, Call) ->
              ,{<<"Record-Sample-Rate">>, wh_json:get_integer_value(<<"record_sample_rate">>, Data)}
              ,{<<"Record-Min-Sec">>, wh_json:get_integer_value(<<"record_min_sec">>, Data)}
             ],
+
     _ = whapps_call_command:record_call(props:filter_undefined(Props), <<"start">>, Call),
     lager:debug("auto handling call recording").
 
