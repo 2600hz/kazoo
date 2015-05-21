@@ -79,7 +79,6 @@ authorize(Context) ->
     authorize_nouns(cb_context:req_nouns(Context)).
 
 authorize_nouns([{<<"user_auth">>, _}]) -> 'true';
-
 authorize_nouns(_) -> 'false'.
 
 %%--------------------------------------------------------------------
