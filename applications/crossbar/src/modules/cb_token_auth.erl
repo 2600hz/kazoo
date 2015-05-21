@@ -220,9 +220,10 @@ disable_account(AccountId) ->
 authorize(Context) ->
     case maybe_check_restrictions(Context) of
         'true' -> 
-            lager:dbug("authorizing the request"),
+            lager:debug("authorizing the request"),
             {'true', Context};
         'false' -> 
+            lager:info("deny access"),
             Cause = wh_json:from_list([{<<"cause">>, <<"access denied">>}]),
             {'halt', cb_context:add_system_error('forbidden', Cause, Context)}
     end.
@@ -254,7 +255,6 @@ check_restrictions(Context, Rs) ->
                      Rs,
                      MatchFuns
                     ),
-    lager:debug("result matching restriction rules: ~p",[Result]),
     wh_util:is_true(Result).
 
 -spec match_endpoint(cb_context:context(), wh_json:object() | 'undefined') -> wh_json:objects() | 'undefined'.
@@ -264,14 +264,14 @@ match_endpoint(Context, Rs) ->
         'undefined' -> 
             case wh_json:get_value(<<"_">>, Rs) of
                 'undefined' ->
-                    lager:debug("not found any endpoint in template, deny access"),
+                    lager:debug("not found any endpoint in template"),
                     'undefined';
                 R ->
-                    lager:debug("found endpoint \"_\" in template"),
+                    lager:debug("match request endpoint \"_\""),
                     R
             end;
         R -> 
-            lager:debug("found endpoint ~p in template",[ReqEndpoint]),
+            lager:debug("match request endpoint ~p",[ReqEndpoint]),
             R
     end.
 
@@ -281,12 +281,12 @@ match_account(Context, Rs) ->
     filter_by_account(AllowedAccounts, Rs).
 
 filter_by_account(_Accounts, []) -> 
-    lager:debug("no match for any account, deny access"),
+    lager:debug("no match for account"),
     'undefined';
 filter_by_account(Accounts, [R|Rs]) ->
     case wh_json:get_value(<<"allowed_accounts">>, R) of
         'undefined' -> 
-            lager:debug("no \"allowed_accounts\" found, match any account"),
+            lager:debug("no \"allowed_accounts\" parameter in rule, match any account"),
             wh_json:get_value(<<"rules">>, R);
         RsAccounts -> 
             SetsAccounts = sets:from_list(Accounts),
@@ -295,7 +295,7 @@ filter_by_account(Accounts, [R|Rs]) ->
             case sets:to_list(SetsMatch) of
                 [] -> filter_by_account(Accounts, Rs);
                 Match ->
-                    lager:debug("found match in \"allowed_accounts\": ~p",[Match]),
+                    lager:debug("match account: ~p",[Match]),
                     wh_json:get_value(<<"rules">>, R)
             end
     end.
@@ -329,10 +329,10 @@ match_param(Context, R) ->
     Rules = wh_json:get_keys(R),
     case match_rules(ReqParam, Rules) of
         'undefined' -> 
-            lager:debug("no match for any rule, deny access"),
+            lager:debug("no match for any rule"),
                 'undefined';
         MatchRule -> 
-            lager:debug("found match rule: ~p",[MatchRule]),
+            lager:debug("match rule: ~p",[MatchRule]),
             wh_json:get_value(MatchRule, R)
     end.
 
@@ -347,7 +347,7 @@ match_rules(ReqParam, [R|Rules]) ->
 -spec match_verb(cb_context:context(), list()) -> boolean().
 match_verb(Context, Verbs) ->
     Verb = cb_context:req_verb(Context),
-    lager:debug("request verb: ~p, verbs from rule: ~p", [Verb, Verbs]),
+    lager:debug("request verb: ~p, rule verbs: ~p", [Verb, Verbs]),
     lists:member(Verb, Verbs) orelse lists:member(<<"_">>, Verbs).
 
 -spec check_as(cb_context:context(), wh_json:object()) ->
