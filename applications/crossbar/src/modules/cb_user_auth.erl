@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz
+%%% @copyright (C) 2011-2015, 2600Hz
 %%% @doc
 %%% User auth module
 %%% @end
@@ -90,7 +90,7 @@ authorize_nouns(_) -> 'false'.
 authenticate(Context) ->
     authenticate_nouns(cb_context:req_nouns(Context)).
 
-authenticate_nouns([{<<"user_auth">>, _}]) -> 'true';
+authenticate_nouns([{<<"user_auth">>, []}]) -> 'true';
 authenticate_nouns([{<<"user_auth">>, [?RECOVERY]}]) -> 'true';
 authenticate_nouns(_Nouns) -> 'false'.
 
@@ -155,17 +155,16 @@ maybe_get_auth_token(Context, Token) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_auth_resp(cb_context:context(), ne_binary(), ne_binary(),  ne_binary()) -> cb_context:context().
-create_auth_resp(Context, _Token, _AccountId, 'undefined') ->
-    cb_context:add_system_error('forbidden', Context);
 create_auth_resp(Context, Token, AccountId, AccountId) ->
+    lager:debug("account ~s is same as auth account", [AccountId]),
     RespData = cb_context:resp_data(Context),
     crossbar_util:response(
-        crossbar_util:response_auth(RespData)
-        ,cb_context:set_auth_token(Context, Token)
-    );
-create_auth_resp(Context, _Token, _AccountId, _AuthAccountId) ->
+      crossbar_util:response_auth(RespData)
+      ,cb_context:set_auth_token(Context, Token)
+     );
+create_auth_resp(Context, _AccountId, _Token, _AuthAccountId) ->
+    lager:debug("forbidding token for account ~s and auth account ~s", [_AccountId, _AuthAccountId]),
     cb_context:add_system_error('forbidden', Context).
-
 
 %%--------------------------------------------------------------------
 %% @private
