@@ -56,8 +56,8 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    put('callid', ?MODULE),
-    ensure_template(),
+    wh_util:put_callid(?MODULE),
+    _ = ensure_template(),
     lager:debug("omnipresence event dialog package started"),
     {'ok', #state{}}.
 
@@ -182,21 +182,21 @@ handle_new_channel(JObj) ->
     lager:debug("received channel create, checking for subscribers"),
     handle_update(JObj, ?PRESENCE_RINGING).
 
--spec handle_answered_channel(wh_json:object()) -> any().
+-spec handle_answered_channel(wh_json:object()) -> 'ok'.
 handle_answered_channel(JObj) ->
     'true' = wapi_call:event_v(JObj),
     wh_util:put_callid(JObj),
     lager:debug("received channel answer, checking for subscribers"),
     handle_update(JObj, ?PRESENCE_ANSWERED).
 
--spec handle_destroyed_channel(wh_json:object()) -> any().
+-spec handle_destroyed_channel(wh_json:object()) -> 'ok'.
 handle_destroyed_channel(JObj) ->
     'true' = wapi_call:event_v(JObj),
     wh_util:put_callid(JObj),
     lager:debug("received channel destroy, checking for subscribers"),
     handle_update(JObj, ?PRESENCE_HANGUP).
 
--spec handle_disconnected_channel(wh_json:object()) -> any().
+-spec handle_disconnected_channel(wh_json:object()) -> 'ok'.
 handle_disconnected_channel(JObj) ->
     'true' = wapi_call:event_v(JObj),
     wh_util:put_callid(JObj),
@@ -214,7 +214,7 @@ handle_disconnected_channel(JObj) ->
 handle_connected_channel(_JObj) ->
     'ok'.
 
--spec initial_update(ne_binary()) -> any().
+-spec initial_update(ne_binary()) -> 'ok'.
 initial_update(User) ->
     Headers = [{<<"From">>, User}
                ,{<<"To">>, User}
@@ -237,7 +237,7 @@ maybe_handle_presence_state(JObj, ?PRESENCE_RINGING=State) ->
 maybe_handle_presence_state(JObj, State) ->
     handle_update(JObj, State, 0).
 
--spec handle_update(wh_json:object(), ne_binary()) -> any().
+-spec handle_update(wh_json:object(), ne_binary()) -> 'ok'.
 handle_update(JObj, ?PRESENCE_HANGUP) ->
     handle_update(JObj, ?PRESENCE_HANGUP, 10);
 handle_update(JObj, ?PRESENCE_RINGING) ->
@@ -256,7 +256,7 @@ handle_update(JObj, State, Expires) ->
         'false' -> lager:warning("dialog handler ignoring update from ~s to ~s", [From, To])
     end.
 
--spec handle_update(wh_json:object(), ne_binary(), ne_binary(), ne_binary(), integer()) -> any().
+-spec handle_update(wh_json:object(), ne_binary(), ne_binary(), ne_binary(), integer()) -> 'ok'.
 handle_update(JObj, State, From, To, Expires) ->
     [ToUsername, ToRealm] = binary:split(To, <<"@">>),
     [FromUsername, FromRealm] = binary:split(From, <<"@">>),
@@ -368,12 +368,12 @@ send_update(<<"amqp">>, _User, Props, Subscriptions) ->
     lager:debug("sending AMQP dialog update: ~p", [Props]),
     Stalkers = lists:usort([St || #omnip_subscription{stalker=St} <- Subscriptions]),
     {'ok', Worker} = wh_amqp_worker:checkout_worker(),
-    [wh_amqp_worker:cast(Props
-                         ,fun(P) -> wapi_omnipresence:publish_update(S, P) end
-                         , Worker
-                        )
-     || S <- Stalkers
-    ],
+    _ = [wh_amqp_worker:cast(Props
+                             ,fun(P) -> wapi_omnipresence:publish_update(S, P) end
+                             , Worker
+                            )
+         || S <- Stalkers
+        ],
     wh_amqp_worker:checkin_worker(Worker);
 send_update(<<"sip">>, User, Props, Subscriptions) ->
     lager:debug("building SIP dialog update: ~p", [Props]),

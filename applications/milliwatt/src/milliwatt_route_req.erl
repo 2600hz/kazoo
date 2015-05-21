@@ -56,7 +56,7 @@ send_route_response(ControllerQ, JObj) ->
     whapps_util:amqp_pool_send(Resp, Publisher),
     lager:info("milliwatt knows how to route the call! sent park response").
 
--spec tone_or_echo(whapps_call:call()) -> atom().
+-spec tone_or_echo(whapps_call:call()) -> 'echo' | 'tone' | 'undefined'.
 tone_or_echo(Call) ->
     CallJObj = whapps_call:to_json(Call),
     From = wh_json:get_binary_value(<<"Caller-ID-Number">>, CallJObj, <<>>),

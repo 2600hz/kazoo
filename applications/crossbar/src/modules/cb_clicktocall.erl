@@ -266,7 +266,7 @@ maybe_migrate_history(Account) ->
 
 -spec migrate_histories(ne_binary(), ne_binary(), wh_json:objects()) -> 'ok'.
 migrate_histories(AccountId, AccountDb, C2Cs) ->
-    [migrate_history(AccountId, AccountDb, wh_json:get_value(<<"doc">>, C2C)) || C2C <- C2Cs],
+    _ = [migrate_history(AccountId, AccountDb, wh_json:get_value(<<"doc">>, C2C)) || C2C <- C2Cs],
     'ok'.
 
 -spec migrate_history(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
@@ -275,7 +275,7 @@ migrate_history(AccountId, AccountDb, C2C) ->
         [] -> 'ok';
         History ->
             Id = wh_json:get_value(<<"_id">>, C2C),
-            [save_history_item(AccountId, HistoryItem, Id) || HistoryItem <- History],
+            _ = [save_history_item(AccountId, HistoryItem, Id) || HistoryItem <- History],
             _Resp = couch_mgr:ensure_saved(AccountDb, wh_json:delete_key(<<"pvt_history">>, C2C)),
             lager:debug("removed history from c2c ~s in ~s: ~p", [Id
                                                                   ,AccountId

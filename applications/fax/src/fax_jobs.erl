@@ -168,13 +168,13 @@ cleanup_jobs() ->
     ViewOptions = [{<<"key">>, wh_util:to_binary(node())}],
     case couch_mgr:get_results(?WH_FAXES_DB, <<"faxes/processing_by_node">>, ViewOptions) of
         {'ok', JObjs} ->
-            [begin
-                 DocId = wh_json:get_value(<<"id">>, JObj),
-                 lager:debug("moving zombie job ~s status to pending", [DocId]),
-                 couch_mgr:update_doc(?WH_FAXES_DB, DocId, [{<<"pvt_job_status">>, <<"pending">>}])
-             end
-             || JObj <- JObjs
-            ],
+            _ = [begin
+                     DocId = wh_json:get_value(<<"id">>, JObj),
+                     lager:debug("moving zombie job ~s status to pending", [DocId]),
+                     couch_mgr:update_doc(?WH_FAXES_DB, DocId, [{<<"pvt_job_status">>, <<"pending">>}])
+                 end
+                 || JObj <- JObjs
+                ],
             'ok';
         {'error', _R} -> lager:debug("unable to cleanup jobs: ~p", [_R])
     end.

@@ -133,9 +133,9 @@ created_from(Context, CreatedTo, MaxRange) ->
 
 -spec bind(atom(), wh_proplist()) -> 'ok'.
 bind(Module, Bindings) ->
-    [crossbar_bindings:bind(Binding, Module, Function)
-     || {Binding, Function} <- Bindings
-    ],
+    _ = [crossbar_bindings:bind(Binding, Module, Function)
+         || {Binding, Function} <- Bindings
+        ],
     'ok'.
 
 %%--------------------------------------------------------------------
@@ -214,8 +214,9 @@ create_call_from_context(Context) ->
           ]),
     whapps_call:exec(Routines, whapps_call:new()).
 
--spec request_specific_extraction_funs(cb_context:context()) -> functions().
--spec request_specific_extraction_funs_from_nouns(cb_context:context(), req_nouns()) -> functions().
+-spec request_specific_extraction_funs(cb_context:context()) -> whapps_call:exec_funs().
+-spec request_specific_extraction_funs_from_nouns(cb_context:context(), req_nouns()) ->
+                                                         whapps_call:exec_funs().
 request_specific_extraction_funs(Context) ->
     request_specific_extraction_funs_from_nouns(Context, cb_context:req_nouns(Context)).
 

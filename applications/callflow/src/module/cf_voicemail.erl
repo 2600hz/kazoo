@@ -1930,7 +1930,7 @@ set_folder(Folder, Message, Box, Call) ->
 %%--------------------------------------------------------------------
 -spec update_folder(ne_binary(), ne_binary(), mailbox(), whapps_call:call()) ->
                            {'ok', wh_json:object()} |
-                           {'error', term()}.
+                           {'error', _}.
 update_folder(_, 'undefined', _, _) ->
     {'error', 'attachment_undefined'};
 update_folder(Folder, MediaId, #mailbox{mailbox_id=Id}=Mailbox, Call) ->

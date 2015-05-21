@@ -199,5 +199,5 @@ notify_email_list(From, OwnerEmail, List) ->
 filter_numbers(Number) ->
     << <<X>> || <<X>> <= Number, is_digit(X)>>.
 
--spec is_digit(integer()) -> boolean().
+-spec is_digit(byte()) -> boolean().
 is_digit(N) -> N >= $0 andalso N =< $9.

@@ -13,9 +13,11 @@
 
 -include("conference.hrl").
 
--type name_pronounced() :: 'undefined' |
-                           {'temp_doc_id', ne_binary(), ne_binary()} |
-                           {'media_doc_id', ne_binary(), ne_binary()}.
+-type name_pronounced_media() :: {'media_doc_id', ne_binary(), ne_binary()}.
+-type name_pronounced_ids()   :: {'temp_doc_id', ne_binary(), ne_binary()} |
+                                 name_pronounced_media().
+-type name_pronounced() :: name_pronounced_ids() |
+                           'undefined'.
 -export_type([name_pronounced/0]).
 
 -define(PRONOUNCED_NAME_KEY, [<<"name_pronounced">>, <<"media_id">>]).
@@ -38,14 +40,14 @@ get_user_id_from_device(Call) ->
         _ -> 'undefined'
     end.
 
--spec lookup_name(whapps_call:call()) -> name_pronounced().
+-spec lookup_name(whapps_call:call()) -> name_pronounced_media() | 'undefined'.
 lookup_name(Call) ->
     case get_user_id(Call) of
         'undefined' -> 'undefined';
         UserId -> lookup_user_name(Call, UserId)
     end.
 
--spec lookup_user_name(whapps_call:call(), ne_binary()) -> name_pronounced().
+-spec lookup_user_name(whapps_call:call(), ne_binary()) -> name_pronounced_media() | 'undefined'.
 lookup_user_name(Call, UserId) ->
     case couch_mgr:open_cache_doc(whapps_call:account_db(Call), UserId) of
         {'ok', UserDoc} ->
@@ -124,7 +126,7 @@ prepare_media_doc(RecordName, Call) ->
         _ -> 'undefined'
     end.
 
--spec save_recording(ne_binary(), ne_binary(), whapps_call:call()) -> name_pronounced().
+-spec save_recording(ne_binary(), ne_binary(), whapps_call:call()) -> name_pronounced_ids().
 save_recording(RecordName, MediaDocId, Call) ->
     UserId = get_user_id(Call),
     AccountDb = whapps_call:account_db(Call),

@@ -106,6 +106,11 @@
 
 -export([node_name/0, node_hostname/0]).
 
+-export([write_file/2
+         ,delete_file/1
+         ,make_dir/1
+        ]).
+
 -include_lib("kernel/include/inet.hrl").
 
 -include_lib("whistle/include/wh_types.hrl").
@@ -1215,11 +1220,40 @@ node_hostname() ->
     [_Name, Host] = binary:split(to_binary(node()), <<"@">>),
     Host.
 
+
+%% @public
+-spec write_file(file:name(), iodata()) -> 'ok'.
+write_file(Filename, Bytes) ->
+    case file:write_file(Filename, Bytes) of
+        'ok' -> 'ok';
+        {'error', _}=_E ->
+            lager:debug("writing file ~s failed : ~p", [Filename, _E])
+    end.
+
+%% @public
+-spec delete_file(file:name()) -> 'ok'.
+delete_file(Filename) ->
+    case file:delete(Filename) of
+        'ok' -> 'ok';
+        {'error', _}=_E ->
+            lager:debug("deleting file ~s failed : ~p", [Filename, _E])
+    end.
+
+%% @public
+-spec make_dir(file:name()) -> 'ok'.
+make_dir(Filename) ->
+    case file:make_dir(Filename) of
+        'ok' -> 'ok';
+        {'error', _}=_E ->
+            lager:debug("creating directory ~s failed : ~p", [Filename, _E])
+    end.
+
+
 -ifdef(TEST).
 
 -include_lib("eunit/include/eunit.hrl").
 
--spec resolve_uri_test() -> any().
+-spec resolve_uri_test() -> _.
 resolve_uri_test() ->
     RawPath = <<"http://pivot/script.php">>,
     Relative = <<"script2.php">>,

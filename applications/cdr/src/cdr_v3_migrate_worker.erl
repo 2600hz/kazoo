@@ -24,12 +24,12 @@
 %% @spec
 %% @end
 %%--------------------------------------------------------------------
--spec migrate_account_cdrs(account_db(), wh_proplist(), wh_date()) -> 'ok'.
+-spec migrate_account_cdrs(account_db(), wh_proplist(), pos_integer()) -> 'ok'.
 migrate_account_cdrs(AccountDb, DbMigrateDateList, ArchiveBatchSize) ->
     AccountId = wh_util:format_account_id(AccountDb, 'raw'),
-    [migrate_cdrs_for_date(AccountId, AccountDb, Date)
-     || Date <- DbMigrateDateList
-    ],
+    _ = [migrate_cdrs_for_date(AccountId, AccountDb, Date)
+         || Date <- DbMigrateDateList
+        ],
     archive_cdr_batch(AccountId
                       ,AccountDb
                       ,ArchiveBatchSize).
@@ -45,18 +45,18 @@ archive_cdr_batch(AccountId, AccountDb, ArchiveBatchSize) ->
     case couch_mgr:get_results(AccountDb, <<"cdrs/crossbar_listing">>, ViewOptions) of
         {'error', _R} ->
             lager:error("cdr_migrator: error ~s: ~p", [AccountDb, _R]);
-        {'ok', []} -> 
+        {'ok', []} ->
             lager:debug("cdr_migrator: done archiving");
         {'ok', JObjs} ->
             case archive(AccountId, AccountDb, JObjs) of
-                {'error', _E} -> 
+                {'error', _E} ->
                     lager:error("migrate archive error: ~p", [_E]);
-                'ok' -> 
+                'ok' ->
                     archive_cdr_batch(AccountId, AccountDb, ArchiveBatchSize)
             end
     end.
 
--spec archive(account_id(), account_db(), wh_proplist()) -> 'ok'.
+-spec archive(account_id(), account_db(), wh_proplist()) -> 'ok' | {'error', _}.
 archive(AccountId, AccountDb, JObjs) ->
     BatchDict = convert_batch(AccountId, JObjs, orddict:new()),
     ArchivePath = list_to_binary([code:priv_dir('cdr')
@@ -68,47 +68,39 @@ archive(AccountId, AccountDb, JObjs) ->
                             ,AccountDb
                             ,BatchDict
                             ,orddict:fetch_keys(BatchDict)) of
-        {'error', _E} ->
-            lager:error("cdr_migrator: error writing to file: ~p", [_E]),
-            {'error', _E};
-        'ok' -> 
+        {'error', _}=Error ->
+            lager:error("cdr_migrator: error writing to file: ~p", [Error]),
+            Error;
+        'ok' ->
             lager:debug("cdr_migrator: cdrs written to file"),
             soft_delete_cdrs(AccountDb, JObjs)
     end.
 
 -spec write_cdrs_to_file(ne_binary(), account_db(), orddict:orddict(), list()) ->
-                                'ok' | {'error', any()}.
+                                'ok' | {'error', _}.
 write_cdrs_to_file(_, _, _, []) -> 'ok';
 write_cdrs_to_file(ArchivePath, AccountDb, Dict, [FileNameKey | RestKeys]) ->
     try orddict:fetch(FileNameKey, Dict) of
         Cdrs -> FilePath = list_to_binary([ArchivePath, FileNameKey]),
-                case {filelib:ensure_dir(ArchivePath), filelib:is_file(FilePath)} of
-                    {'ok', 'true'} ->
+                case filelib:ensure_dir(ArchivePath) of
+                    'ok' ->
                         JsonData = wh_json:encode(Cdrs),
                         case file:write_file(FilePath, JsonData, ['append']) of
-                            {'error', _E} -> lager:error("error appending: ~p", [_E]);
+                            {'error', _}=Error ->
+                                lager:error("error appending to ~s : ~p", [FilePath, Error]),
+                                Error;
                             'ok' ->
                                 write_cdrs_to_file(ArchivePath
                                                    ,AccountDb
                                                    ,Dict
                                                    ,RestKeys)
                         end;
-                    {'ok', 'false'} ->
-                        JsonData = wh_json:encode(Cdrs),
-                        case file:write_file(FilePath, JsonData) of
-                            {'error', _E} -> lager:error("error writings: ~p", [_E]);
-                            'ok' ->
-                                write_cdrs_to_file(ArchivePath
-                                                   ,AccountDb
-                                                   ,Dict
-                                                   ,RestKeys)
-                        end;
-                    {{'error', _E}, _} ->
-                        lager:error("error creating directory: ~p", [_E]),
-                        {'error', _E}
+                    {'error', _}=Error ->
+                        lager:error("error creating directory: ~p", [Error]),
+                        Error
                 end
     catch
-        error:function_clause -> 'undefined'
+        'error':'function_clause' -> 'undefined'
     end.
 
 -spec convert_batch(account_id(), wh_json:objects(), any()) -> any().

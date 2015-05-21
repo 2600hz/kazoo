@@ -131,12 +131,12 @@ remove_fs_node(FSNode, 'false') ->
 
 -spec list_fs_nodes() -> 'no_return'.
 list_fs_nodes() ->
-    [io:format("~s~n", [Node]) || Node <- ecallmgr_fs_nodes:connected()],
+    _ = [io:format("~s~n", [Node]) || Node <- ecallmgr_fs_nodes:connected()],
     'no_return'.
 
 -spec get_fs_nodes() -> 'no_return'.
 get_fs_nodes() ->
-    [io:format("~s~n", [Node]) || Node <- get_fs_nodes(node())],
+    _ = [io:format("~s~n", [Node]) || Node <- get_fs_nodes(node())],
     'no_return'.
 
 -spec carrier_acls() -> 'no_return'.

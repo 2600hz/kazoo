@@ -44,13 +44,13 @@ start_printer(PrinterId) ->
 
 -spec stop_printer(ne_binary()) -> 'ok'.
 stop_printer(PrinterId) ->
-    [begin
-         supervisor:terminate_child(?MODULE, Id),
-         supervisor:delete_child(?MODULE, Id)
-     end
-     || {Id, _Pid, 'worker', [_]} <- supervisor:which_children(?MODULE),
-        (Id == wh_util:to_atom(PrinterId, 'true'))
-    ],
+    _ = [begin
+             supervisor:terminate_child(?MODULE, Id),
+             supervisor:delete_child(?MODULE, Id)
+         end
+         || {Id, _Pid, 'worker', [_]} <- supervisor:which_children(?MODULE),
+            (Id == wh_util:to_atom(PrinterId, 'true'))
+        ],
     'ok'.
 
 -spec printers() -> [{ne_binary(), pid()},...].

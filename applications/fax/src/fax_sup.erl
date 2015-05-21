@@ -64,7 +64,7 @@ listener_proc() ->
                 Mod =:= 'fax_listener'],
     {'ok', P}.
 
--spec smtp_sessions() -> any().
+-spec smtp_sessions() -> non_neg_integer().
 smtp_sessions() ->
     [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
                 Mod =:= 'gen_smtp_server'],

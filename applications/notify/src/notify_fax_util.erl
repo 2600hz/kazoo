@@ -55,14 +55,11 @@ get_attachment(Category, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec raw_attachment_binary(wh_proplist()) ->
-                                   {'ok', ne_binary(), ne_binary()} |
-                                   {'error', _}.
+                                   {'ok', ne_binary(), ne_binary()}.
 -spec raw_attachment_binary(ne_binary(), ne_binary()) ->
-                                   {'ok', ne_binary(), ne_binary()} |
-                                   {'error', _}.
+                                   {'ok', ne_binary(), ne_binary()}.
 -spec raw_attachment_binary(ne_binary(), ne_binary(), non_neg_integer()) ->
-                                   {'ok', ne_binary(), ne_binary()} |
-                                   {'error', _}.
+                                   {'ok', ne_binary(), ne_binary()}.
 raw_attachment_binary(Props) ->
     Fax = props:get_value(<<"fax">>, Props),
     FaxId = props:get_first_defined([<<"fax_jobid">>, <<"fax_id">>], Fax),
@@ -118,15 +115,15 @@ convert_to_pdf(AttachmentBin, Props, <<"application/pdf">>) ->
 convert_to_pdf(AttachmentBin, Props, _ContentType) ->
     TiffFile = tmp_file_name(<<"tiff">>),
     PDFFile = tmp_file_name(<<"pdf">>),
-    _ = file:write_file(TiffFile, AttachmentBin),
+    wh_util:write_file(TiffFile, AttachmentBin),
     ConvertCmd = whapps_config:get_binary(<<"notify.fax">>, <<"tiff_to_pdf_conversion_command">>, ?TIFF_TO_PDF_CMD),
     Cmd = io_lib:format(ConvertCmd, [PDFFile, TiffFile]),
     lager:debug("running command: ~s", [Cmd]),
     _ = os:cmd(Cmd),
-    _ = file:delete(TiffFile),
+    wh_util:delete_file(TiffFile),
     case file:read_file(PDFFile) of
         {'ok', PDFBin} ->
-            _ = file:delete(PDFFile),
+            wh_util:delete_file(PDFFile),
             {<<"application/pdf">>, get_file_name(Props, "pdf"), PDFBin};
         {'error', _R}=E ->
             lager:debug("unable to convert tiff: ~p", [_R]),

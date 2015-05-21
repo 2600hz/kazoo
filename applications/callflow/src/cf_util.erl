@@ -757,7 +757,7 @@ encryption_method_map(JObj, Endpoint) ->
 -spec maybe_start_metaflows(whapps_call:call(), wh_json:objects()) -> 'ok'.
 -spec maybe_start_metaflow(whapps_call:call(), wh_json:object()) -> 'ok'.
 maybe_start_metaflows(Call, Endpoints) ->
-    [maybe_start_metaflow(Call, Endpoint) || Endpoint <- Endpoints],
+    _ = [maybe_start_metaflow(Call, Endpoint) || Endpoint <- Endpoints],
     'ok'.
 
 maybe_start_metaflow(Call, Endpoint) ->

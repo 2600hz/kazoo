@@ -48,9 +48,9 @@ start() ->
 create_config() ->
     {'ok',CWD} = file:get_cwd(),
     ADir = CWD ++ "/agent/conf",
-    filelib:ensure_dir(ADir ++ "/agent"),
+    'ok' = filelib:ensure_dir(ADir ++ "/agent"),
     DDir = CWD ++ "/db",
-    filelib:ensure_dir(DDir ++ "/db"),
+    'ok' = filelib:ensure_dir(DDir ++ "/db"),
     write_conf('agent_entry', 'write_agent_config', ADir,
                [['intAgentUDPPort', 4000]
                 ,['snmpEngineID', "Kazoo agent"]
@@ -118,8 +118,7 @@ create_config() ->
                     ]}
            ],
     lager:debug(File, "~p.", [Snmp]),
-    file:close(File),
-    'ok'.
+    'ok' = file:close(File).
 
 write_conf(EFun, WFun, Dir, EList) ->
     write_conf('snmpa_conf', EFun, WFun, Dir, EList).

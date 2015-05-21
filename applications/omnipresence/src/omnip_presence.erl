@@ -61,8 +61,8 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    put('callid', ?MODULE),
-    ensure_template(),
+    wh_util:put_callid(?MODULE),
+    _ = ensure_template(),
     lager:debug("omnipresence event presence package started"),
     {'ok', #state{}}.
 
@@ -332,12 +332,12 @@ send_update(<<"amqp">>, _User, Props, Subscriptions) ->
     lager:debug("building SIP presence update: ~p", [Props]),
     Stalkers = lists:usort([St || #omnip_subscription{stalker=St} <- Subscriptions]),
     {'ok', Worker} = wh_amqp_worker:checkout_worker(),
-    [wh_amqp_worker:cast(Props
-                         ,fun(P) -> wapi_omnipresence:publish_update(S, P) end
-                         ,Worker
-                        )
-     || S <- Stalkers
-    ],
+    _ = [wh_amqp_worker:cast(Props
+                             ,fun(P) -> wapi_omnipresence:publish_update(S, P) end
+                             ,Worker
+                            )
+         || S <- Stalkers
+        ],
     wh_amqp_worker:checkin_worker(Worker);
 send_update(<<"sip">>, User, Props, Subscriptions) ->
     lager:debug("building SIP presence update: ~p", [Props]),
@@ -345,18 +345,18 @@ send_update(<<"sip">>, User, Props, Subscriptions) ->
                ,{'content_type', <<"application/pidf+xml">>}
                ,{'subscription_state', 'active'}
               ],
-    [nksip_uac:notify(SubscriptionId
-                      ,[{'contact', Contact}
-                        ,{'route', [Proxy]}
-                        | Options
-                       ]
-                     )
-     || #omnip_subscription{subscription_id=SubscriptionId
-                            ,contact=Contact
-                            ,proxy_route=Proxy
-                           } <- Subscriptions,
-        SubscriptionId =/= 'undefined'
-    ],
+    _ = [nksip_uac:notify(SubscriptionId
+                          ,[{'contact', Contact}
+                            ,{'route', [Proxy]}
+                            | Options
+                           ]
+                         )
+         || #omnip_subscription{subscription_id=SubscriptionId
+                                ,contact=Contact
+                                ,proxy_route=Proxy
+                               } <- Subscriptions,
+            SubscriptionId =/= 'undefined'
+        ],
     lager:debug("sent SIP presence updates").
 
 -spec get_user_channels(ne_binary()) -> list().

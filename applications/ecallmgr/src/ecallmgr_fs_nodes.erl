@@ -146,9 +146,9 @@ flush(User, Realm) ->
 -spec do_flush(binary()) -> 'ok'.
 do_flush(Args) ->
     lager:debug("flushing xml cache ~s from all FreeSWITCH servers", [Args]),
-    [freeswitch:api(Node, 'xml_flush_cache', Args)
-     || Node <- connected()
-    ],
+    _ = [freeswitch:api(Node, 'xml_flush_cache', Args)
+         || Node <- connected()
+        ],
     'ok'.
 
 -spec is_node_up(atom()) -> boolean().
@@ -812,11 +812,9 @@ print_details([{NodeName, Node}|Nodes],Count) ->
             NodeSupPid ->
                 io:format("~-12s: ~p~n", [<<"Supervisor">>, NodeSupPid]),
                 io:format("Workers~n"),
-                [begin
-                     io:format("    ~-15w ~s~n", [Pid, Name])
-                 end
-                 || {Name, Pid, _, _} <- supervisor:which_children(NodeSupPid)
-                ],
+                _ = [io:format("    ~-15w ~s~n", [Pid, Name])
+                     || {Name, Pid, _, _} <- supervisor:which_children(NodeSupPid)
+                    ],
                 print_node_details(NodeName)
         end,
     print_details(Nodes, Count + 1).

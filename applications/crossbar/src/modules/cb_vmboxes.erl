@@ -578,7 +578,7 @@ cleanup_heard_voicemail(AccountDb, Duration) ->
     end.
 
 cleanup_heard_voicemail(AccountDb, Timestamp, Boxes) ->
-    [cleanup_voicemail_box(AccountDb, Timestamp, Box) || Box <- Boxes],
+    _ = [cleanup_voicemail_box(AccountDb, Timestamp, Box) || Box <- Boxes],
     'ok'.
 
 -spec cleanup_voicemail_box(ne_binary(), pos_integer(), {wh_json:object(), wh_json:objects()}) -> 'ok'.

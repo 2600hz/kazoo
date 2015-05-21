@@ -559,7 +559,7 @@ collection_process(Context) ->
 collection_process(Context, []) -> Context;
 collection_process(Context, Successes) ->
     {Resources, _} = wh_json:get_values(Successes),
-    [lager:debug("save ~p", [Resource]) || Resource <- Resources],
+    _ = [lager:debug("save ~p", [Resource]) || Resource <- Resources],
     Context1 = crossbar_doc:save(cb_context:set_doc(Context, Resources)),
     case cb_context:resp_status(Context1) of
         'success' ->

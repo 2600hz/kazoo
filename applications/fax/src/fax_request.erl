@@ -455,7 +455,7 @@ maybe_store_fax(JObj, #state{storage=#fax_storage{id=FaxId}}=State) ->
 
 -spec store_fax(wh_json:object(), state() ) ->
                        {'ok', ne_binary()} |
-                       {'error', any()}.
+                       {'error', _}.
 store_fax(JObj, #state{storage=#fax_storage{id=FaxDocId
                                             ,attachment_id=_AttachmentId
                                            }

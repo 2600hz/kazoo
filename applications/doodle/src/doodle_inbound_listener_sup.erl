@@ -38,7 +38,7 @@ start_inbound_listener(Connection) ->
 
 -spec start_listeners() -> 'ok'.
 start_listeners() ->
-    [start_inbound_listener(C) || C <- connections()],
+    _ = [start_inbound_listener(C) || C <- connections()],
     'ok'.
 
 %%--------------------------------------------------------------------

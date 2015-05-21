@@ -91,9 +91,9 @@ check_queued_sms(AccountId) ->
 -spec replay_queue_sms(ne_binary(), wh_json:objects()) -> 'ok'.
 replay_queue_sms(AccountId, JObjs) ->
     lager:debug("starting queued sms for account ~s", [AccountId]),
-    [spawn_handler(AccountId, JObj)
-     || JObj <- JObjs
-    ],
+    _ = [spawn_handler(AccountId, JObj)
+         || JObj <- JObjs
+        ],
     'ok'.
 
 -spec spawn_handler(ne_binary(), wh_json:object()) -> 'ok'.
@@ -120,12 +120,12 @@ check_pending_sms_for_offnet_delivery(AccountId) ->
 -spec replay_sms(ne_binary(), wh_json:objects()) -> 'ok'.
 replay_sms(AccountId, JObjs) ->
     lager:debug("starting sms offnet delivery for account ~s", [AccountId]),
-    [begin
-         doodle_util:replay_sms(AccountId, wh_json:get_value(<<"id">>, JObj)),
-         timer:sleep(200)
-     end
-     || JObj <- JObjs
-    ],
+    _ = [begin
+             doodle_util:replay_sms(AccountId, wh_json:get_value(<<"id">>, JObj)),
+             timer:sleep(200)
+         end
+         || JObj <- JObjs
+        ],
     'ok'.
 
 -define(DEFAULT_ROUTEID, whapps_config:get_ne_binary(?CONFIG_CAT, <<"default_test_route_id">>, <<"syneverse">>)).
