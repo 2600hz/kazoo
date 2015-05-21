@@ -145,7 +145,7 @@ maybe_get_auth_token(Context, Token) ->
         'success' ->
             AuthAccountId = cb_context:auth_account_id(Context),
             AccountId = cb_context:account_id(Context),
-            create_auth_resp(Context1, AccountId, Token, AuthAccountId);
+            create_auth_resp(Context1, Token, AccountId, AuthAccountId);
         _ -> Context1
     end.
 
@@ -155,15 +155,15 @@ maybe_get_auth_token(Context, Token) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_auth_resp(cb_context:context(), ne_binary(), ne_binary(),  ne_binary()) -> cb_context:context().
-create_auth_resp(Context, _AccountId, _Token, 'undefined') ->
+create_auth_resp(Context, _Token, _AccountId, 'undefined') ->
     cb_context:add_system_error('forbidden', Context);
-create_auth_resp(Context, AccountId, Token, AccountId) ->
+create_auth_resp(Context, Token, AccountId, AccountId) ->
     RespData = cb_context:resp_data(Context),
     crossbar_util:response(
         crossbar_util:response_auth(RespData)
         ,cb_context:set_auth_token(Context, Token)
     );
-create_auth_resp(Context, _AccountId, _Token, _AuthAccountId) ->
+create_auth_resp(Context, _Token, _AccountId, _AuthAccountId) ->
     cb_context:add_system_error('forbidden', Context).
 
 
