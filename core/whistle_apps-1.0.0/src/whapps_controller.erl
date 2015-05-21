@@ -61,6 +61,8 @@ stop_app(App) when not is_atom(App) ->
 stop_app(App) ->
     case application:stop(App) of
         'ok' -> lager:info("stopped kazoo application ~s", [App]);
+        {'error', {'not_started', App}} ->
+            lager:error("~s is not currently running", [App]);
         {'error', _E}=Err ->
             lager:error("error stopping applicaiton ~s: ~p", [App, _E]),
             Err

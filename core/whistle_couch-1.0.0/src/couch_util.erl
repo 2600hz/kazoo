@@ -81,6 +81,12 @@
 -define(MAX_BULK_INSERT, 2000).
 -define(RETRY_504(F), retry504s(fun() -> F end)).
 
+-define(PUBLISH_FIELDS, [<<"pvt_type">>
+                         ,<<"pvt_account_id">>
+                         ,<<"pvt_created">>
+                         ,<<"pvt_modified">>
+                        ]).
+
 -type db_create_options() :: [{'q',integer()} | {'n',integer()},...] | [].
 
 -type ddoc() :: ne_binary() | 'all_docs' | 'design_docs'.
@@ -646,7 +652,7 @@ prepare_doc_for_del(Conn, #db{name=DbName}, Doc) ->
         [{<<"_id">>, Id}
          ,{<<"_rev">>, DocRev}
          ,{<<"_deleted">>, 'true'}
-         ,{<<"pvt_type">>, wh_json:get_value(<<"pvt_type">>, Doc)}
+         | publish_fields(Doc)
         ])).
 
 -spec do_ensure_saved(couchbeam_db(), wh_json:object(), wh_proplist()) ->
@@ -691,11 +697,10 @@ do_fetch_doc(#db{}=Db, DocId, Options) ->
 do_save_doc(#db{}=Db, Docs, Options) when is_list(Docs) ->
     do_save_docs(Db, Docs, Options);
 do_save_doc(#db{}=Db, Doc, Options) ->
-    PreparedDoc = maybe_set_docid(Doc),
-    _ = flush_cache_doc(Db, PreparedDoc),
+    {PreparedDoc, PublishDoc} = prepare_doc_for_save(Db, Doc),
     case ?RETRY_504(couchbeam:save_doc(Db, PreparedDoc, Options)) of
         {'ok', JObj}=Ok ->
-            _ = maybe_publish_doc(Db, PreparedDoc, JObj),
+            _ = maybe_publish_doc(Db, PublishDoc, JObj),
             Ok;
         Else -> Else
     end.
@@ -729,14 +734,39 @@ do_save_docs(#db{}=Db, Docs, Options, Acc) ->
                                {'ok', wh_json:objects()} |
                                couchbeam_error().
 perform_save_docs(Db, Docs, Options) ->
-    PreparedDocs = [maybe_set_docid(D) || D <- Docs],
-    _ = flush_cache_docs(Db, PreparedDocs),
+    {PreparedDocs, Publish} = lists:unzip([prepare_doc_for_save(Db, D) || D <- Docs]),
     case ?RETRY_504(couchbeam:save_docs(Db, PreparedDocs, Options)) of
         {'ok', JObjs} ->
-            _ = maybe_publish_docs(Db, PreparedDocs, JObjs),
+            _ = maybe_publish_docs(Db, Publish, JObjs),
             {'ok', JObjs};
         {'error', _}=E -> E
     end.
+
+-spec prepare_doc_for_save(couchbeam_db(), wh_json:object()) ->
+                                  {wh_json:object(), wh_json:object()}.
+-spec prepare_doc_for_save(couchbeam_db(), wh_json:object(), boolean()) ->
+                                  {wh_json:object(), wh_json:object()}.
+prepare_doc_for_save(Db, JObj) ->
+    prepare_doc_for_save(Db, JObj, wh_util:is_empty(doc_id(JObj))).
+prepare_doc_for_save(_Db, JObj, 'true') ->
+    prepare_publish(maybe_set_docid(JObj));
+prepare_doc_for_save(Db, JObj, 'false') ->
+    flush_cache_doc(Db, JObj),
+    prepare_publish(JObj).
+
+-spec prepare_publish(wh_json:object()) ->
+                             {wh_json:object(), wh_json:object()}.
+prepare_publish(JObj) ->
+    {maybe_tombstone(JObj), wh_json:from_list(publish_fields(JObj))}.
+
+-spec maybe_tombstone(wh_json:object()) -> wh_json:object().
+-spec maybe_tombstone(wh_json:object(), boolean()) -> wh_json:object().
+maybe_tombstone(JObj) ->
+    maybe_tombstone(JObj, wh_json:is_true(<<"_deleted">>, JObj, 'false')).
+
+maybe_tombstone(JObj, 'true') ->
+    wh_json:delete_keys(?PUBLISH_FIELDS, JObj);
+maybe_tombstone(JObj, 'false') -> JObj.
 
 -spec maybe_set_docid(wh_json:object()) -> wh_json:object().
 maybe_set_docid(Doc) ->
@@ -879,8 +909,7 @@ maybe_add_pvt_type(Db, DocId, JObj) ->
             lager:error("failed to open doc ~p in ~p : ~p", [DocId, Db, R]),
             JObj;
         {'ok', Doc} ->
-            PvtType = wh_json:get_value(<<"pvt_type">>, Doc),
-            wh_json:set_value(<<"pvt_type">>, PvtType, JObj);
+            wh_json:set_values(publish_fields(Doc), JObj);
         _Else ->
             JObj
     end.
@@ -967,15 +996,26 @@ publish_doc(#db{name=DbName}, Doc, JObj) ->
         orelse wh_json:is_true(<<"_deleted">>, Doc)
     of
         'true' ->
-            publish('deleted', wh_util:to_binary(DbName), Doc);
+            publish('deleted', wh_util:to_binary(DbName), publish_fields(Doc, JObj));
         'false' ->
             case doc_rev(JObj) of
                 <<"1-", _/binary>> ->
-                    publish('created', wh_util:to_binary(DbName), JObj);
+                    publish('created', wh_util:to_binary(DbName), publish_fields(Doc, JObj));
                 _Else ->
-                    publish('edited', wh_util:to_binary(DbName), JObj)
+                    publish('edited', wh_util:to_binary(DbName), publish_fields(Doc, JObj))
             end
     end.
+
+-spec publish_fields(wh_json:object()) -> wh_proplist().
+-spec publish_fields(wh_json:object(), wh_json:object()) -> wh_json:object().
+publish_fields(Doc) ->
+    [{Key, V} ||
+        Key <- ?PUBLISH_FIELDS,
+        wh_util:is_not_empty(V = wh_json:get_value(Key, Doc))
+    ].
+
+publish_fields(Doc, JObj) ->
+    wh_json:set_values(publish_fields(Doc), JObj).
 
 -spec publish(wapi_conf:action(), ne_binary(), wh_json:object()) -> 'ok'.
 publish(Action, Db, Doc) ->
