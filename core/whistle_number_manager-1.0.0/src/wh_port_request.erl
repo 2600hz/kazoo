@@ -216,7 +216,7 @@ send_submitted_requests() ->
         {'error', _R} ->
             lager:error("failed to open view port_requests/listing_submitted ~p", [_R]);
         {'ok', JObjs} ->
-            [maybe_send_request(wh_json:get_value(<<"doc">>, JObj)) || JObj <- JObjs],
+            _ = [maybe_send_request(wh_json:get_value(<<"doc">>, JObj)) || JObj <- JObjs],
             lager:debug("sent requests")
     end.
 

@@ -59,7 +59,7 @@ stop() ->
 crawl_numbers() ->
     wh_util:put_callid(?MODULE),
     lager:debug("beginning a number crawl"),
-    [crawl_number_db(Db) || Db <- wnm_util:get_all_number_dbs()],
+    _ = [crawl_number_db(Db) || Db <- wnm_util:get_all_number_dbs()],
     lager:debug("finished the number crawl").
 
 %%%===================================================================
@@ -175,10 +175,10 @@ crawl_number_docs(_Db, {'error', _E}) ->
     lager:debug(" failed to crawl number db ~s: ~p", [_Db, _E]);
 crawl_number_docs(Db, {'ok', Docs}) ->
     lager:debug(" starting to crawl '~s'", [Db]),
-    [crawl_number_doc(wnm_number:json_to_record(wh_json:get_value(<<"doc">>, Doc), 'false'))
-     || Doc <- Docs,
-        is_number_doc(Doc)
-    ],
+    _ = [crawl_number_doc(wnm_number:json_to_record(wh_json:get_value(<<"doc">>, Doc), 'false'))
+         || Doc <- Docs,
+            is_number_doc(Doc)
+        ],
     lager:debug(" finished crawling '~s'", [Db]).
 
 -spec is_number_doc(wh_json:object()) -> boolean().

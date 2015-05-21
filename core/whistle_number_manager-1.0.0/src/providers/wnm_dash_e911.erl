@@ -83,7 +83,7 @@ delete(#number{features=Features
                         | {'error', _}
                         | {'invalid', _}
                         | {'multiple_choice', wh_json:object()}.
--spec maybe_update_dash_e911(ne_binary(), wh_json:object(), wh_json:object()) ->
+-spec maybe_update_dash_e911(ne_binary() | wnm_number(), wh_json:object(), wh_json:object()) ->
                         {'ok', wh_json:object()}
                         | {'error', _}
                         | {'invalid', _}
