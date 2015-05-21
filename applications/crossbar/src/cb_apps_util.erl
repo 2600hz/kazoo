@@ -66,10 +66,22 @@ is_authorized(AccountDoc, UserId, App) ->
         {<<"specific">>, Users} when is_list(Users) ->
             lists:member(UserId, Users);
         {<<"admins">>, _} ->
-            wh_util:is_system_admin(wh_doc:id(AccountDoc));
+            AccountId = wh_doc:id(AccountDoc),
+            <<"admin">> =:= get_user_priv_level(AccountId, UserId);
         {_A, _U} ->
             lager:error("unknown data ~p : ~p", [_A, _U]),
             'false'
+    end.
+
+-spec get_user_priv_level(ne_binary(), ne_binary()) -> binary().
+get_user_priv_level(AccountId, UserId) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:open_cache_doc(AccountDb, UserId) of
+        {'error', _R} ->
+            lager:error("failed to open user ~s in ~s", [UserId, AccountDb]),
+            'undefined';
+        {'ok', JObj} ->
+            wh_json:get_value(<<"priv_level">>, JObj)
     end.
 
 %%%===================================================================
