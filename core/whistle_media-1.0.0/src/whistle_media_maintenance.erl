@@ -45,7 +45,7 @@ set_account_language(Account, Language) ->
                                  )
     of
         _Config ->
-            io:format("successfully updated account ~s's language from '~s' to '~s'\n"
+            io:format("successfully updated account ~s's language from '~s' to '~s'~n"
                       ,[AccountId, OldLang, Language]
                      )
     catch
@@ -61,18 +61,18 @@ import_prompts(Path, Lang) ->
     MediaPath = filename:join([Path, "*.{wav,mp3}"]),
     case filelib:wildcard(wh_util:to_list(MediaPath)) of
         [] ->
-            io:format("failed to find media files in '~s'\n", [Path]);
+            io:format("failed to find media files in '~s'~n", [Path]);
         Files ->
-            io:format("importing prompts from '~s' with language '~s'\n", [Path, Lang]),
+            io:format("importing prompts from '~s' with language '~s'~n", [Path, Lang]),
             case [{F, Err}
                   || F <- Files,
                      (Err = (catch import_prompt(F, Lang))) =/= 'ok'
                  ]
             of
-                [] -> io:format("importing went successfully\n");
+                [] -> io:format("importing went successfully~n");
                 Errors ->
                     io:format("errors encountered during import:~n"),
-                    _ = [io:format("  '~s': ~p\n", [F, Err]) || {F, Err} <- Errors],
+                    _ = [io:format("  '~s': ~p~n", [F, Err]) || {F, Err} <- Errors],
                     'ok'
             end
     end.
@@ -320,16 +320,16 @@ remove_empty_media_docs(AccountId, AccountDb, Filename, [Media|MediaDocs]) ->
 maybe_remove_media_doc(AccountDb, Filename, MediaJObj) ->
     case wh_doc:attachments(MediaJObj) of
         'undefined' ->
-            io:format("media doc ~s has no attachments, archiving and removing\n"
+            io:format("media doc ~s has no attachments, archiving and removing~n"
                       ,[wh_doc:id(MediaJObj)]
                      ),
             wh_util:write_file(Filename, [wh_json:encode(MediaJObj), $\n], ['append']),
             remove_media_doc(AccountDb, MediaJObj);
         _Attachments ->
-            io:format("media doc ~s has attachments, leaving alone\n", [wh_doc:id(MediaJObj)])
+            io:format("media doc ~s has attachments, leaving alone~n", [wh_doc:id(MediaJObj)])
     end.
 
 -spec remove_media_doc(ne_binary(), wh_json:object()) -> 'ok'.
 remove_media_doc(AccountDb, MediaJObj) ->
     {'ok', _Doc} = couch_mgr:del_doc(AccountDb, MediaJObj),
-    io:format("removed media doc ~s\n", [wh_doc:id(MediaJObj)]).
+    io:format("removed media doc ~s~n", [wh_doc:id(MediaJObj)]).
