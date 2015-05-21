@@ -13,10 +13,10 @@
 -module(cb_accounts).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
-         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
-         ,validate_resource/1, validate_resource/2, validate_resource/3, validate_resource/4
-         ,validate/1, validate/2, validate/3, validate/4
+         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
+         ,resource_exists/0, resource_exists/1, resource_exists/2
+         ,validate_resource/1, validate_resource/2, validate_resource/3
+         ,validate/1, validate/2, validate/3
          ,put/1, put/2
          ,post/2, post/3
          ,delete/2
@@ -49,7 +49,6 @@
 
 -define(REMOVE_SPACES, [<<"realm">>]).
 -define(MOVE, <<"move">>).
--define(TOKEN, <<"token">>).
 
 -spec init() -> 'ok'.
 init() ->
@@ -75,7 +74,6 @@ init() ->
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
 -spec allowed_methods(path_token(), ne_binary()) -> http_methods().
--spec allowed_methods(path_token(), ne_binary() ,path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_PUT].
 
@@ -107,8 +105,6 @@ allowed_methods(_, Path) ->
         'false' -> []
     end.
 
-allowed_methods(_, ?TOKEN, _) -> [?HTTP_GET].
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -120,7 +116,6 @@ allowed_methods(_, ?TOKEN, _) -> [?HTTP_GET].
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
 -spec resource_exists(path_token(), ne_binary()) -> boolean().
--spec resource_exists(path_token(), ne_binary(), path_token()) -> boolean().
 resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
 resource_exists(_, Path) ->
@@ -133,7 +128,6 @@ resource_exists(_, Path) ->
               ,?PARENTS
              ],
     lists:member(Path, Paths).
-resource_exists(_, ?TOKEN, _) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -150,8 +144,7 @@ resource_exists(_, ?TOKEN, _) -> 'true'.
 validate_resource(Context) -> Context.
 validate_resource(Context, AccountId) -> load_account_db(AccountId, Context).
 validate_resource(Context, AccountId, _Path) -> load_account_db(AccountId, Context).
-validate_resource(Context, _AccountId, ?TOKEN, _Token) ->
-    cb_context:set_account_db(Context, ?KZ_TOKEN_DB).
+
 
 
 %%--------------------------------------------------------------------
@@ -179,9 +172,6 @@ validate_accounts(Context, ?HTTP_PUT) ->
 
 validate(Context, AccountId) ->
     validate_account(Context, AccountId, cb_context:req_verb(Context)).
-
-validate(Context, AccountId, ?TOKEN, Token) ->
-    maybe_get_auth_token(Context, AccountId, Token).
 
 -spec validate_account(cb_context:context(), ne_binary(), http_method()) -> cb_context:context().
 validate_account(Context, AccountId, ?HTTP_GET) ->
@@ -242,26 +232,6 @@ validate_account_path(Context, AccountId, ?TREE, ?HTTP_GET) ->
         'success' -> load_account_tree(Context1);
         _Else -> Context1
     end.
-
--spec maybe_get_auth_token(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
-maybe_get_auth_token(Context, AccountId, Token) ->
-    Context1 = crossbar_doc:load(Token, Context),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            AuthAccountId = cb_context:auth_account_id(Context),
-            create_auth_resp(Context1, AccountId, Token, AuthAccountId);
-        _ -> Context1
-    end.
-
--spec create_auth_resp(cb_context:context(), ne_binary(), ne_binary(),  ne_binary()) -> cb_context:context().
-create_auth_resp(Context, AccountId, Token, AccountId) ->
-    RespData = cb_context:resp_data(Context),
-    crossbar_util:response(
-        crossbar_util:response_auth(RespData)
-        ,cb_context:set_auth_token(Context, Token)
-    );
-create_auth_resp(Context, _AccountId, _Token, _AuthAccountId) ->
-    cb_context:add_system_error('forbidden', Context).
 
 %%--------------------------------------------------------------------
 %% @public
