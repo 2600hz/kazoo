@@ -48,11 +48,15 @@ kazoo: core apps
 
 DIALYZER ?= dialyzer
 PLT ?= $(ROOT)/.kazoo.plt
-$(PLT): DEPS_DIRS ?= $(shell find $(ROOT)/deps -name src -print)
+$(PLT): DEPS_SRCS  ?= $(shell find $(ROOT)/deps -name src  -print)
+$(PLT): CORE_EBINS ?= $(shell find $(ROOT)/core -name ebin -print)
 $(PLT):
 	$(DIALYZER) --no_native --build_plt --output_plt $(PLT) \
 	    --apps erts kernel stdlib crypto public_key ssl \
-	    -r $(DEPS_DIRS)
+	    -r $(DEPS_SRCS)
+	for ebin in $(CORE_EBINS); do \
+	    $(DIALYZER) --no_native --add_to_plt --plt $(PLT) --output_plt $(PLT) -r $$ebin; \
+	done
 build-plt: $(PLT)
 
 dialyze: TO_DIALYZE ?= $(shell find $(ROOT)/applications -name ebin -print)
