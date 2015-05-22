@@ -304,26 +304,28 @@ remove_empty_media_docs(AccountId, AccountDb) ->
             io:format("found ~b media docs in account ~s~n", [length(MediaDocs), AccountId]),
             Filename = list_to_binary(["/tmp/empty_media_", AccountId, "_", wh_util:to_binary(wh_util:current_tstamp()), ".json"]),
             io:format("archiving removed media docs to ~s~n", [Filename]),
-            remove_empty_media_docs(AccountId, AccountDb, Filename, MediaDocs);
+            {'ok', File} = file:open(Filename, ['write', 'binary', 'append']),
+            catch remove_empty_media_docs(AccountId, AccountDb, File, MediaDocs),
+            'ok' = file:close(File);
         {'error', _E} ->
             io:format("error looking up media docs in account ~s: ~p~n", [AccountId, _E])
     end.
 
--spec remove_empty_media_docs(ne_binary(), ne_binary(), file:name(), wh_json:objects()) -> 'ok'.
-remove_empty_media_docs(AccountId, _AccountDb, _Filename, []) ->
+-spec remove_empty_media_docs(ne_binary(), ne_binary(), file:io_device(), wh_json:objects()) -> 'ok'.
+remove_empty_media_docs(AccountId, _AccountDb, _File, []) ->
     io:format("finished cleaning up empty media docs for account ~s~n", [AccountId]);
-remove_empty_media_docs(AccountId, AccountDb, Filename, [Media|MediaDocs]) ->
-    maybe_remove_media_doc(AccountDb, Filename, wh_json:get_value(<<"doc">>, Media)),
-    remove_empty_media_docs(AccountId, AccountDb, Filename, MediaDocs).
+remove_empty_media_docs(AccountId, AccountDb, File, [Media|MediaDocs]) ->
+    maybe_remove_media_doc(AccountDb, File, wh_json:get_value(<<"doc">>, Media)),
+    remove_empty_media_docs(AccountId, AccountDb, File, MediaDocs).
 
--spec maybe_remove_media_doc(ne_binary(), file:name(), wh_json:object()) -> 'ok'.
-maybe_remove_media_doc(AccountDb, Filename, MediaJObj) ->
+-spec maybe_remove_media_doc(ne_binary(), file:io_device(), wh_json:object()) -> 'ok'.
+maybe_remove_media_doc(AccountDb, File, MediaJObj) ->
+    DocId = wh_doc:id(MediaJObj),
     case wh_doc:attachments(MediaJObj) of
         'undefined' ->
-            io:format("media doc ~s has no attachments, archiving and removing~n"
-                      ,[wh_doc:id(MediaJObj)]
-                     ),
-            wh_util:write_file(Filename, [wh_json:encode(MediaJObj), $\n], ['append']),
+            io:format("media doc ~s has no attachments, archiving and removing~n", [DocId]),
+            _R = file:write(File, [wh_json:encode(MediaJObj), $\n]),
+            io:format("dumping media doc ~s to file : ~p\n", [DocId, _R]),
             remove_media_doc(AccountDb, MediaJObj);
         _Attachments ->
             io:format("media doc ~s has attachments, leaving alone~n", [wh_doc:id(MediaJObj)])
