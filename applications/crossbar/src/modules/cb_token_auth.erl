@@ -226,7 +226,7 @@ authorize(Context) ->
             'false';
         'true' -> 
             lager:info("deny access"),
-            Cause = wh_json:from_list([{<<"cause">>, <<"access denied">>}]),
+            Cause = wh_json:from_list([{<<"cause">>, <<"access denied by token restrictions">>}]),
             {'halt', cb_context:add_system_error('forbidden', Cause, Context)}
     end.
 

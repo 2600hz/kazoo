@@ -906,12 +906,17 @@ create_auth_token(Context, Method, JObj) ->
 
 -spec get_token_restrictions(ne_binary(), ne_binary(), ne_binary()) -> wh_json:object().
 get_token_restrictions(Method, AccountId, OwnerId) ->
-    Restrictions = case get_account_token_restrictions(AccountId, Method) of
-        'undefined' -> get_system_token_restrictions(Method);
-        AccountRestrictions -> AccountRestrictions
-    end,
-    PrivLevel = get_priv_level(AccountId, OwnerId),
-    get_priv_level_restrictions(Restrictions, PrivLevel).
+    %% dont restrict SuperAdmin
+    case wh_util:is_system_admin(AccountId) of
+        'true' -> 'undefined';
+        'false' ->
+            Restrictions = case get_account_token_restrictions(AccountId, Method) of
+                'undefined' -> get_system_token_restrictions(Method);
+                AccountRestrictions -> AccountRestrictions
+            end,
+            PrivLevel = get_priv_level(AccountId, OwnerId),
+            get_priv_level_restrictions(Restrictions, PrivLevel)
+    end.
 
 -spec get_priv_level(ne_binary(), ne_binary()) -> ne_binary().
 %%
