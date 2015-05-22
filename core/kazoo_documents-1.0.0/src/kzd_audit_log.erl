@@ -35,7 +35,7 @@
 -define(KEY_ACCOUNT_ID, <<"account_id">>).
 -define(KEY_ACCOUNT_NAME, <<"account_name">>).
 -define(KEY_TREE, <<"tree">>).
--define(KEY_AUTHENTICATING_USER, <<"autheticating_user">>).
+-define(KEY_AUTHENTICATING_USER, <<"authenticating_user">>).
 -define(KEY_USER_ID, <<"user_id">>).
 -define(KEY_FIRST_NAME, <<"first_name">>).
 -define(KEY_LAST_NAME, <<"last_name">>).
