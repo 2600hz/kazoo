@@ -307,7 +307,7 @@ base_audit_log(Context) ->
     lists:foldl(fun base_audit_log_fold/2
                 ,kzd_audit_log:new()
                 ,[{fun kzd_audit_log:set_tree/2, Tree}
-                  ,{fun kzd_audit_log:set_authenticating_user/2, base_auth_user(Context, AccountJObj)}
+                  ,{fun kzd_audit_log:set_authenticating_user/2, base_auth_user(Context)}
                   ,{fun kzd_audit_log:set_audit_account/3
                     ,cb_context:account_id(Context)
                     ,base_audit_account(Context)
@@ -332,11 +332,25 @@ base_audit_account(Context) ->
         [{<<"account_name">>, AccountName}]
        )).
 
--spec base_auth_user(cb_context:context(), wh_json:object()) -> wh_json:object().
-base_auth_user(Context, AccountJObj) ->
+-spec base_auth_user(cb_context:context()) -> wh_json:object().
+base_auth_user(Context) ->
     AuthJObj = cb_context:auth_doc(Context),
+    AccountJObj = cb_context:auth_account_doc(Context),
+
     AccountName = kz_account:name(AccountJObj),
-    wh_json:set_value(<<"account_name">>, AccountName, AuthJObj).
+    wh_json:set_value(<<"account_name">>
+                      ,AccountName
+                      ,leak_auth_pvt_fields(AuthJObj)
+                     ).
+
+-spec leak_auth_pvt_fields(wh_json:object()) -> wh_json:object().
+leak_auth_pvt_fields(JObj) ->
+    wh_json:set_values([{<<"account_id">>, wh_doc:account_id(JObj)}
+                        ,{<<"auth_token">>, wh_doc:id(JObj)}
+                        ,{<<"created">>, wh_doc:created(JObj)}
+                       ]
+                       ,wh_json:public_fields(JObj)
+                      ).
 
 -spec save_an_audit_log(cb_context:context(), wh_services:services() | 'undefined') -> 'ok'.
 save_an_audit_log(_Context, 'undefined') -> 'ok';
