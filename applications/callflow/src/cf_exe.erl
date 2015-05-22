@@ -17,6 +17,7 @@
 -export([queue_name/1]).
 -export([control_queue/1, control_queue/2]).
 -export([continue/1, continue/2]).
+-export([force_continue/2]).
 -export([continue_with_flow/2]).
 -export([branch/2]).
 -export([stop/1]).
@@ -106,6 +107,13 @@ continue(Key, Srv) when is_pid(Srv) ->
 continue(Key, Call) ->
     Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     continue(Key, Srv).
+
+-spec force_continue(ne_binary(), whapps_call:call() | pid()) -> 'ok'.
+force_continue(Key, Srv) when is_pid(Srv) ->
+	gen_listener:cast(Srv, {'force_continue', Key});
+force_continue(Key, Call) ->
+	Srv = whapps_call:kvs_fetch('consumer_pid', Call),
+	force_continue(Key, Srv).
 
 -spec continue_with_flow(wh_json:object(), whapps_call:call() | pid()) -> 'ok'.
 continue_with_flow(Flow, Srv) when is_pid(Srv) ->
@@ -329,13 +337,20 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({'set_call', Call}, State) ->
     {'noreply', State#state{call=Call}};
-handle_cast({'continue', Key}, #state{flow=Flow
-                                      ,cf_module_pid=OldPidRef
+handle_cast({'continue', Key}, #state{cf_module_pid=OldPidRef
+									  ,call=Call
                                      }=State) ->
     lager:info("continuing to child '~s'", [Key]),
     maybe_stop_caring(OldPidRef),
 
-    case wh_json:get_value([<<"children">>, Key], Flow) of
+    spawn(
+      fun() ->
+          continue_if_still_active(Key, Call)
+      end),
+    {'noreply', State};
+handle_cast({'force_continue', Key}, #state{flow=Flow
+										   }=State) ->
+	case wh_json:get_value([<<"children">>, Key], Flow) of
         'undefined' when Key =:= <<"_">> ->
             lager:info("wildcard child does not exist, we are lost...hanging up"),
             ?MODULE:stop(self()),
@@ -419,6 +434,16 @@ handle_cast({'gen_listener', {'is_consuming', 'true'}}
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
+
+-spec continue_if_still_active(ne_binary(), whapps_call:call()) -> 'ok'.
+continue_if_still_active(Key, Call) ->
+    case whapps_call_command:b_channel_status(Call) of
+        {'error', E} ->
+            lager:info("channel no longer active (~p), not continuing", [E]),
+            ?MODULE:hard_stop(Call);
+        {'ok', _} ->
+            ?MODULE:force_continue(Key, Call)
+    end.
 
 -spec event_listener_name(whapps_call:call(), atom() | ne_binary()) -> ne_binary().
 event_listener_name(Call, Module) ->
