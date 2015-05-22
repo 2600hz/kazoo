@@ -19,6 +19,7 @@
 -export([reconcile/1, reconcile/2
          ,reconcile_only/1, reconcile_only/2
          ,save_as_dirty/2
+         ,save_audit_logs/2
         ]).
 -export([fetch/1]).
 -export([update/4]).
@@ -65,7 +66,6 @@
                       ,jobj = wh_json:new() :: wh_json:object()
                       ,updates = wh_json:new() :: wh_json:object()
                       ,cascade_quantities = wh_json:new() :: wh_json:object()
-                      ,audit_log :: api_object()
                      }).
 -define(BASE_BACKOFF, 50).
 
@@ -391,6 +391,8 @@ update_audit_log(#wh_services{jobj=JObj
                  ,AuditLog
                 ) ->
     lager:debug("account ~s cascade quantities ~s", [AccountId, wh_json:encode(CascadeQuantities)]),
+    lager:debug("updates: ~s", [UpdatedQuantities]),
+
     AccountAudit = wh_json:from_list(
                      props:filter_empty(
                        [{<<"cascase_quantities">>, CascadeQuantities}
@@ -786,6 +788,7 @@ spawn_move_to_good_standing(<<_/binary>> = AccountId) ->
 -spec move_to_good_standing(ne_binary()) -> services().
 move_to_good_standing(<<_/binary>> = AccountId) ->
     #wh_services{jobj=JObj}=Services = fetch(AccountId),
+    lager:debug("moving account ~s services to good standing", [AccountId]),
     save(Services#wh_services{jobj=wh_json:set_value(<<"pvt_status">>, ?STATUS_GOOD, JObj)}).
 
 %%--------------------------------------------------------------------
