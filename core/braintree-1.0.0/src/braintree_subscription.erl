@@ -23,7 +23,7 @@
 -export([update_payment_token/2]).
 -export([find/1]).
 -export([create/1, create/2]).
--export([update/1, update/2]).
+-export([update/1]).
 -export([cancel/1]).
 -export([xml_to_record/1, xml_to_record/2]).
 -export([record_to_xml/1]).
@@ -247,16 +247,9 @@ create(Plan, Token) ->
 -spec update(subscription()) -> subscription().
 update(#bt_subscription{create='true'}=Subscription) ->
     create(Subscription);
-update(#bt_subscription{}=Subscription) ->
-    update(Subscription, 'false').
-
--spec update(subscription(), boolean()) -> subscription().
-update(#bt_subscription{id=SubscriptionId}=Subscription, ShouldSetFirstBillingDate) ->
+update(#bt_subscription{id=SubscriptionId}=Subscription) ->
     Url = url(SubscriptionId),
-    Prepared = case ShouldSetFirstBillingDate of
-                   'false' -> Subscription#bt_subscription{billing_first_date = 'undefined'};
-                   'true'  -> Subscription
-               end,
+    Prepared = Subscription#bt_subscription{billing_first_date = 'undefined'},
     Request = record_to_xml(Prepared, 'true'),
     Xml = braintree_request:put(Url, Request),
     xml_to_record(Xml).
