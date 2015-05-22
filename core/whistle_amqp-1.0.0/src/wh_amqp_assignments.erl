@@ -176,7 +176,7 @@ handle_cast({'add_watcher', Consumer, Watcher}, State) ->
     _ = add_watcher(Consumer, Watcher),
     {'noreply', State};
 handle_cast({'maybe_reassign', Consumer}, State) ->
-    maybe_reassign(Consumer),
+    _ = maybe_reassign(Consumer),
     {'noreply', State};
 handle_cast({'maybe_defer_reassign', #wh_amqp_assignment{timestamp=Timestamp
                                                          ,consumer=Consumer
@@ -187,7 +187,7 @@ handle_cast({'maybe_defer_reassign', #wh_amqp_assignment{timestamp=Timestamp
              ,{#wh_amqp_assignment.reconnect, 'true'}
             ],
     ets:update_element(?TAB, Timestamp, Props),
-    maybe_reassign(Consumer),
+    _ = maybe_reassign(Consumer),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     {'noreply', State}.

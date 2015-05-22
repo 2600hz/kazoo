@@ -281,7 +281,8 @@ start_timer() ->
 
 -spec stop_timer(reference() | any()) -> 'ok'.
 stop_timer(Ref) when is_reference(Ref) ->
-    erlang:cancel_timer(Ref), 'ok';
+    _ = erlang:cancel_timer(Ref),
+    'ok';
 stop_timer(_) -> 'ok'.
 
 -spec publish_doc_update(ne_binary()) -> 'ok'.

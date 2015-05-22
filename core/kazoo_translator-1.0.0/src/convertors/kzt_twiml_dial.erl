@@ -91,7 +91,7 @@ exec(Call, [#xmlElement{name='Conference'
 
     lager:debug("waited for offnet, maybe ending dial"),
 
-    maybe_end_dial(Call1, DialProps),
+    _ = maybe_end_dial(Call1, DialProps),
     {'stop', Call1};
 
 exec(Call, [#xmlElement{name='Queue'
@@ -183,7 +183,7 @@ setup_call_for_dial(Call, Props) ->
     whapps_call:exec(Setters, Call).
 
 -spec maybe_end_dial(whapps_call:call(), wh_proplist()) ->
-                            {'ok' | 'stop', whapps_call:call()}.
+                            {'ok' | 'stop' | 'request', whapps_call:call()}.
 maybe_end_dial(Call, Props) ->
     maybe_end_dial(Call, Props, kzt_twiml_util:action_url(Props)).
 

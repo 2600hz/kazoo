@@ -302,7 +302,7 @@ remove_empty_media_docs(AccountId, AccountDb) ->
             io:format("no media docs in account ~s~n", [AccountId]);
         {'ok', MediaDocs} ->
             io:format("found ~b media docs in account ~s~n", [length(MediaDocs), AccountId]),
-            Filename = list_to_binary(["/tmp/empty_media_", AccountId, "_", wh_util:to_binary(wh_util:current_tstamp()), ".json"]),
+            Filename = media_doc_filename(AccountId, wh_util:current_tstamp()),
             io:format("archiving removed media docs to ~s~n", [Filename]),
             {'ok', File} = file:open(Filename, ['write', 'binary', 'append']),
             catch remove_empty_media_docs(AccountId, AccountDb, File, MediaDocs),
@@ -311,8 +311,13 @@ remove_empty_media_docs(AccountId, AccountDb) ->
             io:format("error looking up media docs in account ~s: ~p~n", [AccountId, _E])
     end.
 
--spec remove_empty_media_docs(ne_binary(), ne_binary(), file:io_device(), wh_json:objects()) -> 'ok'.
-remove_empty_media_docs(AccountId, _AccountDb, _File, []) ->
+-spec media_doc_filename(ne_binary(), non_neg_integer()) -> file:name().
+media_doc_filename(AccountId, Timestamp) ->
+    Path = ["/tmp/empty_media_", AccountId, "_", wh_util:to_binary(Timestamp), ".json"],
+    binary_to_list(list_to_binary(Path)).
+
+-spec remove_empty_media_docs(ne_binary(), ne_binary(), file:name(), wh_json:objects()) -> 'ok'.
+remove_empty_media_docs(AccountId, _AccountDb, _Filename, []) ->
     io:format("finished cleaning up empty media docs for account ~s~n", [AccountId]);
 remove_empty_media_docs(AccountId, AccountDb, File, [Media|MediaDocs]) ->
     maybe_remove_media_doc(AccountDb, File, wh_json:get_value(<<"doc">>, Media)),

@@ -536,13 +536,13 @@ callid(JObj) ->
 spawn(Module, Function, Arguments) ->
     CallId = get_callid(),
     erlang:spawn(fun () ->
-                         put_callid(CallId),
+                         _ = put_callid(CallId),
                          erlang:apply(Module, Function, Arguments)
                  end).
 spawn(Fun) ->
     CallId = get_callid(),
     erlang:spawn(fun() ->
-                         put_callid(CallId),
+                         _ = put_callid(CallId),
                          Fun()
                  end).
 

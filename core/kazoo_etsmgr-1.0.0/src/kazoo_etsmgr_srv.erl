@@ -220,7 +220,8 @@ handle_info(_Info, State) ->
     {'noreply', State}.
 
 send_give_away_retry(Tbl) ->
-    erlang:send(self(), {'give_away', Tbl}).
+    _ = erlang:send(self(), {'give_away', Tbl}),
+    'ok'.
 
 -spec find_me(find_me_fun(), pid()) -> 'ok'.
 find_me(Fun, Srv) ->
