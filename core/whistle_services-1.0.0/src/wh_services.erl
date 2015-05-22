@@ -36,7 +36,10 @@
 
 -export([account_id/1]).
 -export([is_dirty/1]).
--export([quantity/3, diff_quantity/3]).
+-export([quantity/3
+         ,diff_quantities/1, diff_quantities/2
+         ,diff_quantity/3
+        ]).
 -export([updated_quantity/3]).
 -export([category_quantity/2, category_quantity/3]).
 -export([cascade_quantity/3]).
@@ -340,7 +343,7 @@ maybe_save_audit_log(#wh_services{jobj=JObj
                      ,AuditLog
                      ,ResellerId
                     ) ->
-    CurrentQuantities = current_quantities(JObj),
+    CurrentQuantities = kzd_services:quantities(JObj),
     case have_quantities_changed(UpdatedQuantities, CurrentQuantities) of
         'true' ->
             save_audit_log(Services, AuditLog, ResellerId);
@@ -377,21 +380,16 @@ save_audit_log(Services, AuditLog, ResellerId) ->
     AuditLog1.
 
 -spec update_audit_log(services(), kzd_audit_log:doc()) -> kzd_audit_log:doc().
-update_audit_log(#wh_services{jobj=JObj
-                              ,account_id=AccountId
-                              ,cascade_quantities=CascadeQuantities
-                              ,updates=UpdatedQuantities
-                             }
+update_audit_log(#wh_services{account_id=AccountId
+                              ,jobj=JObj
+                             }=Services
                  ,AuditLog
                 ) ->
-    lager:debug("account ~s cascade quantities ~s", [AccountId, wh_json:encode(CascadeQuantities)]),
-    lager:debug("updates: ~p", [UpdatedQuantities]),
 
     AccountAudit = wh_json:from_list(
                      props:filter_empty(
-                       [{<<"cascase_quantities">>, CascadeQuantities}
-                        ,{?QUANTITIES_ACCOUNT, current_quantities(JObj)}
-                        ,{<<"updated_quantities">>, UpdatedQuantities}
+                       [{?QUANTITIES_ACCOUNT, kzd_services:quantities(JObj)}
+                        ,{<<"diff_quantities">>, diff_quantities(Services)}
                         ,{<<"account_name">>, account_name(AccountId)}
                        ])
                     ),
@@ -407,10 +405,6 @@ account_name(AccountId) ->
         {'error', _} -> 'undefined'
     end.
 
--spec current_quantities(wh_json:object()) -> wh_json:object().
-current_quantities(ServicesJObj) ->
-    kzd_services:quantities(ServicesJObj).
-
 -spec save(services()) -> services().
 -spec save(services(), kzd_audit_log:doc(), pos_integer()) -> services().
 save(#wh_services{}=Services) ->
@@ -424,7 +418,7 @@ save(#wh_services{jobj=JObj
      ,AuditLog
      ,BackOff
     ) ->
-    CurrentQuantities = current_quantities(JObj),
+    CurrentQuantities = kzd_services:quantities(JObj),
 
     Dirty = have_quantities_changed(UpdatedQuantities, CurrentQuantities) orelse ForceDirty,
 
@@ -556,6 +550,7 @@ update(CategoryId, ItemId, Quantity, Services) when not is_integer(Quantity) ->
 update(CategoryId, ItemId, Quantity, #wh_services{updates=JObj}=Services)
   when is_binary(CategoryId),
        is_binary(ItemId) ->
+    lager:debug("setting ~s.~s to ~p in updates", [CategoryId, ItemId, Quantity]),
     Services#wh_services{updates=wh_json:set_value([CategoryId, ItemId], Quantity, JObj)}.
 
 %%--------------------------------------------------------------------
@@ -646,7 +641,7 @@ public_json(#wh_services{jobj=ServicesJObj
                      catch
                          'throw':_ -> 'false'
                      end,
-    Props = [{?QUANTITIES_ACCOUNT, current_quantities(ServicesJObj)}
+    Props = [{?QUANTITIES_ACCOUNT, kzd_services:quantities(ServicesJObj)}
              ,{?QUANTITIES_CASCADE, CascadeQuantities}
              ,{?PLANS, wh_service_plans:plan_summary(ServicesJObj)}
              ,{<<"billing_id">>, kzd_services:billing_id(ServicesJObj, AccountId)}
@@ -665,7 +660,7 @@ to_json(#wh_services{jobj=JObj
                      ,updates=UpdatedQuantities
                     }
        ) ->
-    CurrentQuantities = current_quantities(JObj),
+    CurrentQuantities = kzd_services:quantities(JObj),
     Props = [{fun kzd_services:set_quantities/2, wh_json:merge_jobjs(UpdatedQuantities, CurrentQuantities)}],
     wh_json:set_values(props:filter_undefined(Props), JObj).
 
@@ -872,6 +867,39 @@ quantity(CategoryId, ItemId, #wh_services{updates=Updates
                                          }) ->
     ItemQuantity = kzd_services:item_quantity(JObj, CategoryId, ItemId),
     wh_json:get_integer_value([CategoryId, ItemId], Updates, ItemQuantity).
+
+diff_quantities(#wh_services{deleted='true'}) -> 'undefined';
+diff_quantities(#wh_services{jobj=JObj
+                             ,updates=Updates
+                            }) ->
+    wh_json:foldl(fun diff_cat_quantities/3, Updates, JObj).
+
+diff_cat_quantities(CategoryId, ItemsJObj, Updates) ->
+    wh_json:foldl(fun(I, Q, Acc) ->
+                          diff_item_quantities(I, Q, Acc, CategoryId)
+                  end
+                  ,Updates
+                  ,ItemsJObj
+                 ).
+
+diff_quantities(_CategoryId, #wh_services{deleted='true'}) -> 'undefined';
+diff_quantities(CategoryId, #wh_services{jobj=JObj
+                                         ,updates=Updates
+                                        }) ->
+    CatQuantities = kzd_services:category_quantities(JObj, CategoryId),
+    UpdateQuantities = wh_json:get_value(CategoryId, Updates, wh_json:new()),
+    wh_json:foldl(fun(Id, Q, Acc) ->
+                          diff_item_quantities(Id, Q, Acc, CategoryId)
+                  end
+                  ,UpdateQuantities
+                  ,CatQuantities
+                 ).
+
+-spec diff_item_quantities(ne_binary(), integer(), wh_json:object(), ne_binary()) ->
+                             wh_json:object().
+diff_item_quantities(ItemId, ItemQuantity, Updates, CategoryId) ->
+    UpdateQuantity = wh_json:get_integer_value([CategoryId, ItemId], Updates, 0),
+    wh_json:set_value([CategoryId, ItemId], UpdateQuantity - ItemQuantity, Updates).
 
 diff_quantity(_, _, #wh_services{deleted='true'}) -> 0;
 diff_quantity(CategoryId, ItemId, #wh_services{jobj=JObj
@@ -1370,7 +1398,7 @@ maybe_save('false') -> 'false';
 maybe_save(#wh_services{jobj=JObj
                         ,updates=UpdatedQuantities
                        }=Services) ->
-    CurrentQuantities = current_quantities(JObj),
+    CurrentQuantities = kzd_services:quantities(JObj),
     case have_quantities_changed(UpdatedQuantities, CurrentQuantities) of
         'true' ->
             lager:debug("quantities have changed, saving dirty services"),
