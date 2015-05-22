@@ -28,6 +28,8 @@
 
 -define(CROSSBAR_DEFAULT_CONTENT_TYPE, {<<"application">>, <<"json">>, []}).
 
+-define(CB_ACCOUNT_TOKEN_RESTRICTIONS, <<"token_restrictions">>).
+
 -define(CONTENT_PROVIDED, [{'to_json', ?JSON_CONTENT_TYPES}]).
 -define(CONTENT_ACCEPTED, [{'from_json', ?JSON_CONTENT_TYPES}
                            ,{'from_form', ?MULTIPART_CONTENT_TYPES}
