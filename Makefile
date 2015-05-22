@@ -49,7 +49,7 @@ kazoo: core apps
 DIALYZER ?= dialyzer
 PLT ?= $(ROOT)/.kazoo.plt
 $(PLT): DEPS_SRCS  ?= $(shell find $(ROOT)/deps -name src  -print)
-$(PLT): CORE_EBINS ?= $(shell find $(ROOT)/core -name ebin -print)
+# $(PLT): CORE_EBINS ?= $(shell find $(ROOT)/core -name ebin -print)
 $(PLT):
 	$(DIALYZER) --no_native --build_plt --output_plt $(PLT) \
 	    --apps erts kernel stdlib crypto public_key ssl \
@@ -59,7 +59,13 @@ $(PLT):
 	done
 build-plt: $(PLT)
 
-dialyze: TO_DIALYZE ?= $(shell find $(ROOT)/applications -name ebin -print)
+dialyze-kazoo: TO_DIALYZE  = $(shell find $(ROOT)/applications -name ebin -print) $(shell find $(ROOT)/core -name ebin -print)
+dialyze-kazoo: dialyze
+dialyze-apps:  TO_DIALYZE  = $(shell find $(ROOT)/applications -name ebin -print)
+dialyze-apps: dialyze
+dialyze-core:  TO_DIALYZE  = $(shell find $(ROOT)/core         -name ebin -print)
+dialyze-core: dialyze
+dialyze:       TO_DIALYZE ?= $(shell find $(ROOT)/applications -name ebin -print)
 dialyze: $(PLT)
 	$(ROOT)/scripts/check-dialyzer.escript $(TO_DIALYZE)
 
