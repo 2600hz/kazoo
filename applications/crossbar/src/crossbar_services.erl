@@ -44,12 +44,17 @@ maybe_dry_run_by_props(Context, Callback, Props, 'true') ->
 maybe_dry_run_by_props(Context, Callback, Props, 'false') ->
     Type = props:get_ne_binary_value(<<"type">>, Props),
     RespJObj = dry_run(Context, Type, props:delete(<<"type">>, Props)),
-    lager:debug("request isn't accepting charges, maybe dry run the request: ~s", [wh_json:encode(RespJObj)]),
+
+    handle_dry_run_resp(Context, Callback, RespJObj).
+
+handle_dry_run_resp(Context, Callback, RespJObj) ->
     case wh_json:is_empty(RespJObj) of
         'true' ->
-            lager:debug("nothing to be charged for, continuing : ~p", [RespJObj]),
+            lager:debug("this service update is not a drill people!"),
             Callback();
-        'false' -> crossbar_util:response_402(RespJObj, Context)
+        'false' ->
+            lager:debug("this service update is just a test, do not be alarmed"),
+            crossbar_util:response_402(RespJObj, Context)
     end.
 
 -spec maybe_dry_run_by_type(cb_context:context(), callback(), ne_binary(), boolean()) ->
@@ -61,11 +66,8 @@ maybe_dry_run_by_type(Context, Callback, Type, 'true') ->
     Callback();
 maybe_dry_run_by_type(Context, Callback, Type, 'false') ->
     RespJObj = dry_run(Context, Type),
-    lager:debug("not accepting charges: ~s", [wh_json:encode(RespJObj)]),
-    case wh_json:is_empty(RespJObj) of
-        'true' -> Callback();
-        'false' -> crossbar_util:response_402(RespJObj, Context)
-    end.
+
+    handle_dry_run_resp(Context, Callback, RespJObj).
 
 %%%===================================================================
 %%% Internal functions
