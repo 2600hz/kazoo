@@ -18,7 +18,7 @@
 -export([from_service_json/1, from_service_json/2]).
 -export([reconcile/1, reconcile/2
          ,reconcile_only/1, reconcile_only/2
-         ,save_as_dirty/2
+         ,save_as_dirty/1
          ,save_audit_logs/2
         ]).
 -export([fetch/1]).
@@ -244,18 +244,17 @@ delete_service_plan(PlanId, #wh_services{jobj=JObj}=Services) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec save_as_dirty(ne_binary() | services(), kzd_audit_log:doc()) -> services().
--spec save_as_dirty(ne_binary() | services(), kzd_audit_log:doc(), pos_integer()) -> services().
-save_as_dirty(<<_/binary>> = Account, AuditLog) ->
-    save_as_dirty(fetch(Account), AuditLog);
-save_as_dirty(#wh_services{}=Services, AuditLog) ->
-    save_as_dirty(Services, AuditLog, ?BASE_BACKOFF).
+-spec save_as_dirty(ne_binary() | services()) -> services().
+-spec save_as_dirty(ne_binary() | services(), pos_integer()) -> services().
+save_as_dirty(<<_/binary>> = Account) ->
+    save_as_dirty(fetch(Account));
+save_as_dirty(#wh_services{}=Services) ->
+    save_as_dirty(Services, ?BASE_BACKOFF).
 
 save_as_dirty(#wh_services{jobj=JObj
                            ,updates=_Updates
                            ,account_id = <<_/binary>> = AccountId
                           }=Services
-              ,AuditLog
               ,BackOff
              ) ->
     UpdatedJObj =
@@ -269,24 +268,19 @@ save_as_dirty(#wh_services{jobj=JObj
     case couch_mgr:save_doc(?WH_SERVICES_DB, UpdatedJObj) of
         {'ok', SavedJObj} ->
             lager:debug("marked services as dirty for account ~s", [AccountId]),
-
-            Services1 = from_service_json(SavedJObj),
-
-            _ = save_audit_logs(Services1, AuditLog),
-
-            Services1;
+            from_service_json(SavedJObj);
         {'error', 'not_found'} ->
             lager:debug("service database does not exist, attempting to create"),
             'true' = couch_mgr:db_create(?WH_SERVICES_DB),
             timer:sleep(BackOff),
-            save_as_dirty(Services, AuditLog, BackOff);
+            save_as_dirty(Services, BackOff);
         {'error', 'conflict'} ->
             lager:debug("conflict when saving, attempting mitigation"),
-            save_conflicting_as_dirty(Services, AuditLog, BackOff)
+            save_conflicting_as_dirty(Services, BackOff)
     end.
 
--spec save_conflicting_as_dirty(services(), kzd_audit_log:doc(), pos_integer()) -> services().
-save_conflicting_as_dirty(#wh_services{account_id=AccountId}, AuditLog, BackOff) ->
+-spec save_conflicting_as_dirty(services(), pos_integer()) -> services().
+save_conflicting_as_dirty(#wh_services{account_id=AccountId}, BackOff) ->
     {'ok', Existing} = fetch_services_doc(AccountId, 'true'),
     NewServices = from_service_json(Existing),
 
@@ -297,7 +291,7 @@ save_conflicting_as_dirty(#wh_services{account_id=AccountId}, AuditLog, BackOff)
         'false' ->
             lager:debug("new services doc for ~s not dirty, marking it as so", [AccountId]),
             timer:sleep(BackOff + random:uniform(?BASE_BACKOFF)),
-            save_as_dirty(NewServices, AuditLog, BackOff*2)
+            save_as_dirty(NewServices, BackOff*2)
     end.
 
 -spec save_audit_logs(services(), kzd_audit_log:doc()) -> 'ok'.
@@ -391,7 +385,7 @@ update_audit_log(#wh_services{jobj=JObj
                  ,AuditLog
                 ) ->
     lager:debug("account ~s cascade quantities ~s", [AccountId, wh_json:encode(CascadeQuantities)]),
-    lager:debug("updates: ~s", [UpdatedQuantities]),
+    lager:debug("updates: ~p", [UpdatedQuantities]),
 
     AccountAudit = wh_json:from_list(
                      props:filter_empty(

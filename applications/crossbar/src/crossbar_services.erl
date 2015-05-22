@@ -173,7 +173,6 @@ set_event(_Context, Item, Transaction) ->
     Event = <<"Activation charges for ", ItemValue/binary>>,
     wh_transaction:set_event(Event, Transaction).
 
-
 -spec dry_run(wh_services:services() | 'undefined') -> wh_json:object().
 dry_run('undefined') -> wh_json:new();
 dry_run(Services) ->
@@ -190,11 +189,8 @@ dry_run(Services) ->
 -spec calc_service_updates(cb_context:context(), ne_binary(), wh_proplist()) ->
                                   wh_services:services() | 'undefined'.
 calc_service_updates(Context, <<"device">>) ->
+    DeviceType = kz_device:device_type(cb_context:doc(Context)),
     Services = fetch_service(Context),
-    JObj = cb_context:doc(Context),
-    DeviceType = wh_json:get_value(<<"device_type">>, JObj),
-
-    %% break the update into its own function, then call to dry run, so we can store the updated services for later audit_log generation
 
     wh_service_devices:reconcile(Services, DeviceType);
 calc_service_updates(Context, <<"user">>) ->
