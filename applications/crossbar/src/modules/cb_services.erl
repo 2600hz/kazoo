@@ -17,6 +17,7 @@
          ,validate/1, validate/2
          ,get/1, get/2
          ,post/1
+         ,cleanup/1
         ]).
 
 -include("../crossbar.hrl").
@@ -43,14 +44,17 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.services">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.services">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"*.content_types_provided.services">>, ?MODULE, 'content_types_provided'),
-    _ = crossbar_bindings:bind(<<"*.validate.services">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.execute.get.services">>, ?MODULE, 'get'),
-    _ = crossbar_bindings:bind(<<"*.execute.put.services">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"*.execute.post.services">>, ?MODULE, 'post'),
-    _ = crossbar_bindings:bind(<<"*.execute.delete.services">>, ?MODULE, 'delete').
+    Bindings = [{<<"*.allowed_methods.services">>, 'allowed_methods'}
+                ,{<<"*.resource_exists.services">>, 'resource_exists'}
+                ,{<<"*.content_types_provided.services">>, 'content_types_provided'}
+                ,{<<"*.validate.services">>, 'validate'}
+                ,{<<"*.execute.get.services">>, 'get'}
+                ,{<<"*.execute.put.services">>, 'put'}
+                ,{<<"*.execute.post.services">>, 'post'}
+                ,{<<"*.execute.delete.services">>, 'delete'}
+                ,{crossbar_cleanup:binding_system(), 'cleanup'}
+               ],
+    cb_modules_util:bind(?MODULE, Bindings).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -248,3 +252,36 @@ ranged_modbs(Context, From, To) ->
                                                     ),
     AccountId = cb_context:account_id(Context),
     [kazoo_modb:get_modb(AccountId, Year, Month) || {Year, Month} <- Seq].
+
+-spec cleanup(ne_binary()) -> 'ok'.
+cleanup(?WH_SERVICES_DB) ->
+    lager:debug("checking ~s for abandoned accounts", [?WH_SERVICES_DB]),
+    cleanup_orphaned_services_docs();
+cleanup(_SystemDb) -> 'ok'.
+
+-spec cleanup_orphaned_services_docs() -> 'ok'.
+-spec cleanup_orphaned_services_docs(wh_json:objects()) -> 'ok'.
+cleanup_orphaned_services_docs() ->
+    case couch_mgr:all_docs(?WH_SERVICES_DB) of
+        {'ok', Docs} ->
+            cleanup_orphaned_services_docs(Docs);
+        {'error', _E} ->
+            lager:debug("failed to get all docs from ~s: ~p", [?WH_SERVICES_DB, _E])
+    end.
+
+cleanup_orphaned_services_docs([]) -> 'ok';
+cleanup_orphaned_services_docs([View|Views]) ->
+    cleanup_orphaned_services_doc(View),
+    cleanup_orphaned_services_docs(Views).
+
+-spec cleanup_orphaned_services_doc(wh_json:object() | ne_binary()) -> 'ok'.
+cleanup_orphaned_services_doc(<<"_design/", _/binary>>) -> 'ok';
+cleanup_orphaned_services_doc(<<_/binary>> = AccountId) ->
+    case couch_mgr:db_exists(wh_util:format_account_id(AccountId, 'encoded')) of
+        'true' -> 'ok';
+        'false' ->
+            lager:info("account ~s no longer exists but has a services doc", [AccountId]),
+            couch_mgr:del_doc(?WH_SERVICES_DB, AccountId)
+    end;
+cleanup_orphaned_services_doc(View) ->
+    cleanup_orphaned_services_doc(wh_json:get_value(<<"id">>, View)).
