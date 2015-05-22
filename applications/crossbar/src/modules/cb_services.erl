@@ -281,7 +281,8 @@ cleanup_orphaned_services_doc(<<_/binary>> = AccountId) ->
         'true' -> 'ok';
         'false' ->
             lager:info("account ~s no longer exists but has a services doc", [AccountId]),
-            couch_mgr:del_doc(?WH_SERVICES_DB, AccountId)
+            couch_mgr:del_doc(?WH_SERVICES_DB, AccountId),
+            timer:sleep(5 * ?MILLISECONDS_IN_SECOND)
     end;
 cleanup_orphaned_services_doc(View) ->
     cleanup_orphaned_services_doc(wh_json:get_value(<<"id">>, View)).
