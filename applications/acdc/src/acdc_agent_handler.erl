@@ -181,8 +181,9 @@ maybe_pause_agent(AccountId, AgentId, Timeout, JObj) ->
         'undefined' -> lager:debug("agent ~s (~s) not found, nothing to do", [AgentId, AccountId]);
         Sup when is_pid(Sup) ->
             lager:debug("agent ~s(~s) is pausing for ~p", [AccountId, AgentId, Timeout]),
-            maybe_update_presence(Sup, JObj),
-            acdc_agent_fsm:pause(acdc_agent_sup:fsm(Sup), Timeout)
+            FSM = acdc_agent_sup:fsm(Sup),
+            acdc_agent_fsm:update_presence(FSM,  presence_id(JObj), presence_state(JObj, 'undefined')),
+            acdc_agent_fsm:pause(FSM, Timeout)
     end.
 
 maybe_resume_agent(AccountId, AgentId, JObj) ->
@@ -190,8 +191,9 @@ maybe_resume_agent(AccountId, AgentId, JObj) ->
         'undefined' -> lager:debug("agent ~s (~s) not found, nothing to do", [AgentId, AccountId]);
         Sup when is_pid(Sup) ->
             lager:debug("agent ~s(~s) is resuming: ~p", [AccountId, AgentId, Sup]),
-            maybe_update_presence(Sup, JObj),
-            acdc_agent_fsm:resume(acdc_agent_sup:fsm(Sup))
+            FSM = acdc_agent_sup:fsm(Sup),
+            acdc_agent_fsm:update_presence(FSM,  presence_id(JObj), presence_state(JObj, 'undefined')),
+            acdc_agent_fsm:resume(FSM)
     end.
 
 -spec handle_sync_req(wh_json:object(), wh_proplist()) -> 'ok'.
