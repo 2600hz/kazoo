@@ -949,6 +949,8 @@ get_account_token_restrictions(AccountId, Method) ->
     end.
 
 -spec get_priv_level_restrictions(api_object(), ne_binary()) -> api_object().
+get_priv_level_restrictions('undefined', _PrivLevel) -> 'undefined';
+get_priv_level_restrictions(_Restrictions, 'undefined') -> 'undefined';
 get_priv_level_restrictions(Restrictions, PrivLevel) ->
     RestrictionLevels = wh_json:get_keys(Restrictions),
     case lists:member(PrivLevel, RestrictionLevels) of
