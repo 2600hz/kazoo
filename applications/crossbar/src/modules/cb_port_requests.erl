@@ -67,6 +67,10 @@
                                ]).
 
 -define(AGG_VIEW_DESCENDANTS, <<"accounts/listing_by_descendants">>).
+-define(PORT_REQ_NUMBERS, <<"port_requests/port_in_numbers">>).
+-define(ALL_PORT_REQ_NUMBERS, <<"port_requests/all_port_in_numbers">>).
+
+-define(PATH_FIND, <<"find">>).
 
 -define(UNFINISHED_PORT_REQUEST_LIFETIME
         ,whapps_config:get_integer(?MY_CONFIG_CAT, <<"unfinished_port_request_lifetime_s">>, ?SECONDS_IN_DAY * 30)
@@ -178,6 +182,8 @@ allowed_methods(_Id, ?PORT_CANCELED) ->
 allowed_methods(_Id, ?PORT_ATTACHMENT) ->
     [?HTTP_GET, ?HTTP_PUT];
 allowed_methods(_Id, ?PATH_TOKEN_LOA) ->
+    [?HTTP_GET];
+allowed_methods(?PATH_FIND, _Id) ->
     [?HTTP_GET].
 
 allowed_methods(_Id, ?PORT_ATTACHMENT, _AttachmentId) ->
@@ -208,7 +214,9 @@ resource_exists(_Id, ?PORT_REJECT) -> 'true';
 resource_exists(_Id, ?PORT_CANCELED) -> 'true';
 resource_exists(_Id, ?PORT_ATTACHMENT) -> 'true';
 resource_exists(_Id, ?PATH_TOKEN_LOA) -> 'true';
+resource_exists(?PATH_FIND, _Id) -> 'true';
 resource_exists(_Id, _Unknown) -> 'false'.
+
 
 resource_exists(_Id, ?PORT_ATTACHMENT, _AttachmentId) -> 'true'.
 
@@ -321,7 +329,9 @@ validate(Context, Id, ?PORT_CANCELED) ->
 validate(Context, Id, ?PORT_ATTACHMENT) ->
     validate_attachments(Context, Id, cb_context:req_verb(Context));
 validate(Context, Id, ?PATH_TOKEN_LOA) ->
-    generate_loa(read(Context, Id)).
+    generate_loa(read(Context, Id));
+validate(Context, ?PATH_FIND, Number) ->
+    find_summary(Context, Number).
 
 validate(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
     validate_attachment(Context, Id, AttachmentId, cb_context:req_verb(Context)).
@@ -716,6 +726,22 @@ summary(Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec find_summary(cb_context:context(), ne_binary()) -> cb_context:context().
+find_summary(Context, Number) ->
+    E164 = wnm_util:to_e164(Number),
+    ViewOptions = [{'key', E164}, 'include_docs'],
+    crossbar_doc:load_view(
+        ?ALL_PORT_REQ_NUMBERS
+        ,ViewOptions
+        ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
+        ,fun normalize_view_results/2
+    ).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(Res, Acc) ->
     [wh_port_request:public_fields(wh_json:get_value(<<"doc">>, Res)) | Acc].
@@ -825,7 +851,7 @@ check_number_portability(PortId, Number, Context) ->
     E164 = wnm_util:to_e164(Number),
     lager:debug("checking ~s(~s) for portability", [E164, Number]),
     PortOptions = [{'key', E164}],
-    case couch_mgr:get_results(?KZ_PORT_REQUESTS_DB, <<"port_requests/port_in_numbers">>, PortOptions) of
+    case couch_mgr:get_results(?KZ_PORT_REQUESTS_DB, ?PORT_REQ_NUMBERS, PortOptions) of
         {'ok', []} -> check_number_existence(E164, Number, Context);
         {'ok', [PortReq]} ->
             check_number_portability(PortId, Number, Context, E164, PortReq);
