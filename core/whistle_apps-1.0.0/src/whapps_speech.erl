@@ -12,6 +12,7 @@
 %%% @contributors
 %%%   Karl Anderson
 %%%   James Aimonetti
+%%%   SIPLABS LLC (Ilya Ashchepkov)
 %%%-------------------------------------------------------------------
 -module(whapps_speech).
 
@@ -154,6 +155,8 @@ create_voicefabric(Engine, Text, Voice, Options) ->
                      {<<"male/ru-ru">>, <<208,146,208,187,208,176,208,180,208,184,208,188,208,184,209,128,56,48,48,48>>}
                      %% Юлия8000
                      ,{<<"female/ru-ru">>, <<208,174,208,187,208,184,209,143,56,48,48,48>>}
+                     %% Carol8000
+                     ,{<<"female/en-us">>, <<"Carol8000">>}
                      %% Владимир8000
                      ,{<<"male/ru-ru/vladimir">>, <<208,146,208,187,208,176,208,180,208,184,208,188,208,184,209,128,56,48,48,48>>}
                      %% Юлия8000
@@ -168,19 +171,41 @@ create_voicefabric(Engine, Text, Voice, Options) ->
                      ,{<<"female/ru-ru/maria">>, <<208,156,208,176,209,128,208,184,209,143,56,48,48,48>>}
                      %% Лидия8000
                      ,{<<"female/ru-ru/lidia">>, <<208,155,208,184,208,180,208,184,209,143,56,48,48,48>>}
+                     %% Carol8000
+                     ,{<<"female/en-US/carol">>, <<"Carol8000">>}
+                     %% Asel8000
+                     ,{<<"female/en-US/asel">>, <<"Asel8000">>}
+                     %% Владимир
+                     ,{<<"male/ru-ru/vladimir/22050">>, <<208,146,208,187,208,176,208,180,208,184,208,188,208,184,209,128>>}
+                     %% Юлия
+                     ,{<<"female/ru-ru/julia/22050">>, <<208,174,208,187,208,184,209,143>>}
+                     %% Анна
+                     ,{<<"female/ru-ru/anna/22050">>, <<208,144,208,189,208,189,208,176>>}
+                     %% Виктория
+                     ,{<<"female/ru-ru/viktoria/22050">>, <<208,146,208,184,208,186,209,130,208,190,209,128,208,184,209,143>>}
+                     %% Александр
+                     ,{<<"male/ru-ru/alexander/22050">>, <<208,144,208,187,208,181,208,186,209,129,208,176,208,189,208,180,209,128>>}
+                     %% Мария
+                     ,{<<"female/ru-ru/maria/22050">>, <<208,156,208,176,209,128,208,184,209,143>>}
+                     %% Лидия
+                     ,{<<"female/ru-ru/lidia/22050">>, <<208,155,208,184,208,180,208,184,209,143>>}
+                     %% Carol
+                     ,{<<"female/en-US/carol/22050">>, <<"Carol">>}
+                     %% Asel
+                     ,{<<"female/en-US/asel/22050">>, <<"Asel">>}
                     ],
     case props:get_value(wh_util:to_lower_binary(Voice), VoiceMappings) of
         'undefined' ->
             {'error', 'invalid_voice'};
         VFabricVoice ->
             BaseUrl = whapps_config:get_string(?MOD_CONFIG_CAT, <<"tts_url">>, <<"https://voicefabric.ru/WSServer/ws/tts">>),
-            ApiKey = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_api_key">>, <<"urlencode">>),
+            ApiKey = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_api_key">>),
             Data = [{<<"apikey">>, ApiKey}
                     ,{<<"ttsVoice">>, VFabricVoice}
                     ,{<<"textFormat">>, <<"text/plain">>}
                     ,{<<"text">>, Text}
                    ],
-            ArgsEncode = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_args_encode">>, <<"urlencode">>),
+            ArgsEncode = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_args_encode">>, <<"multipart">>),
             case voicefabric_request_body(ArgsEncode, Data) of
                 {'ok', Headers, Body} ->
                     HTTPOptions = [{'response_format', 'binary'} | Options],
@@ -376,10 +401,11 @@ create_response(_Engine, {'ibrowse_req_id', ReqID}) ->
 create_response(<<"voicefabric">> = _Engine, {'ok', "200", Headers, Content}) ->
     [lager:debug("hdr: ~p", [H]) || H <- Headers],
     lager:debug("converting media"),
+    {'ok', Rate} = voicefabric_get_media_rate(Headers),
     RawFile = tmp_file_name(<<"raw">>),
     WavFile = tmp_file_name(<<"wav">>),
     _ = file:write_file(RawFile, Content),
-    From = "raw -r 8000 -e signed-integer -b 16",
+    From = ["raw -r ", Rate, " -e signed-integer -b 16"],
     To = "wav",
     Cmd = binary_to_list(iolist_to_binary(["sox -t ", From, " ", RawFile, " -t ", To, " ", WavFile])),
     lager:debug("os cmd: ~ts", [Cmd]),
@@ -412,6 +438,20 @@ create_response(Engine, {'ok', Code, RespHeaders, Content}) ->
     [lager:debug("hdr: ~p", [H]) || H <- RespHeaders],
 
     {'error', 'tts_provider_failure', create_error_response(Engine, RespHeaders, Content)}.
+
+-spec voicefabric_get_media_rate(wh_proplist()) -> {ok, ne_binary()}.
+voicefabric_get_media_rate(Headers1) ->
+    Headers = [{wh_util:to_lower_binary(X), wh_util:to_binary(Y)} || {X, Y} <- Headers1],
+    case props:get_value(<<"content-type">>, Headers) of
+        <<"audio/raw; ", Params/binary>> ->
+            [<<"rate=", Rate/binary>>] = lists:filter(fun voicefabric_filter_rate/1
+                                                      ,re:split(Params, "; ")),
+            {'ok', Rate}
+    end.
+
+-spec voicefabric_filter_rate(ne_binary()) -> 'true' | 'false'.
+voicefabric_filter_rate(<<"rate=", _/binary>>)  -> 'true';
+voicefabric_filter_rate(_)                      -> 'false'.
 
 -spec create_error_response(ne_binary(), wh_proplist(), binary()) -> binary().
 create_error_response(<<"ispeech">>, _RespHeaders, Content) ->
