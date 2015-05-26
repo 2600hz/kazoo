@@ -32,11 +32,11 @@
 
           ,misses = [] :: agent_misses() | '_'
 
-          ,status :: api_binary() | '$2' | '$4' | '_'
+          ,status :: api_binary() | '$1' | '$2' | '$4' | '_'
           ,caller_id_name :: api_binary() | '_'
           ,caller_id_number :: api_binary() | '_'
           ,caller_priority :: api_integer() | '_'
-          ,is_archived = 'false' :: boolean() | '$3' | '_'
+          ,is_archived = 'false' :: boolean() | '$2' | '$3' | '_'
          }).
 -type call_stat() :: #call_stat{}.
 
