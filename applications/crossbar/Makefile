@@ -3,6 +3,7 @@ ROOT = ../..
 
 EBINS = $(shell find $(ROOT)/core/whistle-* -maxdepth 2 -name ebin -print) \
 	$(shell find $(ROOT)/core/whistle_number_manager-* -maxdepth 2 -name ebin -print) \
+	$(shell find $(ROOT)/core/whistle_couch-* -maxdepth 2 -name ebin -print) \
 	$(shell find $(ROOT)/core/whistle_transactions-* -maxdepth 2 -name ebin -print) \
 	$(shell find $(ROOT)/core/braintree-* -maxdepth 2 -name ebin -print) \
 	$(shell find $(ROOT)/core/kazoo_oauth-* -maxdepth 2 -name ebin -print) \
@@ -37,7 +38,7 @@ ebin/$(PROJECT).app: src/*.erl src/*/*.erl
 
 compile-test: test/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
-		| sed 's/{modules, \[\]}/{modules, \[$(MODULES),$(CB_MODULES,$(CB_MODULES_V1),$(CB_MODULES_V2)),$(TEST_MODULES)\]}/' \
+		| sed 's/{modules, \[\]}/{modules, \[$(TEST_MODULES),$(MODULES),$(CB_MODULES,$(CB_MODULES_V1),$(CB_MODULES_V2))\]}/' \
 		> test/$(PROJECT).app
 	-@$(MAKE) test/$(PROJECT).app
 
