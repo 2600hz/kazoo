@@ -25,10 +25,9 @@
                   ,'permanent', 5000, 'worker', ['poolboy']
                  }).
 
--define(ORIGIN_BINDINGS, [[{'type', <<"resource">>}
-                           ,{'type', <<"number">>}
-                           ,{'type', <<"dedicated_ip">>}
-                          ]
+-define(ORIGIN_BINDINGS, [[{'type', <<"resource">>}]
+                           ,[{'type', <<"number">>}]
+                           ,[{'type', <<"dedicated_ip">>}]
                          ]).
 -define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
 
