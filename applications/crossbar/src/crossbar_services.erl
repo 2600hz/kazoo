@@ -274,10 +274,12 @@ fetch_service(Context) ->
     AuthAccountId = cb_context:auth_account_id(Context),
     case wh_services:is_reseller(AuthAccountId) of
         'false' ->
-            lager:debug("auth account is not a reseller, loading service account ~s", [AccountId]),
+            lager:debug("auth account ~s is not a reseller, loading service account ~s"
+                        ,[AuthAccountId, AccountId]
+                       ),
             wh_services:fetch(AccountId);
         'true' ->
-            lager:debug("auth account is a reseller, loading service from reseller ~s", [AuthAccountId]),
+            lager:debug("auth account ~s is a reseller, loading service from reseller", [AuthAccountId]),
             wh_services:fetch(AuthAccountId)
     end.
 

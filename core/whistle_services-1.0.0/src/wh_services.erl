@@ -301,22 +301,37 @@ save_conflicting_as_dirty(#wh_services{account_id=AccountId}, BackOff) ->
 -spec save_audit_logs(services(), kzd_audit_log:doc(), ne_binary()) -> 'ok'.
 save_audit_logs(Services, AuditLog) ->
     {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
-    lager:debug("saving base audit log ~s", [wh_json:encode(AuditLog)]),
+    lager:debug("maybe save the base audit log ~s", [wh_json:encode(AuditLog)]),
     save_audit_logs(Services, AuditLog, MasterAccountId).
 
 save_audit_logs(#wh_services{account_id=MasterAccountId}, _AuditLog, MasterAccountId) ->
     lager:debug("reached master account");
 save_audit_logs(#wh_services{jobj=JObj
-                             ,account_id=_AccountId
+                             ,account_id=AccountId
                             }=Services
                 ,AuditLog
                 ,MasterAccountId
                ) ->
+    case kzd_services:is_reseller(JObj) of
+        'false' ->
+            maybe_save_audit_log_to_reseller(Services, AuditLog, MasterAccountId);
+        'true' ->
+            maybe_save_audit_log(Services, AuditLog, AccountId),
+            maybe_save_audit_log_to_reseller(Services, AuditLog, MasterAccountId)
+    end.
+
+maybe_save_audit_log_to_reseller(#wh_services{jobj=JObj
+                                              ,account_id=AccountId
+                                             }=Services
+                                 ,AuditLog
+                                 ,MasterAccountId
+                                ) ->
     case kzd_services:reseller_id(JObj) of
         MasterAccountId ->
+            lager:debug("account ~s' reseller is the master account", [AccountId]),
             maybe_save_master_audit_log(Services, AuditLog, MasterAccountId);
         ResellerId ->
-            lager:debug("saving audit log for account ~s's reseller ~s", [_AccountId, ResellerId]),
+            lager:debug("saving audit log for account ~s's reseller ~s", [AccountId, ResellerId]),
             ResellerServices = fetch(ResellerId),
             AuditLog1 = maybe_save_audit_log(Services, AuditLog, ResellerId),
             save_audit_logs(ResellerServices, AuditLog1, MasterAccountId)
@@ -339,6 +354,7 @@ base_audit_log(<<_/binary>> = AccountId) ->
 -spec maybe_save_audit_log(services(), wh_json:object(), ne_binary()) -> kzd_audit_log:doc().
 maybe_save_audit_log(#wh_services{jobj=JObj
                                   ,updates=UpdatedQuantities
+                                  ,account_id=_AccountId
                                  }=Services
                      ,AuditLog
                      ,ResellerId
@@ -348,7 +364,9 @@ maybe_save_audit_log(#wh_services{jobj=JObj
         'true' ->
             save_audit_log(Services, AuditLog, ResellerId);
         'false' ->
-            lager:debug("nothing has changed, ignoring audit log"),
+            lager:debug("nothing has changed for account ~s(reseller ~s), ignoring audit log"
+                        ,[_AccountId, ResellerId]
+                       ),
             AuditLog
     end.
 
@@ -428,9 +446,17 @@ save(#wh_services{jobj=JObj
              ,{fun kzd_services:set_quantities/2, wh_json:merge_jobjs(UpdatedQuantities, CurrentQuantities)}
             ],
     UpdatedJObj = wh_json:set_values(props:filter_undefined(Props), JObj),
+
+    lager:debug("pre-save q: ~p", [kzd_services:quantities(JObj)]),
+    lager:debug("post-save q: ~p", [kzd_services:quantities(UpdatedJObj)]),
+
+    %% TODO: audit logs when deleting device/user/etc
+    %% figure out the merge_jobjs above (should be (current, update) i think
+    %%
+
     case couch_mgr:save_doc(?WH_SERVICES_DB, UpdatedJObj) of
         {'ok', NewJObj} ->
-            lager:debug("saved services for ~s", [AccountId]),
+            lager:debug("saved services for ~s with qs: ~p", [AccountId, kzd_services:quantities(NewJObj)]),
             IsReseller = kzd_services:is_reseller(NewJObj),
             _ = maybe_clean_old_billing_id(Services),
             BillingId = kzd_services:billing_id(NewJObj, AccountId),
@@ -868,12 +894,14 @@ quantity(CategoryId, ItemId, #wh_services{updates=Updates
     ItemQuantity = kzd_services:item_quantity(JObj, CategoryId, ItemId),
     wh_json:get_integer_value([CategoryId, ItemId], Updates, ItemQuantity).
 
+-spec diff_quantities(services()) -> api_object().
 diff_quantities(#wh_services{deleted='true'}) -> 'undefined';
 diff_quantities(#wh_services{jobj=JObj
                              ,updates=Updates
                             }) ->
-    wh_json:foldl(fun diff_cat_quantities/3, Updates, JObj).
+    wh_json:foldl(fun diff_cat_quantities/3, Updates, kzd_services:quantities(JObj)).
 
+-spec diff_cat_quantities(ne_binary(), wh_json:object(), wh_json:object()) -> wh_json:object().
 diff_cat_quantities(CategoryId, ItemsJObj, Updates) ->
     wh_json:foldl(fun(I, Q, Acc) ->
                           diff_item_quantities(I, Q, Acc, CategoryId)
@@ -882,6 +910,7 @@ diff_cat_quantities(CategoryId, ItemsJObj, Updates) ->
                   ,ItemsJObj
                  ).
 
+-spec diff_quantities(ne_binary(), services()) -> api_object().
 diff_quantities(_CategoryId, #wh_services{deleted='true'}) -> 'undefined';
 diff_quantities(CategoryId, #wh_services{jobj=JObj
                                          ,updates=Updates
@@ -898,8 +927,18 @@ diff_quantities(CategoryId, #wh_services{jobj=JObj
 -spec diff_item_quantities(ne_binary(), integer(), wh_json:object(), ne_binary()) ->
                              wh_json:object().
 diff_item_quantities(ItemId, ItemQuantity, Updates, CategoryId) ->
-    UpdateQuantity = wh_json:get_integer_value([CategoryId, ItemId], Updates, 0),
-    wh_json:set_value([CategoryId, ItemId], UpdateQuantity - ItemQuantity, Updates).
+    UpdateQuantity = wh_json:get_integer_value([CategoryId, ItemId], Updates),
+    maybe_update_diff([CategoryId, ItemId], ItemQuantity, UpdateQuantity, Updates).
+
+maybe_update_diff(_Key, _ItemQuantity, 'undefined', Updates) ->
+    lager:debug("no update for ~p", [_Key]),
+    Updates;
+maybe_update_diff(_Key, 0, 0, Updates) ->
+    lager:debug("not updating ~p", [_Key]),
+    Updates;
+maybe_update_diff(Key, ItemQuantity, UpdateQuantity, Updates) ->
+    lager:debug("updating ~p from ~p to ~p", [Key, ItemQuantity, UpdateQuantity]),
+    wh_json:set_value(Key, UpdateQuantity - ItemQuantity, Updates).
 
 diff_quantity(_, _, #wh_services{deleted='true'}) -> 0;
 diff_quantity(CategoryId, ItemId, #wh_services{jobj=JObj
