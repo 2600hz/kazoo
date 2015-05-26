@@ -358,6 +358,7 @@ load_view(#load_view_params{view=View
             'false' -> IncludeOptions;
             _V -> props:delete('include_docs', IncludeOptions)
         end,
+
     case couch_mgr:get_results(Db, View, ViewOptions) of
         % There were more dbs, so move to the next one
         {'error', 'not_found'} ->
@@ -380,29 +381,32 @@ load_view(#load_view_params{view=View
                                 'undefined' | pos_integer().
 -spec limit_by_page_size(cb_context:context(), api_binary() | pos_integer()) ->
                                 'undefined' | pos_integer().
+-spec limit_by_page_size(cb_context:context(), api_binary() | pos_integer(), api_boolean()) ->
+                                'undefined' | pos_integer().
 limit_by_page_size('undefined') -> 'undefined';
 limit_by_page_size(N) when is_integer(N) -> N+1;
 limit_by_page_size(<<_/binary>> = B) -> limit_by_page_size(wh_util:to_integer(B)).
 
 limit_by_page_size(Context, PageSize) ->
-    case cb_context:api_version(Context) =/= ?VERSION_1
-        andalso cb_context:req_value(Context, <<"paginate">>)
-    of
-        'undefined' ->
-            lager:debug("pagination enabled by default, checking filters"),
-            maybe_disable_page_size(Context, PageSize);
-        'false' ->
-            lager:debug("not enabling pagination"),
+    case cb_context:api_version(Context) of
+        ?VERSION_1 ->
+            lager:debug("pagination not supported in this version"),
             'undefined';
-        ShouldEnable ->
-            case wh_util:is_true(ShouldEnable) of
-                'true' ->
-                    lager:debug("pagination explicitly enabled, getting page size from ~p", [PageSize]),
-                    limit_by_page_size(PageSize);
-                'false' ->
-                    lager:debug("pagination disabled by request or version"),
-                    'undefined'
-            end
+        _Version ->
+            limit_by_page_size(Context, PageSize, cb_context:req_value(Context, <<"paginate">>))
+    end.
+
+limit_by_page_size(Context, PageSize, 'undefined') ->
+    lager:debug("pagination enabled by default, checking filters"),
+    maybe_disable_page_size(Context, PageSize);
+limit_by_page_size(_Context, PageSize, ShouldEnable) ->
+    case wh_util:is_true(ShouldEnable) of
+        'true' ->
+            lager:debug("pagination explicitly enabled, getting page size from ~p", [PageSize]),
+            limit_by_page_size(PageSize);
+        'false' ->
+            lager:debug("pagination disabled by request or version"),
+            'undefined'
     end.
 
 -spec maybe_disable_page_size(cb_context:context(), pos_integer() | api_binary()) ->
