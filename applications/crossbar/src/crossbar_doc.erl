@@ -35,6 +35,10 @@
          ,handle_couch_mgr_errors/3
         ]).
 
+-ifdef(TEST).
+-export([filter_doc_by_querystring/2]).
+-endif.
+
 -export_type([view_options/0
               ,startkey/0
              ]).
@@ -1164,17 +1168,28 @@ filter_doc('undefined', _Context) ->
     lager:debug("no doc was returned (no include_docs?)"),
     'true';
 filter_doc(Doc, Context) ->
+    filter_doc_by_querystring(Doc, cb_context:query_string(Context)).
+
+-spec filter_doc_by_querystring(wh_json:object(), wh_json:object()) -> boolean().
+filter_doc_by_querystring(Doc, QueryString) ->
     wh_json:all(fun({K, V}) ->
-                        try filter_prop(Doc, K, V) of
-                            Bool ->
-                                lager:debug("filtering ~s/~p = ~p", [K, V, Bool]),
-                                Bool
-                        catch
-                            _E:_R -> 'false'
-                        end
+                        should_filter_doc(Doc, K, V)
                 end
-                ,cb_context:query_string(Context)
+                ,QueryString
                ).
+
+-spec should_filter_doc(wh_json:object(), ne_binary(), wh_json:json_term()) -> boolean().
+should_filter_doc(Doc, K, V) ->
+    try filter_prop(Doc, K, V) of
+        'undefined' -> 'true';
+        Bool ->
+            lager:debug("doc filtered by ~s(~p): ~s", [K, V, Bool]),
+            Bool
+    catch
+        _E:_R ->
+            lager:debug("failed to process filter ~s: ~s:~p", [K, _E, _R]),
+            'false'
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1182,25 +1197,47 @@ filter_doc(Doc, Context) ->
 %% Returns 'true' or 'false' if the prop is found inside the doc
 %% @end
 %%--------------------------------------------------------------------
--spec filter_prop(wh_json:object(), ne_binary(), term()) -> boolean().
+-spec filter_prop(wh_json:object(), ne_binary(), term()) -> api_boolean().
 filter_prop(Doc, <<"filter_not_", Key/binary>>, Val) ->
-    not (wh_json:get_binary_value(binary:split(Key, <<".">>), Doc, <<>>) =:= wh_util:to_binary(Val));
+    not should_filter(Doc, Key, Val);
 filter_prop(Doc, <<"filter_", Key/binary>>, Val) ->
-    wh_json:get_binary_value(binary:split(Key, <<".">>), Doc, <<>>) =:= wh_util:to_binary(Val);
+    should_filter(Doc, Key, Val);
 filter_prop(Doc, <<"has_key">>, Key) ->
-    wh_json:get_value(binary:split(Key, <<".">>), Doc) =/= 'undefined';
+    has_key(Doc, Key);
 filter_prop(Doc, <<"key_missing">>, Key) ->
-    wh_json:get_value(binary:split(Key, <<".">>), Doc) =:= 'undefined';
+    not has_key(Doc, Key);
 filter_prop(Doc, <<"has_value">>, Key) ->
-    wh_json:get_ne_value(binary:split(Key, <<".">>), Doc) =/= 'undefined';
+    has_value(Doc, Key);
 filter_prop(Doc, <<"created_from">>, Val) ->
-    wh_util:to_integer(wh_json:get_value(<<"pvt_created">>, Doc)) >= wh_util:to_integer(Val);
+    lowerbound(wh_doc:created(Doc), wh_util:to_integer(Val));
 filter_prop(Doc, <<"created_to">>, Val) ->
-    wh_util:to_integer(wh_json:get_value(<<"pvt_created">>, Doc)) =< wh_util:to_integer(Val);
+    upperbound(wh_doc:created(Doc), wh_util:to_integer(Val));
 filter_prop(Doc, <<"modified_from">>, Val) ->
-    wh_util:to_integer(wh_json:get_value(<<"pvt_modified">>, Doc)) >= wh_util:to_integer(Val);
+    lowerbound(wh_doc:modified(Doc), wh_util:to_integer(Val));
 filter_prop(Doc, <<"modified_to">>, Val) ->
-    wh_util:to_integer(wh_json:get_value(<<"pvt_modified">>, Doc)) =< wh_util:to_integer(Val);
+    upperbound(wh_doc:modified(Doc), wh_util:to_integer(Val));
 filter_prop(_, _, _) ->
-    'true'.
-%% ADD Unit Tests for private/public field filtering and merging
+    'undefined'.
+
+-spec upperbound(integer(), integer()) -> boolean().
+upperbound(DocTimestamp, QSTimestamp) ->
+    QSTimestamp >= DocTimestamp.
+
+-spec lowerbound(integer(), integer()) -> boolean().
+lowerbound(DocTimestamp, QSTimestamp) ->
+    QSTimestamp =< DocTimestamp.
+
+-spec should_filter(wh_json:object(), ne_binary(), wh_json:json_term()) -> boolean().
+should_filter(Doc, Key, Val) ->
+    Keys = binary:split(Key, <<".">>, ['global']),
+    wh_json:get_binary_value(Keys, Doc, <<>>) =:= wh_util:to_binary(Val).
+
+-spec has_key(wh_json:object(), ne_binary()) -> boolean().
+has_key(Doc, Key) ->
+    Keys = binary:split(Key, <<".">>, ['global']),
+    wh_json:get_value(Keys, Doc) =/= 'undefined'.
+
+-spec has_value(wh_json:object(), ne_binary()) -> boolean().
+has_value(Doc, Key) ->
+    Keys = binary:split(Key, <<".">>, ['global']),
+    wh_json:get_ne_value(Keys, Doc) =/= 'undefined'.
