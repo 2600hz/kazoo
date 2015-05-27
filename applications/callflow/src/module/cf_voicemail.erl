@@ -336,10 +336,10 @@ compose_voicemail(#mailbox{max_message_count=MaxCount
              ,{<<"Message-Count">>, Count}
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
-    _ = whapps_util:amqp_pool_request(Props
-                                      ,fun wapi_notifications:publish_voicemail_full/1
-                                      ,fun wapi_notifications:voicemail_full_v/1
-                                     ),
+    _ = wh_amqp_worker:call(Props
+                            ,fun wapi_notifications:publish_voicemail_full/1
+                            ,fun wapi_notifications:voicemail_full_v/1
+                           ),
     _ = whapps_call_command:prompt(<<"vm-mailbox_full">>, Call),
     _NoopId = whapps_call_command:noop(Call),
 
@@ -1132,11 +1132,13 @@ update_mailbox(#mailbox{mailbox_id=Id
             ,{<<"Call-ID">>, whapps_call:call_id(Call)}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
-    _ = case whapps_util:amqp_pool_collect(Prop
-                                           ,fun wapi_notifications:publish_voicemail/1
-                                           ,fun collecting/1
-                                           ,30 * ?MILLISECONDS_IN_SECOND
-                                          )
+
+    lager:debug("notifying of voicemail saved"),
+    _ = case wh_amqp_worker:call_collect(Prop
+                                         ,fun wapi_notifications:publish_voicemail/1
+                                         ,fun collecting/1
+                                         ,30 * ?MILLISECONDS_IN_SECOND
+                                        )
         of
             {'ok', JObjs} ->
                 JObj = get_completed_msg(JObjs),
@@ -1724,7 +1726,8 @@ retry_store(AttachmentName, DocId, Url, Tries, Call, Error) ->
                                      {'error', whapps_call:call()}.
 verify_stored_recording(AttachmentName, DocId, Url, Tries, Call, JObj) ->
     case wh_json:get_value(<<"Application-Response">>, JObj) of
-        <<"success">> -> 'ok';
+        <<"success">> ->
+            lager:debug("storing ~s into ~s was successful", [AttachmentName, DocId]);
         _Response ->
             case check_attachment_length(AttachmentName, DocId, Call) of
                 'true' ->
