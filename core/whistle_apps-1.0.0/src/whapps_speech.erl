@@ -12,10 +12,12 @@
 %%% @contributors
 %%%   Karl Anderson
 %%%   James Aimonetti
+%%%   SIPLABS LLC (Ilya Ashchepkov)
 %%%-------------------------------------------------------------------
 -module(whapps_speech).
 
 -include("whistle_apps.hrl").
+-include("whapps_speech.hrl").
 
 -export([create/1
          ,create/2
@@ -33,8 +35,6 @@
          ,asr_commands/4
          ,asr_commands/5
         ]).
-
--define(MOD_CONFIG_CAT, <<"speech">>).
 
 -type provider_errors() :: 'invalid_voice' | 'unknown_provider'.
 -type provider_return() :: {'error', provider_errors()} |
@@ -74,55 +74,13 @@ create(Text, Voice, Format, Options) ->
 create('undefined', Text, Voice, Format, Options) ->
     create(Text, Voice, Format, Options);
 create(<<"ispeech">> = Engine, Text, Voice, Format, Options) ->
-    VoiceMappings = [{<<"female/en-us">>, <<"usenglishfemale">>}
-                     ,{<<"male/en-us">>, <<"usenglishmale">>}
-                     ,{<<"female/en-ca">>, <<"caenglishfemale">>}
-                     ,{<<"female/en-au">>, <<"auenglishfemale">>}
-                     ,{<<"female/en-gb">>, <<"ukenglishfemale">>}
-                     ,{<<"male/en-gb">>, <<"ukenglishmale">>}
-                     ,{<<"female/es-us">>, <<"usspanishfemale">>}
-                     ,{<<"male/es-us">>, <<"usspanishmale">>}
-                     ,{<<"female/us-us">>, <<"usspanishfemale">>}
-                     ,{<<"female/zh-cn">>, <<"chchinesefemale">>}
-                     ,{<<"male/zh-cn">>, <<"chchinesemale">>}
-                     ,{<<"female/zh-hk">>, <<"hkchinesefemale">>}
-                     ,{<<"female/zh-tw">>, <<"twchinesefemale">>}
-                     ,{<<"female/ja-jp">>, <<"jpjapanesefemale">>}
-                     ,{<<"male/ja-jp">>, <<"jpjapanesemale">>}
-                     ,{<<"female/ko-kr">>, <<"krkoreanfemale">>}
-                     ,{<<"male/ko-kr">>, <<"krkoreanmale">>}
-                     ,{<<"female/da-dk">>, <<"eurdanishfemale">>}
-                     ,{<<"female/de-de">>, <<"eurgermanfemale">>}
-                     ,{<<"male/de-de">>, <<"eurgermanmale">>}
-                     ,{<<"female/ca-es">>, <<"eurcatalanfemale">>}
-                     ,{<<"female/es-es">>, <<"eurspanishfemale">>}
-                     ,{<<"male/es-es">>, <<"eurspanishmale">>}
-                     ,{<<"female/fi-fi">>, <<"eurfinnishfemale">>}
-                     ,{<<"female/fr-ca">>, <<"cafrenchfemale">>}
-                     ,{<<"male/fr-ca">>, <<"cafrenchmale">>}
-                     ,{<<"female/fr-fr">>, <<"eurfrenchfemale">>}
-                     ,{<<"male/fr-fr">>, <<"eurfrenchmale">>}
-                     ,{<<"female/it-it">>, <<"euritalianfemale">>}
-                     ,{<<"male/it-it">>, <<"euritalianmale">>}
-                     ,{<<"female/nb-no">>, <<"eurnorwegianfemale">>}
-                     ,{<<"female/nl-nl">>, <<"eurdutchfemale">>}
-                     ,{<<"female/pl-pl">>, <<"eurpolishfemale">>}
-                     ,{<<"female/pt-br">>, <<"brportuguesefemale">>}
-                     ,{<<"female/pt-pt">>, <<"eurportuguesefemale">>}
-                     ,{<<"male/pt-pt">>, <<"eurportuguesemale">>}
-                     ,{<<"female/ru-ru">>, <<"rurussianfemale">>}
-                     ,{<<"male/ru-ru">>, <<"rurussianmale">>}
-                     ,{<<"female/sv-se">>, <<"swswedishfemale">>}
-                     ,{<<"female/hu-hu">>, <<"huhungarianfemale">>}
-                     ,{<<"female/cs-cz">>, <<"eurczechfemale">>}
-                     ,{<<"female/tr-tr">>, <<"eurturkishfemale">>}
-                     ,{<<"male/tr-tr">>, <<"eurturkishmale">>}
-                    ],
+    VoiceMappings = ?ISPEECH_VOICE_MAPPINGS,
     case props:get_value(wh_util:to_lower_binary(Voice), VoiceMappings) of
         'undefined' ->
             {'error', 'invalid_voice'};
         ISpeechVoice ->
-            BaseUrl = whapps_config:get_string(?MOD_CONFIG_CAT, <<"tts_url">>, <<"http://api.ispeech.org/api/json">>),
+            BaseUrl = ?ISPEECH_TTS_URL,
+
             Props = [{<<"text">>, Text}
                      ,{<<"voice">>, ISpeechVoice}
                      ,{<<"format">>, Format}
@@ -150,37 +108,19 @@ create(_, _, _, _, _) ->
                                 create_resp().
 create_voicefabric(Engine, Text, Voice, Options) ->
     lager:debug("getting ~ts from VoiceFabric", [Text]),
-    VoiceMappings = [%% Владимир8000
-                     {<<"male/ru-ru">>, <<208,146,208,187,208,176,208,180,208,184,208,188,208,184,209,128,56,48,48,48>>}
-                     %% Юлия8000
-                     ,{<<"female/ru-ru">>, <<208,174,208,187,208,184,209,143,56,48,48,48>>}
-                     %% Владимир8000
-                     ,{<<"male/ru-ru/vladimir">>, <<208,146,208,187,208,176,208,180,208,184,208,188,208,184,209,128,56,48,48,48>>}
-                     %% Юлия8000
-                     ,{<<"female/ru-ru/julia">>, <<208,174,208,187,208,184,209,143,56,48,48,48>>}
-                     %% Анна8000
-                     ,{<<"female/ru-ru/anna">>, <<208,144,208,189,208,189,208,176,56,48,48,48>>}
-                     %% Виктория8000
-                     ,{<<"female/ru-ru/viktoria">>, <<208,146,208,184,208,186,209,130,208,190,209,128,208,184,209,143,56,48,48,48>>}
-                     %% Александр8000
-                     ,{<<"male/ru-ru/alexander">>, <<208,144,208,187,208,181,208,186,209,129,208,176,208,189,208,180,209,128,56,48,48,48>>}
-                     %% Мария8000
-                     ,{<<"female/ru-ru/maria">>, <<208,156,208,176,209,128,208,184,209,143,56,48,48,48>>}
-                     %% Лидия8000
-                     ,{<<"female/ru-ru/lidia">>, <<208,155,208,184,208,180,208,184,209,143,56,48,48,48>>}
-                    ],
+    VoiceMappings = ?VOICEFABRIC_VOICE_MAPPINGS,
     case props:get_value(wh_util:to_lower_binary(Voice), VoiceMappings) of
         'undefined' ->
             {'error', 'invalid_voice'};
         VFabricVoice ->
-            BaseUrl = whapps_config:get_string(?MOD_CONFIG_CAT, <<"tts_url">>, <<"https://voicefabric.ru/WSServer/ws/tts">>),
-            ApiKey = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_api_key">>, <<"urlencode">>),
+            BaseUrl = ?VOICEFABRIC_TTS_URL,
+            ApiKey = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_api_key">>),
             Data = [{<<"apikey">>, ApiKey}
                     ,{<<"ttsVoice">>, VFabricVoice}
                     ,{<<"textFormat">>, <<"text/plain">>}
                     ,{<<"text">>, Text}
                    ],
-            ArgsEncode = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_args_encode">>, <<"urlencode">>),
+            ArgsEncode = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_args_encode">>, <<"multipart">>),
             case voicefabric_request_body(ArgsEncode, Data) of
                 {'ok', Headers, Body} ->
                     HTTPOptions = [{'response_format', 'binary'} | Options],
@@ -256,7 +196,8 @@ maybe_convert_content(Content, ContentType, Locale, Options) ->
         'false' ->
             ConvertTo = whapps_config:get_binary(?MOD_CONFIG_CAT
                                                  ,<<"asr_prefered_content_type">>
-                                                 ,<<"application/mpeg">>),
+                                                 ,<<"application/mpeg">>
+                                                ),
             case convert_content(Content, ContentType, ConvertTo) of
                 'error' -> {'error', 'unsupported_content_type'};
                 Converted ->
@@ -376,10 +317,11 @@ create_response(_Engine, {'ibrowse_req_id', ReqID}) ->
 create_response(<<"voicefabric">> = _Engine, {'ok', "200", Headers, Content}) ->
     [lager:debug("hdr: ~p", [H]) || H <- Headers],
     lager:debug("converting media"),
+    {'ok', Rate} = voicefabric_get_media_rate(Headers),
     RawFile = tmp_file_name(<<"raw">>),
     WavFile = tmp_file_name(<<"wav">>),
     _ = file:write_file(RawFile, Content),
-    From = "raw -r 8000 -e signed-integer -b 16",
+    From = ["raw -r ", Rate, " -e signed-integer -b 16"],
     To = "wav",
     Cmd = binary_to_list(iolist_to_binary(["sox -t ", From, " ", RawFile, " -t ", To, " ", WavFile])),
     lager:debug("os cmd: ~ts", [Cmd]),
@@ -413,6 +355,24 @@ create_response(Engine, {'ok', Code, RespHeaders, Content}) ->
 
     {'error', 'tts_provider_failure', create_error_response(Engine, RespHeaders, Content)}.
 
+-spec voicefabric_get_media_rate(wh_proplist()) -> {'ok', ne_binary()}.
+voicefabric_get_media_rate(Headers1) ->
+    Headers = [{wh_util:to_lower_binary(X), wh_util:to_binary(Y)}
+               || {X, Y} <- Headers1
+              ],
+    case props:get_value(<<"content-type">>, Headers) of
+        <<"audio/raw; ", Params/binary>> ->
+            [<<"rate=", Rate/binary>>] =
+                lists:filter(fun voicefabric_filter_rate/1
+                             ,re:split(Params, "; ")
+                            ),
+            {'ok', Rate}
+    end.
+
+-spec voicefabric_filter_rate(ne_binary()) -> boolean().
+voicefabric_filter_rate(<<"rate=", _/binary>>) -> 'true';
+voicefabric_filter_rate(_)                     -> 'false'.
+
 -spec create_error_response(ne_binary(), wh_proplist(), binary()) -> binary().
 create_error_response(<<"ispeech">>, _RespHeaders, Content) ->
     wh_json:get_value(<<"message">>, wh_json:decode(Content));
@@ -441,4 +401,8 @@ convert_content(_, ContentType, ConvertTo) ->
 
 -spec tmp_file_name(ne_binary()) -> string().
 tmp_file_name(Ext) ->
-    wh_util:to_list(<<"/tmp/", (wh_util:rand_hex_binary(10))/binary, "_voicemail.", Ext/binary>>).
+    Prefix = wh_util:rand_hex_binary(10),
+    Name = filename:join([?TMP_PATH
+                          ,<<Prefix/binary, "_voicemail.", Ext/binary>>
+                         ]),
+    wh_util:to_list(Name).
