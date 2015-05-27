@@ -1169,7 +1169,10 @@ declare_exchanges() ->
 publish_voicemail_saved(JObj) -> publish_voicemail_saved(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_voicemail_saved(Voicemail, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Voicemail, ?VOICEMAIL_SAVED_VALUES, fun ?MODULE:voicemail_saved/1),
-    amqp_util:notifications_publish(?NOTIFY_VOICEMAIL_SAVED, Payload, ContentType).
+    amqp_util:notifications_publish(?NOTIFY_VOICEMAIL_SAVED
+                                    ,Payload
+                                    ,ContentType
+                                   ).
 
 -spec publish_voicemail(api_terms()) -> 'ok'.
 -spec publish_voicemail(api_terms(), ne_binary()) -> 'ok'.
