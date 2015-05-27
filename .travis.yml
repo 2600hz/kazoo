@@ -27,9 +27,10 @@ after_success:
   - make xref
   - kerl_deactivate
   - source $HOME/otp/R16B/activate
-  # - files=$(bash -c "git diff --name-only $(git rev-list master.. | tail -n 1)..$TRAVIS_COMMIT")
-  - files="$(bash -c 'git diff --name-only $TRAVIS_COMMIT_RANGE')"
-  - make dialyze TO_DIALYZE="$files"
+  - make build-plt
+  - git fetch origin master:master
+  - files="$(git diff --name-only master..)"
+  - $TRAVIS_BUILD_DIR/scripts/check-dialyzer.escript $files
   - kerl_deactivate
   - source $HOME/otp/$TRAVIS_OTP_RELEASE/activate
   - ERL_LIBS="$HOME/proper" make test

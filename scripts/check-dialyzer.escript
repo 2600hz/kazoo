@@ -85,6 +85,9 @@ filter(W) ->
         {warn_matching, {"src/wh_nodes.erl",_}, {pattern_match_cov,["variable Server","{<<_:8,_:_*8>>,<<_:8,_:_*8>>}"]}} -> 'false';
 
         %% ETS false positives, from core/
+        {warn_matching, {"src/wh_amqp_assignments.erl",_}, {record_match,["pattern {'wh_amqp_assignment', _, _, _, _, _, _, _, _, _, _, _}","{'error','no_channel'}"]}} -> 'false';
+        {warn_matching, {"src/wh_amqp_assignments.erl",_}, {record_match,["pattern {'wh_amqp_assignment', _, _, _, _, Channel, _, _, _, _, _, _}","{'error','no_channel'}"]}} -> 'false';
+        {warn_matching, {"src/wh_amqp_assignments.erl",_}, {record_match,["pattern {'wh_amqp_assignment', Timestamp, _, _, _, _, _, _, _, _, _, Watchers}","{'error','no_channel'}"]}} -> 'false';
         {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {[Assignment = {'wh_amqp_assignment', _, _, _, _, _, _, _, _, _, _, _}], _}",_]}} -> 'false';
         {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern Assignment = {'wh_amqp_assignment', _, _, _, _, Channel, _, _, _, _, _, _}","{'error','no_channel'}"]}} -> 'false';
         {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {'wh_amqp_assignment', _, _, _, _, _, _, _, _, _, _, _}","{'error','no_channel'}"]}} -> 'false';
