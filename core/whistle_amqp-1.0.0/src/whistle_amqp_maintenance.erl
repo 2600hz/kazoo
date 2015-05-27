@@ -365,7 +365,7 @@ channel_summary() ->
     channel_summary(ets:match_object(?ASSIGNMENTS, Pattern, 1)).
 
 channel_summary('$end_of_table') -> 'ok';
-channel_summary({[Assignment], Continuation}) ->
+channel_summary({[#wh_amqp_assignment{}=Assignment], Continuation}) ->
     io:format("| ~-48s | ~-8B | ~-8B | ~-15w | ~-15w | ~-15w | ~-8s | ~-8B |~n"
               ,[Assignment#wh_amqp_assignment.broker
                 ,channel_summary_age(Assignment#wh_amqp_assignment.timestamp)
