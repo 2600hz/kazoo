@@ -22,6 +22,7 @@
          ,presence_id/1, presence_id/2, set_presence_id/2
          ,name/1, name/2, set_name/2
          ,mac_address/1, mac_address/2, set_mac_address/2
+         ,language/1, language/2, set_language/2
 
          ,new/0
         ]).
@@ -43,6 +44,7 @@
 -define(PRESENCE_ID, <<"presence_id">>).
 -define(NAME, <<"name">>).
 -define(MAC_ADDRESS, <<"mac_address">>).
+-define(LANGUAGE, <<"language">>).
 
 -spec new() -> doc().
 new() ->
@@ -188,3 +190,14 @@ mac_address(DeviceJObj, Default) ->
 -spec set_mac_address(doc(), ne_binary()) -> doc().
 set_mac_address(DeviceJObj, MacAddress) ->
     wh_json:set_value(?MAC_ADDRESS, MacAddress, DeviceJObj).
+
+-spec language(doc()) -> api_binary().
+-spec language(doc(), Default) -> ne_binary() | Default.
+language(DeviceJObj) ->
+    language(DeviceJObj, 'undefined').
+language(DeviceJObj, Default) ->
+    wh_json:get_value(?LANGUAGE, DeviceJObj, Default).
+
+-spec set_language(doc(), ne_binary()) -> doc().
+set_language(DeviceJObj, Language) ->
+    wh_json:set_value(?LANGUAGE, Language, DeviceJObj).

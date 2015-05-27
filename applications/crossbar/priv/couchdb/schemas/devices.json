@@ -502,8 +502,7 @@
             "type": "string",
             "required": false,
             "name": "Language",
-            "description": "The language for the device",
-            "default": "en-us"
+            "description": "The language for the device"
         },
         "timezone": {
             "type": "string",
