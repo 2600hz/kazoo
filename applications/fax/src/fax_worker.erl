@@ -496,7 +496,7 @@ release_failed_job('invalid_number', Number, JObj) ->
 release_failed_job('invalid_cid', Number, JObj) ->
     Msg = wh_util:to_binary(io_lib:format("invalid fax cid number: ~s", [Number])),
     Result = [{<<"success">>, 'false'}
-              ,{<<"result_code">>, 500}
+              ,{<<"result_code">>, 400}
               ,{<<"result_text">>, Msg}
               ,{<<"pages_sent">>, 0}
               ,{<<"time_elapsed">>, elapsed_time(JObj)}
