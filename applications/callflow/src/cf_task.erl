@@ -181,6 +181,7 @@ launch_task(#state{queue=Q
     Self = self(),
     {Pid, Ref} = spawn_monitor(
                    fun() ->
+                           whapps_call:put_callid(Call),
                            wh_amqp_channel:consumer_pid(Self),
                            Funs = [{fun whapps_call:kvs_store/3, 'consumer_pid', Self}
                                    ,{fun whapps_call:set_controller_queue/2, Q}
