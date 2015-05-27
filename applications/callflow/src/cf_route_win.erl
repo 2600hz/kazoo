@@ -216,7 +216,7 @@ set_language(Call) ->
     Default = wh_media_util:prompt_language(whapps_call:account_id(Call)),
     case cf_endpoint:get(Call) of
         {'ok', Endpoint} ->
-            Language = wh_json:get_value(<<"language">>, Endpoint, Default),
+            Language = kz_device:language(Endpoint, Default),
             lager:debug("setting language '~s' for this call", [Language]),
             whapps_call:set_language(wh_util:to_lower_binary(Language), Call);
         {'error', _E} ->
