@@ -187,7 +187,7 @@ validate_assignments({[#wh_amqp_assignment{timestamp={_, _, _}
             'true' -> 'ok'
         end,
     validate_assignments(ets:match_object(Continuation));
-validate_assignments({[Assignment], Continuation}) ->
+validate_assignments({[#wh_amqp_assignment{}=Assignment], Continuation}) ->
     log_invalid_assignment(Assignment),
     validate_assignments(ets:match_object(Continuation)).
 
