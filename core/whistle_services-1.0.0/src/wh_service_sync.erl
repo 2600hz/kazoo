@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP, INC
+%%% @copyright (C) 2012-2015, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -194,7 +194,9 @@ bump_modified(JObj) ->
 
     UpdatedJObj = wh_json:set_values([{<<"pvt_modified">>, wh_util:current_tstamp()}
                                       ,{<<"_rev">>, wh_json:get_value(<<"_rev">>, JObj)}
-                                     ], wh_services:to_json(Services)),
+                                     ]
+                                     ,wh_services:to_json(Services)
+                                    ),
     case couch_mgr:save_doc(?WH_SERVICES_DB, UpdatedJObj) of
         {'error', _}=E ->
             %% If we conflict or cant save the doc with a new modified timestamp
@@ -342,9 +344,13 @@ mark_dirty(AccountId) when is_binary(AccountId) ->
         {'ok', JObj} -> mark_dirty(JObj)
     end;
 mark_dirty(JObj) ->
-    couch_mgr:save_doc(?WH_SERVICES_DB, wh_json:set_values([{<<"pvt_dirty">>, 'true'}
-                                                            ,{<<"pvt_modified">>, wh_util:current_tstamp()}
-                                                           ], JObj)).
+    couch_mgr:save_doc(?WH_SERVICES_DB
+                       ,wh_json:set_values([{<<"pvt_dirty">>, 'true'}
+                                            ,{<<"pvt_modified">>, wh_util:current_tstamp()}
+                                           ]
+                                           ,JObj
+                                          )
+                      ).
 
 -spec mark_clean(wh_json:object()) -> wh_std_return().
 mark_clean(JObj) ->
