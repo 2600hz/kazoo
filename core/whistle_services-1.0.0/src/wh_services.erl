@@ -873,6 +873,11 @@ reconcile(#wh_services{}=Services, Module) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec account_id(services()) -> ne_binary().
+account_id(#wh_services{account_id='undefined'
+                        ,jobj=JObj
+                       }) ->
+    lager:debug("services has no account id, looking in ~p", [JObj]),
+    wh_doc:account_id(JObj);
 account_id(#wh_services{account_id=AccountId}) ->
     AccountId.
 
@@ -1097,16 +1102,24 @@ calculate_services_charges(#wh_services{jobj=ServiceJObj}=Services) ->
             calculate_services_charges(Services, ServicePlans)
     end.
 
-calculate_services_charges(#wh_services{jobj=ServiceJObj}=Services, ServicePlans) ->
-    case wh_service_plans:create_items(ServiceJObj) of
-        {'error', _E} ->
-            lager:debug("failed to create items from service plans: ~p", [_E]),
-            {'error', wh_json:new()};
-        {'ok', ServiceItems} ->
-            PlanItems = wh_service_plans:create_items(Services, ServicePlans),
-            Changed = wh_service_items:get_updated_items(PlanItems, ServiceItems),
-            {'ok', wh_service_items:public_json(Changed)}
-    end.
+calculate_services_charges(#wh_services{jobj=ServiceJObj
+                                        ,updates=UpdatesJObj
+                                       }
+                           ,ServicePlans
+                          ) ->
+    CurrentQuantities = kzd_services:quantities(ServiceJObj),
+    UpdatedQuantities = wh_json:merge_jobjs(UpdatesJObj, CurrentQuantities),
+
+    UpdatedServiceJObj = kzd_services:set_quantities(ServiceJObj
+                                                     ,UpdatedQuantities
+                                                    ),
+
+    ServiceItems = wh_service_plans:create_items(UpdatedServiceJObj, ServicePlans),
+
+    PlanItems = wh_service_plans:create_items(ServiceJObj, ServicePlans),
+
+    Changed = wh_service_items:get_updated_items(ServiceItems, PlanItems),
+    {'ok', wh_service_items:public_json(Changed)}.
 
 %%--------------------------------------------------------------------
 %% @private
