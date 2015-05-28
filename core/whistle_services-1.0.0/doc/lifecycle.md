@@ -81,3 +81,44 @@ If the account is its own billing ID, service items are created and synced with 
 # The Account Grows
 
 The admin for the account logs in and wants to create a device. Let's see what happens!
+
+When the `PUT /v2/accounts/{ACCOUNT_ID}/devices` comes in and is validated, it is time to actual try to create the device. However, Kazoo needs to find out if this would cause a billable event and warn the client making the request. A `dry_run` request is made to see what the impact of the change would be. In this case, `wh_service_devices` would calculate a change in quantity which `crossbar_services` would get back as a `dry_run` JSON object. It might look like this:
+
+    {"devices":{
+        "sip_device":{
+            "category":"devices"
+            ,"item":"sip_device"
+            ,"quantity":1
+            ,"rate":1.0
+            ,"single_discount":true
+            ,"single_discount_rate":0.0
+            ,"cumulative_discount":0
+            ,"cumulative_discount_rate":0.0
+        }
+     }
+    }
+
+Crossbar now knows that if the action is performed, the account will be charged. Crossbar then checks to see if the request has explicitly indicated it will accept the charges (by including `"accept_charges":true` on the request payload). If the request is not accepting charges, a 402 response is sent back. The client can then decide if they'd like to accept the charges and resubmit the `PUT` with `"accept_charges":true` set.
+
+## Accepting Charges
+
+When resubmitted, the same dry_run process is executed, the request is found to accept charges, and the `PUT` is executed (in this case, the device is saved to the database). This in turn causes the service doc for the account to be marked as dirty.
+
+This should also cause an audit log entry to be filed in the account's reseller's MODb. This audit log can help the reseller chain know who did what to cause a billing event to occur.
+
+## Audit Logs
+
+The master account won't save audit logs unless configured to do so. In `system_config/services`, toggle the flag `should_save_master_audit_logs` to true. Otherwise only the reseller tree minus the master account will have audit logs saved.
+
+## Continuing...
+
+Now that the client has created a device and indicated they are willing to be billed, all is well...except it isn't. If one were to view the account's services doc, one would see `"devices":{}` in the `quantities` object. Reconciliation hasn't been persisted yet. The main reason is that changes tend to come in waves and clients don't want to see 5 entries for each of 5 devices they've added; they'd rather see they added 5 devices in one line item. Now, any changes made will reconcile before committing the changes to ensure the account is able to make the change, but the actual stored quantities may be out of sync with both the services doc and the underlying bookkeeper.
+
+Two APIs exist to force reconciliation/syncing:
+
+* `POST /v2/accounts/{ACCOUNT_ID}/service_plans/reconciliation`
+    - This API will do a full account reconcile and persist the real quantities to the services doc.
+
+* `POST /v2/accounts/{ACCOUNT_ID}/service_plans/synchronization`
+    - This API will do a full account reconcile, persist, *and* will sync with the bookkeeper (basically what `wh_service_sync` does periodically).
+    - This can also be run via SUP on the backend: `sup whistle_services_maintenance sync {ACCOUNT_ID}`
