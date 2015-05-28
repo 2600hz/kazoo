@@ -447,16 +447,9 @@ save(#wh_services{jobj=JObj
             ],
     UpdatedJObj = wh_json:set_values(props:filter_undefined(Props), JObj),
 
-    lager:debug("pre-save q: ~p", [kzd_services:quantities(JObj)]),
-    lager:debug("post-save q: ~p", [kzd_services:quantities(UpdatedJObj)]),
-
-    %% TODO: audit logs when deleting device/user/etc
-    %% figure out the merge_jobjs above (should be (current, update) i think
-    %%
-
     case couch_mgr:save_doc(?WH_SERVICES_DB, UpdatedJObj) of
         {'ok', NewJObj} ->
-            lager:debug("saved services for ~s with qs: ~p", [AccountId, kzd_services:quantities(NewJObj)]),
+            lager:debug("saved services for ~s", [AccountId, kzd_services:quantities(NewJObj)]),
             IsReseller = kzd_services:is_reseller(NewJObj),
             _ = maybe_clean_old_billing_id(Services),
             BillingId = kzd_services:billing_id(NewJObj, AccountId),
