@@ -14,7 +14,7 @@ There was a service\_plan doc. It defined a simple service: charge $1 per sip de
      ,"name":"Super Simple Service sPlan"
      ,"plan":{
          "devices":{
-             "sip_devices":{
+             "sip_device":{
                  "rate":1
              }
          }
@@ -79,3 +79,5 @@ If the billing ID was marked dirty, this iteration is done (and the billing ID w
 If the account is its own billing ID, service items are created and synced with the bookkeeper. If all goes well, the account is put in good standing and the reseller is marked dirty for future reconciliation/sync.
 
 # The Account Grows
+
+The admin for the account logs in and wants to create a device. Let's see what happens!
