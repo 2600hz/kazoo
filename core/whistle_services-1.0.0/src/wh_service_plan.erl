@@ -74,8 +74,11 @@ create_items(ServicePlan, ServiceItems, Services, CategoryId, ItemId) ->
     ItemPlan = kzd_service_plan:item(ServicePlan, CategoryId, ItemId),
 
     {Rate, Quantity} = get_rate_at_quantity(CategoryId, ItemId, ItemPlan, Services),
+    lager:debug("for ~s/~s, found rate ~p for quantity ~p", [CategoryId, ItemId, Rate, Quantity]),
+
     %% allow service plans to re-map item names (IE: softphone items "as" sip_device)
     As = kzd_item_plan:masquerade_as(ItemPlan, ItemId),
+    lager:debug("item ~s masquerades as ~s", [ItemId, As]),
 
     Routines = [fun(I) -> wh_service_item:set_category(CategoryId, I) end
                 ,fun(I) -> wh_service_item:set_item(As, I) end
@@ -250,7 +253,10 @@ get_quantity_rate(Quantity, ItemPlan) ->
 %% summation.
 %% @end
 %%--------------------------------------------------------------------
--spec get_item_quantity(ne_binary(), ne_binary(), kzd_item_plan:doc(), wh_services:services()) -> integer().
+-spec get_item_quantity(ne_binary(), ne_binary(), kzd_item_plan:doc(), wh_services:services()) ->
+                               integer().
+-spec get_item_quantity(ne_binary(), ne_binary(), kzd_item_plan:doc(), wh_services:services(), ne_binary()) ->
+                               integer().
 
 get_item_quantity(CategoryId, ItemId, ItemPlan, Services) ->
     get_item_quantity(CategoryId, ItemId, ItemPlan, Services, kzd_service_plan:all_items_key()).
