@@ -162,8 +162,8 @@ set_billing_id(JObj, BillingId) ->
     wh_json:set_value(?BILLING_ID, BillingId, JObj).
 
 -spec set_is_reseller(doc(), boolean()) -> doc().
-set_is_reseller(JObj, IsResller) ->
-    wh_json:set_value(?IS_RESELLER, IsResller, JObj).
+set_is_reseller(JObj, IsReseller) ->
+    wh_json:set_value(?IS_RESELLER, IsReseller, JObj).
 
 -spec set_reseller_id(doc(), api_binary()) -> doc().
 set_reseller_id(JObj, ResellerId) ->
