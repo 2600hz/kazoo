@@ -47,6 +47,7 @@ maybe_dry_run_by_props(Context, Callback, Props, 'false') ->
     Type = props:get_ne_binary_value(<<"type">>, Props),
     UpdatedServices = calc_service_updates(Context, Type, props:delete(<<"type">>, Props)),
     RespJObj = dry_run(UpdatedServices),
+    lager:debug("not accepting charges: ~s", [wh_json:encode(RespJObj)]),
 
     handle_dry_run_resp(Context, Callback, UpdatedServices, RespJObj).
 
@@ -74,6 +75,7 @@ maybe_dry_run_by_type(Context, Callback, Type, 'true') ->
 maybe_dry_run_by_type(Context, Callback, Type, 'false') ->
     UpdatedServices = calc_service_updates(Context, Type),
     RespJObj = dry_run(UpdatedServices),
+    lager:debug("not accepting charges: ~s", [wh_json:encode(RespJObj)]),
 
     handle_dry_run_resp(Context, Callback, UpdatedServices, RespJObj).
 
