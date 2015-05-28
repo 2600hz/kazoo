@@ -305,7 +305,10 @@ validate(Context) ->
     validate_port_requests(Context, cb_context:req_verb(Context)).
 
 validate(Context, ?PORT_DESCENDANTS) ->
-    read_descendants(Context);
+    case cb_context:req_value(Context, <<"by_number">>) of
+        'undefined' -> read_descendants(Context);
+        Number -> descendants_by_number(Context, Number)
+    end;
 validate(Context, Id) ->
     validate_port_request(Context, Id, cb_context:req_verb(Context)).
 
@@ -733,6 +736,50 @@ by_number(Context, Number) ->
         ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
         ,fun normalize_view_results/2
     ).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec descendants_by_number(cb_context:context(), ne_binary()) -> cb_context:context().
+descendants_by_number(Context, Number) ->
+    ViewOptions = [{'keys', build_keys(Context, Number)}, 'include_docs'],
+    crossbar_doc:load_view(
+        ?ALL_PORT_REQ_NUMBERS
+        ,ViewOptions
+        ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
+        ,fun normalize_view_results/2
+    ).
+
+-spec build_keys(cb_context:context(), ne_binary()) -> [[ne_binary(), ne_binary()],...] | [].
+build_keys(Context, Number) ->
+    E164 = wnm_util:to_e164(Number),
+    AccountId = cb_context:account_id(Context),
+    ViewOptions = [
+        {'startkey', [AccountId]}
+        ,{'endkey', [AccountId, wh_json:new()]}
+    ],
+    case
+        couch_mgr:get_results(
+            ?WH_ACCOUNTS_DB
+            ,?AGG_VIEW_DESCENDANTS
+            ,ViewOptions
+        )
+    of
+        {'error', _R} ->
+            lager:error("failed to query view ~p", [_R]),
+            [];
+        {'ok', JObjs} ->
+            lists:foldl(
+                fun(JObj, Acc) ->
+                    Id = wh_json:get_value(<<"id">>, JObj),
+                    [[Id, E164]|Acc]
+                end
+                ,[[AccountId, E164]]
+                ,JObjs
+            )
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

@@ -111,3 +111,109 @@ curl -v -X PUT -H "X-Auth-Token: 6cf321ea39fe960d9b855786a0216064" -H "Content-T
 ```
 curl -v -X GET -H "Accepts: application/x-pdf" -H "X-Auth-Token: 6cf321ea39fe960d9b855786a0216064" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/port_requests/b38b134866f87eb196c408f40ededc83/loa | pp
 ```
+
+## Get port request for account
+
+### Request
+
+- Verb: `GET`
+- Url: `/accounts/{ACCOUNT_ID}/port_requests?by_number={NUMBER}`
+- Payload: None
+
+
+### Response
+
+```
+{
+    "page_size": 1,
+    "data": [{
+        "carrier": "PACIFIC BELL",
+        "bill": {
+            "name": "John Doe",
+            "address": "116, natoma street",
+            "locality": "San Francisco",
+            "region": "Ca",
+            "postal_code": "95109"
+        },
+        "name": "Port request test",
+        "notifications": {
+            "email": {
+                "send_to": "someone@2600hz.com"
+            }
+        },
+        "transfer_date": 63598114800,
+        "port_state": "submitted",
+        "numbers": {
+            "{NUMBER}": {}
+        },
+        "sent": false,
+        "uploads": {
+            "loa.pdf": {
+                "content_type": "application/pdf",
+                "length": 59196
+            },
+            "bill.pdf": {
+                "content_type": "application/pdf",
+                "length": 8304
+            }
+        },
+        "updated": 63597642011,
+        "created": 63597642009,
+        "id": "84e0a824c6b74fe1e3ec48962a600ef2"
+    }],
+    "status": "success"
+}
+```
+
+## Get port request for account and descendants
+
+### Request
+
+- Verb: `GET`
+- Url: `/accounts/{ACCOUNT_ID}/port_requests/descendants?by_number={NUMBER}`
+- Payload: None
+
+
+### Response
+
+```
+{
+    "page_size": 1,
+    "data": [{
+        "carrier": "PACIFIC BELL",
+        "bill": {
+            "name": "John Doe",
+            "address": "116, natoma street",
+            "locality": "San Francisco",
+            "region": "Ca",
+            "postal_code": "95109"
+        },
+        "name": "Port request test",
+        "notifications": {
+            "email": {
+                "send_to": "someone@2600hz.com"
+            }
+        },
+        "transfer_date": 63598114800,
+        "port_state": "submitted",
+        "numbers": {
+            "{NUMBER}": {}
+        },
+        "sent": false,
+        "uploads": {
+            "loa.pdf": {
+                "content_type": "application/pdf",
+                "length": 59196
+            },
+            "bill.pdf": {
+                "content_type": "application/pdf",
+                "length": 8304
+            }
+        },
+        "updated": 63597642011,
+        "created": 63597642009,
+        "id": "84e0a824c6b74fe1e3ec48962a600ef2"
+    }],
+    "status": "success"
+}
+```
