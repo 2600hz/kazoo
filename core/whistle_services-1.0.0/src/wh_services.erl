@@ -21,7 +21,7 @@
          ,save_as_dirty/1
          ,save_audit_logs/2
         ]).
--export([fetch/1]).
+-export([fetch/1, fetch_services_doc/2]).
 -export([update/4]).
 -export([save/1]).
 -export([delete/1]).

@@ -43,7 +43,7 @@ start_link() ->
 sync(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     wh_util:put_callid(<<AccountId/binary, "-sync">>),
-    case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
+    case wh_services:fetch_services_doc(AccountId, 'true') of
         {'error', _}=E -> E;
         {'ok', ServiceJObj} ->
             sync(AccountId, ServiceJObj)
