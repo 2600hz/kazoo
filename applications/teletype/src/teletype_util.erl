@@ -102,8 +102,6 @@ relay_email(To, From, {_Type
     try mimemail:encode(Email) of
         Encoded ->
             RelayResult = relay_encoded_email(To, From, Encoded),
-            io:format("MARKER:teletype_util.erl:105 ~p~n", [{To, From}]),
-            io:format("MARKER:teletype_util.erl:106 ~p~n", [{props:get_value(<<"Bcc">>, Addresses), From}]),
             maybe_relay_to_bcc(From, Encoded, props:get_value(<<"Bcc">>, Addresses)),
             RelayResult
     catch
