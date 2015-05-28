@@ -150,17 +150,17 @@ activation_charges(Category, Item, ServicePlans) ->
 -spec create_items(kzd_services:doc()) ->
                           {'ok', wh_service_items:items()} |
                           {'error', 'no_plans'}.
--spec create_items(wh_services:services(), plans()) -> wh_service_items:items().
+-spec create_items(kzd_services:doc(), plans()) -> wh_service_items:items().
 
 create_items(ServiceJObj) ->
-    Services = wh_services:from_service_json(ServiceJObj),
     case from_service_json(ServiceJObj) of
         [] -> {'error', 'no_plans'};
         ServicePlans ->
-            {'ok', create_items(Services, ServicePlans)}
+            {'ok', create_items(ServiceJObj, ServicePlans)}
     end.
 
-create_items(Services, ServicePlans) ->
+create_items(ServiceJObj, ServicePlans) ->
+    Services = wh_services:from_service_json(ServiceJObj),
     Plans = [Plan
              || #wh_service_plans{plans=Plans} <- ServicePlans,
                 Plan <- Plans
