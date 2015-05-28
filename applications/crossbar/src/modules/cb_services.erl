@@ -244,14 +244,7 @@ create_view_options(Context, CreatedFrom, CreatedTo) ->
 -spec ranged_modbs(cb_context:context(), gregorian_seconds(), gregorian_seconds()) ->
                           ne_binaries().
 ranged_modbs(Context, From, To) ->
-    {{FromYear, FromMonth, _}, _} = calendar:gregorian_seconds_to_datetime(From),
-    {{ToYear, ToMonth, _}, _} = calendar:gregorian_seconds_to_datetime(To),
-
-    Seq = crossbar_util:generate_year_month_sequence({FromYear, FromMonth}
-                                                     ,{ToYear, ToMonth}
-                                                    ),
-    AccountId = cb_context:account_id(Context),
-    [kazoo_modb:get_modb(AccountId, Year, Month) || {Year, Month} <- Seq].
+    kazoo_modb:get_range(cb_context:account_id(Context), From, To).
 
 -spec cleanup(ne_binary()) -> 'ok'.
 cleanup(?WH_SERVICES_DB) ->
