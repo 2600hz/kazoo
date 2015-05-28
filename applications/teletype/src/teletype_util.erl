@@ -124,11 +124,11 @@ maybe_relay_to_bcc(From, Encoded, Bcc) ->
         'false' -> 'ok'
     end.
 
--spec relay_to_bcc(ne_binary(), ne_binary(), ne_binaries()) -> 'ok'.
+-spec relay_to_bcc(ne_binary(), ne_binary(), ne_binaries() | ne_binary()) -> 'ok'.
+relay_to_bcc(From, Encoded, Bcc) when is_binary(Bcc) ->
+    relay_encoded_email([Bcc], From, Encoded);
 relay_to_bcc(From, Encoded, Bcc) ->
-    lists:foreach(fun(To) ->
-                          relay_encoded_email(To, From, Encoded)
-                  end, Bcc).
+    relay_encoded_email(Bcc, From, Encoded).
 
 -spec relay_encoded_email(api_binaries(), ne_binary(), ne_binary()) ->
                                  'ok' | {'error', _}.
