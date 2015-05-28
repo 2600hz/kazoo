@@ -11,14 +11,16 @@
 -export([url/0, url/1]).
 -export([default_payment_token/1]).
 -export([default_payment_card/1]).
+-export([payment_token/1]).
 -export([find/1]).
 -export([create/1, create/2]).
 -export([update/1]).
--export([delete/1, delete_unused_cards/1]).
+-export([delete/1]).
 -export([expired/0
          ,expired/1
          ,expiring/2
         ]).
+-export([make_default/1, make_default/2]).
 -export([xml_to_record/1, xml_to_record/2]).
 -export([record_to_xml/1, record_to_xml/2]).
 -export([json_to_record/1]).
@@ -63,6 +65,9 @@ default_payment_card(Cards) ->
         'false' -> braintree_util:error_no_payment_token();
         Card -> Card
     end.
+
+-spec payment_token(bt_card()) -> api_binary().
+payment_token(#bt_card{token = Value}) -> Value.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -121,27 +126,10 @@ delete(Token) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Deletes non-default cards
-%% @end
-%%--------------------------------------------------------------------
--spec delete_unused_cards(bt_cards()) -> bt_cards().
-delete_unused_cards(Cards) ->
-    lists:foldl(fun delete_unused_card/2, [], Cards).
-
--spec delete_unused_card(bt_card(), bt_cards()) -> bt_cards().
-delete_unused_card(#bt_card{default = 'true'}=Card, Acc) ->
-    [Card|Acc];
-delete_unused_card(#bt_card{default = 'false'}=Card, Acc) ->
-    delete(Card),
-    Acc.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
 %% Finds the tokens of credit cards that have all expired
 %% @end
 %%--------------------------------------------------------------------
--spec expired() -> [bt_xml(),...] | [].
+-spec expired() -> [bt_xml()].
 expired() ->
     Xml = braintree_request:post("/payment_methods/all/expired_ids", <<>>),
     [get_xml_value("/item/text()", Item)
@@ -158,7 +146,7 @@ expired(#bt_card{expired=Expired}) -> Expired.
 %% start and end dates. Dates are given as MMYYYY
 %% @end
 %%--------------------------------------------------------------------
--spec expiring(text(), text()) -> [bt_xml(),...] | [].
+-spec expiring(text(), text()) -> [bt_xml()].
 expiring(Start, End) ->
     Url = lists:append(["/payment_methods/all/expiring?start="
                         ,wh_util:to_list(Start)
@@ -169,6 +157,20 @@ expiring(Start, End) ->
     [xml_to_record(Item)
      || Item <- xmerl_xpath:string("/payment-methods/credit-card", Xml)
     ].
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Accessors for field 'make_default'.
+%% @end
+%%--------------------------------------------------------------------
+-spec make_default(bt_card()) -> api_boolean().
+-spec make_default(bt_card(), boolean()) -> bt_card().
+
+make_default(#bt_card{make_default = Value}) -> Value.
+
+make_default(#bt_card{}=Card, Value) ->
+    Card#bt_card{make_default = Value}.
 
 %%--------------------------------------------------------------------
 %% @private
