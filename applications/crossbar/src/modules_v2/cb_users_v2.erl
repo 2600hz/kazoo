@@ -416,18 +416,18 @@ send_email(Context) ->
 %%--------------------------------------------------------------------
 -spec load_user_summary(cb_context:context()) -> cb_context:context().
 load_user_summary(Context) ->
-    fix_envelope(
-        crossbar_doc:load_view(
-            ?CB_LIST
-            ,[]
-            ,Context
-            ,fun normalize_view_results/2
-        )
-    ).
+    Context1 = crossbar_doc:load_view(
+                 ?CB_LIST
+                 ,[]
+                 ,Context
+                 ,fun normalize_view_results/2
+                ),
+    fix_envelope(Context1).
 
 -spec fix_envelope(cb_context:context()) -> cb_context:context().
 fix_envelope(Context) ->
-    cb_context:set_resp_data(Context, lists:reverse(cb_context:resp_data(Context))).
+    RespData = cb_context:resp_data(Context),
+    cb_context:set_resp_data(Context, lists:reverse(RespData)).
 
 %%--------------------------------------------------------------------
 %% @private

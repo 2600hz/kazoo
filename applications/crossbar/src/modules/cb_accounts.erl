@@ -280,13 +280,18 @@ put(Context) ->
             leak_pvt_fields(C)
     catch
         'throw':C ->
+            lager:debug("failed to create account, unrolling changes"),
+
             case cb_context:is_context(C) of
                 'true' -> delete(C, AccountId);
                 'false' ->
                     C = cb_context:add_system_error('unspecified_fault', Context),
                     delete(C, AccountId)
             end;
-        _:_ ->
+        _E:_R ->
+            ST = erlang:get_stacktrace(),
+            lager:debug("unexpected failure when creating account: ~s: ~p", [_E, _R]),
+            wh_util:log_stacktrace(ST),
             C = cb_context:add_system_error('unspecified_fault', Context),
             delete(C, AccountId)
     end.
@@ -1175,15 +1180,30 @@ create_new_account_db(Context) ->
             lager:debug("failed to create database: ~s", [AccountDb]),
             throw(cb_context:add_system_error('datastore_fault', Context));
         'true' ->
-            lager:debug("created DB ~s", [AccountDb]),
+            lager:debug("created account database: ~s", [AccountDb]),
             C = create_account_definition(prepare_context(AccountDb, Context)),
+            lager:debug("created account definition"),
+
             _ = load_initial_views(C),
+            lager:debug("laoded initial views"),
+
             _ = crossbar_bindings:map(<<"account.created">>, C),
+            lager:debug("alerted listeners of new account"),
+
             _ = notify_new_account(C),
+            lager:debug("sent notification of new account"),
+
             _ = wh_services:reconcile(AccountDb),
+            lager:debug("performed initial services reconcile"),
+
             _ = create_account_mod(cb_context:account_id(C)),
+            lager:debug("created this month's MODb for account"),
+
             _ = create_first_transaction(cb_context:account_id(C)),
+            lager:debug("created first transaction for account"),
+
             _ = maybe_set_notification_preference(C),
+            lager:debug("set notification preference"),
             C
     end.
 
@@ -1392,14 +1412,14 @@ support_depreciated_billing_id(BillingId, AccountId, Context) ->
     catch
         'throw':{Error, Reason} ->
             cb_context:add_validation_error(
-                <<"billing_id">>
-                ,<<"not_found">>
-                ,wh_json:from_list([
-                        {<<"message">>, wh_util:to_binary(Error)}
-                        ,{<<"cause">>, AccountId}
-                     ])
-                ,Reason
-            )
+              <<"billing_id">>
+              ,<<"not_found">>
+              ,wh_json:from_list(
+                 [{<<"message">>, wh_util:to_binary(Error)}
+                  ,{<<"cause">>, AccountId}
+                 ])
+              ,Reason
+             )
     end.
 
 %%--------------------------------------------------------------------
