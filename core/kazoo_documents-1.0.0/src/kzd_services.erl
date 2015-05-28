@@ -28,7 +28,7 @@
 
 -export([set_billing_id/2
          ,set_is_reseller/2
-         ,set_resller_id/2
+         ,set_reseller_id/2
          ,set_is_dirty/2
          ,set_status/2
          ,set_tree/2
@@ -165,8 +165,8 @@ set_billing_id(JObj, BillingId) ->
 set_is_reseller(JObj, IsResller) ->
     wh_json:set_value(?IS_RESELLER, IsResller, JObj).
 
--spec set_resller_id(doc(), api_binary()) -> doc().
-set_resller_id(JObj, ResellerId) ->
+-spec set_reseller_id(doc(), api_binary()) -> doc().
+set_reseller_id(JObj, ResellerId) ->
     wh_json:set_value(?RESELLER_ID, ResellerId, JObj).
 
 -spec set_is_dirty(doc(), boolean()) -> doc().
