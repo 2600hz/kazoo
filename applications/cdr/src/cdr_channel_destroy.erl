@@ -13,19 +13,32 @@
 
 -include("cdr.hrl").
 
+-define(IGNORED_APP, whapps_config:get(?CONFIG_CAT, <<"ignore_apps">>, [<<"milliwatt">>])).
+
 -export([handle_req/2]).
 
 handle_req(JObj, _Props) ->
     'true' = wapi_call:event_v(JObj),
     _ = wh_util:put_callid(JObj),
-
     couch_mgr:suppress_change_notice(),
+    maybe_ignore(JObj).
 
+-spec maybe_ignore(wh_json:object()) -> 'ok'.
+maybe_ignore(JObj) ->
+    AppName = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Application-Name">>], JObj),
+    case lists:member(AppName, ?IGNORED_APP) of
+        'false'-> handle_req(JObj);
+        'true' ->
+            lager:debut("ignoring cdr request from ~s", [AppName])
+    end.
+
+-spec handle_req(wh_json:object()) -> 'ok'.
+handle_req(JObj) ->
     AccountId = kz_call_event:account_id(JObj),
     Timestamp = kz_call_event:timestamp(JObj),
     prepare_and_save(AccountId, Timestamp, JObj).
 
--spec prepare_and_save(account_id(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
+-spec prepare_and_save(account_id(), gregorian_seconds(), wh_json:object()) -> 'ok'.
 prepare_and_save(AccountId, Timestamp, JObj) ->
     Routines = [fun update_pvt_parameters/3
                 ,fun update_ccvs/3
@@ -42,7 +55,8 @@ prepare_and_save(AccountId, Timestamp, JObj) ->
                 end
                 ,wh_json:normalize_jobj(JObj)
                 ,Routines
-               ).
+               ),
+    'ok'.
 
 -spec update_pvt_parameters(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
 update_pvt_parameters('undefined', _, JObj) ->

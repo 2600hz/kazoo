@@ -327,7 +327,14 @@ maybe_start_call_handling(Node, FetchId, CallId, JObj) ->
 -spec start_call_handling(atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 start_call_handling(Node, FetchId, CallId, JObj) ->
     ServerQ = wh_json:get_value(<<"Server-ID">>, JObj),
-    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
+
+    CCVs =
+        wh_json:set_values(
+            [{<<"Application-Name">>, wh_json:get_value(<<"App-Name">>, JObj)}
+             ,{<<"Application-Node">>, wh_json:get_value(<<"Node">>, JObj)}
+            ]
+            ,wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())
+        ),
     _ = ecallmgr_call_sup:start_event_process(Node, CallId),
     _ = ecallmgr_call_sup:start_control_process(Node, CallId, FetchId, ServerQ, CCVs),
     ecallmgr_util:set(Node, CallId, wh_json:to_proplist(CCVs)).
