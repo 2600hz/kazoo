@@ -19,17 +19,27 @@ main(Paths) ->
 
 print([]) -> 'ok';
 print([{M,F,_A,Vs}|Rest]) ->
-    Vars = commas(Vs),
-    io:format("~s:~s(~s)\n", [M, F, Vars]),
+    Vars = string:join(Vs, " "),
+    io:format("sup ~s ~s ~s\n", [M, F, Vars]),
     print(Rest);
 print(_R) ->
     io:format("_R = ~p\n", [_R]).
 
+pp({atom,_,Arg}) ->
+    "'" ++ atom_to_list(Arg) ++ "'";
+pp({var,_,Arg}) ->
+    atom_to_list(Arg);
+pp({bin,_,[{bin_element,_,{var,_,Atom},_,_}]}) ->
+    atom_to_list(Atom);
+pp({bin,_,[{bin_element,_,{string,_,Str},_,_}]}) ->
+    "\"" ++ Str ++ "\"";
 
-commas([]) -> "";
-commas([Var]) -> atom_to_list(Var);
-commas([Var|Rest]) ->
-    [atom_to_list(Var), ", ", commas(Rest)].
+%% MAY hide those (as its internals)
+pp({nil,_}) ->
+    "[]";
+pp({cons,_,H,T}) ->
+    "[" ++ pp(H) ++ "|" ++ pp(T) ++ "]".
+
 
 find(File) ->
     {ok, {Module, [{exports, FAs0}]}} = beam_lib:chunks(File, [exports]),
@@ -44,12 +54,13 @@ find(File) ->
                    %% io:format("F ~p A ~p\n", [F,A]),
                    %% Clauses = [Clauses || {function,_,F,A,Clauses} <- Ts],
                    %% io:format("Clauses = ~p\n", [Clauses]),
-                   R = [ [V || {var,_,V} <- Vars]
-                        || {clause,_,Vars,_,_} <- Cs],
-                   %% io:format("R = ~p\n", [R]),
-                   [{Module,F,A,Vs} || Vs <- R]
+                   %% io:format("~s ~s\n", [Module, F]),
+                   ArgsPerClause = [ [pp(Arg) || Arg <- Args]
+                                     || {clause,_,Args,_,_} <- Cs],
+                   [{Module,F,A,Args} || Args <- ArgsPerClause]
            end, Clauses),
-    Ps.
+    %% Ps.
+    lists:usort(Ps).
 
 find_modules(Path) ->
     case filelib:is_dir(Path) of
