@@ -38,6 +38,7 @@ new_call(AccountId) ->
     whapps_call:from_json(wh_json:from_list(
                             [{<<"Account-ID">>, AccountId}
                              ,{<<"Account-DB">>, wh_util:format_account_id(AccountId, 'encoded')}
+                             ,{<<"Resource-Type">>, ?RESOURCE_TYPE_AUDIO}
                             ])).
 
 -spec get_group_and_call_id(wh_json:object()) -> {api_binary(), api_binary()}.
