@@ -327,7 +327,6 @@ maybe_start_call_handling(Node, FetchId, CallId, JObj) ->
 -spec start_call_handling(atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 start_call_handling(Node, FetchId, CallId, JObj) ->
     ServerQ = wh_json:get_value(<<"Server-ID">>, JObj),
-
     CCVs =
         wh_json:set_values(
             [{<<"Application-Name">>, wh_json:get_value(<<"App-Name">>, JObj)}
