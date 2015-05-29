@@ -752,7 +752,7 @@ descendants_by_number(Context, Number) ->
         ,fun normalize_view_results/2
     ).
 
--spec build_keys(cb_context:context(), ne_binary()) -> [[ne_binary(), ne_binary()],...] | [].
+-spec build_keys(cb_context:context(), ne_binary()) -> [ne_binaries()] | [].
 build_keys(Context, Number) ->
     E164 = wnm_util:to_e164(Number),
     AccountId = cb_context:account_id(Context),
