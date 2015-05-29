@@ -264,10 +264,17 @@ get_call_forward(Call) ->
              {'ok', [Owner]} -> wh_json:get_value(<<"value">>, Owner, AuthorizingId);
              _E -> AuthorizingId
          end,
+    maybe_get_call_forward(AccountDb, Id).
+
+-spec maybe_get_call_forward(ne_binary(), api_binary()) -> callfwd() | {'error', callfwd()}.
+maybe_get_call_forward(_AccountDb, 'undefined') ->
+    lager:debug("cannot get call forwarding from undefined"),
+    {'error', #callfwd{}};
+maybe_get_call_forward(AccountDb, Id) ->
     case couch_mgr:open_doc(AccountDb, Id) of
         {'ok', JObj} ->
             lager:info("loaded call forwarding object from ~s", [Id]),
-            #callfwd{doc_id = wh_json:get_value(<<"_id">>, JObj)
+            #callfwd{doc_id = wh_doc:id(JObj)
                      ,enabled = wh_json:is_true([<<"call_forward">>, <<"enabled">>], JObj)
                      ,number = wh_json:get_ne_value([<<"call_forward">>, <<"number">>], JObj, <<>>)
                      ,require_keypress = wh_json:is_true([<<"call_forward">>, <<"require_keypress">>], JObj, 'true')
