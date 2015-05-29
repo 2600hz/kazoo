@@ -324,6 +324,10 @@ default_response(<<"BEARERCAPABILITY_NOTIMPL">>) ->
     [{<<"Code">>, <<"488">>}
      ,{<<"Message">>, <<"Bearer capability not implemented">>}
     ];
+default_response(<<"UNKNOWN">>) ->
+    [{<<"Code">>, <<"500">>}
+     ,{<<"Message">>, <<"Unknown error happened">>}
+    ];
 default_response(<<"FACILITY_NOT_IMPLEMENTED">>) ->
     [{<<"Code">>, <<"501">>}
      ,{<<"Message">>, <<"Facility not implemented">>}
