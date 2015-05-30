@@ -49,8 +49,7 @@ set_account_language(Account, Language) ->
                       ,[AccountId, OldLang, Language]
                      )
     catch
-        _E:_R ->
-            io:format("")
+        _E:_R -> 'ok'
     end.
 
 import_prompts(Path) ->
