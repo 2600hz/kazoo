@@ -99,9 +99,9 @@ allow_dial(Data, Call, Retries, Interdigit) ->
     Number = wnm_util:to_e164(Digits),
     lager:info("caller is trying to call '~s'", [Number]),
 
-    _ = maybe_update_caller_id(Data, Call),
+    Call1 = maybe_update_caller_id(Data, Call),
 
-    maybe_route_to_callflow(Data, Call, Retries, Interdigit, Number).
+    maybe_route_to_callflow(Data, Call1, Retries, Interdigit, Number).
 
 maybe_route_to_callflow(Data, Call, Retries, Interdigit, Number) ->
     case cf_util:lookup_callflow(Number, whapps_call:account_id(Call)) of
@@ -145,11 +145,11 @@ maybe_restrict_call(Data, Call, Number, Flow) ->
             cf_exe:branch(wh_json:get_value(<<"flow">>, Flow), Call)
     end.
 
--spec maybe_update_caller_id(wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec maybe_update_caller_id(wh_json:object(), whapps_call:call()) -> whapps_call:call().
 maybe_update_caller_id(Data, Call) ->
     case wh_json:is_true(<<"use_account_caller_id">>, Data, 'false') of
         'true' -> set_caller_id(Call);
-        'false' -> 'ok'
+        'false' -> Call
     end.
 
 -spec start_preconnect_audio(wh_json:object(), whapps_call:call()) -> 'ok'.
@@ -197,20 +197,20 @@ play_ringing(Data, Call) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set_caller_id(whapps_call:call()) -> 'ok'.
+-spec set_caller_id(whapps_call:call()) -> whapps_call:call().
 set_caller_id(Call) ->
-        AccountId = whapps_call:account_id(Call),
-        {Number, Name} = maybe_get_account_cid(AccountId, Call),
-        lager:info("setting the caller id number to ~s from account ~s", [Number, AccountId]),
-        Updates = [fun(C) -> whapps_call:kvs_store('dynamic_cid', Number, C) end
-                   ,fun(C) ->
-                            C1 = whapps_call:set_caller_id_number(Number, C),
-                            whapps_call:set_caller_id_name(Name, C1)
-                    end
-                  ],
-        {'ok', C} = cf_exe:get_call(Call),
-        cf_exe:set_call(whapps_call:exec(Updates, C)),
-        'ok'.
+    AccountId = whapps_call:account_id(Call),
+    {Number, Name} = maybe_get_account_cid(AccountId, Call),
+    lager:info("setting the caller id number to ~s from account ~s", [Number, AccountId]),
+    Updates = [fun(C) -> whapps_call:kvs_store('dynamic_cid', Number, C) end
+               ,fun(C) ->
+                        C1 = whapps_call:set_caller_id_number(Number, C),
+                        whapps_call:set_caller_id_name(Name, C1)
+                end
+              ],
+    UpdatedCall = whapps_call:exec(Updates, Call),
+    cf_exe:set_call(UpdatedCall),
+    UpdatedCall.
 
 %%--------------------------------------------------------------------
 %% @private
