@@ -69,15 +69,6 @@ dialyze:       TO_DIALYZE ?= $(shell find $(ROOT)/applications -name ebin -print
 dialyze: $(PLT)
 	@$(ROOT)/scripts/check-dialyzer.escript $(TO_DIALYZE)
 
-core:
-	$(MAKE) -C core all
-deps:
-	$(MAKE) -C deps all
-apps:
-	$(MAKE) -C applications all
-
-kazoo: core apps
-
 xref: EBINS = $(shell find $(ROOT) -name ebin -print)
 xref:
 	@$(ROOT)/scripts/check-xref.escript $(EBINS)
