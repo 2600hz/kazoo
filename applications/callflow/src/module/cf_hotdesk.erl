@@ -77,11 +77,11 @@ handle_action(<<"bridge">>, Hotdesk, Call) ->
             cf_exe:continue(Call)
     end;
 handle_action(<<"login">>, Hotdesk, Call) ->
-    login(Hotdesk, Call),
+    _ = login(Hotdesk, Call),
     cf_exe:continue(Call);
 handle_action(<<"logout">>, Hotdesk, Call) ->
     whapps_call_command:answer(Call),
-    logout(Hotdesk, Call),
+    _ = logout(Hotdesk, Call),
     cf_exe:continue(Call);
 handle_action(<<"toggle">>, #hotdesk{endpoint_ids=[]}=Hotdesk, Call) ->
     handle_action(<<"login">>, Hotdesk, Call);

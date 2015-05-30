@@ -169,7 +169,6 @@ handle_info({'event', ['undefined' | Props]}, #state{node=Node}=State) ->
             {'continue', CustomProps} ->
                 send_conference_event(Action, Props, CustomProps)
         end,
-    process_conference_event(Action, Props, Node),
     {'noreply', State};
 handle_info({'event', [CallId | Props]}, #state{node=Node}=State) ->
     Action = props:get_value(<<"Action">>, Props),

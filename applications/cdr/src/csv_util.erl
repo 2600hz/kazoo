@@ -46,7 +46,7 @@ test_convert(AccountDb) ->
                                           [CdrDoc | Acc]
                                   end, [], JObjs),
             CsvData = json_objs_to_csv(CdrDocs),
-            maybe_save_csv(<<"test.csv">>, CsvData)
+            maybe_save_csv("test.csv", CsvData)
     end.
 
 %%--------------------------------------------------------------------
@@ -58,14 +58,12 @@ test_convert(AccountDb) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec maybe_save_csv(ne_binary(), iolist()) -> 'ok'.
+-spec maybe_save_csv(file:name(), iolist()) -> 'ok' | {'error', _}.
 maybe_save_csv(FileName, CsvData) ->
-    TestPath = list_to_binary([code:priv_dir('cdr')
-                               ,"/test_data/"
-                              ]),
+    TestPath = filename:join(code:priv_dir('cdr'), "test_data"),
     case filelib:ensure_dir(TestPath) of
         'ok' ->
-            FilePath = list_to_binary([TestPath, FileName]),
+            FilePath = filename:join(TestPath, FileName),
             wh_util:write_file(FilePath, CsvData);
         {'error', _}=Error ->
             lager:error("Error creating directory: ~p", [Error]),

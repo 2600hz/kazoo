@@ -35,7 +35,7 @@ kazoo_ver('get') ->
 %% @end
 -spec start() -> 'ok'.
 start() ->
-    application:start('snmp'),
+    _ = application:start('snmp'),
     lager:start(),
     snmpa:load_mibs(["KAZOO-MIB"]),
     'ok'.

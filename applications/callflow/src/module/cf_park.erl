@@ -116,7 +116,7 @@ retrieve(SlotNumber, ParkedCalls, Call) ->
             lager:info("the parking slot ~s currently has a parked call ~s, attempting to retrieve caller", [SlotNumber, ParkedCall]),
             case maybe_retrieve_slot(SlotNumber, Slot, ParkedCall, Call) of
                 'ok' ->
-                    cleanup_slot(SlotNumber, ParkedCall, whapps_call:account_db(Call)),
+                    _ = cleanup_slot(SlotNumber, ParkedCall, whapps_call:account_db(Call)),
                     whapps_call_command:wait_for_hangup();
                 {'error', _E}=E ->
                     update_presence(<<"terminated">>, Slot),

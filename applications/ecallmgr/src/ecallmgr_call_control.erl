@@ -955,7 +955,7 @@ execute_queue_commands([Command|Commands], DefJObj, State) ->
         'false' ->
             JObj = wh_json:merge_jobjs(Command, DefJObj),
             'true' = wapi_dialplan:v(JObj),
-            insert_command(State, 'now', JObj),
+            _Ugly = insert_command(State, 'now', JObj),
             execute_queue_commands(Commands, DefJObj, State)
     end.
 

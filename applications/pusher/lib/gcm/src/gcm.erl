@@ -82,7 +82,7 @@ do_push(RegIds, Message, Key, Retry) ->
             R;
         {error, {retry, RetryAfter}} ->
             lager:info("retry after: ~p", [RetryAfter]),
-            do_backoff(RetryAfter, RegIds, Message, Key, Retry),
+            _ = do_backoff(RetryAfter, RegIds, Message, Key, Retry),
             {error, retry};
         {error, Reason} ->
             lager:info("error pushing: ~p", [Reason]),

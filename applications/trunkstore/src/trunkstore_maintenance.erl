@@ -29,7 +29,7 @@ flush(Account) ->
     Flush = wh_cache:filter_local(?TRUNKSTORE_CACHE
                                   ,fun(Key, _Value) -> is_ts_cache_object(Key, AccountId) end
                                  ),
-    [wh_cache:erase_local(?TRUNKSTORE_CACHE, Key) || {Key, _Value} <- Flush],
+    _ = [wh_cache:erase_local(?TRUNKSTORE_CACHE, Key) || {Key, _Value} <- Flush],
     'ok'.
 
 migrate() ->

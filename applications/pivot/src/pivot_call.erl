@@ -43,9 +43,9 @@
                 ,call :: whapps_call:call()
                 ,request_id :: ibrowse_req_id()
                 ,request_params :: wh_json:object()
-                ,response_code :: binary()
-                ,response_headers :: binaries()
-                ,response_body :: binary()
+                ,response_code :: ne_binary()
+                ,response_headers :: binaries() | ne_binary()
+                ,response_body = <<>> :: binary()
                 ,response_content_type :: binary()
                 ,response_pid :: pid() %% pid of the processing of the response
                 ,response_event_handlers = [] :: pids()
@@ -100,16 +100,15 @@ usurp_executor(Srv) -> gen_listener:cast(Srv, 'usurp').
 
 -spec maybe_relay_event(wh_json:object(), wh_proplist()) -> 'ok'.
 maybe_relay_event(JObj, Props) ->
-    case props:get_value('pid', Props) of
-        P when is_pid(P) -> whapps_call_command:relay_event(P, JObj);
-        _ -> 'ok'
-    end,
-    case props:get_value('pids', Props) of
-        [_|_]=Pids ->
-            [whapps_call_command:relay_event(P, JObj) || P <- Pids];
-        _ -> 'ok'
-    end,
-
+    _ = case props:get_value('pid', Props) of
+            P when is_pid(P) -> whapps_call_command:relay_event(P, JObj);
+            _ -> 'ok'
+        end,
+    _ = case props:get_value('pids', Props) of
+            [_|_]=Pids ->
+                [whapps_call_command:relay_event(P, JObj) || P <- Pids];
+            _ -> 'ok'
+        end,
     relay_cdr_event(JObj, Props).
 
 -spec relay_cdr_event(wh_json:object(), wh_proplist()) -> 'ok'.
@@ -288,7 +287,6 @@ handle_info({'stop', _Call}, State) ->
     {'stop', 'normal', State};
 handle_info({'ibrowse_async_headers', ReqId, "200"=StatusCode, Hdrs}
             ,#state{request_id=ReqId
-                    ,response_body=RespBody
                    }=State) ->
     RespHeaders = normalize_resp_headers(Hdrs),
     lager:debug("recv resp headers"),
@@ -296,7 +294,6 @@ handle_info({'ibrowse_async_headers', ReqId, "200"=StatusCode, Hdrs}
                     response_content_type=props:get_value(<<"content-type">>, RespHeaders)
                     ,response_code=wh_util:to_binary(StatusCode)
                     ,response_headers=RespHeaders
-                    ,response_body=RespBody
                 }
     };
 
@@ -320,26 +317,22 @@ handle_info({'ibrowse_async_headers', ReqId, "302"=StatusCode, Hdrs}
     {'noreply', State};
 handle_info({'ibrowse_async_headers', ReqId, "4"++_=StatusCode, RespHeaders}
             ,#state{request_id=ReqId
-                    ,response_body=RespBody
                    }=State) ->
     lager:info("recv client failure status code ~s", [StatusCode]),
     {'noreply', State#state{
                     response_content_type=props:get_value(<<"content-type">>, RespHeaders)
                     ,response_code=wh_util:to_binary(StatusCode)
                     ,response_headers=RespHeaders
-                    ,response_body=RespBody
                 }
     };
 handle_info({'ibrowse_async_headers', ReqId, "5"++_=StatusCode, RespHeaders}
             ,#state{request_id=ReqId
-                    ,response_body=RespBody
                    }=State) ->
     lager:info("recv server failure status code ~s", [StatusCode]),
     {'noreply', State#state{
                     response_content_type=props:get_value(<<"content-type">>, RespHeaders)
                     ,response_code=wh_util:to_binary(StatusCode)
                     ,response_headers=RespHeaders
-                    ,response_body=RespBody
                 }
     };
 
@@ -437,8 +430,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 -spec send_req(whapps_call:call(), ne_binary(), http_method(), wh_json:object() | wh_proplist(), boolean()) ->
-                      'ok' |
-                      {'ok', ibrowse_req_id()} |
+                      {'ok', ibrowse_req_id(), whapps_call:call()} |
                       {'stop', whapps_call:call()}.
 send_req(Call, Uri, Method, BaseParams, Debug) when not is_list(BaseParams) ->
     send_req(Call, Uri, Method, wh_json:to_proplist(BaseParams), Debug);
@@ -451,14 +443,14 @@ send_req(Call, Uri, 'post', BaseParams, Debug) ->
     UserParams = kzt_translator:get_user_vars(Call),
     Params = wh_json:set_values(BaseParams, UserParams),
     UpdatedCall = whapps_call:kvs_erase(<<"digits_collected">>, Call),
-    send(UpdatedCall, Uri, 'post', [{"Content-Type", "application/x-www-form-urlencoded"}], wh_json:to_querystring(Params), Debug).
+    Headers = [{"Content-Type", "application/x-www-form-urlencoded"}],
+    send(UpdatedCall, Uri, 'post', Headers, wh_json:to_querystring(Params), Debug).
 
--spec send(whapps_call:call(), iolist(), atom(), wh_proplist(), iolist(), boolean()) ->
-                  'ok' |
-                  {'ok', ibrowse_req_id()} |
+-spec send(whapps_call:call(), ne_binary(), http_method(), wh_proplist(), iolist(), boolean()) ->
+                  {'ok', ibrowse_req_id(), whapps_call:call()} |
                   {'stop', whapps_call:call()}.
 send(Call, Uri, Method, ReqHdrs, ReqBody, Debug) ->
-    lager:info("sending req to ~s(~s): ~s", [iolist_to_binary(Uri), Method, iolist_to_binary(ReqBody)]),
+    lager:info("sending req to ~s(~s): ~s", [Uri, Method, iolist_to_binary(ReqBody)]),
 
     maybe_debug_req(Call, Uri, Method, ReqHdrs, ReqBody, Debug),
 
@@ -536,14 +528,15 @@ process_resp(Call, CT, RespBody) ->
             {'stop', Call}
     end.
 
--spec uri(ne_binary(), iolist()) -> iolist().
+-spec uri(ne_binary(), iolist()) -> ne_binary().
 uri(URI, QueryString) ->
-    case mochiweb_util:urlsplit(wh_util:to_list(URI)) of
-        {Scheme, Host, Path, [], Fragment} ->
-            mochiweb_util:urlunsplit({Scheme, Host, Path, QueryString, Fragment});
-        {Scheme, Host, Path, QS, Fragment} ->
-            mochiweb_util:urlunsplit({Scheme, Host, Path, [QS, "&", QueryString], Fragment})
-    end.
+    Url = case mochiweb_util:urlsplit(wh_util:to_list(URI)) of
+              {Scheme, Host, Path, [], Fragment} ->
+                  mochiweb_util:urlunsplit({Scheme, Host, Path, QueryString, Fragment});
+              {Scheme, Host, Path, QS, Fragment} ->
+                  mochiweb_util:urlunsplit({Scheme, Host, Path, [QS, "&", QueryString], Fragment})
+          end,
+    wh_util:to_binary(Url).
 
 -spec req_params(ne_binary(), whapps_call:call()) -> wh_proplist().
 req_params(Format, Call) ->
@@ -556,7 +549,7 @@ req_params(Format, Call) ->
         'error':'undef' -> []
     end.
 
--spec maybe_debug_req(whapps_call:call(), iolist(), atom(), wh_proplist(), iolist(), boolean()) -> 'ok'.
+-spec maybe_debug_req(whapps_call:call(), binary(), atom(), wh_proplist(), iolist(), boolean()) -> 'ok'.
 maybe_debug_req(_Call, _Uri, _Method, _ReqHdrs, _ReqBody, 'false') -> 'ok';
 maybe_debug_req(Call, Uri, Method, ReqHdrs, ReqBody, 'true') ->
     store_debug(Call, [{<<"uri">>, iolist_to_binary(Uri)}
@@ -566,14 +559,14 @@ maybe_debug_req(Call, Uri, Method, ReqHdrs, ReqBody, 'true') ->
                        ,{<<"iteration">>, whapps_call:kvs_fetch('pivot_counter', Call)}
                       ]).
 
--spec maybe_debug_resp(boolean(), whapps_call:call(), ne_binary(), ne_binary(), list()) -> 'ok'.
+-spec maybe_debug_resp(boolean(), whapps_call:call(), ne_binary(), ne_binary() | binaries(), binary()) -> 'ok'.
 maybe_debug_resp('false', _Call, _StatusCode, _RespHeaders, _RespBody) -> 'ok';
 maybe_debug_resp('true', Call, StatusCode, RespHeaders, RespBody) ->
     Headers = wh_json:from_list([{fix_value(K), fix_value(V)} || {K, V} <- RespHeaders]),
     store_debug(
         Call
         ,[{<<"resp_status_code">>, StatusCode}
-          ,{<<"resp_headers">>, Headers}
+          ,{<<"resp_headers">>, iolist_to_binary(Headers)}
           ,{<<"resp_body">>, RespBody}
           ,{<<"iteration">>, whapps_call:kvs_fetch('pivot_counter', Call)}
         ]

@@ -99,7 +99,7 @@ send_eavesdrop(JObj, EPs, AccountId) ->
             respond_error(JObj, E);
         {'timeout', _} ->
             lager:debug("error originating: timeout"),
-            respond_error(JObj, 'timeout')
+            respond_error(JObj, <<"timeout">>)
     end.
 
 -spec until_callback(wh_json:objects()) -> boolean().

@@ -45,7 +45,7 @@ start_printer(PrinterId) ->
 -spec stop_printer(ne_binary()) -> 'ok'.
 stop_printer(PrinterId) ->
     _ = [begin
-             supervisor:terminate_child(?MODULE, Id),
+             _ = supervisor:terminate_child(?MODULE, Id),
              supervisor:delete_child(?MODULE, Id)
          end
          || {Id, _Pid, 'worker', [_]} <- supervisor:which_children(?MODULE),

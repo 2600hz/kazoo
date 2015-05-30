@@ -215,8 +215,8 @@ register_overwrite(JObj, Props) ->
                    ,Realm
                   ),
     SipUri = nksip_unparse:uri(#uri{user=Username, domain=Realm}),
-    PrevBody = wh_util:to_list(<<"Replaced-By:", NewContact/binary>>),
-    NewBody = wh_util:to_list(<<"Overwrote:", PrevContact/binary>>),
+    PrevBody = wh_util:to_list(<<"Replaced-By:", (wh_util:to_binary(NewContact))/binary>>),
+    NewBody = wh_util:to_list(<<"Overwrote:", (wh_util:to_binary(PrevContact))/binary>>),
     PrevContactHeaders = [{"profile", ?DEFAULT_FS_PROFILE}
                           ,{"contact", PrevContact}
                           ,{"contact-uri", PrevContact}

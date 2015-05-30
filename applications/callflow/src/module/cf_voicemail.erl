@@ -724,17 +724,17 @@ play_messages([H|T]=Messages, Count, #mailbox{timezone=Timezone}=Box, Call) ->
         {'ok', 'keep'} ->
             lager:info("caller choose to save the message"),
             _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
-            set_folder(?FOLDER_SAVED, H, Box, Call),
+            _ = set_folder(?FOLDER_SAVED, H, Box, Call),
             play_messages(T, Count, Box, Call);
         {'ok', 'delete'} ->
             lager:info("caller choose to delete the message"),
             _ = whapps_call_command:b_prompt(<<"vm-deleted">>, Call),
-            set_folder(?FOLDER_DELETED, H, Box, Call),
+            _ = set_folder(?FOLDER_DELETED, H, Box, Call),
             play_messages(T, Count, Box, Call);
         {'ok', 'return'} ->
             lager:info("caller choose to return to the main menu"),
             _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
-            set_folder(?FOLDER_SAVED, H, Box, Call),
+            _ = set_folder(?FOLDER_SAVED, H, Box, Call),
             'complete';
         {'ok', 'replay'} ->
             lager:info("caller choose to replay"),
@@ -1936,7 +1936,7 @@ get_folder(Messages, Folder) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_folder(ne_binary(), wh_json:object(), mailbox(), whapps_call:call()) -> any().
+-spec set_folder(ne_binary(), wh_json:object(), mailbox(), whapps_call:call()) -> _.
 set_folder(Folder, Message, Box, Call) ->
     lager:info("setting folder for message to ~s", [Folder]),
     not (wh_json:get_value(?KEY_FOLDER, Message) =:= Folder) andalso

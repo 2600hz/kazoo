@@ -389,7 +389,7 @@ init_mods(Accts) ->
     init_mods(Accts, Year, Month).
 init_mods([], _, _) -> 'ok';
 init_mods(Accts, Year, Month) ->
-    [init_mod(Acct, Year, Month) || Acct <- Accts],
+    _ = [init_mod(Acct, Year, Month) || Acct <- Accts],
     'ok'.
 
 -spec init_mod(wh_json:object(), wh_year(), wh_month()) -> 'ok'.
@@ -487,7 +487,7 @@ enable_descendant_hooks(Account) ->
 
 -spec maybe_enable_descendants_hooks(ne_binaries()) -> 'ok'.
 maybe_enable_descendants_hooks(Accounts) ->
-    [maybe_enable_descendant_hooks(Account) || Account <- Accounts],
+    _ = [maybe_enable_descendant_hooks(Account) || Account <- Accounts],
     'ok'.
 
 -spec maybe_enable_descendant_hooks(ne_binary()) -> 'ok'.
