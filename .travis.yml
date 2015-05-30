@@ -6,10 +6,12 @@ notifications:
   irc:
     channels:
       - "irc.freenode.org#2600hz-dev"
+
 otp_release:
   - R16B
   - R15B03
   - R15B02
+
 before_install:
   - set -e
   - sudo apt-get install -qq xsltproc
@@ -18,7 +20,17 @@ before_install:
   - cd proper
   - make fast
   - cd $TRAVIS_BUILD_DIR
+
 script: make compile
+
 after_success:
   - make xref
+  - kerl_deactivate
+  - source $HOME/otp/R16B/activate
+  - make build-plt
+  - git fetch origin master:master
+  - files="$(git diff --name-only master..)"
+  - $TRAVIS_BUILD_DIR/scripts/check-dialyzer.escript $files
+  - kerl_deactivate
+  - source $HOME/otp/$TRAVIS_OTP_RELEASE/activate
   - ERL_LIBS="$HOME/proper" make test
