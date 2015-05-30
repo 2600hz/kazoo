@@ -1136,8 +1136,8 @@ move_doc(Conn, CopySpec, Options) ->
                  ,source_doc_id = SourceDocId
                 } = CopySpec,
     case copy_doc(Conn, CopySpec, Options) of
-         {'ok', JObj} ->
-             del_doc(Conn, SourceDbName, SourceDocId),
-             {'ok', JObj};
-         Error -> Error
+        {'ok', JObj} ->
+            _ = del_doc(Conn, SourceDbName, SourceDocId),
+            {'ok', JObj};
+        Error -> Error
      end.

@@ -83,11 +83,6 @@ delete(#number{features=Features
                         | {'error', _}
                         | {'invalid', _}
                         | {'multiple_choice', wh_json:object()}.
--spec maybe_update_dash_e911(ne_binary(), wh_json:object(), wh_json:object()) ->
-                        {'ok', wh_json:object()}
-                        | {'error', _}
-                        | {'invalid', _}
-                        | {'multiple_choice', wh_json:object()}.
 maybe_update_dash_e911(#number{current_number_doc=CurrentJObj
                                ,number_doc=JObj
                                ,features=Features
@@ -112,8 +107,12 @@ maybe_update_dash_e911(#number{current_number_doc=CurrentJObj
             end
     end.
 
-maybe_update_dash_e911(#number{dry_run='true', number_doc=JObj}, _, _) -> {'ok', JObj};
-maybe_update_dash_e911(Number, Address, JObj) ->
+-spec maybe_update_dash_e911(ne_binary(), wh_json:object(), wh_json:object()) ->
+                        {'ok', wh_json:object()}
+                        | {'error', _}
+                        | {'invalid', _}
+                        | {'multiple_choice', wh_json:object()}.
+maybe_update_dash_e911(Number, Address, JObj) when is_binary(Number) ->
     Location = json_address_to_xml_location(Address),
     case is_valid_location(Location) of
         {'error', _R}=Error->

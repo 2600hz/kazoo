@@ -114,6 +114,7 @@ validate_assignments() ->
     Pattern = #wh_amqp_assignment{_='_'},
     validate_assignments(ets:match_object(?ASSIGNMENTS, Pattern, 1)).
 
+-spec validate_assignments({[wh_amqp_assignment()], ets:continuation()} | '$end_of_table') -> 'ok'.
 validate_assignments('$end_of_table') -> 'ok';
 validate_assignments({[#wh_amqp_assignment{timestamp={_, _, _}
                                            ,consumer='undefined'
@@ -186,10 +187,11 @@ validate_assignments({[#wh_amqp_assignment{timestamp={_, _, _}
             'true' -> 'ok'
         end,
     validate_assignments(ets:match_object(Continuation));
-validate_assignments({[Assignment], Continuation}) ->
+validate_assignments({[#wh_amqp_assignment{}=Assignment], Continuation}) ->
     log_invalid_assignment(Assignment),
     validate_assignments(ets:match_object(Continuation)).
 
+-spec log_invalid_assignment(wh_amqp_assignment()) -> 'ok'.
 log_invalid_assignment(#wh_amqp_assignment{}=Assignment) ->
     io:format("invalid assignment:~n ~p~n", [lager:pr(Assignment, ?MODULE)]).
 
@@ -363,7 +365,7 @@ channel_summary() ->
     channel_summary(ets:match_object(?ASSIGNMENTS, Pattern, 1)).
 
 channel_summary('$end_of_table') -> 'ok';
-channel_summary({[Assignment], Continuation}) ->
+channel_summary({[#wh_amqp_assignment{}=Assignment], Continuation}) ->
     io:format("| ~-48s | ~-8B | ~-8B | ~-15w | ~-15w | ~-15w | ~-8s | ~-8B |~n"
               ,[Assignment#wh_amqp_assignment.broker
                 ,channel_summary_age(Assignment#wh_amqp_assignment.timestamp)

@@ -315,23 +315,23 @@ create_response(_Engine, {'ibrowse_req_id', ReqID}) ->
     lager:debug("speech file streaming as ~p", [ReqID]),
     {'ok', ReqID};
 create_response(<<"voicefabric">> = _Engine, {'ok', "200", Headers, Content}) ->
-    [lager:debug("hdr: ~p", [H]) || H <- Headers],
+    _ = [lager:debug("hdr: ~p", [H]) || H <- Headers],
     lager:debug("converting media"),
     {'ok', Rate} = voicefabric_get_media_rate(Headers),
     RawFile = tmp_file_name(<<"raw">>),
     WavFile = tmp_file_name(<<"wav">>),
-    _ = file:write_file(RawFile, Content),
+    wh_util:write_file(RawFile, Content),
     From = ["raw -r ", Rate, " -e signed-integer -b 16"],
     To = "wav",
     Cmd = binary_to_list(iolist_to_binary(["sox -t ", From, " ", RawFile, " -t ", To, " ", WavFile])),
     lager:debug("os cmd: ~ts", [Cmd]),
     CmdOut = os:cmd(Cmd),
     CmdOut =:= [] orelse lager:debug("cmd out: ~ts", [CmdOut]),
-    _ = file:delete(RawFile),
+    wh_util:delete_file(RawFile),
     lager:debug("reading file"),
     case file:read_file(WavFile) of
         {'ok', WavContent} ->
-            file:delete(WavFile),
+            wh_util:delete_file(WavFile),
             lager:debug("media converted"),
             NewHeaders = props:set_values([{"Content-Type", "audio/wav"}
                                            ,{"Content-Length", integer_to_list(byte_size(WavContent))}
@@ -351,8 +351,7 @@ create_response(_Engine, {'ok', "200", Headers, Content}) ->
     {'ok', wh_util:to_binary(ContentType), Content};
 create_response(Engine, {'ok', Code, RespHeaders, Content}) ->
     lager:warning("creating speech file failed with code ~s: ~s", [Code, Content]),
-    [lager:debug("hdr: ~p", [H]) || H <- RespHeaders],
-
+    _ = [lager:debug("hdr: ~p", [H]) || H <- RespHeaders],
     {'error', 'tts_provider_failure', create_error_response(Engine, RespHeaders, Content)}.
 
 -spec voicefabric_get_media_rate(wh_proplist()) -> {'ok', ne_binary()}.
@@ -383,13 +382,13 @@ create_error_response(_Engine, _RespHeaders, Content) ->
 convert_content(Content, <<"audio/mpeg">>, <<"application/wav">> = _ContentType) ->
     Mp3File = tmp_file_name(<<"mp3">>),
     WavFile = tmp_file_name(<<"wav">>),
-    _ = file:write_file(Mp3File, Content),
+    wh_util:write_file(Mp3File, Content),
     Cmd = io_lib:format("lame --decode ~s ~s &> /dev/null && echo -n \"success\"", [Mp3File, WavFile]),
     _ = os:cmd(Cmd),
-    _ = file:delete(Mp3File),
+    wh_util:delete_file(Mp3File),
     case file:read_file(WavFile) of
         {'ok', WavContent} ->
-            _ = file:delete(WavFile),
+            wh_util:delete_file(WavFile),
             WavContent;
         {'error', _R} ->
             lager:info("unable to convert mpeg to wav: ~p", [_R]),

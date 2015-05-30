@@ -1287,7 +1287,7 @@ rebuild_design_doc(Conn, D, DD, DesignDoc) ->
 -spec rebuild_views(server(), ne_binary(), ne_binary(), ne_binaries()) -> 'ok'.
 -spec rebuild_view(server(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 rebuild_views(Conn, D, DD, Views) ->
-    [rebuild_view(Conn, D, DD, V) || V <- Views],
+    _ = [rebuild_view(Conn, D, DD, V) || V <- Views],
     'ok'.
 
 rebuild_view(Conn, D, DD, View) ->

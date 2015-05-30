@@ -216,10 +216,10 @@ tokens() ->
               ,[<<"Application">>, <<"Key">>, <<"Pid">>, <<"Tokens">>, <<"Last Accessed">>]
              ),
 
-    lists:foldl(fun print_bucket_info/2
-                ,'undefined'
-                ,lists:keysort(#bucket.key, ets:tab2list(table_id()))
-               ),
+    _ = lists:foldl(fun print_bucket_info/2
+                    ,'undefined'
+                    ,lists:keysort(#bucket.key, ets:tab2list(table_id()))
+                   ),
     'ok'.
 
 print_bucket_info(#bucket{key={CurrentApp, Name}

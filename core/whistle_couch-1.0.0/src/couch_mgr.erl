@@ -981,7 +981,7 @@ archive(Db, File, MaxDocs, N, Pos) ->
 
 -spec archive_docs(file:io_device(), wh_json:objects()) -> 'ok'.
 archive_docs(File, Docs) ->
-    [archive_doc(File, wh_json:get_value(<<"doc">>, D)) || D <- Docs],
+    _ = [archive_doc(File, wh_json:get_value(<<"doc">>, D)) || D <- Docs],
     'ok'.
 
 -spec archive_doc(file:io_device(), wh_json:object()) -> 'ok'.

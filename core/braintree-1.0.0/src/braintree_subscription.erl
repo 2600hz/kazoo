@@ -247,16 +247,9 @@ create(Plan, Token) ->
 -spec update(subscription()) -> subscription().
 update(#bt_subscription{create='true'}=Subscription) ->
     create(Subscription);
-update(#bt_subscription{}=Subscription) ->
-    update(Subscription, 'false').
-
--spec update(subscription(), boolean()) -> subscription().
-update(#bt_subscription{id=SubscriptionId}=Subscription, ShouldSetFirstBillingDate) ->
+update(#bt_subscription{id=SubscriptionId}=Subscription) ->
     Url = url(SubscriptionId),
-    Prepared = case ShouldSetFirstBillingDate of
-                   'false' -> Subscription#bt_subscription{billing_first_date = 'undefined'};
-                   'true'  -> Subscription
-               end,
+    Prepared = Subscription#bt_subscription{billing_first_date = 'undefined'},
     Request = record_to_xml(Prepared, 'true'),
     Xml = braintree_request:put(Url, Request),
     xml_to_record(Xml).

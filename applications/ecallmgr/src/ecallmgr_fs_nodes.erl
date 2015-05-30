@@ -129,6 +129,9 @@ remove(Node) -> gen_server:cast(?MODULE, {'rm_fs_node', Node}).
 -spec connected() -> atoms() | wh_proplist_kv(atom(), gregorian_seconds()).
 connected() ->
     connected('false').
+
+-spec connected('false') -> [atom()];
+               ('true') -> [{atom(), gregorian_seconds()}].
 connected(Verbose) ->
     gen_server:call(?MODULE, {'connected_nodes', Verbose}).
 

@@ -30,7 +30,9 @@ what(IO) when is_list(IO) -> iolist_to_binary(IO).
 
 -define(GPROC_KEY(Type), {'n', 'l', type_key(Type)}).
 
--spec type_key(diagram_type() | ne_binary() | atom()) -> {?MODULE, ne_binary() | '_' | '$1'}.
+-type type_key() :: {?MODULE, ne_binary() | '_' | '$1'}.
+
+-spec type_key(diagram_type() | ne_binary() | atom()) -> type_key().
 type_key({'file', Filename}) -> type_key(Filename);
 type_key({'file', Name, _Filename}) -> type_key(Name);
 type_key({'db', Database}) -> type_key(Database);
@@ -60,7 +62,7 @@ stop() ->
     case gproc:select('n', [{MatchHead, Guard, [Result]}]) of
         [] -> 'ok';
         Pids ->
-            [stop_pid(Pid) || Pid <- Pids],
+            _ = [stop_pid(Pid) || Pid <- Pids],
             'ok'
     end.
 
@@ -79,7 +81,7 @@ stop_pid([Pid, Type]) ->
     catch gproc:unreg(?GPROC_KEY(Type)),
     'ok'.
 
--spec running() -> wh_proplist().
+-spec running() -> [{pid(), type_key()}].
 running() ->
     %% {{'n', 'l', Key}, PidToMatch, ValueToMatch}
     MatchHead = {?GPROC_KEY('$2'), '_', '$1'},

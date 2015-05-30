@@ -71,7 +71,7 @@
 -record(node, {node = node() :: atom() | '$1' | '$2' | '_'
                ,expires = 0 :: non_neg_integer() | 'undefined' | '$2' | '_'
                ,whapps = [] :: whapps_info() | '$1' | '_'
-               ,media_servers = [] :: wh_proplist() | atoms() | '_'
+               ,media_servers = [] :: [ne_binary() | {ne_binary(), ne_binary()}] | '_'
                ,last_heartbeat = wh_util:now_ms(now()) :: pos_integer() | 'undefined' | '$3' | '_'
                ,zone :: ne_binary() | '_'
                ,broker :: api_binary() | '_'
@@ -183,22 +183,14 @@ print_status(Nodes) ->
                          io:format("Channels      : ~B~n", [Node#node.channels]),
                          io:format("Registrations : ~B~n", [Node#node.registrations]),
                          io:format("Media Servers : ~s(~s)~n", [Server, Started]),
-                         [begin
-                              io:format("                ~s~n", [S])
-                          end
-                          || S <- Servers
-                         ];
+                         [io:format("                ~s~n", [S]) || S <- Servers];
                      [Server|Servers] ->
                          io:format("Channels      : ~B~n", [Node#node.channels]),
                          io:format("Registrations : ~B~n", [Node#node.registrations]),
                          io:format("Media Servers : ~s~n", [Server]),
-                         [begin
-                              io:format("                ~s~n", [S])
-                          end
-                          || S <- Servers
-                         ]
+                         [io:format("                ~s~n", [S]) || S <- Servers]
                  end,
-             io:format("~n", [])
+             io:format("~n")
          end
          || Node <- Nodes
         ],
@@ -274,9 +266,9 @@ init([]) ->
                            ]),
     lager:debug("started ETS ~p", [Tab]),
     _ = erlang:send_after(?EXPIRE_PERIOD, self(), 'expire_nodes'),
-    net_kernel:monitor_nodes('true', ['nodedown_reason'
-                                      ,{'node_type', 'all'}
-                                     ]),
+    _ = net_kernel:monitor_nodes('true', ['nodedown_reason'
+                                          ,{'node_type', 'all'}
+                                         ]),
     lager:debug("monitoring nodes"),
     State = #state{tab=Tab},
     Node = create_node('undefined', State),
@@ -392,14 +384,14 @@ handle_info({'DOWN', Ref, 'process', Pid, _}, #state{notify_new=NewSet
 
 handle_info({'nodedown', Node, InfoList}, State) ->
     lager:info("VM ~s is no longer connected:", [Node]),
-    [lager:info(" ~p: ~p", [K, V]) || {K, V} <- InfoList],
+    _ = [lager:info(" ~p: ~p", [K, V]) || {K, V} <- InfoList],
     {'noreply', State};
 handle_info({'nodedown', Node}, State) ->
     lager:info("VM ~s is no longer connected", [Node]),
     {'noreply', State};
 handle_info({'nodeup', Node, InfoList}, State) ->
     lager:info("VM ~s is now connected:", [Node]),
-    [lager:info(" ~p: ~p", [K, V]) || {K, V} <- InfoList],
+    _ = [lager:info(" ~p: ~p", [K, V]) || {K, V} <- InfoList],
     {'noreply', State};
 handle_info({'nodeup', Node}, State) ->
     lager:info("VM ~s is now connected", [Node]),
@@ -489,7 +481,7 @@ add_ecallmgr_data(#node{whapps=Whapps}=Node) ->
                || {Server, Started} <- ecallmgr_fs_nodes:connected('true')
               ],
     Node#node{media_servers=Servers
-              ,whapps=[{<<"ecallmgr">>, get_whapp_info('ecallmgr')} |Whapps]
+              ,whapps=[{<<"ecallmgr">>, get_whapp_info('ecallmgr')} | Whapps]
               ,channels=ecallmgr_fs_channels:count()
               ,registrations=ecallmgr_registrar:count()
              }.
@@ -546,14 +538,26 @@ advertise_payload(Node) ->
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec media_servers_to_json(atoms() | wh_proplist()) -> ne_binaries().
+-spec media_servers_to_json([ne_binary() | {ne_binary(), ne_binary()}]) -> ne_binaries().
 media_servers_to_json(Servers) ->
-    [media_server_to_json(Server) || Server <- Servers].
+    [case S of
+         {Server, Started} -> <<Server/binary, "(", Started/binary, ")">>;
+         Server -> Server
+     end
+     || S <- Servers].
 
--spec media_server_to_json(atom() | {atom(), ne_binary()}) -> ne_binary().
-media_server_to_json({Server, Started}) ->
-    list_to_binary([wh_util:to_binary(Server), "(", Started, ")"]);
-media_server_to_json(Server) -> wh_util:to_binary(Server).
+-spec media_servers_from_json(ne_binaries()) -> [ne_binary() | {ne_binary(), ne_binary()}].
+media_servers_from_json(Servers) ->
+    [case binary:match(S, <<"(">>) of
+         'nomatch' -> %% S ~ <<"server@tld.com">>
+             S;
+         {Pos, _} ->  %% S ~ <<"server@tld.com(13d18h43m29s)">>
+             Len = byte_size(S),
+             Started = binary:part(S, {Pos + 1, Len - Pos - 2}),
+             Server  = binary:part(S, {0, Pos}),
+             {Server, Started}
+     end
+     || S <- Servers].
 
 -spec from_json(wh_json:object(), nodes_state()) -> wh_node().
 from_json(JObj, State) ->
@@ -561,7 +565,7 @@ from_json(JObj, State) ->
     #node{node=wh_util:to_atom(Node, 'true')
           ,expires=wh_util:to_integer(wh_json:get_integer_value(<<"Expires">>, JObj, 0) * ?FUDGE_FACTOR)
           ,whapps=whapps_from_json(wh_json:get_value(<<"WhApps">>, JObj, []))
-          ,media_servers=wh_json:get_value(<<"Media-Servers">>, JObj, [])
+          ,media_servers=media_servers_from_json(wh_json:get_value(<<"Media-Servers">>, JObj, []))
           ,used_memory=wh_json:get_integer_value(<<"Used-Memory">>, JObj, 0)
           ,processes=wh_json:get_integer_value(<<"Processes">>, JObj, 0)
           ,ports=wh_json:get_integer_value(<<"Ports">>, JObj, 0)

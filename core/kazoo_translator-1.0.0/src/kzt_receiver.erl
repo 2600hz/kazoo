@@ -26,8 +26,8 @@
                    ,hangup_dtmf :: api_binary()
                    ,collect_dtmf = 'false' :: boolean()
                    ,record_call :: boolean()
-                   ,call_timeout :: integer()
-                   ,call_time_limit :: integer()
+                   ,call_timeout :: api_integer() | 'infinity'
+                   ,call_time_limit :: integer() | 'infinity'
                    ,start :: wh_now()
                    ,call_b_leg :: api_binary()
                   }).

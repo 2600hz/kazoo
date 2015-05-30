@@ -215,7 +215,7 @@ code_change(_OldVsn, Connection, _Extra) ->
 -spec connected(wh_amqp_connection()) -> wh_amqp_connection().
 connected(#wh_amqp_connection{reconnect_ref=Ref}=Connection)
   when is_reference(Ref) ->
-    erlang:cancel_timer(Ref),
+    _ = erlang:cancel_timer(Ref),
     connected(Connection#wh_amqp_connection{reconnect_ref='undefined'});
 connected(#wh_amqp_connection{channel='undefined'}=Connection) ->
     case create_control_channel(Connection) of

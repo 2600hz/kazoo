@@ -279,26 +279,17 @@ simple_save(#number{}=Number) ->
                ],
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines).
 
--spec maybe_update_service_plans(wnm_number() | {_, wnm_number()}) ->
-                                        wnm_number() |
-                                        {_, wnm_number()}.
+-spec maybe_update_service_plans(wnm_number()) -> wnm_number().
 maybe_update_service_plans(#number{state = ?NUMBER_STATE_DISCOVERY}=N) -> N;
-maybe_update_service_plans(#number{}=N) -> update_service_plans(N);
-maybe_update_service_plans(E) -> E.
+maybe_update_service_plans(#number{}=N) -> update_service_plans(N).
 
--spec maybe_save_phone_number_docs(wnm_number() | {_, wnm_number()}) ->
-                                          wnm_number() |
-                                          {_, wnm_number()}.
+-spec maybe_save_phone_number_docs(wnm_number()) -> wnm_number().
 maybe_save_phone_number_docs(#number{state = ?NUMBER_STATE_DISCOVERY}=N) -> N;
-maybe_save_phone_number_docs(#number{}=N) -> save_phone_number_docs(N);
-maybe_save_phone_number_docs(E) -> E.
+maybe_save_phone_number_docs(#number{}=N) -> save_phone_number_docs(N).
 
--spec maybe_save_number_doc(wnm_number() | {_, wnm_number()}) ->
-                                   wnm_number() |
-                                   {_, wnm_number()}.
+-spec maybe_save_number_doc(wnm_number()) -> wnm_number().
 maybe_save_number_doc(#number{dry_run='true'}=N) -> N;
-maybe_save_number_doc(#number{}=N) -> save_number_doc(N);
-maybe_save_number_doc(E) -> E.
+maybe_save_number_doc(#number{}=N) -> save_number_doc(N).
 
 -spec maybe_get_updated_phone_number_docs(wnm_number()) -> wnm_number().
 maybe_get_updated_phone_number_docs(#number{state = ?NUMBER_STATE_DISCOVERY}=N) -> N;

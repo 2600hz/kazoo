@@ -59,13 +59,13 @@ start_deps() ->
         {'ok', 'true'} -> reloader:start();
         _ -> 'ok'
     end,
-    [wh_util:ensure_started(A) || A <- ['sasl'
-                                        ,'crypto'
-                                        ,'gproc'
-                                        ,'lager'
-                                        ,'kazoo_caches'
-                                        ,'kazoo_token_buckets'
-                                        ,'whistle_amqp'
-                                        ,'whistle_couch'
-                                       ]],
+    _ = [wh_util:ensure_started(A) || A <- ['sasl'
+                                            ,'crypto'
+                                            ,'gproc'
+                                            ,'lager'
+                                            ,'kazoo_caches'
+                                            ,'kazoo_token_buckets'
+                                            ,'whistle_amqp'
+                                            ,'whistle_couch'
+                                           ]],
     'ok'.

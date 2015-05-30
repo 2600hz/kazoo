@@ -647,10 +647,10 @@ ensure_aggregate_device(Account) ->
 
 -spec refresh_account_devices(ne_binary(), ne_binary(), wh_json:objects()) -> 'ok'.
 refresh_account_devices(AccountDb, AccountRealm, Devices) ->
-    [whapps_util:add_aggregate_device(AccountDb, wh_json:get_value(<<"doc">>, Device))
-     || Device <- Devices,
-        should_aggregate_device(AccountRealm, wh_json:get_value(<<"doc">>, Device))
-    ],
+    _ = [whapps_util:add_aggregate_device(AccountDb, wh_json:get_value(<<"doc">>, Device))
+         || Device <- Devices,
+            should_aggregate_device(AccountRealm, wh_json:get_value(<<"doc">>, Device))
+        ],
     'ok'.
 
 -spec should_aggregate_device(ne_binary(), wh_json:object()) -> boolean().
@@ -660,10 +660,10 @@ should_aggregate_device(AccountRealm, Device) ->
 
 -spec remove_aggregate_devices(ne_binary(), ne_binary(), wh_json:objects()) -> 'ok'.
 remove_aggregate_devices(AccountDb, AccountRealm, Devices) ->
-    [whapps_util:rm_aggregate_device(AccountDb, wh_json:get_value(<<"doc">>, Device))
-     || Device <- Devices,
-        should_remove_aggregate(AccountRealm, wh_json:get_value(<<"doc">>, Device))
-    ],
+    _ = [whapps_util:rm_aggregate_device(AccountDb, wh_json:get_value(<<"doc">>, Device))
+         || Device <- Devices,
+            should_remove_aggregate(AccountRealm, wh_json:get_value(<<"doc">>, Device))
+        ],
     'ok'.
 
 -spec should_remove_aggregate(ne_binary(), wh_json:object()) -> boolean().
