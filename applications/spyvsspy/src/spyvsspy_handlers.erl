@@ -35,11 +35,14 @@ get_endpoints(AccountId, EndpointId) ->
 
 -spec new_call(ne_binary()) -> whapps_call:call().
 new_call(AccountId) ->
-    whapps_call:from_json(wh_json:from_list(
-                            [{<<"Account-ID">>, AccountId}
-                             ,{<<"Account-DB">>, wh_util:format_account_id(AccountId, 'encoded')}
-                             ,{<<"Resource-Type">>, ?RESOURCE_TYPE_AUDIO}
-                            ])).
+    whapps_call:from_json(
+      wh_json:from_list(
+        [{<<"Account-ID">>, AccountId}
+         ,{<<"Account-DB">>, wh_util:format_account_id(AccountId, 'encoded')}
+         ,{<<"Resource-Type">>, ?RESOURCE_TYPE_AUDIO}
+        ]
+       )
+     ).
 
 -spec get_group_and_call_id(wh_json:object()) -> {api_binary(), api_binary()}.
 get_group_and_call_id(JObj) ->
