@@ -199,24 +199,18 @@ play_ringing(Data, Call) ->
 %%--------------------------------------------------------------------
 -spec set_caller_id(whapps_call:call()) -> 'ok'.
 set_caller_id(Call) ->
-    CIDNum = whapps_call:caller_id_number(Call),
-    case wh_number_manager:lookup_account_by_number(CIDNum) of
-        {'ok', AccountId, _} ->
-            {Number, Name} = maybe_get_account_cid(AccountId, Call),
-            lager:info("setting the caller id number to ~s from account ~s", [Number, AccountId]),
-            Updates = [fun(C) -> whapps_call:kvs_store('dynamic_cid', Number, C) end
-                       ,fun(C) ->
-                                C1 = whapps_call:set_caller_id_number(Number, C),
-                                whapps_call:set_caller_id_name(Name, C1)
-                        end
-                      ],
-            {'ok', C} = cf_exe:get_call(Call),
-            cf_exe:set_call(whapps_call:exec(Updates, C)),
-            'ok';
-        _Else ->
-            lager:debug("~s is not associated with any account, ~s", [CIDNum]),
-            'ok'
-    end.
+        AccountId = whapps_call:account_id(Call),
+        {Number, Name} = maybe_get_account_cid(AccountId, Call),
+        lager:info("setting the caller id number to ~s from account ~s", [Number, AccountId]),
+        Updates = [fun(C) -> whapps_call:kvs_store('dynamic_cid', Number, C) end
+                   ,fun(C) ->
+                            C1 = whapps_call:set_caller_id_number(Number, C),
+                            whapps_call:set_caller_id_name(Name, C1)
+                    end
+                  ],
+        {'ok', C} = cf_exe:get_call(Call),
+        cf_exe:set_call(whapps_call:exec(Updates, C)),
+        'ok'.
 
 %%--------------------------------------------------------------------
 %% @private
