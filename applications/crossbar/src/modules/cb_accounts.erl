@@ -281,7 +281,7 @@ put(Context) ->
     catch
         'throw':C ->
             case cb_context:is_context(C) of
-                'true' ->  delete(C, AccountId);
+                'true' -> delete(C, AccountId);
                 'false' ->
                     C = cb_context:add_system_error('unspecified_fault', Context),
                     delete(C, AccountId)
@@ -407,6 +407,7 @@ validate_request(AccountId, Context) ->
                     ,fun validate_realm_is_unique/2
                     ,fun validate_account_name_is_unique/2
                     ,fun validate_account_schema/2
+                    ,fun disallow_direct_clients/2
                    ],
     lists:foldl(fun(F, C) -> F(AccountId, C) end
                 ,Context
@@ -540,6 +541,36 @@ maybe_import_enabled(Context, JObj, IsEnabled) ->
     cb_context:set_doc(Context
                        ,wh_json:delete_key(<<"enabled">>, JObj1)
                       ).
+
+-spec disallow_direct_clients(api_binary(), cb_context:context()) -> cb_context:context().
+disallow_direct_clients(AccountId, Context) ->
+    AllowDirect = whapps_config:get_is_true(?WH_ACCOUNTS_DB, 'allow_subaccounts_for_direct', 'true'),
+    maybe_disallow_direct_clients(AllowDirect, AccountId, Context).
+
+-spec maybe_disallow_direct_clients(boolean(), api_binary(), cb_context:context()) ->
+                                           cb_context:context().
+maybe_disallow_direct_clients('true', _AccountId, Context) ->
+    Context;
+maybe_disallow_direct_clients('false', _AccountId, Context) ->
+    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
+    AuthAccountId = cb_context:auth_account_id(Context),
+    AuthUserReseller = wh_services:get_reseller_id(AuthAccountId),
+    case AuthUserReseller =/= MasterAccountId
+        orelse wh_services:is_reseller(AuthAccountId)
+    of
+        'true' -> Context;
+        'false' ->
+            lager:debug("direct account ~p is disallowed from creating sub-accounts", [AuthAccountId]),
+            cb_context:add_validation_error(
+              [<<"account">>]
+              ,<<"forbidden">>
+              ,wh_json:from_list(
+                 [{<<"message">>, <<"Direct account is not allowed to create sub-accounts">>}
+                  ,{<<"cause">>, AuthAccountId}
+                 ])
+              ,Context
+             )
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
