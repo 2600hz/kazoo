@@ -221,6 +221,11 @@ dry_run(Context, <<"ips">>) ->
     Services = fetch_service(Context),
     UpdatedServices = wh_service_ips:reconcile(Services, <<"dedicated">>),
     wh_services:dry_run(UpdatedServices);
+dry_run(Context, <<"whitelabel">>) ->
+    lager:debug("dry run whitelabel"),
+    Services = fetch_service(Context),
+    UpdatedServices = wh_service_whitelabel:reconcile(Services, <<"whitelabel">>),
+    wh_services:dry_run(UpdatedServices);
 dry_run(_Context, _Type) ->
     lager:warning("unknown type ~p, cannot execute dry run", [_Type]),
     wh_json:new().

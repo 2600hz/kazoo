@@ -386,7 +386,11 @@ validate_domain_attachment(Context, Domain, AttachType, ?HTTP_GET) ->
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    maybe_update_account_definition(crossbar_doc:save(Context)).
+    Callback =
+        fun() ->
+            maybe_update_account_definition(crossbar_doc:save(Context))
+        end,
+    crossbar_services:maybe_dry_run(Context, Callback, <<"whitelabel">>).
 
 -spec post(cb_context:context()) -> cb_context:context().
 post(Context) ->
