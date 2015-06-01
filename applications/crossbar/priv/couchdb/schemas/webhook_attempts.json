@@ -4,7 +4,7 @@
     "type": "object",
     "required": true,
     "name": "Webhook Attempt",
-    "description": "Log of an attempt to send a webhook to a third-party server"
+    "description": "Log of an attempt to send a webhook to a third-party server",
     "properties": {
         "hook_id": {
             "type": "string",
