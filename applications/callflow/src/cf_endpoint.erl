@@ -1206,7 +1206,7 @@ generate_sip_headers(Endpoint, Acc, Call) ->
 
     HeaderFuns = [fun maybe_add_sip_headers/1
                   ,fun(J) -> maybe_add_alert_info(J, Endpoint, Inception) end
-                  ,fun(J) -> maybe_add_aor(J, Call) end
+                  ,fun(J) -> maybe_add_aor(J, Endpoint, Call) end
                  ],
     lists:foldr(fun(F, JObj) -> F(JObj) end, Acc, HeaderFuns).
 
@@ -1229,15 +1229,15 @@ maybe_add_alert_info(JObj, Endpoint, _Inception) ->
         Ringtone -> wh_json:set_value(<<"Alert-Info">>, Ringtone, JObj)
     end.
 
--spec maybe_add_aor(wh_json:object(), whapps_call:call()) -> wh_json:object().
--spec maybe_add_aor(wh_json:object(), api_binary(), ne_binary()) -> wh_json:object().
-maybe_add_aor(JObj, Call) ->
-    Realm = kz_device:sip_realm(JObj, whapps_call:account_realm(Call)),
-    Username = kz_device:sip_username(JObj),
-    maybe_add_aor(JObj, Username, Realm).
+-spec maybe_add_aor(wh_json:object(), wh_json:object(), whapps_call:call()) -> wh_json:object().
+-spec maybe_add_aor(wh_json:object(), wh_json:object(), api_binary(), ne_binary()) -> wh_json:object().
+maybe_add_aor(JObj, Endpoint, Call) ->
+    Realm = kz_device:sip_realm(Endpoint, whapps_call:account_realm(Call)),
+    Username = kz_device:sip_username(Endpoint),
+    maybe_add_aor(JObj, Endpoint, Username, Realm).
 
-maybe_add_aor(JObj, 'undefined', _Realm) -> JObj;
-maybe_add_aor(JObj, Username, Realm) ->
+maybe_add_aor(JObj, _, 'undefined', _Realm) -> JObj;
+maybe_add_aor(JObj, _, Username, Realm) ->
     wh_json:set_value(<<"X-KAZOO-AOR">>, <<"sip:", Username/binary, "@", Realm/binary>> , JObj).
 
 %%--------------------------------------------------------------------
