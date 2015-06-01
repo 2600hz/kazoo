@@ -392,7 +392,7 @@ send_request(CallId, Self, PublishFun, ReqProps)
     put('callid', CallId),
     Props = props:insert_values(
               [{<<"Server-ID">>, Self}
-              ,{<<"Call-ID">>, CallId}
+               | maybe_send_call_id(CallId)
               ]
               ,props:filter(fun request_proplist_filter/1, ReqProps)
              ),
@@ -401,6 +401,12 @@ send_request(CallId, Self, PublishFun, ReqProps)
     catch
         _:E -> {'error', E}
     end.
+
+-spec maybe_send_call_id(api_binary()) -> wh_proplist().
+maybe_send_call_id('undefined') -> [];
+maybe_send_call_id(?LOG_SYSTEM_ID) -> [];
+maybe_send_call_id(CallId) ->
+    [{<<"Call-ID">>, CallId}].
 
 -spec request_proplist_filter({wh_proplist_key(), wh_proplist_value()}) -> boolean().
 request_proplist_filter({<<"Server-ID">>, Value}) ->
