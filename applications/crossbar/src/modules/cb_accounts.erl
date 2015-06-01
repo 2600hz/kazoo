@@ -1188,11 +1188,7 @@ set_notification_preference(Context, Preference) ->
 -spec create_account_mod(ne_binary()) -> any().
 create_account_mod(AccountId) ->
     Db = wh_util:format_account_mod_id(AccountId),
-    _ = couch_mgr:db_create(Db),
-    couch_mgr:revise_doc_from_file(Db
-                                   ,'crossbar'
-                                   ,<<"account/cdrs.json">>
-                                  ).
+    kazoo_modb:create(Db).
 
 -spec create_first_transaction(ne_binary()) -> any().
 create_first_transaction(AccountId) ->
