@@ -1,37 +1,37 @@
 {
-    "_id": "access_lists",
     "$schema": "http://json-schema.org/draft-03/schema#",
-    "type": "object",
-    "required": false,
-    "name": "ACL Entry",
-    "description": "Access Control List entries for device or account",
+    "_id": "access_lists",
     "additionalProperties": true,
+    "description": "Access Control List entries for device or account",
+    "name": "ACL Entry",
     "properties": {
         "cidrs": {
-            "type": "array",
-            "required": true,
-            "name": "CIDR",
             "description": "Classless Inter-Domain Routing IP notation for use on the access lists",
-            "items":{
-                "type":"string",
-                "description":"CIDR IP to use on access lists"
-            }
+            "items": {
+                "description": "CIDR IP to use on access lists",
+                "type": "string"
+            },
+            "name": "CIDR",
+            "required": true,
+            "type": "array"
         },
-        "order":{
-            "type":"string",
-            "enum":[
+        "order": {
+            "description": "Allow-Deny or Deny-Allow?",
+            "enum": [
                 "allow,deny",
                 "deny,allow"
             ],
-            "required": true,
             "name": "order",
-            "description": "Allow-Deny or Deny-Allow?"
+            "required": true,
+            "type": "string"
         },
-        "user_agent":{
-            "type":"string",
+        "user_agent": {
+            "description": "RegExp to match valid user agent strings",
+            "name": "User-Agent",
             "required": false,
-            "name":"User-Agent",
-            "description": "RegExp to match valid user agent strings"
+            "type": "string"
         }
-    }
+    },
+    "required": false,
+    "type": "object"
 }

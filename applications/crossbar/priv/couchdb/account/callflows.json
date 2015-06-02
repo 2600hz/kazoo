@@ -1,12 +1,12 @@
 {
-    "_id": "_design/callflows"
-    ,"language": "javascript"
-    ,"views": {
+    "_id": "_design/callflows",
+    "filters": {
+        "export": "function(doc, req) { return ( doc.pvt_type == 'callflow' ); }"
+    },
+    "language": "javascript",
+    "views": {
         "crossbar_listing": {
             "map": "function(doc) { if (doc.pvt_type != 'callflow' || doc.pvt_deleted) return; var featurecode = (!doc.featurecode) ? false : doc.featurecode; emit(doc._id, {'id': doc._id, 'name': doc.name, 'type': doc.type, 'numbers': doc.numbers, 'patterns': doc.patterns, 'featurecode': featurecode, 'owner_id': doc.owner_id, 'group_id': doc.group_id}); }"
         }
-    }
-    ,"filters": {
-        "export":"function(doc, req) { return ( doc.pvt_type == 'callflow' ); }"
     }
 }

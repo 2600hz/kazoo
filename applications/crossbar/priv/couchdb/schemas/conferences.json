@@ -1,150 +1,150 @@
 {
-    "_id": "conferences",
     "$schema": "http://json-schema.org/draft-03/schema#",
-    "type": "object",
-    "required": false,
-    "name": "Conference",
+    "_id": "conferences",
     "description": "Schema for conferences",
+    "name": "Conference",
     "properties": {
-        "name": {
-            "type": "string",
+        "conference_numbers": {
+            "default": [],
+            "description": "Defines conference numbers that can be used by members or moderators",
+            "items": {
+                "required": false,
+                "type": "string"
+            },
+            "name": "General Call In Numbers",
             "required": false,
-            "name": "Name",
-            "description": "A friendly name for the conference",
-            "minLength": 1,
-            "maxLength": 128
-        },
-        "play_name": {
-            "name": "Play name",
-            "description": "Do we need to announce new conference members?",
-            "type": "boolean",
-            "required": false,
-            "default": false
-        },
-        "profile": {
-            "type": "string",
-            "required": false,
-            "name": "Profile",
-            "description": "The XML profile name used to configure the conference"
+            "type": "array",
+            "uniqueItems": true
         },
         "focus": {
-            "type": "string",
-            "required": false,
+            "description": "This is a read-only property indicating the media server hosting the conference",
             "name": "Focus",
-            "description": "This is a read-only property indicating the media server hosting the conference"
-        },
-        "owner_id": {
-            "type": "string",
             "required": false,
-            "name": "Owner ID",
-            "description": "The user ID who manages this conference",
-            "minLength": 32,
-            "maxLength": 32
+            "type": "string"
         },
         "member": {
-            "type": "object",
-            "required": false,
-            "name": "Member Call In",
+            "default": {},
             "description": "Defines the discovery properties for a member",
+            "name": "Member Call In",
             "properties": {
-                "join_muted": {
-                    "type": "boolean",
-                    "required": false,
-                    "name": "Join Muted?",
-                    "description": "Determines if a member will join muted",
-                    "default": true
-                },
                 "join_deaf": {
-                    "type": "boolean",
-                    "required": false,
-                    "name": "Join Deaf?",
+                    "default": false,
                     "description": "Determines if a member will join deaf",
-                    "default": false
+                    "name": "Join Deaf?",
+                    "required": false,
+                    "type": "boolean"
+                },
+                "join_muted": {
+                    "default": true,
+                    "description": "Determines if a member will join muted",
+                    "name": "Join Muted?",
+                    "required": false,
+                    "type": "boolean"
                 },
                 "numbers": {
-                    "type": "array",
-                    "required": false,
-                    "name": "Call In Numbers",
+                    "default": [],
                     "description": "Defines the conference number(s) for members",
-                    "minItems": 0,
-                    "uniqueItems": true,
                     "items": {
-                        "type": "string",
-                        "required": false
+                        "required": false,
+                        "type": "string"
                     },
-                    "default": []
+                    "minItems": 0,
+                    "name": "Call In Numbers",
+                    "required": false,
+                    "type": "array",
+                    "uniqueItems": true
                 },
                 "pins": {
-                    "type": "array",
-                    "required": false,
-                    "name": "Pin Numbers",
+                    "default": [],
                     "description": "Defines the pin number(s) for members",
                     "items": {
-                        "type": "string",
-                        "required": false
+                        "required": false,
+                        "type": "string"
                     },
-                    "default": []
+                    "name": "Pin Numbers",
+                    "required": false,
+                    "type": "array"
                 }
             },
-            "default": {}
+            "required": false,
+            "type": "object"
         },
         "moderator": {
-            "type": "object",
-            "required": false,
-            "name": "Moderator Call In",
+            "default": {},
             "description": "Defines the discovery properties for a moderator",
+            "name": "Moderator Call In",
             "properties": {
-                "join_muted": {
-                    "type": "boolean",
-                    "required": false,
-                    "name": "Join Muted?",
-                    "description": "Determines if a moderator will join muted",
-                    "default": false
-                },
                 "join_deaf": {
-                    "type": "boolean",
-                    "required": false,
-                    "name": "Join Deaf?",
+                    "default": false,
                     "description": "Determines if a moderator will join deaf",
-                    "default": false
+                    "name": "Join Deaf?",
+                    "required": false,
+                    "type": "boolean"
+                },
+                "join_muted": {
+                    "default": false,
+                    "description": "Determines if a moderator will join muted",
+                    "name": "Join Muted?",
+                    "required": false,
+                    "type": "boolean"
                 },
                 "numbers": {
-                    "type": "array",
-                    "required": false,
-                    "name": "Call In Numbers",
+                    "default": [],
                     "description": "Defines the conference number(s) for moderators",
-                    "uniqueItems": true,
                     "items": {
-                        "type": "string",
-                        "required": false
+                        "required": false,
+                        "type": "string"
                     },
-                    "default": []
+                    "name": "Call In Numbers",
+                    "required": false,
+                    "type": "array",
+                    "uniqueItems": true
                 },
                 "pins": {
-                    "type": "array",
-                    "required": false,
-                    "name": "Pin Numbers",
+                    "default": [],
                     "description": "Defines the pin number(s) for moderators",
                     "items": {
-                        "type": "string",
-                        "required": false
+                        "required": false,
+                        "type": "string"
                     },
-                    "default": []
+                    "name": "Pin Numbers",
+                    "required": false,
+                    "type": "array"
                 }
             },
-            "default": {}
-        },
-        "conference_numbers": {
-            "type": "array",
             "required": false,
-            "name": "General Call In Numbers",
-            "description": "Defines conference numbers that can be used by members or moderators",
-            "default": [],
-            "uniqueItems": true,
-            "items": {
-                "type": "string",
-                "required": false
-            }
+            "type": "object"
+        },
+        "name": {
+            "description": "A friendly name for the conference",
+            "maxLength": 128,
+            "minLength": 1,
+            "name": "Name",
+            "required": false,
+            "type": "string"
+        },
+        "owner_id": {
+            "description": "The user ID who manages this conference",
+            "maxLength": 32,
+            "minLength": 32,
+            "name": "Owner ID",
+            "required": false,
+            "type": "string"
+        },
+        "play_name": {
+            "default": false,
+            "description": "Do we need to announce new conference members?",
+            "name": "Play name",
+            "required": false,
+            "type": "boolean"
+        },
+        "profile": {
+            "description": "The XML profile name used to configure the conference",
+            "name": "Profile",
+            "required": false,
+            "type": "string"
         }
-    }
+    },
+    "required": false,
+    "type": "object"
 }
