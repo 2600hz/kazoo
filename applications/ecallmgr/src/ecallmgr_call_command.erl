@@ -1033,29 +1033,32 @@ chk_store_vm_result(Res, Node, UUID, _, JobId, Reply) ->
     lager:debug("chk_store_result ~p : ~p : ~p", [Res, JobId, Reply]),
     send_store_vm_call_event(Node, UUID, <<"failure">>).
 
--spec send_store_call_event(atom(), ne_binary(), wh_json:object() | ne_binary()) -> 'ok'.
+-spec send_store_call_event(atom(), ne_binary(), wh_json:object() | ne_binary() | {ne_binary(), ne_binary()}) -> 'ok'.
 send_store_call_event(Node, UUID, {MediaTransResults, File}) ->
     Timestamp = wh_util:to_binary(wh_util:current_tstamp()),
     Prop = case freeswitch:api(Node, 'uuid_dump', wh_util:to_list(UUID)) of
                {'ok', Dump} -> ecallmgr_util:eventstr_to_proplist(Dump);
                {'error', _Err} -> []
            end,
-    EvtProp1 = [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Prop, Timestamp)}
-                ,{<<"Call-ID">>, UUID}
-                ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Prop, <<>>)}
-                ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop, <<"HANGUP">>)}
-                ,{<<"Application-Name">>, <<"store">>}
-                ,{<<"Application-Response">>, MediaTransResults}
-                ,{<<"Application-Data">>, File}
-                | wh_api:default_headers(<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
-               ],
+    EvtProp1 = props:filter_undefined(
+                 [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Prop, Timestamp)}
+                  ,{<<"Call-ID">>, UUID}
+                  ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Prop, <<>>)}
+                  ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop, <<"HANGUP">>)}
+                  ,{<<"Application-Name">>, <<"store">>}
+                  ,{<<"Application-Response">>, MediaTransResults}
+                  ,{<<"Application-Data">>, File}
+                  | wh_api:default_headers(<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
+               ]),
     EvtProp2 = case ecallmgr_util:custom_channel_vars(Prop) of
                    [] -> EvtProp1;
                    CustomProp -> [{<<"Custom-Channel-Vars">>, wh_json:from_list(CustomProp)}
                                   | EvtProp1
                                  ]
                end,
-    wh_amqp_worker:cast(EvtProp2, fun wapi_call:publish_event/1).
+    wh_amqp_worker:cast(EvtProp2, fun wapi_call:publish_event/1);
+send_store_call_event(Node, UUID, MediaTransResults) ->
+    send_store_call_event(Node, UUID, {MediaTransResults, 'undefined'}).
 
 -spec send_store_vm_call_event(atom(), ne_binary(), wh_json:object() | ne_binary()) -> 'ok'.
 send_store_vm_call_event(Node, UUID, MediaTransResults) ->
