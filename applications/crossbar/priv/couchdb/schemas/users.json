@@ -500,6 +500,13 @@
             "description": "User's profile data",
             "$ref":"profile",
             "default": {}
+        },
+        "presence_id": {
+            "type": "string",
+            "required": false,
+            "name": "Presence ID",
+            "description": "User's presence ID"
         }
+
     }
 }
