@@ -106,7 +106,8 @@ maybe_start_agent(AccountId, AgentId, JObj) ->
                     login_fail(JObj)
             end;
         {'exists', Sup} ->
-            maybe_update_presence(Sup, JObj),
+            FSM = acdc_agent_sup:fsm(Sup),
+            acdc_agent_fsm:update_presence(FSM, presence_id(JObj), presence_state(JObj, 'undefuned')),
             login_success(JObj);
         {'error', _E} ->
             acdc_agent_stats:agent_logged_out(AccountId, AgentId),
@@ -163,17 +164,15 @@ maybe_stop_agent(AccountId, AgentId, JObj) ->
             acdc_agent_stats:agent_logged_out(AccountId, AgentId);
         Sup when is_pid(Sup) ->
             lager:debug("agent ~s(~s) is logging out, stopping ~p", [AgentId, AgentId, Sup]),
-            acdc_agent_stats:agent_logged_out(AccountId, AgentId),
+            acdc_agent_stats:agent_pending_logged_out(AccountId, AgentId),
 
-            case catch acdc_agent_sup:listener(Sup) of
+            case catch acdc_agent_sup:fsm(Sup) of
                 APid when is_pid(APid) ->
-                    maybe_update_presence(Sup, JObj, ?PRESENCE_RED_SOLID),
-                    acdc_agent_listener:logout_agent(APid);
-                _P -> lager:debug("failed to find agent listener for ~s: ~p", [AgentId, _P])
-            end,
+                    acdc_agent_fsm:update_presence(APid, presence_id(JObj), presence_state(JObj, ?PRESENCE_RED_SOLID)),
+                    acdc_agent_fsm:agent_logout(APid);
+                _P -> lager:debug("failed to find agent fsm for ~s: ~p", [AgentId, _P])
+            end
 
-            _Stop = acdc_agent_sup:stop(Sup),
-            lager:debug("supervisor ~p stopping agent: ~p", [Sup, _Stop])
     end.
 
 maybe_pause_agent(AccountId, AgentId, Timeout, JObj) ->

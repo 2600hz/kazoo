@@ -24,6 +24,7 @@
          ,pause/2
          ,resume/1
          ,update_presence/3
+         ,agent_logout/1
          ,refresh/2
          ,current_call/1
          ,status/1
@@ -272,6 +273,14 @@ resume(FSM) ->
 -spec update_presence(server_ref(), ne_binary(), ne_binary()) -> 'ok'.
 update_presence(FSM, PresenceID, PresenceState) ->
     gen_fsm:send_all_state_event(FSM, {'update_presence', PresenceID, PresenceState}).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec agent_logout(server_ref()) -> 'ok'.
+agent_logout(FSM) ->
+    gen_fsm:send_all_state_event(FSM, {'agent_logout'}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -1147,6 +1156,12 @@ outbound('current_call', _, State) ->
 %%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
+handle_event({'agent_logout'}, 'ready', State) ->
+    handle_agent_logout(State),
+    {'next_state', 'ready', State};
+handle_event({'agent_logout'} = Event, StateName, #state{agent_state_updates = Queue} = State) ->
+    NewQueue = [Event | Queue],
+    {'next_state', StateName, State#state{agent_state_updates = NewQueue}};
 handle_event({'resume'}, 'ready', State) ->
     {'next_state', 'ready', State};
 handle_event({'resume'}, 'paused', State) ->
@@ -1733,9 +1748,22 @@ state_step({'pause', Timeout}, {_, State}) ->
     {'paused', handle_pause(Timeout, State)};
 state_step({'resume'}, {_, State}) ->
     {'ready', handle_resume(State)};
+state_step({'agent_logout'}, {NextState, State}) ->
+    handle_agent_logout(State),
+    {NextState, State};
 state_step({'update_presence', PresenceId, PresenceState}, {NextState, State}) ->
     handle_presence_update(PresenceId, PresenceState, State),
     {NextState, State}.
+
+-spec handle_agent_logout(fsm_state()) -> 'ok'.
+handle_agent_logout(#state{account_id = AccountId
+                           ,agent_id = AgentId
+                          }) ->
+    acdc_agent_stats:agent_logged_out(AccountId, AgentId),
+    Sup = acdc_agents_sup:find_agent_supervisor(AccountId, AgentId),
+    acdc_agent_listener:logout_agent(acdc_agent_sup:listener(Sup)),
+    _Stop = acdc_agent_sup:stop(Sup),
+    lager:debug("supervisor ~p stopping agent: ~p", [Sup, _Stop]).
 
 -spec handle_presence_update(ne_binary(), ne_binary(), fsm_state()) -> 'ok'.
 handle_presence_update(PresenceId, PresenceState, #state{agent_id = AgentId
