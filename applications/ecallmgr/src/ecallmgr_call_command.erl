@@ -221,7 +221,7 @@ get_fs_app(Node, UUID, JObj, <<"store_fax">> = App) ->
             lager:debug("attempting to store fax on ~s: ~s", [Node, File]),
             case wh_json:get_value(<<"Media-Transfer-Method">>, JObj) of
                 <<"put">> ->
-                    stream_over_http(Node, UUID, File, 'put', 'fax', JObj),
+                    _ = stream_over_http(Node, UUID, File, 'put', 'fax', JObj),
                     {App, 'noop'};
                 _Method ->
                     lager:debug("invalid media transfer method for storing fax: ~s", [_Method]),
