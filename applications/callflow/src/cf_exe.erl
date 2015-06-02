@@ -58,6 +58,7 @@
                 ,status = <<"sane">> :: ne_binary()
                 ,queue :: api_binary()
                 ,self = self()
+                ,stop_on_destroy = 'false' :: boolean()
                 ,destroyed = 'false' :: boolean()
                }).
 -type state() :: #state{}.
@@ -331,7 +332,9 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({'set_call', Call}, State) ->
     {'noreply', State#state{call=Call}};
-handle_cast({'continue', _}, #state{destroyed='true'}=State) ->
+handle_cast({'continue', _}, #state{stop_on_destroy='true'
+                                    ,destroyed='true'
+                                   }=State) ->
     lager:info("channel no longer active, not continuing"),
     ?MODULE:hard_stop(self()),
     {'noreply', State};
@@ -409,8 +412,10 @@ handle_cast('initialize', #state{call=Call}) ->
                ],
     CallWithHelpers = lists:foldr(fun(F, C) -> F(C) end, Call, Updaters),
     spawn('cf_singular_call_hooks', 'maybe_hook_call', [CallWithHelpers]),
+    StopOnDestroy = whapps_config:get_is_true(<<"callflow">>, <<"stop_on_destroy">>, 'false'),
     {'noreply', #state{call=CallWithHelpers
                        ,flow=Flow
+                       ,stop_on_destroy=StopOnDestroy
                       }};
 handle_cast({'gen_listener', {'created_queue', Q}}, #state{call=Call}=State) ->
     {'noreply', State#state{queue=Q
