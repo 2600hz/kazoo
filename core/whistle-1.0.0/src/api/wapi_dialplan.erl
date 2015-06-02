@@ -57,6 +57,7 @@
          ,originate_execute/1, originate_execute_v/1
          ,metaflow/1, metaflow_v/1
          ,fax_detection/1, fax_detection_v/1
+         ,store_vm/1, store_vm_v/1
         ]).
 
 -export([queue/1, queue_v/1
@@ -1179,3 +1180,18 @@ fax_detection(JObj) -> fax_detection(wh_json:to_proplist(JObj)).
 fax_detection_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?FAX_DETECTION_REQ_HEADERS, ?FAX_DETECTION_REQ_VALUES, ?FAX_DETECTION_REQ_TYPES);
 fax_detection_v(JObj) -> fax_detection_v(wh_json:to_proplist(JObj)).
+
+-spec store_vm(api_terms()) ->
+                   {'ok', wh_proplist()} |
+                   {'error', string()}.
+store_vm(Prop) when is_list(Prop) ->
+    case store_vm_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?STORE_VM_REQ_HEADERS, ?OPTIONAL_STORE_VM_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for store_vm"}
+    end;
+store_vm(JObj) -> store_vm(wh_json:to_proplist(JObj)).
+
+-spec store_vm_v(api_terms()) -> boolean().
+store_vm_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?STORE_VM_REQ_HEADERS, ?STORE_VM_REQ_VALUES, ?STORE_VM_REQ_TYPES);
+store_vm_v(JObj) -> store_vm_v(wh_json:to_proplist(JObj)).

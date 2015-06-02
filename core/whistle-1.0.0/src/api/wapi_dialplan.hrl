@@ -674,5 +674,24 @@
                                 ]).
 -define(FAX_DETECTION_REQ_TYPES, []).
 
+%% Store VM Request
+-define(STORE_VM_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>
+                               ,<<"Media-Name">>, <<"Media-Transfer-Method">>
+                               ,<<"Media-Transfer-Destination">>
+                              ]).
+-define(OPTIONAL_STORE_VM_REQ_HEADERS, [<<"Additional-Headers">>
+                                        ,<<"Suppress-Error-Report">>
+                                        ,<<"Insert-At">>
+                                       ]).
+-define(STORE_VM_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
+                              ,{<<"Event-Name">>, <<"command">>}
+                              ,{<<"Application-Name">>, <<"store_vm">>}
+                              ,{<<"Media-Transfer-Method">>, [<<"stream">>, <<"put">>, <<"post">>]}
+                              ,?INSERT_AT_TUPLE
+                             ]).
+-define(STORE_VM_REQ_TYPES, [{<<"Additional-Headers">>, fun is_list/1}
+                             ,{<<"Suppress-Error-Report">>, fun wh_util:is_boolean/1}
+                            ]).
+
 -define(WAPI_DIALPLAN_HRL, 'true').
 -endif.
