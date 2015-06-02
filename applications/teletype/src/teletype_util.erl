@@ -910,33 +910,61 @@ filter_for_admins(Users) ->
     ].
 
 -spec should_handle_notification(wh_json:object()) -> boolean().
-should_handle_notification(DataJObj) ->
-    case is_preview(DataJObj) of
-        'true' -> 'true';
-        'false' ->
-            AccountId = find_account_id(DataJObj),
-            ResellerId = wh_services:find_reseller_id(AccountId),
-            should_handle_notification_for_account(AccountId, ResellerId)
+-spec should_handle_notification(wh_json:object(), boolean()) -> boolean().
+should_handle_notification(JObj) ->
+    DataJObj = wh_json:normalize(JObj),
+    should_handle_notification(DataJObj, is_preview(JObj)).
+
+should_handle_notification(_JObj, 'true') -> 'true';
+should_handle_notification(JObj, 'false') ->
+    case find_account_id(JObj) of
+        'undefined' -> should_handle_system();
+        Account -> should_handle_account(Account)
     end.
 
--spec should_handle_notification_for_account(api_binary(), ne_binary()) -> boolean().
-should_handle_notification_for_account('undefined', _ResellerId) ->
-    'true';
-should_handle_notification_for_account(AccountId, AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
-    kz_account:notification_preference(AccountJObj) =:= ?APP_NAME;
-should_handle_notification_for_account(AccountId, ResellerId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
-    {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
-    {'ok', ResellerJObj} = couch_mgr:open_cache_doc(ResellerDb, ResellerId),
+-spec should_handle_system() -> boolean().
+should_handle_system() ->
+    lager:debug("should system handle notification"),
+    whapps_config:get(?NOTIFY_CONFIG_CAT
+                     ,<<"notification_app">>
+                     ,?APP_NAME
+                     ) =:= ?APP_NAME.
 
-    kz_account:notification_preference(AccountJObj) =:= ?APP_NAME
-        orelse (kz_account:notification_preference(ResellerJObj) =:= ?APP_NAME
-                    andalso kz_account:notification_preference(AccountJObj) =:= 'undefined'
-               )
-        orelse should_handle_notification_for_account(ResellerId, wh_services:find_reseller_id(ResellerId)).
+-spec should_handle_account(ne_binary()) -> boolean().
+-spec should_handle_account(ne_binary(), binary()) -> boolean().
+should_handle_account(Account) ->
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+        {'error', _E} ->
+            lager:debug("teletype should handle account ~s", [AccountId]),
+            'true';
+        {'ok', JObj} ->
+            should_handle_account(
+                Account
+                ,kz_account:notification_preference(JObj)
+            )
+    end.
+
+should_handle_account(_Account, ?APP_NAME) -> 'true';
+should_handle_account(Account, 'undefined') ->
+    should_handle_reseller(Account);
+should_handle_account(_Account, _Preference) ->
+    lager:debug(
+        "not handling notification; unknown notification preference '~s' for '~s'"
+        ,[_Preference, _Account]
+    ).
+
+-spec should_handle_reseller(ne_binary()) -> boolean().
+should_handle_reseller(Account) ->
+    ResellerId = wh_services:find_reseller_id(Account),
+    ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
+    lager:debug("should reseller ~s handle notification", [ResellerId]),
+    case couch_mgr:open_cache_doc(ResellerDb, ResellerId) of
+        {'error', _E} -> 'true';
+        {'ok', AccountJObj} ->
+            kz_account:notification_preference(AccountJObj) =:= ?APP_NAME
+    end.
 
 -define(MOD_CONFIG_CAT(Key), <<(?NOTIFY_CONFIG_CAT)/binary, ".", Key/binary>>).
 

@@ -74,9 +74,7 @@ handle_cnam_request(JObj, _Props) ->
                            ,wh_json:merge_jobjs(DataJObj, ReqData)
                           ),
 
-    case teletype_util:should_handle_notification(DataJObj)
-        andalso teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID)
-    of
+    case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
         'false' -> lager:debug("notification handling not configured for this account");
         'true' -> process_req(CNAMJObj)
     end.
