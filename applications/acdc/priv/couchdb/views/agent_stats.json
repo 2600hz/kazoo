@@ -1,16 +1,15 @@
-{ "_id":"_design/agent_stats"
-  ,"language":"javascript"
-  ,"views":{
-    "status_log": {
-      "map":"function(doc) { if ( doc.pvt_type != 'status_stat' ) return; emit([doc.agent_id, doc.timestamp], doc.status); }"
+{
+    "_id": "_design/agent_stats",
+    "language": "javascript",
+    "views": {
+        "most_recent_by_agent": {
+            "map": "function(doc) { if ( doc.pvt_type != 'status_stat' ) return; emit([doc.agent_id, doc.timestamp], null); }"
+        },
+        "most_recent_by_timestamp": {
+            "map": "function(doc) { if ( doc.pvt_type != 'status_stat' ) return; emit([doc.timestamp, doc.agent_id], null); }"
+        },
+        "status_log": {
+            "map": "function(doc) { if ( doc.pvt_type != 'status_stat' ) return; emit([doc.agent_id, doc.timestamp], doc.status); }"
+        }
     }
-    ,"most_recent_by_agent": {
-      "map":"function(doc) { if ( doc.pvt_type != 'status_stat' ) return; emit([doc.agent_id, doc.timestamp], null); }"
-
-    }
-
-    ,"most_recent_by_timestamp": {
-      "map":"function(doc) { if ( doc.pvt_type != 'status_stat' ) return; emit([doc.timestamp, doc.agent_id], null); }"
-    }
-  }
 }
