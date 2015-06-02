@@ -127,6 +127,7 @@
 -export([b_record/2, b_record/3, b_record/4, b_record/5, b_record/6]).
 -export([b_store/3, b_store/4, b_store/5, b_store/6
          ,b_store_fax/2
+         ,b_store_vm/6
         ]).
 -export([b_prompt_and_collect_digit/2]).
 -export([b_prompt_and_collect_digits/4, b_prompt_and_collect_digits/5
@@ -1462,6 +1463,19 @@ b_store(MediaName, Transfer, Method, Headers, Call) ->
 b_store(MediaName, Transfer, Method, Headers, SuppressReport, Call) ->
     store(MediaName, Transfer, Method, Headers, SuppressReport, Call),
     wait_for_headless_application(<<"store">>).
+
+b_store_vm(MediaName, Transfer, Method, Headers, SuppressReport, Call) ->
+    Command = [{<<"Application-Name">>, <<"store_vm">>}
+               ,{<<"Media-Name">>, MediaName}
+               ,{<<"Media-Transfer-Method">>, Method}
+               ,{<<"Media-Transfer-Destination">>, Transfer}
+               ,{<<"Additional-Headers">>, Headers}
+               ,{<<"Insert-At">>, <<"now">>}
+               ,{<<"Suppress-Error-Report">>, SuppressReport}
+              ],
+    send_command(Command, Call),
+    wait_for_headless_application(<<"store_vm">>).
+
 
 %%--------------------------------------------------------------------
 %% @public
