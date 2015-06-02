@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% "data":{
 %%%   "action":"activate" | "deactivate" | "update" | "toggle" | "menu"
@@ -257,23 +257,32 @@ update_callfwd(#callfwd{doc_id=Id
                               callfwd() |
                               {'error', callfwd()}.
 get_call_forward(Call) ->
-    AccountDb = whapps_call:account_db(Call),
     AuthorizingId = whapps_call:authorizing_id(Call),
-    ViewOptions = [{<<"key">>, AuthorizingId}],
-    Id = case couch_mgr:get_results(AccountDb, <<"cf_attributes/owner">>, ViewOptions) of
-             {'ok', [Owner]} -> wh_json:get_value(<<"value">>, Owner, AuthorizingId);
-             _E -> AuthorizingId
-         end,
-    case couch_mgr:open_doc(AccountDb, Id) of
-        {'ok', JObj} ->
-            lager:info("loaded call forwarding object from ~s", [Id]),
-            #callfwd{doc_id = wh_json:get_value(<<"_id">>, JObj)
-                     ,enabled = wh_json:is_true([<<"call_forward">>, <<"enabled">>], JObj)
-                     ,number = wh_json:get_ne_value([<<"call_forward">>, <<"number">>], JObj, <<>>)
-                     ,require_keypress = wh_json:is_true([<<"call_forward">>, <<"require_keypress">>], JObj, 'true')
-                     ,keep_caller_id = wh_json:is_true([<<"call_forward">>, <<"keep_caller_id">>], JObj, 'true')
+
+    OwnerId =
+        case cf_attributes:owner_id(AuthorizingId, Call) of
+            'undefined' -> AuthorizingId;
+            UserId -> UserId
+        end,
+    maybe_get_call_forward(Call, OwnerId).
+
+-spec maybe_get_call_forward(whapps_call:call(), api_binary()) ->
+                                    callfwd() |
+                                    {'error', callfwd()}.
+maybe_get_call_forward(_Call, 'undefined') ->
+    lager:debug("cannot get call forwarding from undefined"),
+    {'error', #callfwd{}};
+maybe_get_call_forward(Call, OwnerId) ->
+    case couch_mgr:open_cache_doc(whapps_call:account_db(Call), OwnerId) of
+        {'ok', UserJObj} ->
+            lager:info("loaded call forwarding object from ~s", [OwnerId]),
+            #callfwd{doc_id = wh_doc:id(UserJObj)
+                     ,enabled = wh_json:is_true([<<"call_forward">>, <<"enabled">>], UserJObj)
+                     ,number = wh_json:get_ne_value([<<"call_forward">>, <<"number">>], UserJObj, <<>>)
+                     ,require_keypress = wh_json:is_true([<<"call_forward">>, <<"require_keypress">>], UserJObj, 'true')
+                     ,keep_caller_id = wh_json:is_true([<<"call_forward">>, <<"keep_caller_id">>], UserJObj, 'true')
                     };
         {'error', R} ->
-            lager:info("failed to load call forwarding object from ~s, ~w", [Id, R]),
+            lager:info("failed to load call forwarding object from ~s, ~w", [OwnerId, R]),
             {'error', #callfwd{}}
     end.
