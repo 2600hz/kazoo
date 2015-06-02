@@ -14,7 +14,7 @@ all: compile
 MODULES = $(shell ls src/*.erl | sed 's/src\///;s/\.erl/,/' | sed '$$s/.$$//')
 TEST_MODULES = $(shell ls test/*.erl | sed 's/test\///;s/\.erl/,/' | sed '$$s/.$$//')
 
-compile: ebin/$(PROJECT).app
+compile: ebin/$(PROJECT).app json
 	@cat src/$(PROJECT).app.src \
 		| sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' \
 		> ebin/$(PROJECT).app
@@ -23,6 +23,13 @@ compile: ebin/$(PROJECT).app
 ebin/$(PROJECT).app: src/*.erl
 	@mkdir -p ebin/
 	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $?
+
+json: JSON = $(shell find priv/couchdb -name *.json -print)
+json:
+	@for jobj in $(JSON); do \
+		echo checking $$jobj; \
+		python -mjson.tool $$jobj $$jobj~ && mv $$jobj~ $$jobj; \
+	done
 
 compile-test: test/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
