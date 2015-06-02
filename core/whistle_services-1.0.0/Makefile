@@ -16,7 +16,7 @@ MODULES = $(shell ls src/*.erl | sed 's/src\///;s/\.erl/,/' | sed '$$s/.$$//')
 BK_MODULES = $(shell ls src/bookkeepers/*.erl | sed 's/src\/bookkeepers\///;s/\.erl/,/' | sed '$$s/.$$//')
 SRV_MODULES = $(shell ls src/services/*.erl | sed 's/src\/services\///;s/\.erl/,/' | sed '$$s/.$$//')
 
-compile: ebin/$(PROJECT).app
+compile: ebin/$(PROJECT).app json
 	@cat src/$(PROJECT).app.src \
 		| sed 's/{modules, \[\]}/{modules, \[$(MODULES),$(BK_MODULES),$(SRV_MODULES)\]}/' \
 		> ebin/$(PROJECT).app
@@ -25,6 +25,13 @@ compile: ebin/$(PROJECT).app
 ebin/$(PROJECT).app: src/*.erl src/bookkeepers/*.erl src/services/*.erl
 	@mkdir -p ebin/
 	ERL_LIBS=$(ERL_LIBS) erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $?
+
+json: JSON = $(shell find priv -name *.json -print)
+json:
+	@for jobj in $(JSON); do \
+		echo checking $$jobj; \
+		python -mjson.tool $$jobj $$jobj~ && mv $$jobj~ $$jobj; \
+	done
 
 compile-test: test/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
