@@ -183,7 +183,7 @@ print_status(Nodes) ->
                          io:format("Channels      : ~B~n", [Node#node.channels]),
                          io:format("Registrations : ~B~n", [Node#node.registrations]),
                          io:format("Media Servers : ~s(~s)~n", [Server, Started]),
-                         [io:format("                ~s(~s)~n", [S1, S2]) || {S1, S2} <- Servers];
+                         [io:format("                ~s~n", [S]) || S <- Servers];
                      [Server|Servers] ->
                          io:format("Channels      : ~B~n", [Node#node.channels]),
                          io:format("Registrations : ~B~n", [Node#node.registrations]),
