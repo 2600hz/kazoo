@@ -188,6 +188,31 @@ get_fs_app(Node, UUID, JObj, <<"store">>) ->
             end
     end;
 
+get_fs_app(Node, UUID, JObj, <<"store_vm">>) ->
+    case wapi_dialplan:store_vm_v(JObj) of
+        'false' -> {'error', <<"store failed to execute as JObj did not validate">>};
+        'true' ->
+            MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
+            RecordingName = ecallmgr_util:recording_filename(MediaName),
+            lager:debug("streaming media ~s", [RecordingName]),
+            case wh_json:get_value(<<"Media-Transfer-Method">>, JObj) of
+                <<"put">> ->
+                    %% stream file over HTTP PUT
+                    lager:debug("stream ~s via HTTP PUT", [RecordingName]),
+                    stream_over_http(Node, UUID, RecordingName, 'put', 'store_vm', JObj),
+                    {<<"store_vm">>, 'noop'};
+                <<"post">> ->
+                    %% stream file over HTTP POST
+                    lager:debug("stream ~s via HTTP POST", [RecordingName]),
+                    stream_over_http(Node, UUID, RecordingName, 'post', 'store_vm', JObj),
+                    {<<"store_vm">>, 'noop'};
+                _Method ->
+                    %% unhandled method
+                    lager:debug("unhandled stream method ~s", [_Method]),
+                    {'return', 'error'}
+            end
+    end;
+
 get_fs_app(Node, UUID, JObj, <<"store_fax">> = App) ->
     case wapi_dialplan:store_fax_v(JObj) of
         'false' -> {'error', <<"store_fax failed to execute as JObj did not validate">>};
@@ -922,7 +947,21 @@ wait_for_conference(ConfName) ->
 %% Store command helpers
 %% @end
 %%--------------------------------------------------------------------
--spec stream_over_http(atom(), ne_binary(), ne_binary(), 'put' | 'post', 'store' | 'fax', wh_json:object()) -> any().
+-spec stream_over_http(atom(), ne_binary(), ne_binary(), 'put' | 'post', 'store'| 'store_vm' | 'fax', wh_json:object()) -> any().
+stream_over_http(Node, UUID, File, 'put'=Method, 'store'=Type, JObj) ->
+    Url = wh_util:to_list(wh_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
+    lager:debug("streaming via HTTP(~s) to ~s", [Method, Url]),
+    Args = list_to_binary([Url, <<" ">>, File]),
+    lager:debug("execute on node ~s: http_put(~s)", [Node, Args]),
+    send_fs_bg_store(Node, UUID, File, Args, Method, Type);
+
+stream_over_http(Node, UUID, File, 'put'=Method, 'store_vm'=Type, JObj) ->
+    Url = wh_util:to_list(wh_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
+    lager:debug("streaming via HTTP(~s) to ~s", [Method, Url]),
+    Args = list_to_binary([Url, <<" ">>, File]),
+    lager:debug("execute on node ~s: http_put(~s)", [Node, Args]),
+    send_fs_bg_store(Node, UUID, File, Args, Method, Type);
+
 stream_over_http(Node, UUID, File, Method, Type, JObj) ->
     Url = wh_util:to_list(wh_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
     lager:debug("streaming via HTTP(~s) to ~s", [Method, Url]),
@@ -966,8 +1005,34 @@ send_fs_store(Node, Args, 'put') ->
 send_fs_store(Node, Args, 'post') ->
     freeswitch:api(Node, 'http_post', wh_util:to_list(Args), 120000).
 
+-spec send_fs_bg_store(atom(), ne_binary(), ne_binary(), ne_binary(), 'put' | 'post', 'store' | 'fax') -> fs_api_ret().
+send_fs_bg_store(Node, UUID, File, Args, 'put', 'store') ->
+    case freeswitch:bgapi(Node, UUID, [File], 'http_put', wh_util:to_list(Args), fun chk_store_result/6) of
+        {'error', _} -> send_store_call_event(Node, UUID, <<"failure">>);
+        {'ok', JobId} -> lager:debug("bgapi started ~p", [JobId])
+    end;
+send_fs_bg_store(Node, UUID, File, Args, 'put', 'store_vm') ->
+    case freeswitch:bgapi(Node, UUID, [File], 'http_put', wh_util:to_list(Args), fun chk_store_vm_result/6) of
+        {'error', _} -> send_store_vm_call_event(Node, UUID, <<"failure">>);
+        {'ok', JobId} -> lager:debug("bgapi started ~p", [JobId])
+    end.
+
+chk_store_result(Res, Node, UUID, [File], JobId, <<"+OK", _/binary>>=Reply) ->
+    lager:debug("chk_store_result ~p : ~p : ~p", [Res, JobId, Reply]),
+    send_store_call_event(Node, UUID, {<<"success">>, File});
+chk_store_result(Res, Node, UUID, [File], JobId, Reply) ->
+    lager:debug("chk_store_result ~p : ~p : ~p", [Res, JobId, Reply]),
+    send_store_call_event(Node, UUID, {<<"failure">>, File}).
+    
+chk_store_vm_result(Res, Node, UUID, _, JobId, <<"+OK", _/binary>>=Reply) ->
+    lager:debug("chk_store_result ~p : ~p : ~p", [Res, JobId, Reply]),
+    send_store_vm_call_event(Node, UUID, <<"success">>);
+chk_store_vm_result(Res, Node, UUID, _, JobId, Reply) ->
+    lager:debug("chk_store_result ~p : ~p : ~p", [Res, JobId, Reply]),
+    send_store_vm_call_event(Node, UUID, <<"failure">>).
+
 -spec send_store_call_event(atom(), ne_binary(), wh_json:object() | ne_binary()) -> 'ok'.
-send_store_call_event(Node, UUID, MediaTransResults) ->
+send_store_call_event(Node, UUID, {MediaTransResults, File}) ->
     Timestamp = wh_util:to_binary(wh_util:current_tstamp()),
     Prop = case freeswitch:api(Node, 'uuid_dump', wh_util:to_list(UUID)) of
                {'ok', Dump} -> ecallmgr_util:eventstr_to_proplist(Dump);
@@ -979,6 +1044,7 @@ send_store_call_event(Node, UUID, MediaTransResults) ->
                 ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop, <<"HANGUP">>)}
                 ,{<<"Application-Name">>, <<"store">>}
                 ,{<<"Application-Response">>, MediaTransResults}
+                ,{<<"Application-Data">>, File}
                 | wh_api:default_headers(<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
                ],
     EvtProp2 = case ecallmgr_util:custom_channel_vars(Prop) of
@@ -987,7 +1053,30 @@ send_store_call_event(Node, UUID, MediaTransResults) ->
                                   | EvtProp1
                                  ]
                end,
-    wapi_call:publish_event(EvtProp2).
+    wh_amqp_worker:cast(EvtProp2, fun wapi_call:publish_event/1).
+
+-spec send_store_vm_call_event(atom(), ne_binary(), wh_json:object() | ne_binary()) -> 'ok'.
+send_store_vm_call_event(Node, UUID, MediaTransResults) ->
+    Timestamp = wh_util:to_binary(wh_util:current_tstamp()),
+    Prop = case freeswitch:api(Node, 'uuid_dump', wh_util:to_list(UUID)) of
+               {'ok', Dump} -> ecallmgr_util:eventstr_to_proplist(Dump);
+               {'error', _Err} -> []
+           end,
+    EvtProp1 = [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Prop, Timestamp)}
+                ,{<<"Call-ID">>, UUID}
+                ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Prop, <<>>)}
+                ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop, <<"HANGUP">>)}
+                ,{<<"Application-Name">>, <<"store_vm">>}
+                ,{<<"Application-Response">>, MediaTransResults}
+                | wh_api:default_headers(<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
+               ],
+    EvtProp2 = case ecallmgr_util:custom_channel_vars(Prop) of
+                   [] -> EvtProp1;
+                   CustomProp -> [{<<"Custom-Channel-Vars">>, wh_json:from_list(CustomProp)}
+                                  | EvtProp1
+                                 ]
+               end,
+    wh_amqp_worker:cast(EvtProp2, fun wapi_call:publish_event/1).
 
 -spec send_store_fax_call_event(ne_binary(), ne_binary()) -> 'ok'.
 send_store_fax_call_event(UUID, Results) ->
@@ -998,7 +1087,7 @@ send_store_fax_call_event(UUID, Results) ->
             ,{<<"Application-Response">>, Results}
             | wh_api:default_headers(<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
            ],
-    wapi_call:publish_event(Prop).
+    wh_amqp_worker:cast(Prop, fun wapi_call:publish_event/1).
 
 %%--------------------------------------------------------------------
 %% @private
