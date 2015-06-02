@@ -17,6 +17,11 @@
 
 -type http_verb() :: 'put' | 'post' | 'get' | 'delete'.
 
+-define(BT_DEFAULT_ENVIRONMENT, whapps_config:get_string(<<"braintree">>, <<"default_environment">>, <<>>)).
+-define(BT_DEFAULT_MERCHANT_ID, whapps_config:get_string(<<"braintree">>, <<"default_merchant_id">>, <<>>)).
+-define(BT_DEFAULT_PUBLIC_KEY, whapps_config:get_string(<<"braintree">>, <<"default_public_key">>, <<>>)).
+-define(BT_DEFAULT_PRIVATE_KEY, whapps_config:get_string(<<"braintree">>, <<"default_private_key">>, <<>>)).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -65,6 +70,16 @@ delete(Path) ->
 %%--------------------------------------------------------------------
 -spec do_request(http_verb(), nonempty_string(), binary()) -> bt_xml().
 do_request(Method, Path, Body) ->
+    case braintree_server_url(?BT_DEFAULT_ENVIRONMENT) of
+        'undefined' ->
+            lager:error("braintree configuration error: default_environment not set"),
+            _WillCrash = build_url(Path);  %% We should not continue anyway
+        _Ok ->
+            request(Method, Path, Body)
+    end.
+
+-spec request(http_verb(), nonempty_string(), binary()) -> bt_xml().
+request(Method, Path, Body) ->
     StartTime = os:timestamp(),
 
     lager:debug("making ~s request to braintree ~s", [Method, Path]),
@@ -122,8 +137,8 @@ do_request(Method, Path, Body) ->
 -spec build_url(text()) -> text().
 build_url(Path) ->
     lists:flatten(["https://"
-                   ,braintree_server_url(whapps_config:get_string(<<"braintree">>, <<"default_environment">>, <<>>))
-                   ,"/merchants/", whapps_config:get_string(<<"braintree">>, <<"default_merchant_id">>, <<>>)
+                   ,braintree_server_url(?BT_DEFAULT_ENVIRONMENT)
+                   ,"/merchants/", ?BT_DEFAULT_MERCHANT_ID
                    ,Path
                   ]).
 
@@ -141,8 +156,8 @@ request_headers() ->
 -spec http_options() -> [ssl_option() | basic_auth_option()].
 http_options() ->
     [{'ssl',[{'verify', 0}]}
-     ,{'basic_auth', {whapps_config:get_string(<<"braintree">>, <<"default_public_key">>, <<>>)
-                      ,whapps_config:get_string(<<"braintree">>, <<"default_private_key">>, <<>>)
+     ,{'basic_auth', {?BT_DEFAULT_PUBLIC_KEY
+                      ,?BT_DEFAULT_PRIVATE_KEY
                      }
       }
     ].
@@ -158,8 +173,7 @@ verbose_debug(Format, Args) ->
     case ?BT_DEBUG of
         'false' -> 'ok';
         'true' ->
-            _ = file:write_file("/tmp/braintree.xml", io_lib:format(Format, Args), ['append']),
-            'ok'
+            wh_util:write_file("/tmp/braintree.xml", io_lib:format(Format, Args), ['append'])
     end.
 
 %%--------------------------------------------------------------------
@@ -168,7 +182,7 @@ verbose_debug(Format, Args) ->
 %% Get the base URL for the braintree service
 %% @end
 %%--------------------------------------------------------------------
--spec braintree_server_url(string()) -> string().
+-spec braintree_server_url(string()) -> string() | 'undefined'.
 braintree_server_url(Env) ->
     proplists:get_value(Env, ?BT_SERVER_URL).
 
