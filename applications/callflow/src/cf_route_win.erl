@@ -236,7 +236,11 @@ update_ccvs(Call) ->
                        'undefined' -> <<"internal">>;
                        _Else -> <<"external">>
                    end,
-    {CIDNumber, CIDName} = cf_attributes:caller_id(CallerIdType, Call),
+    {CIDNumber, CIDName} =
+        cf_attributes:caller_id(
+            CallerIdType
+            ,whapps_call:kvs_erase('prepend_cid_name', Call)
+        ),
     lager:info("bootstrapping with caller id type ~s: \"~s\" ~s"
                ,[CallerIdType, CIDName, CIDNumber]
               ),
