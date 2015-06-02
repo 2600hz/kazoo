@@ -738,8 +738,13 @@ specific_call_event_props(<<"CHANNEL_DESTROY">>, _, Props) ->
      ,{<<"User-Agent">>, props:get_value(<<"variable_sip_user_agent">>, Props)}
      ,{<<"Fax-Info">>, maybe_fax_specific(Props)}
     ];
-specific_call_event_props(<<"RECORD_START">>, _, _Props) ->
-    [{<<"Application-Name">>, <<"record">>}];
+specific_call_event_props(<<"RECORD_START">>, _, Props) ->
+    [{<<"Application-Name">>, <<"record">>}
+     ,{<<"Application-Response">>, props:get_first_defined([<<"Record-File-Path">>
+                                                            ,<<"whistle_application_response">>
+                                                           ], Props)
+      }    
+    ];
 specific_call_event_props(<<"RECORD_STOP">>, _, Props) ->
     [{<<"Application-Name">>, <<"record">>}
      ,{<<"Application-Response">>, props:get_first_defined([<<"Record-File-Path">>
