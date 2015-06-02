@@ -1,46 +1,46 @@
 {
-    "fast deliver":{
-        "number":3,
-        "interval":{
-            "second":5
-        }
-    },
-    "no_route":{
-        "error":{
-            "reason":["NO_ROUTE_DESTINATION"]
+    "fast deliver": {
+        "interval": {
+            "second": 5
         },
-        "number":5,
-        "interval":{
-            "minute":3
+        "number": 3
+    },
+    "first deliver": {
+        "interval": {
+            "minute": 30
         },
-        "report":{
-        }
+        "number": 5
     },
-    "first deliver":{
-        "number":5,
-        "interval":{
-            "minute":30
-        }
+    "last deliver": {
+        "number": 1,
+        "report": {}
     },
-    "second deliver":{
-        "time":{
-            "day":3
+    "no_route": {
+        "error": {
+            "reason": [
+                "NO_ROUTE_DESTINATION"
+            ]
         },
-        "interval":{
-            "minute":180
-        }
-    },
-    "third deliver":{
-        "time":{
-            "day":3
+        "interval": {
+            "minute": 3
         },
-        "interval":{
-            "hour":12
+        "number": 5,
+        "report": {}
+    },
+    "second deliver": {
+        "interval": {
+            "minute": 180
+        },
+        "time": {
+            "day": 3
         }
     },
-    "last deliver":{
-        "number":1,
-        "report":{
+    "third deliver": {
+        "interval": {
+            "hour": 12
+        },
+        "time": {
+            "day": 3
         }
     }
 }
