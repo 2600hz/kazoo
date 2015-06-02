@@ -174,12 +174,12 @@ get_fs_app(Node, UUID, JObj, <<"store">>) ->
                 <<"put">> ->
                     %% stream file over HTTP PUT
                     lager:debug("stream ~s via HTTP PUT", [RecordingName]),
-                    stream_over_http(Node, UUID, RecordingName, 'put', 'store', JObj),
+                    _ = stream_over_http(Node, UUID, RecordingName, 'put', 'store', JObj),
                     {<<"store">>, 'noop'};
                 <<"post">> ->
                     %% stream file over HTTP POST
                     lager:debug("stream ~s via HTTP POST", [RecordingName]),
-                    stream_over_http(Node, UUID, RecordingName, 'post', 'store', JObj),
+                    _ = stream_over_http(Node, UUID, RecordingName, 'post', 'store', JObj),
                     {<<"store">>, 'noop'};
                 _Method ->
                     %% unhandled method
@@ -199,12 +199,12 @@ get_fs_app(Node, UUID, JObj, <<"store_vm">>) ->
                 <<"put">> ->
                     %% stream file over HTTP PUT
                     lager:debug("stream ~s via HTTP PUT", [RecordingName]),
-                    stream_over_http(Node, UUID, RecordingName, 'put', 'store_vm', JObj),
+                    _ = stream_over_http(Node, UUID, RecordingName, 'put', 'store_vm', JObj),
                     {<<"store_vm">>, 'noop'};
                 <<"post">> ->
                     %% stream file over HTTP POST
                     lager:debug("stream ~s via HTTP POST", [RecordingName]),
-                    stream_over_http(Node, UUID, RecordingName, 'post', 'store_vm', JObj),
+                    _ = stream_over_http(Node, UUID, RecordingName, 'post', 'store_vm', JObj),
                     {<<"store_vm">>, 'noop'};
                 _Method ->
                     %% unhandled method
@@ -1005,7 +1005,7 @@ send_fs_store(Node, Args, 'put') ->
 send_fs_store(Node, Args, 'post') ->
     freeswitch:api(Node, 'http_post', wh_util:to_list(Args), 120000).
 
--spec send_fs_bg_store(atom(), ne_binary(), ne_binary(), ne_binary(), 'put' | 'post', 'store' | 'fax') -> fs_api_ret().
+-spec send_fs_bg_store(atom(), ne_binary(), ne_binary(), ne_binary(), 'put' | 'post', 'store' | 'store_vm' | 'fax') -> fs_api_ret().
 send_fs_bg_store(Node, UUID, File, Args, 'put', 'store') ->
     case freeswitch:bgapi(Node, UUID, [File], 'http_put', wh_util:to_list(Args), fun chk_store_result/6) of
         {'error', _} -> send_store_call_event(Node, UUID, <<"failure">>);
@@ -1017,6 +1017,7 @@ send_fs_bg_store(Node, UUID, File, Args, 'put', 'store_vm') ->
         {'ok', JobId} -> lager:debug("bgapi started ~p", [JobId])
     end.
 
+-spec chk_store_result(atom(), atom(), ne_binary(), list(), ne_binary(), binary()) -> 'ok'.
 chk_store_result(Res, Node, UUID, [File], JobId, <<"+OK", _/binary>>=Reply) ->
     lager:debug("chk_store_result ~p : ~p : ~p", [Res, JobId, Reply]),
     send_store_call_event(Node, UUID, {<<"success">>, File});
@@ -1024,6 +1025,7 @@ chk_store_result(Res, Node, UUID, [File], JobId, Reply) ->
     lager:debug("chk_store_result ~p : ~p : ~p", [Res, JobId, Reply]),
     send_store_call_event(Node, UUID, {<<"failure">>, File}).
     
+-spec chk_store_vm_result(atom(), atom(), ne_binary(), list(), ne_binary(), binary()) -> 'ok'.
 chk_store_vm_result(Res, Node, UUID, _, JobId, <<"+OK", _/binary>>=Reply) ->
     lager:debug("chk_store_result ~p : ~p : ~p", [Res, JobId, Reply]),
     send_store_vm_call_event(Node, UUID, <<"success">>);
