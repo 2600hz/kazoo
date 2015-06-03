@@ -514,7 +514,9 @@ handle_event(JObj, #state{cf_module_pid=PidRef
                               ]}
             end;
         {{<<"call_event">>, <<"CHANNEL_DESTROY">>}, CallId} ->
-            {'reply', []};
+            {'reply', [{'cf_module_pid', get_pid(PidRef)}
+                       ,{'cf_event_pids', Others}
+                      ]};
         {{<<"call_event">>, <<"usurp_control">>}, CallId} ->
             _ = case whapps_call:custom_channel_var(<<"Fetch-ID">>, Call)
                     =:= wh_json:get_value(<<"Fetch-ID">>, JObj)
