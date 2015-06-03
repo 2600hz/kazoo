@@ -204,11 +204,14 @@ extract_chunk(Dev) ->
         'eof' ->
             dump_buffers();
         {'ok', Line} ->
-            case binary:split(Line, <<"|">>) of
-                [RawTimestamp, Logged] ->
-                    Key = {'callid',callid(Line)},
+            %% Expected Line looks like:
+            %% <<"2015-03-03T23:44:07.812917+00:00 kamailio[19136]: INFO: <script>: OTBjNGY4NmVlZDAyYTQ5M2NlMTVkOWQ5ZDQ4YmFlNmI.|log|from sip:user_3331@webdev.realm;transport=UDPRE:1:FIELD:^ [w]+: (.*)**INVALID PROPERTY NAME**\n">>
+            case {binary:matches(Line, <<"|">>), binary:split(Line, <<"<script>: ">>)} of
+                {[_,_], [RawTimestamp, CallIdAndLogPart]} ->
+                    [CallId, LogPart] = binary:split(CallIdAndLogPart, <<"|">>),
+                    Key = {'callid', CallId},
                     Buffer = get_buffer(Key),
-                    acc(rm_newline(Logged), [{RawTimestamp}|Buffer], Dev, Key);
+                    acc(rm_newline(LogPart), [{RawTimestamp}|Buffer], Dev, Key);
                 _Ignore ->
                     extract_chunk(Dev)
             end
@@ -283,13 +286,6 @@ rm_newline(Line0) ->
     [Line, <<>>] = binary:split(Line0, <<"\n">>),
     Line.
 
-
-callid(Line) ->
-    {'match', [Callid]} =
-        re:run(Line
-              ,"<script>: ([^\\s\\|]+)\\|"
-              ,[{'capture','all_but_first','binary'}]),
-    Callid.
 
 label(<<"recieved internal reply ", Label/binary>>) -> Label;
 label(<<"recieved ", _Protocol:3/binary, " request ", Label/binary>>) -> Label;
