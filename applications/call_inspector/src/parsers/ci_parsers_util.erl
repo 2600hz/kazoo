@@ -19,7 +19,7 @@
 
 %% API
 
--spec timestamp(ne_binary()) -> api_binary().
+-spec timestamp(ne_binary()) -> api_integer().
 timestamp(<<YYYY:4/binary, "-", MM:2/binary, "-", DD:2/binary, "T"
             ,HH:2/binary, ":", MMM:2/binary, ":", SS:2/binary, "."
             ,Micro:6/binary, "+", _H:2/binary, ":", _M:2/binary, " ", _/binary>>) ->
@@ -51,7 +51,7 @@ parse_interval() ->
 -spec make_name({'parser_args',ne_binary(),_}) -> atom().
 make_name({'parser_args', Filename, _IP}) ->
     FName = filename:absname(Filename),
-    binary_to_atom(FName, utf8).
+    binary_to_atom(wh_util:to_binary(FName), utf8).
 
 %% Internals
 
