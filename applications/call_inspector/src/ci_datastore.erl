@@ -38,10 +38,11 @@
                  ,timestamp
                  ,type
                  ,value
-                 }).
+                }).
+-type object() :: #object{}.
 
 -define(SERVER, ?MODULE).
--define(TAB, ?MODULE).
+-define(CI_DIR, "/tmp/2600hz-call_inspector").
 
 %%%===================================================================
 %%% API
@@ -71,10 +72,8 @@ store_analysis(Analysis) ->
 
 -spec callid_exists(ne_binary()) -> boolean().
 callid_exists(CallId) ->
-    case ets:lookup(?TAB, CallId) of
-        [] -> 'false';
-        _Else -> 'true'
-    end.
+    File = make_name(CallId),
+    filelib:is_file(File).
 
 -spec lookup_callid(ne_binary()) -> wh_json:object().
 lookup_callid(CallId) ->
@@ -84,8 +83,9 @@ lookup_callid(CallId) ->
                            (#object{type='analysis', value=Analysis}, P) ->
                                 props:set_value('analysis', Analysis, P)
                         end
-                       ,[{'chunks', []}, {'analysis', []}]
-                       ,ets:lookup(?TAB, CallId)),
+                        ,[{'chunks', []}, {'analysis', []}]
+                        ,lookup_objects(CallId)
+                       ),
     props:set_value('chunks'
                    ,lists:reverse(props:get_value('chunks', Props))
                    ,Props
@@ -115,12 +115,10 @@ flush(CallId) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    _ = ets:new(?TAB, ['named_table'
-                      ,'duplicate_bag'
-                      ,{'keypos', #object.call_id}
-                      ,'protected'
-                      ,{'read_concurrency', 'true'}
-                      ]),
+    case file:make_dir(?CI_DIR) of
+        'ok' -> 'ok';
+        {'error', 'eexist'} -> 'ok'
+    end,
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
@@ -137,7 +135,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(atom(), any(), state()) -> handle_call_ret().
+-spec handle_call(atom(), _, state()) -> handle_call_ret().
 handle_call(_Request, _From, State) ->
     lager:debug("unhandled handle_call executed ~p~p", [_Request, _From]),
     Reply = 'ok',
@@ -159,7 +157,7 @@ handle_cast({'store_chunk', CallId, Chunk}, State) ->
                     ,type='chunk'
                     ,value=Chunk
                     },
-    _ = ets:insert(?TAB, Object),
+    insert_object(Object),
     _ = ci_analyzers:new_chunk(CallId, Chunk),
     {'noreply', State};
 handle_cast({'store_analysis', CallId, Analysis}, State) ->
@@ -168,13 +166,13 @@ handle_cast({'store_analysis', CallId, Analysis}, State) ->
                     ,type='analysis'
                     ,value=Analysis
                     },
-    _ = ets:insert(?TAB, Object),
+    insert_object(Object),
     {'noreply', State};
 handle_cast('flush', State) ->
-    _ = ets:delete_all_objects(?TAB),
+    recursive_remove(),
     {'noreply', State};
 handle_cast({'flush', CallId}, State) ->
-    _ = ets:delete(?TAB, CallId),
+    wh_util:delete_file(make_name(CallId)),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled handle_cast ~p", [_Msg]),
@@ -223,3 +221,30 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+-spec make_name(ne_binary()) -> file:filename().
+make_name(CallId) ->
+    filename:join(?CI_DIR, CallId).
+
+-spec insert_object(object()) -> 'ok'.
+insert_object(#object{call_id = CallId} = Object) ->
+    Path = make_name(CallId),
+    IoData = io_lib:fwrite("~p.\n", [Object]),
+    wh_util:write_file(Path, IoData, ['append']).
+
+-spec lookup_objects(ne_binary()) -> [object()].
+lookup_objects(CallId) ->
+    Path = make_name(CallId),
+    case filelib:is_file(Path) of
+        'false' -> [];
+        'true' ->
+            {'ok', Objects} = file:consult(Path),
+            Objects
+    end.
+
+-spec recursive_remove() -> 'ok'.
+recursive_remove() ->
+    F = fun (AbsPath, _Acc) ->
+                'ok' = file:delete(AbsPath)
+        end,
+    filelib:fold_files(?CI_DIR, ".+", 'true', F, 'ok').
