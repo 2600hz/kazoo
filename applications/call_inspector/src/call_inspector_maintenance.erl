@@ -8,9 +8,11 @@
 %%%-------------------------------------------------------------------
 -module(call_inspector_maintenance).
 
--export([list_active_parsers/0]).
--export([import_freeswitch_log/2
-         ,import_kamailio_log/2]).
+-export([list_active_parsers/0
+         ,stop_active_parser/1
+         ,start_freeswitch_parser/2
+         ,start_kamailio_parser/2
+        ]).
 -export([flush/0
          ,flush/1
         ]).
@@ -18,18 +20,30 @@
 
 -include("call_inspector.hrl").
 
--spec list_active_parsers() -> 'ok'.
-list_active_parsers() ->
-    io:format("~p\n", [supervisor:which_children('ci_parsers_sup')]).
+%% API
 
--spec import_freeswitch_log(text(), text()) -> 'ok'.
-import_freeswitch_log(Filename, LogIP) ->
-    Args = [{'parser_args', Filename, LogIP}],
+-spec list_active_parsers() -> 'no_return'.
+list_active_parsers() ->
+    Ids = ci_parsers_sup:children(),
+    lists:foreach(fun (Id) -> io:format("~p\n", [Id]) end, Ids),
+    'no_return'.
+
+-spec stop_active_parser(text()) -> 'ok'.
+stop_active_parser(Id)
+  when not is_atom(Id) ->
+    stop_active_parser(ci_parsers_util:make_name(Id));
+stop_active_parser(Id)
+  when is_atom(Id) ->
+    ci_parsers_sup:stop_child(Id).
+
+-spec start_freeswitch_parser(text(), text()) -> 'ok'.
+start_freeswitch_parser(Filename, LogIP) ->
+    Args = [{'parser_args', Filename, wh_util:to_binary(LogIP)}],
     ci_parsers_sup:start_child('ci_parser_fs', Args).
 
--spec import_kamailio_log(text(), text()) -> 'ok'.
-import_kamailio_log(Filename, LogIP) ->
-    Args = [{'parser_args', Filename, LogIP}],
+-spec start_kamailio_parser(text(), text()) -> 'ok'.
+start_kamailio_parser(Filename, LogIP) ->
+    Args = [{'parser_args', Filename, wh_util:to_binary(LogIP)}],
     ci_parsers_sup:start_child('ci_parser_kamailio', Args).
 
 -spec flush() -> 'ok'.
@@ -51,3 +65,7 @@ callid_details(CallId) ->
 print_chunks(Chunks) ->
     JSONArray = lists:map(fun ci_chunk:to_json/1, Chunks),
     io:fwrite(io_lib:format("~ts\n", [wh_json:encode(JSONArray)])).
+
+%% Internals
+
+%% End of Module.

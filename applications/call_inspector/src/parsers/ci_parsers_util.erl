@@ -48,10 +48,13 @@ parse_interval() ->
     2*1000.  %% Milliseconds
 
 
--spec make_name({'parser_args',ne_binary(),_}) -> atom().
+-spec make_name(ne_binary() | {'parser_args',ne_binary(),_}) -> atom().
+make_name(Bin)
+  when is_binary(Bin) ->
+    binary_to_atom(Bin, 'utf8');
 make_name({'parser_args', Filename, _IP}) ->
     FName = filename:absname(Filename),
-    binary_to_atom(wh_util:to_binary(FName), utf8).
+    make_name(wh_util:to_binary(FName)).
 
 %% Internals
 

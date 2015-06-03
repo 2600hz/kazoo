@@ -146,8 +146,7 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{iodevice = IoDevice}) ->
     'ok' = file:close(IoDevice),
-    lager:debug("call inspector kamailio parser terminated: ~p", [_Reason]),
-    'ok'.
+    lager:debug("call inspector kamailio parser terminated: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -204,8 +203,8 @@ extract_chunk(Dev) ->
         'eof' ->
             dump_buffers();
         {'ok', Line} ->
-            %% Expected Line looks like:
-            %% <<"2015-03-03T23:44:07.812917+00:00 kamailio[19136]: INFO: <script>: OTBjNGY4NmVlZDAyYTQ5M2NlMTVkOWQ5ZDQ4YmFlNmI.|log|from sip:user_3331@webdev.realm;transport=UDPRE:1:FIELD:^ [w]+: (.*)**INVALID PROPERTY NAME**\n">>
+            %% Expected Line looks like: RawTimestamp […] <script>: CallId | Tag | Log \n
+            %% <<"2015-03-03T23:44:07.812917+00:00 kamailio[19136]: INFO: <script>: OTBjNGY4NmVlZDAyYTQ5M2NlMTVkOWQ5ZDQ4YmFlNmI.|log|from sip:user_3331@webdev.realm;transport=UDP\n">>
             case {binary:matches(Line, <<"|">>), binary:split(Line, <<"<script>: ">>)} of
                 {[_,_], [RawTimestamp, CallIdAndLogPart]} ->
                     [CallId, LogPart] = binary:split(CallIdAndLogPart, <<"|">>),

@@ -248,3 +248,5 @@ recursive_remove() ->
                 'ok' = file:delete(AbsPath)
         end,
     filelib:fold_files(?CI_DIR, ".+", 'true', F, 'ok').
+
+%% End of Module.

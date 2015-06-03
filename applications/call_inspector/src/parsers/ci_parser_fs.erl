@@ -146,8 +146,7 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{iodevice = IoDevice}) ->
     'ok' = file:close(IoDevice),
-    lager:debug("call inspector freeswitch parser terminated: ~p", [_Reason]),
-    'ok'.
+    lager:debug("call inspector freeswitch parser terminated: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
