@@ -454,7 +454,9 @@ content_type_to_extension(<<"image/jpeg">>) -> <<"jpg">>;
 content_type_to_extension(<<"image/png">>) -> <<"png">>;
 content_type_to_extension(<<"image/gif">>) -> <<"gif">>;
 content_type_to_extension(<<"text/html">>) -> <<"html">>;
-content_type_to_extension(<<"text/plain">>) -> <<"txt">>.
+content_type_to_extension(<<"text/plain">>) -> <<"txt">>;
+content_type_to_extension(<<"image/icon">>) -> <<"ico">>;
+content_type_to_extension(<<"image/x-icon">>) -> <<"ico">>.
 
 -spec parse_media_type(ne_binary()) ->
                               {'error', 'badarg'} |

@@ -84,6 +84,7 @@ relay_amqp(JObj, Props) ->
 %%--------------------------------------------------------------------
 -spec init([fun()]) -> {'ok', state()}.
 init([Call, Callback, Args]) ->
+    _ = whapps_call:put_callid(Call),
     lager:debug("started event listener for cf_task"),
     {'ok', #state{call=Call
                   ,callback=Callback
