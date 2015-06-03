@@ -115,10 +115,7 @@ flush(CallId) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    case file:make_dir(?CI_DIR) of
-        'ok' -> 'ok';
-        {'error', 'eexist'} -> 'ok'
-    end,
+    mkdir(?CI_DIR),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
@@ -224,11 +221,18 @@ code_change(_OldVsn, State, _Extra) ->
 
 -spec make_name(ne_binary()) -> file:filename().
 make_name(CallId) ->
-    filename:join(?CI_DIR, CallId).
+    <<D1:2/binary, D2:2/binary, Rest/binary>> = wh_util:binary_md5(CallId),
+    filename:join([?CI_DIR, D1, D2, Rest]).
+
+-spec ensure_path_exists(file:filename()) -> 'ok'.
+ensure_path_exists(CallIdPath) ->
+    mkdir(filename:dirname(filename:dirname(CallIdPath))),
+    mkdir(filename:dirname(CallIdPath)).
 
 -spec insert_object(object()) -> 'ok'.
 insert_object(#object{call_id = CallId} = Object) ->
     Path = make_name(CallId),
+    ensure_path_exists(Path),
     IoData = io_lib:fwrite("~p.\n", [Object]),
     wh_util:write_file(Path, IoData, ['append']).
 
@@ -248,5 +252,12 @@ recursive_remove() ->
                 'ok' = file:delete(AbsPath)
         end,
     filelib:fold_files(?CI_DIR, ".+", 'true', F, 'ok').
+
+-spec mkdir(file:filename()) -> 'ok'.
+mkdir(Path) ->
+    case file:make_dir(Path) of
+        'ok' -> 'ok';
+        {'error', 'eexist'} -> 'ok'
+    end.
 
 %% End of Module.

@@ -14,7 +14,6 @@
 -export([start_child/2
          ,stop_child/1
          ,children/0
-         ,child/1
         ]).
 
 -include("../call_inspector.hrl").
@@ -66,24 +65,15 @@ start_child(Module, Args) ->
 
 -spec stop_child(atom()) -> 'ok'.
 stop_child(Id) ->
-    io:format("SUP terminating ~p\n", [Id]),
     'ok' = supervisor:terminate_child(?MODULE, Id),
     'ok' = supervisor:delete_child(?MODULE, Id).
 
 -spec children() -> [atom()].
 children() ->
     [Id
-     || {Id, Pid, _Type, _Modules} <- supervisor:which_children(?MODULE)
-            , Pid =/= 'undefined'
+     || {Id, _Pid, _Type, _Modules} <- supervisor:which_children(?MODULE)
+            %% , _Pid =/= 'undefined'
     ].
-
--spec child(pid()) -> atom().
-child(Pid) ->
-    [Id] = [Id
-            || {Id, PID, _Type, _Modules} <- supervisor:which_children(?MODULE)
-                   , PID =:= Pid
-           ],
-    Id.
 
 %% Internals
 
