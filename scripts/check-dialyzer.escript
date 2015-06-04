@@ -100,8 +100,10 @@ filter(W) ->
         {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {[Assignment = {'wh_amqp_assignment', _, _, Ref, _, _, _, _, _, _, _, _}], Continuation}",_]}} -> 'false';
         {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {[Assignment = {'wh_amqp_assignment', _, _, _, _, _, Ref, _, _, _, _, _}], Continuation}",_]}} -> 'false';
         {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {[Assignment = {'wh_amqp_assignment', _, Consumer, _, _, Channel, _, _, _, _, _, _}], Continuation}",_]}} -> 'false';
-        {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {[Assignment = {'wh_amqp_assignment', _, Consumer, _, _, _, _, _, _, _, _, _}], Continuation}",_]}} -> 'false';
-        {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {[Assignment = {'wh_amqp_assignment', _, _, _, _, _, _, _, _, _, _, _}], Continuation}",_]}} -> 'false';
+
+        {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {[{'wh_amqp_assignment', _, Consumer, _, _, _, _, _, _, _, _, _}], Continuation}",_]}} -> 'false';
+        {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {[{'wh_amqp_assignment', _, _, _, _, _, _, _, _, _, _, _}], Continuation}",_]}} -> 'false';
+
         {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {[{'wh_amqp_assignment', Timestamp, Consumer, _, _, _, _, _, _, _, _, _}], Continuation}",_]}} -> 'false';
         {warn_contract_types, {"src/wh_amqp_assignments.erl",_}, {invalid_contract,[wh_amqp_assignments,maybe_reassign,1,"('$2' | '_' | 'undefined' | pid()) -> 'ok'"]}} -> 'false';
         {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {[{'wh_amqp_assignment', _, _, _, _, Channel, _, _, _, _, _, _}], _}",_]}} -> 'false';
