@@ -1,0 +1,79 @@
+{
+    "_id": "token_restrictions",
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "type": "object",
+    "required": true,
+    "name": "Token restrictions",
+    "description": "Schema for token restrictions",
+    "properties": {
+        "restrictions": {
+            "type": "object",
+            "patternProperties": {
+                "^\\w+$": {
+                    "type": "object",
+                    "required": true,
+                    "name": "Auth method",
+                    "description": "Name of athentication metod used when creating token. \"_\" for match any auth method",
+                    "patternProperties": {
+                        "^\\w+$": {
+                            "type": "object",
+                            "required": true,
+                            "name": "User priv level",
+                            "description": "User privelege level. \"_\" for match any priv level",
+                            "patternProperties": {
+                                "^\\w+$":{
+                                    "type": "array",
+                                    "required": true,
+                                    "items": {
+                                        "type": "object",
+                                        "name": "Endpoint",
+                                        "required": false,
+                                        "description": "Endpoint (first path token) to wich apply restrictions. \"_\" for match any endpoint",
+                                        "properties": {
+                                            "allowed_accounts":{
+                                                "type": "array",
+                                                "required": false,
+                                                "name" : "Allowed accounts",
+                                                "description": "Account allowed to match this item",
+                                                "uniqueItems": true,
+                                                "items":{
+                                                    "type": "string",
+                                                    "required": false
+                                                }
+                                            },
+                                            "rules": {
+                                                "type": "object",
+                                                "requred": false,
+                                                "name": "Rules",
+                                                "description": "Rules applied to endpoint parameters",
+                                                "patternProperties": {
+                                                    "^[\\w/#*]+$": {
+                                                        "type": "array",
+                                                        "requred": false,
+                                                        "name": "verbs",
+                                                        "uniqueItems": true,
+                                                        "items":{
+                                                            "type": "string",
+                                                            "enum": [
+                                                                "GET",
+                                                                "PUT",
+                                                                "POST",
+                                                                "PATCH",
+                                                                "DELETE",
+                                                                "_"
+                                                            ]
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

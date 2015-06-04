@@ -15,6 +15,11 @@
 -module(cb_token_restrictions).
 
 -export([init/0
+         ,allowed_methods/0
+         ,resource_exists/0
+         ,validate/1
+         ,post/1
+         ,delete/1
          ,authorize/1
         ]).
 
@@ -28,7 +33,63 @@ init() ->
 
     _ = couch_mgr:revise_doc_from_file(?KZ_TOKEN_DB, 'crossbar', "views/token_auth.json"),
 
-    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize').
+    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.token_restrictions">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.token_restrictions">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.validate.token_restrictions">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.post.token_restrictions">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.delete.token_restrictions">>, ?MODULE, 'delete').
+
+-spec allowed_methods() -> http_methods().
+allowed_methods() ->
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+
+-spec resource_exists() -> 'true'.
+resource_exists() -> 'true'.
+
+-spec validate(cb_context:context()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
+validate(Context) -> 
+    validate(Context, cb_context:req_verb(Context)).
+
+validate(Context, ?HTTP_GET) -> 
+    load_restrictions(Context);
+validate(Context, ?HTTP_POST) -> 
+    validate_request(Context);
+validate(Context, ?HTTP_DELETE) -> 
+    load_restrictions(Context).
+
+-spec load_restrictions(cb_context:context()) -> cb_context:context().
+load_restrictions(Context) -> 
+    Context1 = crossbar_doc:load(?CB_ACCOUNT_TOKEN_RESTRICTIONS, Context),
+    Restrictions = wh_json:get_value(<<"pvt_restrictions">>, cb_context:doc(Context1)),
+    Resp = wh_json:set_value(<<"restrictions">>, Restrictions, wh_json:new()),
+    cb_context:set_resp_data(Context1, Resp).
+
+validate_request(Context) ->
+    OnSuccess = fun(C) -> on_successful_validation(C) end,
+    cb_context:validate_request_data(<<"token_restrictions">>, Context, OnSuccess).
+
+-spec on_successful_validation(cb_context:context()) -> cb_context:context().
+on_successful_validation(Context) ->
+    Restrictions = wh_json:get_value(<<"restrictions">>, cb_context:doc(Context)),
+    Doc = cb_context:doc(crossbar_doc:load_merge(?CB_ACCOUNT_TOKEN_RESTRICTIONS, Context)),
+    NewDoc = wh_json:set_values(
+               [{<<"pvt_type">>, <<"token_restrictions">>}
+                ,{<<"_id">>,<<"token_restrictions">>} 
+                ,{<<"pvt_restrictions">>, Restrictions}
+               ], 
+               wh_json:delete_key(<<"restrictions">>, Doc)
+              ),
+    cb_context:set_doc(Context, NewDoc).
+
+-spec post(cb_context:context()) -> cb_context:context().
+post(Context) -> 
+    crossbar_doc:save(Context).
+
+-spec delete(cb_context:context()) -> cb_context:context().
+delete(Context) ->
+    crossbar_doc:delete(Context, 'permanent').
 
 %%--------------------------------------------------------------------
 %% @public
