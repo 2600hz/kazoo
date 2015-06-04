@@ -95,7 +95,7 @@ filter(W) ->
         {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {[Assignment = {'wh_amqp_assignment', _, _, _, _, _, Ref, _, _, _, _, _}], Continuation}",_]}} -> 'false';
         {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {[Assignment = {'wh_amqp_assignment', _, Consumer, _, _, Channel, _, _, _, _, _, _}], Continuation}",_]}} -> 'false';
 
-        {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {[{'wh_amqp_assignment', _, Consumer, _, _, _, _, _, _, _, _, _}], Continuation}",_]}} -> 'false';
+        {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {[{'wh_amqp_assignment', _, _, _, _, Channel, _, _, _, _, _, _}], Continuation}",_]}} -> 'false';
         {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {[{'wh_amqp_assignment', _, _, _, _, _, _, _, _, _, _, _}], Continuation}",_]}} -> 'false';
 
         {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {[{'wh_amqp_assignment', Timestamp, Consumer, _, _, _, _, _, _, _, _, _}], Continuation}",_]}} -> 'false';
