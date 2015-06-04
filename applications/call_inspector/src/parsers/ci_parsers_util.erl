@@ -16,6 +16,7 @@
 -export([make_name/1]).
 
 -include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/wh_log.hrl").
 
 %% API
 
