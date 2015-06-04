@@ -22,8 +22,8 @@
 -define(node_id(Val), (Val):16).
 -define(length(Val), (Val):8).
 
--define(length_ipv4, 28).
--define(length_ipv6, 52).
+-define(length_ipv4, 16).
+-define(length_ipv6, 40).
 
 %% API
 
