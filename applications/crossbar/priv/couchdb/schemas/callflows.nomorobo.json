@@ -1,25 +1,25 @@
 {
-    "_id": "callflows.nomorobo",
     "$schema": "http://json-schema.org/draft-03/schema#",
-    "type": "object",
-    "required": true,
+    "_id": "callflows.nomorobo",
     "description": "Validator for the NoMoRobo callflow action",
     "properties": {
-        "username": {
-            "type": "string",
-            "required": true,
-            "name": "NoMoRobo Username",
-            "description": "Username to the NoMoRobo service",
-            "minLength":1,
-            "maxLength":1000
-        },
         "password": {
-            "type":"string",
-            "required":false,
-            "name":"NoMoRobo Password",
-            "description":"Password to the NoMoRobo service",
-            "minLength":1,
-            "maxLength":1000
+            "description": "Password to the NoMoRobo service",
+            "maxLength": 1000,
+            "minLength": 1,
+            "name": "NoMoRobo Password",
+            "required": false,
+            "type": "string"
+        },
+        "username": {
+            "description": "Username to the NoMoRobo service",
+            "maxLength": 1000,
+            "minLength": 1,
+            "name": "NoMoRobo Username",
+            "required": true,
+            "type": "string"
         }
-    }
+    },
+    "required": true,
+    "type": "object"
 }

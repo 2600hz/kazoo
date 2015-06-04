@@ -1,76 +1,76 @@
 {
-    "_id": "caller_id",
     "$schema": "http://json-schema.org/draft-03/schema#",
-    "type": "object",
-    "required": false,
-    "name": "Caller ID",
+    "_id": "caller_id",
     "description": "Defines caller ID settings based on the type of call being made",
+    "name": "Caller ID",
     "properties": {
-        "internal": {
-            "type": "object",
-            "required": false,
-            "name": "Internal",
-            "description": "The default caller ID used when dialing internal extensions",
+        "emergency": {
+            "description": "The caller ID used when a resource is flagged as 'emergency'",
+            "name": "Emergency",
             "properties": {
                 "name": {
-                    "type": "string",
-                    "required": false,
-                    "name": "Name",
                     "description": "The caller id name for the object type",
-                    "maxLength": 35
+                    "maxLength": 35,
+                    "name": "Name",
+                    "required": false,
+                    "type": "string"
                 },
                 "number": {
-                    "type": "string",
-                    "required": false,
-                    "name": "Number",
                     "description": "The caller id name for the object type",
-                    "maxLength": 35
+                    "maxLength": 35,
+                    "name": "Number",
+                    "required": false,
+                    "type": "string"
                 }
-            }
+            },
+            "required": false,
+            "type": "object"
         },
         "external": {
-            "type": "object",
-            "required": false,
-            "name": "External",
             "description": "The default caller ID used when dialing external numbers",
+            "name": "External",
             "properties": {
                 "name": {
-                    "type": "string",
-                    "required": false,
-                    "name": "Name",
                     "description": "The caller id name for the object type",
-                    "maxLength": 35
+                    "maxLength": 35,
+                    "name": "Name",
+                    "required": false,
+                    "type": "string"
                 },
                 "number": {
-                    "type": "string",
-                    "required": false,
-                    "name": "Number",
                     "description": "The caller id name for the object type",
-                    "maxLength": 35
+                    "maxLength": 35,
+                    "name": "Number",
+                    "required": false,
+                    "type": "string"
                 }
-            }
-        },
-        "emergency": {
-            "type": "object",
+            },
             "required": false,
-            "name": "Emergency",
-            "description": "The caller ID used when a resource is flagged as 'emergency'",
+            "type": "object"
+        },
+        "internal": {
+            "description": "The default caller ID used when dialing internal extensions",
+            "name": "Internal",
             "properties": {
                 "name": {
-                    "type": "string",
-                    "required": false,
-                    "name": "Name",
                     "description": "The caller id name for the object type",
-                    "maxLength": 35
+                    "maxLength": 35,
+                    "name": "Name",
+                    "required": false,
+                    "type": "string"
                 },
                 "number": {
-                    "type": "string",
-                    "required": false,
-                    "name": "Number",
                     "description": "The caller id name for the object type",
-                    "maxLength": 35
+                    "maxLength": 35,
+                    "name": "Number",
+                    "required": false,
+                    "type": "string"
                 }
-            }
+            },
+            "required": false,
+            "type": "object"
         }
-    }
+    },
+    "required": false,
+    "type": "object"
 }

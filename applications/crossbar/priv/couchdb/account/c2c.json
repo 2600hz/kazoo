@@ -1,11 +1,12 @@
 {
-    "_id": "_design/click2call"
-    ,"language": "javascript"
-    ,"views": {
+    "_id": "_design/click2call",
+    "filters": {
+        "export": "function(doc, req) { return ( doc.pvt_type == 'click2call' ); }"
+    },
+    "language": "javascript",
+    "views": {
         "crossbar_listing": {
             "map": "function(doc) { if (doc.pvt_type != 'click2call' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name': doc.name, 'extension': doc.extension, 'realm': doc.relam}); }"
-        }}
-    ,"filters": {
-        "export":"function(doc, req) { return ( doc.pvt_type == 'click2call' ); }"
+        }
     }
 }

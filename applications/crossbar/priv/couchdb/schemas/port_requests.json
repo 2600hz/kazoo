@@ -1,35 +1,113 @@
 {
-    "_id": "port_requests",
     "$schema": "http://json-schema.org/draft-03/schema#",
-    "type": "object",
-    "required": true,
-    "name": "Port Request",
+    "_id": "port_requests",
     "description": "Schema for a port request",
+    "name": "Port Request",
     "properties": {
+        "bill": {
+            "description": "Billing information of the losing carrier",
+            "properties": {
+                "extended_address": {
+                    "description": "The suite/floor/apt of the billing address the losing carrier has on record",
+                    "name": "Address",
+                    "required": false,
+                    "type": "string"
+                },
+                "locality": {
+                    "description": "The locality (city) of the billing address the losing carrier has on record",
+                    "name": "City",
+                    "required": false,
+                    "type": "string"
+                },
+                "name": {
+                    "description": "The losing carrier billing/account name",
+                    "name": "Account Name",
+                    "required": false,
+                    "type": "string"
+                },
+                "postal_code": {
+                    "description": "The zip/postal code of the billing address the losing carrier has on record",
+                    "name": "Zip Code",
+                    "required": false,
+                    "type": "string"
+                },
+                "region": {
+                    "description": "The region (state) of the billing address the losing carrier has on record",
+                    "name": "State",
+                    "required": false,
+                    "type": "string"
+                },
+                "street_address": {
+                    "description": "The address of the billing address the losing carrier has on record",
+                    "name": "Address",
+                    "required": false,
+                    "type": "string"
+                }
+            },
+            "required": false,
+            "type": "object"
+        },
+        "comments": {
+            "description": "The history of comments made on a port request",
+            "items": {
+                "required": false,
+                "type": "object"
+            },
+            "name": "Comments",
+            "required": false,
+            "type": "array"
+        },
         "name": {
-            "type": "string",
-            "required": true,
-            "name": "Name",
             "description": "A friendly name for the port request",
+            "maxLength": 128,
             "minLength": 1,
-            "maxLength": 128
+            "name": "Name",
+            "required": true,
+            "type": "string"
+        },
+        "notifications": {
+            "description": "Status notifications",
+            "properties": {
+                "email": {
+                    "description": "Email notifications",
+                    "name": "Inbound Email Notifications",
+                    "properties": {
+                        "send_to": {
+                            "description": "A list or string of email recipent(s)",
+                            "format": "email",
+                            "items": {
+                                "format": "email",
+                                "required": false,
+                                "type": "string"
+                            },
+                            "name": "Email Address",
+                            "required": false,
+                            "type": [
+                                "string",
+                                "array"
+                            ]
+                        }
+                    },
+                    "required": false,
+                    "type": "object"
+                }
+            },
+            "required": false,
+            "type": "object"
         },
         "numbers": {
-            "type": "object",
-            "required": true,
-            "name": "Numbers",
             "description": "The numbers to port in",
             "minProperties": 1,
+            "name": "Numbers",
             "patternProperties": {
                 "\\+?[0-9]+": {
                     "type": "object"
                 }
-            }
+            },
+            "required": true,
+            "type": "object"
         },
         "port_state": {
-            "type": "string",
-            "required": true,
-            "name": "Port State",
             "description": "What state the port request is currently in",
             "enum": [
                 "unconfirmed",
@@ -39,102 +117,24 @@
                 "completed",
                 "rejected",
                 "canceled"
-            ]
-        },
-        "transfer_date": {
-            "type": "integer",
-            "required": false,
-            "name": "Transfer Date",
-            "description": "Requested transfer date in gregorain timestamp"
+            ],
+            "name": "Port State",
+            "required": true,
+            "type": "string"
         },
         "scheduled_date": {
-            "type": "integer",
-            "required": false,
+            "description": "Requested scheduled date in gregorain timestamp",
             "name": "Scheduled Date",
-            "description": "Requested scheduled date in gregorain timestamp"
-        },
-        "notifications": {
-            "type": "object",
             "required": false,
-            "description": "Status notifications",
-            "properties": {
-                "email": {
-                    "type": "object",
-                    "required": false,
-                    "name": "Inbound Email Notifications",
-                    "description": "Email notifications",
-                    "properties": {
-                        "send_to": {
-                            "type": [
-                                "string",
-                                "array"
-                            ],
-                            "required": false,
-                            "name": "Email Address",
-                            "description": "A list or string of email recipent(s)",
-                            "items": {
-                                "type": "string",
-                                "required": false,
-                                "format": "email"
-                            },
-                            "format": "email"
-                        }
-                    }
-                }
-            }
+            "type": "integer"
         },
-        "bill": {
-            "type": "object",
+        "transfer_date": {
+            "description": "Requested transfer date in gregorain timestamp",
+            "name": "Transfer Date",
             "required": false,
-            "description": "Billing information of the losing carrier",
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "required": false,
-                    "name": "Account Name",
-                    "description": "The losing carrier billing/account name"
-                },
-                "locality": {
-                    "type": "string",
-                    "required": false,
-                    "name": "City",
-                    "description": "The locality (city) of the billing address the losing carrier has on record"
-                },
-                "region": {
-                    "type": "string",
-                    "required": false,
-                    "name": "State",
-                    "description": "The region (state) of the billing address the losing carrier has on record"
-                },
-                "street_address": {
-                    "type": "string",
-                    "required": false,
-                    "name": "Address",
-                    "description": "The address of the billing address the losing carrier has on record"
-                },
-                "extended_address": {
-                    "type": "string",
-                    "required": false,
-                    "name": "Address",
-                    "description": "The suite/floor/apt of the billing address the losing carrier has on record"
-                },
-                "postal_code": {
-                    "type": "string",
-                    "required": false,
-                    "name": "Zip Code",
-                    "description": "The zip/postal code of the billing address the losing carrier has on record"
-                }
-            }
-        },
-        "comments": {
-            "type": "array",
-            "required": false,
-            "name": "Comments",
-            "description": "The history of comments made on a port request",
-            "items": {
-                "type": "object",
-                "required": false
-            }
+            "type": "integer"
         }
-    }
+    },
+    "required": true,
+    "type": "object"
 }

@@ -1,65 +1,65 @@
 {
-    "_id": "device_rate_limits",
     "$schema": "http://json-schema.org/draft-03/schema#",
-    "type": "object",
-    "required": true,
-    "name": "Rate limits",
-    "description": "describe limits for SIP requests",
+    "_id": "device_rate_limits",
     "additionalProperties": true,
+    "description": "describe limits for SIP requests",
+    "name": "Rate limits",
     "properties": {
-        "per_minute":{
-            "type":"object",
-            "required": true,
-            "name": "Per minute",
+        "per_minute": {
+            "additionalProperties": false,
             "description": "The limits to apply by a minute",
-            "additionalProperties": false,
+            "name": "Per minute",
             "properties": {
-                "invites":{
-                    "name":"Invites",
+                "invites": {
                     "description": "Count for the specified SIP method",
-                    "type":"integer",
-                    "required": false
+                    "name": "Invites",
+                    "required": false,
+                    "type": "integer"
                 },
-                "registrations":{
-                    "name":"Registrations",
+                "registrations": {
                     "description": "Count for the specified SIP method",
-                    "type":"integer",
-                    "required": false
+                    "name": "Registrations",
+                    "required": false,
+                    "type": "integer"
                 },
-                "total_packets":{
-                    "name":"Total packets",
+                "total_packets": {
                     "description": "Summary count for all of the SIP methods",
-                    "type":"integer",
-                    "required": true
+                    "name": "Total packets",
+                    "required": true,
+                    "type": "integer"
                 }
-            }
-        },
-        "per_second":{
-            "type":"object",
+            },
             "required": true,
-            "name": "Per second",
-            "description": "The limits to apply by a second",
+            "type": "object"
+        },
+        "per_second": {
             "additionalProperties": false,
+            "description": "The limits to apply by a second",
+            "name": "Per second",
             "properties": {
-                "invites":{
-                    "name":"Invites",
+                "invites": {
                     "description": "Count for the specified SIP method",
-                    "type":"integer",
-                    "required": false
+                    "name": "Invites",
+                    "required": false,
+                    "type": "integer"
                 },
-                "registrations":{
-                    "name":"Registrations",
+                "registrations": {
                     "description": "Count for the specified SIP method",
-                    "type":"integer",
-                    "required": false
+                    "name": "Registrations",
+                    "required": false,
+                    "type": "integer"
                 },
-                "total_packets":{
-                    "name":"Total packets",
+                "total_packets": {
                     "description": "Summary count for all of the SIP methods",
-                    "type":"integer",
-                    "required": true
+                    "name": "Total packets",
+                    "required": true,
+                    "type": "integer"
                 }
-            }
+            },
+            "required": true,
+            "type": "object"
         }
-    }
+    },
+    "required": true,
+    "type": "object"
 }

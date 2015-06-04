@@ -14,7 +14,7 @@ all: compile
 MODULES = $(shell ls src/*.erl | sed 's/src\///;s/\.erl/,/' | sed '$$s/.$$//')
 TEMPLATES = $(shell ls src/templates/*.erl | sed 's/src\/templates\///;s/\.erl/,/' | sed '$$s/.$$//')
 
-compile: ebin/$(PROJECT).app
+compile: ebin/$(PROJECT).app json
 	@cat src/$(PROJECT).app.src \
 		| sed 's/{modules, \[\]}/{modules, \[$(MODULES),$(TEMPLATES)\]}/' \
 		> ebin/$(PROJECT).app
@@ -23,6 +23,13 @@ compile: ebin/$(PROJECT).app
 ebin/$(PROJECT).app: src/*.erl src/templates/*.erl
 	@mkdir -p ebin/
 	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $?
+
+json: JSON = $(shell find priv -name *.json -print)
+json:
+	@for jobj in $(JSON); do \
+		echo checking $$jobj; \
+		python -mjson.tool $$jobj $$jobj~ && mv $$jobj~ $$jobj; \
+	done
 
 compile-test: test/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \

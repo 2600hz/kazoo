@@ -1,7 +1,7 @@
 {
-    "_id": "_design/metaflows"
-    ,"language": "javascript"
-    ,"views": {
+    "_id": "_design/metaflows",
+    "language": "javascript",
+    "views": {
         "crossbar_listing": {
             "map": "function(doc) { if (!doc.metaflows || doc.pvt_deleted) return; emit(doc._id, doc.metaflows); }"
         }
