@@ -185,13 +185,15 @@ make_and_store_chunk(LogIP, Counter, Data00) ->
                 ,fun strip_truncating_pieces/1
                 ,fun remove_dashes/1],
     Data = lists:foldl(Apply, Data0, Cleansers),
-    Setters = [fun (C) -> ci_chunk:set_data(C, Data) end
-              ,fun (C) -> ci_chunk:set_call_id(C, call_id(Data)) end
-              ,fun (C) -> ci_chunk:set_timestamp(C, Timestamp) end
-              ,fun (C) -> set_legs(LogIP, C, Data) end
-              ,fun (C) -> ci_chunk:set_parser(C, ?MODULE) end
-              ,fun (C) -> ci_chunk:set_label(C, label(Data)) end],
-    Chunk = lists:foldl(Apply, ci_chunk:new(), Setters),
+    Chunk =
+        ci_chunk:setters(set_legs(LogIP, ci_chunk:new(), Data)
+                        , [ {fun ci_chunk:set_data/2, Data}
+                          , {fun ci_chunk:set_call_id/2, call_id(Data)}
+                          , {fun ci_chunk:set_timestamp/2, Timestamp}
+                          , {fun ci_chunk:set_parser/2, ?MODULE}
+                          , {fun ci_chunk:set_label/2, label(Data)}
+                          ]
+                        ),
     lager:debug("parsed chunk ~s (~s)", [ci_chunk:call_id(Chunk), ci_parsers_sup:child(self())]),
     ci_datastore:store_chunk(Chunk),
     NewCounter.

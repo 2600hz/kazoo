@@ -178,22 +178,23 @@ extract_chunks(Dev, LogIP, Counter) ->
     end.
 
 make_and_store_chunk(LogIP, Callid, Counter, Data0) ->
-    Apply = fun (Fun, Arg) -> Fun(Arg) end,
     {Data, Ts} = cleanse_data_and_get_timestamp(Data0),
     %% Counter is a fallback time ID (for old logfile format)
     {NewCounter, Timestamp} = case Ts of
                                   'undefined' -> {Counter+1, Counter};
                                   _Ts -> {Counter, Ts}
                               end,
-    Setters = [fun (C) -> ci_chunk:set_data(C, Data) end
-              ,fun (C) -> ci_chunk:set_call_id(C, Callid) end
-              ,fun (C) -> ci_chunk:set_timestamp(C, Timestamp) end
-              ,fun (C) -> ci_chunk:set_parser(C, ?MODULE) end
-              ,fun (C) -> ci_chunk:set_label(C, label(hd(Data))) end
-              ,fun (C) -> ci_chunk:set_from(C, from(lists:reverse(Data0),LogIP)) end
-              ,fun (C) -> ci_chunk:set_to(C, to(lists:reverse(Data0),LogIP)) end
-              ],
-    Chunk = lists:foldl(Apply, ci_chunk:new(), Setters),
+    Chunk =
+        ci_chunk:setters(ci_chunk:new()
+                        , [ {fun ci_chunk:set_data/2, Data}
+                          , {fun ci_chunk:set_call_id/2, Callid}
+                          , {fun ci_chunk:set_timestamp/2, Timestamp}
+                          , {fun ci_chunk:set_parser/2, ?MODULE}
+                          , {fun ci_chunk:set_label/2, label(hd(Data))}
+                          , {fun ci_chunk:set_from/2, from(lists:reverse(Data0),LogIP)}
+                          , {fun ci_chunk:set_to/2, to(lists:reverse(Data0),LogIP)}
+                          ]
+                        ),
     lager:debug("parsed chunk ~s (~s)", [ci_chunk:call_id(Chunk), ci_parsers_sup:child(self())]),
     ci_datastore:store_chunk(Chunk),
     NewCounter.
