@@ -94,6 +94,8 @@ filter(W) ->
         {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {[Assignment = {'wh_amqp_assignment', _, _, Ref, _, _, _, _, _, _, _, _}], Continuation}",_]}} -> 'false';
         {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {[Assignment = {'wh_amqp_assignment', _, _, _, _, _, Ref, _, _, _, _, _}], Continuation}",_]}} -> 'false';
         {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {[Assignment = {'wh_amqp_assignment', _, Consumer, _, _, Channel, _, _, _, _, _, _}], Continuation}",_]}} -> 'false';
+        {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {[Assignment = {'wh_amqp_assignment', _, Consumer, _, _, _, _, _, _, _, _, _}], Continuation}",_]}} -> 'false';
+        {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {[Assignment = {'wh_amqp_assignment', _, _, _, _, _, _, _, _, _, _, _}], Continuation}",_]}} -> 'false';
         {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {[{'wh_amqp_assignment', Timestamp, Consumer, _, _, _, _, _, _, _, _, _}], Continuation}",_]}} -> 'false';
         {warn_contract_types, {"src/wh_amqp_assignments.erl",_}, {invalid_contract,[wh_amqp_assignments,maybe_reassign,1,"('$2' | '_' | 'undefined' | pid()) -> 'ok'"]}} -> 'false';
         {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {[{'wh_amqp_assignment', _, _, _, _, Channel, _, _, _, _, _, _}], _}",_]}} -> 'false';
@@ -101,6 +103,7 @@ filter(W) ->
         {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {[Assignment = {'wh_amqp_assignment', _, _, _, 'float', _, _, _, _, _, _, _}], _}",_]}} -> 'false';
         {warn_not_called, {"src/wh_amqp_assignments.erl",_}, {unused_fun,[maybe_reassign,2]}} -> 'false';
         {warn_contract_types, {"src/wh_amqp_assignments.erl",_}, {invalid_contract,[wh_amqp_assignments,assign_or_reserve,3,"('undefined','undefined','float' | 'sticky') -> #wh_amqp_assignment{timestamp::{non_neg_integer(),non_neg_integer(),non_neg_integer()},consumer::'$2' | '_' | 'undefined' | pid(),consumer_ref::reference(),type::'float' | 'sticky',broker::'$1' | '_' | 'undefined' | binary(),reconnect::'false',watchers::set()}"]}} -> 'false';
+        {warn_not_called, {"src/wh_amqp_assignments.erl",_}, {unused_fun,[unregister_channel_handlers,1]}} -> 'false';
         {warn_not_called, {"src/wh_amqp_assignments.erl",_}, {unused_fun,[assign_consumer,3]}} -> 'false';
         {warn_not_called, {"src/wh_amqp_assignments.erl",_}, {unused_fun,[move_channel_to_consumer,2]}} -> 'false';
         {warn_not_called, {"src/wh_amqp_assignments.erl",_}, {unused_fun,[add_consumer_to_channel,3]}} -> 'false';

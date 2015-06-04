@@ -872,10 +872,9 @@ unregister_channel_handlers(Channel) ->
    
 -spec release_handlers({wh_amqp_assignments(), ets:continuation()} | '$end_of_table') -> 'ok'.
 release_handlers('$end_of_table') -> 'ok';
-release_handlers({[#wh_amqp_assignment{channel=Channel}=Assignment], Continuation})
+release_handlers({[#wh_amqp_assignment{channel=Channel}], Continuation})
   when is_pid(Channel) ->
     _ = unregister_channel_handlers(Channel),
-    release_handlers({[Assignment#wh_amqp_assignment{channel='undefined'}]
-                         ,Continuation});
+    release_handlers(ets:match(Continuation));
 release_handlers({[#wh_amqp_assignment{}], Continuation}) ->
     release_handlers(ets:match(Continuation)).
