@@ -24,6 +24,7 @@
         ]).
 
 -include("../crossbar.hrl").
+-define(PVT_TYPE, <<"token_restrictions">>).
 
 %%%===================================================================
 %%% API
@@ -61,27 +62,35 @@ validate(Context, ?HTTP_DELETE) ->
 
 -spec load_restrictions(cb_context:context()) -> cb_context:context().
 load_restrictions(Context) -> 
-    Context1 = crossbar_doc:load(?CB_ACCOUNT_TOKEN_RESTRICTIONS, Context),
-    Restrictions = wh_json:get_value(<<"pvt_restrictions">>, cb_context:doc(Context1)),
-    Resp = wh_json:set_value(<<"restrictions">>, Restrictions, wh_json:new()),
-    cb_context:set_resp_data(Context1, Resp).
+    crossbar_doc:load(?CB_ACCOUNT_TOKEN_RESTRICTIONS, Context).
 
 validate_request(Context) ->
     OnSuccess = fun(C) -> on_successful_validation(C) end,
-    cb_context:validate_request_data(<<"token_restrictions">>, Context, OnSuccess).
+    cb_context:validate_request_data(?PVT_TYPE, Context, OnSuccess).
 
 -spec on_successful_validation(cb_context:context()) -> cb_context:context().
 on_successful_validation(Context) ->
-    Restrictions = wh_json:get_value(<<"restrictions">>, cb_context:doc(Context)),
-    Doc = cb_context:doc(crossbar_doc:load_merge(?CB_ACCOUNT_TOKEN_RESTRICTIONS, Context)),
-    NewDoc = wh_json:set_values(
-               [{<<"pvt_type">>, <<"token_restrictions">>}
-                ,{<<"_id">>,<<"token_restrictions">>} 
-                ,{<<"pvt_restrictions">>, Restrictions}
-               ], 
-               wh_json:delete_key(<<"restrictions">>, Doc)
-              ),
-    cb_context:set_doc(Context, NewDoc).
+    Context1 = crossbar_doc:load_merge(?CB_ACCOUNT_TOKEN_RESTRICTIONS, Context),
+    case cb_context:resp_status(Context1) of
+        'success' -> Context1;
+        _ -> 
+            Setters = [fun add_doc_id/1 
+                       ,fun add_pvt_type/1
+                      ],
+            cb_context:setters(Context, Setters)
+    end.
+
+-spec add_pvt_type(cb_context:context()) -> cb_context:context().
+add_pvt_type(Context) ->
+    cb_context:set_doc(Context
+                       ,wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, cb_context:doc(Context))
+                      ).
+
+-spec add_doc_id(cb_context:context()) -> cb_context:context().
+add_doc_id(Context) ->
+    cb_context:set_doc(Context
+                       ,wh_json:set_value(<<"_id">>, ?CB_ACCOUNT_TOKEN_RESTRICTIONS, cb_context:doc(Context))
+                      ).
 
 -spec post(cb_context:context()) -> cb_context:context().
 post(Context) -> 

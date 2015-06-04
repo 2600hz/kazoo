@@ -941,8 +941,8 @@ get_account_token_restrictions(AccountId, Method) ->
     AccountDB = wh_util:format_account_db(AccountId),
     case couch_mgr:open_cache_doc(AccountDB, ?CB_ACCOUNT_TOKEN_RESTRICTIONS) of
         {'ok', RestrictionsDoc} -> wh_json:get_first_defined(
-                                     [[<<"pvt_restrictions">>, wh_util:to_binary(Method)] 
-                                      ,[<<"pvt_restrictions">>, <<"_">>]
+                                     [[<<"restrictions">>, wh_util:to_binary(Method)] 
+                                      ,[<<"restrictions">>, <<"_">>]
                                      ], 
                                      RestrictionsDoc);
         {'error', _} -> 'undefined'
