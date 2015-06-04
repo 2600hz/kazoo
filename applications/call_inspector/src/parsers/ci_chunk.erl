@@ -9,6 +9,7 @@
 -module(ci_chunk).
 
 -export([new/0]).
+-export([setters/2]).
 -export([set_call_id/2
          ,call_id/1
         ]).
@@ -49,6 +50,11 @@
 
 -spec new() -> chunk().
 new() -> #ci_chunk{}.
+
+-spec setters(chunk(), [{fun((chunk(), A) -> chunk()), A}]) -> chunk().
+setters(#ci_chunk{}=Chunk, Setters) ->
+    Apply = fun ({Fun, Arg}, C) -> Fun(C, Arg) end,
+    lists:foldl(Apply, Chunk, Setters).
 
 -spec set_call_id(chunk(), ne_binary()) -> chunk().
 set_call_id(Chunk, CallId) ->

@@ -14,6 +14,7 @@
 
 %% API
 -export([start_link/1]).
+-export([call_id/1]).
 
 %% gen_server callbacks
 -export([init/1
@@ -185,7 +186,7 @@ make_and_store_chunk(LogIP, Counter, Data00) ->
                 ,fun remove_dashes/1],
     Data = lists:foldl(Apply, Data0, Cleansers),
     Setters = [fun (C) -> ci_chunk:set_data(C, Data) end
-              ,fun (C) -> ci_chunk:set_call_id(C, callid(Data)) end
+              ,fun (C) -> ci_chunk:set_call_id(C, call_id(Data)) end
               ,fun (C) -> ci_chunk:set_timestamp(C, Timestamp) end
               ,fun (C) -> set_legs(LogIP, C, Data) end
               ,fun (C) -> ci_chunk:set_parser(C, ?MODULE) end
@@ -269,7 +270,7 @@ ip(Bin) ->
 label(Data) ->
     lists:nth(2, Data).
 
-callid(Data) ->
+call_id(Data) ->
     get_field([<<"Call-ID">>, <<"i">>], Data).
 
 

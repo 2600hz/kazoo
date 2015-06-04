@@ -171,12 +171,22 @@ resolve_a_record(Domain, IPs) ->
 resolve_a_record_fold(IPTuple, I) ->
     [iptuple_to_binary(IPTuple) | I].
 
--spec iptuple_to_binary(inet:ip4_address()) -> ne_binary().
+-spec iptuple_to_binary(inet:ip4_address() | inet:ipv6_address()) -> ne_binary().
 iptuple_to_binary({A,B,C,D}) ->
     <<(wh_util:to_binary(A))/binary, "."
       ,(wh_util:to_binary(B))/binary, "."
       ,(wh_util:to_binary(C))/binary, "."
       ,(wh_util:to_binary(D))/binary
+    >>;
+iptuple_to_binary({I1, I2, I3, I4, I5, I6, I7, I8}) ->
+    <<(wh_util:to_binary(I1))/binary, ":"
+      ,(wh_util:to_binary(I2))/binary, ":"
+      ,(wh_util:to_binary(I3))/binary, ":"
+      ,(wh_util:to_binary(I4))/binary, ":"
+      ,(wh_util:to_binary(I5))/binary, ":"
+      ,(wh_util:to_binary(I6))/binary, ":"
+      ,(wh_util:to_binary(I7))/binary, ":"
+      ,(wh_util:to_binary(I8))/binary, ":"
     >>.
 
 -spec pretty_print_bytes(non_neg_integer()) -> iolist().

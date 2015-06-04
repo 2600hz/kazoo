@@ -19,7 +19,7 @@
 
 %% API
 
--spec timestamp(ne_binary()) -> api_integer().
+-spec timestamp(ne_binary() | erlang:timestamp()) -> api_integer().
 timestamp(<<YYYY:4/binary, "-", MM:2/binary, "-", DD:2/binary, "T"
             ,HH:2/binary, ":", MMM:2/binary, ":", SS:2/binary, "."
             ,Micro:6/binary, "+", _H:2/binary, ":", _M:2/binary, " ", _/binary>>) ->
@@ -27,6 +27,10 @@ timestamp(<<YYYY:4/binary, "-", MM:2/binary, "-", DD:2/binary, "T"
         calendar:datetime_to_gregorian_seconds(
           { {wh_util:to_integer(YYYY), wh_util:to_integer(MM), wh_util:to_integer(DD)}
           , {wh_util:to_integer(HH), wh_util:to_integer(MMM), wh_util:to_integer(SS)} });
+timestamp({_,_,Micro} = TS) ->
+    Datetime = calendar:now_to_universal_time(TS),
+    1.0e-6 * Micro +
+        calendar:datetime_to_gregorian_seconds(Datetime);
 timestamp(_) -> 'undefined'.
 
 
@@ -48,10 +52,16 @@ parse_interval() ->
     2*1000.  %% Milliseconds
 
 
--spec make_name(ne_binary() | {'parser_args',ne_binary(),_}) -> atom().
+-spec make_name(ne_binary() | {'parser_args', ne_binary(), _}) -> atom().
 make_name(Bin)
   when is_binary(Bin) ->
     binary_to_atom(Bin, 'utf8');
+make_name({'parser_args', ListenIP, Port})
+  when is_integer(Port) ->
+    make_name(<< (wh_util:to_binary(ListenIP))/binary,
+                 ":",
+                 (wh_util:to_binary(Port))/binary
+              >>);
 make_name({'parser_args', Filename, _IP}) ->
     FName = filename:absname(Filename),
     make_name(wh_util:to_binary(FName)).

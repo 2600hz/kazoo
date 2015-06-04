@@ -12,6 +12,7 @@
          ,stop_active_parser/1
          ,start_freeswitch_parser/2
          ,start_kamailio_parser/2
+         ,start_hep_parser/2
         ]).
 -export([flush/0
          ,flush/1
@@ -31,7 +32,11 @@ list_active_parsers() ->
 -spec stop_active_parser(text()) -> 'ok'.
 stop_active_parser(Id)
   when not is_atom(Id) ->
-    stop_active_parser(ci_parsers_util:make_name(Id));
+    stop_active_parser(
+      ci_parsers_util:make_name(
+        wh_util:to_binary(Id)
+       )
+     );
 stop_active_parser(Id)
   when is_atom(Id) ->
     ci_parsers_sup:stop_child(Id).
@@ -45,6 +50,11 @@ start_freeswitch_parser(Filename, LogIP) ->
 start_kamailio_parser(Filename, LogIP) ->
     Args = [{'parser_args', Filename, wh_util:to_binary(LogIP)}],
     ci_parsers_sup:start_child('ci_parser_kamailio', Args).
+
+-spec start_hep_parser(text(), text()) -> 'ok'.
+start_hep_parser(IP, Port) ->
+    Args = [{'parser_args', wh_util:to_binary(IP), wh_util:to_integer(Port)}],
+    ci_parsers_sup:start_child('ci_parser_hep', Args).
 
 -spec flush() -> 'ok'.
 flush() ->
