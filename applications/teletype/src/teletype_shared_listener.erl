@@ -220,7 +220,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(JObj, _State) ->
-    case teletype_util:should_handle_account(JObj) of
+    case teletype_util:should_handle_notification(JObj) of
         'false' -> 'ignore';
         'true' -> {'reply', []}
     end.
