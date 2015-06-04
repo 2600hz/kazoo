@@ -152,9 +152,9 @@ pre_originate(?EVENT(UUID, <<"CHANNEL_UNBRIDGE">>, _Evt)
                      }=State
              )
   when UUID =:= Transferee orelse UUID =:= Transferor ->
-    MOH = wh_media_util:media_path(MOH, Call),
-    lager:info("putting transferee ~s on hold with MOH ~s", [Transferee, MOH]),
-    HoldCommand = whapps_call_command:hold_command(MOH, Transferee),
+    MOHToPlay = wh_media_util:media_path(MOH, Call),
+    lager:info("putting transferee ~s on hold with MOH ~s", [Transferee, MOHToPlay]),
+    HoldCommand = whapps_call_command:hold_command(MOHToPlay, Transferee),
     whapps_call_command:send_command(HoldCommand, Call),
 
     lager:info("ok, now we need to originate to the requested number ~s", [Extension]),
