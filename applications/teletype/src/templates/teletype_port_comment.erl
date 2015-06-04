@@ -39,18 +39,18 @@
 -spec init() -> 'ok'.
 init() ->
     wh_util:put_callid(?MODULE),
-    teletype_util:init_template(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-                                               ,{'text', ?TEMPLATE_TEXT}
-                                               ,{'html', ?TEMPLATE_HTML}
-                                               ,{'subject', ?TEMPLATE_SUBJECT}
-                                               ,{'category', ?TEMPLATE_CATEGORY}
-                                               ,{'friendly_name', ?TEMPLATE_NAME}
-                                               ,{'to', ?TEMPLATE_TO}
-                                               ,{'from', ?TEMPLATE_FROM}
-                                               ,{'cc', ?TEMPLATE_CC}
-                                               ,{'bcc', ?TEMPLATE_BCC}
-                                               ,{'reply_to', ?TEMPLATE_REPLY_TO}
-                                              ]).
+    teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
+                                           ,{'text', ?TEMPLATE_TEXT}
+                                           ,{'html', ?TEMPLATE_HTML}
+                                           ,{'subject', ?TEMPLATE_SUBJECT}
+                                           ,{'category', ?TEMPLATE_CATEGORY}
+                                           ,{'friendly_name', ?TEMPLATE_NAME}
+                                           ,{'to', ?TEMPLATE_TO}
+                                           ,{'from', ?TEMPLATE_FROM}
+                                           ,{'cc', ?TEMPLATE_CC}
+                                           ,{'bcc', ?TEMPLATE_BCC}
+                                           ,{'reply_to', ?TEMPLATE_REPLY_TO}
+                                          ]).
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
@@ -84,7 +84,7 @@ process_req(DataJObj) ->
 -spec handle_port_request(wh_json:object()) -> 'ok'.
 -spec handle_port_request(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_port_request(DataJObj) ->
-    handle_port_request(DataJObj, teletype_util:fetch_templates(?TEMPLATE_ID, DataJObj)).
+    handle_port_request(DataJObj, teletype_templates:fetch(?TEMPLATE_ID, DataJObj)).
 
 handle_port_request(_DataJObj, []) ->
     lager:debug("no templates to render for ~s", [?TEMPLATE_ID]);
@@ -99,9 +99,9 @@ handle_port_request(DataJObj, Templates) ->
                         ],
 
     {'ok', TemplateMetaJObj} =
-        teletype_util:fetch_template_meta(?TEMPLATE_ID
-                                          ,teletype_util:find_account_id(DataJObj)
-                                         ),
+        teletype_templates:fetch_meta(?TEMPLATE_ID
+                                      ,teletype_util:find_account_id(DataJObj)
+                                     ),
 
     Subject =
         teletype_util:render_subject(
