@@ -14,6 +14,7 @@
 -export([start_child/2
          ,stop_child/1
          ,children/0
+         ,child/1
         ]).
 
 -include("../call_inspector.hrl").
@@ -75,6 +76,17 @@ children() ->
      || {Id, _Pid, _Type, _Modules} <- supervisor:which_children(?MODULE)
             %% , _Pid =/= 'undefined'
     ].
+
+-spec child(pid()) -> api_atom().
+child(PID) ->
+    case [Id
+          || {Id, Pid, _Type, _Modules} <- supervisor:which_children(?MODULE)
+                 , Pid =:= PID
+         ]
+    of
+        [Id] -> Id;
+        [] -> 'undefined'
+    end.
 
 %% Internals
 

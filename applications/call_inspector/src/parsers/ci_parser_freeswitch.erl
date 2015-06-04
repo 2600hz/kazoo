@@ -192,7 +192,7 @@ make_and_store_chunk(LogIP, Counter, Data00) ->
               ,fun (C) -> ci_chunk:set_parser(C, ?MODULE) end
               ,fun (C) -> ci_chunk:set_label(C, label(Data)) end],
     Chunk = lists:foldl(Apply, ci_chunk:new(), Setters),
-    lager:debug("parsed freeswitch chunk ~s", [ci_chunk:call_id(Chunk)]),
+    lager:debug("parsed chunk ~s (~s)", [ci_chunk:call_id(Chunk), ci_parsers_sup:child(self())]),
     ci_datastore:store_chunk(Chunk),
     NewCounter.
 

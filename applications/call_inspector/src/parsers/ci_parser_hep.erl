@@ -165,7 +165,7 @@ make_and_store_chunk(Hep) ->
                           , {fun ci_chunk:set_to/2, ip(hep:dst_ip(Hep))}
                           ]
                         ),
-    lager:debug("parsed hep chunk ~s", [ci_chunk:call_id(Chunk)]),
+    lager:debug("parsed chunk ~s (~s)", [ci_chunk:call_id(Chunk), ci_parsers_sup:child(self())]),
     ci_datastore:store_chunk(Chunk).
 
 ip(IP) ->

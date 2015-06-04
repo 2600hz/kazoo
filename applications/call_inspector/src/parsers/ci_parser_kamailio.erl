@@ -194,7 +194,7 @@ make_and_store_chunk(LogIP, Callid, Counter, Data0) ->
               ,fun (C) -> ci_chunk:set_to(C, to(lists:reverse(Data0),LogIP)) end
               ],
     Chunk = lists:foldl(Apply, ci_chunk:new(), Setters),
-    lager:debug("parsed kamailio chunk ~s", [ci_chunk:call_id(Chunk)]),
+    lager:debug("parsed chunk ~s (~s)", [ci_chunk:call_id(Chunk), ci_parsers_sup:child(self())]),
     ci_datastore:store_chunk(Chunk),
     NewCounter.
 
