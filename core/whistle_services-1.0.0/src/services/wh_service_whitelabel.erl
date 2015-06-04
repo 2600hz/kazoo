@@ -11,7 +11,7 @@
 -export([reconcile/1, reconcile/2]).
 
 -define(WHITELABEL, <<"whitelabel">>).
--define(CATEGORY, <<"whitelabel">>).
+-define(CATEGORY, <<"branding">>).
 -define(ITEM, <<"whitelabel">>).
 -define(DESIGN_DOC, <<"whitelabel/crossbar_listing">>).
 

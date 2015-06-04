@@ -221,7 +221,7 @@ dry_run(Context, <<"ips">>) ->
     Services = fetch_service(Context),
     UpdatedServices = wh_service_ips:reconcile(Services, <<"dedicated">>),
     wh_services:dry_run(UpdatedServices);
-dry_run(Context, <<"whitelabel">>) ->
+dry_run(Context, <<"branding">>) ->
     lager:debug("dry run whitelabel"),
     Services = fetch_service(Context),
     UpdatedServices = wh_service_whitelabel:reconcile(Services, <<"whitelabel">>),
