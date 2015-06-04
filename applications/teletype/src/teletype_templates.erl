@@ -25,7 +25,7 @@
 -spec init(ne_binary(), init_params()) -> 'ok'.
 init(TemplateId, Params) ->
     DocId = doc_id(TemplateId),
-    lager:debug("looking for ~s", [DocId]),
+    lager:debug("init template ~s", [DocId]),
     case couch_mgr:open_cache_doc(?WH_CONFIG_DB, DocId) of
         {'ok', TemplateJObj} ->
             maybe_update(TemplateJObj, Params);
@@ -125,6 +125,7 @@ fetch_meta(TemplateId, AccountId, ResellerId) ->
 %%--------------------------------------------------------------------
 -spec fetch_master_meta(ne_binary()) -> {'ok', wh_json:object()} | couch_mgr:couchbeam_error().
 fetch_master_meta(TemplateId) ->
+    lager:debug("fetching master meta for ~s", [TemplateId]),
     couch_mgr:open_cache_doc(?WH_CONFIG_DB, doc_id(TemplateId)).
 
 %%--------------------------------------------------------------------
@@ -178,6 +179,7 @@ fetch_master(TemplateId) ->
 %%--------------------------------------------------------------------
 -spec fetch_parent(ne_binary(), ne_binary(), ne_binary()) -> wh_proplist().
 fetch_parent(TemplateId, AccountId, AccountId) ->
+    lager:debug("trying to fetch parent template ~s for ~s but account is reseller", [TemplateId, AccountId]),
     fetch_master(TemplateId);
 fetch_parent(TemplateId, AccountId, ResellerId) ->
     lager:debug("trying to fetch parent template ~s for ~s", [TemplateId, AccountId]),
@@ -231,6 +233,7 @@ fetch_from_db(TemplateId, AccountId, ResellerId) ->
 %%--------------------------------------------------------------------
 -spec fetch_failure_cache(ne_binary(), ne_binary()) -> 'ok' | 'error'.
 fetch_failure_cache(TemplateId, AccountId) ->
+    lager:debug("looking if ~s recenlty failed to be fetched in ~s", [TemplateId, AccountId]),
     case wh_cache:fetch_local(?CACHE_NAME, ?TEMPLATE_FAILURE_KEY(TemplateId, AccountId)) of
         {'ok', 'failed'} -> 'error';
         {'error', 'not_found'} -> 'ok'
@@ -523,12 +526,14 @@ does_attachment_exist(DocId, AName) ->
                              {'ok', wh_json:object()} |
                              {'error', _}.
 save_attachment(DocId, AName, ContentType, Contents) ->
-    case couch_mgr:put_attachment(?WH_CONFIG_DB
-                                  ,DocId
-                                  ,AName
-                                  ,Contents
-                                  ,[{'content_type', wh_util:to_list(ContentType)}]
-                                 )
+    case
+        couch_mgr:put_attachment(
+            ?WH_CONFIG_DB
+            ,DocId
+            ,AName
+            ,Contents
+            ,[{'content_type', wh_util:to_list(ContentType)}]
+        )
     of
         {'ok', _UpdatedJObj}=OK ->
             lager:debug("added attachment ~s to ~s", [AName, DocId]),
