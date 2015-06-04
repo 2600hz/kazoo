@@ -39,7 +39,7 @@ stop_active_parser(Id)
 -spec start_freeswitch_parser(text(), text()) -> 'ok'.
 start_freeswitch_parser(Filename, LogIP) ->
     Args = [{'parser_args', Filename, wh_util:to_binary(LogIP)}],
-    ci_parsers_sup:start_child('ci_parser_fs', Args).
+    ci_parsers_sup:start_child('ci_parser_freeswitch', Args).
 
 -spec start_kamailio_parser(text(), text()) -> 'ok'.
 start_kamailio_parser(Filename, LogIP) ->

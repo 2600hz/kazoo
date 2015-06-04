@@ -56,7 +56,8 @@ init([]) ->
     {'ok', {SupFlags, []}}.
 
 
--spec start_child('ci_parser_fs' | 'ci_parser_kamailio', [{'parser_args', _, _}]) -> {'ok', atom()}.
+-type parser() :: 'ci_parser_freeswitch' | 'ci_parser_kamailio' | 'ci_parser_hep'.
+-spec start_child(parser(), [{'parser_args', _, _}]) -> {'ok', atom()}.
 start_child(Module, Args) ->
     Id = ci_parsers_util:make_name(lists:keyfind('parser_args', 1, Args)),
     ChildSpec = ?WORKER_NAME_ARGS(Module, Id, Args),

@@ -6,7 +6,7 @@
 %%% @contributors
 %%%
 %%%-------------------------------------------------------------------
--module(ci_parser_fs).
+-module(ci_parser_freeswitch).
 
 -behaviour(gen_server).
 
