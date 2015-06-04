@@ -104,7 +104,7 @@ add_channel(Broker, Connection, Channel) when is_pid(Channel), is_binary(Broker)
 
 -spec release(pid()) -> 'ok'.
 release(Consumer) ->
-    gen_server:cast(?MODULE, {'release_assignments', Consumer}).
+    gen_server:call(?MODULE, {'release_assignments', Consumer}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -149,6 +149,11 @@ handle_call({'request_float', Consumer, Broker}, _, State) ->
     {'reply', assign_or_reserve(Consumer, Broker, 'float'), State};
 handle_call({'request_sticky', Consumer, Broker}, _, State) ->
     {'reply', assign_or_reserve(Consumer, Broker, 'sticky'), State};
+handle_call({'release_assignments', Consumer}, _, State) ->
+    Pattern = #wh_amqp_assignment{consumer=Consumer, _='_'},
+    Res = release_handlers(ets:match_object(?TAB, Pattern, 1)),
+    gen_server:cast(self(), {'release_assignments', Consumer}),
+   {'reply', Res, State};
 handle_call(_Msg, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -857,3 +862,20 @@ register_channel_handlers(Channel, Consumer) ->
     amqp_channel:register_flow_handler(Channel, Consumer),
     lager:debug("registered handlers for channel ~p to ~p", [Channel, Consumer]).
 
+-spec unregister_channel_handlers(pid()) -> 'ok'.
+unregister_channel_handlers(Channel) ->
+    _ = (catch amqp_channel:unregister_return_handler(Channel)),
+    _ = (catch amqp_channel:unregister_confirm_handler(Channel)),
+    _ = (catch amqp_channel:unregister_flow_handler(Channel)),
+    lager:debug("unregistered handlers for channel ~p", [Channel]).
+
+   
+-spec release_handlers({wh_amqp_assignments(), ets:continuation()} | '$end_of_table') -> 'ok'.
+release_handlers('$end_of_table') -> 'ok';
+release_handlers({[#wh_amqp_assignment{channel=Channel}=Assignment], Continuation})
+  when is_pid(Channel) ->
+    _ = unregister_channel_handlers(Channel),
+    release_handlers({[Assignment#wh_amqp_assignment{channel='undefined'}]
+                         ,Continuation});
+release_handlers({[#wh_amqp_assignment{}], Continuation}) ->
+    release_handlers(ets:match(Continuation)).
