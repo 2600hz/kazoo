@@ -128,7 +128,7 @@
         },
         "timeout": {
             "description": "The amount of time (in milliseconds) to wait for the caller to beging entering digits",
-            "maximum": 10000,
+            "maximum": 60000,
             "minimum": 1,
             "name": "Timeout (milliseconds)",
             "required": false,
