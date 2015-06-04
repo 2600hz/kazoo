@@ -29,7 +29,7 @@ maybe_ignore(JObj) ->
     case lists:member(AppName, ?IGNORED_APP) of
         'false'-> handle_req(JObj);
         'true' ->
-            lager:debut("ignoring cdr request from ~s", [AppName])
+            lager:debug("ignoring cdr request from ~s", [AppName])
     end.
 
 -spec handle_req(wh_json:object()) -> 'ok'.
