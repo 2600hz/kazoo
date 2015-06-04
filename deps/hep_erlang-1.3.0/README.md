@@ -1,4 +1,4 @@
-hep-erlang [![Build Status](https://travis-ci.org/fenollp/hep-erlang.svg?branch=master)](https://travis-ci.org/fenollp/hep-erlang)
+hep_erlang [![Build Status](https://travis-ci.org/fenollp/hep_erlang.svg?branch=master)](https://travis-ci.org/fenollp/hep_erlang)
 ==========
 
 An Erlang implementation of HEP (Homer Encapsulation Protocol).
@@ -44,22 +44,22 @@ Very basic example:
 start(Port) ->
     Listener = fun () ->
                        {ok, Socket} = gen_udp:open(Port, [binary, {active,true}]),
-                       loop()
+                       loop(Socket)
                end,
     Pid = spawn(Listener),
     {ok, Pid}.
 
-loop () ->
+loop (Socket) ->
     receive
         {udp, _, _, _, Message} ->
             {ok, Hep} = hep:decode(Message),
             HepMsg = hep:payload(Hep),
             error_logger:info_msg("~p~n", [HepMsg]),
-            loop();
+            loop(Socket);
         stop ->
             gen_udp:close(Socket);
         _ ->
-            loop()
+            loop(Socket)
     end.
 
 stop (ListenerPid) ->

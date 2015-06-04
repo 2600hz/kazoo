@@ -40,7 +40,6 @@
 %% Binary patterns
 -define(vendor(Val), (Val):16).
 -define(type(Val),   (Val):16).
--define(length(Val), (Val):16).
 -define(protocol_family(Val), (Val):8).
 -define(protocol(Val), (Val):8).
 -define(port(Val),   (Val):16).

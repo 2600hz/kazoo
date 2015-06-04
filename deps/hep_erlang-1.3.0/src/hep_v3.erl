@@ -35,7 +35,8 @@
 -define(VENDOR_HOMER_PROJECT, 16#0005).
 -define(VENDOR_SIPXECS,       16#0006).
 
--define(node_id(Val), Val:32).
+-define(node_id(Val), (Val):32).
+-define(length(Val), (Val):16).
 
 %% API
 

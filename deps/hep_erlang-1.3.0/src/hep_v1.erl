@@ -19,6 +19,8 @@
 -export([encode/1]).
 -export([decode/1]).
 
+-define(length(Val), (Val):8).
+
 -define(length_ipv4, 16).
 -define(length_ipv6, 40).
 
