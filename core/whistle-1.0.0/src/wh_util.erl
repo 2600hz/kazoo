@@ -1232,7 +1232,7 @@ write_file(Filename, Bytes, Modes) ->
     case file:write_file(Filename, Bytes, Modes) of
         'ok' -> 'ok';
         {'error', _}=_E ->
-            lager:debug("writing file ~s failed : ~p", [Filename, _E])
+            lager:debug("writing file ~s (~p) failed : ~p", [Filename, Modes, _E])
     end.
 
 %% @public
