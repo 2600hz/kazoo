@@ -67,7 +67,7 @@
                     ,aggressive_nat
                     ,stun_enabled
                     ,stun_auto_disabled
-                    ,all = []
+                    ,interface_props = []
                    }).
 -type interface() :: #interface{}.
 
@@ -331,7 +331,7 @@ handle_call('sip_external_ip', _, #state{interface=Interface}=State) ->
 handle_call('sip_url', _, #state{interface=Interface}=State) ->
     {'reply', Interface#interface.url, State};
 handle_call('interface_props', _, #state{interface=Interface}=State) ->
-    {'reply', Interface#interface.all, State};
+    {'reply', Interface#interface.interface_props, State};
 handle_call('node', _, #state{node=Node}=State) ->
     {'reply', Node, State}.
 
@@ -656,7 +656,7 @@ interface_from_props(Props) ->
                ,aggressive_nat=props:get_is_true(<<"AGGRESSIVENAT">>, Props)
                ,stun_enabled=props:get_is_true(<<"STUN-ENABLED">>, Props)
                ,stun_auto_disabled=props:get_is_true(<<"STUN-AUTO-DISABLE">>, Props)
-               ,all=Props
+               ,interface_props=Props
               }.
 
 -spec split_codes(ne_binary(), wh_proplist()) -> ne_binaries().
