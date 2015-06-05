@@ -23,6 +23,7 @@
 -export([sip_external_ip/1]).
 -export([fs_node/1]).
 -export([hostname/1]).
+-export([interface/1]).
 -export([fetch_timeout/0, fetch_timeout/1]).
 -export([init/1
          ,handle_call/3
@@ -66,6 +67,7 @@
                     ,aggressive_nat
                     ,stun_enabled
                     ,stun_auto_disabled
+                    ,all = []
                    }).
 -type interface() :: #interface{}.
 
@@ -328,6 +330,8 @@ handle_call('sip_external_ip', _, #state{interface=Interface}=State) ->
     {'reply', Interface#interface.ext_sip_ip, State};
 handle_call('sip_url', _, #state{interface=Interface}=State) ->
     {'reply', Interface#interface.url, State};
+handle_call('interface_props', _, #state{interface=Interface}=State) ->
+    {'reply', Interface#interface.all, State};
 handle_call('node', _, #state{node=Node}=State) ->
     {'reply', Node, State}.
 
@@ -652,6 +656,7 @@ interface_from_props(Props) ->
                ,aggressive_nat=props:get_is_true(<<"AGGRESSIVENAT">>, Props)
                ,stun_enabled=props:get_is_true(<<"STUN-ENABLED">>, Props)
                ,stun_auto_disabled=props:get_is_true(<<"STUN-AUTO-DISABLE">>, Props)
+               ,all=Props
               }.
 
 -spec split_codes(ne_binary(), wh_proplist()) -> ne_binaries().
@@ -762,3 +767,7 @@ node_interface(Node, CurrInterface) ->
         Props ->
             interface_from_props(Props)
     end.
+
+-spec interface(atom() | binary()) -> wh_proplist().
+interface(Node) ->
+    gen_server:call(find_srv(Node), 'interface_props').
