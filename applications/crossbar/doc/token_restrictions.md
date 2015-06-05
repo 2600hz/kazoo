@@ -24,21 +24,21 @@ If system not found match for all parameters (endpoint name, account id, endpoin
 Each template can have differnet rules for different authentication method and user privelege level.
 ```JSON
 {
-        "AUTH_METHOD_1": {
-        "PRIV_LEVEL_1": {
-                "RULES"
-        },
-        "PRIV_LEVEL_2": {
-                "RULES"
-        },
-        ...
+  "AUTH_METHOD_1": {
+    "PRIV_LEVEL_1": {
+      "RULES"
     },
-    "AUTH_METHOD_2": {
-        "PRIV_LEVEL_1":{
-                "RULES
-        }
+    "PRIV_LEVEL_2": {
+      "RULES"
     },
     ...
+  },
+  "AUTH_METHOD_2": {
+    "PRIV_LEVEL_1": {
+      "RULES"
+    }
+  },
+  ...
 }
 ```
 `AUTH_METHOD_#` - name of used authentication method (`cb_api_auth`, `cb_user_auth`, etc) which created this auth token.  
@@ -50,68 +50,67 @@ This search made at moment when token is created and result of this search will 
 Example template:
 ```JSON
 {
-        "cb_user_auth": {
-        "admin": {
-                "RULES_FOR_ADMIN"
-        },
-        "user": {
-                "RULES_FOR_USER"
-        },
-        ...
+  "cb_user_auth": {
+    "admin": {
+      "RULES_FOR_ADMIN"
+    },
+    "user": {
+      "RULES_FOR_USER"
+    }
+  },
+  "_": {
+    "admin": {
+      "RULES_FOR_ADMIN"
     },
     "_": {
-        "admin": {
-                "RULES_FOR_ADMIN"
-        },
-        "_": {
-                "CATCH_ALL_RULES"
-        }
+      "CATCH_ALL_RULES"
     }
+  }
 }
 ```
 
 ## Rules structure (saved in token document)
 ```JSON
 {
-        "ENDPOINT_1": [
-                {
-                "allowed_accounts": [
-                "ACCOUNT_ID_1",
-                "ACCOUNT_ID_2
-            ],
-            "rules": {
-                "ARG_1": [
-                        "VERB_1",
-                    "VERB_2"
-                ],
-                "ARG_2": [
-                        "VERB_3"
-                ],
-                ...
-            }
-        },
-                {
-                "allowed_accounts": [
-                "ACCOUNT_ID_3"
-            ],
-            "rules": {
-                "ARG_1": [
-                        "VERB_1"
-                ],
-                ...
-            }
-        }
+  "ENDPOINT_1": [
+    {
+      "allowed_accounts": [
+        "ACCOUNT_ID_1",
+        "ACCOUNT_ID_2"
+      ],
+      "rules": {
+        "ARG_1": [
+          "VERB_1",
+          "VERB_2"
         ],
-        "ENDPOINT_2": [
-                {
-                "rules": {
-                "ARG_1":[
-                        "_"
-                ]
-            }
-        }
-        ].
-    ...
+        "ARG_2": [
+          "VERB_3"
+        ]
+        ...
+      }
+    },
+    {
+      "allowed_accounts": [
+        "ACCOUNT_ID_3"
+      ],
+      "rules": {
+        "ARG_1": [
+          "VERB_1"
+        ],
+        ...
+      }
+    }
+  ],
+  "ENDPOINT_2": [
+    {
+      "rules": {
+        "ARG_1": [
+          "_"
+        ]
+      }
+    }
+  ],
+  ...
 }
 ```
 `ENDPOINT_#` - any appropriate name of endpoint (`"devices"`, `"users"`, `"callflows"`, etc)  
@@ -130,17 +129,17 @@ You can use "catch all" (`"_"`) endpoint name. First try found exact endpoint na
 
 ```JSON
 {
-        "account": [
-                { ... },
-                { ... }
-        ],
-        "users": [
-                { ... },
-                { ... }
-        ],
-        "_": [
-                { ... }
-        ]
+  "account": [
+    { ... },
+    { ... }
+  ],
+  "users": [
+    { ... },
+    { ... }
+  ],
+  "_": [
+    { ... }
+  ]
 }
 ```
 If not found match for endpoint- this request is halted and returned 403 error.  
@@ -150,26 +149,26 @@ Each endpoint contain list of objects with rules. Appropriate object select by `
 After system found endpoint it try match account ID for this request.
 ```JSON
 {
-        "devices": [
-        {
-                "allowed_accounts": [
-                        "90b771808407e7079bfc206d5e3c1a8a",
-                "83a5cb95ac8ce8bc79d6f9b148004cf4",
-                "{AUTH_ACCOUNT_ID}"
-                ],
-            "rules": {
-                        ...
-                }
-                },
-        {
-                "allowed_accounts": [
-                "{DESCENDANT_ACCOUNT_ID}"
-            ],
-            "rules": {
-                ...
-            }
-        }
-    ]
+  "devices": [
+    {
+      "allowed_accounts": [
+        "90b771808407e7079bfc206d5e3c1a8a",
+        "83a5cb95ac8ce8bc79d6f9b148004cf4",
+        "{AUTH_ACCOUNT_ID}"
+      ],
+      "rules": {
+        ...
+      }
+    },
+    {
+      "allowed_accounts": [
+        "{DESCENDANT_ACCOUNT_ID}"
+      ],
+      "rules": {
+        ...
+      }
+    }
+  ]
 }
 ```
  List of account IDs set in parameter `"allowed_accounts"`. You can write axact IDs or one of special macroses.  
@@ -182,18 +181,18 @@ After system found endpoint it try match account ID for this request.
  Endpoint argumnets matched with parameter `"rules"`.
  ```JSON
 {
-        "devices": [
-        {
-                "allowed_accounts": [
-                "90b771808407e7079bfc206d5e3c1a8a"
-                        ],
-                "rules": {
-                        "/": [ ... ],
-                "1f6d4b82b4baafc74ba83186ee04b3d5": [ ... ],
-                "*": [ ... ]
-                }
-                }
-        ]
+  "devices": [
+    {
+      "allowed_accounts": [
+        "90b771808407e7079bfc206d5e3c1a8a"
+      ],
+      "rules": {
+        "/": [ ... ],
+        "1f6d4b82b4baafc74ba83186ee04b3d5": [ ... ],
+        "*": [ ... ]
+      }
+    }
+  ]
 }
 ```
 The search is performed in the order in which they appear in the rules for first match. No more search after that.
@@ -216,25 +215,25 @@ If you have more than one argumnets, write them in one string, seprate with `/`.
 After matching endpoint arguments, system try match HTTP method, used in this request.
  ```JSON
 {
-        "devices": [
-        {
-                "allowed_accounts": [
-                "90b771808407e7079bfc206d5e3c1a8a"
-                        ],
-                "rules": {
-                        "/": [
-                        "GET",
-                    "PUT"
-                                ],
-                "1f6d4b82b4baafc74ba83186ee04b3d5": [
-                        "_"
-                ],
-                "#": [
-                        "GET"
-                ]
-                }
-                }
+  "devices": [
+    {
+      "allowed_accounts": [
+        "90b771808407e7079bfc206d5e3c1a8a"
+      ],
+      "rules": {
+        "/": [
+          "GET",
+          "PUT"
+        ],
+        "1f6d4b82b4baafc74ba83186ee04b3d5": [
+          "_"
+        ],
+        "#": [
+          "GET"
         ]
+      }
+    }
+  ]
 }
 ```
 List can contain any valid HTTP method ("GET", "PUT", "POST", "PATCH", "DELETE") or "allow any" method - `"_"`.
@@ -297,5 +296,4 @@ If account dont have token restrictions template - return 404 error.
 
 ### Delete account template
 `DELETE /v1/accounts/{ACCOUNT_ID}/token_restrictions`
-
 
