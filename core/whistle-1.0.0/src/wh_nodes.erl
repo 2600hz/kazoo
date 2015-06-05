@@ -53,6 +53,10 @@
 -define(APP_NAME, <<"wh_nodes">>).
 -define(APP_VERSION, <<"0.1.0">>).
 
+-define(MEDIA_SERVERS_HEADER, "Media Servers : ").
+-define(MEDIA_SERVERS_LINE, "                ").
+-define(MEDIA_SERVERS_DETAIL, "~s (~s)").
+
 -record(state, {heartbeat_ref :: reference()
                 ,tab :: ets:tid()
                 ,notify_new = sets:new() :: set()
@@ -68,10 +72,13 @@
 -type whapp_info() :: #whapp_info{}.
 -type whapps_info() :: [{binary(), whapp_info()},...] | [].
 
+-type media_server() :: {ne_binary(), wh_json:object()}.
+-type media_servers() :: [media_server(),...] | [].
+
 -record(node, {node = node() :: atom() | '$1' | '$2' | '_'
                ,expires = 0 :: non_neg_integer() | 'undefined' | '$2' | '_'
                ,whapps = [] :: whapps_info() | '$1' | '_'
-               ,media_servers = [] :: [ne_binary() | {ne_binary(), ne_binary()}] | '_'
+               ,media_servers = [] :: media_servers() | '_'
                ,last_heartbeat = wh_util:now_ms(now()) :: pos_integer() | 'undefined' | '$3' | '_'
                ,zone :: ne_binary() | '_'
                ,broker :: api_binary() | '_'
@@ -179,22 +186,28 @@ print_status(Nodes) ->
                      [] when Node#node.registrations =:= 0 -> 'ok';
                      [] when Node#node.registrations > 0 ->
                          io:format("Registrations : ~B~n", [Node#node.registrations]);
-                     [{Server, Started}|Servers] ->
-                         io:format("Channels      : ~B~n", [Node#node.channels]),
-                         io:format("Registrations : ~B~n", [Node#node.registrations]),
-                         io:format("Media Servers : ~s(~s)~n", [Server, Started]),
-                         [io:format("                ~s~n", [S]) || S <- Servers];
                      [Server|Servers] ->
                          io:format("Channels      : ~B~n", [Node#node.channels]),
                          io:format("Registrations : ~B~n", [Node#node.registrations]),
-                         io:format("Media Servers : ~s~n", [Server]),
-                         [io:format("                ~s~n", [S]) || S <- Servers]
+                         print_media_server(Server, ?MEDIA_SERVERS_HEADER),
+                         [print_media_server(OtherServer) || OtherServer <- Servers]
                  end,
              io:format("~n")
          end
          || Node <- Nodes
         ],
     'no_return'.
+
+-spec print_media_server(media_server()) -> 'ok'.
+print_media_server(Server) ->
+    print_media_server(Server, ?MEDIA_SERVERS_LINE).
+
+-spec print_media_server(media_server(), string()) -> 'ok'.
+print_media_server({Name, JObj}, Format) ->
+    io:format(lists:flatten([Format, ?MEDIA_SERVERS_DETAIL, "~n"]),
+              [Name
+              ,wh_util:pretty_print_elapsed_s(wh_util:elapsed_s(wh_json:get_integer_value(<<"Startup">>, JObj)))          
+              ]).
 
 -spec status_list(whapps_info(), 0..4) -> 'ok'.
 status_list([], _) -> io:format("~n", []);
@@ -477,7 +490,11 @@ maybe_add_ecallmgr_data(Node) ->
 
 -spec add_ecallmgr_data(wh_node()) -> wh_node().
 add_ecallmgr_data(#node{whapps=Whapps}=Node) ->
-    Servers = [{wh_util:to_binary(Server), wh_util:pretty_print_elapsed_s(wh_util:elapsed_s(Started))}
+    Servers = [{wh_util:to_binary(Server), 
+                wh_json:set_values(
+                  [{<<"Startup">>, Started}
+                   ,{<<"Interface">>, wh_json:from_list(ecallmgr_fs_node:interface(Server))}
+                  ], wh_json:new())}              
                || {Server, Started} <- ecallmgr_fs_nodes:connected('true')
               ],
     Node#node{media_servers=Servers
@@ -525,39 +542,28 @@ is_ecallmgr_present() ->
 
 -spec advertise_payload(wh_node()) -> wh_proplist().
 advertise_payload(Node) ->
-    [{<<"Expires">>, wh_util:to_binary(Node#node.expires)}
-     ,{<<"WhApps">>, whapps_to_json(Node#node.whapps) }
-     ,{<<"Media-Servers">>, media_servers_to_json(Node#node.media_servers)}
-     ,{<<"Used-Memory">>, Node#node.used_memory}
-     ,{<<"Processes">>, Node#node.processes}
-     ,{<<"Ports">>, Node#node.ports}
-     ,{<<"Version">>, Node#node.version}
-     ,{<<"Channels">>, Node#node.channels}
-     ,{<<"Registrations">>, Node#node.registrations}
-     ,{<<"Zone">>, Node#node.zone}
-     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-    ].
+    props:filter_undefined(
+      [{<<"Expires">>, wh_util:to_binary(Node#node.expires)}
+       ,{<<"WhApps">>, whapps_to_json(Node#node.whapps) }
+       ,{<<"Media-Servers">>, media_servers_to_json(Node#node.media_servers)}
+       ,{<<"Used-Memory">>, Node#node.used_memory}
+       ,{<<"Processes">>, Node#node.processes}
+       ,{<<"Ports">>, Node#node.ports}
+       ,{<<"Version">>, Node#node.version}
+       ,{<<"Channels">>, Node#node.channels}
+       ,{<<"Registrations">>, Node#node.registrations}
+       ,{<<"Zone">>, Node#node.zone}
+       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+      ]).
 
--spec media_servers_to_json([ne_binary() | {ne_binary(), ne_binary()}]) -> ne_binaries().
+-spec media_servers_to_json(media_servers()) -> wh_json:object().
+media_servers_to_json([]) -> 'undefined';
 media_servers_to_json(Servers) ->
-    [case S of
-         {Server, Started} -> <<Server/binary, "(", Started/binary, ")">>;
-         Server -> Server
-     end
-     || S <- Servers].
+    wh_json:from_list(Servers).
 
--spec media_servers_from_json(ne_binaries()) -> [ne_binary() | {ne_binary(), ne_binary()}].
+-spec media_servers_from_json(wh_json:object()) -> media_servers().
 media_servers_from_json(Servers) ->
-    [case binary:match(S, <<"(">>) of
-         'nomatch' -> %% S ~ <<"server@tld.com">>
-             S;
-         {Pos, _} ->  %% S ~ <<"server@tld.com(13d18h43m29s)">>
-             Len = byte_size(S),
-             Started = binary:part(S, {Pos + 1, Len - Pos - 2}),
-             Server  = binary:part(S, {0, Pos}),
-             {Server, Started}
-     end
-     || S <- Servers].
+    [{Key, wh_json:get_value(Key, Servers)} || Key <- wh_json:get_keys(Servers)].
 
 -spec from_json(wh_json:object(), nodes_state()) -> wh_node().
 from_json(JObj, State) ->
@@ -565,7 +571,7 @@ from_json(JObj, State) ->
     #node{node=wh_util:to_atom(Node, 'true')
           ,expires=wh_util:to_integer(wh_json:get_integer_value(<<"Expires">>, JObj, 0) * ?FUDGE_FACTOR)
           ,whapps=whapps_from_json(wh_json:get_value(<<"WhApps">>, JObj, []))
-          ,media_servers=media_servers_from_json(wh_json:get_value(<<"Media-Servers">>, JObj, []))
+          ,media_servers=media_servers_from_json(wh_json:get_value(<<"Media-Servers">>, JObj, wh_json:new()))
           ,used_memory=wh_json:get_integer_value(<<"Used-Memory">>, JObj, 0)
           ,processes=wh_json:get_integer_value(<<"Processes">>, JObj, 0)
           ,ports=wh_json:get_integer_value(<<"Ports">>, JObj, 0)
