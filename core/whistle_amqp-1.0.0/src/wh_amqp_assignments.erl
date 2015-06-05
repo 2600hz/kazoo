@@ -104,7 +104,7 @@ add_channel(Broker, Connection, Channel) when is_pid(Channel), is_binary(Broker)
 
 -spec release(pid()) -> 'ok'.
 release(Consumer) ->
-    gen_server:call(?MODULE, {'release_assignments', Consumer}).
+    gen_server:call(?MODULE, {'release_handlers', Consumer}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -149,7 +149,7 @@ handle_call({'request_float', Consumer, Broker}, _, State) ->
     {'reply', assign_or_reserve(Consumer, Broker, 'float'), State};
 handle_call({'request_sticky', Consumer, Broker}, _, State) ->
     {'reply', assign_or_reserve(Consumer, Broker, 'sticky'), State};
-handle_call({'release_assignments', Consumer}, _, State) ->
+handle_call({'release_handlers', Consumer}, _, State) ->
     Pattern = #wh_amqp_assignment{consumer=Consumer, _='_'},
     Res = release_handlers(ets:match_object(?TAB, Pattern, 1)),
     gen_server:cast(self(), {'release_assignments', Consumer}),
