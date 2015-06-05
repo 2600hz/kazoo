@@ -290,6 +290,13 @@ maybe_find_deprecated_settings(_, _) -> wh_json:new().
 %%--------------------------------------------------------------------
 -spec get_rep_email(wh_json:object()) -> api_binary().
 get_rep_email(JObj) ->
+    case whapps_config:get_is_true(?NOTIFY_CONFIG_CAT, <<"search_rep_email">>, 'true') of
+        'true' -> find_rep_email(JObj);
+        'false' -> 'undefined'
+    end.
+
+-spec find_rep_email(wh_json:object()) -> api_binary().
+find_rep_email(JObj) ->
     AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
 
     Admin =

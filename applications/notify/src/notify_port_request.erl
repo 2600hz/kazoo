@@ -72,7 +72,7 @@ handle_req(JObj, _Props) ->
 
     EmailAttachments = get_attachments(JObj),
 
-    case notify_util:get_rep_email(AccountJObj) of
+    case notify_util:get_rep_email(AccountDoc) of
         'undefined' ->
             SysAdminEmail = whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<>>),
             build_and_send_email(TxtBody, HTMLBody, Subject, SysAdminEmail, Props, EmailAttachments);
