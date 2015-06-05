@@ -187,6 +187,7 @@ do_render_template('undefined', DefaultTemplate, Props) ->
     DefaultTemplate:render(Props);
 do_render_template(Template, DefaultTemplate, Props) ->
     try
+        'false' = wh_util:is_empty(Template),
         CustomTemplate = wh_util:to_atom(list_to_binary([couch_mgr:get_uuid(), "_"
                                                         ,wh_util:to_binary(DefaultTemplate)
                                                         ])
