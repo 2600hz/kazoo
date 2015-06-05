@@ -163,7 +163,9 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(JObj, _State) ->
-    case should_handle(JObj) of
+    case should_handle(JObj)
+        orelse should_handle_port(JObj)
+    of
         'false' -> 'ignore';
         'true' ->
             lager:debug("handling notification for ~p", [wh_util:get_event_type(JObj)]),
@@ -194,6 +196,16 @@ terminate(_Reason, _State) ->
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
+
+-spec should_handle_port(wh_json:object()) -> boolean().
+should_handle_port(JObj) ->
+    case wh_util:get_event_type(JObj) of
+        {<<"notification">>, <<"port_request">>} ->
+            wh_json:get_value(<<"Port-Request-ID">>, JObj) =:= 'undefined';
+        {<<"notification">>, <<"ported">>} ->
+            wh_json:get_value(<<"Port-Request-ID">>, JObj) =:= 'undefined';
+        _Else -> 'false'
+    end.
 
 -spec should_handle(wh_json:object()) -> boolean().
 should_handle(JObj) ->
