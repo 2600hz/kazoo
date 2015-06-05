@@ -120,10 +120,10 @@ handle_info('start_parsing', State=#state{iodevice = IoDevice
                                          ,logip = LogIP
                                          ,timer = OldTimer
                                          ,counter = Counter}) ->
-    case OldTimer of
-        'undefined' -> 'ok';
-        _ -> erlang:cancel_timer(OldTimer)
-    end,
+    _ = case OldTimer of
+            'undefined' -> 'ok';
+            _ -> erlang:cancel_timer(OldTimer)
+        end,
     NewCounter = extract_chunks(IoDevice, LogIP, Counter),
     NewTimer = erlang:send_after(ci_parsers_util:parse_interval()
                                 , self(), 'start_parsing'),

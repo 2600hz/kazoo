@@ -121,10 +121,10 @@ handle_info('start_parsing', State=#state{iodevice = IoDevice
                                          ,logip = LogIP
                                          ,timer = OldTimer
                                          ,counter = Counter}) ->
-    case OldTimer of
-        'undefined' -> 'ok';
-        _ -> erlang:cancel_timer(OldTimer)
-    end,
+    _ = case OldTimer of
+            'undefined' -> 'ok';
+            _ -> erlang:cancel_timer(OldTimer)
+        end,
     NewCounter = extract_chunks(IoDevice, LogIP, Counter),
     NewTimer = erlang:send_after(ci_parsers_util:parse_interval()
                                 , self(), 'start_parsing'),
@@ -261,7 +261,6 @@ set_legs(LogIP, Chunk, [FirstLine|_Lines]) ->
     end,
     ci_chunk:set_to(ci_chunk:set_from(Chunk,From), To).
 
-ip('undefined') -> 'undefined';
 ip(Bin) ->
     case re:run(Bin, "/\\[([\\d\\.]+)\\]:", [{'capture','all_but_first','binary'}]) of
         {'match', [IP]} -> IP;
@@ -280,32 +279,26 @@ call_id(Data) ->
 get_field(_Fields, []) ->
     'undefined';
 get_field(Fields, [Data|Rest]) ->
-    F = fun (Field) -> try_all(Data, Field) end,
-    case filtermap(F, Fields) of
+    case [Val || Field <- Fields
+                     , begin
+                           Val = try_all(Data, Field),
+                           'false' =/= Val
+                       end]
+    of
         [] ->
             get_field(Fields, Rest);
         [Value] ->
             Value
     end.
 
-filtermap(Fun, List1) ->
-    lists:foldr(fun(Elem, Acc) ->
-                        case Fun(Elem) of
-                            'false' -> Acc;
-                            'true' -> [Elem|Acc];
-                            {'true',Value} -> [Value|Acc]
-                        end
-                end, [], List1).
-
--spec try_all(ne_binary(), ne_binary()) -> 'false' | {'true', ne_binary()}.
+-spec try_all(ne_binary(), ne_binary()) -> 'false' | ne_binary().
 try_all(Data, Field) ->
     FieldSz = byte_size(Field),
     case Data of
         <<Field:FieldSz/binary, _/binary>> ->
             case binary:split(Data, <<": ">>) of
                 [_Key, Value0] ->
-                    Value = binary:part(Value0, {0, byte_size(Value0)}),
-                    {'true', Value};
+                    binary:part(Value0, {0, byte_size(Value0)});
                 _ ->
                     'false'
             end;
