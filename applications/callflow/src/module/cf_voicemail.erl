@@ -1660,10 +1660,15 @@ check_attachment_length(AttachmentName, DocId, Call) ->
 
     case couch_mgr:open_doc(AccountDb, DocId) of
         {'ok', JObj} ->
-            AttachmentLength = wh_doc:attachment_length(JObj, AttachmentName),
-            lager:info("attachment length is ~B and must be larger than ~B to be stored", [AttachmentLength, MinLength]),
-            is_integer(AttachmentLength)
-                andalso AttachmentLength > MinLength;
+            case wh_doc:attachment_length(JObj, AttachmentName) of
+                'undefined' ->
+                    Err = {'error', io_lib:format("attachment ~s is missing from doc ~s", [AttachmentName, DocId])},
+                    lager:debug(Err),
+                    {'error', whapps_call:kvs_store('error_details', Err, Call)};
+                AttachmentLength ->
+                    lager:info("attachment length is ~B and must be larger than ~B to be stored", [AttachmentLength, MinLength]),
+                    is_integer(AttachmentLength) andalso AttachmentLength > MinLength
+            end;
         {'error', _}=Err ->
             {'error', whapps_call:kvs_store('error_details', Err, Call) }
     end.
@@ -1698,7 +1703,7 @@ try_store_recording(AttachmentName, DocId, Url, Call) ->
     try_store_recording(AttachmentName, DocId, Url, Tries, whapps_call:exec(Funs, Call)).
 try_store_recording(_, _, _, 0, Call) -> {'error', Call};
 try_store_recording(AttachmentName, DocId, Url, Tries, Call) ->
-    case whapps_call_command:b_store(AttachmentName, store_url(Url), <<"put">>, [wh_json:new()], 'true', Call) of
+    case whapps_call_command:b_store_vm(AttachmentName, store_url(Url), <<"put">>, [wh_json:new()], 'true', Call) of
         {'ok', JObj} ->
             verify_stored_recording(AttachmentName, DocId, Url, Tries, Call, JObj);
         Other ->

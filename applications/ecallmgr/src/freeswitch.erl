@@ -20,6 +20,7 @@
         ]).
 -export([bgapi/3
          ,bgapi/4
+         ,bgapi/6
         ]).
 -export([event/2
          ,event/3
@@ -160,13 +161,45 @@ bgapi(Node, Cmd, Args, Fun) when is_function(Fun, 2) ->
     Self = self(),
     spawn(fun() ->
                   try gen_server:call({'mod_kazoo', Node}, {'bgapi', Cmd, Args}, ?TIMEOUT) of
-                      {'ok', JobId} ->
-                          Self ! {'api', 'ok'},
+                      {'ok', JobId}=JobOk ->
+                          Self ! {'api', JobOk},
                           receive
                               {'bgok', JobId, Reply} ->
                                   Fun('ok', Reply);
                               {'bgerror', JobId, Reply} ->
                                   Fun('error', Reply)
+                          end;
+                      {'error', Reason} ->
+                          Self ! {'api', {'error', Reason}};
+                      'timeout' ->
+                          Self ! {'api', {'error', 'timeout'}}
+                  catch
+                      _E:_R ->
+                          lager:info("failed to execute bgapi command ~s on ~s: ~p ~p"
+                                     ,[Cmd, Node, _E, _R]),
+                          Self ! {'api', {'error', 'exception'}}
+                  end
+          end),
+    %% get the initial result of the command, NOT the asynchronous response, and
+    %% return it
+    receive
+        {'api', Result} -> Result
+    end.
+
+-spec bgapi(atom(), ne_binary(), list(), atom(), string() | binary(), fun()) ->
+                   {'ok', binary()} |
+                   {'error', 'timeout' | 'exception' | binary()}.
+bgapi(Node, UUID, CallBackParams, Cmd, Args, Fun) when is_function(Fun, 6) ->
+    Self = self(),
+    spawn(fun() ->
+                  try gen_server:call({'mod_kazoo', Node}, {'bgapi', Cmd, Args}, ?TIMEOUT) of
+                      {'ok', JobId}=JobOk ->
+                          Self ! {'api', JobOk},
+                          receive
+                              {'bgok', JobId, Reply} ->
+                                  Fun('ok', Node, UUID, CallBackParams, JobId, Reply);
+                              {'bgerror', JobId, Reply} ->
+                                  Fun('error', Node, UUID, CallBackParams, JobId, Reply)
                           end;
                       {'error', Reason} ->
                           Self ! {'api', {'error', Reason}};
