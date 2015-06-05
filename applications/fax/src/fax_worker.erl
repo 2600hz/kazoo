@@ -318,6 +318,11 @@ handle_cast({'error', 'invalid_number', Number}, #state{job=JObj, pool=Pid}=Stat
     release_failed_job('invalid_number', Number, JObj),
     gen_server:cast(Pid, {'job_complete', self()}),
      {'noreply', reset(State)};
+handle_cast({'error', 'invalid_cid', Number}, #state{job=JObj, pool=Pid}=State) ->
+    send_error_status(State, <<"invalid fax cid number">>),
+    release_failed_job('invalid_cid', Number, JObj),
+    gen_server:cast(Pid, {'job_complete', self()}),
+     {'noreply', reset(State)};
 handle_cast({'gen_listener', {'created_queue', QueueName}}, State) ->
     lager:debug("worker discovered queue name ~s", [QueueName]),
     {'noreply', State#state{queue_name=QueueName}};
@@ -483,6 +488,15 @@ release_failed_job('invalid_number', Number, JObj) ->
     Msg = wh_util:to_binary(io_lib:format("invalid fax number: ~s", [Number])),
     Result = [{<<"success">>, 'false'}
               ,{<<"result_code">>, 500}
+              ,{<<"result_text">>, Msg}
+              ,{<<"pages_sent">>, 0}
+              ,{<<"time_elapsed">>, elapsed_time(JObj)}
+             ],
+    release_job(Result, JObj);
+release_failed_job('invalid_cid', Number, JObj) ->
+    Msg = wh_util:to_binary(io_lib:format("invalid fax cid number: ~s", [Number])),
+    Result = [{<<"success">>, 'false'}
+              ,{<<"result_code">>, 400}
               ,{<<"result_text">>, Msg}
               ,{<<"pages_sent">>, 0}
               ,{<<"time_elapsed">>, elapsed_time(JObj)}
@@ -783,7 +797,26 @@ normalize_content_type(CT) ->
 
 -spec send_fax(ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
 send_fax(JobId, JObj, Q) ->
-    send_fax(JobId, JObj, Q, get_did(JObj)).
+    SendFax = fun() -> send_fax(JobId, JObj, Q, get_did(JObj)) end,
+    maybe_ensure_valid_caller_id(JObj, SendFax).
+
+-spec maybe_ensure_valid_caller_id(wh_json:object(), function()) -> 'ok'.
+maybe_ensure_valid_caller_id(JObj, SendFax) ->
+    case wh_json:is_true(<<"ensure_valid_caller_id">>, JObj, 'true') of
+        'false' -> SendFax();
+        'true' ->
+            ensure_valid_caller_id(JObj, SendFax)
+    end.
+
+-spec ensure_valid_caller_id(wh_json:object(), function()) -> 'ok'.
+ensure_valid_caller_id(JObj, SendFax) ->
+    CIDNum = wh_json:get_value(<<"from_number">>, JObj),
+    AccountId =  wh_json:get_value(<<"pvt_account_id">>, JObj),
+    case fax_util:is_valid_caller_id(CIDNum, AccountId) of
+        'true' -> SendFax();
+        'false' ->
+            gen_server:cast(self(), {'error', 'invalid_cid', CIDNum})
+    end.
 
 -spec send_fax(ne_binary(), wh_json:object(), ne_binary(), binary() | 'undefined') -> 'ok'.
 send_fax(_JobId, _JObj, _Q, 'undefined') ->
