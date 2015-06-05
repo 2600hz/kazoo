@@ -66,15 +66,24 @@ flush(CallId) ->
 
 -spec callid_details(text()) -> 'no_return'.
 callid_details(CallId) ->
-    Props = ci_datastore:lookup_callid(CallId),
-    Chunks = props:get_value('chunks', Props),
-    'ok' = print_chunks(ci_chunk:sort_by_timestamp(Chunks)),
+    Props = [{<<"Call-ID">>, wh_util:to_binary(CallId)}
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ],
+    case wh_amqp_worker:call_collect(Props
+                                     ,fun wapi_inspector:publish_lookup_req/1
+                                     ,{'call_inspector', 'true'}
+                                    )
+    of
+        {'ok', JObjs} ->
+            GetChunks = fun (JObj) -> wh_json:get_value(<<"Chunks">>, JObj, wh_json:new()) end,
+            JSONArray = lists:flatmap(GetChunks, JObjs),
+            'ok' = io:fwrite(io_lib:format("~ts\n", [wh_json:encode(JSONArray)]));
+        {'timeout', []} ->
+            io:format("Not found: \"~s\"\n", [CallId]);
+        {'error', _Reason}=Error ->
+            io:format("Error: ~p\n", [Error])
+    end,
     'no_return'.
-
--spec print_chunks(ci_chunk:chunks()) -> 'ok'.
-print_chunks(Chunks) ->
-    JSONArray = lists:map(fun ci_chunk:to_json/1, Chunks),
-    io:fwrite(io_lib:format("~ts\n", [wh_json:encode(JSONArray)])).
 
 %% Internals
 

@@ -16,13 +16,10 @@
 handle_req(JObj, _Props) ->
     'true' = wapi_inspector:lookup_req_v(JObj),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    case ci_datastore:lookup_callid(CallId) of
-        [] -> 'ok';
-        Props ->
-            Q = wh_json:get_value(<<"Server-ID">>, JObj),
-            MessageId = wh_json:get_value(<<"Msg-ID">>, JObj),
-            send_response(Props, Q, MessageId)
-    end.
+    Props = ci_datastore:lookup_callid(CallId),
+    Q = wh_json:get_value(<<"Server-ID">>, JObj),
+    MessageId = wh_json:get_value(<<"Msg-ID">>, JObj),
+    send_response(Props, Q, MessageId).
 
 -spec send_response(wh_proplist(), ne_binary(), ne_binary()) -> 'ok'.
 send_response(Props, Q, MessageId) ->
@@ -43,9 +40,5 @@ chunks_as_json(Props) ->
 
 -spec analysis_as_json(wh_proplist()) -> wh_json:object().
 analysis_as_json(Props) ->
-    case props:get_value('analysis', Props) of
-        'undefined' ->
-            wh_json:new();
-        Analysis ->
-            ci_analysis:to_json(Analysis)
-    end.
+    Analysis = props:get_value('analysis', Props, wh_json:new()),
+    ci_analysis:to_json(Analysis).
