@@ -24,7 +24,7 @@
          ,is_context/1
 
          ,is_authenticated/1
-        
+
          %% Getters / Setters
          ,setters/2
          ,new/0

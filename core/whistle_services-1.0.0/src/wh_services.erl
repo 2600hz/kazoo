@@ -44,6 +44,7 @@
 -export([get_service_module/1]).
 
 -export([is_reseller/1]).
+-export([get_reseller_id/1]).
 
 -export([dry_run/1]).
 
@@ -1117,7 +1118,7 @@ incorporate_depreciated_service_plans(Plans, JObj) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %%
 %% @end
@@ -1139,8 +1140,7 @@ get_reseller_id(<<_/binary>> = Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
         {'ok', AccountJObj} ->
-            Tree = lists:reverse(kz_account:tree(AccountJObj)),
-            get_reseller_id(Tree);
+            get_reseller_id(lists:reverse(kz_account:tree(AccountJObj)));
         {'error', _R} ->
             lager:info("unable to open account definition for ~s: ~p", [AccountId, _R]),
             get_reseller_id([])
