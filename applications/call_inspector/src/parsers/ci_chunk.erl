@@ -19,6 +19,8 @@
         ]).
 -export([set_timestamp/2
          ,timestamp/1]).
+-export([set_ref_timestamp/1
+         ,ref_timestamp/1]).
 -export([set_to/2
          ,to/1]).
 -export([set_from/2
@@ -31,13 +33,14 @@
 -export([is_chunk/1]).
 -export([sort_by_timestamp/1]).
 
--record(ci_chunk, {call_id
-                  ,data = []
+-record(ci_chunk, {call_id :: ne_binary()
+                  ,data = [] :: ne_binaries()
                   ,timestamp
+                  ,ref_timestamp :: number()
                   ,to
                   ,from
                   ,parser :: atom()
-                  ,label
+                  ,label :: ne_binary()
                  }).
 -type chunk() :: #ci_chunk{}.
 -type chunks() :: [chunk(),...].
@@ -76,12 +79,21 @@ set_data(Chunk, Data) ->
 data(#ci_chunk{data=Data}) ->
     Data.
 
--spec set_timestamp(chunk(), ne_binary()) -> chunk().
+-spec set_timestamp(chunk(), integer()) -> chunk().
 set_timestamp(Chunk, Timestamp) ->
     Chunk#ci_chunk{timestamp=Timestamp}.
 
--spec timestamp(chunk()) -> api_binary().
+-spec timestamp(chunk()) -> api_integer().
 timestamp(#ci_chunk{timestamp=Timestamp}) ->
+    Timestamp.
+
+-spec set_ref_timestamp(chunk()) -> chunk().
+set_ref_timestamp(Chunk=#ci_chunk{}) ->
+    Timestamp = ci_parsers_util:timestamp(os:timestamp()),
+    Chunk#ci_chunk{ref_timestamp=Timestamp}.
+
+-spec ref_timestamp(chunk()) -> api_integer().
+ref_timestamp(#ci_chunk{ref_timestamp=Timestamp}) ->
     Timestamp.
 
 -spec set_to(chunk(), ne_binary()) -> chunk().
@@ -123,6 +135,7 @@ to_json(Chunk) ->
        ,{<<"to">>, to(Chunk)}
        ,{<<"call-id">>, call_id(Chunk)}
        ,{<<"timestamp">>, timestamp(Chunk)}
+       ,{<<"ref_timestamp">>, ref_timestamp(Chunk)}
        ,{<<"label">>, label(Chunk)}
        ,{<<"raw">>, data(Chunk)}
       ]
@@ -134,7 +147,7 @@ is_chunk(_) -> 'false'.
 
 -spec sort_by_timestamp(chunks()) -> chunks().
 sort_by_timestamp(Chunks) ->
-    F = fun(C1, C2) -> timestamp(C1) < timestamp(C2) end,
+    F = fun(C1, C2) -> ref_timestamp(C1) < ref_timestamp(C2) end,
     lists:sort(F, Chunks).
 
 

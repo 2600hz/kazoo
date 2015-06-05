@@ -86,8 +86,9 @@ lookup_callid(CallId) ->
                         ,[{'chunks', []}, {'analysis', []}]
                         ,lookup_objects(CallId)
                        ),
+    UnorderedChunks = lists:reverse(props:get_value('chunks', Props)),
     props:set_value('chunks'
-                   ,lists:reverse(props:get_value('chunks', Props))
+                   ,ci_chunk:sort_by_timestamp(UnorderedChunks)
                    ,Props
                    ).
 
@@ -152,7 +153,7 @@ handle_cast({'store_chunk', CallId, Chunk}, State) ->
     Object = #object{call_id=CallId
                     ,timestamp=wh_util:current_tstamp()
                     ,type='chunk'
-                    ,value=Chunk
+                    ,value=ci_chunk:set_ref_timestamp(Chunk)
                     },
     insert_object(Object),
     _ = ci_analyzers:new_chunk(CallId, Chunk),
