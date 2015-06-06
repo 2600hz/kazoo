@@ -12,8 +12,8 @@
 -export([set_call_id/2
          ,call_id/1
         ]).
--export([set_originiate_type/2
-        ,originiate_type/1
+-export([set_originate_type/2
+        ,originate_type/1
         ]).
 -export([set_terminate_type/2
          ,terminate_type/1
@@ -28,7 +28,7 @@
 -export([is_analysis/1]).
 
 -record(ci_analysis, {call_id
-                     ,originiate_type
+                     ,originate_type
                      ,terminate_type
                      ,failure_location
                      ,reason
@@ -50,14 +50,14 @@ set_call_id(Analysis, CallId) ->
 call_id(#ci_analysis{call_id=CallId}) ->
     CallId.
 
--spec set_originiate_type(analysis(), ne_binary()) -> analysis().
-set_originiate_type(Analysis, <<"phone">> = Type) ->
-    Analysis#ci_analysis{originiate_type=Type};
-set_originiate_type(Analysis, <<"carrier">> = Type) ->
-    Analysis#ci_analysis{originiate_type=Type}.
+-spec set_originate_type(analysis(), ne_binary()) -> analysis().
+set_originate_type(Analysis, <<"phone">> = Type) ->
+    Analysis#ci_analysis{originate_type=Type};
+set_originate_type(Analysis, <<"carrier">> = Type) ->
+    Analysis#ci_analysis{originate_type=Type}.
 
--spec originiate_type(analysis()) -> api_binary().
-originiate_type(#ci_analysis{originiate_type=Type}) -> Type.
+-spec originate_type(analysis()) -> api_binary().
+originate_type(#ci_analysis{originate_type=Type}) -> Type.
 
 -spec set_terminate_type(analysis(), ne_binary()) -> analysis().
 set_terminate_type(Analysis, <<"phone">> = Type) ->
@@ -91,7 +91,7 @@ reason(#ci_analysis{reason=Reason}) ->
 to_json(#ci_analysis{}=Analysis) ->
     wh_json:from_list(
       props:filter_undefined(
-        [{<<"originiate_type">>, originiate_type(Analysis)}
+        [{<<"originate_type">>, originate_type(Analysis)}
         ,{<<"terminate_type">>, terminate_type(Analysis)}
         ,{<<"failure_location">>, failure_location(Analysis)}
          ,{<<"reason">>, reason(Analysis)}
