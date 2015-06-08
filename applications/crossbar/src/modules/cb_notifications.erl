@@ -971,7 +971,6 @@ select_normalize_fun(Context) ->
     end.
 
 -spec normalize_available_admin(wh_json:object(), wh_json:objects()) -> wh_json:objects().
--spec normalize_available_non_admin(wh_json:object(), wh_json:objects(), cb_context:context()) -> wh_json:objects().
 normalize_available_admin(JObj, Acc) ->
     Value = wh_json:get_value(<<"value">>, JObj),
     case kz_notification:category(Value) of
@@ -979,6 +978,7 @@ normalize_available_admin(JObj, Acc) ->
         _Category -> [Value | Acc]
     end.
 
+-spec normalize_available_non_admin(wh_json:object(), wh_json:objects(), cb_context:context()) -> wh_json:objects().
 normalize_available_non_admin(JObj, Acc, Context) ->
     Value = wh_json:get_value(<<"value">>, JObj),
     lager:debug("cat of ~s is ~s", [wh_json:get_value(<<"id">>, JObj)
@@ -991,6 +991,8 @@ normalize_available_non_admin(JObj, Acc, Context) ->
         _Category -> [Value | Acc]
     end.
 
+-spec normalize_available_port(wh_json:object(), wh_json:objects(), cb_context:context()) ->
+                                      wh_json:objects().
 normalize_available_port(Value, Acc, Context) ->
     AccountId = cb_context:account_id(Context),
     AuthAccountId = cb_context:auth_account_id(Context),
