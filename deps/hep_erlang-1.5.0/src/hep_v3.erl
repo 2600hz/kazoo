@@ -111,31 +111,31 @@ chunk_from_payload(Hep, <<?vendor(Vendor), ?type(Type), ?length(Length), Rest/bi
     <<Data:DataLength/binary, Continuation/binary>> = Rest,
     NewHep = case vendor(Vendor) of
                  {error, _}=Error -> Error;
-                 VendorId -> set_field(Type, Data, Hep#hep{vendor = VendorId})
+                 VendorId -> set_field(Data, Type, Hep#hep{vendor = VendorId})
              end,
     {NewHep, Continuation}.
 
 %% @private
-set_field(?IP_PROTOCOL_FAMILY, <<?protocol_family(Data)>>, Hep) ->
+set_field(<<?protocol_family(Data)>>, ?IP_PROTOCOL_FAMILY, Hep) ->
     case hep_util:protocol_family(Data) of
         {error,_}=Error -> Error;
         ProtocolFamily -> Hep#hep{protocol_family = ProtocolFamily}
     end;
-set_field(?IP_PROTOCOL_ID, <<?protocol(Data)>>, Hep) ->
+set_field(<<?protocol(Data)>>, ?IP_PROTOCOL_ID, Hep) ->
     Hep#hep{protocol = Data};
-set_field(?IPV4_SOURCE_ADDRESS, <<?ipv4(I1, I2, I3, I4)>>, Hep) ->
+set_field(<<?ipv4(I1, I2, I3, I4)>>, ?IPV4_SOURCE_ADDRESS, Hep) ->
     Hep#hep{src_ip = {I1, I2, I3, I4}};
-set_field(?IPV4_DESTINATION_ADDRESS, <<?ipv4(I1, I2, I3, I4)>>, Hep) ->
+set_field(<<?ipv4(I1, I2, I3, I4)>>, ?IPV4_DESTINATION_ADDRESS, Hep) ->
     Hep#hep{dst_ip = {I1, I2, I3, I4}};
-set_field(?IPV6_SOURCE_ADDRESS, <<?ipv6(I1, I2, I3, I4, I5, I6, I7, I8)>>, Hep) ->
+set_field(<<?ipv6(I1, I2, I3, I4, I5, I6, I7, I8)>>, ?IPV6_SOURCE_ADDRESS, Hep) ->
     Hep#hep{src_ip = {I1, I2, I3, I4, I5, I6, I7, I8}};
-set_field(?IPV6_DESTINATION_ADDRESS, <<?ipv6(I1, I2, I3, I4, I5, I6, I7, I8)>>, Hep) ->
+set_field(<<?ipv6(I1, I2, I3, I4, I5, I6, I7, I8)>>, ?IPV6_DESTINATION_ADDRESS, Hep) ->
     Hep#hep{dst_ip = {I1, I2, I3, I4, I5, I6, I7, I8}};
-set_field(?PROTOCOL_SOURCE_PORT, <<?port(Data)>>, Hep) ->
+set_field(<<?port(Data)>>, ?PROTOCOL_SOURCE_PORT, Hep) ->
     Hep#hep{src_port = Data};
-set_field(?PROTOCOL_DESTINATION_PORT, <<?port(Data)>>, Hep) ->
+set_field(<<?port(Data)>>, ?PROTOCOL_DESTINATION_PORT, Hep) ->
     Hep#hep{dst_port = Data};
-set_field(?TIMESTAMP_IN_SECONDS, <<?timestamp(Secs)>>, Hep = #hep{timestamp = TS}) ->
+set_field(<<?timestamp(Secs)>>, ?TIMESTAMP_IN_SECONDS, Hep = #hep{timestamp = TS}) ->
     MegaSecs = Secs div 1000000,
     TSSecs   = Secs rem 1000000,
     case TS of
@@ -144,35 +144,35 @@ set_field(?TIMESTAMP_IN_SECONDS, <<?timestamp(Secs)>>, Hep = #hep{timestamp = TS
         undefined ->
             Hep#hep{timestamp = {MegaSecs, TSSecs, 0}}
     end;
-set_field(?TIMESTAMP_MS_OFFSET, <<?timestamp(MicroSecs)>>, Hep = #hep{timestamp = TS}) ->
+set_field(<<?timestamp(MicroSecs)>>, ?TIMESTAMP_MS_OFFSET, Hep = #hep{timestamp = TS}) ->
     case TS of
         undefined ->
             Hep#hep{timestamp = {0, 0, MicroSecs}};
         {M, S, _} ->
             Hep#hep{timestamp = {M, S, MicroSecs}}
     end;
-set_field(?PROTOCOL_TYPE, <<?payload_type(Data)>>, Hep) ->
+set_field(<<?payload_type(Data)>>, ?PROTOCOL_TYPE, Hep) ->
     case hep_util:payload_type(Data) of
         {error, _}=Error -> Error;
         Protocol -> Hep#hep{payload_type = Protocol}
     end;
-set_field(?CAPTURE_AGENT_ID, <<?node_id(Data)>>, Hep) ->
+set_field(<<?node_id(Data)>>, ?CAPTURE_AGENT_ID, Hep) ->
     Hep#hep{node_id = Data};
-set_field(?KEEP_ALIVE_TIMER, <<_Data:16>>, Hep) ->
+set_field(<<_Data:16>>, ?KEEP_ALIVE_TIMER, Hep) ->
     %% Hep#hep{keep_alive_timer = Data};
     Hep;
-set_field(?AUTHENTICATE_KEY, _Data, Hep) ->
+set_field(<<_Data:8>>, ?VLAN_ID, Hep) ->
+    %% Hep#hep{vlan_id = Data}.
+    Hep;
+set_field(_Data, ?AUTHENTICATE_KEY, Hep) ->
     %% Hep#hep{authenticate_key = Data};
     Hep;
-set_field(?CAPTURED_PACKET_PAYLOAD, Data, Hep) ->
+set_field(Data, ?CAPTURED_PACKET_PAYLOAD, Hep) ->
     Hep#hep{payload = Data};
-set_field(?CAPTURED_COMPRESSED_PAYLOAD, Data, Hep) ->
+set_field(Data, ?CAPTURED_COMPRESSED_PAYLOAD, Hep) ->
     Hep#hep{payload = Data};
-set_field(?INTERNAL_CORRELATION_ID, _Data, Hep) ->
+set_field(_Data, ?INTERNAL_CORRELATION_ID, Hep) ->
     %% Hep#hep{internal_correlation_id = Data};
-    Hep;
-set_field(?VLAN_ID, <<_Data:8>>, Hep) ->
-    %% Hep#hep{vlan_id = Data}.
     Hep.
 
 
