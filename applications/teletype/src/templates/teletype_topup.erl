@@ -73,15 +73,18 @@ handle_topup(JObj, _Props) ->
     case teletype_util:should_handle_notification(DataJObj)
         andalso teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID)
     of
-        'false' -> lager:debug("notification handling not configured for this account");
-        'true' -> handle_req(DataJObj)
+        'false' ->
+            lager:debug("notification handling not configured for this account");
+        'true' ->
+            lager:debug("handling notification for account ~s", [AccountId]),
+            handle_req(DataJObj)
     end.
 
 -spec handle_req(wh_json:object()) -> 'ok'.
 handle_req(DataJObj) ->
     Macros = build_macro_data(
                wh_json:set_value(<<"account_params">>
-                                 ,teletype_util:account_params(DataJObj)
+                                 ,wh_json:from_list(teletype_util:account_params(DataJObj))
                                  ,DataJObj
                                 )
               ),
@@ -159,9 +162,20 @@ maybe_add_macro_key(_Key, Acc, _DataJObj) ->
 
 -spec maybe_add_account_data(ne_binary(), wh_proplist(), wh_json:object()) ->
                                     wh_proplist().
+-spec maybe_add_account_data(ne_binary(), wh_proplist(), wh_json:object(), api_binary()) ->
+                                    wh_proplist().
 maybe_add_account_data(Key, Acc, DataJObj) ->
-    props:set_value([<<"account">>, Key]
-                    ,wh_json:get_value([<<"account_params">>, Key], DataJObj)
+    maybe_add_account_data(Key, Acc, DataJObj
+                           ,wh_json:get_value([<<"account_params">>, Key], DataJObj)
+                          ).
+maybe_add_account_data(_Key, Acc, _DataJObj, 'undefined') ->
+    lager:debug("failed to find account param ~s", [_Key]),
+    Acc;
+maybe_add_account_data(Key, Acc, _DataJObj, Value) ->
+    AccountData = props:get_value(<<"account">>, Acc, []),
+
+    props:set_value(<<"account">>
+                    ,props:set_value(Key, Value, AccountData)
                     ,Acc
                    ).
 
