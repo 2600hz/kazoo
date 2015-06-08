@@ -302,9 +302,11 @@ from([<<"log|source ", From/binary>>|_Data], _LogIP) ->
 from([_Line|Lines], LogIP) ->
     from(Lines, LogIP).
 
-ip(RawIP) ->
-    [IP, _Port] = binary:split(RawIP, <<":">>),
-    IP.
+ip(RawIP = <<_/binary>>) ->
+    case binary:split(RawIP, <<":">>) of
+        [IP, _Port] -> IP;
+        _Else -> 'undefined'  %% Unexpected case
+    end.
 
 to([], LogIP) -> LogIP;
 to([<<"start|recieved internal reply",_/binary>>|Data], LogIP) ->

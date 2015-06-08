@@ -15,7 +15,7 @@
 %% API
 -export([start_link/1]).
 -export([call_id/1]).
-
+-export([ip/1]).
 %% gen_server callbacks
 -export([init/1
          ,handle_call/3
@@ -262,9 +262,16 @@ set_legs(LogIP, Chunk, [FirstLine|_Lines]) ->
     ci_chunk:set_to(ci_chunk:set_from(Chunk,From), To).
 
 ip(Bin) ->
-    case re:run(Bin, "/\\[([\\d\\.]+)\\]:", [{'capture','all_but_first','binary'}]) of
-        {'match', [IP]} -> IP;
-        'nomatch' -> 'undefined'
+    case binary:match(Bin, <<"/[">>) of
+        {StartS, StartP} ->
+            Start = StartS + StartP,
+            LookAhead = {Start, 4*3+3+2},  %% Look ahead inside longest IPv4 possible
+            case binary:match(Bin, <<"]:">>, [{'scope',LookAhead}]) of
+                {End, _} ->  binary:part(Bin, Start, End-Start);
+                'nomatch' -> 'undefined'
+            end;
+        'nomatch' ->
+            'undefined'
     end.
 
 
