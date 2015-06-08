@@ -1,32 +1,32 @@
 {
-    "_id": "service_plans",
     "$schema": "http://json-schema.org/draft-03/schema#",
-    "type": "object",
-    "required": false,
-    "name": "Service Plan",
+    "_id": "service_plans",
     "description": "Describes services offered to sub-accounts",
+    "name": "Service Plan",
     "properties": {
-        "name": {
+        "bookkeepers": {
+            "$ref": "bookkeepers",
+            "type": "object"
+        },
+        "description": {
+            "description": "Describes the service plan offering",
+            "required": false,
             "type": "string"
-            ,"required": true
-            ,"name": "Service Plan Name"
-            ,"description": "A friendly name for the service plan"
-            ,"minLength": 1
-            ,"maxLength": 128
+        },
+        "name": {
+            "description": "A friendly name for the service plan",
+            "maxLength": 128,
+            "minLength": 1,
+            "name": "Service Plan Name",
+            "required": true,
+            "type": "string"
+        },
+        "plan": {
+            "description": "Outlines the service plan for various services",
+            "required": true,
+            "type": "object"
         }
-        ,"description":{
-            "type":"string"
-            ,"description":"Describes the service plan offering"
-            ,"required":false
-        }
-        ,"plan":{
-            "type":"object"
-            ,"required":true
-            ,"description":"Outlines the service plan for various services"
-        }
-        ,"bookkeepers":{
-            "type":"object"
-            ,"$ref":"bookkeepers"
-        }
-    }
+    },
+    "required": false,
+    "type": "object"
 }
