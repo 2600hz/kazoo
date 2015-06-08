@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2010-2015, 2600Hz
 %%% @doc
-%%%  The module is listener for
+%%%  The module is listener for AMQP events
 %%% @end
 %%% @contributors
 %%%   SIPLABS, LLC (Vladimir Potapev)
@@ -12,23 +12,23 @@
 
 -export([start_link/0]).
 -export([init/1
-    , handle_call/3
-    , handle_cast/2
-    , handle_info/2
-    , handle_event/2
-    , terminate/2
-    , code_change/3
-    , handle_authz_req/3]).
+    ,handle_call/3
+    ,handle_cast/2
+    ,handle_info/2
+    ,handle_event/2
+    ,terminate/2
+    ,code_change/3
+    ,handle_authn_req/3
+    ,handle_authz_req/3]).
 
 -include("circlemaker.hrl").
--include_lib("whistle/src/wh_json.hrl").
 -include_lib("rabbitmq_client/include/amqp_client.hrl").
 
 -record(state, {}).
 
--define(RESPONDERS, [{{'cm_listener', 'handle_authz_req'}
-                        ,[{<<"authz">>, <<"authz_req">>}]}]).
--define(BINDINGS, [{'authz', []}
+-define(RESPONDERS, [{{?MODULE, 'handle_authn_req'}, [{<<"aaa">>, <<"aaa_authn_req">>}]},
+                     {{?MODULE, 'handle_authz_req'}, [{<<"aaa">>, <<"aaa_authz_req">>}]}]).
+-define(BINDINGS, [{'aaa', []}
                    ,{'self', []}
                   ]).
 -define(QUEUE_NAME, <<"circlemaker_listener">>).
@@ -38,9 +38,7 @@
 -define(SERVER, ?MODULE).
 
 -define(SYNC_REQ_HEADERS_ON_AUTHZ, [<<"Account-ID">>, <<"Agent-ID">>]).
--define(SYNC_REQ_VALUES_ON_AUTHZ, [{<<"Event-Category">>, <<"agent">>}
-    ,{<<"Event-Name">>, <<"sync_req">>}
-]).
+-define(SYNC_REQ_VALUES_ON_AUTHZ, [{<<"Event-Category">>, <<"agent">>}, {<<"Event-Name">>, <<"sync_req">>}]).
 -define(SYNC_REQ_TYPES_ON_AUTHZ, []).
 
 %%%===================================================================
@@ -70,30 +68,24 @@ start_link() ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Handle requests from another process.
-%% Processes can request for next actions:
-%% 1. authz
-%% 2. accounting start/stop
-%% 3. accounting CDR
+%% Handle AuthN requests from another process.
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_authn_req(wh_json:object(), wh_proplist(), gen_listener:basic_deliver()) -> any().
+handle_authn_req(JObj, Props, A = #'basic.deliver'{'routing_key' = _Key}) ->
+    lager:debug([{'trace', 'true'}], "JObj=~p~nProps=~p~nA=~p~n", [JObj, Props, A]),
+    cm_pool_mgr:do_request(JObj).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Handle AuthZ requests from another process.
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_authz_req(wh_json:object(), wh_proplist(), gen_listener:basic_deliver()) -> any().
-handle_authz_req(JObj, _Props, #'basic.deliver'{'routing_key' = Key}) ->
-    io:format("handle_authz_req() handled.~n"),
-    case binary:split(Key, <<".">>, ['global']) of
-        [_, ?APP_NAME, <<"auth">>] ->
-            cm_radius:add_request_authz(JObj, wh_api:validate(wh_json:to_proplist(JObj),
-                ?SYNC_REQ_HEADERS_ON_AUTHZ, ?SYNC_REQ_VALUES_ON_AUTHZ, ?SYNC_REQ_TYPES_ON_AUTHZ));
-        [_, ?APP_NAME, <<"start">>] ->
-            cm_radius:add_request_start(JObj, wh_api:validate(wh_json:to_proplist(JObj),
-                ?SYNC_REQ_HEADERS_ON_AUTHZ, ?SYNC_REQ_VALUES_ON_AUTHZ, ?SYNC_REQ_TYPES_ON_AUTHZ));
-        [_, ?APP_NAME, <<"stop">>] ->
-            cm_radius:add_request_stop(JObj, wh_api:validate(wh_json:to_proplist(JObj),
-                ?SYNC_REQ_HEADERS_ON_AUTHZ, ?SYNC_REQ_VALUES_ON_AUTHZ, ?SYNC_REQ_TYPES_ON_AUTHZ));
-        _ ->
-            'ok'
-    end.
-
+handle_authz_req(JObj, Props, A = #'basic.deliver'{'routing_key' = _Key}) ->
+    lager:debug([{'trace', 'true'}], "JObj=~p~nProps=~p~nA=~p~n", [JObj, Props, A]),
+    [].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -136,6 +128,9 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({'gen_listener', {'created_queue', QueueName}}, State) ->
+    lager:debug([{'trace', 'true'}], "QueueName=~p~n", [QueueName]),
+    {'noreply', State};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 

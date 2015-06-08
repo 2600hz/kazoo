@@ -23,7 +23,8 @@
                                                 ]]}
                    ,'permanent', 5000, 'worker', ['poolboy']}).
 
--define(CHILDREN, [?POOL(?WORKER_POOL)
+-define(CHILDREN, [?WORKER('cm_init')
+                   ,?POOL(?WORKER_POOL)
                    ,?WORKER('cm_pool_mgr')
                    ,?WORKER('cm_listener')]).
 
