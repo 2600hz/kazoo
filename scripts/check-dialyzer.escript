@@ -12,12 +12,12 @@
 
 main(Args) ->
     case [Arg || Arg <- Args,
-                 (
-                   is_ebin_dir(Arg)
-                   orelse is_beam(Arg)
-                   orelse is_erl(Arg)
-                 ) andalso
-                     not is_test(Arg)
+                 not is_test(Arg)
+                     andalso (
+                       is_ebin_dir(Arg)
+                       orelse is_beam(Arg)
+                       orelse is_erl(Arg)
+                      )
          ]
     of
         [] ->
