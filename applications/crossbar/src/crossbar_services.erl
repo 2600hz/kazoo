@@ -295,7 +295,7 @@ reconcile(Context) ->
             lager:debug("maybe reconciling services for account ~s"
                         ,[cb_context:account_id(Context)]
                        ),
-            _ = wh_services:save_as_dirty(cb_context:account_id(Context), base_audit_log(Context)),
+            _ = wh_services:save_as_dirty(cb_context:account_id(Context)),
             Context
     end.
 
