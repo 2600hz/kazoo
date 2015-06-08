@@ -12,9 +12,12 @@
 
 main(Args) ->
     case [Arg || Arg <- Args,
-                 is_ebin_dir(Arg)
-                     orelse is_beam(Arg)
-                     orelse is_erl(Arg)
+                 (
+                   is_ebin_dir(Arg)
+                   orelse is_beam(Arg)
+                   orelse is_erl(Arg)
+                 ) andalso
+                     not is_test(Arg)
          ]
     of
         [] ->
@@ -28,6 +31,9 @@ main(Args) ->
     end.
 
 %% Internals
+
+is_test(Path) ->
+    lists:member("test", string:tokens(Path, "/")).
 
 is_erl(Path) ->
     ".erl" == filename:extension(Path).
