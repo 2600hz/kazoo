@@ -10,7 +10,7 @@
 
 -behaviour(gen_listener).
 
--export([start_link/0]).
+-export([start_link/0, get_queue_name/0, insert_auth_user/1, remove_auth_user/1, get_auth_user/1]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -27,6 +27,9 @@
                      }
                      ,{'reg_authz_req'
                       ,[{<<"authz">>, <<"authz_req">>}]
+                     }
+                     ,{{'reg_aaa_resp'
+                      ,[{<<"aaa">>, <<"aaa_authn_resp">>}]}
                      }
                      ,{{'reg_route_req', 'handle_route_req'}
                        ,[{<<"dialplan">>, <<"route_req">>}]
@@ -54,12 +57,29 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
+    lager:debug([{'trace', 'true'}], "", []),
     gen_listener:start_link({'local', ?SERVER}, ?MODULE, [{'responders', ?RESPONDERS}
                                                           ,{'bindings', ?BINDINGS}
                                                           ,{'queue_name', ?REG_QUEUE_NAME}
                                                           ,{'queue_options', ?REG_QUEUE_OPTIONS}
                                                           ,{'consume_options', ?REG_CONSUME_OPTIONS}
                                                          ], []).
+
+get_queue_name() ->
+    lager:debug([{'trace', 'true'}], "", []),
+    ?REG_QUEUE_NAME.
+
+insert_auth_user(AuthUser) ->
+    lager:debug([{'trace', 'true'}], "AuthUser=~p~n", [AuthUser]),
+    gen_server:call(?MODULE, {'insert_auth_user', AuthUser}).
+
+get_auth_user(MsgId) ->
+    lager:debug([{'trace', 'true'}], "MsgId=~p~n", [MsgId]),
+    gen_server:call(?MODULE, {'get_auth_user', MsgId}).
+
+remove_auth_user(AuthUser) ->
+    lager:debug([{'trace', 'true'}], "AuthUser=~p~n", [AuthUser]),
+    gen_server:call(?MODULE, {'remove_auth_user', AuthUser}).
 
 %%%===================================================================
 %%% gen_listener callbacks
@@ -94,7 +114,18 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call(_Msg, _From, State) ->
+handle_call({'insert_auth_user', AuthUser}, _From, State) ->
+    lager:debug([{'trace', 'true'}], "AuthUser=~p~n", [AuthUser]),
+    {'reply', 'ok', [AuthUser | State]};
+handle_call({'remove_auth_user', AuthUser}, _From, State) ->
+    lager:debug([{'trace', 'true'}], "AuthUser=~p~n", [AuthUser]),
+    {'reply', 'ok', [J || J <- State, AuthUser =/= J]};
+handle_call({'get_auth_user', MsgId}, _From, State) ->
+    lager:debug([{'trace', 'true'}], "MsgId=~p~n", [MsgId]),
+    [AuthUser] = [AuthUser || {MsgId1, AuthUser} <- State, MsgId == MsgId1],
+    {'reply', AuthUser, State};
+handle_call(Msg, From, State) ->
+    lager:debug([{'trace', 'true'}], "Msg=~p~nFrom=~p~nState=~p~n", [Msg, From, State]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
