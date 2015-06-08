@@ -125,6 +125,12 @@
         ++ ?TO_MACROS
        ).
 
+-define(AUTHZ_OPERATOR, <<"superduper">>).
+-define(AUTHZ_ADMIN, <<"admin">>).
+-define(AUTHZ_RESELLER, <<"reseller">>).
+-define(AUTHZ_ACCOUNT, <<"account">>).
+-define(AUTHZ_HIDDEN, <<"hidden">>).
+
 -record(email_receipt, {to :: ne_binaries() | ne_binary()
                         ,from :: ne_binary()
                         ,call_id :: ne_binary()
