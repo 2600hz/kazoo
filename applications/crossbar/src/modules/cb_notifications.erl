@@ -19,6 +19,8 @@
          ,put/1
          ,post/2, post/3
          ,delete/2
+
+         ,flush/0
         ]).
 
 -ifdef(TEST).
@@ -894,6 +896,16 @@ cache_available(Context) ->
                          ,[{'origin', [{'db', cb_context:account_db(Context), kz_notification:pvt_type()}]}]
                         ).
 
+-spec flush() -> non_neg_integer().
+flush() ->
+    wh_cache:filter_erase_local(?CROSSBAR_CACHE
+                                ,fun is_cache_key/2
+                               ).
+
+-spec is_cache_key(_, _) -> boolean().
+is_cache_key({?MODULE, 'available'}, _) -> 'true';
+is_cache_key(_K, _V) -> 'false'.
+
 -spec fetch_available() -> {'ok', wh_json:objects()} |
                            {'error', 'not_found'}.
 fetch_available() ->
@@ -955,20 +967,47 @@ select_normalize_fun(Context) ->
     Account = cb_context:auth_account_id(Context),
     case wh_util:is_system_admin(Account) of
         'true' -> fun normalize_available_admin/2;
-        'false' -> fun normalize_available_non_admin/2
+        'false' -> fun(JObj, Acc) -> normalize_available_non_admin(JObj, Acc, Context) end
     end.
 
 -spec normalize_available_admin(wh_json:object(), wh_json:objects()) -> wh_json:objects().
--spec normalize_available_non_admin(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec normalize_available_non_admin(wh_json:object(), wh_json:objects(), cb_context:context()) -> wh_json:objects().
 normalize_available_admin(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj) | Acc].
-
-normalize_available_non_admin(JObj, Acc) ->
     Value = wh_json:get_value(<<"value">>, JObj),
+    case kz_notification:category(Value) of
+        <<"skel">> -> Acc;
+        _Category -> [Value | Acc]
+    end.
+
+normalize_available_non_admin(JObj, Acc, Context) ->
+    Value = wh_json:get_value(<<"value">>, JObj),
+    lager:debug("cat of ~s is ~s", [wh_json:get_value(<<"id">>, JObj)
+                                    ,kz_notification:category(Value)
+                                   ]),
     case kz_notification:category(Value) of
         <<"system">> -> Acc;
         <<"skel">> -> Acc;
+        <<"port">> -> normalize_available_port(Value, Acc, Context);
         _Category -> [Value | Acc]
+    end.
+
+normalize_available_port(Value, Acc, Context) ->
+    AccountId = cb_context:account_id(Context),
+    AuthAccountId = cb_context:auth_account_id(Context),
+
+    case wh_services:is_reseller(AuthAccountId)
+        andalso cb_port_requests:authority(AccountId)
+    of
+        'false' -> Acc;
+
+        'undefined' -> [Value | Acc];
+        AuthAccountId -> [Value | Acc];
+
+        _OtherAccountId ->
+            lager:debug("another account ~s manages port requests for ~s, not ~s"
+                        ,[_OtherAccountId, AccountId, AuthAccountId]
+                       ),
+            Acc
     end.
 
 %%--------------------------------------------------------------------
