@@ -116,7 +116,7 @@ get_balance(DataJObj) ->
 -spec get_topup_amount(wh_json:object()) -> ne_binary().
 get_topup_amount(DataJObj) ->
     Amount = wht_util:units_to_dollars(
-               wh_json:get_integer_value(<<"amount">>, DataJObj)
+               wh_json:get_integer_value(<<"amount">>, DataJObj, 0)
               ),
     wht_util:pretty_print_dollars(Amount).
 
