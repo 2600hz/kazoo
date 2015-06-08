@@ -51,6 +51,7 @@
 
          ,update_default_template/0
          ,find_template/1, find_template/2
+         ,authority/1
         ]).
 
 -define(MY_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".port_requests">>).
