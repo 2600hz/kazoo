@@ -61,7 +61,8 @@ maybe_update_failover(#number{current_number_doc=CurrentJObj
     case wh_util:is_empty(Failover) of
         'true' ->
             N#number{features=sets:del_element(?FAILOVER_KEY, Features)};
-        'false' when NotChanged  -> N#number{features=sets:add_element(?FAILOVER_KEY, Features)};
+        'false' when NotChanged ->
+            N#number{features=sets:add_element(?FAILOVER_KEY, Features)};
         'false' ->
             wnm_number:activate_feature(?FAILOVER_KEY, N)
     end.
