@@ -150,10 +150,8 @@ handle_call({'request_float', Consumer, Broker}, _, State) ->
 handle_call({'request_sticky', Consumer, Broker}, _, State) ->
     {'reply', assign_or_reserve(Consumer, Broker, 'sticky'), State};
 handle_call({'release_handlers', Consumer}, _, State) ->
-    Pattern = #wh_amqp_assignment{consumer=Consumer, _='_'},
-    Res = release_handlers(ets:match_object(?TAB, Pattern, 1)),
     gen_server:cast(self(), {'release_assignments', Consumer}),
-   {'reply', Res, State};
+   {'reply', release_handlers(Consumer), State};
 handle_call(_Msg, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -870,7 +868,11 @@ unregister_channel_handlers(Channel) ->
     lager:debug("unregistered handlers for channel ~p", [Channel]).
 
    
--spec release_handlers({wh_amqp_assignments(), ets:continuation()} | '$end_of_table') -> 'ok'.
+-spec release_handlers({wh_amqp_assignments(), ets:continuation()} | '$end_of_table' | pid()) -> 'ok'.
+release_handlers(Consumer)
+  when is_pid(Consumer) ->
+    Pattern = #wh_amqp_assignment{consumer=Consumer, _='_'},
+    release_handlers(ets:match_object(?TAB, Pattern, 1));
 release_handlers('$end_of_table') -> 'ok';
 release_handlers({[#wh_amqp_assignment{channel=Channel}], Continuation})
   when is_pid(Channel) ->
