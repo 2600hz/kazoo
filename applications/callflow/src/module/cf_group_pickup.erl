@@ -189,7 +189,7 @@ pickup_event(Call, _Type, _Evt) ->
 find_channels(DeviceIds) ->
     lager:debug("finding channels for devices ids ~p", [DeviceIds]),
     Req = [{<<"Authorizing-IDs">>, DeviceIds}
-           ,{<<"Active-Only">>, 'true'}
+           ,{<<"Active-Only">>, 'false'}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case whapps_util:amqp_pool_collect(Req
