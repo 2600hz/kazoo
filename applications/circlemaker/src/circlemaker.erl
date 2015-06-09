@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(circlemaker).
 
--include_lib("whistle/include/wh_types.hrl").
+-include("circlemaker.hrl").
 
 -export([start_link/0
     ,start/0
@@ -75,10 +75,5 @@ start_deps() ->
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    _ = wapi_authz:declare_exchanges(),
-    _ = wapi_call:declare_exchanges(),
-    _ = wapi_route:declare_exchanges(),
-    _ = wapi_self:declare_exchanges(),
-    _ = wapi_dialplan:declare_exchanges(),
-    _ = wapi_notifications:declare_exchanges(),
+    wapi_aaa:declare_exchanges(),
     wapi_self:declare_exchanges().

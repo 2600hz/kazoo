@@ -15,8 +15,17 @@
 -export([start_link/0]).
 -export([init/1]).
 
-% TODO: make a cache
--define(CHILDREN, [?WORKER('cm_listener')]).
+%% Helper macro for declaring children of supervisor
+-define(POOL(N),  {N, {'poolboy', 'start_link', [[{'name', {'local', N}}
+                                                  ,{'worker_module', 'cm_worker'}
+                                                  ,{'size', whapps_config:get_integer(?CONFIG_CAT, <<"workers">>, 5)}
+                                                  ,{'max_overflow', 0}
+                                                ]]}
+                   ,'permanent', 5000, 'worker', ['poolboy']}).
+
+-define(CHILDREN, [?POOL(?WORKER_POOL)
+                   ,?WORKER('cm_pool_mgr')
+                   ,?WORKER('cm_listener')]).
 
 %% ===================================================================
 %% API functions

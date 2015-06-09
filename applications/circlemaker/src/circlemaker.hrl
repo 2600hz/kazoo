@@ -6,6 +6,9 @@
 
 -define(CIRCLEMAKER_CACHE, 'circlemaker_cache').
 
+-define(CONFIG_CAT, <<"circlemaker">>).
+-define(WORKER_POOL, 'circlemaker_worker_pool').
+
 -define(APP_VERSION, <<"1.0.0">>).
 -define(APP_NAME, <<"circlemaker">>).
 
