@@ -66,7 +66,7 @@ delete_modb(<<_:42/binary, "-", _:4/binary, _:2/binary>> = AccountModb) ->
     'ok' = couch_util:archive(AccountModb),
     _Deleted = couch_mgr:db_delete(AccountModb),
     io:format("    deleted: ~p~n", [_Deleted]),
-    timer:sleep(5000).
+    timer:sleep(5 * ?MILLISECONDS_IN_SECOND).
 
 -spec archive_modbs() -> 'no_return'.
 -spec archive_modbs(text()) -> 'no_return'.

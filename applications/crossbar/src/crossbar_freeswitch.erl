@@ -50,7 +50,7 @@
 -define(FS_REALM_TEMPLATES, [?FS_DIRECTORY_REALM]).
 -define(FS_ALL_TEMPLATES, [?FS_DIRECTORY, ?FS_DIALPLAN, ?FS_CHATPLAN, ?FS_DIRECTORY_REALM]).
 
--define(AUTHN_TIMEOUT, 5000).
+-define(AUTHN_TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
 
 -record(state, {config = 'undefined' :: api_binary(),
                 is_running = 'false' :: boolean(),

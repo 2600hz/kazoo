@@ -34,7 +34,7 @@
 -define(CHILD(Name, Mod, Args), fun('ecallmgr_fs_event_stream_sup' = N, M, A) ->
                                         {N, {M, 'start_link', A}, 'permanent', 'infinity', 'supervisor', [N]};
                                    (N, M, A) ->
-                                        {N, {M, 'start_link', A}, 'permanent', 6000, 'worker', [N]}
+                                        {N, {M, 'start_link', A}, 'permanent', 6 * ?MILLISECONDS_IN_SECOND, 'worker', [N]}
                                 end(Name, Mod, Args)).
 -define(CHILDREN, [<<"_node">>, <<"_authn">>, <<"_route">>, <<"_channel">>
                    ,<<"_config">>, <<"_resource">>, <<"_notify">>

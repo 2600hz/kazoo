@@ -178,7 +178,7 @@ maybe_start_plaintext(Dispatch) ->
         'false' -> lager:info("plaintext api support not enabled");
         'true' ->
             Port = whapps_config:get_integer(?CONFIG_CAT, <<"port">>, 8000),
-            ReqTimeout = whapps_config:get_integer(?CONFIG_CAT, <<"request_timeout_ms">>, 10000),
+            ReqTimeout = whapps_config:get_integer(?CONFIG_CAT, <<"request_timeout_ms">>, 10 * ?MILLISECONDS_IN_SECOND),
             Workers = whapps_config:get_integer(?CONFIG_CAT, <<"workers">>, 100),
 
             %% Name, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts
@@ -215,7 +215,7 @@ start_ssl(Dispatch) ->
             lager:debug("trying to start SSL API server"),
             _SslStarted = ssl:start(),
             lager:debug("starting SSL : ~p", [_SslStarted]),
-            ReqTimeout = whapps_config:get_integer(?CONFIG_CAT, <<"request_timeout_ms">>, 10000),
+            ReqTimeout = whapps_config:get_integer(?CONFIG_CAT, <<"request_timeout_ms">>, 10 * ?MILLISECONDS_IN_SECOND),
             Workers = whapps_config:get_integer(?CONFIG_CAT, <<"ssl_workers">>, 100),
 
             try cowboy:start_https('api_resource_ssl', Workers

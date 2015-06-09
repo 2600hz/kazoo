@@ -33,7 +33,7 @@
 
 -include("ecallmgr.hrl").
 
--define(TIMEOUT, 5000).
+-define(TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
 
 version(Node) ->
     version(Node, ?TIMEOUT).
@@ -137,7 +137,7 @@ bgapi(Node, Cmd, Args) ->
                           receive
                               {'bgok', JobId, _}=BgOk -> Self ! BgOk;
                               {'bgerror', JobId, _}=BgError -> Self ! BgError
-                          after 360000 ->
+                          after 360 * ?MILLISECONDS_IN_SECOND ->
                                   Self ! {'bgerror', JobId, 'timeout'}
                           end;
                       {'error', Reason} ->

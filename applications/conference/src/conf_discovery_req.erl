@@ -181,7 +181,7 @@ handle_resource_locked(Conference, Call, Srv) ->
                                {'error', 'timeout'}.
 wait_for_creation(Conference) ->
     lager:debug("checking if conference ~s has been created", [whapps_conference:id(Conference)]),
-    wait_for_creation(Conference, 8000).
+    wait_for_creation(Conference, 8 * ?MILLISECONDS_IN_SECOND).
 
 -spec wait_for_creation(whapps_conference:conference(), non_neg_integer()) ->
                                {'ok', wh_json:object()} |
@@ -193,7 +193,7 @@ wait_for_creation(Conference, After) ->
     case whapps_conference_command:search(Conference) of
         {'ok', _}=Ok -> Ok;
         {'error', _} ->
-            timer:sleep(1000),
+            timer:sleep(?MILLISECONDS_IN_SECOND),
             wait_for_creation(Conference, wh_util:decr_timeout(After, Start))
     end.
 

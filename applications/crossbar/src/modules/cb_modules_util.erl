@@ -166,7 +166,7 @@ pass_hashes(Username, Password) ->
 -spec update_mwi(api_binary(), ne_binary()) -> pid().
 update_mwi(OwnerId, AccountDb) ->
     spawn(fun() ->
-                  timer:sleep(1000),
+                  timer:sleep(?MILLISECONDS_IN_SECOND),
                   cf_util:unsolicited_owner_mwi_update(AccountDb, OwnerId)
           end).
 

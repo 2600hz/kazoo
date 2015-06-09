@@ -43,7 +43,7 @@
 -include("omnipresence.hrl").
 -include_lib("kazoo_etsmgr/include/kazoo_etsmgr.hrl").
 
--define(EXPIRE_SUBSCRIPTIONS, whapps_config:get_integer(?CONFIG_CAT, <<"expire_check_ms">>, 1000)).
+-define(EXPIRE_SUBSCRIPTIONS, whapps_config:get_integer(?CONFIG_CAT, <<"expire_check_ms">>, ?MILLISECONDS_IN_SECOND)).
 -define(EXPIRES_FUDGE, whapps_config:get_integer(?CONFIG_CAT, <<"expires_fudge_s">>, 20)).
 -define(EXPIRE_MESSAGE, 'clear_expired').
 -define(DEFAULT_EVENT, ?BLF_EVENT).
@@ -303,7 +303,7 @@ handle_info('check_sync', #state{sync_nodes=[]} = State) ->
     omnipresence_shared_listener:start_listener(),
     {'noreply', State};
 handle_info('check_sync', State) ->
-    erlang:send_after(5000, self(), 'check_sync'),
+    erlang:send_after(5 * ?MILLISECONDS_IN_SECOND, self(), 'check_sync'),
     {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),

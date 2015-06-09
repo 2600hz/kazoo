@@ -343,9 +343,9 @@ get_update_seq(#db{server=Server, name=DbName}) ->
 -spec update_since(wh_proplist(), #gen_changes_state{}) -> wh_proplist().
 update_since(Options, #gen_changes_state{last_seq=[SeqNumber, SeqHash]}) ->
     Seq = <<"[", (wh_util:to_binary(SeqNumber))/binary, ",\"", SeqHash/binary, "\"]">>,
-    [{since, wh_util:to_list(Seq)} | Options];
+    [{'since', wh_util:to_list(Seq)} | Options];
 update_since(Options, #gen_changes_state{last_seq=Seq}) ->
-    [{since, Seq} | Options].
+    [{'since', Seq} | Options].
 
 -spec random_wait() -> 10000..120000.
-random_wait() -> crypto:rand_uniform(10000, 120000).
+random_wait() -> crypto:rand_uniform(10 * ?MILLISECONDS_IN_SECOND, 120 * ?MILLISECONDS_IN_SECOND).

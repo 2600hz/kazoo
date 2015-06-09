@@ -152,7 +152,11 @@ send_originate_req([], _Call) ->
     lager:debug("no origination proprs, skipping"),
     {'error', 'no_endpoints'};
 send_originate_req(OriginateProps, _Call) ->
-    whapps_util:amqp_pool_collect(OriginateProps, fun wapi_resource:publish_originate_req/1, fun is_resp/1, 20000).
+    whapps_util:amqp_pool_collect(OriginateProps
+                                  ,fun wapi_resource:publish_originate_req/1
+                                  ,fun is_resp/1
+                                  ,20 * ?MILLISECONDS_IN_SECOND
+                                 ).
 
 -spec is_resp(wh_json:objects() | wh_json:object()) -> boolean().
 is_resp([JObj|_]) ->

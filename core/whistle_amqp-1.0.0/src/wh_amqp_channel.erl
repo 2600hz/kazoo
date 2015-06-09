@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -34,7 +34,7 @@
 
 -include("amqp_util.hrl").
 
--define(ASSIGNMENT_TIMEOUT, 5000).
+-define(ASSIGNMENT_TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
 
 -type consumer_pid() :: pid().
 -export_type([consumer_pid/0]).
@@ -100,7 +100,7 @@ release(Pid) when is_pid(Pid) ->
 close(Channel) -> close(Channel, []).
 
 close(Channel, []) when is_pid(Channel) ->
-    _ = (catch gen_server:call(Channel, {'close', 200, <<"Goodbye">>}, 5000)),
+    _ = (catch gen_server:call(Channel, {'close', 200, <<"Goodbye">>}, 5 * ?MILLISECONDS_IN_SECOND)),
     lager:debug("closed amqp channel ~p", [Channel]);
 close(_, []) -> 'ok';
 close(Channel, [#'basic.consume'{consumer_tag=CTag}|Commands]) when is_pid(Channel) ->

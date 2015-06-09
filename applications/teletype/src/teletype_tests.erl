@@ -67,7 +67,7 @@ voicemail_to_email(AccountId, VMBox) ->
            ],
     whapps_util:amqp_pool_collect(Prop
                                   ,fun wapi_notifications:publish_voicemail/1
-                                  ,5000
+                                  ,5 * ?MILLISECONDS_IN_SECOND
                                  ).
 skel(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
@@ -126,7 +126,7 @@ voicemail_full(AccountId, Box) ->
             ],
     wh_amqp_worker:call_collect(Props
                                 ,fun wapi_notifications:publish_voicemail_full/1
-                                ,5000
+                                ,5 * ?MILLISECONDS_IN_SECOND
                                ).
 
 fax_inbound_to_email(AccountId) ->
@@ -158,7 +158,7 @@ fax_inbound_to_email(AccountId, Fax) ->
                  | notify_fields(Fax)
                 ]),
     lager:debug("publishing fax inbound to email req for ~s/~s", [AccountId, wh_json:get_value(<<"_id">>, Fax)]),
-    wh_amqp_worker:call_collect(Message, fun wapi_notifications:publish_fax_inbound/1, 2000).
+    wh_amqp_worker:call_collect(Message, fun wapi_notifications:publish_fax_inbound/1, 2 * ?MILLISECONDS_IN_SECOND).
 
 -spec notify_fields(wh_json:object()) -> wh_proplist().
 notify_fields(JObj) ->

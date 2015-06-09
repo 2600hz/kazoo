@@ -663,7 +663,7 @@ maybe_collect_worker_channel(Pid, Channels) ->
         {Pid, {'error', _}} -> Channels;
         {Pid, {'ok', Channel}} -> [Channel|Channels]
     after
-        2000 -> Channels
+        2 * ?MILLISECONDS_IN_SECOND -> Channels
     end.
 
 -spec build_channel(bridge_endpoint() | wh_json:object()) ->
@@ -1131,7 +1131,7 @@ maybe_add_expires_deviation_ms('undefined') -> 'undefined';
 maybe_add_expires_deviation_ms(Expires) when not is_integer(Expires) ->
     maybe_add_expires_deviation_ms(wh_util:to_integer(Expires));
 maybe_add_expires_deviation_ms(Expires) ->
-    maybe_add_expires_deviation(Expires) * 1000.
+    maybe_add_expires_deviation(Expires) * ?MILLISECONDS_IN_SECOND.
 
 -spec get_dial_separator(api_object() | ne_binary(), wh_json:objects()) -> ne_binary().
 get_dial_separator(?DIAL_METHOD_SIMUL, [_|T]) when T =/= [] -> ?SEPARATOR_SIMULTANEOUS;

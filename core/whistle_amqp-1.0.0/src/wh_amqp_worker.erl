@@ -157,7 +157,7 @@ maybe_server_confirms(Args) ->
     end.
 
 -spec default_timeout() -> 2000.
-default_timeout() -> 2000.
+default_timeout() -> 2 * ?MILLISECONDS_IN_SECOND.
 
 -type request_return() :: {'ok', wh_json:object() | wh_json:objects()} |
                           {'returned', wh_json:object(), wh_json:object()} |

@@ -312,7 +312,7 @@ build_bridge_request(ParkedCallId, Call, Q) ->
                             ,{<<"Presence-ID">>, PresenceId}
                             ,{<<"Account-ID">>, AcctId}
                             ,{<<"Account-Realm">>, whapps_call:from_realm(Call)}
-                            ,{<<"Timeout">>, 10000}
+                            ,{<<"Timeout">>, 10 * ?MILLISECONDS_IN_SECOND}
                             ,{<<"From-URI-Realm">>, whapps_call:from_realm(Call)}
                             | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
                            ]).
@@ -361,7 +361,7 @@ build_offnet_request(Exten, Call, Q) ->
                             ,{<<"Account-ID">>, AcctId}
                             ,{<<"Call-ID">>, CallId}
                             ,{<<"Account-Realm">>, whapps_call:from_realm(Call)}
-                            ,{<<"Timeout">>, 10000}
+                            ,{<<"Timeout">>, 10 * ?MILLISECONDS_IN_SECOND}
                             ,{<<"To-DID">>, Exten}
                             ,{<<"Format-From-URI">>, <<"true">>}
                             ,{<<"From-URI-Realm">>, whapps_call:from_realm(Call)}

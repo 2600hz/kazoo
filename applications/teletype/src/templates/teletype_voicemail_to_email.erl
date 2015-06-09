@@ -296,8 +296,8 @@ build_voicemail_data(DataJObj) ->
 -spec pretty_print_length(api_object() | pos_integer()) -> ne_binary().
 pretty_print_length('undefined') -> <<"00:00">>;
 pretty_print_length(Ms) when is_integer(Ms) ->
-    Seconds = round(Ms / 1000) rem 60,
-    Minutes = trunc(Ms / (1000*60)) rem 60,
+    Seconds = round(Ms / ?MILLISECONDS_IN_SECOND) rem 60,
+    Minutes = trunc(Ms / (?MILLISECONDS_IN_MINUTE)) rem 60,
     wh_util:to_binary(io_lib:format("~2..0w:~2..0w", [Minutes, Seconds]));
 pretty_print_length(JObj) ->
     pretty_print_length(wh_json:get_integer_value(<<"voicemail_length">>, JObj)).

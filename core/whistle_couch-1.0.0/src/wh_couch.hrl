@@ -5,7 +5,7 @@
 -include_lib("whistle/include/kz_system_config.hrl").
 -include_lib("couchbeam/include/couchbeam.hrl").
 
--define(TIMEOUT, 1000 * 60 * 60). %% check every hour
+-define(TIMEOUT, ?MILLISECONDS_IN_HOUR). %% check every hour
 
 -define(COMPACT_THRESHOLD, 500).
 -define(MIN_DISK_SIZE, 131072).

@@ -63,7 +63,7 @@
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 -define(SERVER, ?MODULE).
--define(EXPIRE_CHECK, 60000).
+-define(EXPIRE_CHECK, 60 * ?MILLISECONDS_IN_SECOND).
 
 -record(node, {node :: atom()
                ,cookie :: atom()
@@ -115,9 +115,16 @@ add(Node, Opts) when is_list(Opts) -> add(Node, erlang:get_cookie(), Opts);
 add(Node, Cookie) when is_atom(Cookie) -> add(Node, Cookie, [{'cookie', Cookie}]).
 
 add(Node, Cookie, Opts) ->
-    gen_server:call(?MODULE, {'add_fs_node', Node, Cookie, [{'cookie', Cookie}
-                                                            | props:delete('cookie', Opts)
-                                                           ]}, 60000).
+    gen_server:call(?MODULE
+                    ,{'add_fs_node'
+                      ,Node
+                      ,Cookie
+                      ,[{'cookie', Cookie}
+                        | props:delete('cookie', Opts)
+                       ]
+                     }
+                    ,60 * ?MILLISECONDS_IN_SECOND
+                   ).
 
 -spec nodeup(atom()) -> 'ok'.
 nodeup(Node) -> gen_server:cast(?MODULE, {'fs_nodeup', Node}).
@@ -757,7 +764,7 @@ start_preconfigured_servers() ->
     case ecallmgr_config:get(<<"fs_nodes">>) of
         [] ->
             lager:info("no preconfigured servers available. Is the sysconf whapp running?"),
-            timer:sleep(5000),
+            timer:sleep(5 * ?MILLISECONDS_IN_SECOND),
             _ = ecallmgr_config:flush(<<"fs_nodes">>),
             start_preconfigured_servers();
         Nodes when is_list(Nodes) ->
@@ -766,12 +773,12 @@ start_preconfigured_servers() ->
             'ok';
         'undefined' ->
             lager:debug("failed to receive a response for node configs"),
-            timer:sleep(5000),
+            timer:sleep(5 * ?MILLISECONDS_IN_SECOND),
             _ = ecallmgr_config:flush(<<"fs_nodes">>),
             start_preconfigured_servers();
         _E ->
             lager:debug("recieved a non-list for fs_nodes: ~p", [_E]),
-            timer:sleep(5000),
+            timer:sleep(5 * ?MILLISECONDS_IN_SECOND),
             _ = ecallmgr_config:flush(<<"fs_nodes">>),
             start_preconfigured_servers()
     end.

@@ -13,7 +13,7 @@
 
 -export([handle/2]).
 
--define(DEFAULT_EVENT_WAIT, 10000).
+-define(DEFAULT_EVENT_WAIT, 10 * ?MILLISECONDS_IN_SECOND).
 
 %%--------------------------------------------------------------------
 %% @public

@@ -281,7 +281,7 @@ start_timer(Expiry, Msg) ->
 start_cleanup_timer() ->
     Expiry = whapps_config:get_integer(?CONFIG_CAT, <<"cleanup_timer">>, ?SECONDS_IN_DAY),
     lager:debug("starting cleanup timer for ~b s", [Expiry]),
-    start_timer(Expiry*1000, 'cleanup').
+    start_timer(Expiry * ?MILLISECONDS_IN_SECOND, 'cleanup').
 
 -spec start_minute_timer() -> reference().
 start_minute_timer() ->

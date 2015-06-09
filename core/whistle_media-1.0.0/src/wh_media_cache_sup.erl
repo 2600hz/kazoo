@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -25,10 +25,10 @@
 -define(SERVER, ?MODULE).
 
 -define(CHILD(Name, Id, Doc, Attachment), {Name, {'wh_media_file_cache', 'start_link', [Id, Doc, Attachment]}
-                                           ,'temporary', 5000, 'worker', ['wh_media_file_cache']}
+                                           ,'temporary', 5 * ?MILLISECONDS_IN_SECOND, 'worker', ['wh_media_file_cache']}
        ).
 -define(CHILD(Name, Text, JObj), {Name, {'wh_media_tts_cache', 'start_link', [Text, JObj]}
-                                  ,'temporary', 5000, 'worker', ['wh_media_tts_cache']}
+                                  ,'temporary', 5 * ?MILLISECONDS_IN_SECOND, 'worker', ['wh_media_tts_cache']}
        ).
 
 %%%===================================================================

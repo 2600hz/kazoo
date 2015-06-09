@@ -190,7 +190,7 @@ maybe_retry_upload(ID, AttachmentName, Contents, Options, Retries) ->
             case wh_doc:attachment(JObj, AttachmentName) of
                 'undefined' ->
                     io:format("  attachment does not appear on the document, retrying after a pause~n"),
-                    timer:sleep(1000),
+                    timer:sleep(?MILLISECONDS_IN_SECOND),
                     upload_prompt(ID, AttachmentName, Contents, Options, Retries-1);
                 _Attachment ->
                     io:format("  attachment appears to have uploaded successfully!")

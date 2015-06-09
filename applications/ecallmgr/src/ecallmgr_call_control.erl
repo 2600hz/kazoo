@@ -77,7 +77,7 @@
 -include("ecallmgr.hrl").
 
 -define(SERVER, ?MODULE).
--define(KEEP_ALIVE, 120000). %% after hangup, keep alive for 2 minutes
+-define(KEEP_ALIVE, 2 * ?MILLISECONDS_IN_MINUTE). %% after hangup, keep alive for 2 minutes
 
 -type insert_at_options() :: 'now' | 'head' | 'tail' | 'flush'.
 
@@ -156,11 +156,11 @@ stop(Srv) ->
 
 -spec callid(pid()) -> ne_binary().
 callid(Srv) ->
-    gen_listener:call(Srv, 'callid', 1000).
+    gen_listener:call(Srv, 'callid', ?MILLISECONDS_IN_SECOND).
 
 -spec node(pid()) -> ne_binary().
 node(Srv) ->
-    gen_listener:call(Srv, 'node', 1000).
+    gen_listener:call(Srv, 'node', ?MILLISECONDS_IN_SECOND).
 
 -spec hostname(pid()) -> binary().
 hostname(Srv) ->
@@ -174,7 +174,7 @@ queue_name(_) -> 'undefined'.
 
 -spec other_legs(pid()) -> ne_binaries().
 other_legs(Srv) ->
-    gen_listener:call(Srv, 'other_legs', 1000).
+    gen_listener:call(Srv, 'other_legs', ?MILLISECONDS_IN_SECOND).
 
 -spec event_execute_complete(api_pid(), ne_binary(), ne_binary()) -> 'ok'.
 event_execute_complete('undefined', _CallId, _App) -> 'ok';

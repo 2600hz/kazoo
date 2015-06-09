@@ -75,7 +75,7 @@
        ).
 
 -define(DEFAULT_TARGET_TIMEOUT
-        ,whapps_config:get_integer(?CONFIG_CAT, [<<"transfer">>, <<"default_target_timeout_ms">>], 20000)
+        ,whapps_config:get_integer(?CONFIG_CAT, [<<"transfer">>, <<"default_target_timeout_ms">>], 20 * ?MILLISECONDS_IN_SECOND)
        ).
 
 -define(DEFAULT_RINGBACK, whapps_config:get(<<"ecallmgr">>, <<"default_ringback">>)).
@@ -264,7 +264,7 @@ attended_wait(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
              ) ->
     lager:debug("target ~s hungup before bridging to transferor", [Target]),
     ?WSD_NOTE(Target, 'right', <<"hungup">>),
-    Ref = erlang:start_timer(1000, self(), 'purgatory'),
+    Ref = erlang:start_timer(?MILLISECONDS_IN_SECOND, self(), 'purgatory'),
     {'next_state', 'attended_wait', State#state{purgatory_ref=Ref}};
 attended_wait(?EVENT(TargetA, <<"originate_uuid">>, Evt)
               ,#state{target_a_leg=TargetA
@@ -336,7 +336,7 @@ attended_wait(?EVENT(TargetA, <<"CHANNEL_DESTROY">>, _Evt)
                       ,purgatory_ref='undefined'
                      }=State
              ) ->
-    Ref = erlang:start_timer(1000, self(), 'purgatory'),
+    Ref = erlang:start_timer(?MILLISECONDS_IN_SECOND, self(), 'purgatory'),
     lager:debug("target 'a' ~s has gone done (~s), going to purgatory in ~p"
                 ,[TargetA, kz_call_event:hangup_cause(_Evt), Ref]
                ),
@@ -481,7 +481,7 @@ partial_wait(?EVENT(TargetA, <<"CHANNEL_DESTROY">>, _Evt)
                      ,purgatory_ref='undefined'
                     }=State
             ) ->
-    Ref = erlang:start_timer(1000, self(), 'purgatory'),
+    Ref = erlang:start_timer(?MILLISECONDS_IN_SECOND, self(), 'purgatory'),
     lager:debug("target 'a' ~s has gone done (~s), going to purgatory in ~p"
                 ,[TargetA, kz_call_event:hangup_cause(_Evt), Ref]
                ),
@@ -491,7 +491,7 @@ partial_wait(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
                      ,purgatory_ref='undefined'
                     }=State
             ) ->
-    Ref = erlang:start_timer(1000, self(), 'purgatory'),
+    Ref = erlang:start_timer(?MILLISECONDS_IN_SECOND, self(), 'purgatory'),
     {'next_state', 'partial_wait', State#state{purgatory_ref=Ref}};
 partial_wait(?EVENT(Target, <<"CHANNEL_ANSWER">>, _Evt)
              ,#state{target=Target}=State
@@ -729,7 +729,7 @@ finished(?EVENT(Transferor, <<"CHANNEL_BRIDGE">>, Evt)
         _CallId ->
             ?WSD_EVT(_CallId, Transferor, <<"bridged">>),
             lager:debug("transferor bridged to unknown callid ~s", [_CallId]),
-            {'next_state', 'finished', State, 5000}
+            {'next_state', 'finished', State, 5 * ?MILLISECONDS_IN_SECOND}
     end;
 finished(?EVENT(Transferee, <<"CHANNEL_BRIDGE">>, Evt)
          ,#state{transferee=Transferee
@@ -749,7 +749,7 @@ finished(?EVENT(Transferee, <<"CHANNEL_BRIDGE">>, Evt)
         _CallId ->
             ?WSD_EVT(_CallId, Transferee, <<"bridged">>),
             lager:debug("transferee bridged to unknown callid ~s", [_CallId]),
-            {'next_state', 'finished', State, 5000}
+            {'next_state', 'finished', State, 5 * ?MILLISECONDS_IN_SECOND}
     end;
 finished(?EVENT(Target, <<"CHANNEL_BRIDGE">>, Evt)
          ,#state{target=Target
@@ -764,7 +764,7 @@ finished(?EVENT(Target, <<"CHANNEL_BRIDGE">>, Evt)
         _CallId ->
             ?WSD_EVT(Target, _CallId, <<"bridged">>),
             lager:debug("target ~s bridged to ~s", [Target, _CallId]),
-            {'next_state', 'finished', State, 5000}
+            {'next_state', 'finished', State, 5 * ?MILLISECONDS_IN_SECOND}
     end;
 finished(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
          ,#state{target=Target}=State
@@ -777,7 +777,7 @@ finished(?EVENT(Transferor, <<"CHANNEL_DESTROY">>, _Evt)
         ) ->
     ?WSD_NOTE(Transferor, 'right', <<"transferor hungup">>),
     lager:info("transferor ~s has hungup: ~s", [Transferor, kz_call_event:hangup_cause(_Evt)]),
-    {'next_state', 'finished', State, 5000};
+    {'next_state', 'finished', State, 5 * ?MILLISECONDS_IN_SECOND};
 finished(?EVENT(Transferee, <<"CHANNEL_DESTROY">>, _Evt)
          ,#state{transferee=Transferee
                  ,target_call=TargetCall
@@ -804,7 +804,7 @@ finished('timeout', State) ->
     {'stop', 'normal', State};
 finished(_Msg, State) ->
     lager:info("unhandled message ~p", [_Msg]),
-    {'next_state', 'finished', State, 5000}.
+    {'next_state', 'finished', State, 5 * ?MILLISECONDS_IN_SECOND}.
 
 finished(_Req, _From, State) ->
     {'next_state', 'finished', State}.
@@ -874,7 +874,7 @@ takeback(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
     lager:debug("target ~s has ended: ~s", [Target, kz_call_event:hangup_cause(_Evt)]),
     ?WSD_NOTE(Target, 'right', <<"hungup">>),
     connect_to_transferee(Call),
-    {'next_state', 'takeback', State, 5000};
+    {'next_state', 'takeback', State, 5 * ?MILLISECONDS_IN_SECOND};
 takeback(?EVENT(TargetA, <<"CHANNEL_DESTROY">>, _Evt)
          ,#state{target_a_leg=TargetA
                  ,call=Call
@@ -883,7 +883,7 @@ takeback(?EVENT(TargetA, <<"CHANNEL_DESTROY">>, _Evt)
     lager:debug("target 'a' ~s has ended: ~s", [TargetA, kz_call_event:hangup_cause(_Evt)]),
     ?WSD_NOTE(TargetA, 'right', <<"hungup">>),
     connect_to_transferee(Call),
-    {'next_state', 'takeback', State, 5000};
+    {'next_state', 'takeback', State, 5 * ?MILLISECONDS_IN_SECOND};
 takeback(?EVENT(TargetB, <<"CHANNEL_DESTROY">>, _Evt)
          ,#state{target_b_leg=TargetB}=State
         ) ->

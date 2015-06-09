@@ -374,7 +374,7 @@ init([]) ->
     process_flag('trap_exit', 'true'),
     lager:debug("starting new ecallmgr registrar"),
     _ = ets:new(?MODULE, ['set', 'protected', 'named_table', {'keypos', #registration.id}]),
-    erlang:send_after(2000, self(), 'expire'),
+    erlang:send_after(2 * ?MILLISECONDS_IN_SECOND, self(), 'expire'),
 
     gproc:reg({'p', 'l', ?REGISTER_SUCCESS_REG}),
 
@@ -461,7 +461,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info('expire', State) ->
     _ = expire_objects(),
-    _ = erlang:send_after(2000, self(), 'expire'),
+    _ = erlang:send_after(2 * ?MILLISECONDS_IN_SECOND, self(), 'expire'),
     {'noreply', State};
 handle_info(?REGISTER_SUCCESS_MSG(Node, Props), State) ->
     spawn(?MODULE, 'handle_reg_success', [Node, Props]),
@@ -593,7 +593,7 @@ query_for_registration(Reg) ->
     wh_amqp_worker:call_collect(Reg
                                 ,fun wapi_registration:publish_query_req/1
                                 ,{'ecallmgr', fun wapi_registration:query_resp_v/1, 'true'}
-                                ,2000
+                                ,2 * ?MILLISECONDS_IN_SECOND
                                ).
 
 -spec maybe_fetch_original_contact(ne_binary(), ne_binary()) ->
@@ -617,7 +617,7 @@ fetch_original_contact(Username, Realm) ->
     case wh_amqp_worker:call_collect(Reg
                                      ,fun wapi_registration:publish_query_req/1
                                      ,{'ecallmgr', fun wapi_registration:query_resp_v/1, 'true'}
-                                     ,2000
+                                     ,2 * ?MILLISECONDS_IN_SECOND
                                     )
     of
         {'ok', JObjs} ->

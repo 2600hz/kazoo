@@ -680,7 +680,7 @@ max_length(Args, Acc) ->
 -spec message_ttl(wh_proplist(), amqp_properties()) -> amqp_properties().
 message_ttl(Args, Acc) ->
     case props:get_value(<<"x-message-ttl">>, Args) of
-        'undefined' -> [{<<"x-message-ttl">>, 'signedint', 60000}|Acc];
+        'undefined' -> [{<<"x-message-ttl">>, 'signedint', 60 * ?MILLISECONDS_IN_SECOND}|Acc];
         'infinity' -> props:delete(<<"x-message-ttl">>, Acc);
         Value ->
             Acc1 = props:delete(<<"x-message-ttl">>, Acc),

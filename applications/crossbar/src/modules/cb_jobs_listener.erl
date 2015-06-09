@@ -409,7 +409,7 @@ job_modb(AccountId, <<Year:4/binary, Month:1/binary, "-", _/binary>>) ->
 
 -spec start_timer() -> reference().
 start_timer() ->
-    erlang:start_timer(?RECOVERY_TIMEOUT_S * 1000
+    erlang:start_timer(?RECOVERY_TIMEOUT_S * ?MILLISECONDS_IN_SECOND
                        ,self()
                        ,?RECOVERY_MESSAGE
                       ).

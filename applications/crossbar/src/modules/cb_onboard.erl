@@ -371,7 +371,7 @@ create_vmbox(JObj, Iteration, Context, {Pass, Fail}) ->
                   ,fun(J) ->
                            case wh_json:get_ne_value(<<"mailbox">>, J) of
                                'undefined' ->
-                                   StartExten = whapps_config:get_integer(?OB_CONFIG_CAT, <<"default_vm_start_exten">>, 3000),
+                                   StartExten = whapps_config:get_integer(?OB_CONFIG_CAT, <<"default_vm_start_exten">>, 3 * ?MILLISECONDS_IN_SECOND),
                                    wh_json:set_value(<<"mailbox">>, wh_util:to_binary(StartExten + Iteration), J);
                                _ ->
                                    J
@@ -428,7 +428,7 @@ create_exten_callflow(JObj, Iteration, Context, {Pass, Fail}) ->
                                [] ->
                                    StartExten = whapps_config:get_integer(?OB_CONFIG_CAT
                                                                           ,<<"default_callflow_start_exten">>
-                                                                              ,2000),
+                                                                              ,2 * ?MILLISECONDS_IN_SECOND),
                                    wh_json:set_value(<<"numbers">>, [wh_util:to_binary(StartExten + Iteration)], J);
                                Numbers -> wh_json:set_value(<<"numbers">>, Numbers, J)
                            end

@@ -40,7 +40,7 @@
 
 -define(SIGNUP_CONF, [code:lib_dir('crossbar', 'priv'), "/signup/signup.conf"]).
 
--record(state, {cleanup_interval = 18000 :: integer() %% once every 5 hours (in seconds)
+-record(state, {cleanup_interval = 5 * ?SECONDS_IN_HOUR :: integer() %% once every 5 hours (in seconds)
                 ,signup_lifespan = ?SECONDS_IN_DAY :: integer() %% 24 hours (in seconds)
                 ,register_cmd = 'undefined' :: 'undefined' | atom()
                 ,activation_email_plain = 'undefined' :: 'undefined' | atom()
@@ -79,7 +79,7 @@ init_it() ->
     cleanup_loop(State).
 
 cleanup_loop(#state{cleanup_interval=CleanupInterval}=State) ->
-    Wait = CleanupInterval * 1000,
+    Wait = CleanupInterval * ?MILLISECONDS_IN_SECOND,
     receive
         {'send_activation_email', Context} ->
             _ = send_activation_email(Context, State),

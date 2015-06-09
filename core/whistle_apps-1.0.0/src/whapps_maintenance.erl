@@ -64,7 +64,7 @@
 %%--------------------------------------------------------------------
 -spec rebuild_token_auth() -> 'ok'.
 rebuild_token_auth() ->
-    rebuild_token_auth(5000).
+    rebuild_token_auth(5 * ?MILLISECONDS_IN_SECOND).
 
 -spec rebuild_token_auth(text() | integer()) -> 'ok'.
 rebuild_token_auth(Pause) ->
@@ -81,7 +81,7 @@ rebuild_token_auth(Pause) ->
 %%--------------------------------------------------------------------
 -spec migrate() -> 'no_return'.
 migrate() ->
-    migrate(2000).
+    migrate(2 * ?MILLISECONDS_IN_SECOND).
 
 -spec migrate(text() | integer()) -> 'no_return'.
 migrate(Pause) ->
@@ -137,7 +137,7 @@ blocking_refresh(Pause) ->
 -spec refresh(ne_binaries(), non_neg_integer(), non_neg_integer()) -> 'no_return'.
 refresh() ->
     Databases = get_databases(),
-    refresh(Databases, 2000).
+    refresh(Databases, 2 * ?MILLISECONDS_IN_SECOND).
 
 refresh(Databases, Pause) ->
     Total = length(Databases),
@@ -933,17 +933,17 @@ purge_doc_type([Type|Types], Account) ->
     _ = purge_doc_type(Type, Account),
     purge_doc_type(Types
                    ,Account
-                   ,whapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, 1000)
+                   ,whapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, ?MILLISECONDS_IN_SECOND)
                   );
 purge_doc_type(Type, Account) when not is_binary(Type) ->
     purge_doc_type(wh_util:to_binary(Type)
                    ,Account
-                   ,whapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, 1000)
+                   ,whapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, ?MILLISECONDS_IN_SECOND)
                   );
 purge_doc_type(Type, Account) when not is_binary(Account) ->
     purge_doc_type(Type
                    ,wh_util:to_binary(Account)
-                   ,whapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, 1000)
+                   ,whapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, ?MILLISECONDS_IN_SECOND)
                   ).
 
 purge_doc_type(Type, Account, ChunkSize) ->

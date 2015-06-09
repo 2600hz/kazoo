@@ -21,7 +21,7 @@
 
 -include("ecallmgr.hrl").
 
--define(DEFAULT_USER_CACHE_TIME_IN_MS, 3600000). %% 1 hour
+-define(DEFAULT_USER_CACHE_TIME_IN_MS, ?MILLISECONDS_IN_HOUR). %% 1 hour
 
 -spec acl_xml(wh_json:object()) -> {'ok', iolist()}.
 acl_xml(AclsJObj) ->

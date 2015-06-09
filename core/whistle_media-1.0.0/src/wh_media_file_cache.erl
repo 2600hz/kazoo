@@ -27,7 +27,7 @@
 
 -include("whistle_media.hrl").
 
--define(TIMEOUT_LIFETIME, 600000).
+-define(TIMEOUT_LIFETIME, 600 * ?MILLISECONDS_IN_SECOND).
 -define(TIMEOUT_MESSAGE, {'$wh_media_file_cache', 'file_timeout'}).
 
 -record(state, {

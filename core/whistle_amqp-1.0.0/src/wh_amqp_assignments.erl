@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -32,7 +32,7 @@
 -include("amqp_util.hrl").
 
 -define(TAB, ?MODULE).
--define(SERVER_RETRY_PERIOD, 30000).
+-define(SERVER_RETRY_PERIOD, 30 * ?MILLISECONDS_IN_SECOND).
 -record(state, {brokers = ordsets:new()}).
 
 %%%===================================================================
@@ -122,7 +122,7 @@ release(Consumer) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    put(callid, ?LOG_SYSTEM_ID),
+    wh_util:put_callid(?MODULE),
     _ = ets:new(?TAB, ['named_table'
                        ,{'keypos', #wh_amqp_assignment.timestamp}
                        ,'protected'
@@ -761,7 +761,7 @@ maybe_defer_reassign(#wh_amqp_assignment{}=Assignment
                     ,{'shutdown',{'server_initiated_close', 404, _Msg}}) ->
      lager:debug("defer channel reassign for ~p ms", [?SERVER_RETRY_PERIOD]),
      spawn(fun() ->
-                   timer:sleep(?SERVER_RETRY_PERIOD),                   
+                   timer:sleep(?SERVER_RETRY_PERIOD),
                    gen_server:cast(?MODULE, {'maybe_defer_reassign', Assignment})
            end);
 maybe_defer_reassign(#wh_amqp_assignment{timestamp=Timestamp
@@ -867,7 +867,7 @@ unregister_channel_handlers(Channel) ->
     _ = (catch amqp_channel:unregister_flow_handler(Channel)),
     lager:debug("unregistered handlers for channel ~p", [Channel]).
 
-   
+
 -spec release_handlers({wh_amqp_assignments(), ets:continuation()} | '$end_of_table' | pid()) -> 'ok'.
 release_handlers(Consumer)
   when is_pid(Consumer) ->

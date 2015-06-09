@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -69,7 +69,7 @@ normalize_media(FromFormat, ToFormat, FileContents, Options) ->
         try open_port({'spawn', wh_util:to_list(Command)}, PortOptions) of
             Port ->
                 lager:debug("opened port ~p to sox with '~s'", [Port, Command]),
-                do_normalize_media(FileContents, Port, props:get_integer_value('timeout', Options, 20000))
+                do_normalize_media(FileContents, Port, props:get_integer_value('timeout', Options, 20 * ?MILLISECONDS_IN_SECOND))
         catch
             _E:_R ->
                 lager:debug("failed to open port with '~s': ~s: ~p", [Command, _E, _R]),

@@ -77,7 +77,7 @@ wait_for_connection() ->
         _ -> 'ok'
     catch
         'error':{'badmatch','$end_of_table'} ->
-            timer:sleep(random:uniform(1000) + 100),
+            timer:sleep(random:uniform(?MILLISECONDS_IN_SECOND) + 100),
             wait_for_connection()
     end.
 

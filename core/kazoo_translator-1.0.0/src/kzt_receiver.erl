@@ -33,7 +33,7 @@
                   }).
 -type dial_req() :: #dial_req{}.
 
--define(DEFAULT_EVENT_WAIT, 10000). % 10s or 10000ms
+-define(DEFAULT_EVENT_WAIT, 10 * ?MILLISECONDS_IN_SECOND). % 10s or 10000ms
 
 -type collect_dtmfs_return() :: {'ok', whapps_call:call()} |
                                 {'ok', 'timeout', whapps_call:call()} |
@@ -277,8 +277,8 @@ wait_for_offnet(Call, DialProps) ->
 
     CollectDTMF = props:get_is_true('collect_dtmf', DialProps, 'false'),
 
-    CallTimeLimit = kzt_util:get_call_time_limit(Call) * 1000,
-    CallTimeout = kzt_util:get_call_timeout(Call) * 1000,
+    CallTimeLimit = kzt_util:get_call_time_limit(Call) * ?MILLISECONDS_IN_SECOND,
+    CallTimeout = kzt_util:get_call_timeout(Call) * ?MILLISECONDS_IN_SECOND,
 
     lager:debug("limit: ~p s timeout: ~p s"
                 ,[kzt_util:get_call_time_limit(Call)
@@ -319,8 +319,8 @@ wait_for_conference(Call) ->
     HangupDTMF = kzt_util:get_hangup_dtmf(Call),
     RecordCall = kzt_util:get_record_call(Call),
 
-    CallTimeLimit = kzt_util:get_call_time_limit(Call) * 1000,
-    CallTimeout = kzt_util:get_call_timeout(Call) * 1000,
+    CallTimeLimit = kzt_util:get_call_time_limit(Call) * ?MILLISECONDS_IN_SECOND,
+    CallTimeout = kzt_util:get_call_timeout(Call) * ?MILLISECONDS_IN_SECOND,
 
     wait_for_conference_events(#dial_req{call=Call
                                          ,hangup_dtmf=HangupDTMF

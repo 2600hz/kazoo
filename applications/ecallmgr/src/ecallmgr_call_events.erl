@@ -16,7 +16,7 @@
 
 -define(EVENT_CAT, <<"call_event">>).
 -define(MAX_FAILED_NODE_CHECKS, 10).
--define(NODE_CHECK_PERIOD, 1000).
+-define(NODE_CHECK_PERIOD, ?MILLISECONDS_IN_SECOND).
 
 -export([start_link/2]).
 -export([graceful_shutdown/2]).
@@ -119,10 +119,10 @@ listen_for_other_leg(Node, UUID, [_|_] = Events) ->
     lager:debug("sent msg to ~s to bind for b leg events ~p", [UUID, Events]).
 
 -spec callid(pid()) -> ne_binary().
-callid(Srv) -> gen_listener:call(Srv, 'callid', 1000).
+callid(Srv) -> gen_listener:call(Srv, 'callid', ?MILLISECONDS_IN_SECOND).
 
 -spec node(pid()) -> ne_binary().
-node(Srv) -> gen_listener:call(Srv, 'node', 1000).
+node(Srv) -> gen_listener:call(Srv, 'node', ?MILLISECONDS_IN_SECOND).
 
 update_node(Srv, Node) -> gen_listener:cast(Srv, {'update_node', Node}).
 
@@ -250,7 +250,7 @@ handle_cast({'graceful_shutdown', CallId}, #state{node=Node
                                                   ,call_id=CallId
                                                  }=State) ->
     lager:debug("call event listener on node ~s received graceful shutdown request", [Node]),
-    erlang:send_after(5000, self(), 'shutdown'),
+    erlang:send_after(5 * ?MILLISECONDS_IN_SECOND, self(), 'shutdown'),
     {'noreply', State};
 handle_cast({'graceful_shutdown', _CallId}, #state{}=State) ->
     lager:debug("ignoring graceful shutdown for ~s", [_CallId]),
@@ -356,7 +356,7 @@ handle_info({'event', [CallId | Props]}, #state{node=Node
             %%   our A leg events.  Give them time by buffering
             %%   into our mailbox for 1 second...
             lager:debug("buffering call events for 1 second post transfer"),
-            timer:sleep(1000),
+            timer:sleep(?MILLISECONDS_IN_SECOND),
             {'noreply', State};
         {<<"RECORD_STOP">>, _} ->
             _ = case props:get_value(?GET_CCV(<<"Media-Recorder">>), Props) of
@@ -441,7 +441,7 @@ handle_info('timeout', #state{node=Node
     case freeswitch:api(Node, 'uuid_exists', CallId) of
         {'error', 'timeout'} ->
             lager:warning("timeout trying to find call on node ~s, trying again", [Node]),
-            {'noreply', State#state{failed_node_checks=FNC+1}, 1000};
+            {'noreply', State#state{failed_node_checks=FNC+1}, ?MILLISECONDS_IN_SECOND};
         {'error', Reason} ->
             lager:warning("unable to find call on node ~s: ~p", [Node, Reason]),
             {'stop', 'normal', State};

@@ -197,12 +197,19 @@ make_numbers_request(Verb, Props) ->
                ,{"Content-Type", "text/xml"}
               ],
     HTTPOptions = [{'ssl', [{'verify', 0}]}
-                   ,{'inactivity_timeout', 180000}
-                   ,{'connect_timeout', 180000}
+                   ,{'inactivity_timeout', 180 * ?MILLISECONDS_IN_SECOND}
+                   ,{'connect_timeout', 180 * ?MILLISECONDS_IN_SECOND}
                   ],
     ?BW_DEBUG andalso file:write_file("/tmp/bandwidth.com.xml"
                                       ,io_lib:format("Request:~n~s ~s~n~s~n", ['post', ?BW_NUMBER_URL, Body])),
-    case ibrowse:send_req(?BW_NUMBER_URL, Headers, 'post', unicode:characters_to_binary(Body), HTTPOptions, 180000) of
+    case ibrowse:send_req(?BW_NUMBER_URL
+                          ,Headers
+                          ,'post'
+                          ,unicode:characters_to_binary(Body)
+                          ,HTTPOptions
+                          ,180 * ?MILLISECONDS_IN_SECOND
+                         )
+    of
         {'ok', "401", _, _Response} ->
             ?BW_DEBUG andalso file:write_file("/tmp/bandwidth.com.xml"
                                               ,io_lib:format("Response:~n401~n~s~n", [_Response])

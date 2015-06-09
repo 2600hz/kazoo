@@ -25,7 +25,7 @@
 -record(member_call, {call              :: whapps_call:call()
                       ,queue_id         :: api_binary()
                       ,config_data = [] :: wh_proplist()
-                      ,max_wait = 60000 :: max_wait()
+                      ,max_wait = 60 * ?MILLISECONDS_IN_SECOND :: max_wait()
                      }).
 -type member_call() :: #member_call{}.
 
@@ -153,7 +153,7 @@ process_message(#member_call{call=Call}=MC, Timeout, Start, Wait, JObj, {<<"call
             lager:info("caller pressed the exit key(~s), moving to next callflow action", [DigitPressed]),
             cancel_member_call(Call, <<"dtmf_exit">>),
             _ = whapps_call_command:flush_dtmf(Call),
-            timer:sleep(1000),
+            timer:sleep(?MILLISECONDS_IN_SECOND),
             cf_exe:continue(Call);
         'false' ->
             lager:info("caller pressed ~s, ignoring", [DigitPressed]),
@@ -168,7 +168,7 @@ process_message(MC, Timeout, Start, Wait, _JObj, _Type) ->
 %% convert from seconds to milliseconds, or infinity
 -spec max_wait(integer()) -> max_wait().
 max_wait(N) when N < 1 -> 'infinity';
-max_wait(N) -> N * 1000.
+max_wait(N) -> N * ?MILLISECONDS_IN_SECOND.
 
 max_queue_size(N) when is_integer(N), N > 0 -> N;
 max_queue_size(_) -> 0.

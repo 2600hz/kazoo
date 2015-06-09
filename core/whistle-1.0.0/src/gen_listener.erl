@@ -98,12 +98,9 @@
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 
--define(SERVER_RETRY_PERIOD, 30000).
--define(TIMEOUT_RETRY_CONN, 5000).
+-define(SERVER_RETRY_PERIOD, 30 * ?MILLISECONDS_IN_SECOND).
+-define(TIMEOUT_RETRY_CONN, 5 * ?MILLISECONDS_IN_SECOND).
 -define(CALLBACK_TIMEOUT_MSG, 'callback_timeout').
-
--define(START_TIMEOUT, 500).
--define(MAX_TIMEOUT, 5000).
 
 -define(BIND_WAIT, 100).
 

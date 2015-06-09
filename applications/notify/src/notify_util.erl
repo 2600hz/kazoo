@@ -69,7 +69,7 @@ send_email(From, To, Email) ->
         {'relay_response', {'ok', _Msg}} -> 'ok';
         {'relay_response', {'error', _Type, Message}} -> {'error', Message};
         {'relay_response', {'exit', Reason}} -> {'error', Reason}
-    after 10000 -> {'error', 'timeout'}
+    after 10 * ?MILLISECONDS_IN_SECOND -> {'error', 'timeout'}
     end.
 
 -spec send_update(api_binary(), ne_binary(), ne_binary()) -> 'ok'.

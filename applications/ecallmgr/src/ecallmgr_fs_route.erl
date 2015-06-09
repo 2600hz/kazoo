@@ -298,7 +298,7 @@ reply_forbidden(Section, Node, FetchId) ->
                                                   ,{<<"Fetch-Section">>, wh_util:to_binary(Section)}
                                                  ]),
     lager:debug("sending XML to ~s: ~s", [Node, XML]),
-    case freeswitch:fetch_reply(Node, FetchId, Section, iolist_to_binary(XML), 3000) of
+    case freeswitch:fetch_reply(Node, FetchId, Section, iolist_to_binary(XML), 3 * ?MILLISECONDS_IN_SECOND) of
         'ok' -> lager:info("node ~s accepted ~s route response for request ~s", [Node, Section, FetchId]);
         {'error', Reason} -> lager:debug("node ~s rejected our ~s route unauthz: ~p", [Node, Section, Reason])
     end.
@@ -308,7 +308,7 @@ reply_affirmative(Section, Node, FetchId, CallId, JObj) ->
     lager:info("received affirmative route response for request ~s", [FetchId]),
     {'ok', XML} = ecallmgr_fs_xml:route_resp_xml(JObj),
     lager:debug("sending XML to ~s: ~s", [Node, XML]),
-    case freeswitch:fetch_reply(Node, FetchId, Section, iolist_to_binary(XML), 3000) of
+    case freeswitch:fetch_reply(Node, FetchId, Section, iolist_to_binary(XML), 3 * ?MILLISECONDS_IN_SECOND) of
         {'error', _Reason} -> lager:debug("node ~s rejected our ~s route response: ~p", [Node, Section, _Reason]);
         'ok' ->
             lager:info("node ~s accepted ~s route response for request ~s", [Node, Section, FetchId]),

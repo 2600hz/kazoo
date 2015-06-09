@@ -449,7 +449,7 @@ start_check_call_timer() ->
 
 -spec start_time_limit_timer(pos_integer()) -> reference().
 start_time_limit_timer(TimeLimit) ->
-    erlang:start_timer((TimeLimit+10) * 1000, self(), 'stop_recording').
+    erlang:start_timer((TimeLimit+10) * ?MILLISECONDS_IN_SECOND, self(), 'stop_recording').
 
 -spec maybe_stop_timer(term()) -> 'ok'.
 maybe_stop_timer(Timer) when is_reference(Timer) ->

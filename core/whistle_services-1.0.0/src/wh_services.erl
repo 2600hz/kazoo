@@ -672,7 +672,7 @@ reconcile_only(<<_/binary>> = Account, Module) ->
 -spec reconcile(api_binary(), text()) -> 'false' | services().
 reconcile('undefined', _Module) -> 'false';
 reconcile(<<_/binary>> = Account, Module) ->
-    timer:sleep(1000),
+    timer:sleep(?MILLISECONDS_IN_SECOND),
     maybe_save(reconcile_only(Account, Module)).
 
 %%%===================================================================

@@ -124,7 +124,7 @@ jwt(#oauth_service_app{private_key=PrivateKey
                               ,{<<"aud">>, URL}
                               ,{<<"scope">>, Scope}
                               ,{<<"iat">>, wh_util:current_unix_tstamp()-500}
-                              ,{<<"exp">>, wh_util:current_unix_tstamp()+2000}
+                              ,{<<"exp">>, wh_util:current_unix_tstamp()+(2 * ?MILLISECONDS_IN_SECOND)}
                              ]),
 
     JWT64 = base64:encode(wh_json:encode(JObj)),

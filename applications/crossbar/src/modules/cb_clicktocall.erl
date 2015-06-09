@@ -357,7 +357,7 @@ exec_originate(Request) ->
       wh_amqp_worker:call_collect(Request
                                   ,fun wapi_resource:publish_originate_req/1
                                   ,fun is_resp/1
-                                  ,20000
+                                  ,20 * ?MILLISECONDS_IN_SECOND
                                  )
      ).
 

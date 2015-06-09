@@ -212,7 +212,7 @@ try_to_store(Db, Id, Attachment, CT, Req0) ->
 -spec maybe_resolve_conflict(ne_binary(), ne_binary(), ne_binary(), binary(), wh_proplist(), cowboy_req:req()) ->
                                     {'ok', cowboy_req:req(), 'ok'}.
 maybe_resolve_conflict(DbName, Id, Attachment, Contents, Options, Req0) ->
-    timer:sleep(5000),
+    timer:sleep(5 * ?MILLISECONDS_IN_SECOND),
     lager:debug("putting ~s onto ~s(~s): ~-800p", [Attachment, Id, DbName, Options]),
     case couch_mgr:put_attachment(DbName, Id, Attachment, Contents, Options) of
         {'ok', JObj} ->

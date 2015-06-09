@@ -18,7 +18,7 @@
                        ,{'reuseaddr', 'true'}
                       ]).
 -define(MAX_RESERVED_PORTS, 10).
--define(MAX_WAIT_FOR_LISTENERS, 600000). %% 600 secs = 10 minutes
+-define(MAX_WAIT_FOR_LISTENERS, 600 * ?MILLISECONDS_IN_SECOND). %% 600 secs = 10 minutes
 
 -define(CONFIG_CAT, ?WHM_CONFIG_CAT).
 

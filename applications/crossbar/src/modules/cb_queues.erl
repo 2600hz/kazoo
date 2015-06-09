@@ -421,7 +421,7 @@ eavesdrop_req(Context, Prop) ->
     case whapps_util:amqp_pool_request(props:filter_undefined(Prop)
                                        ,fun wapi_resource:publish_eavesdrop_req/1
                                        ,fun wapi_resource:eavesdrop_resp_v/1
-                                       ,2000
+                                       ,2 * ?MILLISECONDS_IN_SECOND
                                       )
     of
         {'ok', Resp} -> crossbar_util:response(filter_response_fields(Resp), Context);

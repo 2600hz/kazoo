@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2014, 2600Hz INC
+%%% @copyright (C) 2010-2015, 2600Hz INC
 %%% @doc
 %%% Manage a FreeSWITCH node and its resources
 %%% @end
@@ -155,7 +155,7 @@
 -define(SEC_TO_MICRO(Sec), wh_util:to_integer(Sec)*1000000).
 -define(MILLI_TO_MICRO(Mil), wh_util:to_integer(Mil)*1000).
 
--define(FS_TIMEOUT, 5000).
+-define(FS_TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
 
 -define(REPLAY_REG_MAP,
         [{<<"Realm">>, <<"realm">>}
@@ -450,7 +450,7 @@ run_start_cmds(Node, Options) ->
 -spec run_start_cmds(atom(), wh_proplist(), pid()) -> any().
 run_start_cmds(Node, Options, Parent) ->
     wh_util:put_callid(Node),
-    timer:sleep(ecallmgr_config:get_integer(<<"fs_cmds_wait_ms">>, 5000, Node)),
+    timer:sleep(ecallmgr_config:get_integer(<<"fs_cmds_wait_ms">>, 5 * ?MILLISECONDS_IN_SECOND, Node)),
 
     run_start_cmds(Node, Options, Parent, is_restarting(Node)).
 
@@ -553,7 +553,7 @@ execute_command(Node, Options, ApiCmd0, ApiArg, Acc, ArgFormat) ->
                     process_cmd(Node, Options, ApiCmd0, ApiArg, Acc, 'list');
                 {'bgerror', BGApiID, Error} ->
                     process_resp(ApiCmd, ApiArg, binary:split(Error, <<"\n">>, ['global']), Acc)
-            after 120000 ->
+            after 120 * ?MILLISECONDS_IN_SECOND ->
                     [{'timeout', {ApiCmd, ApiArg}} | Acc]
             end;
         {'error', _}=Error ->
@@ -762,7 +762,7 @@ node_interface(Node, CurrInterface) ->
     case ecallmgr_util:get_interface_properties(Node) of
         [] ->
             lager:debug("no interface properties available at the moment, will sync again"),
-            _ = erlang:send_after(1000, self(), 'sync_interface'),
+            _ = erlang:send_after(?MILLISECONDS_IN_SECOND, self(), 'sync_interface'),
             CurrInterface;
         Props ->
             interface_from_props(Props)

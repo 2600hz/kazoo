@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -15,7 +15,7 @@
 
 -include("sysconf.hrl").
 
--define(REQUEST_TIMEOUT, whapps_config:get_integer(?APP_NAME, <<"acl_request_timeout_ms">>, 2000)).
+-define(REQUEST_TIMEOUT, whapps_config:get_integer(?APP_NAME, <<"acl_request_timeout_ms">>, 2 * ?MILLISECONDS_IN_SECOND)).
 -define(REQUEST_TIMEOUT_FUDGE, whapps_config:get_integer(?APP_NAME, <<"acl_request_timeout_fudge_ms">>, 100)).
 -define(IP_REGEX, <<"^(\\d{1,3}\\\.\\d{1,3}\\\.\\d{1,3}\\\.\\d{1,3}).*">>).
 -define(ACL_RESULT(IP, ACL), {'acl', IP, ACL}).

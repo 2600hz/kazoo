@@ -74,7 +74,7 @@
 -spec update_all_accounts(ne_binary()) -> 'ok'.
 update_all_accounts(File) ->
     lists:foreach(fun(AccountDb) ->
-                          timer:sleep(2000),
+                          timer:sleep(2 * ?MILLISECONDS_IN_SECOND),
                           couch_mgr:revise_doc_from_file(AccountDb, 'crossbar', File)
                   end, get_all_accounts(?REPLICATE_ENCODING)).
 
@@ -88,7 +88,7 @@ update_all_accounts(File) ->
 -spec revise_whapp_views_in_accounts(atom()) -> 'ok'.
 revise_whapp_views_in_accounts(App) ->
     lists:foreach(fun(AccountDb) ->
-                          timer:sleep(2000),
+                          timer:sleep(2 * ?MILLISECONDS_IN_SECOND),
                           couch_mgr:revise_views_from_folder(AccountDb, App)
                   end, get_all_accounts(?REPLICATE_ENCODING)).
 
@@ -102,7 +102,7 @@ revise_whapp_views_in_accounts(App) ->
 -spec replicate_from_accounts(ne_binary(), ne_binary()) -> 'ok'.
 replicate_from_accounts(TargetDb, FilterDoc) when is_binary(FilterDoc) ->
     lists:foreach(fun(AccountDb) ->
-                          timer:sleep(2000),
+                          timer:sleep(2 * ?MILLISECONDS_IN_SECOND),
                           replicate_from_account(AccountDb, TargetDb, FilterDoc)
                   end, get_all_accounts(?REPLICATE_ENCODING)).
 

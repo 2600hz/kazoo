@@ -39,7 +39,7 @@
 
 -include("doodle.hrl").
 
--define(CALL_SANITY_CHECK, 30000).
+-define(CALL_SANITY_CHECK, 30 * ?MILLISECONDS_IN_SECOND).
 
 -define(RESPONDERS, [{{?MODULE, 'relay_amqp'}
                       ,[{<<"*">>, <<"*">>}]
@@ -87,7 +87,7 @@ start_link(Call) ->
 
 -spec get_call(pid() | whapps_call:call()) -> {'ok', whapps_call:call()}.
 get_call(Srv) when is_pid(Srv) ->
-    gen_server:call(Srv, 'get_call', 1000);
+    gen_server:call(Srv, 'get_call', ?MILLISECONDS_IN_SECOND);
 get_call(Call) ->
     Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     get_call(Srv).
@@ -161,7 +161,7 @@ callid_update(CallId, Call) ->
 -spec callid(api_binary(), whapps_call:call()) -> ne_binary().
 
 callid(Srv) when is_pid(Srv) ->
-    CallId = gen_server:call(Srv, 'callid', 1000),
+    CallId = gen_server:call(Srv, 'callid', ?MILLISECONDS_IN_SECOND),
     put('callid', CallId),
     CallId;
 callid(Call) ->

@@ -47,10 +47,10 @@ render(TemplateId, Template, TemplateData) ->
 
 -spec next_renderer() -> pid().
 next_renderer() ->
-    try poolboy:checkout(teletype_sup:render_farm_name(), 'false', 2000) of
+    try poolboy:checkout(teletype_sup:render_farm_name(), 'false', 2 * ?MILLISECONDS_IN_SECOND) of
         'full' ->
             lager:critical("render farm pool is full!"),
-            timer:sleep(1000),
+            timer:sleep(?MILLISECONDS_IN_SECOND),
             next_renderer();
         P -> P
     catch

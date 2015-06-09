@@ -93,7 +93,7 @@ summary(Context) ->
     ReqResp = whapps_util:amqp_pool_request(Req
                                             ,fun wapi_sysconf:publish_get_req/1
                                             ,fun wapi_sysconf:get_resp_v/1
-                                            ,2000
+                                            ,2 * ?MILLISECONDS_IN_SECOND
                                            ),
     case ReqResp of
         {'error', _R} ->

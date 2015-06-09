@@ -308,12 +308,12 @@ maybe_bind(Node, Bindings) ->
     maybe_bind(Node, Bindings, 0).
 
 maybe_bind(Node, Bindings, 2) ->
-    case gen_server:call({'mod_kazoo', Node}, {'event', Bindings}, 2000) of
+    case gen_server:call({'mod_kazoo', Node}, {'event', Bindings}, 2 * ?MILLISECONDS_IN_SECOND) of
         {'ok', {_IP, _Port}}=OK -> OK;
         {'error', _Reason}=E -> E
     end;
 maybe_bind(Node, Bindings, Attempts) ->
-    case gen_server:call({'mod_kazoo', Node}, {'event', Bindings}, 2000) of
+    case gen_server:call({'mod_kazoo', Node}, {'event', Bindings}, 2 * ?MILLISECONDS_IN_SECOND) of
         {'ok', {_IP, _Port}}=OK -> OK;
         {'error', _Reason} ->
             lager:debug("failed on attempt ~b to bind: ~p", [Attempts, _Reason]),
@@ -416,5 +416,5 @@ maybe_start_event_listener(Node, UUID) ->
 idle_alert_timeout() ->
     case ecallmgr_config:get_integer(<<"event_stream_idle_alert">>, 0) of
         Timeout when Timeout =< 30 -> 'infinity';
-        Else -> Else * 1000
+        Else -> Else * ?MILLISECONDS_IN_SECOND
     end.

@@ -244,7 +244,7 @@ rate_channel(Props, Node) ->
                                   ,fun wapi_rate:publish_req/1
                                   ,fun wapi_rate:resp_v/1
                                   %% get inbound_rate_resp_timeout or outbound_rate_resp_timeout
-                                  ,ecallmgr_config:get_integer(<<Direction/binary, "_rate_resp_timeout">>, 10000)
+                                  ,ecallmgr_config:get_integer(<<Direction/binary, "_rate_resp_timeout">>, 10 * ?MILLISECONDS_IN_SECOND)
                                  ),
     rate_channel_resp(Props, Node, ReqResp).
 

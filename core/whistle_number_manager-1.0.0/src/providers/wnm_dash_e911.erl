@@ -208,14 +208,18 @@ emergency_provisioning_request(Verb, Props) ->
                ,{"Content-Type", "text/xml"}
               ],
     HTTPOptions = [{'ssl',[{'verify',0}]}
-                   ,{'inactivity_timeout', 180000}
-                   ,{'connect_timeout', 180000}
+                   ,{'inactivity_timeout', 180 * ?MILLISECONDS_IN_SECOND}
+                   ,{'connect_timeout', 180 * ?MILLISECONDS_IN_SECOND}
                    ,{'basic_auth', {?DASH_AUTH_USERNAME, ?DASH_AUTH_PASSWORD}}
                   ],
     lager:debug("making ~s request to dash e911 ~s", [Verb, URL]),
     ?DASH_DEBUG("Request:~n~s ~s~n~s~n", ['post', URL, Body]),
-    case ibrowse:send_req(wh_util:to_list(URL), Headers, 'post'
-                          ,unicode:characters_to_binary(Body), HTTPOptions, 180000
+    case ibrowse:send_req(wh_util:to_list(URL)
+                          ,Headers
+                          ,'post'
+                          ,unicode:characters_to_binary(Body)
+                          ,HTTPOptions
+                          ,180 * ?MILLISECONDS_IN_SECOND
                          )
     of
         {'ok', "401", _, _Response} ->

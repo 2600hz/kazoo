@@ -167,7 +167,7 @@ relay_encoded_email(To, From, Encoded) ->
             lager:debug("failed to send email:"),
             log_email_send_error(Reason),
             {'error', Reason}
-    after 10000 ->
+    after 10 * ?MILLISECONDS_IN_SECOND ->
             lager:debug("timed out waiting for relay response"),
             {'error', 'timeout'}
     end.

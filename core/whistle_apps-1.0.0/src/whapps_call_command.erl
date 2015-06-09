@@ -203,12 +203,12 @@
 
 -define(CONFIG_CAT, <<"call_command">>).
 
--define(DEFAULT_COLLECT_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"collect_timeout">>, 5000)).
--define(DEFAULT_DIGIT_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"digit_timeout">>, 3000)).
--define(DEFAULT_INTERDIGIT_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"interdigit_timeout">>, 2000)).
+-define(DEFAULT_COLLECT_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"collect_timeout">>, 5 * ?MILLISECONDS_IN_SECOND)).
+-define(DEFAULT_DIGIT_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"digit_timeout">>, 3 * ?MILLISECONDS_IN_SECOND)).
+-define(DEFAULT_INTERDIGIT_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"interdigit_timeout">>, 2 * ?MILLISECONDS_IN_SECOND)).
 
--define(DEFAULT_MESSAGE_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"message_timeout">>, 5000)).
--define(DEFAULT_APPLICATION_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"application_timeout">>, 500000)).
+-define(DEFAULT_MESSAGE_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"message_timeout">>, 5 * ?MILLISECONDS_IN_SECOND)).
+-define(DEFAULT_APPLICATION_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"application_timeout">>, 500 * ?MILLISECONDS_IN_SECOND)).
 
 -spec default_collect_timeout() -> pos_integer().
 default_collect_timeout() ->
@@ -614,7 +614,7 @@ redirect(Contact, Server, Call) ->
                ,{<<"Application-Name">>, <<"redirect">>}
               ],
     send_command(Command, Call),
-    timer:sleep(2000),
+    timer:sleep(2 * ?MILLISECONDS_IN_SECOND),
     'ok'.
 
 %%--------------------------------------------------------------------
@@ -631,7 +631,7 @@ redirect_to_node(Contact, Node, Call) ->
                ,{<<"Application-Name">>, <<"redirect">>}
               ],
     send_command(Command, Call),
-    timer:sleep(2000),
+    timer:sleep(2 * ?MILLISECONDS_IN_SECOND),
     'ok'.
 
 %%--------------------------------------------------------------------
@@ -1011,7 +1011,7 @@ b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, I
 
 -spec b_bridge_wait(pos_integer(), whapps_call:call()) -> whapps_api_bridge_return().
 b_bridge_wait(Timeout, Call) ->
-    wait_for_bridge((wh_util:to_integer(Timeout)*1000) + 10000, Call).
+    wait_for_bridge((wh_util:to_integer(Timeout) * ?MILLISECONDS_IN_SECOND) + (10 * ?MILLISECONDS_IN_SECOND) , Call).
 
 -spec unbridge(whapps_call:call()) -> 'ok'.
 -spec unbridge(whapps_call:call(), ne_binary()) -> 'ok'.
@@ -1586,7 +1586,7 @@ prompt_and_collect_digit(Prompt, Call) ->
 prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Call) ->
     prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, 1,  Call).
 prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Call) ->
-    prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, 3000, Call).
+    prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, 3 * ?MILLISECONDS_IN_SECOND, Call).
 prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, Call) ->
     prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, 'undefined', Call).
 prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Call) ->
@@ -1690,7 +1690,7 @@ play_and_collect_digit(Media, Call) ->
 play_and_collect_digits(MinDigits, MaxDigits, Media, Call) ->
     play_and_collect_digits(MinDigits, MaxDigits, Media, 1,  Call).
 play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Call) ->
-    play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, 3000, Call).
+    play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, 3 * ?MILLISECONDS_IN_SECOND, Call).
 play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, Call) ->
     play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, 'undefined', Call).
 play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Call) ->
@@ -2287,7 +2287,7 @@ wait_for_headless_application(Application, Event, Type, Timeout) ->
                     {'error', JObj};
                 {<<"call_event">>,<<"CHANNEL_DESTROY">>, _} ->
                     lager:debug("destroy occurred, waiting 60000 ms for ~s event", [Application]),
-                    wait_for_headless_application(Application, Event, Type, 60000);
+                    wait_for_headless_application(Application, Event, Type, 60 * ?MILLISECONDS_IN_SECOND);
                 {Type, Event, Application} ->
                     {'ok', JObj};
                 _T ->
@@ -2529,7 +2529,7 @@ wait_for_application_or_dtmf(Application, Timeout) ->
 -type wait_for_fax_ret() :: {'ok', wh_json:object()} |
                             {'error', 'timeout' | wh_json:object()}.
 
--define(WAIT_FOR_FAX_TIMEOUT, whapps_config:get_integer(<<"fax">>, <<"wait_for_fax_timeout_ms">>, 3600000)).
+-define(WAIT_FOR_FAX_TIMEOUT, whapps_config:get_integer(<<"fax">>, <<"wait_for_fax_timeout_ms">>, ?MILLISECONDS_IN_HOUR)).
 
 -spec wait_for_fax() -> wait_for_fax_ret().
 -spec wait_for_fax(wh_timeout()) -> wait_for_fax_ret().
@@ -2550,7 +2550,7 @@ wait_for_fax(Timeout) ->
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
                     %% NOTE:
                     lager:debug("channel hungup but no end of fax, maybe its coming next..."),
-                    wait_for_fax(5000);
+                    wait_for_fax(5 * ?MILLISECONDS_IN_SECOND);
                 _ -> wait_for_fax(wh_util:decr_timeout(Timeout, Start))
             end
     end.
@@ -2768,7 +2768,7 @@ stop_fax_detection(Call) ->
 -spec fax_detection(ne_binary(), integer(), whapps_call:call()) -> 'true' | 'false'.
 fax_detection(Direction, Duration, Call) ->
     start_fax_detection(Direction, Duration, Call),
-    Result = case wait_for_fax_detection((Duration + 2) * 1000, Call) of
+    Result = case wait_for_fax_detection((Duration + 2) * ?MILLISECONDS_IN_SECOND, Call) of
                  {'error', 'timeout'} -> 'false';
                  {'ok', _JObj} -> 'true'
              end,

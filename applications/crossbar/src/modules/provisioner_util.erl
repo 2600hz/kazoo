@@ -405,7 +405,7 @@ maybe_send_to_full_provisioner(PartialURL, JObj) ->
                          ,{"Content-Type", "application/json"}
                         ]),
             FullUrl = wh_util:to_lower_string(<<Url/binary, "/", PartialURL/binary>>),
-            {'ok', _, _, RawJObj} = ibrowse:send_req(FullUrl, Headers, 'get', "", [{'inactivity_timeout', 10000}]),
+            {'ok', _, _, RawJObj} = ibrowse:send_req(FullUrl, Headers, 'get', "", [{'inactivity_timeout', 10 * ?MILLISECONDS_IN_SECOND}]),
             case wh_json:get_integer_value([<<"error">>, <<"code">>], wh_json:decode(RawJObj)) of
                 'undefined' -> send_to_full_provisioner('post', FullUrl, JObj);
                 404 -> send_to_full_provisioner('put', FullUrl, JObj);
@@ -422,7 +422,7 @@ send_to_full_provisioner(FullUrl) ->
                  ,{"Content-Type", "application/json"}
                 ]),
     lager:debug("making ~s request to ~s", ['delete', FullUrl]),
-    Res = ibrowse:send_req(FullUrl, Headers, 'delete', [], [{'inactivity_timeout', 10000}]),
+    Res = ibrowse:send_req(FullUrl, Headers, 'delete', [], [{'inactivity_timeout', 10 * ?MILLISECONDS_IN_SECOND}]),
     lager:debug("response from server: ~p", [Res]),
     'true'.
 
@@ -436,7 +436,7 @@ send_to_full_provisioner('put', FullUrl, JObj) ->
                 ]),
     Body = wh_util:to_list(wh_json:encode(JObj)),
     lager:debug("making put request to ~s with: ~-300p", [FullUrl, Body]),
-    Res = ibrowse:send_req(FullUrl, Headers, 'put', Body, [{'inactivity_timeout', 10000}]),
+    Res = ibrowse:send_req(FullUrl, Headers, 'put', Body, [{'inactivity_timeout', 10 * ?MILLISECONDS_IN_SECOND}]),
     lager:debug("response from server: ~p", [Res]),
     'true';
 send_to_full_provisioner('post', FullUrl, JObj) ->
@@ -453,7 +453,7 @@ send_to_full_provisioner('post', FullUrl, JObj) ->
     J =  wh_json:from_list(props:filter_undefined(Props)),
     Body = wh_util:to_list(wh_json:encode(J)),
     lager:debug("making post request to ~s with: ~-300p", [FullUrl, Body]),
-    Res = ibrowse:send_req(FullUrl, Headers, 'post', Body, [{'inactivity_timeout', 10000}]),
+    Res = ibrowse:send_req(FullUrl, Headers, 'post', Body, [{'inactivity_timeout', 10 * ?MILLISECONDS_IN_SECOND}]),
     lager:debug("response from server: ~p", [Res]),
     'true'.
 

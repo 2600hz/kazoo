@@ -36,7 +36,7 @@
 
 -include("ts.hrl").
 
--define(WAIT_FOR_WIN_TIMEOUT, 5000). %% 5 seconds
+-define(WAIT_FOR_WIN_TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND). %% 5 seconds
 
 -type state() :: #ts_callflow_state{}.
 

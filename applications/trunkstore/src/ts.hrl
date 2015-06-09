@@ -27,7 +27,6 @@
 -define(TS_VIEW_CARRIERIP, <<"LookUpCarrierIP/LookUpCarrierIP">>).
 
 -define(EOD, 'end_of_day').
--define(MILLISECS_PER_DAY, 1000 * 60 * 60 * 24).
 
 %% couch params for the routing table and its views
 -define(TS_RATES_DB, <<"ts_rates">>).

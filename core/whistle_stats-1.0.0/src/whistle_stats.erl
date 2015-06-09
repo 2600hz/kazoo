@@ -26,9 +26,10 @@
         ]).
 
 -include_lib("whistle/include/wh_log.hrl").
+-include_lib("whistle/include/wh_types.hrl").
 
 -define(SERVER, ?MODULE).
--define(SEND_INTERVAL, 10000).
+-define(SEND_INTERVAL, 10 * ?MILLISECONDS_IN_SECOND).
 
 -record(state, {variables=[]
                 ,sip=[]
@@ -230,14 +231,14 @@ get_ecallmgr_values(VarList) ->
 
 get_ecallmgr_values2(VarList) ->
     RegFail = case {props:get_value("register-attempt",VarList),
-                    props:get_value("register-success",VarList)} 
+                    props:get_value("register-success",VarList)}
               of
                   {'undefined', _} -> 0;
                   {_, 'undefined'} -> 0;
                   {Reg, RegSucc} -> lists:max([Reg-RegSucc, 0])
               end,
     %% Sums the total reductions for all ecallmgr processes.
-    Procs = [process_info(X) || 
+    Procs = [process_info(X) ||
                 {_, X, _ ,_} <- supervisor:which_children('ecallmgr_sup')
                     ,is_pid(X)
             ],
@@ -247,7 +248,7 @@ get_ecallmgr_values2(VarList) ->
                           ]),
     [{'reduction',Reduction}
      ,{'register-fail',RegFail}
-     ,{'processes', length(processes())} 
+     ,{'processes', length(processes())}
     ].
 
 send(RawPayload) ->
@@ -264,9 +265,8 @@ recursive_from_proplist(List) when is_list(List) ->
         'true' -> List;
         'false' ->
             wh_json:from_list([{wh_util:to_binary(K)
-                                ,recursive_from_proplist(V)} 
+                                ,recursive_from_proplist(V)}
                                || {K,V} <- List
                               ])
     end;
 recursive_from_proplist(Other) -> Other.
-

@@ -505,7 +505,7 @@ rate_for_number(Phonenumber, Context) ->
                              ]
                              ,fun wapi_rate:publish_req/1
                              ,fun wapi_rate:resp_v/1
-                             ,10000
+                             ,10 * ?MILLISECONDS_IN_SECOND
                             )
     of
         {'ok', Rate} ->

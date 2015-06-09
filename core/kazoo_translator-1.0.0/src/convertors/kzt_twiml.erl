@@ -294,7 +294,7 @@ gather(Call, Attrs) ->
 
     Props = kz_xml:attributes_to_proplist(Attrs),
 
-    Timeout = kzt_twiml_util:timeout_s(Props, 5) * 1000,
+    Timeout = kzt_twiml_util:timeout_s(Props, 5) * ?MILLISECONDS_IN_SECOND,
     FinishKey = kzt_twiml_util:finish_dtmf(Props),
 
     gather(Call, FinishKey, Timeout, Props, kzt_twiml_util:num_digits(Props)).

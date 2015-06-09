@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Handle a host's connection/channels
 %%% @end
@@ -28,7 +28,7 @@
 
 -define(SERVER, ?MODULE).
 -define(START_TIMEOUT, 200).
--define(MAX_TIMEOUT, 1000).
+-define(MAX_TIMEOUT, ?MILLISECONDS_IN_SECOND).
 
 %%%===================================================================
 %%% API

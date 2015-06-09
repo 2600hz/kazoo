@@ -78,10 +78,14 @@ init([]) ->
     case whapps_config:get_is_true(?WHS_CONFIG_CAT, <<"sync_services">>, 'false') of
         'false' -> {'ok', #state{}};
         'true' ->
-            ScanRate = whapps_config:get_integer(?WHS_CONFIG_CAT, <<"scan_rate">>, 20000),
-            _TRef = erlang:send_after(ScanRate, self(), {'try_sync_service'}),
+            _Ref = start_sync_service_timer(),
             {'ok', #state{}}
     end.
+
+-spec start_sync_service_timer() -> reference().
+start_sync_service_timer() ->
+    ScanRate = whapps_config:get_integer(?WHS_CONFIG_CAT, <<"scan_rate">>, 20 * ?MILLISECONDS_IN_SECOND),
+    erlang:send_after(ScanRate, self(), {'try_sync_service'}).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -125,8 +129,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({'try_sync_service'}, State) ->
     _ = maybe_sync_service(),
-    ScanRate = whapps_config:get_integer(?WHS_CONFIG_CAT, <<"scan_rate">>, 20000),
-    _TRef = erlang:send_after(ScanRate, self(), {'try_sync_service'}),
+    _Ref = start_sync_service_timer(),
     {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),

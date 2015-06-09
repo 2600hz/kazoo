@@ -492,7 +492,7 @@ flush() -> wh_cache:flush_local(?WHAPPS_CALL_CACHE).
 -spec cache(whapps_conference:conference(), pos_integer()) -> 'ok'.
 
 cache(#whapps_conference{}=Conference) ->
-    cache(Conference, 300000).
+    cache(Conference, 300 * ?MILLISECONDS_IN_SECOND).
 
 cache(#whapps_conference{id=ConferenceId}=Conference, Expires) ->
     CacheProps = [{'expires', Expires}],

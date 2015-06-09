@@ -48,7 +48,7 @@
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, [{'no_local', 'true'}]).
 
--define(EXPIRE_PERIOD, 1000).
+-define(EXPIRE_PERIOD, 1 * ?MILLISECONDS_IN_SECOND).
 -define(FUDGE_FACTOR, 1.25).
 -define(APP_NAME, <<"wh_nodes">>).
 -define(APP_VERSION, <<"0.1.0">>).
@@ -377,7 +377,7 @@ handle_info({'heartbeat', Ref}, #state{heartbeat_ref=Ref
                                        ,tab=Tab
                                       }=State) ->
     _ = ets:insert(Tab, create_node('undefined', State)),
-    Heartbeat = crypto:rand_uniform(5000, 15000),
+    Heartbeat = crypto:rand_uniform(5 * ?MILLISECONDS_IN_SECOND, 15 * ?MILLISECONDS_IN_SECOND),
     try create_node(Heartbeat, State) of
         Node ->
             wapi_nodes:publish_advertise(advertise_payload(Node))

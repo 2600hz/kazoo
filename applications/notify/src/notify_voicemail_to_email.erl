@@ -291,8 +291,8 @@ mime_to_extension(_) -> <<"wav">>.
 preaty_print_length('undefined') ->
     <<"00:00">>;
 preaty_print_length(Milliseconds) when is_integer(Milliseconds) ->
-    Seconds = round(Milliseconds / 1000) rem 60,
-    Minutes = trunc(Milliseconds / (1000*60)) rem 60,
+    Seconds = round(Milliseconds / ?MILLISECONDS_IN_SECOND) rem 60,
+    Minutes = trunc(Milliseconds / ?MILLISECONDS_IN_MINUTE) rem 60,
     wh_util:to_binary(io_lib:format("~2..0w:~2..0w", [Minutes, Seconds]));
 preaty_print_length(Event) ->
     preaty_print_length(wh_json:get_integer_value(<<"Voicemail-Length">>, Event)).

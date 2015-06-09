@@ -55,13 +55,13 @@
 -include("wh_couch.hrl").
 
 -define(SLEEP_BETWEEN_COMPACTION
-        ,whapps_config:get_integer(?CONFIG_CAT, <<"sleep_between_compaction">>, 60000)
+        ,whapps_config:get_integer(?CONFIG_CAT, <<"sleep_between_compaction">>, 60 * ?MILLISECONDS_IN_SECOND)
        ).
 -define(SLEEP_BETWEEN_POLL
-        ,whapps_config:get_integer(?CONFIG_CAT, <<"sleep_between_poll">>, 3000)
+        ,whapps_config:get_integer(?CONFIG_CAT, <<"sleep_between_poll">>, 3 * ?MILLISECONDS_IN_SECOND)
        ).
 -define(SLEEP_BETWEEN_VIEWS
-        ,whapps_config:get_integer(?CONFIG_CAT, <<"sleep_between_views">>, 2000)
+        ,whapps_config:get_integer(?CONFIG_CAT, <<"sleep_between_views">>, 2 * ?MILLISECONDS_IN_SECOND)
        ).
 -define(MAX_COMPACTING_SHARDS
         ,whapps_config:get_integer(?CONFIG_CAT, <<"max_compacting_shards">>, 2)
@@ -70,13 +70,13 @@
         ,whapps_config:get_integer(?CONFIG_CAT, <<"max_compacting_views">>, 2)
        ).
 -define(MAX_WAIT_FOR_COMPACTION_PIDS
-        ,case whapps_config:get(?CONFIG_CAT, <<"max_wait_for_compaction_pids">>, 360000) of
+        ,case whapps_config:get(?CONFIG_CAT, <<"max_wait_for_compaction_pids">>, 360 * ?MILLISECONDS_IN_SECOND) of
              <<"infinity">> -> 'infinity';
              N -> wh_util:to_integer(N)
          end
        ).
 
--define(AUTOCOMPACTION_CHECK_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"autocompaction_check">>, 60000)).
+-define(AUTOCOMPACTION_CHECK_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"autocompaction_check">>, 60 * ?MILLISECONDS_IN_SECOND)).
 
 -define(MIN_RATIO, whapps_config:get_float(?CONFIG_CAT, <<"min_ratio">>, 1.2)).
 -define(MIN_DATA, whapps_config:get_integer(?CONFIG_CAT, <<"min_data_size">>, 131072)). % 128Kb
@@ -1651,7 +1651,7 @@ get_db_disk_and_data(Conn, Encoded, N) ->
             };
         {'error', {'conn_failed',{'error','timeout'}}} ->
             lager:debug("timed out asking for info, waiting and trying again"),
-            'ok' = timer:sleep(1000),
+            'ok' = timer:sleep(?MILLISECONDS_IN_SECOND),
             get_db_disk_and_data(Conn, Encoded, N+1);
         {'error', 'not_found'} ->
             lager:debug("db '~s' not found, skipping", [Encoded]),

@@ -129,7 +129,7 @@
 -type participants() :: [participant(),...] | [].
 
 -define(DEFAULT_REALM, ecallmgr_config:get(<<"default_realm">>, <<"nodomain.com">>)).
--define(MAX_TIMEOUT_FOR_NODE_RESTART, ecallmgr_config:get_integer(<<"max_timeout_for_node_restart">>, 10000)). % 10 seconds
+-define(MAX_TIMEOUT_FOR_NODE_RESTART, ecallmgr_config:get_integer(<<"max_timeout_for_node_restart">>, 10 * ?MILLISECONDS_IN_SECOND)). % 10 seconds
 -define(MAX_NODE_RESTART_FAILURES, 3).
 
 %% list of dialplan Application-Names that can execute after a call has hung up
@@ -137,7 +137,7 @@
                                ,<<"record">>, <<"store_fax">>, <<"receive_fax">>
                               ]).
 
--define(SANITY_CHECK_PERIOD, 300000).
+-define(SANITY_CHECK_PERIOD, 300 * ?MILLISECONDS_IN_SECOND).
 
 -define(APP_NAME, <<"ecallmgr">>).
 -define(APP_VERSION, <<"0.8.0">>).
