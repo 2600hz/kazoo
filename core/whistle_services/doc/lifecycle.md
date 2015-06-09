@@ -129,10 +129,11 @@ The following are the anticipated scenarios of service changes being made and th
 
 Let's assume an account tree of:
 
-```
-M -- R1 -- R2 -- D2
-      | -- D1
-```
+    M
+    |- R1
+       |- R2
+          |- D2
+    |- D1
 
 Here we have the master account *M* with a child account, *R1*, a reseller. *R1* has two child accounts, *R2* (a reseller), and *D1* (a direct client). *R2* has a direct client *D2*.
 
@@ -191,13 +192,13 @@ Now, if you were to look at *R1*'s services doc in the `services` DB, the quanti
                 ,"cumulative_discount_rate":0.0
             }
         }
+     }
+     ,"error":"402"
+     ,"message":"accept charges"
+     ,"status":"error"
+     ,"request_id":"{REQUEST_ID}"
+     ,"auth_token":"{AUTH_TOKEN}"
     }
-    ,"error":"402"
-    ,"message":"accept charges"
-    ,"status":"error"
-    ,"request_id":"{REQUEST_ID}"
-    ,"auth_token":"{AUTH_TOKEN}"
-   }
 
 You can see that the quantity is now 2 for SIP devices. Now, if we reconcile the account manually (either via the UI or on the backend with `sup whistle_services_maintenace reconcile {R1_ACCOUNT_ID}`), we see that *R1*'s services doc now reflects the `"sip_device":1` in the `quantities` for `devices`.
 
@@ -210,3 +211,17 @@ Suppose *M* wants to make a change while masquerading as *R1*. What happens?
 Creating device #3 we see that the request is not responded to with a 402 as before. Why? Since the auth account of the request (*M*) is a reseller, the services doc of *M* is used to process the request, and since *M* is the boss, the request is processed and the device saved.
 
 If we manually reconcile *R1* again, we see `"sip_device":3` as expected. *R1*, when synced with the bookkeeper, will be billed for that third device, so admins of *M* need to be aware when making this service changes.
+
+## *D1*
+
+So what happens to direct accounts of the master account? Again, *M* creates *D1* and assigns the SSSP service plan. Unlike *R1*, *D1* won't be flagged as a reseller.
+
+### *D1* makes changes
+
+Just as when *R1* created its first device, *D1* tries to create the device and gets a 402 response with the summary of what the result would be in terms of service changes.
+
+### *M* makes changes to *D1*
+
+Again, as with *R1*, what *M* wants, *M* gets.
+
+## *R2*
