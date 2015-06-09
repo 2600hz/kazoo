@@ -73,8 +73,19 @@ save(Number) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec to_public_json(number()) -> wh_json:object().
-to_public_json(N) ->
-    to_json(N).
+to_public_json(Number) ->
+    wh_json:foldl(
+        fun
+            (<<"_id">>, Value, Acc) ->
+                wh_json:set_value(<<"id">>, Value, Acc);
+            (<<"pvt_", Key/binary>>, Value, Acc) ->
+                wh_json:set_value(Key, Value, Acc);
+            (Key, Value, Acc) ->
+                wh_json:set_value(Key, Value, Acc)
+        end
+        ,to_json(Number)
+        ,wh_json:new()
+    ).
 
 %%--------------------------------------------------------------------
 %% @public
