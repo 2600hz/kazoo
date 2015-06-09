@@ -47,7 +47,9 @@ fetch(Num) ->
     NormalizedNum = knm_number_converter:normalize(Num),
     NumberDb = knm_number_converter:to_db(NormalizedNum),
     case couch_mgr:open_doc(NumberDb, NormalizedNum) of
-        {'error', _R}=E -> E;
+        {'error', _R}=E ->
+            lager:error("failed to open ~s in ~s", [NormalizedNum, NumberDb]),
+            E;
         {'ok', JObj} ->
             {'ok', from_json(JObj)}
     end.
@@ -61,8 +63,10 @@ fetch(Num) ->
 save(Number) ->
     NumberDb = number_db(Number),
     JObj = to_json(Number),
-    case couch_mgr:save_doc(NumberDb, JObj) of
-        {'error', _R}=E -> E;
+    case couch_mgr:ensure_saved(NumberDb, JObj) of
+        {'error', _R}=E ->
+            lager:error("failed to save ~s in ~s", [number(Number), NumberDb]),
+            E;
         {'ok', _} ->
             hangle_assignment(Number)
     end.
@@ -83,8 +87,8 @@ to_public_json(Number) ->
             (Key, Value, Acc) ->
                 wh_json:set_value(Key, Value, Acc)
         end
-        ,to_json(Number)
         ,wh_json:new()
+        ,to_json(Number)
     ).
 
 %%--------------------------------------------------------------------
@@ -319,8 +323,9 @@ set_region(N, Region) ->
 %%--------------------------------------------------------------------
 -spec hangle_assignment(number()) -> {'ok', number()} | {'error', _}.
 hangle_assignment(Number) ->
+    lager:debug("handling assignment for ~s", [number(Number)]),
     case maybe_assign(Number) of
-        {'error', _R}=E -> E;
+        {'error', _R}=E ->E;
         {'ok', _} ->
             maybe_unassign(Number)
     end.
@@ -334,16 +339,22 @@ hangle_assignment(Number) ->
 maybe_assign(Number) ->
     AssignedTo = assigned_to(Number),
     case wh_util:is_empty(AssignedTo) of
-        'true' -> {'ok', Number};
+        'true' ->
+            lager:debug("assign_to is is empty for ~s, ignoring", [number(Number)]),
+            {'ok', Number};
         'false' -> assign(Number, AssignedTo)
     end.
 
 -spec assign(number(), ne_binary()) -> {'ok', number()} | {'error', _}.
 assign(Number, AssignedTo) ->
-    AccountDb = wh_util:format_account_id(AssignedTo),
-    case couch_mgr:save_doc(AccountDb, to_json(Number)) of
-        {'error', _R}=E -> E;
-        {'ok', _} -> {'ok', Number}
+    AccountDb = wh_util:format_account_id(AssignedTo, 'encoded'),
+    case couch_mgr:ensure_saved(AccountDb, to_json(Number)) of
+        {'error', _R}=E ->
+            lager:error("failed to assign number ~s to ~s", [number(Number), AccountDb]),
+            E;
+        {'ok', _} ->
+            lager:debug("assigned number ~s to ~s", [number(Number), AccountDb]),
+            {'ok', Number}
     end.
 
 %%--------------------------------------------------------------------
@@ -355,16 +366,22 @@ assign(Number, AssignedTo) ->
 maybe_unassign(Number) ->
     PrevAssignedTo = prev_assigned_to(Number),
     case wh_util:is_empty(PrevAssignedTo) of
-        'true' -> {'ok', Number};
+        'true' ->
+            lager:debug("prev_assign_to is is empty for ~s, ignoring", [number(Number)]),
+            {'ok', Number};
         'false' -> unassign(Number, PrevAssignedTo)
     end.
 
 -spec unassign(number(), ne_binary()) -> {'ok', number()} | {'error', _}.
 unassign(Number, PrevAssignedTo) ->
-    AccountDb = wh_util:format_account_id(PrevAssignedTo),
+    AccountDb = wh_util:format_account_id(PrevAssignedTo, 'encoded'),
     case couch_mgr:del_doc(AccountDb, to_json(Number)) of
-        {'error', _R}=E -> E;
-        {'ok', _} -> {'ok', Number}
+        {'error', _R}=E ->
+            lager:error("failed to unassign number ~s from ~s", [number(Number), AccountDb]),
+            E;
+        {'ok', _} ->
+            lager:debug("unassigned number ~s from ~s", [number(Number), AccountDb]),
+            {'ok', Number}
     end.
 
 
