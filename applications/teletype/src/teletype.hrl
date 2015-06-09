@@ -117,6 +117,11 @@
           ,?MACRO_VALUE(<<"port_request.scheduled_date">>, <<"scheduled_date">>, <<"Scheduled Date">>, <<"Scheduled Date">>)
          ]).
 
+-define(SYSTEM_MACROS
+        ,[?MACRO_VALUE(<<"system.hostname">>, <<"system_hostname">>, <<"Hostname">>, <<"Hostname of system generating the email">>)
+         ]
+       ).
+
 -define(DEFAULT_CALL_MACROS
         ,?CALLER_ID_MACROS
         ++ ?CALLEE_ID_MACROS

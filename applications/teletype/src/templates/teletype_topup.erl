@@ -26,7 +26,10 @@
         ]).
 
 -define(TEMPLATE_MACROS
-        ,wh_json:from_list(?USER_MACROS ++ ?ACCOUNT_MACROS ++ ?TOPUP_MACROS)
+        ,wh_json:from_list(?USER_MACROS
+                           ++ ?ACCOUNT_MACROS
+                           ++ ?TOPUP_MACROS
+                          )
        ).
 
 -define(TEMPLATE_TEXT, <<"Attempted to top-up account \"{{account.name}}\" for {{amount}}.  The transaction processor response was {{response}} resulting in a new balance of {{balance}}.">>).
@@ -70,20 +73,21 @@ handle_topup(JObj, _Props) ->
     case teletype_util:should_handle_notification(DataJObj)
         andalso teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID)
     of
-        'false' -> lager:debug("notification handling not configured for this account");
-        'true' -> handle_req(DataJObj)
+        'false' ->
+            lager:debug("notification handling not configured for this account");
+        'true' ->
+            lager:debug("handling notification for account ~s", [AccountId]),
+            handle_req(DataJObj)
     end.
 
 -spec handle_req(wh_json:object()) -> 'ok'.
 handle_req(DataJObj) ->
-    Macros = [{<<"system">>, teletype_util:system_params()}
-              ,{<<"account">>, teletype_util:account_params(DataJObj)}
-              ,{<<"amount">>, get_topup_amount(DataJObj)}
-              ,{<<"balance">>, get_balance(DataJObj)}
-              ,{<<"success">>, wh_json:is_true(<<"success">>, DataJObj)}
-              ,{<<"response">>, wh_json:get_value(<<"response">>, DataJObj, <<>>)}
-              | build_macro_data(DataJObj)
-             ],
+    Macros = build_macro_data(
+               wh_json:set_value(<<"account_params">>
+                                 ,wh_json:from_list(teletype_util:account_params(DataJObj))
+                                 ,DataJObj
+                                )
+              ),
 
     %% Load templates
     Templates = teletype_util:fetch_templates(?TEMPLATE_ID, DataJObj),
@@ -115,10 +119,17 @@ get_balance(DataJObj) ->
 
 -spec get_topup_amount(wh_json:object()) -> ne_binary().
 get_topup_amount(DataJObj) ->
-    Amount = wht_util:units_to_dollars(
-               wh_json:get_integer_value(<<"amount">>, DataJObj)
-              ),
-    wht_util:pretty_print_dollars(Amount).
+    IsPreview = teletype_util:is_preview(DataJObj),
+    case wh_json:get_integer_value(<<"amount">>, DataJObj) of
+        'undefined' when IsPreview -> 0;
+        'undefined' ->
+            lager:warning("failed to get topup amount from data: ~p", [DataJObj]),
+            throw({'error', 'no_topup_amount'});
+        Amount ->
+            wht_util:pretty_print_dollars(
+              wht_util:units_to_dollars(Amount)
+             )
+    end.
 
 -spec build_macro_data(wh_json:object()) -> wh_proplist().
 build_macro_data(DataJObj) ->
@@ -132,9 +143,41 @@ build_macro_data(DataJObj) ->
 -spec maybe_add_macro_key(wh_json:key(), wh_proplist(), wh_json:object()) -> wh_proplist().
 maybe_add_macro_key(<<"user.", UserKey/binary>>, Acc, DataJObj) ->
     maybe_add_user_data(UserKey, Acc, DataJObj);
+maybe_add_macro_key(<<"account.", AccountKey/binary>>, Acc, DataJObj) ->
+    maybe_add_account_data(AccountKey, Acc, DataJObj);
+maybe_add_macro_key(<<"balance">> = Key, Acc, DataJObj) ->
+    props:set_value(Key, get_balance(DataJObj), Acc);
+maybe_add_macro_key(<<"amount">> = Key, Acc, DataJObj) ->
+    props:set_value(Key, get_topup_amount(DataJObj), Acc);
+maybe_add_macro_key(<<"success">> = Key, Acc, DataJObj) ->
+    props:set_value(Key, wh_json:is_true(<<"success">>, DataJObj), Acc);
+maybe_add_macro_key(<<"response">> = Key, Acc, DataJObj) ->
+    props:set_value(Key
+                    ,wh_json:get_value(<<"response">>, DataJObj, <<>>)
+                    ,Acc
+                   );
 maybe_add_macro_key(_Key, Acc, _DataJObj) ->
     lager:debug("unprocessed macro key ~s: ~p", [_Key, _DataJObj]),
     Acc.
+
+-spec maybe_add_account_data(ne_binary(), wh_proplist(), wh_json:object()) ->
+                                    wh_proplist().
+-spec maybe_add_account_data(ne_binary(), wh_proplist(), wh_json:object(), api_binary()) ->
+                                    wh_proplist().
+maybe_add_account_data(Key, Acc, DataJObj) ->
+    maybe_add_account_data(Key, Acc, DataJObj
+                           ,wh_json:get_value([<<"account_params">>, Key], DataJObj)
+                          ).
+maybe_add_account_data(_Key, Acc, _DataJObj, 'undefined') ->
+    lager:debug("failed to find account param ~s", [_Key]),
+    Acc;
+maybe_add_account_data(Key, Acc, _DataJObj, Value) ->
+    AccountData = props:get_value(<<"account">>, Acc, []),
+
+    props:set_value(<<"account">>
+                    ,props:set_value(Key, Value, AccountData)
+                    ,Acc
+                   ).
 
 -spec maybe_add_user_data(wh_json:key(), wh_proplist(), wh_json:object()) -> wh_proplist().
 maybe_add_user_data(Key, Acc, DataJObj) ->
@@ -152,10 +195,9 @@ maybe_add_user_data(Key, Acc, DataJObj) ->
 -spec get_user(wh_json:object()) -> wh_json:object().
 get_user(DataJObj) ->
     AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     UserId = wh_json:get_value(<<"user_id">>, DataJObj),
 
-    case couch_mgr:open_cache_doc(AccountDb, UserId) of
+    case teletype_util:open_doc(<<"user">>, UserId, DataJObj) of
         {'ok', UserJObj} -> UserJObj;
         {'error', _E} ->
             lager:debug("failed to find user ~s in ~s: ~p", [UserId, AccountId, _E]),
