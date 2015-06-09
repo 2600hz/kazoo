@@ -132,7 +132,9 @@ save(Services, AuditLog, MasterAccountId) ->
     save(Services, AuditLog, MasterAccountId, wh_services:account_id(Services)).
 
 save(_Services, _AuditLog, MasterAccountId, MasterAccountId) ->
-    lager:debug("reached master account");
+    lager:debug("reached master account when processing audit log for ~s"
+                ,[wh_services:account_id(_Services)]
+               );
 save(Services, AuditLog, MasterAccountId, AccountId) ->
     JObj = wh_services:services_json(Services),
     case kzd_services:is_reseller(JObj) of
