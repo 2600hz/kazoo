@@ -25,7 +25,9 @@
 -export([get_ne_binary_value/2, get_ne_binary_value/3]).
 -export([get_lower_binary/2, get_lower_binary/3]).
 -export([get_atom_value/2, get_atom_value/3]).
--export([get_string_value/2, get_string_value/3]).
+-export([get_string_value/2, get_string_value/3
+         ,get_list_value/2, get_list_value/3
+        ]).
 -export([get_json_value/2, get_json_value/3]).
 -export([is_true/2, is_true/3, is_false/2, is_false/3, is_empty/1]).
 
@@ -208,7 +210,7 @@ merge_recursive([?JSON_WRAPPER(_)=J|JObjs], Pred) when is_function(Pred, 2) ->
                         merge_recursive(JObjAcc, JObj2, Pred)
                 end, J, JObjs);
 merge_recursive(?JSON_WRAPPER(_)=JObj1, ?JSON_WRAPPER(_)=JObj2) ->
-    merge_recursive([JObj1, JObj2], fun merge_true/2).
+    merge_recursive(JObj1, JObj2, fun merge_true/2).
 
 -spec merge_recursive(object(), object() | json_term(), merge_pred()) -> object().
 merge_recursive(JObj1, JObj2, Pred) when is_function(Pred, 2) ->
@@ -216,10 +218,13 @@ merge_recursive(JObj1, JObj2, Pred) when is_function(Pred, 2) ->
 
 %% inserts values from JObj2 into JObj1
 -spec merge_recursive(object(), object() | json_term(), merge_pred(), keys()) -> object().
-merge_recursive(?JSON_WRAPPER(_)=JObj1, ?JSON_WRAPPER(Prop2), Pred, Keys) when is_function(Pred, 2) ->
-    lists:foldr(fun(Key, J) ->
-                        merge_recursive(J, props:get_value(Key, Prop2), Pred, [Key|Keys])
-                end, JObj1, props:get_keys(Prop2));
+merge_recursive(?JSON_WRAPPER(_)=JObj1, ?JSON_WRAPPER(_)=JObj2, Pred, Keys) when is_function(Pred, 2) ->
+    foldl(fun(Key2, Value2, JObj1Acc) ->
+                  merge_recursive(JObj1Acc, Value2, Pred, [Key2|Keys])
+          end
+          ,JObj1
+          ,JObj2
+         );
 merge_recursive(?JSON_WRAPPER(_)=JObj1, Value, Pred, Keys) when is_function(Pred, 2) ->
     Syek = lists:reverse(Keys),
     case Pred(get_value(Syek, JObj1), Value) of
@@ -342,6 +347,17 @@ get_string_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
         Value -> safe_cast(Value, Default, fun wh_util:to_list/1)
+    end.
+
+-spec get_list_value(key(), object() | objects()) -> 'undefined' | list().
+-spec get_list_value(key(), object() | objects(), Default) -> Default | list().
+get_list_value(Key, JObj) ->
+    get_list_value(Key, JObj, 'undefined').
+get_list_value(Key, JObj, Default) ->
+    case get_value(Key, JObj) of
+        'undefined' -> Default;
+        List when is_list(List) -> List;
+        _Else -> Default
     end.
 
 -spec get_binary_value(key(), object() | objects()) -> 'undefined' | binary().
@@ -595,9 +611,18 @@ get_values(Key, JObj) ->
     get_values(get_value(Key, JObj, new())).
 
 %% Figure out how to set the current key among a list of objects
--spec set_values(json_proplist(), object()) -> object().
+-type set_value_fun() :: {fun((object(), json_term()) -> object()), json_term()}.
+-type set_value_funs() :: [set_value_fun(),...].
+
+-spec set_values(json_proplist() | set_value_funs(), object()) -> object().
 set_values(KVs, JObj) when is_list(KVs) ->
-    lists:foldr(fun({K,V}, JObj0) -> set_value(K, V, JObj0) end, JObj, KVs).
+    lists:foldr(fun set_value_fold/2, JObj, KVs).
+
+-spec set_value_fold(set_value_fun() | {key(), json_term()}, object()) -> object().
+set_value_fold({F, V}, JObj) when is_function(F, 2) ->
+    F(JObj, V);
+set_value_fold({K, V}, JObj) ->
+    set_value(K, V, JObj).
 
 -spec insert_value(key(), json_term(), object()) -> object().
 insert_value(Key, Value, JObj) ->

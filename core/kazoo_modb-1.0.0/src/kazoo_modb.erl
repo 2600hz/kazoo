@@ -330,8 +330,11 @@ get_range(AccountId, From, To) ->
     {{FromYear, FromMonth, _}, _} = calendar:gregorian_seconds_to_datetime(From),
     {{ToYear,   ToMonth,   _}, _} = calendar:gregorian_seconds_to_datetime(To),
     [MODb
-     || MODb <- get_year_month_sequence(AccountId, {FromYear,FromMonth}, {ToYear,ToMonth})
-            , couch_mgr:db_exists(MODb)
+     || MODb <- get_year_month_sequence(AccountId
+                                        ,{FromYear, FromMonth}
+                                        ,{ToYear, ToMonth}
+                                       ),
+        couch_mgr:db_exists(MODb)
     ].
 
 -type year_month_tuple() :: {wh_year(), wh_month()}.

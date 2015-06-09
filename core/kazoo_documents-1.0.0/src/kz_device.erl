@@ -23,6 +23,7 @@
          ,name/1, name/2, set_name/2
          ,mac_address/1, mac_address/2, set_mac_address/2
          ,language/1, language/2, set_language/2
+         ,device_type/1, device_type/2, set_device_type/2
 
          ,new/0
         ]).
@@ -45,6 +46,7 @@
 -define(NAME, <<"name">>).
 -define(MAC_ADDRESS, <<"mac_address">>).
 -define(LANGUAGE, <<"language">>).
+-define(DEVICE_TYPE, <<"device_type">>).
 
 -spec new() -> doc().
 new() ->
@@ -201,3 +203,13 @@ language(DeviceJObj, Default) ->
 -spec set_language(doc(), ne_binary()) -> doc().
 set_language(DeviceJObj, Language) ->
     wh_json:set_value(?LANGUAGE, Language, DeviceJObj).
+-spec device_type(doc()) -> api_binary().
+-spec device_type(doc(), Default) -> ne_binary() | Default.
+device_type(DeviceJObj) ->
+    device_type(DeviceJObj, 'undefined').
+device_type(DeviceJObj, Default) ->
+    wh_json:get_value(?DEVICE_TYPE, DeviceJObj, Default).
+
+-spec set_device_type(doc(), ne_binary()) -> doc().
+set_device_type(DeviceJObj, MacAddress) ->
+    wh_json:set_value(?DEVICE_TYPE, MacAddress, DeviceJObj).

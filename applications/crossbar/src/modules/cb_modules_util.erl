@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Functions shared between crossbar modules
 %%% @end
@@ -20,7 +20,6 @@
 
          ,bucket_name/1
          ,token_cost/1, token_cost/2, token_cost/3
-         ,reconcile_services/1
          ,bind/2
 
          ,range_view_options/1, range_view_options/2
@@ -138,29 +137,11 @@ bind(Module, Bindings) ->
         ],
     'ok'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Bill for devices
-%% @end
-%%--------------------------------------------------------------------
--spec reconcile_services(cb_context:context()) -> cb_context:context().
-reconcile_services(Context) ->
-    case cb_context:resp_status(Context) =:= 'success'
-        andalso cb_context:req_verb(Context) =/= <<"GET">>
-    of
-        'false' -> Context;
-        'true' ->
-            lager:debug("maybe reconciling services for account ~s"
-                       ,[cb_context:account_id(Context)]),
-            _ = wh_services:save_as_dirty(cb_context:account_id(Context))
-    end.
-
 -spec pass_hashes(ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
 pass_hashes(Username, Password) ->
     Creds = list_to_binary([Username, ":", Password]),
-    SHA1 = wh_util:to_hex_binary(crypto:hash(sha, Creds)),
-    MD5 = wh_util:to_hex_binary(crypto:hash(md5, Creds)),
+    SHA1 = wh_util:to_hex_binary(crypto:hash('sha', Creds)),
+    MD5 = wh_util:to_hex_binary(crypto:hash('md5', Creds)),
     {MD5, SHA1}.
 
 -spec update_mwi(api_binary(), ne_binary()) -> pid().

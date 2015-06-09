@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -22,7 +22,7 @@
 -define(TR_DESCRIPTION, <<"braintree transaction">>).
 
 -record(wh_service_update, {bt_subscription :: braintree_subscription:subscription()
-                            ,plan_id :: api_binary()
+                            ,plan_id :: ne_binary()
                            }).
 
 -record(wh_service_updates, {bt_subscriptions = [] :: [update(),...] | []
@@ -642,7 +642,7 @@ fetch_or_create_subscription(PlanId, #bt_customer{}=Customer) ->
     end.
 
 %% @private
--spec prepare_subscription(wh_service:item(), ne_binary(), ne_binary(), updates()) ->
+-spec prepare_subscription(wh_service_item:item(), ne_binary(), ne_binary(), updates()) ->
                                   braintree_subscription:subscription().
 prepare_subscription(ServiceItem, AddOnId, PlanId, Updates) ->
     Routines = [fun(S) ->

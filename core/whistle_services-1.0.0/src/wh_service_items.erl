@@ -37,22 +37,22 @@ empty() ->
 %%--------------------------------------------------------------------
 -spec get_updated_items(items(), items()) -> items().
 -spec get_updated_items(any(), wh_service_item:item(), items(), items()) -> items().
-get_updated_items(Items1, Items2) ->
+get_updated_items(UpdatedItems, ExistingItems) ->
     dict:fold(
-      fun(Key, Item1, Acc) ->
-              get_updated_items(Key, Item1, Items2, Acc)
+      fun(Key, UpdatedItem, DifferingItems) ->
+              get_updated_items(Key, UpdatedItem, ExistingItems, DifferingItems)
       end
       ,dict:new()
-      ,Items1
+      ,UpdatedItems
      ).
 
-get_updated_items(Key, Item1, Items2, NewItem) ->
-    case get_item(Key, Items2) of
-        'error' -> NewItem;
-        Item2 ->
-            case compare(Item1, Item2) of
-                'true' -> NewItem;
-                'false' -> dict:store(Key, Item1, NewItem)
+get_updated_items(Key, UpdatedItem, ExistingItems, DifferingItems) ->
+    case get_item(Key, ExistingItems) of
+        'error' -> DifferingItems;
+        ExistingItem ->
+            case compare(UpdatedItem, ExistingItem) of
+                'true' -> DifferingItems;
+                'false' -> dict:store(Key, UpdatedItem, DifferingItems)
             end
     end.
 

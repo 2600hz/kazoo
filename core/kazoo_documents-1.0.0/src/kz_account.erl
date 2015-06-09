@@ -14,7 +14,7 @@
          ,timezone/1, set_timezone/2
          ,id/1
          ,parent_account_id/1
-         ,set_tree/2, tree/1
+         ,set_tree/2, tree/1, tree/2
          ,notification_preference/1, set_notification_preference/2
          ,is_enabled/1, enable/1, disable/1
          ,set_api_key/2, api_key/1
@@ -41,6 +41,7 @@
 -type doc() :: wh_json:object().
 -export_type([doc/0]).
 
+-spec id(doc()) -> api_binary().
 id(JObj) ->
     wh_doc:id(JObj).
 
@@ -84,8 +85,11 @@ parent_account_id(JObj) ->
     end.
 
 -spec tree(doc()) -> ne_binaries().
+-spec tree(doc(), Default) -> ne_binaries() | Default.
 tree(JObj) ->
-    wh_json:get_value(?TREE, JObj, []).
+    tree(JObj, []).
+tree(JObj, Default) ->
+    wh_json:get_list_value(?TREE, JObj, Default).
 
 -spec set_tree(doc(), ne_binaries()) -> doc().
 set_tree(JObj, Tree) ->

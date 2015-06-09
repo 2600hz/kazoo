@@ -43,5 +43,5 @@ reconcile(Services) ->
 
 reconcile(Services0, ?ITEM=Item) ->
     Services1 = reconcile(Services0),
-    Quantity = wh_services:update_quantity(?CATEGORY, Item, Services1),
+    Quantity = wh_services:updated_quantity(?CATEGORY, Item, Services1),
     wh_services:update(?CATEGORY, Item, Quantity + 1, Services1).

@@ -2,6 +2,7 @@
 Section: Crossbar
 Title: Service Plans
 Language: en-US
+Version: 3.20
 */
 
 # Service Plans
@@ -10,50 +11,47 @@ Language: en-US
 
 This api allow you to list the service plans that you can subscribe to.
 
-### Retreiving your service plans.
+### Retrieving your service plans.
 
 Useful for resellers.
 
 #### Request
 
 - Verb: `GET`
-- Url: `/v2/accounts/{{ACCOUNT_ID}}/service_plans`
+- Url: `/v2/accounts/{ACCOUNT_ID}/service_plans`
 - Payload: None
 
-`curl -X GET -H "X-Auth-Token:{AUTH_TOKEN}"  http://{SERVER_IP}/v2/accounts/{{ACCOUNT_ID}}/service_plans`
+
+    `curl -X GET -H "X-Auth-Token:{AUTH_TOKEN}"  http://{SERVER_IP}/v2/accounts/{ACCOUNT_ID}/service_plans`
 
 #### Response
 
-```
-{
-    "page_size": 1,
-    "data": [{
-        "id": "some_plan_id",
-        "name": "Reseller Test plan",
-        "description": "Some description"
-    }],
-    "status": "success",
-    "auth_token": "{AUTH_TOKEN}"
-}
-```
+    {"page_size": 1,
+     "data": [
+         {"id": "some_plan_id",
+          "name": "Reseller Test plan",
+          "description": "Some description"
+         }
+     ],
+     "status": "success",
+     "auth_token": "{AUTH_TOKEN}"
+    }
 
-### Retreiving one of your service plans.
+### Retrieving one of your service plans.
 
 Useful for resellers.
 
 #### Request
 
 - Verb: `GET`
-- Url: `/v2/accounts/{{ACCOUNT_ID}}/service_plans/{{SERVICE_PLAN_ID}}`
+- Url: `/v2/accounts/{ACCOUNT_ID}/service_plans/{SERVICE_PLAN_ID}`
 - Payload: None
 
-`curl -X GET -H "X-Auth-Token:{AUTH_TOKEN}"  http://{SERVER_IP}/v2/accounts/{{ACCOUNT_ID}}/service_plans/{{SERVICE_PLAN_ID}}`
+    `curl -X GET -H "X-Auth-Token:{AUTH_TOKEN}"  http://{SERVER_IP}/v2/accounts/{ACCOUNT_ID}/service_plans/{SERVICE_PLAN_ID}`
 
 #### Response
 
-```
-{
-    "data": {
+    {"data":{
         "name": "Macpie's plan",
         "description": "",
         "plan": {
@@ -172,10 +170,9 @@ Useful for resellers.
             }
         },
         "id": "plan_macpie"
-    },
-    "status": "success"
-}
-```
+     },
+     "status": "success"
+    }
 
 ### Adding service plan to an account.
 
@@ -184,10 +181,10 @@ Useful for resellers.
 #### Request
 
 - Verb: `POST`
-- Url: `/v2/accounts/{{ACCOUNT_ID}}/service_plans/{{SERVICE_PLAN_ID}}`
-- Payload: {"data":{"id":"service_plan_id"}}
+- Url: `/v2/accounts/{ACCOUNT_ID}/service_plans/{SERVICE_PLAN_ID}`
+- Payload: `{"data":{"id":"service_plan_id"}`
 
-`curl -X POST -H "X-Auth-Token:{AUTH_TOKEN}"  http://{SERVER_IP}/v2/accounts/{{ACCOUNT_ID}}/service_plans/{{SERVICE_PLAN_ID}} -d '{"data":{"id":"service_plan_id"}}'`
+    `curl -X POST -H "X-Auth-Token:{AUTH_TOKEN}"  http://{SERVER_IP}/v2/accounts/{ACCOUNT_ID}/service_plans/{SERVICE_PLAN_ID} -d '{"data":{"id":"service_plan_id"}'`
 
 ### Removing service plan from an account.
 
@@ -196,29 +193,27 @@ Useful for resellers.
 #### Request
 
 - Verb: `DELETE`
-- Url: `/v2/accounts/{{ACCOUNT_ID}}/service_plans/{{SERVICE_PLAN_ID}}`
+- Url: `/v2/accounts/{ACCOUNT_ID}/service_plans/{SERVICE_PLAN_ID}`
 - Payload: None
 
-`curl -X DELETE -H "X-Auth-Token:{AUTH_TOKEN}"  http://{SERVER_IP}/v2/accounts/{{ACCOUNT_ID}}/service_plans/{{SERVICE_PLAN_ID}}`
+    `curl -X DELETE -H "X-Auth-Token:{AUTH_TOKEN}"  http://{SERVER_IP}/v2/accounts/{ACCOUNT_ID}/service_plans/{SERVICE_PLAN_ID}`
 
 
-### Retreiving your current plan
+### Retrieving your current plan
 
 This will retreive the service plan currenlty applied on your account.
 
 #### Request
 
 - Verb: `GET`
-- Url: `/v2/accounts/{{ACCOUNT_ID}}/service_plans/current`
+- Url: `/v2/accounts/{ACCOUNT_ID}/service_plans/current`
 - Payload: None
 
-`curl -X GET -H "X-Auth-Token:{AUTH_TOKEN}"  http://{SERVER_IP}/v2/accounts/{{ACCOUNT_ID}}/service_plans/current`
+    `curl -X GET -H "X-Auth-Token:{AUTH_TOKEN}"  http://{SERVER_IP}/v2/accounts/{ACCOUNT_ID}/service_plans/current`
 
 #### Response
 
-```
-{
-    "data": {
+    {"data": {
         "account_quantities": {
             "number_services": {},
             "phone_numbers": {
@@ -366,53 +361,48 @@ This will retreive the service plan currenlty applied on your account.
     "status": "success",
     "auth_token": "{AUTH_TOKEN}"
 }
-```
 
 ## Listing Service Plans available to you
 
 This api will list the services plan that can be applied to your account
 
-### Retreiving all plans
+### Retrieving all plans
 
 #### Request
 
 
 - Verb: `GET`
-- Url: `/v2/accounts/{{ACCOUNT_ID}}/service_plans/available`
+- Url: `/v2/accounts/{ACCOUNT_ID}/service_plans/available`
 - Payload: None
 
-`curl -X GET -H "X-Auth-Token:{AUTH_TOKEN}"  http://{SERVER_IP}/v2/accounts/{{ACCOUNT_ID}}/service_plans/available`
+    `curl -X GET -H "X-Auth-Token:{AUTH_TOKEN}"  http://{SERVER_IP}/v2/accounts/{ACCOUNT_ID}/service_plans/available`
 
 #### Response
 
-```
-{
-    "page_size": 1,
-    "data": [{
-        "id": "some_plan_id",
-        "name": "Test plan",
-        "description": "Some description"
-    }],
-    "status": "success",
-    "auth_token": "{AUTH_TOKEN}"
-}
-```
+    {"page_size": 1,
+     "data": [
+         {"id": "some_plan_id",
+          "name": "Test plan",
+          "description": "Some description"
+         }
+     ],
+     "status": "success",
+     "auth_token": "{AUTH_TOKEN}"
+    }
 
-### Retreiving a plan
+### Retrieving a plan
 
 #### Request
 
 - Verb: `GET`
-- Url: `/v2/accounts/{{ACCOUNT_ID}}/service_plans/available/{{PLAN_ID}}`
+- Url: `/v2/accounts/{ACCOUNT_ID}/service_plans/available/{PLAN_ID}`
 - Payload: None
 
-`curl -X GET -H "X-Auth-Token:{AUTH_TOKEN}"  http://{SERVER_IP}/v2/accounts/{{ACCOUNT_ID}}/service_plans/available/{{PLAN_ID}}`
+    `curl -X GET -H "X-Auth-Token:{AUTH_TOKEN}"  http://{SERVER_IP}/v2/accounts/{ACCOUNT_ID}/service_plans/available/{PLAN_ID}`
 
 #### Response
 
-```
-{
-    "data": {
+    {"data": {
         "name": "Test plan",
         "description": "Some description",
         "plan": {
@@ -531,8 +521,7 @@ This api will list the services plan that can be applied to your account
             }
         },
         "id": "some_plan_id"
-    },
-    "status": "success",
-    "auth_token": "{AUTH_TOKEN}"
-}
-```
+     },
+     "status": "success",
+     "auth_token": "{AUTH_TOKEN}"
+    }

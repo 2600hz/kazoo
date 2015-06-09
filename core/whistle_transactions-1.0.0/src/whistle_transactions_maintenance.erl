@@ -19,7 +19,7 @@
 %% Implement the application start behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec enable_top_up() -> ok.
+-spec enable_top_up() -> 'ok'.
 enable_top_up() ->
     case whapps_config:set(?TOPUP_CONFIG, <<"enable">>, 'true') of
         {'ok', _} -> io:format("top up enabled ~n", []);
@@ -32,7 +32,7 @@ enable_top_up() ->
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec disable_top_up() -> ok.
+-spec disable_top_up() -> 'ok'.
 disable_top_up() ->
     case whapps_config:set(?TOPUP_CONFIG, <<"enable">>, 'false') of
         {'ok', _} -> io:format("top up disabled ~n", []);

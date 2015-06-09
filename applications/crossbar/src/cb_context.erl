@@ -41,6 +41,7 @@
          ,auth_token/1, set_auth_token/2
          ,auth_doc/1, set_auth_doc/2
          ,auth_account_id/1, set_auth_account_id/2
+         ,auth_account_doc/1
          ,auth_user_id/1
          ,req_verb/1, set_req_verb/2
          ,req_data/1, set_req_data/2
@@ -160,9 +161,7 @@ account_realm(Context) ->
 
 account_doc(#cb_context{account_id='undefined'}) -> 'undefined';
 account_doc(Context) ->
-    {'ok', Doc} =
-        couch_mgr:open_cache_doc(account_db(Context), account_id(Context)),
-    Doc.
+    crossbar_util:get_account_doc(account_id(Context)).
 
 is_authenticated(#cb_context{auth_doc='undefined'}) -> 'false';
 is_authenticated(#cb_context{}) -> 'true'.
@@ -170,6 +169,13 @@ is_authenticated(#cb_context{}) -> 'true'.
 auth_token(#cb_context{auth_token=AuthToken}) -> AuthToken.
 auth_doc(#cb_context{auth_doc=AuthDoc}) -> AuthDoc.
 auth_account_id(#cb_context{auth_account_id=AuthBy}) -> AuthBy.
+auth_account_doc(Context) ->
+    case auth_account_id(Context) of
+        'undefined' -> 'undefined';
+        AccountId ->
+            crossbar_util:get_account_doc(AccountId)
+    end.
+
 auth_user_id(#cb_context{auth_doc='undefined'}) -> 'undefined';
 auth_user_id(#cb_context{auth_doc=JObj}) -> wh_json:get_value(<<"owner_id">>, JObj).
 req_verb(#cb_context{req_verb=ReqVerb}) -> ReqVerb.

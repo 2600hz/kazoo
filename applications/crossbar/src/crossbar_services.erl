@@ -8,7 +8,9 @@
 %%%-------------------------------------------------------------------
 -module(crossbar_services).
 
--export([maybe_dry_run/2, maybe_dry_run/3]).
+-export([maybe_dry_run/2, maybe_dry_run/3
+         ,reconcile/1
+        ]).
 
 -include("crossbar.hrl").
 
@@ -17,11 +19,13 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_dry_run(cb_context:context(), function()) -> any().
--spec maybe_dry_run(cb_context:context(), function(), ne_binary() | wh_proplist()) -> any().
+-type callback() :: fun(() -> cb_context:context()).
+
+-spec maybe_dry_run(cb_context:context(), callback()) -> cb_context:context().
+-spec maybe_dry_run(cb_context:context(), callback(), ne_binary() | wh_proplist()) ->
+                           cb_context:context().
 maybe_dry_run(Context, Callback) ->
-    Doc = cb_context:doc(Context),
-    Type = wh_json:get_value(<<"pvt_type">>, Doc),
+    Type = wh_doc:pvt_type(cb_context:doc(Context)),
     maybe_dry_run(Context, Callback, Type).
 
 maybe_dry_run(Context, Callback, Type) when is_binary(Type) ->
@@ -29,48 +33,57 @@ maybe_dry_run(Context, Callback, Type) when is_binary(Type) ->
 maybe_dry_run(Context, Callback, Props) ->
     maybe_dry_run_by_props(Context, Callback, Props, cb_context:accepting_charges(Context)).
 
--spec maybe_dry_run_by_props(cb_context:context(), function(), wh_proplist(), boolean()) ->
-                                    any().
+-spec maybe_dry_run_by_props(cb_context:context(), callback(), wh_proplist(), boolean()) ->
+                                    cb_context:context().
 maybe_dry_run_by_props(Context, Callback, Props, 'true') ->
     Type = props:get_ne_binary_value(<<"type">>, Props),
-    RespJObj = dry_run(Context, Type, props:delete(<<"type">>, Props)),
-    lager:debug("accepting charges"),
-    _ = accepting_charges(Context, RespJObj),
+
+    UpdatedServices = calc_service_updates(Context, Type, props:delete(<<"type">>, Props)),
+    RespJObj = dry_run(UpdatedServices),
+    lager:debug("accepting charges: ~s", [wh_json:encode(RespJObj)]),
+    _ = accepting_charges(Context, RespJObj, UpdatedServices),
     Callback();
 maybe_dry_run_by_props(Context, Callback, Props, 'false') ->
     Type = props:get_ne_binary_value(<<"type">>, Props),
-    RespJObj = dry_run(Context, Type, props:delete(<<"type">>, Props)),
-    lager:debug("not accepting charges"),
+    UpdatedServices = calc_service_updates(Context, Type, props:delete(<<"type">>, Props)),
+    RespJObj = dry_run(UpdatedServices),
+    lager:debug("not accepting charges: ~s", [wh_json:encode(RespJObj)]),
+
+    handle_dry_run_resp(Context, Callback, UpdatedServices, RespJObj).
+
+-spec handle_dry_run_resp(cb_context:context(), callback(), wh_services:services(), wh_json:object()) ->
+                                 cb_context:context().
+handle_dry_run_resp(Context, Callback, Services, RespJObj) ->
     case wh_json:is_empty(RespJObj) of
         'true' ->
-            lager:debug("no charges"),
+            lager:debug("this service update is not a drill people!"),
+            save_an_audit_log(Context, Services),
             Callback();
-        'false' -> crossbar_util:response_402(RespJObj, Context)
+        'false' ->
+            lager:debug("this service update is just a test, do not be alarmed"),
+            crossbar_util:response_402(RespJObj, Context)
     end.
 
--spec maybe_dry_run_by_type(cb_context:context(), function(), ne_binary(), boolean()) ->
-                                   any().
+-spec maybe_dry_run_by_type(cb_context:context(), callback(), ne_binary(), boolean()) ->
+                                   cb_context:context().
 maybe_dry_run_by_type(Context, Callback, Type, 'true') ->
-    RespJObj = dry_run(Context, Type),
-    lager:debug("accepting charges"),
-    _ = accepting_charges(Context, RespJObj),
+    UpdatedServices = calc_service_updates(Context, Type),
+    RespJObj = dry_run(UpdatedServices),
+    lager:debug("accepting charges: ~s", [wh_json:encode(RespJObj)]),
+    _ = accepting_charges(Context, RespJObj, UpdatedServices),
     Callback();
 maybe_dry_run_by_type(Context, Callback, Type, 'false') ->
-    RespJObj = dry_run(Context, Type),
-    lager:debug("not accepting charges"),
-    case wh_json:is_empty(RespJObj) of
-        'true' ->
-            lager:debug("no charges"),
-            Callback();
-        'false' -> crossbar_util:response_402(RespJObj, Context)
-    end.
+    UpdatedServices = calc_service_updates(Context, Type),
+    RespJObj = dry_run(UpdatedServices),
+    lager:debug("not accepting charges: ~s", [wh_json:encode(RespJObj)]),
+
+    handle_dry_run_resp(Context, Callback, UpdatedServices, RespJObj).
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec accepting_charges(cb_context:context(), wh_json:object()) -> 'ok' | 'error'.
-accepting_charges(Context, JObj) ->
-    Services = fetch_service(Context),
+-spec accepting_charges(cb_context:context(), wh_json:object(), wh_services:services()) -> 'ok' | 'error'.
+accepting_charges(Context, JObj, Services) ->
     Items = extract_items(wh_json:delete_key(<<"activation_charges">>, JObj)),
     Transactions =
         lists:foldl(
@@ -80,7 +93,10 @@ accepting_charges(Context, JObj) ->
           ,[]
           ,Items
          ),
-    wh_services:commit_transactions(Services, Transactions).
+    case wh_services:commit_transactions(Services, Transactions) of
+        'ok' -> save_an_audit_log(Context, Services);
+        'error' -> 'error'
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -159,29 +175,32 @@ set_event(_Context, Item, Transaction) ->
     Event = <<"Activation charges for ", ItemValue/binary>>,
     wh_transaction:set_event(Event, Transaction).
 
+-spec dry_run(wh_services:services() | 'undefined') -> wh_json:object().
+dry_run('undefined') -> wh_json:new();
+dry_run(Services) ->
+    lager:debug("updated services, checking for dry run"),
+    wh_services:dry_run(Services).
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec dry_run(cb_context:context(), ne_binary()) -> wh_json:object().
--spec dry_run(cb_context:context(), ne_binary(), wh_proplist()) -> wh_json:object().
-dry_run(Context, <<"device">>) ->
-    lager:debug("dry run device"),
+-spec calc_service_updates(cb_context:context(), ne_binary()) ->
+                                  wh_services:services() | 'undefined'.
+-spec calc_service_updates(cb_context:context(), ne_binary(), wh_proplist()) ->
+                                  wh_services:services() | 'undefined'.
+calc_service_updates(Context, <<"device">>) ->
+    DeviceType = kz_device:device_type(cb_context:doc(Context)),
     Services = fetch_service(Context),
-    JObj = cb_context:doc(Context),
-    DeviceType = wh_json:get_value(<<"device_type">>, JObj),
-    UpdatedServices = wh_service_devices:reconcile(Services, DeviceType),
-    wh_services:dry_run(UpdatedServices);
-dry_run(Context, <<"user">>) ->
-    lager:debug("dry run user"),
+
+    wh_service_devices:reconcile(Services, DeviceType);
+calc_service_updates(Context, <<"user">>) ->
     Services = fetch_service(Context),
     JObj = cb_context:doc(Context),
     UserType = wh_json:get_value(<<"priv_level">>, JObj),
-    UpdatedServices = wh_service_users:reconcile(Services, UserType),
-    wh_services:dry_run(UpdatedServices);
-dry_run(Context, <<"limits">>) ->
-    lager:debug("dry run limits"),
+    wh_service_users:reconcile(Services, UserType);
+calc_service_updates(Context, <<"limits">>) ->
     Services = fetch_service(Context),
     ReqData = cb_context:req_data(Context),
     Updates =
@@ -190,10 +209,8 @@ dry_run(Context, <<"limits">>) ->
            ,{<<"inbound_trunks">>, wh_json:get_integer_value(<<"inbound_trunks">>, ReqData, 0)}
            ,{<<"outbound_trunks">>, wh_json:get_integer_value(<<"outbound_trunks">>, ReqData, 0)}
           ]),
-    UpdatedServices = wh_service_limits:reconcile(Services, Updates),
-    wh_services:dry_run(UpdatedServices);
-dry_run(Context, <<"port_request">>) ->
-    lager:debug("dry run port_request"),
+    wh_service_limits:reconcile(Services, Updates);
+calc_service_updates(Context, <<"port_request">>) ->
     Services = fetch_service(Context),
     JObj = cb_context:doc(Context),
     Numbers = wh_json:get_value(<<"numbers">>, JObj),
@@ -203,41 +220,33 @@ dry_run(Context, <<"port_request">>) ->
           ,wh_json:new()
           ,Numbers
          ),
-    UpdatedServices = wh_service_phone_numbers:reconcile(PhoneNumbers, Services),
-    wh_services:dry_run(UpdatedServices);
-dry_run(Context, <<"app">>) ->
-    lager:debug("dry run app"),
+    wh_service_phone_numbers:reconcile(PhoneNumbers, Services);
+calc_service_updates(Context, <<"app">>) ->
     [{<<"apps_store">>, [Id]} | _] = cb_context:req_nouns(Context),
     case wh_service_ui_apps:is_in_use(cb_context:req_data(Context)) of
-        'false' -> wh_json:new();
+        'false' -> 'undefined';
         'true' ->
             Services = fetch_service(Context),
             AppName = wh_json:get_value(<<"name">>, cb_context:fetch(Context, Id)),
-            UpdatedServices = wh_service_ui_apps:reconcile(Services, AppName),
-            wh_services:dry_run(UpdatedServices)
+            wh_service_ui_apps:reconcile(Services, AppName)
     end;
-dry_run(Context, <<"ips">>) ->
-    lager:debug("dry run dedicated"),
+calc_service_updates(Context, <<"ips">>) ->
     Services = fetch_service(Context),
     UpdatedServices = wh_service_ips:reconcile(Services, <<"dedicated">>),
     wh_services:dry_run(UpdatedServices);
-dry_run(Context, <<"branding">>) ->
-    lager:debug("dry run whitelabel"),
+calc_service_updates(Context, <<"branding">>) ->
     Services = fetch_service(Context),
-    UpdatedServices = wh_service_whitelabel:reconcile(Services, <<"whitelabel">>),
-    wh_services:dry_run(UpdatedServices);
-dry_run(_Context, _Type) ->
-    lager:warning("unknown type ~p, cannot execute dry run", [_Type]),
-    wh_json:new().
+    wh_service_whitelabel:reconcile(Services, <<"whitelabel">>);
+calc_service_updates(_Context, _Type) ->
+    lager:warning("unknown type ~p, cannot calculate service updates", [_Type]),
+    'undefined'.
 
-dry_run(Context, <<"ips">>, Props) ->
-    lager:debug("dry run dedicated"),
+calc_service_updates(Context, <<"ips">>, Props) ->
     Services = fetch_service(Context),
-    UpdatedServices = wh_service_ips:reconcile(Services, Props),
-    wh_services:dry_run(UpdatedServices);
-dry_run(_Context, _Type, _Props) ->
+    wh_service_ips:reconcile(Services, Props);
+calc_service_updates(_Context, _Type, _Props) ->
     lager:warning("unknown type ~p, cannot execute dry run", [_Type]),
-    wh_json:new().
+    'undefined'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -267,9 +276,84 @@ fetch_service(Context) ->
     AuthAccountId = cb_context:auth_account_id(Context),
     case wh_services:is_reseller(AuthAccountId) of
         'false' ->
-            lager:debug("auth account is not a reseller, loading service account ~s", [AccountId]),
+            lager:debug("auth account ~s is not a reseller, loading service account ~s"
+                        ,[AuthAccountId, AccountId]
+                       ),
             wh_services:fetch(AccountId);
         'true' ->
-            lager:debug("auth account is a reseller, loading service from reseller ~s", [AuthAccountId]),
+            lager:debug("auth account ~s is a reseller, loading service from reseller", [AuthAccountId]),
             wh_services:fetch(AuthAccountId)
     end.
+
+-spec reconcile(cb_context:context()) -> cb_context:context().
+reconcile(Context) ->
+    case cb_context:resp_status(Context) =:= 'success'
+        andalso cb_context:req_verb(Context) =/= ?HTTP_GET
+    of
+        'false' -> Context;
+        'true' ->
+            lager:debug("maybe reconciling services for account ~s"
+                        ,[cb_context:account_id(Context)]
+                       ),
+            _ = wh_services:save_as_dirty(cb_context:account_id(Context)),
+            Context
+    end.
+
+-spec base_audit_log(cb_context:context()) -> wh_json:object().
+base_audit_log(Context) ->
+    AccountJObj = cb_context:account_doc(Context),
+    Tree = kz_account:tree(AccountJObj) ++ [cb_context:account_id(Context)],
+
+    lists:foldl(fun base_audit_log_fold/2
+                ,kzd_audit_log:new()
+                ,[{fun kzd_audit_log:set_tree/2, Tree}
+                  ,{fun kzd_audit_log:set_authenticating_user/2, base_auth_user(Context)}
+                  ,{fun kzd_audit_log:set_audit_account/3
+                    ,cb_context:account_id(Context)
+                    ,base_audit_account(Context)
+                   }
+                 ]
+               ).
+
+-type audit_log_fun_2() :: {fun((kzd_audit_log:doc(), Term) -> kzd_audit_log:doc()), Term}.
+-type audit_log_fun_3() :: {fun((kzd_audit_log:doc(), Term1, Term2) -> kzd_audit_log:doc()), Term1, Term2}.
+-type audit_log_fun() ::  audit_log_fun_2() | audit_log_fun_3().
+
+-spec base_audit_log_fold(audit_log_fun(), kzd_audit_log:doc()) -> kzd_audit_log:doc().
+base_audit_log_fold({F, V}, Acc) -> F(Acc, V);
+base_audit_log_fold({F, V1, V2}, Acc) -> F(Acc, V1, V2).
+
+-spec base_audit_account(cb_context:context()) -> wh_json:object().
+base_audit_account(Context) ->
+    AccountName = kz_account:name(cb_context:account_doc(Context)),
+
+    wh_json:from_list(
+      props:filter_empty(
+        [{<<"account_name">>, AccountName}]
+       )).
+
+-spec base_auth_user(cb_context:context()) -> wh_json:object().
+base_auth_user(Context) ->
+    AuthJObj = cb_context:auth_doc(Context),
+    AccountJObj = cb_context:auth_account_doc(Context),
+
+    AccountName = kz_account:name(AccountJObj),
+    wh_json:set_value(<<"account_name">>
+                      ,AccountName
+                      ,leak_auth_pvt_fields(AuthJObj)
+                     ).
+
+-spec leak_auth_pvt_fields(wh_json:object()) -> wh_json:object().
+leak_auth_pvt_fields(JObj) ->
+    wh_json:set_values([{<<"account_id">>, wh_doc:account_id(JObj)}
+                        ,{<<"auth_token">>, wh_doc:id(JObj)}
+                        ,{<<"created">>, wh_doc:created(JObj)}
+                       ]
+                       ,wh_json:public_fields(JObj)
+                      ).
+
+-spec save_an_audit_log(cb_context:context(), wh_services:services() | 'undefined') -> 'ok'.
+save_an_audit_log(_Context, 'undefined') -> 'ok';
+save_an_audit_log(Context, Services) ->
+    BaseAuditLog = base_audit_log(Context),
+    kzd_audit_log:save(Services, BaseAuditLog).

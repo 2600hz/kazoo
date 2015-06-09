@@ -97,7 +97,6 @@ set_reason(JObj, Reason) ->
 set_counter(JObj, Counter) ->
     wh_json:set_value(?PARAM_COUNTER, Counter, JObj).
 
-
 -spec from_binary(ne_binary()) -> wh_json:object().
 from_binary(<<"Diversion:", Header/binary>>) ->
     from_binary(Header);

@@ -1,0 +1,67 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "audit_logs",
+    "description": "Audit log of what caused a billing event to occur",
+    "name": "Audit Log",
+    "properties": {
+        "audit": {
+            "description": "Contains the accounts involved in the billable event (initial account and resellers)",
+            "patternProperties": {
+                "^[0-9a-zA-Z]{32}$": {
+                    "description": "The account's quantity changes for the billing event",
+                    "properties": {
+                        "account_name": {
+                            "description": "The name of the account (for historical purposes)",
+                            "required": true,
+                            "type": "string"
+                        },
+                        "account_quantities": {
+                            "description": "The account's quantities as a result of the billing event",
+                            "type": "object"
+                        },
+                        "cascade_quantities": {
+                            "description": "The account's cascaded quantities as a result of the billing event",
+                            "type": "object"
+                        }
+                    },
+                    "type": "object"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "authenticating_user": {
+            "description": "Information about the requestor who caused the billing event",
+            "properties": {
+                "account_id": {
+                    "required": true,
+                    "type": "string"
+                },
+                "account_name": {
+                    "required": true,
+                    "type": "string"
+                },
+                "first_name": {
+                    "type": "string"
+                },
+                "last_name": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "tree": {
+            "description": "The account's tree (including the account), ordered from ancestor to account",
+            "items": {
+                "type": "string"
+            },
+            "required": true,
+            "type": "array"
+        }
+    },
+    "required": false,
+    "type": "object"
+}

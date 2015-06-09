@@ -34,7 +34,7 @@ reconcile(Services) ->
 reconcile(Services, 'undefined') -> Services;
 reconcile(Services0, IpType) when is_binary(IpType) ->
     Services1 = reconcile(Services0),
-    Quantity = wh_services:update_quantity(<<"ips">>, IpType, Services1),
+    Quantity = wh_services:updated_quantity(<<"ips">>, IpType, Services1),
     wh_services:update(<<"ips">>, IpType, Quantity+1, Services1);
 reconcile(Services, Props) ->
     lists:foldl(
@@ -46,7 +46,7 @@ reconcile(Services, Props) ->
 -spec reconcile_foldl({ne_binary(), integer() | ne_binary()}, wh_services:services()) ->
                              wh_services:services().
 reconcile_foldl({Type, Quantity}, Services) ->
-    OldQuantity = wh_services:update_quantity(<<"ips">>, Type, Services),
+    OldQuantity = wh_services:updated_quantity(<<"ips">>, Type, Services),
     wh_services:update(<<"ips">>
                        ,Type
                        ,OldQuantity + wh_util:to_integer(Quantity)

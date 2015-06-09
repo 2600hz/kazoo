@@ -316,7 +316,9 @@ load_view(#load_view_params{dbs=[]
                             ,context=Context
                            }) ->
     case cb_context:resp_status(Context) of
-        'success' -> handle_couch_mgr_success(cb_context:doc(Context), Context);
+        'success' ->
+            lager:debug("databases exhausted"),
+            handle_couch_mgr_success(cb_context:doc(Context), Context);
         _Status -> Context
     end;
 load_view(#load_view_params{page_size=PageSize
@@ -358,6 +360,8 @@ load_view(#load_view_params{view=View
             'false' -> IncludeOptions;
             _V -> props:delete('include_docs', IncludeOptions)
         end,
+
+    lager:debug("couch_mgr:get_results(~s, ~s, ~p)", [Db, View, ViewOptions]),
 
     case couch_mgr:get_results(Db, View, ViewOptions) of
         % There were more dbs, so move to the next one

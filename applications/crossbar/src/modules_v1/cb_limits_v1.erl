@@ -31,7 +31,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.billing">>, ?MODULE, 'billing'),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.limits">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.post.limits">>, ?MODULE, 'post'),
-    crossbar_bindings:bind(<<"v1_resource.finish_request.*.limits">>, 'cb_modules_util', 'reconcile_services').
+    crossbar_bindings:bind(<<"v1_resource.finish_request.*.limits">>, 'crossbar_services', 'reconcile').
 
 %%--------------------------------------------------------------------
 %% @public
