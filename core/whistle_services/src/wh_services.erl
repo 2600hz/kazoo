@@ -327,7 +327,7 @@ save(#wh_services{jobj = JObj
 
     case couch_mgr:save_doc(?WH_SERVICES_DB, UpdatedJObj) of
         {'ok', NewJObj} ->
-            lager:debug("saved services for ~s, ~p", [AccountId, kzd_services:quantities(NewJObj)]),
+            lager:debug("saved services for ~s: ~s", [AccountId, wh_json:encode(kzd_services:quantities(NewJObj))]),
             IsReseller = kzd_services:is_reseller(NewJObj),
             _ = maybe_clean_old_billing_id(Services),
             BillingId = kzd_services:billing_id(NewJObj, AccountId),
