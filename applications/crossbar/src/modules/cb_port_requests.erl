@@ -727,9 +727,7 @@ summary(Context) ->
 %%--------------------------------------------------------------------
 -spec by_number(cb_context:context(), ne_binary()) -> cb_context:context().
 by_number(Context, Number) ->
-    E164 = wnm_util:to_e164(Number),
-    AccountId = cb_context:account_id(Context),
-    ViewOptions = [{'key', [AccountId, E164]}, 'include_docs'],
+    ViewOptions = [{'keys', build_keys(Context, Number)}, 'include_docs'],
     crossbar_doc:load_view(
         ?ALL_PORT_REQ_NUMBERS
         ,ViewOptions
@@ -753,8 +751,18 @@ descendants_by_number(Context, Number) ->
     ).
 
 -spec build_keys(cb_context:context(), ne_binary()) -> [ne_binaries()] | [].
+-spec build_keys(cb_context:context(), ne_binary(), ne_binaries()) -> [ne_binaries()] | [].
 build_keys(Context, Number) ->
-    E164 = wnm_util:to_e164(Number),
+    build_keys(
+        Context
+        ,wnm_util:to_e164(Number)
+        ,props:get_value(<<"port_requests">>, cb_context:req_nouns(Context))
+    ).
+
+build_keys(Context, E164, []) ->
+    AccountId = cb_context:account_id(Context),
+    [[AccountId, E164]];
+build_keys(Context, E164, [?PORT_DESCENDANTS]) ->
     AccountId = cb_context:account_id(Context),
     ViewOptions = [
         {'startkey', [AccountId]}
