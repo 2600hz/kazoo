@@ -225,3 +225,15 @@ Just as when *R1* created its first device, *D1* tries to create the device and 
 Again, as with *R1*, what *M* wants, *M* gets.
 
 ## *R2*
+
+*R1* has been given reseller permissions to create their own sub accounts. Through some deal with *M*, *R1* creates a sub account *R2* and instructs *M* to mark *R2* as a reseller. Do note that we haven't assigned a service plan to this account.
+
+### *R2* makes changes
+
+Let's see what happens when *R2* creates its first device!
+
+Interestingly, *R2* is not prompted to accept charges and the device is created. This seems to be a result of not having a service plan associated with the account and being a reseller.
+
+### *R1* makes changes to *R2*
+
+When *R1* tries to create a device in *R2*, *R1*'s services is used, accept charges is kicked back with 4 sip devices because *R1* has 3 devices at this point. This doesn't account for *R2*'s existing device.
