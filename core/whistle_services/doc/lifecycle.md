@@ -122,3 +122,87 @@ Two APIs exist to force reconciliation/syncing:
 * `POST /v2/accounts/{ACCOUNT_ID}/service_plans/synchronization`
     - This API will do a full account reconcile, persist, *and* will sync with the bookkeeper (basically what `wh_service_sync` does periodically).
     - This can also be run via SUP on the backend: `sup whistle_services_maintenance sync {ACCOUNT_ID}`
+
+# Scenarios
+
+The following are the anticipated scenarios of service changes being made and the resulting charges.
+
+Let's assume an account tree of:
+
+```
+M -- R1 -- R2 -- D2
+      | -- D1
+```
+
+Here we have the master account *M* with a child account, *R1*, a reseller. *R1* has two child accounts, *R2* (a reseller), and *D1* (a direct client). *R2* has a direct client *D2*.
+
+It is important to keep in mind not only which account is changing a service quantity but also *who* is making the change (an account user, reseller user, or master user).
+
+## *M*
+
+Since *M* is the master account, it doesn't really get a service plan applied to it and can do as it pleases. Phew, that was easy.
+
+## *R1*
+
+When *M* creates *R1*, it applies a service plan (or several) to the account. Let's continue using the SSSP ($1 per device). After flagging the account as a reseller (`sup whistle_services_maintenance make_reseller {R1_ACCOUNT_ID}`), *R1* now make sub-accounts for itself.
+
+### *R1* makes changes
+
+Now that *R1* exists and is a reseller, let's look at when the *R1* admin creates a device and see what should occur.
+
+When attempting the first PUT to devices, Crossbar should return a 402 with a payload like:
+
+
+    {"data":{
+         "devices":{
+             "sip_device":{
+                 "category":"devices"
+                 ,"item":"sip_device"
+                 ,"quantity":1
+                 ,"rate":1.0
+                 ,"single_discount":true
+                 ,"single_discount_rate":0.0
+                 ,"cumulative_discount":0
+                 ,"cumulative_discount_rate":0.0
+             }
+         }
+     }
+     ,"error":"402"
+     ,"message":"accept charges"
+     ,"status":"error"
+     ,"request_id":"{REQUEST_ID}"
+     ,"auth_token":"{AUTH_TOKEN"
+    }
+
+The payload shows the details of what the change would entail (in absolute terms). If the request is resubmitted with the `accept_charges` flag, and the account is in good standing, the device is created and the services for *R1* is updated.
+
+Now, if you were to look at *R1*'s services doc in the `services` DB, the quantities for `devices` is still empty. The account won't be reconciled until the background sync process gets to it. If another device creation would occur, the 402 response would be:
+
+    {"data":{
+        "devices":{
+            "sip_device":{
+                "category":"devices"
+                ,"item":"sip_device"
+                ,"quantity":2
+                ,"rate":1.0
+                ,"single_discount":true
+                ,"single_discount_rate":0.0
+                ,"cumulative_discount":0
+                ,"cumulative_discount_rate":0.0
+            }
+        }
+    }
+    ,"error":"402"
+    ,"message":"accept charges"
+    ,"status":"error"
+    ,"request_id":"{REQUEST_ID}"
+    ,"auth_token":"{AUTH_TOKEN}"
+   }
+
+You can see that the quantity is now 2 for SIP devices. Now, if we reconcile the account manually (either via the UI or on the backend with `sup whistle_services_maintenace reconcile {R1_ACCOUNT_ID}`), we see that *R1*'s services doc now reflects the `"sip_device":1` in the `quantities` for `devices`.
+
+When *R1* adds a second device after reconciling the first on the backend, we get a 402 with a nearly identical response payload (as Kazoo reconciles the service category to generate the 402 but doesn't persist it). So, from *R1*'s perspective, all is calculated properly for service updates, whether the account has been reconciled in the `services` db.
+
+### *M* makes changes to *R1*
+
+Suppose *M* wants to make a change while masquerading as *R1*. What happens?
