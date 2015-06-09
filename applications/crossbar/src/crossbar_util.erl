@@ -880,7 +880,7 @@ create_auth_token(Context, Method, JObj) ->
                ,{<<"owner_id">>, OwnerId}
                ,{<<"as">>, wh_json:get_value(<<"as">>, Data)}
                ,{<<"api_key">>, wh_json:get_value(<<"api_key">>, Data)}
-               ,{<<"restrictions">>, wh_json:get_value(<<"restrictions">>, Data)}
+               ,{<<"restrictions">>, get_token_restrictions(Method, AccountId, OwnerId)}
                ,{<<"method">>, wh_util:to_binary(Method)}
               ]),
     JObjToken = wh_doc:update_pvt_parameters(wh_json:from_list(Token)
@@ -902,6 +902,60 @@ create_auth_token(Context, Method, JObj) ->
         {'error', R} ->
             lager:debug("could not create new local auth token, ~p", [R]),
             cb_context:add_system_error('invalid_credentials', Context)
+    end.
+
+-spec get_token_restrictions(ne_binary(), ne_binary(), ne_binary()) -> wh_json:object().
+get_token_restrictions(Method, AccountId, OwnerId) ->
+    %% dont restrict SuperAdmin
+    case wh_util:is_system_admin(AccountId) of
+        'true' -> 'undefined';
+        'false' ->
+            Restrictions = case get_account_token_restrictions(AccountId, Method) of
+                'undefined' -> get_system_token_restrictions(Method);
+                AccountRestrictions -> AccountRestrictions
+            end,
+            PrivLevel = get_priv_level(AccountId, OwnerId),
+            get_priv_level_restrictions(Restrictions, PrivLevel)
+    end.
+
+-spec get_priv_level(ne_binary(), ne_binary()) -> ne_binary().
+%%
+%% for api_auth tokens we force "admin" priv_level
+%%
+get_priv_level(_AccountId, 'undefined') -> <<"admin">>;
+
+get_priv_level(AccountId, OwnerId) ->
+    AccountDB = wh_util:format_account_db(AccountId),
+    {'ok', Doc} = couch_mgr:open_cache_doc(AccountDB, OwnerId),
+    wh_json:get_ne_value(<<"priv_level">>, Doc).
+
+-spec get_system_token_restrictions(ne_binary()) -> api_object().
+get_system_token_restrictions(Method) -> 
+    case whapps_config:get(<<(?CONFIG_CAT)/binary, ".token_restrictions">>, Method) of
+        'undefined' ->  whapps_config:get(<<(?CONFIG_CAT)/binary, ".token_restrictions">>, <<"_">>);
+        MethodRestrictions -> MethodRestrictions
+    end.
+
+-spec get_account_token_restrictions(ne_binary(), ne_binary()) -> api_object().
+get_account_token_restrictions(AccountId, Method) -> 
+    AccountDB = wh_util:format_account_db(AccountId),
+    case couch_mgr:open_cache_doc(AccountDB, ?CB_ACCOUNT_TOKEN_RESTRICTIONS) of
+        {'ok', RestrictionsDoc} -> wh_json:get_first_defined(
+                                     [[<<"restrictions">>, wh_util:to_binary(Method)] 
+                                      ,[<<"restrictions">>, <<"_">>]
+                                     ], 
+                                     RestrictionsDoc);
+        {'error', _} -> 'undefined'
+    end.
+
+-spec get_priv_level_restrictions(api_object(), ne_binary()) -> api_object().
+get_priv_level_restrictions('undefined', _PrivLevel) -> 'undefined';
+get_priv_level_restrictions(_Restrictions, 'undefined') -> 'undefined';
+get_priv_level_restrictions(Restrictions, PrivLevel) ->
+    RestrictionLevels = wh_json:get_keys(Restrictions),
+    case lists:member(PrivLevel, RestrictionLevels) of
+        'true' -> wh_json:get_ne_value(PrivLevel, Restrictions);
+        'false' -> wh_json:get_ne_value(<<"_">>, Restrictions)
     end.
 
 %%--------------------------------------------------------------------

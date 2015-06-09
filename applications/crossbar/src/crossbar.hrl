@@ -28,6 +28,8 @@
 
 -define(CROSSBAR_DEFAULT_CONTENT_TYPE, {<<"application">>, <<"json">>, []}).
 
+-define(CB_ACCOUNT_TOKEN_RESTRICTIONS, <<"token_restrictions">>).
+
 -define(CONTENT_PROVIDED, [{'to_json', ?JSON_CONTENT_TYPES}]).
 -define(CONTENT_ACCEPTED, [{'from_json', ?JSON_CONTENT_TYPES}
                            ,{'from_form', ?MULTIPART_CONTENT_TYPES}
@@ -73,6 +75,7 @@
                           ,'cb_schemas', 'cb_service_plans', 'cb_services'
                           ,'cb_simple_authz', 'cb_sms'
                           ,'cb_temporal_rules', 'cb_token_auth', 'cb_transactions'
+                          ,'cb_token_restrictions'
                           ,'cb_user_auth', 'cb_users'
                           ,'cb_vmboxes'
                           ,'cb_webhooks', 'cb_whitelabel'

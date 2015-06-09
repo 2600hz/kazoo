@@ -181,7 +181,7 @@ check_auth_token(Context, AuthToken, _MagicPathed) ->
 is_expired(Context, JObj) ->
     AccountId = wh_json:get_value(<<"account_id">>, JObj),
     case wh_util:is_account_expired(AccountId) of
-        'false' -> check_restrictions(Context, JObj);
+        'false' -> check_as(Context, JObj);
         'true' ->
             _ = spawn(fun() -> maybe_disable_account(AccountId) end),
             Cause = wh_json:from_list([{<<"cause">>, <<"account expired">>}]),
@@ -206,42 +206,6 @@ disable_account(AccountId) ->
         'ok' -> lager:info("account ~s disabled because expired", [AccountId]);
         'failed' -> lager:error("falied to disable account ~s", [AccountId])
     end.
-
--spec check_restrictions(cb_context:context(), wh_json:object()) ->
-                                boolean() |
-                                {'true', cb_context:context()}.
-check_restrictions(Context, JObj) ->
-    case wh_json:get_value(<<"restrictions">>, JObj) of
-        'undefined' ->
-            lager:debug("no restrictions, check as object"),
-            check_as(Context, JObj);
-        Rs ->
-            check_restrictions(Context, JObj, Rs)
-    end.
-
--spec check_restrictions(cb_context:context(), wh_json:object(), wh_json:object()) ->
-                                boolean() |
-                                {'true', cb_context:context()}.
-check_restrictions(Context, JObj, Rs) ->
-    [_, _|PathTokens] = cb_context:path_tokens(Context),
-    Restrictions = get_restrictions(Context, Rs),
-    case crossbar_bindings:matches(Restrictions, PathTokens) of
-        'false' ->
-            lager:debug("failed to find any matches in restrictions"),
-            'false';
-        'true' ->
-            lager:debug("found matche in restrictions, check as object now"),
-            check_as(Context, JObj)
-    end.
-
--spec get_restrictions(cb_context:context(), wh_json:object()) ->
-                              ne_binaries().
-get_restrictions(Context, Restrictions) ->
-    Verb = wh_util:to_lower_binary(cb_context:req_verb(Context)),
-    DefaultRestrictions = wh_json:get_value(<<"*">>, Restrictions, []),
-    VerbRestrictions = wh_json:get_value(Verb, Restrictions, []),
-
-    lists:usort(VerbRestrictions ++ DefaultRestrictions).
 
 -spec check_as(cb_context:context(), wh_json:object()) ->
                       boolean() |
