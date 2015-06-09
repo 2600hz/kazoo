@@ -340,7 +340,7 @@ template_doc_id(<<_/binary>> = ID) -> <<"notification.", ID/binary>>.
 init_template(Id, Params) ->
     DocId = template_doc_id(Id),
     {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
-    lager:debug("looking for ~s", [DocId]),
+    lager:debug("looking for template ~s", [DocId]),
     case couch_mgr:open_cache_doc(MasterAccountDb, DocId) of
         {'ok', TemplateJObj} -> maybe_update_template(MasterAccountDb, TemplateJObj, Params);
         {'error', 'not_found'} -> create_template(MasterAccountDb, DocId, Params);
