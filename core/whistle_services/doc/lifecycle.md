@@ -206,3 +206,7 @@ When *R1* adds a second device after reconciling the first on the backend, we ge
 ### *M* makes changes to *R1*
 
 Suppose *M* wants to make a change while masquerading as *R1*. What happens?
+
+Creating device #3 we see that the request is not responded to with a 402 as before. Why? Since the auth account of the request (*M*) is a reseller, the services doc of *M* is used to process the request, and since *M* is the boss, the request is processed and the device saved.
+
+If we manually reconcile *R1* again, we see `"sip_device":3` as expected. *R1*, when synced with the bookkeeper, will be billed for that third device, so admins of *M* need to be aware when making this service changes.
