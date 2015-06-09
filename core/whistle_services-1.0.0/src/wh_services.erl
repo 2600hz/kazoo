@@ -19,7 +19,6 @@
 -export([reconcile/1, reconcile/2
          ,reconcile_only/1, reconcile_only/2
          ,save_as_dirty/1
-         ,save_audit_logs/2
         ]).
 -export([fetch/1, fetch_services_doc/2]).
 -export([update/4]).
@@ -34,11 +33,15 @@
 -export([get_billing_id/1]).
 -export([find_reseller_id/1]).
 
--export([account_id/1]).
+-export([account_id/1
+         ,account_name/1
+         ,services_json/1
+        ]).
 -export([is_dirty/1]).
 -export([quantity/3
          ,diff_quantities/1, diff_quantities/2
          ,diff_quantity/3
+         ,have_quantities_changed/1
         ]).
 -export([updated_quantity/3]).
 -export([category_quantity/2, category_quantity/3]).
@@ -297,122 +300,6 @@ save_conflicting_as_dirty(#wh_services{account_id=AccountId}, BackOff) ->
             save_as_dirty(NewServices, BackOff*2)
     end.
 
--spec save_audit_logs(services(), kzd_audit_log:doc()) -> 'ok'.
--spec save_audit_logs(services(), kzd_audit_log:doc(), ne_binary()) -> 'ok'.
-save_audit_logs(Services, AuditLog) ->
-    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
-    lager:debug("maybe save the base audit log ~s", [wh_json:encode(AuditLog)]),
-    save_audit_logs(Services, AuditLog, MasterAccountId).
-
-save_audit_logs(#wh_services{account_id=MasterAccountId}, _AuditLog, MasterAccountId) ->
-    lager:debug("reached master account");
-save_audit_logs(#wh_services{jobj=JObj
-                             ,account_id=AccountId
-                            }=Services
-                ,AuditLog
-                ,MasterAccountId
-               ) ->
-    case kzd_services:is_reseller(JObj) of
-        'false' ->
-            maybe_save_audit_log_to_reseller(Services, AuditLog, MasterAccountId);
-        'true' ->
-            maybe_save_audit_log(Services, AuditLog, AccountId),
-            maybe_save_audit_log_to_reseller(Services, AuditLog, MasterAccountId)
-    end.
-
-maybe_save_audit_log_to_reseller(#wh_services{jobj=JObj
-                                              ,account_id=AccountId
-                                             }=Services
-                                 ,AuditLog
-                                 ,MasterAccountId
-                                ) ->
-    case kzd_services:reseller_id(JObj) of
-        MasterAccountId ->
-            lager:debug("account ~s' reseller is the master account", [AccountId]),
-            maybe_save_master_audit_log(Services, AuditLog, MasterAccountId);
-        ResellerId ->
-            lager:debug("saving audit log for account ~s's reseller ~s", [AccountId, ResellerId]),
-            ResellerServices = fetch(ResellerId),
-            AuditLog1 = maybe_save_audit_log(Services, AuditLog, ResellerId),
-            save_audit_logs(ResellerServices, AuditLog1, MasterAccountId)
-    end.
-
--spec base_audit_log(services() | ne_binary()) -> kzd_audit_log:doc().
-base_audit_log(#wh_services{account_id=AccountId}) ->
-    base_audit_log(AccountId);
-base_audit_log(<<_/binary>> = AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    AccountJObj = get_account_definition(AccountDb, AccountId),
-
-    Tree = kz_account:tree(AccountJObj) ++ [AccountId],
-
-    lists:foldl(fun({F, V}, Acc) -> F(Acc, V) end
-                ,kzd_audit_log:new()
-                ,[{fun kzd_audit_log:set_tree/2, Tree}]
-               ).
-
--spec maybe_save_audit_log(services(), wh_json:object(), ne_binary()) -> kzd_audit_log:doc().
-maybe_save_audit_log(#wh_services{jobj=JObj
-                                  ,updates=UpdatedQuantities
-                                  ,account_id=_AccountId
-                                 }=Services
-                     ,AuditLog
-                     ,ResellerId
-                    ) ->
-    CurrentQuantities = kzd_services:quantities(JObj),
-    case have_quantities_changed(UpdatedQuantities, CurrentQuantities) of
-        'true' ->
-            save_audit_log(Services, AuditLog, ResellerId);
-        'false' ->
-            lager:debug("nothing has changed for account ~s(reseller ~s), ignoring audit log"
-                        ,[_AccountId, ResellerId]
-                       ),
-            AuditLog
-    end.
-
--spec maybe_save_master_audit_log(services(), kzd_audit_log:doc(), ne_binary()) -> 'ok'.
--spec maybe_save_master_audit_log(services(), kzd_audit_log:doc(), ne_binary(), boolean()) -> 'ok'.
-maybe_save_master_audit_log(Services, AuditLog, MasterAccountId) ->
-    maybe_save_master_audit_log(Services, AuditLog, MasterAccountId
-                                ,whapps_config:get_is_true(?WHS_CONFIG_CAT, <<"should_save_master_audit_logs">>, 'false')
-                               ).
-
-maybe_save_master_audit_log(_Services, _AuditLog, _MasterAccountId, 'false') ->
-    lager:debug("reached master account, not saving audit log");
-maybe_save_master_audit_log(Services, AuditLog, MasterAccountId, 'true') ->
-    save_audit_log(Services, AuditLog, MasterAccountId),
-    lager:debug("reached master account, saved audit log").
-
--spec save_audit_log(services(), kzd_audit_log:doc(), ne_binary()) -> kzd_audit_log:doc().
-save_audit_log(Services, AuditLog, ResellerId) ->
-    AuditLog1 = update_audit_log(Services, AuditLog),
-    case kzd_audit_log:audit_account_ids(AuditLog1) of
-        [] ->
-            lager:debug("no audit log to save");
-        _Ids ->
-            MODb = kazoo_modb:get_modb(ResellerId),
-            ResellerAuditLog = wh_doc:update_pvt_parameters(AuditLog1, MODb, [{'account_id', ResellerId}]),
-            {'ok', _Saved} = kazoo_modb:save_doc(MODb, ResellerAuditLog),
-            lager:debug("saved audit log to ~s: ~s", [ResellerId, wh_json:encode(_Saved)])
-    end,
-    AuditLog1.
-
--spec update_audit_log(services(), kzd_audit_log:doc()) -> kzd_audit_log:doc().
-update_audit_log(#wh_services{account_id=AccountId
-                              ,jobj=JObj
-                             }=Services
-                 ,AuditLog
-                ) ->
-
-    AccountAudit = wh_json:from_list(
-                     props:filter_empty(
-                       [{?QUANTITIES_ACCOUNT, kzd_services:quantities(JObj)}
-                        ,{<<"diff_quantities">>, diff_quantities(Services)}
-                        ,{<<"account_name">>, account_name(AccountId)}
-                       ])
-                    ),
-    kzd_audit_log:set_audit_account(AuditLog, AccountId, AccountAudit).
-
 -spec account_name(ne_binary()) -> api_binary().
 account_name(AccountId) ->
     case couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded')
@@ -424,16 +311,15 @@ account_name(AccountId) ->
     end.
 
 -spec save(services()) -> services().
--spec save(services(), kzd_audit_log:doc(), pos_integer()) -> services().
+-spec save(services(), pos_integer()) -> services().
 save(#wh_services{}=Services) ->
-    save(Services, base_audit_log(Services), ?BASE_BACKOFF).
+    save(Services, ?BASE_BACKOFF).
 
 save(#wh_services{jobj=JObj
                   ,updates=UpdatedQuantities
                   ,account_id=AccountId
                   ,dirty=ForceDirty
                  }=Services
-     ,AuditLog
      ,BackOff
     ) ->
     CurrentQuantities = kzd_services:quantities(JObj),
@@ -453,25 +339,23 @@ save(#wh_services{jobj=JObj
             IsReseller = kzd_services:is_reseller(NewJObj),
             _ = maybe_clean_old_billing_id(Services),
             BillingId = kzd_services:billing_id(NewJObj, AccountId),
-            Services1 = Services#wh_services{jobj=NewJObj
-                                             ,cascade_quantities=cascade_quantities(AccountId, IsReseller)
-                                             ,status=kzd_services:status(NewJObj)
-                                             ,billing_id=BillingId
-                                             ,current_billing_id=BillingId
-                                             ,deleted=wh_doc:is_soft_deleted(NewJObj)
-                                            },
-            save_audit_logs(Services1, AuditLog),
-            Services1;
+            Services#wh_services{jobj=NewJObj
+                                 ,cascade_quantities=cascade_quantities(AccountId, IsReseller)
+                                 ,status=kzd_services:status(NewJObj)
+                                 ,billing_id=BillingId
+                                 ,current_billing_id=BillingId
+                                 ,deleted=wh_doc:is_soft_deleted(NewJObj)
+                                };
         {'error', 'not_found'} ->
             lager:debug("service database does not exist, attempting to create"),
             'true' = couch_mgr:db_create(?WH_SERVICES_DB),
             timer:sleep(BackOff),
-            save(Services, AuditLog, BackOff);
+            save(Services, BackOff);
         {'error', 'conflict'} ->
             lager:debug("services for ~s conflicted, merging changes and retrying", [AccountId]),
             timer:sleep(BackOff + random:uniform(?BASE_BACKOFF)),
             {'ok', Existing} = couch_mgr:open_doc(?WH_SERVICES_DB, AccountId),
-            save(Services#wh_services{jobj=Existing}, AuditLog, BackOff*2)
+            save(Services#wh_services{jobj=Existing}, BackOff*2)
     end.
 
 %%--------------------------------------------------------------------
@@ -873,6 +757,10 @@ account_id(#wh_services{account_id='undefined'
     wh_doc:account_id(JObj);
 account_id(#wh_services{account_id=AccountId}) ->
     AccountId.
+
+-spec services_json(services()) -> kzd_services:doc().
+services_json(#wh_services{jobj=JObj}) ->
+    JObj.
 
 -spec is_dirty(services()) -> boolean().
 is_dirty(#wh_services{dirty=IsDirty}) ->
@@ -1457,7 +1345,14 @@ maybe_save(#wh_services{jobj=JObj
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec have_quantities_changed(services()) -> boolean().
 -spec have_quantities_changed(wh_json:object(), wh_json:object()) -> boolean().
+have_quantities_changed(#wh_services{jobj=JObj
+                                     ,updates=UpdatedQuantities
+                                    }) ->
+    CurrentQuantities = kzd_services:quantities(JObj),
+    have_quantities_changed(UpdatedQuantities, CurrentQuantities).
+
 have_quantities_changed(Updated, Current) ->
     KeyNotSameFun = fun(Key) ->
                             wh_json:get_value(Key, Updated) =/= wh_json:get_value(Key, Current)

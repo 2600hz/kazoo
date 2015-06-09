@@ -356,4 +356,4 @@ leak_auth_pvt_fields(JObj) ->
 save_an_audit_log(_Context, 'undefined') -> 'ok';
 save_an_audit_log(Context, Services) ->
     BaseAuditLog = base_audit_log(Context),
-    wh_services:save_audit_logs(Services, BaseAuditLog).
+    kzd_audit_log:save(Services, BaseAuditLog).
