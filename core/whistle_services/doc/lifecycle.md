@@ -225,6 +225,14 @@ Just as when **R1** created its first device, **D1** tries to create the device 
 
 Again, as with **R1**, what **M** wants, **M** gets.
 
+## **D2**
+
+**R1** has signed up their first account, **D2**. This is a normal, direct-client account. No service plan has been assigned to **D2**. Let's see how service changes work!
+
+### **D2** makes changes
+
+When a user from **D2** creates a SIP device
+
 ## **R2**
 
 **R1** has been given reseller permissions to create their own sub accounts. Through some deal with **M**, **R1** creates a sub account **R2** and instructs **M** to mark **R2** as a reseller. Do note that we haven't assigned a service plan to this account.

@@ -210,7 +210,11 @@ fetch_cached_services(AccountId) ->
 
 -spec cache_services(ne_binary(), services()) -> 'ok'.
 cache_services(AccountId, Services) ->
-    wh_cache:store_local(?SERVICES_CACHE, services_cache_key(AccountId), Services).
+    wh_cache:store_local(?SERVICES_CACHE
+                         ,services_cache_key(AccountId)
+                         ,Services
+                         ,[{'origin', [{'db', ?WH_SERVICES_DB, AccountId}]}]
+                        ).
 
 -spec flush_services() -> 'ok'.
 flush_services() ->
@@ -661,12 +665,17 @@ maybe_allow_updates(AccountId, ServicesJObj) ->
         orelse kzd_services:status(ServicesJObj)
     of
         'true' ->
-            lager:debug("allowing request for account with no service plans"),
+            lager:debug("allowing request for account ~s with no service plans"
+                        ,[AccountId]
+                       ),
             'true';
         StatusGood ->
             lager:debug("allowing request for account in good standing"),
             'true';
         Status ->
+            lager:debug("checking local bookkeeper for account ~s in status ~s"
+                        ,[AccountId, Status]
+                       ),
             maybe_local_bookkeeper_allow_updates(AccountId, Status)
     end.
 
