@@ -31,6 +31,16 @@
 -define(PVT_CREATED, <<"pvt_created">>).
 -define(PVT_TYPE, <<"pvt_type">>).
 
+-define(NUMBER_STATE_PORT_IN, <<"port_in">>).
+-define(NUMBER_STATE_PORT_OUT, <<"port_out">>).
+-define(NUMBER_STATE_DISCOVERY, <<"discovery">>).
+-define(NUMBER_STATE_IN_SERVICE, <<"in_service">>).
+-define(NUMBER_STATE_RELEASED, <<"released">>).
+-define(NUMBER_STATE_RESERVED, <<"reserved">>).
+-define(NUMBER_STATE_AVAILABLE, <<"available">>).
+-define(NUMBER_STATE_DISCONNECTED, <<"disconnected">>).
+-define(NUMBER_STATE_DELETED, <<"deleted">>).
+
 
 -define(KNM_NUMBER_MANAGER_HRL, 'true').
 -endif.
