@@ -9,5 +9,8 @@
 -define(APP_VERSION, <<"4.0.0">>).
 
 -define(WHS_CONFIG_CAT, <<"services">>).
+
+-define(SERVICES_CACHE, 'whistle_services_cache').
+
 -define(WHISTLE_SERVICES_HRL, 'true').
 -endif.
