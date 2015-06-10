@@ -160,8 +160,6 @@ should_delete_port_request(_) ->
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 
-allowed_methods(?PORT_DESCENDANTS) ->
-    [?HTTP_GET];
 allowed_methods(_Id) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
@@ -304,11 +302,6 @@ content_types_accepted(Context, _Id, ?PORT_ATTACHMENT, _AttachmentId) ->
 validate(Context) ->
     validate_port_requests(Context, cb_context:req_verb(Context)).
 
-validate(Context, ?PORT_DESCENDANTS) ->
-    case cb_context:req_value(Context, <<"by_number">>) of
-        'undefined' -> read_descendants(Context);
-        Number -> descendants_by_number(Context, Number)
-    end;
 validate(Context, Id) ->
     validate_port_request(Context, Id, cb_context:req_verb(Context)).
 
@@ -333,12 +326,24 @@ validate(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
     validate_attachment(Context, Id, AttachmentId, cb_context:req_verb(Context)).
 
 validate_port_requests(Context, ?HTTP_GET) ->
-    case cb_context:req_value(Context, <<"by_number">>) of
-        'undefined' -> summary(Context);
-        Number -> by_number(Context, Number)
-    end;
+    validate_get_port_requests(
+        Context
+        ,props:get_value(<<"accounts">>, cb_context:req_nouns(Context))
+        ,cb_context:req_value(Context, <<"by_number">>)
+    );
 validate_port_requests(Context, ?HTTP_PUT) ->
     create(Context).
+
+
+validate_get_port_requests(Context, [_AccountId], 'undefined') ->
+    summary(Context);
+validate_get_port_requests(Context, [_AccountId], ByNumber) ->
+    summary_by_number(Context, ByNumber);
+validate_get_port_requests(Context, [_AccountId, ?PORT_DESCENDANTS], 'undefined') ->
+    read_descendants(Context);
+validate_get_port_requests(Context, [_AccountId, ?PORT_DESCENDANTS], ByNumber) ->
+    read_descendants_by_number(Context, ByNumber).
+
 
 validate_port_request(Context, Id, ?HTTP_GET) ->
     read(Context, Id);
@@ -725,8 +730,8 @@ summary(Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec by_number(cb_context:context(), ne_binary()) -> cb_context:context().
-by_number(Context, Number) ->
+-spec summary_by_number(cb_context:context(), ne_binary()) -> cb_context:context().
+summary_by_number(Context, Number) ->
     ViewOptions = [{'keys', build_keys(Context, Number)}, 'include_docs'],
     crossbar_doc:load_view(
         ?ALL_PORT_REQ_NUMBERS
@@ -740,8 +745,8 @@ by_number(Context, Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec descendants_by_number(cb_context:context(), ne_binary()) -> cb_context:context().
-descendants_by_number(Context, Number) ->
+-spec read_descendants_by_number(cb_context:context(), ne_binary()) -> cb_context:context().
+read_descendants_by_number(Context, Number) ->
     ViewOptions = [{'keys', build_keys(Context, Number)}, 'include_docs'],
     crossbar_doc:load_view(
         ?ALL_PORT_REQ_NUMBERS
@@ -750,20 +755,10 @@ descendants_by_number(Context, Number) ->
         ,fun normalize_view_results/2
     ).
 
--spec build_keys(cb_context:context(), ne_binary()) -> [ne_binaries()] | [].
--spec build_keys(cb_context:context(), ne_binary(), ne_binaries()) -> [ne_binaries()] | [].
-build_keys(Context, Number) ->
-    build_keys(
-        Context
-        ,wnm_util:to_e164(Number)
-        ,props:get_value(<<"port_requests">>, cb_context:req_nouns(Context))
-    ).
-
-build_keys(Context, E164, []) ->
-    AccountId = cb_context:account_id(Context),
+-spec build_keys(cb_context:context() | ne_binary(), ne_binary()) -> [ne_binaries()] | [].
+build_keys(E164, [AccountId]) ->
     [[AccountId, E164]];
-build_keys(Context, E164, [?PORT_DESCENDANTS]) ->
-    AccountId = cb_context:account_id(Context),
+build_keys(E164, [AccountId, ?PORT_DESCENDANTS]) ->
     ViewOptions = [
         {'startkey', [AccountId]}
         ,{'endkey', [AccountId, wh_json:new()]}
@@ -787,7 +782,12 @@ build_keys(Context, E164, [?PORT_DESCENDANTS]) ->
                 ,[[AccountId, E164]]
                 ,JObjs
             )
-    end.
+    end;
+build_keys(Context, Number) ->
+    build_keys(
+        wnm_util:to_e164(Number)
+        ,props:get_value(<<"accounts">>, cb_context:req_nouns(Context))
+    ).
 
 %%--------------------------------------------------------------------
 %% @private
