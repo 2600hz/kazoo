@@ -34,7 +34,7 @@
 -export([to_json/1]).
 -export([is_chunk/1]).
 -export([sort_by_timestamp/1
-        ,reorder_dialogue/1]).
+        ,reorder_dialog/1]).
 
 -record(ci_chunk, {call_id :: ne_binary()
                   ,data = [] :: ne_binaries()
@@ -154,16 +154,12 @@ sort_by_timestamp(Chunks) ->
     lists:keysort(#ci_chunk.ref_timestamp, Chunks).
 
 
--spec reorder_dialogue([chunk()]) -> [chunk()].
-reorder_dialogue(Chunks) ->
+-spec reorder_dialog([chunk()]) -> [chunk()].
+reorder_dialog(Chunks) ->
     GroupedByCSeq = group_by(fun c_seq/1, Chunks),
-    %% Gna = group_by(fun c_seq/1, Chunks),
-    %% GroupedByCSeq = [lists:keyfind(<<"3">>, 1, Gna)],
     lists:flatmap( fun ({_CSeq, ByCSeq}) ->
-                           io:format("on CSeq ~p\n", [_CSeq]),
                            GroupedByParser = group_by(fun parser/1, sort_by_timestamp(ByCSeq)),
                            [{_Parser,ByParser}|Others0] = GroupedByParser,
-                           io:format("using parser ~p\n", [_Parser]),
                            Others = remove_duplicates(ByParser, Others0),
                            {Done, Rest} = do_merge([], ByParser, Others, []),
                            io:format(">>> Rest = ~p\n", [Rest]),
@@ -187,7 +183,7 @@ do_merge(Before, [Ordered|InOrder], [Chunk|ToOrder], UnMergeable) ->
          }
     of
         {'true', 'true', 'true'} ->
-            io:format("Eh, both match\n~p\n~p\n", [Ordered,Chunk]),
+            io:format(">>> both match\n~p\n~p\n", [Ordered,Chunk]),
             do_merge([], Before++[Ordered|InOrder], ToOrder, [Chunk|UnMergeable]);
         {'true', 'true', ______} ->
             do_merge([], Before++[Ordered]++[Chunk|InOrder], ToOrder, UnMergeable);

@@ -88,7 +88,7 @@ lookup_callid(CallId) ->
                        ),
     UnorderedChunks = lists:reverse(props:get_value('chunks', Props)),
     props:set_value('chunks'
-                   ,ci_chunk:reorder_dialogue(UnorderedChunks)
+                   ,ci_chunk:reorder_dialog(UnorderedChunks)
                    ,Props
                    ).
 
