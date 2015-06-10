@@ -56,11 +56,11 @@ maybe_dry_run_by_props(Context, Callback, Props, 'false') ->
 handle_dry_run_resp(Context, Callback, Services, RespJObj) ->
     case wh_json:is_empty(RespJObj) of
         'true' ->
-            lager:debug("this service update is not a drill people!"),
+            lager:debug("no dry_run charges to accept; this service update is not a drill people!"),
             save_an_audit_log(Context, Services),
             Callback();
         'false' ->
-            lager:debug("this service update is just a test, do not be alarmed"),
+            lager:debug("this update requires service changes to be accepted, do not be alarmed"),
             crossbar_util:response_402(RespJObj, Context)
     end.
 
@@ -75,7 +75,6 @@ maybe_dry_run_by_type(Context, Callback, Type, 'true') ->
 maybe_dry_run_by_type(Context, Callback, Type, 'false') ->
     UpdatedServices = calc_service_updates(Context, Type),
     RespJObj = dry_run(UpdatedServices),
-    lager:debug("not accepting charges: ~s", [wh_json:encode(RespJObj)]),
 
     handle_dry_run_resp(Context, Callback, UpdatedServices, RespJObj).
 
