@@ -162,8 +162,10 @@ reorder_dialog(Chunks) ->
                            [{_Parser,ByParser}|Others0] = GroupedByParser,
                            Others = remove_duplicates(ByParser, Others0),
                            {Done, Rest} = do_merge([], ByParser, Others, []),
-                           io:format(">>> Rest = ~p\n", [Rest]),
-                           Done
+                           io:format(">>> Rest = ~p\n", [to_json(Rest)]),
+                           {ReallyDone, NewRest} = second_pass([], Done, Rest, []),
+                           io:format(">>> NewRest = ~p\n", [to_json(NewRest)]),
+                           ReallyDone
                    end, lists:keysort(1, GroupedByCSeq)).
 
 remove_duplicates(InOrder, GroupedByParser) ->
@@ -175,7 +177,7 @@ remove_duplicates(InOrder, GroupedByParser) ->
                   ]).
 
 do_merge(Before, [Ordered|InOrder], [Chunk|ToOrder], UnMergeable) ->
-    case { label(Ordered) =:= label(Chunk)
+    case {    label(Ordered) =:=    label(Chunk)
          ,   dst_ip(Ordered) =:=   src_ip(Chunk) andalso
            dst_port(Ordered) =:= src_port(Chunk)
          ,   src_ip(Ordered) =:=   dst_ip(Chunk) andalso
@@ -198,6 +200,31 @@ do_merge(Before, [], [Chunk|ToOrder], UnMergeable) ->
     do_merge([], Before, ToOrder, [Chunk|UnMergeable]);
 do_merge(Before, InOrder, [], UnMergeable) ->
     {Before++InOrder, UnMergeable}.
+
+second_pass(Before, [Ordered1,Ordered2|InOrder], [Chunk|ToOrder], UnMergeable) ->
+    case {    label(Ordered1),    label(Chunk),    label(Ordered2)
+         ,    c_seq(Ordered1),    c_seq(Chunk),    c_seq(Ordered2)
+         ,   src_ip(Ordered1),   src_ip(Chunk),   dst_ip(Ordered2)
+         , src_port(Ordered1), src_port(Chunk), dst_port(Ordered2)
+         }
+    of
+        { <<"INVITE ",_/binary>>, <<"SIP/2.0 100 Attempting to connect your call">>, <<"SIP/2.0 100 Trying">>
+        , CSeq, CSeq, CSeq
+        , IP, IP, IP
+        , Port, Port, Port
+        } ->
+            second_pass(Before++[Ordered1,Chunk,Ordered2], InOrder, ToOrder, UnMergeable);
+        _ ->
+            second_pass(Before++[Ordered1], [Ordered2|InOrder], [Chunk|ToOrder], UnMergeable)
+    end;
+second_pass(Before, [Ordered], [Chunk|ToOrder], UnMergeable) ->
+    io:format("here\n"),
+    second_pass([], Before++[Ordered], ToOrder, [Chunk|UnMergeable]);
+second_pass(Before, [], [Chunk|ToOrder], UnMergeable) ->
+    second_pass([], Before, ToOrder, [Chunk|UnMergeable]);
+second_pass(Before, InOrder, [], UnMergeable) ->
+    {Before++InOrder, UnMergeable}.
+
 
 %% Assumes CSeq and Callid already equal.
 is_duplicate([#ci_chunk{ dst_ip = DstIP
