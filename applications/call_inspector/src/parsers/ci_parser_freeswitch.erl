@@ -14,8 +14,7 @@
 
 %% API
 -export([start_link/1]).
--export([call_id/1]).
--export([ip/1]).
+
 %% gen_server callbacks
 -export([init/1
          ,handle_call/3
@@ -28,6 +27,7 @@
 -record(state, {logfile :: file:name()
                ,iodevice :: file:io_device()
                ,logip :: ne_binary()
+               ,logport :: pos_integer()
                ,timer :: reference()
                ,counter :: pos_integer()
                }
@@ -64,11 +64,12 @@ start_link(Args) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init({'parser_args', LogFile, LogIP}) ->
+init({'parser_args', LogFile, LogIP, LogPort}) ->
     NewDev = ci_parsers_util:open_file(LogFile),
     State = #state{logfile = LogFile
                   ,iodevice = NewDev
                   ,logip = LogIP
+                  ,logport = LogPort
                   ,counter = 1},
     self() ! 'start_parsing',
     {'ok', State}.
@@ -119,13 +120,14 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info('start_parsing', State=#state{iodevice = IoDevice
                                          ,logip = LogIP
+                                         ,logport = LogPort
                                          ,timer = OldTimer
                                          ,counter = Counter}) ->
     _ = case OldTimer of
             'undefined' -> 'ok';
             _ -> erlang:cancel_timer(OldTimer)
         end,
-    NewCounter = extract_chunks(IoDevice, LogIP, Counter),
+    NewCounter = extract_chunks(IoDevice, LogIP, LogPort, Counter),
     NewTimer = erlang:send_after(ci_parsers_util:parse_interval()
                                 , self(), 'start_parsing'),
     {'noreply', State#state{timer = NewTimer
@@ -164,15 +166,15 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
-extract_chunks(Dev, LogIP, Counter) ->
+extract_chunks(Dev, LogIP, LogPort, Counter) ->
     case extract_chunk(Dev, buffer()) of
         [] -> Counter;
         Data0 ->
-            NewCounter = make_and_store_chunk(LogIP, Counter, Data0),
-            extract_chunks(Dev, LogIP, NewCounter)
+            NewCounter = make_and_store_chunk(LogIP, LogPort, Counter, Data0),
+            extract_chunks(Dev, LogIP, LogPort, NewCounter)
     end.
 
-make_and_store_chunk(LogIP, Counter, Data00) ->
+make_and_store_chunk(LogIP, LogPort, Counter, Data00) ->
     Apply = fun (Fun, Arg) -> Fun(Arg) end,
     {Timestamp, Data0, NewCounter} =
         case lists:keytake('timestamp', 1, Data00) of
@@ -185,16 +187,17 @@ make_and_store_chunk(LogIP, Counter, Data00) ->
                 ,fun strip_truncating_pieces/1
                 ,fun remove_dashes/1],
     Data = lists:foldl(Apply, Data0, Cleansers),
+    ParserId = ci_parsers_sup:child(self()),
     Chunk =
-        ci_chunk:setters(set_legs(LogIP, ci_chunk:new(), Data)
-                        , [ {fun ci_chunk:set_data/2, Data}
-                          , {fun ci_chunk:set_call_id/2, call_id(Data)}
-                          , {fun ci_chunk:set_timestamp/2, Timestamp}
-                          , {fun ci_chunk:set_parser/2, ?MODULE}
-                          , {fun ci_chunk:set_label/2, label(Data)}
+        ci_chunk:setters(set_legs(LogIP, LogPort, ci_chunk:new(), Data)
+                        , [ {fun ci_chunk:data/2, Data}
+                          , {fun ci_chunk:call_id/2, ci_parsers_util:call_id(Data)}
+                          , {fun ci_chunk:timestamp/2, Timestamp}
+                          , {fun ci_chunk:parser/2, ParserId}
+                          , {fun ci_chunk:label/2, label(Data)}
                           ]
                         ),
-    lager:debug("parsed chunk ~s (~s)", [ci_chunk:call_id(Chunk), ci_parsers_sup:child(self())]),
+    lager:debug("parsed chunk ~s (~s)", [ci_chunk:call_id(Chunk), ParserId]),
     ci_datastore:store_chunk(Chunk),
     NewCounter.
 
@@ -250,23 +253,41 @@ buffer(Buffer) ->
     [].
 
 
-set_legs(LogIP, Chunk, [FirstLine|_Lines]) ->
+set_legs(LogIP, LogPort, Chunk, [FirstLine|_Lines]) ->
     case FirstLine of
         <<"send ", _/binary>> ->
-            From = LogIP,
-            To   = ip(FirstLine);
+            FromIP = LogIP,
+            ToIP   = ip(FirstLine),
+            FromPort = LogPort,
+            ToPort   = get_port(FirstLine);
         <<"recv ", _/binary>> ->
-            From = ip(FirstLine),
-            To   = LogIP
+            FromIP = ip(FirstLine),
+            ToIP   = LogIP,
+            FromPort = get_port(FirstLine),
+            ToPort   = LogPort
     end,
-    ci_chunk:set_to(ci_chunk:set_from(Chunk,From), To).
+    ci_chunk:setters(Chunk
+                    , [ {fun ci_chunk:src_ip/2, FromIP}
+                      , {fun ci_chunk:dst_ip/2, ToIP}
+                      , {fun ci_chunk:src_port/2, FromPort}
+                      , {fun ci_chunk:dst_port/2, ToPort}
+                      ]
+                    ).
 
 ip(Bin) ->
-    case binary:match(Bin, <<"/[">>) of
+    %% 15 = Look ahead inside longest IPv4 possible
+    extract_ahead(<<"/[">>, 4*3+3, <<"]:">>, Bin).
+
+get_port(Bin) ->
+    extract_ahead(<<"]:">>, 6, <<" at ">>, Bin).
+
+-spec extract_ahead(ne_binary(), pos_integer(), ne_binary(), binary()) -> api_binary().
+extract_ahead(Lhs, Span, Rhs, Bin) ->
+    case binary:match(Bin, Lhs) of
         {StartS, StartP} ->
             Start = StartS + StartP,
-            LookAhead = {Start, 4*3+3+2},  %% Look ahead inside longest IPv4 possible
-            case binary:match(Bin, <<"]:">>, [{'scope',LookAhead}]) of
+            LookAhead = {Start, Span+byte_size(Rhs)},
+            case binary:match(Bin, Rhs, [{'scope',LookAhead}]) of
                 {End, _} ->  binary:part(Bin, Start, End-Start);
                 'nomatch' -> 'undefined'
             end;
@@ -277,41 +298,6 @@ ip(Bin) ->
 
 label(Data) ->
     lists:nth(2, Data).
-
-call_id(Data) ->
-    get_field([<<"Call-ID">>, <<"i">>], Data).
-
-
--spec get_field(ne_binaries(), ne_binaries()) -> api_binary().
-get_field(_Fields, []) ->
-    'undefined';
-get_field(Fields, [Data|Rest]) ->
-    case [Val || Field <- Fields
-                     , begin
-                           Val = try_all(Data, Field),
-                           'false' =/= Val
-                       end]
-    of
-        [] ->
-            get_field(Fields, Rest);
-        [Value] ->
-            Value
-    end.
-
--spec try_all(ne_binary(), ne_binary()) -> 'false' | ne_binary().
-try_all(Data, Field) ->
-    FieldSz = byte_size(Field),
-    case Data of
-        <<Field:FieldSz/binary, _/binary>> ->
-            case binary:split(Data, <<": ">>) of
-                [_Key, Value0] ->
-                    binary:part(Value0, {0, byte_size(Value0)});
-                _ ->
-                    'false'
-            end;
-        _ ->
-            'false'
-    end.
 
 
 remove_whitespace_lines(Data) ->

@@ -24,7 +24,7 @@
          ,to_csv/1
         ]).
 -export([pagination/1]).
--export([fetch_view_options/1]).                                                                                                                                                                                                                                                                   
+-export([fetch_view_options/1]).
 -export([get_cdr_ids/3]).
 -export([maybe_paginate_and_clean/2]).
 -export([load_chunked_cdrs/3]).

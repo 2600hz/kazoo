@@ -27,6 +27,7 @@
 -record(state, {logfile :: file:name()
                ,iodevice :: file:io_device()
                ,logip :: ne_binary()
+               ,logport :: pos_integer()
                ,timer :: reference()
                ,counter :: pos_integer()
                }
@@ -63,11 +64,12 @@ start_link(Args) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init({'parser_args', LogFile, LogIP}) ->
+init({'parser_args', LogFile, LogIP, LogPort}) ->
     NewDev = ci_parsers_util:open_file(LogFile),
     State = #state{logfile = LogFile
                   ,iodevice = NewDev
                   ,logip = LogIP
+                  ,logport = LogPort
                   ,counter = 1},
     self() ! 'start_parsing',
     {'ok', State}.
@@ -118,13 +120,14 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info('start_parsing', State=#state{iodevice = IoDevice
                                          ,logip = LogIP
+                                         ,logport = LogPort
                                          ,timer = OldTimer
                                          ,counter = Counter}) ->
     _ = case OldTimer of
             'undefined' -> 'ok';
             _ -> erlang:cancel_timer(OldTimer)
         end,
-    NewCounter = extract_chunks(IoDevice, LogIP, Counter),
+    NewCounter = extract_chunks(IoDevice, LogIP, LogPort, Counter),
     NewTimer = erlang:send_after(ci_parsers_util:parse_interval()
                                 , self(), 'start_parsing'),
     {'noreply', State#state{timer = NewTimer
@@ -163,39 +166,43 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
-extract_chunks(Dev, LogIP, Counter) ->
+extract_chunks(Dev, LogIP, LogPort, Counter) ->
     case extract_chunk(Dev) of
         [] -> Counter;
         {{'callid',Callid}, Data0} ->
-            NewCounter = make_and_store_chunk(LogIP, Callid, Counter, Data0),
-            extract_chunks(Dev, LogIP, NewCounter);
+            NewCounter = make_and_store_chunk(LogIP, LogPort, Callid, Counter, Data0),
+            extract_chunks(Dev, LogIP, LogPort, NewCounter);
         {'buffers', Buffers} ->
             StoreEach =
                 fun ({{'callid',Callid}, Data0}, ACounter) ->
-                        make_and_store_chunk(LogIP, Callid, ACounter, Data0)
+                        make_and_store_chunk(LogIP, LogPort, Callid, ACounter, Data0)
                 end,
             lists:foldl(StoreEach, Counter, Buffers)
     end.
 
-make_and_store_chunk(LogIP, Callid, Counter, Data0) ->
+make_and_store_chunk(LogIP, LogPort, Callid, Counter, Data0) ->
     {Data, Ts} = cleanse_data_and_get_timestamp(Data0),
     %% Counter is a fallback time ID (for old logfile format)
     {NewCounter, Timestamp} = case Ts of
                                   'undefined' -> {Counter+1, Counter};
                                   _Ts -> {Counter, Ts}
                               end,
+    ReversedData0 = lists:reverse(Data0),
+    ParserId = ci_parsers_sup:child(self()),
     Chunk =
         ci_chunk:setters(ci_chunk:new()
-                        , [ {fun ci_chunk:set_data/2, Data}
-                          , {fun ci_chunk:set_call_id/2, Callid}
-                          , {fun ci_chunk:set_timestamp/2, Timestamp}
-                          , {fun ci_chunk:set_parser/2, ?MODULE}
-                          , {fun ci_chunk:set_label/2, label(hd(Data))}
-                          , {fun ci_chunk:set_from/2, from(lists:reverse(Data0),LogIP)}
-                          , {fun ci_chunk:set_to/2, to(lists:reverse(Data0),LogIP)}
+                        , [ {fun ci_chunk:data/2, Data}
+                          , {fun ci_chunk:call_id/2, Callid}
+                          , {fun ci_chunk:timestamp/2, Timestamp}
+                          , {fun ci_chunk:parser/2, ParserId}
+                          , {fun ci_chunk:label/2, label(hd(Data))}
+                          , {fun ci_chunk:src_ip/2, from(ReversedData0,LogIP)}
+                          , {fun ci_chunk:dst_ip/2, to(ReversedData0,LogIP)}
+                          , {fun ci_chunk:src_port/2, from_port(ReversedData0,LogPort)}
+                          , {fun ci_chunk:dst_port/2, to_port(ReversedData0,LogPort)}
                           ]
                         ),
-    lager:debug("parsed chunk ~s (~s)", [ci_chunk:call_id(Chunk), ci_parsers_sup:child(self())]),
+    lager:debug("parsed chunk ~s (~s)", [ci_chunk:call_id(Chunk), ParserId]),
     ci_datastore:store_chunk(Chunk),
     NewCounter.
 
@@ -294,25 +301,50 @@ label(<<"received failure reply ", Label/binary>>) -> Label;
 label(<<"recieved ", Label/binary>>) -> Label;
 label(_Other) -> 'undefined'.
 
-from([], LogIP) -> LogIP;
-from([<<"start|recieved internal reply", _/binary>>|_Data], LogIP) -> LogIP;
-from([<<"log|external reply", _/binary>>|_Data], LogIP) -> LogIP;
-from([<<"log|source ", From/binary>>|_Data], _LogIP) ->
-    ip(From);
-from([_Line|Lines], LogIP) ->
-    from(Lines, LogIP).
+from([], Default) -> Default;
+from([<<"start|recieved internal reply", _/binary>>|_Data], Default) -> Default;
+from([<<"log|external reply", _/binary>>|_Data], Default) -> Default;
+from([<<"log|source ", From/binary>>|_Data], Default) ->
+    get_ip(From, Default);
+from([_Line|Lines], Default) ->
+    from(Lines, Default).
 
-ip(RawIP = <<_/binary>>) ->
-    case binary:split(RawIP, <<":">>) of
+get_ip(Bin, Default) ->
+    case binary:split(Bin, <<":">>) of
         [IP, _Port] -> IP;
-        _Else -> 'undefined'  %% Unexpected case
+        _Else -> Default  %% Unexpected case
     end.
 
-to([], LogIP) -> LogIP;
-to([<<"start|recieved internal reply",_/binary>>|Data], LogIP) ->
-    to(Data, LogIP);
-to([<<"start|",_/binary>>|_Data], LogIP) -> LogIP;
-to([<<"pass|",To/binary>>|_Data], _LogIP) ->
-    ip(To);
-to([_Datum|Data], LogIP) ->
-    to(Data, LogIP).
+to([], Default) -> Default;
+to([<<"start|recieved internal reply",_/binary>>|Data], Default) ->
+    to(Data, Default);
+to([<<"start|",_/binary>>|_Data], Default) -> Default;
+to([<<"pass|",To/binary>>|_Data], Default) ->
+    get_ip(To, Default);
+to([_Datum|Data], Default) ->
+    to(Data, Default).
+
+
+
+from_port([], Default) -> Default;
+from_port([<<"start|recieved internal reply", _/binary>>|_Data], Default) -> Default;
+from_port([<<"log|external reply", _/binary>>|_Data], Default) -> Default;
+from_port([<<"log|source ", From/binary>>|_Data], Default) ->
+    get_port(From, Default);
+from_port([_Line|Lines], Default) ->
+    from_port(Lines, Default).
+
+get_port(Bin, Default) ->
+    case binary:split(Bin, <<":">>) of
+        [_IP, Port] -> Port;
+        _Else -> Default  %% Unexpected case
+    end.
+
+to_port([], Default) -> Default;
+to_port([<<"start|recieved internal reply",_/binary>>|Data], Default) ->
+    to_port(Data, Default);
+to_port([<<"start|",_/binary>>|_Data], Default) -> Default;
+to_port([<<"pass|",To/binary>>|_Data], Default) ->
+    get_port(To, Default);
+to_port([_Datum|Data], Default) ->
+    to(Data, Default).

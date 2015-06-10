@@ -154,18 +154,21 @@ code_change(_OldVsn, State, _Extra) ->
 
 make_and_store_chunk(Hep) ->
     Data = binary:split(hep:payload(Hep), <<"\r\n">>, ['global', 'trim']),
+    ParserId = ci_parsers_sup:child(self()),
     Chunk =
         ci_chunk:setters(ci_chunk:new()
-                        , [ {fun ci_chunk:set_data/2, Data}
-                          , {fun ci_chunk:set_call_id/2, ci_parser_freeswitch:call_id(Data)}
-                          , {fun ci_chunk:set_timestamp/2, ci_parsers_util:timestamp(hep:timestamp(Hep))}
-                          , {fun ci_chunk:set_parser/2, ?MODULE}
-                          , {fun ci_chunk:set_label/2, hd(Data)}
-                          , {fun ci_chunk:set_from/2, ip(hep:src_ip(Hep))}
-                          , {fun ci_chunk:set_to/2, ip(hep:dst_ip(Hep))}
+                        , [ {fun ci_chunk:data/2, Data}
+                          , {fun ci_chunk:call_id/2, ci_parsers_util:call_id(Data)}
+                          , {fun ci_chunk:timestamp/2, ci_parsers_util:timestamp(hep:timestamp(Hep))}
+                          , {fun ci_chunk:parser/2, ParserId}
+                          , {fun ci_chunk:label/2, hd(Data)}
+                          , {fun ci_chunk:src_ip/2, ip(hep:src_ip(Hep))}
+                          , {fun ci_chunk:dst_ip/2, ip(hep:dst_ip(Hep))}
+                          , {fun ci_chunk:src_port/2, hep:src_port(Hep)}
+                          , {fun ci_chunk:dst_port/2, hep:dst_port(Hep)}
                           ]
                         ),
-    lager:debug("parsed chunk ~s (~s)", [ci_chunk:call_id(Chunk), ci_parsers_sup:child(self())]),
+    lager:debug("parsed chunk ~s (~s)", [ci_chunk:call_id(Chunk), ParserId]),
     ci_datastore:store_chunk(Chunk).
 
 ip(IP) ->

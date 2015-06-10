@@ -10,17 +10,23 @@
 
 %% ci_parsers_util: utilities for parsers.
 
--export([timestamp/1]).
+-export([timestamp/1, timestamp/0]).
 -export([open_file/1]).
 -export([parse_interval/0]).
 -export([make_name/1]).
+-export([call_id/1
+        ,c_seq/1]).
 
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 
 %% API
 
--spec timestamp(ne_binary() | erlang:timestamp()) -> api_integer().
+-spec timestamp() -> api_number().
+timestamp() ->
+    timestamp(os:timestamp()).
+
+-spec timestamp(ne_binary() | erlang:timestamp()) -> api_number().
 timestamp(<<YYYY:4/binary, "-", MM:2/binary, "-", DD:2/binary, "T"
             ,HH:2/binary, ":", MMM:2/binary, ":", SS:2/binary, "."
             ,Micro:6/binary, "+", _H:2/binary, ":", _M:2/binary, " ", _/binary>>) ->
@@ -63,10 +69,48 @@ make_name({'parser_args', ListenIP, Port})
                  ":",
                  (wh_util:to_binary(Port))/binary
               >>);
-make_name({'parser_args', Filename, _IP}) ->
+make_name({'parser_args', Filename, _IP, _Port}) ->
     FName = filename:absname(Filename),
     make_name(wh_util:to_binary(FName)).
 
+
+call_id(Data) ->
+    sip_field([<<"Call-ID">>, <<"i">>], Data).
+
+c_seq(Data) ->
+    sip_field([<<"CSeq">>], Data).
+
 %% Internals
+
+-spec sip_field(ne_binaries(), ne_binaries()) -> api_binary().
+sip_field(_Fields, []) ->
+    'undefined';
+sip_field(Fields, [Data|Rest]) ->
+    case [Val || Field <- Fields
+                     , begin
+                           Val = try_all(Data, Field),
+                           'false' =/= Val
+                       end]
+    of
+        [] ->
+            sip_field(Fields, Rest);
+        [Value] ->
+            Value
+    end.
+
+-spec try_all(ne_binary(), ne_binary()) -> 'false' | ne_binary().
+try_all(Data, Field) ->
+    FieldSz = byte_size(Field),
+    case Data of
+        <<Field:FieldSz/binary, _/binary>> ->
+            case binary:split(Data, <<": ">>) of
+                [_Key, Value0] ->
+                    binary:part(Value0, {0, byte_size(Value0)});
+                _ ->
+                    'false'
+            end;
+        _ ->
+            'false'
+    end.
 
 %% End of Module.

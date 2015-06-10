@@ -10,8 +10,8 @@
 
 -export([list_active_parsers/0
          ,stop_active_parser/1
-         ,start_freeswitch_parser/2
-         ,start_kamailio_parser/2
+         ,start_freeswitch_parser/3
+         ,start_kamailio_parser/3
          ,start_hep_parser/2
         ]).
 -export([flush/0
@@ -41,14 +41,14 @@ stop_active_parser(Id)
   when is_atom(Id) ->
     ci_parsers_sup:stop_child(Id).
 
--spec start_freeswitch_parser(text(), text()) -> 'ok'.
-start_freeswitch_parser(Filename, LogIP) ->
-    Args = [{'parser_args', Filename, wh_util:to_binary(LogIP)}],
+-spec start_freeswitch_parser(text(), text(), text()) -> 'ok'.
+start_freeswitch_parser(Filename, LogIP, LogPort) ->
+    Args = [{'parser_args', Filename, wh_util:to_binary(LogIP), wh_util:to_integer(LogPort)}],
     ci_parsers_sup:start_child('ci_parser_freeswitch', Args).
 
--spec start_kamailio_parser(text(), text()) -> 'ok'.
-start_kamailio_parser(Filename, LogIP) ->
-    Args = [{'parser_args', Filename, wh_util:to_binary(LogIP)}],
+-spec start_kamailio_parser(text(), text(), text()) -> 'ok'.
+start_kamailio_parser(Filename, LogIP, LogPort) ->
+    Args = [{'parser_args', Filename, wh_util:to_binary(LogIP), wh_util:to_integer(LogPort)}],
     ci_parsers_sup:start_child('ci_parser_kamailio', Args).
 
 -spec start_hep_parser(text(), text()) -> 'ok'.
