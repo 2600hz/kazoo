@@ -232,8 +232,8 @@ Again, as with *R1*, what *M* wants, *M* gets.
 
 Let's see what happens when *R2* creates its first device!
 
-Interestingly, *R2* is not prompted to accept charges and the device is created. This seems to be a result of not having a service plan associated with the account and being a reseller.
+Interestingly, *R2* is not prompted to accept charges and the device is created. This seems to be a result of not having a service plan associated with *R2* and *R2* being a reseller. Since the change would not result in a charge for *R2* (according to Kazoo), the operation is successful.
 
 ### *R1* makes changes to *R2*
 
-When *R1* tries to create a device in *R2*, *R1*'s services is used, accept charges is kicked back with 4 sip devices because *R1* has 3 devices at this point. This doesn't account for *R2*'s existing device.
+When *R1* tries to create a device in *R2*, *R1*'s services are used, a 402 "accept charges" is kicked back with 4 SIP devices as the quantity because *R1* has 3 devices at this point. This doesn't account for *R2*'s existing device because the service plan item for `sip_device` does not include the `"cascade":true` flag. Setting the flag would result in *R2* seeing 5 devices in their dry run synopsis.
