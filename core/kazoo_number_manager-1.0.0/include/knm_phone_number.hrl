@@ -31,5 +31,6 @@
 -define(PVT_CREATED, <<"pvt_created">>).
 -define(PVT_TYPE, <<"pvt_type">>).
 
+
 -define(KNM_NUMBER_MANAGER_HRL, 'true').
 -endif.
