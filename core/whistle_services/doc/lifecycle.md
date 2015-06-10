@@ -231,7 +231,11 @@ Again, as with **R1**, what **M** wants, **M** gets.
 
 ### **D2** makes changes
 
-When a user from **D2** creates a SIP device
+When a user from **D2** creates a SIP device, the request is processed right away, since there's no service plan to process for **D2**.
+
+### **R1** makes changes to **D2**
+
+**R1** will be prompted to accept charges. The quantity presented will vary depending on it `"cascade":true` is on the service item and if all the sub-accounts have been reconciled (meaning if **R2** has made a change too, but it hasn't been reconciled and persisted to **R2**'s services doc, **R1**'s quantities (assuming `"cascade":true`) will not reflect the change to **R2**).
 
 ## **R2**
 
