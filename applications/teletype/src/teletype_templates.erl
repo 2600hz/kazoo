@@ -41,8 +41,8 @@ init(TemplateId, Params) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec doc_id(ne_binary()) -> ne_binary().
-doc_id(<<"notification.", _/binary>> = Id) -> Id;
-doc_id(<<_/binary>> = Id) -> <<"notification.", Id/binary>>.
+doc_id(Id) ->
+    kz_notification:resp_id(Id).
 
 %%--------------------------------------------------------------------
 %% @public
