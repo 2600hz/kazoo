@@ -1023,9 +1023,8 @@ calculate_services_charges(#wh_services{jobj=ServiceJObj
                                                      ,UpdatedQuantities
                                                     ),
 
-    ExistingItems = wh_service_plans:create_items(UpdatedServiceJObj, ServicePlans),
-
-    UpdatedItems = wh_service_plans:create_items(ServiceJObj, ServicePlans),
+    ExistingItems = wh_service_plans:create_items(ServiceJObj, ServicePlans),
+    UpdatedItems = wh_service_plans:create_items(UpdatedServiceJObj, ServicePlans),
 
     Changed = wh_service_items:get_updated_items(UpdatedItems, ExistingItems),
 
