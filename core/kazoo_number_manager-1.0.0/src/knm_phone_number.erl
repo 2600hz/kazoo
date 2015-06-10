@@ -369,7 +369,15 @@ maybe_unassign(Number) ->
         'true' ->
             lager:debug("prev_assign_to is is empty for ~s, ignoring", [number(Number)]),
             {'ok', Number};
-        'false' -> unassign(Number, PrevAssignedTo)
+        'false' ->
+            Num = number(Number),
+            case get_number_in_account(PrevAssignedTo, Num) of
+                {'error', 'not_found'} ->
+                    lager:debug("number ~s was not found in ~s, no need to unassign", [Num, PrevAssignedTo]),
+                    {'ok', Number};
+                {'ok', _} -> unassign(Number, PrevAssignedTo);
+                {'error', _R} -> unassign(Number, PrevAssignedTo)
+            end
     end.
 
 -spec unassign(number(), ne_binary()) -> {'ok', number()} | {'error', _}.
@@ -384,4 +392,13 @@ unassign(Number, PrevAssignedTo) ->
             {'ok', Number}
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec get_number_in_account(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} | {'error', _}.
+get_number_in_account(AccountId, Num) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    couch_mgr:open_cache_doc(AccountDb, Num).
 
