@@ -31,7 +31,8 @@
         ,parser/1]).
 -export([label/2
         ,label/1]).
--export([to_json/1]).
+-export([to_json/1
+        ,from_json/1]).
 -export([is_chunk/1]).
 -export([sort_by_timestamp/1
         ,reorder_dialog/1]).
@@ -128,7 +129,7 @@ dst_ip(#ci_chunk{}=Chunk, Val) ->
 -spec label(chunk()) -> api_binary().
 ?getter(label).
 
--spec to_json(chunk()) -> ne_binaries().
+-spec to_json(chunk()) -> wh_json:object().
 to_json(Chunk) ->
     wh_json:from_list(
       [ {<<"src_ip">>, src_ip(Chunk)}
@@ -144,6 +145,20 @@ to_json(Chunk) ->
       ]
      ).
 
+-spec from_json(wh_json:object()) -> chunk().
+from_json(JObj) ->
+    #ci_chunk{ src_ip = wh_json:get_value(<<"src_ip">>, JObj)
+             , dst_ip = wh_json:get_value(<<"dst_ip">>, JObj)
+             , src_port = wh_json:get_value(<<"src_port">>, JObj)
+             , dst_port = wh_json:get_value(<<"dst_port">>, JObj)
+             , call_id = wh_json:get_value(<<"call-id">>, JObj)
+             , timestamp = wh_json:get_value(<<"timestamp">>, JObj)
+             , ref_timestamp = wh_json:get_value(<<"ref_timestamp">>, JObj)
+             , label = wh_json:get_value(<<"label">>, JObj)
+             , data = wh_json:get_value(<<"raw">>, JObj)
+             , parser = wh_json:get_value(<<"parser">>, JObj)
+             }.
+
 -spec is_chunk(_) -> boolean().
 is_chunk(#ci_chunk{}) -> 'true';
 is_chunk(_) -> 'false'.
@@ -155,16 +170,24 @@ sort_by_timestamp(Chunks) ->
 
 
 -spec reorder_dialog([chunk()]) -> [chunk()].
+reorder_dialog([]) -> [];
 reorder_dialog(Chunks) ->
+    RefParser = parser(hd(Chunks)),
+    do_reorder_dialog(RefParser, Chunks).
+
+do_reorder_dialog(RefParser, Chunks) ->
+    io:format(user, "RefParser = ~p\n", [RefParser]),
     GroupedByCSeq = group_by(fun c_seq/1, Chunks),
     lists:flatmap( fun ({_CSeq, ByCSeq}) ->
+                           io:format(user, "_CSeq = ~p\n", [_CSeq]),
                            GroupedByParser = group_by(fun parser/1, sort_by_timestamp(ByCSeq)),
-                           [{_Parser,ByParser}|Others0] = GroupedByParser,
+                           {RefParser,ByParser} = lists:keyfind(RefParser, 1, GroupedByParser),
+                           Others0 = [{Parser,Chs} || {Parser,Chs} <- GroupedByParser, Parser =/= RefParser],
                            Others = remove_duplicates(ByParser, Others0),
                            {Done, Rest} = do_merge([], ByParser, Others, []),
-                           io:format(">>> Rest = ~p\n", [to_json(Rest)]),
+                           io:format(user, ">>> Rest = ~p\n", [lists:map(fun to_json/1,Rest)]),
                            {ReallyDone, NewRest} = second_pass([], Done, Rest, []),
-                           io:format(">>> NewRest = ~p\n", [to_json(NewRest)]),
+                           io:format(user, ">>> NewRest = ~p\n", [lists:map(fun to_json/1,NewRest)]),
                            ReallyDone
                    end, lists:keysort(1, GroupedByCSeq)).
 
@@ -185,7 +208,7 @@ do_merge(Before, [Ordered|InOrder], [Chunk|ToOrder], UnMergeable) ->
          }
     of
         {'true', 'true', 'true'} ->
-            io:format(">>> both match\n~p\n~p\n", [Ordered,Chunk]),
+            io:format(user, ">>> both match\n~p\n~p\n", [Ordered,Chunk]),
             do_merge([], Before++[Ordered|InOrder], ToOrder, [Chunk|UnMergeable]);
         {'true', 'true', ______} ->
             do_merge([], Before++[Ordered]++[Chunk|InOrder], ToOrder, UnMergeable);
@@ -218,7 +241,7 @@ second_pass(Before, [Ordered1,Ordered2|InOrder], [Chunk|ToOrder], UnMergeable) -
             second_pass(Before++[Ordered1], [Ordered2|InOrder], [Chunk|ToOrder], UnMergeable)
     end;
 second_pass(Before, [Ordered], [Chunk|ToOrder], UnMergeable) ->
-    io:format("here\n"),
+    io:format(user, "here\n", []),
     second_pass([], Before++[Ordered], ToOrder, [Chunk|UnMergeable]);
 second_pass(Before, [], [Chunk|ToOrder], UnMergeable) ->
     second_pass([], Before, ToOrder, [Chunk|UnMergeable]);
