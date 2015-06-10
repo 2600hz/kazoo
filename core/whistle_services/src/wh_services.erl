@@ -1014,11 +1014,12 @@ calculate_services_charges(#wh_services{jobj=ServiceJObj
                                                      ,UpdatedQuantities
                                                     ),
 
-    ServiceItems = wh_service_plans:create_items(UpdatedServiceJObj, ServicePlans),
+    ExistingItems = wh_service_plans:create_items(UpdatedServiceJObj, ServicePlans),
 
-    PlanItems = wh_service_plans:create_items(ServiceJObj, ServicePlans),
+    UpdatedItems = wh_service_plans:create_items(ServiceJObj, ServicePlans),
 
-    Changed = wh_service_items:get_updated_items(ServiceItems, PlanItems),
+    Changed = wh_service_items:get_updated_items(UpdatedItems, ExistingItems),
+
     {'ok', wh_service_items:public_json(Changed)}.
 
 %%--------------------------------------------------------------------
