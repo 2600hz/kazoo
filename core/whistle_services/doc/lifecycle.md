@@ -132,10 +132,11 @@ Let's assume an account tree of:
     M
     |- R1
        |- R2
-          |- D2
+          |- D3
+       |- D2
     |- D1
 
-Here we have the master account *M* with a child account, *R1*, a reseller. *R1* has two child accounts, *R2* (a reseller), and *D1* (a direct client). *R2* has a direct client *D2*.
+Here we have the master account *M* with two children, *R1* (a reseller) and *D1* (a direct client). *R1*, in turn, has two children *R2* (another reseller) and *D2* (a direct client). Finally, *R2* has one child, *D3* (a direct client).
 
 It is important to keep in mind not only which account is changing a service quantity but also *who* is making the change (an account user, reseller user, or master user).
 
