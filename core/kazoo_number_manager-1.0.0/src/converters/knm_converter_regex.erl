@@ -12,7 +12,6 @@
 
 -export([
     normalize/1
-    ,to_e164/1
     ,to_npan/1
     ,to_1npan/1
 ]).
@@ -42,18 +41,6 @@ normalize(Num) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec to_e164(ne_binary()) -> ne_binary().
-to_e164(<<$+, _/binary>> = N) -> N;
-to_e164(Number) ->
-    Converters = get_e164_converters(),
-    Regexes = wh_json:get_keys(Converters),
-    maybe_convert_to_e164(Regexes, Converters, Number).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec to_npan(ne_binary()) -> ne_binary().
 to_npan(Num) ->
     case re:run(Num, <<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$">>, [{'capture', [1], 'binary'}]) of
@@ -76,6 +63,19 @@ to_1npan(Num) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec to_e164(ne_binary()) -> ne_binary().
+to_e164(<<$+, _/binary>> = N) -> N;
+to_e164(Number) ->
+    Converters = get_e164_converters(),
+    Regexes = wh_json:get_keys(Converters),
+    maybe_convert_to_e164(Regexes, Converters, Number).
+
 
 %%--------------------------------------------------------------------
 %% @private

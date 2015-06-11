@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   Peter Defebvre
 %%%-------------------------------------------------------------------
--module(knm_number_converter).
+-module(knm_converters).
 
 -include("knm.hrl").
 
@@ -50,8 +50,6 @@
                                                                   ,{<<"friendly_name">>, <<"Unknown">>}
                                                                  ])}
                              ]).
--define(NPAN_REGEX, <<"^[2-9][0-9]{2}[2-9][0-9]{6}$">>).
--define(NPAN1_REGEX, <<"^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -78,7 +76,7 @@ is_normalized(Num) ->
 %%--------------------------------------------------------------------
 -spec is_npan(ne_binary()) -> boolean().
 is_npan(Num) ->
-    re:run(Num, ?NPAN_REGEX) =/= 'nomatch'.
+    (?CONVERTER_MOD):to_npan(Num) =:= Num.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -87,7 +85,7 @@ is_npan(Num) ->
 %%--------------------------------------------------------------------
 -spec is_1npan(ne_binary()) -> boolean().
 is_1npan(Num) ->
-    re:run(Num, ?NPAN1_REGEX) =/= 'nomatch'.
+    (?CONVERTER_MOD):to_1npan(Num) =:= Num.
 
 %%--------------------------------------------------------------------
 %% @public
