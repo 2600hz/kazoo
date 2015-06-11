@@ -23,6 +23,7 @@
 
 -export([
     setters/2
+    ,new/0
     ,number/1, set_number/2
     ,number_db/1 ,set_number_db/2
     ,assigned_to/1 ,set_assigned_to/2
@@ -42,7 +43,7 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec fetch(ne_binary()) -> {'ok', number()} | {'error', _}.
+-spec fetch(ne_binary()) -> number_return().
 fetch(Num) ->
     NormalizedNum = knm_number_converter:normalize(Num),
     NumberDb = knm_number_converter:to_db(NormalizedNum),
@@ -59,7 +60,7 @@ fetch(Num) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec save(number()) -> {'ok', number()} | {'error', _}.
+-spec save(number()) -> number_return().
 save(Number) ->
     NumberDb = number_db(Number),
     JObj = to_json(Number),
@@ -140,6 +141,16 @@ from_json(JObj) ->
         ,doc=JObj
     }.
 
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec new() -> number().
+new() ->
+    #number{}.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -148,8 +159,9 @@ from_json(JObj) ->
 -spec setters(number(), wh_proplist()) -> number().
 setters(Number, Props) ->
     lists:foldl(
-        fun({Fun, Value}, Acc) ->
-            Fun(Acc, Value)
+        fun({Fun, Value}, Acc) when is_function(Fun) ->
+            Fun(Acc, Value);
+           (_, Acc) -> Acc
         end
         ,Number
         ,Props
@@ -321,7 +333,7 @@ set_region(N, Region) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec hangle_assignment(number()) -> {'ok', number()} | {'error', _}.
+-spec hangle_assignment(number()) -> number_return().
 hangle_assignment(Number) ->
     lager:debug("handling assignment for ~s", [number(Number)]),
     case maybe_assign(Number) of
@@ -335,7 +347,7 @@ hangle_assignment(Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_assign(number()) -> {'ok', number()} | {'error', _}.
+-spec maybe_assign(number()) -> number_return().
 maybe_assign(Number) ->
     AssignedTo = assigned_to(Number),
     case wh_util:is_empty(AssignedTo) of
@@ -345,7 +357,7 @@ maybe_assign(Number) ->
         'false' -> assign(Number, AssignedTo)
     end.
 
--spec assign(number(), ne_binary()) -> {'ok', number()} | {'error', _}.
+-spec assign(number(), ne_binary()) -> number_return().
 assign(Number, AssignedTo) ->
     AccountDb = wh_util:format_account_id(AssignedTo, 'encoded'),
     case couch_mgr:ensure_saved(AccountDb, to_json(Number)) of
@@ -362,7 +374,7 @@ assign(Number, AssignedTo) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_unassign(number()) -> {'ok', number()} | {'error', _}.
+-spec maybe_unassign(number()) -> number_return().
 maybe_unassign(Number) ->
     PrevAssignedTo = prev_assigned_to(Number),
     case wh_util:is_empty(PrevAssignedTo) of
@@ -380,7 +392,7 @@ maybe_unassign(Number) ->
             end
     end.
 
--spec unassign(number(), ne_binary()) -> {'ok', number()} | {'error', _}.
+-spec unassign(number(), ne_binary()) -> number_return().
 unassign(Number, PrevAssignedTo) ->
     AccountDb = wh_util:format_account_id(PrevAssignedTo, 'encoded'),
     case couch_mgr:del_doc(AccountDb, to_json(Number)) of
