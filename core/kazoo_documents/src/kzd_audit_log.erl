@@ -137,13 +137,8 @@ save(_Services, _AuditLog, MasterAccountId, MasterAccountId) ->
                );
 save(Services, AuditLog, MasterAccountId, AccountId) ->
     JObj = wh_services:services_json(Services),
-    case kzd_services:is_reseller(JObj) of
-        'false' ->
-            maybe_save_audit_log_to_reseller(Services, AuditLog, MasterAccountId, AccountId, JObj);
-        'true' ->
-            maybe_save_audit_log(Services, AuditLog, AccountId),
-            maybe_save_audit_log_to_reseller(Services, AuditLog, MasterAccountId, AccountId, JObj)
-    end.
+    UpdatedLog = maybe_save_audit_log(Services, AuditLog, AccountId),
+    maybe_save_audit_log_to_reseller(Services, UpdatedLog, MasterAccountId, AccountId, JObj).
 
 -spec maybe_save_audit_log_to_reseller(wh_services:services()
                                        ,doc()
@@ -220,6 +215,7 @@ update_audit_log(Services
                      props:filter_empty(
                        [{?KEY_ACCOUNT_QUANTITIES, kzd_services:quantities(JObj)}
                         ,{?KEY_DIFF_QUANTITIES, wh_services:diff_quantities(Services)}
+                        ,{?KEY_CASCADE_QUANTITIES, wh_services:cascade_quantities(Services)}
                         ,{<<"account_name">>, wh_services:account_name(AccountId)}
                        ])
                     ),
