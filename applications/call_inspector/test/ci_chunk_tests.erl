@@ -8,22 +8,31 @@
 %% API tests.
 
 json_test_() ->
-    [ ?_assertEqual(JObj, ci_chunk:to_json(ci_chunk:from_json(JObj)))
-      || I <- lists:seq(1, chunks_1('count'))
-             , begin
-                   JObj = chunks_1(I),
-                   'true'
-               end
-    ].
+    lists:flatmap(
+      fun (Data1) ->
+              [ ?_assertEqual(Data1(I), ci_chunk:to_json(ci_chunk:from_json(Data1(I))))
+                || I <- lists:seq(1, Data1('count'))
+              ]
+      end,
+      [ fun chunks_1/1
+      , fun chunks_2/1
+      ]).
 
 reorder_dialog_1_test_() ->
-    %% reorder_dialog_1('10.26.0.182:9061') ++
-        reorder_dialog_1('10.26.0.182:9060').
+    Data = {fun chunks_1/0, fun chunks_1/1},
+    %% reorder_dialog('10.26.0.182:9061', Data) ++
+        reorder_dialog('10.26.0.182:9060', Data).
 
-reorder_dialog_1(RefParser) ->
-    Chunks = lists:map(fun ci_chunk:from_json/1, chunks_1()),
+reorder_dialog_2_test_() ->
+    Data = {fun chunks_2/0, fun chunks_2/1},
+    reorder_dialog('10.26.0.182:9060', Data).
+
+%% Internals
+
+reorder_dialog(RefParser, {Data0,Data1}) ->
+    Chunks = lists:map(fun ci_chunk:from_json/1, Data0()),
     Reordered = ci_chunk:do_reorder_dialog(RefParser, Chunks),
-    [ ?_assertEqual(chunks_1('count'), length(Reordered)) ] ++
+    [ ?_assertEqual(Data1('count'), length(Reordered)) ] ++
         lists:append(
           [ [ ?_assertEqual(ci_chunk:src_ip(C), ci_chunk:src_ip(R))
             , ?_assertEqual(ci_chunk:dst_ip(C), ci_chunk:dst_ip(R))
@@ -36,16 +45,62 @@ reorder_dialog_1(RefParser) ->
             , ?_assertEqual(ci_chunk:data(C), ci_chunk:data(R))
             %% , ?_assertEqual(ci_chunk:parser(C), ci_chunk:parser(R))
             ]
-            || I <- lists:seq(1, chunks_1('count'))
+            || I <- lists:seq(1, Data1('count'))
                    , begin
-                         C = ci_chunk:from_json(chunks_1(I)),
+                         C = ci_chunk:from_json(Data1(I)),
                          R = lists:nth(I, Reordered),
                          'true'
                      end
           ]
          ).
 
-%% Internals
+
+chunks_2() -> [chunks_2(2), chunks_2(1)].
+chunks_2('count') -> 2;
+chunks_2(1) ->
+    {[{<<"src_ip">>,<<"10.26.0.182">>},
+      {<<"dst_ip">>,<<"10.26.0.182">>},
+      {<<"src_port">>,5060},
+      {<<"dst_port">>,11000},
+      {<<"call-id">>,<<"5dca43e524c680cf-13867@10.26.0.182">>},
+      {<<"timestamp">>,63601204677.8817},
+      {<<"ref_timestamp">>,63601204677.88179},
+      {<<"label">>,<<"OPTIONS sip:10.26.0.182:11000 SIP/2.0">>},
+      {<<"raw">>,
+       [<<"OPTIONS sip:10.26.0.182:11000 SIP/2.0">>,
+        <<"Via: SIP/2.0/UDP 10.26.0.182;branch=z9hG4bK6551.e2149fb2000000000000000000000000.0">>,
+        <<"To: <sip:10.26.0.182:11000>">>,
+        <<"From: <sip:sipcheck@10.26.0.182>;tag=6a9eb17cd14528bda74bd05e73f170de-4acf">>,
+        <<"CSeq: 10 OPTIONS">>,
+        <<"Call-ID: 5dca43e524c680cf-13867@10.26.0.182">>,
+        <<"Max-Forwards: 70">>,
+        <<"Content-Length: 0">>]},
+      {<<"parser">>,'10.26.0.182:9060'}]};
+chunks_2(2) ->
+    {[{<<"src_ip">>,<<"10.26.0.182">>},
+      {<<"dst_ip">>,<<"10.26.0.182">>},
+      {<<"src_port">>,11000},
+      {<<"dst_port">>,5060},
+      {<<"call-id">>,<<"5dca43e524c680cf-13867@10.26.0.182">>},
+      {<<"timestamp">>,63601204677.89242},
+      {<<"ref_timestamp">>,63601204677.892494},
+      {<<"label">>,<<"SIP/2.0 200 OK">>},
+      {<<"raw">>,
+       [<<"SIP/2.0 200 OK">>,
+        <<"Via: SIP/2.0/UDP 10.26.0.182;branch=z9hG4bK6551.e2149fb2000000000000000000000000.0">>,
+        <<"From: <sip:sipcheck@10.26.0.182>;tag=6a9eb17cd14528bda74bd05e73f170de-4acf">>,
+        <<"To: <sip:10.26.0.182:11000>;tag=15vvXS6m6868r">>,
+        <<"Call-ID: 5dca43e524c680cf-13867@10.26.0.182">>,
+        <<"CSeq: 10 OPTIONS">>,
+        <<"Contact: <sip:10.26.0.182:11000>">>,
+        <<"User-Agent: 2600hz">>,
+        <<"Accept: application/sdp">>,
+        <<"Allow: INVITE, ACK, BYE, CANCEL, OPTIONS, MESSAGE, INFO, UPDATE, REGISTER, REFER, NOTIFY, PUBLISH, SUBSCRIBE">>,
+        <<"Supported: path, replaces">>,
+        <<"Allow-Events: talk, hold, conference, presence, as-feature-event, dialog, line-seize, call-info, sla, include-session-description, presence.winfo, message-summary, refer">>,
+        <<"Content-Length: 0">>]},
+      {<<"parser">>,'10.26.0.182:9060'}]}.
+
 
 chunks_1('count') -> 20;
 
