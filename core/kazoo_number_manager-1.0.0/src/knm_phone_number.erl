@@ -46,8 +46,8 @@
 %%--------------------------------------------------------------------
 -spec fetch(ne_binary()) -> number_return().
 fetch(Num) ->
-    NormalizedNum = knm_number_converter:normalize(Num),
-    NumberDb = knm_number_converter:to_db(NormalizedNum),
+    NormalizedNum = knm_converters:normalize(Num),
+    NumberDb = knm_converters:to_db(NormalizedNum),
     case couch_mgr:open_doc(NumberDb, NormalizedNum) of
         {'error', _R}=E ->
             lager:error("failed to open ~s in ~s", [NormalizedNum, NumberDb]),
