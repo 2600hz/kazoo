@@ -9,7 +9,7 @@
 -module(knm_number).
 
 -export([
-    get/1
+    get/1, get/2
     ,create/2
     ,move/2
     ,update/2
@@ -23,11 +23,15 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get(number()) -> number_return().
+-spec get(ne_binary()) -> number_return().
+-spec get(ne_binary(), ne_binary()) -> number_return().
 get(Num) ->
+    get(Num, <<"system">>).
+
+get(Num, AuthBy) ->
     case knm_converters:is_reconcilable(Num) of
         'false' -> {'error', 'not_reconcilable'};
-        'true' -> knm_phone_number:fetch(Num)
+        'true' -> knm_phone_number:fetch(Num, AuthBy)
     end.
 
 %%--------------------------------------------------------------------
@@ -35,7 +39,7 @@ get(Num) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec create(number(), wh_proplist()) -> number_return().
+-spec create(ne_binary(), wh_proplist()) -> number_return().
 create(Num, Props) ->
     NormalizedNum = knm_converters:normalize(Num),
     NumberDb = knm_converters:to_db(NormalizedNum),
@@ -46,6 +50,7 @@ create(Num, Props) ->
             ,{fun knm_phone_number:set_state/2, props:get_value(<<"state">>, Props, ?NUMBER_STATE_DISCOVERY)}
             ,{fun knm_phone_number:set_ported_in/2, props:get_is_true(<<"ported_in">>, Props, 'false')}
             ,{fun knm_phone_number:set_assigned_to/2, props:get_value(<<"assigned_to">>, Props)}
+            ,{fun knm_phone_number:set_auth_by/2, props:get_value(<<"auth_by">>, Props, <<"system">>)}
         ]),
     Number = knm_phone_number:setters(knm_phone_number:new(), Updates),
     knm_phone_number:save(Number).

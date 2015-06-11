@@ -11,7 +11,7 @@
 -include("knm.hrl").
 
 -export([
-    fetch/1
+    fetch/1, fetch/2
     ,save/1
     ,delete/1
 ]).
@@ -37,6 +37,7 @@
     ,ported_in/1 ,set_ported_in/2
     ,module_name/1 ,set_module_name/2
     ,region/1 ,set_region/2
+    ,auth_by/1 ,set_auth_by/2, is_authorize/1
 ]).
 
 %%--------------------------------------------------------------------
@@ -45,7 +46,11 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch(ne_binary()) -> number_return().
+-spec fetch(ne_binary(), ne_binary()) -> number_return().
 fetch(Num) ->
+    fetch(Num, <<"system">>).
+
+fetch(Num, AuthBy) ->
     NormalizedNum = knm_converters:normalize(Num),
     NumberDb = knm_converters:to_db(NormalizedNum),
     case couch_mgr:open_doc(NumberDb, NormalizedNum) of
@@ -53,7 +58,12 @@ fetch(Num) ->
             lager:error("failed to open ~s in ~s", [NormalizedNum, NumberDb]),
             E;
         {'ok', JObj} ->
-            {'ok', from_json(JObj)}
+            Number = set_auth_by(from_json(JObj), AuthBy),
+            case is_authorize(Number) of
+                'true' -> {'ok', Number};
+                'false' ->
+                    {'error', 'unauthorized'}
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -328,9 +338,32 @@ region(Number) ->
 set_region(N, Region) ->
     N#number{region=Region}.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec auth_by(number()) -> ne_binary().
+auth_by(Number) ->
+    Number#number.auth_by.
+
+-spec set_auth_by(number(), ne_binary()) -> number().
+set_auth_by(N, AuthBy) ->
+    N#number{auth_by=AuthBy}.
+
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec is_authorize(number()) -> boolean().
+is_authorize(#number{auth_by= <<"system">>}) -> 'true';
+is_authorize(#number{assigned_to=AssignedTo, auth_by=AuthBy}) ->
+    wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, 'true').
 
 %%--------------------------------------------------------------------
 %% @private

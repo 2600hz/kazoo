@@ -14,6 +14,7 @@
                  ,ported_in = 'false' :: boolean()
                  ,module_name :: ne_binary()
                  ,region :: ne_binary()
+                 ,auth_by = <<"system">> :: ne_binary()
                  ,doc :: wh_json:object()
                 }).
 
