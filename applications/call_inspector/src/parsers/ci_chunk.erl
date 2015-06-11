@@ -185,19 +185,20 @@ pick_ref_parser(Chunks) ->
 
 do_reorder_dialog(RefParser, Chunks) ->
     io:format(user, "RefParser = ~p\n", [RefParser]),
-    GroupedByCSeq = group_by(fun c_seq/1, Chunks),
+    GroupedByCSeq = lists:keysort(1, group_by(fun c_seq/1, Chunks)),
     lists:flatmap( fun ({_CSeq, ByCSeq}) ->
                            io:format(user, "_CSeq = ~p\n", [_CSeq]),
                            GroupedByParser = group_by(fun parser/1, sort_by_timestamp(ByCSeq)),
                            {RefParser,ByParser} = lists:keyfind(RefParser, 1, GroupedByParser),
                            Others0 = [{Parser,Chs} || {Parser,Chs} <- GroupedByParser, Parser =/= RefParser],
                            Others = remove_duplicates(ByParser, Others0),
-                           {Done, Rest} = do_merge([], ByParser, Others, []),
+                           {Done, Rest} = first_pass(ByParser, Others),
                            io:format(user, ">>> Rest = ~p\n", [lists:map(fun to_json/1,Rest)]),
-                           {ReallyDone, NewRest} = second_pass([], Done, Rest, []),
+                           {ReallyDone, NewRest} = second_pass(Done, Rest),
                            io:format(user, ">>> NewRest = ~p\n", [lists:map(fun to_json/1,NewRest)]),
                            ReallyDone ++ NewRest
-                   end, lists:keysort(1, GroupedByCSeq)).
+                   end, GroupedByCSeq).
+
 
 remove_duplicates(InOrder, GroupedByParser) ->
     lists:flatten([ [ Chunk
@@ -207,7 +208,8 @@ remove_duplicates(InOrder, GroupedByParser) ->
                     || {_Parser, ByParser} <- GroupedByParser
                   ]).
 
-do_merge(Before, [Ordered|InOrder], [Chunk|ToOrder], UnMergeable) ->
+first_pass(InOrder, ToOrder) -> first_pass([], InOrder, ToOrder, []).
+first_pass(Before, [Ordered|InOrder], [Chunk|ToOrder], UnMergeable) ->
     case {    label(Ordered) =:=    label(Chunk)
          ,   dst_ip(Ordered) =:=   src_ip(Chunk) andalso
            dst_port(Ordered) =:= src_port(Chunk)
@@ -217,21 +219,22 @@ do_merge(Before, [Ordered|InOrder], [Chunk|ToOrder], UnMergeable) ->
     of
         {'true', 'true', 'true'} ->
             io:format(user, ">>> both match\n~p\n~p\n", [Ordered,Chunk]),
-            do_merge([], Before++[Ordered|InOrder], ToOrder, [Chunk|UnMergeable]);
+            first_pass([], Before++[Ordered|InOrder], ToOrder, [Chunk|UnMergeable]);
         {'true', 'true', ______} ->
-            do_merge([], Before++[Ordered]++[Chunk|InOrder], ToOrder, UnMergeable);
+            first_pass([], Before++[Ordered]++[Chunk|InOrder], ToOrder, UnMergeable);
         {'true', ______, 'true'} ->
-            do_merge([], Before++[Chunk]++[Ordered|InOrder], ToOrder, UnMergeable);
+            first_pass([], Before++[Chunk]++[Ordered|InOrder], ToOrder, UnMergeable);
         {'true', ______, ______} ->
-            do_merge([], Before++[Ordered|InOrder], ToOrder, [Chunk|UnMergeable]);
+            first_pass([], Before++[Ordered|InOrder], ToOrder, [Chunk|UnMergeable]);
         {'false', _____, ______} ->
-            do_merge(Before++[Ordered], InOrder, [Chunk|ToOrder], UnMergeable)
+            first_pass(Before++[Ordered], InOrder, [Chunk|ToOrder], UnMergeable)
     end;
-do_merge(Before, [], [Chunk|ToOrder], UnMergeable) ->
-    do_merge([], Before, ToOrder, [Chunk|UnMergeable]);
-do_merge(Before, InOrder, [], UnMergeable) ->
+first_pass(Before, [], [Chunk|ToOrder], UnMergeable) ->
+    first_pass([], Before, ToOrder, [Chunk|UnMergeable]);
+first_pass(Before, InOrder, [], UnMergeable) ->
     {Before++InOrder, UnMergeable}.
 
+second_pass(InOrder, ToOrder) -> second_pass([], InOrder, ToOrder, []).
 second_pass(Before, [Ordered1,Ordered2|InOrder], [Chunk|ToOrder], UnMergeable) ->
     case {    label(Ordered1),    label(Chunk),    label(Ordered2)
          ,    c_seq(Ordered1),    c_seq(Chunk),    c_seq(Ordered2)
