@@ -13,6 +13,7 @@
 -export([
     fetch/1
     ,save/1
+    ,delete/1
 ]).
 
 -export([
@@ -77,20 +78,23 @@ save(Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec delete(number()) -> number_return().
+delete(Number) ->
+    case delete_number_doc(Number) of
+        {'error', _R}=E -> E;
+        {'ok', _} ->
+            remove_number_from_account(Number)
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec to_public_json(number()) -> wh_json:object().
 to_public_json(Number) ->
-    wh_json:foldl(
-        fun
-            (<<"_id">>, Value, Acc) ->
-                wh_json:set_value(<<"id">>, Value, Acc);
-            (<<"pvt_", Key/binary>>, Value, Acc) ->
-                wh_json:set_value(Key, Value, Acc);
-            (Key, Value, Acc) ->
-                wh_json:set_value(Key, Value, Acc)
-        end
-        ,wh_json:new()
-        ,to_json(Number)
-    ).
+    JObj = to_json(Number),
+    wh_json:public_fields(JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -413,4 +417,33 @@ unassign(Number, PrevAssignedTo) ->
 get_number_in_account(AccountId, Num) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     couch_mgr:open_cache_doc(AccountDb, Num).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec delete_number_doc(number()) -> number_return().
+delete_number_doc(Number) ->
+    NumberDb = number_db(Number),
+    JObj = to_json(Number),
+    case couch_mgr:del_doc(NumberDb, JObj) of
+        {'error', _R}=E -> E;
+        {'ok', _} -> {'ok', Number}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec remove_number_from_account(number()) -> number_return().
+remove_number_from_account(Number) ->
+    AssignedTo = assigned_to(Number),
+    AccountDb = wh_util:format_account_id(AssignedTo, 'encoded'),
+    JObj = to_json(Number),
+    case couch_mgr:del_doc(AccountDb, JObj) of
+        {'error', _R}=E -> E;
+        {'ok', _} -> {'ok', Number}
+    end.
 
