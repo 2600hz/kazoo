@@ -47,7 +47,7 @@
         ]).
 -export([updated_quantity/3]).
 -export([category_quantity/2, category_quantity/3]).
--export([cascade_quantity/3]).
+-export([cascade_quantity/3, cascade_quantities/1]).
 -export([cascade_category_quantity/2, cascade_category_quantity/3]).
 -export([reset_category/2]).
 -export([get_service_module/1]).
@@ -1013,22 +1013,50 @@ calculate_services_charges(#wh_services{jobj=ServiceJObj}=Services) ->
 
 calculate_services_charges(#wh_services{jobj=ServiceJObj
                                         ,updates=UpdatesJObj
+                                        ,cascade_quantities=CascadeQuantities
                                        }
                            ,ServicePlans
                           ) ->
     CurrentQuantities = kzd_services:quantities(ServiceJObj),
     UpdatedQuantities = wh_json:merge_jobjs(UpdatesJObj, CurrentQuantities),
+    UpdatedPlusCascaded = apply_cascade_quantities(UpdatedQuantities, CascadeQuantities),
 
     UpdatedServiceJObj = kzd_services:set_quantities(ServiceJObj
-                                                     ,UpdatedQuantities
+                                                     ,UpdatedPlusCascaded
                                                     ),
 
     ExistingItems = wh_service_plans:create_items(ServiceJObj, ServicePlans),
     UpdatedItems = wh_service_plans:create_items(UpdatedServiceJObj, ServicePlans),
-
     Changed = wh_service_items:get_updated_items(UpdatedItems, ExistingItems),
 
+    lager:debug("computed service charges"),
     {'ok', wh_service_items:public_json(Changed)}.
+
+-spec apply_cascade_quantities(wh_json:object(), wh_json:object()) ->
+                                      wh_json:object().
+apply_cascade_quantities(Quantities, CascadeQuantities) ->
+    wh_json:foldl(fun apply_cascade_categories/3
+                  ,Quantities
+                  ,CascadeQuantities
+                 ).
+
+-spec apply_cascade_categories(ne_binary(), wh_json:object(), wh_json:object()) ->
+                                      wh_json:object().
+apply_cascade_categories(CategoryId, ItemsJObj, Quantities) ->
+    wh_json:foldl(fun(ItemId, ItemQuantity, Acc) ->
+                          apply_cascade_item(CategoryId, ItemId, ItemQuantity, Acc)
+                  end
+                  ,Quantities
+                  ,ItemsJObj
+                 ).
+
+-spec apply_cascade_item(ne_binary(), ne_binary(), non_neg_integer(), wh_json:object()) ->
+                                wh_json:object().
+apply_cascade_item(CategoryId, ItemId, ItemQuantity, Quantities) ->
+    Key = [CategoryId, ItemId],
+    CurrentQuantity = wh_json:get_integer_value(Key, Quantities, 0),
+    lager:debug("updating ~p with cascade: ~p+~p", [Key, CurrentQuantity, ItemQuantity]),
+    wh_json:set_value(Key, CurrentQuantity + ItemQuantity, Quantities).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1177,7 +1205,11 @@ get_service_module(Module) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec cascade_quantities(services()) -> wh_json:object().
 -spec cascade_quantities(ne_binary(), boolean()) -> wh_json:object().
+
+cascade_quantities(#wh_services{cascade_quantities=JObj}) ->
+    JObj.
 
 cascade_quantities(<<_/binary>> = Account, 'false') ->
     lager:debug("computing cascade quantities"),
