@@ -9,7 +9,7 @@
 
 json_test_() ->
     [ ?_assertEqual(JObj, ci_chunk:to_json(ci_chunk:from_json(JObj)))
-      || I <- lists:seq(1, 20)
+      || I <- lists:seq(1, chunks_1('count'))
              , begin
                    JObj = chunks_1(I),
                    'true'
@@ -23,7 +23,7 @@ reorder_dialog_1_test_() ->
 reorder_dialog_1(RefParser) ->
     Chunks = lists:map(fun ci_chunk:from_json/1, chunks_1()),
     Reordered = ci_chunk:do_reorder_dialog(RefParser, Chunks),
-    [ ?_assertEqual(20, length(Reordered)) ] ++
+    [ ?_assertEqual(chunks_1('count'), length(Reordered)) ] ++
         lists:append(
           [ [ ?_assertEqual(ci_chunk:src_ip(C), ci_chunk:src_ip(R))
             , ?_assertEqual(ci_chunk:dst_ip(C), ci_chunk:dst_ip(R))
@@ -36,7 +36,7 @@ reorder_dialog_1(RefParser) ->
             , ?_assertEqual(ci_chunk:data(C), ci_chunk:data(R))
             %% , ?_assertEqual(ci_chunk:parser(C), ci_chunk:parser(R))
             ]
-            || I <- lists:seq(1, 20)
+            || I <- lists:seq(1, chunks_1('count'))
                    , begin
                          C = ci_chunk:from_json(chunks_1(I)),
                          R = lists:nth(I, Reordered),
@@ -46,6 +46,8 @@ reorder_dialog_1(RefParser) ->
          ).
 
 %% Internals
+
+chunks_1('count') -> 20;
 
 chunks_1(1) ->
     {[{<<"src_ip">>,<<"10.26.0.101">>},

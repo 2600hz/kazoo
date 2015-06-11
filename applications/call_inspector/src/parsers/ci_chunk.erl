@@ -172,8 +172,16 @@ sort_by_timestamp(Chunks) ->
 -spec reorder_dialog([chunk()]) -> [chunk()].
 reorder_dialog([]) -> [];
 reorder_dialog(Chunks) ->
-    RefParser = parser(hd(Chunks)),
+    %% RefParser = '10.26.0.182:9061',
+    RefParser = pick_ref_parser(Chunks),
     do_reorder_dialog(RefParser, Chunks).
+
+pick_ref_parser(Chunks) ->
+    GroupedByParser = group_by(fun parser/1, Chunks),
+    Counted = lists:keymap(fun erlang:length/1, 2, GroupedByParser),
+    io:format("Count ~p\n", [Counted]),
+    [{RefParser,_Min}|_Bigger] = lists:keysort(2, Counted),
+    RefParser.
 
 do_reorder_dialog(RefParser, Chunks) ->
     io:format(user, "RefParser = ~p\n", [RefParser]),
@@ -188,7 +196,7 @@ do_reorder_dialog(RefParser, Chunks) ->
                            io:format(user, ">>> Rest = ~p\n", [lists:map(fun to_json/1,Rest)]),
                            {ReallyDone, NewRest} = second_pass([], Done, Rest, []),
                            io:format(user, ">>> NewRest = ~p\n", [lists:map(fun to_json/1,NewRest)]),
-                           ReallyDone
+                           ReallyDone ++ NewRest
                    end, lists:keysort(1, GroupedByCSeq)).
 
 remove_duplicates(InOrder, GroupedByParser) ->
