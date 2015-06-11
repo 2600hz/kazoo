@@ -188,25 +188,19 @@ do_reorder_dialog(RefParser, Chunks) ->
     GroupedByCSeq = lists:keysort(1, group_by(fun c_seq/1, Chunks)),
     lists:flatmap( fun ({_CSeq, ByCSeq}) ->
                            io:format(user, "_CSeq = ~p\n", [_CSeq]),
-                           GroupedByParser = group_by(fun parser/1, sort_by_timestamp(ByCSeq)),
-                           {RefParser,ByParser} = lists:keyfind(RefParser, 1, GroupedByParser),
-                           Others0 = [{Parser,Chs} || {Parser,Chs} <- GroupedByParser, Parser =/= RefParser],
-                           Others = remove_duplicates(ByParser, Others0),
-                           {Done, Rest} = first_pass(ByParser, Others),
+                           {ByRefParser, Others} = sort_split_uniq(RefParser, ByCSeq),
+                           {Done, Rest} = first_pass(ByRefParser, Others),
                            io:format(user, ">>> Rest = ~p\n", [lists:map(fun to_json/1,Rest)]),
                            {ReallyDone, NewRest} = second_pass(Done, Rest),
                            io:format(user, ">>> NewRest = ~p\n", [lists:map(fun to_json/1,NewRest)]),
                            ReallyDone ++ NewRest
                    end, GroupedByCSeq).
 
-
-remove_duplicates(InOrder, GroupedByParser) ->
-    lists:flatten([ [ Chunk
-                      || Chunk <- ByParser
-                             , not is_duplicate(InOrder, Chunk)
-                    ]
-                    || {_Parser, ByParser} <- GroupedByParser
-                  ]).
+sort_split_uniq(RefParser, Chunks) ->
+    Grouper = fun (Chunk) -> RefParser =:= parser(Chunk) end,
+    {InOrder, Others} = lists:partition(Grouper, sort_by_timestamp(Chunks)),
+    Uniq = [Chunk || Chunk <- Others, not is_duplicate(InOrder, Chunk)],
+    {InOrder, Uniq}.
 
 first_pass(InOrder, ToOrder) -> first_pass([], InOrder, ToOrder, []).
 first_pass(Before, [Ordered|InOrder], [Chunk|ToOrder], UnMergeable) ->
