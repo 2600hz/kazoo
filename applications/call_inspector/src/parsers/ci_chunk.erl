@@ -132,32 +132,44 @@ dst_ip(#ci_chunk{}=Chunk, Val) ->
 -spec to_json(chunk()) -> wh_json:object().
 to_json(Chunk) ->
     wh_json:from_list(
-      [ {<<"src_ip">>, src_ip(Chunk)}
-      , {<<"dst_ip">>, dst_ip(Chunk)}
-      , {<<"src_port">>, src_port(Chunk)}
-      , {<<"dst_port">>, dst_port(Chunk)}
-      , {<<"call-id">>, call_id(Chunk)}
+      [ {<<"call-id">>, call_id(Chunk)}
       , {<<"timestamp">>, timestamp(Chunk)}
-      , {<<"ref_timestamp">>, ref_timestamp(Chunk)}
+      , {<<"ref_timestamp">>, wh_util:to_binary(ref_timestamp(Chunk))}
       , {<<"label">>, label(Chunk)}
       , {<<"raw">>, data(Chunk)}
+      , {<<"src">>, src(Chunk)}
+      , {<<"dst">>, dst(Chunk)}
       , {<<"parser">>, parser(Chunk)}
       ]
      ).
 
 -spec from_json(wh_json:object()) -> chunk().
 from_json(JObj) ->
-    #ci_chunk{ src_ip = wh_json:get_value(<<"src_ip">>, JObj)
-             , dst_ip = wh_json:get_value(<<"dst_ip">>, JObj)
-             , src_port = wh_json:get_value(<<"src_port">>, JObj)
-             , dst_port = wh_json:get_value(<<"dst_port">>, JObj)
+    {SrcIP, SrcPort} = src(wh_json:get_value(<<"src">>, JObj)),
+    {DstIP, DstPort} = dst(wh_json:get_value(<<"dst">>, JObj)),
+    #ci_chunk{ src_ip = SrcIP
+             , dst_ip = DstIP
+             , src_port = SrcPort
+             , dst_port = DstPort
              , call_id = wh_json:get_value(<<"call-id">>, JObj)
              , timestamp = wh_json:get_value(<<"timestamp">>, JObj)
-             , ref_timestamp = wh_json:get_value(<<"ref_timestamp">>, JObj)
+             , ref_timestamp = wh_util:to_float(wh_json:get_value(<<"ref_timestamp">>, JObj))
              , label = wh_json:get_value(<<"label">>, JObj)
              , data = wh_json:get_value(<<"raw">>, JObj)
              , parser = wh_json:get_value(<<"parser">>, JObj)
              }.
+
+src(#ci_chunk{src_ip = Ip, src_port = Port}) ->
+    <<Ip/binary, ":", (wh_util:to_binary(Port))/binary>>;
+src(Bin = <<_/binary>>) ->
+    [IP, Port] = binary:split(Bin, <<":">>),
+    {IP, wh_util:to_integer(Port)}.
+
+dst(#ci_chunk{dst_ip = Ip, dst_port = Port}) ->
+    <<Ip/binary, ":", (wh_util:to_binary(Port))/binary>>;
+dst(Bin = <<_/binary>>) ->
+    [IP, Port] = binary:split(Bin, <<":">>),
+    {IP, wh_util:to_integer(Port)}.
 
 -spec is_chunk(_) -> boolean().
 is_chunk(#ci_chunk{}) -> 'true';
@@ -172,27 +184,21 @@ sort_by_timestamp(Chunks) ->
 -spec reorder_dialog([chunk()]) -> [chunk()].
 reorder_dialog([]) -> [];
 reorder_dialog(Chunks) ->
-    %% RefParser = '10.26.0.182:9061',
     RefParser = pick_ref_parser(Chunks),
     do_reorder_dialog(RefParser, Chunks).
 
 pick_ref_parser(Chunks) ->
     GroupedByParser = group_by(fun parser/1, Chunks),
     Counted = lists:keymap(fun erlang:length/1, 2, GroupedByParser),
-    io:format("Count ~p\n", [Counted]),
-    [{RefParser,_Min}|_Bigger] = lists:keysort(2, Counted),
+    {RefParser,_Max} = lists:last(lists:keysort(2, Counted)),
     RefParser.
 
 do_reorder_dialog(RefParser, Chunks) ->
-    io:format(user, "RefParser = ~p\n", [RefParser]),
     GroupedByCSeq = lists:keysort(1, group_by(fun c_seq/1, Chunks)),
     lists:flatmap( fun ({_CSeq, ByCSeq}) ->
-                           io:format(user, "_CSeq = ~p\n", [_CSeq]),
                            {ByRefParser, Others} = sort_split_uniq(RefParser, ByCSeq),
                            {Done, Rest} = first_pass(ByRefParser, Others),
-                           io:format(user, ">>> Rest = ~p\n", [lists:map(fun to_json/1,Rest)]),
                            {ReallyDone, NewRest} = second_pass(Done, Rest),
-                           io:format(user, ">>> NewRest = ~p\n", [lists:map(fun to_json/1,NewRest)]),
                            ReallyDone ++ NewRest
                    end, GroupedByCSeq).
 
@@ -226,33 +232,40 @@ first_pass(Before, [Ordered|InOrder], [Chunk|ToOrder], UnMergeable) ->
 first_pass(Before, [], [Chunk|ToOrder], UnMergeable) ->
     first_pass([], Before, ToOrder, [Chunk|UnMergeable]);
 first_pass(Before, InOrder, [], UnMergeable) ->
-    {Before++InOrder, UnMergeable}.
+    {Before++InOrder, lists:reverse(UnMergeable)}.
 
-second_pass(InOrder, ToOrder) -> second_pass([], InOrder, ToOrder, []).
-second_pass(Before, [Ordered1,Ordered2|InOrder], [Chunk|ToOrder], UnMergeable) ->
-    case {    label(Ordered1),    label(Chunk),    label(Ordered2)
-         ,    c_seq(Ordered1),    c_seq(Chunk),    c_seq(Ordered2)
-         ,   src_ip(Ordered1),   src_ip(Chunk),   dst_ip(Ordered2)
-         , src_port(Ordered1), src_port(Chunk), dst_port(Ordered2)
-         }
-    of
-        { <<"INVITE ",_/binary>>, <<"SIP/2.0 100 Attempting to connect your call">>, <<"SIP/2.0 100 Trying">>
-        , CSeq, CSeq, CSeq
-        , IP, IP, IP
-        , Port, Port, Port
-        } ->
-            second_pass(Before++[Ordered1,Chunk,Ordered2], InOrder, ToOrder, UnMergeable);
-        _ ->
-            second_pass(Before++[Ordered1], [Ordered2|InOrder], [Chunk|ToOrder], UnMergeable)
+find_previous_packet( #ci_chunk{ parser = Parser
+                               , ref_timestamp = RefTimestamp
+                               }
+                    , Chunks ) ->
+    RightPackets = [Chunk || Chunk <- Chunks, parser(Chunk) =:= Parser],
+    Compare = fun (Chunk) -> ref_timestamp(Chunk) < RefTimestamp end,
+    PreviousPackets = lists:takewhile(Compare, RightPackets),
+    try lists:last(PreviousPackets)
+    catch 'error':'function_clause' -> 'no_previous'
+    end.
+
+second_pass(InOrder, ToOrder) ->
+    second_pass(InOrder, ToOrder, []).
+second_pass(InOrder, [Chunk|ToOrder], UnMergeable) ->
+    case find_previous_packet(Chunk, InOrder) of
+        'no_previous' ->
+            second_pass(InOrder, ToOrder, [Chunk|UnMergeable]);
+        PreviousPacket ->
+            PreviousPacketId = ref_timestamp(PreviousPacket),
+            Reordered =
+                lists:flatten(
+                  [ case ref_timestamp(Item) =:= PreviousPacketId of
+                        'true' -> [Item, Chunk];
+                        'false' -> Item
+                    end
+                    || Item <- InOrder
+                  ]
+                 ),
+            second_pass(Reordered, ToOrder, UnMergeable)
     end;
-second_pass(Before, [Ordered], [Chunk|ToOrder], UnMergeable) ->
-    io:format(user, "here\n", []),
-    second_pass([], Before++[Ordered], ToOrder, [Chunk|UnMergeable]);
-second_pass(Before, [], [Chunk|ToOrder], UnMergeable) ->
-    second_pass([], Before, ToOrder, [Chunk|UnMergeable]);
-second_pass(Before, InOrder, [], UnMergeable) ->
-    {Before++InOrder, UnMergeable}.
-
+second_pass(InOrder, [], UnMergeable) ->
+    {InOrder, lists:reverse(UnMergeable)}.
 
 %% Assumes CSeq and Callid already equal.
 is_duplicate([#ci_chunk{ dst_ip = DstIP

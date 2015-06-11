@@ -8,6 +8,9 @@ PA = $(foreach EBIN,$(EBINS),-pa $(EBIN))
 ERLC_OPTS = -Werror +debug_info +warn_export_all $(PA)
 ERL_LIBS = $(subst $(eval) ,:,$(wildcard $(ROOT)/core))
 
+TEST_EBINS = $(shell find $(ROOT)/deps/mochiweb-* -maxdepth 2 -name ebin -print)
+TEST_PA = $(foreach EBIN,$(TEST_EBINS),-pa $(EBIN))
+
 .PHONY: all compile clean
 
 all: compile
@@ -36,7 +39,7 @@ compile-test: test/$(PROJECT).app
 test/$(PROJECT).app: ERLC_OPTS += +export_all
 test/$(PROJECT).app: src/*.erl src/*/*.erl test/*.erl
 	@mkdir -p test/
-	ERL_LIBS=$(ERL_LIBS) erlc -v $(ERLC_OPTS) -DTEST -o test/ -pa test/ $?
+	ERL_LIBS=$(ERL_LIBS) erlc -v $(ERLC_OPTS) $(TEST_PA) -DTEST -o test/ -pa test/ $?
 
 clean:
 	rm -f ebin/*
@@ -48,4 +51,4 @@ clean-test:
 test: clean-test compile-test eunit
 
 eunit: compile-test
-	erl -noshell $(PA) -pa test -eval "case eunit:test([$(MODULES),$(CI_ANALYZERS),$(CI_PARSERS)], [verbose]) of 'ok' -> init:stop(); _ -> init:stop(1) end."
+	erl -noshell $(PA) $(TEST_PA) -pa test -eval "case eunit:test([$(MODULES),$(CI_ANALYZERS),$(CI_PARSERS)], [verbose]) of 'ok' -> init:stop(); _ -> init:stop(1) end."
