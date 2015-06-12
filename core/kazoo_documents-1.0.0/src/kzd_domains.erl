@@ -43,7 +43,7 @@ new() ->
 cnam(Domains) ->
     cnam(Domains, 'undefined').
 cnam(Domains, Default) ->
-    wh_json:get_json_value(Domains, Default).
+    wh_json:get_json_value(?KEY_CNAM, Domains, Default).
 
 -spec cnam_host(doc(), ne_binary()) -> api_object().
 -spec cnam_host(doc(), ne_binary(), Default) -> wh_json:object() | Default.
