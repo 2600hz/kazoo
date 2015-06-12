@@ -893,7 +893,7 @@ check_extends_array(Value, Extends, State) ->
 
 check_ref(Value, <<"#", LocalPath/binary>> = RefSchemaURI, State) ->
   Keys = binary:split(LocalPath, <<"/">>, ['global']),
-  OriginalSchema = jesse_state:original_schema(State),
+  OriginalSchema = jesse_state:get_original_schema(State),
 
   case get_local_schema(Keys, OriginalSchema) of
     ?not_found ->
