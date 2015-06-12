@@ -13,8 +13,10 @@
 
          ,cnam/1, cnam/2
          ,cnam_hosts/1, cnam_host/2, cnam_host/3
+         ,cnam_host_mappings/2, cnam_host_mappings/3
          ,set_cnam/2, add_cnam_host/3
 
+         ,format_host/2
         ]).
 
 -include("kz_documents.hrl").
@@ -28,6 +30,9 @@
 -define(KEY_SRV, <<"SRV">>).
 -define(KEY_MX, <<"MX">>).
 -define(KEY_TXT, <<"TXT">>).
+
+-define(KEY_MAPPINGS, <<"mappings">>).
+-define(DOMAIN_PLACEHOLDER, <<"{{domain}}">>).
 
 -spec new() -> doc().
 new() ->
@@ -56,6 +61,12 @@ cnam_host(Domains, Host) ->
     cnam_host(Domains, Host, 'undefined').
 cnam_host(Domains, Host, Default) ->
     wh_json:get_value([?KEY_CNAM, Host], Domains, Default).
+
+cnam_host_mappings(Domains, Host) ->
+    cnam_host_mappings(Domains, Host, []).
+
+cnam_host_mappings(Domains, Host, Default) ->
+    wh_json:get_value([?KEY_CNAM, Host, ?KEY_MAPPINGS], Domains, Default).
 
 -spec set_cnam(doc(), wh_json:object()) -> doc().
 set_cnam(Domains, CNAM) ->
@@ -102,6 +113,10 @@ is_valid(Domains, {'ok', SchemaJObj}) ->
             lager:debug("failed to validate the domains document"),
             {'false', Errors}
     end.
+
+-spec format_host(ne_binary(), ne_binary()) -> ne_binary().
+format_host(DomainHost, WhitelabelDomain) ->
+    binary:replace(DomainHost, ?DOMAIN_PLACEHOLDER, WhitelabelDomain).
 
 %% {
 %%    "CNAM":{
