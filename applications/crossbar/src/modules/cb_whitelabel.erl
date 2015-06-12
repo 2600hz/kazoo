@@ -360,18 +360,23 @@ validate_upload(Context, FileJObj) ->
     Context1 = load_whitelabel_meta(Context, ?WHITELABEL_ID),
     case cb_context:resp_status(Context) of
         'success' ->
-            CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileJObj, <<"application/octet-stream">>),
-            Size = file_size(FileJObj),
-            Props = [{<<"content_type">>, CT}
-                     ,{<<"content_length">>, Size}
+            Props = [{<<"content_type">>, content_type(FileJObj)}
+                     ,{<<"content_length">>, file_size(FileJObj)}
                     ],
             validate_request(cb_context:set_req_data(Context1
-                                                      ,wh_json:set_values(Props, cb_context:doc(Context))
-                                                     )
-                            ,?WHITELABEL_ID
+                                                     ,wh_json:set_values(Props, cb_context:doc(Context))
+                                                    )
+                             ,?WHITELABEL_ID
                             );
         _Status -> Context1
     end.
+
+-spec content_type(wh_json:object()) -> ne_binary().
+content_type(FileJObj) ->
+    wh_json:get_value([<<"headers">>, <<"content_type">>]
+                      ,FileJObj
+                      ,<<"application/octet-stream">>
+                     ).
 
 -spec file_size(wh_json:object()) -> non_neg_integer().
 file_size(FileJObj) ->
@@ -385,11 +390,39 @@ file_size(FileJObj) ->
         Size -> Size
     end.
 
+-spec validate_domains(cb_context:context(), http_method()) ->
+                              cb_context:context().
 validate_domains(Context, ?HTTP_GET) ->
     lager:debug("getting domains for whitelabel"),
-    Context;
+    load_domains(Context);
 validate_domains(Context, ?HTTP_POST) ->
-    lager:debug("checking domains for whitelabel"),
+    case cb_context:account_id(Context) of
+        'undefined' -> edit_domains(Context);
+        _AccountId -> test_account_domains(Context)
+    end.
+
+load_domains(Context) ->
+    %% load system_config JSON
+    %% load account whitelabel
+    %% merge whitelabel.domain into system_config JSON
+    Context.
+
+edit_domains(Context) ->
+    %% set system_config JSON to request body
+    Context.
+
+test_account_domains(Context) ->
+    Context1 = load_domains(Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            test_account_domains(Context, cb_context:resp_data(Context1));
+        _Status ->
+            Context1
+    end.
+
+test_account_domains(Context, _DomainsJObj) ->
+    %% loop over domains, testing against the "mapping"
+    %% return errored domains or success message
     Context.
 
 -spec validate_domain(cb_context:context(), path_token(), http_method()) ->
