@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2014, 2600Hz INC
+%%% @copyright (C) 2010-2015, 2600Hz INC
 %%% @doc
 %%% Various utilities - a veritable cornicopia
 %%% @end
@@ -22,9 +22,14 @@
 -export([iptuple_to_binary/1]).
 -export([pretty_print_bytes/1]).
 
+-export([add_ns/1
+         ,lookup_dns/2
+        ]).
+
 -export([lookup_timeout/0]).
 
 -include_lib("kernel/include/inet.hrl").
+-include_lib("kernel/src/inet_dns.hrl").
 
 -include("../include/wh_types.hrl").
 -include("../include/wh_log.hrl").
@@ -201,3 +206,20 @@ pretty_print_bytes(Bytes) ->
         'true' ->
             io_lib:format("~BB", [Bytes])
     end.
+
+-spec add_ns(ne_binaries() | ne_binary()) -> 'ok'.
+add_ns(Nss) when is_list(Nss) ->
+    [add_ns(Ns) || Ns <- Nss],
+    'ok';
+add_ns(Ns) ->
+    'ok' = inet_db:add_ns(Ns).
+
+-spec lookup_dns(ne_binary(), atom()) ->
+                        {'ok', ne_binaries()}.
+%% See kernel/src/inet_dns.hrl, the S_* macros for values for Type
+lookup_dns(Hostname, Type) ->
+    {'ok'
+     ,[iptuple_to_binary(IP)
+       || IP <- inet_res:lookup(wh_util:to_list(Hostname), 'in', Type)
+      ]
+    }.
