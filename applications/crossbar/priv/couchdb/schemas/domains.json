@@ -24,7 +24,9 @@
                                 "type": "string"
                             },
                             "name": "Mapping",
-                            "type": "array"
+                            "type": "array",
+                            "required":true,
+                            "minItems":1
                         },
                         "name": {
                             "description": "Human-friendly name of the Host",
