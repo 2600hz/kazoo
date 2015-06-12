@@ -68,6 +68,16 @@
                                   ,{<<"multipart">>, <<"mixed">>}
                                  ]).
 
+-define(IMAGE_CONTENT_TYPES, [{<<"image">>, <<"jpg">>}
+                              ,{<<"image">>, <<"jpeg">>}
+                              ,{<<"image">>, <<"png">>}
+                              ,{<<"image">>, <<"gif">>}
+                             ]).
+
+-define(BASE64_CONTENT_TYPES, [{<<"application">>, <<"base64">>}
+                               ,{<<"application">>, <<"x-base64">>}
+                              ]).
+
 -define(JSONP_CONTENT_TYPE, <<"application/javascript">>).
 
 -define(CROSSBAR_TYPES_INCLUDED, 'true').

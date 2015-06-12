@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Account module
 %%%
@@ -26,15 +26,10 @@
 -define(WHITELABEL_ID, <<"whitelabel">>).
 -define(LOGO_REQ, <<"logo">>).
 -define(ICON_REQ, <<"icon">>).
+-define(DOMAINS_REQ, <<"domains">>).
 -define(WELCOME_REQ, <<"welcome">>).
 
--define(WHITELABEL_MIME_TYPES, [{<<"image">>, <<"jpg">>}
-                                ,{<<"image">>, <<"jpeg">>}
-                                ,{<<"image">>, <<"png">>}
-                                ,{<<"image">>, <<"gif">>}
-                                ,{<<"application">>, <<"base64">>}
-                                ,{<<"application">>, <<"x-base64">>}
-                               ]).
+-define(WHITELABEL_MIME_TYPES, ?IMAGE_CONTENT_TYPES ++ ?BASE64_CONTENT_TYPES).
 
 %% Commonly found ico mime types
 -define(WHITELABEL_ICON_MIME_TYPES, [{<<"image">>, <<"ico">>}
@@ -44,8 +39,7 @@
                                      | ?WHITELABEL_MIME_TYPES
                                     ]).
 
--define(WHITELABEL_WELCOME_MIME_TYPES, [{<<"text">>, <<"html">>}
-                                    ]).
+-define(WHITELABEL_WELCOME_MIME_TYPES, [{<<"text">>, <<"html">>}]).
 
 -define(AGG_VIEW_WHITELABEL_DOMAIN, <<"accounts/list_by_whitelabel_domain">>).
 
@@ -53,16 +47,18 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
-    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
-    _ = crossbar_bindings:bind(<<"*.content_types_provided.whitelabel">>, ?MODULE, 'content_types_provided'),
-    _ = crossbar_bindings:bind(<<"*.content_types_accepted.whitelabel">>, ?MODULE, 'content_types_accepted'),
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.whitelabel">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.whitelabel">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"*.validate.whitelabel">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.execute.put.whitelabel">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"*.execute.post.whitelabel">>, ?MODULE, 'post'),
-    _ = crossbar_bindings:bind(<<"*.execute.delete.whitelabel">>, ?MODULE, 'delete').
+    Bindings = [{<<"*.authenticate">>, 'authenticate'}
+                ,{<<"*.authorize">>, ?MODULE, 'authorize'}
+                ,{<<"*.content_types_provided.whitelabel">>, ?MODULE, 'content_types_provided'}
+                ,{<<"*.content_types_accepted.whitelabel">>, ?MODULE, 'content_types_accepted'}
+                ,{<<"*.allowed_methods.whitelabel">>, ?MODULE, 'allowed_methods'}
+                ,{<<"*.resource_exists.whitelabel">>, ?MODULE, 'resource_exists'}
+                ,{<<"*.validate.whitelabel">>, ?MODULE, 'validate'}
+                ,{<<"*.execute.put.whitelabel">>, ?MODULE, 'put'}
+                ,{<<"*.execute.post.whitelabel">>, ?MODULE, 'post'}
+                ,{<<"*.execute.delete.whitelabel">>, ?MODULE, 'delete'}
+               ],
+    cb_modules_util:bind(?MODULE, Bindings).
 
 %%--------------------------------------------------------------------
 %% @public
