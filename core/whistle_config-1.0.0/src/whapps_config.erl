@@ -300,7 +300,8 @@ set(Category, Key, Value, Node) ->
     update_category(Category, Key, Value, Node, []).
 
 -spec set_default(config_category(), config_key(), term()) ->
-                         {'ok', wh_json:object()} | 'ok'.
+                         {'ok', wh_json:object()} | 'ok' |
+                         {'error', _}.
 set_default(Category, Key, Value) ->
     update_category(Category, Key, Value, <<"default">>, []).
 

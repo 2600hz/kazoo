@@ -54,7 +54,7 @@
          , allowed_errors     :: non_neg_integer() | 'infinity'
          , error_list         :: list()
          , error_handler      :: fun((#state{}) -> list() | no_return())
-         , default_schema_ver :: atom()
+         , default_schema_ver :: binary()
          , schema_loader_fun  :: fun((binary()) -> {'ok', jesse:json_term()} | jesse:json_term() | ?not_found)
          }
        ).
