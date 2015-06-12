@@ -81,6 +81,8 @@ allowed_methods(?ICON_REQ) ->
     [?HTTP_GET, ?HTTP_POST];
 allowed_methods(?WELCOME_REQ) ->
     [?HTTP_GET, ?HTTP_POST];
+allowed_methods(?DOMAINS_REQ) ->
+    [?HTTP_GET, ?HTTP_POST];
 allowed_methods(_) ->
     [?HTTP_GET].
 
@@ -107,6 +109,7 @@ resource_exists() -> 'true'.
 resource_exists(?LOGO_REQ) -> 'true';
 resource_exists(?ICON_REQ) -> 'true';
 resource_exists(?WELCOME_REQ) -> 'true';
+resource_exists(?DOMAINS_REQ) -> 'true';
 resource_exists(_) -> 'true'.
 
 resource_exists(_, ?LOGO_REQ) -> 'true';
@@ -120,18 +123,24 @@ resource_exists(_, ?ICON_REQ) -> 'true'.
 %%--------------------------------------------------------------------
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->
-    authorize(cb_context:req_nouns(Context), cb_context:req_verb(Context)).
+    authorize(Context
+              ,cb_context:req_nouns(Context)
+              ,cb_context:req_verb(Context)
+             ).
 
--spec authorize(req_nouns(), http_method()) -> boolean().
-authorize([{<<"whitelabel">>, [_]}], ?HTTP_GET) ->
+-spec authorize(cb_context:context(), req_nouns(), http_method()) -> boolean().
+authorize(Context, [{<<"whitelabel">>, [?DOMAINS_REQ]}], ?HTTP_POST) ->
+    %% /{VERSION}/whitelabel/domains retricted to sys-admin account
+    wh_util:is_system_admin(cb_context:auth_account_id(Context));
+authorize(_Context, [{<<"whitelabel">>, [_]}], ?HTTP_GET) ->
     'true';
-authorize([{<<"whitelabel">>, [_ | [?LOGO_REQ]]}], ?HTTP_GET) ->
+authorize(_Context, [{<<"whitelabel">>, [_ | [?LOGO_REQ]]}], ?HTTP_GET) ->
     'true';
-authorize([{<<"whitelabel">>, [_ | [?ICON_REQ]]}], ?HTTP_GET) ->
+authorize(_Context, [{<<"whitelabel">>, [_ | [?ICON_REQ]]}], ?HTTP_GET) ->
     'true';
-authorize([{<<"whitelabel">>, [_ | [?WELCOME_REQ]]}], ?HTTP_GET) ->
+authorize(_Context, [{<<"whitelabel">>, [_ | [?WELCOME_REQ]]}], ?HTTP_GET) ->
     'true';
-authorize(_Nouns, _Verb) ->
+authorize(_Context, _Nouns, _Verb) ->
     'false'.
 
 %%--------------------------------------------------------------------
@@ -266,6 +275,8 @@ validate(Context, ?ICON_REQ) ->
     validate_attachment(Context, ?ICON_REQ, cb_context:req_verb(Context));
 validate(Context, ?WELCOME_REQ) ->
     validate_attachment(Context, ?WELCOME_REQ, cb_context:req_verb(Context));
+validate(Context, ?DOMAINS_REQ) ->
+    validate_domains(Context, cb_context:req_verb(Context));
 validate(Context, Domain) ->
     validate_domain(Context, Domain, cb_context:req_verb(Context)).
 
@@ -284,31 +295,31 @@ validate_attachment(Context, AttachType, ?HTTP_POST) ->
                                       cb_context:context().
 validate_attachment_post(Context, ?LOGO_REQ, []) ->
     cb_context:add_validation_error(
-        <<"file">>
-        ,<<"required">>
-        ,wh_json:from_list([
-            {<<"message">>, <<"Please provide an image file">>}
-         ])
-        ,Context
-    );
+      <<"file">>
+      ,<<"required">>
+      ,wh_json:from_list(
+         [{<<"message">>, <<"Please provide an image file">>}]
+        )
+      ,Context
+     );
 validate_attachment_post(Context, ?ICON_REQ, []) ->
     cb_context:add_validation_error(
-        <<"file">>
-        ,<<"required">>
-        ,wh_json:from_list([
-            {<<"message">>, <<"Please provide an image file">>}
-         ])
-        ,Context
-    );
+      <<"file">>
+      ,<<"required">>
+      ,wh_json:from_list(
+         [{<<"message">>, <<"Please provide an image file">>}]
+        )
+      ,Context
+     );
 validate_attachment_post(Context, ?WELCOME_REQ, []) ->
     cb_context:add_validation_error(
-        <<"file">>
-        ,<<"required">>
-        ,wh_json:from_list([
-            {<<"message">>, <<"Please provide an html file">>}
-         ])
-        ,Context
-    );
+      <<"file">>
+      ,<<"required">>
+      ,wh_json:from_list(
+         [{<<"message">>, <<"Please provide an html file">>}]
+        )
+      ,Context
+     );
 validate_attachment_post(Context, ?LOGO_REQ, [{_Filename, FileJObj}]) ->
     validate_upload(Context, FileJObj);
 validate_attachment_post(Context, ?ICON_REQ, [{_Filename, FileJObj}]) ->
@@ -317,31 +328,31 @@ validate_attachment_post(Context, ?WELCOME_REQ, [{_Filename, FileJObj}]) ->
     validate_upload(Context, FileJObj);
 validate_attachment_post(Context, ?LOGO_REQ, _Files) ->
     cb_context:add_validation_error(
-        <<"file">>
-        ,<<"maxItems">>
-        ,wh_json:from_list([
-            {<<"message">>, <<"Please provide a single image file">>}
-         ])
-        ,Context
-    );
+      <<"file">>
+      ,<<"maxItems">>
+      ,wh_json:from_list(
+         [{<<"message">>, <<"Please provide a single image file">>}]
+        )
+      ,Context
+     );
 validate_attachment_post(Context, ?ICON_REQ, _Files) ->
     cb_context:add_validation_error(
-        <<"file">>
-        ,<<"maxItems">>
-        ,wh_json:from_list([
-            {<<"message">>, <<"Please provide a single image file">>}
-         ])
-        ,Context
-    );
+      <<"file">>
+      ,<<"maxItems">>
+      ,wh_json:from_list(
+         [{<<"message">>, <<"Please provide a single image file">>}]
+        )
+      ,Context
+     );
 validate_attachment_post(Context, ?WELCOME_REQ, _Files) ->
     cb_context:add_validation_error(
-        <<"file">>
-        ,<<"maxItems">>
-        ,wh_json:from_list([
-            {<<"message">>, <<"please provide a single html file">>}
-         ])
-        ,Context
-    ).
+      <<"file">>
+      ,<<"maxItems">>
+      ,wh_json:from_list(
+         [{<<"message">>, <<"please provide a single html file">>}]
+        )
+      ,Context
+     ).
 
 -spec validate_upload(cb_context:context(), wh_json:object()) ->
                              cb_context:context().
@@ -350,10 +361,7 @@ validate_upload(Context, FileJObj) ->
     case cb_context:resp_status(Context) of
         'success' ->
             CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileJObj, <<"application/octet-stream">>),
-            Size = wh_json:get_integer_value([<<"headers">>, <<"content_length">>]
-                                             ,FileJObj
-                                             ,byte_size(wh_json:get_value(<<"contents">>, FileJObj, <<>>))
-                                            ),
+            Size = file_size(FileJObj),
             Props = [{<<"content_type">>, CT}
                      ,{<<"content_length">>, Size}
                     ],
@@ -364,6 +372,25 @@ validate_upload(Context, FileJObj) ->
                             );
         _Status -> Context1
     end.
+
+-spec file_size(wh_json:object()) -> non_neg_integer().
+file_size(FileJObj) ->
+    case wh_json:get_integer_value(
+           [<<"headers">>, <<"content_length">>]
+           ,FileJObj
+          )
+    of
+        'undefined' ->
+            byte_size(wh_json:get_value(<<"contents">>, FileJObj, <<>>));
+        Size -> Size
+    end.
+
+validate_domains(Context, ?HTTP_GET) ->
+    lager:debug("getting domains for whitelabel"),
+    Context;
+validate_domains(Context, ?HTTP_POST) ->
+    lager:debug("checking domains for whitelabel"),
+    Context.
 
 -spec validate_domain(cb_context:context(), path_token(), http_method()) ->
                              cb_context:context().
