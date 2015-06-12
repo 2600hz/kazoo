@@ -31,7 +31,17 @@ stop(_) -> 'ok'.
 
 cnam(DomainsSchema) ->
     CNAM = wh_json:decode(?CNAM),
+
+    Hosts = kzd_domains:cnam_hosts(CNAM),
+
     [{"Validate cnam property in domains object"
       ,?_assertEqual({'ok', CNAM}, wh_json_schema:validate(DomainsSchema, CNAM))
      }
+     ,{"Validate list of hosts"
+       ,?_assertEqual([<<"portal.{{whitelabel_domain}}">>
+                       ,<<"api.{{whitelabel_domain}}">>
+                      ]
+                      ,Hosts
+                     )
+      }
     ].

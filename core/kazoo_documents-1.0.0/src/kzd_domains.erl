@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2015, 2600Hz
+%%% @copyright (C) 2015, 2600Hz
 %%% @doc
 %%% Domains document for white-label
 %%% @end
@@ -12,8 +12,9 @@
          ,save/1
 
          ,cnam/1, cnam/2
-         ,cnam_host/2, cnam_host/3
+         ,cnam_hosts/1, cnam_host/2, cnam_host/3
          ,set_cnam/2, add_cnam_host/3
+
         ]).
 
 -include("kz_documents.hrl").
@@ -44,6 +45,10 @@ cnam(Domains) ->
     cnam(Domains, 'undefined').
 cnam(Domains, Default) ->
     wh_json:get_json_value(?KEY_CNAM, Domains, Default).
+
+-spec cnam_hosts(doc()) -> ne_binaries().
+cnam_hosts(Domains) ->
+    wh_json:get_keys(?KEY_CNAM, Domains).
 
 -spec cnam_host(doc(), ne_binary()) -> api_object().
 -spec cnam_host(doc(), ne_binary(), Default) -> wh_json:object() | Default.
