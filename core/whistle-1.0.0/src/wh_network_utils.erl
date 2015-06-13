@@ -215,11 +215,7 @@ add_ns(Ns) ->
     'ok' = inet_db:add_ns(Ns).
 
 -spec lookup_dns(ne_binary(), atom()) ->
-                        {'ok', ne_binaries()}.
+                        {'ok', [inet_res:dns_data()]}.
 %% See kernel/src/inet_dns.hrl, the S_* macros for values for Type
 lookup_dns(Hostname, Type) ->
-    {'ok'
-     ,[iptuple_to_binary(IP)
-       || IP <- inet_res:lookup(wh_util:to_list(Hostname), 'in', Type)
-      ]
-    }.
+    {'ok', inet_res:lookup(wh_util:to_list(Hostname), 'in', Type)}.
