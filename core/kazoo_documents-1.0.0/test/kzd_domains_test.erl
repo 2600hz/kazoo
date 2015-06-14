@@ -9,6 +9,7 @@
 -module(kzd_domains_test).
 
 -include_lib("eunit/include/eunit.hrl").
+-include_lib("whistle/include/wh_databases.hrl").
 
 -define(WHITELABEL_DOMAIN, <<"2600hz.com">>).
 
@@ -25,11 +26,23 @@ domains_test_() ->
       ]
     }.
 
+-define(DOMAINS_SCHEMA, <<"domains">>).
+-define(HOSTS_SCHEMA, <<"domain_hosts">>).
+
 init() ->
     CrossbarDir = code:lib_dir('crossbar'),
-    DomainsSchemaPath = filename:join([CrossbarDir, "priv", "couchdb", "schemas", "domains.json"]),
-    {'ok', DomainsSchemaFile} = file:read_file(DomainsSchemaPath),
-    wh_json:decode(DomainsSchemaFile).
+
+    DomainsSchema = load(CrossbarDir, ?DOMAINS_SCHEMA),
+    DomainHostsSchema = load(CrossbarDir, ?HOSTS_SCHEMA),
+
+    {DomainsSchema, DomainHostsSchema}.
+
+load(AppPath, Filename) ->
+    SchemaPath = filename:join([AppPath, "priv", "couchdb", "schemas"
+                                ,<<Filename/binary, ".json">>
+                               ]),
+    {'ok', SchemaFile} = file:read_file(SchemaPath),
+    wh_json:decode(SchemaFile).
 
 stop(_) -> 'ok'.
 
@@ -43,13 +56,19 @@ format_host(_) ->
      }
     ].
 
-cnam(DomainsSchema) ->
+cnam({DomainsSchema, DomainHostsSchema}) ->
     CNAM = wh_json:decode(?CNAM),
 
     Hosts = kzd_domains:cnam_hosts(CNAM),
+    LoaderFun = fun(?HOSTS_SCHEMA) -> {'ok', DomainHostsSchema} end,
 
     [{"Validate cnam property in domains object"
-      ,?_assertEqual({'ok', CNAM}, wh_json_schema:validate(DomainsSchema, CNAM))
+      ,?_assertEqual({'ok', CNAM}
+                     ,wh_json_schema:validate(DomainsSchema
+                                              ,CNAM
+                                              ,[{'schema_loader_fun', LoaderFun}]
+                                             )
+                    )
      }
      ,{"Validate list of hosts"
        ,?_assertEqual([<<"portal.{{domain}}">>
