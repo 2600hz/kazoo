@@ -62,6 +62,8 @@ cnam_host(Domains, Host) ->
 cnam_host(Domains, Host, Default) ->
     wh_json:get_value([?KEY_CNAM, Host], Domains, Default).
 
+-spec cnam_host_mappings(doc(), ne_binary()) -> ne_binaries().
+-spec cnam_host_mappings(doc(), ne_binary(), Default) -> ne_binaries() | Default.
 cnam_host_mappings(Domains, Host) ->
     cnam_host_mappings(Domains, Host, []).
 
