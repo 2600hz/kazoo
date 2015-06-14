@@ -103,13 +103,16 @@ maybe_add_default(Key, Default, JObj) ->
 
 -type jesse_options() :: [jesse_option(),...] | [].
 
--spec validate(wh_json:object(), wh_json:object()) ->
+-spec validate(ne_binary() | wh_json:object(), wh_json:object()) ->
                       {'ok', wh_json:object()} |
                       {'error', jesse_error:error()}.
--spec validate(wh_json:object(), wh_json:object(), jesse_options()) ->
+-spec validate(ne_binary() | wh_json:object(), wh_json:object(), jesse_options()) ->
                       {'ok', wh_json:object()} |
                       {'error', jesse_error:error()}.
 validate(SchemaJObj, DataJObj) ->
     validate(SchemaJObj, DataJObj, [{'schema_loader_fun', fun load/1}]).
+validate(<<_/binary>> = Schema, DataJObj, Options) ->
+    {'ok', SchemaJObj} = load(Schema),
+    validate(SchemaJObj, DataJObj, Options);
 validate(SchemaJObj, DataJObj, Options) ->
     jesse:validate_with_schema(SchemaJObj, DataJObj, Options).
