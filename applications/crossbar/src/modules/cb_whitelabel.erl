@@ -401,16 +401,19 @@ validate_domains(Context, ?HTTP_POST) ->
         _AccountId -> test_account_domains(Context)
     end.
 
+-spec load_domains(cb_context:context()) -> cb_context:context().
 load_domains(Context) ->
     %% load system_config JSON
     %% load account whitelabel
     %% merge whitelabel.domain into system_config JSON
     Context.
 
+-spec edit_domains(cb_context:context()) -> cb_context:context().
 edit_domains(Context) ->
     %% set system_config JSON to request body
     Context.
 
+-spec test_account_domains(cb_context:context()) -> cb_context:context().
 test_account_domains(Context) ->
     Context1 = load_domains(Context),
     case cb_context:resp_status(Context1) of

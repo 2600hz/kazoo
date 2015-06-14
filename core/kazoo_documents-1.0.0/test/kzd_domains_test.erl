@@ -13,7 +13,7 @@
 -define(WHITELABEL_DOMAIN, <<"2600hz.com">>).
 
 -define(CNAM
-        ,<<"{\"CNAM\":{\"portal.{{whitelabel_domain}}\":{\"name\":\"Web GUI\",\"mapping\":[\"ui.zswitch.net\"]},\"api.{{whitelabel_domain}}\":{\"name\":\"API\",\"mapping\":[\"api.zswitch.net\"]}}}">>
+        ,<<"{\"CNAM\":{\"portal.{{domain}}\":{\"name\":\"Web GUI\",\"mapping\":[\"ui.zswitch.net\"]},\"api.{{domain}}\":{\"name\":\"API\",\"mapping\":[\"api.zswitch.net\"]}}}">>
        ).
 
 domains_test_() ->
@@ -52,26 +52,27 @@ cnam(DomainsSchema) ->
       ,?_assertEqual({'ok', CNAM}, wh_json_schema:validate(DomainsSchema, CNAM))
      }
      ,{"Validate list of hosts"
-       ,?_assertEqual([<<"portal.{{whitelabel_domain}}">>
-                       ,<<"api.{{whitelabel_domain}}">>
+       ,?_assertEqual([<<"portal.{{domain}}">>
+                       ,<<"api.{{domain}}">>
                       ]
                       ,Hosts
                      )
       }
-     | validate_hosts(CNAM, Hosts)
+     | validate_cnam_hosts(CNAM, Hosts)
     ].
 
-validate_hosts(CNAM, Hosts) ->
+validate_cnam_hosts(CNAM, Hosts) ->
     lists:flatten(
-      lists:map(fun(H) -> validate_host(CNAM, H) end
+      lists:map(fun(H) -> validate_cnam_host(CNAM, H) end
                 ,Hosts
                )
      ).
 
-validate_host(CNAM, Host) ->
+validate_cnam_host(CNAM, Host) ->
     _HostMappings = kzd_domains:cnam_host_mappings(CNAM, Host),
     WhitelabelHost = kzd_domains:format_host(Host, ?WHITELABEL_DOMAIN),
+
     [{"Verify whitelabel host"
-      ,?_assertEqual(WhitelabelHost, WhitelabelHost)
+      ,?_assert('nomatch' =/= binary:match(WhitelabelHost, ?WHITELABEL_DOMAIN))
      }
     ].
