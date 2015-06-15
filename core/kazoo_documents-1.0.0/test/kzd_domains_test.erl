@@ -21,6 +21,10 @@
         ,<<"{\"A\":{\"us-east.{{domain}}\":{\"name\":\"Primary Proxy\",\"zone\": \"us-east\",\"mapping\":[\"8.36.70.3\"]},\"us-central.{{domain}}\":{\"name\":\"Secondary Proxy\",\"zone\": \"us-central\",\"mapping\":[\"166.78.105.67\"]},\"us-west.{{domain}}\":{\"name\":\"Tertiary Proxy\",\"zone\": \"us-west\",\"mapping\":[\"8.30.173.3\"]}}}">>
        ).
 
+-define(NAPTR
+        ,<<"{\"NAPTR\":{\"proxy-east.{{domain}}\":{\"name\":\"East NAPTR\",\"mapping\":[\"10 100 \\\"S\\\" \\\"SIP+D2U\\\" \\\"\\\" _sip._udp.proxy-east.{{domain}}.\"]},\"proxy-central.{{domain}}\":{\"name\":\"Central NAPTR\",\"mapping\":[\"10 100 \\\"S\\\" \\\"SIP+D2U\\\" \\\"\\\" _sip._udp.proxy-central.{{domain}}.\"]},\"proxy-west.{{domain}}\":{\"name\":\"West NAPTR\",\"mapping\":[\"10 100 \\\"S\\\" \\\"SIP+D2U\\\" \\\"\\\" _sip._udp.proxy-west.{{domain}}.\"]}}}">>
+       ).
+
 domains_test_() ->
     {'foreach'
      ,fun init/0
@@ -28,6 +32,7 @@ domains_test_() ->
      ,[fun format_host/1
        ,fun cnam/1
        ,fun a_record/1
+       ,fun naptr/1
       ]
     }.
 
@@ -101,7 +106,6 @@ validate_cnam_host(CNAM, Host) ->
      }
     ].
 
-
 a_record({DomainsSchema, DomainHostsSchema}) ->
     A_RECORD = wh_json:decode(?A_RECORD),
 
@@ -140,5 +144,61 @@ validate_a_record_host(A_RECORD, Host) ->
 
     [{"Verify whitelabel host"
       ,?_assert('nomatch' =/= binary:match(WhitelabelHost, ?DOMAIN))
+     }
+    ].
+
+naptr({DomainsSchema, DomainHostsSchema}) ->
+    NAPTR = wh_json:decode(?NAPTR),
+
+    Hosts = kzd_domains:naptr_hosts(NAPTR),
+    LoaderFun = fun(?HOSTS_SCHEMA) -> {'ok', DomainHostsSchema} end,
+
+    [{"Validate naptr property in domains object"
+      ,?_assertEqual({'ok', NAPTR}
+                     ,wh_json_schema:validate(DomainsSchema
+                                              ,NAPTR
+                                              ,[{'schema_loader_fun', LoaderFun}]
+                                             )
+                    )
+     }
+     ,{"Validate list of hosts"
+       ,?_assertEqual([<<"proxy-east.{{domain}}">>
+                       ,<<"proxy-central.{{domain}}">>
+                       ,<<"proxy-west.{{domain}}">>
+                      ]
+                      ,Hosts
+                     )
+      }
+     | validate_naptr_hosts(NAPTR, Hosts)
+    ].
+
+validate_naptr_hosts(NAPTR, Hosts) ->
+    lists:flatten(
+      lists:map(fun(H) -> validate_naptr_host(NAPTR, H) end
+                ,Hosts
+               )
+     ).
+
+validate_naptr_host(NAPTR, Host) ->
+    WhitelabelHost = kzd_domains:format_host(Host, ?DOMAIN),
+
+    [{"Verify whitelabel host"
+      ,?_assert('nomatch' =/= binary:match(WhitelabelHost, ?DOMAIN))
+     }
+     | validate_naptr_host_mappings(NAPTR, Host)
+    ].
+
+validate_naptr_host_mappings(NAPTR, Host) ->
+    HostMappings = [kzd_domains:format_mapping(Mapping, ?DOMAIN)
+                    || Mapping <- kzd_domains:naptr_host_mappings(NAPTR, Host)
+                   ],
+    [{"Verify whitelabel mappings"
+      ,?_assert(
+          lists:all(fun(Mapping) ->
+                            'nomatch' =/= binary:match(Mapping, ?DOMAIN)
+                    end
+                    ,HostMappings
+                   )
+         )
      }
     ].

@@ -21,7 +21,13 @@
          ,a_record_host_mappings/2, a_record_host_mappings/3
          ,set_a_record/2, add_a_record_host/3
 
+         ,naptr/1, naptr/2
+         ,naptr_hosts/1, naptr_host/2, naptr_host/3
+         ,naptr_host_mappings/2, naptr_host_mappings/3
+         ,set_naptr/2, add_naptr_host/3
+
          ,format_host/2
+         ,format_mapping/2
         ]).
 
 -include("kz_documents.hrl").
@@ -117,6 +123,40 @@ set_a_record(Domains, A_RECORD) ->
 add_a_record_host(Domains, Host, Settings) ->
     wh_json:set_value([?KEY_A_RECORD, Host], Settings, Domains).
 
+-spec naptr(doc()) -> api_object().
+-spec naptr(doc(), Default) -> wh_json:object() | Default.
+naptr(Domains) ->
+    naptr(Domains, 'undefined').
+naptr(Domains, Default) ->
+    wh_json:get_json_value(?KEY_NAPTR, Domains, Default).
+
+-spec naptr_hosts(doc()) -> ne_binaries().
+naptr_hosts(Domains) ->
+    wh_json:get_keys(?KEY_NAPTR, Domains).
+
+-spec naptr_host(doc(), ne_binary()) -> api_object().
+-spec naptr_host(doc(), ne_binary(), Default) -> wh_json:object() | Default.
+naptr_host(Domains, Host) ->
+    naptr_host(Domains, Host, 'undefined').
+naptr_host(Domains, Host, Default) ->
+    wh_json:get_value([?KEY_NAPTR, Host], Domains, Default).
+
+-spec naptr_host_mappings(doc(), ne_binary()) -> ne_binaries().
+-spec naptr_host_mappings(doc(), ne_binary(), Default) -> ne_binaries() | Default.
+naptr_host_mappings(Domains, Host) ->
+    naptr_host_mappings(Domains, Host, []).
+
+naptr_host_mappings(Domains, Host, Default) ->
+    wh_json:get_value([?KEY_NAPTR, Host, ?KEY_MAPPINGS], Domains, Default).
+
+-spec set_naptr(doc(), wh_json:object()) -> doc().
+set_naptr(Domains, NAPTR) ->
+    wh_json:set_value(?KEY_NAPTR, NAPTR, Domains).
+
+-spec add_naptr_host(doc(), ne_binary(), wh_json:object()) -> doc().
+add_naptr_host(Domains, Host, Settings) ->
+    wh_json:set_value([?KEY_NAPTR, Host], Settings, Domains).
+
 -spec save(doc()) -> {'ok', doc()} |
                      {'error', _}.
 save(Domains) ->
@@ -159,26 +199,10 @@ is_valid(Domains, {'ok', SchemaJObj}) ->
 format_host(DomainHost, WhitelabelDomain) ->
     binary:replace(DomainHost, ?DOMAIN_PLACEHOLDER, WhitelabelDomain).
 
-%%    "NAPTR":{
-%%       "proxy-east.{{whitelabel_domain}}":{
-%%          "name":"East NAPTR",
-%%          "mapping":[
-%%             "10 100 \"S\" \"SIP+D2U\" \"\" _sip._udp.proxy-east.{{whitelabel_domain}}."
-%%          ]
-%%       },
-%%       "proxy-central.{{whitelabel_domain}}":{
-%%          "name":"Central NAPTR",
-%%          "mapping":[
-%%             "10 100 \"S\" \"SIP+D2U\" \"\" _sip._udp.proxy-central.{{whitelabel_domain}}."
-%%          ]
-%%       },
-%%       "proxy-west.{{whitelabel_domain}}":{
-%%          "name":"West NAPTR",
-%%          "mapping":[
-%%             "10 100 \"S\" \"SIP+D2U\" \"\" _sip._udp.proxy-west.{{whitelabel_domain}}."
-%%          ]
-%%       }
-%%    },
+-spec format_mapping(ne_binary(), ne_binary()) -> ne_binary().
+format_mapping(Mapping, WhitelabelDomain) ->
+    binary:replace(Mapping, ?DOMAIN_PLACEHOLDER, WhitelabelDomain).
+
 %%    "SRV":{
 %%       "_sip._udp.proxy-east.{{whitelabel_domain}}":{
 %%          "name":"East SRV",
