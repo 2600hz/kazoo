@@ -14,6 +14,8 @@
     ,move/1 ,move/2
     ,update/1 ,update/2
     ,delete/1 ,delete/2
+    ,change_state/1 ,change_state/2
+    ,assigned_to_app/1 ,assigned_to_app/2
 ]).
 
 -include("knm.hrl").
@@ -114,6 +116,45 @@ delete([Num|Nums], AuthBy, Acc) ->
     Return = knm_number:delete(Num, AuthBy),
     delete(Nums, AuthBy, [{Num, Return}|Acc]).
 
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec change_state(wh_proplist()) -> numbers_return().
+-spec change_state(wh_proplist(), ne_binary()) -> numbers_return().
+-spec change_state(wh_proplist(), ne_binary(), numbers_return()) -> numbers_return().
+change_state(Props) ->
+    change_state(Props, <<"system">>).
+
+change_state(Props, AuthBy) ->
+    change_state(Props, AuthBy, []).
+
+change_state([], _AuthBy, Acc) -> Acc;
+change_state([{Num, State}|Props], AuthBy, Acc) ->
+    Return  = knm_number:change_state(Num, State, AuthBy),
+    change_state(Props, AuthBy, [{Num, Return}|Acc]).
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec assigned_to_app(wh_proplist()) -> numbers_return().
+-spec assigned_to_app(wh_proplist(), ne_binary()) -> numbers_return().
+-spec assigned_to_app(wh_proplist(), ne_binary(), numbers_return()) -> numbers_return().
+assigned_to_app(Props) ->
+    assigned_to_app(Props, <<"system">>).
+
+assigned_to_app(Props, AuthBy) ->
+    assigned_to_app(Props, AuthBy, []).
+
+assigned_to_app([], _AuthBy, Acc) -> Acc;
+assigned_to_app([{Num, App}|Props], AuthBy, Acc) ->
+    Return  = knm_number:assigned_to_app(Num, App, AuthBy),
+    assigned_to_app(Props, AuthBy, [{Num, Return}|Acc]).
 
 %%%===================================================================
 %%% Internal functions
