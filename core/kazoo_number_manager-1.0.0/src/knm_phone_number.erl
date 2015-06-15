@@ -79,8 +79,8 @@ save(Number) ->
         {'error', _R}=E ->
             lager:error("failed to save ~s in ~s", [number(Number), NumberDb]),
             E;
-        {'ok', _} ->
-            hangle_assignment(Number)
+        {'ok', Doc} ->
+            hangle_assignment(from_json(Doc))
     end.
 
 %%--------------------------------------------------------------------
