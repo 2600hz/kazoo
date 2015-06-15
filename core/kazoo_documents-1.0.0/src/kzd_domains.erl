@@ -47,7 +47,7 @@
 -define(KEY_MX, <<"MX">>).
 -define(KEY_TXT, <<"TXT">>).
 
--define(KEY_MAPPINGS, <<"mappings">>).
+-define(KEY_MAPPINGS, <<"mapping">>).
 -define(DOMAIN_PLACEHOLDER, <<"{{domain}}">>).
 
 -spec new() -> doc().

@@ -204,25 +204,21 @@ validate_naptr_host(NAPTR, Host) ->
     WhitelabelHost = kzd_domains:format_host(Host, ?DOMAIN),
 
     [{"Verify whitelabel host"
-      ,?_assert('nomatch' =/= binary:match(WhitelabelHost, ?DOMAIN))
+      ,?_assertEqual('true', 'nomatch' =/= binary:match(WhitelabelHost, ?DOMAIN))
      }
      | validate_naptr_host_mappings(NAPTR, Host)
     ].
 
 validate_naptr_host_mappings(NAPTR, Host) ->
-    HostMappings = [kzd_domains:format_mapping(Mapping, ?DOMAIN)
-                    || Mapping <- kzd_domains:naptr_host_mappings(NAPTR, Host)
-                   ],
-    [{"Verify whitelabel mappings"
-      ,?_assert(
-          lists:all(fun(Mapping) ->
-                            'nomatch' =/= binary:match(Mapping, ?DOMAIN)
-                    end
-                    ,HostMappings
-                   )
-         )
-     }
+    [validate_mapping(Mapping)
+     || Mapping <- kzd_domains:naptr_host_mappings(NAPTR, Host)
     ].
+
+validate_mapping(Mapping) ->
+    Formatted = kzd_domains:format_mapping(Mapping, ?DOMAIN),
+    {label("Verify whitelabel mapping '~s' -> '~s'", [Mapping, Formatted])
+     ,?_assertEqual('true', 'nomatch' =/= binary:match(Formatted, ?DOMAIN))
+    }.
 
 srv(#state{domains=DomainsSchema
              ,loader_fun=LoaderFun
@@ -239,9 +235,8 @@ srv(#state{domains=DomainsSchema
                                              )
                     )
      }
-     ,{"Validate list of hosts"
-       ,?_assertEqual([<<"_sip._udp.proxy-east.{{domain}}">>
-                      ]
+     ,{"Validate list of SRV hosts"
+       ,?_assertEqual([<<"_sip._udp.proxy-east.{{domain}}">>]
                       ,Hosts
                      )
       }
@@ -258,23 +253,16 @@ validate_srv_hosts(SRV, Hosts) ->
 validate_srv_host(SRV, Host) ->
     WhitelabelHost = kzd_domains:format_host(Host, ?DOMAIN),
 
-    [{"Verify whitelabel host"
+    [{label("Verify whitelabel host '~s' -> '~s'", [Host, WhitelabelHost])
       ,?_assert('nomatch' =/= binary:match(WhitelabelHost, ?DOMAIN))
      }
      | validate_srv_host_mappings(SRV, Host)
     ].
 
 validate_srv_host_mappings(SRV, Host) ->
-    HostMappings = [kzd_domains:format_mapping(Mapping, ?DOMAIN)
-                    || Mapping <- kzd_domains:srv_host_mappings(SRV, Host)
-                   ],
-    [{"Verify whitelabel mappings"
-      ,?_assert(
-          lists:all(fun(Mapping) ->
-                            'nomatch' =/= binary:match(Mapping, ?DOMAIN)
-                    end
-                    ,HostMappings
-                   )
-         )
-     }
+    [validate_mapping(Mapping)
+     || Mapping <- kzd_domains:srv_host_mappings(SRV, Host)
     ].
+
+label(Format, Args) ->
+    lists:flatten(io_lib:format(Format, Args)).
