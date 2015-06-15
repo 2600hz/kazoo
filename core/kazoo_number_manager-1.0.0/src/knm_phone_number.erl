@@ -93,7 +93,7 @@ delete(Number) ->
     case delete_number_doc(Number) of
         {'error', _R}=E -> E;
         {'ok', _} ->
-            remove_number_from_account(Number)
+            maybe_remove_number_from_account(Number)
     end.
 
 %%--------------------------------------------------------------------
@@ -389,7 +389,7 @@ maybe_assign(Number) ->
     AssignedTo = assigned_to(Number),
     case wh_util:is_empty(AssignedTo) of
         'true' ->
-            lager:debug("assign_to is is empty for ~s, ignoring", [number(Number)]),
+            lager:debug("assigned_to is is empty for ~s, ignoring", [number(Number)]),
             {'ok', Number};
         'false' -> assign(Number, AssignedTo)
     end.
@@ -416,7 +416,7 @@ maybe_unassign(Number) ->
     PrevAssignedTo = prev_assigned_to(Number),
     case wh_util:is_empty(PrevAssignedTo) of
         'true' ->
-            lager:debug("prev_assign_to is is empty for ~s, ignoring", [number(Number)]),
+            lager:debug("prev_assigned_to is is empty for ~s, ignoring", [number(Number)]),
             {'ok', Number};
         'false' ->
             Num = number(Number),
@@ -470,13 +470,21 @@ delete_number_doc(Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec remove_number_from_account(number()) -> number_return().
-remove_number_from_account(Number) ->
+-spec maybe_remove_number_from_account(number()) -> number_return().
+maybe_remove_number_from_account(Number) ->
     AssignedTo = assigned_to(Number),
-    AccountDb = wh_util:format_account_id(AssignedTo, 'encoded'),
-    JObj = to_json(Number),
-    case couch_mgr:del_doc(AccountDb, JObj) of
-        {'error', _R}=E -> E;
-        {'ok', _} -> {'ok', Number}
+    case wh_util:is_empty(AssignedTo) of
+        'true' ->
+            lager:debug("assigned_to is is empty for ~s, ignoring", [number(Number)]),
+            {'ok', Number};
+        'false' ->
+            AccountDb = wh_util:format_account_id(AssignedTo, 'encoded'),
+            JObj = to_json(Number),
+            case couch_mgr:del_doc(AccountDb, JObj) of
+                {'error', _R}=E -> E;
+                {'ok', _} -> {'ok', Number}
+            end
     end.
+
+
 
