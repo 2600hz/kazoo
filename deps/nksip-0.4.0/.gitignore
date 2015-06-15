@@ -1,0 +1,9 @@
+deps/
+ebin
+log/
+*.beam
+.eunit
+uuid_*
+/nksip.profile
+
+/.nksip.plt
