@@ -76,10 +76,11 @@ send_email(Emails, Subject, RenderedTemplates, Attachments) ->
         {'ok', Receipt} ->
             maybe_log_smtp(Skip, AccountId, Emails, Subject, RenderedTemplates, Receipt, 'undefined');
         {'error', Reason} = E ->
-            maybe_log_smtp(Skip, AccountId, Emails, Subject, RenderedTemplates, 'undefined', Reason),
+            maybe_log_smtp(Skip, AccountId, Emails, Subject, RenderedTemplates, 'undefined', wh_util:to_binary(Reason)),
             E
     end.
 
+-spec maybe_log_smtp(boolean(), api_binary(), list(), ne_binary(), list(), api_binary(), api_binary()) -> 'ok'.
 maybe_log_smtp('true', _AccountId, _Emails, _Subject, _RenderedTemplates, _Receipt, _Error) ->
     lager:debug("skipping smtp log");
 maybe_log_smtp(_, 'undefined', _Emails, _Subject, _RenderedTemplates, _Receipt, _Error) ->
