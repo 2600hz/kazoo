@@ -15,6 +15,7 @@
     ,update/2 ,update/3
     ,delete/1 ,delete/2
     ,change_state/2 ,change_state/3
+    ,assigned_to_app/2 ,assigned_to_app/3
 ]).
 
 -include("knm.hrl").
@@ -136,9 +137,33 @@ change_state(Num, State, AuthBy) ->
             maybe_change_state(Number, State)
     end.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec assigned_to_app(ne_binary(), ne_binary()) -> number_return().
+-spec assigned_to_app(ne_binary(), ne_binary(), ne_binary()) -> number_return().
+assigned_to_app(Num, App) ->
+    assigned_to_app(Num, App, <<"system">>).
+
+assigned_to_app(Num, App, AuthBy) ->
+    case ?MODULE:get(Num, AuthBy) of
+        {'error', _R}=E -> E;
+        {'ok', Number} ->
+            UpdatedNumber = knm_phone_number:set_used_by(Number, App),
+            knm_phone_number:save(UpdatedNumber)
+    end.
+
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec maybe_change_state(number(), ne_binary()) -> number_return().
 maybe_change_state(Number, ToState) ->
     FromState = knm_phone_number:state(Number),
@@ -149,6 +174,11 @@ maybe_change_state(Number, ToState) ->
             knm_phone_number:save(UpdatedNumber)
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec is_change_allowed(ne_binary(), ne_binary() | ne_binaries()) -> 'ok' | {'error', _}.
 is_change_allowed(_FromState, ?NUMBER_STATE_PORT_IN) ->
     'ok';
@@ -176,10 +206,3 @@ is_change_allowed(FromState, Allowed) when is_list(Allowed) ->
 is_change_allowed(_FromState, _ToState) ->
     lager:error("unknown state ~s", [_ToState]),
     {'error', 'unknown_state'}.
-
-
-
-
-
-
-
