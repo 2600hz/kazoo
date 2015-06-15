@@ -1,71 +1,53 @@
 PROJECT = nksip
-DIALYZER = dialyzer
-REBAR = ./rebar
+ROOT = ../..
 
-all: app
+EBINS = $(shell find $(ROOT)/deps/lager-* -maxdepth 2 -name ebin -print) \
+	$(shell find $(ROOT)/deps/wsock-* -maxdepth 2 -name ebin -print)
+PA = $(foreach EBIN,$(EBINS),-pa $(EBIN))
 
-deps:
-	@$(REBAR) get-deps
+TEST_EBINS = $(shell find $(ROOT)/deps/goldrush-* -maxdepth 2 -name ebin -print) \
+	$(shell find $(ROOT)/deps/lager_syslog-* -maxdepth 2 -name ebin -print) \
+	$(shell find $(ROOT)/deps/erlang-syslog-* -maxdepth 2 -name ebin -print)
+TEST_PA = $(foreach TEST_EBIN,$(TEST_EBINS),-pa $(TEST_EBIN))
 
-app: deps
-	@$(REBAR) compile
+ERLC_OPTS = -Werror +debug_info -Iinclude -Iplugins/include $(PA)
 
-clean: clean-docs clean-logs
-	@$(REBAR) clean
+.PHONY: all compile clean
+
+all: compile
+
+MODULES = $(shell ls src/*.erl | sed 's/src\///;s/\.erl/,/' | sed '$$s/.$$//')
+PLUGIN_MODULES = $(shell ls plugins/src/*.erl | sed 's/plugins\/src\///;s/\.erl/,/' | sed '$$s/.$$//')
+TEST_MODULES = $(shell ls test/*.erl | sed 's/test\///;s/\.erl/,/' | sed '$$s/.$$//')
+
+compile: ebin/$(PROJECT).app
+	@cat src/$(PROJECT).app.src \
+		| sed 's/{modules, \[\]}/{modules, \[$(MODULES),$(PLUGIN_MODULES)\]}/' \
+		> ebin/$(PROJECT).app
+	-@$(MAKE) ebin/$(PROJECT).app
+
+ebin/$(PROJECT).app: src/*.erl plugins/src/*.erl
+	@mkdir -p ebin/
+	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $?
+
+compile-test: test/$(PROJECT).app
+	@cat src/$(PROJECT).app.src \
+		| sed 's/{modules, \[\]}/{modules, \[$(TEST_MODULES),$(MODULES),$(PLUGIN_MODULES)\]}/' \
+		> test/$(PROJECT).app
+	-@$(MAKE) test/$(PROJECT).app
+
+test/$(PROJECT).app: src/*.erl plugins/src/*.erl test/*.erl
+	@mkdir -p test/
+	erlc -v $(ERLC_OPTS) -DTEST -o test/ -pa test/ $?
+
+clean:
+	rm -f ebin/*
 	rm -f erl_crash.dump
 
-clean-logs:
-	rm -rf log/*
-	rm -rf samples/nksip_loadtest/log/*
-	rm -rf samples/nksip_pbx/log/* 
-	rm -rf samples/nksip_tutorial/log/*
+clean-test:
+	rm -f test/*.beam test/$(PROJECT).app
 
-docs: clean-docs
-	@$(REBAR) doc skip_deps=true
+test: clean-test compile-test eunit
 
-clean-docs:
-	rm -f doc/*.css doc/*.html \
-	      doc/*.png doc/edoc-info
-	rm -f plugins/doc/*.css plugins/doc/*.html \
-	      plugins/doc/*.png plugins/doc/edoc-info
-	rm -f samples/nksip_loadtest/doc/*.css samples/nksip_loadtest/doc/*.html \
-	      samples/nksip_loadtest/doc/*.png samples/nksip_loadtest/doc/edoc-info
-	rm -f samples/nksip_pbx/doc/*.css samples/nksip_pbx/doc/*.html \
-	      samples/nksip_pbx/doc/*.png samples/nksip_pbx/doc/edoc-info
-	rm -f samples/nksip_tutorial/doc/*.css samples/nksip_tutorial/doc/*.html \
-	      samples/nksip_tutorial/doc/*.png samples/nksip_tutorial/doc/edoc-info
-
-tests: app eunit
-
-eunit:
-	export ERL_FLAGS="-config test/app.config"; ./rebar eunit skip_deps=true
-
-build-plt:
-	@$(DIALYZER) --build_plt --output_plt .$(PROJECT).plt \
-		--apps erts kernel stdlib sasl tools inets crypto public_key ssl eunit
-
-dialyze: app
-	@$(DIALYZER) ebin/nksip*.beam --plt .$(PROJECT).plt \
-	-Werror_handling  #-Wunmatched_returns -Wrace_conditions -Wunderspecs
-
-shell: 
-	erl -config priv/app.config -args_file priv/vm.args
-
-tutorial: 
-	erl -config samples/nksip_tutorial/priv/app.config \
-		-args_file samples/nksip_tutorial/priv/vm.args 
-
-loadtest: app
-	erl -config samples/nksip_loadtest/priv/app.config \
-		-args_file samples/nksip_loadtest/priv/vm.args -s nksip_loadtest
-
-pbx: app
-	erl -config samples/nksip_pbx/priv/app.config \
-		-args_file samples/nksip_pbx/priv/vm.args -s nksip_pbx
-
-build_tests:
-	erlc -pa ebin -pa deps/lager/ebin -o ebin -I include \
-	+export_all +debug_info +"{parse_transform, lager_transform}" \
-	test/*.erl
-
-
+eunit: compile-test
+	erl -noshell $(PA) $(TEST_PA) -pa test -config test/app.config -eval "case eunit:test([$(TEST_MODULES),$(MODULES)], [verbose]) of 'ok' -> init:stop(); _ -> init:stop(1) end."
