@@ -157,7 +157,8 @@ maybe_relay_to_bcc(From, Encoded, Bcc) ->
         'false' -> 'ok'
     end.
 
--spec relay_to_bcc(ne_binary(), ne_binary(), ne_binaries() | ne_binary()) -> 'ok'.
+-spec relay_to_bcc(ne_binary(), ne_binary(), ne_binaries() | ne_binary()) ->
+          {'ok', ne_binary()} | {'error', _}.
 relay_to_bcc(From, Encoded, Bcc) when is_binary(Bcc) ->
     relay_encoded_email([Bcc], From, Encoded);
 relay_to_bcc(From, Encoded, Bcc) ->
