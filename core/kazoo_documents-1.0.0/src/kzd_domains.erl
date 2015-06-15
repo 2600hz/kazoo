@@ -26,6 +26,11 @@
          ,naptr_host_mappings/2, naptr_host_mappings/3
          ,set_naptr/2, add_naptr_host/3
 
+         ,srv/1, srv/2
+         ,srv_hosts/1, srv_host/2, srv_host/3
+         ,srv_host_mappings/2, srv_host_mappings/3
+         ,set_srv/2, add_srv_host/3
+
          ,format_host/2
          ,format_mapping/2
         ]).
@@ -157,6 +162,40 @@ set_naptr(Domains, NAPTR) ->
 add_naptr_host(Domains, Host, Settings) ->
     wh_json:set_value([?KEY_NAPTR, Host], Settings, Domains).
 
+-spec srv(doc()) -> api_object().
+-spec srv(doc(), Default) -> wh_json:object() | Default.
+srv(Domains) ->
+    srv(Domains, 'undefined').
+srv(Domains, Default) ->
+    wh_json:get_json_value(?KEY_SRV, Domains, Default).
+
+-spec srv_hosts(doc()) -> ne_binaries().
+srv_hosts(Domains) ->
+    wh_json:get_keys(?KEY_SRV, Domains).
+
+-spec srv_host(doc(), ne_binary()) -> api_object().
+-spec srv_host(doc(), ne_binary(), Default) -> wh_json:object() | Default.
+srv_host(Domains, Host) ->
+    srv_host(Domains, Host, 'undefined').
+srv_host(Domains, Host, Default) ->
+    wh_json:get_value([?KEY_SRV, Host], Domains, Default).
+
+-spec srv_host_mappings(doc(), ne_binary()) -> ne_binaries().
+-spec srv_host_mappings(doc(), ne_binary(), Default) -> ne_binaries() | Default.
+srv_host_mappings(Domains, Host) ->
+    srv_host_mappings(Domains, Host, []).
+
+srv_host_mappings(Domains, Host, Default) ->
+    wh_json:get_value([?KEY_SRV, Host, ?KEY_MAPPINGS], Domains, Default).
+
+-spec set_srv(doc(), wh_json:object()) -> doc().
+set_srv(Domains, SRV) ->
+    wh_json:set_value(?KEY_SRV, SRV, Domains).
+
+-spec add_srv_host(doc(), ne_binary(), wh_json:object()) -> doc().
+add_srv_host(Domains, Host, Settings) ->
+    wh_json:set_value([?KEY_SRV, Host], Settings, Domains).
+
 -spec save(doc()) -> {'ok', doc()} |
                      {'error', _}.
 save(Domains) ->
@@ -203,16 +242,7 @@ format_host(DomainHost, WhitelabelDomain) ->
 format_mapping(Mapping, WhitelabelDomain) ->
     binary:replace(Mapping, ?DOMAIN_PLACEHOLDER, WhitelabelDomain).
 
-%%    "SRV":{
-%%       "_sip._udp.proxy-east.{{whitelabel_domain}}":{
-%%          "name":"East SRV",
-%%          "mapping":[
-%%             "10 10 7000 us-east.{{whitelabel_domain}}.",
-%%             "15 15 7000 us-central.{{whitelabel_domain}}.",
-%%             "20 20 7000 us-west.{{whitelabel_domain}}."
-%%          ]
-%%       }
-%%    },
+
 %%    "MX":{
 
 %%    },

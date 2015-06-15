@@ -25,6 +25,10 @@
         ,<<"{\"NAPTR\":{\"proxy-east.{{domain}}\":{\"name\":\"East NAPTR\",\"mapping\":[\"10 100 \\\"S\\\" \\\"SIP+D2U\\\" \\\"\\\" _sip._udp.proxy-east.{{domain}}.\"]},\"proxy-central.{{domain}}\":{\"name\":\"Central NAPTR\",\"mapping\":[\"10 100 \\\"S\\\" \\\"SIP+D2U\\\" \\\"\\\" _sip._udp.proxy-central.{{domain}}.\"]},\"proxy-west.{{domain}}\":{\"name\":\"West NAPTR\",\"mapping\":[\"10 100 \\\"S\\\" \\\"SIP+D2U\\\" \\\"\\\" _sip._udp.proxy-west.{{domain}}.\"]}}}">>
        ).
 
+-define(SRV
+        ,<<"{\"SRV\":{\"_sip._udp.proxy-east.{{domain}}\":{\"name\":\"East SRV\",\"mapping\":[\"10 10 7000 us-east.{{domain}}.\",\"15 15 7000 us-central.{{domain}}.\",\"20 20 7000 us-west.{{domain}}.\"]}}}">>
+       ).
+
 domains_test_() ->
     {'foreach'
      ,fun init/0
@@ -33,11 +37,17 @@ domains_test_() ->
        ,fun cnam/1
        ,fun a_record/1
        ,fun naptr/1
+       ,fun srv/1
       ]
     }.
 
 -define(DOMAINS_SCHEMA, <<"domains">>).
 -define(HOSTS_SCHEMA, <<"domain_hosts">>).
+
+-record(state, {domains
+                ,domain_hosts
+                ,loader_fun
+               }).
 
 init() ->
     CrossbarDir = code:lib_dir('crossbar'),
@@ -45,7 +55,14 @@ init() ->
     DomainsSchema = load(CrossbarDir, ?DOMAINS_SCHEMA),
     DomainHostsSchema = load(CrossbarDir, ?HOSTS_SCHEMA),
 
-    {DomainsSchema, DomainHostsSchema}.
+    LoaderFun = fun(?DOMAINS_SCHEMA) -> DomainsSchema;
+                   (?HOSTS_SCHEMA) -> DomainHostsSchema
+                end,
+
+    #state{domains=DomainsSchema
+           ,domain_hosts=DomainHostsSchema
+           ,loader_fun=LoaderFun
+          }.
 
 load(AppPath, Filename) ->
     SchemaPath = filename:join([AppPath, "priv", "couchdb", "schemas"
@@ -66,11 +83,13 @@ format_host(_) ->
      }
     ].
 
-cnam({DomainsSchema, DomainHostsSchema}) ->
+cnam(#state{domains=DomainsSchema
+            ,loader_fun=LoaderFun
+           }
+    ) ->
     CNAM = wh_json:decode(?CNAM),
 
     Hosts = kzd_domains:cnam_hosts(CNAM),
-    LoaderFun = fun(?HOSTS_SCHEMA) -> {'ok', DomainHostsSchema} end,
 
     [{"Validate cnam property in domains object"
       ,?_assertEqual({'ok', CNAM}
@@ -106,11 +125,12 @@ validate_cnam_host(CNAM, Host) ->
      }
     ].
 
-a_record({DomainsSchema, DomainHostsSchema}) ->
+a_record(#state{domains=DomainsSchema
+                ,loader_fun=LoaderFun
+               }) ->
     A_RECORD = wh_json:decode(?A_RECORD),
 
     Hosts = kzd_domains:a_record_hosts(A_RECORD),
-    LoaderFun = fun(?HOSTS_SCHEMA) -> {'ok', DomainHostsSchema} end,
 
     [{"Validate a_record property in domains object"
       ,?_assertEqual({'ok', A_RECORD}
@@ -147,11 +167,12 @@ validate_a_record_host(A_RECORD, Host) ->
      }
     ].
 
-naptr({DomainsSchema, DomainHostsSchema}) ->
+naptr(#state{domains=DomainsSchema
+             ,loader_fun=LoaderFun
+            }) ->
     NAPTR = wh_json:decode(?NAPTR),
 
     Hosts = kzd_domains:naptr_hosts(NAPTR),
-    LoaderFun = fun(?HOSTS_SCHEMA) -> {'ok', DomainHostsSchema} end,
 
     [{"Validate naptr property in domains object"
       ,?_assertEqual({'ok', NAPTR}
@@ -191,6 +212,61 @@ validate_naptr_host(NAPTR, Host) ->
 validate_naptr_host_mappings(NAPTR, Host) ->
     HostMappings = [kzd_domains:format_mapping(Mapping, ?DOMAIN)
                     || Mapping <- kzd_domains:naptr_host_mappings(NAPTR, Host)
+                   ],
+    [{"Verify whitelabel mappings"
+      ,?_assert(
+          lists:all(fun(Mapping) ->
+                            'nomatch' =/= binary:match(Mapping, ?DOMAIN)
+                    end
+                    ,HostMappings
+                   )
+         )
+     }
+    ].
+
+srv(#state{domains=DomainsSchema
+             ,loader_fun=LoaderFun
+            }) ->
+    SRV = wh_json:decode(?SRV),
+
+    Hosts = kzd_domains:srv_hosts(SRV),
+
+    [{"Validate srv property in domains object"
+      ,?_assertEqual({'ok', SRV}
+                     ,wh_json_schema:validate(DomainsSchema
+                                              ,SRV
+                                              ,[{'schema_loader_fun', LoaderFun}]
+                                             )
+                    )
+     }
+     ,{"Validate list of hosts"
+       ,?_assertEqual([<<"_sip._udp.proxy-east.{{domain}}">>
+                      ]
+                      ,Hosts
+                     )
+      }
+     | validate_srv_hosts(SRV, Hosts)
+    ].
+
+validate_srv_hosts(SRV, Hosts) ->
+    lists:flatten(
+      lists:map(fun(H) -> validate_srv_host(SRV, H) end
+                ,Hosts
+               )
+     ).
+
+validate_srv_host(SRV, Host) ->
+    WhitelabelHost = kzd_domains:format_host(Host, ?DOMAIN),
+
+    [{"Verify whitelabel host"
+      ,?_assert('nomatch' =/= binary:match(WhitelabelHost, ?DOMAIN))
+     }
+     | validate_srv_host_mappings(SRV, Host)
+    ].
+
+validate_srv_host_mappings(SRV, Host) ->
+    HostMappings = [kzd_domains:format_mapping(Mapping, ?DOMAIN)
+                    || Mapping <- kzd_domains:srv_host_mappings(SRV, Host)
                    ],
     [{"Verify whitelabel mappings"
       ,?_assert(
