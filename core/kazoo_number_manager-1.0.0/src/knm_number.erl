@@ -11,9 +11,9 @@
 -export([
     get/1, get/2
     ,create/2
-    ,move/2
-    ,update/2
-    ,delete/1
+    ,move/2 ,move/3
+    ,update/2 ,update/3
+    ,delete/1 ,delete/2
 ]).
 
 -include("knm.hrl").
@@ -61,9 +61,13 @@ create(Num, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec move(ne_binary(), ne_binary()) -> number_return().
+-spec move(ne_binary(), ne_binary(), ne_binary()) -> number_return().
 move(Num, MoveTo) ->
+    move(Num, MoveTo, <<"system">>).
+
+move(Num, MoveTo, AuthBy) ->
     lager:debug("trying to move ~s to ~s", [Num, MoveTo]),
-    case ?MODULE:get(Num) of
+    case ?MODULE:get(Num, AuthBy) of
         {'error', _R}=E -> E;
         {'ok', Number} ->
             AccountId = wh_util:format_account_id(MoveTo, 'raw'),
@@ -83,8 +87,12 @@ move(Num, MoveTo) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update(ne_binary(), wh_proplist()) -> number_return().
+-spec update(ne_binary(), wh_proplist(), ne_binary()) -> number_return().
 update(Num, Props) ->
-    case ?MODULE:get(Num) of
+    update(Num, Props, <<"system">>).
+
+update(Num, Props, AuthBy) ->
+    case ?MODULE:get(Num, AuthBy) of
         {'error', _R}=E -> E;
         {'ok', Number} ->
             UpdatedNumber = knm_phone_number:setters(Number, Props),
@@ -97,8 +105,12 @@ update(Num, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(ne_binary()) -> number_return().
+-spec delete(ne_binary(), ne_binary()) -> number_return().
 delete(Num) ->
-    case ?MODULE:get(Num) of
+    delete(Num, <<"system">>).
+
+delete(Num, AuthBy) ->
+    case ?MODULE:get(Num, AuthBy) of
         {'error', _R}=E -> E;
         {'ok', Number} ->
             knm_phone_number:delete(Number)
