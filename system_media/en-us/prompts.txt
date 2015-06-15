@@ -131,6 +131,7 @@ vm-pin_invalid: I'm sorry, the passwords did not match or can not be used, pleas
 vm-pin_set: Thank you, your new password has been saved.
 vm-received: Received
 vm-record_greeting: At the tone please say your greeting, then press any key or stop talking to end the recording.
+vm-record_temp_greeting: At the tone please say your temporary greeting, then press any key or stop talking to end the recording.
 vm-recording_saved: Recording saved.
 vm-recording_to_short: The recording was too short to be saved.
 vm-record_message: Record your message at the tone, press any key or stop talking to end the recording.
@@ -139,7 +140,7 @@ vm-review_recording: To save this recording, press one. To listen, press two. To
 vm-saved_message: saved message
 vm-saved_messages: saved messages
 vm-saved: Saved.
-vm-settings_menu: To record your mailbox greeting, press one. To record your name, press two. To change your password, press three. To return to the main menu, press zero.
+vm-settings_menu: To record your mailbox greeting, press one. To record your name, press two. To change your password, press three. To record temporary greeting press four. To delete temporary greeting press five. To return to the main menu, press zero.
 vm-setup_complete: Congratulations, your mailbox has been configured. If you would like to change any of these settings later, choose option 5 from the mailbox main menu.
 vm-setup_intro: Welcome to your mailbox. Together we will personalise the settings. Lets start by setting your password.
 vm-setup_rec_greeting: Now lets record the greeting that callers will hear when they reach your mailbox.
