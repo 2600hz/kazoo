@@ -16,6 +16,11 @@
          ,cnam_host_mappings/2, cnam_host_mappings/3
          ,set_cnam/2, add_cnam_host/3
 
+         ,a_record/1, a_record/2
+         ,a_record_hosts/1, a_record_host/2, a_record_host/3
+         ,a_record_host_mappings/2, a_record_host_mappings/3
+         ,set_a_record/2, add_a_record_host/3
+
          ,format_host/2
         ]).
 
@@ -25,7 +30,7 @@
 -export_type([doc/0]).
 
 -define(KEY_CNAM, <<"CNAM">>).
--define(KEY_A, <<"A">>).
+-define(KEY_A_RECORD, <<"A">>).
 -define(KEY_NAPTR, <<"NAPTR">>).
 -define(KEY_SRV, <<"SRV">>).
 -define(KEY_MX, <<"MX">>).
@@ -37,7 +42,7 @@
 -spec new() -> doc().
 new() ->
     wh_json:from_list([{?KEY_CNAM, wh_json:new()}
-                       ,{?KEY_A, wh_json:new()}
+                       ,{?KEY_A_RECORD, wh_json:new()}
                        ,{?KEY_NAPTR, wh_json:new()}
                        ,{?KEY_SRV, wh_json:new()}
                        ,{?KEY_MX, wh_json:new()}
@@ -77,6 +82,40 @@ set_cnam(Domains, CNAM) ->
 -spec add_cnam_host(doc(), ne_binary(), wh_json:object()) -> doc().
 add_cnam_host(Domains, Host, Settings) ->
     wh_json:set_value([?KEY_CNAM, Host], Settings, Domains).
+
+-spec a_record(doc()) -> api_object().
+-spec a_record(doc(), Default) -> wh_json:object() | Default.
+a_record(Domains) ->
+    a_record(Domains, 'undefined').
+a_record(Domains, Default) ->
+    wh_json:get_json_value(?KEY_A_RECORD, Domains, Default).
+
+-spec a_record_hosts(doc()) -> ne_binaries().
+a_record_hosts(Domains) ->
+    wh_json:get_keys(?KEY_A_RECORD, Domains).
+
+-spec a_record_host(doc(), ne_binary()) -> api_object().
+-spec a_record_host(doc(), ne_binary(), Default) -> wh_json:object() | Default.
+a_record_host(Domains, Host) ->
+    a_record_host(Domains, Host, 'undefined').
+a_record_host(Domains, Host, Default) ->
+    wh_json:get_value([?KEY_A_RECORD, Host], Domains, Default).
+
+-spec a_record_host_mappings(doc(), ne_binary()) -> ne_binaries().
+-spec a_record_host_mappings(doc(), ne_binary(), Default) -> ne_binaries() | Default.
+a_record_host_mappings(Domains, Host) ->
+    a_record_host_mappings(Domains, Host, []).
+
+a_record_host_mappings(Domains, Host, Default) ->
+    wh_json:get_value([?KEY_A_RECORD, Host, ?KEY_MAPPINGS], Domains, Default).
+
+-spec set_a_record(doc(), wh_json:object()) -> doc().
+set_a_record(Domains, A_RECORD) ->
+    wh_json:set_value(?KEY_A_RECORD, A_RECORD, Domains).
+
+-spec add_a_record_host(doc(), ne_binary(), wh_json:object()) -> doc().
+add_a_record_host(Domains, Host, Settings) ->
+    wh_json:set_value([?KEY_A_RECORD, Host], Settings, Domains).
 
 -spec save(doc()) -> {'ok', doc()} |
                      {'error', _}.
@@ -120,44 +159,6 @@ is_valid(Domains, {'ok', SchemaJObj}) ->
 format_host(DomainHost, WhitelabelDomain) ->
     binary:replace(DomainHost, ?DOMAIN_PLACEHOLDER, WhitelabelDomain).
 
-%% {
-%%    "CNAM":{
-%%       "portal.{{whitelabel_domain}}":{
-%%          "name":"Web GUI",
-%%          "mapping":[
-%%             "ui.zswitch.net"
-%%          ]
-%%       },
-%%       "api.{{whitelabel_domain}}":{
-%%          "name":"API",
-%%          "mapping":[
-%%             "api.zswitch.net"
-%%          ]
-%%       }
-%%    },
-%%    "A":{
-%%       "us-east.{{whitelabel_domain}}":{
-%%          "name":"Primary Proxy",
-%%          "zone": "us-east",
-%%          "mapping":[
-%%             "8.36.70.3"
-%%          ]
-%%       },
-%%       "us-central.{{whitelabel_domain}}":{
-%%          "name":"Secondary Proxy",
-%%          "zone": "us-central",
-%%          "mapping":[
-%%             "166.78.105.67"
-%%          ]
-%%       },
-%%       "us-west.{{whitelabel_domain}}":{
-%%          "name":"Tertiary Proxy",
-%%          "zone": "us-west",
-%%          "mapping":[
-%%             "8.30.173.3"
-%%          ]
-%%       }
-%%    },
 %%    "NAPTR":{
 %%       "proxy-east.{{whitelabel_domain}}":{
 %%          "name":"East NAPTR",
