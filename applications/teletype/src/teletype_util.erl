@@ -70,8 +70,40 @@ send_email(Emails, Subject, RenderedTemplates, Attachments) ->
                | add_attachments(Attachments)
               ]
             },
-    relay_email(To, From, Email).
+    Skip = wh_util:is_true(get('skip_smtp_log')),
+    AccountId = get('account_id'),
+    case relay_email(To, From, Email) of
+        {'ok', Receipt} ->
+            maybe_log_smtp(Skip, AccountId, Emails, Subject, RenderedTemplates, Receipt, 'undefined');
+        {'error', Reason} = E ->
+            maybe_log_smtp(Skip, AccountId, Emails, Subject, RenderedTemplates, 'undefined', Reason),
+            E
+    end.
 
+maybe_log_smtp('true', _AccountId, _Emails, _Subject, _RenderedTemplates, _Receipt, _Error) ->
+    lager:debug("skipping smtp log");
+maybe_log_smtp(_, 'undefined', _Emails, _Subject, _RenderedTemplates, _Receipt, _Error) ->
+    lager:debug("skipping smtp log since account_id is 'undefined'");
+maybe_log_smtp(_, AccountId, Emails, Subject, RenderedTemplates, Receipt, Error) ->
+    AccountDb = kazoo_modb:get_modb(AccountId),
+    Doc = props:filter_undefined(
+            [{<<"rendered_templates">>, wh_json:from_list(RenderedTemplates)}
+             ,{<<"subject">>, Subject}
+             ,{<<"emails">>, wh_json:from_list(Emails)}
+             ,{<<"receipt">>, Receipt}
+             ,{<<"error">>, Error}
+             ,{<<"pvt_type">>, <<"notify_smtp_log">>}
+             ,{<<"account_id">>, AccountId}
+             ,{<<"account_db">>, AccountDb}
+             ,{<<"pvt_created">>, wh_util:current_tstamp()}
+             ,{<<"template_id">>, get('template_id')}
+             ,{<<"template_account_id">>, get('template_account_id')}
+            ]),
+    _ = lager:debug("saving notify smtp log"),
+    _ = kazoo_modb:save_doc(AccountDb, wh_json:from_list(Doc)),
+    'ok'.
+   
+  
 -spec email_body(rendered_templates()) -> mimemail:mimetuple().
 email_body(RenderedTemplates) ->
     {<<"multipart">>
@@ -107,12 +139,12 @@ relay_email(To, From, {_Type
     catch
         'error':'missing_from' ->
             lager:warning("no From address: ~s: ~p", [From, Addresses]),
-            throw({'error', 'missing_from'});
+            {'error', 'missing_from'};
         _E:_R ->
             ST = erlang:get_stacktrace(),
             lager:warning("failed to encode email: ~s: ~p", [_E, _R]),
             wh_util:log_stacktrace(ST),
-            throw({'error', 'email_encoding_failed'})
+            {'error', 'email_encoding_failed'}
     end.
 
 -spec maybe_relay_to_bcc(ne_binary(), ne_binary(), api_binaries()) -> 'ok'.
@@ -131,7 +163,7 @@ relay_to_bcc(From, Encoded, Bcc) ->
     relay_encoded_email(Bcc, From, Encoded).
 
 -spec relay_encoded_email(api_binaries(), ne_binary(), ne_binary()) ->
-                                 'ok' | {'error', _}.
+                                 {'ok', ne_binary()} | {'error', _}.
 relay_encoded_email('undefined', _From, _Encoded) ->
     lager:debug("failed to send email as the TO address(es) are missing"),
     {'error', 'invalid_to_addresses'};
@@ -159,9 +191,10 @@ relay_encoded_email(To, From, Encoded) ->
                                                 }
                                  ,[{'expires', ?MILLISECONDS_IN_HOUR}]
                                 ),
-            lager:debug("relayed message: ~p", [Receipt]);
+            _ = lager:debug("relayed message: ~p", [Receipt]),
+            {'ok', binary:replace(Receipt, <<"\r\n">>, <<>>, ['global'])};
         {'relay_response', {'error', _Type, Message}} ->
-            lager:debug("error relyaing message: ~p: ~p", [_Type, Message]),
+            lager:debug("error relaying message: ~p: ~p", [_Type, Message]),
             {'error', Message};
         {'relay_response', {'exit', Reason}} ->
             lager:debug("failed to send email:"),
@@ -271,8 +304,12 @@ system_params() ->
 -spec account_params(wh_json:object()) -> wh_proplist().
 account_params(DataJObj) ->
     case find_account_id(DataJObj) of
-        'undefined' -> [];
-        AccountId -> find_account_params(DataJObj, AccountId)
+        'undefined' ->
+            put('account_id', 'undefined'),
+            [];
+        AccountId ->
+            put('account_id', AccountId),            
+            find_account_params(DataJObj, AccountId)
     end.
 
 -spec find_account_params(wh_json:object(), ne_binary()) -> wh_proplist().
@@ -644,6 +681,8 @@ fetch_templates(TemplateId, <<_/binary>> = AccountId) ->
 
     case couch_mgr:open_cache_doc(AccountDb, DocId) of
         {'ok', TemplateJObj} ->
+            put('template_id', TemplateId),
+            put('template_account_id', AccountId),
             fetch_templates(DocId
                             ,AccountDb
                             ,wh_doc:attachments(TemplateJObj, wh_json:new())
