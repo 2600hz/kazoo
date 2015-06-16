@@ -86,7 +86,7 @@ maybe_log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error) ->
 
 maybe_log_smtp('true', _Emails, _Subject, _RenderedTemplates, _Receipt, _Error) ->
     lager:debug("skipping smtp log");
-maybe_log_smtp('false', _Emails, _Subject, _RenderedTemplates, _Receipt, _Error) ->
+maybe_log_smtp('false', Emails, Subject, RenderedTemplates, Receipt, Error) ->
     case get('account_id') of
         'undefined' -> lager:debug("skipping smtp log since account_id is 'undefined'");
         AccountId -> log_smtp(AccountId, Emails, Subject, RenderedTemplates, Receipt, Error) 
@@ -109,7 +109,7 @@ log_smtp(AccountId, Emails, Subject, RenderedTemplates, Receipt, Error) ->
              ,{<<"template_account_id">>, get('template_account_id')}
             ]),
     _ = kazoo_modb:save_doc(AccountDb, wh_json:from_list(Doc)),
-    lager:debug("saved notify smtp log"),
+    lager:debug("saved notify smtp log").
    
   
 -spec email_body(rendered_templates()) -> mimemail:mimetuple().
