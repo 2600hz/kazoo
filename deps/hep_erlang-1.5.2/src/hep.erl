@@ -40,53 +40,53 @@
              , uint16/0
              , uint32/0 ]).
 
--opaque t() :: #hep{}.
+-opaque t () :: #hep{}.
 
--type version() :: 'hep_v1' | 'hep_v2' | 'hep_v3'.
--type vendor() :: 'unknown'
-                | 'freeswitch'
-                | 'kamailio'
-                | 'opensips'
-                | 'asterisk'
-                | 'homer'
-                | 'sipxecs'.
--type protocol_family() :: 'ipv4' | 'ipv6'.
--type payload_type() :: 'reserved'
-                      | 'sip'
-                      | 'xmpp'
-                      | 'sdp'
-                      | 'rtp'
-                      | 'rtcp'
-                      | 'mgcp'
-                      | 'megaco'
-                      | 'm2ua'
-                      | 'm3ua'
-                      | 'iax'
-                      | 'h322'
-                      | 'h321'.
+-type version () :: 'hep_v1' | 'hep_v2' | 'hep_v3'.
+-type vendor () :: 'unknown'
+                 | 'freeswitch'
+                 | 'kamailio'
+                 | 'opensips'
+                 | 'asterisk'
+                 | 'homer'
+                 | 'sipxecs'.
+-type protocol_family () :: 'ipv4' | 'ipv6'.
+-type payload_type () :: 'reserved'
+                       | 'sip'
+                       | 'xmpp'
+                       | 'sdp'
+                       | 'rtp'
+                       | 'rtcp'
+                       | 'mgcp'
+                       | 'megaco'
+                       | 'm2ua'
+                       | 'm3ua'
+                       | 'iax'
+                       | 'h322'
+                       | 'h321'.
 
--type uint8() :: 0..255.
--type uint16() :: 0..65535.
--type uint32() :: 0..4294967295.
+-type uint8 () :: 0..255.
+-type uint16 () :: 0..65535.
+-type uint32 () :: 0..4294967295.
 
 %% API
 
--spec encode(t()) -> {ok, binary()} | {error, _}.
-encode(#hep{version = Version} = Hep)
+-spec encode (t()) -> {ok, binary()} | {error, _}.
+encode (#hep{version = Version} = Hep)
   when Version == 'hep_v1'; Version == 'hep_v2'; Version == 'hep_v3' ->
     Version:encode(Hep);
-encode(Hep) ->
+encode (Hep) ->
     {error, {invalid_hep, Hep}}.
 
 
--spec decode(binary()) -> {ok, t()} | {error, _}.
-decode(Packet = <<?HEP_V1_ID, _Rest/binary>>) ->
+-spec decode (binary()) -> {ok, t()} | {error, _}.
+decode (Packet = <<?HEP_V1_ID, _Rest/binary>>) ->
     hep_v1:decode(Packet);
-decode(Packet = <<?HEP_V2_ID, _Rest/binary>>) ->
+decode (Packet = <<?HEP_V2_ID, _Rest/binary>>) ->
     hep_v2:decode(Packet);
-decode(Packet = <<?HEP_V3_ID, _Rest/binary>>) ->
+decode (Packet = <<?HEP_V3_ID, _Rest/binary>>) ->
     hep_v3:decode(Packet);
-decode(Packet = <<_/binary>>) ->
+decode (Packet = <<_/binary>>) ->
     {error, invalid_packet, Packet}.
 
 

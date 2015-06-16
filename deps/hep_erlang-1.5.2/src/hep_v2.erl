@@ -27,19 +27,19 @@
 
 %% API
 
--spec encode(hep:t()) -> {ok, binary()} | {error, _}.
+-spec encode (hep:t()) -> {ok, binary()} | {error, _}.
 
-encode(#hep{ version = ?MODULE
-           , protocol_family = ProtocolFamily = 'ipv4'
-           , protocol = Protocol
-           , src_ip = {S1, S2, S3, S4}
-           , src_port = SrcPort
-           , dst_ip = {D1, D2, D3, D4}
-           , dst_port = DstPort
-           , timestamp = Timestamp
-           , node_id = NodeId
-           , payload_type = 'sip'
-           , payload = Payload}) ->
+encode (#hep{ version = ?MODULE
+            , protocol_family = ProtocolFamily = 'ipv4'
+            , protocol = Protocol
+            , src_ip = {S1, S2, S3, S4}
+            , src_port = SrcPort
+            , dst_ip = {D1, D2, D3, D4}
+            , dst_port = DstPort
+            , timestamp = Timestamp
+            , node_id = NodeId
+            , payload_type = 'sip'
+            , payload = Payload}) ->
     Secs = hep_util:timestamp_secs(Timestamp),
     Micros = hep_util:timestamp_microsecs(Timestamp),
     Length = ?length_ipv4,
@@ -50,17 +50,17 @@ encode(#hep{ version = ?MODULE
             ?timestamp(Secs), ?timestamp(Micros), ?node_id(NodeId), 0:16, Payload/binary>>,
     {ok, Bin};
 
-encode(#hep{ version = ?MODULE
-           , protocol_family = ProtocolFamily = 'ipv6'
-           , protocol = Protocol
-           , src_ip = {S1, S2, S3, S4, S5, S6, S7, S8}
-           , src_port = SrcPort
-           , dst_ip = {D1, D2, D3, D4, D5, D6, D7, D8}
-           , dst_port = DstPort
-           , timestamp = Timestamp
-           , node_id = NodeId
-           , payload_type = 'sip'
-           , payload = Payload}) ->
+encode (#hep{ version = ?MODULE
+            , protocol_family = ProtocolFamily = 'ipv6'
+            , protocol = Protocol
+            , src_ip = {S1, S2, S3, S4, S5, S6, S7, S8}
+            , src_port = SrcPort
+            , dst_ip = {D1, D2, D3, D4, D5, D6, D7, D8}
+            , dst_port = DstPort
+            , timestamp = Timestamp
+            , node_id = NodeId
+            , payload_type = 'sip'
+            , payload = Payload}) ->
     Secs = hep_util:timestamp_secs(Timestamp),
     Micros = hep_util:timestamp_microsecs(Timestamp),
     Length = ?length_ipv6,
@@ -71,30 +71,30 @@ encode(#hep{ version = ?MODULE
             ?timestamp(Secs), ?timestamp(Micros), ?node_id(NodeId), 0:16, Payload/binary>>,
     {ok, Bin};
 
-encode(#hep{protocol_family = ProtocolFamily})
+encode (#hep{protocol_family = ProtocolFamily})
   when ProtocolFamily =/= 'ipv4'; ProtocolFamily =/= 'ipv6' ->
     {error, {invalid_protocol_family, ProtocolFamily}};
 
-encode(#hep{payload_type = PayloadType})
+encode (#hep{payload_type = PayloadType})
   when PayloadType =/= 'sip' ->
     {error, {invalid_payload_type, PayloadType}};
 
-encode(#hep{version = Version})
+encode (#hep{version = Version})
   when Version =/= ?MODULE ->
     {error, {invalid_version, Version}};
 
-encode(Hep) ->
+encode (Hep) ->
     {error, {invalid_hep, Hep}}.
 
 
 
--spec decode(binary()) -> {ok, hep:t()} | {error, _}.
+-spec decode (binary()) -> {ok, hep:t()} | {error, _}.
 
-decode(<<?HEP_V2_ID, ?length(Length), ?protocol_family(ProtocolFamily),
-         ?protocol(Protocol), ?port(SrcPort), ?port(DstPort),
-         ?ipv4(S1, S2, S3, S4),
-         ?ipv4(D1, D2, D3, D4),
-         ?timestamp(Secs), ?timestamp(USecs), ?node_id(NodeId), _:16, Payload/binary>>)
+decode (<<?HEP_V2_ID, ?length(Length), ?protocol_family(ProtocolFamily),
+          ?protocol(Protocol), ?port(SrcPort), ?port(DstPort),
+          ?ipv4(S1, S2, S3, S4),
+          ?ipv4(D1, D2, D3, D4),
+          ?timestamp(Secs), ?timestamp(USecs), ?node_id(NodeId), _:16, Payload/binary>>)
   when Length == ?length_ipv4, ProtocolFamily == ?FAMILY_IPV4 ->
     HEP = #hep{ version = ?MODULE
               , protocol_family = hep_util:protocol_family(ProtocolFamily)
@@ -110,11 +110,11 @@ decode(<<?HEP_V2_ID, ?length(Length), ?protocol_family(ProtocolFamily),
               },
      {ok, HEP};
 
-decode(<<?HEP_V2_ID, ?length(Length), ?protocol_family(ProtocolFamily),
-         ?protocol(Protocol), ?port(SrcPort), ?port(DstPort),
-         ?ipv6(S1, S2, S3, S4, S5, S6, S7, S8),
-         ?ipv6(D1, D2, D3, D4, D5, D6, D7, D8),
-         ?timestamp(Secs), ?timestamp(USecs), ?node_id(NodeId), _:16, Payload/binary>>)
+decode (<<?HEP_V2_ID, ?length(Length), ?protocol_family(ProtocolFamily),
+          ?protocol(Protocol), ?port(SrcPort), ?port(DstPort),
+          ?ipv6(S1, S2, S3, S4, S5, S6, S7, S8),
+          ?ipv6(D1, D2, D3, D4, D5, D6, D7, D8),
+          ?timestamp(Secs), ?timestamp(USecs), ?node_id(NodeId), _:16, Payload/binary>>)
   when Length == ?length_ipv6, ProtocolFamily == ?FAMILY_IPV6 ->
     HEP = #hep{ version = ?MODULE
               , protocol_family = hep_util:protocol_family(ProtocolFamily)
@@ -130,12 +130,12 @@ decode(<<?HEP_V2_ID, ?length(Length), ?protocol_family(ProtocolFamily),
               },
     {ok, HEP};
 
-decode(<<Other/binary>>) ->
+decode (<<Other/binary>>) ->
     {error, {invalid_packet, Other}}.
 
 %% Internals
 
-to_timestamp(Secs, USecs) ->
+to_timestamp (Secs, USecs) ->
     Mega = Secs div 1000000,
     S    = Secs rem 1000000,
     {Mega, S, USecs}.
