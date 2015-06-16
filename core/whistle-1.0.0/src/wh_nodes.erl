@@ -25,6 +25,7 @@
 -export([notify_expire/0
          ,notify_expire/1
         ]).
+-export([local_zone/0]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -155,15 +156,15 @@ status() ->
         Nodes = lists:sort(fun(N1, N2) ->
                                    N1#node.node > N2#node.node
                            end, ets:tab2list(?MODULE)),
-        print_status(Nodes)
+        print_status(Nodes, wh_util:to_binary(gen_server:call(?MODULE, 'zone')))
     catch
         {'EXIT', {'badarg', _}} ->
             io:format("status unknown until node is fully initialized, try again in a moment~n", []),
             'no_return'
     end.
 
--spec print_status(wh_nodes()) -> 'no_return'.
-print_status(Nodes) ->
+-spec print_status(wh_nodes(), binary()) -> 'no_return'.
+print_status(Nodes, Zone) ->
     _ = [begin
              MemoryUsage = wh_network_utils:pretty_print_bytes(Node#node.used_memory),
              io:format("Node          : ~s~n", [Node#node.node]),
@@ -171,7 +172,10 @@ print_status(Nodes) ->
              io:format("Memory Usage  : ~s~n", [MemoryUsage]),
              io:format("Processes     : ~B~n", [Node#node.processes]),
              io:format("Ports         : ~B~n", [Node#node.ports]),
-             io:format("Zone          : ~s~n", [Node#node.zone]),
+             case Zone =:= Node#node.zone of
+                 'true' -> io:format("Zone          : ~s (local)~n", [Node#node.zone]);
+                 'false' -> io:format("Zone          : ~s~n", [Node#node.zone])
+             end,
              io:format("Broker        : ~s~n", [Node#node.broker]),
              _ = case lists:sort(fun({K1,_}, {K2,_}) -> K1 < K2 end
                                  ,Node#node.whapps
@@ -283,7 +287,7 @@ init([]) ->
                                           ,{'node_type', 'all'}
                                          ]),
     lager:debug("monitoring nodes"),
-    State = #state{tab=Tab},
+    State = #state{tab=Tab, zone=get_zone()},
     Node = create_node('undefined', State),
     lager:debug("created node: ~p", [Node]),
     ets:insert(Tab, Node),
@@ -310,6 +314,11 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({'print_status', Nodes}, _From, State) ->
+    print_status(Nodes, State),
+    {'reply', 'ok', State};
+handle_call('zone', _From, #state{zone=Zone}=State) ->
+    {'reply', Zone, State};
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -622,12 +631,20 @@ whapp_info_to_json(#whapp_info{startup=Start}) ->
         [{<<"Startup">>, Start}]
        )).
 
+get_zone() ->
+    case wh_config:get(wh_config:get_node_section_name(), 'zone') of
+        [Zone] -> Zone;
+        _Else -> 'local'
+    end.
+
 -spec get_zone(wh_json:object(), nodes_state()) -> ne_binary().
 get_zone(JObj, #state{zone=Zone}) ->
-    case wh_json:get_value(<<"Zone">>, JObj, Zone) of
-        Zone -> <<"local">>;
-        RemoteZone -> RemoteZone
-    end.
+    DefaultZone = wh_util:to_binary(Zone),
+    wh_json:get_first_defined([<<"Zone">>, <<"AMQP-Broker-Zone">>], JObj, DefaultZone).
+
+-spec get_zone() -> atom().
+local_zone() ->
+    gen_server:call(?MODULE, 'zone').
 
 -spec get_amqp_broker(api_binary() | wh_json:object()) -> api_binary().
 get_amqp_broker('undefined') ->
@@ -662,11 +679,12 @@ notify_new(Node, Pids) ->
 whapp_oldest_node(Whapp) ->
     whapp_oldest_node(Whapp, 'false').
 
--spec whapp_oldest_node(text(), text() | boolean()) -> api_integer().
+-spec whapp_oldest_node(text(), text() | boolean() | atom()) -> api_integer().
 whapp_oldest_node(Whapp, 'false') ->
+    Zone = wh_util:to_binary(gen_server:call(?MODULE, 'zone')),
     MatchSpec = [{#node{whapps='$1'
                         ,node='$2'
-                        ,zone = <<"local">>
+                        ,zone = Zone
                         ,_ = '_'
                        }
                   ,[{'=/=', '$1', []}]
@@ -680,6 +698,20 @@ whapp_oldest_node(Whapp, 'true') ->
                        }
                   ,[{'=/=', '$1', []}]
                   ,[{{'$1','$2'}}]
+                 }],
+    determine_whapp_oldest_node(wh_util:to_binary(Whapp), MatchSpec);
+whapp_oldest_node(Whapp, Federated)
+  when is_binary(Federated) ->
+    whapp_oldest_node(Whapp, wh_util:is_true(Federated));
+whapp_oldest_node(Whapp, Zone)
+  when is_atom(Zone) ->
+    MatchSpec = [{#node{whapps='$1'
+                        ,node='$2'
+                        ,zone = wh_util:to_binary(Zone)
+                        ,_ = '_'
+                       }
+                  ,[{'=/=', '$1', []}]
+                  ,[{{'$1', '$2'}}]
                  }],
     determine_whapp_oldest_node(wh_util:to_binary(Whapp), MatchSpec).
 
