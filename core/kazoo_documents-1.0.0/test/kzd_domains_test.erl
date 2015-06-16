@@ -17,6 +17,10 @@
         ,<<"{\"CNAM\":{\"portal.{{domain}}\":{\"name\":\"Web GUI\",\"mapping\":[\"ui.zswitch.net\"]},\"api.{{domain}}\":{\"name\":\"API\",\"mapping\":[\"api.zswitch.net\"]}}}">>
        ).
 
+-define(FAIL_CNAM
+        ,<<"{\"CNAM\":{\"portal.{{wrong}}\":{\"name\":\"Web GUI\",\"mapping\":[\"ui.zswitch.net\"]},\"api.{{still_wrong}}\":{\"name\":\"API\",\"mapping\":[\"api.zswitch.net\"]}}}">>
+       ).
+
 -define(A_RECORD
         ,<<"{\"A\":{\"us-east.{{domain}}\":{\"name\":\"Primary Proxy\",\"zone\": \"us-east\",\"mapping\":[\"8.36.70.3\"]},\"us-central.{{domain}}\":{\"name\":\"Secondary Proxy\",\"zone\": \"us-central\",\"mapping\":[\"166.78.105.67\"]},\"us-west.{{domain}}\":{\"name\":\"Tertiary Proxy\",\"zone\": \"us-west\",\"mapping\":[\"8.30.173.3\"]}}}">>
        ).
@@ -35,6 +39,7 @@ domains_test_() ->
      ,fun stop/1
      ,[fun format_host/1
        ,fun cnam/1
+       ,fun fail_cnam/1
        ,fun a_record/1
        ,fun naptr/1
        ,fun srv/1
@@ -69,6 +74,7 @@ load(AppPath, Filename) ->
                                 ,<<Filename/binary, ".json">>
                                ]),
     {'ok', SchemaFile} = file:read_file(SchemaPath),
+
     wh_json:decode(SchemaFile).
 
 stop(_) -> 'ok'.
@@ -120,9 +126,42 @@ validate_cnam_host(CNAM, Host) ->
     _HostMappings = kzd_domains:cnam_host_mappings(CNAM, Host),
     WhitelabelHost = kzd_domains:format_host(Host, ?DOMAIN),
 
-    [{"Verify whitelabel host"
+    [{"Verify CNAM whitelabel host"
       ,?_assert('nomatch' =/= binary:match(WhitelabelHost, ?DOMAIN))
      }
+    ].
+
+fail_cnam(#state{domains=DomainsSchema
+                 ,loader_fun=LoaderFun
+                }
+         ) ->
+    CNAM = wh_json:decode(?FAIL_CNAM),
+
+    Hosts = kzd_domains:cnam_hosts(CNAM),
+
+    [{"Validate badly formed host fails domains validation"
+      ,?_assertMatch({'error'
+                      ,[{'data_invalid'
+                         ,_
+                         ,'no_extra_properties_allowed'
+                         ,_
+                         ,_
+                        }
+                       ]
+                     }
+                     ,wh_json_schema:validate(DomainsSchema
+                                              ,CNAM
+                                              ,[{'schema_loader_fun', LoaderFun}]
+                                             )
+                    )
+     }
+     ,{"Validate list of hosts"
+       ,?_assertEqual([<<"portal.{{wrong}}">>
+                       ,<<"api.{{still_wrong}}">>
+                      ]
+                      ,Hosts
+                     )
+      }
     ].
 
 a_record(#state{domains=DomainsSchema
@@ -203,20 +242,20 @@ validate_naptr_hosts(NAPTR, Hosts) ->
 validate_naptr_host(NAPTR, Host) ->
     WhitelabelHost = kzd_domains:format_host(Host, ?DOMAIN),
 
-    [{"Verify whitelabel host"
+    [{"Verify naptr whitelabel host"
       ,?_assertEqual('true', 'nomatch' =/= binary:match(WhitelabelHost, ?DOMAIN))
      }
      | validate_naptr_host_mappings(NAPTR, Host)
     ].
 
 validate_naptr_host_mappings(NAPTR, Host) ->
-    [validate_mapping(Mapping)
+    [validate_mapping(Mapping, <<"naptr">>)
      || Mapping <- kzd_domains:naptr_host_mappings(NAPTR, Host)
     ].
 
-validate_mapping(Mapping) ->
+validate_mapping(Mapping, Type) ->
     Formatted = kzd_domains:format_mapping(Mapping, ?DOMAIN),
-    {label("Verify whitelabel mapping '~s' -> '~s'", [Mapping, Formatted])
+    {label("Verify ~s whitelabel mapping '~s' -> '~s'", [Type, Mapping, Formatted])
      ,?_assertEqual('true', 'nomatch' =/= binary:match(Formatted, ?DOMAIN))
     }.
 
@@ -253,14 +292,14 @@ validate_srv_hosts(SRV, Hosts) ->
 validate_srv_host(SRV, Host) ->
     WhitelabelHost = kzd_domains:format_host(Host, ?DOMAIN),
 
-    [{label("Verify whitelabel host '~s' -> '~s'", [Host, WhitelabelHost])
+    [{label("Verify srv whitelabel host '~s' -> '~s'", [Host, WhitelabelHost])
       ,?_assert('nomatch' =/= binary:match(WhitelabelHost, ?DOMAIN))
      }
      | validate_srv_host_mappings(SRV, Host)
     ].
 
 validate_srv_host_mappings(SRV, Host) ->
-    [validate_mapping(Mapping)
+    [validate_mapping(Mapping, <<"srv">>)
      || Mapping <- kzd_domains:srv_host_mappings(SRV, Host)
     ].
 

@@ -4,7 +4,7 @@
     "description": "Domain host settings for white-labelling",
     "name": "domain_hosts",
     "patternProperties": {
-        ".*\\{\\{domain\\}\\}.*": {
+        ".*[\\{]{2}domain[\\}]{2}.*": {
             "description": "White-label template for hostname",
             "name": "Host",
             "properties": {
@@ -27,5 +27,6 @@
             },
             "type": "object"
         }
-    }
+    },
+    "additionalProperties":false
 }
