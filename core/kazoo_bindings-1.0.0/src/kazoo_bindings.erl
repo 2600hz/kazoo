@@ -682,23 +682,32 @@ map_processor(Routing, Payload, Bindings) ->
 
     lists:foldl(fun(#kz_binding{binding=Binding
                                 ,binding_responders=Responders
-                               }, Acc) when Binding =:= Routing ->
+                               }
+                    ,Acc
+                   ) when Binding =:= Routing ->
                         lager:debug("exact match for ~s", [Routing]),
                         [catch Map(Responder)
                          || Responder <- queue:to_list(Responders)
                         ] ++ Acc;
                    (#kz_binding{binding_parts=BParts
                                 ,binding_responders=Responders
-                               }, Acc) ->
+                               }
+                    ,Acc
+                   ) ->
                         case matches(BParts, RoutingParts) of
+                            'false' ->
+                                lager:debug("~s isn't matched by ~p", [Routing, BParts]),
+                                Acc;
                             'true' ->
                                 lager:debug("matched ~p to ~p", [BParts, RoutingParts]),
                                 [catch Map(Responder)
                                  || Responder <- queue:to_list(Responders)
-                                ] ++ Acc;
-                            'false' -> Acc
+                                ] ++ Acc
                         end
-                end, [], Bindings).
+                end
+                ,[]
+                ,Bindings
+               ).
 
 -spec fold_processor(ne_binary(), payload(), kz_bindings()) -> fold_results().
 fold_processor(Routing, Payload, Bindings) when not is_list(Payload) ->
