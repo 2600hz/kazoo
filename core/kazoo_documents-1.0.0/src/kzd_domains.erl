@@ -32,6 +32,7 @@
          ,srv_host_mappings/2, srv_host_mappings/3
          ,set_srv/2, add_srv_host/3
 
+         ,format/2
          ,format_host/2
          ,format_mapping/2
         ]).
@@ -243,6 +244,41 @@ is_valid(Domains, {'ok', SchemaJObj}) ->
             {'false', Errors}
     end.
 
+-spec format(doc(), ne_binary()) -> doc().
+format(Domains, WhitelabelDomain) ->
+    wh_json:map(fun(DomainType, DomainConfig) ->
+                        format_domain_type(DomainType, DomainConfig, WhitelabelDomain)
+                end
+                ,Domains
+               ).
+
+-spec format_domain_type(ne_binary(), wh_json:object(), ne_binary()) ->
+                           {ne_binary(), wh_json:object()}.
+format_domain_type(DomainType, DomainConfig, WhitelabelDomain) ->
+    {DomainType
+     ,wh_json:map(fun(Host, HostConfig) ->
+                          format_host_config(Host, HostConfig, WhitelabelDomain)
+                  end
+                  ,DomainConfig
+                 )
+    }.
+
+-spec format_host_config(ne_binary(), wh_json:object(), ne_binary()) ->
+                                {ne_binary(), wh_json:object()}.
+format_host_config(Host, HostConfig, WhitelabelDomain) ->
+    {format_host(Host, WhitelabelDomain)
+     ,format_host_mappings(HostConfig, WhitelabelDomain)
+    }.
+
+-spec format_host_mappings(wh_json:object(), ne_binary()) ->
+                                  wh_json:object().
+format_host_mappings(HostConfig, WhitelabelDomain) ->
+    Mappings =
+        [format_mapping(Mapping, WhitelabelDomain)
+         || Mapping <- wh_json:get_value(?KEY_MAPPINGS, HostConfig, [])
+        ],
+    wh_json:set_value(?KEY_MAPPINGS, Mappings, HostConfig).
+
 -spec format_host(ne_binary(), ne_binary()) -> ne_binary().
 format_host(DomainHost, WhitelabelDomain) ->
     binary:replace(DomainHost, ?DOMAIN_PLACEHOLDER, WhitelabelDomain).
@@ -250,12 +286,3 @@ format_host(DomainHost, WhitelabelDomain) ->
 -spec format_mapping(ne_binary(), ne_binary()) -> ne_binary().
 format_mapping(Mapping, WhitelabelDomain) ->
     binary:replace(Mapping, ?DOMAIN_PLACEHOLDER, WhitelabelDomain).
-
-
-%%    "MX":{
-
-%%    },
-%%    "TXT":{
-
-%%    }
-%% }
