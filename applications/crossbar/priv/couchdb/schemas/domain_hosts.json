@@ -1,6 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "domain_hosts",
+    "additionalProperties": false,
     "description": "Domain host settings for white-labelling",
     "name": "domain_hosts",
     "patternProperties": {
@@ -27,6 +28,5 @@
             },
             "type": "object"
         }
-    },
-    "additionalProperties":false
+    }
 }
