@@ -49,6 +49,7 @@
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, [{'no_local', 'true'}]).
 
+-define(HEARTBEAT, crypto:rand_uniform(5 * ?MILLISECONDS_IN_SECOND, 15 * ?MILLISECONDS_IN_SECOND)).
 -define(EXPIRE_PERIOD, 1 * ?MILLISECONDS_IN_SECOND).
 -define(FUDGE_FACTOR, 1.25).
 -define(APP_NAME, <<"wh_nodes">>).
@@ -344,7 +345,7 @@ handle_cast({'advertise', JObj}, #state{tab=Tab}=State) ->
 handle_cast({'gen_listener', {'created_queue', _}}
             ,#state{heartbeat_ref='undefined'}=State) ->
     Reference = erlang:make_ref(),
-    self() ! {'heartbeat', Reference},
+    erlang:send_after(?HEARTBEAT, self(), {'heartbeat', Reference}),
     {'noreply', State#state{heartbeat_ref=Reference}};
 handle_cast('flush', State) ->
     ets:delete_all_objects(?MODULE),
@@ -382,7 +383,7 @@ handle_info({'heartbeat', Ref}, #state{heartbeat_ref=Ref
                                        ,tab=Tab
                                       }=State) ->
     _ = ets:insert(Tab, create_node('undefined', State)),
-    Heartbeat = crypto:rand_uniform(5 * ?MILLISECONDS_IN_SECOND, 15 * ?MILLISECONDS_IN_SECOND),
+    Heartbeat = ?HEARTBEAT,
     try create_node(Heartbeat, State) of
         Node ->
             wapi_nodes:publish_advertise(advertise_payload(Node))
