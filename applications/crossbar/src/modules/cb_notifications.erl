@@ -34,8 +34,8 @@
                                  ]).
 -define(CB_LIST, <<"notifications/crossbar_listing">>).
 -define(PREVIEW, <<"preview">>).
--define(SMTP_LOG, <<"log">>).
--define(CB_LIST_SMTP_LOG, <<"notify/smtp_log">>).
+-define(SMTP_LOG, <<"logs">>).
+-define(CB_LIST_SMTP_LOG, <<"notifications/smtp_log">>).
        
 -define(MACROS, <<"macros">>).
 

@@ -1,5 +1,5 @@
 {
-   "_id": "_design/notify",
+   "_id": "_design/notifications",
    "language": "javascript",
    "views": {
        "smtp_log": {

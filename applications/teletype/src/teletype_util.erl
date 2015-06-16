@@ -70,22 +70,30 @@ send_email(Emails, Subject, RenderedTemplates, Attachments) ->
                | add_attachments(Attachments)
               ]
             },
-    Skip = wh_util:is_true(get('skip_smtp_log')),
-    AccountId = get('account_id'),
     case relay_email(To, From, Email) of
         {'ok', Receipt} ->
-            maybe_log_smtp(Skip, AccountId, Emails, Subject, RenderedTemplates, Receipt, 'undefined');
+            maybe_log_smtp(Emails, Subject, RenderedTemplates, Receipt, 'undefined');
         {'error', Reason} = E ->
-            maybe_log_smtp(Skip, AccountId, Emails, Subject, RenderedTemplates, 'undefined', wh_util:to_binary(Reason)),
+            maybe_log_smtp(Emails, Subject, RenderedTemplates, 'undefined', wh_util:to_binary(Reason)),
             E
     end.
 
--spec maybe_log_smtp(boolean(), api_binary(), list(), ne_binary(), list(), api_binary(), api_binary()) -> 'ok'.
-maybe_log_smtp('true', _AccountId, _Emails, _Subject, _RenderedTemplates, _Receipt, _Error) ->
+-spec maybe_log_smtp(list(), ne_binary(), list(), api_binary(), api_binary()) -> 'ok'.
+-spec maybe_log_smtp(boolean(), list(), ne_binary(), list(), api_binary(), api_binary()) -> 'ok'.
+maybe_log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error) ->
+    Skip = wh_util:is_true(get('skip_smtp_log')),
+    maybe_log_smtp(Skip, Emails, Subject, RenderedTemplates, Receipt, Error).
+
+maybe_log_smtp('true', _Emails, _Subject, _RenderedTemplates, _Receipt, _Error) ->
     lager:debug("skipping smtp log");
-maybe_log_smtp(_, 'undefined', _Emails, _Subject, _RenderedTemplates, _Receipt, _Error) ->
-    lager:debug("skipping smtp log since account_id is 'undefined'");
-maybe_log_smtp(_, AccountId, Emails, Subject, RenderedTemplates, Receipt, Error) ->
+maybe_log_smtp('false', _Emails, _Subject, _RenderedTemplates, _Receipt, _Error) ->
+    case get('account_id') of
+        'undefined' -> lager:debug("skipping smtp log since account_id is 'undefined'");
+        AccountId -> log_smtp(AccountId, Emails, Subject, RenderedTemplates, Receipt, Error) 
+    end.
+
+-spec log_smtp(ne_binary(), list(), ne_binary(), list(), api_binary(), api_binary()) -> 'ok'.
+log_smtp(AccountId, Emails, Subject, RenderedTemplates, Receipt, Error) ->
     AccountDb = kazoo_modb:get_modb(AccountId),
     Doc = props:filter_undefined(
             [{<<"rendered_templates">>, wh_json:from_list(RenderedTemplates)}
@@ -100,9 +108,8 @@ maybe_log_smtp(_, AccountId, Emails, Subject, RenderedTemplates, Receipt, Error)
              ,{<<"template_id">>, get('template_id')}
              ,{<<"template_account_id">>, get('template_account_id')}
             ]),
-    _ = lager:debug("saving notify smtp log"),
     _ = kazoo_modb:save_doc(AccountDb, wh_json:from_list(Doc)),
-    'ok'.
+    lager:debug("saved notify smtp log"),
    
   
 -spec email_body(rendered_templates()) -> mimemail:mimetuple().
