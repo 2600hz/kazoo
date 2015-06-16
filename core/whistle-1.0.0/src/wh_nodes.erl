@@ -288,15 +288,11 @@ init([]) ->
                                          ]),
     lager:debug("monitoring nodes"),
     State = #state{tab=Tab, zone=get_zone()},
-    Node = create_node('undefined', State),
-    lager:debug("created node: ~p", [Node]),
-    ets:insert(Tab, Node),
-    lager:debug("inserted node"),
     Version = <<(wh_util:whistle_version())/binary
                 ," - "
                 ,(wh_util:to_binary(erlang:system_info('otp_release')))/binary
               >>,
-    {'ok', State#state{node=wh_util:to_binary(Node#node.node)
+    {'ok', State#state{node=wh_util:to_binary(node())
                        ,version=Version
                       }}.
 
