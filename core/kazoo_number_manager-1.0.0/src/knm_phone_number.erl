@@ -38,6 +38,7 @@
     ,module_name/1 ,set_module_name/2
     ,region/1 ,set_region/2
     ,auth_by/1 ,set_auth_by/2, is_authorize/1
+    ,dry_run/1 ,set_dry_run/2
 ]).
 
 %%--------------------------------------------------------------------
@@ -72,7 +73,8 @@ fetch(Num, AuthBy) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec save(number()) -> number_return().
-save(Number) ->
+save(#number{dry_run='true'}=Number) -> {'ok', Number};
+save(#number{dry_run='false'}=Number) ->
     NumberDb = number_db(Number),
     JObj = to_json(Number),
     case couch_mgr:ensure_saved(NumberDb, JObj) of
@@ -89,7 +91,8 @@ save(Number) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(number()) -> number_return().
-delete(Number) ->
+delete(#number{dry_run='true'}=Number) -> {'ok', Number};
+delete(#number{dry_run='false'}=Number) ->
     case delete_number_doc(Number) of
         {'error', _R}=E -> E;
         {'ok', _} ->
@@ -350,6 +353,19 @@ auth_by(Number) ->
 -spec set_auth_by(number(), ne_binary()) -> number().
 set_auth_by(N, AuthBy) ->
     N#number{auth_by=AuthBy}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec dry_run(number()) -> ne_binary().
+dry_run(Number) ->
+    Number#number.dry_run.
+
+-spec set_dry_run(number(), ne_binary()) -> number().
+set_dry_run(N, DryRun) ->
+    N#number{dry_run=DryRun}.
 
 %%%===================================================================
 %%% Internal functions

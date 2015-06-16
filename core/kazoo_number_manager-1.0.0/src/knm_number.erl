@@ -49,10 +49,11 @@ create(Num, Props) ->
         props:filter_undefined([
             {fun knm_phone_number:set_number/2, NormalizedNum}
             ,{fun knm_phone_number:set_number_db/2, NumberDb}
-            ,{fun knm_phone_number:set_state/2, props:get_value(<<"state">>, Props, ?NUMBER_STATE_DISCOVERY)}
+            ,{fun knm_phone_number:set_state/2, props:get_binary_value(<<"state">>, Props, ?NUMBER_STATE_DISCOVERY)}
             ,{fun knm_phone_number:set_ported_in/2, props:get_is_true(<<"ported_in">>, Props, 'false')}
-            ,{fun knm_phone_number:set_assigned_to/2, props:get_value(<<"assigned_to">>, Props)}
-            ,{fun knm_phone_number:set_auth_by/2, props:get_value(<<"auth_by">>, Props, <<"system">>)}
+            ,{fun knm_phone_number:set_assigned_to/2, props:get_binary_value(<<"assigned_to">>, Props)}
+            ,{fun knm_phone_number:set_auth_by/2, props:get_binary_value(<<"auth_by">>, Props, <<"system">>)}
+            ,{fun knm_phone_number:set_dry_run/2, props:get_is_true(<<"dry_run">>, Props, 'false')}
         ]),
     Number = knm_phone_number:setters(knm_phone_number:new(), Updates),
     knm_phone_number:save(Number).

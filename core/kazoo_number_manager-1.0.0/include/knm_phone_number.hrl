@@ -15,6 +15,7 @@
                  ,module_name :: ne_binary()
                  ,region :: ne_binary()
                  ,auth_by = <<"system">> :: ne_binary()
+                 ,dry_run = 'false' :: boolean()
                  ,doc :: wh_json:object()
                 }).
 
