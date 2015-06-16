@@ -48,15 +48,15 @@
 %%%===================================================================
 init() ->
     Bindings = [{<<"*.authenticate">>, 'authenticate'}
-                ,{<<"*.authorize">>, ?MODULE, 'authorize'}
-                ,{<<"*.content_types_provided.whitelabel">>, ?MODULE, 'content_types_provided'}
-                ,{<<"*.content_types_accepted.whitelabel">>, ?MODULE, 'content_types_accepted'}
-                ,{<<"*.allowed_methods.whitelabel">>, ?MODULE, 'allowed_methods'}
-                ,{<<"*.resource_exists.whitelabel">>, ?MODULE, 'resource_exists'}
-                ,{<<"*.validate.whitelabel">>, ?MODULE, 'validate'}
-                ,{<<"*.execute.put.whitelabel">>, ?MODULE, 'put'}
-                ,{<<"*.execute.post.whitelabel">>, ?MODULE, 'post'}
-                ,{<<"*.execute.delete.whitelabel">>, ?MODULE, 'delete'}
+                ,{<<"*.authorize">>, 'authorize'}
+                ,{<<"*.content_types_provided.whitelabel">>, 'content_types_provided'}
+                ,{<<"*.content_types_accepted.whitelabel">>, 'content_types_accepted'}
+                ,{<<"*.allowed_methods.whitelabel">>, 'allowed_methods'}
+                ,{<<"*.resource_exists.whitelabel">>, 'resource_exists'}
+                ,{<<"*.validate.whitelabel">>, 'validate'}
+                ,{<<"*.execute.put.whitelabel">>, 'put'}
+                ,{<<"*.execute.post.whitelabel">>, 'post'}
+                ,{<<"*.execute.delete.whitelabel">>, 'delete'}
                ],
     cb_modules_util:bind(?MODULE, Bindings).
 
@@ -401,12 +401,36 @@ validate_domains(Context, ?HTTP_POST) ->
         _AccountId -> test_account_domains(Context)
     end.
 
--spec load_domains(cb_context:context()) -> cb_context:context().
+-spec load_domains(cb_context:context()) ->
+                          cb_context:context().
+-spec load_domains(cb_context:context(), wh_json:object()) ->
+                          cb_context:context().
 load_domains(Context) ->
-    %% load system_config JSON
-    %% load account whitelabel
+    Context1 = load_whitelabel_meta(Context, ?WHITELABEL_ID),
+    case cb_context:resp_status(Context1) of
+        'success' -> load_domains(Context1, system_domains());
+        _Status -> Context1
+    end.
+
+load_domains(Context, SystemDomains) ->
     %% merge whitelabel.domain into system_config JSON
-    Context.
+    Domain = wh_json:get_value(<<"domain">>, cb_context:doc(Context)),
+
+    AccountDomains = kzd_domains:format(SystemDomains, Domain),
+
+    cb_context:set_resp_status(Context, AccountDomains).
+
+-spec system_domains() -> wh_json:object().
+system_domains() ->
+    case whapps_config:get(<<"whitelabel">>, <<"domains">>) of
+        {'ok', Domains} -> Domains;
+        {'error', 'not_found'} ->
+            lager:info("initializing system domains to default"),
+
+            Default = kzd_domains:default(),
+            whapps_config:set_default(<<"whitelabel">>, <<"domains">>, Default),
+            Default
+    end.
 
 -spec edit_domains(cb_context:context()) -> cb_context:context().
 edit_domains(Context) ->
