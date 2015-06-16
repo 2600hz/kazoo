@@ -9,6 +9,7 @@
 -module(kzd_domains).
 
 -export([new/0
+         ,default/0
          ,save/1
 
          ,cnam/1, cnam/2
@@ -59,6 +60,14 @@ new() ->
                        ,{?KEY_MX, wh_json:new()}
                        ,{?KEY_TXT, wh_json:new()}
                       ]).
+
+-spec default() -> wh_json:object().
+default() ->
+    PrivDir = code:priv_dir('kazoo_documents'),
+    {'ok', FixtureJSON} = file:read_file(
+                            filename:join([PrivDir, "fixtures", "domains.json"])
+                           ),
+    wh_json:decode(FixtureJSON).
 
 -spec cnam(doc()) -> api_object().
 -spec cnam(doc(), Default) -> wh_json:object() | Default.
