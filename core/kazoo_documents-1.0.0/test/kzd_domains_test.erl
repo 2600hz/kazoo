@@ -43,6 +43,7 @@ domains_test_() ->
        ,fun a_record/1
        ,fun naptr/1
        ,fun srv/1
+       ,fun default/1
       ]
     }.
 
@@ -305,3 +306,20 @@ validate_srv_host_mappings(SRV, Host) ->
 
 label(Format, Args) ->
     lists:flatten(io_lib:format(Format, Args)).
+
+default(#state{domains=DomainsSchema
+               ,loader_fun=LoaderFun
+              }) ->
+    Default = kzd_domains:default(),
+
+    case wh_json_schema:validate(DomainsSchema
+                                 ,Default
+                                 ,[{'schema_loader_fun', LoaderFun}]
+                                )
+    of
+        {'ok', _} ->
+            [{"Fixture is valid", ?_assert('true')}];
+        {'error', _E} ->
+            ?debugFmt("schema error: ~p~n", [_E]),
+            [{"Fixture is invalid", ?_assert('false')}]
+    end.
