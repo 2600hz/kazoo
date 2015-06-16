@@ -418,18 +418,18 @@ load_domains(Context, SystemDomains) ->
 
     AccountDomains = kzd_domains:format(SystemDomains, Domain),
 
-    cb_context:set_resp_status(Context, AccountDomains).
+    cb_context:set_resp_data(Context, AccountDomains).
 
 -spec system_domains() -> wh_json:object().
 system_domains() ->
     case whapps_config:get(<<"whitelabel">>, <<"domains">>) of
-        {'ok', Domains} -> Domains;
-        {'error', 'not_found'} ->
+        'undefined' ->
             lager:info("initializing system domains to default"),
 
             Default = kzd_domains:default(),
             whapps_config:set_default(<<"whitelabel">>, <<"domains">>, Default),
-            Default
+            Default;
+        Domains -> Domains
     end.
 
 -spec edit_domains(cb_context:context()) -> cb_context:context().
