@@ -167,42 +167,71 @@ status() ->
 
 -spec print_status(wh_nodes(), binary()) -> 'no_return'.
 print_status(Nodes, Zone) ->
-    _ = [begin
-             MemoryUsage = wh_network_utils:pretty_print_bytes(Node#node.used_memory),
-             io:format("Node          : ~s~n", [Node#node.node]),
-             io:format("Version       : ~s~n", [Node#node.version]),
-             io:format("Memory Usage  : ~s~n", [MemoryUsage]),
-             io:format("Processes     : ~B~n", [Node#node.processes]),
-             io:format("Ports         : ~B~n", [Node#node.ports]),
-             case Zone =:= Node#node.zone of
-                 'true' -> io:format("Zone          : ~s (local)~n", [Node#node.zone]);
-                 'false' -> io:format("Zone          : ~s~n", [Node#node.zone])
-             end,
-             io:format("Broker        : ~s~n", [Node#node.broker]),
-             _ = case lists:sort(fun({K1,_}, {K2,_}) -> K1 < K2 end
-                                 ,Node#node.whapps
-                                )
-                 of
-                     []-> 'ok';
-                     Whapps ->
-                         io:format("WhApps        : ", []),
-                         status_list(Whapps, 0)
-                 end,
-             _ = case lists:sort(Node#node.media_servers) of
-                     [] when Node#node.registrations =:= 0 -> 'ok';
-                     [] when Node#node.registrations > 0 ->
-                         io:format("Registrations : ~B~n", [Node#node.registrations]);
-                     [Server|Servers] ->
-                         io:format("Channels      : ~B~n", [Node#node.channels]),
-                         io:format("Registrations : ~B~n", [Node#node.registrations]),
-                         print_media_server(Server, ?MEDIA_SERVERS_HEADER),
-                         [print_media_server(OtherServer) || OtherServer <- Servers]
-                 end,
-             io:format("~n")
-         end
-         || Node <- Nodes
-        ],
+    _ = [print_node_status(Node, Zone) || Node <- Nodes],
     'no_return'.
+
+-spec print_node_status(wh_node(), ne_binary()) -> 'ok'.
+print_node_status(#node{zone=NodeZone
+                        ,node=N
+                        ,version=Version
+                        ,processes=Processes
+                        ,ports=Ports
+                        ,used_memory=UsedMemory
+                        ,broker=Broker
+                        ,whapps=Whapps
+                       }=Node
+                  ,Zone
+                 ) ->
+    MemoryUsage = wh_network_utils:pretty_print_bytes(UsedMemory),
+    io:format("Node          : ~s~n", [N]),
+    io:format("Version       : ~s~n", [Version]),
+    io:format("Memory Usage  : ~s~n", [MemoryUsage]),
+    io:format("Processes     : ~B~n", [Processes]),
+    io:format("Ports         : ~B~n", [Ports]),
+
+    _ = maybe_print_zone(NodeZone, Zone),
+
+    io:format("Broker        : ~s~n", [Broker]),
+
+    _ = maybe_print_whapps(Whapps),
+    _ = maybe_print_media_servers(Node),
+
+    io:format("~n").
+
+-spec maybe_print_zone(ne_binary(), ne_binary()) -> 'ok'.
+maybe_print_zone(Zone, Zone) ->
+    io:format("Zone          : ~s (local)~n", [Zone]);
+maybe_print_zone(NodeZone, _Zone) ->
+    io:format("Zone          : ~s~n", [NodeZone]).
+
+-spec maybe_print_whapps(wh_proplist()) -> 'ok'.
+maybe_print_whapps(Whapps) ->
+    case lists:sort(fun({K1,_}, {K2,_}) -> K1 < K2 end
+                    ,Whapps
+                   )
+    of
+        []-> 'ok';
+        SortedWhapps ->
+            io:format("WhApps        : ", []),
+            status_list(SortedWhapps, 0)
+    end.
+
+-spec maybe_print_media_servers(wh_node()) -> 'ok'.
+maybe_print_media_servers(#node{media_servers=MediaServers
+                                ,registrations=Registrations
+                                ,channels=Channels
+                               }) ->
+    case lists:sort(MediaServers) of
+        [] when Registrations =:= 0 -> 'ok';
+        [] when Registrations > 0 ->
+            io:format("Registrations : ~B~n", [Registrations]);
+        [Server|Servers] ->
+            io:format("Channels      : ~B~n", [Channels]),
+            io:format("Registrations : ~B~n", [Registrations]),
+            print_media_server(Server, ?MEDIA_SERVERS_HEADER),
+            [print_media_server(OtherServer) || OtherServer <- Servers],
+            'ok'
+    end.
 
 -spec print_media_server(media_server()) -> 'ok'.
 print_media_server(Server) ->
@@ -212,7 +241,7 @@ print_media_server(Server) ->
 print_media_server({Name, JObj}, Format) ->
     io:format(lists:flatten([Format, ?MEDIA_SERVERS_DETAIL, "~n"]),
               [Name
-              ,wh_util:pretty_print_elapsed_s(wh_util:elapsed_s(wh_json:get_integer_value(<<"Startup">>, JObj)))          
+              ,wh_util:pretty_print_elapsed_s(wh_util:elapsed_s(wh_json:get_integer_value(<<"Startup">>, JObj)))
               ]).
 
 -spec status_list(whapps_info(), 0..4) -> 'ok'.
@@ -494,11 +523,11 @@ maybe_add_ecallmgr_data(Node) ->
 
 -spec add_ecallmgr_data(wh_node()) -> wh_node().
 add_ecallmgr_data(#node{whapps=Whapps}=Node) ->
-    Servers = [{wh_util:to_binary(Server), 
+    Servers = [{wh_util:to_binary(Server),
                 wh_json:set_values(
                   [{<<"Startup">>, Started}
                    ,{<<"Interface">>, wh_json:from_list(ecallmgr_fs_node:interface(Server))}
-                  ], wh_json:new())}              
+                  ], wh_json:new())}
                || {Server, Started} <- ecallmgr_fs_nodes:connected('true')
               ],
     Node#node{media_servers=Servers
