@@ -537,6 +537,5 @@ take_sync_field(Context) ->
 %% @public
 -spec remove_plaintext_password(cb_context:context()) -> cb_context:context().
 remove_plaintext_password(Context) ->
-    Doc = cb_context:doc(Context),
-    NewDoc = wh_json:delete_key(<<"confirm_password">>, Doc),
-    cb_context:set_doc(Context, NewDoc).
+    Doc = wh_json:delete_key(<<"confirm_password">>, cb_context:doc(Context)),
+    cb_context:set_doc(Context, Doc).
