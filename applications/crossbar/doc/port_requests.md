@@ -170,7 +170,7 @@ curl -v -X GET -H "Accepts: application/x-pdf" -H "X-Auth-Token: 6cf321ea39fe960
 ### Request
 
 - Verb: `GET`
-- Url: `/accounts/{ACCOUNT_ID}/port_requests/descendants?by_number={NUMBER}`
+- Url: `/accounts/{ACCOUNT_ID}/descendants/port_requests?by_number={NUMBER}`
 - Payload: None
 
 
