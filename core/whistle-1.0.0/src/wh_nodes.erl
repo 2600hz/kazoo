@@ -108,13 +108,16 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link({'local', ?MODULE}, ?MODULE
+    gen_listener:start_link({'local', ?MODULE}
+                            ,?MODULE
                             ,[{'bindings', ?BINDINGS}
                               ,{'responders', ?RESPONDERS}
                               ,{'queue_name', ?QUEUE_NAME}
                               ,{'queue_options', ?QUEUE_OPTIONS}
                               ,{'consume_options', ?CONSUME_OPTIONS}
-                             ], []).
+                             ]
+                            ,[]
+                           ).
 
 -spec whapp_count(text()) -> integer().
 whapp_count(Whapp) ->
@@ -158,7 +161,7 @@ status() ->
         Nodes = lists:sort(fun(N1, N2) ->
                                    N1#node.node > N2#node.node
                            end, ets:tab2list(?MODULE)),
-        print_status(Nodes, gen_server:call(?MODULE, 'zone'))
+        print_status(Nodes, gen_listener:call(?MODULE, 'zone'))
     catch
         {'EXIT', {'badarg', _}} ->
             io:format("status unknown until node is fully initialized, try again in a moment~n", []),
@@ -189,6 +192,7 @@ print_node_status(#node{zone=NodeZone
     io:format("Processes     : ~B~n", [Processes]),
     io:format("Ports         : ~B~n", [Ports]),
 
+    io:format("nz: ~p z: ~p~n", [NodeZone, Zone]),
     _ = maybe_print_zone(wh_util:to_binary(NodeZone)
                          ,wh_util:to_binary(Zone)
                         ),
@@ -262,7 +266,7 @@ status_list([{Whapp, #whapp_info{startup=Started}}|Whapps], Column) ->
 
 -spec flush() -> 'ok'.
 flush() ->
-    gen_server:cast(?MODULE, 'flush').
+    gen_listener:cast(?MODULE, 'flush').
 
 -spec notify_new() -> 'ok'.
 notify_new() ->
@@ -270,7 +274,7 @@ notify_new() ->
 
 -spec notify_new(pid()) -> 'ok'.
 notify_new(Pid) ->
-    gen_server:cast(?MODULE, {'notify_new', Pid}).
+    gen_listener:cast(?MODULE, {'notify_new', Pid}).
 
 -spec notify_expire() -> 'ok'.
 notify_expire() ->
@@ -278,7 +282,7 @@ notify_expire() ->
 
 -spec notify_expire(pid()) -> 'ok'.
 notify_expire(Pid) ->
-    gen_server:cast(?MODULE, {'notify_expire', Pid}).
+    gen_listener:cast(?MODULE, {'notify_expire', Pid}).
 
 -spec handle_advertise(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_advertise(JObj, Props) ->
@@ -286,7 +290,7 @@ handle_advertise(JObj, Props) ->
     Srv = props:get_value('server', Props),
     Node = props:get_value('node', Props),
     case wh_json:get_value(<<"Node">>, JObj, Node) =:= Node of
-        'false' -> gen_server:cast(Srv, {'advertise', JObj});
+        'false' -> gen_listener:cast(Srv, {'advertise', JObj});
         'true' -> 'ok'
     end.
 
@@ -702,7 +706,7 @@ get_zone(JObj, #state{zones=Zones}) ->
 local_zone() ->
     case get('amqp_zone') of
         'undefined' ->
-            Zone = gen_server:call(?MODULE, 'zone'),
+            Zone = gen_listener:call(?MODULE, 'zone'),
             put('amqp_zone', Zone),
             Zone;
         Zone -> Zone
@@ -722,7 +726,7 @@ notify_expire(Nodes, #state{notify_expire=Set}) ->
     notify_expire(Nodes, sets:to_list(Set));
 notify_expire([Node|Nodes], Pids) ->
     lager:warning("node ~s heartbeat has expired", [Node]),
-    _ = [gen_server:cast(Pid, {'wh_nodes', {'expire', Node}})
+    _ = [gen_listener:cast(Pid, {'wh_nodes', {'expire', Node}})
          || Pid <- Pids
         ],
     notify_expire(Nodes, Pids).
@@ -732,7 +736,7 @@ notify_new(Node, #state{notify_new=Set}) ->
     notify_new(Node, sets:to_list(Set));
 notify_new(Node, Pids) ->
     lager:info("recieved heartbeat from new node ~s", [Node]),
-    _ = [gen_server:cast(Pid, {'wh_nodes', {'new', Node}})
+    _ = [gen_listener:cast(Pid, {'wh_nodes', {'new', Node}})
          || Pid <- Pids
         ],
     'ok'.
@@ -743,7 +747,7 @@ whapp_oldest_node(Whapp) ->
 
 -spec whapp_oldest_node(text(), text() | boolean() | atom()) -> api_integer().
 whapp_oldest_node(Whapp, 'false') ->
-    Zone = gen_server:call(?MODULE, 'zone'),
+    Zone = gen_listener:call(?MODULE, 'zone'),
     MatchSpec = [{#node{whapps='$1'
                         ,node='$2'
                         ,zone = Zone
