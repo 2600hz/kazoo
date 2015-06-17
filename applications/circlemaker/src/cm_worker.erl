@@ -22,7 +22,8 @@
          ,code_change/3
          ,start_link/1
          ,send_authn_req/3
-         ,send_authn_req/2]).
+         ,send_authn_req/2
+        ]).
 
 %%%===================================================================
 %%% API
@@ -98,7 +99,8 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({'authn_req', SenderPid, JObj}, State) ->
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj, <<"system_config">>),
-    lager:debug("authn_req message ~p received for account ~p", [JObj, AccountId]),
+    lager:debug("authn_req message for user ~p received for account ~p",
+        [wh_json:get_value(<<"Auth-User">>, JObj), AccountId]),
     Response = maybe_aaa_mode(JObj, AccountId),
     cm_pool_mgr:send_authn_response(SenderPid, Response, JObj, self()),
     {'noreply', State};
@@ -177,8 +179,10 @@ maybe_aaa_mode(JObj, <<"system_config">> = AccountId) ->
 maybe_aaa_mode(JObj, AccountId) when is_binary(AccountId) ->
     {'ok', Account} = couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId),
     AccountDb = wh_json:get_value(<<"pvt_account_db">>, Account),
+    Realm = wh_json:get_value(<<"realm">>, Account),
     {'ok', AaaDoc} = couch_mgr:open_cache_doc(AccountDb, <<"aaa">>),
     AaaProps = wh_json:recursive_to_proplist(AaaDoc),
+    JObj1 = wh_json:set_value([<<"Custom-Auth-Vars">>, <<"Account-Realm">>], Realm, JObj),
     case props:get_value(<<"aaa_mode">>, AaaProps) of
         <<"off">> ->
             lager:debug("AAA functionality disabled for the ~p account", [AccountId]),
@@ -187,12 +191,12 @@ maybe_aaa_mode(JObj, AccountId) when is_binary(AccountId) ->
             % AAA functionality is on for this account
             lager:debug("AAA functionality enabled for the ~p account", [AccountId]),
             ParentAccountId = cm_util:parent_account_id(Account),
-            maybe_suitable_servers(JObj, AaaProps, ParentAccountId);
+            maybe_suitable_servers(JObj1, AaaProps, ParentAccountId);
         <<"inherit">> ->
             % AAA functionality is in the 'inherit' mode for this account
             lager:debug("AAA functionality enabled (inherit mode) for the ~p account", [AccountId]),
             ParentAccountId = cm_util:parent_account_id(Account),
-            maybe_suitable_servers(JObj, AaaProps, ParentAccountId)
+            maybe_suitable_servers(JObj1, AaaProps, ParentAccountId)
     end.
 
 -spec maybe_suitable_servers(wh_json:object(), proplist(), api_binary()) -> {'ok', 'aaa_mode_off'} |
@@ -200,7 +204,7 @@ maybe_aaa_mode(JObj, AccountId) when is_binary(AccountId) ->
                                                                             {'error', 'no_respond'}.
 maybe_suitable_servers(JObj, AaaProps, ParentAccountId) ->
     ServersJson = props:get_value(<<"servers">>, AaaProps),
-    lager:debug("All available servers for this account: ~p", [ServersJson]),
+    lager:debug("Available servers count for this account is ~p", [length(ServersJson)]),
     Servers = [S || S <- wh_json:recursive_to_proplist(ServersJson), props:get_is_true(<<"enabled">>, S)],
     lager:debug("Active servers: ~p", [Servers]),
     maybe_server_request(Servers, JObj, AaaProps, ParentAccountId).
@@ -235,12 +239,23 @@ maybe_eradius_request([Server | Servers], Address, JObj, AaaProps, ParentAccount
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     Port = props:get_value(<<"port">>, Server),
     Secret = props:get_value(<<"secret">>, Server),
-    lager:debug("trying to resolve the next AVPs: ~p", [wh_json:to_proplist(JObj)]),
+    AllAVPs = case wh_json:get_value(<<"Event-Category">>, JObj) of
+                  <<"authz">> ->
+                      lager:debug("Operation is authz"),
+                      WholeRequest = wh_json:get_value(<<"Custom-Auth-Vars">>, JObj),
+                      lager:debug("Request is: ~p", [WholeRequest]),
+                      cm_util:maybe_translate_kv_into_avps(WholeRequest, AaaProps);
+                  _ ->
+                      lager:debug("Operation is authn"),
+                      lager:debug("Request is: ~p", [JObj]),
+                      cm_util:maybe_translate_kv_into_avps(JObj, AaaProps)
+              end,
+    lager:debug("trying to resolve the next AVPs: ~p", [AllAVPs]),
     ParamList = [{eradius_dict:lookup_by_name(AccountId, 'attribute2', Key), Value} ||
-        {Key, Value} <- wh_json:to_proplist(JObj)],
+        {Key, Value} <- AllAVPs],
     ParamList1 = [{Key, Value} || {Key, Value} <- ParamList, Key =/= 'undefined'],
     Request = eradius_lib:set_attributes(#radius_request{cmd = 'request'}, ParamList1),
-    lager:debug("checking next server ~p (~p:~p)", [Server, Address, Port, ParamList1]),
+    lager:debug("checking next server ~p (~p:~p)", [Server, Address, Port]),
     lager:debug("param list is ~p", [ParamList1]),
     lager:debug("final AAA-request is ~p", [Request]),
     case eradius_client:send_request({Address, Port, Secret}, Request) of

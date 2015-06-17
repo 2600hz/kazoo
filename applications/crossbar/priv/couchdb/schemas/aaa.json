@@ -16,6 +16,62 @@
             "required": false,
             "type": "string"
         },
+        "accounting": {
+            "default": [],
+            "description": "List of AAA servers are provide an accounting service",
+            "items": {
+                "type": "string"
+            },
+            "name": "AAA accounting servers",
+            "required": true,
+            "type": "array"
+        },
+        "authentication": {
+            "default": [],
+            "description": "List of AAA servers are provide an authentication service",
+            "items": {
+                "type": "string"
+            },
+            "name": "AAA authentication servers",
+            "required": true,
+            "type": "array"
+        },
+        "authorization": {
+            "default": [],
+            "description": "List of AAA servers are provide an authorization service",
+            "items": {
+                "type": "string"
+            },
+            "name": "AAA authorization servers",
+            "required": true,
+            "type": "array"
+        },
+        "authz_apps": {
+            "default": [
+                "jonny5"
+            ],
+            "description": "List of authz-provided application which should taken into account when an authz request is sent to AMQP",
+            "items": {
+                "type": "string"
+            },
+            "name": "Authz providers list",
+            "required": true,
+            "type": "array"
+        },
+        "nas_address": {
+            "default": 5000,
+            "description": "Network Access Server address",
+            "name": "NAS Address",
+            "required": true,
+            "type": "string"
+        },
+        "nas_port": {
+            "default": 5000,
+            "description": "Network Access Server port",
+            "name": "NAS Port",
+            "required": true,
+            "type": "integer"
+        },
         "servers": {
             "description": "List of the available AAA servers",
             "items": {
@@ -70,20 +126,6 @@
                         "required": true,
                         "type": "string"
                     },
-                    "nas_address": {
-                        "default": 5000,
-                        "description": "Network Access Server address",
-                        "name": "NAS Address",
-                        "required": true,
-                        "type": "string"
-                    },
-                    "nas_port": {
-                        "default": 5000,
-                        "description": "Network Access Server port",
-                        "name": "NAS Port",
-                        "required": true,
-                        "type": "integer"
-                    },
                     "port": {
                         "default": 1812,
                         "description": "AAA server port",
@@ -118,6 +160,13 @@
             "name": "AAA servers list",
             "required": true,
             "type": "array"
+        },
+        "workers": {
+            "default": 5,
+            "description": "Number of RADIUS-workers in the circlemaker application",
+            "name": "Number of workers",
+            "required": true,
+            "type": "integer"
         }
     },
     "required": true,

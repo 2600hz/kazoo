@@ -89,7 +89,8 @@ init([]) ->
         {<<"accounting">>, [<<"unique_server_name">>]},
         {<<"workers">>, 5},
         {<<"nas_address">>, <<"127.0.0.1">>},
-        {<<"nas_port">>, 1812}
+        {<<"nas_port">>, 1812},
+        {<<"authz_apps">>, [<<"jonny5">>]}
     ]
 ).
 

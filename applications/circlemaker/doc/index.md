@@ -1,4 +1,4 @@
-/*                                                                                                                                                                                                                                                                                                 
+/*
 Section: Circlemaker
 Title: Circlemaker
 Language: en-US

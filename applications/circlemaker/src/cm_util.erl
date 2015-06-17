@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(cm_util).
 
--export([network_address_to_ip_tuple/1, parent_account_id/1]).
+-export([network_address_to_ip_tuple/1, parent_account_id/1, maybe_translate_kv_into_avps/2, maybe_translate_avps_into_kv/2]).
 
 -include("circlemaker.hrl").
 
@@ -46,4 +46,65 @@ parent_account_id(JObj) ->
     case kz_account:parent_account_id(JObj) of
         'undefined' -> <<"system_config">>;
         AccountId -> AccountId
+    end.
+
+-spec maybe_translate_kv_into_avps(wh_json:object(), wh_proplist()) -> wh_json:object().
+maybe_translate_kv_into_avps(WholeRequest, AAAProps) ->
+    Attrs = case props:get_value(<<"authz_avp_translation">>, AAAProps) of
+                        'undefined' -> WholeRequest;
+                        TranslationList ->
+                            lists:map(
+                                fun(TranslationItem) ->
+                                    maybe_translate_kv_into_avps_item(TranslationItem, WholeRequest)
+                                end
+                                ,TranslationList)
+                    end,
+    props:filter(fun(T) -> T =/= {'undefined', 'undefined'} end, Attrs).
+
+maybe_translate_kv_into_avps_item(TranslationItem, WholeRequest) ->
+    Attr = props:get_value(<<"attribute">>, TranslationItem),
+    RequestKey = props:get_value(<<"request_key">>, TranslationItem),
+    RequestRegexp = props:get_value(<<"request_value_regexp">>, TranslationItem),
+    case wh_json:get_value(RequestKey, WholeRequest) of
+        'undefined' ->
+            {'undefined', 'undefined'};
+        Value ->
+            BinValue = binary_to_list(Value),
+            BinRequestRegexp = binary_to_list(RequestRegexp),
+            case re:run(BinValue, BinRequestRegexp) of
+                'nomatch' -> {Attr, <<"">>};
+                {'match', Groups} ->
+                    {Pos, Len} = lists:nth(2, Groups),
+                    NewValue = lists:sublist(BinValue, Pos + 1, Len),
+                    {Attr, list_to_binary(NewValue)}
+            end
+    end.
+
+-spec maybe_translate_avps_into_kv(wh_proplist(), wh_json:object()) -> wh_proplist().
+maybe_translate_avps_into_kv(AVPsResponse, AAAJObj) ->
+    TranslationList = wh_json:get_value(<<"authz_avp_translation">>, AAAJObj),
+    Props = lists:map(
+                fun(TranslationItem) ->
+                    maybe_translate_avps_into_kv_item(TranslationItem, AVPsResponse)
+                end
+                ,TranslationList),
+    props:filter(fun(T) -> T =/= {'undefined', 'undefined'} end, Props).
+
+maybe_translate_avps_into_kv_item(TranslationItem, AVPsResponse) ->
+    Attr = wh_json:get_string_value(<<"attribute">>, TranslationItem),
+    RequestKey = wh_json:get_value(<<"request_key">>, TranslationItem),
+    AttrRegexp = wh_json:get_value(<<"attr_value_regexp">>, TranslationItem),
+    case props:get_value(Attr, AVPsResponse) of
+        'undefined' ->
+            {'undefined', 'undefined'};
+        Value ->
+            BinValue = binary_to_list(Value),
+            BinAttrRegexp = binary_to_list(AttrRegexp),
+            case re:run(BinValue, BinAttrRegexp) of
+                'nomatch' -> {RequestKey, <<"">>};
+                {'match', Groups} ->
+                    {Pos, Len} = lists:nth(2, Groups),
+                    NewValue = lists:sublist(BinValue, Pos + 1, Len),
+                    {RequestKey, list_to_binary(NewValue)}
+            end
     end.
