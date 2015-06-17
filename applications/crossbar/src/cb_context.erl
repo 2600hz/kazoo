@@ -11,7 +11,7 @@
 -export([store/3
          ,fetch/2, fetch/3
          ,put_reqid/1
-         ,import_errors/1
+         ,import_errors/1, failed/2
          ,response/1
          ,has_errors/1
          ,add_system_error/2, add_system_error/3
