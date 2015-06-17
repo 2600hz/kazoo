@@ -21,7 +21,8 @@
          ,terminate/2
          ,code_change/3
          ,start_link/1
-         ,handle_authn/3]).
+         ,send_authn_req/3
+         ,send_authn_req/2]).
 
 %%%===================================================================
 %%% API
@@ -42,9 +43,17 @@ start_link(_) ->
 %% Make a AuthN request to a worker
 %% @end
 %%--------------------------------------------------------------------
--spec handle_authn(pid(), wh_json:object(), pid()) -> ok.
-handle_authn(Worker, JObj, Caller) ->
+-spec send_authn_req(pid(), wh_json:object(), pid()) -> ok.
+send_authn_req(Worker, JObj, Caller) ->
     gen_server:cast(Worker, {'authn_req', Caller, JObj}).
+
+-spec send_authn_req(pid(), wh_json:object()) -> ok.
+send_authn_req(Worker, JObj) ->
+    gen_server:cast(Worker, {'authn_req', self(), JObj}).
+
+%%%===================================================================
+%%% gen_server callbacks
+%%%===================================================================
 
 %%--------------------------------------------------------------------
 %% @private
@@ -90,15 +99,10 @@ handle_call(_Request, _From, State) ->
 handle_cast({'authn_req', SenderPid, JObj}, State) ->
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj, <<"system_config">>),
     lager:debug("authn_req message ~p received for account ~p", [JObj, AccountId]),
-    case maybe_aaa_mode(JObj, AccountId) of
-        {'ok', Response} ->
-            cm_pool_mgr:send_authn_response(SenderPid, Response, JObj, self());
-        {'error', Reason} ->
-            cm_pool_mgr:send_authn_error(SenderPid, Reason, JObj, self())
-    end,
+    Response = maybe_aaa_mode(JObj, AccountId),
+    cm_pool_mgr:send_authn_response(SenderPid, Response, JObj, self()),
     {'noreply', State};
-handle_cast(Message, State) ->
-    lager:debug("Message=~p~n", [Message]),
+handle_cast(_Message, State) ->
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -111,8 +115,9 @@ handle_cast(Message, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(_Info, State) ->
-    {'reply', {'error', 'not_implemented'}, State}.
+handle_info(Info, State) ->
+    lager:debug("unexpected info message is ~p", [Info]),
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -157,9 +162,6 @@ maybe_aaa_mode(_JObj, 'undefined') ->
     lager:error("error: call for undefined account"),
     {'error', 'no_respond'};
 maybe_aaa_mode(JObj, <<"system_config">> = AccountId) ->
-    lager:debug("AccountId=~p~n", [AccountId]),
-    % used system_config-related AAA settings
-    AAAProtocol = wh_json:get_value(<<"AAA-Protocol">>, JObj),
     % add system_config as source account
     JObj1 = wh_json:set_value(<<"Account-ID">>, AccountId, JObj),
     AaaProps = whapps_config:get_all_kvs(<<"circlemaker">>),
@@ -169,16 +171,15 @@ maybe_aaa_mode(JObj, <<"system_config">> = AccountId) ->
             {'ok', 'aaa_mode_off'};
         <<"on">> ->
             lager:debug("AAA functionality enabled for system_config"),
-            Result = maybe_suitable_servers(JObj1, AaaProps, AAAProtocol, 'undefined'),
+            Result = maybe_suitable_servers(JObj1, AaaProps, 'undefined'),
             {'ok', Result}
     end;
 maybe_aaa_mode(JObj, AccountId) when is_binary(AccountId) ->
-    AAAProtocol = wh_json:get_value(<<"AAA-Protocol">>, JObj),
-    {ok, Account} = couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId),
-    Value = wh_json:get_value(<<"value">>, Account),
-    AccountDb = wh_json:get_value(<<"account_db">>, Value, Account),
-    {ok, AaaDoc} = couch_mgr:open_doc(AccountDb, <<"aaa">>),
-    case wh_json:get_value(<<"aaa_mode">>, AaaDoc) of
+    {'ok', Account} = couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId),
+    AccountDb = wh_json:get_value(<<"pvt_account_db">>, Account),
+    {'ok', AaaDoc} = couch_mgr:open_cache_doc(AccountDb, <<"aaa">>),
+    AaaProps = wh_json:recursive_to_proplist(AaaDoc),
+    case props:get_value(<<"aaa_mode">>, AaaProps) of
         <<"off">> ->
             lager:debug("AAA functionality disabled for the ~p account", [AccountId]),
             {'ok', 'aaa_mode_off'};
@@ -186,31 +187,30 @@ maybe_aaa_mode(JObj, AccountId) when is_binary(AccountId) ->
             % AAA functionality is on for this account
             lager:debug("AAA functionality enabled for the ~p account", [AccountId]),
             ParentAccountId = cm_util:parent_account_id(Account),
-            Result = maybe_suitable_servers(JObj, AaaDoc, AAAProtocol, ParentAccountId),
-            {'ok', Result};
+            maybe_suitable_servers(JObj, AaaProps, ParentAccountId);
         <<"inherit">> ->
             % AAA functionality is in the 'inherit' mode for this account
             lager:debug("AAA functionality enabled (inherit mode) for the ~p account", [AccountId]),
             ParentAccountId = cm_util:parent_account_id(Account),
-            Result = maybe_suitable_servers(JObj, AaaDoc, AAAProtocol, ParentAccountId),
-            {'ok', Result}
+            maybe_suitable_servers(JObj, AaaProps, ParentAccountId)
     end.
 
--spec maybe_suitable_servers(wh_json:object(), proplist(), ne_binary(), api_binary()) -> {'ok', 'aaa_mode_off'} |
-                                                                                         {'ok', tuple()} |
-                                                                                         {'error', 'no_respond'}.
-maybe_suitable_servers(JObj, AaaDoc, AAAProtocol, ParentAccountId) ->
-    Servers = [S || S <- wh_json:get_value(<<"servers">>, AaaDoc),
-        wh_json:get_value(<<"enabled">>, S) == 'true', wh_json:get_value(<<"aaa_engine">>, S) == AAAProtocol],
-    lager:debug("AAAProtocol=~p~nServersBefore=~p~nServersAfter=~p~n",
-        [AAAProtocol, wh_json:get_value(<<"servers">>, AaaDoc), Servers]),
-    maybe_server_request(Servers, JObj, AaaDoc, ParentAccountId).
+-spec maybe_suitable_servers(wh_json:object(), proplist(), api_binary()) -> {'ok', 'aaa_mode_off'} |
+                                                                            {'ok', tuple()} |
+                                                                            {'error', 'no_respond'}.
+maybe_suitable_servers(JObj, AaaProps, ParentAccountId) ->
+    ServersJson = props:get_value(<<"servers">>, AaaProps),
+    lager:debug("All available servers for this account: ~p", [ServersJson]),
+    Servers = [S || S <- wh_json:recursive_to_proplist(ServersJson), props:get_is_true(<<"enabled">>, S)],
+    lager:debug("Active servers: ~p", [Servers]),
+    maybe_server_request(Servers, JObj, AaaProps, ParentAccountId).
 
 -spec maybe_server_request(list(), wh_json:object(), proplist(), ne_binary()) -> {'ok', 'aaa_mode_off'} |
                                                                                  {'ok', tuple()} |
                                                                                  {'error', 'no_respond'}.
-maybe_server_request([], JObj, AaaDoc, ParentAccountId) ->
-    case wh_json:get_value(<<"aaa_mode">>, AaaDoc) of
+maybe_server_request([], JObj, AaaProps, ParentAccountId) ->
+    lager:debug("all active AAA servers for this account were checked"),
+    case props:get_value(<<"aaa_mode">>, AaaProps) of
         <<"inherit">> ->
             % we are in the "inherit" mode so we should get parent account and use its AAA settings
             lager:debug("the 'inherit' mode used - switching to parent account"),
@@ -219,16 +219,30 @@ maybe_server_request([], JObj, AaaDoc, ParentAccountId) ->
             lager:debug("no 'inherit' mode - servers search stopped"),
             {'error', 'no_respond'}
     end;
-maybe_server_request([Server | Servers], JObj, AaaProps, ParentAccountId) ->
+maybe_server_request([Server | Servers] = AllServers, JObj, AaaProps, ParentAccountId) ->
+    case cm_util:network_address_to_ip_tuple(props:get_value(<<"address">>, Server)) of
+        {'error', Error} ->
+            lager:debug("server can't be unresolved: ~p", [Error]),
+            maybe_server_request(Servers, JObj, AaaProps, ParentAccountId);
+        Address ->
+            maybe_eradius_request(AllServers, Address, JObj, AaaProps, ParentAccountId)
+    end.
+
+-spec maybe_eradius_request(list(), ne_binary(), wh_json:object(), proplist(), ne_binary()) -> {'ok', 'aaa_mode_off'} |
+                                                                                               {'ok', tuple()} |
+                                                                                               {'error', 'no_respond'}.
+maybe_eradius_request([Server | Servers], Address, JObj, AaaProps, ParentAccountId) ->
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
-    Address = cm_util:network_address_to_ip_tuple(props:get_value(<<"address">>, Server)),
     Port = props:get_value(<<"port">>, Server),
     Secret = props:get_value(<<"secret">>, Server),
-    lager:debug("trying to resolve the next AVPs: ~p", wh_json:to_proplist(JObj)),
+    lager:debug("trying to resolve the next AVPs: ~p", [wh_json:to_proplist(JObj)]),
     ParamList = [{eradius_dict:lookup_by_name(AccountId, 'attribute2', Key), Value} ||
-                    {Key, Value} <- wh_json:to_proplist(JObj)],
-    Request = eradius_lib:set_attributes(#radius_request{cmd = request}, ParamList),
-    lager:debug("Address=~p~nPort=~p~nSecret=~p~nRequest=~p~n", [Address, Port, Secret, Request]),
+        {Key, Value} <- wh_json:to_proplist(JObj)],
+    ParamList1 = [{Key, Value} || {Key, Value} <- ParamList, Key =/= 'undefined'],
+    Request = eradius_lib:set_attributes(#radius_request{cmd = 'request'}, ParamList1),
+    lager:debug("checking next server ~p (~p:~p)", [Server, Address, Port, ParamList1]),
+    lager:debug("param list is ~p", [ParamList1]),
+    lager:debug("final AAA-request is ~p", [Request]),
     case eradius_client:send_request({Address, Port, Secret}, Request) of
         {'ok', Response, _Authenticator} ->
             Result = eradius_lib:decode_request(Response, Secret),

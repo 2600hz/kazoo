@@ -90,11 +90,14 @@ do_load_tables() ->
 load_account_tables(AccountId) ->
     lager:debug("prepare to load RADIUS dictionaries for account ~p...", [AccountId]),
     AccountDb = wh_util:format_account_id(AccountId, encoded),
-    {ok, AaaDoc} = couch_mgr:open_cache_doc(AccountDb, <<"aaa">>),
-    ServersList = wh_json:get_value(<<"servers">>, AaaDoc),
-    DictsList1 = [wh_json:get_value(<<"dicts">>, Server) || Server <- ServersList],
-    DictsList = lists:usort(lists:flatten(DictsList1)),
-    load_db_tables(AccountId, DictsList, <<"aaa/fetch_dicts">>).
+    case couch_mgr:open_cache_doc(AccountDb, <<"aaa">>) of
+        {ok, AaaDoc} ->
+            ServersList = wh_json:get_value(<<"servers">>, AaaDoc),
+            DictsList1 = [wh_json:get_value(<<"dicts">>, Server) || Server <- ServersList],
+            DictsList = lists:usort(lists:flatten(DictsList1)),
+            load_db_tables(AccountId, DictsList, <<"aaa/fetch_dicts">>);
+        _ -> ok
+    end.
 
 load_system_tables() ->
     lager:debug("prepare to load RADIUS dictionaries for system_config account..."),

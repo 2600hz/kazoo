@@ -8,16 +8,12 @@
 %%%-------------------------------------------------------------------
 -module(wapi_aaa).
 
--compile({no_auto_import, [error/1]}).
-
 -export([req/1, req_v/1
          ,resp/1, resp_v/1
-         ,error/1, error_v/1
          ,bind_q/2, unbind_q/2
          ,declare_exchanges/0
          ,publish_req/1, publish_req/2
          ,publish_resp/2, publish_resp/3
-         ,publish_error/2, publish_error/3
          ,get_auth_user/1, get_auth_realm/1
          ,req_event_type/0, resp_event_type/0
          ,get_authn_req_routing/1]).
@@ -38,6 +34,7 @@
                            ]).
 -define(OPTIONAL_AUTHN_REQ_HEADERS, [<<"Orig-IP">>, <<"Orig-Port">>, <<"Call-ID">>
                                      ,<<"Switch-Hostname">>
+                                     ,<<"NAS-IP-Address">>, <<"NAS-Port">>
                                      ,<<"Auth-Nonce">>, <<"Auth-Response">>
                                      ,<<"User-Agent">>, <<"Expires">>
                                      ,<<"Custom-SIP-Headers">>, <<"Account-ID">>
@@ -60,6 +57,7 @@
 -define(AUTHN_RESP_HEADERS, [<<"Auth-Password">>, <<"Response-Queue">>, <<"AAA-Result">>]).
 -define(OPTIONAL_AUTHN_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
                                       ,<<"Auth-Username">>, <<"Auth-Nonce">>
+                                      , <<"NAS-IP-Address">>, <<"NAS-Port">>
                                       ,<<"Access-Group">>, <<"Tenant-ID">>, <<"Expires">>
                                       ,<<"Suppress-Unregister-Notifications">>
                                       ,<<"Register-Overwrite-Notify">>
@@ -132,24 +130,6 @@ resp_event_type() ->
     {?EVENT_CATEGORY, ?AUTHN_RESP_EVENT_NAME}.
 
 %%--------------------------------------------------------------------
-%% @doc Authentication Error - see wiki
-%% Takes proplist, creates JSON iolist or error
-%% @end
-%%--------------------------------------------------------------------
--spec error(api_terms()) -> {'ok', iolist()} | {'error', string()}.
-error(Prop) when is_list(Prop) ->
-    case error_v(Prop) of
-        'true' -> wh_api:build_message(Prop, ?AUTHN_ERR_HEADERS, ?OPTIONAL_AUTHN_ERR_HEADERS);
-        'false' -> {'error', "Proplist failed validation for AAA authn_error"}
-    end;
-error(JObj) -> error(wh_json:to_proplist(JObj)).
-
--spec error_v(api_terms()) -> boolean().
-error_v(Prop) when is_list(Prop) ->
-    wh_api:validate(Prop, ?AUTHN_ERR_HEADERS, ?AUTHN_ERR_VALUES, ?AUTHN_ERR_TYPES);
-error_v(JObj) -> error_v(wh_json:to_proplist(JObj)).
-
-%%--------------------------------------------------------------------
 %% @doc Setup and tear down bindings for authn gen_listeners
 %% @end
 %%--------------------------------------------------------------------
@@ -188,14 +168,6 @@ publish_resp(Queue, JObj) ->
     publish_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_resp(Queue, Resp, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Resp, ?AUTHN_RESP_VALUES, fun resp/1),
-    amqp_util:targeted_publish(Queue, Payload, ContentType).
-
--spec publish_error(ne_binary(), api_terms()) -> 'ok'.
--spec publish_error(ne_binary(), api_terms(), binary()) -> 'ok'.
-publish_error(Queue, JObj) ->
-    publish_error(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
-publish_error(Queue, Resp, ContentType) ->
-    {ok, Payload} = wh_api:prepare_api_payload(Resp, ?AUTHN_ERR_VALUES, fun ?MODULE:error/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 %%-----------------------------------------------------------------------------

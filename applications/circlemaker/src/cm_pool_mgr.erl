@@ -12,10 +12,9 @@
 -include("circlemaker.hrl").
 
 -record(state, {workers = [] :: pids()}).
+
 -type pool_mgr_state() :: #state{}.
 -type authn_response() :: {'ok', 'aaa_mode_off'} | {'ok', tuple()}.
-
--define(CM_TIMEOUT, 5000).
 
 -export([init/1
          ,handle_call/3
@@ -25,8 +24,8 @@
          ,code_change/3
          ,start_link/0
          ,send_authn_response/4
-         ,send_authn_error/4
-         ,do_request/1]).
+         ,do_request/1
+        ]).
 
 %%%===================================================================
 %%% API
@@ -39,7 +38,6 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    lager:debug(""),
     gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
 
 %%--------------------------------------------------------------------
@@ -49,7 +47,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec do_request(wh_json:object()) -> 'ok'.
 do_request(Request) ->
-    lager:debug("Request=~p~n"),
+    lager:debug("Make AAA request: ~p", [Request]),
     gen_server:cast(?MODULE, {'request', Request}).
 
 %%--------------------------------------------------------------------
@@ -59,7 +57,10 @@ do_request(Request) ->
 %%--------------------------------------------------------------------
 -spec insert_worker(pid(), pool_mgr_state()) -> pool_mgr_state().
 insert_worker(Worker, State) ->
-    State#state{workers=[Worker | State#state.workers]}.
+    lager:debug("New worker ~p stored", [Worker]),
+    State1 = State#state{workers=[Worker | State#state.workers]},
+    lager:debug("Workers count is ~p", [length(State#state.workers)]),
+    State1.
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -68,11 +69,10 @@ insert_worker(Worker, State) ->
 %%--------------------------------------------------------------------
 -spec remove_worker(pid(), pool_mgr_state()) -> pool_mgr_state().
 remove_worker(Worker, State) ->
-    State#state{workers=lists:delete(Worker, State#state.workers)}.
-
-%%%===================================================================
-%%% gen_server callbacks
-%%%===================================================================
+    lager:debug("Worker ~p removed", [Worker]),
+    State1 = State#state{workers=lists:delete(Worker, State#state.workers)},
+    lager:debug("Workers count is ~p", [length(State#state.workers)]),
+    State1.
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -81,16 +81,12 @@ remove_worker(Worker, State) ->
 %%--------------------------------------------------------------------
 -spec send_authn_response(pid(), authn_response(), wh_json:object(), pid()) -> 'ok'.
 send_authn_response(SenderPid, Response, JObj, Self) ->
+    lager:debug("Response ~p is prepared to send to worker ~p", [Response, Self]),
     gen_server:cast(SenderPid, {'response', Response, JObj, Self}).
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Handler for an error message for AuthN
-%% @end
-%%--------------------------------------------------------------------
--spec send_authn_error(pid(), {'error', 'no_respond'}, wh_json:object(), pid()) -> 'ok'.
-send_authn_error(SenderPid, Reason, JObj, Self) ->
-    gen_server:cast(SenderPid, {'error', Reason, JObj, Self}).
+%%%===================================================================
+%%% gen_server callbacks
+%%%===================================================================
 
 %%--------------------------------------------------------------------
 %% @private
@@ -100,12 +96,25 @@ send_authn_error(SenderPid, Reason, JObj, Self) ->
 %%--------------------------------------------------------------------
 -spec init([]) -> {'ok', tuple()}.
 init([]) ->
-    lager:debug(""),
+    lager:debug("Pool manager started"),
     {'ok', #state{}}.
 
-handle_call(Request, _From, State) ->
-    lager:debug("Request=~p~nState=~p~n", [Request, State]),
-    {'reply', {'error', 'not_implemented'}, State, ?CM_TIMEOUT}.
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handling call messages
+%%
+%% @spec handle_call(Request, From, State) ->
+%%                                   {reply, Reply, State} |
+%%                                   {reply, Reply, State, Timeout} |
+%%                                   {noreply, State} |
+%%                                   {noreply, State, Timeout} |
+%%                                   {stop, Reason, Reply, State} |
+%%                                   {stop, Reason, State}
+%% @end
+%%--------------------------------------------------------------------
+handle_call(_Request, _From, State) ->
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -119,17 +128,16 @@ handle_call(Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({'request', JObj}, State) ->
     lager:debug("requst message is ~p", [JObj]),
-    {'noreply', dist_workers(JObj, State), ?CM_TIMEOUT};
+    {'noreply', dist_workers(JObj, State)};
 handle_cast({'response', Response, JObj, Worker}, State) ->
-    lager:debug("response is ~p", [Response]),
+    lager:debug("response message is ~p", [Response]),
+    NewState = remove_worker(Worker, State),
     poolboy:checkin(?WORKER_POOL, Worker),
     Result = case Response of
-                 {'ok', {'ok', {'radius_request', _, 'accept', _, _, _, _, _}}} ->
+                 {'ok', {'radius_request', _, 'accept', _, _, _, _, _}} ->
                      <<"accept">>;
-                 {'ok', {'ok', {'radius_request', _, 'reject', _, _, _, _, _}}} ->
-                     <<"reject">>;
                  _ ->
-                     <<"error">>
+                     <<"reject">>
              end,
     Queue = wh_json:get_value(<<"Response-Queue">>, JObj),
     Password = wh_json:get_value(<<"User-Password">>, JObj),
@@ -139,22 +147,47 @@ handle_cast({'response', Response, JObj, Worker}, State) ->
                                 JObj),
     % send response to the registrar_listener queue
     wapi_aaa:publish_resp(Queue, JObj1),
-    {'noreply', remove_worker(Worker, State), ?CM_TIMEOUT};
-handle_cast({'error', Response, _JObj, Worker}, State) ->
-    lager:debug("error is ~p", [Response]),
-    poolboy:checkin(?WORKER_POOL, Worker),
-    {'noreply', remove_worker(Worker, State), ?CM_TIMEOUT};
+    {'noreply', NewState};
 handle_cast(Message, State) ->
-    lager:debug("Message=~p~nState=~p~n", [Message, State]),
-    {'noreply', State, ?CM_TIMEOUT}.
+    lager:debug("unexpected message is ~p", [Message]),
+    {'noreply', State}.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handling all non call/cast messages
+%%
+%% @spec handle_info(Info, State) -> {noreply, State} |
+%%                                   {noreply, State, Timeout} |
+%%                                   {stop, Reason, State}
+%% @end
+%%--------------------------------------------------------------------
 handle_info(Info, State) ->
-    lager:debug("Info=~p~nState=~p~n", [Info, State]),
-    {'reply', {'error', 'not_implemented'}, State, ?CM_TIMEOUT}.
+    lager:debug("unexpected info message is ~p", [Info]),
+    {'noreply', State}.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function is called by a gen_server when it is about to
+%% terminate. It should be the opposite of Module:init/1 and do any
+%% necessary cleaning up. When it returns, the gen_server terminates
+%% with Reason. The return value is ignored.
+%%
+%% @spec terminate(Reason, State) -> void()
+%% @end
+%%--------------------------------------------------------------------
 terminate(Reason, _State) ->
     lager:debug("Circlemaker worker terminating: ~p", [Reason]).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Convert process state when code is changed
+%%
+%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
+%% @end
+%%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
@@ -173,9 +206,9 @@ dist_workers(JObj, State) ->
     case catch poolboy:checkout(?WORKER_POOL) of
         Worker when is_pid(Worker) ->
             lager:debug("Worker started sucessfully"),
-            gen_server:cast(Worker, {'authn_req', self(), JObj}),
+            cm_worker:send_authn_req(Worker, JObj),
             insert_worker(Worker, State);
-        _Else ->
-            lager:error("Failed to start a worker"),
+        Else ->
+            lager:error("Failed to start a worker. Reason is ~p", [Else]),
             State
     end.

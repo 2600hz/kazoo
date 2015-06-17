@@ -4,8 +4,6 @@
 -include_lib("whistle/include/wh_databases.hrl").
 -include_lib("whistle/src/wh_json.hrl").
 
--define(CIRCLEMAKER_CACHE, 'circlemaker_cache').
-
 -define(CONFIG_CAT, <<"circlemaker">>).
 -define(WORKER_POOL, 'circlemaker_worker_pool').
 

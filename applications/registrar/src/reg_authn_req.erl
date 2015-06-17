@@ -457,9 +457,8 @@ get_auth_method(JObj) ->
                               ,<<"password">>
                              ).
 
--spec maybe_auth_method(auth_user(), wh_json:object(), wh_json:object(), ne_binary()) ->
-                               {'ok', auth_user()} |
-                               {'error', any()}.
+-spec maybe_auth_method(auth_user(), wh_json:object(), wh_json:object(), ne_binary()) -> {'ok', auth_user()} |
+                                                                                         {'error', any()}.
 maybe_auth_method(AuthUser, JObj, Req, ?GSM_ANY_METHOD)->
     lager:debug("lookup for a GSM auth method"),
     GsmDoc = wh_json:get_value(<<"gsm">>, JObj),
@@ -486,9 +485,20 @@ maybe_auth_method(AuthUser, JObj, Req, ?GSM_ANY_METHOD)->
                            }
        )
      );
-maybe_auth_method(AuthUser, JObj, _Req, ?ANY_AUTH_METHOD)->
+maybe_auth_method(AuthUser, JObj, _Req, ?ANY_AUTH_METHOD) ->
     AccountDB = get_account_db(JObj),
-    {'ok', AccountDoc} = couch_mgr:open_cache_doc(AccountDB, <<"aaa">>),
+    case couch_mgr:open_cache_doc(AccountDB, <<"aaa">>) of
+        {'ok', AccountDoc} ->
+            maybe_auth_aaa_method(AccountDoc, AuthUser);
+        _ ->
+            {'ok', AuthUser}
+    end.
+
+-spec maybe_auth_aaa_method(wh_json:object(), auth_user()) ->
+                            {'ok', auth_user()} |
+                            {'error', any()} |
+                            {'pending', auth_user()}.
+maybe_auth_aaa_method(AccountDoc, AuthUser) ->
     case wh_json:get_value(<<"aaa_mode">>, AccountDoc) of
         <<"off">> ->
             {'ok', AuthUser};
@@ -504,19 +514,19 @@ maybe_use_aaa_method(AccountDoc, AuthUser) ->
     lager:debug("AAA auth method used"),
     % do the authentication for this account via circlemaker app
     Request = AuthUser#auth_user.request,
-    'true' = wapi_authn:req_v(Request),
+    'true' = wapi_authn:req_v(Request), % TODO: wapi_authn or wapi_aaa ?
     MsgId = wh_json:get_value(<<"Msg-ID">>, Request),
     registrar_shared_listener:insert_auth_user({MsgId, AuthUser}),
     {EventCategory, EventName} = wapi_aaa:req_event_type(),
-    Request1 = wh_json:set_values([{<<"Response-Queue">>, registrar_shared_listener:get_queue_name()},
-        {<<"Event-Category">>, EventCategory},
-        {<<"Event-Name">>, EventName},
-        {<<"Account-ID">>, AuthUser#auth_user.account_id},
-        {<<"User-Name">>, AuthUser#auth_user.username},
-        {<<"User-Password">>, AuthUser#auth_user.password},
-        {<<"NAS-IP-Address">>, wh_json:get_value(<<"nas_address">>, AccountDoc)},
-        {<<"NAS-Port">>, wh_json:get_value(<<"nas_port">>, AccountDoc)}
-    ], Request),
+    Request1 = wh_json:set_values([{<<"Response-Queue">>, registrar_shared_listener:get_queue_name()}
+                                   ,{<<"Event-Category">>, EventCategory}
+                                   ,{<<"Event-Name">>, EventName}
+                                   ,{<<"Account-ID">>, AuthUser#auth_user.account_id}
+                                   ,{<<"User-Name">>, AuthUser#auth_user.username}
+                                   ,{<<"User-Password">>, AuthUser#auth_user.password}
+                                   ,{<<"NAS-IP-Address">>, wh_json:get_value(<<"nas_address">>, AccountDoc)}
+                                   ,{<<"NAS-Port">>, wh_json:get_value(<<"nas_port">>, AccountDoc)}
+                                  ], Request),
     wapi_aaa:publish_req(Request1),
     % waiting for response (in the reg_aaa_resp module)
     {'pending', AuthUser}.

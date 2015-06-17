@@ -176,7 +176,8 @@ check_aaa_schema(Id, Context) ->
 on_successful_validation('undefined', Context) ->
     Doc = cb_context:doc(Context),
     cb_context:set_doc(Context, wh_json:set_values([{<<"pvt_type">>, ?AAA_RESOURCE},
-                                                    {<<"_id">>, ?AAA_RESOURCE}], Doc));
+                                                    {<<"_id">>, ?AAA_RESOURCE},
+                                                    {<<"id">>, ?AAA_RESOURCE}], Doc));
 on_successful_validation(?AAA_RESOURCE, Context) ->
     crossbar_doc:load_merge(?AAA_RESOURCE, Context).
 
