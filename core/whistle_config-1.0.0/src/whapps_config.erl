@@ -30,7 +30,7 @@
 -type config_key() :: ne_binary() | nonempty_string() | atom() | [config_key(),...].
 
 -type update_option() :: {'node_specific', boolean()} |
-                         {'pvt_fields', wh_json:object()}.
+                         {'pvt_fields', api_object()}.
 -type update_options() :: [update_option(),...] | [].
 
 -type fetch_ret() :: {'ok', wh_json:object()} |

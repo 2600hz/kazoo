@@ -432,12 +432,13 @@ system_domains() ->
 
 -spec edit_domains(cb_context:context()) -> cb_context:context().
 edit_domains(Context) ->
-    Domains = crossbar_doc:update_pvt_parameters(
-                cb_context:req_data(Context)
-                ,Context
-               ),
+    Domains = cb_context:req_data(Context),
+    PvtFields = crossbar_doc:update_pvt_parameters(
+                  wh_json:new()
+                  ,Context
+                 ),
 
-    case kzd_domains:save(Domains) of
+    case kzd_domains:save(Domains, PvtFields) of
         {'error', Errors} ->
             cb_context:failed(Context, Errors);
         {'ok', SavedDomains} ->

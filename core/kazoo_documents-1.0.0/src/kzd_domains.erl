@@ -10,7 +10,7 @@
 
 -export([new/0
          ,default/0
-         ,save/1
+         ,save/1, save/2
 
          ,cnam/1, cnam/2
          ,cnam_hosts/1, cnam_host/2, cnam_host/3
@@ -209,17 +209,26 @@ add_srv_host(Domains, Host, Settings) ->
 -spec save(doc()) -> {'ok', doc()} |
                      {'error', _}.
 save(Domains) ->
+    save(Domains, 'undefined').
+save(Domains, PvtFields) ->
     case is_valid(Domains) of
         'true' ->
-            try_save(Domains);
+            try_save(Domains, PvtFields);
         {'false', Errors} ->
             {'error', Errors}
     end.
 
--spec try_save(doc()) -> {'ok', doc()} |
-                         {'error', _}.
-try_save(Domains) ->
-    case whapps_config:set_default(<<"whitelabel">>, <<"domains">>, Domains) of
+-spec try_save(doc(), api_object()) ->
+                      {'ok', doc()} |
+                      {'error', _}.
+try_save(Domains, PvtFields) ->
+    case whapps_config:update_default(
+           <<"whitelabel">>
+           ,<<"domains">>
+           ,Domains
+           ,[{'pvt_fields', PvtFields}]
+          )
+    of
         {'error', _E}=E -> E;
         _ ->
             {'ok', whapps_config:get(<<"whitelabel">>, <<"domains">>)}
