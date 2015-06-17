@@ -464,7 +464,10 @@ missing_schema_error(Context) ->
                                     ,Context
                                    ).
 
--spec test_account_domains(cb_context:context()) -> cb_context:context().
+-spec test_account_domains(cb_context:context()) ->
+                                  cb_context:context().
+-spec test_account_domains(cb_context:context(), kzd_domains:doc()) ->
+                                  cb_context:context().
 test_account_domains(Context) ->
     Context1 = load_domains(Context),
     case cb_context:resp_status(Context1) of
@@ -474,10 +477,55 @@ test_account_domains(Context) ->
             Context1
     end.
 
-test_account_domains(Context, _DomainsJObj) ->
-    %% loop over domains, testing against the "mapping"
-    %% return errored domains or success message
-    Context.
+test_account_domains(Context, DomainsJObj) ->
+    TestResults = wh_json:map(fun test_domains/2, DomainsJObj),
+    lager:debug("test results: ~p", [TestResults]),
+    crossbar_util:response(TestResults, Context).
+
+-spec test_domains(ne_binary(), wh_json:object()) ->
+                          {ne_binary(), wh_json:object()}.
+test_domains(DomainType, DomainConfig) ->
+    {DomainType, test_domain_config(DomainType, DomainConfig)}.
+
+-spec test_domain_config(ne_binary(), wh_json:object()) ->
+                                wh_json:object().
+test_domain_config(DomainType, DomainConfig) ->
+    wh_json:map(fun(Host, HostConfig) ->
+                        {Host, test_host(Host, HostConfig, DomainType)}
+                end
+                ,DomainConfig
+               ).
+
+-spec test_host(ne_binary(), wh_json:object(), ne_binary()) ->
+                       wh_json:object().
+test_host(Host, HostConfig, DomainType) ->
+    test_host_mappings(Host, kzd_domains:mappings(HostConfig), DomainType).
+
+-spec test_host_mappings(ne_binary(), ne_binaries(), ne_binary()) ->
+                                wh_json:object().
+test_host_mappings(Host, Mappings, <<"CNAM">>) ->
+    %% inet_dns wants it with an e
+    test_host_mappings(Host, Mappings, <<"CNAME">>);
+test_host_mappings(Host, Mappings, DomainType) ->
+    wh_json:from_list([{<<"expected">>, Mappings}
+                       ,{<<"actual">>, lookup(Host, DomainType)}
+                      ]).
+
+-spec lookup(ne_binary(), ne_binary()) -> ne_binaries().
+lookup(Host, DomainType) ->
+    Type = wh_util:to_atom(wh_util:to_lower_binary(DomainType)),
+    {'ok', Lookup} = wh_network_utils:lookup_dns(Host, Type),
+    lager:debug("lookup of ~s(~s): ~p", [Host, Type, Lookup]),
+    format_lookup_results(Lookup).
+
+-spec format_lookup_results([inet_res:dns_data()]) -> ne_binaries().
+format_lookup_results(Lookup) ->
+    [format_lookup_result(Result) || Result <- Lookup].
+
+-spec format_lookup_result(inet_res:dns_data()) -> ne_binary().
+format_lookup_result({_,_,_,_}=IP) ->
+    wh_network_utils:iptuple_to_binary(IP);
+format_lookup_result(V) -> wh_util:to_binary(V).
 
 -spec validate_domain(cb_context:context(), path_token(), http_method()) ->
                              cb_context:context().
@@ -512,7 +560,9 @@ post(Context, ?LOGO_REQ) ->
 post(Context, ?ICON_REQ) ->
     update_whitelabel_binary(?ICON_REQ, ?WHITELABEL_ID, Context);
 post(Context, ?WELCOME_REQ) ->
-    update_whitelabel_binary(?WELCOME_REQ, ?WHITELABEL_ID, Context).
+    update_whitelabel_binary(?WELCOME_REQ, ?WHITELABEL_ID, Context);
+post(Context, ?DOMAINS_REQ) ->
+    cb_context:set_resp_status(Context, 'success').
 
 -spec delete(cb_context:context()) -> cb_context:context().
 delete(Context) ->
