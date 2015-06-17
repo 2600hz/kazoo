@@ -107,12 +107,11 @@ load_system_tables() ->
 load_db_tables(AccountId, DictList, DesignDoc) ->
     {ok, Dicts} = couch_mgr:get_all_results(?KZ_AAA_DICTS_DB, DesignDoc),
     lists:foreach(fun(Dict) ->
-        Value = wh_json:get_value(<<"value">>, Dict),
-        DictName = wh_json:get_binary_value(<<"name">>, Value),
-        Owner = wh_json:get_binary_value(<<"owner">>, Value),
+        DictName = wh_json:get_value(<<"key">>, Dict),
+        Owner = wh_json:get_binary_value(<<"value">>, Dict),
         case (AccountId == Owner) and lists:member(DictName, DictList) of
             true ->
-                DictId = wh_json:get_binary_value(<<"id">>, Value),
+                DictId = wh_json:get_binary_value(<<"id">>, Dict),
                 {ok, Doc} = couch_mgr:open_cache_doc(?KZ_AAA_DICTS_DB, DictId),
                 process_dict(wh_json:get_value(<<"value">>, Doc), AccountId),
                 lager:debug("loaded RADIUS table ~p", [DictName]);

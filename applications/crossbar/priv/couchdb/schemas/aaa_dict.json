@@ -2,7 +2,7 @@
   "_id": "aaa_dict",
   "$schema": "http://json-schema.org/draft-03/schema#",
   "type": "object",
-  "required": false,
+  "required": true,
   "name": "AAA dictionary configuration",
   "description": "Schema for an AAA dictionary",
   "properties": {

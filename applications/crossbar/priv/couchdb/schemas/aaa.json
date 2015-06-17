@@ -2,7 +2,7 @@
   "_id": "aaa",
   "$schema": "http://json-schema.org/draft-03/schema#",
   "type": "object",
-  "required": false,
+  "required": true,
   "name": "AAA configuration",
   "description": "Schema for an AAA configuration",
   "properties": {

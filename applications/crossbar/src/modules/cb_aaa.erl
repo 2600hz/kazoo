@@ -14,7 +14,7 @@
          ,resource_exists/0, resource_exists/1, resource_exists/2
          ,validate/1, validate/2, validate/3
          ,put/1, put/2
-         ,post/3
+         ,post/1, post/3
          ,patch/1
          ,delete/3
          ,load_dict_list/1, load_dict/3
@@ -26,7 +26,7 @@
 
 -define(AAA_RESOURCE, <<"aaa">>).
 -define(AAA_DICT_RESOURCE, <<"aaa_dict">>).
--define(DICT_RESOURCE, <<"dict">>).
+-define(DICT_RESOURCE, <<"dictionary">>).
 
 %%%===================================================================
 %%% API
@@ -54,7 +54,7 @@ init() ->
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 
 allowed_methods() ->
-    [?HTTP_GET, ?HTTP_PUT, ?HTTP_PATCH].
+    [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_PATCH].
 allowed_methods(?DICT_RESOURCE) ->
     [?HTTP_GET, ?HTTP_PUT].
 allowed_methods(?DICT_RESOURCE, _DictID) ->
@@ -100,7 +100,9 @@ validate(Context) ->
 validate_config(Context, ?HTTP_GET) ->
     load_aaa_config(Context);
 validate_config(Context, ?HTTP_PUT) ->
-    validate_request(Context);
+    validate_request('undefined', Context);
+validate_config(Context, ?HTTP_POST) ->
+    validate_request(?AAA_RESOURCE, Context);
 validate_config(Context, ?HTTP_PATCH) ->
     validate_patch(Context).
 
@@ -110,7 +112,7 @@ validate(Context, ?DICT_RESOURCE) ->
 validate_dict(Context, ?DICT_RESOURCE, ?HTTP_GET) ->
     load_dict_list(Context);
 validate_dict(Context, ?DICT_RESOURCE, ?HTTP_PUT) ->
-    validate_request(Context, ?DICT_RESOURCE, 'undefined').
+    validate_dict_request(Context, ?DICT_RESOURCE, 'undefined').
 
 validate(Context, ?DICT_RESOURCE, DictId) ->
     validate_dict(Context, ?DICT_RESOURCE, DictId, cb_context:req_verb(Context)).
@@ -118,12 +120,15 @@ validate(Context, ?DICT_RESOURCE, DictId) ->
 validate_dict(Context, ?DICT_RESOURCE, DictId, ?HTTP_GET) ->
     load_dict(Context, ?DICT_RESOURCE, DictId);
 validate_dict(Context, ?DICT_RESOURCE, DictId, ?HTTP_POST) ->
-    validate_request(Context, ?DICT_RESOURCE, DictId);
+    validate_dict_request(Context, ?DICT_RESOURCE, DictId);
 validate_dict(Context, ?DICT_RESOURCE, DictId, ?HTTP_DELETE) ->
     load_dict(Context, ?DICT_RESOURCE, DictId).
 
 
+-spec post(cb_context:context()) -> cb_context:context().
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+post(Context) ->
+    crossbar_doc:save(Context).
 post(Context, ?DICT_RESOURCE, _DocId) ->
     crossbar_doc:save(Context).
 
@@ -155,12 +160,25 @@ load_aaa_config(Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Validate request for AAA configuration document for an account 
+%% Validate request for AAA configuration document for an account
 %% @end
 %%--------------------------------------------------------------------
--spec validate_request(cb_context:context()) -> cb_context:context().
-validate_request(Context) ->
-    check_aaa_schema(Context).
+-spec validate_request(api_binary(), cb_context:context()) -> cb_context:context().
+validate_request(Id, Context) ->
+    check_aaa_schema(Id, Context).
+
+-spec check_aaa_schema(api_binary(), cb_context:context()) -> cb_context:context().
+check_aaa_schema(Id, Context) ->
+    OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
+    cb_context:validate_request_data(?AAA_RESOURCE, Context, OnSuccess).
+
+-spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
+on_successful_validation('undefined', Context) ->
+    Doc = cb_context:doc(Context),
+    cb_context:set_doc(Context, wh_json:set_values([{<<"pvt_type">>, ?AAA_RESOURCE},
+                                                    {<<"_id">>, ?AAA_RESOURCE}], Doc));
+on_successful_validation(?AAA_RESOURCE, Context) ->
+    crossbar_doc:load_merge(?AAA_RESOURCE, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -168,52 +186,31 @@ validate_request(Context) ->
 %% Validate request for an dictionary of an account
 %% @end
 %%--------------------------------------------------------------------
--spec validate_request(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-validate_request(Context, ?DICT_RESOURCE, DictId) ->
-    check_aaa_schema(Context, DictId).
+-spec validate_dict_request(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+validate_dict_request(Context, ?DICT_RESOURCE, DictId) ->
+    check_aaa_dict_schema(Context, DictId).
 
--spec check_aaa_schema(cb_context:context()) -> cb_context:context().
-check_aaa_schema(Context) ->
-    OnSuccess = fun(C) -> on_successful_validation(C) end,
-    cb_context:validate_request_data(?AAA_RESOURCE, Context, OnSuccess).
-
--spec on_successful_validation(cb_context:context()) -> cb_context:context().
-on_successful_validation(Context) ->
-    Doc = cb_context:req_data(Context),
-    Res = crossbar_doc:load_merge(?AAA_RESOURCE, Context),
-    case {cb_context:resp_status(Res), cb_context:resp_error_code(Res)} of
-        {'success', _} ->
-            Res;
-        {'error', 404} ->
-            cb_context:set_doc(Context, wh_json:set_values([{<<"pvt_type">>, ?AAA_RESOURCE},
-                                                            {<<"_id">>, ?AAA_RESOURCE},
-                                                            {<<"id">>, ?AAA_RESOURCE}], Doc));
-        {_, _} ->
-            Context
-    end.
-
--spec check_aaa_schema(cb_context:context(), ne_binary()) -> cb_context:context().
-check_aaa_schema(Context, DictId) ->
-    OnSuccess = fun(C) -> on_successful_validation(C, DictId) end,
+-spec check_aaa_dict_schema(cb_context:context(), ne_binary()) -> cb_context:context().
+check_aaa_dict_schema(Context, DictId) ->
+    OnSuccess = fun(C) -> on_successful_dict_validation(C, DictId) end,
     NewReqData = wh_json:set_values([{<<"owner">>, cb_context:account_id(Context)}], cb_context:req_data(Context)),
     Context1 = cb_context:set_req_data(Context, NewReqData),
     Context2 = cb_context:set_account_db(Context1, ?KZ_AAA_DICTS_DB),
     cb_context:validate_request_data(?AAA_DICT_RESOURCE, Context2, OnSuccess).
 
--spec on_successful_validation(cb_context:context(), atom()) -> cb_context:context();
-                              (cb_context:context(), ne_binary()) -> cb_context:context().
-on_successful_validation(Context, 'undefined') ->
+-spec on_successful_dict_validation(cb_context:context(), api_binary()) -> cb_context:context().
+on_successful_dict_validation(Context, 'undefined') ->
     Doc1 = wh_json:set_values([{<<"pvt_type">>, ?AAA_DICT_RESOURCE}], cb_context:doc(Context)),
     View = cb_context:doc(crossbar_doc:load_view(?CB_LIST_DICTS, [], Context,
                                                  normalize_filter_view(cb_context:account_id(Context)))),
-    DictNameList = [wh_json:get_value(<<"name">>, wh_json:get_value(<<"value">>, Elem)) || Elem <- View],
+    DictNameList = [wh_json:get_value(<<"key">>, Elem) || Elem <- View],
     case lists:member(wh_json:get_value(<<"name">>, Doc1), DictNameList) of
         true ->
             Context;
         false ->
             cb_context:set_doc(Context, Doc1)
     end;
-on_successful_validation(Context, DictId) when is_binary(DictId) ->
+on_successful_dict_validation(Context, DictId) when is_binary(DictId) ->
     crossbar_doc:load_merge(DictId, Context).
 
 %%--------------------------------------------------------------------
@@ -223,8 +220,8 @@ on_successful_validation(Context, DictId) when is_binary(DictId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_request_patch(ne_binary(), cb_context:context()) -> cb_context:context().
-validate_request_patch(_DocId, Context) ->
-    OnSuccess = fun(C) -> on_successful_validation(C) end,
+validate_request_patch(?AAA_RESOURCE, Context) ->
+    OnSuccess = fun(C) -> on_successful_validation(?AAA_RESOURCE, C) end,
     cb_context:validate_request_data(?AAA_RESOURCE, Context, OnSuccess).
 
 -spec validate_patch(cb_context:context()) -> cb_context:context().
@@ -240,7 +237,7 @@ validate_patch(Context) ->
 -spec normalize_filter_view(ne_binary()) -> cb_context:context().
 normalize_filter_view(AccountId) ->
     fun(JObj, Acc) ->
-        case wh_json:get_value(<<"owner">>, wh_json:get_value(<<"value">>, JObj)) of
+        case wh_json:get_value(<<"value">>, JObj) of
             AccountId -> [JObj|Acc];
             _ -> Acc
         end

@@ -1068,12 +1068,7 @@ add_data_as_dict(File, ExisingDictList) ->
 -spec init_dicts() -> list('ok' | {'error', 'already_exists'}).
 init_dicts() ->
     (not couch_mgr:db_exists(?KZ_AAA_DICTS_DB)) andalso couch_mgr:db_create(?KZ_AAA_DICTS_DB),
-    case couch_mgr:db_exists(?KZ_AAA_DICTS_DB) of
-        'true' ->
-            Files = filelib:wildcard([code:priv_dir('eradius'), "/*.json"]),
-            {'ok', Results} = couch_mgr:get_results(?KZ_AAA_DICTS_DB, <<"aaa/fetch_system_dicts">>),
-            ExisingDictList = [wh_json:get_value(<<"name">>, wh_json:get_value(<<"value">>, Elem)) || Elem <- Results],
-            [add_data_as_dict(File, ExisingDictList) || File <- Files];
-        _ ->
-            []
-    end.
+    Files = filelib:wildcard([code:priv_dir('eradius'), "/*.json"]),
+    {'ok', Results} = couch_mgr:get_results(?KZ_AAA_DICTS_DB, <<"aaa/fetch_system_dicts">>),
+    ExisingDictList = [wh_json:get_value(<<"key">>, Elem) || Elem <- Results],
+    [add_data_as_dict(File, ExisingDictList) || File <- Files].

@@ -140,7 +140,8 @@ Using Crossbar to work with AAA documents and AAA dictionaries is very simple:
 ## For the AAA documents:
 
 * GET - Gets the current AAA document.
-* PUT - Sets the AAA document.
+* PUT - Create the AAA document.
+* POST - Updates the AAA document.
 * PATCH - Updates the AAA document partially.
 
 ### Account AAA settings URI
