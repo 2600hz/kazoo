@@ -35,6 +35,9 @@
          ,format/2
          ,format_host/2
          ,format_mapping/2
+
+         ,mappings/1
+         ,name/1
         ]).
 
 -include("kz_documents.hrl").
@@ -50,6 +53,8 @@
 -define(KEY_TXT, <<"TXT">>).
 
 -define(KEY_MAPPINGS, <<"mapping">>).
+-define(KEY_NAME, <<"name">>).
+
 -define(DOMAIN_PLACEHOLDER, <<"{{domain}}">>).
 
 -spec new() -> doc().
@@ -296,3 +301,11 @@ format_host(DomainHost, WhitelabelDomain) ->
 -spec format_mapping(ne_binary(), ne_binary()) -> ne_binary().
 format_mapping(Mapping, WhitelabelDomain) ->
     binary:replace(Mapping, ?DOMAIN_PLACEHOLDER, WhitelabelDomain).
+
+-spec mappings(wh_json:object()) -> ne_binaries().
+mappings(JObj) ->
+    wh_json:get_value(?KEY_MAPPINGS, JObj).
+
+-spec name(wh_json:object()) -> api_binary().
+name(JObj) ->
+    wh_json:get_value(?KEY_NAME, JObj).
