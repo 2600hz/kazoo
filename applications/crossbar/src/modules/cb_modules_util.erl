@@ -27,6 +27,8 @@
          ,range_modb_view_options/1, range_modb_view_options/2, range_modb_view_options/3
 
          ,take_sync_field/1
+
+         ,remove_plaintext_password/1
         ]).
 
 -include("../crossbar.hrl").
@@ -531,3 +533,10 @@ take_sync_field(Context) ->
     cb_context:setters(Context, [{fun cb_context:store/3, 'sync', ShouldSync}
                                  ,{fun cb_context:set_doc/2, CleansedDoc}
                                 ]).
+
+%% @public
+-spec remove_plaintext_password(cb_context:context()) -> cb_context:context().
+remove_plaintext_password(Context) ->
+    Doc = cb_context:doc(Context),
+    NewDoc = wh_json:delete_key(<<"confirm_password">>, Doc),
+    cb_context:set_doc(Context, NewDoc).

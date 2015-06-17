@@ -275,7 +275,7 @@ post(Context, _) ->
     _ = crossbar_util:maybe_refresh_fs_xml('user', Context),
     Context1 = cb_modules_util:take_sync_field(Context),
     _ = provisioner_util:maybe_sync_sip_data(Context1, 'user'),
-    Context2 = crossbar_doc:save(Context1),
+    Context2 = crossbar_doc:save(cb_modules_util:remove_plaintext_password(Context1)),
     case cb_context:resp_status(Context2) of
         'success' ->
             _ = maybe_update_devices_presence(Context2),
