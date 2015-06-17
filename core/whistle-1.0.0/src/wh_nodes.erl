@@ -673,6 +673,7 @@ whapp_info_to_json(#whapp_info{startup=Start}) ->
         [{<<"Startup">>, Start}]
        )).
 
+-spec get_zone() -> atom().
 get_zone() ->
     case wh_config:get(wh_config:get_node_section_name(), 'zone') of
         [Zone] -> Zone;
@@ -695,7 +696,7 @@ get_zone(JObj, #state{zones=Zones}) ->
     end.
 
 
--spec get_zone() -> atom().
+-spec local_zone() -> atom().
 local_zone() ->
     case get('amqp_zone') of
         'undefined' -> Zone = gen_server:call(?MODULE, 'zone'),
