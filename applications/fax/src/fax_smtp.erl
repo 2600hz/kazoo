@@ -644,10 +644,9 @@ add_fax_document(#state{docs=Docs
 process_message(<<"multipart">>, <<"mixed">>, _Headers, _Parameters, Body, #state{errors=Errors}=State) ->
     lager:debug("processing multipart/mixed"),
     case Body of
-        {Type, SubType, HeadersPart, ParametersPart, BodyPart} ->
+        {Type, SubType, _HeadersPart, ParametersPart, BodyPart} ->
             lager:debug("processing ~s/~s", [Type, SubType]),
-            process_part(<<Type/binary, "/", SubType/binary>>
-                         ,HeadersPart
+            maybe_process_part(<<Type/binary, "/", SubType/binary>>
                          ,ParametersPart
                          ,BodyPart
                          ,State
@@ -670,90 +669,144 @@ process_parts([], #state{filename='undefined'
     {'ok', State#state{errors=[<<"no valid attachment">> | Errors]}};
 process_parts([], State) ->
     {'ok', State};
-process_parts([{Type, SubType, Headers, Parameters, BodyPart}
+process_parts([{Type, SubType, _Headers, Parameters, BodyPart}
                |Parts
               ], State) ->
     {_ , NewState}
-        = process_part(<<Type/binary, "/", SubType/binary>>
-                       ,Headers
+        = maybe_process_part(<<Type/binary, "/", SubType/binary>>
                        ,Parameters
                        ,BodyPart
                        ,State
                       ),
     process_parts(Parts, NewState).
 
--spec process_part(ne_binary(), wh_proplist(), wh_proplist(), binary() | mimemail:mimetuple(), state()) ->
+-spec maybe_process_part(ne_binary(), wh_proplist(), binary() | mimemail:mimetuple(), state()) ->
                           {'ok', state()}.
-process_part(<<"application/pdf">>=CT, _Headers, _Parameters, Body, State) ->
-    lager:debug("part is application/pdf"),
-    Filename = <<"/tmp/email_attachment_", (wh_util:to_binary(wh_util:current_tstamp()))/binary, ".pdf">>,
-    'ok' = write_file(Filename, Body),
-    {'ok', State#state{filename=Filename
-                       ,content_type=CT
-                      }};
-process_part(<<"image/tiff">>=CT, _Headers, _Parameters, Body, State) ->
-    lager:debug("Part is image/tiff"),
-    Filename = <<"/tmp/email_attachment_", (wh_util:to_binary(wh_util:current_tstamp()))/binary, ".tiff">>,
-    'ok' = write_file(Filename, Body),
-    {'ok', State#state{filename=Filename
-                       ,content_type=CT
-                      }};
-process_part(<<"application/octet-stream">>, _Headers, Parameters, Body, State) ->
-    lager:debug("part is application/octet-stream, try check attachemnt filename extension"),
+maybe_process_part(<<"application/octet-stream">>, Parameters, Body, State) ->
+    lager:debug("part is application/octet-stream, try check attachment filename extension"),
     case props:get_value(<<"disposition">>, Parameters) of
         <<"attachment">> ->
-            Props = props:get_value(<<"disposition-params">>, Parameters),
-            maybe_process_part_attachment(Props, Body, State);
+            Props = props:get_value(<<"disposition-params">>, Parameters, []),
+            Filename = wh_util:to_lower_binary(props:get_value(<<"filename">>, Props, <<>>)),
+            Ext = filename:extension(Filename),
+            CT = fax_util:extension_to_content_type(Ext),
+            maybe_process_part(CT, Parameters, Body, State);
          _Else ->
             lager:debug("part is not attachment"),
             {'ok', State}
     end;
-process_part(_ContentType, _Headers, _Parameters, _Body, State) ->
-    lager:debug("ignoring Part ~s",[_ContentType]),
-    {'ok', State}.
-
--spec write_file(ne_binary(), binary() | mimemail:mimetuple()) -> 'ok'.
-write_file(Filename, Body) ->
-    case file:write_file(Filename, Body) of
-        'ok' -> 'ok';
-        {'error', _}=_Error ->
-            lager:debug("error writing file ~s : ~p", [Filename, _Error])
-    end.
-
--spec maybe_process_part_attachment(wh_proplist(), iolist(), state()) -> {'ok', state()}.
-maybe_process_part_attachment(Props, Body, State) ->
-    case props:get_value(<<"filename">>, Props) of
-        'undefined' ->
-            lager:debug("attachment without filename"),
-            {'ok', State};
-        Filename -> process_part_attachment(Filename, Body, State)
-    end.
-
--spec process_part_attachment(ne_binary(), iolist(), state()) -> {'ok', state()}.
-process_part_attachment(AttchFilename, Body, State) ->
-    case filename:extension(wh_util:to_lower_binary(AttchFilename)) of
-        <<".pdf">> ->
-            lager:debug("found pdf filename extension, set content-type to application/pdf"),
-            Filename = <<"/tmp/email_attachment_", (wh_util:to_binary(wh_util:current_tstamp()))/binary, ".pdf">>,
-            'ok' = write_file(Filename, Body),
-            {'ok', State#state{filename=Filename
-                               ,content_type = <<"application/pdf">>
-                              }};
-        <<".tiff">> ->
-            lager:debug("found tiff filename extension, set content-type to image/tiff"),
-            Filename = <<"/tmp/email_attachment_", (wh_util:to_binary(wh_util:current_tstamp()))/binary, ".tiff">>,
-            'ok' = write_file(Filename, Body),
-            {'ok', State#state{filename=Filename
-                               ,content_type = <<"image/tiff">>
-                              }};
-        <<".tif">> ->
-            lager:debug("found tif filename extension, set content-type to image/tiff"),
-            Filename = <<"/tmp/email_attachment_", (wh_util:to_binary(wh_util:current_tstamp()))/binary, ".tiff">>,
-            'ok' = write_file(Filename, Body),
-            {'ok', State#state{filename=Filename
-                               ,content_type = <<"image/tiff">>
-                              }};
-        _Else ->
-            lager:debug("not acceptable filename extension ~p", [_Else]),
+maybe_process_part(CT, _Parameters, Body, State) ->
+    case {is_allowed_content_type(CT), CT} of
+        {true, <<"image/", _/binary>>} ->
+            maybe_process_image(CT, Body, State);
+        {true, _} ->
+            process_part(CT, Body, State);
+        _ ->
+            lager:debug("ignoring part ~s", [CT]),
             {'ok', State}
+    end.
+
+-spec process_part(ne_binary(), binary() | mimemail:mimetuple(), state()) -> {'ok', state()}.
+process_part(CT, Body, State) ->
+    lager:debug("part is ~s", [CT]),
+    Extension = fax_util:content_type_to_extension(CT),
+    {'ok', Filename} = write_tmp_file(Extension, Body),
+    {'ok', State#state{filename=Filename
+                       ,content_type=CT
+                      }}.
+
+-spec is_allowed_content_type(ne_binary()) -> boolean().
+is_allowed_content_type(CT) ->
+    AllowedCT = whapps_config:get(?CONFIG_CAT, <<"allowed_content_types">>, ?DEFAULT_ALLOWED_CONTENT_TYPES),
+    DeniedCT = whapps_config:get(?CONFIG_CAT, <<"denied_content_types">>, [{[{<<"prefix">>, <<"image/">>}]}]),
+    AllowedBy = content_type_matched_by(CT, AllowedCT, <<>>),
+    DeniedBy = content_type_matched_by(CT, DeniedCT, <<>>),
+    byte_size(AllowedBy) > byte_size(DeniedBy).
+
+-spec content_type_matched_by(ne_binary(), [ne_binary() | wh_json:object()], binary()) -> binary().
+content_type_matched_by(CT, [CT | _T], _) ->
+    CT;
+content_type_matched_by(CT, [Type | T], GreaterMatch) when is_binary(Type) ->
+    content_type_matched_by(CT, T, GreaterMatch);
+content_type_matched_by(CT, [Type | T], GreaterMatch) ->
+    Matched = content_type_matched_json(CT, Type),
+    case byte_size(Matched) > byte_size(GreaterMatch) of
+        'true' -> content_type_matched_by(CT, T, Matched);
+        'false' -> content_type_matched_by(CT, T, GreaterMatch)
+    end;
+content_type_matched_by(_CT, [], GreaterMatch) ->
+    GreaterMatch.
+
+-spec content_type_matched_json(ne_binary(), wh_json:object()) -> binary().
+content_type_matched_json(CT, Type) ->
+    case wh_json:is_json_object(Type) of
+        'false' -> <<>>;
+        'true' ->
+            content_type_matched_json(CT, Type, <<"type">>)
+    end.
+
+-spec content_type_matched_json(ne_binary(), wh_json:object(), ne_binary()) -> binary().
+content_type_matched_json(CT, Type, <<"type">> = Field) ->
+    case wh_json:get_binary_value(Field, Type) of
+        CT -> CT;
+        _ -> content_type_matched_json(CT, Type, <<"prefix">>)
+    end;
+content_type_matched_json(CT, Type, <<"prefix">> = Field) ->
+    Prefix = wh_json:get_binary_value(Field, Type, <<>>),
+    L = byte_size(Prefix),
+    case {L, CT} of
+        {0, CT} -> <<>>;
+        {_, <<Prefix:L/binary, _/binary>>} -> Prefix;
+        {_, _} -> <<>>
+    end.
+
+-spec maybe_process_image(ne_binary(), binary() | mimemail:mimetyple(), state()) -> {'ok', state()}.
+maybe_process_image(CT, Body, State) ->
+    case whapps_config:get_binary(?CONFIG_CAT, <<"image_min_size">>, <<"700x10">>) of
+        'undefined' ->
+            lager:debug("ignoring part ~s", [CT]),
+            {'ok', State};
+        Size ->
+            maybe_process_image(CT, Body, Size, State)
+    end.
+
+-spec maybe_process_image(ne_binary(), binary() | mimemail:mimetuple(), ne_binary(), state()) -> {'ok', state()}.
+maybe_process_image(CT, Body, Size, State) ->
+    {MinX, MinY} = case re:split(Size, "x") of
+                       [P] -> {wh_util:to_integer(P), wh_util:to_integer(P)};
+                       [X, Y] -> {wh_util:to_integer(X), wh_util:to_integer(Y)}
+                   end,
+    {'ok', NewState = #state{filename = Filename}} = process_part(CT, Body, State),
+    Cmd = io_lib:format(<<"identify -format \"%[fx:w]x%[fx:h]\" ~s">>, [Filename]),
+    [W, H] = re:split(os:cmd(Cmd), "x"),
+    Width = wh_util:to_integer(W),
+    Height = wh_util:to_integer(H),
+    case MinX =< Width andalso MinY =< Height of
+        'true' ->
+            {'ok', NewState};
+        'false' ->
+            lager:debug("ignoring part ~s", [CT]),
+            wh_util:delete_file(Filename),
+            {'ok', State}
+    end.
+
+-spec write_tmp_file(ne_binary(), binary() | mimemail:mimetuple()) ->
+    {'ok', api_binary()}
+    | {'error', any()}.
+-spec write_tmp_file(ne_binary() | 'undefined' , ne_binary(), binary() | mimemail:mimetuple()) ->
+    {'ok', api_binary()}
+    | {'error', any()}.
+write_tmp_file(Extension, Body) ->
+    write_tmp_file('undefined', Extension, Body).
+
+write_tmp_file('undefined', Extension, Body) ->
+    Filename = <<"/tmp/email_attachment_", (wh_util:to_binary(wh_util:current_tstamp()))/binary>>,
+    write_tmp_file(Filename, Extension, Body);
+write_tmp_file(Filename, Extension, Body) ->
+    File = <<Filename/binary, ".", Extension/binary>>,
+    case wh_util:write_file(File, Body) of
+        'ok' -> {'ok', File};
+        {'error', _}=Error ->
+            lager:debug("error writing file ~s : ~p", [Filename, Error]),
+            Error
     end.
