@@ -158,14 +158,14 @@ status() ->
         Nodes = lists:sort(fun(N1, N2) ->
                                    N1#node.node > N2#node.node
                            end, ets:tab2list(?MODULE)),
-        print_status(Nodes, wh_util:to_binary(gen_server:call(?MODULE, 'zone')))
+        print_status(Nodes, gen_server:call(?MODULE, 'zone'))
     catch
         {'EXIT', {'badarg', _}} ->
             io:format("status unknown until node is fully initialized, try again in a moment~n", []),
             'no_return'
     end.
 
--spec print_status(wh_nodes(), binary()) -> 'no_return'.
+-spec print_status(wh_nodes(), ne_binary()) -> 'no_return'.
 print_status(Nodes, Zone) ->
     _ = [print_node_status(Node, Zone) || Node <- Nodes],
     'no_return'.
@@ -189,7 +189,9 @@ print_node_status(#node{zone=NodeZone
     io:format("Processes     : ~B~n", [Processes]),
     io:format("Ports         : ~B~n", [Ports]),
 
-    _ = maybe_print_zone(NodeZone, Zone),
+    _ = maybe_print_zone(wh_util:to_binary(NodeZone)
+                         ,wh_util:to_binary(Zone)
+                        ),
 
     io:format("Broker        : ~s~n", [Broker]),
 
@@ -680,7 +682,7 @@ get_zone() ->
         _Else -> 'local'
     end.
 
--spec get_zone(wh_json:object(), nodes_state()) -> ne_binary().
+-spec get_zone(wh_json:object(), nodes_state()) -> atom().
 get_zone(JObj, #state{zones=Zones}) ->
     case wh_json:get_first_defined([<<"Zone">>, <<"AMQP-Broker-Zone">>], JObj) of
         'undefined' ->
@@ -689,7 +691,7 @@ get_zone(JObj, #state{zones=Zones}) ->
                 Broker ->
                     case props:get_value(Broker, Zones) of
                         'undefined' -> 'undefined';
-                        Zone -> Zone
+                        Zone -> wh_util:to_atom(Zone, 'true')
                     end
             end;
         Zone -> wh_util:to_atom(Zone, 'true')
@@ -699,9 +701,10 @@ get_zone(JObj, #state{zones=Zones}) ->
 -spec local_zone() -> atom().
 local_zone() ->
     case get('amqp_zone') of
-        'undefined' -> Zone = gen_server:call(?MODULE, 'zone'),
-                       put('amqp_zone', Zone),
-                       Zone;
+        'undefined' ->
+            Zone = gen_server:call(?MODULE, 'zone'),
+            put('amqp_zone', Zone),
+            Zone;
         Zone -> Zone
     end.
 
@@ -740,7 +743,7 @@ whapp_oldest_node(Whapp) ->
 
 -spec whapp_oldest_node(text(), text() | boolean() | atom()) -> api_integer().
 whapp_oldest_node(Whapp, 'false') ->
-    Zone = wh_util:to_binary(gen_server:call(?MODULE, 'zone')),
+    Zone = gen_server:call(?MODULE, 'zone'),
     MatchSpec = [{#node{whapps='$1'
                         ,node='$2'
                         ,zone = Zone
