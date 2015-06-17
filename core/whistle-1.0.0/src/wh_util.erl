@@ -58,6 +58,7 @@
 -export([uri_encode/1
          ,uri_decode/1
          ,resolve_uri/2
+         ,normalize_amqp_uri/1
         ]).
 
 -export([uri/2]).
@@ -1253,6 +1254,8 @@ make_dir(Filename) ->
             lager:debug("creating directory ~s failed : ~p", [Filename, _E])
     end.
 
+normalize_amqp_uri(URI) ->
+    to_binary(amqp_uri:remove_credentials(to_list(URI))).
 
 -ifdef(TEST).
 

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2014, 2600Hz
+%%% @copyright (C) 2013-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -29,6 +29,7 @@
 -record(state, {parent :: pid()
                 ,broker :: ne_binary()
                 ,self_binary = wh_util:to_binary(pid_to_list(self())) :: ne_binary()
+                ,zone :: ne_binary()
                }).
 
 %%%===================================================================
@@ -74,8 +75,10 @@ init([Parent, Broker]) ->
                 ,[Parent, Broker]
                ),
     wh_amqp_channel:consumer_broker(Broker),
+    Zone = wh_util:to_binary(wh_amqp_connections:broker_zone(Broker)),
     {'ok', #state{parent=Parent
                   ,broker=Broker
+                  ,zone=Zone
                  }}.
 
 %%--------------------------------------------------------------------
@@ -141,6 +144,7 @@ handle_event(_JObj, _State) ->
 handle_event(JObj, BasicDeliver, #state{parent=Parent
                                         ,broker=Broker
                                         ,self_binary=Self
+                                        ,zone=Zone
                                        }) ->
     lager:debug("relaying federated event to ~p with consumer pid ~p",
                 [Parent, Self]
@@ -152,6 +156,7 @@ handle_event(JObj, BasicDeliver, #state{parent=Parent
     gen_listener:federated_event(Parent
                                  ,wh_json:set_values([{<<"Server-ID">>, RemoteServerId}
                                                       ,{<<"AMQP-Broker">>, Broker}
+                                                      ,{<<"AMQP-Broker-Zone">>, Zone}
                                                      ], JObj)
                                  ,BasicDeliver
                                 ),
