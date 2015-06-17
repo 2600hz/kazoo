@@ -63,9 +63,10 @@
                 ,tab :: ets:tid()
                 ,notify_new = sets:new() :: set()
                 ,notify_expire = sets:new() :: set()
-                ,node :: ne_binary()
+                ,node = node() :: atom()
                 ,zone = 'local' :: atom()
                 ,version :: ne_binary()
+                ,zones = [] :: wh_proplist()
                }).
 -type nodes_state() :: #state{}.
 
@@ -82,7 +83,7 @@
                ,whapps = [] :: whapps_info() | '$1' | '_'
                ,media_servers = [] :: media_servers() | '_'
                ,last_heartbeat = wh_util:now_ms(now()) :: pos_integer() | 'undefined' | '$3' | '_'
-               ,zone :: ne_binary() | '_'
+               ,zone :: atom() | 'undefined' | '_'
                ,broker :: api_binary() | '_'
                ,used_memory = 0 :: non_neg_integer() | '_'
                ,processes = 0 :: non_neg_integer() | '_'
@@ -122,7 +123,7 @@ whapp_count(Whapp) ->
 -spec whapp_count(text(), text() | boolean()) -> integer().
 whapp_count(Whapp, 'false') ->
     MatchSpec = [{#node{whapps='$1'
-                        ,zone = <<"local">>
+                        ,zone = local_zone()
                         ,_ = '_'
                        }
                   ,[{'=/=', '$1', []}]
@@ -293,9 +294,7 @@ init([]) ->
                 ," - "
                 ,(wh_util:to_binary(erlang:system_info('otp_release')))/binary
               >>,
-    {'ok', State#state{node=wh_util:to_binary(node())
-                       ,version=Version
-                      }}.
+    {'ok', State#state{version=Version}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -341,7 +340,7 @@ handle_cast({'advertise', JObj}, #state{tab=Tab}=State) ->
             'true' -> spawn(fun() -> notify_new(Node#node.node, State) end);
             'false' -> ets:insert(Tab, Node)
         end,
-    {'noreply', State};
+    {'noreply', maybe_add_zone(Node, State)};
 handle_cast({'gen_listener', {'created_queue', _}}
             ,#state{heartbeat_ref='undefined'}=State) ->
     Reference = erlang:make_ref(),
@@ -382,15 +381,15 @@ handle_info('expire_nodes', #state{tab=Tab}=State) ->
 handle_info({'heartbeat', Ref}, #state{heartbeat_ref=Ref
                                        ,tab=Tab
                                       }=State) ->
-    _ = ets:insert(Tab, create_node('undefined', State)),
     Heartbeat = ?HEARTBEAT,
+    Reference = erlang:make_ref(),
     try create_node(Heartbeat, State) of
         Node ->
+            _ = ets:insert(Tab, Node),
             wapi_nodes:publish_advertise(advertise_payload(Node))
     catch
         _:_ -> 'ok'
     end,
-    Reference = erlang:make_ref(),
     _ = erlang:send_after(Heartbeat, self(), {'heartbeat', Reference}),
     {'noreply', State#state{heartbeat_ref=Reference}};
 handle_info({'DOWN', Ref, 'process', Pid, _}, #state{notify_new=NewSet
@@ -428,7 +427,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, #state{node=Node}) ->
-    {'reply', [{'node', Node}]}.
+    {'reply', [{'node', wh_util:to_binary(Node)}]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -454,7 +453,6 @@ terminate(_Reason, _State) ->
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
-
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
@@ -463,12 +461,12 @@ create_node(Heartbeat, #state{zone=Zone
                               ,version=Version
                              }) ->
     maybe_add_whapps_data(#node{expires=Heartbeat
-                                ,broker=wh_amqp_connections:primary_broker()
+                                ,broker=wh_util:normalize_amqp_uri(wh_amqp_connections:primary_broker())
                                 ,used_memory=erlang:memory('total')
                                 ,processes=erlang:system_info('process_count')
                                 ,ports=length(erlang:ports())
                                 ,version=Version
-                                ,zone=wh_util:to_binary(Zone)
+                                ,zone=Zone
                                }).
 
 -spec maybe_add_whapps_data(wh_node()) -> wh_node().
@@ -558,7 +556,7 @@ advertise_payload(Node) ->
        ,{<<"Version">>, Node#node.version}
        ,{<<"Channels">>, Node#node.channels}
        ,{<<"Registrations">>, Node#node.registrations}
-       ,{<<"Zone">>, Node#node.zone}
+       ,{<<"Zone">>, wh_util:to_binary(Node#node.zone)}
        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
 
@@ -635,17 +633,33 @@ get_zone() ->
     end.
 
 -spec get_zone(wh_json:object(), nodes_state()) -> ne_binary().
-get_zone(JObj, #state{zone=Zone}) ->
-    DefaultZone = wh_util:to_binary(Zone),
-    wh_json:get_first_defined([<<"Zone">>, <<"AMQP-Broker-Zone">>], JObj, DefaultZone).
+get_zone(JObj, #state{zones=Zones}) ->
+    case wh_json:get_first_defined([<<"Zone">>, <<"AMQP-Broker-Zone">>], JObj) of
+        'undefined' ->
+            case wh_json:get_value(<<"AMQP-Broker">>, JObj) of
+                'undefined' -> 'undefined';
+                Broker ->
+                    case props:get_value(Broker, Zones) of
+                        'undefined' -> 'undefined';
+                        Zone -> Zone
+                    end
+            end;
+        Zone -> wh_util:to_atom(Zone, 'true')
+    end.
+    
 
 -spec get_zone() -> atom().
 local_zone() ->
-    gen_server:call(?MODULE, 'zone').
+    case get('amqp_zone') of
+        'undefined' -> Zone = gen_server:call(?MODULE, 'zone'),
+                       put('amqp_zone', Zone),
+                       Zone;
+        Zone -> Zone
+    end.
 
 -spec get_amqp_broker(api_binary() | wh_json:object()) -> api_binary().
 get_amqp_broker('undefined') ->
-    wh_amqp_connections:primary_broker();
+    wh_util:normalize_amqp_uri(wh_amqp_connections:primary_broker());
 get_amqp_broker(Broker) when is_binary(Broker) -> Broker;
 get_amqp_broker(JObj) ->
     get_amqp_broker(wh_json:get_ne_value(<<"AMQP-Broker">>, JObj)).
@@ -704,7 +718,7 @@ whapp_oldest_node(Whapp, Zone)
   when is_atom(Zone) ->
     MatchSpec = [{#node{whapps='$1'
                         ,node='$2'
-                        ,zone = wh_util:to_binary(Zone)
+                        ,zone = Zone
                         ,_ = '_'
                        }
                   ,[{'=/=', '$1', []}]
@@ -738,3 +752,12 @@ determine_whapp_oldest_node_fold({Whapps, Node}, {_, Startup}=Acc, Whapp) ->
           when Start =< Startup -> {Node, Start};
         _ -> Acc
     end.
+
+maybe_add_zone(#node{zone='undefined'}, #state{}=State) -> State;
+maybe_add_zone(#node{zone=Zone, broker=B}, #state{zones=Zones}=State) ->
+    Broker = wh_util:normalize_amqp_uri(B),
+    case props:get_value(Broker, Zones) of
+        'undefined' -> State#state{zones=[{Broker, Zone} | Zones]};
+        _ -> State
+    end.
+
