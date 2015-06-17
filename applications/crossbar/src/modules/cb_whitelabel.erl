@@ -433,7 +433,13 @@ system_domains() ->
 -spec edit_domains(cb_context:context()) -> cb_context:context().
 edit_domains(Context) ->
     %% set system_config JSON to request body
-    Context.
+    Domains = cb_context:req_data(Context),
+    case kzd_domains:save(Domains) of
+        {'error', Errors} ->
+            cb_context:failed(Context, Errors);
+        {'ok', SavedDomains} ->
+            crossbar_util:response(SavedDomains, Context)
+    end.
 
 -spec test_account_domains(cb_context:context()) -> cb_context:context().
 test_account_domains(Context) ->
