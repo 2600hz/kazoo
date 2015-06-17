@@ -34,7 +34,9 @@
                                  ]).
 -define(CB_LIST, <<"notifications/crossbar_listing">>).
 -define(PREVIEW, <<"preview">>).
-
+-define(SMTP_LOG, <<"logs">>).
+-define(CB_LIST_SMTP_LOG, <<"notifications/smtp_log">>).
+       
 -define(MACROS, <<"macros">>).
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".notifications">>).
@@ -107,6 +109,8 @@ authorize(_Context, _AuthAccountId, _Nouns) ->
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
+allowed_methods(?SMTP_LOG) ->
+    [?HTTP_GET];
 allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 allowed_methods(_, ?PREVIEW) ->
@@ -139,6 +143,8 @@ resource_exists(_Id, ?PREVIEW) -> 'true'.
                                     cb_context:context().
 -spec content_types_provided(cb_context:context(), path_token(), http_method()) ->
                                     cb_context:context().
+content_types_provided(Context, ?SMTP_LOG) ->
+    Context;
 content_types_provided(Context, Id) ->
     content_types_provided(Context, kz_notification:db_id(Id), cb_context:req_verb(Context)).
 
@@ -190,6 +196,8 @@ content_type_from_attachment(_Name, Attachment, Acc) ->
     end.
 
 -spec content_types_accepted(cb_context:context(), path_token()) -> cb_context:context().
+content_types_accepted(Context, ?SMTP_LOG) ->
+    Context;
 content_types_accepted(Context, _Id) ->
     content_types_accepted_for_upload(Context, cb_context:req_verb(Context)).
 
@@ -219,6 +227,8 @@ content_types_accepted_for_upload(Context, _Verb) ->
 validate(Context) ->
     validate_notifications(Context, cb_context:req_verb(Context)).
 
+validate(Context, ?SMTP_LOG) ->
+    load_smtp_log(Context);
 validate(Context, Id) ->
     validate_notification(Context, kz_notification:db_id(Id), cb_context:req_verb(Context)).
 
@@ -1132,3 +1142,19 @@ leak_attachments_fold(_Attachment, Props, Acc) ->
                       ,wh_json:from_list([{<<"length">>, wh_json:get_integer_value(<<"length">>, Props)}])
                       ,Acc
                      ).
+
+-spec load_smtp_log(cb_context:context()) -> cb_context:context().
+load_smtp_log(Context) ->
+    case cb_modules_util:range_modb_view_options(Context) of
+        {'ok', ViewOptions} ->
+            crossbar_doc:load_view(?CB_LIST_SMTP_LOG
+                                   ,['include_docs' | ViewOptions]
+                                   ,Context
+                                   ,fun normalize_view_results/2
+                                  );
+        Ctx -> Ctx
+    end.
+
+-spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+normalize_view_results(JObj, Acc) ->
+    [wh_json:get_value(<<"doc">>, JObj)|Acc].

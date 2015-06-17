@@ -206,6 +206,7 @@ process_req(DataJObj, Templates) ->
                ,?MOD_CONFIG_CAT
               ),
 
+    put('skip_smtp_log', 'true'),
     case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
