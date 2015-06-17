@@ -1013,9 +1013,11 @@ delete_system_media_references(DocId, CallResponsesDoc) ->
             'ok'
     end.
 
--spec remove_system_media_refs(wh_json:key(), wh_json:json_term()) ->
+-spec remove_system_media_refs(wh_json:key(), [wh_json:object()]) ->
                                       {wh_json:key(), wh_json:json_term()}.
-remove_system_media_refs(HangupCause, Config) ->
+remove_system_media_refs(HangupCause, Config0) ->
+    %% Ignore non-objects (backwards compatibility)
+    Config = [E || E <- Config0, wh_json:is_json_object(E)],
     {HangupCause
      ,wh_json:foldl(fun remove_system_media_ref/3, wh_json:new(), Config)
     }.
