@@ -168,12 +168,12 @@ status() ->
             'no_return'
     end.
 
--spec print_status(wh_nodes(), ne_binary()) -> 'no_return'.
+-spec print_status(wh_nodes(), atom()) -> 'no_return'.
 print_status(Nodes, Zone) ->
     _ = [print_node_status(Node, Zone) || Node <- Nodes],
     'no_return'.
 
--spec print_node_status(wh_node(), ne_binary()) -> 'ok'.
+-spec print_node_status(wh_node(), atom()) -> 'ok'.
 print_node_status(#node{zone=NodeZone
                         ,node=N
                         ,version=Version
