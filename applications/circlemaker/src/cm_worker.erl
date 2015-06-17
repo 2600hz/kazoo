@@ -94,12 +94,12 @@ maybe_aaa_mode(JObj, AccountId) when is_binary(AccountId) ->
             {'ok', 'aaa_mode_off'};
         <<"on">> ->
             % AAA functionality is on for this account
-            ParentAccountId = cm_util:parent_account_id(AccountDb),
+            ParentAccountId = cm_util:parent_account_id(Account),
             Result = maybe_suitable_servers(JObj, AaaDoc, AAAProtocol, ParentAccountId),
             {'ok', Result};
         <<"inherit">> ->
             % AAA functionality is in the 'inherit' mode for this account
-            ParentAccountId = cm_util:parent_account_id(AccountDb),
+            ParentAccountId = cm_util:parent_account_id(Account),
             Result = maybe_suitable_servers(JObj, AaaDoc, AAAProtocol, ParentAccountId),
             {'ok', Result}
     end.
