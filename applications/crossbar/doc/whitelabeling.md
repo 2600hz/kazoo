@@ -122,3 +122,21 @@ To set the system domains object, the API is:
     -d '{"data":{DOMAINS_OBJECT}}'
 
 Where `{DOMAINS_OBJECT}` is the JSON. If you look at the [default domains fixture](https://github.com/2600hz/kazoo/branch/master/core/kazoo_documents/priv/fixtures/domains.json) for a good base JSON object to modify to your needs.
+
+If you receive a 400 when POSTing with a response like:
+
+    {"auth_token": "{AUTH_TOKEN}",
+     "data": {
+         "domains": {
+             "required": {
+                 "message": "The domains schema is missing, unable to validate request"
+             }
+         }
+     },
+     "error": "400",
+     "message": "invalid data",
+     "request_id": "{REQUEST_ID}",
+     "status": "error"
+    }
+
+You will need to run `sup whapps_maintenance refresh system_schemas` to ensure the `domains` schema is available.
