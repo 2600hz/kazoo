@@ -235,7 +235,7 @@ maybe_print_media_servers(#node{media_servers=MediaServers
             io:format("Channels      : ~B~n", [Channels]),
             io:format("Registrations : ~B~n", [Registrations]),
             print_media_server(Server, ?MEDIA_SERVERS_HEADER),
-            [print_media_server(OtherServer) || OtherServer <- Servers],
+            _ =[print_media_server(OtherServer) || OtherServer <- Servers],
             'ok'
     end.
 
