@@ -1,111 +1,125 @@
 {
-  "_id": "aaa",
-  "$schema": "http://json-schema.org/draft-03/schema#",
-  "type": "object",
-  "required": true,
-  "name": "AAA configuration",
-  "description": "Schema for an AAA configuration",
-  "properties": {
-    "aaa_mode": {
-      "type": "string",
-      "required": false,
-      "name": "AAA mode",
-      "description": "AAA mode for this account uses to enable/disable AAA features",
-      "enum": [
-        "off",
-        "on",
-        "inherit"
-      ],
-      "default": "off"
-    },
-    "servers": {
-      "type": "array",
-      "required": true,
-      "name": "AAA servers list",
-      "description": "List of the available AAA servers",
-      "items": {
-        "type": "object",
-        "description": "AAA server entry",
-        "properties": {
-          "enabled": {
-            "type": "boolean",
-            "default": false,
-            "description": "Is the server used in AAA operations"
-          },
-          "name": {
-            "type": "string",
-            "required": true,
-            "name": "Server name",
-            "description": "AAA server name which should be unique",
-            "minLength": 1
-          },
-          "address": {
-            "type": "string",
-            "required": true,
-            "name": "Server address",
-            "description": "AAA server address (fully qualified domain name or IP)",
-            "minLength": 3
-          },
-          "port": {
-            "type": "integer",
-            "required": true,
-            "name": "Server port",
-            "description": "AAA server port",
-            "default": 1812
-          },
-          "secret": {
-            "type": "string",
-            "required": true,
-            "name": "Server secret",
-            "description": "Secret string which the AAA server knows",
-            "minLength": 1
-          },
-          "aaa_engine": {
-            "type": "string",
-            "required": false,
-            "name": "AAA engine",
-            "description": "Engine (protocol) which is used by AAA features",
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "aaa",
+    "description": "Schema for an AAA configuration",
+    "name": "AAA configuration",
+    "properties": {
+        "aaa_mode": {
+            "default": "off",
+            "description": "AAA mode for this account uses to enable/disable AAA features",
             "enum": [
-              "radius",
-              "diameter"
+                "off",
+                "on",
+                "inherit"
             ],
-            "default": "radius"
-          },
-          "dicts": {
-            "type": "array",
-            "name": "Dictionary name list",
-            "description": "List of all dictionaries from aaa_dicts database (all names should be unique)",
+            "name": "AAA mode",
+            "required": false,
+            "type": "string"
+        },
+        "servers": {
+            "description": "List of the available AAA servers",
             "items": {
-              "type": "string"
-            }
-          },
-          "avp": {
-            "type": "string",
-            "required": false,
-            "name": "AVP checking",
-            "description": "AVP strict checking using available dictionaries or any user's AVPs can be acceptable",
-            "enum": [
-              "strict",
-              "custom"
-            ],
-            "default": "strict"
-          },
-          "retries": {
-            "type": "integer",
+                "description": "AAA server entry",
+                "properties": {
+                    "aaa_engine": {
+                        "default": "radius",
+                        "description": "Engine (protocol) which is used by AAA features",
+                        "enum": [
+                            "radius",
+                            "diameter"
+                        ],
+                        "name": "AAA engine",
+                        "required": false,
+                        "type": "string"
+                    },
+                    "address": {
+                        "description": "AAA server address (fully qualified domain name or IP)",
+                        "minLength": 3,
+                        "name": "Server address",
+                        "required": true,
+                        "type": "string"
+                    },
+                    "avp": {
+                        "default": "strict",
+                        "description": "AVP strict checking using available dictionaries or any user's AVPs can be acceptable",
+                        "enum": [
+                            "strict",
+                            "custom"
+                        ],
+                        "name": "AVP checking",
+                        "required": false,
+                        "type": "string"
+                    },
+                    "dicts": {
+                        "description": "List of all dictionaries from aaa_dicts database (all names should be unique)",
+                        "items": {
+                            "type": "string"
+                        },
+                        "name": "Dictionary name list",
+                        "type": "array"
+                    },
+                    "enabled": {
+                        "default": false,
+                        "description": "Is the server used in AAA operations",
+                        "type": "boolean"
+                    },
+                    "name": {
+                        "description": "AAA server name which should be unique",
+                        "minLength": 1,
+                        "name": "Server name",
+                        "required": true,
+                        "type": "string"
+                    },
+                    "nas_address": {
+                        "default": 5000,
+                        "description": "Network Access Server address",
+                        "name": "NAS Address",
+                        "required": true,
+                        "type": "string"
+                    },
+                    "nas_port": {
+                        "default": 5000,
+                        "description": "Network Access Server port",
+                        "name": "NAS Port",
+                        "required": true,
+                        "type": "integer"
+                    },
+                    "port": {
+                        "default": 1812,
+                        "description": "AAA server port",
+                        "name": "Server port",
+                        "required": true,
+                        "type": "integer"
+                    },
+                    "retries": {
+                        "default": 5,
+                        "description": "Number of a request retries to the AAA server",
+                        "name": "Number of retries",
+                        "required": true,
+                        "type": "integer"
+                    },
+                    "secret": {
+                        "description": "Secret string which the AAA server knows",
+                        "minLength": 1,
+                        "name": "Server secret",
+                        "required": true,
+                        "type": "string"
+                    },
+                    "timeout": {
+                        "default": 5000,
+                        "description": "Request timeout to the AAA server in milliseconds",
+                        "name": "Request timeout",
+                        "required": true,
+                        "type": "integer"
+                    }
+                },
+                "type": "object"
+            },
+            "name": "AAA servers list",
             "required": true,
-            "name": "Number of retries",
-            "description": "Number of a request retries to the AAA server",
-            "default": 5
-          },
-          "timeout": {
-            "type": "integer",
-            "required": true,
-            "name": "Request timeout",
-            "description": "Request timeout to the AAA server in milliseconds",
-            "default": 5000
-          }
+            "type": "array"
         }
-      }
-    }
-  }
+    },
+    "required": true,
+    "type": "object"
 }

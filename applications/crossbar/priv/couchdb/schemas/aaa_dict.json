@@ -1,122 +1,122 @@
 {
-  "_id": "aaa_dict",
-  "$schema": "http://json-schema.org/draft-03/schema#",
-  "type": "object",
-  "required": true,
-  "name": "AAA dictionary configuration",
-  "description": "Schema for an AAA dictionary",
-  "properties": {
-    "name": {
-      "type": "string",
-      "required": true,
-      "name": "Dictionary name",
-      "description": "Dictionary name, should be unique for an account or system_config DB",
-      "minLength": 1
-    },
-    "owner": {
-      "type": "string",
-      "required": true,
-      "name": "Owner of the dictionary",
-      "description": "ID of the dictionary's owner (account ID value or 'system_config')",
-      "minLength": 1
-    },
-    "value": {
-      "type": "array",
-      "required": true,
-      "name": "List of the AVP",
-      "description": "List of the Attribute-Value pairs",
-      "items": {
-        "type": "object",
-        "description": "AVP entry",
-        "properties": {
-          "val": {
-            "type": "object",
-            "required": false,
-            "description": "Value object",
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "aaa_dict",
+    "description": "Schema for an AAA dictionary",
+    "name": "AAA dictionary configuration",
+    "properties": {
+        "name": {
+            "description": "Dictionary name, should be unique for an account or system_config DB",
+            "minLength": 1,
+            "name": "Dictionary name",
+            "required": true,
+            "type": "string"
+        },
+        "owner": {
+            "description": "ID of the dictionary's owner (account ID value or 'system_config')",
+            "minLength": 1,
+            "name": "Owner of the dictionary",
+            "required": true,
+            "type": "string"
+        },
+        "value": {
+            "description": "List of the Attribute-Value pairs",
             "items": {
-              "type": "object",
-              "properties": {
-                "vid": {
-                  "type": "integer",
-                  "required": false,
-                  "name": "Vendor ID",
-                  "description": "Identificator of the dictionary's vendor which the value belongs to"
+                "description": "AVP entry",
+                "properties": {
+                    "attr": {
+                        "description": "Attribute object",
+                        "items": {
+                            "properties": {
+                                "enc": {
+                                    "description": "Encoding name which used to encode the attribute",
+                                    "minLength": 1,
+                                    "name": "Attribute encoding",
+                                    "required": true,
+                                    "type": "string"
+                                },
+                                "id": {
+                                    "description": "Identificator of the attribute",
+                                    "name": "Attribute ID",
+                                    "required": true,
+                                    "type": "integer"
+                                },
+                                "name": {
+                                    "description": "Name of the attribute",
+                                    "minLength": 1,
+                                    "name": "Attribute name",
+                                    "required": true,
+                                    "type": "string"
+                                },
+                                "type": {
+                                    "description": "Type of the attribute",
+                                    "minLength": 1,
+                                    "name": "Attribute type",
+                                    "required": true,
+                                    "type": "string"
+                                },
+                                "vid": {
+                                    "description": "Identificator of the dictionary's vendor which the attribute belongs to",
+                                    "name": "Vendor ID",
+                                    "required": false,
+                                    "type": "integer"
+                                }
+                            },
+                            "type": "object"
+                        },
+                        "required": false,
+                        "type": "object"
+                    },
+                    "val": {
+                        "description": "Value object",
+                        "items": {
+                            "properties": {
+                                "id": {
+                                    "description": "Identificator of the value",
+                                    "name": "Value ID",
+                                    "required": true,
+                                    "type": "integer"
+                                },
+                                "name": {
+                                    "description": "Value as integer",
+                                    "minLength": 1,
+                                    "name": "Value number",
+                                    "required": true,
+                                    "type": "string"
+                                },
+                                "val": {
+                                    "description": "Value as integer",
+                                    "name": "Value number",
+                                    "required": true,
+                                    "type": "integer"
+                                },
+                                "vid": {
+                                    "description": "Identificator of the dictionary's vendor which the value belongs to",
+                                    "name": "Vendor ID",
+                                    "required": false,
+                                    "type": "integer"
+                                }
+                            },
+                            "type": "object"
+                        },
+                        "required": false,
+                        "type": "object"
+                    },
+                    "ven": {
+                        "description": "Attribute object",
+                        "items": {
+                            "type": "object"
+                        },
+                        "required": false,
+                        "type": "object"
+                    }
                 },
-                "id": {
-                  "type": "integer",
-                  "required": true,
-                  "name": "Value ID",
-                  "description": "Identificator of the value"
-                },
-                "val": {
-                  "type": "integer",
-                  "required": true,
-                  "name": "Value number",
-                  "description": "Value as integer"
-                },
-                "name": {
-                  "type": "string",
-                  "required": true,
-                  "name": "Value number",
-                  "description": "Value as integer",
-                  "minLength": 1
-                }
-              }
-            }
-          },
-          "attr": {
-            "type": "object",
-            "required": false,
-            "description": "Attribute object",
-            "items": {
-              "type": "object",
-              "properties": {
-                "vid": {
-                  "type": "integer",
-                  "required": false,
-                  "name": "Vendor ID",
-                  "description": "Identificator of the dictionary's vendor which the attribute belongs to"
-                },
-                "id": {
-                  "type": "integer",
-                  "required": true,
-                  "name": "Attribute ID",
-                  "description": "Identificator of the attribute"
-                },
-                "type": {
-                  "type": "string",
-                  "required": true,
-                  "name": "Attribute type",
-                  "description": "Type of the attribute",
-                  "minLength": 1
-                },
-                "name": {
-                  "type": "string",
-                  "required": true,
-                  "name": "Attribute name",
-                  "description": "Name of the attribute",
-                  "minLength": 1
-                },
-                "enc": {
-                  "type": "string",
-                  "required": true,
-                  "name": "Attribute encoding",
-                  "description": "Encoding name which used to encode the attribute",
-                  "minLength": 1
-                }
-              }
-            }
-          },
-          "ven": {
-            "type": "object",
-            "required": false,
-            "description": "Attribute object",
-            "items": {
-              "type": "object"
-            }
-          }
+                "type": "object"
+            },
+            "name": "List of the AVP",
+            "required": true,
+            "type": "array"
         }
-      }
-    }
-  }
+    },
+    "required": true,
+    "type": "object"
 }

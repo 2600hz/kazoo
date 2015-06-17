@@ -38,6 +38,7 @@
                            ]).
 -define(OPTIONAL_AUTHN_REQ_HEADERS, [<<"Orig-IP">>, <<"Orig-Port">>, <<"Call-ID">>
                                      ,<<"Switch-Hostname">>
+                                     ,<<"NAS-IP-Address">>, <<"NAS-Port">>
                                      ,<<"Auth-Nonce">>, <<"Auth-Response">>
                                      ,<<"User-Agent">>, <<"Expires">>
                                      ,<<"Custom-SIP-Headers">>, <<"Account-ID">>
@@ -60,6 +61,7 @@
 -define(AUTHN_RESP_HEADERS, [<<"Auth-Password">>, <<"Response-Queue">>, <<"AAA-Result">>]).
 -define(OPTIONAL_AUTHN_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
                                       ,<<"Auth-Username">>, <<"Auth-Nonce">>
+                                      , <<"NAS-IP-Address">>, <<"NAS-Port">>
                                       ,<<"Access-Group">>, <<"Tenant-ID">>, <<"Expires">>
                                       ,<<"Suppress-Unregister-Notifications">>
                                       ,<<"Register-Overwrite-Notify">>

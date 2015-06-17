@@ -457,9 +457,8 @@ get_auth_method(JObj) ->
                               ,<<"password">>
                              ).
 
--spec maybe_auth_method(auth_user(), wh_json:object(), wh_json:object(), ne_binary()) ->
-                               {'ok', auth_user()} |
-                               {'error', any()}.
+-spec maybe_auth_method(auth_user(), wh_json:object(), wh_json:object(), ne_binary()) -> {'ok', auth_user()} |
+                                                                                         {'error', any()}.
 maybe_auth_method(AuthUser, JObj, Req, ?GSM_ANY_METHOD)->
     lager:debug("lookup for a GSM auth method"),
     GsmDoc = wh_json:get_value(<<"gsm">>, JObj),
@@ -486,9 +485,20 @@ maybe_auth_method(AuthUser, JObj, Req, ?GSM_ANY_METHOD)->
                            }
        )
      );
-maybe_auth_method(AuthUser, JObj, _Req, ?ANY_AUTH_METHOD)->
+maybe_auth_method(AuthUser, JObj, _Req, ?ANY_AUTH_METHOD) ->
     AccountDB = get_account_db(JObj),
-    {'ok', AccountDoc} = couch_mgr:open_cache_doc(AccountDB, <<"aaa">>),
+    case couch_mgr:open_cache_doc(AccountDB, <<"aaa">>) of
+        {'ok', AccountDoc} ->
+            maybe_auth_aaa_method(AccountDoc, AuthUser);
+        _ ->
+            {'ok', AuthUser}
+    end.
+
+-spec maybe_auth_aaa_method(wh_json:object(), auth_user()) ->
+                            {'ok', auth_user()} |
+                            {'error', any()} |
+                            {'pending', auth_user()}.
+maybe_auth_aaa_method(AccountDoc, AuthUser) ->
     case wh_json:get_value(<<"aaa_mode">>, AccountDoc) of
         <<"off">> ->
             {'ok', AuthUser};

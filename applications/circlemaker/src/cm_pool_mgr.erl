@@ -12,6 +12,7 @@
 -include("circlemaker.hrl").
 
 -record(state, {workers = [] :: pids()}).
+
 -type pool_mgr_state() :: #state{}.
 -type authn_response() :: {'ok', 'aaa_mode_off'} | {'ok', tuple()}.
 
@@ -26,7 +27,8 @@
          ,start_link/0
          ,send_authn_response/4
          ,send_authn_error/4
-         ,do_request/1]).
+         ,do_request/1
+        ]).
 
 %%%===================================================================
 %%% API
@@ -39,7 +41,6 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    lager:debug(""),
     gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
 
 %%--------------------------------------------------------------------
@@ -49,7 +50,6 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec do_request(wh_json:object()) -> 'ok'.
 do_request(Request) ->
-    lager:debug("Request=~p~n"),
     gen_server:cast(?MODULE, {'request', Request}).
 
 %%--------------------------------------------------------------------
@@ -70,10 +70,6 @@ insert_worker(Worker, State) ->
 remove_worker(Worker, State) ->
     State#state{workers=lists:delete(Worker, State#state.workers)}.
 
-%%%===================================================================
-%%% gen_server callbacks
-%%%===================================================================
-
 %%--------------------------------------------------------------------
 %% @doc
 %% Handler for a response message for AuthN
@@ -92,6 +88,10 @@ send_authn_response(SenderPid, Response, JObj, Self) ->
 send_authn_error(SenderPid, Reason, JObj, Self) ->
     gen_server:cast(SenderPid, {'error', Reason, JObj, Self}).
 
+%%%===================================================================
+%%% gen_server callbacks
+%%%===================================================================
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -100,12 +100,24 @@ send_authn_error(SenderPid, Reason, JObj, Self) ->
 %%--------------------------------------------------------------------
 -spec init([]) -> {'ok', tuple()}.
 init([]) ->
-    lager:debug(""),
     {'ok', #state{}}.
 
-handle_call(Request, _From, State) ->
-    lager:debug("Request=~p~nState=~p~n", [Request, State]),
-    {'reply', {'error', 'not_implemented'}, State, ?CM_TIMEOUT}.
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handling call messages
+%%
+%% @spec handle_call(Request, From, State) ->
+%%                                   {reply, Reply, State} |
+%%                                   {reply, Reply, State, Timeout} |
+%%                                   {noreply, State} |
+%%                                   {noreply, State, Timeout} |
+%%                                   {stop, Reason, Reply, State} |
+%%                                   {stop, Reason, State}
+%% @end
+%%--------------------------------------------------------------------
+handle_call(_Request, _From, State) ->
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -124,9 +136,9 @@ handle_cast({'response', Response, JObj, Worker}, State) ->
     lager:debug("response is ~p", [Response]),
     poolboy:checkin(?WORKER_POOL, Worker),
     Result = case Response of
-                 {'ok', {'ok', {'radius_request', _, 'accept', _, _, _, _, _}}} ->
+                 {'ok', {'radius_request', _, 'accept', _, _, _, _, _}} ->
                      <<"accept">>;
-                 {'ok', {'ok', {'radius_request', _, 'reject', _, _, _, _, _}}} ->
+                 {'ok', {'radius_request', _, 'reject', _, _, _, _, _}} ->
                      <<"reject">>;
                  _ ->
                      <<"error">>
@@ -145,16 +157,44 @@ handle_cast({'error', Response, _JObj, Worker}, State) ->
     poolboy:checkin(?WORKER_POOL, Worker),
     {'noreply', remove_worker(Worker, State), ?CM_TIMEOUT};
 handle_cast(Message, State) ->
-    lager:debug("Message=~p~nState=~p~n", [Message, State]),
+    lager:debug("unexpected message is ~p", [Message]),
     {'noreply', State, ?CM_TIMEOUT}.
 
-handle_info(Info, State) ->
-    lager:debug("Info=~p~nState=~p~n", [Info, State]),
-    {'reply', {'error', 'not_implemented'}, State, ?CM_TIMEOUT}.
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handling all non call/cast messages
+%%
+%% @spec handle_info(Info, State) -> {noreply, State} |
+%%                                   {noreply, State, Timeout} |
+%%                                   {stop, Reason, State}
+%% @end
+%%--------------------------------------------------------------------
+handle_info(_Info, State) ->
+    {'noreply', State}.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function is called by a gen_server when it is about to
+%% terminate. It should be the opposite of Module:init/1 and do any
+%% necessary cleaning up. When it returns, the gen_server terminates
+%% with Reason. The return value is ignored.
+%%
+%% @spec terminate(Reason, State) -> void()
+%% @end
+%%--------------------------------------------------------------------
 terminate(Reason, _State) ->
     lager:debug("Circlemaker worker terminating: ~p", [Reason]).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Convert process state when code is changed
+%%
+%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
+%% @end
+%%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
@@ -173,7 +213,7 @@ dist_workers(JObj, State) ->
     case catch poolboy:checkout(?WORKER_POOL) of
         Worker when is_pid(Worker) ->
             lager:debug("Worker started sucessfully"),
-            gen_server:cast(Worker, {'authn_req', self(), JObj}),
+            cm_worker:send_authn_req(Worker, JObj),
             insert_worker(Worker, State);
         _Else ->
             lager:error("Failed to start a worker"),

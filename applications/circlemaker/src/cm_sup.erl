@@ -58,8 +58,47 @@ start_link() ->
 -spec init([]) -> sup_init_ret().
 init([]) ->
     wh_util:set_startup(),
+    _ = init_sysconfig_circlemaker_doc(),
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
     {'ok', {SupFlags, ?CHILDREN}}.
+
+%% Default AAA document (it's not empty but AAA is not enabled,
+%% so this kind of the document description is helpful for editing)
+-define(DEFAULT_AAA_DOCUMENT,
+    [
+        {<<"aaa_mode">>, <<"off">>},
+        {<<"servers">>, [wh_json:from_list([
+            {<<"enabled">>, 'false'},
+            {<<"name">>, <<"unique_server_name">>},
+            {<<"address">>, <<"127.0.0.1">>},
+            {<<"port">>, 1812},
+            {<<"secret">>, <<"secret_phrase">>},
+            {<<"aaa_engine">>, <<"radius">>},
+            {<<"dicts">>, [
+                <<"dictionary_3gpp">>, <<"dictionary">>
+            ]},
+            {<<"avp">>, <<"strict">>},
+            {<<"retries">>, 3},
+            {<<"timeout">>, 5000}
+        ])]},
+        {<<"authentication">>, [<<"unique_server_name">>]},
+        {<<"authorization">>, [<<"unique_server_name">>]},
+        {<<"accounting">>, [<<"unique_server_name">>]},
+        {<<"workers">>, 5},
+        {<<"nas_address">>, <<"127.0.0.1">>},
+        {<<"nas_port">>, 1812}
+    ]
+).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Apply default 'circlemaker' document to the system_config DB, if it isn't exist.
+%% @end
+%%--------------------------------------------------------------------
+-spec init_sysconfig_circlemaker_doc() -> 'ok'.
+init_sysconfig_circlemaker_doc() ->
+    lists:foreach(fun({Key, Value}) -> whapps_config:get(?APP_NAME, Key, Value) end, ?DEFAULT_AAA_DOCUMENT).
