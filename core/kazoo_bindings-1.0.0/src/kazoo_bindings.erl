@@ -695,9 +695,7 @@ map_processor(Routing, Payload, Bindings) ->
                     ,Acc
                    ) ->
                         case matches(BParts, RoutingParts) of
-                            'false' ->
-                                lager:debug("~s isn't matched by ~p", [Routing, BParts]),
-                                Acc;
+                            'false' -> Acc;
                             'true' ->
                                 lager:debug("matched ~p to ~p", [BParts, RoutingParts]),
                                 [catch Map(Responder)
