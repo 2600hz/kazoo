@@ -216,12 +216,13 @@ save(Domains) ->
             {'error', Errors}
     end.
 
--spec try_save(doc()) -> doc() |
+-spec try_save(doc()) -> {'ok', doc()} |
                          {'error', _}.
 try_save(Domains) ->
     case whapps_config:set_default(<<"whitelabel">>, <<"domains">>, Domains) of
         {'error', _E}=E -> E;
-        _ -> whapps_config:get(<<"whitelabel">>, <<"domains">>)
+        _ ->
+            {'ok', whapps_config:get(<<"whitelabel">>, <<"domains">>)}
     end.
 
 -spec is_valid(doc()) ->
