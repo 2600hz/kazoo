@@ -140,3 +140,96 @@ If you receive a 400 when POSTing with a response like:
     }
 
 You will need to run `sup whapps_maintenance refresh system_schemas` to ensure the `domains` schema is available.
+
+### Testing your domains
+
+Kazoo will attempt to validate your whitelabel settings if you send it a POST to do so:
+
+    curl -v -X POST \
+    -H "Content-Type: application/json" \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    'http://{CROSSBAR_URL}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/domains'
+
+No request body is accepted. The response will look similar to:
+
+    {"auth_token": "{AUTH_TOKEN}",
+     "data": {
+         "A": {
+             "us-central.r1.244.com": {
+                 "actual": [
+                     "{IP_ADDRESS}"
+                 ],
+                 "expected": [
+                     "166.78.105.67"
+                 ]
+             },
+             "us-east.r1.244.com": {
+                 "actual": [
+                     "{IP_ADDRESS}"
+                 ],
+                 "expected": [
+                     "8.36.70.3"
+                 ]
+             },
+             "us-west.r1.244.com": {
+                 "actual": [
+                     "{IP_ADDRESS}"
+                 ],
+                 "expected": [
+                     "8.30.173.3"
+                 ]
+             }
+         },
+         "CNAM": {
+             "api.r1.244.com": {
+                 "actual": [],
+                 "expected": [
+                     "api.zswitch.net"
+                 ]
+             },
+             "portal.r1.244.com": {
+                 "actual": [],
+                 "expected": [
+                     "ui.zswitch.net"
+                 ]
+             }
+         },
+         "MX": {},
+         "NAPTR": {
+             "proxy-central.r1.244.com": {
+                 "actual": [],
+                 "expected": [
+                     "10 100 \"S\" \"SIP+D2U\" \"\" _sip._udp.proxy-central.r1.244.com."
+                 ]
+             },
+             "proxy-east.r1.244.com": {
+                 "actual": [],
+                 "expected": [
+                     "10 100 \"S\" \"SIP+D2U\" \"\" _sip._udp.proxy-east.r1.244.com."
+                 ]
+             },
+             "proxy-west.r1.244.com": {
+                 "actual": [],
+                 "expected": [
+                     "10 100 \"S\" \"SIP+D2U\" \"\" _sip._udp.proxy-west.r1.244.com."
+                 ]
+             }
+         },
+         "SRV": {
+             "_sip._udp.proxy-east.r1.244.com": {
+                 "actual": [],
+                 "expected": [
+                     "10 10 7000 us-east.r1.244.com.",
+                     "15 15 7000 us-central.r1.244.com.",
+                     "20 20 7000 us-west.r1.244.com."
+                 ]
+             }
+         },
+         "TXT": {}
+     },
+     "request_id": "{REQUEST_ID}",
+     "revision": "undefined",
+     "status": "success"
+    }
+
+You should be able to compare your hosts in each DNS type against the expected values configured by the system admin and adjust your DNS settins as appropriate.
