@@ -1,28 +1,122 @@
 {
-    "_id": "aaa_dict",
-    "$schema": "http://json-schema.org/draft-03/schema#",
-    "type": "object",
-    "required": false,
-    "name": "AAA dictionary configuration",
-    "description": "Schema for an AAA dictionary",
-    "properties": {
-        "name": {
-            "type": "string",
-            "required": true,
-            "name": "Dictionary name",
-            "description": "Dictionary name, should be unique for an account or system_config"
-        },
-        "owner": {
-            "type": "string",
-            "required": true,
-            "name": "Owner of the dictionary",
-            "description": "ID of the dictionary's owner"
-        },
-        "value": {
-            "type": "array",
-            "required": true,
-            "name": "List of the AVP",
-            "description": "List of the Attribute-Value pairs"
+  "_id": "aaa_dict",
+  "$schema": "http://json-schema.org/draft-03/schema#",
+  "type": "object",
+  "required": false,
+  "name": "AAA dictionary configuration",
+  "description": "Schema for an AAA dictionary",
+  "properties": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "name": "Dictionary name",
+      "description": "Dictionary name, should be unique for an account or system_config DB",
+      "minLength": 1
+    },
+    "owner": {
+      "type": "string",
+      "required": true,
+      "name": "Owner of the dictionary",
+      "description": "ID of the dictionary's owner (account ID value or 'system_config')",
+      "minLength": 1
+    },
+    "value": {
+      "type": "array",
+      "required": true,
+      "name": "List of the AVP",
+      "description": "List of the Attribute-Value pairs",
+      "items": {
+        "type": "object",
+        "description": "AVP entry",
+        "properties": {
+          "val": {
+            "type": "object",
+            "required": false,
+            "description": "Value object",
+            "items": {
+              "type": "object",
+              "properties": {
+                "vid": {
+                  "type": "integer",
+                  "required": false,
+                  "name": "Vendor ID",
+                  "description": "Identificator of the dictionary's vendor which the value belongs to"
+                },
+                "id": {
+                  "type": "integer",
+                  "required": true,
+                  "name": "Value ID",
+                  "description": "Identificator of the value"
+                },
+                "val": {
+                  "type": "integer",
+                  "required": true,
+                  "name": "Value number",
+                  "description": "Value as integer"
+                },
+                "name": {
+                  "type": "string",
+                  "required": true,
+                  "name": "Value number",
+                  "description": "Value as integer",
+                  "minLength": 1
+                }
+              }
+            }
+          },
+          "attr": {
+            "type": "object",
+            "required": false,
+            "description": "Attribute object",
+            "items": {
+              "type": "object",
+              "properties": {
+                "vid": {
+                  "type": "integer",
+                  "required": false,
+                  "name": "Vendor ID",
+                  "description": "Identificator of the dictionary's vendor which the attribute belongs to"
+                },
+                "id": {
+                  "type": "integer",
+                  "required": true,
+                  "name": "Attribute ID",
+                  "description": "Identificator of the attribute"
+                },
+                "type": {
+                  "type": "string",
+                  "required": true,
+                  "name": "Attribute type",
+                  "description": "Type of the attribute",
+                  "minLength": 1
+                },
+                "name": {
+                  "type": "string",
+                  "required": true,
+                  "name": "Attribute name",
+                  "description": "Name of the attribute",
+                  "minLength": 1
+                },
+                "enc": {
+                  "type": "string",
+                  "required": true,
+                  "name": "Attribute encoding",
+                  "description": "Encoding name which used to encode the attribute",
+                  "minLength": 1
+                }
+              }
+            }
+          },
+          "ven": {
+            "type": "object",
+            "required": false,
+            "description": "Attribute object",
+            "items": {
+              "type": "object"
+            }
+          }
         }
+      }
     }
+  }
 }

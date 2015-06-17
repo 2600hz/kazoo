@@ -39,7 +39,6 @@
 -define(GSM_A3A8_METHOD, <<"gsm_a3a8">>).
 -define(GSM_ROAMING_METHOD, <<"gsm_roaming">>).
 -define(GSM_ANY_METHOD, <<"gsm_", _/binary>>).
--define(AAA_AUTH_METHOD, <<"aaa_method">>).
 -define(ANY_AUTH_METHOD, _ ).
 
 -define(REG_HRL, 'true').

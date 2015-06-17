@@ -6,7 +6,7 @@
       "map": "function(doc) { if (doc.pvt_type != 'aaa_dict' || doc.owner == 'system_config' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name': doc.name, 'owner': doc.owner}); }"
     },
     "fetch_system_dicts": {
-      "map": "function(doc) { if (doc.pvt_type != 'aaa_dict' || doc.owner != 'system_config' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name': doc.name}); }"
+      "map": "function(doc) { if (doc.pvt_type != 'aaa_dict' || doc.owner != 'system_config' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name': doc.name, 'owner': doc.owner}); }"
     }
   }
 }

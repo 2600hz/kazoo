@@ -13,13 +13,32 @@
 
 -record(state, {workers = [] :: list(pid())}).
 -type pool_mgr_state() :: #state{}.
+-type authn_response() :: {'ok', 'aaa_mode_off'} | {'ok', tuple()}.
 
-% TODO: should be part of timeout
 -define(CM_TIMEOUT, 5000).
 
-%% API
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3, start_link/0, do_request/1]).
+-export([init/1
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,terminate/2
+         ,code_change/3
+         ,start_link/0
+         ,send_authn_response/4
+         ,send_authn_error/4
+         ,do_request/1]).
 
+%%%===================================================================
+%%% API
+%%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Starts the server
+%%
+%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
+%% @end
+%%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
     lager:debug(""),
@@ -48,8 +67,35 @@ insert_worker(Worker, State) ->
 remove_worker(Worker, State) ->
     State#state{workers=lists:delete(Worker, State#state.workers)}.
 
-%% Internal API
+%%--------------------------------------------------------------------
+%% @doc
+%% Handler for a response message for AuthN
+%% @end
+%%--------------------------------------------------------------------
+-spec send_authn_response(pid(), authn_response(), wh_json:object(), pid()) -> 'ok'.
+send_authn_response(SenderPid, Response, JObj, Self) ->
+    gen_server:cast(SenderPid, {'response', Response, JObj, Self}).
 
+%%--------------------------------------------------------------------
+%% @doc
+%% Handler for an error message for AuthN
+%% @end
+%%--------------------------------------------------------------------
+-spec send_authn_error(pid(), {'error', 'no_respond'}, wh_json:object(), pid()) -> 'ok'.
+send_authn_error(SenderPid, Reason, JObj, Self) ->
+    gen_server:cast(SenderPid, {'error', Reason, JObj, Self}).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Initializes the server
+%%
+%% @spec init([]) -> {ok, State} |
+%%                     {ok, State, Timeout} |
+%%                     ignore |
+%%                     {stop, Reason}
+%% @end
+%%--------------------------------------------------------------------
 -spec init([]) -> {'ok', tuple()}.
 init([]) ->
     lager:debug(""),
@@ -59,6 +105,16 @@ handle_call(Request, _From, State) ->
     lager:debug("Request=~p~nState=~p~n", [Request, State]),
     {'reply', {'error', 'not_implemented'}, State, ?CM_TIMEOUT}.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handling cast messages
+%%
+%% @spec handle_cast(Msg, State) -> {noreply, State} |
+%%                                  {noreply, State, Timeout} |
+%%                                  {stop, Reason, State}
+%% @end
+%%--------------------------------------------------------------------
 handle_cast({'request', JObj}, State) ->
     lager:debug("JObj:~n~p~nState:~n~p~n", [JObj, State]),
     {'noreply', dist_workers(JObj, State), ?CM_TIMEOUT};

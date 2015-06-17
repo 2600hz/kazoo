@@ -1,7 +1,7 @@
 %% @private
 %% @doc Dictionary server
 -module(eradius_dict).
--export([start_link/0, lookup/1, load_tables/0, lookup_by_name/3]).
+-export([start_link/0, lookup/1, load_tables/0, load_system_tables/0, lookup_by_name/3]).
 -export_type([attribute/0, attr_value/0, table_name/0, attribute_id/0, attribute_type/0,
               attribute_prim_type/0, attribute_encryption/0, vendor_id/0, value_id/0]).
 
@@ -43,11 +43,16 @@ start_link() ->
 lookup(Id) ->
     ets:lookup(?TABLENAME_ID_TO_NAME, Id).
 
--spec lookup_by_name(binary(), 'attribute2' | 'value2' | 'vendor2', binary()) -> [tuple()].
+-spec lookup_by_name(binary(), 'attribute2' | 'value2' | 'vendor2', binary()) -> tuple() | [tuple()] | 'badarg'.
 lookup_by_name(AccountId, Type, Name) when is_binary(AccountId) and is_atom(Type) and is_binary(Name) ->
-    ets:lookup(?TABLENAME_NAME_TO_ID, {AccountId, Type, Name}).
+    try ets:lookup_element(?TABLENAME_NAME_TO_ID, {AccountId, Type, Name}, 2) of
+        Id when is_integer(Id); is_tuple(Id) -> Id;
+        _ -> 'undefined'
+    catch
+        'error' : 'badarg'  ->
+            'undefined'
+    end.
 
-% TODO: need to complete the spec
 -spec load_tables() -> ok.
 load_tables() ->
     gen_server:call(?SERVER, load_tables, infinity).
@@ -74,26 +79,27 @@ code_change(_OldVsn, _NewVsn, _State) -> {ok, state}.
 %% ------------------------------------------------------------------------------------------
 %% -- gen_server callbacks
 
-% TODO: need change the spec
 -spec do_load_tables() -> ok.
 do_load_tables() ->
     {ok, Accounts} = couch_mgr:get_all_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_id">>),
     lists:foreach(fun(JObj) ->
-                        load_account_tables(wh_json:get_value(<<"id">>, JObj))
-                    end, Accounts),
+                      load_account_tables(wh_json:get_value(<<"id">>, JObj))
+                  end, Accounts),
     load_system_tables().
 
 load_account_tables(AccountId) ->
+    lager:debug("prepare to load RADIUS dictionaries for account ~p...", [AccountId]),
     AccountDb = wh_util:format_account_id(AccountId, encoded),
-    {ok, AaaDoc} = couch_mgr:open_doc(AccountDb, <<"aaa">>),
+    {ok, AaaDoc} = couch_mgr:open_cache_doc(AccountDb, <<"aaa">>),
     ServersList = wh_json:get_value(<<"servers">>, AaaDoc),
     DictsList1 = [wh_json:get_value(<<"dicts">>, Server) || Server <- ServersList],
     DictsList = lists:usort(lists:flatten(DictsList1)),
     load_db_tables(AccountId, DictsList, <<"aaa/fetch_dicts">>).
 
 load_system_tables() ->
-    {ok, AaaDoc} = couch_mgr:open_doc(<<"system_config">>, <<"circlemaker">>),
-    ServersList = wh_json:get_value(<<"servers">>, AaaDoc),
+    lager:debug("prepare to load RADIUS dictionaries for system_config account..."),
+    AaaProps = whapps_config:get_all_kvs(<<"circlemaker">>),
+    ServersList = props:get_value(<<"servers">>, AaaProps),
     DictsList1 = [wh_json:get_value(<<"dicts">>, Server) || Server <- ServersList],
     DictsList = lists:usort(lists:flatten(DictsList1)),
     load_db_tables(<<"system_config">>, DictsList, <<"aaa/fetch_system_dicts">>).
@@ -102,14 +108,14 @@ load_db_tables(AccountId, DictList, DesignDoc) ->
     {ok, Dicts} = couch_mgr:get_all_results(?KZ_AAA_DICTS_DB, DesignDoc),
     lists:foreach(fun(Dict) ->
         Value = wh_json:get_value(<<"value">>, Dict),
-        DictName = wh_json:get_value(<<"name">>, Value),
-        Owner = wh_json:get_value(<<"owner">>, Value, <<"system_config">>),
+        DictName = wh_json:get_binary_value(<<"name">>, Value),
+        Owner = wh_json:get_binary_value(<<"owner">>, Value),
         case (AccountId == Owner) and lists:member(DictName, DictList) of
             true ->
-                DictId = wh_json:get_value(<<"id">>, Value),
-                {ok, Doc} = couch_mgr:open_doc(?KZ_AAA_DICTS_DB, DictId),
+                DictId = wh_json:get_binary_value(<<"id">>, Value),
+                {ok, Doc} = couch_mgr:open_cache_doc(?KZ_AAA_DICTS_DB, DictId),
                 process_dict(wh_json:get_value(<<"value">>, Doc), AccountId),
-                lager:info("Loaded RADIUS table ~p for account ~p", [DictName, AccountId]);
+                lager:debug("loaded RADIUS table ~p", [DictName]);
             _ ->
                 []
         end
@@ -130,7 +136,7 @@ process_entry(<<"vendor">>, Val, AccountId) ->
     [VendorName] = wh_json:get_keys(Val),
     VendorId = wh_json:get_integer_value(VendorName, Val),
     Def1 = {vendor, VendorId, binary_to_list(VendorName)},
-    Def2 = {{AccountId, vendor2, binary_to_list(VendorName)}, VendorId},
+    Def2 = {{AccountId, vendor2, VendorName}, VendorId},
     {Def1, Def2};
 process_entry(<<"attr">>, Val, AccountId) ->
     VendorId = wh_json:get_integer_value(<<"vid">>, Val),
@@ -141,9 +147,10 @@ process_entry(<<"attr">>, Val, AccountId) ->
          end,
     Type = wh_json:get_atom_value(<<"type">>, Val),
     AttrName = wh_json:get_string_value(<<"name">>, Val),
-    Enc = wh_json:get_atom_value(<<"enc">>, Val),
-    Def1 = {attribute, Id, Type, AttrName, Enc},
-    Def2 = {{AccountId, attribute2, AttrName}, Id, Type, Enc},
+    Enc = wh_json:get_binary_value(<<"enc">>, Val),
+    Enc1 = wh_util:to_atom(Enc, [<<"no">>, <<"scramble">>, <<"salt_crypt">>]),
+    Def1 = {attribute, Id, Type, AttrName, Enc1},
+    Def2 = {{AccountId, attribute2, list_to_binary(AttrName)}, Id, Type, Enc1},
     {Def1, Def2};
 process_entry(<<"val">>, Val, AccountId) ->
     VendorId = wh_json:get_integer_value(<<"vid">>, Val),
@@ -155,5 +162,5 @@ process_entry(<<"val">>, Val, AccountId) ->
              _ -> {{VendorId, AttrId}, Value}
          end,
     Def1 = {value, Id, ValueName},
-    Def2 = {{AccountId, value2, ValueName}, Id},
+    Def2 = {{AccountId, value2, list_to_binary(ValueName)}, Id},
     {Def1, Def2}.

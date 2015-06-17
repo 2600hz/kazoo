@@ -11,9 +11,8 @@
 
 -include("eradius_lib.hrl").
 
-% TODO: need change the spec
 %% @doc Load RADIUS dictionaries from a certain directory.
--spec load_tables() -> ok | {error, {consult, eradius_dict:table_name()}}.
+-spec load_tables() -> ok.
 load_tables() ->
     eradius_dict:load_tables().
 

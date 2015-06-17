@@ -1,28 +1,26 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz
+%%% @copyright (C) 2011-2015, 2600Hz
 %%% @doc
 %%% Handles AAA (authentication, authorization, accounting) requests, responses, queue bindings 
 %%% @end
 %%% @contributors
-%%%   Vladimir Potapev
+%%%   SIPLABS, LLC (Vladimir Potapev)
 %%%-------------------------------------------------------------------
 -module(wapi_aaa).
 
 -compile({no_auto_import, [error/1]}).
 
 -export([req/1, req_v/1
-    , resp/1, resp_v/1
-    , error/1, error_v/1
-    , bind_q/2, unbind_q/2
-    , declare_exchanges/0
-    , publish_req/1, publish_req/2
-    , publish_resp/2, publish_resp/3
-    , publish_error/2, publish_error/3
-    , get_auth_user/1, get_auth_realm/1
-    , req_event_type/0
-    , get_authn_req_routing/1]).
-
-%%% TODO: All comments should be reviewed and changed according actual code
+         ,resp/1, resp_v/1
+         ,error/1, error_v/1
+         ,bind_q/2, unbind_q/2
+         ,declare_exchanges/0
+         ,publish_req/1, publish_req/2
+         ,publish_resp/2, publish_resp/3
+         ,publish_error/2, publish_error/3
+         ,get_auth_user/1, get_auth_realm/1
+         ,req_event_type/0, resp_event_type/0
+         ,get_authn_req_routing/1]).
 
 -include_lib("whistle/include/wh_api.hrl").
 
@@ -30,17 +28,21 @@
 
 -define(EVENT_CATEGORY, <<"aaa">>).
 -define(AUTHN_REQ_EVENT_NAME, <<"aaa_authn_req">>).
+-define(AUTHN_RESP_EVENT_NAME, <<"aaa_authn_resp">>).
 
 -define(AAA_QUEUE, <<"circlemaker_listener">>). %% correspond to the cm_listener:?QUEUE_NAME
 
 -define(AUTHN_REQ_HEADERS, [<<"To">>, <<"From">>
                             ,<<"Auth-User">>, <<"Auth-Realm">>
+                            ,<<"Method">>
                            ]).
--define(OPTIONAL_AUTHN_REQ_HEADERS, [<<"Method">>, <<"Switch-Hostname">>
-                                     ,<<"Orig-IP">>, <<"Orig-Port">>, <<"Call-ID">>
+-define(OPTIONAL_AUTHN_REQ_HEADERS, [<<"Orig-IP">>, <<"Orig-Port">>, <<"Call-ID">>
+                                     ,<<"Switch-Hostname">>
                                      ,<<"Auth-Nonce">>, <<"Auth-Response">>
                                      ,<<"User-Agent">>, <<"Expires">>
-                                     ,<<"Custom-SIP-Headers">>
+                                     ,<<"Custom-SIP-Headers">>, <<"Account-ID">>
+                                     ,<<"User-Name">>, <<"User-Password">>
+                                     ,<<"Response-Queue">>, <<"AAA-Result">>
                                     ]).
 -define(AUTHN_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                            ,{<<"Event-Name">>, ?AUTHN_REQ_EVENT_NAME}
@@ -55,20 +57,17 @@
                          ]).
 
 %% Authentication Responses
--define(AUTHN_RESP_HEADERS, [<<"Auth-Method">>, <<"Auth-Password">>]).
+-define(AUTHN_RESP_HEADERS, [<<"Auth-Password">>, <<"Response-Queue">>, <<"AAA-Result">>]).
 -define(OPTIONAL_AUTHN_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
                                       ,<<"Auth-Username">>, <<"Auth-Nonce">>
                                       ,<<"Access-Group">>, <<"Tenant-ID">>, <<"Expires">>
                                       ,<<"Suppress-Unregister-Notifications">>
                                       ,<<"Register-Overwrite-Notify">>
+                                      ,<<"User-Name">>, <<"User-Password">>
                                      ]).
 -define(AUTHN_RESP_VALUES, [{<<"Event-Category">>, <<"aaa">>}
                            ,{<<"Event-Name">>, <<"aaa_authn_resp">>}
-                           ,{<<"Auth-Method">>, [<<"password">>, <<"ip">>
-                                                ,<<"a1-hash">>, <<"error">>
-                                                ,<<"gsm">>, <<"nonce">>, <<"a3a8">>
-                                                ]}
-                         ]).
+                           ]).
 -define(AUTHN_RESP_TYPES, [{<<"Auth-Password">>, fun is_binary/1}
                            ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
                            ,{<<"Access-Group">>, fun is_binary/1}
@@ -93,7 +92,7 @@
 req(Prop) when is_list(Prop) ->
         case req_v(Prop) of
             true -> wh_api:build_message(Prop, ?AUTHN_REQ_HEADERS, ?OPTIONAL_AUTHN_REQ_HEADERS);
-            false -> {error, "Proplist failed validation for authn_req"}
+            false -> {error, "Proplist failed validation for AAA authn_req"}
     end;
 req(JObj) ->
     req(wh_json:to_proplist(JObj)).
@@ -117,7 +116,7 @@ req_event_type() ->
 resp(Prop) when is_list(Prop) ->
     case resp_v(Prop) of
         true -> wh_api:build_message(Prop, ?AUTHN_RESP_HEADERS, ?OPTIONAL_AUTHN_RESP_HEADERS);
-        false -> {error, "Proplist failed validation for authn_resp"}
+        false -> {error, "Proplist failed validation for AAA authn_resp"}
     end;
 resp(JObj) ->
     resp(wh_json:to_proplist(JObj)).
@@ -128,6 +127,10 @@ resp_v(Prop) when is_list(Prop) ->
 resp_v(JObj) ->
     resp_v(wh_json:to_proplist(JObj)).
 
+-spec resp_event_type() -> {ne_binary(), ne_binary()}.
+resp_event_type() ->
+    {?EVENT_CATEGORY, ?AUTHN_RESP_EVENT_NAME}.
+
 %%--------------------------------------------------------------------
 %% @doc Authentication Error - see wiki
 %% Takes proplist, creates JSON iolist or error
@@ -137,7 +140,7 @@ resp_v(JObj) ->
 error(Prop) when is_list(Prop) ->
     case error_v(Prop) of
         'true' -> wh_api:build_message(Prop, ?AUTHN_ERR_HEADERS, ?OPTIONAL_AUTHN_ERR_HEADERS);
-        'false' -> {'error', "Proplist failed validation for authn_error"}
+        'false' -> {'error', "Proplist failed validation for AAA authn_error"}
     end;
 error(JObj) -> error(wh_json:to_proplist(JObj)).
 

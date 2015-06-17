@@ -12,21 +12,21 @@
 
 -export([start_link/0]).
 -export([init/1
-    ,handle_call/3
-    ,handle_cast/2
-    ,handle_info/2
-    ,handle_event/2
-    ,terminate/2
-    ,code_change/3
-    ,handle_authn_req/3
-    ,handle_authz_req/3]).
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,handle_event/2
+         ,terminate/2
+         ,code_change/3
+         ,handle_authn_req/2
+         ,handle_authz_req/2]).
 
 -include("circlemaker.hrl").
 -include_lib("rabbitmq_client/include/amqp_client.hrl").
 
 -record(state, {}).
 
--define(RESPONDERS, [{{?MODULE, 'handle_authn_req'}, [{<<"aaa">>, <<"aaa_authn_req">>}]},
+-define(RESPONDERS, [{{?MODULE, 'handle_authn_req'}, [wapi_aaa:req_event_type()]},
                      {{?MODULE, 'handle_authz_req'}, [{<<"aaa">>, <<"aaa_authz_req">>}]}]).
 -define(BINDINGS, [{'aaa', []}
                    ,{'self', []}
@@ -36,10 +36,6 @@
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 -define(SERVER, ?MODULE).
-
--define(SYNC_REQ_HEADERS_ON_AUTHZ, [<<"Account-ID">>, <<"Agent-ID">>]).
--define(SYNC_REQ_VALUES_ON_AUTHZ, [{<<"Event-Category">>, <<"agent">>}, {<<"Event-Name">>, <<"sync_req">>}]).
--define(SYNC_REQ_TYPES_ON_AUTHZ, []).
 
 %%%===================================================================
 %%% API
@@ -61,19 +57,15 @@ start_link() ->
                                                           ,{'consume_options', ?CONSUME_OPTIONS}
                                                          ], []).
 
-%%%===================================================================
-%%% gen_server callbacks
-%%%===================================================================
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% Handle AuthN requests from another process.
 %% @end
 %%--------------------------------------------------------------------
--spec handle_authn_req(wh_json:object(), wh_proplist(), gen_listener:basic_deliver()) -> any().
-handle_authn_req(JObj, Props, A = #'basic.deliver'{'routing_key' = _Key}) ->
-    lager:debug([{'trace', 'true'}], "JObj=~p~nProps=~p~nA=~p~n", [JObj, Props, A]),
+-spec handle_authn_req(wh_json:object(), wh_proplist()) -> any().
+handle_authn_req(JObj, _Props) ->
+    'true' = wapi_aaa:req_v(JObj),
     cm_pool_mgr:do_request(JObj).
 
 %%--------------------------------------------------------------------
@@ -82,17 +74,20 @@ handle_authn_req(JObj, Props, A = #'basic.deliver'{'routing_key' = _Key}) ->
 %% Handle AuthZ requests from another process.
 %% @end
 %%--------------------------------------------------------------------
--spec handle_authz_req(wh_json:object(), wh_proplist(), gen_listener:basic_deliver()) -> any().
-handle_authz_req(JObj, Props, A = #'basic.deliver'{'routing_key' = _Key}) ->
-    lager:debug([{'trace', 'true'}], "JObj=~p~nProps=~p~nA=~p~n", [JObj, Props, A]),
+-spec handle_authz_req(wh_json:object(), wh_proplist()) -> any().
+handle_authz_req(_JObj, _Props) ->
     [].
+
+%%%===================================================================
+%%% gen_server callbacks
+%%%===================================================================
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% Initializes the server
 %%
-%% @spec init(Args) -> {ok, State} |
+%% @spec init([]) -> {ok, State} |
 %%                     {ok, State, Timeout} |
 %%                     ignore |
 %%                     {stop, Reason}
@@ -128,9 +123,6 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'gen_listener', {'created_queue', QueueName}}, State) ->
-    lager:debug([{'trace', 'true'}], "QueueName=~p~n", [QueueName]),
-    {'noreply', State};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
@@ -182,7 +174,3 @@ terminate(_Reason, _State) ->
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
-
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
