@@ -199,7 +199,7 @@ print_node_status(#node{zone=NodeZone
     io:format("~n").
 
 -spec maybe_print_zone(ne_binary(), ne_binary()) -> 'ok'.
-maybe_print_zone(Zone, Zone) ->
+maybe_print_zone(Zone, Zone) when Zone =/= <<"local">> ->
     io:format("Zone          : ~s (local)~n", [Zone]);
 maybe_print_zone(NodeZone, _Zone) ->
     io:format("Zone          : ~s~n", [NodeZone]).
