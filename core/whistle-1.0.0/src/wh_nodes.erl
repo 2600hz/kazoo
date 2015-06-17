@@ -364,14 +364,15 @@ handle_cast({'notify_expire', Pid}, #state{notify_expire=Set}=State) ->
     _ = erlang:monitor('process', Pid),
     {'noreply', State#state{notify_expire=sets:add_element(Pid, Set)}};
 handle_cast({'advertise', JObj}, #state{tab=Tab}=State) ->
-    Node = from_json(JObj, State),
+    #node{node=N}=Node = from_json(JObj, State),
     _ = case ets:insert_new(Tab, Node) of
-            'true' -> spawn(fun() -> notify_new(Node#node.node, State) end);
+            'true' -> spawn(fun() -> notify_new(N, State) end);
             'false' -> ets:insert(Tab, Node)
         end,
     {'noreply', maybe_add_zone(Node, State)};
 handle_cast({'gen_listener', {'created_queue', _}}
-            ,#state{heartbeat_ref='undefined'}=State) ->
+            ,#state{heartbeat_ref='undefined'}=State
+           ) ->
     Reference = erlang:make_ref(),
     erlang:send_after(?HEARTBEAT, self(), {'heartbeat', Reference}),
     {'noreply', State#state{heartbeat_ref=Reference}};
@@ -393,7 +394,9 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info('expire_nodes', #state{tab=Tab}=State) ->
     Now = wh_util:now_ms(now()),
-    FindSpec = [{#node{node='$1', expires='$2', last_heartbeat='$3'
+    FindSpec = [{#node{node='$1'
+                       ,expires='$2'
+                       ,last_heartbeat='$3'
                        ,_ = '_'
                       }
                  ,[{'andalso'
@@ -523,11 +526,14 @@ maybe_add_ecallmgr_data(Node) ->
 
 -spec add_ecallmgr_data(wh_node()) -> wh_node().
 add_ecallmgr_data(#node{whapps=Whapps}=Node) ->
-    Servers = [{wh_util:to_binary(Server),
-                wh_json:set_values(
-                  [{<<"Startup">>, Started}
-                   ,{<<"Interface">>, wh_json:from_list(ecallmgr_fs_node:interface(Server))}
-                  ], wh_json:new())}
+    Servers = [{wh_util:to_binary(Server)
+                ,wh_json:set_values(
+                   [{<<"Startup">>, Started}
+                    ,{<<"Interface">>, wh_json:from_list(ecallmgr_fs_node:interface(Server))}
+                   ]
+                   ,wh_json:new()
+                  )
+               }
                || {Server, Started} <- ecallmgr_fs_nodes:connected('true')
               ],
     Node#node{media_servers=Servers
@@ -574,18 +580,28 @@ is_ecallmgr_present() ->
         andalso whereis('ecallmgr_fs_channels') =/= 'undefined'.
 
 -spec advertise_payload(wh_node()) -> wh_proplist().
-advertise_payload(Node) ->
+advertise_payload(#node{expires=Expires
+                        ,whapps=Whapps
+                        ,media_servers=MediaServers
+                        ,used_memory=UsedMemory
+                        ,processes=Processes
+                        ,ports=Ports
+                        ,version=Version
+                        ,channels=Channels
+                        ,registrations=Registrations
+                        ,zone=Zone
+                       }) ->
     props:filter_undefined(
-      [{<<"Expires">>, wh_util:to_binary(Node#node.expires)}
-       ,{<<"WhApps">>, whapps_to_json(Node#node.whapps) }
-       ,{<<"Media-Servers">>, media_servers_to_json(Node#node.media_servers)}
-       ,{<<"Used-Memory">>, Node#node.used_memory}
-       ,{<<"Processes">>, Node#node.processes}
-       ,{<<"Ports">>, Node#node.ports}
-       ,{<<"Version">>, Node#node.version}
-       ,{<<"Channels">>, Node#node.channels}
-       ,{<<"Registrations">>, Node#node.registrations}
-       ,{<<"Zone">>, wh_util:to_binary(Node#node.zone)}
+      [{<<"Expires">>, wh_util:to_binary(Expires)}
+       ,{<<"WhApps">>, whapps_to_json(Whapps) }
+       ,{<<"Media-Servers">>, media_servers_to_json(MediaServers)}
+       ,{<<"Used-Memory">>, UsedMemory}
+       ,{<<"Processes">>, Processes}
+       ,{<<"Ports">>, Ports}
+       ,{<<"Version">>, Version}
+       ,{<<"Channels">>, Channels}
+       ,{<<"Registrations">>, Registrations}
+       ,{<<"Zone">>, wh_util:to_binary(Zone)}
        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
 
@@ -596,7 +612,9 @@ media_servers_to_json(Servers) ->
 
 -spec media_servers_from_json(wh_json:object()) -> media_servers().
 media_servers_from_json(Servers) ->
-    [{Key, wh_json:get_value(Key, Servers)} || Key <- wh_json:get_keys(Servers)].
+    [{Key, wh_json:get_value(Key, Servers)}
+     || Key <- wh_json:get_keys(Servers)
+    ].
 
 -spec from_json(wh_json:object(), nodes_state()) -> wh_node().
 from_json(JObj, State) ->
@@ -675,7 +693,7 @@ get_zone(JObj, #state{zones=Zones}) ->
             end;
         Zone -> wh_util:to_atom(Zone, 'true')
     end.
-    
+
 
 -spec get_zone() -> atom().
 local_zone() ->
@@ -789,4 +807,3 @@ maybe_add_zone(#node{zone=Zone, broker=B}, #state{zones=Zones}=State) ->
         'undefined' -> State#state{zones=[{Broker, Zone} | Zones]};
         _ -> State
     end.
-
