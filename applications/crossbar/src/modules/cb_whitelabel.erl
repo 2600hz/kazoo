@@ -438,12 +438,31 @@ edit_domains(Context) ->
                   ,Context
                  ),
 
+    lager:debug("saving domains ~p", [Domains]),
+    lager:debug("with pvt fields: ~p", [PvtFields]),
+
     case kzd_domains:save(Domains, PvtFields) of
+        {'error', 'not_found'} ->
+            lager:debug("schema for domains is missing"),
+            missing_schema_error(Context);
         {'error', Errors} ->
+            lager:debug("failed to save with ~p", [Errors]),
             cb_context:failed(Context, Errors);
         {'ok', SavedDomains} ->
+            lager:debug("saved domains: ~p", [SavedDomains]),
             crossbar_util:response(SavedDomains, Context)
     end.
+
+-spec missing_schema_error(cb_context:context()) ->
+                                  cb_context:context().
+missing_schema_error(Context) ->
+    cb_context:add_validation_error(<<"domains">>
+                                    ,<<"required">>
+                                    ,wh_json:from_list(
+                                       [{<<"message">>, <<"The domains schema is missing, unable to validate request">>}]
+                                      )
+                                    ,Context
+                                   ).
 
 -spec test_account_domains(cb_context:context()) -> cb_context:context().
 test_account_domains(Context) ->
