@@ -432,8 +432,11 @@ system_domains() ->
 
 -spec edit_domains(cb_context:context()) -> cb_context:context().
 edit_domains(Context) ->
-    %% set system_config JSON to request body
-    Domains = cb_context:req_data(Context),
+    Domains = crossbar_doc:update_pvt_parameters(
+                cb_context:req_data(Context)
+                ,Context
+               ),
+
     case kzd_domains:save(Domains) of
         {'error', Errors} ->
             cb_context:failed(Context, Errors);
