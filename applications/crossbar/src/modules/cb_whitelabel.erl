@@ -131,7 +131,7 @@ authorize(Context) ->
 -spec authorize(cb_context:context(), req_nouns(), http_method()) -> boolean().
 authorize(Context, [{<<"whitelabel">>, [?DOMAINS_REQ]}], ?HTTP_POST) ->
     %% /{VERSION}/whitelabel/domains retricted to sys-admin account
-    wh_util:is_system_admin(cb_context:auth_account_id(Context));
+    cb_modules_util:is_superduper_admin(Context);
 authorize(_Context, [{<<"whitelabel">>, [_]}], ?HTTP_GET) ->
     'true';
 authorize(_Context, [{<<"whitelabel">>, [_ | [?LOGO_REQ]]}], ?HTTP_GET) ->
@@ -413,9 +413,7 @@ load_domains(Context) ->
     end.
 
 load_domains(Context, SystemDomains) ->
-    %% merge whitelabel.domain into system_config JSON
     Domain = wh_json:get_value(<<"domain">>, cb_context:doc(Context)),
-
     AccountDomains = kzd_domains:format(SystemDomains, Domain),
 
     cb_context:set_resp_data(Context, AccountDomains).
