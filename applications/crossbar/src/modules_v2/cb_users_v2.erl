@@ -323,7 +323,7 @@ patch(Context, _Id) ->
 maybe_update_devices_presence(Context) ->
     DbDoc = cb_context:fetch(Context, 'db_doc'),
     Doc = cb_context:doc(Context),
-    case wh_json:get_value(<<"presence_id">>, DbDoc) =:= wh_json:get_value(<<"presence_id">>, Doc) of
+    case kz_device:presence_id(DbDoc) =:= kz_device:presence_id(Doc) of
         'true' ->
             lager:debug("presence_id did not change, ignoring");
         'false' ->

@@ -348,7 +348,7 @@ settings_feature_keys(JObj) ->
                              api_object().
 get_feature_key(<<"presence">> = Type, Value, Brand, Family, AccountId) ->
     {'ok', UserJObj} = get_user(AccountId, Value),
-    case wh_json:get_value(<<"presence_id">>, UserJObj) of
+    case kz_device:presence_id(UserJObj) of
         'undefined' -> 'undefined';
         Presence ->
             wh_json:from_list(
@@ -367,8 +367,7 @@ get_feature_key(<<"speed_dial">> = Type, Value, Brand, Family, _AccountId) ->
       ]);
 get_feature_key(<<"personal_parking">> = Type, Value, Brand, Family, AccountId) ->
     {'ok', UserJObj} = get_user(AccountId, Value),
-    Presence = wh_json:get_value(<<"presence_id">>, UserJObj),
-    case wh_json:get_value(<<"presence_id">>, UserJObj) of
+    case kz_device:presence_id(UserJObj) of
         'undefined' -> 'undefined';
         Presence ->
             wh_json:from_list(
