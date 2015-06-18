@@ -67,6 +67,8 @@
                                ]).
 
 -define(AGG_VIEW_DESCENDANTS, <<"accounts/listing_by_descendants">>).
+-define(PORT_REQ_NUMBERS, <<"port_requests/port_in_numbers">>).
+-define(ALL_PORT_REQ_NUMBERS, <<"port_requests/all_port_in_numbers">>).
 
 -define(UNFINISHED_PORT_REQUEST_LIFETIME
         ,whapps_config:get_integer(?MY_CONFIG_CAT, <<"unfinished_port_request_lifetime_s">>, ?SECONDS_IN_DAY * 30)
@@ -158,8 +160,6 @@ should_delete_port_request(_) ->
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 
-allowed_methods(?PORT_DESCENDANTS) ->
-    [?HTTP_GET];
 allowed_methods(_Id) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
@@ -209,6 +209,7 @@ resource_exists(_Id, ?PORT_CANCELED) -> 'true';
 resource_exists(_Id, ?PORT_ATTACHMENT) -> 'true';
 resource_exists(_Id, ?PATH_TOKEN_LOA) -> 'true';
 resource_exists(_Id, _Unknown) -> 'false'.
+
 
 resource_exists(_Id, ?PORT_ATTACHMENT, _AttachmentId) -> 'true'.
 
@@ -301,8 +302,6 @@ content_types_accepted(Context, _Id, ?PORT_ATTACHMENT, _AttachmentId) ->
 validate(Context) ->
     validate_port_requests(Context, cb_context:req_verb(Context)).
 
-validate(Context, ?PORT_DESCENDANTS) ->
-    read_descendants(Context);
 validate(Context, Id) ->
     validate_port_request(Context, Id, cb_context:req_verb(Context)).
 
@@ -326,11 +325,30 @@ validate(Context, Id, ?PATH_TOKEN_LOA) ->
 validate(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
     validate_attachment(Context, Id, AttachmentId, cb_context:req_verb(Context)).
 
+-spec validate_port_requests(cb_context:context(), http_method()) ->
+                                    cb_context:context().
 validate_port_requests(Context, ?HTTP_GET) ->
-    summary(Context);
+    validate_get_port_requests(
+      Context
+      ,props:get_value(<<"accounts">>, cb_context:req_nouns(Context))
+      ,cb_context:req_value(Context, <<"by_number">>)
+     );
 validate_port_requests(Context, ?HTTP_PUT) ->
     create(Context).
 
+-spec validate_get_port_requests(cb_context:context(), path_tokens(), api_binary()) ->
+                                        cb_context:context().
+validate_get_port_requests(Context, [_AccountId], 'undefined') ->
+    summary(Context);
+validate_get_port_requests(Context, [_AccountId], ByNumber) ->
+    summary_by_number(Context, ByNumber);
+validate_get_port_requests(Context, [_AccountId, ?PORT_DESCENDANTS], 'undefined') ->
+    read_descendants(Context);
+validate_get_port_requests(Context, [_AccountId, ?PORT_DESCENDANTS], ByNumber) ->
+    read_descendants_by_number(Context, ByNumber).
+
+-spec validate_port_request(cb_context:context(), ne_binary(), http_method()) ->
+                                   cb_context:context().
 validate_port_request(Context, Id, ?HTTP_GET) ->
     read(Context, Id);
 validate_port_request(Context, Id, ?HTTP_POST) ->
@@ -338,6 +356,8 @@ validate_port_request(Context, Id, ?HTTP_POST) ->
 validate_port_request(Context, Id, ?HTTP_DELETE) ->
     is_deletable(crossbar_doc:load(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB))).
 
+-spec validate_port_request(cb_context:context(), ne_binary(), ne_binary(), http_method()) ->
+                                   cb_context:context().
 validate_port_request(Context, Id, ?PORT_SUBMITTED, ?HTTP_POST) ->
     maybe_move_state(Context, Id, ?PORT_SUBMITTED);
 validate_port_request(Context, Id, ?PORT_PENDING, ?HTTP_POST) ->
@@ -716,6 +736,86 @@ summary(Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec summary_by_number(cb_context:context(), ne_binary()) ->
+                               cb_context:context().
+summary_by_number(Context, Number) ->
+    ViewOptions = [{'keys', build_keys(Context, Number)}
+                   ,'include_docs'
+                  ],
+    crossbar_doc:load_view(
+      ?ALL_PORT_REQ_NUMBERS
+      ,ViewOptions
+      ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
+      ,fun normalize_view_results/2
+     ).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec read_descendants_by_number(cb_context:context(), ne_binary()) ->
+                                        cb_context:context().
+read_descendants_by_number(Context, Number) ->
+    ViewOptions = [{'keys', build_keys(Context, Number)}
+                   ,'include_docs'
+                  ],
+    crossbar_doc:load_view(
+      ?ALL_PORT_REQ_NUMBERS
+      ,ViewOptions
+      ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
+      ,fun normalize_view_results/2
+     ).
+
+-type descendant_keys() :: [ne_binaries(),...] | [].
+
+-spec build_keys(cb_context:context(), ne_binary()) ->
+                        descendant_keys().
+build_keys(Context, Number) ->
+    build_keys_from_account(
+      wnm_util:to_e164(Number)
+      ,props:get_value(<<"accounts">>, cb_context:req_nouns(Context))
+     ).
+
+-spec build_keys_from_account(ne_binary(), ne_binaries()) ->
+                                     descendant_keys().
+build_keys_from_account(E164, [AccountId]) ->
+    [[AccountId, E164]];
+build_keys_from_account(E164, [AccountId, ?PORT_DESCENDANTS]) ->
+    ViewOptions = [{'startkey', [AccountId]}
+                   ,{'endkey', [AccountId, wh_json:new()]}
+                  ],
+    case couch_mgr:get_results(
+           ?WH_ACCOUNTS_DB
+           ,?AGG_VIEW_DESCENDANTS
+           ,ViewOptions
+          )
+    of
+        {'error', _R} ->
+            lager:error("failed to query view ~p", [_R]),
+            [];
+        {'ok', JObjs} ->
+            lists:foldl(
+              fun(JObj, Acc) ->
+                      build_descendant_key(JObj, Acc, E164)
+              end
+              ,[[AccountId, E164]]
+              ,JObjs
+             )
+    end.
+
+-spec build_descendant_key(wh_json:object(), descendant_keys(), ne_binary()) ->
+                                  descendant_keys().
+build_descendant_key(JObj, Acc, E164) ->
+    [[wh_json:get_value(<<"id">>, JObj), E164]
+     |Acc
+    ].
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(Res, Acc) ->
     [wh_port_request:public_fields(wh_json:get_value(<<"doc">>, Res)) | Acc].
@@ -825,7 +925,7 @@ check_number_portability(PortId, Number, Context) ->
     E164 = wnm_util:to_e164(Number),
     lager:debug("checking ~s(~s) for portability", [E164, Number]),
     PortOptions = [{'key', E164}],
-    case couch_mgr:get_results(?KZ_PORT_REQUESTS_DB, <<"port_requests/port_in_numbers">>, PortOptions) of
+    case couch_mgr:get_results(?KZ_PORT_REQUESTS_DB, ?PORT_REQ_NUMBERS, PortOptions) of
         {'ok', []} -> check_number_existence(E164, Number, Context);
         {'ok', [PortReq]} ->
             check_number_portability(PortId, Number, Context, E164, PortReq);
