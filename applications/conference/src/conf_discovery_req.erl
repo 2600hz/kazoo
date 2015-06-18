@@ -213,7 +213,7 @@ wait_for_creation(Conference, After) ->
 handle_search_resp(JObj, Conference, Call, Srv) ->
     MaxParticipants =  whapps_conference:max_participants(Conference),
     Participants = length(wh_json:get_value(<<"Participants">>, JObj, [])),
-    case (MaxParticipants =/= 0) andalso (Participants >= MaxParticipants) of
+    case MaxParticipants =/= 0 andalso Participants >= MaxParticipants of
         'false' -> add_participant_to_conference(JObj, Conference, Call, Srv);
         'true' ->
             _ = whapps_call_command:b_prompt(<<"conf-max_participants">>, Call),
