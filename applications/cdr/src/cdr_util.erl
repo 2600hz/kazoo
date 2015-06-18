@@ -53,5 +53,5 @@ save_cdr(AccountMODb, Doc, Retries) ->
             save_cdr(AccountMODb, Doc, Retries + 1);
         {'error', 'conflict'} -> 'ok';
         {'error', _E} ->
-            lager:debug("Acocunt MODb Create Error: ~p", [_E])
+            lager:debug("Account MODb Create Error: ~p", [_E])
     end.

@@ -615,16 +615,16 @@ from_jobj(JObj) ->
              ,direction = wh_json:get_value(<<"Call-Direction">>, JObj)
              ,account_id = wh_json:get_value(<<"Account-ID">>, CCVs)
              ,account_billing = AccountBilling
-             ,account_allotment = is_alloment(AccountBilling)
+             ,account_allotment = is_allotment(AccountBilling)
              ,reseller_id = wh_json:get_value(<<"Reseller-ID">>, CCVs)
              ,reseller_billing = ResellerBilling
-             ,reseller_allotment = is_alloment(ResellerBilling)
+             ,reseller_allotment = is_allotment(ResellerBilling)
              ,soft_limit = wh_json:is_true(<<"Soft-Limit">>, JObj)
             }.
 
--spec is_alloment(ne_binary()) -> boolean().
-is_alloment(<<"allotment_", _/binary>>) -> 'true';
-is_alloment(_) -> 'false'.
+-spec is_allotment(ne_binary()) -> boolean().
+is_allotment(<<"allotment_", _/binary>>) -> 'true';
+is_allotment(_) -> 'false'.
 
 -type unique_channel() :: {ne_binary(), api_binary()}.
 -type unique_channels() :: [unique_channel(),...] | [].

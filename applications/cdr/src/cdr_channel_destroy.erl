@@ -98,7 +98,7 @@ update_ccvs_foldl(Key, Value,  {JObj, CCVs}=Acc) ->
 set_doc_id(_, Timestamp, JObj) ->
     CallId = wh_json:get_value(<<"call_id">>, JObj),
     DocId = cdr_util:get_cdr_doc_id(Timestamp, CallId),
-    wh_json:set_value(<<"_id">>, DocId, JObj).
+    wh_doc:set_id(JObj, DocId).
 
 -spec set_call_priority(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
 set_call_priority(_AccountId, _Timestamp, JObj) ->
