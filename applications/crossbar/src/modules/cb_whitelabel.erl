@@ -505,7 +505,6 @@ test_account_domains(Context) ->
 
 test_account_domains(Context, DomainsJObj) ->
     TestResults = wh_json:map(fun test_domains/2, DomainsJObj),
-    lager:debug("test results: ~p", [TestResults]),
     crossbar_util:response(TestResults, Context).
 
 -spec test_domains(ne_binary(), wh_json:object()) ->
