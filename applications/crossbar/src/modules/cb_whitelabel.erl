@@ -393,7 +393,6 @@ file_size(FileJObj) ->
 -spec validate_domains(cb_context:context(), http_method()) ->
                               cb_context:context().
 validate_domains(Context, ?HTTP_GET) ->
-    lager:debug("getting domains for whitelabel"),
     load_domains(Context);
 validate_domains(Context, ?HTTP_POST) ->
     case cb_context:account_id(Context) of
@@ -403,20 +402,47 @@ validate_domains(Context, ?HTTP_POST) ->
 
 -spec load_domains(cb_context:context()) ->
                           cb_context:context().
--spec load_domains(cb_context:context(), wh_json:object()) ->
+-spec load_domains(cb_context:context(), api_binary()) ->
+                          cb_context:context().
+-spec load_domains(cb_context:context(), ne_binary(), wh_json:object()) ->
                           cb_context:context().
 load_domains(Context) ->
-    Context1 = load_whitelabel_meta(Context, ?WHITELABEL_ID),
-    case cb_context:resp_status(Context1) of
-        'success' -> load_domains(Context1, system_domains());
-        _Status -> Context1
+    load_domains(Context, find_domain(Context)).
+
+load_domains(Context, 'undefined') ->
+    missing_domain_error(Context);
+load_domains(Context, Domain) ->
+    load_domains(Context, Domain, system_domains()).
+
+load_domains(Context, Domain, SystemDomains) ->
+    AccountDomains = kzd_domains:format(SystemDomains, Domain),
+    cb_context:set_resp_data(Context, AccountDomains).
+
+-spec missing_domain_error(cb_context:context()) ->
+                                  cb_context:context().
+missing_domain_error(Context) ->
+    cb_context:add_validation_error(<<"domain">>
+                                    ,<<"required">>
+                                    ,wh_json:from_list(
+                                       [{<<"message">>, <<"No domain found to use. Supply one on the request or create one via the whitelabel API">>}]
+                                      )
+                                    ,Context
+                                   ).
+
+-spec find_domain(cb_context:context()) -> api_binary().
+find_domain(Context) ->
+    case cb_context:req_value(Context, <<"domain">>) of
+        'undefined' -> find_existing_domain(Context);
+        Domain -> Domain
     end.
 
-load_domains(Context, SystemDomains) ->
-    Domain = wh_json:get_value(<<"domain">>, cb_context:doc(Context)),
-    AccountDomains = kzd_domains:format(SystemDomains, Domain),
-
-    cb_context:set_resp_data(Context, AccountDomains).
+-spec find_existing_domain(cb_context:context()) -> api_binary().
+find_existing_domain(Context) ->
+    Context1 = load_whitelabel_meta(Context, ?WHITELABEL_ID),
+    case cb_context:resp_status(Context1) of
+        'success' -> wh_json:get_value(<<"domain">>, cb_context:doc(Context1));
+        _Status -> 'undefined'
+    end.
 
 -spec system_domains() -> wh_json:object().
 system_domains() ->
