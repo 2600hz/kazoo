@@ -513,10 +513,6 @@ handle_event(JObj, #state{cf_module_pid=PidRef
                                ,{'cf_event_pids', Others}
                               ]}
             end;
-        {{<<"call_event">>, <<"CHANNEL_DESTROY">>}, CallId} ->
-            {'reply', [{'cf_module_pid', get_pid(PidRef)}
-                       ,{'cf_event_pids', Others}
-                      ]};
         {{<<"call_event">>, <<"usurp_control">>}, CallId} ->
             _ = case whapps_call:custom_channel_var(<<"Fetch-ID">>, Call)
                     =:= wh_json:get_value(<<"Fetch-ID">>, JObj)
@@ -687,7 +683,7 @@ spawn_cf_module(CFModule, Data, Call) ->
 send_amqp_message(API, PubFun, Q) ->
     PubFun(add_server_id(API, Q)).
 
--spec maybe_flag_destroyed(pid(), {api_binary(), api_binary()}) -> any().
+-spec maybe_flag_destroyed(pid(), {api_binary(), api_binary()}) -> 'ok'.
 maybe_flag_destroyed(Srv, {<<"call_event">>, <<"CHANNEL_DESTROY">>}) ->
     gen_listener:cast(Srv, 'flag_destroyed');
 maybe_flag_destroyed(_, _) ->
