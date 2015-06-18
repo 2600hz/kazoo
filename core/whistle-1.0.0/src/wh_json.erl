@@ -334,7 +334,7 @@ all(Pred, ?JSON_WRAPPER(Prop)) when is_function(Pred, 1) ->
 any(Pred, ?JSON_WRAPPER(Prop)) when is_function(Pred, 1) ->
     lists:any(Pred, Prop).
 
--spec foldl(fun((key(), json_term(), any()) -> any()), any(), object()) -> any().
+-spec foldl(fun((key(), json_term(), _) -> _), _, object()) -> _.
 foldl(F, Acc0, ?JSON_WRAPPER([])) when is_function(F, 3) -> Acc0;
 foldl(F, Acc0, ?JSON_WRAPPER(Prop)) when is_function(F, 3) ->
     lists:foldl(fun({Key, Value}, Acc1) -> F(Key, Value, Acc1) end, Acc0, Prop).

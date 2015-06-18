@@ -1007,18 +1007,22 @@ delete_system_media_references(DocId, CallResponsesDoc) ->
     case wh_json:map(fun remove_system_media_refs/2, Default) of
         Default -> 'ok';
         NewDefault ->
-           io:format("updating ~s with stripped system_media references~n", [DocId]),
+            io:format("updating ~s with stripped system_media references~n", [DocId]),
             NewCallResponsesDoc = wh_json:set_value(TheKey, NewDefault, CallResponsesDoc),
             _Resp = couch_mgr:save_doc(?WH_CONFIG_DB, NewCallResponsesDoc),
             'ok'
     end.
 
--spec remove_system_media_refs(wh_json:key(), wh_json:json_term()) ->
+-spec remove_system_media_refs(wh_json:key(), wh_json:objects()) ->
                                       {wh_json:key(), wh_json:json_term()}.
 remove_system_media_refs(HangupCause, Config) ->
-    {HangupCause
-     ,wh_json:foldl(fun remove_system_media_ref/3, wh_json:new(), Config)
-    }.
+    case wh_json:is_json_object(Config) of
+        'false' -> {HangupCause, Config};
+        'true' ->
+            {HangupCause
+            ,wh_json:foldl(fun remove_system_media_ref/3, wh_json:new(), Config)
+            }
+    end.
 
 -spec remove_system_media_ref(wh_json:key(), wh_json:json_term(), wh_json:object()) ->
                                      wh_json:object().
