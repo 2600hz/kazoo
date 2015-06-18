@@ -1013,7 +1013,7 @@ delete_system_media_references(DocId, CallResponsesDoc) ->
             'ok'
     end.
 
--spec remove_system_media_refs(wh_json:key(), [wh_json:object()]) ->
+-spec remove_system_media_refs(wh_json:key(), wh_json:objects()) ->
                                       {wh_json:key(), wh_json:json_term()}.
 remove_system_media_refs(HangupCause, Config0) ->
     %% Ignore non-objects (backwards compatibility)
