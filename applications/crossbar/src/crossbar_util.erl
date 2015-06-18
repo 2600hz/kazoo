@@ -1298,21 +1298,20 @@ maybe_validate_quickcall(Context) ->
                                  )
     of
         'false' -> cb_context:add_system_error('too_many_requests', Context);
-        'true' ->
-            maybe_validate_quickcall(Context, cb_context:resp_status(Context))
+        'true' -> maybe_validate_quickcall(Context, cb_context:resp_status(Context))
     end.
 
 maybe_validate_quickcall(Context, 'success') ->
-    case wh_json:is_true(<<"allow_anoymous_quickcalls">>, cb_context:doc(Context))
+    AllowAnon = wh_json:get_value(<<"allow_anonymous_quickcalls">>, cb_context:doc(Context)),
+    case wh_util:is_true(AllowAnon)
         orelse cb_context:is_authenticated(Context)
         orelse
-        (wh_json:get_value(<<"allow_anoymous_quickcalls">>, cb_context:doc(Context)) =:= 'undefined'
+        (AllowAnon =:= 'undefined'
          andalso
-         whapps_config:get_is_true(?CONFIG_CAT, <<"default_allow_anoymous_quickcalls">>, 'true')
+         whapps_config:get_is_true(?CONFIG_CAT, <<"default_allow_anonymous_quickcalls">>, 'true')
         )
     of
-        'false' ->
-            cb_context:add_system_error('invalid_credentials', Context);
+        'false' -> cb_context:add_system_error('invalid_credentials', Context);
         'true' -> Context
     end;
 maybe_validate_quickcall(Context, _) -> Context.

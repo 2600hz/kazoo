@@ -179,11 +179,12 @@ post(Context, DeviceId) ->
             Context1 = cb_modules_util:take_sync_field(Context),
             Context2 = crossbar_doc:save(Context1),
             _ = maybe_aggregate_device(DeviceId, Context2),
-            _ = wh_util:spawn(fun () ->
-                              _ = provisioner_util:maybe_provision(Context2),
-                              _ = provisioner_util:maybe_sync_sip_data(Context1, 'device'),
-                              _ = crossbar_util:flush_registration(Context)
-                      end),
+            _ = wh_util:spawn(
+                  fun () ->
+                          _ = provisioner_util:maybe_provision(Context2),
+                          _ = provisioner_util:maybe_sync_sip_data(Context1, 'device'),
+                          _ = crossbar_util:flush_registration(Context)
+                  end),
             Context2;
         'false' ->
             error_used_mac_address(Context)
