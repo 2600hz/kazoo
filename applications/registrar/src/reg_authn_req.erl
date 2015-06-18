@@ -29,27 +29,24 @@ init() -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = wapi_authn:req_v(JObj),
     _ = wh_util:put_callid(JObj),
-    Username = get_auth_user(JObj),
-    Realm = wapi_authn:get_auth_realm(JObj),
-    lager:debug("trying to authenticate ~s@~s", [Username, Realm]),
-    case lookup_auth_user(Username, Realm, JObj) of
-        {'ok', #auth_user{}=AuthUser} ->
-            send_auth_resp(AuthUser, JObj);
-        {'error', _R} ->
-            lager:notice("auth failure for ~s@~s: ~p"
-                         ,[Username, Realm, _R]
-                        ),
-            send_auth_error(JObj)
-    end.
-
--spec get_auth_user(wh_json:object()) -> ne_binary().
-get_auth_user(JObj) ->
-    case wapi_authn:get_auth_user(JObj) of
-        <<"unknown">> ->
-            To = wh_json:get_value(<<"To">>, JObj,<<"nouser@nodomain">>),
-            [ToUser, _ToDomain] = binary:split(To, <<"@">>),
-            wh_util:to_lower_binary(ToUser);
-        Username -> Username
+    Realm = wh_json:get_value(<<"Auth-Realm">>, JObj, <<"missing.realm">>),
+    case wh_network_utils:is_ipv4(Realm)
+        orelse wh_network_utils:is_ipv6(Realm)
+    of
+        'true' ->
+            lager:debug("realm is an IP address (~s) : skipping", [Realm]);
+        'false' ->
+            Username = wapi_authn:get_auth_user(JObj),
+            lager:debug("trying to authenticate ~s@~s", [Username, Realm]),
+            case lookup_auth_user(Username, Realm, JObj) of
+                {'ok', #auth_user{}=AuthUser} ->
+                    send_auth_resp(AuthUser, JObj);
+                {'error', _R} ->
+                    lager:notice("auth failure for ~s@~s: ~p"
+                                ,[Username, Realm, _R]
+                                ),
+                    send_auth_error(JObj)
+            end
     end.
 
 -spec send_auth_resp(auth_user(), wh_json:object()) -> 'ok'.

@@ -200,9 +200,11 @@ get_auth_realm(Props) ->
     of
         'undefined' -> get_auth_uri_realm(Props);
         Realm ->
-            case wh_network_utils:is_ipv4(Realm) of
+            case wh_network_utils:is_ipv4(Realm)
+                orelse wh_network_utils:is_ipv6(Realm)
+            of
                 'true' -> get_auth_uri_realm(Props);
-                'false' -> Realm
+                'false' -> wh_util:to_lower_binary(Realm)
             end
     end.
 
@@ -210,7 +212,7 @@ get_auth_realm(Props) ->
 get_auth_uri_realm(Props) ->
     AuthURI = props:get_value(<<"sip_auth_uri">>, Props, <<>>),
     case binary:split(AuthURI, <<"@">>) of
-        [_, Realm] -> Realm;
+        [_, Realm] -> wh_util:to_lower_binary(Realm);
         _Else ->
             props:get_first_defined([<<"Auth-Realm">>
                                     ,<<"sip_request_host">>
