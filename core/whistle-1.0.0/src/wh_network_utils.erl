@@ -209,7 +209,7 @@ pretty_print_bytes(Bytes) ->
 
 -spec add_ns(ne_binaries() | ne_binary()) -> 'ok'.
 add_ns(Nss) when is_list(Nss) ->
-    [add_ns(Ns) || Ns <- Nss],
+    _ = [add_ns(Ns) || Ns <- Nss],
     'ok';
 add_ns(Ns) ->
     'ok' = inet_db:add_ns(Ns).
