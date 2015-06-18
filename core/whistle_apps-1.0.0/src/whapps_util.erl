@@ -277,30 +277,20 @@ is_account_mod(Db) -> couch_util:db_classification(Db) =:= 'modb'.
 -spec is_account_db(ne_binary()) -> boolean().
 is_account_db(Db) -> couch_util:db_classification(Db) =:= 'account'.
 
+
+-type getby_return() :: {'ok', ne_binary()} |
+                        {'multiples', ne_binaries()} |
+                        {'error', 'not_found'}.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc Realms are one->one with accounts.
 %% @end
 %%--------------------------------------------------------------------
--spec get_account_by_realm(ne_binary()) ->
-                                  {'ok', ne_binary()} |
-                                  {'multiples', ne_binaries()} |
-                                  {'error', 'not_found'}.
+-spec get_account_by_realm(ne_binary()) -> getby_return().
 get_account_by_realm(RawRealm) ->
     Realm = wh_util:to_lower_binary(RawRealm),
-    case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_LIST_BY_REALM, [{'key', Realm}]) of
-        {'ok', [JObj]} ->
-            AccountDb = wh_json:get_value([<<"value">>, <<"account_db">>], JObj),
-            {'ok', AccountDb};
-        {'ok', []} ->
-            {'error', 'not_found'};
-        {'ok', [_|_]=JObjs} ->
-            AccountDbs = [wh_json:get_value([<<"value">>, <<"account_db">>], JObj) || JObj <- JObjs],
-            {'multiples', AccountDbs};
-        _E ->
-            lager:debug("error while fetching accounts by realm: ~p", [_E]),
-            {'error', 'not_found'}
-    end.
+    get_accounts_by(Realm, ?ACCT_BY_REALM_CACHE(Realm), ?AGG_LIST_BY_REALM).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -308,23 +298,44 @@ get_account_by_realm(RawRealm) ->
 %% unique.
 %% @end
 %%--------------------------------------------------------------------
--spec get_accounts_by_name(ne_binary()) ->
-                                  {'ok', ne_binary()} |
-                                  {'multiples', ne_binaries()} |
-                                  {'error', 'not_found'}.
+-spec get_accounts_by_name(ne_binary()) -> getby_return().
 get_accounts_by_name(Name) ->
-    case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_LIST_BY_NAME, [{'key', Name}]) of
+    get_accounts_by(Name, ?ACCT_BY_NAME_CACHE(Name), ?AGG_LIST_BY_NAME).
+
+-spec get_accounts_by(ne_binary(), tuple(), ne_binary()) -> getby_return().
+get_accounts_by(What, CacheKey, View) ->
+    case wh_cache:peek_local(?WHAPPS_GETBY_CACHE, CacheKey) of
+        {'ok', [AccountDb]} -> {'ok', AccountDb};
+        {'ok', [_|_]=AccountDbs} -> {'multiples', AccountDbs};
+        {'error', 'not_found'} ->
+            do_get_accounts_by(What, CacheKey, View)
+    end.
+
+-spec do_get_accounts_by(ne_binary(), tuple(), ne_binary()) -> getby_return().
+do_get_accounts_by(What, CacheKey, View) ->
+    ViewOptions = [{'key', What}],
+    case couch_mgr:get_results(?WH_ACCOUNTS_DB, View, ViewOptions) of
         {'ok', [JObj]} ->
             AccountDb = wh_json:get_value([<<"value">>, <<"account_db">>], JObj),
+            _ = cache(CacheKey, [AccountDb]),
             {'ok', AccountDb};
-        {'ok', []} -> {'error', 'not_found'};
         {'ok', [_|_]=JObjs} ->
             AccountDbs = [wh_json:get_value([<<"value">>, <<"account_db">>], JObj) || JObj <- JObjs],
+            _ = cache(CacheKey, AccountDbs),
             {'multiples', AccountDbs};
+        {'ok', []} ->
+            {'error', 'not_found'};
         _E ->
-            lager:debug("error while fetching accounts by name: ~p", [_E]),
+            lager:debug("error while fetching ~s: ~p", [View, _E]),
             {'error', 'not_found'}
     end.
+
+-spec cache(tuple(), ne_binaries()) -> 'ok'.
+cache(Key, AccountDbs) ->
+    CacheProps = [{'origin', [ {'db', AccountDb, wh_util:format_account_id(AccountDb, 'raw')}
+                               || AccountDb <- AccountDbs
+                             ]}],
+    wh_cache:store_local(?WHAPPS_GETBY_CACHE, Key, AccountDbs, CacheProps).
 
 %%--------------------------------------------------------------------
 %% @public
