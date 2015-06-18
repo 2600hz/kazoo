@@ -20,7 +20,14 @@
 -include("whapps_call_command.hrl").
 -include("whistle_apps.hrl").
 
--define(CHILDREN, [?WORKER('wh_nodes')
+-define(ORIGIN_BINDINGS, [[{'type', <<"account">>}
+                          ]
+                         ]).
+
+-define(CACHE_GETBY_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
+
+-define(CHILDREN, [?CACHE_ARGS(?WHAPPS_GETBY_CACHE, ?CACHE_GETBY_PROPS)
+                   ,?WORKER('wh_nodes')
                    ,?WORKER('wh_hooks_listener')
                    ,?WORKER('wh_cache')
                    ,?WORKER('whistle_apps_init')
