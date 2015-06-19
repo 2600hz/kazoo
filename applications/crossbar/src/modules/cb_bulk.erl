@@ -85,13 +85,13 @@ maybe_load_docs(Context) ->
         _Else -> Context1
     end.
 
--spec maybe_follow_groups(set(), cb_context:context()) -> cb_context:context().
+-spec maybe_follow_groups(sets:set(), cb_context:context()) -> cb_context:context().
 maybe_follow_groups(Ids, Context) ->
     JObjs = cb_context:doc(Context),
     Context1 = cb_context:set_doc(Context, []),
     maybe_follow_groups(JObjs, Ids, Context1).
 
--spec maybe_follow_groups(wh_json:objects(), set(), cb_context:context()) ->
+-spec maybe_follow_groups(wh_json:objects(), sets:set(), cb_context:context()) ->
                                  cb_context:context().
 maybe_follow_groups([], _, Context) ->
     maybe_update_docs(Context);
@@ -105,7 +105,7 @@ maybe_follow_groups([JObj|JObjs], Ids, Context) ->
             maybe_follow_groups(JObjs, Ids, Context1)
     end.
 
--spec follow_group(wh_json:object(), wh_json:objects(), set(), cb_context:context()) ->
+-spec follow_group(wh_json:object(), wh_json:objects(), sets:set(), cb_context:context()) ->
                           cb_context:context().
 follow_group(JObj, JObjs, Ids, Context) ->
     lager:debug("trying to follow group members"),

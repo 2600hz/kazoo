@@ -109,7 +109,7 @@
           ,admin_conn :: server()
 
           %% [ {Job, Pid, Ref},...]
-          ,queued_jobs = queue:new() :: queue()
+          ,queued_jobs = queue:new() :: queue:queue()
           ,current_job_pid :: pid()
           ,current_job_ref :: reference()
           ,current_job_heuristic = ?HEUR_NONE :: compactor_heuristic()
@@ -399,7 +399,7 @@ ready(Msg, {NewP, _}, #state{queued_jobs=Jobs}=State) ->
                                                             }}
     end.
 
--spec queue_job(req_job(), pid(), queue()) -> {reference(), queue()}.
+-spec queue_job(req_job(), pid(), queue:queue()) -> {reference(), queue:queue()}.
 queue_job('req_compact', Pid, Jobs) ->
     Ref = erlang:make_ref(),
     {Ref, queue:in({'compact', Pid, Ref}, Jobs)};
@@ -1597,7 +1597,7 @@ maybe_start_auto_compaction_job('true') ->
 start_auto_compaction_check_timer() ->
     erlang:send_after(?AUTOCOMPACTION_CHECK_TIMEOUT, self(), '$maybe_start_auto_compaction_job').
 
--spec queued_jobs_status(queue()) -> 'none' | [wh_proplist(),...].
+-spec queued_jobs_status(queue:queue()) -> 'none' | [wh_proplist(),...].
 queued_jobs_status(Jobs) ->
     case queue:to_list(Jobs) of
         [] -> 'none';

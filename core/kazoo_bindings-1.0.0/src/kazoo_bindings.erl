@@ -60,7 +60,7 @@
 
 -include("kazoo_bindings.hrl").
 
-%% {<<"foo.bar.#">>, [<<"foo">>, <<"bar">>, <<"#">>], queue(), <<"foo.bar">>}
+%% {<<"foo.bar.#">>, [<<"foo">>, <<"bar">>, <<"#">>], queue:queue(), <<"foo.bar">>}
 
 -type payload() :: term().
 
@@ -73,7 +73,7 @@
 
 -record(kz_binding, {binding :: ne_binary() | '_'
                      ,binding_parts :: ne_binaries() | '_'
-                     ,binding_responders = queue:new() :: queue() | '_'
+                     ,binding_responders = queue:new() :: queue:queue() | '_'
                       %% queue -> [#kz_responder{}]
                      ,binding_prefix :: api_binary() | '$1' | '_'
                     }).
@@ -480,7 +480,7 @@ flush_mod(ClientMod, #kz_binding{binding=Binding
             end
     end.
 
--type filter_updates() :: [{ne_binary(), {pos_integer(), queue()}}] | [].
+-type filter_updates() :: [{ne_binary(), {pos_integer(), queue:queue()}}] | [].
 -spec filter_bindings(filter_fun()) -> 'ok'.
 -spec filter_bindings(filter_fun(), ne_binary() | '$end_of_table', filter_updates(), ne_binaries()) -> 'ok'.
 filter_bindings(Predicate) ->

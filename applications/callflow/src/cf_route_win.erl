@@ -139,7 +139,7 @@ enforce_closed_groups(JObj, Call) ->
             maybe_device_groups_intersect(CalleeId, CallerGroups, Groups, Call)
     end.
 
--spec get_caller_groups(wh_json:objects(), wh_json:object(), whapps_call:call()) -> set().
+-spec get_caller_groups(wh_json:objects(), wh_json:object(), whapps_call:call()) -> sets:set().
 get_caller_groups(Groups, JObj, Call) ->
     Ids = [whapps_call:authorizing_id(Call)
            ,wh_json:get_value(<<"owner_id">>, JObj)
@@ -153,7 +153,7 @@ get_caller_groups(Groups, JObj, Call) ->
                 ,Ids
                ).
 
--spec maybe_device_groups_intersect(ne_binary(), set(), wh_json:objects(), whapps_call:call()) -> boolean().
+-spec maybe_device_groups_intersect(ne_binary(), sets:set(), wh_json:objects(), whapps_call:call()) -> boolean().
 maybe_device_groups_intersect(CalleeId, CallerGroups, Groups, Call) ->
     CalleeGroups = get_group_associations(CalleeId, Groups),
     case sets:size(sets:intersection(CallerGroups, CalleeGroups)) =:= 0 of
@@ -171,11 +171,11 @@ maybe_device_groups_intersect(CalleeId, CallerGroups, Groups, Call) ->
             sets:size(sets:intersection(CallerGroups, UsersGroups)) =:= 0
     end.
 
--spec get_group_associations(ne_binary(), wh_json:objects()) -> set().
+-spec get_group_associations(ne_binary(), wh_json:objects()) -> sets:set().
 get_group_associations(Id, Groups) ->
     get_group_associations(Id, Groups, sets:new()).
 
--spec get_group_associations(ne_binary(), wh_json:objects(), set()) -> set().
+-spec get_group_associations(ne_binary(), wh_json:objects(), sets:set()) -> sets:set().
 get_group_associations(Id, Groups, Set) ->
     lists:foldl(fun(Group, S) ->
                         case wh_json:get_value([<<"value">>, Id], Group) of

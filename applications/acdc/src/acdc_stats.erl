@@ -633,12 +633,12 @@ maybe_archive_call_data(Srv, Match) ->
             ]
     end.
 
--spec query_call_fold(call_stat(), dict()) -> dict().
+-spec query_call_fold(call_stat(), dict:dict()) -> dict:dict().
 query_call_fold(#call_stat{status=Status}=Stat, Acc) ->
     Doc = call_stat_to_doc(Stat),
     dict:update(Status, fun(L) -> [Doc | L] end, [Doc], Acc).
 
--spec archive_call_fold(call_stat(), dict()) -> dict().
+-spec archive_call_fold(call_stat(), dict:dict()) -> dict:dict().
 archive_call_fold(#call_stat{account_id=AccountId}=Stat, Acc) ->
     Doc = call_stat_to_doc(Stat),
     dict:update(AccountId, fun(L) -> [Doc | L] end, [Doc], Acc).

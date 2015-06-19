@@ -43,7 +43,7 @@ handle(_Data, Call) ->
             end
     end.
 
--spec get_channels(ne_binary(), whapps_call:call()) -> dict().
+-spec get_channels(ne_binary(), whapps_call:call()) -> dict:dict().
 get_channels(OwnerId, Call) ->
     DeviceIds = cf_attributes:owned_by(OwnerId, <<"device">>, Call),
     Req = [{<<"Authorizing-IDs">>, DeviceIds}
@@ -59,8 +59,8 @@ get_channels(OwnerId, Call) ->
         {_, Resp} -> clean_channels(Resp)
     end.
 
--spec clean_channels(wh_json:objects()) -> dict().
--spec clean_channels(wh_json:objects(), dict()) -> dict().
+-spec clean_channels(wh_json:objects()) -> dict:dict().
+-spec clean_channels(wh_json:objects(), dict:dict()) -> dict:dict().
 clean_channels(JObjs) ->
     clean_channels(JObjs, dict:new()).
 
@@ -79,7 +79,7 @@ clean_channel(JObj, Dict) ->
         ,wh_json:get_value(<<"Channels">>, JObj, [])
     ).
 
--spec filter_channels(dict(), whapps_call:call()) ->
+-spec filter_channels(dict:dict(), whapps_call:call()) ->
                              {'ok', wh_json:object()} |
                              {'error', atom()}.
 filter_channels(Channels, Call) ->

@@ -14,7 +14,7 @@
 -export([find/3]).
 -export([update/2]).
 
--type items() :: dict().
+-type items() :: dict:dict().
 -export_type([items/0]).
 
 -include("whistle_services.hrl").
