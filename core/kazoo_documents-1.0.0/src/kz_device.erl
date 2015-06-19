@@ -170,10 +170,10 @@ presence_id(DeviceJObj, Default) ->
 -spec set_presence_id(doc(), ne_binary()) -> doc().
 set_presence_id(DeviceJObj, Id) ->
     wh_json:set_value(
-        ?PRESENCE_ID
-        ,wh_util:to_binary(Id)
-        ,DeviceJObj
-    ).
+      ?PRESENCE_ID
+      ,wh_util:to_binary(Id)
+      ,DeviceJObj
+     ).
 
 -spec name(doc()) -> api_binary().
 -spec name(doc(), Default) -> ne_binary() | Default.
