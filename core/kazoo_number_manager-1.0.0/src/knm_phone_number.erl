@@ -39,6 +39,7 @@
     ,region/1 ,set_region/2
     ,auth_by/1 ,set_auth_by/2, is_authorize/1
     ,dry_run/1 ,set_dry_run/2
+    ,doc/1
 ]).
 
 %%--------------------------------------------------------------------
@@ -54,7 +55,7 @@ fetch(Num) ->
 fetch(Num, AuthBy) ->
     NormalizedNum = knm_converters:normalize(Num),
     NumberDb = knm_converters:to_db(NormalizedNum),
-    case couch_mgr:open_doc(NumberDb, NormalizedNum) of
+    case couch_mgr:open_cache_doc(NumberDb, NormalizedNum) of
         {'error', _R}=E ->
             lager:error("failed to open ~s in ~s", [NormalizedNum, NumberDb]),
             E;
@@ -366,6 +367,15 @@ dry_run(Number) ->
 -spec set_dry_run(number(), ne_binary()) -> number().
 set_dry_run(N, DryRun) ->
     N#number{dry_run=DryRun}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec doc(number()) -> wh_json:object().
+doc(Number) ->
+    Number#number.doc.
 
 %%%===================================================================
 %%% Internal functions
