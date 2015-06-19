@@ -36,6 +36,9 @@
 -define(CB_LIST, <<"devices/crossbar_listing">>).
 -define(CB_LIST_MAC, <<"devices/listing_by_macaddress">>).
 
+-define(KEY_MAC_ADDRESS, <<"mac_address">>).
+
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -237,7 +240,7 @@ post(Context, DeviceId) ->
             Context2 = crossbar_doc:save(Context1),
             _ = maybe_aggregate_device(DeviceId, Context2),
             _ = wh_util:spawn(
-                  fun () ->
+                  fun() ->
                           _ = provisioner_util:maybe_provision(Context2),
                           _ = provisioner_util:maybe_sync_sip_data(Context1, 'device'),
                           _ = crossbar_util:flush_registration(Context)
@@ -247,7 +250,8 @@ post(Context, DeviceId) ->
             error_used_mac_address(Context)
     end.
 
--spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+-spec post(cb_context:context(), path_token(), path_token()) ->
+                  cb_context:context().
 post(Context, DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
     lager:debug("publishing check_sync for ~s", [DeviceId]),
     Context1 = cb_context:store(Context, 'sync', 'true'),
@@ -303,8 +307,8 @@ validate_request(DeviceId, Context) ->
 
 -spec changed_mac_address(cb_context:context()) -> boolean().
 changed_mac_address(Context) ->
-    NewAddress = cb_context:req_value(Context, <<"mac_address">>),
-    OldAddress = wh_json:get_ne_value(<<"mac_address">>, cb_context:fetch(Context, 'db_doc')),
+    NewAddress = cb_context:req_value(Context, ?KEY_MAC_ADDRESS),
+    OldAddress = wh_json:get_ne_value(?KEY_MAC_ADDRESS, cb_context:fetch(Context, 'db_doc')),
     case NewAddress =:= OldAddress of
         'true' -> 'true';
         'false' ->
@@ -313,7 +317,7 @@ changed_mac_address(Context) ->
 
 -spec check_mac_address(api_binary(), cb_context:context()) -> cb_context:context().
 check_mac_address(DeviceId, Context) ->
-    MacAddress = cb_context:req_value(Context, <<"mac_address">>),
+    MacAddress = cb_context:req_value(Context, ?KEY_MAC_ADDRESS),
     case unique_mac_address(MacAddress, Context) of
         'true' ->
             prepare_outbound_flags(DeviceId, Context);
@@ -330,9 +334,9 @@ unique_mac_address(MacAddress, Context) ->
 
 -spec error_used_mac_address(cb_context:context()) -> cb_context:context().
 error_used_mac_address(Context) ->
-    MacAddress = cb_context:req_value(Context, <<"mac_address">>),
+    MacAddress = cb_context:req_value(Context, ?KEY_MAC_ADDRESS),
     cb_context:add_validation_error(
-      <<"mac_address">>
+      ?KEY_MAC_ADDRESS
       ,<<"unique">>
       ,wh_json:from_list(
          [{<<"message">>, <<"Mac address already in use">>}
