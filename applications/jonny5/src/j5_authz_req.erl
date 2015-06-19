@@ -208,7 +208,8 @@ maybe_inbound_soft_limit(Request, Limits) ->
 -spec send_response(j5_request:request()) -> 'ok'.
 send_response(Request) ->
     ServerId = j5_request:server_id(Request),
-    CCVs = wh_json:from_list([{<<"Account-Trunk-Usage">>, account_trunk_usage(Request)}
+    CCVs = wh_json:from_list([{<<"Account-Trunk-Usage">>, trunk_usage(j5_request:account_id(Request))}
+                              ,{<<"Reseller-Trunk-Usage">>, trunk_usage(j5_request:reseller_id(Request))}
                              ]),
     Resp = props:filter_undefined(
              [{<<"Is-Authorized">>, wh_util:to_binary(j5_request:is_authorized(Request))}
@@ -233,12 +234,14 @@ send_response(Request) ->
     end.
 
 %% @private
--spec account_trunk_usage(j5_request:request()) -> ne_binary().
-account_trunk_usage(Request) ->
-    Limits = j5_limits:get(j5_request:account_id(Request)),
+-spec trunk_usage(ne_binary()) -> ne_binary().
+trunk_usage(Id) ->
+    Limits = j5_limits:get(Id),
     <<
       (wh_util:to_binary(j5_limits:inbound_trunks(Limits)))/binary, "/",
       (wh_util:to_binary(j5_limits:outbound_trunks(Limits)))/binary, "/",
       (wh_util:to_binary(j5_limits:twoway_trunks(Limits)))/binary, "/",
       (wh_util:to_binary(j5_limits:burst_trunks(Limits)))/binary
     >>.
+
+

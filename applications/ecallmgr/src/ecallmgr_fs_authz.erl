@@ -159,10 +159,12 @@ request_channel_authorization(Props, CallId, Node) ->
 
 -spec authz_response(wh_json:object(), wh_proplist(), ne_binary(), atom()) -> boolean().
 authz_response(JObj, Props, CallId, Node) ->
+    'ok' = set_ccv_trunk_usage(JObj, CallId, Node),
     case wh_json:is_true(<<"Is-Authorized">>, JObj)
         orelse wh_json:is_true(<<"Soft-Limit">>, JObj)
     of
-        'true' -> authorize_account(JObj, Props, CallId, Node);
+        'true' ->
+            authorize_account(JObj, Props, CallId, Node);
         'false' ->
             lager:info("channel is unauthorized: ~s/~s"
                        ,[wh_json:get_value(<<"Account-Billing">>, JObj)
@@ -173,6 +175,15 @@ authz_response(JObj, Props, CallId, Node) ->
                 'false' -> 'false'
             end
     end.
+
+-spec set_ccv_trunk_usage(wh_json:object(), ne_binary(), atom()) -> 'ok'.
+set_ccv_trunk_usage(JObj, CallId, Node) ->
+    _ = [begin
+             TrunkUsage = wh_json:get_value([<<"Custom-Channel-Vars">>, Key], JObj),
+             'ok' = ecallmgr_util:set(Node, CallId, [{Key, TrunkUsage}])
+         end || Key <- [<<"Account-Trunk-Usage">>, <<"Reseller-Trunk-Usage">>]
+        ],
+    'ok'.
 
 -spec authorize_account(wh_json:object(), wh_proplist(), ne_binary(), atom()) -> boolean().
 authorize_account(JObj, Props, CallId, Node) ->
