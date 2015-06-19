@@ -258,7 +258,7 @@ username_audio_macro(Call, User) ->
     case media_name(User) of
         'undefined' -> {'tts', <<39, (full_name(User))/binary, 39>>}; % 39 is ascii '
         MediaID ->
-            {'prompt', <<$/, (whapps_call:account_db(Call))/binary, $/, MediaID/binary>>}
+            {'play', <<$/, (whapps_call:account_db(Call))/binary, $/, MediaID/binary>>}
     end.
 
 -spec play_directory_instructions(whapps_call:call(), 'first' | 'last' | ne_binary()) ->
