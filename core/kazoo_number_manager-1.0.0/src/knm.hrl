@@ -5,6 +5,7 @@
 -define(APP_VERSION, <<"1.0.0">>).
 -define(APP_NAME, <<"kazoo_number_manager">>).
 
+-define(KNM_CACHE, 'knm_cache').
 -define(KNM_CONFIG_CAT, <<"number_manager">>).
 -define(KNM_DB_PREFIX, <<"numbers/">>).
 
