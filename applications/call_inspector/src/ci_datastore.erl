@@ -19,7 +19,7 @@
 -export([lookup_callid/1]).
 -export([callid_exists/1]).
 -export([flush/0
-        ,flush/1
+         ,flush/1
         ]).
 
 %% gen_server callbacks

@@ -17,7 +17,7 @@ handle_req(JObj, _Props) ->
     'true' = wapi_inspector:filter_req_v(JObj),
     CallIds = [CallId
                || CallId <- wh_json:get_value(<<"Call-IDs">>, JObj, [])
-                      ,ci_datastore:callid_exists(CallId)
+                      , ci_datastore:callid_exists(CallId)
               ],
     Q = wh_json:get_value(<<"Server-ID">>, JObj),
     MessageId = wh_json:get_value(<<"Msg-ID">>, JObj),
@@ -25,7 +25,6 @@ handle_req(JObj, _Props) ->
 
 -spec send_response(ne_binaries(), ne_binary(), ne_binary()) -> 'ok'.
 send_response(CallIds, Q, MessageId) ->
-    io:format("TEST: ~p~n", [CallIds]),
     JObj = wh_json:from_list(
              [{<<"Call-IDs">>, CallIds}
              ,{<<"Msg-ID">>, MessageId}

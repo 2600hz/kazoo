@@ -25,11 +25,11 @@
         ]).
 
 -record(state, {logfile :: file:name()
-               ,iodevice :: file:io_device()
-               ,logip :: ne_binary()
-               ,logport :: pos_integer()
-               ,timer :: reference()
-               ,counter :: pos_integer()
+                ,iodevice :: file:io_device()
+                ,logip :: ne_binary()
+                ,logport :: pos_integer()
+                ,timer :: reference()
+                ,counter :: pos_integer()
                }
        ).
 -type state() :: #state{}.
@@ -67,10 +67,11 @@ start_link(Args) ->
 init({'parser_args', LogFile, LogIP, LogPort}) ->
     NewDev = ci_parsers_util:open_file(LogFile),
     State = #state{logfile = LogFile
-                  ,iodevice = NewDev
-                  ,logip = LogIP
-                  ,logport = LogPort
-                  ,counter = 1},
+                   ,iodevice = NewDev
+                   ,logip = LogIP
+                   ,logport = LogPort
+                   ,counter = 1
+                  },
     self() ! 'start_parsing',
     {'ok', State}.
 
@@ -119,10 +120,11 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info('start_parsing', State=#state{iodevice = IoDevice
-                                         ,logip = LogIP
-                                         ,logport = LogPort
-                                         ,timer = OldTimer
-                                         ,counter = Counter}) ->
+                                          ,logip = LogIP
+                                          ,logport = LogPort
+                                          ,timer = OldTimer
+                                          ,counter = Counter
+                                         }) ->
     _ = case OldTimer of
             'undefined' -> 'ok';
             _ -> erlang:cancel_timer(OldTimer)
@@ -131,7 +133,8 @@ handle_info('start_parsing', State=#state{iodevice = IoDevice
     NewTimer = erlang:send_after(ci_parsers_util:parse_interval()
                                 , self(), 'start_parsing'),
     {'noreply', State#state{timer = NewTimer
-                           ,counter = NewCounter}};
+                            ,counter = NewCounter
+                           }};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
@@ -191,15 +194,15 @@ make_and_store_chunk(LogIP, LogPort, Callid, Counter, Data0) ->
     ParserId = ci_parsers_sup:child(self()),
     Chunk =
         ci_chunk:setters(ci_chunk:new()
-                        , [ {fun ci_chunk:data/2, Data}
-                          , {fun ci_chunk:call_id/2, Callid}
-                          , {fun ci_chunk:timestamp/2, Timestamp}
-                          , {fun ci_chunk:parser/2, ParserId}
-                          , {fun ci_chunk:label/2, label(hd(Data))}
-                          , {fun ci_chunk:src_ip/2, from(ReversedData0,LogIP)}
-                          , {fun ci_chunk:dst_ip/2, to(ReversedData0,LogIP)}
-                          , {fun ci_chunk:src_port/2, from_port(ReversedData0,LogPort)}
-                          , {fun ci_chunk:dst_port/2, to_port(ReversedData0,LogPort)}
+                        , [{fun ci_chunk:data/2, Data}
+                           ,{fun ci_chunk:call_id/2, Callid}
+                           ,{fun ci_chunk:timestamp/2, Timestamp}
+                           ,{fun ci_chunk:parser/2, ParserId}
+                           ,{fun ci_chunk:label/2, label(hd(Data))}
+                           ,{fun ci_chunk:src_ip/2, from(ReversedData0,LogIP)}
+                           ,{fun ci_chunk:dst_ip/2, to(ReversedData0,LogIP)}
+                           ,{fun ci_chunk:src_port/2, from_port(ReversedData0,LogPort)}
+                           ,{fun ci_chunk:dst_port/2, to_port(ReversedData0,LogPort)}
                           ]
                         ),
     lager:debug("parsed chunk ~s (~s)", [ci_chunk:call_id(Chunk), ParserId]),

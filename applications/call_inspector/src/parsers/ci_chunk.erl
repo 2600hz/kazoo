@@ -10,32 +10,26 @@
 
 -export([new/0]).
 -export([setters/2]).
--export([call_id/2
-        ,call_id/1]).
+-export([call_id/2, call_id/1]).
 -export([append_data/2
-        ,data/2
-        ,data/1
+         ,data/2
+         ,data/1
         ]).
--export([timestamp/2
-        ,timestamp/1]).
+-export([timestamp/2, timestamp/1]).
 -export([ref_timestamp/1]).
--export([dst_ip/2
-        ,dst_ip/1]).
--export([dst_port/2
-        ,dst_port/1]).
--export([src_ip/2
-        ,src_ip/1]).
--export([src_port/2
-        ,src_port/1]).
--export([parser/2
-        ,parser/1]).
--export([label/2
-        ,label/1]).
+-export([dst_ip/2, dst_ip/1]).
+-export([dst_port/2, dst_port/1]).
+-export([src_ip/2, src_ip/1]).
+-export([src_port/2, src_port/1]).
+-export([parser/2, parser/1]).
+-export([label/2, label/1]).
 -export([to_json/1
-        ,from_json/1]).
+         ,from_json/1
+        ]).
 -export([is_chunk/1]).
 -export([sort_by_timestamp/1
-        ,reorder_dialog/1]).
+         ,reorder_dialog/1
+        ]).
 
 -record(ci_chunk, {call_id :: ne_binary()
                   ,data = [] :: ne_binaries()
@@ -132,14 +126,14 @@ dst_ip(#ci_chunk{}=Chunk, Val) ->
 -spec to_json(chunk()) -> wh_json:object().
 to_json(Chunk) ->
     wh_json:from_list(
-      [ {<<"call-id">>, call_id(Chunk)}
-      , {<<"timestamp">>, timestamp(Chunk)}
-      , {<<"ref_timestamp">>, wh_util:to_binary(ref_timestamp(Chunk))}
-      , {<<"label">>, label(Chunk)}
-      , {<<"raw">>, data(Chunk)}
-      , {<<"src">>, src(Chunk)}
-      , {<<"dst">>, dst(Chunk)}
-      , {<<"parser">>, parser(Chunk)}
+      [{<<"call-id">>, call_id(Chunk)}
+       ,{<<"timestamp">>, timestamp(Chunk)}
+       ,{<<"ref_timestamp">>, wh_util:to_binary(ref_timestamp(Chunk))}
+       ,{<<"label">>, label(Chunk)}
+       ,{<<"raw">>, data(Chunk)}
+       ,{<<"src">>, src(Chunk)}
+       ,{<<"dst">>, dst(Chunk)}
+       ,{<<"parser">>, parser(Chunk)}
       ]
      ).
 
@@ -147,16 +141,16 @@ to_json(Chunk) ->
 from_json(JObj) ->
     {SrcIP, SrcPort} = src(wh_json:get_value(<<"src">>, JObj)),
     {DstIP, DstPort} = dst(wh_json:get_value(<<"dst">>, JObj)),
-    #ci_chunk{ src_ip = SrcIP
-             , dst_ip = DstIP
-             , src_port = SrcPort
-             , dst_port = DstPort
-             , call_id = wh_json:get_value(<<"call-id">>, JObj)
-             , timestamp = wh_json:get_value(<<"timestamp">>, JObj)
-             , ref_timestamp = wh_util:to_float(wh_json:get_value(<<"ref_timestamp">>, JObj))
-             , label = wh_json:get_value(<<"label">>, JObj)
-             , data = wh_json:get_value(<<"raw">>, JObj)
-             , parser = wh_json:get_value(<<"parser">>, JObj)
+    #ci_chunk{src_ip = SrcIP
+              ,dst_ip = DstIP
+              ,src_port = SrcPort
+              ,dst_port = DstPort
+              ,call_id = wh_json:get_value(<<"call-id">>, JObj)
+              ,timestamp = wh_json:get_value(<<"timestamp">>, JObj)
+              ,ref_timestamp = wh_util:to_float(wh_json:get_value(<<"ref_timestamp">>, JObj))
+              ,label = wh_json:get_value(<<"label">>, JObj)
+              ,data = wh_json:get_value(<<"raw">>, JObj)
+              ,parser = wh_json:get_value(<<"parser">>, JObj)
              }.
 
 src(#ci_chunk{src_ip = Ip, src_port = Port}) ->
@@ -218,7 +212,6 @@ first_pass(Before, [Ordered|InOrder], [Chunk|ToOrder], UnMergeable) ->
          }
     of
         {'true', 'true', 'true'} ->
-            io:format(user, ">>> both match\n~p\n~p\n", [Ordered,Chunk]),
             first_pass([], Before++[Ordered|InOrder], ToOrder, [Chunk|UnMergeable]);
         {'true', 'true', ______} ->
             first_pass([], Before++[Ordered]++[Chunk|InOrder], ToOrder, UnMergeable);

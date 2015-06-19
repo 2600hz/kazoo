@@ -25,8 +25,8 @@ handle_req(JObj, _Props) ->
 send_response(Props, Q, MessageId) ->
     JObj = wh_json:from_list(
              [{<<"Chunks">>, chunks_as_json(Props)}
-             ,{<<"Analysis">>, analysis_as_json(Props)}
-             ,{<<"Msg-ID">>, MessageId}
+              ,{<<"Analysis">>, analysis_as_json(Props)}
+              ,{<<"Msg-ID">>, MessageId}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]
             ),

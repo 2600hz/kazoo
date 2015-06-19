@@ -74,9 +74,11 @@ make_name({'parser_args', Filename, _IP, _Port}) ->
     make_name(wh_util:to_binary(FName)).
 
 
+-spec call_id(ne_binaries()) -> ne_binary().
 call_id(Data) ->
     sip_field([<<"Call-ID">>, <<"i">>], Data).
 
+-spec c_seq(ne_binaries()) -> ne_binary().
 c_seq(Data) ->
     sip_field([<<"CSeq">>], Data).
 

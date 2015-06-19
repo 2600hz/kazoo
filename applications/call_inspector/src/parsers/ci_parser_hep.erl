@@ -25,8 +25,8 @@
         ]).
 
 -record(state, {socket :: gen_udp:socket()
-               ,listen_ip :: ne_binary()
-               ,listen_port :: pos_integer()
+                ,listen_ip :: ne_binary()
+                ,listen_port :: pos_integer()
                }
        ).
 -type state() :: #state{}.
@@ -66,8 +66,9 @@ init({'parser_args', IP, Port}) ->
                                          ,{'active', 'true'}
                                         ]),
     State = #state{socket = Socket
-                  ,listen_ip = IP
-                  ,listen_port = Port},
+                   ,listen_ip = IP
+                   ,listen_port = Port
+                  },
     {'ok', State}.
 
 %%--------------------------------------------------------------------
@@ -157,15 +158,15 @@ make_and_store_chunk(Hep) ->
     ParserId = ci_parsers_sup:child(self()),
     Chunk =
         ci_chunk:setters(ci_chunk:new()
-                        , [ {fun ci_chunk:data/2, Data}
-                          , {fun ci_chunk:call_id/2, ci_parsers_util:call_id(Data)}
-                          , {fun ci_chunk:timestamp/2, ci_parsers_util:timestamp(hep:timestamp(Hep))}
-                          , {fun ci_chunk:parser/2, ParserId}
-                          , {fun ci_chunk:label/2, hd(Data)}
-                          , {fun ci_chunk:src_ip/2, ip(hep:src_ip(Hep))}
-                          , {fun ci_chunk:dst_ip/2, ip(hep:dst_ip(Hep))}
-                          , {fun ci_chunk:src_port/2, hep:src_port(Hep)}
-                          , {fun ci_chunk:dst_port/2, hep:dst_port(Hep)}
+                        , [{fun ci_chunk:data/2, Data}
+                           ,{fun ci_chunk:call_id/2, ci_parsers_util:call_id(Data)}
+                           ,{fun ci_chunk:timestamp/2, ci_parsers_util:timestamp(hep:timestamp(Hep))}
+                           ,{fun ci_chunk:parser/2, ParserId}
+                           ,{fun ci_chunk:label/2, hd(Data)}
+                           ,{fun ci_chunk:src_ip/2, ip(hep:src_ip(Hep))}
+                           ,{fun ci_chunk:dst_ip/2, ip(hep:dst_ip(Hep))}
+                           ,{fun ci_chunk:src_port/2, hep:src_port(Hep)}
+                           ,{fun ci_chunk:dst_port/2, hep:dst_port(Hep)}
                           ]
                         ),
     lager:debug("parsed chunk ~s (~s)", [ci_chunk:call_id(Chunk), ParserId]),

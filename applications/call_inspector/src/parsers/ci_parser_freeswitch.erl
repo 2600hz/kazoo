@@ -67,10 +67,11 @@ start_link(Args) ->
 init({'parser_args', LogFile, LogIP, LogPort}) ->
     NewDev = ci_parsers_util:open_file(LogFile),
     State = #state{logfile = LogFile
-                  ,iodevice = NewDev
-                  ,logip = LogIP
-                  ,logport = LogPort
-                  ,counter = 1},
+                   ,iodevice = NewDev
+                   ,logip = LogIP
+                   ,logport = LogPort
+                   ,counter = 1
+                  },
     self() ! 'start_parsing',
     {'ok', State}.
 
@@ -119,10 +120,11 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info('start_parsing', State=#state{iodevice = IoDevice
-                                         ,logip = LogIP
-                                         ,logport = LogPort
-                                         ,timer = OldTimer
-                                         ,counter = Counter}) ->
+                                          ,logip = LogIP
+                                          ,logport = LogPort
+                                          ,timer = OldTimer
+                                          ,counter = Counter
+                                         }) ->
     _ = case OldTimer of
             'undefined' -> 'ok';
             _ -> erlang:cancel_timer(OldTimer)
@@ -131,7 +133,8 @@ handle_info('start_parsing', State=#state{iodevice = IoDevice
     NewTimer = erlang:send_after(ci_parsers_util:parse_interval()
                                 , self(), 'start_parsing'),
     {'noreply', State#state{timer = NewTimer
-                           ,counter = NewCounter}};
+                            ,counter = NewCounter
+                           }};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
@@ -182,19 +185,20 @@ make_and_store_chunk(LogIP, LogPort, Counter, Data00) ->
             'false' ->                         {Counter, Data00, Counter+1}
         end,
     Cleansers = [fun remove_whitespace_lines/1
-                ,fun remove_unrelated_lines/1 %% MUST be called before unwrap_lines/1
-                ,fun unwrap_lines/1
-                ,fun strip_truncating_pieces/1
-                ,fun remove_dashes/1],
+                 ,fun remove_unrelated_lines/1 %% MUST be called before unwrap_lines/1
+                 ,fun unwrap_lines/1
+                 ,fun strip_truncating_pieces/1
+                 ,fun remove_dashes/1
+                ],
     Data = lists:foldl(Apply, Data0, Cleansers),
     ParserId = ci_parsers_sup:child(self()),
     Chunk =
         ci_chunk:setters(set_legs(LogIP, LogPort, ci_chunk:new(), Data)
-                        , [ {fun ci_chunk:data/2, Data}
-                          , {fun ci_chunk:call_id/2, ci_parsers_util:call_id(Data)}
-                          , {fun ci_chunk:timestamp/2, Timestamp}
-                          , {fun ci_chunk:parser/2, ParserId}
-                          , {fun ci_chunk:label/2, label(Data)}
+                        , [{fun ci_chunk:data/2, Data}
+                           ,{fun ci_chunk:call_id/2, ci_parsers_util:call_id(Data)}
+                           ,{fun ci_chunk:timestamp/2, Timestamp}
+                           ,{fun ci_chunk:parser/2, ParserId}
+                           ,{fun ci_chunk:label/2, label(Data)}
                           ]
                         ),
     lager:debug("parsed chunk ~s (~s)", [ci_chunk:call_id(Chunk), ParserId]),
@@ -266,12 +270,11 @@ set_legs(LogIP, LogPort, Chunk, [FirstLine|_Lines]) ->
             FromPort = get_port(FirstLine),
             ToPort   = LogPort
     end,
-    ci_chunk:setters(Chunk
-                    , [ {fun ci_chunk:src_ip/2, FromIP}
-                      , {fun ci_chunk:dst_ip/2, ToIP}
-                      , {fun ci_chunk:src_port/2, FromPort}
-                      , {fun ci_chunk:dst_port/2, ToPort}
-                      ]
+    ci_chunk:setters(Chunk, [{fun ci_chunk:src_ip/2, FromIP}
+                             ,{fun ci_chunk:dst_ip/2, ToIP}
+                             ,{fun ci_chunk:src_port/2, FromPort}
+                             ,{fun ci_chunk:dst_port/2, ToPort}
+                            ]
                     ).
 
 ip(Bin) ->
