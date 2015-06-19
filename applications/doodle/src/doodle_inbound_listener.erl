@@ -176,10 +176,10 @@ terminate('shutdown', _State) ->
     lager:debug("inbound listener terminating");
 terminate(Reason, #state{connection=Connection}) ->
     lager:error("inbound listener unexpected termination : ~p", [Reason]),
-    spawn(fun()->
-                  timer:sleep(10000),
-                  doodle_inbound_listener_sup:start_inbound_listener(Connection)
-          end).
+    wh_util:spawn(fun()->
+                          timer:sleep(10000),
+                          doodle_inbound_listener_sup:start_inbound_listener(Connection)
+                  end).
 
 %%--------------------------------------------------------------------
 %% @private

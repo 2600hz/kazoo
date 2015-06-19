@@ -180,10 +180,10 @@ handle_info({'tcp', Socket, Data}, #state{socket=Socket
             EventProps = props:filter_undefined([{<<"Switch-URL">>, SwitchURL}
                                                  ,{<<"Switch-URI">>, SwitchURI}
                                                 ]) ++ Props ,
-            _ = spawn(fun() ->
-                              maybe_send_event(EventName, UUID, EventProps, Node),
-                              process_event(EventName, UUID, EventProps, Node)
-                      end),
+            _ = wh_util:spawn(fun() ->
+                                      maybe_send_event(EventName, UUID, EventProps, Node),
+                                      process_event(EventName, UUID, EventProps, Node)
+                              end),
             {'noreply', State, Timeout};
         _Else ->
             io:format("~p~n", [_Else]),

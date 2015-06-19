@@ -639,7 +639,7 @@ build_bridge_channels([#bridge_endpoint{invite_format = <<"loopback">>}=Endpoint
 %% If this does not have an explicted sip route and we have no ip address, lookup the registration
 build_bridge_channels([#bridge_endpoint{ip_address='undefined'}=Endpoint|Endpoints], Channels) ->
     S = self(),
-    Pid = spawn(fun() -> S ! {self(), build_channel(Endpoint)} end),
+    Pid = wh_util:spawn(fun() -> S ! {self(), build_channel(Endpoint)} end),
     build_bridge_channels(Endpoints, [{'worker', Pid}|Channels]);
 %% If we have been given a IP to route to then do that now
 build_bridge_channels([Endpoint|Endpoints], Channels) ->

@@ -606,11 +606,12 @@ maybe_reconnect(#wh_amqp_assignment{reconnect='false'}) -> 'ok';
 maybe_reconnect(#wh_amqp_assignment{consumer=Consumer
                                     ,channel=Channel
                                    }=Assignment) ->
-    _ = spawn(fun() ->
-                      lager:debug("replaying previous AMQP commands from consumer ~p on channel ~p"
-                                  ,[Consumer, Channel]),
-                      reconnect(Assignment, wh_amqp_history:get(Consumer))
-              end),
+    _ = wh_util:spawn(
+          fun() ->
+                  lager:debug("replaying previous AMQP commands from consumer ~p on channel ~p"
+                              ,[Consumer, Channel]),
+                  reconnect(Assignment, wh_amqp_history:get(Consumer))
+          end),
     'ok'.
 
 -spec reconnect(wh_amqp_assignment(), wh_amqp_commands()) -> 'ok'.
@@ -759,11 +760,12 @@ handle_down_match({'channel', #wh_amqp_assignment{channel=Channel
 -spec maybe_defer_reassign(#wh_amqp_assignment{}, term()) -> 'ok'.
 maybe_defer_reassign(#wh_amqp_assignment{}=Assignment
                     ,{'shutdown',{'server_initiated_close', 404, _Msg}}) ->
-     lager:debug("defer channel reassign for ~p ms", [?SERVER_RETRY_PERIOD]),
-     spawn(fun() ->
-                   timer:sleep(?SERVER_RETRY_PERIOD),
-                   gen_server:cast(?MODULE, {'maybe_defer_reassign', Assignment})
-           end);
+    lager:debug("defer channel reassign for ~p ms", [?SERVER_RETRY_PERIOD]),
+    wh_util:spawn(
+      fun() ->
+              timer:sleep(?SERVER_RETRY_PERIOD),
+              gen_server:cast(?MODULE, {'maybe_defer_reassign', Assignment})
+      end);
 maybe_defer_reassign(#wh_amqp_assignment{timestamp=Timestamp
                                          ,consumer=Consumer
                                         }, _) ->

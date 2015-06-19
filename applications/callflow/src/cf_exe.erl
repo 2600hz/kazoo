@@ -400,7 +400,7 @@ handle_cast('initialize', #state{call=Call}) ->
                 ,fun(C) -> whapps_call:control_queue_helper(fun cf_exe:control_queue/2, C) end
                ],
     CallWithHelpers = lists:foldr(fun(F, C) -> F(C) end, Call, Updaters),
-    spawn('cf_singular_call_hooks', 'maybe_hook_call', [CallWithHelpers]),
+    _ = wh_util:spawn('cf_singular_call_hooks', 'maybe_hook_call', [CallWithHelpers]),
     {'noreply', #state{call=CallWithHelpers
                        ,flow=Flow
                       }};

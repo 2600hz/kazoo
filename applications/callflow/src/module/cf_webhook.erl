@@ -21,10 +21,10 @@
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    spawn(?MODULE, 'handle_webhook', [Data, Call]),
+    _ = wh_util:spawn(?MODULE, 'handle_webhook', [Data, Call]),
     cf_exe:continue(Call).
 
--spec handle_webhook(wh_json:object(), whapps_call:call()) -> 'ok' | {'error', any()}.
+-spec handle_webhook(wh_json:object(), whapps_call:call()) -> 'ok' | {'error', _}.
 handle_webhook(Data, Call) ->
     CallJObj = format_call_data(Call),
     Hook = set_hook(Data, CallJObj),

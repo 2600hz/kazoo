@@ -16,7 +16,7 @@
 
 -spec start_link() -> 'ignore'.
 start_link() ->
-    _ = spawn(?MODULE, 'init', []),
+    _ = wh_util:spawn(?MODULE, 'init', []),
     'ignore'.
 
 -spec init() -> 'ok'.

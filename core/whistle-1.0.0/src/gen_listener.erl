@@ -254,11 +254,12 @@ cast(Name, Request) -> gen_server:cast(Name, {'$client_cast', Request}).
 
 -spec delayed_cast(server_ref(), term(), pos_integer()) -> 'ok'.
 delayed_cast(Name, Request, Wait) when is_integer(Wait), Wait > 0 ->
-    _P = spawn(fun() ->
-                       wh_util:put_callid(?MODULE),
-                       timer:sleep(Wait),
-                       gen_server:cast(Name, Request)
-               end),
+    _P = wh_util:spawn(
+           fun() ->
+                   wh_util:put_callid(?MODULE),
+                   timer:sleep(Wait),
+                   gen_server:cast(Name, Request)
+           end),
     'ok'.
 
 -spec reply({pid(), reference()}, term()) -> no_return().
@@ -497,7 +498,7 @@ handle_cast({'wh_amqp_assignment', {'new_channel', 'true'}}, State) ->
 handle_cast({'wh_amqp_assignment', {'new_channel', 'false'}}, State) ->
     {'noreply', handle_amqp_channel_available(State)};
 handle_cast({'federated_event', JObj, BasicDeliver}, State) ->
-    spawn(?MODULE, 'distribute_event', [JObj, BasicDeliver, State]),
+    _ = wh_util:spawn(?MODULE, 'distribute_event', [JObj, BasicDeliver, State]),
     {'noreply', State};
 handle_cast({'$execute', Module, Function, Args}
             ,#state{federators=[]}=State) ->
@@ -589,7 +590,7 @@ maybe_remove_binding(_BP, _B, _P, _Q) -> 'true'.
 handle_info({#'basic.deliver'{}=BD, #amqp_msg{props=#'P_basic'{content_type=CT}
                                               ,payload=Payload
                                              }}, State) ->
-    spawn(?MODULE, 'handle_event', [Payload, CT, BD, State]),
+    _ = wh_util:spawn(?MODULE, 'handle_event', [Payload, CT, BD, State]),
     {'noreply', State, 'hibernate'};
 handle_info({#'basic.return'{}=BR, #amqp_msg{props=#'P_basic'{content_type=CT}
                                              ,payload=Payload

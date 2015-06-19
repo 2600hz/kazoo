@@ -54,7 +54,7 @@ sysconfig_default_rates() ->
 
 -spec start_link() -> 'ignore'.
 start_link() ->
-    _ = spawn(fun default_rate_limits/0),
+    _ = wh_util:spawn(fun default_rate_limits/0),
     'ignore'.
 
 -spec default_rate_limits() -> wh_json:object().

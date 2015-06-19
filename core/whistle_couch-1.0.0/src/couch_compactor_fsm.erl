@@ -858,10 +858,11 @@ compact({'compact_db', N, D, [], _}, #state{nodes=[]
     };
 
 compact({'rebuild_views', N, D, DDs}, #state{conn=Conn}=State) ->
-    _P = spawn(fun() ->
-                       put('callid', N),
-                       ?MODULE:rebuild_design_docs(Conn, encode_db(D), DDs)
-               end),
+    _P = wh_util:spawn(
+           fun() ->
+                   wh_util:put_callid(N),
+                   ?MODULE:rebuild_design_docs(Conn, encode_db(D), DDs)
+           end),
     lager:debug("rebuilding views in ~p", [_P]),
     gen_fsm:send_event(self(), {'compact_db', N, D, [], DDs}),
     {'next_state', 'compact', State};
@@ -1306,7 +1307,7 @@ rebuild_view(Conn, D, DD, View) ->
 -spec compact_shards(server(), server(), list(), list(), list()) -> pid_ref().
 compact_shards(Conn, AdminConn, Node, Ss, DDs) ->
     PR = spawn_monitor(fun() ->
-                               put('callid', Node),
+                               wh_util:put_callid(Node),
                                Ps = [spawn_monitor(?MODULE, 'compact_shard', [Conn, AdminConn, Shard, DDs])
                                      || Shard <- Ss
                                     ],

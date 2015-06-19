@@ -117,11 +117,11 @@ handle_cast({'omnipresence',{'x_resubscribe_notify', <<"presence">>, User, #omni
     wh_amqp_worker:cast(Props, fun wapi_presence:publish_probe/1),
     {'noreply', State};
 handle_cast({'omnipresence',{'presence_update', JObj}}, State) ->
-    _ = spawn(fun() -> presence_event(JObj) end),
+    _ = wh_util:spawn(fun() -> presence_event(JObj) end),
     {'noreply', State};
 handle_cast({'omnipresence',{'channel_event', JObj}}, State) ->
     EventType = wh_json:get_value(<<"Event-Name">>, JObj),
-    _ = spawn(fun() -> channel_event(EventType, JObj) end),
+    _ = wh_util:spawn(fun() -> channel_event(EventType, JObj) end),
     {'noreply', State};
 handle_cast({'omnipresence', _}, State) ->
     {'noreply', State};

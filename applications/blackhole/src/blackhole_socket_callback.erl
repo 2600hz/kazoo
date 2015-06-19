@@ -48,16 +48,17 @@ recv(_SessionPid, SessionId, Message, Context) ->
 
 close(SessionPid, SessionId, _Context) ->
     lager:debug("closing socket ~p", [SessionId]),
-    blackhole_bindings:filter(fun(Binding, _Module, _Function, BindingContext) ->
-                                      case bh_context:is_context(BindingContext) of
-                                          'false' -> 'true';
-                                          'true' ->
-                                              case not (bh_context:websocket_pid(BindingContext) =:= SessionPid) of
-                                                  'true' -> 'true';
-                                                  'false' ->
-                                                      spawn('blackhole_util', 'remove_binding', [Binding, BindingContext]),
-                                                      'false'
-                                              end
-                                      end
-                              end),
+    blackhole_bindings:filter(
+      fun(Binding, _Module, _Function, BindingContext) ->
+              case bh_context:is_context(BindingContext) of
+                  'false' -> 'true';
+                  'true' ->
+                      case not (bh_context:websocket_pid(BindingContext) =:= SessionPid) of
+                          'true' -> 'true';
+                          'false' ->
+                              _ = wh_util:spawn('blackhole_util', 'remove_binding', [Binding, BindingContext]),
+                              'false'
+                      end
+              end
+      end),
     'ok'.

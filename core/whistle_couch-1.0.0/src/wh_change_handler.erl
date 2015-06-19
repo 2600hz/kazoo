@@ -182,7 +182,7 @@ handle_change(_JObj, #state{listeners=[]}=State) ->
 handle_change({done, _}, State) ->
     {noreply, State};
 handle_change(JObj, #state{listeners=Ls}=State) ->
-    spawn(?MODULE, alert_listeners, [JObj, Ls]),
+    _ = wh_util:spawn(?MODULE, alert_listeners, [JObj, Ls]),
     {noreply, State, hibernate}.
 
 %%--------------------------------------------------------------------

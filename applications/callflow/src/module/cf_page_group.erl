@@ -20,7 +20,7 @@
 %% stop when successfull.
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:object(), whapps_call:call()) -> any().
+-spec handle(wh_json:object(), whapps_call:call()) -> _.
 handle(Data, Call) ->
     case get_endpoints(wh_json:get_value(<<"endpoints">>, Data, []), Call) of
         [] ->
@@ -45,10 +45,11 @@ attempt_page(Endpoints, Data, Call) ->
 -spec get_endpoints(wh_json:objects(), whapps_call:call()) -> wh_json:objects().
 get_endpoints(Members, Call) ->
     S = self(),
-    Builders = [spawn(fun() ->
-                              put('callid', whapps_call:call_id(Call)),
-                              S ! {self(), catch cf_endpoint:build(EndpointId, Member, Call)}
-                      end)
+    Builders = [wh_util:spawn(
+                  fun() ->
+                          wh_util:put_callid(whapps_call:call_id(Call)),
+                          S ! {self(), catch cf_endpoint:build(EndpointId, Member, Call)}
+                  end)
                 || {EndpointId, Member} <- resolve_endpoint_ids(Members, Call)
                ],
     lists:foldl(fun(Pid, Acc) ->

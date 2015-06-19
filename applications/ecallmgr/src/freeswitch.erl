@@ -130,7 +130,8 @@ api(Node, Cmd, Args, Timeout) ->
                    {'error', 'timeout' | binary()}.
 bgapi(Node, Cmd, Args) ->
     Self = self(),
-    spawn(fun() ->
+    _ = wh_util:spawn(
+          fun() ->
                   try gen_server:call({'mod_kazoo', Node}, {'bgapi', Cmd, Args}, ?TIMEOUT) of
                       {'ok', JobId}=JobOk ->
                           Self ! {'api', JobOk},
@@ -159,7 +160,8 @@ bgapi(Node, Cmd, Args) ->
 
 bgapi(Node, Cmd, Args, Fun) when is_function(Fun, 2) ->
     Self = self(),
-    spawn(fun() ->
+    _ = wh_util:spawn(
+          fun() ->
                   try gen_server:call({'mod_kazoo', Node}, {'bgapi', Cmd, Args}, ?TIMEOUT) of
                       {'ok', JobId}=JobOk ->
                           Self ! {'api', JobOk},
@@ -191,7 +193,8 @@ bgapi(Node, Cmd, Args, Fun) when is_function(Fun, 2) ->
                    {'error', 'timeout' | 'exception' | binary()}.
 bgapi(Node, UUID, CallBackParams, Cmd, Args, Fun) when is_function(Fun, 6) ->
     Self = self(),
-    spawn(fun() ->
+    _ = wh_util:spawn(
+          fun() ->
                   try gen_server:call({'mod_kazoo', Node}, {'bgapi', Cmd, Args}, ?TIMEOUT) of
                       {'ok', JobId}=JobOk ->
                           Self ! {'api', JobOk},

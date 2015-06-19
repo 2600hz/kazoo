@@ -88,7 +88,7 @@ init([]) ->
     wh_util:put_callid(?MODULE),
     lager:debug("started ~s", [?MODULE]),
     wapi_call:declare_exchanges(),
-    _ = spawn('whistle_apps_sup', 'start_child', [?CACHE(?HOOKS_CACHE_NAME)]),
+    _ = wh_util:spawn('whistle_apps_sup', 'start_child', [?CACHE(?HOOKS_CACHE_NAME)]),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------

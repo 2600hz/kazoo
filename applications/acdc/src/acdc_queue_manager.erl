@@ -571,14 +571,15 @@ start_secondary_queue(AccountId, QueueId) ->
     Self = self(),
     AccountDb = wh_util:format_account_db(AccountId),
     Priority = lookup_priority_levels(AccountDb, QueueId),
-    _ = spawn(fun() -> gen_listener:add_queue(Self
-                                              ,?SECONDARY_QUEUE_NAME(QueueId)
-                                              ,[{'queue_options', ?SECONDARY_QUEUE_OPTIONS(Priority)}
-                                                ,{'consume_options', ?SECONDARY_CONSUME_OPTIONS}
-                                               ]
-                                              ,?SECONDARY_BINDINGS(AccountId, QueueId)
-                                             )
-              end).
+    _ = wh_util:spawn(
+          fun() -> gen_listener:add_queue(Self
+                                          ,?SECONDARY_QUEUE_NAME(QueueId)
+                                          ,[{'queue_options', ?SECONDARY_QUEUE_OPTIONS(Priority)}
+                                            ,{'consume_options', ?SECONDARY_CONSUME_OPTIONS}
+                                           ]
+                                          ,?SECONDARY_BINDINGS(AccountId, QueueId)
+                                         )
+          end).
 
 -spec lookup_priority_levels(ne_binary(), ne_binary()) -> api_integer().
 lookup_priority_levels(AccountDB, QueueId) ->
@@ -593,9 +594,7 @@ make_ignore_key(AccountId, QueueId, CallId) ->
 -spec start_agent_and_worker(pid(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 start_agent_and_worker(WorkersSup, AccountId, QueueId, AgentJObj) ->
     acdc_queue_workers_sup:new_worker(WorkersSup, AccountId, QueueId),
-
-    AgentId = wh_json:get_value(<<"_id">>, AgentJObj),
-
+    AgentId = wh_doc:id(AgentJObj),
     case acdc_agent_util:most_recent_status(AccountId, AgentId) of
         {'ok', <<"logout">>} -> 'ok';
         {'ok', <<"logged_out">>} -> 'ok';

@@ -127,7 +127,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'timeout', Ref, _Msg}, #state{cleanup_ref=Ref}=State) ->
-    _P = spawn(?MODULE, 'crawl_numbers', []),
+    _P = wh_util:spawn(?MODULE, 'crawl_numbers', []),
     {'noreply', State#state{cleanup_ref=cleanup_timer()}};
 handle_info(_Msg, State) ->
     lager:debug("unhandled msg: ~p", [_Msg]),

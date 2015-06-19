@@ -328,24 +328,26 @@ originate_call(C2CId, Context, Contact) ->
     AccountId = cb_context:account_id(Context),
     AccountModb = cb_context:account_modb(Context),
 
-    _Pid = spawn(fun() ->
-                         put('callid', ReqId),
-                         Request = build_originate_req(Contact, Context),
-                         Status = exec_originate(Request),
-                         lager:debug("got status ~p", [Status]),
+    _Pid = wh_util:spawn(
+             fun() ->
+                     wh_util:put_callid(ReqId),
+                     Request = build_originate_req(Contact, Context),
+                     Status = exec_originate(Request),
+                     lager:debug("got status ~p", [Status]),
 
-                         HistoryItem = wh_doc:update_pvt_parameters(
-                                         wh_json:from_list(
-                                           [{<<"pvt_clicktocall_id">>, C2CId}
-                                            | create_c2c_history_item(Status, Contact)
-                                           ]
-                                          )
-                                         ,AccountModb
-                                         ,[{'account_id', AccountId}
-                                           ,{'type', <<"c2c_history">>}
-                                          ]),
-                         kazoo_modb:save_doc(AccountId, HistoryItem)
-                 end),
+                     JObj = wh_json:from_list(
+                              [{<<"pvt_clicktocall_id">>, C2CId}
+                               | create_c2c_history_item(Status, Contact)
+                              ]
+                             ),
+                     HistoryItem =
+                         wh_doc:update_pvt_parameters(JObj
+                                                      ,AccountModb
+                                                      ,[{'account_id', AccountId}
+                                                        ,{'type', <<"c2c_history">>}
+                                                       ]),
+                     kazoo_modb:save_doc(AccountId, HistoryItem)
+             end),
     lager:debug("attempting call in ~p", [_Pid]),
     crossbar_util:response_202(<<"processing request">>, Context).
 

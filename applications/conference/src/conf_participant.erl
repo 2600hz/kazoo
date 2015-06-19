@@ -527,12 +527,12 @@ sync_moderator(JObj, Call, #participant{conference=Conference
         andalso gen_listener:cast(self(), 'mute'),
     whapps_conference:moderator_join_deaf(Conference)
         andalso gen_listener:cast(self(), 'deaf'),
-    _ = spawn(fun() -> notify_requestor(whapps_call:controller_queue(Call)
-                                        ,ParticipantId
-                                        ,DiscoveryEvent
-                                        ,whapps_conference:id(Conference)
-                                       )
-              end),
+    _ = wh_util:spawn(fun() -> notify_requestor(whapps_call:controller_queue(Call)
+                                                ,ParticipantId
+                                                ,DiscoveryEvent
+                                                ,whapps_conference:id(Conference)
+                                               )
+                      end),
     Participant#participant{in_conference='true'
                             ,muted=Muted
                             ,deaf=Deaf
@@ -552,12 +552,12 @@ sync_member(JObj, Call, #participant{conference=Conference
         andalso gen_listener:cast(self(), 'mute'),
     whapps_conference:member_join_deaf(Conference)
         andalso gen_listener:cast(self(), 'deaf'),
-    _ = spawn(fun() -> notify_requestor(whapps_call:controller_queue(Call)
-                                        ,ParticipantId
-                                        ,DiscoveryEvent
-                                        ,whapps_conference:id(Conference)
-                                       )
-              end),
+    _ = wh_util:spawn(fun() -> notify_requestor(whapps_call:controller_queue(Call)
+                                                ,ParticipantId
+                                                ,DiscoveryEvent
+                                                ,whapps_conference:id(Conference)
+                                               )
+                      end),
     Participant#participant{in_conference='true'
                             ,muted=Muted
                             ,deaf=Deaf

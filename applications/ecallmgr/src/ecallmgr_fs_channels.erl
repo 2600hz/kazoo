@@ -444,7 +444,7 @@ handle_cast({'flush_node', Node}, State) ->
         [] ->
             lager:debug("no locally handled channels");
         LocalChannels ->
-            _P = spawn(fun() -> handle_channels_disconnected(LocalChannels) end),
+            _P = wh_util:spawn(fun() -> handle_channels_disconnected(LocalChannels) end),
             lager:debug("sending channel disconnecteds for local channels: ~p", [LocalChannels])
     end,
 
@@ -809,7 +809,7 @@ maybe_cleanup_old_channels() ->
     case max_channel_uptime() of
         N when N =< 0 -> 'ok';
         MaxAge ->
-            _P = spawn(?MODULE, 'cleanup_old_channels', [MaxAge]),
+            _P = wh_util:spawn(?MODULE, 'cleanup_old_channels', [MaxAge]),
             'ok'
     end.
 

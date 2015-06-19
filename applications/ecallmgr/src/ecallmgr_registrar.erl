@@ -417,7 +417,7 @@ handle_cast({'update_registration', {Username, Realm}=Id, Props}, State) ->
     _ = ets:update_element(?MODULE, Id, Props),
     {'noreply', State};
 handle_cast({'delete_registration', #registration{id=Id}=Reg}, State) ->
-    spawn(fun() -> maybe_send_deregister_notice(Reg) end),
+    _ = wh_util:spawn(fun() -> maybe_send_deregister_notice(Reg) end),
     ets:delete(?MODULE, Id),
     {'noreply', State};
 handle_cast('flush', State) ->
@@ -464,7 +464,7 @@ handle_info('expire', State) ->
     _ = erlang:send_after(2 * ?MILLISECONDS_IN_SECOND, self(), 'expire'),
     {'noreply', State};
 handle_info(?REGISTER_SUCCESS_MSG(Node, Props), State) ->
-    spawn(?MODULE, 'handle_reg_success', [Node, Props]),
+    _ = wh_util:spawn(?MODULE, 'handle_reg_success', [Node, Props]),
     {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
@@ -654,7 +654,7 @@ expire_objects() ->
 -spec expire_object(_) -> 'ok'.
 expire_object('$end_of_table') -> 'ok';
 expire_object({[#registration{id=Id}=Reg], Continuation}) ->
-    spawn(fun() -> maybe_send_deregister_notice(Reg) end),
+    _ = wh_util:spawn(fun() -> maybe_send_deregister_notice(Reg) end),
     _ = ets:delete(?MODULE, Id),
     expire_object(ets:select(Continuation)).
 
