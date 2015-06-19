@@ -137,7 +137,7 @@ maybe_get_owner_presence_id(AccountDb, DeviceId, OwnerId) ->
     case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
         {'error', _} -> 'undefined';
         {'ok', JObj} ->
-            case wh_json:get_ne_value(<<"presence_id">>, JObj) of
+            case kz_device:presence_id(JObj) of
                 'undefined' -> get_device_presence_id(AccountDb, DeviceId);
                 PresenceId -> wh_util:to_binary(PresenceId)
             end
@@ -148,7 +148,7 @@ get_device_presence_id(AccountDb, DeviceId) ->
     case couch_mgr:open_cache_doc(AccountDb, DeviceId) of
         {'error', _} -> 'undefined';
         {'ok', JObj} ->
-            case wh_json:get_ne_value(<<"presence_id">>, JObj) of
+            case kz_device:presence_id(JObj) of
                 'undefined' -> 'undefined';
                 PresenceId -> wh_util:to_binary(PresenceId)
             end
