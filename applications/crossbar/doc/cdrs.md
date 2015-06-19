@@ -134,3 +134,7 @@ Using Crossbar to modify metaflows is very simple. There are only three GETs
     curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/cdrs?created_from={FROM_TIMESTAMP}&created_to={TO_TIMESTAMP}
 
 &tip All timestamps will be in Gregorian seconds (not Unix epoch).
+
+#### _GET_ - Fetch account CDRs in csv format:
+
+    curl -v -X GET -H "Accept: text/csv" -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/cdrs
