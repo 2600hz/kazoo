@@ -86,6 +86,8 @@
         ,whapps_config:get(?CONFIG_CAT, <<"default_language">>, <<"en-US">>)
        ).
 
+-define(KEY_EMERGENCY, <<"emergency">>).
+
 -type fails() :: 'error' | 'fatal'.
 
 %%--------------------------------------------------------------------
@@ -973,7 +975,8 @@ get_priv_level(AccountId, OwnerId) ->
 -spec get_system_token_restrictions(ne_binary()) -> api_object().
 get_system_token_restrictions(Method) ->
     case whapps_config:get(<<(?CONFIG_CAT)/binary, ".token_restrictions">>, Method) of
-        'undefined' ->  whapps_config:get(<<(?CONFIG_CAT)/binary, ".token_restrictions">>, <<"_">>);
+        'undefined' ->
+            whapps_config:get(<<(?CONFIG_CAT)/binary, ".token_restrictions">>, <<"_">>);
         MethodRestrictions -> MethodRestrictions
     end.
 
@@ -981,11 +984,13 @@ get_system_token_restrictions(Method) ->
 get_account_token_restrictions(AccountId, Method) ->
     AccountDB = wh_util:format_account_db(AccountId),
     case couch_mgr:open_cache_doc(AccountDB, ?CB_ACCOUNT_TOKEN_RESTRICTIONS) of
-        {'ok', RestrictionsDoc} -> wh_json:get_first_defined(
-                                     [[<<"restrictions">>, wh_util:to_binary(Method)]
-                                      ,[<<"restrictions">>, <<"_">>]
-                                     ],
-                                     RestrictionsDoc);
+        {'ok', RestrictionsDoc} ->
+            wh_json:get_first_defined(
+              [[<<"restrictions">>, wh_util:to_binary(Method)]
+               ,[<<"restrictions">>, <<"_">>]
+              ]
+              ,RestrictionsDoc
+             );
         {'error', _} -> 'undefined'
     end.
 
@@ -1058,22 +1063,29 @@ handle_no_descendants(ViewOptions) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec format_emergency_caller_id_number(cb_context:context()) -> cb_context:context().
+-spec format_emergency_caller_id_number(cb_context:context()) ->
+                                               cb_context:context().
+-spec format_emergency_caller_id_number(cb_context:context(), wh_json:object()) ->
+                                               cb_context:context().
 format_emergency_caller_id_number(Context) ->
-    case cb_context:req_value(Context, [<<"caller_id">>, <<"emergency">>]) of
+    case cb_context:req_value(Context, [<<"caller_id">>, ?KEY_EMERGENCY]) of
         'undefined' -> Context;
         Emergency ->
-            case wh_json:get_value(<<"number">>, Emergency) of
-                'undefined' -> Context;
-                Number ->
-                    NEmergency = wh_json:set_value(<<"number">>, wnm_util:to_e164(Number), Emergency),
-                    CallerId = cb_context:req_value(Context, <<"caller_id">>),
-                    NCallerId = wh_json:set_value(<<"emergency">>, NEmergency, CallerId),
-                    cb_context:set_req_data(
-                        Context
-                        ,wh_json:set_value(<<"caller_id">>, NCallerId, cb_context:req_data(Context))
-                    )
-            end
+            format_emergency_caller_id_number(Context, Emergency)
+    end.
+
+format_emergency_caller_id_number(Context, Emergency) ->
+    case wh_json:get_value(<<"number">>, Emergency) of
+        'undefined' -> Context;
+        Number ->
+            NEmergency = wh_json:set_value(<<"number">>, wnm_util:to_e164(Number), Emergency),
+            CallerId = cb_context:req_value(Context, <<"caller_id">>),
+            NCallerId = wh_json:set_value(?KEY_EMERGENCY, NEmergency, CallerId),
+
+            cb_context:set_req_data(
+              Context
+              ,wh_json:set_value(<<"caller_id">>, NCallerId, cb_context:req_data(Context))
+             )
     end.
 
 %% @public
@@ -1288,21 +1300,26 @@ update_descendants_count(AccountId, JObj, NewCount) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_validate_quickcall(cb_context:context()) -> cb_context:context().
--spec maybe_validate_quickcall(cb_context:context(), crossbar_status()) -> cb_context:context().
+-spec maybe_validate_quickcall(cb_context:context()) ->
+                                      cb_context:context().
+-spec maybe_validate_quickcall(cb_context:context(), crossbar_status()) ->
+                                      cb_context:context().
 maybe_validate_quickcall(Context) ->
     case
         kz_buckets:consume_tokens(?APP_NAME
-                                 ,cb_modules_util:bucket_name(Context)
-                                 ,cb_modules_util:token_cost(Context, 1, [?QUICKCALL_PATH_TOKEN])
+                                  ,cb_modules_util:bucket_name(Context)
+                                  ,cb_modules_util:token_cost(Context, 1, [?QUICKCALL_PATH_TOKEN])
                                  )
     of
-        'false' -> cb_context:add_system_error('too_many_requests', Context);
-        'true' -> maybe_validate_quickcall(Context, cb_context:resp_status(Context))
+        'false' ->
+            cb_context:add_system_error('too_many_requests', Context);
+        'true' ->
+            maybe_validate_quickcall(Context, cb_context:resp_status(Context))
     end.
 
 maybe_validate_quickcall(Context, 'success') ->
     AllowAnon = wh_json:get_value(<<"allow_anonymous_quickcalls">>, cb_context:doc(Context)),
+
     case wh_util:is_true(AllowAnon)
         orelse cb_context:is_authenticated(Context)
         orelse
