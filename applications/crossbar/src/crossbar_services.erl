@@ -368,12 +368,12 @@ save_an_audit_log(Context, Services) ->
     case cb_context:account_id(Context) =:= wh_services:account_id(Services) of
         'true' -> 'ok';
         'false' ->
-            _Res = (catch save_subaccount_audit_log(Context, BaseAuditLog)),
-            lager:debug("saved sub account ~s's audit log", [cb_context:account_id(Context)])
+            (catch save_subaccount_audit_log(Context, BaseAuditLog))
     end,
     kzd_audit_log:save(Services, BaseAuditLog).
 
 -spec save_subaccount_audit_log(cb_context:context(), kzd_audit_log:doc()) -> 'ok'.
 save_subaccount_audit_log(Context, BaseAuditLog) ->
     MODb = cb_context:account_modb(Context),
-    {'ok', _Saved} = kazoo_modb:save_doc(MODb, BaseAuditLog).
+    {'ok', _Saved} = kazoo_modb:save_doc(MODb, BaseAuditLog),
+    lager:debug("saved sub account ~s's audit log", [cb_context:account_id(Context)]).
