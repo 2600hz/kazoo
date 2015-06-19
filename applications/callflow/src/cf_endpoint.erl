@@ -112,11 +112,16 @@ maybe_have_endpoint(JObj, EndpointId, AccountDb) ->
             lager:info("endpoint module does not manage document type ~s", [EndpointType]),
             {'error', 'not_device_nor_user'};
         'true' ->
-            Endpoint = wh_json:set_value(<<"Endpoint-ID">>, EndpointId, merge_attributes(JObj, EndpointType)),
-            CacheProps = [{'origin', cache_origin(JObj, EndpointId, AccountDb)}],
-            catch wh_cache:store_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, EndpointId}, Endpoint, CacheProps),
-            {'ok', Endpoint}
+            has_endpoint(JObj, EndpointId, AccountDb, EndpointType)
     end.
+
+-spec has_endpoint(wh_json:object(), ne_binary(), ne_binary(), ne_binary()) ->
+                          {'ok', wh_json:object()}.
+has_endpoint(JObj, EndpointId, AccountDb, EndpointType) ->
+    Endpoint = wh_json:set_value(<<"Endpoint-ID">>, EndpointId, merge_attributes(JObj, EndpointType)),
+    CacheProps = [{'origin', cache_origin(JObj, EndpointId, AccountDb)}],
+    catch wh_cache:store_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, EndpointId}, Endpoint, CacheProps),
+    {'ok', Endpoint}.
 
 -spec cache_origin(wh_json:object(), ne_binary(), ne_binary()) ->  list().
 cache_origin(JObj, EndpointId, AccountDb) ->
