@@ -11,7 +11,7 @@
 
 -include("jonny5.hrl").
 
--spec handle_req(wh_json:object(), wh_proplist()) -> any().
+-spec handle_req(wh_json:object(), wh_proplist()) -> _.
 handle_req(JObj, _) ->
     'true' = wapi_authz:authz_req_v(JObj),
     wh_util:put_callid(JObj),
@@ -114,7 +114,7 @@ maybe_reseller_limited(Request) ->
     ResellerId = j5_request:reseller_id(Request),
     case j5_request:account_id(Request) =:= ResellerId of
         'true' ->
-            lager:debug("channel belongs to reseller, ignoring reseller billing", []),
+            lager:debug("channel belongs to reseller, ignoring reseller billing"),
             send_response(
               j5_request:authorize_reseller(<<"limits_disabled">>, Request)
              );
@@ -208,6 +208,8 @@ maybe_inbound_soft_limit(Request, Limits) ->
 -spec send_response(j5_request:request()) -> 'ok'.
 send_response(Request) ->
     ServerId = j5_request:server_id(Request),
+    CCVs = wh_json:from_list([{<<"Account-Trunk-Usage">>, account_trunk_usage(Request)}
+                             ]),
     Resp = props:filter_undefined(
              [{<<"Is-Authorized">>, wh_util:to_binary(j5_request:is_authorized(Request))}
               ,{<<"Account-ID">>, j5_request:account_id(Request)}
@@ -219,6 +221,7 @@ send_response(Request) ->
               ,{<<"Soft-Limit">>, wh_util:to_binary(j5_request:soft_limit(Request))}
               ,{<<"Msg-ID">>, j5_request:message_id(Request)}
               ,{<<"Call-ID">>, j5_request:call_id(Request)}
+              ,{<<"Custom-Channel-Vars">>, CCVs}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     wapi_authz:publish_authz_resp(ServerId, Resp),
@@ -228,3 +231,14 @@ send_response(Request) ->
             j5_channels:authorized(wh_json:from_list(Resp));
         'false' -> j5_util:send_system_alert(Request)
     end.
+
+%% @private
+-spec account_trunk_usage(j5_request:request()) -> ne_binary().
+account_trunk_usage(Request) ->
+    Limits = j5_limits:get(j5_request:account_id(Request)),
+    <<
+      (wh_util:to_binary(j5_limits:inbound_trunks(Limits)))/binary, "/",
+      (wh_util:to_binary(j5_limits:outbound_trunks(Limits)))/binary, "/",
+      (wh_util:to_binary(j5_limits:twoway_trunks(Limits)))/binary, "/",
+      (wh_util:to_binary(j5_limits:burst_trunks(Limits)))/binary
+    >>.
