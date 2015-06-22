@@ -73,6 +73,10 @@ delete(Number) ->
             {'ok', Number1}
     end.
 
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -90,7 +94,7 @@ maybe_update_dash_e911(Number) ->
     CurrentE911 = wh_json:get_ne_value(?DASH_KEY, Features),
 
     Doc = knm_phone_number:doc(Number),
-    E911 = wh_json:get_ne_value([<<"features">>, ?DASH_KEY], Doc),
+    E911 = wh_json:get_ne_value([?PVT_FEATURES, ?DASH_KEY], Doc),
 
     NotChanged = wnm_util:are_jobjs_identical(CurrentE911, E911),
     case wh_util:is_empty(E911) of
