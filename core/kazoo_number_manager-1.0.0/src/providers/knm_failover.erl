@@ -8,9 +8,8 @@
 %%%-------------------------------------------------------------------
 -module(knm_failover).
 
--export([save/1
-         ,delete/1
-        ]).
+-export([save/1]).
+-export([delete/1]).
 
 -include("../knm.hrl").
 
@@ -43,12 +42,10 @@ save(Number, _State) ->
 %%--------------------------------------------------------------------
 -spec delete(number()) -> number_return().
 delete(Number) ->
-    Features = knm_phone_number:features(Number),
-    case wh_json:get_ne_value(?FAILOVER_KEY, Features) of
+    case knm_phone_number:feature(Number, ?FAILOVER_KEY) of
         'undefined' -> {'ok', Number};
         _Else ->
-            Number1 = knm_phone_number:set_features(Number, wh_json:delete_key(?FAILOVER_KEY, Features)),
-            {'ok', Number1}
+            {'ok', knm_services:deactivate_feature(Number, ?FAILOVER_KEY)}
     end.
 
 %%%===================================================================
@@ -73,11 +70,9 @@ maybe_update_failover(Number) ->
 
     case wh_util:is_empty(Failover) of
         'true' ->
-            Number1 = knm_phone_number:set_features(Number, wh_json:delete_key(?FAILOVER_KEY, Features)),
-            {'ok', Number1};
+            {'ok', knm_services:deactivate_feature(Number, ?FAILOVER_KEY)};
         'false' when NotChanged ->
-            Number1 = knm_phone_number:set_features(Number, wh_json:delete_key(?FAILOVER_KEY, Features)),
-            {'ok', Number1};
+            {'ok', knm_services:deactivate_feature(Number, ?FAILOVER_KEY)};
         'false' ->
-            {'ok', knm_services:activate_feature(?FAILOVER_KEY, Number)}
+            {'ok', knm_services:activate_feature(Number, ?FAILOVER_KEY)}
     end.

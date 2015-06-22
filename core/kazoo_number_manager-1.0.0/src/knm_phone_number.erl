@@ -74,20 +74,18 @@ fetch(Num, AuthBy) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec save(number()) -> number_return().
-save(#number{dry_run='true'}=Number) -> {'ok', Number};
+save(#number{dry_run='true'}=Number) ->
+    Routines = [
+        fun knm_providers:save/1
+    ],
+    routines(Number, Routines);
 save(#number{dry_run='false'}=Number) ->
     Routines = [
         fun knm_providers:save/1
         ,fun save_to_number_db/1
         ,fun hangle_assignment/1
     ],
-    lists:foldl(
-        fun(F, {'ok', N}) -> F(N);
-           (_F, Error) -> Error
-        end
-        ,{'ok', Number}
-        ,Routines
-    ).
+    routines(Number, Routines).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -102,13 +100,7 @@ delete(#number{dry_run='false'}=Number) ->
         ,fun delete_number_doc/1
         ,fun maybe_remove_number_from_account/1
     ],
-    lists:foldl(
-        fun(F, {'ok', N}) -> F(N);
-           (_F, Error) -> Error
-        end
-        ,{'ok', Number}
-        ,Routines
-    ).
+    routines(Number, Routines).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -390,6 +382,21 @@ doc(Number) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec routines(number(), [function()]) -> number_return().
+routines(Number, Routines) ->
+    lists:foldl(
+        fun(F, {'ok', N}) -> F(N);
+           (_F, Error) -> Error
+        end
+        ,{'ok', Number}
+        ,Routines
+    ).
 
 %%--------------------------------------------------------------------
 %% @private

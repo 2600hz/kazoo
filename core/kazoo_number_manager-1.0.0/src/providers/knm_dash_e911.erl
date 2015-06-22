@@ -62,15 +62,13 @@ save(Number, _State) -> delete(Number).
 %%--------------------------------------------------------------------
 -spec delete(number()) -> number_return().
 delete(Number) ->
-    Features = knm_phone_number:features(Number),
-    case wh_json:get_ne_value(?DASH_KEY, Features) of
+    case knm_phone_number:feature(Number, ?DASH_KEY) of
         'undefined' -> {'ok', Number};
         _Else ->
             Num = knm_phone_number:number(Number),
             lager:debug("removing e911 information from ~s", [Num]),
             _ = remove_number(Num),
-            Number1 = knm_phone_number:set_features(Number, wh_json:delete_key(?DASH_KEY, Features)),
-            {'ok', Number1}
+            {'ok', knm_services:deactivate_feature(Number, ?DASH_KEY)}
     end.
 
 %%%===================================================================
@@ -88,8 +86,6 @@ delete(Number) ->
                         | {'invalid', _}
                         | {'multiple_choice', wh_json:object()}.
 maybe_update_dash_e911(Number) ->
-    Num = knm_phone_number:number(Number),
-
     Features = knm_phone_number:features(Number),
     CurrentE911 = wh_json:get_ne_value(?DASH_KEY, Features),
 
@@ -100,27 +96,25 @@ maybe_update_dash_e911(Number) ->
     case wh_util:is_empty(E911) of
         'true' ->
             lager:debug("dash e911 information has been removed, updating dash"),
-            _ = remove_number(Num),
-            Number1 = knm_phone_number:set_features(Number, wh_json:delete_key(?DASH_KEY, Features)),
-            {'ok', Number1};
+            _ = remove_number(Number),
+            {'ok', knm_services:deactivate_feature(Number, ?DASH_KEY)};
         'false' when NotChanged  ->
-            Number1 = knm_phone_number:set_features(Number, wh_json:delete_key(?DASH_KEY, Features)),
-            {'ok', Number1};
+            {'ok', knm_services:deactivate_feature(Number, ?DASH_KEY)};
         'false' ->
             lager:debug("e911 information has been changed: ~s", [wh_json:encode(E911)]),
-            Number1 = knm_services:activate_feature(?DASH_KEY, Number),
-            case maybe_update_dash_e911(Num, E911, Features) of
+            Number1 = knm_services:activate_feature(Number, ?DASH_KEY),
+            case maybe_update_dash_e911(Number, E911, Features) of
                 {'ok', UpdatedFeatures} -> knm_phone_number:set_features(Number1, UpdatedFeatures);
                 Else -> Else
             end
     end.
 
--spec maybe_update_dash_e911(ne_binary(), wh_json:object(), wh_json:object()) ->
+-spec maybe_update_dash_e911(number(), wh_json:object(), wh_json:object()) ->
                         {'ok', wh_json:object()}
                         | {'error', _}
                         | {'invalid', _}
                         | {'multiple_choice', wh_json:object()}.
-maybe_update_dash_e911(Num, Address, JObj) when is_binary(Num) ->
+maybe_update_dash_e911(Number, Address, JObj) ->
     Location = json_address_to_xml_location(Address),
     case is_valid_location(Location) of
         {'error', _R}=Error->
@@ -136,10 +130,10 @@ maybe_update_dash_e911(Num, Address, JObj) when is_binary(Num) ->
             {'invalid', Error};
         {'provisioned', _} ->
             lager:debug("location seems already provisioned"),
-            update_e911(Num, Address, JObj);
+            update_e911(Number, Address, JObj);
         {'geocoded', [_Loc]} ->
             lager:debug("location seems geocoded to only one address"),
-            update_e911(Num, Address, JObj);
+            update_e911(Number, Address, JObj);
         {'geocoded', [_|_]=Addresses} ->
             lager:warning("location could correspond to multiple addresses"),
             Update =
@@ -151,7 +145,7 @@ maybe_update_dash_e911(Num, Address, JObj) when is_binary(Num) ->
             {'multiple_choice', Update};
         {'geocoded', _Loc} ->
             lager:debug("location seems geocoded to only one address"),
-            update_e911(Num, Address, JObj)
+            update_e911(Number, Address, JObj)
     end.
 
 %%--------------------------------------------------------------------
@@ -160,10 +154,16 @@ maybe_update_dash_e911(Num, Address, JObj) when is_binary(Num) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_e911(ne_binary(), wh_json:object(), wh_json:object()) ->
-                         {'ok', wh_json:object()} |
-                         {'error', _}.
-update_e911(Num, Address, JObj) ->
+-spec update_e911(number(), wh_json:object(), wh_json:object()) -> {'ok', wh_json:object()} | {'error', _}.
+-spec update_e911(number(), wh_json:object(), wh_json:object(), boolean()) -> {'ok', wh_json:object()} | {'error', _}.
+update_e911(Number, Address, JObj) ->
+    DryRun = knm_phone_number:dry_run(Number),
+    update_e911(Number, Address, JObj, DryRun).
+
+update_e911(_Number, Address, JObj, 'true') ->
+    {'ok', wh_json:set_value(?DASH_KEY, Address, JObj)};
+update_e911(Number, Address, JObj, 'false') ->
+    Num = knm_phone_number:number(Number),
     Location = json_address_to_xml_location(Address),
     CallerName = wh_json:get_ne_value(<<"caller_name">>, Address, <<"Valued Customer">>),
     case add_location(Num, Location, CallerName) of
@@ -187,82 +187,6 @@ provision_geocoded(JObj, E911) ->
         Status ->
             lager:debug("provisioning attempt moved location to status: ~s", [Status]),
             {'ok', wh_json:set_value(?DASH_KEY, wh_json:set_value(<<"status">>, Status, E911), JObj)}
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Make a REST request to dash e911 emergency provisiong API to preform
-%% the given verb (validatelocation, addlocation, ect).
-%% @end
-%%--------------------------------------------------------------------
--type emergency_provisioning_error() :: 'authentication' |
-                                        'authorization' |
-                                        'not_found' |
-                                        'server_error' |
-                                        'empty_response' |
-                                        'unreachable'.
--spec emergency_provisioning_request(atom(), wh_proplist()) ->
-                                            {'ok', xml_el()} |
-                                            {'error', emergency_provisioning_error()}.
-emergency_provisioning_request(Verb, Props) ->
-    URL = list_to_binary([?DASH_EMERG_URL, "/", wh_util:to_lower_binary(Verb)]),
-    Body = xmerl:export_simple([{Verb, Props}]
-                               ,'xmerl_xml'
-                               ,[{'prolog', ?DASH_XML_PROLOG}]
-                              ),
-    Headers = [{"Accept", "*/*"}
-               ,{"User-Agent", ?KNM_USER_AGENT}
-               ,{"Content-Type", "text/xml"}
-              ],
-    HTTPOptions = [{'ssl',[{'verify',0}]}
-                   ,{'inactivity_timeout', 180 * ?MILLISECONDS_IN_SECOND}
-                   ,{'connect_timeout', 180 * ?MILLISECONDS_IN_SECOND}
-                   ,{'basic_auth', {?DASH_AUTH_USERNAME, ?DASH_AUTH_PASSWORD}}
-                  ],
-    lager:debug("making ~s request to dash e911 ~s", [Verb, URL]),
-    ?DASH_DEBUG("Request:~n~s ~s~n~s~n", ['post', URL, Body]),
-    case ibrowse:send_req(wh_util:to_list(URL)
-                          ,Headers
-                          ,'post'
-                          ,unicode:characters_to_binary(Body)
-                          ,HTTPOptions
-                          ,180 * ?MILLISECONDS_IN_SECOND
-                         )
-    of
-        {'ok', "401", _, _Response} ->
-            ?DASH_DEBUG("Response:~n401~n~s~n", [_Response]),
-            lager:debug("dash e911 request error: 401 (unauthenticated)"),
-            {'error', 'authentication'};
-        {'ok', "403", _, _Response} ->
-            ?DASH_DEBUG("Response:~n403~n~s~n", [_Response]),
-            lager:debug("dash e911 request error: 403 (unauthorized)"),
-            {'error', 'authorization'};
-        {'ok', "404", _, _Response} ->
-            ?DASH_DEBUG("Response:~n404~n~s~n", [_Response]),
-            lager:debug("dash e911 request error: 404 (not found)"),
-            {'error', 'not_found'};
-        {'ok', "500", _, _Response} ->
-            ?DASH_DEBUG("Response:~n500~n~s~n", [_Response]),
-            lager:debug("dash e911 request error: 500 (server error)"),
-            {'error', 'server_error'};
-        {'ok', "503", _, _Response} ->
-            ?DASH_DEBUG("Response:~n503~n~s~n", [_Response]),
-            lager:debug("dash e911 request error: 503"),
-            {'error', 'server_error'};
-        {'ok', Code, _, Response} ->
-            ?DASH_DEBUG("Response:~n~p~n~s~n", [Code, Response]),
-            lager:debug("received response from dash e911"),
-            try xmerl_scan:string(Response) of
-                {Xml, _} -> {'ok', Xml}
-            catch
-                _:R ->
-                    lager:debug("failed to decode xml: ~p", [R]),
-                    {'error', 'empty_response'}
-            end;
-        {'error', _}=E ->
-            lager:debug("dash e911 request error: ~p", [E]),
-            {'error', 'unreachable'}
     end.
 
 %%--------------------------------------------------------------------
@@ -349,10 +273,11 @@ provision_location(LocationId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec remove_number(ne_binary()) -> api_binary().
+-spec remove_number(number()) -> api_binary().
 remove_number(Number) ->
-    lager:debug("removing dash e911 number '~s'", [Number]),
-    Props = [{'uri', [wh_util:to_list(<<"tel:", (wnm_util:to_1npan(Number))/binary>>)]}],
+    Num = knm_phone_number:number(Number),
+    lager:debug("removing dash e911 number '~s'", [Num]),
+    Props = [{'uri', [wh_util:to_list(<<"tel:", (knm_converter_regex:to_1npan(Num))/binary>>)]}],
     case emergency_provisioning_request('removeURI', Props) of
         {'error', 'server_error'} ->
             lager:debug("removed number from dash e911"),
@@ -370,6 +295,83 @@ remove_number(Number) ->
                     Else
             end
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Make a REST request to dash e911 emergency provisiong API to preform
+%% the given verb (validatelocation, addlocation, ect).
+%% @end
+%%--------------------------------------------------------------------
+-type emergency_provisioning_error() :: 'authentication' |
+                                        'authorization' |
+                                        'not_found' |
+                                        'server_error' |
+                                        'empty_response' |
+                                        'unreachable'.
+-spec emergency_provisioning_request(atom(), wh_proplist()) ->
+                                            {'ok', xml_el()} |
+                                            {'error', emergency_provisioning_error()}.
+emergency_provisioning_request(Verb, Props) ->
+    URL = list_to_binary([?DASH_EMERG_URL, "/", wh_util:to_lower_binary(Verb)]),
+    Body = xmerl:export_simple([{Verb, Props}]
+                               ,'xmerl_xml'
+                               ,[{'prolog', ?DASH_XML_PROLOG}]
+                              ),
+    Headers = [{"Accept", "*/*"}
+               ,{"User-Agent", ?KNM_USER_AGENT}
+               ,{"Content-Type", "text/xml"}
+              ],
+    HTTPOptions = [{'ssl',[{'verify',0}]}
+                   ,{'inactivity_timeout', 180 * ?MILLISECONDS_IN_SECOND}
+                   ,{'connect_timeout', 180 * ?MILLISECONDS_IN_SECOND}
+                   ,{'basic_auth', {?DASH_AUTH_USERNAME, ?DASH_AUTH_PASSWORD}}
+                  ],
+    lager:debug("making ~s request to dash e911 ~s", [Verb, URL]),
+    ?DASH_DEBUG("Request:~n~s ~s~n~s~n", ['post', URL, Body]),
+    case ibrowse:send_req(wh_util:to_list(URL)
+                          ,Headers
+                          ,'post'
+                          ,unicode:characters_to_binary(Body)
+                          ,HTTPOptions
+                          ,180 * ?MILLISECONDS_IN_SECOND
+                         )
+    of
+        {'ok', "401", _, _Response} ->
+            ?DASH_DEBUG("Response:~n401~n~s~n", [_Response]),
+            lager:debug("dash e911 request error: 401 (unauthenticated)"),
+            {'error', 'authentication'};
+        {'ok', "403", _, _Response} ->
+            ?DASH_DEBUG("Response:~n403~n~s~n", [_Response]),
+            lager:debug("dash e911 request error: 403 (unauthorized)"),
+            {'error', 'authorization'};
+        {'ok', "404", _, _Response} ->
+            ?DASH_DEBUG("Response:~n404~n~s~n", [_Response]),
+            lager:debug("dash e911 request error: 404 (not found)"),
+            {'error', 'not_found'};
+        {'ok', "500", _, _Response} ->
+            ?DASH_DEBUG("Response:~n500~n~s~n", [_Response]),
+            lager:debug("dash e911 request error: 500 (server error)"),
+            {'error', 'server_error'};
+        {'ok', "503", _, _Response} ->
+            ?DASH_DEBUG("Response:~n503~n~s~n", [_Response]),
+            lager:debug("dash e911 request error: 503"),
+            {'error', 'server_error'};
+        {'ok', Code, _, Response} ->
+            ?DASH_DEBUG("Response:~n~p~n~s~n", [Code, Response]),
+            lager:debug("received response from dash e911"),
+            try xmerl_scan:string(Response) of
+                {Xml, _} -> {'ok', Xml}
+            catch
+                _:R ->
+                    lager:debug("failed to decode xml: ~p", [R]),
+                    {'error', 'empty_response'}
+            end;
+        {'error', _}=E ->
+            lager:debug("dash e911 request error: ~p", [E]),
+            {'error', 'unreachable'}
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @private
