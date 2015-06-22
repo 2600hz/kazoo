@@ -3,33 +3,7 @@
 %%% @doc
 %%%
 %%% Handles port request life cycles
-%%% GET /port_requests - list all the account's port requests
-%%% GET /port_requests/descendants - detailed report of a port request
-%%% GET /port_requests/{id} - detailed report of a port request
-%%% GET /port_requests/{id}/loa - build an LOA (Letter of Authorization) PDF
-%%%
-%%% PUT /port_requests - start a new port request
-%%% PUT /port_requests/{id}/submitted - indicate a port request is ready and let port dept know
-%%%   Causes billing to occur
-%%%   Ensure there's at least one attachment of non-0 length
-%%% PUT /port_requests/{id}/scheduled - SDA indicates the port request is being processed
-%%% PUT /port_requests/{id}/completed - SDA can force completion of the port request (populate numbers DBs)
-%%% PUT /port_requests/{id}/rejected - SDA can force rejection of the port request
-%%%
-%%% POST /port_requests/{id} - update a port request
-%%% DELETE /port_requests/{id} - delete a port request, only if in "unconfirmed" or "rejected"
-%%%
-%%% GET /port_request/{id}/attachments - List attachments on the port request
-%%% PUT /port_request/{id}/attachments - upload a document
-%%% GET /port_request/{id}/attachments/{attachment_id} - download the document
-%%% POST /port_request/{id}/attachments/{attachment_id} - replace a document
-%%% DELETE /port_request/{id}/attachments/{attachment_id} - delete a document
-%%%
-%%% { "numbers":{
-%%%   "+12225559999":{
-%%%   },
-%%%   "port_state": ["unconfirmed", "submitted", "scheduled", "completed", "rejected"]
-%%% }
+%%% See doc/port_requests.md
 %%%
 %%% @end
 %%% @contributors:
@@ -93,16 +67,19 @@
 -spec init() -> 'ok'.
 init() ->
     wh_port_request:init(),
-    _ = crossbar_bindings:bind(crossbar_cleanup:binding_system(), ?MODULE, 'cleanup'),
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.port_requests">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.port_requests">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"*.content_types_provided.port_requests">>, ?MODULE, 'content_types_provided'),
-    _ = crossbar_bindings:bind(<<"*.content_types_accepted.port_requests">>, ?MODULE, 'content_types_accepted'),
-    _ = crossbar_bindings:bind(<<"*.validate.port_requests">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.execute.get.port_requests">>, ?MODULE, 'get'),
-    _ = crossbar_bindings:bind(<<"*.execute.put.port_requests">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"*.execute.post.port_requests">>, ?MODULE, 'post'),
-    crossbar_bindings:bind(<<"*.execute.delete.port_requests">>, ?MODULE, 'delete').
+
+    Bindings = [{crossbar_cleanup:binding_system(), 'cleanup'}
+                ,{<<"*.allowed_methods.port_requests">>, 'allowed_methods'}
+                ,{<<"*.resource_exists.port_requests">>, 'resource_exists'}
+                ,{<<"*.content_types_provided.port_requests">>, 'content_types_provided'}
+                ,{<<"*.content_types_accepted.port_requests">>, 'content_types_accepted'}
+                ,{<<"*.validate.port_requests">>, 'validate'}
+                ,{<<"*.execute.get.port_requests">>, 'get'}
+                ,{<<"*.execute.put.port_requests">>, 'put'}
+                ,{<<"*.execute.post.port_requests">>, 'post'}
+                ,{<<"*.execute.delete.port_requests">>, 'delete'}
+               ],
+    cb_modules_util:bind(?MODULE, Bindings).
 
 %%--------------------------------------------------------------------
 %% @public
