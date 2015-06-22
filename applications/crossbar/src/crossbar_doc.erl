@@ -763,12 +763,39 @@ rev_to_etag(JObj) ->
 -spec update_pagination_envelope_params(cb_context:context(), term(), non_neg_integer() | 'undefined') ->
                                                cb_context:context().
 update_pagination_envelope_params(Context, StartKey, PageSize) ->
-    update_pagination_envelope_params(Context, StartKey, PageSize, 'undefined').
+    update_pagination_envelope_params(Context
+                                      ,StartKey
+                                      ,PageSize
+                                      ,'undefined'
+                                      ,cb_context:should_paginate(Context)
+                                     ).
 
 -spec update_pagination_envelope_params(cb_context:context(), term(), non_neg_integer() | 'undefined', api_binary()) ->
                                                cb_context:context().
 update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey) ->
-    CurrentPageSize = wh_json:get_value(<<"page_size">>, cb_context:resp_envelope(Context), 0),
+    update_pagination_envelope_params(Context
+                                      ,StartKey
+                                      ,PageSize
+                                      ,NextStartKey
+                                      ,cb_context:should_paginate(Context)
+                                     ).
+
+-spec update_pagination_envelope_params(cb_context:context(), term(), non_neg_integer() | 'undefined', api_binary(), boolean()) ->
+                                               cb_context:context().
+update_pagination_envelope_params(Context, _StartKey, _PageSize, _NextStartKey, 'false') ->
+    lager:debug("pagination disabled, removing resp envelope keys"),
+    cb_context:set_resp_envelope(Context
+                                 ,wh_json:delete_keys(
+                                    [<<"start_key">>
+                                     ,<<"page_size">>
+                                     ,<<"next_start_key">>
+                                    ]
+                                    ,cb_context:resp_envelope(Context)
+                                   )
+                                );
+update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey, 'true') ->
+    RespEnvelope = cb_context:resp_envelope(Context),
+    CurrentPageSize = wh_json:get_integer_value(<<"page_size">>, RespEnvelope, 0),
     cb_context:set_resp_envelope(Context
                                  ,wh_json:set_values(
                                     props:filter_undefined(
@@ -776,8 +803,9 @@ update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey) ->
                                        ,{<<"page_size">>, PageSize + CurrentPageSize}
                                        ,{<<"next_start_key">>, NextStartKey}
                                       ])
-                                    ,cb_context:resp_envelope(Context)
-                                   )).
+                                    ,RespEnvelope
+                                   )
+                                ).
 
 -spec handle_couch_mgr_pagination_success(wh_json:objects(), pos_integer() | 'undefined', ne_binary(), load_view_params()) ->
                                                  cb_context:context().
