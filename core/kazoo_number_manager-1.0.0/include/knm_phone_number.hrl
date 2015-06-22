@@ -45,6 +45,10 @@
 -define(NUMBER_STATE_DISCONNECTED, <<"disconnected">>).
 -define(NUMBER_STATE_DELETED, <<"deleted">>).
 
+-define(DEFAULT_PROVIDER_MODULES, [<<"cnam_notifier">>, <<"port_notifier">>
+                                   ,<<"failover">> ,<<"prepend">>
+                                  ]).
+
 
 -define(KNM_NUMBER_MANAGER_HRL, 'true').
 -endif.
