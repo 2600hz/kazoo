@@ -20,6 +20,25 @@ A port request can be in one of five states:
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests
 
+#### Listing by port state
+
+You can issue GET requests to find all ports in a particular state too:
+
+    curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{STATE_NAME}
+
+Where `{STATE_NAME}` is one of:
+
+* submitted
+* pending
+* scheduled
+* completed
+* rejected
+* canceled
+
+All requests are not paginated, with the exception of the `completed` state. Use pagination toggles for date range as desired.
+
 ### List port requests of self and sub accounts
 
     curl -v -X GET \
