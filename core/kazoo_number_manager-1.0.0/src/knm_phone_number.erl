@@ -76,15 +76,18 @@ fetch(Num, AuthBy) ->
 -spec save(number()) -> number_return().
 save(#number{dry_run='true'}=Number) -> {'ok', Number};
 save(#number{dry_run='false'}=Number) ->
-    NumberDb = number_db(Number),
-    JObj = to_json(Number),
-    case couch_mgr:ensure_saved(NumberDb, JObj) of
-        {'error', _R}=E ->
-            lager:error("failed to save ~s in ~s", [number(Number), NumberDb]),
-            E;
-        {'ok', Doc} ->
-            hangle_assignment(from_json(Doc))
-    end.
+    Routines = [
+        fun save_to_number_db/1
+        ,fun hangle_assignment/1
+        ,fun knm_providers:save/1
+    ],
+    lists:foldl(
+        fun(F, {'ok', N}) -> F(N);
+           (F, Error) -> Error
+        end
+        ,{'ok', Number}
+        ,Routines
+    ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -94,11 +97,18 @@ save(#number{dry_run='false'}=Number) ->
 -spec delete(number()) -> number_return().
 delete(#number{dry_run='true'}=Number) -> {'ok', Number};
 delete(#number{dry_run='false'}=Number) ->
-    case delete_number_doc(Number) of
-        {'error', _R}=E -> E;
-        {'ok', _} ->
-            maybe_remove_number_from_account(Number)
-    end.
+    Routines = [
+        fun delete_number_doc/1
+        ,fun maybe_remove_number_from_account/1
+        ,fun knm_providers:delete/1
+    ],
+    lists:foldl(
+        fun(F, {'ok', N}) -> F(N);
+           (F, Error) -> Error
+        end
+        ,{'ok', Number}
+        ,Routines
+    ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -390,6 +400,22 @@ doc(Number) ->
 is_authorize(#number{auth_by= <<"system">>}) -> 'true';
 is_authorize(#number{assigned_to=AssignedTo, auth_by=AuthBy}) ->
     wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, 'true').
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec save_to_number_db(number()) -> number_return().
+save_to_number_db(Number) ->
+    NumberDb = number_db(Number),
+    JObj = to_json(Number),
+    case couch_mgr:ensure_saved(NumberDb, JObj) of
+        {'error', _R}=E ->
+            lager:error("failed to save ~s in ~s", [number(Number), NumberDb]),
+            E;
+        {'ok', Doc} -> {'ok', from_json(Doc)}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
