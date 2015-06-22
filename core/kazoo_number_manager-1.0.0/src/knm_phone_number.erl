@@ -83,7 +83,7 @@ save(#number{dry_run='false'}=Number) ->
     ],
     lists:foldl(
         fun(F, {'ok', N}) -> F(N);
-           (F, Error) -> Error
+           (_F, Error) -> Error
         end
         ,{'ok', Number}
         ,Routines
@@ -104,7 +104,7 @@ delete(#number{dry_run='false'}=Number) ->
     ],
     lists:foldl(
         fun(F, {'ok', N}) -> F(N);
-           (F, Error) -> Error
+           (_F, Error) -> Error
         end
         ,{'ok', Number}
         ,Routines
