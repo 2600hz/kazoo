@@ -30,11 +30,11 @@ save(Number) ->
     save(Number, State).
 
 save(Number, ?NUMBER_STATE_RESERVED) ->
-    update_cnam_features(Number);
+    handle_outbound_cnam(Number);
 save(Number, ?NUMBER_STATE_IN_SERVICE) ->
-    update_cnam_features(Number);
+    handle_outbound_cnam(Number);
 save(Number, ?NUMBER_STATE_PORT_IN) ->
-    update_cnam_features(Number);
+    handle_outbound_cnam(Number);
 save(Number, _State) -> {'ok', Number}.
 
 %%--------------------------------------------------------------------
@@ -45,23 +45,11 @@ save(Number, _State) -> {'ok', Number}.
 %%--------------------------------------------------------------------
 -spec delete(number()) -> number_return().
 delete(Number) ->
-    Features = knm_phone_number:features(Number),
-    UpdatedFeatures = wh_json:delete_keys([<<"inbound_cnam">>, <<"outbound_cnam">>, <<"cnam">>], Features),
-    {'ok', knm_phone_number:set_features(Number, UpdatedFeatures)}.
+    {'ok', knm_services:deactivate_features(Number, [<<"inbound_cnam">>, <<"outbound_cnam">>, <<"cnam">>])}.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec update_cnam_features(number()) -> number_return().
-update_cnam_features(Number) ->
-    handle_outbound_cnam(Number).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -82,7 +70,7 @@ handle_outbound_cnam(Number) ->
             Number1 = knm_phone_number:set_features(Number, wh_json:delete_key(<<"outbound_cnam">>, Features)),
             handle_inbound_cnam(Number1);
         _Else ->
-            Number1 = knm_services:activate_feature(<<"outbound_cnam">>, Number),
+            Number1 = knm_services:activate_feature(Number, <<"outbound_cnam">>),
             _ = publish_cnam_update(Number1),
             handle_inbound_cnam(Number1)
     end.
@@ -96,11 +84,10 @@ handle_outbound_cnam(Number) ->
 -spec handle_inbound_cnam(number()) -> number_return().
 handle_inbound_cnam(Number) ->
     Doc = knm_phone_number:doc(Number),
-    Features = knm_phone_number:features(Number),
     Number1 =
         case wh_json:is_true([?PVT_FEATURES, <<"cnam">>, <<"inbound_lookup">>], Doc) of
-            'false' -> knm_phone_number:set_features(Number, wh_json:delete_key(<<"inbound_lookup">>, Features));
-            'true' ->  knm_services:activate_feature(<<"inbound_cnam">>, Number)
+            'false' -> knm_services:deactivate_feature(Number, <<"inbound_lookup">>);
+            'true' ->  knm_services:activate_feature(Number, <<"inbound_cnam">>)
         end,
     support_depreciated_cnam(Number1).
 
@@ -112,9 +99,7 @@ handle_inbound_cnam(Number) ->
 %%--------------------------------------------------------------------
 -spec support_depreciated_cnam(number()) -> number_return().
 support_depreciated_cnam(Number) ->
-    Features = knm_phone_number:features(Number),
-    Number1 = knm_phone_number:set_features(Number, wh_json:delete_key(<<"cnam">>, Features)),
-    {'ok', Number1}.
+    {'ok', knm_services:deactivate_feature(Number, <<"cnam">>)}.
 
 
 %%--------------------------------------------------------------------
