@@ -130,7 +130,7 @@
           ,client_ip = <<"127.0.0.1">> :: api_binary()
           ,load_merge_bypass :: api_object()
           ,profile_id :: api_binary()
-          ,api_version = ?VERSION_2 :: ne_binary()
+          ,api_version = ?VERSION_1 :: ne_binary()
           ,magic_pathed = 'false' :: boolean()
           ,should_paginate :: api_boolean()
          }).

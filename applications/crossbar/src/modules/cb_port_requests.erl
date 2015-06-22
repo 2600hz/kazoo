@@ -28,6 +28,10 @@
          ,authority/1
         ]).
 
+-include_lib("whistle_number_manager/include/wh_number_manager.hrl").
+-include_lib("whistle_number_manager/include/wh_port_request.hrl").
+-include("../crossbar.hrl").
+
 -define(MY_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".port_requests">>).
 
 -define(TEMPLATE_DOC_ID, <<"notify.loa">>).
@@ -43,16 +47,13 @@
 -define(AGG_VIEW_DESCENDANTS, <<"accounts/listing_by_descendants">>).
 -define(PORT_REQ_NUMBERS, <<"port_requests/port_in_numbers">>).
 -define(ALL_PORT_REQ_NUMBERS, <<"port_requests/all_port_in_numbers">>).
+-define(LISTING_BY_TYPE, <<"port_requests/listing_by_type">>).
 
 -define(UNFINISHED_PORT_REQUEST_LIFETIME
         ,whapps_config:get_integer(?MY_CONFIG_CAT, <<"unfinished_port_request_lifetime_s">>, ?SECONDS_IN_DAY * 30)
        ).
 
 -define(PATH_TOKEN_LOA, <<"loa">>).
-
--include_lib("whistle_number_manager/include/wh_number_manager.hrl").
--include_lib("whistle_number_manager/include/wh_port_request.hrl").
--include("../crossbar.hrl").
 
 %%%===================================================================
 %%% API
@@ -290,17 +291,17 @@ content_types_accepted(Context, _Id, ?PORT_ATTACHMENT, _AttachmentId) ->
 validate(Context) ->
     validate_port_requests(Context, cb_context:req_verb(Context)).
 
-validate(Context, ?PORT_SUBMITTED=Type) ->
+validate(Context, ?PORT_SUBMITTED = Type) ->
     validate_load_requests(Context, Type);
-validate(Context, ?PORT_PENDING=Type) ->
+validate(Context, ?PORT_PENDING = Type) ->
     validate_load_requests(Context, Type);
-validate(Context, ?PORT_SCHEDULED=Type) ->
+validate(Context, ?PORT_SCHEDULED = Type) ->
     validate_load_requests(Context, Type);
-validate(Context, ?PORT_COMPLETE=Type) ->
+validate(Context, ?PORT_COMPLETE = Type) ->
     validate_load_requests(Context, Type);
-validate(Context, ?PORT_REJECT=Type) ->
+validate(Context, ?PORT_REJECT = Type) ->
     validate_load_requests(Context, Type);
-validate(Context, ?PORT_CANCELED=Type) ->
+validate(Context, ?PORT_CANCELED = Type) ->
     validate_load_requests(Context, Type);
 validate(Context, Id) ->
     validate_port_request(Context, Id, cb_context:req_verb(Context)).
@@ -336,32 +337,32 @@ validate_port_requests(Context, ?HTTP_GET) ->
 validate_port_requests(Context, ?HTTP_PUT) ->
     create(Context).
 
--spec validate_load_requests(cb_context:context(), path_token()) ->
-                                    cb_context:context().
--spec validate_load_requests(cb_context:context(), path_token(), crossbar_doc:view_options()) ->
+-spec validate_load_requests(cb_context:context(), ne_binary()) ->
                                     cb_context:context().
 validate_load_requests(Context, ?PORT_COMPLETE = Type) ->
     case cb_modules_util:range_view_options(Context) of
         {From, To} ->
-            validate_load_requests(Context
-                                   ,Type
-                                   ,[{'startkey', From}
-                                     ,{'endkey', To}
-                                     ,'descending'
-                                    ]
-                                  );
+            load_requests(Context
+                          ,[{'startkey', [Type, cb_context:account_id(Context), From]}
+                            ,{'endkey', [Type, cb_context:account_id(Context), To]}
+                           ]
+                         );
         Context1 -> Context1
     end;
-validate_load_requests(Context, Type) ->
-    validate_load_requests(cb_context:set_shoudl_paginate(Context, 'false')
-                           ,Type
-                           ,[]
-                          ).
+validate_load_requests(Context, <<_/binary>> = Type) ->
+    load_requests(cb_context:set_should_paginate(Context, 'false')
+                  ,[{'startkey', [Type, cb_context:account_id(Context)]}
+                    ,{'endkey', [Type, cb_context:account_id(Context), wh_json:new()]}
+                   ]
+                 ).
 
-validate_load_requests(Context, _Type, ViewOptions) ->
-    crossbar_doc:load_view(<<"port_requests/listing_by_type">>
-                           ,ViewOptions
-                           ,Context
+-spec load_requests(cb_context:context(), crossbar_doc:view_options()) ->
+                           cb_context:context().
+load_requests(Context, ViewOptions) ->
+    crossbar_doc:load_view(?LISTING_BY_TYPE
+                           ,['include_doc', 'descending' | ViewOptions]
+                           ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
+                           ,fun normalize_view_results/2
                           ).
 
 -spec validate_get_port_requests(cb_context:context(), path_tokens(), api_binary()) ->
@@ -844,7 +845,8 @@ build_descendant_key(JObj, Acc, E164) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec normalize_view_results(wh_json:object(), wh_json:objects()) ->
+                                    wh_json:objects().
 normalize_view_results(Res, Acc) ->
     [wh_port_request:public_fields(wh_json:get_value(<<"doc">>, Res)) | Acc].
 
