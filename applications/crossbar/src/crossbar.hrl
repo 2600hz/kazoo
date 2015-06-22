@@ -132,6 +132,7 @@
           ,profile_id :: api_binary()
           ,api_version = ?VERSION_1 :: ne_binary()
           ,magic_pathed = 'false' :: boolean()
+          ,should_paginate :: api_boolean()
          }).
 
 -define(CROSSBAR_HRL, 'true').

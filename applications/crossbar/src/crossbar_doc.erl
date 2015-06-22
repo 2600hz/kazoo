@@ -385,44 +385,16 @@ load_view(#load_view_params{view=View
                                 'undefined' | pos_integer().
 -spec limit_by_page_size(cb_context:context(), api_binary() | pos_integer()) ->
                                 'undefined' | pos_integer().
--spec limit_by_page_size(cb_context:context(), api_binary() | pos_integer(), api_boolean()) ->
-                                'undefined' | pos_integer().
 limit_by_page_size('undefined') -> 'undefined';
 limit_by_page_size(N) when is_integer(N) -> N+1;
 limit_by_page_size(<<_/binary>> = B) -> limit_by_page_size(wh_util:to_integer(B)).
 
 limit_by_page_size(Context, PageSize) ->
-    case cb_context:api_version(Context) of
-        ?VERSION_1 ->
-            lager:debug("pagination not supported in this version"),
-            'undefined';
-        _Version ->
-            limit_by_page_size(Context, PageSize, cb_context:req_value(Context, <<"paginate">>))
-    end.
-
-limit_by_page_size(Context, PageSize, 'undefined') ->
-    lager:debug("pagination enabled by default, checking filters"),
-    maybe_disable_page_size(Context, PageSize);
-limit_by_page_size(_Context, PageSize, ShouldEnable) ->
-    case wh_util:is_true(ShouldEnable) of
-        'true' ->
-            lager:debug("pagination explicitly enabled, getting page size from ~p", [PageSize]),
-            limit_by_page_size(PageSize);
+    case cb_context:should_paginate(Context) of
+        'true' -> limit_by_page_size(PageSize);
         'false' ->
-            lager:debug("pagination disabled by request or version"),
+            lager:debug("pagination disabled in context"),
             'undefined'
-    end.
-
--spec maybe_disable_page_size(cb_context:context(), pos_integer() | api_binary()) ->
-                                     'undefined' | pos_integer().
-maybe_disable_page_size(Context, PageSize) ->
-    case has_qs_filter(Context) of
-        'true' ->
-            lager:debug("request has a query string filter, disabling pagination"),
-            'undefined';
-        'false' ->
-            lager:debug("no query string filter, getting page size from ~p", [PageSize]),
-            limit_by_page_size(PageSize)
     end.
 
 -spec start_key(cb_context:context()) -> wh_json:json_term() | 'undefined'.
@@ -791,12 +763,39 @@ rev_to_etag(JObj) ->
 -spec update_pagination_envelope_params(cb_context:context(), term(), non_neg_integer() | 'undefined') ->
                                                cb_context:context().
 update_pagination_envelope_params(Context, StartKey, PageSize) ->
-    update_pagination_envelope_params(Context, StartKey, PageSize, 'undefined').
+    update_pagination_envelope_params(Context
+                                      ,StartKey
+                                      ,PageSize
+                                      ,'undefined'
+                                      ,cb_context:should_paginate(Context)
+                                     ).
 
 -spec update_pagination_envelope_params(cb_context:context(), term(), non_neg_integer() | 'undefined', api_binary()) ->
                                                cb_context:context().
 update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey) ->
-    CurrentPageSize = wh_json:get_value(<<"page_size">>, cb_context:resp_envelope(Context), 0),
+    update_pagination_envelope_params(Context
+                                      ,StartKey
+                                      ,PageSize
+                                      ,NextStartKey
+                                      ,cb_context:should_paginate(Context)
+                                     ).
+
+-spec update_pagination_envelope_params(cb_context:context(), term(), non_neg_integer() | 'undefined', api_binary(), boolean()) ->
+                                               cb_context:context().
+update_pagination_envelope_params(Context, _StartKey, _PageSize, _NextStartKey, 'false') ->
+    lager:debug("pagination disabled, removing resp envelope keys"),
+    cb_context:set_resp_envelope(Context
+                                 ,wh_json:delete_keys(
+                                    [<<"start_key">>
+                                     ,<<"page_size">>
+                                     ,<<"next_start_key">>
+                                    ]
+                                    ,cb_context:resp_envelope(Context)
+                                   )
+                                );
+update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey, 'true') ->
+    RespEnvelope = cb_context:resp_envelope(Context),
+    CurrentPageSize = wh_json:get_integer_value(<<"page_size">>, RespEnvelope, 0),
     cb_context:set_resp_envelope(Context
                                  ,wh_json:set_values(
                                     props:filter_undefined(
@@ -804,8 +803,9 @@ update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey) ->
                                        ,{<<"page_size">>, PageSize + CurrentPageSize}
                                        ,{<<"next_start_key">>, NextStartKey}
                                       ])
-                                    ,cb_context:resp_envelope(Context)
-                                   )).
+                                    ,RespEnvelope
+                                   )
+                                ).
 
 -spec handle_couch_mgr_pagination_success(wh_json:objects(), pos_integer() | 'undefined', ne_binary(), load_view_params()) ->
                                                  cb_context:context().

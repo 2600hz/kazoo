@@ -212,7 +212,11 @@ enable_number(N) ->
 
 -spec send_submitted_requests() -> 'ok'.
 send_submitted_requests() ->
-    case couch_mgr:get_results(?KZ_PORT_REQUESTS_DB, ?VIEW_LISTING_SUBMITTED, ['include_docs']) of
+    case couch_mgr:get_results(?KZ_PORT_REQUESTS_DB
+                               ,?VIEW_LISTING_SUBMITTED
+                               ,['include_docs']
+                              )
+    of
         {'error', _R} ->
             lager:error("failed to open view port_requests/listing_submitted ~p", [_R]);
         {'ok', JObjs} ->
@@ -229,7 +233,7 @@ maybe_send_request(JObj) ->
     AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
 
-    case couch_mgr:open_doc(AccountDb, AccountId) of
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
         {'error', _R} ->
             lager:error("failed to open account ~s:~p", [AccountId, _R]);
         {'ok', AccountDoc} ->

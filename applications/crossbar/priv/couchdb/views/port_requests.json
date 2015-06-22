@@ -11,6 +11,9 @@
         "listing_by_modified": {
             "map": "function(doc) { if (doc.pvt_type != 'port_request' || doc.pvt_deleted) return; emit([doc.pvt_modified, doc.pvt_port_state], null); }"
         },
+        "listing_by_state": {
+            "map": "function(doc) { if (doc.pvt_type != 'port_request' || doc.pvt_deleted) return; emit([doc.pvt_account_id, doc.pvt_port_state, doc.pvt_modified], null); }"
+        },
         "listing_submitted": {
             "map": "function(doc) {if (doc.pvt_type != 'port_request' || doc.pvt_deleted) return;if(doc.pvt_port_state != 'submitted') return;if(doc.pvt_sent === true) return;emit(doc._id, null);}"
         },

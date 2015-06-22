@@ -132,7 +132,9 @@ created_from(Context, CreatedTo, MaxRange) ->
     lager:debug("building created_from from req value"),
     wh_util:to_integer(cb_context:req_value(Context, <<"created_from">>, CreatedTo - MaxRange)).
 
--spec bind(atom(), wh_proplist()) -> 'ok'.
+-type binding() :: {ne_binary(), atom()}.
+-type bindings() :: [binding(),...].
+-spec bind(atom(), bindings()) -> 'ok'.
 bind(Module, Bindings) ->
     _ = [crossbar_bindings:bind(Binding, Module, Function)
          || {Binding, Function} <- Bindings
