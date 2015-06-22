@@ -49,6 +49,5 @@
                                    ,<<"failover">> ,<<"prepend">>
                                   ]).
 
-
 -define(KNM_NUMBER_MANAGER_HRL, 'true').
 -endif.
