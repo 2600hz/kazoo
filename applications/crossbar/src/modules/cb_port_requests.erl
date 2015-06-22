@@ -47,7 +47,7 @@
 -define(AGG_VIEW_DESCENDANTS, <<"accounts/listing_by_descendants">>).
 -define(PORT_REQ_NUMBERS, <<"port_requests/port_in_numbers">>).
 -define(ALL_PORT_REQ_NUMBERS, <<"port_requests/all_port_in_numbers">>).
--define(LISTING_BY_TYPE, <<"port_requests/listing_by_type">>).
+-define(LISTING_BY_STATE, <<"port_requests/listing_by_state">>).
 
 -define(UNFINISHED_PORT_REQUEST_LIFETIME
         ,whapps_config:get_integer(?MY_CONFIG_CAT, <<"unfinished_port_request_lifetime_s">>, ?SECONDS_IN_DAY * 30)
@@ -342,25 +342,30 @@ validate_port_requests(Context, ?HTTP_PUT) ->
 validate_load_requests(Context, ?PORT_COMPLETE = Type) ->
     case cb_modules_util:range_view_options(Context) of
         {From, To} ->
+            lager:debug("loading requests for ~s from ~p to ~p", [Type, From, To]),
             load_requests(Context
-                          ,[{'startkey', [Type, cb_context:account_id(Context), From]}
-                            ,{'endkey', [Type, cb_context:account_id(Context), To]}
+                          ,[{'startkey', [cb_context:account_id(Context), Type, To]}
+                            ,{'endkey', [cb_context:account_id(Context), Type, From]}
                            ]
                          );
         Context1 -> Context1
     end;
 validate_load_requests(Context, <<_/binary>> = Type) ->
+    lager:debug("loading requests for ~s", [Type]),
     load_requests(cb_context:set_should_paginate(Context, 'false')
-                  ,[{'startkey', [Type, cb_context:account_id(Context)]}
-                    ,{'endkey', [Type, cb_context:account_id(Context), wh_json:new()]}
+                  ,[{'startkey', [cb_context:account_id(Context), Type, wh_json:new()]}
+                    ,{'endkey', [cb_context:account_id(Context), Type]}
                    ]
                  ).
 
 -spec load_requests(cb_context:context(), crossbar_doc:view_options()) ->
                            cb_context:context().
 load_requests(Context, ViewOptions) ->
-    crossbar_doc:load_view(?LISTING_BY_TYPE
-                           ,['include_doc', 'descending' | ViewOptions]
+    crossbar_doc:load_view(?LISTING_BY_STATE
+                           ,['include_docs'
+                             ,'descending'
+                             | ViewOptions
+                            ]
                            ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
                            ,fun normalize_view_results/2
                           ).
