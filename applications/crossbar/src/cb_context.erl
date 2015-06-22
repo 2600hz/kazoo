@@ -66,6 +66,7 @@
          ,method/1, set_method/2
          ,path_tokens/1
          ,magic_pathed/1, set_magic_pathed/2
+         ,should_paginate/1, set_should_paginate/2
 
          ,req_json/1, set_req_json/2
          ,resp_error_code/1, set_resp_error_code/2
@@ -209,6 +210,18 @@ path_tokens(#cb_context{raw_path=Path}) ->
 -spec magic_pathed(context()) -> boolean().
 magic_pathed(#cb_context{magic_pathed=MP}) -> MP.
 
+-spec should_paginate(context()) -> boolean().
+should_paginate(#cb_context{api_version=?VERSION_1}) ->
+    'false';
+should_paginate(#cb_context{should_paginate='undefined'}=Context) ->
+    case req_value(Context, <<"paginate">>) of
+        'undefined' ->
+            crossbar_doc:has_qs_filter(Context);
+        ShouldPaginate ->
+            wh_util:is_true(ShouldPaginate)
+    end;
+should_paginate(#cb_context{should_paginate=Should}) -> Should.
+
 req_json(#cb_context{req_json=RJ}) -> RJ.
 content_types_accepted(#cb_context{content_types_accepted=CTAs}) -> CTAs.
 content_types_provided(#cb_context{content_types_provided=CTPs}) -> CTPs.
@@ -269,51 +282,88 @@ setters_fold(F, C) when is_function(F, 1) -> F(C).
 -spec set_resp_error_code(context(), integer()) -> context().
 -spec set_resp_error_msg(context(), api_binary()) -> context().
 -spec set_magic_pathed(context(), boolean()) -> context().
+-spec set_should_paginate(context(), boolean()) -> context().
 -spec set_validation_errors(context(), wh_json:object()) -> context().
 
-set_account_id(#cb_context{}=Context, AcctId) -> Context#cb_context{account_id=AcctId}.
-set_user_id(#cb_context{}=Context, UserId) -> Context#cb_context{user_id=UserId}.
-set_device_id(#cb_context{}=Context, DeviceId) -> Context#cb_context{device_id=DeviceId}.
-set_reseller_id(#cb_context{}=Context, AcctId) -> Context#cb_context{reseller_id=AcctId}.
-set_account_db(#cb_context{}=Context, AcctDb) -> Context#cb_context{db_name=AcctDb}.
+set_account_id(#cb_context{}=Context, AcctId) ->
+    Context#cb_context{account_id=AcctId}.
+set_user_id(#cb_context{}=Context, UserId) ->
+    Context#cb_context{user_id=UserId}.
+set_device_id(#cb_context{}=Context, DeviceId) ->
+    Context#cb_context{device_id=DeviceId}.
+set_reseller_id(#cb_context{}=Context, AcctId) ->
+    Context#cb_context{reseller_id=AcctId}.
+set_account_db(#cb_context{}=Context, AcctDb) ->
+    Context#cb_context{db_name=AcctDb}.
 set_account_modb(#cb_context{}=Context, Year, Month) ->
     Context#cb_context{db_name=kazoo_modb:get_modb(account_id(Context), Year, Month)}.
 set_account_modb(#cb_context{}=Context, AcctId, Year, Month) ->
     Context#cb_context{db_name=kazoo_modb:get_modb(AcctId, Year, Month)}.
-set_auth_token(#cb_context{}=Context, AuthToken) -> Context#cb_context{auth_token=AuthToken}.
-set_auth_doc(#cb_context{}=Context, AuthDoc) -> Context#cb_context{auth_doc=AuthDoc}.
-set_auth_account_id(#cb_context{}=Context, AuthBy) -> Context#cb_context{auth_account_id=AuthBy}.
-set_req_verb(#cb_context{}=Context, ReqVerb) -> Context#cb_context{req_verb=ReqVerb}.
-set_req_data(#cb_context{}=Context, ReqData) -> Context#cb_context{req_data=ReqData}.
-set_req_files(#cb_context{}=Context, ReqFiles) -> Context#cb_context{req_files=ReqFiles}.
-set_req_nouns(#cb_context{}=Context, ReqNouns) -> Context#cb_context{req_nouns=ReqNouns}.
-set_req_headers(#cb_context{}=Context, ReqHs) -> Context#cb_context{req_headers=ReqHs}.
-set_query_string(#cb_context{}=Context, Q) -> Context#cb_context{query_json=Q}.
-set_req_id(#cb_context{}=Context, ReqId) -> Context#cb_context{req_id=ReqId}.
-set_doc(#cb_context{}=Context, Doc) -> Context#cb_context{doc=Doc}.
-set_load_merge_bypass(#cb_context{}=Context, JObj) -> Context#cb_context{load_merge_bypass=JObj}.
-set_start(#cb_context{}=Context, Start) -> Context#cb_context{start=Start}.
-set_resp_data(#cb_context{}=Context, RespData) -> Context#cb_context{resp_data=RespData}.
-set_resp_status(#cb_context{}=Context, RespStatus) -> Context#cb_context{resp_status=RespStatus}.
-set_resp_expires(#cb_context{}=Context, RespExpires) -> Context#cb_context{resp_expires=RespExpires}.
-set_api_version(#cb_context{}=Context, ApiVersion) -> Context#cb_context{api_version=ApiVersion}.
-set_resp_etag(#cb_context{}=Context, ETag) -> Context#cb_context{resp_etag=ETag}.
-set_resp_envelope(#cb_context{}=Context, E) -> Context#cb_context{resp_envelope=E}.
+set_auth_token(#cb_context{}=Context, AuthToken) ->
+    Context#cb_context{auth_token=AuthToken}.
+set_auth_doc(#cb_context{}=Context, AuthDoc) ->
+    Context#cb_context{auth_doc=AuthDoc}.
+set_auth_account_id(#cb_context{}=Context, AuthBy) ->
+    Context#cb_context{auth_account_id=AuthBy}.
+set_req_verb(#cb_context{}=Context, ReqVerb) ->
+    Context#cb_context{req_verb=ReqVerb}.
+set_req_data(#cb_context{}=Context, ReqData) ->
+    Context#cb_context{req_data=ReqData}.
+set_req_files(#cb_context{}=Context, ReqFiles) ->
+    Context#cb_context{req_files=ReqFiles}.
+set_req_nouns(#cb_context{}=Context, ReqNouns) ->
+    Context#cb_context{req_nouns=ReqNouns}.
+set_req_headers(#cb_context{}=Context, ReqHs) ->
+    Context#cb_context{req_headers=ReqHs}.
+set_query_string(#cb_context{}=Context, Q) ->
+    Context#cb_context{query_json=Q}.
+set_req_id(#cb_context{}=Context, ReqId) ->
+    Context#cb_context{req_id=ReqId}.
+set_doc(#cb_context{}=Context, Doc) ->
+    Context#cb_context{doc=Doc}.
+set_load_merge_bypass(#cb_context{}=Context, JObj) ->
+    Context#cb_context{load_merge_bypass=JObj}.
+set_start(#cb_context{}=Context, Start) ->
+    Context#cb_context{start=Start}.
+set_resp_data(#cb_context{}=Context, RespData) ->
+    Context#cb_context{resp_data=RespData}.
+set_resp_status(#cb_context{}=Context, RespStatus) ->
+    Context#cb_context{resp_status=RespStatus}.
+set_resp_expires(#cb_context{}=Context, RespExpires) ->
+    Context#cb_context{resp_expires=RespExpires}.
+set_api_version(#cb_context{}=Context, ApiVersion) ->
+    Context#cb_context{api_version=ApiVersion}.
+set_resp_etag(#cb_context{}=Context, ETag) ->
+    Context#cb_context{resp_etag=ETag}.
+set_resp_envelope(#cb_context{}=Context, E) ->
+    Context#cb_context{resp_envelope=E}.
 
-set_allow_methods(#cb_context{}=Context, AMs) -> Context#cb_context{allow_methods=AMs}.
-set_allowed_methods(#cb_context{}=Context, AMs) -> Context#cb_context{allowed_methods=AMs}.
-set_method(#cb_context{}=Context, M) -> Context#cb_context{method=M}.
+set_allow_methods(#cb_context{}=Context, AMs) ->
+    Context#cb_context{allow_methods=AMs}.
+set_allowed_methods(#cb_context{}=Context, AMs) ->
+    Context#cb_context{allowed_methods=AMs}.
+set_method(#cb_context{}=Context, M) ->
+    Context#cb_context{method=M}.
 
-set_req_json(#cb_context{}=Context, RJ) -> Context#cb_context{req_json=RJ}.
-set_content_types_accepted(#cb_context{}=Context, CTAs) -> Context#cb_context{content_types_accepted=CTAs}.
-set_content_types_provided(#cb_context{}=Context, CTPs) -> Context#cb_context{content_types_provided=CTPs}.
-set_languages_provided(#cb_context{}=Context, LP) -> Context#cb_context{languages_provided=LP}.
-set_encodings_provided(#cb_context{}=Context, EP) -> Context#cb_context{encodings_provided=EP}.
+set_req_json(#cb_context{}=Context, RJ) ->
+    Context#cb_context{req_json=RJ}.
+set_content_types_accepted(#cb_context{}=Context, CTAs) ->
+    Context#cb_context{content_types_accepted=CTAs}.
+set_content_types_provided(#cb_context{}=Context, CTPs) ->
+    Context#cb_context{content_types_provided=CTPs}.
+set_languages_provided(#cb_context{}=Context, LP) ->
+    Context#cb_context{languages_provided=LP}.
+set_encodings_provided(#cb_context{}=Context, EP) ->
+    Context#cb_context{encodings_provided=EP}.
 set_magic_pathed(#cb_context{}=Context, MP) ->
     Context#cb_context{magic_pathed=wh_util:is_true(MP)}.
+set_should_paginate(#cb_context{}=Context, SP) ->
+    Context#cb_context{magic_pathed=wh_util:is_true(SP)}.
 
-set_resp_error_code(#cb_context{}=Context, Code) -> Context#cb_context{resp_error_code=Code}.
-set_resp_error_msg(#cb_context{}=Context, Msg) -> Context#cb_context{resp_error_msg=Msg}.
+set_resp_error_code(#cb_context{}=Context, Code) ->
+    Context#cb_context{resp_error_code=Code}.
+set_resp_error_msg(#cb_context{}=Context, Msg) ->
+    Context#cb_context{resp_error_msg=Msg}.
 
 set_resp_headers(#cb_context{resp_headers=Hs}=Context, Headers) ->
     Context#cb_context{resp_headers=lists:foldl(fun set_resp_header_fold/2, Hs, Headers)}.
