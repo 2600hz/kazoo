@@ -77,9 +77,9 @@ fetch(Num, AuthBy) ->
 save(#number{dry_run='true'}=Number) -> {'ok', Number};
 save(#number{dry_run='false'}=Number) ->
     Routines = [
-        fun save_to_number_db/1
+        fun knm_providers:save/1
+        ,fun save_to_number_db/1
         ,fun hangle_assignment/1
-        ,fun knm_providers:save/1
     ],
     lists:foldl(
         fun(F, {'ok', N}) -> F(N);
@@ -98,9 +98,9 @@ save(#number{dry_run='false'}=Number) ->
 delete(#number{dry_run='true'}=Number) -> {'ok', Number};
 delete(#number{dry_run='false'}=Number) ->
     Routines = [
-        fun delete_number_doc/1
+        fun knm_providers:delete/1
+        ,fun delete_number_doc/1
         ,fun maybe_remove_number_from_account/1
-        ,fun knm_providers:delete/1
     ],
     lists:foldl(
         fun(F, {'ok', N}) -> F(N);
