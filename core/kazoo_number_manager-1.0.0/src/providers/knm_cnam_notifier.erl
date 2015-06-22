@@ -1,11 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2015, 2600Hz INC
 %%% @doc
 %%%
 %%%
 %%% @end
 %%% @contributors
-%%%   Karl Anderson
+%%%   Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(knm_cnam_notifier).
 
@@ -73,8 +73,8 @@ update_cnam_features(Number) ->
 handle_outbound_cnam(Number) ->
     Doc = knm_phone_number:doc(Number),
     Features = knm_phone_number:features(Number),
-    CurrentCNAM = wh_json:get_ne_value([<<"features">>, <<"cnam">>, <<"display_name">>], Doc),
-    case wh_json:get_ne_value([<<"cnam">>, <<"display_name">>], Features) of
+    CurrentCNAM = wh_json:get_ne_value([<<"cnam">>, <<"display_name">>], Features),
+    case wh_json:get_ne_value([<<"features">>, <<"cnam">>, <<"display_name">>], Doc) of
         'undefined' ->
             Number1 = knm_phone_number:set_features(Number, wh_json:delete_key(<<"outbound_cnam">>, Features)),
             handle_inbound_cnam(Number1);
@@ -82,7 +82,7 @@ handle_outbound_cnam(Number) ->
             Number1 = knm_phone_number:set_features(Number, wh_json:delete_key(<<"outbound_cnam">>, Features)),
             handle_inbound_cnam(Number1);
         _Else ->
-            Number1 = number:activate_feature(<<"outbound_cnam">>, Number),
+            Number1 = knm_services:activate_feature(<<"outbound_cnam">>, Number),
             _ = publish_cnam_update(Number1),
             handle_inbound_cnam(Number1)
     end.
@@ -95,11 +95,12 @@ handle_outbound_cnam(Number) ->
 %%--------------------------------------------------------------------
 -spec handle_inbound_cnam(number()) -> number_return().
 handle_inbound_cnam(Number) ->
+    Doc = knm_phone_number:doc(Number),
     Features = knm_phone_number:features(Number),
     Number1 =
-        case wh_json:is_true([<<"cnam">>, <<"inbound_lookup">>], Features) of
+        case wh_json:is_true([<<"features">>, <<"cnam">>, <<"inbound_lookup">>], Doc) of
             'false' -> knm_phone_number:set_features(Number, wh_json:delete_key(<<"inbound_lookup">>, Features));
-            'true' ->  number:activate_feature(<<"inbound_cnam">>, Number)
+            'true' ->  knm_services:activate_feature(<<"inbound_cnam">>, Number)
         end,
     support_depreciated_cnam(Number1).
 

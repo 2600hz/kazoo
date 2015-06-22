@@ -9,5 +9,7 @@
 -define(KNM_CONFIG_CAT, <<"number_manager">>).
 -define(KNM_DB_PREFIX, <<"numbers/">>).
 
+-define(KNM_USER_AGENT, "Kazoo Number Manager 1.0.0").
+
 -define(KNM_HRL, 'true').
 -endif.
