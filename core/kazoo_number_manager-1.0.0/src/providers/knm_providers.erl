@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   Peter Defebvre
 %%%-------------------------------------------------------------------
--module(knm_provider).
+-module(knm_providers).
 
 -include("../knm.hrl").
 
