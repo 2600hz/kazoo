@@ -137,6 +137,18 @@ should_delete_port_request(_) ->
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 
+allowed_methods(?PORT_SUBMITTED) ->
+    [?HTTP_GET];
+allowed_methods(?PORT_PENDING) ->
+    [?HTTP_GET];
+allowed_methods(?PORT_SCHEDULED) ->
+    [?HTTP_GET];
+allowed_methods(?PORT_COMPLETE) ->
+    [?HTTP_GET];
+allowed_methods(?PORT_REJECT) ->
+    [?HTTP_GET];
+allowed_methods(?PORT_CANCELED) ->
+    [?HTTP_GET];
 allowed_methods(_Id) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
@@ -186,7 +198,6 @@ resource_exists(_Id, ?PORT_CANCELED) -> 'true';
 resource_exists(_Id, ?PORT_ATTACHMENT) -> 'true';
 resource_exists(_Id, ?PATH_TOKEN_LOA) -> 'true';
 resource_exists(_Id, _Unknown) -> 'false'.
-
 
 resource_exists(_Id, ?PORT_ATTACHMENT, _AttachmentId) -> 'true'.
 
@@ -279,6 +290,18 @@ content_types_accepted(Context, _Id, ?PORT_ATTACHMENT, _AttachmentId) ->
 validate(Context) ->
     validate_port_requests(Context, cb_context:req_verb(Context)).
 
+validate(Context, ?PORT_SUBMITTED=Type) ->
+    validate_load_requests(Context, Type);
+validate(Context, ?PORT_PENDING=Type) ->
+    validate_load_requests(Context, Type);
+validate(Context, ?PORT_SCHEDULED=Type) ->
+    validate_load_requests(Context, Type);
+validate(Context, ?PORT_COMPLETE=Type) ->
+    validate_load_requests(Context, Type);
+validate(Context, ?PORT_REJECT=Type) ->
+    validate_load_requests(Context, Type);
+validate(Context, ?PORT_CANCELED=Type) ->
+    validate_load_requests(Context, Type);
 validate(Context, Id) ->
     validate_port_request(Context, Id, cb_context:req_verb(Context)).
 
@@ -312,6 +335,34 @@ validate_port_requests(Context, ?HTTP_GET) ->
      );
 validate_port_requests(Context, ?HTTP_PUT) ->
     create(Context).
+
+-spec validate_load_requests(cb_context:context(), path_token()) ->
+                                    cb_context:context().
+-spec validate_load_requests(cb_context:context(), path_token(), crossbar_doc:view_options()) ->
+                                    cb_context:context().
+validate_load_requests(Context, ?PORT_COMPLETE = Type) ->
+    case cb_modules_util:range_view_options(Context) of
+        {From, To} ->
+            validate_load_requests(Context
+                                   ,Type
+                                   ,[{'startkey', From}
+                                     ,{'endkey', To}
+                                     ,'descending'
+                                    ]
+                                  );
+        Context1 -> Context1
+    end;
+validate_load_requests(Context, Type) ->
+    validate_load_requests(cb_context:set_shoudl_paginate(Context, 'false')
+                           ,Type
+                           ,[]
+                          ).
+
+validate_load_requests(Context, _Type, ViewOptions) ->
+    crossbar_doc:load_view(<<"port_requests/listing_by_type">>
+                           ,ViewOptions
+                           ,Context
+                          ).
 
 -spec validate_get_port_requests(cb_context:context(), path_tokens(), api_binary()) ->
                                         cb_context:context().
