@@ -75,22 +75,30 @@ callid_exists(CallId) ->
     File = make_name(CallId),
     filelib:is_file(File).
 
--spec lookup_callid(ne_binary()) -> wh_json:object().
+-type datum() :: {'chunk', [ci_chunk:chunk()]} |
+                 {'analysis', [ci_analysis:analysis()]}.
+-type data() :: [datum()].
+
+-spec lookup_callid(ne_binary()) -> data().
 lookup_callid(CallId) ->
-    Props = lists:foldl(fun(#object{type='chunk', value=Chunk}, P) ->
-                                Chunks = props:get_value('chunks', P, []),
-                                props:set_value('chunks', [Chunk|Chunks], P);
-                           (#object{type='analysis', value=Analysis}, P) ->
-                                props:set_value('analysis', Analysis, P)
-                        end
-                        ,[{'chunks', []}, {'analysis', []}]
+    Props = lists:foldl(fun lookup_callid_fold/2
+                        ,[{'chunks', []}
+                          ,{'analysis', []}
+                         ]
                         ,lookup_objects(CallId)
                        ),
     UnorderedChunks = lists:reverse(props:get_value('chunks', Props)),
     props:set_value('chunks'
-                   ,ci_chunk:reorder_dialog(UnorderedChunks)
-                   ,Props
+                    ,ci_chunk:reorder_dialog(UnorderedChunks)
+                    ,Props
                    ).
+
+-spec lookup_callid_fold(object(), data()) -> data().
+lookup_callid_fold(#object{type='chunk', value=Chunk}, P) ->
+    Chunks = props:get_value('chunks', P, []),
+    props:set_value('chunks', [Chunk|Chunks], P);
+lookup_callid_fold(#object{type='analysis', value=Analysis}, P) ->
+    props:set_value('analysis', Analysis, P).
 
 -spec flush() -> 'ok'.
 flush() ->

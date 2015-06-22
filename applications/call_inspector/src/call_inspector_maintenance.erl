@@ -44,17 +44,20 @@ stop_active_parser(Id)
 -spec start_freeswitch_parser(text(), text(), text()) -> 'ok'.
 start_freeswitch_parser(Filename, LogIP, LogPort) ->
     Args = [{'parser_args', Filename, wh_util:to_binary(LogIP), wh_util:to_integer(LogPort)}],
-    ci_parsers_sup:start_child('ci_parser_freeswitch', Args).
+    {'ok', _Id} = ci_parsers_sup:start_child('ci_parser_freeswitch', Args),
+    'ok'.
 
 -spec start_kamailio_parser(text(), text(), text()) -> 'ok'.
 start_kamailio_parser(Filename, LogIP, LogPort) ->
     Args = [{'parser_args', Filename, wh_util:to_binary(LogIP), wh_util:to_integer(LogPort)}],
-    ci_parsers_sup:start_child('ci_parser_kamailio', Args).
+    {'ok', _Id} = ci_parsers_sup:start_child('ci_parser_kamailio', Args),
+    'ok'.
 
 -spec start_hep_parser(text(), text()) -> 'ok'.
 start_hep_parser(IP, Port) ->
     Args = [{'parser_args', wh_util:to_binary(IP), wh_util:to_integer(Port)}],
-    ci_parsers_sup:start_child('ci_parser_hep', Args).
+    {'ok', _Id} = ci_parsers_sup:start_child('ci_parser_hep', Args),
+    'ok'.
 
 -spec flush() -> 'ok'.
 flush() ->
