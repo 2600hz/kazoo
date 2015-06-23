@@ -30,9 +30,9 @@
 
 -include("../knm.hrl").
 
--define(NM_VITELITY_CONFIG_CAT, <<(?KNM_CONFIG_CAT)/binary, ".vitelity">>).
+-define(KNM_VITELITY_CONFIG_CAT, <<(?KNM_CONFIG_CAT)/binary, ".vitelity">>).
 
--define(VITELITY_URI, whapps_config:get(?NM_VITELITY_CONFIG_CAT, <<"api_uri">>
+-define(VITELITY_URI, whapps_config:get(?KNM_VITELITY_CONFIG_CAT, <<"api_uri">>
                                         ,<<"http://api.vitelity.net/api.php">>)).
 
 -spec api_uri() -> ne_binary().
@@ -41,7 +41,7 @@ api_uri() ->
 
 -spec config_cat() -> ne_binary().
 config_cat() ->
-    ?NM_VITELITY_CONFIG_CAT.
+    ?KNM_VITELITY_CONFIG_CAT.
 
 -spec add_options_fold({atom(), api_binary()}, wh_proplist()) -> wh_proplist().
 add_options_fold({_K, 'undefined'}, Opts) -> Opts;
@@ -51,7 +51,7 @@ add_options_fold({K, V}, Opts) ->
 -spec get_query_value(atom(), wh_proplist()) -> term().
 get_query_value(Key, Opts) ->
     case props:get_value(Key, Opts) of
-        'undefined' -> whapps_config:get(?NM_VITELITY_CONFIG_CAT, Key);
+        'undefined' -> whapps_config:get(?KNM_VITELITY_CONFIG_CAT, Key);
         Value -> Value
     end.
 

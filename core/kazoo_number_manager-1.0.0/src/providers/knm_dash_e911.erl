@@ -92,7 +92,7 @@ maybe_update_dash_e911(Number) ->
     Doc = knm_phone_number:doc(Number),
     E911 = wh_json:get_ne_value([?PVT_FEATURES, ?DASH_KEY], Doc),
 
-    NotChanged = wnm_util:are_jobjs_identical(CurrentE911, E911),
+    NotChanged = wh_json:are_identical(CurrentE911, E911),
     case wh_util:is_empty(E911) of
         'true' ->
             lager:debug("dash e911 information has been removed, updating dash"),

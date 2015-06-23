@@ -66,7 +66,7 @@ maybe_update_prepend(Number) ->
     Doc = knm_phone_number:doc(Number),
     Prepend = wh_json:get_ne_value([?PVT_FEATURES ,?PREPEND_KEY], Doc),
 
-    NotChanged = wnm_util:are_jobjs_identical(CurrentPrepend, Prepend),
+    NotChanged = wh_json:are_identical(CurrentPrepend, Prepend),
 
     case wh_util:is_empty(Prepend) of
         'true' ->

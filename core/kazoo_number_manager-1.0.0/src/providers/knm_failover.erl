@@ -66,7 +66,7 @@ maybe_update_failover(Number) ->
     Doc = knm_phone_number:doc(Number),
     Failover = wh_json:get_ne_value([?PVT_FEATURES ,?FAILOVER_KEY], Doc),
 
-    NotChanged = wnm_util:are_jobjs_identical(CurrentFailover, Failover),
+    NotChanged = wh_json:are_identical(CurrentFailover, Failover),
 
     case wh_util:is_empty(Failover) of
         'true' ->

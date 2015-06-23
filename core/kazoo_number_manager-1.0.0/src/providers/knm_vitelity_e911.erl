@@ -107,7 +107,7 @@ maybe_update_e911(Number, 'true') ->
     Doc = knm_phone_number:doc(Number),
     E911 = wh_json:get_ne_value([?PVT_FEATURES, ?VITELITY_KEY], Doc),
 
-    NotChanged = wnm_util:are_jobjs_identical(CurrentE911, E911),
+    NotChanged = wh_json:are_identical(CurrentE911, E911),
 
     case wh_util:is_empty(E911) of
         'true' ->
@@ -126,7 +126,7 @@ maybe_update_e911(Number, 'false') ->
     Doc = knm_phone_number:doc(Number),
     E911 = wh_json:get_ne_value([?PVT_FEATURES, ?VITELITY_KEY], Doc),
 
-    NotChanged = wnm_util:are_jobjs_identical(CurrentE911, E911),
+    NotChanged = wh_json:are_identical(CurrentE911, E911),
 
     case wh_util:is_empty(E911) of
         'true' ->
