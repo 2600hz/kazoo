@@ -941,14 +941,23 @@ record_temporary_unavailable_greeting(AttachmentName, Box, Call) ->
 %% by a new recorded version.
 %% @end
 %%--------------------------------------------------------------------
--spec overwrite_temporary_unavailable_greeting(ne_binary(), mailbox(), whapps_call:call()) -> 'ok' | mailbox().
-overwrite_temporary_unavailable_greeting(AttachmentName, #mailbox{temporary_unavailable_media_id=MediaId}=Box, Call) ->
+-spec overwrite_temporary_unavailable_greeting(ne_binary(), mailbox(), whapps_call:call()) ->
+                                                      'ok' | mailbox().
+overwrite_temporary_unavailable_greeting(AttachmentName
+                                         ,#mailbox{temporary_unavailable_media_id=MediaId}=Box
+                                         ,Call
+                                        ) ->
     lager:info("overwriting temporary unavailable greeting  as ~s", [AttachmentName]),
     Tone = wh_json:from_list([{<<"Frequencies">>, [<<"440">>]}
                               ,{<<"Duration-ON">>, <<"500">>}
                               ,{<<"Duration-OFF">>, <<"100">>}
                              ]),
-    _NoopId = whapps_call_command:audio_macro([{'prompt', <<"vm-record_temp_greeting">>},{'tones', [Tone]}], Call),
+    _NoopId = whapps_call_command:audio_macro(
+                [{'prompt', <<"vm-record_temp_greeting">>}
+                 ,{'tones', [Tone]}
+                ]
+                ,Call
+               ),
     _ = whapps_call_command:b_record(AttachmentName, Call),
     case review_recording(AttachmentName, 'false', Box, Call) of
         {'ok', 'record'} ->
@@ -973,7 +982,8 @@ overwrite_temporary_unavailable_greeting(AttachmentName, #mailbox{temporary_unav
 %% Deletes current temporary greeting.
 %% @end
 %%--------------------------------------------------------------------
--spec delete_temporary_unavailable_greeting(mailbox(), whapps_call:call()) -> 'ok' | mailbox().
+-spec delete_temporary_unavailable_greeting(mailbox(), whapps_call:call()) ->
+                                                   'ok' | mailbox().
 delete_temporary_unavailable_greeting(#mailbox{temporary_unavailable_media_id='undefined'}=_Box, _Call) ->
     'ok';
 delete_temporary_unavailable_greeting(Box, Call) ->
@@ -1014,7 +1024,9 @@ overwrite_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id=Med
                              ]),
     _NoopId = whapps_call_command:audio_macro([{'prompt', <<"vm-record_greeting">>}
                                                ,{'tones', [Tone]}
-                                              ], Call),
+                                              ]
+                                              ,Call
+                                             ),
     _ = whapps_call_command:b_record(AttachmentName, Call),
     case review_recording(AttachmentName, 'false', Box, Call) of
         {'ok', 'record'} ->
@@ -1097,7 +1109,9 @@ record_name(AttachmentName, #mailbox{name_media_id=MediaId}=Box, Call, DocId) ->
                         mailbox() | {'error', _}.
 change_pin(#mailbox{mailbox_id=Id
                     ,interdigit_timeout=Interdigit
-                   }=Box, Call) ->
+                   }=Box
+           ,Call
+          ) ->
     lager:info("requesting new mailbox pin number"),
     try
         {'ok', Pin} = get_new_pin(Interdigit, Call),
@@ -1476,98 +1490,117 @@ get_mailbox_profile(Data, Call) ->
     AccountDb = whapps_call:account_db(Call),
 
     case get_mailbox_doc(AccountDb, Id, Data, Call) of
-        {'ok', JObj} ->
-            MailboxId = wh_json:get_value(<<"_id">>, JObj),
+        {'ok', MailboxJObj} ->
+            MailboxId = wh_json:get_value(<<"_id">>, MailboxJObj),
             lager:info("loaded voicemail box ~s", [MailboxId]),
             Default = #mailbox{},
 
             %% dont check if the voicemail box belongs to the owner (by default) if the call was not
             %% specificly to him, IE: calling a ring group and going to voicemail should not check
             LastAct = whapps_call:kvs_fetch('cf_last_action', Call),
-            CheckIfOwner = (('undefined' =:= LastAct) orelse ('cf_device' =:= LastAct)),
+            CheckIfOwner = (('undefined' =:= LastAct)
+                            orelse ('cf_device' =:= LastAct)
+                           ),
 
-            {NameMediaId, OwnerId}
-                = case wh_json:get_ne_value(<<"owner_id">>, JObj) of
-                      'undefined' -> {wh_json:get_ne_value(?RECORDED_NAME_KEY, JObj), 'undefined'};
-                      OId ->
-                          case couch_mgr:open_cache_doc(AccountDb, OId) of
-                              {'ok', Owner} ->
-                                  {wh_json:find(?RECORDED_NAME_KEY, [Owner, JObj]), OId};
-                              {'error', 'not_found'} ->
-                                  lager:info("owner ~s no longer exists", [OId]),
-                                  {wh_json:get_ne_value(?RECORDED_NAME_KEY, JObj), 'undefined'}
-                          end
-                  end,
+            {NameMediaId, OwnerId} = owner_info(AccountDb, MailboxJObj),
 
-            MaxMessageCount =
-                case whapps_account_config:get(whapps_call:account_id(Call)
-                                               ,?CF_CONFIG_CAT
-                                               ,[<<"voicemail">>, <<"max_message_count">>]
-                                              )
-                of
-                    'undefined' -> ?MAILBOX_DEFAULT_SIZE;
-                    MMC -> MMC
-                end,
-            MsgCount = count_non_deleted_messages(wh_json:get_value(?KEY_MESSAGES, JObj, [])),
+            MaxMessageCount = max_message_count(Call),
+            MsgCount = count_non_deleted_messages(wh_json:get_value(?KEY_MESSAGES, MailboxJObj, [])),
 
-            lager:info("mailbox limited to ~p voicemail messages (has ~b currently)", [MaxMessageCount, MsgCount]),
+            lager:info("mailbox limited to ~p voicemail messages (has ~b currently)"
+                       ,[MaxMessageCount, MsgCount]
+                      ),
 
-            DeleteAfterNotify =
-                case ?DEFAULT_DELETE_AFTER_NOTIFY of
-                    'true' -> 'true';
-                    'false' ->
-                        wh_json:is_true(<<"delete_after_notify">>, JObj, 'false')
-                end,
+            DeleteAfterNotify = should_delete_after_notify(MailboxJObj),
 
             #mailbox{mailbox_id = MailboxId
                      ,exists = 'true'
                      ,keys = populate_keys(Call)
                      ,skip_instructions =
-                         wh_json:is_true(<<"skip_instructions">>, JObj, Default#mailbox.skip_instructions)
+                         wh_json:is_true(<<"skip_instructions">>, MailboxJObj, Default#mailbox.skip_instructions)
                      ,skip_greeting =
-                         wh_json:is_true(<<"skip_greeting">>, JObj, Default#mailbox.skip_greeting)
+                         wh_json:is_true(<<"skip_greeting">>, MailboxJObj, Default#mailbox.skip_greeting)
                      ,pin =
-                         wh_json:get_binary_value(<<"pin">>, JObj, <<>>)
-                     ,timezone = cf_util:get_timezone(JObj, Call)
+                         wh_json:get_binary_value(<<"pin">>, MailboxJObj, <<>>)
+                     ,timezone = cf_util:get_timezone(MailboxJObj, Call)
                      ,mailbox_number =
-                         wh_json:get_binary_value(<<"mailbox">>, JObj, whapps_call:request_user(Call))
+                         wh_json:get_binary_value(<<"mailbox">>, MailboxJObj, whapps_call:request_user(Call))
                      ,require_pin =
-                         wh_json:is_true(<<"require_pin">>, JObj)
+                         wh_json:is_true(<<"require_pin">>, MailboxJObj)
                      ,check_if_owner =
-                         wh_json:is_true(<<"check_if_owner">>, JObj, CheckIfOwner)
+                         wh_json:is_true(<<"check_if_owner">>, MailboxJObj, CheckIfOwner)
                      ,unavailable_media_id =
-                         wh_json:get_ne_value([<<"media">>, <<"unavailable">>], JObj)
+                         wh_json:get_ne_value([<<"media">>, <<"unavailable">>], MailboxJObj)
                      ,temporary_unavailable_media_id =
-                         wh_json:get_ne_value([<<"media">>, <<"temporary_unavailable">>], JObj)
+                         wh_json:get_ne_value([<<"media">>, <<"temporary_unavailable">>], MailboxJObj)
                      ,name_media_id =
                          NameMediaId
                      ,owner_id =
                          OwnerId
                      ,is_setup =
-                         wh_json:is_true(<<"is_setup">>, JObj, 'false')
+                         wh_json:is_true(<<"is_setup">>, MailboxJObj, 'false')
                      ,max_message_count =
                          wh_util:to_integer(MaxMessageCount)
                      ,max_message_length =
-                         find_max_message_length([Data, JObj])
+                         find_max_message_length([Data, MailboxJObj])
                      ,message_count =
                          MsgCount
                      ,transcribe_voicemail =
-                         wh_json:is_true(<<"transcribe">>, JObj, 'false')
+                         wh_json:is_true(<<"transcribe">>, MailboxJObj, 'false')
                      ,notifications =
-                         wh_json:get_value(<<"notifications">>, JObj)
+                         wh_json:get_value(<<"notifications">>, MailboxJObj)
                      ,delete_after_notify = DeleteAfterNotify
                      ,interdigit_timeout =
-                         wh_json:find(<<"interdigit_timeout">>, [JObj, Data], whapps_call_command:default_interdigit_timeout())
+                         wh_json:find(<<"interdigit_timeout">>, [MailboxJObj, Data], whapps_call_command:default_interdigit_timeout())
                      ,play_greeting_intro =
-                         wh_json:is_true(<<"play_greeting_intro">>, JObj, Default#mailbox.play_greeting_intro)
+                         wh_json:is_true(<<"play_greeting_intro">>, MailboxJObj, Default#mailbox.play_greeting_intro)
                      ,use_person_not_available =
-                         wh_json:is_true(<<"use_person_not_available">>, JObj, Default#mailbox.use_person_not_available)
+                         wh_json:is_true(<<"use_person_not_available">>, MailboxJObj, Default#mailbox.use_person_not_available)
                      ,not_configurable=
-                         wh_json:is_true(<<"not_configurable">>, JObj, 'false')
+                         wh_json:is_true(<<"not_configurable">>, MailboxJObj, 'false')
                     };
         {'error', R} ->
             lager:info("failed to load voicemail box ~s, ~p", [Id, R]),
             #mailbox{}
+    end.
+
+-spec should_delete_after_notify(wh_json:object()) -> boolean().
+should_delete_after_notify(MailboxJObj) ->
+    case ?DEFAULT_DELETE_AFTER_NOTIFY of
+        'true' -> 'true';
+        'false' ->
+            wh_json:is_true(<<"delete_after_notify">>, MailboxJObj, 'false')
+    end.
+
+-spec max_message_count(whapps_call:call()) -> non_neg_integer().
+max_message_count(Call) ->
+    case whapps_account_config:get(whapps_call:account_id(Call)
+                                   ,?CF_CONFIG_CAT
+                                   ,[<<"voicemail">>, <<"max_message_count">>]
+                                  )
+    of
+        'undefined' -> ?MAILBOX_DEFAULT_SIZE;
+        MMC -> MMC
+    end.
+
+-spec owner_info(ne_binary(), wh_json:object()) ->
+                        {api_binary(), api_binary()}.
+-spec owner_info(ne_binary(), wh_json:object(), api_binary()) ->
+                        {api_binary(), api_binary()}.
+owner_info(AccountDb, MailboxJObj) ->
+    owner_info(AccountDb, MailboxJObj, wh_json:get_ne_value(<<"owner_id">>, MailboxJObj)).
+
+owner_info(_AccountDb, MailboxJObj, 'undefined') ->
+    {wh_json:get_ne_value(?RECORDED_NAME_KEY, MailboxJObj)
+     ,'undefined'
+    };
+owner_info(AccountDb, MailboxJObj, OwnerId) ->
+    case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
+        {'ok', OwnerJObj} ->
+            {wh_json:find(?RECORDED_NAME_KEY, [OwnerJObj, MailboxJObj]), OwnerId};
+        {'error', 'not_found'} ->
+            lager:info("owner ~s no longer exists", [OwnerId]),
+            {wh_json:get_ne_value(?RECORDED_NAME_KEY, MailboxJObj), 'undefined'}
     end.
 
 %%--------------------------------------------------------------------
