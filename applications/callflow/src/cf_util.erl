@@ -909,8 +909,6 @@ process_event(Call, NoopId, JObj) ->
             wait_for_noop(Call, NoopId)
     end.
 
--define(DEFAULT_TIMEZONE, <<"America/Los_Angeles">>).
-
 -spec get_timezone(wh_json:object(), whapps_call:call()) -> ne_binary().
 get_timezone(JObj, Call) ->
     case wh_json:get_value(<<"timezone">>, JObj) of
