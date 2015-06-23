@@ -860,12 +860,18 @@ check_value_of_fields(Perms, Def, Data, Call) ->
 
 -spec sip_users_from_device_ids(ne_binaries(), whapps_call:call()) -> ne_binaries().
 sip_users_from_device_ids(EndpointIds, Call) ->
-    lists:foldl(fun(EndpointId, Acc) ->
-        case sip_user_from_device_id(EndpointId, Call) of
-            'undefined' -> Acc;
-            Username -> [Username|Acc]
-        end
-    end, [], EndpointIds).
+    lists:foldl(fun(EID, Acc) -> sip_users_from_device_id(EID, Acc, Call) end
+                ,[]
+                ,EndpointIds
+               ).
+
+-spec sip_users_from_device_id(ne_binary(), ne_binaries(), whapps_call:call()) ->
+                                      ne_binaries().
+sip_users_from_device_id(EndpointId, Acc, Call) ->
+    case sip_user_from_device_id(EndpointId, Call) of
+        'undefined' -> Acc;
+        Username -> [Username|Acc]
+    end.
 
 -spec sip_user_from_device_id(ne_binary(), whapps_call:call()) -> api_binary().
 sip_user_from_device_id(EndpointId, Call) ->
@@ -914,17 +920,15 @@ process_event(Call, NoopId, JObj) ->
 -spec get_timezone(wh_json:object(), whapps_call:call()) -> ne_binary().
 get_timezone(JObj, Call) ->
     case wh_json:get_value(<<"timezone">>, JObj) of
-        'undefined' -> cf_util:account_timezone(Call);
+        'undefined' -> account_timezone(Call);
         TZ -> TZ
     end.
 
 -spec account_timezone(whapps_call:call()) -> ne_binary().
 account_timezone(Call) ->
-    case couch_mgr:open_cache_doc(whapps_call:account_db(Call)
-                                  ,whapps_call:account_id(Call)
-                                 )
-    of
-        {'ok', JObj} -> wh_json:get_value(<<"timezone">>, JObj, ?DEFAULT_TIMEZONE);
+    case kz_account:fetch(whapps_call:account_id(Call)) of
+        {'ok', AccountJObj} ->
+            kz_account:timezone(AccountJObj, ?DEFAULT_TIMEZONE);
         {'error', _E} ->
             whapps_config:get(<<"accounts">>, <<"timezone">>, ?DEFAULT_TIMEZONE)
     end.

@@ -11,7 +11,7 @@
 -export([name/1, set_name/2
          ,realm/1, set_realm/2
          ,language/1, set_language/2
-         ,timezone/1, set_timezone/2
+         ,timezone/1, timezone/2, set_timezone/2
          ,id/1
          ,parent_account_id/1
          ,set_tree/2, tree/1, tree/2
@@ -70,8 +70,11 @@ set_language(JObj, Language) ->
     wh_json:set_value(?LANGUAGE, Language, JObj).
 
 -spec timezone(doc()) -> api_binary().
+-spec timezone(doc(), Default) -> ne_binary() | Default.
 timezone(JObj) ->
-    wh_json:get_value(?TIMEZONE, JObj).
+    timezone(JObj, 'undefined').
+timezone(JObj, Default) ->
+    wh_json:get_value(?TIMEZONE, JObj, Default).
 
 -spec set_timezone(doc(), ne_binary()) -> doc().
 set_timezone(JObj, Timezone) ->
