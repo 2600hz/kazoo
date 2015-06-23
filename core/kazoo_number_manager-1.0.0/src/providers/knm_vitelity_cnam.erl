@@ -125,7 +125,7 @@ try_update_outbound_cnam(Number, NewCNAM) ->
 -spec outbound_cnam_options(ne_binary(), ne_binary()) -> list().
 outbound_cnam_options(DID, NewCNAM) ->
     [{'qs', [{'cmd', <<"lidb">>}
-             ,{'did',  wnm_util:to_npan(DID)}
+             ,{'did',  knm_converter_regex:to_npan(DID)}
              ,{'name', NewCNAM}
              ,{'xml', <<"yes">>}
              | wnm_vitelity_util:default_options()
@@ -274,7 +274,7 @@ add_inbound_cnam(Number) ->
 %%--------------------------------------------------------------------
 -spec inbound_options(ne_binary()) -> list().
 inbound_options(DID) ->
-    [{'qs', [{'did',  wnm_util:to_npan(DID)}
+    [{'qs', [{'did',  knm_converter_regex:to_npan(DID)}
              ,{'cmd', <<"cnamenable">>}
              ,{'xml', <<"yes">>}
              | wnm_vitelity_util:default_options()
