@@ -274,7 +274,7 @@ maybe_faxbox_log(#state{account_id='undefined'}=State) ->
     maybe_system_report(State);
 maybe_faxbox_log(#state{faxbox='undefined', account_id=AccountId}=State) ->
     maybe_faxbox_log(AccountId, wh_json:new(), State);
-maybe_faxbox_log(#state{faxbox=JObj, account_id=AccountId}=State) ->    
+maybe_faxbox_log(#state{faxbox=JObj, account_id=AccountId}=State) ->
     maybe_faxbox_log(AccountId, JObj, State).
 
 -spec maybe_faxbox_log(ne_binary(), wh_json:object(), state()) -> 'ok'.
@@ -615,10 +615,10 @@ add_fax_document(#state{docs=Docs
                ,{<<"fax_identity_name">>, wh_json:get_value(<<"fax_header">>, FaxBoxDoc)}
                ,{<<"from_number">>, wh_json:get_value(<<"caller_id">>, FaxBoxDoc)}
                ,{<<"fax_identity_number">>, wh_json:get_value(<<"fax_identity">>, FaxBoxDoc)}
-               ,{<<"fax_timezone">>, wh_json:get_value(<<"fax_timezone">>, FaxBoxDoc)}
+               ,{<<"fax_timezone">>, kzd_fax_box:timezone(FaxBoxDoc)}
                ,{<<"to_name">>, FaxNumber}
                ,{<<"to_number">>, FaxNumber}
-               ,{<<"retries">>, wh_json:get_value(<<"retries">>, FaxBoxDoc, 3)}
+               ,{<<"retries">>, kzd_fax_box:retries(FaxBoxDoc, 3)}
                ,{<<"notifications">>, Notify}
                ,{<<"faxbox_id">>, FaxBoxId}
                ,{<<"folder">>, <<"outbox">>}

@@ -841,7 +841,7 @@ send_fax(JobId, JObj, Q, ToDID) ->
                  ,{<<"To-DID">>, ToDID}
                  ,{<<"Fax-Identity-Number">>, wh_json:get_value(<<"fax_identity_number">>, JObj)}
                  ,{<<"Fax-Identity-Name">>, wh_json:get_value(<<"fax_identity_name">>, JObj)}
-                 ,{<<"Fax-Timezone">>, wh_json:get_value(<<"fax_timezone">>, JObj)}
+                 ,{<<"Fax-Timezone">>, kzd_fax_box:timezone(JObj)}
                  ,{<<"Flags">>, [<<"fax">> | wh_json:get_value(<<"flags">>, JObj, [])]}
                  ,{<<"Resource-Type">>, <<"originate">>}
                  ,{<<"Hunt-Account-ID">>, get_hunt_account_id(AccountId)}
@@ -867,7 +867,7 @@ get_hunt_account_id(AccountId) ->
     AccountDb = wh_util:format_account_db(AccountId),
     Options = [{'key', <<"no_match">>}, 'include_docs'],
     case couch_mgr:get_results(AccountDb, ?CALLFLOW_LIST, Options) of
-        {'ok', [JObj]} -> maybe_hunt_account_id(wh_json:get_value(<<"doc">>, JObj)); 
+        {'ok', [JObj]} -> maybe_hunt_account_id(wh_json:get_value(<<"doc">>, JObj));
         _ -> 'undefined'
     end.
 
@@ -876,7 +876,7 @@ maybe_hunt_account_id('undefined') -> 'undefined';
 maybe_hunt_account_id(JObj) ->
     case wh_json:get_value([<<"flow">>, <<"module">>], JObj) of
         <<"resources">> ->
-            case wh_json:get_value([<<"flow">>, <<"data">>, <<"hunt_account_id">>], JObj) of                
+            case wh_json:get_value([<<"flow">>, <<"data">>, <<"hunt_account_id">>], JObj) of
                 'undefined' -> wh_json:get_value(<<"pvt_account_id">>, JObj);
                 HuntAccountID -> HuntAccountID
             end;

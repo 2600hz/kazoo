@@ -277,7 +277,7 @@ save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
                ,{<<"from_number">>,wh_json:get_value(<<"caller_id">>,FaxBoxDoc)}
                ,{<<"fax_identity_name">>, wh_json:get_value(<<"fax_header">>, FaxBoxDoc)}
                ,{<<"fax_identity_number">>, wh_json:get_value(<<"fax_identity">>, FaxBoxDoc)}
-               ,{<<"fax_timezone">>, wh_json:get_value(<<"fax_timezone">>, FaxBoxDoc)}
+               ,{<<"fax_timezone">>, kzd_fax_box:timezone(FaxBoxDoc)}
                ,{<<"to_name">>,FaxNumber}
                ,{<<"to_number">>,FaxNumber}
                ,{<<"retries">>,wh_json:get_value(<<"retries">>,FaxBoxDoc,3)}
@@ -431,7 +431,7 @@ process_registration_result('true', AppId, JObj, Result) ->
         ,JObj
        )),
 
-    timer:sleep(15000),
+    timer:sleep(15 * ?MILLISECONDS_IN_SECOND),
     Payload = props:filter_undefined(
                 [{<<"Event-Name">>, <<"start">>}
                  ,{<<"Application-Name">>, <<"fax">>}

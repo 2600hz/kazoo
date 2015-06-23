@@ -403,7 +403,7 @@ build_fax_settings(Call, JObj) ->
                {<<"Callee-ID-Number">>, overridden_callee_id(Call, JObj)}
        end
        ,{<<"Fax-Identity-Name">>, wh_json:get_value(<<"fax_header">>, JObj)}
-       ,{<<"Fax-Timezone">>, wh_json:get_value(<<"fax_timezone">>, JObj)}
+       ,{<<"Fax-Timezone">>, kzd_fax_box:timezone(JObj)}
        ,{<<"Callee-ID-Name">>, callee_name(JObj)}
        ,{<<"Fax-Doc-ID">>, whapps_call:kvs_fetch(<<"Fax-Doc-ID">>, Call) }
        ,{<<"Fax-Doc-DB">>, whapps_call:kvs_fetch(<<"Fax-Doc-DB">>, Call) }
