@@ -98,6 +98,8 @@
           ,rec_unavailable  = <<"1">>
           ,rec_name = <<"2">>
           ,set_pin = <<"3">>
+          ,rec_temporary_unavailable  = <<"4">>
+          ,del_temporary_unavailable  = <<"5">>
           ,return_main = <<"0">>
 
           %% Post playbak
@@ -116,6 +118,7 @@
           ,skip_instructions = 'false' :: boolean()
           ,skip_greeting = 'false' :: boolean()
           ,unavailable_media_id :: api_binary()
+          ,temporary_unavailable_media_id :: api_binary()
           ,name_media_id :: api_binary()
           ,pin = <<>> :: binary()
           ,timezone :: ne_binary()
@@ -403,6 +406,11 @@ play_greeting_intro(_, _) -> 'ok'.
 %%--------------------------------------------------------------------
 -spec play_greeting(mailbox(), whapps_call:call()) -> ne_binary() | 'ok'.
 play_greeting(#mailbox{skip_greeting='true'}, _) -> 'ok';
+play_greeting(#mailbox{temporary_unavailable_media_id=MediaId}, Call) when MediaId =/= 'undefined' ->
+    Corrected = wh_media_util:media_path(MediaId, Call),
+    lager:info("mailbox has a temporary greeting which always overrides standard greeting: '~s', corrected to '~s'",
+               [MediaId, Corrected]),
+    whapps_call_command:play(Corrected, Call);
 play_greeting(#mailbox{use_person_not_available='true'
                        ,unavailable_media_id='undefined'
                       }, Call) ->
@@ -805,6 +813,8 @@ config_menu(Box, Call) ->
 config_menu(#mailbox{keys=#keys{rec_unavailable=RecUnavailable
                                 ,rec_name=RecName
                                 ,set_pin=SetPin
+                                ,rec_temporary_unavailable=RecTemporaryUnavailable
+                                ,del_temporary_unavailable=DelTemporaryUnavailable
                                 ,return_main=ReturnMain
                                }
                      ,interdigit_timeout=Interdigit
@@ -845,6 +855,18 @@ config_menu(#mailbox{keys=#keys{rec_unavailable=RecUnavailable
                 #mailbox{}=Box1 ->
                     config_menu(Box1, Call)
             end;
+        {'ok', RecTemporaryUnavailable} ->
+            lager:info("caller choose to record their temporary unavailable greeting"),
+            case record_temporary_unavailable_greeting(tmp_file(), Box, Call) of
+                'ok' -> 'ok';
+                Else -> config_menu(Else, Call)
+            end;
+        {'ok', DelTemporaryUnavailable} ->
+            lager:info("caller choose to delete their temporary unavailable greeting"),
+            case delete_temporary_unavailable_greeting(Box, Call) of
+                'ok' -> 'ok';
+                Else -> config_menu(Else, Call)
+            end;
         {'ok', ReturnMain} ->
             lager:info("caller choose to return to the main menu"),
             Box;
@@ -857,9 +879,64 @@ config_menu(#mailbox{keys=#keys{rec_unavailable=RecUnavailable
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
+%% Recording the temporary greeting to override the common greeting
 %% @end
 %%--------------------------------------------------------------------
+-spec record_temporary_unavailable_greeting(ne_binary(), mailbox(), whapps_call:call()) -> 'ok' | mailbox().
+record_temporary_unavailable_greeting(AttachmentName, #mailbox{temporary_unavailable_media_id='undefined'}=Box, Call) ->
+    lager:info("no temporary greetings was recorded before so new media document should be created"),
+    MediaId = recording_media_doc(<<"temporary unavailable greeting">>, Box, Call),
+    record_temporary_unavailable_greeting(AttachmentName, Box#mailbox{temporary_unavailable_media_id=MediaId}, Call);
+record_temporary_unavailable_greeting(AttachmentName, Box, Call) ->
+    lager:info("record new temporary greetings use existing media document"),
+    overwrite_temporary_unavailable_greeting(AttachmentName, Box, Call).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Overwrites current media document of the temporary greeting
+%% by a new recorded version.
+%% @end
+%%--------------------------------------------------------------------
+-spec overwrite_temporary_unavailable_greeting(ne_binary(), mailbox(), whapps_call:call()) -> 'ok' | mailbox().
+overwrite_temporary_unavailable_greeting(AttachmentName, #mailbox{temporary_unavailable_media_id=MediaId}=Box, Call) ->
+    lager:info("overwriting temporary unavailable greeting  as ~s", [AttachmentName]),
+    Tone = wh_json:from_list([{<<"Frequencies">>, [<<"440">>]}
+                              ,{<<"Duration-ON">>, <<"500">>}
+                              ,{<<"Duration-OFF">>, <<"100">>}
+                             ]),
+    _NoopId = whapps_call_command:audio_macro([{'prompt', <<"vm-record_temp_greeting">>},{'tones', [Tone]}], Call),
+    _ = whapps_call_command:b_record(AttachmentName, Call),
+    case review_recording(AttachmentName, 'false', Box, Call) of
+        {'ok', 'record'} ->
+            lager:info("selected item: record new temporary greetings"),
+            record_temporary_unavailable_greeting(tmp_file(), Box, Call);
+        {'ok', 'save'} ->
+            lager:info("selected item: store recorded temporary greetings"),
+            _ = store_recording(AttachmentName, MediaId, Call),
+            'ok' = update_doc([<<"media">>, <<"temporary_unavailable">>], MediaId, Box, Call),
+            _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
+            Box;
+        {'ok', 'no_selection'} ->
+            lager:info("selected item: no selection"),
+            _ = whapps_call_command:b_prompt(<<"vm-deleted">>, Call),
+            'ok';
+        {'branch', _}=B -> B
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Deletes current temporary greeting.
+%% @end
+%%--------------------------------------------------------------------
+-spec delete_temporary_unavailable_greeting(mailbox(), whapps_call:call()) -> 'ok' | mailbox().
+delete_temporary_unavailable_greeting(#mailbox{temporary_unavailable_media_id='undefined'}=_Box, _Call) ->
+    'ok';
+delete_temporary_unavailable_greeting(Box, Call) ->
+    'ok' = update_doc([<<"media">>, <<"temporary_unavailable">>], 'undefined', Box, Call),
+    Box#mailbox{temporary_unavailable_media_id='undefined'}.
+
 -spec record_unavailable_greeting(ne_binary(), mailbox(), whapps_call:call()) ->
                                          'ok' | mailbox().
 record_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id='undefined'}=Box, Call) ->
@@ -1417,6 +1494,8 @@ get_mailbox_profile(Data, Call) ->
                          wh_json:is_true(<<"check_if_owner">>, JObj, CheckIfOwner)
                      ,unavailable_media_id =
                          wh_json:get_ne_value([<<"media">>, <<"unavailable">>], JObj)
+                     ,temporary_unavailable_media_id =
+                         wh_json:get_ne_value([<<"media">>, <<"temporary_unavailable">>], JObj)
                      ,name_media_id =
                          NameMediaId
                      ,owner_id =
