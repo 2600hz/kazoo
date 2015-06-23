@@ -104,7 +104,7 @@ to_json({Req1, Context}) ->
 
 -spec pagination(payload()) -> payload().
 pagination({Req, Context}=Payload) ->
-    PageSize = cb_context:fetch(Context, 'page_size'),
+    PageSize = cb_context:fetch(Context, 'page_size', 0),
     'ok' = cowboy_req:chunk(<<", \"page_size\": ", (wh_util:to_binary(PageSize))/binary>>, Req),
     case cb_context:fetch(Context, 'next_start_key') of
         'undefined' -> 'ok';
