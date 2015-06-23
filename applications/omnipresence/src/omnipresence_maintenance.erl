@@ -11,10 +11,17 @@
 -include("omnipresence.hrl").
 
 -export([current_subscriptions/0, current_subscriptions/1, current_subscriptions/2
+         ,count_current_subscriptions/0
          ,subscribe/2
          ,send_mwi_update/3
          ,list_terminated_callids/0
         ]).
+
+-spec count_current_subscriptions() -> 'no_return'.
+count_current_subscriptions() ->
+    CurrentSubscriptions = ets:tab2list(omnip_subscriptions:table_id()),
+    io:format("~p\n", [length(CurrentSubscriptions)]),
+    'no_return'.
 
 -define(SUBSCRIPTION_FORMAT_STR, " ~50.s | ~50.s | ~10.s | ~20.s |~n").
 
