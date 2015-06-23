@@ -1,14 +1,12 @@
 PROJECT = erlang_localtime
 ROOT = ../..
-DIALYZER = dialyzer
 
-EBINS = $(shell find $(ROOT)/core -maxdepth 2 -name ebin -print) $(shell find $(ROOT)/deps -maxdepth 2 -name ebin -print)
+EBINS = $(shell find $(ROOT)/deps/erlang_localtime-* -maxdepth 2 -name ebin -print)
 PA = $(foreach EBIN,$(EBINS),-pa $(EBIN))
 
-ERLC_OPTS = +debug_info +warn_export_all -I$(ROOT)/core -I$(ROOT)/deps -I$(ROOT)/deps/erlang_localtime-1.0.1/include $(PA)
-     # +bin_opt_info
-
-DIRS =  .
+ERLC_OPTS = -Werror +debug_info +warn_export_all \
+	-I$(ROOT)/deps/erlang_localtime-1.0.1/include \
+	 $(PA)
 
 .PHONY: all compile clean
 
@@ -49,8 +47,3 @@ test: clean include/tz_index.hrl compile-test eunit
 
 eunit: compile-test
 	erl -noshell -pa test -eval "eunit:test([$(MODULES)], [verbose])" -s init stop
-
-dialyze:
-	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) \
-		--plt $(ROOT)/.platform_dialyzer.plt --no_native \
-		-Werror_handling -Wrace_conditions -Wunmatched_returns # -Wunderspecs

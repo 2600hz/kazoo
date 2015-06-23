@@ -37,6 +37,9 @@
 %  LocalDateTime = DateTime()
 %  DstLocalDateTime = DateTime()
 %  ErrDescr = atom(), unknown_tz
+-spec utc_to_local(calendar:datetime(), list() | binary()) ->
+                          {'error', 'unknown_tz'} |
+                          calendar:datetime().
 utc_to_local(UtcDateTime, <<_/binary>> = Timezone) ->
     utc_to_local(UtcDateTime, binary_to_list(Timezone));
 utc_to_local(UtcDateTime, Timezone) ->
