@@ -405,11 +405,14 @@ play_greeting_intro(_, _) -> 'ok'.
 %% @end
 %%--------------------------------------------------------------------
 -spec play_greeting(mailbox(), whapps_call:call()) -> ne_binary() | 'ok'.
-play_greeting(#mailbox{skip_greeting='true'}, _) -> 'ok';
-play_greeting(#mailbox{temporary_unavailable_media_id=MediaId}, Call) when MediaId =/= 'undefined' ->
+play_greeting(#mailbox{skip_greeting='true'}, _Call) -> 'ok';
+play_greeting(#mailbox{temporary_unavailable_media_id= <<_/binary>> = MediaId}
+              ,Call
+             ) ->
     Corrected = wh_media_util:media_path(MediaId, Call),
     lager:info("mailbox has a temporary greeting which always overrides standard greeting: '~s', corrected to '~s'",
-               [MediaId, Corrected]),
+               [MediaId, Corrected]
+              ),
     whapps_call_command:play(Corrected, Call);
 play_greeting(#mailbox{use_person_not_available='true'
                        ,unavailable_media_id='undefined'
@@ -810,15 +813,10 @@ message_menu(Prompt, #mailbox{keys=#keys{replay=Replay
 config_menu(Box, Call) ->
     config_menu(Box, Call, 1).
 
-config_menu(#mailbox{keys=#keys{rec_unavailable=RecUnavailable
-                                ,rec_name=RecName
-                                ,set_pin=SetPin
-                                ,rec_temporary_unavailable=RecTemporaryUnavailable
-                                ,del_temporary_unavailable=DelTemporaryUnavailable
-                                ,return_main=ReturnMain
-                               }
-                     ,interdigit_timeout=Interdigit
-                    }=Box, Call, Loop) when Loop < 4 ->
+config_menu(#mailbox{interdigit_timeout=Interdigit}=Box
+            ,Call
+            ,Loop
+           ) when Loop < 4 ->
     lager:info("playing mailbox configuration menu"),
     {'ok', _} = whapps_call_command:b_flush(Call),
 
@@ -831,50 +829,84 @@ config_menu(#mailbox{keys=#keys{rec_unavailable=RecUnavailable
                                             ,Call
                                            )
     of
-        {'ok', RecUnavailable} ->
-            lager:info("caller choose to record their unavailable greeting"),
-            case record_unavailable_greeting(tmp_file(), Box, Call) of
-                'ok' -> 'ok';
-                Else -> config_menu(Else, Call)
-            end;
-        {'ok', RecName} ->
-            lager:info("caller choose to record their name"),
-            case record_name(tmp_file(), Box, Call) of
-                'ok' -> 'ok';
-                Else -> config_menu(Else, Call)
-            end;
-        {'ok', SetPin} ->
-            lager:info("caller choose to change their pin"),
-            case change_pin(Box, Call) of
-                {'error', 'channel_hungup'}=E ->
-                    lager:debug("channel has hungup, done trying to setup mailbox"),
-                    E;
-                {'error', _E} ->
-                    lager:debug("changing pin failed: ~p", [_E]),
-                    config_menu(Box, Call);
-                #mailbox{}=Box1 ->
-                    config_menu(Box1, Call)
-            end;
-        {'ok', RecTemporaryUnavailable} ->
-            lager:info("caller choose to record their temporary unavailable greeting"),
-            case record_temporary_unavailable_greeting(tmp_file(), Box, Call) of
-                'ok' -> 'ok';
-                Else -> config_menu(Else, Call)
-            end;
-        {'ok', DelTemporaryUnavailable} ->
-            lager:info("caller choose to delete their temporary unavailable greeting"),
-            case delete_temporary_unavailable_greeting(Box, Call) of
-                'ok' -> 'ok';
-                Else -> config_menu(Else, Call)
-            end;
-        {'ok', ReturnMain} ->
-            lager:info("caller choose to return to the main menu"),
-            Box;
-        %% Bulk delete -> delete all voicemails
-        %% Reset -> delete all voicemails, greetings, name, and reset pin
-        {'ok', _} -> config_menu(Box, Call, Loop + 1);
-        _ -> 'ok'
+        {'ok', Selection} ->
+            handle_config_selection(Box, Call, Loop, Selection);
+        {'error', _E} ->
+            lager:info("failed to collect config menu selection: ~p", [_E])
     end.
+
+handle_config_selection(#mailbox{keys=#keys{rec_unavailable=Selection}}=Box
+                        ,Call
+                        ,_Loop
+                        ,Selection
+                       ) ->
+    lager:info("caller choose to record their unavailable greeting"),
+    case record_unavailable_greeting(tmp_file(), Box, Call) of
+        'ok' -> 'ok';
+        Else -> config_menu(Else, Call)
+    end;
+handle_config_selection(#mailbox{keys=#keys{rec_name=Selection}}=Box
+                        ,Call
+                        ,_Loop
+                        ,Selection
+                       ) ->
+    lager:info("caller choose to record their name"),
+    case record_name(tmp_file(), Box, Call) of
+        'ok' -> 'ok';
+        Else -> config_menu(Else, Call)
+    end;
+handle_config_selection(#mailbox{keys=#keys{set_pin=Selection}}=Box
+                        ,Call
+                        ,_Loop
+                        ,Selection
+                       ) ->
+    lager:info("caller choose to change their pin"),
+    case change_pin(Box, Call) of
+        {'error', 'channel_hungup'}=E ->
+            lager:debug("channel has hungup, done trying to setup mailbox"),
+            E;
+        {'error', _E} ->
+            lager:debug("changing pin failed: ~p", [_E]),
+            config_menu(Box, Call);
+        #mailbox{}=Box1 ->
+            config_menu(Box1, Call)
+    end;
+handle_config_selection(#mailbox{keys=#keys{rec_temporary_unavailable=Selection}}=Box
+                        ,Call
+                        ,_Loop
+                        ,Selection
+                       ) ->
+    lager:info("caller choose to record their temporary unavailable greeting"),
+    case record_temporary_unavailable_greeting(tmp_file(), Box, Call) of
+        'ok' -> 'ok';
+        Else -> config_menu(Else, Call)
+    end;
+handle_config_selection(#mailbox{keys=#keys{del_temporary_unavailable=Selection}}=Box
+                        ,Call
+                        ,_Loop
+                        ,Selection
+                       ) ->
+    lager:info("caller choose to delete their temporary unavailable greeting"),
+    case delete_temporary_unavailable_greeting(Box, Call) of
+        'ok' -> 'ok';
+        Else -> config_menu(Else, Call)
+    end;
+handle_config_selection(#mailbox{keys=#keys{return_main=Selection}}=Box
+                        ,_Call
+                        ,_Loop
+                        ,Selection
+                       ) ->
+    lager:info("caller choose to return to the main menu"),
+    Box;
+%% Bulk delete -> delete all voicemails
+%% Reset -> delete all voicemails, greetings, name, and reset pin
+handle_config_selection(#mailbox{}=Box
+                        ,Call
+                        ,Loop
+                        ,_Selection
+                       ) ->
+    lager:info("undefined config menu option '~s'", [_Selection]),
+    config_menu(Box, Call, Loop + 1).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -882,11 +914,18 @@ config_menu(#mailbox{keys=#keys{rec_unavailable=RecUnavailable
 %% Recording the temporary greeting to override the common greeting
 %% @end
 %%--------------------------------------------------------------------
--spec record_temporary_unavailable_greeting(ne_binary(), mailbox(), whapps_call:call()) -> 'ok' | mailbox().
-record_temporary_unavailable_greeting(AttachmentName, #mailbox{temporary_unavailable_media_id='undefined'}=Box, Call) ->
+-spec record_temporary_unavailable_greeting(ne_binary(), mailbox(), whapps_call:call()) ->
+                                                   'ok' | mailbox().
+record_temporary_unavailable_greeting(AttachmentName
+                                      ,#mailbox{temporary_unavailable_media_id='undefined'}=Box
+                                      ,Call
+                                     ) ->
     lager:info("no temporary greetings was recorded before so new media document should be created"),
     MediaId = recording_media_doc(<<"temporary unavailable greeting">>, Box, Call),
-    record_temporary_unavailable_greeting(AttachmentName, Box#mailbox{temporary_unavailable_media_id=MediaId}, Call);
+    record_temporary_unavailable_greeting(AttachmentName
+                                          ,Box#mailbox{temporary_unavailable_media_id=MediaId}
+                                          ,Call
+                                         );
 record_temporary_unavailable_greeting(AttachmentName, Box, Call) ->
     lager:info("record new temporary greetings use existing media document"),
     overwrite_temporary_unavailable_greeting(AttachmentName, Box, Call).
