@@ -187,7 +187,7 @@ extract_chunks(Dev, LogIP, LogPort, Counter) ->
 -type key() :: {'callid', ne_binary()}.
 -type data() :: [ne_binary() | {ne_binary()}].
 
--spec make_and_store_chunk(ne_binary(), pos_integer(), ne_binary(), pos_integer(), [data()]) ->
+-spec make_and_store_chunk(ne_binary(), pos_integer(), ne_binary(), pos_integer(), data()) ->
                                   pos_integer().
 make_and_store_chunk(LogIP, LogPort, Callid, Counter, Data0) ->
     {Data, Ts} = cleanse_data_and_get_timestamp(Data0),
@@ -238,7 +238,7 @@ extract_chunk(Dev) ->
             end
     end.
 
--spec acc(ne_binary(), data(), file:io_device(), ne_binary()) -> {key(), data()}.
+-spec acc(ne_binary(), data(), file:io_device(), key()) -> {key(), data()}.
 acc(<<"start|",_/binary>>=Logged, Buffer, Dev, Key) ->
     put(Key, [Logged]),
     case Buffer of
@@ -266,7 +266,7 @@ acc(<<"stop|",_/binary>>=Logged, Buffer, _Dev, Key) ->
     erase(Key),
     {Key, [Logged|Buffer]}.
 
--spec cleanse_data_and_get_timestamp(data()) -> [{[ne_binary()], api_number()}].
+-spec cleanse_data_and_get_timestamp(data()) -> {[ne_binary()], api_number()}.
 cleanse_data_and_get_timestamp(Data0) ->
     F =
         fun ({RawTimestamp}, {Acc, TS}) ->

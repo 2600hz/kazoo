@@ -183,7 +183,7 @@ reorder_dialog(Chunks) ->
     RefParser = pick_ref_parser(Chunks),
     do_reorder_dialog(RefParser, Chunks).
 
--spec pick_ref_parser([chunk()]) -> [chunk()].
+-spec pick_ref_parser([chunk()]) -> atom().
 pick_ref_parser(Chunks) ->
     GroupedByParser = group_by(fun parser/1, Chunks),
     Counted = lists:keymap(fun erlang:length/1, 2, GroupedByParser),
@@ -294,11 +294,11 @@ c_seq(Chunk) ->
     [Number, _Tag] = binary:split(FullCSeq, <<$\s>>),
     Number.
 
--spec group_by(fun((V,_) -> K), [V]) -> [{K, [V]}].
+-spec group_by(fun((V) -> K), [V]) -> [{K, [V]}] when K :: atom().
 group_by(Fun, List) ->
     dict:to_list(group_as_dict(Fun, List)).
 
--spec group_as_dict(fun((V) -> K), [V]) -> D when K :: atom().
+-spec group_as_dict(fun((V) -> K), [V]) -> dict() when K :: atom().
 group_as_dict(Fun, List) ->
     F = fun (Value, Dict) -> dict:append(Fun(Value), Value, Dict) end,
     lists:foldl(F, dict:new(), List).

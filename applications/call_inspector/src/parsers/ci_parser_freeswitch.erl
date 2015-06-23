@@ -178,7 +178,9 @@ extract_chunks(Dev, LogIP, LogPort, Counter) ->
             extract_chunks(Dev, LogIP, LogPort, NewCounter)
     end.
 
--spec make_and_store_chunk(ne_binary(), pos_integer(), pos_integer(), [binary()]) -> pos_integer().
+-type buffer() :: [binary() | {'timestamp', api_number()}].
+
+-spec make_and_store_chunk(ne_binary(), pos_integer(), pos_integer(), buffer()) -> pos_integer().
 make_and_store_chunk(LogIP, LogPort, Counter, Data00) ->
     Apply = fun (Fun, Arg) -> Fun(Arg) end,
     {Timestamp, Data0, NewCounter} =
@@ -207,7 +209,7 @@ make_and_store_chunk(LogIP, LogPort, Counter, Data00) ->
     ci_datastore:store_chunk(Chunk),
     NewCounter.
 
--spec extract_chunk(file:io_device(), [binary()]) -> [binary()].
+-spec extract_chunk(file:io_device(), buffer()) -> buffer().
 extract_chunk(Dev, Buffer) ->
     case file:read_line(Dev) of
         'eof' -> buffer(Buffer);
@@ -225,7 +227,7 @@ extract_chunk(Dev, Buffer) ->
             end
     end.
 
--spec acc(binary(), [binary()], file:io_device()) -> [binary()].
+-spec acc(binary(), buffer(), file:io_device()) -> buffer().
 acc(<<"recv ", _/binary>>=Line, Buffer, Dev)
   when Buffer == [] ->
     %% Start of a new chunk
@@ -257,13 +259,13 @@ buffer() ->
     end,
     [].
 
--spec buffer([binary()]) -> [].
+-spec buffer(buffer()) -> [].
 buffer(Buffer) ->
     _OldBuffer = put('buffer', Buffer),
     [].
 
 
--spec set_legs(ne_binary(), pos_integer(), ci_chunk:chunk(), [binary()]) ->
+-spec set_legs(ne_binary(), pos_integer(), ci_chunk:chunk(), [ne_binary()]) ->
                       ci_chunk:chunk().
 set_legs(LogIP, LogPort, Chunk, [FirstLine|_Lines]) ->
     case FirstLine of
