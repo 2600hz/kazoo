@@ -250,7 +250,7 @@ maybe_find_local(IP, Port, Realm, AccountId) ->
                               {'ok', wh_proplist()} |
                               {'error', 'not_found'}.
 search_resources(_IP, _Port, _Realm, []) ->
-    lager:debug("failed to find matching resource for ~s:~s(~s)", [_IP, _Port, _Realm]),
+    lager:debug("failed to find matching resource for ~s:~p(~s)", [_IP, _Port, _Realm]),
     {'error', 'not_found'};
 search_resources(IP, Port, Realm, [#resrc{id=Id
                                           ,gateways=Gateways
