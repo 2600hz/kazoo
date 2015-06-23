@@ -29,52 +29,68 @@
 -define(KEY_FOLDER, <<"folder">>).
 -define(KEY_MEDIA_ID, <<"media_id">>).
 
+-define(KEY_VOICEMAIL, <<"voicemail">>).
+-define(KEY_MAX_MESSAGE_COUNT, <<"max_message_count">>).
+-define(KEY_MAX_MESSAGE_LENGTH, <<"max_message_length">>).
+-define(KEY_MIN_MESSAGE_SIZE, <<"min_message_size">>).
+-define(KEY_MAX_BOX_NUMBER_LENGTH, <<"max_box_number_length">>).
+-define(KEY_EXTERNAL_STORAGE, <<"external_storage">>).
+-define(KEY_EXTENSION, <<"extension">>).
+-define(KEY_MAX_PIN_LENGTH, <<"max_pin_length">>).
+-define(KEY_DELETE_AFTER_NOTIFY, <<"delete_after_notify">>).
+
 -define(MAILBOX_DEFAULT_SIZE
         ,whapps_config:get_integer(?CF_CONFIG_CAT
-                                   ,[<<"voicemail">>, <<"max_message_count">>]
+                                   ,[?KEY_VOICEMAIL, ?KEY_MAX_MESSAGE_COUNT]
                                    ,100
                                   )).
 -define(MAILBOX_DEFAULT_MSG_MAX_LENGTH
         ,whapps_config:get_integer(?CF_CONFIG_CAT
-                                   ,[<<"voicemail">>, <<"max_message_length">>]
+                                   ,[?KEY_VOICEMAIL, ?KEY_MAX_MESSAGE_LENGTH]
                                    ,500
                                   )).
 -define(MAILBOX_DEFAULT_MSG_MIN_LENGTH
         ,whapps_config:get_integer(?CF_CONFIG_CAT
-                                   ,[<<"voicemail">>, <<"min_message_size">>]
+                                   ,[?KEY_VOICEMAIL, ?KEY_MIN_MESSAGE_SIZE]
                                    ,500
                                   )).
 -define(MAILBOX_DEFAULT_BOX_NUMBER_LENGTH
         ,whapps_config:get_integer(?CF_CONFIG_CAT
-                                   ,[<<"voicemail">>, <<"max_box_number_length">>]
+                                   ,[?KEY_VOICEMAIL, ?KEY_MAX_BOX_NUMBER_LENGTH]
                                    ,15
                                   )).
 -define(MAILBOX_DEFAULT_STORAGE
         ,whapps_config:get(?CF_CONFIG_CAT
-                           ,[<<"voicemail">>, <<"external_storage">>]
+                           ,[?KEY_VOICEMAIL, ?KEY_EXTERNAL_STORAGE]
                           )).
 -define(DEFAULT_VM_EXTENSION
-        ,whapps_config:get(?CF_CONFIG_CAT, [<<"voicemail">>, <<"extension">>], <<"mp3">>)
+        ,whapps_config:get(?CF_CONFIG_CAT
+                           ,[?KEY_VOICEMAIL, ?KEY_EXTENSION]
+                           ,<<"mp3">>
+                          )
        ).
 
 -define(DEFAULT_MAX_PIN_LENGTH
-        ,whapps_config:get_integer(?CF_CONFIG_CAT, [<<"voicemail">>, <<"max_pin_length">>], 6)
+        ,whapps_config:get_integer(?CF_CONFIG_CAT
+                                   ,[?KEY_VOICEMAIL, ?KEY_MAX_PIN_LENGTH]
+                                   ,6
+                                  )
        ).
 
 -define(DEFAULT_DELETE_AFTER_NOTIFY
         ,whapps_config:get(?CF_CONFIG_CAT
-                           ,[<<"voicemail">>, <<"delete_after_notify">>]
+                           ,[?KEY_VOICEMAIL, ?KEY_DELETE_AFTER_NOTIFY]
                            ,'false'
                           )
        ).
 -define(MAILBOX_RETRY_STORAGE_TIMES(AccountId)
         ,whapps_account_config:get_global(AccountId, ?CF_CONFIG_CAT
-                                          ,[<<"voicemail">>, <<"storage_retry_times">>]
+                                          ,[?KEY_VOICEMAIL, <<"storage_retry_times">>]
                                           ,5
                                          )).
 -define(MAILBOX_RETRY_LOCAL_STORAGE_REMOTE_FAILS(AccountId)
         ,whapps_account_config:get_global(AccountId, ?CF_CONFIG_CAT
-                                          ,[<<"voicemail">>, <<"storage_retry_local_on_remote_failure">>]
+                                          ,[?KEY_VOICEMAIL, <<"storage_retry_local_on_remote_failure">>]
                                           ,'true'
                                          )).
 
@@ -287,7 +303,10 @@ find_mailbox(#mailbox{interdigit_timeout=Interdigit}=Box, Call, Loop) ->
                     find_mailbox(Box, Call, Loop + 1);
                 {'ok', [JObj]} ->
                     lager:info("get profile of ~p", [JObj]),
-                    ReqBox = get_mailbox_profile(wh_json:from_list([{<<"id">>, wh_json:get_value(<<"id">>, JObj)}]), Call),
+                    ReqBox = get_mailbox_profile(
+                               wh_json:from_list([{<<"id">>, wh_json:get_value(<<"id">>, JObj)}])
+                               ,Call
+                              ),
                     check_mailbox(ReqBox, Call, Loop);
                 {'ok', _} ->
                     lager:info("mailbox ~s is ambiguous", [Mailbox]),
@@ -883,7 +902,7 @@ handle_config_selection(#mailbox{keys=#keys{rec_temporary_unavailable=Selection}
     lager:info("caller choose to record their temporary unavailable greeting"),
     case record_temporary_unavailable_greeting(tmp_file(), Box, Call) of
         'ok' -> 'ok';
-        Else -> config_menu(Else, Call)
+        Box1 -> config_menu(Box1, Call)
     end;
 handle_config_selection(#mailbox{keys=#keys{del_temporary_unavailable=Selection}}=Box
                         ,Call
@@ -893,7 +912,7 @@ handle_config_selection(#mailbox{keys=#keys{del_temporary_unavailable=Selection}
     lager:info("caller choose to delete their temporary unavailable greeting"),
     case delete_temporary_unavailable_greeting(Box, Call) of
         'ok' -> 'ok';
-        Else -> config_menu(Else, Call)
+        Box1 -> config_menu(Box1, Call)
     end;
 handle_config_selection(#mailbox{keys=#keys{return_main=Selection}}=Box
                         ,_Call
@@ -1569,14 +1588,14 @@ should_delete_after_notify(MailboxJObj) ->
     case ?DEFAULT_DELETE_AFTER_NOTIFY of
         'true' -> 'true';
         'false' ->
-            wh_json:is_true(<<"delete_after_notify">>, MailboxJObj, 'false')
+            wh_json:is_true(?KEY_DELETE_AFTER_NOTIFY, MailboxJObj, 'false')
     end.
 
 -spec max_message_count(whapps_call:call()) -> non_neg_integer().
 max_message_count(Call) ->
     case whapps_account_config:get(whapps_call:account_id(Call)
                                    ,?CF_CONFIG_CAT
-                                   ,[<<"voicemail">>, <<"max_message_count">>]
+                                   ,[?KEY_VOICEMAIL, ?KEY_MAX_MESSAGE_COUNT]
                                   )
     of
         'undefined' -> ?MAILBOX_DEFAULT_SIZE;
@@ -1613,22 +1632,22 @@ owner_info(AccountDb, MailboxJObj, OwnerId) ->
 populate_keys(Call) ->
     Default = #keys{},
     JObj = whapps_account_config:get(whapps_call:account_id(Call), <<"keys">>),
-    #keys{operator = wh_json:get_binary_value([<<"voicemail">>, <<"operator">>], JObj, Default#keys.operator)
-          ,login = wh_json:get_binary_value([<<"voicemail">>, <<"login">>], JObj, Default#keys.login)
-          ,save = wh_json:get_binary_value([<<"voicemail">>, <<"save">>], JObj, Default#keys.save)
-          ,listen = wh_json:get_binary_value([<<"voicemail">>, <<"listen">>], JObj, Default#keys.listen)
-          ,record = wh_json:get_binary_value([<<"voicemail">>, <<"record">>], JObj, Default#keys.record)
-          ,hear_new = wh_json:get_binary_value([<<"voicemail">>, <<"hear_new">>], JObj, Default#keys.hear_new)
-          ,hear_saved = wh_json:get_binary_value([<<"voicemail">>, <<"hear_saved">>], JObj, Default#keys.hear_saved)
-          ,configure = wh_json:get_binary_value([<<"voicemail">>, <<"configure">>], JObj, Default#keys.configure)
-          ,exit = wh_json:get_binary_value([<<"voicemail">>, <<"exit">>], JObj, Default#keys.exit)
-          ,rec_unavailable = wh_json:get_binary_value([<<"voicemail">>, <<"record_unavailable">>], JObj, Default#keys.rec_unavailable)
-          ,rec_name = wh_json:get_binary_value([<<"voicemail">>, <<"record_name">>], JObj, Default#keys.rec_name)
-          ,set_pin = wh_json:get_binary_value([<<"voicemail">>, <<"set_pin">>], JObj, Default#keys.set_pin)
-          ,return_main = wh_json:get_binary_value([<<"voicemail">>, <<"return_main_menu">>], JObj, Default#keys.return_main)
-          ,keep = wh_json:get_binary_value([<<"voicemail">>, <<"keep">>], JObj, Default#keys.keep)
-          ,replay = wh_json:get_binary_value([<<"voicemail">>, <<"replay">>], JObj, Default#keys.replay)
-          ,delete = wh_json:get_binary_value([<<"voicemail">>, <<"delete">>], JObj, Default#keys.delete)
+    #keys{operator = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"operator">>], JObj, Default#keys.operator)
+          ,login = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"login">>], JObj, Default#keys.login)
+          ,save = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"save">>], JObj, Default#keys.save)
+          ,listen = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"listen">>], JObj, Default#keys.listen)
+          ,record = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"record">>], JObj, Default#keys.record)
+          ,hear_new = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"hear_new">>], JObj, Default#keys.hear_new)
+          ,hear_saved = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"hear_saved">>], JObj, Default#keys.hear_saved)
+          ,configure = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"configure">>], JObj, Default#keys.configure)
+          ,exit = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"exit">>], JObj, Default#keys.exit)
+          ,rec_unavailable = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"record_unavailable">>], JObj, Default#keys.rec_unavailable)
+          ,rec_name = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"record_name">>], JObj, Default#keys.rec_name)
+          ,set_pin = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"set_pin">>], JObj, Default#keys.set_pin)
+          ,return_main = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"return_main_menu">>], JObj, Default#keys.return_main)
+          ,keep = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"keep">>], JObj, Default#keys.keep)
+          ,replay = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"replay">>], JObj, Default#keys.replay)
+          ,delete = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"delete">>], JObj, Default#keys.delete)
          }.
 
 %%--------------------------------------------------------------------
@@ -1915,7 +1934,7 @@ get_media_url(AttachmentName, DocId, Call, OwnerId, StorageUrl) ->
 min_recording_length(Call) ->
     case whapps_account_config:get(whapps_call:account_id(Call)
                                    ,?CF_CONFIG_CAT
-                                   ,[<<"voicemail">>, <<"min_message_size">>]
+                                   ,[?KEY_VOICEMAIL, ?KEY_MIN_MESSAGE_SIZE]
                                   )
     of
         'undefined' -> ?MAILBOX_DEFAULT_MSG_MIN_LENGTH;
@@ -1989,7 +2008,7 @@ message_media_doc(Db
     Props = props:filter_undefined(
               [{<<"name">>, Name}
                ,{<<"description">>, <<"voicemail message media">>}
-               ,{<<"source_type">>, <<"voicemail">>}
+               ,{<<"source_type">>, ?KEY_VOICEMAIL}
                ,{<<"source_id">>, Id}
                ,{<<"media_source">>, <<"recording">>}
                ,{<<"media_type">>, ?DEFAULT_VM_EXTENSION}
@@ -2017,7 +2036,7 @@ recording_media_doc(Recording, #mailbox{mailbox_number=BoxNum
     Props = props:filter_undefined(
               [{<<"name">>, Name}
                ,{<<"description">>, <<"voicemail recorded/prompt media">>}
-               ,{<<"source_type">>, <<"voicemail">>}
+               ,{<<"source_type">>, ?KEY_VOICEMAIL}
                ,{<<"source_id">>, Id}
                ,{<<"owner_id">>, OwnerId}
                ,{<<"media_source">>, <<"recording">>}
@@ -2219,7 +2238,7 @@ get_unix_epoch(Epoch, Timezone) ->
 -spec find_max_message_length(wh_json:objects()) -> pos_integer().
 find_max_message_length([]) -> ?MAILBOX_DEFAULT_MSG_MAX_LENGTH;
 find_max_message_length([JObj | T]) ->
-    case wh_json:get_integer_value(<<"max_message_length">>, JObj) of
+    case wh_json:get_integer_value(?KEY_MAX_MESSAGE_LENGTH, JObj) of
         Len when is_integer(Len) andalso Len > 0 -> Len;
         _ -> find_max_message_length(T)
     end.
