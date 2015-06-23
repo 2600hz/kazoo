@@ -37,7 +37,7 @@
     ,ported_in/1 ,set_ported_in/2
     ,module_name/1 ,set_module_name/2
     ,region/1 ,set_region/2
-    ,auth_by/1 ,set_auth_by/2, is_authorize/1
+    ,auth_by/1 ,set_auth_by/2, is_authorized/1
     ,dry_run/1 ,set_dry_run/2
     ,doc/1
 ]).
@@ -61,7 +61,7 @@ fetch(Num, AuthBy) ->
             E;
         {'ok', JObj} ->
             Number = set_auth_by(from_json(JObj), AuthBy),
-            case is_authorize(Number) of
+            case is_authorized(Number) of
                 'true' -> {'ok', Number};
                 'false' ->
                     {'error', 'unauthorized'}
@@ -78,14 +78,14 @@ save(#number{dry_run='true'}=Number) ->
     Routines = [
         fun knm_providers:save/1
     ],
-    routines(Number, Routines);
+    execute_routines(Number, Routines);
 save(#number{dry_run='false'}=Number) ->
     Routines = [
         fun knm_providers:save/1
         ,fun save_to_number_db/1
         ,fun hangle_assignment/1
     ],
-    routines(Number, Routines).
+    execute_routines(Number, Routines).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -100,7 +100,7 @@ delete(#number{dry_run='false'}=Number) ->
         ,fun delete_number_doc/1
         ,fun maybe_remove_number_from_account/1
     ],
-    routines(Number, Routines).
+    execute_routines(Number, Routines).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -388,8 +388,8 @@ doc(Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec routines(number(), [function()]) -> number_return().
-routines(Number, Routines) ->
+-spec execute_routines(number(), [function()]) -> number_return().
+execute_routines(Number, Routines) ->
     lists:foldl(
         fun(F, {'ok', N}) -> F(N);
            (_F, Error) -> Error
@@ -403,9 +403,9 @@ routines(Number, Routines) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec is_authorize(number()) -> boolean().
-is_authorize(#number{auth_by= <<"system">>}) -> 'true';
-is_authorize(#number{assigned_to=AssignedTo, auth_by=AuthBy}) ->
+-spec is_authorized(number()) -> boolean().
+is_authorized(#number{auth_by= <<"system">>}) -> 'true';
+is_authorized(#number{assigned_to=AssignedTo, auth_by=AuthBy}) ->
     wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, 'true').
 
 %%--------------------------------------------------------------------
@@ -460,9 +460,9 @@ assign(Number, AssignedTo) ->
         {'error', _R}=E ->
             lager:error("failed to assign number ~s to ~s", [number(Number), AccountDb]),
             E;
-        {'ok', _} ->
+        {'ok', JObj} ->
             lager:debug("assigned number ~s to ~s", [number(Number), AccountDb]),
-            {'ok', Number}
+            {'ok', from_json(JObj)}
     end.
 
 %%--------------------------------------------------------------------
