@@ -139,7 +139,7 @@ maybe_update_e911(Number, 'false') ->
             lager:debug("vitelity e911 information has been changed: ~s", [wh_json:encode(E911)]),
             Number1 = knm_services:activate_feature(Number, ?VITELITY_KEY),
             case update_e911(Number1, E911) of
-                {'ok', Data} -> {'ok', knm_phone_number:set_feature(?VITELITY_KEY, Data)};
+                {'ok', Data} -> {'ok', knm_phone_number:set_feature(Number1, ?VITELITY_KEY, Data)};
                 {'error', _R}=Error ->
                     lager:error("vitelity e911 information update failed: ~p", [_R]),
                     Error
