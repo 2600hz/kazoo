@@ -357,8 +357,7 @@ maybe_sanitize_fs_value(_, Val) -> Val.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set(atom(), ne_binary(), wh_proplist()) ->
-                 ecallmgr_util:send_cmd_ret().
+-spec set(atom(), ne_binary(), wh_proplist()) -> send_cmd_ret().
 set(_, _, []) -> 'ok';
 set(Node, UUID, [{<<"Auto-Answer", _/binary>> = K, V}]) ->
     ecallmgr_fs_command:set(Node, UUID, [{<<"alert_info">>, <<"intercom">>}, get_fs_key_and_value(K, V, UUID)]);
@@ -432,8 +431,7 @@ set_fold(Node, UUID, {K, V}, Acc) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec export(atom(), ne_binary(), wh_proplist()) ->
-                    ecallmgr_util:send_cmd_ret().
+-spec export(atom(), ne_binary(), wh_proplist()) -> send_cmd_ret().
 export(_, _, []) -> 'ok';
 export(Node, UUID, [{<<"Auto-Answer", _/binary>> = K, V} | Props]) ->
     Exports = [get_fs_key_and_value(Key, Val, UUID)
@@ -447,8 +445,7 @@ export(Node, UUID, Props) ->
     Exports = [get_fs_key_and_value(Key, Val, UUID) || {Key, Val} <- Props],
     ecallmgr_fs_command:export(Node, UUID, props:filter(Exports, 'skip')).
 
--spec bridge_export(atom(), ne_binary(), wh_proplist()) ->
-                    ecallmgr_util:send_cmd_ret().
+-spec bridge_export(atom(), ne_binary(), wh_proplist()) -> send_cmd_ret().
 bridge_export(_, _, []) -> 'ok';
 bridge_export(Node, UUID, [{<<"Auto-Answer", _/binary>> = K, V} | Props]) ->
     BridgeExports = get_fs_keys_and_values(UUID, Props),
