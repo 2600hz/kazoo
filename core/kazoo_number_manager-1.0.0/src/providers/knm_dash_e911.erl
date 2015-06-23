@@ -229,7 +229,7 @@ is_valid_location(Location) ->
                           {'provisioned', wh_json:object()} |
                           {'error', binary()}.
 add_location(Number, Location, CallerName) ->
-    Props = [{'uri', [{'uri', [wh_util:to_list(<<"tel:", (wnm_util:to_1npan(Number))/binary>>)]}
+    Props = [{'uri', [{'uri', [wh_util:to_list(<<"tel:", (knm_converter_regex:to_1npan(Number))/binary>>)]}
                       ,{'callername', [wh_util:to_list(CallerName)]}
                      ]
              }
