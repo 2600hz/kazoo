@@ -1902,7 +1902,7 @@ message_media_doc(Db
                  ) ->
     UtcSeconds = wh_util:current_tstamp(),
     UtcDateTime = calendar:gregorian_seconds_to_datetime(UtcSeconds),
-    Name = case localtime:utc_to_local(UtcDateTime, wh_util:to_list(Timezone)) of
+    Name = case localtime:utc_to_local(UtcDateTime, Timezone) of
                {'error', 'unknown_tz'} ->
                    lager:info("unknown timezone: ~s", [Timezone]),
                    message_name(BoxNum, UtcDateTime, " UTC");
@@ -2131,7 +2131,7 @@ new_timestamp() -> wh_util:current_tstamp().
 -spec get_unix_epoch(ne_binary(), ne_binary()) -> ne_binary().
 get_unix_epoch(Epoch, Timezone) ->
     UtcDateTime = calendar:gregorian_seconds_to_datetime(wh_util:to_integer(Epoch)),
-    LocalDateTime = localtime:utc_to_local(UtcDateTime, wh_util:to_list(Timezone)),
+    LocalDateTime = localtime:utc_to_local(UtcDateTime, Timezone),
     wh_util:to_binary(calendar:datetime_to_gregorian_seconds(LocalDateTime) - ?UNIX_EPOCH_IN_GREGORIAN).
 
 %%--------------------------------------------------------------------
