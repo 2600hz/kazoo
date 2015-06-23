@@ -48,12 +48,12 @@
 
 -include("../call_inspector.hrl").
 
--define(setter(Field),
+-define(SETTER(Field),
         Field(#ci_chunk{}=Chunk, Value) ->
                Chunk#ci_chunk{Field = Value}
        ).
 
--define(getter(Field),
+-define(GETTER(Field),
         Field(#ci_chunk{Field = Value}) ->
                Value
        ).
@@ -71,57 +71,57 @@ setters(#ci_chunk{}=Chunk, Setters) ->
     NewChunk#ci_chunk{ref_timestamp = ci_parsers_util:timestamp()}.
 
 -spec call_id(chunk(), ne_binary()) -> chunk().
-?setter(call_id).
+?SETTER(call_id).
 -spec call_id(chunk()) -> api_binary().
-?getter(call_id).
+?GETTER(call_id).
 
 -spec data(chunk(), ne_binaries()) -> chunk().
-?setter(data).
+?SETTER(data).
 -spec data(chunk()) -> ne_binaries().
-?getter(data).
+?GETTER(data).
 -spec append_data(chunk(), ne_binary()) -> chunk().
 append_data(#ci_chunk{data=D}=Chunk, Data) ->
     Chunk#ci_chunk{data=[Data|D]}.
 
 -spec timestamp(chunk(), integer()) -> chunk().
-?setter(timestamp).
+?SETTER(timestamp).
 -spec timestamp(chunk()) -> api_integer().
-?getter(timestamp).
+?GETTER(timestamp).
 
 -spec ref_timestamp(chunk()) -> api_number().
-?getter(ref_timestamp).
+?GETTER(ref_timestamp).
 
 -spec src_ip(chunk(), ne_binary()) -> chunk().
 src_ip(#ci_chunk{}=Chunk, Val) ->
     Chunk#ci_chunk{src_ip = resolve(Val)}.
 -spec src_ip(chunk()) -> api_binary().
-?getter(src_ip).
+?GETTER(src_ip).
 
 -spec src_port(chunk(), pos_integer()) -> chunk().
-?setter(src_port).
+?SETTER(src_port).
 -spec src_port(chunk()) -> api_pos_integer().
-?getter(src_port).
+?GETTER(src_port).
 
 -spec dst_ip(chunk(), ne_binary()) -> chunk().
 dst_ip(#ci_chunk{}=Chunk, Val) ->
     Chunk#ci_chunk{dst_ip = resolve(Val)}.
 -spec dst_ip(chunk()) -> api_binary().
-?getter(dst_ip).
+?GETTER(dst_ip).
 
 -spec dst_port(chunk(), pos_integer()) -> chunk().
-?setter(dst_port).
+?SETTER(dst_port).
 -spec dst_port(chunk()) -> api_pos_integer().
-?getter(dst_port).
+?GETTER(dst_port).
 
 -spec parser(chunk(), atom()) -> chunk().
-?setter(parser).
+?SETTER(parser).
 -spec parser(chunk()) -> api_atom().
-?getter(parser).
+?GETTER(parser).
 
 -spec label(chunk(), ne_binary()) -> chunk().
-?setter(label).
+?SETTER(label).
 -spec label(chunk()) -> api_binary().
-?getter(label).
+?GETTER(label).
 
 -spec to_json(chunk()) -> wh_json:object().
 to_json(Chunk) ->
@@ -153,12 +153,14 @@ from_json(JObj) ->
               ,parser = wh_json:get_value(<<"parser">>, JObj)
              }.
 
+-spec src(chunk()) -> {ne_binary(), pos_integer()}.
 src(#ci_chunk{src_ip = Ip, src_port = Port}) ->
     <<Ip/binary, ":", (wh_util:to_binary(Port))/binary>>;
 src(Bin = <<_/binary>>) ->
     [IP, Port] = binary:split(Bin, <<":">>),
     {IP, wh_util:to_integer(Port)}.
 
+-spec dst(chunk()) -> {ne_binary(), pos_integer()}.
 dst(#ci_chunk{dst_ip = Ip, dst_port = Port}) ->
     <<Ip/binary, ":", (wh_util:to_binary(Port))/binary>>;
 dst(Bin = <<_/binary>>) ->
@@ -181,12 +183,14 @@ reorder_dialog(Chunks) ->
     RefParser = pick_ref_parser(Chunks),
     do_reorder_dialog(RefParser, Chunks).
 
+-spec pick_ref_parser([chunk()]) -> [chunk()].
 pick_ref_parser(Chunks) ->
     GroupedByParser = group_by(fun parser/1, Chunks),
     Counted = lists:keymap(fun erlang:length/1, 2, GroupedByParser),
     {RefParser,_Max} = lists:last(lists:keysort(2, Counted)),
     RefParser.
 
+-spec do_reorder_dialog(atom(), [chunk()]) -> [chunk()].
 do_reorder_dialog(RefParser, Chunks) ->
     GroupedByCSeq = lists:keysort(1, group_by(fun c_seq/1, Chunks)),
     lists:flatmap( fun ({_CSeq, ByCSeq}) ->
@@ -196,12 +200,14 @@ do_reorder_dialog(RefParser, Chunks) ->
                            ReallyDone ++ NewRest
                    end, GroupedByCSeq).
 
+-spec sort_split_uniq(atom(), [chunk()]) -> {[chunk()], [chunk()]}.
 sort_split_uniq(RefParser, Chunks) ->
     Grouper = fun (Chunk) -> RefParser =:= parser(Chunk) end,
     {InOrder, Others} = lists:partition(Grouper, sort_by_timestamp(Chunks)),
     Uniq = [Chunk || Chunk <- Others, not is_duplicate(InOrder, Chunk)],
     {InOrder, Uniq}.
 
+-spec first_pass([chunk()], [chunk()]) -> {[chunk()], [chunk()]}.
 first_pass(InOrder, ToOrder) -> first_pass([], InOrder, ToOrder, []).
 first_pass(Before, [Ordered|InOrder], [Chunk|ToOrder], UnMergeable) ->
     case {    label(Ordered) =:=    label(Chunk)
@@ -227,6 +233,7 @@ first_pass(Before, [], [Chunk|ToOrder], UnMergeable) ->
 first_pass(Before, InOrder, [], UnMergeable) ->
     {Before++InOrder, lists:reverse(UnMergeable)}.
 
+-spec find_previous_packet(chunk(), [chunk()]) -> chunk() | 'no_previous'.
 find_previous_packet( #ci_chunk{ parser = Parser
                                , ref_timestamp = RefTimestamp
                                }
@@ -238,6 +245,7 @@ find_previous_packet( #ci_chunk{ parser = Parser
     catch 'error':'function_clause' -> 'no_previous'
     end.
 
+-spec second_pass([chunk()], [chunk()]) -> {[chunk()], [chunk()]}.
 second_pass(InOrder, ToOrder) ->
     second_pass(InOrder, ToOrder, []).
 second_pass(InOrder, [Chunk|ToOrder], UnMergeable) ->
@@ -260,6 +268,7 @@ second_pass(InOrder, [Chunk|ToOrder], UnMergeable) ->
 second_pass(InOrder, [], UnMergeable) ->
     {InOrder, lists:reverse(UnMergeable)}.
 
+-spec is_duplicate([chunk()], chunk()) -> boolean().
 %% Assumes CSeq and Callid already equal.
 is_duplicate([#ci_chunk{ dst_ip = DstIP
                        , src_ip = SrcIP
@@ -279,17 +288,21 @@ is_duplicate([], _) ->
 is_duplicate([_|Chunks], Chunk) ->
     is_duplicate(Chunks, Chunk).
 
+-spec c_seq(chunk()) -> ne_binary().
 c_seq(Chunk) ->
     FullCSeq = ci_parsers_util:c_seq(data(Chunk)),
     [Number, _Tag] = binary:split(FullCSeq, <<$\s>>),
     Number.
 
+-spec group_by(fun((V,_) -> K), [V]) -> [{K, [V]}].
 group_by(Fun, List) ->
     dict:to_list(group_as_dict(Fun, List)).
 
+-spec group_as_dict(fun((V) -> K), [V]) -> D when K :: atom().
 group_as_dict(Fun, List) ->
     F = fun (Value, Dict) -> dict:append(Fun(Value), Value, Dict) end,
     lists:foldl(F, dict:new(), List).
 
 
+-spec resolve(ne_binary()) -> ne_binary().
 resolve(IP) -> IP.

@@ -169,6 +169,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
+-spec extract_chunks(file:io_device(), ne_binary(), pos_integer(), pos_integer()) -> pos_integer().
 extract_chunks(Dev, LogIP, LogPort, Counter) ->
     case extract_chunk(Dev) of
         [] -> Counter;
@@ -183,6 +184,11 @@ extract_chunks(Dev, LogIP, LogPort, Counter) ->
             lists:foldl(StoreEach, Counter, Buffers)
     end.
 
+-type key() :: {'callid', ne_binary()}.
+-type data() :: [ne_binary() | {ne_binary()}].
+
+-spec make_and_store_chunk(ne_binary(), pos_integer(), ne_binary(), pos_integer(), [data()]) ->
+                                  pos_integer().
 make_and_store_chunk(LogIP, LogPort, Callid, Counter, Data0) ->
     {Data, Ts} = cleanse_data_and_get_timestamp(Data0),
     %% Counter is a fallback time ID (for old logfile format)
@@ -209,6 +215,11 @@ make_and_store_chunk(LogIP, LogPort, Callid, Counter, Data0) ->
     ci_datastore:store_chunk(Chunk),
     NewCounter.
 
+-type buffer() :: {key(), data()}.
+-spec extract_chunk(file:io_device()) ->
+                           buffer() |
+                           [] |
+                           {'buffers', [buffer()]}.
 extract_chunk(Dev) ->
     case file:read_line(Dev) of
         'eof' ->
@@ -227,6 +238,7 @@ extract_chunk(Dev) ->
             end
     end.
 
+-spec acc(ne_binary(), data(), file:io_device(), ne_binary()) -> {key(), data()}.
 acc(<<"start|",_/binary>>=Logged, Buffer, Dev, Key) ->
     put(Key, [Logged]),
     case Buffer of
@@ -254,6 +266,7 @@ acc(<<"stop|",_/binary>>=Logged, Buffer, _Dev, Key) ->
     erase(Key),
     {Key, [Logged|Buffer]}.
 
+-spec cleanse_data_and_get_timestamp(data()) -> [{[ne_binary()], api_number()}].
 cleanse_data_and_get_timestamp(Data0) ->
     F =
         fun ({RawTimestamp}, {Acc, TS}) ->
@@ -268,12 +281,14 @@ cleanse_data_and_get_timestamp(Data0) ->
         end,
     lists:foldl(F, {[], 'undefined'}, Data0).
 
+-spec get_buffer(key()) -> data().
 get_buffer(Key) ->
     case get(Key) of
         'undefined' -> [];
         Buffer -> Buffer
     end.
 
+-spec dump_buffers() -> [] | {'buffers', [buffer()]}.
 dump_buffers() ->
     Buffers = [{Key, Buff} || {{'callid',_}=Key,Buff} <- get()],
     case Buffers of
@@ -286,17 +301,20 @@ dump_buffers() ->
             {'buffers', Buffers}
     end.
 
+-spec unwrap(ne_binary()) -> ne_binary().
 unwrap(Bin0) ->
     case binary:split(Bin0, <<"|">>) of
         [_Tag, Bin] -> Bin;
         [RawTimestamp] -> RawTimestamp
     end.
 
+-spec rm_newline(ne_binary()) -> ne_binary().
 rm_newline(Line0) ->
     [Line, <<>>] = binary:split(Line0, <<"\n">>),
     Line.
 
 
+-spec label(ne_binary()) -> api_binary().
 label(<<"recieved internal reply ", Label/binary>>) -> Label;
 label(<<"recieved ", _Protocol:3/binary, " request ", Label/binary>>) -> Label;
 label(<<"external reply ", Label/binary>>) -> Label;
@@ -304,6 +322,7 @@ label(<<"received failure reply ", Label/binary>>) -> Label;
 label(<<"recieved ", Label/binary>>) -> Label;
 label(_Other) -> 'undefined'.
 
+-spec from([ne_binary()], Default) -> ne_binary() | Default.
 from([], Default) -> Default;
 from([<<"start|recieved internal reply", _/binary>>|_Data], Default) -> Default;
 from([<<"log|external reply", _/binary>>|_Data], Default) -> Default;
@@ -312,12 +331,14 @@ from([<<"log|source ", From/binary>>|_Data], Default) ->
 from([_Line|Lines], Default) ->
     from(Lines, Default).
 
+-spec get_ip(ne_binary(), Default) -> ne_binary() | Default.
 get_ip(Bin, Default) ->
     case binary:split(Bin, <<":">>) of
         [IP, _Port] -> IP;
         _Else -> Default  %% Unexpected case
     end.
 
+-spec to([ne_binary()], Default) -> ne_binary() | Default.
 to([], Default) -> Default;
 to([<<"start|recieved internal reply",_/binary>>|Data], Default) ->
     to(Data, Default);
@@ -329,6 +350,7 @@ to([_Datum|Data], Default) ->
 
 
 
+-spec from_port([ne_binary()], Default) -> ne_binary() | Default.
 from_port([], Default) -> Default;
 from_port([<<"start|recieved internal reply", _/binary>>|_Data], Default) -> Default;
 from_port([<<"log|external reply", _/binary>>|_Data], Default) -> Default;
@@ -337,12 +359,14 @@ from_port([<<"log|source ", From/binary>>|_Data], Default) ->
 from_port([_Line|Lines], Default) ->
     from_port(Lines, Default).
 
+-spec get_port(ne_binary(), Default) -> ne_binary() | Default.
 get_port(Bin, Default) ->
     case binary:split(Bin, <<":">>) of
         [_IP, Port] -> Port;
         _Else -> Default  %% Unexpected case
     end.
 
+-spec to_port([ne_binary()], Default) -> ne_binary() | Default.
 to_port([], Default) -> Default;
 to_port([<<"start|recieved internal reply",_/binary>>|Data], Default) ->
     to_port(Data, Default);

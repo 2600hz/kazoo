@@ -169,6 +169,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
+-spec extract_chunks(file:io_device(), ne_binary(), pos_integer(), pos_integer()) -> pos_integer().
 extract_chunks(Dev, LogIP, LogPort, Counter) ->
     case extract_chunk(Dev, buffer()) of
         [] -> Counter;
@@ -177,6 +178,7 @@ extract_chunks(Dev, LogIP, LogPort, Counter) ->
             extract_chunks(Dev, LogIP, LogPort, NewCounter)
     end.
 
+-spec make_and_store_chunk(ne_binary(), pos_integer(), pos_integer(), [binary()]) -> pos_integer().
 make_and_store_chunk(LogIP, LogPort, Counter, Data00) ->
     Apply = fun (Fun, Arg) -> Fun(Arg) end,
     {Timestamp, Data0, NewCounter} =
@@ -205,6 +207,7 @@ make_and_store_chunk(LogIP, LogPort, Counter, Data00) ->
     ci_datastore:store_chunk(Chunk),
     NewCounter.
 
+-spec extract_chunk(file:io_device(), [binary()]) -> [binary()].
 extract_chunk(Dev, Buffer) ->
     case file:read_line(Dev) of
         'eof' -> buffer(Buffer);
@@ -222,6 +225,7 @@ extract_chunk(Dev, Buffer) ->
             end
     end.
 
+-spec acc(binary(), [binary()], file:io_device()) -> [binary()].
 acc(<<"recv ", _/binary>>=Line, Buffer, Dev)
   when Buffer == [] ->
     %% Start of a new chunk
@@ -245,6 +249,7 @@ acc(_Line, Buffer, Dev) ->
     %% Skip over the rest
     extract_chunk(Dev, Buffer).
 
+-spec buffer() -> [].
 buffer() ->
     case get('buffer') of
         'undefined' -> [];
@@ -252,11 +257,14 @@ buffer() ->
     end,
     [].
 
+-spec buffer([binary()]) -> [].
 buffer(Buffer) ->
     _OldBuffer = put('buffer', Buffer),
     [].
 
 
+-spec set_legs(ne_binary(), pos_integer(), ci_chunk:chunk(), [binary()]) ->
+                      ci_chunk:chunk().
 set_legs(LogIP, LogPort, Chunk, [FirstLine|_Lines]) ->
     case FirstLine of
         <<"send ", _/binary>> ->
@@ -277,10 +285,12 @@ set_legs(LogIP, LogPort, Chunk, [FirstLine|_Lines]) ->
                             ]
                     ).
 
+-spec ip(ne_binary()) -> ne_binary().
 ip(Bin) ->
     %% 15 = Look ahead inside longest IPv4 possible
     extract_ahead(<<"/[">>, 4*3+3, <<"]:">>, Bin).
 
+-spec get_port(ne_binary()) -> ne_binary().
 get_port(Bin) ->
     extract_ahead(<<"]:">>, 6, <<" at ">>, Bin).
 
@@ -299,13 +309,16 @@ extract_ahead(Lhs, Span, Rhs, Bin) ->
     end.
 
 
+-spec label([ne_binary()]) -> ne_binary().
 label(Data) ->
     lists:nth(2, Data).
 
 
+-spec remove_whitespace_lines([binary()]) -> [ne_binary()].
 remove_whitespace_lines(Data) ->
     [Line || Line <- Data, not all_whitespace(Line)].
 
+-spec all_whitespace(binary()) -> boolean().
 all_whitespace(<<$\s, Rest/binary>>) ->
     all_whitespace(Rest);
 all_whitespace(<<$\n, Rest/binary>>) ->
@@ -314,19 +327,21 @@ all_whitespace(<<>>) -> 'true';
 all_whitespace(_) -> 'false'.
 
 
-strip_truncating_pieces([]) -> [];
-strip_truncating_pieces([Data|Rest]) ->
-    case re:run(Data, "(\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{6} \\[[A-Z]+\\] )") of
-        'nomatch' ->
-            [Data | strip_truncating_pieces(Rest)];
-        {'match', [{Offset,_}|_]} ->
-            [binary:part(Data, {0,Offset}) | strip_truncating_pieces(Rest)]
-    end.
+-spec strip_truncating_pieces([ne_binary()]) -> [ne_binary()].
+strip_truncating_pieces(Data) ->
+    [case re:run(Line, "(\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{6} \\[[A-Z]+\\] )") of
+         {'match', [{Offset,_}|_]} -> binary:part(Line, {0,Offset});
+         'nomatch' -> Line
+     end
+     || Line <- Data
+    ].
 
 
+-spec remove_unrelated_lines([ne_binary()]) -> [ne_binary()].
 remove_unrelated_lines([FirstLine|Lines]) ->
     [FirstLine | do_remove_unrelated_lines(Lines)].
 
+-spec do_remove_unrelated_lines([ne_binary()]) -> [ne_binary()].
 do_remove_unrelated_lines([]) -> [];
 do_remove_unrelated_lines([<<"   ", _/binary>>=Line|Lines]) ->
     [Line | do_remove_unrelated_lines(Lines)];
@@ -334,20 +349,24 @@ do_remove_unrelated_lines([_|Lines]) ->
     do_remove_unrelated_lines(Lines).
 
 
+-spec unwrap_lines([ne_binary()]) -> [ne_binary()].
 unwrap_lines([FirstLine|Lines]) ->
     [unwrap_first_line(FirstLine)] ++ [unwrap(Line) || Line <- Lines].
 
+-spec unwrap_first_line(ne_binary()) -> ne_binary().
 unwrap_first_line(FirstLine) ->
     Rm = length(":\n"),
     Sz = byte_size(FirstLine) - Rm,
     <<Line:Sz/binary, _:Rm/binary>> = FirstLine,
     Line.
 
+-spec unwrap(ne_binary()) -> ne_binary().
 unwrap(Line) ->
     Sz = byte_size(Line) - length("   ") - length("\n"),
     <<"   ", Data:Sz/binary, _:1/binary>> = Line,
     Data.
 
+-spec remove_dashes([ne_binary()]) -> [ne_binary()].
 remove_dashes([]) -> [];
 remove_dashes([Line|Lines]) ->
     case binary:split(Line, <<"#012   --">>) of

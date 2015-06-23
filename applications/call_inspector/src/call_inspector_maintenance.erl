@@ -41,23 +41,26 @@ stop_active_parser(Id)
   when is_atom(Id) ->
     ci_parsers_sup:stop_child(Id).
 
--spec start_freeswitch_parser(text(), text(), text()) -> 'ok'.
+-spec start_freeswitch_parser(text(), text(), text()) -> 'no_return'.
 start_freeswitch_parser(Filename, LogIP, LogPort) ->
     Args = [{'parser_args', Filename, wh_util:to_binary(LogIP), wh_util:to_integer(LogPort)}],
-    {'ok', _Id} = ci_parsers_sup:start_child('ci_parser_freeswitch', Args),
-    'ok'.
+    {'ok', Name} = ci_parsers_sup:start_child('ci_parser_freeswitch', Args),
+    io:format("started ~p\n", [Name]),
+    'no_return'.
 
--spec start_kamailio_parser(text(), text(), text()) -> 'ok'.
+-spec start_kamailio_parser(text(), text(), text()) -> 'no_return'.
 start_kamailio_parser(Filename, LogIP, LogPort) ->
     Args = [{'parser_args', Filename, wh_util:to_binary(LogIP), wh_util:to_integer(LogPort)}],
-    {'ok', _Id} = ci_parsers_sup:start_child('ci_parser_kamailio', Args),
-    'ok'.
+    {'ok', Name} = ci_parsers_sup:start_child('ci_parser_kamailio', Args),
+    io:format("started ~p\n", [Name]),
+    'no_return'.
 
--spec start_hep_parser(text(), text()) -> 'ok'.
+-spec start_hep_parser(text(), text()) -> 'no_return'.
 start_hep_parser(IP, Port) ->
     Args = [{'parser_args', wh_util:to_binary(IP), wh_util:to_integer(Port)}],
-    {'ok', _Id} = ci_parsers_sup:start_child('ci_parser_hep', Args),
-    'ok'.
+    {'ok', Name} = ci_parsers_sup:start_child('ci_parser_hep', Args),
+    io:format("started ~p\n", [Name]),
+    'no_return'.
 
 -spec flush() -> 'ok'.
 flush() ->

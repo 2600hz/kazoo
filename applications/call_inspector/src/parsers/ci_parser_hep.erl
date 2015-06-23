@@ -153,6 +153,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
+-spec make_and_store_chunk(hep:t()) -> 'ok'.
 make_and_store_chunk(Hep) ->
     Data = binary:split(hep:payload(Hep), <<"\r\n">>, ['global', 'trim']),
     ParserId = ci_parsers_sup:child(self()),
@@ -172,5 +173,6 @@ make_and_store_chunk(Hep) ->
     lager:debug("parsed chunk ~s (~s)", [ci_chunk:call_id(Chunk), ParserId]),
     ci_datastore:store_chunk(Chunk).
 
+-spec ip(inet:ip4_address() | inet:ip6_address()) -> ne_binary().
 ip(IP) ->
     wh_network_utils:iptuple_to_binary(IP).

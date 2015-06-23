@@ -86,9 +86,7 @@ to_json(#ci_analysis{}=Analysis) ->
          ,{<<"failure_location">>, failure_location(Analysis)}
          ,{<<"reason">>, reason(Analysis)}
         ])
-     );
-to_json(_) ->
-    wh_json:new().
+     ).
 
 -spec is_analysis(_) -> boolean().
 is_analysis(#ci_analysis{}) -> 'true';

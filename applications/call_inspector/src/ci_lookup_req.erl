@@ -40,5 +40,7 @@ chunks_as_json(Props) ->
 
 -spec analysis_as_json(wh_proplist()) -> wh_json:object().
 analysis_as_json(Props) ->
-    Analysis = props:get_value('analysis', Props, wh_json:new()),
-    ci_analysis:to_json(Analysis).
+    case props:get_value('analysis', Props) of
+        'undefined' -> wh_json:new();
+        Analysis -> ci_analysis:to_json(Analysis)
+    end.
