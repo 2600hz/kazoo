@@ -40,8 +40,6 @@
 -spec utc_to_local(calendar:datetime(), list() | binary()) ->
                           {'error', 'unknown_tz'} |
                           calendar:datetime().
-utc_to_local({{_,_,_},{_,_,_}}=UtcDateTime, <<_/binary>> = Timezone) ->
-    utc_to_local(UtcDateTime, binary_to_list(Timezone));
 utc_to_local({{_,_,_},{_,_,_}}=UtcDateTime, Timezone) ->
     case lists:keyfind(get_timezone(Timezone), 1, ?tz_database) of
         false ->
