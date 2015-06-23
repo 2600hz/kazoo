@@ -717,7 +717,7 @@ message_count_prompts(New, Saved) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec play_messages(wh_json:objects(), non_neg_integer(), mailbox(), whapps_call:call()) ->
-                                 'ok' | 'complete'.
+                           'ok' | 'complete'.
 play_messages([H|T]=Messages, Count, #mailbox{timezone=Timezone}=Box, Call) ->
     Message = get_message(H, Call),
     lager:info("playing mailbox message ~p (~s)", [Count, Message]),
@@ -1792,7 +1792,7 @@ try_store_recording(AttachmentName, DocId, Url, Tries, Call) ->
 
 -spec store_url(store_url()) -> ne_binary().
 store_url(UrlFun) when is_function(UrlFun) -> UrlFun();
-store_url(Url) -> Url.
+store_url(<<_/binary>> = Url) -> Url.
 
 -spec retry_store(ne_binary(), ne_binary(), store_url(), pos_integer(), whapps_call:call(), any()) ->
                          'ok' | {'error', whapps_call:call()}.
