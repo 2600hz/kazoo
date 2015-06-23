@@ -79,7 +79,7 @@ maybe_port_changed(Number, Port) ->
 maybe_port_changed(Number, _Port, 'true') -> {'ok', Number};
 maybe_port_changed(Number, Port, 'false') ->
     CurrentPort = knm_phone_number:feature(Number, ?PORT_KEY),
-    case wnm_util:are_jobjs_identical(CurrentPort, Port) of
+    case wh_json:are_identical(CurrentPort, Port) of
         'true' -> {'ok', Number};
         'false' ->
             lager:debug("port information has been changed: ~s"
