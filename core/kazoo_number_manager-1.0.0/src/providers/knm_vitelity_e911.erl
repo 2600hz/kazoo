@@ -65,7 +65,7 @@ delete(Number) ->
 %%--------------------------------------------------------------------
 -spec is_valid_location(wh_json:object()) -> {'ok', wh_json:object()} | {'error', ne_binary()}.
 is_valid_location(Location) ->
-    case query_vitelity(wnm_vitelity_util:build_uri(location_options(Location))) of
+    case query_vitelity(knm_vitelity_util:build_uri(location_options(Location))) of
         {'error', _}=E -> E;
         {'ok', XML} -> process_xml_resp(XML)
     end.
@@ -78,7 +78,7 @@ is_valid_location(Location) ->
 %%--------------------------------------------------------------------
 -spec get_location(ne_binary() | number()) -> {'ok', wh_json:object()} | {'error', _}.
 get_location(DID) when is_binary(DID) ->
-    case query_vitelity(wnm_vitelity_util:build_uri(get_location_options(DID))) of
+    case query_vitelity(knm_vitelity_util:build_uri(get_location_options(DID))) of
         {'ok', RespXML} -> process_xml_resp(RespXML);
         {'error', _}=E -> E
     end;
@@ -155,7 +155,7 @@ maybe_update_e911(Number, 'false') ->
 -spec remove_number(number()) -> {'ok', _} | {'error', _}.
 remove_number(Number) ->
     DID = knm_phone_number:number(Number),
-    case query_vitelity(wnm_vitelity_util:build_uri(remove_e911_options(DID))) of
+    case query_vitelity(knm_vitelity_util:build_uri(remove_e911_options(DID))) of
         {'error', _}=E -> E;
         {'ok', RespXML} -> process_xml_resp(RespXML)
     end.
@@ -171,9 +171,9 @@ remove_e911_options(DID) ->
     [{'qs', [{'did', knm_converter_regex:to_npan(DID)}
              ,{'xml', <<"yes">>}
              ,{'cmd', <<"e911delete">>}
-             | wnm_vitelity_util:default_options()
+             | knm_vitelity_util:default_options()
             ]}
-     ,{'uri', wnm_vitelity_util:api_uri()}
+     ,{'uri', knm_vitelity_util:api_uri()}
     ].
 
 %%--------------------------------------------------------------------
@@ -187,9 +187,9 @@ get_location_options(DID) ->
     [{'qs', [{'did',  knm_converter_regex:to_npan(DID)}
              ,{'xml', <<"yes">>}
              ,{'cmd', <<"e911getinfo">>}
-             | wnm_vitelity_util:default_options()
+             | knm_vitelity_util:default_options()
             ]}
-     ,{'uri', wnm_vitelity_util:api_uri()}
+     ,{'uri', knm_vitelity_util:api_uri()}
     ].
 
 %%--------------------------------------------------------------------
@@ -200,7 +200,7 @@ get_location_options(DID) ->
 %%--------------------------------------------------------------------
 -spec update_e911(number(), wh_json:object()) -> {'ok', wh_json:object() | ne_binary()} | {'error', ne_binary()}.
 update_e911(Number, Address) ->
-    query_vitelity(wnm_vitelity_util:build_uri(e911_options(Number, Address))).
+    query_vitelity(knm_vitelity_util:build_uri(e911_options(Number, Address))).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -212,7 +212,7 @@ update_e911(Number, Address) ->
 e911_options(Number, AddressJObj) ->
     AccountId = knm_phone_number:assigned_to(Number),
     DID = knm_phone_number:number(Number),
-    State = wnm_vitelity_util:get_short_state(wh_json:get_value(<<"region">>, AddressJObj)),
+    State = knm_vitelity_util:get_short_state(wh_json:get_value(<<"region">>, AddressJObj)),
     {UnitType, UnitNumber} = get_unit(wh_json:get_value(<<"extended_address">>, AddressJObj)),
     [{'qs', props:filter_undefined(
                 [{'did',  knm_converter_regex:to_npan(DID)}
@@ -225,10 +225,10 @@ e911_options(Number, AddressJObj) ->
                  ,{'zip', wh_json:get_value(<<"postal_code">>, AddressJObj)}
                  ,{'xml', <<"yes">>}
                  ,{'cmd', <<"e911send">>}
-                 | wnm_vitelity_util:default_options()
+                 | knm_vitelity_util:default_options()
                 ])
      }
-     ,{'uri', wnm_vitelity_util:api_uri()}
+     ,{'uri', knm_vitelity_util:api_uri()}
     ].
 
 %%--------------------------------------------------------------------
@@ -269,7 +269,7 @@ get_account_name(AccountId) ->
 %%--------------------------------------------------------------------
 -spec location_options(wh_json:object()) -> list().
 location_options(AddressJObj) ->
-    State = wnm_vitelity_util:get_short_state(wh_json:get_value(<<"region">>, AddressJObj)),
+    State = knm_vitelity_util:get_short_state(wh_json:get_value(<<"region">>, AddressJObj)),
     [{'qs', [{'name', wh_json:get_value(<<"customer_name">>, AddressJObj)}
              ,{'address', wh_json:get_value(<<"street_address">>, AddressJObj)}
              ,{'city', wh_json:get_value(<<"locality">>, AddressJObj)}
@@ -277,9 +277,9 @@ location_options(AddressJObj) ->
              ,{'zip', wh_json:get_value(<<"postal_code">>, AddressJObj)}
              ,{'xml', <<"yes">>}
              ,{'cmd', <<"e911checkaddress">>}
-             | wnm_vitelity_util:default_options()
+             | knm_vitelity_util:default_options()
             ]}
-     ,{'uri', wnm_vitelity_util:api_uri()}
+     ,{'uri', knm_vitelity_util:api_uri()}
     ].
 
 %%--------------------------------------------------------------------
@@ -332,9 +332,9 @@ process_xml_content_tag(#xmlElement{name='content'
                                     ,content=Children
                                    }) ->
     Els = kz_xml:elements(Children),
-    case wnm_vitelity_util:xml_resp_status_msg(Els) of
+    case knm_vitelity_util:xml_resp_status_msg(Els) of
         <<"fail">> ->
-            {'error', wnm_vitelity_util:xml_resp_error_msg(Els)};
+            {'error', knm_vitelity_util:xml_resp_error_msg(Els)};
         <<"ok">> ->
             {'ok', xml_resp(Els)}
     end.
@@ -351,7 +351,7 @@ xml_resp([#xmlElement{name='info'
                     }
           |_]) ->
     wh_json:from_list(
-      wnm_vitelity_util:xml_els_to_proplist(
+      knm_vitelity_util:xml_els_to_proplist(
         kz_xml:elements(Content)
        ));
 xml_resp([#xmlElement{name='response'
