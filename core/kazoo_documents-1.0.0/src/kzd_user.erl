@@ -11,6 +11,7 @@
 -export([email/1, email/2
          ,voicemail_notification_enabled/1, voicemail_notification_enabled/2
          ,to_vcard/1
+         ,timezone/1, timezone/2
         ]).
 
 -include("kz_documents.hrl").
@@ -19,6 +20,7 @@
 -export_type([doc/0]).
 
 -define(KEY_EMAIL, <<"email">>).
+-define(KEY_TIMEZONE, <<"timezone">>).
 
 -spec email(doc()) -> api_binary().
 -spec email(doc(), Default) -> ne_binary() | Default.
@@ -163,7 +165,7 @@ card_field(Key = <<"TITLE">>, JObj) ->
 card_field(Key = <<"ROLE">>, JObj) ->
     {Key, wh_json:get_value(<<"role">>, JObj)};
 card_field(Key = <<"TZ">>, JObj) ->
-    {Key, wh_json:get_value(<<"timezone">>, JObj)};
+    {Key, wh_json:get_value(?KEY_TIMEZONE, JObj)};
 card_field(Key = <<"NICKNAME">>, JObj) ->
     {Key, {$,, wh_json:get_value(<<"nicknames">>, JObj, [])}}.
 
@@ -186,3 +188,10 @@ normalize_address(JObj) ->
             end,
     Address = wh_json:get_value(<<"address">>, JObj),
     {wh_util:join_binary(Types, <<",">>), Address}.
+
+-spec timezone(wh_json:object()) -> api_binary().
+-spec timezone(wh_json:object(), Default) -> ne_binary() | Default.
+timezone(JObj) ->
+    timezone(JObj, 'undefined').
+timezone(JObj, Default) ->
+    wh_json:get_value(?KEY_TIMEZONE, JObj, Default).
