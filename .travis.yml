@@ -8,9 +8,14 @@ notifications:
       - "irc.freenode.org#2600hz-dev"
 
 otp_release:
+  - 17.4
+  - 17.3
+  - 17.1
+  - R16B03
+  - R16B02
+  - R16B01
   - R16B
   - R15B03
-  - R15B02
 
 addons:
   apt:
@@ -33,7 +38,7 @@ script: make compile
 after_success:
   - make xref
   - kerl_deactivate
-  - source $HOME/otp/R16B/activate
+  - source $HOME/otp/17.4/activate
   - make build-plt
   - git fetch origin master:master
   - files="$(git diff --name-only master.. | grep -v deps/)" || true
