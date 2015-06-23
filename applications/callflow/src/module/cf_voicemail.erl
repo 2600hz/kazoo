@@ -806,10 +806,11 @@ message_menu(Prompt, #mailbox{keys=#keys{replay=Replay
 %% @end
 %%--------------------------------------------------------------------
 -spec config_menu(mailbox(), whapps_call:call()) ->
-                         'ok' | mailbox() | {'error', 'channel_hungup'}.
+                         'ok' | mailbox() |
+                         {'error', 'channel_hungup'}.
 -spec config_menu(mailbox(), whapps_call:call(), pos_integer()) ->
-                         'ok' | mailbox() | {'error', 'channel_hungup'}.
-
+                         'ok' | mailbox() |
+                         {'error', 'channel_hungup'}.
 config_menu(Box, Call) ->
     config_menu(Box, Call, 1).
 
@@ -835,6 +836,9 @@ config_menu(#mailbox{interdigit_timeout=Interdigit}=Box
             lager:info("failed to collect config menu selection: ~p", [_E])
     end.
 
+-spec handle_config_selection(mailbox(), whapps_call:call(), pos_integer(), binary()) ->
+                                     'ok' | mailbox() |
+                                     {'error', 'channel_hungup'}.
 handle_config_selection(#mailbox{keys=#keys{rec_unavailable=Selection}}=Box
                         ,Call
                         ,_Loop
