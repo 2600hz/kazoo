@@ -40,25 +40,25 @@
 -spec utc_to_local(calendar:datetime(), list() | binary()) ->
                           {'error', 'unknown_tz'} |
                           calendar:datetime().
-utc_to_local(UtcDateTime, <<_/binary>> = Timezone) ->
+utc_to_local({{_,_,_},{_,_,_}}=UtcDateTime, <<_/binary>> = Timezone) ->
     utc_to_local(UtcDateTime, binary_to_list(Timezone));
-utc_to_local(UtcDateTime, Timezone) ->
-   case lists:keyfind(get_timezone(Timezone), 1, ?tz_database) of
-      false ->
-         {error, unknown_tz};
-      {_Tz, _, _, Shift, _DstShift, undef, _DstStartTime, undef, _DstEndTime} ->
-         adjust_datetime(UtcDateTime, Shift);
-      TzRule = {_, _, _, Shift, DstShift, _, _, _, _} ->
-         LocalDateTime = adjust_datetime(UtcDateTime, Shift),
-         case localtime_dst:check(LocalDateTime, TzRule) of
-            Res when (Res == is_in_dst) or (Res == time_not_exists) ->
-               adjust_datetime(LocalDateTime, DstShift);
-            is_not_in_dst ->
-               LocalDateTime;
-            ambiguous_time ->
-               [LocalDateTime, adjust_datetime(LocalDateTime, DstShift)]
-         end
-   end.
+utc_to_local({{_,_,_},{_,_,_}}=UtcDateTime, Timezone) ->
+    case lists:keyfind(get_timezone(Timezone), 1, ?tz_database) of
+        false ->
+            {error, unknown_tz};
+        {_Tz, _, _, Shift, _DstShift, undef, _DstStartTime, undef, _DstEndTime} ->
+            adjust_datetime(UtcDateTime, Shift);
+        TzRule = {_, _, _, Shift, DstShift, _, _, _, _} ->
+            LocalDateTime = adjust_datetime(UtcDateTime, Shift),
+            case localtime_dst:check(LocalDateTime, TzRule) of
+                Res when (Res == is_in_dst) or (Res == time_not_exists) ->
+                    adjust_datetime(LocalDateTime, DstShift);
+                is_not_in_dst ->
+                    LocalDateTime;
+                ambiguous_time ->
+                    [LocalDateTime, adjust_datetime(LocalDateTime, DstShift)]
+            end
+    end.
 
 % local_to_utc(LocalDateTime, Timezone) -> UtcDateTime | [UtcDateTime, DstUtcDateTime] | time_not_exists | {error, ErrDescr}
 %  LocalDateTime = DateTime()
