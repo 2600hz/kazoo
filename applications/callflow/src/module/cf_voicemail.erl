@@ -1536,18 +1536,19 @@ get_mailbox_profile(Data, Call) ->
                      ,exists = 'true'
                      ,keys = populate_keys(Call)
                      ,skip_instructions =
-                         wh_json:is_true(<<"skip_instructions">>, MailboxJObj, Default#mailbox.skip_instructions)
+                         kzd_voicemail_box:skip_instructions(MailboxJObj, Default#mailbox.skip_instructions)
                      ,skip_greeting =
-                         wh_json:is_true(<<"skip_greeting">>, MailboxJObj, Default#mailbox.skip_greeting)
+                         kzd_voicemail_box:skip_greeting(MailboxJObj, Default#mailbox.skip_greeting)
                      ,pin =
-                         wh_json:get_binary_value(<<"pin">>, MailboxJObj, <<>>)
-                     ,timezone = cf_util:get_timezone(MailboxJObj, Call)
+                         kzd_voicemail_box:pin(MailboxJObj, <<>>)
+                     ,timezone =
+                         kzd_voicemail_box:timezone(MailboxJObj, ?DEFAULT_TIMEZONE)
                      ,mailbox_number =
-                         wh_json:get_binary_value(<<"mailbox">>, MailboxJObj, whapps_call:request_user(Call))
+                         kzd_voicemail_box:mailbox_number(MailboxJObj, whapps_call:request_user(Call))
                      ,require_pin =
-                         wh_json:is_true(<<"require_pin">>, MailboxJObj)
+                         kzd_voicemail_box:pin_required(MailboxJObj)
                      ,check_if_owner =
-                         wh_json:is_true(<<"check_if_owner">>, MailboxJObj, CheckIfOwner)
+                         kzd_voicemail_box:check_if_owner(MailboxJObj, CheckIfOwner)
                      ,unavailable_media_id =
                          wh_json:get_ne_value([<<"media">>, <<"unavailable">>], MailboxJObj)
                      ,temporary_unavailable_media_id =
@@ -1557,7 +1558,7 @@ get_mailbox_profile(Data, Call) ->
                      ,owner_id =
                          OwnerId
                      ,is_setup =
-                         wh_json:is_true(<<"is_setup">>, MailboxJObj, 'false')
+                         kzd_voicemail_box:is_setup(MailboxJObj, 'false')
                      ,max_message_count =
                          wh_util:to_integer(MaxMessageCount)
                      ,max_message_length =
