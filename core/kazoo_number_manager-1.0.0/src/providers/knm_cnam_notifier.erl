@@ -64,10 +64,10 @@ handle_outbound_cnam(Number) ->
     CurrentCNAM = wh_json:get_ne_value([<<"cnam">>, <<"display_name">>], Features),
     case wh_json:get_ne_value([?PVT_FEATURES, <<"cnam">>, <<"display_name">>], Doc) of
         'undefined' ->
-            Number1 = knm_phone_number:set_features(Number, wh_json:delete_key(<<"outbound_cnam">>, Features)),
+            Number1 = knm_services:deactivate_feature(Number, <<"outbound_cnam">>),
             handle_inbound_cnam(Number1);
         CurrentCNAM ->
-            Number1 = knm_phone_number:set_features(Number, wh_json:delete_key(<<"outbound_cnam">>, Features)),
+            Number1 = knm_services:deactivate_feature(Number, <<"outbound_cnam">>),
             handle_inbound_cnam(Number1);
         _Else ->
             Number1 = knm_services:activate_feature(Number, <<"outbound_cnam">>),
