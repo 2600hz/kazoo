@@ -128,7 +128,7 @@ handle_cast('create_prechannel'
     {'noreply', Connection};
 handle_cast('create_prechannel'
             ,#wh_amqp_connection{available='true'}=Connection) ->
-    spawn(fun() -> establish_prechannel(Connection) end),
+    _ = wh_util:spawn(fun() -> establish_prechannel(Connection) end),
     {'noreply', Connection, 'hibernate'};
 handle_cast({'new_exchange', _}
             ,#wh_amqp_connection{available='false'}=Connection) ->

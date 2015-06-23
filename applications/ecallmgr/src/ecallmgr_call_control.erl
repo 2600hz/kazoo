@@ -754,11 +754,12 @@ add_leg(Props, LegId, #state{other_legs=Legs
         'false' ->
             lager:debug("added leg ~s to call", [LegId]),
             ConsumerPid = wh_amqp_channel:consumer_pid(),
-            _ = spawn(fun() ->
-                              _ = put('callid', CallId),
-                              wh_amqp_channel:consumer_pid(ConsumerPid),
-                              publish_leg_addition(props:set_value(<<"Other-Leg-Unique-ID">>, CallId, Props))
-                      end),
+            _ = wh_util:spawn(
+                  fun() ->
+                          wh_util:put_callid(CallId),
+                          wh_amqp_channel:consumer_pid(ConsumerPid),
+                          publish_leg_addition(props:set_value(<<"Other-Leg-Unique-ID">>, CallId, Props))
+                  end),
             State#state{other_legs=[LegId|Legs]}
     end.
 
@@ -787,11 +788,12 @@ add_cleg(Props, OtherLeg, LegId, #state{other_legs=Legs
         'false' ->
             lager:debug("added cleg ~s to call", [LegId]),
             ConsumerPid = wh_amqp_channel:consumer_pid(),
-            _ = spawn(fun() ->
-                              _ = put('callid', CallId),
-                              wh_amqp_channel:consumer_pid(ConsumerPid),
-                              publish_cleg_addition(Props, OtherLeg, CallId)
-                      end),
+            _ = wh_util:spawn(
+                  fun() ->
+                          wh_util:put_callid(CallId),
+                          wh_amqp_channel:consumer_pid(ConsumerPid),
+                          publish_cleg_addition(Props, OtherLeg, CallId)
+                  end),
             State#state{other_legs=[LegId|Legs]}
     end.
 
@@ -835,11 +837,12 @@ remove_leg(Props, #state{other_legs=Legs
         'true' ->
             lager:debug("removed leg ~s from call", [LegId]),
             ConsumerPid = wh_amqp_channel:consumer_pid(),
-            _ = spawn(fun() ->
-                              put('callid', CallId),
-                              wh_amqp_channel:consumer_pid(ConsumerPid),
-                              publish_leg_removal(Props)
-                      end),
+            _ = wh_util:spawn(
+                  fun() ->
+                          wh_util:put_callid(CallId),
+                          wh_amqp_channel:consumer_pid(ConsumerPid),
+                          publish_leg_removal(Props)
+                  end),
             State#state{other_legs=lists:delete(LegId, Legs)
                         ,last_removed_leg=LegId
                        }

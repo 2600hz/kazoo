@@ -353,7 +353,7 @@ handle_cast({'continue', Key}, #state{flow=Flow
             end
     end;
 handle_cast('stop', #state{call=Call}=State) ->
-    spawn('doodle_util', 'save_sms', [whapps_call:clear_helpers(Call)]),
+    _ = wh_util:spawn('doodle_util', 'save_sms', [whapps_call:clear_helpers(Call)]),
     {'stop', 'normal', State};
 handle_cast('transfer', State) ->
     {'stop', {'shutdown', 'transfer'}, State};
@@ -651,7 +651,7 @@ spawn_cf_module(CFModule, Data, Call) ->
     {spawn_monitor(
        fun() ->
                _ = wh_amqp_channel:consumer_pid(AMQPConsumer),
-               put('callid', whapps_call:call_id_direct(Call)),
+               wh_util:put_callid(whapps_call:call_id_direct(Call)),
                try CFModule:handle(Data, Call) of
                    _ -> 'ok'
                catch

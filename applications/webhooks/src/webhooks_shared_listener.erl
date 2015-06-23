@@ -320,10 +320,10 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(?HOOK_EVT(AccountId, EventType, JObj), State) ->
-    _ = spawn(?MODULE
-              ,'maybe_handle_channel_event'
-              ,[AccountId, EventType, JObj]
-             ),
+    _ = wh_util:spawn(?MODULE
+                      ,'maybe_handle_channel_event'
+                      ,[AccountId, EventType, JObj]
+                     ),
     {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),

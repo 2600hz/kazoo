@@ -221,7 +221,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({'ETS-TRANSFER', _TableId, _From, _GiftData}, State) ->
     lager:debug("recv control of ~p from ~p", [_TableId, _From]),
-    _ = spawn(fun init_map/0),
+    _ = wh_util:spawn(fun init_map/0),
     {'noreply', State};
 handle_info(_Info, State) ->
     {'noreply', State}.

@@ -646,7 +646,7 @@ expire_objects(Tab) ->
 -spec maybe_exec_expired_callbacks(list(), atom()) -> 'ok'.
 maybe_exec_expired_callbacks([], _) -> 'ok';
 maybe_exec_expired_callbacks([{Fun, K, V}|Objects], Tab) when is_function(Fun, 3) ->
-    _ = spawn(fun() -> Fun(K, V, 'expire') end),
+    _ = wh_util:spawn(fun() -> Fun(K, V, 'expire') end),
     maybe_exec_expired_callbacks(Objects, Tab);
 maybe_exec_expired_callbacks([_|Objects], Tab) ->
     maybe_exec_expired_callbacks(Objects, Tab).
@@ -685,7 +685,7 @@ maybe_exec_erase_callbacks(Key, Tab) ->
                     ,value=Value
                    }
         ] when is_function(Fun, 3) ->
-            _ = spawn(fun() -> Fun(Key, Value, 'erase') end),
+            _ = wh_util:spawn(fun() -> Fun(Key, Value, 'erase') end),
             'ok';
         _Else -> 'ok'
     end.
@@ -701,7 +701,7 @@ maybe_exec_flush_callbacks(Tab) ->
           ,[{'=/=', '$3', 'undefined'}]
           ,[{{'$3', '$1', '$2'}}]
          }],
-    _ = [spawn(fun() -> Callback(K, V, 'flush') end)
+    _ = [wh_util:spawn(fun() -> Callback(K, V, 'flush') end)
          || {Callback, K, V} <- ets:select(Tab, MatchSpec),
             is_function(Callback, 3)
         ],
@@ -718,7 +718,7 @@ maybe_exec_store_callbacks(Key, Value, Tab) ->
                   ,['$2']
                  }],
     Monitors = ets:select(Tab, MatchSpec),
-    _ = [spawn(fun() -> Callback(Key, Value, 'store') end)
+    _ = [wh_util:spawn(fun() -> Callback(Key, Value, 'store') end)
          || Callback <- Monitors
         ],
     _ = delete_monitor_callbacks(Key, Tab),

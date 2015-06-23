@@ -32,7 +32,7 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    _ = spawn(fun initialize_whapps/0),
+    _ = wh_util:spawn(fun initialize_whapps/0),
     'ignore'.
 
 -spec start_app(atom() | nonempty_string() | ne_binary()) ->
@@ -130,7 +130,7 @@ running_apps_list() ->
 
 -spec initialize_whapps() -> 'ok'.
 initialize_whapps() ->
-    put('callid', ?LOG_SYSTEM_ID),
+    wh_util:put_callid(?LOG_SYSTEM_ID),
     case couch_mgr:db_exists(?WH_ACCOUNTS_DB) of
         'false' -> whapps_maintenance:refresh();
         'true' -> 'ok'

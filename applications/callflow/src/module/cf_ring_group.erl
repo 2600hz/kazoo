@@ -83,9 +83,9 @@ start_builders(Data, Call) ->
 -spec start_builder(ne_binary(), wh_json:object(), whapps_call:call()) -> pid().
 start_builder(EndpointId, Member, Call) ->
     S = self(),
-    spawn(
+    wh_util:spawn(
       fun() ->
-              put('callid', whapps_call:call_id(Call)),
+              wh_util:put_callid(whapps_call:call_id(Call)),
               S ! {self(), catch cf_endpoint:build(EndpointId, Member, Call)}
       end
      ).

@@ -871,9 +871,9 @@ update_locality(Context, Numbers) ->
         {'error', <<"missing phonebook url">>} -> Context;
         {'error', _} -> Context;
         {'ok', Localities} ->
-            _ = spawn(fun() ->
-                              update_phone_numbers_locality(Context, Localities)
-                      end),
+            _ = wh_util:spawn(fun() ->
+                                      update_phone_numbers_locality(Context, Localities)
+                              end),
             update_context_locality(Context, Localities)
     end.
 

@@ -292,14 +292,15 @@ handle_cast(_Msg, State) ->
 handle_info({'ETS-TRANSFER', _TblId, _From, _Data}, State) ->
     lager:info("write access to table '~p' available", [_TblId]),
     Self = self(),
-    _ = spawn(fun() ->
-                      wh_util:put_callid(?MODULE),
-                      webhooks_util:load_hooks(Self),
-                      webhooks_util:init_mods()
-              end),
+    _ = wh_util:spawn(
+          fun() ->
+                  wh_util:put_callid(?MODULE),
+                  webhooks_util:load_hooks(Self),
+                  webhooks_util:init_mods()
+          end),
     {'noreply', State};
 handle_info({'timeout', Ref, ?EXPIRY_MSG}, #state{failure_tref=Ref}=State) ->
-    _ = spawn(?MODULE, 'check_failed_attempts', []),
+    _ = wh_util:spawn(?MODULE, 'check_failed_attempts', []),
     {'noreply', State#state{failure_tref=start_failure_check_timer()}};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),

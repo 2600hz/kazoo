@@ -75,7 +75,7 @@ handle_push_event(_JID, <<"GCP">>, <<"Queued-Job">>, PrinterId) ->
                 {'ok', "200", _RespHeaders, RespBody} ->
                     JObj = wh_json:decode(RespBody),
                     JObjs = wh_json:get_value(<<"jobs">>, JObj, []),
-                    _P = spawn(?MODULE, 'maybe_process_job', [JObjs, Authorization]),
+                    _P = wh_util:spawn(?MODULE, 'maybe_process_job', [JObjs, Authorization]),
                     lager:debug("maybe processing job in ~p", [_P]);
                 {'ok', "403", _RespHeaders, _RespBody} ->
                     lager:debug("something wrong with oauth credentials"),
@@ -386,7 +386,7 @@ handle_faxbox_created(JObj, _Props) ->
     State = wh_json:get_value(<<"pvt_cloud_state">>, Doc),
     ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, Doc),
     AppId = whapps_account_config:get(ResellerId, ?CONFIG_CAT, <<"cloud_oauth_app">>),
-    spawn(?MODULE, 'check_registration', [AppId, State, Doc]).
+    wh_util:spawn(?MODULE, 'check_registration', [AppId, State, Doc]).
 
 -spec check_registration(ne_binary(), ne_binary(), wh_json:object() ) -> 'ok'.
 check_registration('undefined', _, _JObj) -> 'ok';

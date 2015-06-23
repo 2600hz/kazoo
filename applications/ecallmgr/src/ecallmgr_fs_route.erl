@@ -140,22 +140,22 @@ handle_info({'fetch', Section, _Tag, _Key, _Value, FSId, [CallId | FSData]}, #st
         {'dialplan', <<"REQUEST_PARAMS">>, _SubClass, _Context} ->
             %% TODO: move this to a supervisor somewhere
             lager:info("processing dialplan fetch request ~s (call ~s) from ~s", [FSId, CallId, Node]),
-            spawn(?MODULE, 'process_route_req', [Section, Node, FSId, CallId, FSData]),
+            _ = wh_util:spawn(?MODULE, 'process_route_req', [Section, Node, FSId, CallId, FSData]),
             {'noreply', State, 'hibernate'};
         {'chatplan', <<"CUSTOM">>, <<"KZ::", _/binary>>, _Context} ->
             %% TODO: move this to a supervisor somewhere
             lager:info("processing chatplan fetch request ~s (call ~s) from ~s", [FSId, CallId, Node]),
-            spawn(?MODULE, 'process_route_req', [Section, Node, FSId, CallId, init_message_props(FSData)]),
+            _ = wh_util:spawn(?MODULE, 'process_route_req', [Section, Node, FSId, CallId, init_message_props(FSData)]),
             {'noreply', State, 'hibernate'};
         {'chatplan', <<"REQUEST_PARAMS">>, _SubClass, _Context} ->
             %% TODO: move this to a supervisor somewhere
             lager:info("processing chatplan fetch request ~s (call ~s) from ~s", [FSId, CallId, Node]),
-            spawn(?MODULE, 'process_route_req', [Section, Node, FSId, CallId, init_message_props(FSData)]),
+            _ = wh_util:spawn(?MODULE, 'process_route_req', [Section, Node, FSId, CallId, init_message_props(FSData)]),
             {'noreply', State, 'hibernate'};
         {'chatplan', <<"MESSAGE">>, _SubClass, _Context} ->
             %% TODO: move this to a supervisor somewhere
             lager:info("processing chatplan fetch request ~s (call ~s) from ~s", [FSId, CallId, Node]),
-            spawn(?MODULE, 'process_route_req', [Section, Node, FSId, CallId, init_message_props(FSData)]),
+            _ = wh_util:spawn(?MODULE, 'process_route_req', [Section, Node, FSId, CallId, init_message_props(FSData)]),
             {'noreply', State, 'hibernate'};
         {_, _Other, _, _Context} ->
             lager:debug("ignoring ~s event ~s in context ~s from ~s", [Section, _Other, _Context, Node]),
@@ -243,10 +243,10 @@ process_route_req(Section, Node, FetchId, CallId, Props) ->
 
 -spec search_for_route(atom(), atom(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
 search_for_route(Section, Node, FetchId, CallId, Props) ->
-    _ = spawn('ecallmgr_fs_authz', 'authorize', [props:set_value(<<"Call-Setup">>, <<"true">>, Props)
-                                                 ,CallId
-                                                 ,Node
-                                                ]),
+    _ = wh_util:spawn('ecallmgr_fs_authz', 'authorize', [props:set_value(<<"Call-Setup">>, <<"true">>, Props)
+                                                         ,CallId
+                                                         ,Node
+                                                        ]),
     ReqResp = wh_amqp_worker:call(route_req(CallId, FetchId, Props, Node)
                                   ,fun wapi_route:publish_req/1
                                   ,fun wapi_route:is_actionable_resp/1

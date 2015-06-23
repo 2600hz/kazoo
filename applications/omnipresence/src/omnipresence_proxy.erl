@@ -81,12 +81,12 @@ sip_authorize(_Method, Auth, Req, _Call) ->
 
 sip_subscribe(Req, _Call) ->
     {'ok', ReqId} = nksip_request:get_handle(Req),
-    spawn(fun() -> update_manager(ReqId) end),
+    _ = wh_util:spawn(fun() -> update_manager(ReqId) end),
     'noreply'.
 
 sip_resubscribe(Req, _Call) ->
     {'ok', ReqId} = nksip_request:get_handle(Req),
-    spawn(fun() -> update_manager(ReqId) end),
+    _ = wh_util:spawn(fun() -> update_manager(ReqId) end),
     'noreply'.
 
 sip_dialog_update({'subscription_status', State, _Subs}, _Dialog, _Call) ->

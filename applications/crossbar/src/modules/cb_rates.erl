@@ -153,7 +153,7 @@ validate_rate(Context, Id, ?HTTP_DELETE) ->
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context) ->
     _ = init_db(),
-    spawn(fun() -> upload_csv(Context) end),
+    _ = wh_util:spawn(fun() -> upload_csv(Context) end),
     crossbar_util:response_202(<<"attempting to insert rates from the uploaded document">>, Context).
 post(Context, _RateId) ->
     crossbar_doc:save(Context).
@@ -490,12 +490,13 @@ constrain_weight(X) -> X.
 
 -spec save_processed_rates(cb_context:context(), integer()) -> pid().
 save_processed_rates(Context, Count) ->
-    spawn(fun() ->
-                  Now = erlang:now(),
-                  _ = cb_context:put_reqid(Context),
-                  _ = crossbar_doc:save(Context, [{'publish_doc', 'false'}]),
-                  lager:debug("saved up to ~b docs (took ~b ms)", [Count, wh_util:elapsed_ms(Now)])
-          end).
+    wh_util:spawn(
+      fun() ->
+              Now = erlang:now(),
+              _ = cb_context:put_reqid(Context),
+              _ = crossbar_doc:save(Context, [{'publish_doc', 'false'}]),
+              lager:debug("saved up to ~b docs (took ~b ms)", [Count, wh_util:elapsed_ms(Now)])
+      end).
 
 -spec rate_for_number(ne_binary(), cb_context:context()) -> cb_context:context().
 rate_for_number(Phonenumber, Context) ->

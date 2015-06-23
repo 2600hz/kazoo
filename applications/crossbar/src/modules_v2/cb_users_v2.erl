@@ -334,7 +334,7 @@ maybe_update_devices_presence(Context) ->
 -spec update_devices_presence(cb_context:context(), wh_json:objects()) -> 'ok'.
 update_devices_presence(Context) ->
     Doc = cb_context:doc(Context),
-    UserId = wh_json:get_value(<<"id">>, Doc),
+    UserId = wh_doc:id(Doc),
     AccountDb = wh_json:get_value(<<"pvt_account_db">>, Doc),
     Options = [{'key', UserId}, 'include_docs'],
     case couch_mgr:get_results(AccountDb, ?LIST_BY_PRESENCE_ID, Options) of
@@ -359,12 +359,12 @@ update_device_presence(Context, JObj) ->
 
     DeviceDoc = wh_json:get_value(<<"doc">>, JObj),
 
-    lager:debug("re-provisioning device ~s", [wh_json:get_value(<<"id">>, JObj)]),
+    lager:debug("re-provisioning device ~s", [wh_doc:id(JObj)]),
 
-    spawn(fun() ->
-                  wh_util:put_callid(ReqId),
-                  provisioner_v5:update_device(DeviceDoc, AuthToken)
-          end).
+    wh_util:spawn(fun() ->
+                          wh_util:put_callid(ReqId),
+                          provisioner_v5:update_device(DeviceDoc, AuthToken)
+                  end).
 
 %%--------------------------------------------------------------------
 %% @private
