@@ -136,7 +136,7 @@ acquire_number(Number, 'false') ->
                 {'ok', Xml} ->
                     Response = xmerl_xpath:string("/numberOrderResponse/numberOrder", Xml),
                     Data = number_order_response_to_json(Response),
-                    {'ok', knm_phone_number:set_carrier_data(Data)}
+                    {'ok', knm_phone_number:set_carrier_data(Number, Data)}
             end
     end.
 
