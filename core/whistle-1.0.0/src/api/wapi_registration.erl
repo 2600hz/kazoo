@@ -73,6 +73,7 @@
 
 %% Query Registrations
 -define(REG_QUERY_HEADERS, []).
+-define(OPTIONAL_REG_QUERY_FIELDS, [<<"Bridge-RURI">>]).
 -define(OPTIONAL_REG_QUERY_HEADERS, [<<"Username">>, <<"Realm">>
                                      ,<<"Count-Only">>, <<"Fields">>
                                     ]).
@@ -80,7 +81,9 @@
                            ,{<<"Event-Name">>, <<"reg_query">>}
                           ]).
 -define(REG_QUERY_TYPES, [{<<"Fields">>, fun(Fs) when is_list(Fs) ->
-                                                 Allowed = ?OPTIONAL_REG_SUCCESS_HEADERS ++ ?REG_SUCCESS_HEADERS,
+                                                 Allowed = ?OPTIONAL_REG_SUCCESS_HEADERS ++
+                                                               ?REG_SUCCESS_HEADERS ++
+                                                               ?OPTIONAL_REG_QUERY_FIELDS,
                                                  lists:foldl(fun(F, 'true') -> lists:member(F, Allowed);
                                                                 (_, 'false') -> 'false'
                                                              end, 'true', Fs);
@@ -239,17 +242,17 @@ bind_q(Q, Props) ->
     bind_q(Q, props:get_value('restrict_to', Props), Props).
 
 bind_q(Q, 'undefined', Props) ->
-    _ = amqp_util:bind_q_to_callmgr(Q, get_success_binding(Props)),
-    amqp_util:bind_q_to_callmgr(Q, get_query_binding(Props));
+    _ = amqp_util:bind_q_to_registrar(Q, get_success_binding(Props)),
+    amqp_util:bind_q_to_registrar(Q, get_query_binding(Props));
 bind_q(Q, ['reg_success'|T], Props) ->
-    _ = amqp_util:bind_q_to_callmgr(Q, get_success_binding(Props)),
+    _ = amqp_util:bind_q_to_registrar(Q, get_success_binding(Props)),
     bind_q(Q, T, Props);
 bind_q(Q, ['reg_query'|T], Props) ->
-    _ = amqp_util:bind_q_to_callmgr(Q, get_query_binding(Props)),
+    _ = amqp_util:bind_q_to_registrar(Q, get_query_binding(Props)),
     bind_q(Q, T, Props);
 bind_q(Q, ['reg_flush'|T], Props) ->
     Realm = props:get_value('realm', Props, <<"*">>),
-    _ = amqp_util:bind_q_to_callmgr(Q, get_flush_routing(Realm)),
+    _ = amqp_util:bind_q_to_registrar(Q, get_flush_routing(Realm)),
     bind_q(Q, T, Props);
 bind_q(Q, [_|T], Props) -> bind_q(Q, T, Props);
 bind_q(_, [], _) -> 'ok'.
@@ -259,17 +262,17 @@ unbind_q(Q, Props) ->
     unbind_q(Q, props:get_value('restrict_to', Props), Props).
 
 unbind_q(Q, 'undefined', Props) ->
-    _ = amqp_util:unbind_q_from_callmgr(Q, get_success_binding(Props)),
-    amqp_util:unbind_q_from_callmgr(Q, get_query_binding(Props));
+    _ = amqp_util:unbind_q_from_registrar(Q, get_success_binding(Props)),
+    amqp_util:unbind_q_from_registrar(Q, get_query_binding(Props));
 unbind_q(Q, ['reg_success'|T], Props) ->
-    _ = amqp_util:unbind_q_from_callmgr(Q, get_success_binding(Props)),
+    _ = amqp_util:unbind_q_from_registrar(Q, get_success_binding(Props)),
     unbind_q(Q, T, Props);
 unbind_q(Q, ['reg_query'|T], Props) ->
-    _ = amqp_util:unbind_q_from_callmgr(Q, get_query_binding(Props)),
+    _ = amqp_util:unbind_q_from_registrar(Q, get_query_binding(Props)),
     unbind_q(Q, T, Props);
 unbind_q(Q, ['reg_flush'|T], Props) ->
     Realm = props:get_value('realm', Props, <<"*">>),
-    _ = amqp_util:unbind_q_from_callmgr(Q, get_flush_routing(Realm)),
+    _ = amqp_util:unbind_q_from_registrar(Q, get_flush_routing(Realm)),
     unbind_q(Q, T, Props);
 unbind_q(Q, [_|T], Props) -> unbind_q(Q, T, Props);
 unbind_q(_, [], _) -> 'ok'.
@@ -281,7 +284,7 @@ unbind_q(_, [], _) -> 'ok'.
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:callmgr_exchange().
+    amqp_util:registrar_exchange().
 
 %%--------------------------------------------------------------------
 %% @doc Publish the JSON iolist() to the proper Exchange
@@ -293,7 +296,7 @@ publish_success(JObj) ->
     publish_success(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_success(Success, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Success, ?REG_SUCCESS_VALUES, fun ?MODULE:success/1),
-    amqp_util:callmgr_publish(Payload, ContentType, get_success_routing(Success)).
+    amqp_util:registrar_publish(get_success_routing(Success), Payload, ContentType).
 
 %%--------------------------------------------------------------------
 %% @doc Publish the JSON iolist() to the proper Exchange
@@ -305,7 +308,7 @@ publish_flush(JObj) ->
     publish_flush(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_flush(API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?REG_FLUSH_VALUES, fun ?MODULE:flush/1),
-    amqp_util:callmgr_publish(Payload, ContentType, get_flush_routing(API)).
+    amqp_util:registrar_publish(get_flush_routing(API), Payload, ContentType).
 
 -spec publish_query_req(api_terms()) -> 'ok'.
 -spec publish_query_req(api_terms(), ne_binary()) -> 'ok'.
@@ -313,7 +316,7 @@ publish_query_req(JObj) ->
     publish_query_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_query_req(Req, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?REG_QUERY_VALUES, fun ?MODULE:query_req/1),
-    amqp_util:callmgr_publish(Payload, ContentType, get_query_routing(Req)).
+    amqp_util:registrar_publish(get_query_routing(Req), Payload, ContentType).
 
 -spec publish_query_resp(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_query_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
@@ -337,7 +340,7 @@ publish_sync(JObj) ->
     publish_sync(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_sync(API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?REG_SYNC_VALUES, fun ?MODULE:sync/1),
-    amqp_util:callmgr_publish(Payload, ContentType, ?REG_SYNC_RK).
+    amqp_util:registrar_publish(?REG_SYNC_RK, Payload, ContentType).
 
 %%--------------------------------------------------------------------
 %% @doc Special access to the API keys

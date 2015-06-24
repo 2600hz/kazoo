@@ -128,6 +128,11 @@
 -define(EXCHANGE_NODES, <<"nodes">>).
 -define(TYPE_NODES, <<"fanout">>).
 
+%% Registrar Exchange
+%% - For registrar related communication
+-define(EXCHANGE_REGISTRAR, <<"registrar">>).
+-define(TYPE_REGISTRAR, <<"topic">>).
+
 -type wh_amqp_command() :: #'queue.declare'{} | #'queue.delete'{} |
                            #'queue.bind'{} | #'queue.unbind'{} |
                            #'basic.consume'{} | #'basic.cancel'{} |

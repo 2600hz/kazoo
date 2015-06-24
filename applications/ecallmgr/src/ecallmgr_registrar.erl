@@ -52,12 +52,14 @@
                        ,[{<<"directory">>, <<"reg_flush">>}]
                       }
                     ]).
--define(BINDINGS, [{'registration', [{'restrict_to', ['reg_success'
-                                                      ,'reg_query'
+-define(BINDINGS, [{'registration', [{'restrict_to', ['reg_query'
                                                       ,'reg_flush'
                                                      ]}
                                      ,'federate'
                                     ]}
+                   ,{'registration', [{'restrict_to', ['reg_success'
+                                                      ]}
+                                     ]}
                    ,{'self', []}
                   ]).
 -define(SERVER, ?MODULE).
@@ -562,29 +564,46 @@ maybe_fetch_contact(Username, Realm) ->
 fetch_contact(Username, Realm) ->
     Reg = [{<<"Username">>, Username}
            ,{<<"Realm">>, Realm}
-           ,{<<"Fields">>, [<<"Contact">>]}
+           ,{<<"Fields">>, [<<"Contact">>, <<"Bridge-RURI">>]}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case query_for_registration(Reg) of
         {'ok', JObjs} ->
-            case [Contact
-                  || JObj <- JObjs
-                         ,wapi_registration:query_resp_v(JObj)
-                         ,(Contact = wh_json:get_value([<<"Fields">>, 1, <<"Contact">>]
-                                                       ,JObj)) =/= 'undefined'
-                 ]
-            of
-                [Contact|_] ->
-                    lager:info("fetched user ~s@~s contact ~s", [Username, Realm, Contact]),
-                    {'ok', Contact};
-                _Else ->
-                    lager:info("contact query for user ~s@~s returned an empty result", [Username, Realm]),
-                    {'error', 'not_found'}
-            end;
+            process_query_resp_contacts(Username, Realm, JObjs);
         _Else ->
             lager:info("contact query for user ~s@~s failed: ~p", [Username, Realm, _Else]),
             {'error', 'not_found'}
     end.
+
+-spec process_query_resp_contacts(ne_binary(), ne_binary(), wh_json:objects()) ->
+                                         {'ok', ne_binary()} |
+                                         {'error', 'not_found'}.
+process_query_resp_contacts(Username, Realm, JObjs) ->
+    case find_contacts_in_query_resp(JObjs) of
+        [Contact|_] ->
+            lager:info("fetched user ~s@~s contact ~s", [Username, Realm, Contact]),
+            {'ok', Contact};
+        _Else ->
+            lager:info("contact query for user ~s@~s returned an empty result", [Username, Realm]),
+            {'error', 'not_found'}
+    end.
+
+-spec find_contacts_in_query_resp(wh_json:objects()) -> ne_binaries().
+find_contacts_in_query_resp(JObjs) ->
+    [Contact
+     || JObj <- JObjs,
+        wapi_registration:query_resp_v(JObj),
+        (Contact = find_contact_in_query_resp(JObj))
+            =/= 'undefined'
+    ].
+
+-spec find_contact_in_query_resp(wh_json:object()) -> api_binary().
+find_contact_in_query_resp(JObj) ->
+    wh_json:get_first_defined([[<<"Fields">>, 1, <<"Bridge-RURI">>]
+                               ,[<<"Fields">>, 1, <<"Contact">>]
+                              ]
+                              ,JObj
+                             ).
 
 -spec query_for_registration(api_terms()) ->
                                     {'ok', wh_json:objects()} |
@@ -1069,6 +1088,7 @@ filter(Fields, JObj) ->
 
 -spec oldest_registrar() -> boolean().
 oldest_registrar() ->
+    wh_nodes:whapp_zone_count(?APP_NAME) =:= 1 andalso
     wh_nodes:whapp_oldest_node(?APP_NAME, 'true') =:= node().
 
 -type ets_continuation() :: '$end_of_table' |
