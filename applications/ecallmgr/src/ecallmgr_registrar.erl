@@ -52,11 +52,13 @@
                        ,[{<<"directory">>, <<"reg_flush">>}]
                       }
                     ]).
--define(BINDINGS, [{'registration', [{'restrict_to', ['reg_success'
-                                                      ,'reg_query'
+-define(BINDINGS, [{'registration', [{'restrict_to', ['reg_query'
                                                       ,'reg_flush'
                                                      ]}
                                      ,'federate'
+                                    ]}
+                   ,{'registration', [{'restrict_to', ['reg_success'
+                                                     ]}
                                     ]}
                    ,{'self', []}
                   ]).
@@ -562,7 +564,7 @@ maybe_fetch_contact(Username, Realm) ->
 fetch_contact(Username, Realm) ->
     Reg = [{<<"Username">>, Username}
            ,{<<"Realm">>, Realm}
-           ,{<<"Fields">>, [<<"Contact">>]}
+           ,{<<"Fields">>, [<<"Contact">>, <<"Bridge-RURI">>]}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case query_for_registration(Reg) of
@@ -570,7 +572,9 @@ fetch_contact(Username, Realm) ->
             case [Contact
                   || JObj <- JObjs
                          ,wapi_registration:query_resp_v(JObj)
-                         ,(Contact = wh_json:get_value([<<"Fields">>, 1, <<"Contact">>]
+                         ,(Contact = wh_json:get_first_defined([[<<"Fields">>, 1, <<"Bridge-RURI">>]
+                                                                ,[<<"Fields">>, 1, <<"Contact">>]
+                                                               ]
                                                        ,JObj)) =/= 'undefined'
                  ]
             of
@@ -1069,6 +1073,7 @@ filter(Fields, JObj) ->
 
 -spec oldest_registrar() -> boolean().
 oldest_registrar() ->
+    wh_nodes:whapp_zone_count(?APP_NAME) =:= 1 andalso
     wh_nodes:whapp_oldest_node(?APP_NAME, 'true') =:= node().
 
 -type ets_continuation() :: '$end_of_table' |
