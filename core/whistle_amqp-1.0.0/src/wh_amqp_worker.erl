@@ -61,8 +61,9 @@
 -define(CONSUME_OPTIONS, []).
 
 -type publish_fun() :: fun((api_terms()) -> _).
--type validate_fun() :: fun((api_terms()) -> boolean()).
--type collect_until_fun() :: fun((wh_json:objects()) -> boolean()).
+-type validate_fun() :: fun((api_terms()) -> boolean()). 
+-type collect_until_acc_fun() :: fun((wh_json:objects(), any()) -> boolean() | {boolean(), any()}).
+-type collect_until_fun() :: fun((wh_json:objects()) -> boolean()) | collect_until_acc_fun().
 
 -type whapp() :: atom() | ne_binary().
 
