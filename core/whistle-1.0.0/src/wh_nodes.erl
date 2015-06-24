@@ -194,8 +194,9 @@ determine_whapp_zones(Whapp, MatchSpec) ->
 whapp_zone_count(Whapp) ->
     length(whapp_zones(Whapp)).
 
+-type fold_zones_acc() :: {atom(), list(), non_neg_integer()}.
 
--spec determine_whapp_zones_fold({atom(), whapps_info()}, {atom(), list(), non_neg_integer()}) -> {list(), non_neg_integer()}.
+-spec determine_whapp_zones_fold({atom(), whapps_info()}, fold_zones_acc()) -> fold_zones_acc().
 determine_whapp_zones_fold({Zone, Whapps}, {Whapp, Zones, C}=Acc) ->
     case props:is_defined(Whapp, Whapps) andalso
              not lists:member(Zone, Zones) of
