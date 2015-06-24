@@ -59,7 +59,7 @@ check(Numbers, Opts) ->
     FormattedNumbers = [knm_converters:normalize(Num) || Num <- Numbers],
     lager:info("attempting to check ~p ", [FormattedNumbers]),
     [{Module, catch(Module:check_numbers(FormattedNumbers, Opts))}
-     || Module <- ?MODULE:list_carrier_modules()].
+     || Module <- ?MODULE:list_modules()].
 
 
 
