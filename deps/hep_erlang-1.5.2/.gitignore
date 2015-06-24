@@ -1,7 +1,0 @@
-*.iml
-*.plt
-_rel
-deps
-ebin
-erl_crash.dump
-relx

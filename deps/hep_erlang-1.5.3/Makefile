@@ -10,9 +10,7 @@ erl.mk:
 test: eunit
 debug: debug-app
 clean: clean-ebin
-distclean: clean
-	$(if $(wildcard erl.mk), rm erl.mk)
 
-.PHONY: test debug clean distclean
+.PHONY: test debug clean
 
 app: ERLCFLAGS += +debug_info
