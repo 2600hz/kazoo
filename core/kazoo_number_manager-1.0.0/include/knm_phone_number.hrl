@@ -13,6 +13,7 @@
                  ,reserve_history = [] :: ne_binaries()
                  ,ported_in = 'false' :: boolean()
                  ,module_name :: ne_binary()
+                 ,carrier_data :: wh_json:object()
                  ,region :: ne_binary()
                  ,auth_by = <<"system">> :: ne_binary()
                  ,dry_run = 'false' :: boolean()
@@ -30,6 +31,7 @@
 -define(PVT_RESERVE_HISTORY, <<"pvt_reserve_history">>).
 -define(PVT_PORTED_IN, <<"pvt_ported_in">>).
 -define(PVT_MODULE_NAME, <<"pvt_module_name">>).
+-define(PVT_CARRIER_DATA, <<"pvt_carrier_data">>).
 -define(PVT_REGION, <<"pvt_region">>).
 -define(PVT_MODIFIED, <<"pvt_modified">>).
 -define(PVT_CREATED, <<"pvt_created">>).
@@ -48,6 +50,8 @@
 -define(DEFAULT_PROVIDER_MODULES, [<<"cnam_notifier">>, <<"port_notifier">>
                                    ,<<"failover">> ,<<"prepend">>
                                   ]).
+
+-define(DEFAULT_CARRIER_MODULES, [<<"knm_local">>]).
 
 -define(KNM_NUMBER_MANAGER_HRL, 'true').
 -endif.

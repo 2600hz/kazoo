@@ -36,6 +36,7 @@
     ,reserve_history/1 ,set_reserve_history/2
     ,ported_in/1 ,set_ported_in/2
     ,module_name/1 ,set_module_name/2
+    ,carrier_data/1 ,set_carrier_data/2
     ,region/1 ,set_region/2
     ,auth_by/1 ,set_auth_by/2, is_authorized/1
     ,dry_run/1 ,set_dry_run/2
@@ -132,6 +133,7 @@ to_json(#number{doc=JObj}=N) ->
             ,{?PVT_RESERVE_HISTORY, reserve_history(N)}
             ,{?PVT_PORTED_IN, ported_in(N)}
             ,{?PVT_MODULE_NAME, module_name(N)}
+            ,{?PVT_CARRIER_DATA, carrier_data(N)}
             ,{?PVT_REGION, region(N)}
             ,{?PVT_MODIFIED, Now}
             ,{?PVT_CREATED, wh_json:get_value(<<"pvt_created">>, JObj, Now)}
@@ -157,6 +159,7 @@ from_json(JObj) ->
         ,reserve_history=wh_json:get_value(?PVT_RESERVE_HISTORY, JObj)
         ,ported_in=wh_json:get_value(?PVT_PORTED_IN, JObj)
         ,module_name=wh_json:get_value(?PVT_MODULE_NAME, JObj)
+        ,carrier_data=wh_json:get_value(?PVT_CARRIER_DATA, JObj)
         ,region=wh_json:get_value(?PVT_REGION, JObj)
         ,doc=JObj
     }.
@@ -330,6 +333,19 @@ module_name(Number) ->
 -spec set_module_name(number(), ne_binary()) -> number().
 set_module_name(N, Name) ->
     N#number{module_name=Name}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec carrier_data(number()) -> ne_binary().
+carrier_data(Number) ->
+    Number#number.carrier_data.
+
+-spec set_carrier_data(number(), wh_json:object()) -> number().
+set_carrier_data(N, Data) ->
+    N#number{carrier_data=Data}.
 
 %%--------------------------------------------------------------------
 %% @public
