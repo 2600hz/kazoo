@@ -177,14 +177,19 @@ authz_response(JObj, Props, CallId, Node) ->
 
 -spec set_ccv_trunk_usage(wh_json:object(), ne_binary(), atom()) -> 'ok'.
 set_ccv_trunk_usage(JObj, CallId, Node) ->
-    _ = [begin
-             TrunkUsage = wh_json:get_value([<<"Custom-Channel-Vars">>, Key], JObj),
-             _ = ecallmgr_util:set(Node, CallId, [{Key, TrunkUsage}])
-         end || Key <- [<<"Account-Trunk-Usage">>, <<"Reseller-Trunk-Usage">>]
-        ],
+    ecallmgr_util:set(Node
+                      ,CallId
+                      ,[{Key, TrunkUsage}
+                        || Key <- [<<"Account-Trunk-Usage">>
+                                   ,<<"Reseller-Trunk-Usage">>
+                                  ],
+                           (TrunkUsage = kz_call_event:custom_channel_var(JObj, Key)) =/= 'undefined'
+                       ]
+                     ),
     'ok'.
 
--spec authorize_account(wh_json:object(), wh_proplist(), ne_binary(), atom()) -> boolean().
+-spec authorize_account(wh_json:object(), wh_proplist(), ne_binary(), atom()) ->
+                               boolean().
 authorize_account(JObj, Props, CallId, Node) ->
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     Type = wh_json:get_value(<<"Account-Billing">>, JObj),
@@ -194,7 +199,8 @@ authorize_account(JObj, Props, CallId, Node) ->
                          ], Props),
     authorize_reseller(JObj, P, CallId, Node).
 
--spec authorize_reseller(wh_json:object(), wh_proplist(), ne_binary(), atom()) -> boolean().
+-spec authorize_reseller(wh_json:object(), wh_proplist(), ne_binary(), atom()) ->
+                                boolean().
 authorize_reseller(JObj, Props, CallId, Node) ->
     AccountId = props:get_value(?GET_CCV(<<"Account-ID">>), Props),
     case wh_json:get_value(<<"Reseller-ID">>, JObj, AccountId) of
