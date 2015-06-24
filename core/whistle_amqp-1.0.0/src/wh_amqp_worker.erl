@@ -97,6 +97,7 @@
                 ,queue :: api_binary()
                 ,confirms = 'false' :: boolean()
                 ,flow = 'undefined' :: boolean() | 'undefined'
+                ,acc = 'undefined' :: any()
                }).
 
 %%%===================================================================
@@ -298,6 +299,12 @@ call_collect(Req, PubFun, {Whapp, VFun}, Timeout)
        andalso is_function(VFun) ->
     CollectFromWhapp = collect_from_whapp_or_validate(Whapp, VFun),
     call_collect(Req, PubFun, CollectFromWhapp, Timeout);
+call_collect(Req, PubFun, {Whapp, IncludeFederated, IsShared}, Timeout)
+  when (is_atom(Whapp) orelse is_binary(Whapp))
+       andalso is_boolean(IncludeFederated)
+       andalso is_boolean(IsShared) ->
+    CollectFromWhapp = collect_from_whapp(Whapp, IncludeFederated, IsShared),
+    call_collect(Req, PubFun, CollectFromWhapp, Timeout);
 call_collect(Req, PubFun, {Whapp, VFun, IncludeFederated}, Timeout)
   when (is_atom(Whapp) orelse is_binary(Whapp))
        andalso is_function(VFun)
@@ -314,10 +321,15 @@ call_collect(Req, PubFun, UntilFun, Timeout)
         Worker -> call_collect(Req, PubFun, UntilFun, Timeout, Worker)
     end.
 
+call_collect(Req, PubFun, {UntilFun, Acc}, Timeout, Worker) 
+  when is_function(UntilFun, 2) ->
+    call_collect(Req, PubFun, UntilFun, Timeout, Acc, Worker);
 call_collect(Req, PubFun, UntilFun, Timeout, Worker) ->
+    call_collect(Req, PubFun, UntilFun, Timeout, 'undefined', Worker).
+call_collect(Req, PubFun, UntilFun, Timeout, Acc, Worker) ->
     Prop = maybe_convert_to_proplist(Req),
     try gen_listener:call(Worker
-                          ,{'call_collect', Prop, PubFun, UntilFun, Timeout}
+                          ,{'call_collect', Prop, PubFun, UntilFun, Timeout, Acc}
                           ,fudge_timeout(Timeout)
                          )
     of
@@ -362,7 +374,15 @@ collect_from_whapp(Whapp) ->
 
 -spec collect_from_whapp(text(), boolean()) -> collect_until_fun().
 collect_from_whapp(Whapp, IncludeFederated) ->
-    Count = wh_nodes:whapp_count(Whapp, IncludeFederated),
+    collect_from_whapp(Whapp, IncludeFederated, 'false').
+
+-spec collect_from_whapp(text(), boolean(), boolean()) -> collect_until_fun().
+collect_from_whapp(Whapp, IncludeFederated, IsShared) ->
+    Count = case {IncludeFederated, IsShared} of
+                {'true', 'true'} -> wh_nodes:whapp_zone_count(Whapp);
+                {'false', 'true'} -> 1;
+                _ -> wh_nodes:whapp_count(Whapp, IncludeFederated)
+            end,                
     lager:debug("attempting to collect ~p responses from ~s", [Count, Whapp]),
     fun(Responses) -> length(Responses) >= Count end.
 
@@ -492,13 +512,13 @@ handle_call({'request', ReqProp, PublishFun, VFun, Timeout}
             lager:debug("failed to send request: ~p", [Err]),
             {'reply', {'error', Err}, reset(State), 'hibernate'}
     end;
-handle_call({'call_collect', _ReqProp, _, _, _}, _, #state{flow='false'}=State) ->
+handle_call({'call_collect', _ReqProp, _, _, _, _}, _, #state{flow='false'}=State) ->
     lager:debug("flow control is active and server put us in waiting"),
     {'reply', {'error', 'flow_control'}, reset(State)};
-handle_call({'call_collect', _ReqProp, _, _, _}, _, #state{queue='undefined'}=State) ->
+handle_call({'call_collect', _ReqProp, _, _, _, _}, _, #state{queue='undefined'}=State) ->
     lager:debug("unable to publish collect request prior to queue creation"),
     {'reply', {'error', 'timeout'}, reset(State)};
-handle_call({'call_collect', ReqProp, PublishFun, UntilFun, Timeout}
+handle_call({'call_collect', ReqProp, PublishFun, UntilFun, Timeout, Acc}
             ,{ClientPid, _}=From
             ,#state{queue=Q}=State
            ) ->
@@ -519,6 +539,7 @@ handle_call({'call_collect', ReqProp, PublishFun, UntilFun, Timeout}
                 ,client_ref = erlang:monitor('process', ClientPid)
                 ,client_from = From
                 ,client_cfun = UntilFun
+                ,acc = Acc
                 ,responses = [] % how we know to collect all responses
                 ,neg_resp_count = 0
                 ,current_msg_id = MsgID
@@ -656,6 +677,28 @@ handle_cast({'event', MsgId, JObj}, #state{current_msg_id = MsgId
                                             ,neg_resp=JObj
                                            }, 0}
             end
+    end;
+handle_cast({'event', MsgId, JObj}, #state{current_msg_id = MsgId
+                                           ,client_from = From
+                                           ,client_cfun = UntilFun
+                                           ,responses = Resps
+                                           ,acc = Acc
+                                           ,req_start_time = StartTime
+                                          }=State) 
+  when is_list(Resps) andalso is_function(UntilFun, 2) ->
+    _ = wh_util:put_callid(JObj),
+    lager:debug("recv message ~s", [MsgId]),
+    Responses = [JObj | Resps],
+    case UntilFun(Responses, Acc) of
+        'true' ->
+            lager:debug("responses have apparently met the criteria for the client, returning", []),
+            lager:debug("response for msg id ~s took ~b micro to return", [MsgId, timer:now_diff(os:timestamp(), StartTime)]),
+            gen_server:reply(From, {'ok', Responses}),
+            {'noreply', reset(State), 'hibernate'};
+        'false' ->
+            {'noreply', State#state{responses=Responses}, 'hibernate'};
+        {'false', Acc0} ->
+            {'noreply', State#state{responses=Responses, acc=Acc0}, 'hibernate'}
     end;
 handle_cast({'event', MsgId, JObj}, #state{current_msg_id = MsgId
                                            ,client_from = From
