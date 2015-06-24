@@ -26,6 +26,8 @@
          ,notify_expire/1
         ]).
 -export([local_zone/0]).
+-export([whapp_zones/1, whapp_zone_count/1]).
+
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -83,7 +85,7 @@
                ,whapps = [] :: whapps_info() | '$1' | '_'
                ,media_servers = [] :: media_servers() | '_'
                ,last_heartbeat = wh_util:now_ms(now()) :: pos_integer() | 'undefined' | '$3' | '_'
-               ,zone :: atom() | 'undefined' | '_'
+               ,zone :: atom() | 'undefined' | '$2' | '_'
                ,broker :: api_binary() | '_'
                ,used_memory = 0 :: non_neg_integer() | '_'
                ,processes = 0 :: non_neg_integer() | '_'
@@ -123,7 +125,9 @@ start_link() ->
 whapp_count(Whapp) ->
     whapp_count(Whapp, 'false').
 
--spec whapp_count(text(), text() | boolean()) -> integer().
+-spec whapp_count(text(), text() | boolean() | 'remote') -> integer().
+whapp_count(Whapp, Arg) when not is_atom(Arg) ->
+    whapp_count(Whapp, wh_util:to_atom(Arg, 'true'));
 whapp_count(Whapp, 'false') ->
     MatchSpec = [{#node{whapps='$1'
                         ,zone = local_zone()
@@ -140,7 +144,22 @@ whapp_count(Whapp, 'true') ->
                   ,[{'=/=', '$1', []}]
                   ,['$1']
                  }],
-    determine_whapp_count(wh_util:to_binary(Whapp), MatchSpec).
+    determine_whapp_count(wh_util:to_binary(Whapp), MatchSpec);
+whapp_count(Whapp, 'remote') ->
+    Zone = local_zone(),
+    MatchSpec = [{#node{whapps='$1'
+                        ,zone='$2' 
+                        ,_ = '_'
+                       }
+                  ,[{'andalso', {'=/=', '$1', []}
+                              , {'=/=', '$2', {'const', Zone}}
+                    }]
+                  ,['$1']
+                 }],
+    determine_whapp_count(wh_util:to_binary(Whapp), MatchSpec);
+whapp_count(Whapp, Unhandled) ->
+    lager:debug("invalid parameters", [Whapp, Unhandled]),
+    0.
 
 -spec determine_whapp_count(ne_binary(), ets:match_spec()) -> non_neg_integer().
 determine_whapp_count(Whapp, MatchSpec) ->
@@ -152,6 +171,35 @@ determine_whapp_count(Whapp, MatchSpec) ->
 determine_whapp_count_fold(Whapps, Acc, Whapp) ->
     case props:is_defined(Whapp, Whapps) of
         'true' -> Acc + 1;
+        'false' -> Acc
+    end.
+
+-spec whapp_zones(text()) -> list().
+whapp_zones(Whapp) ->
+    MatchSpec = [{#node{whapps='$1'
+                        ,zone='$2'
+                        ,_ = '_'
+                       }
+                  ,[{'=/=', '$1', []}]
+                  ,[{{'$2', '$1'}}]
+                 }],
+    determine_whapp_zones(wh_util:to_binary(Whapp), MatchSpec).
+
+-spec determine_whapp_zones(ne_binary(), ets:match_spec()) -> list().
+determine_whapp_zones(Whapp, MatchSpec) ->
+    {Whapp, Zones, _} = lists:foldl(fun determine_whapp_zones_fold/2, {Whapp, [],0}, ets:select(?MODULE, MatchSpec)),
+    Zones.
+
+-spec whapp_zone_count(text()) -> integer().
+whapp_zone_count(Whapp) ->
+    length(whapp_zones(Whapp)).
+
+
+-spec determine_whapp_zones_fold({atom(), whapps_info()}, {atom(), list(), non_neg_integer()}) -> {list(), non_neg_integer()}.
+determine_whapp_zones_fold({Zone, Whapps}, {Whapp, Zones, C}=Acc) ->
+    case props:is_defined(Whapp, Whapps) andalso
+             not lists:member(Zone, Zones) of
+        'true' -> {Whapp, [Zone | Zones], C+ 1};
         'false' -> Acc
     end.
 
@@ -192,7 +240,6 @@ print_node_status(#node{zone=NodeZone
     io:format("Processes     : ~B~n", [Processes]),
     io:format("Ports         : ~B~n", [Ports]),
 
-    io:format("nz: ~p z: ~p~n", [NodeZone, Zone]),
     _ = maybe_print_zone(wh_util:to_binary(NodeZone)
                          ,wh_util:to_binary(Zone)
                         ),
@@ -635,8 +682,8 @@ from_json(JObj, State) ->
           ,version=wh_json:get_first_defined([<<"Version">>, <<"App-Version">>], JObj, <<"unknown">>)
           ,channels=wh_json:get_integer_value(<<"Channels">>, JObj, 0)
           ,registrations=wh_json:get_integer_value(<<"Registrations">>, JObj, 0)
-          ,zone=get_zone(JObj, State)
           ,broker=get_amqp_broker(JObj)
+          ,zone=get_zone(JObj, State)
          }.
 
 -spec whapps_from_json(api_terms()) -> whapps_info().
@@ -687,14 +734,14 @@ get_zone() ->
     end.
 
 -spec get_zone(wh_json:object(), nodes_state()) -> atom().
-get_zone(JObj, #state{zones=Zones}) ->
+get_zone(JObj, #state{zones=Zones, zone=LocalZone}) ->
     case wh_json:get_first_defined([<<"Zone">>, <<"AMQP-Broker-Zone">>], JObj) of
         'undefined' ->
             case wh_json:get_value(<<"AMQP-Broker">>, JObj) of
-                'undefined' -> 'undefined';
+                'undefined' -> LocalZone;
                 Broker ->
                     case props:get_value(Broker, Zones) of
-                        'undefined' -> 'undefined';
+                        'undefined' -> LocalZone;
                         Zone -> wh_util:to_atom(Zone, 'true')
                     end
             end;
@@ -715,7 +762,7 @@ local_zone() ->
 -spec get_amqp_broker(api_binary() | wh_json:object()) -> api_binary().
 get_amqp_broker('undefined') ->
     wh_util:normalize_amqp_uri(wh_amqp_connections:primary_broker());
-get_amqp_broker(Broker) when is_binary(Broker) -> Broker;
+get_amqp_broker(Broker) when is_binary(Broker) -> wh_util:normalize_amqp_uri(Broker);
 get_amqp_broker(JObj) ->
     get_amqp_broker(wh_json:get_ne_value(<<"AMQP-Broker">>, JObj)).
 
