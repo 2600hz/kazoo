@@ -404,7 +404,7 @@ collect_from_whapp_or_validate(Whapp, VFun, IncludeFederated) ->
 -spec handle_resp(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_resp(JObj, Props) ->
     gen_listener:cast(props:get_value('server', Props)
-                      ,{'event', wh_json:get_value(<<"Msg-ID">>, JObj), JObj}
+                      ,{'event', wh_api:msg_id(JObj), JObj}
                      ).
 
 -spec send_request(ne_binary(), ne_binary(), publish_fun(), wh_proplist()) ->
@@ -488,12 +488,8 @@ handle_call({'request', ReqProp, PublishFun, VFun, Timeout}
            ) ->
     _ = wh_util:put_callid(ReqProp),
     CallId = wh_util:get_callid(),
-    {ReqProp1, MsgId} = case props:get_value(<<"Msg-ID">>, ReqProp) of
-                            'undefined' ->
-                                M = wh_util:rand_hex_binary(8),
-                                {[{<<"Msg-ID">>, M} | ReqProp], M};
-                            M -> {ReqProp, M}
-                        end,
+    {ReqProp1, MsgId} = ensure_msg_id(ReqProp),
+
     case ?MODULE:send_request(CallId, Q, PublishFun, ReqProp1) of
         'ok' ->
             lager:debug("published request with msg id ~s for ~p", [MsgId, ClientPid]),
@@ -535,12 +531,7 @@ handle_call({'call_collect', ReqProp, PublishFun, UntilFun, Timeout, Acc}
     _ = wh_util:put_callid(ReqProp),
     CallId = wh_util:get_callid(),
 
-    {ReqProp1, MsgId} = case props:get_value(<<"Msg-ID">>, ReqProp) of
-                            'undefined' ->
-                                M = wh_util:rand_hex_binary(8),
-                                {[{<<"Msg-ID">>, M} | ReqProp], M};
-                            M -> {ReqProp, M}
-                        end,
+    {ReqProp1, MsgId} = ensure_msg_id(ReqProp),
 
     case ?MODULE:send_request(CallId, Q, PublishFun, ReqProp1) of
         'ok' ->
@@ -638,7 +629,7 @@ handle_cast({'gen_listener', {'return', JObj, BasicReturn}}
                    }=State
            ) ->
     _ = wh_util:put_callid(JObj),
-    case wh_json:get_value(<<"Msg-ID">>, JObj) of
+    case wh_api:msg_id(JObj) of
         MsgId ->
             lager:debug("published message was returned from the broker"),
             gen_server:reply(From, {'returned', JObj, BasicReturn}),
@@ -927,12 +918,14 @@ maybe_convert_to_proplist(Req) ->
         'false' -> Req
     end.
 
--spec handle_valid_event(ne_binary(), wh_json:object(), state()) ->
-                                state().
-handle_valid_event(MsgId, JObj
+-spec handle_valid_event(api_binary(), wh_json:object(), state()) ->
+                                {'noreply', state(), 'hibernate'}.
+handle_valid_event(MsgId
+                   ,JObj
                    ,#state{client_from=From
                            ,req_start_time=StartTime
-                          }=State) ->
+                          }=State
+                  ) ->
     case wh_json:is_true(<<"Defer-Response">>, JObj) of
         'false' ->
             lager:debug("response for msg id ~s took ~b micro to return"
@@ -945,7 +938,9 @@ handle_valid_event(MsgId, JObj
             {'noreply', State#state{defer_response=JObj}, 'hibernate'}
     end.
 
--spec handle_invalid_event(wh_json:object(), state()) -> state().
+-spec handle_invalid_event(wh_json:object(), state()) ->
+                                  {'noreply', state()} |
+                                  {'noreply', state(), 0}.
 handle_invalid_event(JObj, #state{neg_resp_count=NegCount}=State) ->
     case wh_json:is_true(<<"Defer-Response">>, JObj) of
         'true' ->
@@ -959,4 +954,13 @@ handle_invalid_event(JObj, #state{neg_resp_count=NegCount}=State) ->
                          }
              ,0
             }
+    end.
+
+-spec ensure_msg_id(api_terms()) -> {api_terms(), ne_binary()}.
+ensure_msg_id(ReqProp) ->
+    case wh_api:msg_id(ReqProp) of
+        'undefined' ->
+            M = wh_util:rand_hex_binary(8),
+            {props:insert_value(<<"Msg-ID">>, M, ReqProp), M};
+        M -> {ReqProp, M}
     end.
