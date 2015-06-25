@@ -472,7 +472,7 @@ handle_info({'heartbeat', Ref}, #state{heartbeat_ref=Ref
     try create_node(Heartbeat, State) of
         Node ->
             _ = ets:insert(Tab, Node),
-            wapi_nodes:publish_advertise(advertise_payload(Node))
+            wh_federation:cast(advertise_payload(Node), fun wapi_nodes:publish_advertise/1)            
     catch
         _:_ -> 'ok'
     end,
