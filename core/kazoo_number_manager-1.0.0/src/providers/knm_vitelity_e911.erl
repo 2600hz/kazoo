@@ -168,7 +168,7 @@ remove_number(Number) ->
 %%--------------------------------------------------------------------
 -spec remove_e911_options(ne_binary()) -> list().
 remove_e911_options(DID) ->
-    [{'qs', [{'did', knm_converter_regex:to_npan(DID)}
+    [{'qs', [{'did', (knm_converters:default()):to_npan(DID)}
              ,{'xml', <<"yes">>}
              ,{'cmd', <<"e911delete">>}
              | knm_vitelity_util:default_options()
@@ -184,7 +184,7 @@ remove_e911_options(DID) ->
 %%--------------------------------------------------------------------
 -spec get_location_options(ne_binary()) -> list().
 get_location_options(DID) ->
-    [{'qs', [{'did',  knm_converter_regex:to_npan(DID)}
+    [{'qs', [{'did',  (knm_converters:default()):to_npan(DID)}
              ,{'xml', <<"yes">>}
              ,{'cmd', <<"e911getinfo">>}
              | knm_vitelity_util:default_options()
@@ -215,7 +215,7 @@ e911_options(Number, AddressJObj) ->
     State = knm_vitelity_util:get_short_state(wh_json:get_value(<<"region">>, AddressJObj)),
     {UnitType, UnitNumber} = get_unit(wh_json:get_value(<<"extended_address">>, AddressJObj)),
     [{'qs', props:filter_undefined(
-                [{'did',  knm_converter_regex:to_npan(DID)}
+                [{'did',  (knm_converters:default()):to_npan(DID)}
                  ,{'name', wh_json:get_value(<<"customer_name">>, AddressJObj, get_account_name(AccountId))}
                  ,{'address', wh_json:get_value(<<"street_address">>, AddressJObj)}
                  ,{'unittype', UnitType}

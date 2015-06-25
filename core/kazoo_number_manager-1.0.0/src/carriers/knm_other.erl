@@ -51,7 +51,7 @@ find_numbers(Number, Quantity, Props) ->
 %%--------------------------------------------------------------------
 -spec check_numbers(ne_binaries(), wh_proplist()) -> {'error', any()} | {'ok', any()}.
 check_numbers(Numbers, _Props) ->
-    FormatedNumbers = [knm_converter_regex:to_npan(Number) || Number <- Numbers],
+    FormatedNumbers = [(knm_converters:default()):to_npan(Number) || Number <- Numbers],
     case whapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"phonebook_url">>) of
         'undefined' ->
             {'error', 'non_available'};

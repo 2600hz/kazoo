@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(knm_converters).
 
--include("knm.hrl").
+-include("../knm.hrl").
 
 -export([
     normalize/1, is_normalized/1
@@ -16,7 +16,7 @@
     ,to_db/1
     ,is_reconcilable/1
     ,classify/1, available_classifiers/0
-    ,available_converters/0
+    ,available_converters/0, default/0
 ]).
 
 -define(DEFAULT_CONVERTERS, [<<"regex">>]).
@@ -150,6 +150,16 @@ available_classifiers() ->
 available_converters() ->
     Default = wh_json:from_list(?DEFAULT_CONVERTERS),
     whapps_config:get(?KNM_CONFIG_CAT, <<"converters">>, Default).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec default() -> atom().
+default() ->
+    ?CONVERTER_MOD.
 
 %%%===================================================================
 %%% Internal functions

@@ -125,7 +125,7 @@ try_update_outbound_cnam(Number, NewCNAM) ->
 -spec outbound_cnam_options(ne_binary(), ne_binary()) -> list().
 outbound_cnam_options(DID, NewCNAM) ->
     [{'qs', [{'cmd', <<"lidb">>}
-             ,{'did',  knm_converter_regex:to_npan(DID)}
+             ,{'did',  (knm_converters:default()):to_npan(DID)}
              ,{'name', NewCNAM}
              ,{'xml', <<"yes">>}
              | wnm_vitelity_util:default_options()
@@ -238,7 +238,7 @@ remove_inbound_cnam(Number) ->
 %%--------------------------------------------------------------------
 -spec remove_inbound_options(ne_binary()) -> list().
 remove_inbound_options(Number) ->
-    [{'qs', [{'did',  knm_converter_regex:to_npan(Number)}
+    [{'qs', [{'did',  (knm_converters:default()):to_npan(Number)}
              ,{'cmd', <<"cnamdisable">>}
              ,{'xml', <<"yes">>}
              | wnm_vitelity_util:default_options()
@@ -274,7 +274,7 @@ add_inbound_cnam(Number) ->
 %%--------------------------------------------------------------------
 -spec inbound_options(ne_binary()) -> list().
 inbound_options(DID) ->
-    [{'qs', [{'did',  knm_converter_regex:to_npan(DID)}
+    [{'qs', [{'did',  (knm_converters:default()):to_npan(DID)}
              ,{'cmd', <<"cnamenable">>}
              ,{'xml', <<"yes">>}
              | wnm_vitelity_util:default_options()
