@@ -593,8 +593,3 @@ load_cdr(<<Year:4/binary, Month:2/binary, "-", _/binary>> = CDRId, Context) ->
 load_cdr(CDRId, Context) ->
     lager:debug("error loading cdr by id ~p", [CDRId]),
     crossbar_util:response('error', <<"could not find cdr with supplied id">>, 404, Context).
-
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
-
--endif.
