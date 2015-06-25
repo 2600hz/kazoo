@@ -179,16 +179,37 @@ new() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec setters(number(), wh_proplist()) -> number().
+-spec setters(number(), wh_proplist()) -> number() | number_return().
 setters(Number, Props) ->
     lists:foldl(
-        fun({Fun, Value}, Acc) when is_function(Fun) ->
-            Fun(Acc, Value);
-           (_, Acc) -> Acc
-        end
+        fun setters_fold/2
         ,Number
         ,Props
     ).
+
+setters_fold(_, {'error', _R}=Error) ->
+    Error;
+setters_fold({Fun, [_|_]=Value}, {'ok', Number}) when is_function(Fun) ->
+    lager:debug("applying ~p", [Fun]),
+    erlang:apply(Fun, [Number|Value]);
+setters_fold({Fun, [_|_]=Value}, Number) when is_function(Fun) ->
+    lager:debug("applying ~p", [Fun]),
+    erlang:apply(Fun, [Number|Value]);
+setters_fold({Fun, Value}, {'ok', Number}) when is_function(Fun) ->
+    lager:debug("applying ~p", [Fun]),
+    erlang:apply(Fun, [Number, Value]);
+setters_fold({Fun, Value}, Number) when is_function(Fun) ->
+    lager:debug("applying ~p", [Fun]),
+    erlang:apply(Fun, [Number, Value]);
+setters_fold(Fun, {'ok', Number}) when is_function(Fun) ->
+    lager:debug("applying ~p", [Fun]),
+    erlang:apply(Fun, [Number]);
+setters_fold(Fun, Number) when is_function(Fun) ->
+    lager:debug("applying ~p", [Fun]),
+    erlang:apply(Fun, [Number]);
+setters_fold(_Fun, Acc) ->
+    lager:warning("unknown fun ~p", [_Fun]),
+    Acc.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -407,10 +428,12 @@ doc(Number) ->
 -spec execute_routines(number(), [function()]) -> number_return().
 execute_routines(Number, Routines) ->
     lists:foldl(
-        fun(F, {'ok', N}) -> F(N);
-           (_F, Error) -> Error
+        fun
+            (F, {'ok', N}) -> F(N);
+            (_F, {'error', _R}=Error) -> Error;
+            (F, N) -> F(N)
         end
-        ,{'ok', Number}
+        ,Number
         ,Routines
     ).
 

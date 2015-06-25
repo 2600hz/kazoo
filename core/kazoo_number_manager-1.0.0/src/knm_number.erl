@@ -56,9 +56,9 @@ create(Num, Props) ->
             ,{fun knm_phone_number:set_assigned_to/2, props:get_binary_value(<<"assigned_to">>, Props)}
             ,{fun knm_phone_number:set_auth_by/2, props:get_binary_value(<<"auth_by">>, Props, <<"system">>)}
             ,{fun knm_phone_number:set_dry_run/2, props:get_is_true(<<"dry_run">>, Props, 'false')}
+            ,fun knm_phone_number:save/1
         ]),
-    Number = knm_phone_number:setters(knm_phone_number:new(), Updates),
-    knm_phone_number:save(Number).
+    knm_phone_number:setters(knm_phone_number:new(), Updates).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -80,9 +80,9 @@ move(Num, MoveTo, AuthBy) ->
             Props = [
                 {fun knm_phone_number:set_assigned_to/2, AccountId}
                 ,{fun knm_phone_number:set_prev_assigned_to/2, AssignedTo}
+                ,fun knm_phone_number:save/1
             ],
-            UpdatedNumber = knm_phone_number:setters(Number, Props),
-            knm_phone_number:save(UpdatedNumber)
+            knm_phone_number:setters(Number, Props)
     end.
 
 
@@ -100,8 +100,13 @@ update(Num, Props, AuthBy) ->
     case ?MODULE:get(Num, AuthBy) of
         {'error', _R}=E -> E;
         {'ok', Number} ->
-            UpdatedNumber = knm_phone_number:setters(Number, Props),
-            knm_phone_number:save(UpdatedNumber)
+            case knm_phone_number:setters(Number, Props) of
+                {'error', _R}=Error -> Error;
+                {'ok', UpdatedNumber} ->
+                    knm_phone_number:save(UpdatedNumber);
+                UpdatedNumber ->
+                    knm_phone_number:save(UpdatedNumber)
+            end
     end.
 
 %%--------------------------------------------------------------------
