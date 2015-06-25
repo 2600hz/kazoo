@@ -49,7 +49,7 @@
 -define(OPTIONAL_DEFAULT_HEADERS, [<<"Raw-Headers">>, <<"Destination-Server">>
                                    ,<<"Geo-Location">>, <<"Access-Group">>
                                    ,<<"Tenant-ID">>, <<"Node">>, <<"Server-ID">>
-                                   ,<<"Defer-Response">>
+                                   ,<<"Defer-Response">>, ?FEDERATION_MESSAGE
                                   ]).
 -define(DEFAULT_VALUES, [{<<"Node">>, wh_util:to_binary(node())}
                          ,{<<"Msg-ID">>, wh_util:rand_hex_binary(16)}
