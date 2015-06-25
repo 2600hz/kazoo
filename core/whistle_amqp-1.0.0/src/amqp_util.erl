@@ -134,6 +134,8 @@
 -export([is_json/1, is_host_available/0]).
 -export([encode/1]).
 
+-export([bind_exchanges/3 , bind_exchanges/4]).
+
 -ifdef(TEST).
 -export([trim/3]).
 -endif.
@@ -873,6 +875,18 @@ bind_q_to_exchange(Queue, Routing, Exchange, Options) ->
     QB = #'queue.bind'{
             queue = Queue %% what queue does the binding attach to?
             ,exchange = Exchange %% what exchange does the binding attach to?
+            ,routing_key = Routing %% how does an exchange know a message should go to a bound queue?
+            ,nowait = ?P_GET('nowait', Options, 'false')
+            ,arguments = []
+           },
+    wh_amqp_channel:command(QB).
+
+bind_exchanges(From, To, Routing) ->
+    bind_exchanges(From, To, Routing, []).
+bind_exchanges(From, To, Routing, Options) ->
+    QB = #'exchange.bind'{
+            source = From %% what exchange does the binding attach from?
+            ,destination = To %% what exchange does the binding attach to?
             ,routing_key = Routing %% how does an exchange know a message should go to a bound queue?
             ,nowait = ?P_GET('nowait', Options, 'false')
             ,arguments = []
