@@ -127,7 +127,8 @@ node(Srv) -> gen_listener:call(Srv, 'node', ?MILLISECONDS_IN_SECOND).
 update_node(Srv, Node) -> gen_listener:cast(Srv, {'update_node', Node}).
 
 -spec transfer(pid(), atom(), wh_proplist()) -> 'ok'.
-transfer(Srv, TransferType, Props) -> gen_listener:cast(Srv, {TransferType, Props}).
+transfer(Srv, TransferType, Props) ->
+    gen_listener:cast(Srv, {TransferType, Props}).
 
 -spec queue_name(pid()) -> ne_binary().
 queue_name(Srv) -> gen_listener:queue_name(Srv).
@@ -743,7 +744,7 @@ specific_call_event_props(<<"RECORD_START">>, _, Props) ->
      ,{<<"Application-Response">>, props:get_first_defined([<<"Record-File-Path">>
                                                             ,<<"whistle_application_response">>
                                                            ], Props)
-      }    
+      }
     ];
 specific_call_event_props(<<"RECORD_STOP">>, _, Props) ->
     [{<<"Application-Name">>, <<"record">>}
