@@ -334,7 +334,7 @@ xml_did_to_json(#xmlElement{name='number'
 %% @end
 %%--------------------------------------------------------------------
 purchase_local_options(DID) ->
-    [{'qs', [{'did', knm_converter_regex:to_npan(DID)}
+    [{'qs', [{'did', (knm_converters:default()):to_npan(DID)}
              ,{'cmd', <<"getlocaldid">>}
              ,{'xml', <<"yes">>}
              ,{'routesip', get_routesip()}
@@ -350,7 +350,7 @@ purchase_local_options(DID) ->
 %% @end
 %%--------------------------------------------------------------------
 purchase_tollfree_options(DID) ->
-    [{'qs', [{'did', knm_converter_regex:to_npan(DID)}
+    [{'qs', [{'did', (knm_converters:default()):to_npan(DID)}
              ,{'cmd', <<"gettollfree">>}
              ,{'xml', <<"yes">>}
              ,{'routesip', get_routesip()}
@@ -434,7 +434,7 @@ process_xml_content_tag(Number, #xmlElement{name='content'
 %% @end
 %%--------------------------------------------------------------------
 release_did_options(DID) ->
-    [{'qs', [{'did', knm_converter_regex:to_npan(DID)}
+    [{'qs', [{'did', (knm_converters:default()):to_npan(DID)}
              ,{'cmd', <<"removedid">>}
              ,{'xml', <<"yes">>}
              | knm_vitelity_util:default_options([])

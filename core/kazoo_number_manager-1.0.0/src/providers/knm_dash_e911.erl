@@ -229,7 +229,7 @@ is_valid_location(Location) ->
                           {'provisioned', wh_json:object()} |
                           {'error', binary()}.
 add_location(Number, Location, CallerName) ->
-    Props = [{'uri', [{'uri', [wh_util:to_list(<<"tel:", (knm_converter_regex:to_1npan(Number))/binary>>)]}
+    Props = [{'uri', [{'uri', [wh_util:to_list(<<"tel:", ((knm_converters:default()):to_1npan(Number))/binary>>)]}
                       ,{'callername', [wh_util:to_list(CallerName)]}
                      ]
              }
@@ -277,7 +277,7 @@ provision_location(LocationId) ->
 remove_number(Number) ->
     Num = knm_phone_number:number(Number),
     lager:debug("removing dash e911 number '~s'", [Num]),
-    Props = [{'uri', [wh_util:to_list(<<"tel:", (knm_converter_regex:to_1npan(Num))/binary>>)]}],
+    Props = [{'uri', [wh_util:to_list(<<"tel:", ((knm_converters:default()):to_1npan(Num))/binary>>)]}],
     case emergency_provisioning_request('removeURI', Props) of
         {'error', 'server_error'} ->
             lager:debug("removed number from dash e911"),
