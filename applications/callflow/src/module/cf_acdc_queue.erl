@@ -84,24 +84,10 @@ send_agent_message(Call, AgentId, QueueId, PubFun) ->
 update_queues(Call, AgentId, QueueId, <<"login">>) ->
     couch_mgr:with_cache_doc(whapps_call:account_db(Call)
                              ,AgentId
-                             ,fun (JObj) -> maybe_add_queue(JObj, QueueId) end
+                             ,fun (JObj) -> kzd_agent:maybe_add_queue(JObj, QueueId, 'skip') end
                             );
 update_queues(Call, AgentId, QueueId, <<"logout">>) ->
     couch_mgr:with_cache_doc(whapps_call:account_db(Call)
                              ,AgentId
-                             ,fun (JObj) -> maybe_rm_queue(JObj, QueueId) end
+                             ,fun (JObj) -> kzd_agent:maybe_rm_queue(JObj, QueueId, 'skip') end
                             ).
-
-maybe_add_queue(AgentJObj, QueueId) ->
-    Qs = wh_json:get_value(<<"queues">>, AgentJObj, []),
-    case lists:member(QueueId, Qs) of
-        'false' -> wh_json:set_value(<<"queues">>, [QueueId | Qs], AgentJObj);
-        'true' -> 'skip'
-    end.
-
-maybe_rm_queue(AgentJObj, QueueId) ->
-    Qs = wh_json:get_value(<<"queues">>, AgentJObj, []),
-    case lists:member(QueueId, Qs) of
-        'true' -> wh_json:set_value(<<"queues">>, lists:delete(QueueId, Qs), AgentJObj);
-        'false' -> 'skip'
-    end.
