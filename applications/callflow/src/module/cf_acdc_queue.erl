@@ -82,12 +82,12 @@ send_agent_message(Call, AgentId, QueueId, PubFun) ->
                     {'ok', wh_json:object()}
                     | couch_mgr:couchbeam_error().
 update_queues(Call, AgentId, QueueId, <<"login">>) ->
-    couch_mgr:with_cache_doc(whapps_call:account_db(Call)
-                             ,AgentId
-                             ,fun (JObj) -> kzd_agent:maybe_add_queue(JObj, QueueId, 'skip') end
-                            );
+    couch_mgr:update_cache_doc(whapps_call:account_db(Call)
+                               ,AgentId
+                               ,fun (JObj) -> kzd_agent:maybe_add_queue(JObj, QueueId, 'skip') end
+                              );
 update_queues(Call, AgentId, QueueId, <<"logout">>) ->
-    couch_mgr:with_cache_doc(whapps_call:account_db(Call)
-                             ,AgentId
-                             ,fun (JObj) -> kzd_agent:maybe_rm_queue(JObj, QueueId, 'skip') end
-                            ).
+    couch_mgr:update_cache_doc(whapps_call:account_db(Call)
+                               ,AgentId
+                               ,fun (JObj) -> kzd_agent:maybe_rm_queue(JObj, QueueId, 'skip') end
+                              ).
