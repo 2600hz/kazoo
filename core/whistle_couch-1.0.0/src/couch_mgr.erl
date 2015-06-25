@@ -33,7 +33,7 @@
 -export([save_doc/2, save_doc/3
          ,save_docs/2, save_docs/3
          ,open_cache_doc/2, open_cache_doc/3
-         ,with_cache_doc/3
+         ,update_cache_doc/3
          ,flush_cache_doc/2, flush_cache_doc/3
          ,flush_cache_docs/0, flush_cache_docs/1
          ,cache_db_doc/3
@@ -529,10 +529,10 @@ cache_db_doc(DbName, DocId, Doc) ->
         {'error', _}=E -> E
     end.
 
--spec with_cache_doc(text(), ne_binary(), fun((wh_json:object()) -> wh_json:object() | 'skip')) ->
+-spec update_cache_doc(text(), ne_binary(), fun((wh_json:object()) -> wh_json:object() | 'skip')) ->
                       {'ok', wh_json:object()}
                       | couchbeam_error().
-with_cache_doc(DbName, DocId, Fun) when is_function(Fun, 1) ->
+update_cache_doc(DbName, DocId, Fun) when is_function(Fun, 1) ->
     case open_cache_doc(DbName, DocId) of
         {'ok', JObj} ->
             NewJObj = Fun(JObj),
