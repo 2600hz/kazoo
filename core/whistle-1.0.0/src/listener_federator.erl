@@ -76,6 +76,7 @@ init([Parent, Broker]) ->
                ),
     wh_amqp_channel:consumer_broker(Broker),
     Zone = wh_util:to_binary(wh_amqp_connections:broker_zone(Broker)),
+    put('$federator_listener', 'true'),
     {'ok', #state{parent=Parent
                   ,broker=Broker
                   ,zone=Zone
@@ -155,7 +156,7 @@ handle_event(JObj, BasicDeliver, #state{parent=Parent
                      >>,
     gen_listener:federated_event(Parent
                                  ,wh_json:set_values([{<<"Server-ID">>, RemoteServerId}
-                                                      ,{<<"AMQP-Broker">>, Broker}
+                                                      ,{<<"AMQP-Broker">>, wh_util:normalize_amqp_uri(Broker)}
                                                       ,{<<"AMQP-Broker-Zone">>, Zone}
                                                      ], JObj)
                                  ,BasicDeliver
