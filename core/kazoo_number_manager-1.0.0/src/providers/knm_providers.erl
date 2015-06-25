@@ -53,7 +53,7 @@ exec(Number, Action, [Provider|Providers]) ->
             lager:debug("provider ~s is unknown, skipping", [Provider]),
             exec(Number, Action, Providers);
         Module ->
-            case apply(Module, Action, [Number]) of
+            case erlang:apply(Module, Action, [Number]) of
                 {'ok', N}->
                     lager:debug("successfully attempted ~s:~s/1", [Module, Action]),
                     exec(N, Action, Providers);
