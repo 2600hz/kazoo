@@ -50,7 +50,6 @@ find_numbers(Prefix, Quantity, _Options) ->
 %% Acquire a given number from Simwood.com
 %% @end
 %%--------------------------------------------------------------------
-
 -spec acquire_number(number()) -> number_return().
 -spec acquire_number(number(), boolean()) -> number_return().
 
