@@ -20,6 +20,7 @@
          ,put/1, put/2
          ,post/2, post/3
          ,delete/2
+         ,patch/2
         ]).
 
 -export([is_unique_realm/2]).
@@ -58,6 +59,7 @@ init() ->
                 ,{<<"*.validate.accounts">>, 'validate'}
                 ,{<<"*.execute.put.accounts">>, 'put'}
                 ,{<<"*.execute.post.accounts">>, 'post'}
+                ,{<<"*.execute.patch.accounts">>, 'patch'}
                 ,{<<"*.execute.delete.accounts">>, 'delete'}
                ],
     cb_modules_util:bind(?MODULE, Bindings).
@@ -81,13 +83,13 @@ allowed_methods(AccountId) ->
     case whapps_util:get_master_account_id() of
         {'ok', AccountId} ->
             lager:debug("accessing master account, disallowing DELETE"),
-            [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST];
+            [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_PATCH];
         {'ok', _MasterId} ->
-            [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE];
+            [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE];
         {'error', _E} ->
             lager:debug("failed to get master account id: ~p", [_E]),
             lager:info("disallowing DELETE while we can't determine the master account id"),
-            [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST]
+            [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_PATCH]
     end.
 
 allowed_methods(_, ?MOVE) ->
@@ -180,6 +182,9 @@ validate_account(Context, _AccountId, ?HTTP_PUT) ->
     validate_request('undefined', prepare_context('undefined', Context));
 validate_account(Context, AccountId, ?HTTP_POST) ->
     validate_request(AccountId, prepare_context(AccountId, Context));
+validate_account(Context, AccountId, ?HTTP_PATCH) ->
+    Context1 = prepare_context(AccountId, Context),
+    crossbar_doc:patch_and_validate(AccountId, Context1, fun validate_request/2);
 validate_account(Context, AccountId, ?HTTP_DELETE) ->
     validate_delete_request(AccountId, prepare_context(AccountId, Context)).
 
@@ -259,6 +264,17 @@ post(Context, AccountId, ?MOVE) ->
     case cb_context:resp_status(Context) of
         'success' -> move_account(Context, AccountId);
         _Status -> Context
+    end.
+
+-spec patch(cb_context:context(), path_token()) -> cb_context:context().
+patch(Context, _AccountId) ->
+    Context1 = crossbar_doc:save(Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            _ = wh_util:spawn('provisioner_util', 'maybe_update_account', [Context1]),
+            Context1;
+        _Status ->
+            Context1
     end.
 
 %%--------------------------------------------------------------------
