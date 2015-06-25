@@ -135,6 +135,7 @@
 -export([encode/1]).
 
 -export([bind_exchanges/3 , bind_exchanges/4]).
+-export([federation_exchange/0]).
 
 -ifdef(TEST).
 -export([trim/3]).
@@ -445,6 +446,10 @@ presence_exchange() ->
 -spec targeted_exchange() -> 'ok'.
 targeted_exchange() ->
     new_exchange(?EXCHANGE_TARGETED, ?TYPE_TARGETED).
+
+-spec federation_exchange() -> 'ok'.
+federation_exchange() ->
+    new_exchange(?EXCHANGE_FEDERATION, ?TYPE_FEDERATION).
 
 -spec nodes_exchange() -> 'ok'.
 nodes_exchange() ->
@@ -872,6 +877,21 @@ bind_q_to_exchange(Queue, _Routing, _Exchange) when not is_binary(Queue) ->
 bind_q_to_exchange(Queue, Routing, Exchange) ->
     bind_q_to_exchange(Queue, Routing, Exchange, []).
 bind_q_to_exchange(Queue, Routing, Exchange, Options) ->
+  case  wh_util:is_true(get('$federator_listener')) of
+      'true' -> do_bind_q_to_federated(Queue, Routing, Exchange, Options);
+      _ -> do_bind_q_to_exchange(Queue, Routing, Exchange, Options)
+  end.
+
+-spec do_bind_q_to_federated(ne_binary(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
+do_bind_q_to_federated(Queue, Queue, Exchange, Options) ->
+    do_bind_q_to_exchange(Queue, Exchange, ?EXCHANGE_FEDERATION,  Options);
+do_bind_q_to_federated(Queue, <<>>, Exchange, Options) ->
+    do_bind_q_to_exchange(Queue, Exchange, ?EXCHANGE_FEDERATION,  Options);
+do_bind_q_to_federated(Queue, RoutingKey, Exchange, Options) ->
+    do_bind_q_to_exchange(Queue, <<Exchange/binary, ".", RoutingKey/binary>>, ?EXCHANGE_FEDERATION, Options).
+
+-spec do_bind_q_to_exchange(ne_binary(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
+do_bind_q_to_exchange(Queue, Routing, Exchange, Options) ->
     QB = #'queue.bind'{
             queue = Queue %% what queue does the binding attach to?
             ,exchange = Exchange %% what exchange does the binding attach to?
@@ -960,6 +980,23 @@ unbind_q_from_registrar(Queue, Routing) ->
 -spec unbind_q_from_exchange(ne_binary(), ne_binary(), ne_binary()) ->
                                     'ok' | {'error', _}.
 unbind_q_from_exchange(Queue, Routing, Exchange) ->
+  case  wh_util:is_true(get('$federator_listener')) of
+      'true' -> do_unbind_q_from_federated(Queue, Routing, Exchange);
+      _ -> do_unbind_q_from_exchange(Queue, Routing, Exchange)
+  end.
+
+-spec do_unbind_q_from_federated(ne_binary(), ne_binary(), ne_binary()) ->
+                                    'ok' | {'error', _}.
+do_unbind_q_from_federated(Queue, <<>>, Exchange) ->
+    do_unbind_q_from_exchange(Queue, Exchange, ?EXCHANGE_FEDERATION);
+do_unbind_q_from_federated(Queue, Queue, Exchange) ->
+    do_unbind_q_from_exchange(Queue, Exchange, ?EXCHANGE_FEDERATION);
+do_unbind_q_from_federated(Queue, RoutingKey, Exchange) ->
+    do_unbind_q_from_exchange(Queue, <<Exchange/binary, ".", RoutingKey/binary>>, ?EXCHANGE_FEDERATION).
+
+-spec do_unbind_q_from_exchange(ne_binary(), ne_binary(), ne_binary()) ->
+                                    'ok' | {'error', _}.
+do_unbind_q_from_exchange(Queue, Routing, Exchange) ->
     QU = #'queue.unbind'{
             queue = Queue
             ,exchange = Exchange
