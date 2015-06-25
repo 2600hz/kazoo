@@ -167,10 +167,17 @@ prepare_api_payload(Prop, HeaderValues, Options) when is_list(Prop) ->
     CleanupFuns = [fun (P) -> remove_empty_values(P, props:get_is_true('remove_recursive', Options, 'true')) end
                    ,fun (P) -> set_missing_values(P, ?DEFAULT_VALUES) end
                    ,fun (P) -> set_missing_values(P, HeaderValues) end
+                   ,fun (P) -> set_federation_message(P) end
                   ],
     FormatterFun(lists:foldr(fun(F, P) -> F(P) end, Prop, CleanupFuns));
 prepare_api_payload(JObj, HeaderValues, Options) ->
     prepare_api_payload(wh_json:to_proplist(JObj), HeaderValues, Options).
+
+
+-spec set_federation_message(api_terms()) -> api_terms().
+set_federation_message(Props) ->
+    put('$amqp_federation_message', props:get_value(?FEDERATION_MESSAGE, Props, 'false')),
+    Props.
 
 %%--------------------------------------------------------------------
 %% @doc

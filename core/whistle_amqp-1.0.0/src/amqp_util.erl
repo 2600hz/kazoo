@@ -384,7 +384,24 @@ basic_publish(Exchange, RoutingKey, Payload, ContentType) ->
 basic_publish(Exchange, RoutingKey, Payload, ContentType, Prop)
   when is_list(Payload) ->
     basic_publish(Exchange, RoutingKey, iolist_to_binary(Payload), ContentType, Prop);
-basic_publish(Exchange, RoutingKey, ?NE_BINARY = Payload, ContentType, Props)
+basic_publish(Exchange, RoutingKey, ?NE_BINARY = Payload, ContentType, Props) ->
+  case get('$amqp_federation_message') of
+      'true' -> do_federated_publish(Exchange, RoutingKey, Payload, ContentType, Props),
+                do_basic_publish(Exchange, RoutingKey, Payload, ContentType, Props);
+      'no-local' -> do_federated_publish(Exchange, RoutingKey, Payload, ContentType, Props);
+      _ -> do_basic_publish(Exchange, RoutingKey, Payload, ContentType, Props)
+  end.
+
+-spec do_federated_publish(ne_binary(), binary(), amqp_payload(), ne_binary(), wh_proplist()) -> 'ok'.
+do_federated_publish(Exchange, <<>>, Payload, ContentType, Props) ->
+    do_basic_publish(?EXCHANGE_FEDERATION, Exchange, Payload, ContentType, Props);
+do_federated_publish(Exchange, Exchange, Payload, ContentType, Props) ->
+    do_basic_publish(?EXCHANGE_FEDERATION, Exchange, Payload, ContentType, Props);
+do_federated_publish(Exchange, RoutingKey, Payload, ContentType, Props) ->
+    do_basic_publish(?EXCHANGE_FEDERATION, <<Exchange/binary, ".", RoutingKey/binary>>, Payload, ContentType, Props).
+
+-spec do_basic_publish(ne_binary(), binary(), amqp_payload(), ne_binary(), wh_proplist()) -> 'ok'.
+do_basic_publish(Exchange, RoutingKey, ?NE_BINARY = Payload, ContentType, Props)
   when is_binary(Exchange),
        is_binary(RoutingKey),
        is_binary(ContentType),
