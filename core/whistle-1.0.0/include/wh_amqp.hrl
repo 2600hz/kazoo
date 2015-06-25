@@ -133,6 +133,11 @@
 -define(EXCHANGE_REGISTRAR, <<"registrar">>).
 -define(TYPE_REGISTRAR, <<"topic">>).
 
+%% Federation Exchange
+%% - For federation related communication
+-define(EXCHANGE_FEDERATION, <<"federation">>).
+-define(TYPE_FEDERATION, <<"topic">>).
+
 -type wh_amqp_command() :: #'queue.declare'{} | #'queue.delete'{} |
                            #'queue.bind'{} | #'queue.unbind'{} |
                            #'basic.consume'{} | #'basic.cancel'{} |
