@@ -65,6 +65,7 @@ init([]) ->
     wh_amqp_connections:wait_for_available(),
     timer:sleep(2 * ?MILLISECONDS_IN_SECOND),
     amqp_util:targeted_exchange(),
+    amqp_util:federation_exchange(),
     {'ok', #state{}, 100}.
 
 %%--------------------------------------------------------------------
