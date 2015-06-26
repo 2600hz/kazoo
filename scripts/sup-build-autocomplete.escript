@@ -2,7 +2,8 @@
 %%! -sname kazoo_sup_build_autocomplete
 %% -*- coding: utf-8 -*-
 
--mode('compile').
+-mode(compile).
+-compile([debug_info]).
 
 -export([main/1]).
 
@@ -13,9 +14,106 @@ main([]) ->
     halt(255);
 main(Paths) ->
     Files = lists:flatmap(fun find_modules/1, Paths),
-    [print(find(File)) || File <- Files].
+    [begin
+         Found = find(File),
+         group(Found),
+         print(Found)
+     end || File <- Files],
+    dump("/etc/bash_completion.d/sup.bash").
 
 %% Internals
+
+dump(CompFile) ->
+    {ok, Dev} = file:open(CompFile, [write, append]),
+    ok = file:write(Dev,
+                    "# bash completion for 2600Hz, Inc's sup command\n"
+                    "\n"
+                    "_sup() {\n"
+                    "    local cur prev\n"
+                    "    _get_comp_words_by_ref cur prev\n"
+                    "\n"
+                    "    local path=.`echo ${COMP_WORDS[*]} | sed 's/ /./g'`.\n"
+                    "    # echo $path\n"
+                    "\n"
+                    "    args() {\n"
+                    "        case $path in\n"),
+    lists:foreach(
+      fun (MF) ->
+              UChars = unicode:characters_to_binary(case_args(MF)),
+              ok = file:write(Dev, UChars)
+      end, get(mfs)),
+    ok = file:write(Dev,
+                    "        esac\n"
+                    "    }\n"
+                    "\n"
+                    "    case $prev in\n"
+                    "\n"),
+
+    ok = file:write(Dev, case_sup()),
+
+    lists:foreach(
+     fun (M) ->
+             ok = file:write(Dev, case_prev(M))
+     end, get(modules)),
+    ok = file:write(Dev,  "\n"
+                    "        *) args ;;\n"
+                          "    esac\n"
+                          "}\n"
+                          "complete -F _sup sup\n"),
+    ok = file:close(Dev).
+
+group([]) -> ok;
+group([{Module,_,_,_}|_]=MFAs) ->
+    append(modules, Module),
+    Fs = lists:map(
+           fun ({_M, F, _A, As}) ->
+                   append({Module,F}, As),
+                   F
+           end, MFAs),
+    [append(mfs, {Module,F}) || F <- lists:usort(Fs)],
+    put(Module, lists:usort(Fs)).
+
+append(Key, Value) ->
+    case get(Key) of
+        L when is_list(L) ->
+            put(Key, [Value|L]);
+        _ ->
+            put(Key, [Value])
+    end.
+
+case_sup() ->
+    Ms = get(modules),
+    ["        sup) COMPREPLY=( $(compgen -W '", spaces(Ms), "' -- $cur) ) ;;\n\n"].
+
+case_prev(M) ->
+    Fs = get(M),
+    %% io:format("Fs = ~p\n", [Fs]),
+    ["        ", to_list(M), ")\n"
+     "            case $path in\n"
+     "                .sup.", to_list(M), ".*)"
+     " COMPREPLY=( $(compgen -W '", spaces(Fs), "' -- $cur) ) ;;\n"
+     "            esac ;;\n"].
+
+case_args({M,F} = MF) ->
+    Asz = lists:reverse(get(MF)),
+    %% io:format("Asz(~p) ~10000p\n", [MF, Asz]),
+    ["            .sup.", to_list(M), $., to_list(F), ".*)"
+     " COMPREPLY=( $(compgen -W '--> ", spaces(uspaces(Asz)), "' -- $cur) ) ;;\n"
+    ].
+
+uspaces(Lists) ->
+    %% Note the Unicode non-breaking space (not part of $IFS)
+    [ [[to_list(E), " "] || E <- List]
+      || List <- Lists ].
+
+spaces([]) -> "<no arguments>";
+spaces(List) ->
+    [[to_list(E), $\s] || E <- List].
+
+to_list(A) when is_atom(A) -> atom_to_list(A);
+to_list([$"]++_=Word) -> [Char || Char <- Word, Char =/= $"];
+to_list(S) -> S.
+
 
 print([]) -> 'ok';
 print([{M,F,_A,Vs}|Rest]) ->
@@ -38,7 +136,10 @@ pp({bin,_,[{bin_element,_,{string,_,Str},_,_}]}) ->
 pp({nil,_}) ->
     "[]";
 pp({cons,_,H,T}) ->
-    "[" ++ pp(H) ++ "|" ++ pp(T) ++ "]".
+    "[" ++ pp(H) ++ "|" ++ pp(T) ++ "]";
+pp(_E) ->
+    "PLACEHOLDER".
+
 
 
 find(File) ->
@@ -68,6 +169,7 @@ find_modules(Path) ->
         'true' ->
             AccFiles = fun (File, Acc) -> [File|Acc] end,
             filelib:fold_files(Path, ".+_maintenance\\.beam", true, AccFiles, [])
+            %% filelib:fold_files(Path, ".+\\.beam", true, AccFiles, [])
     end.
 
 usage() ->
