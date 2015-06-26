@@ -12,14 +12,14 @@
 main([]) ->
     usage(),
     halt(255);
-main(Paths) ->
+main([CompletionFile | Paths]) ->
     Files = lists:flatmap(fun find_modules/1, Paths),
     [begin
          Found = find(File),
          group(Found),
          print(Found)
      end || File <- Files],
-    dump("/etc/bash_completion.d/sup.bash").
+    dump(CompletionFile).
 
 %% Internals
 
@@ -103,10 +103,10 @@ case_args({M,F} = MF) ->
 
 uspaces(Lists) ->
     %% Note the Unicode non-breaking space (not part of $IFS)
-    [ [[to_list(E), " "] || E <- List]
+    USpace = " ",
+    [ [$[, USpace, [[to_list(E), USpace] || E <- List], $]]
       || List <- Lists ].
 
-spaces([]) -> "<no arguments>";
 spaces(List) ->
     [[to_list(E), $\s] || E <- List].
 
@@ -123,12 +123,14 @@ print([{M,F,_A,Vs}|Rest]) ->
 print(_R) ->
     io:format("_R = ~p\n", [_R]).
 
-pp({atom,_,Arg}) ->
-    "'" ++ atom_to_list(Arg) ++ "'";
-pp({var,_,Arg}) ->
-    atom_to_list(Arg);
-pp({bin,_,[{bin_element,_,{var,_,Atom},_,_}]}) ->
+pp(Atom) when is_atom(Atom) ->
     atom_to_list(Atom);
+pp({atom,_,Atom}) ->
+    "'" ++ pp(Atom) ++ "'";
+pp({var,_,Atom}) ->
+    pp(Atom);
+pp({bin,_,[{bin_element,_,{var,_,Atom},_,_}]}) ->
+    pp(Atom);
 pp({bin,_,[{bin_element,_,{string,_,Str},_,_}]}) ->
     "\"" ++ Str ++ "\"";
 
@@ -175,6 +177,6 @@ find_modules(Path) ->
 usage() ->
     %% ok = io:setopts([{encoding, unicode}]),
     Arg0 = escript:script_name(),
-    io:format("Usage: ~s  <path to dir>+\n", [filename:basename(Arg0)]).
+    io:format("Usage: ~s  <completion file destination> <path to dir>+\n", [filename:basename(Arg0)]).
 
 %% End of Module
