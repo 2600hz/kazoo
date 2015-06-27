@@ -535,7 +535,7 @@ cache_if_not_media(CacheProps, DbName, DocId, CacheValue) ->
     %%   message bus anytime a http_put is issued (or maybe if the store
     %%   url is built in media IF everything uses that helper function,
     %    which is not currently the case...)
-    case wh_doc:pvt_type(CacheValue) of
+    case wh_doc:type(CacheValue) of
         <<"media">> -> 'ok';
         <<"private_media">> -> 'ok';
         _Else ->

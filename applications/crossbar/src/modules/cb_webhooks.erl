@@ -367,7 +367,6 @@ get_start_key(Context, Default, Formatter) ->
                                     cb_context:context().
 summary_attempts_fetch(Context, ViewOptions, View) ->
     Db = wh_util:format_account_mod_id(cb_context:account_id(Context), wh_util:current_tstamp()),
-
     lager:debug("loading view ~s with options ~p", [View, ViewOptions]),
     maybe_fix_envelope(
       crossbar_doc:load_view(View
@@ -426,7 +425,6 @@ normalize_view_results(JObj, Acc) ->
 -spec maybe_update_hook(cb_context:context()) -> cb_context:context().
 maybe_update_hook(Context) ->
     Doc = cb_context:doc(Context),
-
     case kzd_webhook:is_enabled(Doc) of
         'false' -> Context;
         'true' -> cb_context:set_doc(Context, kzd_webhook:enable(Doc))

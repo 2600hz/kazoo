@@ -224,9 +224,7 @@ load_merge(DocId, DataJObj, Context, 'undefined') ->
     Context1 = load(DocId, Context),
     case cb_context:resp_status(Context1) of
         'success' ->
-            lager:debug("loaded doc ~s(~s), merging"
-                        ,[DocId, wh_json:get_value(<<"_rev">>, cb_context:doc(Context1))]
-                       ),
+            lager:debug("loaded doc ~s(~s), merging", [DocId, wh_doc:revision(cb_context:doc(Context1))]),
             merge(DataJObj, cb_context:doc(Context1), Context1);
         _Status -> Context1
     end;
@@ -469,14 +467,7 @@ load_attachment(DocId, AName, Context) when is_binary(DocId) ->
                                 ])
     end;
 load_attachment(Doc, AName, Context) ->
-    load_attachment(find_doc_id(Doc), AName, Context).
-
--spec find_doc_id(wh_json:object()) -> api_binary().
-find_doc_id(JObj) ->
-    case wh_json:get_ne_value(<<"_id">>, JObj) of
-        'undefined' -> wh_json:get_ne_value(<<"id">>, JObj);
-        DocId -> DocId
-    end.
+    load_attachment(wh_doc:id(Doc), AName, Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -551,7 +542,7 @@ ensure_saved(Context, JObj, Options) ->
     JObj0 = update_pvt_parameters(JObj, Context),
     case couch_mgr:ensure_saved(cb_context:account_db(Context), JObj0, Options) of
         {'error', Error} ->
-            DocId = wh_json:get_value(<<"_id">>, JObj0),
+            DocId = wh_doc:id(JObj0),
             handle_couch_mgr_errors(Error, DocId, Context);
         {'ok', JObj1} ->
             Context1 = handle_couch_mgr_success(JObj1, Context),
@@ -662,14 +653,10 @@ delete(Context) ->
     delete(Context, 'soft').
 
 delete(Context, 'soft') ->
-    case couch_mgr:lookup_doc_rev(cb_context:account_db(Context)
-                                  ,wh_doc:id(cb_context:doc(Context))
-                                 )
-    of
-        {'ok', Rev} ->
-            soft_delete(Context, Rev);
-        {'error', _E} ->
-            soft_delete(Context, wh_doc:revision(cb_context:doc(Context)))
+    Doc = cb_context:doc(Context),
+    case couch_mgr:lookup_doc_rev(cb_context:account_db(Context), wh_doc:id(Doc)) of
+        {'ok', Rev}   -> soft_delete(Context, Rev);
+        {'error', _E} -> soft_delete(Context, wh_doc:revision(Doc))
     end;
 delete(Context, 'permanent') ->
     JObj = cb_context:doc(Context),
@@ -750,7 +737,7 @@ rev_to_etag([_|_])-> 'automatic';
 rev_to_etag([]) -> 'undefined';
 rev_to_etag(Rev) when is_binary(Rev) -> wh_util:to_list(Rev);
 rev_to_etag(JObj) ->
-    case wh_json:get_value(<<"_rev">>, JObj) of
+    case wh_doc:revision(JObj) of
         'undefined' -> 'undefined';
         Rev -> wh_util:to_list(Rev)
     end.
@@ -990,7 +977,7 @@ handle_json_success([_|_]=JObjs, Context, ?HTTP_PUT) ->
                 || JObj <- JObjs,
                    not wh_doc:is_soft_deleted(JObj)
                ],
-    RespHeaders = [{<<"Location">>, wh_json:get_value(<<"_id">>, JObj)}
+    RespHeaders = [{<<"Location">>, wh_doc:id(JObj)}
                    || JObj <- JObjs
                   ] ++ cb_context:resp_headers(Context),
     cb_context:setters(Context
@@ -1013,7 +1000,7 @@ handle_json_success([_|_]=JObjs, Context, _Verb) ->
                          | version_specific_success(JObjs, Context)
                         ]);
 handle_json_success(JObj, Context, ?HTTP_PUT) ->
-    RespHeaders = [{<<"Location">>, wh_json:get_value(<<"_id">>, JObj)}
+    RespHeaders = [{<<"Location">>, wh_doc:id(JObj)}
                    | cb_context:resp_headers(Context)
                   ],
     cb_context:setters(Context
@@ -1100,39 +1087,39 @@ apply_pvt_fun(Fun, JObj, Context) ->
 
 -spec add_pvt_vsn(wh_json:object(), cb_context:context()) -> wh_json:object().
 add_pvt_vsn(JObj, _) ->
-    case wh_json:get_value(<<"pvt_vsn">>, JObj) of
-        'undefined' -> wh_json:set_value(<<"pvt_vsn">>, ?CROSSBAR_DOC_VSN, JObj);
+    case wh_doc:vsn(JObj) of
+        'undefined' -> wh_doc:set_vsn(JObj, ?CROSSBAR_DOC_VSN);
         _ -> JObj
     end.
 
 -spec add_pvt_account_db(wh_json:object(), cb_context:context()) -> wh_json:object().
 add_pvt_account_db(JObj, Context) ->
-    case wh_json:get_value(<<"pvt_account_db">>, JObj) of
+    case wh_doc:account_db(JObj) of
         'undefined' ->
             case cb_context:account_db(Context) of
                 'undefined' -> JObj;
-                AccountDb -> wh_json:set_value(<<"pvt_account_db">>, AccountDb, JObj)
+                AccountDb -> wh_doc:set_account_db(JObj, AccountDb)
             end;
         _Else -> JObj
     end.
 
 -spec add_pvt_account_id(wh_json:object(), cb_context:context()) -> wh_json:object().
 add_pvt_account_id(JObj, Context) ->
-    case wh_json:get_value(<<"pvt_account_id">>, JObj) of
+    case wh_doc:account_id(JObj) of
         'undefined' ->
             case cb_context:account_id(Context) of
                 'undefined' -> JObj;
-                AccountId -> wh_json:set_value(<<"pvt_account_id">>, AccountId, JObj)
+                AccountId -> wh_doc:set_account_id(JObj, AccountId)
             end;
         _Else -> JObj
     end.
 
 -spec add_pvt_created(wh_json:object(), cb_context:context()) -> wh_json:object().
 add_pvt_created(JObj, _) ->
-    case wh_json:get_value(<<"_rev">>, JObj) of
+    case wh_doc:revision(JObj) of
         'undefined' ->
             Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
-            wh_json:set_value(<<"pvt_created">>, Timestamp, JObj);
+            wh_doc:set_created(JObj, Timestamp);
         _ ->
             JObj
     end.
@@ -1141,7 +1128,7 @@ add_pvt_created(JObj, _) ->
                               wh_json:object().
 add_pvt_modified(JObj, _) ->
     Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
-    wh_json:set_value(<<"pvt_modified">>, Timestamp, JObj).
+    wh_doc:set_modified(JObj, Timestamp).
 
 -spec add_pvt_request_id(wh_json:object(), cb_context:context()) ->
                                 wh_json:object().

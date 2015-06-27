@@ -149,9 +149,7 @@ validate_email_address(Context) ->
     IsValid =
         case Email of
             'undefined' -> 'true';
-            Email ->
-                DocId = wh_json:get_value(<<"_id">>, cb_context:doc(Context)),
-                is_faxbox_email_global_unique(Email, DocId)
+            Email -> is_faxbox_email_global_unique(Email, wh_doc:id(cb_context:doc(Context)))
         end,
     case IsValid of
         'true' -> Context;
@@ -169,7 +167,7 @@ validate_email_address(Context) ->
 
 -spec validate_patch(cb_context:context()) -> cb_context:context().
 validate_patch(Context) ->
-    DocId = wh_json:get_value(<<"_id">>, cb_context:doc(Context)),
+    DocId = wh_doc:id(cb_context:doc(Context)),
     IsValid = case wh_json:get_value(<<"custom_smtp_email_address">>, cb_context:doc(Context)) of
                   'undefined' -> 'true';
                   CustomEmail -> is_faxbox_email_global_unique(CustomEmail, DocId)
@@ -201,10 +199,12 @@ validate_patch(Context) ->
 %%--------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    Ctx = faxbox_doc_save(maybe_register_cloud_printer(Context)),
-    case cb_context:resp_status(Ctx) of
-        'success' -> cb_context:set_resp_data(Ctx, wh_json:public_fields(leak_private_fields(cb_context:doc(Ctx))));
-        _ -> Ctx
+    Context1 = faxbox_doc_save(maybe_register_cloud_printer(Context)),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            RespData = wh_json:public_fields(leak_private_fields(cb_context:doc(Context1))),
+            cb_context:set_resp_data(Context1, RespData);
+        _ -> Context1
     end.
 
 %%--------------------------------------------------------------------
@@ -216,10 +216,12 @@ put(Context) ->
 %%--------------------------------------------------------------------
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _Id) ->
-    Ctx = faxbox_doc_save(maybe_register_cloud_printer(Context)),
-    case cb_context:resp_status(Ctx) of
-        'success' -> cb_context:set_resp_data(Ctx, wh_json:public_fields(leak_private_fields(cb_context:doc(Ctx))));
-        _ -> Ctx
+    Context1 = faxbox_doc_save(maybe_register_cloud_printer(Context)),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            RespData = wh_json:public_fields(leak_private_fields(cb_context:doc(Context1))),
+            cb_context:set_resp_data(Context1, RespData);
+        _ -> Context1
     end.
 
 %%--------------------------------------------------------------------
@@ -268,7 +270,7 @@ read(Id, Context) ->
 
 -spec leak_private_fields(wh_json:object()) -> wh_json:object().
 leak_private_fields(JObj) ->
-    J = wh_json:set_value(<<"id">>, wh_json:get_value(<<"_id">>, JObj), JObj),
+    J = wh_json:set_value(<<"id">>, wh_doc:id(JObj), JObj),
     lists:foldl(fun leak_private_field/2, J, ?LEAKED_FIELDS).
 
 -spec leak_private_field(ne_binary(), wh_json:object()) -> wh_json:object().
@@ -363,14 +365,14 @@ faxbox_listing(Context) ->
 
 -spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [leak_private_fields(wh_json:get_value(<<"doc">>, JObj)) | Acc].
+    [leak_private_fields(wh_doc:id(JObj)) | Acc].
 
 -spec is_faxbox_email_global_unique(ne_binary(), ne_binary()) -> boolean().
 is_faxbox_email_global_unique(Email, FaxBoxId) ->
     ViewOptions = [{'key', wh_util:to_lower_binary(Email)}],
     case couch_mgr:get_results(?WH_FAXES_DB, <<"faxbox/email_address">>, ViewOptions) of
         {'ok', []} -> 'true';
-        {'ok', [JObj]} -> wh_json:get_value(<<"id">>, JObj) =:= FaxBoxId;
+        {'ok', [JObj]} -> wh_doc:id(JObj) =:= FaxBoxId;
         {'error', 'not_found'} -> 'true';
         _ -> 'false'
     end.
@@ -409,7 +411,7 @@ maybe_register_cloud_printer(Context) ->
 maybe_register_cloud_printer(Context, JObj) ->
     case wh_json:get_value(<<"pvt_cloud_printer_id">>, JObj) of
         'undefined' ->
-            DocId = wh_json:get_value(<<"_id">>, JObj),
+            DocId = wh_doc:id(JObj),
             NewDoc = wh_json:set_values(register_cloud_printer(Context, DocId), JObj),
             cb_context:set_doc(Context, NewDoc);
         _PrinterId -> Context
@@ -448,8 +450,7 @@ register_cloud_printer(Context, FaxboxId) ->
 -spec get_cloud_registered_properties(wh_json:object()) -> wh_proplist().
 get_cloud_registered_properties(JObj) ->
     [PrinterDoc] = wh_json:get_value(<<"printers">>, JObj),
-
-    [{<<"pvt_cloud_printer_id">>, wh_json:get_value(<<"id">>, PrinterDoc)}
+    [{<<"pvt_cloud_printer_id">>, wh_doc:id(PrinterDoc)}
      ,{<<"pvt_cloud_proxy">>, wh_json:get_value(<<"proxy">>, PrinterDoc)}
      ,{<<"pvt_cloud_created_time">>, wh_json:get_integer_value(<<"createTime">>, PrinterDoc)}
      ,{<<"pvt_cloud_registration_token">>, wh_json:get_value(<<"registration_token">>, JObj)}
@@ -497,11 +498,7 @@ format_multipart_formdata(Boundary, Fields, Files) ->
     EndingParts = [<<"--", Boundary/binary, "--">>, <<"">>],
     FileParts = build_file_parts(Boundary, Files, EndingParts),
     FieldParts = build_field_parts(Boundary, Fields, FileParts),
-
-    lists:foldr(fun join_formdata_fold/2
-                ,[]
-                ,FieldParts
-               ).
+    lists:foldr(fun join_formdata_fold/2, [], FieldParts).
 
 -spec build_field_parts(ne_binary(), wh_proplist(), iolist()) -> iolist().
 build_field_parts(Boundary, Fields, Acc0) ->
@@ -560,7 +557,7 @@ faxbox_doc_save(Context) ->
     Ctx3 = crossbar_doc:ensure_saved(
              cb_context:set_doc(
                cb_context:set_account_db(Ctx2, ?WH_FAXES_DB),
-               wh_json:delete_key(<<"_rev">>, cb_context:doc(Ctx2))
+               wh_doc:delete_revision(cb_context:doc(Ctx2))
               )),
     case cb_context:resp_status(Ctx3) of
         'success' -> Ctx2;

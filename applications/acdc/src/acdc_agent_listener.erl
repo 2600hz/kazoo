@@ -351,7 +351,7 @@ id(Srv) ->
 %%--------------------------------------------------------------------
 init([Supervisor, Agent, Queues]) ->
     AgentId = agent_id(Agent),
-    put('callid', AgentId),
+    wh_util:put_callid(AgentId),
     lager:debug("starting acdc agent listener"),
 
     {'ok', #state{agent_id=AgentId
@@ -444,7 +444,7 @@ handle_cast({'queue_login', Q}, #state{agent_queues=Qs
     end;
 handle_cast({'queue_login', QJObj}, State) ->
     lager:debug("queue jobj: ~p", [QJObj]),
-    handle_cast({'queue_login', wh_json:get_value(<<"_id">>, QJObj)}, State);
+    handle_cast({'queue_login', wh_doc:id(QJObj)}, State);
 
 handle_cast({'queue_logout', Q}, #state{agent_queues=[Q]
                                         ,acct_id=AcctId
@@ -498,7 +498,7 @@ handle_cast({'channel_hungup', CallId}, #state{call=Call
 
             _ = filter_agent_calls(ACallIds, CallId),
 
-            put('callid', AgentId),
+            wh_util:put_callid(AgentId),
             case IsThief of
                 'false' ->
                     {'noreply', State#state{call='undefined'
@@ -559,7 +559,7 @@ handle_cast({'member_connect_retry', CallId}, #state{my_id=MyId
             _ = [acdc_util:unbind_from_call_events(ACallId) || ACallId <- ACallIds],
             acdc_util:unbind_from_call_events(CallId),
 
-            put('callid', AgentId),
+            wh_util:put_callid(AgentId),
 
             {'noreply', State#state{msg_queue_id='undefined'
                                     ,acdc_queue_id='undefined'
@@ -1132,7 +1132,7 @@ recording_format() ->
 -spec agent_id(agent()) -> api_binary().
 agent_id(Agent) ->
     case wh_json:is_json_object(Agent) of
-        'true' -> wh_json:get_value(<<"_id">>, Agent);
+        'true' -> wh_doc:id(Agent);
         'false' -> whapps_call:owner_id(Agent)
     end.
 
@@ -1146,7 +1146,7 @@ account_id(Agent) ->
 -spec account_db(agent()) -> api_binary().
 account_db(Agent) ->
     case wh_json:is_json_object(Agent) of
-        'true' -> wh_json:get_value(<<"pvt_account_db">>, Agent);
+        'true' -> wh_doc:account_db(Agent);
         'false' -> whapps_call:account_db(Agent)
     end.
 
@@ -1174,8 +1174,8 @@ stop_agent_leg(ACallId, ACtrlQ) ->
     wapi_dialplan:publish_command(ACtrlQ, Command).
 
 find_account_id(JObj) ->
-    case wh_json:get_value(<<"pvt_account_id">>, JObj) of
-        'undefined' -> wh_util:format_account_id(wh_json:get_value(<<"pvt_account_db">>, JObj), 'raw');
+    case wh_doc:account_id(JObj) of
+        'undefined' -> wh_util:format_account_id(wh_doc:account_db(JObj), 'raw');
         AcctId -> AcctId
     end.
 

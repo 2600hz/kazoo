@@ -100,7 +100,7 @@ authenticating_user_account_name(JObj) ->
 -spec type(doc()) -> api_binary().
 type() -> ?PVT_TYPE.
 
-type(JObj) -> wh_doc:pvt_type(JObj).
+type(JObj) -> wh_doc:type(JObj).
 
 -spec new() -> doc().
 new() ->
