@@ -743,13 +743,6 @@ group_value(JObj) ->
 
 -spec adjusted_timestamp(kzd_cdr:doc()) -> gregorian_seconds().
 adjusted_timestamp(JObj) ->
-    lager:debug("adjusted ~s: ~p - ~p(~p) - ~p"
-                ,[kzd_cdr:call_id(JObj)
-                  ,kzd_cdr:timestamp(JObj)
-                  ,direction_offset(JObj)
-                  ,kzd_cdr:call_direction(JObj)
-                  ,kzd_cdr:duration_s(JObj, 0)
-                 ]),
     kzd_cdr:timestamp(JObj)
         - direction_offset(JObj)
         - kzd_cdr:duration_s(JObj, 0).
