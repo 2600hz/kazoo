@@ -24,6 +24,11 @@
          ,to_csv/1
         ]).
 
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-export([group_cdrs/1]).
+-endif.
+
 -include("../crossbar.hrl").
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".cdrs">>).
@@ -593,3 +598,107 @@ load_cdr(<<Year:4/binary, Month:2/binary, "-", _/binary>> = CDRId, Context) ->
 load_cdr(CDRId, Context) ->
     lager:debug("error loading cdr by id ~p", [CDRId]),
     crossbar_util:response('error', <<"could not find cdr with supplied id">>, 404, Context).
+
+-record(group_value, {timestamp :: gregorian_seconds()
+                      ,call_id :: ne_binary()
+                      ,cdr :: kzd_cdr:doc()
+                     }).
+
+-type group_value() :: #group_value{}.
+-type group_values() :: [group_value(),...] | [].
+
+-spec group_cdrs(wh_json:objects()) -> wh_json:object().
+group_cdrs(JObjs) ->
+    Grouped = lists:foldl(fun group_cdr/2
+                          ,dict:new()
+                          ,JObjs
+                         ),
+    Combined = combine_groups(Grouped),
+
+    combined_to_json(Combined).
+
+-spec combined_to_json(dict()) ->
+                              wh_json:object().
+combined_to_json(Combined) ->
+    wh_json:from_list(
+      [{K, group_values_to_json(sort_group(GroupValues))}
+       || {K, GroupValues} <- dict:to_list(Combined)
+      ]
+     ).
+
+-spec group_values_to_json(group_values()) -> wh_json:objects().
+
+group_values_to_json([#group_value{cdr=ALeg}|GroupValues]) ->
+    [wh_json:set_value(<<"is_a_leg">>, 'true', ALeg)
+     | [JObj || #group_value{cdr=JObj} <- GroupValues]
+    ].
+
+-spec combine_groups(dict()) -> dict().
+combine_groups(Grouped) ->
+    dict:fold(fun combine_group/3
+              ,dict:new()
+              ,Grouped
+             ).
+
+-spec combine_group(ne_binary(), group_values(), dict()) ->
+                           dict().
+combine_group(_CallId, CDRs, Acc) ->
+    case sort_group(CDRs) of
+        [#group_value{call_id=KeyCallId
+                      ,cdr=CDR
+                     }
+        ]=Sorted ->
+            case kzd_cdr:other_leg_call_id(CDR) of
+                'undefined' -> dict:store(KeyCallId, Sorted, Acc);
+                _OtherLeg -> Acc
+            end;
+        [#group_value{call_id=KeyCallId}|_]=Sorted ->
+            combine_sorted(KeyCallId, Sorted, Acc)
+    end.
+
+-spec sort_group(group_values()) -> group_values().
+sort_group(CDRs) ->
+    lists:keysort(#group_value.timestamp, CDRs).
+
+-spec combine_sorted(ne_binary(), group_values(), dict()) -> dict().
+combine_sorted(KeyCallId, Sorted, Acc) ->
+    Existing = existing(KeyCallId, Acc),
+    Merged = merge(Existing, Sorted),
+    dict:store(KeyCallId, Merged, Acc).
+
+-spec merge(group_values(), group_values()) -> group_values().
+merge([], Sorted) -> Sorted;
+merge(Existing, Sorted) ->
+    lists:ukeysort(#group_value.call_id, Existing ++ Sorted).
+
+-spec existing(ne_binary(), dict()) -> group_values().
+existing(Key, Acc) ->
+    try dict:fetch(Key, Acc) of
+        Existing -> Existing
+    catch
+        'error':'badarg' -> []
+    end.
+
+-spec group_cdr(kzd_cdr:doc(), dict()) -> dict().
+group_cdr(JObj, Acc) ->
+    CallId = kzd_cdr:call_id(JObj),
+
+    maybe_add_other_leg(JObj
+                        ,dict:append(CallId, group_value(JObj), Acc)
+                        ,kzd_cdr:other_leg_call_id(JObj)
+                       ).
+
+-spec maybe_add_other_leg(kzd_cdr:doc(), dict(), api_binary()) ->
+                                 dict().
+maybe_add_other_leg(_JObj, Acc, 'undefined') ->
+    Acc;
+maybe_add_other_leg(JObj, Acc, OtherLeg) ->
+    dict:append(OtherLeg, group_value(JObj), Acc).
+
+-spec group_value(kzd_cdr:doc()) ->
+                         group_value().
+group_value(JObj) ->
+    #group_value{timestamp=kzd_cdr:timestamp(JObj)
+                 ,call_id=kzd_cdr:call_id(JObj)
+                 ,cdr=JObj
+                }.
