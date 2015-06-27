@@ -322,8 +322,9 @@ handle_change(JObj, <<"undefined">>) ->
                                  )
     of
         {'ok', Doc} ->
-            lager:debug("found doc of type ~s", [wh_json:get_value(<<"pvt_type">>, Doc)]),
-            handle_change(JObj, wh_json:get_value(<<"pvt_type">>, Doc));
+            Type = wh_doc:type(Doc),
+            lager:debug("found doc of type ~s", [Type]),
+            handle_change(JObj, Type);
         {'error', _E} ->
             lager:debug("failed to find doc")
     end.
@@ -349,7 +350,7 @@ handle_device_change(AccountDb, AccountId, DeviceId, Rev, <<"doc_created">>, Cnt
 handle_device_change(AccountDb, AccountId, DeviceId, Rev, <<"doc_edited">>, Cnt) ->
     case cf_endpoint:get(DeviceId, AccountDb) of
         {'ok', EP} ->
-            case wh_json:get_value(<<"_rev">>, EP) of
+            case wh_doc:revision(EP) of
                 Rev ->
                     gproc:send(?ENDPOINT_UPDATE_REG(AccountId, DeviceId), ?ENDPOINT_EDITED(EP)),
                     gproc:send(?OWNER_UPDATE_REG(AccountId, wh_json:get_value(<<"owner_id">>, EP)), ?ENDPOINT_EDITED(EP));
@@ -362,7 +363,7 @@ handle_device_change(AccountDb, AccountId, DeviceId, Rev, <<"doc_edited">>, Cnt)
 handle_device_change(AccountDb, AccountId, DeviceId, Rev, <<"doc_deleted">>, Cnt) ->
     case cf_endpoint:get(DeviceId, AccountDb) of
         {'ok', EP} ->
-            case wh_json:get_value(<<"_rev">>, EP) of
+            case wh_doc:revision(EP) of
                 Rev ->
                     gproc:send(?ENDPOINT_UPDATE_REG(AccountId, DeviceId), ?ENDPOINT_DELETED(EP)),
                     gproc:send(?OWNER_UPDATE_REG(AccountId, wh_json:get_value(<<"owner_id">>, EP)), ?ENDPOINT_DELETED(EP));

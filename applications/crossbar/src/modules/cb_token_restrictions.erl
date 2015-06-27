@@ -50,18 +50,18 @@ resource_exists() -> 'true'.
 
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
-validate(Context) -> 
+validate(Context) ->
     validate(Context, cb_context:req_verb(Context)).
 
-validate(Context, ?HTTP_GET) -> 
+validate(Context, ?HTTP_GET) ->
     load_restrictions(Context);
-validate(Context, ?HTTP_POST) -> 
+validate(Context, ?HTTP_POST) ->
     validate_request(Context);
-validate(Context, ?HTTP_DELETE) -> 
+validate(Context, ?HTTP_DELETE) ->
     load_restrictions(Context).
 
 -spec load_restrictions(cb_context:context()) -> cb_context:context().
-load_restrictions(Context) -> 
+load_restrictions(Context) ->
     crossbar_doc:load(?CB_ACCOUNT_TOKEN_RESTRICTIONS, Context).
 
 validate_request(Context) ->
@@ -73,8 +73,8 @@ on_successful_validation(Context) ->
     Context1 = crossbar_doc:load_merge(?CB_ACCOUNT_TOKEN_RESTRICTIONS, Context),
     case cb_context:resp_status(Context1) of
         'success' -> Context1;
-        _ -> 
-            Setters = [fun add_doc_id/1 
+        _ ->
+            Setters = [fun add_doc_id/1
                        ,fun add_pvt_type/1
                       ],
             cb_context:setters(Context, Setters)
@@ -82,18 +82,14 @@ on_successful_validation(Context) ->
 
 -spec add_pvt_type(cb_context:context()) -> cb_context:context().
 add_pvt_type(Context) ->
-    cb_context:set_doc(Context
-                       ,wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, cb_context:doc(Context))
-                      ).
+    cb_context:set_doc(Context, wh_doc:set_type(cb_context:doc(Context), ?PVT_TYPE)).
 
 -spec add_doc_id(cb_context:context()) -> cb_context:context().
 add_doc_id(Context) ->
-    cb_context:set_doc(Context
-                       ,wh_json:set_value(<<"_id">>, ?CB_ACCOUNT_TOKEN_RESTRICTIONS, cb_context:doc(Context))
-                      ).
+    cb_context:set_doc(Context, wh_doc:set_id(cb_context:doc(Context), ?CB_ACCOUNT_TOKEN_RESTRICTIONS)).
 
 -spec post(cb_context:context()) -> cb_context:context().
-post(Context) -> 
+post(Context) ->
     crossbar_doc:save(Context).
 
 -spec delete(cb_context:context()) -> cb_context:context().
@@ -139,22 +135,23 @@ maybe_deny_access(Context, Rs) ->
                 ,fun match_param/2
                 ,fun match_verb/2
                 ],
-    Result = lists:foldl(fun(F, R) -> 
+    Result = lists:foldl(fun(F, R) ->
                              case wh_util:is_empty(R) of
                                  'false' -> F(Context, R);
                                  'true' -> 'undefined'
                              end
-                     end, 
+                     end,
                      Rs,
                      MatchFuns
                     ),
     wh_util:is_empty(Result).
 
--spec match_endpoint(cb_context:context(), wh_json:object() | 'undefined') -> wh_json:objects() | 'undefined'.
-match_endpoint(Context, Rs) -> 
+-spec match_endpoint(cb_context:context(), wh_json:object() | 'undefined') ->
+                            wh_json:objects() | 'undefined'.
+match_endpoint(Context, Rs) ->
     [{ReqEndpoint, _}|_] = cb_context:req_nouns(Context),
     case wh_json:get_value(ReqEndpoint, Rs) of
-        'undefined' -> 
+        'undefined' ->
             case wh_json:get_value(<<"_">>, Rs) of
                 'undefined' ->
                     lager:info("no match endpoint for: ~p", [ReqEndpoint]),
@@ -163,25 +160,25 @@ match_endpoint(Context, Rs) ->
                     lager:debug("match endpoint \"_\""),
                     R
             end;
-        R -> 
+        R ->
             lager:debug("match endpoint ~p",[ReqEndpoint]),
             R
     end.
 
 -spec match_account(cb_context:context(), wh_json:objects()) -> wh_json:objects() | 'undefined'.
-match_account(Context, Rs) -> 
+match_account(Context, Rs) ->
     AllowedAccounts = allowed_accounts(Context),
     filter_by_account(AllowedAccounts, Rs).
 
-filter_by_account(Accounts, []) -> 
+filter_by_account(Accounts, []) ->
     lager:info("no match account for: ~p",[Accounts]),
     'undefined';
 filter_by_account(AllowedAccounts, [R|Rs]) ->
     case wh_json:get_value(<<"allowed_accounts">>, R) of
-        'undefined' -> 
+        'undefined' ->
             lager:debug("no \"allowed_accounts\" parameter in rule, match any account"),
             wh_json:get_value(<<"rules">>, R);
-        RsAccounts -> 
+        RsAccounts ->
             SetsAllowedAccounts = sets:from_list(AllowedAccounts),
             SetsRsAccounts = sets:from_list(RsAccounts),
             SetsMatch = sets:intersection(SetsAllowedAccounts, SetsRsAccounts),
@@ -197,11 +194,11 @@ filter_by_account(AllowedAccounts, [R|Rs]) ->
 allowed_accounts(Context) ->
     AuthAccountId = cb_context:auth_account_id(Context),
     AccountId = cb_context:account_id(Context),
-    %% 
+    %%
     %% #cb_context.account_id not always contain AccountId, try found it from req_nouns
     %%
 %%    AccountId = case cb_context:account_id(Context) of
-%%        'undefined' -> 
+%%        'undefined' ->
 %%            Nouns = cb_context:req_nouns(Context),
 %%            case props:get_value(?WH_ACCOUNTS_DB, Nouns) of
 %%                'undefined' -> 'undefined';
@@ -222,14 +219,14 @@ allowed_accounts(Context) ->
     end.
 
 -spec match_param(cb_context:context(), wh_json:objects()) -> wh_json:object() | 'undefined'.
-match_param(Context, R) -> 
+match_param(Context, R) ->
     [{_, ReqParam}|_] = cb_context:req_nouns(Context),
     Rules = wh_json:get_keys(R),
     case match_rules(ReqParam, Rules) of
-        'undefined' -> 
+        'undefined' ->
             lager:info("no match rule for: ~p",[ReqParam]),
                 'undefined';
-        MatchRule -> 
+        MatchRule ->
             lager:debug("match rule: ~p",[MatchRule]),
             wh_json:get_value(MatchRule, R)
     end.

@@ -191,7 +191,7 @@ set_base_properties(JObj, Id) ->
 -spec pvt_type() -> ne_binary().
 -spec pvt_type(doc()) -> ne_binary().
 pvt_type() -> ?PVT_TYPE.
-pvt_type(JObj) -> wh_json:get_value(<<"pvt_type">>, JObj, ?PVT_TYPE).
+pvt_type(JObj) -> wh_doc:type(JObj, ?PVT_TYPE).
 
 -spec is_enabled(doc()) -> boolean().
 -spec is_enabled(doc(), Default) -> boolean() | Default.

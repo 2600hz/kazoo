@@ -329,7 +329,7 @@ is_valid_queue(Context, <<_/binary>> = QueueId) ->
             }
     end;
 is_valid_queue(Context, QueueJObj) ->
-    case wh_json:get_value(<<"pvt_type">>, QueueJObj) of
+    case wh_doc:type(QueueJObj) of
         <<"queue">> -> 'true';
         _ ->
             {'false'
@@ -344,7 +344,7 @@ is_valid_queue(Context, QueueJObj) ->
 
 is_valid_endpoint(Context, DataJObj) ->
     AcctDb = cb_context:account_db(Context),
-    Id = wh_json:get_value(<<"id">>, DataJObj),
+    Id = wh_doc:id(DataJObj),
     case couch_mgr:open_cache_doc(AcctDb, Id) of
         {'ok', CallMeJObj} -> is_valid_endpoint_type(Context, CallMeJObj);
         {'error', _} ->
@@ -362,7 +362,7 @@ is_valid_endpoint(Context, DataJObj) ->
     end.
 
 is_valid_endpoint_type(Context, CallMeJObj) ->
-    case wh_json:get_value(<<"pvt_type">>, CallMeJObj) of
+    case wh_doc:type(CallMeJObj) of
         <<"device">> -> 'true';
         Type ->
             {'false'

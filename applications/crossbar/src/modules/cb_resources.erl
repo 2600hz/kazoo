@@ -508,9 +508,7 @@ update_local(Context, Id) ->
 %%--------------------------------------------------------------------
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
-    cb_context:set_doc(Context
-                       ,wh_json:set_value(<<"pvt_type">>, <<"resource">>, cb_context:doc(Context))
-                      );
+    cb_context:set_doc(Context, wh_doc:set_type(cb_context:doc(Context), <<"resource">>));
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context).
 

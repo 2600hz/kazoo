@@ -207,7 +207,7 @@ validate_set_rate_limits(Context, ThingId) ->
 set_pvt_fields(Context) ->
     ThingId = thing_id(Context),
     {'ok', JObj} = couch_mgr:open_cache_doc(cb_context:account_db(Context), ThingId),
-    ThingType = wh_json:get_value(<<"pvt_type">>, JObj),
+    ThingType = wh_doc:type(JObj),
 
     Props = [{<<"pvt_type">>, <<"rate_limits">>}
              ,{<<"pvt_owner_id">>, ThingId}
@@ -218,7 +218,7 @@ set_pvt_fields(Context) ->
 
 -spec query_name(ne_binary(), wh_json:object()) -> api_binary().
 query_name(<<"account">>, JObj) ->
-    wh_json:get_value(<<"realm">>, JObj);
+    kz_account:realm(JObj);
 query_name(<<"device">>, JObj) ->
     kz_device:sip_username(JObj).
 

@@ -665,7 +665,7 @@ create_new_ring_group_callflow(JObj) ->
 
 -spec base_group_ring_group(wh_json:object()) -> wh_json:object().
 base_group_ring_group(JObj) ->
-    io:format("migrating callflow ~s: ~s~n", [wh_json:get_value(<<"_id">>, JObj), wh_json:encode(JObj)]),
+    io:format("migrating callflow ~s: ~s~n", [wh_doc:id(JObj), wh_json:encode(JObj)]),
     BaseGroup = wh_json:from_list(
                   props:filter_undefined(
                     [{<<"pvt_vsn">>, <<"1">>}

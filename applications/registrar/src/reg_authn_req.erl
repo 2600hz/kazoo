@@ -314,7 +314,7 @@ account_ccvs_from_ip_auth(Doc) ->
     props:filter_undefined(
       [{<<"Account-ID">>, AccountID}
        ,{<<"Owner-ID">>, OwnerID}
-       ,{<<"Authorizing-ID">>, wh_json:get_value(<<"id">>, Doc)}
+       ,{<<"Authorizing-ID">>, wh_doc:id(Doc)}
        ,{<<"Inception">>, <<"on-net">>}
        ,{<<"Authorizing-Type">>, AuthType}
       ]).
@@ -360,9 +360,7 @@ is_device_enabled(JObj) ->
     case wh_json:is_true([<<"doc">>, <<"enabled">>], JObj, Default) of
         'true' -> 'true';
         'false' ->
-            lager:notice("rejecting authn for disabled device ~s"
-                         ,[wh_json:get_value(<<"id">>, JObj)]
-                        ),
+            lager:notice("rejecting authn for disabled device ~s", [wh_doc:id(JObj)]),
             'false'
     end.
 
@@ -381,9 +379,7 @@ is_owner_enabled(AccountDb, OwnerId) ->
             case kzd_user:is_enabled(UserJObj, Default) of
                 'true' -> 'true';
                 'false' ->
-                    lager:notice("rejecting authn for disabled owner ~s"
-                                 ,[OwnerId]
-                                ),
+                    lager:notice("rejecting authn for disabled owner ~s", [OwnerId]),
                     'false'
             end;
         {'error', _R} ->
@@ -393,7 +389,7 @@ is_owner_enabled(AccountDb, OwnerId) ->
 
 -spec jobj_to_auth_user(wh_json:object(), ne_binary(), ne_binary(), wh_json:object()) ->
                                {'ok', auth_user()} |
-                               {'error', any()}.
+                               {'error', _}.
 jobj_to_auth_user(JObj, Username, Realm, Req) ->
     AuthValue = get_auth_value(JObj),
     AuthDoc = wh_json:get_value(<<"doc">>, JObj),

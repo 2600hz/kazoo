@@ -103,7 +103,7 @@ maybe_migrate_private_media(AccountDb, JObj) ->
     end.
 
 migrate_private_media(AccountDb, Doc, <<"tiff">>) ->
-    {'ok', _} = couch_mgr:ensure_saved(AccountDb, wh_json:set_value(<<"pvt_type">>, <<"fax">>, Doc)),
+    {'ok', _} = couch_mgr:ensure_saved(AccountDb, wh_doc:set_type(Doc, <<"fax">>)),
     'ok';
 migrate_private_media(_AccountDb, _JObj, _MediaType) -> 'ok'.
 
@@ -127,14 +127,13 @@ recover_private_media(Account) ->
     end.
 
 maybe_recover_private_media(AccountDb, JObj) ->
-    DocId = wh_json:get_value(<<"id">>, JObj),
-    {'ok', Doc } = couch_mgr:open_doc(AccountDb, DocId),
+    {'ok', Doc } = couch_mgr:open_doc(AccountDb, wh_doc:id(JObj)),
     recover_private_media(AccountDb, Doc, wh_json:get_value(<<"media_type">>, Doc)).
 
 recover_private_media(_AccountDb, _Doc, <<"tiff">>) ->
     'ok';
 recover_private_media(AccountDb, Doc, _MediaType) ->
-    {'ok', _ } = couch_mgr:ensure_saved(AccountDb, wh_json:set_value(<<"pvt_type">>, <<"private_media">>, Doc)),
+    {'ok', _ } = couch_mgr:ensure_saved(AccountDb, wh_doc:set_type(Doc, <<"private_media">>)),
     'ok'.
 
 -spec migrate_faxes_to_modb(ne_binary(),  wh_proplist()) -> 'ok'.
@@ -157,7 +156,7 @@ migrate_faxes_to_modb(Account, Options) ->
     end.
 
 maybe_migrate_fax_to_modb(AccountDb, JObj, Options) ->
-    DocId = wh_json:get_value(<<"id">>, JObj),
+    DocId = wh_doc:id(JObj),
     case couch_mgr:open_doc(AccountDb, DocId) of
         {'ok', Doc} ->
             case wh_doc:attachments(Doc) of
@@ -176,7 +175,7 @@ maybe_migrate_fax_to_modb(AccountDb, JObj, Options) ->
     end.
 
 migrate_fax_to_modb(AccountDb, DocId, JObj, Options) ->
-    Timestamp = wh_json:get_integer_value(<<"pvt_created">>, JObj, wh_util:current_tstamp()),
+    Timestamp = wh_doc:created(JObj, wh_util:current_tstamp()),
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
     AccountMODb = kazoo_modb:get_modb(AccountDb, Year, Month),
     FaxMODb = wh_util:format_account_id(AccountMODb, 'encoded'),

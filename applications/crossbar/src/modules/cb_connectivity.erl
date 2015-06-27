@@ -231,7 +231,7 @@ validate_patch(Id, Context) ->
 %%--------------------------------------------------------------------
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
-    cb_context:set_doc(Context, wh_json:set_value(<<"pvt_type">>, <<"sys_info">>, cb_context:doc(Context)));
+    cb_context:set_doc(Context, wh_doc:set_type(cb_context:doc(Context), <<"sys_info">>));
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context).
 
@@ -258,4 +258,4 @@ summary(Context) ->
 %%--------------------------------------------------------------------
 -spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"id">>, JObj)|Acc].
+    [wh_doc:id(JObj) | Acc].

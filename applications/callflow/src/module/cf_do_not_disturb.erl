@@ -90,7 +90,7 @@ maybe_get_doc('undefined', _) ->
 maybe_get_doc(AccountDb, Id) ->
     case couch_mgr:open_doc(AccountDb, Id) of
         {'ok', JObj}=Ok ->
-            case wh_json:get_value(<<"pvt_type">>, JObj) of
+            case wh_doc:type(JObj) of
                 <<"device">> -> Ok;
                 <<"user">> -> Ok;
                 _Else ->
@@ -102,7 +102,7 @@ maybe_get_doc(AccountDb, Id) ->
             E
     end.
 
--spec maybe_execute_action(ne_binary(), dnd(), whapps_call:call()) -> any().
+-spec maybe_execute_action(ne_binary(), dnd(), whapps_call:call()) -> _.
 maybe_execute_action(<<"activate">>, #dnd{enabled='true'}, Call) ->
     lager:info("dnd is already enabled on this document", []),
     whapps_call_command:b_prompt(<<"dnd-activated">>, Call);

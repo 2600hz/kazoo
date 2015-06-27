@@ -558,7 +558,7 @@ create_metadata(Doc) ->
     %% simple funciton for setting the same key in one json object
     %% with the value of that key in another, unless it doesnt exist
     Metadata = fun(<<"name">> = K, D, J) ->
-                       case wh_json:get_value(<<"pvt_type">>, D) of
+                       case wh_doc:type(D) of
                            <<"user">> ->
                                case <<(wh_json:get_binary_value(<<"first_name">>, D, <<>>))/binary
                                         ," "

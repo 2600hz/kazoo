@@ -64,9 +64,7 @@ maybe_build_call_waiting_record(Data, Call) ->
     case maybe_get_doc(AccountDb, DocId) of
         {'error', _}= _E -> _E;
         {'ok', JObj} ->
-            lager:info("changing call waiting settings on document ~s"
-                       ,[wh_json:get_value(<<"_id">>, JObj)]
-                      ),
+            lager:info("changing call waiting settings on document ~s", [wh_doc:id(JObj)]),
             {'ok', #call_waiting{enabled = wh_json:is_true([<<"call_waiting">>, <<"enabled">>], JObj, 'true')
                                  ,jobj = JObj
                                  ,account_db = AccountDb
@@ -128,19 +126,13 @@ maybe_update_doc(Enabled
     case couch_mgr:save_doc(AccountDb, Updated) of
         {'ok', _} ->
             lager:info("call_waiting.enabled set to ~s on ~s ~s"
-                       ,[Enabled
-                         ,wh_json:get_value(<<"pvt_type">>, JObj)
-                         ,wh_json:get_value(<<"_id">>, JObj)
-                        ]
+                       ,[Enabled, wh_doc:type(JObj), wh_doc:id(JObj)]
                       );
         {'error', 'conflict'} ->
             retry_update_doc(Enabled, CW, Retries);
         {'error', _R} ->
             lager:debug("unabled to update call_waiting.enabled on ~s ~s: ~p"
-                        ,[wh_json:get_value(<<"pvt_type">>, JObj)
-                          ,wh_json:get_value(<<"_id">>, JObj)
-                          ,_R
-                         ]
+                        ,[wh_doc:type(JObj), wh_doc:id(JObj), _R]
                        ),
             'error'
     end.
@@ -148,9 +140,7 @@ maybe_update_doc(Enabled
 -spec retry_update_doc(boolean(), call_waiting(), 0..3) -> 'ok' | 'error'.
 retry_update_doc(_Enabled, #call_waiting{jobj = JObj}, Retries) when Retries >= 3 ->
     lager:info("to many attempts to update call_waiting for ~s ~s: ~p"
-               ,[wh_json:get_value(<<"pvt_type">>, JObj)
-                 ,wh_json:get_value(<<"_id">>, JObj)
-                ]
+               ,[wh_doc:type(JObj), wh_doc:id(JObj)]
               ),
     'error';
 retry_update_doc(Enabled
@@ -159,15 +149,12 @@ retry_update_doc(Enabled
                                }=CW
                  ,Retries
                 ) ->
-    case couch_mgr:open_doc(AccountDb, wh_json:get_value(<<"_id">>, JObj)) of
+    case couch_mgr:open_doc(AccountDb, wh_doc:id(JObj)) of
         {'ok', NewJObj} ->
             maybe_update_doc(Enabled, CW#call_waiting{jobj = NewJObj}, Retries+1);
         {'error', _R} ->
             lager:info("unable to retry call_waiting update for ~s ~s: ~p"
-                       ,[wh_json:get_value(<<"pvt_type">>, JObj)
-                         ,wh_json:get_value(<<"_id">>, JObj)
-                         ,_R
-                        ]
+                       ,[wh_doc:type(JObj), wh_doc:id(JObj), _R]
                       ),
             'error'
     end.

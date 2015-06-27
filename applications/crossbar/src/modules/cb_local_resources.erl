@@ -154,9 +154,7 @@ check_resource_schema(ResourceId, Context) ->
 
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
-    cb_context:set_doc(Context
-                       ,wh_json:set_value(<<"pvt_type">>, <<"resource">>, cb_context:doc(Context))
-                      );
+    cb_context:set_doc(Context, wh_doc:set_type(cb_context:doc(Context), <<"resource">>));
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context).
 
@@ -174,11 +172,11 @@ maybe_aggregate_resource(Context) ->
 maybe_aggregate_resource(Context, 'success') ->
     case wh_util:is_true(cb_context:fetch(Context, 'aggregate_resource')) of
         'false' ->
-            ResourceId = wh_json:get_value(<<"_id">>, cb_context:doc(Context)),
+            ResourceId = wh_doc:id(cb_context:doc(Context)),
             maybe_remove_aggregate(ResourceId, Context);
         'true' ->
             lager:debug("adding resource to the sip auth aggregate"),
-            couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, cb_context:doc(Context))),
+            couch_mgr:ensure_saved(?WH_SIP_DB, wh_doc:delete_revision(cb_context:doc(Context))),
             _ = wapi_switch:publish_reload_gateways(),
             _ = wapi_switch:publish_reload_acls(),
             'true'
@@ -218,7 +216,7 @@ get_all_sip_auth_ips() ->
         {'ok', JObjs} ->
             lists:foldr(fun(JObj, IPs) ->
                                 IP = wh_json:get_value(<<"key">>, JObj),
-                                ID = wh_json:get_value(<<"id">>, JObj),
+                                ID = wh_doc:id(JObj),
                                 [{IP, ID}|IPs]
                         end, [], JObjs);
         {'error', _} -> []
@@ -310,8 +308,7 @@ maybe_aggregate_resources([Resource|Resources]) ->
 -spec maybe_remove_aggregates(wh_json:objects()) -> 'ok'.
 maybe_remove_aggregates([]) -> 'ok';
 maybe_remove_aggregates([Resource|Resources]) ->
-    ResourceId = wh_json:get_first_defined([<<"_id">>, <<"id">>], Resource),
-    case couch_mgr:open_doc(?WH_SIP_DB, ResourceId) of
+    case couch_mgr:open_doc(?WH_SIP_DB, wh_doc:id(Resource)) of
         {'ok', JObj} ->
             couch_mgr:del_doc(?WH_SIP_DB, JObj),
             _ = wapi_switch:publish_reload_gateways(),

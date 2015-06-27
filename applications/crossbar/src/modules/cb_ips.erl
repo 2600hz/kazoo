@@ -386,12 +386,12 @@ release_ip(Context, Id) ->
 clean_ip(JObj) ->
     wh_json:from_list(
       props:filter_undefined(
-        [{<<"id">>, wh_json:get_value(<<"_id">>, JObj)}
-         ,{<<"ip">>, wh_json:get_value(<<"_id">>, JObj)}
+        [{<<"id">>, wh_doc:id(JObj)}
+         ,{<<"ip">>, wh_doc:id(JObj)}
          ,{<<"zone">>, wh_json:get_value(<<"pvt_zone">>, JObj)}
          ,{<<"host">>, wh_json:get_value(<<"pvt_host">>, JObj)}
          ,{<<"status">>, wh_json:get_value(<<"pvt_status">>, JObj)}
-         ,{<<"type">>, wh_json:get_value(<<"pvt_type">>, JObj)}
+         ,{<<"type">>, wh_doc:type(JObj)}
          ,{<<"assigned_to">>, wh_json:get_value(<<"pvt_assigned_to">>, JObj)}
         ])
      ).

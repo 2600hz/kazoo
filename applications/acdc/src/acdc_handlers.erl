@@ -30,7 +30,7 @@ maybe_route_respond(ReqJObj, Call, AcctId, Id) ->
     case couch_mgr:open_cache_doc(whapps_call:account_db(Call), Id) of
         {'error', _} -> 'ok';
         {'ok', Doc} ->
-            maybe_route_respond(ReqJObj, Call, AcctId, Id, wh_json:get_value(<<"pvt_type">>, Doc))
+            maybe_route_respond(ReqJObj, Call, AcctId, Id, wh_doc:type(Doc))
     end.
 
 maybe_route_respond(ReqJObj, Call, AccountId, QueueId, <<"queue">> = T) ->

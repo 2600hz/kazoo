@@ -1054,9 +1054,7 @@ set_private_properties(Context) ->
 
 -spec add_pvt_type(cb_context:context()) -> cb_context:context().
 add_pvt_type(Context) ->
-    cb_context:set_doc(Context
-                       ,wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, cb_context:doc(Context))
-                      ).
+    cb_context:set_doc(Context, wh_doc:set_type(cb_context:doc(Context), ?PVT_TYPE)).
 
 -spec add_pvt_vsn(cb_context:context()) -> cb_context:context().
 add_pvt_vsn(Context) ->

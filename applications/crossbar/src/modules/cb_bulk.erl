@@ -388,4 +388,4 @@ get_validate_binding(<<"vmbox">>) ->      <<"v1_resource.validate.vmboxes">>;
 get_validate_binding(<<_/binary>>) ->
     'undefined';
 get_validate_binding(JObj) ->
-    get_validate_binding(wh_json:get_value(<<"pvt_type">>, JObj)).
+    get_validate_binding(wh_doc:type(JObj)).
