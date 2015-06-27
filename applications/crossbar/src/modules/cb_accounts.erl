@@ -183,8 +183,7 @@ validate_account(Context, _AccountId, ?HTTP_PUT) ->
 validate_account(Context, AccountId, ?HTTP_POST) ->
     validate_request(AccountId, prepare_context(AccountId, Context));
 validate_account(Context, AccountId, ?HTTP_PATCH) ->
-    Context1 = prepare_context(AccountId, Context),
-    crossbar_doc:patch_and_validate(AccountId, Context1, fun validate_request/2);
+    validate_patch_request(AccountId, prepare_context(AccountId, Context));
 validate_account(Context, AccountId, ?HTTP_DELETE) ->
     validate_delete_request(AccountId, prepare_context(AccountId, Context)).
 
@@ -267,15 +266,8 @@ post(Context, AccountId, ?MOVE) ->
     end.
 
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
-patch(Context, _AccountId) ->
-    Context1 = crossbar_doc:save(Context),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            _ = wh_util:spawn('provisioner_util', 'maybe_update_account', [Context1]),
-            Context1;
-        _Status ->
-            Context1
-    end.
+patch(Context, AccountId) ->
+    post(Context, AccountId).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -613,6 +605,11 @@ validate_delete_request(AccountId, Context) ->
                 _Else -> cb_context:add_system_error('account_has_descendants', Context)
             end
     end.
+
+%% @private
+-spec validate_patch_request(ne_binary(), cb_context:context()) -> cb_context:context().
+validate_patch_request(AccountId, Context) ->
+    crossbar_doc:patch_and_validate(AccountId, Context, fun validate_request/2).
 
 %%--------------------------------------------------------------------
 %% @private
