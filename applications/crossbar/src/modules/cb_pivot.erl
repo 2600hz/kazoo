@@ -311,8 +311,7 @@ leak_pvt_field(JObj) ->
 
 -spec leak_pvt_created(wh_json:object(), wh_json:object()) -> wh_json:object().
 leak_pvt_created(JObj, Acc) ->
-    Created = wh_json:get_value([<<"pvt_created">>], JObj),
-    wh_json:set_value(<<"created">>, Created, Acc).
+    wh_json:set_value(<<"created">>, wh_doc:created(JObj), Acc).
 
 -spec leak_pvt_node(wh_json:object(), wh_json:object()) -> wh_json:object().
 leak_pvt_node(JObj, Acc) ->

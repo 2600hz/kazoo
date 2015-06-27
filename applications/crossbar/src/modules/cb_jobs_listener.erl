@@ -256,7 +256,7 @@ maybe_recover_incomplete_jobs(IncompleteJobs) ->
 -spec maybe_recover_incomplete_job(wh_json:object()) -> 'ok'.
 maybe_recover_incomplete_job(Job) ->
     Now = wh_util:current_tstamp(),
-    case (Now - wh_json:get_integer_value(<<"pvt_modified">>, Job)) > ?RECOVERY_THRESHOLD_S of
+    case (Now - wh_doc:modified(Job)) > ?RECOVERY_THRESHOLD_S of
         'false' -> 'ok';
         'true' ->
             lager:debug("job ~s in ~s is old and incomplete, attempting to restart it"

@@ -380,9 +380,8 @@ summary_attempts_fetch(Context, ViewOptions, View) ->
                                        wh_json:objects().
 normalize_attempt_results(JObj, Acc) ->
     Doc = wh_json:get_value(<<"doc">>, JObj),
-    Timestamp = wh_json:get_value(<<"pvt_created">>, Doc),
     [wh_json:delete_keys([<<"id">>, <<"_id">>]
-                         ,wh_json:set_value(<<"timestamp">>, Timestamp, Doc)
+                         ,wh_json:set_value(<<"timestamp">>, wh_doc:created(Doc), Doc)
                         )
      | Acc
     ].

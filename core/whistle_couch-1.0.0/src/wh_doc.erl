@@ -305,8 +305,11 @@ set_created(JObj, Timestamp) ->
     wh_json:set_value(?KEY_CREATED, Timestamp, JObj).
 
 -spec modified(wh_json:object()) -> api_integer().
+-spec modified(wh_json:object(), Default) -> integer() | Default.
 modified(JObj) ->
-    wh_json:get_integer_value(?KEY_MODIFIED, JObj).
+    modified(JObj, 'undefined').
+modified(JObj, Default) ->
+    wh_json:get_integer_value(?KEY_MODIFIED, JObj, Default).
 
 -spec account_id(wh_json:object()) -> api_binary().
 -spec account_id(wh_json:object(), Default) -> ne_binary() | Default.

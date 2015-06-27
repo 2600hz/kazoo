@@ -1191,8 +1191,8 @@ create_number_summary(_Account, #number{state=State
                        ,{<<"features">>, NFeatures}
                        ,{<<"assigned_to">>, AssignedTo}
                        ,{<<"used_by">>, UsedBy}
-                       ,{<<"created">>, wh_json:get_value(<<"pvt_created">>, Doc, 0)}
-                       ,{<<"updated">>, wh_json:get_value(<<"pvt_modified">>, Doc, 0)}
+                       ,{<<"created">>, wh_doc:created(Doc, 0)}
+                       ,{<<"updated">>, wh_doc:modified(Doc, 0)}
                       ]).
 
 %%--------------------------------------------------------------------

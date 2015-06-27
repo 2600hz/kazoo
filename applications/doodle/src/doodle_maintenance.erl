@@ -54,7 +54,7 @@ check_sms_by_owner_id(AccountId, OwnerId) ->
 
 -spec start_check_sms_by_account(ne_binary(), wh_json:object()) -> pid().
 start_check_sms_by_account(AccountId, JObj) ->
-     case wh_json:is_true(<<"pvt_deleted">>, JObj, 'false')
+     case wh_doc:is_soft_deleted(JObj)
          orelse wh_json:is_false(<<"enabled">>, JObj, 'true')
      of
          'true' -> 'ok';
