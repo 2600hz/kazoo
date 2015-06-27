@@ -736,7 +736,28 @@ maybe_add_other_leg(JObj, Acc, OtherLeg) ->
 -spec group_value(kzd_cdr:doc()) ->
                          group_value().
 group_value(JObj) ->
-    #group_value{timestamp=kzd_cdr:timestamp(JObj)
+    #group_value{timestamp=adjusted_timestamp(JObj)
                  ,call_id=kzd_cdr:call_id(JObj)
                  ,cdr=JObj
                 }.
+
+-spec adjusted_timestamp(kzd_cdr:doc()) -> gregorian_seconds().
+adjusted_timestamp(JObj) ->
+    lager:debug("adjusted ~s: ~p - ~p(~p) - ~p"
+                ,[kzd_cdr:call_id(JObj)
+                  ,kzd_cdr:timestamp(JObj)
+                  ,direction_offset(JObj)
+                  ,kzd_cdr:call_direction(JObj)
+                  ,kzd_cdr:duration_s(JObj, 0)
+                 ]),
+    kzd_cdr:timestamp(JObj)
+        - direction_offset(JObj)
+        - kzd_cdr:duration_s(JObj, 0).
+
+%% Fixes sort when timestamp is identical for A/B legs
+-spec direction_offset(kzd_cdr:doc()) -> 0..1.
+direction_offset(JObj) ->
+    case kzd_cdr:call_direction(JObj) of
+        <<"inbound">> -> 1;
+        _Direction -> 0
+    end.
