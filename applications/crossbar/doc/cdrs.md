@@ -119,22 +119,213 @@ Using Crossbar to modify metaflows is very simple. There are only three GETs
 
 #### _GET_ - Fetch account CDRs:
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/cdrs
+    curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs
+
+    {"auth_token": "{AUTH_TOKEN}",
+     "data": [
+         {"authorizing_id": "9c3a10ee4d311feec43333fdf6d715b7",
+          "billing_seconds": "7",
+          "bridge_id": "{BRIDGE_ID}",
+          "call_id": "{CALL_ID},
+          "call_priority": "",
+          "call_type": "",
+          "callee_id_name": "Internal Device 2",
+          "callee_id_number": "0000",
+          "caller_id_name": "Internal Device 0",
+          "caller_id_number": "0000",
+          "calling_from": "0000",
+          "cost": "0",
+          "datetime": "2015-06-26 12:28:35",
+          "dialed_number": "1002",
+          "direction": "inbound",
+          "duration_seconds": "8",
+          "from": "test_user@{ACCOUNT_REALM}",
+          "hangup_cause": "NORMAL_CLEARING",
+          "id": "YYYYMM-{CALL_ID}",
+          "iso_8601": "\"2015-06-26\"",
+          "other_leg_call_id": "{OTHER_LEG_CALL_ID}",
+          "owner_id": "",
+          "rate": "0.0",
+          "rate_name": "",
+          "recording_url": "",
+          "request": "1002@{ACCOUNT_REALM}",
+          "reseller_call_type": "",
+          "reseller_cost": "0",
+          "rfc_1036": "\"Fri, 26 Jun 2015 12:28:35 GMT\"",
+          "timestamp": "63602540915",
+          "to": "1002@10.0.1.141",
+          "unix_timestamp": "1435321715"
+         }
+         ,{"authorizing_id": "0306f08da52079c1223e4fa84c415a68",
+           "billing_seconds": "3",
+           "bridge_id": "{BRIDGE_ID}",
+           "call_id": "{CALL_ID}",
+           "call_priority": "",
+           "call_type": "",
+           "callee_id_name": "Internal Device 2",
+           "callee_id_number": "0000",
+           "caller_id_name": "",
+           "caller_id_number": "0000000000",
+           "calling_from": "0000",
+           "cost": "0",
+           "datetime": "2015-06-26 12:28:39",
+           "dialed_number": "device_ZYcHDwktNB",
+           "direction": "outbound",
+           "duration_seconds": "4",
+           "from": "test_user@{ACCOUNT_REALM}",
+           "hangup_cause": "NORMAL_CLEARING",
+           "id": "YYYYMM-{CALL_ID}",
+           "iso_8601": "\"2015-06-26\"",
+           "other_leg_call_id": "{OTHER_LEG_CALL_ID}"
+           "owner_id": "",
+           "rate": "0.0",
+           "rate_name": "",
+           "recording_url": "",
+           "request": "device_ZYcHDwktNB@{ACCOUNT_REALM}",
+           "reseller_call_type": "",
+           "reseller_cost": "0",
+           "rfc_1036": "\"Fri, 26 Jun 2015 12:28:39 GMT\"",
+           "timestamp": "63602540919",
+           "to": "device_ZYcHDwktNB@{ACCOUNT_REALM}",
+           "unix_timestamp": "1435321719"
+         }
+         ...
+     ],
+     "next_start_key": "63602563961",
+     "page_size": 50,
+     "request_id": "{REQUEST_ID}",
+     "start_key": "63602603243",
+     "status": "success"
+    }
 
 #### _GET_ - Fetch user CDRs:
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/users/{USER_ID}/cdrs
+This will fetch only the CDRs associated with the user.
+
+    curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/cdrs
+
+#### _GET_ - Grouped CDRs
+
+It is possible to group CDRs to see which legs go together. Add the query string parameter `grouped=true` to have Crossbar group the legs together.
+
+The resulting JSON will be of the form:
+
+    {"A_LEG_CALL_ID":[{A_LEG_CDR}, {B_LEG_CDR}, ...]
+     ,"A_LEG_CALL_ID":[{A_LEG_CDR}]
+     ,...
+    }
+
+Where `{A_LEG_CALL_ID}` is the leg identified as the A leg, and the list of CDR objects is ordered by leg. The `{A_LEG_CDR}` object will also have a flag `is_a_leg=true` added.
+
+**Important**: this is only available as a JSON response; CSV is not supported
+
+The full request:
+
+    curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs?grouped=true
+
+    {"auth_token": "543b90ddea74af1b214d84bf71443cc4",
+     "data": [
+        {"69767aeb-9c69-45d3-bf3f-792b7175a12c": [
+            {"authorizing_id": "e7d89a1d901d3b10a0b06675f5ef49c1",
+             "billing_seconds": "1",
+             "bridge_id": "testCfSubstituteTrue-bCgAm7aG",
+             "call_id": "{CALL_ID}",
+             "call_priority": "",
+             "call_type": "",
+             "callee_id_name": "Internal Device 2",
+             "callee_id_number": "0000",
+             "caller_id_name": "External Device 0",
+             "caller_id_number": "000000000",
+             "calling_from": "000000000",
+             "cost": "0",
+             "datetime": "2015-06-26 12:26:47",
+             "dialed_number": "1003",
+             "direction": "inbound",
+             "duration_seconds": "8",
+             "from": "device_SsrwT1dxAd@{ACCOUNT_REALM}",
+             "hangup_cause": "NORMAL_CLEARING",
+             "id": "201506-{CALL_ID}",
+             "is_a_leg": true,
+             "iso_8601": "\"2015-06-26\"",
+             "other_leg_call_id": "{OTHER_LEG_CALL_ID}",
+             "owner_id": "",
+             "rate": "0.0",
+             "rate_name": "",
+             "recording_url": "",
+             "request": "1003@nodomain.com",
+             "reseller_call_type": "",
+             "reseller_cost": "0",
+             "rfc_1036": "\"Fri, 26 Jun 2015 12:26:47 GMT\"",
+             "timestamp": "63602540807",
+             "to": "1003@nodomain.com",
+             "unix_timestamp": "1435321607"
+         }
+         ,{"authorizing_id": "0306f08da52079c1223e4fa84c415a68",
+           "billing_seconds": "1",
+           "bridge_id": "{BRIDGE_ID}",
+           "call_id": "{CALL_ID}",
+           "call_priority": "",
+           "call_type": "",
+           "callee_id_name": "Internal Device 2",
+           "callee_id_number": "0000",
+           "caller_id_name": "External Device 0",
+           "caller_id_number": "000000000",
+           "calling_from": "000000000",
+           "cost": "0",
+           "datetime": "2015-06-26 12:26:48",
+           "dialed_number": "device_ZYcHDwktNB",
+           "direction": "outbound",
+           "duration_seconds": "7",
+           "from": "1003-b",
+           "hangup_cause": "NORMAL_CLEARING",
+           "id": "201506-{CALL_ID}",
+           "iso_8601": "\"2015-06-26\"",
+           "other_leg_call_id": "{OTHER_LEG_CALL_ID}",
+           "owner_id": "",
+           "rate": "0.0",
+           "rate_name": "",
+           "recording_url": "",
+           "request": "device_ZYcHDwktNB@{ACCOUNT_REALM}",
+           "reseller_call_type": "",
+           "reseller_cost": "0",
+           "rfc_1036": "\"Fri, 26 Jun 2015 12:26:48 GMT\"",
+           "timestamp": "63602540808",
+           "to": "device_ZYcHDwktNB@{ACCOUNT_REALM}",
+           "unix_timestamp": "1435321608"
+         }
+        ]
+       }
+      ],
+     "next_start_key": "63602563961",
+     "page_size": 50,
+     "request_id": "{REQUEST_ID}",
+     "start_key": "63602603916",
+     "status": "success"
+    }
 
 ####  _GET_ - Fetch a CDR:
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/cdrs/{CDR_ID}
+    curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs/{CDR_ID}
 
 #### _GET_ - Fetch a time-range of CDRs
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/cdrs?created_from={FROM_TIMESTAMP}&created_to={TO_TIMESTAMP}
+    curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs?created_from={FROM_TIMESTAMP}&created_to={TO_TIMESTAMP}
 
 &tip All timestamps will be in Gregorian seconds (not Unix epoch).
 
 #### _GET_ - Fetch account CDRs in csv format:
 
-    curl -v -X GET -H "Accept: text/csv" -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/cdrs
+    curl -v -X GET \
+    -H "Accept: text/csv" \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs
