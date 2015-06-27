@@ -98,7 +98,7 @@ tree(JObj, Default) ->
 
 type() -> ?TYPE.
 type(JObj) ->
-    wh_doc:pvt_type(JObj, ?TYPE).
+    wh_doc:type(JObj, ?TYPE).
 
 -spec status_good() -> ne_binary().
 status_good() ->
@@ -183,7 +183,7 @@ set_tree(JObj, Tree) ->
 
 -spec set_type(doc()) -> doc().
 set_type(JObj) ->
-    wh_doc:set_pvt_type(JObj, ?TYPE).
+    wh_doc:set_type(JObj, ?TYPE).
 
 -spec set_plans(doc(), wh_json:object()) -> doc().
 set_plans(JObj, Plans) ->

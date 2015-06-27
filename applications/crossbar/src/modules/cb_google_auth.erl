@@ -169,8 +169,8 @@ maybe_load_username(Account, Context) ->
                     UserDoc = wh_json:get_value(<<"doc">>, User),
                     User2 =
                         wh_json:set_values(
-                            [{<<"account_id">>, wh_json:get_value(<<"pvt_account_id">>, UserDoc)}
-                             ,{<<"owner_id">>, wh_json:get_value(<<"_id">>, UserDoc)}
+                            [{<<"account_id">>, wh_doc:account_id(UserDoc)}
+                             ,{<<"owner_id">>, wh_doc:id(UserDoc)}
                             ]
                            ,UserDoc
                         ),
@@ -241,7 +241,7 @@ create_auth_token(Context) ->
                     ],
             case couch_mgr:save_doc(?KZ_TOKEN_DB, wh_json:from_list(Token)) of
                 {'ok', Doc} ->
-                    AuthToken = wh_json:get_value(<<"_id">>, Doc),
+                    AuthToken = wh_doc:id(Doc),
                     lager:debug("created new local auth token ~s", [AuthToken]),
                     JObj2 = crossbar_util:response_auth(wh_json:get_value(<<"User">>, JObj), AccountId, OwnerId),
                     JObj3 = wh_json:set_value(<<"profile">>, wh_json:get_value(<<"Profile">>, JObj), JObj2),

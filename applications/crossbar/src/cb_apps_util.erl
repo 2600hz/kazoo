@@ -148,9 +148,9 @@ load_default_apps() ->
 -spec maybe_set_account(ne_binary(), wh_json:object()) -> wh_json:object().
 maybe_set_account(Account, Doc) ->
     JObj = wh_json:get_value(<<"doc">>, Doc),
-    PvtAccountDb = wh_json:get_value(<<"pvt_account_db">>, JObj),
-    PvtAccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
-    case {PvtAccountDb, PvtAccountId} of
+    AccountDb = wh_doc:account_db(JObj),
+    AccountId = wh_doc:account_id(JObj),
+    case {AccountDb, AccountId} of
         {'undefined', _} -> set_account(Account, JObj);
         {_, 'undefined'} -> set_account(Account, JObj);
         {_, _} -> JObj

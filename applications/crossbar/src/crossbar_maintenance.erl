@@ -111,10 +111,10 @@ add_missing_modules(Modules, MissingModules) ->
 -spec refresh(input_term()) -> 'ok'.
 
 refresh() ->
-    io:format("please use whapps_maintenance:refresh().", []).
+    io:format("please use whapps_maintenance:refresh().~n").
 
 refresh(Value) ->
-    io:format("please use whapps_maintenance:refresh(~p).", [Value]).
+    io:format("please use whapps_maintenance:refresh(~p).~n", [Value]).
 
 -spec flush() -> 'ok'.
 flush() ->
@@ -190,7 +190,7 @@ running_modules() -> crossbar_bindings:modules_loaded().
 %%--------------------------------------------------------------------
 -spec find_account_by_number(input_term()) ->
                                     {'ok', ne_binary()} |
-                                    {'error', term()}.
+                                    {'error', _}.
 find_account_by_number(Number) when not is_binary(Number) ->
     find_account_by_number(wh_util:to_binary(Number));
 find_account_by_number(Number) ->
@@ -218,7 +218,7 @@ find_account_by_number(Number) ->
 -spec find_account_by_name(input_term()) ->
                                   {'ok', ne_binary()} |
                                   {'multiples', [ne_binary(),...]} |
-                                  {'error', term()}.
+                                  {'error', _}.
 find_account_by_name(Name) when not is_binary(Name) ->
     find_account_by_name(wh_util:to_binary(Name));
 find_account_by_name(Name) ->
@@ -246,7 +246,7 @@ find_account_by_name(Name) ->
 -spec find_account_by_realm(input_term()) ->
                                    {'ok', ne_binary()} |
                                    {'multiples', [ne_binary(),...]} |
-                                   {'error', term()}.
+                                   {'error', _}.
 find_account_by_realm(Realm) when not is_binary(Realm) ->
     find_account_by_realm(wh_util:to_binary(Realm));
 find_account_by_realm(Realm) ->
@@ -493,7 +493,7 @@ create_account(Context) ->
         _Status ->
             Errors = cb_context:resp_data(Context1),
             io:format("failed to create account: '~s'~n", [wh_json:encode(Errors)]),
-            AccountId = wh_json:get_value(<<"_id">>, cb_context:req_data(Context)),
+            AccountId = wh_doc:id(cb_context:req_data(Context)),
             couch_mgr:db_delete(wh_util:format_account_id(AccountId, 'encoded')),
             {'error', Errors}
     end.
@@ -640,7 +640,7 @@ get_migrateable_ring_group_callflow(JObj, Acc, AccountDb) ->
     of
         {'undefined', _} -> Acc;
         {_, 'undefined'} ->
-            Id = wh_json:get_value(<<"id">>, JObj),
+            Id = wh_doc:id(JObj),
             case couch_mgr:open_cache_doc(AccountDb, Id) of
                 {'ok', CallflowJObj} -> check_callflow_eligibility(CallflowJObj, Acc);
                 {'error', _M} ->
@@ -672,8 +672,8 @@ base_group_ring_group(JObj) ->
                      ,{<<"pvt_type">>, <<"callflow">>}
                      ,{<<"pvt_modified">>, wh_util:current_tstamp()}
                      ,{<<"pvt_created">>, wh_util:current_tstamp()}
-                     ,{<<"pvt_account_db">>, wh_json:get_value(<<"pvt_account_db">>, JObj)}
-                     ,{<<"pvt_account_id">>, wh_json:get_value(<<"pvt_account_id">>, JObj)}
+                     ,{<<"pvt_account_db">>, wh_doc:account_db(JObj)}
+                     ,{<<"pvt_account_id">>, wh_doc:account_id(JObj)}
                      ,{<<"flow">>, wh_json:from_list([{<<"children">>, wh_json:new()}
                                                       ,{<<"module">>, <<"ring_group">>}
                                                      ])
@@ -717,7 +717,7 @@ set_ui_metadata(JObj, BaseGroup) ->
 
 -spec save_new_ring_group_callflow(wh_json:object(), wh_json:object()) -> 'ok'.
 save_new_ring_group_callflow(JObj, NewCallflow) ->
-    AccountDb = wh_json:get_value(<<"pvt_account_db">>, JObj),
+    AccountDb = wh_doc:account_db(JObj),
     Name = wh_json:get_value(<<"name">>, NewCallflow),
     case check_if_callflow_exist(AccountDb, Name) of
         'true' ->
@@ -730,7 +730,7 @@ save_new_ring_group_callflow(JObj, NewCallflow, AccountDb) ->
     case couch_mgr:save_doc(AccountDb, NewCallflow) of
         {'error', _M} ->
             io:format("unable to save new callflow (old:~p) in ~p aborting...~n"
-                      ,[wh_json:get_value(<<"_id">>, JObj), AccountDb]
+                      ,[wh_doc:id(JObj), AccountDb]
                      );
         {'ok', NewJObj} ->
             io:format("  saved base group callflow: ~s~n", [wh_json:encode(NewJObj)]),
@@ -773,7 +773,7 @@ update_old_ring_group_metadata(JObj, _NewCallflow) ->
 
 -spec update_old_ring_group_flow(wh_json:object(), wh_json:object()) -> wh_json:object().
 update_old_ring_group_flow(JObj, NewCallflow) ->
-    Data = wh_json:from_list([{<<"id">>, wh_json:get_value(<<"_id">>, NewCallflow)}]),
+    Data = wh_json:from_list([{<<"id">>, wh_doc:id(NewCallflow)}]),
     case wh_json:get_value([<<"flow">>, <<"module">>], JObj) of
         <<"ring_group">> ->
             Flow = wh_json:get_value(<<"flow">>, JObj),
@@ -789,11 +789,12 @@ update_old_ring_group_flow(JObj, NewCallflow) ->
 
 -spec save_old_ring_group(wh_json:object(), wh_json:object()) -> 'ok'.
 save_old_ring_group(JObj, NewCallflow) ->
-    AccountDb = wh_json:get_value(<<"pvt_account_db">>, JObj),
+    AccountDb = wh_doc:account_db(JObj),
     case couch_mgr:save_doc(AccountDb, JObj) of
         {'error', _M} ->
-            L = [wh_json:get_value(<<"_id">>, JObj), AccountDb, wh_json:get_value(<<"_id">>, NewCallflow)],
-            io:format("unable to save callflow ~p in ~p, removing new one (~p)~n", L),
+            io:format("unable to save callflow ~p in ~p, removing new one (~p)~n"
+                      ,[wh_doc:id(JObj), AccountDb, wh_doc:id(NewCallflow)]
+                     ),
             {'ok', _} = couch_mgr:del_doc(AccountDb, NewCallflow),
             'ok';
         {'ok', _OldJObj} ->

@@ -479,13 +479,13 @@ fetch_parked_calls(AccountDb, AccountId) ->
     case couch_mgr:open_doc(AccountDb, ?DB_DOC_NAME) of
         {'error', 'not_found'} ->
             Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
-            Generators = [fun(J) -> wh_json:set_value(<<"_id">>, <<"parked_calls">>, J) end
-                          ,fun(J) -> wh_json:set_value(<<"pvt_type">>, <<"parked_calls">>, J) end
-                          ,fun(J) -> wh_json:set_value(<<"pvt_account_db">>, AccountDb, J) end
-                          ,fun(J) -> wh_json:set_value(<<"pvt_account_id">>, AccountId, J) end
-                          ,fun(J) -> wh_json:set_value(<<"pvt_created">>, Timestamp, J) end
-                          ,fun(J) -> wh_json:set_value(<<"pvt_modified">>, Timestamp, J) end
-                          ,fun(J) -> wh_json:set_value(<<"pvt_vsn">>, <<"1">>, J) end
+            Generators = [fun(J) -> wh_doc:set_id(J, <<"parked_calls">>) end
+                          ,fun(J) -> wh_doc:set_type(J, <<"parked_calls">>) end
+                          ,fun(J) -> wh_doc:set_account_id(J, AccountId) end
+                          ,fun(J) -> wh_doc:set_account_db(J, AccountDb) end
+                          ,fun(J) -> wh_doc:set_created(J, Timestamp) end
+                          ,fun(J) -> wh_doc:set_modified(J, Timestamp) end
+                          ,fun(J) -> wh_doc:set_vsn(J, <<"1">>) end
                           ,fun(J) -> wh_json:set_value(<<"slots">>, wh_json:new(), J) end],
             lists:foldr(fun(F, J) -> F(J) end, wh_json:new(), Generators);
         {'ok', JObj} ->
@@ -551,7 +551,7 @@ wait_for_pickup(SlotNumber, Slot, Call) ->
             ChannelUp = case whapps_call_command:b_channel_status(Call) of
                             {'ok', _} -> 'true';
                             {'error', _} -> 'false'
-                     end,
+                        end,
             case ChannelUp andalso ringback_parker(RingbackId, SlotNumber, TmpCID, Call) of
                 'answered' ->
                     lager:info("parked caller ringback was answered"),
@@ -574,7 +574,7 @@ wait_for_pickup(SlotNumber, Slot, Call) ->
                     lager:info("call '~s' is no longer active, ", [cf_exe:callid(Call)]),
                     _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), whapps_call:account_db(Call)),
                     cf_exe:transfer(Call)
-            end;            
+            end;
         {'error', _} ->
             lager:info("parked caller has hungup"),
             _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), whapps_call:account_db(Call)),

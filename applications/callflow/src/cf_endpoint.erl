@@ -72,10 +72,10 @@
 %%--------------------------------------------------------------------
 -spec get(whapps_call:call()) ->
                  {'ok', wh_json:object()} |
-                 {'error', term()}.
+                 {'error', _}.
 -spec get(api_binary(), ne_binary() | whapps_call:call()) ->
                  {'ok', wh_json:object()} |
-                 {'error', term()}.
+                 {'error', _}.
 get(Call) -> get(whapps_call:authorizing_id(Call), Call).
 
 get('undefined', _Call) ->
@@ -106,7 +106,7 @@ maybe_fetch_endpoint(EndpointId, AccountDb) ->
                                  {'error', 'not_device_nor_user'}.
 maybe_have_endpoint(JObj, EndpointId, AccountDb) ->
     EndpointTypes = [<<"device">>, <<"user">>, <<"account">>],
-    EndpointType = wh_json:get_value(<<"pvt_type">>, JObj),
+    EndpointType = wh_doc:type(JObj),
     case lists:member(EndpointType, EndpointTypes) of
         'false' ->
             lager:info("endpoint module does not manage document type ~s", [EndpointType]),
@@ -615,7 +615,7 @@ maybe_endpoint_called_self(Endpoint, Properties, Call) ->
 maybe_endpoint_called_self(Endpoint, Properties, <<"audio">>, Call) ->
     CanCallSelf = wh_json:is_true(<<"can_call_self">>, Properties),
     AuthorizingId = whapps_call:authorizing_id(Call),
-    EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
+    EndpointId = wh_doc:id(Endpoint),
     case CanCallSelf
         orelse (not is_binary(AuthorizingId))
         orelse (not is_binary(EndpointId))
@@ -631,7 +631,7 @@ maybe_endpoint_called_self(Endpoint, Properties, <<"sms">>, Call) ->
     DefTextSelf = whapps_account_config:get_global(AccountId, ?CF_CONFIG_CAT, <<"default_can_text_self">>, 'true'),
     CanTextSelf = wh_json:is_true(<<"can_text_self">>, Properties, DefTextSelf),
     AuthorizingId = whapps_call:authorizing_id(Call),
-    EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
+    EndpointId = wh_doc:id(Endpoint),
     case CanTextSelf
         orelse (not is_binary(AuthorizingId))
         orelse (not is_binary(EndpointId))
@@ -650,8 +650,7 @@ maybe_endpoint_disabled(Endpoint, _, _) ->
     case wh_json:is_false(<<"enabled">>, Endpoint) of
         'false' -> 'ok';
         'true' ->
-            EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
-            lager:info("endpoint ~s is disabled", [EndpointId]),
+            lager:info("endpoint ~s is disabled", [wh_doc:id(Endpoint)]),
             {'error', 'endpoint_disabled'}
     end.
 
@@ -663,8 +662,7 @@ maybe_do_not_disturb(Endpoint, _, _) ->
     case wh_json:is_true(<<"enabled">>, DND) of
         'false' -> 'ok';
         'true' ->
-            EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
-            lager:info("do not distrub endpoint ~s", [EndpointId]),
+            lager:info("do not distrub endpoint ~s", [wh_doc:id(Endpoint)]),
             {'error', 'do_not_disturb'}
     end.
 
@@ -931,7 +929,7 @@ create_sip_endpoint(Endpoint, Properties, #clid{}=Clid, Call) ->
          ,{<<"Endpoint-Progress-Timeout">>, get_progress_timeout(Endpoint)}
          ,{<<"Endpoint-Timeout">>, get_timeout(Properties)}
          ,{<<"Endpoint-Delay">>, get_delay(Properties)}
-         ,{<<"Endpoint-ID">>, wh_json:get_value(<<"_id">>, Endpoint)}
+         ,{<<"Endpoint-ID">>, wh_doc:id(Endpoint)}
          ,{<<"Codecs">>, get_codecs(Endpoint)}
          ,{<<"Hold-Media">>, cf_attributes:moh_attributes(Endpoint, <<"media_id">>, Call)}
          ,{<<"Presence-ID">>, cf_attributes:presence_id(Endpoint, Call)}
@@ -1008,7 +1006,7 @@ build_push_failover(Endpoint, Clid, PushJObj, Call) ->
          ,{<<"Ignore-Early-Media">>, get_ignore_early_media(Endpoint)}
          ,{<<"Bypass-Media">>, get_bypass_media(Endpoint)}
          ,{<<"Endpoint-Progress-Timeout">>, get_progress_timeout(Endpoint)}
-         ,{<<"Endpoint-ID">>, wh_json:get_value(<<"_id">>, Endpoint)}
+         ,{<<"Endpoint-ID">>, wh_doc:id(Endpoint)}
          ,{<<"Codecs">>, get_codecs(Endpoint)}
          ,{<<"Hold-Media">>, cf_attributes:moh_attributes(Endpoint, <<"media_id">>, Call)}
          ,{<<"Presence-ID">>, cf_attributes:presence_id(Endpoint, Call)}
@@ -1288,7 +1286,7 @@ maybe_retain_caller_id({Endpoint, Call, CallFwd, JObj}) ->
 -spec maybe_set_endpoint_id(ccv_acc()) -> ccv_acc().
 maybe_set_endpoint_id({Endpoint, Call, CallFwd, JObj}) ->
     {Endpoint, Call, CallFwd
-     ,case wh_json:get_value(<<"_id">>, Endpoint) of
+     ,case wh_doc:id(Endpoint) of
           'undefined' -> JObj;
           EndpointId ->
               wh_json:set_value(<<"Authorizing-ID">>, EndpointId, JObj)
@@ -1298,7 +1296,7 @@ maybe_set_endpoint_id({Endpoint, Call, CallFwd, JObj}) ->
 -spec maybe_set_owner_id(ccv_acc()) -> ccv_acc().
 maybe_set_owner_id({Endpoint, Call, CallFwd, JObj}) ->
     {Endpoint, Call, CallFwd
-     ,case wh_json:get_value(<<"owner_id">>, Endpoint) of
+     ,case wh_doc:id(Endpoint) of
           'undefined' -> JObj;
           OwnerId ->
               wh_json:set_value(<<"Owner-ID">>, OwnerId, JObj)
@@ -1308,11 +1306,11 @@ maybe_set_owner_id({Endpoint, Call, CallFwd, JObj}) ->
 -spec maybe_set_account_id(ccv_acc()) -> ccv_acc().
 maybe_set_account_id({Endpoint, Call, CallFwd, JObj}) ->
     {Endpoint, Call, CallFwd
-     ,case wh_json:get_value(<<"pvt_account_id">>, Endpoint) of
+     ,case wh_doc:account_id(Endpoint) of
           'undefined' ->
               wh_json:set_value(<<"Account-ID">>, whapps_call:account_id(Call), JObj);
-          PvtAccountId ->
-              wh_json:set_value(<<"Account-ID">>, PvtAccountId, JObj)
+          AccountId ->
+              wh_json:set_value(<<"Account-ID">>, AccountId, JObj)
       end
     }.
 
@@ -1509,7 +1507,7 @@ create_mobile_sms_endpoint_failover(Endpoint, [{Route, Options} | Failover]) ->
 maybe_build_mobile_sms_route(Endpoint) ->
     case wh_json:get_ne_value([<<"mobile">>, <<"mdn">>], Endpoint) of
         'undefined' ->
-            lager:info("unable to build mobile sms endpoint, MDN missing", []),
+            lager:info("unable to build mobile sms endpoint, MDN missing"),
             {'error', 'mdn_missing'};
         MDN -> build_mobile_sms_route(MDN)
     end.

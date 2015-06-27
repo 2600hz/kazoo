@@ -200,7 +200,7 @@ create_local_token(#cb_context{doc=JObj, auth_token=SharedToken}=Context) ->
                               ]),
     case couch_mgr:save_doc(?KZ_TOKEN_DB, Token) of
         {ok, Doc} ->
-            AuthToken = wh_json:get_value(<<"_id">>, Doc),
+            AuthToken = wh_doc:id(Doc),
             lager:debug("created new local auth token ~s", [AuthToken]),
             crossbar_util:response(crossbar_util:response_auth(JObj)
                                    ,Context#cb_context{auth_token=AuthToken, auth_doc=Doc});
@@ -216,8 +216,10 @@ create_local_token(#cb_context{doc=JObj, auth_token=SharedToken}=Context) ->
 %% the shared token and get the account/user for the token
 %% @end
 %%--------------------------------------------------------------------
--spec authenticate_shared_token(api_binary(), nonempty_string())
-                                     -> {'ok', string() | binary()} | {'error', atom()} | {'forbidden', 'shared_token_rejected'}.
+-spec authenticate_shared_token(api_binary(), nonempty_string()) ->
+                                       {'ok', string() | binary()} |
+                                       {'error', atom()} |
+                                       {'forbidden', 'shared_token_rejected'}.
 authenticate_shared_token(undefined, _) ->
     {forbidden, missing_shared_token};
 authenticate_shared_token(SharedToken, XBarUrl) ->
@@ -245,9 +247,9 @@ authenticate_shared_token(SharedToken, XBarUrl) ->
 -spec import_missing_data(wh_json:object()) -> boolean().
 import_missing_data(RemoteData) ->
     Account = wh_json:get_value(<<"account">>, RemoteData),
-    AccountId = wh_json:get_value(<<"pvt_account_id">>, Account),
+    AccountId = wh_doc:account_id(Account),
     User = wh_json:get_value(<<"user">>, RemoteData),
-    UserId = wh_json:get_value(<<"_id">>, User),
+    UserId = wh_doc:id(User),
     import_missing_account(AccountId, Account) andalso
         import_missing_user(AccountId, UserId, User).
 
@@ -278,7 +280,7 @@ import_missing_account(AccountId, Account) ->
             case couch_mgr:open_cache_doc(Db, AccountId) of
                 {'error', 'not_found'} ->
                     lager:debug("missing local account definition, creating from shared auth response"),
-                    Doc = wh_json:delete_key(<<"_rev">>, Account),
+                    Doc = wh_doc:delete_revision(Account),
                     Event = <<"*.execute.post.accounts">>,
                     case crossbar_bindings:fold(Event, [#cb_context{doc=Doc, db_name=Db}, AccountId]) of
                         #cb_context{resp_status='success'} ->
@@ -294,7 +296,7 @@ import_missing_account(AccountId, Account) ->
             end;
         'false' ->
             lager:debug("remote account db ~s does not exist locally, creating", [AccountId]),
-            Doc = wh_json:delete_key(<<"_rev">>, Account),
+            Doc = wh_doc:delete_revision(Account),
             Event = <<"*.execute.put.accounts">>,
             case crossbar_bindings:fold(Event, [#cb_context{doc=Doc}]) of
                 #cb_context{resp_status='success'} ->
@@ -327,7 +329,7 @@ import_missing_user(AccountId, UserId, User) ->
             lager:debug("remote user ~s already exists locally in account ~s", [UserId, AccountId]),
             'true';
         _Else ->
-            Doc = wh_json:delete_key(<<"_rev">>, User),
+            Doc = wh_doc:delete_revision(User),
             Event = <<"*.execute.put.users">>,
             case crossbar_bindings:fold(Event, [#cb_context{doc=Doc, db_name=Db}]) of
                 #cb_context{resp_status='success'} ->

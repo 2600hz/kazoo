@@ -17,7 +17,7 @@
          ,set_tree/2, tree/1, tree/2
          ,notification_preference/1, set_notification_preference/2
          ,is_enabled/1, enable/1, disable/1
-         ,set_api_key/2, api_key/1
+         ,api_key/1, set_api_key/2
          ,is_superduper_admin/1
          ,allow_number_additions/1
 

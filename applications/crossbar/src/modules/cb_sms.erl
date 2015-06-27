@@ -292,7 +292,7 @@ normalize_view_results(JObj, Acc) ->
 
 -spec normalize_view_result_value(wh_json:object()) -> wh_json:object().
 normalize_view_result_value(JObj) ->
-    Date = wh_util:rfc1036(wh_json:get_value(<<"created">>, JObj)),
+    Date = wh_util:rfc1036(wh_doc:created(JObj)),
     wh_json:set_value(<<"date">>, Date, JObj).
 
 -spec get_view_and_filter(cb_context:context()) ->
