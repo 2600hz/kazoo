@@ -184,23 +184,18 @@ merge_attributes(Endpoint, _Type, Keys) ->
                               wh_json:object().
 merge_attributes([], _AccountDoc, Endpoint, _OwnerDoc) -> Endpoint;
 merge_attributes(Keys, Account, Endpoint, 'undefined') ->
-    AccountDb = wh_json:get_value(<<"pvt_account_db">>, Endpoint),
+    AccountDb = wh_doc:account_db(Endpoint),
     JObj = get_user(AccountDb, Endpoint),
-    Id = wh_json:get_value(<<"_id">>, JObj),
     merge_attributes(Keys
                      ,Account
-                     ,wh_json:set_value(<<"owner_id">>, Id, Endpoint)
+                     ,wh_json:set_value(<<"owner_id">>, wh_doc:id(JObj), Endpoint)
                      ,JObj);
 merge_attributes(Keys, Account, 'undefined', Owner) ->
     merge_attributes(Keys, Account, wh_json:new(), Owner);
 merge_attributes(Keys, 'undefined', Endpoint, Owner) ->
-    AccountDb = wh_json:get_value(<<"pvt_account_db">>, Endpoint),
-    AccountId = wh_json:get_value(<<"pvt_account_id">>, Endpoint),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {'ok', JObj} ->
-            merge_attributes(Keys, JObj, Endpoint, Owner);
-        {'error', _} ->
-            merge_attributes(Keys, wh_json:new(), Endpoint, Owner)
+    case kz_account:fetch(wh_doc:account_id(Endpoint)) of
+        {'ok', JObj} -> merge_attributes(Keys, JObj, Endpoint, Owner);
+        {'error', _} -> merge_attributes(Keys, wh_json:new(), Endpoint, Owner)
     end;
 merge_attributes([<<"call_restriction">>|Keys], Account, Endpoint, Owner) ->
     Classifiers = wh_json:get_keys(wnm_util:available_classifiers()),

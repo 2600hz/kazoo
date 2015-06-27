@@ -471,10 +471,7 @@ is_number_porting(N) ->
 -spec account_can_create_number(ne_binary() | 'system') -> boolean().
 account_can_create_number('system') -> 'true';
 account_can_create_number(Account) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-
-    {'ok', JObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+    {'ok', JObj} = kz_account:fetch(Account),
     kz_account:allow_number_additions(JObj).
 
 %%--------------------------------------------------------------------

@@ -177,11 +177,9 @@ get_master_account_db() ->
 %%--------------------------------------------------------------------
 -spec get_account_name(ne_binary()) -> ne_binary().
 get_account_name(Account) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(Account) of
         {'error', _} -> 'undefined';
-        {'ok', JObj} -> wh_json:get_ne_value(<<"name">>, JObj)
+        {'ok', JObj} -> kz_account:name(JObj)
     end.
 
 %%--------------------------------------------------------------------
@@ -197,14 +195,14 @@ find_oldest_doc([]) -> {'error', 'no_docs'};
 find_oldest_doc([First|Docs]) ->
     {_, OldestDocID} =
         lists:foldl(fun(Doc, {Created, _}=Eldest) ->
-                            Older = wh_json:get_integer_value(<<"pvt_created">>, Doc),
+                            Older = wh_doc:created(Doc),
                             case Older < Created  of
-                                'true' -> {Older, wh_json:get_value(<<"_id">>, Doc)};
+                                'true' -> {Older, wh_doc:id(Doc)};
                                 'false' -> Eldest
                             end
                     end
-                    ,{wh_json:get_integer_value(<<"pvt_created">>, First)
-                      ,wh_json:get_value(<<"_id">>, First)
+                    ,{wh_doc:created(First)
+                      ,wh_doc:id(First)
                      }
                     ,Docs),
     {'ok', OldestDocID}.

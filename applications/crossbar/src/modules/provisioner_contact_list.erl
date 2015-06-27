@@ -70,8 +70,7 @@ get_extension_contacts(AccountDb) ->
 
 get_contact_list_includes(AccountDb) ->
     Default = whapps_config:get(<<"crossbar.contact_list">>, <<"default_includes">>, []),
-    AccountId = wh_util:format_account_id(AccountDb, raw),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(AccountDb) of
         {'ok', JObj} ->
             wh_json:get_value([<<"contact_list">>, <<"includes">>], JObj, Default);
         {'error', _} ->
@@ -83,7 +82,7 @@ filter_excluded(Contacts, AccountDb) ->
     case couch_mgr:get_results(AccountDb, <<"contact_list/excluded">>, ViewOptions) of
         {error, _} -> Contacts;
         {ok, JObjs} ->
-            Ids = [wh_json:get_value(<<"id">>, JObj) || JObj <- JObjs],
+            Ids = [wh_doc:id(JObj) || JObj <- JObjs],
             lists:filter(fun(#contact{id=Id}) -> (not lists:member(Id, Ids)) end, Contacts)
     end.
 

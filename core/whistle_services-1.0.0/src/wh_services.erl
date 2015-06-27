@@ -104,7 +104,7 @@ empty() ->
 -spec new(ne_binary()) -> services().
 new(<<_/binary>> = AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    AccountJObj = get_account_definition(AccountDb, AccountId),
+    AccountJObj = get_account_definition(AccountId),
 
     JObj = base_service_object(AccountId, AccountDb, AccountJObj),
 
@@ -1299,19 +1299,17 @@ get_reseller_id([Parent|Ancestors]) ->
             get_reseller_id(Parent, Ancestors, JObj)
     end;
 get_reseller_id(<<_/binary>> = Account) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(Account) of
         {'ok', AccountJObj} ->
             get_reseller_id(lists:reverse(kz_account:tree(AccountJObj)));
         {'error', _R} ->
-            lager:info("unable to open account definition for ~s: ~p", [AccountId, _R]),
+            lager:info("unable to open account definition for ~s: ~p", [Account, _R]),
             get_reseller_id([])
     end.
 
 -spec get_reseller_id(ne_binary(), ne_binaries(), wh_json:object()) -> api_binary().
 get_reseller_id(Parent, Ancestors, JObj) ->
-    case wh_json:is_true(<<"pvt_reseller">>, JObj) of
+    case kzd_services:is_reseller(JObj) of
         'false' -> get_reseller_id(Ancestors);
         'true' -> Parent
     end.
@@ -1377,9 +1375,9 @@ any_changed(KeyNotSameFun, Quantities) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_account_definition(ne_binary(), ne_binary()) -> kz_account:doc().
-get_account_definition(<<_/binary>> = AccountDb, <<_/binary>> = AccountId) ->
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+-spec get_account_definition(ne_binary()) -> kz_account:doc().
+get_account_definition(<<_/binary>> = AccountId) ->
+    case kz_account:fetch(AccountId) of
         {'error', _R} ->
             lager:debug("unable to get account defintion for ~s: ~p", [AccountId, _R]),
             wh_json:new();

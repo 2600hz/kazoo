@@ -31,13 +31,12 @@
 
 cnam_request(PhoneNumber) ->
     AccountId = wh_json:get_ne_value(<<"pvt_assigned_to">>, PhoneNumber),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(AccountId) of
         {'ok', Account} -> cnam_request(Account, PhoneNumber);
         {'error', Reason} ->
-            Number = wh_json:get_value(<<"_id">>, PhoneNumber),
+            Number = wh_doc:id(PhoneNumber),
             Subject = io_lib:format("unable to open account ~s for cnam update on ~s", [AccountId, Number]),
-            Body = io_lib:format("Failed to open account ~s (~s) for cnam update on ~s.~nReason: ~p", [AccountId, AccountDb, Number, Reason]),
+            Body = io_lib:format("Failed to open account doc ~s for cnam update on ~s.~nReason: ~p", [AccountId, Number, Reason]),
             generic_alert(Subject, Body)
     end.
 
@@ -53,13 +52,12 @@ cnam_request(PhoneNumber, Account) ->
 
 port_request(PhoneNumber) ->
     AccountId = wh_json:get_ne_value(<<"pvt_assigned_to">>, PhoneNumber),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(AccountId) of
         {'ok', Account} -> cnam_request(Account, PhoneNumber);
         {'error', Reason} ->
-            Number = wh_json:get_value(<<"_id">>, PhoneNumber),
+            Number = wh_doc:id(PhoneNumber),
             Subject = io_lib:format("unable to open account ~s for port request of ~s", [AccountId, Number]),
-            Body = io_lib:format("Failed to open account ~s (~s) for port request of ~s.~nReason: ~p", [AccountId, AccountDb, Number, Reason]),
+            Body = io_lib:format("Failed to open account doc ~s for port request of ~s.~nReason: ~p", [AccountId, Number, Reason]),
             generic_alert(Subject, Body)
     end.
 
@@ -85,8 +83,7 @@ deregister(LastReg) ->
 
 deregister(LastReg, Endpoint) ->
     AccountId = wh_json:get_value(<<"Account-ID">>, LastReg),
-    AccountDb = wh_json:get_value(<<"Account-DB">>, LastReg),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(AccountId) of
         {'ok', Account} -> deregister(LastReg, Endpoint, Account);
         {'error', _R} ->
             lager:info("unable to open account ~s deregister notice: ~p", [AccountId, _R])

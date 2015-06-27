@@ -164,8 +164,7 @@ maybe_update_callee_id(JObj) ->
 
 -spec update_callee_id(wh_json:object()) -> boolean().
 update_callee_id(AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(AccountId) of
         {'ok', AccountDoc} ->
             wh_json:is_true([<<"caller_id_options">>, <<"show_rate">>], AccountDoc, 'false');
         {'error', _R} ->

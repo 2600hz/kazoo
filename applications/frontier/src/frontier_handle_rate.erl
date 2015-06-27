@@ -51,7 +51,7 @@ name_to_method(Name) ->
 resolve_method(Method) ->
     props:get_value(Method, lists:zip(methods(), names())).
 
--spec handle_rate_req(wh_json:object(), wh_proplist()) -> any().
+-spec handle_rate_req(wh_json:object(), wh_proplist()) -> _.
 handle_rate_req(JObj, _Props) ->
     Entity = wh_json:get_value(<<"Entity">>, JObj),
     IncludeRealm = wh_json:is_true(<<"With-Realm">>, JObj, 'false'),
@@ -250,8 +250,7 @@ fetch_rates(EntityList, IncludeRealm, MethodList, AccountDB) ->
 
 -spec fetch_from_parents(ne_binary(), ne_binaries(), ne_binary()) -> wh_json:objects().
 fetch_from_parents(AccountDb, MethodList, Realm) ->
-    AccountId = wh_util:format_account_id(AccountDb, 'raw'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(AccountDb) of
         {'ok', JObj} ->
             Tree = lists:reverse(kz_account:tree(JObj)),
             check_fallbacks(Tree, MethodList, Realm);

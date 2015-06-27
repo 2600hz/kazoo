@@ -224,9 +224,7 @@ should_handle_system() ->
 -spec should_handle_account(ne_binary()) -> boolean().
 should_handle_account(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(Account) of
         {'ok', AccountJObj} ->
             kz_account:notification_preference(AccountJObj) =:= 'undefined'
                 andalso should_handle_reseller(wh_services:find_reseller_id(AccountId));

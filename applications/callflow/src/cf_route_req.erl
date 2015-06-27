@@ -44,15 +44,14 @@ handle_req(JObj, Props) ->
     end.
 
 -spec maybe_prepend_preflow(wh_json:object(), wh_proplist()
-                         ,whapps_call:call(), wh_json:object()
-                         ,boolean()
-                        ) -> whapps_call:call().
+                            ,whapps_call:call(), wh_json:object()
+                            ,boolean()
+                           ) -> whapps_call:call().
 maybe_prepend_preflow(JObj, Props, Call, Flow, NoMatch) ->
     AccountId = whapps_call:account_id(Call),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(AccountId) of
         {'error', _E} ->
-            lager:warning("could not open ~s in ~s : ~p", [AccountId, AccountDb, _E]),
+            lager:warning("could not open account doc ~s : ~p", [AccountId, _E]),
             maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch);
         {'ok', Doc} ->
             case wh_json:get_ne_value([<<"preflow">>, <<"always">>], Doc) of

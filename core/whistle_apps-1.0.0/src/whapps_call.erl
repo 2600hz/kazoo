@@ -738,11 +738,9 @@ account_id(#whapps_call{account_id=AccountId}) ->
     AccountId.
 
 -spec account_realm(call()) -> ne_binary().
-account_realm(#whapps_call{account_id=AccountId
-                           ,account_db=AccountDb
-                          }) ->
-    {'ok', Doc} = couch_mgr:open_cache_doc(AccountDb, AccountId),
-    wh_json:get_value(<<"realm">>, Doc).
+account_realm(#whapps_call{account_id=AccountId}) ->
+    {'ok', Doc} = kz_account:fetch(AccountId),
+    kz_account:realm(Doc).
 
 -spec set_authorizing_id(ne_binary(), call()) -> call().
 set_authorizing_id(AuthorizingId, #whapps_call{}=Call) when is_binary(AuthorizingId) ->

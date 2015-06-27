@@ -512,7 +512,7 @@ create_user(Context) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             io:format("created new account admin user '~s'~n"
-                      ,[wh_json:get_value(<<"_id">>, cb_context:doc(Context1))]
+                      ,[wh_doc:id(cb_context:doc(Context1))]
                      ),
             {'ok', Context1};
         _Status ->
@@ -527,29 +527,29 @@ create_user(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_account(input_term(), ne_binary(), term()) ->
+-spec update_account(input_term(), ne_binary(), _) ->
                             {'ok', wh_json:object()} |
-                            {'error', term()}.
+                            {'error', _}.
 update_account(AccountId, Key, Value) when not is_binary(AccountId) ->
     update_account(wh_util:to_binary(AccountId), Key, Value);
 update_account(AccountId, Key, Value) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     Updaters = [fun({'error', _}=E) -> E;
                    ({'ok', J}) ->
+                        AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
                         couch_mgr:save_doc(AccountDb, wh_json:set_value(Key, Value, J))
                 end
                 ,fun({'error', _}=E) -> E;
                     ({'ok', J}) ->
                          case couch_mgr:lookup_doc_rev(?WH_ACCOUNTS_DB, AccountId) of
                              {'ok', Rev} ->
-                                 couch_mgr:save_doc(?WH_ACCOUNTS_DB, wh_json:set_value(<<"_rev">>, Rev, J));
+                                 couch_mgr:save_doc(?WH_ACCOUNTS_DB, wh_doc:set_revision(J, Rev));
                              {'error', 'not_found'} ->
-                                 couch_mgr:save_doc(?WH_ACCOUNTS_DB, wh_json:delete_key(<<"_rev">>, J))
+                                 couch_mgr:save_doc(?WH_ACCOUNTS_DB, wh_doc:delete_revision(J))
                          end
                  end
                ],
     lists:foldl(fun(F, J) -> F(J) end
-                ,couch_mgr:open_cache_doc(AccountDb, AccountId)
+                ,kz_account:fetch(AccountId)
                 ,Updaters
                ).
 

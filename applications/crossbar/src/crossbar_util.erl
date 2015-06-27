@@ -427,18 +427,18 @@ maybe_flush_registration_on_username(Realm, OldDevice, NewDevice) ->
 -spec move_account(ne_binary(), ne_binary()) ->
                           {'ok', wh_json:object()} |
                           {'error', _}.
--spec move_account(ne_binary(), ne_binary(), wh_json:object(), ne_binaries()) ->
+-spec move_account(ne_binary(), wh_json:object(), ne_binaries()) ->
                           {'ok', wh_json:object()} |
                           {'error', _}.
 move_account(<<_/binary>> = AccountId, <<_/binary>> = ToAccount) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case validate_move(AccountId, ToAccount, AccountDb) of
+    case validate_move(AccountId, ToAccount) of
         {'error', _E}=Error -> Error;
         {'ok', JObj, ToTree} ->
-            move_account(AccountId, AccountDb, JObj, ToTree)
+            move_account(AccountId, JObj, ToTree)
     end.
 
-move_account(AccountId, AccountDb, JObj, ToTree) ->
+move_account(AccountId, JObj, ToTree) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     PreviousTree = kz_account:tree(JObj),
     JObj1 = wh_json:set_values([{<<"pvt_tree">>, ToTree}
                                 ,{<<"pvt_previous_tree">>, PreviousTree}
@@ -458,11 +458,11 @@ move_account(AccountId, AccountDb, JObj, ToTree) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec validate_move(ne_binary(), ne_binary(), ne_binary()) ->
+-spec validate_move(ne_binary(), ne_binary()) ->
                            {'error', _} |
                            {'ok', wh_json:object(), ne_binaries()}.
-validate_move(AccountId, ToAccount, AccountDb) ->
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+validate_move(AccountId, ToAccount) ->
+    case kz_account:fetch(AccountId) of
         {'error', _E}=Error -> Error;
         {'ok', JObj} ->
             ToTree = lists:append(get_tree(ToAccount), [ToAccount]),
@@ -589,12 +589,10 @@ mark_dirty(JObj) ->
 %%--------------------------------------------------------------------
 -spec get_tree(ne_binary()) -> ne_binaries().
 get_tree(<<_/binary>> = Account) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(Account) of
         {'ok', JObj} -> kz_account:tree(JObj);
         {'error', _E} ->
-            lager:error("could not load ~s in ~s: ~p", [AccountId, AccountDb, _E]),
+            lager:error("could not load account doc ~s : ~p", [Account, _E]),
             []
     end.
 
@@ -826,8 +824,7 @@ get_user_lang(AccountId, UserId) ->
 
 -spec get_account_lang(ne_binary()) -> 'error' | {'ok', ne_binary()}.
 get_account_lang(AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(AccountId) of
         {'ok', JObj} ->
             case wh_json:get_value(<<"language">>, JObj) of
                 'undefined' -> 'error';
@@ -844,10 +841,8 @@ get_user_timezone(AccountId, 'undefined') ->
 get_user_timezone(AccountId, UserId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_cache_doc(AccountDb, UserId) of
-        {'ok', UserJObj} ->
-            kzd_user:timezone(UserJObj);
-        {'error', _E} ->
-            get_account_timezone(AccountId)
+        {'ok', UserJObj} -> kzd_user:timezone(UserJObj);
+        {'error', _E} -> get_account_timezone(AccountId)
     end.
 
 -spec get_account_timezone(api_binary()) -> api_binary().
@@ -855,10 +850,8 @@ get_account_timezone('undefined') ->
     'undefined';
 get_account_timezone(AccountId) ->
     case kz_account:fetch(AccountId) of
-        {'ok', AccountJObj} ->
-            kz_account:timezone(AccountJObj);
-        {'error', _E} ->
-            'undefined'
+        {'ok', AccountJObj} -> kz_account:timezone(AccountJObj);
+        {'error', _E} -> 'undefined'
     end.
 
 -spec apply_response_map(cb_context:context(), wh_proplist()) -> cb_context:context().
@@ -1257,8 +1250,7 @@ maybe_update_descendants_count(AccountId, NewCount) ->
 maybe_update_descendants_count(AccountId, _, Try) when Try =< 0 ->
     io:format("too many attempts to update descendants count for ~s~n", [AccountId]);
 maybe_update_descendants_count(AccountId, NewCount, Try) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(AccountId) of
         {'error', _E} ->
             io:format("could not load account ~s: ~p~n", [AccountId, _E]);
         {'ok', JObj} ->

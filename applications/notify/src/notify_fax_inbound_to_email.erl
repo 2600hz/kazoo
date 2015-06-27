@@ -37,14 +37,13 @@ handle_req(JObj, _Props) ->
     lager:debug("new fax left, sending to email if enabled"),
 
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     FaxId = wh_json:get_value(<<"Fax-ID">>, JObj),
     lager:debug("account-id: ~s, fax-id: ~s", [AccountId, FaxId]),
     {'ok', FaxDoc} = kazoo_modb:open_doc(AccountId, FaxId),
 
     Emails = wh_json:get_value([<<"notifications">>,<<"email">>,<<"send_to">>], FaxDoc, []),
 
-    {'ok', AcctObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+    {'ok', AcctObj} = kz_account:fetch(AccountId),
     Docs = [FaxDoc, JObj, AcctObj],
     Props = create_template_props(JObj, Docs, AcctObj),
 

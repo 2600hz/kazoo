@@ -144,8 +144,7 @@ maybe_prefix_cid_name(Number, Name, Validate, Attribute, Call) ->
 maybe_rewrite_cid_number(Number, Name, Validate, Attribute, Call) ->
     case whapps_call:kvs_fetch('rewrite_cid_number', Call) of
         'undefined' -> maybe_rewrite_cid_name(Number, Name, Validate, Attribute, Call);
-        NewNumber ->
-            maybe_rewrite_cid_name(NewNumber, Name, Validate, Attribute, Call)
+        NewNumber -> maybe_rewrite_cid_name(NewNumber, Name, Validate, Attribute, Call)
     end.
 
 -spec maybe_rewrite_cid_name(ne_binary(), ne_binary(), boolean(), ne_binary(), whapps_call:call()) ->
@@ -153,8 +152,7 @@ maybe_rewrite_cid_number(Number, Name, Validate, Attribute, Call) ->
 maybe_rewrite_cid_name(Number, Name, Validate, Attribute, Call) ->
     case whapps_call:kvs_fetch('rewrite_cid_name', Call) of
         'undefined' -> maybe_ensure_cid_valid(Number, Name, Validate, Attribute, Call);
-        NewName ->
-            maybe_ensure_cid_valid(Number, NewName, Validate, Attribute, Call)
+        NewName -> maybe_ensure_cid_valid(Number, NewName, Validate, Attribute, Call)
     end.
 
 -spec maybe_ensure_cid_valid(ne_binary(), ne_binary(), boolean(), ne_binary(), whapps_call:call()) ->
@@ -182,7 +180,7 @@ maybe_cid_privacy(Number, Name, Call) ->
         'true' ->
             lager:info("overriding caller id to maintain privacy"),
             {whapps_config:get_non_empty(<<"callflow">>, <<"privacy_number">>, <<"0000000000">>)
-            ,whapps_config:get_non_empty(<<"callflow">>, <<"privacy_name">>, <<"anonymous">>)};
+             ,whapps_config:get_non_empty(<<"callflow">>, <<"privacy_name">>, <<"anonymous">>)};
         'false' -> {Number, Name}
     end.
 
@@ -227,12 +225,9 @@ ensure_valid_caller_id(Number, Name, Call) ->
 -spec maybe_get_account_cid(ne_binary(), ne_binary(), whapps_call:call()) ->
                                    {api_binary(), api_binary()}.
 maybe_get_account_cid(Number, Name, Call) ->
-    AccountDb = whapps_call:account_db(Call),
-    AccountId = whapps_call:account_id(Call),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(whapps_call:account_id(Call)) of
         {'error', _} -> maybe_get_assigned_number(Number, Name, Call);
-        {'ok', JObj} ->
-            maybe_get_account_external_number(Number, Name, JObj, Call)
+        {'ok', JObj} -> maybe_get_account_external_number(Number, Name, JObj, Call)
     end.
 
 -spec maybe_get_account_external_number(ne_binary(), ne_binary(), wh_json:object(), whapps_call:call()) ->

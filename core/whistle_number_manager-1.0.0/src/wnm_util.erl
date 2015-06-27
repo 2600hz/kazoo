@@ -376,9 +376,8 @@ to_e164(Number) ->
 to_e164(<<$+, _/binary>> = N, _) -> N;
 to_e164(Number, 'undefined') -> to_e164(Number);
 to_e164(Number, <<_/binary>> = Account) ->
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
     AccountId = wh_util:format_account_id(Account, 'raw'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(Account) of
         {'ok', JObj} -> to_account_e164(Number, AccountId, wh_json:get_value(<<"dial_plan">>, JObj));
         {'error', _} -> to_account_e164(Number, AccountId)
     end.

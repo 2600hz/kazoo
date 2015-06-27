@@ -8,8 +8,8 @@
 %%%-------------------------------------------------------------------
 -module(kz_account).
 
--export([name/1, set_name/2
-         ,realm/1, set_realm/2
+-export([name/1, name/2, set_name/2
+         ,realm/1, realm/2, set_realm/2
          ,language/1, set_language/2
          ,timezone/1, timezone/2, set_timezone/2
          ,id/1
@@ -46,16 +46,22 @@ id(JObj) ->
     wh_doc:id(JObj).
 
 -spec name(doc()) -> api_binary().
+-spec name(doc(), Default) -> ne_binary() | Default.
 name(JObj) ->
-    wh_json:get_value(?NAME, JObj).
+    name(JObj, 'undefined').
+name(JObj, Default) ->
+    wh_json:get_value(?NAME, JObj, Default).
 
 -spec set_name(doc(), ne_binary()) -> doc().
 set_name(JObj, Name) ->
     wh_json:set_value(?NAME, Name, JObj).
 
 -spec realm(doc()) -> api_binary().
+-spec realm(doc(), Default) -> ne_binary() | Default.
 realm(JObj) ->
-    wh_json:get_ne_value(?REALM, JObj).
+    realm(JObj, 'undefined').
+realm(JObj, Default) ->
+    wh_json:get_ne_value(?REALM, JObj, Default).
 
 -spec set_realm(doc(), ne_binary()) -> doc().
 set_realm(JObj, Realm) ->

@@ -36,14 +36,13 @@ handle_req(JObj, _Props) ->
     lager:debug("new outbound fax left, sending to email if enabled"),
 
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     JobId = wh_json:get_value(<<"Fax-JobId">>, JObj),
     lager:debug("account-id: ~s, fax-id: ~s", [AccountId, JobId]),
     {'ok', FaxDoc} = couch_mgr:open_doc(?WH_FAXES_DB, JobId),
 
     Emails = wh_json:get_value([<<"notifications">>,<<"email">>,<<"send_to">>], FaxDoc, []),
 
-    {'ok', AcctObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+    {'ok', AcctObj} = kz_account:fetch(AccountId),
     Docs = [FaxDoc, JObj, AcctObj],
     Props = create_template_props(JObj, Docs, AcctObj),
 

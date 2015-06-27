@@ -122,10 +122,8 @@ delete_account(AccountId, AuthToken) ->
 -spec update_account(ne_binary(), ne_binary()) -> 'ok'.
 update_account(Account, AuthToken) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {'ok', JObj} ->
-            update_account(AccountId, JObj, AuthToken);
+    case kz_account:fetch(AccountId) of
+        {'ok', JObj} -> update_account(AccountId, JObj, AuthToken);
         {'error', _R} ->
             lager:debug("unable to fetch account ~s: ~p", [AccountId, _R])
     end.
@@ -144,9 +142,8 @@ account_settings(JObj) ->
 %%--------------------------------------------------------------------
 -spec update_user(ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
 update_user(AccountId, JObj, AuthToken) ->
-    case wh_json:get_value(<<"pvt_type">>, JObj) of
-        <<"user">> ->
-            save_user(AccountId, JObj, AuthToken);
+    case wh_doc:type(JObj) of
+        <<"user">> -> save_user(AccountId, JObj, AuthToken);
         _ -> 'ok' %% Gets rid of VMbox
     end.
 
@@ -154,8 +151,7 @@ update_user(AccountId, JObj, AuthToken) ->
 save_user(AccountId, JObj, AuthToken) ->
     _ = update_account(AccountId, AuthToken),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    OwnerId = wh_json:get_value(<<"id">>, JObj),
-    Devices = crossbar_util:get_devices_by_owner(AccountDb, OwnerId),
+    Devices = crossbar_util:get_devices_by_owner(AccountDb, wh_doc:id(JObj)),
     Settings = settings(JObj),
     lists:foreach(
       fun(Device) ->

@@ -21,10 +21,10 @@
          ,maybe_restrict_call/2
         ]).
 
--spec handle_req(wh_json:object(), wh_proplist()) -> any().
+-spec handle_req(wh_json:object(), wh_proplist()) -> _.
 handle_req(JObj, _Options) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    put('callid', CallId),
+    wh_util:put_callid(CallId),
     lager:info("callflow has received a route win, taking control of the call"),
     case whapps_call:retrieve(CallId, ?APP_NAME) of
         {'ok', Call} ->
@@ -56,7 +56,7 @@ should_restrict_call(Call) ->
 
 -spec maybe_service_unavailable(wh_json:object(), whapps_call:call()) -> boolean().
 maybe_service_unavailable(JObj, Call) ->
-    Id = wh_json:get_value(<<"_id">>, JObj),
+    Id = wh_doc:id(JObj),
     Services = wh_json:merge_recursive(
                  wh_json:get_value(<<"services">>, JObj, ?DEFAULT_SERVICES),
                  wh_json:get_value(<<"pvt_services">>, JObj, wh_json:new())),
@@ -71,8 +71,7 @@ maybe_service_unavailable(JObj, Call) ->
 -spec maybe_account_service_unavailable(wh_json:object(), whapps_call:call()) -> boolean().
 maybe_account_service_unavailable(JObj, Call) ->
     AccountId = whapps_call:account_id(Call),
-    AccountDb = whapps_call:account_db(Call),
-    {'ok', Doc} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+    {'ok', Doc} = kz_account:fetch(AccountId),
     Services = wh_json:merge_recursive(
                  wh_json:get_value(<<"services">>, Doc, ?DEFAULT_SERVICES),
                  wh_json:get_value(<<"pvt_services">>, Doc, wh_json:new())),

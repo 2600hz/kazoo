@@ -361,11 +361,9 @@ maybe_add_owner_to_notify_list(List, OwnerEmail) ->
     NotifyList = fax_util:notify_email_list('undefined', OwnerEmail, List),
     wh_json:set_value([<<"email">>, <<"send_to">>], NotifyList, wh_json:new()).
 
--spec maybe_update_fax_settings_from_account(state()) -> any().
+-spec maybe_update_fax_settings_from_account(state()) -> _.
 maybe_update_fax_settings_from_account(#state{call=Call}=State) ->
-    AccountId = whapps_call:account_id(Call),
-    AccountDb = whapps_call:account_db(Call),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(whapps_call:account_id(Call)) of
         {'ok', JObj} ->
             case wh_json:is_json_object(<<"fax_settings">>, JObj) of
                 'true' ->

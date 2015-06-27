@@ -291,12 +291,11 @@ is_blacklisted(JObj) ->
 
 -spec get_blacklists(ne_binary()) ->
                             {'ok', ne_binaries()} |
-                            {'error', any()}.
+                            {'error', _}.
 get_blacklists(AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(AccountId) of
         {'error', _R}=E ->
-            lager:error("could not open ~s in ~s: ~p", [AccountId, AccountDb, _R]),
+            lager:error("could not open account doc ~s : ~p", [AccountId, _R]),
             E;
         {'ok', Doc} ->
             case wh_json:get_value(<<"blacklists">>, Doc, []) of

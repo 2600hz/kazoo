@@ -124,15 +124,11 @@ get_attribute(JObj, K, DefaultFun, FormatterFun) ->
 
 -spec konami_doc(ne_binary()) -> api_object().
 konami_doc(Account) ->
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(Account) of
         {'ok', JObj} -> wh_json:get_value(<<"metaflows">>, JObj);
         {'error', 'not_found'} -> 'undefined';
         {'error', _E} ->
-            lager:debug("failed to open account(~s)'s konami doc: ~p", [wh_util:format_account_id(AccountDb, 'raw')
-                                                                        ,_E
-                                                                       ]),
+            AccountId = wh_util:format_account_id(Account, 'raw'),
+            lager:debug("failed to open account(~s)'s konami doc: ~p", [AccountId, _E]),
             'undefined'
     end.

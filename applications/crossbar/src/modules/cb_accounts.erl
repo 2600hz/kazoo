@@ -1148,9 +1148,9 @@ create_new_tree(Context, _Verb, _Nouns) ->
 load_account_db([AccountId|_], Context) ->
     load_account_db(AccountId, Context);
 load_account_db(AccountId, Context) when is_binary(AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(AccountId) of
         {'ok', _JObj} ->
+            AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
             lager:debug("account ~s db exists, setting operating database as ~s", [AccountId, AccountDb]),
             ResellerId = wh_services:find_reseller_id(AccountId),
             cb_context:setters(Context

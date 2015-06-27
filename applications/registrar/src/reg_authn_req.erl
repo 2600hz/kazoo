@@ -447,7 +447,7 @@ get_auth_method(JObj) ->
 
 -spec maybe_auth_method(auth_user(), wh_json:object(), wh_json:object(), ne_binary()) ->
                                {'ok', auth_user()} |
-                               {'error', any()}.
+                               {'error', _}.
 maybe_auth_method(AuthUser, JObj, Req, ?GSM_ANY_METHOD)->
     GsmDoc = wh_json:get_value(<<"gsm">>, JObj),
     CachedNonce = wh_json:get_value(<<"nonce">>, GsmDoc, wh_util:rand_hex_binary(16)),
