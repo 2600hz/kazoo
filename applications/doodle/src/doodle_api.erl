@@ -12,7 +12,7 @@
 
 -include("doodle.hrl").
 
--spec handle_api_sms(binary(), binary()) -> 'ok'.
+-spec handle_api_sms(ne_binary(), ne_binary()) -> 'ok'.
 handle_api_sms(Db, Id) ->
     {'ok', Doc} = couch_mgr:open_doc(Db, Id),
     Status = wh_json:get_value(<<"pvt_status">>, Doc),
@@ -73,14 +73,14 @@ route_req(FetchId, CallId, JObj) ->
 route_req_ccvs(FetchId, JObj) ->
     props:filter_undefined(
       [{<<"Fetch-ID">>, FetchId}
-       ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, JObj)}
-       ,{<<"Reseller-ID">>, wh_json:get_value(<<"pvt_reseller_id">>, JObj)}
+       ,{<<"Account-ID">>, wh_doc:account_id(JObj)}
+       ,{<<"Reseller-ID">>, kzd_services:reseller_id(JObj)}
        ,{<<"Authorizing-Type">>, wh_json:get_value(<<"pvt_authorization_type">>, JObj)}
        ,{<<"Authorizing-ID">>, wh_json:get_value(<<"pvt_authorization">>, JObj)}
        ,{<<"Owner-ID">>, wh_json:get_value(<<"pvt_owner_id">>, JObj)}
        ,{<<"Channel-Authorized">>, 'true'}
-       ,{<<"Doc-Revision">>, wh_json:get_value(<<"_rev">>, JObj)}
-       ,{<<"Doc-ID">>, wh_json:get_value(<<"_id">>, JObj)}
+       ,{<<"Doc-Revision">>, wh_doc:revision(JObj)}
+       ,{<<"Doc-ID">>, wh_doc:id(JObj)}
        ,{<<"Scheduled-Delivery">>, wh_json:get_value(<<"scheduled">>, JObj)}
        ,{<<"API-Call">>, 'true'}
        | wh_json:to_proplist(<<"pvt_address_options">>, JObj)

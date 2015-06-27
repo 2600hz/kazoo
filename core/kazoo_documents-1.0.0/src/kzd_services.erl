@@ -61,6 +61,10 @@ billing_id(JObj) ->
 billing_id(JObj, Default) ->
     wh_json:get_value(?BILLING_ID, JObj, Default).
 
+-spec set_billing_id(doc(), api_binary()) -> doc().
+set_billing_id(JObj, BillingId) ->
+    wh_json:set_value(?BILLING_ID, BillingId, JObj).
+
 -spec is_reseller(doc()) -> boolean().
 -spec is_reseller(doc(), Default) -> boolean() | Default.
 is_reseller(JObj) ->
@@ -156,10 +160,6 @@ item_quantity(JObj, CategoryId, ItemId) ->
     item_quantity(JObj, CategoryId, ItemId, 0).
 item_quantity(JObj, CategoryId, ItemId, Default) ->
     wh_json:get_integer_value([?QUANTITIES, CategoryId, ItemId], JObj, Default).
-
--spec set_billing_id(doc(), api_binary()) -> doc().
-set_billing_id(JObj, BillingId) ->
-    wh_json:set_value(?BILLING_ID, BillingId, JObj).
 
 -spec set_is_reseller(doc(), boolean()) -> doc().
 set_is_reseller(JObj, IsReseller) ->

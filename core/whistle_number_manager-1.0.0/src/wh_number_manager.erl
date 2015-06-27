@@ -366,8 +366,7 @@ check_ports(#number{number=MaybePortNumber}=Number) ->
     case wnm_number:find_port_in_number(Number) of
         {'ok', PortDoc} ->
             lager:debug("found port doc with number ~s for account ~s"
-                        ,[MaybePortNumber, wh_json:get_value(<<"pvt_account_id">>, PortDoc)]
-                       ),
+                        ,[MaybePortNumber, wh_doc:account_id(PortDoc)]),
             wnm_number:number_from_port_doc(Number, PortDoc);
         {'error', 'not_found'} ->
             lager:debug("number not found in ports"),
@@ -843,7 +842,7 @@ put_attachment(Number, Name, Content, Options, AuthBy) ->
                     (#number{number=Num, number_doc=JObj}) ->
                          lager:debug("attempting to put attachement ~s", [Name]),
                          Db = wnm_util:number_to_db_name(Num),
-                         Rev = wh_json:get_value(<<"_rev">>, JObj),
+                         Rev = wh_doc:revision(JObj),
                          couch_mgr:put_attachment(Db, Num, Name, Content, [{'rev', Rev}|Options])
                  end
                ],

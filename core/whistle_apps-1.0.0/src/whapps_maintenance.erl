@@ -266,16 +266,14 @@ remove_depreciated_account_views(AccountDb) ->
 -spec ensure_account_definition(ne_binary(), ne_binary()) -> 'ok'.
 ensure_account_definition(AccountDb, AccountId) ->
     case couch_mgr:open_doc(AccountDb, AccountId) of
-        {'error', 'not_found'} ->
-            get_definition_from_accounts(AccountDb, AccountId);
+        {'error', 'not_found'} -> get_definition_from_accounts(AccountDb, AccountId);
         {'ok', _} -> 'ok'
     end.
 
 -spec get_definition_from_accounts(ne_binary(), ne_binary()) -> 'ok'.
 get_definition_from_accounts(AccountDb, AccountId) ->
     case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
-        {'ok', JObj} ->
-            couch_mgr:ensure_saved(AccountDb, wh_json:delete_key(<<"_rev">>, JObj));
+        {'ok', JObj} -> couch_mgr:ensure_saved(AccountDb, wh_doc:delete_revision(JObj));
         {'error', 'not_found'} ->
             io:format("    account ~s is missing its local account definition, and not in the accounts db~n"
                      ,[AccountId]),
@@ -317,8 +315,7 @@ remove_depreciated_databases([]) -> 'ok';
 remove_depreciated_databases([Database|Databases]) ->
     _ = case couch_util:db_classification(Database) of
             'depreciated' ->
-                io:format("    archive and remove depreciated database ~s~n"
-                         ,[Database]),
+                io:format("    archive and remove depreciated database ~s~n", [Database]),
                 _ = couch_mgr:db_archive(Database),
                 maybe_delete_db(Database);
             _Else -> 'ok'
@@ -341,11 +338,10 @@ cleanup_aggregated_accounts() ->
 -spec cleanup_aggregated_accounts(wh_json:objects()) -> 'ok'.
 cleanup_aggregated_accounts([]) -> 'ok';
 cleanup_aggregated_accounts([JObj|JObjs]) ->
-    _ = case wh_json:get_value(<<"id">>, JObj) of
+    _ = case wh_doc:id(JObj) of
             <<"_design", _/binary>> -> 'ok';
             AccountId ->
-                io:format("    verifing ~s doc ~s~n"
-                         ,[?WH_ACCOUNTS_DB, AccountId]),
+                io:format("    verifing ~s doc ~s~n", [?WH_ACCOUNTS_DB, AccountId]),
                 cleanup_aggregated_account(AccountId)
         end,
     cleanup_aggregated_accounts(JObjs).
@@ -355,8 +351,7 @@ cleanup_aggregated_account(Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     AccountId = wh_util:format_account_id(Account, 'raw'),
     case couch_mgr:open_doc(AccountDb, AccountId) of
-        {'error', 'not_found'} ->
-            remove_aggregated_account(AccountDb);
+        {'error', 'not_found'} -> remove_aggregated_account(AccountDb);
         _Else -> 'ok'
     end.
 
@@ -364,8 +359,7 @@ cleanup_aggregated_account(Account) ->
 remove_aggregated_account(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     {'ok', JObj} = couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId),
-    io:format("    removing invalid ~s doc ~s~n"
-             ,[?WH_ACCOUNTS_DB, AccountId]),
+    io:format("    removing invalid ~s doc ~s~n", [?WH_ACCOUNTS_DB, AccountId]),
     _ = couch_mgr:del_doc(?WH_ACCOUNTS_DB, JObj),
     'ok'.
 
@@ -385,11 +379,10 @@ cleanup_aggregated_devices() ->
 -spec cleanup_aggregated_devices(wh_json:objects()) -> 'ok'.
 cleanup_aggregated_devices([]) -> 'ok';
 cleanup_aggregated_devices([JObj|JObjs]) ->
-    _ = case wh_json:get_value(<<"id">>, JObj) of
+    _ = case wh_doc:id(JObj) of
             <<"_design", _/binary>> -> 'ok';
             DocId ->
-                io:format("    verifing ~s doc ~s~n"
-                         ,[?WH_SIP_DB, DocId]),
+                io:format("    verifing ~s doc ~s~n", [?WH_SIP_DB, DocId]),
                 cleanup_aggregated_device(DocId)
         end,
     cleanup_aggregated_devices(JObjs).
@@ -474,8 +467,7 @@ get_medias(Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     ViewOptions = [],
     case couch_mgr:get_results(AccountDb, ?PMEDIA_VIEW, ViewOptions) of
-        {'ok', ViewRes} ->
-            [wh_json:get_value(<<"id">>, JObj) || JObj<- ViewRes];
+        {'ok', ViewRes} -> [wh_doc:id(JObj) || JObj<- ViewRes];
         {'error', _E} ->
             lager:error("could not load view ~p: ~p", [?PMEDIA_VIEW, _E]),
             []
@@ -500,8 +492,7 @@ migrate_all_limits(Accounts) ->
     'ok'.
 
 migrate_limits_fold(AccountDb, Current, Total) ->
-    io:format("checking limits doc in database (~p/~p) '~s'~n"
-             ,[Current, Total, AccountDb]),
+    io:format("checking limits doc in database (~p/~p) '~s'~n", [Current, Total, AccountDb]),
     _ = case couch_mgr:open_doc(AccountDb, <<"limits">>) of
             {'error', 'not_found'} -> migrate_limits(AccountDb);
             _Else -> 'ok'
@@ -559,7 +550,7 @@ clean_trunkstore_docs(AccountDb, [JObj|JObjs], Trunks, InboundTrunks) ->
     _ = case wh_json:get_ne_value(<<"servers">>, Doc) =:= 'undefined'
             andalso wh_json:get_ne_value(<<"pvt_created_by">>, Doc) =:= <<"jonny5">>
         of
-            'true' -> couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"pvt_deleted">>, 'true', Doc));
+            'true' -> couch_mgr:save_doc(AccountDb, wh_doc:set_soft_deleted(Doc, 'true'));
             'false' -> 'ok'
         end,
     NewTrunks = case wh_json:get_integer_value([<<"account">>, <<"trunks">>], Doc, 0) of
@@ -703,7 +694,7 @@ maybe_migrate_attachments(AccountDb, Id, JObj) ->
     case wh_doc:attachments(JObj) of
         'undefined' ->
             io:format("media doc ~s/~s has no attachments, removing~n", [AccountDb, Id]),
-            couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"pvt_deleted">>, 'true', JObj));
+            couch_mgr:save_doc(AccountDb, wh_doc:set_soft_deleted(JObj, 'true'));
         Attachments ->
             _ = [catch migrate_attachment(AccountDb, JObj, K, V)
                  || {K,V} <- wh_json:to_proplist(Attachments)
@@ -712,16 +703,18 @@ maybe_migrate_attachments(AccountDb, Id, JObj) ->
 
 -spec migrate_attachment(ne_binary(), wh_json:object()) -> 'ok'.
 migrate_attachment(AccountDb, ViewJObj) ->
-    Id = wh_json:get_value(<<"id">>, ViewJObj),
+    Id = wh_doc:id(ViewJObj),
     _ = case couch_mgr:open_doc(AccountDb, Id) of
-            {'error', _}=E1 -> io:format("unable to open media for attachment migration ~s/~s: ~p~n", [AccountDb, Id, E1]);
+            {'error', _}=E1 ->
+                io:format("unable to open media for attachment migration ~s/~s: ~p~n", [AccountDb, Id, E1]);
             {'ok', JObj1} ->
                 maybe_migrate_attachments(AccountDb, Id, JObj1)
         end,
 
     %% we must reopen the doc since the _attachments has changed or we will effectively remove all attachments!
     case couch_mgr:open_doc(AccountDb, Id) of
-        {'error', _}=E2 -> io:format("unable to open media for depreciated field removal ~s/~s: ~p~n", [AccountDb, Id, E2]);
+        {'error', _}=E2 ->
+            io:format("unable to open media for depreciated field removal ~s/~s: ~p~n", [AccountDb, Id, E2]);
         {'ok', JObj2} ->
             remove_deprecated_attachment_properties(AccountDb, Id, JObj2)
     end.
@@ -759,21 +752,17 @@ migrate_attachment(AccountDb, JObj, Attachment, MetaData) ->
     Migrations = [fun({A, MCT}) -> maybe_update_attachment_content_type(A, MCT, DocCT) end
                   ,fun maybe_add_extension/1
                  ],
-
     Migrate = lists:foldl(fun(F, Acc) -> F(Acc) end
                           ,{Attachment, MetaCT}
                           ,Migrations
                          ),
-
-    Id = wh_json:get_value(<<"_id">>, JObj),
-    maybe_update_attachment(AccountDb, Id, {Attachment, MetaCT}, Migrate).
+    maybe_update_attachment(AccountDb, wh_doc:id(JObj), {Attachment, MetaCT}, Migrate).
 
 maybe_update_attachment_content_type(A, MCT, DocCT) ->
     case {is_audio_content(DocCT), is_audio_content(MCT)} of
         {_, 'true'} -> {A, MCT};
         {'true', 'false'} -> {A, DocCT};
-        {'false', 'false'} ->
-            {A, find_attachment_content_type(A)}
+        {'false', 'false'} -> {A, find_attachment_content_type(A)}
     end.
 
 -spec find_attachment_content_type(ne_binary()) -> ne_binary().
@@ -926,11 +915,11 @@ maybe_delete_db(Database) ->
 %%--------------------------------------------------------------------
 -spec purge_doc_type(ne_binaries() | ne_binary(), ne_binary()) ->
                             {'ok', wh_json:objects()} |
-                            {'error', term()} |
+                            {'error', _} |
                             'ok'.
 -spec purge_doc_type(ne_binaries() | ne_binary(), ne_binary(), integer()) ->
                             {'ok', wh_json:objects()} |
-                            {'error', term()} |
+                            {'error', _} |
                             'ok'.
 purge_doc_type([], _Account) -> 'ok';
 purge_doc_type([Type|Types], Account) ->
@@ -1000,7 +989,7 @@ delete_system_media_references() ->
     case couch_mgr:open_doc(?WH_CONFIG_DB, DocId) of
         {'ok', CallResponsesDoc} ->
             delete_system_media_references(DocId, CallResponsesDoc);
-        {'error', 'not_found'} -> ok
+        {'error', 'not_found'} -> 'ok'
     end.
 
 -spec delete_system_media_references(ne_binary(), wh_json:object()) -> 'ok'.

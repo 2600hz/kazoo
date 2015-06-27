@@ -193,8 +193,7 @@ fetch_number(#number{number_db=Db
 -spec maybe_correct_used_by(wnm_number(), wh_json:object()) -> wnm_number().
 maybe_correct_used_by(#number{assigned_to=Account}=N) ->
     case load_phone_number_doc(Account) of
-        {'ok', JObj} ->
-            maybe_correct_used_by(N, JObj);
+        {'ok', JObj} -> maybe_correct_used_by(N, JObj);
         {'error', _R} ->
             lager:warning("failed to get phone number doc for used_by correction: ~p", [_R]),
             N
@@ -771,31 +770,32 @@ json_to_record(JObj, IsNew, #number{number=Num
                                     ,number_db=Db
                                    }=Number) ->
     Number#number{
-      number=wh_json:get_value(<<"_id">>, JObj, Num)
-      ,number_db=wh_json:get_value(<<"pvt_db_name">>, JObj, Db)
-      ,state=wh_json:get_ne_value(?PVT_NUMBER_STATE, JObj)
-      ,current_state=wh_json:get_ne_value(?PVT_NUMBER_STATE, JObj)
-      ,reserve_history=ordsets:from_list(wh_json:get_ne_value(<<"pvt_reserve_history">>, JObj, []))
-      ,assigned_to=wh_json:get_ne_value(<<"pvt_assigned_to">>, JObj)
-      ,prev_assigned_to=wh_json:get_ne_value(<<"pvt_previously_assigned_to">>, JObj)
-      ,module_name=wnm_util:get_carrier_module(JObj)
-      ,module_data=wh_json:get_ne_value(<<"pvt_module_data">>, JObj)
-      ,features=sets:from_list(wh_json:get_ne_value(<<"pvt_features">>, JObj, []))
-      ,current_features=sets:from_list(wh_json:get_ne_value(<<"pvt_features">>, JObj, []))
-      ,number_doc=JObj
-      ,current_number_doc=case IsNew of 'true' -> wh_json:new(); 'false' -> JObj end
-      ,used_by=wh_json:get_value(<<"used_by">>, JObj, <<>>)
-      ,is_new=IsNew
+      number = wh_doc:id(JObj, Num)
+      ,number_db = wh_json:get_value(<<"pvt_db_name">>, JObj, Db)
+      ,state = wh_json:get_ne_value(?PVT_NUMBER_STATE, JObj)
+      ,current_state = wh_json:get_ne_value(?PVT_NUMBER_STATE, JObj)
+      ,reserve_history = ordsets:from_list(wh_json:get_ne_value(<<"pvt_reserve_history">>, JObj, []))
+      ,assigned_to = wh_json:get_ne_value(<<"pvt_assigned_to">>, JObj)
+      ,prev_assigned_to = wh_json:get_ne_value(<<"pvt_previously_assigned_to">>, JObj)
+      ,module_name = wnm_util:get_carrier_module(JObj)
+      ,module_data = wh_json:get_ne_value(<<"pvt_module_data">>, JObj)
+      ,features = sets:from_list(wh_json:get_ne_value(<<"pvt_features">>, JObj, []))
+      ,current_features  =sets:from_list(wh_json:get_ne_value(<<"pvt_features">>, JObj, []))
+      ,number_doc = JObj
+      ,current_number_doc = case IsNew of 'true' -> wh_json:new(); 'false' -> JObj end
+      ,used_by = wh_json:get_value(<<"used_by">>, JObj, <<>>)
+      ,is_new = IsNew
      }.
 
 -spec number_from_port_doc(wnm_number(), wh_json:object()) -> wnm_number().
 number_from_port_doc(#number{number=N}=Number, JObj) ->
+    AccountId = wh_doc:account_id(JObj),
     Number#number{
-      number_db=wnm_util:number_to_db_name(N)
+      number_db = wnm_util:number_to_db_name(N)
       ,state = ?NUMBER_STATE_PORT_IN
       ,current_state = ?NUMBER_STATE_PORT_IN
-      ,assigned_to=wh_json:get_ne_value(<<"pvt_account_id">>, JObj)
-      ,auth_by=wh_json:get_ne_value(<<"pvt_account_id">>, JObj)
+      ,assigned_to = AccountId
+      ,auth_by = AccountId
      }.
 
 %%--------------------------------------------------------------------
@@ -818,7 +818,7 @@ record_to_json(#number{number_doc=JObj}=N) ->
                ,{<<"pvt_features">>, [wh_util:to_binary(F) || F <- sets:to_list(N#number.features)]}
                ,{<<"pvt_db_name">>, N#number.number_db}
                ,{<<"pvt_modified">>, Now}
-               ,{<<"pvt_created">>, wh_json:get_value(<<"pvt_created">>, JObj, Now)}
+               ,{<<"pvt_created">>, wh_doc:created(JObj, Now)}
                ,{<<"used_by">>, N#number.used_by}
                ,{<<"pvt_type">>, <<"number">>}
               ],

@@ -68,12 +68,13 @@ format_numbers_resp(JObjs) ->
 
 format_numbers_resp_fold(JObj, Acc) ->
     Doc = wh_json:get_value(<<"doc">>,JObj),
+    Id = wh_doc:id(Doc),
     Props = props:filter_undefined(
-              [{<<"number">>, wh_json:get_value(<<"_id">>, Doc)}
+              [{<<"number">>, Id}
                ,{<<"rate">>, wh_json:get_value(<<"rate">>, Doc, <<"1">>)}
                ,{<<"activation_charge">>, wh_json:get_value(<<"activation_charge">>, Doc, <<"0">>)}
               ]),
-    [{wh_json:get_value(<<"_id">>, Doc), wh_json:from_list(Props)} | Acc].
+    [{Id, wh_json:from_list(Props)} | Acc].
 
 -spec is_number_billable(wnm_number()) -> 'true' | 'false'.
 is_number_billable(_Number) -> 'false'.

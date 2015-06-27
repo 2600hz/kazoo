@@ -142,8 +142,7 @@ endpoints(Number, JObj) ->
 maybe_get_endpoints(Number, JObj) ->
     case wh_json:get_value(<<"Hunt-Account-ID">>, JObj) of
         'undefined' -> get_global_endpoints(Number, JObj);
-        HuntAccount ->
-            maybe_get_local_endpoints(HuntAccount, Number, JObj)
+        HuntAccount -> maybe_get_local_endpoints(HuntAccount, Number, JObj)
     end.
 
 -spec maybe_get_local_endpoints(ne_binary(), ne_binary(), wh_json:object()) -> wh_json:objects().
@@ -691,7 +690,7 @@ fetch_local_resources(AccountId, JObjs) ->
 -spec fetch_local_cache_origin(wh_json:objects(), ne_binary(), wh_cache_props()) -> wh_cache_props().
 fetch_local_cache_origin([], _, Props) -> [{'type', <<"resource">>} | Props];
 fetch_local_cache_origin([JObj|JObjs], AccountDb, Props) ->
-    Id = wh_json:get_value(<<"id">>, JObj),
+    Id = wh_doc:id(JObj),
     fetch_local_cache_origin(JObjs, AccountDb, [{'db', AccountDb, Id}|Props]).
 
 -spec fetch_account_dedicated_proxies(api_binary()) -> wh_proplist().
@@ -731,7 +730,7 @@ create_resource(JObj, Resources) ->
     case wh_json:get_value(<<"classifiers">>, JObj) of
         'undefined' -> [resource_from_jobj(JObj) | Resources];
         ResourceClassifiers ->
-            AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
+            AccountId = wh_doc:account_id(JObj),
             create_resource(wh_json:to_proplist(ResourceClassifiers)
                             ,wh_json:to_proplist(wnm_util:available_classifiers(AccountId))
                             ,JObj
@@ -747,7 +746,7 @@ create_resource([{Classifier, ClassifierJobj}|Cs], ConfigClassifiers, JObj, Reso
     of
         'false' -> create_resource(Cs, ConfigClassifiers, JObj, Resources);
         'true' ->
-            Id = wh_json:get_value(<<"_id">>, JObj),
+            Id = wh_doc:id(JObj),
             Name = wh_json:get_value(<<"name">>, JObj),
             DefaultRegex = wh_json:get_value(<<"regex">>, ConfigClassifier),
             Props = [{<<"rules">>, [wh_json:get_value(<<"regex">>, ClassifierJobj, DefaultRegex)]}
@@ -772,8 +771,8 @@ create_resource([{Classifier, ClassifierJobj}|Cs], ConfigClassifiers, JObj, Reso
 
 -spec resource_from_jobj(wh_json:object()) -> resource().
 resource_from_jobj(JObj) ->
-    Resource = #resrc{id=wh_json:get_value(<<"_id">>, JObj)
-                      ,rev=wh_json:get_value(<<"_rev">>, JObj)
+    Resource = #resrc{id=wh_doc:id(JObj)
+                      ,rev=wh_doc:revision(JObj)
                       ,name=wh_json:get_value(<<"name">>, JObj)
                       ,flags=wh_json:get_value(<<"flags">>, JObj, [])
                       ,require_flags=wh_json:is_true(<<"require_flags">>, JObj)
@@ -822,9 +821,7 @@ resource_codecs(JObj) ->
 -spec resource_rules(wh_json:object()) -> rules().
 resource_rules(JObj) ->
     lager:info("compiling resource rules for ~s / ~s"
-               ,[wh_json:get_value(<<"pvt_account_db">>, JObj, <<"offnet">>)
-                 ,wh_json:get_value(<<"_id">>, JObj)
-                ]),
+               ,[wh_doc:account_db(JObj, <<"offnet">>), wh_doc:id(JObj)]),
     Rules = wh_json:get_value(<<"rules">>, JObj, []),
     resource_rules(Rules, []).
 
@@ -842,9 +839,7 @@ resource_rules([Rule|Rules], CompiledRules) ->
 -spec resource_cid_rules(wh_json:object()) -> rules().
 resource_cid_rules(JObj) ->
     lager:info("compiling resource rules for ~s / ~s"
-               ,[wh_json:get_value(<<"pvt_account_db">>, JObj, <<"offnet">>)
-                 ,wh_json:get_value(<<"_id">>, JObj)
-                ]),
+               ,[wh_doc:account_db(JObj, <<"offnet">>), wh_doc:id(JObj)]),
     Rules = wh_json:get_value(<<"cid_rules">>, JObj, []),
     resource_rules(Rules, []).
 

@@ -147,7 +147,7 @@ transition(JObj, [_FromState | FromStates], ToState, CurrentState) ->
 -spec charge_for_port(wh_json:object()) -> 'ok' | 'error'.
 -spec charge_for_port(wh_json:object(), ne_binary()) -> 'ok' | 'error'.
 charge_for_port(JObj) ->
-    charge_for_port(JObj, wh_json:get_value(<<"pvt_account_id">>, JObj)).
+    charge_for_port(JObj, wh_doc:account_id(JObj)).
 charge_for_port(_JObj, AccountId) ->
     Services = wh_services:fetch(AccountId),
     Cost = wh_services:activation_charges(<<"number_services">>, <<"port">>, Services),
@@ -315,7 +315,7 @@ fetch_and_send(Url, JObj) ->
       ,Attachments
      ).
 
--spec send_attachement(ne_binary(), ne_binary(), ne_binary(), wh_json:object(), any()) -> 'error' | 'ok'.
+-spec send_attachement(ne_binary(), ne_binary(), ne_binary(), wh_json:object(), _) -> 'error' | 'ok'.
 send_attachement(Url, Id, Name, Options, Attachment) ->
     ContentType = wh_json:get_value(<<"content_type">>, Options),
 

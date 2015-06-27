@@ -44,15 +44,15 @@ init() ->
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = wapi_notifications:port_request_v(JObj),
-    whapps_util:put_callid(JObj),
+    wh_util:put_callid(JObj),
 
     lager:debug("a port change has been requested, sending email notification"),
 
     {'ok', AccountDoc} = notify_util:get_account_doc(JObj),
     AccountJObj = wh_doc:public_fields(AccountDoc),
 
-    lager:debug("creating port change notice for ~s(~s)", [wh_json:get_value(<<"name">>, AccountJObj)
-                                                           ,wh_json:get_value(<<"pvt_account_id">>, AccountDoc)
+    lager:debug("creating port change notice for ~s(~s)", [kz_account:name(AccountJObj)
+                                                           ,wh_doc:account_id(AccountDoc)
                                                           ]),
 
     Version = wh_json:get_value(<<"Version">>, JObj),
@@ -99,7 +99,7 @@ create_template_props(<<"v2">>, NotifyJObj, AccountJObj) ->
     Request = [{<<"port">>
                 ,[{<<"service_provider">>, wh_json:get_value(<<"carrier">>, PortDoc)}
                   ,{<<"billing_name">>, wh_json:get_value([<<"bill">>, <<"name">>], PortDoc)}
-                  ,{<<"billing_account_id">>, wh_json:get_value(<<"pvt_account_id">>, PortDoc)}
+                  ,{<<"billing_account_id">>, wh_doc:account_id(PortDoc)}
                   ,{<<"billing_street_address">>, wh_json:get_value([<<"bill">>, <<"address">>], PortDoc)}
                   ,{<<"billing_locality">>, wh_json:get_value([<<"bill">>, <<"locality">>], PortDoc)}
                   ,{<<"billing_postal_code">>, wh_json:get_value([<<"bill">>, <<"postal_code">>], PortDoc)}

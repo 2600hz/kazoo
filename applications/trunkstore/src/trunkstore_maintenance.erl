@@ -33,8 +33,8 @@ flush(Account) ->
     'ok'.
 
 migrate() ->
-    io:format("This command is ancient, if you REALLY know what you are duing run:~n", []),
-    io:format(" sup trunkstore_maintenance i_understand_migrate").
+    io:format("This command is ancient, if you REALLY know what you are duing run:~n"),
+    io:format(" sup trunkstore_maintenance i_understand_migrate~n").
 
 i_understand_migrate() ->
     lager:info("migrating trunkstore information from the ts database"),
@@ -43,7 +43,7 @@ i_understand_migrate() ->
             lager:info("ts database not found or ts_account/crossbar_listing view missing");
         {'ok', TSAccts} ->
             lager:info("trying ~b ts accounts", [length(TSAccts)]),
-            _ = [maybe_migrate(wh_json:set_value(<<"_rev">>, <<>>, wh_json:get_value(<<"doc">>, Acct)))
+            _ = [maybe_migrate(wh_doc:set_revision(wh_json:get_value(<<"doc">>, Acct), <<>>))
                  || Acct <- TSAccts
                 ],
             lager:info("migration complete")
@@ -64,8 +64,7 @@ maybe_migrate(AcctJObj) ->
                 'ignore' ->
                     lager:info("failed to create an account db for realm ~s", [Realm])
             end;
-        'ignore' ->
-            lager:info("ignoring ts account with realm ~s", [Realm])
+        'ignore' -> lager:info("ignoring ts account with realm ~s", [Realm])
     end.
 
 move_doc(AcctDB, AcctID, TSJObj) ->
@@ -90,8 +89,8 @@ create_ts_doc(AcctDB, AcctID, TSJObj) ->
     JObj = wh_json:set_values([{<<"pvt_type">>, <<"sys_info">>}
                                ,{<<"pvt_account_db">>, AcctDB}
                                ,{<<"pvt_account_id">>, AcctID}
-                              ], wh_json:delete_key(<<"_id">>, wh_json:delete_key(<<"_rev">>, TSJObj))),
-    lager:info("saving ts doc ~s into ~s", [wh_json:get_value(<<"_id">>, TSJObj), AcctDB]),
+                              ], wh_json:delete_key(<<"_id">>, wh_doc:delete_revision(TSJObj))),
+    lager:info("saving ts doc ~s into ~s", [wh_doc:id(TSJObj), AcctDB]),
     {'ok', _} = couch_mgr:save_doc(AcctDB, JObj).
 
 create_credit_doc(AcctDB, AcctID, TSJObj) ->
@@ -162,7 +161,8 @@ create_account_doc(Realm, AcctID, AcctDB) ->
 %% this clears them out
 clear_old_calls() ->
     _ = clear_old_calls('ts_offnet_sup'),
-    clear_old_calls('ts_onnet_sup').
+    _ = clear_old_calls('ts_onnet_sup'),
+    'ok'.
 
 clear_old_calls(Super) ->
     Ps = [P || {_,P,_,_} <- supervisor:which_children(Super)],

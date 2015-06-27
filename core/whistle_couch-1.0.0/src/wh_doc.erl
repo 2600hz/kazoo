@@ -27,7 +27,7 @@
          ,type/1, type/2, set_type/2
          ,id/1, id/2, set_id/2
          ,revision/1, set_revision/2, delete_revision/1
-         ,created/1, set_created/2
+         ,created/1, created/2, set_created/2
          ,modified/1, set_modified/2
          ,vsn/1, vsn/2, set_vsn/2
          ,set_soft_deleted/2, is_soft_deleted/1
@@ -294,8 +294,11 @@ is_soft_deleted(JObj) ->
     wh_json:is_true(?KEY_SOFT_DELETED, JObj).
 
 -spec created(wh_json:object()) -> api_integer().
+-spec created(wh_json:object(), Default) -> integer() | Default.
 created(JObj) ->
-    wh_json:get_integer_value(?KEY_CREATED, JObj).
+    created(JObj, 'undefined').
+created(JObj, Default) ->
+    wh_json:get_integer_value(?KEY_CREATED, JObj, Default).
 
 -spec set_created(wh_json:object(), pos_integer()) -> wh_json:object().
 set_created(JObj, Timestamp) ->

@@ -75,7 +75,7 @@ from_json(Hook) ->
              ,hook_event = hook_event(wh_json:get_value(<<"hook">>, Hook))
              ,hook_id = wh_json:get_first_defined([<<"_id">>, <<"ID">>], Hook)
              ,retries = retries(wh_json:get_integer_value(<<"retries">>, Hook, 3))
-             ,account_id = wh_json:get_value(<<"pvt_account_id">>, Hook)
+             ,account_id = wh_doc:account_id(Hook)
              ,custom_data = wh_json:get_ne_value(<<"custom_data">>, Hook)
             }.
 
@@ -349,10 +349,7 @@ load_hook(Srv, WebHook) ->
     catch
         'throw':{'bad_hook', HookEvent} ->
             lager:debug("failed to load hook ~s.~s: bad_hook: ~s"
-                        ,[wh_json:get_value(<<"pvt_account_id">>, WebHook)
-                          ,wh_json:get_value(<<"_id">>, WebHook)
-                          ,HookEvent
-                         ])
+                        ,[wh_doc:account_id(WebHook), wh_doc:id(WebHook), HookEvent])
     end.
 
 -spec jobj_to_rec(wh_json:object()) -> webhook().
@@ -363,7 +360,7 @@ jobj_to_rec(Hook) ->
              ,hook_event = hook_event(wh_json:get_value(<<"hook">>, Hook))
              ,hook_id = wh_json:get_first_defined([<<"_id">>, <<"ID">>], Hook)
              ,retries = retries(wh_json:get_integer_value(<<"retries">>, Hook, 3))
-             ,account_id = wh_json:get_value(<<"pvt_account_id">>, Hook)
+             ,account_id = wh_doc:account_id(Hook)
              ,custom_data = wh_json:get_ne_value(<<"custom_data">>, Hook)
             }.
 
@@ -376,12 +373,9 @@ init_mods() ->
                                ,[{'group_level', 1}]
                               )
     of
-        {'ok', []} ->
-            lager:debug("no accounts to load views into the MODs");
-        {'ok', Accts} ->
-            init_mods(Accts);
-        {'error', _E} ->
-            lager:debug("failed to load accounts_listing: ~p", [_E])
+        {'ok', []} -> lager:debug("no accounts to load views into the MODs");
+        {'ok', Accts} -> init_mods(Accts);
+        {'error', _E} -> lager:debug("failed to load accounts_listing: ~p", [_E])
     end.
 
 init_mods(Accts) ->
