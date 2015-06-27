@@ -25,7 +25,6 @@
         ]).
 
 -ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
 -export([group_cdrs/1]).
 -endif.
 
@@ -207,17 +206,22 @@ validate(Context, CDRId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_cdr_summary(cb_context:context(), req_nouns()) -> cb_context:context().
-load_cdr_summary(Context, [_, {?WH_ACCOUNTS_DB, [_]} | _]) ->
-    lager:debug("loading cdrs for account ~s", [cb_context:account_id(Context)]),
+load_cdr_summary(Context, [{<<"cdrs">>, []}
+                           ,{<<"accounts">>, [AccountId]}
+                          ]) ->
+    lager:debug("loading cdrs for account ~s", [AccountId]),
     case create_view_options('undefined', Context) of
         {'ok', ViewOptions} ->
             load_view(?CB_LIST
                       ,props:filter_undefined(ViewOptions)
                       ,remove_qs_keys(Context)
                      );
-        Else -> Else
+        Context1 -> Context1
     end;
-load_cdr_summary(Context, [_, {<<"users">>, [UserId] } | _]) ->
+load_cdr_summary(Context, [{<<"cdrs">>, []}
+                           ,{<<"users">>, [UserId]}
+                           ,{<<"accounts">>, [_AccountId]}
+                          ]) ->
     lager:debug("loading cdrs for user ~s", [UserId]),
     case create_view_options(UserId, Context) of
         {'ok', ViewOptions} ->
@@ -225,10 +229,10 @@ load_cdr_summary(Context, [_, {<<"users">>, [UserId] } | _]) ->
                       ,props:filter_undefined(ViewOptions)
                       ,remove_qs_keys(Context)
                      );
-        Else -> Else
+        Context1 -> Context1
     end;
 load_cdr_summary(Context, _Nouns) ->
-    lager:debug("invalid URL chain for cdr summary request"),
+    lager:debug("invalid URL chain for cdr summary request: ~p", [_Nouns]),
     cb_context:add_system_error('faulty_request', Context).
 
 %%--------------------------------------------------------------------
@@ -237,7 +241,7 @@ load_cdr_summary(Context, _Nouns) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_view_options(api_binary(), cb_context:context()) ->
-                                 {'ok', wh_proplist()} |
+                                 {'ok', crossbar_doc:view_options()} |
                                  cb_context:context().
 create_view_options(OwnerId, Context) ->
     MaxRange = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_range">>, (?SECONDS_IN_DAY * 31  + ?SECONDS_IN_HOUR)),
@@ -248,13 +252,15 @@ create_view_options(OwnerId, Context) ->
         Context1 -> Context1
     end.
 
--spec create_view_options(api_binary(), cb_context:context(), pos_integer(), pos_integer()) ->
-                                 {'ok', wh_proplist()}.
+-spec create_view_options(api_binary(), cb_context:context()
+                          ,gregorian_seconds(), gregorian_seconds()
+                         ) ->
+                                 {'ok', crossbar_doc:view_options()}.
 create_view_options('undefined', Context, CreatedFrom, CreatedTo) ->
     {'ok', [{'startkey', CreatedTo}
             ,{'endkey', CreatedFrom}
             ,{'limit', pagination_page_size(Context)}
-           ,'descending'
+            ,'descending'
            ]};
 create_view_options(OwnerId, Context, CreatedFrom, CreatedTo) ->
     {'ok', [{'startkey', [OwnerId, CreatedTo]}
@@ -425,7 +431,11 @@ load_chunked_cdrs(Db, Ids, {_, Context}=Payload) ->
 normalize_and_send(JObjs, {_, Context}=Payload) ->
     case cb_context:fetch(Context, 'is_csv') of
         'true' -> normalize_and_send('csv', JObjs, Payload);
-        _ -> normalize_and_send('json', JObjs, Payload)
+        _ ->
+            normalize_and_send('json'
+                               ,maybe_group_cdrs(Context, JObjs)
+                               ,Payload
+                              )
     end.
 
 normalize_and_send('json', [], Payload) -> Payload;
@@ -439,6 +449,10 @@ normalize_and_send('json', [JObj|JObjs], {Req, Context}) ->
             'ok' = cowboy_req:chunk(wh_json:encode(CDR), Req),
             normalize_and_send('json', JObjs, {Req, cb_context:store(Context, 'started_chunk', 'true')})
     end;
+normalize_and_send('json', JObj, {Req, _Context}=Payload) ->
+    lager:debug("responding with grouped CDRs"),
+    'ok' = cowboy_req:chunk(wh_json:encode(JObj), Req),
+    Payload;
 normalize_and_send('csv', [], Payload) -> Payload;
 normalize_and_send('csv', [JObj|JObjs], {Req, Context}) ->
     case cb_context:fetch(Context, 'started_chunk') of
@@ -599,6 +613,14 @@ load_cdr(CDRId, Context) ->
     lager:debug("error loading cdr by id ~p", [CDRId]),
     crossbar_util:response('error', <<"could not find cdr with supplied id">>, 404, Context).
 
+-spec maybe_group_cdrs(cb_context:context(), JObjs) ->
+                              wh_json:object() | JObjs.
+maybe_group_cdrs(Context, JObjs) ->
+    case wh_util:is_true(cb_context:req_value(Context, <<"grouped">>)) of
+        'true' -> group_cdrs(JObjs, fun(JObj) -> normalize_cdr(JObj, Context) end);
+        'false' -> JObjs
+    end.
+
 -record(group_value, {timestamp :: gregorian_seconds()
                       ,call_id :: ne_binary()
                       ,cdr :: kzd_cdr:doc()
@@ -607,9 +629,21 @@ load_cdr(CDRId, Context) ->
 -type group_value() :: #group_value{}.
 -type group_values() :: [group_value(),...] | [].
 
--spec group_cdrs(wh_json:objects()) -> wh_json:object().
+-type transform_fun() :: fun((wh_json:object()) -> wh_json:object()).
+
+-ifdef(TEST).
+-spec group_cdrs(wh_json:objects()) ->
+                        wh_json:object().
 group_cdrs(JObjs) ->
-    Grouped = lists:foldl(fun group_cdr/2
+    group_cdrs(JObjs, fun wh_util:identity/1).
+-endif.
+
+-spec group_cdrs(wh_json:objects(), transform_fun()) ->
+                        wh_json:object().
+group_cdrs(JObjs, TransformFun) ->
+    Grouped = lists:foldl(fun(JObj, Acc) ->
+                                  group_cdr(JObj, Acc, TransformFun)
+                          end
                           ,dict:new()
                           ,JObjs
                          ),
@@ -630,7 +664,9 @@ combined_to_json(Combined) ->
 
 group_values_to_json([#group_value{cdr=ALeg}|GroupValues]) ->
     [wh_json:set_value(<<"is_a_leg">>, 'true', ALeg)
-     | [JObj || #group_value{cdr=JObj} <- GroupValues]
+     | [JObj
+        || #group_value{cdr=JObj} <- GroupValues
+       ]
     ].
 
 -spec combine_groups(dict()) -> dict().
@@ -679,12 +715,14 @@ existing(Key, Acc) ->
         'error':'badarg' -> []
     end.
 
--spec group_cdr(kzd_cdr:doc(), dict()) -> dict().
-group_cdr(JObj, Acc) ->
+-spec group_cdr(kzd_cdr:doc(), dict(), transform_fun()) -> dict().
+group_cdr(JObj, Acc, TransformFun) ->
     CallId = kzd_cdr:call_id(JObj),
 
-    maybe_add_other_leg(JObj
-                        ,dict:append(CallId, group_value(JObj), Acc)
+    Transformed = TransformFun(JObj),
+
+    maybe_add_other_leg(Transformed
+                        ,dict:append(CallId, group_value(Transformed), Acc)
                         ,kzd_cdr:other_leg_call_id(JObj)
                        ).
 
