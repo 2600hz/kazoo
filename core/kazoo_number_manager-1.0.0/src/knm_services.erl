@@ -49,11 +49,11 @@ activate_feature(Number, Feature, BillingId, Services) ->
             ),
             {'error', 'not_enough_credit'};
         'true' ->
-            lager:debug("adding feature ~s to ~s", [Feature, knm_phone_number:numer(Number)]),
+            lager:debug("adding feature ~s to ~s", [Feature, knm_phone_number:number(Number)]),
             Transactions = knm_phone_number:fetch_storage(Number, <<"transactions">>, []),
             Transaction = create_transaction(Number, Feature, Units),
             Updates =[
-                {fun knm_phone_number:set_feature/2, [Feature, wh_json:new()]}
+                {fun knm_phone_number:set_feature/3, [Feature, wh_json:new()]}
                 ,{fun knm_phone_number:store/3, [<<"charges">>, TotalCharges]}
                 ,{fun knm_phone_number:store/3, [<<"transactions">>, [Transaction|Transactions]]}
             ],
