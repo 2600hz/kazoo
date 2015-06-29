@@ -2,6 +2,7 @@
 Section: Crossbar
 Title: CDRs
 Language: en-US
+Version: 3.21
 */
 
 CDRs (Call Detail Records) provide a summary view of a call leg.
@@ -221,7 +222,7 @@ The resulting JSON will be of the form:
 
 Where `{A_LEG_CALL_ID}` is the leg identified as the A leg, and the list of CDR objects is ordered by leg. The `{A_LEG_CDR}` object will also have a flag `is_a_leg=true` added.
 
-**Important**: this is only available as a JSON response; CSV is not supported
+**Important**: this is only available as a JSON response; CSV is not supported!
 
 The full request:
 
