@@ -215,6 +215,7 @@ get_t38_enabled(Call) ->
 get_flags(Data, Call) ->
     Routines = [fun get_endpoint_flags/3
                 ,fun get_flow_flags/3
+                ,fun get_account_flags/3
                 ,fun get_flow_dynamic_flags/3
                 ,fun get_endpoint_dynamic_flags/3
                 ,fun get_account_dynamic_flags/3
@@ -237,6 +238,19 @@ get_flow_flags(Data, _, Flags) ->
     case wh_json:get_value(<<"outbound_flags">>, Data) of
         'undefined' -> Flags;
         FlowFlags -> FlowFlags ++ Flags
+    end.
+
+-spec get_account_flags(wh_json:object(), whapps_call:call(), ne_binaries()) -> ne_binaries().
+get_account_flags(_Data, Call, Flags) ->
+    AccountDB = whapps_call:account_db(Call),
+    AccountID = whapps_call:account_id(Call),
+    case couch_mgr:open_cache_doc(AccountDB, AccountID) of
+        {'ok', JObj} ->
+            AccountFlags = wh_json:get_value(<<"outbound_flags">>, JObj, []),
+            AccountFlags ++ Flags;
+        _Else ->
+            lager:error("Can't open account doc for ~s", [AccountDB]),
+            Flags
     end.
 
 -spec get_flow_dynamic_flags(wh_json:object(), whapps_call:call(), ne_binaries()) -> ne_binaries().
