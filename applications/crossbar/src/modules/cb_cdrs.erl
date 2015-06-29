@@ -617,7 +617,8 @@ load_cdr(CDRId, Context) ->
                               wh_json:object() | JObjs.
 maybe_group_cdrs(Context, JObjs) ->
     case wh_util:is_true(cb_context:req_value(Context, <<"grouped">>)) of
-        'true' -> group_cdrs(JObjs, fun(JObj) -> normalize_cdr(JObj, Context) end);
+        'true' ->
+            group_cdrs(JObjs, fun(JObj) -> normalize_cdr(JObj, Context) end);
         'false' -> JObjs
     end.
 
