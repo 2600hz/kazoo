@@ -693,4 +693,4 @@ update_presence(State, Slot) ->
                  | wh_api:default_headers(<<"park">>, ?APP_VERSION)
                 ]),
     lager:info("update presence-id '~s' with state: ~s", [PresenceId, State]),
-    wh_amqp_worker:cast(Command, fun wapi_presence:publish_update/1).
+    wh_federation:cast(Command, fun wapi_presence:publish_update/1).
