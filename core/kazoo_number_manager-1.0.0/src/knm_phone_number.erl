@@ -40,6 +40,7 @@
     ,region/1 ,set_region/2
     ,auth_by/1 ,set_auth_by/2, is_authorized/1
     ,dry_run/1 ,set_dry_run/2
+    ,fetch_storage/2 ,fetch_storage/3 ,store/3
     ,doc/1
 ]).
 
@@ -406,6 +407,24 @@ dry_run(Number) ->
 -spec set_dry_run(number(), ne_binary()) -> number().
 set_dry_run(N, DryRun) ->
     N#number{dry_run=DryRun}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec fetch_storage(number(), ne_binary()) -> any().
+-spec fetch_storage(number(), ne_binary(), any()) -> any().
+fetch_storage(Number, Key) ->
+    props:get_value(Key, Number#number.storage).
+
+fetch_storage(Number, Key, Default) ->
+    props:get_value(Key, Number#number.storage, Default).
+
+-spec store(number(), ne_binary(), any()) -> number().
+store(N, Key, Data) ->
+    Storage = props:set_value(Key, Data, N#number.storage),
+    N#number{storage=Storage}.
 
 %%--------------------------------------------------------------------
 %% @public

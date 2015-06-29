@@ -16,7 +16,7 @@
 -include("../knm.hrl").
 
 -define(KNM_DASH_CONFIG_CAT, <<(?KNM_CONFIG_CAT)/binary, ".dash_e911">>).
--define(DASH_KEY, <<"dash_e911">>).
+
 -define(DASH_XML_PROLOG, "<?xml version=\"1.0\"?>").
 -define(DASH_AUTH_USERNAME, whapps_config:get_string(?KNM_DASH_CONFIG_CAT, <<"auth_username">>, <<>>)).
 -define(DASH_AUTH_PASSWORD, whapps_config:get_string(?KNM_DASH_CONFIG_CAT, <<"auth_password">>, <<>>)).

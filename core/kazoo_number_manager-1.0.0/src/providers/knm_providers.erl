@@ -46,9 +46,10 @@ exec(Number, Action) ->
     Providers = whapps_config:get(?KNM_CONFIG_CAT, <<"providers">>, ?DEFAULT_PROVIDER_MODULES),
     exec(Number, Action, Providers).
 
-exec(Number, _, []) -> {'ok', Number};
+exec(Number, _, []) ->
+    {'ok', knm_services:maybe_update_services(Number)};
 exec(Number, Action, [Provider|Providers]) ->
-    case wh_util:try_load_module(<<"wnm_", Provider/binary>>) of
+    case wh_util:try_load_module(<<"knm_", Provider/binary>>) of
         'false' ->
             lager:debug("provider ~s is unknown, skipping", [Provider]),
             exec(Number, Action, Providers);
