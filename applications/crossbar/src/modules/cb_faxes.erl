@@ -121,12 +121,15 @@ allowed_methods(?INCOMING, _Id, ?ATTACHMENT) ->
 -spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
 
 resource_exists() -> 'true'.
+
 resource_exists(?SMTP_LOG) -> 'true';
 resource_exists(?INCOMING) -> 'true';
 resource_exists(?OUTGOING) -> 'true'.
+
 resource_exists(?SMTP_LOG, _Id) -> 'true';
 resource_exists(?INCOMING, _Id) -> 'true';
 resource_exists(?OUTGOING, _Id) -> 'true'.
+
 resource_exists(?INCOMING, _Id, ?ATTACHMENT) -> 'true'.
 
 -spec content_types_accepted(cb_context:context()) -> cb_context:context().
@@ -563,7 +566,8 @@ outgoing_summary(Context) ->
                            ,fun normalize_view_results/2
                           ).
 
--spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec normalize_view_results(wh_json:object(), wh_json:objects()) ->
+                                    wh_json:objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -573,7 +577,8 @@ normalize_view_results(JObj, Acc) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_incoming_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec normalize_incoming_view_results(wh_json:object(), wh_json:objects()) ->
+                                             wh_json:objects().
 normalize_incoming_view_results(JObj, Acc) ->
     [wh_json:public_fields(wh_json:get_value(<<"doc">>, JObj))|Acc].
 

@@ -345,7 +345,7 @@ load_view(#load_view_params{view=View
         props:filter_undefined(
           [{'startkey', StartKey}
            ,{'limit', Limit}
-           | props:delete_keys(['startkey', 'limit'], Options)
+           | props:delete_keys(['startkey', 'limit', 'databases'], Options)
           ]),
 
     IncludeOptions =
@@ -361,7 +361,7 @@ load_view(#load_view_params{view=View
             _V -> props:delete('include_docs', IncludeOptions)
         end,
 
-    lager:debug("couch_mgr:get_results(~s, ~s, ~p)", [Db, View, ViewOptions]),
+    lager:debug("couch_mgr:get_results(~p, ~p, ~p)", [Db, View, ViewOptions]),
 
     case couch_mgr:get_results(Db, View, ViewOptions) of
         % There were more dbs, so move to the next one
@@ -1154,7 +1154,9 @@ extract_included_docs(JObjs) ->
 %%--------------------------------------------------------------------
 -spec has_qs_filter(cb_context:context()) -> boolean().
 has_qs_filter(Context) ->
-    lists:any(fun is_filter_key/1, wh_json:to_proplist(cb_context:query_string(Context))).
+    wh_json:any(fun is_filter_key/1
+                ,cb_context:query_string(Context)
+               ).
 
 %%--------------------------------------------------------------------
 %% @private

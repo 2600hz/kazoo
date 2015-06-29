@@ -212,12 +212,15 @@ magic_pathed(#cb_context{magic_pathed=MP}) -> MP.
 
 -spec should_paginate(context()) -> boolean().
 should_paginate(#cb_context{api_version=?VERSION_1}) ->
+    lager:debug("pagination disabled in this API version"),
     'false';
 should_paginate(#cb_context{should_paginate='undefined'}=Context) ->
     case req_value(Context, <<"paginate">>) of
         'undefined' ->
-            crossbar_doc:has_qs_filter(Context);
+            lager:debug("checking if request has query-string filter"),
+            not crossbar_doc:has_qs_filter(Context);
         ShouldPaginate ->
+            lager:debug("request has paginate flag: ~s", [ShouldPaginate]),
             wh_util:is_true(ShouldPaginate)
     end;
 should_paginate(#cb_context{should_paginate=Should}) -> Should.
