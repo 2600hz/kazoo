@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2014, 2600Hz
+%%% @copyright (C) 2013-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -17,8 +17,8 @@
 -include("teletype.hrl").
 
 -define(POOL_NAME, 'teletype_render_farm').
--define(POOL_SIZE, whapps_config:get_integer(?APP_NAME, <<"render_farm_workers">>, 20)).
--define(POOL_OVERFLOW, 0).
+-define(POOL_SIZE, whapps_config:get_integer(?APP_NAME, <<"render_farm_workers">>, 50)).
+-define(POOL_OVERFLOW, 50).
 
 -define(POOL_ARGS, [[{'worker_module', 'teletype_renderer'}
                      ,{'name', {'local', ?POOL_NAME}}
