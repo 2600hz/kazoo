@@ -20,7 +20,15 @@ Each CDR tracks both the `call_id` and `other_leg_call_id` (if applicable). So s
 
 ## The basic scenarios
 
-Let's call scenario 1 leg A and scenario 2 has legs B and C. If we take the legs indentifed in the CDRs as keys, and the call\_id of the CDR as a value, we can create a list of values for a given call\_id. This would give us:
+Let's call scenario 1 leg A and scenario 2 has legs B and C. If we take the legs indentifed in the CDRs as keys, and the call\_id of the CDR as a value, we can create a list of values for a given call\_id.
+
+The pseudo-code would be:
+
+    foreach CDR
+        Map[CDR.call_id][] = CDR.call_id
+        Map[CDR.other_leg_call_id][] = CDR.call_id
+
+This would give us:
 
     Intermediate Map
     {"A":["A"]
@@ -28,15 +36,14 @@ Let's call scenario 1 leg A and scenario 2 has legs B and C. If we take the legs
      ,"C":["C", "B"]
     }
 
-This assumes we sort the legs by their timestamp (more on that later). We then apply the following pseudo-code to get the CDRs grouped according to their calls:
+We then apply the following pseudo-code to get the CDRs grouped according to their calls:
 
     foreach array in the intermediate map:
         sort the array by timestamp
         take the head (first element) of the array as the initiating leg
         merge the sorted array into a map using the head as the key
 
-
-What might this look like given our object above?
+What might this look like applied to our intermediate map above?
 
 1. First Iteration
     * Array = `["A"]`, FinalMap = `{}`
@@ -62,7 +69,7 @@ What might this look like given our object above?
 
 So the resulting map would have the a-leg call\_id as the top-level keys and the values would be the sorted list of CDRs involved in the call.
 
-Now, if these two scenarios were all we ever had to deal with, this would be quite easy to build in a view in the database (since we have all the information we need in a CDR for which legs are involved.
+Now, if these two scenarios were all we ever had to deal with, this would be quite easy to build in a view in the database (since we have all the information we need in a CDR for which legs are involved).
 
 Unfortunately, Kazoo supports transfers! These scenarios involve multiple legs and must be handled differently.
 
@@ -78,36 +85,32 @@ The call scenario:
 
 The resulting intermediate map would be:
 
-    {"D":["D", "F"]
-     ,"E":["E", "D"]
-     ,"F":["F", "D"]
+    {"D":["D", "E", "F"]
+     ,"E":["E"]
+     ,"F":["F"]
     }
+
+We can see that merging `"D"` is going to give us all three legs, but what do with `"E"` and `"F"`? As it stands, the resulting map would include those are single-leg calls. Well, remember what we said about the each CDR having the call\_id **and** the other leg's call\_id (if any)? The "(if any)" part turns out to be particularly helpful here. True single-leg calls won't have one, while `"E"` and `"F"` will have other leg call\_ids. So we filter out and single-leg arrays where the CDR of the leg has another leg associated with it.
 
 Let's apply our function over this map:
 
 1. First Iteration
-    * Array = `["D", "F"]`, FinalMap = `{}`
-        * SortedArray = `["D", "F"]`
+    * Array = `["D", "E", "F"]`, FinalMap = `{}`
+        * SortedArray = `["D", "E", "F"]`
         * ALeg = `hd(SortedArray)` = `"D"`
         * Existing = `get(ALeg, FinalMap)` = `[]`
         * set(ALeg, merge(Existing, SortedArray), FinalMap)
-        * FinalMap = `{"D":["D", "F"]}`
+        * FinalMap = `{"D":["D", "E", "F"]}`
 2. Second Iteration
-    * Array = `["E", "D"]`, FinalMap = `{"D":["D", "F"]}`
-        * SortedArray = `["D", "E"]`
-        * ALeg = `hd(SortedArray)` = `"D"`
-        * Existing = `get(ALeg, FinalMap)` = `["D", "F"]`
-        * set(ALeg, merge(Existing, SortedArray), FinalMap)
+    * Array = `["E"]`, FinalMap = `{"D":["D", "E", "F"]}`
+        * if (hd(Array) contains other\_leg\_call\_id) return FinalMap
         * FinalMap = `{"D":["D", "E", "F"]}`
 3. Third Iteration
-    * Array = `["F", "D"]`, FinalMap = `{"D":["D", "E", "F"]}`
-        * SortedArray = `["D", "F"]`
-        * ALeg = `hd(SortedArray)` = `"D"`
-        * Existing = `get(ALeg, FinalMap)` = `["D", "E", "F"]`
-        * set(ALeg, merge(Existing, SortedArray), FinalMap)
+    * Array = `["F"]`, FinalMap = `{"D":["D", "E", "F"]}`
+        * if (hd(Array) contains other\_leg\_call\_id) return FinalMap
         * FinalMap = `{"D":["D", "E", "F"]}`
 
-We can see we've identified `"D"` as the a-leg and include the "D", "E", and "F" CDRs in the call.
+We can see we've identified `"D"` as the a-leg and include the "D", "E", and "F" CDRs in the call. We've also filtered out the single-but-not-single legs
 
 ## Attended transfers
 
@@ -131,7 +134,7 @@ The intermediate map then becomes:
      ,"J", ["G", "I", "J"]
     }
 
-We can see that merging `"G"` and `"J"` is going to give us all four legs, but what do with `"H"` and `"I"`? As it stands, the resulting map would include those are single-leg calls. Well, remember what we said about the each CDR having the call\_id **and** the other leg's call\_id (if any)? The "(if any)" part turns out to be particularly helpful here. True single-leg calls won't have one, while `"H"` and `"I"` will have other leg call\_ids. So we filter out and single-leg arrays where the CDR of the leg has another leg associated with it.
+We can see that merging `"G"` and `"J"` is going to give us all four legs (left as an exercise to the reader), and that `"H"` and `"I"` will be filtered out as single-but-not-single legs.
 
 The attended transfer's final map would then be:
 
@@ -145,9 +148,11 @@ If we were to process all four scenarios, the response would be:
      ,"G":["G", "H", "I", "J"]
     }
 
-Huzzah, life is good.
+So we have 10 legs and 4 calls. Huzzah, life is good.
 
 See the `group_cdrs/1` in `cb_cdrs.erl` for the entry into the process (`group` builds the intermediate map, `combine` builds the final map).
+
+See `cb_cdrs_test.erl` for the unit tests.
 
 ## A note about timestamps
 
