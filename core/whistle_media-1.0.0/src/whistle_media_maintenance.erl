@@ -63,19 +63,27 @@ import_prompts(Path, Lang) ->
         [] ->
             io:format("failed to find media files in '~s'~n", [Path]);
         Files ->
-            io:format("importing prompts from '~s' with language '~s'~n", [Path, Lang]),
-            case [{F, Err}
-                  || F <- Files,
-                     (Err = (catch import_prompt(F, Lang))) =/= 'ok'
-                 ]
-            of
-                [] -> io:format("importing went successfully~n", []);
-                Errors ->
-                    io:format("errors encountered during import:~n"),
-                    [io:format("  '~s': ~p~n", [F, Err]) || {F, Err} <- Errors],
-                    'ok'
-            end
+            import_files(Path, Lang, Files)
     end.
+
+-spec import_files(ne_binary(), ne_binary(), ne_binaries()) -> 'ok'.
+import_files(Path, Lang, Files) ->
+    io:format("importing prompts from '~s' with language '~s'~n", [Path, Lang]),
+    case import_prompts_from_files(Files, Lang) of
+        [] -> io:format("importing went successfully~n");
+        Errors ->
+            io:format("errors encountered during import:~n"),
+            _ = [io:format("  '~s': ~p~n", [F, Err]) || {F, Err} <- Errors],
+            'ok'
+    end.
+
+-spec import_prompts_from_files(ne_binaries(), ne_binary()) ->
+                                       [] | [{ne_binary(), 'ok' | {'error', _}},...].
+import_prompts_from_files(Files, Lang) ->
+     [{F, Err}
+      || F <- Files,
+         (Err = (catch import_prompt(F, Lang))) =/= 'ok'
+     ].
 
 -spec import_prompt(text()) -> 'ok' | {'error', _}.
 -spec import_prompt(text(), text()) -> 'ok' | {'error', _}.
@@ -229,7 +237,10 @@ maybe_delete_system_config(ConfigId, 'true') ->
 migrate_system_config(ConfigJObj) ->
     {'ok', MediaJObj} = get_media_config_doc(),
 
-    UpdatedMediaJObj = wh_json:foldl(fun migrate_system_config_fold/3, MediaJObj, ConfigJObj),
+    UpdatedMediaJObj = wh_json:foldl(fun migrate_system_config_fold/3
+                                     ,MediaJObj
+                                     ,ConfigJObj
+                                    ),
     io:format("saving updated media config~n", []),
     {'ok', _} = couch_mgr:save_doc(?WH_CONFIG_DB, UpdatedMediaJObj),
     'ok'.
@@ -238,17 +249,24 @@ migrate_system_config(ConfigJObj) ->
 get_media_config_doc() ->
     case couch_mgr:open_doc(?WH_CONFIG_DB, ?WHM_CONFIG_CAT) of
         {'ok', _MediaJObj}=OK -> OK;
-        {'error', 'not_found'} -> {'ok', wh_json:from_list([{<<"_id">>, ?WHM_CONFIG_CAT}])}
+        {'error', 'not_found'} ->
+            {'ok', wh_json:from_list([{<<"_id">>, ?WHM_CONFIG_CAT}])}
     end.
 
--spec migrate_system_config_fold(ne_binary(), wh_json:json_term(), wh_json:object()) -> wh_json:object().
-migrate_system_config_fold(<<"_id">>, _Id, MediaJObj) ->
-    MediaJObj;
-migrate_system_config_fold(<<"_rev">>, _Rev, MediaJObj) ->
-    MediaJObj;
-migrate_system_config_fold(Node, Settings, MediaJObj) ->
+-spec migrate_system_config_fold(ne_binary(), wh_json:json_term(), wh_json:object()) ->
+                                        wh_json:object().
+migrate_system_config_fold(<<"default">> = Node, Settings, MediaJObj) ->
     io:format("migrating node '~s' settings~n", [Node]),
-    migrate_node_config(Node, Settings, MediaJObj, ?CONFIG_KVS).
+    migrate_node_config(Node, Settings, MediaJObj, ?CONFIG_KVS);
+migrate_system_config_fold(Node, Settings, MediaJObj) ->
+    case binary:split(Node, <<"@">>) of
+        [_User, _Domain] ->
+            io:format("migrating node '~s' settings~n", [Node]),
+            migrate_node_config(Node, Settings, MediaJObj, ?CONFIG_KVS);
+        _Split ->
+            io:format("skipping non-node '~s'~n", [Node]),
+            MediaJObj
+    end.
 
 -spec migrate_node_config(ne_binary(), wh_json:object(), wh_json:object(), wh_proplist()) -> wh_json:object().
 migrate_node_config(_Node, _Settings, MediaJObj, []) -> MediaJObj;
@@ -263,15 +281,14 @@ migrate_node_config(Node, Settings, MediaJObj, [{K, V} | KVs]) ->
             migrate_node_config(Node, Settings, set_node_value(Node, K, NodeV, MediaJObj), KVs)
     end.
 
--spec set_node_value(ne_binary(), ne_binary() | ne_binaries(), ne_binary(), wh_json:object()) ->
+-spec set_node_value(ne_binary(), wh_json:keys(), ne_binary(), wh_json:object()) ->
                             wh_json:object().
 set_node_value(Node, <<_/binary>> = K, V, MediaJObj) ->
     set_node_value(Node, [K], V, MediaJObj);
 set_node_value(Node, K, V, MediaJObj) ->
     wh_json:set_value([Node | K], V, MediaJObj).
 
-
--spec maybe_update_media_config(ne_binary(), ne_binary() | ne_binaries(), api_binary(), wh_json:object()) ->
+-spec maybe_update_media_config(ne_binary(), wh_json:keys(), api_binary(), wh_json:object()) ->
                                        wh_json:object().
 maybe_update_media_config(_Node, _K, 'undefined', MediaJObj) ->
     io:format("    no value to set for ~p~n", [_K]),
