@@ -17,6 +17,7 @@
                  ,region :: ne_binary()
                  ,auth_by = <<"system">> :: ne_binary()
                  ,dry_run = 'false' :: boolean()
+                 ,storage = [] :: wh_proplist()
                  ,doc :: wh_json:object()
                 }).
 
@@ -50,6 +51,10 @@
 -define(DEFAULT_PROVIDER_MODULES, [<<"cnam_notifier">>, <<"port_notifier">>
                                    ,<<"failover">> ,<<"prepend">>
                                   ]).
+
+-define(EMERGENCY_SERVICES_KEY, <<"e911">>).
+-define(DASH_KEY, <<"dash_e911">>).
+-define(VITELITY_KEY, <<"vitelity_e911">>).
 
 -define(DEFAULT_CARRIER_MODULES, [<<"knm_local">>]).
 
