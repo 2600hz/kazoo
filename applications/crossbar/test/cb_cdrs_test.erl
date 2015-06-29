@@ -35,9 +35,11 @@ group_by_calls_test() ->
     Legs = wh_util:shuffle_list(
              [wh_json:decode(Leg) || Leg <- ?CDRS]
             ),
+    Start = os:timestamp(),
     wh_json:foreach(fun grouped_call/1
                     ,cb_cdrs:group_cdrs(Legs)
-                   ).
+                   ),
+    ?debugFmt("processing CDRs took ~p ms~n", [wh_util:elapsed_ms(Start)]).
 
 grouped_call({<<"single_a">>, Legs}) ->
     ?assertEqual(1, length(Legs)),
