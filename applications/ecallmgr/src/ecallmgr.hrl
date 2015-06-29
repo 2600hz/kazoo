@@ -328,6 +328,10 @@
                            ,'loopback::bowout'
                           ]).
 
+-define(FS_FEDERATED_EVENTS, [<<"CHANNEL_CREATE">>, <<"CHANNEL_ANSWER">>, <<"CHANNEL_DESTROY">>
+                              ,<<"CHANNEL_CONNECTED">>, <<"CHANNEL_DISCONNECTED">>
+                             ]).
+
 -define(FS_DEFAULT_HDRS, [<<"Event-Name">>, <<"Core-UUID">>, <<"FreeSWITCH-Hostname">>, <<"FreeSWITCH-Switchname">>
                           ,<<"FreeSWITCH-IPv4">>, <<"FreeSWITCH-IPv6">>, <<"Event-Date-Local">>
                           ,<<"Event-Date-GMT">>, <<"Event-Date-Timestamp">>, <<"Event-Calling-File">>
