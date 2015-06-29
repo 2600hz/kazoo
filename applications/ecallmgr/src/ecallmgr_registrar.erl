@@ -616,7 +616,17 @@ sort_fetched_registrations(A, B) ->
     wh_json:get_integer_value(<<"Event-Timestamp">>, B) =<
         wh_json:get_integer_value(<<"Event-Timestamp">>, A).
 
--spec fetch_contact(ne_binary(), ne_binary()) ->
+-spec query_for_registration(api_terms()) ->
+                                    {'ok', wh_json:objects()} |
+                                    {'error', any()}.
+query_for_registration(Reg) ->
+    wh_federation:collect(Reg
+                          ,fun wapi_registration:publish_query_req/1
+                          ,{'ecallmgr', fun wapi_registration:query_resp_v/1, 'true'}
+                          ,2 * ?MILLISECONDS_IN_SECOND
+                          ).
+
+-spec maybe_fetch_original_contact(ne_binary(), ne_binary()) ->
                            {'ok', ne_binary()} |
                            {'error', 'not_found'}.
 fetch_contact(Username, Realm) ->
