@@ -273,8 +273,8 @@ resume(FSM) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_presence(server_ref(), ne_binary(), ne_binary()) -> 'ok'.
-update_presence(FSM, PresenceID, PresenceState) ->
-    gen_fsm:send_all_state_event(FSM, {'update_presence', PresenceID, PresenceState}).
+update_presence(FSM, PresenceId, PresenceState) ->
+    gen_fsm:send_all_state_event(FSM, {'update_presence', PresenceId, PresenceState}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -497,7 +497,8 @@ sync({'sync_resp', JObj}, #state{sync_ref=Ref
             _ = erlang:cancel_timer(Ref),
             acdc_agent_stats:agent_ready(AccountId, AgentId),
             acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_GREEN),
-            {Next, SwitchTo, State} = apply_state_updates(State#state{sync_ref='undefined'}),
+            {Next, SwitchTo, State} =
+                apply_state_updates(State#state{sync_ref='undefined'}),
             {Next, SwitchTo, State, 'hibernate'};
         {'EXIT', _} ->
             lager:debug("other agent sent unusable state, ignoring"),
@@ -1169,8 +1170,8 @@ handle_event({'resume'}, 'ready', State) ->
 handle_event({'resume'}, 'paused', State) ->
     ReadyState = handle_resume(State),
     {'next_state', 'ready', apply_state_updates(ReadyState)};
-handle_event({'resume'}, StateName, #state{agent_state_updates = Queue} = State) ->
-    NewQueue = [{'resume'} | Queue],
+handle_event({'resume'} = Event, StateName, #state{agent_state_updates = Queue} = State) ->
+    NewQueue = [Event | Queue],
     {'next_state', StateName, State#state{agent_state_updates = NewQueue}};
 handle_event({'pause', Timeout}, 'ready', State) ->
     lager:debug("recv status update: pausing for up to ~b s", [Timeout]),
@@ -1178,8 +1179,8 @@ handle_event({'pause', Timeout}, 'ready', State) ->
 handle_event({'pause', _} = Event, StateName, #state{agent_state_updates = Queue} = State) ->
     NewQueue = [Event | Queue],
     {'next_state', StateName, State#state{agent_state_updates = NewQueue}};
-handle_event({'update_presence', PresenceID, PresenceState}, 'ready', State) ->
-    handle_presence_update(PresenceID, PresenceState, State),
+handle_event({'update_presence', PresenceId, PresenceState}, 'ready', State) ->
+    handle_presence_update(PresenceId, PresenceState, State),
     {'next_state', 'ready', State};
 handle_event({'update_presence', _, _} = Event, StateName, #state{agent_state_updates = Queue} = State) ->
     NewQueue = [Event | Queue],
@@ -1196,15 +1197,13 @@ handle_event('load_endpoints', StateName, #state{agent_id=AgentId
                                                  ,account_id=AccountId
                                                  ,account_db=AccountDb
                                                 }=State) ->
-    Setters = [fun(C) -> whapps_call:set_account_id(AccountId, C) end
-               ,fun(C) -> whapps_call:set_account_db(AccountDb, C) end
-               ,fun(C) -> whapps_call:set_owner_id(AgentId, C) end
-               ,fun(C) -> whapps_call:set_resource_type(?RESOURCE_TYPE_AUDIO, C) end
+    Setters = [{fun whapps_call:set_account_id/2, AccountId}
+               ,{fun whapps_call:set_account_db/2, AccountDb}
+               ,{fun whapps_call:set_owner_id/2, AgentId}
+               ,{fun whapps_call:set_resource_type/2, ?RESOURCE_TYPE_AUDIO}
               ],
 
-    Call = lists:foldl(fun(F, C) -> F(C) end
-                       ,whapps_call:new(), Setters
-                      ),
+    Call = whapps_call:exec(Setters, whapps_call:new()),
 
     %% Inform us of things with us as owner
     catch gproc:reg(?OWNER_UPDATE_REG(AccountId, AgentId)),
@@ -1742,7 +1741,11 @@ uri(URI, QueryString) ->
 
 -spec apply_state_updates(fsm_state()) -> {'next_state', atom(), fsm_state()}.
 apply_state_updates(#state{agent_state_updates=Q}=State) ->
-    {Atom, ModState} = lists:foldl(fun state_step/2, {'ready', State}, lists:reverse(Q)),
+    {Atom, ModState} =
+        lists:foldl(fun state_step/2
+                    ,{'ready', State}
+                    ,lists:reverse(Q)
+                   ),
     {'next_state', Atom, ModState#state{agent_state_updates = []}}.
 
 -type state_acc() :: {atom(), fsm_state()}.

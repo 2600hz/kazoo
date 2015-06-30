@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014, 2600Hz
+%%% @copyright (C) 2014-2015, 2600Hz
 %%% @doc
 %%% Collector of stats for agents
 %%% @end
@@ -40,51 +40,68 @@ status_table_opts() ->
      ,{'keypos', status_key_pos()}
     ].
 
-agent_ready(AcctId, AgentId) ->
+-spec agent_ready(ne_binary(), ne_binary()) -> 'ok'.
+agent_ready(AccountId, AgentId) ->
     Prop = props:filter_undefined(
-             [{<<"Account-ID">>, AcctId}
+             [{<<"Account-ID">>, AccountId}
               ,{<<"Agent-ID">>, AgentId}
               ,{<<"Timestamp">>, wh_util:current_tstamp()}
               ,{<<"Status">>, <<"ready">>}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
-    whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_ready/1).
+    whapps_util:amqp_pool_send(Prop
+                               ,fun wapi_acdc_stats:publish_status_ready/1
+                              ).
 
-agent_logged_in(AcctId, AgentId) ->
+-spec agent_logged_in(ne_binary(), ne_binary()) -> 'ok'.
+agent_logged_in(AccountId, AgentId) ->
     Prop = props:filter_undefined(
-             [{<<"Account-ID">>, AcctId}
+             [{<<"Account-ID">>, AccountId}
               ,{<<"Agent-ID">>, AgentId}
               ,{<<"Timestamp">>, wh_util:current_tstamp()}
               ,{<<"Status">>, <<"logged_in">>}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
-    whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_logged_in/1).
+    whapps_util:amqp_pool_send(Prop
+                               ,fun wapi_acdc_stats:publish_status_logged_in/1
+                              ).
 
-agent_logged_out(AcctId, AgentId) ->
+-spec agent_logged_out(ne_binary(), ne_binary()) -> 'ok'.
+agent_logged_out(AccountId, AgentId) ->
     Prop = props:filter_undefined(
-             [{<<"Account-ID">>, AcctId}
+             [{<<"Account-ID">>, AccountId}
               ,{<<"Agent-ID">>, AgentId}
               ,{<<"Timestamp">>, wh_util:current_tstamp()}
               ,{<<"Status">>, <<"logged_out">>}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
-    whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_logged_out/1).
+    whapps_util:amqp_pool_send(Prop
+                               ,fun wapi_acdc_stats:publish_status_logged_out/1
+                              ).
 
-agent_pending_logged_out(AcctId, AgentId) ->
+-spec agent_pending_logged_out(ne_binary(), ne_binary()) ->
+                                      'ok'.
+agent_pending_logged_out(AccountId, AgentId) ->
     Prop = props:filter_undefined(
-             [{<<"Account-ID">>, AcctId}
+             [{<<"Account-ID">>, AccountId}
               ,{<<"Agent-ID">>, AgentId}
               ,{<<"Timestamp">>, wh_util:current_tstamp()}
               ,{<<"Status">>, <<"pending_logged_out">>}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
-    whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_pending_logged_out/1).
+    whapps_util:amqp_pool_send(Prop
+                               ,fun wapi_acdc_stats:publish_status_pending_logged_out/1
+                              ).
 
-agent_connecting(AcctId, AgentId, CallId) ->
-    agent_connecting(AcctId, AgentId, CallId, 'undefined', 'undefined').
-agent_connecting(AcctId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
+-spec agent_connecting(ne_binary(), ne_binary(), ne_binary()) ->
+                              'ok'.
+-spec agent_connecting(ne_binary(), ne_binary(), ne_binary(), api_binary(), api_binary()) ->
+                              'ok'.
+agent_connecting(AccountId, AgentId, CallId) ->
+    agent_connecting(AccountId, AgentId, CallId, 'undefined', 'undefined').
+agent_connecting(AccountId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
     Prop = props:filter_undefined(
-             [{<<"Account-ID">>, AcctId}
+             [{<<"Account-ID">>, AccountId}
               ,{<<"Agent-ID">>, AgentId}
               ,{<<"Timestamp">>, wh_util:current_tstamp()}
               ,{<<"Status">>, <<"connecting">>}
@@ -93,13 +110,19 @@ agent_connecting(AcctId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
               ,{<<"Caller-ID-Number">>, CallerIDNumber}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
-    whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_connecting/1).
+    whapps_util:amqp_pool_send(Prop
+                               ,fun wapi_acdc_stats:publish_status_connecting/1
+                              ).
 
-agent_connected(AcctId, AgentId, CallId) ->
-    agent_connected(AcctId, AgentId, CallId, 'undefined', 'undefined').
-agent_connected(AcctId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
+-spec agent_connected(ne_binary(), ne_binary(), ne_binary()) ->
+                             'ok'.
+-spec agent_connected(ne_binary(), ne_binary(), ne_binary(), api_binary(), api_binary()) ->
+                             'ok'.
+agent_connected(AccountId, AgentId, CallId) ->
+    agent_connected(AccountId, AgentId, CallId, 'undefined', 'undefined').
+agent_connected(AccountId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
     Prop = props:filter_undefined(
-             [{<<"Account-ID">>, AcctId}
+             [{<<"Account-ID">>, AccountId}
               ,{<<"Agent-ID">>, AgentId}
               ,{<<"Timestamp">>, wh_util:current_tstamp()}
               ,{<<"Status">>, <<"connected">>}
@@ -108,42 +131,53 @@ agent_connected(AcctId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
               ,{<<"Caller-ID-Number">>, CallerIDNumber}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
-    whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_connected/1).
+    whapps_util:amqp_pool_send(Prop
+                               ,fun wapi_acdc_stats:publish_status_connected/1
+                              ).
 
-agent_wrapup(AcctId, AgentId, WaitTime) ->
+-spec agent_wrapup(ne_binary(), ne_binary(), integer()) -> 'ok'.
+agent_wrapup(AccountId, AgentId, WaitTime) ->
     Prop = props:filter_undefined(
-             [{<<"Account-ID">>, AcctId}
+             [{<<"Account-ID">>, AccountId}
               ,{<<"Agent-ID">>, AgentId}
               ,{<<"Timestamp">>, wh_util:current_tstamp()}
               ,{<<"Status">>, <<"wrapup">>}
               ,{<<"Wait-Time">>, WaitTime}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
-    whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_wrapup/1).
+    whapps_util:amqp_pool_send(Prop
+                               ,fun wapi_acdc_stats:publish_status_wrapup/1
+                              ).
 
-agent_paused(AcctId, AgentId, 'undefined') ->
-    lager:debug("undefined pause time for ~s(~s)", [AgentId, AcctId]);
-agent_paused(AcctId, AgentId, PauseTime) ->
+-spec agent_paused(ne_binary(), ne_binary(), api_integer()) -> 'ok'.
+agent_paused(AccountId, AgentId, 'undefined') ->
+    lager:debug("undefined pause time for ~s(~s)", [AgentId, AccountId]);
+agent_paused(AccountId, AgentId, PauseTime) ->
     Prop = props:filter_undefined(
-             [{<<"Account-ID">>, AcctId}
+             [{<<"Account-ID">>, AccountId}
               ,{<<"Agent-ID">>, AgentId}
               ,{<<"Timestamp">>, wh_util:current_tstamp()}
               ,{<<"Status">>, <<"paused">>}
               ,{<<"Pause-Time">>, PauseTime}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
-    whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_paused/1).
+    whapps_util:amqp_pool_send(Prop
+                               ,fun wapi_acdc_stats:publish_status_paused/1
+                              ).
 
-agent_outbound(AcctId, AgentId, CallId) ->
+-spec agent_outbound(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+agent_outbound(AccountId, AgentId, CallId) ->
     Prop = props:filter_undefined(
-             [{<<"Account-ID">>, AcctId}
+             [{<<"Account-ID">>, AccountId}
               ,{<<"Agent-ID">>, AgentId}
               ,{<<"Timestamp">>, wh_util:current_tstamp()}
               ,{<<"Status">>, <<"outbound">>}
               ,{<<"Call-ID">>, CallId}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
-    whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_outbound/1).
+    whapps_util:amqp_pool_send(Prop
+                               ,fun wapi_acdc_stats:publish_status_outbound/1
+                              ).
 
 -spec handle_status_stat(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_status_stat(JObj, Props) ->
@@ -170,7 +204,7 @@ handle_status_stat(JObj, Props) ->
                         ,#status_stat{
                             id=status_stat_id(AgentId, Timestamp, EventName)
                             ,agent_id=AgentId
-                            ,acct_id=wh_json:get_value(<<"Account-ID">>, JObj)
+                            ,account_id=wh_json:get_value(<<"Account-ID">>, JObj)
                             ,status=EventName
                             ,timestamp=Timestamp
                             ,callid=wh_json:get_value(<<"Call-ID">>, JObj)
@@ -178,8 +212,9 @@ handle_status_stat(JObj, Props) ->
                             ,pause_time=acdc_stats_util:pause_time(EventName, JObj)
                             ,caller_id_name=acdc_stats_util:caller_id_name(EventName, JObj)
                             ,caller_id_number=acdc_stats_util:caller_id_number(EventName, JObj)
-                           }}).
-
+                           }
+                       }
+                     ).
 
 -spec status_stat_id(ne_binary(), pos_integer(), _) -> ne_binary().
 status_stat_id(AgentId, Timestamp, _EventName) ->
@@ -211,7 +246,7 @@ status_build_match_spec(JObj) ->
         'undefined' ->
             {'error', wh_json:from_list([{<<"Account-ID">>, <<"missing but required">>}])};
         AccountId ->
-            AcctMatch = {#status_stat{acct_id='$1', _='_'}
+            AcctMatch = {#status_stat{account_id='$1', _='_'}
                          ,[{'=:=', '$1', {'const', AccountId}}]
                         },
             status_build_match_spec(JObj, AcctMatch)
@@ -336,7 +371,7 @@ query_status_fold(#status_stat{agent_id=AgentId
 -spec status_stat_to_doc(status_stat()) -> wh_json:object().
 status_stat_to_doc(#status_stat{id=Id
                                 ,agent_id=AgentId
-                                ,acct_id=AcctId
+                                ,account_id=AccountId
                                 ,status=Status
                                 ,timestamp=Timestamp
                                 ,wait_time=WT
@@ -357,8 +392,8 @@ status_stat_to_doc(#status_stat{id=Id
            ],
     wh_doc:update_pvt_parameters(
       wh_json:from_list(props:filter_undefined(Prop))
-      ,acdc_stats_util:db_name(AcctId)
-      ,[{'account_id', AcctId}
+      ,acdc_stats_util:db_name(AccountId)
+      ,[{'account_id', AccountId}
         ,{'type', <<"status_stat">>}
        ]).
 
@@ -402,6 +437,6 @@ maybe_archive_status_data(Srv, Match) ->
     end.
 
 -spec archive_status_fold(status_stat(), dict()) -> dict().
-archive_status_fold(#status_stat{acct_id=AcctId}=Stat, Acc) ->
+archive_status_fold(#status_stat{account_id=AccountId}=Stat, Acc) ->
     Doc = status_stat_to_doc(Stat),
-    dict:update(AcctId, fun(L) -> [Doc | L] end, [Doc], Acc).
+    dict:update(AccountId, fun(L) -> [Doc | L] end, [Doc], Acc).
