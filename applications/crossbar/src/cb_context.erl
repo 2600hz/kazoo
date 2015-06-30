@@ -52,7 +52,7 @@
          ,req_header/2
          ,query_string/1, set_query_string/2
          ,client_ip/1
-         ,doc/1, set_doc/2
+         ,doc/1, set_doc/2, update_doc/2
          ,load_merge_bypass/1, set_load_merge_bypass/2
          ,start/1, set_start/2
          ,resp_data/1, set_resp_data/2
@@ -386,6 +386,9 @@ add_resp_header_fold({K, V}, Hs) ->
 
 set_validation_errors(#cb_context{}=Context, Errors) ->
     Context#cb_context{validation_errors=Errors}.
+
+-spec update_doc(context(), setter_fun_1()) -> context().
+update_doc(#cb_context{doc=Doc}=Context, Updater) -> Context#cb_context{doc=Updater(Doc)}.
 
 %% Helpers
 

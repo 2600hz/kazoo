@@ -249,6 +249,7 @@ call_table_opts() ->
                        ,[{<<"acdc_status_stat">>, <<"ready">>}
                          ,{<<"acdc_status_stat">>, <<"logged_in">>}
                          ,{<<"acdc_status_stat">>, <<"logged_out">>}
+                         ,{<<"acdc_status_stat">>, <<"pending_logged_out">>}
                          ,{<<"acdc_status_stat">>, <<"connecting">>}
                          ,{<<"acdc_status_stat">>, <<"connected">>}
                          ,{<<"acdc_status_stat">>, <<"wrapup">>}

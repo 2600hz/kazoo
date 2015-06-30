@@ -11,6 +11,7 @@
 -export([agent_ready/2
          ,agent_logged_in/2
          ,agent_logged_out/2
+         ,agent_pending_logged_out/2
          ,agent_connecting/3, agent_connecting/5
          ,agent_connected/3, agent_connected/5
          ,agent_wrapup/3
@@ -68,6 +69,16 @@ agent_logged_out(AcctId, AgentId) ->
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_logged_out/1).
+
+agent_pending_logged_out(AcctId, AgentId) ->
+    Prop = props:filter_undefined(
+             [{<<"Account-ID">>, AcctId}
+              ,{<<"Agent-ID">>, AgentId}
+              ,{<<"Timestamp">>, wh_util:current_tstamp()}
+              ,{<<"Status">>, <<"pending_logged_out">>}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]),
+    whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_pending_logged_out/1).
 
 agent_connecting(AcctId, AgentId, CallId) ->
     agent_connecting(AcctId, AgentId, CallId, 'undefined', 'undefined').
@@ -140,6 +151,7 @@ handle_status_stat(JObj, Props) ->
                  <<"ready">> -> wapi_acdc_stats:status_ready_v(JObj);
                  <<"logged_in">> -> wapi_acdc_stats:status_logged_in_v(JObj);
                  <<"logged_out">> -> wapi_acdc_stats:status_logged_out_v(JObj);
+                 <<"pending_logged_out">> -> wapi_acdc_stats:status_pending_logged_out_v(JObj);
                  <<"connecting">> -> wapi_acdc_stats:status_connecting_v(JObj);
                  <<"connected">> -> wapi_acdc_stats:status_connected_v(JObj);
                  <<"wrapup">> -> wapi_acdc_stats:status_wrapup_v(JObj);
