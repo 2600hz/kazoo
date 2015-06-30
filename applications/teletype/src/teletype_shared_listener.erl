@@ -10,6 +10,7 @@
 -behaviour(gen_listener).
 
 -export([start_link/0]).
+
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -138,12 +139,15 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS}
-                                      ,{'responders', ?RESPONDERS}
-                                      ,{'queue_name', ?QUEUE_NAME}       % optional to include
-                                      ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
-                                      ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
-                                     ], []).
+    gen_listener:start_link(?MODULE
+                            ,[{'bindings', ?BINDINGS}
+                              ,{'responders', ?RESPONDERS}
+                              ,{'queue_name', ?QUEUE_NAME}
+                              ,{'queue_options', ?QUEUE_OPTIONS}
+                              ,{'consume_options', ?CONSUME_OPTIONS}
+                             ]
+                            ,[]
+                           ).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -220,7 +224,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(JObj, _State) ->
-    case should_handle(JObj) of
+    case teletype_util:should_handle_notification(JObj) of
         'false' -> 'ignore';
         'true' -> {'reply', []}
     end.
@@ -253,57 +257,3 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec should_handle(wh_json:object()) -> boolean().
-should_handle(JObj) ->
-    should_handle(JObj, wh_json:is_true(<<"Preview">>, JObj, 'false')).
-
-should_handle(_JObj, 'true') -> 'true';
-should_handle(JObj, 'false') ->
-    case wh_json:get_first_defined([<<"Account-ID">>, <<"Account-DB">>], JObj) of
-        'undefined' -> should_handle_system();
-        Account -> should_handle_account(Account)
-    end.
-
--spec should_handle_system() -> boolean().
-should_handle_system() ->
-    lager:debug("should system handle notification"),
-    whapps_config:get(?NOTIFY_CONFIG_CAT
-                     ,<<"notification_app">>
-                     ,?APP_NAME
-                     ) =:= ?APP_NAME.
-
--spec should_handle_account(ne_binary()) -> boolean().
-should_handle_account(Account) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {'error', _E} ->
-            lager:debug("teletype should handle account ~s", [AccountId]),
-            'true';
-        {'ok', AccountJObj} ->
-            should_handle_account(
-              Account
-              ,kz_account:notification_preference(AccountJObj)
-             )
-    end.
-
--spec should_handle_account(ne_binary(), api_binary()) -> boolean().
-should_handle_account(_Account, ?APP_NAME) -> 'true';
-should_handle_account(Account, 'undefined') ->
-    should_handle_reseller(Account);
-should_handle_account(_Account, _Preference) ->
-    lager:debug("not handling notification; unknown notification preference '~s' for '~s'"
-                ,[_Preference, _Account]
-               ).
-
--spec should_handle_reseller(api_binary()) -> boolean().
-should_handle_reseller(Account) ->
-    ResellerId = wh_services:find_reseller_id(Account),
-    lager:debug("should reseller ~s handle notification", [ResellerId]),
-    AccountDb = wh_util:format_account_id(ResellerId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, ResellerId) of
-        {'error', _E} -> 'true';
-        {'ok', AccountJObj} ->
-            kz_account:notification_preference(AccountJObj) =:= ?APP_NAME
-    end.

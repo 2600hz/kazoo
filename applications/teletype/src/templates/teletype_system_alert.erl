@@ -112,18 +112,18 @@
 -spec init() -> 'ok'.
 init() ->
     wh_util:put_callid(?MODULE),
-    teletype_util:init_template(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-                                               ,{'text', ?TEMPLATE_TEXT}
-                                               ,{'html', ?TEMPLATE_HTML}
-                                               ,{'subject', ?TEMPLATE_SUBJECT}
-                                               ,{'category', ?TEMPLATE_CATEGORY}
-                                               ,{'friendly_name', ?TEMPLATE_NAME}
-                                               ,{'to', ?TEMPLATE_TO}
-                                               ,{'from', ?TEMPLATE_FROM}
-                                               ,{'cc', ?TEMPLATE_CC}
-                                               ,{'bcc', ?TEMPLATE_BCC}
-                                               ,{'reply_to', ?TEMPLATE_REPLY_TO}
-                                              ]).
+    teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
+                                           ,{'text', ?TEMPLATE_TEXT}
+                                           ,{'html', ?TEMPLATE_HTML}
+                                           ,{'subject', ?TEMPLATE_SUBJECT}
+                                           ,{'category', ?TEMPLATE_CATEGORY}
+                                           ,{'friendly_name', ?TEMPLATE_NAME}
+                                           ,{'to', ?TEMPLATE_TO}
+                                           ,{'from', ?TEMPLATE_FROM}
+                                           ,{'cc', ?TEMPLATE_CC}
+                                           ,{'bcc', ?TEMPLATE_BCC}
+                                           ,{'reply_to', ?TEMPLATE_REPLY_TO}
+                                          ]).
 
 -spec handle_system_alert(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_system_alert(JObj, _Props) ->
@@ -172,7 +172,7 @@ handle_req_as_email(JObj, 'true') ->
 process_req(DataJObj) ->
     lager:debug("template is enabled for account, fetching templates for rendering"),
     %% Load templates
-    process_req(DataJObj, teletype_util:fetch_templates(?TEMPLATE_ID)).
+    process_req(DataJObj, teletype_templates:fetch(?TEMPLATE_ID)).
 
 process_req(DataJObj, Templates) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
@@ -189,9 +189,9 @@ process_req(DataJObj, Templates) ->
                         ],
 
     {'ok', TemplateMetaJObj} =
-        teletype_util:fetch_template_meta(?TEMPLATE_ID
-                                          ,teletype_util:find_account_id(DataJObj)
-                                         ),
+        teletype_templates:fetch_meta(?TEMPLATE_ID
+                                      ,teletype_util:find_account_id(DataJObj)
+                                     ),
 
     Subject =
         teletype_util:render_subject(

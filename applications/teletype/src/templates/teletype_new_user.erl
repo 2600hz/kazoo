@@ -39,7 +39,7 @@
 -spec init() -> 'ok'.
 init() ->
     wh_util:put_callid(?MODULE),
-    teletype_util:init_template(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
+    teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
                                                ,{'text', ?TEMPLATE_TEXT}
                                                ,{'html', ?TEMPLATE_HTML}
                                                ,{'subject', ?TEMPLATE_SUBJECT}
@@ -61,9 +61,7 @@ handle_req(JObj, _Props) ->
     DataJObj = wh_json:normalize(JObj),
     AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
 
-    case teletype_util:should_handle_notification(DataJObj)
-        andalso teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID)
-    of
+    case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
         'false' -> lager:debug("notification handling not configured for this account");
         'true' -> do_handle_req(DataJObj)
     end.
@@ -91,7 +89,7 @@ do_handle_req(DataJObj) ->
 -spec process_req(wh_json:object(), wh_proplist()) -> 'ok'.
 process_req(DataJObj) ->
     %% Load templates
-    process_req(DataJObj, teletype_util:fetch_templates(?TEMPLATE_ID, DataJObj)).
+    process_req(DataJObj, teletype_templates:fetch(?TEMPLATE_ID, DataJObj)).
 
 process_req(_DataJObj, []) ->
     lager:debug("no templates to render for ~s", [?TEMPLATE_ID]);
@@ -107,9 +105,9 @@ process_req(DataJObj, Templates) ->
                         ],
 
     {'ok', TemplateMetaJObj} =
-        teletype_util:fetch_template_meta(?TEMPLATE_ID
-                                          ,teletype_util:find_account_id(DataJObj)
-                                         ),
+        teletype_templates:fetch_meta(?TEMPLATE_ID
+                                      ,teletype_util:find_account_id(DataJObj)
+                                     ),
 
     Subject =
         teletype_util:render_subject(

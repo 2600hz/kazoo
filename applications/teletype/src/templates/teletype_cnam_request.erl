@@ -44,18 +44,18 @@
 -spec init() -> 'ok'.
 init() ->
     wh_util:put_callid(?MODULE),
-    teletype_util:init_template(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-                                               ,{'text', ?TEMPLATE_TEXT}
-                                               ,{'html', ?TEMPLATE_HTML}
-                                               ,{'subject', ?TEMPLATE_SUBJECT}
-                                               ,{'category', ?TEMPLATE_CATEGORY}
-                                               ,{'friendly_name', ?TEMPLATE_NAME}
-                                               ,{'to', ?TEMPLATE_TO}
-                                               ,{'from', ?TEMPLATE_FROM}
-                                               ,{'cc', ?TEMPLATE_CC}
-                                               ,{'bcc', ?TEMPLATE_BCC}
-                                               ,{'reply_to', ?TEMPLATE_REPLY_TO}
-                                              ]).
+    teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
+                                           ,{'text', ?TEMPLATE_TEXT}
+                                           ,{'html', ?TEMPLATE_HTML}
+                                           ,{'subject', ?TEMPLATE_SUBJECT}
+                                           ,{'category', ?TEMPLATE_CATEGORY}
+                                           ,{'friendly_name', ?TEMPLATE_NAME}
+                                           ,{'to', ?TEMPLATE_TO}
+                                           ,{'from', ?TEMPLATE_FROM}
+                                           ,{'cc', ?TEMPLATE_CC}
+                                           ,{'bcc', ?TEMPLATE_BCC}
+                                           ,{'reply_to', ?TEMPLATE_REPLY_TO}
+                                          ]).
 
 -spec handle_cnam_request(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_cnam_request(JObj, _Props) ->
@@ -74,17 +74,16 @@ handle_cnam_request(JObj, _Props) ->
                            ,wh_json:merge_jobjs(DataJObj, ReqData)
                           ),
 
-    case teletype_util:should_handle_notification(DataJObj)
-        andalso teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID)
-    of
+    case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
         'false' -> lager:debug("notification handling not configured for this account");
         'true' -> process_req(CNAMJObj)
     end.
 
+-spec cnam_data(wh_json:object()) -> api_object().
 cnam_data(DataJObj) ->
     case teletype_util:is_preview(DataJObj) of
         'false' ->
-            wh_json:get_value(<<"cnam">>, DataJObj);
+            wh_json:get_json_value(<<"cnam">>, DataJObj);
         'true' ->
             wh_json:from_list([{<<"display_name">>, <<"Display Name">>}])
     end.
@@ -92,7 +91,7 @@ cnam_data(DataJObj) ->
 -spec process_req(wh_json:object()) -> 'ok'.
 -spec process_req(wh_json:object(), wh_proplist()) -> 'ok'.
 process_req(DataJObj) ->
-    process_req(DataJObj, teletype_util:fetch_templates(?TEMPLATE_ID, DataJObj)).
+    process_req(DataJObj, teletype_templates:fetch(?TEMPLATE_ID, DataJObj)).
 
 process_req(_DataJObj, []) ->
     lager:debug("no templates to render for ~s", [?TEMPLATE_ID]);
@@ -110,7 +109,7 @@ process_req(DataJObj, Templates) ->
                         ],
 
     {'ok', TemplateMetaJObj} =
-        teletype_util:fetch_template_meta(?TEMPLATE_ID
+        teletype_templates:fetch_meta(?TEMPLATE_ID
                                           ,teletype_util:find_account_id(DataJObj)
                                          ),
 
