@@ -79,11 +79,13 @@ fetch(Num, AuthBy) ->
 save(#number{dry_run='true'}=Number) ->
     Routines = [
         fun knm_providers:save/1
+        ,fun knm_services:maybe_update_services/1
     ],
     execute_routines(Number, Routines);
 save(#number{dry_run='false'}=Number) ->
     Routines = [
         fun knm_providers:save/1
+        ,fun knm_services:maybe_update_services/1
         ,fun save_to_number_db/1
         ,fun hangle_assignment/1
     ],

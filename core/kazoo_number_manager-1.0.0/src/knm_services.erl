@@ -14,6 +14,7 @@
     ,deactivate_feature/2
     ,deactivate_features/2
     ,maybe_update_services/1
+    ,activate_phone_number/1
 ]).
 
 -export([fetch/1]).
@@ -25,9 +26,9 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec activate_feature(number(), ne_binary()) -> number().
--spec activate_feature(number(), ne_binary(), ne_binary()) -> number().
--spec activate_feature(number(), ne_binary(), ne_binary(), wh_services:services()) -> number().
+-spec activate_feature(number(), ne_binary()) -> number_return().
+-spec activate_feature(number(), ne_binary(), ne_binary()) -> number_return().
+-spec activate_feature(number(), ne_binary(), ne_binary(), wh_services:services()) -> number_return().
 activate_feature(Number, Feature) ->
     {Number1, BillingId} = fetch_billing_id(Number),
     activate_feature(Number1, Feature, BillingId).
@@ -38,7 +39,7 @@ activate_feature(Number, Feature, BillingId) ->
 
 activate_feature(Number, Feature, BillingId, Services) ->
     Units = wh_service_phone_numbers:feature_activation_charge(Feature, Services),
-    Charges = knm_phone_number:fetch_storage(Number, <<"charges">>),
+    Charges = knm_phone_number:fetch_storage(Number, <<"feature_charges">>),
     TotalCharges = Charges + Units,
 
     case wh_services:check_bookkeeper(BillingId, TotalCharges) of
@@ -54,7 +55,7 @@ activate_feature(Number, Feature, BillingId, Services) ->
             Transaction = create_transaction(Number, Feature, Units),
             Updates =[
                 {fun knm_phone_number:set_feature/3, [Feature, wh_json:new()]}
-                ,{fun knm_phone_number:store/3, [<<"charges">>, TotalCharges]}
+                ,{fun knm_phone_number:store/3, [<<"feature_charges">>, TotalCharges]}
                 ,{fun knm_phone_number:store/3, [<<"transactions">>, [Transaction|Transactions]]}
             ],
             {'ok', knm_phone_number:setters(Number, Updates)}
@@ -107,6 +108,47 @@ maybe_update_services(Number, 'false') ->
 
     Number.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec activate_phone_number(number()) -> number_return().
+-spec activate_phone_number(number(), ne_binary()) -> number_return().
+-spec activate_phone_number(number(), ne_binary(), integer()) -> number_return().
+activate_phone_number(Number) ->
+    {Number1, BillingId} = fetch_billing_id(Number),
+    activate_phone_number(Number1, BillingId).
+
+activate_phone_number(Number, BillingId) ->
+    {Number1, Services} = fetch_services(Number),
+    Units = wh_service_phone_numbers:phone_number_activation_charge(Number, Services),
+    activate_phone_number(Number1, BillingId, Units).
+
+activate_phone_number(Number, _BillingId, 0) ->
+    Num  = knm_phone_number:number(Number),
+    lager:debug("no activation charge for ~s", [Num]),
+    Number;
+activate_phone_number(Number, BillingId, Units) ->
+    Charges = knm_phone_number:fetch_storage(Number, <<"number_activation_charges">>),
+    TotalCharges = Charges + Units,
+
+    case wh_services:check_bookkeeper(BillingId, TotalCharges) of
+        'false' ->
+            lager:error(
+                "not enough credit to activate number for $~p"
+                ,[wht_util:units_to_dollars(Units)]
+            ),
+            {'error', 'not_enough_credit'};
+        'true' ->
+            Transactions = knm_phone_number:fetch_storage(Number, <<"transactions">>, []),
+            Transaction = create_transaction(Number, Units),
+            Updates =[
+                {fun knm_phone_number:store/3, [<<"number_activation_charges">>, TotalCharges]}
+                ,{fun knm_phone_number:store/3, [<<"transactions">>, [Transaction|Transactions]]}
+            ],
+            {'ok', knm_phone_number:setters(Number, Updates)}
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -117,7 +159,6 @@ maybe_update_services(Number, 'false') ->
 fetch(Number) ->
     {_, Services} = fetch_services(Number),
     Services.
-
 
 %%%===================================================================
 %%% Internal functions
@@ -161,6 +202,35 @@ fetch_billing_id(Number) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_transaction(number(), ne_binary(), number()) -> wh_transaction:transaction().
+-spec create_transaction(number(), number()) -> wh_transaction:transaction().
+create_transaction(Number, Units) ->
+    {_, BillingId} = fetch_billing_id(Number),
+    AccountId = knm_phone_number:assigned_to(Number),
+    LedgerId = wh_util:format_account_id(BillingId, 'raw'),
+    Num = knm_phone_number:number(Number),
+
+    Routines = [fun(T) ->
+                    case LedgerId =/= AccountId of
+                        'false' ->
+                            wh_transaction:set_reason(<<"number_activation">>, T);
+                        'true' ->
+                            T1 = wh_transaction:set_sub_account_info(AccountId, T),
+                            wh_transaction:set_reason(<<"sub_account_number_activation">>, T1)
+                    end
+                end
+                ,fun(T) -> wh_transaction:set_number(Num, T) end
+                ,fun(T) -> set_feature_description(T, wh_util:to_binary(Num)) end
+               ],
+    lager:debug("staging number activation charge $~p for ~s via billing account ~s"
+                ,[wht_util:units_to_dollars(Units), AccountId, LedgerId]
+               ),
+
+    lists:foldl(
+        fun(F, T) -> F(T) end
+        ,wh_transaction:debit(LedgerId, Units)
+        ,Routines
+    ).
+
 create_transaction(Number, Feature, Units) ->
     {_, BillingId} = fetch_billing_id(Number),
     AccountId = knm_phone_number:assigned_to(Number),

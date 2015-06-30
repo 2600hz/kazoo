@@ -47,7 +47,7 @@ exec(Number, Action) ->
     exec(Number, Action, Providers).
 
 exec(Number, _, []) ->
-    {'ok', knm_services:maybe_update_services(Number)};
+    {'ok', Number};
 exec(Number, Action, [Provider|Providers]) ->
     case wh_util:try_load_module(<<"knm_", Provider/binary>>) of
         'false' ->
