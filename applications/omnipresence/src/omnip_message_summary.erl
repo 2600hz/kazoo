@@ -98,13 +98,8 @@ handle_cast({'omnipresence',{'subscribe_notify', <<"message-summary">>, User, _S
             ],
     wh_amqp_worker:cast(Query, fun wapi_presence:publish_mwi_query/1),
     {'noreply', State};
-handle_cast({'omnipresence',{'x_resubscribe_notify', <<"message-summary">>, User, _Subscription}}, State) ->
-    [Username, Realm] = binary:split(User, <<"@">>),
-    Query = [{<<"Username">>, Username}
-             ,{<<"Realm">>, Realm}
-             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-            ],
-    wh_amqp_worker:cast(Query, fun wapi_presence:publish_mwi_query/1),
+handle_cast({'omnipresence',{'subscription_reset', <<"message-summary">>, User, #omnip_subscription{}=_Subscription}}, State) ->
+    _ = wh_util:spawn(fun() -> handle_update(wh_json:new(), User) end),
     {'noreply', State};
 handle_cast({'omnipresence',{'mwi_update', JObj}}, State) ->
     _ = wh_util:spawn(fun() -> mwi_event(JObj) end),

@@ -39,6 +39,9 @@
           ,subscription_id                      :: api_binary() | '_'
           ,proxy_route                          :: api_binary() | '_'
           ,version = 1                          :: non_neg_integer() | '_'
+          ,last_sequence = 0                    :: non_neg_integer() | '_'
+          ,last_reply = 0                       :: non_neg_integer() | '_'
+          ,last_body                            :: api_binary() | '_'
          }).
 
 -type subscription() :: #omnip_subscription{}.

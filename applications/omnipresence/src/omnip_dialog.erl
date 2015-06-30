@@ -93,11 +93,8 @@ handle_cast({'gen_listener',{'created_queue',_Queue}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
-handle_cast({'omnipresence',{'x_subscribe_notify', <<"dialog">>, User, #omnip_subscription{}=_Subscription}}, State) ->
-    _ = wh_util:spawn(fun() -> initial_update(User) end),
-    {'noreply', State};
-handle_cast({'omnipresence',{'x_resubscribe_notify', <<"dialog">>, User, #omnip_subscription{}=_Subscription}}, State) ->
-    _ = wh_util:spawn(fun() -> initial_update(User) end),
+handle_cast({'omnipresence',{'subscription_reset', <<"dialog">>, User, #omnip_subscription{}=_Subscription}}, State) ->
+    _ = wh_util:spawn(fun() -> reset_blf(User) end),
     {'noreply', State};
 handle_cast({'omnipresence',{'channel_event', JObj}}, State) ->
     EventType = wh_json:get_value(<<"Event-Name">>, JObj),
@@ -179,7 +176,7 @@ channel_event(_, _JObj) -> 'ok'.
 handle_new_channel(JObj) ->
     'true' = wapi_call:event_v(JObj),
     wh_util:put_callid(JObj),
-    lager:debug("received channel create, checking for subscribers"),
+    lager:debug("received channel create, checking for dialog subscribers"),
     handle_update(JObj, ?PRESENCE_RINGING).
 
 -spec handle_answered_channel(wh_json:object()) -> 'ok'.
@@ -193,7 +190,7 @@ handle_answered_channel(JObj) ->
 handle_destroyed_channel(JObj) ->
     'true' = wapi_call:event_v(JObj),
     wh_util:put_callid(JObj),
-    lager:debug("received channel destroy, checking for subscribers"),
+    lager:debug("received channel destroy, checking for dialog subscribers"),
     handle_update(JObj, ?PRESENCE_HANGUP).
 
 -spec handle_disconnected_channel(wh_json:object()) -> 'ok'.
@@ -214,13 +211,13 @@ handle_disconnected_channel(JObj) ->
 handle_connected_channel(_JObj) ->
     'ok'.
 
--spec initial_update(ne_binary()) -> 'ok'.
-initial_update(User) ->
-    Headers = [{<<"From">>, User}
-               ,{<<"To">>, User}
-               ,{<<"Call-ID">>, wh_util:rand_hex_binary(16)}
-              ],
-    handle_update(wh_json:from_list(Headers), ?PRESENCE_HANGUP).
+%% -spec initial_update(ne_binary()) -> 'ok'.
+%% initial_update(User) ->
+%%     Headers = [{<<"From">>, User}
+%%                ,{<<"To">>, User}
+%%                ,{<<"Call-ID">>, wh_util:rand_hex_binary(16)}
+%%               ],
+%%     handle_update(wh_json:from_list(Headers), ?PRESENCE_HANGUP).
 
 -spec presence_event(wh_json:object()) -> 'ok'.
 presence_event(JObj) ->

@@ -107,14 +107,8 @@ handle_cast({'omnipresence',{'subscribe_notify', <<"presence">>, User, #omnip_su
             ],
     wh_amqp_worker:cast(Props, fun wapi_presence:publish_probe/1),
     {'noreply', State};
-handle_cast({'omnipresence',{'x_resubscribe_notify', <<"presence">>, User, #omnip_subscription{}=_Subscription}}, State) ->
-    [Username, Realm] = binary:split(User, <<"@">>),
-    Props = [{<<"Username">>, Username}
-             ,{<<"Realm">>, Realm}
-             ,{<<"Event-Package">>, <<"presence">>}
-             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-            ],
-    wh_amqp_worker:cast(Props, fun wapi_presence:publish_probe/1),
+handle_cast({'omnipresence',{'subscription_reset', <<"presence">>, User, #omnip_subscription{}=_Subscription}}, State) ->
+    _ = wh_util:spawn(fun() -> set_presence_state(User, ?PRESENCE_HANGUP) end),
     {'noreply', State};
 handle_cast({'omnipresence',{'presence_update', JObj}}, State) ->
     _ = wh_util:spawn(fun() -> presence_event(JObj) end),
@@ -196,7 +190,7 @@ channel_event(_, _JObj) -> 'ok'.
 handle_new_channel(JObj) ->
     'true' = wapi_call:event_v(JObj),
     wh_util:put_callid(JObj),
-    lager:debug("received channel create, checking for subscribers"),
+    lager:debug("received channel create, checking for presence subscribers"),
     handle_update(JObj, ?PRESENCE_RINGING).
 
 -spec handle_answered_channel(wh_json:object()) -> 'ok'.
@@ -210,7 +204,7 @@ handle_answered_channel(JObj) ->
 handle_destroyed_channel(JObj) ->
     'true' = wapi_call:event_v(JObj),
     wh_util:put_callid(JObj),
-    lager:debug("received channel destroy, checking for subscribers"),
+    lager:debug("received channel destroy, checking for presence subscribers"),
     handle_update(JObj, ?PRESENCE_HANGUP).
 
 -spec handle_disconnected_channel(wh_json:object()) -> 'ok'.

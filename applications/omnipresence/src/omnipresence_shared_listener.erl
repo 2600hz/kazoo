@@ -41,6 +41,8 @@
                    ,{'presence', [{'restrict_to', ['update'
                                                    ,'mwi_update'
                                                    ,'reset'
+                                                   ,'flush'
+                                                   ,'search_req'
                                                   ]}
                                   ,'federate'
                                  ]}
@@ -58,8 +60,14 @@
                      ,{{'omnip_subscriptions', 'handle_reset'}
                        ,[{<<"presence">>, <<"reset">>}]
                       }
+                     ,{{'omnip_subscriptions', 'handle_flush'}
+                       ,[{<<"presence">>, <<"flush">>}]
+                      }
                      ,{{'omnip_subscriptions', 'handle_kamailio_subscribe'}
                        ,[{<<"presence">>, <<"subscription">>}]
+                      }
+                     ,{{'omnip_subscriptions', 'handle_search_req'}
+                       ,[{<<"presence">>, <<"search_req">>}]
                       }
                     ]).
 -define(QUEUE_NAME, <<"omnip_shared_listener">>).
