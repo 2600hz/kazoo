@@ -243,8 +243,7 @@ get_flow_flags(Data, _, Flags) ->
 -spec get_account_flags(wh_json:object(), whapps_call:call(), ne_binaries()) -> ne_binaries().
 get_account_flags(_Data, Call, Flags) ->
     AccountDB = whapps_call:account_db(Call),
-    AccountID = whapps_call:account_id(Call),
-    case couch_mgr:open_cache_doc(AccountDB, AccountID) of
+    case kz_account:fetch(AccountDB) of
         {'ok', JObj} ->
             AccountFlags = wh_json:get_value(<<"outbound_flags">>, JObj, []),
             AccountFlags ++ Flags;
