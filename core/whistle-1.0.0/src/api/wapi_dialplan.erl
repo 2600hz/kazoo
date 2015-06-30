@@ -58,6 +58,7 @@
          ,metaflow/1, metaflow_v/1
          ,fax_detection/1, fax_detection_v/1
          ,store_vm/1, store_vm_v/1
+         ,b_leg_events_v/1
         ]).
 
 -export([queue/1, queue_v/1

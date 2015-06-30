@@ -40,7 +40,7 @@
           ,<<"Enable-T38-Passthrough">>, <<"Force-Fax">>, <<"Enable-T38-Gateway">>
           ,<<"Format-From-URI">>, <<"From-URI-Realm">>, <<"Bypass-E164">>
           ,<<"Hunt-Account-ID">>, <<"Inception">>
-          ,<<"Message-ID">>, <<"Body">>
+          ,<<"Message-ID">>, <<"Body">>, <<"B-Leg-Events">>
          ]).
 -define(OFFNET_RESOURCE_REQ_VALUES
         ,[{<<"Event-Category">>, <<"resource">>}
@@ -67,6 +67,7 @@
           ,{<<"Force-Fax">>, fun wh_util:is_boolean/1}
           ,{<<"Enable-T38-Gateway">>, fun is_binary/1}
           ,{<<"Force-Outbound">>, fun wh_util:is_boolean/1}
+          ,{<<"B-Leg-Events">>, fun wapi_dialplan:b_leg_events_v/1}
          ]).
 
 %% Offnet Resource Response

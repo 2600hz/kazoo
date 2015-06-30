@@ -91,6 +91,7 @@ build_offnet_request(Data, Call) ->
                             ,{<<"From-URI-Realm">>, get_from_uri_realm(Data, Call)}
                             ,{<<"Bypass-E164">>, get_bypass_e164(Data)}
                             ,{<<"Inception">>, get_inception(Call)}
+                            ,{<<"B-Leg-Events">>, [<<"DTMF">>]}
                             | wh_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)
                            ]).
 
