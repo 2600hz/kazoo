@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, VoIP INC
+%% @copyright (C) 2013, VoIP INC
 %%% @doc
 %%%
 %%%
@@ -14,11 +14,13 @@
          ,resource_exists/0, resource_exists/2
          ,validate/1, validate/3
          ,post/3
+         ,collect_presentities/2
         ]).
 
 -include("../crossbar.hrl").
 
 -define(RESET, <<"reset">>).
+-define(PRESENTITY, <<"presentity">>).
 
 %%%===================================================================
 %%% API
@@ -69,42 +71,129 @@ resource_exists(_, ?RESET) -> 'true'.
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token(), ne_binary()) -> cb_context:context().
-validate(#cb_context{req_verb = ?HTTP_GET, account_id=AccountId}=Context) ->
-    Doc = cb_context:doc(crossbar_doc:load(AccountId, Context)),
-    Realm = wh_json:get_value(<<"realm">>, Doc),
-    publish_search_req(Realm, Context).
+validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
+    publish_search(cb_context:req_param(Context, <<"type">>), cb_context:account_realm(Context), Context).
 
 validate(#cb_context{req_verb = ?HTTP_POST}=Context, _, ?RESET) ->
     Context#cb_context{resp_status='success'}.
 
 -spec post(cb_context:context(), path_token(), ne_binary()) -> cb_context:context().
 post(#cb_context{}=Context, User, ?RESET) ->
-    [Username, Realm|_] = binary:split(User, <<"@">>),
+    [Username |_] = binary:split(User, <<"@">>),
     Req = [{<<"Username">>, Username}
-           ,{<<"Realm">>, Realm}
+           ,{<<"Realm">>, cb_context:account_realm(Context)}
            |wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    whapps_util:amqp_pool_send(Req, fun wapi_presence:publish_reset/1),
+    wh_federation:cast(Req, fun wapi_presence:publish_reset/1),
     Context#cb_context{resp_status='success'}.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+publish_search(<<"presentity">>, Realm, Context) ->
+    publish_presentity_search_req(Realm, Context);
+publish_search(_, Realm, Context) ->
+    publish_search_req(Realm, Context).
 
 publish_search_req('undefined', Context) ->
     crossbar_util:response('error', <<"realm could not be found">>, 500, Context);
 publish_search_req(Realm, Context) ->
     Req = [{<<"Realm">>, Realm}
+           ,{<<"Event-Package">>, cb_context:req_param(Context, <<"event">>)}
            |wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case whapps_util:amqp_pool_request(Req
-                                       ,fun wapi_presence:publish_search_req/1
-                                       ,fun wapi_presence:search_resp_v/1
-                                      )
+    case wh_federation:collect(Req
+                               ,fun wapi_presence:publish_search_req/1
+                               ,{'omnipresence', 'true', 'true'}
+                              )
     of
-        {'ok', Subs} ->
-            JObj = wh_json:set_value(<<"subscriptions">>, wh_json:get_value(<<"Subscriptions">>, Subs), wh_json:new()),
+        {'ok', JObjs} ->
+            J = lists:foldl(fun extract_subscriptions/2, wh_json:new(), JObjs),
+            JObj = wh_json:set_value(<<"Subscriptions">>, J, wh_json:new()),
+            Context#cb_context{resp_status='success', resp_data=JObj};
+        {'timeout', JObjs} ->
+            J = lists:foldl(fun extract_subscriptions/2, wh_json:new(), JObjs),
+            JObj = wh_json:set_values([{<<"Subscriptions">>, J}
+                                       ,{<<"timeout">>, 'true'}
+                                      ], wh_json:new()),
             Context#cb_context{resp_status='success', resp_data=JObj};
         {'error', Reason} ->
             crossbar_util:response('error', wh_util:to_binary(Reason), 500, Context)
     end.
+
+publish_presentity_search_req('undefined', Context) ->
+    crossbar_util:response('error', <<"realm could not be found">>, 500, Context);
+publish_presentity_search_req(Realm, Context) ->
+    Req = [{<<"Realm">>, Realm}
+           ,{<<"Event-Package">>, cb_context:req_param(Context, <<"event">>)}
+           ,{<<"Scope">>, <<"presentity">>}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    Count = wh_nodes:whapp_count(<<"kamailio">>, 'true'),
+    lager:debug("attempting to collect ~p responses from kamailio", [Count]),
+    case wh_federation:collect(Req
+                               ,fun wapi_omnipresence:publish_search_req/1
+                               ,{fun collect_presentities/2 , {0, Count}}
+                              )
+    of
+        {'ok', JObjs} ->
+            J = lists:foldl(fun extract_presentities/2, wh_json:new(), JObjs),
+            JObj = wh_json:set_value(<<"Presentities">>, J, wh_json:new()),
+            Context#cb_context{resp_status='success', resp_data=JObj};
+        {'timeout', JObjs} ->
+            J = lists:foldl(fun extract_presentities/2, wh_json:new(), JObjs),
+            JObj = wh_json:set_values([{<<"Presentities">>, J}
+                                       ,{<<"timeout">>, 'true'}
+                                      ], wh_json:new()),
+            Context#cb_context{resp_status='success', resp_data=JObj};
+        {'error', Reason} ->
+            crossbar_util:response('error', wh_util:to_binary(Reason), 500, Context)
+    end.
+
+collect_presentities([Response|_], {Count, Max}) ->
+    Evt = wh_json:get_value(<<"Event-Name">>, Response),
+    case Count + check_event(Evt) of
+         Max -> 'true';
+        V -> {'false', {V, Max}}    
+    end.
+
+check_event(<<"search_resp">>) -> 1;
+check_event(_) -> 0.
+
+extract_presentities(JObj, Acc) ->
+    Event = wh_json:get_value(<<"Event-Name">>, JObj),
+    maybe_process_event(Event, JObj, Acc).
+
+maybe_process_event(<<"search_partial_resp">>, JObj, Acc) ->
+    Keys = wh_json:get_keys(<<"Subscriptions">>, JObj),
+    Node = wh_json:get_value(<<"Node">>, JObj),
+    process_event(Keys, Node, JObj, Acc);            
+maybe_process_event(_Event, _JObj, Acc) -> Acc.
+    
+process_event([], __Node, _JObj, Acc) -> Acc;
+process_event([Key | Keys], Node, JObj, Acc) ->
+    V = wh_json:get_value([<<"Subscriptions">>, Key], JObj),
+    process_event(Keys, Node, JObj, wh_json:set_value([Key, Node], V , Acc)).
+
+extract_subscriptions(JObj, Acc) ->
+    Subs = wh_json:get_value(<<"Subscriptions">>, JObj, []),
+    lists:foldl(fun extract_subscription/2, Acc, Subs).
+
+extract_subscription(JObj, Acc) ->
+    User = wh_json:get_value(<<"username">>, JObj),
+    Event = wh_json:get_value(<<"event">>, JObj),
+    CallId = wh_json:get_value(<<"call_id">>, JObj),
+    case wh_json:get_value([User, Event, CallId], Acc) of
+        'undefined' ->
+            wh_json:set_value([User, Event, CallId], 
+                              wh_json:delete_keys([<<"username">>
+                                                   ,<<"user">>
+                                                   ,<<"event">>
+                                                   ,<<"realm">>
+                                                   ,<<"protocol">>
+                                                   ,<<"contact">>
+                                                   ,<<"call_id">>
+                                                  ], JObj), Acc);
+        _ -> Acc
+    end.
+    
