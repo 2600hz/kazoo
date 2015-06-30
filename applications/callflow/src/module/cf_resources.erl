@@ -213,65 +213,83 @@ get_t38_enabled(Call) ->
 
 -spec get_flags(wh_json:object(), whapps_call:call()) -> api_binaries().
 get_flags(Data, Call) ->
-    Routines = [fun get_endpoint_flags/3
+    Routines = [fun maybe_get_endpoint_flags/3
                 ,fun get_flow_flags/3
                 ,fun get_account_flags/3
                 ,fun get_flow_dynamic_flags/3
-                ,fun get_endpoint_dynamic_flags/3
+                ,fun maybe_get_endpoint_dynamic_flags/3
                 ,fun get_account_dynamic_flags/3
                ],
     lists:foldl(fun(F, A) -> F(Data, Call, A) end, [], Routines).
 
--spec get_endpoint_flags(wh_json:object(), whapps_call:call(), ne_binaries()) -> ne_binaries().
-get_endpoint_flags(_, Call, Flags) ->
+-spec maybe_get_endpoint_flags(wh_json:object(), whapps_call:call(), ne_binaries()) ->
+                                      ne_binaries().
+maybe_get_endpoint_flags(_Data, Call, Flags) ->
     case cf_endpoint:get(Call) of
         {'error', _} -> Flags;
-        {'ok', JObj} ->
-            case wh_json:get_value(<<"outbound_flags">>, JObj) of
-                'undefined' -> Flags;
-                 EndpointFlags -> EndpointFlags ++ Flags
-            end
+        {'ok', Endpoint} ->
+            get_endpoint_flags(Flags, Endpoint)
     end.
 
--spec get_flow_flags(wh_json:object(), whapps_call:call(), ne_binaries()) -> ne_binaries().
-get_flow_flags(Data, _, Flags) ->
+-spec get_endpoint_flags(ne_binaries(), wh_json:object()) ->
+                                ne_binaries().
+get_endpoint_flags(Flags, Endpoint) ->
+    case wh_json:get_value(<<"outbound_flags">>, Endpoint) of
+        'undefined' -> Flags;
+        EndpointFlags -> EndpointFlags ++ Flags
+    end.
+
+-spec get_flow_flags(wh_json:object(), whapps_call:call(), ne_binaries()) ->
+                            ne_binaries().
+get_flow_flags(Data, _Call, Flags) ->
     case wh_json:get_value(<<"outbound_flags">>, Data) of
         'undefined' -> Flags;
         FlowFlags -> FlowFlags ++ Flags
     end.
 
--spec get_account_flags(wh_json:object(), whapps_call:call(), ne_binaries()) -> ne_binaries().
+-spec get_account_flags(wh_json:object(), whapps_call:call(), ne_binaries()) ->
+                               ne_binaries().
 get_account_flags(_Data, Call, Flags) ->
-    AccountDB = whapps_call:account_db(Call),
-    case kz_account:fetch(AccountDB) of
-        {'ok', JObj} ->
-            AccountFlags = wh_json:get_value(<<"outbound_flags">>, JObj, []),
+    AccountId = whapps_call:account_id(Call),
+    case kz_account:fetch(AccountId) of
+        {'ok', AccountJObj} ->
+            AccountFlags = wh_json:get_value(<<"outbound_flags">>, AccountJObj, []),
             AccountFlags ++ Flags;
-        _Else ->
-            lager:error("Can't open account doc for ~s", [AccountDB]),
+        {'error', _E} ->
+            lager:error("not applying account outbound flags for ~s: ~p"
+                        ,[AccountId, _E]
+                       ),
             Flags
     end.
 
--spec get_flow_dynamic_flags(wh_json:object(), whapps_call:call(), ne_binaries()) -> ne_binaries().
+-spec get_flow_dynamic_flags(wh_json:object(), whapps_call:call(), ne_binaries()) ->
+                                    ne_binaries().
 get_flow_dynamic_flags(Data, Call, Flags) ->
     case wh_json:get_value(<<"dynamic_flags">>, Data) of
         'undefined' -> Flags;
         DynamicFlags -> process_dynamic_flags(DynamicFlags, Flags, Call)
     end.
 
--spec get_endpoint_dynamic_flags(wh_json:object(), whapps_call:call(), ne_binaries()) -> ne_binaries().
-get_endpoint_dynamic_flags(_, Call, Flags) ->
+-spec maybe_get_endpoint_dynamic_flags(wh_json:object(), whapps_call:call(), ne_binaries()) ->
+                                        ne_binaries().
+maybe_get_endpoint_dynamic_flags(_Data, Call, Flags) ->
     case cf_endpoint:get(Call) of
         {'error', _} -> Flags;
-        {'ok', JObj} ->
-            case wh_json:get_value(<<"dynamic_flags">>, JObj) of
-                'undefined' -> Flags;
-                 DynamicFlags ->
-                    process_dynamic_flags(DynamicFlags, Flags, Call)
-            end
+        {'ok', Endpoint} ->
+            get_endpoint_dynamic_flags(Call, Flags, Endpoint)
     end.
 
--spec get_account_dynamic_flags(wh_json:object(), whapps_call:call(), ne_binaries()) -> ne_binaries().
+-spec get_endpoint_dynamic_flags(whapps_call:call(), ne_binaries(), wh_json:object()) ->
+                                        ne_binaries().
+get_endpoint_dynamic_flags(Call, Flags, Endpoint) ->
+    case wh_json:get_value(<<"dynamic_flags">>, Endpoint) of
+        'undefined' -> Flags;
+        DynamicFlags ->
+            process_dynamic_flags(DynamicFlags, Flags, Call)
+    end.
+
+-spec get_account_dynamic_flags(wh_json:object(), whapps_call:call(), ne_binaries()) ->
+                                       ne_binaries().
 get_account_dynamic_flags(_, Call, Flags) ->
     DynamicFlags = whapps_account_config:get(whapps_call:account_id(Call)
                                              ,<<"callflow">>
@@ -280,7 +298,8 @@ get_account_dynamic_flags(_, Call, Flags) ->
                                             ),
     process_dynamic_flags(DynamicFlags, Flags, Call).
 
--spec process_dynamic_flags(ne_binaries(), ne_binaries(), whapps_call:call()) -> ne_binaries().
+-spec process_dynamic_flags(ne_binaries(), ne_binaries(), whapps_call:call()) ->
+                                   ne_binaries().
 process_dynamic_flags([], Flags, _) -> Flags;
 process_dynamic_flags([DynamicFlag|DynamicFlags], Flags, Call) ->
     case is_flag_exported(DynamicFlag) of
