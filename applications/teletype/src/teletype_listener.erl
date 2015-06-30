@@ -12,6 +12,7 @@
 -export([start_link/0
          ,handle_message/2
         ]).
+
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -30,9 +31,6 @@
                       ,[{<<"*">>, <<"*">>}]
                      }
                     ]).
--define(QUEUE_NAME, <<>>).
--define(QUEUE_OPTIONS, []).
--define(CONSUME_OPTIONS, []).
 
 %%%===================================================================
 %%% API
@@ -46,13 +44,12 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link(?MODULE, [
-                                      {'bindings', ?BINDINGS}
-                                      ,{'responders', ?RESPONDERS}
-                                      ,{'queue_name', ?QUEUE_NAME}       % optional to include
-                                      ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
-                                      ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
-                                     ], []).
+    gen_listener:start_link(?MODULE
+                            ,[{'bindings', ?BINDINGS}
+                              ,{'responders', ?RESPONDERS}
+                             ]
+                            ,[]
+                           ).
 
 -spec handle_message(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_message(JObj, _Props) ->

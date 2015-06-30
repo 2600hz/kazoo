@@ -79,10 +79,11 @@ handle_cnam_request(JObj, _Props) ->
         'true' -> process_req(CNAMJObj)
     end.
 
+-spec cnam_data(wh_json:object()) -> api_object().
 cnam_data(DataJObj) ->
     case teletype_util:is_preview(DataJObj) of
         'false' ->
-            wh_json:get_value(<<"cnam">>, DataJObj);
+            wh_json:get_json_value(<<"cnam">>, DataJObj);
         'true' ->
             wh_json:from_list([{<<"display_name">>, <<"Display Name">>}])
     end.

@@ -52,8 +52,8 @@ doc_id(Id) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch(ne_binary()) -> wh_proplist().
--spec fetch(ne_binary(), api_binary()) -> wh_proplist().
--spec fetch(ne_binary(), api_binary(), ne_binary()) -> wh_proplist().
+-spec fetch(ne_binary(), api_object() | ne_binary()) -> wh_proplist().
+-spec fetch(ne_binary(), ne_binary(), ne_binary()) -> wh_proplist().
 fetch(TemplateId) ->
     fetch_master(TemplateId).
 

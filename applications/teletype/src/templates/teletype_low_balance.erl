@@ -63,13 +63,13 @@ handle_low_balance(JObj, _Props) ->
         'true' -> handle_req(DataJObj)
     end.
 
--spec get_current_balance(wh_json:object()) -> float().
+-spec get_current_balance(wh_json:object()) -> ne_binary().
 get_current_balance(DataJObj) ->
     AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
     Dollars = wht_util:current_account_dollars(AccountId),
     wht_util:pretty_print_dollars(Dollars).
 
--spec get_balance_threshold(wh_json:object()) -> float().
+-spec get_balance_threshold(wh_json:object()) -> ne_binary().
 get_balance_threshold(DataJObj) ->
     Default = 5.00,
     Key = [<<"account">>, <<"topup">>, <<"threshold">>],

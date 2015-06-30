@@ -74,22 +74,24 @@ send_email(Emails, Subject, RenderedTemplates, Attachments) ->
             E
     end.
 
--spec maybe_log_smtp(list(), ne_binary(), list(), api_binary(), api_binary()) -> 'ok'.
--spec maybe_log_smtp(boolean(), list(), ne_binary(), list(), api_binary(), api_binary()) -> 'ok'.
+-spec maybe_log_smtp(email_map(), ne_binary(), list(), api_binary(), api_binary()) -> 'ok'.
+-spec maybe_log_smtp(email_map(), ne_binary(), list(), api_binary(), api_binary(), boolean()) -> 'ok'.
 maybe_log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error) ->
     Skip = wh_util:is_true(get('skip_smtp_log')),
-    maybe_log_smtp(Skip, Emails, Subject, RenderedTemplates, Receipt, Error).
+    maybe_log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, Skip).
 
-maybe_log_smtp('true', _Emails, _Subject, _RenderedTemplates, _Receipt, _Error) ->
+maybe_log_smtp(_Emails, _Subject, _RenderedTemplates, _Receipt, _Error, 'true') ->
     lager:debug("skipping smtp log");
-maybe_log_smtp('false', Emails, Subject, RenderedTemplates, Receipt, Error) ->
+maybe_log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, 'false') ->
     case get('account_id') of
-        'undefined' -> lager:debug("skipping smtp log since account_id is 'undefined'");
-        AccountId -> log_smtp(AccountId, Emails, Subject, RenderedTemplates, Receipt, Error)
+        'undefined' ->
+            lager:debug("skipping smtp log since account_id is 'undefined'");
+        AccountId ->
+            log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, AccountId)
     end.
 
--spec log_smtp(ne_binary(), list(), ne_binary(), list(), api_binary(), api_binary()) -> 'ok'.
-log_smtp(AccountId, Emails, Subject, RenderedTemplates, Receipt, Error) ->
+-spec log_smtp(email_map(), ne_binary(), list(), api_binary(), api_binary(), ne_binary()) -> 'ok'.
+log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, AccountId) ->
     AccountDb = kazoo_modb:get_modb(AccountId),
     Doc = props:filter_undefined(
             [{<<"rendered_templates">>, wh_json:from_list(RenderedTemplates)}
@@ -547,24 +549,23 @@ should_handle_notification(JObj, 'false') ->
 should_handle_system() ->
     lager:debug("should system handle notification"),
     whapps_config:get(?NOTIFY_CONFIG_CAT
-                     ,<<"notification_app">>
-                     ,?APP_NAME
-                     ) =:= ?APP_NAME.
+                      ,<<"notification_app">>
+                      ,?APP_NAME
+                     )
+        =:= ?APP_NAME.
 
 -spec should_handle_account(ne_binary()) -> boolean().
--spec should_handle_account(ne_binary(), binary()) -> boolean().
+-spec should_handle_account(ne_binary(), api_binary()) -> boolean().
 should_handle_account(Account) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(Account) of
         {'error', _E} ->
-            lager:debug("teletype should handle account ~s", [AccountId]),
+            lager:debug("teletype should handle account ~s", [Account]),
             'true';
         {'ok', JObj} ->
             should_handle_account(
-                Account
-                ,kz_account:notification_preference(JObj)
-            )
+              Account
+              ,kz_account:notification_preference(JObj)
+             )
     end.
 
 should_handle_account(_Account, ?APP_NAME) -> 'true';
@@ -572,19 +573,19 @@ should_handle_account(Account, 'undefined') ->
     should_handle_reseller(Account);
 should_handle_account(_Account, _Preference) ->
     lager:debug(
-        "not handling notification; unknown notification preference '~s' for '~s'"
-        ,[_Preference, _Account]
-    ).
+      "not handling notification; unknown notification preference '~s' for '~s'"
+      ,[_Preference, _Account]
+     ).
 
 -spec should_handle_reseller(ne_binary()) -> boolean().
 should_handle_reseller(Account) ->
     ResellerId = wh_services:find_reseller_id(Account),
-    ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
+
     lager:debug("should reseller ~s handle notification", [ResellerId]),
-    case couch_mgr:open_cache_doc(ResellerDb, ResellerId) of
+    case kz_account:fetch(ResellerId) of
         {'error', _E} -> 'true';
-        {'ok', AccountJObj} ->
-            kz_account:notification_preference(AccountJObj) =:= ?APP_NAME
+        {'ok', ResellerJObj} ->
+            kz_account:notification_preference(ResellerJObj) =:= ?APP_NAME
     end.
 
 -define(MOD_CONFIG_CAT(Key), <<(?NOTIFY_CONFIG_CAT)/binary, ".", Key/binary>>).
@@ -675,14 +676,16 @@ find_address(DataJObj, _TemplateMetaJObj, ConfigCat, Key, ?EMAIL_ADMINS) ->
     lager:debug("looking for admin emails for '~s'", [Key]),
     {Key, find_admin_emails(DataJObj, ConfigCat, Key)}.
 
--spec find_address(wh_json:key(), wh_json:object(), wh_json:object()) -> api_binaries().
+-spec find_address(wh_json:key(), wh_json:object(), wh_json:object()) ->
+                          api_binaries().
 find_address(Key, DataJObj, TemplateMetaJObj) ->
     case wh_json:get_ne_value(Key, DataJObj) of
         'undefined' -> wh_json:get_ne_value(Key, TemplateMetaJObj);
         Emails -> Emails
     end.
 
--spec find_admin_emails(wh_json:object(), ne_binary(), wh_json:key()) -> api_binaries().
+-spec find_admin_emails(wh_json:object(), ne_binary(), wh_json:key()) ->
+                               api_binaries().
 find_admin_emails(DataJObj, ConfigCat, Key) ->
     case teletype_util:find_account_rep_email(
            teletype_util:find_account_id(DataJObj)
