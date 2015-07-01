@@ -4,7 +4,7 @@ This API provides convenient way for agent status management without need to dia
 
 ### Log In/Log Out agent to/from some queue
 
-/agents/AID/logged_in (GET, POST):
+/agents/AID/queue_status (GET, POST):
 
 ```
 {
@@ -15,7 +15,7 @@ This API provides convenient way for agent status management without need to dia
 }
 ```
 
-where 
+where
 
 {{action}} - "login" | "logout"
 and {{queue_id}} is an ID of the queue
@@ -38,7 +38,6 @@ where
 {{timeout}} - timeout for "pause" status
 `presence_id` и `presence_state` - optional fields for presence information
 
-If the agent is on call in time of request, then "pause",  "resume"  and "logout" commands will be executed right after the agent is back from the call. 
+If the agent is on call in time of request, then "pause",  "resume"  and "logout" commands will be executed right after the agent is back from the call.
 
 When `logout` is issued when agent is on call, the agent will be assigned special status of `pending_logged_out` until hang up (after which the logout command will be executed). While in this status, agent can't log in again until logout is completed.
-

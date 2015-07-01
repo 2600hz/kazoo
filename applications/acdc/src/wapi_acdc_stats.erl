@@ -661,6 +661,8 @@ publish_status_logged_out(API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?STATUS_VALUES(<<"logged_out">>), fun status_logged_out/1),
     amqp_util:whapps_publish(status_stat_routing_key(API), Payload, ContentType).
 
+-spec publish_status_pending_logged_out(api_terms()) -> 'ok'.
+-spec publish_status_pending_logged_out(api_terms(), ne_binary()) -> 'ok'.
 publish_status_pending_logged_out(JObj) ->
     publish_status_pending_logged_out(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_status_pending_logged_out(API, ContentType) ->
