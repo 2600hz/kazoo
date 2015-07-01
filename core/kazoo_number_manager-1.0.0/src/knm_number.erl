@@ -28,14 +28,14 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec get(ne_binary()) -> number_return().
--spec get(ne_binary(), ne_binary()) -> number_return().
+-spec get(ne_binary(), wh_proplist()) -> number_return().
 get(Num) ->
-    get(Num, <<"system">>).
+    get(Num, knm_phone_number:default_options()).
 
-get(Num, AuthBy) ->
+get(Num, Options) ->
     case knm_converters:is_reconcilable(Num) of
         'false' -> {'error', 'not_reconcilable'};
-        'true' -> knm_phone_number:fetch(Num, AuthBy)
+        'true' -> knm_phone_number:fetch(Num, Options)
     end.
 
 %%--------------------------------------------------------------------
@@ -66,13 +66,13 @@ create(Num, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec move(ne_binary(), ne_binary()) -> number_return().
--spec move(ne_binary(), ne_binary(), ne_binary()) -> number_return().
+-spec move(ne_binary(), ne_binary(), wh_proplist()) -> number_return().
 move(Num, MoveTo) ->
-    move(Num, MoveTo, <<"system">>).
+    move(Num, MoveTo, knm_phone_number:default_options()).
 
-move(Num, MoveTo, AuthBy) ->
+move(Num, MoveTo, Options) ->
     lager:debug("trying to move ~s to ~s", [Num, MoveTo]),
-    case ?MODULE:get(Num, AuthBy) of
+    case ?MODULE:get(Num, Options) of
         {'error', _R}=E -> E;
         {'ok', Number} ->
             AccountId = wh_util:format_account_id(MoveTo, 'raw'),
@@ -92,12 +92,12 @@ move(Num, MoveTo, AuthBy) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update(ne_binary(), wh_proplist()) -> number_return().
--spec update(ne_binary(), wh_proplist(), ne_binary()) -> number_return().
+-spec update(ne_binary(), wh_proplist(), wh_proplist()) -> number_return().
 update(Num, Props) ->
-    update(Num, Props, <<"system">>).
+    update(Num, Props, knm_phone_number:default_options()).
 
-update(Num, Props, AuthBy) ->
-    case ?MODULE:get(Num, AuthBy) of
+update(Num, Props, Options) ->
+    case ?MODULE:get(Num, Options) of
         {'error', _R}=E -> E;
         {'ok', Number} ->
             case knm_phone_number:setters(Number, Props) of
@@ -115,12 +115,12 @@ update(Num, Props, AuthBy) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(ne_binary()) -> number_return().
--spec delete(ne_binary(), ne_binary()) -> number_return().
+-spec delete(ne_binary(), wh_proplist()) -> number_return().
 delete(Num) ->
-    delete(Num, <<"system">>).
+    delete(Num, knm_phone_number:default_options()).
 
-delete(Num, AuthBy) ->
-    case ?MODULE:get(Num, AuthBy) of
+delete(Num, Options) ->
+    case ?MODULE:get(Num, Options) of
         {'error', _R}=E -> E;
         {'ok', Number} ->
             knm_phone_number:delete(Number)
@@ -134,12 +134,12 @@ delete(Num, AuthBy) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec change_state(ne_binary(), ne_binary()) -> number_return().
--spec change_state(ne_binary(), ne_binary(), ne_binary()) -> number_return().
+-spec change_state(ne_binary(), ne_binary(), wh_proplist()) -> number_return().
 change_state(Num, State) ->
-    change_state(Num, State, <<"system">>).
+    change_state(Num, State, knm_phone_number:default_options()).
 
-change_state(Num, State, AuthBy) ->
-    case ?MODULE:get(Num, AuthBy) of
+change_state(Num, State, Options) ->
+    case ?MODULE:get(Num, Options) of
         {'error', _R}=E -> E;
         {'ok', Number} ->
             maybe_change_state(Number, State)
@@ -151,12 +151,12 @@ change_state(Num, State, AuthBy) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec assigned_to_app(ne_binary(), ne_binary()) -> number_return().
--spec assigned_to_app(ne_binary(), ne_binary(), ne_binary()) -> number_return().
+-spec assigned_to_app(ne_binary(), ne_binary(), wh_proplist()) -> number_return().
 assigned_to_app(Num, App) ->
-    assigned_to_app(Num, App, <<"system">>).
+    assigned_to_app(Num, App, knm_phone_number:default_options()).
 
-assigned_to_app(Num, App, AuthBy) ->
-    case ?MODULE:get(Num, AuthBy) of
+assigned_to_app(Num, App, Options) ->
+    case ?MODULE:get(Num, Options) of
         {'error', _R}=E -> E;
         {'ok', Number} ->
             UpdatedNumber = knm_phone_number:set_used_by(Number, App),

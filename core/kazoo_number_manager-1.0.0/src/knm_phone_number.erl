@@ -44,17 +44,19 @@
     ,doc/1
 ]).
 
+-export([default_options/0]).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch(ne_binary()) -> number_return().
--spec fetch(ne_binary(), ne_binary()) -> number_return().
+-spec fetch(ne_binary(), wh_proplist()) -> number_return().
 fetch(Num) ->
-    fetch(Num, <<"system">>).
+    fetch(Num, ?MODULE:default_options()).
 
-fetch(Num, AuthBy) ->
+fetch(Num, Options) ->
     NormalizedNum = knm_converters:normalize(Num),
     NumberDb = knm_converters:to_db(NormalizedNum),
     case couch_mgr:open_cache_doc(NumberDb, NormalizedNum) of
@@ -62,7 +64,7 @@ fetch(Num, AuthBy) ->
             lager:error("failed to open ~s in ~s", [NormalizedNum, NumberDb]),
             E;
         {'ok', JObj} ->
-            Number = set_auth_by(from_json(JObj), AuthBy),
+            Number = set_options(from_json(JObj), Options),
             case is_authorized(Number) of
                 'true' -> {'ok', Number};
                 'false' ->
@@ -80,8 +82,9 @@ save(#number{dry_run='true'}=Number) ->
     Routines = [
         fun knm_providers:save/1
         ,fun knm_services:maybe_update_services/1
+        ,fun(N) -> {'ok', N} end
     ],
-    execute_routines(Number, Routines);
+    setters(Number, Routines);
 save(#number{dry_run='false'}=Number) ->
     Routines = [
         fun knm_providers:save/1
@@ -89,7 +92,7 @@ save(#number{dry_run='false'}=Number) ->
         ,fun save_to_number_db/1
         ,fun hangle_assignment/1
     ],
-    execute_routines(Number, Routines).
+    setters(Number, Routines).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -104,7 +107,7 @@ delete(#number{dry_run='false'}=Number) ->
         ,fun delete_number_doc/1
         ,fun maybe_remove_number_from_account/1
     ],
-    execute_routines(Number, Routines).
+    setters(Number, Routines).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -437,6 +440,18 @@ store(N, Key, Data) ->
 doc(Number) ->
     Number#number.doc.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec default_options() -> wh_proplist().
+default_options() ->
+    [
+        {<<"auth_by">>, <<"system">>}
+        ,{<<"dry_run">>, 'false'}
+    ].
+
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
@@ -446,17 +461,15 @@ doc(Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec execute_routines(number(), [function()]) -> number_return().
-execute_routines(Number, Routines) ->
-    lists:foldl(
-        fun
-            (F, {'ok', N}) -> F(N);
-            (_F, {'error', _R}=Error) -> Error;
-            (F, N) -> F(N)
-        end
-        ,Number
-        ,Routines
-    ).
+-spec set_options(number(), wh_proplist()) -> number().
+set_options(Number, Options) ->
+    DryRun = props:get_is_true(<<"dry_run">>, Options, 'false'),
+    AuthBy = props:get_binary_value(<<"auth_by">>, Options, <<"system">>),
+    Props = [
+        {fun set_dry_run/2, DryRun}
+        ,{fun set_auth_by/2, AuthBy}
+    ],
+    setters(Number, Props).
 
 %%--------------------------------------------------------------------
 %% @private
