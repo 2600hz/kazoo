@@ -28,7 +28,7 @@ init() ->
     {'ok', _} = notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
     lager:debug("init done for ~s", [?MODULE]).
 
--spec handle_req(wh_json:object(), wh_proplist()) -> any().
+-spec handle_req(wh_json:object(), wh_proplist()) -> _.
 handle_req(JObj, _Props) ->
     true = wapi_notifications:fax_outbound_v(JObj),
     _ = whapps_util:put_callid(JObj),
@@ -106,7 +106,7 @@ create_template_props(Event, [FaxDoc | _Others]=_Docs, Account) ->
                    ,{<<"call_id">>, wh_json:get_value(<<"Call-ID">>, Event)}
                    | fax_values(wh_json:get_value(<<"Fax-Info">>, Event))
                   ]}
-     ,{<<"account_db">>, wh_json:get_value(<<"pvt_account_db">>, Account)}
+     ,{<<"account_db">>, wh_doc:account_db(Account)}
     ].
 
 fax_values(Event) ->
@@ -120,7 +120,7 @@ fax_values(Event) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), wh_proplist()) -> any().
+-spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), wh_proplist()) -> _.
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
     _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->

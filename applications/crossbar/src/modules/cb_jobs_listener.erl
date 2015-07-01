@@ -213,7 +213,7 @@ build_number_properties(JObj) ->
 
 -spec update_status(wh_json:object(), ne_binary()) -> wh_json:object().
 update_status(Job, Status) ->
-    {'ok', Job1} = couch_mgr:save_doc(wh_json:get_value(<<"pvt_account_db">>, Job)
+    {'ok', Job1} = couch_mgr:save_doc(wh_doc:account_db(Job)
                                       ,wh_json:set_values([{<<"pvt_status">>, Status}
                                                            ,{<<"pvt_node">>, wh_util:to_binary(node())}
                                                           ]

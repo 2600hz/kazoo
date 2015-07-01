@@ -110,7 +110,7 @@ admin_user_properties(DataJObj) ->
     account_admin_user_properties(AccountJObj).
 
 account_admin_user_properties(AccountJObj) ->
-    AccountDb = wh_json:get_value(<<"pvt_account_db">>, AccountJObj),
+    AccountDb = wh_doc:account_db(AccountJObj),
     case couch_mgr:get_all_results(AccountDb, <<"users/crossbar_listing">>) of
         {'error', _E} ->
             lager:debug("failed to get user listing from ~s: ~p", [AccountDb, _E]),

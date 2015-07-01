@@ -128,7 +128,7 @@ create_template_props(Event, Docs, Account) ->
      ,{<<"error">>, [{<<"call_info">>, wh_json:get_value(<<"Fax-Error">>, Event)}
                     ,{<<"fax_info">>, wh_json:get_value([<<"Fax-Info">>,<<"Fax-Result-Text">>], Event)}
                     ]}
-     ,{<<"account_db">>, wh_json:get_value(<<"pvt_account_db">>, Account)}
+     ,{<<"account_db">>, wh_doc:account_db(Account)}
     ].
 
 fax_values(Event) ->
@@ -142,7 +142,7 @@ fax_values(Event) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), wh_proplist()) -> any().
+-spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), wh_proplist()) -> _.
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
     _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->

@@ -46,11 +46,9 @@ start_link() ->
 -spec check(ne_binary()) -> 'ok'.
 check(Account) when is_binary(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
     case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
         {'ok', JObj} ->
-            AccountDb = wh_json:get_value(<<"pvt_account_db">>, JObj),
-            process_account(AccountId, AccountDb, JObj);
+            process_account(AccountId, wh_doc:account_db(JObj), JObj);
         {'error', _R} ->
             lager:warning("unable to open account definition for ~s: ~p", [AccountId, _R])
     end;
@@ -155,8 +153,7 @@ check_then_process_account(AccountId, {'ok', JObj}) ->
         'true' ->
             lager:debug("not processing account ~p (soft-destroyed)", [AccountId]);
         'false' ->
-            AccountDb = wh_json:get_value(<<"pvt_account_db">>, JObj),
-            process_account(AccountId, AccountDb, JObj)
+            process_account(AccountId, wh_doc:account_db(JObj), JObj)
     end;
 check_then_process_account(AccountId, {'error', _R}) ->
     lager:warning("unable to open account definition for ~s: ~p", [AccountId, _R]).

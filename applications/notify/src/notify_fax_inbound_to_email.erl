@@ -92,7 +92,7 @@ create_template_props(Event, [FaxDoc | _Others]=_Docs, Account) ->
     DateCalled = wh_json:get_integer_value(<<"Fax-Timestamp">>, Event, Now),
     DateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
     Timezone = wh_util:to_list(wh_json:get_value([<<"rx_result">>,<<"timezone">>], FaxDoc, <<"UTC">>)),
-    ClockTimezone = whapps_config:get_string(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),    
+    ClockTimezone = whapps_config:get_string(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
     [{<<"account">>, notify_util:json_to_template_props(Account)}
      ,{<<"service">>, notify_util:get_service_props(Event, Account, ?MOD_CONFIG_CAT)}
      ,{<<"fax">>, [{<<"caller_id_number">>, wnm_util:pretty_print(CIDNum)}
@@ -110,7 +110,7 @@ create_template_props(Event, [FaxDoc | _Others]=_Docs, Account) ->
                    ,{<<"call_id">>, wh_json:get_value(<<"Call-ID">>, Event)}
                    | fax_values(wh_json:get_value(<<"Fax-Info">>, Event))
                   ]}
-     ,{<<"account_db">>, wh_json:get_value(<<"pvt_account_db">>, FaxDoc)}
+     ,{<<"account_db">>, wh_doc:account_db(FaxDoc)}
     ].
 
 fax_values(Event) ->
@@ -124,7 +124,7 @@ fax_values(Event) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), wh_proplist()) -> any().
+-spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), wh_proplist()) -> _.
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
     _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
 build_and_send_email(_TxtBody, _HTMLBody, _Subject, 'undefined', _Props) ->
