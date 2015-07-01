@@ -21,6 +21,8 @@
 
 -define(KZ_ACDC_DB, <<"acdc">>).
 
+-define(KZ_CCCPS_DB, <<"cccps">>).
+
 -define(KZ_PORT_REQUESTS_DB, <<"port_requests">>).
 
 -define(KZ_OAUTH_DB,<<"oauth">>).

@@ -10,7 +10,6 @@
 -define(APP_VERSION, <<"0.0.1">> ).
 
 -define(CCCP_CONFIG_CAT, <<"cccp">>).
--define(CCCPS_DB, <<"cccps">>).
 
 -define(TIMEOUT, <<"timeout">>).
 -define(DEFAULT_TIMEOUT, 15).
