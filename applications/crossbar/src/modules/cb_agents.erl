@@ -378,10 +378,10 @@ fetch_ranged_agent_stats(Context, From, To, 'false') ->
 
 -spec fetch_stats_from_amqp(cb_context:context(), wh_proplist()) -> cb_context:context().
 fetch_stats_from_amqp(Context, Req) ->
-    case whapps_util:amqp_pool_request(Req
-                                       ,fun wapi_acdc_stats:publish_current_calls_req/1
-                                       ,fun wapi_acdc_stats:current_calls_resp_v/1
-                                      )
+    case wh_amqp_worker:call(Req
+                             ,fun wapi_acdc_stats:publish_current_calls_req/1
+                             ,fun wapi_acdc_stats:current_calls_resp_v/1
+                            )
     of
         {'error', E} ->
             crossbar_util:response('error', <<"stat request had errors">>, 400
@@ -391,16 +391,24 @@ fetch_stats_from_amqp(Context, Req) ->
         {'ok', Resp} -> format_stats(Context, Resp)
     end.
 
--spec format_stats(cb_context:context(), wh_json:object()) -> cb_context:context().
+-spec format_stats(cb_context:context(), wh_json:object()) ->
+                          cb_context:context().
 format_stats(Context, Resp) ->
-    Stats = wh_json:get_value(<<"Handled">>, Resp, []) ++
-        wh_json:get_value(<<"Abandoned">>, Resp, []) ++
-        wh_json:get_value(<<"Waiting">>, Resp, []) ++
-        wh_json:get_value(<<"Processed">>, Resp, []),
+    Stats = wh_json:get_value(<<"Handled">>, Resp, [])
+        ++ wh_json:get_value(<<"Abandoned">>, Resp, [])
+        ++ wh_json:get_value(<<"Waiting">>, Resp, [])
+        ++ wh_json:get_value(<<"Processed">>, Resp, []),
 
-    crossbar_util:response(lists:foldl(fun format_stats_fold/2, wh_json:new(), Stats), Context).
+    crossbar_util:response(
+      lists:foldl(fun format_stats_fold/2
+                  ,wh_json:new()
+                  ,Stats
+                 )
+      ,Context
+     ).
 
--spec format_stats_fold(wh_json:object(), wh_json:object()) -> wh_json:object().
+-spec format_stats_fold(wh_json:object(), wh_json:object()) ->
+                               wh_json:object().
 format_stats_fold(Stat, Acc) ->
     QueueId = wh_json:get_value(<<"queue_id">>, Stat),
 
@@ -419,7 +427,9 @@ format_stats_fold(Stat, Acc) ->
                              ,wh_json:set_values([{TotalsK, Totals + 1}
                                                   ,{QTotalsK, QTotals + 1}
                                                   | AnsweredData
-                                                 ], Acc)
+                                                 ]
+                                                 ,Acc
+                                                )
                              ,QueueId
                             )
     end.
@@ -462,7 +472,10 @@ maybe_add_misses(Stat, Acc, QueueId) ->
         Misses ->
             lists:foldl(fun(Miss, AccJObj) ->
                                 add_miss(Miss, AccJObj, QueueId)
-                        end, Acc, Misses)
+                        end
+                        ,Acc
+                        ,Misses
+                       )
     end.
 
 -spec add_miss(wh_json:object(), wh_json:object(), ne_binary()) -> wh_json:object().
@@ -484,7 +497,9 @@ add_miss(Miss, Acc, QueueId) ->
                         ,{QMissesK, QMisses + 1}
                         ,{TotalsK, Totals + 1}
                         ,{QTotalsK, QTotals + 1}
-                       ], Acc).
+                       ]
+                       ,Acc
+                      ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -494,7 +509,8 @@ add_miss(Miss, Acc, QueueId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
-summary(Context) -> crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+summary(Context) ->
+    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -502,7 +518,8 @@ summary(Context) -> crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec normalize_view_results(wh_json:object(), wh_json:objects()) ->
+                                    wh_json:objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:set_value(<<"id">>
                        ,wh_json:get_value(<<"id">>, JObj)
@@ -523,38 +540,40 @@ validate_status_change(Context) ->
     end.
 
 -define(STATUS_CHANGES, [<<"login">>, <<"logout">>, <<"pause">>, <<"resume">>]).
--spec validate_status_change(cb_context:context(), api_binary()) -> cb_context:context().
+-spec validate_status_change(cb_context:context(), api_binary()) ->
+                                    cb_context:context().
 validate_status_change(Context, S) ->
     case lists:member(S, ?STATUS_CHANGES) of
         'true' -> validate_status_change_params(Context, S);
         'false' ->
             lager:debug("status ~s not valid", [S]),
             cb_context:add_validation_error(
-                <<"status">>
-                ,<<"enum">>
-                ,wh_json:from_list([
-                    {<<"message">>, <<"value is not a valid status">>}
-                    ,{<<"cause">>, S}
+              <<"status">>
+              ,<<"enum">>
+              ,wh_json:from_list(
+                 [{<<"message">>, <<"value is not a valid status">>}
+                  ,{<<"cause">>, S}
                  ])
-                ,Context
-            )
+              ,Context
+             )
     end.
 
--spec check_for_status_error(cb_context:context(), api_binary()) -> cb_context:context().
+-spec check_for_status_error(cb_context:context(), api_binary()) ->
+                                    cb_context:context().
 check_for_status_error(Context, S) ->
     case lists:member(S, ?STATUS_CHANGES) of
         'true' -> Context;
         'false' ->
             lager:debug("status ~s not found", [S]),
             cb_context:add_validation_error(
-                <<"status">>
-                ,<<"enum">>
-                ,wh_json:from_list([
-                    {<<"message">>, <<"value is not a valid status">>}
-                    ,{<<"cause">>, S}
+              <<"status">>
+              ,<<"enum">>
+              ,wh_json:from_list(
+                 [{<<"message">>, <<"value is not a valid status">>}
+                  ,{<<"cause">>, S}
                  ])
-                ,Context
-            )
+              ,Context
+             )
     end.
 
 -spec validate_status_change_params(cb_context:context(), ne_binary()) ->
@@ -566,26 +585,26 @@ validate_status_change_params(Context, <<"pause">>) ->
         N ->
             lager:debug("bad int for pause: ~p", [N]),
             cb_context:add_validation_error(
-                <<"timeout">>
-                ,<<"minimum">>
-                ,wh_json:from_list([
-                    {<<"message">>, <<"value must be at least greater than or equal to 0">>}
-                    ,{<<"cause">>, N}
+              <<"timeout">>
+              ,<<"minimum">>
+              ,wh_json:from_list(
+                 [{<<"message">>, <<"value must be at least greater than or equal to 0">>}
+                  ,{<<"cause">>, N}
                  ])
-                ,Context
-            )
+              ,Context
+             )
     catch
-        _:_ ->
-            lager:debug("bad int for pause"),
+        _E:_R ->
+            lager:debug("bad int for pause: ~s: ~p", [_E, _R]),
             cb_context:add_validation_error(
-                <<"timeout">>
-                ,<<"type">>
-                ,wh_json:from_list([
-                    {<<"message">>, <<"value must be an integer greater than or equal to 0">>}
-                    ,{<<"cause">>, Value}
+              <<"timeout">>
+              ,<<"type">>
+              ,wh_json:from_list(
+                 [{<<"message">>, <<"value must be an integer greater than or equal to 0">>}
+                  ,{<<"cause">>, Value}
                  ])
-                ,Context
-            )
+              ,Context
+             )
     end;
 validate_status_change_params(Context, _S) ->
     lager:debug("great success for ~s", [_S]),
