@@ -604,7 +604,7 @@ store_recording_to_third_party_bigcouch(Call, MediaName, Format, BCHost) ->
     S = couchbeam:server_connection(BCHost, wh_util:to_list(BCPort)),
     {'ok', Db} = couchbeam:open_or_create_db(S, AcctMODb, Options),
     {'ok', DocRes} = couchbeam:save_doc(Db, MediaDoc),
-    DocRev = wh_json:get_value(<<"_rev">>, DocRes),
+    DocRev = wh_doc:revision(DocRes),
     StoreUrl = <<"http://", BCHost/binary, ":", BCPort/binary,"/", AcctMODb/binary, "/", MediaDocId/binary, "/", MediaName/binary, "?rev=", DocRev/binary>>,
     lager:info("store to third-party modb url: ~s", [StoreUrl]),
     'ok' = whapps_call_command:store(MediaName, StoreUrl, Call).

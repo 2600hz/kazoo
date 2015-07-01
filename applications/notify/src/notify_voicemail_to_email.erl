@@ -43,7 +43,7 @@ stop_processing(Format, Args) ->
 -spec handle_req(wh_json:object(), wh_proplist()) -> any().
 handle_req(JObj, _Props) ->
     'true' = wapi_notifications:voicemail_v(JObj),
-    _ = whapps_util:put_callid(JObj),
+    _ = wh_util:put_callid(JObj),
 
     lager:debug("new voicemail left, sending to email if enabled"),
 
@@ -69,7 +69,7 @@ handle_req(JObj, _Props) ->
 
     'ok' = notify_util:send_update(RespQ, MsgId, <<"pending">>),
     lager:debug("VM->Email enabled for user, sending to ~p", [Emails]),
-    {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, wh_util:format_account_id(AccountDb, 'raw')),
+    {'ok', AccountJObj} = kz_account:fetch(AccountDb),
     Docs = [VMBox, UserJObj, AccountJObj],
 
     Props = [{<<"email_address">>, Emails}
@@ -142,7 +142,7 @@ create_template_props(Event, Docs, Account) ->
                            ,{<<"call_id">>, wh_json:get_value(<<"Call-ID">>, Event)}
                            ,{<<"magic_hash">>, magic_hash(Event)}
                           ])}
-     ,{<<"account_db">>, wh_json:get_value(<<"pvt_account_db">>, Account)}
+     ,{<<"account_db">>, wh_doc:account_db(Account)}
     ].
 
 -spec magic_hash(wh_json:object()) -> api_binary().

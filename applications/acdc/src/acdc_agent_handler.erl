@@ -337,7 +337,7 @@ handle_device_change(_AccountDb, _AccountId, DeviceId, Rev, _Type, Cnt) when Cnt
 handle_device_change(AccountDb, AccountId, DeviceId, Rev, <<"doc_created">>, Cnt) ->
     case cf_endpoint:get(DeviceId, AccountDb) of
         {'ok', EP} ->
-            case wh_json:get_value(<<"_rev">>, EP) of
+            case wh_doc:revision(EP) of
                 Rev ->
                     gproc:send(?ENDPOINT_UPDATE_REG(AccountId, DeviceId), ?ENDPOINT_CREATED(EP)),
                     gproc:send(?OWNER_UPDATE_REG(AccountId, wh_json:get_value(<<"owner_id">>, EP)), ?ENDPOINT_CREATED(EP));

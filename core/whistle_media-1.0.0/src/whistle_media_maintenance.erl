@@ -145,7 +145,7 @@ import_prompt(Path0, Lang0, Contents) ->
                           ,Contents
                           ,[{'content_type', wh_util:to_list(ContentType)}
                             ,{'content_length', ContentLength}
-                            ,{'rev', wh_json:get_value(<<"_rev">>, MetaJObj1)}
+                            ,{'rev', wh_doc:revision(MetaJObj1)}
                            ]
                          );
         {'error', E} ->

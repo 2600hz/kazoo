@@ -48,8 +48,7 @@
 -define(PVT_TYPE, <<"notification">>).
 
 -spec id(doc()) -> api_binary().
-id(JObj) ->
-    wh_json:get_first_defined([<<"_id">>, <<"id">>], JObj).
+id(JObj) -> wh_doc:id(JObj).
 
 -spec db_id(doc() | ne_binary()) -> api_binary().
 db_id(<<_/binary>> = Id) ->

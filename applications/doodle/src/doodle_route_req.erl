@@ -92,9 +92,8 @@ allow_no_match_type(Call) ->
 -spec maybe_reply_to_req(wh_json:object(), wh_proplist(), whapps_call:call(), wh_json:object(), boolean()) ->
                                 'ok'.
 maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch) ->
-    lager:info("callflow ~s in ~s satisfies request", [wh_doc:id(Flow)
-                                                       ,whapps_call:account_id(Call)
-                                                      ]),
+    lager:info("callflow ~s in ~s satisfies request"
+               ,[wh_doc:id(Flow), whapps_call:account_id(Call)]),
     {Name, Cost} = bucket_info(Call, Flow),
 
     case kz_buckets:consume_tokens(?APP_NAME, Name, Cost) of

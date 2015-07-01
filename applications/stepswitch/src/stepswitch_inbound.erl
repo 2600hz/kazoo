@@ -19,7 +19,7 @@
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = wapi_route:req_v(JObj),
-    _ = whapps_util:put_callid(JObj),
+    _ = wh_util:put_callid(JObj),
     case wh_json:get_ne_value(?CCV(<<"Account-ID">>), JObj) of
         'undefined' -> maybe_relay_request(JObj);
         _AcctID -> 'ok'

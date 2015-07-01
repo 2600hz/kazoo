@@ -136,7 +136,7 @@ update_doc_from_file(DbName, App, File) when ?VALID_DBNAME ->
         {'ok', Bin} = file:read_file(Path),
         JObj = wh_json:decode(Bin),
         {'ok', Rev} = ?MODULE:lookup_doc_rev(DbName, wh_doc:id(JObj)),
-        ?MODULE:save_doc(DbName, wh_json:set_value(<<"_rev">>, Rev, JObj))
+        ?MODULE:save_doc(DbName, wh_doc:set_revision(JObj, Rev))
     catch
         _Type:{'badmatch',{'error',Reason}} ->
             lager:debug("bad match: ~p", [Reason]),
@@ -209,7 +209,7 @@ do_revise_docs_from_folder(DbName, Sleep, [H|T]) ->
         case lookup_doc_rev(DbName, wh_doc:id(JObj)) of
             {'ok', Rev} ->
                 lager:debug("update doc from file ~s in ~s", [H, DbName]),
-                save_doc(DbName, wh_json:set_value(<<"_rev">>, Rev, JObj));
+                save_doc(DbName, wh_doc:set_revision(JObj, Rev));
             {'error', 'not_found'} ->
                 lager:debug("import doc from file ~s in ~s", [H, DbName]),
                 save_doc(DbName, JObj);

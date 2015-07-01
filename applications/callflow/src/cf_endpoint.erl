@@ -1291,22 +1291,17 @@ maybe_set_endpoint_id({Endpoint, Call, CallFwd, JObj}) ->
 -spec maybe_set_owner_id(ccv_acc()) -> ccv_acc().
 maybe_set_owner_id({Endpoint, Call, CallFwd, JObj}) ->
     {Endpoint, Call, CallFwd
-     ,case wh_doc:id(Endpoint) of
+     ,case wh_json:get_value(<<"owner_id">>, Endpoint) of
           'undefined' -> JObj;
-          OwnerId ->
-              wh_json:set_value(<<"Owner-ID">>, OwnerId, JObj)
+          OwnerId -> wh_json:set_value(<<"Owner-ID">>, OwnerId, JObj)
       end
     }.
 
 -spec maybe_set_account_id(ccv_acc()) -> ccv_acc().
 maybe_set_account_id({Endpoint, Call, CallFwd, JObj}) ->
+    AccountId = wh_doc:account_id(Endpoint, whapps_call:account_id(Call)),
     {Endpoint, Call, CallFwd
-     ,case wh_doc:account_id(Endpoint) of
-          'undefined' ->
-              wh_json:set_value(<<"Account-ID">>, whapps_call:account_id(Call), JObj);
-          AccountId ->
-              wh_json:set_value(<<"Account-ID">>, AccountId, JObj)
-      end
+     ,wh_json:set_value(<<"Account-ID">>, AccountId, JObj)
     }.
 
 -spec maybe_set_call_forward(ccv_acc()) -> ccv_acc().

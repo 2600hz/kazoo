@@ -111,10 +111,10 @@ add_missing_modules(Modules, MissingModules) ->
 -spec refresh(input_term()) -> 'ok'.
 
 refresh() ->
-    io:format("please use whapps_maintenance:refresh().~n").
+    io:format("please use whapps_maintenance:refresh().").
 
 refresh(Value) ->
-    io:format("please use whapps_maintenance:refresh(~p).~n", [Value]).
+    io:format("please use whapps_maintenance:refresh(~p).", [Value]).
 
 -spec flush() -> 'ok'.
 flush() ->

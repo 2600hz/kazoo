@@ -362,14 +362,12 @@ find_admin(Account) ->
                              {'error', _} |
                              'undefined'.
 get_account_doc(JObj) ->
-    case {wh_json:get_value(<<"Account-DB">>, JObj), wh_json:get_value(<<"Account-ID">>, JObj)} of
-        {'undefined', 'undefined'} -> 'undefined';
-        {'undefined', Id} ->
-            couch_mgr:open_cache_doc(wh_util:format_account_id(Id, 'encoded'), Id);
-        {Db, 'undefined'} ->
-            couch_mgr:open_cache_doc(Db, wh_util:format_account_id(Db, 'raw'));
-        {Db, AccountId} ->
-            couch_mgr:open_cache_doc(Db, AccountId)
+    case wh_json:get_first_defined([<<"Account-DB">>
+                                    ,<<"Account-ID">>
+                                   ], JObj)
+    of
+        'undefined' -> 'undefined';
+        Account -> kz_account:fetch(Account)
     end.
 
 -spec category_to_file(ne_binary()) -> iolist() | 'undefined'.

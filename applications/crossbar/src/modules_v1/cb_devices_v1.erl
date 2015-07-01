@@ -548,7 +548,7 @@ maybe_aggregate_device(DeviceId, Context, 'success') ->
             maybe_remove_aggregate(DeviceId, Context);
         'true' ->
             lager:debug("adding device to the sip auth aggregate"),
-            {'ok', _} = couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, cb_context:doc(Context))),
+            {'ok', _} = couch_mgr:ensure_saved(?WH_SIP_DB, wh_doc:delete_revision(cb_context:doc(Context))),
             whapps_util:amqp_pool_send([], fun(_) -> wapi_switch:publish_reload_acls() end),
             'true'
     end;

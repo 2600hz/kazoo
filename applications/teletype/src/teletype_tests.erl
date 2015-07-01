@@ -56,7 +56,7 @@ voicemail_to_email(AccountId, VMBox) ->
             ,{<<"To-Realm">>, <<"TestToRealm">>}
             ,{<<"Account-DB">>, wh_util:format_account_id(AccountId, 'encoded')}
             ,{<<"Account-ID">>, AccountId}
-            ,{<<"Voicemail-Box">>, wh_json:get_first_defined([<<"_id">>, <<"id">>], VMBox)}
+            ,{<<"Voicemail-Box">>, wh_doc:id(VMBox)}
             ,{<<"Voicemail-Name">>, MediaId}
             ,{<<"Caller-ID-Number">>, <<"CallerIdNumber">>}
             ,{<<"Caller-ID-Name">>, <<"CallerIdName">>}

@@ -119,11 +119,7 @@ validate_get_metaflows(Context, Doc) ->
 
 -spec validate_delete_metaflows(cb_context:context(), api_object()) -> cb_context:context().
 validate_delete_metaflows(Context, 'undefined') ->
-    {'ok', AccountDoc} =
-        couch_mgr:open_cache_doc(
-          cb_context:account_db(Context)
-          ,cb_context:account_id(Context)
-         ),
+    {'ok', AccountDoc} = kz_account:fetch(cb_context:account_id(Context)),
     validate_delete_metaflows(Context, AccountDoc);
 validate_delete_metaflows(Context, Doc) ->
     crossbar_util:response(wh_json:new()

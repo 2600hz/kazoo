@@ -46,7 +46,7 @@ init() ->
 -spec handle_req(wh_json:object(), proplist()) -> any().
 handle_req(JObj, _Props) ->
     true = wapi_notifications:deregister_v(JObj),
-    _ = whapps_util:put_callid(JObj),
+    _ = wh_util:put_callid(JObj),
 
     lager:debug("endpoint has become unregistered, sending email notification"),
 

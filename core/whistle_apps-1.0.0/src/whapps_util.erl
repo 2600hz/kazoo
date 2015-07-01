@@ -32,7 +32,7 @@
         ]).
 -export([get_account_name/1]).
 -export([find_oldest_doc/1]).
--export([get_event_type/1, put_callid/1]).
+-export([get_event_type/1]).
 -export([get_call_termination_reason/1]).
 -export([get_view_json/1, get_view_json/2]).
 -export([get_views_json/2]).
@@ -201,9 +201,7 @@ find_oldest_doc([First|Docs]) ->
                                 'false' -> Eldest
                             end
                     end
-                    ,{wh_doc:created(First)
-                      ,wh_doc:id(First)
-                     }
+                    ,{wh_doc:created(First), wh_doc:id(First)}
                     ,Docs),
     {'ok', OldestDocID}.
 
@@ -348,16 +346,6 @@ get_event_type(JObj) -> wh_util:get_event_type(JObj).
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Given an JSON Object extracts the Call-ID into the processes
-%% dictionary, failing that the Msg-ID and finally a generic
-%% @end
-%%--------------------------------------------------------------------
--spec put_callid(wh_json:object()) -> api_binary().
-put_callid(JObj) -> wh_util:put_callid(JObj).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
 %% Given an JSON Object for a hangup event, or bridge completion
 %% this returns the cause and code for the call termination
 %% @end
@@ -437,7 +425,7 @@ update_views([], Db, [{Id,View}|Views], Remove) ->
 update_views([Found|Finds], Db, Views, Remove) ->
     Id = wh_doc:id(Found),
     Doc = wh_json:get_value(<<"doc">>, Found),
-    RawDoc = wh_json:delete_key(<<"_rev">>, Doc),
+    RawDoc = wh_doc:delete_revision(Doc),
     case props:get_value(Id, Views) of
         'undefined' when Remove ->
             lager:debug("removing view '~s' from '~s'", [Id, Db]),
@@ -450,8 +438,8 @@ update_views([Found|Finds], Db, Views, Remove) ->
             update_views(Finds, Db, props:delete(Id, Views), Remove);
         View2 ->
             lager:debug("updating view '~s' in '~s'", [Id, Db]),
-            Rev = wh_json:get_value(<<"_rev">>, Doc),
-            _ = couch_mgr:ensure_saved(Db, wh_json:set_value(<<"_rev">>, Rev, View2)),
+            Rev = wh_doc:revision(Doc),
+            _ = couch_mgr:ensure_saved(Db, wh_doc:set_revision(View2, Rev)),
             update_views(Finds, Db, props:delete(Id, Views), Remove)
     end.
 
@@ -468,10 +456,10 @@ add_aggregate_device(Db, Device) ->
     _ = case couch_mgr:lookup_doc_rev(?WH_SIP_DB, DeviceId) of
             {'ok', Rev} ->
                 lager:debug("aggregating device ~s/~s", [Db, DeviceId]),
-                couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:set_value(<<"_rev">>, Rev, Device));
+                couch_mgr:ensure_saved(?WH_SIP_DB, wh_doc:set_revision(Device, Rev));
             {'error', 'not_found'} ->
                 lager:debug("aggregating device ~s/~s", [Db, DeviceId]),
-                couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Device))
+                couch_mgr:ensure_saved(?WH_SIP_DB, wh_doc:delete_revision(Device))
         end,
     'ok'.
 

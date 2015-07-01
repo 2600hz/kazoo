@@ -31,7 +31,7 @@ init() ->
 -spec handle_req(wh_json:object(), wh_proplist()) -> _.
 handle_req(JObj, _Props) ->
     true = wapi_notifications:fax_outbound_v(JObj),
-    _ = whapps_util:put_callid(JObj),
+    _ = wh_util:put_callid(JObj),
 
     lager:debug("new outbound fax left, sending to email if enabled"),
 

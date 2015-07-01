@@ -582,7 +582,7 @@ set_account_id(Context) ->
 -spec set_account_line_defaults(cb_context:context()) ->
                                        [fun((wh_json:object()) -> wh_json:object()),...].
 set_account_line_defaults(Context) ->
-    Account = case couch_mgr:open_cache_doc(cb_context:account_db(Context), cb_context:account_id(Context)) of
+    Account = case kz_account:fetch(cb_context:account_id(Context)) of
                   {'ok', JObj} -> JObj;
                   {'error', _} -> wh_json:new()
               end,
@@ -673,7 +673,7 @@ set_global_overrides(_) ->
 -spec set_account_overrides(cb_context:context()) ->
                                    [fun((wh_json:object()) -> wh_json:object()),...].
 set_account_overrides(Context) ->
-    Account = case couch_mgr:open_cache_doc(cb_context:account_db(Context), cb_context:account_id(Context)) of
+    Account = case kz_account:fetch(cb_context:account_id(Context)) of
                   {'ok', JObj} -> JObj;
                   {'error', _} -> wh_json:new()
               end,

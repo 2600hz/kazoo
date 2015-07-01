@@ -191,7 +191,7 @@ handle_resource_result(Collector, JObj) ->
 
 -spec handle_resource_result(pid(), wh_json:object(), ne_binaries()) -> 'ok'.
 handle_resource_result(Collector, JObj, IPs) ->
-    AuthorizingId = wh_json:get_first_defined([<<"_id">>, <<"id">>], JObj),
+    AuthorizingId = wh_doc:id(JObj),
     add_trusted_objects(Collector, 'undefined', AuthorizingId, <<"resource">>, IPs).
 
 -spec resource_inbound_ips(pid(), wh_json:object()) -> pid_refs().

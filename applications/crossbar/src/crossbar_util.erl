@@ -745,7 +745,7 @@ format_app(JObj, Lang) ->
     DefaultLabel = wh_json:get_value([<<"i18n">>, ?DEFAULT_LANGUAGE, <<"label">>], JObj),
     wh_json:from_list(
         props:filter_undefined(
-          [{<<"id">>, wh_json:get_first_defined([<<"id">>, <<"_id">>], JObj)}
+          [{<<"id">>, wh_doc:id(JObj)}
            ,{<<"name">>, wh_json:get_value(<<"name">>, JObj)}
            ,{<<"api_url">>, wh_json:get_value(<<"api_url">>, JObj)}
            ,{<<"source_url">>, wh_json:get_value(<<"source_url">>, JObj)}
@@ -769,9 +769,9 @@ change_pvt_enabled(State, AccountId) ->
         {'ok', JObj2} = couch_mgr:ensure_saved(AccountDb, wh_json:set_value(<<"pvt_enabled">>, State, JObj1)),
         case couch_mgr:lookup_doc_rev(?WH_ACCOUNTS_DB, AccountId) of
             {'ok', Rev} ->
-                couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_json:set_value(<<"_rev">>, Rev, JObj2));
+                couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_doc:set_revision(JObj2, Rev));
             _Else ->
-                couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_json:delete_key(<<"_rev">>, JObj2))
+                couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_doc:delete_revision(JObj2))
         end
     catch
         _:R ->
@@ -870,10 +870,7 @@ apply_response_map(Context, Map) ->
 apply_response_map_item({Key, Fun}, J, JObj) when is_function(Fun, 1) ->
     wh_json:set_value(Key, Fun(JObj), J);
 apply_response_map_item({Key, Fun}, J, JObj) when is_function(Fun, 2) ->
-    Id = case wh_doc:id(JObj) of
-             'undefined' -> wh_json:get_value(<<"Id">>, JObj);
-             LeId -> LeId
-         end,
+    Id = wh_doc:id(JObj, wh_json:get_value(<<"Id">>, JObj)),
     wh_json:set_value(Key, Fun(Id, JObj), J);
 apply_response_map_item({Key, ExistingKey}, J, JObj) ->
     wh_json:set_value(Key, wh_json:get_value(ExistingKey, JObj), J).
@@ -910,7 +907,7 @@ create_auth_token(Context, Method) ->
 create_auth_token(Context, Method, JObj) ->
     Data = cb_context:req_data(Context),
 
-    AccountId = wh_doc:account_id(JObj),
+    AccountId = wh_json:get_value(<<"account_id">>, JObj),
     OwnerId = wh_json:get_value(<<"owner_id">>, JObj),
 
     Token = props:filter_undefined(

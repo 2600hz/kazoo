@@ -284,7 +284,7 @@ validate_collection_resource(Resource, Context, ?HTTP_PUT) ->
                                                 {'error', wh_json:object()}.
 validate_collection_resource_patch(PatchJObj, Context) ->
     PatchedJObj = wh_json:merge_jobjs(wh_doc:public_fields(PatchJObj), cb_context:doc(Context)),
-    Context1 = update(wh_json:get_first_defined([<<"_id">>, <<"id">>], PatchedJObj)
+    Context1 = update(wh_doc:id(PatchedJObj)
                       ,cb_context:set_req_data(Context, PatchedJObj)
                      ),
     case cb_context:resp_status(Context1) of
@@ -403,7 +403,7 @@ leak_job_fields(Context) ->
         'success' ->
             JObj = cb_context:doc(Context),
             cb_context:set_resp_data(Context
-                                     ,wh_json:set_values([{<<"timestamp">>, wh_json:get_value(<<"pvt_created">>, JObj)}
+                                     ,wh_json:set_values([{<<"timestamp">>, wh_doc:created(JObj)}
                                                           ,{<<"status">>, wh_json:get_value(<<"pvt_status">>, JObj)}
                                                          ], cb_context:resp_data(Context))
                                     );

@@ -31,7 +31,7 @@ init() ->
 -spec handle_req(wh_json:object(), wh_proplist()) -> _.
 handle_req(JObj, _Props) ->
     'true' = wapi_notifications:fax_outbound_error_v(JObj),
-    _ = whapps_util:put_callid(JObj),
+    _ = wh_util:put_callid(JObj),
     lager:debug("new outbound fax error left, sending to email if enabled"),
     {'ok', AcctObj} = kz_account:fetch(wh_json:get_value(<<"Account-ID">>, JObj)),
     case is_notice_enabled(AcctObj) of

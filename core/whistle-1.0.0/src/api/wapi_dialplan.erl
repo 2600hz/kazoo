@@ -1151,7 +1151,7 @@ local_store_url(Call, JObj) ->
     MediaId = wh_doc:id(JObj),
     MediaName = wh_json:get_value(<<"name">>, JObj),
 
-    Rev = wh_json:get_value(<<"_rev">>, JObj),
+    Rev = wh_doc:revision(JObj),
     list_to_binary([wh_couch_connections:get_url(), AccountDb
                     ,"/", MediaId
                     ,"/", MediaName

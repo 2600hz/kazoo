@@ -43,7 +43,7 @@ init() ->
 -spec handle_req(wh_json:object(), proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = wapi_notifications:new_account_v(JObj),
-    whapps_util:put_callid(JObj),
+    wh_util:put_callid(JObj),
 
     lager:debug("a new account has been created, sending email notification"),
 

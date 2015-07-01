@@ -148,9 +148,7 @@ load_default_apps() ->
 -spec maybe_set_account(ne_binary(), wh_json:object()) -> wh_json:object().
 maybe_set_account(Account, Doc) ->
     JObj = wh_json:get_value(<<"doc">>, Doc),
-    AccountDb = wh_doc:account_db(JObj),
-    AccountId = wh_doc:account_id(JObj),
-    case {AccountDb, AccountId} of
+    case {wh_doc:account_db(JObj), wh_doc:account_id(JObj)} of
         {'undefined', _} -> set_account(Account, JObj);
         {_, 'undefined'} -> set_account(Account, JObj);
         {_, _} -> JObj
@@ -159,10 +157,9 @@ maybe_set_account(Account, Doc) ->
 -spec set_account(ne_binary(), wh_json:object()) -> wh_json:object().
 set_account(Account, JObj) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    AccountId = wh_util:format_account_id(Account, 'raw'),
     Corrected =
         wh_json:set_values(
-          [{<<"pvt_account_id">>, AccountId}
+          [{<<"pvt_account_id">>, wh_util:format_account_id(Account, 'raw')}
            ,{<<"pvt_account_db">>, AccountDb}
           ], JObj),
     case couch_mgr:save_doc(AccountDb, Corrected) of

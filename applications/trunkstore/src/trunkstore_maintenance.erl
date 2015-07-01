@@ -202,7 +202,7 @@ set_classifier_action(Action, Classifier, UserR) ->
     case account_exists_with_realm(Realm) of
         {'true', AcctDB, AcctID} ->
             {'ok', Opts} = ts_util:lookup_user_flags(User, Realm, AcctID),
-            TSDocId = wh_json:get_first_defined([<<"_id">>, <<"id">>], Opts),
+            TSDocId = wh_doc:id(Opts),
             couch_mgr:update_doc(AcctDB, TSDocId, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
             io:format("Success\n");
         'false' ->

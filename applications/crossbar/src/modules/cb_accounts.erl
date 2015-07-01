@@ -1215,8 +1215,7 @@ create_new_account_db(Context) ->
 maybe_set_notification_preference(Context) ->
     AccountId = cb_context:account_id(Context),
     ResellerId = wh_services:find_reseller_id(AccountId),
-    ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
-    case couch_mgr:open_cache_doc(ResellerDb, ResellerId) of
+    case kz_account:fetch(ResellerId) of
         {'error', _E} ->
             lager:error("failed to open reseller '~s': ~p", [ResellerId, _E]);
         {'ok', AccountJObj} ->

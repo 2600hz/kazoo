@@ -32,7 +32,7 @@ init() ->
 handle_req(JObj, _Props) ->
     'true' = wapi_notifications:fax_inbound_v(JObj),
 
-    _ = whapps_util:put_callid(JObj),
+    _ = wh_util:put_callid(JObj),
 
     lager:debug("new fax left, sending to email if enabled"),
 

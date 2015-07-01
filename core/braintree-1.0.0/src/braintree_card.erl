@@ -336,8 +336,6 @@ record_to_json(#bt_card{}=Card) ->
 -spec create_or_get_json_id(wh_json:object()) -> api_binary().
 create_or_get_json_id(JObj) ->
     case wh_json:get_value(<<"number">>, JObj) of
-        'undefined' ->
-            wh_doc:id(JObj);
-         _ ->
-            wh_doc:id(JObj, wh_util:rand_hex_binary(16))
+        'undefined' -> wh_doc:id(JObj);
+         _ ->          wh_doc:id(JObj, wh_util:rand_hex_binary(16))
     end.

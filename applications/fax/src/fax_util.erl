@@ -147,12 +147,12 @@ save_fax_attachment(JObj, FileContents, CT) ->
 
 save_fax_attachment(JObj, _FileContents, _CT, 0) ->
     DocId = wh_doc:id(JObj),
-    Rev = wh_json:get_value(<<"_rev">>, JObj),
+    Rev = wh_doc:revision(JObj),
     lager:debug("max retry saving attachment on fax id ~s rev ~s",[DocId, Rev]),
     {'error', <<"max retry saving attachment">>};
 save_fax_attachment(JObj, FileContents, CT, Count) ->
     DocId = wh_doc:id(JObj),
-    Rev = wh_json:get_value(<<"_rev">>, JObj),
+    Rev = wh_doc:revision(JObj),
     Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]}
             ,{'rev', Rev}
            ],

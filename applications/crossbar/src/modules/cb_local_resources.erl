@@ -292,7 +292,7 @@ maybe_aggregate_resources([Resource|Resources]) ->
     of
         'true' ->
             lager:debug("adding resource to the sip auth aggregate"),
-            couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Resource)),
+            couch_mgr:ensure_saved(?WH_SIP_DB, wh_doc:delete_revision(Resource)),
             _ = wapi_switch:publish_reload_gateways(),
             _ = wapi_switch:publish_reload_acls(),
             maybe_aggregate_resources(Resources);

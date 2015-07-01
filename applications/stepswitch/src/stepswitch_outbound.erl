@@ -25,7 +25,7 @@
 -spec handle_req(wh_json:object(), wh_proplist()) -> any().
 handle_req(JObj, _Props) ->
     'true' = wapi_offnet_resource:req_v(JObj),
-    _ = whapps_util:put_callid(JObj),
+    _ = wh_util:put_callid(JObj),
     case wh_json:get_value(<<"Resource-Type">>, JObj) of
         <<"audio">> -> handle_audio_req(JObj);
         <<"originate">> -> handle_originate_req(JObj);

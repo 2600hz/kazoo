@@ -1324,9 +1324,7 @@ find_moh(Data, Call) ->
         MOH -> MOH
     end.
 find_moh(Call) ->
-    {'ok', JObj} = couch_mgr:open_cache_doc(whapps_call:account_db(Call)
-                                            ,whapps_call:account_id(Call)
-                                           ),
+    {'ok', JObj} = kz_account:fetch(whapps_call:account_id(Call)),
     wh_json:get_value([<<"music_on_hold">>, <<"media_id">>], JObj).
 
 -spec issue_transferee_event(ne_binary(), whapps_call:call()) -> 'ok'.

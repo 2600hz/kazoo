@@ -43,7 +43,7 @@ init() ->
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = wapi_notifications:pwd_recovery_v(JObj),
-    whapps_util:put_callid(JObj),
+    wh_util:put_callid(JObj),
 
     lager:debug("password has been reset, sending email notification"),
 

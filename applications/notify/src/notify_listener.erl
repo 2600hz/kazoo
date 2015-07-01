@@ -239,9 +239,7 @@ should_handle_reseller(MasterAccountId, MasterAccountId) ->
     lager:debug("reached master account, checking system"),
     should_handle_system();
 should_handle_reseller(ResellerId, _MasterAccountId) ->
-    ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
-
-    case couch_mgr:open_cache_doc(ResellerDb, ResellerId) of
+    case kz_account:fetch(ResellerId) of
         {'ok', ResellerJObj} ->
             kz_account:notification_preference(ResellerJObj) =:= 'undefined';
         {'error', _E} -> 'false'
