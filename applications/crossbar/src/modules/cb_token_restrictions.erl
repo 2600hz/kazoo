@@ -106,12 +106,12 @@ delete(Context) ->
                           {'true' | 'halt', cb_context:context()}.
 authorize(Context) ->
     case maybe_deny_access(Context) of
-        'false' -> 
+        'false' ->
             %%---------------------------------------------------------
             %% We dont halt this request, let someone else authorize it
             %%---------------------------------------------------------
             'false';
-        'true' -> 
+        'true' ->
             lager:info("deny access"),
             Cause = wh_json:from_list([{<<"cause">>, <<"access denied by token restrictions">>}]),
             {'halt', cb_context:add_system_error('forbidden', Cause, Context)}
@@ -239,7 +239,7 @@ match_rules(ReqParam, [R|Rules]) ->
         'false' -> match_rules(ReqParam, Rules)
     end.
 
--spec match_verb(cb_context:context(), list()) -> boolean().
+-spec match_verb(cb_context:context(), list()) -> list() | 'undefined'.
 match_verb(Context, Verbs) ->
     Verb = cb_context:req_verb(Context),
     case lists:member(Verb, Verbs) orelse lists:member(<<"_">>, Verbs) of
