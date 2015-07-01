@@ -249,6 +249,7 @@ call_table_opts() ->
                        ,[{<<"acdc_status_stat">>, <<"ready">>}
                          ,{<<"acdc_status_stat">>, <<"logged_in">>}
                          ,{<<"acdc_status_stat">>, <<"logged_out">>}
+                         ,{<<"acdc_status_stat">>, <<"pending_logged_out">>}
                          ,{<<"acdc_status_stat">>, <<"connecting">>}
                          ,{<<"acdc_status_stat">>, <<"connected">>}
                          ,{<<"acdc_status_stat">>, <<"wrapup">>}
@@ -418,7 +419,7 @@ call_build_match_spec(JObj) ->
         'undefined' ->
             {'error', wh_json:from_list([{<<"Account-ID">>, <<"missing but required">>}])};
         AccountId ->
-            AccountMatch = {#call_stat{acct_id='$1', _='_'}
+            AccountMatch = {#call_stat{account_id='$1', _='_'}
                          ,[{'=:=', '$1', {'const', AccountId}}]
                         },
             call_build_match_spec(JObj, AccountMatch)
@@ -638,14 +639,14 @@ query_call_fold(#call_stat{status=Status}=Stat, Acc) ->
     dict:update(Status, fun(L) -> [Doc | L] end, [Doc], Acc).
 
 -spec archive_call_fold(call_stat(), dict()) -> dict().
-archive_call_fold(#call_stat{acct_id=AccountId}=Stat, Acc) ->
+archive_call_fold(#call_stat{account_id=AccountId}=Stat, Acc) ->
     Doc = call_stat_to_doc(Stat),
     dict:update(AccountId, fun(L) -> [Doc | L] end, [Doc], Acc).
 
 -spec call_stat_to_doc(call_stat()) -> wh_json:object().
 call_stat_to_doc(#call_stat{id=Id
                             ,call_id=CallId
-                            ,acct_id=AccountId
+                            ,account_id=AccountId
                             ,queue_id=QueueId
                             ,agent_id=AgentId
                             ,entered_timestamp=EnteredT
@@ -687,7 +688,7 @@ call_stat_to_doc(#call_stat{id=Id
 -spec call_stat_to_json(call_stat()) -> wh_json:object().
 call_stat_to_json(#call_stat{id=Id
                              ,call_id=CallId
-                             ,acct_id=AccountId
+                             ,account_id=AccountId
                              ,queue_id=QueueId
                              ,agent_id=AgentId
                              ,entered_timestamp=EnteredT
@@ -855,7 +856,7 @@ create_call_stat(Id, JObj, Props) ->
                       ,{'create_call', #call_stat{
                                           id = Id
                                           ,call_id = wh_json:get_value(<<"Call-ID">>, JObj)
-                                          ,acct_id = wh_json:get_value(<<"Account-ID">>, JObj)
+                                          ,account_id = wh_json:get_value(<<"Account-ID">>, JObj)
                                           ,queue_id = wh_json:get_value(<<"Queue-ID">>, JObj)
                                           ,entered_timestamp = wh_json:get_value(<<"Entered-Timestamp">>, JObj)
                                           ,misses = []

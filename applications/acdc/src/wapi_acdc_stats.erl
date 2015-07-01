@@ -29,6 +29,7 @@
          ,status_ready/1, status_ready_v/1
          ,status_logged_in/1, status_logged_in_v/1
          ,status_logged_out/1, status_logged_out_v/1
+         ,status_pending_logged_out/1, status_pending_logged_out_v/1
          ,status_connecting/1, status_connecting_v/1
          ,status_connected/1, status_connected_v/1
          ,status_wrapup/1, status_wrapup_v/1
@@ -61,6 +62,7 @@
          ,publish_status_ready/1, publish_status_ready/2
          ,publish_status_logged_in/1, publish_status_logged_in/2
          ,publish_status_logged_out/1, publish_status_logged_out/2
+         ,publish_status_pending_logged_out/1, publish_status_pending_logged_out/2
          ,publish_status_connecting/1, publish_status_connecting/2
          ,publish_status_connected/1, publish_status_connected/2
          ,publish_status_wrapup/1, publish_status_wrapup/2
@@ -433,6 +435,23 @@ status_logged_out_v(Prop) when is_list(Prop) ->
 status_logged_out_v(JObj) ->
     status_logged_out_v(wh_json:to_proplist(JObj)).
 
+-spec status_pending_logged_out(api_terms()) ->
+                               {'ok', iolist()} |
+                               {'error', string()}.
+status_pending_logged_out(Props) when is_list(Props) ->
+    case status_pending_logged_out_v(Props) of
+        'true' -> wh_api:build_message(Props, ?STATUS_HEADERS, ?STATUS_OPTIONAL_HEADERS);
+        'false' -> {'error', "Proplist failed validation for status_logged_out"}
+    end;
+status_pending_logged_out(JObj) ->
+    status_pending_logged_out(wh_json:to_proplist(JObj)).
+
+-spec status_pending_logged_out_v(api_terms()) -> boolean().
+status_pending_logged_out_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?STATUS_HEADERS, ?STATUS_VALUES(<<"pending_logged_out">>), ?STATUS_TYPES);
+status_pending_logged_out_v(JObj) ->
+    status_pending_logged_out_v(wh_json:to_proplist(JObj)).
+
 -spec status_connecting(api_terms()) ->
                                {'ok', iolist()} |
                                {'error', string()}.
@@ -640,6 +659,14 @@ publish_status_logged_out(JObj) ->
     publish_status_logged_out(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_status_logged_out(API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?STATUS_VALUES(<<"logged_out">>), fun status_logged_out/1),
+    amqp_util:whapps_publish(status_stat_routing_key(API), Payload, ContentType).
+
+-spec publish_status_pending_logged_out(api_terms()) -> 'ok'.
+-spec publish_status_pending_logged_out(api_terms(), ne_binary()) -> 'ok'.
+publish_status_pending_logged_out(JObj) ->
+    publish_status_pending_logged_out(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_status_pending_logged_out(API, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(API, ?STATUS_VALUES(<<"pending_logged_out">>), fun status_pending_logged_out/1),
     amqp_util:whapps_publish(status_stat_routing_key(API), Payload, ContentType).
 
 publish_status_connecting(JObj) ->

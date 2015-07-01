@@ -18,7 +18,7 @@
 -record(call_stat, {
           id :: api_binary() | '_' %% call_id::queue_id
           ,call_id :: api_binary() | '_'
-          ,acct_id :: api_binary() | '$1' | '_'
+          ,account_id :: api_binary() | '$1' | '_'
           ,queue_id :: api_binary() | '$2' | '_'
 
           ,agent_id :: api_binary() | '$3' | '_' % the handling agent
@@ -48,7 +48,7 @@
 -record(status_stat, {
           id :: api_binary() | '_'
           ,agent_id :: api_binary() | '$2' | '_'
-          ,acct_id :: api_binary() | '$1' | '_'
+          ,account_id :: api_binary() | '$1' | '_'
           ,status :: api_binary() | '$4' | '_'
           ,timestamp :: api_pos_integer() | '$1' | '$3' | '$5' | '_'
 
