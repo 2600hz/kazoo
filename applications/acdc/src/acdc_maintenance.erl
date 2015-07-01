@@ -38,7 +38,7 @@ logout_agents(AccountId) ->
     io:format("Sending notices to logout agents for ~s~n", [AccountId]),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     {'ok', AgentView} = couch_mgr:get_all_results(AccountDb, <<"agents/crossbar_listing">>),
-    _ = [logout_agent(AccountId, wh_json:get_value(<<"id">>, Agent)) || Agent <- AgentView],
+    _ = [logout_agent(AccountId, wh_doc:id(Agent)) || Agent <- AgentView],
     'ok'.
 
 -spec logout_agent(ne_binary(), ne_binary()) -> 'ok'.
@@ -207,7 +207,7 @@ migrate() ->
     migrate_to_acdc_db().
 migrate_to_acdc_db() ->
     {'ok', Accounts} = couch_mgr:all_docs(?KZ_ACDC_DB),
-    _ = [maybe_remove_acdc_account(wh_json:get_value(<<"id">>, Account)) || Account <- Accounts],
+    _ = [maybe_remove_acdc_account(wh_doc:id(Account)) || Account <- Accounts],
     io:format("removed any missing accounts from ~s~n", [?KZ_ACDC_DB]),
     _ = [migrate_to_acdc_db(Acct) || Acct <- whapps_util:get_all_accounts('raw')],
     io:format("migration complete~n").

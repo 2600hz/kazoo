@@ -466,7 +466,7 @@ filter_callflow_list('undefined', JObjs) -> JObjs;
 filter_callflow_list(CallflowId, JObjs) ->
     [JObj
      || JObj <- JObjs,
-        wh_json:get_value(<<"id">>, JObj) =/= CallflowId
+        wh_doc:id(JObj) =/= CallflowId
     ].
 
 -spec patterns_dont_match(ne_binary(), ne_binaries()) -> boolean().
@@ -478,7 +478,7 @@ patterns_dont_match(Number, Patterns) ->
 -spec add_number_conflict(ne_binary(), wh_json:object(), cb_context:context()) ->
                                  cb_context:context().
 add_number_conflict(Number, JObj, Context) ->
-    Id = wh_json:get_value(<<"id">>, JObj),
+    Id = wh_doc:id(JObj),
     case wh_json:get_ne_value([<<"doc">>, <<"featurecode">>, <<"name">>], JObj) of
         'undefined' ->
             cb_context:add_validation_error(

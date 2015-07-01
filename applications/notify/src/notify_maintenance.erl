@@ -201,7 +201,7 @@ template_ids() ->
     {'ok', JObjs} =  couch_mgr:all_docs(?SYSTEM_CONFIG_DB),
     lists:foldl(
         fun(JObj, Acc) ->
-           case wh_json:get_value(<<"id">>, JObj) of
+           case wh_doc:id(JObj) of
                 <<"notify.", _/binary>>=Id ->
                     [Id|Acc];
                 _ ->
@@ -296,7 +296,7 @@ compare_template_system_config([{FileId, Id}|Match]) ->
     end.
 
 compare_template_system_config([], JObj) ->
-    Id = wh_json:get_value(<<"_id">>, JObj),
+    Id = wh_doc:id(JObj),
     case couch_mgr:save_doc(?SYSTEM_CONFIG_DB, JObj) of
         {'ok', _} -> io:format("doc ~s updated~n", [Id]);
         {'error', Reason} ->
@@ -304,7 +304,7 @@ compare_template_system_config([], JObj) ->
     end;
 compare_template_system_config([{Key, FileTemplate}|Props], JObj) ->
     BinKey = wh_util:to_binary(Key),
-    <<"notify.", Id/binary>> = wh_json:get_value(<<"_id">>, JObj),
+    <<"notify.", Id/binary>> = wh_doc:id(JObj),
     DefaultTemplates = props:get_value(Key, props:get_value(Id, ?NOTIFY_TEMPLATES, [])),
     case wh_json:get_value([<<"default">>, BinKey], JObj) of
         'undefined' ->

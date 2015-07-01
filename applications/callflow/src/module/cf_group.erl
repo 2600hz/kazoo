@@ -31,7 +31,7 @@ handle(Data, Call) ->
 
 -spec attempt_group(wh_json:object(), whapps_call:call()) -> 'ok'.
 attempt_group(Data, Call) ->
-    GroupId = wh_json:get_value(<<"id">>, Data),
+    GroupId = wh_doc:id(Data),
     AccountId = whapps_call:account_id(Call),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_cache_doc(AccountDb, GroupId) of

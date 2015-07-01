@@ -31,7 +31,7 @@ handle(Data, Call) ->
                 cf_acdc_agent:play_not_an_agent(Call);
             {'ok', AgentId} ->
                 Action = wh_json:get_value(<<"action">>, Data),
-                QueueId = wh_json:get_value(<<"id">>, Data),
+                QueueId = wh_doc:id(Data),
                 Status = cf_acdc_agent:find_agent_status(Call, AgentId),
 
                 update_queues(Call, AgentId, QueueId, Action),

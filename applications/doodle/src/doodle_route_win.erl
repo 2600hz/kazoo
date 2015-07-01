@@ -91,7 +91,7 @@ should_restrict_call(Call) ->
 
 -spec maybe_service_unavailable(wh_json:object(), whapps_call:call()) -> boolean().
 maybe_service_unavailable(JObj, Call) ->
-    Id = wh_json:get_value(<<"_id">>, JObj),
+    Id = wh_doc:id(JObj),
     Services = wh_json:merge_recursive(
                  wh_json:get_value(<<"services">>, JObj, ?DEFAULT_SERVICES),
                  wh_json:get_value(<<"pvt_services">>, JObj, wh_json:new())),
@@ -187,7 +187,7 @@ get_group_associations(Id, Groups, Set) ->
                         case wh_json:get_value([<<"value">>, Id], Group) of
                             'undefined' -> S;
                             _Else ->
-                                GroupId = wh_json:get_value(<<"id">>, Group),
+                                GroupId = wh_doc:id(Group),
                                 sets:add_element(GroupId, S)
                         end
                 end, Set, Groups).

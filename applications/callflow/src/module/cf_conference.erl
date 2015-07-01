@@ -25,7 +25,7 @@ handle(Data, Call) ->
     Command =
         props:filter_undefined(
           [{<<"Call">>, whapps_call:to_json(Call)}
-           ,{<<"Conference-ID">>, wh_json:get_value(<<"id">>, Data)}
+           ,{<<"Conference-ID">>, wh_doc:id(Data)}
            ,{<<"Moderator">>, wh_json:get_binary_boolean(<<"moderator">>, Data)}
            ,{<<"Play-Welcome">>, wh_json:is_true([<<"welcome_prompt">>, <<"play">>], Data, 'true')}
            ,{<<"Play-Welcome-Media">>, wh_json:get_ne_value([<<"welcome_prompt">>, <<"media_id">>], Data)}

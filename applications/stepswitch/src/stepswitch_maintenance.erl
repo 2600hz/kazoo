@@ -69,13 +69,13 @@ number_tree(DID) ->
 number_tree(DID, AccountDoc) ->
     io:format("~s tree ", [DID]),
     print_tree(kz_account:tree(AccountDoc)),
-    io:format(" ~s(~s)~n", [wh_json:get_value(<<"name">>, AccountDoc), wh_json:get_value(<<"_id">>, AccountDoc)]).
+    io:format(" ~s(~s)~n", [kz_account:name(AccountDoc), wh_doc:id(AccountDoc)]).
 
 -spec print_tree(ne_binaries()) -> 'ok'.
 print_tree([]) -> 'ok';
 print_tree([AccountId|Tree]) ->
     {'ok', AccountDoc} = couch_mgr:open_cache_doc(<<"accounts">>, AccountId),
-    io:format(" ~s(~s) ->", [wh_json:get_value(<<"name">>, AccountDoc), wh_json:get_value(<<"_id">>, AccountDoc)]),
+    io:format(" ~s(~s) ->", [kz_account:name(AccountDoc), wh_doc:id(AccountDoc)]),
     print_tree(Tree).
 
 %%--------------------------------------------------------------------

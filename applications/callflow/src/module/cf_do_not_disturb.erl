@@ -50,7 +50,7 @@ maybe_build_dnd_record(Data, Call) ->
     case maybe_get_data_id(AccountDb, Data, Call) of
         {'error', _}=E -> E;
         {'ok', JObj} ->
-            lager:info("changing dnd settings on document ~s", [wh_json:get_value(<<"_id">>, JObj)]),
+            lager:info("changing dnd settings on document ~s", [wh_doc:id(JObj)]),
             {'ok', #dnd{enabled=wh_json:is_true([<<"do_not_disturb">>, <<"enabled">>], JObj)
                         ,jobj=JObj
                         ,account_db=AccountDb
@@ -59,7 +59,7 @@ maybe_build_dnd_record(Data, Call) ->
 
 -spec maybe_get_data_id(ne_binary(), wh_json:object(), whapps_call:call()) -> wh_jobj_return().
 maybe_get_data_id(AccountDb, Data, Call) ->
-    Id = wh_json:get_value(<<"id">>, Data),
+    Id = wh_doc:id(Data),
     case maybe_get_doc(AccountDb, Id) of
         {'error', _} ->
             lager:info("dnd feature callflow does not specify a document", []),
@@ -144,10 +144,10 @@ maybe_update_doc(Enabled, JObj, AccountDb) ->
     Updated = wh_json:set_value([<<"do_not_disturb">>, <<"enabled">>], Enabled, JObj),
     case couch_mgr:save_doc(AccountDb, Updated) of
         {'ok', _}=Ok ->
-            lager:info("dnd enabled set to ~s on document ~s", [Enabled, wh_json:get_value(<<"_id">>, JObj)]),
+            lager:info("dnd enabled set to ~s on document ~s", [Enabled, wh_doc:id(JObj)]),
             Ok;
         {'error', 'conflict'} ->
-            case couch_mgr:open_doc(AccountDb, wh_json:get_value(<<"_id">>, JObj)) of
+            case couch_mgr:open_doc(AccountDb, wh_doc:id(JObj)) of
                 {'error', _}=E -> E;
                 {'ok', NewJObj} -> maybe_update_doc(Enabled, NewJObj, AccountDb)
             end;

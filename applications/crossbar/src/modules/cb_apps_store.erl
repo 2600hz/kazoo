@@ -353,7 +353,7 @@ normalize_apps_result([App|Apps], Acc) ->
             JObj =
                 wh_json:from_list(
                   props:filter_undefined(
-                    [{<<"id">>, wh_json:get_value(<<"_id">>, App)}
+                    [{<<"id">>, wh_doc:id(App)}
                     ,{<<"name">>, wh_json:get_value(<<"name">>, App)}
                     ,{<<"i18n">>, wh_json:get_value(<<"i18n">>, App)}
                     ,{<<"tags">>, wh_json:get_value(<<"tags">>, App)}

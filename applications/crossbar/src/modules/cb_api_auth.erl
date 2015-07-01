@@ -158,11 +158,11 @@ validate_by_api_key(Context, ApiKey, [Doc]) ->
     validate_by_api_key(Context, ApiKey, Doc);
 validate_by_api_key(Context, ApiKey, [Doc|_]) ->
     lager:debug("found multiple accounts with api key '~s', using '~s'"
-                ,[ApiKey, wh_json:get_value(<<"id">>, Doc)]
+                ,[ApiKey, wh_doc:id(Doc)]
                ),
     validate_by_api_key(Context, ApiKey, Doc);
 validate_by_api_key(Context, ApiKey, Doc) ->
-    lager:debug("found API key '~s' belongs to account ~s", [ApiKey, wh_json:get_value(<<"id">>, Doc)]),
+    lager:debug("found API key '~s' belongs to account ~s", [ApiKey, wh_doc:id(Doc)]),
     cb_context:setters(Context
                        ,[{fun cb_context:set_resp_status/2, 'success'}
                          ,{fun cb_context:set_doc/2, wh_json:get_value(<<"value">>, Doc)}

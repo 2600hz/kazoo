@@ -135,7 +135,7 @@ update_doc_from_file(DbName, App, File) when ?VALID_DBNAME ->
     try
         {'ok', Bin} = file:read_file(Path),
         JObj = wh_json:decode(Bin),
-        {'ok', Rev} = ?MODULE:lookup_doc_rev(DbName, wh_json:get_value(<<"_id">>, JObj)),
+        {'ok', Rev} = ?MODULE:lookup_doc_rev(DbName, wh_doc:id(JObj)),
         ?MODULE:save_doc(DbName, wh_json:set_value(<<"_rev">>, Rev, JObj))
     catch
         _Type:{'badmatch',{'error',Reason}} ->
@@ -206,7 +206,7 @@ do_revise_docs_from_folder(DbName, Sleep, [H|T]) ->
         {'ok', Bin} = file:read_file(H),
         JObj = wh_json:decode(Bin),
         Sleep andalso timer:sleep(250),
-        case lookup_doc_rev(DbName, wh_json:get_value(<<"_id">>, JObj)) of
+        case lookup_doc_rev(DbName, wh_doc:id(JObj)) of
             {'ok', Rev} ->
                 lager:debug("update doc from file ~s in ~s", [H, DbName]),
                 save_doc(DbName, wh_json:set_value(<<"_rev">>, Rev, JObj));
@@ -240,7 +240,7 @@ do_load_fixtures_from_folder(DbName, [F|Fs]) ->
     try
         {'ok', Bin} = file:read_file(F),
         FixJObj = wh_json:decode(Bin),
-        FixId = wh_json:get_value(<<"_id">>, FixJObj),
+        FixId = wh_doc:id(FixJObj),
         case lookup_doc_rev(DbName, FixId) of
             {'ok', _Rev} ->
                 lager:debug("fixture ~s exists in ~s: ~s", [FixId, DbName, _Rev]);

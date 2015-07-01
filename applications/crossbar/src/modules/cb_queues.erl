@@ -614,7 +614,7 @@ maybe_add_queue_to_agent(Id, A) ->
                  end;
              _ -> [Id]
          end,
-    lager:debug("agent ~s adding queues: ~p", [wh_json:get_value(<<"_id">>, A), Qs]),
+    lager:debug("agent ~s adding queues: ~p", [wh_doc:id(A), Qs]),
     wh_json:set_value(<<"queues">>, Qs, A).
 
 -spec maybe_rm_agents(ne_binary(), cb_context:context(), wh_json:keys()) -> cb_context:context().
@@ -783,7 +783,7 @@ normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
 normalize_agents_results(JObj, Acc) ->
-    [wh_json:get_value(<<"id">>, JObj) | Acc].
+    [wh_doc:id(JObj) | Acc].
 
 %%--------------------------------------------------------------------
 %% @private

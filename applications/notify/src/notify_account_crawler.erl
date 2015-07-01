@@ -122,7 +122,7 @@ handle_info('next_account', []) ->
     erlang:send_after(Cycle, self(), 'crawl_accounts'),
     {'noreply', [], 'hibernate'};
 handle_info('next_account', [Account|Accounts]) ->
-    _ = case wh_json:get_value(<<"id">>, Account) of
+    _ = case wh_doc:id(Account) of
             <<"_design", _/binary>> -> 'ok';
             AccountId ->
                 %% do not open the account def in the account db or we will

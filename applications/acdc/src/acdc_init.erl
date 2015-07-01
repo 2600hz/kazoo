@@ -97,7 +97,7 @@ init_queues(AccountId, {'error', _E}) ->
     'ok';
 init_queues(AccountId, {'ok', Qs}) ->
     acdc_stats:init_db(AccountId),
-    [acdc_queues_sup:new(AccountId, wh_json:get_value(<<"id">>, Q)) || Q <- Qs].
+    [acdc_queues_sup:new(AccountId, wh_doc:id(Q)) || Q <- Qs].
 
 -spec init_agents(ne_binary(), couch_mgr:get_results_return()) -> _.
 init_agents(_, {'ok', []}) -> 'ok';
@@ -114,7 +114,7 @@ init_agents(AccountId, {'error', _E}) ->
     wait_a_bit(),
     'ok';
 init_agents(AccountId, {'ok', As}) ->
-    [acdc_agents_sup:new(AccountId, wh_json:get_value(<<"id">>, A)) || A <- As].
+    [acdc_agents_sup:new(AccountId, wh_doc:id(A)) || A <- As].
 
 wait_a_bit() -> timer:sleep(1000 + random:uniform(500)).
 

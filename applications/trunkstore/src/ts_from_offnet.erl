@@ -235,7 +235,7 @@ routing_data(ToDID, AcctID, Settings) ->
     ToPort = wh_json:find(<<"port">>, [AuthOpts, SrvOptions]),
 
     case wh_json:is_true(<<"enabled">>, SrvOptions, 'true') of
-        'false' -> throw({'server_disabled', wh_json:get_value(<<"id">>, Srv)});
+        'false' -> throw({'server_disabled', wh_doc:id(Srv)});
         'true' -> 'ok'
     end,
 

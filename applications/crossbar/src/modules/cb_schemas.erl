@@ -148,7 +148,7 @@ summary(Context) ->
 %%--------------------------------------------------------------------
 -spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, Acc) ->
-    case wh_json:get_value(<<"id">>, JObj) of
+    case wh_doc:id(JObj) of
         <<"_design/", _/binary>> -> Acc;
         ID -> [ID | Acc]
     end.

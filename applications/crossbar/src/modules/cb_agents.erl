@@ -522,7 +522,7 @@ summary(Context) ->
                                     wh_json:objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:set_value(<<"id">>
-                       ,wh_json:get_value(<<"id">>, JObj)
+                       ,wh_doc:id(JObj)
                        ,wh_json:get_value(<<"value">>, JObj)
                       )
      | Acc

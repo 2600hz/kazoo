@@ -181,7 +181,7 @@ start_all_printers() ->
     {'ok', Results} = couch_mgr:get_results(?WH_FAXES_DB, <<"faxbox/cloud">>),
     [ send_start_printer(Id, Jid)
        || {Id, Jid, <<"claimed">>}
-              <- [{wh_json:get_value(<<"id">>, Result)
+              <- [{wh_doc:id(Result)
                    ,wh_json:get_value([<<"value">>,<<"xmpp_jid">>], Result)
                    ,wh_json:get_value([<<"value">>,<<"state">>], Result)
                   }

@@ -328,7 +328,7 @@ get_all_number_dbs() ->
     {'ok', Dbs} = couch_mgr:admin_all_docs(<<"dbs">>, [{'startkey', ?WNM_DB_PREFIX}
                                                        ,{'endkey', <<?WNM_DB_PREFIX_L, "\ufff0">>}
                                                       ]),
-    [cow_qs:urlencode(wh_json:get_value(<<"id">>, View))
+    [cow_qs:urlencode(wh_doc:id(View))
      || View <- Dbs
     ].
 

@@ -313,7 +313,7 @@ activate_account(Account) ->
     Payload = [#cb_context{doc=Account}],
     case crossbar_bindings:fold(Event, Payload) of
         #cb_context{resp_status='success', resp_data=JObj} ->
-            AccountId = wh_json:get_value(<<"id">>, JObj),
+            AccountId = wh_doc:id(JObj),
             lager:debug("created new account ~s", [AccountId]),
             {'ok', JObj};
         _ ->
@@ -334,13 +334,13 @@ activate_account(Account) ->
 activate_user(_, 'undefined') ->
     {'error', 'user_undefined'};
 activate_user(Account, User) ->
-    AccountId = wh_json:get_value(<<"id">>, Account),
+    AccountId = wh_doc:id(Account),
     Db = wh_util:format_account_id(AccountId, 'encoded'),
     Event = <<"*.execute.put.users">>,
     Payload = [#cb_context{doc=User, db_name=Db}],
     case crossbar_bindings:fold(Event, Payload) of
         #cb_context{resp_status='success', resp_data=JObj} ->
-            UserId = wh_json:get_value(<<"id">>, JObj),
+            UserId = wh_doc:id(JObj),
             lager:debug("created new user ~s in account ~s", [UserId, AccountId]),
             {'ok', Account, JObj};
         _ ->

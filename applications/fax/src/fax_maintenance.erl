@@ -93,7 +93,7 @@ migrate_private_media(Account) ->
     end.
 
 maybe_migrate_private_media(AccountDb, JObj) ->
-    DocId = wh_json:get_value(<<"id">>, JObj),
+    DocId = wh_doc:id(JObj),
     case couch_mgr:open_doc(AccountDb, DocId) of
         {'ok', Doc } ->
             MediaType = wh_json:get_value(<<"media_type">>, Doc),

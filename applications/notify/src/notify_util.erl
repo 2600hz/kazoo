@@ -259,7 +259,7 @@ find_notification_settings([_, Module], Tree) ->
         {'error', _} -> wh_json:new();
         {'ok', JObj} ->
             lager:debug("looking for notifications '~s' service info in: ~s"
-                        ,[Module, wh_json:get_value(<<"_id">>, JObj)]),
+                        ,[Module, wh_doc:id(JObj)]),
             case wh_json:get_ne_value([<<"notifications">>, Module], JObj) of
                 'undefined' -> maybe_find_deprecated_settings(Module, JObj);
                 Settings -> Settings

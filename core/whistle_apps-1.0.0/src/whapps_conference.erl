@@ -182,7 +182,7 @@ to_proplist(#whapps_conference{}=Conference) ->
      ,{<<"Call">>, whapps_call:to_json(call(Conference))}
     ].
 
--spec is_conference(term()) -> boolean().
+-spec is_conference(_) -> boolean().
 is_conference(#whapps_conference{}) -> 'true';
 is_conference(_) -> 'false'.
 
@@ -196,7 +196,7 @@ from_conference_doc(JObj, Conference) ->
     Member = wh_json:get_value(<<"member">>, JObj),
     Moderator = wh_json:get_value(<<"moderator">>, JObj),
     Conference#whapps_conference{
-      id = wh_json:get_ne_value(<<"_id">>, JObj, id(Conference))
+      id = wh_doc:id(JObj, id(Conference))
       ,profile = wh_json:get_ne_value(<<"profile">>, JObj, profile(Conference))
       ,focus = wh_json:get_ne_value(<<"focus">>, JObj, focus(Conference))
       ,bridge_username = wh_json:get_ne_value(<<"bridge_username">>, JObj, bridge_username(Conference))

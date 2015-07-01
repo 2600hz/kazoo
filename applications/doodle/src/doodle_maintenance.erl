@@ -98,7 +98,7 @@ replay_queue_sms(AccountId, JObjs) ->
 
 -spec spawn_handler(ne_binary(), wh_json:object()) -> 'ok'.
 spawn_handler(AccountId, JObj) ->
-    DocId = wh_json:get_value(<<"id">>, JObj),
+    DocId = wh_doc:id(JObj),
     <<Year:4/binary, Month:2/binary, "-", _/binary>> = DocId,
     AccountDb = kazoo_modb:get_modb(AccountId, Year, Month),
 
@@ -121,7 +121,7 @@ check_pending_sms_for_offnet_delivery(AccountId) ->
 replay_sms(AccountId, JObjs) ->
     lager:debug("starting sms offnet delivery for account ~s", [AccountId]),
     _ = [begin
-             doodle_util:replay_sms(AccountId, wh_json:get_value(<<"id">>, JObj)),
+             doodle_util:replay_sms(AccountId, wh_doc:id(JObj)),
              timer:sleep(200)
          end
          || JObj <- JObjs

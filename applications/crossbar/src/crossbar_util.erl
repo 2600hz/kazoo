@@ -563,7 +563,7 @@ get_descendants(<<_/binary>> = AccountId) ->
 
 -spec filter_by_account_id(wh_json:object(), ne_binaries(), ne_binary()) -> ne_binaries().
 filter_by_account_id(JObj, Acc, AccountId) ->
-    case wh_json:get_value(<<"id">>, JObj) of
+    case wh_doc:id(JObj) of
         AccountId -> Acc;
         Id -> [Id | Acc]
     end.
@@ -626,7 +626,7 @@ disable_account(AccountId) ->
                   ],
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions) of
         {'ok', JObjs} ->
-            _ = [change_pvt_enabled('false', wh_json:get_value(<<"id">>, JObj)) || JObj <- JObjs],
+            _ = [change_pvt_enabled('false', wh_doc:id(JObj)) || JObj <- JObjs],
             'ok';
         {'error', R}=E ->
             lager:debug("unable to disable descendants of ~s: ~p", [AccountId, R]),
@@ -647,7 +647,7 @@ enable_account(AccountId) ->
                   ],
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions) of
         {'ok', JObjs} ->
-            _ = [change_pvt_enabled('true', wh_json:get_value(<<"id">>, JObj)) || JObj <- JObjs],
+            _ = [change_pvt_enabled('true', wh_doc:id(JObj)) || JObj <- JObjs],
             'ok';
         {'error', R}=E ->
             lager:debug("unable to enable descendants of ~s: ~p", [AccountId, R]),

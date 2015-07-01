@@ -183,7 +183,7 @@ crawl_number_docs(Db, {'ok', Docs}) ->
 
 -spec is_number_doc(wh_json:object()) -> boolean().
 is_number_doc(Doc) ->
-    case wh_json:get_value(<<"id">>, Doc) of
+    case wh_doc:id(Doc) of
         <<"_design/", _/binary>> -> 'false';
         _Id -> 'true'
     end.

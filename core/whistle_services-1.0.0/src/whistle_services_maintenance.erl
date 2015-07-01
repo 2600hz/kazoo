@@ -184,7 +184,7 @@ cascade_reseller_id(Reseller, Account) ->
         {'ok', JObjs} ->
             _ = [set_reseller_id(ResellerId, SubAccountId)
                  || JObj <- JObjs
-                        ,(SubAccountId = wh_json:get_value(<<"id">>, JObj)) =/= AccountId
+                        ,(SubAccountId = wh_doc:id(JObj)) =/= AccountId
                 ],
             'ok'
     end.

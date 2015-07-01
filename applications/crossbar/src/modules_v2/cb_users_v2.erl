@@ -390,7 +390,7 @@ send_email(Context) ->
     Doc = cb_context:doc(Context),
     ReqData = cb_context:req_data(Context),
     Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
-           ,{<<"User-ID">>, wh_json:get_value(<<"_id">>, Doc)}
+           ,{<<"User-ID">>, wh_doc:id(Doc)}
            ,{<<"Password">>, wh_json:get_value(<<"password">>, ReqData)}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
@@ -496,7 +496,7 @@ is_username_unique(AccountDb, UserId, UserName) ->
     ViewOptions = [{'key', UserName}],
     case couch_mgr:get_results(AccountDb, ?LIST_BY_USERNAME, ViewOptions) of
         {'ok', []} -> 'true';
-        {'ok', [JObj|_]} -> wh_json:get_value(<<"id">>, JObj) =:= UserId;
+        {'ok', [JObj|_]} -> wh_doc:id(JObj) =:= UserId;
         _Else ->
             lager:error("error ~p checking view ~p in ~p", [_Else, ?LIST_BY_USERNAME, AccountDb]),
             'false'
@@ -631,7 +631,7 @@ username_doc_id(Username, Context, _AccountDb) ->
     case cb_context:resp_status(Context1) =:= 'success'
         andalso cb_context:doc(Context1)
     of
-        [JObj] -> wh_json:get_value(<<"id">>, JObj);
+        [JObj] -> wh_doc:id(JObj);
         _ -> 'undefined'
     end.
 
@@ -662,7 +662,7 @@ convert_to_vcard(Context) ->
 
 -spec set_photo(wh_json:object(), cb_context:context()) -> wh_json:object().
 set_photo(JObj, Context) ->
-    UserId = wh_json:get_value(<<"id">>, cb_context:doc(Context)),
+    UserId = wh_doc:id(cb_context:doc(Context)),
     Attach = crossbar_doc:load_attachment(UserId, ?PHOTO, Context),
     case cb_context:resp_status(Attach) of
         'error' -> JObj;

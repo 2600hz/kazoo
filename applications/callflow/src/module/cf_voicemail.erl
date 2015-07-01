@@ -304,7 +304,7 @@ find_mailbox(#mailbox{interdigit_timeout=Interdigit}=Box, Call, Loop) ->
                 {'ok', [JObj]} ->
                     lager:info("get profile of ~p", [JObj]),
                     ReqBox = get_mailbox_profile(
-                               wh_json:from_list([{<<"id">>, wh_json:get_value(<<"id">>, JObj)}])
+                               wh_json:from_list([{<<"id">>, wh_doc:id(JObj)}])
                                ,Call
                               ),
                     check_mailbox(ReqBox, Call, Loop);
@@ -1505,12 +1505,12 @@ has_message_meta(NewMsgCallId, Messages) ->
 %%--------------------------------------------------------------------
 -spec get_mailbox_profile(wh_json:object(), whapps_call:call()) -> mailbox().
 get_mailbox_profile(Data, Call) ->
-    Id = wh_json:get_value(<<"id">>, Data),
+    Id = wh_doc:id(Data),
     AccountDb = whapps_call:account_db(Call),
 
     case get_mailbox_doc(AccountDb, Id, Data, Call) of
         {'ok', MailboxJObj} ->
-            MailboxId = wh_json:get_value(<<"_id">>, MailboxJObj),
+            MailboxId = wh_doc:id(MailboxJObj),
             lager:info("loaded voicemail box ~s", [MailboxId]),
             Default = #mailbox{},
 
@@ -1711,7 +1711,7 @@ get_user_mailbox_doc(Data, Call, OwnerId) ->
             {'error', "request voicemail box number"};
         [Box] when SingleMailboxLogin ->
             lager:debug("owner ~s has one vmbox ~s, and single mailbox login is enabled"
-                       ,[OwnerId, wh_json:get_value(<<"id">>, Box)]
+                       ,[OwnerId, wh_doc:id(Box)]
                        ),
             {'ok', Box};
         Boxes ->
@@ -2020,7 +2020,7 @@ message_media_doc(Db
               ]),
     Doc = wh_doc:update_pvt_parameters(wh_json:from_list(Props), Db, [{'type', <<"private_media">>}]),
     {'ok', JObj} = couch_mgr:save_doc(Db, Doc),
-    wh_json:get_value(<<"_id">>, JObj).
+    wh_doc:id(JObj).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -2045,7 +2045,7 @@ recording_media_doc(Recording, #mailbox{mailbox_number=BoxNum
               ]),
     Doc = wh_doc:update_pvt_parameters(wh_json:from_list(Props), AccountDb, [{'type', <<"media">>}]),
     {'ok', JObj} = couch_mgr:save_doc(AccountDb, Doc),
-    wh_json:get_value(<<"_id">>, JObj).
+    wh_doc:id(JObj).
 
 
 %%--------------------------------------------------------------------

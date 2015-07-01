@@ -259,7 +259,7 @@ get_descendants(AccountId) ->
     of
         {'error', _}=Error -> Error;
         {'ok', JObjs} ->
-            {'ok', [wh_json:get_value(<<"id">>, JObj) || JObj <- JObjs]}
+            {'ok', [wh_doc:id(JObj) || JObj <- JObjs]}
     end.
 
 -spec set_auth_doc(cb_context:context(), wh_json:object()) -> cb_context:context().

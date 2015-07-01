@@ -50,7 +50,7 @@ maybe_handle_bridge_failure(Reason, Call) ->
 -spec bridge_to_endpoints(wh_json:object(), whapps_call:call()) ->
                                  cf_api_bridge_return().
 bridge_to_endpoints(Data, Call) ->
-    EndpointId = wh_json:get_value(<<"id">>, Data),
+    EndpointId = wh_doc:id(Data),
     Params = wh_json:set_value(<<"source">>, ?MODULE, Data),
     case cf_endpoint:build(EndpointId, Params, Call) of
         {'error', _}=E -> E;

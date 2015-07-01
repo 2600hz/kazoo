@@ -961,11 +961,11 @@ merge_available(AccountAvailable, Available) ->
 
 -spec merge_fold(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 merge_fold(Overridden, Acc) ->
-    Id = wh_json:get_value(<<"id">>, Overridden),
+    Id = wh_doc:id(Overridden),
     lager:debug("noting ~s is overridden in account", [Id]),
     [note_account_override(Overridden)
      | [JObj || JObj <- Acc,
-                wh_json:get_value(<<"id">>, JObj) =/= Id
+                wh_doc:id(JObj) =/= Id
        ]
     ].
 

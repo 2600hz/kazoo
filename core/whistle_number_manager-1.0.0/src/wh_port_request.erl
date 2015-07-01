@@ -296,7 +296,7 @@ send_attachements(Url, JObj) ->
 
 -spec fetch_and_send(ne_binary(), wh_json:object()) -> 'ok'.
 fetch_and_send(Url, JObj) ->
-    Id = wh_json:get_value(<<"_id">>, JObj),
+    Id = wh_doc:id(JObj),
     Attachments = wh_doc:attachments(JObj, wh_json:new()),
 
     wh_json:foldl(

@@ -303,7 +303,7 @@ record_to_xml(Customer, ToString) ->
 -spec json_to_record(api_object()) -> customer().
 json_to_record('undefined') -> #bt_customer{};
 json_to_record(JObj) ->
-    #bt_customer{id = wh_json:get_binary_value(<<"id">>, JObj)
+    #bt_customer{id = wh_doc:id(JObj)
                  ,first_name = wh_json:get_binary_value(<<"first_name">>, JObj)
                  ,last_name = wh_json:get_binary_value(<<"last_name">>, JObj)
                  ,company = wh_json:get_binary_value(<<"company">>, JObj)

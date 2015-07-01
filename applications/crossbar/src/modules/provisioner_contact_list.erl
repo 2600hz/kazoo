@@ -118,7 +118,7 @@ jobj_to_contact(JObj, Contact) ->
 merge_results([], Contacts) -> Contacts;
 merge_results([JObj|JObjs], Contacts) ->
     Contact = wh_json:get_value(<<"value">>, JObj),
-    Id = wh_json:get_value(<<"id">>, Contact),
+    Id = wh_doc:id(Contact),
     merge_results(JObjs, maybe_update_contacts(Id, Contact, Contacts)).
 
 maybe_update_contacts(Id, JObj, Contacts) ->
@@ -136,7 +136,7 @@ maybe_update_contact([Field|Fields], Id, JObj, #contact{id=Id}=Contact) ->
 maybe_update_contact(_, _, _, Contact) -> Contact.
 
 maybe_update_contact(id, JObj, #contact{id=undefined}=Contact) ->
-    Contact#contact{id=wh_json:get_ne_value(<<"id">>, JObj)};
+    Contact#contact{id=wh_doc:id(JObj)};
 maybe_update_contact(callflow, JObj, #contact{callflow=undefined}=Contact) ->
     Contact#contact{callflow=wh_json:get_ne_value(<<"callflow">>, JObj)};
 maybe_update_contact(name, JObj, #contact{name=undefined}=Contact) ->

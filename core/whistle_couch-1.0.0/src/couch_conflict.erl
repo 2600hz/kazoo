@@ -63,7 +63,7 @@ resolve(#server{}=Conn, DBName, View, Strategy, F) when is_function(F, 2) ->
 resolve_strategically(_Conn, _Strategy, _DBName, []) -> [];
 resolve_strategically(#server{}=Conn, remove_conflicts, DBName, Ds) ->
     [ begin
-          ID = wh_json:get_value(<<"id">>, D),
+          ID = wh_doc:id(D),
           %% delete the conflicting version
           [couch_util:del_doc(Conn, DBName, wh_json:from_list([{<<"_id">>, ID}
                                                                ,{<<"_rev">>, R}
@@ -79,7 +79,7 @@ resolve_strategically(#server{}=Conn, user_merge, DBName, Ds, F) ->
 
 -spec merge_doc(#server{}, ne_binary(), wh_json:object()) -> wh_json:object().
 merge_doc(#server{}=Conn, DBName, D) ->
-    ID = wh_json:get_value(<<"id">>, D),
+    ID = wh_doc:id(D),
     F = fun(Rev, Doc) ->
                 {ok, ConflictDoc} = couch_util:open_doc(Conn, DBName, ID, [{<<"_rev">>, Rev}]),
                 %% favor Doc values over ConflictDoc
@@ -90,7 +90,7 @@ merge_doc(#server{}=Conn, DBName, D) ->
 %% fold all conflicting versions, using fun F to handle the merge, into the existing doc and save.
 -spec merge_user_doc(#server{}, ne_binary(), wh_json:object(), fun((ne_binary(), wh_json:object()) -> wh_json:object())) -> wh_json:object().
 merge_user_doc(#server{}=Conn, DBName, D, F) ->
-    ID = wh_json:get_value(<<"id">>, D),
+    ID = wh_doc:id(D),
     {ok, ExistingDoc} = couch_util:open_doc(Conn, DBName, ID, []),
     MergedDoc = lists:foldr(F, ExistingDoc, wh_json:get_value(<<"key">>, D, [])),
     {ok, SavedDoc} = couch_util:ensure_saved(Conn, DBName, MergedDoc, []),

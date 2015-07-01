@@ -912,7 +912,7 @@ update_context_locality_fold(Key, Value, JObj) ->
                                            {'error', _}.
 update_phone_numbers_locality(Context, Localities) ->
     AccountDb = cb_context:account_db(Context),
-    DocId = wh_json:get_value(<<"_id">>, cb_context:doc(Context), ?WNM_PHONE_NUMBER_DOC),
+    DocId = wh_doc:id(cb_context:doc(Context), ?WNM_PHONE_NUMBER_DOC),
     case couch_mgr:open_doc(AccountDb, DocId) of
         {'ok', JObj} ->
             J = wh_json:foldl(fun update_phone_numbers_locality_fold/3, JObj, Localities),

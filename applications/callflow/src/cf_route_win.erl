@@ -154,9 +154,7 @@ get_group_associations(Id, Groups, Set) ->
     lists:foldl(fun(Group, S) ->
                         case wh_json:get_value([<<"value">>, Id], Group) of
                             'undefined' -> S;
-                            _Else ->
-                                GroupId = wh_json:get_value(<<"id">>, Group),
-                                sets:add_element(GroupId, S)
+                            _Else -> sets:add_element(wh_doc:id(Group), S)
                         end
                 end, Set, Groups).
 

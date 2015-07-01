@@ -170,7 +170,7 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link(Supervisor, AgentJObj) ->
-    AgentId = wh_json:get_value(<<"_id">>, AgentJObj),
+    AgentId = wh_doc:id(AgentJObj),
     AcctId = account_id(AgentJObj),
 
     Queues = case wh_json:get_value(<<"queues">>, AgentJObj) of

@@ -530,7 +530,7 @@ get_url(Data) ->
 -spec store_url(whapps_call:call(), wh_json:object()) -> ne_binary().
 store_url(Call, JObj) ->
     AccountDb = whapps_call:account_db(Call),
-    MediaId = wh_json:get_value(<<"_id">>, JObj),
+    MediaId = wh_doc:id(JObj),
     MediaName = wh_json:get_value(<<"name">>, JObj),
     {'ok', URL} = wh_media_url:store(AccountDb, MediaId, MediaName),
     URL.

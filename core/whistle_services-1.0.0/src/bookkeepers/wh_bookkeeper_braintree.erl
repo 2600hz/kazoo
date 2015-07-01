@@ -311,7 +311,7 @@ set_description(_BTTransaction, Transaction) ->
 set_bookkeeper_info(BTTransaction, Transaction) ->
     wh_transaction:set_bookkeeper_info(
         wh_json:from_list([
-            {<<"id">>, wh_json:get_value(<<"id">>, BTTransaction)}
+            {<<"id">>, wh_doc:id(BTTransaction)}
             ,{<<"merchant_account_id">>, wh_json:get_value(<<"merchant_account_id">>, BTTransaction)}
         ])
         ,Transaction
@@ -513,7 +513,7 @@ already_charged(Code, [Transaction|Transactions]) ->
 %%--------------------------------------------------------------------
 -spec already_charged_transaction(integer(), ne_binary(), integer(), wh_json:object()) -> boolean().
 already_charged_transaction(_ , ?BT_TRANS_VOIDED, _, Transaction) ->
-    _Id = wh_json:get_value(<<"id">>, Transaction),
+    _Id = wh_doc:id(Transaction),
     lager:debug("transaction was voided (~s)", [_Id]),
     'false';
 already_charged_transaction(Code , _, Code, Transaction) ->
@@ -522,7 +522,7 @@ already_charged_transaction(Code , _, Code, Transaction) ->
       ,Day:2/binary
       ,_/binary
     >> = wh_json:get_value(<<"created_at">>, Transaction),
-    Id = wh_json:get_value(<<"id">>, Transaction),
+    Id = wh_doc:id(Transaction),
     {YearNow, M, D} = erlang:date(),
     case {wh_util:to_binary(YearNow), wh_util:pad_month(M), wh_util:pad_month(D)} of
         {Year, Month, Day} ->

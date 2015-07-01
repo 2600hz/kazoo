@@ -232,6 +232,6 @@ record_to_json(#bt_address{}=Address) ->
 -spec create_or_get_json_id(wh_json:object()) ->  api_binary().
 create_or_get_json_id(JObj) ->
     case wh_json:get_value(<<"street_address">>, JObj) of
-        'undefined' -> wh_json:get_value(<<"id">>, JObj);
-        _Address -> wh_json:get_value(<<"id">>, JObj, wh_util:rand_hex_binary(16))
+        'undefined' -> wh_doc:id(JObj);
+        _Address -> wh_doc:id(JObj, wh_util:rand_hex_binary(16))
     end.

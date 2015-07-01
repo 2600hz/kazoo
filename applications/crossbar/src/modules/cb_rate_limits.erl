@@ -148,7 +148,7 @@ get_rate_limits_id_for_thing(Context, ThingId) ->
 
 -spec get_id(wh_json:object()) -> api_binary().
 get_id(JObj) ->
-    wh_json:get_value(<<"id">>, JObj).
+    wh_doc:id(JObj).
 
 -spec validate_get_rate_limits(cb_context:context(), api_binary()) -> cb_context:context().
 validate_get_rate_limits(Context, 'undefined') ->

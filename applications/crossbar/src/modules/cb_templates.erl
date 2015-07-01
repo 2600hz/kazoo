@@ -207,7 +207,7 @@ import_template(TemplateName, AccountId, AccountDb) ->
         {'ok', Docs} ->
             Ids = [Id || Doc <- Docs,
                          begin
-                             Id = wh_json:get_value(<<"id">>, Doc),
+                             Id = wh_doc:id(Doc),
                              not is_design_doc_id(Id)
                          end
                   ],

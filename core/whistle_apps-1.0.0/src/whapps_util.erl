@@ -224,7 +224,7 @@ get_all_accounts(Encoding) ->
                                                       ]),
     [wh_util:format_account_id(Id, Encoding)
      || Db <- Dbs,
-        is_account_db((Id = wh_json:get_value(<<"id">>, Db)))
+        is_account_db((Id = wh_doc:id(Db)))
     ].
 
 -spec get_all_accounts_and_mods() -> ne_binaries().
@@ -407,7 +407,7 @@ get_view_json(Path) ->
     lager:debug("fetch view from ~s", [Path]),
     {'ok', Bin} = file:read_file(Path),
     JObj = wh_json:decode(Bin),
-    {wh_json:get_value(<<"_id">>, JObj), JObj}.
+    {wh_doc:id(JObj), JObj}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -435,7 +435,7 @@ update_views([], Db, [{Id,View}|Views], Remove) ->
     _ = couch_mgr:ensure_saved(Db, View),
     update_views([], Db, Views, Remove);
 update_views([Found|Finds], Db, Views, Remove) ->
-    Id = wh_json:get_value(<<"id">>, Found),
+    Id = wh_doc:id(Found),
     Doc = wh_json:get_value(<<"doc">>, Found),
     RawDoc = wh_json:delete_key(<<"_rev">>, Doc),
     case props:get_value(Id, Views) of
@@ -464,7 +464,7 @@ update_views([Found|Finds], Db, Views, Remove) ->
 -spec add_aggregate_device(ne_binary(), api_binary()) -> 'ok'.
 add_aggregate_device(_, 'undefined') -> 'ok';
 add_aggregate_device(Db, Device) ->
-    DeviceId = wh_json:get_value(<<"_id">>, Device),
+    DeviceId = wh_doc:id(Device),
     _ = case couch_mgr:lookup_doc_rev(?WH_SIP_DB, DeviceId) of
             {'ok', Rev} ->
                 lager:debug("aggregating device ~s/~s", [Db, DeviceId]),
@@ -492,7 +492,7 @@ rm_aggregate_device(Db, DeviceId) when is_binary(DeviceId) ->
             'ok'
     end;
 rm_aggregate_device(Db, Device) ->
-    rm_aggregate_device(Db, wh_json:get_value(<<"_id">>, Device)).
+    rm_aggregate_device(Db, wh_doc:id(Device)).
 
 -spec amqp_pool_send(api_terms(), wh_amqp_worker:publish_fun()) ->
                             'ok' | {'error', any()}.

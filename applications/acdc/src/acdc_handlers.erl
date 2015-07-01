@@ -153,11 +153,11 @@ update_agent_device(_, _, _) -> {'ok', 'ok'}.
 -spec move_agent_device(whapps_call:call(), ne_binary(), wh_json:object()) ->
                                {'ok', wh_json:object()}.
 move_agent_device(Call, AgentId, Device) ->
-    DeviceId = wh_json:get_value(<<"_id">>, Device),
+    DeviceId = wh_doc:id(Device),
 
     _ = case [wh_json:delete_key(<<"owner_id">>, D)
               || D <- acdc_util:agent_devices(whapps_call:account_db(Call), AgentId),
-                 wh_json:get_value(<<"_id">>, D) =/= DeviceId
+                 wh_doc:id(D) =/= DeviceId
              ]
         of
             [] -> 'ok';

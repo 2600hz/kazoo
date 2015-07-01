@@ -450,7 +450,7 @@ record_to_json(#bt_transaction{}=Transaction) ->
 json_to_record('undefined') -> 'undefined';
 json_to_record(JObj) ->
     #bt_transaction{
-       id = wh_json:get_binary_value(<<"id">>, JObj)
+       id = wh_doc:id(JObj)
        ,status = wh_json:get_binary_value(<<"status">>, JObj)
        ,type = wh_json:get_binary_value(<<"type">>, JObj)
        ,currency_code = wh_json:get_binary_value(<<"currency_code">>, JObj)

@@ -23,7 +23,7 @@
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     AccountId = whapps_call:account_id(Call),
-    Path = wh_json:get_value(<<"id">>, Data),
+    Path = wh_doc:id(Data),
     case wh_media_util:media_path(Path, AccountId) of
         'undefined' ->
             lager:info("invalid data in the play callflow"),

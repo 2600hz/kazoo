@@ -274,7 +274,7 @@ migrate_history(AccountId, AccountDb, C2C) ->
     case wh_json:get_value(<<"pvt_history">>, C2C, []) of
         [] -> 'ok';
         History ->
-            Id = wh_json:get_value(<<"_id">>, C2C),
+            Id = wh_doc:id(C2C),
             _ = [save_history_item(AccountId, HistoryItem, Id) || HistoryItem <- History],
             _Resp = couch_mgr:ensure_saved(AccountDb, wh_json:delete_key(<<"pvt_history">>, C2C)),
             lager:debug("removed history from c2c ~s in ~s: ~p", [Id
@@ -419,7 +419,7 @@ build_originate_req(Contact, Context) ->
     CCVs = [{<<"Account-ID">>, AccountId}
             ,{<<"Auto-Answer">>, AutoAnswer}
             ,{<<"Retain-CID">>, <<"true">>}
-            ,{<<"Authorizing-ID">>, wh_json:get_value(<<"_id">>, JObj)}
+            ,{<<"Authorizing-ID">>, wh_doc:id(JObj)}
             ,{<<"Inherit-Codec">>, <<"false">>}
             ,{<<"Authorizing-Type">>, <<"device">>}
            ],

@@ -241,7 +241,7 @@ validate_collection(Context) ->
 -type collection_fold_acc() :: cb_context:context().
 -spec validate_collection_fold(wh_json:object(), collection_fold_acc()) -> collection_fold_acc().
 validate_collection_fold(Resource, C) ->
-    Id = wh_json:get_value(<<"id">>, Resource, couch_mgr:get_uuid()),
+    Id = wh_doc:id(Resource, couch_mgr:get_uuid()),
     case validate_collection_resource(wh_json:set_value(<<"id">>, Id, Resource)
                                       ,C
                                       ,cb_context:req_verb(C)
@@ -267,7 +267,7 @@ validate_collection_fold(Resource, C) ->
                                           {'ok', cb_context:context()} |
                                           {'error', 'not_found' | wh_json:object()}.
 validate_collection_resource(Resource, Context, ?HTTP_POST) ->
-    C1 = crossbar_doc:load(wh_json:get_value(<<"id">>, Resource), Context),
+    C1 = crossbar_doc:load(wh_doc:id(Resource), Context),
     case cb_context:resp_status(C1) of
         'success' -> validate_collection_resource_patch(Resource, C1);
         _Status -> {'error', 'not_found'}

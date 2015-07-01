@@ -292,7 +292,7 @@ fetch_account_by_ip(IP) ->
             lager:debug("no entry in ~s for IP: ~s", [?WH_SIP_DB, IP]),
             {'error', 'not_found'};
         {'ok', [Doc|_]} ->
-            lager:debug("found IP ~s in db ~s (~s)", [IP, ?WH_SIP_DB, wh_json:get_value(<<"id">>, Doc)]),
+            lager:debug("found IP ~s in db ~s (~s)", [IP, ?WH_SIP_DB, wh_doc:id(Doc)]),
             AccountCCVs = account_ccvs_from_ip_auth(Doc),
             wh_cache:store_local(?REG_CACHE, ip_cache_key(IP), AccountCCVs),
             {'ok', AccountCCVs};

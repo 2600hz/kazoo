@@ -153,7 +153,7 @@ maybe_capture_ip(Collector, CaptureMe, JObj, ACLBuilderFun) ->
 -spec handle_sip_auth_result(pid(), wh_json:object(), ne_binaries()) -> 'ok'.
 handle_sip_auth_result(Collector, JObj, IPs) ->
     AccountId = wh_json:get_value([<<"value">>, <<"account_id">>], JObj),
-    AuthorizingId = wh_json:get_value(<<"id">>, JObj),
+    AuthorizingId = wh_doc:id(JObj),
     AuthorizingType = wh_json:get_value([<<"value">>, <<"authorizing_type">>], JObj),
     add_trusted_objects(Collector, AccountId, AuthorizingId, AuthorizingType, IPs).
 

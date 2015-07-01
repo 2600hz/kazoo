@@ -231,7 +231,7 @@ keep_listener(_, _, _) -> 'true'.
 
 -spec alert_listeners(wh_json:object(), listeners()) -> 'ok'.
 alert_listeners(JObj, Ls) ->
-    DocID = wh_json:get_value(<<"id">>, JObj),
+    DocID = wh_doc:id(JObj),
     Msg = case wh_json:is_true(<<"deleted">>, JObj, 'false') of
               'false' ->
                   {'document_changes', DocID, [wh_json:to_proplist(C)

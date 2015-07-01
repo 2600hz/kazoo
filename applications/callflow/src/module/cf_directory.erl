@@ -108,7 +108,7 @@
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     {'ok', DirJObj} = couch_mgr:open_cache_doc(whapps_call:account_db(Call)
-                                               ,wh_json:get_value(<<"id">>, Data)
+                                               ,wh_doc:id(Data)
                                               ),
     whapps_call_command:answer(Call),
 

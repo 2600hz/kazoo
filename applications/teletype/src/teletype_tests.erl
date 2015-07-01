@@ -91,7 +91,7 @@ find_user_for_skel(AccountId, [User|Users]) ->
 
 find_user_for_skel(AccountId, User, Users, PotentialEmail) ->
     case binary:split(PotentialEmail, <<"@">>) of
-        [_U, _D] -> skel(AccountId, wh_json:get_value(<<"id">>, User));
+        [_U, _D] -> skel(AccountId, wh_doc:id(User));
         _ -> find_user_for_skel(AccountId, Users)
     end.
 
@@ -117,7 +117,7 @@ voicemail_full(AccountId, Box) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     Props = [{<<"Account-DB">>, AccountDb}
              ,{<<"Account-ID">>, AccountId}
-             ,{<<"Voicemail-Box">>, wh_json:get_value(<<"_id">>, Box)}
+             ,{<<"Voicemail-Box">>, wh_doc:id(Box)}
              ,{<<"Voicemail-Number">>, wh_json:get_value(<<"mailbox">>, Box)}
              ,{<<"Max-Message-Count">>, 1}
              ,{<<"Message-Count">>, 2}
@@ -151,13 +151,13 @@ fax_inbound_to_email(AccountId, <<_/binary>> = FaxId) ->
     fax_inbound_to_email(AccountId, Fax);
 fax_inbound_to_email(AccountId, Fax) ->
     Message = props:filter_undefined(
-                [{<<"Fax-ID">>, wh_json:get_value(<<"_id">>, Fax)}
+                [{<<"Fax-ID">>, wh_doc:id(Fax)}
                  ,{<<"Owner-ID">>, wh_json:get_value(<<"owner_id">>, Fax)}
                  ,{<<"FaxBox-ID">>, wh_json:get_value(<<"faxbox_id">>, Fax)}
                  ,{<<"Account-ID">>, AccountId}
                  | notify_fields(Fax)
                 ]),
-    lager:debug("publishing fax inbound to email req for ~s/~s", [AccountId, wh_json:get_value(<<"_id">>, Fax)]),
+    lager:debug("publishing fax inbound to email req for ~s/~s", [AccountId, wh_doc:id(Fax)]),
     wh_amqp_worker:call_collect(Message, fun wapi_notifications:publish_fax_inbound/1, 2 * ?MILLISECONDS_IN_SECOND).
 
 -spec notify_fields(wh_json:object()) -> wh_proplist().
