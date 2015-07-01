@@ -1,0 +1,60 @@
+# -*- text -*-
+#
+#	3GPP stuff.
+#
+#	ftp://ftp.3gpp.org/specs/2002-06/R1999/29_series/29061-3a0.zip
+#
+#	$Id$
+#
+VENDOR		X_3GPP				10415
+
+BEGIN-VENDOR	X_3GPP
+
+#
+#	Most of the 'string' attributes are UTF-8 encoded text.
+#	Maybe we want a UTF-8 'type' in the server...
+#
+ATTRIBUTE	X_3GPP-IMSI				1	string
+ATTRIBUTE	X_3GPP-Charging-ID			2	integer
+ATTRIBUTE	X_3GPP-PDP-Type				3	integer
+ATTRIBUTE	X_3GPP-Charging-Gateway-Address		4	ipaddr
+ATTRIBUTE	X_3GPP-GPRS-Negotiated-QoS-profile	5	string
+ATTRIBUTE	X_3GPP-SGSN-Address			6	ipaddr
+ATTRIBUTE	X_3GPP-GGSN-Address			7	ipaddr
+ATTRIBUTE	X_3GPP-IMSI-MCC-MNC			8	string
+ATTRIBUTE	X_3GPP-GGSN-MCC-MNC			9	string
+ATTRIBUTE	X_3GPP-NSAPI				10	string
+ATTRIBUTE	X_3GPP-Session-Stop-Indicator		11	octets
+ATTRIBUTE	X_3GPP-Selection-Mode			12	string
+ATTRIBUTE	X_3GPP-Charging-Characteristics		13	string
+ATTRIBUTE	X_3GPP-Charging-Gateway-IPv6-Address	14	ipv6addr
+ATTRIBUTE	X_3GPP-SGSN-IPv6-Address			15	ipv6addr
+ATTRIBUTE	X_3GPP-GGSN-IPv6-Address			16	ipv6addr
+
+#
+#	This attribute is really an array of IPv6 addresses.
+#	Why the heck couldn't they just send multiple attributes?
+#
+ATTRIBUTE	X_3GPP-IPv6-DNS-Servers			17	octets
+
+ATTRIBUTE	X_3GPP-SGSN-MCC-MNC			18	string
+ATTRIBUTE	X_3GPP-Teardown-Indicator			19	octets
+
+ATTRIBUTE	X_3GPP-IMEISV				20	string
+ATTRIBUTE	X_3GPP-RAT-Type				21	octets
+ATTRIBUTE	X_3GPP-User-Location-Info			22	octets
+ATTRIBUTE	X_3GPP-MS-TimeZone			23	octets
+ATTRIBUTE	X_3GPP-Camel-Charging			24	octets
+
+#
+#  Complex type.  Not Ascend Filters, and not anything else...
+#
+ATTRIBUTE	X_3GPP-Packet-Filter			25	octets
+ATTRIBUTE	X_3GPP-Negotiated-DSCP			26	octets
+ATTRIBUTE	X_3GPP-PDN-Type				27	integer
+
+VALUE	X_3GPP-PDN-Type			IPv4			0
+VALUE	X_3GPP-PDN-Type			IPv6			1
+VALUE	X_3GPP-PDN-Type			IPv4v6			2
+
+END-VENDOR	X_3GPP

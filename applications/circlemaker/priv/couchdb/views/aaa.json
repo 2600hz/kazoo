@@ -1,0 +1,12 @@
+{
+  "_id": "_design/aaa",
+  "language": "javascript",
+  "views": {
+    "fetch_dicts": {
+      "map": "function(doc) { if (doc.pvt_type != 'aaa_dict' || doc.owner == 'system_config' || doc.pvt_deleted) return; emit(doc.name, doc.owner); }"
+    },
+    "fetch_system_dicts": {
+      "map": "function(doc) { if (doc.pvt_type != 'aaa_dict' || doc.owner != 'system_config' || doc.pvt_deleted) return; emit(doc.name, doc.owner); }"
+    }
+  }
+}

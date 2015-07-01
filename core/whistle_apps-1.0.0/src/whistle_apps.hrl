@@ -26,6 +26,7 @@
                          ,'camper'
                          ,'frontier'
                          ,'doodle'
+                         ,'circlemaker'
                         ]).
 
 -define(WHAPPS_GETBY_CACHE, 'whapps_getby_cache').

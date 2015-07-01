@@ -1,0 +1,10 @@
+#
+#	Telebit dictionary
+#	$Id: dictionary.telebit,v 1.1 2003/10/27 23:39:40 etnt Exp $
+#
+VENDOR Telebit 117
+
+ATTRIBUTE	Telebit-Login-Command		1	string	Telebit
+ATTRIBUTE	Telebit-Port-Name		2	string	Telebit
+ATTRIBUTE	Telebit-Activate-Command	3	string	Telebit
+ATTRIBUTE	Telebit-Accounting-Info		4	string	Telebit

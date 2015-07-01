@@ -1,17 +1,16 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2010-2015, 2600Hz
 %%% @doc
-%%% Listener for authn_req, reg_success, and reg_query AMQP requests
+%%%  The module is listener for AMQP events
 %%% @end
 %%% @contributors
-%%%   James Aimonetti
 %%%   SIPLABS, LLC (Vladimir Potapev)
 %%%-------------------------------------------------------------------
--module(registrar_shared_listener).
+-module(cm_listener).
 
 -behaviour(gen_listener).
 
--export([start_link/0, get_queue_name/0, insert_auth_user/1, remove_auth_user/1, get_auth_user/1]).
+-export([start_link/0]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -19,33 +18,24 @@
          ,handle_event/2
          ,terminate/2
          ,code_change/3
-        ]).
+         ,handle_authn_req/2
+         ,handle_authz_req/2]).
 
--include("reg.hrl").
+-include("circlemaker.hrl").
+-include_lib("rabbitmq_client/include/amqp_client.hrl").
 
--define(RESPONDERS, [{'reg_authn_req'
-                      ,[{<<"directory">>, <<"authn_req">>}]
-                     }
-                     ,{'reg_authz_req'
-                      ,[{<<"authz">>, <<"authz_req">>}]
-                     }
-                     ,{'reg_aaa_resp'
-                      ,[wapi_aaa:resp_event_type()]
-                     }
-                     ,{{'reg_route_req', 'handle_route_req'}
-                       ,[{<<"dialplan">>, <<"route_req">>}]
-                      }
-                    ]).
--define(BINDINGS, [{'authn', []}
-                   ,{'authz', []}
-                   ,{'aaa', []}
-                   ,{'route', []}
+-record(state, {}).
+
+-define(RESPONDERS, [{{?MODULE, 'handle_authn_req'}, [wapi_aaa:req_event_type()]},
+                     {{?MODULE, 'handle_authz_req'}, [{<<"aaa">>, <<"aaa_authz_req">>}]}]).
+-define(BINDINGS, [{'aaa', []}
                    ,{'self', []}
                   ]).
+-define(QUEUE_NAME, <<"circlemaker_listener">>).
+-define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
+-define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
+
 -define(SERVER, ?MODULE).
--define(REG_QUEUE_NAME, <<"registrar_listener">>).
--define(REG_QUEUE_OPTIONS, [{'exclusive', 'false'}]).
--define(REG_CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 %%%===================================================================
 %%% API
@@ -58,28 +48,38 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link({'local', ?SERVER}, ?MODULE, [{'responders', ?RESPONDERS}
-                                                          ,{'bindings', ?BINDINGS}
-                                                          ,{'queue_name', ?REG_QUEUE_NAME}
-                                                          ,{'queue_options', ?REG_QUEUE_OPTIONS}
-                                                          ,{'consume_options', ?REG_CONSUME_OPTIONS}
+    gen_listener:start_link({'local', ?SERVER}, ?MODULE, [{'bindings', ?BINDINGS}
+                                                          ,{'responders', ?RESPONDERS}
+                                                          ,{'queue_name', ?QUEUE_NAME}
+                                                          ,{'queue_options', ?QUEUE_OPTIONS}
+                                                          ,{'consume_options', ?CONSUME_OPTIONS}
                                                          ], []).
 
-get_queue_name() ->
-    ?REG_QUEUE_NAME.
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Handle AuthN requests from another process.
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_authn_req(wh_json:object(), wh_proplist()) -> any().
+handle_authn_req(JObj, _Props) ->
+    'true' = wapi_aaa:req_v(JObj),
+    cm_pool_mgr:do_request(JObj).
 
-insert_auth_user(AuthUser) ->
-    gen_server:call(?MODULE, {'insert_auth_user', AuthUser}).
-
-get_auth_user(MsgId) ->
-    gen_server:call(?MODULE, {'get_auth_user', MsgId}).
-
-remove_auth_user(AuthUser) ->
-    gen_server:call(?MODULE, {'remove_auth_user', AuthUser}).
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Handle AuthZ requests from another process.
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_authz_req(wh_json:object(), wh_proplist()) -> any().
+handle_authz_req(_JObj, _Props) ->
+    [].
 
 %%%===================================================================
-%%% gen_listener callbacks
+%%% gen_server callbacks
 %%%===================================================================
 
 %%--------------------------------------------------------------------
@@ -87,15 +87,14 @@ remove_auth_user(AuthUser) ->
 %% @doc
 %% Initializes the server
 %%
-%% @spec init(Args) -> {ok, State} |
+%% @spec init([]) -> {ok, State} |
 %%                     {ok, State, Timeout} |
 %%                     ignore |
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    lager:debug("starting new registrar shared queue server"),
-    {'ok', []}.
+    {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -111,18 +110,8 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({'insert_auth_user', AuthUser}, _From, State) ->
-    lager:debug("inserted new user ~p", [AuthUser]),
-    {'reply', 'ok', [AuthUser | State]};
-handle_call({'remove_auth_user', AuthUser}, _From, State) ->
-    lager:debug("removed new user ~p", [AuthUser]),
-    {'reply', 'ok', [J || J <- State, AuthUser =/= J]};
-handle_call({'get_auth_user', MsgId}, _From, State) ->
-    [AuthUser] = [AuthUser || {MsgId1, AuthUser} <- State, MsgId == MsgId1],
-    lager:debug("retrieved stored information about user ~p", [AuthUser]),
-    {'reply', AuthUser, State};
-handle_call(_Msg, _From, State) ->
-    {'noreply', State}.
+handle_call(_Request, _From, State) ->
+    {'reply', {'error', 'not_implemented'}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -153,9 +142,9 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Handling AMQP event objects
+%% Allows listener to pass options to handlers
 %%
-%% @spec handle_event(JObj, State) -> {reply, Props}
+%% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, _State) ->
@@ -164,17 +153,16 @@ handle_event(_JObj, _State) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% This function is called by a gen_listener when it is about to
+%% This function is called by a gen_server when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_listener terminates
+%% necessary cleaning up. When it returns, the gen_server terminates
 %% with Reason. The return value is ignored.
 %%
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
--spec terminate(term(), term()) -> 'ok'.
-terminate(_Reason, _) ->
-    lager:debug("registrar shared queue server ~p termination", [_Reason]).
+terminate(_Reason, _State) ->
+    lager:debug("listener terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -186,7 +174,3 @@ terminate(_Reason, _) ->
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
-
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================

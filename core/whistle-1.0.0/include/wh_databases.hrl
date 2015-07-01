@@ -12,6 +12,7 @@
 -define(WH_OFFNET_DB, <<"offnet">>).
 -define(WH_DEDICATED_IP_DB, <<"dedicated_ips">>).
 -define(WH_ANONYMOUS_CDR_DB, <<"anonymous_cdrs">>).
+-define(KZ_AAA_DICTS_DB, <<"aaa_dicts">>).
 
 -define(KZ_TOKEN_DB, <<"token_auth">>).
 
@@ -39,6 +40,7 @@
                         ,?KZ_PORT_REQUESTS_DB
                         ,?WH_DEDICATED_IP_DB
                         ,?KZ_ACDC_DB
+                        ,?KZ_AAA_DICTS_DB
                         ,?KZ_OAUTH_DB
                         ,?KZ_WEBHOOKS_DB
                         ,?KZ_TOKEN_DB
