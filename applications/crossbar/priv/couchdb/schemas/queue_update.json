@@ -5,7 +5,7 @@
     "name": "Call Update",
     "properties": {
         "action": {
-            "description": "Login agent into queue or logout from it",
+            "description": "Action to perform",
             "enum": [
                 "login",
                 "logout"
@@ -15,7 +15,7 @@
             "type": "string"
         },
         "queue_id": {
-            "description": "Which queue login or logout agent?",
+            "description": "Queue Identifier",
             "maxLength": 128,
             "minLength": 1,
             "name": "Queue ID",
