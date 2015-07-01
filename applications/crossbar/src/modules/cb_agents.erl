@@ -12,7 +12,7 @@
 %%%   GET: statuses for each agents
 %%% /agents/AID
 %%%   GET: agent details
-%%% /agents/AID/logged_in
+%%% /agents/AID/queue_status
 %%%   POST: login/logout agent to/from queue
 %%%
 %%% /agents/AID/status
@@ -43,7 +43,7 @@
 -define(CB_LIST, <<"agents/crossbar_listing">>).
 -define(STATS_PATH_TOKEN, <<"stats">>).
 -define(STATUS_PATH_TOKEN, <<"status">>).
--define(QUEUES_STATUS_PATH_TOKEN, <<"queue_status">>).
+-define(QUEUE_STATUS_PATH_TOKEN, <<"queue_status">>).
 
 %%%===================================================================
 %%% API
@@ -81,7 +81,7 @@ allowed_methods(_) -> [?HTTP_GET].
 
 allowed_methods(?STATUS_PATH_TOKEN, _) -> [?HTTP_GET, ?HTTP_POST];
 allowed_methods(_, ?STATUS_PATH_TOKEN) -> [?HTTP_GET, ?HTTP_POST];
-allowed_methods(_, ?QUEUES_STATUS_PATH_TOKEN) -> [?HTTP_GET, ?HTTP_POST].
+allowed_methods(_, ?QUEUE_STATUS_PATH_TOKEN) -> [?HTTP_GET, ?HTTP_POST].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -99,7 +99,7 @@ resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
 resource_exists(_, ?STATUS_PATH_TOKEN) -> 'true';
 resource_exists(?STATUS_PATH_TOKEN, _) -> 'true';
-resource_exists(_, ?QUEUES_STATUS_PATH_TOKEN) -> 'true'.
+resource_exists(_, ?QUEUE_STATUS_PATH_TOKEN) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -126,7 +126,7 @@ content_types_provided(Context, ?STATS_PATH_TOKEN) ->
     end.
 content_types_provided(Context, ?STATUS_PATH_TOKEN, _) -> Context;
 content_types_provided(Context, _, ?STATUS_PATH_TOKEN) -> Context;
-content_types_provided(Context, _, ?QUEUES_STATUS_PATH_TOKEN) -> Context.
+content_types_provided(Context, _, ?QUEUE_STATUS_PATH_TOKEN) -> Context.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -164,10 +164,10 @@ validate_agent_action(Context, AgentId, ?STATUS_PATH_TOKEN, ?HTTP_POST) ->
     validate_status_change(read(AgentId, Context));
 validate_agent_action(Context, AgentId, ?STATUS_PATH_TOKEN, ?HTTP_GET) ->
     fetch_agent_status(AgentId, Context);
-validate_agent_action(Context, AgentId, ?QUEUES_STATUS_PATH_TOKEN, ?HTTP_POST) ->
+validate_agent_action(Context, AgentId, ?QUEUE_STATUS_PATH_TOKEN, ?HTTP_POST) ->
     OnSuccess = fun (C) -> maybe_queues_change(read(AgentId, C)) end,
     cb_context:validate_request_data(<<"queue_update">>, Context, OnSuccess);
-validate_agent_action(Context, AgentId, ?QUEUES_STATUS_PATH_TOKEN, ?HTTP_GET) ->
+validate_agent_action(Context, AgentId, ?QUEUE_STATUS_PATH_TOKEN, ?HTTP_GET) ->
     fetch_agent_queues(read(AgentId, Context));
 validate_agent_action(Context, ?STATUS_PATH_TOKEN, AgentId, ?HTTP_GET) ->
     fetch_agent_status(AgentId, Context).
@@ -210,22 +210,34 @@ post(Context, AgentId, ?STATUS_PATH_TOKEN) ->
         <<"resume">> -> publish_update(Context, AgentId, fun wapi_acdc_agent:publish_resume/1)
     end,
     crossbar_util:response(<<"status update sent">>, Context);
-post(Context, AgentId, ?QUEUES_STATUS_PATH_TOKEN) ->
+post(Context, AgentId, ?QUEUE_STATUS_PATH_TOKEN) ->
+    publish_action(Context, AgentId),
+
+    Context1 = crossbar_doc:save(Context),
+
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            Queues = wh_json:get_value(<<"queues">>, cb_context:doc(Context), []),
+            cb_context:set_resp_data(Context1, Queues);
+        _Status ->
+            Context1
+    end.
+
+-spec publish_action(cb_context:context(), ne_binary()) -> 'ok'.
+publish_action(Context, AgentId) ->
     Publisher = case cb_context:req_value(Context, <<"action">>) of
                     <<"logout">> -> fun wapi_acdc_agent:publish_logout_queue/1;
                     <<"login">> -> fun wapi_acdc_agent:publish_login_queue/1
                 end,
-    Props = props:filter_undefined(
-                [{<<"Account-ID">>, cb_context:account_id(Context)}
-                 ,{<<"Agent-ID">>, AgentId}
-                 ,{<<"Queue-ID">>, cb_context:req_value(Context, <<"queue_id">>)}
-                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                ]),
-    Publisher(Props),
-    crossbar_doc:save(Context),
-    Queues =  wh_json:get_value(<<"queues">>, cb_context:doc(Context), []),
-    cb_context:set_resp_data(Context, Queues).
 
+    Props = props:filter_undefined(
+              [{<<"Account-ID">>, cb_context:account_id(Context)}
+               ,{<<"Agent-ID">>, AgentId}
+               ,{<<"Queue-ID">>, cb_context:req_value(Context, <<"queue_id">>)}
+               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+              ]),
+
+    wh_amqp_worker:cast(Props, Publisher).
 
 -spec publish_update(cb_context:context(), api_binary(), function()) -> 'ok'.
 publish_update(Context, AgentId, PubFun) ->
@@ -237,7 +249,7 @@ publish_update(Context, AgentId, PubFun) ->
                 ,{<<"Presence-State">>, cb_context:req_value(Context, <<"presence_state">>)}
                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
-    PubFun(Update).
+    wh_amqp_worker:cast(Update, PubFun).
 
 %%--------------------------------------------------------------------
 %% @private
