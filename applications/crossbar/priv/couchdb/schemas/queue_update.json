@@ -1,0 +1,25 @@
+{
+  "_id": "queue_update",
+  "$schema": "http://json-schema.org/draft-03/schema#",
+  "type": "object",
+  "required": true,
+  "name": "Call Update",
+  "description": "Schema for queue update request",
+  "properties": {
+      "action":{
+        "type":"string",
+        "enum":["login", "logout"],
+        "name":"Action",
+        "description":"Login agent into queue or logout from it",
+        "required":true
+      },
+      "queue_id":{
+        "type":"string",
+        "name":"Queue ID",
+        "description":"Which queue login or logout agent?",
+        "minLength":1,
+        "maxLength":128,
+        "required":true
+      }
+  }
+}
