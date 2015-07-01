@@ -26,7 +26,6 @@
          ,default_headers/4
          ,default_headers/5
 
-         ,msg_id/1
          ,server_id/1
          ,msg_id/1
          ,event_category/1
@@ -64,10 +63,6 @@
 -spec server_id(wh_json:object()) -> api_binary().
 server_id(JObj) ->
     wh_json:get_value(<<"Server-ID">>, JObj).
-
--spec msg_id(wh_json:object()) -> api_binary().
-msg_id(JObj) ->
-    wh_json:get_value(<<"Msg-ID">>, JObj).
 
 -spec event_category(wh_json:object()) -> api_binary().
 event_category(JObj) ->
