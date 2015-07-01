@@ -388,7 +388,8 @@ set_validation_errors(#cb_context{}=Context, Errors) ->
     Context#cb_context{validation_errors=Errors}.
 
 -spec update_doc(context(), setter_fun_1()) -> context().
-update_doc(#cb_context{doc=Doc}=Context, Updater) -> Context#cb_context{doc=Updater(Doc)}.
+update_doc(#cb_context{doc=Doc}=Context, Updater) ->
+    Context#cb_context{doc=Updater(Doc)}.
 
 %% Helpers
 
