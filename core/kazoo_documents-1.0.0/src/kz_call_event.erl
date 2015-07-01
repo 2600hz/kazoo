@@ -17,6 +17,8 @@
          ,dtmf_digit/1
          ,event_name/1
          ,hangup_cause/1, hangup_code/1
+         ,application_name/1, application_response/1
+         ,response_message/1, response_code/1
          ,account_id/1
          ,timestamp/1
         ]).
@@ -66,6 +68,22 @@ hangup_cause(JObj) ->
 -spec hangup_code(wh_json:object()) -> api_binary().
 hangup_code(JObj) ->
     wh_json:get_value(<<"Hangup-Code">>, JObj).
+
+-spec application_name(wh_json:object()) -> api_binary().
+application_name(JObj) ->
+    wh_json:get_value(<<"Application-Name">>, JObj).
+
+-spec application_response(wh_json:object()) -> api_binary().
+application_response(JObj) ->
+    wh_json:get_value(<<"Application-Response">>, JObj).
+
+-spec response_message(wh_json:object()) -> api_binary().
+response_message(JObj) ->
+    wh_json:get_value(<<"Response-Message">>, JObj).
+
+-spec response_code(wh_json:object()) -> api_binary().
+response_code(JObj) ->
+    wh_json:get_value(<<"Response-Code">>, JObj).
 
 -spec account_id(wh_json:object()) -> api_binary().
 account_id(JObj) ->
