@@ -29,18 +29,18 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec get(ne_binaries()) -> numbers_return().
--spec get(ne_binaries(), ne_binary()) -> numbers_return().
--spec get(ne_binaries(), ne_binary(), numbers_return()) -> numbers_return().
+-spec get(ne_binaries(), wh_proplist()) -> numbers_return().
+-spec get(ne_binaries(), wh_proplist(), numbers_return()) -> numbers_return().
 get(Nums) ->
-    get(Nums, <<"system">>).
+    get(Nums, knm_phone_number:default_options()).
 
-get(Nums, AuthBy) ->
-    get(Nums, AuthBy, []).
+get(Nums, Options) ->
+    get(Nums, Options, []).
 
-get([], _AuthBy, Acc) -> Acc;
-get([Num|Nums], AuthBy, Acc) ->
-    Return = knm_number:get(Num, AuthBy),
-    get(Nums, AuthBy, [{Num, Return}|Acc]).
+get([], _Options, Acc) -> Acc;
+get([Num|Nums], Options, Acc) ->
+    Return = knm_number:get(Num, Options),
+    get(Nums, Options, [{Num, Return}|Acc]).
 
 
 %%--------------------------------------------------------------------
@@ -64,18 +64,18 @@ create([{Num, Data}|Props], Acc) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec move(wh_proplist()) -> numbers_return().
--spec move(wh_proplist(), ne_binary()) -> numbers_return().
--spec move(wh_proplist(), ne_binary(), numbers_return()) -> numbers_return().
+-spec move(wh_proplist(), wh_proplist()) -> numbers_return().
+-spec move(wh_proplist(), wh_proplist(), numbers_return()) -> numbers_return().
 move(Props) ->
-    move(Props, <<"system">>).
+    move(Props, knm_phone_number:default_options()).
 
-move(Props, AuthBy) ->
-    move(Props, AuthBy, []).
+move(Props, Options) ->
+    move(Props, Options, []).
 
-move([], _AuthBy, Acc) -> Acc;
-move([{Num, MoveTo}|Props], AuthBy, Acc) ->
-    Return  = knm_number:move(Num, MoveTo, AuthBy),
-    move(Props, AuthBy, [{Num, Return}|Acc]).
+move([], _Options, Acc) -> Acc;
+move([{Num, MoveTo}|Props], Options, Acc) ->
+    Return  = knm_number:move(Num, MoveTo, Options),
+    move(Props, Options, [{Num, Return}|Acc]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -83,18 +83,18 @@ move([{Num, MoveTo}|Props], AuthBy, Acc) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update(wh_proplist()) -> numbers_return().
--spec update(wh_proplist(), ne_binary()) -> numbers_return().
--spec update(wh_proplist(), ne_binary(), numbers_return()) -> numbers_return().
+-spec update(wh_proplist(), wh_proplist()) -> numbers_return().
+-spec update(wh_proplist(), wh_proplist(), numbers_return()) -> numbers_return().
 update(Props) ->
-    update(Props, <<"system">>).
+    update(Props, knm_phone_number:default_options()).
 
-update(Props, AuthBy) ->
-    update(Props, AuthBy, []).
+update(Props, Options) ->
+    update(Props, Options, []).
 
-update([], _AuthBy, Acc) -> Acc;
-update([{Num, Data}|Props], AuthBy, Acc) ->
-    Return  = knm_number:update(Num, Data, AuthBy),
-    update(Props, AuthBy, [{Num, Return}|Acc]).
+update([], _Options, Acc) -> Acc;
+update([{Num, Data}|Props], Options, Acc) ->
+    Return  = knm_number:update(Num, Data, Options),
+    update(Props, Options, [{Num, Return}|Acc]).
 
 
 %%--------------------------------------------------------------------
@@ -103,18 +103,18 @@ update([{Num, Data}|Props], AuthBy, Acc) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(ne_binaries()) -> numbers_return().
--spec delete(ne_binaries(), ne_binary()) -> numbers_return().
--spec delete(ne_binaries(), ne_binary(), numbers_return()) -> numbers_return().
+-spec delete(ne_binaries(), wh_proplist()) -> numbers_return().
+-spec delete(ne_binaries(), wh_proplist(), numbers_return()) -> numbers_return().
 delete(Props) ->
-    delete(Props, <<"system">>).
+    delete(Props, knm_phone_number:default_options()).
 
-delete(Props, AuthBy) ->
-    delete(Props, AuthBy, []).
+delete(Props, Options) ->
+    delete(Props, Options, []).
 
-delete([], _AuthBy, Acc) -> Acc;
-delete([Num|Nums], AuthBy, Acc) ->
-    Return = knm_number:delete(Num, AuthBy),
-    delete(Nums, AuthBy, [{Num, Return}|Acc]).
+delete([], _Options, Acc) -> Acc;
+delete([Num|Nums], Options, Acc) ->
+    Return = knm_number:delete(Num, Options),
+    delete(Nums, Options, [{Num, Return}|Acc]).
 
 
 %%--------------------------------------------------------------------
@@ -123,18 +123,18 @@ delete([Num|Nums], AuthBy, Acc) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec change_state(wh_proplist()) -> numbers_return().
--spec change_state(wh_proplist(), ne_binary()) -> numbers_return().
--spec change_state(wh_proplist(), ne_binary(), numbers_return()) -> numbers_return().
+-spec change_state(wh_proplist(), wh_proplist()) -> numbers_return().
+-spec change_state(wh_proplist(), wh_proplist(), numbers_return()) -> numbers_return().
 change_state(Props) ->
-    change_state(Props, <<"system">>).
+    change_state(Props, knm_phone_number:default_options()).
 
-change_state(Props, AuthBy) ->
-    change_state(Props, AuthBy, []).
+change_state(Props, Options) ->
+    change_state(Props, Options, []).
 
-change_state([], _AuthBy, Acc) -> Acc;
-change_state([{Num, State}|Props], AuthBy, Acc) ->
-    Return  = knm_number:change_state(Num, State, AuthBy),
-    change_state(Props, AuthBy, [{Num, Return}|Acc]).
+change_state([], _Options, Acc) -> Acc;
+change_state([{Num, State}|Props], Options, Acc) ->
+    Return  = knm_number:change_state(Num, State, Options),
+    change_state(Props, Options, [{Num, Return}|Acc]).
 
 
 %%--------------------------------------------------------------------
@@ -143,18 +143,18 @@ change_state([{Num, State}|Props], AuthBy, Acc) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec assigned_to_app(wh_proplist()) -> numbers_return().
--spec assigned_to_app(wh_proplist(), ne_binary()) -> numbers_return().
--spec assigned_to_app(wh_proplist(), ne_binary(), numbers_return()) -> numbers_return().
+-spec assigned_to_app(wh_proplist(), wh_proplist()) -> numbers_return().
+-spec assigned_to_app(wh_proplist(), wh_proplist(), numbers_return()) -> numbers_return().
 assigned_to_app(Props) ->
-    assigned_to_app(Props, <<"system">>).
+    assigned_to_app(Props, knm_phone_number:default_options()).
 
-assigned_to_app(Props, AuthBy) ->
-    assigned_to_app(Props, AuthBy, []).
+assigned_to_app(Props, Options) ->
+    assigned_to_app(Props, Options, []).
 
-assigned_to_app([], _AuthBy, Acc) -> Acc;
-assigned_to_app([{Num, App}|Props], AuthBy, Acc) ->
-    Return  = knm_number:assigned_to_app(Num, App, AuthBy),
-    assigned_to_app(Props, AuthBy, [{Num, Return}|Acc]).
+assigned_to_app([], _Options, Acc) -> Acc;
+assigned_to_app([{Num, App}|Props], Options, Acc) ->
+    Return  = knm_number:assigned_to_app(Num, App, Options),
+    assigned_to_app(Props, Options, [{Num, Return}|Acc]).
 
 %%%===================================================================
 %%% Internal functions
