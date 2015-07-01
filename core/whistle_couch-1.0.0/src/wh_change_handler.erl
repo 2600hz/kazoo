@@ -89,7 +89,7 @@ rm_listener(Srv, Pid, Doc) ->
 %%--------------------------------------------------------------------
 -spec init(list()) -> {'ok', state()}.
 init([DbName]) ->
-    _ = put('callid', list_to_binary([<<"changes_">>, DbName])),
+    _ = wh_util:put_callid(list_to_binary([<<"changes_">>, DbName])),
     lager:debug("starting change handler for ~s", [DbName]),
     {'ok', #state{db=DbName}}.
 

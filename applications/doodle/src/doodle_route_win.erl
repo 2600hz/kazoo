@@ -30,7 +30,7 @@
 -spec handle_req(wh_json:object(), wh_proplist()) -> _.
 handle_req(JObj, _Options) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    put('callid', CallId),
+    wh_util:put_callid(CallId),
     lager:info("doodle has received a route win, taking control of the call"),
     case whapps_call:retrieve(CallId) of
         {'ok', Call} -> maybe_scheduled_delivery(JObj, Call);

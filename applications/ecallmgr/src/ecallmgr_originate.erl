@@ -202,7 +202,7 @@ handle_cast({'create_uuid'}, #state{node=Node
                                     ,uuid='undefined'
                                    }=State) ->
     UUID = {_, Id} = create_uuid(JObj, Node),
-    put('callid', Id),
+    wh_util:put_callid(Id),
     lager:debug("created uuid ~p", [UUID]),
     wh_cache:store_local(?ECALLMGR_UTIL_CACHE, {Id, 'start_listener'}, 'true'),
 
@@ -300,7 +300,7 @@ handle_cast({'originate_execute'}, #state{dialstrings=Dialstrings
 
             {'stop', 'normal', State#state{control_pid='undefined'}};
         {'ok', CallId} ->
-            put('callid', CallId),
+            wh_util:put_callid(CallId),
             lager:debug("originate is executing, waiting for completion"),
             erlang:monitor_node(Node, 'true'),
             bind_to_call_events(CallId),
@@ -593,7 +593,7 @@ unbind_from_call_events() ->
 
 -spec update_uuid(api_binary(), ne_binary()) -> 'ok'.
 update_uuid(OldUUID, NewUUID) ->
-    put('callid', NewUUID),
+    wh_util:put_callid(NewUUID),
     lager:debug("updating call id from ~s to ~s", [OldUUID, NewUUID]),
     unbind_from_call_events(),
     bind_to_call_events(NewUUID),
@@ -606,7 +606,7 @@ update_uuid(OldUUID, NewUUID) ->
 create_uuid(Node) ->
     case freeswitch:api(Node, 'create_uuid', " ") of
         {'ok', UUID} ->
-            put('callid', UUID),
+            wh_util:put_callid(UUID),
             lager:debug("FS generated our uuid: ~s", [UUID]),
             {'fs', UUID};
         {'error', _E} ->

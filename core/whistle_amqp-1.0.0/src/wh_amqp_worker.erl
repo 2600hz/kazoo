@@ -410,7 +410,7 @@ handle_resp(JObj, Props) ->
                           'ok' | {'error', _}.
 send_request(CallId, Self, PublishFun, ReqProps)
   when is_function(PublishFun, 1) ->
-    put('callid', CallId),
+    wh_util:put_callid(CallId),
     Props = props:insert_values(
               [{<<"Server-ID">>, Self}
                | maybe_send_call_id(CallId)
@@ -451,7 +451,7 @@ request_proplist_filter(_) -> 'true'.
 %% @end
 %%--------------------------------------------------------------------
 init([Args]) ->
-    put('callid', ?LOG_SYSTEM_ID),
+    wh_util:put_callid(?LOG_SYSTEM_ID),
     lager:debug("starting amqp worker"),
     NegThreshold = props:get_value('neg_resp_threshold', Args, 1),
     Pool = props:get_value('name', Args, 'undefined'),
@@ -755,7 +755,7 @@ handle_info({'DOWN', ClientRef, 'process', _Pid, _Reason}, #state{current_msg_id
                                                                   ,client_ref = ClientRef
                                                                   ,callid = CallID
                                                                  }=State) ->
-    put('callid', CallID),
+    wh_util:put_callid(CallID),
     lager:debug("requestor processes ~p  died while waiting for msg id ~s", [_Pid, _MsgID]),
     {'noreply', reset(State), 'hibernate'};
 handle_info('timeout', #state{neg_resp=ErrorJObj
@@ -789,7 +789,7 @@ handle_info({'timeout', ReqRef, 'req_timeout'}, #state{current_msg_id= _MsgID
                                                        ,client_from={_Pid, _}=From
                                                        ,defer_response=ReservedJObj
                                                       }=State) ->
-    put('callid', CallID),
+    wh_util:put_callid(CallID),
     case wh_util:is_empty(ReservedJObj) of
         'true' ->
             lager:debug("request timeout exceeded for msg id: ~s and client: ~p", [_MsgID, _Pid]),
@@ -804,7 +804,7 @@ handle_info({'timeout', ReqRef, 'req_timeout'}, #state{responses=Resps
                                                        ,client_from=From
                                                        ,callid=CallId
                                                       }=State) ->
-    put('callid', CallId),
+    wh_util:put_callid(CallId),
     lager:debug("req timeout for call_collect"),
     gen_server:reply(From, {'timeout', Resps}),
     {'noreply', reset(State), 'hibernate'};
@@ -855,7 +855,7 @@ code_change(_OldVsn, State, _Extra) ->
 reset(#state{req_timeout_ref = ReqRef
              ,client_ref = ClientRef
             }=State) ->
-    put('callid', ?LOG_SYSTEM_ID),
+    wh_util:put_callid(?LOG_SYSTEM_ID),
     _ = case is_reference(ReqRef) of
             'true' -> erlang:cancel_timer(ReqRef);
             'false' -> 'ok'

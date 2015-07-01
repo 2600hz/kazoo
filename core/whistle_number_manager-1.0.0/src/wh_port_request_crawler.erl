@@ -67,7 +67,7 @@ cleanup_timer() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    put('callid', ?MODULE),
+    wh_util:put_callid(?MODULE),
     lager:debug("started ~s", [?MODULE]),
     {'ok', #state{cleanup_ref=cleanup_timer()}}.
 

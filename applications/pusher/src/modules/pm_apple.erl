@@ -25,7 +25,7 @@ start_link() ->
 
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    put('callid', ?MODULE),
+    wh_util:put_callid(?MODULE),
     {'ok', #state{tab=ets:new(?MODULE, [])}}.
 
 -spec handle_call(term(), pid_ref(), state()) -> handle_call_ret_state(state()).

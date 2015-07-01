@@ -268,7 +268,7 @@ set_node_cookie(Cookie) when is_atom(Cookie) ->
 %%--------------------------------------------------------------------
 init([]) ->
     process_flag('trap_exit', 'true'),
-    put('callid', ?LOG_SYSTEM_ID),
+    wh_util:put_callid(?LOG_SYSTEM_ID),
     _ = ets:new(?MODULE, ['ordered_set'
                           ,{'read_concurrency', 'true'}
                           ,{'keypos', #wh_couch_connection.id}

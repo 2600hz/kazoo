@@ -62,7 +62,7 @@ start_link(TableId, TableOptions) ->
 %%--------------------------------------------------------------------
 init([TableId, TableOptions]) ->
     process_flag('trap_exit', 'true'),
-    put('callid', ?MODULE),
+    wh_util:put_callid(?MODULE),
     gen_server:cast(self(), {'begin', TableId, TableOptions}),
 
     lager:debug("started etsmgr for stats for ~s", [TableId]),

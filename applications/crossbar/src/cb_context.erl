@@ -468,7 +468,7 @@ fetch(#cb_context{storage=Storage}, Key, Default) ->
 %%--------------------------------------------------------------------
 -spec put_reqid(context()) -> api_binary().
 put_reqid(#cb_context{req_id=ReqId}) ->
-    put('callid', ReqId).
+    wh_util:put_callid(ReqId).
 
 %%--------------------------------------------------------------------
 %% @public

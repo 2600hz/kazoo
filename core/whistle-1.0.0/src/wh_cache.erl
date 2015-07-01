@@ -354,7 +354,7 @@ handle_document_change(JObj, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Name, ExpirePeriod, Props]) ->
-    put('callid', Name),
+    wh_util:put_callid(Name),
     wapi_conf:declare_exchanges(),
 
     Tab = ets:new(Name, ['set', 'protected', 'named_table', {'keypos', #cache_obj.key}]),

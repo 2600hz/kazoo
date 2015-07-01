@@ -332,7 +332,7 @@ count() -> ets:info(?MODULE, 'size').
 
 -spec handle_reg_success(atom(), wh_proplist()) -> 'ok'.
 handle_reg_success(Node, Props) ->
-    put('callid', props:get_first_defined([<<"Call-ID">>, <<"call-id">>], Props, 'reg_success')),
+    wh_util:put_callid(props:get_first_defined([<<"Call-ID">>, <<"call-id">>], Props, 'reg_success')),
     Req = lists:foldl(fun(<<"Contact">>=K, Acc) ->
                               [{K, get_fs_contact(Props)} | Acc];
                          (K, Acc) ->
@@ -1029,13 +1029,13 @@ maybe_send_deregister_notice(#registration{username=Username
                                            ,suppress_unregister='true'
                                            ,call_id=CallId
                                           }) ->
-    put('callid', CallId),
+    wh_util:put_callid(CallId),
     lager:debug("registration ~s@~s expired", [Username, Realm]);
 maybe_send_deregister_notice(#registration{username=Username
                                            ,realm=Realm
                                            ,call_id=CallId
                                           }=Reg) ->
-    put('callid', CallId),
+    wh_util:put_callid(CallId),
     case oldest_registrar() of
         'false' -> 'ok';
         'true' ->

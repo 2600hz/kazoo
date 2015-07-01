@@ -108,7 +108,7 @@ deliveries(Srv) ->
 %% @end
 %%--------------------------------------------------------------------
 init([FSMPid]) ->
-    put('callid', ?LOG_SYSTEM_ID),
+    wh_util:put_callid(?LOG_SYSTEM_ID),
 
     lager:debug("shared queue proc started, sending messages to FSM ~p", [FSMPid]),
     {'ok', #state{fsm_pid=FSMPid}}.

@@ -743,7 +743,7 @@ clear_member_call(#state{connection_timer_ref=ConnRef
                          ,collect_ref=CollectRef
                          ,queue_id=QueueId
                         }=State) ->
-    put('callid', QueueId),
+    wh_util:put_callid(QueueId),
     maybe_stop_timer(ConnRef),
     maybe_stop_timer(AgentRef),
     maybe_stop_timer(CollectRef),

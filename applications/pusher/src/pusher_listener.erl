@@ -187,7 +187,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    put('callid', ?MODULE),
+    wh_util:put_callid(?MODULE),
     lager:debug("pusher_listener started"),
     {'ok', #state{}}.
 

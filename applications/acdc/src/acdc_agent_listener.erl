@@ -538,7 +538,7 @@ handle_cast('agent_timeout', #state{agent_call_ids=ACallIds
 
     _ = filter_agent_calls(ACallIds, AgentId),
 
-    put('callid', AgentId),
+    wh_util:put_callid(AgentId),
     {'noreply', State#state{msg_queue_id='undefined'
                             ,acdc_queue_id='undefined'
                             ,agent_call_ids=[]
@@ -1002,7 +1002,7 @@ call_id(Call) ->
                                     ne_binaries().
 maybe_connect_to_agent(MyQ, EPs, Call, Timeout, AgentId, _CdrUrl) ->
     MCallId = whapps_call:call_id(Call),
-    put('callid', MCallId),
+    wh_util:put_callid(MCallId),
 
     ReqId = wh_util:rand_hex_binary(6),
     AcctId = whapps_call:account_id(Call),

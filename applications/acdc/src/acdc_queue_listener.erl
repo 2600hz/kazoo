@@ -203,7 +203,7 @@ delivery(Srv) ->
 %% @end
 %%--------------------------------------------------------------------
 init([WorkerSup, MgrPid, AccountId, QueueId]) ->
-    put('callid', QueueId),
+    wh_util:put_callid(QueueId),
 
     lager:debug("starting queue ~s", [QueueId]),
 
@@ -309,7 +309,7 @@ handle_cast({'member_connect_req', MemberCallJObj, Delivery, _Url}
                    }=State) ->
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, MemberCallJObj)),
 
-    put('callid', whapps_call:call_id(Call)),
+    wh_util:put_callid(whapps_call:call_id(Call)),
 
     acdc_util:bind_to_call_events(Call),
     lager:debug("bound to call events for ~s", [whapps_call:call_id(Call)]),
@@ -642,7 +642,7 @@ clear_call_state(#state{account_id=AccountId
                        }=State) ->
     _ = acdc_util:queue_presence_update(AccountId, QueueId),
 
-    put('callid', QueueId),
+    wh_util:put_callid(QueueId),
     State#state{call='undefined'
                 ,member_call_queue='undefined'
                 ,agent_id='undefined'

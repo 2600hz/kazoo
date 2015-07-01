@@ -273,7 +273,7 @@ current() -> gen_fsm:sync_send_all_state_event(?SERVER, 'current').
 %%--------------------------------------------------------------------
 init([]) ->
     _ = random:seed(erlang:now()),
-    put('callid', ?MODULE),
+    wh_util:put_callid(?MODULE),
     self() ! '$maybe_start_auto_compaction_job',
     {'ok', 'ready', #state{conn='undefined'
                            ,admin_conn='undefined'
@@ -1335,7 +1335,7 @@ wait_for_pids(MaxWait, [{P,Ref}|Ps]) ->
 
 -spec compact_shard(server(), server(), ne_binary(), ne_binaries()) -> 'ok'.
 compact_shard(Conn, AdminConn, S, DDs) ->
-    put('callid', 'compact_shard'),
+    wh_util:put_callid('compact_shard'),
 
     wait_for_compaction(AdminConn, S),
 

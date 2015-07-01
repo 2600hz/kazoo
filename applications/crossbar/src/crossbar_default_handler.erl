@@ -25,7 +25,7 @@
 -spec init({atom(), 'http'}, cowboy_req:req(), wh_proplist()) ->
                   {'ok', cowboy_req:req(), 'undefined'}.
 init({_Any, 'http'}, Req0, HandlerOpts) ->
-    put('callid', ?LOG_SYSTEM_ID),
+    wh_util:put_callid(?LOG_SYSTEM_ID),
 
     {Path, Req1} = cowboy_req:path(Req0),
 

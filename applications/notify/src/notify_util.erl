@@ -59,7 +59,7 @@ send_email(From, To, Email) ->
                            ,{'auth', Auth}
                           ]
                          ,fun(X) ->
-                                  put('callid', ReqId),
+                                  wh_util:put_callid(ReqId),
                                   lager:debug("email relay responded: ~p, send to ~p", [X, Self]),
                                   Self ! {'relay_response', X}
                           end),

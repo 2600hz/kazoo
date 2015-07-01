@@ -22,7 +22,7 @@ start_link() ->
 
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    put('callid', ?MODULE),
+    wh_util:put_callid(?MODULE),
     lager:debug("starting server"),
     {'ok', #state{tab=ets:new(?MODULE, [])}}.
 

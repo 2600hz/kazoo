@@ -77,7 +77,7 @@ disconnect(Srv) ->
 %%--------------------------------------------------------------------
 init([#wh_amqp_connection{}=Connection]) ->
     _ = process_flag('trap_exit', 'true'),
-    put('callid', ?LOG_SYSTEM_ID),
+    wh_util:put_callid(?LOG_SYSTEM_ID),
     {'ok', disconnected(Connection#wh_amqp_connection{manager=self()})}.
 
 %%--------------------------------------------------------------------

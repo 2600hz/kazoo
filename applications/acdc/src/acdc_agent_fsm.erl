@@ -1396,7 +1396,7 @@ clear_call(#state{fsm_call_id=FSMemberCallId
                   ,wrapup_ref=WRef
                   ,pause_ref=PRef
                  }=State, NextState)->
-    put('callid', FSMemberCallId),
+    wh_util:put_callid(FSMemberCallId),
 
     ReadyForAction = not (NextState =:= 'wrapup' orelse NextState =:= 'paused'),
     lager:debug("ready for action: ~s: ~s", [NextState, ReadyForAction]),
@@ -1666,7 +1666,7 @@ notify(Url, Method, Key, #state{account_id=AccountId
                                 ,agent_call_id=AgentCallId
                                 ,member_call_queue_id=QueueId
                                }) ->
-    put('callid', whapps_call:call_id(MemberCall)),
+    wh_util:put_callid(whapps_call:call_id(MemberCall)),
     Data = wh_json:from_list(
              props:filter_undefined(
                [{<<"account_id">>, AccountId}

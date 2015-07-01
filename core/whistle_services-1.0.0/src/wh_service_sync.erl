@@ -207,7 +207,7 @@ bump_modified(JObj) ->
             %% modified time to be x mins in the past) we have gain exclusive
             %% control for x mins.... good luck!
             [RevNum, _] = binary:split(wh_doc:revision(NewJObj), <<"-">>),
-            put('callid', <<AccountId/binary, "-", RevNum/binary>>),
+            wh_util:put_callid(<<AccountId/binary, "-", RevNum/binary>>),
             lager:debug("start synchronization of services with bookkeepers"),
             maybe_follow_billing_id(AccountId, NewJObj)
     end.
