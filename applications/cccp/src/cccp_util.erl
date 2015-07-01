@@ -71,7 +71,7 @@ handle_disconnect_cause(JObj) ->
                        'error'.
 authorize(Value, View) ->
     ViewOptions = [{'key', Value}],
-    case couch_mgr:get_results(?CCCPS_DB, View, ViewOptions) of
+    case couch_mgr:get_results(?KZ_CCCPS_DB, View, ViewOptions) of
         {'ok',[]} ->
             lager:info("Auth by ~p failed for: ~p. No such value in Db.", [Value, View]),
             'empty';   %%% don't change. used in cb_cccps.erl

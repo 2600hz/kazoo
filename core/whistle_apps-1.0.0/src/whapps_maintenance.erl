@@ -224,6 +224,10 @@ refresh(?KZ_ACDC_DB) ->
     couch_mgr:db_create(?KZ_ACDC_DB),
     _ = couch_mgr:revise_doc_from_file(?KZ_ACDC_DB, 'crossbar', <<"views/acdc.json">>),
     'ok';
+refresh(?KZ_CCCPS_DB) ->
+    couch_mgr:db_create(?KZ_CCCPS_DB),
+    _ = couch_mgr:revise_doc_from_file(?KZ_CCCPS_DB, 'crossbar', <<"views/cccps.json">>),
+    'ok';
 refresh(?KZ_TOKEN_DB) ->
     _ = couch_mgr:db_create(?KZ_TOKEN_DB),
     couch_mgr:revise_doc_from_file(?KZ_TOKEN_DB, 'crossbar', "views/token_auth.json"),
