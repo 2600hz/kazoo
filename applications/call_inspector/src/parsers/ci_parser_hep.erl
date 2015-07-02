@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (c) 2010-2013, 2600Hz
+%%% @copyright (c) 2010-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -159,7 +159,7 @@ make_and_store_chunk(Hep) ->
     ParserId = ci_parsers_sup:child(self()),
     Chunk =
         ci_chunk:setters(ci_chunk:new()
-                        , [{fun ci_chunk:data/2, Data}
+                         ,[{fun ci_chunk:data/2, Data}
                            ,{fun ci_chunk:call_id/2, ci_parsers_util:call_id(Data)}
                            ,{fun ci_chunk:timestamp/2, ci_parsers_util:timestamp(hep:timestamp(Hep))}
                            ,{fun ci_chunk:parser/2, ParserId}
