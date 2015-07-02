@@ -153,14 +153,14 @@ from_json(JObj) ->
               ,parser = wh_json:get_value(<<"parser">>, JObj)
              }.
 
--spec src(chunk() | ne_binary()) -> {ne_binary(), pos_integer()}.
+-spec src(chunk() | ne_binary()) -> ne_binary() | {ne_binary(), pos_integer()}.
 src(#ci_chunk{src_ip = Ip, src_port = Port}) ->
     <<Ip/binary, ":", (wh_util:to_binary(Port))/binary>>;
 src(Bin = <<_/binary>>) ->
     [IP, Port] = binary:split(Bin, <<":">>),
     {IP, wh_util:to_integer(Port)}.
 
--spec dst(chunk() | ne_binary()) -> {ne_binary(), pos_integer()}.
+-spec dst(chunk() | ne_binary()) -> ne_binary() | {ne_binary(), pos_integer()}.
 dst(#ci_chunk{dst_ip = Ip, dst_port = Port}) ->
     <<Ip/binary, ":", (wh_util:to_binary(Port))/binary>>;
 dst(Bin = <<_/binary>>) ->
