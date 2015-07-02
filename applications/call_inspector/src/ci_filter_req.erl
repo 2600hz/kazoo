@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -16,8 +16,8 @@
 handle_req(JObj, _Props) ->
     'true' = wapi_inspector:filter_req_v(JObj),
     CallIds = [CallId
-               || CallId <- wh_json:get_value(<<"Call-IDs">>, JObj, [])
-                      , ci_datastore:callid_exists(CallId)
+               || CallId <- wh_json:get_value(<<"Call-IDs">>, JObj, []),
+                  ci_datastore:callid_exists(CallId)
               ],
     Q = wh_json:get_value(<<"Server-ID">>, JObj),
     MessageId = wh_json:get_value(<<"Msg-ID">>, JObj),
@@ -27,7 +27,7 @@ handle_req(JObj, _Props) ->
 send_response(CallIds, Q, MessageId) ->
     JObj = wh_json:from_list(
              [{<<"Call-IDs">>, CallIds}
-             ,{<<"Msg-ID">>, MessageId}
+              ,{<<"Msg-ID">>, MessageId}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]
             ),
