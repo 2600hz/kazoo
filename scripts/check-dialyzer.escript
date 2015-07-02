@@ -54,11 +54,11 @@ warn(Path) ->
     case {is_beam(Path), is_erl(Path)} of
         {'true',_} ->
             do_warn(Path);
-        {_,'true'} ->
-            RootDir = root_dir(Path),
-            Module  = filename:basename(Path, ".erl"),
-            Beam = filename:join([RootDir, "ebin", Module++".beam"]),
-            do_warn(Beam);
+%%        {_,'true'} ->
+%%            RootDir = root_dir(Path),
+%%            Module  = filename:basename(Path, ".erl"),
+%%            Beam = filename:join([RootDir, "ebin", Module++".beam"]),
+%%            do_warn(Beam);
         {_,_} ->
             io:format("going through ~p\n", [Path]),
             Files = filelib:wildcard(filename:join(Path, "*.beam")),
