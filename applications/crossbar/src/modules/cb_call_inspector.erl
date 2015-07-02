@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
-%%%
-%%% Listing of all expected v1 callbacks
 %%%
 %%% @end
 %%% @contributors:
@@ -12,12 +10,9 @@
 -module(cb_call_inspector).
 
 -export([init/0
-         ,allowed_methods/0
-         ,allowed_methods/1
-         ,resource_exists/0
-         ,resource_exists/1
-         ,validate/1
-         ,validate/2
+         ,allowed_methods/0, allowed_methods/1
+         ,resource_exists/0, resource_exists/1
+         ,validate/1, validate/2
          ,to_json/1
          ,to_csv/1
         ]).
@@ -45,7 +40,7 @@ init() ->
 -spec to_json(cb_cdrs:payload()) -> cb_cdrs:payload().
 to_json({Req1, Context}) ->
     Nouns = cb_context:req_nouns(Context),
-    lager:debug("Nouns: ~p", [Nouns]),
+
     case props:get_value(<<"call_inspector">>, Nouns, []) of
         [_|_] -> {Req1, Context};
         [] ->
@@ -58,7 +53,9 @@ to_json({Req1, Context}) ->
             'ok' = cowboy_req:chunk([",\"request_id\":\"", cb_context:req_id(Context), "\""
                                      ,",\"auth_token\":\"", cb_context:auth_token(Context), "\""
                                      ,"}"
-                                    ], Req3),
+                                    ]
+                                    ,Req3
+                                   ),
             'ok' = cowboy_req:ensure_response(Req3, 200),
             {Req3, cb_context:store(Context1, 'is_chunked', 'true')}
     end.
@@ -66,7 +63,7 @@ to_json({Req1, Context}) ->
 -spec to_csv(cb_cdrs:payload()) -> cb_cdrs:payload().
 to_csv({Req, Context}) ->
     Nouns = cb_context:req_nouns(Context),
-    lager:debug("Nouns: ~p", [Nouns]),
+
     case props:get_value(<<"call_inspector">>, Nouns, []) of
         [_|_] -> {Req, Context};
         [] ->
@@ -141,15 +138,15 @@ inspect_call_id(CallId, Context) ->
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case wh_amqp_worker:call(Req
-                            ,fun wapi_inspector:publish_lookup_req/1
-                            ,fun wapi_inspector:lookup_resp_v/1
+                             ,fun wapi_inspector:publish_lookup_req/1
+                             ,fun wapi_inspector:lookup_resp_v/1
                             )
     of
         {'ok', JObj} ->
             Response =
                 wh_json:from_list(
                   [{<<"messages">>, wh_json:get_value(<<"Chunks">>, JObj)}
-                  ,{<<"analysis">>, wh_json:get_value(<<"Analysis">>, JObj)}
+                   ,{<<"analysis">>, wh_json:get_value(<<"Analysis">>, JObj)}
                   ]
                  ),
             crossbar_util:response(Response, Context);
@@ -195,8 +192,8 @@ filter_cdr_ids(Ids) ->
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case wh_amqp_worker:call(Req
-                            ,fun wapi_inspector:publish_filter_req/1
-                            ,fun wapi_inspector:filter_resp_v/1
+                             ,fun wapi_inspector:publish_filter_req/1
+                             ,fun wapi_inspector:filter_resp_v/1
                             )
     of
         {'ok', JObj} ->
