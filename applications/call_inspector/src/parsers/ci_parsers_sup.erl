@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -56,7 +56,6 @@ init([]) ->
 
     {'ok', {SupFlags, []}}.
 
-
 -type parser() :: 'ci_parser_freeswitch' | 'ci_parser_kamailio' | 'ci_parser_hep'.
 -spec start_child(parser(), [{'parser_args',_,_} | {'parser_args',_,_,_}]) ->
                          {'ok', atom()}.
@@ -75,14 +74,13 @@ stop_child(Id) ->
 children() ->
     [Id
      || {Id, _Pid, _Type, _Modules} <- supervisor:which_children(?MODULE)
-            %% , _Pid =/= 'undefined'
     ].
 
 -spec child(pid()) -> api_atom().
 child(PID) ->
     case [Id
-          || {Id, Pid, _Type, _Modules} <- supervisor:which_children(?MODULE)
-                 , Pid =:= PID
+          || {Id, Pid, _Type, _Modules} <- supervisor:which_children(?MODULE),
+             Pid =:= PID
          ]
     of
         [Id] -> Id;
