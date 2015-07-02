@@ -838,6 +838,7 @@ bind_q_to_configuration(Queue, Routing) ->
 bind_q_to_monitor(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_MONITOR).
 
+-spec unbind_q_from_monitor(ne_binary(), ne_binary()) -> 'ok'.
 unbind_q_from_monitor(Queue, Routing) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_MONITOR).
 
