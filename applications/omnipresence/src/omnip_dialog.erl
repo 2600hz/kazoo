@@ -211,14 +211,6 @@ handle_disconnected_channel(JObj) ->
 handle_connected_channel(_JObj) ->
     'ok'.
 
-%% -spec initial_update(ne_binary()) -> 'ok'.
-%% initial_update(User) ->
-%%     Headers = [{<<"From">>, User}
-%%                ,{<<"To">>, User}
-%%                ,{<<"Call-ID">>, wh_util:rand_hex_binary(16)}
-%%               ],
-%%     handle_update(wh_json:from_list(Headers), ?PRESENCE_HANGUP).
-
 -spec presence_event(wh_json:object()) -> 'ok'.
 presence_event(JObj) ->
     State = wh_json:get_value(<<"State">>, JObj),
