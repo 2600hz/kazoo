@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -10,6 +10,7 @@
 -behaviour(gen_listener).
 
 -export([start_link/0]).
+
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -26,16 +27,13 @@
 -define(BINDINGS, [{'self', []}
                    ,{'inspector', []}
                   ]).
--define(RESPONDERS, [{'ci_lookup_req',
-                      [{<<"call_inspector">>, <<"lookup_req">>}]
+-define(RESPONDERS, [{'ci_lookup_req'
+                      ,[{<<"call_inspector">>, <<"lookup_req">>}]
                      }
-                    ,{'ci_filter_req',
-                      [{<<"call_inspector">>, <<"filter_req">>}]
-                     }
+                     ,{'ci_filter_req'
+                       ,[{<<"call_inspector">>, <<"filter_req">>}]
+                      }
                     ]).
--define(QUEUE_NAME, <<>>).
--define(QUEUE_OPTIONS, []).
--define(CONSUME_OPTIONS, []).
 
 %%%===================================================================
 %%% API
@@ -49,12 +47,12 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS}
-                                      ,{'responders', ?RESPONDERS}
-                                      ,{'queue_name', ?QUEUE_NAME}
-                                      ,{'queue_options', ?QUEUE_OPTIONS}
-                                      ,{'consume_options', ?CONSUME_OPTIONS}
-                                     ], []).
+    gen_listener:start_link(?MODULE
+                            ,[{'bindings', ?BINDINGS}
+                              ,{'responders', ?RESPONDERS}
+                             ]
+                            ,[]
+                           ).
 
 %%%===================================================================
 %%% gen_server callbacks
