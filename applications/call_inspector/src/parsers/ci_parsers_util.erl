@@ -15,7 +15,8 @@
 -export([parse_interval/0]).
 -export([make_name/1]).
 -export([call_id/1
-        ,c_seq/1]).
+         ,c_seq/1
+        ]).
 
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
@@ -29,23 +30,23 @@ timestamp() ->
 -spec timestamp(ne_binary() | erlang:timestamp()) -> api_number().
 timestamp(<<YYYY:4/binary, "-", MM:2/binary, "-", DD:2/binary, "T"
             ,HH:2/binary, ":", MMM:2/binary, ":", SS:2/binary, "."
-            ,Micro:6/binary, "+", _H:2/binary, ":", _M:2/binary, " ", _/binary>>) ->
+            ,Micro:6/binary, "+", _H:2/binary, ":", _M:2/binary, " ", _/binary
+          >>) ->
     1.0e-6 * wh_util:to_integer(Micro) +
         calendar:datetime_to_gregorian_seconds(
-          { {wh_util:to_integer(YYYY), wh_util:to_integer(MM), wh_util:to_integer(DD)}
-          , {wh_util:to_integer(HH), wh_util:to_integer(MMM), wh_util:to_integer(SS)} });
-timestamp({_,_,Micro} = TS) ->
-    Datetime = calendar:now_to_universal_time(TS),
-    1.0e-6 * Micro +
-        calendar:datetime_to_gregorian_seconds(Datetime);
+          {{wh_util:to_integer(YYYY), wh_util:to_integer(MM), wh_util:to_integer(DD)}
+           ,{wh_util:to_integer(HH), wh_util:to_integer(MMM), wh_util:to_integer(SS)}
+          }
+         );
+timestamp({_,_,_} = TS) ->
+    wh_util:now_s(TS);
 timestamp(_) -> 'undefined'.
-
 
 -spec open_file(iodata()) -> file:io_device().
 open_file(Filename) ->
-    Options = ['read','append'     %% Read whole file then from its end
-              ,'binary'            %% Return binaries instead of lists
-              ,'raw','read_ahead'  %% Faster access to file
+    Options = ['read','append'      %% Read whole file then from its end
+               ,'binary'            %% Return binaries instead of lists
+               ,'raw','read_ahead'  %% Faster access to file
               ],
     case file:open(Filename, Options) of
         {'ok', IoDevice} -> IoDevice;
@@ -53,11 +54,9 @@ open_file(Filename) ->
             lager:debug("parser cannot open '~p': ~p", [Filename,_FileOpenError])
     end.
 
-
 -spec parse_interval() -> pos_integer().
 parse_interval() ->
-    2*1000.  %% Milliseconds
-
+    2 * ?MILLISECONDS_IN_SECOND.  %% Milliseconds
 
 -spec make_name(ne_binary() | {'parser_args', ne_binary(), _}) -> atom().
 make_name(Bin)
@@ -73,7 +72,6 @@ make_name({'parser_args', Filename, _IP, _Port}) ->
     FName = filename:absname(Filename),
     make_name(wh_util:to_binary(FName)).
 
-
 -spec call_id(ne_binaries()) -> ne_binary().
 call_id(Data) ->
     sip_field([<<"Call-ID">>, <<"i">>], Data).
@@ -88,11 +86,9 @@ c_seq(Data) ->
 sip_field(_Fields, []) ->
     'undefined';
 sip_field(Fields, [Data|Rest]) ->
-    case [Val || Field <- Fields
-                     , begin
-                           Val = try_all(Data, Field),
-                           'false' =/= Val
-                       end]
+    case [Val || Field <- Fields,
+                 (Val = try_all(Data, Field)) =/= 'false'
+         ]
     of
         [] ->
             sip_field(Fields, Rest);
