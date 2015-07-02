@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%% @copyright (C) 2013, VoIP INC
+%%% @copyright (C) 2013-2015, 2600Hz INC
 %%% @doc
 %%%
 %%%
@@ -84,7 +84,7 @@ post(#cb_context{}=Context, User, ?RESET) ->
            ,{<<"Realm">>, cb_context:account_realm(Context)}
            |wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    wh_federation:cast(Req, fun wapi_presence:publish_reset/1),
+    wh_amqp_worker:cast(Req, fun wapi_presence:publish_reset/1),
     Context#cb_context{resp_status='success'}.
 
 %%%===================================================================
@@ -102,10 +102,10 @@ publish_search_req(Realm, Context) ->
            ,{<<"Event-Package">>, cb_context:req_param(Context, <<"event">>)}
            |wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case wh_federation:collect(Req
-                               ,fun wapi_presence:publish_search_req/1
-                               ,{'omnipresence', 'true', 'true'}
-                              )
+    case wh_amqp_worker:call_collect(Req
+                                     ,fun wapi_presence:publish_search_req/1
+                                     ,{'omnipresence', 'true', 'true'}
+                                    )
     of
         {'ok', JObjs} ->
             J = lists:foldl(fun extract_subscriptions/2, wh_json:new(), JObjs),
@@ -131,10 +131,10 @@ publish_presentity_search_req(Realm, Context) ->
           ],
     Count = wh_nodes:whapp_count(<<"kamailio">>, 'true'),
     lager:debug("attempting to collect ~p responses from kamailio", [Count]),
-    case wh_federation:collect(Req
-                               ,fun wapi_omnipresence:publish_search_req/1
-                               ,{fun collect_presentities/2 , {0, Count}}
-                              )
+    case wh_amqp_worker:call_collect(Req
+                                     ,fun wapi_omnipresence:publish_search_req/1
+                                     ,{fun collect_presentities/2 , {0, Count}}
+                                    )
     of
         {'ok', JObjs} ->
             J = lists:foldl(fun extract_presentities/2, wh_json:new(), JObjs),
