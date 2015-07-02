@@ -38,46 +38,47 @@ init() ->
     crossbar_bindings:bind(<<"*.validate.call_inspector">>, ?MODULE, 'validate').
 
 -spec to_json(cb_cdrs:payload()) -> cb_cdrs:payload().
+-spec to_json(cb_cdrs:payload(), list()) -> cb_cdrs:payload().
 to_json({Req1, Context}) ->
-    Nouns = cb_context:req_nouns(Context),
-
-    case props:get_value(<<"call_inspector">>, Nouns, []) of
-        [_|_] -> {Req1, Context};
-        [] ->
-            Headers = cowboy_req:get('resp_headers', Req1),
-            {'ok', Req2} = cowboy_req:chunked_reply(200, Headers, Req1),
-            'ok' = cowboy_req:chunk("{\"status\":\"success\", \"data\":[", Req2),
-            {Req3, Context1} = send_chunked_cdrs({Req2, Context}),
-            'ok' = cowboy_req:chunk("]", Req3),
-            _ = cb_cdrs:pagination({Req3, Context1}),
-            'ok' = cowboy_req:chunk([",\"request_id\":\"", cb_context:req_id(Context), "\""
-                                     ,",\"auth_token\":\"", cb_context:auth_token(Context), "\""
-                                     ,"}"
-                                    ]
-                                    ,Req3
-                                   ),
-            'ok' = cowboy_req:ensure_response(Req3, 200),
-            {Req3, cb_context:store(Context1, 'is_chunked', 'true')}
-    end.
+    to_json({Req1, Context}
+            ,props:get_value(<<"call_inspector">>, cb_context:req_nouns(Context), [])
+           ).
+to_json(Payload, [_|_]) -> Payload;
+to_json({Req1, Context}, []) ->
+    Headers = cowboy_req:get('resp_headers', Req1),
+    {'ok', Req2} = cowboy_req:chunked_reply(200, Headers, Req1),
+    'ok' = cowboy_req:chunk("{\"status\":\"success\", \"data\":[", Req2),
+    {Req3, Context1} = send_chunked_cdrs({Req2, Context}),
+    'ok' = cowboy_req:chunk("]", Req3),
+    _ = cb_cdrs:pagination({Req3, Context1}),
+    'ok' = cowboy_req:chunk([",\"request_id\":\"", cb_context:req_id(Context), "\""
+                             ,",\"auth_token\":\"", cb_context:auth_token(Context), "\""
+                             ,"}"
+                            ]
+                            ,Req3
+                           ),
+    'ok' = cowboy_req:ensure_response(Req3, 200),
+    {Req3, cb_context:store(Context1, 'is_chunked', 'true')}.
 
 -spec to_csv(cb_cdrs:payload()) -> cb_cdrs:payload().
+-spec to_csv(cb_cdrs:payload(), list()) -> cb_cdrs:payload().
 to_csv({Req, Context}) ->
-    Nouns = cb_context:req_nouns(Context),
+    to_csv({Req, Context}
+           ,props:get_value(<<"call_inspector">>, cb_context:req_nouns(Context), [])
+          ).
 
-    case props:get_value(<<"call_inspector">>, Nouns, []) of
-        [_|_] -> {Req, Context};
-        [] ->
-            Headers = props:set_values([{<<"content-type">>, <<"application/octet-stream">>}
-                                        ,{<<"content-disposition">>, <<"attachment; filename=\"cdrs.csv\"">>}
-                                       ]
-                                       ,cowboy_req:get('resp_headers', Req)
-                                      ),
-            {'ok', Req1} = cowboy_req:chunked_reply(200, Headers, Req),
-            Context1 = cb_context:store(Context, 'is_csv', 'true'),
-            {Req2, _} = send_chunked_cdrs({Req1, Context1}),
-            'ok' = cowboy_req:ensure_response(Req2, 200),
-            {Req2, cb_context:store(Context1,'is_chunked', 'true')}
-    end.
+to_csv(Payload, [_|_]) -> Payload;
+to_csv({Req, Context}, []) ->
+    Headers = props:set_values([{<<"content-type">>, <<"application/octet-stream">>}
+                                ,{<<"content-disposition">>, <<"attachment; filename=\"cdrs.csv\"">>}
+                               ]
+                               ,cowboy_req:get('resp_headers', Req)
+                              ),
+    {'ok', Req1} = cowboy_req:chunked_reply(200, Headers, Req),
+    Context1 = cb_context:store(Context, 'is_csv', 'true'),
+    {Req2, _} = send_chunked_cdrs({Req1, Context1}),
+    'ok' = cowboy_req:ensure_response(Req2, 200),
+    {Req2, cb_context:store(Context1,'is_chunked', 'true')}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -178,15 +179,17 @@ send_chunked_cdrs([Db | Dbs], {Req, Context}) ->
     Context1 = cb_context:store(Context, 'start_key', props:get_value('startkey', ViewOptions)),
     Context2 = cb_context:store(Context1, 'page_size', 0),
     Ids = get_cdr_ids(Db, View, ViewOptions),
-    lager:debug("IDS: ~p", [Ids]),
+
     {Context3, CDRIds} = cb_cdrs:maybe_paginate_and_clean(Context2, Ids),
     send_chunked_cdrs(Dbs, cb_cdrs:load_chunked_cdrs(Db, CDRIds, {Req, Context3})).
 
+-spec get_cdr_ids(ne_binary(), ne_binary(), crossbar_doc:view_options()) ->
+                         ne_binaries().
 get_cdr_ids(Db, View, ViewOptions) ->
     {'ok', Ids} = cb_cdrs:get_cdr_ids(Db, View, ViewOptions),
     filter_cdr_ids(Ids).
 
--spec filter_cdr_ids(ne_binaries()) -> cb_context:context().
+-spec filter_cdr_ids(ne_binaries()) -> ne_binaries().
 filter_cdr_ids(Ids) ->
     Req = [{<<"Call-IDs">>, [CallId || {<<_:7/binary, CallId/binary>>, _} <- Ids]}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -198,8 +201,11 @@ filter_cdr_ids(Ids) ->
     of
         {'ok', JObj} ->
             FilteredIds = wh_json:get_value(<<"Call-IDs">>, JObj, []),
-            lager:debug("FiltereIDs ~p", [FilteredIds]),
-            [Id || {<<_:7/binary, CallId/binary>>, _}=Id <- Ids, lists:member(CallId, FilteredIds)];
+
+            [Id ||
+                {<<_:7/binary, CallId/binary>>, _}=Id <- Ids,
+                lists:member(CallId, FilteredIds)
+            ];
         {'timeout', _Resp} ->
             lager:debug("timeout: ~p", [_Resp]),
             [];
