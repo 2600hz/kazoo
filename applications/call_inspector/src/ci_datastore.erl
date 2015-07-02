@@ -41,6 +41,12 @@
                 }).
 -type object() :: #object{}.
 
+-type datum() :: {'chunks', [ci_chunk:chunk()]} |
+                 {'analysis', [ci_analysis:analysis()]}.
+-type data() :: [datum(),...] | [].
+
+-export_type([data/0]).
+
 -define(SERVER, ?MODULE).
 -define(CI_DIR, "/tmp/2600hz-call_inspector").
 
@@ -74,10 +80,6 @@ store_analysis(Analysis) ->
 callid_exists(CallId) ->
     File = make_name(CallId),
     filelib:is_file(File).
-
--type datum() :: {'chunks', [ci_chunk:chunk()]} |
-                 {'analysis', [ci_analysis:analysis()]}.
--type data() :: [datum()].
 
 -spec lookup_callid(ne_binary()) -> data().
 lookup_callid(CallId) ->
