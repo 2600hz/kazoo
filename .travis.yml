@@ -32,6 +32,8 @@ after_success:
   - first_commit=$(bash -c "curl https://patch-diff.githubusercontent.com/raw/$TRAVIS_REPO_SLUG/pull/$TRAVIS_PULL_REQUEST.patch -s | head -n 1 | cut -d ' ' -f 2 || true")
   - reference=$(bash -c "[[ $TRAVIS_PULL_REQUEST == false ]] && echo master || echo $first_commit")
   - echo .$reference.
+  - echo .$first_commit.
+  - echo $TRAVIS_PULL_REQUEST
   - files=$(bash -c "git diff --name-only $reference.. | grep -v deps/")
   - $TRAVIS_BUILD_DIR/scripts/check-dialyzer.escript $files
   - kerl_deactivate
