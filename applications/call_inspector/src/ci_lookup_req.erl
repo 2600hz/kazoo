@@ -21,7 +21,7 @@ handle_req(JObj, _Props) ->
     MessageId = wh_json:get_value(<<"Msg-ID">>, JObj),
     send_response(Props, Q, MessageId).
 
--spec send_response(wh_proplist(), ne_binary(), ne_binary()) -> 'ok'.
+-spec send_response(ci_datastore:data(), ne_binary(), ne_binary()) -> 'ok'.
 send_response(Props, Q, MessageId) ->
     JObj = wh_json:from_list(
              [{<<"Chunks">>, chunks_as_json(Props)}
@@ -32,13 +32,13 @@ send_response(Props, Q, MessageId) ->
             ),
     wapi_inspector:publish_lookup_resp(Q, JObj).
 
--spec chunks_as_json(wh_proplist()) -> wh_json:objects().
+-spec chunks_as_json(ci_datastore:data()) -> wh_json:objects().
 chunks_as_json(Props) ->
     [ci_chunk:to_json(Chunk)
      || Chunk <- props:get_value('chunks', Props, [])
     ].
 
--spec analysis_as_json(wh_proplist()) -> wh_json:object().
+-spec analysis_as_json(ci_datastore:data()) -> wh_json:object().
 analysis_as_json(Props) ->
     [ci_analysis:to_json(Analysis)
      || Analysis <- props:get_value('analysis', Props, [])
