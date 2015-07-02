@@ -50,15 +50,27 @@ root_dir(Path) ->
                           (_) -> 'true'
                       end, string:tokens(Path, "/"))).
 
+file_exists(Filename) ->
+    case file:read_file_info(Filename) of
+        {ok, _}         -> 'true';
+        {error, enoent} -> 'false';
+        {error, Reason} -> 'false';
+        _ -> 'false'
+    end.
+
 warn(Path) ->
     case {is_beam(Path), is_erl(Path)} of
         {'true',_} ->
             do_warn(Path);
-%%        {_,'true'} ->
-%%            RootDir = root_dir(Path),
-%%            Module  = filename:basename(Path, ".erl"),
-%%            Beam = filename:join([RootDir, "ebin", Module++".beam"]),
-%%            do_warn(Beam);
+        {_,'true'} ->
+            RootDir = root_dir(Path),
+            Module  = filename:basename(Path, ".erl"),
+            Beam = filename:join([RootDir, "ebin", Module++".beam"]),
+            case file_exists(Beam) of
+                'true' -> do_warn(Beam);
+                'false' -> io:format("file ~s doesn't exist ~p~n", [Beam]),
+                           0
+            end;
         {_,_} ->
             io:format("going through ~p\n", [Path]),
             Files = filelib:wildcard(filename:join(Path, "*.beam")),
