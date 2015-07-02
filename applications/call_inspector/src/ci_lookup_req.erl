@@ -38,7 +38,7 @@ chunks_as_json(Props) ->
      || Chunk <- props:get_value('chunks', Props, [])
     ].
 
--spec analysis_as_json(ci_datastore:data()) -> wh_json:object().
+-spec analysis_as_json(ci_datastore:data()) -> wh_json:objects().
 analysis_as_json(Props) ->
     [ci_analysis:to_json(Analysis)
      || Analysis <- props:get_value('analysis', Props, [])
