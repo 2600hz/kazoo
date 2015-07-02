@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (c) 2010-2013, 2600Hz
+%%% @copyright (c) 2010-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -25,11 +25,11 @@
         ]).
 
 -record(state, {logfile :: file:name()
-               ,iodevice :: file:io_device()
-               ,logip :: ne_binary()
-               ,logport :: pos_integer()
-               ,timer :: reference()
-               ,counter :: pos_integer()
+                ,iodevice :: file:io_device()
+                ,logip :: ne_binary()
+                ,logport :: pos_integer()
+                ,timer :: reference()
+                ,counter :: pos_integer()
                }
        ).
 -type state() :: #state{}.
@@ -131,7 +131,9 @@ handle_info('start_parsing', State=#state{iodevice = IoDevice
         end,
     NewCounter = extract_chunks(IoDevice, LogIP, LogPort, Counter),
     NewTimer = erlang:send_after(ci_parsers_util:parse_interval()
-                                , self(), 'start_parsing'),
+                                 ,self()
+                                 ,'start_parsing'
+                                ),
     {'noreply', State#state{timer = NewTimer
                             ,counter = NewCounter
                            }};
@@ -198,7 +200,7 @@ make_and_store_chunk(LogIP, LogPort, Counter, Data00) ->
     ParserId = ci_parsers_sup:child(self()),
     Chunk =
         ci_chunk:setters(set_legs(LogIP, LogPort, ci_chunk:new(), Data)
-                        , [{fun ci_chunk:data/2, Data}
+                         ,[{fun ci_chunk:data/2, Data}
                            ,{fun ci_chunk:call_id/2, ci_parsers_util:call_id(Data)}
                            ,{fun ci_chunk:timestamp/2, Timestamp}
                            ,{fun ci_chunk:parser/2, ParserId}
@@ -280,11 +282,12 @@ set_legs(LogIP, LogPort, Chunk, [FirstLine|_Lines]) ->
             FromPort = get_port(FirstLine),
             ToPort   = LogPort
     end,
-    ci_chunk:setters(Chunk, [{fun ci_chunk:src_ip/2, FromIP}
-                             ,{fun ci_chunk:dst_ip/2, ToIP}
-                             ,{fun ci_chunk:src_port/2, FromPort}
-                             ,{fun ci_chunk:dst_port/2, ToPort}
-                            ]
+    ci_chunk:setters(Chunk
+                     ,[{fun ci_chunk:src_ip/2, FromIP}
+                       ,{fun ci_chunk:dst_ip/2, ToIP}
+                       ,{fun ci_chunk:src_port/2, FromPort}
+                       ,{fun ci_chunk:dst_port/2, ToPort}
+                      ]
                     ).
 
 -spec ip(ne_binary()) -> ne_binary().
@@ -310,11 +313,9 @@ extract_ahead(Lhs, Span, Rhs, Bin) ->
             'undefined'
     end.
 
-
 -spec label([ne_binary()]) -> ne_binary().
 label(Data) ->
     lists:nth(2, Data).
-
 
 -spec remove_whitespace_lines([binary()]) -> [ne_binary()].
 remove_whitespace_lines(Data) ->
@@ -328,7 +329,6 @@ all_whitespace(<<$\n, Rest/binary>>) ->
 all_whitespace(<<>>) -> 'true';
 all_whitespace(_) -> 'false'.
 
-
 -spec strip_truncating_pieces([ne_binary()]) -> [ne_binary()].
 strip_truncating_pieces(Data) ->
     [case re:run(Line, "(\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{6} \\[[A-Z]+\\] )") of
@@ -337,7 +337,6 @@ strip_truncating_pieces(Data) ->
      end
      || Line <- Data
     ].
-
 
 -spec remove_unrelated_lines([ne_binary()]) -> [ne_binary()].
 remove_unrelated_lines([FirstLine|Lines]) ->
@@ -349,7 +348,6 @@ do_remove_unrelated_lines([<<"   ", _/binary>>=Line|Lines]) ->
     [Line | do_remove_unrelated_lines(Lines)];
 do_remove_unrelated_lines([_|Lines]) ->
     do_remove_unrelated_lines(Lines).
-
 
 -spec unwrap_lines([ne_binary()]) -> [ne_binary()].
 unwrap_lines([FirstLine|Lines]) ->
