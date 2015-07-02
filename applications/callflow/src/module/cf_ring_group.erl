@@ -24,14 +24,26 @@
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    case get_endpoints(Data, Call) of
+    Repeat = wh_json:get_value(<<"repeats">>, Data, 1),
+    repeat(Repeat, Data, Call).
+
+repeat(0, _Data, Call) ->
+    cf_exe:continue(Call);
+repeat(N, Data, Call) when N > 0 ->
+    Next = case get_endpoints(Data, Call) of
         [] ->
             lager:notice("ring group has no endpoints, moving to next callflow element"),
-            cf_exe:continue(Call);
+            'continue';
         Endpoints -> attempt_endpoints(Endpoints, Data, Call)
+    end,
+    case Next of
+        'stop' -> cf_exe:stop(Call);
+        'continue' -> repeat(N - 1, Data, Call);
+        'fail' -> 'ok'
     end.
 
--spec attempt_endpoints(wh_json:objects(), wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec attempt_endpoints(wh_json:objects(), wh_json:object(), whapps_call:call()) ->
+    'stop' | 'fail' | 'continue'.
 attempt_endpoints(Endpoints, Data, Call) ->
     Timeout = wh_json:get_integer_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT_S),
     Strategy = wh_json:get_binary_value(<<"strategy">>, Data, ?DIAL_METHOD_SIMUL),
@@ -41,20 +53,20 @@ attempt_endpoints(Endpoints, Data, Call) ->
     case whapps_call_command:b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Ringback, 'undefined', IgnoreForward, Call) of
         {'ok', _} ->
             lager:info("completed successful bridge to the ring group - call finished normally"),
-            cf_exe:stop(Call);
+            'stop';
         {'fail', _}=F ->
             case cf_util:handle_bridge_failure(F, Call) of
-                'ok' -> lager:debug("bridge failure handled");
-                'not_found' -> cf_exe:continue(Call)
+                'ok' -> lager:debug("bridge failure handled"), 'fail';
+                'not_found' -> 'continue'
             end;
         {'error', 'timeout'} ->
             lager:debug("bridge timed out waiting for someone to answer"),
-            cf_exe:continue(Call);
+            'continue';
         {'error', _R} ->
             lager:info("error bridging to ring group: ~p"
                        ,[wh_json:get_value(<<"Error-Message">>, _R)]
                       ),
-            cf_exe:continue(Call)
+            'continue'
     end.
 
 -spec get_endpoints(wh_json:object(), whapps_call:call()) -> wh_json:objects().
