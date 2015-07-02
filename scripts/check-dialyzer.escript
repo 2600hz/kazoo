@@ -68,7 +68,7 @@ warn(Path) ->
             Beam = filename:join([RootDir, "ebin", Module++".beam"]),
             case file_exists(Beam) of
                 'true' -> do_warn(Beam);
-                'false' -> io:format("file ~s doesn't exist ~p~n", [Beam]),
+                'false' -> io:format("file ~s doesn't exist~n", [Beam]),
                            0
             end;
         {_,_} ->

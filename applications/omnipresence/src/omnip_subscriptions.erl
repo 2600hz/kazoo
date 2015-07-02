@@ -637,26 +637,6 @@ search_for_subscriptions(Event, Realm, Username) ->
                            },
     ets:match_object(table_id(), MatchSpec).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
-%% -spec publish_flush(subscriptions()) -> 'ok'.
-%% publish_flush([]) -> 'ok';
-%% publish_flush([#omnip_subscription{stalker=Q, user=User, event=Event}
-%%                | Subscriptions
-%%               ]) ->
-%%     Props = [{<<"Type">>, <<"id">>}
-%%              ,{<<"Event-Package">>, Event}
-%%              ,{<<"User">>, <<"sip:", User/binary>>}
-%%              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-%%             ],
-%%     lager:debug("sending flush for ~s to ~s", [User, Q]),
-%%     whapps_util:amqp_pool_send(Props, fun(P) -> wapi_presence:publish_flush(Q, P) end),
-%%     publish_flush(Subscriptions).
-
 -spec subscribe(subscription()) -> 'invalid' |
                                    {'subscribe', subscription()} |
                                    {'resubscribe', subscription()} |
