@@ -12,8 +12,7 @@
 -export([setters/2]).
 -export([call_id/2, call_id/1]).
 -export([append_data/2
-         ,data/2
-         ,data/1
+         ,data/1, data/2
         ]).
 -export([timestamp/2, timestamp/1]).
 -export([ref_timestamp/1]).
@@ -57,7 +56,6 @@
         Field(#ci_chunk{Field = Value}) ->
                Value
        ).
-
 
 %% API
 
@@ -147,7 +145,7 @@ from_json(JObj) ->
               ,dst_port = DstPort
               ,call_id = wh_json:get_value(<<"call-id">>, JObj)
               ,timestamp = wh_json:get_value(<<"timestamp">>, JObj)
-              ,ref_timestamp = wh_util:to_float(wh_json:get_value(<<"ref_timestamp">>, JObj))
+              ,ref_timestamp = wh_json:get_float_value(<<"ref_timestamp">>, JObj)
               ,label = wh_json:get_value(<<"label">>, JObj)
               ,data = wh_json:get_value(<<"raw">>, JObj)
               ,parser = wh_json:get_value(<<"parser">>, JObj)
@@ -171,11 +169,9 @@ dst(Bin = <<_/binary>>) ->
 is_chunk(#ci_chunk{}) -> 'true';
 is_chunk(_) -> 'false'.
 
-
 -spec sort_by_timestamp([chunk()]) -> [chunk()].
 sort_by_timestamp(Chunks) ->
     lists:keysort(#ci_chunk.ref_timestamp, Chunks).
-
 
 -spec reorder_dialog([chunk()]) -> [chunk()].
 reorder_dialog([]) -> [];
@@ -193,12 +189,14 @@ pick_ref_parser(Chunks) ->
 -spec do_reorder_dialog(atom(), [chunk()]) -> [chunk()].
 do_reorder_dialog(RefParser, Chunks) ->
     GroupedByCSeq = lists:keysort(1, group_by(fun c_seq/1, Chunks)),
-    lists:flatmap( fun ({_CSeq, ByCSeq}) ->
-                           {ByRefParser, Others} = sort_split_uniq(RefParser, ByCSeq),
-                           {Done, Rest} = first_pass(ByRefParser, Others),
-                           {ReallyDone, NewRest} = second_pass(Done, Rest),
-                           ReallyDone ++ NewRest
-                   end, GroupedByCSeq).
+    lists:flatmap(fun({_CSeq, ByCSeq}) ->
+                          {ByRefParser, Others} = sort_split_uniq(RefParser, ByCSeq),
+                          {Done, Rest} = first_pass(ByRefParser, Others),
+                          {ReallyDone, NewRest} = second_pass(Done, Rest),
+                          ReallyDone ++ NewRest
+                  end
+                  ,GroupedByCSeq
+                 ).
 
 -spec sort_split_uniq(atom(), [chunk()]) -> {[chunk()], [chunk()]}.
 sort_split_uniq(RefParser, Chunks) ->
@@ -234,10 +232,10 @@ first_pass(Before, InOrder, [], UnMergeable) ->
     {Before++InOrder, lists:reverse(UnMergeable)}.
 
 -spec find_previous_packet(chunk(), [chunk()]) -> chunk() | 'no_previous'.
-find_previous_packet( #ci_chunk{ parser = Parser
-                               , ref_timestamp = RefTimestamp
-                               }
-                    , Chunks ) ->
+find_previous_packet(#ci_chunk{parser = Parser
+                               ,ref_timestamp = RefTimestamp
+                              }
+                     ,Chunks) ->
     RightPackets = [Chunk || Chunk <- Chunks, parser(Chunk) =:= Parser],
     Compare = fun (Chunk) -> ref_timestamp(Chunk) < RefTimestamp end,
     PreviousPackets = lists:takewhile(Compare, RightPackets),
@@ -256,11 +254,11 @@ second_pass(InOrder, [Chunk|ToOrder], UnMergeable) ->
             PreviousPacketId = ref_timestamp(PreviousPacket),
             Reordered =
                 lists:flatten(
-                  [ case ref_timestamp(Item) =:= PreviousPacketId of
-                        'true' -> [Item, Chunk];
-                        'false' -> Item
-                    end
-                    || Item <- InOrder
+                  [case ref_timestamp(Item) =:= PreviousPacketId of
+                       'true' -> [Item, Chunk];
+                       'false' -> Item
+                   end
+                   || Item <- InOrder
                   ]
                  ),
             second_pass(Reordered, ToOrder, UnMergeable)
@@ -270,17 +268,18 @@ second_pass(InOrder, [], UnMergeable) ->
 
 -spec is_duplicate([chunk()], chunk()) -> boolean().
 %% Assumes CSeq and Callid already equal.
-is_duplicate([#ci_chunk{ dst_ip = DstIP
-                       , src_ip = SrcIP
-                       , dst_port = DstPort
-                       , src_port = SrcPort
-                       , label = Label
-                       }|_]
-            , #ci_chunk{ dst_ip = DstIP
-                       , src_ip = SrcIP
-                       , dst_port = DstPort
-                       , src_port = SrcPort
-                       , label = Label
+is_duplicate([#ci_chunk{dst_ip = DstIP
+                        ,src_ip = SrcIP
+                        ,dst_port = DstPort
+                        ,src_port = SrcPort
+                        ,label = Label
+                       }
+              |_]
+             ,#ci_chunk{dst_ip = DstIP
+                        ,src_ip = SrcIP
+                        ,dst_port = DstPort
+                        ,src_port = SrcPort
+                        ,label = Label
                        }) ->
     'true';
 is_duplicate([], _) ->
@@ -300,9 +299,8 @@ group_by(Fun, List) ->
 
 -spec group_as_dict(fun((V) -> K), [V]) -> dict() when K :: atom().
 group_as_dict(Fun, List) ->
-    F = fun (Value, Dict) -> dict:append(Fun(Value), Value, Dict) end,
+    F = fun(Value, Dict) -> dict:append(Fun(Value), Value, Dict) end,
     lists:foldl(F, dict:new(), List).
-
 
 -spec resolve(ne_binary()) -> ne_binary().
 resolve(IP) -> IP.
