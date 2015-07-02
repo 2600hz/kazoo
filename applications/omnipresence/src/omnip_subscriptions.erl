@@ -341,8 +341,8 @@ code_change(_OldVsn, State, _Extra) ->
 -spec notify_packages(atom(), subscriptions()) -> 'ok'.
 notify_packages(_MsgType, []) -> 'ok';
 notify_packages(MsgType , [#omnip_subscription{user=User
-                                           ,event=Package
-                                          }=Subscription | Subscriptions]) ->
+                                               ,event=Package
+                                              }=Subscription | Subscriptions]) ->
     Msg = {'omnipresence', {MsgType, Package, User, Subscription}},
     notify_packages(Msg),
     notify_packages(MsgType, Subscriptions).
