@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (c) 2010-2013, 2600Hz
+%%% @copyright (c) 2010-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -131,7 +131,9 @@ handle_info('start_parsing', State=#state{iodevice = IoDevice
         end,
     NewCounter = extract_chunks(IoDevice, LogIP, LogPort, Counter),
     NewTimer = erlang:send_after(ci_parsers_util:parse_interval()
-                                , self(), 'start_parsing'),
+                                 ,self()
+                                 ,'start_parsing'
+                                ),
     {'noreply', State#state{timer = NewTimer
                             ,counter = NewCounter
                            }};
@@ -200,7 +202,7 @@ make_and_store_chunk(LogIP, LogPort, Callid, Counter, Data0) ->
     ParserId = ci_parsers_sup:child(self()),
     Chunk =
         ci_chunk:setters(ci_chunk:new()
-                        , [{fun ci_chunk:data/2, Data}
+                         ,[{fun ci_chunk:data/2, Data}
                            ,{fun ci_chunk:call_id/2, Callid}
                            ,{fun ci_chunk:timestamp/2, Timestamp}
                            ,{fun ci_chunk:parser/2, ParserId}
@@ -266,20 +268,27 @@ acc(<<"stop|",_/binary>>=Logged, Buffer, _Dev, Key) ->
     erase(Key),
     {Key, [Logged|Buffer]}.
 
--spec cleanse_data_and_get_timestamp(data()) -> {[ne_binary()], api_number()}.
+-type cleanse_acc() :: {ne_binaries(), api_number()}.
+
+-spec cleanse_data_and_get_timestamp(data()) -> cleanse_acc().
 cleanse_data_and_get_timestamp(Data0) ->
-    F =
-        fun ({RawTimestamp}, {Acc, TS}) ->
-                case ci_parsers_util:timestamp(RawTimestamp) of
-                    Ts when Ts < TS ->
-                        {Acc, Ts};
-                    _Ts ->
-                        {Acc, TS}
-                end;
-            (Bin, {Acc, TS}) ->
-                {[unwrap(Bin)|Acc], TS}
-        end,
-    lists:foldl(F, {[], 'undefined'}, Data0).
+    lists:foldl(fun cleanse_data_fold/2
+                ,{[], 'undefined'}
+                ,Data0
+               ).
+
+-spec cleanse_data_fold({ne_binary() | erlang:timestamp()} | ne_binary()
+                        ,cleanse_acc()
+                       ) -> cleanse_acc().
+cleanse_data_fold({RawTimestamp}, {Acc, TS}) ->
+    case ci_parsers_util:timestamp(RawTimestamp) of
+        Ts when Ts < TS ->
+            {Acc, Ts};
+        _Ts ->
+            {Acc, TS}
+    end;
+cleanse_data_fold(Bin, {Acc, TS}) ->
+    {[unwrap(Bin)|Acc], TS}.
 
 -spec get_buffer(key()) -> data().
 get_buffer(Key) ->
@@ -313,7 +322,6 @@ rm_newline(Line0) ->
     [Line, <<>>] = binary:split(Line0, <<"\n">>),
     Line.
 
-
 -spec label(ne_binary()) -> api_binary().
 label(<<"recieved internal reply ", Label/binary>>) -> Label;
 label(<<"recieved ", _Protocol:3/binary, " request ", Label/binary>>) -> Label;
@@ -322,7 +330,7 @@ label(<<"received failure reply ", Label/binary>>) -> Label;
 label(<<"recieved ", Label/binary>>) -> Label;
 label(_Other) -> 'undefined'.
 
--spec from([ne_binary()], Default) -> ne_binary() | Default.
+-spec from(ne_binaries(), Default) -> ne_binary() | Default.
 from([], Default) -> Default;
 from([<<"start|recieved internal reply", _/binary>>|_Data], Default) -> Default;
 from([<<"log|external reply", _/binary>>|_Data], Default) -> Default;
@@ -338,7 +346,7 @@ get_ip(Bin, Default) ->
         _Else -> Default  %% Unexpected case
     end.
 
--spec to([ne_binary()], Default) -> ne_binary() | Default.
+-spec to(ne_binaries(), Default) -> ne_binary() | Default.
 to([], Default) -> Default;
 to([<<"start|recieved internal reply",_/binary>>|Data], Default) ->
     to(Data, Default);
@@ -348,9 +356,7 @@ to([<<"pass|",To/binary>>|_Data], Default) ->
 to([_Datum|Data], Default) ->
     to(Data, Default).
 
-
-
--spec from_port([ne_binary()], Default) -> ne_binary() | Default.
+-spec from_port(ne_binaries(), Default) -> ne_binary() | Default.
 from_port([], Default) -> Default;
 from_port([<<"start|recieved internal reply", _/binary>>|_Data], Default) -> Default;
 from_port([<<"log|external reply", _/binary>>|_Data], Default) -> Default;
@@ -366,7 +372,7 @@ get_port(Bin, Default) ->
         _Else -> Default  %% Unexpected case
     end.
 
--spec to_port([ne_binary()], Default) -> ne_binary() | Default.
+-spec to_port(ne_binaries(), Default) -> ne_binary() | Default.
 to_port([], Default) -> Default;
 to_port([<<"start|recieved internal reply",_/binary>>|Data], Default) ->
     to_port(Data, Default);
