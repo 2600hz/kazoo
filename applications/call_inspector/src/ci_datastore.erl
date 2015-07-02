@@ -75,7 +75,7 @@ callid_exists(CallId) ->
     File = make_name(CallId),
     filelib:is_file(File).
 
--type datum() :: {'chunk', [ci_chunk:chunk()]} |
+-type datum() :: {'chunks', [ci_chunk:chunk()]} |
                  {'analysis', [ci_analysis:analysis()]}.
 -type data() :: [datum()].
 
@@ -87,11 +87,8 @@ lookup_callid(CallId) ->
                          ]
                         ,lookup_objects(CallId)
                        ),
-    UnorderedChunks = lists:reverse(props:get_value('chunks', Props)),
-    props:set_value('chunks'
-                    ,ci_chunk:reorder_dialog(UnorderedChunks)
-                    ,Props
-                   ).
+    Chunks = ci_chunk:reorder_dialog(props:get_value('chunks', Props)),
+    props:set_value('chunks', Chunks, Props).
 
 -spec lookup_callid_fold(object(), data()) -> data().
 lookup_callid_fold(#object{type='chunk', value=Chunk}, P) ->
