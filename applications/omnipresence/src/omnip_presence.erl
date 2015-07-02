@@ -422,7 +422,8 @@ build_variables(User, Props) ->
 -spec build_body(ne_binary(), wh_proplist()) -> ne_binary().
 build_body(User, Props) ->
     Variables = build_variables(User, Props),
-    {'ok', Text} = sub_package_presence:render(Variables),
+    Mod = wh_util:to_atom(<<"sub_package_presence">>, 'true'),
+    {'ok', Text} = Mod:render(Variables),
     Body = wh_util:to_binary(Text),
     binary:replace(Body, <<"\n\n">>, <<"\n">>, ['global']).
 
