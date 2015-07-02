@@ -345,7 +345,7 @@ notify_packages(MsgType , [#omnip_subscription{user=User
                                           }=Subscription | Subscriptions]) ->
     Msg = {'omnipresence', {MsgType, Package, User, Subscription}},
     notify_packages(Msg),
-    notify_packages(Msg, Subscriptions).
+    notify_packages(MsgType, Subscriptions).
 
 -spec notify_packages(any()) -> 'ok'.
 notify_packages(Msg) ->
