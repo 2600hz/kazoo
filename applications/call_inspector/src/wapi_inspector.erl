@@ -116,8 +116,8 @@ bind_q(Q, _Props) ->
     amqp_util:bind_q_to_monitor(Q, ?CI_AMQP_KEY(<<"*">>)).
 
 -spec unbind_q(ne_binary(), wh_proplist()) -> 'ok'.
-unbind_q(_Q, _Props) ->
-    'ok'.
+unbind_q(Q, _Props) ->
+    amqp_util:unbind_q_from_monitor(Q, ?CI_AMQP_KEY(<<"*">>)).
 
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
