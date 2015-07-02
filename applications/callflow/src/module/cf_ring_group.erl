@@ -57,7 +57,10 @@ repeat(_Data, _Call, _N, 'fail') ->
     'stop' | 'fail' | 'continue'.
 attempt_endpoints(Endpoints, Data, Call) ->
     Timeout = wh_json:get_integer_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT_S),
-    Strategy = wh_json:get_binary_value(<<"strategy">>, Data, ?DIAL_METHOD_SIMUL),
+    Strategy = case wh_json:get_binary_value(<<"strategy">>, Data, ?DIAL_METHOD_SIMUL) of
+                   ?DIAL_METHOD_SIMUL -> ?DIAL_METHOD_SIMUL;
+                   _ -> ?DIAL_METHOD_SINGLE
+               end,
     Ringback = wh_json:get_value(<<"ringback">>, Data),
     IgnoreForward = wh_json:get_binary_boolean(<<"ignore_forward">>, Data, <<"true">>),
     lager:info("attempting ring group of ~b members with strategy ~s", [length(Endpoints), Strategy]),
@@ -125,13 +128,24 @@ start_builder(EndpointId, Member, Call) ->
 -spec resolve_endpoint_ids(wh_json:object(), whapps_call:call()) -> wh_proplist().
 resolve_endpoint_ids(Data, Call) ->
     Members = wh_json:get_value(<<"endpoints">>, Data, []),
-    [{Id, wh_json:set_value(<<"source">>, ?MODULE, Member)}
-     || {Type, Id, Member} <- resolve_endpoint_ids(Members, [], Data, Call)
-            ,Type =:= <<"device">>
-            ,Id =/= whapps_call:authorizing_id(Call)
-    ].
+    ResolvedEndpoints = resolve_endpoint_ids(Members, [], Data, Call),
+    FilteredEndpoints = [{Weight, {Id, wh_json:set_value(<<"source">>, ?MODULE, Member)}}
+                         || {Type, Id, Weight, Member} <- ResolvedEndpoints
+                            ,Type =:= <<"device">>
+                            ,Id =/= whapps_call:authorizing_id(Call)
+                        ],
+    Strategy = wh_json:get_value(<<"strategy">>, Data, ?DIAL_METHOD_SIMUL),
+    order_endpoints(Strategy, FilteredEndpoints).
 
--type endpoint_intermediate() :: {ne_binary(), ne_binary(), api_object()}.
+-spec order_endpoints(ne_binary(), wh_proplist()) -> wh_proplist().
+order_endpoints(Method, Endpoints)
+  when Method =:= ?DIAL_METHOD_SIMUL
+       orelse Method =:= ?DIAL_METHOD_SINGLE ->
+    [{Id, Endpoint} || {_, {Id, Endpoint}} <- Endpoints];
+order_endpoints(<<"weighted_random">>, Endpoints) ->
+    weighted_random_sort(Endpoints).
+
+-type endpoint_intermediate() :: {ne_binary(), ne_binary(), integer(), api_object()}.
 -type endpoint_intermediates() :: [] | [endpoint_intermediate(),...].
 
 -spec resolve_endpoint_ids(wh_json:objects(), endpoint_intermediates(), wh_json:object(), whapps_call:call()) ->
@@ -140,6 +154,7 @@ resolve_endpoint_ids([], EndpointIds, _, _) -> EndpointIds;
 resolve_endpoint_ids([Member|Members], EndpointIds, Data, Call) ->
     Id = wh_json:get_value(<<"id">>, Member),
     Type = wh_json:get_value(<<"endpoint_type">>, Member, <<"device">>),
+    Weight = wh_json:get_integer_value(<<"weight">>, Member, 20),
     case wh_util:is_empty(Id)
         orelse lists:keymember(Id, 2, EndpointIds)
         orelse Type
@@ -148,65 +163,65 @@ resolve_endpoint_ids([Member|Members], EndpointIds, Data, Call) ->
             resolve_endpoint_ids(Members, EndpointIds, Data, Call);
         <<"group">> ->
             lager:info("member ~s is a group, merge the group's members", [Id]),
-            GroupMembers = get_group_members(Member, Id, Data, Call),
+            GroupMembers = get_group_members(Member, Id, Weight, Data, Call),
             Ids = resolve_endpoint_ids(GroupMembers, EndpointIds, Data, Call),
             resolve_endpoint_ids(Members, [{Type, Id, 'undefined'}|Ids], Data, Call);
         <<"user">> ->
             lager:info("member ~s is a user, get all the user's endpoints", [Id]),
-            Ids = get_user_endpoint_ids(Member, EndpointIds, Id, Call),
+            Ids = get_user_endpoint_ids(Member, EndpointIds, Id, Weight, Call),
             resolve_endpoint_ids(Members, Ids, Data, Call);
         <<"device">> ->
-            resolve_endpoint_ids(Members, [{Type, Id, Member}|EndpointIds], Data, Call)
+            resolve_endpoint_ids(Members, [{Type, Id, Weight, Member}|EndpointIds], Data, Call)
     end.
 
--spec get_user_endpoint_ids(wh_json:object(), endpoint_intermediates(), ne_binary(), whapps_call:call()) ->
+-spec get_user_endpoint_ids(wh_json:object(), endpoint_intermediates(), ne_binary(), integer(), whapps_call:call()) ->
                                    endpoint_intermediates().
-get_user_endpoint_ids(Member, EndpointIds, Id, Call) ->
+get_user_endpoint_ids(Member, EndpointIds, Id, GroupWeight, Call) ->
     lists:foldr(
       fun(EndpointId, Acc) ->
               case lists:keymember(EndpointId, 2, Acc) of
                   'true' -> Acc;
                   'false' ->
-                      [{<<"device">>, EndpointId, Member} | Acc]
+                      [{<<"device">>, EndpointId, GroupWeight, Member} | Acc]
               end
       end
       ,[{<<"user">>, Id, 'undefined'} | EndpointIds]
       ,cf_attributes:owned_by(Id, <<"device">>, Call)
      ).
 
--spec get_group_members(wh_json:object(), ne_binary(), wh_json:object(), whapps_call:call()) -> wh_json:objects().
-get_group_members(Member, Id, Data, Call) ->
+-spec get_group_members(wh_json:object(), ne_binary(), integer(), wh_json:object(), whapps_call:call()) -> wh_json:objects().
+get_group_members(Member, Id, GroupWeight, Data, Call) ->
     AccountDb = whapps_call:account_db(Call),
     case couch_mgr:open_cache_doc(AccountDb, Id) of
         {'ok', JObj} ->
-            maybe_order_group_members(Member, JObj, Data);
+            maybe_order_group_members(GroupWeight, Member, JObj, Data);
         {'error', _R} ->
             lager:warning("unable to lookup members of group ~s: ~p", [Id, _R]),
             []
     end.
 
--spec maybe_order_group_members(wh_json:object(), wh_json:object(), wh_json:object()) -> wh_json:objects().
-maybe_order_group_members(Member, JObj, Data) ->
+-spec maybe_order_group_members(integer(), wh_json:object(), wh_json:object(), wh_json:object()) -> wh_json:objects().
+maybe_order_group_members(Weight, Member, JObj, Data) ->
     case wh_json:get_binary_value(<<"strategy">>, Data, ?DIAL_METHOD_SIMUL) of
         ?DIAL_METHOD_SINGLE ->
-            order_group_members(Member, JObj);
+            order_group_members(Weight, Member, JObj);
         _ ->
-            unordered_group_members(Member, JObj)
+            unordered_group_members(Weight, Member, JObj)
     end.
 
--spec unordered_group_members(wh_json:object(), wh_json:object()) -> wh_json:objects().
-unordered_group_members(Member, JObj) ->
+-spec unordered_group_members(integer(), wh_json:object(), wh_json:object()) -> wh_json:objects().
+unordered_group_members(Weight, Member, JObj) ->
     Endpoints = wh_json:get_ne_value(<<"endpoints">>, JObj, wh_json:new()),
     wh_json:foldl(
       fun(Key, Endpoint, Acc) ->
-              [create_group_member(Key, Endpoint, Member) | Acc]
+              [create_group_member(Key, Endpoint, Weight, Member) | Acc]
       end
       ,[]
       ,Endpoints
      ).
 
--spec order_group_members(wh_json:object(), wh_json:object()) -> wh_json:objects().
-order_group_members(Member, JObj) ->
+-spec order_group_members(integer(), wh_json:object(), wh_json:object()) -> wh_json:objects().
+order_group_members(GroupWeight, Member, JObj) ->
     Endpoints = wh_json:get_ne_value(<<"endpoints">>, JObj, wh_json:new()),
     GroupMembers =
         wh_json:foldl(
@@ -216,7 +231,7 @@ order_group_members(Member, JObj) ->
                           lager:debug("endpoint ~s has no weight, removing from ordered group", [Key]),
                           Acc;
                       Weight ->
-                          GroupMember = create_group_member(Key, Endpoint, Member),
+                          GroupMember = create_group_member(Key, Endpoint, GroupWeight, Member),
                           orddict:store(Weight, GroupMember, Acc)
                   end
           end
@@ -225,14 +240,15 @@ order_group_members(Member, JObj) ->
          ),
     [V || {_, V} <- orddict:to_list(GroupMembers)].
 
--spec create_group_member(ne_binary(), wh_json:object(), wh_json:object()) -> wh_json:object().
-create_group_member(Key, Endpoint, Member) ->
+-spec create_group_member(ne_binary(), wh_json:object(), integer(), wh_json:object()) -> wh_json:object().
+create_group_member(Key, Endpoint, GroupWeight, Member) ->
     DefaultDelay = wh_json:get_value(<<"delay">>, Member),
     DefaultTimeout = wh_json:get_value(<<"timeout">>, Member),
     wh_json:set_values([{<<"endpoint_type">>, wh_json:get_value(<<"type">>, Endpoint)}
                         ,{<<"id">>, Key}
                         ,{<<"delay">>, wh_json:get_value(<<"delay">>, Endpoint, DefaultDelay)}
                         ,{<<"timeout">>, wh_json:get_value(<<"timeout">>, Endpoint, DefaultTimeout)}
+                        ,{<<"weight">>, GroupWeight}
                        ]
                        ,Member
                       ).
@@ -244,3 +260,38 @@ repeats(Data) ->
         N when N < 1 -> 1;
         N -> N
     end.
+
+-spec weighted_random_sort(wh_proplist()) -> wh_json:objects().
+weighted_random_sort(Endpoints) ->
+    random:seed(erlang:now()),
+    WeightSortedEndpoints = lists:sort(Endpoints),
+    weighted_random_sort(WeightSortedEndpoints, []).
+
+-spec set_intervals_on_weight(wh_proplist(), wh_proplist(), integer()) -> term().
+set_intervals_on_weight([{Weight, _} =E | Tail], Acc, Sum) ->
+    set_intervals_on_weight(Tail, [{Weight + Sum, E} | Acc], Sum + Weight);
+set_intervals_on_weight([], Acc, _Sum) ->
+    Acc.
+
+-spec weighted_random_sort(wh_proplist(), [] | [wh_proplist(),...]) -> [] | [wh_proplist(), ...].
+weighted_random_sort([_ | _] = ListWeight, Acc) ->
+    [{Sum, _} | _] = ListInterval = set_intervals_on_weight(ListWeight, [], 0),
+    Pivot = random_integer(Sum),
+    {_, {_, Endpoint} = Element} = weighted_random_get_element(ListInterval, Pivot),
+    ListNew = lists:delete(Element, ListWeight),
+    weighted_random_sort(ListNew, [Endpoint | Acc]);
+weighted_random_sort([], Acc) ->
+    Acc.
+
+-spec weighted_random_get_element([{integer(), {integer(), wh_proplist()}},...], integer()) -> {integer(), {integer(), wh_proplist()}}.
+weighted_random_get_element(List, Pivot) ->
+    {_, {Weight, _}} = case [E || E={X, _} <- List, X =< Pivot] of
+                           [] -> lists:last(List);
+                           L -> hd(L)
+                       end,
+    ListFiltered = [E || E = {_, {W, _}} <- List, W =:= Weight],
+    lists:nth(random_integer(length(ListFiltered)), ListFiltered).
+
+-spec random_integer(integer()) -> integer().
+random_integer(I) ->
+    random:uniform(I).
