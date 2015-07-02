@@ -61,8 +61,8 @@
 -define(SEARCH_REQ_TYPES, []).
 
 %% Search response for active subscriptions
--define(SEARCH_RESP_HEADERS, [<<"Subscriptions">>]).
--define(OPTIONAL_SEARCH_RESP_HEADERS, []).
+-define(SEARCH_RESP_HEADERS, []).
+-define(OPTIONAL_SEARCH_RESP_HEADERS, [<<"Subscriptions">>]).
 -define(SEARCH_RESP_VALUES, [{<<"Event-Category">>, <<"presence">>}
                              ,{<<"Event-Name">>, <<"search_resp">>}
                             ]).

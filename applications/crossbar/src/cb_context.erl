@@ -86,6 +86,7 @@
          %% Special accessors
          ,req_value/2, req_value/3
          ,accepting_charges/1
+         ,req_param/2, req_param/3
         ]).
 
 -include("./crossbar.hrl").
@@ -158,7 +159,7 @@ account_modb(Context, Year, Month) ->
     kazoo_modb:get_modb(account_id(Context), Year, Month).
 
 account_realm(Context) ->
-    wh_json:get_value(<<"pvt_realm">>, account_doc(Context)).
+    kz_account:realm(account_doc(Context)).
 
 account_doc(#cb_context{account_id='undefined'}) -> 'undefined';
 account_doc(Context) ->
@@ -186,6 +187,9 @@ req_nouns(#cb_context{req_nouns=ReqNouns}) -> ReqNouns.
 req_headers(#cb_context{req_headers=Hs}) -> Hs.
 req_header(#cb_context{req_headers=Hs}, K) -> props:get_value(K, Hs).
 query_string(#cb_context{query_json=Q}) -> Q.
+req_param(#cb_context{}=Context, K) -> req_param(Context, K, 'undefined').
+req_param(#cb_context{query_json='undefined'}, _K, Default) -> Default;
+req_param(#cb_context{query_json=JObj}, K, Default) -> wh_json:get_value(K, JObj, Default).
 client_ip(#cb_context{client_ip=IP}) -> IP.
 req_id(#cb_context{req_id=ReqId}) -> ReqId.
 doc(#cb_context{doc=Doc}) -> Doc.
