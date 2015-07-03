@@ -34,12 +34,13 @@ repeat(N, Data, Call) when N > 0 ->
     Next = case get_endpoints(Data, Call) of
         [] ->
             lager:notice("ring group has no endpoints, moving to next callflow element"),
-            cf_exe:continue(Call);
+            'no_endpoints';
         Endpoints -> attempt_endpoints(Endpoints, Data, Call)
     end,
     case Next of
         'stop' -> cf_exe:stop(Call);
         'continue' -> repeat(N - 1, Data, Call);
+        'no_endpoints' -> cf_exe:continue(Call);
         'fail' -> 'ok'
     end.
 
