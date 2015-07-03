@@ -91,7 +91,7 @@ send_auth_error(JObj) ->
     wapi_authn:publish_error(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
 -spec create_ccvs(auth_user()) -> wh_json:object().
-create_ccvs(#auth_user{}=AuthUser) ->
+create_ccvs(#auth_user{doc=JObj}=AuthUser) ->
     Props = [{<<"Username">>, AuthUser#auth_user.username}
              ,{<<"Realm">>, AuthUser#auth_user.realm}
              ,{<<"Account-ID">>, AuthUser#auth_user.account_id}
@@ -103,6 +103,7 @@ create_ccvs(#auth_user{}=AuthUser) ->
              ,{<<"Presence-ID">>, maybe_get_presence_id(AuthUser)}
              ,{<<"Suppress-Unregister-Notifications">>, AuthUser#auth_user.suppress_unregister_notifications}
              ,{<<"Register-Overwrite-Notify">>, AuthUser#auth_user.register_overwrite_notify}
+             ,{<<"Pusher-Application">>, wh_json:get_value([<<"push">>, <<"Token-App">>], JObj)}
              | (create_specific_ccvs(AuthUser, AuthUser#auth_user.method)
                  ++ generate_security_ccvs(AuthUser))
             ],
