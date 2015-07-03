@@ -24,25 +24,34 @@
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    Repeat = wh_json:get_integer_value(<<"repeats">>, Data, 1),
-    repeat(Repeat, Data, Call).
+    repeat(Data, Call, repeats(Data)).
 
--spec repeat(integer(), wh_json:object(), whapps_call:call()) -> 'ok'.
-repeat(0, _Data, Call) ->
+-spec repeat(wh_json:object(), whapps_call:call(), non_neg_integer()) -> 'ok'.
+repeat(_Data, Call, 0) ->
     cf_exe:continue(Call);
-repeat(N, Data, Call) when N > 0 ->
+repeat(Data, Call, N) ->
     Next = case get_endpoints(Data, Call) of
-        [] ->
-            lager:notice("ring group has no endpoints, moving to next callflow element"),
-            'no_endpoints';
-        Endpoints -> attempt_endpoints(Endpoints, Data, Call)
-    end,
-    case Next of
-        'stop' -> cf_exe:stop(Call);
-        'continue' -> repeat(N - 1, Data, Call);
-        'no_endpoints' -> cf_exe:continue(Call);
-        'fail' -> 'ok'
-    end.
+               [] ->
+                   lager:notice("ring group has no endpoints, moving to next callflow element"),
+                   'no_endpoints';
+               Endpoints -> attempt_endpoints(Endpoints, Data, Call)
+           end,
+    repeat(Data, Call, N, Next).
+
+-type attempt_result() :: 'stop' |
+                          'continue' |
+                          'no_endpoints' |
+                          'fail'.
+
+-spec repeat(wh_json:object(), whapps_call:call(), non_neg_integer(), attempt_result()) -> 'ok'.
+repeat(_Data, Call, _N, 'stop') ->
+    cf_exe:stop(Call);
+repeat(Data, Call, N, 'continue') ->
+    repeat(Data, Call, N-1);
+repeat(_Data, Call, _N, 'no_endpoints') ->
+    cf_exe:continue(Call);
+repeat(_Data, _Call, _N, 'fail') ->
+    'ok'.
 
 -spec attempt_endpoints(wh_json:objects(), wh_json:object(), whapps_call:call()) ->
     'stop' | 'fail' | 'continue'.
@@ -227,3 +236,11 @@ create_group_member(Key, Endpoint, Member) ->
                        ]
                        ,Member
                       ).
+
+-spec repeats(wh_json:object()) -> pos_integer().
+repeats(Data) ->
+    case wh_json:get_integer_value(<<"repeats">>, Data) of
+        'undefined' -> 1;
+        N when N < 1 -> 1;
+        N -> N
+    end.
