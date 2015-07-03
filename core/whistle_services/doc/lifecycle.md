@@ -176,7 +176,7 @@ When attempting the first PUT to devices, Crossbar should return a 402 with a pa
      ,"auth_token":"{AUTH_TOKEN}"
     }
 
-The payload shows the details of what the change would entail (in absolute terms). If the request is resubmitted with the `accept_charges` flag, and the account is in good standing, the device is created and the services for **R1** is updated.
+The payload shows the details of what the change would entail (in absolute terms). If the request is resubmitted with the `accept_charges` flag, and the account is in good standing, the device is created and the services for **R1** are updated.
 
 Now, if you were to look at **R1**'s services doc in the `services` DB, the quantities for `devices` is still empty. The account won't be reconciled until the background sync process gets to it. If another device creation would occur, the 402 response would be:
 
