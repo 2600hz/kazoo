@@ -12,6 +12,7 @@
          ,voicemail_notification_enabled/1, voicemail_notification_enabled/2
          ,to_vcard/1
          ,timezone/1, timezone/2
+         ,presence_id/1, presence_id/2, set_presence_id/2
         ]).
 
 -include("kz_documents.hrl").
@@ -21,6 +22,7 @@
 
 -define(KEY_EMAIL, <<"email">>).
 -define(KEY_TIMEZONE, <<"timezone">>).
+-define(PRESENCE_ID, <<"presence_id">>).
 
 -spec email(doc()) -> api_binary().
 -spec email(doc(), Default) -> ne_binary() | Default.
@@ -195,3 +197,18 @@ timezone(JObj) ->
     timezone(JObj, 'undefined').
 timezone(JObj, Default) ->
     wh_json:get_value(?KEY_TIMEZONE, JObj, Default).
+
+-spec presence_id(doc()) -> api_binary().
+-spec presence_id(doc(), Default) -> ne_binary() | Default.
+presence_id(UserJObj) ->
+    presence_id(UserJObj, 'undefined').
+presence_id(UserJObj, Default) ->
+    wh_json:get_binary_value(?PRESENCE_ID, UserJObj, Default).
+
+-spec set_presence_id(doc(), ne_binary()) -> doc().
+set_presence_id(UserJObj, Id) ->
+    wh_json:set_value(
+      ?PRESENCE_ID
+      ,wh_util:to_binary(Id)
+      ,UserJObj
+     ).
