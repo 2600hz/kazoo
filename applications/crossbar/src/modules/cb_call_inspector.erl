@@ -184,12 +184,12 @@ send_chunked_cdrs([Db | Dbs], {Req, Context}) ->
     send_chunked_cdrs(Dbs, cb_cdrs:load_chunked_cdrs(Db, CDRIds, {Req, Context3})).
 
 -spec get_cdr_ids(ne_binary(), ne_binary(), crossbar_doc:view_options()) ->
-                         ne_binaries().
+                         wh_proplist().
 get_cdr_ids(Db, View, ViewOptions) ->
     {'ok', Ids} = cb_cdrs:get_cdr_ids(Db, View, ViewOptions),
     filter_cdr_ids(Ids).
 
--spec filter_cdr_ids(ne_binaries()) -> ne_binaries().
+-spec filter_cdr_ids(wh_proplist()) -> wh_proplist().
 filter_cdr_ids(Ids) ->
     Req = [{<<"Call-IDs">>, [CallId || {<<_:7/binary, CallId/binary>>, _} <- Ids]}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)

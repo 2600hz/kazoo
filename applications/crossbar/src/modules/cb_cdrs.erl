@@ -372,7 +372,8 @@ get_cdr_ids(Db, View, ViewOptions) ->
     case couch_mgr:get_results(Db, View, ViewOptions) of
         {'error', _R} ->
             lager:debug("unable to fetch ~s from ~s: ~p"
-                       ,[View, Db, _R]),
+                       ,[View, Db, _R]
+                       ),
             {'ok', []};
         {'ok', JObjs} ->
             lager:debug("fetched cdr ids from ~s", [Db]),
