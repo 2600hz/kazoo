@@ -21,6 +21,7 @@
                             "user",
                             "group"
                         ],
+                        "required": true,
                         "type": "string"
                     },
                     "id": {
