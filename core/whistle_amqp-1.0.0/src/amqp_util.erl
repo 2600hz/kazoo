@@ -112,7 +112,9 @@
 -export([new_configuration_queue/1, new_configuration_queue/2, delete_configuration_queue/1]).
 
 -export([monitor_exchange/0, monitor_publish/3]).
--export([bind_q_to_monitor/2]).
+-export([bind_q_to_monitor/2
+         ,unbind_q_from_monitor/2
+        ]).
 -export([new_monitor_queue/0, new_monitor_queue/1, delete_monitor_queue/1]).
 
 -export([bind_q_to_exchange/3, bind_q_to_exchange/4]).
@@ -835,6 +837,10 @@ bind_q_to_configuration(Queue, Routing) ->
 -spec bind_q_to_monitor(ne_binary(), ne_binary()) -> 'ok'.
 bind_q_to_monitor(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_MONITOR).
+
+-spec unbind_q_from_monitor(ne_binary(), ne_binary()) -> 'ok'.
+unbind_q_from_monitor(Queue, Routing) ->
+    unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_MONITOR).
 
 -spec bind_q_to_conference(ne_binary(), conf_routing_type()) -> 'ok'.
 -spec bind_q_to_conference(ne_binary(), conf_routing_type(), api_binary()) -> 'ok'.
