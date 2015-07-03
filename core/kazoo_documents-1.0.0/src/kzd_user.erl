@@ -13,6 +13,8 @@
          ,to_vcard/1
          ,timezone/1, timezone/2
          ,presence_id/1, presence_id/2, set_presence_id/2
+         ,is_enabled/1, is_enabled/2
+         ,enable/1, disable/1
         ]).
 
 -include("kz_documents.hrl").
@@ -22,7 +24,8 @@
 
 -define(KEY_EMAIL, <<"email">>).
 -define(KEY_TIMEZONE, <<"timezone">>).
--define(PRESENCE_ID, <<"presence_id">>).
+-define(KEY_PRESENCE_ID, <<"presence_id">>).
+-define(KEY_IS_ENABLED, <<"enabled">>).
 
 -spec email(doc()) -> api_binary().
 -spec email(doc(), Default) -> ne_binary() | Default.
@@ -203,12 +206,27 @@ timezone(JObj, Default) ->
 presence_id(UserJObj) ->
     presence_id(UserJObj, 'undefined').
 presence_id(UserJObj, Default) ->
-    wh_json:get_binary_value(?PRESENCE_ID, UserJObj, Default).
+    wh_json:get_binary_value(?KEY_PRESENCE_ID, UserJObj, Default).
 
 -spec set_presence_id(doc(), ne_binary()) -> doc().
 set_presence_id(UserJObj, Id) ->
     wh_json:set_value(
-      ?PRESENCE_ID
+      ?KEY_PRESENCE_ID
       ,wh_util:to_binary(Id)
       ,UserJObj
      ).
+
+-spec is_enabled(doc()) -> boolean().
+-spec is_enabled(doc(), Default) -> boolean() | Default.
+is_enabled(JObj) ->
+    is_enabled(JObj, 'true').
+is_enabled(JObj, Default) ->
+    wh_json:is_true(?KEY_IS_ENABLED, JObj, Default).
+
+-spec enable(doc()) -> doc().
+enable(JObj) ->
+    wh_json:set_value(?KEY_IS_ENABLED, 'true', JObj).
+
+-spec disable(doc()) -> doc().
+disable(JObj) ->
+    wh_json:set_value(?KEY_IS_ENABLED, 'false', JObj).
