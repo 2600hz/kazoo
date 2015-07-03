@@ -24,7 +24,7 @@
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    Repeat = wh_json:get_value(<<"repeats">>, Data, 1),
+    Repeat = wh_json:get_integer_value(<<"repeats">>, Data, 1),
     repeat(Repeat, Data, Call).
 
 -spec repeat(integer(), wh_json:object(), whapps_call:call()) -> 'ok'.
@@ -52,7 +52,16 @@ attempt_endpoints(Endpoints, Data, Call) ->
     Ringback = wh_json:get_value(<<"ringback">>, Data),
     IgnoreForward = wh_json:get_binary_boolean(<<"ignore_forward">>, Data, <<"true">>),
     lager:info("attempting ring group of ~b members with strategy ~s", [length(Endpoints), Strategy]),
-    case whapps_call_command:b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Ringback, 'undefined', IgnoreForward, Call) of
+    case whapps_call_command:b_bridge(Endpoints
+                                      ,Timeout
+                                      ,Strategy
+                                      ,<<"true">>
+                                      ,Ringback
+                                      ,'undefined'
+                                      ,IgnoreForward
+                                      ,Call
+                                     )
+    of
         {'ok', _} ->
             lager:info("completed successful bridge to the ring group - call finished normally"),
             'stop';
