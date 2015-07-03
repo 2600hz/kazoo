@@ -137,10 +137,10 @@ get_presence_id(AccountDb, DeviceId, OwnerId) ->
 maybe_get_owner_presence_id(AccountDb, DeviceId, OwnerId) ->
     case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
         {'error', _} -> 'undefined';
-        {'ok', JObj} ->
-            case kz_device:presence_id(JObj) of
+        {'ok', UserJObj} ->
+            case kzd_user:presence_id(UserJObj) of
                 'undefined' -> get_device_presence_id(AccountDb, DeviceId);
-                PresenceId -> wh_util:to_binary(PresenceId)
+                PresenceId -> PresenceId
             end
     end.
 
