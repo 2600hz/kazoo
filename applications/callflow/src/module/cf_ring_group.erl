@@ -27,6 +27,7 @@ handle(Data, Call) ->
     Repeat = wh_json:get_value(<<"repeats">>, Data, 1),
     repeat(Repeat, Data, Call).
 
+-spec repeat(integer(), wh_json:object(), whapps_call:call()) -> 'ok'.
 repeat(0, _Data, Call) ->
     cf_exe:continue(Call);
 repeat(N, Data, Call) when N > 0 ->
