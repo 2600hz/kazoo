@@ -144,6 +144,7 @@
                            #'basic.ack'{} | #'basic.nack'{} |
                            #'basic.qos'{} |
                            #'exchange.declare'{} |
+                           #'exchange.bind'{} |
                            #'confirm.select'{} |
                            #'channel.flow'{} | #'channel.flow_ok'{} |
                            '_' | 'undefined'.
