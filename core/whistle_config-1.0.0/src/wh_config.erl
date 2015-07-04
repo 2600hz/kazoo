@@ -61,7 +61,7 @@ get(Section) ->
 get(Section, Key) ->
     get(Section, Key, ?DEFAULT_DEFAULTS).
 
--spec get(section(), atom(), Default) -> wh_proplist() | Default.
+-spec get(section(), atom(), Default) -> list() | Default.
 get(Section, Key, Default) ->
     case find_values(Section, Key) of
         [] -> Default;
@@ -179,7 +179,7 @@ find_values(Section, Key) ->
 %%--------------------------------------------------------------------
 -spec get_sections(section(), wh_proplist()) -> wh_proplist().
 get_sections(Section, Prop) ->
-    Sections = proplists:get_all_values(Section, Prop),
+    Sections = props:get_all_values(Section, Prop),
     format_sections(Sections).
 
 %%--------------------------------------------------------------------
@@ -221,17 +221,12 @@ local_sections([Section | T], Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_local_section({ne_binary(), _}) -> {'false', 'generic'} |
-                                            {boolean(), ne_binary()}.
+-spec is_local_section({SectionHost, _}) ->
+                              {boolean(), SectionHost}.
 is_local_section({SectionHost, _}) ->
-    LocalHost = wh_util:to_binary(wh_network_utils:get_hostname()),
-    case SectionHost of
-        'generic' -> {'false', 'generic'};
-        SH ->
-            case SH =:= LocalHost of
-                'true' -> {'true', LocalHost};
-                'false' -> {'false', SectionHost}
-            end
+    case wh_util:to_binary(wh_network_utils:get_hostname()) of
+        SectionHost -> {'true', SectionHost};
+        _Localhost -> {'false', SectionHost}
     end.
 
 %%--------------------------------------------------------------------
@@ -241,14 +236,18 @@ is_local_section({SectionHost, _}) ->
 %% @end
 %%--------------------------------------------------------------------
 %-spec get_value(atom(), wh_proplist()) -> [].
-get_values(Key, Sections) -> get_values(Sections, Key, []).
 
-get_values([], _, []) -> [];
-get_values([], _, Acc) ->
+-spec get_values(atom(), wh_proplist()) -> list().
+-spec get_values(atom(), wh_proplist(), list()) -> list().
+get_values(Key, Sections) ->
+    get_values(Key, Sections, []).
+
+get_values(_Key, [], []) -> [];
+get_values(_Key, [], Acc) ->
     lists:reverse(Acc);
-get_values([{_, Values} | T], Key, Acc) ->
-    V = proplists:get_all_values(Key, Values),
-    get_values(T, Key, lists:append(V, Acc)).
+get_values(Key, [{_, Values} | T], Acc) ->
+    V = props:get_all_values(Key, Values),
+    get_values(Key, T, lists:append(V, Acc)).
 
 %%--------------------------------------------------------------------
 %% @private
