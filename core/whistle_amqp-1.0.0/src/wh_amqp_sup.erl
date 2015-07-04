@@ -156,30 +156,31 @@ init([]) ->
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
     PoolSize =
-        case wh_config:get(wh_config:get_node_section_name(), 'pool_size') of
+        case wh_config:get_integer(wh_config:get_node_section_name(), 'pool_size') of
             [] -> ?POOL_SIZE;
-            [Size|_] -> wh_util:to_integer(Size)
+            [Size|_] -> Size
         end,
 
     PoolOverflow =
-        case wh_config:get(wh_config:get_node_section_name(), 'pool_overflow') of
+        case wh_config:get_integer(wh_config:get_node_section_name(), 'pool_overflow') of
             [] -> ?POOL_OVERFLOW;
-            [Overflow|_] -> wh_util:to_integer(Overflow)
+            [Overflow|_] -> Overflow
         end,
 
     PoolThreshold =
-        case wh_config:get(wh_config:get_node_section_name(), 'pool_threshold') of
+        case wh_config:get_integer(wh_config:get_node_section_name(), 'pool_threshold') of
             [] -> ?POOL_THRESHOLD;
-            [Threshold|_] -> wh_util:to_integer(Threshold)
+            [Threshold|_] -> Threshold
         end,
 
     PoolArgs = [{'worker_module', 'wh_amqp_worker'}
-               ,{'name', {'local', ?POOL_NAME}}
-               ,{'size', PoolSize}
-               ,{'max_overflow', PoolOverflow}
-               ,{'neg_resp_threshold', PoolThreshold}
+                ,{'name', {'local', ?POOL_NAME}}
+                ,{'size', PoolSize}
+                ,{'max_overflow', PoolOverflow}
+                ,{'neg_resp_threshold', PoolThreshold}
                ],
 
-    Children = ?CHILDREN ++ [?WORKER_NAME_ARGS('poolboy', ?POOL_NAME, [PoolArgs])],
+    Children = ?CHILDREN
+        ++ [?WORKER_NAME_ARGS('poolboy', ?POOL_NAME, [PoolArgs])],
 
     {'ok', {SupFlags, Children}}.
