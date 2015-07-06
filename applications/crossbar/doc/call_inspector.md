@@ -42,7 +42,7 @@ Example:
     {
       "auth_token": "077dceaa5420167953530ee604fdb1ca",
       "data": {
-        "analysis": "undefined",
+        "analysis": [],
         "messages": {CHUNKS}
       }
       "request_id": "6a10fe5e916c1982d8b910e59bed7915",
