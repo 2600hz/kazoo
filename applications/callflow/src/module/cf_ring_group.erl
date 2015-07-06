@@ -15,6 +15,9 @@
 
 -export([handle/2]).
 
+-ifdef(TEST).
+-export([weighted_random_sort/1]).
+-endif.
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
