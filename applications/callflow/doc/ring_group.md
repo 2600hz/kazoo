@@ -23,7 +23,7 @@ Ring group callflow element allows calling multiple endpoints with given strateg
 
 ## Optional fields
 
-**strategy** - `single` | `simultaneous` | `weighted_random`, deafult is `simultaneous`
+**strategy** - `single` | `simultaneous` | `weighted_random`, default is `simultaneous`
 **timeout** - time to call the endpoint before moving further, default is `20`
 **repeats** - number of repeats (rounds) this group will be called, default is `1`
 

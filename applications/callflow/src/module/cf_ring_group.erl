@@ -6,6 +6,7 @@
 %%% @contributors
 %%%   Karl Anderson
 %%%   James Aimonetti
+%%%   SIPLABS LLC (Ilya Ashchepkov)
 %%%-------------------------------------------------------------------
 -module(cf_ring_group).
 
@@ -57,10 +58,7 @@ repeat(_Data, _Call, _N, 'fail') ->
     'stop' | 'fail' | 'continue'.
 attempt_endpoints(Endpoints, Data, Call) ->
     Timeout = wh_json:get_integer_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT_S),
-    Strategy = case wh_json:get_binary_value(<<"strategy">>, Data, ?DIAL_METHOD_SIMUL) of
-                   ?DIAL_METHOD_SIMUL -> ?DIAL_METHOD_SIMUL;
-                   _ -> ?DIAL_METHOD_SINGLE
-               end,
+    Strategy = freeswitch_strategy(Data),
     Ringback = wh_json:get_value(<<"ringback">>, Data),
     IgnoreForward = wh_json:get_binary_boolean(<<"ignore_forward">>, Data, <<"true">>),
     lager:info("attempting ring group of ~b members with strategy ~s", [length(Endpoints), Strategy]),
@@ -134,7 +132,7 @@ resolve_endpoint_ids(Data, Call) ->
                             ,Type =:= <<"device">>
                             ,Id =/= whapps_call:authorizing_id(Call)
                         ],
-    Strategy = wh_json:get_value(<<"strategy">>, Data, ?DIAL_METHOD_SIMUL),
+    Strategy = strategy(Data),
     order_endpoints(Strategy, FilteredEndpoints).
 
 -spec order_endpoints(ne_binary(), wh_proplist()) -> wh_proplist().
@@ -202,7 +200,7 @@ get_group_members(Member, Id, GroupWeight, Data, Call) ->
 
 -spec maybe_order_group_members(integer(), wh_json:object(), wh_json:object(), wh_json:object()) -> wh_json:objects().
 maybe_order_group_members(Weight, Member, JObj, Data) ->
-    case wh_json:get_binary_value(<<"strategy">>, Data, ?DIAL_METHOD_SIMUL) of
+    case strategy(Data) of
         ?DIAL_METHOD_SINGLE ->
             order_group_members(Weight, Member, JObj);
         _ ->
@@ -253,17 +251,9 @@ create_group_member(Key, Endpoint, GroupWeight, Member) ->
                        ,Member
                       ).
 
--spec repeats(wh_json:object()) -> pos_integer().
-repeats(Data) ->
-    case wh_json:get_integer_value(<<"repeats">>, Data) of
-        'undefined' -> 1;
-        N when N < 1 -> 1;
-        N -> N
-    end.
-
 -spec weighted_random_sort(wh_proplist()) -> wh_json:objects().
 weighted_random_sort(Endpoints) ->
-    random:seed(erlang:now()),
+    random:seed(os:timestamp()),
     WeightSortedEndpoints = lists:sort(Endpoints),
     weighted_random_sort(WeightSortedEndpoints, []).
 
@@ -295,3 +285,22 @@ weighted_random_get_element(List, Pivot) ->
 -spec random_integer(integer()) -> integer().
 random_integer(I) ->
     random:uniform(I).
+
+-spec repeats(wh_json:object()) -> pos_integer().
+repeats(Data) ->
+    case wh_json:get_integer_value(<<"repeats">>, Data) of
+        'undefined' -> 1;
+        N when N < 1 -> 1;
+        N -> N
+    end.
+
+-spec strategy(wh_json:object()) -> ne_binary().
+strategy(Data) ->
+    wh_json:get_binary_value(<<"strategy">>, Data, ?DIAL_METHOD_SIMUL).
+
+-spec freeswitch_strategy(wh_json:object()) -> ne_binary().
+freeswitch_strategy(Data) ->
+    case strategy(Data) of
+        ?DIAL_METHOD_SIMUL -> ?DIAL_METHOD_SIMUL;
+        _ -> ?DIAL_METHOD_SINGLE
+    end.
