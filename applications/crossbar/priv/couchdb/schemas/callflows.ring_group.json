@@ -66,7 +66,8 @@
             "description": "How to ring the members of the group",
             "enum": [
                 "simultaneous",
-                "single"
+                "single",
+                "weighted_random"
             ],
             "required": false,
             "type": "string"
