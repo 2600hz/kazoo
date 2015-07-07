@@ -35,7 +35,7 @@
 
 %% Doc related
 -export([open_cache_doc/4
-         ,cache_db_doc/3
+         ,add_to_doc_cache/3
          ,flush_cache_doc/2
          ,flush_cache_doc/3
          ,flush_cache_docs/0
@@ -490,7 +490,7 @@ open_cache_doc(#server{}=Conn, DbName, DocId, Options) ->
                     maybe_cache_failure(DbName, DocId, Options, E),
                     E;
                 {'ok', JObj}=Ok ->
-                    cache_db_doc(DbName, DocId, JObj),
+                    add_to_doc_cache(DbName, DocId, JObj),
                     Ok
             end
     end.
@@ -505,20 +505,42 @@ maybe_cache_failure(DbName, DocId, Options, Error) ->
     case props:get_value('cache_failures', Options) of
         ErrorCodes when is_list(ErrorCodes) ->
             maybe_cache_failure(DbName, DocId, Options, Error, ErrorCodes);
-        'true' -> cache_db_doc(DbName, DocId, Error);
+        'true' -> add_to_doc_cache(DbName, DocId, Error);
         _ -> 'ok'
     end.
 
 maybe_cache_failure(DbName, DocId, _Options, {'error', ErrorCode}=Error, ErrorCodes) ->
     case lists:member(ErrorCode, ErrorCodes) of
-        'true' -> cache_db_doc(DbName, DocId, Error);
+        'true' -> add_to_doc_cache(DbName, DocId, Error);
         'false' -> 'ok'
     end.
 
--spec cache_db_doc(ne_binary(), ne_binary(), wh_json:object() | couchbeam_error()) -> 'ok'.
-cache_db_doc(DbName, DocId, CacheValue) ->
+-spec add_to_doc_cache(ne_binary(), ne_binary(), wh_json:object() | couchbeam_error()) -> 'ok'.
+add_to_doc_cache(DbName, DocId, CacheValue) ->
     CacheProps = [{'origin', {'db', DbName, DocId}}],
-    wh_cache:store_local(?WH_COUCH_CACHE, {?MODULE, DbName, DocId}, CacheValue, CacheProps).
+    case wh_json:is_json_object(CacheValue) of
+        'true' ->
+           cache_if_not_media(CacheProps, DbName, DocId, CacheValue);
+        'false' ->
+            wh_cache:store_local(?WH_COUCH_CACHE, {?MODULE, DbName, DocId}, CacheValue, CacheProps)
+    end.
+
+-spec cache_if_not_media(wh_proplist(), ne_binary(), ne_binary(), wh_json:object() | couchbeam_error()) -> 'ok'.
+cache_if_not_media(CacheProps, DbName, DocId, CacheValue) ->
+    %% NOTE: this is currently necessary because when a http_put is issued to
+    %%   freeswitch and the media is uploaded it goes directly to bigcouch
+    %%   and therefore no doc change notice is pushed.  This results in the
+    %%   doc cache containing a document tha thas no attachements (or the wrong
+    %%   attachments).  What needs to happen is a change notice get sent on the
+    %%   message bus anytime a http_put is issued (or maybe if the store
+    %%   url is built in media IF everything uses that helper function,
+    %    which is not currently the case...)
+    case wh_json:get_value(<<"pvt_type">>, CacheValue) of
+        <<"media">> -> 'ok';
+        <<"private_media">> -> 'ok';
+        _Else ->
+            wh_cache:store_local(?WH_COUCH_CACHE, {?MODULE, DbName, DocId}, CacheValue, CacheProps)
+    end.
 
 -spec flush_cache_doc(ne_binary() | db(), ne_binary() | wh_json:object()) -> 'ok'.
 flush_cache_doc(#db{name=Name}, Doc) ->
