@@ -146,17 +146,17 @@ inspect_call_id(CallId, Context) ->
         {'ok', JObj} ->
             Response =
                 wh_json:from_list(
-                  [{<<"messages">>, wh_json:get_value(<<"Chunks">>, JObj)}
-                   ,{<<"analysis">>, wh_json:get_value(<<"Analysis">>, JObj)}
+                  [{<<"messages">>, wh_json:get_value(<<"Chunks">>, JObj, [])}
+                   ,{<<"analysis">>, wh_json:get_value(<<"Analysis">>, JObj, [])}
                   ]
                  ),
             crossbar_util:response(Response, Context);
         {'timeout', _Resp} ->
-            lager:debug("timeout: ~p", [_Resp]),
+            lager:debug("timeout: ~s ~p", [CallId, _Resp]),
             crossbar_util:response_datastore_timeout(Context);
         {'error', _E} ->
-            lager:debug("error: ~p", [_E]),
-            crossbar_util:response_datastore_timeout(Context)
+            lager:debug("error: ~s ~p", [CallId, _E]),
+            crossbar_util:response_bad_identifier(CallId, Context)
     end.
 
 %%--------------------------------------------------------------------
