@@ -438,8 +438,8 @@ add_account_name(#auth_user{account_id=AccountId}=AuthUser) ->
 get_auth_method(?GSM_ANY_METHOD=M) when is_binary(M)-> <<"gsm">>;
 get_auth_method(M) when is_binary(M) -> M;
 get_auth_method(JObj) ->
-    wh_json:get_first_defined([[<<"sip">>,<<"method">>]
-                               ,[<<"gsm">>,<<"method">>]
+    wh_json:get_first_defined([[<<"gsm">>,<<"method">>]
+                               ,[<<"sip">>,<<"method">>]
                               ]
                               ,JObj
                               ,<<"password">>
