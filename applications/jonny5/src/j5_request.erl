@@ -18,7 +18,9 @@
 -export([is_authorized/1
          ,is_authorized/2
         ]).
--export([from_jobj/1]).
+-export([from_jobj/1
+         ,to_jobj/1
+        ]).
 
 -export([set_account_id/2
          ,account_id/1
@@ -121,6 +123,31 @@ request_number(Number, CCVs) ->
             lager:debug("using original number ~s instead of ~s", [Original, Number]),
             Original
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec to_jobj(request()) -> wh_json:object().
+to_jobj(Request) ->
+    Props =
+        props:filter_undefined(
+          [{<<"account_id">>, account_id(Request)}
+          ,{<<"reseller_id">>, reseller_id(Request)}
+          ,{<<"call_direction">>, call_direction(Request)}
+          ,{<<"call_id">>, call_id(Request)}
+          ,{<<"other_leg_call_id">>, other_leg_call_id(Request)}
+          ,{<<"answered_time">>, answered_time(Request)}
+          ,{<<"billing_seconds">>, billing_seconds(Request)}
+          ,{<<"from">>, from(Request)}
+          ,{<<"to">>, to(Request)}
+          ,{<<"number">>, ?MODULE:number(Request)}
+          ,{<<"classification">>, classification(Request)}
+          ]
+         ),
+    wh_json:from_list(Props).
 
 %%--------------------------------------------------------------------
 %% @public
