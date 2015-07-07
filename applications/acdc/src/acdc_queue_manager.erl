@@ -287,7 +287,7 @@ init(Super, AccountId, QueueId, QueueJObj) ->
     process_flag('trap_exit', 'false'),
 
     AcctDb = wh_util:format_account_id(AccountId, 'encoded'),
-    couch_mgr:cache_db_doc(AcctDb, QueueId, QueueJObj),
+    couch_mgr:add_to_doc_cache(AcctDb, QueueId, QueueJObj),
 
     _ = start_secondary_queue(AccountId, QueueId),
 

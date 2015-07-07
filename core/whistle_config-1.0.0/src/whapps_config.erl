@@ -381,7 +381,7 @@ maybe_save_category(Category, JObj, Looped) ->
     case couch_mgr:save_doc(?WH_CONFIG_DB, JObj1) of
         {'ok', SavedJObj} ->
             lager:debug("saved cat ~s to db ~s (~s)", [Category, ?WH_CONFIG_DB, wh_doc:revision(SavedJObj)]),
-            couch_mgr:cache_db_doc(?WH_CONFIG_DB, Category, SavedJObj),
+            couch_mgr:add_to_doc_cache(?WH_CONFIG_DB, Category, SavedJObj),
             {'ok', SavedJObj};
         {'error', 'not_found'} when not Looped ->
             lager:debug("attempting to create ~s DB", [?WH_CONFIG_DB]),
@@ -390,7 +390,7 @@ maybe_save_category(Category, JObj, Looped) ->
         {'error', 'conflict'}=E -> E;
         {'error', _R} ->
             lager:warning("unable to update ~s system config doc: ~p", [Category, _R]),
-            couch_mgr:cache_db_doc(?WH_CONFIG_DB, Category, JObj1),
+            couch_mgr:add_to_doc_cache(?WH_CONFIG_DB, Category, JObj1),
             {'ok', JObj1}
     end.
 
@@ -426,7 +426,7 @@ flush(Category, Keys, Node) ->
         {'error', _} -> 'ok';
         {'ok', JObj} ->
             J = wh_json:delete_key([Node | Keys], JObj),
-            _ = couch_mgr:cache_db_doc(?WH_CONFIG_DB, Category, J),
+            _ = couch_mgr:add_to_doc_cache(?WH_CONFIG_DB, Category, J),
             'ok'
     end.
 
