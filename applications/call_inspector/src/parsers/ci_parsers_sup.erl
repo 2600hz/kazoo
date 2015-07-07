@@ -62,8 +62,10 @@ init([]) ->
 start_child(Module, Args) ->
     Id = ci_parsers_util:make_name(lists:keyfind('parser_args', 1, Args)),
     ChildSpec = ?WORKER_NAME_ARGS(Module, Id, Args),
-    {'ok', _Pid} = supervisor:start_child(?MODULE, ChildSpec),
-    {'ok', Id}.
+    case supervisor:start_child(?MODULE, ChildSpec) of
+        {'ok', _Pid} -> {'ok', Id};
+        {'error', {'already_started', _Pid}} -> {'ok', Id}
+    end.
 
 -spec stop_child(atom()) -> 'ok'.
 stop_child(Id) ->
