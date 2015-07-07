@@ -220,7 +220,7 @@ handle_cast('maybe_start_recording', #state{is_recording='false'
                                            }=State) ->
     start_recording(Call, MediaName, TimeLimit, SampleRate, RecordMinSec),
     lager:debug("started recording shutting down"),
-    {'stop', 'normal', State};
+    {'noreply', State};
 handle_cast('maybe_start_recording', #state{is_recording='false'
                                             ,record_on_answer='false'
                                             ,call=Call
@@ -245,7 +245,7 @@ handle_cast('maybe_start_recording', #state{is_recording='false'
                                             ,record_min_sec = RecordMinSec
                                            }=State) ->
     start_recording(Call, MediaName, TimeLimit, SampleRate, RecordMinSec),
-    {'stop', 'normal', State};
+    {'noreply', State};
 handle_cast('maybe_start_recording_on_answer', #state{is_recording='true'}=State) ->
     lager:debug("we've already starting a recording for this call"),
     {'noreply', State};
