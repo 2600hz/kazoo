@@ -36,7 +36,7 @@
          ,update_cache_doc/3
          ,flush_cache_doc/2, flush_cache_doc/3
          ,flush_cache_docs/0, flush_cache_docs/1
-         ,cache_db_doc/3
+         ,add_to_doc_cache/3
          ,open_doc/2, admin_open_doc/2
          ,open_doc/3, admin_open_doc/3
          ,del_doc/2, del_docs/2
@@ -521,11 +521,11 @@ open_cache_doc(DbName, DocId, Options) ->
         {'error', _}=E -> E
     end.
 
-cache_db_doc(DbName, DocId, Doc) when ?VALID_DBNAME ->
-    couch_util:cache_db_doc(DbName, DocId, Doc);
-cache_db_doc(DbName, DocId, Doc) ->
+add_to_doc_cache(DbName, DocId, Doc) when ?VALID_DBNAME ->
+    couch_util:add_to_doc_cache(DbName, DocId, Doc);
+add_to_doc_cache(DbName, DocId, Doc) ->
     case maybe_convert_dbname(DbName) of
-        {'ok', Db} -> cache_db_doc(Db, DocId, Doc);
+        {'ok', Db} -> add_to_doc_cache(Db, DocId, Doc);
         {'error', _}=E -> E
     end.
 
