@@ -30,7 +30,6 @@
 
 -define(STATUS_PATH_TOKEN, <<"status">>).
 -define(CHECK_SYNC_PATH_TOKEN, <<"sync">>).
--define(BLF_PATH_TOKEN, <<"presence">>).
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".devices">>).
 
@@ -88,8 +87,6 @@ allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
 allowed_methods(_DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
-    [?HTTP_POST];
-allowed_methods(_DeviceId, ?BLF_PATH_TOKEN) ->
     [?HTTP_POST].
 
 allowed_methods(_, ?QUICKCALL_PATH_TOKEN, _) ->
@@ -112,8 +109,7 @@ resource_exists() -> 'true'.
 
 resource_exists(_) -> 'true'.
 
-resource_exists(_DeviceId, ?CHECK_SYNC_PATH_TOKEN) -> 'true';
-resource_exists(_DeviceId, ?BLF_PATH_TOKEN) -> 'true'.
+resource_exists(_DeviceId, ?CHECK_SYNC_PATH_TOKEN) -> 'true'.
 
 resource_exists(_, ?QUICKCALL_PATH_TOKEN, _) -> 'true'.
 
@@ -234,8 +230,6 @@ validate_device(Context, DeviceId, ?HTTP_DELETE) ->
     load_device(DeviceId, Context).
 
 validate(Context, DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
-    load_device(DeviceId, Context);
-validate(Context, DeviceId, ?BLF_PATH_TOKEN) ->
     load_device(DeviceId, Context).
 
 validate(Context, DeviceId, ?QUICKCALL_PATH_TOKEN, _ToDial) ->
@@ -271,25 +265,7 @@ post(Context, DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
     lager:debug("publishing check_sync for ~s", [DeviceId]),
     Context1 = cb_context:store(Context, 'sync', 'force'),
     _ = provisioner_util:maybe_sync_sip_data(Context1, 'device'),
-    crossbar_util:response_202(<<"sync request sent">>, Context);
-post(Context, _DeviceId, ?BLF_PATH_TOKEN) ->
-    PresenceId = kz_device:presence_id(cb_context:doc(Context)),
-    AccountRealm = cb_context:account_realm(Context),
-
-    lager:info("publishing blf reset for presense id ~s@~s"
-               ,[PresenceId, AccountRealm]
-              ),
-
-    publish_reset_payload(AccountRealm, PresenceId),
-    crossbar_util:response_202(<<"reset request sent">>, Context).
-
--spec publish_reset_payload(ne_binary(), ne_binary()) -> 'ok'.
-publish_reset_payload(AccountRealm, PresenceId) ->
-    API = [{<<"Realm">>, AccountRealm}
-           ,{<<"Username">>, PresenceId}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    wh_amqp_worker:cast(API, fun wapi_presence:publish_reset/1).
+    crossbar_util:response_202(<<"sync request sent">>, Context).
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
