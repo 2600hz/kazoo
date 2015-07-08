@@ -416,7 +416,10 @@ load_domains(Context, Domain) ->
 
 load_domains(Context, Domain, SystemDomains) ->
     AccountDomains = kzd_domains:format(SystemDomains, Domain),
-    cb_context:set_resp_data(Context, AccountDomains).
+    cb_context:setters(Context
+                       ,[{fun cb_context:set_resp_data/2, AccountDomains}
+                         ,{fun cb_context:set_resp_status/2, 'success'}
+                        ]).
 
 -spec missing_domain_error(cb_context:context()) ->
                                   cb_context:context().
