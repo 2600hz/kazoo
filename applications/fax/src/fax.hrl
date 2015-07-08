@@ -40,5 +40,24 @@
 
 -define(FAX_STATE_LIST, [?FAX_START, ?FAX_PREPARE, ?FAX_SEND, ?FAX_RECEIVE, ?FAX_END, ?FAX_ERROR]).
 
+-define(OPENXML_MIME_PREFIX, "application/vnd.openxmlformats-officedocument.").
+-define(OPENOFFICE_MIME_PREFIX, "application/vnd.oasis.opendocument.").
+-define(OPENOFFICE_COMPATIBLE(CT), (
+                                CT =:= <<"application/msword">>
+                                orelse CT =:= <<"application/vnd.ms-excel">>
+                                orelse CT =:= <<"application/vnd.ms-powerpoint">>
+                               )).
+
+-define(DEFAULT_ALLOWED_CONTENT_TYPES, [
+                                        <<"application/pdf">>
+                                        ,<<"image/tiff">>
+                                        ,{[{<<"prefix">>, <<"image">>}]}
+                                        ,{[{<<"prefix">>, <<?OPENXML_MIME_PREFIX>>}]}
+                                        ,{[{<<"prefix">>, <<?OPENOFFICE_MIME_PREFIX>>}]}
+                                        ,<<"application/msword">>
+                                        ,<<"application/vnd.ms-excel">>
+                                        ,<<"application/vnd.ms-powerpoint">>
+                                       ]).
+
 -define(FAX_HRL, 'true').
 -endif.

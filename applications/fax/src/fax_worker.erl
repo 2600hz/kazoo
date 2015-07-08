@@ -67,10 +67,31 @@
 -define(DEFAULT_COMPARE_FIELD, whapps_config:get_binary(?CONFIG_CAT, <<"default_compare_field">>, <<"result_cause">>)).
 
 -define(COUNT_PAGES_CMD, <<"echo -n `tiffinfo ~s | grep 'Page Number' | grep -c 'P'`">>).
--define(CONVERT_PDF_CMD, <<"/usr/bin/gs -q -r204x98 -g1728x1078 -dNOPAUSE -dBATCH -dSAFER -sDEVICE=tiffg3 -sOutputFile=~s -- ~s &> /dev/null && echo -n \"success\"">>).
+-define(CONVERT_PDF_CMD, <<"/usr/bin/gs -q "
+                            "-r204x98 "
+                            "-g1728x1078 "
+                            "-dNOPAUSE "
+                            "-dBATCH "
+                            "-dSAFER "
+                            "-sDEVICE=tiffg3 "
+                            "-sOutputFile=~s -- ~s > /dev/null "
+                            "&& echo -n \"success\"">>).
+-define(CONVERT_IMAGE_CMD, <<"convert -density 204x98 "
+                            "-units PixelsPerInch "
+                            "-size 1728x1078 ~s ~s > /dev/null "
+                            "&& echo -n success">>).
+-define(CONVERT_OO_DOC_CMD, <<"unoconv -c ~s -f pdf --stdout ~s "
+                            "| /usr/bin/gs -q "
+                            "-r204x98 "
+                            "-g1728x1078 "
+                            "-dNOPAUSE "
+                            "-dBATCH "
+                            "-dSAFER "
+                            "-sDEVICE=tiffg3 "
+                            "-sOutputFile=~s - > /dev/null"
+                            "&& echo -n success">>).
 
 -define(CALLFLOW_LIST, <<"callflow/listing_by_number">>).
-
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -754,7 +775,11 @@ prepare_contents(JobId, RespHeaders, RespContent) ->
             InputFile = list_to_binary([TmpDir, JobId, ".pdf"]),
             OutputFile = list_to_binary([TmpDir, JobId, ".tiff"]),
             wh_util:write_file(InputFile, RespContent),
-            ConvertCmd = whapps_config:get_binary(<<"fax">>, <<"conversion_command">>, ?CONVERT_PDF_CMD),
+            ConvertCmd = whapps_config:get_binary(?CONFIG_CAT
+                                                  ,<<"conversion_pdf_command">>
+                                                  ,whapps_config:get_binary(?CONFIG_CAT
+                                                                            ,<<"conversion_command">>
+                                                                            ,?CONVERT_PDF_CMD)),
             Cmd = io_lib:format(ConvertCmd, [OutputFile, InputFile]),
             lager:debug("attempting to convert pdf: ~s", [Cmd]),
             case os:cmd(Cmd) of
@@ -764,14 +789,55 @@ prepare_contents(JobId, RespHeaders, RespContent) ->
                     lager:debug("could not covert file: ~s", [_Else]),
                     {'error', <<"can not convert file, try uploading a tiff">>}
             end;
+        %% PDF also may be converted here
+        <<"image/", SubType/binary>> ->
+            InputFile = list_to_binary([TmpDir, JobId, ".", SubType]),
+            OutputFile = list_to_binary([TmpDir, JobId, ".tiff"]),
+            wh_util:write_file(InputFile, RespContent),
+            ConvertCmd = whapps_config:get_binary(?CONFIG_CAT, <<"conversion_image_command">>, ?CONVERT_IMAGE_CMD),
+            Cmd = io_lib:format(ConvertCmd, [InputFile, OutputFile]),
+            lager:debug("attempting to convert ~s: ~s", [SubType, Cmd]),
+            case os:cmd(Cmd) of
+                "success" ->
+                    {'ok', OutputFile};
+                _Else ->
+                    lager:debug("could not convert file: ~s", [_Else]),
+                    {'error', <<"can not convert file, try uploading a tiff">>}
+            end;
+        <<?OPENXML_MIME_PREFIX, _/binary>> = CT ->
+            convert_openoffice_document(CT, TmpDir, JobId, RespContent);
+        <<?OPENOFFICE_MIME_PREFIX, _/binary>> = CT ->
+            convert_openoffice_document(CT, TmpDir, JobId, RespContent);
+        CT when ?OPENOFFICE_COMPATIBLE(CT) ->
+            convert_openoffice_document(CT, TmpDir, JobId, RespContent);
         Else ->
             lager:debug("unsupported file type: ~p", [Else]),
             {'error', list_to_binary(["file type '", Else, "' is unsupported"])}
     end.
 
+-spec convert_openoffice_document(ne_binary(), ne_binary(), ne_binary(), ne_binary()) ->
+    {'ok', ne_binary()}
+    | {'error', ne_binary()}.
+convert_openoffice_document(CT, TmpDir, JobId, RespContent) ->
+    Extension = fax_util:content_type_to_extension(CT),
+    InputFile = list_to_binary([TmpDir, JobId, ".", Extension]),
+    OutputFile = list_to_binary([TmpDir, JobId, ".tiff"]),
+    wh_util:write_file(InputFile, RespContent),
+    ConvertCmd = whapps_config:get_binary(?CONFIG_CAT, <<"conversion_openoffice_document_command">>, ?CONVERT_OO_DOC_CMD),
+    OpenOfficeServer = whapps_config:get_binary(?CONFIG_CAT, <<"openoffice_server">>, <<"'socket,host=localhost,port=2002;urp;StarOffice.ComponentContext'">>),
+    Cmd = io_lib:format(ConvertCmd, [OpenOfficeServer, InputFile, OutputFile]),
+    lager:debug("attemting to convert openoffice document: ~s", [Cmd]),
+    case os:cmd(Cmd) of
+        "success" ->
+            {'ok', OutputFile};
+        _Else ->
+            lager:debug("could not convert file: ~s", [_Else]),
+            {'error', <<"can not convert file, try uploading a tiff">>}
+    end.
+
 -spec get_sizes(ne_binary()) -> {integer(), non_neg_integer()}.
 get_sizes(OutputFile) when is_binary(OutputFile) ->
-    CmdCount = whapps_config:get_binary(<<"fax">>, <<"count_pages_command">>, ?COUNT_PAGES_CMD),
+    CmdCount = whapps_config:get_binary(?CONFIG_CAT, <<"count_pages_command">>, ?COUNT_PAGES_CMD),
     Cmd = io_lib:format(CmdCount, [OutputFile]),
     Result = os:cmd(wh_util:to_list(Cmd)),
     NumberOfPages = wh_util:to_integer(Result),
