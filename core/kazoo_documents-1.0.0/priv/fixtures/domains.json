@@ -2,21 +2,21 @@
     "A": {
         "us-central.{{domain}}": {
             "mapping": [
-                "166.78.105.67"
+                "127.0.0.1"
             ],
             "name": "Secondary Proxy",
             "zone": "us-central"
         },
         "us-east.{{domain}}": {
             "mapping": [
-                "8.36.70.3"
+                "127.0.0.1"
             ],
             "name": "Primary Proxy",
             "zone": "us-east"
         },
         "us-west.{{domain}}": {
             "mapping": [
-                "8.30.173.3"
+                "127.0.0.1"
             ],
             "name": "Tertiary Proxy",
             "zone": "us-west"
@@ -25,13 +25,13 @@
     "CNAM": {
         "api.{{domain}}": {
             "mapping": [
-                "api.zswitch.net"
+                "api.yourcompany.net"
             ],
             "name": "API"
         },
         "portal.{{domain}}": {
             "mapping": [
-                "ui.zswitch.net"
+                "ui.yourcompany.net"
             ],
             "name": "Web GUI"
         }
