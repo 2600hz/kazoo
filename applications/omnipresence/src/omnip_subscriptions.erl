@@ -89,7 +89,8 @@ handle_reset(JObj, _Props) ->
     'true' = wapi_presence:reset_v(JObj),
     case find_subscriptions(JObj) of
         {'error', 'not_found'} -> 'ok';
-        {'ok', Subscriptions} -> notify_packages('subscription_reset', Subscriptions)
+        {'ok', Subscriptions} ->
+            notify_packages('subscription_reset', Subscriptions)
     end.
 
 %% Subscribes work like this:
@@ -342,7 +343,9 @@ code_change(_OldVsn, State, _Extra) ->
 notify_packages(_MsgType, []) -> 'ok';
 notify_packages(MsgType , [#omnip_subscription{user=User
                                                ,event=Package
-                                              }=Subscription | Subscriptions]) ->
+                                              }=Subscription
+                           | Subscriptions
+                          ]) ->
     Msg = {'omnipresence', {MsgType, Package, User, Subscription}},
     notify_packages(Msg),
     notify_packages(MsgType, Subscriptions).
@@ -700,7 +703,7 @@ notify_update(JObj) ->
                                   } = Sub} ->
             lager:debug("received notify reply ~B for ~s subscription (~s) of ~s to ~s", [Reply, Event, CallId, From, User]),
             ets:delete_object(table_id(), Sub),
-            ets:insert(table_id(), Sub#omnip_subscription{last_sequence = Sequence 
+            ets:insert(table_id(), Sub#omnip_subscription{last_sequence = Sequence
                                                           ,last_reply = Reply
                                                           ,last_body = Body
                                                          });
@@ -708,5 +711,3 @@ notify_update(JObj) ->
             lager:debug("notify received for unexistent subscription ~s", [CallId]),
             E
     end.
-
-        
