@@ -470,7 +470,7 @@ reset_blf(User) ->
     Headers = [{<<"From">>, User}
                ,{<<"To">>, User}
                ,{<<"Flush-Level">>, 1}
-               ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:hash(md5, User))}
+               ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:hash('md5', User))}
                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     handle_update(wh_json:from_list(Headers), ?PRESENCE_HANGUP).

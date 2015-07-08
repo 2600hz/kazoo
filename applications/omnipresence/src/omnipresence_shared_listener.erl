@@ -35,7 +35,8 @@
                                                ,'CHANNEL_DESTROY'
                                                ,'CHANNEL_CONNECTED'
                                                ,'CHANNEL_DISCONNECTED'
-                                              ]}
+                                              ]
+                              }
                               ,'federate'
                              ]}
                    ,{'presence', [{'restrict_to', ['update'
@@ -43,7 +44,8 @@
                                                    ,'reset'
                                                    ,'flush'
                                                    ,'search_req'
-                                                  ]}
+                                                  ]
+                                  }
                                   ,'federate'
                                  ]}
                    ,{'omnipresence', [{'restrict_to', ['subscribe']}]}
