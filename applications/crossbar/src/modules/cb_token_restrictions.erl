@@ -195,7 +195,7 @@ allowed_accounts(Context) ->
     AuthAccountId = cb_context:auth_account_id(Context),
     AccountId = cb_context:account_id(Context),
     %%
-    %% #cb_context.account_id not always contain AccountId, try found it from req_nouns
+    %% cb_context:account_id/1 not always contain AccountId, try found it from req_nouns
     %%
 %%    AccountId = case cb_context:account_id(Context) of
 %%        'undefined' ->

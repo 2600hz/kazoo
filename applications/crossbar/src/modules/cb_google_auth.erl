@@ -116,12 +116,12 @@ put(Context) ->
 -spec maybe_authenticate_user(cb_context:context()) -> cb_context:context().
 
 maybe_authenticate_user(Context) ->
-    JObj = cb_context:doc(Context),
-    case kazoo_oauth_client:authenticate(JObj) of
+    case kazoo_oauth_client:authenticate(cb_context:doc(Context)) of
         {'ok', OAuth} ->
             lager:debug("verified oauth: ~p",[OAuth]),
-            maybe_account_is_disabled(Context#cb_context{doc=OAuth
-                                                        ,resp_status='success'});
+            Context1 = cb_context:set_doc(cb_context:set_resp_status(Context, 'success')
+                                          ,OAuth),
+            maybe_account_is_disabled(Context1);
         {'error', _R} ->
             lager:debug("error verifying token: ~p",[_R]),
             cb_context:add_system_error('invalid_credentials', Context)

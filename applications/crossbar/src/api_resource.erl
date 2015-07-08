@@ -84,22 +84,23 @@ rest_init(Req0, Opts) ->
 
     {Headers, _} = cowboy_req:headers(Req7),
 
-    Context0 = #cb_context{
-                  req_id = ReqId
-                  ,req_headers = Headers
-                  ,raw_host = wh_util:to_binary(Host)
-                  ,port = wh_util:to_integer(Port)
-                  ,raw_path = wh_util:to_binary(Path)
-                  ,raw_qs = wh_util:to_binary(QS)
-                  ,method = wh_util:to_binary(Method)
-                  ,resp_status = 'fatal'
-                  ,resp_error_msg = <<"init failed">>
-                  ,resp_error_code = 500
-                  ,client_ip = ClientIP
-                  ,profile_id = ProfileId
-                  ,api_version = Version
-                  ,magic_pathed = props:is_defined('magic_path', Opts)
-                 },
+    Setters = [{fun cb_context:set_req_id/2, ReqId}
+              ,{fun cb_context:set_req_headers/2, Headers}
+              ,{fun cb_context:set_raw_host/2, wh_util:to_binary(Host)}
+              ,{fun cb_context:set_port/2, wh_util:to_integer(Port)}
+              ,{fun cb_context:set_raw_path/2, wh_util:to_binary(Path)}
+              ,{fun cb_context:set_raw_qs/2, wh_util:to_binary(QS)}
+              ,{fun cb_context:set_method/2, wh_util:to_binary(Method)}
+              ,{fun cb_context:set_resp_status/2, 'fatal'}
+              ,{fun cb_context:set_resp_error_msg/2, <<"init failed">>}
+              ,{fun cb_context:set_resp_error_code/2, 500}
+              ,{fun cb_context:set_client_ip/2, ClientIP}
+              ,{fun cb_context:set_profile_id/2, ProfileId}
+              ,{fun cb_context:set_api_version/2, Version}
+              ,{fun cb_context:set_magic_pathed/2, props:is_defined('magic_path', Opts)}
+              ],
+    Context0 = cb_context:setters(cb_context:new(), Setters),
+
     Event = api_util:create_event_name(Context0, <<"init">>),
     {Context1, _} = crossbar_bindings:fold(Event, {Context0, Opts}),
     lager:info("~s: ~s?~s from ~s", [Method, Path, QS, ClientIP]),

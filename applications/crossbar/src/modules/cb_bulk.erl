@@ -38,7 +38,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.bulk">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.bulk">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.bulk">>, ?MODULE, 'post'),
-    crossbar_bindings:bind(<<"*.execute.delete.bulk">>, ?MODULE, 'delete').
+    _ = crossbar_bindings:bind(<<"*.execute.delete.bulk">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -47,7 +47,7 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods() | [].
+-spec allowed_methods() -> http_methods().
 allowed_methods() -> [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
@@ -69,11 +69,10 @@ resource_exists() -> 'true'.
 %% and load necessary information.
 %% /bulk might load a list of bulk_update objects
 %% /bulk/123 might load the bulk_update object 123
-%% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
-validate(#cb_context{}=Context) ->
+validate(Context) ->
     maybe_load_docs(Context).
 
 -spec maybe_load_docs(cb_context:context()) -> cb_context:context().

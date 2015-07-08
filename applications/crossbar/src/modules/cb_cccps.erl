@@ -44,7 +44,7 @@ init() ->
 -spec maybe_init_db() -> 'ok'.
 maybe_init_db() ->
     case couch_mgr:db_exists(<<"cccps">>) of
-        'true' -> 
+        'true' ->
              _ = couch_mgr:revise_doc_from_file(<<"cccps">>, 'crossbar', <<"views/cccps.json">>),
             'ok';
         'false' -> init_db()
@@ -104,8 +104,8 @@ validate(Context, Id) ->
 -spec validate_cccps(cb_context:context(), http_method()) -> cb_context:context().
 validate_cccps(Context, ?HTTP_GET) ->
     summary(Context);
-validate_cccps(#cb_context{req_data=ReqData}=Context, ?HTTP_PUT) ->
-    case wh_json:get_value(<<"cid">>, ReqData) of
+validate_cccps(Context, ?HTTP_PUT) ->
+    case wh_json:get_value(<<"cid">>, cb_context:req_data(Context)) of
         'undefined' ->
             check_pin(Context);
         _ ->
@@ -251,7 +251,8 @@ check_pin(Context) ->
     end.
 
 -spec check_cid(cb_context:context()) -> cb_context:context().
-check_cid(#cb_context{req_data=ReqData}=Context) ->
+check_cid(Context) ->
+    ReqData = cb_context:req_data(Context),
     CID = wh_json:get_value(<<"cid">>, ReqData),
     case wnm_util:is_reconcilable(CID) of
         'false' ->
@@ -266,7 +267,7 @@ check_cid(#cb_context{req_data=ReqData}=Context) ->
             );
         'true' ->
             ReqData2 = wh_json:set_value(<<"cid">>, wnm_util:normalize_number(CID), ReqData),
-            Context2 = Context#cb_context{req_data=ReqData2},
+            Context2 = cb_context:set_req_data(Context, ReqData2),
             case unique_cid(Context2) of
                 'empty' -> create(Context2);
                 _ ->
@@ -282,13 +283,12 @@ check_cid(#cb_context{req_data=ReqData}=Context) ->
             end
 
     end.
--spec unique_cid(cb_context:context()) -> {ok, list()} | 'empty' | 'error'.
-unique_cid(#cb_context{req_data=ReqData}) ->
-    CID = wh_json:get_value(<<"cid">>, ReqData),
+-spec unique_cid(cb_context:context()) -> {'ok', list()} | 'empty' | 'error'.
+unique_cid(Context) ->
+    CID = wh_json:get_value(<<"cid">>, cb_context:req_data(Context)),
     cccp_util:authorize(CID, <<"cccps/cid_listing">>).
 
--spec unique_pin(cb_context:context()) -> {ok, list()} | 'empty' | 'error'.
-unique_pin(#cb_context{req_data=ReqData}) ->
-    Pin = wh_json:get_value(<<"pin">>, ReqData),
+-spec unique_pin(cb_context:context()) -> {'ok', list()} | 'empty' | 'error'.
+unique_pin(Context) ->
+    Pin = wh_json:get_value(<<"pin">>, cb_context:req_data(Context)),
     cccp_util:authorize(Pin, <<"cccps/pin_listing">>).
-

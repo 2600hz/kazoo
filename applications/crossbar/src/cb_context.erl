@@ -51,7 +51,7 @@
          ,req_headers/1, set_req_headers/2
          ,req_header/2
          ,query_string/1, set_query_string/2
-         ,client_ip/1
+         ,client_ip/1, set_client_ip/2
          ,doc/1, set_doc/2, update_doc/2
          ,load_merge_bypass/1, set_load_merge_bypass/2
          ,start/1, set_start/2
@@ -82,6 +82,12 @@
          ,encodings_provided/1, set_encodings_provided/2
 
          ,validation_errors/1, set_validation_errors/2
+
+         ,set_raw_host/2
+         ,set_port/2
+         ,set_raw_path/2
+         ,set_raw_qs/2
+         ,profile_id/1 ,set_profile_id/2
 
          %% Special accessors
          ,req_value/2, req_value/3
@@ -142,12 +148,14 @@ accepting_charges(Context) ->
 -spec account_modb(context(), wh_year(), wh_month()) -> api_binary().
 -spec account_realm(context()) -> api_binary().
 -spec account_doc(context()) -> api_object().
+-spec profile_id(context()) -> api_binary().
 
 account_id(#cb_context{account_id=AcctId}) -> AcctId.
 user_id(#cb_context{user_id=UserId}) -> UserId.
 device_id(#cb_context{device_id=DeviceId}) -> DeviceId.
 reseller_id(#cb_context{reseller_id=AcctId}) -> AcctId.
 account_db(#cb_context{db_name=AcctDb}) -> AcctDb.
+profile_id(#cb_context{profile_id = Value}) -> Value.
 
 account_modb(Context) ->
     kazoo_modb:get_modb(account_id(Context)).
@@ -291,6 +299,12 @@ setters_fold(F, C) when is_function(F, 1) -> F(C).
 -spec set_magic_pathed(context(), boolean()) -> context().
 -spec set_should_paginate(context(), boolean()) -> context().
 -spec set_validation_errors(context(), wh_json:object()) -> context().
+-spec set_port(context(), integer()) -> context().
+-spec set_raw_host(context(), binary()) -> context().
+-spec set_raw_path(context(), binary()) -> context().
+-spec set_raw_qs(context(), binary()) -> context().
+-spec set_client_ip(context(), ne_binary()) -> context().
+-spec set_profile_id(context(), ne_binary()) -> context().
 
 set_account_id(#cb_context{}=Context, AcctId) ->
     Context#cb_context{account_id=AcctId}.
@@ -390,6 +404,25 @@ add_resp_header_fold({K, V}, Hs) ->
 
 set_validation_errors(#cb_context{}=Context, Errors) ->
     Context#cb_context{validation_errors=Errors}.
+
+set_port(#cb_context{}=Context, Value) ->
+    Context#cb_context{port = Value}.
+
+set_raw_host(#cb_context{}=Context, Value) ->
+    Context#cb_context{raw_host = Value}.
+
+set_raw_path(#cb_context{}=Context, Value) ->
+    Context#cb_context{raw_path = Value}.
+
+set_raw_qs(#cb_context{}=Context, Value) ->
+    Context#cb_context{raw_qs = Value}.
+
+set_client_ip(#cb_context{}=Context, Value) ->
+    Context#cb_context{client_ip = Value}.
+
+set_profile_id(#cb_context{}=Context, Value) ->
+    Context#cb_context{profile_id = Value}.
+
 
 -spec update_doc(context(), setter_fun_1()) -> context().
 update_doc(#cb_context{doc=Doc}=Context, Updater) ->
