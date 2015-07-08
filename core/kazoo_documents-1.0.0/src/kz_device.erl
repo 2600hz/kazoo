@@ -169,7 +169,7 @@ set_sip_settings(DeviceJObj, SipJObj) ->
 -spec presence_id(doc()) -> api_binary().
 -spec presence_id(doc(), Default) -> ne_binary() | Default.
 presence_id(DeviceJObj) ->
-    presence_id(DeviceJObj, 'undefined').
+    presence_id(DeviceJObj, sip_username(DeviceJObj)).
 presence_id(DeviceJObj, Default) ->
     wh_json:get_binary_value(?PRESENCE_ID, DeviceJObj, Default).
 
