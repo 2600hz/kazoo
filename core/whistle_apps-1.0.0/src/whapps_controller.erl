@@ -85,6 +85,7 @@ restart_app(App) when is_atom(App) ->
           ,'ibrowse','inets'
           ,'kazoo_bindings','kazoo_caches','kazoo_token_buckets','kernel'
           ,'lager'
+          ,'nksip'
           ,'public_key'
           ,'ranch'
           ,'sasl','socketio','ssl','stdlib','syslog'

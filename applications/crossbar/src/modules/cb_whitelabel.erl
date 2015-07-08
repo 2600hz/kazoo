@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Account module
 %%%
@@ -26,15 +26,10 @@
 -define(WHITELABEL_ID, <<"whitelabel">>).
 -define(LOGO_REQ, <<"logo">>).
 -define(ICON_REQ, <<"icon">>).
+-define(DOMAINS_REQ, <<"domains">>).
 -define(WELCOME_REQ, <<"welcome">>).
 
--define(WHITELABEL_MIME_TYPES, [{<<"image">>, <<"jpg">>}
-                                ,{<<"image">>, <<"jpeg">>}
-                                ,{<<"image">>, <<"png">>}
-                                ,{<<"image">>, <<"gif">>}
-                                ,{<<"application">>, <<"base64">>}
-                                ,{<<"application">>, <<"x-base64">>}
-                               ]).
+-define(WHITELABEL_MIME_TYPES, ?IMAGE_CONTENT_TYPES ++ ?BASE64_CONTENT_TYPES).
 
 %% Commonly found ico mime types
 -define(WHITELABEL_ICON_MIME_TYPES, [{<<"image">>, <<"ico">>}
@@ -44,8 +39,7 @@
                                      | ?WHITELABEL_MIME_TYPES
                                     ]).
 
--define(WHITELABEL_WELCOME_MIME_TYPES, [{<<"text">>, <<"html">>}
-                                    ]).
+-define(WHITELABEL_WELCOME_MIME_TYPES, [{<<"text">>, <<"html">>}]).
 
 -define(AGG_VIEW_WHITELABEL_DOMAIN, <<"accounts/list_by_whitelabel_domain">>).
 
@@ -53,16 +47,18 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
-    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
-    _ = crossbar_bindings:bind(<<"*.content_types_provided.whitelabel">>, ?MODULE, 'content_types_provided'),
-    _ = crossbar_bindings:bind(<<"*.content_types_accepted.whitelabel">>, ?MODULE, 'content_types_accepted'),
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.whitelabel">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.whitelabel">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"*.validate.whitelabel">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.execute.put.whitelabel">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"*.execute.post.whitelabel">>, ?MODULE, 'post'),
-    _ = crossbar_bindings:bind(<<"*.execute.delete.whitelabel">>, ?MODULE, 'delete').
+    Bindings = [{<<"*.authenticate">>, 'authenticate'}
+                ,{<<"*.authorize">>, 'authorize'}
+                ,{<<"*.content_types_provided.whitelabel">>, 'content_types_provided'}
+                ,{<<"*.content_types_accepted.whitelabel">>, 'content_types_accepted'}
+                ,{<<"*.allowed_methods.whitelabel">>, 'allowed_methods'}
+                ,{<<"*.resource_exists.whitelabel">>, 'resource_exists'}
+                ,{<<"*.validate.whitelabel">>, 'validate'}
+                ,{<<"*.execute.put.whitelabel">>, 'put'}
+                ,{<<"*.execute.post.whitelabel">>, 'post'}
+                ,{<<"*.execute.delete.whitelabel">>, 'delete'}
+               ],
+    cb_modules_util:bind(?MODULE, Bindings).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -84,6 +80,8 @@ allowed_methods(?LOGO_REQ) ->
 allowed_methods(?ICON_REQ) ->
     [?HTTP_GET, ?HTTP_POST];
 allowed_methods(?WELCOME_REQ) ->
+    [?HTTP_GET, ?HTTP_POST];
+allowed_methods(?DOMAINS_REQ) ->
     [?HTTP_GET, ?HTTP_POST];
 allowed_methods(_) ->
     [?HTTP_GET].
@@ -111,6 +109,7 @@ resource_exists() -> 'true'.
 resource_exists(?LOGO_REQ) -> 'true';
 resource_exists(?ICON_REQ) -> 'true';
 resource_exists(?WELCOME_REQ) -> 'true';
+resource_exists(?DOMAINS_REQ) -> 'true';
 resource_exists(_) -> 'true'.
 
 resource_exists(_, ?LOGO_REQ) -> 'true';
@@ -124,18 +123,24 @@ resource_exists(_, ?ICON_REQ) -> 'true'.
 %%--------------------------------------------------------------------
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->
-    authorize(cb_context:req_nouns(Context), cb_context:req_verb(Context)).
+    authorize(Context
+              ,cb_context:req_nouns(Context)
+              ,cb_context:req_verb(Context)
+             ).
 
--spec authorize(req_nouns(), http_method()) -> boolean().
-authorize([{<<"whitelabel">>, [_]}], ?HTTP_GET) ->
+-spec authorize(cb_context:context(), req_nouns(), http_method()) -> boolean().
+authorize(Context, [{<<"whitelabel">>, [?DOMAINS_REQ]}], ?HTTP_POST) ->
+    %% /{VERSION}/whitelabel/domains retricted to sys-admin account
+    cb_modules_util:is_superduper_admin(Context);
+authorize(_Context, [{<<"whitelabel">>, [_]}], ?HTTP_GET) ->
     'true';
-authorize([{<<"whitelabel">>, [_ | [?LOGO_REQ]]}], ?HTTP_GET) ->
+authorize(_Context, [{<<"whitelabel">>, [_ | [?LOGO_REQ]]}], ?HTTP_GET) ->
     'true';
-authorize([{<<"whitelabel">>, [_ | [?ICON_REQ]]}], ?HTTP_GET) ->
+authorize(_Context, [{<<"whitelabel">>, [_ | [?ICON_REQ]]}], ?HTTP_GET) ->
     'true';
-authorize([{<<"whitelabel">>, [_ | [?WELCOME_REQ]]}], ?HTTP_GET) ->
+authorize(_Context, [{<<"whitelabel">>, [_ | [?WELCOME_REQ]]}], ?HTTP_GET) ->
     'true';
-authorize(_Nouns, _Verb) ->
+authorize(_Context, _Nouns, _Verb) ->
     'false'.
 
 %%--------------------------------------------------------------------
@@ -270,6 +275,8 @@ validate(Context, ?ICON_REQ) ->
     validate_attachment(Context, ?ICON_REQ, cb_context:req_verb(Context));
 validate(Context, ?WELCOME_REQ) ->
     validate_attachment(Context, ?WELCOME_REQ, cb_context:req_verb(Context));
+validate(Context, ?DOMAINS_REQ) ->
+    validate_domains(Context, cb_context:req_verb(Context));
 validate(Context, Domain) ->
     validate_domain(Context, Domain, cb_context:req_verb(Context)).
 
@@ -288,31 +295,31 @@ validate_attachment(Context, AttachType, ?HTTP_POST) ->
                                       cb_context:context().
 validate_attachment_post(Context, ?LOGO_REQ, []) ->
     cb_context:add_validation_error(
-        <<"file">>
-        ,<<"required">>
-        ,wh_json:from_list([
-            {<<"message">>, <<"Please provide an image file">>}
-         ])
-        ,Context
-    );
+      <<"file">>
+      ,<<"required">>
+      ,wh_json:from_list(
+         [{<<"message">>, <<"Please provide an image file">>}]
+        )
+      ,Context
+     );
 validate_attachment_post(Context, ?ICON_REQ, []) ->
     cb_context:add_validation_error(
-        <<"file">>
-        ,<<"required">>
-        ,wh_json:from_list([
-            {<<"message">>, <<"Please provide an image file">>}
-         ])
-        ,Context
-    );
+      <<"file">>
+      ,<<"required">>
+      ,wh_json:from_list(
+         [{<<"message">>, <<"Please provide an image file">>}]
+        )
+      ,Context
+     );
 validate_attachment_post(Context, ?WELCOME_REQ, []) ->
     cb_context:add_validation_error(
-        <<"file">>
-        ,<<"required">>
-        ,wh_json:from_list([
-            {<<"message">>, <<"Please provide an html file">>}
-         ])
-        ,Context
-    );
+      <<"file">>
+      ,<<"required">>
+      ,wh_json:from_list(
+         [{<<"message">>, <<"Please provide an html file">>}]
+        )
+      ,Context
+     );
 validate_attachment_post(Context, ?LOGO_REQ, [{_Filename, FileJObj}]) ->
     validate_upload(Context, FileJObj);
 validate_attachment_post(Context, ?ICON_REQ, [{_Filename, FileJObj}]) ->
@@ -321,31 +328,31 @@ validate_attachment_post(Context, ?WELCOME_REQ, [{_Filename, FileJObj}]) ->
     validate_upload(Context, FileJObj);
 validate_attachment_post(Context, ?LOGO_REQ, _Files) ->
     cb_context:add_validation_error(
-        <<"file">>
-        ,<<"maxItems">>
-        ,wh_json:from_list([
-            {<<"message">>, <<"Please provide a single image file">>}
-         ])
-        ,Context
-    );
+      <<"file">>
+      ,<<"maxItems">>
+      ,wh_json:from_list(
+         [{<<"message">>, <<"Please provide a single image file">>}]
+        )
+      ,Context
+     );
 validate_attachment_post(Context, ?ICON_REQ, _Files) ->
     cb_context:add_validation_error(
-        <<"file">>
-        ,<<"maxItems">>
-        ,wh_json:from_list([
-            {<<"message">>, <<"Please provide a single image file">>}
-         ])
-        ,Context
-    );
+      <<"file">>
+      ,<<"maxItems">>
+      ,wh_json:from_list(
+         [{<<"message">>, <<"Please provide a single image file">>}]
+        )
+      ,Context
+     );
 validate_attachment_post(Context, ?WELCOME_REQ, _Files) ->
     cb_context:add_validation_error(
-        <<"file">>
-        ,<<"maxItems">>
-        ,wh_json:from_list([
-            {<<"message">>, <<"please provide a single html file">>}
-         ])
-        ,Context
-    ).
+      <<"file">>
+      ,<<"maxItems">>
+      ,wh_json:from_list(
+         [{<<"message">>, <<"please provide a single html file">>}]
+        )
+      ,Context
+     ).
 
 -spec validate_upload(cb_context:context(), wh_json:object()) ->
                              cb_context:context().
@@ -353,21 +360,200 @@ validate_upload(Context, FileJObj) ->
     Context1 = load_whitelabel_meta(Context, ?WHITELABEL_ID),
     case cb_context:resp_status(Context) of
         'success' ->
-            CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileJObj, <<"application/octet-stream">>),
-            Size = wh_json:get_integer_value([<<"headers">>, <<"content_length">>]
-                                             ,FileJObj
-                                             ,byte_size(wh_json:get_value(<<"contents">>, FileJObj, <<>>))
-                                            ),
-            Props = [{<<"content_type">>, CT}
-                     ,{<<"content_length">>, Size}
+            Props = [{<<"content_type">>, content_type(FileJObj)}
+                     ,{<<"content_length">>, file_size(FileJObj)}
                     ],
             validate_request(cb_context:set_req_data(Context1
-                                                      ,wh_json:set_values(Props, cb_context:doc(Context))
-                                                     )
-                            ,?WHITELABEL_ID
+                                                     ,wh_json:set_values(Props, cb_context:doc(Context))
+                                                    )
+                             ,?WHITELABEL_ID
                             );
         _Status -> Context1
     end.
+
+-spec content_type(wh_json:object()) -> ne_binary().
+content_type(FileJObj) ->
+    wh_json:get_value([<<"headers">>, <<"content_type">>]
+                      ,FileJObj
+                      ,<<"application/octet-stream">>
+                     ).
+
+-spec file_size(wh_json:object()) -> non_neg_integer().
+file_size(FileJObj) ->
+    case wh_json:get_integer_value(
+           [<<"headers">>, <<"content_length">>]
+           ,FileJObj
+          )
+    of
+        'undefined' ->
+            byte_size(wh_json:get_value(<<"contents">>, FileJObj, <<>>));
+        Size -> Size
+    end.
+
+-spec validate_domains(cb_context:context(), http_method()) ->
+                              cb_context:context().
+validate_domains(Context, ?HTTP_GET) ->
+    load_domains(Context);
+validate_domains(Context, ?HTTP_POST) ->
+    case cb_context:account_id(Context) of
+        'undefined' -> edit_domains(Context);
+        _AccountId -> test_account_domains(Context)
+    end.
+
+-spec load_domains(cb_context:context()) ->
+                          cb_context:context().
+-spec load_domains(cb_context:context(), api_binary()) ->
+                          cb_context:context().
+-spec load_domains(cb_context:context(), ne_binary(), wh_json:object()) ->
+                          cb_context:context().
+load_domains(Context) ->
+    load_domains(Context, find_domain(Context)).
+
+load_domains(Context, 'undefined') ->
+    missing_domain_error(Context);
+load_domains(Context, Domain) ->
+    load_domains(Context, Domain, system_domains()).
+
+load_domains(Context, Domain, SystemDomains) ->
+    AccountDomains = kzd_domains:format(SystemDomains, Domain),
+    cb_context:setters(Context
+                       ,[{fun cb_context:set_resp_data/2, AccountDomains}
+                         ,{fun cb_context:set_resp_status/2, 'success'}
+                        ]).
+
+-spec missing_domain_error(cb_context:context()) ->
+                                  cb_context:context().
+missing_domain_error(Context) ->
+    cb_context:add_validation_error(<<"domain">>
+                                    ,<<"required">>
+                                    ,wh_json:from_list(
+                                       [{<<"message">>, <<"No domain found to use. Supply one on the request or create one via the whitelabel API">>}]
+                                      )
+                                    ,Context
+                                   ).
+
+-spec find_domain(cb_context:context()) -> api_binary().
+find_domain(Context) ->
+    case cb_context:req_value(Context, <<"domain">>) of
+        'undefined' -> find_existing_domain(Context);
+        Domain -> Domain
+    end.
+
+-spec find_existing_domain(cb_context:context()) -> api_binary().
+find_existing_domain(Context) ->
+    Context1 = load_whitelabel_meta(Context, ?WHITELABEL_ID),
+    case cb_context:resp_status(Context1) of
+        'success' -> wh_json:get_value(<<"domain">>, cb_context:doc(Context1));
+        _Status -> 'undefined'
+    end.
+
+-spec system_domains() -> wh_json:object().
+system_domains() ->
+    case whapps_config:get(<<"whitelabel">>, <<"domains">>) of
+        'undefined' ->
+            lager:info("initializing system domains to default"),
+
+            Default = kzd_domains:default(),
+            whapps_config:set_default(<<"whitelabel">>, <<"domains">>, Default),
+            Default;
+        Domains -> Domains
+    end.
+
+-spec edit_domains(cb_context:context()) -> cb_context:context().
+edit_domains(Context) ->
+    Domains = cb_context:req_data(Context),
+    PvtFields = crossbar_doc:update_pvt_parameters(
+                  wh_json:new()
+                  ,Context
+                 ),
+
+    lager:debug("saving domains ~p", [Domains]),
+    lager:debug("with pvt fields: ~p", [PvtFields]),
+
+    case kzd_domains:save(Domains, PvtFields) of
+        {'error', 'not_found'} ->
+            lager:debug("schema for domains is missing"),
+            missing_schema_error(Context);
+        {'error', Errors} ->
+            lager:debug("failed to save with ~p", [Errors]),
+            cb_context:failed(Context, Errors);
+        {'ok', SavedDomains} ->
+            lager:debug("saved domains: ~p", [SavedDomains]),
+            crossbar_util:response(SavedDomains, Context)
+    end.
+
+-spec missing_schema_error(cb_context:context()) ->
+                                  cb_context:context().
+missing_schema_error(Context) ->
+    cb_context:add_validation_error(<<"domains">>
+                                    ,<<"required">>
+                                    ,wh_json:from_list(
+                                       [{<<"message">>, <<"The domains schema is missing, unable to validate request">>}]
+                                      )
+                                    ,Context
+                                   ).
+
+-spec test_account_domains(cb_context:context()) ->
+                                  cb_context:context().
+-spec test_account_domains(cb_context:context(), kzd_domains:doc()) ->
+                                  cb_context:context().
+test_account_domains(Context) ->
+    Context1 = load_domains(Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            test_account_domains(Context, cb_context:resp_data(Context1));
+        _Status ->
+            Context1
+    end.
+
+test_account_domains(Context, DomainsJObj) ->
+    TestResults = wh_json:map(fun test_domains/2, DomainsJObj),
+    crossbar_util:response(TestResults, Context).
+
+-spec test_domains(ne_binary(), wh_json:object()) ->
+                          {ne_binary(), wh_json:object()}.
+test_domains(DomainType, DomainConfig) ->
+    {DomainType, test_domain_config(DomainType, DomainConfig)}.
+
+-spec test_domain_config(ne_binary(), wh_json:object()) ->
+                                wh_json:object().
+test_domain_config(DomainType, DomainConfig) ->
+    wh_json:map(fun(Host, HostConfig) ->
+                        {Host, test_host(Host, HostConfig, DomainType)}
+                end
+                ,DomainConfig
+               ).
+
+-spec test_host(ne_binary(), wh_json:object(), ne_binary()) ->
+                       wh_json:object().
+test_host(Host, HostConfig, DomainType) ->
+    test_host_mappings(Host, kzd_domains:mappings(HostConfig), DomainType).
+
+-spec test_host_mappings(ne_binary(), ne_binaries(), ne_binary()) ->
+                                wh_json:object().
+test_host_mappings(Host, Mappings, <<"CNAM">>) ->
+    %% inet_dns wants it with an e
+    test_host_mappings(Host, Mappings, <<"CNAME">>);
+test_host_mappings(Host, Mappings, DomainType) ->
+    wh_json:from_list([{<<"expected">>, Mappings}
+                       ,{<<"actual">>, lookup(Host, DomainType)}
+                      ]).
+
+-spec lookup(ne_binary(), ne_binary()) -> ne_binaries().
+lookup(Host, DomainType) ->
+    Type = wh_util:to_atom(wh_util:to_lower_binary(DomainType)),
+    {'ok', Lookup} = wh_network_utils:lookup_dns(Host, Type),
+    lager:debug("lookup of ~s(~s): ~p", [Host, Type, Lookup]),
+    format_lookup_results(Lookup).
+
+-spec format_lookup_results([inet_res:dns_data()]) -> ne_binaries().
+format_lookup_results(Lookup) ->
+    [format_lookup_result(Result) || Result <- Lookup].
+
+-spec format_lookup_result(inet_res:dns_data()) -> ne_binary().
+format_lookup_result({_,_,_,_}=IP) ->
+    wh_network_utils:iptuple_to_binary(IP);
+format_lookup_result(V) -> wh_util:to_binary(V).
 
 -spec validate_domain(cb_context:context(), path_token(), http_method()) ->
                              cb_context:context().
@@ -402,7 +588,9 @@ post(Context, ?LOGO_REQ) ->
 post(Context, ?ICON_REQ) ->
     update_whitelabel_binary(?ICON_REQ, ?WHITELABEL_ID, Context);
 post(Context, ?WELCOME_REQ) ->
-    update_whitelabel_binary(?WELCOME_REQ, ?WHITELABEL_ID, Context).
+    update_whitelabel_binary(?WELCOME_REQ, ?WHITELABEL_ID, Context);
+post(Context, ?DOMAINS_REQ) ->
+    cb_context:set_resp_status(Context, 'success').
 
 -spec delete(cb_context:context()) -> cb_context:context().
 delete(Context) ->

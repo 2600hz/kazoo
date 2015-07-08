@@ -53,8 +53,8 @@
          , current_path       :: [binary()] %% current path in reversed order
          , allowed_errors     :: non_neg_integer() | 'infinity'
          , error_list         :: list()
-         , error_handler      :: fun((#state{}) -> list() | no_return())
-         , default_schema_ver :: atom()
+         , error_handler      :: jesse_error:error_handler()
+         , default_schema_ver :: binary()
          , schema_loader_fun  :: fun((binary()) -> {'ok', jesse:json_term()} | jesse:json_term() | ?not_found)
          }
        ).
@@ -94,8 +94,7 @@ get_default_schema_ver(#state{default_schema_ver = SchemaVer}) ->
   SchemaVer.
 
 %% @doc Getter for `error_handler'.
--spec get_error_handler(State :: state()) ->
-                           fun((#state{}) -> list() | no_return()).
+-spec get_error_handler(State :: state()) -> jesse_error:error_handler().
 get_error_handler(#state{error_handler = ErrorHandler}) ->
   ErrorHandler.
 

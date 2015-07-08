@@ -611,7 +611,10 @@ allow_methods(Responses, ReqVerb, HttpVerb) ->
     case crossbar_bindings:succeeded(Responses) of
         [] -> [];
         Succeeded ->
-            AllowedSet = lists:foldr(fun allow_methods_fold/2, sets:new(), Succeeded),
+            AllowedSet = lists:foldr(fun allow_methods_fold/2
+                                     ,sets:new()
+                                     ,Succeeded
+                                    ),
             maybe_add_post_method(ReqVerb, HttpVerb, sets:to_list(AllowedSet))
     end.
 

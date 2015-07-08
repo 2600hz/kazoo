@@ -30,6 +30,7 @@
 -export_type([ error/0
              , error_reason/0
              , error_reasons/0
+               ,error_handler/0
              ]).
 
 -type error() :: {error, error_reasons()}.
@@ -68,13 +69,20 @@
 %% Includes
 -include("jesse_schema_validator.hrl").
 
+-type error_handler() :: fun((error_reason()
+                              ,error_reasons()
+                              ,non_neg_integer()
+                             ) ->
+                                error_reasons()
+                                  ).
+
 %% @doc Implements the default error handler.
 %% If the length of `ErrorList' exceeds `AllowedErrors' then the function
 %% throws an exeption, otherwise adds a new element to the list and returs it.
 -spec default_error_handler( Error         :: error_reason()
-                           , ErrorList     :: [error_reason()]
+                           , ErrorList     :: error_reasons()
                            , AllowedErrors :: non_neg_integer()
-                           ) -> [error_reason()] | no_return().
+                           ) -> error_reasons() | no_return().
 default_error_handler(Error, ErrorList, AllowedErrors) ->
   case AllowedErrors > length(ErrorList) orelse AllowedErrors =:= 'infinity' of
     true  -> [Error | ErrorList];

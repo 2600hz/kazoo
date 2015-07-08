@@ -11,7 +11,7 @@
 -export([store/3
          ,fetch/2, fetch/3
          ,put_reqid/1
-         ,import_errors/1
+         ,import_errors/1, failed/2
          ,response/1
          ,has_errors/1
          ,add_system_error/2, add_system_error/3
@@ -547,10 +547,9 @@ validate_request_data(<<_/binary>> = Schema, Context) ->
             validate_request_data(SchemaJObj, Context)
     end;
 validate_request_data(SchemaJObj, Context) ->
-    case jesse:validate_with_schema(SchemaJObj
-                                    ,wh_json:public_fields(req_data(Context))
-                                    ,[{'schema_loader_fun', fun wh_json_schema:load/1}]
-                                   )
+    case wh_json_schema:validate(SchemaJObj
+                                 ,wh_json:public_fields(req_data(Context))
+                                )
     of
         {'ok', JObj} ->
             passed(
@@ -574,7 +573,6 @@ validate_request_data(Schema, Context, OnSuccess, OnFailure) ->
             OnFailure(C2);
         Else -> Else
     end.
-
 
 -spec failed(context(), jesse_error:error_reasons()) -> context().
 -spec failed_error(jesse_error:error_reason(), context()) -> context().

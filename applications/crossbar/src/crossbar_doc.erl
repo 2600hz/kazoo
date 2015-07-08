@@ -52,6 +52,7 @@
                    ,fun add_pvt_created/2
                    ,fun add_pvt_modified/2
                    ,fun add_pvt_request_id/2
+                   ,fun add_pvt_auth/2
                   ]).
 
 -define(PAGINATION_PAGE_SIZE
@@ -1084,7 +1085,18 @@ handle_couch_mgr_errors(Else, _View, Context) ->
 update_pvt_parameters(JObjs, Context) when is_list(JObjs) ->
     [update_pvt_parameters(JObj, Context) || JObj <- JObjs];
 update_pvt_parameters(JObj0, Context) ->
-    lists:foldl(fun(Fun, JObj) -> Fun(JObj, Context) end, JObj0, ?PVT_FUNS).
+    lists:foldl(fun(Fun, JObj) ->
+                        apply_pvt_fun(Fun, JObj, Context)
+                end
+                ,JObj0
+                ,?PVT_FUNS
+               ).
+
+-type pvt_fun() :: fun((wh_json:object(), cb_context:context()) -> wh_json:object()).
+-spec apply_pvt_fun(pvt_fun(), wh_json:object(), cb_context:context()) ->
+                           wh_json:object().
+apply_pvt_fun(Fun, JObj, Context) ->
+    Fun(JObj, Context).
 
 -spec add_pvt_vsn(wh_json:object(), cb_context:context()) -> wh_json:object().
 add_pvt_vsn(JObj, _) ->
@@ -1125,15 +1137,31 @@ add_pvt_created(JObj, _) ->
             JObj
     end.
 
--spec add_pvt_modified(wh_json:object(), cb_context:context()) -> wh_json:object().
+-spec add_pvt_modified(wh_json:object(), cb_context:context()) ->
+                              wh_json:object().
 add_pvt_modified(JObj, _) ->
     Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
     wh_json:set_value(<<"pvt_modified">>, Timestamp, JObj).
 
--spec add_pvt_request_id(wh_json:object(), cb_context:context()) -> wh_json:object().
+-spec add_pvt_request_id(wh_json:object(), cb_context:context()) ->
+                                wh_json:object().
 add_pvt_request_id(JObj, Context) ->
     RequestId = cb_context:req_id(Context),
     wh_json:set_value(<<"pvt_request_id">>, RequestId, JObj).
+
+-spec add_pvt_auth(wh_json:object(), cb_context:context()) ->
+                          wh_json:object().
+add_pvt_auth(JObj, Context) ->
+    case cb_context:is_authenticated(Context) of
+        'false' -> wh_json:set_value(<<"pvt_is_authenticated">>, 'false', JObj);
+        'true' ->
+            Values = props:filter_undefined(
+                       [{<<"pvt_is_authenticated">>, 'true'}
+                        ,{<<"pvt_auth_account_id">>, cb_context:auth_account_id(Context)}
+                        ,{<<"pvt_auth_user_id">>, cb_context:auth_user_id(Context)}
+                       ]),
+            wh_json:set_values(Values, JObj)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

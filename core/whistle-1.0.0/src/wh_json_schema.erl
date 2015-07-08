@@ -11,6 +11,7 @@
 -export([add_defaults/2
          ,load/1
          ,flush/0, flush/1
+         ,validate/2, validate/3
         ]).
 
 -include_lib("whistle/include/wh_types.hrl").
@@ -93,3 +94,25 @@ maybe_add_default(Key, Default, JObj) ->
         'undefined' ->  wh_json:set_value(Key, Default, wh_json:new());
         _Value -> JObj
     end.
+
+-type jesse_option() :: {'parser_fun', fun((_) -> _)} |
+{'error_handler', fun((jesse_error:error_reason(), jesse_error:error_reasons(), non_neg_integer()) -> jesse_error:error_reasons())} |
+{'allowed_errors', non_neg_integer()} |
+{'default_schema_ver', binary()} |
+{'schema_loader_fun', fun((binary()) -> {'ok', jesse:json_term()} | jesse:json_term() | 'not_found')}.
+
+-type jesse_options() :: [jesse_option(),...] | [].
+
+-spec validate(ne_binary() | wh_json:object(), wh_json:object()) ->
+                      {'ok', wh_json:object()} |
+                      {'error', jesse_error:error()}.
+-spec validate(ne_binary() | wh_json:object(), wh_json:object(), jesse_options()) ->
+                      {'ok', wh_json:object()} |
+                      {'error', jesse_error:error()}.
+validate(SchemaJObj, DataJObj) ->
+    validate(SchemaJObj, DataJObj, [{'schema_loader_fun', fun load/1}]).
+validate(<<_/binary>> = Schema, DataJObj, Options) ->
+    {'ok', SchemaJObj} = load(Schema),
+    validate(SchemaJObj, DataJObj, Options);
+validate(SchemaJObj, DataJObj, Options) ->
+    jesse:validate_with_schema(SchemaJObj, DataJObj, Options).
