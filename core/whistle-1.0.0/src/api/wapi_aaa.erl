@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2015, 2600Hz
 %%% @doc
-%%% Handles AAA (authentication, authorization, accounting) requests, responses, queue bindings 
+%%% Handles AAA (authentication, authorization, accounting) requests, responses, queue bindings
 %%% @end
 %%% @contributors
 %%%   SIPLABS, LLC (Vladimir Potapev)
