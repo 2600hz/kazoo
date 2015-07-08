@@ -30,6 +30,7 @@
 
 -define(STATUS_PATH_TOKEN, <<"status">>).
 -define(CHECK_SYNC_PATH_TOKEN, <<"sync">>).
+-define(BLF_PATH_TOKEN, <<"presence">>).
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".devices">>).
 
@@ -38,22 +39,28 @@
 
 -define(KEY_MAC_ADDRESS, <<"mac_address">>).
 
-
 %%%===================================================================
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"v2_resource.allowed_methods.devices">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"v2_resource.resource_exists.devices">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"v2_resource.authenticate">>, ?MODULE, 'authenticate'),
-    _ = crossbar_bindings:bind(<<"v2_resource.authorize">>, ?MODULE, 'authorize'),
-    _ = crossbar_bindings:bind(<<"v2_resource.billing">>, ?MODULE, 'billing'),
-    _ = crossbar_bindings:bind(<<"v2_resource.validate_resource.devices">>, ?MODULE, 'validate_resource'),
-    _ = crossbar_bindings:bind(<<"v2_resource.validate.devices">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"v2_resource.execute.put.devices">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"v2_resource.execute.post.devices">>, ?MODULE, 'post'),
-    _ = crossbar_bindings:bind(<<"v2_resource.execute.delete.devices">>, ?MODULE, 'delete'),
-    crossbar_bindings:bind(<<"v2_resource.finish_request.*.devices">>, 'crossbar_services', 'reconcile').
+    Bindings = [{<<"v2_resource.allowed_methods.devices">>, 'allowed_methods'}
+                ,{<<"v2_resource.resource_exists.devices">>, 'resource_exists'}
+                ,{<<"v2_resource.authenticate">>, 'authenticate'}
+                ,{<<"v2_resource.authorize">>, 'authorize'}
+                ,{<<"v2_resource.billing">>, 'billing'}
+                ,{<<"v2_resource.validate_resource.devices">>, 'validate_resource'}
+                ,{<<"v2_resource.validate.devices">>, 'validate'}
+                ,{<<"v2_resource.execute.put.devices">>, 'put'}
+                ,{<<"v2_resource.execute.post.devices">>, 'post'}
+                ,{<<"v2_resource.execute.delete.devices">>, 'delete'}
+               ],
+    cb_modules_util:bind(?MODULE, Bindings),
+
+    crossbar_bindings:bind(
+      <<"v2_resource.finish_request.*.devices">>
+      ,'crossbar_services'
+      ,'reconcile'
+     ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -81,6 +88,8 @@ allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
 allowed_methods(_DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
+    [?HTTP_POST];
+allowed_methods(_DeviceId, ?BLF_PATH_TOKEN) ->
     [?HTTP_POST].
 
 allowed_methods(_, ?QUICKCALL_PATH_TOKEN, _) ->
@@ -100,8 +109,12 @@ allowed_methods(_, ?QUICKCALL_PATH_TOKEN, _) ->
 -spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
 
 resource_exists() -> 'true'.
+
 resource_exists(_) -> 'true'.
-resource_exists(_DeviceId, ?CHECK_SYNC_PATH_TOKEN) -> 'true'.
+
+resource_exists(_DeviceId, ?CHECK_SYNC_PATH_TOKEN) -> 'true';
+resource_exists(_DeviceId, ?BLF_PATH_TOKEN) -> 'true'.
+
 resource_exists(_, ?QUICKCALL_PATH_TOKEN, _) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -221,6 +234,8 @@ validate_device(Context, DeviceId, ?HTTP_DELETE) ->
     load_device(DeviceId, Context).
 
 validate(Context, DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
+    load_device(DeviceId, Context);
+validate(Context, DeviceId, ?BLF_PATH_TOKEN) ->
     load_device(DeviceId, Context).
 
 validate(Context, DeviceId, ?QUICKCALL_PATH_TOKEN, _ToDial) ->
@@ -256,7 +271,25 @@ post(Context, DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
     lager:debug("publishing check_sync for ~s", [DeviceId]),
     Context1 = cb_context:store(Context, 'sync', 'force'),
     _ = provisioner_util:maybe_sync_sip_data(Context1, 'device'),
-    crossbar_util:response_202(<<"sync request sent">>, Context).
+    crossbar_util:response_202(<<"sync request sent">>, Context);
+post(Context, _DeviceId, ?BLF_PATH_TOKEN) ->
+    PresenceId = kz_device:presence_id(cb_context:doc(Context)),
+    AccountRealm = cb_context:account_realm(Context),
+
+    lager:info("publishing blf reset for presense id ~s@~s"
+               ,[PresenceId, AccountRealm]
+              ),
+
+    publish_reset_payload(AccountRealm, PresenceId),
+    crossbar_util:response_202(<<"reset request sent">>, Context).
+
+-spec publish_reset_payload(ne_binary(), ne_binary()) -> 'ok'.
+publish_reset_payload(AccountRealm, PresenceId) ->
+    API = [{<<"Realm">>, AccountRealm}
+           ,{<<"Username">>, PresenceId}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    wh_amqp_worker:cast(API, fun wapi_presence:publish_reset/1).
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
