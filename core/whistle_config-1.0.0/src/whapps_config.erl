@@ -432,7 +432,7 @@ maybe_save_category(Category, JObj, PvtFields, Looped) ->
                                wh_json:object().
 update_pvt_fields(Category, JObj, 'undefined') ->
     wh_doc:update_pvt_parameters(
-      wh_json:set_value(<<"_id">>, Category, JObj)
+      wh_doc:set_id(JObj, Category)
       ,?WH_CONFIG_DB
       ,[{'type', <<"config">>}]
      );
