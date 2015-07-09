@@ -27,7 +27,6 @@
 -export([create_masquerade_event/2, create_masquerade_event/3]).
 -export([media_path/3, media_path/4
          ,lookup_media/4
-         ,cached_media_expelled/3
         ]).
 -export([unserialize_fs_array/1]).
 -export([convert_fs_evt_name/1, convert_whistle_app_name/1]).
@@ -1044,43 +1043,18 @@ request_media_url(MediaName, CallId, JObj, Type) ->
             E
     end.
 
--define(DEFAULT_MEDIA_CACHE_PROPS
-        ,[{'callback', fun ?MODULE:cached_media_expelled/3}]
-       ).
-
 -spec media_url_cache_props(ne_binary()) -> wh_cache:store_options().
 media_url_cache_props(<<"/", _/binary>> = MediaName) ->
     case binary:split(MediaName, <<"/">>, ['global']) of
         [<<>>, AccountId, MediaId] ->
             AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-            [{'origin', {'db', AccountDb, MediaId}}
-             | ?DEFAULT_MEDIA_CACHE_PROPS
-            ];
-        _Parts ->
-            ?DEFAULT_MEDIA_CACHE_PROPS
+            [{'origin', {'db', AccountDb, MediaId}}];
+        _Parts -> []
     end;
 media_url_cache_props(<<"tts://", Text/binary>>) ->
     Id = wh_util:binary_md5(Text),
-    [{'origin', {'db', <<"tts">>, Id}}
-     | ?DEFAULT_MEDIA_CACHE_PROPS
-    ];
-media_url_cache_props(_MediaName) ->
-    ?DEFAULT_MEDIA_CACHE_PROPS.
-
--spec cached_media_expelled(?ECALLMGR_PLAYBACK_MEDIA_KEY(ne_binary()), ne_binary(), atom()) -> 'ok'.
-cached_media_expelled(?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName), MediaUrl, _Reason) ->
-    lager:debug("media ~s was expelled(~p), flushing from media servers", [MediaName, _Reason]),
-    Nodes = ecallmgr_fs_nodes:connected(),
-    _ = [maybe_flush_node_of_media(MediaUrl, N) || N <- Nodes],
-    'ok'.
-
--spec maybe_flush_node_of_media(ne_binary(), atom()) -> 'ok'.
-maybe_flush_node_of_media(_MediaUrl, _Node) ->
-    %% TODO: We need to both reduce the expelled
-    %%  notifications (they currently include things
-    %%  like voicemail message saves) as well as
-    %%  massively increase the effeciency of the flush.
-    'ok'.
+    [{'origin', {'db', <<"tts">>, Id}}];
+media_url_cache_props(_MediaName) -> [].
 
 -spec custom_sip_headers(wh_proplist()) -> wh_proplist().
 custom_sip_headers(Props) ->
