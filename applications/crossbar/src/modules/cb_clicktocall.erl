@@ -180,8 +180,7 @@ validate(Context, Id, ?CONNECT_CALL) ->
 post(Context, _) ->
     crossbar_doc:save(Context).
 post(Context, _, ?CONNECT_CALL) ->
-    Context1 = crossbar_doc:save(Context),
-    cb_context:set_resp_data(Context1, cb_context:resp_data(Context)).
+    Context.
 
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
 patch(Context, _) ->
@@ -431,22 +430,22 @@ build_originate_req(Contact, Context) ->
                 ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
                ],
 
-    MsgId = wh_json:get_value(<<"Msg-ID">>, JObj, wh_util:rand_hex_binary(16)),
+    MsgId = wh_json:get_value(<<"msg_id">>, JObj, wh_util:rand_hex_binary(16)),
     props:filter_undefined(
       [{<<"Application-Name">>, <<"transfer">>}
        ,{<<"Application-Data">>, wh_json:from_list([{<<"Route">>, Contact}])}
        ,{<<"Msg-ID">>, MsgId}
        ,{<<"Endpoints">>, [wh_json:from_list(Endpoint)]}
-       ,{<<"Timeout">>, wh_json:get_value(<<"Timeout">>, JObj)}
-       ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"Ignore-Early-Media">>, JObj)}
-       ,{<<"Media">>, wh_json:get_value(<<"Media">>, JObj)}
-       ,{<<"Hold-Media">>, wh_json:get_value(<<"Hold-Media">>, JObj)}
-       ,{<<"Presence-ID">>, wh_json:get_value(<<"Presence-ID">>, JObj)}
+       ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, JObj, 30)}
+       ,{<<"Ignore-Early-Media">>, get_ignore_early_media(JObj)}
+       ,{<<"Media">>, wh_json:get_value(<<"media">>, JObj)}
+       ,{<<"Hold-Media">>, wh_json:get_value([<<"music_on_hold">>, <<"media_id">>], JObj)}
+       ,{<<"Presence-ID">>, wh_json:get_value(<<"presence_id">>, JObj)}
        ,{<<"Outbound-Callee-ID-Name">>, CalleeName}
        ,{<<"Outbound-Callee-ID-Number">>, CalleeNumber}
        ,{<<"Outbound-Caller-ID-Name">>, FriendlyName}
        ,{<<"Outbound-Caller-ID-Number">>, OutboundNumber}
-       ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
+       ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, JObj)}
        ,{<<"Dial-Endpoint-Method">>, <<"single">>}
        ,{<<"Continue-On-Fail">>, 'true'}
        ,{<<"Custom-SIP-Headers">>, wh_json:get_value(<<"custom_sip_headers">>, JObj)}
@@ -454,6 +453,10 @@ build_originate_req(Contact, Context) ->
        ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>]}
        | wh_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
       ]).
+
+-spec get_ignore_early_media(wh_json:object()) -> boolean().
+get_ignore_early_media(JObj) ->
+    wh_util:is_true(wh_json:get_value([<<"media">>, <<"ignore_early_media">>], JObj, 'true')).
 
 -spec is_resp(wh_json:objects() | wh_json:object()) -> boolean().
 is_resp([JObj|_]) -> is_resp(JObj);
