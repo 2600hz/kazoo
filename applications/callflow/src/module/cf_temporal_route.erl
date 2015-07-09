@@ -149,25 +149,29 @@ process_rules(_, [#rule{enabled='true'
         'true' -> <<"rule_set">>;
         'false' -> Id
     end;
-process_rules(#temporal{local_sec=LSec, local_date={Y, M, D}}=T
+process_rules(#temporal{local_sec=LSec
+                        ,local_date={Y, M, D}
+                       }=T
               ,[#rule{id=Id
                       ,name=Name
                       ,wtime_start=TStart
                       ,wtime_stop=TStop
                       ,rule_set=RuleSet
-                     }=R|Rs]
+                     }=Rule
+                |Rules
+               ]
               ,Call) ->
     lager:info("processing temporal rule ~s (~s) part of rule set? ~p", [Id, Name, RuleSet]),
     PrevDay = normalize_date({Y, M, D - 1}),
-    BaseDate = next_rule_date(R, PrevDay),
-    BastTime = calendar:datetime_to_gregorian_seconds({BaseDate, {0,0,0}}),
-    case {BastTime + TStart, BastTime + TStop} of
+    BaseDate = next_rule_date(Rule, PrevDay),
+    BaseTime = calendar:datetime_to_gregorian_seconds({BaseDate, {0,0,0}}),
+    case {BaseTime + TStart, BaseTime + TStop} of
         {Start, _} when LSec < Start ->
             lager:info("rule applies in the future ~w", [calendar:gregorian_seconds_to_datetime(Start)]),
-            process_rules(T, Rs, Call);
+            process_rules(T, Rules, Call);
         {_, End} when LSec > End ->
             lager:info("rule was valid today but expired ~w", [calendar:gregorian_seconds_to_datetime(End)]),
-            process_rules(T, Rs, Call);
+            process_rules(T, Rules, Call);
         {_, End} ->
             lager:info("within active time window until ~w", [calendar:gregorian_seconds_to_datetime(End)]),
             case RuleSet of
@@ -228,7 +232,9 @@ get_temporal_rules([Route|Routes], LSec, AccountDb, RuleSet, TZ, Now, Rules) ->
                              wh_json:get_integer_value(<<"interval">>, JObj, ?RULE_DEFAULT_INTERVAL)
                          ,days = Days
                          ,wdays =
-                             wh_json:get_value(<<"wdays">>, JObj, ?RULE_DEFAULT_WDAYS)
+                             sort_wdays(
+                               wh_json:get_value(<<"wdays">>, JObj, ?RULE_DEFAULT_WDAYS)
+                              )
                          ,ordinal =
                              wh_json:get_value(<<"ordinal">>, JObj, ?RULE_DEFAULT_ORDINAL)
                          ,month =
@@ -322,9 +328,9 @@ get_rule_set(RuleSetId, Call) ->
 -spec get_date(non_neg_integer(), ne_binary()) -> wh_date().
 get_date(Seconds, TZ) when is_integer(Seconds) ->
     {Date, _} = localtime:utc_to_local(
-                    calendar:gregorian_seconds_to_datetime(Seconds)
-                    ,wh_util:to_list(TZ)
-                ),
+                  calendar:gregorian_seconds_to_datetime(Seconds)
+                  ,wh_util:to_list(TZ)
+                 ),
     Date.
 
 %%--------------------------------------------------------------------
@@ -341,7 +347,10 @@ temporal_route_menu(#temporal{keys=#keys{enable=Enable
                                         }
                               ,prompts=#prompts{main_menu=MainMenu}
                               ,interdigit_timeout=Interdigit
-                             }=Temporal, Rules, Call) ->
+                             }=Temporal
+                    ,Rules
+                    ,Call
+                   ) ->
     NoopId = whapps_call_command:prompt(MainMenu, Call),
 
     case whapps_call_command:collect_digits(1
@@ -492,32 +501,40 @@ load_current_time(#temporal{timezone=Timezone}=Temporal)->
 %% @end
 %%--------------------------------------------------------------------
 -spec next_rule_date(rule(), wh_date()) -> wh_date().
-next_rule_date(#rule{cycle = <<"date">>, start_date=Date0}, _) ->
+next_rule_date(#rule{cycle = <<"date">>
+                     ,start_date=Date0
+                    }
+               ,_Date
+              ) ->
     Date0;
-
 next_rule_date(#rule{cycle = <<"daily">>
                      ,interval=I0
                      ,start_date={Y0, M0, D0}
-                    }, {Y1, M1, D1}) ->
+                    }
+               ,{Y1, M1, D1}
+              ) ->
     %% Calculate the distance in days as a function of
     %%   the interval and fix
     DS0 = calendar:date_to_gregorian_days({Y0, M0, D0}),
     DS1 = calendar:date_to_gregorian_days({Y1, M1, D1}),
     Offset = trunc( ( DS1 - DS0 ) / I0 ) * I0,
     normalize_date({Y0, M0, D0 + Offset + I0});
-
 next_rule_date(#rule{cycle = <<"weekly">>
                      ,interval=I0
                      ,wdays=Weekdays
-                     ,start_date={Y0, M0, D0}
-                    }, {Y1, M1, D1}) ->
+                     ,start_date={Y0, M0, D0}=_StartDate
+                    }
+               ,{Y1, M1, D1}=_PrevDate
+              ) ->
     DOW0 = day_of_the_week({Y1, M1, D1}),
     Distance = iso_week_difference({Y0, M0, D0}, {Y1, M1, D1}),
     Offset = trunc( Distance / I0 ) * I0,
-    case [ DOW1 || DOW1 <- [to_dow(D) || D <- Weekdays], DOW1 > DOW0 ] of
+
+    case find_active_days(Weekdays, DOW0) of
         %% During an 'active' week but before the last weekday in the list
         %%   move to the next day this week
         [Day|_] when Distance =:= Offset ->
+            lager:debug("next day in rule is ~w", [Day]),
             normalize_date({Y1, M1, D1 + Day - DOW0});
         %% Empty list:
         %%   The last DOW during an 'active' week,
@@ -1001,6 +1018,22 @@ gregorian_days_of_iso_w01_1(Year) ->
 -spec our_day_of_the_week(calendar:year(), calendar:month(), calendar:day()) -> calendar:daynum().
 our_day_of_the_week(Year, Month, Day) ->
     (calendar:date_to_gregorian_days(Year, Month, Day) + 5) rem 7 + 1.
+
+-spec find_active_days(ne_binaries(), wh_day()) -> [wh_daynum(),...] | [].
+find_active_days(Weekdays, DOW0) ->
+    [DOW1
+     || DOW1 <- [to_dow(D) || D <- Weekdays],
+        DOW1 > DOW0
+    ].
+
+-spec sort_wdays(ne_binaries()) -> ne_binaries().
+sort_wdays([]) -> [];
+sort_wdays(WDays0) ->
+    {_, WDays1} = lists:unzip(
+                    lists:keysort(1, [{to_dow(Day), Day} || Day <- WDays0])
+                   ),
+    WDays1.
+
 
 -include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).
