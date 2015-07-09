@@ -567,9 +567,12 @@ originate_execute(Node, Dialstrings, Timeout) ->
         {'ok', Other} ->
             lager:debug("recv other 'ok': ~s", [Other]),
             {'error', wh_util:strip_binary(binary:replace(Other, <<"\n">>, <<>>))};
-        {'error', Error} ->
+        {'error', Error} when is_binary(Error) ->
             lager:debug("error originating: ~s", [Error]),
-            {'error', wh_util:strip_binary(binary:replace(Error, <<"\n">>, <<>>))}
+            {'error', wh_util:strip_binary(binary:replace(Error, <<"\n">>, <<>>))};
+        {'error', _Reason} ->
+            lager:debug("error originating: ~p", [_Reason]),
+            {'error', <<"unspecified">>}
     end.
 
 -spec set_music_on_hold(atom(), ne_binary(), api_binary()) -> 'ok'.
@@ -641,15 +644,35 @@ get_unset_vars(JObj) ->
                  ,not lists:member(begin [K, _] = string:tokens(binary_to_list(KV), "="), K end, Export)]
     of
         [] -> "";
-        Unset -> [string:join(Unset, "^"), maybe_fix_fs_auto_answer_bug(Export)]
+        Unset ->
+            [string:join(Unset, "^")
+            ,maybe_fix_ignore_early_media(Export)
+            ,maybe_fix_group_confirm(Export)
+            ,maybe_fix_fs_auto_answer_bug(Export)
+            ,"^"
+            ]
+    end.
+
+-spec maybe_fix_ignore_early_media(strings()) -> string().
+maybe_fix_ignore_early_media(Export) ->
+    case lists:member("ignore_early_media", Export) of
+        'true' -> "";
+        'false' -> "^unset:ignore_early_media"
+    end.
+
+-spec maybe_fix_group_confirm(strings()) -> string().
+maybe_fix_group_confirm(Export) ->
+    case lists:member("group_confirm_key", Export) of
+        'true' -> "";
+        'false' -> "^unset:group_confirm_key^unset:group_confirm_cancel_timeout^unset:group_confirm_file"
     end.
 
 -spec maybe_fix_fs_auto_answer_bug(strings()) -> string().
 maybe_fix_fs_auto_answer_bug(Export) ->
     case lists:member("sip_auto_answer", Export) of
-        'true' -> "^";
+        'true' -> "";
         'false' ->
-            "^unset:sip_h_Call-Info^unset:sip_h_Alert-Info^unset:alert_info^unset:sip_invite_params^set:sip_auto_answer=false^"
+            "^unset:sip_h_Call-Info^unset:sip_h_Alert-Info^unset:alert_info^unset:sip_invite_params^set:sip_auto_answer=false"
     end.
 
 -spec publish_error(ne_binary(), created_uuid() | api_binary(), wh_json:object(), api_binary()) -> 'ok'.

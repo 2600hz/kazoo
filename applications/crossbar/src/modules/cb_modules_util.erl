@@ -339,7 +339,7 @@ get_timeout(Context) ->
 
 -spec get_ignore_early_media(cb_context:context()) -> boolean().
 get_ignore_early_media(Context) ->
-    wh_util:is_true(cb_context:req_value(Context, <<"ignore-early-media">>)).
+    wh_util:is_true(cb_context:req_value(Context, <<"ignore-early-media">>, 'true')).
 
 -spec get_media(cb_context:context()) -> ne_binary().
 get_media(Context) ->
