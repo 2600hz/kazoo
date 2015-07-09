@@ -764,10 +764,10 @@ play_messages([H|T]=Messages, PrevMessages, Count, #mailbox{timezone=Timezone}=B
             _ = set_folder(?FOLDER_SAVED, H, Box, Call),
             play_messages(T, [H|PrevMessages], Count, Box, Call);
         {'ok', 'prev'} ->
-            lager:info("caller choose to listen previous message"),
+            lager:info("caller choose to listen to previous message"),
             play_prev_message(Messages, PrevMessages, Count, Box, Call);
         {'ok', 'next'} ->
-            lager:info("caller choose to listen next message"),
+            lager:info("caller choose to listen to next message"),
             play_next_message(Messages, PrevMessages, Count, Box, Call);
         {'ok', 'delete'} ->
             lager:info("caller choose to delete the message"),
@@ -790,18 +790,19 @@ play_messages([], _, _, _, _) ->
     'complete'.
 
 -spec play_next_message(wh_json:objects(), wh_json:objects(), non_neg_integer(), mailbox(), whapps_call:call()) ->
-                           'ok' | 'complete'.
-play_next_message([_|[]] = Messages, PrevMessages, Count, Box, Call) ->
+                               'ok' | 'complete'.
+play_next_message([_] = Messages, PrevMessages, Count, Box, Call) ->
     play_messages(Messages, PrevMessages, Count, Box, Call);
 play_next_message([H|T], PrevMessages, Count, Box, Call) ->
     play_messages(T, [H|PrevMessages], Count, Box, Call).
 
 -spec play_prev_message(wh_json:objects(), wh_json:objects(), non_neg_integer(), mailbox(), whapps_call:call()) ->
-                           'ok' | 'complete'.
+                               'ok' | 'complete'.
 play_prev_message(Messages, [] = PrevMessages, Count, Box, Call) ->
     play_messages(Messages, PrevMessages, Count, Box, Call);
 play_prev_message(Messages, [H|T], Count, Box, Call) ->
     play_messages([H|Messages], T, Count, Box, Call).
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
