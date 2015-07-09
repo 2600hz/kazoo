@@ -765,16 +765,10 @@ play_messages([H|T]=Messages, PrevMessages, Count, #mailbox{timezone=Timezone}=B
             play_messages(T, [H|PrevMessages], Count, Box, Call);
         {'ok', 'prev'} ->
             lager:info("caller choose to listen previous message"),
-            case PrevMessages of
-                [] -> play_messages(Messages, [], Count, Box, Call);
-                [PH|PT] -> play_messages([PH|Messages], PT, Count, Box, Call)
-            end;
+            play_prev_message(Messages, PrevMessages, Count, Box, Call);
         {'ok', 'next'} ->
             lager:info("caller choose to listen next message"),
-            case T of
-                [] -> play_messages(Messages, PrevMessages, Count, Box, Call);
-                _ -> play_messages(T, [H|PrevMessages], Count, Box, Call)
-            end;
+            play_next_message(Messages, PrevMessages, Count, Box, Call);
         {'ok', 'delete'} ->
             lager:info("caller choose to delete the message"),
             _ = whapps_call_command:b_prompt(<<"vm-deleted">>, Call),
@@ -795,6 +789,19 @@ play_messages([], _, _, _, _) ->
     lager:info("all messages in folder played to caller"),
     'complete'.
 
+-spec play_next_message(wh_json:objects(), wh_json:objects(), non_neg_integer(), mailbox(), whapps_call:call()) ->
+                           'ok' | 'complete'.
+play_next_message([_|[]] = Messages, PrevMessages, Count, Box, Call) ->
+    play_messages(Messages, PrevMessages, Count, Box, Call);
+play_next_message([H|T], PrevMessages, Count, Box, Call) ->
+    play_messages(T, [H|PrevMessages], Count, Box, Call).
+
+-spec play_prev_message(wh_json:objects(), wh_json:objects(), non_neg_integer(), mailbox(), whapps_call:call()) ->
+                           'ok' | 'complete'.
+play_prev_message(Messages, [] = PrevMessages, Count, Box, Call) ->
+    play_messages(Messages, PrevMessages, Count, Box, Call);
+play_prev_message(Messages, [H|T], Count, Box, Call) ->
+    play_messages([H|Messages], T, Count, Box, Call).
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
