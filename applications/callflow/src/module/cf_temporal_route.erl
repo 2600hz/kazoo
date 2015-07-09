@@ -1034,9 +1034,13 @@ sort_wdays(WDays0) ->
                    ),
     WDays1.
 
-
--include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+sort_wdays_test() ->
+    Sorted = [<<"monday">>, <<"tuesday">>, <<"wednesday">>, <<"thursday">>, <<"friday">>, <<"saturday">>, <<"sunday">>],
+    Shuffled = wh_util:shuffle_list(Sorted),
+    ?assertEqual(Sorted, sort_wdays(Shuffled)).
 
 daily_recurrence_test() ->
     %% basic increment
