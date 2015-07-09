@@ -21,7 +21,9 @@
         ]).
 
 -ifdef(TEST).
--export([next_rule_date/2]).
+-export([next_rule_date/2
+         ,sort_wdays/1
+        ]).
 -endif.
 
 %%--------------------------------------------------------------------
