@@ -122,7 +122,7 @@ prepare_media_doc(RecordName, Call) ->
               ]),
     Doc = wh_doc:update_pvt_parameters(wh_json:from_list(Props), AccountDb, [{'type', <<"media">>}]),
     case couch_mgr:save_doc(AccountDb, Doc) of
-        {'ok', MediaJObj} when not is_list(MediaJObj) -> wh_json:get_value(<<"_id">>, MediaJObj);
+        {'ok', MediaJObj} when not is_list(MediaJObj) -> wh_doc:id(MediaJObj);
         _ -> 'undefined'
     end.
 

@@ -59,7 +59,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    put('callid', ?LOG_SYSTEM_ID),
+    wh_util:put_callid(?LOG_SYSTEM_ID),
     add_zones(get_config()),
     lager:info("waiting for first amqp connection...", []),
     wh_amqp_connections:wait_for_available(),

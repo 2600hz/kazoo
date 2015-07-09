@@ -32,7 +32,7 @@
         ]).
 -export([get_account_name/1]).
 -export([find_oldest_doc/1]).
--export([get_event_type/1, put_callid/1]).
+-export([get_event_type/1]).
 -export([get_call_termination_reason/1]).
 -export([get_view_json/1, get_view_json/2]).
 -export([get_views_json/2]).
@@ -177,11 +177,9 @@ get_master_account_db() ->
 %%--------------------------------------------------------------------
 -spec get_account_name(ne_binary()) -> ne_binary().
 get_account_name(Account) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(Account) of
         {'error', _} -> 'undefined';
-        {'ok', JObj} -> wh_json:get_ne_value(<<"name">>, JObj)
+        {'ok', JObj} -> kz_account:name(JObj)
     end.
 
 %%--------------------------------------------------------------------
@@ -197,15 +195,13 @@ find_oldest_doc([]) -> {'error', 'no_docs'};
 find_oldest_doc([First|Docs]) ->
     {_, OldestDocID} =
         lists:foldl(fun(Doc, {Created, _}=Eldest) ->
-                            Older = wh_json:get_integer_value(<<"pvt_created">>, Doc),
+                            Older = wh_doc:created(Doc),
                             case Older < Created  of
-                                'true' -> {Older, wh_json:get_value(<<"_id">>, Doc)};
+                                'true' -> {Older, wh_doc:id(Doc)};
                                 'false' -> Eldest
                             end
                     end
-                    ,{wh_json:get_integer_value(<<"pvt_created">>, First)
-                      ,wh_json:get_value(<<"_id">>, First)
-                     }
+                    ,{wh_doc:created(First), wh_doc:id(First)}
                     ,Docs),
     {'ok', OldestDocID}.
 
@@ -226,7 +222,7 @@ get_all_accounts(Encoding) ->
                                                       ]),
     [wh_util:format_account_id(Id, Encoding)
      || Db <- Dbs,
-        is_account_db((Id = wh_json:get_value(<<"id">>, Db)))
+        is_account_db((Id = wh_doc:id(Db)))
     ].
 
 -spec get_all_accounts_and_mods() -> ne_binaries().
@@ -350,16 +346,6 @@ get_event_type(JObj) -> wh_util:get_event_type(JObj).
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Given an JSON Object extracts the Call-ID into the processes
-%% dictionary, failing that the Msg-ID and finally a generic
-%% @end
-%%--------------------------------------------------------------------
--spec put_callid(wh_json:object()) -> api_binary().
-put_callid(JObj) -> wh_util:put_callid(JObj).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
 %% Given an JSON Object for a hangup event, or bridge completion
 %% this returns the cause and code for the call termination
 %% @end
@@ -409,7 +395,7 @@ get_view_json(Path) ->
     lager:debug("fetch view from ~s", [Path]),
     {'ok', Bin} = file:read_file(Path),
     JObj = wh_json:decode(Bin),
-    {wh_json:get_value(<<"_id">>, JObj), JObj}.
+    {wh_doc:id(JObj), JObj}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -437,9 +423,9 @@ update_views([], Db, [{Id,View}|Views], Remove) ->
     _ = couch_mgr:ensure_saved(Db, View),
     update_views([], Db, Views, Remove);
 update_views([Found|Finds], Db, Views, Remove) ->
-    Id = wh_json:get_value(<<"id">>, Found),
+    Id = wh_doc:id(Found),
     Doc = wh_json:get_value(<<"doc">>, Found),
-    RawDoc = wh_json:delete_key(<<"_rev">>, Doc),
+    RawDoc = wh_doc:delete_revision(Doc),
     case props:get_value(Id, Views) of
         'undefined' when Remove ->
             lager:debug("removing view '~s' from '~s'", [Id, Db]),
@@ -452,8 +438,8 @@ update_views([Found|Finds], Db, Views, Remove) ->
             update_views(Finds, Db, props:delete(Id, Views), Remove);
         View2 ->
             lager:debug("updating view '~s' in '~s'", [Id, Db]),
-            Rev = wh_json:get_value(<<"_rev">>, Doc),
-            _ = couch_mgr:ensure_saved(Db, wh_json:set_value(<<"_rev">>, Rev, View2)),
+            Rev = wh_doc:revision(Doc),
+            _ = couch_mgr:ensure_saved(Db, wh_doc:set_revision(View2, Rev)),
             update_views(Finds, Db, props:delete(Id, Views), Remove)
     end.
 
@@ -466,14 +452,14 @@ update_views([Found|Finds], Db, Views, Remove) ->
 -spec add_aggregate_device(ne_binary(), api_binary()) -> 'ok'.
 add_aggregate_device(_, 'undefined') -> 'ok';
 add_aggregate_device(Db, Device) ->
-    DeviceId = wh_json:get_value(<<"_id">>, Device),
+    DeviceId = wh_doc:id(Device),
     _ = case couch_mgr:lookup_doc_rev(?WH_SIP_DB, DeviceId) of
             {'ok', Rev} ->
                 lager:debug("aggregating device ~s/~s", [Db, DeviceId]),
-                couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:set_value(<<"_rev">>, Rev, Device));
+                couch_mgr:ensure_saved(?WH_SIP_DB, wh_doc:set_revision(Device, Rev));
             {'error', 'not_found'} ->
                 lager:debug("aggregating device ~s/~s", [Db, DeviceId]),
-                couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Device))
+                couch_mgr:ensure_saved(?WH_SIP_DB, wh_doc:delete_revision(Device))
         end,
     'ok'.
 
@@ -494,7 +480,7 @@ rm_aggregate_device(Db, DeviceId) when is_binary(DeviceId) ->
             'ok'
     end;
 rm_aggregate_device(Db, Device) ->
-    rm_aggregate_device(Db, wh_json:get_value(<<"_id">>, Device)).
+    rm_aggregate_device(Db, wh_doc:id(Device)).
 
 -spec amqp_pool_send(api_terms(), wh_amqp_worker:publish_fun()) ->
                             'ok' | {'error', any()}.

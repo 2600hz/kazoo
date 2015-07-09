@@ -30,7 +30,7 @@ handle(Data, Call) ->
     {'stop', Call}.
 
 callflow(Data, Call) ->
-    callflow(Data, Call, wh_json:get_value(<<"id">>, Data)).
+    callflow(Data, Call, wh_doc:id(Data)).
 
 callflow(Data, Call, 'undefined') ->
     captured_callflow(Call, wh_json:get_first_defined([<<"captures">>

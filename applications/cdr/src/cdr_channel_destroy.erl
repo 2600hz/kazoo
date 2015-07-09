@@ -117,7 +117,7 @@ is_conference(_AccountId, _Timestamp, JObj) ->
     maybe_leak_ccv(JObj, <<"is_conference">>, {fun wh_json:is_true/3, 'false'}).
 
 -spec maybe_leak_ccv(wh_json:object(), wh_json:key()) -> wh_json:object().
--spec maybe_leak_ccv(wh_json:object(), wh_json:key(), {fun(), term()}) -> wh_json:object().
+-spec maybe_leak_ccv(wh_json:object(), wh_json:key(), {fun(), _}) -> wh_json:object().
 maybe_leak_ccv(JObj, Key) ->
     maybe_leak_ccv(JObj, Key, {fun wh_json:get_value/3, 'undefined'}).
 
@@ -134,7 +134,7 @@ maybe_leak_ccv(JObj, Key, {GetFun, Default}) ->
 
 -spec save_cdr(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
 save_cdr(_, _, JObj) ->
-    CDRDb = wh_json:get_value(<<"pvt_account_db">>, JObj),
+    CDRDb = wh_doc:account_db(JObj),
     case cdr_util:save_cdr(CDRDb, JObj) of
         {'error', 'max_retries'} ->
             lager:error("write failed to ~s, too many retries", [CDRDb]);

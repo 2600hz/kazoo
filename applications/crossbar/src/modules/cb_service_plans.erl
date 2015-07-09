@@ -298,7 +298,7 @@ check_plan_id(Context, PlanId, ResellerId) ->
 -spec is_service_plan(cb_context:context(), path_token(), wh_json:object()) ->
                              cb_context:context().
 is_service_plan(Context, PlanId, JObj) ->
-    case wh_doc:pvt_type(JObj) =:= <<"service_plan">> of
+    case wh_doc:type(JObj) =:= <<"service_plan">> of
         'true' -> cb_context:set_resp_status(Context, 'success');
         'false' ->
             cb_context:add_system_error(

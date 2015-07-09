@@ -47,7 +47,7 @@ get_offnet_gateways(Gateways) ->
 -spec gateway_fold(wh_json:object(), wh_json:object()) -> wh_json:object().
 gateway_fold(JObj, Acc) ->
     Gateway = wh_json:get_value(<<"value">>, JObj),
-    Id = wh_json:get_value(<<"id">>, Gateway),
+    Id = wh_doc:id(Gateway),
     wh_json:set_value(Id, format_gateway(Gateway), Acc).
 
 -spec format_gateway(wh_json:object()) -> wh_json:object().
@@ -57,7 +57,7 @@ format_gateway(JObj) ->
                  ,{<<"Username">>, wh_json:get_value(<<"username">>, JObj)}
                  ,{<<"Realm">>, wh_json:get_value(<<"realm">>, JObj)}
                  ,{<<"Authorizing-Type">>, wh_json:get_value(<<"resource">>, JObj)}
-                 ,{<<"Authorizing-ID">>, wh_json:get_value(<<"id">>, JObj)}
+                 ,{<<"Authorizing-ID">>, wh_doc:id(JObj)}
                  ,{<<"Inception">>, <<"${destination_number}">>}
                  ,{<<"Gateway-Version">>, wh_json:get_value(<<"version">>, JObj)}
                 ],

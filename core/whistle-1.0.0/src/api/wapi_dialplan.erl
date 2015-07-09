@@ -1148,10 +1148,10 @@ terminator_v(T) -> lists:member(T, ?ANY_DIGIT).
 -spec local_store_url(whapps_call:call(), wh_json:object()) -> ne_binary().
 local_store_url(Call, JObj) ->
     AccountDb = whapps_call:account_db(Call),
-    MediaId = wh_json:get_value(<<"_id">>, JObj),
+    MediaId = wh_doc:id(JObj),
     MediaName = wh_json:get_value(<<"name">>, JObj),
 
-    Rev = wh_json:get_value(<<"_rev">>, JObj),
+    Rev = wh_doc:revision(JObj),
     list_to_binary([wh_couch_connections:get_url(), AccountDb
                     ,"/", MediaId
                     ,"/", MediaName

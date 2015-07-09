@@ -24,7 +24,7 @@
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call1) ->
-    UserId = wh_json:get_ne_value(<<"id">>, Data),
+    UserId = wh_doc:id(Data),
     Funs = [{fun doodle_util:set_callee_id/2, UserId}
             ,{fun whapps_call:kvs_store/3, <<"target_owner_id">>, UserId}
            ],

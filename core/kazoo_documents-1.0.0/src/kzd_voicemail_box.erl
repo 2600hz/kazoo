@@ -72,10 +72,7 @@ owner(Box) ->
     end.
 
 owner(Box, OwnerId) ->
-    case couch_mgr:open_cache_doc(wh_doc:account_db(Box)
-                                  ,OwnerId
-                                 )
-    of
+    case couch_mgr:open_cache_doc(wh_doc:account_db(Box), OwnerId) of
         {'ok', OwnerJObj} -> OwnerJObj;
         {'error', 'not_found'} -> 'undefined'
     end.

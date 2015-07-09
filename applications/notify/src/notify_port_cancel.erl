@@ -44,15 +44,15 @@ init() ->
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = wapi_notifications:port_cancel_v(JObj),
-    whapps_util:put_callid(JObj),
+    wh_util:put_callid(JObj),
 
     lager:debug("an in-progress port has been cancelled, sending email notification"),
 
     {'ok', AccountDoc} = notify_util:get_account_doc(JObj),
     AccountJObj = wh_doc:public_fields(AccountDoc),
 
-    lager:debug("creating port cancel notice for ~s(~s)", [wh_json:get_value(<<"name">>, AccountJObj)
-                                                           ,wh_json:get_value(<<"pvt_account_id">>, AccountDoc)
+    lager:debug("creating port cancel notice for ~s(~s)", [kz_account:name(AccountJObj)
+                                                           ,wh_doc:account_id(AccountDoc)
                                                           ]),
 
     Props = create_template_props(JObj, AccountJObj),

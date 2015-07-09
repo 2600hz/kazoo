@@ -44,7 +44,7 @@ init() ->
 %%--------------------------------------------------------------------
 -spec send(integer(), wh_json:object()) -> any().
 send(CurrentBalance, Account) ->
-    AccountId = wh_json:get_value(<<"_id">>, Account),
+    AccountId = wh_doc:id(Account),
     case collect_recipients(AccountId) of
         'undefined' -> 'ok';
         To ->
@@ -67,7 +67,7 @@ send(CurrentBalance, Account) ->
 %%--------------------------------------------------------------------
 -spec create_template_props(integer(), wh_json:object()) -> wh_proplist().
 create_template_props(CurrentBalance, Account) ->
-    AccountDb = wh_util:format_account_id(wh_json:get_value(<<"_id">>, Account), 'encoded'),
+    AccountDb = wh_util:format_account_id(wh_doc:id(Account), 'encoded'),
     Threshold = notify_account_crawler:low_balance_threshold(AccountDb),
     [{<<"account">>, notify_util:json_to_template_props(Account)}
      ,{<<"service">>, notify_util:get_service_props(wh_json:new(), Account, ?MOD_CONFIG_CAT)}

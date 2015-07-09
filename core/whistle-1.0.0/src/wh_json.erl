@@ -873,8 +873,7 @@ search_replace_format({Old, New, Formatter}, JObj) when is_function(Formatter, 1
 public_fields(JObjs) when is_list(JObjs) -> [public_fields(JObj) || JObj <- JObjs];
 public_fields(JObj) ->
     PubJObj = filter(fun({K, _}) -> (not is_private_key(K)) end, JObj),
-
-    case get_binary_value(<<"_id">>, JObj) of
+    case wh_doc:id(JObj) of
         'undefined' -> PubJObj;
         Id -> set_value(<<"id">>, Id, PubJObj)
     end.

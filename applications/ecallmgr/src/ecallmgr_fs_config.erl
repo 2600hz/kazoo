@@ -61,7 +61,7 @@ start_link(Node, Options) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node, Options]) ->
-    put('callid', Node),
+    wh_util:put_callid(Node),
     lager:info("starting new fs config listener for ~s", [Node]),
     gen_server:cast(self(), 'bind_to_configuration'),
     {'ok', #state{node=Node, options=Options}}.

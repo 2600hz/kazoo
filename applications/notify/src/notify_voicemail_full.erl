@@ -44,7 +44,7 @@ init() ->
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = wapi_notifications:voicemail_full_v(JObj),
-    whapps_util:put_callid(JObj),
+    wh_util:put_callid(JObj),
     lager:debug("voicemail full notice, sending to email if enabled"),
     {'ok', Account} = notify_util:get_account_doc(JObj),
     case is_notice_enabled(Account) of
@@ -124,7 +124,7 @@ maybe_add_user_email(BoxEmails, UserEmail) -> [UserEmail | BoxEmails].
 -spec create_template_props(wh_json:object()) -> wh_proplist().
 create_template_props(JObj) ->
     AccountDb = wh_json:get_value(<<"Account-DB">>, JObj),
-    {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, wh_util:format_account_id(AccountDb, 'raw')),
+    {'ok', AccountJObj} = kz_account:fetch(AccountDb),
 
     [{<<"service">>, notify_util:get_service_props(JObj, AccountJObj, ?MOD_CONFIG_CAT)}
      ,{<<"voicemail">>, [{<<"name">>, get_vm_name(JObj)}

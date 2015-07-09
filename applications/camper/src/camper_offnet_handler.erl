@@ -91,7 +91,7 @@ init([JObj]) ->
 
     {'ok', StopTimerRef} = timer:apply_after(StopAfter, 'gen_listener', 'cast', [self(), 'stop_campering']),
 
-    Moh = case couch_mgr:open_cache_doc(whapps_call:account_db(Call), whapps_call:account_id(Call)) of
+    Moh = case kz_account:fetch(whapps_call:account_id(Call)) of
               {'ok', JObj} ->
                   wh_media_util:media_path(
                     wh_json:get_value([<<"music_on_hold">>, <<"media_id">>], JObj)

@@ -146,13 +146,11 @@ create_extensions([Exten|Extens], Iteration, Context, {PassAcc, FailAcc}) ->
 %% json object.
 %% @end
 %%--------------------------------------------------------------------
--spec create_account(wh_json:object(), #cb_context{}, {proplist(), wh_json:object()}) -> {proplist(), wh_json:object()}.
+-spec create_account(wh_json:object(), cb_context:context(), {proplist(), wh_json:object()}) ->
+                            {proplist(), wh_json:object()}.
 create_account(JObj, Context, {Pass, Fail}) ->
     Account = wh_json:get_value(<<"account">>, JObj, wh_json:new()),
-    Generators = [fun(J) ->
-                          Id = couch_mgr:get_uuid(),
-                          wh_json:set_value(<<"_id">>, Id, J)
-                  end
+    Generators = [fun(J) -> wh_doc:set_id(J, couch_mgr:get_uuid()) end
                  ],
     Payload = [Context#cb_context{req_data=lists:foldr(fun(F, J) -> F(J) end, Account, Generators)
                                   ,req_nouns=[{?WH_ACCOUNTS_DB, []}]}
@@ -171,8 +169,8 @@ create_account(JObj, Context, {Pass, Fail}) ->
 %% json object.
 %% @end
 %%--------------------------------------------------------------------
--spec create_phone_numbers(wh_json:object(), #cb_context{}, {proplist(), wh_json:object()}) -> {proplist(), wh_json:object()}.
-
+-spec create_phone_numbers(wh_json:object(), cb_context:context(), {proplist(), wh_json:object()}) ->
+                                  {proplist(), wh_json:object()}.
 create_phone_numbers(JObj, Context, Results) ->
     PhoneNumbers = wh_json:get_value(<<"phone_numbers">>, JObj),
     lists:foldr(fun(Number, R) ->
@@ -203,7 +201,7 @@ create_phone_number(Number, Properties, Context, {Pass, Fail}) ->
 -spec create_braintree_cards(wh_json:object(), #cb_context{}, {proplist(), wh_json:object()}) -> {proplist(), wh_json:object()}.
 create_braintree_cards(JObj, Context, {Pass, Fail}) ->
     Account = get_context_jobj(<<"accounts">>, Pass),
-    case wh_json:get_value(<<"_id">>, Account) of
+    case wh_doc:id(Account) of
         'undefined' ->
             Error = wh_json:set_value([<<"account_id">>, <<"required">>], <<"account failed validation">>, wh_json:new()),
             {Pass, wh_json:set_value(<<"braintree">>, Error, Fail)};
@@ -240,10 +238,7 @@ create_braintree_cards(JObj, Context, {Pass, Fail}) ->
                        -> {proplist(), wh_json:object()}.
 create_user(JObj, Iteration, Context, {Pass, Fail}) ->
     User = wh_json:get_value(<<"user">>, JObj, wh_json:new()),
-    Generators = [fun(J) ->
-                          Id = couch_mgr:get_uuid(),
-                          wh_json:set_value(<<"_id">>, Id, J)
-                  end
+    Generators = [fun(J) -> wh_doc:set_id(J, couch_mgr:get_uuid()) end
                   ,fun(J) when Iteration =:= 1 ->
                            %% ensure the first user is a admin
                            wh_json:set_value(<<"priv_level">>, <<"admin">>, J);
@@ -294,16 +289,12 @@ create_user(JObj, Iteration, Context, {Pass, Fail}) ->
                          -> {proplist(), wh_json:object()}.
 create_device(JObj, Iteration, Context, {Pass, Fail}) ->
     Device = wh_json:get_value(<<"device">>, JObj, wh_json:new()),
-    Generators = [fun(J) ->
-                          Id = couch_mgr:get_uuid(),
-                          wh_json:set_value(<<"_id">>, Id, J)
-                  end
+    Generators = [fun(J) -> wh_doc:set_id(J, couch_mgr:get_uuid()) end
                   ,fun(J) ->
                            User = get_context_jobj(<<"users">>, Pass),
-                           case wh_json:get_value(<<"_id">>, User) of
+                           case wh_doc:id(User) of
                                'undefined' -> J;
-                               OwnerId ->
-                                   wh_json:set_value(<<"owner_id">>, OwnerId, J)
+                               OwnerId -> wh_json:set_value(<<"owner_id">>, OwnerId, J)
                            end
                    end
                   ,fun(J) ->
@@ -356,16 +347,12 @@ create_device(JObj, Iteration, Context, {Pass, Fail}) ->
                         -> {proplist(), wh_json:object()}.
 create_vmbox(JObj, Iteration, Context, {Pass, Fail}) ->
     VMBox = wh_json:get_value(<<"vmbox">>, JObj, wh_json:new()),
-    Generators = [fun(J) ->
-                          Id = couch_mgr:get_uuid(),
-                          wh_json:set_value(<<"_id">>, Id, J)
-                  end
+    Generators = [fun(J) -> wh_doc:set_id(J, couch_mgr:get_uuid()) end
                   ,fun(J) ->
                            User = get_context_jobj(<<"users">>, Pass),
-                           case wh_json:get_value(<<"_id">>, User) of
+                           case wh_doc:id(User) of
                                'undefined' -> J;
-                               OwnerId ->
-                                   wh_json:set_value(<<"owner_id">>, OwnerId, J)
+                               OwnerId -> wh_json:set_value(<<"owner_id">>, OwnerId, J)
                            end
                    end
                   ,fun(J) ->
@@ -414,17 +401,16 @@ create_exten_callflow(JObj, Iteration, Context, {Pass, Fail}) ->
                           VMBox = get_context_jobj(<<"vmboxes">>, Pass),
                           DefaultFlow = whapps_config:get_string(?OB_CONFIG_CAT, <<"default_extension_callflow">>
                                                                      ,wh_util:to_binary(?DEFAULT_FLOW)),
-                          Flow = wh_json:decode(io_lib:format(DefaultFlow, [wh_json:get_value(<<"_id">>, User)
-                                                                            ,wh_json:get_value(<<"_id">>, VMBox)
+                          Flow = wh_json:decode(io_lib:format(DefaultFlow, [wh_doc:id(User)
+                                                                            ,wh_doc:id(VMBox)
                                                                            ])),
                           wh_json:set_value(<<"flow">>, Flow, J)
                   end
+                  ,fun(J) -> wh_doc:set_id(J, couch_mgr:get_uuid()) end
                   ,fun(J) ->
-                           Id = couch_mgr:get_uuid(),
-                           wh_json:set_value(<<"_id">>, Id, J)
-                   end
-                  ,fun(J) ->
-                           case [Num || Num <- wh_json:get_ne_value(<<"numbers">>, J, []), not wh_util:is_empty(Num)] of
+                           case [Num || Num <- wh_json:get_ne_value(<<"numbers">>, J, [])
+                                            , not wh_util:is_empty(Num)]
+                           of
                                [] ->
                                    StartExten = whapps_config:get_integer(?OB_CONFIG_CAT
                                                                           ,<<"default_callflow_start_exten">>
@@ -518,7 +504,7 @@ populate_new_account([{Event, #cb_context{storage=[{'iteration', Iteration}]}=Co
             case wh_json:get_value(<<"priv_level">>, JObj) of
                 <<"admin">> ->
                     populate_new_account(Props, AccountDb
-                                         ,wh_json:set_value(<<"owner_id">>, wh_json:get_value(<<"_id">>, JObj), Results));
+                                         ,wh_json:set_value(<<"owner_id">>, wh_doc:id(JObj), Results));
                 _ ->
                     populate_new_account(Props, AccountDb, Results)
             end;
@@ -564,7 +550,7 @@ create_response(#cb_context{doc=JObj, account_id=AccountId}=Context) ->
             ],
     case couch_mgr:save_doc(?KZ_TOKEN_DB, wh_json:from_list(Token)) of
         {'ok', Doc} ->
-            AuthToken = wh_json:get_value(<<"_id">>, Doc),
+            AuthToken = wh_doc:id(Doc),
             lager:debug("created new local auth token ~s", [AuthToken]),
             crossbar_util:response(wh_json:set_value(<<"auth_token">>, AuthToken, JObj)
                                    ,Context#cb_context{auth_token=AuthToken, auth_doc=Doc});
@@ -581,16 +567,17 @@ create_response(#cb_context{doc=JObj, account_id=AccountId}=Context) ->
 %%--------------------------------------------------------------------
 -spec notfy_new_account(wh_json:object()) -> 'ok'.
 notfy_new_account(JObj) ->
-    Notify = [{<<"Account-Name">>, wh_json:get_value(<<"name">>, JObj)}
-              ,{<<"Account-Realm">>, wh_json:get_value(<<"realm">>, JObj)}
-              ,{<<"Account-API-Key">>, wh_json:get_value(<<"pvt_api_key">>, JObj)}
-              ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, JObj)}
-              ,{<<"Account-DB">>, wh_json:get_value(<<"pvt_account_db">>, JObj)}
+    Notify = [{<<"Account-Name">>, kz_account:name(JObj)}
+              ,{<<"Account-Realm">>, kz_account:realm(JObj)}
+              ,{<<"Account-API-Key">>, kz_account:api_key(JObj)}
+              ,{<<"Account-ID">>, wh_doc:account_id(JObj)}
+              ,{<<"Account-DB">>, wh_doc:account_db(JObj)}
               | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
     wapi_notifications:publish_new_account(Notify).
 
--spec generate_username('undefined' | ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary()) -> ne_binary().
+-spec generate_username(api_binary(), api_binary(), api_binary()) ->
+                               ne_binary().
 generate_username('undefined', 'undefined', _) ->
     wh_util:rand_hex_binary(3);
 generate_username('undefined', _, 'undefined') ->

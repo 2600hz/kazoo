@@ -213,7 +213,7 @@ handle_conference_command(JObj, Props) ->
 -spec handle_call_events(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_call_events(JObj, Props) ->
     Srv = props:get_value('server', Props),
-    put('callid', wh_json:get_value(<<"Call-ID">>, JObj)),
+    wh_util:put_callid(wh_json:get_value(<<"Call-ID">>, JObj)),
     case wh_json:get_value(<<"Event-Name">>, JObj) of
         <<"usurp_control">> ->
             case wh_json:get_value(<<"Fetch-ID">>, JObj)
@@ -241,7 +241,7 @@ handle_call_events(JObj, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node, CallId, FetchId, ControllerQ, CCVs]) ->
-    put('callid', CallId),
+    wh_util:put_callid(CallId),
     lager:debug("starting call control listener"),
     gen_listener:cast(self(), 'init'),
     {'ok', #state{node=Node
@@ -713,7 +713,7 @@ handle_sofia_replaced(ReplacedBy, #state{call_id=CallId
     unreg_for_call_related_events(CallId),
     gen_listener:rm_binding(self(), 'call', [{'callid', CallId}]),
 
-    put('callid', ReplacedBy),
+    wh_util:put_callid(ReplacedBy),
     bind_to_events(Node, ReplacedBy),
     reg_for_call_related_events(ReplacedBy),
     gen_listener:add_binding(self(), 'call', [{'callid', ReplacedBy}]),
@@ -1079,7 +1079,7 @@ execute_control_request(Cmd, #state{node=Node
                                     ,call_id=CallId
                                     ,other_legs=OtherLegs
                                    }) ->
-    put('callid', CallId),
+    wh_util:put_callid(CallId),
     Srv = self(),
 
     lager:debug("executing call command '~s' ~s"

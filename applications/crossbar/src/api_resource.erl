@@ -63,7 +63,7 @@ rest_init(Req0, Opts) ->
                 {'undefined', _} -> couch_mgr:get_uuid();
                 {UserReqId, _} -> wh_util:to_binary(UserReqId)
             end,
-    put('callid', ReqId),
+    wh_util:put_callid(ReqId),
     ProfileId = case cowboy_req:header(<<"x-profile-id">>, Req0) of
                     {'undefined', _} -> 'undefined';
                     {ProfId, _} -> wh_util:to_binary(ProfId)

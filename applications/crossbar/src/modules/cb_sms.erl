@@ -240,14 +240,11 @@ on_successful_validation(Context) ->
 
 -spec get_default_caller_id(cb_context:context(), api_binary()) -> api_binary().
 get_default_caller_id(Context, 'undefined') ->
-    AccountId = cb_context:account_id(Context),
-    AccountDb = cb_context:account_db(Context),
-    {'ok', JObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+    {'ok', JObj} = kz_account:fetch(cb_context:account_id(Context)),
     wh_json:get_first_defined([?CALLER_ID_INTERNAL, ?CALLER_ID_EXTERNAL], JObj, <<"anonymous">>);
 get_default_caller_id(Context, OwnerId) ->
-    AccountId = cb_context:account_id(Context),
     AccountDb = cb_context:account_db(Context),
-    {'ok', JObj1} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+    {'ok', JObj1} = kz_account:fetch(AccountDb),
     {'ok', JObj2} = couch_mgr:open_cache_doc(AccountDb, OwnerId),
     wh_json:get_first_defined([?CALLER_ID_INTERNAL, ?CALLER_ID_EXTERNAL]
                               ,wh_json:merge_recursive(JObj1, JObj2)

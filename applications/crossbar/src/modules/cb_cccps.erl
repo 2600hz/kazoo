@@ -156,7 +156,7 @@ delete(Context, _) ->
     Context2 = crossbar_doc:delete(Context),
     case cb_context:resp_status(Context2) of
         'success' ->
-            _ = couch_mgr:del_doc(?KZ_CCCPS_DB, wh_json:get_value(<<"_id">>, cb_context:doc(Context2))),
+            _ = couch_mgr:del_doc(?KZ_CCCPS_DB, wh_doc:id(cb_context:doc(Context2))),
             Context2;
         _ ->
             Context2
@@ -214,7 +214,7 @@ summary(Context) ->
 %%--------------------------------------------------------------------
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
-    cb_context:set_doc(Context, wh_json:set_value(<<"pvt_type">>, <<"cccp">>, cb_context:doc(Context)));
+    cb_context:set_doc(Context, wh_doc:set_type(cb_context:doc(Context), <<"cccp">>));
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context).
 

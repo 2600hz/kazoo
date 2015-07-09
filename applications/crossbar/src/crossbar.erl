@@ -51,7 +51,7 @@ api_version_constraint(_NotVersion) ->
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    put('callid', ?LOG_SYSTEM_ID),
+    wh_util:put_callid(?LOG_SYSTEM_ID),
     _ = start_deps(),
     _ = declare_exchanges(),
 

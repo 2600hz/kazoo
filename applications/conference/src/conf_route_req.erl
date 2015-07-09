@@ -56,7 +56,7 @@ find_conference(Call, AccountDb) ->
     ConferenceId = whapps_call:to_user(Call),
     case couch_mgr:open_cache_doc(AccountDb, ConferenceId) of
         {'ok', JObj} ->
-            <<"conference">> = wh_json:get_value(<<"pvt_type">>, JObj),
+            <<"conference">> = wh_doc:type(JObj),
             {'ok', whapps_conference:from_conference_doc(JObj)};
         {'error', _R}=Error ->
             lager:info("unable to find conference ~s in account db ~s: ~p"

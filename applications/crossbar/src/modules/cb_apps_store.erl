@@ -353,7 +353,7 @@ normalize_apps_result([App|Apps], Acc) ->
             JObj =
                 wh_json:from_list(
                   props:filter_undefined(
-                    [{<<"id">>, wh_json:get_value(<<"_id">>, App)}
+                    [{<<"id">>, wh_doc:id(App)}
                     ,{<<"name">>, wh_json:get_value(<<"name">>, App)}
                     ,{<<"i18n">>, wh_json:get_value(<<"i18n">>, App)}
                     ,{<<"tags">>, wh_json:get_value(<<"tags">>, App)}
@@ -563,7 +563,7 @@ get_attachment(Context, Id) ->
     end.
 
 get_attachment(Context, Id, JObj, Attachment) ->
-    Db = wh_json:get_value(<<"pvt_account_db">>, JObj),
+    Db = wh_doc:account_db(JObj),
     AppId = wh_doc:id(JObj),
     case couch_mgr:fetch_attachment(Db, AppId, Id) of
         {'error', R} ->

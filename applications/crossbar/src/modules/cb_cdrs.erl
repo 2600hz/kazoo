@@ -377,9 +377,7 @@ get_cdr_ids(Db, View, ViewOptions) ->
             {'ok', []};
         {'ok', JObjs} ->
             lager:debug("fetched cdr ids from ~s", [Db]),
-            {'ok', [{wh_json:get_value(<<"id">>, JObj)
-                     ,wh_json:get_value(<<"key">>, JObj)
-                    }
+            {'ok', [{wh_doc:id(JObj), wh_json:get_value(<<"key">>, JObj)}
                     || JObj <- JObjs
                    ]}
     end.

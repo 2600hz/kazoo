@@ -180,7 +180,7 @@ summary(Context) ->
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     Doc = cb_context:doc(Context),
-    cb_context:set_doc(Context, wh_json:set_value(<<"pvt_type">>, <<"blacklist">>, Doc));
+    cb_context:set_doc(Context, wh_doc:set_type(Doc, <<"blacklist">>));
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context).
 
@@ -192,4 +192,4 @@ on_successful_validation(Id, Context) ->
 %%--------------------------------------------------------------------
 -spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].
+    [wh_json:get_value(<<"value">>, JObj) | Acc].

@@ -180,7 +180,7 @@ rollup_account(AccountId, Balance) ->
 -spec rollup_balance(wh_json:object()) -> integer().
 rollup_balance(JObj) ->
     Balance = wh_json:get_integer_value(<<"pvt_amount">>, JObj, 0),
-    case wh_json:get_value(<<"pvt_type">>, JObj) of
+    case wh_doc:type(JObj) of
         <<"credit">> -> Balance;
         <<"debit">> -> Balance * -1
     end.

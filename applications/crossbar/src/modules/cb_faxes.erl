@@ -342,7 +342,7 @@ get_delivered_date(JObj) ->
     case wh_json:get_value(<<"pvt_delivered_date">>, JObj) of
         'undefined' ->
             case wh_json:get_value(<<"pvt_job_status">>, JObj) of
-                <<"completed">> -> wh_json:get_value(<<"pvt_modified">>, JObj);
+                <<"completed">> -> wh_doc:modified(JObj);
                 _ -> 'undefined'
             end;
         Date -> Date
@@ -478,8 +478,8 @@ incoming_summary(Context) ->
 -spec get_incoming_view_and_filter(wh_json:object()) ->
           {ne_binary(), api_binaries(), api_binaries()}.
 get_incoming_view_and_filter(JObj) ->
-    Id = wh_json:get_value(<<"_id">>, JObj),
-    case wh_json:get_value(<<"pvt_type">>, JObj) of
+    Id = wh_doc:id(JObj),
+    case wh_doc:type(JObj) of
         <<"faxbox">> -> {?CB_LIST_BY_FAXBOX, [Id], 'undefined'};
         <<"user">> -> {?CB_LIST_BY_OWNERID, [Id], 'undefined'};
         _Else -> {?CB_LIST_ALL, 'undefined', [wh_json:new()]}
@@ -546,10 +546,10 @@ set_fax_binary(Context, AttachmentId) ->
 outgoing_summary(Context) ->
     JObj = cb_context:doc(Context),
     {View, ViewOptions} =
-        case wh_json:get_value(<<"pvt_type">>, JObj) of
+        case wh_doc:type(JObj) of
             <<"faxbox">> ->
                 {?CB_LIST_BY_FAXBOX
-                 ,[{'key', wh_json:get_value(<<"_id">>, JObj)}
+                 ,[{'key', wh_doc:id(JObj)}
                    ,'include_docs'
                   ]};
             _Else ->

@@ -138,7 +138,7 @@ resolve_endpoint_ids(Data, Call) ->
                                   endpoint_intermediates().
 resolve_endpoint_ids([], EndpointIds, _, _) -> EndpointIds;
 resolve_endpoint_ids([Member|Members], EndpointIds, Data, Call) ->
-    Id = wh_json:get_value(<<"id">>, Member),
+    Id = wh_doc:id(Member),
     Type = wh_json:get_value(<<"endpoint_type">>, Member, <<"device">>),
     case wh_util:is_empty(Id)
         orelse lists:keymember(Id, 2, EndpointIds)

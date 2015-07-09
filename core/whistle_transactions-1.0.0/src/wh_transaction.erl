@@ -454,8 +454,8 @@ clean_jobj(JObj) ->
 %%--------------------------------------------------------------------
 -spec from_json(wh_json:object()) -> transaction().
 from_json(JObj) ->
-    #wh_transaction{id = wh_json:get_ne_value(<<"_id">>, JObj)
-                    ,rev = wh_json:get_ne_value(<<"_rev">>, JObj)
+    #wh_transaction{id = wh_doc:id(JObj)
+                    ,rev = wh_doc:revision(JObj)
                     ,description = wh_json:get_ne_value(<<"description">>, JObj)
                     ,call_id = wh_json:get_ne_value(<<"call_id">>, JObj)
                     ,sub_account_id = wh_json:get_ne_value(<<"sub_account_id">>, JObj)
@@ -469,12 +469,12 @@ from_json(JObj) ->
                     ,pvt_status = wh_json:get_ne_value(<<"pvt_status">>, JObj)
                     ,pvt_code = wh_json:get_integer_value(<<"pvt_code">>, JObj, 0)
                     ,pvt_amount = wh_json:get_integer_value(<<"pvt_amount">>, JObj, 0)
-                    ,pvt_type = wh_json:get_ne_value(<<"pvt_type">>, JObj)
-                    ,pvt_created = wh_json:get_ne_value(<<"pvt_created">>, JObj)
-                    ,pvt_modified = wh_json:get_ne_value(<<"pvt_modified">>, JObj)
-                    ,pvt_account_id = wh_json:get_ne_value(<<"pvt_account_id">>, JObj)
-                    ,pvt_account_db = wh_json:get_ne_value(<<"pvt_account_db">>, JObj)
-                    ,pvt_vsn = wh_json:get_integer_value(<<"pvt_vsn">>, JObj, 1)
+                    ,pvt_type = wh_doc:type(JObj)
+                    ,pvt_created = wh_doc:created(JObj)
+                    ,pvt_modified = wh_doc:modified(JObj)
+                    ,pvt_account_id = wh_doc:account_id(JObj)
+                    ,pvt_account_db = wh_doc:account_db(JObj)
+                    ,pvt_vsn = wh_doc:vsn(JObj, 1)
                     ,order_id = wh_json:get_ne_value(<<"order_id">>, JObj)
                    }.
 

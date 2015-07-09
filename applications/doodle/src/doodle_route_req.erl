@@ -40,11 +40,10 @@ handle_req(JObj, Props) ->
 
 -spec maybe_prepend_preflow(whapps_call:call(), wh_json:object()) -> wh_json:object().
 maybe_prepend_preflow(Call, CallFlow) ->
-    AccountId = whapps_call:account_id(Call),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    AccountDb = whapps_call:account_db(Call),
+    case kz_account:fetch(AccountDb) of
         {'error', _E} ->
-            lager:warning("could not open ~s in ~s : ~p", [AccountId, AccountDb, _E]),
+            lager:warning("could not open account doc ~s : ~p", [AccountDb, _E]),
             CallFlow;
         {'ok', Doc} ->
             case wh_json:get_ne_value([<<"preflow">>, <<"always">>], Doc) of
@@ -93,9 +92,8 @@ allow_no_match_type(Call) ->
 -spec maybe_reply_to_req(wh_json:object(), wh_proplist(), whapps_call:call(), wh_json:object(), boolean()) ->
                                 'ok'.
 maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch) ->
-    lager:info("callflow ~s in ~s satisfies request", [wh_json:get_value(<<"_id">>, Flow)
-                                                       ,whapps_call:account_id(Call)
-                                                      ]),
+    lager:info("callflow ~s in ~s satisfies request"
+               ,[wh_doc:id(Flow), whapps_call:account_id(Call)]),
     {Name, Cost} = bucket_info(Call, Flow),
 
     case kz_buckets:consume_tokens(?APP_NAME, Name, Cost) of
@@ -116,7 +114,7 @@ bucket_info(Call, Flow) ->
 
 -spec bucket_name_from_call(whapps_call:call(), wh_json:object()) -> ne_binary().
 bucket_name_from_call(Call, Flow) ->
-    <<(whapps_call:account_id(Call))/binary, ":", (wh_json:get_value(<<"_id">>, Flow))/binary>>.
+    <<(whapps_call:account_id(Call))/binary, ":", (wh_doc:id(Flow))/binary>>.
 
 -spec bucket_cost(wh_json:object()) -> pos_integer().
 bucket_cost(Flow) ->
@@ -142,7 +140,7 @@ send_route_response(_Flow, JObj, Q, _Call) ->
 -spec cache_call(wh_json:object(), boolean(), ne_binary(), whapps_call:call(), wh_json:object()) -> whapps_call:call().
 cache_call(Flow, NoMatch, ControllerQ, Call, JObj) ->
     Updaters = [{fun whapps_call:kvs_store_proplist/2
-                 ,[{'cf_flow_id', wh_json:get_value(<<"_id">>, Flow)}
+                 ,[{'cf_flow_id', wh_doc:id(Flow)}
                    ,{'cf_flow', wh_json:get_value(<<"flow">>, Flow)}
                    ,{'cf_capture_group', wh_json:get_ne_value(<<"capture_group">>, Flow)}
                    ,{'cf_no_match', NoMatch}

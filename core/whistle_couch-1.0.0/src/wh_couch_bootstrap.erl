@@ -53,7 +53,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    put('callid', ?LOG_SYSTEM_ID),
+    wh_util:put_callid(?LOG_SYSTEM_ID),
     Config= get_config(),
     %% TODO: for the time being just maintain backward compatability
     wh_couch_connections:add(create_connection(Config)),

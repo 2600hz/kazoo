@@ -24,24 +24,19 @@
          ,attachment_property/3
          ,delete_attachments/1, delete_attachment/2
          ,maybe_remove_attachments/1, maybe_remove_attachments/2
-         ,type/1, type/2
+         ,type/1, type/2, set_type/2
          ,id/1, id/2, set_id/2
          ,revision/1, set_revision/2, delete_revision/1
-         ,created/1
-         ,modified/1
-         ,set_soft_deleted/2
+         ,created/1, created/2, set_created/2
+         ,modified/1, modified/2, set_modified/2
+         ,vsn/1, vsn/2, set_vsn/2
+         ,set_soft_deleted/2, is_soft_deleted/1
 
-         ,is_soft_deleted/1
-         ,pvt_type/1, pvt_type/2
-         ,set_pvt_type/2
-
-         ,account_id/1, account_id/2
-         ,account_db/1, account_db/2
+         ,account_id/1, account_id/2, set_account_id/2
+         ,account_db/1, account_db/2, set_account_db/2
         ]).
 
--export([update_pvt_modified/1
-         ,set_modified/2
-        ]).
+-export([update_pvt_modified/1]).
 
 -define(PVT_FUNS, [fun add_pvt_vsn/3
                    ,fun add_pvt_account_id/3
@@ -149,6 +144,13 @@ set_modified(JObj, Now) ->
 -spec add_pvt_modified(wh_json:object(), api_binary(), wh_proplist()) -> wh_json:object().
 add_pvt_modified(JObj, _, Opts) ->
     wh_json:set_value(?KEY_MODIFIED, props:get_value('now', Opts), JObj).
+
+-spec modified(wh_json:object()) -> api_integer().
+-spec modified(wh_json:object(), Default) -> integer() | Default.
+modified(JObj) ->
+    modified(JObj, 'undefined').
+modified(JObj, Default) ->
+    wh_json:get_integer_value(?KEY_MODIFIED, JObj, Default).
 
 -spec add_id(wh_json:object(), _, wh_proplist()) -> wh_json:object().
 add_id(JObj, _, Opts) ->
@@ -273,7 +275,11 @@ id(JObj) ->
     id(JObj, 'undefined').
 
 id(JObj, Default) ->
-    wh_json:get_first_defined([?KEY_ID, <<"id">>], JObj, Default).
+    Id = wh_json:get_first_defined([?KEY_ID, <<"id">>], JObj, Default),
+    case wh_util:is_empty(Id) of
+        'true' -> Default;
+        'false' -> Id
+    end.
 
 -spec set_id(wh_json:object(), ne_binary()) -> wh_json:object().
 set_id(JObj, Id) ->
@@ -284,7 +290,11 @@ set_id(JObj, Id) ->
 type(JObj) ->
     type(JObj, 'undefined').
 type(JObj, Default) ->
-    wh_json:get_value(<<"pvt_type">>, JObj, Default).
+    wh_json:get_value(?KEY_PVT_TYPE, JObj, Default).
+
+-spec set_type(wh_json:object(), ne_binary()) -> wh_json:object().
+set_type(JObj, Type) ->
+    wh_json:set_value(?KEY_PVT_TYPE, Type, JObj).
 
 -spec set_soft_deleted(wh_json:object(), boolean()) -> wh_json:object().
 set_soft_deleted(JObj, IsSoftDeleted) ->
@@ -295,23 +305,15 @@ is_soft_deleted(JObj) ->
     wh_json:is_true(?KEY_SOFT_DELETED, JObj).
 
 -spec created(wh_json:object()) -> api_integer().
+-spec created(wh_json:object(), Default) -> integer() | Default.
 created(JObj) ->
-    wh_json:get_integer_value(?KEY_CREATED, JObj).
+    created(JObj, 'undefined').
+created(JObj, Default) ->
+    wh_json:get_integer_value(?KEY_CREATED, JObj, Default).
 
--spec modified(wh_json:object()) -> api_integer().
-modified(JObj) ->
-    wh_json:get_integer_value(?KEY_MODIFIED, JObj).
-
--spec pvt_type(wh_json:object()) -> api_binary().
--spec pvt_type(wh_json:object(), api_binary()) -> api_binary().
-pvt_type(JObj) ->
-    pvt_type(JObj, 'undefined').
-pvt_type(JObj, Default) ->
-    wh_json:get_value(?KEY_PVT_TYPE, JObj, Default).
-
--spec set_pvt_type(wh_json:object(), ne_binary()) -> wh_json:object().
-set_pvt_type(JObj, Type) ->
-    wh_json:set_value(?KEY_PVT_TYPE, Type, JObj).
+-spec set_created(wh_json:object(), pos_integer()) -> wh_json:object().
+set_created(JObj, Timestamp) ->
+    wh_json:set_value(?KEY_CREATED, Timestamp, JObj).
 
 -spec account_id(wh_json:object()) -> api_binary().
 -spec account_id(wh_json:object(), Default) -> ne_binary() | Default.
@@ -320,9 +322,28 @@ account_id(JObj) ->
 account_id(JObj, Default) ->
     wh_json:get_value(?KEY_ACCOUNT_ID, JObj, Default).
 
+-spec set_account_id(wh_json:object(), ne_binary()) -> wh_json:object().
+set_account_id(JObj, AccountId) ->
+    wh_json:set_value(?KEY_ACCOUNT_ID, AccountId, JObj).
+
 -spec account_db(wh_json:object()) -> api_binary().
 -spec account_db(wh_json:object(), Default) -> ne_binary() | Default.
 account_db(JObj) ->
     account_db(JObj, 'undefined').
 account_db(JObj, Default) ->
     wh_json:get_value(?KEY_ACCOUNT_DB, JObj, Default).
+
+-spec set_account_db(wh_json:object(), ne_binary()) -> wh_json:object().
+set_account_db(JObj, AccountDb) ->
+    wh_json:set_value(?KEY_ACCOUNT_DB, AccountDb, JObj).
+
+-spec vsn(wh_json:object()) -> api_binary().
+-spec vsn(wh_json:object(), Default) -> ne_binary() | Default.
+vsn(JObj) ->
+    vsn(JObj, 'undefined').
+vsn(JObj, Default) ->
+    wh_json:get_value(?KEY_VSN, JObj, Default).
+
+-spec set_vsn(wh_json:object(), ne_binary()) -> wh_json:object().
+set_vsn(JObj, VSN) ->
+    wh_json:set_value(?KEY_VSN, VSN, JObj).

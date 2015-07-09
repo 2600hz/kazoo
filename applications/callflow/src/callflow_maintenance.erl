@@ -53,8 +53,7 @@ lookup_endpoint(Username, Realm) ->
                     {'ok', EndpointId} ->
                         Endpoint = cf_endpoint:get(EndpointId, AccountDb),
                         io:format("~p~n", [Endpoint]);
-                    _Else -> io:format("unable to find username ~s in ~s~n"
-                                       ,[Username, AccountDb])
+                    _Else -> io:format("unable to find username ~s in ~s~n", [Username, AccountDb])
                 end;
             _Else -> io:format("unable to find account with realm ~s~n", [Realm])
         end,
@@ -153,7 +152,7 @@ migrate_recorded_name(Db) ->
 -spec do_recorded_name_migration(ne_binary(), wh_json:object()) -> _.
 -spec do_recorded_name_migration(ne_binary(), wh_json:object(), api_binary()) -> _.
 do_recorded_name_migration(Db, VMBox) ->
-    VMBoxId = wh_json:get_value(<<"_id">>, VMBox),
+    VMBoxId = wh_doc:id(VMBox),
     case wh_json:get_value(?RECORDED_NAME_KEY, VMBox) of
         'undefined' -> lager:info("vm box ~s has no recorded name to migrate", [VMBoxId]);
         MediaId ->
@@ -205,8 +204,8 @@ migrate_menus(Account) ->
 
 do_menu_migration(Menu, Db) ->
     Doc = wh_json:get_value(<<"doc">>, Menu),
-    MenuId = wh_json:get_value(<<"_id">>, Doc),
-    VSN = wh_json:get_integer_value(<<"pvt_vsn">>, Doc, 1),
+    MenuId = wh_doc:id(Doc),
+    VSN = wh_doc:vsn(Doc, 1),
     case couch_mgr:fetch_attachment(Db, MenuId, <<"prompt.mp3">>) of
         {'ok', _} when VSN =/= 1 ->
             lager:info("menu ~s in ~s already migrated", [MenuId, Db]);
@@ -238,7 +237,7 @@ create_media_doc(Name, SourceType, SourceId, Db) ->
              ,{<<"streamable">>, 'true'}],
     Doc = wh_doc:update_pvt_parameters(wh_json:from_list(Props), Db, [{'type', <<"media">>}]),
     {'ok', JObj} = couch_mgr:save_doc(Db, Doc),
-    wh_json:get_value(<<"_id">>, JObj).
+    wh_doc:id(JObj).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -320,12 +319,11 @@ all_accounts_set_classifier(Action, Classifier) ->
 
 -spec get_account_name_by_db(ne_binary()) -> ne_binary() | 'undefined'.
 get_account_name_by_db(AccountDb) ->
-    AccountId = wh_util:format_account_id(AccountDb, 'raw'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(AccountDb) of
         {'error', _Error} ->
-            lager:error('error opening ~p in ~p', [AccountId, AccountDb]),
+            lager:error('error opening account doc ~p', [AccountDb]),
             'undefined';
-        {'ok', JObj} -> wh_json:get_value(<<"name">>, JObj, 'undefined')
+        {'ok', JObj} -> kz_account:name(JObj)
     end.
 
 %%--------------------------------------------------------------------
@@ -358,7 +356,7 @@ set_device_classifier_action(Action, Classifier, Uri) ->
     {'ok', AccountDb} = whapps_util:get_account_by_realm(Realm),
     Options = [{'key', User}],
     {'ok', [DeviceDoc]} = couch_mgr:get_results(AccountDb, <<"devices/sip_credentials">>, Options),
-    DeviceId = wh_json:get_first_defined([<<"_id">>, <<"id">>], DeviceDoc),
+    DeviceId = wh_doc:id(DeviceDoc),
     couch_mgr:update_doc(AccountDb, DeviceId, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
     cf_endpoint:flush(AccountDb, DeviceId).
 
@@ -432,7 +430,7 @@ print_users_level_call_restrictions(DbName) ->
             io:format("\n\nUser level classifiers:\n"),
             lists:foreach(fun(UserObj) ->
                              io:format("\nUsername: ~s\n\n", [wh_json:get_value([<<"value">>,<<"username">>],UserObj)]),
-                             print_call_restrictions(DbName, wh_json:get_value(<<"id">>,UserObj))
+                             print_call_restrictions(DbName, wh_doc:id(UserObj))
                           end,
                           JObj);
         {'error', E} ->
@@ -446,7 +444,7 @@ print_devices_level_call_restrictions(DbName) ->
             io:format("\n\nDevice level classifiers:\n"),
             lists:foreach(fun(UserObj) ->
                              io:format("\nDevice: ~s\n\n", [wh_json:get_value([<<"value">>,<<"name">>],UserObj)]),
-                             print_call_restrictions(DbName, wh_json:get_value(<<"id">>,UserObj))
+                             print_call_restrictions(DbName, wh_doc:id(UserObj))
                           end,
                           JObj);
         {'error', E} ->
@@ -460,7 +458,7 @@ print_trunkstore_call_restrictions(DbName) ->
             io:format("\n\nTrunkstore classifiers:\n\n"),
             lists:foreach(fun(UserObj) ->
                              io:format("Trunk: ~s@~s\n\n", lists:reverse(wh_json:get_value(<<"key">>,UserObj))),
-                             print_call_restrictions(DbName, wh_json:get_value(<<"id">>,UserObj))
+                             print_call_restrictions(DbName, wh_doc:id(UserObj))
                           end,
                           JObj);
         {'error', E} ->
@@ -497,7 +495,7 @@ update_feature_codes(Account) ->
 maybe_update_feature_codes(Db, []) ->
     io:format("~s : feature codes up to date\n", [wh_util:format_account_id(Db, 'raw')]);
 maybe_update_feature_codes(Db, [Pattern|Patterns]) ->
-    DocId = wh_json:get_value(<<"id">>, Pattern),
+    DocId = wh_doc:id(Pattern),
     Regex = wh_json:get_value(<<"key">>, Pattern),
     case Regex of
         <<"^\\*5([0-9]*)$">> ->

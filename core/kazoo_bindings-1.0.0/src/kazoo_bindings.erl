@@ -325,7 +325,7 @@ gift_data() -> 'ok'.
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    put('callid', ?LOG_SYSTEM_ID),
+    wh_util:put_callid(?LOG_SYSTEM_ID),
 
     lager:debug("starting bindings server"),
 

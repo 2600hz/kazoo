@@ -19,7 +19,7 @@
                   {'ok', cowboy_req:req(), ne_binaries()} |
                   {'shutdown',  cowboy_req:req(), 'ok'}.
 init({_Transport, _Proto}, Req0, _Opts) ->
-    put('callid', wh_util:rand_hex_binary(16)),
+    wh_util:put_callid(wh_util:rand_hex_binary(16)),
     case cowboy_req:path_info(Req0) of
         {[_, _, _]=PathTokens, Req1} ->
             is_authentic(PathTokens, Req1);

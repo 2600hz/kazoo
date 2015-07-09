@@ -106,7 +106,7 @@ allow_dial(Data, Call, Retries, Interdigit) ->
 maybe_route_to_callflow(Data, Call, Retries, Interdigit, Number) ->
     case cf_util:lookup_callflow(Number, whapps_call:account_id(Call)) of
         {'ok', Flow, NoMatch} ->
-            lager:info("callflow ~s satisfies request", [wh_json:get_value(<<"_id">>, Flow)]),
+            lager:info("callflow ~s satisfies request", [wh_doc:id(Flow)]),
             Updates = [{fun whapps_call:set_request/2
                         ,list_to_binary([Number, "@", whapps_call:request_realm(Call)])
                        }
@@ -222,11 +222,9 @@ set_caller_id(Call) ->
 maybe_get_account_cid(AccountId, Call) ->
     Name = whapps_call:caller_id_name(Call),
     Number = whapps_call:caller_id_number(Call),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(AccountId) of
         {'error', _} -> cf_attributes:maybe_get_assigned_number(Number, Name, Call);
-        {'ok', JObj} ->
-            maybe_get_account_external_number(Number, Name, JObj, Call)
+        {'ok', JObj} -> maybe_get_account_external_number(Number, Name, JObj, Call)
     end.
 
 %%--------------------------------------------------------------------
@@ -274,9 +272,7 @@ should_restrict_call(Data, Call, Number) ->
 %%--------------------------------------------------------------------
 -spec should_restrict_call_by_account(whapps_call:call(), ne_binary()) -> boolean().
 should_restrict_call_by_account(Call, Number) ->
-    AccountId = whapps_call:account_id(Call),
-    AccountDb = whapps_call:account_db(Call),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(whapps_call:account_id(Call)) of
         {'error', _} -> 'false';
         {'ok', JObj} ->
             Classification = wnm_util:classify_number(Number),

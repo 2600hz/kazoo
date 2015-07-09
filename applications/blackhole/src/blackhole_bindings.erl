@@ -174,7 +174,7 @@ modules_loaded() -> kazoo_bindings:modules_loaded().
 -spec init() -> 'ok'.
 init() ->
     lager:debug("initializing blackhole bindings"),
-    put('callid', ?LOG_SYSTEM_ID),
+    wh_util:put_callid(?LOG_SYSTEM_ID),
     _ = [init_mod(Mod)
          || Mod <- whapps_config:get(?BLACKHOLE_CONFIG_CAT, <<"autoload_modules">>, ?DEFAULT_MODULES)
         ],

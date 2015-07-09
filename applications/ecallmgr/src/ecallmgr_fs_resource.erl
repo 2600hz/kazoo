@@ -89,7 +89,7 @@ handle_originate_req(JObj, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node, Options]) ->
-    put('callid', Node),
+    wh_util:put_callid(Node),
     lager:info("starting new fs resource listener for ~s", [Node]),
     {'ok', #state{node=Node, options=Options}}.
 

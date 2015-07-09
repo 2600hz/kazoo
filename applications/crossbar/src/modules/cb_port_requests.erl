@@ -677,7 +677,7 @@ read_descendants(Context, SubAccounts) ->
 -spec read_descendants_fold(wh_json:object(), wh_json:objects(), cb_context:context()) ->
                                    wh_json:objects().
 read_descendants_fold(Account, Acc, Context) ->
-    AccountId = wh_json:get_value(<<"id">>, Account),
+    AccountId = wh_doc:id(Account),
     case maybe_read_descendant(Context, AccountId) of
         'undefined' -> Acc;
         PortRequests ->
@@ -841,7 +841,7 @@ build_keys_from_account(E164, [AccountId, ?PORT_DESCENDANTS]) ->
 -spec build_descendant_key(wh_json:object(), descendant_keys(), ne_binary()) ->
                                   descendant_keys().
 build_descendant_key(JObj, Acc, E164) ->
-    [[wh_json:get_value(<<"id">>, JObj), E164]
+    [[wh_doc:id(JObj), E164]
      |Acc
     ].
 
@@ -976,7 +976,7 @@ check_number_portability(PortId, Number, Context) ->
 
 check_number_portability(PortId, Number, Context, E164, PortReq) ->
     case {wh_json:get_value(<<"value">>, PortReq) =:= cb_context:account_id(Context)
-          ,wh_json:get_value(<<"id">>, PortReq) =:= PortId
+          ,wh_doc:id(PortReq) =:= PortId
          }
     of
         {'true', 'true'} ->
@@ -988,9 +988,9 @@ check_number_portability(PortId, Number, Context, E164, PortReq) ->
         {'true', 'false'} ->
             lager:debug(
                 "number ~s(~s) is on a different port request in this account(~s): ~s"
-                ,[E164, Number, cb_context:account_id(Context), wh_json:get_value(<<"id">>, PortReq)]
+                ,[E164, Number, cb_context:account_id(Context), wh_doc:id(PortReq)]
             ),
-            Message = <<"Number is on a port request already: ", (wh_json:get_value(<<"id">>, PortReq))/binary>>,
+            Message = <<"Number is on a port request already: ", (wh_doc:id(PortReq))/binary>>,
             number_validation_error(Context, Number, Message);
         {'false', _} ->
             lager:debug(

@@ -63,7 +63,7 @@ start_link(Node, Options) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node, Options]) ->
-    put('callid', Node),
+    wh_util:put_callid(Node),
     lager:info("starting new fs route listener for ~s", [Node]),
     gen_server:cast(self(), 'bind_to_dialplan'),
     gen_server:cast(self(), 'bind_to_chatplan'),
@@ -229,7 +229,7 @@ expand_message_vars(Props) ->
 
 -spec process_route_req(atom(), atom(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
 process_route_req(Section, Node, FetchId, CallId, Props) ->
-    put('callid', CallId),
+    wh_util:put_callid(CallId),
     case wh_util:is_true(props:get_value(<<"variable_recovered">>, Props)) of
         'false' -> search_for_route(Section, Node, FetchId, CallId, Props);
         'true' ->

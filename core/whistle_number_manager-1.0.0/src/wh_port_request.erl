@@ -30,7 +30,7 @@
 -type transition_response() :: {'ok', wh_json:object()} |
                                {'error', 'invalid_state_transition'}.
 
--spec init() -> any().
+-spec init() -> _.
 init() ->
     _ = couch_mgr:db_create(?KZ_PORT_REQUESTS_DB),
     couch_mgr:revise_doc_from_file(?KZ_PORT_REQUESTS_DB, 'crossbar', <<"views/port_requests.json">>).
@@ -50,9 +50,9 @@ get(Number) ->
 public_fields(JObj) ->
     As = wh_doc:attachments(JObj, wh_json:new()),
 
-    wh_json:set_values([{<<"id">>, wh_json:get_value(<<"_id">>, JObj)}
-                        ,{<<"created">>, wh_json:get_value(<<"pvt_created">>, JObj)}
-                        ,{<<"updated">>, wh_json:get_value(<<"pvt_modified">>, JObj)}
+    wh_json:set_values([{<<"id">>, wh_doc:id(JObj)}
+                        ,{<<"created">>, wh_doc:created(JObj)}
+                        ,{<<"updated">>, wh_doc:modified(JObj)}
                         ,{<<"uploads">>, normalize_attachments(As)}
                         ,{<<"port_state">>, wh_json:get_value(?PORT_PVT_STATE, JObj, ?PORT_WAITING)}
                         ,{<<"sent">>, wh_json:get_value(?PVT_SENT, JObj, 'false')}
@@ -147,7 +147,7 @@ transition(JObj, [_FromState | FromStates], ToState, CurrentState) ->
 -spec charge_for_port(wh_json:object()) -> 'ok' | 'error'.
 -spec charge_for_port(wh_json:object(), ne_binary()) -> 'ok' | 'error'.
 charge_for_port(JObj) ->
-    charge_for_port(JObj, wh_json:get_value(<<"pvt_account_id">>, JObj)).
+    charge_for_port(JObj, wh_doc:account_id(JObj)).
 charge_for_port(_JObj, AccountId) ->
     Services = wh_services:fetch(AccountId),
     Cost = wh_services:activation_charges(<<"number_services">>, <<"port">>, Services),
@@ -227,13 +227,11 @@ send_submitted_requests() ->
 -spec maybe_send_request(wh_json:object()) -> 'ok'.
 -spec maybe_send_request(wh_json:object(), api_binary()) -> 'ok'.
 maybe_send_request(JObj) ->
-    Id = wh_json:get_value(<<"_id">>, JObj),
+    Id = wh_doc:id(JObj),
     wh_util:put_callid(Id),
 
-    AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    AccountId = wh_doc:account_id(JObj),
+    case kz_account:fetch(AccountId) of
         {'error', _R} ->
             lager:error("failed to open account ~s:~p", [AccountId, _R]);
         {'ok', AccountDoc} ->
@@ -242,7 +240,7 @@ maybe_send_request(JObj) ->
     end.
 
 maybe_send_request(JObj, 'undefined')->
-    AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
+    AccountId = wh_doc:account_id(JObj),
     lager:debug("'submitted_port_requests_url' is not set for account ~s", [AccountId]);
 maybe_send_request(JObj, Url)->
     case send_request(JObj, Url) of
@@ -256,7 +254,7 @@ maybe_send_request(JObj, Url)->
 
 -spec send_request(wh_json:object(), ne_binary()) -> 'error' | 'ok'.
 send_request(JObj, Url) ->
-    Id = wh_json:get_value(<<"_id">>, JObj),
+    Id = wh_doc:id(JObj),
 
     Headers = [{"Content-Type", "application/json"}
                ,{"User-Agent", wh_util:to_list(erlang:node())}
@@ -298,7 +296,7 @@ send_attachements(Url, JObj) ->
 
 -spec fetch_and_send(ne_binary(), wh_json:object()) -> 'ok'.
 fetch_and_send(Url, JObj) ->
-    Id = wh_json:get_value(<<"_id">>, JObj),
+    Id = wh_doc:id(JObj),
     Attachments = wh_doc:attachments(JObj, wh_json:new()),
 
     wh_json:foldl(
@@ -315,7 +313,7 @@ fetch_and_send(Url, JObj) ->
       ,Attachments
      ).
 
--spec send_attachement(ne_binary(), ne_binary(), ne_binary(), wh_json:object(), any()) -> 'error' | 'ok'.
+-spec send_attachement(ne_binary(), ne_binary(), ne_binary(), wh_json:object(), _) -> 'error' | 'ok'.
 send_attachement(Url, Id, Name, Options, Attachment) ->
     ContentType = wh_json:get_value(<<"content_type">>, Options),
 

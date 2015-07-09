@@ -16,7 +16,7 @@
 
 -spec start_link() -> 'ignore'.
 start_link() ->
-    put('callid', ?LOG_SYSTEM_ID),
+    wh_util:put_callid(?LOG_SYSTEM_ID),
 
     _ = application:start('crypto'),
     _ = application:start('ranch'),

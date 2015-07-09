@@ -46,7 +46,7 @@
                   state() | {'error', 'not_ts_account'}.
 init(RouteReqJObj, Type) ->
     CallID = wh_json:get_value(<<"Call-ID">>, RouteReqJObj),
-    put('callid', CallID),
+    wh_util:put_callid(CallID),
     case is_trunkstore_acct(RouteReqJObj, Type) of
         'false' ->
             lager:info("request is not for a trunkstore account"),

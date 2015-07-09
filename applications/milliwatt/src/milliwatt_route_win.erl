@@ -15,7 +15,7 @@
 handle_req(JObj, _Props) ->
     'true' = wapi_route:win_v(JObj),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    put('callid', CallId),
+    wh_util:put_callid(CallId),
     case whapps_call:retrieve(CallId, ?APP_NAME) of
         {'ok', C} ->
             Call = whapps_call:from_route_win(JObj, C),

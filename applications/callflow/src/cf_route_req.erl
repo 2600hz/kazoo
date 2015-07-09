@@ -44,15 +44,14 @@ handle_req(JObj, Props) ->
     end.
 
 -spec maybe_prepend_preflow(wh_json:object(), wh_proplist()
-                         ,whapps_call:call(), wh_json:object()
-                         ,boolean()
-                        ) -> whapps_call:call().
+                            ,whapps_call:call(), wh_json:object()
+                            ,boolean()
+                           ) -> whapps_call:call().
 maybe_prepend_preflow(JObj, Props, Call, Flow, NoMatch) ->
     AccountId = whapps_call:account_id(Call),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(AccountId) of
         {'error', _E} ->
-            lager:warning("could not open ~s in ~s : ~p", [AccountId, AccountDb, _E]),
+            lager:warning("could not open account doc ~s : ~p", [AccountId, _E]),
             maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch);
         {'ok', Doc} ->
             case wh_json:get_ne_value([<<"preflow">>, <<"always">>], Doc) of
@@ -83,7 +82,7 @@ prepend_preflow(AccountId, PreflowId, Flow) ->
 -spec maybe_reply_to_req(wh_json:object(), wh_proplist()
                          ,whapps_call:call(), wh_json:object(), boolean()) -> whapps_call:call().
 maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch) ->
-    lager:info("callflow ~s in ~s satisfies request", [wh_json:get_value(<<"_id">>, Flow)
+    lager:info("callflow ~s in ~s satisfies request", [wh_doc:id(Flow)
                                                        ,whapps_call:account_id(Call)
                                                       ]),
     {Name, Cost} = bucket_info(Call, Flow),
@@ -105,7 +104,7 @@ bucket_info(Call, Flow) ->
 
 -spec bucket_name_from_call(whapps_call:call(), wh_json:object()) -> ne_binary().
 bucket_name_from_call(Call, Flow) ->
-    <<(whapps_call:account_id(Call))/binary, ":", (wh_json:get_value(<<"_id">>, Flow))/binary>>.
+    <<(whapps_call:account_id(Call))/binary, ":", (wh_doc:id(Flow))/binary>>.
 
 -spec bucket_cost(wh_json:object()) -> pos_integer().
 bucket_cost(Flow) ->
@@ -236,7 +235,7 @@ pre_park_action(Call) ->
 -spec cache_call(wh_json:object(), boolean(), ne_binary(), whapps_call:call()) -> 'ok'.
 cache_call(Flow, NoMatch, ControllerQ, Call) ->
     Updaters = [fun(C) ->
-                        Props = [{'cf_flow_id', wh_json:get_value(<<"_id">>, Flow)}
+                        Props = [{'cf_flow_id', wh_doc:id(Flow)}
                                  ,{'cf_flow', wh_json:get_value(<<"flow">>, Flow)}
                                  ,{'cf_capture_group', wh_json:get_ne_value(<<"capture_group">>, Flow)}
                                  ,{'cf_no_match', NoMatch}

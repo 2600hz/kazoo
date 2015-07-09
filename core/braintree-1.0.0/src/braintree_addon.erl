@@ -99,7 +99,7 @@ record_to_json(#bt_addon{id=Id, amount=Amount, quantity=Q}) ->
 -spec json_to_record(api_object()) -> bt_addon() | 'undefined'.
 json_to_record('undefined') -> 'undefined';
 json_to_record(JObj) ->
-    #bt_addon{id = wh_json:get_binary_value(<<"id">>, JObj)
+    #bt_addon{id = wh_doc:id(JObj)
               ,amount = wh_json:get_binary_value(<<"amount">>, JObj)
               ,never_expires = wh_json:get_value(<<"never_expires">>, JObj, 'true')
               ,billing_cycle = wh_json:get_binary_value(<<"billing_cycle">>, JObj)

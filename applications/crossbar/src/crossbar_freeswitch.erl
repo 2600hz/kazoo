@@ -314,7 +314,7 @@ crawl_numbers_db(NumberDb) ->
 get_numbers(JObjs) ->
     [Number
      || JObj <- JObjs
-            ,case (Number = wh_json:get_value(<<"id">>, JObj)) of
+            ,case (Number = wh_doc:id(JObj)) of
                  <<"_design/", _/binary>> -> 'false';
                  _Else -> 'true'
              end
@@ -364,7 +364,7 @@ maybe_export_number(_, _, _) -> 'ok'.
 -spec process_callflows(ne_binary(), ne_binary(), wh_json:objects()) -> 'ok'.
 process_callflows(_, _, []) -> 'ok';
 process_callflows(Number, AccountId, [JObj | JObjs]) ->
-    FlowId = wh_json:get_value(<<"_id">>, JObj),
+    FlowId = wh_doc:id(JObj),
     Flow = wh_json:get_value(<<"flow">>, JObj),
     lager:debug("processing callflow ~s in account ~s with number ~s"
                 ,[FlowId, AccountId, Number]),

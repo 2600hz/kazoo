@@ -77,7 +77,7 @@ is_auto_disabled(Hook) ->
 type() -> ?TYPE.
 
 type(Hook) ->
-    wh_json:get_value(<<"pvt_type">>, Hook).
+    wh_doc:type(Hook).
 
 -spec name(doc()) -> api_binary().
 -spec name(doc(), Default) -> ne_binary() | Default.

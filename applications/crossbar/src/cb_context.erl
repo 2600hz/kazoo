@@ -468,7 +468,7 @@ fetch(#cb_context{storage=Storage}, Key, Default) ->
 %%--------------------------------------------------------------------
 -spec put_reqid(context()) -> api_binary().
 put_reqid(#cb_context{req_id=ReqId}) ->
-    put('callid', ReqId).
+    wh_util:put_callid(ReqId).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -556,7 +556,7 @@ validate_request_data(SchemaJObj, Context) ->
               set_doc(Context, wh_json_schema:add_defaults(JObj, SchemaJObj))
              );
         {'error', Errors} ->
-            lager:debug("request data did not validate against ~s: ~p", [wh_json:get_value(<<"_id">>, SchemaJObj)
+            lager:debug("request data did not validate against ~s: ~p", [wh_doc:id(SchemaJObj)
                                                                          ,Errors
                                                                         ]),
             failed(Context, Errors)
@@ -906,12 +906,12 @@ passed(Context) ->
     passed(Context, 'success').
 
 passed(#cb_context{req_data=Data}=Context, Status) ->
-    case wh_json:get_ne_value(<<"_id">>, Data) of
+    case wh_doc:id(Data) of
         'undefined' ->
-            Context#cb_context{resp_status=Status};
+            Context#cb_context{resp_status = Status};
         Id ->
-            Context#cb_context{resp_status=Status
-                               ,doc=wh_json:set_value(<<"_id">>, Id, doc(Context))
+            Context#cb_context{resp_status = Status
+                               ,doc = wh_doc:set_id(doc(Context), Id)
                               }
     end.
 

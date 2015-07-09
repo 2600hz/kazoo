@@ -316,8 +316,7 @@ is_in_account_hierarchy(_, 'undefined', _) -> 'false';
 is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
     CheckId = wh_util:format_account_id(CheckFor, 'raw'),
     AccountId = wh_util:format_account_id(InAccount, 'raw'),
-    AccountDb = wh_util:format_account_id(InAccount, 'encoded'),
-    case (IncludeSelf andalso AccountId =:= CheckId) orelse couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case (IncludeSelf andalso AccountId =:= CheckId) orelse kz_account:fetch(AccountId) of
         'true' ->
             lager:debug("account ~s is the same as the account to fetch the hierarchy from", [CheckId]),
             'true';
@@ -345,9 +344,7 @@ is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
 -spec is_system_admin(api_binary()) -> boolean().
 is_system_admin('undefined') -> 'false';
 is_system_admin(Account) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(Account) of
         {'ok', JObj} -> kz_account:is_superduper_admin(JObj);
         {'error', _R} ->
             lager:debug("unable to open account definition for ~s: ~p", [Account, _R]),
@@ -370,11 +367,9 @@ is_system_db(Db) ->
 -spec is_account_enabled(api_binary()) -> boolean().
 is_account_enabled('undefined') -> 'false';
 is_account_enabled(Account) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(Account) of
         {'error', _E} ->
-            lager:error("could not open account ~p in ~p", [AccountId, AccountDb]),
+            lager:error("could not open account ~s", [Account]),
             'false';
         {'ok', JObj} ->
             kz_account:is_enabled(JObj)
@@ -385,9 +380,7 @@ is_account_enabled(Account) ->
 -spec is_account_expired(api_binary()) -> boolean().
 is_account_expired('undefined') -> 'false';
 is_account_expired(Account) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(Account) of
         {'ok', Doc} ->
             Now = wh_util:current_tstamp(),
             Trial = wh_json:get_integer_value(<<"pvt_trial_expires">>, Doc, Now+1),

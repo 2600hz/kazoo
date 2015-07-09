@@ -280,7 +280,7 @@ patch(Context, AccountId) ->
 
 put(Context) ->
     JObj = cb_context:doc(Context),
-    AccountId = wh_json:get_value(<<"_id">>, JObj, couch_mgr:get_uuid()),
+    AccountId = wh_doc:id(JObj, couch_mgr:get_uuid()),
     try create_new_account_db(prepare_context(AccountId, Context)) of
         C ->
             Tree = kz_account:tree(JObj),
@@ -322,8 +322,7 @@ delete(Context, Account) ->
             cb_context:add_system_error('bad_identifier', wh_json:from_list([{<<"cause">>, AccountId}]),  Context);
         'true' ->
             Context1 = delete_remove_services(prepare_context(Context, AccountId, AccountDb)),
-            Tree = wh_json:get_value(<<"pvt_tree">>, cb_context:doc(Context1)),
-            _ = maybe_update_descendants_count(Tree),
+            _ = maybe_update_descendants_count(kz_account:tree(cb_context:doc(Context1))),
             Context1
     end.
 %%--------------------------------------------------------------------
@@ -600,7 +599,7 @@ validate_delete_request(AccountId, Context) ->
         {'error', 'not_found'} -> cb_context:add_system_error('datastore_missing_view', Context);
         {'error', _} -> cb_context:add_system_error('datastore_fault', Context);
         {'ok', JObjs} ->
-            case [JObj || JObj <- JObjs, wh_json:get_value(<<"id">>, JObj) =/= AccountId] of
+            case [JObj || JObj <- JObjs, wh_doc:id(JObj) =/= AccountId] of
                 [] -> cb_context:set_resp_status(Context, 'success');
                 _Else -> cb_context:add_system_error('account_has_descendants', Context)
             end
@@ -691,7 +690,6 @@ leak_pvt_created(Context) ->
 -spec leak_pvt_enabled(cb_context:context()) -> cb_context:context().
 leak_pvt_enabled(Context) ->
     RespJObj = cb_context:resp_data(Context),
-
     case kz_account:is_enabled(cb_context:doc(Context)) of
         'true' ->
             cb_context:set_resp_data(Context
@@ -725,10 +723,8 @@ leak_is_reseller(Context) ->
 -spec leak_billing_mode(cb_context:context()) -> cb_context:context().
 leak_billing_mode(Context) ->
     {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
-
     AuthAccountId = cb_context:auth_account_id(Context),
     RespJObj = cb_context:resp_data(Context),
-
     case cb_context:reseller_id(Context) of
         AuthAccountId ->
             cb_context:set_resp_data(Context
@@ -941,7 +937,7 @@ get_authorized_account_tree(Context) ->
 format_account_tree_results(Context, JObjs) ->
     RespData =
         [wh_json:from_list(
-           [{<<"id">>, wh_json:get_value(<<"id">>, JObj)}
+           [{<<"id">>, wh_doc:id(JObj)}
             ,{<<"name">>, wh_json:get_value([<<"doc">>, <<"name">>], JObj)}
            ])
          || JObj <- JObjs
@@ -1025,7 +1021,7 @@ find_accounts_from_tree([AccountId|Tree], JObjs, AuthAccountId, Acc) ->
 
 -spec account_from_tree(wh_json:object()) -> wh_json:object().
 account_from_tree(JObj) ->
-    wh_json:from_list([{<<"id">>, wh_json:get_value(<<"id">>, JObj)}
+    wh_json:from_list([{<<"id">>, wh_doc:id(JObj)}
                        ,{<<"name">>, kz_account:name(JObj)}
                       ]).
 
@@ -1058,13 +1054,11 @@ set_private_properties(Context) ->
 
 -spec add_pvt_type(cb_context:context()) -> cb_context:context().
 add_pvt_type(Context) ->
-    cb_context:set_doc(Context
-                       ,wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, cb_context:doc(Context))
-                      ).
+    cb_context:set_doc(Context, wh_doc:set_type(cb_context:doc(Context), ?PVT_TYPE)).
 
 -spec add_pvt_vsn(cb_context:context()) -> cb_context:context().
 add_pvt_vsn(Context) ->
-    cb_context:set_doc(Context, wh_json:set_value(<<"pvt_vsn">>, <<"1">>, cb_context:doc(Context))).
+    cb_context:set_doc(Context, wh_doc:set_vsn(cb_context:doc(Context), <<"1">>)).
 
 -spec add_pvt_enabled(cb_context:context()) -> cb_context:context().
 add_pvt_enabled(Context) ->
@@ -1098,7 +1092,7 @@ maybe_add_pvt_api_key(Context) ->
 
 -spec maybe_add_pvt_tree(cb_context:context()) -> cb_context:context().
 maybe_add_pvt_tree(Context) ->
-    case wh_json:get_value(<<"pvt_tree">>, cb_context:doc(Context)) of
+    case kz_account:tree(cb_context:doc(Context)) of
         [_|_] -> Context;
         _Else -> add_pvt_tree(Context)
     end.
@@ -1106,10 +1100,8 @@ maybe_add_pvt_tree(Context) ->
 -spec add_pvt_tree(cb_context:context()) -> cb_context:context().
 add_pvt_tree(Context) ->
     case create_new_tree(Context) of
-        'error' ->
-            cb_context:add_system_error('empty_tree_accounts_exist', Context);
-        Tree ->
-            cb_context:set_doc(Context, kz_account:set_tree(cb_context:doc(Context), Tree))
+        'error' -> cb_context:add_system_error('empty_tree_accounts_exist', Context);
+        Tree -> cb_context:set_doc(Context, kz_account:set_tree(cb_context:doc(Context), Tree))
     end.
 
 -spec create_new_tree(cb_context:context() | api_binary()) -> ne_binaries() | 'error'.
@@ -1139,8 +1131,7 @@ create_new_tree(Context, _Verb, _Nouns) ->
     JObj = cb_context:auth_doc(Context),
     case wh_json:is_json_object(JObj) of
         'false' -> create_new_tree('undefined');
-        'true' ->
-            create_new_tree(wh_json:get_value(<<"account_id">>, JObj))
+        'true' -> create_new_tree(wh_json:get_value(<<"account_id">>, JObj))
     end.
 
 %%--------------------------------------------------------------------
@@ -1155,9 +1146,9 @@ create_new_tree(Context, _Verb, _Nouns) ->
 load_account_db([AccountId|_], Context) ->
     load_account_db(AccountId, Context);
 load_account_db(AccountId, Context) when is_binary(AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(AccountId) of
         {'ok', _JObj} ->
+            AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
             lager:debug("account ~s db exists, setting operating database as ~s", [AccountId, AccountDb]),
             ResellerId = wh_services:find_reseller_id(AccountId),
             cb_context:setters(Context
@@ -1224,8 +1215,7 @@ create_new_account_db(Context) ->
 maybe_set_notification_preference(Context) ->
     AccountId = cb_context:account_id(Context),
     ResellerId = wh_services:find_reseller_id(AccountId),
-    ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
-    case couch_mgr:open_cache_doc(ResellerDb, ResellerId) of
+    case kz_account:fetch(ResellerId) of
         {'error', _E} ->
             lager:error("failed to open reseller '~s': ~p", [ResellerId, _E]);
         {'ok', AccountJObj} ->
@@ -1331,12 +1321,12 @@ ensure_views(Context, [Id|Ids], Retries) ->
                                           {'ok', wh_json:object()} |
                                           {'error', _}.
 replicate_account_definition(JObj) ->
-    AccountId = wh_json:get_value(<<"_id">>, JObj),
+    AccountId = wh_doc:id(JObj),
     case couch_mgr:lookup_doc_rev(?WH_ACCOUNTS_DB, AccountId) of
         {'ok', Rev} ->
-            couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_json:set_value(<<"_rev">>, Rev, JObj));
+            couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_doc:set_revision(JObj, Rev));
         _Else ->
-            couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_json:delete_key(<<"_rev">>, JObj))
+            couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_doc:delete_revision(JObj))
     end.
 
 %%--------------------------------------------------------------------
@@ -1351,7 +1341,7 @@ is_unique_realm(AccountId, Realm) ->
     ViewOptions = [{'key', wh_util:to_lower_binary(Realm)}],
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_REALM, ViewOptions) of
         {'ok', []} -> 'true';
-        {'ok', [JObj]} -> wh_json:get_value(<<"id">>, JObj) =:= AccountId;
+        {'ok', [JObj]} -> wh_doc:id(JObj) =:= AccountId;
         {'error', 'not_found'} -> 'true';
         _Else -> 'false'
     end.
@@ -1376,7 +1366,7 @@ is_unique_account_name(AccountId, Name) ->
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_NAME, ViewOptions) of
         {'ok', []} -> 'true';
         {'error', 'not_found'} -> 'true';
-        {'ok', [JObj|_]} -> wh_json:get_value(<<"id">>, JObj) =:= AccountId;
+        {'ok', [JObj|_]} -> wh_doc:id(JObj) =:= AccountId;
         _Else ->
             lager:error("error ~p checking view ~p in ~p", [_Else, ?AGG_VIEW_NAME, ?WH_ACCOUNTS_DB]),
             'false'

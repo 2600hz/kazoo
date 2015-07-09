@@ -131,9 +131,7 @@ maybe_get_call_from_realm(Call) ->
 
 -spec get_account_realm(whapps_call:call()) -> api_binary().
 get_account_realm(Call) ->
-    AccountId = whapps_call:account_id(Call),
-    AccountDb = whapps_call:account_db(Call),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(whapps_call:account_id(Call)) of
         {'ok', JObj} -> wh_json:get_value(<<"realm">>, JObj);
         {'error', _} -> 'undefined'
     end.

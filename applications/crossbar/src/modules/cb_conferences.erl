@@ -245,7 +245,7 @@ patch_conference(DocId, Context) ->
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context
-                       ,wh_json:set_value(<<"pvt_type">>, <<"conference">>, cb_context:doc(Context))
+                       ,wh_doc:set_type(cb_context:doc(Context), <<"conference">>)
                       );
 on_successful_validation(DocId, Context) ->
     crossbar_doc:load_merge(DocId, Context).

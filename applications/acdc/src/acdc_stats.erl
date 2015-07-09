@@ -319,7 +319,7 @@ find_call(CallId) ->
          }).
 
 init([]) ->
-    put('callid', <<"acdc.stats">>),
+    wh_util:put_callid(<<"acdc.stats">>),
     couch_mgr:suppress_change_notice(),
     lager:debug("started new acdc stats collector"),
 
@@ -588,7 +588,7 @@ cleanup_unfinished(Unfinished) ->
     lager:debug("unfinished stats: ~p", [Unfinished]).
 
 archive_call_data(Srv, 'true') ->
-    put('callid', <<"acdc_stats.force_call_archiver">>),
+    wh_util:put_callid(<<"acdc_stats.force_call_archiver">>),
 
     Match = [{#call_stat{status='$1'
                          ,is_archived='$2'
@@ -602,7 +602,7 @@ archive_call_data(Srv, 'true') ->
              }],
     maybe_archive_call_data(Srv, Match);
 archive_call_data(Srv, 'false') ->
-    put('callid', <<"acdc_stats.call_archiver">>),
+    wh_util:put_callid(<<"acdc_stats.call_archiver">>),
 
     Past = wh_util:current_tstamp() - ?ARCHIVE_WINDOW,
     Match = [{#call_stat{entered_timestamp='$1'

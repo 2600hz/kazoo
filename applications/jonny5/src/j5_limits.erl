@@ -98,14 +98,12 @@ fetch(Account) ->
     wh_cache:store_local(?JONNY5_CACHE, ?LIMITS_KEY(AccountId), Limits, CacheProps),
     Limits.
 
--spec cached() -> [limits(),...] | [].
+-spec cached() -> [limits()].
 cached() ->
-    [Limit
-     || {_, Limit} <- wh_cache:filter_local(?JONNY5_CACHE
-                                            ,fun(_, #limits{}) -> 'true';
-                                                (_, _) -> 'false'
-                                             end)
-    ].
+    IsLimit = fun (_, #limits{}) -> 'true';
+                  (_, _) -> 'false'
+              end,
+    [Limit || {_, Limit} <- wh_cache:filter_local(?JONNY5_CACHE, IsLimit)].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -435,4 +433,3 @@ create_limit_jobj(AccountDb) ->
             lager:debug("failed to create initial limits document in db ~s: ~p", [AccountDb, _R]),
             wh_json:new()
     end.
-

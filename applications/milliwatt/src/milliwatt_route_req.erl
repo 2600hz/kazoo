@@ -29,7 +29,7 @@
 handle_req(JObj, Props) ->
     'true' = wapi_route:req_v(JObj),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    put('callid', CallId),
+    wh_util:put_callid(CallId),
     Call = whapps_call:from_route_req(JObj),
 
     %% do magic to determine if we should respond...

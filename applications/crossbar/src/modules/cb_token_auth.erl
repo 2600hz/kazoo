@@ -97,7 +97,7 @@ finish_request(Context, AuthDoc) ->
 
 -spec maybe_save_auth_doc(wh_json:object()) -> any().
 maybe_save_auth_doc(OldAuthDoc) ->
-    OldAuthModified = wh_json:get_integer_value(<<"pvt_modified">>, OldAuthDoc),
+    OldAuthModified = wh_doc:modified(OldAuthDoc),
     Now = wh_util:current_tstamp(),
 
     ToSaveTimeout = (?LOOP_TIMEOUT * ?PERCENT_OF_TIMEOUT) div 100,
@@ -108,7 +108,7 @@ maybe_save_auth_doc(OldAuthDoc) ->
         'true' ->
             lager:debug("auth doc is past time (~ps after) to be saved, saving", [TimeLeft]),
             couch_mgr:ensure_saved(?KZ_TOKEN_DB
-                                   ,wh_json:set_value(<<"pvt_modified">>, Now, OldAuthDoc)
+                                   ,wh_doc:set_modified(OldAuthDoc, Now)
                                   );
         'false' ->
             lager:debug("auth doc is too new (~ps to go), not saving", [TimeLeft*-1])
@@ -259,7 +259,7 @@ get_descendants(AccountId) ->
     of
         {'error', _}=Error -> Error;
         {'ok', JObjs} ->
-            {'ok', [wh_json:get_value(<<"id">>, JObj) || JObj <- JObjs]}
+            {'ok', [wh_doc:id(JObj) || JObj <- JObjs]}
     end.
 
 -spec set_auth_doc(cb_context:context(), wh_json:object()) -> cb_context:context().

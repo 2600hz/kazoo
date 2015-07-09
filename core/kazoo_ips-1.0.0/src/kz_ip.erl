@@ -186,7 +186,7 @@ delete(IP) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec ip(ip()) -> ne_binary().
-ip(IP) -> wh_json:get_value(<<"_id">>, IP).
+ip(IP) -> wh_doc:id(IP).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -204,7 +204,7 @@ zone(IP) -> wh_json:get_value(<<"pvt_zone">>, IP).
 %% @end
 %%--------------------------------------------------------------------
 -spec modified(ip()) -> ne_binary().
-modified(IP) -> wh_json:get_value(<<"pvt_modified">>, IP).
+modified(IP) -> wh_doc:modified(IP).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -213,7 +213,7 @@ modified(IP) -> wh_json:get_value(<<"pvt_modified">>, IP).
 %% @end
 %%--------------------------------------------------------------------
 -spec created(ip()) -> ne_binary().
-created(IP) -> wh_json:get_value(<<"pvt_created">>, IP).
+created(IP) -> wh_doc:created(IP).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -241,7 +241,7 @@ assigned_to(IP) -> wh_json:get_value(<<"pvt_assigned_to">>, IP).
 %%--------------------------------------------------------------------
 -spec is_dedicated_ip(ip()) -> boolean().
 is_dedicated_ip(IP) ->
-    wh_json:get_value(<<"pvt_type">>, IP) =:= ?PVT_TYPE.
+    wh_doc:type(IP) =:= ?PVT_TYPE.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -274,9 +274,7 @@ save(JObj, PrevAccountId) ->
             _ = reconcile_services(PrevAccountId, AccountId),
             {'ok', from_json(J)};
         {'error', _R}=E ->
-            lager:debug("failed to save dedicated ip ~s: ~p"
-                        ,[wh_json:get_value(<<"_id">>, JObj), _R]
-                       ),
+            lager:debug("failed to save dedicated ip ~s: ~p", [wh_doc:id(JObj), _R]),
             E
     end.
 

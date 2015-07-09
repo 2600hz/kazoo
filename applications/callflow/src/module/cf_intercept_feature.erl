@@ -155,10 +155,10 @@ build_intercept_params(_, Other, _) ->
                               {'ok', wh_proplist()} |
                               {'error', ne_binary()}.
 params_from_data(<<"user">>, Data, _Call) ->
-    EndpointId = wh_json:get_value(<<"id">>,Data),
+    EndpointId = wh_doc:id(Data),
     {'ok', [{<<"user_id">>, EndpointId}]};
 params_from_data(<<"device">>, Data, _Call) ->
-    EndpointId = wh_json:get_value(<<"id">>, Data),
+    EndpointId = wh_doc:id(Data),
     {'ok', [{<<"device_id">>, EndpointId}]};
 params_from_data(Other, _, _) ->
     {'error',<<"module ",Other/binary," not implemented">>}.

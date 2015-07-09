@@ -66,9 +66,9 @@ start_link(Node, Bindings, Subclasses) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node, Bindings, Subclasses]) ->
-    put('callid', list_to_binary([wh_util:to_binary(Node)
-                                  ,<<"-eventstream">>
-                                 ])),
+    wh_util:put_callid(list_to_binary([wh_util:to_binary(Node)
+                                       ,<<"-eventstream">>
+                                      ])),
     gen_server:cast(self(), 'request_event_stream'),
     {'ok', #state{node=Node
                   ,bindings=Bindings
@@ -109,10 +109,10 @@ handle_cast('request_event_stream', #state{node=Node}=State) ->
         {'ok', {IP, Port}} ->
             {'ok', IPAddress} = inet_parse:address(IP),
             gen_server:cast(self(), 'connect'),
-            put('callid', list_to_binary([wh_util:to_binary(Node)
-                                          ,$-, wh_util:to_binary(IP)
-                                         ,$:, wh_util:to_binary(Port)
-                                         ])),
+            wh_util:put_callid(list_to_binary([wh_util:to_binary(Node)
+                                               ,$-, wh_util:to_binary(IP)
+                                               ,$:, wh_util:to_binary(Port)
+                                              ])),
             {'noreply', State#state{ip=IPAddress, port=wh_util:to_integer(Port)}};
         {'error', Reason} ->
             lager:warning("unable to establish event stream to ~p for ~p: ~p", [Node, Bindings, Reason]),

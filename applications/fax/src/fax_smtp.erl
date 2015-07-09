@@ -57,7 +57,7 @@
 
 -spec init(ne_binary(), non_neg_integer(), peer(), wh_proplist()) ->
                   {'ok', string(), #state{}} |
-                  {'stop', any(), string()}.
+                  {'stop', _, string()}.
 init(Hostname, SessionCount, Address, Options) ->
     case SessionCount > ?SMTP_MAX_SESSIONS  of
         'false' ->
@@ -239,23 +239,13 @@ handle_message(#state{filename=Filename
     case file:read_file(Filename) of
         {'ok', FileContents} ->
             case fax_util:save_fax_docs(Docs, FileContents, CT) of
-                'ok' ->
-                    'ok' = file_delete(Filename);
-                {'error', Error} ->
-                    maybe_faxbox_log(State#state{errors=[Error]})
+                'ok' -> wh_util:delete_file(Filename);
+                {'error', Error} -> maybe_faxbox_log(State#state{errors=[Error]})
             end;
         _Else ->
             Error = wh_util:to_binary(io_lib:format("error reading attachment ~s", [Filename])),
             maybe_faxbox_log(State#state{errors=[Error]})
     end.
-
--spec file_delete(api_binary()) -> 'ok'.
-file_delete(Filename) ->
-     case file:delete(Filename) of
-         'ok' -> 'ok';
-         {'error', _}=_E ->
-             lager:debug("error deleting ~s : ~p", [Filename, _E])
-     end.
 
 -spec maybe_system_report(state()) -> 'ok'.
 maybe_system_report(#state{faxbox='undefined', account_id='undefined'}=State) ->
@@ -342,7 +332,7 @@ to_proplist(#state{}=State) ->
 to_proplist('undefined') -> [];
 to_proplist(JObj) ->
     props:filter_undefined(
-      [{<<"FaxBox-ID">>, wh_json:get_value(<<"_id">>, JObj)}
+      [{<<"FaxBox-ID">>, wh_doc:id(JObj)}
       ]
      ).
 
@@ -432,7 +422,7 @@ check_permissions(#state{from=From
         'false' ->
             Error = wh_util:to_binary(
                       io_lib:format("address ~s is not allowed on faxbox ~s"
-                                    ,[From, wh_json:get_value(<<"_id">>, FaxBoxDoc)]
+                                    ,[From, wh_doc:id(FaxBoxDoc)]
                                    )
                      ),
             lager:debug(Error),
@@ -461,7 +451,7 @@ maybe_faxbox(#state{faxbox_email=Domain}=State) ->
     case couch_mgr:get_results(?WH_FAXES_DB, <<"faxbox/email_address">>, ViewOptions) of
         {'ok', [JObj]} ->
             FaxBoxDoc= wh_json:get_value(<<"doc">>,JObj),
-            AccountId = wh_json:get_value(<<"pvt_account_id">>,FaxBoxDoc),
+            AccountId = wh_doc:account_id(FaxBoxDoc),
             maybe_faxbox_owner(State#state{faxbox=FaxBoxDoc, account_id=AccountId});
         _ -> maybe_faxbox_domain(State)
     end.
@@ -471,7 +461,7 @@ maybe_faxbox_owner(#state{faxbox=FaxBoxDoc}=State) ->
     case wh_json:get_value(<<"owner_id">>, FaxBoxDoc) of
         'undefined' -> State;
         OwnerId ->
-            AccountId = wh_json:get_value(<<"pvt_account_id">>, FaxBoxDoc),
+            AccountId = wh_doc:account_id(FaxBoxDoc),
             AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
             case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
                 {'ok', OwnerDoc} ->
@@ -490,7 +480,7 @@ maybe_faxbox_domain(#state{faxbox_email=Domain}=State) ->
             lager:debug(Error),
             State#state{errors=[Error]};
         {'ok', [JObj]} ->
-            AccountId = wh_json:get_value(<<"id">>, JObj),
+            AccountId = wh_doc:id(JObj),
             maybe_faxbox_by_owner_email(AccountId, State#state{account_id=AccountId});
         {'ok', [_JObj | _JObjs]} ->
             Error = <<"accounts query by realm ", Domain/binary, " return more than one document">>,
@@ -511,7 +501,7 @@ maybe_faxbox_by_owner_email(AccountId, #state{from=From}=State) ->
             lager:debug("user ~s does not exist in account ~s, trying by rules",[From, AccountId]),
             maybe_faxbox_by_rules(AccountId, State);
         {'ok', [JObj]} ->
-            OwnerId = wh_json:get_value(<<"id">>, JObj),
+            OwnerId = wh_doc:id(JObj),
             maybe_faxbox_by_owner_id(AccountId, OwnerId, State);
         {'ok', [_JObj | _JObjs]} ->
             lager:debug("more then one user with email ~s in account ~s, trying by rules", [From, AccountId]),
@@ -592,10 +582,13 @@ add_fax_document(#state{docs=Docs
                         ,number=FaxNumber
                         ,faxbox=FaxBoxDoc
                        }=State) ->
-    FaxBoxId = wh_json:get_value(<<"_id">>, FaxBoxDoc),
-    AccountId = wh_json:get_value(<<"pvt_account_id">>, FaxBoxDoc),
+    FaxBoxId = wh_doc:id(FaxBoxDoc),
+    AccountId = wh_doc:account_id(FaxBoxDoc),
     AccountDb = ?WH_FAXES_DB,
-    ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, FaxBoxDoc, wh_services:find_reseller_id(AccountId)),
+    ResellerId = case kzd_services:reseller_id(FaxBoxDoc) of
+                     'undefined' -> wh_services:find_reseller_id(AccountId);
+                     TheResellerId -> TheResellerId
+                 end,
 
     SendToKey = [<<"notifications">>
                  ,<<"outbound">>

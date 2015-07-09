@@ -158,7 +158,7 @@ create(Config, #cb_context{req_data=JObj, db_name=Db}=Context) ->
     case couch_mgr:lookup_doc_rev(Db, Id) of
         {ok, _} -> cb_context:add_system_error(datastore_conflict, Context);
         {error, _} ->
-            J = wh_json:set_value(<<"_id">>, Id, JObj),
+            J = wh_doc:set_id(JObj, Id),
             cb_context:validate_request_data(<<"configs">>, Context#cb_context{req_data=J})
     end.
 

@@ -59,7 +59,7 @@ send_email(From, To, Email) ->
                            ,{'auth', Auth}
                           ]
                          ,fun(X) ->
-                                  put('callid', ReqId),
+                                  wh_util:put_callid(ReqId),
                                   lager:debug("email relay responded: ~p, send to ~p", [X, Self]),
                                   Self ! {'relay_response', X}
                           end),
@@ -259,7 +259,7 @@ find_notification_settings([_, Module], Tree) ->
         {'error', _} -> wh_json:new();
         {'ok', JObj} ->
             lager:debug("looking for notifications '~s' service info in: ~s"
-                        ,[Module, wh_json:get_value(<<"_id">>, JObj)]),
+                        ,[Module, wh_doc:id(JObj)]),
             case wh_json:get_ne_value([<<"notifications">>, Module], JObj) of
                 'undefined' -> maybe_find_deprecated_settings(Module, JObj);
                 Settings -> Settings
@@ -297,8 +297,7 @@ get_rep_email(JObj) ->
 
 -spec find_rep_email(wh_json:object()) -> api_binary().
 find_rep_email(JObj) ->
-    AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
-
+    AccountId = wh_doc:account_id(JObj),
     Admin =
         case wh_services:is_reseller(AccountId) of
             'true' ->
@@ -322,13 +321,10 @@ find_rep_email(JObj) ->
 find_admin('undefined') -> wh_json:new();
 find_admin([]) -> wh_json:new();
 find_admin(Account) when is_binary(Account) ->
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
     AccountId = wh_util:format_account_id(Account, 'raw'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(Account) of
         {'error', _} -> find_admin([AccountId]);
-        {'ok', JObj} ->
-            Tree = kz_account:tree(JObj),
-            find_admin([AccountId | lists:reverse(Tree)])
+        {'ok', JObj} -> find_admin([AccountId | lists:reverse(kz_account:tree(JObj))])
     end;
 find_admin([AcctId|Tree]) ->
     AccountDb = wh_util:format_account_id(AcctId, 'encoded'),
@@ -351,7 +347,7 @@ find_admin([AcctId|Tree]) ->
             find_admin(Tree)
     end;
 find_admin(Account) ->
-    find_admin([wh_json:get_value(<<"pvt_account_id">>, Account)
+    find_admin([wh_doc:account_id(Account)
                 | lists:reverse(kz_account:tree(Account))
                ]).
 
@@ -363,17 +359,15 @@ find_admin(Account) ->
 %%--------------------------------------------------------------------
 -spec get_account_doc(wh_json:object()) ->
                              {'ok', wh_json:object()} |
-                             {'error', term()} |
+                             {'error', _} |
                              'undefined'.
 get_account_doc(JObj) ->
-    case {wh_json:get_value(<<"Account-DB">>, JObj), wh_json:get_value(<<"Account-ID">>, JObj)} of
-        {'undefined', 'undefined'} -> 'undefined';
-        {'undefined', Id} ->
-            couch_mgr:open_cache_doc(wh_util:format_account_id(Id, 'encoded'), Id);
-        {Db, 'undefined'} ->
-            couch_mgr:open_cache_doc(Db, wh_util:format_account_id(Db, 'raw'));
-        {Db, AccountId} ->
-            couch_mgr:open_cache_doc(Db, AccountId)
+    case wh_json:get_first_defined([<<"Account-DB">>
+                                    ,<<"Account-ID">>
+                                   ], JObj)
+    of
+        'undefined' -> 'undefined';
+        Account -> kz_account:fetch(Account)
     end.
 
 -spec category_to_file(ne_binary()) -> iolist() | 'undefined'.

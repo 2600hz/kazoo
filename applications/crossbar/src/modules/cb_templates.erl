@@ -207,7 +207,7 @@ import_template(TemplateName, AccountId, AccountDb) ->
         {'ok', Docs} ->
             Ids = [Id || Doc <- Docs,
                          begin
-                             Id = wh_json:get_value(<<"id">>, Doc),
+                             Id = wh_doc:id(Doc),
                              not is_design_doc_id(Id)
                          end
                   ],
@@ -231,8 +231,8 @@ import_template_docs([], _, _, _) -> 'ok';
 import_template_docs([Id|Ids], TemplateDb, AccountId, AccountDb) ->
     case couch_mgr:open_doc(TemplateDb, Id) of
         {'ok', JObj} ->
-            Routines = [fun(J) -> wh_json:set_value(<<"pvt_account_id">>, AccountId, J) end
-                        ,fun(J) -> wh_json:set_value(<<"pvt_account_db">>, AccountDb, J) end
+            Routines = [fun(J) -> wh_doc:set_account_id(J, AccountId) end
+                        ,fun(J) -> wh_doc:set_account_db(J, AccountDb) end
                         ,fun wh_doc:delete_revision/1
                         ,fun wh_doc:delete_attachments/1
                        ],

@@ -61,6 +61,10 @@ billing_id(JObj) ->
 billing_id(JObj, Default) ->
     wh_json:get_value(?BILLING_ID, JObj, Default).
 
+-spec set_billing_id(doc(), api_binary()) -> doc().
+set_billing_id(JObj, BillingId) ->
+    wh_json:set_value(?BILLING_ID, BillingId, JObj).
+
 -spec is_reseller(doc()) -> boolean().
 -spec is_reseller(doc(), Default) -> boolean() | Default.
 is_reseller(JObj) ->
@@ -98,7 +102,7 @@ tree(JObj, Default) ->
 
 type() -> ?TYPE.
 type(JObj) ->
-    wh_doc:pvt_type(JObj, ?TYPE).
+    wh_doc:type(JObj, ?TYPE).
 
 -spec status_good() -> ne_binary().
 status_good() ->
@@ -157,10 +161,6 @@ item_quantity(JObj, CategoryId, ItemId) ->
 item_quantity(JObj, CategoryId, ItemId, Default) ->
     wh_json:get_integer_value([?QUANTITIES, CategoryId, ItemId], JObj, Default).
 
--spec set_billing_id(doc(), api_binary()) -> doc().
-set_billing_id(JObj, BillingId) ->
-    wh_json:set_value(?BILLING_ID, BillingId, JObj).
-
 -spec set_is_reseller(doc(), boolean()) -> doc().
 set_is_reseller(JObj, IsReseller) ->
     wh_json:set_value(?IS_RESELLER, IsReseller, JObj).
@@ -183,7 +183,7 @@ set_tree(JObj, Tree) ->
 
 -spec set_type(doc()) -> doc().
 set_type(JObj) ->
-    wh_doc:set_pvt_type(JObj, ?TYPE).
+    wh_doc:set_type(JObj, ?TYPE).
 
 -spec set_plans(doc(), wh_json:object()) -> doc().
 set_plans(JObj, Plans) ->

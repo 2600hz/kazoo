@@ -278,4 +278,4 @@ cleanup_orphaned_services_doc(<<_/binary>> = AccountId) ->
             timer:sleep(5 * ?MILLISECONDS_IN_SECOND)
     end;
 cleanup_orphaned_services_doc(View) ->
-    cleanup_orphaned_services_doc(wh_json:get_value(<<"id">>, View)).
+    cleanup_orphaned_services_doc(wh_doc:id(View)).

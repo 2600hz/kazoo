@@ -427,18 +427,18 @@ maybe_flush_registration_on_username(Realm, OldDevice, NewDevice) ->
 -spec move_account(ne_binary(), ne_binary()) ->
                           {'ok', wh_json:object()} |
                           {'error', _}.
--spec move_account(ne_binary(), ne_binary(), wh_json:object(), ne_binaries()) ->
+-spec move_account(ne_binary(), wh_json:object(), ne_binaries()) ->
                           {'ok', wh_json:object()} |
                           {'error', _}.
 move_account(<<_/binary>> = AccountId, <<_/binary>> = ToAccount) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case validate_move(AccountId, ToAccount, AccountDb) of
+    case validate_move(AccountId, ToAccount) of
         {'error', _E}=Error -> Error;
         {'ok', JObj, ToTree} ->
-            move_account(AccountId, AccountDb, JObj, ToTree)
+            move_account(AccountId, JObj, ToTree)
     end.
 
-move_account(AccountId, AccountDb, JObj, ToTree) ->
+move_account(AccountId, JObj, ToTree) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     PreviousTree = kz_account:tree(JObj),
     JObj1 = wh_json:set_values([{<<"pvt_tree">>, ToTree}
                                 ,{<<"pvt_previous_tree">>, PreviousTree}
@@ -458,11 +458,11 @@ move_account(AccountId, AccountDb, JObj, ToTree) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec validate_move(ne_binary(), ne_binary(), ne_binary()) ->
+-spec validate_move(ne_binary(), ne_binary()) ->
                            {'error', _} |
                            {'ok', wh_json:object(), ne_binaries()}.
-validate_move(AccountId, ToAccount, AccountDb) ->
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+validate_move(AccountId, ToAccount) ->
+    case kz_account:fetch(AccountId) of
         {'error', _E}=Error -> Error;
         {'ok', JObj} ->
             ToTree = lists:append(get_tree(ToAccount), [ToAccount]),
@@ -563,7 +563,7 @@ get_descendants(<<_/binary>> = AccountId) ->
 
 -spec filter_by_account_id(wh_json:object(), ne_binaries(), ne_binary()) -> ne_binaries().
 filter_by_account_id(JObj, Acc, AccountId) ->
-    case wh_json:get_value(<<"id">>, JObj) of
+    case wh_doc:id(JObj) of
         AccountId -> Acc;
         Id -> [Id | Acc]
     end.
@@ -589,12 +589,10 @@ mark_dirty(JObj) ->
 %%--------------------------------------------------------------------
 -spec get_tree(ne_binary()) -> ne_binaries().
 get_tree(<<_/binary>> = Account) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(Account) of
         {'ok', JObj} -> kz_account:tree(JObj);
         {'error', _E} ->
-            lager:error("could not load ~s in ~s: ~p", [AccountId, AccountDb, _E]),
+            lager:error("could not load account doc ~s : ~p", [Account, _E]),
             []
     end.
 
@@ -608,12 +606,10 @@ get_tree(<<_/binary>> = Account) ->
                                           {'ok', wh_json:object()} |
                                           {'error', _}.
 replicate_account_definition(JObj) ->
-    AccountId = wh_json:get_value(<<"_id">>, JObj),
+    AccountId = wh_doc:id(JObj),
     case couch_mgr:lookup_doc_rev(?WH_ACCOUNTS_DB, AccountId) of
-        {'ok', Rev} ->
-            couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_json:set_value(<<"_rev">>, Rev, JObj));
-        _Else ->
-            couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_json:delete_key(<<"_rev">>, JObj))
+        {'ok', Rev} -> couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_doc:set_revision(JObj, Rev));
+        _Else       -> couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_doc:delete_revision(JObj))
     end.
 
 %%--------------------------------------------------------------------
@@ -630,7 +626,7 @@ disable_account(AccountId) ->
                   ],
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions) of
         {'ok', JObjs} ->
-            _ = [change_pvt_enabled('false', wh_json:get_value(<<"id">>, JObj)) || JObj <- JObjs],
+            _ = [change_pvt_enabled('false', wh_doc:id(JObj)) || JObj <- JObjs],
             'ok';
         {'error', R}=E ->
             lager:debug("unable to disable descendants of ~s: ~p", [AccountId, R]),
@@ -651,7 +647,7 @@ enable_account(AccountId) ->
                   ],
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions) of
         {'ok', JObjs} ->
-            _ = [change_pvt_enabled('true', wh_json:get_value(<<"id">>, JObj)) || JObj <- JObjs],
+            _ = [change_pvt_enabled('true', wh_doc:id(JObj)) || JObj <- JObjs],
             'ok';
         {'error', R}=E ->
             lager:debug("unable to enable descendants of ~s: ~p", [AccountId, R]),
@@ -749,7 +745,7 @@ format_app(JObj, Lang) ->
     DefaultLabel = wh_json:get_value([<<"i18n">>, ?DEFAULT_LANGUAGE, <<"label">>], JObj),
     wh_json:from_list(
         props:filter_undefined(
-          [{<<"id">>, wh_json:get_first_defined([<<"id">>, <<"_id">>], JObj)}
+          [{<<"id">>, wh_doc:id(JObj)}
            ,{<<"name">>, wh_json:get_value(<<"name">>, JObj)}
            ,{<<"api_url">>, wh_json:get_value(<<"api_url">>, JObj)}
            ,{<<"source_url">>, wh_json:get_value(<<"source_url">>, JObj)}
@@ -773,9 +769,9 @@ change_pvt_enabled(State, AccountId) ->
         {'ok', JObj2} = couch_mgr:ensure_saved(AccountDb, wh_json:set_value(<<"pvt_enabled">>, State, JObj1)),
         case couch_mgr:lookup_doc_rev(?WH_ACCOUNTS_DB, AccountId) of
             {'ok', Rev} ->
-                couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_json:set_value(<<"_rev">>, Rev, JObj2));
+                couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_doc:set_revision(JObj2, Rev));
             _Else ->
-                couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_json:delete_key(<<"_rev">>, JObj2))
+                couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_doc:delete_revision(JObj2))
         end
     catch
         _:R ->
@@ -828,8 +824,7 @@ get_user_lang(AccountId, UserId) ->
 
 -spec get_account_lang(ne_binary()) -> 'error' | {'ok', ne_binary()}.
 get_account_lang(AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(AccountId) of
         {'ok', JObj} ->
             case wh_json:get_value(<<"language">>, JObj) of
                 'undefined' -> 'error';
@@ -846,10 +841,8 @@ get_user_timezone(AccountId, 'undefined') ->
 get_user_timezone(AccountId, UserId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_cache_doc(AccountDb, UserId) of
-        {'ok', UserJObj} ->
-            kzd_user:timezone(UserJObj);
-        {'error', _E} ->
-            get_account_timezone(AccountId)
+        {'ok', UserJObj} -> kzd_user:timezone(UserJObj);
+        {'error', _E} -> get_account_timezone(AccountId)
     end.
 
 -spec get_account_timezone(api_binary()) -> api_binary().
@@ -857,10 +850,8 @@ get_account_timezone('undefined') ->
     'undefined';
 get_account_timezone(AccountId) ->
     case kz_account:fetch(AccountId) of
-        {'ok', AccountJObj} ->
-            kz_account:timezone(AccountJObj);
-        {'error', _E} ->
-            'undefined'
+        {'ok', AccountJObj} -> kz_account:timezone(AccountJObj);
+        {'error', _E} -> 'undefined'
     end.
 
 -spec apply_response_map(cb_context:context(), wh_proplist()) -> cb_context:context().
@@ -879,7 +870,7 @@ apply_response_map(Context, Map) ->
 apply_response_map_item({Key, Fun}, J, JObj) when is_function(Fun, 1) ->
     wh_json:set_value(Key, Fun(JObj), J);
 apply_response_map_item({Key, Fun}, J, JObj) when is_function(Fun, 2) ->
-    Id = wh_json:get_first_defined([<<"_id">>,<<"Id">>], JObj),
+    Id = wh_doc:id(JObj, wh_json:get_value(<<"Id">>, JObj)),
     wh_json:set_value(Key, Fun(Id, JObj), J);
 apply_response_map_item({Key, ExistingKey}, J, JObj) ->
     wh_json:set_value(Key, wh_json:get_value(ExistingKey, JObj), J).
@@ -934,7 +925,7 @@ create_auth_token(Context, Method, JObj) ->
 
     case couch_mgr:save_doc(?KZ_TOKEN_DB, JObjToken) of
         {'ok', Doc} ->
-            AuthToken = wh_json:get_value(<<"_id">>, Doc),
+            AuthToken = wh_doc:id(Doc),
             lager:debug("created new local auth token ~s", [AuthToken]),
             ?MODULE:response(?MODULE:response_auth(JObj, AccountId, OwnerId)
                              ,cb_context:setters(
@@ -1107,8 +1098,8 @@ maybe_refresh_fs_xml('user', _Context, 'false') -> 'ok';
 maybe_refresh_fs_xml('user', Context, 'true') ->
     Doc = cb_context:doc(Context),
     AccountDb = cb_context:account_db(Context),
-    Realm     = wh_util:get_account_realm(AccountDb),
-    Id = wh_json:get_value(<<"_id">>, Doc),
+    Realm = wh_util:get_account_realm(AccountDb),
+    Id = wh_doc:id(Doc),
     Devices = get_devices_by_owner(AccountDb, Id),
     lists:foreach(fun (DevDoc) -> refresh_fs_xml(Realm, DevDoc) end, Devices);
 maybe_refresh_fs_xml('device', Context, Precondition) ->
@@ -1256,8 +1247,7 @@ maybe_update_descendants_count(AccountId, NewCount) ->
 maybe_update_descendants_count(AccountId, _, Try) when Try =< 0 ->
     io:format("too many attempts to update descendants count for ~s~n", [AccountId]);
 maybe_update_descendants_count(AccountId, NewCount, Try) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(AccountId) of
         {'error', _E} ->
             io:format("could not load account ~s: ~p~n", [AccountId, _E]);
         {'ok', JObj} ->
@@ -1311,10 +1301,8 @@ maybe_validate_quickcall(Context) ->
                                   ,cb_modules_util:token_cost(Context, 1, [?QUICKCALL_PATH_TOKEN])
                                  )
     of
-        'false' ->
-            cb_context:add_system_error('too_many_requests', Context);
-        'true' ->
-            maybe_validate_quickcall(Context, cb_context:resp_status(Context))
+        'false' -> cb_context:add_system_error('too_many_requests', Context);
+        'true' -> maybe_validate_quickcall(Context, cb_context:resp_status(Context))
     end.
 
 maybe_validate_quickcall(Context, 'success') ->

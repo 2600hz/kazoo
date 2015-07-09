@@ -110,11 +110,7 @@ thing_doc(Context, ThingId) ->
 
 -spec validate_get_metaflows(cb_context:context(), api_object()) -> cb_context:context().
 validate_get_metaflows(Context, 'undefined') ->
-    {'ok', AccountDoc} =
-        couch_mgr:open_cache_doc(
-          cb_context:account_db(Context)
-          ,cb_context:account_id(Context)
-         ),
+    {'ok', AccountDoc} = kz_account:fetch(cb_context:account_id(Context)),
     validate_get_metaflows(Context, AccountDoc);
 validate_get_metaflows(Context, Doc) ->
     Metaflows = wh_json:get_value(<<"metaflows">>, Doc, wh_json:new()),
@@ -123,11 +119,7 @@ validate_get_metaflows(Context, Doc) ->
 
 -spec validate_delete_metaflows(cb_context:context(), api_object()) -> cb_context:context().
 validate_delete_metaflows(Context, 'undefined') ->
-    {'ok', AccountDoc} =
-        couch_mgr:open_cache_doc(
-          cb_context:account_db(Context)
-          ,cb_context:account_id(Context)
-         ),
+    {'ok', AccountDoc} = kz_account:fetch(cb_context:account_id(Context)),
     validate_delete_metaflows(Context, AccountDoc);
 validate_delete_metaflows(Context, Doc) ->
     crossbar_util:response(wh_json:new()
@@ -145,15 +137,10 @@ validate_set_metaflows(Context) ->
 
 validate_set_metaflows(Context, Metaflows, 'undefined') ->
     lager:debug("no doc found, using account doc"),
-    {'ok', AccountDoc} =
-        couch_mgr:open_cache_doc(
-          cb_context:account_db(Context)
-          ,cb_context:account_id(Context)
-         ),
+    {'ok', AccountDoc} = kz_account:fetch(cb_context:account_id(Context)),
     validate_set_metaflows(Context, Metaflows, AccountDoc);
 validate_set_metaflows(Context, Metaflows, Doc) ->
     OwnerId = wh_json:get_first_defined([<<"_id">>, <<"pvt_account_id">>], Doc),
-
     Doc1 = wh_json:set_value(<<"metaflows">>
                              ,wh_json:set_value(<<"owner_id">>, OwnerId, Metaflows)
                              ,Doc

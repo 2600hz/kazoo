@@ -194,7 +194,7 @@ new() -> #whapps_call{}.
 -spec put_callid(call()) -> api_binary().
 put_callid(#whapps_call{call_id='undefined'}) -> 'undefined';
 put_callid(#whapps_call{call_id=CallId}) ->
-    put('callid', CallId).
+    wh_util:put_callid(CallId).
 
 -spec from_route_req(wh_json:object()) -> call().
 from_route_req(RouteReq) ->
@@ -211,7 +211,7 @@ from_route_req(RouteReq, #whapps_call{call_id=OldCallId
                                       ,to=OldTo
                                      }=Call) ->
     CallId = wh_json:get_value(<<"Call-ID">>, RouteReq, OldCallId),
-    put('callid', CallId),
+    wh_util:put_callid(CallId),
 
     CCVs = merge(OldCCVs, wh_json:get_value(<<"Custom-Channel-Vars">>, RouteReq)),
     SHs = merge(OldSHs, wh_json:get_value(<<"Custom-SIP-Headers">>, RouteReq)),
@@ -284,7 +284,7 @@ from_route_win(RouteWin, #whapps_call{call_id=OldCallId
                                       ,language=OldLanguage
                                      }=Call) ->
     CallId = wh_json:get_value(<<"Call-ID">>, RouteWin, OldCallId),
-    put('callid', CallId),
+    wh_util:put_callid(CallId),
 
     CCVs = merge(OldCCVs, wh_json:get_value(<<"Custom-Channel-Vars">>, RouteWin)),
     SHs = merge(OldSHs, wh_json:get_value(<<"Custom-SIP-Headers">>, RouteWin)),
@@ -738,11 +738,9 @@ account_id(#whapps_call{account_id=AccountId}) ->
     AccountId.
 
 -spec account_realm(call()) -> ne_binary().
-account_realm(#whapps_call{account_id=AccountId
-                           ,account_db=AccountDb
-                          }) ->
-    {'ok', Doc} = couch_mgr:open_cache_doc(AccountDb, AccountId),
-    wh_json:get_value(<<"realm">>, Doc).
+account_realm(#whapps_call{account_id=AccountId}) ->
+    {'ok', Doc} = kz_account:fetch(AccountId),
+    kz_account:realm(Doc).
 
 -spec set_authorizing_id(ne_binary(), call()) -> call().
 set_authorizing_id(AuthorizingId, #whapps_call{}=Call) when is_binary(AuthorizingId) ->

@@ -366,8 +366,7 @@ check_ports(#number{number=MaybePortNumber}=Number) ->
     case wnm_number:find_port_in_number(Number) of
         {'ok', PortDoc} ->
             lager:debug("found port doc with number ~s for account ~s"
-                        ,[MaybePortNumber, wh_json:get_value(<<"pvt_account_id">>, PortDoc)]
-                       ),
+                        ,[MaybePortNumber, wh_doc:account_id(PortDoc)]),
             wnm_number:number_from_port_doc(Number, PortDoc);
         {'error', 'not_found'} ->
             lager:debug("number not found in ports"),
@@ -472,10 +471,7 @@ is_number_porting(N) ->
 -spec account_can_create_number(ne_binary() | 'system') -> boolean().
 account_can_create_number('system') -> 'true';
 account_can_create_number(Account) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-
-    {'ok', JObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+    {'ok', JObj} = kz_account:fetch(Account),
     kz_account:allow_number_additions(JObj).
 
 %%--------------------------------------------------------------------
@@ -843,7 +839,7 @@ put_attachment(Number, Name, Content, Options, AuthBy) ->
                     (#number{number=Num, number_doc=JObj}) ->
                          lager:debug("attempting to put attachement ~s", [Name]),
                          Db = wnm_util:number_to_db_name(Num),
-                         Rev = wh_json:get_value(<<"_rev">>, JObj),
+                         Rev = wh_doc:revision(JObj),
                          couch_mgr:put_attachment(Db, Num, Name, Content, [{'rev', Rev}|Options])
                  end
                ],

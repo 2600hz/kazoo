@@ -155,7 +155,7 @@ handle_publisher_usurp(JObj, Props) ->
     of
         'false' -> 'ok';
         'true' ->
-            put('callid', CallId),
+            wh_util:put_callid(CallId),
             gen_listener:cast(props:get_value('server', Props), {'passive'})
     end.
 
@@ -562,7 +562,7 @@ maybe_process_channel_destroy(Node, CallId, Props) ->
 
 -spec process_channel_event(wh_proplist()) -> 'ok'.
 process_channel_event(Props) ->
-    put('callid', get_call_id(Props)),
+    wh_util:put_callid(get_call_id(Props)),
     EventName = get_event_name(Props),
     ApplicationName = get_application_name(Props),
     Masqueraded = is_masquerade(Props),

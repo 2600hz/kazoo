@@ -57,7 +57,7 @@ refresh() ->
 -spec reconcile(string() | ne_binary() | 'all') -> 'no_return'.
 
 reconcile() ->
-    io:format("This command is depreciated, please use reconcile_numbers() or for older systems reconcile_accounts(). See the wiki for details on the differences.", []),
+    io:format("This command is depreciated, please use reconcile_numbers() or for older systems reconcile_accounts(). See the wiki for details on the differences."),
     'no_return'.
 
 reconcile(Arg) ->
@@ -91,7 +91,7 @@ reconcile_numbers(NumberDb) ->
         {'ok', JObjs} ->
             Numbers = [Number
                        || JObj <- JObjs
-                              ,case (Number = wh_json:get_value(<<"id">>, JObj)) of
+                              ,case (Number = wh_doc:id(JObj)) of
                                    <<"_design/", _/binary>> -> 'false';
                                    _Else -> 'true'
                                end
@@ -132,8 +132,8 @@ reconcile_accounts(AccountId) ->
 %% exist
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile_providers() -> any().
--spec reconcile_providers(ne_binaries(), ne_binaries()) -> any().
+-spec reconcile_providers() -> _.
+-spec reconcile_providers(ne_binaries(), ne_binaries()) -> _.
 reconcile_providers() ->
     Paths = filelib:wildcard([code:lib_dir('whistle_number_manager'), "/src/providers/*.erl"]),
     Mods = [wh_util:to_binary(filename:rootname(filename:basename(P))) || P <- Paths],
@@ -197,7 +197,7 @@ get_callflow_account_numbers(AccountId) ->
 -spec is_trunkstore_account(wh_json:object()) -> boolean().
 is_trunkstore_account(JObj) ->
     wh_json:get_value(<<"type">>, JObj) =:= <<"sys_info">> orelse
-        wh_json:get_value(<<"pvt_type">>, JObj) =:= <<"sys_info">>.
+        wh_doc:type(JObj) =:= <<"sys_info">>.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -217,7 +217,7 @@ get_trunkstore_account_numbers(AccountId, AccountDb) ->
             lager:debug("account db ~s has trunkstore DIDs", [AccountDb]),
             Assigned = [wh_json:get_value(<<"key">>, JObj) || JObj <- JObjs],
 
-            TSDocId = wh_json:get_value(<<"id">>, hd(JObjs)),
+            TSDocId = wh_doc:id(hd(JObjs)),
             {'ok', TSDoc} = couch_mgr:open_doc(AccountDb, TSDocId),
             lager:debug("fetched ts doc ~s from ~s", [TSDocId, AccountDb]),
 

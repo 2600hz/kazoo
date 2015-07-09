@@ -54,7 +54,7 @@ check_sms_by_owner_id(AccountId, OwnerId) ->
 
 -spec start_check_sms_by_account(ne_binary(), wh_json:object()) -> pid().
 start_check_sms_by_account(AccountId, JObj) ->
-     case wh_json:is_true(<<"pvt_deleted">>, JObj, 'false')
+     case wh_doc:is_soft_deleted(JObj)
          orelse wh_json:is_false(<<"enabled">>, JObj, 'true')
      of
          'true' -> 'ok';
@@ -98,7 +98,7 @@ replay_queue_sms(AccountId, JObjs) ->
 
 -spec spawn_handler(ne_binary(), wh_json:object()) -> 'ok'.
 spawn_handler(AccountId, JObj) ->
-    DocId = wh_json:get_value(<<"id">>, JObj),
+    DocId = wh_doc:id(JObj),
     <<Year:4/binary, Month:2/binary, "-", _/binary>> = DocId,
     AccountDb = kazoo_modb:get_modb(AccountId, Year, Month),
 
@@ -121,7 +121,7 @@ check_pending_sms_for_offnet_delivery(AccountId) ->
 replay_sms(AccountId, JObjs) ->
     lager:debug("starting sms offnet delivery for account ~s", [AccountId]),
     _ = [begin
-             doodle_util:replay_sms(AccountId, wh_json:get_value(<<"id">>, JObj)),
+             doodle_util:replay_sms(AccountId, wh_doc:id(JObj)),
              timer:sleep(200)
          end
          || JObj <- JObjs

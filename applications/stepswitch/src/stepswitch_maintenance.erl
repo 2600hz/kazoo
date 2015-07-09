@@ -69,13 +69,13 @@ number_tree(DID) ->
 number_tree(DID, AccountDoc) ->
     io:format("~s tree ", [DID]),
     print_tree(kz_account:tree(AccountDoc)),
-    io:format(" ~s(~s)~n", [wh_json:get_value(<<"name">>, AccountDoc), wh_json:get_value(<<"_id">>, AccountDoc)]).
+    io:format(" ~s(~s)~n", [kz_account:name(AccountDoc), wh_doc:id(AccountDoc)]).
 
 -spec print_tree(ne_binaries()) -> 'ok'.
 print_tree([]) -> 'ok';
 print_tree([AccountId|Tree]) ->
     {'ok', AccountDoc} = couch_mgr:open_cache_doc(<<"accounts">>, AccountId),
-    io:format(" ~s(~s) ->", [wh_json:get_value(<<"name">>, AccountDoc), wh_json:get_value(<<"_id">>, AccountDoc)]),
+    io:format(" ~s(~s) ->", [kz_account:name(AccountDoc), wh_doc:id(AccountDoc)]),
     print_tree(Tree).
 
 %%--------------------------------------------------------------------
@@ -145,7 +145,7 @@ refresh() ->
                                      || JObj <- JObjs,
                                         begin
                                             Doc = wh_json:get_value(<<"doc">>, JObj),
-                                            wh_json:get_value(<<"pvt_type">>, Doc) =:= <<"route">>
+                                            wh_doc:type(Doc) =:= <<"route">>
                                         end
                                     ]),
             'ok'
@@ -170,9 +170,7 @@ lookup_number(Number) ->
 -spec pretty_print_number_props(wh_proplist()) -> 'ok'.
 pretty_print_number_props([]) -> 'ok';
 pretty_print_number_props([{Key, Value}|Props]) ->
-    io:format("~-19s: ~s~n", [wh_util:to_binary(Key)
-                              ,wh_util:to_binary(Value)
-                             ]),
+    io:format("~-19s: ~s~n", [wh_util:to_binary(Key), wh_util:to_binary(Value)]),
     pretty_print_number_props(Props).
 
 %%--------------------------------------------------------------------
@@ -199,10 +197,10 @@ reload_resources(Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec process_number(text()) -> any().
+-spec process_number(text()) -> _.
 process_number(Number) -> process_number(Number, 'undefined').
 
--spec process_number(text(), text() | 'undefined') -> any().
+-spec process_number(text(), text() | 'undefined') -> _.
 process_number(Number, 'undefined') ->
     Endpoints = stepswitch_resources:endpoints(wh_util:to_binary(Number), wh_json:new()),
     pretty_print_endpoints(Endpoints);
@@ -213,14 +211,14 @@ process_number(Number, AccountId) ->
     Endpoints = stepswitch_resources:endpoints(wh_util:to_binary(Number), JObj),
     pretty_print_endpoints(Endpoints).
 
--spec pretty_print_endpoints(wh_json:objects()) -> any().
+-spec pretty_print_endpoints(wh_json:objects()) -> _.
 pretty_print_endpoints([]) -> 'ok';
 pretty_print_endpoints([Endpoint|Endpoints]) ->
     _ = pretty_print_endpoint(wh_json:to_proplist(Endpoint)),
     io:format("~n"),
     pretty_print_endpoints(Endpoints).
 
--spec pretty_print_endpoint(wh_proplist()) -> any().
+-spec pretty_print_endpoint(wh_proplist()) -> _.
 pretty_print_endpoint([]) -> 'ok';
 pretty_print_endpoint([{_, []}|Props]) ->
     pretty_print_endpoint(Props);

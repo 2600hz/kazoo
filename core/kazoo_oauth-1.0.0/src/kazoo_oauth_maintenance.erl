@@ -14,7 +14,7 @@
 %% Internal functions
 %% ====================================================================
 
--spec register_oauth_app(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> any().
+-spec register_oauth_app(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> _.
 register_oauth_app(AccountId, OAuthId, EMail, Secret, Provider) ->
     Doc = wh_json:from_list([
            {<<"_id">>, OAuthId}
@@ -26,10 +26,8 @@ register_oauth_app(AccountId, OAuthId, EMail, Secret, Provider) ->
           ,{<<"pvt_type">>, <<"app">>}
           ]),
     case couch_mgr:open_doc(?KZ_OAUTH_DB, OAuthId) of
-        {'ok', _JObj} ->
-            {'error', <<"already registered">>};
-        {'error', _} ->
-            couch_mgr:save_doc(?KZ_OAUTH_DB, Doc)
+        {'ok', _JObj} -> {'error', <<"already registered">>};
+        {'error', _} -> couch_mgr:save_doc(?KZ_OAUTH_DB, Doc)
     end.
 
 -spec register_common_providers() -> 'ok'.

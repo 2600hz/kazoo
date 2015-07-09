@@ -28,7 +28,7 @@
 %%--------------------------------------------------------------------
 -spec update_device(wh_json:object(), ne_binary()) -> 'ok'.
 update_device(JObj, AuthToken) ->
-    AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
+    AccountId = wh_doc:account_id(JObj),
     Request = device_settings(set_owner(JObj)),
     case check_request(Request) of
         {'ok', Data} ->
@@ -48,7 +48,7 @@ delete_device(JObj, AuthToken) ->
     send_req('devices_delete'
              ,'undefined'
              ,AuthToken
-             ,wh_json:get_value(<<"pvt_account_id">>, JObj)
+             ,wh_doc:account_id(JObj)
              ,kz_device:mac_address(JObj)
             ).
 
@@ -58,7 +58,7 @@ device_settings(JObj) ->
       [{<<"brand">>, get_brand(JObj)}
        ,{<<"family">>, get_family(JObj)}
        ,{<<"model">>, get_model(JObj)}
-       ,{<<"name">>, wh_json:get_value(<<"name">>, JObj)}
+       ,{<<"name">>, kz_device:name(JObj)}
        ,{<<"settings">>, settings(JObj)}
       ]
      ).
@@ -122,10 +122,8 @@ delete_account(AccountId, AuthToken) ->
 -spec update_account(ne_binary(), ne_binary()) -> 'ok'.
 update_account(Account, AuthToken) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {'ok', JObj} ->
-            update_account(AccountId, JObj, AuthToken);
+    case kz_account:fetch(AccountId) of
+        {'ok', JObj} -> update_account(AccountId, JObj, AuthToken);
         {'error', _R} ->
             lager:debug("unable to fetch account ~s: ~p", [AccountId, _R])
     end.
@@ -144,9 +142,8 @@ account_settings(JObj) ->
 %%--------------------------------------------------------------------
 -spec update_user(ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
 update_user(AccountId, JObj, AuthToken) ->
-    case wh_json:get_value(<<"pvt_type">>, JObj) of
-        <<"user">> ->
-            save_user(AccountId, JObj, AuthToken);
+    case wh_doc:type(JObj) of
+        <<"user">> -> save_user(AccountId, JObj, AuthToken);
         _ -> 'ok' %% Gets rid of VMbox
     end.
 
@@ -154,8 +151,7 @@ update_user(AccountId, JObj, AuthToken) ->
 save_user(AccountId, JObj, AuthToken) ->
     _ = update_account(AccountId, AuthToken),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    OwnerId = wh_json:get_value(<<"id">>, JObj),
-    Devices = crossbar_util:get_devices_by_owner(AccountDb, OwnerId),
+    Devices = crossbar_util:get_devices_by_owner(AccountDb, wh_doc:id(JObj)),
     Settings = settings(JObj),
     lists:foreach(
       fun(Device) ->
@@ -217,16 +213,15 @@ check_MAC(MacAddress, AuthToken) ->
 %%--------------------------------------------------------------------
 -spec set_owner(wh_json:object()) -> wh_json:object().
 set_owner(JObj) ->
-    AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
     OwnerId = wh_json:get_ne_value(<<"owner_id">>, JObj),
-    case get_owner(OwnerId, AccountId) of
+    case get_owner(OwnerId, wh_doc:account_id(JObj)) of
         {'ok', Doc} -> wh_json:merge_recursive(Doc, JObj);
         {'error', _R} -> JObj
     end.
 
 -spec get_owner(api_binary(), ne_binary()) ->
                        {'ok', wh_json:object()} |
-                       {'error', any()}.
+                       {'error', _}.
 get_owner('undefined', _) -> {'error', 'undefined'};
 get_owner(OwnerId, AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
@@ -276,8 +271,7 @@ settings_lines(JObj) ->
            ])
     of
         [] -> wh_json:new();
-        Props ->
-            wh_json:from_list([{<<"0">>, wh_json:from_list(Props)}])
+        Props -> wh_json:from_list([{<<"0">>, wh_json:from_list(Props)}])
     end.
 
 -spec settings_basic(wh_json:object()) -> wh_json:object().
@@ -332,7 +326,7 @@ settings_feature_keys(JObj) ->
     FeatureKeys = wh_json:get_value([<<"provision">>, <<"feature_keys">>], JObj, wh_json:new()),
     Brand = get_brand(JObj),
     Family = get_family(JObj),
-    AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
+    AccountId = wh_doc:account_id(JObj),
     wh_json:foldl(
       fun(Key, Value, Acc) ->
               Type = wh_json:get_binary_value(<<"type">>, Value),
@@ -507,9 +501,9 @@ account_payload(JObj, AccountId) ->
     ResellerId = wh_services:find_reseller_id(AccountId),
     wh_json:from_list(
       [{<<"create_if_missing">>, 'true'}
-      ,{<<"reseller_id">>, ResellerId}
-      ,{<<"merge">>, 'true'}
-      ,{<<"data">>, JObj}
+       ,{<<"reseller_id">>, ResellerId}
+       ,{<<"merge">>, 'true'}
+       ,{<<"data">>, JObj}
       ]
      ).
 

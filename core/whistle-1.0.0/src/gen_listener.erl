@@ -371,7 +371,7 @@ execute(Srv, Function) when is_function(Function) ->
                             'ignore'.
 init_state([Module, Params, ModuleState]) ->
     process_flag('trap_exit', 'true'),
-    put('callid', Module),
+    wh_util:put_callid(Module),
     lager:debug("continuing as a gen_listener proc"),
     init(Module, Params, ModuleState, 'undefined').
 
@@ -381,7 +381,7 @@ init_state([Module, Params, ModuleState]) ->
                   'ignore'.
 init([Module, Params, InitArgs]) ->
     process_flag('trap_exit', 'true'),
-    put('callid', Module),
+    wh_util:put_callid(Module),
     lager:debug("starting new gen_listener proc"),
     case erlang:function_exported(Module, 'init', 1)
         andalso Module:init(InitArgs)

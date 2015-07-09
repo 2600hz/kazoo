@@ -190,7 +190,7 @@ put(#cb_context{doc=JObj}=Context) ->
     Doc = wh_json:delete_key(<<"template">>, JObj),
     case crossbar_doc:save(Context#cb_context{doc=Doc}) of
         #cb_context{resp_status=success, doc=SavedDoc, resp_data=SavedResp}=Context1 ->
-            DocId = wh_json:get_value(<<"_id">>, SavedDoc),
+            DocId = wh_doc:id(SavedDoc),
             Opts = [{headers, [{content_type, "application/json"}]}],
             case crossbar_doc:save_attachment(DocId, ?TEMPLATE_ATTCH, wh_json:encode(Template), Context, Opts) of
                 #cb_context{resp_status=success} ->

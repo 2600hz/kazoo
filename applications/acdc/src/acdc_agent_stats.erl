@@ -398,7 +398,7 @@ status_stat_to_doc(#status_stat{id=Id
        ]).
 
 archive_status_data(Srv, 'true') ->
-    put('callid', <<"acdc_stats.force_status_archiver">>),
+    wh_util:put_callid(<<"acdc_stats.force_status_archiver">>),
 
     Match = [{#status_stat{is_archived='$1'
                            ,_='_'
@@ -408,7 +408,7 @@ archive_status_data(Srv, 'true') ->
              }],
     maybe_archive_status_data(Srv, Match);
 archive_status_data(Srv, 'false') ->
-    put('callid', <<"acdc_stats.status_archiver">>),
+    wh_util:put_callid(<<"acdc_stats.status_archiver">>),
 
     Past = wh_util:current_tstamp() - ?ARCHIVE_WINDOW,
     Match = [{#status_stat{timestamp='$1'

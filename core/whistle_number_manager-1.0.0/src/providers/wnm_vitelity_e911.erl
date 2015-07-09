@@ -173,12 +173,11 @@ get_unit(ExtendedAddress) ->
 
 -spec get_account_name(ne_binary()) -> api_binary().
 get_account_name(AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(AccountId) of
         {'error', _Error} ->
-            lager:error('error opening ~p in ~p', [AccountId, AccountDb]),
+            lager:error('error opening account doc ~s', [AccountId]),
             'undefined';
-        {'ok', JObj} -> wh_json:get_value(<<"name">>, JObj, 'undefined')
+        {'ok', JObj} -> kz_account:name(JObj)
     end.
 
 -spec is_valid_location(wh_json:object()) ->

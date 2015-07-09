@@ -24,7 +24,7 @@ generate_loa(Context, PortRequest) ->
 
     Numbers = [wnm_util:pretty_print(N) || N <- wh_json:get_keys(<<"numbers">>, PortRequest)],
 
-    QRCode = create_qr_code(cb_context:account_id(Context), wh_json:get_first_defined([<<"_id">>, <<"id">>], PortRequest)),
+    QRCode = create_qr_code(cb_context:account_id(Context), wh_doc:id(PortRequest)),
 
     generate_loa_from_template(Context
                                ,props:filter_undefined(

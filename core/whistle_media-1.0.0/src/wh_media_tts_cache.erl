@@ -86,7 +86,7 @@ stop(Srv) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Text, JObj]) ->
-    put('callid', wh_util:binary_md5(Text)),
+    wh_util:put_callid(wh_util:binary_md5(Text)),
 
     Voice = list_to_binary([wh_json:get_value(<<"Voice">>, JObj, <<"female">>), "/"
                             ,get_language(wh_json:get_value(<<"Language">>, JObj, <<"en-us">>))

@@ -36,7 +36,7 @@
 -define(PREVIEW, <<"preview">>).
 -define(SMTP_LOG, <<"logs">>).
 -define(CB_LIST_SMTP_LOG, <<"notifications/smtp_log">>).
-       
+
 -define(MACROS, <<"macros">>).
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".notifications">>).
@@ -683,9 +683,8 @@ maybe_hard_delete(Context, Id) ->
 -spec maybe_note_notification_preference(cb_context:context()) -> 'ok'.
 -spec maybe_note_notification_preference(ne_binary(), wh_json:object()) -> 'ok'.
 maybe_note_notification_preference(Context) ->
-    AccountId = cb_context:account_id(Context),
     AccountDb = cb_context:account_db(Context),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(AccountDb) of
         {'error', _E} -> lager:debug("failed to note preference: ~p", [_E]);
         {'ok', AccountJObj} ->
             maybe_note_notification_preference(AccountDb, AccountJObj)
@@ -962,11 +961,11 @@ merge_available(AccountAvailable, Available) ->
 
 -spec merge_fold(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 merge_fold(Overridden, Acc) ->
-    Id = wh_json:get_value(<<"id">>, Overridden),
+    Id = wh_doc:id(Overridden),
     lager:debug("noting ~s is overridden in account", [Id]),
     [note_account_override(Overridden)
      | [JObj || JObj <- Acc,
-                wh_json:get_value(<<"id">>, JObj) =/= Id
+                wh_doc:id(JObj) =/= Id
        ]
     ].
 

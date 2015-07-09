@@ -367,7 +367,6 @@ get_start_key(Context, Default, Formatter) ->
                                     cb_context:context().
 summary_attempts_fetch(Context, ViewOptions, View) ->
     Db = wh_util:format_account_mod_id(cb_context:account_id(Context), wh_util:current_tstamp()),
-
     lager:debug("loading view ~s with options ~p", [View, ViewOptions]),
     maybe_fix_envelope(
       crossbar_doc:load_view(View
@@ -381,9 +380,8 @@ summary_attempts_fetch(Context, ViewOptions, View) ->
                                        wh_json:objects().
 normalize_attempt_results(JObj, Acc) ->
     Doc = wh_json:get_value(<<"doc">>, JObj),
-    Timestamp = wh_json:get_value(<<"pvt_created">>, Doc),
     [wh_json:delete_keys([<<"id">>, <<"_id">>]
-                         ,wh_json:set_value(<<"timestamp">>, Timestamp, Doc)
+                         ,wh_json:set_value(<<"timestamp">>, wh_doc:created(Doc), Doc)
                         )
      | Acc
     ].
@@ -426,7 +424,6 @@ normalize_view_results(JObj, Acc) ->
 -spec maybe_update_hook(cb_context:context()) -> cb_context:context().
 maybe_update_hook(Context) ->
     Doc = cb_context:doc(Context),
-
     case kzd_webhook:is_enabled(Doc) of
         'false' -> Context;
         'true' -> cb_context:set_doc(Context, kzd_webhook:enable(Doc))

@@ -82,7 +82,7 @@ start_link(Call) ->
 init([Call]) ->
     process_flag('trap_exit', 'true'),
     CallId = whapps_call:call_id(Call),
-    put('callid', CallId),
+    wh_util:put_callid(CallId),
     self() ! 'initialize',
     {'ok', #state{call=Call}}.
 

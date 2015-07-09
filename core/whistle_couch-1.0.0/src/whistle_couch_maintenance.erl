@@ -125,7 +125,7 @@ maybe_update_user_urls(AppName, ApiUrl, AccountDb, UserJObj) ->
         ApiUrl -> 'ok';
         OldApiUrl ->
             io:format("  user ~s in account ~s has old api url ~s, updating...~n"
-                      ,[wh_json:get_value(<<"_id">>, UserJObj)
+                      ,[wh_doc:id(UserJObj)
                         ,whapps_util:get_account_name(AccountDb)
                         ,OldApiUrl
                        ]

@@ -43,7 +43,7 @@ init() ->
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     true = wapi_notifications:transaction_v(JObj),
-    _ = whapps_util:put_callid(JObj),
+    _ = wh_util:put_callid(JObj),
     lager:debug("creating transaction notice"),
     {ok, Account} = notify_util:get_account_doc(JObj),
     Props = create_template_props(JObj, Account),

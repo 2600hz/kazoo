@@ -267,24 +267,24 @@ maybe_account_is_enabled(Context, Credentials, Method, Account) ->
 -spec load_sha1_results(cb_context:context(), wh_json:objects() | wh_json:object()) ->
                                cb_context:context().
 load_sha1_results(Context, [JObj|_]) ->
-    lager:debug("found more that one user with SHA1 creds, using ~s", [wh_json:get_value(<<"id">>, JObj)]),
+    lager:debug("found more that one user with SHA1 creds, using ~s", [wh_doc:id(JObj)]),
     cb_context:set_doc(Context, wh_json:get_value(<<"value">>, JObj));
 load_sha1_results(Context, []) ->
     cb_context:add_system_error('invalid_credentials', Context);
 load_sha1_results(Context, JObj) ->
-    lager:debug("found SHA1 credentials belong to user ~s", [wh_json:get_value(<<"id">>, JObj)]),
+    lager:debug("found SHA1 credentials belong to user ~s", [wh_doc:id(JObj)]),
     cb_context:set_doc(Context, wh_json:get_value(<<"value">>, JObj)).
 
 -spec load_md5_results(cb_context:context(), wh_json:objects() | wh_json:object()) ->
                               cb_context:context().
 load_md5_results(Context, [JObj|_]) ->
-    lager:debug("found more that one user with MD5 creds, using ~s", [wh_json:get_value(<<"id">>, JObj)]),
+    lager:debug("found more that one user with MD5 creds, using ~s", [wh_doc:id(JObj)]),
     cb_context:set_doc(Context, wh_json:get_value(<<"value">>, JObj));
 load_md5_results(Context, []) ->
     lager:debug("failed to find a user with MD5 creds"),
     cb_context:add_system_error('invalid_credentials', Context);
 load_md5_results(Context, JObj) ->
-    lager:debug("found MD5 credentials belong to user ~s", [wh_json:get_value(<<"id">>, JObj)]),
+    lager:debug("found MD5 credentials belong to user ~s", [wh_doc:id(JObj)]),
     cb_context:set_doc(Context, wh_json:get_value(<<"value">>, JObj)).
 
 %%--------------------------------------------------------------------
@@ -299,7 +299,6 @@ maybe_recover_user_password(Context) ->
     AccountName = normalize_account_name(wh_json:get_value(<<"account_name">>, JObj)),
     PhoneNumber = wh_json:get_ne_value(<<"phone_number">>, JObj),
     AccountRealm = wh_json:get_first_defined([<<"account_realm">>, <<"realm">>], JObj),
-
     case find_account(PhoneNumber, AccountRealm, AccountName, Context) of
         {'error', C} -> C;
         {'ok', [Account|_]} -> maybe_load_username(Account, Context);
@@ -383,8 +382,8 @@ reset_users_password(Context) ->
                       ,{<<"First-Name">>, wh_json:get_value(<<"first_name">>, JObj)}
                       ,{<<"Last-Name">>, wh_json:get_value(<<"last_name">>, JObj)}
                       ,{<<"Password">>, Password}
-                      ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, JObj)}
-                      ,{<<"Account-DB">>, wh_json:get_value(<<"pvt_account_db">>, JObj)}
+                      ,{<<"Account-ID">>, wh_doc:account_id(JObj)}
+                      ,{<<"Account-DB">>, wh_doc:account_db(JObj)}
                       ,{<<"Request">>, wh_json:delete_key(<<"username">>, cb_context:req_data(Context))}
                       | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
                      ],

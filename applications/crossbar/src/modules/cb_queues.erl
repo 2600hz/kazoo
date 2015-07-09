@@ -329,7 +329,7 @@ is_valid_queue(Context, <<_/binary>> = QueueId) ->
             }
     end;
 is_valid_queue(Context, QueueJObj) ->
-    case wh_json:get_value(<<"pvt_type">>, QueueJObj) of
+    case wh_doc:type(QueueJObj) of
         <<"queue">> -> 'true';
         _ ->
             {'false'
@@ -344,7 +344,7 @@ is_valid_queue(Context, QueueJObj) ->
 
 is_valid_endpoint(Context, DataJObj) ->
     AcctDb = cb_context:account_db(Context),
-    Id = wh_json:get_value(<<"id">>, DataJObj),
+    Id = wh_doc:id(DataJObj),
     case couch_mgr:open_cache_doc(AcctDb, Id) of
         {'ok', CallMeJObj} -> is_valid_endpoint_type(Context, CallMeJObj);
         {'error', _} ->
@@ -362,7 +362,7 @@ is_valid_endpoint(Context, DataJObj) ->
     end.
 
 is_valid_endpoint_type(Context, CallMeJObj) ->
-    case wh_json:get_value(<<"pvt_type">>, CallMeJObj) of
+    case wh_doc:type(CallMeJObj) of
         <<"device">> -> 'true';
         Type ->
             {'false'
@@ -614,7 +614,7 @@ maybe_add_queue_to_agent(Id, A) ->
                  end;
              _ -> [Id]
          end,
-    lager:debug("agent ~s adding queues: ~p", [wh_json:get_value(<<"_id">>, A), Qs]),
+    lager:debug("agent ~s adding queues: ~p", [wh_doc:id(A), Qs]),
     wh_json:set_value(<<"queues">>, Qs, A).
 
 -spec maybe_rm_agents(ne_binary(), cb_context:context(), wh_json:keys()) -> cb_context:context().
@@ -783,7 +783,7 @@ normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
 normalize_agents_results(JObj, Acc) ->
-    [wh_json:get_value(<<"id">>, JObj) | Acc].
+    [wh_doc:id(JObj) | Acc].
 
 %%--------------------------------------------------------------------
 %% @private

@@ -27,10 +27,10 @@
          ,maybe_replay_sms/2
         ]).
 
--spec handle_req(wh_json:object(), wh_proplist()) -> any().
+-spec handle_req(wh_json:object(), wh_proplist()) -> _.
 handle_req(JObj, _Options) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    put('callid', CallId),
+    wh_util:put_callid(CallId),
     lager:info("doodle has received a route win, taking control of the call"),
     case whapps_call:retrieve(CallId) of
         {'ok', Call} -> maybe_scheduled_delivery(JObj, Call);
@@ -48,9 +48,10 @@ maybe_scheduled_delivery(JObj, Call) ->
             'ok';
         'false' ->
             maybe_scheduled_delivery(JObj, Call, ?SCHEDULED(Call) , wh_util:current_tstamp())
-    end.        
+    end.
 
--spec maybe_scheduled_delivery(wh_json:object(), whapps_call:call(), integer(), integer() ) -> whapps_call:call() | {'ok', pid()}.
+-spec maybe_scheduled_delivery(wh_json:object(), whapps_call:call(), integer(), integer()) ->
+                                      whapps_call:call() | {'ok', pid()}.
 maybe_scheduled_delivery(_JObj, Call, DeliveryAt, Now)
   when DeliveryAt > Now ->
     lager:info("scheduling sms delivery"),
@@ -90,7 +91,7 @@ should_restrict_call(Call) ->
 
 -spec maybe_service_unavailable(wh_json:object(), whapps_call:call()) -> boolean().
 maybe_service_unavailable(JObj, Call) ->
-    Id = wh_json:get_value(<<"_id">>, JObj),
+    Id = wh_doc:id(JObj),
     Services = wh_json:merge_recursive(
                  wh_json:get_value(<<"services">>, JObj, ?DEFAULT_SERVICES),
                  wh_json:get_value(<<"pvt_services">>, JObj, wh_json:new())),
@@ -105,8 +106,7 @@ maybe_service_unavailable(JObj, Call) ->
 -spec maybe_account_service_unavailable(wh_json:object(), whapps_call:call()) -> boolean().
 maybe_account_service_unavailable(JObj, Call) ->
     AccountId = whapps_call:account_id(Call),
-    AccountDb = whapps_call:account_db(Call),
-    {'ok', Doc} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+    {'ok', Doc} = kz_account:fetch(AccountId),
     Services = wh_json:merge_recursive(
                  wh_json:get_value(<<"services">>, Doc, ?DEFAULT_SERVICES),
                  wh_json:get_value(<<"pvt_services">>, Doc, wh_json:new())),
@@ -187,7 +187,7 @@ get_group_associations(Id, Groups, Set) ->
                         case wh_json:get_value([<<"value">>, Id], Group) of
                             'undefined' -> S;
                             _Else ->
-                                GroupId = wh_json:get_value(<<"id">>, Group),
+                                GroupId = wh_doc:id(Group),
                                 sets:add_element(GroupId, S)
                         end
                 end, Set, Groups).

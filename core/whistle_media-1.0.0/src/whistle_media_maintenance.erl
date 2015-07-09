@@ -65,7 +65,7 @@ import_prompts(Path, Lang) ->
             import_files(Path, Lang, Files)
     end.
 
--spec import_files(ne_binary(), ne_binary(), ne_binaries()) -> 'ok'.
+-spec import_files(ne_binary(), ne_binary(), [file:filename()]) -> 'ok'.
 import_files(Path, Lang, Files) ->
     io:format("importing prompts from '~s' with language '~s'~n", [Path, Lang]),
     case import_prompts_from_files(Files, Lang) of
@@ -76,17 +76,17 @@ import_files(Path, Lang, Files) ->
             'ok'
     end.
 
--spec import_prompts_from_files(ne_binaries(), ne_binary()) ->
-                                       [] | [{ne_binary(), 'ok' | {'error', _}},...].
+-spec import_prompts_from_files([file:filename()], ne_binary()) ->
+                                       [{file:filename(), {'error', _}}].
 import_prompts_from_files(Files, Lang) ->
      [{F, Err}
       || F <- Files,
          (Err = (catch import_prompt(F, Lang))) =/= 'ok'
      ].
 
--spec import_prompt(text()) -> 'ok' | {'error', _}.
--spec import_prompt(text(), text()) -> 'ok' | {'error', _}.
--spec import_prompt(text(), text(), ne_binary()) -> 'ok' | {'error', _}.
+-spec import_prompt(text() | file:filename()) -> 'ok' | {'error', _}.
+-spec import_prompt(text() | file:filename(), text()) -> 'ok' | {'error', _}.
+-spec import_prompt(text() | file:filename(), text(), ne_binary()) -> 'ok' | {'error', _}.
 
 import_prompt(Path) ->
     import_prompt(Path, wh_media_util:default_prompt_language()).
@@ -145,7 +145,7 @@ import_prompt(Path0, Lang0, Contents) ->
                           ,Contents
                           ,[{'content_type', wh_util:to_list(ContentType)}
                             ,{'content_length', ContentLength}
-                            ,{'rev', wh_json:get_value(<<"_rev">>, MetaJObj1)}
+                            ,{'rev', wh_doc:revision(MetaJObj1)}
                            ]
                          );
         {'error', E} ->

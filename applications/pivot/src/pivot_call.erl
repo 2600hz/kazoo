@@ -137,7 +137,7 @@ relay_cdr_event(JObj, Props) ->
 %%--------------------------------------------------------------------
 -spec init([whapps_call:call() | wh_json:object()]) -> {'ok', state(), 'hibernate'}.
 init([Call, JObj]) ->
-    put('callid', whapps_call:call_id(Call)),
+    wh_util:put_callid(whapps_call:call_id(Call)),
 
     Method = kzt_util:http_method(wh_json:get_value(<<"HTTP-Method">>, JObj, 'get')),
     VoiceUri = wh_json:get_value(<<"Voice-URI">>, JObj),
@@ -476,7 +476,7 @@ normalize_resp_headers(Headers) ->
 
 -spec handle_resp(whapps_call:call(), ne_binary(), binary()) -> 'ok'.
 handle_resp(Call, CT, RespBody) ->
-    put('callid', whapps_call:call_id(Call)),
+    wh_util:put_callid(whapps_call:call_id(Call)),
     Srv = kzt_util:get_amqp_listener(Call),
 
     case process_resp(Call, CT, RespBody) of

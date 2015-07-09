@@ -25,7 +25,7 @@
 -spec maybe_dry_run(cb_context:context(), callback(), ne_binary() | wh_proplist()) ->
                            cb_context:context().
 maybe_dry_run(Context, Callback) ->
-    Type = wh_doc:pvt_type(cb_context:doc(Context)),
+    Type = wh_doc:type(cb_context:doc(Context)),
     maybe_dry_run(Context, Callback, Type).
 
 maybe_dry_run(Context, Callback, Type) when is_binary(Type) ->

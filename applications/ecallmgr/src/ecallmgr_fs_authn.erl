@@ -63,7 +63,7 @@ start_link(Node, Options) -> gen_server:start_link(?MODULE, [Node, Options], [])
 %% @end
 %%--------------------------------------------------------------------
 init([Node, Options]) ->
-    put('callid', Node),
+    wh_util:put_callid(Node),
     lager:info("starting new fs authn listener for ~s", [Node]),
     gen_server:cast(self(), 'bind_to_directory'),
     {'ok', #state{node=Node
@@ -164,7 +164,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 handle_directory_lookup(Id, Props, Node) ->
-    put('callid', Id),
+    wh_util:put_callid(Id),
     case props:get_value(<<"sip_auth_method">>, Props) of
         <<"REGISTER">> ->
             lager:debug("received fetch request (~s) for sip registration creds from ~s", [Id, Node]);

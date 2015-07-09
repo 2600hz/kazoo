@@ -99,7 +99,7 @@ init([Type]) ->
 init({'file', <<_/binary>>=Filename}) ->
     init({'file', Filename, Filename});
 init({'file', Name, PreFilename}=Type) ->
-    put('callid', Name),
+    wh_util:put_callid(Name),
 
     Filename = create_filename(PreFilename),
 
@@ -121,7 +121,7 @@ init({'file', Name, PreFilename}=Type) ->
 init({'db', Database}) ->
     init({'db', wh_util:rand_hex_binary(4), Database});
 init({'db', Name, Database}=Type) ->
-    put('callid', Name),
+    wh_util:put_callid(Name),
 
     case couch_mgr:db_exists(Database) of
         'true' ->

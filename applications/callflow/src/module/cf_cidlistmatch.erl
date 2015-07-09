@@ -34,7 +34,7 @@ handle(Data, Call) ->
     lager:debug("comparing caller id ~s with match list entries", [CallerIdNumber]),
     case match_one_of(ListEntries, CallerIdNumber) of
         {'match', Entry} ->
-            lager:info("matched list ~s entry", [wh_json:get_value(<<"id">>, Entry)]),
+            lager:info("matched list ~s entry", [wh_doc:id(Entry)]),
             handle_match(Call);
         'nomatch' ->
             handle_no_match(Call)
@@ -103,7 +103,7 @@ match_one_of([Entry|Rest], CallerIdNumber) ->
 
 -spec get_list_entries(wh_json:object(), whapps_call:call()) -> wh_json:objects().
 get_list_entries(Data, Call) ->
-    ListId = wh_json:get_ne_value(<<"id">>, Data),
+    ListId = wh_doc:id(Data),
     AccountDb = whapps_call:account_db(Call),
     case couch_mgr:open_cache_doc(AccountDb, ListId) of
         {'ok', ListJObj} ->

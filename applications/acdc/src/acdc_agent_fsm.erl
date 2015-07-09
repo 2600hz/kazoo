@@ -83,7 +83,8 @@
 
 -define(WRAPUP_FINISHED, 'wrapup_finished').
 
--define(MAX_FAILURES, whapps_config:get_integer(?CONFIG_CAT, <<"max_connect_failures">>, 3)).
+-define(MAX_CONNECT_FAILURES, <<"max_connect_failures">>).
+-define(MAX_FAILURES, whapps_config:get_integer(?CONFIG_CAT, ?MAX_CONNECT_FAILURES, 3)).
 
 -define(NOTIFY_PICKUP, <<"pickup">>).
 -define(NOTIFY_HANGUP, <<"hangup">>).
@@ -311,8 +312,8 @@ status(FSM) -> gen_fsm:sync_send_event(FSM, 'status').
 -spec start_link(ne_binary(), ne_binary(), pid(), wh_proplist()) -> startlink_ret().
 
 start_link(Supervisor, AgentJObj) when is_pid(Supervisor) ->
-    pvt_start_link(wh_json:get_value(<<"pvt_account_id">>, AgentJObj)
-                   ,wh_json:get_value(<<"_id">>, AgentJObj)
+    pvt_start_link(wh_doc:account_id(AgentJObj)
+                   ,wh_doc:id(AgentJObj)
                    ,Supervisor
                    ,[]
                    ,'false'
@@ -345,7 +346,7 @@ new_endpoint(FSM, EP) ->
     lager:debug("sending EP to ~p: ~p", [FSM, EP]).
 edited_endpoint(FSM, EP) ->
     lager:debug("sending EP to ~p: ~p", [FSM, EP]),
-    gen_fsm:send_all_state_event(FSM, {'edited_endpoint', wh_json:get_value(<<"_id">>, EP), EP}).
+    gen_fsm:send_all_state_event(FSM, {'edited_endpoint', wh_doc:id(EP), EP}).
 deleted_endpoint(FSM, EP) -> lager:debug("sending EP to ~p: ~p", [FSM, EP]).
 
 %%%===================================================================
@@ -367,34 +368,28 @@ deleted_endpoint(FSM, EP) -> lager:debug("sending EP to ~p: ~p", [FSM, EP]).
 %%--------------------------------------------------------------------
 init([AccountId, AgentId, Supervisor, Props, IsThief]) ->
     FSMCallId = <<"fsm_", AccountId/binary, "_", AgentId/binary>>,
-    put('callid', FSMCallId),
+    wh_util:put_callid(FSMCallId),
     lager:debug("started acdc agent fsm"),
 
     Self = self(),
     _P = wh_util:spawn(?MODULE, 'wait_for_listener', [Supervisor, Self, Props, IsThief]),
     lager:debug("waiting for listener in ~p", [_P]),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
 
-    {'ok', 'wait', #state{account_id=AccountId
-                          ,account_db=AccountDb
-                          ,agent_id=AgentId
-                          ,fsm_call_id=FSMCallId
-                          ,max_connect_failures=max_failures(AccountDb, AccountId)
+    {'ok', 'wait', #state{account_id = AccountId
+                          ,account_db = wh_util:format_account_id(AccountId, 'encoded')
+                          ,agent_id = AgentId
+                          ,fsm_call_id = FSMCallId
+                          ,max_connect_failures = max_failures(AccountId)
                          }}.
 
--spec max_failures(ne_binary(), ne_binary()) -> non_neg_integer().
--spec max_failures(wh_json:object()) -> non_neg_integer().
-max_failures(AccountDb, AccountId) ->
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+-spec max_failures(ne_binary() | wh_json:object()) -> non_neg_integer().
+max_failures(Account) when is_binary(Account) ->
+    case kz_account:fetch(Account) of
         {'ok', AccountJObj} -> max_failures(AccountJObj);
         {'error', _} -> ?MAX_FAILURES
-    end.
-
+    end;
 max_failures(JObj) ->
-    case wh_json:get_integer_value(<<"max_connect_failures">>, JObj) of
-        'undefined' -> ?MAX_FAILURES;
-        N -> N
-    end.
+    wh_json:get_integer_value(?MAX_CONNECT_FAILURES, JObj, ?MAX_FAILURES).
 
 -spec wait_for_listener(pid(), pid(), wh_proplist(), boolean()) -> 'ok'.
 wait_for_listener(Supervisor, FSM, Props, IsThief) ->
@@ -545,7 +540,7 @@ ready({'member_connect_win', JObj}, #state{agent_listener=AgentListener
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
     CallId = whapps_call:call_id(Call),
 
-    put('callid', CallId),
+    wh_util:put_callid(CallId),
 
     WrapupTimer = wh_json:get_integer_value(<<"Wrapup-Timeout">>, JObj, 0),
     CallerExitKey = wh_json:get_value(<<"Caller-Exit-Key">>, JObj, <<"#">>),
@@ -1258,7 +1253,7 @@ handle_info({'endpoint_edited', EP}, StateName, #state{endpoints=EPs
                                                        ,agent_id=AgentId
                                                        ,agent_listener=AgentListener
                                                       }=State) ->
-    EPId = wh_json:get_value(<<"_id">>, EP),
+    EPId = wh_doc:id(EP),
     case wh_json:get_value(<<"owner_id">>, EP) of
         AgentId ->
             lager:debug("device ~s edited, we're the owner, maybe adding it", [EPId]),
@@ -1271,7 +1266,7 @@ handle_info({'endpoint_deleted', EP}, StateName, #state{endpoints=EPs
                                                         ,account_id=AccountId
                                                         ,agent_listener=AgentListener
                                                        }=State) ->
-    EPId = wh_json:get_value(<<"_id">>, EP),
+    EPId = wh_doc:id(EP),
     lager:debug("device ~s deleted, maybe removing it", [EPId]),
     {'next_state', StateName, State#state{endpoints=maybe_remove_endpoint(EPId, EPs, AccountId, AgentListener)}, 'hibernate'};
 handle_info({'endpoint_created', EP}, StateName, #state{endpoints=EPs
@@ -1279,7 +1274,7 @@ handle_info({'endpoint_created', EP}, StateName, #state{endpoints=EPs
                                                         ,agent_id=AgentId
                                                         ,agent_listener=AgentListener
                                                        }=State) ->
-    EPId = wh_json:get_value(<<"_id">>, EP),
+    EPId = wh_doc:id(EP),
     case wh_json:get_value(<<"owner_id">>, EP) of
         AgentId ->
             lager:debug("device ~s created, we're the owner, maybe adding it", [EPId]),
@@ -1401,9 +1396,9 @@ clear_call(#state{fsm_call_id=FSMemberCallId
                   ,wrapup_ref=WRef
                   ,pause_ref=PRef
                  }=State, NextState)->
-    put('callid', FSMemberCallId),
+    wh_util:put_callid(FSMemberCallId),
 
-    ReadyForAction = not(NextState =:= 'wrapup' orelse NextState =:= 'paused'),
+    ReadyForAction = not (NextState =:= 'wrapup' orelse NextState =:= 'paused'),
     lager:debug("ready for action: ~s: ~s", [NextState, ReadyForAction]),
 
     _ = maybe_stop_timer(WRef, ReadyForAction),
@@ -1482,7 +1477,7 @@ start_outbound_call_handling(CallId, #state{agent_listener=AgentListener
                                             ,account_id=AccountId
                                             ,agent_id=AgentId
                                            }=State) when is_binary(CallId) ->
-    _ = put('callid', CallId),
+    wh_util:put_callid(CallId),
     lager:debug("agent making outbound call, not receiving ACDc calls"),
     acdc_agent_listener:outbound_call(AgentListener, CallId),
     acdc_agent_stats:agent_outbound(AccountId, AgentId, CallId),
@@ -1537,12 +1532,12 @@ find_sip_username(_EP, Username) -> Username.
 -spec find_endpoint_id(wh_json:object(), api_binary()) -> api_binary().
 
 find_endpoint_id(EP) ->
-    find_endpoint_id(EP, wh_json:get_value(<<"_id">>, EP)).
+    find_endpoint_id(EP, wh_doc:id(EP)).
 
 find_endpoint_id(EP, 'undefined') -> wh_json:get_value(<<"Endpoint-ID">>, EP);
 find_endpoint_id(_EP, EPId) -> EPId.
 
--spec monitor_endpoint(wh_json:object(), ne_binary(), server_ref()) -> any().
+-spec monitor_endpoint(wh_json:object(), ne_binary(), server_ref()) -> _.
 monitor_endpoint(EP, AccountId, AgentListener) ->
     %% Bind for outbound call requests
     acdc_agent_listener:add_endpoint_bindings(AgentListener
@@ -1553,7 +1548,7 @@ monitor_endpoint(EP, AccountId, AgentListener) ->
     catch gproc:reg(?ENDPOINT_UPDATE_REG(AccountId, find_endpoint_id(EP))),
     catch gproc:reg(?NEW_CHANNEL_REG(AccountId, find_username(EP))).
 
--spec unmonitor_endpoint(wh_json:object(), ne_binary(), server_ref()) -> any().
+-spec unmonitor_endpoint(wh_json:object(), ne_binary(), server_ref()) -> _.
 unmonitor_endpoint(EP, AccountId, AgentListener) ->
     %% Bind for outbound call requests
     acdc_agent_listener:remove_endpoint_bindings(AgentListener
@@ -1561,12 +1556,12 @@ unmonitor_endpoint(EP, AccountId, AgentListener) ->
                                         ,find_username(EP)
                                        ),
     %% Inform us of device changes
-    catch gproc:unreg(?ENDPOINT_UPDATE_REG(AccountId, wh_json:get_value(<<"_id">>, EP))),
+    catch gproc:unreg(?ENDPOINT_UPDATE_REG(AccountId, wh_doc:id(EP))),
     catch gproc:unreg(?NEW_CHANNEL_REG(AccountId, find_username(EP))).
 
--spec maybe_add_endpoint(ne_binary(), wh_json:object(), wh_json:objects(), ne_binary(), server_ref()) -> any().
+-spec maybe_add_endpoint(ne_binary(), wh_json:object(), wh_json:objects(), ne_binary(), server_ref()) -> _.
 maybe_add_endpoint(EPId, EP, EPs, AccountId, AgentListener) ->
-    case lists:partition(fun(E) -> wh_json:get_value(<<"_id">>, E) =:= EPId end, EPs) of
+    case lists:partition(fun(E) -> wh_doc:id(E) =:= EPId end, EPs) of
         {[], _} ->
             lager:debug("endpoint ~s not in our list, adding it", [EPId]),
             [begin monitor_endpoint(EP, AccountId, AgentListener), EP end | EPs];
@@ -1575,7 +1570,7 @@ maybe_add_endpoint(EPId, EP, EPs, AccountId, AgentListener) ->
 
 -spec maybe_remove_endpoint(ne_binary(), wh_json:objects(), ne_binary(), server_ref()) -> wh_json:objects().
 maybe_remove_endpoint(EPId, EPs, AccountId, AgentListener) ->
-    case lists:partition(fun(EP) -> wh_json:get_value(<<"_id">>, EP) =:= EPId end, EPs) of
+    case lists:partition(fun(EP) -> wh_doc:id(EP) =:= EPId end, EPs) of
         {[], _} -> EPs; %% unknown endpoint
         {[RemoveEP], EPs1} ->
             lager:debug("endpoint ~s in our list, removing it", [EPId]),
@@ -1671,7 +1666,7 @@ notify(Url, Method, Key, #state{account_id=AccountId
                                 ,agent_call_id=AgentCallId
                                 ,member_call_queue_id=QueueId
                                }) ->
-    put('callid', whapps_call:call_id(MemberCall)),
+    wh_util:put_callid(whapps_call:call_id(MemberCall)),
     Data = wh_json:from_list(
              props:filter_undefined(
                [{<<"account_id">>, AccountId}

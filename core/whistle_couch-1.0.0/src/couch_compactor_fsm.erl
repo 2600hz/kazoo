@@ -273,7 +273,7 @@ current() -> gen_fsm:sync_send_all_state_event(?SERVER, 'current').
 %%--------------------------------------------------------------------
 init([]) ->
     _ = random:seed(erlang:now()),
-    put('callid', ?MODULE),
+    wh_util:put_callid(?MODULE),
     self() ! '$maybe_start_auto_compaction_job',
     {'ok', 'ready', #state{conn='undefined'
                            ,admin_conn='undefined'
@@ -1186,7 +1186,7 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 -spec get_nodes() -> ne_binaries().
 get_nodes() ->
     {'ok', Nodes} = couch_mgr:admin_all_docs(<<"nodes">>),
-    shuffle([wh_json:get_value(<<"id">>, Node) || Node <- Nodes]).
+    shuffle([wh_doc:id(Node) || Node <- Nodes]).
 
 -spec get_nodes(ne_binary()) -> ne_binaries().
 get_nodes(Database) ->
@@ -1207,7 +1207,7 @@ get_admin_nodes(Database) ->
         'true' ->
             lager:debug("database '~s' is an admin DB", [Database]),
             {'ok', NodesJObj} = couch_mgr:admin_all_docs(<<"nodes">>),
-            shuffle([wh_json:get_value(<<"id">>, NodeJObj) || NodeJObj <- NodesJObj]);
+            shuffle([wh_doc:id(NodeJObj) || NodeJObj <- NodesJObj]);
         'false' -> []
     end.
 
@@ -1225,7 +1225,7 @@ encode_design_doc(Design) ->
 -spec node_dbs(server()) -> {'ok', ne_binaries()}.
 node_dbs(AdminConn) ->
     {'ok', Dbs} = couch_util:all_docs(AdminConn, <<"dbs">>, []),
-    {'ok', shuffle([<<"dbs">> | [wh_json:get_value(<<"id">>, Db) || Db <- Dbs]])}.
+    {'ok', shuffle([<<"dbs">> | [wh_doc:id(Db) || Db <- Dbs]])}.
 
 -spec db_shards(server(), ne_binary(), ne_binary()) -> ne_binaries().
 db_shards(AdminConn, N, D) ->
@@ -1256,7 +1256,7 @@ db_admin(AdminConn, D) ->
 -spec db_design_docs(server(), ne_binary()) -> ne_binaries().
 db_design_docs(Conn, D) ->
     case couch_util:all_design_docs(Conn, encode_db(D), []) of
-        {'ok', Designs} -> [encode_design_doc(wh_json:get_value(<<"id">>, Design)) || Design <- Designs];
+        {'ok', Designs} -> [encode_design_doc(wh_doc:id(Design)) || Design <- Designs];
         {'error', _} -> []
     end.
 
@@ -1335,7 +1335,7 @@ wait_for_pids(MaxWait, [{P,Ref}|Ps]) ->
 
 -spec compact_shard(server(), server(), ne_binary(), ne_binaries()) -> 'ok'.
 compact_shard(Conn, AdminConn, S, DDs) ->
-    put('callid', 'compact_shard'),
+    wh_util:put_callid('compact_shard'),
 
     wait_for_compaction(AdminConn, S),
 

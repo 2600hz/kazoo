@@ -43,7 +43,7 @@ init() ->
 -spec handle_req(wh_json:object(), proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = wapi_notifications:new_account_v(JObj),
-    whapps_util:put_callid(JObj),
+    wh_util:put_callid(JObj),
 
     lager:debug("a new account has been created, sending email notification"),
 
@@ -159,7 +159,7 @@ find_account([]) ->
     wh_json:new();
 find_account([Doc|Docs]) ->
     JObj = wh_json:get_value(<<"doc">>, Doc),
-    case wh_json:get_value(<<"pvt_type">>, JObj) of
+    case wh_doc:type(JObj) of
         <<"account">> -> JObj;
         _ -> find_account(Docs)
     end.
@@ -174,7 +174,7 @@ find_account([Doc|Docs]) ->
 find_admin([]) -> wh_json:new();
 find_admin([Doc|Docs]) ->
     JObj = wh_json:get_value(<<"doc">>, Doc),
-    case wh_json:get_value(<<"pvt_type">>, JObj) =:= <<"user">>
+    case wh_doc:type(JObj) =:= <<"user">>
         andalso wh_json:get_value(<<"priv_level">>, JObj) =:= <<"admin">>
     of
         'true' -> JObj;
