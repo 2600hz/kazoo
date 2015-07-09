@@ -11,6 +11,11 @@
 -include("../src/module/cf_temporal_route.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
+sort_wdays_test() ->
+    Sorted = [<<"monday">>, <<"tuesday">>, <<"wednesday">>, <<"thursday">>, <<"friday">>, <<"saturday">>, <<"sunday">>],
+    Shuffled = wh_util:shuffle_list(Sorted),
+    ?assertEqual(Sorted, cf_temporal_route:sort_wdays(Shuffled)).
+
 daily_recurrence_test() ->
     %% basic increment
     ?assertEqual({2011,1,2}, cf_temporal_route:next_rule_date(#rule{cycle = <<"daily">>, start_date={2011,1,1}}, {2011,1,1})),
