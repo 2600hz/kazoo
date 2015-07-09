@@ -127,7 +127,8 @@ node(Srv) -> gen_listener:call(Srv, 'node', ?MILLISECONDS_IN_SECOND).
 update_node(Srv, Node) -> gen_listener:cast(Srv, {'update_node', Node}).
 
 -spec transfer(pid(), atom(), wh_proplist()) -> 'ok'.
-transfer(Srv, TransferType, Props) -> gen_listener:cast(Srv, {TransferType, Props}).
+transfer(Srv, TransferType, Props) ->
+    gen_listener:cast(Srv, {TransferType, Props}).
 
 -spec queue_name(pid()) -> ne_binary().
 queue_name(Srv) -> gen_listener:queue_name(Srv).
@@ -743,7 +744,7 @@ specific_call_event_props(<<"RECORD_START">>, _, Props) ->
      ,{<<"Application-Response">>, props:get_first_defined([<<"Record-File-Path">>
                                                             ,<<"whistle_application_response">>
                                                            ], Props)
-      }    
+      }
     ];
 specific_call_event_props(<<"RECORD_STOP">>, _, Props) ->
     [{<<"Application-Name">>, <<"record">>}
@@ -954,16 +955,25 @@ get_fax_ecm_used(Props) ->
 -spec get_transfer_history(wh_proplist()) -> api_object().
 get_transfer_history(Props) ->
     SerializedHistory = kzd_freeswitch:transfer_history(Props),
-    case [HistJObj
-          || Trnsf <- ecallmgr_util:unserialize_fs_array(SerializedHistory),
-             (HistJObj = create_trnsf_history_object(binary:split(Trnsf, <<":">>, ['global']))) =/= 'undefined'
-         ]
-    of
+
+    case process_serialized_history(SerializedHistory) of
         [] -> 'undefined';
         History -> wh_json:from_list(History)
     end.
 
--spec create_trnsf_history_object(list()) -> {ne_binary(), wh_json:object()} | 'undefined'.
+-spec process_serialized_history(ne_binary()) ->
+                                        wh_json:json_proplist().
+process_serialized_history(SerializedHistory) ->
+    [HistJObj
+     || Trnsf <- ecallmgr_util:unserialize_fs_array(SerializedHistory),
+        (HistJObj = create_trnsf_history_object(Trnsf)) =/= 'undefined'
+    ].
+
+-spec create_trnsf_history_object(ne_binary() | ne_binaries()) ->
+                                         {ne_binary(), wh_json:object()} |
+                                         'undefined'.
+create_trnsf_history_object(<<_/binary>> = Trnsf) ->
+    create_trnsf_history_object(binary:split(Trnsf, <<":">>, ['global']));
 create_trnsf_history_object([Epoch, CallId, <<"att_xfer">>, Props]) ->
     [Transferee, Transferer] = binary:split(Props, <<"/">>),
     Trans = [{<<"Call-ID">>, CallId}
@@ -976,6 +986,7 @@ create_trnsf_history_object([Epoch, CallId, <<"bl_xfer">> | Props]) ->
     %% This looks confusing but FS uses the same delimiter to in the array
     %% as it does for inline dialplan actions (like those created during partial attended)
     %% so we have to put it together to take it apart... I KNOW! ARRRG
+
     Dialplan = lists:last(binary:split(wh_util:join_binary(Props, <<":">>), <<",">>)),
     [Exten | _] = binary:split(Dialplan, <<"/">>, ['global']),
     Trans = [{<<"Call-ID">>, CallId}
@@ -983,7 +994,7 @@ create_trnsf_history_object([Epoch, CallId, <<"bl_xfer">> | Props]) ->
              ,{<<"Extension">>, Exten}
             ],
     {Epoch, wh_json:from_list(Trans)};
-create_trnsf_history_object(_) ->
+create_trnsf_history_object(_Object) ->
     'undefined'.
 
 -spec get_hangup_cause(wh_proplist()) -> api_binary().

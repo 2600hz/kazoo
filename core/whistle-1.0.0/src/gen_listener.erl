@@ -244,13 +244,16 @@ nack(Srv, Delivery) -> gen_server:cast(Srv, {'nack', Delivery}).
 
 %% API functions that mirror gen_server:call,cast,reply
 -spec call(server_ref(), term()) -> term().
-call(Name, Request) -> gen_server:call(Name, {'$client_call', Request}).
+call(Name, Request) ->
+    gen_server:call(Name, {'$client_call', Request}).
 
 -spec call(server_ref(), term(), wh_timeout()) -> term().
-call(Name, Request, Timeout) -> gen_server:call(Name, {'$client_call', Request}, Timeout).
+call(Name, Request, Timeout) ->
+    gen_server:call(Name, {'$client_call', Request}, Timeout).
 
 -spec cast(server_ref(), term()) -> 'ok'.
-cast(Name, Request) -> gen_server:cast(Name, {'$client_cast', Request}).
+cast(Name, Request) ->
+    gen_server:cast(Name, {'$client_cast', Request}).
 
 -spec delayed_cast(server_ref(), term(), pos_integer()) -> 'ok'.
 delayed_cast(Name, Request, Wait) when is_integer(Wait), Wait > 0 ->

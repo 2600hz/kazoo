@@ -560,6 +560,11 @@ maybe_other_leg_answered(State, _CallId, _EndpointId) ->
     State.
 
 -spec handle_channel_bridge(state(), ne_binary(), ne_binary()) -> state().
+handle_channel_bridge(#state{call_id=CallId}=State
+                      ,CallId, CallId
+                     ) ->
+    lager:debug("a leg ~s bridged to self", [CallId]),
+    State;
 handle_channel_bridge(#state{call_id=CallId
                              ,other_leg=OtherLeg
                             }=State, CallId, OtherLeg) ->
@@ -600,6 +605,7 @@ handle_channel_bridge(#state{call_id=_CallId
     State#state{call_id=UUID
                 ,call=whapps_call:set_call_id(UUID, Call)
                }.
+
 
 -spec handle_channel_destroy(state(), ne_binary()) -> state().
 handle_channel_destroy(#state{call_id=CallId
