@@ -121,6 +121,8 @@
           %% Post playbak
           ,keep = <<"1">>
           ,replay = <<"2">>
+          ,prev = <<"4">>
+          ,next = <<"6">>
           ,delete = <<"7">>
          }).
 -type vm_keys() :: #keys{}.
@@ -740,7 +742,12 @@ message_count_prompts(New, Saved) ->
 %%--------------------------------------------------------------------
 -spec play_messages(wh_json:objects(), non_neg_integer(), mailbox(), whapps_call:call()) ->
                            'ok' | 'complete'.
-play_messages([H|T]=Messages, Count, #mailbox{timezone=Timezone}=Box, Call) ->
+play_messages(Messages, Count, Box, Call) ->
+    play_messages(Messages, [], Count, Box, Call).
+
+-spec play_messages(wh_json:objects(), wh_json:objects(), non_neg_integer(), mailbox(), whapps_call:call()) ->
+                           'ok' | 'complete'.
+play_messages([H|T]=Messages, PrevMessages, Count, #mailbox{timezone=Timezone}=Box, Call) ->
     Message = get_message(H, Call),
     lager:info("playing mailbox message ~p (~s)", [Count, Message]),
     Prompt = [{'prompt', <<"vm-message_number">>}
@@ -755,12 +762,18 @@ play_messages([H|T]=Messages, Count, #mailbox{timezone=Timezone}=Box, Call) ->
             lager:info("caller choose to save the message"),
             _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
             _ = set_folder(?FOLDER_SAVED, H, Box, Call),
-            play_messages(T, Count, Box, Call);
+            play_messages(T, [H|PrevMessages], Count, Box, Call);
+        {'ok', 'prev'} ->
+            lager:info("caller choose to listen previous message"),
+            play_prev_message(Messages, PrevMessages, Count, Box, Call);
+        {'ok', 'next'} ->
+            lager:info("caller choose to listen next message"),
+            play_next_message(Messages, PrevMessages, Count, Box, Call);
         {'ok', 'delete'} ->
             lager:info("caller choose to delete the message"),
             _ = whapps_call_command:b_prompt(<<"vm-deleted">>, Call),
             _ = set_folder(?FOLDER_DELETED, H, Box, Call),
-            play_messages(T, Count, Box, Call);
+            play_messages(T, PrevMessages, Count, Box, Call);
         {'ok', 'return'} ->
             lager:info("caller choose to return to the main menu"),
             _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
@@ -768,14 +781,27 @@ play_messages([H|T]=Messages, Count, #mailbox{timezone=Timezone}=Box, Call) ->
             'complete';
         {'ok', 'replay'} ->
             lager:info("caller choose to replay"),
-            play_messages(Messages, Count, Box, Call);
+            play_messages(Messages, PrevMessages, Count, Box, Call);
         {'error', _} ->
             lager:info("error during message playback")
     end;
-play_messages([], _, _, _) ->
+play_messages([], _, _, _, _) ->
     lager:info("all messages in folder played to caller"),
     'complete'.
 
+-spec play_next_message(wh_json:objects(), wh_json:objects(), non_neg_integer(), mailbox(), whapps_call:call()) ->
+                           'ok' | 'complete'.
+play_next_message([_|[]] = Messages, PrevMessages, Count, Box, Call) ->
+    play_messages(Messages, PrevMessages, Count, Box, Call);
+play_next_message([H|T], PrevMessages, Count, Box, Call) ->
+    play_messages(T, [H|PrevMessages], Count, Box, Call).
+
+-spec play_prev_message(wh_json:objects(), wh_json:objects(), non_neg_integer(), mailbox(), whapps_call:call()) ->
+                           'ok' | 'complete'.
+play_prev_message(Messages, [] = PrevMessages, Count, Box, Call) ->
+    play_messages(Messages, PrevMessages, Count, Box, Call);
+play_prev_message(Messages, [H|T], Count, Box, Call) ->
+    play_messages([H|Messages], T, Count, Box, Call).
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -783,7 +809,7 @@ play_messages([], _, _, _) ->
 %% user provides a valid option
 %% @end
 %%--------------------------------------------------------------------
--type message_menu_returns() :: {'ok', 'keep' | 'delete' | 'return' | 'replay'}.
+-type message_menu_returns() :: {'ok', 'keep' | 'delete' | 'return' | 'replay' | 'prev' | 'next'}.
 
 -spec message_menu(mailbox(), whapps_call:call()) ->
                           {'error', 'channel_hungup' | 'channel_unbridge' | wh_json:object()} |
@@ -796,6 +822,8 @@ message_menu(Box, Call) ->
 message_menu(Prompt, #mailbox{keys=#keys{replay=Replay
                                          ,keep=Keep
                                          ,delete=Delete
+                                         ,prev=Prev
+                                         ,next=Next
                                          ,return_main=ReturnMain
                                         }
                               ,interdigit_timeout=Interdigit
@@ -814,6 +842,8 @@ message_menu(Prompt, #mailbox{keys=#keys{replay=Replay
         {'ok', Delete} -> {'ok', 'delete'};
         {'ok', ReturnMain} -> {'ok', 'return'};
         {'ok', Replay} -> {'ok', 'replay'};
+        {'ok', Prev} -> {'ok', 'prev'};
+        {'ok', Next} -> {'ok', 'next'};
         {'error', _}=E -> E;
         _ -> message_menu(Box, Call)
     end.
@@ -1648,6 +1678,8 @@ populate_keys(Call) ->
           ,return_main = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"return_main_menu">>], JObj, Default#keys.return_main)
           ,keep = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"keep">>], JObj, Default#keys.keep)
           ,replay = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"replay">>], JObj, Default#keys.replay)
+          ,prev = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"prev">>], JObj, Default#keys.prev)
+          ,next = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"next">>], JObj, Default#keys.next)
           ,delete = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"delete">>], JObj, Default#keys.delete)
          }.
 
