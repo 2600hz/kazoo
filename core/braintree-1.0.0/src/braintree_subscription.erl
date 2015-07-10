@@ -22,7 +22,7 @@
 -export([get_payment_token/1]).
 -export([update_payment_token/2]).
 -export([find/1]).
--export([create/1, create/2]).
+-export([create/1]).
 -export([update/1]).
 -export([cancel/1]).
 -export([xml_to_record/1, xml_to_record/2]).
@@ -225,7 +225,6 @@ find(SubscriptionId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create(subscription()) -> subscription().
--spec create(ne_binary(), ne_binary()) -> subscription().
 
 create(#bt_subscription{id='undefined'}=Subscription) ->
     create(Subscription#bt_subscription{id=new_subscription_id()});
@@ -235,13 +234,11 @@ create(#bt_subscription{}=Subscription) ->
     Xml = braintree_request:post(Url, Request),
     xml_to_record(Xml).
 
-create(Plan, Token) ->
-    create(#bt_subscription{payment_token=Token, plan_id=Plan}).
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Updates a subscription with the given record
+%% Updates a subscription with the given record.
+%% Note: a cancelled subscription cannot be updated.
 %% @end
 %%--------------------------------------------------------------------
 -spec update(subscription()) -> subscription().
@@ -249,6 +246,7 @@ update(#bt_subscription{create='true'}=Subscription) ->
     create(Subscription);
 update(#bt_subscription{id=SubscriptionId}=Subscription) ->
     Url = url(SubscriptionId),
+    %% Fixes: 91919: First Billing Date cannot be updated
     Prepared = Subscription#bt_subscription{billing_first_date = 'undefined'},
     Request = record_to_xml(Prepared, 'true'),
     Xml = braintree_request:put(Url, Request),
@@ -423,11 +421,8 @@ increment_discount_quantity(SubscriptionId, DiscountId) ->
 %%--------------------------------------------------------------------
 -spec update_payment_token(subscription(), ne_binary()) -> subscription().
 update_payment_token(#bt_subscription{}=Subscription, PaymentToken) ->
-    NextBillingDate = Subscription#bt_subscription.next_bill_date,
-    Subscription#bt_subscription{ id = 'undefined'
-                                , start_immediately = 'false'
-                                , payment_token = PaymentToken
-                                , billing_first_date = NextBillingDate
+    Subscription#bt_subscription{payment_token = PaymentToken
+                                 ,start_immediately = 'false'
                                 }.
 
 %%--------------------------------------------------------------------
@@ -437,8 +432,8 @@ update_payment_token(#bt_subscription{}=Subscription, PaymentToken) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec is_cancelled(subscription()) -> boolean().
-is_cancelled(#bt_subscription{status= <<"Canceled">>}) -> 'true';
-is_cancelled(_Subscription) -> 'false'.
+is_cancelled(#bt_subscription{status = <<"Canceled">>}) -> 'true';
+is_cancelled(#bt_subscription{}) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @public
