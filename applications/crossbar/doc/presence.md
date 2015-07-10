@@ -43,10 +43,10 @@ Sometimes folks subscribe for parking slots or other values that aren't represen
 
 ### GET presence state
 
-    curl -v -X GET http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/presence?extension="{EXTENSION}"
+    curl -v -X GET http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/presence/{EXTENSION}
 
 Where `{EXTENSION}` could be `*3101`, `110011`, or whatever other extensions are allowed.
 
 ### POST to reset presence state
 
-    curl -v -X POST http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/presence -d '{"data":{"reset":true, "extension":"{EXTENSION}"}}'
+    curl -v -X POST http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/presence/{EXTENSION} -d '{"data":{"reset":true}'
