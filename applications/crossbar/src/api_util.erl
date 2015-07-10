@@ -344,7 +344,7 @@ handle_max_filesize_exceeded(Context, Req1) ->
                  ,cb_context:add_validation_error(<<"file">>
                                                   ,<<"maxLength">>
                                                   ,wh_json:from_list(
-                                                     [{<<"message">>, <<"String must not be more than ", MaxLen/binary, " characters">>}
+                                                     [{<<"message">>, <<"Files must not be more than ", MaxLen/binary, " bytes">>}
                                                       ,{<<"target">>, Maximum}
                                                      ])
                                                   ,Context

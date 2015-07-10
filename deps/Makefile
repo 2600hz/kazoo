@@ -31,6 +31,7 @@ clean: $(MAKEDIRS)
 	rm -rf gen_smtp-0.0.1
 	rm -rf erlydtl-0.9.0
 	rm -rf jesse-1.0.1
+	rm -rf nksip-0.4
 
 $(MAKEDIRS):
 	$(MAKE) -C $(@D) $(ACTION)
