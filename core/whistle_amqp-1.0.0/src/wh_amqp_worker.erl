@@ -61,7 +61,7 @@
 -define(CONSUME_OPTIONS, []).
 
 -type publish_fun() :: fun((api_terms()) -> _).
--type validate_fun() :: fun((api_terms()) -> boolean()). 
+-type validate_fun() :: fun((api_terms()) -> boolean()).
 -type collect_until_acc_fun() :: fun((wh_json:objects(), any()) -> boolean() | {boolean(), any()}).
 -type collect_until_fun() :: fun((wh_json:objects()) -> boolean()) | collect_until_acc_fun().
 
@@ -69,9 +69,16 @@
 
 -type collect_until() :: collect_until_fun() |
                          whapp() |
-                         {whapp(), validate_fun() | boolean()} |
-                         {whapp(), validate_fun(), boolean()}.
+                         {whapp(), validate_fun() | boolean()} | %% {Whapp, VFun | IncludeFederated}
+                         {whapp(), validate_fun(), boolean()} |  %% {Whapp, VFun, IncludeFederated}
+                         {whapp(), boolean(), boolean()} |       %% {Whapp, IncludeFederated, IsShared}
+                         {whapp(), validate_fun(), boolean(), boolean()}. %% {Whapp, VFun, IncludeFederated. IsShared}
 -type timeout_or_until() :: wh_timeout() | collect_until().
+
+%% case {IsFederated, IsShared} of
+%%  {'true', 'true'} -> Get from {0,1} whapp instance per zone
+%%  {'false', 'true'} -> %% Get from {0,1} whapp instance in the local zone
+%%  _Otherwise -> Get from all instances, either local or federated
 
 -export_type([publish_fun/0
               ,validate_fun/0
@@ -287,6 +294,8 @@ call_collect(Req, PubFun, {_, _}=Until) ->
     call_collect(Req, PubFun, Until, default_timeout());
 call_collect(Req, PubFun, {_, _, _}=Until) ->
     call_collect(Req, PubFun, Until, default_timeout());
+call_collect(Req, PubFun, {_, _, _, _}=Until) ->
+    call_collect(Req, PubFun, Until, default_timeout());
 call_collect(Req, PubFun, Timeout) ->
     call_collect(Req, PubFun, collect_until_timeout(), Timeout).
 
@@ -312,6 +321,13 @@ call_collect(Req, PubFun, {Whapp, VFun, IncludeFederated}, Timeout)
        andalso is_boolean(IncludeFederated) ->
     CollectFromWhapp = collect_from_whapp_or_validate(Whapp, VFun, IncludeFederated),
     call_collect(Req, PubFun, CollectFromWhapp, Timeout);
+call_collect(Req, PubFun, {Whapp, VFun, IncludeFederated, IsShared}, Timeout)
+  when (is_atom(Whapp) orelse is_binary(Whapp))
+       andalso is_function(VFun)
+       andalso is_boolean(IncludeFederated)
+       andalso is_boolean(IsShared) ->
+    CollectFromWhapp = collect_from_whapp_or_validate(Whapp, VFun, IncludeFederated, IsShared),
+    call_collect(Req, PubFun, CollectFromWhapp, Timeout);
 call_collect(Req, PubFun, Whapp, Timeout)
   when is_atom(Whapp) orelse is_binary(Whapp) ->
     call_collect(Req, PubFun, collect_from_whapp(Whapp), Timeout);
@@ -322,7 +338,7 @@ call_collect(Req, PubFun, UntilFun, Timeout)
         Worker -> call_collect(Req, PubFun, UntilFun, Timeout, Worker)
     end.
 
-call_collect(Req, PubFun, {UntilFun, Acc}, Timeout, Worker) 
+call_collect(Req, PubFun, {UntilFun, Acc}, Timeout, Worker)
   when is_function(UntilFun, 2) ->
     call_collect(Req, PubFun, UntilFun, Timeout, Acc, Worker);
 call_collect(Req, PubFun, UntilFun, Timeout, Worker) ->
@@ -380,10 +396,10 @@ collect_from_whapp(Whapp, IncludeFederated) ->
 -spec collect_from_whapp(text(), boolean(), boolean()) -> collect_until_fun().
 collect_from_whapp(Whapp, IncludeFederated, IsShared) ->
     Count = case {IncludeFederated, IsShared} of
-                {'true', 'true'} -> wh_nodes:whapp_zone_count(Whapp);
-                {'false', 'true'} -> 1;
-                _ -> wh_nodes:whapp_count(Whapp, IncludeFederated)
-            end,                
+                {'true', 'true'} -> wh_nodes:whapp_zone_count(Whapp); %% Get from {0,1} whapp instance per zone
+                {'false', 'true'} -> 1; %% Get from one whapp instance
+                _ -> wh_nodes:whapp_count(Whapp, IncludeFederated) %% Get from all instances, either local or federated
+            end,
     lager:debug("attempting to collect ~p responses from ~s", [Count, Whapp]),
     fun(Responses) -> length(Responses) >= Count end.
 
@@ -393,8 +409,24 @@ collect_from_whapp_or_validate(Whapp, VFun) ->
 
 -spec collect_from_whapp_or_validate(text(),validate_fun(), boolean()) -> collect_until_fun().
 collect_from_whapp_or_validate(Whapp, VFun, IncludeFederated) ->
+    collect_from_whapp_or_validate(Whapp, VFun, IncludeFederated, 'false').
+
+-spec collect_from_whapp_or_validate(text(),validate_fun(), boolean(), boolean()) -> collect_until_fun().
+collect_from_whapp_or_validate(Whapp, VFun, 'true', 'true') ->
+    Count = wh_nodes:whapp_zone_count(Whapp),
+    lager:debug("attempting to collect ~p responses from ~s or the first valid", [Count, Whapp]),
+    collect_or_validate_fun(VFun, Count);
+collect_from_whapp_or_validate(Whapp, VFun, 'false', 'true') ->
+    Count = 1,
+    lager:debug("attempting to collect ~p responses from ~s or the first valid", [Count, Whapp]),
+    collect_or_validate_fun(VFun, Count);
+collect_from_whapp_or_validate(Whapp, VFun, IncludeFederated, 'false') ->
     Count = wh_nodes:whapp_count(Whapp, IncludeFederated),
     lager:debug("attempting to collect ~p responses from ~s or the first valid", [Count, Whapp]),
+    collect_or_validate_fun(VFun, Count).
+
+-spec collect_or_validate_fun(validate_fun(), pos_integer()) -> collect_until_fun().
+collect_or_validate_fun(VFun, Count) ->
     fun([Response|_]=Responses) ->
             length(Responses) >= Count
                 orelse VFun(Response)
@@ -478,7 +510,7 @@ handle_call({'request', _ReqProp, _, _, _}, _, #state{flow='false'}=State) ->
     {'reply', {'error', 'flow_control'}, reset(State)};
 handle_call({'request', _ReqProp, _, _, _}, _, #state{queue='undefined'}=State) ->
     lager:debug("unable to publish request prior to queue creation"),
-    {'reply', {'error', 'timeout'}, reset(State)};
+    {'reply', {'error', 'not_ready'}, reset(State)};
 handle_call({'request', ReqProp, PublishFun, VFun, Timeout}
             ,{ClientPid, _}=From
             ,#state{queue=Q}=State
@@ -518,7 +550,7 @@ handle_call({'call_collect', _ReqProp, _, _, _, _}, _, #state{flow='false'}=Stat
     {'reply', {'error', 'flow_control'}, reset(State)};
 handle_call({'call_collect', _ReqProp, _, _, _, _}, _, #state{queue='undefined'}=State) ->
     lager:debug("unable to publish collect request prior to queue creation"),
-    {'reply', {'error', 'timeout'}, reset(State)};
+    {'reply', {'error', 'not_ready'}, reset(State)};
 handle_call({'call_collect', ReqProp, PublishFun, UntilFun, Timeout, Acc}
             ,{ClientPid, _}=From
             ,#state{queue=Q}=State
@@ -664,7 +696,7 @@ handle_cast({'event', MsgId, JObj}, #state{current_msg_id = MsgId
                     gen_server:reply(From, {'ok', JObj}),
                     {'noreply', reset(State), 'hibernate'};
                 'true' ->
-                    lager:debug("defered response for msg id ~s, waiting for primary response", [MsgId]),
+                    lager:debug("deferred response for msg id ~s, waiting for primary response", [MsgId]),
                     {'noreply', State#state{defer_response=JObj}, 'hibernate'}
             end;
         'false' ->
@@ -685,15 +717,17 @@ handle_cast({'event', MsgId, JObj}, #state{current_msg_id = MsgId
                                            ,responses = Resps
                                            ,acc = Acc
                                            ,req_start_time = StartTime
-                                          }=State) 
+                                          }=State)
   when is_list(Resps) andalso is_function(UntilFun, 2) ->
     _ = wh_util:put_callid(JObj),
     lager:debug("recv message ~s", [MsgId]),
     Responses = [JObj | Resps],
     case UntilFun(Responses, Acc) of
         'true' ->
-            lager:debug("responses have apparently met the criteria for the client, returning", []),
-            lager:debug("response for msg id ~s took ~b micro to return", [MsgId, timer:now_diff(os:timestamp(), StartTime)]),
+            lager:debug("responses have apparently met the criteria for the client, returning"),
+            lager:debug("response for msg id ~s took ~bus to return"
+                        ,[MsgId, wh_util:elapsed_us(StartTime)]
+                       ),
             gen_server:reply(From, {'ok', Responses}),
             {'noreply', reset(State), 'hibernate'};
         'false' ->
@@ -712,8 +746,10 @@ handle_cast({'event', MsgId, JObj}, #state{current_msg_id = MsgId
     Responses = [JObj | Resps],
     case UntilFun(Responses) of
         'true' ->
-            lager:debug("responses have apparently met the criteria for the client, returning", []),
-            lager:debug("response for msg id ~s took ~b micro to return", [MsgId, timer:now_diff(os:timestamp(), StartTime)]),
+            lager:debug("responses have apparently met the criteria for the client, returning"),
+            lager:debug("response for msg id ~s took ~bus to return"
+                        ,[MsgId, wh_util:elapsed_us(StartTime)]
+                       ),
             gen_server:reply(From, {'ok', Responses}),
             {'noreply', reset(State), 'hibernate'};
         'false' ->
