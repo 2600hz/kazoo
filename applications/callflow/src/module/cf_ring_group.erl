@@ -291,10 +291,9 @@ random_integer(I) ->
 
 -spec repeats(wh_json:object()) -> pos_integer().
 repeats(Data) ->
-    case wh_json:get_integer_value(<<"repeats">>, Data) of
-        'undefined' -> 1;
-        N when N < 1 -> 1;
-        N -> N
+    case wh_json:get_integer_value(<<"repeats">>, Data, 1) of
+        N when N >= 0 -> N;
+        _ -> 1
     end.
 
 -spec strategy(wh_json:object()) -> ne_binary().
