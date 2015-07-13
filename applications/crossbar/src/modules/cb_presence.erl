@@ -177,6 +177,7 @@ publish_presence_reset(Realm, PresenceId) ->
     lager:debug("resetting ~s @ ~s", [PresenceId, Realm]),
     API = [{<<"Realm">>, Realm}
            ,{<<"Username">>, PresenceId}
+           ,{<<"Msg-ID">>, wh_util:get_callid()}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     wh_amqp_worker:cast(API, fun wapi_presence:publish_reset/1).
