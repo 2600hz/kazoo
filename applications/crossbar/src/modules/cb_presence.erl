@@ -159,7 +159,6 @@ send_reset(Context, []) ->
     lager:debug("nothing to reset"),
     crossbar_util:response(<<"nothing to reset">>, Context);
 send_reset(Context, [_|_]=Things) ->
-    lager:debug("reseting things: ~p", [Things]),
     publish_reset(cb_context:account_realm(Context), Things),
     crossbar_util:response_202(<<"reset commands sent">>, Context);
 send_reset(Context, Thing) ->
@@ -167,18 +166,27 @@ send_reset(Context, Thing) ->
 
 -spec publish_reset(ne_binary(), wh_json:objects()) -> 'ok'.
 publish_reset(Realm, Things) ->
-    _ = [publish_presence_reset(Realm, kz_device:presence_id(Thing))
+    _ = [publish_presence_reset(Realm, find_presence_id(Thing))
          || Thing <- Things
         ],
     'ok'.
 
--spec publish_presence_reset(ne_binary(), ne_binary()) -> 'ok'.
+-spec publish_presence_reset(ne_binary(), api_binary()) -> 'ok'.
+publish_presence_reset(_Realm, 'undefined') -> 'ok';
 publish_presence_reset(Realm, PresenceId) ->
+    lager:debug("resetting ~s @ ~s", [PresenceId, Realm]),
     API = [{<<"Realm">>, Realm}
            ,{<<"Username">>, PresenceId}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     wh_amqp_worker:cast(API, fun wapi_presence:publish_reset/1).
+
+-spec find_presence_id(wh_json:object()) -> ne_binary().
+find_presence_id(JObj) ->
+    case kz_device:is_device(JObj) of
+        'true' -> kz_device:presence_id(JObj);
+        'false' -> kzd_user:presence_id(JObj)
+    end.
 
 %%%===================================================================
 %%% Internal functions
