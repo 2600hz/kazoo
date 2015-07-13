@@ -2,10 +2,9 @@
 %%% @copyright (C) 2013-2015, 2600Hz INC
 %%% @doc
 %%%
-%%%
 %%% @end
 %%% @contributors
-%%%   Peter Defebvre
+
 %%%-------------------------------------------------------------------
 -module('cb_presence').
 
@@ -14,7 +13,6 @@
          ,resource_exists/0, resource_exists/1
          ,validate/1, validate/2
          ,post/1, post/2
-         ,collect_presentities/2
         ]).
 
 -include("../crossbar.hrl").
@@ -44,9 +42,9 @@ init() ->
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
-    [?HTTP_GET, ?HTTP_POST].
+    [?HTTP_POST].
 allowed_methods(_Extension) ->
-    [?HTTP_GET, ?HTTP_POST].
+    [?HTTP_POST].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -74,143 +72,114 @@ resource_exists(_Extension) -> 'true'.
 validate(Context) ->
     validate_thing(Context, cb_context:req_verb(Context)).
 
-validate_thing(Context, ?HTTP_GET) ->
-    validate_thing_presence(Context, cb_context:req_nouns(Context));
+validate(Context, _Extension) ->
+    cb_context:set_resp_status(Context, 'success').
+
 validate_thing(Context, ?HTTP_POST) ->
     validate_thing_reset(Context, cb_context:req_nouns(Context)).
 
-validate_thing_presence(Context, [{<<"presence">>, []}
-                                  ,{<<"devices">>, [DeviceId]}
-                                  ,{<<"accounts">>, [_AccountId]}
-                                 ]) ->
-    validate_device_presence(Context, DeviceId);
-validate_thing_presence(Context, [{<<"presence">>, []}
-                                  ,{<<"users">>, [UserId]}
-                                  ,{<<"accounts">>, [_AccountId]}
-                                 ]) ->
-    validate_user_presence(Context, UserId);
-validate_thing_presence(Context, _ReqNouns) ->
+validate_thing_reset(Context, [{<<"presence">>, []}
+                               ,{<<"devices">>, [DeviceId]}
+                               ,{<<"accounts">>, [_AccountId]}
+                              ]) ->
+    maybe_load_thing(Context, DeviceId);
+validate_thing_reset(Context, [{<<"presence">>, []}
+                               ,{<<"users">>, [UserId]}
+                               ,{<<"accounts">>, [_AccountId]}
+                              ]) ->
+    case is_reset_request(Context) of
+        'true' -> validate_user_reset(Context, UserId);
+        'false' -> reset_validation_error(Context)
+    end;
+validate_thing_reset(Context, _ReqNouns) ->
     crossbar_util:response_faulty_request(Context).
 
-validate_device_presence(Context, DeviceId) ->
-    Context1 = cb_context:load(DeviceId, Context),
+-spec validate_user_reset(cb_context:context(), ne_binary()) -> cb_context:context().
+validate_user_reset(Context, UserId) ->
+    Context1 = cb_context:load(UserId, Context),
     case cb_context:resp_status(Context1) of
         'success' ->
-            PresenceState = fetch_device_presence_state(Context1),
-            crossbar_util:response(PresenceState, Context1);
+            maybe_load_user_devices(Context1);
         _Status ->
-            Context1
+            Context
     end.
 
-fetch_device_presence_state(Context) ->
-    DeviceJObj = cb_context:doc(Context),
-    PresenceId = kz_device:presence_id(DeviceJObj),
-    Realm = cb_context:account_realm(Context),
+-spec maybe_load_user_devices(cb_context:context()) -> cb_context:context().
+maybe_load_user_devices(Context) ->
+    User = cb_context:doc(Context),
+    case kzd_user:presence_id(User) of
+        'undefined' -> load_user_devices(Context);
+        _PresenceId -> Context
+    end.
 
-    lager:debug("fetching presence for ~s @ ~s", [PresenceId, Realm]),
+-spec load_user_devices(cb_context:context()) -> cb_context:context().
+load_user_devices(Context) ->
+    User = cb_context:doc(Context),
+    Devices = kzd_user:devices(User),
+    cb_context:set_doc(Devices).
 
-    Req = [{<<"Realm">>, Realm}
+-spec maybe_load_thing(cb_context:context(), ne_binary()) -> cb_context:context().
+maybe_load_thing(Context, ThingId) ->
+    case is_reset_request(Context) of
+        'true' -> cb_context:load(ThingId, Context);
+        'false' ->
+            lager:debug("user failed to include reset=true"),
+            reset_validation_error(Context)
+    end.
+
+-spec is_reset_request(cb_context:context()) -> boolean().
+is_reset_request(Context) ->
+    wh_util:is_true(cb_context:req_value(Context, <<"reset">>)).
+
+-spec reset_validation_error(cb_context:context()) -> cb_context:context().
+reset_validation_error(Context) ->
+    cb_context:add_validation_error(<<"reset">>
+                                    ,<<"required">>
+                                    ,wh_json:from_list(
+                                       [{<<"message">>, <<"Field must be set to true">>}
+                                        ,{<<"target">>, <<"required">>}
+                                       ]
+                                      )
+                                    ,Context
+                                   ).
+
+-spec post(cb_context:context()) -> cb_context:context().
+post(Context) ->
+    Things = cb_context:doc(Context),
+    send_reset(Context, Things).
+
+-spec post(cb_context:context(), ne_binary()) -> cb_context:context().
+post(Context, Extension) ->
+    publish_presence_reset(cb_context:account_realm(Context), Extension),
+    crossbar_util:response_202(<<"reset command sent for extension ", Extension/binary>>, Context).
+
+-spec send_reset(cb_context:context(), wh_json:object() | wh_json:objects()) ->
+                        cb_context:context().
+send_reset(Context, []) ->
+    lager:debug("nothing to reset"),
+    crossbar_util:response(<<"nothing to reset">>, Context);
+send_reset(Context, [_|_]=Things) ->
+    lager:debug("reseting things: ~p", [Things]),
+    publish_reset(cb_context:account_realm(Context), Things),
+    crossbar_util:response_202(<<"reset commands sent">>, Context);
+send_reset(Context, Thing) ->
+    send_reset(Context, [Thing]).
+
+-spec publish_reset(ne_binary(), wh_json:objects()) -> 'ok'.
+publish_reset(Realm, Things) ->
+    _ = [publish_presence_reset(Realm, kz_device:presence_id(Thing))
+         || Thing <- Things
+        ],
+    'ok'.
+
+-spec publish_presence_reset(ne_binary(), ne_binary()) -> 'ok'.
+publish_presence_reset(Realm, PresenceId) ->
+    API = [{<<"Realm">>, Realm}
            ,{<<"Username">>, PresenceId}
-           ,{<<"Event-Package">>, cb_context:req_param(Context, <<"event">>)}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case wh_amqp_worker:call_collect(Req
-                                     ,fun wapi_presence:publish_search_req/1
-                                     ,{'omnipresence', fun wapi_presence:search_resp_v/1, 'true', 'true'}
-                                    )
-    of
-        {'ok', JObjs} ->
-            J = lists:foldl(fun extract_subscriptions/2, wh_json:new(), JObjs),
-            JObj = wh_json:from_list([{<<"subscriptions">>, J}]),
-            crossbar_util:response(JObj, Context);
-        {'timeout', JObjs} ->
-            J = lists:foldl(fun extract_subscriptions/2, wh_json:new(), JObjs),
-            JObj = wh_json:from_list([{<<"subscriptions">>, J}
-                                      ,{<<"timeout">>, 'true'}
-                                     ]),
-            crossbar_util:response(JObj, Context);
-        {'error', Reason} ->
-            crossbar_util:response('error', wh_util:to_binary(Reason), 500, Context)
-    end.
+    wh_amqp_worker:cast(API, fun wapi_presence:publish_reset/1).
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-publish_search(<<"presentity">>, Realm, Context) ->
-    publish_presentity_search_req(Realm, Context).
-
-publish_presentity_search_req('undefined', Context) ->
-    crossbar_util:response('error', <<"realm could not be found">>, 500, Context);
-publish_presentity_search_req(Realm, Context) ->
-    Req = [{<<"Realm">>, Realm}
-           ,{<<"Event-Package">>, cb_context:req_param(Context, <<"event">>)}
-           ,{<<"Scope">>, <<"presentity">>}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    Count = wh_nodes:whapp_count(<<"kamailio">>, 'true'),
-    lager:debug("attempting to collect ~p responses from kamailio", [Count]),
-    case wh_amqp_worker:call_collect(Req
-                                     ,fun wapi_omnipresence:publish_search_req/1
-                                     ,{fun collect_presentities/2 , {0, Count}}
-                                    )
-    of
-        {'ok', JObjs} ->
-            J = lists:foldl(fun extract_presentities/2, wh_json:new(), JObjs),
-            JObj = wh_json:set_value(<<"Presentities">>, J, wh_json:new()),
-            Context#cb_context{resp_status='success', resp_data=JObj};
-        {'timeout', JObjs} ->
-            J = lists:foldl(fun extract_presentities/2, wh_json:new(), JObjs),
-            JObj = wh_json:set_values([{<<"Presentities">>, J}
-                                       ,{<<"timeout">>, 'true'}
-                                      ], wh_json:new()),
-            Context#cb_context{resp_status='success', resp_data=JObj};
-        {'error', Reason} ->
-            crossbar_util:response('error', wh_util:to_binary(Reason), 500, Context)
-    end.
-
-collect_presentities([Response|_], {Count, Max}) ->
-    Evt = wh_json:get_value(<<"Event-Name">>, Response),
-    case Count + check_event(Evt) of
-         Max -> 'true';
-        V -> {'false', {V, Max}}
-    end.
-
-check_event(<<"search_resp">>) -> 1;
-check_event(_) -> 0.
-
-extract_presentities(JObj, Acc) ->
-    Event = wh_json:get_value(<<"Event-Name">>, JObj),
-    maybe_process_event(Event, JObj, Acc).
-
-maybe_process_event(<<"search_partial_resp">>, JObj, Acc) ->
-    Keys = wh_json:get_keys(<<"Subscriptions">>, JObj),
-    Node = wh_json:get_value(<<"Node">>, JObj),
-    process_event(Keys, Node, JObj, Acc);
-maybe_process_event(_Event, _JObj, Acc) -> Acc.
-
-process_event([], __Node, _JObj, Acc) -> Acc;
-process_event([Key | Keys], Node, JObj, Acc) ->
-    V = wh_json:get_value([<<"Subscriptions">>, Key], JObj),
-    process_event(Keys, Node, JObj, wh_json:set_value([Key, Node], V , Acc)).
-
-extract_subscriptions(JObj, Acc) ->
-    Subs = wh_json:get_value(<<"Subscriptions">>, JObj, []),
-    lists:foldl(fun extract_subscription/2, Acc, Subs).
-
-extract_subscription(JObj, Acc) ->
-    User = wh_json:get_value(<<"username">>, JObj),
-    Event = wh_json:get_value(<<"event">>, JObj),
-    CallId = wh_json:get_value(<<"call_id">>, JObj),
-    case wh_json:get_value([User, Event, CallId], Acc) of
-        'undefined' ->
-            wh_json:set_value([User, Event, CallId],
-                              wh_json:delete_keys([<<"username">>
-                                                   ,<<"user">>
-                                                   ,<<"event">>
-                                                   ,<<"realm">>
-                                                   ,<<"protocol">>
-                                                   ,<<"contact">>
-                                                   ,<<"call_id">>
-                                                  ], JObj), Acc);
-        _ -> Acc
-    end.
