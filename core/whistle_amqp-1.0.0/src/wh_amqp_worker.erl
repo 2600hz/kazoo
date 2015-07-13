@@ -435,7 +435,7 @@ collect_or_validate_fun(VFun, Count) ->
 -spec handle_resp(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_resp(JObj, Props) ->
     gen_listener:cast(props:get_value('server', Props)
-                      ,{'event', wh_json:get_value(<<"Msg-ID">>, JObj), JObj}
+                      ,{'event', wh_api:msg_id(JObj), JObj}
                      ).
 
 -spec send_request(ne_binary(), ne_binary(), publish_fun(), wh_proplist()) ->
@@ -516,16 +516,12 @@ handle_call({'request', ReqProp, PublishFun, VFun, Timeout}
             ,#state{queue=Q}=State
            ) ->
     _ = wh_util:put_callid(ReqProp),
-    CallID = get('callid'),
-    {ReqProp1, MsgID} = case props:get_value(<<"Msg-ID">>, ReqProp) of
-                            'undefined' ->
-                                M = wh_util:rand_hex_binary(8),
-                                {[{<<"Msg-ID">>, M} | ReqProp], M};
-                            M -> {ReqProp, M}
-                        end,
-    case ?MODULE:send_request(CallID, Q, PublishFun, ReqProp1) of
+    CallId = get('callid'),
+    MsgId = wh_api:msg_id(ReqProp),
+
+    case ?MODULE:send_request(CallId, Q, PublishFun, ReqProp) of
         'ok' ->
-            lager:debug("published request with msg id ~s for ~p", [MsgID, ClientPid]),
+            lager:debug("published request with msg id ~s for ~p", [MsgId, ClientPid]),
             {'noreply'
              ,State#state{
                 client_pid = ClientPid
@@ -534,10 +530,10 @@ handle_call({'request', ReqProp, PublishFun, VFun, Timeout}
                 ,client_vfun = VFun
                 ,responses = 'undefined' % how we know not to collect many responses
                 ,neg_resp_count = 0
-                ,current_msg_id = MsgID
+                ,current_msg_id = MsgId
                 ,req_timeout_ref = start_req_timeout(Timeout)
                 ,req_start_time = os:timestamp()
-                ,callid = CallID
+                ,callid = CallId
                }
              ,'hibernate'
             };
@@ -556,16 +552,12 @@ handle_call({'call_collect', ReqProp, PublishFun, UntilFun, Timeout, Acc}
             ,#state{queue=Q}=State
            ) ->
     _ = wh_util:put_callid(ReqProp),
-    CallID = get('callid'),
-    {ReqProp1, MsgID} = case props:get_value(<<"Msg-ID">>, ReqProp) of
-                            'undefined' ->
-                                M = wh_util:rand_hex_binary(8),
-                                {[{<<"Msg-ID">>, M} | ReqProp], M};
-                            M -> {ReqProp, M}
-                        end,
-    case ?MODULE:send_request(CallID, Q, PublishFun, ReqProp1) of
+    CallId = get('callid'),
+    MsgId = wh_api:msg_id(ReqProp),
+
+    case ?MODULE:send_request(CallId, Q, PublishFun, ReqProp) of
         'ok' ->
-            lager:debug("published request with msg id ~s for ~p", [MsgID, ClientPid]),
+            lager:debug("published request with msg id ~s for ~p", [MsgId, ClientPid]),
             {'noreply'
              ,State#state{
                 client_pid = ClientPid
@@ -575,10 +567,10 @@ handle_call({'call_collect', ReqProp, PublishFun, UntilFun, Timeout, Acc}
                 ,acc = Acc
                 ,responses = [] % how we know to collect all responses
                 ,neg_resp_count = 0
-                ,current_msg_id = MsgID
+                ,current_msg_id = MsgId
                 ,req_timeout_ref = start_req_timeout(Timeout)
                 ,req_start_time = os:timestamp()
-                ,callid = CallID
+                ,callid = CallId
                }
              ,'hibernate'
             };
@@ -652,7 +644,7 @@ handle_cast({'gen_listener', {'return', JObj, BasicReturn}}
                     ,confirms=Confirms
                    }=State) ->
     _ = wh_util:put_callid(JObj),
-    case wh_json:get_value(<<"Msg-ID">>, JObj) of
+    case wh_api:msg_id(JObj) of
         MsgId ->
             lager:debug("published message was returned from the broker"),
             gen_server:reply(From, {'returned', JObj, BasicReturn}),
@@ -787,12 +779,12 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'DOWN', ClientRef, 'process', _Pid, _Reason}, #state{current_msg_id = _MsgID
+handle_info({'DOWN', ClientRef, 'process', _Pid, _Reason}, #state{current_msg_id = _MsgId
                                                                   ,client_ref = ClientRef
-                                                                  ,callid = CallID
+                                                                  ,callid = CallId
                                                                  }=State) ->
-    wh_util:put_callid(CallID),
-    lager:debug("requestor processes ~p  died while waiting for msg id ~s", [_Pid, _MsgID]),
+    wh_util:put_callid(CallId),
+    lager:debug("requestor processes ~p  died while waiting for msg id ~s", [_Pid, _MsgId]),
     {'noreply', reset(State), 'hibernate'};
 handle_info('timeout', #state{neg_resp=ErrorJObj
                               ,neg_resp_count=Thresh
@@ -818,20 +810,20 @@ handle_info('timeout', #state{responses=Resps
     {'noreply', reset(State), 'hibernate'};
 handle_info('timeout', State) ->
     {'noreply', State};
-handle_info({'timeout', ReqRef, 'req_timeout'}, #state{current_msg_id= _MsgID
+handle_info({'timeout', ReqRef, 'req_timeout'}, #state{current_msg_id= _MsgId
                                                        ,req_timeout_ref=ReqRef
-                                                       ,callid=CallID
+                                                       ,callid=CallId
                                                        ,responses='undefined'
                                                        ,client_from={_Pid, _}=From
                                                        ,defer_response=ReservedJObj
                                                       }=State) ->
-    wh_util:put_callid(CallID),
+    wh_util:put_callid(CallId),
     case wh_util:is_empty(ReservedJObj) of
         'true' ->
-            lager:debug("request timeout exceeded for msg id: ~s and client: ~p", [_MsgID, _Pid]),
+            lager:debug("request timeout exceeded for msg id: ~s and client: ~p", [_MsgId, _Pid]),
             gen_server:reply(From, {'error', 'timeout'});
         'false' ->
-            lager:debug("only received defered response for msg id: ~s and client: ~p", [_MsgID, _Pid]),
+            lager:debug("only received defered response for msg id: ~s and client: ~p", [_MsgId, _Pid]),
             gen_server:reply(From, {'ok', ReservedJObj})
     end,
     {'noreply', reset(State), 'hibernate'};
@@ -927,6 +919,15 @@ start_req_timeout(Timeout) ->
 -spec maybe_convert_to_proplist(wh_proplist() | wh_json:object()) -> wh_proplist().
 maybe_convert_to_proplist(Req) ->
     case wh_json:is_json_object(Req) of
-        'true' -> wh_json:to_proplist(Req);
-        'false' -> Req
+        'true' -> maybe_set_msg_id(wh_json:to_proplist(Req));
+        'false' -> maybe_set_msg_id(Req)
+    end.
+
+-spec maybe_set_msg_id(wh_proplist()) -> wh_proplist().
+maybe_set_msg_id(Props) ->
+    case wh_api:msg_id(Props) of
+        'undefined' ->
+            props:set_value(<<"Msg-ID">>, wh_util:rand_hex_binary(8), Props);
+        _MsgId ->
+            Props
     end.
