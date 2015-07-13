@@ -16,6 +16,7 @@
          ,is_enabled/1, is_enabled/2
          ,enable/1, disable/1
          ,type/0
+         ,devices/1
         ]).
 
 -include("kz_documents.hrl").
@@ -236,3 +237,18 @@ disable(JObj) ->
 
 -spec type() -> ne_binary().
 type() -> ?PVT_TYPE.
+
+devices(UserJObj) ->
+    AccountDb = wh_doc:account_db(UserJObj),
+    UserId = wh_doc:is(UserJObj),
+
+    ViewOptions = [{'startkey', [UserId]}
+                   ,{'endkey', [UserId, wh_json:new()]}
+                   ,'include_docs'
+                  ],
+    case couch_mgr:get_results(AccountDb, <<"cf_attributes/owned">>, ViewOptions) of
+        {'ok', JObjs} -> [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs];
+        {'error', _R} ->
+            lager:warning("unable to find documents owned by ~s: ~p", [UserId, _R]),
+            []
+    end.
