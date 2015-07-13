@@ -96,7 +96,7 @@ validate_thing_reset(Context, _ReqNouns) ->
 
 -spec validate_user_reset(cb_context:context(), ne_binary()) -> cb_context:context().
 validate_user_reset(Context, UserId) ->
-    Context1 = cb_context:load(UserId, Context),
+    Context1 = crossbar_doc:load(UserId, Context),
     case cb_context:resp_status(Context1) of
         'success' ->
             maybe_load_user_devices(Context1);
@@ -116,12 +116,12 @@ maybe_load_user_devices(Context) ->
 load_user_devices(Context) ->
     User = cb_context:doc(Context),
     Devices = kzd_user:devices(User),
-    cb_context:set_doc(Devices).
+    cb_context:set_doc(Context, Devices).
 
 -spec maybe_load_thing(cb_context:context(), ne_binary()) -> cb_context:context().
 maybe_load_thing(Context, ThingId) ->
     case is_reset_request(Context) of
-        'true' -> cb_context:load(ThingId, Context);
+        'true' -> crossbar_doc:load(ThingId, Context);
         'false' ->
             lager:debug("user failed to include reset=true"),
             reset_validation_error(Context)
