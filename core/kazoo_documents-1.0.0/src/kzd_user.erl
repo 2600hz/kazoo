@@ -240,7 +240,7 @@ type() -> ?PVT_TYPE.
 
 devices(UserJObj) ->
     AccountDb = wh_doc:account_db(UserJObj),
-    UserId = wh_doc:is(UserJObj),
+    UserId = wh_doc:id(UserJObj),
 
     ViewOptions = [{'startkey', [UserId]}
                    ,{'endkey', [UserId, wh_json:new()]}
