@@ -27,6 +27,7 @@
 
          ,new/0
          ,type/0
+         ,is_device/1
         ]).
 
 -include("kz_documents.hrl").
@@ -57,6 +58,10 @@
 -spec new() -> doc().
 new() ->
     wh_json:from_list([{<<"pvt_type">>, type()}]).
+
+-spec is_device(doc() | wh_json:object()) -> boolean().
+is_device(Doc) ->
+    wh_doc:type(Doc) =:= ?PVT_TYPE.
 
 -spec sip_username(doc()) -> api_binary().
 -spec sip_username(doc(), Default) -> ne_binary() | Default.
