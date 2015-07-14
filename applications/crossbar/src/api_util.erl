@@ -42,6 +42,8 @@
 -define(MAX_UPLOAD_SIZE, whapps_config:get_integer(?CONFIG_CAT, <<"max_upload_size">>, 8000000)).
 
 -type halt_return() :: {'halt', cowboy_req:req(), cb_context:context()}.
+-type resource_existence() :: {boolean(), cb_context:context()}.
+-export_type([resource_existence/0]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -868,18 +870,39 @@ ensure_content_type(CT) -> CT.
 %% (the final module in the chain) accepts this verb parameter pair.
 %% @end
 %%--------------------------------------------------------------------
--spec does_resource_exist(cb_context:context()) -> boolean().
--spec does_resource_exist(cb_context:context(), list()) -> boolean().
+
+-spec does_resource_exist(cb_context:context()) -> resource_existence().
+-spec does_resource_exist(cb_context:context(), list()) -> resource_existence().
 does_resource_exist(Context) ->
     does_resource_exist(Context, cb_context:req_nouns(Context)).
 
 does_resource_exist(Context, [{Mod, Params}|_]) ->
-    Event = ?MODULE:create_event_name(Context, <<"resource_exists.", Mod/binary>>),
-    Responses = crossbar_bindings:map(Event, Params),
-    crossbar_bindings:any(Responses) and 'true';
-does_resource_exist(_Context, _ReqNouns) ->
-    'false'.
+    Event = api_util:create_event_name(Context, <<"resource_exists.", Mod/binary>>),
+    Responses =
+        try
+            crossbar_bindings:map(Event, [Context | Params])
+        catch
+            _:_ ->
+                []
+        end,
+    SuccessResponses = crossbar_bindings:succeeded(Responses),
+    case SuccessResponses of
+        [] -> first_failed(Responses, Context);
+        [Response1] -> Response1;
+        [Response1 | _] ->
+            lager:info("resource exists: ~p responses, returning the first one", [length(SuccessResponses)]),
+            Response1
+    end;
+does_resource_exist(Context, _ReqNouns) ->
+    {'false', Context}.
 
+-spec first_failed([resource_existence()], cb_context:context()) -> resource_existence().
+first_failed([{'false', _Response} = Reply | _], _Context) ->
+    Reply;
+first_failed([], Context) ->
+    {'false', Context};
+first_failed([_ | Responses], Context) ->
+    first_failed(Responses, Context).
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
