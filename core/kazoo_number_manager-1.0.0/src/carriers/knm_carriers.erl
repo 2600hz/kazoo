@@ -22,9 +22,9 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec find(ne_binary()) -> ne_binaries().
--spec find(ne_binary(), integer()) -> ne_binaries().
--spec find(ne_binary(), integer(), wh_proplist()) -> ne_binaries().
+-spec find(ne_binary()) -> wh_json:objects().
+-spec find(ne_binary(), integer()) -> wh_json:objects().
+-spec find(ne_binary(), integer(), wh_proplist()) -> wh_json:objects().
 
 find(Num) ->
     find(Num, 1).
@@ -41,8 +41,17 @@ find(Num, Quantity, Opts) ->
         ,[Quantity, NormalizedNumber, AccountId]
     ),
 
-    [{Module, catch(Module:find_numbers(NormalizedNumber, Quantity, Opts))}
-     || Module <- ?MODULE:list_modules()].
+    lists:foldl(
+        fun(Mod, Acc) ->
+            format_find_resp(
+                Mod
+                ,catch(Mod:find_numbers(NormalizedNumber, Quantity, Opts))
+                ,Acc
+            )
+        end
+        ,[]
+        ,?MODULE:list_modules()
+    ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -108,3 +117,71 @@ disconnect(Number) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec format_find_resp(atom(), any(), wh_json:objects()) -> wh_json:objects().
+format_find_resp(Module, {'ok', JObj}, Acc) ->
+    format_module_resp(Module, JObj) ++ Acc;
+format_find_resp(_Module, {'error', _Reason}, Acc) ->
+    lager:error("failed to find number in ~p : ~p", [_Module, _Reason]),
+    Acc;
+format_find_resp(_Module, _Data, Acc) ->
+    lager:error("unknown return for module ~p", [_Module]),
+    lager:error("~p", [_Data]),
+    Acc.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec format_module_resp(atom(), wh_json:object()) -> wh_json:objects().
+format_module_resp(Module, JObj) ->
+    wh_json:foldl(
+        fun(Num, Data, Acc) ->
+           Number = default_module_resp(Module, Num, Data),
+           [specific_module_resp(Module, Number, Data)|Acc]
+        end
+        ,[]
+        ,JObj
+    ).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec default_module_resp(atom(), ne_binary(), wh_json:object()) -> number().
+default_module_resp(Module, Num, Data) ->
+    NormalizedNum = knm_converters:normalize(Num),
+    NumberDb = knm_converters:to_db(NormalizedNum),
+    Updates = [
+        {fun knm_phone_number:set_number/2, NormalizedNum}
+        ,{fun knm_phone_number:set_number_db/2, NumberDb}
+        ,{fun knm_phone_number:set_module_name/2, wh_util:to_binary(Module)}
+        ,{fun knm_phone_number:set_carrier_data/2, Data}
+        ,{fun knm_phone_number:set_number_db/2, NumberDb}
+    ],
+    knm_phone_number:setters(knm_phone_number:new(), Updates).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec specific_module_resp(atom(), ne_binary(), wh_json:object()) -> wh_json:object().
+specific_module_resp(Module, Number, _Data) when Module =:= 'wnm_bandwidth'
+                                            orelse Module =:= 'wnm_vitelity' ->
+    lager:warning("specific format for ~s module ~p", [knm_phone_number:number(Number), Module]),
+    Updates = [
+        {fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}
+        ,fun knm_phone_number:to_public_json/1
+    ],
+    knm_phone_number:setters(Number, Updates);
+specific_module_resp(_Module, Number, _Data) ->
+    lager:warning("no specific format for ~s module ~p", [knm_phone_number:number(Number), _Module]),
+    knm_phone_number:to_public_json(Number).
