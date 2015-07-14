@@ -189,7 +189,7 @@ get_numbers(Url, Number, Quantity, Props) ->
             lager:error("number lookup error to ~s: ~p", [Uri, _Reason]),
             {'error', 'non_available'};
         {'ok', "200", _Headers, Body} ->
-            {'ok', format_numbers_resp(wh_json:decode(Body))};
+            format_numbers_resp(wh_json:decode(Body));
         {'ok', _Status, _Headers, _Body} ->
             lager:error("number lookup failed to ~s with ~s: ~s", [Uri, _Status, _Body]),
             {'error', 'non_available'}
