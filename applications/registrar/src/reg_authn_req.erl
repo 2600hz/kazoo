@@ -65,7 +65,7 @@ send_auth_resp(#auth_user{password=Password
                          }=AuthUser
                ,JObj
               ) ->
-    lager:debug("send authn response for user ~p", [AuthUser]),
+    lager:debug("send authn response for user ~p", [Username]),
     Category = wh_json:get_value(<<"Event-Category">>, JObj),
     Resp = props:filter_undefined(
              [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
@@ -499,6 +499,18 @@ maybe_auth_method(AuthUser, JObj, _Req, ?ANY_AUTH_METHOD) ->
                             {'error', any()} |
                             {'pending', auth_user()}.
 maybe_auth_aaa_method(AccountDoc, AuthUser) ->
+    % similar check is used for authorization (in the wapi_authz)
+    AuthzServersList = wh_json:get_value(<<"authentication">>, AccountDoc),
+    case length(AuthzServersList) of
+        0 -> {'ok', AuthUser};
+        _ -> maybe_auth_aaa_mode(AccountDoc, AuthUser)
+    end.
+
+-spec maybe_auth_aaa_mode(wh_json:object(), auth_user()) ->
+                            {'ok', auth_user()} |
+                            {'error', any()} |
+                            {'pending', auth_user()}.
+maybe_auth_aaa_mode(AccountDoc, AuthUser) ->
     case wh_json:get_value(<<"aaa_mode">>, AccountDoc) of
         <<"off">> ->
             {'ok', AuthUser};

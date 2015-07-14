@@ -112,14 +112,14 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call({'insert_auth_user', AuthUser}, _From, State) ->
-    lager:debug("inserted new user ~p", [AuthUser]),
+    lager:debug("Save new user in storage"),
     {'reply', 'ok', [AuthUser | State]};
 handle_call({'remove_auth_user', AuthUser}, _From, State) ->
-    lager:debug("removed new user ~p", [AuthUser]),
-    {'reply', 'ok', [J || J <- State, AuthUser =/= J]};
+    lager:debug("removed existing user from storage"),
+    {'reply', 'ok', [J || J <- State, AuthUser =/= J]}; % TODO: need to be sure that it's really removed
 handle_call({'get_auth_user', MsgId}, _From, State) ->
     [AuthUser] = [AuthUser || {MsgId1, AuthUser} <- State, MsgId == MsgId1],
-    lager:debug("retrieved stored information about user ~p", [AuthUser]),
+    lager:debug("retrieved stored information about user"),
     {'reply', AuthUser, State};
 handle_call(_Msg, _From, State) ->
     {'noreply', State}.
