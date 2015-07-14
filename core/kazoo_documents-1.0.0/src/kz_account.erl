@@ -21,7 +21,11 @@
          ,is_superduper_admin/1
          ,allow_number_additions/1
 
-         ,fetch/1
+         ,trial_expiration/1, trial_expiration/2, set_trial_expiration/2
+         ,trial_time_left/1, trial_time_left/2
+         ,trial_has_expired/1
+
+         ,fetch/1, new/0
         ]).
 
 -define(ID, <<"_id">>).
@@ -35,11 +39,16 @@
 -define(IS_SUPERDUPER_ADMIN, <<"pvt_superduper_admin">>).
 -define(ALLOW_NUMBER_ADDITIONS, <<"pvt_wnm_allow_additions">>).
 -define(NOTIFY_PREF, <<"pvt_notification_preference">>).
+-define(KEY_TRIAL_EXPIRATION, <<"pvt_trial_expires">>).
 
 -include("kz_documents.hrl").
 
 -type doc() :: wh_json:object().
 -export_type([doc/0]).
+
+-spec new() -> doc().
+new() ->
+    wh_doc:set_type(wh_json:new(), <<"account">>).
 
 -spec id(doc()) -> api_binary().
 id(JObj) ->
@@ -147,3 +156,27 @@ fetch(<<_/binary>> = Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
 
     couch_mgr:open_cache_doc(AccountDb, AccountId).
+
+-spec trial_expiration(doc()) -> api_integer().
+-spec trial_expiration(doc(), Default) -> integer() | Default.
+trial_expiration(JObj) ->
+    trial_expiration(JObj, 'undefined').
+
+trial_expiration(JObj, Default) ->
+    wh_json:get_integer_value(?KEY_TRIAL_EXPIRATION, JObj, Default).
+
+-spec set_trial_expiration(doc(), gregorian_seconds()) -> doc().
+set_trial_expiration(JObj, Expiration) ->
+    wh_json:set_value(?KEY_TRIAL_EXPIRATION, Expiration, JObj).
+
+trial_time_left(JObj) ->
+    trial_time_left(JObj, wh_util:current_tstamp()).
+trial_time_left(JObj, Now) ->
+    case trial_expiration(JObj) of
+        'undefined' -> 0;
+        Expiration -> wh_util:elapsed_s(Now, Expiration)
+    end.
+
+-spec trial_has_expired(doc()) -> boolean().
+trial_has_expired(JObj) ->
+    trial_time_left(JObj) =< 0.
