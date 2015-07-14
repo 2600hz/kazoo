@@ -383,7 +383,7 @@ is_account_expired(Account) ->
     case kz_account:fetch(Account) of
         {'ok', Doc} ->
             Now = wh_util:current_tstamp(),
-            Trial = wh_json:get_integer_value(<<"pvt_trial_expires">>, Doc, Now+1),
+            Trial = kz_account:trial_expiration(Doc, Now+1),
             Trial < Now;
         {'error', _R} ->
             lager:debug("failed to check if expired token auth, ~p", [_R]),
