@@ -169,6 +169,8 @@ trial_expiration(JObj, Default) ->
 set_trial_expiration(JObj, Expiration) ->
     wh_json:set_value(?KEY_TRIAL_EXPIRATION, Expiration, JObj).
 
+-spec trial_time_left(doc()) -> integer().
+-spec trial_time_left(doc(), gregorian_seconds()) -> integer().
 trial_time_left(JObj) ->
     trial_time_left(JObj, wh_util:current_tstamp()).
 trial_time_left(JObj, Now) ->
