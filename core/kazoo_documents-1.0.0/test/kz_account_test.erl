@@ -37,3 +37,22 @@ tree_test() ->
     ?assertEqual([], kz_account:tree(?MASTER_ACCOUNT)),
     ?assertEqual([?MASTER_ACCOUNT_ID], kz_account:tree(?SUB_ACCOUNT)),
     ?assertEqual([?MASTER_ACCOUNT_ID, ?SUB_ACCOUNT_ID], kz_account:tree(?SUB_SUB_ACCOUNT)).
+
+trial_time_test_() ->
+    Now = wh_util:current_tstamp(),
+    Passed = kz_account:set_trial_expiration(kz_account:new(), Now - 10000),
+    Active = kz_account:set_trial_expiration(kz_account:new(), Now + 10000),
+
+    [{"testing expired trial accounts are computed as such"
+      ,?_assertEqual('true', kz_account:trial_has_expired(Passed))
+     }
+     ,{"testing current trial accounts are computed as such"
+       ,?_assertEqual('false', kz_account:trial_has_expired(Active))
+      }
+     ,{"testing that current trial accounts have proper time left computed"
+       ,?_assertEqual(10000, kz_account:trial_time_left(Active))
+      }
+     ,{"testing that expired trial accounts have proper time since expiration computed"
+       ,?_assertEqual(-10000, kz_account:trial_time_left(Passed))
+      }
+    ].
