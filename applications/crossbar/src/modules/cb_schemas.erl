@@ -11,8 +11,8 @@
 -module(cb_schemas).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
-         ,resource_exists/0, resource_exists/1, resource_exists/2
+         ,allowed_methods/1, allowed_methods/2, allowed_methods/3
+         ,resource_exists/1, resource_exists/2, resource_exists/3
          ,authorize/1
          ,authenticate/1
          ,validate/1, validate/2, validate/3
@@ -60,14 +60,14 @@ authenticate_nouns(_) -> 'false'.
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
-allowed_methods() ->
+-spec allowed_methods(cb_context:context()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token(), path_token()) -> http_methods().
+allowed_methods(_Context) ->
     [?HTTP_GET].
-allowed_methods(_) ->
+allowed_methods(_Context, _) ->
     [?HTTP_GET].
-allowed_methods(_, ?VALIDATION_PATH_TOKEN) ->
+allowed_methods(_Context, _, ?VALIDATION_PATH_TOKEN) ->
     [?HTTP_PUT].
 
 %%--------------------------------------------------------------------
@@ -78,12 +78,12 @@ allowed_methods(_, ?VALIDATION_PATH_TOKEN) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
-resource_exists() ->  'true'.
-resource_exists(_) -> 'true'.
-resource_exists(_, ?VALIDATION_PATH_TOKEN) -> 'true'.
+-spec resource_exists(cb_context:context()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token(), path_token()) -> api_util:resource_existence().
+resource_exists(Context) -> { 'true', Context}.
+resource_exists(Context, _) -> {'true', Context}.
+resource_exists(Context, _, ?VALIDATION_PATH_TOKEN) -> {'true', Context}.
 
 %%--------------------------------------------------------------------
 %% @private
