@@ -12,8 +12,8 @@
 -module(cb_contact_list).
 
 -export([init/0
-         ,allowed_methods/0
-         ,resource_exists/0
+         ,allowed_methods/1
+         ,resource_exists/1
          ,validate/1
         ]).
 
@@ -42,8 +42,8 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods().
-allowed_methods() -> [?HTTP_GET].
+-spec allowed_methods(cb_context:context()) -> http_methods().
+allowed_methods(_Context) -> [?HTTP_GET].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -54,8 +54,8 @@ allowed_methods() -> [?HTTP_GET].
 %%    /contact_list/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists() -> 'true'.
-resource_exists() -> 'true'.
+-spec resource_exists(cb_context:context()) -> api_util:resource_existence().
+resource_exists(Context) -> {'true', Context}.
 
 %%--------------------------------------------------------------------
 %% @public
