@@ -16,6 +16,7 @@
     ,delete/1 ,delete/2
     ,change_state/1 ,change_state/2
     ,assigned_to_app/1 ,assigned_to_app/2
+    ,buy/2
 ]).
 
 -include("knm.hrl").
@@ -155,6 +156,15 @@ assigned_to_app([], _Options, Acc) -> Acc;
 assigned_to_app([{Num, App}|Props], Options, Acc) ->
     Return  = knm_number:assigned_to_app(Num, App, Options),
     assigned_to_app(Props, Options, [{Num, Return}|Acc]).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec buy(binary(), binary()) -> numbers_return().
+buy(Nums, Account) ->
+    [knm_number:buy(Num, Account) || Num <- Nums].
 
 %%%===================================================================
 %%% Internal functions
