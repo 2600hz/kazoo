@@ -59,6 +59,7 @@ format_gateway(JObj) ->
                  ,{<<"ecallmgr_Gateway-Version">>, wh_json:get_value(<<"version">>, JObj)}
                 ],
     Gateway = [{<<"Username">>, wh_json:get_value(<<"username">>, JObj, <<"none">>)}
+               ,{<<"Auth-Username">>, wh_json:get_value(<<"auth_username">>, JObj)}
                ,{<<"Password">>, wh_json:get_value(<<"password">>, JObj, <<"none">>)}
                ,{<<"Realm">>, wh_json:get_value(<<"server">>, JObj)}
                ,{<<"Proxy">>, wh_json:get_value(<<"proxy">>, JObj)}
