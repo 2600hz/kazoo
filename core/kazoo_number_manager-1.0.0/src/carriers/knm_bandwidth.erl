@@ -195,8 +195,8 @@ should_lookup_cnam() -> 'true'.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec format_resp(wh_json:object()) -> numbers().
--spec format_resp(wh_json:object(), numbers()) -> numbers().
+-spec format_resp(wh_proplist()) -> numbers().
+-spec format_resp(wh_proplist(), numbers()) -> numbers().
 format_resp(Resp) ->
     format_resp(Resp, []).
 
