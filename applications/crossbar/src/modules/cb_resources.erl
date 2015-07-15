@@ -13,8 +13,8 @@
 
 -export([init/0
          ,authorize/1
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
-         ,resource_exists/0, resource_exists/1, resource_exists/2
+         ,allowed_methods/1, allowed_methods/2, allowed_methods/3
+         ,resource_exists/1, resource_exists/2, resource_exists/3
          ,validate/1, validate/2, validate/3
          ,put/1, put/2
          ,post/2
@@ -119,20 +119,20 @@ maybe_authorize_admin(Context) ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
-allowed_methods() ->
+-spec allowed_methods(cb_context:context()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token(), path_token()) -> http_methods().
+allowed_methods(_Context) ->
     [?HTTP_GET, ?HTTP_PUT].
 
-allowed_methods(?COLLECTION) ->
+allowed_methods(_Context, ?COLLECTION) ->
     [?HTTP_PUT, ?HTTP_POST];
-allowed_methods(?JOBS) ->
+allowed_methods(_Context, ?JOBS) ->
     [?HTTP_GET, ?HTTP_PUT];
-allowed_methods(_) ->
+allowed_methods(_Context, _) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
-allowed_methods(?JOBS, _Id) ->
+allowed_methods(_Context, ?JOBS, _Id) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
@@ -143,12 +143,12 @@ allowed_methods(?JOBS, _Id) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
-resource_exists() -> 'true'.
-resource_exists(_) -> 'true'.
-resource_exists(?JOBS, _ID) -> 'true'.
+-spec resource_exists(cb_context:context()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token(), path_token()) -> api_util:resource_existence().
+resource_exists(Context) -> {'true', Context}.
+resource_exists(Context, _) -> {'true', Context}.
+resource_exists(Context, ?JOBS, _ID) -> {'true', Context}.
 
 %%--------------------------------------------------------------------
 %% @public
