@@ -126,7 +126,7 @@ disconnect(Number) ->
 -spec format_find_resp(atom(), any(), wh_json:objects()) -> wh_json:objects().
 format_find_resp(_Module, {'ok', Numbers}, Acc) ->
     lager:debug("found numbers in ~p", [_Module]),
-    [knm_phone_number:to_public_json(Number) || Number <- Numbers] ++ Acc;
+    lists:reverse([knm_phone_number:to_public_json(Number) || Number <- Numbers]) ++ Acc;
 format_find_resp(_Module, {'error', _Reason}, Acc) ->
     lager:error("failed to find number in ~p : ~p", [_Module, _Reason]),
     Acc;
