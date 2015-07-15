@@ -17,6 +17,7 @@
     ,change_state/2 ,change_state/3
     ,assigned_to_app/2 ,assigned_to_app/3
     ,lookup_account/1
+    ,buy/2
 ]).
 
 -include("knm.hrl").
@@ -185,6 +186,20 @@ lookup_account(Num) ->
                 Else -> Else
             end
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec buy(binary(), binary()) -> number_return().
+buy(Num, Account) ->
+    Updates = [
+        {fun knm_phone_number:set_assigned_to/2, wh_util:format_account_id(Account, 'raw')}
+        ,fun knm_carriers:maybe_acquire/1
+    ],
+    update(Num, Updates).
+
 
 %%%===================================================================
 %%% Internal functions
