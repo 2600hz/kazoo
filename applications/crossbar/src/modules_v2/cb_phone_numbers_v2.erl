@@ -12,8 +12,8 @@
 -module(cb_phone_numbers_v2).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
-         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
+         ,allowed_methods/1, allowed_methods/2, allowed_methods/3, allowed_methods/4
+         ,resource_exists/1, resource_exists/2, resource_exists/3, resource_exists/4
          ,billing/1
          ,content_types_accepted/4
          ,validate/1 ,validate/2, validate/3, validate/4
@@ -176,44 +176,44 @@ maybe_authorize(_Verb, _Nouns) ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
-allowed_methods() ->
+-spec allowed_methods(cb_context:context()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token(), path_token()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token(), path_token(), path_token()) -> http_methods().
+allowed_methods(_Context) ->
     [?HTTP_GET].
 
-allowed_methods(?FIX) ->
+allowed_methods(_Context, ?FIX) ->
     [?HTTP_POST];
-allowed_methods(?CLASSIFIERS) ->
+allowed_methods(_Context, ?CLASSIFIERS) ->
     [?HTTP_GET];
-allowed_methods(?COLLECTION) ->
+allowed_methods(_Context, ?COLLECTION) ->
     [?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE];
-allowed_methods(?PREFIX) ->
+allowed_methods(_Context, ?PREFIX) ->
     [?HTTP_GET];
-allowed_methods(?LOCALITY) ->
+allowed_methods(_Context, ?LOCALITY) ->
     [?HTTP_POST];
-allowed_methods(?CHECK) ->
+allowed_methods(_Context, ?CHECK) ->
     [?HTTP_POST];
-allowed_methods(_) ->
+allowed_methods(_Context, _) ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
 
-allowed_methods(?COLLECTION, ?ACTIVATE) ->
+allowed_methods(_Context, ?COLLECTION, ?ACTIVATE) ->
     [?HTTP_PUT];
-allowed_methods(?CLASSIFIERS, _PhoneNumber) ->
+allowed_methods(_Context, ?CLASSIFIERS, _PhoneNumber) ->
     [?HTTP_GET];
-allowed_methods(_PhoneNumber, ?ACTIVATE) ->
+allowed_methods(_Context, _PhoneNumber, ?ACTIVATE) ->
     [?HTTP_PUT];
-allowed_methods(_, ?RESERVE) ->
+allowed_methods(_Context, _, ?RESERVE) ->
     [?HTTP_PUT];
-allowed_methods(_, ?PORT) ->
+allowed_methods(_Context, _, ?PORT) ->
     [?HTTP_PUT];
-allowed_methods(_, ?PORT_DOCS) ->
+allowed_methods(_Context, _, ?PORT_DOCS) ->
     [?HTTP_GET];
-allowed_methods(_, ?IDENTIFY) ->
+allowed_methods(_Context, _, ?IDENTIFY) ->
     [?HTTP_GET].
 
-allowed_methods(_, ?PORT_DOCS, _) ->
+allowed_methods(_Context, _, ?PORT_DOCS, _) ->
     [?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
@@ -224,29 +224,29 @@ allowed_methods(_, ?PORT_DOCS, _) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> boolean().
--spec resource_exists(path_token(), path_token(), path_token()) -> boolean().
-resource_exists() -> 'true'.
+-spec resource_exists(cb_context:context()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token(), path_token()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token(), path_token(), path_token()) -> api_util:resource_existence().
+resource_exists(Context) -> {'true', Context}.
 
-resource_exists(?FIX) -> 'true';
-resource_exists(?PREFIX) -> 'true';
-resource_exists(?LOCALITY) -> 'true';
-resource_exists(?CHECK) -> 'true';
-resource_exists(?CLASSIFIERS) -> 'true';
-resource_exists(_) -> 'true'.
+resource_exists(Context, ?FIX) -> {'true', Context};
+resource_exists(Context, ?PREFIX) -> {'true', Context};
+resource_exists(Context, ?LOCALITY) -> {'true', Context};
+resource_exists(Context, ?CHECK) -> {'true', Context};
+resource_exists(Context, ?CLASSIFIERS) -> {'true', Context};
+resource_exists(Context, _) -> {'true', Context}.
 
-resource_exists(_, ?ACTIVATE) -> 'true';
-resource_exists(_, ?RESERVE) -> 'true';
-resource_exists(_, ?PORT) -> 'true';
-resource_exists(_, ?PORT_DOCS) -> 'true';
-resource_exists(_, ?IDENTIFY) -> 'true';
-resource_exists(?CLASSIFIERS, _) -> 'true';
-resource_exists(_, _) -> 'false'.
+resource_exists(Context, _, ?ACTIVATE) -> {'true', Context};
+resource_exists(Context, _, ?RESERVE) -> {'true', Context};
+resource_exists(Context, _, ?PORT) -> {'true', Context};
+resource_exists(Context, _, ?PORT_DOCS) -> {'true', Context};
+resource_exists(Context, _, ?IDENTIFY) -> {'true', Context};
+resource_exists(Context, ?CLASSIFIERS, _) -> {'true', Context};
+resource_exists(Context, _, _) -> {'false', Context}.
 
-resource_exists(_, ?PORT_DOCS, _) -> 'true';
-resource_exists(_, _, _) -> 'false'.
+resource_exists(Context, _, ?PORT_DOCS, _) -> {'true', Context};
+resource_exists(Context, _, _, _) -> {'false', Context}.
 
 %%--------------------------------------------------------------------
 %% @public
