@@ -12,8 +12,8 @@
 -module(cb_media).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
-         ,resource_exists/0, resource_exists/1, resource_exists/2
+         ,allowed_methods/1, allowed_methods/2, allowed_methods/3
+         ,resource_exists/1, resource_exists/2, resource_exists/3
          ,authorize/1
          ,validate/1, validate/2, validate/3
          ,content_types_provided/3
@@ -75,24 +75,24 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
-allowed_methods() ->
+-spec allowed_methods(cb_context:context()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token(), path_token()) -> http_methods().
+allowed_methods(_Context) ->
     [?HTTP_GET, ?HTTP_PUT].
 
-allowed_methods(?LANGUAGES) ->
+allowed_methods(_Context, ?LANGUAGES) ->
     [?HTTP_GET];
-allowed_methods(?PROMPTS) ->
+allowed_methods(_Context, ?PROMPTS) ->
     [?HTTP_GET];
-allowed_methods(_MediaId) ->
+allowed_methods(_Context, _MediaId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
-allowed_methods(?LANGUAGES, _Language) ->
+allowed_methods(_Context, ?LANGUAGES, _Language) ->
     [?HTTP_GET];
-allowed_methods(?PROMPTS, _PromptId) ->
+allowed_methods(_Context, ?PROMPTS, _PromptId) ->
     [?HTTP_GET];
-allowed_methods(_MediaId, ?BIN_DATA) ->
+allowed_methods(_Context, _MediaId, ?BIN_DATA) ->
     [?HTTP_GET, ?HTTP_POST].
 
 %%--------------------------------------------------------------------
@@ -103,14 +103,14 @@ allowed_methods(_MediaId, ?BIN_DATA) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
-resource_exists() -> 'true'.
-resource_exists(_) -> 'true'.
-resource_exists(?LANGUAGES, _Language) -> 'true';
-resource_exists(?PROMPTS, _PromptId) -> 'true';
-resource_exists(_, ?BIN_DATA) -> 'true'.
+-spec resource_exists(cb_context:context()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token(), path_token()) -> api_util:resource_existence().
+resource_exists(Context) -> {'true', Context}.
+resource_exists(Context, _) -> {'true', Context}.
+resource_exists(Context, ?LANGUAGES, _Language) -> {'true', Context};
+resource_exists(Context, ?PROMPTS, _PromptId) -> {'true', Context};
+resource_exists(Context, _, ?BIN_DATA) -> {'true', Context}.
 
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->
