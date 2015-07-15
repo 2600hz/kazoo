@@ -9,8 +9,8 @@
 -module(cb_limits_v2).
 
 -export([init/0
-         ,allowed_methods/0
-         ,resource_exists/0
+         ,allowed_methods/1
+         ,resource_exists/1
          ,billing/1
          ,validate/1
          ,post/1
@@ -42,8 +42,8 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods().
-allowed_methods() ->
+-spec allowed_methods(cb_context:context()) -> http_methods().
+allowed_methods(_Context) ->
     [?HTTP_GET, ?HTTP_POST].
 
 %%--------------------------------------------------------------------
@@ -54,8 +54,8 @@ allowed_methods() ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists() -> 'true'.
-resource_exists() -> 'true'.
+-spec resource_exists(cb_context:context()) -> api_util:resource_existence().
+resource_exists(Context) -> {'true', Context}.
 
 %%--------------------------------------------------------------------
 %% @public
