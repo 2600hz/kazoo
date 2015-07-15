@@ -12,8 +12,8 @@
 -module(cb_freeswitch).
 
 -export([init/0
-         ,allowed_methods/0
-         ,resource_exists/0
+         ,allowed_methods/1
+         ,resource_exists/1
          ,validate_freeswitch/1
          ,content_types_provided/1
          ,authenticate/1
@@ -107,8 +107,8 @@ content_types_provided(Context) ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods().
-allowed_methods() ->
+-spec allowed_methods(cb_context:context()) -> http_methods().
+allowed_methods(_Context) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
@@ -119,8 +119,8 @@ allowed_methods() ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists() -> 'true'.
-resource_exists() -> 'true'.
+-spec resource_exists(cb_context:context()) -> api_util:resource_existence().
+resource_exists(Context) -> {'true', Context}.
 
 %%--------------------------------------------------------------------
 %% @public
