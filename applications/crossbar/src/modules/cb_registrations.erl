@@ -17,8 +17,8 @@
 -module(cb_registrations).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1
-         ,resource_exists/0, resource_exists/1
+         ,allowed_methods/1, allowed_methods/2
+         ,resource_exists/1, resource_exists/2
          ,authorize/2
          ,validate/1, validate/2
          ,lookup_regs/1
@@ -48,18 +48,18 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.registrations">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.registrations">>, ?MODULE, 'delete').
 
--spec allowed_methods() -> http_methods().
-allowed_methods() ->
+-spec allowed_methods(cb_context:context()) -> http_methods().
+allowed_methods(_Context) ->
     [?HTTP_GET, ?HTTP_DELETE].
-allowed_methods(?COUNT_PATH_TOKEN) ->
+allowed_methods(_Context, ?COUNT_PATH_TOKEN) ->
     [?HTTP_GET];
-allowed_methods(_) ->
+allowed_methods(_Context, _) ->
     [?HTTP_DELETE].
 
--spec resource_exists() -> 'true'.
-resource_exists() -> 'true'.
-resource_exists(?COUNT_PATH_TOKEN) -> 'true';
-resource_exists(_) -> 'true'.
+-spec resource_exists(cb_context:context()) -> api_util:resource_existence().
+resource_exists(Context) -> {'true', Context}.
+resource_exists(Context, ?COUNT_PATH_TOKEN) -> {'true', Context};
+resource_exists(Context, _) -> {'true', Context}.
 
 %%--------------------------------------------------------------------
 %% @public
