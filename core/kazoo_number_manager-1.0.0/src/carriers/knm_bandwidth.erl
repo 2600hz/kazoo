@@ -42,7 +42,7 @@
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) -> {'ok', wh_json:object()} | {'error', term()}.
+-spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) -> {'ok', numbers()} | {'error', term()}.
 find_numbers(<<"+", Rest/binary>>, Quanity, Opts) ->
     find_numbers(Rest, Quanity, Opts);
 find_numbers(<<"1", Rest/binary>>, Quanity, Opts) ->
@@ -60,7 +60,7 @@ find_numbers(<<NPA:3/binary>>, Quanity, _) ->
                         {Num, JObj}
                     end
                     || Number <- xmerl_xpath:string(TelephoneNumbers, Xml)],
-            {'ok', wh_json:from_list(Resp)}
+            {'ok', format_resp(Resp)}
     end;
 find_numbers(Search, Quanity, _) ->
     NpaNxx = binary:part(Search, 0, (case size(Search) of L when L < 6 -> L; _ -> 6 end)),
@@ -77,10 +77,8 @@ find_numbers(Search, Quanity, _) ->
                         {Num, JObj}
                     end
                     || Number <- xmerl_xpath:string(TelephoneNumbers, Xml)],
-            {'ok', wh_json:from_list(Resp)}
+            {'ok', format_resp(Resp)}
     end.
-
-
 
 %%--------------------------------------------------------------------
 %% @public
@@ -191,6 +189,31 @@ should_lookup_cnam() -> 'true'.
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec format_resp(wh_json:object()) -> numbers().
+-spec format_resp(wh_json:object(), numbers()) -> numbers().
+format_resp(Resp) ->
+    format_resp(Resp, []).
+
+format_resp([], Numbers) -> Numbers;
+format_resp([{Num, JObj}|T], Numbers) ->
+    NormalizedNum = knm_converters:normalize(Num),
+    NumberDb = knm_converters:to_db(NormalizedNum),
+    Updates = [
+        {fun knm_phone_number:set_number/2, NormalizedNum}
+        ,{fun knm_phone_number:set_number_db/2, NumberDb}
+        ,{fun knm_phone_number:set_module_name/2, wh_util:to_binary(?MODULE)}
+        ,{fun knm_phone_number:set_carrier_data/2, JObj}
+        ,{fun knm_phone_number:set_number_db/2, NumberDb}
+        ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}
+    ],
+    Number = knm_phone_number:setters(knm_phone_number:new(), Updates),
+    format_resp(T, [Number|Numbers]).
 
 %%--------------------------------------------------------------------
 %% @private
