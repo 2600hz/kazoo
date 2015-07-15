@@ -38,8 +38,8 @@
 -module(cb_queues).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
-         ,resource_exists/0, resource_exists/1, resource_exists/2
+         ,allowed_methods/1, allowed_methods/2, allowed_methods/3
+         ,resource_exists/1, resource_exists/2, resource_exists/3
          ,content_types_provided/1, content_types_provided/2
          ,validate/1, validate/2, validate/3
          ,put/1, put/2, put/3
@@ -114,22 +114,22 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
+-spec allowed_methods(cb_context:context()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token(), path_token()) -> http_methods().
 
-allowed_methods() ->
+allowed_methods(_Context) ->
     [?HTTP_GET, ?HTTP_PUT].
-allowed_methods(?STATS_PATH_TOKEN) ->
+allowed_methods(_Context, ?STATS_PATH_TOKEN) ->
     [?HTTP_GET];
-allowed_methods(?EAVESDROP_PATH_TOKEN) ->
+allowed_methods(_Context, ?EAVESDROP_PATH_TOKEN) ->
     [?HTTP_PUT];
-allowed_methods(_QID) ->
+allowed_methods(_Context, _QID) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
-allowed_methods(_QID, ?ROSTER_PATH_TOKEN) ->
+allowed_methods(_Context, _QID, ?ROSTER_PATH_TOKEN) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE];
-allowed_methods(_QID, ?EAVESDROP_PATH_TOKEN) ->
+allowed_methods(_Context, _QID, ?EAVESDROP_PATH_TOKEN) ->
     [?HTTP_PUT].
 
 %%--------------------------------------------------------------------
@@ -141,15 +141,15 @@ allowed_methods(_QID, ?EAVESDROP_PATH_TOKEN) ->
 %%    /queues/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
-resource_exists() -> 'true'.
+-spec resource_exists(cb_context:context()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token(), path_token()) -> api_util:resource_existence().
+resource_exists(Context) -> {'true', Context}.
 
-resource_exists(_) -> 'true'.
+resource_exists(Context, _) -> {'true', Context}.
 
-resource_exists(_, ?ROSTER_PATH_TOKEN) -> 'true';
-resource_exists(_, ?EAVESDROP_PATH_TOKEN) -> 'true'.
+resource_exists(Context, _, ?ROSTER_PATH_TOKEN) -> {'true', Context};
+resource_exists(Context, _, ?EAVESDROP_PATH_TOKEN) -> {'true', Context}.
 
 %%--------------------------------------------------------------------
 %% @private
