@@ -10,8 +10,8 @@
 -module(cb_whitelabel).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
-         ,resource_exists/0, resource_exists/1, resource_exists/2
+         ,allowed_methods/1, allowed_methods/2, allowed_methods/3
+         ,resource_exists/1, resource_exists/2, resource_exists/3
          ,authorize/1, authenticate/1
          ,validate/1, validate/2, validate/3
          ,content_types_provided/2, content_types_provided/3
@@ -69,28 +69,28 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
-allowed_methods() ->
+-spec allowed_methods(cb_context:context()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token(), path_token()) -> http_methods().
+allowed_methods(_Context) ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
 
-allowed_methods(?LOGO_REQ) ->
+allowed_methods(_Context, ?LOGO_REQ) ->
     [?HTTP_GET, ?HTTP_POST];
-allowed_methods(?ICON_REQ) ->
+allowed_methods(_Context, ?ICON_REQ) ->
     [?HTTP_GET, ?HTTP_POST];
-allowed_methods(?WELCOME_REQ) ->
+allowed_methods(_Context, ?WELCOME_REQ) ->
     [?HTTP_GET, ?HTTP_POST];
-allowed_methods(?DOMAINS_REQ) ->
+allowed_methods(_Context, ?DOMAINS_REQ) ->
     [?HTTP_GET, ?HTTP_POST];
-allowed_methods(_) ->
+allowed_methods(_Context, _) ->
     [?HTTP_GET].
 
-allowed_methods(_, ?LOGO_REQ) ->
+allowed_methods(_Context, _, ?LOGO_REQ) ->
     [?HTTP_GET];
-allowed_methods(_, ?ICON_REQ) ->
+allowed_methods(_Context, _, ?ICON_REQ) ->
     [?HTTP_GET];
-allowed_methods(_, ?WELCOME_REQ) ->
+allowed_methods(_Context, _, ?WELCOME_REQ) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
@@ -101,20 +101,20 @@ allowed_methods(_, ?WELCOME_REQ) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
-resource_exists() -> 'true'.
+-spec resource_exists(cb_context:context()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token(), path_token()) -> api_util:resource_existence().
+resource_exists(Context) -> {'true', Context}.
 
-resource_exists(?LOGO_REQ) -> 'true';
-resource_exists(?ICON_REQ) -> 'true';
-resource_exists(?WELCOME_REQ) -> 'true';
-resource_exists(?DOMAINS_REQ) -> 'true';
-resource_exists(_) -> 'true'.
+resource_exists(Context, ?LOGO_REQ) -> {'true', Context};
+resource_exists(Context, ?ICON_REQ) -> {'true', Context};
+resource_exists(Context, ?WELCOME_REQ) -> {'true', Context};
+resource_exists(Context, ?DOMAINS_REQ) -> {'true', Context};
+resource_exists(Context, _) -> {'true', Context}.
 
-resource_exists(_, ?LOGO_REQ) -> 'true';
-resource_exists(_, ?WELCOME_REQ) -> 'true';
-resource_exists(_, ?ICON_REQ) -> 'true'.
+resource_exists(Context, _, ?LOGO_REQ) -> {'true', Context};
+resource_exists(Context, _, ?WELCOME_REQ) -> {'true', Context};
+resource_exists(Context, _, ?ICON_REQ) -> {'true', Context}.
 
 %%--------------------------------------------------------------------
 %% @public
