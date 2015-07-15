@@ -13,8 +13,8 @@
 -module(cb_accounts).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
-         ,resource_exists/0, resource_exists/1, resource_exists/2
+         ,allowed_methods/1, allowed_methods/2, allowed_methods/3
+         ,resource_exists/1, resource_exists/2, resource_exists/3
          ,validate_resource/1, validate_resource/2, validate_resource/3
          ,validate/1, validate/2, validate/3
          ,put/1, put/2
@@ -73,13 +73,13 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), ne_binary()) -> http_methods().
-allowed_methods() ->
+-spec allowed_methods(cb_context:context()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token(), ne_binary()) -> http_methods().
+allowed_methods(_Context) ->
     [?HTTP_PUT].
 
-allowed_methods(AccountId) ->
+allowed_methods(_Context, AccountId) ->
     case whapps_util:get_master_account_id() of
         {'ok', AccountId} ->
             lager:debug("accessing master account, disallowing DELETE"),
@@ -92,9 +92,9 @@ allowed_methods(AccountId) ->
             [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_PATCH]
     end.
 
-allowed_methods(_, ?MOVE) ->
+allowed_methods(_Context, _, ?MOVE) ->
     [?HTTP_POST];
-allowed_methods(_, Path) ->
+allowed_methods(_Context, _, Path) ->
     Paths =  [?CHILDREN
               ,?DESCENDANTS
               ,?SIBLINGS
@@ -115,12 +115,12 @@ allowed_methods(_, Path) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), ne_binary()) -> boolean().
-resource_exists() -> 'true'.
-resource_exists(_) -> 'true'.
-resource_exists(_, Path) ->
+-spec resource_exists(cb_context:context()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token(), ne_binary()) -> api_util:resource_existence().
+resource_exists(Context) -> {'true', Context}.
+resource_exists(Context, _) -> {'true', Context}.
+resource_exists(Context, _, Path) ->
     Paths =  [?CHILDREN
               ,?DESCENDANTS
               ,?SIBLINGS
@@ -129,7 +129,7 @@ resource_exists(_, Path) ->
               ,?TREE
               ,?PARENTS
              ],
-    lists:member(Path, Paths).
+    {lists:member(Path, Paths), Context}.
 
 %%--------------------------------------------------------------------
 %% @public
