@@ -10,8 +10,8 @@
 -module(cb_user_auth).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1 %% only accept 0 or 1 path token
-         ,resource_exists/0, resource_exists/1
+         ,allowed_methods/1, allowed_methods/2 %% only accept 0 or 1 path token
+         ,resource_exists/1, resource_exists/2
          ,authorize/1
          ,authenticate/1
          ,validate/1, validate/2
@@ -49,11 +49,11 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
-allowed_methods() -> [?HTTP_PUT].
-allowed_methods(?RECOVERY) -> [?HTTP_PUT];
-allowed_methods(_) -> [?HTTP_GET].
+-spec allowed_methods(cb_context:context()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token()) -> http_methods().
+allowed_methods(_Context) -> [?HTTP_PUT].
+allowed_methods(_Context, ?RECOVERY) -> [?HTTP_PUT];
+allowed_methods(_Context, _) -> [?HTTP_GET].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -63,11 +63,11 @@ allowed_methods(_) -> [?HTTP_GET].
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists() -> 'true'.
--spec resource_exists(path_tokens()) -> boolean().
-resource_exists() -> 'true'.
-resource_exists(?RECOVERY) -> 'true';
-resource_exists(_) -> 'true'.
+-spec resource_exists(cb_context:context()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_tokens()) -> api_util:resource_existence().
+resource_exists(Context) -> {'true', Context}.
+resource_exists(Context, ?RECOVERY) -> {'true', Context};
+resource_exists(Context, _) -> {'true', Context}.
 
 %%--------------------------------------------------------------------
 %% @public
