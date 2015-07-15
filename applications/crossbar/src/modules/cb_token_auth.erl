@@ -14,8 +14,8 @@
 -module(cb_token_auth).
 
 -export([init/0
-         ,allowed_methods/0
-         ,resource_exists/0
+         ,allowed_methods/1
+         ,resource_exists/1
          ,validate/1
          ,delete/1
          ,authenticate/1
@@ -52,11 +52,11 @@ init() ->
 
     crossbar_bindings:bind(<<"*.finish_request.*.*">>, ?MODULE, 'finish_request').
 
--spec allowed_methods() -> http_methods().
-allowed_methods() -> [?HTTP_DELETE, ?HTTP_GET].
+-spec allowed_methods(cb_context:context()) -> http_methods().
+allowed_methods(_Context) -> [?HTTP_DELETE, ?HTTP_GET].
 
--spec resource_exists() -> 'true'.
-resource_exists() -> 'true'.
+-spec resource_exists(cb_context:context()) -> api_util:resource_existence().
+resource_exists(Context) -> {'true', Context}.
 
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
