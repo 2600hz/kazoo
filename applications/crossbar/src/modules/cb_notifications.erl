@@ -10,8 +10,8 @@
 -module(cb_notifications).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
-         ,resource_exists/0, resource_exists/1, resource_exists/2
+         ,allowed_methods/1, allowed_methods/2, allowed_methods/3
+         ,resource_exists/1, resource_exists/2, resource_exists/3
          ,content_types_provided/2
          ,content_types_accepted/2
          ,validate/1, validate/2, validate/3
@@ -71,16 +71,16 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
-allowed_methods() ->
+-spec allowed_methods(cb_context:context()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token(), path_token()) -> http_methods().
+allowed_methods(_Context) ->
     [?HTTP_GET, ?HTTP_PUT].
-allowed_methods(?SMTP_LOG) ->
+allowed_methods(_Context, ?SMTP_LOG) ->
     [?HTTP_GET];
-allowed_methods(_) ->
+allowed_methods(_Context, _) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
-allowed_methods(_, ?PREVIEW) ->
+allowed_methods(_Context, _, ?PREVIEW) ->
     [?HTTP_POST].
 
 %%--------------------------------------------------------------------
@@ -92,12 +92,12 @@ allowed_methods(_, ?PREVIEW) ->
 %%    /notifications/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
-resource_exists() -> 'true'.
-resource_exists(_Id) -> 'true'.
-resource_exists(_Id, ?PREVIEW) -> 'true'.
+-spec resource_exists(cb_context:context()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token(), path_token()) -> api_util:resource_existence().
+resource_exists(Context) -> {'true', Context}.
+resource_exists(Context, _Id) -> {'true', Context}.
+resource_exists(Context, _Id, ?PREVIEW) -> {'true', Context}.
 
 %%--------------------------------------------------------------------
 %% @private
