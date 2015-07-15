@@ -21,6 +21,8 @@
                  ,doc :: wh_json:object()
                 }).
 
+-type numbers() :: [number(), ...].
+
 -type number_return() :: {'ok', number()} | {'error', _}.
 
 -define(PVT_DB_NAME, <<"pvt_db_name">>).
