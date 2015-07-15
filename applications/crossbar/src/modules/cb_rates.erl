@@ -10,8 +10,8 @@
 
 -export([init/0
          ,authorize/1
-         ,allowed_methods/0, allowed_methods/1 ,allowed_methods/2
-         ,resource_exists/0, resource_exists/1 ,resource_exists/2
+         ,allowed_methods/1, allowed_methods/2 ,allowed_methods/3
+         ,resource_exists/1, resource_exists/2 ,resource_exists/3
          ,content_types_accepted/1
          ,validate/1, validate/2, validate/3
          ,put/1
@@ -75,16 +75,16 @@ authorize(_Context, _Nouns) ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods().
-allowed_methods() ->
+-spec allowed_methods(cb_context:context()) -> http_methods().
+allowed_methods(_Context) ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST].
 
--spec allowed_methods(path_token()) -> http_methods().
-allowed_methods(_) ->
+-spec allowed_methods(cb_context:context(), path_token()) -> http_methods().
+allowed_methods(_Context, _) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
--spec allowed_methods(path_token(),path_token()) -> http_methods().
-allowed_methods(?NUMBER,_) ->
+-spec allowed_methods(cb_context:context(), path_token(),path_token()) -> http_methods().
+allowed_methods(_Context, ?NUMBER,_) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
@@ -95,14 +95,14 @@ allowed_methods(?NUMBER,_) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists() -> 'true'.
-resource_exists() -> 'true'.
+-spec resource_exists(cb_context:context()) -> api_util:resource_existence().
+resource_exists(Context) -> {'true', Context}.
 
--spec resource_exists(path_token()) -> 'true'.
-resource_exists(_) -> 'true'.
+-spec resource_exists(cb_context:context(), path_token()) -> api_util:resource_existence().
+resource_exists(Context, _) -> {'true', Context}.
 
--spec resource_exists(path_token(),path_token()) -> 'true'.
-resource_exists(?NUMBER,_) -> 'true'.
+-spec resource_exists(cb_context:context(), path_token(),path_token()) -> api_util:resource_existence().
+resource_exists(Context, ?NUMBER,_) -> {'true', Context}.
 
 -spec content_types_accepted(cb_context:context()) -> cb_context:context().
 content_types_accepted(Context) ->
