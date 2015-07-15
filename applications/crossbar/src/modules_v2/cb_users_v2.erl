@@ -18,9 +18,9 @@
         ]).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
+         ,allowed_methods/1, allowed_methods/2, allowed_methods/3, allowed_methods/4
          ,content_types_provided/1, content_types_provided/2, content_types_provided/3, content_types_provided/4
-         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
+         ,resource_exists/1, resource_exists/2, resource_exists/3, resource_exists/4
          ,validate_resource/1, validate_resource/2, validate_resource/3, validate_resource/4
          ,billing/1
          ,authenticate/1
@@ -78,22 +78,22 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
+-spec allowed_methods(cb_context:context()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token(), path_token(), path_token()) -> http_methods().
 
-allowed_methods() ->
+allowed_methods(_Context) ->
     [?HTTP_GET, ?HTTP_PUT].
 
-allowed_methods(_) ->
+allowed_methods(_Context, _) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE, ?HTTP_PATCH].
 
-allowed_methods(_, ?PHOTO) ->
+allowed_methods(_Context, _, ?PHOTO) ->
     [?HTTP_POST];
-allowed_methods(_, ?VCARD) ->
+allowed_methods(_Context, _, ?VCARD) ->
     [?HTTP_GET].
 
-allowed_methods(_, ?QUICKCALL_PATH_TOKEN, _) ->
+allowed_methods(_Context, _, ?QUICKCALL_PATH_TOKEN, _) ->
     [?HTTP_GET].
 
 -spec content_types_provided(cb_context:context()) ->
@@ -123,15 +123,15 @@ content_types_provided(Context, _, _, _) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
+-spec resource_exists(cb_context:context()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token(), path_token()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token(), path_token(), path_token()) -> api_util:resource_existence().
 
-resource_exists() -> 'true'.
-resource_exists(_) -> 'true'.
-resource_exists(_, ?VCARD) -> 'true'.
-resource_exists(_, ?QUICKCALL_PATH_TOKEN, _) -> 'true'.
+resource_exists(Context) -> {'true', Context}.
+resource_exists(Context, _) -> {'true', Context}.
+resource_exists(Context, _, ?VCARD) -> {'true', Context}.
+resource_exists(Context, _, ?QUICKCALL_PATH_TOKEN, _) -> {'true', Context}.
 
 %%--------------------------------------------------------------------
 %% @public
