@@ -10,8 +10,8 @@
 -module(cb_service_plans).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
-         ,resource_exists/0, resource_exists/1, resource_exists/2
+         ,allowed_methods/1, allowed_methods/2, allowed_methods/3
+         ,resource_exists/1, resource_exists/2, resource_exists/3
          ,content_types_provided/1 ,content_types_provided/2, content_types_provided/3
          ,validate/1, validate/2, validate/3
          ,post/1 ,post/2, post/3
@@ -57,21 +57,21 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
-allowed_methods() ->
+-spec allowed_methods(cb_context:context()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token()) -> http_methods().
+allowed_methods(_Context) ->
     [?HTTP_GET, ?HTTP_POST].
-allowed_methods(?SYNCHRONIZATION) ->
+allowed_methods(_Context, ?SYNCHRONIZATION) ->
     [?HTTP_POST];
-allowed_methods(?RECONCILIATION) ->
+allowed_methods(_Context, ?RECONCILIATION) ->
     [?HTTP_POST];
-allowed_methods(?CURRENT) ->
+allowed_methods(_Context, ?CURRENT) ->
     [?HTTP_GET];
-allowed_methods(?OVERRIDE) ->
+allowed_methods(_Context, ?OVERRIDE) ->
     [?HTTP_POST];
-allowed_methods(_) ->
+allowed_methods(_Context, _) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
-allowed_methods(?AVAILABLE, _) ->
+allowed_methods(_Context, ?AVAILABLE, _) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
@@ -83,11 +83,11 @@ allowed_methods(?AVAILABLE, _) ->
 %%    /service_plans/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
-resource_exists() -> 'true'.
-resource_exists(_) -> 'true'.
-resource_exists(_, _) -> 'true'.
+-spec resource_exists(cb_context:context()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token()) -> api_util:resource_existence().
+resource_exists(Context) -> {'true', Context}.
+resource_exists(Context, _) -> {'true', Context}.
+resource_exists(Context, _, _) -> {'true', Context}.
 
 %%--------------------------------------------------------------------
 %% @public
