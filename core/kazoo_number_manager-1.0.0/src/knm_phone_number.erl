@@ -40,6 +40,7 @@
     ,region/1 ,set_region/2
     ,auth_by/1 ,set_auth_by/2, is_authorized/1
     ,dry_run/1 ,set_dry_run/2
+    ,locality/1 ,set_locality/2
     ,fetch_storage/2 ,fetch_storage/3 ,store/3
     ,doc/1
 ]).
@@ -412,6 +413,19 @@ dry_run(Number) ->
 -spec set_dry_run(number(), ne_binary()) -> number().
 set_dry_run(N, DryRun) ->
     N#number{dry_run=DryRun}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec locality(number()) -> ne_binary().
+locality(Number) ->
+    Number#number.locality.
+
+-spec set_locality(number(), wh_json:object()) -> number().
+set_locality(N, JObj) ->
+    N#number{locality=JObj}.
 
 %%--------------------------------------------------------------------
 %% @public

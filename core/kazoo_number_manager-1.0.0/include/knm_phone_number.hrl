@@ -17,6 +17,7 @@
                  ,region :: ne_binary()
                  ,auth_by = <<"system">> :: ne_binary()
                  ,dry_run = 'false' :: boolean()
+                 ,locality :: wh_json:object()
                  ,storage = [] :: wh_proplist()
                  ,doc :: wh_json:object()
                 }).
