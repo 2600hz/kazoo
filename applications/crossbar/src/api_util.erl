@@ -115,8 +115,8 @@ add_cors_headers(Req0, Context) ->
 get_cors_headers(Allow) ->
     [{<<"access-control-allow-origin">>, <<"*">>}
      ,{<<"access-control-allow-methods">>, wh_util:join_binary(Allow, <<", ">>)}
-     ,{<<"access-control-allow-headers">>, <<"Content-Type, Depth, User-Agent, X-Http-Method-Override, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-control, X-Auth-Token, If-Match">>}
-     ,{<<"access-control-expose-headers">>, <<"Content-Type, X-Auth-Token, X-Request-ID, Location, Etag, ETag">>}
+     ,{<<"access-control-allow-headers">>, <<"Content-Type, Depth, User-Agent, X-Http-Method-Override, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-control, X-Auth-Token, X-Kazoo-Cluster-ID, If-Match">>}
+     ,{<<"access-control-expose-headers">>, <<"Content-Type, X-Auth-Token, X-Request-ID, X-Kazoo-Cluster-ID, Location, Etag, ETag">>}
      ,{<<"access-control-max-age">>, wh_util:to_binary(?SECONDS_IN_DAY)}
     ].
 
