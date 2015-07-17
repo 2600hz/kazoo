@@ -18,6 +18,7 @@
          ,maybe_transition/2
          ,charge_for_port/1, charge_for_port/2
          ,send_submitted_requests/0
+         ,migrate/0
         ]).
 
 -compile({'no_auto_import', [get/1]}).
@@ -340,3 +341,67 @@ set_flag(JObj) ->
         {'error', _R} ->
             lager:debug("failed to set flag for submitted_port_request: ~p", [_R])
     end.
+
+-spec migrate() -> 'ok'.
+-spec migrate(binary(), pos_integer()) -> 'ok'.
+migrate() ->
+    wh_util:put_callid(<<"port_request_migration">>),
+    lager:debug("migrating port request documents, if necessary"),
+
+    migrate(<<>>, 10),
+    lager:debug("finished migrating port request documents").
+
+migrate(StartKey, Limit) ->
+    {'ok', Docs} = fetch_docs(StartKey, Limit),
+    try lists:split(Limit, Docs) of
+        {Results, []} ->
+            migrate_docs(Results);
+        {Results, [NextResult]} ->
+            migrate_docs(Results),
+            lager:debug("migrated batch of ~p port requests", [Limit]),
+            timer:sleep(5000),
+            migrate(wh_json:get_value(<<"key">>, NextResult), Limit)
+    catch
+        'error':'badarg' ->
+            migrate_docs(Docs)
+    end.
+
+-spec migrate_docs(wh_json:objects()) -> 'ok'.
+migrate_docs([]) -> 'ok';
+migrate_docs(Docs) ->
+    UpdatedDocs =
+        [UpdatedDoc
+         || Doc <- Docs,
+            (UpdatedDoc = migrate_doc(wh_json:get_value(<<"doc">>, Doc))) =/= 'undefined'
+        ],
+    {'ok', _} = couch_mgr:save_docs(?KZ_PORT_REQUESTS_DB, UpdatedDocs),
+    'ok'.
+
+-spec migrate_doc(wh_json:object()) -> api_object().
+migrate_doc(PortRequest) ->
+    case wh_json:get_value(<<"pvt_tree">>, PortRequest) of
+        'undefined' -> update_doc(PortRequest);
+        _Tree -> 'undefined'
+    end.
+
+-spec update_doc(wh_json:object()) -> api_object().
+-spec update_doc(wh_json:object(), api_binary()) -> api_object().
+update_doc(PortRequest) ->
+    update_doc(PortRequest, wh_doc:account_id(PortRequest)).
+
+update_doc(_Doc, 'undefined') ->
+    lager:debug("no account id in doc ~s", [wh_doc:id(_Doc)]),
+    'undefined';
+update_doc(PortRequest, AccountId) ->
+    {'ok', AccountDoc} = kz_account:fetch(AccountId),
+    Tree = kz_account:tree(AccountDoc),
+    wh_json:set_value(<<"pvt_tree">>, Tree, PortRequest).
+
+-spec fetch_docs(binary(), pos_integer()) -> {'ok', wh_json:objects()}.
+fetch_docs(StartKey, Limit) ->
+    couch_mgr:all_docs(?KZ_PORT_REQUESTS_DB
+                       ,[{'startkey', StartKey}
+                         ,{'limit', Limit + 1}
+                         ,'include_docs'
+                        ]
+                      ).
