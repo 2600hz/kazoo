@@ -81,16 +81,15 @@ resource_exists(_) -> true.
 %% @end
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, Config) ->
-    read(Config, Context);
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context, Config) ->
-    create(Config, Context);
-validate(#cb_context{req_verb = ?HTTP_POST}=Context, Config) ->
-    update(Config, Context);
-validate(#cb_context{req_verb = ?HTTP_PATCH}=Context, Config) ->
-    validate_patch(Config, Context);
-validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Config) ->
-    read(Config, Context).
+validate(Context, Config) ->
+    validate(Context, cb_context:req_verb(Context), Config).
+
+-spec validate(cb_context:context(), http_method(), path_token()) -> cb_context:context().
+validate(Context, ?HTTP_GET, Config) -> read(Config, Context);
+validate(Context, ?HTTP_PUT, Config) -> create(Config, Context);
+validate(Context, ?HTTP_POST, Config) -> update(Config, Context);
+validate(Context, ?HTTP_PATCH, Config) -> validate_patch(Config, Context);
+validate(Context, ?HTTP_DELETE, Config) -> read(Config, Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -153,13 +152,14 @@ delete(Context, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create(ne_binary(), cb_context:context()) -> cb_context:context().
-create(Config, #cb_context{req_data=JObj, db_name=Db}=Context) ->
+create(Config, Context) ->
     Id = <<(?WH_ACCOUNT_CONFIGS)/binary, Config/binary>>,
-    case couch_mgr:lookup_doc_rev(Db, Id) of
-        {ok, _} -> cb_context:add_system_error(datastore_conflict, Context);
-        {error, _} ->
-            J = wh_doc:set_id(JObj, Id),
-            cb_context:validate_request_data(<<"configs">>, Context#cb_context{req_data=J})
+    case couch_mgr:lookup_doc_rev(cb_context:account_db(Context), Id) of
+        {'ok', _} -> cb_context:add_system_error('datastore_conflict', Context);
+        {'error', _} ->
+            JObj = wh_doc:set_id(cb_context:req_data(Context), Id),
+            Context1 = cb_context:set_req_data(Context, JObj),
+            cb_context:validate_request_data(<<"configs">>, Context1)
     end.
 
 %%--------------------------------------------------------------------

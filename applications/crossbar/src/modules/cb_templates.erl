@@ -33,7 +33,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.templates">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.post.templates">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.templates">>, ?MODULE, 'delete'),
-    crossbar_bindings:bind(<<"account.created">>, ?MODULE, 'account_created').
+    _ = crossbar_bindings:bind(<<"account.created">>, ?MODULE, 'account_created').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -75,19 +75,26 @@ resource_exists(_) -> 'true'.
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
-validate(#cb_context{req_nouns=[{<<"templates">>, _}], req_verb = ?HTTP_GET}=Context) ->
+-spec validate_request(cb_context:context(), http_method(), req_nouns()) -> cb_context:context().
+-spec validate_request(cb_context:context(), http_method(), req_nouns(), path_token()) ->
+                              cb_context:context().
+
+validate(Context) ->
+    validate_request(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+validate(Context, TemplateName) ->
+    validate_request(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context), TemplateName).
+
+validate_request(Context, ?HTTP_GET, [{<<"templates">>, _}]) ->
     summary(Context).
 
-validate(#cb_context{req_nouns=[{<<"templates">>, _}], req_verb = ?HTTP_PUT}=Context, TemplateName) ->
-    case load_template_db(TemplateName, Context) of
-        #cb_context{resp_status='success'} ->
-            cb_context:add_system_error('datastore_conflict', Context);
-        _Else ->
-            crossbar_util:response(wh_json:new(), Context)
+validate_request(Context, ?HTTP_PUT, [{<<"templates">>, _}], TemplateName) ->
+    case cb_context:resp_status(load_template_db(TemplateName, Context)) of
+        'success' -> cb_context:add_system_error('datastore_conflict', Context);
+        _Else     -> crossbar_util:response(wh_json:new(), Context)
     end;
-validate(#cb_context{req_nouns=[{<<"templates">>, _}], req_verb = ?HTTP_DELETE}=Context, TemplateName) ->
+validate_request(Context, ?HTTP_DELETE, [{<<"templates">>, _}], TemplateName) ->
     load_template_db(TemplateName, Context);
-validate(Context, TemplateName) ->
+validate_request(Context, _, _, TemplateName) ->
     load_template_db(TemplateName, Context).
 
 put(Context, TemplateName) ->
@@ -100,7 +107,10 @@ delete(Context, TemplateName) ->
         'false' -> cb_context:add_system_error('datastore_fault', Context)
     end.
 
-account_created(#cb_context{doc=JObj, account_id=AccountId, db_name=AccountDb}) ->
+account_created(Context) ->
+    JObj = cb_context:doc(Context),
+    AccountId = cb_context:account_id(Context),
+    AccountDb = cb_context:account_db(Context),
     import_template(wh_json:get_value(<<"template">>, JObj), AccountId, AccountDb).
 
 %%%===================================================================
@@ -117,12 +127,10 @@ account_created(#cb_context{doc=JObj, account_id=AccountId, db_name=AccountDb}) 
 summary(Context) ->
     case couch_mgr:db_info() of
         {'ok', Dbs} ->
-            Context#cb_context{resp_status='success'
-                               ,resp_data=[format_template_name(Db, 'raw') || Db <- Dbs,
-                                           (fun(<<?DB_PREFIX, _/binary>>) -> 'true';
-                                               (_) -> 'false' end)(Db)
-                                          ]
-                              };
+            RespData = [format_template_name(Db, 'raw') || <<?DB_PREFIX, _/binary>>=Db <- Dbs],
+            cb_context:set_resp_status(cb_context:set_resp_data(Context, RespData)
+                                       ,'success'
+                                      );
         _ -> cb_context:add_system_error('datastore_missing_view', Context)
     end.
 
@@ -144,10 +152,10 @@ load_template_db(TemplateName, Context) ->
             cb_context:add_system_error('datastore_missing', Context);
         'true' ->
             lager:debug("check succeeded for template db ~s", [DbName]),
-            Context#cb_context{resp_status='success'
-                               ,db_name=DbName
-                               ,account_id=TemplateName
-                              }
+            cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
+                                         ,{fun cb_context:set_account_id/2, TemplateName}
+                                         ,{fun cb_context:set_account_db/2, DbName}
+                                        ])
     end.
 
 %%--------------------------------------------------------------------

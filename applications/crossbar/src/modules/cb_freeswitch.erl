@@ -132,7 +132,11 @@ resource_exists() -> 'true'.
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_freeswitch(cb_context:context()) -> cb_context:context().
-validate_freeswitch(#cb_context{req_verb = ?HTTP_GET}=Context) ->
+validate_freeswitch(Context) ->
+    validate_freeswitch(Context, cb_context:req_verb(Context)).
+
+-spec validate_freeswitch(cb_context:context(), http_method()) -> cb_context:context().
+validate_freeswitch(Context, ?HTTP_GET) ->
     maybe_load_last_data(Context).
 
 %%%===================================================================

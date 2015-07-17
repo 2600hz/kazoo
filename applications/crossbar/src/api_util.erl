@@ -581,12 +581,18 @@ is_cb_module(Context, Elem) ->
     end.
 
 -spec is_cb_module_version(cb_context:context(), ne_binary()) -> boolean().
-is_cb_module_version(#cb_context{api_version=ApiVersion}, Elem) ->
-    try (wh_util:to_atom(<<"cb_", Elem/binary, "_", ApiVersion/binary>>)):module_info('imports') of
-        _ -> 'true'
-    catch
-        'error':'badarg' -> 'false'; %% atom didn't exist already
-        _E:_R -> 'false'
+is_cb_module_version(Context, Elem) ->
+    case cb_context:is_context(Context) of
+        'false' -> 'false';
+        'true'  ->
+            ApiVersion = cb_context:api_version(Context),
+            ModuleName = <<"cb_", Elem/binary, "_", ApiVersion/binary>>,
+            try (wh_util:to_atom(ModuleName)):module_info('imports') of
+                _ -> 'true'
+            catch
+                'error':'badarg' -> 'false'; %% atom didn't exist already
+                _E:_R -> 'false'
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -1124,7 +1130,7 @@ do_create_resp_envelope(Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Iterate through #cb_context.resp_headers, setting the headers specified
+%% Iterate through cb_context:resp_headers/1, setting the headers specified
 %% @end
 %%--------------------------------------------------------------------
 -spec set_resp_headers(cowboy_req:req(), cb_context:context() | wh_proplist()) ->

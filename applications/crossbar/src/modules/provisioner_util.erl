@@ -351,35 +351,26 @@ delete_account(Context) ->
     delete_account(cb_context:account_id(Context)).
 
 
--spec delete_full_provision(ne_binary(), cb_context:context() | wh_json:object()) -> boolean().
-delete_full_provision(MACAddress, #cb_context{}=Context) ->
-    case get_merged_device(MACAddress, Context) of
-        {'ok', Context1} ->
-            delete_full_provision(MACAddress, cb_context:doc(Context1))
-    end;
-delete_full_provision(MACAddress, JObj) ->
-    PartialURL = <<(wh_json:get_binary_value(<<"account_id">>, JObj))/binary
-                   ,"/", MACAddress/binary
-                 >>,
+-spec delete_full_provision(ne_binary(), cb_context:context()) -> boolean().
+delete_full_provision(MACAddress, Context) ->
+    {'ok', Context1} = get_merged_device(MACAddress, Context),
+    AccountId = wh_json:get_binary_value(<<"account_id">>, cb_context:doc(Context1)),
+    PartialURL = <<AccountId/binary, "/", MACAddress/binary>>,
     maybe_send_to_full_provisioner(PartialURL).
 
--spec do_full_provision(ne_binary(), cb_context:context() | wh_json:object()) -> boolean().
-do_full_provision(MACAddress, #cb_context{}=Context) ->
-    case get_merged_device(MACAddress, Context) of
-        {'ok', Context1} ->
-            OldMACAddress = get_old_mac_address(Context),
-            case OldMACAddress =/= MACAddress
-                andalso OldMACAddress =/= 'undefined'
-            of
-                'true' -> delete_full_provision(OldMACAddress, Context);
-                _ -> 'ok'
-            end,
-            do_full_provision(MACAddress, cb_context:doc(Context1))
-    end;
-do_full_provision(MACAddress, JObj) ->
-    PartialURL = <<(wh_json:get_binary_value(<<"account_id">>, JObj))/binary
-                   ,"/", MACAddress/binary
-                 >>,
+-spec do_full_provision(ne_binary(), cb_context:context()) -> boolean().
+do_full_provision(MACAddress, Context) ->
+    {'ok', Context1} = get_merged_device(MACAddress, Context),
+    OldMACAddress = get_old_mac_address(Context),
+    _ = case OldMACAddress =/= MACAddress
+            andalso OldMACAddress =/= 'undefined'
+        of
+            'true' -> delete_full_provision(OldMACAddress, Context);
+            _ -> 'ok'
+        end,
+    JObj = cb_context:doc(Context1),
+    AccountId = wh_json:get_binary_value(<<"account_id">>, JObj),
+    PartialURL = <<AccountId/binary, "/", MACAddress/binary>>,
     maybe_send_to_full_provisioner(PartialURL, JObj).
 
 -spec maybe_send_to_full_provisioner(ne_binary()) -> boolean().
