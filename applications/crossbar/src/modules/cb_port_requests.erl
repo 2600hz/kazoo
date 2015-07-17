@@ -48,6 +48,9 @@
 -define(PORT_REQ_NUMBERS, <<"port_requests/port_in_numbers">>).
 -define(ALL_PORT_REQ_NUMBERS, <<"port_requests/all_port_in_numbers">>).
 -define(LISTING_BY_STATE, <<"port_requests/listing_by_state">>).
+-define(DESCENDANT_LISTING_BY_STATE, <<"port_requests/listing_by_descendant_state">>).
+
+-define(DESCENDANTS, <<"descendants">>).
 
 -define(UNFINISHED_PORT_REQUEST_LIFETIME
         ,whapps_config:get_integer(?MY_CONFIG_CAT, <<"unfinished_port_request_lifetime_s">>, ?SECONDS_IN_DAY * 30)
@@ -361,7 +364,11 @@ validate_load_requests(Context, <<_/binary>> = Type) ->
 -spec load_requests(cb_context:context(), crossbar_doc:view_options()) ->
                            cb_context:context().
 load_requests(Context, ViewOptions) ->
-    crossbar_doc:load_view(?LISTING_BY_STATE
+    View = case should_load_descendant_requests(Context) of
+               'true' -> ?DESCENDANT_LISTING_BY_STATE;
+               'false' -> ?LISTING_BY_STATE
+           end,
+    crossbar_doc:load_view(View
                            ,['include_docs'
                              ,'descending'
                              | ViewOptions
@@ -369,6 +376,13 @@ load_requests(Context, ViewOptions) ->
                            ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
                            ,fun normalize_view_results/2
                           ).
+
+-spec should_load_descendant_requests(cb_context:context()) -> boolean().
+should_load_descendant_requests(Context) ->
+    case props:get_value(<<"accounts">>, cb_context:req_nouns(Context)) of
+        [_AccountId, ?DESCENDANTS] -> 'true';
+        _Params -> 'false'
+    end.
 
 -spec validate_get_port_requests(cb_context:context(), path_tokens(), api_binary()) ->
                                         cb_context:context().
@@ -454,7 +468,23 @@ get(Context, Id, ?PATH_TOKEN_LOA) ->
 -spec put(cb_context:context()) -> cb_context:context().
 -spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 put(Context) ->
-    crossbar_doc:save(cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)).
+    crossbar_doc:save(
+      update_port_request_for_save(Context)
+     ).
+
+-spec update_port_request_for_save(cb_context:context()) -> cb_context:context().
+update_port_request_for_save(Context) ->
+    cb_context:setters(Context
+                       ,[{fun cb_context:set_account_db/2, ?KZ_PORT_REQUESTS_DB}
+                         ,{fun cb_context:set_doc/2, add_pvt_fields(Context, cb_context:doc(Context))}
+                        ]
+                      ).
+
+-spec add_pvt_fields(cb_context:context(), wh_json:object()) ->
+                            wh_json:object().
+add_pvt_fields(Context, PortRequest) ->
+    Tree = kz_account:tree(cb_context:account_doc(Context)),
+    wh_json:set_value(<<"pvt_tree">>, Tree, PortRequest).
 
 put(Context, Id, ?PORT_ATTACHMENT) ->
     [{Filename, FileJObj}] = cb_context:req_files(Context),
@@ -596,10 +626,13 @@ post(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
 
 -spec do_post(cb_context:context(), path_token()) -> cb_context:context().
 do_post(Context, Id) ->
-    Context1 = crossbar_doc:save(cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)),
+    Context1 = crossbar_doc:save(
+                 update_port_request_for_save(Context)
+                ),
+
     case cb_context:resp_status(Context1) of
         'success' ->
-            _ = maybe_send_port_comment_notification(Context, Id),
+            _ = maybe_send_port_comment_notification(Context1, Id),
             cb_context:set_resp_data(Context1, wh_port_request:public_fields(cb_context:doc(Context1)));
         _Status ->
             Context1
@@ -900,17 +933,17 @@ on_successful_validation(Context, Id, 'true') ->
 on_successful_validation(Context, _Id, 'false') ->
     PortState = wh_json:get_value(?PORT_PVT_STATE, cb_context:doc(Context)),
     lager:debug(
-        "port state ~s is not valid for updating a port request"
-        ,[PortState]
-    ),
+      "port state ~s is not valid for updating a port request"
+      ,[PortState]
+     ),
     cb_context:add_validation_error(
-        PortState
-        ,<<"type">>
-        ,wh_json:from_list([
-            {<<"message">>, <<"Updating port requests not allowed in current port state">>}
-            ,{<<"cause">>, PortState}
+      PortState
+      ,<<"type">>
+      ,wh_json:from_list(
+         [{<<"message">>, <<"Updating port requests not allowed in current port state">>}
+          ,{<<"cause">>, PortState}
          ])
-        ,Context
+      ,Context
      ).
 
 %%--------------------------------------------------------------------
@@ -939,13 +972,19 @@ can_update_port_request(Context, _) ->
 -spec successful_validation(cb_context:context(), api_binary()) -> cb_context:context().
 successful_validation(Context, 'undefined') ->
     JObj = cb_context:doc(Context),
-    cb_context:set_doc(Context, wh_json:set_values([{<<"pvt_type">>, <<"port_request">>}
-                                                    ,{?PORT_PVT_STATE, ?PORT_WAITING}
-                                                   ]
-                                                   ,wh_port_request:normalize_numbers(JObj)
-                                                  ));
+    cb_context:set_doc(Context
+                       ,wh_json:set_values([{<<"pvt_type">>, <<"port_request">>}
+                                            ,{?PORT_PVT_STATE, ?PORT_WAITING}
+                                           ]
+                                           ,wh_port_request:normalize_numbers(JObj)
+                                          )
+                      );
 successful_validation(Context, _Id) ->
-    cb_context:set_doc(Context, wh_port_request:normalize_numbers(cb_context:doc(Context))).
+    cb_context:set_doc(Context
+                       ,wh_port_request:normalize_numbers(
+                          cb_context:doc(Context)
+                         )
+                      ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -981,22 +1020,22 @@ check_number_portability(PortId, Number, Context, E164, PortReq) ->
     of
         {'true', 'true'} ->
             lager:debug(
-                "number ~s(~s) is on this existing port request for this account(~s)"
-                ,[E164, Number, cb_context:account_id(Context)]
-            ),
+              "number ~s(~s) is on this existing port request for this account(~s)"
+              ,[E164, Number, cb_context:account_id(Context)]
+             ),
             cb_context:set_resp_status(Context, 'success');
         {'true', 'false'} ->
             lager:debug(
-                "number ~s(~s) is on a different port request in this account(~s): ~s"
-                ,[E164, Number, cb_context:account_id(Context), wh_json:get_value(<<"id">>, PortReq)]
-            ),
-            Message = <<"Number is on a port request already: ", (wh_json:get_value(<<"id">>, PortReq))/binary>>,
+              "number ~s(~s) is on a different port request in this account(~s): ~s"
+              ,[E164, Number, cb_context:account_id(Context), wh_doc:id(PortReq)]
+             ),
+            Message = <<"Number is on a port request already: ", (wh_doc:id(PortReq))/binary>>,
             number_validation_error(Context, Number, Message);
         {'false', _} ->
             lager:debug(
-                "number ~s(~s) is on existing port request for other account(~s)"
-                ,[E164, Number, wh_json:get_value(<<"value">>, PortReq)]
-            ),
+              "number ~s(~s) is on existing port request for other account(~s)"
+              ,[E164, Number, wh_json:get_value(<<"value">>, PortReq)]
+             ),
             number_validation_error(Context, Number, <<"Number is being ported for a different account">>)
     end.
 
@@ -1083,10 +1122,10 @@ maybe_move_state(Context, Id, PortState) ->
             cb_context:add_validation_error(
               <<"port_state">>
               ,<<"enum">>
-                  ,wh_json:from_list(
-                     [{<<"message">>, <<"Cannot move to new state from current state">>}
-                      ,{<<"cause">>, PortState}
-                     ])
+              ,wh_json:from_list(
+                 [{<<"message">>, <<"Cannot move to new state from current state">>}
+                  ,{<<"cause">>, PortState}
+                 ])
               ,Context
              )
     end.
