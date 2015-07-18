@@ -33,6 +33,9 @@
         "listing_by_realm": {
             "map": "function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; emit(doc.realm.toLowerCase(), {'account_id': doc.pvt_account_id, 'account_db': doc.pvt_account_db}); }"
         },
+        "listing_by_simple_id": {
+            "map": "function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; emit(doc._id, {'id': doc.pvt_account_id, 'name': doc.name, 'realm' : doc.realm}); }"
+        },
         "listing_by_sso": {
             "map": "function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted || !doc.sso ) return; for(id in doc.sso.ids) {emit([doc.sso.provider, doc.sso.ids[id]], {'account_id': doc._id, 'account_db': doc.pvt_account_db});} }"
         }

@@ -22,7 +22,7 @@
          ,token_cost/1, token_cost/2, token_cost/3
          ,bind/2
 
-         ,range_view_options/1, range_view_options/2
+         ,range_view_options/1, range_view_options/2, range_view_options/3
 
          ,range_modb_view_options/1, range_modb_view_options/2, range_modb_view_options/3
 
@@ -33,12 +33,6 @@
 
 -include("../crossbar.hrl").
 
--define(MAX_RANGE, whapps_config:get_integer(?CONFIG_CAT
-                                             ,<<"maximum_range">>
-                                             ,(?SECONDS_IN_DAY * 31 + ?SECONDS_IN_HOUR)
-                                            )
-       ).
-
 -spec range_view_options(cb_context:context()) ->
                                 {gregorian_seconds(), gregorian_seconds()} |
                                 cb_context:context().
@@ -48,36 +42,39 @@
 range_view_options(Context) ->
     range_view_options(Context, ?MAX_RANGE).
 range_view_options(Context, MaxRange) ->
-    TStamp =  wh_util:current_tstamp(),
-    CreatedTo = created_to(Context, TStamp),
-    CreatedFrom = created_from(Context, CreatedTo, MaxRange),
+    range_view_options(Context, MaxRange, <<"created">>).
 
-    case CreatedTo - CreatedFrom of
+range_view_options(Context, MaxRange, Key) ->
+    TStamp =  wh_util:current_tstamp(),
+    RangeTo = range_to(Context, TStamp, Key),
+    RangeFrom = range_from(Context, RangeTo, MaxRange, Key),
+
+    case RangeTo - RangeFrom of
         N when N < 0 ->
             cb_context:add_validation_error(
-              <<"created_from">>
+              <<Key/binary, "_from">>
               ,<<"date_range">>
               ,wh_json:from_list(
-                 [{<<"message">>, <<"created_from is prior to created_to">>}
-                  ,{<<"cause">>, CreatedFrom}
+                 [{<<"message">>, <<Key/binary, "_from is prior to ", Key/binary, "_to">>}
+                  ,{<<"cause">>, RangeFrom}
                  ])
               ,Context
              );
         N when N > MaxRange ->
-            Message = <<"created_to is more than "
+            Message = <<Key/binary, "_to is more than "
                         ,(wh_util:to_binary(MaxRange))/binary
-                        ," seconds from created_from"
+                        ," seconds from ", Key/binary, "_from"
                       >>,
             cb_context:add_validation_error(
-              <<"created_from">>
+              <<Key/binary, "_from">>
               ,<<"date_range">>
               ,wh_json:from_list(
                  [{<<"message">>, Message}
-                  ,{<<"cause">>, CreatedTo}
+                  ,{<<"cause">>, RangeTo}
                  ])
               ,Context
              );
-        _N -> {CreatedFrom, CreatedTo}
+        _N -> {RangeFrom, RangeTo}
     end.
 
 -spec range_modb_view_options(cb_context:context()) ->
@@ -116,21 +113,21 @@ range_modb_view_options(Context, PrefixKeys, SuffixKeys) ->
         Context1 -> Context1
     end.
 
--spec created_to(cb_context:context(), pos_integer()) -> pos_integer().
-created_to(Context, TStamp) ->
+-spec range_to(cb_context:context(), pos_integer(), ne_binary()) -> pos_integer().
+range_to(Context, TStamp, Key) ->
     case crossbar_doc:start_key(Context) of
         'undefined' ->
-            lager:debug("building created_to from req value"),
-            wh_util:to_integer(cb_context:req_value(Context, <<"created_to">>, TStamp));
+            lager:debug("building ~s_to from req value", [Key]),
+            wh_util:to_integer(cb_context:req_value(Context, <<Key/binary, "_to">>, TStamp));
         StartKey ->
-            lager:debug("found startkey ~p as created_to", [StartKey]),
+            lager:debug("found startkey ~p as ~s_to", [StartKey, Key]),
             wh_util:to_integer(StartKey)
     end.
 
--spec created_from(cb_context:context(), pos_integer(), pos_integer()) -> pos_integer().
-created_from(Context, CreatedTo, MaxRange) ->
-    lager:debug("building created_from from req value"),
-    wh_util:to_integer(cb_context:req_value(Context, <<"created_from">>, CreatedTo - MaxRange)).
+-spec range_from(cb_context:context(), pos_integer(), pos_integer(), ne_binary()) -> pos_integer().
+range_from(Context, CreatedTo, MaxRange, Key) ->
+    lager:debug("building ~s_from from req value", [Key]),
+    wh_util:to_integer(cb_context:req_value(Context, <<Key/binary, "_from">>, CreatedTo - MaxRange)).
 
 -type binding() :: {ne_binary(), atom()}.
 -type bindings() :: [binding(),...].

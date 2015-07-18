@@ -38,7 +38,7 @@ init() ->
 -spec current_state(wh_json:object()) -> api_binary().
 current_state(JObj) ->
     lager:debug("current state: ~p", [JObj]),
-    wh_json:get_value(?PORT_PVT_STATE, JObj, ?PORT_WAITING).
+    wh_json:get_value(?PORT_PVT_STATE, JObj, ?PORT_UNCONFIRMED).
 
 -spec get(ne_binary()) ->
                  {'ok', wh_json:object()} |
@@ -54,7 +54,7 @@ public_fields(JObj) ->
                         ,{<<"created">>, wh_json:get_value(<<"pvt_created">>, JObj)}
                         ,{<<"updated">>, wh_json:get_value(<<"pvt_modified">>, JObj)}
                         ,{<<"uploads">>, normalize_attachments(As)}
-                        ,{<<"port_state">>, wh_json:get_value(?PORT_PVT_STATE, JObj, ?PORT_WAITING)}
+                        ,{<<"port_state">>, wh_json:get_value(?PORT_PVT_STATE, JObj, ?PORT_UNCONFIRMED)}
                         ,{<<"sent">>, wh_json:get_value(?PVT_SENT, JObj, 'false')}
                        ]
                        ,wh_doc:public_fields(JObj)
@@ -93,7 +93,7 @@ normalize_number_map(N, Meta) ->
 -spec transition_to_canceled(wh_json:object()) -> transition_response().
 
 transition_to_submitted(JObj) ->
-    transition(JObj, [?PORT_WAITING, ?PORT_REJECT], ?PORT_SUBMITTED).
+    transition(JObj, [?PORT_UNCONFIRMED, ?PORT_REJECT], ?PORT_SUBMITTED).
 
 transition_to_pending(JObj) ->
     transition(JObj, [?PORT_SUBMITTED], ?PORT_PENDING).
@@ -111,7 +111,7 @@ transition_to_rejected(JObj) ->
     transition(JObj, [?PORT_SUBMITTED, ?PORT_PENDING, ?PORT_SCHEDULED], ?PORT_REJECT).
 
 transition_to_canceled(JObj) ->
-    transition(JObj, [?PORT_WAITING, ?PORT_SUBMITTED, ?PORT_PENDING, ?PORT_SCHEDULED, ?PORT_REJECT], ?PORT_CANCELED).
+    transition(JObj, [?PORT_UNCONFIRMED, ?PORT_SUBMITTED, ?PORT_PENDING, ?PORT_SCHEDULED, ?PORT_REJECT], ?PORT_CANCELED).
 
 -spec maybe_transition(wh_json:object(), ne_binary()) -> transition_response().
 maybe_transition(PortReq, ?PORT_SUBMITTED) ->
