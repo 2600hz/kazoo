@@ -135,5 +135,11 @@
           ,should_paginate :: api_boolean()
          }).
 
+-define(MAX_RANGE, whapps_config:get_integer(?CONFIG_CAT
+                                            ,<<"maximum_range">>
+                                            ,(?SECONDS_IN_DAY * 31 + ?SECONDS_IN_HOUR)
+                                            )
+       ).
+
 -define(CROSSBAR_HRL, 'true').
 -endif.
