@@ -866,7 +866,7 @@ maybe_update_app(AppPath, MetaData, MasterAccountDb, JObj) ->
 	    end
     end,
 
-    delete_old_images(CurrentDocId, MetaData, MasterAccountDb),
+    'ok' = delete_old_images(CurrentDocId, MetaData, MasterAccountDb),
     maybe_add_images(AppPath, CurrentDocId, MetaData, MasterAccountDb).
 
 -spec find_app(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} |
@@ -905,8 +905,9 @@ delete_old_images(AppId, MetaData, MasterAccountDb) ->
 	end
     end,
 
-    [Delete(X) || X <- Icons],
-    [Delete(X) || X <- Screenshots].
+    _ = [Delete(X) || X <- Icons],
+    _ = [Delete(X) || X <- Screenshots],
+    'ok'.
 
 -spec maybe_add_images(file:filename(), ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
 maybe_add_images(AppPath, AppId, MetaData, MasterAccountDb) ->
