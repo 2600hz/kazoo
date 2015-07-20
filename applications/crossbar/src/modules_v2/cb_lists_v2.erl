@@ -234,17 +234,20 @@ on_successfull_validation(Id, _Type, Context) ->
 
 -spec set_org(wh_json:object(), cb_context:context()) -> wh_json:object().
 set_org(JObj, Context) ->
-    Context1 = crossbar_doc:load(wh_json:get_value(<<"list_id">>, JObj), Context),
-    set_org(JObj, Context1, cb_context:resp_status(Context1)).
+    ListId = wh_json:get_value(<<"list_id">>, JObj),
+    Context1 = crossbar_doc:load(ListId, Context),
+    set_org(JObj, Context1, cb_context:resp_status(Context1), ListId).
 
--spec set_org(wh_json:object(), cb_context:context(), crossbar_status()) -> wh_json:object().
-set_org(JObj, Context, 'success') ->
+-spec set_org(wh_json:object(), cb_context:context(), crossbar_status(), ne_binary()) -> wh_json:object().
+set_org(JObj, Context, 'success', _) ->
     case wh_json:get_value(<<"org">>, cb_context:doc(Context)) of
         'undefined' -> JObj;
         Val -> wh_json:set_value(<<"org">>, Val, JObj)
     end;
-set_org(JObj, Context, _) ->
-    lager:debug("failed to load list ~p while loading list entry ~p", [crossbar_doc:doc_id(Context), wh_json:get_value(<<"id">>, JObj)]),
+set_org(JObj, _, _, ListId) ->
+    lager:debug("failed to load list ~p while loading list entry ~p",
+                [ListId, wh_json:get_value(<<"id">>, JObj)]
+               ),
     JObj.
 
 -spec set_photo(wh_json:object(), cb_context:context()) -> wh_json:object().
