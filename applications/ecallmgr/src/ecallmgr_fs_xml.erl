@@ -724,7 +724,7 @@ param_el(Name, Value) ->
                             ]
                }.
 
--spec param_el(xml_attrib_value(), xml_attrib_value()) -> xml_el() | 'undefined'.
+-spec maybe_param_el(xml_attrib_value(), xml_attrib_value()) -> xml_el() | 'undefined'.
 maybe_param_el(Name, Value) ->
     case wh_util:is_empty(Value) of
         'true' -> 'undefined';
