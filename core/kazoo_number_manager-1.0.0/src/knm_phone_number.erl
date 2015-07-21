@@ -224,8 +224,7 @@ setters_fold(_Fun, Acc) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec number(number()) -> ne_binary().
-number(Number) ->
-    Number#number.number.
+number(#number{number=Num}) -> Num.
 
 -spec set_number(number(), ne_binary()) -> number().
 set_number(N, Number) ->
@@ -237,8 +236,7 @@ set_number(N, Number) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec number_db(number()) -> ne_binary().
-number_db(Number) ->
-    Number#number.number_db.
+number_db(#number{number_db=Db}) -> Db.
 
 -spec set_number_db(number(), ne_binary()) -> number().
 set_number_db(N, NumberDb) ->
@@ -250,8 +248,7 @@ set_number_db(N, NumberDb) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec assigned_to(number()) -> ne_binary().
-assigned_to(Number) ->
-    Number#number.assigned_to.
+assigned_to(#number{assigned_to=AssignedTo}) -> AssignedTo.
 
 -spec set_assigned_to(number(), ne_binary()) -> number().
 set_assigned_to(N, AccountId) ->
@@ -263,8 +260,7 @@ set_assigned_to(N, AccountId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec prev_assigned_to(number()) -> ne_binary().
-prev_assigned_to(Number) ->
-    Number#number.prev_assigned_to.
+prev_assigned_to(#number{prev_assigned_to=PrevAssignedTo}) -> PrevAssignedTo.
 
 -spec set_prev_assigned_to(number(), ne_binary()) -> number().
 set_prev_assigned_to(N, AccountId) ->
@@ -276,8 +272,7 @@ set_prev_assigned_to(N, AccountId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec used_by(number()) -> ne_binary().
-used_by(Number) ->
-    Number#number.used_by.
+used_by(#number{used_by=UsedBy}) -> UsedBy.
 
 -spec set_used_by(number(), ne_binary()) -> number().
 set_used_by(N, UsedBy) ->
@@ -289,8 +284,7 @@ set_used_by(N, UsedBy) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec features(number()) -> ne_binary().
-features(Number) ->
-    Number#number.features.
+features(#number{features=Features}) -> Features.
 
 -spec set_features(number(), ne_binary()) -> number().
 set_features(N, Features) ->
@@ -303,12 +297,12 @@ set_features(N, Features) ->
 %%--------------------------------------------------------------------
 -spec feature(number(), ne_binary()) -> ne_binary().
 feature(Number, Feature) ->
-    wh_json:get_value(Feature, Number#number.features).
+    wh_json:get_value(Feature, features(Number)).
 
 -spec set_feature(number(), ne_binary(), _) -> number().
 set_feature(N, Feature, Data) ->
-    Features = features(N),
-    N#number{features=wh_json:set_value(Feature, Data, Features)}.
+    Features = wh_json:set_value(Feature, Data, features(N)),
+    N#number{features=Features}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -316,8 +310,7 @@ set_feature(N, Feature, Data) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec state(number()) -> ne_binary().
-state(Number) ->
-    Number#number.state.
+state(#number{state=State}) -> State.
 
 -spec set_state(number(), ne_binary()) -> number().
 set_state(N, State) ->
@@ -329,8 +322,7 @@ set_state(N, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec reserve_history(number()) -> ne_binaries().
-reserve_history(Number) ->
-    Number#number.reserve_history.
+reserve_history(#number{reserve_history=History}) -> History.
 
 -spec set_reserve_history(number(), ne_binaries()) -> number().
 set_reserve_history(N, History) ->
@@ -342,8 +334,7 @@ set_reserve_history(N, History) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec ported_in(number()) -> boolean().
-ported_in(Number) ->
-    Number#number.ported_in.
+ported_in(#number{ported_in=Ported}) -> Ported.
 
 -spec set_ported_in(number(), boolean()) -> number().
 set_ported_in(N, Ported) ->
@@ -355,8 +346,7 @@ set_ported_in(N, Ported) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec module_name(number()) -> ne_binary().
-module_name(Number) ->
-    Number#number.module_name.
+module_name(#number{module_name=Name}) -> Name.
 
 -spec set_module_name(number(), ne_binary()) -> number().
 set_module_name(N, Name) ->
@@ -368,8 +358,7 @@ set_module_name(N, Name) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec carrier_data(number()) -> ne_binary().
-carrier_data(Number) ->
-    Number#number.carrier_data.
+carrier_data(#number{carrier_data=Data}) -> Data.
 
 -spec set_carrier_data(number(), wh_json:object()) -> number().
 set_carrier_data(N, Data) ->
@@ -381,8 +370,7 @@ set_carrier_data(N, Data) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec region(number()) -> ne_binary().
-region(Number) ->
-    Number#number.region.
+region(#number{region=Region}) -> Region.
 
 -spec set_region(number(), ne_binary()) -> number().
 set_region(N, Region) ->
@@ -394,8 +382,7 @@ set_region(N, Region) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec auth_by(number()) -> ne_binary().
-auth_by(Number) ->
-    Number#number.auth_by.
+auth_by(#number{auth_by=AuthBy}) -> AuthBy.
 
 -spec set_auth_by(number(), ne_binary()) -> number().
 set_auth_by(N, AuthBy) ->
@@ -407,8 +394,7 @@ set_auth_by(N, AuthBy) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec dry_run(number()) -> ne_binary().
-dry_run(Number) ->
-    Number#number.dry_run.
+dry_run(#number{dry_run=DryRun}) -> DryRun.
 
 -spec set_dry_run(number(), ne_binary()) -> number().
 set_dry_run(N, DryRun) ->
@@ -420,8 +406,7 @@ set_dry_run(N, DryRun) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec locality(number()) -> ne_binary().
-locality(Number) ->
-    Number#number.locality.
+locality(#number{locality=Locality}) -> Locality.
 
 -spec set_locality(number(), wh_json:object()) -> number().
 set_locality(N, JObj) ->
@@ -451,8 +436,7 @@ store(N, Key, Data) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec doc(number()) -> wh_json:object().
-doc(Number) ->
-    Number#number.doc.
+doc(#number{doc=Doc}) -> Doc.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -461,10 +445,8 @@ doc(Number) ->
 %%--------------------------------------------------------------------
 -spec default_options() -> wh_proplist().
 default_options() ->
-    [
-        {<<"auth_by">>, <<"system">>}
-        ,{<<"dry_run">>, 'false'}
-    ].
+    [{<<"auth_by">>, <<"system">>}
+     ,{<<"dry_run">>, 'false'}].
 
 %%%===================================================================
 %%% Internal functions
@@ -558,6 +540,7 @@ assign(Number, AssignedTo) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_unassign(number()) -> number_return().
+-spec maybe_unassign(number(), ne_binary()) -> number_return().
 maybe_unassign(Number) ->
     PrevAssignedTo = prev_assigned_to(Number),
     case wh_util:is_empty(PrevAssignedTo) of
@@ -565,14 +548,17 @@ maybe_unassign(Number) ->
             lager:debug("prev_assigned_to is is empty for ~s, ignoring", [number(Number)]),
             {'ok', Number};
         'false' ->
-            Num = number(Number),
-            case get_number_in_account(PrevAssignedTo, Num) of
-                {'error', 'not_found'} ->
-                    lager:debug("number ~s was not found in ~s, no need to unassign", [Num, PrevAssignedTo]),
-                    {'ok', Number};
-                {'ok', _} -> unassign(Number, PrevAssignedTo);
-                {'error', _R} -> unassign(Number, PrevAssignedTo)
-            end
+            maybe_unassign(Number, PrevAssignedTo)
+    end.
+
+maybe_unassign(Number, PrevAssignedTo) ->
+    Num = number(Number),
+    case get_number_in_account(PrevAssignedTo, Num) of
+        {'error', 'not_found'} ->
+            lager:debug("number ~s was not found in ~s, no need to unassign", [Num, PrevAssignedTo]),
+            {'ok', Number};
+        {'ok', _} -> unassign(Number, PrevAssignedTo);
+        {'error', _R} -> unassign(Number, PrevAssignedTo)
     end.
 
 -spec unassign(number(), ne_binary()) -> number_return().
