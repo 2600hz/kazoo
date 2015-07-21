@@ -230,12 +230,27 @@ handle_config_req(Node, Id, <<"conference.conf">>, Data) ->
               end,
     lager:debug("sending conference profile XML to ~s: ~s", [Node, XmlResp]),
     freeswitch:fetch_reply(Node, Id, 'configuration', iolist_to_binary(XmlResp));
-handle_config_req(Node, Id, _Conf, _) ->
+handle_config_req(Node, Id, Conf, Data) ->
     wh_util:put_callid(Id),
-
-    lager:debug("ignoring conf ~s: ~s", [_Conf, Id]),
-    {'ok', Resp} = ecallmgr_fs_xml:not_found(),
-    freeswitch:fetch_reply(Node, Id, 'configuration', iolist_to_binary(Resp)).
+    {'ok', NotHandled} = ecallmgr_fs_xml:not_found(),    
+    case ecallmgr_config:get(<<"configuration_handlers">>) of
+        'undefined' ->
+            lager:debug("ignoring conf ~s: ~s", [Conf, Id]),    
+            freeswitch:fetch_reply(Node, Id, 'configuration', iolist_to_binary(NotHandled));
+        Configuration ->
+            case wh_json:get_value(Conf, Configuration) of
+                'undefined' -> freeswitch:fetch_reply(Node, Id, 'configuration', iolist_to_binary(NotHandled));
+                Module ->
+                    lager:debug("relaying configuration ~s to ~s", [Conf, Module]),
+                    try 
+                        (wh_util:to_atom(Module, 'true')):handle_config_req(Node, Id, Conf, Data)
+                    catch
+                        _E1:_E2 ->
+                            lager:debug("exception ~p/~p calling module ~s for configuration ~s", [_E1, _E2, Module, Conf]),
+                            freeswitch:fetch_reply(Node, Id, 'configuration', iolist_to_binary(NotHandled))
+                    end
+            end
+    end.
 
 -spec generate_acl_xml(api_object()) -> api_binary().
 generate_acl_xml('undefined') ->
