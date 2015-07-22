@@ -856,7 +856,7 @@ maybe_update_app(AppPath, MetaData, MasterAccountDb, JObj) ->
     CurrentApiUrl = wh_json:get_value([<<"value">>, <<"api_url">>], JObj),
 
     case wh_json:get_value(<<"api_url">>, MetaData) of
-	undefined     -> io:format(" not updating api_url, it is undefined~n");
+	'undefined'   -> io:format(" not updating api_url, it is undefined~n");
 	CurrentApiUrl -> io:format(" not updating api_url, it is unchanged~n");
 	NewApiUrl ->
 	    Update = [{<<"api_url">>, NewApiUrl}],
