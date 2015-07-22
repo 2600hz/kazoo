@@ -896,18 +896,19 @@ create_app(AppPath, MetaData, MasterAccountDb) ->
 -spec delete_old_images(ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
 delete_old_images(AppId, MetaData, MasterAccountDb) ->
     Icons       = [wh_json:get_value(<<"icon">>, MetaData)],
-    Screenshots = wh_json:get_value(<<"screenshots">>, MetaData),
+    Screenshots = wh_json:get_value(<<"screenshots">>, MetaData, []),
 
-    Delete = fun(Image) ->
-	case couch_mgr:fetch_attachment(MasterAccountDb, AppId, Image) of
-	   {'ok', _} -> couch_mgr:delete_attachment(MasterAccountDb, AppId, Image);
-	   {'error', _} -> ok
-	end
-    end,
-
-    _ = [Delete(X) || X <- Icons],
-    _ = [Delete(X) || X <- Screenshots],
+    _ = [safe_delete_image(MasterAccountDb, AppId, X) || X <- Icons],
+    _ = [safe_delete_image(MasterAccountDb, AppId, X) || X <- Screenshots],
     'ok'.
+
+-spec safe_delete_image(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+safe_delete_image(_AccountDb, _AppId, 'undefined') -> 'ok';
+safe_delete_image(AccountDb, AppId, Image) ->
+    case couch_mgr:fetch_attachment(AccountDb, AppId, Image) of
+	{'ok', _}    -> couch_mgr:delete_attachment(AccountDb, AppId, Image);
+	{'error', _} -> 'ok'
+    end.
 
 -spec maybe_add_images(file:filename(), ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
 maybe_add_images(AppPath, AppId, MetaData, MasterAccountDb) ->
