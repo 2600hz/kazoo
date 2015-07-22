@@ -14,7 +14,7 @@
          ,import_errors/1, failed/2
          ,response/1
          ,has_errors/1
-         ,add_system_error/2, add_system_error/3
+         ,add_system_error/2, add_system_error/3, add_system_error/4
          ,add_validation_error/4
          ,validate_request_data/2, validate_request_data/3, validate_request_data/4
          ,add_content_types_provided/2
@@ -1059,6 +1059,9 @@ add_system_error(Error, JObj, Context) ->
         _Else ->
             build_system_error(500, Error, JObj, Context)
     end.
+
+add_system_error(Code, Error, JObj, Context) ->
+    build_system_error(Code, Error, JObj, Context).
 
 %%--------------------------------------------------------------------
 %% @private
