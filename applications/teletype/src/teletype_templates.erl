@@ -44,7 +44,7 @@ init(TemplateId, Params) ->
 %%--------------------------------------------------------------------
 -spec doc_id(ne_binary()) -> ne_binary().
 doc_id(Id) ->
-    kz_notification:resp_id(Id).
+    kz_notification:db_id(Id).
 
 %%--------------------------------------------------------------------
 %% @public
