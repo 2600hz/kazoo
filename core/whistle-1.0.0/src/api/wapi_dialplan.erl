@@ -38,6 +38,7 @@
          ,echo/1, echo_v/1
          ,privacy/1, privacy_v/1
          ,hold/1, hold_v/1
+         ,soft_hold/1, soft_hold_v/1
          ,park/1, park_v/1
          ,play_and_collect_digits/1, play_and_collect_digits_v/1
          ,call_pickup/1, call_pickup_v/1
@@ -623,6 +624,21 @@ hangup_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?HANGUP_REQ_HEADERS, ?HANGUP_REQ_VALUES, ?HANGUP_REQ_TYPES);
 hangup_v(JObj) ->
     hangup_v(wh_json:to_proplist(JObj)).
+
+-spec soft_hold(api_terms()) -> api_formatter_return().
+soft_hold(Prop) when is_list(Prop) ->
+    case soft_hold_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?SOFT_HOLD_REQ_HEADERS, ?OPTIONAL_SOFT_HOLD_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for hold_req"}
+    end;
+soft_hold(JObj) ->
+    soft_hold(wh_json:to_proplist(JObj)).
+
+-spec soft_hold_v(api_terms()) -> boolean().
+soft_hold_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?SOFT_HOLD_REQ_HEADERS, ?SOFT_HOLD_REQ_VALUES, ?SOFT_HOLD_REQ_TYPES);
+soft_hold_v(JObj) ->
+    soft_hold_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Hold a call - see wiki

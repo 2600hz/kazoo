@@ -294,6 +294,7 @@
                                ,{<<"noop">>, <<"noop">>}
                                ,{<<"execute_extension">>, <<"execute_extension">>}
                                ,{<<"endless_playback">>, <<"hold">>}
+                               ,{<<"soft_hold">>, <<"soft_hold">>}
                                ,{<<"uuid_record">>, <<"record_call">>}
                                ,{<<"record">>, <<"record_call">>}
                                ,{<<"presence">>, <<"presence">>}

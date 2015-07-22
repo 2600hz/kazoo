@@ -1,13 +1,14 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2014, 2600Hz
 %%% @doc
-%%% Put the caller (by default) on hold
+%%% Put the call on hold
 %%% Data = {
 %%%   "moh":"media_id"
 %%% }
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
+%%%   SIPLABS LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
 -module(konami_hold).
 
@@ -20,28 +21,28 @@
 -spec handle(wh_json:object(), whapps_call:call()) ->
                     {'continue', whapps_call:call()}.
 handle(Data, Call) ->
-    MOH = wh_json:get_value(<<"moh">>, Data),
-
+    AMOH = wh_json:get_value(<<"moh_aleg">>, Data),
+    AMOHToPlay = wh_media_util:media_path(AMOH, Call),
+    BMOH = wh_json:get_value(<<"moh_bleg">>, Data, AMOH),
+    BMOHToPlay = wh_media_util:media_path(BMOH, Call),
+    Unholdkey = wh_json:get_value(<<"unhold_key">>, Data, <<"1">>),
     RequestingLeg = wh_json:get_value(<<"dtmf_leg">>, Data),
 
-    lager:debug("first, unbridging the call"),
-    whapps_call_command:unbridge(Call),
+    HoldCommand = whapps_call_command:soft_hold_command(RequestingLeg, Unholdkey, AMOHToPlay, BMOHToPlay),
 
-    HoldLeg =
-        case whapps_call:call_id(Call) of
-            RequestingLeg -> whapps_call:other_leg_call_id(Call);
-            CallId -> CallId
-        end,
+    lager:debug("leg ~s is putting ~s on hold", [RequestingLeg, hold_leg(Call, RequestingLeg)]),
 
-    HoldCommand = whapps_call_command:hold_command(MOH, HoldLeg),
-
-    lager:debug("leg ~s is putting ~s on hold", [RequestingLeg, HoldLeg]),
-
-    whapps_call_command:send_command(
-      wh_json:set_value(<<"Insert-At">>, <<"now">>, HoldCommand)
-      ,Call
-     ),
+    whapps_call_command:send_command(props:set_value(<<"Insert-At">>, <<"now">>, HoldCommand)
+                                     ,Call
+                                    ),
     {'continue', Call}.
+
+-spec hold_leg(whapps_call:call(), ne_binary()) -> ne_binary().
+hold_leg(Call, RequestingLeg) ->
+    case whapps_call:call_id(Call) of
+        RequestingLeg -> whapps_call:other_leg_call_id(Call);
+        HoldLeg -> HoldLeg
+    end.
 
 -spec number_builder(wh_json:object()) -> wh_json:object().
 number_builder(DefaultJObj) ->
