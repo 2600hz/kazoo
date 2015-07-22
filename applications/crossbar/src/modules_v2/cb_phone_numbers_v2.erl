@@ -609,16 +609,14 @@ normalize_view_results(JObj, Acc) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec error_return(cb_context:context(), ne_binary(), any()) -> cb_context:context().
-error_return(Context, Num, 'not_found') ->
-    JObj = wh_json:from_list([{<<"cause">>, Num}]),
-    cb_context:add_system_error('not_found', JObj, Context);
-error_return(Context, Num, 'unauthorized') ->
-    JObj = wh_json:from_list([{<<"cause">>, Num}]),
-    cb_context:add_system_error('forbidden', JObj, Context);
 error_return(Context, Num, Reason) ->
-    JObj = wh_json:from_list([{<<"cause">>, Num}, {<<"message">>, wh_util:to_binary(Reason)}]),
-    cb_context:add_system_error('unspecified_fault', JObj, Context).
-
+    ErrorJObj = knm_errors:to_json(Reason, Num),
+    cb_context:add_system_error(
+        wh_json:get_integer_value(<<"code">>, ErrorJObj)
+        ,wh_json:get_value(<<"error">>, ErrorJObj)
+        ,wh_json:delete_keys([<<"code">>, <<"error">>], ErrorJObj)
+        ,Context
+    ).
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
