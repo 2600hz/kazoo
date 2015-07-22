@@ -304,6 +304,14 @@ get_fs_app(_Node, UUID, JObj, <<"hold">>) ->
             {<<"endless_playback">>, Stream}
     end;
 
+get_fs_app(_Node, UUID, JObj, <<"soft_hold">>) ->
+    UnholdKey = wh_json:get_value(<<"Unhold-Key">>, JObj),
+    AMOH = wh_json:get_value(<<"A-MOH">>, JObj, <<"">>),
+    BMOH = wh_json:get_value(<<"B-MOH">>, JObj, <<"">>),
+    AMedia = ecallmgr_util:media_path(AMOH, 'extant', UUID, JObj),
+    BMedia = ecallmgr_util:media_path(BMOH, 'extant', UUID, JObj),
+    {<<"soft_hold">>, list_to_binary([UnholdKey, " ", AMedia, " ", BMedia])};
+
 get_fs_app(_Node, _UUID, JObj, <<"page">>) ->
     Endpoints = wh_json:get_ne_value(<<"Endpoints">>, JObj, []),
     case wapi_dialplan:page_v(JObj) of
