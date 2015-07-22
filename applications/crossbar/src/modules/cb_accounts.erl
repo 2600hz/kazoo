@@ -641,6 +641,7 @@ leak_pvt_fields(Context, 'success') ->
                 ,fun leak_is_reseller/1
                 ,fun leak_billing_mode/1
                 ,fun leak_notification_preference/1
+                ,fun leak_trial_time_left/1
                ],
     cb_context:setters(Context, Routines);
 leak_pvt_fields(Context, _Status) -> Context.
@@ -750,6 +751,23 @@ leak_notification_preference(Context, 'undefined') ->
 leak_notification_preference(Context, Pref) ->
     UpdatedRespJObj = wh_json:set_value(<<"notification_preference">>, Pref, cb_context:resp_data(Context)),
     cb_context:set_resp_data(Context, UpdatedRespJObj).
+
+-spec leak_trial_time_left(cb_context:context()) ->
+                                  cb_context:context().
+-spec leak_trial_time_left(cb_context:context(), wh_json:object(), api_integer()) ->
+                                  cb_context:context().
+leak_trial_time_left(Context) ->
+    JObj = cb_context:doc(Context),
+    leak_trial_time_left(Context, JObj, kz_account:trial_expiration(JObj)).
+
+leak_trial_time_left(Context, _JObj, 'undefined') ->
+    Context;
+leak_trial_time_left(Context, JObj, _Expiration) ->
+    RespData = wh_json:set_value(<<"trial_time_left">>
+                                 ,kz_account:trial_time_left(JObj)
+                                 ,cb_context:resp_data(Context)
+                                ),
+    cb_context:set_resp_data(Context, RespData).
 
 %%--------------------------------------------------------------------
 %% @private
