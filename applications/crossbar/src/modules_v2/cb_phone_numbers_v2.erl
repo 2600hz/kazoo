@@ -18,13 +18,15 @@
          ,resource_exists/0, resource_exists/1, resource_exists/2
          ,validate/1, validate/2, validate/3
          ,post/2
+         ,put/2 ,put/3
+         ,delete/2
         ]).
 
 -include("crossbar.hrl").
-
-% -include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
+-include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
 
 -define(CB_LIST, <<"phone_numbers/crossbar_listing">>).
+-define(KNM_NUMBER, <<"numbers">>).
 
 -define(FIND_NUMBER_PREFIX
         ,wh_json:from_list([{<<"required">>, 'true'}
@@ -56,6 +58,7 @@
 -define(CLASSIFIERS, <<"classifiers">>).
 -define(LOCALITY, <<"locality">>).
 -define(FIX, <<"fix">>).
+-define(ACTIVATE, <<"activate">>).
 
 %%%===================================================================
 %%% API
@@ -74,7 +77,9 @@ init() ->
     _ = crossbar_bindings:bind(<<"v2_resource.allowed_methods.phone_numbers">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"v2_resource.resource_exists.phone_numbers">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"v2_resource.validate.phone_numbers">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"v2_resource.execute.post.phone_numbers">>, ?MODULE, 'post').
+    _ = crossbar_bindings:bind(<<"v2_resource.execute.post.phone_numbers">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"v2_resource.execute.put.phone_numbers">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"v2_resource.execute.delete.phone_numbers">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -135,10 +140,12 @@ allowed_methods(?LOCALITY) ->
 allowed_methods(?FIX) ->
     [?HTTP_POST];
 allowed_methods(_) ->
-    [?HTTP_GET].
+    [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
 
 allowed_methods(?CLASSIFIERS, _Number) ->
-    [?HTTP_GET].
+    [?HTTP_GET];
+allowed_methods(_Number, ?ACTIVATE) ->
+    [?HTTP_PUT].
 
 
 %%--------------------------------------------------------------------
@@ -158,6 +165,7 @@ resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
 
 resource_exists(?CLASSIFIERS, _Number) -> 'true';
+resource_exists(_Number, ?ACTIVATE) -> 'true';
 resource_exists(_, _) -> 'false'.
 
 
@@ -203,7 +211,9 @@ validate(Context, Id) ->
     validate_phone_number(Context, Id, cb_context:req_verb(Context)).
 
 validate(Context, ?CLASSIFIERS, Number) ->
-    maybe_classify(Context, Number).
+    maybe_classify(Context, Number);
+validate(Context, Number, ?ACTIVATE) ->
+    cb_context:validate_request_data(?KNM_NUMBER, Context).
 
 
 %%--------------------------------------------------------------------
@@ -221,7 +231,61 @@ post(Context, ?LOCALITY) ->
 post(Context, ?FIX) ->
     AccountId = cb_context:account_id(Context),
     _ = knm_maintenance:fix_by_account(AccountId),
-    summary(Context).
+    summary(Context);
+post(Context, Number) ->
+    Context.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec put(cb_context:context(), path_token()) -> cb_context:context().
+-spec put(cb_context:context(), path_token(), path_token() -> cb_context:context().
+put(Context, Num) ->
+    ReqJObj = cb_context:req_json(Context),
+    DryRun = (not wh_json:is_true(<<"accept_charges">>, ReqJObj)),
+    Options = [
+        {<<"assigned_to">>, cb_context:account_id(Context)}
+        ,{<<"auth_by">>, cb_context:auth_account_id(Context)}
+        ,{<<"dry_run">>, DryRun}
+    ],
+    case knm_number:create(Num, Options) of
+        {'error', Reason} ->
+            error_return(Context, Num, Reason);
+        {'ok', Number} ->
+            success_return(Context, Number, DryRun) %TODO
+    end.
+
+put(Context, Num, ?ACTIVATE) ->
+    ReqJObj = cb_context:req_json(Context),
+    DryRun = (not wh_json:is_true(<<"accept_charges">>, ReqJObj)),
+    Options = [
+        {<<"auth_by">>, cb_context:auth_account_id(Context)}
+        ,{<<"dry_run">>, DryRun}
+    ],
+    case knm_number:buy(Num, cb_context:account_id(Context), Options) of
+        {'error', Reason} ->
+            error_return(Context, Num, Reason);
+        {'ok', Number} ->
+            success_return(Context, Number, DryRun) %TODO
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec delete(cb_context:context(), path_token()) -> cb_context:context().
+delete(Context, Num) ->
+    Options = [
+        {<<"auth_by">>, cb_context:auth_account_id(Context)}
+    ],
+    case knm_number:change_state(Num, ?NUMBER_STATE_RELEASED, Options) of
+        {'error', Reason} -> error_return(Context, Num, Reason);
+        {'ok', _} ->
+            cb_context:set_resp_status(Context, 'success')
+    end.
 
 
 %%%===================================================================
@@ -440,7 +504,16 @@ get_find_numbers_req(Context) ->
 %%--------------------------------------------------------------------
 -spec validate_phone_number(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_phone_number(Context, Number, ?HTTP_GET) ->
-    read(Context, Number).
+    read(Context, Number)
+validate_phone_number(Context, Number, ?HTTP_PUT) ->
+    cb_context:validate_request_data(?KNM_NUMBER, Context);
+validate_phone_number(Context, Number, ?HTTP_POST) ->
+    cb_context:validate_request_data(?KNM_NUMBER, Context);
+validate_phone_number(Context, Number, ?HTTP_DELETE) ->
+    cb_context:set_doc(
+        cb_context:set_resp_status(Context, 'success')
+        ,'undefined'
+    ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -623,6 +696,7 @@ error_return(Context, Num, Reason) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec success_return(cb_context:context(), any()) -> cb_context:context().
+-spec success_return(cb_context:context(), any(), boolean()) -> cb_context:context().
 success_return(Context, Number) ->
     Props = [
         {fun cb_context:set_resp_data/2, knm_phone_number:to_public_json(Number)}
