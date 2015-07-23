@@ -585,8 +585,13 @@ req_headers(Token) ->
     props:filter_undefined(
         [{"Content-Type", "application/json"}
          ,{"X-Auth-Token", wh_util:to_list(Token)}
+         ,{"X-Kazoo-Cluster-ID", get_cluster_id()}
          ,{"User-Agent", wh_util:to_list(erlang:node())}
         ]).
+
+-spec get_cluster_id() -> 'undefined' | string().
+get_cluster_id() ->
+    whapps_config:get_string(?MOD_CONFIG_CAT, <<"cluster_id">>).
 
 %%--------------------------------------------------------------------
 %% @private
