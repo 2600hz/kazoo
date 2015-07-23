@@ -5,6 +5,8 @@ Title: Installation
 
 # Kazoo Installation Guide
 
+**NOTE: This document is a work in progress**
+
 ## Installation requirements
 
 The simplest Kazoo installation only requires a single server.  Naturally to take full advantage of the distributed capabilities offered by Kazoo you will need multiple servers to form a cluster.  The basic requirements for a Kazoo server (single or multiple server deployment) are:
@@ -143,16 +145,9 @@ On all servers:
 **Set the Erlang cookie correctly for bigcouch (see section below)**
 
 **Set up bigcouch cluster**
-Note that for each server in the cluster, the other 2 servers must be added to its nodes using the following curl commands:
 ```
 # curl -X PUT test1.cluster1.2600hz.com:5986/nodes/bigcouch@test2.cluster1.2600hz.com -d {}
 # curl -X PUT test1.cluster1.2600hz.com:5986/nodes/bigcouch@test3.cluster1.2600hz.com -d {}
-
-# curl -X PUT test2.cluster1.2600hz.com:5986/nodes/bigcouch@test1.cluster1.2600hz.com -d {}
-# curl -X PUT test2.cluster1.2600hz.com:5986/nodes/bigcouch@test3.cluster1.2600hz.com -d {}
-
-# curl -X PUT test3.cluster1.2600hz.com:5986/nodes/bigcouch@test1.cluster1.2600hz.com -d {}
-# curl -X PUT test3.cluster1.2600hz.com:5986/nodes/bigcouch@test2.cluster1.2600hz.com -d {}
 ```
 
 ### Install remaining packages
@@ -427,7 +422,7 @@ Verify that the status shows nodes for BOTH Server 1 and Server 3
 
 *Server 1 OR Server 3*
 ```
-# sup crossbar_maintenance create_account <ACCT NAME> <REALM> <LOGIN> <PASSWORD>
+# sup crossbar_maintenance create_account {ACCT NAME} {REALM} {LOGIN} {PASSWORD}
 ```
 
 ## Notes / Credits
