@@ -1032,7 +1032,7 @@ chk_store_result(Res, Node, UUID, [File], JobId, <<"+OK", _/binary>>=Reply) ->
 chk_store_result(Res, Node, UUID, [File], JobId, Reply) ->
     lager:debug("chk_store_result ~p : ~p : ~p", [Res, JobId, Reply]),
     send_store_call_event(Node, UUID, {<<"failure">>, File}).
-    
+
 -spec chk_store_vm_result(atom(), atom(), ne_binary(), list(), ne_binary(), binary()) -> 'ok'.
 chk_store_vm_result(Res, Node, UUID, _, JobId, <<"+OK", _/binary>>=Reply) ->
     lager:debug("chk_store_result ~p : ~p : ~p", [Res, JobId, Reply]),
@@ -1041,55 +1041,57 @@ chk_store_vm_result(Res, Node, UUID, _, JobId, Reply) ->
     lager:debug("chk_store_result ~p : ~p : ~p", [Res, JobId, Reply]),
     send_store_vm_call_event(Node, UUID, <<"failure">>).
 
--spec send_store_call_event(atom(), ne_binary(), wh_json:object() | ne_binary() | {ne_binary(), ne_binary()}) -> 'ok'.
+-spec send_store_call_event(atom(), ne_binary(), wh_json:object() | ne_binary() | {ne_binary(), api_binary()}) -> 'ok'.
 send_store_call_event(Node, UUID, {MediaTransResults, File}) ->
-    Timestamp = wh_util:to_binary(wh_util:current_tstamp()),
-    Prop = case freeswitch:api(Node, 'uuid_dump', wh_util:to_list(UUID)) of
-               {'ok', Dump} -> ecallmgr_util:eventstr_to_proplist(Dump);
-               {'error', _Err} -> []
-           end,
-    EvtProp1 = props:filter_undefined(
-                 [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Prop, Timestamp)}
-                  ,{<<"Call-ID">>, UUID}
-                  ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Prop, <<>>)}
-                  ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop, <<"HANGUP">>)}
-                  ,{<<"Application-Name">>, <<"store">>}
-                  ,{<<"Application-Response">>, MediaTransResults}
-                  ,{<<"Application-Data">>, File}
-                  | wh_api:default_headers(<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
-               ]),
-    EvtProp2 = case ecallmgr_util:custom_channel_vars(Prop) of
-                   [] -> EvtProp1;
-                   CustomProp -> [{<<"Custom-Channel-Vars">>, wh_json:from_list(CustomProp)}
-                                  | EvtProp1
-                                 ]
-               end,
-    wh_amqp_worker:cast(EvtProp2, fun wapi_call:publish_event/1);
+    ChannelProps =
+        case ecallmgr_fs_channel:channel_data(Node, UUID) of
+            {'ok', Ps} -> Ps;
+            {'error', _Err} -> []
+        end,
+
+    BaseProps = build_base_store_event_props(UUID, ChannelProps, MediaTransResults, File, <<"store">>),
+    ApiProps = maybe_add_ccvs(BaseProps, ChannelProps),
+    wh_amqp_worker:cast(ApiProps, fun wapi_call:publish_event/1);
 send_store_call_event(Node, UUID, MediaTransResults) ->
     send_store_call_event(Node, UUID, {MediaTransResults, 'undefined'}).
 
+-spec maybe_add_ccvs(wh_proplist(), wh_proplist()) -> wh_proplist().
+maybe_add_ccvs(BaseProps, ChannelProps) ->
+    case ecallmgr_util:custom_channel_vars(ChannelProps) of
+        [] -> BaseProps;
+        CustomProp ->
+            props:set_value(<<"Custom-Channel-Vars">>
+                            ,wh_json:from_list(CustomProp)
+                            ,BaseProps
+                           )
+    end.
+
+-spec build_base_store_event_props(ne_binary(), wh_proplist(), ne_binary(), api_binary(), ne_binary()) -> wh_proplist().
+build_base_store_event_props(UUID, ChannelProps, MediaTransResults, File, App) ->
+    Timestamp = wh_util:to_binary(wh_util:current_tstamp()),
+    props:filter_undefined(
+      [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, ChannelProps, Timestamp)}
+       ,{<<"Call-ID">>, UUID}
+       ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, ChannelProps, <<>>)}
+       ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, ChannelProps, <<"HANGUP">>)}
+       ,{<<"Application-Name">>, App}
+       ,{<<"Application-Response">>, MediaTransResults}
+       ,{<<"Application-Data">>, File}
+       | wh_api:default_headers(<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
+      ]).
+
 -spec send_store_vm_call_event(atom(), ne_binary(), wh_json:object() | ne_binary()) -> 'ok'.
 send_store_vm_call_event(Node, UUID, MediaTransResults) ->
-    Timestamp = wh_util:to_binary(wh_util:current_tstamp()),
-    Prop = case freeswitch:api(Node, 'uuid_dump', wh_util:to_list(UUID)) of
-               {'ok', Dump} -> ecallmgr_util:eventstr_to_proplist(Dump);
-               {'error', _Err} -> []
-           end,
-    EvtProp1 = [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Prop, Timestamp)}
-                ,{<<"Call-ID">>, UUID}
-                ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Prop, <<>>)}
-                ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop, <<"HANGUP">>)}
-                ,{<<"Application-Name">>, <<"store_vm">>}
-                ,{<<"Application-Response">>, MediaTransResults}
-                | wh_api:default_headers(<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
-               ],
-    EvtProp2 = case ecallmgr_util:custom_channel_vars(Prop) of
-                   [] -> EvtProp1;
-                   CustomProp -> [{<<"Custom-Channel-Vars">>, wh_json:from_list(CustomProp)}
-                                  | EvtProp1
-                                 ]
-               end,
-    wh_amqp_worker:cast(EvtProp2, fun wapi_call:publish_event/1).
+    ChannelProps =
+        case ecallmgr_fs_channel:channel_data(Node, UUID) of
+            {'ok', Ps} -> Ps;
+            {'error', _Err} -> []
+        end,
+
+    BaseProps = build_base_store_event_props(UUID, ChannelProps, MediaTransResults, 'undefined', <<"store_vm">>),
+    ApiProps = maybe_add_ccvs(BaseProps, ChannelProps),
+
+    wh_amqp_worker:cast(ApiProps, fun wapi_call:publish_event/1).
 
 -spec send_store_fax_call_event(ne_binary(), ne_binary()) -> 'ok'.
 send_store_fax_call_event(UUID, Results) ->
@@ -1107,45 +1109,54 @@ send_store_fax_call_event(UUID, Results) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec find_fetch_channel_data(atom(), ne_binary(), wh_json:object()) ->
+                                     {'ok', wh_proplist()}.
+find_fetch_channel_data(Node, UUID, JObj) ->
+    case wh_json:is_true(<<"From-Other-Leg">>, JObj) of
+        'true' ->
+            {'ok', OtherUUID} = freeswitch:api(Node, 'uuid_getvar', wh_util:to_list(<<UUID/binary, " bridge_uuid">>)),
+            ecallmgr_fs_channel:channel_data(Node, OtherUUID);
+        'false' ->
+            ecallmgr_fs_channel:channel_data(Node, UUID)
+    end.
+
 -spec send_fetch_call_event(atom(), ne_binary(), wh_json:object()) -> 'ok'.
 send_fetch_call_event(Node, UUID, JObj) ->
     try
-        Prop = case wh_util:is_true(wh_json:get_value(<<"From-Other-Leg">>, JObj)) of
-                   'true' ->
-                       {'ok', OtherUUID} = freeswitch:api(Node, 'uuid_getvar', wh_util:to_list(<<UUID/binary, " bridge_uuid">>)),
-                       {'ok', Dump} = freeswitch:api(Node, 'uuid_dump', wh_util:to_list(OtherUUID)),
-                       ecallmgr_util:eventstr_to_proplist(Dump);
-                   'false' ->
-                       {'ok', Dump} = freeswitch:api(Node, 'uuid_dump', wh_util:to_list(UUID)),
-                       ecallmgr_util:eventstr_to_proplist(Dump)
-               end,
-        EvtProp1 = [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Prop)}
-                    ,{<<"Call-ID">>, UUID}
-                    ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Prop)}
-                    ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop)}
-                    ,{<<"Application-Name">>, <<"fetch">>}
-                    ,{<<"Application-Response">>, <<>>}
-                    | wh_api:default_headers(<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
-                   ],
-        EvtProp2 =
-            case ecallmgr_util:custom_channel_vars(Prop) of
-                [] -> EvtProp1;
-                CustomProp -> [{<<"Custom-Channel-Vars">>, wh_json:from_list(CustomProp)}
-                               | EvtProp1
-                              ]
-            end,
-        wapi_call:publish_event(EvtProp2)
+        {'ok', ChannelProps} = find_fetch_channel_data(Node, UUID, JObj),
+        BaseProps = base_fetch_call_event_props(UUID, ChannelProps),
+        ApiProps = maybe_add_ccvs(BaseProps, ChannelProps),
+        wh_amqp_worker:cast(ApiProps, fun wapi_call:publish_event/1)
     catch
         Type:_ ->
-            Error = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                     ,{<<"Error-Message">>, "failed to construct or publish fetch call event"}
-                     ,{<<"Call-ID">>, UUID}
-                     ,{<<"Application-Name">>, <<"fetch">>}
-                     ,{<<"Application-Response">>, <<>>}
-                     | wh_api:default_headers(<<"error">>, wh_util:to_binary(Type), ?APP_NAME, ?APP_VERSION)
-                    ],
-            wapi_dialplan:publish_error(UUID, Error)
+            Error = base_fetch_error_event_props(UUID, JObj, Type),
+            wh_amqp_worker:cast(Error, fun(E) -> wapi_dialplan:publish_error(UUID, E) end)
     end.
+
+-spec base_fetch_error_event_props(ne_binary(), wh_json:object(), atom()) ->
+                                          wh_proplist().
+base_fetch_error_event_props(UUID, JObj, Type) ->
+    props:filter_undefined(
+      [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+       ,{<<"Error-Message">>, <<"failed to construct or publish fetch call event">>}
+       ,{<<"Call-ID">>, UUID}
+       ,{<<"Application-Name">>, <<"fetch">>}
+       ,{<<"Application-Response">>, <<>>}
+       | wh_api:default_headers(<<"error">>, wh_util:to_binary(Type), ?APP_NAME, ?APP_VERSION)
+      ]).
+
+-spec base_fetch_call_event_props(ne_binary(), wh_proplist()) ->
+                                         wh_proplist().
+base_fetch_call_event_props(UUID, ChannelProps) ->
+    props:filter_undefined(
+      [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, ChannelProps)}
+       ,{<<"Call-ID">>, UUID}
+       ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, ChannelProps)}
+       ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, ChannelProps)}
+       ,{<<"Application-Name">>, <<"fetch">>}
+       ,{<<"Application-Response">>, <<>>}
+       | wh_api:default_headers(<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
+      ]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1189,28 +1200,36 @@ execute_exten_post_exec(DP, _Node, _UUID, _JObj) ->
      |DP
     ].
 
--spec create_dialplan_move_ccvs(ne_binary(), atom(), ne_binary(), wh_proplist()) -> wh_proplist().
+-spec create_dialplan_move_ccvs(ne_binary(), atom(), ne_binary(), wh_proplist()) ->
+                                       wh_proplist().
 create_dialplan_move_ccvs(Root, Node, UUID, DP) ->
-    case freeswitch:api(Node, 'uuid_dump', wh_util:to_list(UUID)) of
-        {'ok', Result} ->
-            Props = ecallmgr_util:eventstr_to_proplist(Result),
-            lists:foldr(fun({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, Val}, Acc) ->
-                                [{"application"
-                                  ,<<"unset ", ?CHANNEL_VAR_PREFIX, Key/binary>>}
-                                 ,{"application"
-                                   ,<<"set ",?CHANNEL_VAR_PREFIX, Root/binary ,Key/binary, "=", Val/binary>>}
-                                 |Acc
-                                ];
-                           ({<<?CHANNEL_VAR_PREFIX, K/binary>> = Key, Val}, Acc) ->
-                                [{"application", <<"unset ", Key/binary>>}
-                                 ,{"application", <<"set ", ?CHANNEL_VAR_PREFIX, Root/binary, K/binary, "=", Val/binary>>}
-                                 |Acc];
-                           (_, Acc) -> Acc
-                        end, DP, Props);
-        _Error ->
-            lager:debug("failed to get result from uuid_dump for ~s", [UUID]),
+    case ecallmgr_fs_channel:channel_data(Node, UUID) of
+        {'ok', Props} ->
+            create_dialplan_move_ccvs(Root, DP, Props);
+        {'error', _E} ->
+            lager:debug("failed to create ccvs for move, no channel data for ~s: ~p", [UUID, _E]),
             DP
     end.
+
+-spec create_dialplan_move_ccvs(ne_binary(), wh_proplist(), wh_proplist()) ->
+                                       wh_proplist().
+create_dialplan_move_ccvs(Root, DP, Props) ->
+    lists:foldr(
+      fun({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, Val}, Acc) ->
+              [{"application", <<"unset ", ?CHANNEL_VAR_PREFIX, Key/binary>>}
+               ,{"application", <<"set ",?CHANNEL_VAR_PREFIX, Root/binary ,Key/binary, "=", Val/binary>>}
+               |Acc
+              ];
+         ({<<?CHANNEL_VAR_PREFIX, K/binary>> = Key, Val}, Acc) ->
+              [{"application", <<"unset ", Key/binary>>}
+               ,{"application", <<"set ", ?CHANNEL_VAR_PREFIX, Root/binary, K/binary, "=", Val/binary>>}
+               |Acc
+              ];
+         (_, Acc) -> Acc
+      end
+      ,DP
+      ,Props
+     ).
 
 -spec tts(atom(), ne_binary(), wh_json:object()) ->
                  {ne_binary(), ne_binary()}.
