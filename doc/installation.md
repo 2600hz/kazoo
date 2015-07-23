@@ -35,9 +35,9 @@ There are six major components to a Kazoo system, they can all be installed on o
 The following should be done to prepare a server for installation (this should be done on all servers in a cluster prior to installing anything)
 
 ### Add 2600hz repo
-'''
-[server]# wget -P /etc/yum.repos.d/ http://repo.2600hz.com/2600hz.repo
-'''
+```
+# wget -P /etc/yum.repos.d/ http://repo.2600hz.com/2600hz.repo
+```
 
 ### Set correct IP / hostname
 
@@ -45,54 +45,54 @@ You must have the correct IP and host name configuration prior to starting insta
 
 After setting a static IP, you must also configure the hostnames in /etc/hosts for both long and short hostnames.
 Example:
-'''
-192.168.1.100 test1.cluster1.2600hz.com test
-'''
+```
+191.168.1.100 test1.cluster1.2600hz.com test
+```
 
 ### Disable firewall and SELinux
 
 During installation you should disable any firewalls and SELinux, this is to prevent them from causing any problems during installation and initial testing.
 
-'''
+```
 # service iptables save && service iptables stop && chkconfig iptables off
-'''
+```
 
 Edit /etc/selinux/config (restart required)
-'''
+```
 SELINUX=disabled
-'''
+```
 
 ### Verify time and date settings
 
 It is important for the time and dates to be correct and in sync on all servers in a cluster.  It is highly reccomended that you use NTP to facilitate this.
 
 Select the correct timezone
-'''
+```
 # tzselect
-'''
+```
 
 Symlink the timezone file to make the configuration change persistent
-'''
+```
 # ln -sf /usr/share/zoneinfo/<region>/<tzfile> /etc/localtime
-'''
+```
 
 Enable NTP
-'''
+```
 # service ntpd start && chkconfig ntpd on
-'''
+```
 
 Check date / time and verify it is correct
-'''
+```
 # date
-'''
+```
 
 ## Single server installation
 
 ### Install packages
 
-'''
+```
 # yum install -y kazoo-bigcouch-R15B haproxy kazoo-freeswitch-R15B kazoo-kamailio kazoo-R15B httpd monster-ui*
-'''
+```
 
 ### Configure packages
 
@@ -103,17 +103,17 @@ See Common Configuration section below for configuration that is to be done
 The following configuration changes must be done in addition to the common configuration.
 
 Edit /etc/kazoo/bigcouch/local.ini and update the cluster configuration values to the following:
-'''
+```
 q=1
 r=1
 w=1
 n=1
-'''
+```
 
 Restart bigcouch for changes to take effect
-'''
+```
 # service bigcouch restart
-'''
+```
 
 You should now be ready to validate the installation
 
@@ -136,15 +136,15 @@ Server 3 (zone 2): bigcouch, kazoo, monster-ui
 ### Install and configure bigcouch
 
 On all servers:
-'''
+```
 # yum install -y kazoo-bigcouch-R15B
-'''
+```
 
 **Set the Erlang cookie correctly for bigcouch (see section below)**
 
 **Set up bigcouch cluster**
 Note that for each server in the cluster, the other 2 servers must be added to its nodes using the following curl commands:
-'''
+```
 # curl -X PUT test1.cluster1.2600hz.com:5986/nodes/bigcouch@test2.cluster1.2600hz.com -d {}
 # curl -X PUT test1.cluster1.2600hz.com:5986/nodes/bigcouch@test3.cluster1.2600hz.com -d {}
 
@@ -153,24 +153,24 @@ Note that for each server in the cluster, the other 2 servers must be added to i
 
 # curl -X PUT test3.cluster1.2600hz.com:5986/nodes/bigcouch@test1.cluster1.2600hz.com -d {}
 # curl -X PUT test3.cluster1.2600hz.com:5986/nodes/bigcouch@test2.cluster1.2600hz.com -d {}
-'''
+```
 
 ### Install remaining packages
 
 **Server 1**
-'''
+```
 # yum install -y kazoo-kamailio kazoo-R15B
-'''
+```
 
 ** Server 2**
-'''
+```
 # yum install -y haproxy kazoo-freeswitch-R15B
-'''
+```
 
 **Server 3**
-'''
+```
 # yum install -y kazoo-kamailio kazoo-R15B httpd monster-ui*
-'''
+```
 
 ### Configure packages
 
@@ -180,7 +180,7 @@ See Common Configuration section below for configuration to be done on all serve
 
 **Update HAProxy configuration with all bigcouch servers**
 */etc/kazoo/haproxy.cfg*
-'''
+```
 listen bigcouch-data 127.0.0.1:15984
   balance roundrobin
     server test1.cluster1.2600hz.com 192.168.1.100:5984 check
@@ -192,7 +192,7 @@ listen bigcouch-mgr 127.0.0.1:15986
     server test1.cluster1.2600hz.com 192.168.1.100:5986 check
     server test2.cluster1.2600hz.com 192.168.1.101:5986 check
     server test3.cluster1.2600hz.com 192.168.1.102:5986 check backup
-'''
+```
 
 ## Common Configuration
 
@@ -201,34 +201,34 @@ listen bigcouch-mgr 127.0.0.1:15986
 All components must share the same Erlang cookie.  Since Erlang cookies allow unrestricted access to the Erlang VM you should use a unique and non-public cookie string.  The cookie must be set in the following configuration files:
 
 **/etc/kazoo/bigcouch/vm.args**
-'''
+```
 -setcookie COOKIEHERE
-'''
+```
 
 **/etc/kazoo/freeswitch/autoload_configs/kazoo.conf.xml**
-'''
+```
 <param name="cookie" value="COOKIEHERE" />
-'''
+```
 
 **/etc/kazoo/config.ini (in multiple locations)**
-'''
+```
 cookie = COOKIEHERE
-'''
+```
 
 ### Configure HAProxy
 
 Symlink the Kazoo HAProxy configruation file
-'''
+```
 # rm -f /etc/haproxy/haproxy.cfg
 # ln -s /etc/kazoo/haproxy/haproxy.cfg /etc/haproxy/
-'''
+```
 
 ### Configure Kamailio
 
 Update the following values in the /etc/kamailio/local.cfg file
 
 *Server 1*
-'''
+```
 #!substdef "!MY_HOSTNAME!test1.cluster1.2600hz.com!g"
 
 #!substdef "!MY_IP_ADDRESS!192.168.1.100!g"
@@ -236,10 +236,10 @@ Update the following values in the /etc/kamailio/local.cfg file
 #!substdef "!MY_AMQP_URL!kazoo://guest:guest@192.168.1.100:5672!g"
 
 #!substdef "!MY_WEBSOCKET_DOMAIN!2600hz.com!g"
-'''
+```
 
 *Server 3*
-'''
+```
 #!substdef "!MY_HOSTNAME!test3.cluster1.2600hz.com!g"
 
 #!substdef "!MY_IP_ADDRESS!192.168.1.102!g"
@@ -247,17 +247,17 @@ Update the following values in the /etc/kamailio/local.cfg file
 #!substdef "!MY_AMQP_URL!kazoo://guest:guest@192.168.1.102:5672!g"
 
 #!substdef "!MY_WEBSOCKET_DOMAIN!2600hz.com!g"
-'''
+```
 
 On both Server 1 and Server 3 update /etc/kazoo/kamailio/dbtext/dispatcher to contain the following:
-'''
+```
 1 sip:192.168.1.101:11000 0
-'''
+```
 
 ### Configure Kazoo / RabbitMQ
 
 We will now create 2 zones, one for each Kazoo server.  Edit the zone, whistle_apps, and ecallmgr sections of /etc/kazoo/config.ini to look like the following:
-'''
+```
 [zone]
 name = "c1_zone1"
 amqp_uri = "amqp://guest:guest@192.168.1.100:5672"
@@ -285,7 +285,13 @@ cookie = COOKIEHERE
 host = "test3.cluster1.2600hz.com"
 zone = "c1_zone2"
 cookie = COOKIEHERE
-'''
+```
+### Configure monster-ui
+
+Edit /var/www/html/monster-ui/js/config.js and ensure the api default value is correctly set to either Server 1 or Server 3:
+```
+default: 'http://192.168.1.102:8000/v2/'
+```
 
 ### Ensure services are running and set to auto-start
 
@@ -294,37 +300,37 @@ cookie = COOKIEHERE
 Start all services
 
 **Server 1**
-'''
+```
 # service bigcouch restart
 # service rabbitmq-server restart
 # service rsyslog restart
 # service kz-whistle_apps restart
 # service kz-ecallmgr restart
 # service kamailio restart
-'''
+```
 
 **Server 2**
-'''
+```
 # service bigcouch restart
 # service rsyslog restart
 # service haproxy restart
 # service freeswitch restart
-'''
+```
 
 **Server 3**
-'''
+```
 # service bigcouch restart
 # service rabbitmq-server restart
 # service rsyslog restart
 # service kz-whistle_apps restart
 # service kz-ecallmgr restart
 # service kamailio restart
-'''
+```
 
 Enable auto-startup for all services
 
 **Server 1**
-'''
+```
 # chkconfig --add rabbitmq-server
 # chkconfig --add kz-ecallmgr
 # chkconfig --add kz-whistle_apps
@@ -333,16 +339,16 @@ Enable auto-startup for all services
 # chkconfig kz-whistle_apps on
 # chkconfig kamailio on
 # chkconfig bigcouch on
-'''
+```
 
 **Server 2**
-'''
+```
 # chkconfig haproxy on
 # chkconfig freeswitch on
-'''
+```
 
 **Server 3**
-'''
+```
 # chkconfig --add rabbitmq-server
 # chkconfig --add kz-ecallmgr
 # chkconfig --add kz-whistle_apps
@@ -351,47 +357,47 @@ Enable auto-startup for all services
 # chkconfig kz-whistle_apps on
 # chkconfig kamailio on
 # chkconfig bigcouch on
-'''
+```
 
 ### Import media files
 
 *Server 1 OR Server 3*
-'''
+```
 # sup whistle_media_maintenance import_prompts /opt/kazoo/system_media/en-us en-us
-'''
+```
 
 ### Configure ecallmgr
 
 Add freeswitch node
 *Server 1 and Server 3*
-'''
+```
 # sup -n ecallmgr_maintenance add_fs_node test2.cluster1.2600hz.com
-'''
+```
 
 Add acl entries for SIP servers
 *Server 1 OR Server 3*
-'''
+```
 # sup -n ecallmgr ecallmgr_maintenance allow_sbc test1.cluster1.2600hz.com 192.168.1.100
 # sup -n ecallmgr ecallmgr_maintenance allow_sbc test3.cluster1.2600hz.com 192.168.1.102
-'''
+```
 
 ## Validate installation
 
 ### Check database
 
 On all servers, curl the database ip/port to verify that it is reachable:
-'''
+```
 # curl localhost:15984
-'''
+```
 You should see something similar to:
-'''
+```
 {"couchdb":"Welcome","version":"1.1.1","bigcouch":"0.4.2"}
-'''
+```
 
 ### Check Freeswitch
 
 Connect to the cli and verify that you have at least one profile running, also verify that BOTH ecallmgr nodes are connected
-'''
+```
 # fs_cli
 
 > sofia status
@@ -399,30 +405,30 @@ Connect to the cli and verify that you have at least one profile running, also v
 
 > erlang nodes list
 < should show BOTH ecallmgr nodes (Server1 and Server3)
-'''
+```
 
 ### Check Kamailio status
 
 *Server 1 and Server 3*
-'''
+```
 # kamctl fifo ds_list
-'''
+```
 
 ### Check federation (for cluster installations)
 
 *Server 1 and Server 3*
-'''
+```
 # service kz-whistle_apps status
-'''
+```
 
 Verify that the status shows nodes for BOTH Server 1 and Server 3
 
 ### Create master account
 
 *Server 1 OR Server 3*
-'''
+```
 # sup crossbar_maintenance create_account <ACCT NAME> <REALM> <LOGIN> <PASSWORD>
-'''
+```
 
 ## Notes / Credits
 
