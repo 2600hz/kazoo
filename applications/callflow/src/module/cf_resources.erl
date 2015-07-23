@@ -357,15 +357,15 @@ maybe_start_offnet_metaflow(Call, BridgedTo) ->
     HackedCall = hack_call(Call, BridgedTo),
     case cf_endpoint:get(HackedCall) of
         {'ok', EP} -> cf_util:maybe_start_metaflow(HackedCall, EP);
-        _Else -> lager:debug("Can't get endpoint for ~s", whapps_call:authorizing_id(HackedCall))
+        _Else -> lager:debug("can't get endpoint for ~s", whapps_call:authorizing_id(HackedCall))
     end.
 
 -spec hack_call(whapps_call:call(), ne_binary()) -> whapps_call:call().
 hack_call(Call, BridgedTo) ->
-    Account = whapps_call:account_id(Call),
+    AccountId = whapps_call:account_id(Call),
     CallId = whapps_call:call_id(Call),
     whapps_call:set_call_id(BridgedTo
                             ,whapps_call:set_other_leg_call_id(CallId
-                                                               ,whapps_call:set_authorizing_id(Account, Call)
+                                                               ,whapps_call:set_authorizing_id(AccountId, Call)
                                                               )
                            ).
