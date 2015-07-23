@@ -535,7 +535,7 @@ maybe_import_enabled(Context, JObj, IsEnabled) ->
     JObj1 =
         case wh_util:is_true(IsEnabled) of
             'true' -> kz_account:enable(JObj);
-            'false' -> kz_accuont:disable(JObj)
+            'false' -> kz_account:disable(JObj)
         end,
     cb_context:set_doc(Context
                        ,wh_json:delete_key(<<"enabled">>, JObj1)
