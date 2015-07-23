@@ -306,10 +306,13 @@ get_fs_app(_Node, UUID, JObj, <<"hold">>) ->
 
 get_fs_app(_Node, UUID, JObj, <<"soft_hold">>) ->
     UnholdKey = wh_json:get_value(<<"Unhold-Key">>, JObj),
-    AMOH = wh_json:get_value(<<"A-MOH">>, JObj, <<"">>),
-    BMOH = wh_json:get_value(<<"B-MOH">>, JObj, <<"">>),
+
+    AMOH = wh_json:get_value(<<"A-MOH">>, JObj, <<>>),
+    BMOH = wh_json:get_value(<<"B-MOH">>, JObj, <<>>),
+
     AMedia = ecallmgr_util:media_path(AMOH, 'extant', UUID, JObj),
     BMedia = ecallmgr_util:media_path(BMOH, 'extant', UUID, JObj),
+
     {<<"soft_hold">>, list_to_binary([UnholdKey, " ", AMedia, " ", BMedia])};
 
 get_fs_app(_Node, _UUID, JObj, <<"page">>) ->
