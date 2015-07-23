@@ -17,7 +17,7 @@
     ,change_state/2 ,change_state/3
     ,assigned_to_app/2 ,assigned_to_app/3
     ,lookup_account/1
-    ,buy/2
+    ,buy/2, buy/3
 ]).
 
 -include("knm.hrl").
@@ -52,7 +52,7 @@ create(Num, Props) ->
         props:filter_undefined([
             {fun knm_phone_number:set_number/2, NormalizedNum}
             ,{fun knm_phone_number:set_number_db/2, NumberDb}
-            ,{fun knm_phone_number:set_state/2, props:get_binary_value(<<"state">>, Props, ?NUMBER_STATE_DISCOVERY)}
+            ,{fun knm_phone_number:set_state/2, props:get_binary_value(<<"state">>, Props, ?NUMBER_STATE_RESERVED)}
             ,{fun knm_phone_number:set_ported_in/2, props:get_is_true(<<"ported_in">>, Props, 'false')}
             ,{fun knm_phone_number:set_assigned_to/2, props:get_binary_value(<<"assigned_to">>, Props)}
             ,{fun knm_phone_number:set_auth_by/2, props:get_binary_value(<<"auth_by">>, Props, <<"system">>)}
@@ -193,13 +193,17 @@ lookup_account(Num) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec buy(binary(), binary()) -> number_return().
+-spec buy(binary(), binary(), wh_proplist()) -> number_return().
 buy(Num, Account) ->
+    buy(Num, Account, []).
+
+buy(Num, Account, Options) ->
     Updates = [
         {fun knm_phone_number:set_assigned_to/2, wh_util:format_account_id(Account, 'raw')}
         ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_IN_SERVICE}
         ,fun knm_carriers:maybe_acquire/1
     ],
-    update(Num, Updates).
+    update(Num, Updates, Options).
 
 
 %%%===================================================================
