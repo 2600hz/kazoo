@@ -36,7 +36,7 @@ The following should be done to prepare a server for installation (this should b
 
 ### Add 2600hz repo
 '''
-# wget -P /etc/yum.repos.d/ http://repo.2600hz.com/2600hz.repo
+[server]# wget -P /etc/yum.repos.d/ http://repo.2600hz.com/2600hz.repo
 '''
 
 ### Set correct IP / hostname
