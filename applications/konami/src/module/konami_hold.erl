@@ -1,9 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014, 2600Hz
+%%% @copyright (C) 2014-2015, 2600Hz
 %%% @doc
 %%% Put the call on hold
 %%% Data = {
-%%%   "moh":"media_id"
+%%%   "moh_aleg":"media_id"
+%%%   ,"moh_bleg":"media_id"
+%%%   ,"unhold_key":"DTMF"
 %%% }
 %%% @end
 %%% @contributors
@@ -23,9 +25,12 @@
 handle(Data, Call) ->
     AMOH = wh_json:get_value(<<"moh_aleg">>, Data),
     AMOHToPlay = wh_media_util:media_path(AMOH, Call),
+
     BMOH = wh_json:get_value(<<"moh_bleg">>, Data, AMOH),
     BMOHToPlay = wh_media_util:media_path(BMOH, Call),
+
     Unholdkey = wh_json:get_value(<<"unhold_key">>, Data, <<"1">>),
+
     RequestingLeg = wh_json:get_value(<<"dtmf_leg">>, Data),
 
     HoldCommand = whapps_call_command:soft_hold_command(RequestingLeg, Unholdkey, AMOHToPlay, BMOHToPlay),
