@@ -254,6 +254,7 @@ build_bridge(#state{endpoints=Endpoints
                     ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
                    ]),
     BLegEvents = wh_json:get_list_value(<<"B-Leg-Events">>, JObj, []),
+
     props:filter_undefined(
       [{<<"Application-Name">>, <<"bridge">>}
        ,{<<"Dial-Endpoint-Method">>, <<"single">>}
