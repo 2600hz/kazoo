@@ -253,6 +253,7 @@ build_bridge(#state{endpoints=Endpoints
                     ,{<<"From-URI">>, bridge_from_uri(CIDNum, JObj)}
                     ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
                    ]),
+    BLegEvents = wh_json:get_list_value(<<"B-Leg-Events">>, JObj, []),
     props:filter_undefined(
       [{<<"Application-Name">>, <<"bridge">>}
        ,{<<"Dial-Endpoint-Method">>, <<"single">>}
@@ -273,6 +274,7 @@ build_bridge(#state{endpoints=Endpoints
        ,{<<"Fax-Identity-Name">>, wh_json:get_value(<<"Fax-Identity-Name">>, JObj, CIDName)}
        ,{<<"Outbound-Callee-ID-Number">>, wh_json:get_value(<<"Outbound-Callee-ID-Number">>, JObj)}
        ,{<<"Outbound-Callee-ID-Name">>, wh_json:get_value(<<"Outbound-Callee-ID-Name">>, JObj)}
+       ,{<<"B-Leg-Events">>, BLegEvents}
        | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
