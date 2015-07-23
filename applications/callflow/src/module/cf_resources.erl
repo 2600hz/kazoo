@@ -336,16 +336,16 @@ wait_for_stepswitch(Call) ->
         {'ok', JObj} ->
             case wh_util:get_event_type(JObj) of
                 {<<"resource">>, <<"offnet_resp">>} ->
-                    {wh_json:get_value(<<"Response-Message">>, JObj)
-                     ,wh_json:get_value(<<"Response-Code">>, JObj)
+                    {kz_call_event:response_message(JObj)
+                     ,kz_call_event:response_code(JObj)
                     };
                 {<<"call_event">>, <<"CHANNEL_BRIDGE">>} ->
-                    maybe_start_offnet_metaflow(Call, wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj)),
+                    maybe_start_offnet_metaflow(Call, kz_call_event:other_leg_call_id(JObj)),
                     wait_for_stepswitch(Call);
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
                     lager:info("recv channel destroy"),
-                    {wh_json:get_value(<<"Hangup-Cause">>, JObj)
-                     ,wh_json:get_value(<<"Hangup-Code">>, JObj)
+                    {kz_call_event:hangup_cause(JObj)
+                     ,kz_call_event:hangup_code(JObj)
                     };
                 _ -> wait_for_stepswitch(Call)
             end;
