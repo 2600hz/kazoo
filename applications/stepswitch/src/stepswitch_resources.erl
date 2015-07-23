@@ -737,7 +737,8 @@ create_resource(JObj, Resources) ->
                             ,wh_json:to_proplist(wnm_util:available_classifiers(AccountId))
                             ,JObj
                             ,Resources
-                           )    end.
+                           )
+    end.
 
 -spec create_resource(wh_proplist(), wh_proplist(), wh_json:object(), resources()) -> resources().
 create_resource([], _ConfigClassifiers, _Resource, Resources) -> Resources;
@@ -759,8 +760,8 @@ create_resource([{Classifier, ClassifierJObj}|Classifiers], ConfigClassifiers, R
               ,ConfigClassifiers
               ,Resource
               ,[resource_from_jobj(JObj)
-               | Resources
-              ]
+                | Resources
+               ]
              )
     end.
 
@@ -769,9 +770,9 @@ create_classifier_resource(Resource, ClassifierJObj, Classifier, DefaultRegex) -
     Props =
         props:filter_undefined(
           [{<<"_id">>, <<(wh_json:get_value(<<"_id">>, Resource))/binary, "-", Classifier/binary>>}
-          ,{<<"name">>, <<(wh_json:get_value(<<"name">>, Resource))/binary, " - ", Classifier/binary>>}
-          ,{<<"rules">>, [wh_json:get_value(<<"regex">>, ClassifierJObj, DefaultRegex)]}
-          ,{<<"weight_cost">>, wh_json:get_value(<<"weight_cost">>, ClassifierJObj)}
+           ,{<<"name">>, <<(wh_json:get_value(<<"name">>, Resource))/binary, " - ", Classifier/binary>>}
+           ,{<<"rules">>, [wh_json:get_value(<<"regex">>, ClassifierJObj, DefaultRegex)]}
+           ,{<<"weight_cost">>, wh_json:get_value(<<"weight_cost">>, ClassifierJObj)}
           ]
          ),
     create_classifier_gateways(wh_json:set_values(Props, Resource), ClassifierJObj).
