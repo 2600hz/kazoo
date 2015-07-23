@@ -639,19 +639,12 @@ fetch_global_resources() ->
             lager:warning("unable to fetch global resources: ~p", [_R]),
             [];
         {'ok', JObjs} ->
-            CacheProps = [{'origin', fetch_global_cache_origin(JObjs, [])}],
+            CacheProps = [{'origin', fetch_cache_origin(JObjs, ?RESOURCES_DB)}],
             Docs = [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs],
             Resources = resources_from_jobjs(Docs),
             wh_cache:store_local(?STEPSWITCH_CACHE, 'global_resources', Resources, CacheProps),
             Resources
     end.
-
--type cache_property() :: tuple('db', ne_binary(), ne_binary()).
--type wh_cache_props() :: [cache_property(),...] | [].
-
--spec fetch_global_cache_origin(wh_json:objects(), wh_cache_props()) -> wh_cache_props().
-fetch_global_cache_origin(_JObjs, _Props) ->
-    [{'db', ?RESOURCES_DB, <<"resource">>}].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -670,7 +663,7 @@ fetch_local_resources(AccountId) ->
             [];
         {'ok', JObjs} ->
             LocalResources = fetch_local_resources(AccountId, JObjs),
-            CacheProps = [{'origin', fetch_local_cache_origin(JObjs, AccountDb, [])}],
+            CacheProps = [{'origin', fetch_cache_origin(JObjs, AccountDb)}],
             wh_cache:store_local(?STEPSWITCH_CACHE, {'local_resources', AccountId}, LocalResources, CacheProps),
             LocalResources
     end.
@@ -687,12 +680,6 @@ fetch_local_resources(AccountId, JObjs) ->
        || JObj <- JObjs
       ]).
 
--spec fetch_local_cache_origin(wh_json:objects(), ne_binary(), wh_cache_props()) -> wh_cache_props().
-fetch_local_cache_origin([], _, Props) -> [{'type', <<"resource">>} | Props];
-fetch_local_cache_origin([JObj|JObjs], AccountDb, Props) ->
-    Id = wh_doc:id(JObj),
-    fetch_local_cache_origin(JObjs, AccountDb, [{'db', AccountDb, Id}|Props]).
-
 -spec fetch_account_dedicated_proxies(api_binary()) -> wh_proplist().
 fetch_account_dedicated_proxies('undefined') -> [];
 fetch_account_dedicated_proxies(AccountId) ->
@@ -706,6 +693,21 @@ build_account_dedicated_proxy(Proxy) ->
     Zone = wh_json:get_value(<<"zone">>, Proxy),
     ProxyIP = wh_json:get_value(<<"ip">>, Proxy),
     {Zone, ProxyIP}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-type cache_property() :: tuple('db', ne_binary(), ne_binary()).
+-type wh_cache_props() :: [cache_property(),...] | [].
+
+-spec fetch_cache_origin(wh_json:objects(), ne_binary()) -> wh_cache_props().
+fetch_cache_origin(JObjs, Database) ->
+    [{'db', Database, wh_doc:id(JObj)}
+     || JObj <- JObjs
+    ].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -735,30 +737,58 @@ create_resource(JObj, Resources) ->
                             ,wh_json:to_proplist(wnm_util:available_classifiers(AccountId))
                             ,JObj
                             ,Resources
-                           )
-    end.
+                           )    end.
 
 -spec create_resource(wh_proplist(), wh_proplist(), wh_json:object(), resources()) -> resources().
-create_resource([], _ConfigClassifiers, _JObj, Resources) -> Resources;
-create_resource([{Classifier, ClassifierJobj}|Cs], ConfigClassifiers, JObj, Resources) ->
+create_resource([], _ConfigClassifiers, _Resource, Resources) -> Resources;
+create_resource([{Classifier, ClassifierJObj}|Classifiers], ConfigClassifiers, Resource, Resources) ->
     case (ConfigClassifier = props:get_value(Classifier, ConfigClassifiers)) =/= 'undefined'
-        andalso wh_json:is_true(<<"enabled">>, ClassifierJobj, 'true')
+        andalso wh_json:is_true(<<"enabled">>, ClassifierJObj, 'true')
     of
-        'false' -> create_resource(Cs, ConfigClassifiers, JObj, Resources);
+        'false' -> create_resource(Classifiers, ConfigClassifiers, Resource, Resources);
         'true' ->
-            Id = wh_doc:id(JObj),
-            Name = wh_json:get_value(<<"name">>, JObj),
-            DefaultRegex = wh_json:get_value(<<"regex">>, ConfigClassifier),
-            Props = [{<<"rules">>, [wh_json:get_value(<<"regex">>, ClassifierJobj, DefaultRegex)]}
-                     ,{<<"weight_cost">>, wh_json:get_value(<<"weight_cost">>, ClassifierJobj)}
-                     ,{<<"_id">>, <<Id/binary, "-", Classifier/binary>>}
-                     ,{<<"name">>, <<Name/binary, " - ", Classifier/binary>>}
-                    ],
-            create_resource(Cs, ConfigClassifiers, JObj
-                            ,[resource_from_jobj(wh_json:set_values(Props, JObj))
-                              | Resources
-                             ])
+            JObj =
+                create_classifier_resource(
+                  Resource
+                  ,ClassifierJObj
+                  ,Classifier
+                  ,wh_json:get_value(<<"regex">>, ConfigClassifier)
+                 ),
+            create_resource(
+              Classifiers
+              ,ConfigClassifiers
+              ,Resource
+              ,[resource_from_jobj(JObj)
+               | Resources
+              ]
+             )
     end.
+
+-spec create_classifier_resource(wh_json:object(), wh_json:object(), ne_binary(), ne_binary()) -> wh_json:object().
+create_classifier_resource(Resource, ClassifierJObj, Classifier, DefaultRegex) ->
+    Props =
+        props:filter_undefined(
+          [{<<"_id">>, <<(wh_json:get_value(<<"_id">>, Resource))/binary, "-", Classifier/binary>>}
+          ,{<<"name">>, <<(wh_json:get_value(<<"name">>, Resource))/binary, " - ", Classifier/binary>>}
+          ,{<<"rules">>, [wh_json:get_value(<<"regex">>, ClassifierJObj, DefaultRegex)]}
+          ,{<<"weight_cost">>, wh_json:get_value(<<"weight_cost">>, ClassifierJObj)}
+          ]
+         ),
+    create_classifier_gateways(wh_json:set_values(Props, Resource), ClassifierJObj).
+
+-spec create_classifier_gateways(wh_json:object(), wh_json:object()) -> wh_json:object().
+create_classifier_gateways(Resource, ClassifierJObj) ->
+    Props =
+        props:filter_undefined(
+          [{<<"suffix">>, wh_json:get_value(<<"suffix">>, ClassifierJObj)}
+           ,{<<"prefix">>, wh_json:get_value(<<"prefix">>, ClassifierJObj)}
+          ]
+         ),
+    Gateways =
+        [wh_json:set_values(Props, Gateway)
+         || Gateway <- wh_json:get_value(<<"gateways">>, Resource, [])
+        ],
+    wh_json:set_value(<<"gateways">>, Gateways, Resource).
 
 %%--------------------------------------------------------------------
 %% @private
