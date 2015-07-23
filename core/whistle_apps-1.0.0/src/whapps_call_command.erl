@@ -64,7 +64,9 @@
          ,park/1
          ,park_command/1
         ]).
--export([soft_hold/1, soft_hold/2, soft_hold_command/2, soft_hold_command/4, soft_hold_command/5]).
+-export([soft_hold/1, soft_hold/2
+         ,soft_hold_command/2, soft_hold_command/4, soft_hold_command/5
+        ]).
 -export([play/2, play/3, play/4
          ,play_command/2, play_command/3, play_command/4
          ,b_play/2, b_play/3, b_play/4
@@ -1049,9 +1051,12 @@ soft_hold(Call, UnholdKey) ->
     Command = soft_hold_command(whapps_call:call_id(Call), UnholdKey),
     send_command(Command, Call).
 
--spec soft_hold_command(ne_binary(), ne_binary()) -> wh_proplist().
--spec soft_hold_command(ne_binary(), ne_binary(), api_binary(), api_binary()) -> wh_proplist().
--spec soft_hold_command(ne_binary(), ne_binary(), api_binary(), api_binary(), ne_binary()) -> wh_proplist().
+-spec soft_hold_command(ne_binary(), ne_binary()) ->
+                               wh_proplist().
+-spec soft_hold_command(ne_binary(), ne_binary(), api_binary(), api_binary()) ->
+                               wh_proplist().
+-spec soft_hold_command(ne_binary(), ne_binary(), api_binary(), api_binary(), ne_binary()) ->
+                               wh_proplist().
 soft_hold_command(CallId, UnholdKey) ->
     soft_hold_command(CallId, UnholdKey, 'undefined', 'undefined').
 soft_hold_command(CallId, UnholdKey, AMOH, BMOH) ->
@@ -1064,9 +1069,9 @@ soft_hold_command(CallId, UnholdKey, AMOH, BMOH, InsertAt) ->
                             | build_moh_keys(AMOH, BMOH)
                            ]).
 
--spec build_moh_keys(api_binary(), api_binary()) -> wh_proplist_kv(ne_binary(), api_binary()).
-build_moh_keys('undefiend', _) ->
-    [];
+-spec build_moh_keys(api_binary(), api_binary()) ->
+                            wh_proplist_kv(ne_binary(), api_binary()).
+build_moh_keys('undefiend', _) -> [];
 build_moh_keys(AMOH, BMOH) ->
     [{<<"A-MOH">>, AMOH}
      ,{<<"B-MOH">>, BMOH}
