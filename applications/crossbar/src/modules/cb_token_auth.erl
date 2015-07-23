@@ -19,6 +19,7 @@
          ,validate/1
          ,delete/1
          ,authenticate/1
+         ,authorize/1
          ,finish_request/1
          ,clean_expired/0
         ]).
@@ -43,6 +44,7 @@ init() ->
     crossbar_bindings:bind(crossbar_cleanup:binding_hour(), ?MODULE, 'clean_expired'),
 
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
+    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.token_auth">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.token_auth">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.token_auth">>, ?MODULE, 'validate'),
@@ -51,13 +53,24 @@ init() ->
     crossbar_bindings:bind(<<"*.finish_request.*.*">>, ?MODULE, 'finish_request').
 
 -spec allowed_methods() -> http_methods().
-allowed_methods() -> [?HTTP_DELETE].
+allowed_methods() -> [?HTTP_DELETE, ?HTTP_GET].
 
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
 
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
+    validate(Context, cb_context:req_verb(Context)).
+
+validate(Context, ?HTTP_GET) ->
+    JObj = crossbar_util:response_auth(
+             wh_json:public_fields(cb_context:auth_doc(Context))
+            ),
+    Setters = [{fun cb_context:set_resp_status/2, 'success'}
+               ,{fun cb_context:set_resp_data/2, JObj}
+              ],
+    cb_context:setters(Context, Setters);
+validate(Context, <<"DELETE">>) ->
     case cb_context:auth_doc(Context) of
         'undefined' -> Context;
         AuthDoc ->
@@ -132,6 +145,17 @@ clean_expired() ->
         {'error', _E} ->
             lager:debug("failed to lookup expired tokens: ~p", [_E])
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec authorize(cb_context:context()) -> boolean().
+authorize(Context) ->
+    %% if the request is directly for token_auth (only)
+    %% then allow GET and DELETE
+    [{<<"token_auth">>, []}] =:= cb_context:req_nouns(Context).
 
 %%--------------------------------------------------------------------
 %% @public
