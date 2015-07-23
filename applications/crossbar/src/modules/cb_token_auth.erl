@@ -62,6 +62,7 @@ resource_exists() -> 'true'.
 validate(Context) ->
     validate(Context, cb_context:req_verb(Context)).
 
+-spec validate(cb_context:context(), ne_binary()) -> cb_context:context().
 validate(Context, ?HTTP_GET) ->
     JObj = crossbar_util:response_auth(
              wh_json:public_fields(cb_context:auth_doc(Context))
@@ -70,7 +71,7 @@ validate(Context, ?HTTP_GET) ->
                ,{fun cb_context:set_resp_data/2, JObj}
               ],
     cb_context:setters(Context, Setters);
-validate(Context, <<"DELETE">>) ->
+validate(Context, ?HTTP_DELETE) ->
     case cb_context:auth_doc(Context) of
         'undefined' -> Context;
         AuthDoc ->
