@@ -655,6 +655,10 @@ handle_event(Payload, <<"application/json">>, BasicDeliver, State) ->
     JObj = wh_json:decode(Payload),
     _ = wh_util:put_callid(JObj),
     distribute_event(JObj, BasicDeliver, State);
+handle_event(Payload, <<"text/json">>, BasicDeliver, State) ->
+    JObj = wh_json:decode(Payload),
+    _ = wh_util:put_callid(JObj),
+    distribute_event(JObj, BasicDeliver, State);
 handle_event(Payload, <<"application/erlang">>, BasicDeliver, State) ->
     JObj = binary_to_term(Payload),
     _ = wh_util:put_callid(JObj),

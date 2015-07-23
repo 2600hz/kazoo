@@ -19,6 +19,11 @@
          ,conference_resp_xml/1
         ]).
 
+-export([config_el/2, config_el/3]).
+-export([section_el/2, section_el/3]).
+-export([params_el/1, param_el/2, maybe_param_el/2]).
+-export([xml_attrib/2]).
+
 -include("ecallmgr.hrl").
 
 -define(DEFAULT_USER_CACHE_TIME_IN_MS, ?MILLISECONDS_IN_HOUR). %% 1 hour
@@ -718,6 +723,13 @@ param_el(Name, Value) ->
                              ,xml_attrib('value', Value)
                             ]
                }.
+
+-spec maybe_param_el(xml_attrib_value(), xml_attrib_value()) -> xml_el() | 'undefined'.
+maybe_param_el(Name, Value) ->
+    case wh_util:is_empty(Value) of
+        'true' -> 'undefined';
+        'false' -> param_el(Name, Value)
+    end.
 
 profile_el(Name, Children) ->
     #xmlElement{name='profile'
