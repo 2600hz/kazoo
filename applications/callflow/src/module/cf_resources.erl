@@ -91,6 +91,7 @@ build_offnet_request(Data, Call) ->
                             ,{<<"From-URI-Realm">>, get_from_uri_realm(Data, Call)}
                             ,{<<"Bypass-E164">>, get_bypass_e164(Data)}
                             ,{<<"Inception">>, get_inception(Call)}
+                            ,{<<"B-Leg-Events">>, [<<"DTMF">>]}
                             | wh_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)
                            ]).
 
@@ -335,15 +336,36 @@ wait_for_stepswitch(Call) ->
         {'ok', JObj} ->
             case wh_util:get_event_type(JObj) of
                 {<<"resource">>, <<"offnet_resp">>} ->
-                    {wh_json:get_value(<<"Response-Message">>, JObj)
-                     ,wh_json:get_value(<<"Response-Code">>, JObj)
+                    {kz_call_event:response_message(JObj)
+                     ,kz_call_event:response_code(JObj)
                     };
+                {<<"call_event">>, <<"CHANNEL_BRIDGE">>} ->
+                    maybe_start_offnet_metaflow(Call, kz_call_event:other_leg_call_id(JObj)),
+                    wait_for_stepswitch(Call);
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
                     lager:info("recv channel destroy"),
-                    {wh_json:get_value(<<"Hangup-Cause">>, JObj)
-                     ,wh_json:get_value(<<"Hangup-Code">>, JObj)
+                    {kz_call_event:hangup_cause(JObj)
+                     ,kz_call_event:hangup_code(JObj)
                     };
                 _ -> wait_for_stepswitch(Call)
             end;
         _ -> wait_for_stepswitch(Call)
     end.
+
+-spec maybe_start_offnet_metaflow(whapps_call:call(), ne_binary()) -> 'ok'.
+maybe_start_offnet_metaflow(Call, BridgedTo) ->
+    HackedCall = hack_call(Call, BridgedTo),
+    case cf_endpoint:get(HackedCall) of
+        {'ok', EP} -> cf_util:maybe_start_metaflow(HackedCall, EP);
+        _Else -> lager:debug("can't get endpoint for ~s", whapps_call:authorizing_id(HackedCall))
+    end.
+
+-spec hack_call(whapps_call:call(), ne_binary()) -> whapps_call:call().
+hack_call(Call, BridgedTo) ->
+    AccountId = whapps_call:account_id(Call),
+    CallId = whapps_call:call_id(Call),
+    whapps_call:set_call_id(BridgedTo
+                            ,whapps_call:set_other_leg_call_id(CallId
+                                                               ,whapps_call:set_authorizing_id(AccountId, Call)
+                                                              )
+                           ).

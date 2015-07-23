@@ -22,6 +22,7 @@
          ,set_account_id/2
          ,fetch/1, fetch/2
          ,renew/2
+         ,channel_data/2
          ,get_other_leg/2
         ]).
 -export([to_json/1
@@ -167,11 +168,19 @@ set_account_id(UUID, Value) ->
                    {'ok', channel()} |
                    {'error', 'timeout' | 'badarg'}.
 renew(Node, UUID) ->
-    case freeswitch:api(Node, 'uuid_dump', wh_util:to_list(UUID)) of
-        {'ok', Dump} ->
-            Props = ecallmgr_util:eventstr_to_proplist(Dump),
+    case channel_data(Node, UUID) of
+        {'ok', Props} ->
             {'ok', props_to_record(Props, Node)};
         {'error', _}=E -> E
+    end.
+
+-spec channel_data(atom(), ne_binary()) -> {'ok', wh_proplist()} |
+                                           {'error', 'timeout' | 'badarg'}.
+channel_data(Node, UUID) ->
+    case freeswitch:api(Node, 'uuid_dump', UUID) of
+        {'error', _}=E -> E;
+        {'ok', Dump} ->
+            {'ok', ecallmgr_util:eventstr_to_proplist(Dump)}
     end.
 
 -spec to_json(channel()) -> wh_json:object().

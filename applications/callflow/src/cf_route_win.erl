@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% handler for route wins, bootstraps callflow execution
 %%% @end
@@ -8,18 +8,21 @@
 %%%-------------------------------------------------------------------
 -module(cf_route_win).
 
+-export([handle_req/2
+         ,maybe_restrict_call/2
+        ]).
+
 -include("callflow.hrl").
 
 -define(JSON(L), wh_json:from_list(L)).
 
--define(DEFAULT_SERVICES, ?JSON([{<<"audio">>, ?JSON([{<<"enabled">>, 'true'}])}
-                                 ,{<<"video">>,?JSON([{<<"enabled">>, 'true'}])}
-                                 ,{<<"sms">>,  ?JSON([{<<"enabled">>, 'true'}])}
-                                ])).
-
--export([handle_req/2
-         ,maybe_restrict_call/2
-        ]).
+-define(DEFAULT_SERVICES
+        ,?JSON([{<<"audio">>, ?JSON([{<<"enabled">>, 'true'}])}
+                ,{<<"video">>,?JSON([{<<"enabled">>, 'true'}])}
+                ,{<<"sms">>,  ?JSON([{<<"enabled">>, 'true'}])}
+               ]
+              )
+       ).
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> _.
 handle_req(JObj, _Options) ->
@@ -33,7 +36,8 @@ handle_req(JObj, _Options) ->
             lager:info("unable to find callflow during second lookup (HUH?) ~p", [R])
     end.
 
--spec maybe_restrict_call(wh_json:object(), whapps_call:call()) -> 'ok' | {'ok', pid()}.
+-spec maybe_restrict_call(wh_json:object(), whapps_call:call()) ->
+                                 'ok' | {'ok', pid()}.
 maybe_restrict_call(JObj, Call) ->
     case should_restrict_call(Call) of
         'true' ->
@@ -256,7 +260,10 @@ maybe_start_metaflow(Call) ->
     Call.
 
 -spec maybe_start_endpoint_metaflow(whapps_call:call(), api_binary()) -> 'ok'.
-maybe_start_endpoint_metaflow(_Call, 'undefined') -> 'ok';
+maybe_start_endpoint_metaflow(Call, 'undefined') ->
+    Account = whapps_call:account_id(Call),
+    HackedCall = whapps_call:set_authorizing_id(Account, Call),
+    maybe_start_endpoint_metaflow(HackedCall, Account);
 maybe_start_endpoint_metaflow(Call, EndpointId) ->
     lager:debug("looking up endpoint for ~s", [EndpointId]),
     case cf_endpoint:get(EndpointId, Call) of
