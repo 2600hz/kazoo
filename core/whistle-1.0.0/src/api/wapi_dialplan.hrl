@@ -346,6 +346,16 @@
                          ]).
 -define(HOLD_REQ_TYPES, []).
 
+%% Soft hold
+-define(SOFT_HOLD_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Unhold-Key">>]).
+-define(OPTIONAL_SOFT_HOLD_REQ_HEADERS, [<<"Insert-At">>, <<"A-MOH">>, <<"B-MOH">>]).
+-define(SOFT_HOLD_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
+                               ,{<<"Event-Name">>, <<"command">>}
+                               ,{<<"Application-Name">>, <<"soft_hold">>}
+                               ,?INSERT_AT_TUPLE
+                              ]).
+-define(SOFT_HOLD_REQ_TYPES, []).
+
 %% Park
 -define(PARK_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
 -define(OPTIONAL_PARK_REQ_HEADERS, [<<"Insert-At">>, <<"Timeout">>, <<"Hangup-Cause">>]).
