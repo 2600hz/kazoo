@@ -607,19 +607,20 @@ code_change(_OldVsn, State, _Extra) ->
 from_jobj(JObj) ->
     %% CHANNEL_CREATE has bunch of stuff in CCVs where as auth_resp
     %%  is root level, so if no CCVs then just use the JObj as is...
-    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, JObj),
-    AccountBilling = wh_json:get_value(<<"Account-Billing">>, CCVs),
-    ResellerBilling = wh_json:get_value(<<"Reseller-Billing">>, CCVs),
-    #channel{call_id = wh_json:get_value(<<"Call-ID">>, JObj)
-             ,other_leg_call_id = wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj)
-             ,direction = wh_json:get_value(<<"Call-Direction">>, JObj)
-             ,account_id = wh_json:get_value(<<"Account-ID">>, CCVs)
+    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
+    JObj1 = wh_json:merge_recursive([CCVs, JObj]),
+    AccountBilling = wh_json:get_value(<<"Account-Billing">>, JObj1),
+    ResellerBilling = wh_json:get_value(<<"Reseller-Billing">>, JObj1),
+    #channel{call_id = wh_json:get_value(<<"Call-ID">>, JObj1)
+             ,other_leg_call_id = wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj1)
+             ,direction = wh_json:get_value(<<"Call-Direction">>, JObj1)
+             ,account_id = wh_json:get_value(<<"Account-ID">>, JObj1)
              ,account_billing = AccountBilling
              ,account_allotment = is_allotment(AccountBilling)
-             ,reseller_id = wh_json:get_value(<<"Reseller-ID">>, CCVs)
+             ,reseller_id = wh_json:get_value(<<"Reseller-ID">>, JObj1)
              ,reseller_billing = ResellerBilling
              ,reseller_allotment = is_allotment(ResellerBilling)
-             ,soft_limit = wh_json:is_true(<<"Soft-Limit">>, JObj)
+             ,soft_limit = wh_json:is_true(<<"Soft-Limit">>, JObj1)
             }.
 
 -spec is_allotment(ne_binary()) -> boolean().
