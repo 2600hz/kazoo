@@ -52,10 +52,10 @@ create(Num, Props) ->
         props:filter_undefined([
             {fun knm_phone_number:set_number/2, NormalizedNum}
             ,{fun knm_phone_number:set_number_db/2, NumberDb}
-            ,{fun knm_phone_number:set_state/2, props:get_binary_value(<<"state">>, Props, ?NUMBER_STATE_RESERVED)}
+            ,{fun knm_phone_number:set_state/2, props:get_binary_value(<<"state">>, Props, ?NUMBER_STATE_IN_SERVICE)}
             ,{fun knm_phone_number:set_ported_in/2, props:get_is_true(<<"ported_in">>, Props, 'false')}
             ,{fun knm_phone_number:set_assigned_to/2, props:get_binary_value(<<"assigned_to">>, Props)}
-            ,{fun knm_phone_number:set_auth_by/2, props:get_binary_value(<<"auth_by">>, Props, <<"system">>)}
+            ,{fun knm_phone_number:set_auth_by/2, props:get_binary_value(<<"auth_by">>, Props, ?DEFAULT_AUTH_BY)}
             ,{fun knm_phone_number:set_dry_run/2, props:get_is_true(<<"dry_run">>, Props, 'false')}
             ,fun knm_phone_number:save/1
         ]),
@@ -250,7 +250,7 @@ maybe_change_state(Number, ?NUMBER_STATE_RESERVED, ?NUMBER_STATE_IN_SERVICE) ->
     ],
     knm_phone_number:setters(Number, Props);
 maybe_change_state(_Number, ?NUMBER_STATE_IN_SERVICE, ?NUMBER_STATE_IN_SERVICE) ->
-    {'error', 'not_change_required'};
+    {'error', 'no_change_required'};
 
 % TO AVAILABLE
 maybe_change_state(Number, ?NUMBER_STATE_RELEASED, ?NUMBER_STATE_AVAILABLE) ->
@@ -260,7 +260,7 @@ maybe_change_state(Number, ?NUMBER_STATE_RELEASED, ?NUMBER_STATE_AVAILABLE) ->
     ],
     knm_phone_number:setters(Number, Props);
 maybe_change_state(_Number, ?NUMBER_STATE_AVAILABLE, ?NUMBER_STATE_AVAILABLE) ->
-    {'error', 'not_change_required'};
+    {'error', 'no_change_required'};
 
 % TO RESERVED
 maybe_change_state(Number, ?NUMBER_STATE_DISCOVERY, ?NUMBER_STATE_RESERVED) ->
@@ -281,7 +281,7 @@ maybe_change_state(Number, ?NUMBER_STATE_AVAILABLE, ?NUMBER_STATE_RESERVED) ->
     ],
     knm_phone_number:setters(Number, Props);
 maybe_change_state(_Number, ?NUMBER_STATE_RESERVED, ?NUMBER_STATE_RESERVED) ->
-    {'error', 'not_change_required'};
+    {'error', 'no_change_required'};
 
 % TO RELEASED
 maybe_change_state(Number, ?NUMBER_STATE_RESERVED, ?NUMBER_STATE_RELEASED) ->
@@ -309,7 +309,7 @@ maybe_change_state(Number, ?NUMBER_STATE_PORT_IN, ?NUMBER_STATE_RELEASED) ->
     ],
     knm_phone_number:setters(Number, Props);
 maybe_change_state(_Number, ?NUMBER_STATE_RELEASED, ?NUMBER_STATE_RELEASED) ->
-    {'error', 'not_change_required'};
+    {'error', 'no_change_required'};
 
 % UNKNOWN CHANGE
 maybe_change_state(_Number, _FromState, _ToState) ->
@@ -389,7 +389,7 @@ update_reserved_history(Number) ->
 %%--------------------------------------------------------------------
 -spec fetch_account_from_number(ne_binary()) -> lookup_account_return().
 fetch_account_from_number(NormalizedNum) ->
-    case knm_phone_number:fetch(NormalizedNum, <<"system">>) of
+    case knm_phone_number:fetch(NormalizedNum, ?DEFAULT_AUTH_BY) of
         {'error', _}=Error -> fetch_account_from_ports(NormalizedNum, Error);
         {'ok', Number} -> check_number(Number)
     end.
@@ -426,10 +426,10 @@ check_account(Number) ->
         'true' ->
             Module = knm_phone_number:module_name(Number),
             State = knm_phone_number:state(Number),
-            Num = knm_phone_number:state(Number),
+            Num = knm_phone_number:number(Number),
             Props = [
                 {'pending_port', State =:= ?NUMBER_STATE_PORT_IN}
-                ,{'local', Module =:= 'wnm_local'}
+                ,{'local', Module =:= <<"knm_local">>}
                 ,{'number', Num}
                 ,{'account_id', AssignedTo}
                 ,{'prepend', feature_prepend(Number)}
@@ -512,7 +512,7 @@ should_force_outbound(?NUMBER_STATE_PORT_IN, _Module, ForceOutbound) ->
 should_force_outbound(?NUMBER_STATE_PORT_OUT, _Module, ForceOutbound) ->
     whapps_config:get_is_true(?KNM_CONFIG_CAT, <<"force_port_out_outbound">>, 'true')
     orelse force_module_outbound(ForceOutbound);
-should_force_outbound(_State, <<"wnm_local">>, _ForceOutbound) ->
+should_force_outbound(_State, <<"knm_local">>, _ForceOutbound) ->
     force_local_outbound();
 should_force_outbound(_State, _Module, 'undefined') ->
     default_force_outbound();
@@ -525,7 +525,7 @@ should_force_outbound(_State, _Module, ForceOutbound) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec force_module_outbound(ne_binary()) -> boolean().
-force_module_outbound(<<"wnm_local">>) -> force_local_outbound();
+force_module_outbound(<<"knm_local">>) -> force_local_outbound();
 force_module_outbound(_Mod) -> 'false'.
 
 %%--------------------------------------------------------------------

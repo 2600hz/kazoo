@@ -148,8 +148,7 @@ available_classifiers() ->
 %%--------------------------------------------------------------------
 -spec available_converters() -> ne_binaries().
 available_converters() ->
-    Default = wh_json:from_list(?DEFAULT_CONVERTERS),
-    whapps_config:get(?KNM_CONFIG_CAT, <<"converters">>, Default).
+    whapps_config:get(?KNM_CONFIG_CAT, <<"converters">>, ?DEFAULT_CONVERTERS).
 
 %%--------------------------------------------------------------------
 %% @public
