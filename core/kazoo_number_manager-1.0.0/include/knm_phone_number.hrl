@@ -3,6 +3,8 @@
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_types.hrl").
 
+-define(DEFAULT_AUTH_BY, <<"system">>).
+
 -record(number, {number :: ne_binary()
                  ,number_db :: ne_binary()
                  ,assigned_to :: api_binary()
@@ -15,7 +17,7 @@
                  ,module_name :: ne_binary()
                  ,carrier_data :: wh_json:object()
                  ,region :: ne_binary()
-                 ,auth_by = <<"system">> :: ne_binary()
+                 ,auth_by = ?DEFAULT_AUTH_BY :: ne_binary()
                  ,dry_run = 'false' :: boolean()
                  ,locality :: wh_json:object()
                  ,storage = [] :: wh_proplist()

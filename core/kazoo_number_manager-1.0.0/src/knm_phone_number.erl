@@ -91,7 +91,7 @@ save(#number{dry_run='false'}=Number) ->
         fun knm_providers:save/1
         ,fun knm_services:maybe_update_services/1
         ,fun save_to_number_db/1
-        ,fun hangle_assignment/1
+        ,fun handle_assignment/1
     ],
     setters(Number, Routines).
 
@@ -445,7 +445,7 @@ doc(#number{doc=Doc}) -> Doc.
 %%--------------------------------------------------------------------
 -spec default_options() -> wh_proplist().
 default_options() ->
-    [{<<"auth_by">>, <<"system">>}
+    [{<<"auth_by">>, ?DEFAULT_AUTH_BY}
      ,{<<"dry_run">>, 'false'}].
 
 %%%===================================================================
@@ -460,7 +460,7 @@ default_options() ->
 -spec set_options(number(), wh_proplist()) -> number().
 set_options(Number, Options) ->
     DryRun = props:get_is_true(<<"dry_run">>, Options, 'false'),
-    AuthBy = props:get_binary_value(<<"auth_by">>, Options, <<"system">>),
+    AuthBy = props:get_binary_value(<<"auth_by">>, Options, ?DEFAULT_AUTH_BY),
     Props = [
         {fun set_dry_run/2, DryRun}
         ,{fun set_auth_by/2, AuthBy}
@@ -473,7 +473,7 @@ set_options(Number, Options) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec is_authorized(number()) -> boolean().
-is_authorized(#number{auth_by= <<"system">>}) -> 'true';
+is_authorized(#number{auth_by= ?DEFAULT_AUTH_BY}) -> 'true';
 is_authorized(#number{assigned_to=AssignedTo, auth_by=AuthBy}) ->
     wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, 'true').
 
@@ -498,8 +498,8 @@ save_to_number_db(Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec hangle_assignment(number()) -> number_return().
-hangle_assignment(Number) ->
+-spec handle_assignment(number()) -> number_return().
+handle_assignment(Number) ->
     lager:debug("handling assignment for ~s", [number(Number)]),
     case maybe_assign(Number) of
         {'error', _R}=E ->E;

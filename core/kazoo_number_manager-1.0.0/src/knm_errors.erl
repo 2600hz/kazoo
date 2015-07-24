@@ -34,10 +34,10 @@ to_json('not_reconcilable', Num, _Cause) ->
 to_json('unauthorized', Num, Cause) ->
     Message = <<"operation on ", Num/binary, " unauthorized">>,
     build_error(403, 'forbidden', Message, Cause);
-to_json('not_change_required', Num, Cause) ->
+to_json('no_change_required', _Num, Cause) ->
     Message = <<"no change required">>,
-    build_error(400, 'not_change_required', Message, Cause);
-to_json('invalid_state_transition', Num, Cause) ->
+    build_error(400, 'no_change_required', Message, Cause);
+to_json('invalid_state_transition', _Num, Cause) ->
     Message = <<"invalid state transition">>,
     build_error(400, 'invalid_state_transition', Message, Cause);
 to_json(Reason, _Num, Cause) ->
