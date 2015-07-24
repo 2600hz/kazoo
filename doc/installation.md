@@ -220,7 +220,7 @@ Symlink the Kazoo HAProxy configruation file
 
 ### Configure Kamailio
 
-Update the following values in the /etc/kamailio/local.cfg file
+Update the following values in the /etc/kazoo/kamailio/local.cfg file
 
 *Server 1*
 ```
@@ -302,6 +302,7 @@ Start all services
 # service kz-whistle_apps restart
 # service kz-ecallmgr restart
 # service kamailio restart
+# service httpd restart
 ```
 
 **Server 2**
@@ -320,6 +321,7 @@ Start all services
 # service kz-whistle_apps restart
 # service kz-ecallmgr restart
 # service kamailio restart
+# service httpd restart
 ```
 
 Enable auto-startup for all services
@@ -334,6 +336,7 @@ Enable auto-startup for all services
 # chkconfig kz-whistle_apps on
 # chkconfig kamailio on
 # chkconfig bigcouch on
+# chkconfig httpd on
 ```
 
 **Server 2**
@@ -352,6 +355,7 @@ Enable auto-startup for all services
 # chkconfig kz-whistle_apps on
 # chkconfig kamailio on
 # chkconfig bigcouch on
+# chkconfig httpd on
 ```
 
 ### Import media files
@@ -366,7 +370,7 @@ Enable auto-startup for all services
 Add freeswitch node
 *Server 1 and Server 3*
 ```
-# sup -n ecallmgr_maintenance add_fs_node test2.cluster1.2600hz.com
+# sup -n ecallmgr ecallmgr_maintenance add_fs_node freeswitch@test2.cluster1.2600hz.com
 ```
 
 Add acl entries for SIP servers
@@ -423,6 +427,17 @@ Verify that the status shows nodes for BOTH Server 1 and Server 3
 *Server 1 OR Server 3*
 ```
 # sup crossbar_maintenance create_account {ACCT NAME} {REALM} {LOGIN} {PASSWORD}
+```
+### Load applications
+
+*Server 1*
+```
+# sup crossbar_maintenance init_apps /var/www/html/monster-ui/apps/ http://192.168.1.100:8000/v2
+```
+
+*Server 3*
+```
+# sup crossbar_maintenance init_apps /var/www/html/monster-ui/apps/ http://192.168.1.102:8000/v2
 ```
 
 ## Notes / Credits
