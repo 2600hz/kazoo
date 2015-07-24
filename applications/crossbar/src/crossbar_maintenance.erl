@@ -902,7 +902,7 @@ delete_old_images(AppId, MetaData, MasterAccountDb) ->
     _ = [safe_delete_image(MasterAccountDb, AppId, X) || X <- Screenshots],
     'ok'.
 
--spec safe_delete_image(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec safe_delete_image(ne_binary(), ne_binary(), api_binary()) -> 'ok'.
 safe_delete_image(_AccountDb, _AppId, 'undefined') -> 'ok';
 safe_delete_image(AccountDb, AppId, Image) ->
     case couch_mgr:fetch_attachment(AccountDb, AppId, Image) of
@@ -913,7 +913,7 @@ safe_delete_image(AccountDb, AppId, Image) ->
 -spec maybe_add_images(file:filename(), ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
 maybe_add_images(AppPath, AppId, MetaData, MasterAccountDb) ->
     Icons       = [wh_json:get_value(<<"icon">>, MetaData)],
-    Screenshots = wh_json:get_value(<<"screenshots">>, MetaData),
+    Screenshots = wh_json:get_value(<<"screenshots">>, MetaData, []),
 
     IconPaths  = [{Icon, filename:join([AppPath, <<"metadata">>, <<"icon">>, Icon])} || Icon <- Icons],
     SShotPaths = [{SShot, filename:join([AppPath, <<"metadata">>, <<"screenshots">>, SShot])} || SShot <- Screenshots],
