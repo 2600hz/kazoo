@@ -117,7 +117,12 @@ delete(#number{dry_run='false'}=Number) ->
 %%--------------------------------------------------------------------
 -spec to_public_json(number()) -> wh_json:object().
 to_public_json(Number) ->
-    JObj = to_json(Number),
+    Remove = [],
+    Format = [
+        {?PVT_USED_BY, <<"used_by">>}
+        ,{?PVT_FEATURES, <<"features">>}
+    ],
+    JObj = wh_json:normalize_jobj(to_json(Number), Remove, Format),
     wh_json:public_fields(JObj).
 
 %%--------------------------------------------------------------------
