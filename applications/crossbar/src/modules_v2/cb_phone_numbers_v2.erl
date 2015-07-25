@@ -23,7 +23,7 @@
         ]).
 
 -include("../crossbar.hrl").
--include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
+% -include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
 
 -define(CB_LIST, <<"phone_numbers/crossbar_listing">>).
 -define(KNM_NUMBER, <<"numbers">>).
@@ -140,7 +140,7 @@ allowed_methods(?LOCALITY) ->
 allowed_methods(?FIX) ->
     [?HTTP_POST];
 allowed_methods(_) ->
-    [[?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
 
 allowed_methods(?CLASSIFIERS, _Number) ->
     [?HTTP_GET];
@@ -196,7 +196,7 @@ validate(Context, Id) ->
 
 validate(Context, ?CLASSIFIERS, Number) ->
     maybe_classify(Context, Number);
-validate(Context, Number, ?ACTIVATE) ->
+validate(Context, _Number, ?ACTIVATE) ->
     cb_context:validate_request_data(?KNM_NUMBER, Context).
 
 
@@ -216,7 +216,7 @@ post(Context, ?FIX) ->
     AccountId = cb_context:account_id(Context),
     _ = knm_maintenance:fix_by_account(AccountId),
     summary(Context);
-post(Context, Number) ->
+post(Context, _Number) ->
     Context.
 
 %%--------------------------------------------------------------------
@@ -225,7 +225,7 @@ post(Context, Number) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
--spec put(cb_context:context(), path_token(), path_token() -> cb_context:context().
+-spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 put(Context, Num) ->
     ReqJObj = cb_context:req_json(Context),
     DryRun = (not wh_json:is_true(<<"accept_charges">>, ReqJObj)),
@@ -265,7 +265,8 @@ delete(Context, Num) ->
     Options = [
         {<<"auth_by">>, cb_context:auth_account_id(Context)}
     ],
-    case knm_number:change_state(Num, ?NUMBER_STATE_RELEASED, Options) of
+    % ?NUMBER_STATE_RELEASED
+    case knm_number:change_state(Num, <<"released">>, Options) of
         {'error', Reason} -> error_return(Context, Num, Reason);
         {'ok', _} ->
             cb_context:set_resp_status(Context, 'success')
@@ -296,12 +297,12 @@ validate_phone_numbers(Context, ?HTTP_GET, _AccountId) ->
 %%--------------------------------------------------------------------
 -spec validate_phone_number(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_phone_number(Context, Number, ?HTTP_GET) ->
-    read(Context, Number)
-validate_phone_number(Context, Number, ?HTTP_PUT) ->
+    read(Context, Number);
+validate_phone_number(Context, _Number, ?HTTP_PUT) ->
     cb_context:validate_request_data(?KNM_NUMBER, Context);
-validate_phone_number(Context, Number, ?HTTP_POST) ->
+validate_phone_number(Context, _Number, ?HTTP_POST) ->
     cb_context:validate_request_data(?KNM_NUMBER, Context);
-validate_phone_number(Context, Number, ?HTTP_DELETE) ->
+validate_phone_number(Context, _Number, ?HTTP_DELETE) ->
     cb_context:set_doc(
         cb_context:set_resp_status(Context, 'success')
         ,'undefined'
@@ -532,7 +533,7 @@ success_return(Context, Number) ->
 
 success_return(Context, Number, 'false') ->
     success_return(Context, Number);
-success_return(Context, Number, 'true') ->
+success_return(_Context, Number, 'true') ->
     case knm_phone_number:fetch_storage(Number, <<"services">>) of
         'undefined' -> wh_json:new();
         Services ->
