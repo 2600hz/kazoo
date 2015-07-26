@@ -22,6 +22,7 @@
          ,account_id/1
          ,owner_id/1
          ,timestamp/1
+         ,ringing_seconds/1, billing_seconds/1, duration_seconds/1
         ]).
 
 -include("kz_documents.hrl").
@@ -107,3 +108,15 @@ owner_id(JObj) ->
 -spec timestamp(wh_json:object()) -> api_integer().
 timestamp(JObj) ->
     wh_json:get_integer_value(<<"Timestamp">>, JObj).
+
+-spec ringing_seconds(wh_json:object()) -> api_integer().
+ringing_seconds(JObj) ->
+    wh_json:get_integer_value(<<"Ringing-Seconds">>, JObj).
+
+-spec billing_seconds(wh_json:object()) -> api_integer().
+billing_seconds(JObj) ->
+    wh_json:get_integer_value(<<"Billing-Seconds">>, JObj).
+
+-spec duration_seconds(wh_json:object()) -> api_integer().
+duration_seconds(JObj) ->
+    wh_json:get_integer_value(<<"Duration-Seconds">>, JObj).
