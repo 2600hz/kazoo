@@ -20,6 +20,7 @@
          ,application_name/1, application_response/1
          ,response_message/1, response_code/1
          ,account_id/1
+         ,owner_id/1
          ,timestamp/1
         ]).
 
@@ -98,6 +99,10 @@ response_code(JObj) ->
 -spec account_id(wh_json:object()) -> api_binary().
 account_id(JObj) ->
     custom_channel_var(JObj, <<"Account-ID">>).
+
+-spec owner_id(wh_json:object()) -> api_binary().
+owner_id(JObj) ->
+    custom_channel_var(JObj, <<"Owner-ID">>).
 
 -spec timestamp(wh_json:object()) -> api_integer().
 timestamp(JObj) ->

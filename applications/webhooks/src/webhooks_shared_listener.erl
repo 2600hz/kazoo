@@ -190,7 +190,7 @@ base_hook_event(JObj, AccountId, Acc) ->
          ,{<<"caller_id_number">>, wh_json:get_value(<<"Caller-ID-Number">>, JObj)}
          ,{<<"callee_id_name">>, wh_json:get_value(<<"Callee-ID-Name">>, JObj)}
          ,{<<"callee_id_number">>, wh_json:get_value(<<"Callee-ID-Number">>, JObj)}
-         ,{<<"owner_id">>, ccv(JObj, <<"Owner-ID">>)}
+         ,{<<"owner_id">>, kz_call_event:owner_id(JObj)}
          ,{<<"reseller_id">>, wh_services:find_reseller_id(AccountId)}
          ,{<<"authorizing_id">>, kz_call_event:authorizing_id(JObj)}
          ,{<<"authorizing_type">>, kz_call_event:authorizing_type(JObj)}
