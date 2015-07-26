@@ -214,7 +214,7 @@ handle_info({'ETS-TRANSFER', _TblId, _From, _Data}, State) ->
           fun() ->
                   wh_util:put_callid(?MODULE),
                   webhooks_util:load_hooks(Self),
-                  webhooks_util:init_mods()
+                  webhooks_util:init_webhooks()
           end),
     {'noreply', State};
 handle_info(_Info, State) ->
