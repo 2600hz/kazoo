@@ -178,22 +178,22 @@ base_hook_event(JObj, AccountId, Acc) ->
     wh_json:from_list(
       props:filter_undefined(
         [{<<"call_direction">>, wh_json:get_value(<<"Call-Direction">>, JObj)}
-         ,{<<"timestamp">>, wh_json:get_value(<<"Timestamp">>, JObj)}
-         ,{<<"account_id">>, AccountId}
+         ,{<<"timestamp">>, kz_call_event:timestamp(JObj)}
+         ,{<<"account_id">>, ccv(JObj, <<"Account-ID">>, AccountId)}
          ,{<<"request">>, wh_json:get_value(<<"Request">>, JObj)}
          ,{<<"to">>, wh_json:get_value(<<"To">>, JObj)}
          ,{<<"from">>, wh_json:get_value(<<"From">>, JObj)}
          ,{<<"inception">>, wh_json:get_value(<<"Inception">>, JObj)}
-         ,{<<"call_id">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-         ,{<<"other_leg_call_id">>, wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj)}
+         ,{<<"call_id">>, kz_call_event:call_id(JObj)}
+         ,{<<"other_leg_call_id">>, kz_call_event:other_leg_call_id(JObj)}
          ,{<<"caller_id_name">>, wh_json:get_value(<<"Caller-ID-Name">>, JObj)}
          ,{<<"caller_id_number">>, wh_json:get_value(<<"Caller-ID-Number">>, JObj)}
          ,{<<"callee_id_name">>, wh_json:get_value(<<"Callee-ID-Name">>, JObj)}
          ,{<<"callee_id_number">>, wh_json:get_value(<<"Callee-ID-Number">>, JObj)}
          ,{<<"owner_id">>, ccv(JObj, <<"Owner-ID">>)}
          ,{<<"reseller_id">>, wh_services:find_reseller_id(AccountId)}
-         ,{<<"authorizing_id">>, ccv(JObj, <<"Authorizing-ID">>)}
-         ,{<<"authorizing_type">>, ccv(JObj, <<"Authorizing-Type">>)}
+         ,{<<"authorizing_id">>, kz_call_event:authorizing_id(JObj)}
+         ,{<<"authorizing_type">>, kz_call_event:authorizing_type(JObj)}
          ,{<<"local_resource_used">>, (not WasGlobal)}
          ,{<<"local_resource_id">>, resource_used(WasGlobal, JObj)}
          ,{<<"emergency_resource_used">>, wh_util:is_true(ccv(JObj, <<"Emergency-Resource">>))}
@@ -204,9 +204,14 @@ base_hook_event(JObj, AccountId, Acc) ->
 resource_used('true', _JObj) -> 'undefined';
 resource_used('false', JObj) -> ccv(JObj, <<"Resource-ID">>).
 
--spec ccv(wh_json:object(), wh_json:key()) -> api_binary().
+-spec ccv(wh_json:object(), wh_json:key()) ->
+                 api_binary().
+-spec ccv(wh_json:object(), wh_json:key(), Default) ->
+                 ne_binary() | Default.
 ccv(JObj, Key) ->
-    wh_json:get_value([<<"Custom-Channel-Vars">>, Key], JObj).
+    ccv(JObj, Key, 'undefined').
+ccv(JObj, Key, Default) ->
+    kz_call_event:custom_channel_var(JObj, Key, Default).
 
 -spec hooks_configured() -> 'ok'.
 -spec hooks_configured(ne_binary()) -> 'ok'.

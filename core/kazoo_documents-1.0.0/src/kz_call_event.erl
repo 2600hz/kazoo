@@ -11,9 +11,9 @@
 -export([call_id/1
          ,other_leg_call_id/1
          ,replaced_by/1
-         ,custom_channel_vars/1, custom_channel_var/2
+         ,custom_channel_vars/1, custom_channel_var/2, custom_channel_var/3
          ,custom_sip_headers/1
-         ,authorizing_id/1
+         ,authorizing_id/1, authorizing_type/1
          ,dtmf_digit/1
          ,event_name/1
          ,hangup_cause/1, hangup_code/1
@@ -41,9 +41,15 @@ replaced_by(JObj) ->
 custom_channel_vars(JObj) ->
     wh_json:get_value(<<"Custom-Channel-Vars">>, JObj).
 
--spec custom_channel_var(wh_json:object(), wh_json:key()) -> api_binary().
+-spec custom_channel_var(wh_json:object(), wh_json:key()) ->
+                                api_binary().
+-spec custom_channel_var(wh_json:object(), wh_json:key(), Default) ->
+                                ne_binary() | Default.
 custom_channel_var(JObj, Key) ->
-    wh_json:get_value([<<"Custom-Channel-Vars">>, Key], JObj).
+    custom_channel_var(JObj, Key, 'undefined').
+
+custom_channel_var(JObj, Key, Default) ->
+    wh_json:get_value([<<"Custom-Channel-Vars">>, Key], JObj, Default).
 
 -spec custom_sip_headers(wh_json:object()) -> api_object().
 custom_sip_headers(JObj) ->
@@ -52,6 +58,10 @@ custom_sip_headers(JObj) ->
 -spec authorizing_id(wh_json:object()) -> api_binary().
 authorizing_id(JObj) ->
     custom_channel_var(JObj, <<"Authorizing-ID">>).
+
+-spec authorizing_type(wh_json:object()) -> api_binary().
+authorizing_type(JObj) ->
+    custom_channel_var(JObj, <<"Authorizing-Type">>).
 
 -spec dtmf_digit(wh_json:object()) -> api_binary().
 dtmf_digit(JObj) ->
