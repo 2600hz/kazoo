@@ -23,6 +23,7 @@
          ,owner_id/1
          ,timestamp/1
          ,ringing_seconds/1, billing_seconds/1, duration_seconds/1
+         ,is_call_forwarded/1, is_call_forwarded/2
         ]).
 
 -include("kz_documents.hrl").
@@ -120,3 +121,14 @@ billing_seconds(JObj) ->
 -spec duration_seconds(wh_json:object()) -> api_integer().
 duration_seconds(JObj) ->
     wh_json:get_integer_value(<<"Duration-Seconds">>, JObj).
+
+-spec is_call_forwarded(wh_json:object()) -> api_boolean().
+-spec is_call_forwarded(wh_json:object(), Default) -> boolean() | Default.
+is_call_forwarded(JObj) ->
+    is_call_forwarded(JObj, 'undefined').
+is_call_forwarded(JObj, Default) ->
+    case custom_channel_var(JObj, <<"Call-Forward">>, Default) of
+        'undefined' -> Default;
+        Default -> Default;
+        IsForwarded -> wh_util:is_true(IsForwarded)
+    end.

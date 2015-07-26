@@ -202,6 +202,7 @@ base_hook_event(JObj, AccountId, Acc) ->
          ,{<<"local_resource_used">>, (not WasGlobal)}
          ,{<<"local_resource_id">>, resource_used(WasGlobal, JObj)}
          ,{<<"emergency_resource_used">>, wh_util:is_true(ccv(JObj, <<"Emergency-Resource">>))}
+         ,{<<"call_forwarded">>, kz_call_event:is_call_forwarded(JObj)}
          | Acc
         ])).
 
