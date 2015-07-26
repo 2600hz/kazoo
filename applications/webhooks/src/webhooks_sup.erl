@@ -56,7 +56,9 @@ listener() ->
 
 -spec child_of_type(pid() | atom(), atom()) -> pids().
 child_of_type(S, T) ->
-    [P || {Ty, P, 'worker', _} <- supervisor:which_children(S), T =:= Ty].
+    [P || {Ty, P, 'worker', _} <- supervisor:which_children(S),
+          T =:= Ty
+    ].
 
 %% ===================================================================
 %% Supervisor callbacks

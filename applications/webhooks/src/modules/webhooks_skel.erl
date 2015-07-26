@@ -13,7 +13,7 @@
 
 -include("../webhooks.hrl").
 
--define(ID, ?MODULE).
+-define(ID, wh_util:to_binary(?MODULE)).
 -define(NAME, <<"skel">>).
 -define(DESC, <<"Example webhook module">>).
 
