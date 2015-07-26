@@ -136,6 +136,7 @@
 -type responder_callback_mapping() :: {ne_binary(), ne_binary()}.
 -type responder_callback_mappings() :: [responder_callback_mapping(),...] | [].
 -type responder_start_params() :: [{responder_callback_mod(), responder_callback_mappings()},...].
+-type responders() :: responder_start_params().
 
 %% ExchangeName, ExchangeType[, ExchangeOptions]
 -type declare_exchange() :: {ne_binary(), ne_binary()} |
@@ -155,6 +156,7 @@
 -export_type([handle_event_return/0
               ,binding/0
               ,bindings/0
+              ,responders/0
               ,basic_deliver/0
              ]).
 
