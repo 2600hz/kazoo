@@ -11,6 +11,7 @@
 
 -export([start_link/0
          ,check_failed_attempts/0
+         ,find_failures/0
         ]).
 
 -export([init/1
