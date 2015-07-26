@@ -162,11 +162,16 @@ format_event(JObj, AccountId, <<"CHANNEL_ANSWER">>) ->
                       ,base_hook_event(JObj, AccountId)
                      );
 format_event(JObj, AccountId, <<"CHANNEL_DESTROY">>) ->
-    base_hook_event(JObj, AccountId
+    base_hook_event(JObj
+                    ,AccountId
                     ,[{<<"hook_event">>, <<"channel_destroy">>}
-                      ,{<<"hangup_cause">>, wh_json:get_value(<<"Hangup-Cause">>, JObj)}
-                      ,{<<"hangup_code">>, wh_json:get_value(<<"Hangup-Code">>, JObj)}
-                     ]).
+                      ,{<<"hangup_cause">>, kz_call_event:hangup_cause(JObj)}
+                      ,{<<"hangup_code">>, kz_call_event:hangup_code(JObj)}
+                      ,{<<"duration_seconds">>, kz_call_event:duration_seconds(JObj)}
+                      ,{<<"ringing_seconds">>, kz_call_event:ringing_seconds(JObj)}
+                      ,{<<"billing_seconds">>, kz_call_event:billing_seconds(JObj)}
+                     ]
+                   ).
 
 -spec base_hook_event(wh_json:object(), api_binary()) -> wh_json:object().
 -spec base_hook_event(wh_json:object(), api_binary(), wh_proplist()) -> wh_json:object().
@@ -178,25 +183,26 @@ base_hook_event(JObj, AccountId, Acc) ->
     wh_json:from_list(
       props:filter_undefined(
         [{<<"call_direction">>, wh_json:get_value(<<"Call-Direction">>, JObj)}
-         ,{<<"timestamp">>, wh_json:get_value(<<"Timestamp">>, JObj)}
-         ,{<<"account_id">>, AccountId}
+         ,{<<"timestamp">>, kz_call_event:timestamp(JObj)}
+         ,{<<"account_id">>, ccv(JObj, <<"Account-ID">>, AccountId)}
          ,{<<"request">>, wh_json:get_value(<<"Request">>, JObj)}
          ,{<<"to">>, wh_json:get_value(<<"To">>, JObj)}
          ,{<<"from">>, wh_json:get_value(<<"From">>, JObj)}
          ,{<<"inception">>, wh_json:get_value(<<"Inception">>, JObj)}
-         ,{<<"call_id">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-         ,{<<"other_leg_call_id">>, wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj)}
+         ,{<<"call_id">>, kz_call_event:call_id(JObj)}
+         ,{<<"other_leg_call_id">>, kz_call_event:other_leg_call_id(JObj)}
          ,{<<"caller_id_name">>, wh_json:get_value(<<"Caller-ID-Name">>, JObj)}
          ,{<<"caller_id_number">>, wh_json:get_value(<<"Caller-ID-Number">>, JObj)}
          ,{<<"callee_id_name">>, wh_json:get_value(<<"Callee-ID-Name">>, JObj)}
          ,{<<"callee_id_number">>, wh_json:get_value(<<"Callee-ID-Number">>, JObj)}
-         ,{<<"owner_id">>, ccv(JObj, <<"Owner-ID">>)}
+         ,{<<"owner_id">>, kz_call_event:owner_id(JObj)}
          ,{<<"reseller_id">>, wh_services:find_reseller_id(AccountId)}
-         ,{<<"authorizing_id">>, ccv(JObj, <<"Authorizing-ID">>)}
-         ,{<<"authorizing_type">>, ccv(JObj, <<"Authorizing-Type">>)}
+         ,{<<"authorizing_id">>, kz_call_event:authorizing_id(JObj)}
+         ,{<<"authorizing_type">>, kz_call_event:authorizing_type(JObj)}
          ,{<<"local_resource_used">>, (not WasGlobal)}
          ,{<<"local_resource_id">>, resource_used(WasGlobal, JObj)}
          ,{<<"emergency_resource_used">>, wh_util:is_true(ccv(JObj, <<"Emergency-Resource">>))}
+         ,{<<"call_forwarded">>, kz_call_event:is_call_forwarded(JObj)}
          | Acc
         ])).
 
@@ -204,9 +210,14 @@ base_hook_event(JObj, AccountId, Acc) ->
 resource_used('true', _JObj) -> 'undefined';
 resource_used('false', JObj) -> ccv(JObj, <<"Resource-ID">>).
 
--spec ccv(wh_json:object(), wh_json:key()) -> api_binary().
+-spec ccv(wh_json:object(), wh_json:key()) ->
+                 api_binary().
+-spec ccv(wh_json:object(), wh_json:key(), Default) ->
+                 ne_binary() | Default.
 ccv(JObj, Key) ->
-    wh_json:get_value([<<"Custom-Channel-Vars">>, Key], JObj).
+    ccv(JObj, Key, 'undefined').
+ccv(JObj, Key, Default) ->
+    kz_call_event:custom_channel_var(JObj, Key, Default).
 
 -spec hooks_configured() -> 'ok'.
 -spec hooks_configured(ne_binary()) -> 'ok'.
