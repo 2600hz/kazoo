@@ -36,9 +36,36 @@ When an account creates a webhook, it is stored in the `webhooks` database for e
 
 ## Startup
 
+The startup process tree in `webhooks_sup` looks like:
+
+    [webhooks_sup]
+          |
+          -- [webhooks_cache]
+          -- [kazoo_etsmgr_srv]
+          -- [webhooks_init]
+          -- [webhooks_disabler]
+          -- [webhooks_listener]
+          -- [webhooks_shared_listener]
+
+### `webhooks_cache`
+
+The cache is used to track failed hook firing attempts.
+
+### `kazoo_etsmgr_srv`
+
+Manages the ETS table used to store active hooks. Cedes control to `webhooks_listener` once the listener is ready.
+
+### `webhooks_init`
+
+Finds available webhook modules and initializes them. Does not continue running afterwards (returns 'ignore').
+
+### `webhooks_disabler`
+
+Starts up a server to periodically check configured webhooks for too many failures, automatically disabling requests to those servers deemed broken.
+
+### Listeners
+
 Webhooks starts up two listeners:
 
 1. `webhooks_listener`: listens for webhook configuration changes and adjusts the ETS table appropriately.
 2. `webhooks_shared_listener`: listens for Kazoo events (based on loaded webhook modules) and distributes the events to the handlers.
-
-Webhooks also starts up a server to periodically check configured webhooks for too many failures, automatically disabling requests to those servers deemed broken.
