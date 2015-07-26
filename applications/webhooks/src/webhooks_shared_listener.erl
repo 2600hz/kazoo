@@ -162,11 +162,16 @@ format_event(JObj, AccountId, <<"CHANNEL_ANSWER">>) ->
                       ,base_hook_event(JObj, AccountId)
                      );
 format_event(JObj, AccountId, <<"CHANNEL_DESTROY">>) ->
-    base_hook_event(JObj, AccountId
+    base_hook_event(JObj
+                    ,AccountId
                     ,[{<<"hook_event">>, <<"channel_destroy">>}
-                      ,{<<"hangup_cause">>, wh_json:get_value(<<"Hangup-Cause">>, JObj)}
-                      ,{<<"hangup_code">>, wh_json:get_value(<<"Hangup-Code">>, JObj)}
-                     ]).
+                      ,{<<"hangup_cause">>, kz_call_event:hangup_cause(JObj)}
+                      ,{<<"hangup_code">>, kz_call_event:hangup_code(JObj)}
+                      ,{<<"duration_seconds">>, kz_call_event:duration_seconds(JObj)}
+                      ,{<<"ringing_seconds">>, kz_call_event:ringing_seconds(JObj)}
+                      ,{<<"billing_seconds">>, kz_call_event:billing_seconds(JObj)}
+                     ]
+                   ).
 
 -spec base_hook_event(wh_json:object(), api_binary()) -> wh_json:object().
 -spec base_hook_event(wh_json:object(), api_binary(), wh_proplist()) -> wh_json:object().
