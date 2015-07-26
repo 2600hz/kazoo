@@ -13,7 +13,8 @@
         ]).
 -export([find_webhooks/2]).
 -export([fire_hooks/2]).
--export([init_mods/0
+-export([init_webhooks/0
+         ,init_webhook_db/0
          ,jobj_to_rec/1
          ,hook_event_lowered/1
          ,hook_event/1
@@ -26,6 +27,7 @@
          ,system_expires_time/0
 
          ,reenable/2
+         ,init_metadata/2
         ]).
 
 %% ETS Management
@@ -324,14 +326,14 @@ load_hooks(Srv) ->
             load_hooks(Srv, WebHooks);
         {'error', 'not_found'} ->
             lager:debug("db or view not found, initing"),
-            init_webhooks(),
+            init_webhook_db(),
             load_hooks(Srv);
         {'error', _E} ->
             lager:debug("failed to load webhooks: ~p", [_E])
     end.
 
--spec init_webhooks() -> 'ok'.
-init_webhooks() ->
+-spec init_webhook_db() -> 'ok'.
+init_webhook_db() ->
     _ = couch_mgr:db_create(?KZ_WEBHOOKS_DB),
     _ = couch_mgr:revise_doc_from_file(?KZ_WEBHOOKS_DB, 'crossbar', <<"views/webhooks.json">>),
     _ = couch_mgr:revise_doc_from_file(?WH_SCHEMA_DB, 'crossbar', <<"schemas/webhooks.json">>),
@@ -364,30 +366,30 @@ jobj_to_rec(Hook) ->
              ,custom_data = wh_json:get_ne_value(<<"custom_data">>, Hook)
             }.
 
--spec init_mods() -> 'ok'.
--spec init_mods(wh_json:objects()) -> 'ok'.
--spec init_mods(wh_json:objects(), wh_year(), wh_month()) -> 'ok'.
-init_mods() ->
+-spec init_webhooks() -> 'ok'.
+-spec init_webhooks(wh_json:objects()) -> 'ok'.
+-spec init_webhooks(wh_json:objects(), wh_year(), wh_month()) -> 'ok'.
+init_webhooks() ->
     case couch_mgr:get_results(?KZ_WEBHOOKS_DB
                                ,<<"webhooks/accounts_listing">>
                                ,[{'group_level', 1}]
                               )
     of
         {'ok', []} -> lager:debug("no accounts to load views into the MODs");
-        {'ok', Accts} -> init_mods(Accts);
+        {'ok', Accts} -> init_webhooks(Accts);
         {'error', _E} -> lager:debug("failed to load accounts_listing: ~p", [_E])
     end.
 
-init_mods(Accts) ->
+init_webhooks(Accts) ->
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(wh_util:current_tstamp()),
-    init_mods(Accts, Year, Month).
-init_mods([], _, _) -> 'ok';
-init_mods(Accts, Year, Month) ->
-    _ = [init_mod(Acct, Year, Month) || Acct <- Accts],
+    init_webhooks(Accts, Year, Month).
+init_webhooks([], _, _) -> 'ok';
+init_webhooks(Accts, Year, Month) ->
+    _ = [init_webhook(Acct, Year, Month) || Acct <- Accts],
     'ok'.
 
--spec init_mod(wh_json:object(), wh_year(), wh_month()) -> 'ok'.
-init_mod(Acct, Year, Month) ->
+-spec init_webhook(wh_json:object(), wh_year(), wh_month()) -> 'ok'.
+init_webhook(Acct, Year, Month) ->
     Db = wh_util:format_account_id(wh_json:get_value(<<"key">>, Acct), Year, Month),
     kazoo_modb:create(Db),
     lager:debug("updated account_mod ~s", [Db]).
@@ -488,3 +490,33 @@ maybe_enable_descendants_hooks(Accounts) ->
 maybe_enable_descendant_hooks(Account) ->
     io:format("## checking account ~s for hooks to enable ##~n", [Account]),
     enable_account_hooks(Account).
+
+init_metadata(Id, JObj) ->
+    {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
+    init(Id, JObj, MasterAccountDb).
+
+init(Id, JObj, MasterAccountDb) ->
+    case metadata_exists(MasterAccountDb, Id) of
+        'true' -> lager:debug("~s already exists, not loading", [Id]);
+        'false' -> load_metadata(MasterAccountDb, JObj)
+    end.
+
+-spec metadata_exists(ne_binary(), ne_binary()) -> boolean().
+metadata_exists(MasterAccountDb, Id) ->
+    case couch_mgr:open_cache_doc(MasterAccountDb, Id) of
+        {'ok', _} -> 'true';
+        {'error', _} -> 'false'
+    end.
+
+-spec load_metadata(ne_binary(), wh_json:object()) -> 'ok'.
+load_metadata(MasterAccountDb, JObj) ->
+    case couch_mgr:save_doc(MasterAccountDb, JObj) of
+        {'ok', _Saved} ->
+            lager:debug("~s initialized successfully", [wh_doc:id(JObj)]);
+        {'error', 'conflict'} ->
+            lager:debug("~s loaded elsewhere", [wh_doc:id(JObj)]);
+        {'error', _E} ->
+            lager:warning("failed to load metadata for ~s: ~p"
+                          ,[wh_doc:id(JObj), _E]
+                         )
+    end.
