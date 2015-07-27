@@ -79,15 +79,47 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
+    {Bindings, Responders} = load_module_bindings_and_responders(),
     gen_listener:start_link(?MODULE
-                            ,[{'bindings', ?BINDINGS}
-                              ,{'responders', ?RESPONDERS}
+                            ,[{'bindings', Bindings}
+                              ,{'responders', Responders}
                               ,{'queue_name', ?QUEUE_NAME}
                               ,{'queue_options', ?QUEUE_OPTIONS}
                               ,{'consume_options', ?CONSUME_OPTIONS}
                              ]
                             ,[]
                            ).
+
+-type load_acc() :: {gen_listener:bindings()
+                     ,gen_listener:responders()
+                    }.
+
+-spec load_module_bindings_and_responders() -> load_acc().
+load_module_bindings_and_responders() ->
+    lists:foldl(fun load_module_fold/2
+                ,{?BINDINGS, ?RESPONDERS}
+                ,webhooks_init:existing_modules()
+               ).
+
+-spec load_module_fold(atom(), load_acc()) -> load_acc().
+load_module_fold(Module, {Bindings, Responders}=Acc) ->
+    try Module:bindings_and_responders() of
+        {ModBindings, ModResponders} ->
+            lager:debug("added ~s bindings and responders", [Module]),
+            {ModBindings ++ Bindings
+             ,ModResponders ++ Responders
+            }
+    catch
+        'error':'undef' ->
+            lager:debug("~s doesn't supply bindings or responders", [Module]),
+            Acc;
+        _E:_R ->
+            lager:debug("~s failed to load bindings or responders: ~s: ~p"
+                        ,[Module, _E, _R]
+                       ),
+            Acc
+    end.
+
 
 -spec handle_doc_type_update(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_doc_type_update(JObj, _Props) ->
