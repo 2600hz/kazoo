@@ -59,17 +59,40 @@ init() ->
                                       ,gen_listener:responders()
                                      }.
 bindings_and_responders() ->
-    {[{'conf', [{'restrict_to', ['doc_updates']}
-                ,{'type', Type}
-               ]
-      }
-      || Type <- ?OBJECT_TYPES
-     ]
+    {bindings(load_accounts())
      ,[{{?MODULE, 'handle_event'}
         ,[{<<"configuration">>, <<"*">>}]
        }
       ]
     }.
+
+-spec bindings(ne_binaries()) -> gen_listener:bindings().
+bindings([]) ->
+    lager:debug("no accounts configured"),
+    [];
+bindings(AccountsWithObjectHook) ->
+    [{'conf', [{'restrict_to', ['doc_updates']}
+               ,{'type', Type}
+               ,{'account', Account}
+              ]
+     }
+     || Type <- ?OBJECT_TYPES,
+        Account <- AccountsWithObjectHook
+    ].
+
+-spec load_accounts() -> ne_binaries().
+load_accounts() ->
+    case couch_mgr:get_results(?KZ_WEBHOOKS_DB
+                               ,<<"webhooks/hook_listing">>
+                               ,[{'key', ?NAME}]
+                              )
+    of
+        {'ok', View} ->
+            [wh_json:get_value(<<"value">>, Result) || Result <- View];
+        {'error', _E} ->
+            lager:warning("failed to load accounts: ~p", [_E]),
+            []
+    end.
 
 -spec handle_event(wh_json:object(), wh_proplist()) -> any().
 handle_event(JObj, _Props) ->
