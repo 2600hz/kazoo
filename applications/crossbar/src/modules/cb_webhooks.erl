@@ -30,6 +30,7 @@
 
 -define(ATTEMPTS_BY_ACCOUNT, <<"webhooks/attempts_by_time_listing">>).
 -define(ATTEMPTS_BY_HOOK, <<"webhooks/attempts_by_hook_listing">>).
+-define(AVAILABLE_HOOKS, <<"webhooks/webhook_meta_listing">>).
 
 -define(DESCENDANTS, <<"descendants">>).
 -define(REENABLE, <<"re-enable">>).
@@ -109,7 +110,10 @@ validate(Context) ->
 
 -spec validate_webhooks(cb_context:context(), http_method()) -> cb_context:context().
 validate_webhooks(Context, ?HTTP_GET) ->
-    summary(Context);
+    case cb_context:req_nouns(Context) of
+        [{<<"webhooks">>, []}] -> summary_available(Context);
+        _Nouns -> summary(Context)
+    end;
 validate_webhooks(Context, ?HTTP_PUT) ->
     create(Context);
 validate_webhooks(Context, ?HTTP_PATCH) ->
@@ -327,6 +331,24 @@ fix_key_fold(Key, Envelope) ->
         ?EMPTY_JSON_OBJECT -> wh_json:delete_key(Key, Envelope);
         'undefined' -> Envelope
     end.
+
+-spec summary_available(cb_context:context()) ->
+                               cb_context:context().
+summary_available(Context) ->
+    {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
+
+    crossbar_doc:load_view(?AVAILABLE_HOOKS
+                           ,['include_docs']
+                           ,cb_context:set_account_db(Context, MasterAccountDb)
+                           ,fun normalize_available/2
+                          ).
+
+-spec normalize_available(wh_json:object(), wh_json:objects()) ->
+                                 wh_json:objects().
+normalize_available(JObj, Acc) ->
+    [wh_json:public_fields(wh_json:get_value(<<"doc">>, JObj))
+     | Acc
+    ].
 
 -spec summary_attempts(cb_context:context()) -> cb_context:context().
 -spec summary_attempts(cb_context:context(), api_binary()) -> cb_context:context().
