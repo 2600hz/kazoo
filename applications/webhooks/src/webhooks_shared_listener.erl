@@ -29,11 +29,8 @@
 -record(state, {}).
 -type state() :: #state{}.
 
--define(WEBHOOKS_NOTIFY_RESTRICT_TO, ['webhook']).
-
 -define(BINDINGS, [%% channel events that toggle presence lights
-                   {'notifications', [{'restrict_to', ?WEBHOOKS_NOTIFY_RESTRICT_TO}]}
-                   ,{'conf', [{'restrict_to', ['doc_type_updates']}
+                   {'conf', [{'restrict_to', ['doc_type_updates']}
                               ,{'type', kzd_webhook:type()}
                              ]
                     }
@@ -45,9 +42,6 @@
                         ,{<<"configuration">>, <<"doc_deleted">>}
                        ]
                      }
-                     ,{{'webhooks_callflow', 'handle_req'}
-                       ,[{<<"notification">>, <<"webhook">>}]
-                      }
                      ,{{?MODULE, 'handle_doc_type_update'}
                        ,[{<<"configuration">>, <<"doc_type_update">>}]
                       }
