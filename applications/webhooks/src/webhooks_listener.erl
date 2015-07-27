@@ -39,9 +39,7 @@
                       ,[{<<"configuration">>, <<"*">>}]
                      }
                     ]).
--define(QUEUE_NAME, <<>>).
--define(QUEUE_OPTIONS, []).
--define(CONSUME_OPTIONS, []).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -58,9 +56,6 @@ start_link() ->
     gen_listener:start_link(?MODULE
                             ,[{'bindings', ?BINDINGS}
                               ,{'responders', ?RESPONDERS}
-                              ,{'queue_name', ?QUEUE_NAME}
-                              ,{'queue_options', ?QUEUE_OPTIONS}
-                              ,{'consume_options', ?CONSUME_OPTIONS}
                              ]
                             ,[]
                            ).

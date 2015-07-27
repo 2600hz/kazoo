@@ -29,20 +29,14 @@
 -record(state, {}).
 -type state() :: #state{}.
 
--define(BINDINGS, [%% channel events that toggle presence lights
-                   {'conf', [{'restrict_to', ['doc_type_updates']}
-                              ,{'type', kzd_webhook:type()}
-                             ]
-                    }
+%% responsible for reloading auto-disabled webhooks
+-define(BINDINGS, [{'conf', [{'restrict_to', ['doc_type_updates']}
+                             ,{'type', kzd_webhook:type()}
+                            ]
+                   }
                   ]).
 
--define(RESPONDERS, [{{?MODULE, 'handle_config'}
-                      ,[{<<"configuration">>, <<"doc_created">>}
-                        ,{<<"configuration">>, <<"doc_updated">>}
-                        ,{<<"configuration">>, <<"doc_deleted">>}
-                       ]
-                     }
-                     ,{{?MODULE, 'handle_doc_type_update'}
+-define(RESPONDERS, [{{?MODULE, 'handle_doc_type_update'}
                        ,[{<<"configuration">>, <<"doc_type_update">>}]
                       }
                     ]).
@@ -103,7 +97,6 @@ load_module_fold(Module, {Bindings, Responders}=Acc) ->
                        ),
             Acc
     end.
-
 
 -spec handle_doc_type_update(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_doc_type_update(JObj, _Props) ->
