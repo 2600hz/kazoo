@@ -134,29 +134,26 @@ You should now be ready to validate the installation
 
 For the purposes of this guide we will assume the following cluster layout:
 
+```
 Server 1 (zone 1): bigcouch, kazoo
-
  Hostname: test1.cluster1.2600hz.com
-
  IP Addr : 192.168.1.100
-
+```
+```
 Server 2 (zone 1): bigcouch, freeswitch
-
  Hostname: test2.cluster1.2600hz.com
-
  IP Addr : 192.168.1.101
-
+```
+```
 Server 3 (zone 2): bigcouch, kazoo, monster-ui
-
  Hostname: test3.cluster1.2600hz.com
-
  IP Addr : 192.168.1.102
-
+```
+```
 Server 4 (zone 2): bigcouch, freeswitch
-
  Hostname: test4.cluster1.2600hz.com
-
  IP Addr : 192.168.1.103
+```
 
 ### Install and configure bigcouch
 
