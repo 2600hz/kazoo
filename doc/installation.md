@@ -178,7 +178,7 @@ On all servers:
 # yum install -y kazoo-kamailio kazoo-R15B
 ```
 
-** Server 2**
+**Server 2**
 ```
 # yum install -y haproxy kazoo-freeswitch-R15B
 ```
@@ -188,7 +188,7 @@ On all servers:
 # yum install -y kazoo-kamailio kazoo-R15B httpd monster-ui*
 ```
 
-** Server 4**
+**Server 4**
 ```
 # yum install -y haproxy kazoo-freeswitch-R15B
 ```
