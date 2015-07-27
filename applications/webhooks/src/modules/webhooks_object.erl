@@ -14,8 +14,8 @@
 -include("../webhooks.hrl").
 
 -define(ID, wh_util:to_binary(?MODULE)).
--define(NAME, <<"skel">>).
--define(DESC, <<"Example webhook module">>).
+-define(NAME, <<"object">>).
+-define(DESC, <<"Receive notifications when objects in Kazoo are changed">>).
 
 -define(TYPE_MODIFIER
         ,wh_json:from_list([{<<"type">>, <<"array">>}
@@ -66,7 +66,7 @@ bindings_and_responders() ->
       || Type <- ?OBJECT_TYPES
      ]
      ,[{{?MODULE, 'handle_event'}
-        ,[{<<"configuration">>, <<"doc_type_update">>}]
+        ,[{<<"configuration">>, <<"*">>}]
        }
       ]
     }.
@@ -74,12 +74,13 @@ bindings_and_responders() ->
 -spec handle_event(wh_json:object(), wh_proplist()) -> any().
 handle_event(JObj, _Props) ->
     wh_util:put_callid(JObj),
+    'true' = wapi_conf:doc_update_v(JObj),
 
     AccountId = find_account_id(JObj),
     case webhooks_util:find_webhooks(?NAME, AccountId) of
         [] ->
             lager:debug("no hooks to handle ~s for ~s"
-                        ,[wapi_conf:get_action(JObj)
+                        ,[wh_api:event_name(JObj)
                           ,AccountId
                          ]);
         Hooks -> webhooks_util:fire_hooks(format_event(JObj, AccountId), Hooks)
@@ -91,7 +92,7 @@ format_event(JObj, AccountId) ->
       props:filter_undefined(
         [{<<"id">>, wapi_conf:get_id(JObj)}
          ,{<<"account_id">>, AccountId}
-         ,{<<"action">>, wapi_conf:get_action(JObj)}
+         ,{<<"action">>, wh_api:event_name(JObj)}
          ,{<<"type">>, wapi_conf:get_type(JObj)}
         ]
        )
