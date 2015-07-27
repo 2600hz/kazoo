@@ -510,7 +510,8 @@ metadata_exists(MasterAccountDb, Id) ->
 
 -spec load_metadata(ne_binary(), wh_json:object()) -> 'ok'.
 load_metadata(MasterAccountDb, JObj) ->
-    case couch_mgr:save_doc(MasterAccountDb, JObj) of
+    Metadata = update_metadata(MasterAccountDb, JObj),
+    case couch_mgr:save_doc(MasterAccountDb, Metadata) of
         {'ok', _Saved} ->
             lager:debug("~s initialized successfully", [wh_doc:id(JObj)]);
         {'error', 'conflict'} ->
@@ -520,3 +521,11 @@ load_metadata(MasterAccountDb, JObj) ->
                           ,[wh_doc:id(JObj), _E]
                          )
     end.
+
+-spec update_metadata(ne_binary(), wh_json:object()) ->
+                             wh_json:object().
+update_metadata(MasterAccountDb, JObj) ->
+    wh_doc:update_pvt_parameters(JObj
+                                 ,MasterAccountDb
+                                 ,[{'type', <<"webhook_meta">>}]
+                                ).
