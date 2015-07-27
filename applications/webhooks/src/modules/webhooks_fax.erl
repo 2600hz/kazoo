@@ -34,7 +34,7 @@
        ).
 -define(RESPONDERS
         ,[{{'webhooks_fax', 'handle_req'}
-           ,[{<<"notification">>, <<"outbound_fax">>}
+           ,[{<<"notification">>, ?NAME}
              ,{<<"notification">>, <<"outbound_fax_error">>}
             ]
           }
@@ -58,16 +58,16 @@ handle_event(JObj, Props) ->
     EventName = wh_json:get_value(<<"Event-Name">>, JObj),
     handle_event(JObj, Props, EventName).
 
-handle_event(JObj, _Props, <<"outbound_fax">> = EventName) ->
+handle_event(JObj, _Props, ?NAME = EventName) ->
     'true' = wapi_notifications:fax_outbound_v(JObj),
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
-    Formated = format_outbound_fax_event(JObj),
-    maybe_send_event(EventName, AccountId, Formated);
-handle_event(JObj, _Props, <<"outbound_fax_error">> = EventName) ->
+    Formatted = format_outbound_fax_event(JObj),
+    maybe_send_event(EventName, AccountId, Formatted);
+handle_event(JObj, _Props, <<"outbound_fax_error">>) ->
     'true' = wapi_notifications:fax_outbound_error_v(JObj),
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
-    Formated = format_outbound_fax_event(JObj),
-    maybe_send_event(EventName, AccountId, Formated).
+    Formatted = format_outbound_fax_event(JObj),
+    maybe_send_event(?NAME, AccountId, Formatted).
 
 -spec maybe_send_event(ne_binary(), api_binary(), wh_json:object()) -> 'ok'.
 maybe_send_event(_EventName, 'undefined', _JObj) -> 'ok';
