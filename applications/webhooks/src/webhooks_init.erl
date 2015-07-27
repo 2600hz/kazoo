@@ -16,6 +16,7 @@
 
 -spec start_link() -> 'ignore'.
 start_link() ->
+    wh_util:put_callid(?MODULE),
     init_dbs(),
     init_modules(),
     'ignore'.
