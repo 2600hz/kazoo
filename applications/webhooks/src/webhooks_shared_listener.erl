@@ -42,6 +42,8 @@
                                               ,'CHANNEL_ANSWER'
                                               ,'CHANNEL_DESTROY'
                                               ,'CHANNEL_DISCONNECTED'
+                                              ,'CHANNEL_HOLD'
+                                              ,'CHANNEL_UNHOLD'
                                              ]}
                              ,'federate'
                             ]}
@@ -154,19 +156,27 @@ hook_event_name(Event) -> Event.
 -spec format_event(wh_json:object(), api_binary(), ne_binary()) ->
                           wh_json:object().
 format_event(JObj, AccountId, <<"CHANNEL_CREATE">>) ->
-    wh_json:set_value(<<"hook_event">>, <<"channel_create">>
+    wh_json:set_value(<<"hook_event">>
+                      ,<<"channel_create">>
                       ,base_hook_event(JObj, AccountId)
                      );
 format_event(JObj, AccountId, <<"CHANNEL_ANSWER">>) ->
-    wh_json:set_value(<<"hook_event">>, <<"channel_answer">>
+    wh_json:set_value(<<"hook_event">>
+                      ,<<"channel_answer">>
                       ,base_hook_event(JObj, AccountId)
                      );
 format_event(JObj, AccountId, <<"CHANNEL_DESTROY">>) ->
-    base_hook_event(JObj, AccountId
+    base_hook_event(JObj
+                    ,AccountId
                     ,[{<<"hook_event">>, <<"channel_destroy">>}
                       ,{<<"hangup_cause">>, wh_json:get_value(<<"Hangup-Cause">>, JObj)}
                       ,{<<"hangup_code">>, wh_json:get_value(<<"Hangup-Code">>, JObj)}
-                     ]).
+                     ]);
+format_event(JObj, AccountId, EventName) ->
+    wh_json:set_value(<<"hook_event">>
+                      ,wh_util:to_lower_binary(EventName)
+                      ,base_hook_event(JObj, AccountId)
+                     ).
 
 -spec base_hook_event(wh_json:object(), api_binary()) -> wh_json:object().
 -spec base_hook_event(wh_json:object(), api_binary(), wh_proplist()) -> wh_json:object().

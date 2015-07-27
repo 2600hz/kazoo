@@ -305,7 +305,7 @@
                     ,'CALL_UPDATE', 'DETECTED_TONE', 'CHANNEL_PROGRESS_MEDIA'
                     ,'DTMF', 'RECORD_START', 'RECORD_STOP', 'CHANNEL_BRIDGE'
                     ,'CHANNEL_UNBRIDGE', 'CHANNEL_EXECUTE', 'CHANNEL_EXECUTE_COMPLETE'
-                    ,'CHANNEL_DATA', 'CALL_SECURE'
+                    ,'CHANNEL_DATA', 'CALL_SECURE', 'CHANNEL_HOLD', 'CHANNEL_UNHOLD'
                    ]).
 
 -define(FS_CUSTOM_EVENTS, ['whistle::noop', 'whistle::masquerade'

@@ -218,6 +218,7 @@
          ,<<"LEG_CREATED">>, <<"LEG_DESTROYED">>
          ,<<"RECORD_START">>,<<"RECORD_STOP">>
          ,<<"dialplan">> %% errors are sent with this
+         ,<<"CHANNEL_HOLD">>, <<"CHANNEL_UNHOLD">>
         ]).
 
 -type xml_thing() :: xml_el() | xml_text().
