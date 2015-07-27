@@ -353,18 +353,31 @@ start_message_handling(_Node, _FetchId, CallId, JObj) ->
 
 -spec route_req(ne_binary(), ne_binary(), wh_proplist(), atom()) -> wh_proplist().
 route_req(CallId, FetchId, Props, Node) ->
+    props:to_log(Props, <<"ROUTE-REQ">>),
     SwitchURL = ecallmgr_fs_node:sip_url(Node),
     [_, SwitchURIHost] = binary:split(SwitchURL, <<"@">>),
     SwitchURI = <<"sip:", SwitchURIHost/binary>>,
     [{<<"Msg-ID">>, FetchId}
      ,{<<"Call-ID">>, CallId}
      ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, Props)}
-     ,{<<"Caller-ID-Name">>, props:get_first_defined([<<"variable_effective_caller_id_name">>
-                                                      ,<<"Caller-Caller-ID-Name">>
-                                                     ], Props, <<"Unknown">>)}
-     ,{<<"Caller-ID-Number">>, props:get_first_defined([<<"variable_effective_caller_id_number">>
-                                                        ,<<"Caller-Caller-ID-Number">>
-                                                       ], Props, <<"0000000000">>)}
+     ,{<<"Caller-ID-Name">>,
+       case wh_util:is_true(props:get_value(<<"Caller-Screen-Bit">>, Props, 'false')) andalso
+                wh_util:is_true(props:get_value(<<"Caller-Privacy-Hide-Name">>, Props, 'false')) of
+           'true' -> <<"Anonymous">>;
+           'false' -> props:get_first_defined([<<"variable_effective_caller_id_name">>
+                                               ,<<"Caller-Caller-ID-Name">>
+                                              ], Props, <<"Unknown">>)
+       end
+       }
+     ,{<<"Caller-ID-Number">>, 
+       case wh_util:is_true(props:get_value(<<"Caller-Screen-Bit">>, Props, 'false')) andalso
+                wh_util:is_true(props:get_value(<<"Caller-Privacy-Hide-Number">>, Props, 'false')) of
+           'true' -> <<"Anonymous">>;
+           'false' -> props:get_first_defined([<<"variable_effective_caller_id_number">>
+                                               ,<<"Caller-Caller-ID-Number">>
+                                              ], Props, <<"0000000000">>)
+       end
+      }
      ,{<<"From-Network-Addr">>, props:get_first_defined([<<"variable_sip_h_X-AUTH-IP">>
                                                          ,<<"variable_sip_received_ip">>
                                                         ], Props)}
@@ -399,6 +412,14 @@ route_req_ccvs(FetchId, Props) ->
       [{<<"Fetch-ID">>, FetchId}
        ,{<<"Redirected-By">>, RedirectedBy}
        ,{<<"Redirected-Reason">>, RedirectedReason}
+       ,{<<"Caller-Privacy-Number">>, 
+         wh_util:is_true(props:get_value(<<"Caller-Screen-Bit">>, Props, 'false')) andalso
+         wh_util:is_true(props:get_value(<<"Caller-Privacy-Hide-Number">>, Props, 'false'))
+        }
+       ,{<<"Caller-Privacy-Name">>, 
+         wh_util:is_true(props:get_value(<<"Caller-Screen-Bit">>, Props, 'false')) andalso
+         wh_util:is_true(props:get_value(<<"Caller-Privacy-Hide-Name">>, Props, 'false'))
+        }
        | ecallmgr_util:custom_channel_vars(Props)
       ]
      ).
