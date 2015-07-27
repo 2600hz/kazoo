@@ -11,6 +11,7 @@
 
 -export([start_link/0
          ,listener/0
+         ,shared_listener/0
         ]).
 -export([init/1]).
 
@@ -50,6 +51,13 @@ start_link() ->
 -spec listener() -> api_pid().
 listener() ->
     case child_of_type(?MODULE, 'webhooks_listener') of
+        [] -> 'undefined';
+        [P] -> P
+    end.
+
+-spec shared_listener() -> api_pid().
+shared_listener() ->
+    case child_of_type(?MODULE, 'webhooks_shared_listener') of
         [] -> 'undefined';
         [P] -> P
     end.
