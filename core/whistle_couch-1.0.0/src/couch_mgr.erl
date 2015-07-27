@@ -112,10 +112,10 @@ load_doc_from_file(DbName, App, File) ->
         ?MODULE:save_doc(DbName, wh_json:decode(Bin)) %% if it crashes on the match, the catch will let us know
     catch
         _Type:{'badmatch',{'error',Reason}} ->
-            lager:debug("badmatch error: ~p", [Reason]),
+            lager:debug("badmatch error reading ~s: ~p", [Path, Reason]),
             {'error', Reason};
         _Type:Reason ->
-            lager:debug("exception: ~p", [Reason]),
+            lager:debug("exception reading ~s: ~p", [Path, Reason]),
             {'error', Reason}
     end.
 

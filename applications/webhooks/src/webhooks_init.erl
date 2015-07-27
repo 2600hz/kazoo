@@ -30,14 +30,14 @@ init_master_account_db() ->
                                        ,'webhooks'
                                        ,<<"webhooks.json">>
                                       ),
-    'ok'.
+    lager:debug("loaded view into master db").
 
 -spec init_modules() -> 'ok'.
 init_modules() ->
-    Init = [{Mod, init_module(Mod)}
-            || Mod <- existing_modules()
-           ],
-    lager:debug("initializing: ~p", [Init]).
+    [init_module(Mod)
+     || Mod <- existing_modules()
+    ],
+    lager:debug("finished initializing modules").
 
 -spec init_module(atom()) -> 'ok'.
 init_module(Module) ->
