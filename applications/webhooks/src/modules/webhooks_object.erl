@@ -74,7 +74,7 @@ bindings([]) ->
 bindings(AccountsWithObjectHook) ->
     [{'conf', [{'restrict_to', ['doc_updates']}
                ,{'type', Type}
-               ,{'account', Account}
+               ,{'db', Account}
               ]
      }
      || Type <- ?OBJECT_TYPES,
@@ -83,7 +83,7 @@ bindings(AccountsWithObjectHook) ->
 
 -spec account_bindings(ne_binary()) -> gen_listener:bindings().
 account_bindings(AccountId) ->
-    bindings([AccountId]).
+    bindings([wh_util:format_account_id(AccountId, 'encoded')]).
 
 -spec load_accounts() -> ne_binaries().
 load_accounts() ->
@@ -93,7 +93,12 @@ load_accounts() ->
                               )
     of
         {'ok', View} ->
-            [wh_json:get_value(<<"value">>, Result) || Result <- View];
+            [wh_util:format_account_id(
+               wh_json:get_value(<<"value">>, Result)
+               ,'encoded'
+              )
+             || Result <- View
+            ];
         {'error', _E} ->
             lager:warning("failed to load accounts: ~p", [_E]),
             []
