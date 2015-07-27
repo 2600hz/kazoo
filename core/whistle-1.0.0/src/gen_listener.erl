@@ -303,25 +303,25 @@ rm_responder(Srv, Responder, Keys) ->
 -spec add_binding(server_ref(), binding() | ne_binary() | atom()) -> 'ok'.
 add_binding(Srv, {Binding, Props}) when is_list(Props)
                                         ,(is_atom(Binding) orelse is_binary(Binding)) ->
-    gen_server:cast(Srv, {'add_binding', wh_util:to_binary(Binding), Props});
+    gen_server:cast(Srv, {'add_binding', Binding, Props});
 add_binding(Srv, Binding) when is_binary(Binding) orelse is_atom(Binding) ->
-    gen_server:cast(Srv, {'add_binding', wh_util:to_binary(Binding), []}).
+    gen_server:cast(Srv, {'add_binding', Binding, []}).
 
 
 -spec add_binding(server_ref(), ne_binary() | atom(), wh_proplist()) -> 'ok'.
 add_binding(Srv, Binding, Props) when is_binary(Binding) orelse is_atom(Binding) ->
-    gen_server:cast(Srv, {'add_binding', wh_util:to_binary(Binding), Props}).
+    gen_server:cast(Srv, {'add_binding', Binding, Props}).
 
 -spec b_add_binding(server_ref(), binding() | ne_binary() | atom()) -> 'ok'.
 b_add_binding(Srv, {Binding, Props}) when is_list(Props)
                                         ,(is_atom(Binding) orelse is_binary(Binding)) ->
-    gen_server:call(Srv, {'add_binding', wh_util:to_binary(Binding), Props});
+    gen_server:call(Srv, {'add_binding', Binding, Props});
 b_add_binding(Srv, Binding) when is_binary(Binding) orelse is_atom(Binding) ->
-    gen_server:call(Srv, {'add_binding', wh_util:to_binary(Binding), []}).
+    gen_server:call(Srv, {'add_binding', Binding, []}).
 
 -spec b_add_binding(server_ref(), ne_binary() | atom(), wh_proplist()) -> 'ok'.
 b_add_binding(Srv, Binding, Props) when is_binary(Binding) orelse is_atom(Binding) ->
-    gen_server:call(Srv, {'add_binding', wh_util:to_binary(Binding), Props}).
+    gen_server:call(Srv, {'add_binding', Binding, Props}).
 
 %% It is expected that responders have been set up already, prior to binding the new queue
 -spec add_queue(server_ref(), binary(), wh_proplist(), binding() | bindings()) ->
@@ -345,7 +345,7 @@ rm_binding(Srv, {Binding, Props}) ->
 
 -spec rm_binding(server_ref(), ne_binary() | atom(), wh_proplist()) -> 'ok'.
 rm_binding(Srv, Binding, Props) ->
-    gen_server:cast(Srv, {'rm_binding', wh_util:to_binary(Binding), Props}).
+    gen_server:cast(Srv, {'rm_binding', Binding, Props}).
 
 -spec federated_event(server_ref(), wh_json:object(), basic_deliver()) -> 'ok'.
 federated_event(Srv, JObj, BasicDeliver) ->
@@ -492,7 +492,15 @@ handle_cast({'add_binding', Binding, Props}, State) ->
 handle_cast({'rm_binding', Binding, Props}, #state{queue=Q
                                                    ,bindings=Bs
                                                   }=State) ->
-    KeepBs = lists:filter(fun(BP) -> maybe_remove_binding(BP, Binding, Props, Q) end, Bs),
+    KeepBs = lists:filter(fun(BP) ->
+                                  maybe_remove_binding(BP
+                                                       ,wh_util:to_binary(Binding)
+                                                       ,Props
+                                                       ,Q
+                                                      )
+                          end
+                          ,Bs
+                         ),
     {'noreply', State#state{bindings=KeepBs}, 'hibernate'};
 handle_cast({'wh_amqp_assignment', {'new_channel', 'true'}}, State) ->
     lager:debug("channel reconnecting"),
@@ -538,11 +546,11 @@ handle_cast({'$execute', Function}=Msg
 handle_cast({'$client_cast', Message}, State) ->
     handle_module_cast(Message, State);
 handle_cast({'start_listener', Params}, #state{queue='undefined'
-                                              ,is_consuming='false'
-                                              ,responders=[]
-                                              ,bindings=[]
-                                              ,params=[]
-                                               }=State) ->
+                                               ,is_consuming='false'
+                                               ,responders=[]
+                                               ,bindings=[]
+                                               ,params=[]
+                                              }=State) ->
     #state{module=Module
            ,module_state=ModuleState
            ,module_timeout_ref=TimeoutRef
@@ -562,7 +570,8 @@ handle_cast({'resume_consumers'}, #state{queue='undefined'}=State) ->
 handle_cast({'resume_consumers'}, #state{is_consuming='false'
                                          ,params=Params
                                          ,queue=Q
-                                         ,other_queues=OtherQueues}=State) ->
+                                         ,other_queues=OtherQueues
+                                        }=State) ->
     start_consumer(Q, props:get_value('consume_options', Params)),
     _ = [start_consumer(Q1, props:get_value('consume_options', P))
          || {Q1, {_, P}} <- OtherQueues],
@@ -874,7 +883,7 @@ start_consumer(Q, ConsumeProps) -> amqp_util:basic_consume(Q, ConsumeProps).
 
 -spec remove_binding(binding_module(), wh_proplist(), api_binary()) -> any().
 remove_binding(Binding, Props, Q) ->
-    Wapi = list_to_binary([<<"wapi_">>, wh_util:to_binary(Binding)]),
+    Wapi = list_to_binary([<<"wapi_">>, Binding]),
     lager:debug("trying to remove bindings with ~s:unbind_q(~s, ~p)", [Wapi, Q, Props]),
     try (wh_util:to_atom(Wapi, 'true')):unbind_q(Q, Props) of
         Return -> Return
@@ -885,9 +894,9 @@ remove_binding(Binding, Props, Q) ->
 
 -spec create_binding(ne_binary(), wh_proplist(), ne_binary()) -> any().
 create_binding(Binding, Props, Q) when not is_binary(Binding) ->
-    create_binding(wh_util:to_binary(Binding), Props, Q);
+    create_binding(Binding, Props, Q);
 create_binding(Binding, Props, Q) ->
-    Wapi = list_to_binary([<<"wapi_">>, wh_util:to_binary(Binding)]),
+    Wapi = list_to_binary([<<"wapi_">>, Binding]),
     try (wh_util:to_atom(Wapi, 'true')):bind_q(Q, Props) of
         Return -> Return
     catch
@@ -992,16 +1001,32 @@ handle_module_cast(Msg, #state{module=Module
 
 -spec handle_add_binding(binding(), wh_proplist(), state()) ->
                                 state().
-handle_add_binding(Binding, Props, #state{queue=Q
-                                          ,bindings=Bs
-                                         }=State) ->
+handle_add_binding(B, Props, #state{queue=Q
+                                    ,bindings=Bs
+                                   }=State) ->
+    Binding = wh_util:to_binary(B),
     case lists:keyfind(Binding, 1, Bs) of
         'false' ->
             lager:debug("creating new binding: '~s'", [Binding]),
             create_binding(Binding, Props, Q),
             maybe_update_federated_bindings(State#state{bindings=[{Binding, Props}|Bs]});
-        {_, Props} -> State;
-        {_, _P} ->
+        {Binding, ExistingProps} ->
+            handle_existing_binding(Binding, Props, State, Q, ExistingProps, Bs)
+    end.
+
+-spec handle_existing_binding(binding(), wh_proplist(), state(), ne_binary(), wh_proplist(), bindings()) ->
+                                     state().
+handle_existing_binding(Binding, Props, State, Q, ExistingProps, Bs) ->
+    case lists:all(fun({K,V}) ->
+                           props:get_value(K, ExistingProps) =:= V
+                   end
+                   ,Props
+                  )
+    of
+        'true' ->
+            lager:debug("binding ~s with props exists", [Binding]),
+            State;
+        'false' ->
             lager:debug("creating existing binding '~s' with new props: ~p", [Binding, Props]),
             create_binding(Binding, Props, Q),
             maybe_update_federated_bindings(State#state{bindings=[{Binding, Props}|Bs]})
