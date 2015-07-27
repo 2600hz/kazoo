@@ -34,7 +34,6 @@
                 "post"
             ],
             "name": "Method",
-            "required": true,
             "type": "string"
         },
         "name": {
