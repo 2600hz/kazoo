@@ -16,8 +16,21 @@
 
 -spec start_link() -> 'ignore'.
 start_link() ->
+    init_dbs(),
     init_modules(),
     'ignore'.
+
+init_dbs() ->
+    init_master_account_db(),
+    webhooks_util:init_webhook_db().
+
+init_master_account_db() ->
+    {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
+    _ = couch_mgr:revise_doc_from_file(MasterAccountDb
+                                       ,'webhooks'
+                                       ,<<"webhooks.json">>
+                                      ),
+    'ok'.
 
 -spec init_modules() -> 'ok'.
 init_modules() ->
