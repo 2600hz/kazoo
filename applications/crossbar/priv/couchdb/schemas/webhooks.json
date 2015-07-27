@@ -23,12 +23,6 @@
         },
         "hook": {
             "description": "The trigger event for a request being made to 'callback_uri'.",
-            "enum": [
-                "channel_create",
-                "channel_answer",
-                "channel_destroy",
-                "all"
-            ],
             "required": true,
             "type": "string"
         },
