@@ -52,7 +52,9 @@ Webhooks are installed by the system administrator. You can query Crossbar to se
      "request_id": "{REQUEST_ID}",
      "revision": "{REVISION}",
      "status": "success"
-    }
+     }
+
+Some webhooks will also include a `modifiers` object; these are parameters specific to that webhook that can be used to modify the behaviour of the webhook.
 
 ## Sample cURL Requests
 

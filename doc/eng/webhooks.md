@@ -16,11 +16,16 @@ The structure of each metadata package will include:
     {"id":"channel_create"
      ,"name":"Channel Create"
      ,"description":"Event fires when a new call is begun"
+     ,"modifiers":{...}
     }
 
 These metadata packages can then be accessed via Crossbar to allow REST clients to present the latest available webhooks for selection.
 
 See the [webhooks_skel](applications/webhooks/src/modules/webhooks_skel.erl) for creating new webhook modules.
+
+#### Modifiers
+
+Some webhooks, like `objects`, have a `modifiers` object to fine-tune the behaviour of the webhook. `objects`, for instance, allows the creator to specify a subset of object types to listen for and publish (versus getting everything).
 
 ### Webhook Modules
 
