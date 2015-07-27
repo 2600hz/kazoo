@@ -383,7 +383,7 @@ init_webhooks() ->
 init_webhooks(Accts) ->
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(wh_util:current_tstamp()),
     init_webhooks(Accts, Year, Month).
-init_webhooks([], _, _) -> 'ok';
+
 init_webhooks(Accts, Year, Month) ->
     _ = [init_webhook(Acct, Year, Month) || Acct <- Accts],
     'ok'.

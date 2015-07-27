@@ -45,9 +45,9 @@ init() ->
                                       ,gen_listener:responders()
                                      }.
 bindings_and_responders() ->
-    {[{'self', []}]
+    {[] %% these are loaded as webhooks are loaded
      ,[{{?MODULE, 'handle_event'}
-        ,[{<<"category">>, <<"name">>}]
+        ,[{<<"configuration">>, <<"doc_type_update">>}]
        }
       ]
     }.
