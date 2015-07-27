@@ -772,7 +772,7 @@ to_list(X) when is_list(X) -> X.
 
 %% Known limitations:
 %%   Converting [256 | _], lists with integers > 255
--spec to_binary(atom() | string() | binary() | integer() | float() | pid()) -> binary().
+-spec to_binary(atom() | string() | binary() | integer() | float() | pid() | iolist()) -> binary().
 to_binary(X) when is_float(X) -> to_binary(mochinum:digits(X));
 to_binary(X) when is_integer(X) -> list_to_binary(integer_to_list(X));
 to_binary(X) when is_atom(X) -> list_to_binary(atom_to_list(X));
