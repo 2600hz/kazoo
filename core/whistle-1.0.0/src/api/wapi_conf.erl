@@ -169,10 +169,21 @@ bind_for_doc_changes(Q, Props) ->
 -spec bind_for_doc_type_changes(ne_binary(), wh_proplist()) -> 'ok'.
 bind_for_doc_type_changes(Q, Props) ->
     case props:get_value('type', Props) of
-        'undefined' ->
-            lager:warning("binding for doc type changes without supplying a type");
+        'undefined' -> bind_for_doc_types(Q, Props);
         Type ->
             amqp_util:bind_q_to_configuration(Q, doc_type_update_routing_key(Type))
+    end.
+
+-spec bind_for_doc_types(ne_binary(), wh_proplist()) -> 'ok'.
+bind_for_doc_types(Q, Props) ->
+    case props:get_value('types', Props) of
+        'undefined' ->
+            lager:warning("binding for doc type changes without supplying a type");
+        Types ->
+            [amqp_util:bind_q_to_configuration(Q, doc_type_update_routing_key(Type))
+             || Type <- Types
+            ],
+            'ok'
     end.
 
 -spec unbind_q(binary(), wh_proplist()) -> 'ok'.
@@ -207,9 +218,19 @@ unbind_for_doc_changes(Q, Props) ->
 -spec unbind_for_doc_type_changes(ne_binary(), wh_proplist()) -> 'ok'.
 unbind_for_doc_type_changes(Q, Props) ->
     case props:get_value('type', Props) of
-        'undefined' -> 'ok';
+        'undefined' -> unbind_for_doc_types(Q, Props);
         Type ->
             amqp_util:unbind_q_from_configuration(Q, doc_type_update_routing_key(Type))
+    end.
+
+-spec unbind_for_doc_types(ne_binary(), wh_proplist()) -> 'ok'.
+unbind_for_doc_types(Q, Props) ->
+    case props:get_value('types', Props) of
+        'undefined' -> 'ok';
+        Types ->
+            [amqp_util:unbind_q_from_configuration(Q, doc_type_update_routing_key(Type))
+             || Type <- Types
+            ]
     end.
 
 %%--------------------------------------------------------------------
