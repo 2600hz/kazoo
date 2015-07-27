@@ -8,6 +8,7 @@
 
 -export([init/0
          ,bindings_and_responders/0
+         ,account_bindings/1
          ,handle_event/2
         ]).
 
@@ -79,6 +80,10 @@ bindings(AccountsWithObjectHook) ->
      || Type <- ?OBJECT_TYPES,
         Account <- lists:usort(AccountsWithObjectHook)
     ].
+
+-spec account_bindings(ne_binary()) -> gen_listener:bindings().
+account_bindings(AccountId) ->
+    bindings([AccountId]).
 
 -spec load_accounts() -> ne_binaries().
 load_accounts() ->

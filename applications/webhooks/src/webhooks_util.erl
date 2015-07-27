@@ -351,7 +351,11 @@ load_hook(Srv, WebHook) ->
     catch
         'throw':{'bad_hook', HookEvent} ->
             lager:debug("failed to load hook ~s.~s: bad_hook: ~s"
-                        ,[wh_doc:account_id(WebHook), wh_doc:id(WebHook), HookEvent])
+                        ,[wh_doc:account_id(WebHook)
+                          ,wh_doc:id(WebHook)
+                          ,HookEvent
+                         ]
+                       )
     end.
 
 -spec jobj_to_rec(wh_json:object()) -> webhook().
