@@ -25,7 +25,9 @@
          ,trial_time_left/1, trial_time_left/2
          ,trial_has_expired/1
 
-         ,fetch/1, new/0
+         ,fetch/1
+         ,new/0
+         ,type/0
         ]).
 
 -define(ID, <<"_id">>).
@@ -41,6 +43,8 @@
 -define(NOTIFY_PREF, <<"pvt_notification_preference">>).
 -define(KEY_TRIAL_EXPIRATION, <<"pvt_trial_expires">>).
 
+-define(PVT_TYPE, <<"account">>).
+
 -include("kz_documents.hrl").
 
 -type doc() :: wh_json:object().
@@ -48,7 +52,10 @@
 
 -spec new() -> doc().
 new() ->
-    wh_doc:set_type(wh_json:new(), <<"account">>).
+    wh_doc:set_type(wh_json:new(), ?PVT_TYPE).
+
+-spec type() -> ne_binary().
+type() -> ?PVT_TYPE.
 
 -spec id(doc()) -> api_binary().
 id(JObj) ->

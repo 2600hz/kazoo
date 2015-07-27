@@ -8,7 +8,9 @@
 %%%-------------------------------------------------------------------
 -module(kzd_fax_box).
 
--export([owner_id/1, owner_id/2
+-export([new/0
+         ,type/0
+         ,owner_id/1, owner_id/2
          ,owner/1
          ,timezone/1, timezone/2
          ,retries/1, retries/2
@@ -22,6 +24,15 @@
 -define(KEY_OWNER_ID, <<"owner_id">>).
 -define(KEY_TIMEZONE, <<"fax_timezone">>).
 -define(KEY_RETRIES, <<"retries">>).
+
+-define(PVT_TYPE, <<"faxbox">>).
+
+-spec new() -> doc().
+new() ->
+    wh_json:from_list([{<<"pvt_type">>, type()}]).
+
+-spec type() -> ne_binary().
+type() -> ?PVT_TYPE.
 
 -spec owner_id(doc()) -> api_binary().
 -spec owner_id(doc(), Default) -> ne_binary() | Default.
