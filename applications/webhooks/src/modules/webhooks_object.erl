@@ -74,4 +74,33 @@ bindings_and_responders() ->
 -spec handle_event(wh_json:object(), wh_proplist()) -> any().
 handle_event(JObj, _Props) ->
     wh_util:put_callid(JObj),
-    'ok'.
+
+    AccountId = find_account_id(JObj),
+    case webhooks_util:find_webhooks(?NAME, AccountId) of
+        [] ->
+            lager:debug("no hooks to handle ~s for ~s"
+                        ,[wapi_conf:get_action(JObj)
+                          ,AccountId
+                         ]);
+        Hooks -> webhooks_util:fire_hooks(format_event(JObj, AccountId), Hooks)
+    end.
+
+-spec format_event(wh_json:object(), ne_binary()) -> wh_json:object().
+format_event(JObj, AccountId) ->
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"id">>, wapi_conf:get_id(JObj)}
+         ,{<<"account_id">>, AccountId}
+         ,{<<"action">>, wapi_conf:get_action(JObj)}
+         ,{<<"type">>, wapi_conf:get_type(JObj)}
+        ]
+       )
+     ).
+
+-spec find_account_id(wh_json:object()) -> ne_binary().
+find_account_id(JObj) ->
+    case wapi_conf:get_account_id(JObj) of
+        'undefined' ->
+            wh_util:format_account_id(wapi_conf:get_account_db(JObj), 'raw');
+        AccountId -> AccountId
+    end.
