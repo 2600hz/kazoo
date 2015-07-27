@@ -346,7 +346,10 @@ summary_available(Context) ->
 -spec normalize_available(wh_json:object(), wh_json:objects()) ->
                                  wh_json:objects().
 normalize_available(JObj, Acc) ->
-    [wh_json:public_fields(wh_json:get_value(<<"doc">>, JObj))
+    Doc = wh_json:public_fields(wh_json:get_value(<<"doc">>, JObj)),
+    Name = wh_json:get_value(<<"name">>, Doc),
+
+    [wh_json:set_value(<<"id">>, Name, Doc)
      | Acc
     ].
 
