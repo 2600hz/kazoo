@@ -36,6 +36,20 @@
                            ])
        ).
 
+-define(OBJECT_TYPES
+        ,whapps_config:get(?APP_NAME
+                           ,<<"object_types">>
+                           ,[kz_account:type()
+                             ,kzd_callflow:type()
+                             ,kz_device:type()
+                             ,kzd_fax_box:type()
+                             ,kzd_media:type()
+                             ,kzd_user:type()
+                             ,kzd_voicemail_box:type()
+                            ]
+                          )
+       ).
+
 -spec init() -> 'ok'.
 init() ->
     webhooks_util:init_metadata(?ID, ?METADATA).
@@ -45,7 +59,12 @@ init() ->
                                       ,gen_listener:responders()
                                      }.
 bindings_and_responders() ->
-    {[] %% these are loaded as webhooks are loaded
+    {[{'conf', [{'restrict_to', ['doc_updates']}
+                ,{'type', Type}
+               ]
+      }
+      || Type <- ?OBJECT_TYPES
+     ]
      ,[{{?MODULE, 'handle_event'}
         ,[{<<"configuration">>, <<"doc_type_update">>}]
        }
@@ -55,4 +74,4 @@ bindings_and_responders() ->
 -spec handle_event(wh_json:object(), wh_proplist()) -> any().
 handle_event(JObj, _Props) ->
     wh_util:put_callid(JObj),
-    lager:debug("event handled").
+    'ok'.
