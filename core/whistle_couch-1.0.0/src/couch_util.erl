@@ -1045,6 +1045,7 @@ publish(Action, Db, Doc) ->
          ,{<<"Account-ID">>, doc_acct_id(Db, Doc)}
          ,{<<"Date-Modified">>, wh_doc:created(Doc)}
          ,{<<"Date-Created">>, wh_doc:modified(Doc)}
+         ,{<<"Is-Soft-Deleted">>, wh_doc:is_soft_deleted(Doc)}
          | wh_api:default_headers(<<"configuration">>
                                   ,<<"doc_", (wh_util:to_binary(Action))/binary>>
                                   ,?CONFIG_CAT
