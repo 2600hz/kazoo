@@ -280,7 +280,7 @@ routing_data(ToDID, AcctID, Settings) ->
     %% Bridge Endpoint fields go here
     %% See http://wiki.2600hz.org/display/whistle/Dialplan+Actions#DialplanActions-Endpoint
     [KV || {_,V}=KV <- [ {<<"Invite-Format">>, InboundFormat}
-                         ,{<<"Codecs">>, wh_json:get_value(<<"codecs">>, Srv)}
+                         ,{<<"Codecs">>, wh_json:find(<<"codecs">>, [SrvOptions, Srv])}
                          ,{<<"Bypass-Media">>, BypassMedia}
                          ,{<<"Endpoint-Progress-Timeout">>, ProgressTimeout}
                          ,{<<"Failover">>, Failover}
