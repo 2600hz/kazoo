@@ -489,19 +489,8 @@ handle_cast({'add_binding', _, _}=AddBinding, #state{is_consuming='false'}=State
     {'noreply', State};
 handle_cast({'add_binding', Binding, Props}, State) ->
     {'noreply', handle_add_binding(Binding, Props, State), 'hibernate'};
-handle_cast({'rm_binding', Binding, Props}, #state{queue=Q
-                                                   ,bindings=Bs
-                                                  }=State) ->
-    KeepBs = lists:filter(fun(BP) ->
-                                  maybe_remove_binding(BP
-                                                       ,wh_util:to_binary(Binding)
-                                                       ,Props
-                                                       ,Q
-                                                      )
-                          end
-                          ,Bs
-                         ),
-    {'noreply', State#state{bindings=KeepBs}, 'hibernate'};
+handle_cast({'rm_binding', Binding, Props}, State) ->
+    {'noreply', handle_rm_binding(Binding, Props, State), 'hibernate'};
 handle_cast({'wh_amqp_assignment', {'new_channel', 'true'}}, State) ->
     lager:debug("channel reconnecting"),
     {'noreply', State};
@@ -561,7 +550,9 @@ handle_cast({'start_listener', _Params}, State) ->
     lager:debug("gen listener asked to start listener but it is already initialized"),
     {'noreply', State};
 
-handle_cast({'pause_consumers'}, #state{is_consuming='true', consumer_tags=Tags}=State) ->
+handle_cast({'pause_consumers'}, #state{is_consuming='true'
+                                        ,consumer_tags=Tags
+                                       }=State) ->
     _ = [amqp_util:basic_cancel(Tag) || Tag <- Tags],
     {'noreply', State};
 
@@ -612,11 +603,15 @@ handle_info(#'basic.consume_ok'{consumer_tag=CTag}, #state{queue='undefined'}=St
     {'noreply', State};
 handle_info(#'basic.consume_ok'{consumer_tag=CTag}, #state{consumer_tags=CTags}=State) ->
     gen_server:cast(self(), {'gen_listener', {'is_consuming', 'true'}}),
-    {'noreply', State#state{is_consuming='true', consumer_tags=[CTag | CTags]}};
+    {'noreply', State#state{is_consuming='true'
+                            ,consumer_tags=[CTag | CTags]
+                           }};
 handle_info(#'basic.cancel_ok'{consumer_tag=CTag}, #state{consumer_tags=CTags}=State) ->
     lager:debug("recv a basic.cancel_ok for tag ~s", [CTag]),
     gen_server:cast(self(), {'gen_listener', {'is_consuming', 'false'}}),
-    {'noreply', State#state{is_consuming='false', consumer_tags=lists:delete(CTag, CTags)}};
+    {'noreply', State#state{is_consuming='false'
+                            ,consumer_tags=lists:delete(CTag, CTags)
+                           }};
 handle_info(#'basic.ack'{}=Ack, #state{}=State) ->
     lager:debug("recv a basic.ack ~p", [Ack]),
     handle_confirm(Ack, State);
@@ -999,7 +994,7 @@ handle_module_cast(Msg, #state{module=Module
             {'stop', R, State}
     end.
 
--spec handle_add_binding(binding(), wh_proplist(), state()) ->
+-spec handle_add_binding(binding_module(), wh_proplist(), state()) ->
                                 state().
 handle_add_binding(B, Props, #state{queue=Q
                                     ,bindings=Bs
@@ -1014,7 +1009,7 @@ handle_add_binding(B, Props, #state{queue=Q
             handle_existing_binding(Binding, Props, State, Q, ExistingProps, Bs)
     end.
 
--spec handle_existing_binding(binding(), wh_proplist(), state(), ne_binary(), wh_proplist(), bindings()) ->
+-spec handle_existing_binding(binding_module(), wh_proplist(), state(), ne_binary(), wh_proplist(), bindings()) ->
                                      state().
 handle_existing_binding(Binding, Props, State, Q, ExistingProps, Bs) ->
     case lists:all(fun({K,V}) ->
@@ -1031,6 +1026,21 @@ handle_existing_binding(Binding, Props, State, Q, ExistingProps, Bs) ->
             create_binding(Binding, Props, Q),
             maybe_update_federated_bindings(State#state{bindings=[{Binding, Props}|Bs]})
     end.
+
+-spec handle_rm_binding(binding(), wh_proplist(), state()) -> state().
+handle_rm_binding(Binding, Props, #state{queue=Q
+                                         ,bindings=Bs
+                                        }=State) ->
+    KeepBs = lists:filter(fun(BP) ->
+                                  maybe_remove_binding(BP
+                                                       ,wh_util:to_binary(Binding)
+                                                       ,Props
+                                                       ,Q
+                                                      )
+                          end
+                          ,Bs
+                         ),
+    State#state{bindings=KeepBs}.
 
 -spec maybe_update_federated_bindings(state()) -> state().
 maybe_update_federated_bindings(#state{bindings=[{_Binding, Props}|_]}=State) ->
