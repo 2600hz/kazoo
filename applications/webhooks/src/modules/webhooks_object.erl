@@ -77,7 +77,7 @@ bindings(AccountsWithObjectHook) ->
               ]
      }
      || Type <- ?OBJECT_TYPES,
-        Account <- AccountsWithObjectHook
+        Account <- lists:usort(AccountsWithObjectHook)
     ].
 
 -spec load_accounts() -> ne_binaries().
