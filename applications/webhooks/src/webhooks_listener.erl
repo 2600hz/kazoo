@@ -63,9 +63,10 @@ start_link() ->
 -spec handle_config(wh_json:object(), wh_proplist()) -> 'ok'.
 -spec handle_config(wh_json:object(), pid(), ne_binary()) -> 'ok'.
 handle_config(JObj, Props) ->
+    'true' = wapi_conf:doc_update_v(JObj),
     handle_config(JObj
                   ,props:get_value('server', Props)
-                  ,wh_json:get_value(<<"Event-Name">>, JObj)
+                  ,wh_api:event_name(JObj)
                  ).
 
 handle_config(JObj, Srv, <<"doc_created">>) ->
@@ -78,7 +79,10 @@ handle_config(JObj, Srv, <<"doc_edited">>) ->
         'undefined' -> find_and_update_hook(JObj, Srv);
         HookId ->
             {'ok', Hook} = couch_mgr:open_cache_doc(?KZ_WEBHOOKS_DB, HookId),
-            case kzd_webhook:is_enabled(Hook) of
+            case (not wapi_conf:get_is_soft_deleted(JObj))
+                andalso kzd_webhook:is_enabled(Hook)
+
+            of
                 'true' ->
                     gen_listener:cast(Srv, {'update_hook', webhooks_util:jobj_to_rec(Hook)});
                 'false' ->
@@ -270,6 +274,7 @@ maybe_remove_shared_bindings(Id) ->
         [Hook] -> remove_shared_bindings(Hook);
         _ -> 'ok'
     end,
+    lager:debug("deleting hook ~s", [Id]),
     ets:delete(webhooks_util:table_id(), Id).
 
 -spec remove_shared_bindings(webhook()) -> 'ok'.
