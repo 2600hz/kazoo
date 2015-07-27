@@ -29,15 +29,10 @@
 -record(state, {}).
 -type state() :: #state{}.
 
--define(FAX_NOTIFY_RESTRICT_TO, ['outbound_fax'
-                                 ,'outbound_fax_error'
-                                ]).
-
 -define(WEBHOOKS_NOTIFY_RESTRICT_TO, ['webhook']).
 
 -define(BINDINGS, [%% channel events that toggle presence lights
-                   {'notifications', [{'restrict_to', ?FAX_NOTIFY_RESTRICT_TO}]}
-                   ,{'notifications', [{'restrict_to', ?WEBHOOKS_NOTIFY_RESTRICT_TO}]}
+                   {'notifications', [{'restrict_to', ?WEBHOOKS_NOTIFY_RESTRICT_TO}]}
                    ,{'conf', [{'restrict_to', ['doc_type_updates']}
                               ,{'type', kzd_webhook:type()}
                              ]
@@ -50,11 +45,6 @@
                         ,{<<"configuration">>, <<"doc_deleted">>}
                        ]
                      }
-                     ,{{'webhooks_fax', 'handle_req'}
-                       ,[{<<"notification">>, <<"outbound_fax">>}
-                         ,{<<"notification">>, <<"outbound_fax_error">>}
-                        ]
-                      }
                      ,{{'webhooks_callflow', 'handle_req'}
                        ,[{<<"notification">>, <<"webhook">>}]
                       }

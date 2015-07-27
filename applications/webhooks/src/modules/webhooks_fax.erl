@@ -1,18 +1,60 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014, 2600Hz INC
+%%% @copyright (C) 2014-2015, 2600Hz INC
 %%%
 %%% @contributors
 %%%   Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(webhooks_fax).
 
+-export([init/0
+         ,bindings_and_responders/0
+         ,handle_event/2
+        ]).
+
 -include("../webhooks.hrl").
 
--export([handle_req/2]).
+-define(ID, wh_util:to_binary(?MODULE)).
+-define(NAME, <<"outbound_fax">>).
+-define(DESC, <<"Outbound faxes (or errors if they occur)">>).
+-define(METADATA
+        ,wh_json:from_list([{<<"_id">>, ?ID}
+                            ,{<<"name">>, ?NAME}
+                            ,{<<"description">>, ?DESC}
+                           ])
+       ).
 
--spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
+-define(FAX_NOTIFY_RESTRICT_TO, ['outbound_fax'
+                                 ,'outbound_fax_error'
+                                ]).
+
+-define(BINDINGS, [{'notifications'
+                    ,[{'restrict_to', ?FAX_NOTIFY_RESTRICT_TO}]
+                   }
+                  ]
+       ).
+-define(RESPONDERS
+        ,[{{'webhooks_fax', 'handle_req'}
+           ,[{<<"notification">>, <<"outbound_fax">>}
+             ,{<<"notification">>, <<"outbound_fax_error">>}
+            ]
+          }
+         ]
+       ).
+
+-spec init() -> 'ok'.
+init() ->
+    webhooks_util:init_metadata(?ID, ?METADATA).
+
+-spec bindings_and_responders() ->
+                                     {gen_listener:bindings()
+                                      ,gen_listener:responders()
+                                     }.
+bindings_and_responders() ->
+    {?BINDINGS, ?RESPONDERS}.
+
+-spec handle_event(wh_json:object(), wh_proplist()) -> 'ok'.
 -spec handle_event(wh_json:object(), wh_proplist(), ne_binary()) -> 'ok'.
-handle_req(JObj, Props) ->
+handle_event(JObj, Props) ->
     EventName = wh_json:get_value(<<"Event-Name">>, JObj),
     handle_event(JObj, Props, EventName).
 
@@ -25,9 +67,7 @@ handle_event(JObj, _Props, <<"outbound_fax_error">> = EventName) ->
     'true' = wapi_notifications:fax_outbound_error_v(JObj),
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     Formated = format_outbound_fax_event(JObj),
-    maybe_send_event(EventName, AccountId, Formated);
-handle_event(_JObj, _Props, Event) ->
-    lager:error("received unhandle message event '~s'", [Event]).
+    maybe_send_event(EventName, AccountId, Formated).
 
 -spec maybe_send_event(ne_binary(), api_binary(), wh_json:object()) -> 'ok'.
 maybe_send_event(_EventName, 'undefined', _JObj) -> 'ok';
