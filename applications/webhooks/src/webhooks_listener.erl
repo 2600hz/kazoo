@@ -274,13 +274,14 @@ maybe_remove_shared_bindings(Id) ->
 
 -spec remove_shared_bindings(webhook()) -> 'ok'.
 remove_shared_bindings(#webhook{hook_event = <<"object">>
-                                ,account_id=AccountId
+                                ,account_id = AccountId
+                                ,id = Id
                                }
                       ) ->
     lager:debug("account ~s removed an object hook, seeing if others exist"
                 ,[AccountId]
                ),
-    case ets:match(webhooks_util:table_id(), object_account_ms(AccountId)) of
+    case ets:select(webhooks_util:table_id(), object_account_ms(AccountId, Id)) of
         [] ->
             lager:debug("no other object bindings, removing ~s", [AccountId]),
             webhooks_shared_listener:remove_object_bindings(AccountId);
@@ -288,15 +289,13 @@ remove_shared_bindings(#webhook{hook_event = <<"object">>
             lager:debug("account ~s has other object bindings", [AccountId])
     end.
 
--spec object_account_ms(ne_binary()) -> ets:ms().
-object_account_ms(AccountId) ->
-    [{#webhook{account_id='$1'
-               ,hook_event='$2'
+-spec object_account_ms(ne_binary(), ne_binary()) -> ets:match_spec().
+object_account_ms(AccountId, Id) ->
+    [{#webhook{account_id=AccountId
+               ,hook_event='$1'
+               ,hook_id=Id
+               ,_='_'
               }
-      ,[{'andalso'
-         ,{'=:=', '$1', AccountId}
-         ,{'=:=', '$2', <<"object">>}
-        }
-       ]
+      ,[{'=:=', '$1', {'const', <<"object">>}}]
       ,['$_']
      }].
