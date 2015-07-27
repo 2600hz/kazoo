@@ -133,6 +133,7 @@ hooks_configured() ->
                   ,['$_']
                  }],
     print_summary(ets:select(webhooks_util:table_id(), MatchSpec, 1)).
+
 hooks_configured(AccountId) ->
     MatchSpec = [{#webhook{account_id = '$1'
                            ,_ = '_'
@@ -172,7 +173,7 @@ print_summary({[#webhook{uri=URI
 
 -spec add_object_bindings(ne_binary()) -> 'ok'.
 add_object_bindings(AccountId) ->
-    Bindings = webhooks_objects:account_bindings(AccountId),
+    Bindings = webhooks_object:account_bindings(AccountId),
     Srv = webhooks_sup:shared_listener(),
 
     [gen_listener:add_binding(Srv, Binding)
@@ -182,7 +183,7 @@ add_object_bindings(AccountId) ->
 
 -spec remove_object_bindings(ne_binary()) -> 'ok'.
 remove_object_bindings(AccountId) ->
-    Bindings = webhooks_objects:account_bindings(AccountId),
+    Bindings = webhooks_object:account_bindings(AccountId),
     Srv = webhooks_sup:shared_listener(),
 
     [gen_listener:rm_binding(Srv, Binding)
