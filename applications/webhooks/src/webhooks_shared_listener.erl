@@ -44,6 +44,8 @@
                                               ,'CHANNEL_DISCONNECTED'
                                               ,'CHANNEL_HOLD'
                                               ,'CHANNEL_UNHOLD'
+                                              ,'CHANNEL_EXECUTE'
+                                              ,'CHANNEL_EXECUTE_COMPLETE'
                                              ]}
                              ,'federate'
                             ]}
@@ -171,6 +173,20 @@ format_event(JObj, AccountId, <<"CHANNEL_DESTROY">>) ->
                     ,[{<<"hook_event">>, <<"channel_destroy">>}
                       ,{<<"hangup_cause">>, wh_json:get_value(<<"Hangup-Cause">>, JObj)}
                       ,{<<"hangup_code">>, wh_json:get_value(<<"Hangup-Code">>, JObj)}
+                     ]);
+format_event(JObj, AccountId, <<"CHANNEL_EXECUTE">> = EventName) ->
+    base_hook_event(JObj
+                    ,AccountId
+                    ,[{<<"hook_event">>, wh_util:to_lower_binary(EventName)}
+                      ,{<<"application_name">>, wh_json:get_value(<<"Application-Name">>, JObj)}
+                      ,{<<"application_data">>, wh_json:get_value(<<"Raw-Application-Data">>, JObj)}
+                     ]);
+format_event(JObj, AccountId, <<"CHANNEL_EXECUTE_COMPLETE">> = EventName) ->
+    base_hook_event(JObj
+                    ,AccountId
+                    ,[{<<"hook_event">>, wh_util:to_lower_binary(EventName)}
+                      ,{<<"application_name">>, wh_json:get_value(<<"Application-Name">>, JObj)}
+                      ,{<<"application_response">>, wh_json:get_value(<<"Application-Response">>, JObj)}
                      ]);
 format_event(JObj, AccountId, EventName) ->
     wh_json:set_value(<<"hook_event">>
