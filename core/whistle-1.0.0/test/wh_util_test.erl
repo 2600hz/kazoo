@@ -284,3 +284,37 @@ resolve_uri_test() ->
 
     ?assertEqual(<<"http://pivot/script2.php">>, wh_util:resolve_uri(RawPath, Relative)),
     ?assertEqual(<<"http://pivot/script2.php">>, wh_util:resolve_uri(RawPath, <<"/", Relative/binary>>)).
+
+account_formats_test_() ->
+    AccountId = <<A:2/binary, B:2/binary, Rest/binary>> = wh_util:rand_hex_binary(16),
+    AccountDbUn = list_to_binary(["account/", A, "/", B, "/", Rest]),
+    AccountDbEn = list_to_binary(["account%2F", A, "%2F", B, "%2F", Rest]),
+
+    {Y, M, _} = erlang:date(),
+    Year = wh_util:to_binary(Y),
+    Month = wh_util:pad_month(M),
+
+    MODb = list_to_binary([AccountId, "-", Year, Month]),
+    MODbEn = list_to_binary([AccountDbEn, "-", Year, Month]),
+
+    Formats = [AccountId, AccountDbUn, AccountDbEn
+               ,MODb, MODbEn
+              ],
+    Funs = [{fun(F) -> wh_util:format_account_id(F, 'raw') end, AccountId}
+            ,{fun(F) -> wh_util:format_account_id(F, 'unencoded') end, AccountDbUn}
+            ,{fun(F) -> wh_util:format_account_id(F, 'encoded') end, AccountDbEn}
+            ,{fun wh_util:format_account_mod_id/1, MODbEn}
+           ],
+    [{format_title(Format, Expected)
+      ,?_assertEqual(Expected, Fun(Format))
+     }
+     || {Fun, Expected} <- Funs,
+        Format <- Formats
+    ].
+
+format_title(Format, Expected) ->
+    wh_util:to_list(
+      iolist_to_binary(
+        ["Converting ", Format, " to ", Expected]
+       )
+     ).
