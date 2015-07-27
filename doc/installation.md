@@ -191,7 +191,7 @@ On all servers:
 ** Server 4**
 ```
 # yum install -y haproxy kazoo-freeswitch-R15B
-
+```
 
 ### Configure packages
 
