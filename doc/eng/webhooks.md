@@ -5,7 +5,7 @@
 When the webhooks app starts up for the first time, two initialization processes will run:
 
 1. Loading webhook metadata into master account (if missing)
-2. Loading configured webhooks into memory for routing
+2. Loading configured webhooks into memory for responders
 
 ### Webhook Metadata
 
@@ -27,7 +27,7 @@ See the [webhooks_skel](applications/webhooks/src/modules/webhooks_skel.erl) for
 These modules define a webhook available for accounts to create and for the webhooks app to fire. They expose three functions:
 
 1. `init/0` - load metadata document into the master account database
-2. `bindings_and_routings/0` - load binding keys and routing rules into the `webhooks_shared_listener` process.
+2. `bindings_and_responders/0` - load binding keys and responders rules into the `webhooks_shared_listener` process.
 3. `handle_event/2` - `gen_listener` callback to process the Kazoo event for distribution
 
 ### Configured Webhooks

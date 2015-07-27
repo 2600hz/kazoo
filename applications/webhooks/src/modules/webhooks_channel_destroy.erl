@@ -7,7 +7,7 @@
 -module(webhooks_channel_destroy).
 
 -export([init/0
-         ,bindings_and_routing/0
+         ,bindings_and_responders/0
         ]).
 
 -include("../webhooks.hrl").
@@ -26,11 +26,11 @@
 init() ->
     webhooks_util:init_metadata(?ID, ?METADATA).
 
--spec bindings_and_routing() ->
-                                  {gen_listener:bindings()
-                                   ,gen_listener:responders()
-                                  }.
-bindings_and_routing() ->
+-spec bindings_and_responders() ->
+                                     {gen_listener:bindings()
+                                      ,gen_listener:responders()
+                                     }.
+bindings_and_responders() ->
     {[{'call', [{'restrict_to', ['CHANNEL_DESTROY']}
                 ,'federate'
                ]
