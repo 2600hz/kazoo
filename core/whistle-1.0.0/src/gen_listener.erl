@@ -1013,7 +1013,9 @@ handle_add_binding(B, Props, #state{queue=Q
                                      state().
 handle_existing_binding(Binding, Props, State, Q, ExistingProps, Bs) ->
     case lists:all(fun({K,V}) ->
-                           props:get_value(K, ExistingProps) =:= V
+                           props:get_value(K, ExistingProps) =:= V;
+                      (K) ->
+                           props:get_value(K, ExistingProps) =:= 'true'
                    end
                    ,Props
                   )
