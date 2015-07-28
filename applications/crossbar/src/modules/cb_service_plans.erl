@@ -14,7 +14,7 @@
          ,resource_exists/0, resource_exists/1, resource_exists/2
          ,content_types_provided/1 ,content_types_provided/2, content_types_provided/3
          ,validate/1, validate/2, validate/3
-         ,post/2
+         ,post/1 ,post/2
          ,delete/2
         ]).
 
@@ -59,7 +59,7 @@ init() ->
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
-    [?HTTP_GET].
+    [?HTTP_GET, ?HTTP_POST].
 allowed_methods(?SYNCHRONIZATION) ->
     [?HTTP_POST];
 allowed_methods(?RECONCILIATION) ->
@@ -100,12 +100,7 @@ resource_exists(_, _) -> 'true'.
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 
 validate(Context) ->
-    crossbar_doc:load_view(
-      ?CB_LIST
-      ,[]
-      ,Context
-      ,fun normalize_view_results/2
-     ).
+    validate_service_plan(Context, cb_context:req_verb(Context)).
 
 validate(Context, ?CURRENT) ->
     cb_context:setters(
@@ -145,7 +140,18 @@ validate(Context, ?AVAILABLE, PlanId) ->
     ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
     crossbar_doc:load(PlanId, cb_context:set_account_db(Context, ResellerDb)).
 
+-spec validate_service_plan(cb_context:context(), http_method()) -> cb_context:context().
 -spec validate_service_plan(cb_context:context(), path_token(), http_method()) -> cb_context:context().
+validate_service_plan(Context, ?HTTP_GET) ->
+    crossbar_doc:load_view(
+        ?CB_LIST
+        ,[]
+        ,Context
+        ,fun normalize_view_results/2
+    );
+validate_service_plan(Context, ?HTTP_POST) ->
+    maybe_allow_change(Context).
+
 validate_service_plan(Context, PlanId, ?HTTP_GET) ->
     crossbar_doc:load(PlanId, Context);
 validate_service_plan(Context, PlanId, ?HTTP_POST) ->
@@ -160,7 +166,29 @@ validate_service_plan(Context, PlanId, ?HTTP_DELETE) ->
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
+-spec post(cb_context:context()) -> cb_context:context().
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
+post(Context) ->
+    Plans = cb_context:fetch(Context, <<"plans">>, []),
+    Services =
+        lists:foldl(
+            fun(PlanId, Acc) ->
+                Routines = [
+                    fun(S) -> wh_services:add_service_plan(PlanId, S) end
+                    ,fun(S) -> wh_services:save(S) end
+                ],
+                lists:foldl(fun apply_fun/2, Acc, Routines)
+            end
+            ,wh_services:fetch(cb_context:account_id(Context))
+            ,Plans
+        ),
+    cb_context:setters(
+        Context
+        ,[{fun cb_context:set_resp_data/2, wh_services:service_plan_json(Services)}
+          ,{fun cb_context:set_resp_status/2, 'success'}]
+    ).
+
+
 post(Context, ?SYNCHRONIZATION) ->
     wh_service_sync:sync(cb_context:account_id(Context)),
     cb_context:set_resp_status(Context, 'success');
@@ -263,7 +291,16 @@ is_allowed(Context) ->
 %% Check if you have the permission to update or delete service plans
 %% @end
 %%--------------------------------------------------------------------
+-spec maybe_allow_change(cb_context:context()) -> cb_context:context().
 -spec maybe_allow_change(cb_context:context(), path_token()) -> cb_context:context().
+maybe_allow_change(Context) ->
+    case is_allowed(Context) of
+        {'ok', ResellerId} ->
+            check_plan_ids(Context, ResellerId);
+        'false' ->
+            cb_context:add_system_error('forbidden', Context)
+    end.
+
 maybe_allow_change(Context, PlanId) ->
     case is_allowed(Context) of
         {'ok', ResellerId} ->
@@ -285,7 +322,38 @@ check_plan_id(Context, PlanId, ResellerId) ->
     Context1 = crossbar_doc:load(PlanId, cb_context:set_account_db(Context, ResellerDb)),
     case cb_context:resp_status(Context1) of
         'success' ->
-            is_service_plan(Context, PlanId, cb_context:doc(Context1));
+            is_service_plan(Context1, PlanId, cb_context:doc(Context1));
+        _Status -> Context1
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec check_plan_ids(cb_context:context(), ne_binary()) -> cb_context:context().
+check_plan_ids(Context, ResellerId) ->
+    ReqData  = cb_context:req_data(Context),
+    lists:foldl(
+        fun(PlanId, Ctxt) ->
+            case cb_context:resp_status(Ctxt) of
+                'success' ->
+                    check_plan_ids_fold(Ctxt, PlanId, ResellerId);
+                _Status -> Ctxt
+            end
+        end
+        ,cb_context:set_resp_status(Context, 'success')
+        ,wh_json:get_value(<<"plans">>, ReqData, [])
+    ).
+
+-spec check_plan_ids_fold(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
+check_plan_ids_fold(Context, PlanId, ResellerId) ->
+    Context1 = check_plan_id(Context, PlanId, ResellerId),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            Plans = cb_context:fetch(Context1, <<"plans">>, []),
+            cb_context:store(Context1, <<"plans">>, [PlanId|Plans]);
         _Status -> Context1
     end.
 

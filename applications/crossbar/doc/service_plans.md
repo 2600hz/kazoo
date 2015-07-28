@@ -186,6 +186,42 @@ Useful for resellers.
 
     `curl -X POST -H "X-Auth-Token:{AUTH_TOKEN}"  http://{SERVER_IP}/v2/accounts/{ACCOUNT_ID}/service_plans/{SERVICE_PLAN_ID} -d '{"data":{"id":"service_plan_id"}'`
 
+#### Response
+
+```json
+{
+    "data": {} // Service plan
+    "status": "success"
+}
+```
+
+### Adding multiple service plans to an account.
+
+Useful for resellers.
+
+#### Request
+
+- Verb: `POST`
+- Url: `/v2/accounts/{ACCOUNT_ID}/service_plans`
+- Payload:
+
+```json
+{
+    "data": {
+        "plans": ["plan1", "plan2"]
+    }
+}
+```
+
+#### Response
+
+```json
+{
+    "data": {} // Merge of the Service plans
+    "status": "success"
+}
+```
+
 ### Removing service plan from an account.
 
 Useful for resellers.
