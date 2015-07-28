@@ -628,8 +628,9 @@ handle_info('$is_gen_listener_consuming'
                     ,bindings=ExistingBindings
                     ,params=Params
                    }=State) ->
-    _ = (catch wh_amqp_channel:release()),
-    _ = channel_requisition(Params),
+    _Release = (catch wh_amqp_channel:release()),
+    _Req = channel_requisition(Params),
+
     {'noreply', State#state{queue='undefined'
                             ,bindings=[]
                             ,params=props:set_value('bindings', ExistingBindings, Params)
@@ -887,9 +888,7 @@ remove_binding(Binding, Props, Q) ->
             erlang:error({'api_module_undefined', Wapi})
     end.
 
--spec create_binding(ne_binary(), wh_proplist(), ne_binary()) -> any().
-create_binding(Binding, Props, Q) when not is_binary(Binding) ->
-    create_binding(Binding, Props, Q);
+-spec create_binding(binding_module(), wh_proplist(), ne_binary()) -> any().
 create_binding(Binding, Props, Q) ->
     Wapi = list_to_binary([<<"wapi_">>, Binding]),
     try (wh_util:to_atom(Wapi, 'true')):bind_q(Q, Props) of
@@ -1148,11 +1147,16 @@ handle_exchanges_ready(#state{params=Params}=State) ->
 -spec handle_amqp_started(state(), ne_binary()) -> state().
 handle_amqp_started(#state{params=Params}=State, Q) ->
     State1 = start_initial_bindings(State#state{queue=Q}, Params),
+
     gen_server:cast(self(), {'gen_listener', {'created_queue', Q}}),
+
     maybe_server_confirms(props:get_value('server_confirms', Params, 'false')),
     maybe_channel_flow(props:get_value('channel_flow', Params, 'false')),
+
     erlang:send_after(?TIMEOUT_RETRY_CONN, self(), '$is_gen_listener_consuming'),
+
     State1#state{is_consuming='false'}.
+
 
 -spec handle_amqp_errored(state()) -> state().
 handle_amqp_errored(#state{params=Params}=State) ->
@@ -1213,7 +1217,8 @@ start_initial_bindings(State, Params) ->
                ).
 
 -spec channel_requisition(wh_proplist()) -> boolean().
-channel_requisition([]) -> 'false';
+channel_requisition([]) ->
+    'false';
 channel_requisition(Params) ->
     case props:get_value('broker_tag', Params) of
         'undefined' ->
