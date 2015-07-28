@@ -272,7 +272,7 @@ save_attempt(Attempt, AccountId) ->
                ,{<<"pvt_modified">>, Now}
               ]), Attempt),
 
-    _ = couch_mgr:save_doc(ModDb, Doc),
+    _ = couch_mgr:save_doc(ModDb, Doc, [{'publish_change_notice', 'false'}]),
     'ok'.
 
 -spec hook_id(wh_json:object()) -> ne_binary().
