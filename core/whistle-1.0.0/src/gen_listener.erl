@@ -879,7 +879,7 @@ start_consumer(Q, ConsumeProps) -> amqp_util:basic_consume(Q, ConsumeProps).
 
 -spec remove_binding(binding_module(), wh_proplist(), api_binary()) -> any().
 remove_binding(Binding, Props, Q) ->
-    Wapi = list_to_binary([<<"wapi_">>, Binding]),
+    Wapi = wapi_module_name(Binding),
     lager:debug("trying to remove bindings with ~s:unbind_q(~s, ~p)", [Wapi, Q, Props]),
     try (wh_util:to_atom(Wapi, 'true')):unbind_q(Q, Props) of
         Return -> Return
@@ -890,13 +890,17 @@ remove_binding(Binding, Props, Q) ->
 
 -spec create_binding(binding_module(), wh_proplist(), ne_binary()) -> any().
 create_binding(Binding, Props, Q) ->
-    Wapi = list_to_binary([<<"wapi_">>, Binding]),
+    Wapi = wapi_module_name(Binding),
     try (wh_util:to_atom(Wapi, 'true')):bind_q(Q, Props) of
         Return -> Return
     catch
         'error':'undef' ->
             erlang:error({'api_module_undefined', Wapi})
     end.
+
+-spec wapi_module_name(binding_module()) -> ne_binary().
+wapi_module_name(Binding) ->
+    list_to_binary([<<"wapi_">>, wh_util:to_binary(Binding)]).
 
 -spec stop_timer('undefined' | reference()) -> non_neg_integer() | 'false'.
 stop_timer('undefined') -> 'false';
