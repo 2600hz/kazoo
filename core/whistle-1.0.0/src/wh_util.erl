@@ -193,59 +193,63 @@ change_syslog_log_level(L) ->
 %% @end
 %%--------------------------------------------------------------------
 -type account_format() :: 'unencoded' | 'encoded' | 'raw'.
--spec format_account_id(ne_binaries() | api_binary() | wh_json:object()) -> api_binary().
--spec format_account_id(ne_binaries() | api_binary() | wh_json:object(), account_format()) -> api_binary().
--spec format_account_id(ne_binaries() | api_binary(), wh_year() | ne_binary(), wh_month() | ne_binary()) -> api_binary().
+-spec format_account_id(ne_binaries() | api_binary()) -> api_binary().
+-spec format_account_id(ne_binaries() | api_binary(), account_format()) ->
+                               api_binary().
+-spec format_account_id(ne_binaries() | api_binary(), wh_year() | ne_binary(), wh_month() | ne_binary()) ->
+                               api_binary().
 
-format_account_id(Doc) -> format_account_id(Doc, 'unencoded').
+format_account_id(Doc) -> format_account_id(Doc, 'raw').
 
 format_account_id('undefined', _Encoding) -> 'undefined';
-format_account_id(DbName, Timestamp) when is_integer(Timestamp) andalso Timestamp > 0 ->
+format_account_id(DbName, Timestamp)
+  when is_integer(Timestamp)
+       andalso Timestamp > 0 ->
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
     format_account_id(DbName, Year, Month);
 format_account_id(<<"accounts">>, _) -> <<"accounts">>;
 
-%% unencode the account db name
-format_account_id(<<"account/", _/binary>> = DbName, 'unencoded') ->
-    DbName;
-format_account_id(<<"account%2F", _/binary>> = DbName, 'unencoded') ->
-    binary:replace(DbName, <<"%2F">>, <<"/">>, ['global']);
-
-%% encode the account db name
-format_account_id(<<"account%2F", _/binary>>=DbName, 'encoded') ->
-    DbName;
-format_account_id(<<"account/", _/binary>>=DbName, 'encoded') ->
-    binary:replace(DbName, <<"/">>, <<"%2F">>, ['global']);
-
-%% get just the account ID from the account db name
-format_account_id(<<"account/", AccountId:34/binary, "-", _Date:6/binary>>, 'raw') ->
-    binary:replace(AccountId, <<"/">>, <<>>, ['global']);
-format_account_id(<<"account%2F", AccountId:38/binary, "-", _Date:6/binary>>, 'raw') ->
-    binary:replace(AccountId, <<"%2F">>, <<>>, ['global']);
-
-format_account_id(<<"account%2F", AccountId/binary>>, 'raw') ->
-    binary:replace(AccountId, <<"%2F">>, <<>>, ['global']);
-format_account_id(<<"account/", AccountId/binary>>, 'raw') ->
-    binary:replace(AccountId, <<"/">>, <<>>, ['global']);
-
-format_account_id(<<AccountId:32/binary, "-", _Date:6/binary>>, 'raw') ->
+%% Short-circuit IDs already in encoding
+format_account_id(<<_:32/binary>> = AccountId, 'raw') ->
+    AccountId;
+format_account_id(<<"account/", _:34/binary>> = AccountId, 'unencoded') ->
+    AccountId;
+format_account_id(<<"account%2F", _:38/binary>> = AccountId, 'encoded') ->
     AccountId;
 
-format_account_id([AccountId], Encoding) when is_binary(AccountId) ->
-    format_account_id(AccountId, Encoding);
-format_account_id(Account, Encoding) when not is_binary(Account) ->
-    case wh_json:is_json_object(Account) of
-        'true' -> format_account_id([wh_json:get_value([<<"_id">>], Account)], Encoding);
-        'false' -> format_account_id(wh_util:to_binary(Account), Encoding)
-    end;
-
+format_account_id(AccountId, 'raw') ->
+    raw_account_id(AccountId);
 format_account_id(AccountId, 'unencoded') ->
-    [Id1, Id2, Id3, Id4 | IdRest] = to_list(AccountId),
-    to_binary(["account/", Id1, Id2, $/, Id3, Id4, $/, IdRest]);
-format_account_id(AccountId, 'encoded') when is_binary(AccountId) ->
-    [Id1, Id2, Id3, Id4 | IdRest] = to_list(AccountId),
-    to_binary(["account%2F", Id1, Id2, "%2F", Id3, Id4, "%2F", IdRest]);
-format_account_id(AccountId, 'raw') -> AccountId.
+    <<A:2/binary, B:2/binary, Rest/binary>> = raw_account_id(AccountId),
+    to_binary(["account/", A, "/", B, "/", Rest]);
+format_account_id(AccountId, 'encoded') ->
+    <<A:2/binary, B:2/binary, Rest/binary>> = raw_account_id(AccountId),
+    to_binary(["account%2F", A, "%2F", B, "%2F", Rest]).
+
+-spec raw_account_id(ne_binary()) -> ne_binary().
+raw_account_id(<<_:32/binary>> = AccountId) ->
+    AccountId;
+raw_account_id(<<"account/"
+                 ,A:2/binary
+                 ,"/", B:2/binary
+                 ,"/", Rest:28/binary
+               >>) ->
+    <<A/binary, B/binary, Rest/binary>>;
+raw_account_id(<<"account%2F"
+                 ,A:2/binary
+                 ,"%2F", B:2/binary
+                 ,"%2F", Rest:28/binary
+               >>) ->
+    <<A/binary, B/binary, Rest/binary>>;
+raw_account_id(<<AccountId:32/binary, "-", _Date:6/binary>>) ->
+    AccountId;
+raw_account_id(<<"account%2F"
+                 ,A:2/binary
+                 ,"%2F", B:2/binary
+                 ,"%2F", Rest:28/binary
+                 ,"-", _Date:6/binary
+               >>) ->
+    <<A/binary, B/binary, Rest/binary>>.
 
 format_account_id('undefined', _Year, _Month) -> 'undefined';
 format_account_id(AccountId, Year, Month) when not is_integer(Year) ->
@@ -254,7 +258,7 @@ format_account_id(AccountId, Year, Month) when not is_integer(Month) ->
     format_account_id(AccountId, Year, to_integer(Month));
 format_account_id(Account, Year, Month) when is_integer(Year),
                                              is_integer(Month) ->
-    AccountId = format_account_id(Account, 'raw'),
+    AccountId = raw_account_id(Account),
     <<(format_account_id(AccountId, 'encoded'))/binary
       ,"-"
       ,(to_binary(Year))/binary
@@ -768,7 +772,7 @@ to_list(X) when is_list(X) -> X.
 
 %% Known limitations:
 %%   Converting [256 | _], lists with integers > 255
--spec to_binary(atom() | string() | binary() | integer() | float() | pid()) -> binary().
+-spec to_binary(atom() | string() | binary() | integer() | float() | pid() | iolist()) -> binary().
 to_binary(X) when is_float(X) -> to_binary(mochinum:digits(X));
 to_binary(X) when is_integer(X) -> list_to_binary(integer_to_list(X));
 to_binary(X) when is_atom(X) -> list_to_binary(atom_to_list(X));

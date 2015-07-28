@@ -84,7 +84,7 @@ failure_status() ->
     print_failure_footer().
 
 failure_status(Account) ->
-    AccountId = wh_util:format_account_id(Account),
+    AccountId = wh_util:format_account_id(Account, 'raw'),
     Failed = webhooks_listener:find_failures(),
     Sorted = lists:keysort(1, Failed),
     print_failure_header(),
