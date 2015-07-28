@@ -249,7 +249,14 @@ raw_account_id(<<"account%2F"
                  ,"%2F", Rest:28/binary
                  ,"-", _Date:6/binary
                >>) ->
-    <<A/binary, B/binary, Rest/binary>>.
+    <<A/binary, B/binary, Rest/binary>>;
+raw_account_id(Other) ->
+    case lists:member(Other, ?KZ_SYSTEM_DBS) of
+        'true' -> Other;
+        'false' ->
+            lager:warning("raw account id doesn't process '~p'", [Other]),
+            Other
+    end.
 
 format_account_id('undefined', _Year, _Month) -> 'undefined';
 format_account_id(AccountId, Year, Month) when not is_integer(Year) ->
