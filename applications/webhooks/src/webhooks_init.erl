@@ -35,9 +35,9 @@ init_master_account_db() ->
 
 -spec init_modules() -> 'ok'.
 init_modules() ->
-    [init_module(Mod)
-     || Mod <- existing_modules()
-    ],
+    _ = [init_module(Mod)
+         || Mod <- existing_modules()
+        ],
     lager:debug("finished initializing modules").
 
 -spec init_module(atom()) -> 'ok'.

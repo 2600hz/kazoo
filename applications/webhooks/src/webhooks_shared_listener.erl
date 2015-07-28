@@ -176,9 +176,9 @@ add_object_bindings(AccountId) ->
     Bindings = webhooks_object:account_bindings(AccountId),
     Srv = webhooks_sup:shared_listener(),
 
-    [gen_listener:add_binding(Srv, Binding)
-     || Binding <- Bindings
-    ],
+    _ = [gen_listener:add_binding(Srv, Binding)
+         || Binding <- Bindings
+        ],
     'ok'.
 
 -spec remove_object_bindings(ne_binary()) -> 'ok'.
@@ -186,11 +186,10 @@ remove_object_bindings(AccountId) ->
     Bindings = webhooks_object:account_bindings(AccountId),
     Srv = webhooks_sup:shared_listener(),
 
-    [gen_listener:rm_binding(Srv, Binding)
-     || Binding <- Bindings
-    ],
+    _ = [gen_listener:rm_binding(Srv, Binding)
+         || Binding <- Bindings
+        ],
     'ok'.
-
 
 %%%===================================================================
 %%% gen_server callbacks

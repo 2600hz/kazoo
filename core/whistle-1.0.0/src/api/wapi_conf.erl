@@ -179,9 +179,9 @@ bind_for_doc_types(Q, Props) ->
         'undefined' ->
             lager:warning("binding for doc type changes without supplying a type");
         Types ->
-            [amqp_util:bind_q_to_configuration(Q, doc_type_update_routing_key(Type))
-             || Type <- Types
-            ],
+            _ = [amqp_util:bind_q_to_configuration(Q, doc_type_update_routing_key(Type))
+                 || Type <- Types
+                ],
             'ok'
     end.
 
