@@ -232,19 +232,24 @@ order_group_members(GroupWeight, Member, JObj) ->
     GroupMembers =
         wh_json:foldl(
           fun(Key, Endpoint, Acc) ->
-                  case group_weight(Endpoint) of
-                      'undefined' ->
-                          lager:debug("endpoint ~s has no weight, removing from ordered group", [Key]),
-                          Acc;
-                      Weight ->
-                          GroupMember = create_group_member(Key, Endpoint, GroupWeight, Member),
-                          orddict:store(Weight, GroupMember, Acc)
-                  end
+                  order_group_member_fold(Key, Endpoint, Acc, GroupWeight, Member)
           end
           ,orddict:new()
           ,Endpoints
          ),
     [V || {_, V} <- orddict:to_list(GroupMembers)].
+
+-spec order_group_member_fold(wh_json:key(), wh_json:object(), orddict:orddict(), group_weight(), wh_json:object()) ->
+                                     orddict:orddict().
+order_group_member_fold(Key, Endpoint, Acc, GroupWeight, Member) ->
+    case group_weight(Endpoint) of
+        'undefined' ->
+            lager:debug("endpoint ~s has no weight, removing from ordered group", [Key]),
+            Acc;
+        Weight ->
+            GroupMember = create_group_member(Key, Endpoint, GroupWeight, Member),
+            orddict:store(Weight, GroupMember, Acc)
+    end.
 
 -spec create_group_member(ne_binary(), wh_json:object(), group_weight(), wh_json:object()) ->
                                  wh_json:object().
