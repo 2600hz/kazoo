@@ -761,11 +761,12 @@ get_provisioning_type() ->
 
 %% @public
 -spec maybe_sync_sip_data(cb_context:context(), 'user' | 'device') -> 'ok'.
--spec maybe_sync_sip_data(cb_context:context(), 'user' | 'device', boolean()) -> 'ok'.
+-spec maybe_sync_sip_data(cb_context:context(), 'user' | 'device', boolean() | 'force') -> 'ok'.
 maybe_sync_sip_data(Context, Type) ->
     ShouldSync = cb_context:fetch(Context, 'sync'),
     maybe_sync_sip_data(Context, Type, ShouldSync).
-maybe_sync_sip_data(_Context, _Type, 'false') -> 'ok';
+maybe_sync_sip_data(_Context, _Type, 'false') ->
+    lager:debug("sync not configured in context for ~s", [_Type]);
 maybe_sync_sip_data(Context, 'device', 'true') ->
     NewDevice = cb_context:doc(Context),
     OldDevice = cb_context:fetch(Context, 'db_doc'),
@@ -773,20 +774,25 @@ maybe_sync_sip_data(Context, 'device', 'true') ->
     case kz_device:sip_username(NewDevice) =/= OldUsername
         orelse kz_device:sip_password(NewDevice) =/= kz_device:sip_password(OldDevice)
     of
-        'false' -> 'ok';
+        'false' ->
+            lager:debug("nothing has changed on device; no check-sync needed");
         'true' ->
             Realm = wh_util:get_account_realm(cb_context:account_id(Context)),
             send_check_sync(OldUsername, Realm, cb_context:req_id(Context))
     end;
+maybe_sync_sip_data(Context, 'device', 'force') ->
+    Username = kz_device:sip_username(cb_context:doc(Context)),
+    Realm = wh_util:get_account_realm(cb_context:account_id(Context)),
+    send_check_sync(Username, Realm, cb_context:req_id(Context));
 maybe_sync_sip_data(Context, 'user', 'true') ->
     Realm = wh_util:get_account_realm(cb_context:account_id(Context)),
     Req = [{<<"Realm">>, Realm}
            ,{<<"Fields">>, [<<"Username">>]}
           ],
-    ReqResp = whapps_util:amqp_pool_request(Req
-                                            ,fun wapi_registration:publish_query_req/1
-                                            ,fun wapi_registration:query_resp_v/1
-                                           ),
+    ReqResp = wh_amqp_worker:call(Req
+                                  ,fun wapi_registration:publish_query_req/1
+                                  ,fun wapi_registration:query_resp_v/1
+                                 ),
     case ReqResp of
         {'error', _E} -> lager:debug("no devices to send check sync to for realm ~s", [Realm]);
         {'timeout', _} -> lager:debug("timed out query for fetching devices for ~s", [Realm]);
@@ -797,6 +803,19 @@ maybe_sync_sip_data(Context, 'user', 'true') ->
                           end
                           ,wh_json:get_value(<<"Fields">>, JObj)
                          )
+    end;
+maybe_sync_sip_data(Context, 'user', 'force') ->
+    case cb_users_v2:user_devices(Context) of
+        {'error', _E} ->
+            lager:debug("unable to sync user devices: ~p", [_E]);
+        {'ok', []} ->
+            lager:debug("no user devices to sync");
+        {'ok', DeviceDocs} ->
+            Realm = wh_util:get_account_realm(cb_context:account_id(Context)),
+            _ = [send_check_sync(kz_device:presence_id(DeviceDoc), Realm, cb_context:req_id(Context))
+                 || DeviceDoc <- DeviceDocs
+                ],
+            'ok'
     end.
 
 %% @private

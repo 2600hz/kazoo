@@ -31,7 +31,10 @@
 -include("kz_documents.hrl").
 
 -type doc() :: wh_json:object().
--export_type([doc/0]).
+-type docs() :: [doc()].
+-export_type([doc/0
+              ,docs/0
+             ]).
 
 -define(SIP, <<"sip">>).
 -define(USERNAME, [?SIP, <<"username">>]).
