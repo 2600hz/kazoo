@@ -112,10 +112,10 @@ load_doc_from_file(DbName, App, File) ->
         ?MODULE:save_doc(DbName, wh_json:decode(Bin)) %% if it crashes on the match, the catch will let us know
     catch
         _Type:{'badmatch',{'error',Reason}} ->
-            lager:debug("badmatch error: ~p", [Reason]),
+            lager:debug("badmatch error reading ~s: ~p", [Path, Reason]),
             {'error', Reason};
         _Type:Reason ->
-            lager:debug("exception: ~p", [Reason]),
+            lager:debug("exception reading ~s: ~p", [Path, Reason]),
             {'error', Reason}
     end.
 
@@ -728,12 +728,31 @@ ensure_saved(DbName, Doc, Options) ->
                       {'ok', wh_json:object()} |
                       couchbeam_error().
 save_doc(DbName, Doc, Options) when ?VALID_DBNAME ->
-    couch_util:save_doc(wh_couch_connections:get_server(), DbName, Doc, Options);
+    OldSetting = maybe_toggle_publish(Options),
+    Result = couch_util:save_doc(wh_couch_connections:get_server(), DbName, Doc, Options),
+    maybe_revert_publish(OldSetting),
+    Result;
 save_doc(DbName, Doc, Options) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> save_doc(Db, Doc, Options);
         {'error', _}=E -> E
     end.
+
+-spec maybe_toggle_publish(wh_proplist()) -> boolean().
+maybe_toggle_publish(Options) ->
+    Old = change_notice(),
+    case props:get_value('publish_change_notice', Options) of
+        'true' -> enable_change_notice();
+        'false' -> suppress_change_notice();
+        'undefined' -> 'ok'
+    end,
+    Old.
+
+-spec maybe_revert_publish(boolean()) -> boolean().
+maybe_revert_publish('true') ->
+    enable_change_notice();
+maybe_revert_publish('false') ->
+    suppress_change_notice().
 
 -spec save_docs(text(), wh_json:objects()) ->
                        {'ok', wh_json:objects()} |
@@ -746,7 +765,10 @@ save_docs(DbName, Docs) when is_list(Docs) ->
     save_docs(DbName, Docs, []).
 
 save_docs(DbName, Docs, Options) when is_list(Docs) andalso ?VALID_DBNAME ->
-    couch_util:save_docs(wh_couch_connections:get_server(), DbName, Docs, Options);
+    OldSetting = maybe_toggle_publish(Options),
+    Result = couch_util:save_docs(wh_couch_connections:get_server(), DbName, Docs, Options),
+    maybe_revert_publish(OldSetting),
+    Result;
 save_docs(DbName, Docs, Options) when is_list(Docs) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> save_docs(Db, Docs, Options);

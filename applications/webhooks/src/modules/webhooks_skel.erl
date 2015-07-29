@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014, 2600Hz INC
+%%% @copyright (C) 2015, 2600Hz INC
 %%%
 %%% @contributors
-%%%   Peter Defebvre
 %%%-------------------------------------------------------------------
--module(webhooks_callflow).
+
+-module(webhooks_skel).
 
 -export([init/0
          ,bindings_and_responders/0
@@ -14,8 +14,8 @@
 -include("../webhooks.hrl").
 
 -define(ID, wh_util:to_binary(?MODULE)).
--define(NAME, <<"callflow">>).
--define(DESC, <<"Fire a webhook from a callflow">>).
+-define(NAME, <<"skel">>).
+-define(DESC, <<"Example webhook module">>).
 -define(METADATA
         ,wh_json:from_list([{<<"_id">>, ?ID}
                             ,{<<"name">>, ?NAME}
@@ -32,16 +32,14 @@ init() ->
                                       ,gen_listener:responders()
                                      }.
 bindings_and_responders() ->
-    {[{'notifications', [{'restrict_to', ['webhook']}]}]
+    {[{'self', []}]
      ,[{{?MODULE, 'handle_event'}
-        ,[{<<"notification">>, <<"webhook">>}]
+        ,[{<<"category">>, <<"name">>}]
        }
       ]
     }.
 
--spec handle_event(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_event(wh_json:object(), wh_proplist()) -> any().
 handle_event(JObj, _Props) ->
-    'true' = wapi_notifications:webhook_v(JObj),
-    Hook = webhooks_util:from_json(wh_json:get_value(<<"Hook">>, JObj)),
-    Data = wh_json:get_value(<<"Data">>, JObj),
-    webhooks_util:fire_hooks(Data, [Hook]).
+    wh_util:put_callid(JObj),
+    lager:debug("event handled").

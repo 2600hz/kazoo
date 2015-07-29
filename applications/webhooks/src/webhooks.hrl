@@ -14,7 +14,7 @@
           id :: ne_binary() | '_'
           ,uri :: ne_binary() | '_'
           ,http_verb :: http_verb() | '_'
-          ,hook_event :: ne_binary() | '_' | '$2'
+          ,hook_event :: ne_binary() | '_' | '$1' | '$2'
           ,hook_id :: ne_binary() | '_'
           ,retries = 3 :: hook_retries() | '_'
           ,account_id :: ne_binary() | '_' | '$1'

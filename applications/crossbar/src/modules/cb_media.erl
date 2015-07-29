@@ -821,7 +821,7 @@ check_media_schema(MediaId, Context) ->
     cb_context:validate_request_data(<<"media">>, Context, OnSuccess).
 
 on_successful_validation('undefined', Context) ->
-    Props = [{<<"pvt_type">>, <<"media">>}
+    Props = [{<<"pvt_type">>, kzd_media:type()}
              ,{<<"media_source">>, <<"upload">>}
              | maybe_add_prompt_fields(Context)
             ],
@@ -848,14 +848,14 @@ validate_prompt(MediaId, Context, PromptId) ->
                        ,[PromptId, MediaId]
                       ),
             cb_context:add_validation_error(
-                <<"prompt_id">>
-                ,<<"invalid">>
-                ,wh_json:from_list([
-                    {<<"message">>, <<"Changing the prompt_id on an existing prompt is not allowed">>}
-                    ,{<<"cause">>, PromptId}
+              <<"prompt_id">>
+              ,<<"invalid">>
+              ,wh_json:from_list(
+                 [{<<"message">>, <<"Changing the prompt_id on an existing prompt is not allowed">>}
+                  ,{<<"cause">>, PromptId}
                  ])
-                ,Context
-            )
+              ,Context
+             )
     end.
 
 -spec maybe_add_prompt_fields(cb_context:context()) -> wh_proplist().

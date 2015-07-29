@@ -364,6 +364,9 @@ load_view(#load_view_params{view=View
 
     case couch_mgr:get_results(Db, View, ViewOptions) of
         % There were more dbs, so move to the next one
+        {'error', 'not_found'} when Dbs =:= [] ->
+            lager:debug("either the db ~s or view ~s was not found", [Db, View]),
+            crossbar_util:response_missing_view(Context);
         {'error', 'not_found'} ->
             lager:debug("either the db ~s or view ~s was not found", [Db, View]),
             load_view(LVPs#load_view_params{dbs=Dbs});

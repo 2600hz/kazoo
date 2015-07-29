@@ -264,7 +264,7 @@ check_callflow_schema(CallflowId, Context) ->
 
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
-    Props = [{<<"pvt_type">>, <<"callflow">>}],
+    Props = [{<<"pvt_type">>, kzd_callflow:type()}],
     cb_context:set_doc(Context, wh_json:set_values(Props, cb_context:doc(Context)));
 on_successful_validation(CallflowId, Context) ->
     crossbar_doc:load_merge(CallflowId, Context).
@@ -394,18 +394,33 @@ maybe_reconcile_numbers(Context) ->
 track_assignment('post', Context) ->
     NewNums = wh_json:get_value(<<"numbers">>, cb_context:doc(Context), []),
     OldNums = wh_json:get_value(<<"numbers">>, cb_context:fetch(Context, 'db_doc'), []),
-    Unassigned = [{Num, <<>>} || Num <- OldNums, not(lists:member(Num, NewNums)) andalso Num =/= <<"undefined">>],
-    Assigned =  [{Num, <<"callflow">>} || Num <- NewNums,  Num =/= <<"undefined">>],
+
+    Unassigned = [{Num, <<>>}
+                  || Num <- OldNums,
+                     not(lists:member(Num, NewNums))
+                         andalso Num =/= <<"undefined">>
+                 ],
+    Assigned =  [{Num, kzd_callflow:type()}
+                 || Num <- NewNums,
+                    Num =/= <<"undefined">>
+                ],
+
     lager:debug("assign ~p, unassign ~p", [Assigned, Unassigned]),
     wh_number_manager:track_assignment(cb_context:account_id(Context), Unassigned ++ Assigned);
 track_assignment('put', Context) ->
     NewNums = wh_json:get_value(<<"numbers">>, cb_context:doc(Context), []),
-    Assigned =  [{Num, <<"callflow">>} || Num <- NewNums, Num =/= <<"undefined">>],
+    Assigned =  [{Num, kzd_callflow:type()}
+                 || Num <- NewNums,
+                    Num =/= <<"undefined">>
+                ],
     lager:debug("assign ~p", [Assigned]),
     wh_number_manager:track_assignment(cb_context:account_id(Context), Assigned);
 track_assignment('delete', Context) ->
     Nums = wh_json:get_value(<<"numbers">>, cb_context:doc(Context), []),
-    Unassigned =  [{Num, <<>>} || Num <- Nums,  Num =/= <<"undefined">>],
+    Unassigned =  [{Num, <<>>}
+                   || Num <- Nums,
+                      Num =/= <<"undefined">>
+                  ],
     lager:debug("unassign ~p", [Unassigned]),
     wh_number_manager:track_assignment(cb_context:account_id(Context), Unassigned).
 

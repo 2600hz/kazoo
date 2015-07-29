@@ -183,7 +183,7 @@ handle_call_event(JObj, AccountId, HookEvent, _CallId, 'true') ->
 
 -spec lookup_account_id(wh_json:object()) -> {'ok', ne_binary()} | {'error', _}.
 lookup_account_id(JObj) ->
-    case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj) of
+    case kz_call_event:account_id(JObj) of
         'undefined' ->
             Number = get_inbound_destination(JObj),
             case wh_cache:peek_local(?HOOKS_CACHE_NAME, cache_key_number(Number)) of

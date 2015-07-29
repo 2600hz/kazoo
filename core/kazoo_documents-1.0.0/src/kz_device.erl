@@ -26,6 +26,7 @@
          ,device_type/1, device_type/2, set_device_type/2
 
          ,new/0
+         ,type/0
         ]).
 
 -include("kz_documents.hrl").
@@ -51,9 +52,11 @@
 -define(LANGUAGE, <<"language">>).
 -define(DEVICE_TYPE, <<"device_type">>).
 
+-define(PVT_TYPE, <<"device">>).
+
 -spec new() -> doc().
 new() ->
-    wh_json:new().
+    wh_json:from_list([{<<"pvt_type">>, type()}]).
 
 -spec sip_username(doc()) -> api_binary().
 -spec sip_username(doc(), Default) -> ne_binary() | Default.
@@ -220,3 +223,6 @@ device_type(DeviceJObj, Default) ->
 -spec set_device_type(doc(), ne_binary()) -> doc().
 set_device_type(DeviceJObj, MacAddress) ->
     wh_json:set_value(?DEVICE_TYPE, MacAddress, DeviceJObj).
+
+-spec type() -> ne_binary().
+type() -> ?PVT_TYPE.

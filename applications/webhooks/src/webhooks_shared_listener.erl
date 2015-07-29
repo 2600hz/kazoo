@@ -11,11 +11,12 @@
 -behaviour(gen_listener).
 
 -export([start_link/0
-         ,handle_channel_event/2
-         ,maybe_handle_channel_event/3
          ,hooks_configured/0
          ,hooks_configured/1
          ,handle_doc_type_update/2
+
+         ,add_object_bindings/1
+         ,remove_object_bindings/1
         ]).
 -export([init/1
          ,handle_call/3
@@ -31,46 +32,14 @@
 -record(state, {}).
 -type state() :: #state{}.
 
--define(FAX_NOTIFY_RESTRICT_TO, ['outbound_fax'
-                                 ,'outbound_fax_error'
-                                ]).
-
--define(WEBHOOKS_NOTIFY_RESTRICT_TO, ['webhook']).
-
--define(BINDINGS, [%% channel events that toggle presence lights
-                   {'call', [{'restrict_to', ['CHANNEL_CREATE'
-                                              ,'CHANNEL_ANSWER'
-                                              ,'CHANNEL_DESTROY'
-                                              ,'CHANNEL_DISCONNECTED'
-                                             ]}
-                             ,'federate'
-                            ]}
-                   ,{'notifications', [{'restrict_to', ?FAX_NOTIFY_RESTRICT_TO}]}
-                   ,{'notifications', [{'restrict_to', ?WEBHOOKS_NOTIFY_RESTRICT_TO}]}
-                   ,{'conf', [{'restrict_to', ['doc_type_updates']}
-                              ,{'type', kzd_webhook:type()}
-                             ]
-                    }
+%% responsible for reloading auto-disabled webhooks
+-define(BINDINGS, [{'conf', [{'restrict_to', ['doc_type_updates']}
+                             ,{'type', kzd_webhook:type()}
+                            ]
+                   }
                   ]).
 
--define(RESPONDERS, [{{?MODULE, 'handle_config'}
-                      ,[{<<"configuration">>, <<"doc_created">>}
-                        ,{<<"configuration">>, <<"doc_updated">>}
-                        ,{<<"configuration">>, <<"doc_deleted">>}
-                       ]
-                     }
-                     ,{{?MODULE, 'handle_channel_event'}
-                       ,[{<<"call_event">>, <<"*">>}]
-                      }
-                     ,{{'webhooks_fax', 'handle_req'}
-                       ,[{<<"notification">>, <<"outbound_fax">>}
-                         ,{<<"notification">>, <<"outbound_fax_error">>}
-                        ]
-                      }
-                     ,{{'webhooks_callflow', 'handle_req'}
-                       ,[{<<"notification">>, <<"webhook">>}]
-                      }
-                     ,{{?MODULE, 'handle_doc_type_update'}
+-define(RESPONDERS, [{{?MODULE, 'handle_doc_type_update'}
                        ,[{<<"configuration">>, <<"doc_type_update">>}]
                       }
                     ]).
@@ -91,9 +60,10 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
+    {Bindings, Responders} = load_module_bindings_and_responders(),
     gen_listener:start_link(?MODULE
-                            ,[{'bindings', ?BINDINGS}
-                              ,{'responders', ?RESPONDERS}
+                            ,[{'bindings', Bindings}
+                              ,{'responders', Responders}
                               ,{'queue_name', ?QUEUE_NAME}
                               ,{'queue_options', ?QUEUE_OPTIONS}
                               ,{'consume_options', ?CONSUME_OPTIONS}
@@ -101,26 +71,34 @@ start_link() ->
                             ,[]
                            ).
 
--spec handle_channel_event(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_channel_event(JObj, _Props) ->
-    HookEvent = hook_event_name(wh_json:get_value(<<"Event-Name">>, JObj)),
-    case wh_hooks_util:lookup_account_id(JObj) of
-        {'error', _R} ->
-            lager:debug("failed to determine account id for ~s", [HookEvent]);
-        {'ok', AccountId} ->
-            lager:debug("determined account id for ~s is ~s", [HookEvent, AccountId]),
-            J = wh_json:set_value([<<"Custom-Channel-Vars">>
-                                   ,<<"Account-ID">>
-                                  ], AccountId, JObj),
-            maybe_handle_channel_event(AccountId, HookEvent, J)
-    end.
+-type load_acc() :: {gen_listener:bindings()
+                     ,gen_listener:responders()
+                    }.
 
--spec maybe_handle_channel_event(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-maybe_handle_channel_event(AccountId, HookEvent, JObj) ->
-    lager:debug("evt ~s for ~s", [HookEvent, AccountId]),
-    case webhooks_util:find_webhooks(HookEvent, AccountId) of
-        [] -> lager:debug("no hooks to handle ~s for ~s", [HookEvent, AccountId]);
-        Hooks -> webhooks_util:fire_hooks(format_event(JObj, AccountId, HookEvent), Hooks)
+-spec load_module_bindings_and_responders() -> load_acc().
+load_module_bindings_and_responders() ->
+    lists:foldl(fun load_module_fold/2
+                ,{?BINDINGS, ?RESPONDERS}
+                ,webhooks_init:existing_modules()
+               ).
+
+-spec load_module_fold(atom(), load_acc()) -> load_acc().
+load_module_fold(Module, {Bindings, Responders}=Acc) ->
+    try Module:bindings_and_responders() of
+        {ModBindings, ModResponders} ->
+            lager:debug("added ~s bindings and responders", [Module]),
+            {ModBindings ++ Bindings
+             ,ModResponders ++ Responders
+            }
+    catch
+        'error':'undef' ->
+            lager:debug("~s doesn't supply bindings or responders", [Module]),
+            Acc;
+        _E:_R ->
+            lager:debug("~s failed to load bindings or responders: ~s: ~p"
+                        ,[Module, _E, _R]
+                       ),
+            Acc
     end.
 
 -spec handle_doc_type_update(wh_json:object(), wh_proplist()) -> 'ok'.
@@ -147,67 +125,6 @@ handle_doc_type_update(JObj, _Props) ->
                         ,fun(P) -> wapi_self:publish_message(ServerId, P) end
                        ).
 
--spec hook_event_name(ne_binary()) -> ne_binary().
-hook_event_name(<<"CHANNEL_DISCONNECTED">>) -> <<"CHANNEL_DESTROY">>;
-hook_event_name(Event) -> Event.
-
--spec format_event(wh_json:object(), api_binary(), ne_binary()) ->
-                          wh_json:object().
-format_event(JObj, AccountId, <<"CHANNEL_CREATE">>) ->
-    wh_json:set_value(<<"hook_event">>, <<"channel_create">>
-                      ,base_hook_event(JObj, AccountId)
-                     );
-format_event(JObj, AccountId, <<"CHANNEL_ANSWER">>) ->
-    wh_json:set_value(<<"hook_event">>, <<"channel_answer">>
-                      ,base_hook_event(JObj, AccountId)
-                     );
-format_event(JObj, AccountId, <<"CHANNEL_DESTROY">>) ->
-    base_hook_event(JObj, AccountId
-                    ,[{<<"hook_event">>, <<"channel_destroy">>}
-                      ,{<<"hangup_cause">>, wh_json:get_value(<<"Hangup-Cause">>, JObj)}
-                      ,{<<"hangup_code">>, wh_json:get_value(<<"Hangup-Code">>, JObj)}
-                     ]).
-
--spec base_hook_event(wh_json:object(), api_binary()) -> wh_json:object().
--spec base_hook_event(wh_json:object(), api_binary(), wh_proplist()) -> wh_json:object().
-base_hook_event(JObj, AccountId) ->
-    base_hook_event(JObj, AccountId, []).
-base_hook_event(JObj, AccountId, Acc) ->
-    WasGlobal = wh_util:is_true(ccv(JObj, <<"Global-Resource">>)),
-
-    wh_json:from_list(
-      props:filter_undefined(
-        [{<<"call_direction">>, wh_json:get_value(<<"Call-Direction">>, JObj)}
-         ,{<<"timestamp">>, wh_json:get_value(<<"Timestamp">>, JObj)}
-         ,{<<"account_id">>, AccountId}
-         ,{<<"request">>, wh_json:get_value(<<"Request">>, JObj)}
-         ,{<<"to">>, wh_json:get_value(<<"To">>, JObj)}
-         ,{<<"from">>, wh_json:get_value(<<"From">>, JObj)}
-         ,{<<"inception">>, wh_json:get_value(<<"Inception">>, JObj)}
-         ,{<<"call_id">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-         ,{<<"other_leg_call_id">>, wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj)}
-         ,{<<"caller_id_name">>, wh_json:get_value(<<"Caller-ID-Name">>, JObj)}
-         ,{<<"caller_id_number">>, wh_json:get_value(<<"Caller-ID-Number">>, JObj)}
-         ,{<<"callee_id_name">>, wh_json:get_value(<<"Callee-ID-Name">>, JObj)}
-         ,{<<"callee_id_number">>, wh_json:get_value(<<"Callee-ID-Number">>, JObj)}
-         ,{<<"owner_id">>, ccv(JObj, <<"Owner-ID">>)}
-         ,{<<"reseller_id">>, wh_services:find_reseller_id(AccountId)}
-         ,{<<"authorizing_id">>, ccv(JObj, <<"Authorizing-ID">>)}
-         ,{<<"authorizing_type">>, ccv(JObj, <<"Authorizing-Type">>)}
-         ,{<<"local_resource_used">>, (not WasGlobal)}
-         ,{<<"local_resource_id">>, resource_used(WasGlobal, JObj)}
-         ,{<<"emergency_resource_used">>, wh_util:is_true(ccv(JObj, <<"Emergency-Resource">>))}
-         | Acc
-        ])).
-
--spec resource_used(boolean(), wh_json:object()) -> api_binary().
-resource_used('true', _JObj) -> 'undefined';
-resource_used('false', JObj) -> ccv(JObj, <<"Resource-ID">>).
-
--spec ccv(wh_json:object(), wh_json:key()) -> api_binary().
-ccv(JObj, Key) ->
-    wh_json:get_value([<<"Custom-Channel-Vars">>, Key], JObj).
-
 -spec hooks_configured() -> 'ok'.
 -spec hooks_configured(ne_binary()) -> 'ok'.
 hooks_configured() ->
@@ -216,6 +133,7 @@ hooks_configured() ->
                   ,['$_']
                  }],
     print_summary(ets:select(webhooks_util:table_id(), MatchSpec, 1)).
+
 hooks_configured(AccountId) ->
     MatchSpec = [{#webhook{account_id = '$1'
                            ,_ = '_'
@@ -252,6 +170,26 @@ print_summary({[#webhook{uri=URI
               ,[URI, Verb, Event, wh_util:to_binary(Retries), AccountId]
              ),
     print_summary(ets:select(Continuation), Count+1).
+
+-spec add_object_bindings(ne_binary()) -> 'ok'.
+add_object_bindings(AccountId) ->
+    Bindings = webhooks_object:account_bindings(AccountId),
+    Srv = webhooks_sup:shared_listener(),
+
+    _ = [gen_listener:add_binding(Srv, Binding)
+         || Binding <- Bindings
+        ],
+    'ok'.
+
+-spec remove_object_bindings(ne_binary()) -> 'ok'.
+remove_object_bindings(AccountId) ->
+    Bindings = webhooks_object:account_bindings(AccountId),
+    Srv = webhooks_sup:shared_listener(),
+
+    _ = [gen_listener:rm_binding(Srv, Binding)
+         || Binding <- Bindings
+        ],
+    'ok'.
 
 %%%===================================================================
 %%% gen_server callbacks

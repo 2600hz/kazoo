@@ -15,6 +15,7 @@
          ,presence_id/1, presence_id/2, set_presence_id/2
          ,is_enabled/1, is_enabled/2
          ,enable/1, disable/1
+         ,type/0
         ]).
 
 -include("kz_documents.hrl").
@@ -26,6 +27,8 @@
 -define(KEY_TIMEZONE, <<"timezone">>).
 -define(KEY_PRESENCE_ID, <<"presence_id">>).
 -define(KEY_IS_ENABLED, <<"enabled">>).
+
+-define(PVT_TYPE, <<"user">>).
 
 -spec email(doc()) -> api_binary().
 -spec email(doc(), Default) -> ne_binary() | Default.
@@ -230,3 +233,6 @@ enable(JObj) ->
 -spec disable(doc()) -> doc().
 disable(JObj) ->
     wh_json:set_value(?KEY_IS_ENABLED, 'false', JObj).
+
+-spec type() -> ne_binary().
+type() -> ?PVT_TYPE.

@@ -82,4 +82,4 @@ maybe_init_responder({Responder, _Fun}, 'true') when is_atom(Responder) ->
             wh_util:log_stacktrace(ST)
     end;
 maybe_init_responder({_Responder, _Fun}, 'false') ->
-    lager:debug("ignoring init for responder ~s: ~p", [_Responder, _Fun]).
+    lager:debug("init/0 not found for responder ~s, skipping", [_Responder]).

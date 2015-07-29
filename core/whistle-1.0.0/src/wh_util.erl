@@ -249,7 +249,14 @@ raw_account_id(<<"account%2F"
                  ,"%2F", Rest:28/binary
                  ,"-", _Date:6/binary
                >>) ->
-    <<A/binary, B/binary, Rest/binary>>.
+    <<A/binary, B/binary, Rest/binary>>;
+raw_account_id(Other) ->
+    case lists:member(Other, ?KZ_SYSTEM_DBS) of
+        'true' -> Other;
+        'false' ->
+            lager:warning("raw account id doesn't process '~p'", [Other]),
+            Other
+    end.
 
 format_account_id('undefined', _Year, _Month) -> 'undefined';
 format_account_id(AccountId, Year, Month) when not is_integer(Year) ->
@@ -1167,7 +1174,10 @@ elapsed_s(Start, Now) when is_integer(Start), is_integer(Now) -> Now - Start.
 elapsed_ms({_,_,_}=Start, {_,_,_}=Now) -> timer:now_diff(Now, Start) div ?MILLISECONDS_IN_SECOND;
 elapsed_ms({_,_,_}=Start, Now) -> elapsed_ms(now_s(Start), Now);
 elapsed_ms(Start, {_,_,_}=Now) -> elapsed_ms(Start, now_s(Now));
-elapsed_ms(Start, Now) when is_integer(Start), is_integer(Now) -> (Now - Start) * 1 * ?MILLISECONDS_IN_SECOND.
+elapsed_ms(Start, Now)
+  when is_integer(Start),
+       is_integer(Now) ->
+    (Now - Start) * ?MILLISECONDS_IN_SECOND.
 
 elapsed_us({_,_,_}=Start, {_,_,_}=Now) -> timer:now_diff(Now, Start);
 elapsed_us({_,_,_}=Start, Now) -> elapsed_us(now_s(Start), Now);

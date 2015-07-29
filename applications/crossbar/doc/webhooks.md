@@ -2,6 +2,7 @@
 Section: Crossbar
 Title: Webhooks
 Language: en-US
+Version: 3.22
 */
 
 Webhooks allow Kazoo to send HTTP requests to a third-party webserver, alerting that server of events occuring within Kazoo. Typically, events would be fired for new calls, when a call is answered, and when a call is finished, though other events will be added in the future.
@@ -20,13 +21,48 @@ Webhooks allow Kazoo to send HTTP requests to a third-party webserver, alerting 
 * `custom_data`: JSON object of custom data to be sent along with the event data to the `uri`
 * `enabled`: Boolean, is this webhook enabled for operation
 
+## List Installed Webhooks
+
+Webhooks are installed by the system administrator. You can query Crossbar to see which are installed:
+
+    curl -v -X GET \
+    -H "Content-Type:application/json" \
+    -H "X-Auth-Token: {AUTH_TOKEN} \
+    http://{SERVER}:8000/v2/webhooks
+
+    {"auth_token": "{AUTH_TOKEN}",
+     "data": [
+         {
+             "description": "Events when calls end",
+             "id": "channel_destroy",
+             "name": "channel_destroy"
+         },
+         {
+             "description": "Events when new calls start",
+             "id": "channel_create",
+             "name": "channel_create"
+         },
+         {
+             "description": "Events for when the channel is answered by the endpoint",
+             "id": "channel_answer",
+             "name": "channel_answer"
+         }
+     ],
+     "page_size": 3,
+     "request_id": "{REQUEST_ID}",
+     "revision": "{REVISION}",
+     "status": "success"
+     }
+
+Some webhooks will also include a `modifiers` object; these are parameters specific to that webhook that can be used to modify the behaviour of the webhook.
+
 ## Sample cURL Requests
 
 ### List webhooks
 
     curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://server.com:8000/v2/accounts/{ACCOUNT_ID}/webhooks
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks
 
 Any webhooks with *disable\_reason* in the summary has been auto-disabled.
 
@@ -35,23 +71,23 @@ Any webhooks with *disable\_reason* in the summary has been auto-disabled.
     curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
-    http://server.com:8000/v2/accounts/{ACCOUNT_ID}/webhooks \
-    -d '{"data":{"name":"New Calls", "uri":"http://my.server.com/calls/new.php", \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks \
+    -d '{"data":{"name":"New Calls", "uri":"http://my.{SERVER}/calls/new.php", \
     "http_verb":"post", "hook":"channel_create", "retries":3}}'
 
 ### Get details of the webhook
 
     curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://server.com:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 
 ### Edit webhook
 
     curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
-    http://server.com:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID} \
-    -d '{"data":{"name":"New Calls", "uri":"http://my.server.com/calls/new_calls.php", \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID} \
+    -d '{"data":{"name":"New Calls", "uri":"http://my.{SERVER}/calls/new_calls.php", \
     "http_verb":"post", "hook":"channel_create", "retries":3}}'
 
 ### Patch webhook
@@ -61,14 +97,14 @@ You can also patch an existing webhook:
     curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
-    http://server.com:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID} \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID} \
     -d '{"data":{"enabled":true}}'
 
 ### Delete a webhook
 
     curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://server.com:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 
 ### List Attempts
 
@@ -78,7 +114,7 @@ Webhooks tracks attempts to send the hook payloads to your URIs. You can get a l
 
     curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://server.com:8000/v2/accounts/{ACCOUNT_ID}/webhooks/attempts
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/attempts
 
     {"auth_token": "c89bc20fd8954f6e67614b99e31b4f58",
     "data": [
@@ -106,7 +142,7 @@ Webhooks tracks attempts to send the hook payloads to your URIs. You can get a l
 
     curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://server.com:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}/attempts
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}/attempts
 
 ### Re-enable auto-disabled hooks in bulk
 
@@ -116,14 +152,14 @@ Webhooks will auto-disable failing hooks (if Kazoo can't reach your server, or y
 
     curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://server.com:8000/v2/accounts/{ACCOUNT_ID}/webhooks \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks \
     -d '{"data":{"re-enable":true}}'
 
 #### Enable an account's and descendant accounts' hooks
 
     curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://server.com:8000/v2/accounts/{ACCOUNT_ID}/descendants/webhooks \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/descendants/webhooks \
     -d '{"data":{"re-enable":true}}'
 
 ## Hook Payload

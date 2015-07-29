@@ -8,7 +8,9 @@
 %%%-------------------------------------------------------------------
 -module(kzd_voicemail_box).
 
--export([notification_emails/1, notification_emails/2
+-export([new/0
+         ,type/0
+         ,notification_emails/1, notification_emails/2
          ,owner_id/1, owner_id/2
          ,owner/1
          ,timezone/1, timezone/2
@@ -39,6 +41,15 @@
 -define(KEY_PIN_REQUIRED, <<"require_pin">>).
 -define(KEY_CHECK_IF_OWNER, <<"check_if_owner">>).
 -define(KEY_IS_SETUP, <<"is_setup">>).
+
+-define(PVT_TYPE, <<"vmbox">>).
+
+-spec new() -> doc().
+new() ->
+    wh_json:from_list([{<<"pvt_type">>, type()}]).
+
+-spec type() -> ne_binary().
+type() -> ?PVT_TYPE.
 
 -spec notification_emails(doc()) -> ne_binaries().
 -spec notification_emails(doc(), Default) -> ne_binaries() | Default.

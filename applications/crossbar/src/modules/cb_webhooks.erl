@@ -30,6 +30,7 @@
 
 -define(ATTEMPTS_BY_ACCOUNT, <<"webhooks/attempts_by_time_listing">>).
 -define(ATTEMPTS_BY_HOOK, <<"webhooks/attempts_by_hook_listing">>).
+-define(AVAILABLE_HOOKS, <<"webhooks/webhook_meta_listing">>).
 
 -define(DESCENDANTS, <<"descendants">>).
 -define(REENABLE, <<"re-enable">>).
@@ -100,8 +101,10 @@ resource_exists(_Id, ?PATH_TOKEN_ATTEMPTS) -> 'true'.
 %% @end
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token()) ->
+                      cb_context:context().
+-spec validate(cb_context:context(), path_token(), path_token()) ->
+                      cb_context:context().
 validate(Context) ->
     validate_webhooks(cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB)
                       ,cb_context:req_verb(Context)
@@ -109,7 +112,10 @@ validate(Context) ->
 
 -spec validate_webhooks(cb_context:context(), http_method()) -> cb_context:context().
 validate_webhooks(Context, ?HTTP_GET) ->
-    summary(Context);
+    case cb_context:req_nouns(Context) of
+        [{<<"webhooks">>, []}] -> summary_available(Context);
+        _Nouns -> summary(Context)
+    end;
 validate_webhooks(Context, ?HTTP_PUT) ->
     create(Context);
 validate_webhooks(Context, ?HTTP_PATCH) ->
@@ -123,7 +129,8 @@ validate(Context, Id) ->
                      ,cb_context:req_verb(Context)
                     ).
 
--spec validate_webhook(cb_context:context(), path_token(), http_method()) -> cb_context:context().
+-spec validate_webhook(cb_context:context(), path_token(), http_method()) ->
+                              cb_context:context().
 validate_webhook(Context, Id, ?HTTP_GET) ->
     read(Id, Context);
 validate_webhook(Context, Id, ?HTTP_POST) ->
@@ -136,7 +143,8 @@ validate_webhook(Context, Id, ?HTTP_DELETE) ->
 validate(Context, Id, ?PATH_TOKEN_ATTEMPTS) ->
     summary_attempts(Context, Id).
 
--spec validate_patch(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec validate_patch(cb_context:context(), ne_binary()) ->
+                            cb_context:context().
 validate_patch(Context, Id) ->
     case cb_context:resp_status(Context) of
         'success' ->
@@ -176,22 +184,35 @@ delete_account(Context, AccountId) ->
 
 -spec delete_account_webhooks(ne_binary()) -> 'ok'.
 delete_account_webhooks(AccountId) ->
-    case couch_mgr:get_results(?KZ_WEBHOOKS_DB
-                               ,<<"webhooks/accounts_listing">>
-                               ,[{'key', AccountId}
-                                 ,{'reduce', 'false'}
-                                 ,'include_docs'
-                                ]
-                              )
-    of
+    case fetch_account_hooks(AccountId) of
         {'ok', []} -> 'ok';
-        {'error', _E} -> lager:debug("failed to fetch webhooks for account ~s: ~p", [AccountId, _E]);
+        {'error', _E} ->
+            lager:debug("failed to fetch webhooks for account ~s: ~p"
+                        ,[AccountId, _E]
+                       );
         {'ok', ViewJObjs} ->
-            _Res = couch_mgr:del_docs(?KZ_WEBHOOKS_DB
-                                      ,[wh_json:get_value(<<"doc">>, ViewJObj) || ViewJObj <- ViewJObjs]
-                                     ),
+            _ = delete_account_hooks(ViewJObjs),
             lager:debug("deleted ~p hooks from account ~s", [length(ViewJObjs), AccountId])
     end.
+
+-spec fetch_account_hooks(ne_binary()) ->
+                                 couch_mgr:get_results_return().
+fetch_account_hooks(AccountId) ->
+    couch_mgr:get_results(?KZ_WEBHOOKS_DB
+                          ,<<"webhooks/accounts_listing">>
+                          ,[{'key', AccountId}
+                            ,{'reduce', 'false'}
+                            ,'include_docs'
+                           ]
+                         ).
+
+-spec delete_account_hooks(wh_json:objects()) -> any().
+delete_account_hooks(ViewJObjs) ->
+    couch_mgr:del_docs(?KZ_WEBHOOKS_DB
+                       ,[wh_json:get_value(<<"doc">>, ViewJObj)
+                         || ViewJObj <- ViewJObjs
+                        ]
+                      ).
 
 %%%===================================================================
 %%% Internal functions
@@ -225,17 +246,21 @@ validate_collection_patch(Context, 'undefined') ->
 validate_collection_patch(Context, ReEnable) ->
     case wh_util:is_true(ReEnable) of
         'true' -> cb_context:set_resp_status(Context, 'success');
-        'false' ->
-            cb_context:add_validation_error(
-              ?REENABLE
-              ,<<"enum">>
-              ,wh_json:from_list(
-                 [{<<"message">>, <<"value not found in enumerated list of values">>}
-                  ,{<<"target">>, ['true']}
-                 ])
-              ,Context
-             )
+        'false' -> reenable_validation_error(Context)
     end.
+
+-spec reenable_validation_error(cb_context:context()) ->
+                                       cb_context:context().
+reenable_validation_error(Context) ->
+    cb_context:add_validation_error(
+      ?REENABLE
+      ,<<"enum">>
+      ,wh_json:from_list(
+         [{<<"message">>, <<"value not found in enumerated list of values">>}
+          ,{<<"target">>, ['true']}
+         ])
+      ,Context
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -313,7 +338,10 @@ fix_envelope(Context) ->
 
 -spec fix_keys(wh_json:object()) -> wh_json:object().
 fix_keys(Envelope) ->
-    lists:foldl(fun fix_key_fold/2, Envelope, [<<"start_key">>, <<"next_start_key">>]).
+    lists:foldl(fun fix_key_fold/2
+                ,Envelope
+                ,[<<"start_key">>, <<"next_start_key">>]
+               ).
 
 -spec fix_key_fold(wh_json:key(), wh_json:object()) -> wh_json:object().
 fix_key_fold(Key, Envelope) ->
@@ -327,6 +355,27 @@ fix_key_fold(Key, Envelope) ->
         ?EMPTY_JSON_OBJECT -> wh_json:delete_key(Key, Envelope);
         'undefined' -> Envelope
     end.
+
+-spec summary_available(cb_context:context()) ->
+                               cb_context:context().
+summary_available(Context) ->
+    {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
+
+    crossbar_doc:load_view(?AVAILABLE_HOOKS
+                           ,['include_docs']
+                           ,cb_context:set_account_db(Context, MasterAccountDb)
+                           ,fun normalize_available/2
+                          ).
+
+-spec normalize_available(wh_json:object(), wh_json:objects()) ->
+                                 wh_json:objects().
+normalize_available(JObj, Acc) ->
+    Doc = wh_json:public_fields(wh_json:get_value(<<"doc">>, JObj)),
+    Name = wh_json:get_value(<<"name">>, Doc),
+
+    [wh_json:set_value(<<"id">>, Name, Doc)
+     | Acc
+    ].
 
 -spec summary_attempts(cb_context:context()) -> cb_context:context().
 -spec summary_attempts(cb_context:context(), api_binary()) -> cb_context:context().
@@ -352,7 +401,8 @@ summary_attempts(Context, <<_/binary>> = HookId) ->
 get_summary_start_key(Context) ->
     get_start_key(Context, 0, fun wh_util:identity/1).
 
--spec get_attempts_start_key(cb_context:context()) -> integer() | ?EMPTY_JSON_OBJECT.
+-spec get_attempts_start_key(cb_context:context()) ->
+                                    integer() | ?EMPTY_JSON_OBJECT.
 get_attempts_start_key(Context) ->
     get_start_key(Context, wh_json:new(), fun wh_util:to_integer/1).
 
@@ -392,7 +442,8 @@ normalize_attempt_results(JObj, Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
+-spec on_successful_validation(api_binary(), cb_context:context()) ->
+                                      cb_context:context().
 on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context
                        ,wh_json:set_values([{<<"pvt_type">>, kzd_webhook:type()}
@@ -410,7 +461,8 @@ on_successful_validation(Id, Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec normalize_view_results(wh_json:object(), wh_json:objects()) ->
+                                    wh_json:objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -429,11 +481,14 @@ maybe_update_hook(Context) ->
         'true' -> cb_context:set_doc(Context, kzd_webhook:enable(Doc))
     end.
 
--spec reenable_hooks(cb_context:context()) -> cb_context:context().
+-spec reenable_hooks(cb_context:context()) ->
+                            cb_context:context().
 -spec reenable_hooks(cb_context:context(), ne_binaries()) ->
                             cb_context:context().
 reenable_hooks(Context) ->
-    reenable_hooks(Context, props:get_value(<<"accounts">>, cb_context:req_nouns(Context))).
+    reenable_hooks(Context
+                   ,props:get_value(<<"accounts">>, cb_context:req_nouns(Context))
+                  ).
 
 reenable_hooks(Context, [AccountId]) ->
     handle_resp(
@@ -496,16 +551,21 @@ cleanup_orphaned_hooks() ->
         {'error', _E} ->
             lager:debug("failed to lookup accounts in ~s: ~p", [?KZ_WEBHOOKS_DB, _E]);
         {'ok', Accounts} ->
-            _Rm = [begin
-                       delete_account_webhooks(AccountId),
-                       timer:sleep(5 * ?MILLISECONDS_IN_SECOND)
-                   end
-                   || Account <- Accounts,
-                      begin
-                          AccountId = wh_json:get_value(<<"key">>, Account),
-                          not couch_mgr:db_exists(wh_util:format_account_id(AccountId, 'encoded'))
-                      end
-                  ],
-            _Rm =/= [] andalso lager:debug("removed ~p accounts' webhooks", [length(_Rm)]),
-            'ok'
+            cleanup_orphaned_hooks(Accounts)
     end.
+
+-spec cleanup_orphaned_hooks(wh_json:objects()) -> 'ok'.
+cleanup_orphaned_hooks(Accounts) ->
+    _Rm = [begin
+               delete_account_webhooks(AccountId),
+               timer:sleep(5 * ?MILLISECONDS_IN_SECOND)
+           end
+           || Account <- Accounts,
+              begin
+                  AccountId = wh_json:get_value(<<"key">>, Account),
+                  not couch_mgr:db_exists(wh_util:format_account_id(AccountId, 'encoded'))
+              end
+          ],
+    _Rm =/= []
+        andalso lager:debug("removed ~p accounts' webhooks", [length(_Rm)]),
+    'ok'.

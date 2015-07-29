@@ -20,7 +20,7 @@
 
          ,get_account_id/1, get_account_db/1
          ,get_type/1, get_doc/1, get_id/1
-         ,get_action/1
+         ,get_action/1, get_is_soft_deleted/1
         ]).
 
 -type action() :: 'created' | 'edited' | 'deleted'.
@@ -32,7 +32,7 @@
 -define(CONF_DOC_UPDATE_HEADERS, [<<"ID">>, <<"Rev">>, <<"Database">>]).
 -define(OPTIONAL_CONF_DOC_UPDATE_HEADERS, [<<"Account-ID">>, <<"Type">>, <<"Version">>
                                            ,<<"Date-Modified">>, <<"Date-Created">>
-                                           ,<<"Doc">>
+                                           ,<<"Doc">>, <<"Is-Soft-Deleted">>
                                           ]).
 -define(CONF_DOC_UPDATE_VALUES, [{<<"Event-Category">>, <<"configuration">>}
                                  ,{<<"Event-Name">>, [<<"doc_edited">>
@@ -42,6 +42,7 @@
                                 ]).
 -define(CONF_DOC_UPDATE_TYPES, [{<<"ID">>, fun is_binary/1}
                                 ,{<<"Rev">>, fun is_binary/1}
+                                ,{<<"Is-Soft-Deleted">>, fun wh_util:is_boolean/1}
                                ]).
 
 -define(DOC_TYPE_UPDATE_HEADERS, [<<"Type">>]).
@@ -56,42 +57,40 @@
 -define(DOC_TYPE_UPDATE_TYPES, []).
 
 -spec get_account_id(api_terms()) -> api_binary().
-get_account_id(Prop) when is_list(Prop) ->
-    props:get_value(<<"Account-ID">>, Prop);
-get_account_id(JObj) ->
-    wh_json:get_value(<<"Account-ID">>, JObj).
+get_account_id(API) ->
+    get_value(API, <<"Account-ID">>).
 
 -spec get_action(api_terms()) -> api_binary().
-get_action(Prop) when is_list(Prop) ->
-    props:get_value(<<"Action">>, Prop);
-get_action(JObj) ->
-    wh_json:get_value(<<"Action">>, JObj).
+get_action(API) ->
+    get_value(API, <<"Action">>).
 
 -spec get_account_db(api_terms()) -> api_binary().
-get_account_db(Prop) when is_list(Prop) ->
-    props:get_value(<<"Account-DB">>, Prop);
-get_account_db(JObj) ->
-    wh_json:get_value(<<"Account-DB">>, JObj).
+get_account_db(API) ->
+    get_value(API, <<"Account-DB">>).
 
 %% returns the public fields of the document
 -spec get_doc(api_terms()) -> api_object().
-get_doc(Prop) when is_list(Prop) ->
-    props:get_value(<<"Doc">>, Prop);
-get_doc(JObj) ->
-    wh_json:get_value(<<"Doc">>, JObj).
+get_doc(API) ->
+    get_value(API, <<"Doc">>).
 
 -spec get_id(api_terms()) -> api_binary().
-get_id(Prop) when is_list(Prop) ->
-    props:get_value(<<"ID">>, Prop);
-get_id(JObj) ->
-    wh_json:get_value(<<"ID">>, JObj).
+get_id(API) ->
+    get_value(API, <<"ID">>).
 
 %% returns the pvt_type field
 -spec get_type(api_terms()) -> api_binary().
-get_type(Prop) when is_list(Prop) ->
-    props:get_value(<<"Type">>, Prop);
-get_type(JObj) ->
-    wh_json:get_value(<<"Type">>, JObj).
+get_type(API) ->
+    get_value(API, <<"Type">>).
+
+-spec get_is_soft_deleted(api_terms()) -> boolean().
+get_is_soft_deleted(API) ->
+    wh_util:is_true(get_value(API, <<"Is-Soft-Deleted">>)).
+
+-spec get_value(api_terms(), ne_binary()) -> any().
+get_value(Prop, Key) when is_list(Prop) ->
+    props:get_value(Key, Prop);
+get_value(JObj, Key) ->
+    wh_json:get_value(Key, JObj).
 
 %%--------------------------------------------------------------------
 %% @doc Format a call event from the switch for the listener
@@ -169,9 +168,21 @@ bind_for_doc_changes(Q, Props) ->
 -spec bind_for_doc_type_changes(ne_binary(), wh_proplist()) -> 'ok'.
 bind_for_doc_type_changes(Q, Props) ->
     case props:get_value('type', Props) of
-        'undefined' -> 'ok';
+        'undefined' -> bind_for_doc_types(Q, Props);
         Type ->
             amqp_util:bind_q_to_configuration(Q, doc_type_update_routing_key(Type))
+    end.
+
+-spec bind_for_doc_types(ne_binary(), wh_proplist()) -> 'ok'.
+bind_for_doc_types(Q, Props) ->
+    case props:get_value('types', Props) of
+        'undefined' ->
+            lager:warning("binding for doc type changes without supplying a type");
+        Types ->
+            _ = [amqp_util:bind_q_to_configuration(Q, doc_type_update_routing_key(Type))
+                 || Type <- Types
+                ],
+            'ok'
     end.
 
 -spec unbind_q(binary(), wh_proplist()) -> 'ok'.
@@ -206,9 +217,19 @@ unbind_for_doc_changes(Q, Props) ->
 -spec unbind_for_doc_type_changes(ne_binary(), wh_proplist()) -> 'ok'.
 unbind_for_doc_type_changes(Q, Props) ->
     case props:get_value('type', Props) of
-        'undefined' -> 'ok';
+        'undefined' -> unbind_for_doc_types(Q, Props);
         Type ->
             amqp_util:unbind_q_from_configuration(Q, doc_type_update_routing_key(Type))
+    end.
+
+-spec unbind_for_doc_types(ne_binary(), wh_proplist()) -> 'ok'.
+unbind_for_doc_types(Q, Props) ->
+    case props:get_value('types', Props) of
+        'undefined' -> 'ok';
+        Types ->
+            [amqp_util:unbind_q_from_configuration(Q, doc_type_update_routing_key(Type))
+             || Type <- Types
+            ]
     end.
 
 %%--------------------------------------------------------------------

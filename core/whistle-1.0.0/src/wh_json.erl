@@ -870,7 +870,8 @@ search_replace_format({Old, New, Formatter}, JObj) when is_function(Formatter, 1
 %% @end
 %%--------------------------------------------------------------------
 -spec public_fields(object() | objects()) -> object() | objects().
-public_fields(JObjs) when is_list(JObjs) -> [public_fields(JObj) || JObj <- JObjs];
+public_fields(JObjs) when is_list(JObjs) ->
+    [public_fields(JObj) || JObj <- JObjs];
 public_fields(JObj) ->
     PubJObj = filter(fun({K, _}) -> (not is_private_key(K)) end, JObj),
     case wh_doc:id(JObj) of
@@ -886,8 +887,10 @@ public_fields(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec private_fields(object() | objects()) -> object() | objects().
-private_fields(JObjs) when is_list(JObjs) -> [private_fields(JObj) || JObj <- JObjs];
-private_fields(JObj) -> filter(fun({K, _}) -> is_private_key(K) end, JObj).
+private_fields(JObjs) when is_list(JObjs) ->
+    [private_fields(JObj) || JObj <- JObjs];
+private_fields(JObj) ->
+    filter(fun({K, _}) -> is_private_key(K) end, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
