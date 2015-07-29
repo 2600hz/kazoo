@@ -693,24 +693,29 @@ load_summary_by_range(Context) ->
 
 load_summary_by_range(Context, From, To) ->
     lager:debug("loading summary for all port requests from ~p to ~p", [From, To]),
-    lists:foldl(fun(Type, C) ->
-                        load_summary_by_range_fold(C, Type, From, To)
-                end,
-                cb_context:setters(
-                  Context,
-                  [{fun cb_context:set_resp_data/2, []}
-                  ,{fun cb_context:set_resp_status/2, 'success'}
-                  ]
-                 ),
-                ?PORT_STATES
-               ).
+    normalize_summary_results(
+      lists:foldl(fun(Type, C) ->
+                          load_summary_by_range_fold(C, Type, From, To)
+                  end,
+                  cb_context:setters(
+                    Context,
+                    [{fun cb_context:set_resp_data/2, []}
+                    ,{fun cb_context:set_resp_status/2, 'success'}
+                    ]
+                   ),
+                  ?PORT_STATES
+                 )
+     ).
 
 load_summary_by_range(Context, Type, From, To) ->
-    %%% WARNING: these are not bound by time-ranges and could return a huge list!
+    load_summary_by_range(Context, Type, From, To, 'true').
+
+load_summary_by_range(Context, Type, From, To, Normalize) ->
     lager:debug("loading summary for ~s from ~p to ~p", [Type, From, To]),
     load_summary(Context
                 ,[{'startkey', [cb_context:account_id(Context), Type, To]}
                  ,{'endkey', [cb_context:account_id(Context), Type, From]}
+                 ,{'normalize', Normalize}
                  ]
                 ).
 
@@ -718,7 +723,7 @@ load_summary_by_range(Context, Type, From, To) ->
 load_summary_by_range_fold(Context, Type, From, To) ->
     Summary = cb_context:resp_data(Context),
     case cb_context:resp_data(
-           load_summary_by_range(Context, Type, From, To)
+           load_summary_by_range(Context, Type, From, To, 'false')
           )
     of
         TypeSummary when is_list(TypeSummary) ->
@@ -749,10 +754,12 @@ load_summary(Context, ViewOptions) ->
                             ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
                             ,fun normalize_view_results/2
                             )
+      ,props:get_value('normalize', ViewOptions, 'true')
      ).
 
--spec maybe_normalize_summary_results(cb_context:context()) -> cb_context:context().
-maybe_normalize_summary_results(Context) ->
+-spec maybe_normalize_summary_results(cb_context:context(), boolean()) -> cb_context:context().
+maybe_normalize_summary_results(Context, 'false') -> Context;
+maybe_normalize_summary_results(Context, 'true') ->
     case cb_context:resp_status(Context) of
         'success' -> normalize_summary_results(Context);
         _Else -> Context
