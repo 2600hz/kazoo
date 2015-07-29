@@ -18,6 +18,9 @@
 -ifdef(TEST).
 -export([weighted_random_sort/1]).
 -endif.
+
+-type group_weight() :: 1..100.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -146,7 +149,7 @@ order_endpoints(Method, Endpoints)
 order_endpoints(<<"weighted_random">>, Endpoints) ->
     weighted_random_sort(Endpoints).
 
--type endpoint_intermediate() :: {ne_binary(), ne_binary(), integer(), api_object()}.
+-type endpoint_intermediate() :: {ne_binary(), ne_binary(), group_weight(), api_object()}.
 -type endpoint_intermediates() :: [] | [endpoint_intermediate(),...].
 
 -spec resolve_endpoint_ids(wh_json:objects(), endpoint_intermediates(), wh_json:object(), whapps_call:call()) ->
@@ -155,7 +158,7 @@ resolve_endpoint_ids([], EndpointIds, _, _) -> EndpointIds;
 resolve_endpoint_ids([Member|Members], EndpointIds, Data, Call) ->
     Id = wh_doc:id(Member),
     Type = wh_json:get_value(<<"endpoint_type">>, Member, <<"device">>),
-    Weight = wh_json:get_integer_value(<<"weight">>, Member, 20),
+    Weight = group_weight(Member, 20),
     case wh_util:is_empty(Id)
         orelse lists:keymember(Id, 2, EndpointIds)
         orelse Type
@@ -175,7 +178,7 @@ resolve_endpoint_ids([Member|Members], EndpointIds, Data, Call) ->
             resolve_endpoint_ids(Members, [{Type, Id, Weight, Member}|EndpointIds], Data, Call)
     end.
 
--spec get_user_endpoint_ids(wh_json:object(), endpoint_intermediates(), ne_binary(), integer(), whapps_call:call()) ->
+-spec get_user_endpoint_ids(wh_json:object(), endpoint_intermediates(), ne_binary(), group_weight(), whapps_call:call()) ->
                                    endpoint_intermediates().
 get_user_endpoint_ids(Member, EndpointIds, Id, GroupWeight, Call) ->
     lists:foldr(
@@ -190,7 +193,7 @@ get_user_endpoint_ids(Member, EndpointIds, Id, GroupWeight, Call) ->
       ,cf_attributes:owned_by(Id, <<"device">>, Call)
      ).
 
--spec get_group_members(wh_json:object(), ne_binary(), integer(), wh_json:object(), whapps_call:call()) -> wh_json:objects().
+-spec get_group_members(wh_json:object(), ne_binary(), group_weight(), wh_json:object(), whapps_call:call()) -> wh_json:objects().
 get_group_members(Member, Id, GroupWeight, Data, Call) ->
     AccountDb = whapps_call:account_db(Call),
     case couch_mgr:open_cache_doc(AccountDb, Id) of
@@ -201,7 +204,8 @@ get_group_members(Member, Id, GroupWeight, Data, Call) ->
             []
     end.
 
--spec maybe_order_group_members(integer(), wh_json:object(), wh_json:object(), wh_json:object()) -> wh_json:objects().
+-spec maybe_order_group_members(group_weight(), wh_json:object(), wh_json:object(), wh_json:object()) ->
+                                       wh_json:objects().
 maybe_order_group_members(Weight, Member, JObj, Data) ->
     case strategy(Data) of
         ?DIAL_METHOD_SINGLE ->
@@ -210,7 +214,8 @@ maybe_order_group_members(Weight, Member, JObj, Data) ->
             unordered_group_members(Weight, Member, JObj)
     end.
 
--spec unordered_group_members(integer(), wh_json:object(), wh_json:object()) -> wh_json:objects().
+-spec unordered_group_members(group_weight(), wh_json:object(), wh_json:object()) ->
+                                     wh_json:objects().
 unordered_group_members(Weight, Member, JObj) ->
     Endpoints = wh_json:get_ne_value(<<"endpoints">>, JObj, wh_json:new()),
     wh_json:foldl(
@@ -221,13 +226,13 @@ unordered_group_members(Weight, Member, JObj) ->
       ,Endpoints
      ).
 
--spec order_group_members(integer(), wh_json:object(), wh_json:object()) -> wh_json:objects().
+-spec order_group_members(group_weight(), wh_json:object(), wh_json:object()) -> wh_json:objects().
 order_group_members(GroupWeight, Member, JObj) ->
     Endpoints = wh_json:get_ne_value(<<"endpoints">>, JObj, wh_json:new()),
     GroupMembers =
         wh_json:foldl(
           fun(Key, Endpoint, Acc) ->
-                  case wh_json:get_value(<<"weight">>, Endpoint) of
+                  case group_weight(Endpoint) of
                       'undefined' ->
                           lager:debug("endpoint ~s has no weight, removing from ordered group", [Key]),
                           Acc;
@@ -241,18 +246,20 @@ order_group_members(GroupWeight, Member, JObj) ->
          ),
     [V || {_, V} <- orddict:to_list(GroupMembers)].
 
--spec create_group_member(ne_binary(), wh_json:object(), integer(), wh_json:object()) -> wh_json:object().
+-spec create_group_member(ne_binary(), wh_json:object(), group_weight(), wh_json:object()) ->
+                                 wh_json:object().
 create_group_member(Key, Endpoint, GroupWeight, Member) ->
     DefaultDelay = wh_json:get_value(<<"delay">>, Member),
     DefaultTimeout = wh_json:get_value(<<"timeout">>, Member),
-    wh_json:set_values([{<<"endpoint_type">>, wh_json:get_value(<<"type">>, Endpoint)}
-                        ,{<<"id">>, Key}
-                        ,{<<"delay">>, wh_json:get_value(<<"delay">>, Endpoint, DefaultDelay)}
-                        ,{<<"timeout">>, wh_json:get_value(<<"timeout">>, Endpoint, DefaultTimeout)}
-                        ,{<<"weight">>, GroupWeight}
-                       ]
-                       ,Member
-                      ).
+    wh_json:set_values(
+      [{<<"endpoint_type">>, wh_json:get_value(<<"type">>, Endpoint)}
+       ,{<<"id">>, Key}
+       ,{<<"delay">>, wh_json:get_integer_value(<<"delay">>, Endpoint, DefaultDelay)}
+       ,{<<"timeout">>, wh_json:get_integer_value(<<"timeout">>, Endpoint, DefaultTimeout)}
+       ,{<<"weight">>, GroupWeight}
+      ]
+      ,Member
+     ).
 
 -spec weighted_random_sort(wh_proplist()) -> wh_json:objects().
 weighted_random_sort(Endpoints) ->
@@ -260,13 +267,14 @@ weighted_random_sort(Endpoints) ->
     WeightSortedEndpoints = lists:sort(Endpoints),
     weighted_random_sort(WeightSortedEndpoints, []).
 
--spec set_intervals_on_weight(wh_proplist(), wh_proplist(), integer()) -> term().
+-spec set_intervals_on_weight(wh_proplist(), wh_proplist(), integer()) ->
+                                     wh_proplist().
 set_intervals_on_weight([{Weight, _} =E | Tail], Acc, Sum) ->
     set_intervals_on_weight(Tail, [{Weight + Sum, E} | Acc], Sum + Weight);
 set_intervals_on_weight([], Acc, _Sum) ->
     Acc.
 
--spec weighted_random_sort(wh_proplist(), [] | [wh_proplist(),...]) -> [] | [wh_proplist(), ...].
+-spec weighted_random_sort(wh_proplist(), wh_proplists()) -> wh_proplists().
 weighted_random_sort([_ | _] = ListWeight, Acc) ->
     [{Sum, _} | _] = ListInterval = set_intervals_on_weight(ListWeight, [], 0),
     Pivot = random_integer(Sum),
@@ -292,6 +300,18 @@ random_integer(I) ->
 -spec repeats(wh_json:object()) -> pos_integer().
 repeats(Data) ->
     max(1, wh_json:get_integer_value(<<"repeats">>, Data, 1)).
+
+-spec group_weight(wh_json:object()) -> group_weight() | 'undefined'.
+-spec group_weight(wh_json:object(), Default) -> group_weight() | Default.
+group_weight(Endpoint) ->
+    group_weight(Endpoint, 'undefined').
+group_weight(Endpoint, Default) ->
+    case wh_json:get_integer_value(<<"weight">>, Endpoint) of
+        'undefined' -> Default;
+        N when N < 1 -> 1;
+        N when N > 100 -> 100;
+        N -> N
+    end.
 
 -spec strategy(wh_json:object()) -> ne_binary().
 strategy(Data) ->
