@@ -254,7 +254,7 @@ post(Context, DeviceId) ->
                   cb_context:context().
 post(Context, DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
     lager:debug("publishing check_sync for ~s", [DeviceId]),
-    Context1 = cb_context:store(Context, 'sync', 'true'),
+    Context1 = cb_context:store(Context, 'sync', 'force'),
     _ = provisioner_util:maybe_sync_sip_data(Context1, 'device'),
     crossbar_util:response_202(<<"sync request sent">>, Context).
 

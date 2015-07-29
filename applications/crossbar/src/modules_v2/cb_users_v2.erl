@@ -13,7 +13,10 @@
 %%%-------------------------------------------------------------------
 -module(cb_users_v2).
 
--export([create_user/1]).
+-export([create_user/1
+         ,user_devices/1
+        ]).
+
 -export([init/0
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
          ,content_types_provided/1, content_types_provided/2, content_types_provided/3, content_types_provided/4
@@ -331,35 +334,43 @@ maybe_update_devices_presence(Context) ->
     end.
 
 -spec update_devices_presence(cb_context:context()) -> 'ok'.
--spec update_devices_presence(cb_context:context(), wh_json:objects()) -> 'ok'.
+-spec update_devices_presence(cb_context:context(), kz_device:docs()) -> 'ok'.
 update_devices_presence(Context) ->
-    Doc = cb_context:doc(Context),
-    UserId = wh_doc:id(Doc),
-    AccountDb = wh_json:get_value(<<"pvt_account_db">>, Doc),
-    Options = [{'key', UserId}, 'include_docs'],
-    case couch_mgr:get_results(AccountDb, ?LIST_BY_PRESENCE_ID, Options) of
+    case user_devices(Context) of
         {'error', _R} ->
-            lager:error("failed to query view ~s in ~s : ~p", [?LIST_BY_PRESENCE_ID, AccountDb, _R]);
+            lager:error("failed to query view ~s: ~p", [?LIST_BY_PRESENCE_ID, _R]);
         {'ok', []} ->
-            lager:debug("no device found attached to ~s", [UserId]);
-        {'ok', JObjs} ->
-            update_devices_presence(Context, JObjs)
+            lager:debug("no presence IDs found for user");
+        {'ok', DeviceDocs} ->
+            update_devices_presence(Context, DeviceDocs)
     end.
 
-update_devices_presence(Context, JObjs) ->
+update_devices_presence(Context, DeviceDocs) ->
     lists:foreach(
-      fun(JObj) -> update_device_presence(Context, JObj) end
-      ,JObjs
+      fun(DeviceDoc) -> update_device_presence(Context, DeviceDoc) end
+      ,DeviceDocs
      ).
 
--spec update_device_presence(cb_context:context(), wh_json:object()) -> pid().
-update_device_presence(Context, JObj) ->
+-spec user_devices(cb_context:context()) ->
+                          {'ok', kz_device:docs()} |
+                          {'error', _}.
+user_devices(Context) ->
+    UserId = wh_doc:id(cb_context:doc(Context)),
+    AccountDb = cb_context:account_db(Context),
+
+    Options = [{'key', UserId}, 'include_docs'],
+    case couch_mgr:get_results(AccountDb, ?LIST_BY_PRESENCE_ID, Options) of
+        {'error', _}=E -> E;
+        {'ok', JObjs} ->
+            {'ok', [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs]}
+    end.
+
+-spec update_device_presence(cb_context:context(), kz_device:doc()) -> pid().
+update_device_presence(Context, DeviceDoc) ->
     AuthToken = cb_context:auth_token(Context),
     ReqId = cb_context:req_id(Context),
 
-    DeviceDoc = wh_json:get_value(<<"doc">>, JObj),
-
-    lager:debug("re-provisioning device ~s", [wh_doc:id(JObj)]),
+    lager:debug("re-provisioning device ~s", [wh_doc:id(DeviceDoc)]),
 
     wh_util:spawn(fun() ->
                           wh_util:put_callid(ReqId),
