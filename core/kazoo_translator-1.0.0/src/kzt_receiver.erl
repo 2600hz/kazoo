@@ -419,9 +419,7 @@ wait_for_offnet_events(#dial_req{call_timeout=CallTimeout
 
 -spec process_offnet_event(dial_req(), wh_json:object()) ->
                                   {'ok', whapps_call:call()}.
-process_offnet_event(#dial_req{call=Call
-                               ,call_b_leg=CallBLeg
-                              }=OffnetReq
+process_offnet_event(#dial_req{call=Call}=OffnetReq
                      ,JObj) ->
     CallId = whapps_call:call_id(Call),
 
@@ -454,18 +452,6 @@ process_offnet_event(#dial_req{call=Call
                 OffnetReq#dial_req{call_timeout='undefined'
                                    ,call=whapps_call:exec(Updates, Call)
                                   }));
-
-        {{<<"call_event">>, <<"CHANNEL_UNBRIDGE">>}, CallId} ->
-            case kz_call_event:other_leg_call_id(JObj) of
-                CallBLeg ->
-                    handle_hangup(Call, JObj);
-                _O ->
-                    lager:info("unknown b-leg (~s) unbridged (waiting on ~s)", [_O, CallBLeg])
-            end,
-            wait_for_offnet_events(update_offnet_timers(OffnetReq));
-
-        {{<<"call_event">>, <<"CHANNEL_EXECUTE">>}, CallId} ->
-            wait_for_offnet_events(update_offnet_timers(OffnetReq));
 
         {{<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>}, CallId} ->
             case kz_call_event:application_name(JObj) of
