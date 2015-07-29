@@ -36,6 +36,11 @@
                         "description": "How long to ring the endpoint, in seconds",
                         "required": false,
                         "type": "integer"
+                    },
+                    "weight": {
+                        "description": "Weight of endpoint, different usage in various strategies",
+                        "required": false,
+                        "type": "integer"
                     }
                 },
                 "type": "object"
@@ -66,7 +71,8 @@
             "description": "How to ring the members of the group",
             "enum": [
                 "simultaneous",
-                "single"
+                "single",
+                "weighted_random"
             ],
             "required": false,
             "type": "string"
