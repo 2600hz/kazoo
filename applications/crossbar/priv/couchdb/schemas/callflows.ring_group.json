@@ -39,6 +39,8 @@
                     },
                     "weight": {
                         "description": "Weight of endpoint, different usage in various strategies",
+                        "maximum": 100,
+                        "minimum": 1,
                         "required": false,
                         "type": "integer"
                     }
