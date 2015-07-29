@@ -9,46 +9,49 @@ Ring group callflow element allows calling multiple endpoints with given strateg
 
 ## Example of `data` payload
 
-```
-"data": {
-    "endpoints": [...],
-    "strategy": "strategy",
-    "timeout": seconds,
-    "repeats": number_of_repeats
-}
-```
+    "data": {
+        "endpoints": [...]
+        ,"strategy": "{STRATEGY}"
+        ,"timeout": {SECONDS}
+        ,"repeats": {REPEAT}
+        ,"ringback": "{RINGBACK}"
+        ,"ignore_forward": boolean()
+    }
 
 ## Mandatory fields
 **endpoints** - array of endpoints (see below)
 
 ## Optional fields
 
-**strategy** - `single` | `simultaneous` | `weighted_random`, default is `simultaneous`
-**timeout** - time to call the endpoint before moving further, default is `20`
-**repeats** - number of repeats (rounds) this group will be called, default is `1`
+* **{STRATEGY}**: default is `simultaneous`
+    * `single` - ring one endpoint after another
+    * `simultaneous` - ring all endpoints at the same time
+    * `weighted_random` - randomize the list of endpoints, then use `single` strategy
+* **{TIMEOUT}** - time to call the endpoint before moving further, default is `20`
+* **{REPEAT}** - number of repeats (rounds) this group will be called, default is `1`
+* **{RINGBACK}** - ringback to use, if any
+* **{IGNORE\_FORWARD}** - Whether to ignore forwarded endpoints, defaults to `true`
 
-### Enpoint format
+### Endpoint format
 #### Example
 
-```
-[...,
-    {
-        "id": "id-of-entpoint",
-        "endpoint_type": "type of endpoint",
-        "weight": weight,
-        "timeout": timeout,
-        "delay": delay
-    },
-...
-]
-```
+    {"id": "{ENDPOINT_ID}"
+     ,"endpoint_type": "{ENDPOINT_TYPE}"
+     ,"weight": {WEIGHT}
+     ,"timeout": {TIMEOUT}
+     ,"delay": {DELAY}
+    }
+
 #### Mandatory fields
 
-**id**
+**id**: Endpoint ID
 
 #### Optional fields
 
-**endpoint_type** - `device` | `user` | `group`, default is `device`
-**weight** - integer from 1 to 100, used by `weighted_random` strategy
-**timeout** - timeout to call the given endpoint, default is `20`
-**delay** - delay before this endpoint is called, default is `0`
+* **{ENDPOINT\_TYPE}**: default is `device`
+    * `device`
+    * `user`
+    * `group`
+* **{WEIGHT}** - integer from 1 to 100, used by `weighted_random` strategy
+* **{TIMEOUT}** - timeout to call the given endpoint, default is `20`
+* **{DELAY}** - delay before this endpoint is called, default is `0`
