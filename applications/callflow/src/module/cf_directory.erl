@@ -270,9 +270,9 @@ maybe_play_media(Call, User, MediaID) ->
     AccountDb = whapps_call:account_db(Call),
     MediaFile = <<$/, AccountDb/binary, $/, MediaID/binary>>,
 
-    case couch_mgr:open_doc(AccountDb, MediaID) of
+    case couch_mgr:open_cache_doc(AccountDb, MediaID) of
 	{'ok', Doc}    ->
-	    case wh_json:get_value(<<"_attachments">>, Doc) of
+	    case wh_doc:attachments(Doc) of
 		'undefined'  -> {'tts', <<39, (full_name(User))/binary, 39>>};
 		_ValidAttach -> {'play', MediaFile}
 	    end;
