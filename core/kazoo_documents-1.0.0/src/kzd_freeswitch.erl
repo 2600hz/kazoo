@@ -31,6 +31,9 @@
          ,account_id/1, account_billing/1
          ,reseller_id/1, reseller_billing/1
 
+         ,from_network_ip/1, from_network_port/1
+         ,user_agent/1
+
          ,to_did/1
 
          ,application_name/1, raw_application_name/1
@@ -213,3 +216,27 @@ event_name(Props) ->
     props:get_first_defined([<<"whistle_event_name">>
                              ,<<"Event-Name">>
                             ], Props).
+
+-spec from_network_ip(wh_proplist()) -> api_binary().
+from_network_ip(Props) ->
+    props:get_first_defined([<<"variable_sip_h_X-AUTH-IP">>
+                             ,<<"variable_sip_received_ip">>
+                            ]
+                            ,Props
+                           ).
+
+-spec from_network_port(wh_proplist()) -> api_binary().
+from_network_port(Props) ->
+    props:get_first_defined([<<"variable_sip_h_X-AUTH-PORT">>
+                             ,<<"variable_sip_received_port">>
+                            ]
+                            ,Props
+                           ).
+
+-spec user_agent(wh_proplist()) -> api_binary().
+user_agent(Props) ->
+    props:get_first_defined([<<"variable_sip_user_agent">>
+                             ,<<"sip_user_agent">>
+                            ]
+                            ,Props
+                           ).
