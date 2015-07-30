@@ -172,13 +172,7 @@ post(Context) ->
     Plans = cb_context:fetch(Context, <<"plans">>, []),
     Services =
         lists:foldl(
-            fun(PlanId, Acc) ->
-                Routines = [
-                    fun(S) -> wh_services:add_service_plan(PlanId, S) end
-                    ,fun(S) -> wh_services:save(S) end
-                ],
-                lists:foldl(fun apply_fun/2, Acc, Routines)
-            end
+            fun apply_plan/2
             ,wh_services:fetch(cb_context:account_id(Context))
             ,Plans
         ),
@@ -187,7 +181,6 @@ post(Context) ->
         ,[{fun cb_context:set_resp_data/2, wh_services:service_plan_json(Services)}
           ,{fun cb_context:set_resp_status/2, 'success'}]
     ).
-
 
 post(Context, ?SYNCHRONIZATION) ->
     wh_service_sync:sync(cb_context:account_id(Context)),
@@ -202,7 +195,7 @@ post(Context, ?RECONCILIATION) ->
     end;
 post(Context, PlanId) ->
     Routines = [fun(S) -> wh_services:add_service_plan(PlanId, S) end
-                ,fun(S) -> wh_services:save(S) end
+                ,fun wh_services:save/1
                ],
     Services = lists:foldl(fun apply_fun/2, wh_services:fetch(cb_context:account_id(Context)), Routines),
     cb_context:setters(Context
@@ -227,6 +220,24 @@ delete(Context, PlanId) ->
                          ,{fun cb_context:set_resp_status/2, 'success'}
                         ]).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec apply_plan(ne_binary(), wh_services:services()) -> wh_services:services().
+apply_plan(PlanId, Services) ->
+    Routines = [
+        fun(S) -> wh_services:add_service_plan(PlanId, S) end
+        ,fun wh_services:save/1
+    ],
+    lists:foldl(fun apply_fun/2, Services, Routines).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec apply_fun(fun((wh_services:services()) -> wh_services:services()), wh_services:services()) ->
                        wh_services:services().
 apply_fun(F, S) -> F(S).
