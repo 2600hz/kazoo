@@ -12,10 +12,10 @@
          ,default/0
          ,save/1, save/2
 
-         ,cnam/1, cnam/2
-         ,cnam_hosts/1, cnam_host/2, cnam_host/3
-         ,cnam_host_mappings/2, cnam_host_mappings/3
-         ,set_cnam/2, add_cnam_host/3
+         ,cname/1, cname/2
+         ,cname_hosts/1, cname_host/2, cname_host/3
+         ,cname_host_mappings/2, cname_host_mappings/3
+         ,set_cname/2, add_cname_host/3
 
          ,a_record/1, a_record/2
          ,a_record_hosts/1, a_record_host/2, a_record_host/3
@@ -45,7 +45,7 @@
 -type doc() :: wh_json:object().
 -export_type([doc/0]).
 
--define(KEY_CNAM, <<"CNAM">>).
+-define(KEY_CNAME, <<"CNAME">>).
 -define(KEY_A_RECORD, <<"A">>).
 -define(KEY_NAPTR, <<"NAPTR">>).
 -define(KEY_SRV, <<"SRV">>).
@@ -59,7 +59,7 @@
 
 -spec new() -> doc().
 new() ->
-    wh_json:from_list([{?KEY_CNAM, wh_json:new()}
+    wh_json:from_list([{?KEY_CNAME, wh_json:new()}
                        ,{?KEY_A_RECORD, wh_json:new()}
                        ,{?KEY_NAPTR, wh_json:new()}
                        ,{?KEY_SRV, wh_json:new()}
@@ -75,39 +75,39 @@ default() ->
                            ),
     wh_json:decode(FixtureJSON).
 
--spec cnam(doc()) -> api_object().
--spec cnam(doc(), Default) -> wh_json:object() | Default.
-cnam(Domains) ->
-    cnam(Domains, 'undefined').
-cnam(Domains, Default) ->
-    wh_json:get_json_value(?KEY_CNAM, Domains, Default).
+-spec cname(doc()) -> api_object().
+-spec cname(doc(), Default) -> wh_json:object() | Default.
+cname(Domains) ->
+    cname(Domains, 'undefined').
+cname(Domains, Default) ->
+    wh_json:get_json_value(?KEY_CNAME, Domains, Default).
 
--spec cnam_hosts(doc()) -> ne_binaries().
-cnam_hosts(Domains) ->
-    wh_json:get_keys(?KEY_CNAM, Domains).
+-spec cname_hosts(doc()) -> ne_binaries().
+cname_hosts(Domains) ->
+    wh_json:get_keys(?KEY_CNAME, Domains).
 
--spec cnam_host(doc(), ne_binary()) -> api_object().
--spec cnam_host(doc(), ne_binary(), Default) -> wh_json:object() | Default.
-cnam_host(Domains, Host) ->
-    cnam_host(Domains, Host, 'undefined').
-cnam_host(Domains, Host, Default) ->
-    wh_json:get_value([?KEY_CNAM, Host], Domains, Default).
+-spec cname_host(doc(), ne_binary()) -> api_object().
+-spec cname_host(doc(), ne_binary(), Default) -> wh_json:object() | Default.
+cname_host(Domains, Host) ->
+    cname_host(Domains, Host, 'undefined').
+cname_host(Domains, Host, Default) ->
+    wh_json:get_value([?KEY_CNAME, Host], Domains, Default).
 
--spec cnam_host_mappings(doc(), ne_binary()) -> ne_binaries().
--spec cnam_host_mappings(doc(), ne_binary(), Default) -> ne_binaries() | Default.
-cnam_host_mappings(Domains, Host) ->
-    cnam_host_mappings(Domains, Host, []).
+-spec cname_host_mappings(doc(), ne_binary()) -> ne_binaries().
+-spec cname_host_mappings(doc(), ne_binary(), Default) -> ne_binaries() | Default.
+cname_host_mappings(Domains, Host) ->
+    cname_host_mappings(Domains, Host, []).
 
-cnam_host_mappings(Domains, Host, Default) ->
-    wh_json:get_value([?KEY_CNAM, Host, ?KEY_MAPPINGS], Domains, Default).
+cname_host_mappings(Domains, Host, Default) ->
+    wh_json:get_value([?KEY_CNAME, Host, ?KEY_MAPPINGS], Domains, Default).
 
--spec set_cnam(doc(), wh_json:object()) -> doc().
-set_cnam(Domains, CNAM) ->
-    wh_json:set_value(?KEY_CNAM, CNAM, Domains).
+-spec set_cname(doc(), wh_json:object()) -> doc().
+set_cname(Domains, CNAME) ->
+    wh_json:set_value(?KEY_CNAME, CNAME, Domains).
 
--spec add_cnam_host(doc(), ne_binary(), wh_json:object()) -> doc().
-add_cnam_host(Domains, Host, Settings) ->
-    wh_json:set_value([?KEY_CNAM, Host], Settings, Domains).
+-spec add_cname_host(doc(), ne_binary(), wh_json:object()) -> doc().
+add_cname_host(Domains, Host, Settings) ->
+    wh_json:set_value([?KEY_CNAME, Host], Settings, Domains).
 
 -spec a_record(doc()) -> api_object().
 -spec a_record(doc(), Default) -> wh_json:object() | Default.
