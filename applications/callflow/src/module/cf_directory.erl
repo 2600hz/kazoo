@@ -144,17 +144,20 @@ directory_start(Call, State, CurrUsers) ->
 	    lager:error("failed to collect digits: ~p", [_Error]),
 	    cf_exe:stop(Call);
 
-	{'ok', DTMF} ->
-	    case whapps_call_command:collect_digits(100, ?TIMEOUT_DTMF, ?TIMEOUT_DTMF, Call) of
-		{'error', _E} ->
-		    lager:error("failed to collect digits: ~p", [_E]),
-		    cf_exe:stop(Call);
-		{'ok', <<>>} ->
-		    whapps_call_command:audio_macro([{'prompt', ?PROMPT_SPECIFY_MINIMUM}], Call),
-		    directory_start(Call, State, CurrUsers);
-		{'ok', DTMFS} ->
-		    maybe_match(Call, add_dtmf(add_dtmf(State, DTMF), DTMFS), CurrUsers)
-	    end
+	{'ok', DTMF} -> collect_digits(Call, State, CurrUsers, DTMF)
+    end.
+
+-spec collect_digits(whapps_call:call(), directory(), directory_users(), binary()) -> 'ok'.
+collect_digits(Call, State, CurrUsers, DTMF) ->
+    case whapps_call_command:collect_digits(100, ?TIMEOUT_DTMF, ?TIMEOUT_DTMF, Call) of
+	{'error', _E} ->
+	    lager:error("failed to collect digits: ~p", [_E]),
+	    cf_exe:stop(Call);
+	{'ok', <<>>} ->
+	    whapps_call_command:audio_macro([{'prompt', ?PROMPT_SPECIFY_MINIMUM}], Call),
+	    directory_start(Call, State, CurrUsers);
+	{'ok', DTMFS} ->
+	    maybe_match(Call, add_dtmf(add_dtmf(State, DTMF), DTMFS), CurrUsers)
     end.
 
 -spec maybe_match(whapps_call:call(), directory(), directory_users()) -> 'ok'.
