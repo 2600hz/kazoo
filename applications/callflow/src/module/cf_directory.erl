@@ -262,8 +262,21 @@ play_confirm_match(Call, User) ->
 username_audio_macro(Call, User) ->
     case media_name(User) of
         'undefined' -> {'tts', <<39, (full_name(User))/binary, 39>>}; % 39 is ascii '
-        MediaID ->
-            {'play', <<$/, (whapps_call:account_db(Call))/binary, $/, MediaID/binary>>}
+        MediaID     -> maybe_play_media(Call, User, MediaID)
+    end.
+
+-spec maybe_play_media(whapps_call:call(), directory_user(), api_binary()) ->
+                              whapps_call_command:audio_macro_prompt().
+maybe_play_media(Call, User, MediaId) ->
+    AccountDb = whapps_call:account_db(Call),
+
+    case couch_mgr:open_cache_doc(AccountDb, MediaId) of
+	{'ok', Doc}    ->
+	    case wh_doc:attachments(Doc) of
+		'undefined'  -> {'tts', <<39, (full_name(User))/binary, 39>>};
+		_ValidAttach -> {'play', <<$/, AccountDb/binary, $/, MediaId/binary>>}
+	    end;
+	{'error', _} -> {'tts', <<39, (full_name(User))/binary, 39>>}
     end.
 
 -spec play_directory_instructions(whapps_call:call(), 'first' | 'last' | ne_binary()) ->
