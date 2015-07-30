@@ -13,12 +13,12 @@
 
 -define(DOMAIN, <<"2600hz.com">>).
 
--define(CNAM
-        ,<<"{\"CNAM\":{\"portal.{{domain}}\":{\"name\":\"Web GUI\",\"mapping\":[\"ui.zswitch.net\"]},\"api.{{domain}}\":{\"name\":\"API\",\"mapping\":[\"api.zswitch.net\"]}}}">>
+-define(CNAME
+        ,<<"{\"CNAME\":{\"portal.{{domain}}\":{\"name\":\"Web GUI\",\"mapping\":[\"ui.zswitch.net\"]},\"api.{{domain}}\":{\"name\":\"API\",\"mapping\":[\"api.zswitch.net\"]}}}">>
        ).
 
--define(FAIL_CNAM
-        ,<<"{\"CNAM\":{\"portal.{{wrong}}\":{\"name\":\"Web GUI\",\"mapping\":[\"ui.zswitch.net\"]},\"api.{{still_wrong}}\":{\"name\":\"API\",\"mapping\":[\"api.zswitch.net\"]}}}">>
+-define(FAIL_CNAME
+        ,<<"{\"CNAME\":{\"portal.{{wrong}}\":{\"name\":\"Web GUI\",\"mapping\":[\"ui.zswitch.net\"]},\"api.{{still_wrong}}\":{\"name\":\"API\",\"mapping\":[\"api.zswitch.net\"]}}}">>
        ).
 
 -define(A_RECORD
@@ -38,8 +38,8 @@ domains_test_() ->
      ,fun init/0
      ,fun stop/1
      ,[fun format_host/1
-       ,fun cnam/1
-       ,fun fail_cnam/1
+       ,fun cname/1
+       ,fun fail_cname/1
        ,fun a_record/1
        ,fun naptr/1
        ,fun srv/1
@@ -90,18 +90,18 @@ format_host(_) ->
      }
     ].
 
-cnam(#state{domains=DomainsSchema
+cname(#state{domains=DomainsSchema
             ,loader_fun=LoaderFun
            }
     ) ->
-    CNAM = wh_json:decode(?CNAM),
+    CNAME = wh_json:decode(?CNAME),
 
-    Hosts = kzd_domains:cnam_hosts(CNAM),
+    Hosts = kzd_domains:cname_hosts(CNAME),
 
-    [{"Validate cnam property in domains object"
-      ,?_assertEqual({'ok', CNAM}
+    [{"Validate cname property in domains object"
+      ,?_assertEqual({'ok', CNAME}
                      ,wh_json_schema:validate(DomainsSchema
-                                              ,CNAM
+                                              ,CNAME
                                               ,[{'schema_loader_fun', LoaderFun}]
                                              )
                     )
@@ -113,32 +113,32 @@ cnam(#state{domains=DomainsSchema
                       ,Hosts
                      )
       }
-     | validate_cnam_hosts(CNAM, Hosts)
+     | validate_cname_hosts(CNAME, Hosts)
     ].
 
-validate_cnam_hosts(CNAM, Hosts) ->
+validate_cname_hosts(CNAME, Hosts) ->
     lists:flatten(
-      lists:map(fun(H) -> validate_cnam_host(CNAM, H) end
+      lists:map(fun(H) -> validate_cname_host(CNAME, H) end
                 ,Hosts
                )
      ).
 
-validate_cnam_host(CNAM, Host) ->
-    _HostMappings = kzd_domains:cnam_host_mappings(CNAM, Host),
+validate_cname_host(CNAME, Host) ->
+    _HostMappings = kzd_domains:cname_host_mappings(CNAME, Host),
     WhitelabelHost = kzd_domains:format_host(Host, ?DOMAIN),
 
-    [{"Verify CNAM whitelabel host"
+    [{"Verify CNAME whitelabel host"
       ,?_assert('nomatch' =/= binary:match(WhitelabelHost, ?DOMAIN))
      }
     ].
 
-fail_cnam(#state{domains=DomainsSchema
+fail_cname(#state{domains=DomainsSchema
                  ,loader_fun=LoaderFun
                 }
          ) ->
-    CNAM = wh_json:decode(?FAIL_CNAM),
+    CNAME = wh_json:decode(?FAIL_CNAME),
 
-    Hosts = kzd_domains:cnam_hosts(CNAM),
+    Hosts = kzd_domains:cname_hosts(CNAME),
 
     [{"Validate badly formed host fails domains validation"
       ,?_assertMatch({'error'
@@ -151,7 +151,7 @@ fail_cnam(#state{domains=DomainsSchema
                        ]
                      }
                      ,wh_json_schema:validate(DomainsSchema
-                                              ,CNAM
+                                              ,CNAME
                                               ,[{'schema_loader_fun', LoaderFun}]
                                              )
                     )
