@@ -39,7 +39,7 @@ There are six major components to a Kazoo system, they can all be installed on o
 There are a few concerns that should be planned for when designing a Kazoo cluster.
 
 * Design in enough bigcouch servers from the start
-  * It is very difficult to add additional database servers once the cluster has been deployed, as such you should plan in advance and add the maximum number of bigcouch servers that you forsee needing over the lifetime of the cluster from the start.
+  * It is difficult to add additional database servers once the cluster has been deployed, as such you should plan in advance and add the maximum number of bigcouch servers that you forsee needing in the near future of the cluster from the start.
 * Each zone should have it's own Freeswitch server
   * Freeswitch servers may not be shared between zones
 
@@ -216,6 +216,8 @@ listen bigcouch-mgr 127.0.0.1:15986
     server test3.cluster1.2600hz.com 192.168.1.102:5986 check
     server test4.cluster1.2600hz.com 192.168.1.103:5986 check backup
 ```
+
+You may want to have a separate configuration for each zone, with the other zone configured as backup's.
 
 ## Common Configuration
 
