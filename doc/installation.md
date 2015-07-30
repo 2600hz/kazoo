@@ -19,8 +19,10 @@ The simplest Kazoo installation only requires a single server.  Naturally to tak
 
 There are six major components to a Kazoo system, they can all be installed on one server or split arbitrarily over any number of servers.  This guide will provide examples for installing either a single server, or three server cluster.  The components and their functions are:
 
-* Kazoo (and RabbitMQ)
-  * Provides all application logic for the system, the brains of the operation.  This also includes the RabbitMQ server which provides the command and control channel (AMQP).  While it is possible for the RabbitMQ server to be a separate component, for the purposes of this document it will be assumed to be park of the Kazoo server.
+* Kazoo
+  * Provides all application logic for the system, the brains of the operation.
+* RabbitMQ 
+  * Messaging system using AMQP, it provides command and control as well as allows examination of running system state.
 * Kamailio
   * Provides the SIP processing for the system.  For the purposes of this guide we will assume that it is always installed on the same server as Kazoo.
 * Freeswitch
@@ -31,6 +33,15 @@ There are six major components to a Kazoo system, they can all be installed on o
   * Provides load balancing and request distribution.  Also routes internal system connections between components and Bigcouch.
 * Monster-UI
   * Provides the Kazoo web interface for configuration and monitoring of the system.
+
+## Cluster design considerations
+
+There are a few concerns that should be planned for when designing a Kazoo cluster.
+
+* Design in enough bigcouch servers from the start
+  * It is difficult to add additional database servers once the cluster has been deployed, as such you should plan in advance and add the maximum number of bigcouch servers that you forsee needing in the near future of the cluster from the start.
+* Each zone should have it's own Freeswitch server
+  * Freeswitch servers may not be shared between zones
 
 ## Pre-Installation
 
@@ -123,17 +134,26 @@ You should now be ready to validate the installation
 
 For the purposes of this guide we will assume the following cluster layout:
 
+```
 Server 1 (zone 1): bigcouch, kazoo
  Hostname: test1.cluster1.2600hz.com
  IP Addr : 192.168.1.100
-
-Server 2: bigcouch, freeswitch
+```
+```
+Server 2 (zone 1): bigcouch, freeswitch
  Hostname: test2.cluster1.2600hz.com
  IP Addr : 192.168.1.101
-
+```
+```
 Server 3 (zone 2): bigcouch, kazoo, monster-ui
  Hostname: test3.cluster1.2600hz.com
  IP Addr : 192.168.1.102
+```
+```
+Server 4 (zone 2): bigcouch, freeswitch
+ Hostname: test4.cluster1.2600hz.com
+ IP Addr : 192.168.1.103
+```
 
 ### Install and configure bigcouch
 
@@ -148,6 +168,7 @@ On all servers:
 ```
 # curl -X PUT test1.cluster1.2600hz.com:5986/nodes/bigcouch@test2.cluster1.2600hz.com -d {}
 # curl -X PUT test1.cluster1.2600hz.com:5986/nodes/bigcouch@test3.cluster1.2600hz.com -d {}
+# curl -X PUT test1.cluster1.2600hz.com:5986/nodes/bigcouch@test4.cluster1.2600hz.com -d {}
 ```
 
 ### Install remaining packages
@@ -157,7 +178,7 @@ On all servers:
 # yum install -y kazoo-kamailio kazoo-R15B
 ```
 
-** Server 2**
+**Server 2**
 ```
 # yum install -y haproxy kazoo-freeswitch-R15B
 ```
@@ -165,6 +186,11 @@ On all servers:
 **Server 3**
 ```
 # yum install -y kazoo-kamailio kazoo-R15B httpd monster-ui*
+```
+
+**Server 4**
+```
+# yum install -y haproxy kazoo-freeswitch-R15B
 ```
 
 ### Configure packages
@@ -180,14 +206,18 @@ listen bigcouch-data 127.0.0.1:15984
   balance roundrobin
     server test1.cluster1.2600hz.com 192.168.1.100:5984 check
     server test2.cluster1.2600hz.com 192.168.1.101:5984 check
-    server test3.cluster1.2600hz.com 192.168.1.102:5984 check backup
+    server test3.cluster1.2600hz.com 192.168.1.102:5984 check
+    server test4.cluster1.2600hz.com 192.168.1.103:5984 check backup
 
 listen bigcouch-mgr 127.0.0.1:15986
   balance roundrobin
     server test1.cluster1.2600hz.com 192.168.1.100:5986 check
     server test2.cluster1.2600hz.com 192.168.1.101:5986 check
-    server test3.cluster1.2600hz.com 192.168.1.102:5986 check backup
+    server test3.cluster1.2600hz.com 192.168.1.102:5986 check
+    server test4.cluster1.2600hz.com 192.168.1.103:5986 check backup
 ```
+
+You may want to have a separate configuration for each zone, with the other zone configured as backup's.
 
 ## Common Configuration
 
@@ -220,7 +250,7 @@ Symlink the Kazoo HAProxy configruation file
 
 ### Configure Kamailio
 
-Update the following values in the /etc/kamailio/local.cfg file
+Update the following values in the /etc/kazoo/kamailio/local.cfg file
 
 *Server 1*
 ```
@@ -302,6 +332,7 @@ Start all services
 # service kz-whistle_apps restart
 # service kz-ecallmgr restart
 # service kamailio restart
+# service httpd restart
 ```
 
 **Server 2**
@@ -320,6 +351,7 @@ Start all services
 # service kz-whistle_apps restart
 # service kz-ecallmgr restart
 # service kamailio restart
+# service httpd restart
 ```
 
 Enable auto-startup for all services
@@ -334,6 +366,7 @@ Enable auto-startup for all services
 # chkconfig kz-whistle_apps on
 # chkconfig kamailio on
 # chkconfig bigcouch on
+# chkconfig httpd on
 ```
 
 **Server 2**
@@ -352,6 +385,7 @@ Enable auto-startup for all services
 # chkconfig kz-whistle_apps on
 # chkconfig kamailio on
 # chkconfig bigcouch on
+# chkconfig httpd on
 ```
 
 ### Import media files
@@ -363,10 +397,15 @@ Enable auto-startup for all services
 
 ### Configure ecallmgr
 
-Add freeswitch node
-*Server 1 and Server 3*
+Add freeswitch nodes
+*Server 1*
 ```
-# sup -n ecallmgr_maintenance add_fs_node test2.cluster1.2600hz.com
+# sup -n ecallmgr ecallmgr_maintenance add_fs_node freeswitch@test2.cluster1.2600hz.com
+```
+
+*Server 3*
+```
+# sup -n ecallmgr ecallmgr_maintenance add_fs_node freeswitch@test4.cluster1.2600hz.com
 ```
 
 Add acl entries for SIP servers
@@ -423,6 +462,17 @@ Verify that the status shows nodes for BOTH Server 1 and Server 3
 *Server 1 OR Server 3*
 ```
 # sup crossbar_maintenance create_account {ACCT NAME} {REALM} {LOGIN} {PASSWORD}
+```
+### Load applications
+
+*Server 1*
+```
+# sup crossbar_maintenance init_apps /var/www/html/monster-ui/apps/ http://192.168.1.100:8000/v2
+```
+
+*Server 3*
+```
+# sup crossbar_maintenance init_apps /var/www/html/monster-ui/apps/ http://192.168.1.102:8000/v2
 ```
 
 ## Notes / Credits
