@@ -33,8 +33,15 @@
 -export([set_cumulative_discount_rate/2
          ,cumulative_discount_rate/1
         ]).
--export([set_bookkeepers/2]).
--export([bookkeeper/2]).
+-export([set_bookkeepers/2
+         ,bookkeeper/2
+        ]).
+-export([set_activation_charge/2
+         ,activation_charge/1
+        ]).
+-export([set_minimum/2
+         ,minimum/1
+        ]).
 
 
 -include("whistle_services.hrl").
@@ -48,6 +55,8 @@
                           ,cumulative_discount = 0 :: api_integer()
                           ,cumulative_discount_rate = 0.00 :: api_float()
                           ,bookkeepers = wh_json:new() :: wh_json:object()
+                          ,activation_charge = 0.00 :: api_float()
+                          ,minimum = 0 :: api_integer()
                          }).
 
 -type item() :: #wh_service_item{}.
@@ -72,6 +81,8 @@ public_json(Item) ->
              ,{<<"single_discount_rate">>, Item#wh_service_item.single_discount_rate}
              ,{<<"cumulative_discount">>, Item#wh_service_item.cumulative_discount}
              ,{<<"cumulative_discount_rate">>, Item#wh_service_item.cumulative_discount_rate}
+             ,{<<"activation_charge">>, Item#wh_service_item.activation_charge}
+             ,{<<"minimum">>, Item#wh_service_item.minimum}
             ],
     wh_json:from_list(props:filter_undefined(Props)).
 
@@ -281,3 +292,41 @@ bookkeeper(Bookkeeper, #wh_service_item{bookkeepers=Bookkeepers}) ->
 -spec set_bookkeepers(wh_json:object(), item()) -> item().
 set_bookkeepers(Bookkeepers, #wh_service_item{}=ServiceItem) ->
     ServiceItem#wh_service_item{bookkeepers=Bookkeepers}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec activation_charge(item()) -> float().
+activation_charge(#wh_service_item{activation_charge=Charge}) -> Charge.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec set_activation_charge(float(), item()) -> item().
+set_activation_charge(Charge, ServiceItem) ->
+    ServiceItem#wh_service_item{activation_charge=Charge}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec minimum(item()) -> integer().
+minimum(#wh_service_item{minimum=Min}) -> Min.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec set_minimum(integer(), item()) -> item().
+set_minimum(Min, ServiceItem) ->
+    ServiceItem#wh_service_item{minimum=Min}.
