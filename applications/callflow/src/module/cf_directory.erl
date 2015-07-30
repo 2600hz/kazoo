@@ -265,16 +265,16 @@ username_audio_macro(Call, User) ->
         MediaID     -> maybe_play_media(Call, User, MediaID)
     end.
 
--spec maybe_play_media(whapps_call:call(), directory_user(), api_binary()) -> whapps_call_command:audio_macro_prompt().
-maybe_play_media(Call, User, MediaID) ->
+-spec maybe_play_media(whapps_call:call(), directory_user(), api_binary()) ->
+                              whapps_call_command:audio_macro_prompt().
+maybe_play_media(Call, User, MediaId) ->
     AccountDb = whapps_call:account_db(Call),
-    MediaFile = <<$/, AccountDb/binary, $/, MediaID/binary>>,
 
-    case couch_mgr:open_cache_doc(AccountDb, MediaID) of
+    case couch_mgr:open_cache_doc(AccountDb, MediaId) of
 	{'ok', Doc}    ->
 	    case wh_doc:attachments(Doc) of
 		'undefined'  -> {'tts', <<39, (full_name(User))/binary, 39>>};
-		_ValidAttach -> {'play', MediaFile}
+		_ValidAttach -> {'play', <<$/, AccountDb/binary, $/, MediaId/binary>>}
 	    end;
 	{'error', _} -> {'tts', <<39, (full_name(User))/binary, 39>>}
     end.
