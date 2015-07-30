@@ -694,7 +694,11 @@ load_summary_by_range(Context) ->
 load_summary_by_range(Context, From, To) ->
     lager:debug("loading summary for all port requests from ~p to ~p", [From, To]),
     normalize_summary_results(
-      lists:foldl(fun(Type, C) ->
+      lists:foldl(fun(?PORT_SUBMITTED=Type, C) -> load_summary_fold(C, Type);
+                     (?PORT_PENDING=Type, C) -> load_summary_fold(C, Type);
+                     (?PORT_SCHEDULED=Type, C) -> load_summary_fold(C, Type);
+                     (?PORT_REJECT=Type, C) -> load_summary_fold(C, Type);
+                     (Type, C) ->
                           load_summary_by_range_fold(C, Type, From, To)
                   end,
                   cb_context:setters(
@@ -718,6 +722,24 @@ load_summary_by_range(Context, Type, From, To, Normalize) ->
                  ,{'normalize', Normalize}
                  ]
                 ).
+
+-spec load_summary_fold(cb_context:context(), ne_binary()) -> cb_context:context().
+load_summary_fold(Context, Type) ->
+    Summary = cb_context:resp_data(Context),
+    Props =
+        [{'startkey', [cb_context:account_id(Context), Type, wh_json:new()]}
+        ,{'endkey', [cb_context:account_id(Context), Type]}
+        ,{'normalize', 'false'}
+        ],
+    case cb_context:resp_data(
+           load_summary(cb_context:set_should_paginate(Context, 'false'), Props)
+          )
+    of
+        TypeSummary when is_list(TypeSummary) ->
+            cb_context:set_resp_data(Context, Summary ++ TypeSummary);
+        _Else -> Context
+    end.
+
 
 -spec load_summary_by_range_fold(cb_context:context(), ne_binary(), gregorian_seconds(), gregorian_seconds()) -> cb_context:context().
 load_summary_by_range_fold(Context, Type, From, To) ->
