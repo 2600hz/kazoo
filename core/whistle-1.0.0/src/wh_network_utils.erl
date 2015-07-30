@@ -400,7 +400,7 @@ set_option_edns(Options, Value) ->
 set_option_inet6(Options, Value) ->
     props:set_value('inet6', Value, Options).
 
--spec set_option_nameservers(options(), [nameserver()]) -> options().
+-spec set_option_nameservers(options(), [nameserver() | string()]) -> options().
 set_option_nameservers(Options, Value) ->
     props:set_value('nameservers', maybe_resolve_nameservers(Value, []), Options).
 
@@ -424,7 +424,8 @@ set_option_udp_payload_size(Options, Value) ->
 set_option_usevc(Options, Value) ->
     props:set_value('usevc', Value, Options).
 
--spec maybe_resolve_nameservers([nameserver() | string()], [nameserver()]) -> [nameserver()].
+-spec maybe_resolve_nameservers([nameserver() | string()], [nameserver()]) ->
+                                       [nameserver()].
 maybe_resolve_nameservers([], Nameservers) -> Nameservers;
 maybe_resolve_nameservers([{_, _}=Nameserver|Values], Nameservers) ->
     maybe_resolve_nameservers(Values, [Nameserver|Nameservers]);

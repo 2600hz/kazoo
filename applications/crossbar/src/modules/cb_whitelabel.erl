@@ -507,10 +507,12 @@ test_account_domains(Context) ->
 
 test_account_domains(Context, DomainsJObj) ->
     Options = test_network_options(Context),
-    TestResults = wh_json:map(
-                    fun(DomainType, DomainConfig) ->
+    TestResults =
+        wh_json:map(fun(DomainType, DomainConfig) ->
                             test_domains(DomainType, DomainConfig, Options)
-                    end, DomainsJObj),
+                    end
+                    ,DomainsJObj
+                   ),
     crossbar_util:response(TestResults, Context).
 
 -spec test_domains(ne_binary(), wh_json:object(), wh_network_utils:options()) ->
@@ -535,18 +537,20 @@ test_host(Host, HostConfig, DomainType, Options) ->
                        ,{<<"name">>, kzd_domains:name(HostConfig)}
                       ]).
 
--spec lookup(ne_binary(), ne_binary(), wh_network_utils:options()) -> ne_binaries().
+-spec lookup(ne_binary(), ne_binary(), wh_network_utils:options()) ->
+                    ne_binaries().
 lookup(Host, DomainType, Options) ->
     Type = wh_util:to_atom(wh_util:to_lower_binary(DomainType)),
     {'ok', Lookup} = wh_network_utils:lookup_dns(Host, Type, Options),
     lager:debug("lookup of ~s(~s): ~p", [Host, Type, Lookup]),
     format_lookup_results(Type, Lookup).
 
--spec format_lookup_results(ne_binary(), [inet_res:dns_data()]) -> ne_binaries().
+-spec format_lookup_results(atom(), [inet_res:dns_data()]) ->
+                                   ne_binaries().
 format_lookup_results(Type, Lookup) ->
     [format_lookup_result(Type, Result) || Result <- Lookup].
 
--spec format_lookup_result(ne_binary(), inet_res:dns_data()) -> ne_binary().
+-spec format_lookup_result(atom(), inet_res:dns_data()) -> ne_binary().
 format_lookup_result('naptr', {_, _, _, _, _, _}=NAPTR) ->
     wh_network_utils:naptrtuple_to_binary(NAPTR);
 format_lookup_result('srv', {_, _, _, _}=Srv) ->
