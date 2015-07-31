@@ -30,7 +30,7 @@
                         ]).
 
 %% Endpoints performing their own auth
--define(IGNORE_MODS, [<<"notifications">>]).
+-define(IGNORE_MODS, []).
 
 %%%===================================================================
 %%% API

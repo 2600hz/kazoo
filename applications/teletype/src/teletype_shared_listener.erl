@@ -81,6 +81,9 @@
                      ,{'teletype_port_scheduled'
                        ,[{<<"notification">>, <<"port_scheduled">>}]
                       }
+                     ,{'teletype_port_rejected'
+                       ,[{<<"notification">>, <<"port_rejected">>}]
+                      }
                      ,{'teletype_port_cancel'
                        ,[{<<"notification">>, <<"port_cancel">>}]
                       }
@@ -109,6 +112,7 @@
                       ,'port_request'
                       ,'port_pending'
                       ,'port_scheduled'
+                      ,'port_rejected'
                       ,'port_cancel'
                       ,'ported'
                       ,'port_comment'

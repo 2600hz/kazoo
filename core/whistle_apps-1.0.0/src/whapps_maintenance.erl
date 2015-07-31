@@ -161,6 +161,8 @@ get_databases() ->
 
 refresh(?WH_CONFIG_DB) ->
     couch_mgr:db_create(?WH_CONFIG_DB),
+    couch_mgr:revise_doc_from_file(?WH_CONFIG_DB, 'teletype', <<"views/notifications.json">>),
+    cleanup_invalid_notify_docs(),
     delete_system_media_references();
 refresh(?KZ_OAUTH_DB) ->
     couch_mgr:db_create(?KZ_OAUTH_DB),
@@ -242,6 +244,37 @@ refresh(Database) when is_binary(Database) ->
             'ok';
         _Else -> 'ok'
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec cleanup_invalid_notify_docs() -> 'ok'.
+cleanup_invalid_notify_docs() ->
+    _ = couch_mgr:db_archive(<<"system_config">>),
+    case couch_mgr:all_docs(?WH_CONFIG_DB, ['include_docs']) of
+        {'ok', JObjs} -> cleanup_invalid_notify_docs(JObjs);
+        {'error', _R} ->
+            lager:warning("unable to fetch all system config docs: ~p", [_R])
+    end.
+
+-spec cleanup_invalid_notify_docs(wh_json:objects()) -> 'ok'.
+cleanup_invalid_notify_docs([]) -> 'ok';
+cleanup_invalid_notify_docs([JObj|JObjs]) ->
+    Id = wh_json:get_value(<<"id">>, JObj),
+    Doc = wh_json:get_value(<<"doc">>, JObj),
+    Type = wh_json:get_value(<<"pvt_type">>, Doc),
+    _ = maybe_remove_invalid_notify_doc(Type, Id, Doc),
+    cleanup_invalid_notify_docs(JObjs).
+
+-spec maybe_remove_invalid_notify_doc(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+maybe_remove_invalid_notify_doc(<<"notification">>, <<"notification", _/binary>>, _) -> 'ok';
+maybe_remove_invalid_notify_doc(<<"notification">>, _, JObj) ->
+    _ = couch_mgr:del_doc(?WH_CONFIG_DB, JObj),
+    'ok';
+maybe_remove_invalid_notify_doc(_, _, _) -> 'ok'.
 
 %%--------------------------------------------------------------------
 %% @public
