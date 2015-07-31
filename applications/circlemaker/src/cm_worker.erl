@@ -262,7 +262,7 @@ maybe_eradius_request([Server | Servers], Address, JObj, AaaProps, AccountId, Pa
         {'ok', Response, _Authenticator} ->
             Result = eradius_lib:decode_request(Response, Secret),
             lager:debug("response received: ~p", [Result]),
-            {'ok', Result};
+            {'ok', {Result, AccountId}};
         Error ->
             lager:debug("error response received: ~p", [Error]),
             maybe_server_request(Servers, JObj, AaaProps, AccountId, ParentAccountId)

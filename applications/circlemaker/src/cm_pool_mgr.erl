@@ -137,15 +137,14 @@ handle_cast({'response', Response, JObj, Worker}, State) ->
     lager:debug("response message is ~p", [Response]),
     NewState = remove_worker(Worker, State),
     poolboy:checkin(?WORKER_POOL, Worker),
-    {AaaResult, AttributeList} = case Response of
-                 {'ok', {'radius_request', _, 'accept', ParamList, _, _, _, _}} ->
+    {AaaResult, AttributeList, AccountId} = case Response of
+                 {'ok', {{'radius_request', _, 'accept', ParamList, _, _, _, _}, AuthzAccountId}} ->
                      AttrList = [{Name, Val} || {{_, _, _, Name, _}, Val} <- ParamList],
-                     {<<"accept">>, AttrList};
+                     {<<"accept">>, AttrList, AuthzAccountId};
                  _ ->
                      {<<"reject">>, []}
              end,
     lager:debug("AttributeList is: ~p", [AttributeList]),
-    AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     {'ok', AaaDoc} = couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded'), <<"aaa">>),
     AttributeList1 = case wh_json:get_value(<<"Event-Category">>, JObj) of
                          <<"authz">> ->
