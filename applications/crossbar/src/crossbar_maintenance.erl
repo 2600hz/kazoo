@@ -869,8 +869,9 @@ maybe_update_app(AppPath, MetaData, MasterAccountDb, JObj) ->
     'ok' = delete_old_images(CurrentDocId, MetaData, MasterAccountDb),
     maybe_add_images(AppPath, CurrentDocId, MetaData, MasterAccountDb).
 
--spec find_app(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} |
-                                            {'error', _}.
+-spec find_app(ne_binary(), ne_binary()) ->
+                      {'ok', wh_json:object()} |
+                      {'error', _}.
 find_app(Db, Name) ->
     case couch_mgr:get_results(Db, ?CB_APPS_STORE_LIST, [{'key', Name}]) of
         {'ok', []} -> {'error', 'not_found'};
@@ -890,7 +891,9 @@ create_app(AppPath, MetaData, MasterAccountDb) ->
                                                    ]),
             maybe_add_images(AppPath, wh_doc:id(JObj), MetaData, MasterAccountDb);
         {'error', _E} ->
-            io:format(" failed to save app ~s to ~s: ~p~n", [wh_json:get_value(<<"name">>, MetaData), MasterAccountDb, _E])
+            io:format(" failed to save app ~s to ~s: ~p~n"
+                      ,[wh_json:get_value(<<"name">>, MetaData), MasterAccountDb, _E]
+                     )
     end.
 
 -spec delete_old_images(ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
@@ -915,30 +918,35 @@ maybe_add_images(AppPath, AppId, MetaData, MasterAccountDb) ->
     Icons       = [wh_json:get_value(<<"icon">>, MetaData)],
     Screenshots = wh_json:get_value(<<"screenshots">>, MetaData, []),
 
-    IconPaths  = [{Icon, filename:join([AppPath, <<"metadata">>, <<"icon">>, Icon])} || Icon <- Icons],
-    SShotPaths = [{SShot, filename:join([AppPath, <<"metadata">>, <<"screenshots">>, SShot])} || SShot <- Screenshots],
+    IconPaths  = [{Icon, filename:join([AppPath, <<"metadata">>, <<"icon">>, Icon])}
+                  || Icon <- Icons
+                 ],
+    SShotPaths = [{SShot, filename:join([AppPath, <<"metadata">>, <<"screenshots">>, SShot])}
+                  || SShot <- Screenshots
+                 ],
 
-    try read_images(IconPaths) of
-        {'ok', IconImages} -> add_images(AppId, MasterAccountDb, IconImages)
+    _ = update_images(AppId, MasterAccountDb, IconPaths, <<"icon">>),
+    _ = update_images(AppId, MasterAccountDb, SShotPaths, <<"screenshots">>).
+
+-type image_path() :: {wh_json:object(), file:filename()}.
+-type image_paths() :: [image_path()].
+
+-spec update_images(file:filename(), ne_binary(), image_paths(), ne_binary()) -> 'ok'.
+update_images(AppId, MasterAccountDb, ImagePaths, Type) ->
+    try read_images(ImagePaths) of
+        {'ok', Images} -> add_images(AppId, MasterAccountDb, Images)
     catch
         'error':{'badmatch', {'error', 'enoent'}} ->
-            io:format("  failed to find icons in ~s~n", [AppPath]);
+            io:format("  failed to find ~s in ~s~n", [Type, AppId]);
         'error':_E ->
-            io:format("  failed to load icons from ~s: ~p~n", [AppPath, _E])
-    end,
-
-    try read_images(SShotPaths) of
-        {'ok', SShotImages} -> add_images(AppId, MasterAccountDb, SShotImages)
-    catch
-        'error':{'badmatch', {'error', 'enoent'}} ->
-            io:format("  failed to find screenshots in ~s~n", [AppPath]);
-        'error':_E2 ->
-            io:format("  failed to load screenshots from ~s: ~p~n", [AppPath, _E2])
+            io:format("  failed to load ~s in ~s: ~p~n", [Type, AppId, _E])
     end.
 
 -spec add_images(ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
 add_images(AppId, MasterAccountDb, Images) ->
-    _ = [add_image(AppId, MasterAccountDb, ImageId, ImageData) || {ImageId, ImageData} <- Images],
+    _ = [add_image(AppId, MasterAccountDb, ImageId, ImageData)
+         || {ImageId, ImageData} <- Images
+        ],
     'ok'.
 
 -spec add_image(ne_binary(), ne_binary(), file:filename(), binary()) -> 'ok'.
@@ -950,14 +958,18 @@ add_image(AppId, MasterAccountDb, ImageId, ImageData) ->
 
 -spec read_images(list(file:filename())) -> {'ok', [{file:filename(), binary()}]}.
 read_images(Images) ->
-    {'ok', [{Image, read_image(ImagePath)} || {Image, ImagePath} <- Images]}.
+    {'ok', [{Image, read_image(ImagePath)}
+            || {Image, ImagePath} <- Images
+           ]}.
 
 -spec read_image(file:filename()) -> binary().
 read_image(File) ->
     {'ok', ImageData} = file:read_file(File),
     ImageData.
 
--spec find_metadata(file:filename()) -> {'ok', wh_json:object()} | {'invalid_data', wh_proplist()}.
+-spec find_metadata(file:filename()) ->
+                           {'ok', wh_json:object()} |
+                           {'invalid_data', wh_proplist()}.
 find_metadata(AppPath) ->
     AppJSONPath = filename:join([AppPath, <<"metadata">>, <<"app.json">>]),
     {'ok', JSON} = file:read_file(AppJSONPath),
