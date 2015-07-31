@@ -40,6 +40,7 @@
         ]).
 
 -include("callflow.hrl").
+-include_lib("whistle/src/wh_json.hrl").
 
 -define(CALL_SANITY_CHECK, 30000).
 
@@ -593,9 +594,14 @@ code_change(_OldVsn, State, _Extra) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec launch_cf_module(state()) -> state().
+launch_cf_module(#state{flow=?EMPTY_JSON_OBJECT}=State) ->
+    lager:debug("no flow left to launch, maybe stopping"),
+    gen_listener:cast(self(), 'stop'),
+    State;
 launch_cf_module(#state{call=Call
                         ,flow=Flow
                        }=State) ->
+    lager:debug("launching next flow module: ~p", [Flow]),
     Module = <<"cf_", (wh_json:get_value(<<"module">>, Flow))/binary>>,
     Data = wh_json:get_value(<<"data">>, Flow, wh_json:new()),
     {PidRef, Action} = maybe_start_cf_module(Module, Data, Call),
