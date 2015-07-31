@@ -74,19 +74,33 @@ process_authz_broadcast_request(JObj, _Props) ->
         {'ok', AaaDoc} ->
             % similar check is used for authentication (in the registrar app)
             AuthzServersList = wh_json:get_value(<<"authorization">>, AaaDoc),
-            case length(AuthzServersList) of
-                0 ->
-                    lager:debug("Authz disabled for this account"),
-                    JObj1 = wh_json:set_value([<<"Custom-Auth-Vars">>, <<"AAA-Authz-Disabled">>], <<"true">>, JObj),
-                    wapi_authz:publish_authz_req(JObj1);
-                _ ->
-                    lager:debug("Authz enabled for this account"),
+            AaaMode = wh_json:get_value(<<"aaa_mode">>, AaaDoc),
+            case {AaaMode, length(AuthzServersList)} of
+                {<<"inherit">>, 0} ->
+                    lager:debug("Authz enabled for this account (inherit mode)"),
                     AppList = wh_json:get_value(<<"authz_apps">>, AaaDoc),
                     TimerRef = erlang:send_after(?AUTHZ_BROADCAST_TIMEOUT, self(), {'authz_broadcast_timeout', MsgID}),
                     lager:debug("Store broadcast request in ETS: ~p", [{MsgID, JObj, AppList, TimerRef}]),
                     ets:insert(?AUTHZ_ETS, {MsgID, JObj, AppList, TimerRef}),
                     lager:debug("Authz broadcast request sent"),
                     JObj1 = wh_json:set_value(<<"Server-ID">>, <<"wh_authz_listener">>, JObj),
+                    wapi_authz:publish_authz_req(JObj1);
+                {_, 0} ->
+                    lager:debug("Authz disabled for this account (no servers in config)"),
+                    JObj1 = wh_json:set_value([<<"Custom-Auth-Vars">>, <<"AAA-Authz-Disabled">>], <<"true">>, JObj),
+                    wapi_authz:publish_authz_req(JObj1);
+                {<<"on">>, _} ->
+                    lager:debug("Authz enabled for this account (on mode)"),
+                    AppList = wh_json:get_value(<<"authz_apps">>, AaaDoc),
+                    TimerRef = erlang:send_after(?AUTHZ_BROADCAST_TIMEOUT, self(), {'authz_broadcast_timeout', MsgID}),
+                    lager:debug("Store broadcast request in ETS: ~p", [{MsgID, JObj, AppList, TimerRef}]),
+                    ets:insert(?AUTHZ_ETS, {MsgID, JObj, AppList, TimerRef}),
+                    lager:debug("Authz broadcast request sent"),
+                    JObj1 = wh_json:set_value(<<"Server-ID">>, <<"wh_authz_listener">>, JObj),
+                    wapi_authz:publish_authz_req(JObj1);
+                {<<"off">>, _} ->
+                    lager:debug("Authz disabled for this account (off mode)"),
+                    JObj1 = wh_json:set_value([<<"Custom-Auth-Vars">>, <<"AAA-Authz-Disabled">>], <<"true">>, JObj),
                     wapi_authz:publish_authz_req(JObj1)
             end;
         {'error', _} ->
