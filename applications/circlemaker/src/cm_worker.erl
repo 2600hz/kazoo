@@ -173,7 +173,7 @@ maybe_aaa_mode(JObj, <<"system_config">> = AccountId) ->
             {'ok', 'aaa_mode_off'};
         <<"on">> ->
             lager:debug("AAA functionality enabled for system_config"),
-            Result = maybe_suitable_servers(JObj1, AaaProps, 'undefined'),
+            Result = maybe_suitable_servers(JObj1, AaaProps, AccountId, 'undefined'),
             {'ok', Result}
     end;
 maybe_aaa_mode(JObj, AccountId) when is_binary(AccountId) ->
@@ -191,28 +191,28 @@ maybe_aaa_mode(JObj, AccountId) when is_binary(AccountId) ->
             % AAA functionality is on for this account
             lager:debug("AAA functionality enabled for the ~p account", [AccountId]),
             ParentAccountId = cm_util:parent_account_id(Account),
-            maybe_suitable_servers(JObj1, AaaProps, ParentAccountId);
+            maybe_suitable_servers(JObj1, AaaProps, AccountId, ParentAccountId);
         <<"inherit">> ->
             % AAA functionality is in the 'inherit' mode for this account
             lager:debug("AAA functionality enabled (inherit mode) for the ~p account", [AccountId]),
             ParentAccountId = cm_util:parent_account_id(Account),
-            maybe_suitable_servers(JObj1, AaaProps, ParentAccountId)
+            maybe_suitable_servers(JObj1, AaaProps, AccountId, ParentAccountId)
     end.
 
--spec maybe_suitable_servers(wh_json:object(), proplist(), api_binary()) -> {'ok', 'aaa_mode_off'} |
+-spec maybe_suitable_servers(wh_json:object(), proplist(), api_binary(), api_binary()) -> {'ok', 'aaa_mode_off'} |
                                                                             {'ok', tuple()} |
                                                                             {'error', 'no_respond'}.
-maybe_suitable_servers(JObj, AaaProps, ParentAccountId) ->
+maybe_suitable_servers(JObj, AaaProps, AccountId, ParentAccountId) ->
     ServersJson = props:get_value(<<"servers">>, AaaProps),
     lager:debug("Available servers count for this account is ~p", [length(ServersJson)]),
     Servers = [S || S <- wh_json:recursive_to_proplist(ServersJson), props:get_is_true(<<"enabled">>, S)],
     lager:debug("Active servers: ~p", [Servers]),
-    maybe_server_request(Servers, JObj, AaaProps, ParentAccountId).
+    maybe_server_request(Servers, JObj, AaaProps, AccountId, ParentAccountId).
 
--spec maybe_server_request(list(), wh_json:object(), proplist(), ne_binary()) -> {'ok', 'aaa_mode_off'} |
+-spec maybe_server_request(list(), wh_json:object(), proplist(), ne_binary(), ne_binary()) -> {'ok', 'aaa_mode_off'} |
                                                                                  {'ok', tuple()} |
                                                                                  {'error', 'no_respond'}.
-maybe_server_request([], JObj, AaaProps, ParentAccountId) ->
+maybe_server_request([], JObj, AaaProps, _AccountId, ParentAccountId) ->
     lager:debug("all active AAA servers for this account were checked"),
     case props:get_value(<<"aaa_mode">>, AaaProps) of
         <<"inherit">> ->
@@ -223,20 +223,20 @@ maybe_server_request([], JObj, AaaProps, ParentAccountId) ->
             lager:debug("no 'inherit' mode - servers search stopped"),
             {'error', 'no_respond'}
     end;
-maybe_server_request([Server | Servers] = AllServers, JObj, AaaProps, ParentAccountId) ->
+maybe_server_request([Server | Servers] = AllServers, JObj, AaaProps, AccountId, ParentAccountId) ->
     case cm_util:network_address_to_ip_tuple(props:get_value(<<"address">>, Server)) of
         {'error', Error} ->
             lager:debug("server can't be unresolved: ~p", [Error]),
-            maybe_server_request(Servers, JObj, AaaProps, ParentAccountId);
+            maybe_server_request(Servers, JObj, AaaProps, AccountId, ParentAccountId);
         Address ->
-            maybe_eradius_request(AllServers, Address, JObj, AaaProps, ParentAccountId)
+            maybe_eradius_request(AllServers, Address, JObj, AaaProps, AccountId, ParentAccountId)
     end.
 
--spec maybe_eradius_request(list(), ne_binary(), wh_json:object(), proplist(), ne_binary()) -> {'ok', 'aaa_mode_off'} |
-                                                                                               {'ok', tuple()} |
-                                                                                               {'error', 'no_respond'}.
-maybe_eradius_request([Server | Servers], Address, JObj, AaaProps, ParentAccountId) ->
-    AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
+-spec maybe_eradius_request(list(), ne_binary(), wh_json:object(), proplist(), ne_binary(), ne_binary()) ->
+                                                                                            {'ok', 'aaa_mode_off'} |
+                                                                                            {'ok', tuple()} |
+                                                                                            {'error', 'no_respond'}.
+maybe_eradius_request([Server | Servers], Address, JObj, AaaProps, AccountId, ParentAccountId) ->
     Port = props:get_value(<<"port">>, Server),
     Secret = props:get_value(<<"secret">>, Server),
     AllAVPs = case wh_json:get_value(<<"Event-Category">>, JObj) of
@@ -265,5 +265,5 @@ maybe_eradius_request([Server | Servers], Address, JObj, AaaProps, ParentAccount
             {'ok', Result};
         Error ->
             lager:debug("error response received: ~p", [Error]),
-            maybe_server_request(Servers, JObj, AaaProps, ParentAccountId)
+            maybe_server_request(Servers, JObj, AaaProps, AccountId, ParentAccountId)
     end.
