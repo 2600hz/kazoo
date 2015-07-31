@@ -954,7 +954,8 @@ db_archive(Db) ->
     {'ok', DbInfo} = couch_mgr:db_info(Db),
 
     MaxDocs = whapps_config:get_integer(?CONFIG_CAT, <<"max_concurrent_docs_to_archive">>, 500),
-    Filename = filename:join(["/tmp", <<Db/binary, ".archive.json">>]),
+    Timestamp = wh_util:to_binary(wh_util:current_tstamp()),
+    Filename = filename:join(["/tmp", <<Db/binary, ".", Timestamp/binary, ".archive.json">>]),
     {'ok', File} = file:open(Filename, ['write']),
 
     lager:debug("archiving to ~s", [Filename]),

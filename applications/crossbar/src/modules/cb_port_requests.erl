@@ -541,14 +541,13 @@ post(Context, Id, ?PORT_COMPLETE) ->
              )
     end;
 post(Context, Id, ?PORT_REJECT) ->
-    _ = remove_from_phone_numbers_doc(Context),
-    try send_port_cancel_notification(Context, Id) of
+    try send_port_rejected_notification(Context, Id) of
         _ ->
-            lager:debug("port cancel notification sent"),
+            lager:debug("port rejected notification sent"),
             post(Context, Id)
     catch
         _E:_R ->
-            lager:debug("failed to send the port cancel notification: ~s:~p", [_E, _R]),
+            lager:debug("failed to send the port rejected notification: ~s:~p", [_E, _R]),
             cb_context:add_system_error(
               'bad_gateway'
               ,<<"failed to send port cancel email">>
@@ -1391,6 +1390,20 @@ send_port_pending_notification(Context, Id) ->
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     whapps_util:amqp_pool_send(Req, fun wapi_notifications:publish_port_pending/1).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec send_port_rejected_notification(cb_context:context(), ne_binary()) -> 'ok'.
+send_port_rejected_notification(Context, Id) ->
+    Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
+           ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
+           ,{<<"Port-Request-ID">>, Id}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    whapps_util:amqp_pool_send(Req, fun wapi_notifications:publish_port_rejected/1).
 
 %%--------------------------------------------------------------------
 %% @private
