@@ -140,11 +140,10 @@ handle(Data, Call) ->
 directory_start(Call, State, CurrUsers) ->
     _ = whapps_call_command:flush_dtmf(Call),
     case play_directory_instructions(Call, sort_by(State)) of
+	{'ok', DTMF} -> collect_digits(Call, State, CurrUsers, DTMF);
 	{'error', _Error} ->
 	    lager:error("failed to collect digits: ~p", [_Error]),
-	    cf_exe:stop(Call);
-
-	{'ok', DTMF} -> collect_digits(Call, State, CurrUsers, DTMF)
+	    cf_exe:stop(Call)
     end.
 
 -spec collect_digits(whapps_call:call(), directory(), directory_users(), binary()) -> 'ok'.
