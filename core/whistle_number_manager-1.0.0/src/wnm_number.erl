@@ -789,14 +789,26 @@ json_to_record(JObj, IsNew, #number{number=Num
      }.
 
 -spec number_from_port_doc(wnm_number(), wh_json:object()) -> wnm_number().
-number_from_port_doc(#number{number=N}=Number, JObj) ->
-    Number#number{
-      number_db=wnm_util:number_to_db_name(N)
-      ,state = ?NUMBER_STATE_PORT_IN
-      ,current_state = ?NUMBER_STATE_PORT_IN
-      ,assigned_to=wh_json:get_ne_value(<<"pvt_account_id">>, JObj)
-      ,auth_by=wh_json:get_ne_value(<<"pvt_account_id">>, JObj)
-     }.
+number_from_port_doc(#number{number=Number}=N, JObj) ->
+    AccountId = wh_doc:account_id(JObj),
+    Num = wnm_util:normalize_number(Number),
+    ModuleName = whapps_config:get_binary(?WNM_CONFIG_CAT, <<"porting_module_name">>, <<"wnm_local">>),
+    Props = [{<<"_id">>, Num}
+            ,{<<"pvt_module_name">>, ModuleName}
+            ,{<<"pvt_module_data">>, wh_json:new()}
+            ,{?PVT_NUMBER_STATE, ?NUMBER_STATE_PORT_IN}
+            ,{<<"pvt_ported_in">>, 'true'}
+            ,{<<"pvt_db_name">>, wnm_util:number_to_db_name(Num)}
+            ,{<<"pvt_created">>, wh_util:current_tstamp()}
+            ,{<<"pvt_authorizing_account">>, AccountId}
+            ,{<<"pvt_assigned_to">>, AccountId}
+            ],
+    json_to_record(
+      wh_json:from_list(Props)
+      ,'true'
+      ,N#number{auth_by = 'system'
+               ,assign_to = AccountId}
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
