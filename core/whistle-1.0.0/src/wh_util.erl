@@ -241,15 +241,22 @@ raw_account_id(<<"account%2F"
                  ,"%2F", Rest:28/binary
                >>) ->
     <<A/binary, B/binary, Rest/binary>>;
-raw_account_id(<<AccountId:32/binary, "-", _Date:6/binary>>) ->
+raw_account_id(<<_:32/binary, "-", _Date:6/binary>>=AccountId) ->
     AccountId;
 raw_account_id(<<"account%2F"
                  ,A:2/binary
                  ,"%2F", B:2/binary
                  ,"%2F", Rest:28/binary
-                 ,"-", _Date:6/binary
+                 ,"-", Date:6/binary
                >>) ->
-    <<A/binary, B/binary, Rest/binary>>;
+    <<A/binary, B/binary, Rest/binary, "-", Date/binary>>;
+raw_account_id(<<"account/"
+                 ,A:2/binary
+                 ,"/", B:2/binary
+                 ,"/", Rest:28/binary
+                 ,"-", Date:6/binary
+               >>) ->
+    <<A/binary, B/binary, Rest/binary,"-", Date/binary>>;
 raw_account_id(Other) ->
     case lists:member(Other, ?KZ_SYSTEM_DBS) of
         'true' -> Other;
