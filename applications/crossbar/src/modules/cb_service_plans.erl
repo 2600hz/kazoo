@@ -14,7 +14,7 @@
          ,resource_exists/0, resource_exists/1, resource_exists/2
          ,content_types_provided/1 ,content_types_provided/2, content_types_provided/3
          ,validate/1, validate/2, validate/3
-         ,post/1 ,post/2
+         ,post/1 ,post/2, post/3
          ,delete/2
         ]).
 
@@ -181,6 +181,8 @@ validate_service_plan(Context, PlanId, ?HTTP_DELETE) ->
 %%--------------------------------------------------------------------
 -spec post(cb_context:context()) -> cb_context:context().
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
+-spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+
 post(Context) ->
     Routines = [fun(S) -> add_plans(Context, S) end
                 ,fun(S) -> delete_plans(Context, S) end
@@ -234,6 +236,20 @@ post(Context, PlanId) ->
                        ,[{fun cb_context:set_resp_data/2, wh_services:service_plan_json(Services)}
                          ,{fun cb_context:set_resp_status/2, 'success'}
                         ]).
+
+post(Context, PlanId, ?OVERRIDE) ->
+    Doc = cb_context:doc(Context),
+
+    Overrides = wh_json:get_value([<<"plans">>, PlanId, <<"overrides">>], Doc, wh_json:new()),
+    Overriden = wh_json:merge_recursive([Overrides, cb_context:req_data(Context)]),
+
+    NewDoc = wh_json:set_value([<<"plans">>, PlanId, <<"overrides">>], Overriden, Doc),
+
+    Context1 = crossbar_doc:save(cb_context:set_doc(Context, NewDoc)),
+    case cb_context:resp_status(Context1) of
+        'success' ->  cb_context:set_resp_data(Context1, Overriden);
+        _Status -> Context1
+    end.
 
 %%----------------------------------- ---------------------------------
 %% @public
