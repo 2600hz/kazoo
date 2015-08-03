@@ -178,7 +178,7 @@ migrate_fax_to_modb(AccountDb, DocId, JObj, Options) ->
     Timestamp = wh_doc:created(JObj, wh_util:current_tstamp()),
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
     AccountMODb = kazoo_modb:get_modb(AccountDb, Year, Month),
-    FaxMODb = wh_util:format_account_id(AccountMODb, 'encoded'),
+    FaxMODb = wh_util:format_account_modb(AccountMODb, 'encoded'),
     FaxId = <<(wh_util:to_binary(Year))/binary
              ,(wh_util:pad_month(Month))/binary
              ,"-"
