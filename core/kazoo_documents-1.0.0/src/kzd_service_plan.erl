@@ -73,12 +73,16 @@ merge_overrides(Plan, Overrides) ->
 -spec item_activation_charge(doc(), ne_binary(), ne_binary()) -> api_float().
 -spec item_activation_charge(doc(), ne_binary(), ne_binary(), Default) -> float() | Default.
 item_activation_charge(Plan, Category, Item) ->
-    item_activation_charge(Plan, Category, Item, 'undefined').
+    item_activation_charge(Plan, Category, Item, 0).
 item_activation_charge(Plan, Category, Item, Default) ->
-    wh_json:get_float_value([?PLAN, Category, Item, ?ACTIVATION_CHARGE]
-                            ,Plan
-                            ,Default
-                           ).
+    kzd_item_plan:activation_charge(
+        wh_json:get_json_value(
+            [?PLAN, Category, Item]
+            ,Plan
+            ,wh_json:new()
+        )
+        ,Default
+    ).
 
 -spec category_activation_charge(doc(), ne_binary()) -> float().
 -spec category_activation_charge(doc(), ne_binary(), Default) -> float() | Default.

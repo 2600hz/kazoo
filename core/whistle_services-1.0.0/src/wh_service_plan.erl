@@ -76,6 +76,9 @@ create_items(ServicePlan, ServiceItems, Services, CategoryId, ItemId) ->
     {Rate, Quantity} = get_rate_at_quantity(CategoryId, ItemId, ItemPlan, Services),
     lager:debug("for ~s/~s, found rate ~p for quantity ~p", [CategoryId, ItemId, Rate, Quantity]),
 
+    Charge = activation_charges(CategoryId, ItemId, ServicePlan),
+    Min = kzd_service_plan:item_minimum(ServicePlan, CategoryId, ItemId),
+
     %% allow service plans to re-map item names (IE: softphone items "as" sip_device)
     As = kzd_item_plan:masquerade_as(ItemPlan, ItemId),
     lager:debug("item ~s masquerades as ~s", [ItemId, As]),
@@ -86,6 +89,8 @@ create_items(ServicePlan, ServiceItems, Services, CategoryId, ItemId) ->
                 ,fun(I) -> wh_service_item:set_rate(Rate, I) end
                 ,fun(I) -> maybe_set_discounts(I, ItemPlan) end
                 ,fun(I) -> wh_service_item:set_bookkeepers(bookkeeper_jobj(CategoryId, As, ServicePlan), I) end
+                ,fun(I) -> wh_service_item:set_activation_charge(Charge, I) end
+                ,fun(I) -> wh_service_item:set_minimum(Min, I) end
                ],
     ServiceItem = lists:foldl(fun(F, I) -> F(I) end
                               ,wh_service_items:find(CategoryId, As, ServiceItems)
