@@ -14,7 +14,7 @@
          ,resource_exists/0, resource_exists/1, resource_exists/2
          ,content_types_provided/1 ,content_types_provided/2, content_types_provided/3
          ,validate/1, validate/2, validate/3
-         ,post/2
+         ,post/2, post/3
          ,delete/2
         ]).
 
@@ -25,6 +25,7 @@
 -define(CURRENT, <<"current">>).
 -define(SYNCHRONIZATION, <<"synchronization">>).
 -define(RECONCILIATION, <<"reconciliation">>).
+-define(OVERRIDE, <<"override">>).
 
 %%%===================================================================
 %%% API
@@ -69,7 +70,9 @@ allowed_methods(?CURRENT) ->
 allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 allowed_methods(?AVAILABLE, _) ->
-    [?HTTP_GET].
+    [?HTTP_GET];
+allowed_methods(_, ?OVERRIDE) ->
+    [?HTTP_POST].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -143,7 +146,17 @@ validate(Context, ?AVAILABLE, PlanId) ->
     AccountId = cb_context:account_id(Context),
     ResellerId = wh_services:find_reseller_id(AccountId),
     ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
-    crossbar_doc:load(PlanId, cb_context:set_account_db(Context, ResellerDb)).
+    crossbar_doc:load(PlanId, cb_context:set_account_db(Context, ResellerDb));
+validate(Context, _PlanId, ?OVERRIDE) ->
+    AuthAccountId = cb_context:auth_account_id(Context),
+    case wh_util:is_system_admin(AuthAccountId) of
+        'true' ->
+            crossbar_doc:load(
+                cb_context:account_id(Context)
+                ,cb_context:set_account_db(Context, ?WH_SERVICES_DB)
+            );
+        'false' -> cb_context:add_system_error('forbidden', Context)
+    end.
 
 -spec validate_service_plan(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_service_plan(Context, PlanId, ?HTTP_GET) ->
@@ -161,6 +174,7 @@ validate_service_plan(Context, PlanId, ?HTTP_DELETE) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
+-spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, ?SYNCHRONIZATION) ->
     wh_service_sync:sync(cb_context:account_id(Context)),
     cb_context:set_resp_status(Context, 'success');
@@ -181,6 +195,20 @@ post(Context, PlanId) ->
                        ,[{fun cb_context:set_resp_data/2, wh_services:service_plan_json(Services)}
                          ,{fun cb_context:set_resp_status/2, 'success'}
                         ]).
+
+post(Context, PlanId, ?OVERRIDE) ->
+    Doc = cb_context:doc(Context),
+
+    Overrides = wh_json:get_value([<<"plans">>, PlanId, <<"overrides">>], Doc, wh_json:new()),
+    Overriden = wh_json:merge_recursive([Overrides, cb_context:req_data(Context)]),
+
+    NewDoc = wh_json:set_value([<<"plans">>, PlanId, <<"overrides">>], Overriden, Doc),
+
+    Context1 = crossbar_doc:save(cb_context:set_doc(Context, NewDoc)),
+    case cb_context:resp_status(Context1) of
+        'success' ->  cb_context:set_resp_data(Context1, Overriden);
+        _Status -> Context1
+    end.
 
 %%----------------------------------- ---------------------------------
 %% @public
