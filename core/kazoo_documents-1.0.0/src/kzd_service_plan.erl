@@ -79,7 +79,7 @@ item_activation_charge(Plan, Category, Item, Default) ->
         wh_json:get_json_value(
             [?PLAN, Category, Item]
             ,Plan
-            ,Default
+            ,wh_json:new()
         )
         ,Default
     ).
