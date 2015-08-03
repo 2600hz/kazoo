@@ -194,7 +194,7 @@ maybe_aaa_mode(JObj, <<"system_config">> = AccountId) ->
             {'ok', 'aaa_mode_off'};
         <<"on">> ->
             lager:debug("AAA functionality enabled for system_config"),
-            Result = maybe_suitable_servers(JObj1, AaaProps, AccountId, 'undefined'),
+            Result = maybe_authn_special_case(JObj1, AaaProps, AccountId, 'undefined'),
             {'ok', Result}
     end;
 maybe_aaa_mode(JObj, AccountId) when is_binary(AccountId) ->
@@ -212,23 +212,39 @@ maybe_aaa_mode(JObj, AccountId) when is_binary(AccountId) ->
             % AAA functionality is on for this account
             lager:debug("AAA functionality enabled for the ~p account", [AccountId]),
             ParentAccountId = cm_util:parent_account_id(Account),
-            maybe_suitable_servers(JObj1, AaaProps, AccountId, ParentAccountId);
+            maybe_authn_special_case(JObj1, AaaProps, AccountId, ParentAccountId);
         <<"inherit">> ->
             % AAA functionality is in the 'inherit' mode for this account
             lager:debug("AAA functionality enabled (inherit mode) for the ~p account", [AccountId]),
             ParentAccountId = cm_util:parent_account_id(Account),
-            maybe_suitable_servers(JObj1, AaaProps, AccountId, ParentAccountId)
+            maybe_authn_special_case(JObj1, AaaProps, AccountId, ParentAccountId)
+    end.
+
+-spec maybe_authn_special_case(wh_json:object(), proplist(), api_binary(), api_binary()) -> {'ok', 'aaa_mode_off'} |
+                                                                            {'ok', tuple()} |
+                                                                            {'error', 'no_respond'}.
+maybe_authn_special_case(JObj, AaaProps, AccountId, ParentAccountId) ->
+    AaaRequestType = cm_util:determine_aaa_request_type(JObj),
+    AuthzServersList = wh_json:get_value(<<"authentication">>, AccountId),
+    AaaMode = wh_json:get_value(<<"aaa_mode">>, AccountId),
+    case {AaaRequestType, AaaMode, length(AuthzServersList)} of
+        % special case processing - if the "aaa_mode" = "on" and no authn servers in the "authentication" list,
+        % then it's assumed that standart authentication is used, and the request is accepted
+        %{'authn', <<"on">>, 0} -> {'ok', {{'radius_request', _, 'accept', [], _, _, _, _}, AccountId}};
+        {'authn', <<"on">>, 0} -> {'ok', {'aaa_mode_on_and_no_servers', AccountId}};
+        _ -> maybe_suitable_servers(JObj, AaaProps, AccountId, ParentAccountId)
     end.
 
 -spec maybe_suitable_servers(wh_json:object(), proplist(), api_binary(), api_binary()) -> {'ok', 'aaa_mode_off'} |
                                                                             {'ok', tuple()} |
                                                                             {'error', 'no_respond'}.
 maybe_suitable_servers(JObj, AaaProps, AccountId, ParentAccountId) ->
+    AaaRequestType = cm_util:determine_aaa_request_type(JObj),
     ServersJson = props:get_value(<<"servers">>, AaaProps),
     lager:debug("Available servers count for this account is ~p", [length(ServersJson)]),
     Servers = [S || S <- wh_json:recursive_to_proplist(ServersJson), props:get_is_true(<<"enabled">>, S)],
     lager:debug("Active servers: ~p", [Servers]),
-    ServersFilterArg = case cm_util:determine_aaa_request_type(JObj) of
+    ServersFilterArg = case AaaRequestType of
                            'authn' -> <<"authentication">>;
                            'authz' -> <<"authorization">>;
                            'accounting' -> <<"accounting">>

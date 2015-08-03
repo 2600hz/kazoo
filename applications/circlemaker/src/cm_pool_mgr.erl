@@ -150,6 +150,8 @@ handle_cast({'response', Response, JObj, Worker}, State) ->
                 {'ok', {{'radius_request', _, 'accept', ParamList, _, _, _, _}, AuthzAccountId}} ->
                     AttrList = [{Name, Val} || {{_, _, _, Name, _}, Val} <- ParamList],
                     {<<"accept">>, AttrList, AuthzAccountId};
+                {'ok', {'aaa_mode_on_and_no_servers', AuthzAccountId}} ->
+                    {<<"accept">>, [], AuthzAccountId};
                 {'ok', {{'radius_request', _, 'reject', ParamList, _, _, _, _}, AuthzAccountId}} ->
                     AttrList = [{Name, Val} || {{_, _, _, Name, _}, Val} <- ParamList],
                     {<<"reject">>, AttrList, AuthzAccountId};

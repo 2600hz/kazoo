@@ -26,7 +26,7 @@ handle_req(JObj, _Props) ->
     case wh_json:get_value(<<"AAA-Result">>, JObj1) of
         <<"accept">> ->
             lager:debug("AAA registration - accepted"),
-            reg_authn_req:send_auth_resp(registrar_shared_listener:get_auth_user(MsgId), JObj1);
+            reg_authn_req:send_auth_resp(AuthUser, JObj1);
         _ ->
             lager:debug("AAA registration - denied"),
             reg_authn_req:send_auth_error(JObj1)
