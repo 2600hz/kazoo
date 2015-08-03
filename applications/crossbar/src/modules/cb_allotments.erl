@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, Dinkor Media Group
+%%% @copyright
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
-%%%   Sergey Korobkov
+%%%   Dinkor Media Group (Sergey Korobkov)
 %%%-------------------------------------------------------------------
 -module(cb_allotments).
 
@@ -20,7 +20,7 @@
 -include("../crossbar.hrl").
 -include_lib("whistle/src/wh_json.hrl").
 
--define(CB_LIST, <<"allotments/crossbar_listing">>).
+-define(LIST_CONSUMED, <<"allotments/consumed">>).
 -define(PVT_TYPE, <<"limits">>).
 -define(CONSUMED, <<"consumed">>).
 -define(PVT_ALLOTMENTS, <<"pvt_allotments">>).
@@ -84,10 +84,7 @@ validate(Context, ?CONSUMED) ->
 validate_allotments(Context, ?HTTP_GET) ->
     load_allotments(Context);
 validate_allotments(Context, ?HTTP_POST) ->
-    case is_allowed(Context) of
-        'true' -> maybe_handle_load_failure(crossbar_doc:load(?PVT_TYPE, Context));
-        'false' -> crossbar_util:response_400("sub-accounts of non-master resellers must contact the reseller to change their allotments", wh_json:new(), Context)
-    end.
+    cb_context:validate_request_data(<<"allotments">>, Context, fun on_successful_validation/1).
 
 -spec validate_consumed(cb_context:context(), http_method()) -> cb_context:context().
 validate_consumed(Context, ?HTTP_GET) ->
@@ -95,7 +92,7 @@ validate_consumed(Context, ?HTTP_GET) ->
 
 -spec post(cb_context:context()) -> cb_context:context().
 post(Context) ->
-    maybe_update_allotments(Context).
+    update_allotments(Context).
 
 %%%===================================================================
 %%% Internal functions
@@ -115,7 +112,29 @@ load_allotments(Context) ->
 
 -spec load_consumed(cb_context:context()) -> cb_context:context().
 load_consumed(Context) ->
-    cb_context:set_doc(Context,wh_json:new()).
+    ViewOptions = [{'reduce', 'true'}
+                   ,{'group_level', 1}
+                  ],
+    Db = wh_util:format_account_mod_id(cb_context:account_id(Context), wh_util:current_tstamp()),
+    lager:debug("loading view ~s with options ~p", [?LIST_CONSUMED, ViewOptions]),
+    crossbar_doc:load_view(?LIST_CONSUMED
+                           ,ViewOptions
+                           ,cb_context:set_account_db(Context, Db)
+                           ,fun normalize_view_results/2
+                          ).
+
+-spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+normalize_view_results(JObj, Acc) ->
+    [Key|_] = wh_json:get_value(<<"key">>,JObj),
+    Value = wh_json:get_value(<<"value">>, JObj),
+    [ wh_json:set_value(Key, Value, wh_json:new()) | Acc ].
+
+-spec on_successful_validation(cb_context:context()) -> cb_context:context().
+on_successful_validation(Context) ->
+    case is_allowed(Context) of
+        'true' -> maybe_handle_load_failure(crossbar_doc:load(?PVT_TYPE, Context));
+        'false' -> crossbar_util:response_400("sub-accounts of non-master resellers must contact the reseller to change their allotments", wh_json:new(), Context)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -179,11 +198,11 @@ maybe_handle_load_failure(Context, _RespCode) -> Context.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_update_allotments(cb_context:context()) -> cb_context:context().
-maybe_update_allotments(Context) ->
+-spec update_allotments(cb_context:context()) -> cb_context:context().
+update_allotments(Context) ->
     Doc = cb_context:doc(Context),
     Allotments = cb_context:req_data(Context),
-    NewDoc = wh_json:set_value(<<"pvt_allotments">>, Allotments, Doc),
+    NewDoc = wh_json:set_value(?PVT_ALLOTMENTS, Allotments, Doc),
     Context1 = crossbar_doc:save(cb_context:set_doc(Context, NewDoc)),
     cb_context:set_resp_data(Context1, Allotments).
 
