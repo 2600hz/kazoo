@@ -21,9 +21,11 @@
 parse_cmds(XMLString) ->
     try xmerl_scan:string(wh_util:to_list(XMLString)) of
         {#xmlElement{name='Response'}=XML, _} -> {'ok', XML};
-        _ -> {'error', 'not_parsed'}
+        _E ->
+            {'error', 'not_parsed'}
     catch
-        _:_ -> {'error', 'not_parsed'}
+        _E:_R ->
+            {'error', 'not_parsed'}
     end.
 
 -spec exec(whapps_call:call(), xml_el() | text()) ->

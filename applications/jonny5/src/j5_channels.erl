@@ -605,21 +605,41 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec from_jobj(wh_json:object()) -> channel().
 from_jobj(JObj) ->
-    %% CHANNEL_CREATE has bunch of stuff in CCVs where as auth_resp
-    %%  is root level, so if no CCVs then just use the JObj as is...
-    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, JObj),
-    AccountBilling = wh_json:get_value(<<"Account-Billing">>, CCVs),
-    ResellerBilling = wh_json:get_value(<<"Reseller-Billing">>, CCVs),
+    AccountId = wh_json:get_first_defined(
+                       [<<"Account-ID">>
+                       ,[<<"Custom-Channel-Vars">>, <<"Account-ID">>]
+                       ], JObj
+                      ),
+    AccountBilling = wh_json:get_first_defined(
+                       [<<"Account-Billing">>
+                       ,[<<"Custom-Channel-Vars">>, <<"Account-Billing">>]
+                       ], JObj
+                      ),
+    ResellerId = wh_json:get_first_defined(
+                       [<<"Reseller-ID">>
+                       ,[<<"Custom-Channel-Vars">>, <<"Reseller-ID">>]
+                       ], JObj
+                      ),
+    ResellerBilling = wh_json:get_first_defined(
+                       [<<"Reseller-Billing">>
+                       ,[<<"Custom-Channel-Vars">>, <<"Reseller-Billing">>]
+                       ], JObj
+                      ),
+    SoftLimit = wh_json:get_first_defined(
+                       [<<"Soft-Limit">>
+                       ,[<<"Custom-Channel-Vars">>, <<"Soft-Limit">>]
+                       ], JObj
+                      ),
     #channel{call_id = wh_json:get_value(<<"Call-ID">>, JObj)
              ,other_leg_call_id = wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj)
              ,direction = wh_json:get_value(<<"Call-Direction">>, JObj)
-             ,account_id = wh_json:get_value(<<"Account-ID">>, CCVs)
+             ,account_id = AccountId
              ,account_billing = AccountBilling
              ,account_allotment = is_allotment(AccountBilling)
-             ,reseller_id = wh_json:get_value(<<"Reseller-ID">>, CCVs)
+             ,reseller_id = ResellerId
              ,reseller_billing = ResellerBilling
              ,reseller_allotment = is_allotment(ResellerBilling)
-             ,soft_limit = wh_json:is_true(<<"Soft-Limit">>, JObj)
+             ,soft_limit = wh_util:is_true(SoftLimit)
             }.
 
 -spec is_allotment(ne_binary()) -> boolean().

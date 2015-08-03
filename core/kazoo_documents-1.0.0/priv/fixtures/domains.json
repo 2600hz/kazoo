@@ -22,7 +22,7 @@
             "zone": "us-west"
         }
     },
-    "CNAM": {
+    "CNAME": {
         "api.{{domain}}": {
             "mapping": [
                 "api.yourcompany.net"
@@ -40,19 +40,19 @@
     "NAPTR": {
         "proxy-central.{{domain}}": {
             "mapping": [
-                "10 100 \"S\" \"SIP+D2U\" \"\" _sip._udp.proxy-central.{{domain}}."
+                "10 100 \"S\" \"SIP+D2U\" \"\" _sip._udp.proxy-central.{{domain}}"
             ],
             "name": "Central NAPTR"
         },
         "proxy-east.{{domain}}": {
             "mapping": [
-                "10 100 \"S\" \"SIP+D2U\" \"\" _sip._udp.proxy-east.{{domain}}."
+                "10 100 \"S\" \"SIP+D2U\" \"\" _sip._udp.proxy-east.{{domain}}"
             ],
             "name": "East NAPTR"
         },
         "proxy-west.{{domain}}": {
             "mapping": [
-                "10 100 \"S\" \"SIP+D2U\" \"\" _sip._udp.proxy-west.{{domain}}."
+                "10 100 \"S\" \"SIP+D2U\" \"\" _sip._udp.proxy-west.{{domain}}"
             ],
             "name": "West NAPTR"
         }
@@ -60,9 +60,9 @@
     "SRV": {
         "_sip._udp.proxy-east.{{domain}}": {
             "mapping": [
-                "10 10 7000 us-east.{{domain}}.",
-                "15 15 7000 us-central.{{domain}}.",
-                "20 20 7000 us-west.{{domain}}."
+                "10 10 7000 us-east.{{domain}}",
+                "15 15 7000 us-central.{{domain}}",
+                "20 20 7000 us-west.{{domain}}"
             ],
             "name": "East SRV"
         }

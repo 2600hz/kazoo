@@ -227,8 +227,9 @@ handle_cast({'gen_listener', {'created_queue', Q}}, #state{call=Call}=State) ->
     %% TODO: Block on waiting for controller queue
     {'noreply', State#state{call=whapps_call:set_controller_queue(Q, Call)}};
 
-handle_cast({'stop', _Call}, #state{cdr_uri='undefined'}=State) ->
-    lager:debug("no cdr callback, server going down"),
+handle_cast({'stop', Call}, #state{cdr_uri='undefined'}=State) ->
+    lager:debug("no cdr callback, terminating call"),
+    whapps_call_command:hangup(Call),
     {'stop', 'normal', State};
 
 handle_cast({'cdr', _JObj}, #state{cdr_uri='undefined'
@@ -291,10 +292,10 @@ handle_info({'ibrowse_async_headers', ReqId, "200"=StatusCode, Hdrs}
     RespHeaders = normalize_resp_headers(Hdrs),
     lager:debug("recv resp headers"),
     {'noreply', State#state{
-                    response_content_type=props:get_value(<<"content-type">>, RespHeaders)
-                    ,response_code=wh_util:to_binary(StatusCode)
-                    ,response_headers=RespHeaders
-                }
+                  response_content_type=props:get_value(<<"content-type">>, RespHeaders)
+                  ,response_code=wh_util:to_binary(StatusCode)
+                  ,response_headers=RespHeaders
+                 }
     };
 
 handle_info({'ibrowse_async_headers', ReqId, "302"=StatusCode, Hdrs}
@@ -316,24 +317,22 @@ handle_info({'ibrowse_async_headers', ReqId, "302"=StatusCode, Hdrs}
     ?MODULE:new_request(self(), Redirect1, Method, Params),
     {'noreply', State};
 handle_info({'ibrowse_async_headers', ReqId, "4"++_=StatusCode, RespHeaders}
-            ,#state{request_id=ReqId
-                   }=State) ->
+            ,#state{request_id=ReqId}=State) ->
     lager:info("recv client failure status code ~s", [StatusCode]),
     {'noreply', State#state{
-                    response_content_type=props:get_value(<<"content-type">>, RespHeaders)
-                    ,response_code=wh_util:to_binary(StatusCode)
-                    ,response_headers=RespHeaders
-                }
+                  response_content_type=props:get_value(<<"content-type">>, RespHeaders)
+                  ,response_code=wh_util:to_binary(StatusCode)
+                  ,response_headers=RespHeaders
+                 }
     };
 handle_info({'ibrowse_async_headers', ReqId, "5"++_=StatusCode, RespHeaders}
-            ,#state{request_id=ReqId
-                   }=State) ->
+            ,#state{request_id=ReqId}=State) ->
     lager:info("recv server failure status code ~s", [StatusCode]),
     {'noreply', State#state{
-                    response_content_type=props:get_value(<<"content-type">>, RespHeaders)
-                    ,response_code=wh_util:to_binary(StatusCode)
-                    ,response_headers=RespHeaders
-                }
+                  response_content_type=props:get_value(<<"content-type">>, RespHeaders)
+                  ,response_code=wh_util:to_binary(StatusCode)
+                  ,response_headers=RespHeaders
+                 }
     };
 
 handle_info({'ibrowse_async_response', ReqId, {'error', 'connection_closed'}}

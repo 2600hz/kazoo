@@ -41,7 +41,7 @@ get_results(_Account, _View, _ViewOptions, Retry) when Retry =< 0 ->
     {'error', 'retries_exceeded'};
 get_results(Account, View, ViewOptions, Retry) ->
     AccountMODb = get_modb(Account, ViewOptions),
-    EncodedMODb = wh_util:format_account_id(AccountMODb, 'encoded'),
+    EncodedMODb = wh_util:format_account_modb(AccountMODb, 'encoded'),
     case couch_mgr:get_results(EncodedMODb, View, ViewOptions) of
         {'error', 'not_found'} ->
             get_results_not_found(Account, View, ViewOptions, Retry);
@@ -52,7 +52,7 @@ get_results(Account, View, ViewOptions, Retry) ->
                                    {'ok', wh_json:objects()}.
 get_results_not_found(Account, View, ViewOptions, Retry) ->
     AccountMODb = get_modb(Account, ViewOptions),
-    EncodedMODb = wh_util:format_account_id(AccountMODb, 'encoded'),
+    EncodedMODb = wh_util:format_account_modb(AccountMODb, 'encoded'),
     case couch_mgr:db_exists(EncodedMODb) of
         'true' ->
             refresh_views(AccountMODb),
@@ -104,7 +104,7 @@ open_doc(Account, DocId, Year, Month) ->
                         {'ok', wh_json:object()} |
                         {'error', atom()}.
 couch_open(AccountMODb, DocId) ->
-    EncodedMODb = wh_util:format_account_id(AccountMODb, 'encoded'),
+    EncodedMODb = wh_util:format_account_modb(AccountMODb, 'encoded'),
     case couch_mgr:open_doc(EncodedMODb, DocId) of
         {'ok', _}=Ok -> Ok;
         {'error', _E}=Error ->
@@ -145,7 +145,7 @@ save_doc(Account, Doc, Year, Month) ->
 couch_save(AccountMODb, _Doc, 0) ->
     lager:error("failed to save doc in ~p", AccountMODb);
 couch_save(AccountMODb, Doc, Retry) ->
-     EncodedMODb = wh_util:format_account_id(AccountMODb, 'encoded'),
+     EncodedMODb = wh_util:format_account_modb(AccountMODb, 'encoded'),
     case couch_mgr:save_doc(EncodedMODb, Doc) of
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} ->
@@ -217,14 +217,14 @@ maybe_create(<<"account%2F", AccountId/binary>>) ->
 
 -spec create(ne_binary()) -> 'ok'.
 create(AccountMODb) ->
-    EncodedMODb = wh_util:format_account_id(AccountMODb, 'encoded'),
+    EncodedMODb = wh_util:format_account_modb(AccountMODb, 'encoded'),
     do_create(AccountMODb, couch_mgr:db_exists(EncodedMODb)).
 
 -spec do_create(ne_binary(), boolean()) -> 'ok'.
 do_create(_AccountMODb, 'true') -> 'ok';
 do_create(AccountMODb, 'false') ->
     lager:debug("create modb ~p", [AccountMODb]),
-    EncodedMODb = wh_util:format_account_id(AccountMODb, 'encoded'),
+    EncodedMODb = wh_util:format_account_modb(AccountMODb, 'encoded'),
     _ = couch_mgr:db_create(EncodedMODb),
     _ = refresh_views(EncodedMODb),
     create_routines(AccountMODb).
@@ -232,7 +232,7 @@ do_create(AccountMODb, 'false') ->
 -spec refresh_views(ne_binary()) -> 'ok'.
 refresh_views(AccountMODb) ->
     lager:debug("init modb ~p", [AccountMODb]),
-    EncodedMODb = wh_util:format_account_id(AccountMODb, 'encoded'),
+    EncodedMODb = wh_util:format_account_modb(AccountMODb, 'encoded'),
     Views = get_modb_views(),
     _ = whapps_util:update_views(EncodedMODb, Views, 'true'),
     'ok'.

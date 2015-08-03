@@ -139,16 +139,24 @@ handle(Data, Call) ->
 -spec directory_start(whapps_call:call(), directory(), directory_users()) -> 'ok'.
 directory_start(Call, State, CurrUsers) ->
     _ = whapps_call_command:flush_dtmf(Call),
-    {'ok', DTMF} = play_directory_instructions(Call, sort_by(State)),
+    case play_directory_instructions(Call, sort_by(State)) of
+	{'ok', DTMF} -> collect_digits(Call, State, CurrUsers, DTMF);
+	{'error', _Error} ->
+	    lager:error("failed to collect digits: ~p", [_Error]),
+	    cf_exe:stop(Call)
+    end.
+
+-spec collect_digits(whapps_call:call(), directory(), directory_users(), binary()) -> 'ok'.
+collect_digits(Call, State, CurrUsers, DTMF) ->
     case whapps_call_command:collect_digits(100, ?TIMEOUT_DTMF, ?TIMEOUT_DTMF, Call) of
-        {'error', _E} ->
-            lager:error("failed to collect digits: ~p", [_E]),
-            cf_exe:stop(Call);
-        {'ok', <<>>} ->
-            whapps_call_command:audio_macro([{'prompt', ?PROMPT_SPECIFY_MINIMUM}], Call),
-            directory_start(Call, State, CurrUsers);
-        {'ok', DTMFS} ->
-            maybe_match(Call, add_dtmf(add_dtmf(State, DTMF), DTMFS), CurrUsers)
+	{'error', _E} ->
+	    lager:error("failed to collect digits: ~p", [_E]),
+	    cf_exe:stop(Call);
+	{'ok', <<>>} ->
+	    whapps_call_command:audio_macro([{'prompt', ?PROMPT_SPECIFY_MINIMUM}], Call),
+	    directory_start(Call, State, CurrUsers);
+	{'ok', DTMFS} ->
+	    maybe_match(Call, add_dtmf(add_dtmf(State, DTMF), DTMFS), CurrUsers)
     end.
 
 -spec maybe_match(whapps_call:call(), directory(), directory_users()) -> 'ok'.
@@ -280,7 +288,8 @@ maybe_play_media(Call, User, MediaId) ->
     end.
 
 -spec play_directory_instructions(whapps_call:call(), 'first' | 'last' | ne_binary()) ->
-                                         {'ok', binary()}.
+                                         {'ok', binary()} |
+					 {'error', atom()}.
 play_directory_instructions(Call, 'first') ->
     play_and_collect(Call, [{'prompt', ?PROMPT_ENTER_PERSON_FIRSTNAME}]);
 play_directory_instructions(Call, 'last') ->
@@ -295,9 +304,11 @@ play_no_users_found(Call) ->
     whapps_call_command:audio_macro([{'prompt', ?PROMPT_NO_RESULTS_FOUND}], Call).
 
 -spec play_and_collect(whapps_call:call(), whapps_call_command:audio_macro_prompts()) ->
-                              {'ok', binary()}.
+                              {'ok', binary()} |
+			      {'error', atom()}.
 -spec play_and_collect(whapps_call:call(), whapps_call_command:audio_macro_prompts(), non_neg_integer()) ->
-                              {'ok', binary()}.
+                              {'ok', binary()} |
+			      {'error', atom()}.
 play_and_collect(Call, AudioMacro) ->
     play_and_collect(Call, AudioMacro, 1).
 play_and_collect(Call, AudioMacro, NumDigits) ->

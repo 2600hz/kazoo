@@ -844,13 +844,35 @@ maybe_create_app(AppPath, MetaData) ->
 maybe_create_app(AppPath, MetaData, MasterAccountDb) ->
     AppName = wh_json:get_value(<<"name">>, MetaData),
     case find_app(MasterAccountDb, AppName) of
-        {'ok', _JObj} -> io:format(" app ~s already loaded in system~n", [AppName]);
+        {'ok', JObj} ->
+	    io:format(" app ~s already loaded in system~n", [AppName]),
+	    maybe_update_app(AppPath, MetaData, MasterAccountDb, JObj);
         {'error', 'not_found'} -> create_app(AppPath, MetaData, MasterAccountDb);
         {'error', _E} -> io:format(" failed to find app ~s: ~p", [AppName, _E])
     end.
 
--spec find_app(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} |
-                                            {'error', _}.
+-spec maybe_update_app(file:filename(), wh_json:object(), ne_binary(), wh_json:object()) -> 'ok'.
+maybe_update_app(AppPath, MetaData, MasterAccountDb, JObj) ->
+    CurrentDocId  = wh_doc:id(JObj),
+    CurrentApiUrl = wh_json:get_value([<<"value">>, <<"api_url">>], JObj),
+
+    case wh_json:get_value(<<"api_url">>, MetaData) of
+	'undefined'   -> io:format(" not updating api_url, it is undefined~n");
+	CurrentApiUrl -> io:format(" not updating api_url, it is unchanged~n");
+	NewApiUrl ->
+	    Update = [{<<"api_url">>, NewApiUrl}],
+	    case couch_mgr:update_doc(MasterAccountDb, CurrentDocId, Update) of
+		{'ok', _NJObj} -> io:format(" updated api_url to ~s~n", [NewApiUrl]);
+		{'error', Err} -> io:format(" error updating api_url: ~p~n", [Err])
+	    end
+    end,
+
+    'ok' = delete_old_images(CurrentDocId, MetaData, MasterAccountDb),
+    maybe_add_images(AppPath, CurrentDocId, MetaData, MasterAccountDb).
+
+-spec find_app(ne_binary(), ne_binary()) ->
+                      {'ok', wh_json:object()} |
+                      {'error', _}.
 find_app(Db, Name) ->
     case couch_mgr:get_results(Db, ?CB_APPS_STORE_LIST, [{'key', Name}]) of
         {'ok', []} -> {'error', 'not_found'};
@@ -868,53 +890,87 @@ create_app(AppPath, MetaData, MasterAccountDb) ->
             io:format(" saved app ~s as doc ~s~n", [wh_json:get_value(<<"name">>, JObj)
                                                     ,wh_doc:id(JObj)
                                                    ]),
-            maybe_add_icons(AppPath, wh_doc:id(JObj), MasterAccountDb);
+            maybe_add_images(AppPath, wh_doc:id(JObj), MetaData, MasterAccountDb);
         {'error', _E} ->
-            io:format(" failed to save app ~s to ~s: ~p~n", [wh_json:get_value(<<"name">>, MetaData), MasterAccountDb, _E])
+            io:format(" failed to save app ~s to ~s: ~p~n"
+                      ,[wh_json:get_value(<<"name">>, MetaData), MasterAccountDb, _E]
+                     )
     end.
 
--spec maybe_add_icons(file:filename(), ne_binary(), ne_binary()) -> 'ok'.
-maybe_add_icons(AppPath, AppId, MasterAccountDb) ->
-    try find_icons(AppPath) of
-        {'ok', Icons} -> add_icons(AppId, MasterAccountDb, Icons)
-    catch
-        'error':{'badmatch', {'error', 'enoent'}} ->
-            io:format("  failed to find icons in ~s~n", [AppPath]);
-        'error':_E ->
-            io:format("  failed to load icons from ~s: ~p~n", [AppPath, _E])
-    end.
+-spec delete_old_images(ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
+delete_old_images(AppId, MetaData, MasterAccountDb) ->
+    Icons       = [wh_json:get_value(<<"icon">>, MetaData)],
+    Screenshots = wh_json:get_value(<<"screenshots">>, MetaData, []),
 
--spec add_icons(ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
-add_icons(AppId, MasterAccountDb, Icons) ->
-    _ = [add_icon(AppId, MasterAccountDb, IconId, IconData) || {IconId, IconData} <- Icons],
+    _ = [safe_delete_image(MasterAccountDb, AppId, X) || X <- Icons],
+    _ = [safe_delete_image(MasterAccountDb, AppId, X) || X <- Screenshots],
     'ok'.
 
--spec add_icon(ne_binary(), ne_binary(), file:filename(), binary()) -> 'ok'.
-add_icon(AppId, MasterAccountDb, IconId, IconData) ->
-    case couch_mgr:put_attachment(MasterAccountDb, AppId, IconId, IconData) of
-        {'ok', _} ->     io:format("   saved ~s to ~s~n", [IconId, AppId]);
-        {'error', _E} -> io:format("   failed to save ~s to ~s: ~p~n", [IconId, AppId, _E])
+-spec safe_delete_image(ne_binary(), ne_binary(), api_binary()) -> 'ok'.
+safe_delete_image(_AccountDb, _AppId, 'undefined') -> 'ok';
+safe_delete_image(AccountDb, AppId, Image) ->
+    case couch_mgr:fetch_attachment(AccountDb, AppId, Image) of
+	{'ok', _}    -> couch_mgr:delete_attachment(AccountDb, AppId, Image);
+	{'error', _} -> 'ok'
     end.
 
--spec find_icons(file:filename()) -> {'ok', [{file:filename(), binary()}]}.
-find_icons(AppPath) ->
-    {'ok', Dirs} = file:list_dir(AppPath),
-    case lists:member("icon", Dirs) of
-        'true' ->  read_icons(filename:join([AppPath, <<"icon">>]));
-        'false' -> read_icons(filename:join([AppPath, <<"metadata">>, <<"icon">>]))
+-spec maybe_add_images(file:filename(), ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
+maybe_add_images(AppPath, AppId, MetaData, MasterAccountDb) ->
+    Icons       = [wh_json:get_value(<<"icon">>, MetaData)],
+    Screenshots = wh_json:get_value(<<"screenshots">>, MetaData, []),
+
+    IconPaths  = [{Icon, filename:join([AppPath, <<"metadata">>, <<"icon">>, Icon])}
+                  || Icon <- Icons
+                 ],
+    SShotPaths = [{SShot, filename:join([AppPath, <<"metadata">>, <<"screenshots">>, SShot])}
+                  || SShot <- Screenshots
+                 ],
+
+    _ = update_images(AppId, MasterAccountDb, IconPaths, <<"icon">>),
+    _ = update_images(AppId, MasterAccountDb, SShotPaths, <<"screenshots">>).
+
+-type image_path() :: {wh_json:object(), file:filename()}.
+-type image_paths() :: [image_path()].
+
+-spec update_images(file:filename(), ne_binary(), image_paths(), ne_binary()) -> 'ok'.
+update_images(AppId, MasterAccountDb, ImagePaths, Type) ->
+    try read_images(ImagePaths) of
+        {'ok', Images} -> add_images(AppId, MasterAccountDb, Images)
+    catch
+        'error':{'badmatch', {'error', 'enoent'}} ->
+            io:format("  failed to find ~s in ~s~n", [Type, AppId]);
+        'error':_E ->
+            io:format("  failed to load ~s in ~s: ~p~n", [Type, AppId, _E])
     end.
 
--spec read_icons(file:filename()) -> {'ok', [{file:filename(), binary()}]}.
-read_icons(IconPath) ->
-    {'ok', Icons} = file:list_dir(IconPath),
-    {'ok', [{Icon, read_icon(IconPath, Icon)} || Icon <- Icons]}.
+-spec add_images(ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
+add_images(AppId, MasterAccountDb, Images) ->
+    _ = [add_image(AppId, MasterAccountDb, ImageId, ImageData)
+         || {ImageId, ImageData} <- Images
+        ],
+    'ok'.
 
--spec read_icon(file:filename(), file:filename()) -> binary().
-read_icon(Path, File) ->
-    {'ok', IconData} = file:read_file(filename:join([Path, File])),
-    IconData.
+-spec add_image(ne_binary(), ne_binary(), file:filename(), binary()) -> 'ok'.
+add_image(AppId, MasterAccountDb, ImageId, ImageData) ->
+    case couch_mgr:put_attachment(MasterAccountDb, AppId, ImageId, ImageData) of
+        {'ok', _} ->     io:format("   saved ~s to ~s~n", [ImageId, AppId]);
+        {'error', _E} -> io:format("   failed to save ~s to ~s: ~p~n", [ImageId, AppId, _E])
+    end.
 
--spec find_metadata(file:filename()) -> {'ok', wh_json:object()} | {'invalid_data', wh_proplist()}.
+-spec read_images(list(file:filename())) -> {'ok', [{file:filename(), binary()}]}.
+read_images(Images) ->
+    {'ok', [{Image, read_image(ImagePath)}
+            || {Image, ImagePath} <- Images
+           ]}.
+
+-spec read_image(file:filename()) -> binary().
+read_image(File) ->
+    {'ok', ImageData} = file:read_file(File),
+    ImageData.
+
+-spec find_metadata(file:filename()) ->
+                           {'ok', wh_json:object()} |
+                           {'invalid_data', wh_proplist()}.
 find_metadata(AppPath) ->
     AppJSONPath = filename:join([AppPath, <<"metadata">>, <<"app.json">>]),
     {'ok', JSON} = file:read_file(AppJSONPath),

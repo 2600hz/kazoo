@@ -196,7 +196,6 @@ req_headers(#cb_context{req_headers=Hs}) -> Hs.
 req_header(#cb_context{req_headers=Hs}, K) -> props:get_value(K, Hs).
 query_string(#cb_context{query_json=Q}) -> Q.
 req_param(#cb_context{}=Context, K) -> req_param(Context, K, 'undefined').
-req_param(#cb_context{query_json='undefined'}, _K, Default) -> Default;
 req_param(#cb_context{query_json=JObj}, K, Default) -> wh_json:get_value(K, JObj, Default).
 client_ip(#cb_context{client_ip=IP}) -> IP.
 req_id(#cb_context{req_id=ReqId}) -> ReqId.

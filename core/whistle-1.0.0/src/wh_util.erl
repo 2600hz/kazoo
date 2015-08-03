@@ -13,6 +13,7 @@
          ,format_account_id/1, format_account_id/2, format_account_id/3
          ,format_account_mod_id/1, format_account_mod_id/2, format_account_mod_id/3
          ,format_account_db/1
+         ,format_account_modb/1, format_account_modb/2
          ,normalize_account_name/1
         ]).
 -export([is_in_account_hierarchy/2, is_in_account_hierarchy/3]).
@@ -250,6 +251,13 @@ raw_account_id(<<"account%2F"
                  ,"-", _Date:6/binary
                >>) ->
     <<A/binary, B/binary, Rest/binary>>;
+raw_account_id(<<"account/"
+                 ,A:2/binary
+                 ,"/", B:2/binary
+                 ,"/", Rest:28/binary
+                 ,"-", _Date:6/binary
+               >>) ->
+    <<A/binary, B/binary, Rest/binary>>;
 raw_account_id(Other) ->
     case lists:member(Other, ?KZ_SYSTEM_DBS) of
         'true' -> Other;
@@ -257,6 +265,24 @@ raw_account_id(Other) ->
             lager:warning("raw account id doesn't process '~p'", [Other]),
             Other
     end.
+
+-spec raw_account_modb(ne_binary()) -> ne_binary().
+raw_account_modb(<<_:32/binary, "-", _Date:6/binary>>=AccountId) ->
+    AccountId;
+raw_account_modb(<<"account%2F"
+                 ,A:2/binary
+                 ,"%2F", B:2/binary
+                 ,"%2F", Rest:28/binary
+                 ,"-", Date:6/binary
+               >>) ->
+    <<A/binary, B/binary, Rest/binary, "-", Date/binary>>;
+raw_account_modb(<<"account/"
+                 ,A:2/binary
+                 ,"/", B:2/binary
+                 ,"/", Rest:28/binary
+                 ,"-", Date:6/binary
+               >>) ->
+    <<A/binary, B/binary, Rest/binary,"-", Date/binary>>.
 
 format_account_id('undefined', _Year, _Month) -> 'undefined';
 format_account_id(AccountId, Year, Month) when not is_integer(Year) ->
@@ -290,6 +316,17 @@ format_account_mod_id(AccountId, Year, Month) ->
 
 -spec format_account_db(ne_binaries() | api_binary() | wh_json:object()) -> api_binary().
 format_account_db(AccountId) -> format_account_id(AccountId, 'encoded').
+
+-spec format_account_modb(ne_binary()) -> ne_binary().
+format_account_modb(AccountId) -> format_account_modb(AccountId, 'raw').
+format_account_modb(AccountId, 'raw') ->
+    raw_account_modb(AccountId);
+format_account_modb(AccountId, 'unencoded') ->
+    <<A:2/binary, B:2/binary, Rest/binary>> = raw_account_modb(AccountId),
+    to_binary(["account/", A, "/", B, "/", Rest]);
+format_account_modb(AccountId, 'encoded') ->
+    <<A:2/binary, B:2/binary, Rest/binary>> = raw_account_modb(AccountId),
+    to_binary(["account%2F", A, "%2F", B, "%2F", Rest]).
 
 -spec pad_month(wh_month() | ne_binary()) -> ne_binary().
 pad_month(<<_/binary>> = Month) ->

@@ -452,7 +452,6 @@ system_domains() ->
     case whapps_config:get(<<"whitelabel">>, <<"domains">>) of
         'undefined' ->
             lager:info("initializing system domains to default"),
-
             Default = kzd_domains:default(),
             whapps_config:set_default(<<"whitelabel">>, <<"domains">>, Default),
             Default;
@@ -507,53 +506,76 @@ test_account_domains(Context) ->
     end.
 
 test_account_domains(Context, DomainsJObj) ->
-    TestResults = wh_json:map(fun test_domains/2, DomainsJObj),
+    Options = test_network_options(Context),
+    TestResults =
+        wh_json:map(fun(DomainType, DomainConfig) ->
+                            test_domains(DomainType, DomainConfig, Options)
+                    end
+                    ,DomainsJObj
+                   ),
     crossbar_util:response(TestResults, Context).
 
--spec test_domains(ne_binary(), wh_json:object()) ->
+-spec test_domains(ne_binary(), wh_json:object(), wh_network_utils:options()) ->
                           {ne_binary(), wh_json:object()}.
-test_domains(DomainType, DomainConfig) ->
-    {DomainType, test_domain_config(DomainType, DomainConfig)}.
+test_domains(DomainType, DomainConfig, Options) ->
+    {DomainType, test_domain_config(DomainType, DomainConfig, Options)}.
 
--spec test_domain_config(ne_binary(), wh_json:object()) ->
+-spec test_domain_config(ne_binary(), wh_json:object(), wh_network_utils:options()) ->
                                 wh_json:object().
-test_domain_config(DomainType, DomainConfig) ->
+test_domain_config(DomainType, DomainConfig, Options) ->
     wh_json:map(fun(Host, HostConfig) ->
-                        {Host, test_host(Host, HostConfig, DomainType)}
+                        {Host, test_host(Host, HostConfig, DomainType, Options)}
                 end
                 ,DomainConfig
                ).
 
--spec test_host(ne_binary(), wh_json:object(), ne_binary()) ->
+-spec test_host(ne_binary(), wh_json:object(), ne_binary(), wh_network_utils:options()) ->
                        wh_json:object().
-test_host(Host, HostConfig, DomainType) ->
-    test_host_mappings(Host, kzd_domains:mappings(HostConfig), DomainType).
-
--spec test_host_mappings(ne_binary(), ne_binaries(), ne_binary()) ->
-                                wh_json:object().
-test_host_mappings(Host, Mappings, <<"CNAM">>) ->
-    %% inet_dns wants it with an e
-    test_host_mappings(Host, Mappings, <<"CNAME">>);
-test_host_mappings(Host, Mappings, DomainType) ->
-    wh_json:from_list([{<<"expected">>, Mappings}
-                       ,{<<"actual">>, lookup(Host, DomainType)}
+test_host(Host, HostConfig, DomainType, Options) ->
+    wh_json:from_list([{<<"expected">>, kzd_domains:mappings(HostConfig)}
+                       ,{<<"actual">>, lookup(Host, DomainType, Options)}
+                       ,{<<"name">>, kzd_domains:name(HostConfig)}
                       ]).
 
--spec lookup(ne_binary(), ne_binary()) -> ne_binaries().
-lookup(Host, DomainType) ->
+-spec lookup(ne_binary(), ne_binary(), wh_network_utils:options()) ->
+                    ne_binaries().
+lookup(Host, DomainType, Options) ->
     Type = wh_util:to_atom(wh_util:to_lower_binary(DomainType)),
-    {'ok', Lookup} = wh_network_utils:lookup_dns(Host, Type),
+    {'ok', Lookup} = wh_network_utils:lookup_dns(Host, Type, Options),
     lager:debug("lookup of ~s(~s): ~p", [Host, Type, Lookup]),
-    format_lookup_results(Lookup).
+    format_lookup_results(Type, Lookup).
 
--spec format_lookup_results([inet_res:dns_data()]) -> ne_binaries().
-format_lookup_results(Lookup) ->
-    [format_lookup_result(Result) || Result <- Lookup].
+-spec format_lookup_results(atom(), [inet_res:dns_data()]) ->
+                                   ne_binaries().
+format_lookup_results(Type, Lookup) ->
+    [format_lookup_result(Type, Result) || Result <- Lookup].
 
--spec format_lookup_result(inet_res:dns_data()) -> ne_binary().
-format_lookup_result({_,_,_,_}=IP) ->
+-spec format_lookup_result(atom(), inet_res:dns_data()) -> ne_binary().
+format_lookup_result('naptr', {_, _, _, _, _, _}=NAPTR) ->
+    wh_network_utils:naptrtuple_to_binary(NAPTR);
+format_lookup_result('srv', {_, _, _, _}=Srv) ->
+    wh_network_utils:srvtuple_to_binary(Srv);
+format_lookup_result('mx', {_, _}=MX) ->
+    wh_network_utils:mxtuple_to_binary(MX);
+format_lookup_result(_, {_, _, _, _}=IP) ->
     wh_network_utils:iptuple_to_binary(IP);
-format_lookup_result(V) -> wh_util:to_binary(V).
+format_lookup_result(_, {_, _, _, _, _, _, _, _}=IP) ->
+    wh_network_utils:iptuple_to_binary(IP);
+format_lookup_result(_Type, Value) ->
+    lager:debug("attempt to convert ~s result to binary: ~p", [Value]),
+    wh_util:to_binary(Value).
+
+-spec test_network_options(cb_context:context()) -> wh_network_utils:options().
+test_network_options(Context) ->
+    Domain = find_domain(Context),
+    case wh_network_utils:find_nameservers(Domain) of
+        [] ->  wh_network_utils:default_options();
+        Nameservers ->
+            wh_network_utils:set_option_nameservers(
+              wh_network_utils:default_options()
+              ,Nameservers
+             )
+    end.
 
 -spec validate_domain(cb_context:context(), path_token(), http_method()) ->
                              cb_context:context().

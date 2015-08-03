@@ -10,10 +10,10 @@
             "required": false,
             "type": "object"
         },
-        "CNAM": {
+        "CNAME": {
             "$ref": "domain_hosts",
-            "description": "CNAM records",
-            "name": "CNAM",
+            "description": "CNAME records",
+            "name": "CNAME",
             "required": false,
             "type": "object"
         },
