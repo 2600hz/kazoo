@@ -156,7 +156,7 @@ maybe_send_authz_response([], JObjResp, JObj, TimerRef) ->
     lager:debug("All authz requests were processed. Sending joint result."),
     erlang:cancel_timer(TimerRef),
 
-    CustomAuthVars = wh_json:get_value(<<"Custom-Auth-Vars">>, JObjResp),
+    CustomAuthVars = wh_json:get_value(<<"Custom-Auth-Vars">>, JObjResp, wh_json:new()),
     A1 = wh_json:delete_key(<<"Custom-Auth-Vars">>, JObjResp),
     A2 = wh_json:merge_jobjs(A1, CustomAuthVars),
     JObjMsgID = wh_json:get_value(<<"Msg-ID">>, A2),

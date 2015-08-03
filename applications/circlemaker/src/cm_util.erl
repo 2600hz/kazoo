@@ -8,7 +8,11 @@
 %%%-------------------------------------------------------------------
 -module(cm_util).
 
--export([network_address_to_ip_tuple/1, parent_account_id/1, maybe_translate_kv_into_avps/2, maybe_translate_avps_into_kv/2]).
+-export([network_address_to_ip_tuple/1
+         ,parent_account_id/1
+         ,maybe_translate_kv_into_avps/3
+         ,maybe_translate_avps_into_kv/3
+         ,determine_aaa_request_type/1]).
 
 -include("circlemaker.hrl").
 
@@ -48,9 +52,14 @@ parent_account_id(JObj) ->
         AccountId -> AccountId
     end.
 
--spec maybe_translate_kv_into_avps(wh_json:object(), wh_proplist()) -> wh_json:object().
-maybe_translate_kv_into_avps(WholeRequest, AAAProps) ->
-    Attrs = case props:get_value(<<"authz_avp_translation">>, AAAProps) of
+-spec maybe_translate_kv_into_avps(wh_json:object(), wh_proplist(), atom()) -> wh_json:object().
+maybe_translate_kv_into_avps(WholeRequest, AAAProps, RequestType) ->
+    TranslationConfigEntry = case RequestType of
+                                 'authz' -> <<"authz_avp_translation">>;
+                                 'authn' -> <<"authn_avp_translation">>;
+                                 'accounting' -> <<"accounting_avp_translation">>
+                             end,
+    Attrs = case props:get_value(TranslationConfigEntry, AAAProps) of
                         'undefined' -> WholeRequest;
                         TranslationList ->
                             lists:map(
@@ -80,9 +89,14 @@ maybe_translate_kv_into_avps_item(TranslationItem, WholeRequest) ->
             end
     end.
 
--spec maybe_translate_avps_into_kv(wh_proplist(), wh_json:object()) -> wh_proplist().
-maybe_translate_avps_into_kv(AVPsResponse, AAAJObj) ->
-    TranslationList = wh_json:get_value(<<"authz_avp_translation">>, AAAJObj),
+-spec maybe_translate_avps_into_kv(wh_proplist(), wh_json:object(), atom()) -> wh_proplist().
+maybe_translate_avps_into_kv(AVPsResponse, AAAJObj, RequestType) ->
+    TranslationConfigEntry = case RequestType of
+                                 'authz' -> <<"authz_avp_translation">>;
+                                 'authn' -> <<"authn_avp_translation">>;
+                                 'accounting' -> <<"accounting_avp_translation">>
+                             end,
+    TranslationList = wh_json:get_value(TranslationConfigEntry, AAAJObj),
     Props = lists:map(
                 fun(TranslationItem) ->
                     maybe_translate_avps_into_kv_item(TranslationItem, AVPsResponse)
@@ -107,4 +121,14 @@ maybe_translate_avps_into_kv_item(TranslationItem, AVPsResponse) ->
                     NewValue = lists:sublist(BinValue, Pos + 1, Len),
                     {RequestKey, list_to_binary(NewValue)}
             end
+    end.
+
+-spec determine_aaa_request_type(wh_json:object()) -> atom().
+determine_aaa_request_type(JObj) ->
+    case {wh_json:get_value(<<"Event-Category">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj)} of
+        {<<"aaa">>, <<"aaa_authn_req">>} -> 'authn';
+        {<<"authn">>, _} -> 'authn';
+        {<<"authz">>, _} -> 'authz';
+        {<<"call_event">>, <<"CHANNEL_CREATE">>} -> 'accounting';
+        {<<"call_event">>, <<"CHANNEL_DESTROY">>} -> 'accounting'
     end.

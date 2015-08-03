@@ -501,9 +501,12 @@ maybe_auth_method(AuthUser, JObj, _Req, ?ANY_AUTH_METHOD) ->
 maybe_auth_aaa_method(AccountDoc, AuthUser) ->
     % similar check is used for authorization (in the wapi_authz)
     AuthzServersList = wh_json:get_value(<<"authentication">>, AccountDoc),
-    case length(AuthzServersList) of
-        0 -> {'ok', AuthUser};
-        _ -> maybe_auth_aaa_mode(AccountDoc, AuthUser)
+    AaaMode = wh_json:get_value(<<"aaa_mode">>, AccountDoc),
+    case {AaaMode, length(AuthzServersList)} of
+        {<<"inherit">>, 0} -> maybe_auth_aaa_mode(AccountDoc, AuthUser);
+        {_, 0} -> {'ok', AuthUser};
+        {<<"on">>, _} -> maybe_auth_aaa_mode(AccountDoc, AuthUser);
+        {<<"off">>, _} -> {'ok', AuthUser}
     end.
 
 -spec maybe_auth_aaa_mode(wh_json:object(), auth_user()) ->

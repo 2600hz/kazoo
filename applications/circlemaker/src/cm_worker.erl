@@ -21,8 +21,8 @@
          ,terminate/2
          ,code_change/3
          ,start_link/1
-         ,send_authn_req/3
-         ,send_authn_req/2
+         ,send_req/3
+         ,send_req/2
         ]).
 
 %%%===================================================================
@@ -44,13 +44,27 @@ start_link(_) ->
 %% Make a AuthN request to a worker
 %% @end
 %%--------------------------------------------------------------------
--spec send_authn_req(pid(), wh_json:object(), pid()) -> ok.
-send_authn_req(Worker, JObj, Caller) ->
-    gen_server:cast(Worker, {'authn_req', Caller, JObj}).
+-spec send_req(pid(), wh_json:object(), pid()) -> ok.
+send_req(Worker, JObj, Caller) ->
+    RequestType = cm_util:determine_aaa_request_type(JObj),
+    lager:debug("Request type is ~p", [RequestType]),
+    FixedRequestType = case RequestType of
+                           'authn' -> 'auth_req';
+                           'authz' -> 'auth_req';
+                           'accounting' -> 'accounting_req'
+                       end,
+    gen_server:cast(Worker, {FixedRequestType, Caller, JObj}).
 
--spec send_authn_req(pid(), wh_json:object()) -> ok.
-send_authn_req(Worker, JObj) ->
-    gen_server:cast(Worker, {'authn_req', self(), JObj}).
+-spec send_req(pid(), wh_json:object()) -> ok.
+send_req(Worker, JObj) ->
+    RequestType = cm_util:determine_aaa_request_type(JObj),
+    lager:debug("Request type is ~p", [RequestType]),
+    FixedRequestType = case RequestType of
+                           'authn' -> 'auth_req';
+                           'authz' -> 'auth_req';
+                           'accounting' -> 'accounting_req'
+                       end,
+    gen_server:cast(Worker, {FixedRequestType, self(), JObj}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -97,12 +111,19 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'authn_req', SenderPid, JObj}, State) ->
+handle_cast({'auth_req', SenderPid, JObj}, State) ->
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj, <<"system_config">>),
-    lager:debug("authn_req message for user ~p received for account ~p",
+    lager:debug("auth_req message for user ~p received for account ~p",
         [wh_json:get_value(<<"Auth-User">>, JObj), AccountId]),
     Response = maybe_aaa_mode(JObj, AccountId),
     cm_pool_mgr:send_authn_response(SenderPid, Response, JObj, self()),
+    {'noreply', State};
+handle_cast({'accounting_req', SenderPid, JObj}, State) ->
+    AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj, <<"system_config">>),
+    lager:debug("accounting_req message received for account ~p", [AccountId]),
+    Response = maybe_aaa_mode(JObj, AccountId),
+    lager:debug("Accounting response is ~p", [Response]),
+    cm_pool_mgr:send_accounting_response(SenderPid, Response, JObj, self()),
     {'noreply', State};
 handle_cast(_Message, State) ->
     {'noreply', State}.
@@ -207,7 +228,14 @@ maybe_suitable_servers(JObj, AaaProps, AccountId, ParentAccountId) ->
     lager:debug("Available servers count for this account is ~p", [length(ServersJson)]),
     Servers = [S || S <- wh_json:recursive_to_proplist(ServersJson), props:get_is_true(<<"enabled">>, S)],
     lager:debug("Active servers: ~p", [Servers]),
-    maybe_server_request(Servers, JObj, AaaProps, AccountId, ParentAccountId).
+    ServersFilterArg = case cm_util:determine_aaa_request_type(JObj) of
+                           'authn' -> <<"authentication">>;
+                           'authz' -> <<"authorization">>;
+                           'accounting' -> <<"accounting">>
+                        end,
+    FilteredServers = [S || S <- Servers,
+        lists:member(props:get_value(<<"name">>, S), props:get_value(ServersFilterArg, AaaProps))],
+    maybe_server_request(FilteredServers, JObj, AaaProps, AccountId, ParentAccountId).
 
 -spec maybe_server_request(list(), wh_json:object(), proplist(), ne_binary(), ne_binary()) -> {'ok', 'aaa_mode_off'} |
                                                                                  {'ok', tuple()} |
@@ -239,24 +267,28 @@ maybe_server_request([Server | Servers] = AllServers, JObj, AaaProps, AccountId,
 maybe_eradius_request([Server | Servers], Address, JObj, AaaProps, AccountId, ParentAccountId) ->
     Port = props:get_value(<<"port">>, Server),
     Secret = props:get_value(<<"secret">>, Server),
-    AllAVPs = case wh_json:get_value(<<"Event-Category">>, JObj) of
-                  <<"authz">> ->
+    {AllAVPs, RadiusCmdType} = case cm_util:determine_aaa_request_type(JObj) of
+                  'authz' = RequestType ->
                       lager:debug("Operation is authz"),
                       WholeRequest = wh_json:get_value(<<"Custom-Auth-Vars">>, JObj),
                       lager:debug("Request is: ~p", [WholeRequest]),
-                      cm_util:maybe_translate_kv_into_avps(WholeRequest, AaaProps);
-                  _ ->
+                      {cm_util:maybe_translate_kv_into_avps(WholeRequest, AaaProps, RequestType), 'request'};
+                  'authn' = RequestType ->
                       lager:debug("Operation is authn"),
                       lager:debug("Request is: ~p", [JObj]),
-                      cm_util:maybe_translate_kv_into_avps(JObj, AaaProps)
+                      {cm_util:maybe_translate_kv_into_avps(JObj, AaaProps, RequestType), 'request'};
+                  'accounting' = RequestType ->
+                      lager:debug("Operation is accounting"),
+                      lager:debug("Request is: ~p", [JObj]),
+                      {cm_util:maybe_translate_kv_into_avps(JObj, AaaProps, RequestType), 'accreq'}
               end,
     lager:debug("trying to resolve the next AVPs: ~p", [AllAVPs]),
     ParamList = [{eradius_dict:lookup_by_name(AccountId, 'attribute2', Key), Value} ||
         {Key, Value} <- AllAVPs],
     ParamList1 = [{Key, Value} || {Key, Value} <- ParamList, Key =/= 'undefined'],
-    Request = eradius_lib:set_attributes(#radius_request{cmd = 'request'}, ParamList1),
+    Request = eradius_lib:set_attributes(#radius_request{cmd = RadiusCmdType}, ParamList1),
     lager:debug("checking next server ~p (~p:~p)", [Server, Address, Port]),
-    lager:debug("param list is ~p", [ParamList1]),
+    lager:debug("RADIUS param list is ~p", [ParamList1]),
     lager:debug("final AAA-request is ~p", [Request]),
     case eradius_client:send_request({Address, Port, Secret}, Request) of
         {'ok', Response, _Authenticator} ->

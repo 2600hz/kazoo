@@ -14,68 +14,68 @@ AAA configuration document can be stored as part of an account or in the system 
 An example AAA configuration document (mostly self-explaining):
 
     {
-        "aaa_mode":"on",
-        "servers":[
+        "aaa_mode": "on",
+        "servers": [
             {
-                "enabled":true,
-                "name":"server1",
-                "address":"127.0.0.1",
-                "port":1812,
-                "secret":"secret1",
-                "aaa_engine":"radius",
-                "dicts":["dictionary_3gpp", "dictionary"],
-                "avp":"strict",
-                "retries":3,
-                "timeout":5000
+                "enabled": true,
+                "name": "server1",
+                "address": "127.0.0.1",
+                "port": 1812,
+                "secret": "secret1",
+                "aaa_engine": "radius",
+                "dicts": ["dictionary_3gpp", "dictionary"],
+                "avp": "strict",
+                "retries": 3,
+                "timeout": 5000
             },
             {
-                "enabled":false,
-                "name":"server2",
-                "address":"127.0.0.1",
-                "port":1812,
-                "secret":"secret2",
-                "aaa_engine":"radius",
-                "dicts":["dictionary_3gpp", "dictionary", "dictionary1"],
-                "avp":"strict",
-                "retries":5,
-                "timeout":10000
+                "enabled": false,
+                "name": "server2",
+                "address": "127.0.0.1",
+                "port": 1812,
+                "secret": "secret2",
+                "aaa_engine": "radius",
+                "dicts": ["dictionary_3gpp", "dictionary", "dictionary1"],
+                "avp": "strict",
+                "retries": 5,
+                "timeout": 10000
             },
             {
-                "enabled":true,
-                "name":"server3",
-                "address":"127.0.0.1",
-                "port":1813,
-                "secret":"secret3",
-                "aaa_engine":"diameter",
-                "dicts":["dictionary", "dictionary2"],
-                "avp":"strict",
-                "retries":2,
-                "timeout":20000
+                "enabled": true,
+                "name": "server3",
+                "address": "127.0.0.1",
+                "port": 1813,
+                "secret": "secret3",
+                "aaa_engine": "diameter",
+                "dicts": ["dictionary", "dictionary2"],
+                "avp": "strict",
+                "retries": 2,
+                "timeout": 20000
             },
             {
-                "enabled":false,
-                "name":"server4",
-                "address":"127.0.0.1",
-                "port":1813,
-                "secret":"secret4",
-                "aaa_engine":"diameter",
-                "dicts":["dictionary_3gpp", "dictionary", "dictionary2a"],
-                "avp":"custom",
-                "retries":3,
-                "timeout":3000
+                "enabled": false,
+                "name": "server4",
+                "address": "127.0.0.1",
+                "port": 1813,
+                "secret": "secret4",
+                "aaa_engine": "diameter",
+                "dicts": ["dictionary_3gpp", "dictionary", "dictionary2a"],
+                "avp": "custom",
+                "retries": 3,
+                "timeout": 3000
             }
         ],
-        "authentication":["server1", "server2"],
-        "authorization":["server1", "server2"],
-        "accounting":["server3", "server4"],
-        "workers":5,
-        "nas_address":"127.0.0.1",
-        "nas_port":"2000",
-            "authz_apps": [
-                "circlemaker",
-                "jonny5"
-            ],
-            "authz_avp_translation": [
+        "authentication": ["server1", "server2"],
+        "authorization": ["server1", "server2"],
+        "accounting": ["server3", "server4"],
+        "workers": 5,
+        "nas_address": "127.0.0.1",
+        "nas_port": "2000",
+        "authz_apps": [
+            "circlemaker",
+            "jonny5"
+        ],
+        "authz_avp_translation": [
             {
                 "attribute": "User-Name",
                 "request_key": "User-Name",
@@ -91,40 +91,66 @@ An example AAA configuration document (mostly self-explaining):
         ]
     }
 
+An example AAA configuration document with 'inherit' configuration for an account which uses AAA configuration of the parent account:
+
+    {
+        "aaa_mode": "inherit",
+        "servers": [],
+        "authentication": [],
+        "authorization": [],
+        "accounting": [],
+        "workers": 5,
+        "nas_address": "127.0.0.1",
+        "nas_port": "2000",
+        "authz_apps": [],
+        "authz_avp_translation": []
+    }
+
 ### Fields list:
 
-* `aaa_mode`: A mode used for this entity (an account or default system configuration).
+* `aaa_mode`: A mode used for this entity (an account or default system configuration). Required.
     1. `off` - an request to an AAA-server is disabled for this entity
     2. `on` - an request to an AAA-server is enabled for this entity according settings in the AAA document for the entity
-    3. `inherit` - an request to an AAA-server is enabled for this entity according settings in the AAA document for the entity. If no AAA servers for the entity, then an AAA document for parent entity will be used.
-* `servers`: A list of AAA servers will be used for an related operations with this entity.
-* `servers -> enabled`:
+    3. `inherit` - an request to an AAA-server is enabled for this entity according settings in the AAA document for the entity. If no AAA servers for the entity (the `servers` list entry is empty), then an AAA document for parent entity will be used.
+* `servers`: A list of AAA servers will be used for an related operations with this entity. Required.
+* `servers -> enabled`: Required.
     1. `true` - this server will be used for AAA operations.
     2. `false` - this server won't be used for AAA operations.
-* `servers -> name`: An unique server name (used in the document as its ID).
-* `servers -> address`: An address of the server.
-* `servers -> port`: An port of the server.
-* `servers -> secret`: An secret value (in terms of the RADIUS protocol) for this server.
-* `servers -> aaa_engine`:
+* `servers -> name`: An unique server name (used in the document as its ID). Required.
+* `servers -> address`: An address of the server. Required.
+* `servers -> port`: An port of the server. Required.
+* `servers -> secret`: An secret value (in terms of the RADIUS protocol) for this server. Required.
+* `servers -> aaa_engine`: Required.
     1. `radius` - this server is RADIUS server.
     2. `diameter` - this server is DIAMETER server ( **not implemented yet** ).
-* `servers -> dicts`: Dictionaries list will be used in AAA operations. All dictionaries in the list should be existing.
+* `servers -> dicts`: Dictionaries list will be used in AAA operations. All dictionaries in the list should be existing. Required.
 * `servers -> avp`:
     1. `strict` - strict check of an AVP (Attribute-Value Pair) in an dictionary. Only AVP existing in dictionaries will be sent to AAA-servers.
     2. `custom` - any AVPs are allowed without any checks ( **not implemented yet** ).
 * `servers -> retries`: A number of retries when make a request to the server.
 * `servers -> timeout`: A timeout value (in milliseconds) when make a request to the server.
-* `servers -> authentication`: A list of servers name will be used for all authentication operations.
-* `servers -> authorization`: A list of servers name will be used for all authorization operations.
-* `servers -> accounting`: A list of servers name will be used for all accounting operations.
-* `servers -> workers`: A number of worker threads which will process requests simultaneously.
-* `servers -> nas_address`: NAS address for this account
-* `servers -> nas_port`: NAS port for this account
-* `servers -> authz_apps`: List of the applications will be used as authz providers (e.g. jonny5, circlemaker).
-* `servers -> authz_apps -> request_key`: A key name of the the internal authz message. This key name will be translated to corresponding attribute name on a request processing.
-* `servers -> authz_apps -> attribute`: An attribute name in the dictionary. This attribute name will be translated to corresponding key name on a response processing.
-* `servers -> authz_apps -> request_value_regexp`: Regular expression used for extracting needed part of the request value. Required part of the value can be extracted using round brackets (regex group).
-* `servers -> authz_apps -> attr_value_regexp`: Regular expression used for extracting needed part of the response AVP value. Required part of the value can be extracted using round brackets (regex group).
+* `authentication`: A list of servers name will be used for all authentication operations. Required.
+* `authorization`: A list of servers name will be used for all authorization operations. Required.
+* `accounting`: A list of servers name will be used for all accounting operations. Required.
+* `workers`: A number of worker threads which will process requests simultaneously. Required.
+* `nas_address`: NAS address for this account. Required.
+* `nas_port`: NAS port for this account. Required.
+* `authz_apps`: List of the applications will be used as authz providers (e.g. jonny5, circlemaker). Required.
+* `authn_avp_translation`: This section describes translation from internal authn message representation to RADIUS message. Required.
+* `authn_avp_translation -> request_key`: A key name of the the internal authn message. This key name will be translated to corresponding attribute name on a request processing. Required.
+* `authn_avp_translation -> attribute`: An attribute name in the dictionary. This attribute name will be translated to corresponding key name on a response processing. Required.
+* `authn_avp_translation -> request_value_regexp`: Regular expression used for extracting needed part of the request value. Required part of the value can be extracted using round brackets (regex group). Required.
+* `authn_avp_translation -> attr_value_regexp`: Regular expression used for extracting needed part of the response AVP value. Required part of the value can be extracted using round brackets (regex group). Required.
+* `authz_avp_translation`: This section describes translation from internal authz message representation to RADIUS message. Required.
+* `authz_avp_translation -> request_key`: A key name of the the internal authz message. This key name will be translated to corresponding attribute name on a request processing. Required.
+* `authz_avp_translation -> attribute`: An attribute name in the dictionary. This attribute name will be translated to corresponding key name on a response processing. Required.
+* `authz_avp_translation -> request_value_regexp`: Regular expression used for extracting needed part of the request value. Required part of the value can be extracted using round brackets (regex group). Required.
+* `authz_avp_translation -> attr_value_regexp`: Regular expression used for extracting needed part of the response AVP value. Required part of the value can be extracted using round brackets (regex group). Required.
+* `accounting_avp_translation`: This section describes translation from internal accounting message representation to RADIUS message. Required.
+* `accounting_avp_translation -> request_key`: A key name of the the internal accounting message. This key name will be translated to corresponding attribute name on a request processing. Required.
+* `accounting_avp_translation -> attribute`: An attribute name in the dictionary. This attribute name will be translated to corresponding key name on a response processing. Required.
+* `accounting_avp_translation -> request_value_regexp`: Regular expression used for extracting needed part of the request value. Required part of the value can be extracted using round brackets (regex group). Required.
+* `accounting_avp_translation -> attr_value_regexp`: Regular expression used for extracting needed part of the response AVP value. Required part of the value can be extracted using round brackets (regex group). Required.
 
 ## Dictionary document structure
 

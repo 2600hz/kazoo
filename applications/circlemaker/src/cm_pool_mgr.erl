@@ -24,6 +24,7 @@
          ,code_change/3
          ,start_link/0
          ,send_authn_response/4
+         ,send_accounting_response/4
          ,do_request/1
         ]).
 
@@ -47,7 +48,6 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec do_request(wh_json:object()) -> 'ok'.
 do_request(Request) ->
-    lager:debug("Make AAA request for user ~p", [wh_json:get_value(<<"Auth-User">>, Request)]),
     gen_server:cast(?MODULE, {'request', Request}).
 
 %%--------------------------------------------------------------------
@@ -59,7 +59,7 @@ do_request(Request) ->
 insert_worker(Worker, State) ->
     lager:debug("New worker ~p stored", [Worker]),
     State1 = State#state{workers=[Worker | State#state.workers]},
-    lager:debug("Workers count is ~p", [length(State1#state.workers)]),
+    lager:debug("Busy workers count is ~p", [length(State1#state.workers)]),
     State1.
 
 %%--------------------------------------------------------------------
@@ -71,7 +71,7 @@ insert_worker(Worker, State) ->
 remove_worker(Worker, State) ->
     lager:debug("Worker ~p removed", [Worker]),
     State1 = State#state{workers=lists:delete(Worker, State#state.workers)},
-    lager:debug("Workers count is ~p", [length(State1#state.workers)]),
+    lager:debug("Busy workers count is ~p", [length(State1#state.workers)]),
     State1.
 
 %%--------------------------------------------------------------------
@@ -83,6 +83,16 @@ remove_worker(Worker, State) ->
 send_authn_response(SenderPid, Response, JObj, Self) ->
     lager:debug("Response ~p is prepared to send to worker ~p", [Response, Self]),
     gen_server:cast(SenderPid, {'response', Response, JObj, Self}).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Handler for a response message for Accounting
+%% @end
+%%--------------------------------------------------------------------
+-spec send_accounting_response(pid(), authn_response(), wh_json:object(), pid()) -> 'ok'.
+send_accounting_response(SenderPid, Response, JObj, Self) ->
+    lager:debug("Response ~p is prepared to send to worker ~p", [Response, Self]),
+    gen_server:cast(SenderPid, {'accounting_response', Response, JObj, Self}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -131,26 +141,28 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({'request', JObj}, State) ->
-    lager:debug("requst message for user ~p was prepared", [wh_json:get_value(<<"Auth-User">>, JObj)]),
     {'noreply', dist_workers(JObj, State)};
 handle_cast({'response', Response, JObj, Worker}, State) ->
     lager:debug("response message is ~p", [Response]),
     NewState = remove_worker(Worker, State),
     poolboy:checkin(?WORKER_POOL, Worker),
     {AaaResult, AttributeList, AccountId} = case Response of
-                 {'ok', {{'radius_request', _, 'accept', ParamList, _, _, _, _}, AuthzAccountId}} ->
-                     AttrList = [{Name, Val} || {{_, _, _, Name, _}, Val} <- ParamList],
-                     {<<"accept">>, AttrList, AuthzAccountId};
-                 _ ->
-                     {<<"reject">>, []}
-             end,
+                {'ok', {{'radius_request', _, 'accept', ParamList, _, _, _, _}, AuthzAccountId}} ->
+                    AttrList = [{Name, Val} || {{_, _, _, Name, _}, Val} <- ParamList],
+                    {<<"accept">>, AttrList, AuthzAccountId};
+                {'ok', {{'radius_request', _, 'reject', ParamList, _, _, _, _}, AuthzAccountId}} ->
+                    AttrList = [{Name, Val} || {{_, _, _, Name, _}, Val} <- ParamList],
+                    {<<"reject">>, AttrList, AuthzAccountId};
+                _ ->
+                    {<<"reject">>, [], wh_json:get_value(<<"Account-ID">>, JObj)}
+            end,
     lager:debug("AttributeList is: ~p", [AttributeList]),
     {'ok', AaaDoc} = couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded'), <<"aaa">>),
-    AttributeList1 = case wh_json:get_value(<<"Event-Category">>, JObj) of
-                         <<"authz">> ->
+    AttributeList1 = case cm_util:determine_aaa_request_type(JObj) of
+                         'authz' = RequestType ->
                              lager:debug("Operation is authz"),
-                             cm_util:maybe_translate_avps_into_kv(AttributeList, AaaDoc);
-                         _ ->
+                             cm_util:maybe_translate_avps_into_kv(AttributeList, AaaDoc, RequestType);
+                         'authn' ->
                              lager:debug("Operation is authn"),
                              AttributeList
                      end,
@@ -176,6 +188,11 @@ handle_cast({'response', Response, JObj, Worker}, State) ->
             JObj2 = wh_json:set_value(<<"Event-Name">>, <<"aaa_authn_resp">>, JObj1),
             wapi_aaa:publish_resp(Queue, JObj2)
     end,
+    {'noreply', NewState};
+handle_cast({'accounting_response', Response, _JObj, Worker}, State) ->
+    lager:debug("accounting response message is ~p", [Response]),
+    NewState = remove_worker(Worker, State),
+    poolboy:checkin(?WORKER_POOL, Worker),
     {'noreply', NewState};
 handle_cast(Message, State) ->
     lager:debug("unexpected message is ~p", [Message]),
@@ -235,7 +252,7 @@ dist_workers(JObj, State) ->
     case catch poolboy:checkout(?WORKER_POOL) of
         Worker when is_pid(Worker) ->
             lager:debug("Worker started sucessfully"),
-            cm_worker:send_authn_req(Worker, JObj),
+            cm_worker:send_req(Worker, JObj),
             insert_worker(Worker, State);
         Else ->
             % TODO: need to send message to self for 'denied' response

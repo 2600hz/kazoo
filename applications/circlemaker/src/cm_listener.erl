@@ -19,18 +19,22 @@
          ,terminate/2
          ,code_change/3
          ,handle_authn_req/2
-         ,handle_authz_req/2]).
+         ,handle_authz_req/2
+         ,handle_accounting_req/2]).
 
 -include("circlemaker.hrl").
 -include_lib("rabbitmq_client/include/amqp_client.hrl").
 
 -record(state, {}).
 
--define(RESPONDERS, [{{?MODULE, 'handle_authn_req'}, [wapi_aaa:req_event_type()]},
-                     {{?MODULE, 'handle_authz_req'}, [{<<"authz">>, <<"authz_req">>}]}]).
+-define(RESPONDERS, [{{?MODULE, 'handle_authn_req'}, [wapi_aaa:req_event_type()]}
+                     ,{{?MODULE, 'handle_authz_req'}, [{<<"authz">>, <<"authz_req">>}]}
+                     ,{{?MODULE, 'handle_accounting_req'}, [{<<"call_event">>, <<"*">>}]}
+                    ]).
 -define(BINDINGS, [{'aaa', []}
                    ,{'authz', []}
                    ,{'self', []}
+                   ,{'call', [{'restrict_to', ['CHANNEL_CREATE', 'CHANNEL_DESTROY']}]}
                   ]).
 -define(QUEUE_NAME, <<"circlemaker_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
@@ -82,10 +86,26 @@ handle_authz_req(JObj, _Props) ->
     lager:debug("cm_listener handled authz request ~p", [JObj]),
     case wh_json:get_value([<<"Custom-Auth-Vars">>, <<"AAA-Authz-Disabled">>], JObj) of
         <<"true">> ->
-            lager:debug("Authz disabled, no processing: ~p", [JObj]),
+            lager:debug("Authz disabled, no processing"),
             'ok';
         _ ->
             maybe_processing_authz(JObj)
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Handle AuthZ requests from another process.
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_accounting_req(wh_json:object(), wh_proplist()) -> any().
+handle_accounting_req(JObj, _Props) ->
+    % TODO: Add validation
+    % 'true' = wapi_aaa:accounting_req_v(JObj),
+    lager:debug("cm_listener handled accounting request ~p", [JObj]),
+    case whapps_util:get_event_type(JObj) of
+        {<<"call_event">>, <<"CHANNEL_CREATE">>} -> cm_pool_mgr:do_request(JObj);
+        {<<"call_event">>, <<"CHANNEL_DESTROY">>} -> cm_pool_mgr:do_request(JObj)
     end.
 
 maybe_processing_authz(JObj) ->
