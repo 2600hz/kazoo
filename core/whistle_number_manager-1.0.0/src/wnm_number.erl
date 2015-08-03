@@ -793,20 +793,21 @@ number_from_port_doc(#number{number=Number}=N, JObj) ->
     Num = wnm_util:normalize_number(Number),
     ModuleName = whapps_config:get_binary(?WNM_CONFIG_CAT, <<"porting_module_name">>, <<"wnm_local">>),
     Props = [{<<"_id">>, Num}
-            ,{<<"pvt_module_name">>, ModuleName}
-            ,{<<"pvt_module_data">>, wh_json:new()}
-            ,{?PVT_NUMBER_STATE, ?NUMBER_STATE_PORT_IN}
-            ,{<<"pvt_ported_in">>, 'true'}
-            ,{<<"pvt_db_name">>, wnm_util:number_to_db_name(Num)}
-            ,{<<"pvt_created">>, wh_util:current_tstamp()}
-            ,{<<"pvt_authorizing_account">>, AccountId}
-            ,{<<"pvt_assigned_to">>, AccountId}
+             ,{<<"pvt_module_name">>, ModuleName}
+             ,{<<"pvt_module_data">>, wh_json:new()}
+             ,{?PVT_NUMBER_STATE, ?NUMBER_STATE_PORT_IN}
+             ,{<<"pvt_ported_in">>, 'true'}
+             ,{<<"pvt_db_name">>, wnm_util:number_to_db_name(Num)}
+             ,{<<"pvt_created">>, wh_util:current_tstamp()}
+             ,{<<"pvt_authorizing_account">>, AccountId}
+             ,{<<"pvt_assigned_to">>, AccountId}
             ],
     json_to_record(
       wh_json:from_list(Props)
       ,'true'
       ,N#number{auth_by = 'system'
-               ,assign_to = AccountId}
+                ,assign_to = AccountId
+               }
      ).
 
 %%--------------------------------------------------------------------

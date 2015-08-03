@@ -181,10 +181,10 @@ transition_numbers(PriorState, JObj) ->
         )
      ).
 
--spec finalize_number_transition(ne_binary(), {wh_json:object(), wh_proplist()}) -> transition_response().
+-spec finalize_number_transition(ne_binary(), {wh_json:object(), wh_proplist()}) ->
+                                        transition_response().
 finalize_number_transition(_, {JObj, []}) ->
-    {'ok', Updated} = couch_mgr:ensure_saved(?KZ_PORT_REQUESTS_DB, JObj),
-    {'ok', Updated};
+    {'ok', _Updated} = couch_mgr:ensure_saved(?KZ_PORT_REQUESTS_DB, JObj);
 finalize_number_transition(PriorState, {JObj, Errors}) ->
     _ = couch_mgr:ensure_saved(
           ?KZ_PORT_REQUESTS_DB
@@ -193,7 +193,8 @@ finalize_number_transition(PriorState, {JObj, Errors}) ->
     lager:debug("failed to transition all numbers: ~p", [Errors]),
     {'errors', Errors}.
 
--spec enable_numbers(ne_binaries(), wh_json:object(), wh_proplist()) -> {wh_json:object(), wh_proplist()}.
+-spec enable_numbers(ne_binaries(), wh_json:object(), wh_proplist()) ->
+                            {wh_json:object(), wh_proplist()}.
 enable_numbers([], JObj, Errors) -> {JObj, Errors};
 enable_numbers([Number|Numbers], JObj, Errors) ->
     case enable_number(Number) of
