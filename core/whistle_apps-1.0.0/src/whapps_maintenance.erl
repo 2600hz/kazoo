@@ -274,7 +274,7 @@ maybe_remove_invalid_notify_doc(<<"notification">>, <<"notification", _/binary>>
 maybe_remove_invalid_notify_doc(<<"notification">>, _, JObj) ->
     _ = couch_mgr:del_doc(?WH_CONFIG_DB, JObj),
     'ok';
-maybe_remove_invalid_notify_doc(_, _, _) -> 'ok'.
+maybe_remove_invalid_notify_doc(_Type, _Id, _Doc) -> 'ok'.
 
 %%--------------------------------------------------------------------
 %% @public
