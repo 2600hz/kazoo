@@ -113,20 +113,11 @@ resource_exists(_Id, ?PREVIEW) -> 'true'.
 content_types_provided(Context, ?SMTP_LOG) ->
     Context;
 content_types_provided(Context, Id) ->
-    case cb_context:account_id(Context) of
-        'undefined' ->
-            content_types_provided(
-              cb_context:set_account_db(Context, ?WH_CONFIG_DB)
-              ,kz_notification:db_id(Id)
-              ,cb_context:req_verb(Context)
-             );
-        _Else ->
-            content_types_provided(
-              Context
-              ,kz_notification:db_id(Id)
-              ,cb_context:req_verb(Context)
-             )
-    end.
+    content_types_provided(
+      maybe_update_db(Context)
+      ,kz_notification:db_id(Id)
+      ,cb_context:req_verb(Context)
+     ).
 
 content_types_provided(Context, Id, ?HTTP_GET) ->
     Context1 = read(Context, Id),
@@ -205,50 +196,25 @@ content_types_accepted_for_upload(Context, _Verb) ->
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
-    case cb_context:account_id(Context) of
-        'undefined' ->
-            validate_notifications(
-              cb_context:set_account_db(Context, ?WH_CONFIG_DB)
-              ,cb_context:req_verb(Context)
-             );
-        _Else ->
-            validate_notifications(
-              Context
-              ,cb_context:req_verb(Context)
-             )
-    end.
+    validate_notifications(
+      maybe_update_db(Context)
+      ,cb_context:req_verb(Context)
+     ).
 
 validate(Context, ?SMTP_LOG) ->
     load_smtp_log(Context);
 validate(Context, Id) ->
-    case cb_context:account_id(Context) of
-        'undefined' ->
-            validate_notification(
-              cb_context:set_account_db(Context, ?WH_CONFIG_DB)
-              ,kz_notification:db_id(Id)
-              ,cb_context:req_verb(Context)
-             );
-        _Else ->
-            validate_notification(
-              Context
-              ,kz_notification:db_id(Id)
-              ,cb_context:req_verb(Context)
-             )
-    end.
+    validate_notification(
+      maybe_update_db(Context)
+      ,kz_notification:db_id(Id)
+      ,cb_context:req_verb(Context)
+     ).
 
 validate(Context, Id, ?PREVIEW) ->
-    case cb_context:account_id(Context) of
-        'undefined' ->
-            update_notification(
-              cb_context:set_account_db(Context, ?WH_CONFIG_DB)
-              ,kz_notification:db_id(Id)
-             );
-        _Else ->
-            update_notification(
-              Context
-              ,kz_notification:db_id(Id)
-             )
-    end.
+    update_notification(
+      maybe_update_db(Context)
+      ,kz_notification:db_id(Id)
+     ).
 
 -spec validate_notifications(cb_context:context(), http_method()) ->
                                     cb_context:context().
@@ -1078,7 +1044,8 @@ on_successful_validation(Id, Context) ->
             Context1
     end.
 
--spec handle_missing_account_notification(cb_context:context(), ne_binary(), wh_proplist()) -> cb_context:context().
+-spec handle_missing_account_notification(cb_context:context(), ne_binary(), wh_proplist()) ->
+                                                 cb_context:context().
 handle_missing_account_notification(Context, Id, [{<<"notifications">>, [Id, ?PREVIEW]}|_]) ->
     lager:debug("preview request, ignoring if notification ~s is missing", [Id]),
     on_successful_validation(Id, Context);
@@ -1088,7 +1055,7 @@ handle_missing_account_notification(Context, Id, _ReqNouns) ->
     on_successful_validation(Id, Context).
 
 -spec handle_missing_system_config_notification(cb_context:context(), ne_binary(), wh_json:object()) ->
-                                                cb_context:context().
+                                                       cb_context:context().
 handle_missing_system_config_notification(Context, DocId, ReqTemplate) ->
     case cb_context:account_id(Context) of
         'undefined' ->
@@ -1163,3 +1130,11 @@ load_smtp_log(Context) ->
 -spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"doc">>, JObj)|Acc].
+
+
+-spec maybe_update_db(cb_context:context()) -> cb_context:context().
+maybe_update_db(Context) ->
+    case cb_context:account_id(Context) of
+        'undefined' -> cb_context:set_account_db(Context, ?WH_CONFIG_DB);
+        _AccountId -> Context
+    end.
