@@ -77,7 +77,7 @@ maybe_translate_kv_into_avps_item(TranslationItem, WholeRequest) ->
     case wh_json:get_value(RequestKey, WholeRequest) of
         'undefined' ->
             {'undefined', 'undefined'};
-        Value ->
+        Value when is_binary(Value) ->
             BinValue = binary_to_list(Value),
             BinRequestRegexp = binary_to_list(RequestRegexp),
             case re:run(BinValue, BinRequestRegexp) of
@@ -86,7 +86,9 @@ maybe_translate_kv_into_avps_item(TranslationItem, WholeRequest) ->
                     {Pos, Len} = lists:nth(2, Groups),
                     NewValue = lists:sublist(BinValue, Pos + 1, Len),
                     {Attr, list_to_binary(NewValue)}
-            end
+            end;
+        Value when is_integer(Value) ->
+            {Attr, Value}
     end.
 
 -spec maybe_translate_avps_into_kv(wh_proplist(), wh_json:object(), atom()) -> wh_proplist().
@@ -111,7 +113,7 @@ maybe_translate_avps_into_kv_item(TranslationItem, AVPsResponse) ->
     case props:get_value(Attr, AVPsResponse) of
         'undefined' ->
             {'undefined', 'undefined'};
-        Value ->
+        Value when is_binary(Value) ->
             BinValue = binary_to_list(Value),
             BinAttrRegexp = binary_to_list(AttrRegexp),
             case re:run(BinValue, BinAttrRegexp) of
@@ -120,7 +122,9 @@ maybe_translate_avps_into_kv_item(TranslationItem, AVPsResponse) ->
                     {Pos, Len} = lists:nth(2, Groups),
                     NewValue = lists:sublist(BinValue, Pos + 1, Len),
                     {RequestKey, list_to_binary(NewValue)}
-            end
+            end;
+        Value when is_integer(Value) ->
+            {Attr, Value}
     end.
 
 -spec determine_aaa_request_type(wh_json:object()) -> atom().

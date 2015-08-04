@@ -225,8 +225,8 @@ maybe_aaa_mode(JObj, AccountId) when is_binary(AccountId) ->
                                                                             {'error', 'no_respond'}.
 maybe_authn_special_case(JObj, AaaProps, AccountId, ParentAccountId) ->
     AaaRequestType = cm_util:determine_aaa_request_type(JObj),
-    AuthzServersList = wh_json:get_value(<<"authentication">>, AccountId),
-    AaaMode = wh_json:get_value(<<"aaa_mode">>, AccountId),
+    AuthzServersList = props:get_value(<<"authentication">>, AaaProps),
+    AaaMode = props:get_value(<<"aaa_mode">>, AaaProps),
     case {AaaRequestType, AaaMode, length(AuthzServersList)} of
         % special case processing - if the "aaa_mode" = "on" and no authn servers in the "authentication" list,
         % then it's assumed that standart authentication is used, and the request is accepted
@@ -299,8 +299,9 @@ maybe_eradius_request([Server | Servers], Address, JObj, AaaProps, AccountId, Pa
                       {cm_util:maybe_translate_kv_into_avps(JObj, AaaProps, RequestType), 'accreq'}
               end,
     lager:debug("trying to resolve the next AVPs: ~p", [AllAVPs]),
-    ParamList = [{eradius_dict:lookup_by_name(AccountId, 'attribute2', Key), Value} ||
-        {Key, Value} <- AllAVPs],
+    % prepare attribute param list
+    ParamList = [{eradius_dict:lookup_by_name(AccountId, 'attribute2', Key)
+                  ,lookup_value_by_name(AccountId, Value)} || {Key, Value} <- AllAVPs],
     ParamList1 = [{Key, Value} || {Key, Value} <- ParamList, Key =/= 'undefined'],
     Request = eradius_lib:set_attributes(#radius_request{cmd = RadiusCmdType}, ParamList1),
     lager:debug("checking next server ~p (~p:~p)", [Server, Address, Port]),
@@ -315,3 +316,12 @@ maybe_eradius_request([Server | Servers], Address, JObj, AaaProps, AccountId, Pa
             lager:debug("error response received: ~p", [Error]),
             maybe_server_request(Servers, JObj, AaaProps, AccountId, ParentAccountId)
     end.
+
+lookup_value_by_name(AccountId, ValueAsName) when is_binary(ValueAsName) ->
+    case eradius_dict:lookup_by_name(AccountId, 'value2', ValueAsName) of
+        'undefined' -> ValueAsName;
+        {_AttrId, Value} when is_integer(Value) -> Value;
+        Value when is_integer(Value) ->Value
+    end;
+lookup_value_by_name(_AccountId, ValueAsName) ->
+    ValueAsName.

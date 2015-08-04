@@ -103,9 +103,22 @@ handle_accounting_req(JObj, _Props) ->
     % TODO: Add validation
     % 'true' = wapi_aaa:accounting_req_v(JObj),
     lager:debug("cm_listener handled accounting request ~p", [JObj]),
+    AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
+    {'ok', AaaDoc} = couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded'), <<"aaa">>),
+    NasAddress = wh_json:get_value(<<"nas_address">>, AaaDoc),
     case whapps_util:get_event_type(JObj) of
-        {<<"call_event">>, <<"CHANNEL_CREATE">>} -> cm_pool_mgr:do_request(JObj);
-        {<<"call_event">>, <<"CHANNEL_DESTROY">>} -> cm_pool_mgr:do_request(JObj)
+        {<<"call_event">>, <<"CHANNEL_CREATE">>} ->
+            JObj1 = wh_json:set_values([{<<"Acct-Status-Type">>, <<"Start">>}
+                                        ,{<<"Acct-Delay-Time">>, 0}
+                                        ,{<<"NAS-IP-Address">>, NasAddress}]
+                                        ,JObj),
+            cm_pool_mgr:do_request(JObj1);
+        {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
+            JObj1 = wh_json:set_values([{<<"Acct-Status-Type">>, <<"Stop">>}
+                                        ,{<<"Acct-Delay-Time">>, 0}
+                                        ,{<<"NAS-IP-Address">>, NasAddress}]
+                                        ,JObj),
+            cm_pool_mgr:do_request(JObj1)
     end.
 
 maybe_processing_authz(JObj) ->
