@@ -5,6 +5,7 @@ Language: en-US
 */
 
 # Allotments
+
 Module `cb_allotments`.
 
 ## Get allotments configuration for a given account
@@ -46,6 +47,7 @@ Module `cb_allotments`.
 ```
 
 #### Explanаtion
+
 Each object have name (`outbound_national`) which build from direction (inbound or outbound) and classificator from number_manager configuration.
 Properties:
 - `amount`: time in seconds. which can be consumed
@@ -56,7 +58,9 @@ Properties:
 - `group_consume`: other allotments which will be summed, when calcualting rest of allotments time on authorization. See examples below.
 
 #### Examples
+
 ##### "increment", "minimum" and "no_consume_time"
+
 ```json
       "outbound_local": {               
            "increment": 10,
@@ -70,7 +74,9 @@ Call with duration 40 seconds will be count as 60 seconds.
 75 seconds -> 80  
 5 seconds -> 0  
 6 seconds -> 60
+
 #### "group_consume"
+
 ```json
       "Class1": {
            "amount": 600,
@@ -120,8 +126,6 @@ Class1 - 60 (300 Class1 + 60 Class2 + 180 Class = 540, 600-540 = 60)
 Class2 - 0 (60 Class2 + 300 Class1 = 360, 360 > 120)
 Class3 - 60 (180 Class3 + 60 Class2 = 240, 300-240 = 60)
 
-
-
 ## Update allotments configuration for a given account
 
 ### Request
@@ -168,13 +172,22 @@ Class3 - 60 (180 Class3 + 60 Class2 = 240, 300-240 = 60)
 
 ```JSON
 {
-    "page_size": 2,
     "data": [
         {
-            "outbound_national": 180
+            "outbound_local": {
+                "cycle": "weekly",
+                "cycle_start": 63605779200,
+                "cycle_end": 63606384000,
+                "consumed": 180
+            }
         },
         {
-            "outbound_local": 120
+            "outbound_national": {
+                "cycle": "monthly",
+                "cycle_start": 63605606400,
+                "cycle_end": 63608284800,
+                "consumed": 120
+            }
         }
     ],
     "status": "success"

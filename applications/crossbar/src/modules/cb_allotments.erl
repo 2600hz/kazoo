@@ -100,7 +100,7 @@ post(Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Load a Limit document from the database
+%% Load a document from the database
 %% @end
 %%--------------------------------------------------------------------
 -spec load_allotments(cb_context:context()) -> cb_context:context().
@@ -112,22 +112,45 @@ load_allotments(Context) ->
 
 -spec load_consumed(cb_context:context()) -> cb_context:context().
 load_consumed(Context) ->
-    ViewOptions = [{'reduce', 'true'}
-                   ,{'group_level', 1}
-                  ],
-    Db = wh_util:format_account_mod_id(cb_context:account_id(Context), wh_util:current_tstamp()),
-    lager:debug("loading view ~s with options ~p", [?LIST_CONSUMED, ViewOptions]),
-    crossbar_doc:load_view(?LIST_CONSUMED
-                           ,ViewOptions
-                           ,cb_context:set_account_db(Context, Db)
-                           ,fun normalize_view_results/2
-                          ).
+    Context1 = crossbar_doc:load(?PVT_TYPE, Context),
+    Allotments = wh_json:get_json_value(?PVT_ALLOTMENTS, cb_context:doc(Context1), wh_json:new()),
+    MoDb = cb_context:account_modb(Context),
+    load_consumed(Context, MoDb, Allotments).
 
--spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
-normalize_view_results(JObj, Acc) ->
-    [Key|_] = wh_json:get_value(<<"key">>,JObj),
-    Value = wh_json:get_value(<<"value">>, JObj),
-    [ wh_json:set_value(Key, Value, wh_json:new()) | Acc ].
+-spec load_consumed(cb_context:context(), api_binary(), wh_json:objects()) -> cb_context:context().
+load_consumed(Context, MoDb, Allotments) ->
+    {_, Result} = wh_json:foldl(fun foldl_consumed/3, {MoDb, []}, Allotments),
+    cb_context:setters(Context
+                       ,[{fun cb_context:set_resp_status/2, 'success'}
+                         ,{fun cb_context:set_resp_data/2, Result}
+                        ]).
+
+-spec foldl_consumed(api_binary(), wh_json:object(), {cb_context:context(), api_binary(), wh_json:objects()}) -> wh_json:objects().
+foldl_consumed(Classification, Value, {MoDb, Acc}) ->
+    Cycle = wh_json:get_value(<<"cycle">>, Value),
+    CycleStart = cycle_start(Cycle),
+    CycleEnd = cycle_end(Cycle),
+    ViewOptions = [{'startkey', [Classification, CycleStart]}
+                   ,{'endkey', [Classification, CycleEnd]}
+                   ,{'reduce', 'true'}
+                  ],
+    case couch_mgr:get_results(MoDb, ?LIST_CONSUMED, ViewOptions) of
+        {'ok', [Result]} -> 
+            R = wh_json:from_list(
+                  [{Classification, 
+                    wh_json:from_list(
+                      [{<<"cycle">>, Cycle}
+                       ,{<<"cycle_start">>, CycleStart}
+                       ,{<<"cycle_end">>, CycleEnd}
+                       ,{<<"consumed">>, wh_json:get_value(<<"value">>, Result)}
+                      ]
+                     )
+                   }]
+                 ), 
+            {MoDb, [ R | Acc]};
+        {'ok', []} -> {MoDb, Acc};
+        {'error', _} ->{MoDb, Acc} 
+    end.
 
 -spec on_successful_validation(cb_context:context()) -> cb_context:context().
 on_successful_validation(Context) ->
@@ -206,3 +229,30 @@ update_allotments(Context) ->
     Context1 = crossbar_doc:save(cb_context:set_doc(Context, NewDoc)),
     cb_context:set_resp_data(Context1, Allotments).
 
+-spec cycle_start(ne_binary()) -> integer().
+cycle_start(<<"monthly">>) ->
+    {{Year, Month, _}, _} = calendar:universal_time(),
+    calendar:datetime_to_gregorian_seconds({{Year, Month, 1}, {0, 0, 0}});
+cycle_start(<<"weekly">>) ->
+    {Date, _} = calendar:universal_time(),
+    calendar:datetime_to_gregorian_seconds({Date, {0, 0, 0}}) -
+        (calendar:day_of_the_week(Date) - 1) * ?SECONDS_IN_DAY;
+cycle_start(<<"daily">>) ->
+    {{Year, Month, Day}, _} = calendar:universal_time(),
+    calendar:datetime_to_gregorian_seconds({{Year, Month, Day}, {0, 0, 0}});
+cycle_start(<<"hourly">>) ->
+    {{Year, Month, Day}, {Hour, _, _}} = calendar:universal_time(),
+    calendar:datetime_to_gregorian_seconds({{Year, Month, Day}, {Hour, 0, 0}});
+cycle_start(<<"minutely">>) ->
+    {{Year, Month, Day}, {Hour, Min, _}} = calendar:universal_time(),
+    calendar:datetime_to_gregorian_seconds({{Year, Month, Day}, {Hour, Min, 0}}).
+
+-spec cycle_end(ne_binary()) -> integer().
+cycle_end(<<"monthly">>) -> 
+    {{Year, Month, _}, _} = calendar:universal_time(),
+    LastDay = calendar:last_day_of_the_month(Year, Month),
+    calendar:datetime_to_gregorian_seconds({{Year, Month, LastDay}, {23, 59, 59}}) + 1;
+cycle_end(<<"weekly">>) -> cycle_start(<<"weekly">>) + ?SECONDS_IN_WEEK;
+cycle_end(<<"daily">>) ->  cycle_start(<<"daily">>) + ?SECONDS_IN_DAY;
+cycle_end(<<"hourly">>) -> cycle_start(<<"hourly">>) + ?SECONDS_IN_HOUR;
+cycle_end(<<"minutely">>) -> cycle_start(<<"minutely">>) + ?SECONDS_IN_MINUTE.
