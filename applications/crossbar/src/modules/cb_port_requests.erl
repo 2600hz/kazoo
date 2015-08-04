@@ -1162,7 +1162,12 @@ maybe_move_state(Context, Id, PortState) ->
                   ,{<<"cause">>, PortState}
                  ])
               ,Context
-             )
+             );
+        {'error', 'failed_to_charge'} ->
+            cb_context:add_system_error('no_credit', Context);
+        {'errors', Errors} ->
+            JObj = wh_json:from_list([{<<"message">>, wh_json:from_list(Errors)}]),
+            cb_context:add_system_error('transition_errors', JObj, Context)
     end.
 
 %%--------------------------------------------------------------------
