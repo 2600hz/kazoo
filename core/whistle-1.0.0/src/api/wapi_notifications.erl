@@ -310,13 +310,13 @@
 % Notify Port Rejected
 -define(PORT_REJECTED_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_PORT_REJECTED_HEADERS, [<<"Authorized-By">>, <<"Port-Request-ID">>
-                                       ,<<"Number-State">>, <<"Local-Number">>
-                                       ,<<"Number">>, <<"Port">>
-                                       | ?DEFAULT_OPTIONAL_HEADERS
-                                      ]).
+                                         ,<<"Number-State">>, <<"Local-Number">>
+                                         ,<<"Number">>, <<"Port">>
+                                         | ?DEFAULT_OPTIONAL_HEADERS
+                                        ]).
 -define(PORT_REJECTED_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                             ,{<<"Event-Name">>, <<"port_rejected">>}
-                            ]).
+                               ,{<<"Event-Name">>, <<"port_rejected">>}
+                              ]).
 -define(PORT_REJECTED_TYPES, []).
 
 % Notify Port Cancel
@@ -416,8 +416,8 @@
 -define(WEBHOOK_DISABLED_HEADERS, [<<"Hook-ID">>, <<"Account-ID">>]).
 -define(OPTIONAL_WEBHOOK_DISABLED_HEADERS, ?DEFAULT_OPTIONAL_HEADERS).
 -define(WEBHOOK_DISABLED_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                         ,{<<"Event-Name">>, <<"webhook_disabled">>}
-                        ]).
+                                  ,{<<"Event-Name">>, <<"webhook_disabled">>}
+                                 ]).
 -define(WEBHOOK_DISABLED_TYPES, []).
 
 -define(NOTIFY_UPDATE_HEADERS, [<<"Status">>]).
