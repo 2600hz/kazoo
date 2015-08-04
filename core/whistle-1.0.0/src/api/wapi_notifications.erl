@@ -27,6 +27,7 @@
          ,port_request/1, port_request_v/1
          ,port_pending/1, port_pending_v/1
          ,port_scheduled/1, port_scheduled_v/1
+         ,port_rejected/1, port_rejected_v/1
          ,port_cancel/1, port_cancel_v/1
          ,ported/1, ported_v/1
          ,port_comment/1, port_comment_v/1
@@ -59,6 +60,7 @@
          ,publish_port_request/1, publish_port_request/2
          ,publish_port_pending/1, publish_port_pending/2
          ,publish_port_scheduled/1, publish_port_scheduled/2
+         ,publish_port_rejected/1, publish_port_rejected/2
          ,publish_port_cancel/1, publish_port_cancel/2
          ,publish_ported/1, publish_ported/2
          ,publish_port_comment/1, publish_port_comment/2
@@ -101,6 +103,7 @@
 -define(NOTIFY_PORT_REQUEST, <<"notifications.number.port">>).
 -define(NOTIFY_PORT_PENDING, <<"notifications.number.port_pending">>).
 -define(NOTIFY_PORT_SCHEDULED, <<"notifications.number.port_scheduled">>).
+-define(NOTIFY_PORT_REJECTED, <<"notifications.number.port_rejected">>).
 -define(NOTIFY_PORT_CANCEL, <<"notifications.number.port_cancel">>).
 -define(NOTIFY_PORTED, <<"notifications.number.ported">>).
 -define(NOTIFY_PORT_COMMENT, <<"notifications.number.port_comment">>).
@@ -304,6 +307,18 @@
                                ]).
 -define(PORT_SCHEDULED_TYPES, []).
 
+% Notify Port Rejected
+-define(PORT_REJECTED_HEADERS, [<<"Account-ID">>]).
+-define(OPTIONAL_PORT_REJECTED_HEADERS, [<<"Authorized-By">>, <<"Port-Request-ID">>
+                                         ,<<"Number-State">>, <<"Local-Number">>
+                                         ,<<"Number">>, <<"Port">>
+                                         | ?DEFAULT_OPTIONAL_HEADERS
+                                        ]).
+-define(PORT_REJECTED_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                               ,{<<"Event-Name">>, <<"port_rejected">>}
+                              ]).
+-define(PORT_REJECTED_TYPES, []).
+
 % Notify Port Cancel
 -define(PORT_CANCEL_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_PORT_CANCEL_HEADERS, [<<"Authorized-By">>, <<"Port-Request-ID">>
@@ -401,8 +416,8 @@
 -define(WEBHOOK_DISABLED_HEADERS, [<<"Hook-ID">>, <<"Account-ID">>]).
 -define(OPTIONAL_WEBHOOK_DISABLED_HEADERS, ?DEFAULT_OPTIONAL_HEADERS).
 -define(WEBHOOK_DISABLED_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                         ,{<<"Event-Name">>, <<"webhook_disabled">>}
-                        ]).
+                                  ,{<<"Event-Name">>, <<"webhook_disabled">>}
+                                 ]).
 -define(WEBHOOK_DISABLED_TYPES, []).
 
 -define(NOTIFY_UPDATE_HEADERS, [<<"Status">>]).
@@ -464,6 +479,8 @@ headers(<<"port_scheduled">>) ->
     ?PORT_SCHEDULED_HEADERS ++ ?OPTIONAL_PORT_SCHEDULED_HEADERS;
 headers(<<"port_cancel">>) ->
     ?PORT_CANCEL_HEADERS ++ ?OPTIONAL_PORT_CANCEL_HEADERS;
+headers(<<"port_rejected">>) ->
+    ?PORT_REJECTED_HEADERS ++ ?OPTIONAL_PORT_REJECTED_HEADERS;
 headers(<<"ported">>) ->
     ?PORTED_HEADERS ++ ?OPTIONAL_PORTED_HEADERS;
 headers(<<"port_comment">>) ->
@@ -730,6 +747,23 @@ port_scheduled_v(Prop) when is_list(Prop) ->
 port_scheduled_v(JObj) -> port_scheduled_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
+%% @doc Port rejected notification - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+port_rejected(Prop) when is_list(Prop) ->
+    case port_rejected_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?PORT_REJECTED_HEADERS, ?OPTIONAL_PORT_REJECTED_HEADERS);
+        'false' -> {'error', "Proplist failed validation for port_rejected"}
+    end;
+port_rejected(JObj) -> port_rejected(wh_json:to_proplist(JObj)).
+
+-spec port_rejected_v(api_terms()) -> boolean().
+port_rejected_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?PORT_REJECTED_HEADERS, ?PORT_REJECTED_VALUES, ?PORT_REJECTED_TYPES);
+port_rejected_v(JObj) -> port_rejected_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
 %% @doc Port cancel notification - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
@@ -952,6 +986,7 @@ skel_v(JObj) -> skel_v(wh_json:to_proplist(JObj)).
                        'port_pending' |
                        'port_scheduled' |
                        'port_cancel' |
+                       'port_rejected' |
                        'ported' |
                        'port_comment' |
                        'cnam_requests' |
@@ -1025,6 +1060,9 @@ bind_to_q(Q, ['port_pending'|T]) ->
     bind_to_q(Q, T);
 bind_to_q(Q, ['port_scheduled'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PORT_SCHEDULED),
+    bind_to_q(Q, T);
+bind_to_q(Q, ['port_rejected'|T]) ->
+    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PORT_REJECTED),
     bind_to_q(Q, T);
 bind_to_q(Q, ['port_cancel'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PORT_CANCEL),
@@ -1118,6 +1156,9 @@ unbind_q_from(Q, ['port_pending'|T]) ->
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['port_scheduled'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PORT_SCHEDULED),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, ['port_rejected'|T]) ->
+    'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PORT_REJECTED),
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['port_cancel'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PORT_CANCEL),
@@ -1271,6 +1312,13 @@ publish_port_scheduled(JObj) -> publish_port_scheduled(JObj, ?DEFAULT_CONTENT_TY
 publish_port_scheduled(API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?PORT_SCHEDULED_VALUES, fun ?MODULE:port_scheduled/1),
     amqp_util:notifications_publish(?NOTIFY_PORT_SCHEDULED, Payload, ContentType).
+
+-spec publish_port_rejected(api_terms()) -> 'ok'.
+-spec publish_port_rejected(api_terms(), ne_binary()) -> 'ok'.
+publish_port_rejected(JObj) -> publish_port_rejected(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_port_rejected(API, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(API, ?PORT_REJECTED_VALUES, fun ?MODULE:port_rejected/1),
+    amqp_util:notifications_publish(?NOTIFY_PORT_REJECTED, Payload, ContentType).
 
 -spec publish_port_cancel(api_terms()) -> 'ok'.
 -spec publish_port_cancel(api_terms(), ne_binary()) -> 'ok'.
