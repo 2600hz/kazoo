@@ -633,7 +633,6 @@ connect_leg(Node, UUID, JObj) ->
                          {'error', ne_binary()}.
 prepare_app(Node, UUID, JObj) ->
     Target = wh_json:get_value(<<"Target-Call-ID">>, JObj),
-
     case ecallmgr_fs_channel:fetch(Target, 'record') of
         {'ok', #channel{node=Node
                         ,answered=IsAnswered
@@ -655,20 +654,42 @@ prepare_app(Node, UUID, JObj) ->
                                   {'execute', atom(), ne_binary(), wh_json:object(), ne_binary()} |
                                   {'error', ne_binary()}.
 prepare_app_via_amqp(Node, UUID, JObj, TargetCallId) ->
-    case wh_amqp_worker:call([{<<"Call-ID">>, TargetCallId}
-                              ,{<<"Active-Only">>, 'true'}
-                              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                             ]
-                             ,fun(C) -> wapi_call:publish_channel_status_req(TargetCallId, C) end
-                             ,fun wapi_call:channel_status_resp_v/1
-                            )
+    case wh_amqp_worker:call_collect(
+           [{<<"Call-ID">>, TargetCallId}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ]
+            ,fun(C) -> wapi_call:publish_channel_status_req(TargetCallId, C) end
+            ,{'ecallmgr', 'true'}
+          )
     of
-        {'ok', Resp} ->
-            lager:debug("found response to channel query, checking for ~s: ~p", [TargetCallId, Resp]),
-            prepare_app_via_amqp(Node, UUID, JObj, TargetCallId, Resp);
+        {'ok', JObjs} ->
+            lager:debug("got response to channel query, checking if ~s is active.", [TargetCallId]),
+            case prepare_app_status_filter(JObjs) of
+                {'ok', Resp} ->
+                    prepare_app_via_amqp(Node, UUID, JObj, TargetCallId, Resp);
+                {'error', _E} ->
+                    lager:debug("error querying for channels for ~s: ~p", [TargetCallId, _E]),
+                    {'error', <<"failed to find target callid ", TargetCallId/binary>>}
+            end;
         {'error', _E} ->
             lager:debug("error querying for channels for ~s: ~p", [TargetCallId, _E]),
             {'error', <<"failed to find target callid ", TargetCallId/binary>>}
+    end.
+
+-spec prepare_app_status_filter(wh_json:objects()) ->
+                                         {'ok', wh_json:object()} |
+                                         {'error', 'not_found'}.
+prepare_app_status_filter([]) -> {'error', 'not_found'};
+prepare_app_status_filter([JObj|JObjs]) ->
+    %% NOTE: this prefers active calls with the assumption
+    %%  that kazoo will never have a call that is active
+    %%  then disconnected then active...This seems reasonable
+    %%  for the foreseeable future ;)
+    case wapi_call:channel_status_resp_v(JObj) andalso
+        wh_json:get_value(<<"Status">>, JObj) =:= <<"active">>
+    of
+        'true' -> {'ok', JObj};
+        'false' -> prepare_app_status_filter(JObjs)
     end.
 
 -spec prepare_app_via_amqp(atom(), ne_binary(), wh_json:object(), ne_binary(), wh_json:object()) ->
