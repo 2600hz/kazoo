@@ -125,7 +125,7 @@ load_consumed(Context, MoDb, Allotments) ->
                          ,{fun cb_context:set_resp_data/2, Result}
                         ]).
 
--spec foldl_consumed(api_binary(), wh_json:object(), {cb_context:context(), api_binary(), wh_json:objects()}) -> wh_json:objects().
+-spec foldl_consumed(api_binary(), wh_json:object(), {api_binary(), wh_json:objects()}) -> wh_json:objects().
 foldl_consumed(Classification, Value, {MoDb, Acc}) ->
     Cycle = wh_json:get_value(<<"cycle">>, Value),
     CycleStart = cycle_start(Cycle),
