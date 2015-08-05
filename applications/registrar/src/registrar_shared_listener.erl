@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Listener for authn_req, reg_success, and reg_query AMQP requests
 %%% @end
@@ -54,7 +54,7 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link({'local', ?SERVER}, ?MODULE, [{'responders', ?RESPONDERS}
+    gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
                                                           ,{'bindings', ?BINDINGS}
                                                           ,{'queue_name', ?REG_QUEUE_NAME}
                                                           ,{'queue_options', ?REG_QUEUE_OPTIONS}

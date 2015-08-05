@@ -15,7 +15,7 @@
 -export([init/1]).
 
 -define(CHILDREN, [?CACHE(?REG_CACHE)
-                   ,?WORKER('registrar_shared_listener')
+                   ,?SUPER('registrar_shared_listener_sup')
                   ]).
 
 %% ===================================================================
