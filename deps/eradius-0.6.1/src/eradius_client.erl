@@ -82,7 +82,7 @@ send_remote_request(_Node, _NAS, _Request, _Options) ->
     error(badarg).
 
 fill_authenticator(Req = #radius_request{cmd = accreq}) ->
-    Req#radius_request{authenticator = eradius_lib:zero_authenticator()};
+    Req#radius_request{authenticator = eradius_lib:md5_authenticator(Req)};
 fill_authenticator(Req = #radius_request{}) ->
     Req#radius_request{authenticator = eradius_lib:random_authenticator()}.
 
