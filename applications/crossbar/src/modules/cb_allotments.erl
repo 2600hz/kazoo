@@ -13,6 +13,7 @@
          ,resource_exists/0, resource_exists/1
          ,validate/1, validate/2
          ,post/1
+         ,normalize_timestamp/1
         ]).
 
 -export([is_allowed/1]).
@@ -114,22 +115,42 @@ load_allotments(Context) ->
 load_consumed(Context) ->
     Context1 = crossbar_doc:load(?PVT_TYPE, Context),
     Allotments = wh_json:get_json_value(?PVT_ALLOTMENTS, cb_context:doc(Context1), wh_json:new()),
-    MoDb = cb_context:account_modb(Context),
-    load_consumed(Context, MoDb, Allotments).
+    load_consumed(Context, Allotments).
 
--spec load_consumed(cb_context:context(), api_binary(), wh_json:objects()) -> cb_context:context().
-load_consumed(Context, MoDb, Allotments) ->
-    {_, Result} = wh_json:foldl(fun foldl_consumed/3, {MoDb, []}, Allotments),
+-spec load_consumed(cb_context:context(), wh_json:objects()) -> cb_context:context().
+load_consumed(Context, Allotments) ->
+    ReqCycleStart = cb_context:req_param(Context, <<"start">>),
+    ReqCycleEnd = cb_context:req_param(Context, <<"end">>),
+    load_consumed(Context, Allotments, ReqCycleStart, ReqCycleEnd).
+
+-spec load_consumed(cb_context:context(), wh_json:objects(), api_seconds(), api_seconds()) -> cb_context:context().
+load_consumed(Context, Allotments, 'undefined', 'undefined') ->
+    DateTime = calendar:universal_time(),
+    MoDb = wh_util:format_account_mod_id(cb_context:account_id(Context), calendar:datetime_to_gregorian_seconds(DateTime)),
+    {_, _, Result} = wh_json:foldl(fun foldl_consumed_datetime/3, {DateTime, MoDb, []}, Allotments),
     cb_context:setters(Context
                        ,[{fun cb_context:set_resp_status/2, 'success'}
                          ,{fun cb_context:set_resp_data/2, Result}
-                        ]).
+                        ]);
 
--spec foldl_consumed(api_binary(), wh_json:object(), {api_binary(), wh_json:objects()}) -> wh_json:objects().
-foldl_consumed(Classification, Value, {MoDb, Acc}) ->
+load_consumed(Context, Allotments, ReqStart, ReqEnd) ->
+    case normalize_timestamps({ReqStart, ReqEnd}) of
+        {'undefined', _} -> crossbar_util:response('error', "Error in 'start' parameter", Context);
+        {_, 'undefined'} -> crossbar_util:response('error', "Error in 'end' parameter", Context);
+        {Start, End} ->
+            MoDb = wh_util:format_account_mod_id(cb_context:account_id(Context), Start),
+            {_, _, _, Result} = wh_json:foldl(fun foldl_consumed_range/3, {Start, End, MoDb, []}, Allotments),
+            cb_context:setters(Context
+                               ,[{fun cb_context:set_resp_status/2, 'success'}
+                                 ,{fun cb_context:set_resp_data/2, Result}
+                                ])
+    end.
+
+-spec foldl_consumed_datetime(api_binary(), wh_json:object(), {wh_datetime(), api_binary(), wh_json:objects()}) -> wh_json:objects().
+foldl_consumed_datetime(Classification, Value, {DateTime, MoDb, Acc}) ->
     Cycle = wh_json:get_value(<<"cycle">>, Value),
-    CycleStart = cycle_start(Cycle),
-    CycleEnd = cycle_end(Cycle),
+    CycleStart = cycle_start(Cycle, DateTime),
+    CycleEnd = cycle_end(Cycle, DateTime),
     ViewOptions = [{'startkey', [Classification, CycleStart]}
                    ,{'endkey', [Classification, CycleEnd]}
                    ,{'reduce', 'true'}
@@ -147,9 +168,33 @@ foldl_consumed(Classification, Value, {MoDb, Acc}) ->
                      )
                    }]
                  ), 
-            {MoDb, [ R | Acc]};
-        {'ok', []} -> {MoDb, Acc};
-        {'error', _} ->{MoDb, Acc} 
+            {DateTime, MoDb, [ R | Acc]};
+        {'ok', []} -> {DateTime, MoDb, Acc};
+        {'error', _} ->{DateTime, MoDb, Acc} 
+    end.
+
+-spec foldl_consumed_range(api_binary(), wh_json:object(), {gregorian_seconds(), gregorian_seconds(), api_binary(), wh_json:objects()}) -> wh_json:objects().
+foldl_consumed_range(Classification, _Value, {Start, End, MoDb, Acc}) ->
+    ViewOptions = [{'startkey', [Classification, Start]}
+                   ,{'endkey', [Classification, End]}
+                   ,{'reduce', 'true'}
+                  ],
+    case couch_mgr:get_results(MoDb, ?LIST_CONSUMED, ViewOptions) of
+        {'ok', [Result]} -> 
+            R = wh_json:from_list(
+                  [{Classification, 
+                    wh_json:from_list(
+                      [{<<"cycle">>, <<"manual">>}
+                       ,{<<"cycle_start">>, Start}
+                       ,{<<"cycle_end">>, End}
+                       ,{<<"consumed">>, wh_json:get_value(<<"value">>, Result)}
+                      ]
+                     )
+                   }]
+                 ), 
+            {Start, End, MoDb, [ R | Acc]};
+        {'ok', []} -> {Start, End, MoDb, Acc};
+        {'error', _} ->{Start, End, MoDb, Acc} 
     end.
 
 -spec on_successful_validation(cb_context:context()) -> cb_context:context().
@@ -229,30 +274,54 @@ update_allotments(Context) ->
     Context1 = crossbar_doc:save(cb_context:set_doc(Context, NewDoc)),
     cb_context:set_resp_data(Context1, Allotments).
 
--spec cycle_start(ne_binary()) -> integer().
-cycle_start(<<"monthly">>) ->
-    {{Year, Month, _}, _} = calendar:universal_time(),
+-spec cycle_start(ne_binary(), wh_datetime()) -> gregorian_seconds().
+cycle_start(<<"monthly">>, {{Year, Month, _}, _}) ->
     calendar:datetime_to_gregorian_seconds({{Year, Month, 1}, {0, 0, 0}});
-cycle_start(<<"weekly">>) ->
-    {Date, _} = calendar:universal_time(),
+cycle_start(<<"weekly">>, {Date, _}) ->
     calendar:datetime_to_gregorian_seconds({Date, {0, 0, 0}}) -
         (calendar:day_of_the_week(Date) - 1) * ?SECONDS_IN_DAY;
-cycle_start(<<"daily">>) ->
-    {{Year, Month, Day}, _} = calendar:universal_time(),
+cycle_start(<<"daily">>,  {{Year, Month, Day}, _}) ->
     calendar:datetime_to_gregorian_seconds({{Year, Month, Day}, {0, 0, 0}});
-cycle_start(<<"hourly">>) ->
-    {{Year, Month, Day}, {Hour, _, _}} = calendar:universal_time(),
+cycle_start(<<"hourly">>, {{Year, Month, Day}, {Hour, _, _}}) ->
     calendar:datetime_to_gregorian_seconds({{Year, Month, Day}, {Hour, 0, 0}});
-cycle_start(<<"minutely">>) ->
-    {{Year, Month, Day}, {Hour, Min, _}} = calendar:universal_time(),
+cycle_start(<<"minutely">>, {{Year, Month, Day}, {Hour, Min, _}}) ->
     calendar:datetime_to_gregorian_seconds({{Year, Month, Day}, {Hour, Min, 0}}).
 
--spec cycle_end(ne_binary()) -> integer().
-cycle_end(<<"monthly">>) -> 
-    {{Year, Month, _}, _} = calendar:universal_time(),
+-spec cycle_end(ne_binary(), wh_datetime()) -> gregorian_seconds().
+cycle_end(<<"monthly">>, {{Year, Month, _}, _}) -> 
     LastDay = calendar:last_day_of_the_month(Year, Month),
     calendar:datetime_to_gregorian_seconds({{Year, Month, LastDay}, {23, 59, 59}}) + 1;
-cycle_end(<<"weekly">>) -> cycle_start(<<"weekly">>) + ?SECONDS_IN_WEEK;
-cycle_end(<<"daily">>) ->  cycle_start(<<"daily">>) + ?SECONDS_IN_DAY;
-cycle_end(<<"hourly">>) -> cycle_start(<<"hourly">>) + ?SECONDS_IN_HOUR;
-cycle_end(<<"minutely">>) -> cycle_start(<<"minutely">>) + ?SECONDS_IN_MINUTE.
+cycle_end(<<"weekly">>, DateTime) -> cycle_start(<<"weekly">>, DateTime) + ?SECONDS_IN_WEEK;
+cycle_end(<<"daily">>, DateTime) ->  cycle_start(<<"daily">>, DateTime) + ?SECONDS_IN_DAY;
+cycle_end(<<"hourly">>, DateTime) -> cycle_start(<<"hourly">>, DateTime) + ?SECONDS_IN_HOUR;
+cycle_end(<<"minutely">>, DateTime) -> cycle_start(<<"minutely">>, DateTime) + ?SECONDS_IN_MINUTE.
+
+-spec normalize_timestamp(term()) -> api_seconds().
+normalize_timestamp('undefined') -> 'undefined';
+normalize_timestamp(Seconds) when is_integer(Seconds) andalso Seconds > ?UNIX_EPOCH_IN_GREGORIAN -> Seconds;
+normalize_timestamp(Seconds) when is_integer(Seconds) andalso Seconds > 0 -> wh_util:unix_seconds_to_gregorian_seconds(Seconds);
+normalize_timestamp(Seconds) when is_integer(Seconds) -> 'undefined';
+normalize_timestamp(Req) -> 
+    try wh_util:to_integer(Req) of
+        Seconds -> normalize_timestamp(Seconds)
+    catch
+        error:_ -> 'undefined'
+    end.
+
+-spec normalize_timestamps({term(), term()}) -> {api_seconds(), api_seconds()}.
+normalize_timestamps({ReqStart, ReqEnd}) ->
+    Start = normalize_timestamp(ReqStart),
+    End = normalize_timestamp(ReqEnd),
+    normalize_timestamps(Start, End).
+
+-spec normalize_timestamps(api_seconds(), api_seconds()) -> {api_seconds(), api_seconds()}.
+normalize_timestamps('undefined', End) -> {'undefined', End};
+normalize_timestamps(Start, 'undefined') -> {Start, 'undefined'};
+normalize_timestamps(Start, End) ->
+    EndMonth = cycle_end(<<"monthly">>, calendar:gregorian_seconds_to_datetime(Start)),
+    NormEnd = case End > EndMonth of
+                    'true' -> EndMonth;
+                    'false' -> End
+                end,
+    {Start, NormEnd}.
+

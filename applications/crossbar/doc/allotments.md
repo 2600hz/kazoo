@@ -194,4 +194,41 @@ Class3 - 60 (180 Class3 + 60 Class2 = 240, 300-240 = 60)
 }
 ```
 
+## Get consumed allotments for a given account at certain time
+
+### Request
+- Verb: `GET`
+- Url: `/v2/accounts/{{ACCOUNT_ID}}/allotments/consumed?start={{TIMESTAMP}}&end={{TIMESTAMP}}`
+- Payload: None
+
+`{{TIMESTAMP}}` - Gregorian epoch seconds or Unix epoch seconds.  
+Must be defined both `start` and `end` parameters.  
+Data will be loaded only from single monthly DB, which defined by `start` parameters.
+
+### Response
+
+```JSON
+{
+    "data": [
+        {
+            "outbound_local": {
+                "cycle": "manual",
+                "cycle_start": 63605779200,
+                "cycle_end": 63606384000,
+                "consumed": 180
+            }
+        },
+        {
+            "outbound_national": {
+                "cycle": "manual",
+                "cycle_start": 63605606400,
+                "cycle_end": 63608284800,
+                "consumed": 120
+            }
+        }
+    ],
+    "status": "success"
+}
+```
+
 
