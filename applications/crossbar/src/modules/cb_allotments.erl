@@ -319,9 +319,8 @@ normalize_timestamps('undefined', End) -> {'undefined', End};
 normalize_timestamps(Start, 'undefined') -> {Start, 'undefined'};
 normalize_timestamps(Start, End) ->
     EndMonth = cycle_end(<<"monthly">>, calendar:gregorian_seconds_to_datetime(Start)),
-    NormEnd = case End > EndMonth of
-                    'true' -> EndMonth;
-                    'false' -> End
-                end,
-    {Start, NormEnd}.
+    case End > EndMonth of
+        'true' -> {Start, EndMonth};
+        'false' -> {Start, End}
+    end.
 
