@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -37,5 +37,3 @@ set_listeners(Count) when is_binary(Count) ->
 set_listeners(Count) ->
     whapps_config:set(?CONFIG_CAT, <<"listeners">>, Count),
     registrar_shared_listener_sup:set_listeners(Count).
-
-    

@@ -62,11 +62,11 @@ set_listeners(Count) ->
         I when I < Count -> start_listeners(Count - I);
         I when I > Count -> stop_listeners(I - Count);
         _Else -> 'ok'
-    end.   
+    end.
 
 -spec workers() -> pids().
 workers() ->
-    [ Pid || {_, Pid, 'worker', [_]} <- supervisor:which_children(?MODULE)].
+    [Pid || {_, Pid, 'worker', [_]} <- supervisor:which_children(?MODULE)].
 
 %% ===================================================================
 %% Supervisor callbacks

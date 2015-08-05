@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz
+%%% @copyright (C) 2012-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -15,8 +15,8 @@
 -export([init/1]).
 
 -define(CHILDREN, [?CACHE(?REG_CACHE)
-                   ,?SUPER('registrar_shared_listener_sup')
                    ,?WORKER('registrar_init')
+                   ,?SUPER('registrar_shared_listener_sup')
                   ]).
 
 %% ===================================================================

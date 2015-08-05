@@ -14,7 +14,7 @@
 
 -include("reg.hrl").
 
--spec init() -> 'ok' | 'remove'.
+-spec init() -> 'ok'.
 init() -> 'ok'.
 
 -spec handle_route_req(wh_json:object(), wh_proplist()) -> any().

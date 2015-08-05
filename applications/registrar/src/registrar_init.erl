@@ -12,7 +12,6 @@
 
 -include("reg.hrl").
 
-
 -spec start_link() -> startlink_ret().
 start_link() ->
     wh_util:spawn(?MODULE, 'init', []),
