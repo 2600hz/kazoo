@@ -13,6 +13,7 @@
 -spec handle_event(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_event(JObj, _Props) ->
     HookEvent = hook_event_name(wh_json:get_value(<<"Event-Name">>, JObj)),
+    io:format("MARKER:webhooks_channel_util.erl:16 ~p~n", [HookEvent]),
     case wh_hooks_util:lookup_account_id(JObj) of
         {'error', _R} ->
             lager:debug("failed to determine account id for ~s", [HookEvent]);
@@ -56,7 +57,12 @@ format_event(JObj, AccountId, <<"CHANNEL_DESTROY">>) ->
                       ,{<<"ringing_seconds">>, kz_call_event:ringing_seconds(JObj)}
                       ,{<<"billing_seconds">>, kz_call_event:billing_seconds(JObj)}
                      ]
-                   ).
+                   );
+format_event(JObj, AccountId, <<"CHANNEL_PARK">>) ->
+    io:format("MARKER:webhooks_channel_util.erl:61 ~p~n", [JObj]),
+    wh_json:set_value(<<"hook_event">>, <<"channel_park">>
+                      ,base_hook_event(JObj, AccountId)
+                     ).
 
 -spec base_hook_event(wh_json:object(), api_binary()) -> wh_json:object().
 -spec base_hook_event(wh_json:object(), api_binary(), wh_proplist()) -> wh_json:object().
