@@ -71,6 +71,7 @@ maybe_translate_kv_into_avps(WholeRequest, AAAProps, RequestType) ->
     props:filter(fun(T) -> T =/= {'undefined', 'undefined'} end, Attrs).
 
 maybe_translate_kv_into_avps_item(TranslationItem, WholeRequest) ->
+    Cast = props:get_value(<<"cast">>, TranslationItem),
     Attr = props:get_value(<<"attribute">>, TranslationItem),
     RequestKey = props:get_value(<<"request_key">>, TranslationItem),
     RequestRegexp = props:get_value(<<"request_value_regexp">>, TranslationItem),
@@ -85,7 +86,13 @@ maybe_translate_kv_into_avps_item(TranslationItem, WholeRequest) ->
                 {'match', Groups} ->
                     {Pos, Len} = lists:nth(2, Groups),
                     NewValue = lists:sublist(BinValue, Pos + 1, Len),
-                    {Attr, list_to_binary(NewValue)}
+                    MaybeCasted = case Cast of
+                                      <<"string_to_integer">> ->
+                                          list_to_integer(NewValue);
+                                      _ ->
+                                          list_to_binary(NewValue)
+                                  end,
+                    {Attr, MaybeCasted}
             end;
         Value when is_integer(Value) ->
             {Attr, Value}
@@ -107,6 +114,7 @@ maybe_translate_avps_into_kv(AVPsResponse, AAAJObj, RequestType) ->
     props:filter(fun(T) -> T =/= {'undefined', 'undefined'} end, Props).
 
 maybe_translate_avps_into_kv_item(TranslationItem, AVPsResponse) ->
+    Cast = props:get_value(<<"cast">>, TranslationItem),
     Attr = wh_json:get_string_value(<<"attribute">>, TranslationItem),
     RequestKey = wh_json:get_value(<<"request_key">>, TranslationItem),
     AttrRegexp = wh_json:get_value(<<"attr_value_regexp">>, TranslationItem),
@@ -124,7 +132,13 @@ maybe_translate_avps_into_kv_item(TranslationItem, AVPsResponse) ->
                     {RequestKey, list_to_binary(NewValue)}
             end;
         Value when is_integer(Value) ->
-            {Attr, Value}
+            MaybeCasted = case Cast of
+                              <<"string_to_integer">> ->
+                                  integer_to_list(Value);
+                              _ ->
+                                  Value
+                          end,
+            {RequestKey, MaybeCasted}
     end.
 
 -spec determine_aaa_request_type(wh_json:object()) -> atom().
