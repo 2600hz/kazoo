@@ -647,8 +647,8 @@ prepare_app_via_amqp(Node, UUID, JObj, TargetCallId) ->
            [{<<"Call-ID">>, TargetCallId}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
            ]
-            ,fun(C) -> wapi_call:publish_channel_status_req(TargetCallId, C) end
-            ,{'ecallmgr', 'true'}
+           ,fun(C) -> wapi_call:publish_channel_status_req(TargetCallId, C) end
+           ,{'ecallmgr', 'true'}
           )
     of
         {'ok', JObjs} ->
@@ -666,9 +666,10 @@ prepare_app_via_amqp(Node, UUID, JObj, TargetCallId) ->
     end.
 
 -spec prepare_app_status_filter(wh_json:objects()) ->
-                                         {'ok', wh_json:object()} |
-                                         {'error', 'not_found'}.
-prepare_app_status_filter([]) -> {'error', 'not_found'};
+                                       {'ok', wh_json:object()} |
+                                       {'error', 'not_found'}.
+prepare_app_status_filter([]) ->
+    {'error', 'not_found'};
 prepare_app_status_filter([JObj|JObjs]) ->
     %% NOTE: this prefers active calls with the assumption
     %%  that kazoo will never have a call that is active
