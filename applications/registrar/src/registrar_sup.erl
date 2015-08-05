@@ -16,6 +16,7 @@
 
 -define(CHILDREN, [?CACHE(?REG_CACHE)
                    ,?SUPER('registrar_shared_listener_sup')
+                   ,?WORKER('registrar_init')
                   ]).
 
 %% ===================================================================
