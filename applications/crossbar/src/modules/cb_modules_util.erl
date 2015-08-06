@@ -22,9 +22,9 @@
          ,token_cost/1, token_cost/2, token_cost/3
          ,bind/2
 
-         ,range_view_options/1, range_view_options/2, range_view_options/3
+         ,range_view_options/1, range_view_options/2, range_view_options/3, range_view_options/4
 
-         ,range_modb_view_options/1, range_modb_view_options/2, range_modb_view_options/3
+         ,range_modb_view_options/1, range_modb_view_options/2, range_modb_view_options/3, range_modb_view_options/5
 
          ,take_sync_field/1
 
@@ -39,6 +39,12 @@
 -spec range_view_options(cb_context:context(), pos_integer()) ->
                                 {gregorian_seconds(), gregorian_seconds()} |
                                 cb_context:context().
+-spec range_view_options(cb_context:context(), gregorian_seconds(), gregorian_seconds()) ->
+                                {gregorian_seconds(), gregorian_seconds()} |
+                                cb_context:context().
+-spec range_view_options(cb_context:context(), gregorian_seconds(), gregorian_seconds(), pos_integer()) ->
+                                {gregorian_seconds(), gregorian_seconds()} |
+                                cb_context:context().
 range_view_options(Context) ->
     range_view_options(Context, ?MAX_RANGE).
 range_view_options(Context, MaxRange) ->
@@ -46,10 +52,17 @@ range_view_options(Context, MaxRange) ->
 
 range_view_options(Context, MaxRange, Key) ->
     TStamp =  wh_util:current_tstamp(),
-    RangeTo = range_to(Context, TStamp, Key),
-    RangeFrom = range_from(Context, RangeTo, MaxRange, Key),
-
-    case RangeTo - RangeFrom of
+    CreatedTo = created_to(Context, TStamp),
+    CreatedFrom = created_from(Context, CreatedTo, MaxRange),
+    range_view_options(Context, CreatedFrom, CreatedTo).
+range_view_options(Context, CreatedFrom, CreatedTo) ->
+    range_view_options(Context, CreatedFrom, CreatedTo, ?MAX_RANGE).
+range_view_options(Context, 'undefined', CreatedTo, MaxRange) ->
+    range_view_options(Context, CreatedTo - MaxRange, CreatedTo, MaxRange);
+range_view_options(Context, CreatedFrom, 'undefined', MaxRange) ->
+    range_view_options(Context, CreatedFrom, CreatedFrom + MaxRange, MaxRange);
+range_view_options(Context, CreatedFrom, CreatedTo, MaxRange) ->
+    case CreatedTo - CreatedFrom of
         N when N < 0 ->
             cb_context:add_validation_error(
               <<Key/binary, "_from">>
@@ -98,23 +111,39 @@ range_modb_view_options(Context, PrefixKeys, 'undefined') ->
     range_modb_view_options(Context, PrefixKeys, []);
 range_modb_view_options(Context, PrefixKeys, SuffixKeys) ->
     case cb_modules_util:range_view_options(Context) of
-        {CreatedFrom, CreatedTo} ->
+        {CreatedFrom, CreatedTo} -> 
             AccountId = cb_context:account_id(Context),
-            case PrefixKeys =:= [] andalso SuffixKeys =:= [] of
-                'true' -> {'ok', [{'startkey', CreatedFrom}
-                                  ,{'endkey', CreatedTo}
-                                  ,{'databases', kazoo_modb:get_range(AccountId, CreatedFrom, CreatedTo)}
-                                 ]};
-                'false' -> {'ok', [{'startkey', [Key || Key <- PrefixKeys ++ [CreatedFrom] ++ SuffixKeys] }
-                                   ,{'endkey', [Key || Key <- PrefixKeys  ++ [CreatedTo]   ++ SuffixKeys] }
-                                   ,{'databases', kazoo_modb:get_range(AccountId, CreatedFrom, CreatedTo)}
-                                  ]}
-            end;
+            create_modb_view_options(AccountId, PrefixKeys, SuffixKeys, CreatedFrom, CreatedTo);
         Context1 -> Context1
     end.
 
--spec range_to(cb_context:context(), pos_integer(), ne_binary()) -> pos_integer().
-range_to(Context, TStamp, Key) ->
+-spec range_modb_view_options(cb_context:context(), api_binaries(), api_binaries(), gregorian_seconds(), gregorian_seconds()) ->
+                                     {'ok', crossbar_doc:view_options()} |
+                                     cb_context:context().
+range_modb_view_options(Context, PrefixKeys, SuffixKeys, ReqFrom, ReqTo) ->
+    case cb_modules_util:range_view_options(Context, ReqFrom, ReqTo) of
+        {CreatedFrom, CreatedTo} -> 
+            AccountId = cb_context:account_id(Context),
+            create_modb_view_options(AccountId, PrefixKeys, SuffixKeys, CreatedFrom, CreatedTo);
+        Context1 -> Context1
+    end.
+
+-spec create_modb_view_options(api_binary(), api_binaries(), api_binaries(), gregorian_seconds(), gregorian_seconds()) ->
+                                        {'ok', crossbar_doc:view_options()}.
+create_modb_view_options(AccountId, PrefixKeys, SuffixKeys, CreatedFrom, CreatedTo) ->
+    case PrefixKeys =:= [] andalso SuffixKeys =:= [] of
+        'true' -> {'ok', [{'startkey', CreatedFrom}
+                          ,{'endkey', CreatedTo}
+                          ,{'databases', kazoo_modb:get_range(AccountId, CreatedFrom, CreatedTo)}
+                         ]};
+        'false' -> {'ok', [{'startkey', [Key || Key <- PrefixKeys ++ [CreatedFrom] ++ SuffixKeys] }
+                           ,{'endkey', [Key || Key <- PrefixKeys  ++ [CreatedTo]   ++ SuffixKeys] }
+                           ,{'databases', kazoo_modb:get_range(AccountId, CreatedFrom, CreatedTo)}
+                          ]}
+    end.
+
+-spec created_to(cb_context:context(), pos_integer()) -> pos_integer().
+created_to(Context, TStamp) ->
     case crossbar_doc:start_key(Context) of
         'undefined' ->
             lager:debug("building ~s_to from req value", [Key]),
