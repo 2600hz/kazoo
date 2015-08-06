@@ -172,25 +172,21 @@ Class3 - 60 (180 Class3 + 60 Class2 = 240, 300-240 = 60)
 
 ```JSON
 {
-    "data": [
-        {
-            "outbound_local": {
-                "cycle": "weekly",
-                "consumed_from": 63605779200,
-                "consumed_to": 63606384000,
-                "consumed": 180
-            }
+    "data": {
+        "outbound_local": {
+            "consumed": 120,
+            "consumed_to": 63608284800,
+            "consumed_from": 63605606400,
+            "cycle": "monthly"
         },
-        {
-            "outbound_national": {
-                "cycle": "monthly",
-                "consumed_from": 63605606400,
-                "consumed_to": 63608284800,
-                "consumed": 120
-            }
+        "outbound_national": {
+            "consumed": 120,
+            "consumed_to": 63606384000,
+            "consumed_from": 63605779200,
+            "cycle": "weekly"
         }
-    ],
-    "status": "success"
+    },
+    "status": "success",
 }
 ```
 
@@ -207,25 +203,21 @@ Class3 - 60 (180 Class3 + 60 Class2 = 240, 300-240 = 60)
 
 ```JSON
 {
-    "data": [
-        {
-            "outbound_local": {
-                "cycle": "manual",
-                "consumed_from": 63605779200,
-                "consumed_to": 63606384000,
-                "consumed": 60
-            }
+    "data": {
+        "outbound_local": {
+            "consumed": 180,
+            "consumed_to": 63607728001,
+            "consumed_from": 63605046001,
+            "cycle": "manual"
         },
-        {
-            "outbound_national": {
-                "cycle": "manual",
-                "consumed_from": 63605606400,
-                "consumed_to": 63608284800,
-                "consumed": 120
-            }
+        "outbound_national": {
+            "consumed": 120,
+            "consumed_to": 63607728001,
+            "consumed_from": 63605046001,
+            "cycle": "manual"
         }
-    ],
-    "status": "success"
+    },
+    "status": "success",
 }
 ```
 
