@@ -106,19 +106,43 @@ handle_accounting_req(JObj, _Props) ->
     AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
     {'ok', AaaDoc} = couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded'), <<"aaa">>),
     NasAddress = wh_json:get_value(<<"nas_address">>, AaaDoc),
-    case whapps_util:get_event_type(JObj) of
-        {<<"call_event">>, <<"CHANNEL_CREATE">>} ->
+    case {whapps_util:get_event_type(JObj), maybe_block_processing(JObj, AaaDoc, <<"block_accounting">>)} of
+        {_, 'blocked'} ->
+            lager:debug("Accounting for this type of channel is blocked. Request bypassed.");
+        {{<<"call_event">>, <<"CHANNEL_CREATE">>}, 'ok'} ->
             JObj1 = wh_json:set_values([{<<"Acct-Status-Type">>, <<"Start">>}
                                         ,{<<"Acct-Delay-Time">>, 0}
                                         ,{<<"NAS-IP-Address">>, NasAddress}]
                                         ,JObj),
             cm_pool_mgr:do_request(JObj1);
-        {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
+        {{<<"call_event">>, <<"CHANNEL_DESTROY">>}, 'ok'} ->
             JObj1 = wh_json:set_values([{<<"Acct-Status-Type">>, <<"Stop">>}
                                         ,{<<"Acct-Delay-Time">>, 0}
                                         ,{<<"NAS-IP-Address">>, NasAddress}]
                                         ,JObj),
             cm_pool_mgr:do_request(JObj1)
+    end.
+
+-spec maybe_block_processing(wh_json:object(), wh_json:object(), ne_binary()) -> any().
+maybe_block_processing(JObj, AaaDoc, BlockKey) ->
+    {ChannelProps, Type} = cm_util:determine_channel_type(JObj),
+    BlockChannelsList = wh_json:get_value(BlockKey, AaaDoc),
+    lager:debug("BlockChannelsList is ~p", [BlockChannelsList]),
+    case BlockChannelsList of
+        'undefined' -> 'ok';
+        _ ->
+            FilteredList = props:filter(
+                fun(JObjEntry) ->
+                    Value = wh_json:get_value(<<"channel">>, JObjEntry),
+                    lager:debug("Left is ~p and Right is ~p", [ordsets:from_list(Value), ordsets:from_list(ChannelProps)]),
+                    ordsets:from_list(Value) == ordsets:from_list(ChannelProps) end,
+                BlockChannelsList),
+            lager:debug("FilteredList is ~p and Type is ~p", [FilteredList, Type]),
+            case {length(FilteredList), Type} of
+                {_, 'loopback'} -> 'blocked';
+                {0, 'normal'} -> 'ok';
+                {_, 'normal'} -> 'blocked'
+            end
     end.
 
 maybe_processing_authz(JObj) ->
@@ -127,28 +151,38 @@ maybe_processing_authz(JObj) ->
         {'ok', AccountId} ->
             lager:debug("Account ID found. Value is ~p", [AccountId]),
             {'ok', AaaDoc} = couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded'), <<"aaa">>),
-            JObj1 = case {wh_json:get_value(<<"User-Name">>, JObj), wh_json:get_value(<<"User-Password">>, JObj)} of
-                        {'undefined', 'undefined'} ->
-                            lager:debug("No User-Name and User-Password AVPs in request. "
-                                        "Insert it from account fields authz_username and authz_password"),
-                            Username = wh_json:get_value(<<"authz_username">>, AaaDoc),
-                            Password = wh_json:get_value(<<"authz_password">>, AaaDoc),
-                            wh_json:set_values([{<<"Auth-User">>, Username}
-                                ,{<<"Auth-Password">>, Password}
-                                ,{<<"User-Name">>, Username}
-                                ,{<<"User-Password">>, Password}
-                                ,{<<"Account-ID">>, AccountId}
-                            ], JObj);
-                        {Username, Password} ->
-                            lager:debug("The User-Name and User-Password AVPs were found in request"),
-                            wh_json:set_values([{<<"Auth-User">>, Username}
-                                ,{<<"Auth-Password">>, Password}
-                                ,{<<"User-Name">>, Username}
-                                ,{<<"User-Password">>, Password}
-                                ,{<<"Account-ID">>, AccountId}
-                            ], JObj)
-                    end,
-            cm_pool_mgr:do_request(JObj1);
+            case maybe_block_processing(JObj, AaaDoc, <<"block_authz">>) of
+                'ok' ->
+                    JObj1 = case {wh_json:get_value(<<"User-Name">>, JObj), wh_json:get_value(<<"User-Password">>, JObj)} of
+                                {'undefined', 'undefined'} ->
+                                    lager:debug("No User-Name and User-Password AVPs in request. "
+                                    "Insert it from account fields authz_username and authz_password"),
+                                    Username = wh_json:get_value(<<"authz_username">>, AaaDoc),
+                                    Password = wh_json:get_value(<<"authz_password">>, AaaDoc),
+                                    wh_json:set_values([{<<"Auth-User">>, Username}
+                                        ,{<<"Auth-Password">>, Password}
+                                        ,{<<"User-Name">>, Username}
+                                        ,{<<"User-Password">>, Password}
+                                        ,{<<"Account-ID">>, AccountId}
+                                    ], JObj);
+                                {Username, Password} ->
+                                    lager:debug("The User-Name and User-Password AVPs were found in request"),
+                                    wh_json:set_values([{<<"Auth-User">>, Username}
+                                        ,{<<"Auth-Password">>, Password}
+                                        ,{<<"User-Name">>, Username}
+                                        ,{<<"User-Password">>, Password}
+                                        ,{<<"Account-ID">>, AccountId}
+                                    ], JObj)
+                            end,
+                    cm_pool_mgr:do_request(JObj1);
+                'blocked' ->
+                    lager:debug("Authz for this type of channel is blocked. Request bypassed."),
+                    Queue = wh_json:get_value(<<"Server-ID">>, JObj),
+                    JObj1 = wh_json:set_values([{<<"Event-Name">>, <<"authz.broadcast.resp">>}
+                                                ,{<<"Is-Authorized">>, <<"true">>}]
+                                                ,JObj),
+                    wapi_authz:publish_authz_resp(Queue, JObj1)
+            end;
         {'error', Error} ->
             lager:debug("Account ID not found. Error is ~p", [Error]),
             Queue = wh_json:get_value(<<"Response-Queue">>, JObj),

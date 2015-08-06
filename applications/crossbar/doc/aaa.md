@@ -75,18 +75,82 @@ An example AAA configuration document (mostly self-explaining):
             "circlemaker",
             "jonny5"
         ],
-        "authz_avp_translation": [
+        "authn_avp_translation": [
             {
                 "attribute": "User-Name",
                 "request_key": "User-Name",
                 "request_value_regexp": "^(.*)$",
-                "attr_value_regexp": "^(.*)$" 
+                "attr_value_regexp": "^(.*)$"
             },
             {
                 "attribute": "User-Password",
                 "request_key": "User-Password",
                 "request_value_regexp": "^(.*)$",
-                "attr_value_regexp": "^(.*)$" 
+                "attr_value_regexp": "^(.*)$"
+            }
+        ],
+        "authz_avp_translation": [
+            {
+                "attribute": "User-Name",
+                "request_key": "User-Name",
+                "request_value_regexp": "^(.*)$",
+                "attr_value_regexp": "^(.*)$"
+            },
+            {
+                "attribute": "User-Password",
+                "request_key": "User-Password",
+                "request_value_regexp": "^(.*)$",
+                "attr_value_regexp": "^(.*)$"
+            }
+        ],
+        "accounting_avp_translation": [
+            {
+                "attribute": "User-Name",
+                "request_key": "User-Name",
+                "request_value_regexp": "^(.*)$",
+                "attr_value_regexp": "^(.*)$"
+            },
+            {
+                "attribute": "User-Password",
+                "request_key": "User-Password",
+                "request_value_regexp": "^(.*)$",
+                "attr_value_regexp": "^(.*)$"
+            },
+            {
+                "cast": "string_to_integer",
+                "attribute": "Acct-Delay-Time",
+                "request_key": "Acct-Delay-Time",
+                "request_value_regexp": "^(.*)$",
+                "attr_value_regexp": "^(.*)$"
+            },
+            {
+                "cast": "string_to_integer",
+                "attribute": "Acct-Session-Time",
+                "request_key": "Billing-Seconds",
+                "request_value_regexp": "^(.*)$",
+                "attr_value_regexp": "^(.*)$"
+            }
+        ],
+        "block_accounting": [
+            {
+                "channel": [
+                "inbound",
+                "internal"
+                ]
+            }
+        ],
+        "block_authz": [
+            {
+                "channel": [
+                  "inbound",
+                  "external"
+                ]
+            },
+            {
+                "channel": [
+                  "inbound",
+                  "internal"
+                ]
             }
         ]
     }
@@ -103,7 +167,9 @@ An example AAA configuration document with 'inherit' configuration for an accoun
         "nas_address": "127.0.0.1",
         "nas_port": "2000",
         "authz_apps": [],
-        "authz_avp_translation": []
+        "authz_avp_translation": [],
+        "authn_avp_translation": [],
+        "accounting_avp_translation": []
     }
 
 ### Fields list:
@@ -137,6 +203,8 @@ An example AAA configuration document with 'inherit' configuration for an accoun
 * `nas_port`: NAS port for this account. Required.
 * `authz_apps`: List of the applications will be used as authz providers (e.g. jonny5, circlemaker). Required.
 * `authn_avp_translation`: This section describes translation from internal authn message representation to RADIUS message. Required.
+* `authn_avp_translation -> cast`: Key used in a situation when need to convert value type of an internal message to another type of the a RADIUS request.
+    1. `string_to_integer` - need to convert string value of an internal message into integer value of the a RADIUS request.
 * `authn_avp_translation -> request_key`: A key name of the the internal authn message. This key name will be translated to corresponding attribute name on a request processing. Required.
 * `authn_avp_translation -> attribute`: An attribute name in the dictionary. This attribute name will be translated to corresponding key name on a response processing. Required.
 * `authn_avp_translation -> request_value_regexp`: Regular expression used for extracting needed part of the request value. Required part of the value can be extracted using round brackets (regex group). Required.
@@ -151,6 +219,18 @@ An example AAA configuration document with 'inherit' configuration for an accoun
 * `accounting_avp_translation -> attribute`: An attribute name in the dictionary. This attribute name will be translated to corresponding key name on a response processing. Required.
 * `accounting_avp_translation -> request_value_regexp`: Regular expression used for extracting needed part of the request value. Required part of the value can be extracted using round brackets (regex group). Required.
 * `accounting_avp_translation -> attr_value_regexp`: Regular expression used for extracting needed part of the response AVP value. Required part of the value can be extracted using round brackets (regex group). Required.
+* `block_accounting`: Section responsible for avoiding accounting operations via Circlemaker, so no requests will be sent to RADIUS server.
+* `block_accounting -> channel`: Entry described type of channel which will be blocked
+    1.1. `inbound` - inbound channel
+    1.2. `outbound` - outbound channel
+    2.1. `internal` - internal channel
+    2.2. `external` - external channel
+* `block_authz`: Section responsible for avoiding authz operations via Circlemaker. All authz operations of the blocked types will be bypassed and authorized without request to RADIUS server.
+* `block_authz-> channel`: Entry described type of channel which will be blocked
+    1.1. `inbound` - inbound channel
+    1.2. `outbound` - outbound channel
+    2.1. `internal` - internal channel
+    2.2. `external` - external channel
 
 ## Dictionary document structure
 

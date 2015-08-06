@@ -12,7 +12,8 @@
          ,parent_account_id/1
          ,maybe_translate_kv_into_avps/3
          ,maybe_translate_avps_into_kv/3
-         ,determine_aaa_request_type/1]).
+         ,determine_aaa_request_type/1
+         ,determine_channel_type/1]).
 
 -include("circlemaker.hrl").
 
@@ -114,7 +115,7 @@ maybe_translate_avps_into_kv(AVPsResponse, AAAJObj, RequestType) ->
     props:filter(fun(T) -> T =/= {'undefined', 'undefined'} end, Props).
 
 maybe_translate_avps_into_kv_item(TranslationItem, AVPsResponse) ->
-    Cast = props:get_value(<<"cast">>, TranslationItem),
+    Cast = wh_json:get_value(<<"cast">>, TranslationItem),
     Attr = wh_json:get_string_value(<<"attribute">>, TranslationItem),
     RequestKey = wh_json:get_value(<<"request_key">>, TranslationItem),
     AttrRegexp = wh_json:get_value(<<"attr_value_regexp">>, TranslationItem),
@@ -150,3 +151,27 @@ determine_aaa_request_type(JObj) ->
         {<<"call_event">>, <<"CHANNEL_CREATE">>} -> 'accounting';
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} -> 'accounting'
     end.
+
+-spec determine_channel_type(wh_json:object()) -> {ne_binaries(), 'normal'|'loopback'}.
+determine_channel_type(JObj) ->
+    From = wh_json:get_value(<<"From">>, JObj),
+    To = wh_json:get_value(<<"To">>, JObj),
+    CallDirection = wh_json:get_value(<<"Call-Direction">>, JObj),
+    ResourceId = wh_json:get_value(<<"Resource-ID">>, JObj),
+    Result = case ResourceId of
+                  'undefined' ->
+                      [<<"internal">>, CallDirection];
+                  Val when is_binary(Val) ->
+                      [<<"external">>, CallDirection]
+              end,
+    FromPart = binary:part(From, {byte_size(From), -2}),
+    ToPart = binary:part(To, {byte_size(To), -2}),
+    Type = case {FromPart, ToPart} of
+               {<<"-a">>, _} -> 'loopback';
+               {<<"-b">>, _} -> 'loopback';
+               {_, <<"-a">>} -> 'loopback';
+               {_, <<"-b">>} -> 'loopback';
+               _ -> 'normal'
+           end,
+    lager:debug("Channel type is ~p", [{Result, Type}]),
+    {Result, Type}.
