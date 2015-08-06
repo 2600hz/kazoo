@@ -198,12 +198,10 @@ Class3 - 60 (180 Class3 + 60 Class2 = 240, 300-240 = 60)
 
 ### Request
 - Verb: `GET`
-- Url: `/v2/accounts/{{ACCOUNT_ID}}/allotments/consumed?consumed_from={{TIMESTAMP}}&consumed_to={{TIMESTAMP}}`
+- Url: `/v2/accounts/{{ACCOUNT_ID}}/allotments/consumed?created_from={{TIMESTAMP}}&created_to={{TIMESTAMP}}`
 - Payload: None
 
-`{{TIMESTAMP}}` - Gregorian epoch seconds or Unix epoch seconds.  
-Must be defined both `consumed_from` and `consumed_to` parameters.  
-Data will be loaded only from single monthly DB, which defined by `consumed_from` parameters.
+`{{TIMESTAMP}}` - Gregorian epoch seconds.  
 
 ### Response
 
@@ -215,7 +213,7 @@ Data will be loaded only from single monthly DB, which defined by `consumed_from
                 "cycle": "manual",
                 "consumed_from": 63605779200,
                 "consumed_to": 63606384000,
-                "consumed": 180
+                "consumed": 60
             }
         },
         {
