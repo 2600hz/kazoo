@@ -310,7 +310,7 @@ normalize_view_results(JObj, Acc) ->
 -spec upload_csv(cb_context:context()) -> 'ok'.
 upload_csv(Context) ->
     _ = cb_context:put_reqid(Context),
-    Now = erlang:now(),
+    Now = erlang:timestamp(),
     {'ok', {Count, Rates}} = process_upload_file(Context),
     lager:debug("trying to save ~b rates (took ~b ms to process)", [Count, wh_util:elapsed_ms(Now)]),
     _  = crossbar_doc:save(cb_context:set_doc(Context, Rates), [{'publish_doc', 'false'}]),
@@ -490,7 +490,7 @@ constrain_weight(X) -> X.
 save_processed_rates(Context, Count) ->
     wh_util:spawn(
       fun() ->
-              Now = erlang:now(),
+              Now = erlang:timestamp(),
               _ = cb_context:put_reqid(Context),
               _ = crossbar_doc:save(Context, [{'publish_doc', 'false'}]),
               lager:debug("saved up to ~b docs (took ~b ms)", [Count, wh_util:elapsed_ms(Now)])

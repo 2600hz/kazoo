@@ -576,7 +576,7 @@ ready({'member_connect_win', JObj}, #state{agent_listener=AgentListener
                     {'next_state', 'ringing', State#state{wrapup_timeout=WrapupTimer
                                                           ,member_call=Call
                                                           ,member_call_id=CallId
-                                                          ,member_call_start=erlang:now()
+                                                          ,member_call_start=erlang:timestamp()
                                                           ,member_call_queue_id=QueueId
                                                           ,caller_exit_key=CallerExitKey
                                                           ,endpoints=UpdatedEPs
@@ -591,7 +591,7 @@ ready({'member_connect_win', JObj}, #state{agent_listener=AgentListener
             {'next_state', 'ringing', State#state{
                                         wrapup_timeout=WrapupTimer
                                         ,member_call_id=CallId
-                                        ,member_call_start=erlang:now()
+                                        ,member_call_start=erlang:timestamp()
                                         ,member_call_queue_id=QueueId
                                         ,caller_exit_key=CallerExitKey
                                         ,agent_call_id='undefined'

@@ -84,7 +84,7 @@
                ,expires = 0 :: non_neg_integer() | 'undefined' | '$2' | '_'
                ,whapps = [] :: whapps_info() | '$1' | '_'
                ,media_servers = [] :: media_servers() | '_'
-               ,last_heartbeat = wh_util:now_ms(now()) :: pos_integer() | 'undefined' | '$3' | '_'
+               ,last_heartbeat = erlang:system_time('milli_seconds') :: pos_integer() | 'undefined' | '$3' | '_'
                ,zone :: atom() | 'undefined' | '$2' | '_'
                ,broker :: api_binary() | '_'
                ,used_memory = 0 :: non_neg_integer() | '_'
@@ -447,7 +447,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info('expire_nodes', #state{tab=Tab}=State) ->
-    Now = wh_util:now_ms(now()),
+    Now = erlang:system_time('milli_seconds'),
     FindSpec = [{#node{node='$1'
                        ,expires='$2'
                        ,last_heartbeat='$3'
