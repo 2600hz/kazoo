@@ -552,21 +552,22 @@ req_params(Format, Call) ->
 -spec maybe_debug_req(whapps_call:call(), binary(), atom(), wh_proplist(), iolist(), boolean()) -> 'ok'.
 maybe_debug_req(_Call, _Uri, _Method, _ReqHdrs, _ReqBody, 'false') -> 'ok';
 maybe_debug_req(Call, Uri, Method, ReqHdrs, ReqBody, 'true') ->
+    Headers = wh_json:from_list([{fix_value(K), fix_value(V)} || {K, V} <- ReqHdrs]),
     store_debug(Call, [{<<"uri">>, iolist_to_binary(Uri)}
                        ,{<<"method">>, wh_util:to_binary(Method)}
-                       ,{<<"req_headers">>, wh_json:from_list(ReqHdrs)}
+                       ,{<<"req_headers">>, Headers}
                        ,{<<"req_body">>, iolist_to_binary(ReqBody)}
                        ,{<<"iteration">>, whapps_call:kvs_fetch('pivot_counter', Call)}
                       ]).
 
--spec maybe_debug_resp(boolean(), whapps_call:call(), ne_binary(), ne_binary() | binaries(), binary()) -> 'ok'.
+-spec maybe_debug_resp(boolean(), whapps_call:call(), ne_binary(), wh_proplist(), binary()) -> 'ok'.
 maybe_debug_resp('false', _Call, _StatusCode, _RespHeaders, _RespBody) -> 'ok';
 maybe_debug_resp('true', Call, StatusCode, RespHeaders, RespBody) ->
     Headers = wh_json:from_list([{fix_value(K), fix_value(V)} || {K, V} <- RespHeaders]),
     store_debug(
         Call
         ,[{<<"resp_status_code">>, StatusCode}
-          ,{<<"resp_headers">>, iolist_to_binary(Headers)}
+          ,{<<"resp_headers">>, Headers}
           ,{<<"resp_body">>, RespBody}
           ,{<<"iteration">>, whapps_call:kvs_fetch('pivot_counter', Call)}
         ]
