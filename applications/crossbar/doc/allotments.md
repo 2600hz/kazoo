@@ -122,7 +122,7 @@ Class2 - 60
 Class3 - 180
 
 As result next call wil have this free seconds:
-Class1 - 60 (300 Class1 + 60 Class2 + 180 Class = 540, 600-540 = 60)
+Class1 - 60 (300 Class1 + 60 Class2 + 180 Class3 = 540, 600-540 = 60)
 Class2 - 0 (60 Class2 + 300 Class1 = 360, 360 > 120)
 Class3 - 60 (180 Class3 + 60 Class2 = 240, 300-240 = 60)
 
@@ -176,16 +176,16 @@ Class3 - 60 (180 Class3 + 60 Class2 = 240, 300-240 = 60)
         {
             "outbound_local": {
                 "cycle": "weekly",
-                "cycle_start": 63605779200,
-                "cycle_end": 63606384000,
+                "consumed_from": 63605779200,
+                "consumed_to": 63606384000,
                 "consumed": 180
             }
         },
         {
             "outbound_national": {
                 "cycle": "monthly",
-                "cycle_start": 63605606400,
-                "cycle_end": 63608284800,
+                "consumed_from": 63605606400,
+                "consumed_to": 63608284800,
                 "consumed": 120
             }
         }
@@ -198,12 +198,12 @@ Class3 - 60 (180 Class3 + 60 Class2 = 240, 300-240 = 60)
 
 ### Request
 - Verb: `GET`
-- Url: `/v2/accounts/{{ACCOUNT_ID}}/allotments/consumed?start={{TIMESTAMP}}&end={{TIMESTAMP}}`
+- Url: `/v2/accounts/{{ACCOUNT_ID}}/allotments/consumed?consumed_from={{TIMESTAMP}}&consumed_to={{TIMESTAMP}}`
 - Payload: None
 
 `{{TIMESTAMP}}` - Gregorian epoch seconds or Unix epoch seconds.  
-Must be defined both `start` and `end` parameters.  
-Data will be loaded only from single monthly DB, which defined by `start` parameters.
+Must be defined both `consumed_from` and `consumed_to` parameters.  
+Data will be loaded only from single monthly DB, which defined by `consumed_from` parameters.
 
 ### Response
 
@@ -213,16 +213,16 @@ Data will be loaded only from single monthly DB, which defined by `start` parame
         {
             "outbound_local": {
                 "cycle": "manual",
-                "cycle_start": 63605779200,
-                "cycle_end": 63606384000,
+                "consumed_from": 63605779200,
+                "consumed_to": 63606384000,
                 "consumed": 180
             }
         },
         {
             "outbound_national": {
                 "cycle": "manual",
-                "cycle_start": 63605606400,
-                "cycle_end": 63608284800,
+                "consumed_from": 63605606400,
+                "consumed_to": 63608284800,
                 "consumed": 120
             }
         }
