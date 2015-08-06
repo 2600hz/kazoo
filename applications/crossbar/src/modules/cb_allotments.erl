@@ -119,9 +119,9 @@ load_consumed(Context) ->
 
 -spec load_consumed(cb_context:context(), wh_json:objects()) -> cb_context:context().
 load_consumed(Context, Allotments) ->
-    ReqCycleStart = cb_context:req_param(Context, <<"start">>),
-    ReqCycleEnd = cb_context:req_param(Context, <<"end">>),
-    load_consumed(Context, Allotments, ReqCycleStart, ReqCycleEnd).
+    ReqFrom = cb_context:req_param(Context, <<"consumed_from">>),
+    ReqTo = cb_context:req_param(Context, <<"consumed_to">>),
+    load_consumed(Context, Allotments, ReqFrom, ReqTo).
 
 -spec load_consumed(cb_context:context(), wh_json:objects(), api_seconds(), api_seconds()) -> cb_context:context().
 load_consumed(Context, Allotments, 'undefined', 'undefined') ->
@@ -133,13 +133,13 @@ load_consumed(Context, Allotments, 'undefined', 'undefined') ->
                          ,{fun cb_context:set_resp_data/2, Result}
                         ]);
 
-load_consumed(Context, Allotments, ReqStart, ReqEnd) ->
-    case normalize_timestamps({ReqStart, ReqEnd}) of
-        {'undefined', _} -> crossbar_util:response('error', "Error in 'start' parameter", Context);
-        {_, 'undefined'} -> crossbar_util:response('error', "Error in 'end' parameter", Context);
-        {Start, End} ->
-            MoDb = wh_util:format_account_mod_id(cb_context:account_id(Context), Start),
-            {_, _, _, Result} = wh_json:foldl(fun foldl_consumed_range/3, {Start, End, MoDb, []}, Allotments),
+load_consumed(Context, Allotments, ReqFrom, ReqTo) ->
+    case normalize_timestamps({ReqFrom, ReqTo}) of
+        {'undefined', _} -> crossbar_util:response('error', "Error in 'consumed_from' parameter", Context);
+        {_, 'undefined'} -> crossbar_util:response('error', "Error in 'consumed_to' parameter", Context);
+        {From, To} ->
+            MoDb = wh_util:format_account_mod_id(cb_context:account_id(Context), From),
+            {_, _, _, Result} = wh_json:foldl(fun foldl_consumed_range/3, {From, To, MoDb, []}, Allotments),
             cb_context:setters(Context
                                ,[{fun cb_context:set_resp_status/2, 'success'}
                                  ,{fun cb_context:set_resp_data/2, Result}
@@ -149,10 +149,10 @@ load_consumed(Context, Allotments, ReqStart, ReqEnd) ->
 -spec foldl_consumed_datetime(api_binary(), wh_json:object(), {wh_datetime(), api_binary(), wh_json:objects()}) -> wh_json:objects().
 foldl_consumed_datetime(Classification, Value, {DateTime, MoDb, Acc}) ->
     Cycle = wh_json:get_value(<<"cycle">>, Value),
-    CycleStart = cycle_start(Cycle, DateTime),
-    CycleEnd = cycle_end(Cycle, DateTime),
-    ViewOptions = [{'startkey', [Classification, CycleStart]}
-                   ,{'endkey', [Classification, CycleEnd]}
+    CycleFrom = cycle_start(Cycle, DateTime),
+    CycleTo = cycle_end(Cycle, DateTime),
+    ViewOptions = [{'startkey', [Classification, CycleFrom]}
+                   ,{'endkey', [Classification, CycleTo]}
                    ,{'reduce', 'true'}
                   ],
     case couch_mgr:get_results(MoDb, ?LIST_CONSUMED, ViewOptions) of
@@ -161,8 +161,8 @@ foldl_consumed_datetime(Classification, Value, {DateTime, MoDb, Acc}) ->
                   [{Classification, 
                     wh_json:from_list(
                       [{<<"cycle">>, Cycle}
-                       ,{<<"cycle_start">>, CycleStart}
-                       ,{<<"cycle_end">>, CycleEnd}
+                       ,{<<"consumed_from">>, CycleFrom}
+                       ,{<<"consumed_to">>, CycleTo}
                        ,{<<"consumed">>, wh_json:get_value(<<"value">>, Result)}
                       ]
                      )
@@ -174,9 +174,9 @@ foldl_consumed_datetime(Classification, Value, {DateTime, MoDb, Acc}) ->
     end.
 
 -spec foldl_consumed_range(api_binary(), wh_json:object(), {gregorian_seconds(), gregorian_seconds(), api_binary(), wh_json:objects()}) -> wh_json:objects().
-foldl_consumed_range(Classification, _Value, {Start, End, MoDb, Acc}) ->
-    ViewOptions = [{'startkey', [Classification, Start]}
-                   ,{'endkey', [Classification, End]}
+foldl_consumed_range(Classification, _Value, {From, To, MoDb, Acc}) ->
+    ViewOptions = [{'startkey', [Classification, From]}
+                   ,{'endkey', [Classification, To]}
                    ,{'reduce', 'true'}
                   ],
     case couch_mgr:get_results(MoDb, ?LIST_CONSUMED, ViewOptions) of
@@ -185,16 +185,16 @@ foldl_consumed_range(Classification, _Value, {Start, End, MoDb, Acc}) ->
                   [{Classification, 
                     wh_json:from_list(
                       [{<<"cycle">>, <<"manual">>}
-                       ,{<<"cycle_start">>, Start}
-                       ,{<<"cycle_end">>, End}
+                       ,{<<"consumed_from">>, From}
+                       ,{<<"consumed_to">>, To}
                        ,{<<"consumed">>, wh_json:get_value(<<"value">>, Result)}
                       ]
                      )
                    }]
                  ), 
-            {Start, End, MoDb, [ R | Acc]};
-        {'ok', []} -> {Start, End, MoDb, Acc};
-        {'error', _} ->{Start, End, MoDb, Acc} 
+            {From, To, MoDb, [ R | Acc]};
+        {'ok', []} -> {From, To, MoDb, Acc};
+        {'error', _} ->{From, To, MoDb, Acc} 
     end.
 
 -spec on_successful_validation(cb_context:context()) -> cb_context:context().
@@ -315,12 +315,12 @@ normalize_timestamps({ReqStart, ReqEnd}) ->
     normalize_timestamps(Start, End).
 
 -spec normalize_timestamps(api_seconds(), api_seconds()) -> {api_seconds(), api_seconds()}.
-normalize_timestamps('undefined', End) -> {'undefined', End};
-normalize_timestamps(Start, 'undefined') -> {Start, 'undefined'};
-normalize_timestamps(Start, End) ->
-    EndMonth = cycle_end(<<"monthly">>, calendar:gregorian_seconds_to_datetime(Start)),
-    case End > EndMonth of
-        'true' -> {Start, EndMonth};
-        'false' -> {Start, End}
+normalize_timestamps('undefined', To) -> {'undefined', To};
+normalize_timestamps(From, 'undefined') -> {From, 'undefined'};
+normalize_timestamps(From, To) ->
+    EndMonth = cycle_end(<<"monthly">>, calendar:gregorian_seconds_to_datetime(To)),
+    case To > EndMonth of
+        'true' -> {From, EndMonth};
+        'false' -> {From, To}
     end.
 
