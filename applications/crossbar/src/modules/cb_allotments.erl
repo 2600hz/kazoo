@@ -115,7 +115,7 @@ load_consumed(Context) ->
     Context1 = crossbar_doc:load(?PVT_TYPE, Context),
     Allotments = wh_json:get_json_value(?PVT_ALLOTMENTS, cb_context:doc(Context1), wh_json:new()),
     Mode = create_consumed_mode(Context),
-    {_, _, Result} = wh_json:foldl(fun foldl_consumed/3, {Context, Mode, []}, Allotments),
+    {_, _, Result} = wh_json:foldl(fun foldl_consumed/3, {Context, Mode, wh_json:new()}, Allotments),
     cb_context:setters(Context
                        ,[{fun cb_context:set_resp_status/2, 'success'}
                          ,{fun cb_context:set_resp_data/2, Result}
@@ -127,28 +127,34 @@ foldl_consumed(Classification, Value, {Context, Mode, Acc}) ->
     [_, From] = props:get_value('startkey', ViewOptions),
     [_, To] = props:get_value('endkey', ViewOptions),
     Context1 = crossbar_doc:load_view(?LIST_CONSUMED
-                                      ,props:insert_value('reduce',ViewOptions)
+                                      ,props:insert_value({'group_level', 1},ViewOptions)
                                       ,Context
-                                      ,fun normalize_view_results/2
                                      ),
-    Acc1 = case cb_context:doc(Context1) of
-               [] -> Acc;
-               [Result|_] ->
-                   [ wh_json:set_value(Classification, 
-                                       wh_json:set_values(
-                                         [
-                                          {<<"cycle">>, Cycle}
-                                          ,{<<"consumed_from">>, From}
-                                          ,{<<"consumed_to">>, To}
-                                          ,{<<"consumed">>, Result}
-                                         ], wh_json:new()
-                                        ), wh_json:new())
-                     | Acc ]
-           end,
+    Acc1 = normalize_result(Cycle, From, To, Acc, cb_context:doc(Context1)),
     {Context, Mode, Acc1}.
 
+-spec normalize_result(api_binary(), gregorian_seconds(), gregorian_seconds(), wh_json:object(), wh_json:objects()) -> wh_json:object().
+normalize_result(_Cycle, _From, _To, Acc, []) -> Acc;
+normalize_result(Cycle, From, To, Acc, [H|T]) ->
+    [Classification] = wh_json:get_value(<<"key">>, H),
+    Consumed = wh_json:get_value(<<"value">>, H),
+    Acc1 = case wh_json:get_value(Classification, Acc) of
+               'undefined' ->
+                   Value = wh_json:set_values(
+                             [{<<"cycle">>, Cycle}
+                              ,{<<"consumed_from">>, From}
+                              ,{<<"consumed_to">>, To}
+                              ,{<<"consumed">>, Consumed}
+                             ], wh_json:new()),
+                   wh_json:set_value(Classification, Value, Acc);
+               AccValue ->
+                   AccConsumed = wh_json:get_integer_value(<<"consumed">>, AccValue),
+                   wh_json:set_value([Classification, <<"consumed">>], AccConsumed + Consumed, Acc)
+           end,
+    normalize_result(Cycle, From, To, Acc1, T).
+
 -spec create_viewoptions(cb_context:context(), api_binary(), wh_json:object(), {'cycle', wh_datetime()} | {'manual', api_seconds(), api_seconds()}) -> 
-                                     {'ok', wh_proplist()} |
+    {'ok', wh_proplist()} |
                                      cb_context:context().
 create_viewoptions(Context, Classification, JObj, {'cycle', DateTime}) ->
     Cycle = wh_json:get_value(<<"cycle">>, JObj),
@@ -175,10 +181,6 @@ create_consumed_mode(Context) ->
         'true' -> {'cycle', calendar:universal_time()};
         'false' -> {'manual',  From, To}
     end.
-
-normalize_view_results(JObj, Acc) ->
-    Consumed = wh_json:get_value(<<"value">>, JObj),
-    [ Consumed | Acc ].
 
 -spec on_successful_validation(cb_context:context()) -> cb_context:context().
 on_successful_validation(Context) ->
