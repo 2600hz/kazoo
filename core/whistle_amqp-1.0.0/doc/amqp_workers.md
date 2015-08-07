@@ -83,7 +83,7 @@ You can also supply an arity/2 function and an accumulator arg thusly:
 
     InitAcc = [],
     UntilFun = fun(CollectedJObj, Acc) -> custom_code(CollectedJObjs, Acc) end,
-    wh_amqp_worker:call_collect(Req, fun wapi_module:publish_req/1, {UntilFun. InitAcc}).
+    wh_amqp_worker:call_collect(Req, fun wapi_module:publish_req/1, {UntilFun, InitAcc}).
 
 The `UntilFun` should return either a `boolean()` or `{'false', Acc1}` to continue with a new accumulator.
 
