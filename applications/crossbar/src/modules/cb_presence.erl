@@ -108,6 +108,7 @@ validate_search(Context, _Type) ->
 search_req(Context) ->
     Req = [{<<"Realm">>, cb_context:account_realm(Context)}
            ,{<<"Event-Package">>, cb_context:req_param(Context, <<"event">>)}
+           ,{<<"Msg-ID">>, cb_context:req_id(Context)}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case wh_amqp_worker:call_collect(Req
@@ -204,6 +205,7 @@ presentity_search_req(Context) ->
     Req = [{<<"Realm">>, cb_context:account_realm(Context)}
            ,{<<"Event-Package">>, cb_context:req_param(Context, <<"event">>)}
            ,{<<"Scope">>, <<"presentity">>}
+           ,{<<"Msg-ID">>, cb_context:req_id(Context)}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     Count = wh_nodes:whapp_count(<<"kamailio">>, 'true'),
