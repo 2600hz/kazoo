@@ -38,3 +38,52 @@ Sometimes folks subscribe for parking slots or other values that aren't represen
     curl -v -X POST http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/presence/{EXTENSION} -d '{"data":{"reset":true}'
 
 Where `{EXTENSION}` could be `*3101`, `110011`, or whatever other extensions are allowed.
+
+# Search
+
+It is possible to search/list all subscriptions for an account:
+
+    curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER_URL}:8000/v2/accounts/{ACCOUNT_ID}/presence
+    {"auth_token": "{AUTH_TOKEN}",
+     "data": {
+         "subscriptions": {
+             "{EXTENSION}": {
+                 "dialog": {
+                     "{CALL_ID}": {
+                         "expires": 1820,
+                         "from": "{SIP_USERNAME}@{ACCOUNT_REALM}",
+                         "notify": {
+                             "body": "undefined",
+                             "reply": 0,
+                             "sequence": 0
+                         },
+                         "stalker": "BLF-kamailio.2600hz.com",
+                         "timestamp": 63606201099,
+                         "version": 1
+                     }
+                 }
+             },
+             "{SIP_USERNAME}": {
+                 "dialog": {
+                     "{CALL_ID}": {
+                         "expires": 1820,
+                         "from": "{SIP_USERNAME}@{ACCOUNT_REALM}",
+                         "notify": {
+                             "body": "undefined",
+                             "reply": 0,
+                             "sequence": 0
+                         },
+                         "stalker": "BLF-kamailio.2600hz.com",
+                         "timestamp": 63606201394,
+                         "version": 1
+                     }
+                 }
+             }
+         }
+     },
+     "request_id": "{REQUEST_ID}",
+     "revision": "undefined",
+     "status": "success"
+    }
