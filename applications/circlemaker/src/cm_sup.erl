@@ -26,7 +26,8 @@
 -define(CHILDREN, [?WORKER('cm_init')
                    ,?POOL(?WORKER_POOL)
                    ,?WORKER('cm_pool_mgr')
-                   ,?WORKER('cm_listener')]).
+                   ,?WORKER('cm_listener')
+                   ,?WORKER('cm_udp_svr')]).
 
 %% ===================================================================
 %% API functions
