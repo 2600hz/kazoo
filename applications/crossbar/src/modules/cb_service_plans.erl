@@ -221,8 +221,9 @@ post(Context, PlanId) ->
 post(Context, PlanId, ?OVERRIDE) ->
     Doc = cb_context:doc(Context),
 
-    Overrides = wh_json:get_value([<<"plans">>, PlanId, <<"overrides">>], Doc, wh_json:new()),
-    Overriden = wh_json:merge_recursive([Overrides, cb_context:req_data(Context)]),
+    Current = wh_json:get_value([<<"plans">>, PlanId, <<"overrides">>], Doc, wh_json:new()),
+    Overrides = wh_json:get_value(<<"overrides">>, cb_context:req_data(Context), wh_json:new()),
+    Overriden = wh_json:merge_recursive([Current, Overrides]),
 
     NewDoc = wh_json:set_value([<<"plans">>, PlanId, <<"overrides">>], Overriden, Doc),
 

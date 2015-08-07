@@ -575,12 +575,13 @@ This api will list the services plan that can be applied to your account
 ```json
 {
     "data": {
-        "whitelabel": {
-            "_all": {
-                "activation_charge": 700
+        "overrides" {
+            "whitelabel": {
+                "_all": {
+                    "activation_charge": 700
+                }
             }
         }
-
     }
 }
 ```
