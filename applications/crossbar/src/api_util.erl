@@ -18,6 +18,7 @@
          ,parse_path_tokens/2
          ,get_req_data/2
          ,get_http_verb/2
+         ,get_auth_token/2
          ,is_authentic/2
          ,is_permitted/2
          ,is_known_content_type/2
@@ -664,19 +665,18 @@ is_authentic(Req, Context) ->
 is_authentic(Req, Context, ?HTTP_OPTIONS) ->
     %% all OPTIONS, they are harmless (I hope) and required for CORS preflight
     {'true', Req, Context};
-is_authentic(Req0, Context0, _ReqVerb) ->
+is_authentic(Req, Context0, _ReqVerb) ->
     Event = api_util:create_event_name(Context0, <<"authenticate">>),
-    {Req1, Context1} = get_auth_token(Req0, Context0),
-    case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Context1)) of
+    case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Context0)) of
         [] ->
-            is_authentic(Req1, Context1, _ReqVerb, cb_context:req_nouns(Context1));
+            is_authentic(Req, Context0, _ReqVerb, cb_context:req_nouns(Context0));
         ['true'|T] ->
-            prefer_new_context(T, Req1, Context1);
-        [{'true', Context2}|_] ->
-            {'true', Req1, Context2};
-        [{'halt', Context2}|_] ->
+            prefer_new_context(T, Req, Context0);
+        [{'true', Context1}|_] ->
+            {'true', Req, Context1};
+        [{'halt', Context1}|_] ->
             lager:debug("authn halted"),
-            ?MODULE:halt(Req1, Context2)
+            ?MODULE:halt(Req, Context1)
     end.
 
 -spec is_authentic(cowboy_req:req(), cb_context:context(), http_method(), list()) ->
