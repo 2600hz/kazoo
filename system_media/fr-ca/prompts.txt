@@ -25,7 +25,7 @@ conf-bad_pin: Invalid numéro de broche.
 conf-bad_conf: Numéro de conférence non valide.
 conf-to_many_attempts: Je suis désolé; il ya eu de nombreuses tentatives d&#39;accès à la conférence ..
 conf-alone: Vous êtes actuellement la seule personne dans cette conférence.
-conf-max_participants: Le nombre maximum de participants est déjà dans la conférence. Se il vous plaît réessayer plus tard.
+conf-max_participants: Le nombre maximum de participants est déjà dans la conférence. S'il vous plaît réessayez plus tard.
 conf-single: Il ya seulement un autre participant à cette conférence.
 conf-there_are: Il y a
 conf-other_participants: d&#39;autres participants à cette conférence.
