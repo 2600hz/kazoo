@@ -121,7 +121,7 @@ load_consumed(Context) ->
                          ,{fun cb_context:set_resp_data/2, Result}
                         ]).
 
--spec foldl_consumed(api_binary(), wh_json:object(), {cb_context:context(), atom(), wh_json:objects()}) -> wh_json:objects().
+-spec foldl_consumed(api_binary(), wh_json:object(), {cb_context:context(), {'cycle', wh_datetime()} | {'manual', api_seconds(), api_seconds()} , wh_json:objects()}) -> wh_json:objects().
 foldl_consumed(Classification, Value, {Context, Mode, Acc}) ->
     {Cycle, ViewOptions} =  create_viewoptions(Context, Classification, Value, Mode),
     [_, From] = props:get_value('startkey', ViewOptions),
@@ -154,8 +154,7 @@ normalize_result(Cycle, From, To, Acc, [H|T]) ->
     normalize_result(Cycle, From, To, Acc1, T).
 
 -spec create_viewoptions(cb_context:context(), api_binary(), wh_json:object(), {'cycle', wh_datetime()} | {'manual', api_seconds(), api_seconds()}) -> 
-    {'ok', wh_proplist()} |
-                                     cb_context:context().
+    {'ok', wh_proplist()} | cb_context:context().
 create_viewoptions(Context, Classification, JObj, {'cycle', DateTime}) ->
     Cycle = wh_json:get_value(<<"cycle">>, JObj),
     From = cycle_start(Cycle, DateTime),
@@ -167,7 +166,7 @@ create_viewoptions(Context, Classification, _JObj, {'manual', From, To}) ->
     {'ok', ViewOptions} = cb_modules_util:range_modb_view_options(Context, [Classification], [], From, To),
     {<<"manual">>, ViewOptions}.
 
--spec create_consumed_mode(cb_context:context()) -> 'cycle' | 'range'.
+-spec create_consumed_mode(cb_context:context()) -> {'cycle', wh_datetime()} | {'manual', api_seconds(), api_seconds()}.
 create_consumed_mode(Context) ->
     From = case cb_context:req_value(Context, <<"created_from">>) of
                'undefined' -> 'undefined';
