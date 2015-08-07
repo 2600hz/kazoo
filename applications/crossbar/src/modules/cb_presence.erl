@@ -208,7 +208,7 @@ presentity_search_req(Context) ->
           ],
     Count = wh_nodes:whapp_count(<<"kamailio">>, 'true'),
 
-    lager:debug("attempting presentity search for ~p responses", [Count]),
+    lager:debug("attempting presentity search from ~p servers", [Count]),
 
     case wh_amqp_worker:call_collect(Req
                                      ,fun wapi_omnipresence:publish_search_req/1

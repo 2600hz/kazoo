@@ -30,10 +30,8 @@
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'self', []}
-                   ,{'presence', [{'restrict_to', ['subscribe']}
-                                 ]}
-                   ,{'omnipresence', [{'restrict_to', ['notify']}
-                                     ]}
+                   ,{'presence', [{'restrict_to', ['subscribe']}]}
+                   ,{'omnipresence', [{'restrict_to', ['notify']}]}
                   ]).
 -define(RESPONDERS, [{{'omnip_subscriptions', 'handle_subscribe'}
                        ,[{<<"presence">>, <<"subscription">>}]

@@ -77,11 +77,11 @@
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 -define(LISTENER_PARAMS, [{'bindings', ?BINDINGS}
-                              ,{'responders', ?RESPONDERS}
-                              ,{'queue_name', ?QUEUE_NAME}
-                              ,{'queue_options', ?QUEUE_OPTIONS}
-                              ,{'consume_options', ?CONSUME_OPTIONS}
-                             ]).
+                          ,{'responders', ?RESPONDERS}
+                          ,{'queue_name', ?QUEUE_NAME}
+                          ,{'queue_options', ?QUEUE_OPTIONS}
+                          ,{'consume_options', ?CONSUME_OPTIONS}
+                         ]).
 
 %%%===================================================================
 %%% API
