@@ -87,11 +87,7 @@ handle_search_req(JObj, _Props) ->
 -spec handle_reset(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_reset(JObj, _Props) ->
     'true' = wapi_presence:reset_v(JObj),
-    case find_subscriptions(JObj) of
-        {'error', 'not_found'} -> 'ok';
-        {'ok', Subscriptions} ->
-            notify_packages('subscription_reset', Subscriptions)
-    end.
+    gen_server:cast(?MODULE, {'presence_reset', JObj}).
 
 %% Subscribes work like this:
 %%   Subscribe comes into shared queue, gets round-robined to next omni whapp
@@ -272,6 +268,10 @@ handle_cast({'presence_update', JObj}, State) ->
     Msg = {'omnipresence', {'presence_update', JObj}},
     notify_packages(Msg),
     {'noreply', State};
+handle_cast({'presence_reset', JObj}, State) ->
+    Msg = {'omnipresence', {'presence_reset', JObj}},
+    notify_packages(Msg),
+    {'noreply', State};
 handle_cast({'sync', {<<"Start">>, Node}}, #state{sync_nodes=Nodes}=State) ->
     {'noreply', State#state{sync_nodes=[Node | Nodes]}};
 handle_cast({'sync', {<<"End">>, Node}}, #state{sync_nodes=Nodes} = State) ->
@@ -338,17 +338,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
--spec notify_packages(atom(), subscriptions()) -> 'ok'.
-notify_packages(_MsgType, []) -> 'ok';
-notify_packages(MsgType , [#omnip_subscription{user=User
-                                               ,event=Package
-                                              }=Subscription
-                           | Subscriptions
-                          ]) ->
-    Msg = {'omnipresence', {MsgType, Package, User, Subscription}},
-    notify_packages(Msg),
-    notify_packages(MsgType, Subscriptions).
 
 -spec notify_packages(any()) -> 'ok'.
 notify_packages(Msg) ->

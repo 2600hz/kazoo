@@ -107,11 +107,11 @@ handle_cast({'omnipresence',{'subscribe_notify', <<"presence">>, User, #omnip_su
             ],
     wh_amqp_worker:cast(Props, fun wapi_presence:publish_probe/1),
     {'noreply', State};
-handle_cast({'omnipresence',{'subscription_reset', <<"presence">>, User, #omnip_subscription{}=_Subscription}}, State) ->
-    _ = wh_util:spawn(fun() -> set_presence_state(User, ?PRESENCE_HANGUP) end),
-    {'noreply', State};
 handle_cast({'omnipresence',{'presence_update', JObj}}, State) ->
     _ = wh_util:spawn(fun() -> presence_event(JObj) end),
+    {'noreply', State};
+handle_cast({'omnipresence',{'presence_reset', JObj}}, State) ->
+    _ = wh_util:spawn(fun() -> presence_reset(JObj) end),
     {'noreply', State};
 handle_cast({'omnipresence',{'channel_event', JObj}}, State) ->
     EventType = wh_json:get_value(<<"Event-Name">>, JObj),
@@ -433,6 +433,11 @@ ensure_template() ->
     File = lists:concat([BasePath, "/packages/presence.xml"]),
     Mod = wh_util:to_atom(<<"sub_package_presence">>, 'true'),
     {'ok', _CompileResult} = erlydtl:compile(File, Mod, [{'record_info', [{'call', record_info('fields', 'call')}]}]).
+
+-spec presence_reset(wh_json:object()) -> any().
+presence_reset(JObj) ->
+    User = <<(wh_json:get_value(<<"Username">>, JObj))/binary, "@", (wh_json:get_value(<<"Realm">>, JObj))/binary>>,
+    set_presence_state(User, ?PRESENCE_HANGUP).
 
 -spec set_presence_state(ne_binary(), ne_binary()) -> 'ok'.
 set_presence_state(PresenceId, State) ->
