@@ -22,6 +22,7 @@
          ,category_activation_charge/2, category_activation_charge/3
 
          ,item_minimum/3, item_minimum/4
+         ,item_name/3
 
          ,categories/1, category/2, category/3
          ,items/2, item/3
@@ -133,6 +134,16 @@ item_minimum(Plan, CategoryId, ItemId, Default) ->
                              ,wh_json:new()
                             )
       ,Default
+     ).
+
+-spec item_name(doc(), ne_binary(), ne_binary()) -> ne_binary().
+item_name(Plan, CategoryId, ItemId) ->
+    kzd_item_plan:name(
+        wh_json:get_json_value(
+            [?PLAN, CategoryId, ItemId]
+            ,Plan
+            ,wh_json:new()
+        )
      ).
 
 -spec item_plan(doc(), ne_binary(), ne_binary()) -> wh_json:object().
