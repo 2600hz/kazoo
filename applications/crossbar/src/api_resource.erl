@@ -101,10 +101,12 @@ rest_init(Req0, Opts) ->
               ],
     Context0 = cb_context:setters(cb_context:new(), Setters),
 
-    Event = api_util:create_event_name(Context0, <<"init">>),
-    {Context1, _} = crossbar_bindings:fold(Event, {Context0, Opts}),
+    {Req8, Context1} = api_util:get_auth_token(Req7, Context0),
+
+    Event = api_util:create_event_name(Context1, <<"init">>),
+    {Context2, _} = crossbar_bindings:fold(Event, {Context1, Opts}),
     lager:info("~s: ~s?~s from ~s", [Method, Path, QS, ClientIP]),
-    {'ok', cowboy_req:set_resp_header(<<"x-request-id">>, ReqId, Req7), Context1}.
+    {'ok', cowboy_req:set_resp_header(<<"x-request-id">>, ReqId, Req8), Context2}.
 
 find_version(Path, Req) ->
     case cowboy_req:binding('version', Req) of

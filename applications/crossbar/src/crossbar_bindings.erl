@@ -66,6 +66,7 @@
                         ,...] | [].
 -spec map(ne_binary(), payload()) -> map_results().
 map(Routing, Payload) ->
+    lager:debug("mapping ~s", [Routing]),
     kazoo_bindings:map(Routing, Payload).
 
 %%--------------------------------------------------------------------
@@ -78,6 +79,7 @@ map(Routing, Payload) ->
 -type fold_results() :: payload().
 -spec fold(ne_binary(), payload()) -> fold_results().
 fold(Routing, Payload) ->
+    lager:debug("folding ~s", [Routing]),
     kazoo_bindings:fold(Routing, Payload).
 
 %%-------------------------------------------------------------------

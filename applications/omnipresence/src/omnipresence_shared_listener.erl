@@ -35,7 +35,8 @@
                                                ,'CHANNEL_DESTROY'
                                                ,'CHANNEL_CONNECTED'
                                                ,'CHANNEL_DISCONNECTED'
-                                              ]}
+                                              ]
+                              }
                               ,'federate'
                              ]}
                    ,{'presence', [{'restrict_to', ['update'
@@ -43,7 +44,8 @@
                                                    ,'reset'
                                                    ,'flush'
                                                    ,'search_req'
-                                                  ]}
+                                                  ]
+                                  }
                                   ,'federate'
                                  ]}
                    ,{'omnipresence', [{'restrict_to', ['subscribe']}]}
@@ -75,11 +77,11 @@
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 -define(LISTENER_PARAMS, [{'bindings', ?BINDINGS}
-                              ,{'responders', ?RESPONDERS}
-                              ,{'queue_name', ?QUEUE_NAME}
-                              ,{'queue_options', ?QUEUE_OPTIONS}
-                              ,{'consume_options', ?CONSUME_OPTIONS}
-                             ]).
+                          ,{'responders', ?RESPONDERS}
+                          ,{'queue_name', ?QUEUE_NAME}
+                          ,{'queue_options', ?QUEUE_OPTIONS}
+                          ,{'consume_options', ?CONSUME_OPTIONS}
+                         ]).
 
 %%%===================================================================
 %%% API

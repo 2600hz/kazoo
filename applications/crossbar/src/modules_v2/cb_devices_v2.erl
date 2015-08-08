@@ -38,22 +38,28 @@
 
 -define(KEY_MAC_ADDRESS, <<"mac_address">>).
 
-
 %%%===================================================================
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"v2_resource.allowed_methods.devices">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"v2_resource.resource_exists.devices">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"v2_resource.authenticate">>, ?MODULE, 'authenticate'),
-    _ = crossbar_bindings:bind(<<"v2_resource.authorize">>, ?MODULE, 'authorize'),
-    _ = crossbar_bindings:bind(<<"v2_resource.billing">>, ?MODULE, 'billing'),
-    _ = crossbar_bindings:bind(<<"v2_resource.validate_resource.devices">>, ?MODULE, 'validate_resource'),
-    _ = crossbar_bindings:bind(<<"v2_resource.validate.devices">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"v2_resource.execute.put.devices">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"v2_resource.execute.post.devices">>, ?MODULE, 'post'),
-    _ = crossbar_bindings:bind(<<"v2_resource.execute.delete.devices">>, ?MODULE, 'delete'),
-    crossbar_bindings:bind(<<"v2_resource.finish_request.*.devices">>, 'crossbar_services', 'reconcile').
+    Bindings = [{<<"v2_resource.allowed_methods.devices">>, 'allowed_methods'}
+                ,{<<"v2_resource.resource_exists.devices">>, 'resource_exists'}
+                ,{<<"v2_resource.authenticate">>, 'authenticate'}
+                ,{<<"v2_resource.authorize">>, 'authorize'}
+                ,{<<"v2_resource.billing">>, 'billing'}
+                ,{<<"v2_resource.validate_resource.devices">>, 'validate_resource'}
+                ,{<<"v2_resource.validate.devices">>, 'validate'}
+                ,{<<"v2_resource.execute.put.devices">>, 'put'}
+                ,{<<"v2_resource.execute.post.devices">>, 'post'}
+                ,{<<"v2_resource.execute.delete.devices">>, 'delete'}
+               ],
+    cb_modules_util:bind(?MODULE, Bindings),
+
+    crossbar_bindings:bind(
+      <<"v2_resource.finish_request.*.devices">>
+      ,'crossbar_services'
+      ,'reconcile'
+     ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -100,8 +106,11 @@ allowed_methods(_, ?QUICKCALL_PATH_TOKEN, _) ->
 -spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
 
 resource_exists() -> 'true'.
+
 resource_exists(_) -> 'true'.
+
 resource_exists(_DeviceId, ?CHECK_SYNC_PATH_TOKEN) -> 'true'.
+
 resource_exists(_, ?QUICKCALL_PATH_TOKEN, _) -> 'true'.
 
 %%--------------------------------------------------------------------

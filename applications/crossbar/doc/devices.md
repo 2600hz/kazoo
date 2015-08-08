@@ -52,3 +52,11 @@ One can also attempt `check-sync` while updating a device (in the same request) 
     }'
 
 If `"sync"` is set to `false` or is not defined, no `check-sync` will be attempted.
+
+## Presence / BLF
+
+Occassionally a phone's BLF might be out of sync with the true state of the phone. You can explicitly ask Kazoo to reset the presence status via API to resolve this.
+
+    curl -v -X POST -H "X-Auth-Token:{AUTH_TOKEN}" http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/presence
+
+No data payload at this time is required. This will send the appropriate internal command to reset the presence of the device (following `presence_id` if required.
