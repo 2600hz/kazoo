@@ -107,7 +107,12 @@ ensure_valid_caller_id(OutboundCID, AccountId) ->
         'true' ->
             OutboundCID;
         'false' ->
-            DefaultCID = whapps_config:get(?CCCP_CONFIG_CAT, <<"default_caller_id_number">>, <<"00000000000">>),
+            DefaultCID =
+                whapps_config:get(
+                  ?CCCP_CONFIG_CAT
+                  ,<<"default_caller_id_number">>
+                  ,wh_util:anonymous_caller_id_number()
+                 ),
             lager:debug("OutboundCID ~p is out of account's list; changing to application's default: ~p", [OutboundCID, DefaultCID]),
             DefaultCID
     end.

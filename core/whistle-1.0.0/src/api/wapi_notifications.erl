@@ -40,8 +40,8 @@
          ,webhook_disabled/1, webhook_disabled_v/1
          %% published on completion of notification
          ,notify_update/1, notify_update_v/1
+         ,denied_emergency_bridge/1, denied_emergency_bridge_v/1
          ,skel/1, skel_v/1
-
          ,headers/1
         ]).
 
@@ -72,6 +72,7 @@
          ,publish_webhook/1, publish_webhook/2
          ,publish_webhook_disabled/1, publish_webhook_disabled/2
          ,publish_notify_update/2, publish_notify_update/3
+         ,publish_denied_emergency_bridge/1, publish_denied_emergency_bridge/2
          ,publish_skel/1, publish_skel/2
         ]).
 
@@ -114,6 +115,7 @@
 -define(NOTIFY_SYSTEM_ALERT, <<"notifications.system.alert">>).
 -define(NOTIFY_WEBHOOK_CALLFLOW, <<"notifications.webhook.callflow">>).
 -define(NOTIFY_WEBHOOK_DISABLED, <<"notifications.webhook.disabled">>).
+-define(NOTIFY_DENIED_EMERGENCY_BRIDGE, <<"notifications.denied_emergency_bridge">>).
 -define(NOTIFY_SKEL, <<"notifications.skel">>).
 
 %% Notify New Voicemail or Voicemail Saved
@@ -430,6 +432,19 @@
                               ]).
 -define(NOTIFY_UPDATE_TYPES, []).
 
+%% Denied Emergency Bridge
+-define(DENIED_EMERGENCY_BRIDGE_HEADERS, [<<"Account-ID">>, <<"Call-ID">>]).
+-define(OPTIONAL_DENIED_EMERGENCY_BRIDGE_HEADERS, [<<"Emergency-Caller-ID-Number">>
+                                                   ,<<"Emergency-Caller-ID-Name">>
+                                                   ,<<"Outbound-Caller-ID-Number">>
+                                                   ,<<"Outbound-Caller-ID-Name">>
+                                                   | ?DEFAULT_OPTIONAL_HEADERS
+                                                  ]).
+-define(DENIED_EMERGENCY_BRIDGE_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                                         ,{<<"Event-Name">>, <<"denied_emergency_bridge">>}
+                                        ]).
+-define(DENIED_EMERGENCY_BRIDGE_TYPES, []).
+
 %% Skeleton
 -define(SKEL_HEADERS, [<<"Account-ID">>, <<"User-ID">>]).
 -define(OPTIONAL_SKEL_HEADERS, ?DEFAULT_OPTIONAL_HEADERS).
@@ -467,8 +482,6 @@ headers(<<"system_alert">>) ->
     ?SYSTEM_ALERT_HEADERS ++ ?OPTIONAL_SYSTEM_ALERT_HEADERS;
 headers(<<"cnam_request">>) ->
     ?CNAM_REQUEST_HEADERS ++ ?OPTIONAL_CNAM_REQUEST_HEADERS;
-headers(<<"skel">>) ->
-    ?SKEL_HEADERS ++ ?OPTIONAL_SKEL_HEADERS;
 headers(<<"topup">>) ->
     ?TOPUP_HEADERS ++ ?OPTIONAL_TOPUP_HEADERS;
 headers(<<"port_request">>) ->
@@ -487,6 +500,10 @@ headers(<<"port_comment">>) ->
     ?PORT_COMMENT_HEADERS ++ ?OPTIONAL_PORT_COMMENT_HEADERS;
 headers(<<"webhook_disabled">>) ->
     ?WEBHOOK_DISABLED_HEADERS ++ ?OPTIONAL_WEBHOOK_DISABLED_HEADERS;
+headers(<<"denied_emergency_bridge">>) ->
+    ?DENIED_EMERGENCY_BRIDGE_HEADERS ++ ?OPTIONAL_DENIED_EMERGENCY_BRIDGE_HEADERS;
+headers(<<"skel">>) ->
+    ?SKEL_HEADERS ++ ?OPTIONAL_SKEL_HEADERS;
 headers(_Notification) ->
     lager:warning("no notification headers for ~s", [_Notification]),
     [].
@@ -952,6 +969,23 @@ notify_update_v(Prop) when is_list(Prop) ->
 notify_update_v(JObj) -> notify_update_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
+%% @doc denied_emergency_bridge notification - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+denied_emergency_bridge(Prop) when is_list(Prop) ->
+    case denied_emergency_bridge_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?DENIED_EMERGENCY_BRIDGE_HEADERS, ?OPTIONAL_DENIED_EMERGENCY_BRIDGE_HEADERS);
+        'false' -> {'error', "Proplist failed validation for denied_emergency_bridge"}
+    end;
+denied_emergency_bridge(JObj) -> denied_emergency_bridge(wh_json:to_proplist(JObj)).
+
+-spec denied_emergency_bridge_v(api_terms()) -> boolean().
+denied_emergency_bridge_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?DENIED_EMERGENCY_BRIDGE_HEADERS, ?DENIED_EMERGENCY_BRIDGE_VALUES, ?DENIED_EMERGENCY_BRIDGE_TYPES);
+denied_emergency_bridge_v(JObj) -> denied_emergency_bridge_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
 %% @doc skel notification - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
@@ -996,6 +1030,7 @@ skel_v(JObj) -> skel_v(wh_json:to_proplist(JObj)).
                        'system_alerts' |
                        'webhook' |
                        'webhook_disabled' |
+                       'denied_emergency_bridge' |
                        'skel'.
 -type restrictions() :: [restriction(),...] | [].
 -type option() :: {'restrict_to', restrictions()}.
@@ -1094,6 +1129,9 @@ bind_to_q(Q, ['webhook'|T]) ->
 bind_to_q(Q, ['webhook_disabled'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_WEBHOOK_DISABLED),
     bind_to_q(Q, T);
+bind_to_q(Q, ['denied_emergency_bridge'|T]) ->
+    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_DENIED_EMERGENCY_BRIDGE),
+    bind_to_q(Q, T);
 bind_to_q(Q, ['skel'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_SKEL),
     bind_to_q(Q, T);
@@ -1189,6 +1227,9 @@ unbind_q_from(Q, ['webhook'|T]) ->
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['webhook_disabled'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_WEBHOOK_DISABLED),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, ['denied_emergency_bridge'|T]) ->
+    'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_DENIED_EMERGENCY_BRIDGE),
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['skel'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_SKEL),
@@ -1397,6 +1438,13 @@ publish_notify_update(RespQ, JObj) -> publish_notify_update(RespQ, JObj, ?DEFAUL
 publish_notify_update(RespQ, API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?NOTIFY_UPDATE_VALUES, fun ?MODULE:notify_update/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
+
+-spec publish_denied_emergency_bridge(api_terms()) -> 'ok'.
+-spec publish_denied_emergency_bridge(api_terms(), ne_binary()) -> 'ok'.
+publish_denied_emergency_bridge(JObj) -> publish_denied_emergency_bridge(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_denied_emergency_bridge(API, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(API, ?DENIED_EMERGENCY_BRIDGE_VALUES, fun ?MODULE:denied_emergency_bridge/1),
+    amqp_util:notifications_publish(?NOTIFY_DENIED_EMERGENCY_BRIDGE, Payload, ContentType).
 
 -spec publish_skel(api_terms()) -> 'ok'.
 -spec publish_skel(api_terms(), ne_binary()) -> 'ok'.

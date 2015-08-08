@@ -537,7 +537,7 @@ emergency_cid_number(JObj) ->
 %% if there are no emergency enabled numbers then either use the global system default
 %% or the requested (if there isnt one)
 emergency_cid_number(Requested, _, []) ->
-    case whapps_config:get_non_empty(<<"stepswitch">>, <<"default_emergency_cid_number">>) of
+    case whapps_config:get_non_empty(?SS_CONFIG_CAT, <<"default_emergency_cid_number">>) of
         'undefined' -> Requested;
         DefaultEmergencyCID -> DefaultEmergencyCID
     end;

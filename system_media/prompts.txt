@@ -150,3 +150,5 @@ vm-you_have: You have
 cw-activated: Call waiting is now enabled, you will receive a new incoming call even when you are currently on another call.
 cw-deactivated: Call waiting is now disabled, when you are already on a call new incoming calls will not be sent to you.
 cw-not_available: Call waiting is not supported from this phone. Please contact support if you beleive this is in error.
+
+stepswitch-emergency_not_configured: The account you are dialing from, is not configured for emergency services.  Contact your system administrator as soon as possible to add the emergency service configuration.

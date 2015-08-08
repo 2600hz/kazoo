@@ -45,7 +45,6 @@
 -include_lib("kernel/include/inet.hrl"). %% for hostent record, used in find_ip/1
 
 -define(VALIDATE_CALLER_ID, whapps_config:get_is_true(<<"trunkstore">>, <<"ensure_valid_caller_id">>, 'false')).
--define(VALIDATE_EMERGENCY_ID, whapps_config:get_is_true(<<"trunkstore">>, <<"ensure_valid_emergency_number">>, 'false')).
 
 -spec find_ip(ne_binary() | nonempty_string()) -> nonempty_string().
 find_ip(Domain) when is_binary(Domain) ->
@@ -331,19 +330,8 @@ maybe_ensure_cid_valid('external', CIDNum, FromUser, AccountId) ->
         'true' -> validate_external_cid(CIDNum, FromUser, AccountId);
         'false' -> CIDNum
     end;
-maybe_ensure_cid_valid('emergency', ECIDNum, _FromUser, AccountId) ->
-    case ?VALIDATE_EMERGENCY_ID of
-        'true' -> validate_emergency_number(ECIDNum, AccountId);
-        'false' -> ECIDNum
-    end.
-
--spec validate_emergency_number(api_binary(), ne_binary()) -> ne_binary().
-validate_emergency_number(ECIDNum, AccountId) ->
-    lager:info("ensure_valid_emergency_number flag detected; will check whether ECID is legal..."),
-    case wh_number_manager:lookup_account_by_number(ECIDNum) of
-        {'ok', AccountId, _} -> ensure_valid_emergency_number(ECIDNum, AccountId);
-        _Else -> valid_emergency_number(AccountId)
-    end.
+maybe_ensure_cid_valid('emergency', ECIDNum, _FromUser, _AccountId) ->
+    ECIDNum.
 
 -spec validate_external_cid(api_binary(), ne_binary(), ne_binary()) -> ne_binary().
 validate_external_cid(CIDNum, FromUser, AccountId) ->
@@ -361,38 +349,10 @@ validate_from_user(FromUser, AccountId) ->
             lager:info("CID Number derived from CID Name, normalized and set to: ~s", [NormalizedFromUser]),
             NormalizedFromUser;
         _NothingLeft ->
-            DefaultCID = whapps_config:get(<<"trunkstore">>, <<"default_caller_id_number">>, <<"00000000000000">>),
+            DefaultCID = whapps_config:get(<<"trunkstore">>, <<"default_caller_id_number">>, wh_util:anonymous_caller_id_number()),
             lager:info("no valid caller id identified! Will use default trunkstore caller id: ~s", [DefaultCID]),
             DefaultCID
     end.
-
--spec ensure_valid_emergency_number(api_binary(), ne_binary()) -> ne_binary().
-ensure_valid_emergency_number(ECIDNum, AccountId) ->
-    Numbers = valid_emergency_numbers(AccountId),
-    case lists:member(ECIDNum, Numbers) of
-        'false' -> valid_emergency_number(AccountId);
-        'true' -> ECIDNum
-    end.
-
--spec valid_emergency_numbers(ne_binary()) -> ne_binaries().
-valid_emergency_numbers(AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
-        {'ok', JObj} ->
-            [Number
-             || Number <- wh_json:get_keys(JObj),
-                wnm_util:emergency_services_configured(Number, JObj)
-            ];
-        {'error', _} ->
-            DefaultECID = whapps_config:get_non_empty(<<"trunkstore">>, <<"default_emergency_number">>, <<>>),
-            lager:info("No valid caller id identified! Will use default trunkstore caller id: ~p",[DefaultECID]),
-            DefaultECID
-    end.
-
--spec valid_emergency_number(ne_binary()) -> ne_binary().
-valid_emergency_number(AccountId) ->
-    [H|_] = valid_emergency_numbers(AccountId),
-    H.
 
 -spec maybe_restrict_call(ts_callflow:state(), wh_proplist()) -> boolean().
 maybe_restrict_call(#ts_callflow_state{acctid=AccountId

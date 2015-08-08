@@ -27,22 +27,26 @@ handle(Data, Call) ->
 
 -spec update_call(ne_binary(), {'ok', whapps_call:call()}) -> 'ok'.
 update_call(CaptureGroup, {'ok', Call}) ->
-    Routines = [fun(C) ->
-                        Request = <<CaptureGroup/binary, "@"
-                                    ,(whapps_call:request_realm(C))/binary>>,
-                        whapps_call:set_request(Request, C)
-                end
-                ,fun(C) ->
-                         whapps_call:kvs_store('cf_privacy', 'true', C)
-                 end
-                ,fun(C) ->
-                         Name = whapps_config:get_non_empty(<<"callflow">>, <<"privacy_name">>, <<"anonymous">>),
-                         whapps_call:set_caller_id_name(Name, C)
-                 end
-                ,fun(C) ->
-                         Number = whapps_config:get_non_empty(<<"callflow">>, <<"privacy_number">>, <<"0000000000">>),
-                         whapps_call:set_caller_id_number(Number, C)
-                 end
+    Routines = [{fun whapps_call:set_request/2
+                 ,<<CaptureGroup/binary, "@"
+                    ,(whapps_call:request_realm(Call))/binary
+                  >>
+                }
+                ,{fun whapps_call:kvs_store/3, 'cf_privacy', 'true'}
+                ,{fun whapps_call:set_caller_id_name/2
+                  ,whapps_config:get_non_empty(
+                     ?CF_CONFIG_CAT
+                     ,<<"privacy_name">>
+                     ,wh_util:anonymous_caller_id_name()
+                    )
+                 }
+                ,{fun whapps_call:set_caller_id_number/2
+                  ,whapps_config:get_non_empty(
+                     ?CF_CONFIG_CAT
+                     ,<<"privacy_number">>
+                     ,wh_util:anonymous_caller_id_number()
+                    )
+                 }
                ],
     cf_exe:set_call(lists:foldl(fun(F, C) -> F(C) end, Call, Routines)).
 

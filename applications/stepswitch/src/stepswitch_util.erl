@@ -48,7 +48,7 @@ get_realm(JObj) ->
 -spec get_inbound_destination(wh_json:object()) -> ne_binary().
 get_inbound_destination(JObj) ->
     {Number, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"inbound_user_field">>),
-    case whapps_config:get_is_true(<<"stepswitch">>, <<"assume_inbound_e164">>, 'false') of
+    case whapps_config:get_is_true(?SS_CONFIG_CAT, <<"assume_inbound_e164">>, 'false') of
         'true' -> assume_e164(Number);
         'false' -> wnm_util:to_e164(Number)
     end.
@@ -121,7 +121,7 @@ correct_shortdial(Number, JObj) ->
     CIDNum = wh_json:get_first_defined([<<"Outbound-Caller-ID-Number">>
                                         ,<<"Emergency-Caller-ID-Number">>
                                        ], JObj),
-    MaxCorrection = whapps_config:get_integer(<<"stepswitch">>, <<"max_shortdial_correction">>, 5),
+    MaxCorrection = whapps_config:get_integer(?SS_CONFIG_CAT, <<"max_shortdial_correction">>, 5),
     case is_binary(CIDNum) andalso (size(CIDNum) - size(Number)) of
         Length when Length =< MaxCorrection, Length > 0 ->
             CorrectedNumber = wnm_util:to_e164(<<(binary:part(CIDNum, 0, Length))/binary, Number/binary>>),

@@ -46,6 +46,9 @@
          ,get_values/1, get_values/2
         ]).
 -export([get_keys/1, get_keys/2]).
+-export([get_public_keys/1
+         ,get_private_keys/1
+        ]).
 -export([set_value/3, set_values/2
          ,insert_value/3
          ,new/0
@@ -487,6 +490,20 @@ get_keys(Keys, JObj) -> get_keys1(get_value(Keys, JObj, new())).
 -spec get_keys1(list() | object()) -> [pos_integer(),...] | keys().
 get_keys1(KVs) when is_list(KVs) -> lists:seq(1,length(KVs));
 get_keys1(JObj) -> props:get_keys(to_proplist(JObj)).
+
+-spec get_public_keys(object()) -> keys().
+get_public_keys(JObj) ->
+    [Key
+     || Key <- get_keys(JObj)
+            ,not is_private_key(Key)
+    ].
+
+-spec get_private_keys(object()) -> keys().
+get_private_keys(JObj) ->
+    [Key
+     || Key <- get_keys(JObj)
+            ,is_private_key(Key)
+    ].
 
 -spec get_ne_value(key(), object() | objects()) ->
                           json_term() | 'undefined'.

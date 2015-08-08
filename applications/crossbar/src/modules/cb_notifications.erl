@@ -438,6 +438,8 @@ publish_fun(<<"ported">>) ->
     fun wapi_notifications:publish_ported/1;
 publish_fun(<<"webhook_disabled">>) ->
     fun wapi_notifications:publish_webhook_disabled/1;
+publish_fun(<<"denied_emergency_bridge">>) ->
+    fun wapi_notifications:publish_denied_emergency_bridge/1;
 publish_fun(_Id) ->
     lager:debug("no wapi_notification:publish_~s/1 defined", [_Id]),
     fun(_Any) -> 'ok' end.

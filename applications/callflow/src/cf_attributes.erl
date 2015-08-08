@@ -10,7 +10,6 @@
 
 -include("callflow.hrl").
 
--export([valid_emergency_numbers/1]).
 -export([temporal_rules/1]).
 -export([groups/1, groups/2]).
 -export([caller_id/2]).
@@ -182,6 +181,9 @@ maybe_rewrite_cid_name(Number, Name, Validate, Attribute, Call) ->
 
 -spec maybe_ensure_cid_valid(ne_binary(), ne_binary(), boolean(), ne_binary(), whapps_call:call()) ->
                                     {api_binary(), api_binary()}.
+maybe_ensure_cid_valid(Number, Name, 'true', <<"emergency">>, _Call) ->
+    lager:info("determined emergency caller id is <~s> ~s", [Name, Number]),
+    {Number, Name};
 maybe_ensure_cid_valid(Number, Name, 'true', <<"external">>, Call) ->
     case whapps_config:get_is_true(<<"callflow">>, <<"ensure_valid_caller_id">>, 'false') of
         'true' -> ensure_valid_caller_id(Number, Name, Call);
@@ -189,52 +191,29 @@ maybe_ensure_cid_valid(Number, Name, 'true', <<"external">>, Call) ->
             lager:info("determined external caller id is <~s> ~s", [Name, Number]),
             maybe_cid_privacy(Number, Name, Call)
     end;
-maybe_ensure_cid_valid(Number, Name, 'true', <<"emergency">>, Call) ->
-    case whapps_config:get_is_true(<<"callflow">>, <<"ensure_valid_emergency_number">>, 'false') of
-        'true' -> ensure_valid_emergency_number(Number, Name, Call);
-        'false' ->
-            lager:info("determined emergency caller id is <~s> ~s", [Name, Number]),
-            {Number, Name}
-    end;
 maybe_ensure_cid_valid(Number, Name, _, Attribute, Call) ->
     lager:info("determined ~s caller id is <~s> ~s", [Attribute, Name, Number]),
     maybe_cid_privacy(Number, Name, Call).
 
+-spec maybe_cid_privacy(api_binary(), api_binary(), whapps_call:call()) ->
+                               {api_binary(), api_binary()}.
 maybe_cid_privacy(Number, Name, Call) ->
     case wh_util:is_true(whapps_call:kvs_fetch('cf_privacy', Call)) of
         'true' ->
             lager:info("overriding caller id to maintain privacy"),
-            {whapps_config:get_non_empty(<<"callflow">>, <<"privacy_number">>, <<"0000000000">>)
-            ,whapps_config:get_non_empty(<<"callflow">>, <<"privacy_name">>, <<"anonymous">>)};
+            {whapps_config:get_non_empty(
+               <<"callflow">>
+               ,<<"privacy_number">>
+               ,wh_util:anonymous_caller_id_number()
+              )
+             ,whapps_config:get_non_empty(
+                <<"callflow">>
+                ,<<"privacy_name">>
+                ,wh_util:anonymous_caller_id_name()
+               )
+            };
         'false' -> {Number, Name}
     end.
-
--spec ensure_valid_emergency_number(ne_binary(), api_binary(), whapps_call:call()) ->
-                                           {api_binary(), api_binary()}.
-ensure_valid_emergency_number(Number, Name, Call) ->
-    Numbers = valid_emergency_numbers(Call),
-    case lists:member(Number, Numbers) of
-        'true' ->
-            lager:info("determined emergency caller id is <~s> ~s", [Name, Number]),
-            {Number, Name};
-        'false' ->
-            find_valid_emergency_number(Numbers, Number, Name)
-    end.
-
--spec find_valid_emergency_number(ne_binaries(), ne_binary(), ne_binary()) ->
-                                         {api_binary(), api_binary()}.
-find_valid_emergency_number([], Number, Name) ->
-    case whapps_config:get_non_empty(<<"callflow">>, <<"default_emergency_number">>, <<>>) of
-        'undefined' ->
-            lager:info("determined emergency caller id is <~s> ~s", [Name, Number]),
-            {Number, Name};
-        Default ->
-            lager:info("using default emergency caller id <~s> ~s", [Name, Default]),
-            {Default, Name}
-    end;
-find_valid_emergency_number([Number|_], _, Name) ->
-    lager:info("determined emergency caller id is <~s> ~s", [Name, Number]),
-    {Number, Name}.
 
 -spec ensure_valid_caller_id(ne_binary(), ne_binary(), whapps_call:call()) ->
                                     {api_binary(), api_binary()}.
@@ -572,12 +551,21 @@ owned_by_query(ViewOptions, Call, ViewKey) ->
 %%-----------------------------------------------------------------------------
 -spec default_cid_number() -> ne_binary().
 default_cid_number() ->
-    whapps_config:get(?CF_CONFIG_CAT, <<"default_caller_id_number">>, ?DEFAULT_CALLER_ID_NUMBER).
+    whapps_config:get(
+      ?CF_CONFIG_CAT
+      ,<<"default_caller_id_number">>
+      ,wh_util:anonymous_caller_id_number()
+     ).
 
 -spec default_cid_name(wh_json:object()) -> ne_binary().
 default_cid_name(Endpoint) ->
     case wh_json:get_ne_value(<<"name">>, Endpoint) of
-        'undefined' -> whapps_config:get_non_empty(<<"callflow">>, <<"default_caller_id_name">>, <<"unknown">>);
+        'undefined' ->
+            whapps_config:get(
+              ?CF_CONFIG_CAT
+              ,<<"default_caller_id_name">>
+              ,wh_util:anonymous_caller_id_name()
+             );
         Name -> Name
     end.
 
@@ -593,17 +581,4 @@ get_cid_or_default(Attribute, Property, Endpoint) ->
     case wh_json:get_ne_value([<<"caller_id">>, Attribute, Property], Endpoint) of
         'undefined' -> wh_json:get_ne_value([<<"default">>, Property], Endpoint);
         Value -> Value
-    end.
-
--spec valid_emergency_numbers(whapps_call:call()) -> ne_binaries().
-valid_emergency_numbers(Call) ->
-    AccountDb = whapps_call:account_db(Call),
-    case couch_mgr:open_cache_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
-        {'ok', JObj} ->
-            [Number
-             || Number <- wh_json:get_keys(JObj),
-                wnm_util:emergency_services_configured(Number, JObj)
-            ];
-        {'error', _} ->
-            []
     end.
