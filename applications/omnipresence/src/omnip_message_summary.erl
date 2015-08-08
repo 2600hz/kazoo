@@ -98,11 +98,11 @@ handle_cast({'omnipresence',{'subscribe_notify', <<"message-summary">>, User, _S
             ],
     wh_amqp_worker:cast(Query, fun wapi_presence:publish_mwi_query/1),
     {'noreply', State};
-handle_cast({'omnipresence',{'subscription_reset', <<"message-summary">>, User, #omnip_subscription{}=_Subscription}}, State) ->
-    _ = wh_util:spawn(fun() -> handle_update(wh_json:new(), User) end),
-    {'noreply', State};
 handle_cast({'omnipresence',{'mwi_update', JObj}}, State) ->
     _ = wh_util:spawn(fun() -> mwi_event(JObj) end),
+    {'noreply', State};
+handle_cast({'omnipresence',{'presence_reset', JObj}}, State) ->
+    _ = wh_util:spawn(fun() -> presence_reset(JObj) end),
     {'noreply', State};
 handle_cast({'omnipresence', _}, State) ->
     {'noreply', State};
@@ -266,3 +266,8 @@ ensure_template() ->
     File = lists:concat([BasePath, "/packages/message-summary.xml"]),
     Mod = wh_util:to_atom(<<"sub_package_message_summary">>, 'true'),
     {'ok', _CompileResult} = erlydtl:compile(File, Mod, []).
+
+-spec presence_reset(wh_json:object()) -> any().
+presence_reset(JObj) ->
+    User = <<(wh_json:get_value(<<"Username">>, JObj))/binary, "@", (wh_json:get_value(<<"Realm">>, JObj))/binary>>,
+    handle_update(wh_json:new(), User).

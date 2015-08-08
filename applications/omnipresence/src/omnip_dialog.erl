@@ -93,15 +93,15 @@ handle_cast({'gen_listener',{'created_queue',_Queue}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
-handle_cast({'omnipresence',{'subscription_reset', <<"dialog">>, User, #omnip_subscription{}=_Subscription}}, State) ->
-    _ = wh_util:spawn(fun() -> reset_blf(User) end),
-    {'noreply', State};
 handle_cast({'omnipresence',{'channel_event', JObj}}, State) ->
     EventType = wh_json:get_value(<<"Event-Name">>, JObj),
     _ = wh_util:spawn(fun() -> channel_event(EventType, JObj) end),
     {'noreply', State};
 handle_cast({'omnipresence',{'presence_update', JObj}}, State) ->
     _ = wh_util:spawn(fun() -> presence_event(JObj) end),
+    {'noreply', State};
+handle_cast({'omnipresence',{'presence_reset', JObj}}, State) ->
+    _ = wh_util:spawn(fun() -> presence_reset(JObj) end),
     {'noreply', State};
 handle_cast({'omnipresence', _}, State) ->
     {'noreply', State};
@@ -464,6 +464,11 @@ ensure_template() ->
     File = lists:concat([BasePath, "/packages/dialog.xml"]),
     Mod = wh_util:to_atom(<<"sub_package_dialog">>, 'true'),
     {'ok', _CompileResult} = erlydtl:compile(File, Mod, [{'record_info', [{'channel', record_info('fields', 'channel')}]}]).
+
+-spec presence_reset(wh_json:object()) -> any().
+presence_reset(JObj) ->
+    User = <<(wh_json:get_value(<<"Username">>, JObj))/binary, "@", (wh_json:get_value(<<"Realm">>, JObj))/binary>>,
+    reset_blf(User).
 
 -spec reset_blf(ne_binary()) -> any().
 reset_blf(User) ->
