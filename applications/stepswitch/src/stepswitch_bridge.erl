@@ -31,6 +31,7 @@
                 ,queue :: api_binary()
                 ,timeout :: reference()
                }).
+-type state() :: #state{}.
 
 -define(RESPONDERS, []).
 -define(QUEUE_NAME, <<>>).
@@ -127,9 +128,8 @@ handle_cast({'wh_amqp_channel', _}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
     {'noreply', State#state{queue=Q}};
-handle_cast({'gen_listener', {'is_consuming', 'true'}}, #state{control_queue=ControlQ}=State) ->
-    'ok' = wapi_dialplan:publish_command(ControlQ, build_bridge(State)),
-    lager:debug("sent bridge command to ~s", [ControlQ]),
+handle_cast({'gen_listener', {'is_consuming', 'true'}}, State) ->
+    _ = maybe_bridge(State),
     {'noreply', State};
 handle_cast({'bridge_result', _Props}, #state{response_queue='undefined'}=State) ->
     {'stop', 'normal', State};
@@ -239,60 +239,124 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec maybe_bridge(state()) -> 'ok'.
+maybe_bridge(#state{endpoints=Endpoints
+                    ,resource_req=JObj
+                    ,control_queue=ControlQ
+                   }=State) ->
+    case contains_emergency_endpoints(Endpoints) of
+        'true' -> maybe_bridge_emergency(State);
+        'false' ->
+            Name = bridge_outbound_cid_name(JObj),
+            Number = bridge_outbound_cid_number(JObj),
+            wapi_dialplan:publish_command(
+              ControlQ
+              ,build_bridge(State, Number, Name)
+             ),
+            lager:debug("sent bridge command to ~s", [ControlQ])
+    end.
+
+-spec maybe_bridge_emergency(state()) -> 'ok'.
+maybe_bridge_emergency(#state{resource_req=JObj
+                              ,control_queue=ControlQ
+                             }=State) ->
+    %% NOTE: if this request had a hunt-account-id then we
+    %%   are assuming it was for a local resource (at the
+    %%   time of this commit offnet DB is still in use)
+    Name = bridge_emergency_cid_name(JObj),
+    Number = find_emergency_number(JObj),
+    case wh_json:get_value(<<"Hunt-Account-ID">>, JObj) of
+        'undefined' ->
+            maybe_deny_emergency_bridge(State, Number, Name);
+        _Else ->
+            lager:debug("not enforcing emergency caller id validation when using resource from account ~s", [_Else]),
+            wapi_dialplan:publish_command(
+              ControlQ
+              ,build_bridge(State, Number, Name)
+             ),
+            lager:debug("sent bridge command to ~s", [ControlQ])
+    end.
+
+-spec maybe_deny_emergency_bridge(state(), api_binary(), api_binary()) -> 'ok'.
+maybe_deny_emergency_bridge(State, 'undefined', Name) ->
+    case whapps_config:get_is_true(
+           ?SS_CONFIG_CAT
+           ,<<"deny_invalid_emergency_cid">>
+           ,'false'
+          )
+    of
+        'false' ->
+            maybe_deny_emergency_bridge(
+              State
+              ,default_emergency_number(wh_util:anonymous_caller_id_number())
+              ,Name
+             );
+        'true' -> deny_emergency_bridge(State)
+    end;
+maybe_deny_emergency_bridge(#state{control_queue=ControlQ}=State, Number, Name) ->
+    wapi_dialplan:publish_command(
+      ControlQ
+      ,build_bridge(State, Number, Name)
+     ),
+    lager:debug("sent bridge command to ~s", [ControlQ]).
+
+-spec build_bridge(state(), api_binary(), api_binary()) -> wh_proplist().
 build_bridge(#state{endpoints=Endpoints
                     ,resource_req=JObj
                     ,queue=Q
-                   }) ->
-    {CIDNum, CIDName} = bridge_caller_id(Endpoints, JObj),
-    lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
+                   }
+            ,Number
+            ,Name) ->
+    lager:debug("set outbound caller id to ~s '~s'", [Number, Name]),
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
-    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
-    CCVUpdates = props:filter_undefined(
-                   [{<<"Ignore-Display-Updates">>, <<"true">>}
-                    ,{<<"Account-ID">>, AccountId}
-                    ,{<<"From-URI">>, bridge_from_uri(CIDNum, JObj)}
-                    ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
-                   ]),
-    BLegEvents = wh_json:get_list_value(<<"B-Leg-Events">>, JObj, []),
-
+    CCVs =
+        wh_json:set_values(
+          props:filter_undefined(
+            [{<<"Ignore-Display-Updates">>, <<"true">>}
+             ,{<<"Account-ID">>, AccountId}
+             ,{<<"From-URI">>, bridge_from_uri(Number, JObj)}
+             ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
+            ])
+          ,wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())
+         ),
     props:filter_undefined(
       [{<<"Application-Name">>, <<"bridge">>}
        ,{<<"Dial-Endpoint-Method">>, <<"single">>}
-       ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
-       ,{<<"Outbound-Caller-ID-Name">>, CIDName}
-       ,{<<"Caller-ID-Number">>, CIDNum}
-       ,{<<"Caller-ID-Name">>, CIDName}
-       ,{<<"Endpoints">>, format_endpoints(Endpoints, CIDNum, JObj, AccountId)}
+       ,{<<"Outbound-Caller-ID-Number">>, Number}
+       ,{<<"Outbound-Caller-ID-Name">>, Name}
+       ,{<<"Caller-ID-Number">>, Number}
+       ,{<<"Caller-ID-Name">>, Name}
+       ,{<<"Custom-Channel-Vars">>, CCVs}
        ,{<<"Timeout">>, wh_json:get_value(<<"Timeout">>, JObj)}
        ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"Ignore-Early-Media">>, JObj, <<"false">>)}
        ,{<<"Media">>, wh_json:get_value(<<"Media">>, JObj)}
        ,{<<"Hold-Media">>, wh_json:get_value(<<"Hold-Media">>, JObj)}
        ,{<<"Presence-ID">>, wh_json:get_value(<<"Presence-ID">>, JObj)}
        ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
-       ,{<<"Custom-Channel-Vars">>, wh_json:set_values(CCVUpdates, CCVs)}
        ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-       ,{<<"Fax-Identity-Number">>, wh_json:get_value(<<"Fax-Identity-Number">>, JObj, CIDNum)}
-       ,{<<"Fax-Identity-Name">>, wh_json:get_value(<<"Fax-Identity-Name">>, JObj, CIDName)}
+       ,{<<"Fax-Identity-Number">>, wh_json:get_value(<<"Fax-Identity-Number">>, JObj, Number)}
+       ,{<<"Fax-Identity-Name">>, wh_json:get_value(<<"Fax-Identity-Name">>, JObj, Name)}
        ,{<<"Outbound-Callee-ID-Number">>, wh_json:get_value(<<"Outbound-Callee-ID-Number">>, JObj)}
        ,{<<"Outbound-Callee-ID-Name">>, wh_json:get_value(<<"Outbound-Callee-ID-Name">>, JObj)}
-       ,{<<"B-Leg-Events">>, BLegEvents}
+       ,{<<"B-Leg-Events">>, wh_json:get_list_value(<<"B-Leg-Events">>, JObj, [])}
+       ,{<<"Endpoints">>, format_endpoints(Endpoints, Number, JObj, AccountId)}
        | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
 -spec format_endpoints(wh_json:objects(), api_binary(), wh_json:object(), api_binary()) ->
                               wh_json:objects().
-format_endpoints(Endpoints, CIDNum, JObj, AccountId) ->
+format_endpoints(Endpoints, Number, JObj, AccountId) ->
     SIPHeaders = stepswitch_util:get_sip_headers(JObj),
 
     DefaultRealm = wh_json:get_first_defined([<<"From-URI-Realm">>
                                               ,<<"Account-Realm">>
                                              ], JObj),
-    [format_endpoint(Endpoint, CIDNum, AccountId, SIPHeaders, DefaultRealm)
+    [format_endpoint(Endpoint, Number, AccountId, SIPHeaders, DefaultRealm)
      || Endpoint <- Endpoints
     ].
 
 -spec format_endpoint(wh_json:object(), api_binary(), api_binary(), api_object(), api_binary()) -> wh_json:object().
-format_endpoint(Endpoint, CIDNum, AccountId, SIPHeaders, DefaultRealm) ->
+format_endpoint(Endpoint, Number, AccountId, SIPHeaders, DefaultRealm) ->
     FormattedEndpoint =
         stepswitch_formatters:apply(maybe_add_sip_headers(Endpoint, SIPHeaders)
                                     ,props:get_value(<<"Formatters">>
@@ -301,7 +365,7 @@ format_endpoint(Endpoint, CIDNum, AccountId, SIPHeaders, DefaultRealm) ->
                                                     )
                                     ,'outbound'
                                    ),
-    maybe_endpoint_format_from(FormattedEndpoint, CIDNum, DefaultRealm).
+    maybe_endpoint_format_from(FormattedEndpoint, Number, DefaultRealm).
 
 -spec maybe_add_sip_headers(wh_json:object(), api_object()) -> wh_json:object().
 maybe_add_sip_headers(Endpoint, 'undefined') -> Endpoint;
@@ -329,10 +393,10 @@ empty_list_on_undefined(L) -> L.
 
 -spec maybe_endpoint_format_from(wh_json:object(), ne_binary(), api_binary()) ->
                                         wh_json:object().
-maybe_endpoint_format_from(Endpoint, CIDNum, DefaultRealm) ->
+maybe_endpoint_format_from(Endpoint, Number, DefaultRealm) ->
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, Endpoint, wh_json:new()),
     case wh_json:is_true(<<"Format-From-URI">>, CCVs) of
-        'true' -> endpoint_format_from(Endpoint, CIDNum, DefaultRealm, CCVs);
+        'true' -> endpoint_format_from(Endpoint, Number, DefaultRealm, CCVs);
         'false' ->
             wh_json:set_value(<<"Custom-Channel-Vars">>
                               ,wh_json:delete_keys([<<"Format-From-URI">>
@@ -343,10 +407,10 @@ maybe_endpoint_format_from(Endpoint, CIDNum, DefaultRealm) ->
 
 -spec endpoint_format_from(wh_json:object(), ne_binary(), api_binary(), wh_json:object()) ->
                                   wh_json:object().
-endpoint_format_from(Endpoint, CIDNum, DefaultRealm, CCVs) ->
+endpoint_format_from(Endpoint, Number, DefaultRealm, CCVs) ->
     case wh_json:get_value(<<"From-URI-Realm">>, CCVs, DefaultRealm) of
         <<_/binary>> = Realm ->
-            FromURI = <<"sip:", CIDNum/binary, "@", Realm/binary>>,
+            FromURI = <<"sip:", Number/binary, "@", Realm/binary>>,
             lager:debug("setting resource ~s from-uri to ~s"
                         ,[wh_json:get_value(<<"Resource-ID">>, CCVs)
                           ,FromURI
@@ -365,120 +429,130 @@ endpoint_format_from(Endpoint, CIDNum, DefaultRealm, CCVs) ->
                               ,Endpoint)
     end.
 
--spec bridge_caller_id(wh_json:objects(), wh_json:object()) ->
-                              {api_binary(), api_binary()}.
-bridge_caller_id(Endpoints, JObj) ->
-    case contains_emergency_endpoints(Endpoints) of
-        'true' -> bridge_emergency_caller_id(JObj);
-        'false' -> bridge_caller_id(JObj)
-    end.
-
--spec bridge_emergency_caller_id(wh_json:object()) ->
-                                        {api_binary(), api_binary()}.
-bridge_emergency_caller_id(JObj) ->
-    lager:debug("outbound call is using an emergency route, attempting to set CID accordingly"),
-    {maybe_emergency_cid_number(JObj)
-     ,wh_json:get_first_defined([<<"Emergency-Caller-ID-Name">>
-                                 ,<<"Outbound-Caller-ID-Name">>
-                                ], JObj)
-    }.
-
--spec bridge_caller_id(wh_json:object()) ->
-                              {api_binary(), api_binary()}.
-bridge_caller_id(JObj) ->
-    {wh_json:get_first_defined([<<"Outbound-Caller-ID-Number">>
-                                ,<<"Emergency-Caller-ID-Number">>
-                               ], JObj)
-     ,wh_json:get_first_defined([<<"Outbound-Caller-ID-Name">>
-                                 ,<<"Emergency-Caller-ID-Name">>
-                                ], JObj)
-    }.
-
 -spec bridge_from_uri(api_binary(), wh_json:object()) ->
                              api_binary().
-bridge_from_uri(CIDNum, JObj) ->
+bridge_from_uri(Number, JObj) ->
     Realm = wh_json:get_first_defined([<<"From-URI-Realm">>
                                        ,<<"Account-Realm">>
                                       ], JObj),
-    case (whapps_config:get_is_true(?APP_NAME, <<"format_from_uri">>, 'false')
+    case (whapps_config:get_is_true(?SS_CONFIG_CAT, <<"format_from_uri">>, 'false')
           orelse wh_json:is_true(<<"Format-From-URI">>, JObj)
          )
-        andalso (is_binary(CIDNum) andalso is_binary(Realm))
+        andalso (is_binary(Number) andalso is_binary(Realm))
     of
         'false' -> 'undefined';
         'true' ->
-            FromURI = <<"sip:", CIDNum/binary, "@", Realm/binary>>,
+            FromURI = <<"sip:", Number/binary, "@", Realm/binary>>,
             lager:debug("setting bridge from-uri to ~s", [FromURI]),
             FromURI
     end.
 
--spec maybe_emergency_cid_number(wh_json:object()) ->
-                                        api_binary().
-maybe_emergency_cid_number(JObj) ->
-    %% NOTE: if this request had a hunt-account-id then we
-    %%   are assuming it was for a local resource (at the
-    %%   time of this commit offnet DB is still in use)
-    case wh_json:get_value(<<"Hunt-Account-ID">>, JObj) of
-        'undefined' -> emergency_cid_number(JObj);
-        _Else ->
-            wh_json:get_first_defined([<<"Emergency-Caller-ID-Number">>
-                                       ,<<"Outbound-Caller-ID-Number">>
-                                      ], JObj)
+-spec bridge_outbound_cid_name(wh_json:object()) -> api_binary().
+bridge_outbound_cid_name(JObj) ->
+    wh_json:get_first_defined(
+      [<<"Outbound-Caller-ID-Name">>
+       ,<<"Emergency-Caller-ID-Name">>
+      ], JObj
+     ).
+
+-spec bridge_outbound_cid_number(wh_json:object()) -> api_binary().
+bridge_outbound_cid_number(JObj) ->
+    wh_json:get_first_defined(
+      [<<"Outbound-Caller-ID-Number">>
+       ,<<"Emergency-Caller-ID-Number">>
+      ], JObj
+     ).
+
+-spec bridge_emergency_cid_name(wh_json:object()) -> api_binary().
+bridge_emergency_cid_name(JObj) ->
+    wh_json:get_first_defined(
+      [<<"Emergency-Caller-ID-Name">>
+       ,<<"Outbound-Caller-ID-Name">>
+      ], JObj
+     ).
+
+-spec bridge_emergency_cid_number(wh_json:object()) -> api_binary().
+bridge_emergency_cid_number(JObj) ->
+    wh_json:get_first_defined(
+      [<<"Emergency-Caller-ID-Number">>
+       ,<<"Outbound-Caller-ID-Number">>
+      ], JObj
+     ).
+
+-spec find_emergency_number(wh_json:object()) -> api_binary().
+find_emergency_number(JObj) ->
+    case whapps_config:get_is_true(
+           ?SS_CONFIG_CAT
+           ,<<"ensure_valid_emergency_cid">>
+           ,'false'
+          )
+    of
+        'true' -> ensure_valid_emergency_number(JObj);
+        'false' ->
+            lager:debug("using first configured unverified emergency caller id"),
+            bridge_emergency_cid_number(JObj)
     end.
 
--spec emergency_cid_number(wh_json:object()) ->
-                                  ne_binary().
-emergency_cid_number(JObj) ->
-    Account = wh_json:get_value(<<"Account-ID">>, JObj),
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    Candidates = [wh_json:get_ne_value(<<"Emergency-Caller-ID-Number">>, JObj)
-                  ,wh_json:get_ne_value(<<"Outbound-Caller-ID-Number">>, JObj)
-                 ],
-    Requested = wh_json:get_first_defined([<<"Emergency-Caller-ID-Number">>
-                                           ,<<"Outbound-Caller-ID-Number">>
-                                          ], JObj),
-    lager:debug("ensuring requested CID is emergency enabled: ~s", [Requested]),
+-spec ensure_valid_emergency_number(wh_json:object()) -> api_binary().
+ensure_valid_emergency_number(JObj) ->
+    AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
+    lager:debug("ensuring emergency caller is valid for account ~s", [AccountId]),
+    Numbers = valid_emergency_numbers(AccountId),
+    Emergency = bridge_emergency_cid_number(JObj),
+    Outbound = bridge_outbound_cid_number(JObj),
+    case {lists:member(Emergency, Numbers), lists:member(Outbound, Numbers)} of
+        {'true', _} ->
+            lager:info("determined emergency caller id number ~s is configured for e911", [Emergency]),
+            Emergency;
+        {_, 'true'} ->
+            lager:info("determined outbound caller id number ~s is configured for e911", [Outbound]),
+            Outbound;
+        {'false', 'false'} ->
+            lager:notice("emergency caller id number ~s nor outbound caller id number ~s configured for e911"
+                         ,[Emergency, Outbound]
+                        ),
+            find_valid_emergency_number(Numbers)
+    end.
+
+-spec find_valid_emergency_number(ne_binaries()) -> api_binary().
+find_valid_emergency_number([]) ->
+    lager:info("no alternative e911 enabled numbers available", []),
+    'undefined';
+find_valid_emergency_number([Number|_]) ->
+    lager:info("found alternative emergency caller id number ~s", [Number]),
+    Number.
+
+-spec valid_emergency_numbers(ne_binary()) -> ne_binaries().
+valid_emergency_numbers(AccountId) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_cache_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
-        {'ok', PhoneNumbers} ->
-            Numbers = wh_json:get_keys(wh_json:public_fields(PhoneNumbers)),
-            EmergencyEnabled = [Number
-                                || Number <- Numbers,
-                                   wnm_util:emergency_services_configured(Number, PhoneNumbers)
-                               ],
-            emergency_cid_number(Requested, Candidates, EmergencyEnabled);
+        {'ok', JObj} ->
+            [Number
+             || Number <- wh_json:get_public_keys(JObj),
+                wnm_util:emergency_services_configured(Number, JObj)
+            ];
         {'error', _R} ->
-            lager:error("unable to fetch the ~s from account ~s: ~p", [?WNM_PHONE_NUMBER_DOC, Account, _R]),
-            emergency_cid_number(Requested, Candidates, [])
+            []
     end.
 
--spec emergency_cid_number(ne_binary(), api_binaries(), ne_binaries()) -> ne_binary().
-%% if there are no emergency enabled numbers then either use the global system default
-%% or the requested (if there isnt one)
-emergency_cid_number(Requested, _, []) ->
-    case whapps_config:get_non_empty(<<"stepswitch">>, <<"default_emergency_cid_number">>) of
+-spec default_emergency_number(ne_binary()) -> ne_binary().
+default_emergency_number(Requested) ->
+    case whapps_config:get_non_empty(
+           ?SS_CONFIG_CAT
+           ,<<"default_emergency_cid_number">>
+          )
+    of
         'undefined' -> Requested;
-        DefaultEmergencyCID -> DefaultEmergencyCID
-    end;
-%% If neither their emergency cid or outgoung cid is emergency enabled but their account
-%% has other numbers with emergency then use the first...
-emergency_cid_number(_, [], [EmergencyEnabled|_]) -> EmergencyEnabled;
-%% due to the way we built the candidates list it can contain the atom 'undefined'
-%% handle that condition (ignore)
-emergency_cid_number(Requested, ['undefined'|Candidates], EmergencyEnabled) ->
-    emergency_cid_number(Requested, Candidates, EmergencyEnabled);
-%% check if the first non-atom undefined element in the list is in the list of
-%% emergency enabled numbers, if so use it otherwise keep checking.
-emergency_cid_number(Requested, [Candidate|Candidates], EmergencyEnabled) ->
-    case lists:member(Candidate, EmergencyEnabled) of
-        'true' -> Candidate;
-        'false' -> emergency_cid_number(Requested, Candidates, EmergencyEnabled)
+        Else -> Else
     end.
 
 -spec contains_emergency_endpoints(wh_json:objects()) -> boolean().
 contains_emergency_endpoints([]) -> 'false';
 contains_emergency_endpoints([Endpoint|Endpoints]) ->
     case wh_json:is_true([<<"Custom-Channel-Vars">>, <<"Emergency-Resource">>], Endpoint) of
-        'true' -> 'true';
+        'true' ->
+            lager:debug("endpoints contain an emergency resource", []),
+            'true';
         'false' -> contains_emergency_endpoints(Endpoints)
     end.
 
@@ -529,3 +603,54 @@ bridge_failure(JObj, Request) ->
      ,{<<"Resource-Response">>, JObj}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
+
+-spec bridge_not_configured(wh_json:object()) -> wh_proplist().
+bridge_not_configured(Request) ->
+    [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, Request)}
+     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Request, <<>>)}
+     ,{<<"Response-Message">>, <<"MANDATORY_IE_MISSING">>}
+     ,{<<"Response-Code">>, <<"sip:403">>}
+     ,{<<"Error-Message">>, <<"services not configured">>}
+     ,{<<"To-DID">>, wh_json:get_value(<<"To-DID">>, Request)}
+     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+    ].
+
+-spec deny_emergency_bridge(state()) -> 'ok'.
+deny_emergency_bridge(#state{resource_req=JObj, control_queue=ControlQ}) ->
+    lager:warning("terminating attempted emergency bridge from unconfigured device"),
+    send_deny_emergency_response(JObj, ControlQ),
+    send_deny_emergency_notification(JObj),
+    Result = bridge_not_configured(JObj),
+    gen_listener:cast(self(), {'bridge_result', Result}).
+
+-spec send_deny_emergency_notification(wh_json:object()) -> 'ok'.
+send_deny_emergency_notification(Request) ->
+    Props = [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, Request)}
+             ,{<<"Account-ID">>, wh_json:get_value(<<"Account-ID">>, Request)}
+             ,{<<"Emergency-Caller-ID-Number">>, wh_json:get_value(<<"Emergency-Caller-ID-Number">>, Request)}
+             ,{<<"Emergency-Caller-ID-Name">>, wh_json:get_value(<<"Emergency-Caller-ID-Name">>, Request)}
+             ,{<<"Outbound-Caller-ID-Number">>, wh_json:get_value(<<"Outbound-Caller-ID-Number">>, Request)}
+             ,{<<"Outbound-Caller-ID-Name">>, wh_json:get_value(<<"Outbound-Caller-ID-Name">>, Request)}
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ],
+    wapi_notifications:publish_denied_emergency_bridge(Props).
+
+-spec send_deny_emergency_response(wh_json:object(), ne_binary()) -> 'ok'.
+send_deny_emergency_response(JObj, ControlQ) ->
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+    Code = whapps_config:get_ne_binary(
+             ?SS_CONFIG_CAT
+             ,<<"deny_emergency_bridge_code">>
+             ,486
+            ),
+    Cause = whapps_config:get_ne_binary(
+              ?SS_CONFIG_CAT
+              ,<<"deny_emergency_bridge_cause">>
+              ,<<"Emergency service not configured">>
+             ),
+    Media = whapps_config:get_ne_binary(
+              ?SS_CONFIG_CAT
+              ,<<"deny_emergency_bridge_media">>
+              ,<<"prompt://system_media/stepswitch-emergency_not_configured/">>
+             ),
+    wh_call_response:send(CallId, ControlQ, Code, Cause, Media).

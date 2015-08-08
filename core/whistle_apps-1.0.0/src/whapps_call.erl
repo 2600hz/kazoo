@@ -116,16 +116,13 @@
 
 -export([default_helper_function/2]).
 
--define(DEFAULT_CALLER_ID_NAME, <<"Unknown">>).
--define(DEFAULT_CALLER_ID_NUMBER, <<"0000000000">>).
-
 -record(whapps_call, {call_id :: api_binary()                       %% The UUID of the call
                       ,call_id_helper = fun ?MODULE:default_helper_function/2 :: whapps_helper_function()         %% A function used when requesting the call id, to ensure it is up-to-date
                       ,control_q :: api_binary()                   %% The control queue provided on route win
                       ,control_q_helper = fun ?MODULE:default_helper_function/2 :: whapps_helper_function()       %% A function used when requesting the call id, to ensure it is up-to-date
                       ,controller_q :: api_binary()                %%
-                      ,caller_id_name = ?DEFAULT_CALLER_ID_NAME :: ne_binary()      %% The caller name
-                      ,caller_id_number = ?DEFAULT_CALLER_ID_NUMBER :: ne_binary() %% The caller number
+                      ,caller_id_name = wh_util:anonymous_caller_id_name() :: ne_binary()      %% The caller name
+                      ,caller_id_number = wh_util:anonymous_caller_id_number() :: ne_binary() %% The caller number
                       ,callee_id_name :: api_binary()                     %% The callee name
                       ,callee_id_number :: api_binary()                   %% The callee number
                       ,switch_nodename = <<>> :: binary()                 %% The switch node name (as known in ecallmgr)
@@ -569,7 +566,7 @@ set_caller_id_name(CIDName, #whapps_call{}=Call) when is_binary(CIDName) ->
 -spec caller_id_name(call()) -> ne_binary().
 caller_id_name(#whapps_call{caller_id_name=CIDName}) ->
     case wh_util:is_empty(CIDName) of
-        'true' -> ?DEFAULT_CALLER_ID_NAME;
+        'true' -> wh_util:anonymous_caller_id_name();
         'false' -> CIDName
     end.
 
@@ -581,7 +578,7 @@ set_caller_id_number(CIDNumber, #whapps_call{}=Call) ->
 -spec caller_id_number(call()) -> ne_binary().
 caller_id_number(#whapps_call{caller_id_number=CIDNumber}) ->
     case  wh_util:is_empty(CIDNumber) of
-        'true' -> ?DEFAULT_CALLER_ID_NUMBER;
+        'true' -> wh_util:anonymous_caller_id_number();
         'false' -> CIDNumber
     end.
 

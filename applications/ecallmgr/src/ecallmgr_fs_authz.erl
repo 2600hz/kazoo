@@ -358,8 +358,8 @@ authz_req(Props) ->
        ,{<<"Call-ID">>, kzd_freeswitch:call_id(Props)}
        ,{<<"Call-Direction">>, kzd_freeswitch:call_direction(Props)}
        ,{<<"Other-Leg-Call-ID">>, kzd_freeswitch:other_leg_call_id(Props)}
-       ,{<<"Caller-ID-Name">>, kzd_freeswitch:caller_id_name(Props, <<"Unknown">>)}
-       ,{<<"Caller-ID-Number">>, kzd_freeswitch:caller_id_number(Props, <<"Unknown">>)}
+       ,{<<"Caller-ID-Name">>, kzd_freeswitch:caller_id_name(Props, wh_util:anonymous_caller_id_name())}
+       ,{<<"Caller-ID-Number">>, kzd_freeswitch:caller_id_number(Props, wh_util:anonymous_caller_id_number())}
        ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).

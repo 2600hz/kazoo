@@ -76,7 +76,7 @@ lookup(<<_/binary>> = Number) ->
                              )
           );
 lookup(JObj) ->
-    Number = wh_json:get_value(<<"Caller-ID-Number">>, JObj, <<"0000000000">>),
+    Number = wh_json:get_value(<<"Caller-ID-Number">>, JObj,  wh_util:anonymous_caller_id_number()),
     Num = wnm_util:normalize_number(Number),
     case wh_cache:fetch_local(?STEPSWITCH_CACHE, cache_key(Num)) of
         {'ok', CNAM} ->
@@ -91,7 +91,7 @@ lookup(JObj) ->
 -spec update_request(wh_json:object(), api_binary(), boolean()) -> wh_json:object().
 update_request(JObj, 'undefined', FromCache) ->
     update_request(JObj
-                   ,wh_json:get_value(<<"Caller-ID-Name">>, JObj, <<"UNKNOWN">>)
+                   ,wh_json:get_value(<<"Caller-ID-Name">>, JObj, wh_util:anonymous_caller_id_name())
                    ,FromCache
                   );
 update_request(JObj, CNAM, FromCache) ->
