@@ -493,22 +493,27 @@ maybe_faxbox_domain(#state{faxbox_email=Domain}=State) ->
     end.
 
 -spec maybe_faxbox_by_owner_email(ne_binary(), state()) -> state().
-maybe_faxbox_by_owner_email(AccountId, #state{from=From}=State) ->
+maybe_faxbox_by_owner_email(AccountId, #state{errors=Errors
+                                              ,from=From
+                                             }=State) ->
     ViewOptions = [{'key', From}],
     AccountDb = wh_util:format_account_db(AccountId),
     case couch_mgr:get_results(AccountDb, <<"users/list_by_email">>, ViewOptions) of
         {'ok', []} ->
-            lager:debug("user ~s does not exist in account ~s, trying by rules",[From, AccountId]),
-            maybe_faxbox_by_rules(AccountId, State);
+            Error = wh_util:to_binary(io_lib:format("user ~s does not exist in account ~s, trying by rules",[From, AccountId])),
+            lager:debug(Error),
+            maybe_faxbox_by_rules(AccountId, State#state{errors=[Error | Errors]});
         {'ok', [JObj]} ->
             OwnerId = wh_doc:id(JObj),
             maybe_faxbox_by_owner_id(AccountId, OwnerId, State);
         {'ok', [_JObj | _JObjs]} ->
-            lager:debug("more then one user with email ~s in account ~s, trying by rules", [From, AccountId]),
-            maybe_faxbox_by_rules(AccountId, State);
+            Error = wh_util:to_binary(io_lib:format("more then one user with email ~s in account ~s, trying by rules", [From, AccountId])), 
+            lager:debug(Error),
+            maybe_faxbox_by_rules(AccountId, State#state{errors=[Error | Errors]});
         {'error', _E} ->
-            lager:debug("error ~p getting user by email ~s  in account ~s, trying by rules",[_E, From, AccountId]),
-            maybe_faxbox_by_rules(AccountId, State)
+            Error = wh_util:to_binary(io_lib:format("error ~p getting user by email ~s  in account ~s, trying by rules",[_E, From, AccountId])),
+            lager:debug(Error),
+            maybe_faxbox_by_rules(AccountId, State#state{errors=[Error | Errors]})
     end.
 
 -spec maybe_faxbox_by_owner_id(ne_binary(), ne_binary(),state()) -> state().
