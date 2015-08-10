@@ -13,7 +13,9 @@
          ,maybe_translate_kv_into_avps/3
          ,maybe_translate_avps_into_kv/3
          ,determine_aaa_request_type/1
-         ,determine_channel_type/1]).
+         ,determine_channel_type/1
+         ,put_session_timeout/2
+         ,get_session_timeout/1]).
 
 -include("circlemaker.hrl").
 
@@ -175,3 +177,21 @@ determine_channel_type(JObj) ->
            end,
     lager:debug("Channel type is ~p", [{Result, Type}]),
     {Result, Type}.
+
+-spec put_session_timeout(pos_integer(), ne_binary()) -> any().
+put_session_timeout(SessionTimeout, AccountId) ->
+    DbName = wh_util:format_account_id(AccountId, 'encoded'),
+    {'ok', AaaDoc} = couch_mgr:open_cache_doc(DbName, <<"aaa">>),
+    case wh_json:get_value(<<"session_timeout">>, AaaDoc) of
+        SessionTimeout ->
+            'ok';
+        _ ->
+            NewAaaDoc = wh_json:set_value(<<"session_timeout">>, SessionTimeout, AaaDoc),
+            couch_mgr:save_doc(DbName, NewAaaDoc)
+    end.
+
+-spec get_session_timeout(ne_binary()) -> pos_integer() | 'undefined'.
+get_session_timeout(AccountId) ->
+    DbName = wh_util:format_account_id(AccountId, 'encoded'),
+    {'ok', AaaDoc} = couch_mgr:open_cache_doc(DbName, <<"aaa">>),
+    wh_json:get_value(<<"session_timeout">>, AaaDoc).

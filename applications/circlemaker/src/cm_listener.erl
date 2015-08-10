@@ -21,6 +21,7 @@
          ,handle_authn_req/2
          ,handle_authz_req/2
          ,handle_accounting_req/2]).
+-export([handle_hangup_by_session_timeout/1]).
 
 -include("circlemaker.hrl").
 -include_lib("rabbitmq_client/include/amqp_client.hrl").
@@ -41,6 +42,8 @@
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 -define(SERVER, ?MODULE).
+
+-define(ETS_SESSION_TIMEOUT, 'cm_session_timeout').
 
 %%%===================================================================
 %%% API
@@ -139,17 +142,41 @@ handle_accounting_req(JObj, _Props) ->
     NasAddress = wh_json:get_value(<<"nas_address">>, AaaDoc),
     case whapps_util:get_event_type(JObj) of
         {<<"call_event">>, <<"CHANNEL_CREATE">>} ->
+            CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+            maybe_start_session_timer(AccountId, CallId),
             JObj1 = wh_json:set_values([{<<"Acct-Status-Type">>, <<"Start">>}
                                         ,{<<"Acct-Delay-Time">>, 0}
                                         ,{<<"NAS-IP-Address">>, NasAddress}]
                                         ,JObj),
             cm_pool_mgr:do_request(JObj1);
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
+            CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+            maybe_cancel_session_timer(AccountId, CallId),
             JObj1 = wh_json:set_values([{<<"Acct-Status-Type">>, <<"Stop">>}
                                         ,{<<"Acct-Delay-Time">>, 0}
                                         ,{<<"NAS-IP-Address">>, NasAddress}]
                                         ,JObj),
             cm_pool_mgr:do_request(JObj1)
+    end.
+
+maybe_start_session_timer(AccountId, CallId) ->
+    case cm_util:get_session_timeout(AccountId) of
+        'undefined' -> 'ok';
+        SessionTimeout ->
+            {'ok', TRef} = timer:apply_after(SessionTimeout, ?MODULE, 'handle_hangup_by_session_timeout', [CallId]),
+            ets:insert(?ETS_SESSION_TIMEOUT, {CallId, AccountId, TRef})
+    end.
+
+handle_hangup_by_session_timeout(CallId) ->
+    whapps_call_command:hangup(CallId),
+    ets:delete(?ETS_SESSION_TIMEOUT, CallId).
+
+maybe_cancel_session_timer(AccountId, CallId) ->
+    case ets:lookup(?ETS_SESSION_TIMEOUT, CallId) of
+        [] -> 'ok';
+        [{CallId, AccountId, TRef}] ->
+            timer:cancel(TRef),
+            ets:delete(?ETS_SESSION_TIMEOUT, CallId)
     end.
 
 maybe_processing_authz(JObj) ->
@@ -206,6 +233,7 @@ maybe_processing_authz(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    ets:new(?ETS_SESSION_TIMEOUT, [named_table, {keypos, 1}, protected]),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
@@ -274,6 +302,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
+    ets:delete(?ETS_SESSION_TIMEOUT),
     lager:debug("listener terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------

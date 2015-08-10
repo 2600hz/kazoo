@@ -132,6 +132,7 @@ handle_cast({'response', Response, JObj, Worker}, State) ->
                     {<<"reject">>, [], wh_json:get_value(<<"Account-ID">>, JObj)}
             end,
     lager:debug("AttributeList is: ~p", [AttributeList]),
+    maybe_session_timeout(AttributeList, AccountId),
     {'ok', AaaDoc} = couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded'), <<"aaa">>),
     AttributeList1 = case cm_util:determine_aaa_request_type(JObj) of
                          'authz' = RequestType ->
@@ -230,5 +231,13 @@ dist_workers(JObj) ->
         Else ->
             % TODO: need to send message to self for 'denied' response
             lager:error("Failed to start a worker. Reason is ~p", [Else]),
+            'ok'
+    end.
+
+maybe_session_timeout(AttributeList, AccountId) ->
+    case props:get_integer_value(<<"Session-Timeout">>, AttributeList) of
+        'undefined' -> 'ok';
+        SessionTimeout ->
+            cm_util:put_session_timeout(SessionTimeout, AccountId),
             'ok'
     end.
