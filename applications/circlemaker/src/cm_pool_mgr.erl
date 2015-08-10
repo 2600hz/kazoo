@@ -132,14 +132,15 @@ handle_cast({'response', Response, JObj, Worker}, State) ->
                     {<<"reject">>, [], wh_json:get_value(<<"Account-ID">>, JObj)}
             end,
     lager:debug("AttributeList is: ~p", [AttributeList]),
-    maybe_session_timeout(AttributeList, AccountId),
     {'ok', AaaDoc} = couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded'), <<"aaa">>),
     AttributeList1 = case cm_util:determine_aaa_request_type(JObj) of
                          'authz' = RequestType ->
                              lager:debug("Operation is authz"),
+                             maybe_session_timeout(AttributeList, AccountId),
                              cm_util:maybe_translate_avps_into_kv(AttributeList, AaaDoc, RequestType);
                          'authn' ->
                              lager:debug("Operation is authn"),
+                             maybe_session_timeout(AttributeList, AccountId),
                              AttributeList
                      end,
     lager:debug("Resulted AttributeList1 is: ~p", [AttributeList1]),
