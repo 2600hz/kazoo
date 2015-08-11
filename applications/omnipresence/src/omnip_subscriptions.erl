@@ -94,10 +94,7 @@ handle_search_req(JObj, _Props) ->
 -spec handle_reset(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_reset(JObj, _Props) ->
     'true' = wapi_presence:reset_v(JObj),
-    case find_subscriptions(JObj) of
-        {'error', 'not_found'} -> 'ok';
-        {'ok', Subscriptions} -> publish_flush(Subscriptions)
-    end.
+    notify_packages({'omnipresence', {'presence_reset', JObj}}).
 
 %% Subscribes work like this:
 %%   Subscribe comes into shared queue, gets round-robined to next omni whapp
@@ -140,12 +137,12 @@ handle_sync(JObj, _Props) ->
 -spec handle_mwi_update(wh_json:object(), wh_proplist()) -> any().
 handle_mwi_update(JObj, _Props) ->
     'true' = wapi_presence:mwi_update_v(JObj),
-    gen_server:cast(?MODULE, {'mwi_update', JObj}).
+    notify_packages({'omnipresence', {'mwi_update', JObj}}).
 
 -spec handle_presence_update(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_presence_update(JObj, _Props) ->
     'true' = wapi_presence:update_v(JObj),
-    gen_server:cast(?MODULE, {'presence_update', JObj}).
+    notify_packages({'omnipresence', {'presence_update', JObj}}).
 
 -define(CACHE_TERMINATED_CALLID, whapps_config:get_integer(?CONFIG_CAT, <<"cache_terminated_callid_s">>, 60)).
 
@@ -182,7 +179,7 @@ maybe_handle_event(JObj, _CallId, _EventName) ->
 
 -spec handle_the_event(wh_json:object()) -> 'ok'.
 handle_the_event(JObj) ->
-    gen_server:cast(?MODULE, {'channel_event', JObj}).
+    notify_packages({'omnipresence', {'channel_event', JObj}}).
 
 -spec terminated_cache_key(CallId) -> {'terminated', CallId}.
 terminated_cache_key(CallId) ->
@@ -258,18 +255,6 @@ handle_call(_Request, _From, State) ->
 
 handle_cast({'distribute_subscribe', JObj}, State) ->
     distribute_subscribe(JObj),
-    {'noreply', State};
-handle_cast({'channel_event', JObj}, State) ->
-    Msg = {'omnipresence', {'channel_event', JObj}},
-    notify_packages(Msg),
-    {'noreply', State};
-handle_cast({'mwi_update', JObj}, State) ->
-    Msg = {'omnipresence', {'mwi_update', JObj}},
-    notify_packages(Msg),
-    {'noreply', State};
-handle_cast({'presence_update', JObj}, State) ->
-    Msg = {'omnipresence', {'presence_update', JObj}},
-    notify_packages(Msg),
     {'noreply', State};
 handle_cast({'sync', {<<"Start">>, Node}}, #state{sync_nodes=Nodes}=State) ->
     {'noreply', State#state{sync_nodes=[Node | Nodes]}};
@@ -618,26 +603,6 @@ search_for_subscriptions(Event, Realm, Username) ->
                             ,_='_'
                            },
     ets:match_object(table_id(), MatchSpec).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec publish_flush(subscriptions()) -> 'ok'.
-publish_flush([]) -> 'ok';
-publish_flush([#omnip_subscription{stalker=Q, user=User, event=Event}
-               | Subscriptions
-              ]) ->
-    Props = [{<<"Type">>, <<"id">>}
-             ,{<<"Event-Package">>, Event}
-             ,{<<"User">>, <<"sip:", User/binary>>}
-             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-            ],
-    lager:debug("sending flush for ~s to ~s", [User, Q]),
-    whapps_util:amqp_pool_send(Props, fun(P) -> wapi_presence:publish_flush(Q, P) end),
-    publish_flush(Subscriptions).
 
 -spec subscribe(subscription()) -> 'invalid' |
                                    {'subscribe', subscription()} |
