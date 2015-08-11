@@ -21,7 +21,7 @@
          ,handle_authn_req/2
          ,handle_authz_req/2
          ,handle_accounting_req/2]).
--export([handle_hangup_by_session_timeout/1]).
+-export([handle_hangup_by_session_timeout/1, handle_interim_update/1]).
 
 -include("circlemaker.hrl").
 -include_lib("rabbitmq_client/include/amqp_client.hrl").
@@ -44,6 +44,7 @@
 -define(SERVER, ?MODULE).
 
 -define(ETS_SESSION_TIMEOUT, 'cm_session_timeout').
+-define(ETS_INTERIM_UPDATE, 'cm_interim_update').
 
 %%%===================================================================
 %%% API
@@ -144,6 +145,7 @@ handle_accounting_req(JObj, _Props) ->
         {<<"call_event">>, <<"CHANNEL_CREATE">>} ->
             CallId = wh_json:get_value(<<"Call-ID">>, JObj),
             maybe_start_session_timer(AccountId, CallId),
+            maybe_start_interim_update_timer(AccountId, CallId),
             JObj1 = wh_json:set_values([{<<"Acct-Status-Type">>, <<"Start">>}
                                         ,{<<"Acct-Delay-Time">>, 0}
                                         ,{<<"NAS-IP-Address">>, NasAddress}]
@@ -152,6 +154,7 @@ handle_accounting_req(JObj, _Props) ->
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
             CallId = wh_json:get_value(<<"Call-ID">>, JObj),
             maybe_cancel_session_timer(AccountId, CallId),
+            maybe_cancel_interim_update_timer(AccountId, CallId),
             JObj1 = wh_json:set_values([{<<"Acct-Status-Type">>, <<"Stop">>}
                                         ,{<<"Acct-Delay-Time">>, 0}
                                         ,{<<"NAS-IP-Address">>, NasAddress}]
@@ -163,7 +166,7 @@ maybe_start_session_timer(AccountId, CallId) ->
     case cm_util:get_session_timeout(AccountId) of
         'undefined' -> 'ok';
         SessionTimeout ->
-            {'ok', TRef} = timer:apply_after(SessionTimeout, ?MODULE, 'handle_hangup_by_session_timeout', [CallId]),
+            {'ok', TRef} = timer:apply_after(SessionTimeout * 1000, ?MODULE, 'handle_hangup_by_session_timeout', [CallId]),
             ets:insert(?ETS_SESSION_TIMEOUT, {CallId, AccountId, TRef})
     end.
 
@@ -177,6 +180,63 @@ maybe_cancel_session_timer(AccountId, CallId) ->
         [{CallId, AccountId, TRef}] ->
             timer:cancel(TRef),
             ets:delete(?ETS_SESSION_TIMEOUT, CallId)
+    end.
+
+maybe_start_interim_update_timer(AccountId, CallId) ->
+    case cm_util:get_interim_update(AccountId) of
+        'undefined' -> 'ok';
+        Interval ->
+            {'ok', TRef} = timer:apply_interval(Interval * 1000, ?MODULE, 'handle_interim_update', [CallId]),
+            ets:insert(?ETS_INTERIM_UPDATE, {CallId, AccountId, TRef})
+    end.
+
+handle_interim_update(CallId) ->
+    % TODO: rewrite as async request? spawn?
+    case wh_amqp_worker:call_collect([{<<"Call-ID">>, CallId}, {<<"Fields">>, <<"all">>}, {<<"Active-Only">>, 'true'}
+        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)]
+        ,fun wapi_call:publish_query_channels_req/1
+        ,{'ecallmgr', fun wapi_call:query_channels_resp_v/1}
+    )
+    of
+        {'ok', []} ->
+            lager:debug("No channels in response");
+        {'ok', StatusJObjs} ->
+            case find_channel(CallId, StatusJObjs) of
+                [] ->
+                    lager:debug("No information");
+                [StatusJObj] ->
+                    lager:debug("Channel found: ~p", StatusJObj),
+                    % emulation of Accounting Request operation
+                    handle_accounting_req(StatusJObj, [])
+            end;
+        {'returned', _JObj, BR} ->
+            lager:debug("Return something: ~p", [BR]);
+        {'timeout', Resp} ->
+            lager:debug("Timeout: ~p", [Resp]);
+        {'error', Error} ->
+            lager:debug("Error: ~p", [Error])
+    end.
+
+-spec find_channel(ne_binary(), wh_json:objects()) -> api_object().
+find_channel(CallId, []) ->
+    find_channel(CallId, [], []).
+
+-spec find_channel(ne_binary(), wh_json:objects(), wh_json:objects()) -> api_object().
+find_channel(_CallId, [], Acc) -> Acc;
+find_channel(CallId, [StatusJObj|JObjs], Acc) ->
+    lager:debug("Next StatusJObj is ~p", [StatusJObj]),
+    Channel = wh_json:get_value([<<"Channels">>, CallId], StatusJObj),
+    case wh_json:get_value(<<"Call-ID">>, Channel) of
+        CallId -> find_channel(CallId, JObjs, [Channel | Acc]);
+        _AnotherCallId -> find_channel(CallId, JObjs, Acc)
+    end.
+
+maybe_cancel_interim_update_timer(AccountId, CallId) ->
+    case ets:lookup(?ETS_INTERIM_UPDATE, CallId) of
+        [] -> 'ok';
+        [{CallId, AccountId, TRef}] ->
+            timer:cancel(TRef),
+            ets:delete(?ETS_INTERIM_UPDATE, CallId)
     end.
 
 maybe_processing_authz(JObj) ->
@@ -234,6 +294,7 @@ maybe_processing_authz(JObj) ->
 %%--------------------------------------------------------------------
 init([]) ->
     ets:new(?ETS_SESSION_TIMEOUT, [named_table, {keypos, 1}, protected]),
+    ets:new(?ETS_INTERIM_UPDATE, [named_table, {keypos, 1}, protected]),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
@@ -303,6 +364,7 @@ handle_event(_JObj, _State) ->
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
     ets:delete(?ETS_SESSION_TIMEOUT),
+    ets:delete(?ETS_INTERIM_UPDATE),
     lager:debug("listener terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------

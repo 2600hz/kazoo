@@ -137,10 +137,12 @@ handle_cast({'response', Response, JObj, Worker}, State) ->
                          'authz' = RequestType ->
                              lager:debug("Operation is authz"),
                              maybe_session_timeout(AttributeList, AccountId),
+                             maybe_interim_update(AttributeList, AccountId),
                              cm_util:maybe_translate_avps_into_kv(AttributeList, AaaDoc, RequestType);
                          'authn' ->
                              lager:debug("Operation is authn"),
                              maybe_session_timeout(AttributeList, AccountId),
+                             maybe_interim_update(AttributeList, AccountId),
                              AttributeList
                      end,
     lager:debug("Resulted AttributeList1 is: ~p", [AttributeList1]),
@@ -240,5 +242,13 @@ maybe_session_timeout(AttributeList, AccountId) ->
         'undefined' -> 'ok';
         SessionTimeout ->
             cm_util:put_session_timeout(SessionTimeout, AccountId),
+            'ok'
+    end.
+
+maybe_interim_update(AttributeList, AccountId) ->
+    case props:get_integer_value(<<"Acct-Interim-Interval">>, AttributeList) of
+        'undefined' -> 'ok';
+        SessionTimeout ->
+            cm_util:put_interim_update(SessionTimeout, AccountId),
             'ok'
     end.

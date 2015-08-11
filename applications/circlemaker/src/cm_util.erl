@@ -15,7 +15,9 @@
          ,determine_aaa_request_type/1
          ,determine_channel_type/1
          ,put_session_timeout/2
-         ,get_session_timeout/1]).
+         ,get_session_timeout/1
+         ,put_interim_update/2
+         ,get_interim_update/1]).
 
 -include("circlemaker.hrl").
 
@@ -195,3 +197,26 @@ get_session_timeout(AccountId) ->
     DbName = wh_util:format_account_id(AccountId, 'encoded'),
     {'ok', AaaDoc} = couch_mgr:open_cache_doc(DbName, <<"aaa">>),
     wh_json:get_value(<<"session_timeout">>, AaaDoc).
+
+-spec put_interim_update(pos_integer(), ne_binary()) -> any().
+put_interim_update(InterimUpdate, AccountId) ->
+    DbName = wh_util:format_account_id(AccountId, 'encoded'),
+    {'ok', AaaDoc} = couch_mgr:open_cache_doc(DbName, <<"aaa">>),
+    case wh_json:get_value(<<"interim_update_interval">>, AaaDoc) of
+        InterimUpdate ->
+            'ok';
+        'undefined' ->
+            NewAaaDoc = wh_json:set_value(<<"interim_update_interval">>, InterimUpdate, AaaDoc),
+            couch_mgr:save_doc(DbName, NewAaaDoc)
+    end.
+
+-spec get_interim_update(ne_binary()) -> pos_integer() | 'undefined'.
+get_interim_update(AccountId) ->
+    DbName = wh_util:format_account_id(AccountId, 'encoded'),
+    {'ok', AaaDoc} = couch_mgr:open_cache_doc(DbName, <<"aaa">>),
+    case {wh_json:get_value(<<"local_interim_update_interval">>, AaaDoc)
+          ,wh_json:get_value(<<"interim_update_interval">>, AaaDoc)} of
+        {'undefined', 'undefined'} -> 'undefined';
+        {'undefined', Interval} -> Interval;
+        {Interval, _} ->Interval
+    end.

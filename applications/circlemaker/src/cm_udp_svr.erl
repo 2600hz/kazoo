@@ -86,7 +86,8 @@ handle_info(Info = {'udp', Socket, IP, InPortNo, Packet}, State = #state{socket 
                                   ,reqid = ReqId
                                   ,authenticator = ReqAuthenticator} ->
             lager:debug("Decoded Disconnect-Request PDU is: ~p", [Request]),
-            case {props:get_value(<<"Acct-Session-Id">>, Attrs), props:get_value(<<"User-Name">>, Attrs)} of
+            NewAttrs = [{list_to_binary(AttrName), AttrValue} || {{'attribute',_,_,AttrName,_},AttrValue} <- Attrs],
+            case {props:get_value(<<"Acct-Session-Id">>, NewAttrs), props:get_value(<<"User-Name">>, NewAttrs)} of
                 {AcctSessionId, 'undefined'} when is_binary(AcctSessionId) ->
                     maybe_get_active_channels('session_id'
                                               ,AcctSessionId
@@ -97,10 +98,17 @@ handle_info(Info = {'udp', Socket, IP, InPortNo, Packet}, State = #state{socket 
                                               ,UserName
                                               ,{Socket, IP, InPortNo, ReqId, ReqAuthenticator, Secret}
                                              );
+                {AcctSessionId, UserName} when is_binary(AcctSessionId) andalso is_binary(UserName) ->
+                    maybe_get_active_channels('session_id'
+                                              ,AcctSessionId
+                                              ,{Socket, IP, InPortNo, ReqId, ReqAuthenticator, Secret}
+                                             ),
+                    maybe_get_active_channels('user_name'
+                                              ,UserName
+                                              ,{Socket, IP, InPortNo, ReqId, ReqAuthenticator, Secret}
+                                             );
                 {'undefined', 'undefined'} ->
-                    lager:debug("No required fields in AVPs ~p", [Attrs]);
-                _ ->
-                    lager:debug("Ambiguity in AVPs ~p", [Attrs])
+                    lager:debug("No required fields in AVPs ~p", [NewAttrs])
             end;
         _ ->
             lager:debug("Unexpected PDU type. Bypassed.")
@@ -142,7 +150,7 @@ maybe_get_active_channels(Key, Value, {Socket, IP, InPortNo, ReqId, ReqAuthentic
                  | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ]
           end,
-    % TODO: rewrite as async request?
+    % TODO: rewrite as async request? spawn?
     case wh_amqp_worker:call_collect(Req
                                      ,fun wapi_call:publish_query_channels_req/1
                                      ,{'ecallmgr', fun wapi_call:query_channels_resp_v/1}
@@ -167,8 +175,8 @@ maybe_get_active_channels(Key, Value, {Socket, IP, InPortNo, ReqId, ReqAuthentic
     end.
 
 -spec find_channel(ne_binary(), ne_binary(), wh_json:objects()) -> api_object().
-find_channel(Key, Value, []) ->
-    find_channel(Key, Value, [], []).
+find_channel(Key, Value, JObjs) ->
+    find_channel(Key, Value, JObjs, []).
 
 -spec find_channel(ne_binary(), ne_binary(), wh_json:objects(), wh_json:objects()) -> api_object().
 find_channel(_Key, _Value, [], Acc) -> Acc;
@@ -195,8 +203,14 @@ find_channel('user_name' = Key, UserName, [StatusJObj|JObjs], Acc) ->
 hangup_channels(Channels, {Socket, IP, InPortNo, ReqId, ReqAuthenticator, Secret}) ->
     lists:foreach(fun(JObjChannel) ->
         CallId = wh_json:get_value(<<"Call-ID">>, JObjChannel),
-        lager:debug("Hangup channel with CallID ~p", [CallId]),
-        whapps_call_command:hangup(CallId)
+        case whapps_call:retrieve(CallId, ?APP_NAME) of
+            % TODO: Need to retrieve #whapps_call properly
+            {'ok', Call} ->
+                lager:debug("Hangup channel with CallID ~p", [CallId]),
+                whapps_call_command:hangup(Call);
+            {'error', _R} ->
+                lager:debug("failed to retrieve cached call: ~p", [_R])
+        end
     end, Channels),
     send_disconnect_resp({Socket, IP, InPortNo, ReqId, ReqAuthenticator, Secret}).
 
