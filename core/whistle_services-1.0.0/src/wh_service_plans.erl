@@ -89,8 +89,21 @@ merge_plans(SerivcePlan, JObj) ->
 %%--------------------------------------------------------------------
 -spec add_service_plan(ne_binary(), ne_binary(), kzd_services:doc()) -> kzd_services:doc().
 add_service_plan(PlanId, ResellerId, ServicesJObj) ->
-    Plan = wh_json:from_list([{<<"account_id">>, ResellerId}]),
-    kzd_services:set_plan(ServicesJObj, PlanId, Plan).
+    ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
+    case couch_mgr:open_cache_doc(ResellerDb, PlanId) of
+        {'error', _R} ->
+            Plan = wh_json:from_list([{<<"account_id">>, ResellerId}]),
+            kzd_services:set_plan(ServicesJObj, PlanId, Plan);
+        {'ok', JObj} ->
+            Plan =
+                wh_json:from_list(
+                    props:filter_undefined([
+                        {<<"account_id">>, ResellerId}
+                        ,{<<"category">>, wh_json:get_value(<<"category">>, JObj)}
+                    ])
+                ),
+            kzd_services:set_plan(ServicesJObj, PlanId, Plan)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
