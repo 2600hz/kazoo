@@ -264,13 +264,13 @@ discovery_failed(Call, _) -> whapps_call_command:hangup(Call).
 
 -spec validate_conference_id(api_binary(), whapps_call:call()) ->
                                     {'ok', whapps_conference:conference()} |
-                                    {'error', term()}.
+                                    {'error', _}.
 validate_conference_id(ConferenceId, Call) ->
     validate_conference_id(ConferenceId, Call, 1).
 
 -spec validate_conference_id(api_binary(), whapps_call:call(), pos_integer()) ->
                                     {'ok', whapps_conference:conference()} |
-                                    {'error', term()}.
+                                    {'error', _}.
 validate_conference_id('undefined', Call, Loop) when Loop > 3 ->
     lager:debug("caller has failed to provide a valid conference number to many times"),
     _ = whapps_call_command:b_prompt(<<"conf-too_many_attempts">>, Call),

@@ -68,9 +68,9 @@
 -define(BRIDGE_PWD, whapps_config:get(<<"conferences">>, <<"bridge_password">>, wh_util:rand_hex_binary(12))).
 
 -record(whapps_conference, {
-          id :: api_binary()                                 %% the conference id
+          id :: api_binary()                                  %% the conference id
           ,focus :: api_binary()                              %% the conference focus
-          ,profile = <<"default">> :: api_binary()            %% conference profile (config settings)
+          ,profile = <<"undefined">> :: api_binary()          %% conference profile (config settings)
           ,controller_q :: api_binary()                       %% the controller queue, for responses
           ,bridge_username = ?BRIDGE_USER :: ne_binary()      %% the username used for a conference bridge
           ,bridge_password = ?BRIDGE_PWD :: ne_binary()       %% the password used for a conference bridge

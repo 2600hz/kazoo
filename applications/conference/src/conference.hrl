@@ -10,6 +10,8 @@
 
 -define(CONFERENCE_CACHE, 'conference_cache').
 
+-define(DEFAULT_PROFILE_NAME, <<"default">>).
+
 -define(DEFAULT_ENTRY_TONE, <<"tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)">>).
 -define(ENTRY_TONE, whapps_config:get(?CONFIG_CAT, <<"entry_tone">>, ?DEFAULT_ENTRY_TONE)).
 -define(MOD_ENTRY_TONE, whapps_config:get(?CONFIG_CAT, <<"moderator_entry_tone">>, ?DEFAULT_ENTRY_TONE)).

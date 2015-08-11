@@ -1907,7 +1907,7 @@ conference(ConfId, Mute, Call) ->
 conference(ConfId, Mute, Deaf, Call) ->
     conference(ConfId, Mute, Deaf, 'false', Call).
 conference(ConfId, Mute, Deaf, Moderator, Call) ->
-    conference(ConfId, Mute, Deaf, Moderator, <<"default">>, Call).
+    conference(ConfId, Mute, Deaf, Moderator, <<"undefined">>, Call).
 conference(ConfId, Mute, Deaf, Moderator, ProfileName, Call) ->
     conference(ConfId, Mute, Deaf, Moderator, ProfileName, 'false', Call).
 conference(ConfId, Mute, Deaf, Moderator, ProfileName, Reinvite, Call) ->

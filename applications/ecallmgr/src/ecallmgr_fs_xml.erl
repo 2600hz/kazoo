@@ -173,8 +173,8 @@ conference_resp_xml([_|_]=Resp) ->
                                 ,[AdvertiseEl, ProfilesEl, CallerControlsEl, ChatPermsEl]
                                ),
     SectionEl = section_el(<<"configuration">>, ConfigurationEl),
-
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
+
 conference_resp_xml(Resp) -> conference_resp_xml(wh_json:to_proplist(Resp)).
 
 conference_profiles_xml(Profiles) when is_list(Profiles) ->
@@ -712,7 +712,7 @@ params_el(Children) ->
 
 -spec param_el(xml_attrib_value(), xml_attrib_value()) -> xml_el().
 param_el(<<"moh-sound">> = Name, MediaName) ->
-    Value = ecallmgr_util:media_path(MediaName, get('callid'), wh_json:new()),
+    Value = ecallmgr_util:media_path(MediaName, wh_util:get_callid(), wh_json:new()),
     #xmlElement{name='param'
                 ,attributes=[xml_attrib('name', Name)
                              ,xml_attrib('value', Value)
