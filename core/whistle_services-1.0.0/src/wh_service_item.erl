@@ -45,6 +45,9 @@
 -export([set_minimum/2
          ,minimum/1
         ]).
+-export([set_exceptions/2
+         ,exceptions/1
+        ]).
 
 
 -include("whistle_services.hrl").
@@ -61,6 +64,7 @@
                           ,bookkeepers = wh_json:new() :: wh_json:object()
                           ,activation_charge = 0.00 :: api_float()
                           ,minimum = 0 :: api_integer()
+                          ,exceptions = [] :: ne_binaries()
                          }).
 
 -type item() :: #wh_service_item{}.
@@ -88,6 +92,7 @@ public_json(Item) ->
              ,{<<"cumulative_discount_rate">>, Item#wh_service_item.cumulative_discount_rate}
              ,{<<"activation_charge">>, Item#wh_service_item.activation_charge}
              ,{<<"minimum">>, Item#wh_service_item.minimum}
+             ,{<<"exceptions">>, Item#wh_service_item.exceptions}
             ],
     wh_json:from_list(props:filter_undefined(Props)).
 
@@ -355,3 +360,22 @@ minimum(#wh_service_item{minimum=Min}) -> Min.
 -spec set_minimum(integer(), item()) -> item().
 set_minimum(Min, ServiceItem) ->
     ServiceItem#wh_service_item{minimum=Min}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec exceptions(item()) -> ne_binaries().
+exceptions(#wh_service_item{exceptions=Exc}) -> Exc.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec set_exceptions(ne_binaries(), item()) -> item().
+set_exceptions(Exc, ServiceItem) ->
+    ServiceItem#wh_service_item{exceptions=Exc}.

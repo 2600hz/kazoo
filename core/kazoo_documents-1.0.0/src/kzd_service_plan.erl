@@ -23,6 +23,7 @@
 
          ,item_minimum/3, item_minimum/4
          ,item_name/3
+         ,item_exceptions/3
 
          ,categories/1, category/2, category/3
          ,items/2, item/3
@@ -144,6 +145,20 @@ item_name(Plan, CategoryId, ItemId) ->
             ,Plan
             ,wh_json:new()
         )
+     ).
+
+-spec item_exceptions(doc(), ne_binary(), ne_binary()) -> ne_binary().
+-spec item_exceptions(doc(), ne_binary(), ne_binary(), ne_binaries()) -> ne_binary().
+item_exceptions(Plan, CategoryId, ItemId) ->
+    item_exceptions(Plan, CategoryId, ItemId, []).
+item_exceptions(Plan, CategoryId, ItemId, Default) ->
+    kzd_item_plan:exceptions(
+        wh_json:get_json_value(
+            [?PLAN, CategoryId, ItemId]
+            ,Plan
+            ,wh_json:new()
+        )
+        ,Default
      ).
 
 -spec item_plan(doc(), ne_binary(), ne_binary()) -> wh_json:object().
