@@ -357,7 +357,7 @@ alpha_to_dialpad(Value) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec strip_nonalpha(char()) -> char().
-strip_nonalpha(Value) when Value < 123 andalso Value > 96 -> Value;
+strip_nonalpha(Value) when Value =< $z andalso Value >= $a -> Value;
 strip_nonalpha(_NotAlpha) -> "".
 
 %%--------------------------------------------------------------------
