@@ -64,7 +64,7 @@ set_name(L, Name) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec amount(ledger()) -> ne_binary().
+-spec amount(ledger()) -> integer().
 amount(#kz_ledger{amount=Amount}) -> Amount.
 
 -spec set_amount(ledger(), integer()) -> ledger().
@@ -116,7 +116,7 @@ set_type(L, Type) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec from_json(wh_json:object()) -> number().
+-spec from_json(wh_json:object()) -> ledger().
 from_json(JObj) ->
     #kz_ledger{
         name=wh_json:get_value(?PVT_NAME, JObj)

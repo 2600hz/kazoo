@@ -38,8 +38,8 @@ get(Account, Name) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec credit(ne_binary(), ne_binary(), integer()) -> {'ok', ledger()} | {'error', _}.
--spec credit(ne_binary(), ne_binary(), integer(), api_binary()) -> {'ok', ledger()} | {'error', _}.
+-spec credit(ne_binary(), integer(), ne_binary()) -> {'ok', ledger()} | {'error', _}.
+-spec credit(ne_binary(), integer(), ne_binary(), api_binary()) -> {'ok', ledger()} | {'error', _}.
 credit(Name, Amount, Account) ->
     credit(Name, Amount, Account, 'undefined').
 
@@ -52,8 +52,8 @@ credit(Name, Amount, Account, Desc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec debit(ne_binary(), ne_binary(), integer()) -> {'ok', ledger()} | {'error', _}.
--spec debit(ne_binary(), ne_binary(), integer(), api_binary()) -> {'ok', ledger()} | {'error', _}.
+-spec debit(ne_binary(), integer(), ne_binary()) -> {'ok', ledger()} | {'error', _}.
+-spec debit(ne_binary(), integer(), ne_binary(), api_binary()) -> {'ok', ledger()} | {'error', _}.
 debit(Name, Amount, Account) ->
     debit(Name, Amount, Account, 'undefined').
 
