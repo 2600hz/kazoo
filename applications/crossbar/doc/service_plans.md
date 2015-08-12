@@ -195,7 +195,7 @@ Useful for resellers.
 }
 ```
 
-### Adding multiple service plans to an account.
+### Adding/Removing multiple service plans on an account.
 
 Useful for resellers.
 
@@ -208,7 +208,8 @@ Useful for resellers.
 ```json
 {
     "data": {
-        "plans": ["plan1", "plan2"]
+        "add": ["plan1", "plan2"],
+        "delete": ["plan3"]
     }
 }
 ```
@@ -217,34 +218,7 @@ Useful for resellers.
 
 ```json
 {
-    "data": {} // Merge of the Service plans
-    "status": "success"
-}
-```
-
-### Remove multiple service plans on an account.
-
-Useful for resellers.
-
-#### Request
-
-- Verb: `DELETE`
-- Url: `/v2/accounts/{ACCOUNT_ID}/service_plans`
-- Payload:
-
-```json
-{
-    "data": {
-        "plans": ["plan1", "plan2"]
-    }
-}
-```
-
-#### Response
-
-```json
-{
-    "data": {} // Merge of the Service plans if any left
+    "data": {} //  Merge of the Service plans if any left
     "status": "success"
 }
 ```

@@ -15,7 +15,7 @@
          ,content_types_provided/1 ,content_types_provided/2, content_types_provided/3
          ,validate/1, validate/2, validate/3
          ,post/1 ,post/2
-         ,delete/1, delete/2
+         ,delete/2
         ]).
 
 -include("../crossbar.hrl").
@@ -60,7 +60,7 @@ init() ->
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_POST].
 allowed_methods(?SYNCHRONIZATION) ->
     [?HTTP_POST];
 allowed_methods(?RECONCILIATION) ->
@@ -163,8 +163,6 @@ validate_service_plan(Context, ?HTTP_GET) ->
         ,fun normalize_view_results/2
     );
 validate_service_plan(Context, ?HTTP_POST) ->
-    maybe_allow_change(Context);
-validate_service_plan(Context, ?HTTP_DELETE) ->
     maybe_allow_change(Context).
 
 validate_service_plan(Context, PlanId, ?HTTP_GET) ->
@@ -184,8 +182,9 @@ validate_service_plan(Context, PlanId, ?HTTP_DELETE) ->
 -spec post(cb_context:context()) -> cb_context:context().
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context) ->
-    Routines = [fun(S) -> apply_plans(Context, S) end
-                ,fun(S) -> maybe_save_plans(Context, S) end
+    Routines = [fun(S) -> add_plans(Context, S) end
+                ,fun(S) -> delete_plans(Context, S) end
+                ,fun wh_services:save/1
                ],
     Services = lists:foldl(fun apply_fun/2, wh_services:fetch(cb_context:account_id(Context)), Routines),
     cb_context:setters(
@@ -241,19 +240,7 @@ post(Context, PlanId) ->
 %% If the HTTP verib is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
--spec delete(cb_context:context()) -> cb_context:context().
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
-delete(Context) ->
-    Routines = [fun(S) -> delete_plans(Context, S) end
-                ,fun(S) -> maybe_save_plans(Context, S) end
-               ],
-    Services = lists:foldl(fun apply_fun/2, wh_services:fetch(cb_context:account_id(Context)), Routines),
-    cb_context:setters(
-        Context
-        ,[{fun cb_context:set_resp_data/2, wh_services:service_plan_json(Services)}
-          ,{fun cb_context:set_resp_status/2, 'success'}]
-    ).
-
 delete(Context, PlanId) ->
     Routines = [fun(S) -> wh_services:delete_service_plan(PlanId, S) end
                 ,fun wh_services:save/1
@@ -268,15 +255,13 @@ delete(Context, PlanId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec apply_plans(cb_context:context(), wh_services:services()) -> wh_services:services().
-apply_plans(Context, Services) ->
-    Plans = cb_context:fetch(Context, <<"plans">>, []),
+-spec add_plans(cb_context:context(), wh_services:services()) -> wh_services:services().
+add_plans(Context, Services) ->
+    ReqData = cb_context:req_data(Context),
     lists:foldl(
-        fun(PlanId, S) ->
-            wh_services:add_service_plan(PlanId, S)
-        end
+        fun wh_services:add_service_plan/2
         ,Services
-        ,Plans
+        ,wh_json:get_value(<<"add">>, ReqData, [])
     ).
 
 %%--------------------------------------------------------------------
@@ -286,26 +271,12 @@ apply_plans(Context, Services) ->
 %%--------------------------------------------------------------------
 -spec delete_plans(cb_context:context(), wh_services:services()) -> wh_services:services().
 delete_plans(Context, Services) ->
-    Plans = cb_context:fetch(Context, <<"plans">>, []),
+    ReqData = cb_context:req_data(Context),
     lists:foldl(
-        fun(PlanId, S) ->
-            wh_services:delete_service_plan(PlanId, S)
-        end
+        fun wh_services:delete_service_plan/2
         ,Services
-        ,Plans
+        ,wh_json:get_value(<<"delete">>, ReqData, [])
     ).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec maybe_save_plans(cb_context:context(), wh_services:services()) -> wh_services:services().
-maybe_save_plans(Context, Services) ->
-    case cb_context:fetch(Context, <<"plans">>, []) of
-        [] -> Services;
-        _ -> wh_services:save(Services)
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -400,6 +371,34 @@ maybe_allow_change(Context, PlanId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec check_plan_ids(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec check_plan_ids(cb_context:context(), ne_binary(), ne_binaries()) -> cb_context:context().
+check_plan_ids(Context, ResellerId) ->
+    ReqData = cb_context:req_data(Context),
+    AddPlanIds = wh_json:get_value(<<"add">>, ReqData, []),
+    DeletePlanIds = wh_json:get_value(<<"delete">>, ReqData, []),
+    check_plan_ids(Context, ResellerId, AddPlanIds ++ DeletePlanIds).
+
+check_plan_ids(Context, ResellerId, PlanIds) ->
+    lists:foldl(
+        fun(PlanId, Ctxt) ->
+            case cb_context:resp_status(Ctxt) of
+                'success' ->
+                    check_plan_id(Ctxt, PlanId, ResellerId);
+                _Status -> Ctxt
+            end
+        end
+        ,cb_context:set_resp_status(Context, 'success')
+        ,PlanIds
+    ).
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec check_plan_id(cb_context:context(), path_token(), ne_binary()) ->
                            cb_context:context().
 check_plan_id(Context, PlanId, ResellerId) ->
@@ -408,37 +407,6 @@ check_plan_id(Context, PlanId, ResellerId) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             is_service_plan(Context1, PlanId, cb_context:doc(Context1));
-        _Status -> Context1
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec check_plan_ids(cb_context:context(), ne_binary()) -> cb_context:context().
-check_plan_ids(Context, ResellerId) ->
-    ReqData  = cb_context:req_data(Context),
-    lists:foldl(
-        fun(PlanId, Ctxt) ->
-            case cb_context:resp_status(Ctxt) of
-                'success' ->
-                    check_plan_ids_fold(Ctxt, PlanId, ResellerId);
-                _Status -> Ctxt
-            end
-        end
-        ,cb_context:set_resp_status(Context, 'success')
-        ,wh_json:get_value(<<"plans">>, ReqData, [])
-    ).
-
--spec check_plan_ids_fold(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
-check_plan_ids_fold(Context, PlanId, ResellerId) ->
-    Context1 = check_plan_id(Context, PlanId, ResellerId),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            Plans = cb_context:fetch(Context1, <<"plans">>, []),
-            cb_context:store(Context1, <<"plans">>, [PlanId|Plans]);
         _Status -> Context1
     end.
 
