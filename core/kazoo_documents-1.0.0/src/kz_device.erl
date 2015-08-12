@@ -213,7 +213,7 @@ set_mac_address(DeviceJObj, MacAddress) ->
 language(DeviceJObj) ->
     language(DeviceJObj, 'undefined').
 language(DeviceJObj, Default) ->
-    wh_json:get_value(?LANGUAGE, DeviceJObj, Default).
+    wh_json:get_ne_value(?LANGUAGE, DeviceJObj, Default).
 
 -spec set_language(doc(), ne_binary()) -> doc().
 set_language(DeviceJObj, Language) ->
