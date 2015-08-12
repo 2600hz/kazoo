@@ -222,6 +222,33 @@ Useful for resellers.
 }
 ```
 
+### Remove multiple service plans on an account.
+
+Useful for resellers.
+
+#### Request
+
+- Verb: `DELETE`
+- Url: `/v2/accounts/{ACCOUNT_ID}/service_plans`
+- Payload:
+
+```json
+{
+    "data": {
+        "plans": ["plan1", "plan2"]
+    }
+}
+```
+
+#### Response
+
+```json
+{
+    "data": {} // Merge of the Service plans if any left
+    "status": "success"
+}
+```
+
 ### Removing service plan from an account.
 
 Useful for resellers.
@@ -569,19 +596,22 @@ This api will list the services plan that can be applied to your account
 #### Request
 
 - Verb: `POST`
-- Url: `/v2/accounts/{ACCOUNT_ID}/service_plans/{PLAN_ID}/override`
+- Url: `/v2/accounts/{ACCOUNT_ID}/service_plans/override`
 - Payload:
 
 ```json
 {
     "data": {
-        "overrides" {
-            "whitelabel": {
-                "_all": {
-                    "activation_charge": 700
+        "overrides": {
+            "{{PLAN_ID}}": {
+                "whitelabel": {
+                    "_all": {
+                        "activation_charge": 700
+                    }
                 }
             }
         }
+
     }
 }
 ```

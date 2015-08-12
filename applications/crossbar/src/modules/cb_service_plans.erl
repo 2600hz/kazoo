@@ -14,8 +14,8 @@
          ,resource_exists/0, resource_exists/1, resource_exists/2
          ,content_types_provided/1 ,content_types_provided/2, content_types_provided/3
          ,validate/1, validate/2, validate/3
-         ,post/1 ,post/2, post/3
-         ,delete/2
+         ,post/1 ,post/2
+         ,delete/1, delete/2
         ]).
 
 -include("../crossbar.hrl").
@@ -60,19 +60,19 @@ init() ->
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
-    [?HTTP_GET, ?HTTP_POST].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 allowed_methods(?SYNCHRONIZATION) ->
     [?HTTP_POST];
 allowed_methods(?RECONCILIATION) ->
     [?HTTP_POST];
 allowed_methods(?CURRENT) ->
     [?HTTP_GET];
+allowed_methods(?OVERRIDE) ->
+    [?HTTP_POST];
 allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 allowed_methods(?AVAILABLE, _) ->
-    [?HTTP_GET];
-allowed_methods(_, ?OVERRIDE) ->
-    [?HTTP_POST].
+    [?HTTP_GET].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -134,15 +134,7 @@ validate(Context, ?RECONCILIATION) ->
         {'ok', _} -> cb_context:set_resp_status(Context, 'success');
         'false' -> cb_context:add_system_error('forbidden', Context)
     end;
-validate(Context, PlanId) ->
-    validate_service_plan(Context, PlanId, cb_context:req_verb(Context)).
-
-validate(Context, ?AVAILABLE, PlanId) ->
-    AccountId = cb_context:account_id(Context),
-    ResellerId = wh_services:find_reseller_id(AccountId),
-    ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
-    crossbar_doc:load(PlanId, cb_context:set_account_db(Context, ResellerDb));
-validate(Context, _PlanId, ?OVERRIDE) ->
+validate(Context, ?OVERRIDE) ->
     AuthAccountId = cb_context:auth_account_id(Context),
     case wh_util:is_system_admin(AuthAccountId) of
         'true' ->
@@ -151,7 +143,15 @@ validate(Context, _PlanId, ?OVERRIDE) ->
                 ,cb_context:set_account_db(Context, ?WH_SERVICES_DB)
             );
         'false' -> cb_context:add_system_error('forbidden', Context)
-    end.
+    end;
+validate(Context, PlanId) ->
+    validate_service_plan(Context, PlanId, cb_context:req_verb(Context)).
+
+validate(Context, ?AVAILABLE, PlanId) ->
+    AccountId = cb_context:account_id(Context),
+    ResellerId = wh_services:find_reseller_id(AccountId),
+    ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
+    crossbar_doc:load(PlanId, cb_context:set_account_db(Context, ResellerDb)).
 
 -spec validate_service_plan(cb_context:context(), http_method()) -> cb_context:context().
 -spec validate_service_plan(cb_context:context(), path_token(), http_method()) -> cb_context:context().
@@ -163,6 +163,8 @@ validate_service_plan(Context, ?HTTP_GET) ->
         ,fun normalize_view_results/2
     );
 validate_service_plan(Context, ?HTTP_POST) ->
+    maybe_allow_change(Context);
+validate_service_plan(Context, ?HTTP_DELETE) ->
     maybe_allow_change(Context).
 
 validate_service_plan(Context, PlanId, ?HTTP_GET) ->
@@ -181,16 +183,11 @@ validate_service_plan(Context, PlanId, ?HTTP_DELETE) ->
 %%--------------------------------------------------------------------
 -spec post(cb_context:context()) -> cb_context:context().
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
--spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-
 post(Context) ->
-    Plans = cb_context:fetch(Context, <<"plans">>, []),
-    Services =
-        lists:foldl(
-            fun apply_plan/2
-            ,wh_services:fetch(cb_context:account_id(Context))
-            ,Plans
-        ),
+    Routines = [fun(S) -> apply_plans(Context, S) end
+                ,fun(S) -> maybe_save_plans(Context, S) end
+               ],
+    Services = lists:foldl(fun apply_fun/2, wh_services:fetch(cb_context:account_id(Context)), Routines),
     cb_context:setters(
         Context
         ,[{fun cb_context:set_resp_data/2, wh_services:service_plan_json(Services)}
@@ -208,6 +205,26 @@ post(Context, ?RECONCILIATION) ->
             lager:debug("failed to reconcile account services(~s): ~p", [_E, _R]),
             cb_context:add_system_error('unspecified_fault', Context)
     end;
+post(Context, ?OVERRIDE) ->
+    NewDoc =
+        wh_json:foldl(
+            fun(PlanId, Overrides, Doc) ->
+                Current = wh_json:get_value([<<"plans">>, PlanId, <<"overrides">>], Doc, wh_json:new()),
+                Overriden = wh_json:merge_recursive([Current, Overrides]),
+                wh_json:set_value([<<"plans">>, PlanId, <<"overrides">>], Overriden, Doc)
+            end
+            ,cb_context:doc(Context)
+            ,wh_json:get_value(<<"overrides">>, cb_context:req_data(Context), wh_json:new())
+        ),
+    Context1 = crossbar_doc:save(cb_context:set_doc(Context, NewDoc)),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            cb_context:set_resp_data(
+                Context1
+                ,wh_json:get_value(<<"plans">>, NewDoc)
+            );
+        _Status -> Context1
+    end;
 post(Context, PlanId) ->
     Routines = [fun(S) -> wh_services:add_service_plan(PlanId, S) end
                 ,fun wh_services:save/1
@@ -218,28 +235,25 @@ post(Context, PlanId) ->
                          ,{fun cb_context:set_resp_status/2, 'success'}
                         ]).
 
-post(Context, PlanId, ?OVERRIDE) ->
-    Doc = cb_context:doc(Context),
-
-    Current = wh_json:get_value([<<"plans">>, PlanId, <<"overrides">>], Doc, wh_json:new()),
-    Overrides = wh_json:get_value(<<"overrides">>, cb_context:req_data(Context), wh_json:new()),
-    Overriden = wh_json:merge_recursive([Current, Overrides]),
-
-    NewDoc = wh_json:set_value([<<"plans">>, PlanId, <<"overrides">>], Overriden, Doc),
-
-    Context1 = crossbar_doc:save(cb_context:set_doc(Context, NewDoc)),
-    case cb_context:resp_status(Context1) of
-        'success' ->  cb_context:set_resp_data(Context1, Overriden);
-        _Status -> Context1
-    end.
-
 %%----------------------------------- ---------------------------------
 %% @public
 %% @doc
 %% If the HTTP verib is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
+-spec delete(cb_context:context()) -> cb_context:context().
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
+delete(Context) ->
+    Routines = [fun(S) -> delete_plans(Context, S) end
+                ,fun(S) -> maybe_save_plans(Context, S) end
+               ],
+    Services = lists:foldl(fun apply_fun/2, wh_services:fetch(cb_context:account_id(Context)), Routines),
+    cb_context:setters(
+        Context
+        ,[{fun cb_context:set_resp_data/2, wh_services:service_plan_json(Services)}
+          ,{fun cb_context:set_resp_status/2, 'success'}]
+    ).
+
 delete(Context, PlanId) ->
     Routines = [fun(S) -> wh_services:delete_service_plan(PlanId, S) end
                 ,fun wh_services:save/1
@@ -249,19 +263,49 @@ delete(Context, PlanId) ->
                        ,[{fun cb_context:set_resp_data/2, wh_services:service_plan_json(Services)}
                          ,{fun cb_context:set_resp_status/2, 'success'}
                         ]).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec apply_plans(cb_context:context(), wh_services:services()) -> wh_services:services().
+apply_plans(Context, Services) ->
+    Plans = cb_context:fetch(Context, <<"plans">>, []),
+    lists:foldl(
+        fun(PlanId, S) ->
+            wh_services:add_service_plan(PlanId, S)
+        end
+        ,Services
+        ,Plans
+    ).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec apply_plan(ne_binary(), wh_services:services()) -> wh_services:services().
-apply_plan(PlanId, Services) ->
-    Routines = [
-        fun(S) -> wh_services:add_service_plan(PlanId, S) end
-        ,fun wh_services:save/1
-    ],
-    lists:foldl(fun apply_fun/2, Services, Routines).
+-spec delete_plans(cb_context:context(), wh_services:services()) -> wh_services:services().
+delete_plans(Context, Services) ->
+    Plans = cb_context:fetch(Context, <<"plans">>, []),
+    lists:foldl(
+        fun(PlanId, S) ->
+            wh_services:delete_service_plan(PlanId, S)
+        end
+        ,Services
+        ,Plans
+    ).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_save_plans(cb_context:context(), wh_services:services()) -> wh_services:services().
+maybe_save_plans(Context, Services) ->
+    case cb_context:fetch(Context, <<"plans">>, []) of
+        [] -> Services;
+        _ -> wh_services:save(Services)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
