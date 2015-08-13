@@ -102,11 +102,11 @@
 
 -export([conference/2, conference/3
          ,conference/4, conference/5
-         ,conference/6
+         ,conference/6, conference/7
         ]).
 -export([b_conference/2, b_conference/3
          ,b_conference/4, b_conference/5
-         ,b_conference/6
+         ,b_conference/6, b_conference/7
         ]).
 
 -export([noop/1]).
@@ -942,49 +942,28 @@ b_page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, Call) ->
 -spec b_bridge(wh_json:objects(), integer(), api_binary(), api_binary(), api_binary(), api_object(), api_binary(), whapps_call:call()) ->
                       whapps_api_bridge_return().
 
-bridge_command(Endpoints, Call) ->
-    bridge_command(Endpoints, ?DEFAULT_TIMEOUT_S, Call).
-bridge_command(Endpoints, Timeout, Call) ->
-    bridge_command(Endpoints, Timeout, wapi_dialplan:dial_method_single(), Call).
-bridge_command(Endpoints, Timeout, Strategy, Call) ->
-    bridge_command(Endpoints, Timeout, Strategy, <<"true">>, Call).
-bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
-    bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, 'undefined', Call).
-bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
-    bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, 'undefined', Call).
-bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call) ->
-    bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, <<"false">>, Call).
-bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreFoward, Call) ->
-    [{<<"Application-Name">>, <<"bridge">>}
-     ,{<<"Endpoints">>, Endpoints}
-     ,{<<"Timeout">>, Timeout}
-     ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
-     ,{<<"Ringback">>, wh_media_util:media_path(Ringback, Call)}
-     ,{<<"Dial-Endpoint-Method">>, Strategy}
-     ,{<<"Custom-SIP-Headers">>, SIPHeaders}
-     ,{<<"Ignore-Forward">>, IgnoreFoward}
-    ].
-
 bridge(Endpoints, Call) ->
-    Command = bridge_command(Endpoints, Call),
-    send_command(Command, Call).
+    bridge(Endpoints, ?DEFAULT_TIMEOUT_S, Call).
 bridge(Endpoints, Timeout, Call) ->
-    Command = bridge_command(Endpoints, Timeout, Call),
-    send_command(Command, Call).
+    bridge(Endpoints, Timeout, wapi_dialplan:dial_method_single(), Call).
 bridge(Endpoints, Timeout, Strategy, Call) ->
-    Command = bridge_command(Endpoints, Timeout, Strategy, Call),
-    send_command(Command, Call).
+    bridge(Endpoints, Timeout, Strategy, <<"true">>, Call).
 bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
-    Command = bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call),
-    send_command(Command, Call).
+    bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, 'undefined', Call).
 bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
-    Command = bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call),
-    send_command(Command, Call).
+    bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, 'undefined', Call).
 bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call) ->
-    Command = bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call),
-    send_command(Command, Call).
+    bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, <<"false">>, Call).
 bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreFoward, Call) ->
-    Command = bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreFoward, Call),
+    Command = [{<<"Application-Name">>, <<"bridge">>}
+               ,{<<"Endpoints">>, Endpoints}
+               ,{<<"Timeout">>, Timeout}
+               ,{<<"Dial-Endpoint-Method">>, Strategy}
+               ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
+               ,{<<"Ringback">>, wh_media_util:media_path(Ringback, Call)}
+               ,{<<"Custom-SIP-Headers">>, SIPHeaders}
+               ,{<<"Ignore-Forward">>, IgnoreFoward}
+              ],
     send_command(Command, Call).
 
 b_bridge(Endpoints, Call) ->
@@ -1017,28 +996,16 @@ b_bridge_wait(Timeout, Call) ->
 -spec unbridge(whapps_call:call(), ne_binary()) -> 'ok'.
 -spec unbridge(whapps_call:call(), ne_binary(), ne_binary()) -> 'ok'.
 unbridge(Call) ->
-    Command = unbridge_command(Call),
-    send_command(Command, Call).
+    unbridge(Call, <<"Both">>).
 unbridge(Call, Leg) ->
-    Command = unbridge_command(Call, Leg),
-    send_command(Command, Call).
+    unbridge(Call, Leg, <<"now">>).
 unbridge(Call, Leg, Insert) ->
-    Command = unbridge_command(Call, Leg, Insert),
+    Command = [{<<"Application-Name">>, <<"unbridge">>}
+               ,{<<"Leg">>, Leg}
+               ,{<<"Insert-At">>, Insert}
+               ,{<<"Call-ID">>, whapps_call:call_id(Call)}
+              ],
     send_command(Command, Call).
-
--spec unbridge_command(whapps_call:call()) -> wh_proplist().
--spec unbridge_command(whapps_call:call(), ne_binary()) -> wh_proplist().
--spec unbridge_command(whapps_call:call(), ne_binary(), ne_binary()) -> wh_proplist().
-unbridge_command(Call) ->
-    unbridge_command(Call, <<"Both">>).
-unbridge_command(Call, Leg) ->
-    unbridge_command(Call, Leg, <<"now">>).
-unbridge_command(Call, Leg, Insert) ->
-    [{<<"Application-Name">>, <<"unbridge">>}
-     ,{<<"Insert-At">>, Insert}
-     ,{<<"Leg">>, Leg}
-     ,{<<"Call-ID">>, whapps_call:call_id(Call)}
-    ].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1853,13 +1820,15 @@ wait_for_say(Call) ->
 -spec conference(ne_binary(), boolean(), whapps_call:call()) -> 'ok'.
 -spec conference(ne_binary(), boolean(), boolean(), whapps_call:call()) -> 'ok'.
 -spec conference(ne_binary(), boolean(), boolean(), boolean(), whapps_call:call()) -> 'ok'.
--spec conference(ne_binary(), boolean(), boolean(), boolean(), boolean(), whapps_call:call()) -> 'ok'.
+-spec conference(ne_binary(), boolean(), boolean(), boolean(), ne_binary(), whapps_call:call()) -> 'ok'.
+-spec conference(ne_binary(), boolean(), boolean(), boolean(), ne_binary(), boolean(), whapps_call:call()) -> 'ok'.
 
 -spec b_conference(ne_binary(), whapps_call:call()) -> whapps_api_std_return().
 -spec b_conference(ne_binary(), boolean(), whapps_call:call()) -> whapps_api_std_return().
 -spec b_conference(ne_binary(), boolean(), boolean(), whapps_call:call()) -> whapps_api_std_return().
 -spec b_conference(ne_binary(), boolean(), boolean(), boolean(), whapps_call:call()) -> whapps_api_std_return().
--spec b_conference(ne_binary(), boolean(), boolean(), boolean(), boolean(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_conference(ne_binary(), boolean(), boolean(), boolean(), ne_binary(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_conference(ne_binary(), boolean(), boolean(), boolean(), ne_binary(), boolean(), whapps_call:call()) -> whapps_api_std_return().
 
 conference(ConfId, Call) ->
     conference(ConfId, 'false', Call).
@@ -1868,13 +1837,16 @@ conference(ConfId, Mute, Call) ->
 conference(ConfId, Mute, Deaf, Call) ->
     conference(ConfId, Mute, Deaf, 'false', Call).
 conference(ConfId, Mute, Deaf, Moderator, Call) ->
-    conference(ConfId, Mute, Deaf, Moderator, 'false', Call).
-conference(ConfId, Mute, Deaf, Moderator, Reinvite, Call) ->
+    conference(ConfId, Mute, Deaf, Moderator, <<"default">>, Call).
+conference(ConfId, Mute, Deaf, Moderator, ProfileName, Call) ->
+    conference(ConfId, Mute, Deaf, Moderator, ProfileName, 'false', Call).
+conference(ConfId, Mute, Deaf, Moderator, ProfileName, Reinvite, Call) ->
     Command = [{<<"Application-Name">>, <<"conference">>}
                ,{<<"Conference-ID">>, ConfId}
                ,{<<"Mute">>, Mute}
                ,{<<"Deaf">>, Deaf}
                ,{<<"Moderator">>, Moderator}
+               ,{<<"Profile">>, ProfileName}
                ,{<<"Reinvite">>, Reinvite}
               ],
     send_command(Command, Call).
@@ -1886,9 +1858,11 @@ b_conference(ConfId, Mute, Call) ->
 b_conference(ConfId, Mute, Deaf, Call) ->
     b_conference(ConfId, Mute, Deaf, 'false', Call).
 b_conference(ConfId, Mute, Deaf, Moderator, Call) ->
-    b_conference(ConfId, Mute, Deaf, Moderator, 'false', Call).
-b_conference(ConfId, Mute, Deaf, Moderator, Reinvite, Call) ->
-    conference(ConfId, Mute, Deaf, Moderator, Reinvite, Call),
+    b_conference(ConfId, Mute, Deaf, Moderator, <<"default">>, Call).
+b_conference(ConfId, Mute, Deaf, Moderator, Profile, Call) ->
+    b_conference(ConfId, Mute, Deaf, Moderator, Profile, 'false', Call).
+b_conference(ConfId, Mute, Deaf, Moderator, Profile, Reinvite, Call) ->
+    conference(ConfId, Mute, Deaf, Moderator, Profile, Reinvite, Call),
     wait_for_message(Call, <<"conference">>, <<"CHANNEL_EXECUTE">>).
 
 %%--------------------------------------------------------------------
