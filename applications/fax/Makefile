@@ -26,7 +26,7 @@ ebin/$(PROJECT).app: src/*.erl
 	@mkdir -p ebin/
 	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $?
 
-json: JSON = $(shell find priv/couchdb -name *.json -print)
+json: JSON = $(shell find priv -name *.json -print)
 json:
 	@$(ROOT)/scripts/format-json.sh $(JSON)
 

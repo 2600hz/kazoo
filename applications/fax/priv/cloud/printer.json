@@ -1,19 +1,21 @@
 {
-  "version": "1.0",
-  "printer": {
-    "supported_content_type": [
-      {"content_type": "application/pdf", "min_version": "1.5"},
-    ],
-    "vendor_capability": [
-      {
-        "id" : "fax_number",
-        "display_name" : "Fax Number",
-        "type" : "TYPED_VALUE",
-        "typed_value_cap" :
-        {
-         "value_type" : "STRING"
-        }        
-      }
-    ],
-  }
+    "printer": {
+        "supported_content_type": [
+            {
+                "content_type": "application/pdf",
+                "min_version": "1.5"
+            }
+        ],
+        "vendor_capability": [
+            {
+                "display_name": "Fax Number",
+                "id": "fax_number",
+                "type": "TYPED_VALUE",
+                "typed_value_cap": {
+                    "value_type": "STRING"
+                }
+            }
+        ]
+    },
+    "version": "1.0"
 }
