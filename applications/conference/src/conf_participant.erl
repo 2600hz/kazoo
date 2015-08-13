@@ -245,7 +245,8 @@ handle_cast('hungup', #participant{in_conference='true'
                                    ,conference=Conference
                                   }=Participant
            ) ->
-    whapps_conference_command:play(?EXIT_TONE, Conference),
+    _ = whapps_conference:play_exit_tone(Conference)
+        andalso whapps_conference_command:play(?EXIT_TONE, Conference),
     _ = whapps_call_command:hangup(Call),
     {'stop', {'shutdown', 'hungup'}, Participant};
 handle_cast('hungup', #participant{in_conference='false'
@@ -594,9 +595,9 @@ bridge_to_conference(Route, Conference, Call) ->
                                  ]),
     Command = [{<<"Application-Name">>, <<"bridge">>}
                ,{<<"Endpoints">>, [Endpoint]}
-               ,{<<"Timeout">>, <<"20">>}
-               ,{<<"Ignore-Early-Media">>, <<"false">>}
+               ,{<<"Timeout">>, 20}
                ,{<<"Dial-Endpoint-Method">>, <<"single">>}
+               ,{<<"Ignore-Early-Media">>, <<"false">>}
                ,{<<"Hold-Media">>, <<"silence">>}
               ],
     whapps_call_command:send_command(Command, Call).
@@ -627,11 +628,10 @@ send_conference_command(Conference, Call) ->
                  ,whapps_conference:member_join_deaf(Conference)
                 }
         end,
-    Command = [{<<"Application-Name">>, <<"conference">>}
-               ,{<<"Conference-ID">>, whapps_conference:id(Conference)}
-               ,{<<"Mute">>, Mute}
-               ,{<<"Deaf">>, Deaf}
-               ,{<<"Moderator">>, whapps_conference:moderator(Conference)}
-               ,{<<"Profile">>, whapps_conference:profile(Conference)}
-              ],
-    whapps_call_command:send_command(Command, Call).
+    whapps_call_command:conference(whapps_conference:id(Conference)
+                                   ,Mute
+                                   ,Deaf
+                                   ,whapps_conference:moderator(Conference)
+                                   ,whapps_conference:profile(Conference)
+                                   ,Call
+                                  ).
