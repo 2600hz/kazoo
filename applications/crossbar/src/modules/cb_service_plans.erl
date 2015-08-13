@@ -208,9 +208,7 @@ post(Context, ?OVERRIDE) ->
     NewDoc =
         wh_json:foldl(
             fun(PlanId, Overrides, Doc) ->
-                Current = wh_json:get_value([<<"plans">>, PlanId, <<"overrides">>], Doc, wh_json:new()),
-                Overriden = wh_json:merge_recursive([Current, Overrides]),
-                wh_json:set_value([<<"plans">>, PlanId, <<"overrides">>], Overriden, Doc)
+                wh_json:set_value([<<"plans">>, PlanId, <<"overrides">>], Overrides, Doc)
             end
             ,cb_context:doc(Context)
             ,wh_json:get_value(<<"overrides">>, cb_context:req_data(Context), wh_json:new())
