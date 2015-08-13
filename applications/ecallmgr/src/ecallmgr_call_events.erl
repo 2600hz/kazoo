@@ -743,7 +743,7 @@ specific_call_event_props(<<"RECORD_START">>, _, Props) ->
      ,{<<"Application-Response">>, props:get_first_defined([<<"Record-File-Path">>
                                                             ,<<"whistle_application_response">>
                                                            ], Props)
-      }    
+      }
     ];
 specific_call_event_props(<<"RECORD_STOP">>, _, Props) ->
     [{<<"Application-Name">>, <<"record">>}

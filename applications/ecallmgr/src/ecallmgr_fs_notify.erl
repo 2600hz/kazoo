@@ -23,7 +23,7 @@
          ,terminate/2
          ,code_change/3
         ]).
-  
+
 -record(state, {
           node :: atom()
           ,options :: wh_proplist()

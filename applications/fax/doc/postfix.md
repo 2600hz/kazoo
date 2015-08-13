@@ -25,9 +25,9 @@ although you can expose kazoo fax on port 25 or use haproxy, we recommend to use
 
 ```
 relay_domains = hash:/etc/postfix/kz_smtp_domains
-# relayhost should be the IP:PORT of haproxy-smtp-listener or kazoo fax whapp 
+# relayhost should be the IP:PORT of haproxy-smtp-listener or kazoo fax whapp
 relayhost = 127.0.0.1:2525
- 
+
 policy-spf_time_limit = 3600s
 
 smtpd_delay_reject = yes
@@ -59,7 +59,7 @@ smtpd_recipient_restrictions =
    reject
 ```
 
-## edit /etc/postfix/master.cf and add the following line at the end 
+## edit /etc/postfix/master.cf and add the following line at the end
 ```
 policyd-spf  unix  -       n       n       -       0       spawn
    user=nobody argv=/usr/libexec/postfix/policyd-spf
@@ -67,15 +67,10 @@ policyd-spf  unix  -       n       n       -       0       spawn
 
 ## Todo
 * use couchdb views to get kazoo faxboxes configuration into postfix
-* edit domains and permitteed users from kazoo  
+* edit domains and permitteed users from kazoo
 * `postconf /etc/postfix/kz_smtp_domains`
 * `postconf /etc/postfix/kz_allowed_senders`
 * `postfix reload`
 * put into a bash script
 * add it to a cron table
 * handle 304 Not Modified responses
-
-
-
-
-

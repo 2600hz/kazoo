@@ -74,7 +74,7 @@ set_account_id(#bh_context{}=Context, AcctId) -> Context#bh_context{account_id=A
 set_auth_token(#bh_context{}=Context, AuthToken) -> Context#bh_context{auth_token=AuthToken}.
 set_auth_account_id(#bh_context{}=Context, AuthBy) -> Context#bh_context{auth_account_id=AuthBy}.
 set_binding(#bh_context{}=Context, Binding) -> Context#bh_context{binding=Binding}.
-set_websocket_session_id(#bh_context{}=Context, SessionId) -> 
+set_websocket_session_id(#bh_context{}=Context, SessionId) ->
     Context#bh_context{websocket_session_id=SessionId}.
 set_websocket_pid(#bh_context{}=Context, SocketPid) ->
     Context#bh_context{websocket_pid=SocketPid}.

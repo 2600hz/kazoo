@@ -43,7 +43,7 @@ start() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec stop() -> 'ok'.
-stop() -> 
+stop() ->
     exit(whereis('reorder_sup'), 'shutdown'),
     'ok'.
 

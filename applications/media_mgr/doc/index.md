@@ -1,4 +1,4 @@
-/*                                                                                                                                                                                                                                                                                                 
+/*
 Section: Media Manager
 Title: Media Manager
 Language: en-US
@@ -20,5 +20,3 @@ playback() -->   media_shout_protocol
                    accept client
                    verify stream path exists (can issue redirect to couch?)
                    send chunked data to socket
-                   
-                   

@@ -78,7 +78,7 @@ init([]) ->
     URL = props:get_value('dth_cdr_url', Configs),
 
     erlang:send_after(0, self(), 'blacklist_refresh'),
-    
+
     WSDLFile = [code:priv_dir('dth'), "/dthsoap.wsdl"],
     WSDLHrlFile = [code:lib_dir('dth', 'include'), "/dthsoap.hrl"],
 

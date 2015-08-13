@@ -148,7 +148,7 @@ whapp_count(Whapp, 'true') ->
 whapp_count(Whapp, 'remote') ->
     Zone = local_zone(),
     MatchSpec = [{#node{whapps='$1'
-                        ,zone='$2' 
+                        ,zone='$2'
                         ,_ = '_'
                        }
                   ,[{'andalso', {'=/=', '$1', []}

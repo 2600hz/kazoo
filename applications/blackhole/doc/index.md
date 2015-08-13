@@ -88,7 +88,7 @@ backend websocket_blackhole
 Here is how cert_key.pem should look like:
 
 ~~~
-[root@kz527 ~]# cat /etc/kazoo/haproxy/cert_key.pem 
+[root@kz527 ~]# cat /etc/kazoo/haproxy/cert_key.pem
 -----BEGIN CERTIFICATE-----
 MIIF0jCCBLqgAwIBAgIRAOQQ6+NpkZwOENe2OQiJlW4wDQYJKoZIhvcNAQEFBQAw
 ..........
@@ -106,5 +106,5 @@ V8MsGq2IA+2FmrRrd0jYfh8iu1VydbmySghjs69HtYNPndfhs37HtH0=
 Now you can use 7777 port for your blackhole WSS connections.
 
 
-Config was created to connect Kazoo-Popup secure and wasn't fully tested, 
+Config was created to connect Kazoo-Popup secure and wasn't fully tested,
 so treat it as a hint needed to be proved before putting into production.

@@ -26,7 +26,7 @@ https://{your kazoo domain}:8443/v1/accounts/{account_id}/users/{user_id}/quickc
 
 _Both cid-number and cid-name are optional_
 
-Above are all the options of QuickCall (As Far as I can tell) They should be added to the examples. 
+Above are all the options of QuickCall (As Far as I can tell) They should be added to the examples.
 
 Also under Resource Parameters add "cid-name" info to the "cid-number" info
 

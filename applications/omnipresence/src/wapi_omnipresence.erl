@@ -38,7 +38,7 @@
 -define(DIALOGINFO_SUBS_EXCHANGE, <<"dialoginfo_subs">>).
 -define(DIALOGINFO_EXCHANGE, <<"dialoginfo">>).
 -define(OMNIPRESENCE_EXCHANGE, <<"omnipresence">>).
-  
+
 -define(SUBSCRIBE_HEADERS, [<<"User">>, <<"Expires">>]).
 -define(OPTIONAL_SUBSCRIBE_HEADERS, [<<"Queue">>, <<"From">>
                                      ,<<"Event-Package">>, <<"Call-ID">>
