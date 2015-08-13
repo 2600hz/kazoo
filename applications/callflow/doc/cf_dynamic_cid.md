@@ -13,27 +13,28 @@ The `dynamic_cid` callflow enables you to change the caller id (CID).
 
 If undefined, will revert to historical behavior, *manual*. 
 
-## Optional fields
 
-**time_limit** - Limit, in seconds, of how long to record the call. If ommited get value from `system_config/media/max_recording_time_limit`. Default `3600`.  
-**format** - Format to write the recording. Set `mp3` or `wav`. If ommited get value from `system_config/media/call_recording/extension`. Default `mp3`.  
-**record_on_answer** - Whether to delay starting the recording until the call is answered. Default `false`.  
-**record_sample_rate** - Sampling rate of the recording, in Hz. If ommited get value from `system_config/ecallmgr/record_sample_rate`. Default `8000`.  
-**record_min_sec** - Minimal record time, in seconds, to store recordings. If the recording time is less than this value, FreeSwitch will discard recorded file. If ommited get value from `system_config/media/record_min_sec`. Default `0`.  
-**url** - See **Storage of recordings** section.
+## Manual action mode
+### Optional fields 
 
-## Manual
+**interdigit_timeout** - default 2000 ms
 
 Can only set the caller id number with this method.
 
-## List
+You dial the new caller id on the keypad when prompted.
+
+## List action mode
+### Manditory fields 
+
+**id** - cidlist, couchdb doc id of the document that contains the new caller
+  id name and number information.
 
 You can set the caller id number and the caller id name with this
 method.
 
 On a handset you dial `*2015149072508`
 
-The callflow regex looks like this:
+It's hooked in as a part of the feature codes.  The callflow regex looks like this:
 `
    "patterns": [
        "^\\*2(|[0-9]{2,})$"
@@ -53,7 +54,7 @@ cached by Kazoo.  Make sure you flush changes..
 ```
 {
    "_id": "cidlist",
-   "_rev": "5-c0b5be0b4b65d51074ddb6808d075d6a",
+   "_rev": "5-FyFaandfumIsmellthebloudofanEnglishman",
    "entries": {
        "00": {
            "number": "16139999999",
