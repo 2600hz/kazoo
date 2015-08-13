@@ -35,10 +35,18 @@ update_call(CaptureGroup, {'ok', Call}) ->
                 }
                 ,{fun whapps_call:kvs_store/3, 'cf_privacy', 'true'}
                 ,{fun whapps_call:set_caller_id_name/2
-                  ,whapps_config:get_non_empty(<<"callflow">>, <<"privacy_name">>, <<"anonymous">>)
+                  ,whapps_config:get_non_empty(
+                     ?CF_CONFIG_CAT
+                     ,<<"privacy_name">>
+                     ,wh_util:anonymous_caller_id_name()
+                    )
                  }
                 ,{fun whapps_call:set_caller_id_number/2
-                  ,whapps_config:get_non_empty(<<"callflow">>, <<"privacy_number">>, <<"0000000000">>)
+                  ,whapps_config:get_non_empty(
+                     ?CF_CONFIG_CAT
+                     ,<<"privacy_number">>
+                     ,wh_util:anonymous_caller_id_number()
+                    )
                  }
                ],
     cf_exe:set_call(whapps_call:exec(Routines, Call)).

@@ -241,15 +241,20 @@ on_successful_validation(Context) ->
 -spec get_default_caller_id(cb_context:context(), api_binary()) -> api_binary().
 get_default_caller_id(Context, 'undefined') ->
     {'ok', JObj} = kz_account:fetch(cb_context:account_id(Context)),
-    wh_json:get_first_defined([?CALLER_ID_INTERNAL, ?CALLER_ID_EXTERNAL], JObj, <<"anonymous">>);
+    wh_json:get_first_defined(
+      [?CALLER_ID_INTERNAL, ?CALLER_ID_EXTERNAL]
+      ,JObj
+      ,wh_util:anonymous_caller_id_number()
+     );
 get_default_caller_id(Context, OwnerId) ->
     AccountDb = cb_context:account_db(Context),
     {'ok', JObj1} = kz_account:fetch(AccountDb),
     {'ok', JObj2} = couch_mgr:open_cache_doc(AccountDb, OwnerId),
-    wh_json:get_first_defined([?CALLER_ID_INTERNAL, ?CALLER_ID_EXTERNAL]
-                              ,wh_json:merge_recursive(JObj1, JObj2)
-                              ,<<"anonymous">>
-                             ).
+    wh_json:get_first_defined(
+      [?CALLER_ID_INTERNAL, ?CALLER_ID_EXTERNAL]
+      ,wh_json:merge_recursive(JObj1, JObj2)
+      ,wh_util:anonymous_caller_id_number()
+     ).
 
 -spec create_sms_doc_id() -> ne_binary().
 create_sms_doc_id() ->

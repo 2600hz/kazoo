@@ -16,6 +16,8 @@
 -define(APP_NAME, <<"stepswitch">>).
 -define(APP_VERSION, <<"0.5.0">>).
 
+-define(SS_CONFIG_CAT, <<"stepswitch">>).
+
 -define(STEPSWITCH_CACHE, 'stepswitch_cache').
 -define(STEPSWITCH_CNAM_POOL, 'stepswitch_cnam_pool').
 

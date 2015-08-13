@@ -153,7 +153,7 @@ find_destination(JObj) ->
 use_to_as_destination(JObj) ->
     case catch binary:split(wh_json:get_value(<<"To-Uri">>, JObj), <<"@">>) of
         [Num|_] -> Num;
-        _ -> wh_json:get_value(<<"Callee-ID-Number">>, JObj, <<"unknown">>)
+        _ -> wh_json:get_value(<<"Callee-ID-Number">>, JObj,  wh_util:anonymous_caller_id_number())
     end.
 
 %%--------------------------------------------------------------------
@@ -166,7 +166,7 @@ use_to_as_destination(JObj) ->
 find_source(JObj) ->
     case catch binary:split(wh_json:get_value(<<"From-Uri">>, JObj), <<"@">>) of
         [Num|_] -> Num;
-        _ -> wh_json:get_value(<<"Caller-ID-Number">>, JObj, <<"unknown">>)
+        _ -> wh_json:get_value(<<"Caller-ID-Number">>, JObj,  wh_util:anonymous_caller_id_number())
     end.
 
 %%--------------------------------------------------------------------

@@ -437,9 +437,9 @@ caller_id_name(Props) ->
 
 -spec caller_id_name(boolean(), wh_proplist()) -> ne_binary().
 caller_id_name('true', _Props) ->
-    <<"Anonymous">>;
+    wh_util:anonymous_caller_id_name();
 caller_id_name('false', Props) ->
-    kzd_freeswitch:caller_id_name(Props, <<"Unknown">>).
+    kzd_freeswitch:caller_id_name(Props, wh_util:anonymous_caller_id_name()).
 
 -spec caller_id_number(wh_proplist()) -> ne_binary().
 caller_id_number(Props) ->
@@ -447,6 +447,6 @@ caller_id_number(Props) ->
 
 -spec caller_id_number(boolean(), wh_proplist()) -> ne_binary().
 caller_id_number('true', _Props) ->
-    <<"Anonymous">>;
+    wh_util:anonymous_caller_id_number();
 caller_id_number('false', Props) ->
-    kzd_freeswitch:caller_id_number(Props, <<"0000000000">>).
+    kzd_freeswitch:caller_id_number(Props, wh_util:anonymous_caller_id_number()).
