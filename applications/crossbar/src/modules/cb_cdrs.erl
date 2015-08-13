@@ -520,7 +520,7 @@ col_account_call_type(JObj, _Timestamp) -> wh_json:get_value([<<"custom_channel_
 col_rate(JObj, _Timestamp) -> wh_util:to_binary(wht_util:units_to_dollars(wh_json:get_value([<<"custom_channel_vars">>, <<"rate">>], JObj, 0))).
 col_rate_name(JObj, _Timestamp) -> wh_json:get_value([<<"custom_channel_vars">>, <<"rate_name">>], JObj, <<>>).
 col_bridge_id(JObj, _Timestamp) -> wh_json:get_value([<<"custom_channel_vars">>, <<"bridge_id">>], JObj, <<>>).
-col_recording_url(JObj, _Timestamp) -> wh_json:get_value([<<"custom_channel_vars">>, <<"recording_url">>], JObj, <<>>).
+col_recording_url(JObj, _Timestamp) -> wh_json:get_value([<<"recording_url">>], JObj, <<>>).
 col_call_priority(JObj, _Timestamp) -> wh_json:get_value([<<"custom_channel_vars">>, <<"call_priority">>], JObj, <<>>).
 
 col_reseller_cost(JObj, _Timestamp) -> wh_util:to_binary(reseller_cost(JObj)).
