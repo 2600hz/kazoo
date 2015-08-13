@@ -41,5 +41,4 @@ after_success:
   - kerl_deactivate
   - source $HOME/otp/$TRAVIS_OTP_RELEASE/activate
   - ERL_LIBS="$HOME/proper" make test
-  - echo "Files with trailing whitespace:"
-  - bash -c "git grep -IE '[ '""$(echo -ne '\t\v')""']$' -- core/ applications/ | cut -d: -f1 | sort -u && false || true"
+  - ./scripts/check-whitespace.sh core/ applications/
