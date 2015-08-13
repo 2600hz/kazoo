@@ -596,14 +596,18 @@ main_menu(#mailbox{owner_id=OwnerId
             lager:info("playing all messages in folder: ~s", [?FOLDER_NEW]),
             Folder = get_folder(Messages, ?FOLDER_NEW),
             case play_messages(Folder, New, Box, Call) of
-                'ok' -> 'ok';
+                'ok' ->
+                    _ = cf_util:unsolicited_owner_mwi_update(AccountDb, OwnerId),
+                    'ok';
                 _Else -> main_menu(Box, Call)
             end;
         {'ok', HearSaved} ->
             lager:info("playing all messages in folder: ~s", [?FOLDER_SAVED]),
             Folder = get_folder(Messages, ?FOLDER_SAVED),
             case play_messages(Folder, Saved, Box, Call) of
-                'ok' -> 'ok';
+                'ok' ->
+                    _ = cf_util:unsolicited_owner_mwi_update(AccountDb, OwnerId),
+                    'ok';
                 _Else ->  main_menu(Box, Call)
             end;
         _ ->
@@ -650,14 +654,18 @@ main_menu(#mailbox{owner_id=OwnerId
             lager:info("playing all messages in folder: ~s", [?FOLDER_NEW]),
             Folder = get_folder(Messages, ?FOLDER_NEW),
             case play_messages(Folder, New, Box, Call) of
-                'ok' -> 'ok';
+                'ok' ->
+                    _ = cf_util:unsolicited_owner_mwi_update(AccountDb, OwnerId),
+                    'ok';
                 _Else -> main_menu(Box, Call)
             end;
         {'ok', HearSaved} ->
             lager:info("playing all messages in folder: ~s", [?FOLDER_SAVED]),
             Folder = get_folder(Messages, ?FOLDER_SAVED),
             case play_messages(Folder, Saved, Box, Call) of
-                'ok' -> 'ok';
+                'ok' ->
+                    _ = cf_util:unsolicited_owner_mwi_update(AccountDb, OwnerId),
+                    'ok';
                 _Else ->  main_menu(Box, Call)
             end;
         {'ok', Configure} ->
