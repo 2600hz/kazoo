@@ -13,11 +13,11 @@ The `record_call` callflow enables you to record the audio of the call.
 
 ## Optional fields
 
-**time_limit** - Limit, in seconds, of how long to record the call. If ommited get value from `system_config/media/max_recording_time_limit`. Default `3600`.  
-**format** - Format to write the recording. Set `mp3` or `wav`. If ommited get value from `system_config/media/call_recording/extension`. Default `mp3`.  
-**record_on_answer** - Whether to delay starting the recording until the call is answered. Default `false`.  
-**record_sample_rate** - Sampling rate of the recording, in Hz. If ommited get value from `system_config/ecallmgr/record_sample_rate`. Default `8000`.  
-**record_min_sec** - Minimal record time, in seconds, to store recordings. If the recording time is less than this value, FreeSwitch will discard recorded file. If ommited get value from `system_config/media/record_min_sec`. Default `0`.  
+**time_limit** - Limit, in seconds, of how long to record the call. If ommited get value from `system_config/media/max_recording_time_limit`. Default `3600`.
+**format** - Format to write the recording. Set `mp3` or `wav`. If ommited get value from `system_config/media/call_recording/extension`. Default `mp3`.
+**record_on_answer** - Whether to delay starting the recording until the call is answered. Default `false`.
+**record_sample_rate** - Sampling rate of the recording, in Hz. If ommited get value from `system_config/ecallmgr/record_sample_rate`. Default `8000`.
+**record_min_sec** - Minimal record time, in seconds, to store recordings. If the recording time is less than this value, FreeSwitch will discard recorded file. If ommited get value from `system_config/media/record_min_sec`. Default `0`.
 **url** - See **Storage of recordings** section.
 
 ## Storage of recordings
@@ -31,5 +31,3 @@ If you omit the URL, there are a couple options for storage:
     * If `true`, check `system_config/media` for `third_party_bigcouch_host`
         * If `undefined`, store to the Kazoo BigCouch cluster
         * If defined, send the recording to the configured URL
-
-

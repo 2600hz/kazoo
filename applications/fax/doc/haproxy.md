@@ -5,12 +5,12 @@ Language: en-US
 */
 
 # HAPROXY role in smtp to fax
-if you have more than one whapps node running the fax application, you may want to distribute the load from smtp among the several nodes. 
- 
+if you have more than one whapps node running the fax application, you may want to distribute the load from smtp among the several nodes.
+
 ```
 # smtp configuration simple configuration for haproxy
 listen kazoo-fax-smtp
- bind *:2525 
+ bind *:2525
  mode tcp
   no option http-server-close
   maxconn 50
@@ -28,4 +28,3 @@ listen kazoo-fax-smtp
 ```
 # haproxy version
 at least haproxy-1.5-dev23 (check-send-proxy send-proxy)
-

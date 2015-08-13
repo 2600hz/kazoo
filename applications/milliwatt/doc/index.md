@@ -1,4 +1,4 @@
-/*                                                                                                                                                                                                                                                                                                 
+/*
 Section: Milliwatt
 Title: Milliwatt
 Language: en-US

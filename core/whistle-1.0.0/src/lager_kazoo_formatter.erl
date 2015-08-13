@@ -40,7 +40,7 @@
 %% or refer to other properties, if desired. You can also use a {atom, semi-iolist(), semi-iolist()} formatter, which
 %% acts like a ternary operator's true/false branches.
 %%
-%% The metadata properties date,time, message, and severity will always exist.  
+%% The metadata properties date,time, message, and severity will always exist.
 %% The properties pid, file, line, module, and function will always exist if the parser transform is used.
 %%
 %% Example:
@@ -69,7 +69,7 @@ format(Msg,[{eol, EOL}], Colors) ->
 format(Message,Config,Colors) ->
     [ case V of
         color -> output_color(Message,Colors);
-        _ -> output(V,Message) 
+        _ -> output(V,Message)
       end || V <- Config ].
 
 -spec format(lager_msg:lager_msg(),list()) -> any().
@@ -114,7 +114,7 @@ output_color(Msg,Colors) ->
 -spec make_printable(any()) -> iolist().
 make_printable(A) when is_atom(A) -> atom_to_list(A);
 make_printable(P) when is_pid(P) -> pid_to_list(P);
-make_printable(L) when is_list(L) orelse is_binary(L) -> L; 
+make_printable(L) when is_list(L) orelse is_binary(L) -> L;
 make_printable(Other) -> io_lib:format("~p",[Other]).
 
 get_metadata(Key, Metadata) ->

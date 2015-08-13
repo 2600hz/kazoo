@@ -8,16 +8,16 @@ Language: en-US
 Module `cb_token_restrictions`.
 
 ## What is it?
-Token restrictions - set of rules saved in auth token document. This rules grant access to API URI-s.  
-**If token document dont have any set of rules - then this module dont apply any restrictions to request.**  
+Token restrictions - set of rules saved in auth token document. This rules grant access to API URI-s.
+**If token document dont have any set of rules - then this module dont apply any restrictions to request.**
 This rules created when the system create auth token.
 Rules can be loaded from system template or account template.
 System template located in `system_config/crossbar.token_restrictions`.
 Account template located in `{AccountDB}/token_restrictions`.
 
 ## How it works?
-When you make request to Crossbar (API), the system load rules from token, which used for authentitcation, and try apply this rules to URI (`/v1/accounts/1234...xyz/devices/123...xyz/`).  
-More information about URI structure you can find [here](basics.md).  
+When you make request to Crossbar (API), the system load rules from token, which used for authentitcation, and try apply this rules to URI (`/v1/accounts/1234...xyz/devices/123...xyz/`).
+More information about URI structure you can find [here](basics.md).
 If system not found match for all parameters (endpoint name, account id, endpoint arguments, HTTP method), then it halt this request and return 403 error.
 
 ## Template structure
@@ -41,10 +41,10 @@ Each template can have differnet rules for different authentication method and u
   ...
 }
 ```
-`AUTH_METHOD_#` - name of used authentication method (`cb_api_auth`, `cb_user_auth`, etc) which created this auth token.  
-`PRIV_LEVEL_#` - name of privilege level of authenticated user (`admin`, `user`, etc). This level set in `priv_level` property of user document. If authentication method dont have usern id (such as `cb_api_auth`) then select `admin` set of rules.  
-`RULES` - set of rules which will be saved in auth token document.  
-Auth method and priv level can be matched with "catch all" term - `"_"`. If no exact match for auth method or priv level, then system try use "catch all" rules.  
+`AUTH_METHOD_#` - name of used authentication method (`cb_api_auth`, `cb_user_auth`, etc) which created this auth token.
+`PRIV_LEVEL_#` - name of privilege level of authenticated user (`admin`, `user`, etc). This level set in `priv_level` property of user document. If authentication method dont have usern id (such as `cb_api_auth`) then select `admin` set of rules.
+`RULES` - set of rules which will be saved in auth token document.
+Auth method and priv level can be matched with "catch all" term - `"_"`. If no exact match for auth method or priv level, then system try use "catch all" rules.
 This search made at moment when token is created and result of this search will be saved in token document and applied to any further reqest, authenticated by this token.
 
 Example template:
@@ -113,8 +113,8 @@ Example template:
   ...
 }
 ```
-`ENDPOINT_#` - any appropriate name of endpoint (`"devices"`, `"users"`, `"callflows"`, etc)  
-`ACCOUNT_ID_#` - any appropriate account ID  
+`ENDPOINT_#` - any appropriate name of endpoint (`"devices"`, `"users"`, `"callflows"`, etc)
+`ACCOUNT_ID_#` - any appropriate account ID
 `ARG_#` - arguments for endpoint separated by `/`
 `VERB_#` - any appropriate HTTP method (`"GET"`, `"PUT"`, etc)
 
@@ -122,9 +122,9 @@ Example template:
 ## Match order
 
 ### Endpoint match
-At this step module compare resource from URI with resource names in token restrictions. 
-If URI is `/v1/accounts/1234...890/users/abc/xyz/` then endpoint will be `users`, and `abc`, `xyz` is arguments of this endpoint.  
-Rules applied to the last endpoint in URI.  
+At this step module compare resource from URI with resource names in token restrictions.
+If URI is `/v1/accounts/1234...890/users/abc/xyz/` then endpoint will be `users`, and `abc`, `xyz` is arguments of this endpoint.
+Rules applied to the last endpoint in URI.
 You can use "catch all" (`"_"`) endpoint name. First try found exact endpoint name, then try search for "catch all" name.
 
 ```JSON
@@ -142,8 +142,8 @@ You can use "catch all" (`"_"`) endpoint name. First try found exact endpoint na
   ]
 }
 ```
-If not found match for endpoint- this request is halted and returned 403 error.  
-Each endpoint contain list of objects with rules. Appropriate object select by `"allowed_account"` parameter.  
+If not found match for endpoint- this request is halted and returned 403 error.
+Each endpoint contain list of objects with rules. Appropriate object select by `"allowed_account"` parameter.
 
 ### Account match
 After system found endpoint it try match account ID for this request.
@@ -171,12 +171,12 @@ After system found endpoint it try match account ID for this request.
   ]
 }
 ```
- List of account IDs set in parameter `"allowed_accounts"`. You can write axact IDs or one of special macroses.  
- `"{AUTH_ACCOUNT_ID}"` - match account which created auth token.  
- `"{DESCENDANT_ACCOUNT_ID}"` - match any descendats accounts.  
- `"_"` - match any account.  
- **If object dont have parameter `"allowed_accounts"` then it match any account (equal to `"_"`).**  
- 
+ List of account IDs set in parameter `"allowed_accounts"`. You can write axact IDs or one of special macroses.
+ `"{AUTH_ACCOUNT_ID}"` - match account which created auth token.
+ `"{DESCENDANT_ACCOUNT_ID}"` - match any descendats accounts.
+ `"_"` - match any account.
+ **If object dont have parameter `"allowed_accounts"` then it match any account (equal to `"_"`).**
+
  ### Endpoint arguments match
  Endpoint argumnets matched with parameter `"rules"`.
  ```JSON
@@ -240,7 +240,7 @@ List can contain any valid HTTP method ("GET", "PUT", "POST", "PATCH", "DELETE")
 
 ## Manage accounts templates
 ### Get current account template
-`GET /v1/accounts/{ACCOUNT_ID}/token_restrictions` return JSON like this:  
+`GET /v1/accounts/{ACCOUNT_ID}/token_restrictions` return JSON like this:
 ```JSON
 {
   "data": {
@@ -268,7 +268,7 @@ List can contain any valid HTTP method ("GET", "PUT", "POST", "PATCH", "DELETE")
 If account dont have token restrictions template - return 404 error.
 
 ### Create/update account template
-`POST /v1/accounts/{ACCOUNT_ID}/token_restrictions` 
+`POST /v1/accounts/{ACCOUNT_ID}/token_restrictions`
 ```JSON
 {
   "data": {
@@ -296,4 +296,3 @@ If account dont have token restrictions template - return 404 error.
 
 ### Delete account template
 `DELETE /v1/accounts/{ACCOUNT_ID}/token_restrictions`
-

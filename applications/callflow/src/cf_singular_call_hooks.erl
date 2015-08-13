@@ -45,7 +45,7 @@
 %% @doc
 %% First we check if this feature is enabled - if not, we return false.
 %% Next we check if the call is an indicator for the start of a singular call (A-leg),
-%% and if so, then we know the call should be hooked. 
+%% and if so, then we know the call should be hooked.
 %% We then can start the event listener, which will send init and end hooks.
 %%
 %% @spec maybe_hook_call(whapps_call:call()) -> ok.
@@ -55,8 +55,8 @@
 maybe_hook_call(Call) ->
     %% Never invoke anything if we are disabled
     case should_hook(Call) of
-        'true' -> 
-            %% start event listener, which will be responsible for sending all hooks, 
+        'true' ->
+            %% start event listener, which will be responsible for sending all hooks,
             %% including the init hook (we want to do it this way to make sure we are listening)
             cf_exe:add_event_listener(Call, {'cf_singular_call_hooks_listener', []});
         'false' -> 'false'
@@ -102,7 +102,7 @@ send_init_hook(Call) ->
         {'error', Reason} ->
             lager:warning("Ibrowse error when sending singular call init hook: ~p", [Reason]),
             'false';
-        _ -> 
+        _ ->
             'true'
     end.
 
@@ -129,7 +129,7 @@ send_end_hook(Call, Event) ->
     lager:debug("================", []),
 
     ReferredBy = whapps_call:custom_channel_var(<<"Referred-By">>, Call),
-    CallID = 
+    CallID =
         case ReferredBy of
             'undefined' -> whapps_call:call_id_direct(Call);
             % if we were a forwarded call, refer to the original call id (bridge id)
@@ -191,8 +191,8 @@ is_enabled() ->
 %% @private
 %% @doc
 %% This function identifies if a call is the first of the conversation by checking if it
-%% has an existing bridge. We also check the presence of referredby and 
-%% want to send the hook if it is a call transfer 
+%% has an existing bridge. We also check the presence of referredby and
+%% want to send the hook if it is a call transfer
 %%
 %% @spec call_is_singular(whapps_call:call()) -> boolean().
 %% @end

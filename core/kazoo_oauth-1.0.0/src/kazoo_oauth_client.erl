@@ -13,7 +13,7 @@
 
 authenticate(JObj) ->
     case {wh_json:get_value(<<"access_token">>, JObj)
-         ,wh_json:get_value(<<"provider">>, JObj)} 
+         ,wh_json:get_value(<<"provider">>, JObj)}
     of
         {'undefined', 'undefined'} ->
             {'error', <<"OAUTH missing parameters AccessToken and Provider">>};
@@ -27,7 +27,7 @@ authenticate(JObj) ->
 authenticate(AccessToken, ProviderId, JObj) ->
     case kazoo_oauth_util:verify_token(ProviderId, AccessToken) of
         {'ok', Token} -> maybe_add_oauth_user(JObj, Token);
-        {'error', _R}=Error -> 
+        {'error', _R}=Error ->
             lager:debug("unable to verify oauth access token: ~p", [_R]),
             Error
     end.
@@ -35,7 +35,7 @@ authenticate(AccessToken, ProviderId, JObj) ->
 maybe_add_oauth_user(JObj, TokenObj) ->
     AppId = wh_json:get_value(<<"issued_to">>, TokenObj, <<"invalid_issued_to">>),
     case kazoo_oauth_util:get_oauth_app(AppId) of
-        {'ok', #oauth_app{}=App} -> 
+        {'ok', #oauth_app{}=App} ->
             add_oauth_user(App, JObj, TokenObj);
         {'error', _R}=Error ->
             lager:debug("unable to get oauth application: ~p", [_R]),
@@ -66,9 +66,9 @@ get_refresh_token(<<"offline">>, App, Scope, AuthorizationCode) ->
     case kazoo_oauth_util:refresh_token(App, Scope, AuthorizationCode, []) of
         {'ok', Token} -> Token;
         _ -> wh_json:new()
-    end;    
+    end;
 get_refresh_token(_ , _, _ , _) -> wh_json:new().
-                                    
+
 
 save_oauth_doc(App, DocId, JObj, TokenObj, RefreshTokenObj) ->
     Doc = props:filter_undefined([{<<"email">>, wh_json:get_value(<<"email">>, TokenObj) }
@@ -88,9 +88,9 @@ save_oauth_doc(App, DocId, JObj, TokenObj, RefreshTokenObj) ->
 maybe_update_oauth_doc(DocId, JObj, TokenObj, App, AuthObj) ->
     Fields = [<<"scope">>, <<"email">>, <<"verified_email">>],
     case lists:any(fun(Field) ->
-                           wh_json:get_value(Field, TokenObj) 
+                           wh_json:get_value(Field, TokenObj)
                                =/= wh_json:get_value(Field, AuthObj)
-                   end, Fields) 
+                   end, Fields)
     of
         'true' -> maybe_save_oauth_doc(DocId, JObj, TokenObj, App);
         'false' -> load_profile(App, JObj, TokenObj, AuthObj)
@@ -116,11 +116,9 @@ load_profile(#oauth_app{provider=#oauth_provider{profile_url=ProfileURL}}, JObj,
             lager:debug("failed to get oauth profile: ~p", [_Else]),
             {'error', <<"OAUTH - Error fetching Profile">>}
     end.
-	
+
 
 
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
-
-

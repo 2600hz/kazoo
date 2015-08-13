@@ -1,4 +1,4 @@
-/*                                                                                                                                                                                                                                                                                                 
+/*
 Section: ACDC
 Title: TODO
 Language: en-US

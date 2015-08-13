@@ -9,7 +9,7 @@ pusher app allows kazoo to send a push message to a device when the device is th
 
 pusher listens for reg_success messages, checks if the user-agent supports push messages and updates the endpoint_id with a pusher object used in the construction of a failover endpoint for that device.
 
-freeswitch will send the failover to kamailio, kamailio uses kazoo_query to call pusher to send the real push message, waits for the registration and then completes the call. 
+freeswitch will send the failover to kamailio, kamailio uses kazoo_query to call pusher to send the real push message, waits for the registration and then completes the call.
 
 ## Configuration
 
@@ -43,6 +43,5 @@ freeswitch will send the failover to kamailio, kamailio uses kazoo_query to call
 ### Maintenance
 in order for the push services from apple / google to work they need to be configured with application secrets / certificates. the app used in the push message is taken from Token-App.
 
-* `sup pusher_maintenance add_google_app(AppId, Secret)` 
-* `sup pusher_maintenance add_apple_app(AppId, CertFile)` 
-
+* `sup pusher_maintenance add_google_app(AppId, Secret)`
+* `sup pusher_maintenance add_apple_app(AppId, CertFile)`

@@ -30,7 +30,7 @@
 -spec is_authorized(bh_context:context()) -> boolean().
 is_authorized(Context) ->
     AuthEvent = <<"blackhole.authenticate">>,
-    case blackhole_bindings:succeeded(blackhole_bindings:map(AuthEvent, Context)) of        
+    case blackhole_bindings:succeeded(blackhole_bindings:map(AuthEvent, Context)) of
         [] ->
             lager:debug("failed to authenticate"),
             'false';
@@ -50,7 +50,7 @@ maybe_add_binding_to_listener(Module, Binding, Context) ->
     try Module:add_amqp_binding(Binding, Context) of
         _Result -> 'ok'
     catch
-        _ -> 
+        _ ->
             lager:debug("could not exec ~s:add_amqp_binding", [Module]),
             'ok'
     end.
@@ -61,7 +61,7 @@ maybe_rm_binding_from_listener(Module, Binding, Context) ->
     try Module:rm_amqp_binding(Binding, Context) of
         _ -> 'ok'
     catch
-        _ -> 
+        _ ->
             lager:debug("could not exec ~s:rm_amqp_binding", [Module]),
             'ok'
     end.
@@ -90,7 +90,7 @@ respond_with_authn_failure(Context) ->
 remove_binding(Binding, Context) ->
     case blackhole_util:get_callback_module(Binding) of
         'undefined' -> 'ok';
-        Module -> 
+        Module ->
             blackhole_util:maybe_rm_binding_from_listener(Module, Binding, Context),
             blackhole_bindings:unbind(Binding, Module, 'handle_event', Context)
     end.

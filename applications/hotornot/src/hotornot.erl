@@ -44,7 +44,7 @@ start() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec stop() -> 'ok'.
-stop() -> 
+stop() ->
     exit(whereis('hotornot_sup'), 'shutdown'),
     'ok'.
 

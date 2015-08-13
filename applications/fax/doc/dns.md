@@ -5,11 +5,11 @@ Language: en-US
 */
 
 # DNS configuration for smtp-to-fax
- 
+
 
 # generated addresses
-simple bind configuration for kazoo generated addresses. 
-assuming that fax.kazoo.io is the domain configured for faxboxes. 
+simple bind configuration for kazoo generated addresses.
+assuming that fax.kazoo.io is the domain configured for faxboxes.
 
 ```
 $ORIGIN kazoo.io.

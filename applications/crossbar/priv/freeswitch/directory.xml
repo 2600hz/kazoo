@@ -1,5 +1,5 @@
 <include>
     <context name="context_2">
         <X-PRE-PROCESS cmd="include" data="*/*.xml"/>
-    </context> 
+    </context>
 </include>

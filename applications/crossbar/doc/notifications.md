@@ -296,6 +296,5 @@ All accounts will continue to be processed by the `notify` app until the Crossba
 * GET - Gets the notification(s) smtp log.
 
 ```
-curl  -H "X-Auth-Token:{AUTH_TOKEN}" -H "Content-Type:text/plain"  http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/logs 
+curl  -H "X-Auth-Token:{AUTH_TOKEN}" -H "Content-Type:text/plain"  http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/logs
 ```
-

@@ -339,7 +339,7 @@ handle_cast('store_failed', #state{retries=Retries
     lager:debug("store failed, retrying ~p times", [Retries]),
     save_recording(Call, MediaName, Format, Store),
     {'noreply', State#state{retries=Retries - 1}};
-  
+
 handle_cast({'gen_listener',{'created_queue',Queue}}, #state{call=Call}=State) ->
     Call1 = whapps_call:kvs_store('consumer_pid', wh_amqp_channel:consumer_pid(), Call),
     {'noreply', State#state{call=whapps_call:set_controller_queue(Queue, Call1)}};

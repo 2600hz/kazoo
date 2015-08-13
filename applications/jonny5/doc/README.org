@@ -10,7 +10,7 @@ other whapp-specific requests.
 
 ** The Listener
 
-Generally speaking, most action starts at the listener. The listener typically 
+Generally speaking, most action starts at the listener. The listener typically
 builds on top of the gen_listener pattern (found in lib/whistle-1.0.0/src) to
 abstract the AMQP connection and reception of payloads off the message bus.
 Instead, the gen_listener behaviour allows the implementing module to specify

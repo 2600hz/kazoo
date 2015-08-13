@@ -507,7 +507,7 @@ maybe_faxbox_by_owner_email(AccountId, #state{errors=Errors
             OwnerId = wh_doc:id(JObj),
             maybe_faxbox_by_owner_id(AccountId, OwnerId, State);
         {'ok', [_JObj | _JObjs]} ->
-            Error = wh_util:to_binary(io_lib:format("more then one user with email ~s in account ~s, trying by rules", [From, AccountId])), 
+            Error = wh_util:to_binary(io_lib:format("more then one user with email ~s in account ~s, trying by rules", [From, AccountId])),
             lager:debug(Error),
             maybe_faxbox_by_rules(AccountId, State#state{errors=[Error | Errors]});
         {'error', _E} ->

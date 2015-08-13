@@ -252,7 +252,7 @@ handle_config_req(Node, Id, Conf, Data, JObj) ->
 -spec config_req_not_handled(atom(), ne_binary(), ne_binary()) -> fs_sendmsg_ret().
 config_req_not_handled(Node, Id, Conf) ->
     {'ok', NotHandled} = ecallmgr_fs_xml:not_found(),
-    lager:debug("ignoring conf ~s: ~s", [Conf, Id]),  
+    lager:debug("ignoring conf ~s: ~s", [Conf, Id]),
     freeswitch:fetch_reply(Node, Id, 'configuration', iolist_to_binary(NotHandled)).
 
 -spec generate_acl_xml(api_object()) -> api_binary().
