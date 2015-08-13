@@ -20,12 +20,24 @@
             "name":"Moderator",
             "description":"Is the caller entering the conference as a moderator"
         },
-        "welcome_prompt":{
-            "type":"object",
-            "required":false,
-            "name":"Welcome Prompt",
-            "description":"Describes how the caller is greeted on entering a conference",
-            "properties":{
+        "play_entry_tone": {
+            "default": true,
+            "description": "Should the Entry Tone be played",
+            "name": "Play Entry Tone",
+            "required": false,
+            "type": "boolean"
+        },
+        "play_exit_tone": {
+            "default": true,
+            "description": "Should the Exit Tone be played",
+            "name": "Play Exit Tone",
+            "required": false,
+            "type": "boolean"
+        },
+        "welcome_prompt": {
+            "description": "Describes how the caller is greeted on entering a conference",
+            "name": "Welcome Prompt",
+            "properties": {
                 "play":{
                     "type":"boolean",
                     "required":false,

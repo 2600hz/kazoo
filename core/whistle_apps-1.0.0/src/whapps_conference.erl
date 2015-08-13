@@ -37,6 +37,7 @@
 -export([wait_for_moderator/1, set_wait_for_moderator/2]).
 -export([play_name_on_join/1, set_play_name_on_join/2]).
 -export([play_entry_prompt/1, set_play_entry_prompt/2]).
+-export([play_exit_tone/1, set_play_exit_tone/2]).
 -export([play_entry_tone/1, set_play_entry_tone/2]).
 -export([play_welcome/1, set_play_welcome/2]).
 -export([conference_doc/1, set_conference_doc/2]).
@@ -85,6 +86,7 @@
           ,wait_for_moderator = 'false' :: boolean()          %% can members wait for a moderator
           ,play_name_on_join = 'false' :: boolean()           %% should participants have their name played on join
           ,play_entry_prompt = 'true' :: boolean()            %% Play prompt telling caller they're entering the conference
+          ,play_exit_tone = 'true' :: boolean()               %% Play tone telling caller they've left the conference
           ,play_entry_tone = 'true' :: boolean()              %% Play tone telling caller they've entered the conference
           ,play_welcome = 'true' :: boolean()                 %% Play prompt welcoming caller to the conference
           ,conference_doc :: wh_json:object()                 %% the complete conference doc used to create the record (when and if)
@@ -125,6 +127,7 @@ from_json(JObj, Conference) ->
       ,wait_for_moderator = wh_json:is_true(<<"Wait-For-Moderator">>, JObj, wait_for_moderator(Conference))
       ,play_name_on_join = wh_json:is_true(<<"Play-Name-On-Join">>, JObj, play_name_on_join(Conference))
       ,play_entry_prompt = wh_json:is_true(<<"Play-Entry-Prompt">>, JObj, play_entry_prompt(Conference))
+      ,play_exit_tone = wh_json:is_true(<<"Play-Exit-Tone">>, JObj, play_exit_tone(Conference))
       ,play_entry_tone = wh_json:is_true(<<"Play-Entry-Tone">>, JObj, play_entry_tone(Conference))
       ,play_welcome = wh_json:is_true(<<"Play-Welcome">>, JObj, play_welcome(Conference))
       ,conference_doc = wh_json:is_true(<<"Conference-Doc">>, JObj, conference_doc(Conference))
@@ -175,6 +178,7 @@ to_proplist(#whapps_conference{}=Conference) ->
      ,{<<"Wait-For-Moderator">>, wait_for_moderator(Conference)}
      ,{<<"Play-Name-On-Join">>, play_name_on_join(Conference)}
      ,{<<"Play-Entry-Prompt">>, play_entry_prompt(Conference)}
+     ,{<<"Play-Exit-Tone">>, play_exit_tone(Conference)}
      ,{<<"Play-Entry-Tone">>, play_entry_tone(Conference)}
      ,{<<"Play-Welcome">>, play_welcome(Conference)}
      ,{<<"Conference-Doc">>, conference_doc(Conference)}
@@ -207,6 +211,7 @@ from_conference_doc(JObj, Conference) ->
       ,member_join_deaf = wh_json:is_true(<<"join_deaf">>, Member, member_join_deaf(Conference))
       ,play_name_on_join = wh_json:is_true(<<"play_name">>, JObj, play_name_on_join(Conference))
       ,play_entry_prompt = wh_json:is_true(<<"play_entry_prompt">>, Member, play_entry_prompt(Conference))
+      ,play_exit_tone = wh_json:is_true(<<"play_exit_tone">>, JObj, play_exit_tone(Conference))
       ,play_entry_tone = wh_json:is_true(<<"play_entry_tone">>, JObj, play_entry_tone(Conference))
       ,play_welcome = wh_json:is_true(<<"play_welcome">>, JObj, play_welcome(Conference))
       ,moderator_join_muted = wh_json:is_true(<<"join_muted">>, Moderator, moderator_join_muted(Conference))
@@ -388,6 +393,13 @@ play_entry_prompt(#whapps_conference{play_entry_prompt=ShouldPlay}) ->
 -spec set_play_entry_prompt(boolean(), whapps_conference:conference()) -> whapps_conference:conference().
 set_play_entry_prompt(ShouldPlay, Conference) when is_boolean(ShouldPlay) ->
     Conference#whapps_conference{play_entry_prompt=ShouldPlay}.
+
+-spec play_exit_tone(whapps_conference:conference()) -> boolean().
+play_exit_tone(#whapps_conference{play_exit_tone=ShouldPlay}) ->
+    ShouldPlay.
+-spec set_play_exit_tone(boolean(), whapps_conference:conference()) -> whapps_conference:conference().
+set_play_exit_tone(ShouldPlay, Conference) when is_boolean(ShouldPlay) ->
+    Conference#whapps_conference{play_exit_tone=ShouldPlay}.
 
 -spec play_entry_tone(whapps_conference:conference()) -> boolean().
 play_entry_tone(#whapps_conference{play_entry_tone=ShouldPlay}) ->

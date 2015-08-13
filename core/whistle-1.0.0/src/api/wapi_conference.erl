@@ -100,6 +100,7 @@
 -define(OPTIONAL_DISCOVERY_REQ_HEADERS, [<<"Conference-ID">>, <<"Moderator">>
                                          ,<<"Conference-Doc">>, <<"Play-Welcome">>
                                          ,<<"Play-Welcome-Media">>
+                                         ,<<"Play-Exit-Tone">>, <<"Play-Entry-Tone">>
                                         ]).
 -define(DISCOVERY_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                ,{<<"Event-Name">>, <<"discovery_req">>}
