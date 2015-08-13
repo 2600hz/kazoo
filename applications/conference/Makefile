@@ -27,10 +27,7 @@ ebin/$(PROJECT).app: src/*.erl
 
 json: JSON = $(shell find priv/couchdb -name *.json -print)
 json:
-	@for jobj in $(JSON); do \
-		echo checking $$jobj; \
-		python2 -c 'import sys,json; json.encoder.FLOAT_REPR=str; data=json.load(open("'$$jobj'")); print json.dumps(data, sort_keys=True, indent=4, separators=(",", ": "))' >$$jobj~ && mv $$jobj~ $$jobj; \
-	done
+	@$(ROOT)/scripts/format-json.sh $(JSON)
 
 compile-test: test/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
