@@ -35,7 +35,7 @@ start_link() ->
 start_handler(CallID, RouteReqJObj) ->
     supervisor:start_child(?SERVER, ?WORKER_NAME_ARGS('ts_from_onnet'
                                                       ,<<"onnet-", CallID/binary>>
-                                                      ,RouteReqJObj
+                                                      ,[RouteReqJObj]
                                                      )).
 
 stop_handler(CallID) ->
