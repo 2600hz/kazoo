@@ -205,14 +205,17 @@ post(Context, ?RECONCILIATION) ->
             cb_context:add_system_error('unspecified_fault', Context)
     end;
 post(Context, ?OVERRIDE) ->
+    Overrides = wh_json:get_value(<<"overrides">>, cb_context:req_data(Context), wh_json:new()),
     NewDoc =
         wh_json:foldl(
-            fun(PlanId, Overrides, Doc) ->
-                wh_json:set_value([<<"plans">>, PlanId, <<"overrides">>], Overrides, Doc)
+            fun(PlanId, _JObj, Doc) ->
+                Override = wh_json:get_value(PlanId, Overrides, wh_json:new()),
+                wh_json:set_value([<<"plans">>, PlanId, <<"overrides">>], Override, Doc)
             end
             ,cb_context:doc(Context)
-            ,wh_json:get_value(<<"overrides">>, cb_context:req_data(Context), wh_json:new())
+            ,wh_json:get_value(<<"plans">>, cb_context:doc(Context))
         ),
+
     Context1 = crossbar_doc:save(cb_context:set_doc(Context, NewDoc)),
     case cb_context:resp_status(Context1) of
         'success' ->
