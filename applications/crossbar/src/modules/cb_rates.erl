@@ -38,6 +38,10 @@
                              ,<<"E164-Number">>
                             ]).
 
+-type view_result_key() :: {api_binary(), ne_binaries(), api_binary(), ne_binaries()}.
+-type view_result_value() :: wh_json:json_term().
+-type view_result() :: {view_result_key(), view_result_value()}.
+-type view_results() :: [view_result(),...] | [].
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -53,18 +57,25 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.patch.rates">>, ?MODULE, 'patch'),
     crossbar_bindings:bind(<<"*.execute.delete.rates">>, ?MODULE, 'delete').
 
+-spec init_db() -> 'ok'.
 init_db() ->
-    _ = couch_mgr:db_create(?WH_RATES_DB),
-    couch_mgr:revise_doc_from_file(?WH_RATES_DB, 'crossbar', "views/rates.json").
+    init_db(?WH_RATES_DB).
 
+-spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->
-    authorize(Context, cb_context:req_nouns(Context)).
+    AccountId = cb_context:account_id(Context),
+    AuthId = cb_context:auth_account_id(Context),
+    authorize(cb_context:req_verb(Context), AccountId, AuthId).
 
-authorize(_Context, [{<<"rates">>, [?NUMBER, _NumberToRate]}]) ->
-    lager:debug("authorizing rate request for ~s", [_NumberToRate]),
+-spec authorize(http_method(), ne_binary(), ne_binary()) -> boolean().
+authorize(?HTTP_GET, AccountId, AccountId) ->
     'true';
-authorize(_Context, _Nouns) ->
-    'false'.
+authorize(_, AccountId, AuthId) ->
+    (
+     wh_util:is_in_account_hierarchy(AuthId, AccountId, 'true')
+     andalso wh_services:is_reseller(AuthId)
+    )
+    orelse cb_modules_util:is_superduper_admin(AuthId).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -110,7 +121,9 @@ content_types_accepted(Context) ->
 
 -spec content_types_accepted_by_verb(cb_context:context(), http_method()) -> cb_context:context().
 content_types_accepted_by_verb(Context, ?HTTP_POST) ->
-    cb_context:set_content_types_accepted(Context, [{'from_binary', ?UPLOAD_MIME_TYPES}]).
+    cb_context:set_content_types_accepted(Context, [{'from_binary', ?UPLOAD_MIME_TYPES}]);
+content_types_accepted_by_verb(Context, _) ->
+    Context.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -133,21 +146,24 @@ validate(Context, ?NUMBER, Phonenumber) ->
 
 -spec validate_rates(cb_context:context(), http_method()) -> cb_context:context().
 validate_rates(Context, ?HTTP_GET) ->
-    summary(cb_context:set_account_db(Context, ?WH_RATES_DB));
+    AccountId = wh_util:format_account_id(cb_context:account_id(Context), 'raw'),
+    AuthId = wh_util:format_account_id(cb_context:auth_account_id(Context), 'raw'),
+    Parents = account_parents(Context),
+    summary(Context, AccountId, AuthId, Parents);
 validate_rates(Context, ?HTTP_PUT) ->
-    create(cb_context:set_account_db(Context, ?WH_RATES_DB));
+    create(set_account_db(Context));
 validate_rates(Context, ?HTTP_POST) ->
-    check_uploaded_file(cb_context:set_account_db(Context, ?WH_RATES_DB)).
+    check_uploaded_file(set_account_db(Context)).
 
 -spec validate_rate(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_rate(Context, Id, ?HTTP_GET) ->
-    read(Id, cb_context:set_account_db(Context, ?WH_RATES_DB));
+    read(Id, set_account_db(Context));
 validate_rate(Context, Id, ?HTTP_POST) ->
-    update(Id, cb_context:set_account_db(Context, ?WH_RATES_DB));
+    update(Id, set_account_db(Context));
 validate_rate(Context, Id, ?HTTP_PATCH) ->
-    validate_patch(Id, cb_context:set_account_db(Context, ?WH_RATES_DB));
+    validate_patch(Id, set_account_db(Context));
 validate_rate(Context, Id, ?HTTP_DELETE) ->
-    read(Id, cb_context:set_account_db(Context, ?WH_RATES_DB)).
+    read(Id, set_account_db(Context)).
 
 -spec post(cb_context:context()) -> cb_context:context().
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
@@ -250,10 +266,47 @@ on_successful_validation(Id, Context) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec summary(cb_context:context()) -> cb_context:context().
-summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+-spec summary(cb_context:context(), ne_binary(), ne_binary(), ne_binaries()) -> cb_context:context().
+summary(Context, _AccountId, _AuthId, []) ->
+    lager:debug("loading global rates"),
+    summary(Context, [?WH_RATES_DB]);
+summary(Context, AccountId, AccountId, Parents) ->
+    lager:debug("loading self rates"),
+    DBs = [?WH_RATES_DB
+           | lists:map(
+               fun account_rates_db/1
+               ,Parents ++ [AccountId]
+              )],
+    summary(Context, DBs);
+summary(Context, AccountId, _AuthId, _Parents) ->
+    lager:debug("loading client rates"),
+    summary(Context, [account_rates_db(AccountId)]).
 
+-spec summary(cb_context:context(), ne_binaries()) -> cb_context:context().
+summary(Context, DBs) ->
+    Context1 = crossbar_doc:load_view(?CB_LIST, [{'databases', DBs}, 'include_docs'], Context, fun normalize_view_results/2),
+    Context2 = case cb_context:resp_status(Context1) of
+                   'fatal' ->
+                       cb_context:set_resp_status(cb_context:set_resp_data(Context1, []), 'success');
+                   _ ->
+                       Context1
+               end,
+    Data = lists:foldl(fun merge_acc/2
+                      ,[]
+                      ,cb_context:resp_data(Context2)),
+    Data1 = [Val || {_K, Val} <- Data],
+    cb_context:set_resp_data(Context2, Data1).
+
+-spec merge_acc({ne_binary(), wh_json:object()}, view_results()) -> view_results().
+merge_acc({K, Val}, Acc) ->
+    UnDef = case Val of
+                'undefined' -> 'null';
+                _ -> 'undefined'
+            end,
+    case props:get_value(K, Acc, UnDef) of
+        UnDef -> [{K, Val} | Acc];
+        _ -> Acc
+    end.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -297,9 +350,17 @@ check_uploaded_file(Context, _ReqFiles) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
-normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].
+-spec normalize_view_results(wh_json:object(), view_results()) -> view_results().
+normalize_view_results(JObj, Acc) when is_list(Acc) ->
+    JDoc = wh_json:get_value(<<"doc">>, JObj),
+    JVal = wh_json:get_value(<<"value">>, JObj),
+    Key = {wh_json:get_value(<<"prefix">>, JDoc, 'undefined')
+           ,wh_json:get_value(<<"options">>, JDoc, [])
+           ,wh_json:get_value(<<"routes">>, JDoc, 'undefined')
+           ,wh_json:get_value(<<"directions">>, JDoc, [<<"inbound">>, <<"outbound">>])
+          },
+    Val1 = {Key, JVal},
+    [Val1 | Acc].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -407,7 +468,7 @@ process_row(Row, {Count, JObjs}=Acc) ->
                        ,{<<"rate_cost">>, get_row_rate(Row)}
                        ,{<<"pvt_rate_surcharge">>, get_row_internal_surcharge(Row)}
                        ,{<<"routes">>, [<<"^\\+", (wh_util:to_binary(Prefix))/binary, "(\\d*)$">>]}
-                       ,{?HTTP_OPTIONS, []}
+                       ,{<<"options">>, []}
                       ]),
 
             {Count + 1, [wh_json:from_list(Props) | JObjs]}
@@ -500,6 +561,7 @@ save_processed_rates(Context, Count) ->
 rate_for_number(Phonenumber, Context) ->
     case wh_amqp_worker:call([{<<"To-DID">>, Phonenumber}
                               ,{<<"Send-Empty">>, 'true'}
+                              ,{<<"Account-ID">>, cb_context:account_id(Context)}
                               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                              ]
                              ,fun wapi_rate:publish_req/1
@@ -554,3 +616,32 @@ normalize_field(<<"Surcharge">> = K, Surcharge) ->
     {K, wht_util:units_to_dollars(Surcharge)};
 normalize_field(K, V) ->
     {K, V}.
+
+-spec account_rates_db(ne_binary()) -> ne_binary().
+account_rates_db(AccountId) ->
+    FormatedAccountDb = wh_util:format_account_db(AccountId),
+    <<FormatedAccountDb/binary, "-", ?WH_RATES_DB/binary>>.
+
+-spec account_parents(cb_context:context()) -> ne_binaries().
+account_parents(Context) ->
+    AccountId = cb_context:account_id(Context),
+    kz_account:tree(cb_context:doc(crossbar_doc:load(AccountId, Context))).
+
+-spec init_db(ne_binary()) -> 'ok'.
+init_db(DbName) ->
+    case couch_mgr:db_exists(DbName) of
+        'true' -> 'ok';
+        'false' ->
+            _ = couch_mgr:db_create(DbName),
+            couch_mgr:revise_doc_from_file(DbName, 'crossbar', "views/rates.json"),
+            'ok'
+    end.
+
+-spec set_account_db(cb_context:context()) -> cb_context:context().
+set_account_db(Context) ->
+    Db = case account_parents(Context) of
+             [] -> ?WH_RATES_DB;
+             _Parents -> account_rates_db(cb_context:account_id(Context))
+         end,
+    init_db(Db),
+    cb_context:set_account_db(Context, Db).

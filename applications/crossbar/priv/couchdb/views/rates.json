@@ -6,7 +6,7 @@
             "map": "function(doc) { if (doc.deleted || doc.pvt_type !== 'rate') return; emit(doc._id, {\"name\":doc.rate_name, \"cost\":doc.rate_cost, \"prefix\":doc.prefix, \"description\":doc.description, \"surcharge\":doc.rate_surcharge, \"carrier\":doc.carrier}); }"
         },
         "lookup": {
-            "map": "function(doc) { if (doc.deleted || doc.pvt_type !== 'rate') return; emit(parseInt(doc.prefix), null); }"
+            "map": "function(doc) { if (doc.deleted || doc.pvt_type !== 'rate') return; do_emit = function(direction) {emit([(''+doc.prefix), direction], {\"prefix\": ''+doc.prefix, \"routes\": (doc.routes || []).length ? doc.routes : ['^\\\\+?' + (''+doc.prefix).replace(/[^0-9]/g, '')], \"rate_name\": doc.rate_name || 'prefix:'+doc.prefix}); }; if ((doc.direction || 'both') == 'both') { do_emit('inbound'); do_emit('outbound'); do_emit('any');} else {do_emit(doc.direction); do_emit('any');}}"
         }
     }
 }
