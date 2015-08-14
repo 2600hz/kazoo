@@ -8,6 +8,8 @@ notifications:
       - "irc.freenode.org#2600hz-dev"
 
 otp_release:
+  - 18.0
+  - 17.5
   - 17.4
   - 17.3
   - 17.1
@@ -16,6 +18,19 @@ otp_release:
   - R16B01
   - R16B
   - R15B03
+
+matrix:
+  allow_failures:
+    - otp_release:
+        - 17.5
+        - 17.4
+        - 17.3
+        - 17.1
+        - R16B03
+        - R16B02
+        - R16B01
+        - R16B
+        - R15B03
 
 addons:
   apt:
