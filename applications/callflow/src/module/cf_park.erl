@@ -317,27 +317,52 @@ save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
                           {'error', atom()}.
 do_save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
     AccountDb = whapps_call:account_db(Call),
-    case couch_mgr:save_doc(AccountDb, wh_json:set_value([<<"slots">>, SlotNumber], Slot, ParkedCalls)) of
-        {'ok', JObj}=Ok ->
-            lager:info("successfully stored call parking data for slot ~s", [SlotNumber]),
-            CacheProps = [{'origin', {'db', AccountDb, ?DB_DOC_NAME}}],
-            wh_cache:store_local(?CALLFLOW_CACHE, ?PARKED_CALLS_KEY(AccountDb), JObj, CacheProps),
-            Ok;
-        {'error', 'conflict'} ->
-            maybe_resolve_conflict(SlotNumber, Slot, Call)
+    CallId = wh_json:get_value(<<"Call-ID">>, Slot),
+    case whapps_call_command:b_channel_status(CallId) of
+        {'ok', _} ->
+            lager:debug("attempting to update parked calls document for slot ~s with call ~s", [SlotNumber, CallId]),
+            case couch_mgr:save_doc(AccountDb, wh_json:set_value([<<"slots">>, SlotNumber], Slot, ParkedCalls)) of
+                {'ok', JObj}=Ok ->
+                    lager:info("successfully stored call parking data for slot ~s", [SlotNumber]),
+                    CacheProps = [{'origin', {'db', AccountDb, ?DB_DOC_NAME}}],
+                    wh_cache:store_local(?CALLFLOW_CACHE, ?PARKED_CALLS_KEY(AccountDb), JObj, CacheProps),
+                    Ok;
+                {'error', 'conflict'} ->
+                    maybe_resolve_conflict(SlotNumber, Slot, ParkedCalls, Call)
+            end;
+        _Else ->
+            lager:debug("ignoring attempt to park terminated call ~s", [CallId]),
+            {'error', 'terminated'}
     end.
 
--spec maybe_resolve_conflict(ne_binary(), wh_json:object(), whapps_call:call()) ->
+-spec maybe_resolve_conflict(ne_binary(), wh_json:object(), wh_json:object(), whapps_call:call()) ->
                                     {'ok', wh_json:object()} |
                                     {'error', atom()}.
-maybe_resolve_conflict(SlotNumber, Slot, Call) ->
+maybe_resolve_conflict(SlotNumber, Slot, ParkedCalls, Call) ->
     AccountDb = whapps_call:account_db(Call),
+    ExpectedParkedCall = wh_json:get_ne_value([<<"slots">>, SlotNumber, <<"Call-ID">>], ParkedCalls),
     {'ok', JObj1} = couch_mgr:open_doc(AccountDb, ?DB_DOC_NAME),
-    {'ok', JObj2}=Ok = couch_mgr:save_doc(AccountDb, wh_json:set_value([<<"slots">>, SlotNumber], Slot, JObj1)),
-    lager:info("successfully stored call parking data for slot ~s", [SlotNumber]),
-    CacheProps = [{'origin', {'db', AccountDb, ?DB_DOC_NAME}}],
-    wh_cache:store_local(?CALLFLOW_CACHE, ?PARKED_CALLS_KEY(AccountDb), JObj2, CacheProps),
-    Ok.
+    case wh_json:get_ne_value([<<"slots">>, SlotNumber, <<"Call-ID">>], JObj1) of
+        ExpectedParkedCall ->
+            UpdatedJObj = wh_json:set_value([<<"slots">>, SlotNumber], Slot, JObj1),
+            {'ok', JObj2}=Ok = couch_mgr:save_doc(AccountDb, UpdatedJObj),
+            lager:info("conflict when attempting to store call parking data for slot ~s due to a different slot update", [SlotNumber]),
+            CacheProps = [{'origin', {'db', AccountDb, ?DB_DOC_NAME}}],
+            wh_cache:store_local(?CALLFLOW_CACHE, ?PARKED_CALLS_KEY(AccountDb), JObj2, CacheProps),
+            Ok;
+        CurrentParkedCall ->
+            lager:debug("attempt to store parking data conflicted with a recent update to slot ~s", [SlotNumber]),
+            CacheProps = [{'origin', {'db', AccountDb, ?DB_DOC_NAME}}],
+            wh_cache:store_local(?CALLFLOW_CACHE, ?PARKED_CALLS_KEY(AccountDb), JObj1, CacheProps),
+            case whapps_call_command:b_channel_status(CurrentParkedCall) of
+                {'ok', _} ->
+                    lager:debug("slot ~s is now occupied by ~s", [SlotNumber, CurrentParkedCall]),
+                    {'error', 'occupied'};
+                _Else ->
+                    lager:info("slot ~s was updated to inactive call ~s", [SlotNumber, CurrentParkedCall]),
+                    save_slot(SlotNumber, Slot, JObj1, Call)
+            end
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
