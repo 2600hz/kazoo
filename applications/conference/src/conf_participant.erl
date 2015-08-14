@@ -245,8 +245,11 @@ handle_cast('hungup', #participant{in_conference='true'
                                    ,conference=Conference
                                   }=Participant
            ) ->
-    _ = whapps_conference:play_exit_tone(Conference)
-        andalso whapps_conference_command:play(?EXIT_TONE, Conference),
+    _ = case whapps_conference:play_exit_tone(Conference) of
+            'false' -> 'ok';
+            Media = ?NE_BINARY -> whapps_conference_command:play(Media, Conference);
+            _Else -> whapps_conference_command:play(?EXIT_TONE, Conference)
+        end,
     _ = whapps_call_command:hangup(Call),
     {'stop', {'shutdown', 'hungup'}, Participant};
 handle_cast('hungup', #participant{in_conference='false'
@@ -320,12 +323,18 @@ handle_cast({'join_remote', JObj}, #participant{call=Call
 handle_cast({'sync_participant', JObj}, #participant{call=Call}=Participant) ->
     {'noreply', sync_participant(JObj, Call, Participant)};
 handle_cast('play_member_entry', #participant{conference=Conference}=Participant) ->
-    _ = whapps_conference:play_entry_tone(Conference)
-        andalso whapps_conference_command:play(?ENTRY_TONE, Conference),
+    _ = case whapps_conference:play_entry_tone(Conference) of
+            'false' -> 'ok';
+            Media = ?NE_BINARY -> whapps_conference_command:play(Media, Conference);
+            _Else -> whapps_conference_command:play(?ENTRY_TONE, Conference)
+        end,
     {'noreply', Participant};
 handle_cast('play_moderator_entry', #participant{conference=Conference}=Participant) ->
-    _ = whapps_conference:play_entry_tone(Conference)
-        andalso whapps_conference_command:play(?MOD_ENTRY_TONE, Conference),
+    _ = case whapps_conference:play_entry_tone(Conference) of
+            'false' -> 'ok';
+            Media = ?NE_BINARY -> whapps_conference_command:play(Media, Conference);
+            _Else -> whapps_conference_command:play(?MOD_ENTRY_TONE, Conference)
+        end,
     {'noreply', Participant};
 handle_cast({'dtmf', Digit}, #participant{last_dtmf = <<"*">>}=Participant) ->
     case Digit of
