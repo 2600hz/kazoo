@@ -89,7 +89,17 @@ handle_authz_req(JObj, _Props) ->
             lager:debug("Authz disabled, no processing"),
             'ok';
         _ ->
-            maybe_processing_authz(JObj)
+            case wh_json:get_value([<<"Custom-Auth-Vars">>, <<"AAA-Authz-Granted">>], JObj) of
+                <<"true">> ->
+                    lager:debug("Authz granted. Request bypassed."),
+                    Queue = wh_json:get_value(<<"Server-ID">>, JObj),
+                    JObj1 = wh_json:set_values([{<<"Event-Name">>, <<"authz.broadcast.resp">>}
+                        ,{<<"Is-Authorized">>, <<"true">>}]
+                        ,JObj),
+                    wapi_authz:publish_authz_resp(Queue, JObj1);
+                _ ->
+                    maybe_processing_authz(JObj)
+            end
     end.
 
 %%--------------------------------------------------------------------
