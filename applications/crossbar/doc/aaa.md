@@ -394,27 +394,27 @@ Using Crossbar to work with AAA documents and AAA dictionaries is very simple:
 
 ### AAA dictionaries URI
 
-`/v2/accounts/{ACCOUNT_ID}/aaa/dict`
+`/v2/accounts/{ACCOUNT_ID}/aaa/dictionary`
 
 #### GET - Fetch all dictionaries:
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/accounts/{ACCOUNT_ID}/aaa/dict
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/accounts/{ACCOUNT_ID}/aaa/dictionary
 
 #### GET - Fetch an single dictionary:
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/accounts/{ACCOUNT_ID}/aaa/dict/{ID}
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/accounts/{ACCOUNT_ID}/aaa/dictionary/{ID}
 
 #### PUT - Add an account dictionary:
 
-    curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v2/accounts/{ACCOUNT_ID}/aaa/dict -d '{"data":{"name": "dictionary_juniper","owner": "5157b7a3b843668a6baf83f6fa5e0bf4","value": [{"attr": {"vid": 2636,"id": 5,"type": "string","name": "Juniper_Deny_Configuration","enc": "no"}},{"vendor": {"Juniper": 2636}}]}}'
+    curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v2/accounts/{ACCOUNT_ID}/aaa/dictionary -d '{"data":{"name": "dictionary_juniper","owner": "5157b7a3b843668a6baf83f6fa5e0bf4","value": [{"attr": {"vid": 2636,"id": 5,"type": "string","name": "Juniper_Deny_Configuration","enc": "no"}},{"vendor": {"Juniper": 2636}}]}}'
 
 #### POST - Update an account dictionary:
 
-    curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v2/accounts/{ACCOUNT_ID}/aaa/dict/{ID} -d '{"data":{"name": "dictionary_juniper","owner": "5157b7a3b843668a6baf83f6fa5e0bf4","value": [{"attr": {"vid": 2636,"id": 5,"type": "string","name": "Juniper_Deny_Configuration","enc": "yes"}},{"vendor": {"Juniper": 1111}}]}}'
+    curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v2/accounts/{ACCOUNT_ID}/aaa/dictionary/{ID} -d '{"data":{"name": "dictionary_juniper","owner": "5157b7a3b843668a6baf83f6fa5e0bf4","value": [{"attr": {"vid": 2636,"id": 5,"type": "string","name": "Juniper_Deny_Configuration","enc": "yes"}},{"vendor": {"Juniper": 1111}}]}}'
 
 #### DELETE - Remove an account dictionary:
 
-    curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/accounts/{ACCOUNT_ID}/aaa/dict/{ID}
+    curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/accounts/{ACCOUNT_ID}/aaa/dictionary/{ID}
 
 Dictionaries of the system configuration can't be changed using API. They loaded once on start and after this they can't be changed.
 
