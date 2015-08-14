@@ -101,12 +101,17 @@ rest_init(Req0, Opts) ->
               ],
     Context0 = cb_context:setters(cb_context:new(), Setters),
 
-    {Req8, Context1} = api_util:get_auth_token(Req7, Context0),
+    case api_util:get_req_data(Context0, Req7) of
+        {'halt', _Req7, _Context0}=Halt -> Halt;
+        {Context1, Req8} ->
+            {Req9, Context2} = api_util:get_auth_token(Req8, Context1),
 
-    Event = api_util:create_event_name(Context1, <<"init">>),
-    {Context2, _} = crossbar_bindings:fold(Event, {Context1, Opts}),
-    lager:info("~s: ~s?~s from ~s", [Method, Path, QS, ClientIP]),
-    {'ok', cowboy_req:set_resp_header(<<"x-request-id">>, ReqId, Req8), Context2}.
+            Event = api_util:create_event_name(Context2, <<"init">>),
+            {Context3, _} = crossbar_bindings:fold(Event, {Context2, Opts}),
+            lager:info("~s: ~s?~s from ~s", [Method, Path, QS, ClientIP]),
+            {'ok', cowboy_req:set_resp_header(<<"x-request-id">>, ReqId, Req9), Context3}
+    end.
+
 
 find_version(Path, Req) ->
     case cowboy_req:binding('version', Req) of
@@ -179,7 +184,7 @@ path_tokens(Context) ->
 
 -spec allowed_methods(cowboy_req:req(), cb_context:context()) ->
                              {http_methods() | 'halt', cowboy_req:req(), cb_context:context()}.
-allowed_methods(Req0, Context) ->
+allowed_methods(Req, Context) ->
     lager:debug("run: allowed_methods"),
     Methods = cb_context:allowed_methods(Context),
     Tokens = path_tokens(Context),
@@ -189,14 +194,9 @@ allowed_methods(Req0, Context) ->
             %% Because we allow tunneling of verbs through the request,
             %% we have to check and see if we need to override the actual
             %% HTTP method with the tunneled version
-            case api_util:get_req_data(Context, Req0) of
-                {'halt', _Req1, _Context1}=Halt ->
-                    Halt;
-                {Context1, Req1} ->
-                    determine_http_verb(Req1, cb_context:set_req_nouns(Context1, Nouns))
-            end;
+            determine_http_verb(Req, cb_context:set_req_nouns(Context, Nouns));
         [] ->
-            {Methods, Req0, cb_context:set_allow_methods(Context, Methods)}
+            {Methods, Req, cb_context:set_allow_methods(Context, Methods)}
     end.
 
 -spec determine_http_verb(cowboy_req:req(), cb_context:context()) ->
