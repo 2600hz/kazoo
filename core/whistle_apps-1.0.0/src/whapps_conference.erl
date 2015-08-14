@@ -86,8 +86,8 @@
           ,wait_for_moderator = 'false' :: boolean()          %% can members wait for a moderator
           ,play_name_on_join = 'false' :: boolean()           %% should participants have their name played on join
           ,play_entry_prompt = 'true' :: boolean()            %% Play prompt telling caller they're entering the conference
-          ,play_exit_tone = 'true' :: boolean()               %% Play tone telling caller they've left the conference
-          ,play_entry_tone = 'true' :: boolean()              %% Play tone telling caller they've entered the conference
+          ,play_exit_tone = 'true' :: tone()                  %% Play tone telling caller they have left the conference
+          ,play_entry_tone = 'true' :: tone()                 %% Play tone telling caller they have entered the conference
           ,play_welcome = 'true' :: boolean()                 %% Play prompt welcoming caller to the conference
           ,conference_doc :: wh_json:object()                 %% the complete conference doc used to create the record (when and if)
           ,app_name = <<"whapps_conference">> :: ne_binary()  %% The application name used during whapps_conference_command
@@ -95,6 +95,9 @@
           ,kvs = orddict:new() :: orddict:orddict()           %% allows conferences to set values that propogate to children
           ,call :: whapps_call:call()
          }).
+
+-type tone() :: boolean() | ne_binary().
+-export_type([tone/0]).
 
 -opaque conference() :: #whapps_conference{}.
 -export_type([conference/0]).
@@ -127,8 +130,8 @@ from_json(JObj, Conference) ->
       ,wait_for_moderator = wh_json:is_true(<<"Wait-For-Moderator">>, JObj, wait_for_moderator(Conference))
       ,play_name_on_join = wh_json:is_true(<<"Play-Name-On-Join">>, JObj, play_name_on_join(Conference))
       ,play_entry_prompt = wh_json:is_true(<<"Play-Entry-Prompt">>, JObj, play_entry_prompt(Conference))
-      ,play_exit_tone = wh_json:is_true(<<"Play-Exit-Tone">>, JObj, play_exit_tone(Conference))
-      ,play_entry_tone = wh_json:is_true(<<"Play-Entry-Tone">>, JObj, play_entry_tone(Conference))
+      ,play_exit_tone = get_tone(wh_json:get_ne_value(<<"Play-Exit-Tone">>, JObj, play_exit_tone(Conference)))
+      ,play_entry_tone = get_tone(wh_json:get_ne_value(<<"Play-Entry-Tone">>, JObj, play_entry_tone(Conference)))
       ,play_welcome = wh_json:is_true(<<"Play-Welcome">>, JObj, play_welcome(Conference))
       ,conference_doc = wh_json:is_true(<<"Conference-Doc">>, JObj, conference_doc(Conference))
       ,kvs = orddict:merge(fun(_, _, V2) -> V2 end, Conference#whapps_conference.kvs, KVS)
@@ -211,8 +214,8 @@ from_conference_doc(JObj, Conference) ->
       ,member_join_deaf = wh_json:is_true(<<"join_deaf">>, Member, member_join_deaf(Conference))
       ,play_name_on_join = wh_json:is_true(<<"play_name">>, JObj, play_name_on_join(Conference))
       ,play_entry_prompt = wh_json:is_true(<<"play_entry_prompt">>, Member, play_entry_prompt(Conference))
-      ,play_exit_tone = wh_json:is_true(<<"play_exit_tone">>, JObj, play_exit_tone(Conference))
-      ,play_entry_tone = wh_json:is_true(<<"play_entry_tone">>, JObj, play_entry_tone(Conference))
+      ,play_exit_tone = get_tone(wh_json:get_ne_value(<<"play_exit_tone">>, JObj, play_exit_tone(Conference)))
+      ,play_entry_tone = get_tone(wh_json:get_ne_value(<<"play_entry_tone">>, JObj, play_entry_tone(Conference)))
       ,play_welcome = wh_json:is_true(<<"play_welcome">>, JObj, play_welcome(Conference))
       ,moderator_join_muted = wh_json:is_true(<<"join_muted">>, Moderator, moderator_join_muted(Conference))
       ,moderator_join_deaf = wh_json:is_true(<<"join_deaf">>, Moderator, moderator_join_deaf(Conference))
@@ -394,19 +397,21 @@ play_entry_prompt(#whapps_conference{play_entry_prompt=ShouldPlay}) ->
 set_play_entry_prompt(ShouldPlay, Conference) when is_boolean(ShouldPlay) ->
     Conference#whapps_conference{play_entry_prompt=ShouldPlay}.
 
--spec play_exit_tone(whapps_conference:conference()) -> boolean().
-play_exit_tone(#whapps_conference{play_exit_tone=ShouldPlay}) ->
-    ShouldPlay.
--spec set_play_exit_tone(boolean(), whapps_conference:conference()) -> whapps_conference:conference().
+-spec play_exit_tone(whapps_conference:conference()) -> tone().
+play_exit_tone(#whapps_conference{play_exit_tone=ShouldPlay}) -> ShouldPlay.
+-spec set_play_exit_tone(tone(), whapps_conference:conference()) -> whapps_conference:conference().
 set_play_exit_tone(ShouldPlay, Conference) when is_boolean(ShouldPlay) ->
-    Conference#whapps_conference{play_exit_tone=ShouldPlay}.
+    Conference#whapps_conference{play_exit_tone=ShouldPlay};
+set_play_exit_tone(Media, Conference) when is_binary(Media) ->
+    Conference#whapps_conference{play_exit_tone = get_tone(Media)}.
 
--spec play_entry_tone(whapps_conference:conference()) -> boolean().
-play_entry_tone(#whapps_conference{play_entry_tone=ShouldPlay}) ->
-    ShouldPlay.
--spec set_play_entry_tone(boolean(), whapps_conference:conference()) -> whapps_conference:conference().
+-spec play_entry_tone(whapps_conference:conference()) -> tone().
+play_entry_tone(#whapps_conference{play_entry_tone=ShouldPlay}) -> ShouldPlay.
+-spec set_play_entry_tone(tone(), whapps_conference:conference()) -> whapps_conference:conference().
 set_play_entry_tone(ShouldPlay, Conference) when is_boolean(ShouldPlay) ->
-    Conference#whapps_conference{play_entry_tone=ShouldPlay}.
+    Conference#whapps_conference{play_entry_tone=ShouldPlay};
+set_play_entry_tone(Media, Conference) when is_binary(Media) ->
+    Conference#whapps_conference{play_entry_tone = get_tone(Media)}.
 
 -spec play_welcome(whapps_conference:conference()) -> boolean().
 play_welcome(#whapps_conference{play_welcome=ShouldPlay}) ->
@@ -422,19 +427,19 @@ conference_doc(#whapps_conference{conference_doc=JObj}) -> JObj.
 set_conference_doc(JObj, Conference) ->
     Conference#whapps_conference{conference_doc=JObj}.
 
--spec kvs_append(term(), term(), whapps_conference:conference()) -> whapps_conference:conference().
+-spec kvs_append(_, _, whapps_conference:conference()) -> whapps_conference:conference().
 kvs_append(Key, Value, #whapps_conference{kvs=Dict}=Conference) ->
     Conference#whapps_conference{kvs=orddict:append(wh_util:to_binary(Key), Value, Dict)}.
 
--spec kvs_append_list(term(), [term(),...], whapps_conference:conference()) -> whapps_conference:conference().
+-spec kvs_append_list(_, [_,...], whapps_conference:conference()) -> whapps_conference:conference().
 kvs_append_list(Key, ValList, #whapps_conference{kvs=Dict}=Conference) ->
     Conference#whapps_conference{kvs=orddict:append_list(wh_util:to_binary(Key), ValList, Dict)}.
 
--spec kvs_erase(term(), whapps_conference:conference()) -> whapps_conference:conference().
+-spec kvs_erase(_, whapps_conference:conference()) -> whapps_conference:conference().
 kvs_erase(Key, #whapps_conference{kvs=Dict}=Conference) ->
     Conference#whapps_conference{kvs=orddict:erase(wh_util:to_binary(Key), Dict)}.
 
--spec kvs_fetch(term(), whapps_conference:conference()) -> term().
+-spec kvs_fetch(_, whapps_conference:conference()) -> _.
 kvs_fetch(Key, #whapps_conference{kvs=Dict}) ->
     try orddict:fetch(wh_util:to_binary(Key), Dict) of
         Ok -> Ok
@@ -442,11 +447,11 @@ kvs_fetch(Key, #whapps_conference{kvs=Dict}) ->
         'error':'function_clause' -> 'undefined'
     end.
 
--spec kvs_fetch_keys(whapps_conference:conference()) -> [term(),...] | [].
+-spec kvs_fetch_keys(whapps_conference:conference()) -> list().
 kvs_fetch_keys( #whapps_conference{kvs=Dict}) ->
     orddict:fetch_keys(Dict).
 
--spec kvs_filter(fun((term(), term()) -> boolean()), whapps_conference:conference()) -> whapps_conference:conference().
+-spec kvs_filter(fun((_, _) -> boolean()), whapps_conference:conference()) -> whapps_conference:conference().
 kvs_filter(Pred, #whapps_conference{kvs=Dict}=Conference) ->
     Conference#whapps_conference{kvs=orddict:filter(Pred, Dict)}.
 
@@ -521,3 +526,15 @@ call(#whapps_conference{call=Call}) -> Call.
 -spec set_call(whapps_call:call(), whapps_conference:conference()) -> whapps_conference:conference().
 set_call(Call, Conference) ->
     Conference#whapps_conference{call=Call}.
+
+
+%% @private
+-spec get_tone(_) -> tone().
+get_tone(Thing) ->
+    case wh_util:is_boolean(Thing) of
+        'true' -> wh_util:is_true(Thing);
+        'false' -> case is_binary(Thing) of
+                       'true' -> Thing;
+                       'false' -> 'true'
+                   end
+    end.

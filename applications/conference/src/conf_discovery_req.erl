@@ -71,8 +71,8 @@ collect_conference_id(Call, Srv, DiscoveryJObj) ->
 -spec maybe_set_conference_tones(whapps_conference:conference(), wh_json:object()) ->
                                   whapps_conference:conference().
 maybe_set_conference_tones(Conf, JObj) ->
-    ShouldPlayOnEntry = wh_json:is_true(<<"Play-Entry-Tone">>, JObj, whapps_conference:play_entry_tone(Conf)),
-    ShouldPlayOnExit = wh_json:is_true(<<"Play-Exit-Tone">>, JObj, whapps_conference:play_exit_tone(Conf)),
+    ShouldPlayOnEntry = wh_json:get_ne_value(<<"Play-Entry-Tone">>, JObj, whapps_conference:play_entry_tone(Conf)),
+    ShouldPlayOnExit = wh_json:get_ne_value(<<"Play-Exit-Tone">>, JObj, whapps_conference:play_exit_tone(Conf)),
     whapps_conference:set_play_entry_tone(ShouldPlayOnEntry
                                           ,whapps_conference:set_play_exit_tone(ShouldPlayOnExit, Conf)
                                          ).
