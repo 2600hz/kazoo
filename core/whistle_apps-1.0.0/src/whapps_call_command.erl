@@ -942,28 +942,49 @@ b_page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, Call) ->
 -spec b_bridge(wh_json:objects(), integer(), api_binary(), api_binary(), api_binary(), api_object(), api_binary(), whapps_call:call()) ->
                       whapps_api_bridge_return().
 
+bridge_command(Endpoints, Call) ->
+    bridge_command(Endpoints, ?DEFAULT_TIMEOUT_S, Call).
+bridge_command(Endpoints, Timeout, Call) ->
+    bridge_command(Endpoints, Timeout, wapi_dialplan:dial_method_single(), Call).
+bridge_command(Endpoints, Timeout, Strategy, Call) ->
+    bridge_command(Endpoints, Timeout, Strategy, <<"true">>, Call).
+bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
+    bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, 'undefined', Call).
+bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
+    bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, 'undefined', Call).
+bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call) ->
+    bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, <<"false">>, Call).
+bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreFoward, Call) ->
+    [{<<"Application-Name">>, <<"bridge">>}
+     ,{<<"Endpoints">>, Endpoints}
+     ,{<<"Timeout">>, Timeout}
+     ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
+     ,{<<"Ringback">>, wh_media_util:media_path(Ringback, Call)}
+     ,{<<"Dial-Endpoint-Method">>, Strategy}
+     ,{<<"Custom-SIP-Headers">>, SIPHeaders}
+     ,{<<"Ignore-Forward">>, IgnoreFoward}
+    ].
+
 bridge(Endpoints, Call) ->
-    bridge(Endpoints, ?DEFAULT_TIMEOUT_S, Call).
+    Command = bridge_command(Endpoints, Call),
+    send_command(Command, Call).
 bridge(Endpoints, Timeout, Call) ->
-    bridge(Endpoints, Timeout, wapi_dialplan:dial_method_single(), Call).
+    Command = bridge_command(Endpoints, Timeout, Call),
+    send_command(Command, Call).
 bridge(Endpoints, Timeout, Strategy, Call) ->
-    bridge(Endpoints, Timeout, Strategy, <<"true">>, Call).
+    Command = bridge_command(Endpoints, Timeout, Strategy, Call),
+    send_command(Command, Call).
 bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
-    bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, 'undefined', Call).
+    Command = bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call),
+    send_command(Command, Call).
 bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
-    bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, 'undefined', Call).
+    Command = bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call),
+    send_command(Command, Call).
 bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call) ->
-    bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, <<"false">>, Call).
+    Command = bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call),
+    send_command(Command, Call).
 bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreFoward, Call) ->
-    Command = [{<<"Application-Name">>, <<"bridge">>}
-               ,{<<"Endpoints">>, Endpoints}
-               ,{<<"Timeout">>, Timeout}
-               ,{<<"Dial-Endpoint-Method">>, Strategy}
-               ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
-               ,{<<"Ringback">>, wh_media_util:media_path(Ringback, Call)}
-               ,{<<"Custom-SIP-Headers">>, SIPHeaders}
-               ,{<<"Ignore-Forward">>, IgnoreFoward}
-              ],
+    Command = bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreFoward, Call),
     send_command(Command, Call).
 
 b_bridge(Endpoints, Call) ->
@@ -996,16 +1017,28 @@ b_bridge_wait(Timeout, Call) ->
 -spec unbridge(whapps_call:call(), ne_binary()) -> 'ok'.
 -spec unbridge(whapps_call:call(), ne_binary(), ne_binary()) -> 'ok'.
 unbridge(Call) ->
-    unbridge(Call, <<"Both">>).
-unbridge(Call, Leg) ->
-    unbridge(Call, Leg, <<"now">>).
-unbridge(Call, Leg, Insert) ->
-    Command = [{<<"Application-Name">>, <<"unbridge">>}
-               ,{<<"Leg">>, Leg}
-               ,{<<"Insert-At">>, Insert}
-               ,{<<"Call-ID">>, whapps_call:call_id(Call)}
-              ],
+    Command = unbridge_command(Call),
     send_command(Command, Call).
+unbridge(Call, Leg) ->
+    Command = unbridge_command(Call, Leg),
+    send_command(Command, Call).
+unbridge(Call, Leg, Insert) ->
+    Command = unbridge_command(Call, Leg, Insert),
+    send_command(Command, Call).
+
+-spec unbridge_command(whapps_call:call()) -> wh_proplist().
+-spec unbridge_command(whapps_call:call(), ne_binary()) -> wh_proplist().
+-spec unbridge_command(whapps_call:call(), ne_binary(), ne_binary()) -> wh_proplist().
+unbridge_command(Call) ->
+    unbridge_command(Call, <<"Both">>).
+unbridge_command(Call, Leg) ->
+    unbridge_command(Call, Leg, <<"now">>).
+unbridge_command(Call, Leg, Insert) ->
+    [{<<"Application-Name">>, <<"unbridge">>}
+     ,{<<"Insert-At">>, Insert}
+     ,{<<"Leg">>, Leg}
+     ,{<<"Call-ID">>, whapps_call:call_id(Call)}
+    ].
 
 %%--------------------------------------------------------------------
 %% @public
