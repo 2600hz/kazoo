@@ -26,7 +26,7 @@
 -define(RATE_REQ_HEADERS, [<<"To-DID">>]).
 -define(OPTIONAL_RATE_REQ_HEADERS, [<<"Call-ID">>, <<"Account-ID">>, <<"From-DID">>
                                     ,<<"Options">>, <<"Direction">>, <<"Resource-Type">>
-                                    ,<<"Send-Empty">>
+                                    ,<<"Send-Empty">>, <<"Outbound-Flags">>
                                    ]).
 -define(RATE_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                           ,{<<"Event-Name">>, <<"req">>}

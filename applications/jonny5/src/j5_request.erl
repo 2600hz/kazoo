@@ -51,6 +51,7 @@
 -export([number/1]).
 -export([per_minute_cost/1]).
 -export([call_cost/1]).
+-export([ccvs/1]).
 
 -include_lib("jonny5.hrl").
 
@@ -76,6 +77,7 @@
                   ,answered_time = 0 :: non_neg_integer()
                   ,timestamp = 0 :: gregorian_seconds()
                   ,request_jobj = wh_json:new() :: wh_json:object()
+                  ,request_ccvs = wh_json:new() :: wh_json:object()
                  }).
 -opaque request() :: #request{}.
 -export_type([request/0]).
@@ -113,6 +115,7 @@ from_jobj(JObj) ->
              ,classification = wnm_util:classify_number(Number)
              ,number = Number
              ,request_jobj = JObj
+             ,request_ccvs = CCVs
             }.
 
 -spec request_number(ne_binary(), wh_json:object()) -> ne_binary().
@@ -123,6 +126,9 @@ request_number(Number, CCVs) ->
             lager:debug("using original number ~s instead of ~s", [Original, Number]),
             Original
     end.
+
+ccvs(Request) ->
+    Request#request.request_ccvs.
 
 %%--------------------------------------------------------------------
 %% @public

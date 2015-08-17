@@ -92,6 +92,7 @@ build_offnet_request(Data, Call) ->
                             ,{<<"Bypass-E164">>, get_bypass_e164(Data)}
                             ,{<<"Inception">>, get_inception(Call)}
                             ,{<<"B-Leg-Events">>, [<<"DTMF">>]}
+			    ,{<<"Custom-Channel-Vars">>, {[{<<"Authorizing-ID">>, whapps_call:authorizing_id(Call)}]}}
                             | wh_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)
                            ]).
 

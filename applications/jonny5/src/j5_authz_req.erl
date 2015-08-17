@@ -208,23 +208,33 @@ maybe_inbound_soft_limit(Request, Limits) ->
 -spec send_response(j5_request:request()) -> 'ok'.
 send_response(Request) ->
     ServerId = j5_request:server_id(Request),
-    CCVs = wh_json:from_list([{<<"Account-Trunk-Usage">>, trunk_usage(j5_request:account_id(Request))}
-                              ,{<<"Reseller-Trunk-Usage">>, trunk_usage(j5_request:reseller_id(Request))}
-                             ]),
-    Resp = props:filter_undefined(
-             [{<<"Is-Authorized">>, wh_util:to_binary(j5_request:is_authorized(Request))}
-              ,{<<"Account-ID">>, j5_request:account_id(Request)}
-              ,{<<"Account-Billing">>, j5_request:account_billing(Request)}
-              ,{<<"Reseller-ID">>, j5_request:reseller_id(Request)}
-              ,{<<"Reseller-Billing">>, j5_request:reseller_billing(Request)}
-              ,{<<"Call-Direction">>, j5_request:call_direction(Request)}
-              ,{<<"Other-Leg-Call-ID">>, j5_request:other_leg_call_id(Request)}
-              ,{<<"Soft-Limit">>, wh_util:to_binary(j5_request:soft_limit(Request))}
-              ,{<<"Msg-ID">>, j5_request:message_id(Request)}
-              ,{<<"Call-ID">>, j5_request:call_id(Request)}
-              ,{<<"Custom-Channel-Vars">>, CCVs}
-              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-             ]),
+    Account  = wh_util:format_account_id(j5_request:account_id(Request), 'encoded'),
+    AuthId   = wh_json:get_value(<<"Authorizing-ID">>, j5_request:ccvs(Request)),
+
+    {'ok', Endpoint} = cf_endpoint:get(AuthId, Account),
+    OutboundFlags    = wh_json:get_value(<<"outbound_flags">>, Endpoint),
+
+    CCVs = wh_json:from_list([
+	{<<"Account-Trunk-Usage">>, trunk_usage(j5_request:account_id(Request))}
+       ,{<<"Reseller-Trunk-Usage">>, trunk_usage(j5_request:reseller_id(Request))}
+       ,{<<"Outbound-Flags">>, OutboundFlags}
+    ]),
+
+    Resp = props:filter_undefined([
+	{<<"Is-Authorized">>, wh_util:to_binary(j5_request:is_authorized(Request))}
+       ,{<<"Account-ID">>, j5_request:account_id(Request)}
+       ,{<<"Account-Billing">>, j5_request:account_billing(Request)}
+       ,{<<"Reseller-ID">>, j5_request:reseller_id(Request)}
+       ,{<<"Reseller-Billing">>, j5_request:reseller_billing(Request)}
+       ,{<<"Call-Direction">>, j5_request:call_direction(Request)}
+       ,{<<"Other-Leg-Call-ID">>, j5_request:other_leg_call_id(Request)}
+       ,{<<"Soft-Limit">>, wh_util:to_binary(j5_request:soft_limit(Request))}
+       ,{<<"Msg-ID">>, j5_request:message_id(Request)}
+       ,{<<"Call-ID">>, j5_request:call_id(Request)}
+       ,{<<"Custom-Channel-Vars">>, CCVs}
+       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+    ]),
+
     wapi_authz:publish_authz_resp(ServerId, Resp),
     case j5_request:is_authorized(Request) of
         'true' ->

@@ -192,11 +192,16 @@ set_ccv_trunk_usage(JObj, CallId, Node) ->
                                boolean().
 authorize_account(JObj, Props, CallId, Node) ->
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
-    Type = wh_json:get_value(<<"Account-Billing">>, JObj),
+    Type      = wh_json:get_value(<<"Account-Billing">>, JObj),
+    ChanVars  = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
+
     lager:debug("call authorized by account ~s as ~s", [AccountId, Type]),
-    P = props:set_values([{?GET_CCV(<<"Account-ID">>), AccountId}
-                          ,{?GET_CCV(<<"Account-Billing">>), Type}
-                         ], Props),
+    P = props:set_values([
+	{?GET_CCV(<<"Account-ID">>), AccountId}
+       ,{?GET_CCV(<<"Account-Billing">>), Type}
+       ,{<<"Outbound-Flags">>, wh_json:get_value(<<"Outbound-Flags">>, ChanVars)}
+    ], Props),
+
     authorize_reseller(JObj, P, CallId, Node).
 
 -spec authorize_reseller(wh_json:object(), wh_proplist(), ne_binary(), atom()) ->
@@ -372,5 +377,6 @@ rating_req(CallId, Props) ->
      ,{<<"Account-ID">>, kzd_freeswitch:account_id(Props)}
      ,{<<"Direction">>, kzd_freeswitch:call_direction(Props)}
      ,{<<"Send-Empty">>, 'true'}
+     ,{<<"Outbound-Flags">>, proplists:get_value(<<"Outbound-Flags">>, Props)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
