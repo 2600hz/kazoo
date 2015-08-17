@@ -339,7 +339,7 @@ vm_count_by_owner(<<_/binary>> = AccountDb, <<_/binary>> = OwnerId) ->
 %%--------------------------------------------------------------------
 -spec alpha_to_dialpad(ne_binary()) -> ne_binary().
 alpha_to_dialpad(Value) ->
-    << <<(dialpad_digit(C))>> || <<C>> <= strip_nonalpha(wh_util:to_lower_binary(Value))>>.
+    << <<(dialpad_digit(C))>> || <<C>> <= wh_util:to_lower_binary(Value), is_alpha(C) >>.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -347,11 +347,9 @@ alpha_to_dialpad(Value) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec strip_nonalpha(ne_binary()) -> ne_binary().
-strip_nonalpha(Value) ->
-    re:replace(Value, <<"[^[:alpha:]]">>, <<>>, [{'return', 'binary'}
-                                                 ,'global'
-                                                ]).
+-spec is_alpha(char()) -> boolean().
+is_alpha(Char) ->
+    Char =< $z andalso Char >= $a.
 
 %%--------------------------------------------------------------------
 %% @public

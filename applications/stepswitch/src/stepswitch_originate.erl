@@ -285,7 +285,7 @@ originate_from_uri(CIDNum, JObj) ->
     Realm = wh_json:get_first_defined([<<"From-URI-Realm">>
                                        ,<<"Account-Realm">>
                                       ], JObj),
-    case (whapps_config:get_is_true(?APP_NAME, <<"format_from_uri">>, 'false')
+    case (whapps_config:get_is_true(?SS_CONFIG_CAT, <<"format_from_uri">>, 'false')
           orelse wh_json:is_true(<<"Format-From-URI">>, JObj))
         andalso (is_binary(CIDNum) andalso is_binary(Realm))
     of

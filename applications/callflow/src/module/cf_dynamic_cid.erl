@@ -37,10 +37,15 @@
 
 -record(dynamic_cid, {
           prompts = #prompts{} :: prompts(),
-          default_cid = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"default_cid">>, ?DEFAULT_CALLER_ID_NUMBER),
+
           max_digits = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"max_digits">>, 10),
           min_digits = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"min_digits">>, 10),
-          whitelist = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"whitelist_regex">>, <<"\\d+">>)
+          whitelist = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"whitelist_regex">>, <<"\\d+">>),
+          default_cid = whapps_config:get_binary(
+                          ?MOD_CONFIG_CAT
+                          ,<<"default_cid">>
+                          ,wh_util:anonymous_caller_id_number()
+                         )
          }).
 
 

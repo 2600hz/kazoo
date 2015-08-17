@@ -96,32 +96,36 @@
                      ,{{'teletype_webhook_disabled', 'handle_webhook_disabled'}
                        ,[{<<"notification">>, <<"webhook_disabled">>}]
                       }
+                     ,{'teletype_denied_emergency_bridge'
+                       ,[{<<"notification">>, <<"denied_emergency_bridge">>}]
+                      }
                     ]).
 
--define(RESTRICT_TO, ['new_voicemail'
-                      ,'voicemail_full'
+-define(RESTRICT_TO, ['cnam_requests'
+                      ,'denied_emergency_bridge'
+                      ,'deregister'
                       ,'inbound_fax'
-                      ,'outbound_fax'
+                      ,'inbound_fax_error'
+                      ,'low_balance'
                       ,'new_account'
                       ,'new_user'
-                      ,'inbound_fax_error'
+                      ,'new_voicemail'
+                      ,'outbound_fax'
                       ,'outbound_fax_error'
-                      ,'deregister'
-                      ,'pwd_recovery'
-                      ,'cnam_requests'
-                      ,'port_request'
-                      ,'port_pending'
-                      ,'port_scheduled'
-                      ,'port_rejected'
-                      ,'port_cancel'
                       ,'ported'
+                      ,'port_cancel'
                       ,'port_comment'
-                      ,'low_balance'
+                      ,'port_pending'
+                      ,'pwd_recovery'
+                      ,'port_rejected'
+                      ,'port_request'
+                      ,'port_scheduled'
                       ,'system_alerts'
+                      ,'topup'
                       ,'transaction'
+                      ,'voicemail_full'
                       ,'webhook_disabled'
                       %%,'skel'
-                      ,'topup'
                      ]).
 
 -define(BINDINGS, [{'notifications', [{'restrict_to', ?RESTRICT_TO}]}

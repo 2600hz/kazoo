@@ -108,6 +108,10 @@
 
 -export([node_name/0, node_hostname/0]).
 
+-export([anonymous_caller_id_name/0
+         ,anonymous_caller_id_number/0
+        ]).
+
 -export([write_file/2, write_file/3
          ,delete_file/1
          ,make_dir/1
@@ -1300,6 +1304,14 @@ make_dir(Filename) ->
 
 normalize_amqp_uri(URI) ->
     to_binary(amqp_uri:remove_credentials(to_list(URI))).
+
+-spec anonymous_caller_id_name() -> ne_binary().
+anonymous_caller_id_name() ->
+    <<"anonymous">>.
+
+-spec anonymous_caller_id_number() -> ne_binary().
+anonymous_caller_id_number() ->
+    <<"0000000000">>.
 
 -ifdef(TEST).
 
