@@ -17,7 +17,7 @@
 %% @doc
 %% Entry point for this module, attempts to call an endpoint as defined
 %% in the Data payload.  Returns continue if fails to connect or
-%% stop when successfull.
+%% stop when successful.
 %% @end
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
@@ -30,6 +30,8 @@ handle(Data, Call) ->
            ,{<<"Play-Welcome">>, wh_json:is_true([<<"welcome_prompt">>, <<"play">>], Data, 'true')}
            ,{<<"Play-Welcome-Media">>, wh_json:get_ne_value([<<"welcome_prompt">>, <<"media_id">>], Data)}
            ,{<<"Conference-Doc">>, wh_json:get_value(<<"config">>, Data)}
+           ,{<<"Play-Exit-Tone">>, wh_json:get_ne_value([<<"play_exit_tone">>], Data)}
+           ,{<<"Play-Entry-Tone">>, wh_json:get_ne_value([<<"play_entry_tone">>], Data)}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ]),
     wapi_conference:publish_discovery_req(Command),
