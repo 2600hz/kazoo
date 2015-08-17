@@ -245,11 +245,7 @@ handle_cast('hungup', #participant{in_conference='true'
                                    ,conference=Conference
                                   }=Participant
            ) ->
-    _ = case whapps_conference:play_exit_tone(Conference) of
-            'false' -> 'ok';
-            Media = ?NE_BINARY -> whapps_conference_command:play(Media, Conference);
-            _Else -> whapps_conference_command:play(?EXIT_TONE, Conference)
-        end,
+    _ = maybe_play_exit_tone(Conference),
     _ = whapps_call_command:hangup(Call),
     {'stop', {'shutdown', 'hungup'}, Participant};
 handle_cast('hungup', #participant{in_conference='false'
@@ -323,18 +319,10 @@ handle_cast({'join_remote', JObj}, #participant{call=Call
 handle_cast({'sync_participant', JObj}, #participant{call=Call}=Participant) ->
     {'noreply', sync_participant(JObj, Call, Participant)};
 handle_cast('play_member_entry', #participant{conference=Conference}=Participant) ->
-    _ = case whapps_conference:play_entry_tone(Conference) of
-            'false' -> 'ok';
-            Media = ?NE_BINARY -> whapps_conference_command:play(Media, Conference);
-            _Else -> whapps_conference_command:play(?ENTRY_TONE, Conference)
-        end,
+    _ = maybe_play_entry_tone('member', Conference),
     {'noreply', Participant};
 handle_cast('play_moderator_entry', #participant{conference=Conference}=Participant) ->
-    _ = case whapps_conference:play_entry_tone(Conference) of
-            'false' -> 'ok';
-            Media = ?NE_BINARY -> whapps_conference_command:play(Media, Conference);
-            _Else -> whapps_conference_command:play(?MOD_ENTRY_TONE, Conference)
-        end,
+    _ = maybe_play_entry_tone('moderator', Conference),
     {'noreply', Participant};
 handle_cast({'dtmf', Digit}, #participant{last_dtmf = <<"*">>}=Participant) ->
     case Digit of
@@ -644,3 +632,27 @@ send_conference_command(Conference, Call) ->
                                    ,whapps_conference:profile(Conference)
                                    ,Call
                                   ).
+
+%% @private
+-spec maybe_play_exit_tone(whapps_conference:conference()) -> 'ok'.
+maybe_play_exit_tone(Conference) ->
+    case whapps_conference:play_exit_tone(Conference) of
+        'false' -> 'ok';
+        Media = ?NE_BINARY -> whapps_conference_command:play(Media, Conference);
+        _Else -> whapps_conference_command:play(?EXIT_TONE, Conference)
+    end.
+
+%% @private
+-spec maybe_play_entry_tone('member' | 'moderator', whapps_conference:conference()) -> 'ok'.
+maybe_play_entry_tone('member', Conference) ->
+    case whapps_conference:play_entry_tone(Conference) of
+        'false' -> 'ok';
+        Media = ?NE_BINARY -> whapps_conference_command:play(Media, Conference);
+        _Else -> whapps_conference_command:play(?ENTRY_TONE, Conference)
+    end;
+maybe_play_entry_tone('moderator', Conference) ->
+    case whapps_conference:play_entry_tone(Conference) of
+        'false' -> 'ok';
+        Media = ?NE_BINARY -> whapps_conference_command:play(Media, Conference);
+        _Else -> whapps_conference_command:play(?MOD_ENTRY_TONE, Conference)
+    end.
