@@ -135,9 +135,9 @@ foldl_consumed(Classification, Value, {Context, Mode, Acc}) ->
 
 -spec normalize_result(api_binary(), gregorian_seconds(), gregorian_seconds(), wh_json:object(), wh_json:objects()) -> wh_json:object().
 normalize_result(_Cycle, _From, _To, Acc, []) -> Acc;
-normalize_result(Cycle, From, To, Acc, [H|T]) ->
-    [Classification] = wh_json:get_value(<<"key">>, H),
-    Consumed = wh_json:get_value(<<"value">>, H),
+normalize_result(Cycle, From, To, Acc, [Head|Tail]) ->
+    [Classification] = wh_json:get_value(<<"key">>, Head),
+    Consumed = wh_json:get_value(<<"value">>, Head),
     Acc1 = case wh_json:get_value(Classification, Acc) of
                'undefined' ->
                    Value = wh_json:set_values(
@@ -151,7 +151,7 @@ normalize_result(Cycle, From, To, Acc, [H|T]) ->
                    AccConsumed = wh_json:get_integer_value(<<"consumed">>, AccValue),
                    wh_json:set_value([Classification, <<"consumed">>], AccConsumed + Consumed, Acc)
            end,
-    normalize_result(Cycle, From, To, Acc1, T).
+    normalize_result(Cycle, From, To, Acc1, Tail).
 
 -spec create_viewoptions(cb_context:context(), api_binary(), wh_json:object(), {'cycle', wh_datetime()} | {'manual', api_seconds(), api_seconds()}) -> 
     {'ok', wh_proplist()} | cb_context:context().
