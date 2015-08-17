@@ -273,7 +273,57 @@ maybe_server_request([Server | Servers] = AllServers, JObj, AaaProps, AccountId,
             lager:debug("server can't be unresolved: ~p", [Error]),
             maybe_server_request(Servers, JObj, AaaProps, AccountId, ParentAccountId);
         Address ->
-            maybe_eradius_request(AllServers, Address, JObj, AaaProps, AccountId, ParentAccountId)
+            maybe_channel_blocked(AllServers, Address, JObj, AaaProps, AccountId, ParentAccountId)
+    end.
+
+-spec maybe_block_processing(wh_json:object(), wh_json:object(), ne_binary()) -> any().
+maybe_block_processing(JObj, AaaProps, BlockKey) ->
+    {ChannelProps, Type} = cm_util:determine_channel_type(JObj),
+    BlockChannelsList = props:get_value(BlockKey, AaaProps),
+    lager:debug("BlockChannelsList is ~p", [BlockChannelsList]),
+    case BlockChannelsList of
+        'undefined' -> 'ok';
+        _ ->
+            FilteredList = props:filter(
+                fun(PropEntry) ->
+                    lager:debug("PropEntry entry is ~p", [PropEntry]),
+                    Value = props:get_value(<<"channel">>, PropEntry),
+                    lager:debug("Value of 'channel' is ~p", [Value]),
+                    lager:debug("Left is ~p and Right is ~p", [ordsets:from_list(Value), ordsets:from_list(ChannelProps)]),
+                    ordsets:from_list(Value) == ordsets:from_list(ChannelProps) end,
+                BlockChannelsList),
+            lager:debug("FilteredList is ~p and Type is ~p", [FilteredList, Type]),
+            case {length(FilteredList), Type} of
+                {_, 'loopback'} -> 'blocked';
+                {0, 'normal'} -> 'ok';
+                {_, 'normal'} -> 'blocked'
+            end
+    end.
+
+maybe_channel_blocked(AllServers, Address, JObj, AaaProps, AccountId, ParentAccountId) ->
+    AaaRequestType = cm_util:determine_aaa_request_type(JObj),
+    case AaaRequestType of
+        'authn' ->
+            maybe_eradius_request(AllServers, Address, JObj, AaaProps, AccountId, ParentAccountId);
+        'authz' ->
+            case maybe_block_processing(JObj, AaaProps, <<"block_authz">>) of
+                'ok' ->
+                    maybe_eradius_request(AllServers, Address, JObj, AaaProps, AccountId, ParentAccountId);
+                'blocked' ->
+                    lager:debug("Authz for this type of channel is blocked. Request bypassed."),
+                    Queue = wh_json:get_value(<<"Server-ID">>, JObj),
+                    JObj1 = wh_json:set_values([{<<"Event-Name">>, <<"authz.broadcast.resp">>}
+                        ,{<<"Is-Authorized">>, <<"true">>}]
+                        ,JObj),
+                    wapi_authz:publish_authz_resp(Queue, JObj1)
+            end;
+        'accounting' ->
+            case maybe_block_processing(JObj, AaaProps, <<"block_accounting">>) of
+                'ok' ->
+                    maybe_eradius_request(AllServers, Address, JObj, AaaProps, AccountId, ParentAccountId);
+                'blocked' ->
+                    lager:debug("Accounting for this type of channel is blocked. Request bypassed.")
+            end
     end.
 
 -spec maybe_eradius_request(list(), ne_binary(), wh_json:object(), proplist(), ne_binary(), ne_binary()) ->

@@ -11,9 +11,6 @@
 
 -include("circlemaker.hrl").
 
--record(state, {workers = [] :: pids()}).
-
--type pool_mgr_state() :: #state{}.
 -type authn_response() :: {'ok', 'aaa_mode_off'} | {'ok', tuple()}.
 
 -export([init/1
@@ -52,30 +49,6 @@ do_request(Request) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Stores a new worker process into the Pool Manager's state
-%% @end
-%%--------------------------------------------------------------------
--spec insert_worker(pid(), pool_mgr_state()) -> pool_mgr_state().
-insert_worker(Worker, State) ->
-    lager:debug("New worker ~p stored", [Worker]),
-    State1 = State#state{workers=[Worker | State#state.workers]},
-    lager:debug("Busy workers count is ~p", [length(State1#state.workers)]),
-    State1.
-
-%%--------------------------------------------------------------------
-%% @doc
-%% Removes a new worker process from the Pool Manager's state
-%% @end
-%%--------------------------------------------------------------------
--spec remove_worker(pid(), pool_mgr_state()) -> pool_mgr_state().
-remove_worker(Worker, State) ->
-    lager:debug("Worker ~p removed", [Worker]),
-    State1 = State#state{workers=lists:delete(Worker, State#state.workers)},
-    lager:debug("Busy workers count is ~p", [length(State1#state.workers)]),
-    State1.
-
-%%--------------------------------------------------------------------
-%% @doc
 %% Handler for a response message for AuthN
 %% @end
 %%--------------------------------------------------------------------
@@ -111,7 +84,7 @@ send_accounting_response(SenderPid, Response, JObj, Self) ->
 -spec init([]) -> {'ok', tuple()}.
 init([]) ->
     lager:debug("Pool manager started"),
-    {'ok', #state{}}.
+    {'ok', []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -141,10 +114,10 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({'request', JObj}, State) ->
-    {'noreply', dist_workers(JObj, State)};
+    dist_workers(JObj),
+    {'noreply', State};
 handle_cast({'response', Response, JObj, Worker}, State) ->
     lager:debug("response message is ~p", [Response]),
-    NewState = remove_worker(Worker, State),
     poolboy:checkin(?WORKER_POOL, Worker),
     {AaaResult, AttributeList, AccountId} = case Response of
                 {'ok', {{'radius_request', _, 'accept', ParamList, _, _, _, _}, AuthzAccountId}} ->
@@ -190,12 +163,11 @@ handle_cast({'response', Response, JObj, Worker}, State) ->
             JObj2 = wh_json:set_value(<<"Event-Name">>, <<"aaa_authn_resp">>, JObj1),
             wapi_aaa:publish_resp(Queue, JObj2)
     end,
-    {'noreply', NewState};
+    {'noreply', State};
 handle_cast({'accounting_response', Response, _JObj, Worker}, State) ->
     lager:debug("accounting response message is ~p", [Response]),
-    NewState = remove_worker(Worker, State),
     poolboy:checkin(?WORKER_POOL, Worker),
-    {'noreply', NewState};
+    {'noreply', State};
 handle_cast(Message, State) ->
     lager:debug("unexpected message is ~p", [Message]),
     {'noreply', State}.
@@ -248,16 +220,15 @@ code_change(_OldVsn, State, _Extra) ->
 %% Starts new worker for processing a request
 %% @end
 %%--------------------------------------------------------------------
--spec dist_workers(wh_json:object(), pool_mgr_state()) -> pool_mgr_state().
-dist_workers(JObj, State) ->
+-spec dist_workers(wh_json:object()) -> 'ok'.
+dist_workers(JObj) ->
     lager:debug("Trying to start new worker..."),
     case catch poolboy:checkout(?WORKER_POOL) of
         Worker when is_pid(Worker) ->
             lager:debug("Worker started sucessfully"),
-            cm_worker:send_req(Worker, JObj),
-            insert_worker(Worker, State);
+            cm_worker:send_req(Worker, JObj);
         Else ->
             % TODO: need to send message to self for 'denied' response
             lager:error("Failed to start a worker. Reason is ~p", [Else]),
-            State
+            'ok'
     end.
