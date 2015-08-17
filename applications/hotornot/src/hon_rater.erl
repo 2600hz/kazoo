@@ -74,8 +74,9 @@ get_rate_data(JObj) ->
 get_rate_data(JObj, ToDID, FromDID, Rates) ->
     lager:debug("candidate rates found, filtering"),
     RouteOptions = wh_json:get_value(<<"Options">>, JObj, []),
-    Direction = wh_json:get_value(<<"Direction">>, JObj),
-    Matching = hon_util:matching_rates(Rates, ToDID, Direction, RouteOptions),
+    RouteFlags   = wh_json:get_value(<<"Outbound-Flags">>, JObj, []),
+    Direction    = wh_json:get_value(<<"Direction">>, JObj),
+    Matching     = hon_util:matching_rates(Rates, ToDID, Direction, RouteOptions++RouteFlags),
 
     case hon_util:sort_rates(Matching) of
         [] ->
