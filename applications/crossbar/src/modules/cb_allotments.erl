@@ -112,26 +112,34 @@ load_allotments(Context) ->
 
 -spec load_consumed(cb_context:context()) -> cb_context:context().
 load_consumed(Context) ->
-    Context1 = crossbar_doc:load(?PVT_TYPE, Context),
-    Allotments = wh_json:get_json_value(?PVT_ALLOTMENTS, cb_context:doc(Context1), wh_json:new()),
+    Allotments = wh_json:get_json_value(?PVT_ALLOTMENTS, cb_context:doc(crossbar_doc:load(?PVT_TYPE, Context)), wh_json:new()),
     Mode = create_consumed_mode(Context),
-    {_, _, Result} = wh_json:foldl(fun foldl_consumed/3, {Context, Mode, wh_json:new()}, Allotments),
-    cb_context:setters(Context
-                       ,[{fun cb_context:set_resp_status/2, 'success'}
-                         ,{fun cb_context:set_resp_data/2, Result}
-                        ]).
+    {ContextResult, _, Result} = wh_json:foldl(fun foldl_consumed/3, {Context, Mode, wh_json:new()}, Allotments),
+    case cb_context:resp_status(ContextResult) of
+        'error' -> ContextResult;
+        _ ->
+            cb_context:setters(Context
+                               ,[{fun cb_context:set_resp_status/2, 'success'}
+                                 ,{fun cb_context:set_resp_data/2, Result}
+                                ])
+    end.
 
--spec foldl_consumed(api_binary(), wh_json:object(), {cb_context:context(), {'cycle', wh_datetime()} | {'manual', api_seconds(), api_seconds()} , wh_json:objects()}) -> wh_json:objects().
+-spec foldl_consumed(api_binary(), wh_json:object(), {cb_context:context(), {'cycle', wh_datetime()} | {'manual', api_seconds(), api_seconds()} , wh_json:objects()}) ->
+    {cb_context:context(), {'cycle', wh_datetime()} | {'manual', api_seconds(), api_seconds()} , wh_json:objects()}. 
+foldl_consumed(_Classification, _Value, {#cb_context{resp_status='error'}=ContextErr, Mode, Acc}) -> {ContextErr, Mode, Acc};
 foldl_consumed(Classification, Value, {Context, Mode, Acc}) ->
-    {Cycle, ViewOptions} =  create_viewoptions(Context, Classification, Value, Mode),
-    [_, From] = props:get_value('startkey', ViewOptions),
-    [_, To] = props:get_value('endkey', ViewOptions),
-    Context1 = crossbar_doc:load_view(?LIST_CONSUMED
-                                      ,props:insert_value({'group_level', 1},ViewOptions)
-                                      ,Context
-                                     ),
-    Acc1 = normalize_result(Cycle, From, To, Acc, cb_context:doc(Context1)),
-    {Context, Mode, Acc1}.
+    case create_viewoptions(Context, Classification, Value, Mode) of
+        {Cycle, ViewOptions} -> 
+            [_, From] = props:get_value('startkey', ViewOptions),
+            [_, To] = props:get_value('endkey', ViewOptions),
+            ContextResult = crossbar_doc:load_view(?LIST_CONSUMED
+                                                   ,props:insert_value({'group_level', 1},ViewOptions)
+                                                   ,Context
+                                                  ),
+            Acc1 = normalize_result(Cycle, From, To, Acc, cb_context:doc(ContextResult)),
+            {ContextResult, Mode, Acc1};
+        ContextErr -> {ContextErr, Mode, Acc}
+    end.
 
 -spec normalize_result(api_binary(), gregorian_seconds(), gregorian_seconds(), wh_json:object(), wh_json:objects()) -> wh_json:object().
 normalize_result(_Cycle, _From, _To, Acc, []) -> Acc;
@@ -154,17 +162,22 @@ normalize_result(Cycle, From, To, Acc, [Head|Tail]) ->
     normalize_result(Cycle, From, To, Acc1, Tail).
 
 -spec create_viewoptions(cb_context:context(), api_binary(), wh_json:object(), {'cycle', wh_datetime()} | {'manual', api_seconds(), api_seconds()}) -> 
-    {'ok', wh_proplist()} | cb_context:context().
+    {api_binary(), wh_proplist()} | 
+    cb_context:context().
 create_viewoptions(Context, Classification, JObj, {'cycle', DateTime}) ->
     Cycle = wh_json:get_value(<<"cycle">>, JObj),
     From = cycle_start(Cycle, DateTime),
     To = cycle_end(Cycle, DateTime),
-    {'ok', ViewOptions} = cb_modules_util:range_modb_view_options(Context, [Classification], [], From, To),
-    {Cycle, ViewOptions};
+    case cb_modules_util:range_modb_view_options(Context, [Classification], [], From, To) of
+        {'ok', ViewOptions} -> {Cycle, ViewOptions};
+        ContextErr -> ContextErr
+    end;
 
 create_viewoptions(Context, Classification, _JObj, {'manual', From, To}) ->
-    {'ok', ViewOptions} = cb_modules_util:range_modb_view_options(Context, [Classification], [], From, To),
-    {<<"manual">>, ViewOptions}.
+    case cb_modules_util:range_modb_view_options(Context, [Classification], [], From, To) of
+        {'ok', ViewOptions} -> {<<"manual">>, ViewOptions};
+        ContextErr -> ContextErr
+    end.
 
 -spec create_consumed_mode(cb_context:context()) -> {'cycle', wh_datetime()} | {'manual', api_seconds(), api_seconds()}.
 create_consumed_mode(Context) ->
