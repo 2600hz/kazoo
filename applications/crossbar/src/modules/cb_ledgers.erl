@@ -119,10 +119,11 @@ validate(Context, Id) ->
 validate(Context, Id, _Action) ->
     validate_ledger(Context, Id, cb_context:req_verb(Context)).
 
-
+-spec validate_ledgers(cb_context:context(), http_method()) -> cb_context:context().
 validate_ledgers(Context, ?HTTP_GET) ->
     read_ledgers(Context).
 
+-spec validate_ledger(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_ledger(Context, Id, ?HTTP_GET) ->
     read_ledger(Context, Id);
 validate_ledger(Context, _Id, ?HTTP_POST) ->
@@ -141,23 +142,39 @@ post(Context, Id, ?CREDIT) ->
 post(Context, Id, ?DEBIT) ->
     credit_or_debit(Context, Id, ?DEBIT).
 
-
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec credit_or_debit(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
 credit_or_debit(Context, Name, Action) ->
-    Fun = wh_util:to_atom(Action, 'true'),
     AccountId = cb_context:account_id(Context),
     ReqData = cb_context:req_data(Context),
     Amount = wh_json:get_integer_value(<<"amount">>, ReqData, 0),
     Desc = wh_json:get_ne_binary_value(<<"description">>, ReqData),
-    case kz_ledger:Fun(Name, Amount, AccountId, Desc) of
+    case process_action(Action, Name, Amount, AccountId, Desc) of
         {'error', Reason} ->
-            Reason;
+            crossbar_util:response('error', Reason, Context);
         {'ok', Ledger} ->
             crossbar_util:response(kazoo_ledger:to_public_json(Ledger), Context)
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec process_action(ne_binary(), ne_binary(), integer(), ne_binary(), ne_binary()) -> {'ok', _} | {'error', _}.
+process_action(?CREDIT, Name, Amount, AccountId, Desc) ->
+    kz_ledger:credit(Name, Amount, AccountId, Desc);
+process_action(?DEBIT, Name, Amount, AccountId, Desc) ->
+    kz_ledger:debit(Name, Amount, AccountId, Desc).
 
 %%--------------------------------------------------------------------
 %% @private

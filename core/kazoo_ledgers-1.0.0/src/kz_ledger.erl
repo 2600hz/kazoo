@@ -44,7 +44,7 @@ credit(Name, Amount, Account) ->
     credit(Name, Amount, Account, 'undefined').
 
 credit(Name, Amount, Account, Desc) ->
-    create(<<"credit">>, Name, Amount, Account, Desc).
+    create(Name, Amount, Account, Desc, <<"credit">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -58,7 +58,7 @@ debit(Name, Amount, Account) ->
     debit(Name, Amount, Account, 'undefined').
 
 debit(Name, Amount, Account, Desc) ->
-    create(<<"debit">>, Name, Amount, Account, Desc).
+    create(Name, Amount, Account, Desc, <<"debit">>).
 
 %%%===================================================================
 %%% Internal functions
@@ -70,8 +70,8 @@ debit(Name, Amount, Account, Desc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec create( ne_binary(), ne_binary(), integer(), ne_binary(), ne_binary()) -> {'ok', ledger()} | {'error', _}.
-create(Type, Name, Amount, Account, Desc) ->
+-spec create(ne_binary(), integer(), ne_binary(), ne_binary(), ne_binary()) -> {'ok', ledger()} | {'error', _}.
+create(Name, Amount, Account, Desc, Type) ->
     Routines = [
         fun(L) -> kazoo_ledger:set_name(L, Name) end
         ,fun(L) -> kazoo_ledger:set_amount(L, Amount) end
