@@ -92,9 +92,15 @@ build_offnet_request(Data, Call) ->
                             ,{<<"Bypass-E164">>, get_bypass_e164(Data)}
                             ,{<<"Inception">>, get_inception(Call)}
                             ,{<<"B-Leg-Events">>, [<<"DTMF">>]}
-			    ,{<<"Custom-Channel-Vars">>, {[{<<"Authorizing-ID">>, whapps_call:authorizing_id(Call)}]}}
+                            ,{<<"Custom-Channel-Vars">>, get_channel_vars(Call)}
                             | wh_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)
                            ]).
+
+-spec get_channel_vars(whapps_call:call()) -> wh_proplist().
+get_channel_vars(Call) ->
+    wh_json:from_list([
+        {<<"Authorizing-ID">>, whapps_call:authorizing_id(Call)}
+    ]).
 
 -spec get_bypass_e164(wh_json:object()) -> boolean().
 get_bypass_e164(Data) ->
