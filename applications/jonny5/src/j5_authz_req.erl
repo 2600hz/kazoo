@@ -214,33 +214,33 @@ send_response(Request) ->
     {'ok', Endpoint} = cf_endpoint:get(AuthId, AccountDb),
     OutboundFlags    = wh_json:get_value(<<"outbound_flags">>, Endpoint),
 
-    CCVs = wh_json:from_list([
-	{<<"Account-Trunk-Usage">>, trunk_usage(j5_request:account_id(Request))}
-       ,{<<"Reseller-Trunk-Usage">>, trunk_usage(j5_request:reseller_id(Request))}
-       ,{<<"Outbound-Flags">>, OutboundFlags}
-    ]),
+    CCVs = wh_json:from_list(
+             [{<<"Account-Trunk-Usage">>, trunk_usage(j5_request:account_id(Request))}
+              ,{<<"Reseller-Trunk-Usage">>, trunk_usage(j5_request:reseller_id(Request))}
+              ,{<<"Outbound-Flags">>, OutboundFlags}
+             ]),
 
-    Resp = props:filter_undefined([
-	{<<"Is-Authorized">>, wh_util:to_binary(j5_request:is_authorized(Request))}
-       ,{<<"Account-ID">>, j5_request:account_id(Request)}
-       ,{<<"Account-Billing">>, j5_request:account_billing(Request)}
-       ,{<<"Reseller-ID">>, j5_request:reseller_id(Request)}
-       ,{<<"Reseller-Billing">>, j5_request:reseller_billing(Request)}
-       ,{<<"Call-Direction">>, j5_request:call_direction(Request)}
-       ,{<<"Other-Leg-Call-ID">>, j5_request:other_leg_call_id(Request)}
-       ,{<<"Soft-Limit">>, wh_util:to_binary(j5_request:soft_limit(Request))}
-       ,{<<"Msg-ID">>, j5_request:message_id(Request)}
-       ,{<<"Call-ID">>, j5_request:call_id(Request)}
-       ,{<<"Custom-Channel-Vars">>, CCVs}
-       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-    ]),
+    Resp = props:filter_undefined(
+             [{<<"Is-Authorized">>, wh_util:to_binary(j5_request:is_authorized(Request))}
+              ,{<<"Account-ID">>, j5_request:account_id(Request)}
+              ,{<<"Account-Billing">>, j5_request:account_billing(Request)}
+              ,{<<"Reseller-ID">>, j5_request:reseller_id(Request)}
+              ,{<<"Reseller-Billing">>, j5_request:reseller_billing(Request)}
+              ,{<<"Call-Direction">>, j5_request:call_direction(Request)}
+              ,{<<"Other-Leg-Call-ID">>, j5_request:other_leg_call_id(Request)}
+              ,{<<"Soft-Limit">>, wh_util:to_binary(j5_request:soft_limit(Request))}
+              ,{<<"Msg-ID">>, j5_request:message_id(Request)}
+              ,{<<"Call-ID">>, j5_request:call_id(Request)}
+              ,{<<"Custom-Channel-Vars">>, CCVs}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]),
 
     wapi_authz:publish_authz_resp(ServerId, Resp),
     case j5_request:is_authorized(Request) of
+        'false' -> j5_util:send_system_alert(Request);
         'true' ->
             wapi_authz:broadcast_authz_resp(Resp),
-            j5_channels:authorized(wh_json:from_list(Resp));
-        'false' -> j5_util:send_system_alert(Request)
+            j5_channels:authorized(wh_json:from_list(Resp))
     end.
 
 %% @private
@@ -253,5 +253,3 @@ trunk_usage(Id) ->
       (wh_util:to_binary(j5_limits:twoway_trunks(Limits)))/binary, "/",
       (wh_util:to_binary(j5_limits:burst_trunks(Limits)))/binary
     >>.
-
-

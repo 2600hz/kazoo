@@ -127,8 +127,8 @@ request_number(Number, CCVs) ->
             Original
     end.
 
-ccvs(Request) ->
-    Request#request.request_ccvs.
+-spec ccvs(request()) -> wh_json:object().
+ccvs(#request{request_ccvs=CCVs}) -> CCVs.
 
 %%--------------------------------------------------------------------
 %% @public

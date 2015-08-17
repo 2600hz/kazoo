@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz, INC
+%%% @copyright (C) 2011-2015, 2600Hz, INC
 %%% @doc
 %%% Make a request for authorization, and answer queries about the CallID
 %%% @end
@@ -197,11 +197,12 @@ authorize_account(JObj, Props, CallId, Node) ->
 
     lager:debug("call authorized by account ~s as ~s", [AccountId, Type]),
     P = props:set_values(
-        [{?GET_CCV(<<"Account-ID">>), AccountId}
-        ,{?GET_CCV(<<"Account-Billing">>), Type}
-        ,{<<"Outbound-Flags">>, wh_json:get_value(<<"Outbound-Flags">>, ChanVars)}
-        ]
-        , Props),
+          [{?GET_CCV(<<"Account-ID">>), AccountId}
+           ,{?GET_CCV(<<"Account-Billing">>), Type}
+           ,{<<"Outbound-Flags">>, wh_json:get_value(<<"Outbound-Flags">>, ChanVars)}
+          ]
+          ,Props
+         ),
 
     authorize_reseller(JObj, P, CallId, Node).
 
