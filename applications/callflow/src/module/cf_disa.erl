@@ -147,8 +147,9 @@ maybe_restrict_call(Data, Call, Number, Flow) ->
 
 -spec maybe_update_caller_id(wh_json:object(), whapps_call:call()) -> whapps_call:call().
 maybe_update_caller_id(Data, Call) ->
-    case wh_json:is_true(<<"use_account_caller_id">>, Data, 'false') of
-        'true' -> set_caller_id(Call);
+    DefaultCidFlag = whapps_config:get(?CF_CONFIG_CAT, <<"default_use_account_caller_id">>, 'true'),
+    case wh_json:is_true(<<"use_account_caller_id">>, Data, DefaultCidFlag) of
+        'true'  -> set_caller_id(Call);
         'false' -> Call
     end.
 
