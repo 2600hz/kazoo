@@ -16,3 +16,8 @@ alpha_to_dialpad_test() ->
     ?assertEqual(<<"23456789">>, cf_util:alpha_to_dialpad(<<"behknqux">>)),
     ?assertEqual(<<"23456789">>, cf_util:alpha_to_dialpad(<<"BeHkNqUx">>)),
     ?assertEqual(<<"23456789">>, cf_util:alpha_to_dialpad(<<"1BeH@k(N$q-u+x=">>)).
+
+alpha_to_dialpad_nonascii_test() ->
+    ?assertEqual(<<"8378">>, cf_util:alpha_to_dialpad(<<"teÕst">>)),
+    ?assertEqual(<<"8378896">>, cf_util:alpha_to_dialpad(<<"testÕÀ«©§two">>)),
+    ?assertEqual(<<"">>, cf_util:alpha_to_dialpad(<<"Ì¸ûî">>)).
