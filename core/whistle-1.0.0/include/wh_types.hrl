@@ -117,12 +117,12 @@
 
 %% Recreate the non-exported types defined in the erlang supervisor source
 -type sup_child_spec() :: supervisor:child_spec().
--type sup_child_specs() :: [sup_child_spec()] | [].
--type sup_start_flags() :: {supervisor:strategy(), non_neg_integer(), non_neg_integer()}.
--type sup_init_ret() :: {'ok', {sup_start_flags(), sup_child_specs()}}.
+-type sup_child_specs() :: [sup_child_spec()].
+-type sup_start_flags() :: supervisor:sup_flags().
+-type sup_init_ret() :: {'ok', {sup_start_flags(), sup_child_specs()}} | 'ignore'.
 -type sup_child_id() :: pid() | 'undefined'.
--type sup_startchild_err() :: 'already_present' | {'already_started', sup_child_id()} | term().
--type sup_startchild_ret() :: {'ok', sup_child_id()} | {'ok', sup_child_id(), term()} |
+-type sup_startchild_err() :: 'already_present' | {'already_started', sup_child_id()} | _.
+-type sup_startchild_ret() :: {'ok', sup_child_id()} | {'ok', sup_child_id(), _} |
                               {'error', sup_startchild_err()}.
 
 %% Helper macro for declaring children of supervisor
