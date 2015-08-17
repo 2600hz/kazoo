@@ -57,7 +57,6 @@
                           ,number :: api_binary()
                           ,route :: api_binary()
                           ,proxy_address :: api_binary()
-                          ,fs_path :: api_binary()
                           ,forward_address :: api_binary()
                           ,transport :: api_binary()
                           ,span = <<"1">> :: ne_binary()
@@ -220,21 +219,25 @@ get_orig_port(Prop) ->
     end.
 
 -spec get_sip_interface_from_db(ne_binary()) -> ne_binary().
-get_sip_interface_from_db(Fs_Path) ->
-    Network_Map = ecallmgr_config:fetch(<<"network-map">>),
-    case wh_json:is_json_object(Network_Map) of
+get_sip_interface_from_db([FsPath]) ->
+    NetworkMap = ecallmgr_config:get(<<"network_map">>),
+    case wh_json:is_json_object(NetworkMap) of
         'true' ->
-            map_fs_path_to_sip_profile(Fs_Path, Network_Map);
+            map_fs_path_to_sip_profile(FsPath, NetworkMap);
         'false' ->
-            lager:info("failed to obtain json object for Network Map, using default sip interface ~p", [?SIP_INTERFACE]),
+            lager:info("failed to obtain json object for network map, using default sip interface ~p", [?SIP_INTERFACE]),
             ?SIP_INTERFACE
     end.
 
 -spec map_fs_path_to_sip_profile(ne_binary(), wh_json:object()) -> ne_binary().
-map_fs_path_to_sip_profile(Fs_Path, Network_Map) ->
-    SIPInterfaceObj = wh_json:filter(fun({K, _}) -> wh_network_utils:verify_cidr(Fs_Path, K) end, Network_Map),
-    {[V], _} = wh_json:get_values(SIPInterfaceObj),
-    wh_json:get_value(<<"custom_sip_interface">>, V).
+map_fs_path_to_sip_profile(FsPath, NetworkMap) ->
+    SIPInterfaceObj = wh_json:filter(fun({K, _}) -> wh_network_utils:verify_cidr(FsPath, K) end, NetworkMap),
+    case  (wh_json:get_values(SIPInterfaceObj)) of
+        {[],[]} ->
+            ?SIP_INTERFACE;
+        {[V], _} ->
+            wh_json:get_value(<<"custom_sip_interface">>, V)
+    end.
 
 %% Extract custom channel variables to include in the event
 -spec custom_channel_vars(wh_proplist()) -> wh_proplist().
@@ -742,7 +745,6 @@ build_sip_channel(#bridge_endpoint{failover=Failover}=Endpoint) ->
                 ,fun(C) -> maybe_set_interface(C, Endpoint) end
                 ,fun(C) -> append_channel_vars(C, Endpoint) end
                ],
-    lager:info("This is the initial endpoint string ~s", [get_sip_contact(Endpoint)]),
     try lists:foldl(fun(F, C) -> F(C) end, get_sip_contact(Endpoint), Routines) of
         Channel -> {'ok', Channel}
     catch
@@ -804,17 +806,6 @@ guess_username(#bridge_endpoint{username=Username}) when is_binary(Username) -> 
 guess_username(#bridge_endpoint{user=User}) when is_binary(User) -> User;
 guess_username(_) -> <<"kazoo">>.
 
--spec maybe_set_fs_path(ne_binary(), bridge_endpoint()) -> ne_binary().
-maybe_set_fs_path(Contact, #bridge_endpoint{} = Endpoint) ->
-    case re:run(Contact, <<";fs_path=sip:(.*):\\d*;">>, [dotall, ungreedy, {capture, all_but_first, binary}]) of
-        {'match', Captured} ->
-            _ = Endpoint#bridge_endpoint{fs_path = Captured},
-            Contact;
-        'nomatch' -> 
-            lager:info("Endpoint does not originate from proxy"),
-            Contact
-    end.
-
 -spec maybe_replace_fs_path(ne_binary(), bridge_endpoint()) -> ne_binary().
 maybe_replace_fs_path(Contact, #bridge_endpoint{proxy_address='undefined'}) -> Contact;
 maybe_replace_fs_path(Contact, #bridge_endpoint{proxy_address = <<"sip:", _/binary>> = Proxy}) ->
@@ -865,8 +856,8 @@ maybe_set_interface(<<"sofia/", _/binary>>=Contact, _) -> Contact;
 maybe_set_interface(<<"loopback/", _/binary>>=Contact, _) -> Contact;
 maybe_set_interface(Contact, #bridge_endpoint{sip_interface='undefined'}) ->
     case re:run(Contact, <<";fs_path=sip:(.*):\\d*;">>, [dotall, ungreedy, {capture, all_but_first, binary}]) of
-        {'match', Fs_path} ->
-            SIPInterface = list_to_binary(get_sip_interface_from_db(Fs_path)),
+        {'match', FsPath} ->
+            SIPInterface = wh_util:to_binary(get_sip_interface_from_db(FsPath)),
             <<"sofia/", SIPInterface/binary, "/", Contact/binary>>;
         'nomatch' -> 
             <<"sofia/", ?SIP_INTERFACE, "/", Contact/binary>>
