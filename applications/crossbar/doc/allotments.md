@@ -221,4 +221,49 @@ Class3 - 60 (180 Class3 + 60 Class2 = 240, 300-240 = 60)
 }
 ```
 
+## Get consumed allotments at certain time
+
+### Request
+- Verb: `GET`
+- Url: `/v2/accounts/{{ACCOUNT_ID}}/allotments/consumed?created_from={{TIMESTAMP}}`  
+OR   
+`/v2/accounts/{{ACCOUNT_ID}}/allotments/consumed?created_to={{TIMESTAMP}}`
+- Payload: None
+
+`{{TIMESTAMP}}` - Gregorian epoch seconds.  
+
+```ASCII
+
+                                {{TIMESTAMP}}
+                                     ||
+----+--------------------+-----------||-------+--------------------+--------
+    | week3              | week4     ||       | week5              | week6
+----+------------+-------+-----------||-------+--------------------+--------
+ month1          | month2            ||
+-----------------+-------------------||-------------------------------------
+
+```
+
+### Response
+
+```JSON
+{
+    "data": {
+        "outbound_local": {
+            "consumed": 180,
+            "consumed_to": month2_end_timestamp,
+            "consumed_from": month2_start_timestamp,
+            "cycle": "monthly"
+        },
+        "outbound_national": {
+            "consumed": 60,
+            "consumed_to": week4_end_timestamp,
+            "consumed_from": week4_start_timestamp,
+            "cycle": "weekly"
+        }
+    },
+    "status": "success",
+}
+```
+
 

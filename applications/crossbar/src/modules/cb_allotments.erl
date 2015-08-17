@@ -113,7 +113,7 @@ load_allotments(Context) ->
 -spec load_consumed(cb_context:context()) -> cb_context:context().
 load_consumed(Context) ->
     Allotments = wh_json:get_json_value(?PVT_ALLOTMENTS, cb_context:doc(crossbar_doc:load(?PVT_TYPE, Context)), wh_json:new()),
-    Mode = create_consumed_mode(Context),
+    Mode = get_consumed_mode(Context),
     {ContextResult, _, Result} = wh_json:foldl(fun foldl_consumed/3, {Context, Mode, wh_json:new()}, Allotments),
     case cb_context:resp_status(ContextResult) of
         'error' -> ContextResult;
@@ -179,19 +179,25 @@ create_viewoptions(Context, Classification, _JObj, {'manual', From, To}) ->
         ContextErr -> ContextErr
     end.
 
--spec create_consumed_mode(cb_context:context()) -> {'cycle', wh_datetime()} | {'manual', api_seconds(), api_seconds()}.
-create_consumed_mode(Context) ->
-    From = case cb_context:req_value(Context, <<"created_from">>) of
-               'undefined' -> 'undefined';
-               F -> wh_util:to_integer(F)
-           end,
-    To = case cb_context:req_value(Context, <<"created_to">>) of
-               'undefined' -> 'undefined';
-               T -> wh_util:to_integer(T)
-           end,
-    case wh_util:is_empty(From) andalso wh_util:is_empty(To) of
-        'true' -> {'cycle', calendar:universal_time()};
-        'false' -> {'manual',  From, To}
+-spec get_consumed_mode(cb_context:context()) -> {'cycle', wh_datetime()} | {'manual', api_seconds(), api_seconds()}.
+get_consumed_mode(Context) ->
+    case 
+        {maybe_req_seconds(Context, <<"created_from">>)
+         ,maybe_req_seconds(Context, <<"created_to">>)
+        }
+    of
+        {'undefined', 'undefined'} -> {'cycle', calendar:universal_time()};
+        {From, 'undefined'} -> {'cycle', calendar:gregorian_seconds_to_datetime(From)};
+        {'undefined', To} -> {'cycle', calendar:gregorian_seconds_to_datetime(To)};
+        {From, To} -> {'manual', From, To}
+    end.
+
+-spec maybe_req_seconds(cb_context:context(), api_binary()) -> api_seconds().
+maybe_req_seconds(Context, Key) ->
+    T = cb_context:req_value(Context, Key),
+    case wh_util:is_empty(T) of
+        'true' -> 'undefined';
+        'false' -> wh_util:to_integer(T)
     end.
 
 -spec on_successful_validation(cb_context:context()) -> cb_context:context().
