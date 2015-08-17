@@ -1,3 +1,4 @@
+
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
@@ -70,11 +71,11 @@ collect_conference_id(Call, Srv, DiscoveryJObj) ->
 
 -spec maybe_set_conference_tones(whapps_conference:conference(), wh_json:object()) ->
                                   whapps_conference:conference().
-maybe_set_conference_tones(Conf, JObj) ->
-    ShouldPlayOnEntry = wh_json:get_ne_value(<<"Play-Entry-Tone">>, JObj, whapps_conference:play_entry_tone(Conf)),
-    ShouldPlayOnExit = wh_json:get_ne_value(<<"Play-Exit-Tone">>, JObj, whapps_conference:play_exit_tone(Conf)),
+maybe_set_conference_tones(Conference, JObj) ->
+    ShouldPlayOnEntry = wh_json:get_ne_value(<<"Play-Entry-Tone">>, JObj, whapps_conference:play_entry_tone(Conference)),
+    ShouldPlayOnExit = wh_json:get_ne_value(<<"Play-Exit-Tone">>, JObj, whapps_conference:play_exit_tone(Conference)),
     whapps_conference:set_play_entry_tone(ShouldPlayOnEntry
-                                          ,whapps_conference:set_play_exit_tone(ShouldPlayOnExit, Conf)
+                                          ,whapps_conference:set_play_exit_tone(ShouldPlayOnExit, Conference)
                                          ).
 
 -spec maybe_collect_conference_pin(whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
