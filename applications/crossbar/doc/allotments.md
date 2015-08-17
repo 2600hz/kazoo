@@ -190,7 +190,7 @@ Class3 - 60 (180 Class3 + 60 Class2 = 240, 300-240 = 60)
 }
 ```
 
-## Get consumed allotments for a given account at certain time
+## Get consumed allotments for a certain period of time
 
 ### Request
 - Verb: `GET`
