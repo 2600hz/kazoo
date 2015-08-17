@@ -113,6 +113,9 @@ range_modb_view_options(Context, PrefixKeys, SuffixKeys, CreatedFrom, CreatedTo)
         Context1 -> Context1
     end.
 
+-spec range_modb_view_options1(cb_context:context(), api_binaries(), api_binaries(), gregorian_seconds(), gregorian_seconds()) ->
+                                     {'ok', crossbar_doc:view_options()} |
+                                     cb_context:context().
 range_modb_view_options1(Context, PrefixKeys, SuffixKeys, CreatedFrom, CreatedTo) ->
     AccountId = cb_context:account_id(Context),
     case PrefixKeys =:= [] andalso SuffixKeys =:= [] of
