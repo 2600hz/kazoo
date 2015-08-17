@@ -97,7 +97,7 @@ build_offnet_request(Data, Call) ->
        | wh_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)
       ]).
 
--spec get_channel_vars(whapps_call:call()) -> wh_proplist().
+-spec get_channel_vars(whapps_call:call()) -> wh_json:object().
 get_channel_vars(Call) ->
     wh_json:from_list(
       [{<<"Authorizing-ID">>, whapps_call:authorizing_id(Call)}]
