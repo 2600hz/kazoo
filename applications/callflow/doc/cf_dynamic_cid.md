@@ -24,7 +24,7 @@ Can only set the caller id number with this method.
 You dial the new caller id on the keypad when prompted.
 
 ## List action mode
-### Manditory fields 
+### Mandatory fields 
 
 **id** - cidlist, couchdb doc id of the document that contains the new caller
   id name and number information.
@@ -35,11 +35,11 @@ method.
 On a handset you dial `*2015149072508`
 
 It's hooked in as a part of the feature codes.  The callflow regex looks like this:
-`
+```
    "patterns": [
        "^\\*2(|[0-9]{2,})$"
 	   ],
-`
+```
 
 This means that `*2` is the "feature code" for this feature.
 
