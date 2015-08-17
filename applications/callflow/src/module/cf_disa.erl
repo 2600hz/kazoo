@@ -18,6 +18,9 @@
 
 -export([handle/2]).
 
+-define(DEFAULT_USE_ACCOUNT_CALLER_ID, whapps_config:get(?CF_CONFIG_CAT, <<"refault_use_account_caller_id">>, 'true')).
+-define(DEFAULT_PIN_LENGTH, whapps_config:get_integer(?CF_CONFIG_CAT, <<"default_pin_length">>, 10)).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -53,8 +56,7 @@ try_collect_pin(Call, _Pin, 0, _Interdigit) ->
 try_collect_pin(Call, Pin, Retries, Interdigit) ->
     Prompt = <<"disa-enter_pin">>,
     NoopId = whapps_call_command:prompt(Prompt, Call),
-    DefaultPinLength = whapps_config:get_integer(?CF_CONFIG_CAT, <<"default_pin_length">>, 10),
-    PinLength = erlang:max(DefaultPinLength, byte_size(Pin)),
+    PinLength = erlang:max(?DEFAULT_PIN_LENGTH, byte_size(Pin)),
 
     lager:debug("collecting up to ~p digits for pin", [PinLength]),
     case whapps_call_command:collect_digits(PinLength
@@ -147,8 +149,8 @@ maybe_restrict_call(Data, Call, Number, Flow) ->
 
 -spec maybe_update_caller_id(wh_json:object(), whapps_call:call()) -> whapps_call:call().
 maybe_update_caller_id(Data, Call) ->
-    case wh_json:is_true(<<"use_account_caller_id">>, Data, 'false') of
-        'true' -> set_caller_id(Call);
+    case wh_json:is_true(<<"use_account_caller_id">>, Data, ?DEFAULT_USE_ACCOUNT_CALLER_ID) of
+        'true'  -> set_caller_id(Call);
         'false' -> Call
     end.
 
