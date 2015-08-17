@@ -30,7 +30,7 @@
                    ,?WORKER('wh_cache')
                    ,?CACHE_ARGS(?WHAPPS_CONFIG_CACHE, ?CACHE_PROPS)
                    ,?WORKER('whistle_apps_init')
-                   ,?CACHE_ARGS(?WHAPPS_CALL_CACHE, ?CACHE_PROPS)
+                   ,?CACHE(?WHAPPS_CALL_CACHE)
                    ,?WORKER('whapps_controller')
                    ,?SUPER('whistle_services_sup')
                   ]).
