@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014, 2600Hz INC
+%%% @copyright (C) 2014-2015, 2600Hz INC
 %%% @doc
 %%%
 %%%
@@ -28,12 +28,44 @@
          ,xml_els_to_proplist/1
         ]).
 
--include("../knm.hrl").
+-include("knm.hrl").
 
 -define(KNM_VITELITY_CONFIG_CAT, <<(?KNM_CONFIG_CAT)/binary, ".vitelity">>).
 
--define(VITELITY_URI, whapps_config:get(?KNM_VITELITY_CONFIG_CAT, <<"api_uri">>
-                                        ,<<"http://api.vitelity.net/api.php">>)).
+-define(VITELITY_URI
+        ,whapps_config:get(?KNM_VITELITY_CONFIG_CAT
+                           ,<<"api_uri">>
+                           ,<<"http://api.vitelity.net/api.php">>
+                          )
+       ).
+
+%% <<"yes">> or <<"no">>
+-type yes_or_no() :: <<_:16>> | <<_:24>>.
+-type state_two_letters() :: <<_:16>>.
+
+-type qs_option() :: {'did', ne_binary()} |
+                     {'name', ne_binary()} |
+                     {'cmd', ne_binary()} |
+                     {'xml', yes_or_no()} |
+                     {'routesip', ne_binary()} |
+                     {'npanxx', ne_binary()} |
+                     {'type', ne_binary()} |
+                     {'withrates', yes_or_no()} |
+                     {'provider', ne_binary()} |
+                     {'cnam', yes_or_no()} |
+                     {'address', ne_binary()} |
+                     {'city', ne_binary()} |
+                     {'state', state_two_letters()} |
+                     {'zip', ne_binary() | integer()} |
+                     {'ratecenter', ne_binary()} |
+                     {'smsonly', yes_or_no()} |
+                     {'login', ne_binary()} |
+                     {'pass', ne_binary()}.
+-type qs_options() :: [qs_option()].
+
+-type query_option() :: {'qs', qs_options()} |
+                        {'uri', ne_binary()}.
+-type query_options() :: [query_option()].
 
 -spec api_uri() -> ne_binary().
 api_uri() ->
@@ -43,20 +75,20 @@ api_uri() ->
 config_cat() ->
     ?KNM_VITELITY_CONFIG_CAT.
 
--spec add_options_fold({atom(), api_binary()}, wh_proplist()) -> wh_proplist().
+-spec add_options_fold({atom(), api_binary()}, query_options()) -> query_options().
 add_options_fold({_K, 'undefined'}, Opts) -> Opts;
 add_options_fold({K, V}, Opts) ->
     props:insert_value(K, V, Opts).
 
--spec get_query_value(atom(), wh_proplist()) -> term().
+-spec get_query_value(atom(), query_options()) -> term().
 get_query_value(Key, Opts) ->
     case props:get_value(Key, Opts) of
         'undefined' -> whapps_config:get(?KNM_VITELITY_CONFIG_CAT, Key);
         Value -> Value
     end.
 
--spec default_options() -> wh_proplist().
--spec default_options(wh_proplist()) -> wh_proplist().
+-spec default_options() -> qs_options().
+-spec default_options(wh_proplist()) -> qs_options().
 default_options() ->
      default_options([]).
 default_options(Opts) ->
@@ -168,74 +200,67 @@ query_vitelity(URI) ->
             E
     end.
 
-
--spec get_short_state(ne_binary()) -> ne_binary() | 'undefined'.
+-spec get_short_state(ne_binary()) -> state_two_letters() | 'undefined'.
 get_short_state(FullState) ->
-    States = [
-        {<<"alabama">>, <<"AL">>}
-        ,{<<"alaska">>, <<"AK">>}
-        ,{<<"american samoa">>, <<"AS">>}
-        ,{<<"arizona">>, <<"AZ">>}
-        ,{<<"arkansas">>, <<"AR">>}
-        ,{<<"california">>, <<"CA">>}
-        ,{<<"colorado">>, <<"CO">>}
-        ,{<<"connecticut">>, <<"CT">>}
-        ,{<<"delaware">>, <<"DE">>}
-        ,{<<"district of columbia">>, <<"DC">>}
-        ,{<<"federated states of micronesia">>, <<"FM">>}
-        ,{<<"florida">>, <<"FL">>}
-        ,{<<"georgia">>, <<"GA">>}
-        ,{<<"guam">>, <<"GU">>}
-        ,{<<"hawaii">>, <<"HI">>}
-        ,{<<"idaho">>, <<"ID">>}
-        ,{<<"illinois">>, <<"IL">>}
-        ,{<<"indiana">>, <<"IN">>}
-        ,{<<"iowa">>, <<"IA">>}
-        ,{<<"kansas">>, <<"KS">>}
-        ,{<<"kentucky">>, <<"KY">>}
-        ,{<<"louisiana">>, <<"LA">>}
-        ,{<<"maine">>, <<"ME">>}
-        ,{<<"marshall islands">>, <<"MH">>}
-        ,{<<"maryland">>, <<"MD">>}
-        ,{<<"massachusetts">>, <<"MA">>}
-        ,{<<"michigan">>, <<"MI">>}
-        ,{<<"minnesota">>, <<"MN">>}
-        ,{<<"mississippi">>, <<"MS">>}
-        ,{<<"missouri">>, <<"MO">>}
-        ,{<<"montana">>, <<"MT">>}
-        ,{<<"nebraska">>, <<"NE">>}
-        ,{<<"nevada">>, <<"NV">>}
-        ,{<<"new hampshire">>, <<"NH">>}
-        ,{<<"new jersey">>, <<"NJ">>}
-        ,{<<"new mexico">>, <<"NM">>}
-        ,{<<"new york">>, <<"NY">>}
-        ,{<<"north carolina">>, <<"NC">>}
-        ,{<<"north dakota">>, <<"ND">>}
-        ,{<<"northern mariana islands">>, <<"MP">>}
-        ,{<<"ohio">>, <<"OH">>}
-        ,{<<"oklahoma">>, <<"OK">>}
-        ,{<<"oregon">>, <<"OR">>}
-        ,{<<"palau">>, <<"PW">>}
-        ,{<<"pennsylvania">>, <<"PA">>}
-        ,{<<"puerto rico">>, <<"PR">>}
-        ,{<<"rhode island">>, <<"RI">>}
-        ,{<<"south carolina">>, <<"SC">>}
-        ,{<<"south dakota">>, <<"SD">>}
-        ,{<<"tennessee">>, <<"TN">>}
-        ,{<<"texas">>, <<"TX">>}
-        ,{<<"utah">>, <<"UT">>}
-        ,{<<"vermont">>, <<"VT">>}
-        ,{<<"virgin islands">>, <<"VI">>}
-        ,{<<"virginia">>, <<"VA">>}
-        ,{<<"washington">>, <<"WA">>}
-        ,{<<"west virginia">>, <<"WV">>}
-        ,{<<"wisconsin">>, <<"WI">>}
-        ,{<<"wyoming">>, <<"WY">>}
-    ],
-    State =  wh_util:to_lower_binary(FullState),
+    States = [{<<"alabama">>, <<"AL">>}
+              ,{<<"alaska">>, <<"AK">>}
+              ,{<<"american samoa">>, <<"AS">>}
+              ,{<<"arizona">>, <<"AZ">>}
+              ,{<<"arkansas">>, <<"AR">>}
+              ,{<<"california">>, <<"CA">>}
+              ,{<<"colorado">>, <<"CO">>}
+              ,{<<"connecticut">>, <<"CT">>}
+              ,{<<"delaware">>, <<"DE">>}
+              ,{<<"district of columbia">>, <<"DC">>}
+              ,{<<"federated states of micronesia">>, <<"FM">>}
+              ,{<<"florida">>, <<"FL">>}
+              ,{<<"georgia">>, <<"GA">>}
+              ,{<<"guam">>, <<"GU">>}
+              ,{<<"hawaii">>, <<"HI">>}
+              ,{<<"idaho">>, <<"ID">>}
+              ,{<<"illinois">>, <<"IL">>}
+              ,{<<"indiana">>, <<"IN">>}
+              ,{<<"iowa">>, <<"IA">>}
+              ,{<<"kansas">>, <<"KS">>}
+              ,{<<"kentucky">>, <<"KY">>}
+              ,{<<"louisiana">>, <<"LA">>}
+              ,{<<"maine">>, <<"ME">>}
+              ,{<<"marshall islands">>, <<"MH">>}
+              ,{<<"maryland">>, <<"MD">>}
+              ,{<<"massachusetts">>, <<"MA">>}
+              ,{<<"michigan">>, <<"MI">>}
+              ,{<<"minnesota">>, <<"MN">>}
+              ,{<<"mississippi">>, <<"MS">>}
+              ,{<<"missouri">>, <<"MO">>}
+              ,{<<"montana">>, <<"MT">>}
+              ,{<<"nebraska">>, <<"NE">>}
+              ,{<<"nevada">>, <<"NV">>}
+              ,{<<"new hampshire">>, <<"NH">>}
+              ,{<<"new jersey">>, <<"NJ">>}
+              ,{<<"new mexico">>, <<"NM">>}
+              ,{<<"new york">>, <<"NY">>}
+              ,{<<"north carolina">>, <<"NC">>}
+              ,{<<"north dakota">>, <<"ND">>}
+              ,{<<"northern mariana islands">>, <<"MP">>}
+              ,{<<"ohio">>, <<"OH">>}
+              ,{<<"oklahoma">>, <<"OK">>}
+              ,{<<"oregon">>, <<"OR">>}
+              ,{<<"palau">>, <<"PW">>}
+              ,{<<"pennsylvania">>, <<"PA">>}
+              ,{<<"puerto rico">>, <<"PR">>}
+              ,{<<"rhode island">>, <<"RI">>}
+              ,{<<"south carolina">>, <<"SC">>}
+              ,{<<"south dakota">>, <<"SD">>}
+              ,{<<"tennessee">>, <<"TN">>}
+              ,{<<"texas">>, <<"TX">>}
+              ,{<<"utah">>, <<"UT">>}
+              ,{<<"vermont">>, <<"VT">>}
+              ,{<<"virgin islands">>, <<"VI">>}
+              ,{<<"virginia">>, <<"VA">>}
+              ,{<<"washington">>, <<"WA">>}
+              ,{<<"west virginia">>, <<"WV">>}
+              ,{<<"wisconsin">>, <<"WI">>}
+              ,{<<"wyoming">>, <<"WY">>}
+             ],
+    State = wh_util:to_lower_binary(FullState),
     props:get_value(State, States).
-
-
-
-
-

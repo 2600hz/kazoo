@@ -8,44 +8,68 @@
 %%%-------------------------------------------------------------------
 -module(knm_phone_number).
 
--include("knm.hrl").
+-export([fetch/1, fetch/2
+         ,save/1
+         ,delete/1
+        ]).
 
--export([
-    fetch/1, fetch/2
-    ,save/1
-    ,delete/1
-]).
+-export([to_json/1
+         ,to_public_json/1
+         ,from_json/1
+        ]).
 
--export([
-    to_json/1
-    ,to_public_json/1
-    ,from_json/1
-]).
-
--export([
-    setters/2
-    ,new/0
-    ,number/1, set_number/2
-    ,number_db/1 ,set_number_db/2
-    ,assigned_to/1 ,set_assigned_to/2
-    ,prev_assigned_to/1 ,set_prev_assigned_to/2
-    ,used_by/1 ,set_used_by/2
-    ,features/1 ,set_features/2
-    ,feature/2 ,set_feature/3
-    ,state/1 ,set_state/2
-    ,reserve_history/1 ,set_reserve_history/2
-    ,ported_in/1 ,set_ported_in/2
-    ,module_name/1 ,set_module_name/2
-    ,carrier_data/1 ,set_carrier_data/2
-    ,region/1 ,set_region/2
-    ,auth_by/1 ,set_auth_by/2, is_authorized/1
-    ,dry_run/1 ,set_dry_run/2
-    ,locality/1 ,set_locality/2
-    ,fetch_storage/2 ,fetch_storage/3 ,store/3
-    ,doc/1
-]).
+-export([setters/2
+         ,new/0
+         ,number/1, set_number/2
+         ,number_db/1 ,set_number_db/2
+         ,assigned_to/1 ,set_assigned_to/2
+         ,prev_assigned_to/1 ,set_prev_assigned_to/2
+         ,used_by/1 ,set_used_by/2
+         ,features/1 ,set_features/2
+         ,feature/2 ,set_feature/3
+         ,state/1 ,set_state/2
+         ,reserve_history/1 ,set_reserve_history/2
+         ,ported_in/1 ,set_ported_in/2
+         ,module_name/1 ,set_module_name/2
+         ,carrier_data/1 ,set_carrier_data/2
+         ,region/1 ,set_region/2
+         ,auth_by/1 ,set_auth_by/2, is_authorized/1
+         ,dry_run/1 ,set_dry_run/2
+         ,locality/1 ,set_locality/2
+         ,fetch_storage/2 ,fetch_storage/3 ,store/3
+         ,doc/1
+        ]).
 
 -export([default_options/0]).
+
+-include("knm.hrl").
+
+-record(number, {number :: ne_binary()
+                 ,number_db :: ne_binary()
+                 ,assigned_to :: api_binary()
+                 ,prev_assigned_to :: api_binary()
+                 ,used_by :: api_binary()
+                 ,features = wh_json:new() :: wh_json:object()
+                 ,state :: ne_binary()
+                 ,reserve_history = [] :: ne_binaries()
+                 ,ported_in = 'false' :: boolean()
+                 ,module_name :: ne_binary()
+                 ,carrier_data :: wh_json:object()
+                 ,region :: ne_binary()
+                 ,auth_by = ?DEFAULT_AUTH_BY :: ne_binary()
+                 ,dry_run = 'false' :: boolean()
+                 ,locality :: wh_json:object()
+                 ,storage = [] :: wh_proplist()
+                 ,doc :: wh_json:object()
+                }).
+-type knm_number() :: #number{}.
+
+-type knm_numbers() :: [knm_number(), ...] | [].
+
+-export_type([knm_number/0
+              ,knm_numbers/0
+              ,set_functions/0
+             ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -78,21 +102,19 @@ fetch(Num, Options) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec save(number()) -> number_return().
+-spec save(knm_number()) -> number_return().
 save(#number{dry_run='true'}=Number) ->
-    Routines = [
-        fun knm_providers:save/1
-        ,fun knm_services:maybe_update_services/1
-        ,fun(N) -> {'ok', N} end
-    ],
+    Routines = [fun knm_providers:save/1
+                ,fun knm_services:maybe_update_services/1
+                ,fun(N) -> {'ok', N} end
+               ],
     setters(Number, Routines);
 save(#number{dry_run='false'}=Number) ->
-    Routines = [
-        fun knm_providers:save/1
-        ,fun knm_services:maybe_update_services/1
-        ,fun save_to_number_db/1
-        ,fun handle_assignment/1
-    ],
+    Routines = [fun knm_providers:save/1
+                ,fun knm_services:maybe_update_services/1
+                ,fun save_to_number_db/1
+                ,fun handle_assignment/1
+               ],
     setters(Number, Routines).
 
 %%--------------------------------------------------------------------
@@ -100,14 +122,13 @@ save(#number{dry_run='false'}=Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec delete(number()) -> number_return().
+-spec delete(knm_number()) -> number_return().
 delete(#number{dry_run='true'}=Number) -> {'ok', Number};
 delete(#number{dry_run='false'}=Number) ->
-    Routines = [
-        fun knm_providers:delete/1
-        ,fun delete_number_doc/1
-        ,fun maybe_remove_number_from_account/1
-    ],
+    Routines = [fun knm_providers:delete/1
+                ,fun delete_number_doc/1
+                ,fun maybe_remove_number_from_account/1
+               ],
     setters(Number, Routines).
 
 %%--------------------------------------------------------------------
@@ -115,13 +136,12 @@ delete(#number{dry_run='false'}=Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec to_public_json(number()) -> wh_json:object().
+-spec to_public_json(knm_number()) -> wh_json:object().
 to_public_json(Number) ->
     Remove = [],
-    Format = [
-        {?PVT_USED_BY, <<"used_by">>}
-        ,{?PVT_FEATURES, <<"features">>}
-    ],
+    Format = [{?PVT_USED_BY, <<"used_by">>}
+              ,{?PVT_FEATURES, <<"features">>}
+             ],
     JObj = wh_json:normalize_jobj(to_json(Number), Remove, Format),
     wh_json:public_fields(JObj).
 
@@ -130,59 +150,58 @@ to_public_json(Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec to_json(number()) -> wh_json:object().
+-spec to_json(knm_number()) -> wh_json:object().
 to_json(#number{doc=JObj}=N) ->
     Now = wh_util:current_tstamp(),
     wh_json:from_list(
-        props:filter_undefined([
-            {<<"_id">>, number(N)}
-            ,{?PVT_DB_NAME, number_db(N)}
-            ,{?PVT_ASSIGNED_TO, assigned_to(N)}
-            ,{?PVT_PREVIOUSLY_ASSIGNED_TO, prev_assigned_to(N)}
-            ,{?PVT_USED_BY, used_by(N)}
-            ,{?PVT_FEATURES, features(N)}
-            ,{?PVT_STATE, state(N)}
-            ,{?PVT_RESERVE_HISTORY, reserve_history(N)}
-            ,{?PVT_PORTED_IN, ported_in(N)}
-            ,{?PVT_MODULE_NAME, module_name(N)}
-            ,{?PVT_CARRIER_DATA, carrier_data(N)}
-            ,{?PVT_REGION, region(N)}
-            ,{?PVT_MODIFIED, Now}
-            ,{?PVT_CREATED, wh_json:get_value(<<"pvt_created">>, JObj, Now)}
-            ,{?PVT_TYPE, <<"number">>}
+      props:filter_undefined(
+        [{<<"_id">>, number(N)}
+         ,{?PVT_DB_NAME, number_db(N)}
+         ,{?PVT_ASSIGNED_TO, assigned_to(N)}
+         ,{?PVT_PREVIOUSLY_ASSIGNED_TO, prev_assigned_to(N)}
+         ,{?PVT_USED_BY, used_by(N)}
+         ,{?PVT_FEATURES, features(N)}
+         ,{?PVT_STATE, state(N)}
+         ,{?PVT_RESERVE_HISTORY, reserve_history(N)}
+         ,{?PVT_PORTED_IN, ported_in(N)}
+         ,{?PVT_MODULE_NAME, module_name(N)}
+         ,{?PVT_CARRIER_DATA, carrier_data(N)}
+         ,{?PVT_REGION, region(N)}
+         ,{?PVT_MODIFIED, Now}
+         ,{?PVT_CREATED, wh_doc:created(JObj, Now)}
+         ,{?PVT_TYPE, <<"number">>}
         ])
-    ).
+     ).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec from_json(wh_json:object()) -> number().
+-spec from_json(wh_json:object()) -> knm_number().
 from_json(JObj) ->
     #number{
-        number=wh_json:get_value(<<"_id">>, JObj)
-        ,number_db=wh_json:get_value(?PVT_DB_NAME, JObj)
-        ,assigned_to=wh_json:get_value(?PVT_ASSIGNED_TO, JObj)
-        ,prev_assigned_to=wh_json:get_value(?PVT_PREVIOUSLY_ASSIGNED_TO, JObj)
-        ,used_by=wh_json:get_value(?PVT_USED_BY, JObj)
-        ,features=wh_json:get_value(?PVT_FEATURES, JObj)
-        ,state=wh_json:get_value(?PVT_STATE, JObj)
-        ,reserve_history=wh_json:get_value(?PVT_RESERVE_HISTORY, JObj)
-        ,ported_in=wh_json:get_value(?PVT_PORTED_IN, JObj)
-        ,module_name=wh_json:get_value(?PVT_MODULE_NAME, JObj)
-        ,carrier_data=wh_json:get_value(?PVT_CARRIER_DATA, JObj)
-        ,region=wh_json:get_value(?PVT_REGION, JObj)
-        ,doc=JObj
-    }.
-
+       number=wh_doc:id(JObj)
+       ,number_db=wh_json:get_value(?PVT_DB_NAME, JObj)
+       ,assigned_to=wh_json:get_value(?PVT_ASSIGNED_TO, JObj)
+       ,prev_assigned_to=wh_json:get_value(?PVT_PREVIOUSLY_ASSIGNED_TO, JObj)
+       ,used_by=wh_json:get_value(?PVT_USED_BY, JObj)
+       ,features=wh_json:get_value(?PVT_FEATURES, JObj)
+       ,state=wh_json:get_value(?PVT_STATE, JObj)
+       ,reserve_history=wh_json:get_value(?PVT_RESERVE_HISTORY, JObj)
+       ,ported_in=wh_json:get_value(?PVT_PORTED_IN, JObj)
+       ,module_name=wh_json:get_value(?PVT_MODULE_NAME, JObj)
+       ,carrier_data=wh_json:get_value(?PVT_CARRIER_DATA, JObj)
+       ,region=wh_json:get_value(?PVT_REGION, JObj)
+       ,doc=JObj
+      }.
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec new() -> number().
+-spec new() -> knm_number().
 new() ->
     #number{}.
 
@@ -191,14 +210,25 @@ new() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec setters(number(), wh_proplist()) -> number() | number_return().
-setters(Number, Props) ->
+-spec setters(knm_number(), set_functions()) ->
+                     knm_number() |
+                     number_return().
+setters(Number, Routines) ->
     lists:foldl(
-        fun setters_fold/2
-        ,Number
-        ,Props
-    ).
+      fun setters_fold/2
+      ,Number
+      ,Routines
+     ).
 
+-type set_function() :: function() |
+                        {function(), term()}.
+-type set_functions() :: [set_function()].
+
+-type setter_acc() :: {'ok', knm_number()} |
+                      knm_number() |
+                      {'error', _}.
+
+-spec setters_fold(set_function(), setter_acc()) -> setter_acc().
 setters_fold(_, {'error', _R}=Error) ->
     Error;
 setters_fold({Fun, [_|_]=Value}, {'ok', Number}) when is_function(Fun) ->
@@ -207,31 +237,30 @@ setters_fold({Fun, [_|_]=Value}, {'ok', Number}) when is_function(Fun) ->
 setters_fold({Fun, [_|_]=Value}, Number) when is_function(Fun) ->
     lager:debug("applying ~p", [Fun]),
     erlang:apply(Fun, [Number|Value]);
+
 setters_fold({Fun, Value}, {'ok', Number}) when is_function(Fun) ->
     lager:debug("applying ~p", [Fun]),
     erlang:apply(Fun, [Number, Value]);
 setters_fold({Fun, Value}, Number) when is_function(Fun) ->
     lager:debug("applying ~p", [Fun]),
     erlang:apply(Fun, [Number, Value]);
+
 setters_fold(Fun, {'ok', Number}) when is_function(Fun) ->
     lager:debug("applying ~p", [Fun]),
     erlang:apply(Fun, [Number]);
 setters_fold(Fun, Number) when is_function(Fun) ->
     lager:debug("applying ~p", [Fun]),
-    erlang:apply(Fun, [Number]);
-setters_fold(_Fun, Acc) ->
-    lager:warning("unknown fun ~p", [_Fun]),
-    Acc.
+    erlang:apply(Fun, [Number]).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec number(number()) -> ne_binary().
+-spec number(knm_number()) -> ne_binary().
 number(#number{number=Num}) -> Num.
 
--spec set_number(number(), ne_binary()) -> number().
+-spec set_number(knm_number(), ne_binary()) -> knm_number().
 set_number(N, Number) ->
     N#number{number=Number}.
 
@@ -240,10 +269,10 @@ set_number(N, Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec number_db(number()) -> ne_binary().
+-spec number_db(knm_number()) -> ne_binary().
 number_db(#number{number_db=Db}) -> Db.
 
--spec set_number_db(number(), ne_binary()) -> number().
+-spec set_number_db(knm_number(), ne_binary()) -> knm_number().
 set_number_db(N, NumberDb) ->
     N#number{number_db=NumberDb}.
 
@@ -252,10 +281,10 @@ set_number_db(N, NumberDb) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec assigned_to(number()) -> ne_binary().
+-spec assigned_to(knm_number()) -> ne_binary().
 assigned_to(#number{assigned_to=AssignedTo}) -> AssignedTo.
 
--spec set_assigned_to(number(), ne_binary()) -> number().
+-spec set_assigned_to(knm_number(), ne_binary()) -> knm_number().
 set_assigned_to(N, AccountId) ->
     N#number{assigned_to=AccountId}.
 
@@ -264,10 +293,10 @@ set_assigned_to(N, AccountId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec prev_assigned_to(number()) -> ne_binary().
+-spec prev_assigned_to(knm_number()) -> ne_binary().
 prev_assigned_to(#number{prev_assigned_to=PrevAssignedTo}) -> PrevAssignedTo.
 
--spec set_prev_assigned_to(number(), ne_binary()) -> number().
+-spec set_prev_assigned_to(knm_number(), ne_binary()) -> knm_number().
 set_prev_assigned_to(N, AccountId) ->
     N#number{prev_assigned_to=AccountId}.
 
@@ -276,10 +305,10 @@ set_prev_assigned_to(N, AccountId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec used_by(number()) -> ne_binary().
+-spec used_by(knm_number()) -> ne_binary().
 used_by(#number{used_by=UsedBy}) -> UsedBy.
 
--spec set_used_by(number(), ne_binary()) -> number().
+-spec set_used_by(knm_number(), ne_binary()) -> knm_number().
 set_used_by(N, UsedBy) ->
     N#number{used_by=UsedBy}.
 
@@ -288,10 +317,10 @@ set_used_by(N, UsedBy) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec features(number()) -> ne_binary().
+-spec features(knm_number()) -> wh_json:object().
 features(#number{features=Features}) -> Features.
 
--spec set_features(number(), ne_binary()) -> number().
+-spec set_features(knm_number(), wh_json:object()) -> knm_number().
 set_features(N, Features) ->
     N#number{features=Features}.
 
@@ -300,11 +329,11 @@ set_features(N, Features) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec feature(number(), ne_binary()) -> ne_binary().
+-spec feature(knm_number(), ne_binary()) -> api_binary().
 feature(Number, Feature) ->
     wh_json:get_value(Feature, features(Number)).
 
--spec set_feature(number(), ne_binary(), _) -> number().
+-spec set_feature(knm_number(), ne_binary(), wh_json:json_term()) -> knm_number().
 set_feature(N, Feature, Data) ->
     Features = wh_json:set_value(Feature, Data, features(N)),
     N#number{features=Features}.
@@ -314,10 +343,10 @@ set_feature(N, Feature, Data) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec state(number()) -> ne_binary().
+-spec state(knm_number()) -> api_binary().
 state(#number{state=State}) -> State.
 
--spec set_state(number(), ne_binary()) -> number().
+-spec set_state(knm_number(), ne_binary()) -> knm_number().
 set_state(N, State) ->
     N#number{state=State}.
 
@@ -326,10 +355,10 @@ set_state(N, State) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec reserve_history(number()) -> ne_binaries().
+-spec reserve_history(knm_number()) -> ne_binaries().
 reserve_history(#number{reserve_history=History}) -> History.
 
--spec set_reserve_history(number(), ne_binaries()) -> number().
+-spec set_reserve_history(knm_number(), ne_binaries()) -> knm_number().
 set_reserve_history(N, History) ->
     N#number{reserve_history=History}.
 
@@ -338,10 +367,10 @@ set_reserve_history(N, History) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec ported_in(number()) -> boolean().
+-spec ported_in(knm_number()) -> boolean().
 ported_in(#number{ported_in=Ported}) -> Ported.
 
--spec set_ported_in(number(), boolean()) -> number().
+-spec set_ported_in(knm_number(), boolean()) -> knm_number().
 set_ported_in(N, Ported) ->
     N#number{ported_in=Ported}.
 
@@ -350,10 +379,10 @@ set_ported_in(N, Ported) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec module_name(number()) -> ne_binary().
+-spec module_name(knm_number()) -> api_binary().
 module_name(#number{module_name=Name}) -> Name.
 
--spec set_module_name(number(), ne_binary()) -> number().
+-spec set_module_name(knm_number(), ne_binary()) -> knm_number().
 set_module_name(N, Name) ->
     N#number{module_name=Name}.
 
@@ -362,10 +391,10 @@ set_module_name(N, Name) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec carrier_data(number()) -> ne_binary().
+-spec carrier_data(knm_number()) -> api_object().
 carrier_data(#number{carrier_data=Data}) -> Data.
 
--spec set_carrier_data(number(), wh_json:object()) -> number().
+-spec set_carrier_data(knm_number(), wh_json:object()) -> knm_number().
 set_carrier_data(N, Data) ->
     N#number{carrier_data=Data}.
 
@@ -374,10 +403,10 @@ set_carrier_data(N, Data) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec region(number()) -> ne_binary().
+-spec region(knm_number()) -> ne_binary().
 region(#number{region=Region}) -> Region.
 
--spec set_region(number(), ne_binary()) -> number().
+-spec set_region(knm_number(), ne_binary()) -> knm_number().
 set_region(N, Region) ->
     N#number{region=Region}.
 
@@ -386,10 +415,10 @@ set_region(N, Region) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec auth_by(number()) -> ne_binary().
+-spec auth_by(knm_number()) -> ne_binary().
 auth_by(#number{auth_by=AuthBy}) -> AuthBy.
 
--spec set_auth_by(number(), ne_binary()) -> number().
+-spec set_auth_by(knm_number(), ne_binary()) -> knm_number().
 set_auth_by(N, AuthBy) ->
     N#number{auth_by=AuthBy}.
 
@@ -398,10 +427,10 @@ set_auth_by(N, AuthBy) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec dry_run(number()) -> ne_binary().
+-spec dry_run(knm_number()) -> boolean().
 dry_run(#number{dry_run=DryRun}) -> DryRun.
 
--spec set_dry_run(number(), ne_binary()) -> number().
+-spec set_dry_run(knm_number(), boolean()) -> knm_number().
 set_dry_run(N, DryRun) ->
     N#number{dry_run=DryRun}.
 
@@ -410,10 +439,10 @@ set_dry_run(N, DryRun) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec locality(number()) -> ne_binary().
+-spec locality(knm_number()) -> wh_json:object().
 locality(#number{locality=Locality}) -> Locality.
 
--spec set_locality(number(), wh_json:object()) -> number().
+-spec set_locality(knm_number(), wh_json:object()) -> knm_number().
 set_locality(N, JObj) ->
     N#number{locality=JObj}.
 
@@ -422,15 +451,15 @@ set_locality(N, JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_storage(number(), ne_binary()) -> any().
--spec fetch_storage(number(), ne_binary(), any()) -> any().
+-spec fetch_storage(knm_number(), ne_binary()) -> any().
+-spec fetch_storage(knm_number(), ne_binary(), Default) -> any() | Default.
 fetch_storage(Number, Key) ->
     props:get_value(Key, Number#number.storage).
 
 fetch_storage(Number, Key, Default) ->
     props:get_value(Key, Number#number.storage, Default).
 
--spec store(number(), ne_binary(), any()) -> number().
+-spec store(knm_number(), ne_binary(), any()) -> knm_number().
 store(N, Key, Data) ->
     Storage = props:set_value(Key, Data, N#number.storage),
     N#number{storage=Storage}.
@@ -440,7 +469,7 @@ store(N, Key, Data) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec doc(number()) -> wh_json:object().
+-spec doc(knm_number()) -> wh_json:object().
 doc(#number{doc=Doc}) -> Doc.
 
 %%--------------------------------------------------------------------
@@ -451,7 +480,8 @@ doc(#number{doc=Doc}) -> Doc.
 -spec default_options() -> wh_proplist().
 default_options() ->
     [{<<"auth_by">>, ?DEFAULT_AUTH_BY}
-     ,{<<"dry_run">>, 'false'}].
+     ,{<<"dry_run">>, 'false'}
+    ].
 
 %%%===================================================================
 %%% Internal functions
@@ -462,14 +492,13 @@ default_options() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set_options(number(), wh_proplist()) -> number().
+-spec set_options(knm_number(), wh_proplist()) -> knm_number().
 set_options(Number, Options) ->
     DryRun = props:get_is_true(<<"dry_run">>, Options, 'false'),
     AuthBy = props:get_binary_value(<<"auth_by">>, Options, ?DEFAULT_AUTH_BY),
-    Props = [
-        {fun set_dry_run/2, DryRun}
-        ,{fun set_auth_by/2, AuthBy}
-    ],
+    Props = [{fun set_dry_run/2, DryRun}
+             ,{fun set_auth_by/2, AuthBy}
+            ],
     setters(Number, Props).
 
 %%--------------------------------------------------------------------
@@ -477,7 +506,7 @@ set_options(Number, Options) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec is_authorized(number()) -> boolean().
+-spec is_authorized(knm_number()) -> boolean().
 is_authorized(#number{auth_by= ?DEFAULT_AUTH_BY}) -> 'true';
 is_authorized(#number{assigned_to=AssignedTo, auth_by=AuthBy}) ->
     wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, 'true').
@@ -487,7 +516,7 @@ is_authorized(#number{assigned_to=AssignedTo, auth_by=AuthBy}) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec save_to_number_db(number()) -> number_return().
+-spec save_to_number_db(knm_number()) -> number_return().
 save_to_number_db(Number) ->
     NumberDb = number_db(Number),
     JObj = to_json(Number),
@@ -503,7 +532,7 @@ save_to_number_db(Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle_assignment(number()) -> number_return().
+-spec handle_assignment(knm_number()) -> number_return().
 handle_assignment(Number) ->
     lager:debug("handling assignment for ~s", [number(Number)]),
     case maybe_assign(Number) of
@@ -517,7 +546,7 @@ handle_assignment(Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_assign(number()) -> number_return().
+-spec maybe_assign(knm_number()) -> number_return().
 maybe_assign(Number) ->
     AssignedTo = assigned_to(Number),
     case wh_util:is_empty(AssignedTo) of
@@ -527,7 +556,7 @@ maybe_assign(Number) ->
         'false' -> assign(Number, AssignedTo)
     end.
 
--spec assign(number(), ne_binary()) -> number_return().
+-spec assign(knm_number(), ne_binary()) -> number_return().
 assign(Number, AssignedTo) ->
     AccountDb = wh_util:format_account_id(AssignedTo, 'encoded'),
     case couch_mgr:ensure_saved(AccountDb, to_json(Number)) of
@@ -544,8 +573,8 @@ assign(Number, AssignedTo) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_unassign(number()) -> number_return().
--spec maybe_unassign(number(), ne_binary()) -> number_return().
+-spec maybe_unassign(knm_number()) -> number_return().
+-spec maybe_unassign(knm_number(), ne_binary()) -> number_return().
 maybe_unassign(Number) ->
     PrevAssignedTo = prev_assigned_to(Number),
     case wh_util:is_empty(PrevAssignedTo) of
@@ -566,7 +595,7 @@ maybe_unassign(Number, PrevAssignedTo) ->
         {'error', _R} -> unassign(Number, PrevAssignedTo)
     end.
 
--spec unassign(number(), ne_binary()) -> number_return().
+-spec unassign(knm_number(), ne_binary()) -> number_return().
 unassign(Number, PrevAssignedTo) ->
     AccountDb = wh_util:format_account_id(PrevAssignedTo, 'encoded'),
     case couch_mgr:del_doc(AccountDb, to_json(Number)) of
@@ -593,7 +622,7 @@ get_number_in_account(AccountId, Num) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec delete_number_doc(number()) -> number_return().
+-spec delete_number_doc(knm_number()) -> number_return().
 delete_number_doc(Number) ->
     NumberDb = number_db(Number),
     JObj = to_json(Number),
@@ -607,7 +636,7 @@ delete_number_doc(Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_remove_number_from_account(number()) -> number_return().
+-spec maybe_remove_number_from_account(knm_number()) -> number_return().
 maybe_remove_number_from_account(Number) ->
     AssignedTo = assigned_to(Number),
     case wh_util:is_empty(AssignedTo) of
@@ -622,6 +651,3 @@ maybe_remove_number_from_account(Number) ->
                 {'ok', _} -> {'ok', Number}
             end
     end.
-
-
-

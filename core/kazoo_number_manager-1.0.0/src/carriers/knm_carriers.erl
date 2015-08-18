@@ -37,21 +37,33 @@ find(Num, Quantity, Opts) ->
     NormalizedNumber = knm_converters:normalize(Num),
 
     lager:info(
-        "attempting to find ~p numbers with prefix '~s' for account ~p"
-        ,[Quantity, NormalizedNumber, AccountId]
-    ),
+      "attempting to find ~p numbers with prefix '~s' for account ~p"
+      ,[Quantity, NormalizedNumber, AccountId]
+     ),
 
     lists:foldl(
-        fun(Mod, Acc) ->
-            format_find_resp(
+      fun(Mod, Acc) ->
+              format_find_resp(
                 Mod
-                ,catch(Mod:find_numbers(NormalizedNumber, Quantity, Opts))
+                ,attempt_find(Mod, NormalizedNumber, Quantity, Opts)
                 ,Acc
-            )
-        end
-        ,[]
-        ,?MODULE:list_modules()
-    ).
+               )
+      end
+      ,[]
+      ,?MODULE:list_modules()
+     ).
+
+-spec attempt_find(atom(), ne_binary(), integer(), wh_proplist()) ->
+                          {'ok', knm_phone_number:knm_numbers()} |
+                          {'error', _}.
+attempt_find(Mod, NormalizedNumber, Quantity, Opts) ->
+    try Mod:find_numbers(NormalizedNumber, Quantity, Opts) of
+        Resp -> Resp
+    catch
+        _E:R ->
+            lager:warning("failed to find ~s: ~s: ~p", [NormalizedNumber, _E, R]),
+            {'error', R}
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -81,7 +93,9 @@ check(Numbers, Opts) ->
 list_modules() ->
     CarrierModules =
         whapps_config:get(?KNM_CONFIG_CAT, <<"carrier_modules">>, ?DEFAULT_CARRIER_MODULES),
-    [Module || M <- CarrierModules, (Module = wh_util:try_load_module(M)) =/= 'false'].
+    [Module || M <- CarrierModules,
+               (Module = wh_util:try_load_module(M)) =/= 'false'
+    ].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -89,16 +103,16 @@ list_modules() ->
 %% Create a list of all available carrier modules
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_acquire(number()) -> number_return().
--spec maybe_acquire(number(), api_binary(), boolean()) -> number_return().
+-spec maybe_acquire(knm_phone_number:knm_number()) -> number_return().
+-spec maybe_acquire(knm_phone_number:knm_number(), ne_binary(), boolean()) -> number_return().
 maybe_acquire(Number) ->
     Module = knm_phone_number:module_name(Number),
     DryRun = knm_phone_number:dry_run(Number),
     maybe_acquire(Number, Module, DryRun).
 
-maybe_acquire(_Number, 'undefined', _DryRun) -> {'error', 'undefined_module'};
-maybe_acquire(Number, _Mod, 'true') -> {'ok', Number};
-maybe_acquire(Number, Mod, 'false') ->
+maybe_acquire(Number, _Mod, 'true') ->
+    {'ok', Number};
+maybe_acquire(Number, <<_/binary>> = Mod, 'false') ->
     Module = wh_util:to_atom(Mod, 'true'),
     Module:acquire_number(Number).
 
@@ -108,7 +122,7 @@ maybe_acquire(Number, Mod, 'false') ->
 %% Create a list of all available carrier modules
 %% @end
 %%--------------------------------------------------------------------
--spec disconnect(number()) -> number_return().
+-spec disconnect(knm_phone_number:knm_number()) -> number_return().
 disconnect(Number) ->
     Mod = knm_phone_number:module_name(Number),
     Module = wh_util:to_atom(Mod, 'true'),
@@ -123,14 +137,14 @@ disconnect(Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec format_find_resp(atom(), any(), wh_json:objects()) -> wh_json:objects().
+-type find_resp() :: {'ok', knm_phone_number:knm_numbers()} |
+                     {'error', _}.
+
+-spec format_find_resp(atom(), find_resp(), wh_json:objects()) ->
+                              wh_json:objects().
 format_find_resp(_Module, {'ok', Numbers}, Acc) ->
     lager:debug("found numbers in ~p", [_Module]),
     lists:reverse([knm_phone_number:to_public_json(Number) || Number <- Numbers]) ++ Acc;
 format_find_resp(_Module, {'error', _Reason}, Acc) ->
     lager:error("failed to find number in ~p : ~p", [_Module, _Reason]),
-    Acc;
-format_find_resp(_Module, _Data, Acc) ->
-    lager:error("unknown return for module ~p", [_Module]),
-    lager:error("~p", [_Data]),
     Acc.

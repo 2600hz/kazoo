@@ -162,11 +162,10 @@ assigned_to_app([{Num, App}|Props], Options, Acc) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec buy(binary(), binary()) -> numbers_return().
+-spec buy(ne_binaries(), ne_binary()) -> numbers_return().
 buy(Nums, Account) ->
     [knm_number:buy(Num, Account) || Num <- Nums].
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-

@@ -22,8 +22,8 @@
 %% add the prepend route (for in service numbers only)
 %% @end
 %%--------------------------------------------------------------------
--spec save(number()) -> number_return().
--spec save(number(), ne_binary()) -> number_return().
+-spec save(knm_phone_number:knm_number()) -> number_return().
+-spec save(knm_phone_number:knm_number(), ne_binary()) -> number_return().
 save(Number) ->
     State = knm_phone_number:state(Number),
     save(Number, State).
@@ -40,12 +40,14 @@ save(Number, _State) ->
 %% remove the prepend route
 %% @end
 %%--------------------------------------------------------------------
--spec delete(number()) -> number_return().
+-spec delete(knm_phone_number:knm_number()) ->
+                    {'ok', knm_phone_number:knm_number()}.
 delete(Number) ->
     case knm_phone_number:feature(Number, ?PREPEND_KEY) of
-        'undefined' -> {'ok', Number};
+        'undefined' ->
+            {'ok', Number};
         _Else ->
-            {'ok', knm_services:deactivate_feature(Number, ?PREPEND_KEY)}
+            knm_services:deactivate_feature(Number, ?PREPEND_KEY)
     end.
 
 %%%===================================================================
@@ -58,7 +60,7 @@ delete(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_update_prepend(number()) -> number_return().
+-spec maybe_update_prepend(knm_phone_number:knm_number()) -> number_return().
 maybe_update_prepend(Number) ->
     Features = knm_phone_number:features(Number),
     CurrentPrepend = wh_json:get_ne_value(?PREPEND_KEY, Features),
@@ -70,14 +72,14 @@ maybe_update_prepend(Number) ->
 
     case wh_util:is_empty(Prepend) of
         'true' ->
-            {'ok', knm_services:deactivate_feature(Number, ?PREPEND_KEY)};
+            knm_services:deactivate_feature(Number, ?PREPEND_KEY);
         'false' when NotChanged  ->
-            {'ok', knm_services:deactivate_feature(Number, ?PREPEND_KEY)};
+            knm_services:deactivate_feature(Number, ?PREPEND_KEY);
         'false' ->
             case wh_json:is_true(<<"enabled">>, Prepend) of
                 'false' ->
-                    {'ok', knm_services:deactivate_feature(Number, ?PREPEND_KEY)};
+                    knm_services:deactivate_feature(Number, ?PREPEND_KEY);
                 'true' ->
-                    {'ok', knm_services:activate_feature(Number, ?PREPEND_KEY)}
+                    knm_services:activate_feature(Number, ?PREPEND_KEY)
             end
     end.

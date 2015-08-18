@@ -22,8 +22,10 @@
 %% add the failover route (for in service numbers only)
 %% @end
 %%--------------------------------------------------------------------
--spec save(number()) -> number_return().
--spec save(number(), ne_binary()) -> number_return().
+-spec save(knm_phone_number:knm_number()) ->
+                  {'ok', knm_phone_number:knm_number()}.
+-spec save(knm_phone_number:knm_number(), ne_binary()) ->
+                  {'ok', knm_phone_number:knm_number()}.
 save(Number) ->
     State = knm_phone_number:state(Number),
     save(Number, State).
@@ -40,12 +42,13 @@ save(Number, _State) ->
 %% remove the failover route
 %% @end
 %%--------------------------------------------------------------------
--spec delete(number()) -> number_return().
+-spec delete(knm_phone_number:knm_number()) ->
+                    {'ok', knm_phone_number:knm_number()}.
 delete(Number) ->
     case knm_phone_number:feature(Number, ?FAILOVER_KEY) of
         'undefined' -> {'ok', Number};
         _Else ->
-            {'ok', knm_services:deactivate_feature(Number, ?FAILOVER_KEY)}
+            knm_services:deactivate_feature(Number, ?FAILOVER_KEY)
     end.
 
 %%%===================================================================
@@ -58,7 +61,8 @@ delete(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_update_failover(number()) -> number_return().
+-spec maybe_update_failover(knm_phone_number:knm_number()) ->
+                                   number_return().
 maybe_update_failover(Number) ->
     Features = knm_phone_number:features(Number),
     CurrentFailover = wh_json:get_ne_value(?FAILOVER_KEY, Features),
@@ -70,9 +74,9 @@ maybe_update_failover(Number) ->
 
     case wh_util:is_empty(Failover) of
         'true' ->
-            {'ok', knm_services:deactivate_feature(Number, ?FAILOVER_KEY)};
+            knm_services:deactivate_feature(Number, ?FAILOVER_KEY);
         'false' when NotChanged ->
-            {'ok', knm_services:deactivate_feature(Number, ?FAILOVER_KEY)};
+            knm_services:deactivate_feature(Number, ?FAILOVER_KEY);
         'false' ->
-            {'ok', knm_services:activate_feature(Number, ?FAILOVER_KEY)}
+            knm_services:activate_feature(Number, ?FAILOVER_KEY)
     end.

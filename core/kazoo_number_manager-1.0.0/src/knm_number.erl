@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%-------------------------------------------------------------------
 %%% @copyright (C) 2015, 2600Hz INC
 %%% @doc
 %%%
@@ -8,20 +8,32 @@
 %%%-------------------------------------------------------------------
 -module(knm_number).
 
--export([
-    get/1, get/2
-    ,create/2
-    ,move/2 ,move/3
-    ,update/2 ,update/3
-    ,delete/1 ,delete/2
-    ,change_state/2 ,change_state/3
-    ,assigned_to_app/2 ,assigned_to_app/3
-    ,lookup_account/1
-    ,buy/2, buy/3
-]).
+-export([get/1, get/2
+         ,create/2
+         ,move/2 ,move/3
+         ,update/2 ,update/3
+         ,delete/1 ,delete/2
+         ,change_state/2 ,change_state/3
+         ,assigned_to_app/2 ,assigned_to_app/3
+         ,lookup_account/1
+         ,buy/2, buy/3
+        ]).
 
 -include("knm.hrl").
--type lookup_account_return() ::  {'ok', ne_binary(), wh_proplist()} | {'error', _}.
+
+-type lookup_option() :: {'pending_port', boolean()} |
+                         {'local', boolean()} |
+                         {'number', ne_binary()} |
+                         {'account_id', ne_binary()} |
+                         {'prepend', api_binary()} |
+                         {'inbound_cnam', boolean()} |
+                         {'ringback_media', api_binary()} |
+                         {'transfer_media', api_binary()} |
+                         {'force_outbound', boolean()}.
+-type lookup_options() :: [lookup_option()].
+
+-type lookup_account_return() :: {'ok', ne_binary(), lookup_options()} |
+                                 {'error', _}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -49,16 +61,16 @@ create(Num, Props) ->
     NormalizedNum = knm_converters:normalize(Num),
     NumberDb = knm_converters:to_db(NormalizedNum),
     Updates =
-        props:filter_undefined([
-            {fun knm_phone_number:set_number/2, NormalizedNum}
-            ,{fun knm_phone_number:set_number_db/2, NumberDb}
-            ,{fun knm_phone_number:set_state/2, props:get_binary_value(<<"state">>, Props, ?NUMBER_STATE_IN_SERVICE)}
-            ,{fun knm_phone_number:set_ported_in/2, props:get_is_true(<<"ported_in">>, Props, 'false')}
-            ,{fun knm_phone_number:set_assigned_to/2, props:get_binary_value(<<"assigned_to">>, Props)}
-            ,{fun knm_phone_number:set_auth_by/2, props:get_binary_value(<<"auth_by">>, Props, ?DEFAULT_AUTH_BY)}
-            ,{fun knm_phone_number:set_dry_run/2, props:get_is_true(<<"dry_run">>, Props, 'false')}
-            ,fun knm_phone_number:save/1
-        ]),
+        props:filter_undefined(
+          [{fun knm_phone_number:set_number/2, NormalizedNum}
+           ,{fun knm_phone_number:set_number_db/2, NumberDb}
+           ,{fun knm_phone_number:set_state/2, props:get_binary_value(<<"state">>, Props, ?NUMBER_STATE_IN_SERVICE)}
+           ,{fun knm_phone_number:set_ported_in/2, props:get_is_true(<<"ported_in">>, Props, 'false')}
+           ,{fun knm_phone_number:set_assigned_to/2, props:get_binary_value(<<"assigned_to">>, Props)}
+           ,{fun knm_phone_number:set_auth_by/2, props:get_binary_value(<<"auth_by">>, Props, ?DEFAULT_AUTH_BY)}
+           ,{fun knm_phone_number:set_dry_run/2, props:get_is_true(<<"dry_run">>, Props, 'false')}
+           ,fun knm_phone_number:save/1
+          ]),
     knm_phone_number:setters(knm_phone_number:new(), Updates).
 
 %%--------------------------------------------------------------------
@@ -78,30 +90,30 @@ move(Num, MoveTo, Options) ->
         {'ok', Number} ->
             AccountId = wh_util:format_account_id(MoveTo, 'raw'),
             AssignedTo = knm_phone_number:assigned_to(Number),
-            Props = [
-                {fun knm_phone_number:set_assigned_to/2, AccountId}
-                ,{fun knm_phone_number:set_prev_assigned_to/2, AssignedTo}
-                ,fun knm_phone_number:save/1
-            ],
+            Props = [{fun knm_phone_number:set_assigned_to/2, AccountId}
+                     ,{fun knm_phone_number:set_prev_assigned_to/2, AssignedTo}
+                     ,fun knm_phone_number:save/1
+                    ],
             knm_phone_number:setters(Number, Props)
     end.
-
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec update(ne_binary(), wh_proplist()) -> number_return().
--spec update(ne_binary(), wh_proplist(), wh_proplist()) -> number_return().
-update(Num, Props) ->
-    update(Num, Props, knm_phone_number:default_options()).
+-spec update(ne_binary(), knm_phone_number:set_functions()) ->
+                    number_return().
+-spec update(ne_binary(), knm_phone_number:set_functions(), wh_proplist()) ->
+                    number_return().
+update(Num, Routines) ->
+    update(Num, Routines, knm_phone_number:default_options()).
 
-update(Num, Props, Options) ->
+update(Num, Routines, Options) ->
     case ?MODULE:get(Num, Options) of
         {'error', _R}=E -> E;
         {'ok', Number} ->
-            case knm_phone_number:setters(Number, Props) of
+            case knm_phone_number:setters(Number, Routines) of
                 {'error', _R}=Error -> Error;
                 {'ok', UpdatedNumber} ->
                     knm_phone_number:save(UpdatedNumber);
@@ -192,19 +204,17 @@ lookup_account(Num) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec buy(binary(), binary()) -> number_return().
--spec buy(binary(), binary(), wh_proplist()) -> number_return().
+-spec buy(ne_binary(), ne_binary()) -> number_return().
+-spec buy(ne_binary(), ne_binary(), wh_proplist()) -> number_return().
 buy(Num, Account) ->
     buy(Num, Account, []).
 
 buy(Num, Account, Options) ->
-    Updates = [
-        {fun knm_phone_number:set_assigned_to/2, wh_util:format_account_id(Account, 'raw')}
-        ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_IN_SERVICE}
-        ,fun knm_carriers:maybe_acquire/1
-    ],
+    Updates = [{fun knm_phone_number:set_assigned_to/2, wh_util:format_account_id(Account, 'raw')}
+               ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_IN_SERVICE}
+               ,fun knm_carriers:maybe_acquire/1
+              ],
     update(Num, Updates, Options).
-
 
 %%%===================================================================
 %%% Internal functions
@@ -215,8 +225,8 @@ buy(Num, Account, Options) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_change_state(number(), ne_binary()) -> number_return().
--spec maybe_change_state(number(), ne_binary(), ne_binary()) -> number_return().
+-spec maybe_change_state(knm_phone_number:knm_number(), ne_binary()) -> number_return().
+-spec maybe_change_state(knm_phone_number:knm_number(), ne_binary(), ne_binary()) -> number_return().
 maybe_change_state(Number, ToState) ->
     FromState = knm_phone_number:state(Number),
     maybe_change_state(Number, FromState, ToState).
@@ -321,7 +331,7 @@ maybe_change_state(_Number, _FromState, _ToState) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_disconnect(number()) -> number_return().
+-spec maybe_disconnect(knm_phone_number:knm_number()) -> number_return().
 maybe_disconnect(Number) ->
     case knm_phone_number:reserve_history(Number) of
         [] -> disconnect_or_delete(Number);
@@ -342,8 +352,8 @@ maybe_disconnect(Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec disconnect_or_delete(number()) -> number_return().
--spec disconnect_or_delete(number(), boolean()) -> number_return().
+-spec disconnect_or_delete(knm_phone_number:knm_number()) -> number_return().
+-spec disconnect_or_delete(knm_phone_number:knm_number(), boolean()) -> number_return().
 disconnect_or_delete(Number) ->
     Bool = whapps_config:get_is_true(?KNM_CONFIG_CAT, <<"should_permanently_delete">>, 'false'),
     disconnect_or_delete(Number, Bool).
@@ -363,7 +373,7 @@ disconnect_or_delete(Number, 'true') ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec attempt_disconnect(number()) -> number_return().
+-spec attempt_disconnect(knm_phone_number:knm_number()) -> number_return().
 attempt_disconnect(Number) ->
     case knm_carriers:disconnect(Number) of
         {'error', _R}=Error -> Error;
@@ -376,7 +386,7 @@ attempt_disconnect(Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec update_reserved_history(number()) -> number().
+-spec update_reserved_history(knm_phone_number:knm_number()) -> knm_phone_number:knm_number().
 update_reserved_history(Number) ->
     History = knm_phone_number:reserve_history(Number),
     AssignedTo = knm_phone_number:assigned_to(Number),
@@ -389,7 +399,7 @@ update_reserved_history(Number) ->
 %%--------------------------------------------------------------------
 -spec fetch_account_from_number(ne_binary()) -> lookup_account_return().
 fetch_account_from_number(NormalizedNum) ->
-    case knm_phone_number:fetch(NormalizedNum, ?DEFAULT_AUTH_BY) of
+    case knm_phone_number:fetch(NormalizedNum) of
         {'error', _}=Error -> fetch_account_from_ports(NormalizedNum, Error);
         {'ok', Number} -> check_number(Number)
     end.
@@ -399,7 +409,7 @@ fetch_account_from_number(NormalizedNum) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec check_number(number()) -> lookup_account_return().
+-spec check_number(knm_phone_number:knm_number()) -> lookup_account_return().
 check_number(Number) ->
     AssignedTo = knm_phone_number:assigned_to(Number),
     case wh_util:is_empty(AssignedTo) of
@@ -418,7 +428,7 @@ check_number(Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec check_account(number()) -> lookup_account_return().
+-spec check_account(knm_phone_number:knm_number()) -> lookup_account_return().
 check_account(Number) ->
     AssignedTo = knm_phone_number:assigned_to(Number),
     case wh_util:is_account_enabled(AssignedTo) of
@@ -427,17 +437,16 @@ check_account(Number) ->
             Module = knm_phone_number:module_name(Number),
             State = knm_phone_number:state(Number),
             Num = knm_phone_number:number(Number),
-            Props = [
-                {'pending_port', State =:= ?NUMBER_STATE_PORT_IN}
-                ,{'local', Module =:= <<"knm_local">>}
-                ,{'number', Num}
-                ,{'account_id', AssignedTo}
-                ,{'prepend', feature_prepend(Number)}
-                ,{'inbound_cnam', feature_inbound_cname(Number)}
-                ,{'ringback_media', find_early_ringback(Number)}
-                ,{'transfer_media', find_transfer_ringback(Number)}
-                ,{'force_outbound', should_force_outbound(Number)}
-            ],
+            Props = [{'pending_port', State =:= ?NUMBER_STATE_PORT_IN}
+                     ,{'local', Module =:= ?LOCAL_CARRIER}
+                     ,{'number', Num}
+                     ,{'account_id', AssignedTo}
+                     ,{'prepend', feature_prepend(Number)}
+                     ,{'inbound_cnam', feature_inbound_cname(Number)}
+                     ,{'ringback_media', find_early_ringback(Number)}
+                     ,{'transfer_media', find_transfer_ringback(Number)}
+                     ,{'force_outbound', should_force_outbound(Number)}
+                    ],
             {'ok', AssignedTo, Props}
     end.
 
@@ -446,7 +455,7 @@ check_account(Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec feature_prepend(number()) -> ne_binary().
+-spec feature_prepend(knm_phone_number:knm_number()) -> api_binary().
 feature_prepend(Number) ->
     Prepend = knm_phone_number:feature(Number, <<"prepend">>),
     case wh_json:is_true(<<"enabled">>, Prepend) of
@@ -459,7 +468,7 @@ feature_prepend(Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec feature_inbound_cname(number()) -> boolean().
+-spec feature_inbound_cname(knm_phone_number:knm_number()) -> boolean().
 feature_inbound_cname(Number) ->
     case knm_phone_number:feature(Number, <<"inbound_cnam">>) of
         'undefined' -> 'false';
@@ -478,7 +487,7 @@ feature_inbound_cname(Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec find_early_ringback(number()) -> api_binary().
+-spec find_early_ringback(knm_phone_number:knm_number()) -> api_binary().
 find_early_ringback(Number) ->
     RingBack = knm_phone_number:feature(Number, <<"ringback">>),
     wh_json:get_ne_value(<<"early">>, RingBack).
@@ -488,7 +497,7 @@ find_early_ringback(Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec find_transfer_ringback(number()) -> api_binary().
+-spec find_transfer_ringback(knm_phone_number:knm_number()) -> api_binary().
 find_transfer_ringback(Number) ->
     RingBack = knm_phone_number:feature(Number, <<"ringback">>),
     wh_json:get_ne_value(<<"transfer">>, RingBack).
@@ -498,26 +507,31 @@ find_transfer_ringback(Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec should_force_outbound(number()) -> boolean().
+-spec should_force_outbound(knm_phone_number:knm_number()) -> boolean().
 -spec should_force_outbound(ne_binary(), ne_binary(), boolean()) -> boolean().
 should_force_outbound(Number) ->
     Module = knm_phone_number:module_name(Number),
     State = knm_phone_number:state(Number),
-    ForceOutbound = knm_phone_number:feature(Number, <<"force_outbound">>),
-    should_force_outbound(State, Module, ForceOutbound).
+    ForceOutbound = force_outbound_feature(Number),
+    should_force_outbound(State, Module, wh_util:is_true(ForceOutbound)).
 
-should_force_outbound(?NUMBER_STATE_PORT_IN, _Module, ForceOutbound) ->
+should_force_outbound(?NUMBER_STATE_PORT_IN, Module, _ForceOutbound) ->
     whapps_config:get_is_true(?KNM_CONFIG_CAT, <<"force_port_in_outbound">>, 'true')
-    orelse force_module_outbound(ForceOutbound);
-should_force_outbound(?NUMBER_STATE_PORT_OUT, _Module, ForceOutbound) ->
+        orelse force_module_outbound(Module);
+should_force_outbound(?NUMBER_STATE_PORT_OUT, Module, _ForceOutbound) ->
     whapps_config:get_is_true(?KNM_CONFIG_CAT, <<"force_port_out_outbound">>, 'true')
-    orelse force_module_outbound(ForceOutbound);
-should_force_outbound(_State, <<"knm_local">>, _ForceOutbound) ->
+        orelse force_module_outbound(Module);
+should_force_outbound(_State, ?LOCAL_CARRIER, _ForceOutbound) ->
     force_local_outbound();
-should_force_outbound(_State, _Module, 'undefined') ->
-    default_force_outbound();
 should_force_outbound(_State, _Module, ForceOutbound) ->
-    wh_util:is_true(ForceOutbound).
+    ForceOutbound.
+
+-spec force_outbound_feature(knm_phone_number:knm_number()) -> boolean().
+force_outbound_feature(Number) ->
+    case knm_phone_number:feature(Number, <<"force_outbound">>) of
+        'undefined' -> default_force_outbound();
+        FO -> wh_util:is_true(FO)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -525,7 +539,7 @@ should_force_outbound(_State, _Module, ForceOutbound) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec force_module_outbound(ne_binary()) -> boolean().
-force_module_outbound(<<"knm_local">>) -> force_local_outbound();
+force_module_outbound(?LOCAL_CARRIER) -> force_local_outbound();
 force_module_outbound(_Mod) -> 'false'.
 
 %%--------------------------------------------------------------------
@@ -555,24 +569,23 @@ default_force_outbound() ->
 fetch_account_from_ports(NormalizedNum, Error) ->
     case
         couch_mgr:get_results(
-            ?KZ_PORT_REQUESTS_DB
-            ,<<"port_requests/port_in_numbers">>
-            ,[{'key', NormalizedNum}]
-        )
+          ?KZ_PORT_REQUESTS_DB
+          ,<<"port_requests/port_in_numbers">>
+          ,[{'key', NormalizedNum}]
+         )
     of
         {'ok', []} ->
             lager:debug("no port for ~s: ~p", [NormalizedNum, Error]),
             Error;
         {'ok', [Port]} ->
             AccountId = wh_json:get_value(<<"value">>, Port),
-            Props = [
-                {'force_outbound', 'true'}
-                ,{'pending_port', 'true'}
-                ,{'local', 'true'}
-                ,{'inbound_cnam', 'false'}
-                ,{'number', NormalizedNum}
-                ,{'account_id', AccountId}
-            ],
+            Props = [{'force_outbound', 'true'}
+                     ,{'pending_port', 'true'}
+                     ,{'local', 'true'}
+                     ,{'inbound_cnam', 'false'}
+                     ,{'number', NormalizedNum}
+                     ,{'account_id', AccountId}
+                    ],
             {'ok', AccountId, Props};
         {'error', 'not_found'}=E ->
             lager:debug("port number ~s not found", [NormalizedNum]),

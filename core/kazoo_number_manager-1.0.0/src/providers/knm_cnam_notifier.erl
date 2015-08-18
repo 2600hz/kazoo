@@ -23,8 +23,8 @@
 %% produce notifications if the cnam object changes
 %% @end
 %%--------------------------------------------------------------------
--spec save(number()) -> number_return().
--spec save(number(), ne_binary()) -> number_return().
+-spec save(knm_phone_number:knm_number()) -> number_return().
+-spec save(knm_phone_number:knm_number(), ne_binary()) -> number_return().
 save(Number) ->
     State = knm_phone_number:state(Number),
     save(Number, State).
@@ -43,9 +43,10 @@ save(Number, _State) -> {'ok', Number}.
 %% This function is called each time a number is deleted
 %% @end
 %%--------------------------------------------------------------------
--spec delete(number()) -> number_return().
+-spec delete(knm_phone_number:knm_number()) ->
+                    {'ok', knm_phone_number:knm_number()}.
 delete(Number) ->
-    {'ok', knm_services:deactivate_features(Number, [<<"inbound_cnam">>, <<"outbound_cnam">>, <<"cnam">>])}.
+    knm_services:deactivate_features(Number, [<<"inbound_cnam">>, <<"outbound_cnam">>, <<"cnam">>]).
 
 %%%===================================================================
 %%% Internal functions
@@ -57,20 +58,20 @@ delete(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_outbound_cnam(number()) -> number_return().
+-spec handle_outbound_cnam(knm_phone_number:knm_number()) -> number_return().
 handle_outbound_cnam(Number) ->
     Doc = knm_phone_number:doc(Number),
     Features = knm_phone_number:features(Number),
     CurrentCNAM = wh_json:get_ne_value([<<"cnam">>, <<"display_name">>], Features),
     case wh_json:get_ne_value([?PVT_FEATURES, <<"cnam">>, <<"display_name">>], Doc) of
         'undefined' ->
-            Number1 = knm_services:deactivate_feature(Number, <<"outbound_cnam">>),
+            {'ok', Number1} = knm_services:deactivate_feature(Number, <<"outbound_cnam">>),
             handle_inbound_cnam(Number1);
         CurrentCNAM ->
-            Number1 = knm_services:deactivate_feature(Number, <<"outbound_cnam">>),
+            {'ok', Number1} = knm_services:deactivate_feature(Number, <<"outbound_cnam">>),
             handle_inbound_cnam(Number1);
         _Else ->
-            Number1 = knm_services:activate_feature(Number, <<"outbound_cnam">>),
+            {'ok', Number1} = knm_services:activate_feature(Number, <<"outbound_cnam">>),
             _ = publish_cnam_update(Number1),
             handle_inbound_cnam(Number1)
     end.
@@ -81,10 +82,11 @@ handle_outbound_cnam(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_inbound_cnam(number()) -> number_return().
+-spec handle_inbound_cnam(knm_phone_number:knm_number()) ->
+                                 {'ok', knm_phone_number:knm_number()}.
 handle_inbound_cnam(Number) ->
     Doc = knm_phone_number:doc(Number),
-    Number1 =
+    {'ok', Number1} =
         case wh_json:is_true([?PVT_FEATURES, <<"cnam">>, <<"inbound_lookup">>], Doc) of
             'false' -> knm_services:deactivate_feature(Number, <<"inbound_lookup">>);
             'true' ->  knm_services:activate_feature(Number, <<"inbound_cnam">>)
@@ -97,10 +99,10 @@ handle_inbound_cnam(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec support_depreciated_cnam(number()) -> number_return().
+-spec support_depreciated_cnam(knm_phone_number:knm_number()) ->
+                                      {'ok', knm_phone_number:knm_number()}.
 support_depreciated_cnam(Number) ->
-    {'ok', knm_services:deactivate_feature(Number, <<"cnam">>)}.
-
+    knm_services:deactivate_feature(Number, <<"cnam">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -108,8 +110,8 @@ support_depreciated_cnam(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec publish_cnam_update(number()) -> 'ok'.
--spec publish_cnam_update(number(), boolean()) -> 'ok'.
+-spec publish_cnam_update(knm_phone_number:knm_number()) -> 'ok'.
+-spec publish_cnam_update(knm_phone_number:knm_number(), boolean()) -> 'ok'.
 publish_cnam_update(Number) ->
     DryRun = knm_phone_number:dry_run(Number),
     publish_cnam_update(Number, DryRun).
@@ -119,7 +121,7 @@ publish_cnam_update(Number, 'false') ->
     Features = knm_phone_number:features(Number),
     Notify = [{<<"Account-ID">>, knm_phone_number:assigned_to(Number)}
               ,{<<"Number-State">>, knm_phone_number:state(Number)}
-              ,{<<"Local-Number">>, knm_phone_number:module_name(Number) =:= 'local'}
+              ,{<<"Local-Number">>, knm_phone_number:module_name(Number) =:= ?LOCAL_CARRIER}
               ,{<<"Number">>, knm_phone_number:number(Number)}
               ,{<<"Acquired-For">>, knm_phone_number:auth_by(Number)}
               ,{<<"Cnam">>, wh_json:get_value(<<"cnam">>, Features, wh_json:new())}
