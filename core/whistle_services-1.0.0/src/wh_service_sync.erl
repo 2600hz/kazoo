@@ -129,11 +129,20 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({'try_sync_service'}, State) ->
     _ = maybe_sync_service(),
+    _ = maybe_clear_process_dictionary(),
     _Ref = start_sync_service_timer(),
-    {'noreply', State};
-handle_info(_Info, State) ->
-    lager:debug("unhandled msg: ~p", [_Info]),
+    {'noreply', State, 'hibernate'};
+handle_info(_Msg, State) ->
     {'noreply', State}.
+
+-spec maybe_clear_process_dictionary() -> 'ok'.
+maybe_clear_process_dictionary() ->
+    lists:foreach(fun maybe_clear_dictionary_entry/1, get()).
+
+-spec maybe_clear_dictionary_entry({term(), term()}) -> any().
+maybe_clear_dictionary_entry({{'phone_number_doc', _AccountId}=Key, _Doc}) ->
+    erase(Key);
+maybe_clear_dictionary_entry(_) -> 'ok'.
 
 %%--------------------------------------------------------------------
 %% @private
