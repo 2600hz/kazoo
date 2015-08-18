@@ -220,23 +220,25 @@ get_orig_port(Prop) ->
 
 -spec get_sip_interface_from_db(ne_binary()) -> ne_binary().
 get_sip_interface_from_db([FsPath]) ->
-    NetworkMap = ecallmgr_config:get(<<"network_map">>),
-    case wh_json:is_json_object(NetworkMap) of
-        'true' ->
-            map_fs_path_to_sip_profile(FsPath, NetworkMap);
-        'false' ->
-            lager:info("failed to obtain json object for network map, using default sip interface ~p", [?SIP_INTERFACE]),
-            ?SIP_INTERFACE
+    NetworkMap = ecallmgr_config:get(<<"network_map">>, wh_json:new()),
+    case map_fs_path_to_sip_profile(FsPath, NetworkMap) of
+        'undefined' ->
+            lager:debug("unable to find network map for ~s, using default interface '~s'", [FsPath, ?SIP_INTERFACE]),
+            ?SIP_INTERFACE;
+        Else ->
+            lager:debug("found custom interface '~s' in network map for ~s", [Else, FsPath]),
+            Else
     end.
 
 -spec map_fs_path_to_sip_profile(ne_binary(), wh_json:object()) -> ne_binary().
 map_fs_path_to_sip_profile(FsPath, NetworkMap) ->
-    SIPInterfaceObj = wh_json:filter(fun({K, _}) -> wh_network_utils:verify_cidr(FsPath, K) end, NetworkMap),
-    case  (wh_json:get_values(SIPInterfaceObj)) of
-        {[],[]} ->
-            ?SIP_INTERFACE;
-        {[V], _} ->
-            wh_json:get_value(<<"custom_sip_interface">>, V)
+    SIPInterfaceObj = wh_json:filter(fun({K, _}) ->
+                               wh_network_utils:verify_cidr(FsPath, K)
+                       end, NetworkMap),
+    case wh_json:get_values(SIPInterfaceObj) of
+        {[],[]} -> 'undefined';
+        {[V|_], _} ->
+            wh_json:get_ne_value(<<"custom_sip_interface">>, V)
     end.
 
 %% Extract custom channel variables to include in the event
@@ -738,7 +740,6 @@ build_skype_channel(#bridge_endpoint{user=User, interface=IFace}) ->
 build_sip_channel(#bridge_endpoint{failover=Failover}=Endpoint) ->
     Routines = [fun(C) -> maybe_clean_contact(C, Endpoint) end
                 ,fun(C) -> ensure_username_present(C, Endpoint) end
-                ,fun(C) -> maybe_set_fs_path(C, Endpoint) end
                 ,fun(C) -> maybe_replace_fs_path(C, Endpoint) end
                 ,fun(C) -> maybe_replace_transport(C, Endpoint) end
                 ,fun(C) -> maybe_format_user(C, Endpoint) end
@@ -854,16 +855,20 @@ maybe_format_user(Contact, _) -> Contact.
 -spec maybe_set_interface(ne_binary(), bridge_endpoint()) -> ne_binary().
 maybe_set_interface(<<"sofia/", _/binary>>=Contact, _) -> Contact;
 maybe_set_interface(<<"loopback/", _/binary>>=Contact, _) -> Contact;
-maybe_set_interface(Contact, #bridge_endpoint{sip_interface='undefined'}) ->
-    case re:run(Contact, <<";fs_path=sip:(.*):\\d*;">>, [dotall, ungreedy, {capture, all_but_first, binary}]) of
+maybe_set_interface(Contact, #bridge_endpoint{sip_interface='undefined'}=Endpoint) ->
+    Options = ['ungreedy', {'capture', 'all_but_first', 'binary'}],
+    case re:run(Contact, <<";fs_path=sip:(.*):\\d*;">>, Options) of
         {'match', FsPath} ->
             SIPInterface = wh_util:to_binary(get_sip_interface_from_db(FsPath)),
-            <<"sofia/", SIPInterface/binary, "/", Contact/binary>>;
-        'nomatch' -> 
+            maybe_set_interface(Contact, Endpoint#bridge_endpoint{sip_interface=SIPInterface});
+        'nomatch' ->
             <<"sofia/", ?SIP_INTERFACE, "/", Contact/binary>>
     end;
+maybe_set_interface(Contact, #bridge_endpoint{sip_interface= <<"sofia/", _/binary>>=SIPInterface}) ->
+    <<(wh_util:strip_right_binary(SIPInterface, <<"/">>))/binary, "/", Contact/binary>>;
 maybe_set_interface(Contact, #bridge_endpoint{sip_interface=SIPInterface}) ->
-    <<SIPInterface/binary, Contact/binary>>.
+    <<"sofia/", SIPInterface/binary, "/", Contact/binary>>.
+
 
 -spec append_channel_vars(ne_binary(), bridge_endpoint()) -> ne_binary().
 append_channel_vars(Contact, #bridge_endpoint{include_channel_vars='false'}) ->
