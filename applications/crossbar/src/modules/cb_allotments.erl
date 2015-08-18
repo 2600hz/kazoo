@@ -15,8 +15,6 @@
          ,post/1
         ]).
 
--export([is_allowed/1]).
-
 -include("../crossbar.hrl").
 -include_lib("whistle/src/wh_json.hrl").
 
@@ -204,7 +202,7 @@ maybe_req_seconds(Context, Key) ->
 on_successful_validation(Context) ->
     case is_allowed(Context) of
         'true' -> maybe_handle_load_failure(crossbar_doc:load(?PVT_TYPE, Context));
-        'false' -> crossbar_util:response_400("sub-accounts of non-master resellers must contact the reseller to change their allotments", wh_json:new(), Context)
+        'false' -> crossbar_util:response_400(<<"sub-accounts of non-master resellers must contact the reseller to change their allotments">>, wh_json:new(), Context)
     end.
 
 %%--------------------------------------------------------------------
