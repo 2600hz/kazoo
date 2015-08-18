@@ -317,7 +317,8 @@ fix_value(_K, V) -> V.
 unserialize_fs_array('undefined') -> [];
 unserialize_fs_array(<<"ARRAY::", Serialized/binary>>) ->
     binary:split(Serialized, <<"|:">>, ['global']);
-unserialize_fs_array(_) -> [].
+unserialize_fs_array(Single) ->
+    [Single].
 
 %% convert a raw FS list of vars to a proplist
 %% "Event-Name=NAME,Event-Timestamp=1234" -> [{<<"Event-Name">>, <<"NAME">>}, {<<"Event-Timestamp">>, <<"1234">>}]
