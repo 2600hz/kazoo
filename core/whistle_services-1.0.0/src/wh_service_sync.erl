@@ -125,12 +125,22 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({'try_sync_service'}, State) ->
     _ = maybe_sync_service(),
+    _ = maybe_clear_process_dictionary(),
     ScanRate = whapps_config:get_integer(?WHS_CONFIG_CAT, <<"scan_rate">>, 20000),
     _TRef = erlang:send_after(ScanRate, self(), {'try_sync_service'}),
-    {'noreply', State};
+    {'noreply', State, 'hibernate'};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
+
+-spec maybe_clear_process_dictionary() -> 'ok'.
+maybe_clear_process_dictionary() ->
+    lists:foreach(fun maybe_clear_dictionary_entry/1, get()).
+
+-spec maybe_clear_dictionary_entry({term(), term()}) -> any().
+maybe_clear_dictionary_entry({{'phone_number_doc', _AccountId}=Key, _Doc}) ->
+    erase(Key);
+maybe_clear_dictionary_entry(_) -> 'ok'.
 
 %%--------------------------------------------------------------------
 %% @private
