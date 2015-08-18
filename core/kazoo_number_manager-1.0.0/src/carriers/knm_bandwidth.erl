@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle client requests for phone_number documents
@@ -42,25 +42,19 @@
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) -> {'ok', numbers()} | {'error', term()}.
+-spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) ->
+                          number_return().
 find_numbers(<<"+", Rest/binary>>, Quanity, Opts) ->
     find_numbers(Rest, Quanity, Opts);
 find_numbers(<<"1", Rest/binary>>, Quanity, Opts) ->
     find_numbers(Rest, Quanity, Opts);
 find_numbers(<<NPA:3/binary>>, Quanity, _) ->
     Props = [{'areaCode', [wh_util:to_list(NPA)]}
-             ,{'maxQuantity', [wh_util:to_list(Quanity)]}],
+             ,{'maxQuantity', [wh_util:to_list(Quanity)]}
+            ],
     case make_numbers_request('areaCodeNumberSearch', Props) of
         {'error', _}=E -> E;
-        {'ok', Xml} ->
-            TelephoneNumbers = "/numberSearchResponse/telephoneNumbers/telephoneNumber",
-            Resp = [begin
-                        JObj = number_search_response_to_json(Number),
-                        Num = wh_json:get_value(<<"e164">>, JObj),
-                        {Num, JObj}
-                    end
-                    || Number <- xmerl_xpath:string(TelephoneNumbers, Xml)],
-            {'ok', format_resp(Resp)}
+        {'ok', Xml} -> process_numbers_search_resp(Xml)
     end;
 find_numbers(Search, Quanity, _) ->
     NpaNxx = binary:part(Search, 0, (case size(Search) of L when L < 6 -> L; _ -> 6 end)),
@@ -69,16 +63,20 @@ find_numbers(Search, Quanity, _) ->
             ],
     case make_numbers_request('npaNxxNumberSearch', Props) of
         {'error', _}=E -> E;
-        {'ok', Xml} ->
-            TelephoneNumbers = "/numberSearchResponse/telephoneNumbers/telephoneNumber",
-            Resp = [begin
-                        JObj = number_search_response_to_json(Number),
-                        Num = wh_json:get_value(<<"e164">>, JObj),
-                        {Num, JObj}
-                    end
-                    || Number <- xmerl_xpath:string(TelephoneNumbers, Xml)],
-            {'ok', format_resp(Resp)}
+        {'ok', Xml} -> process_numbers_search_resp(Xml)
     end.
+
+-spec process_numbers_search_resp(string()) -> {'ok', knm_phone_number:knm_numbers()}.
+process_numbers_search_resp(Xml) ->
+    TelephoneNumbers = "/numberSearchResponse/telephoneNumbers/telephoneNumber",
+    Resp = [begin
+                JObj = number_search_response_to_json(Number),
+                Num = wh_json:get_value(<<"e164">>, JObj),
+                {Num, JObj}
+            end
+            || Number <- xmerl_xpath:string(TelephoneNumbers, Xml)
+           ],
+    {'ok', format_resp(Resp)}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -86,8 +84,8 @@ find_numbers(Search, Quanity, _) ->
 %% Acquire a given number from the carrier
 %% @end
 %%--------------------------------------------------------------------
--spec acquire_number(number()) -> number_return().
--spec acquire_number(number(), boolean()) -> number_return().
+-spec acquire_number(knm_phone_number:knm_number()) -> number_return().
+-spec acquire_number(knm_phone_number:knm_number(), boolean()) -> number_return().
 
 acquire_number(Number) ->
     acquire_number(Number, knm_phone_number:dry_run(Number)).
@@ -102,40 +100,44 @@ acquire_number(Number, 'false') ->
         'false' ->
             {'error', 'provisioning_disabled'};
         'true' ->
-            AuthBy = knm_phone_number:auth_by(Number),
-            AssignedTo = knm_phone_number:assigned_to(Number),
-            Data = knm_phone_number:carrier_data(Number),
-            Id = wh_json:get_string_value(<<"number_id">>, Data),
-            Hosts = case whapps_config:get(?KNM_BW_CONFIG_CAT, <<"endpoints">>) of
-                        'undefined' -> [];
-                        Endpoint when is_binary(Endpoint) ->
-                            [{'endPoints', [{'host', [wh_util:to_list(Endpoint)]}]}];
-                        Endpoints ->
-                            [{'endPoints', [{'host', [wh_util:to_list(E)]} || E <- Endpoints]}]
-                    end,
-            OrderNamePrefix = whapps_config:get_binary(?KNM_BW_CONFIG_CAT, <<"order_name_prefix">>, <<"Kazoo">>),
-            OrderName = list_to_binary([OrderNamePrefix, "-", wh_util:to_binary(wh_util:current_tstamp())]),
-            ExtRef = case wh_util:is_empty(AuthBy) of
-                         'true' -> "no_authorizing_account";
-                         'false' -> wh_util:to_list(AuthBy)
-                     end,
-            AcquireFor = case wh_util:is_empty(AuthBy) of
-                             'true' -> "no_assigned_account";
-                             'false' -> wh_util:to_list(AssignedTo)
-                         end,
-            Props = [{'orderName', [wh_util:to_list(OrderName)]}
-                     ,{'extRefID', [wh_util:to_list(ExtRef)]}
-                     ,{'numberIDs', [{'id', [Id]}]}
-                     ,{'subscriber', [wh_util:to_list(AcquireFor)]}
-                     | Hosts
-                    ],
-            case make_numbers_request('basicNumberOrder', Props) of
-                {'error', _R}=Error -> Error;
-                {'ok', Xml} ->
-                    Response = xmerl_xpath:string("/numberOrderResponse/numberOrder", Xml),
-                    Data = number_order_response_to_json(Response),
-                    {'ok', knm_phone_number:set_carrier_data(Number, Data)}
-            end
+            acquire_and_provision_number(Number)
+    end.
+
+-spec acquire_and_provision_number(knm_phone_number:knm_number()) -> number_return().
+acquire_and_provision_number(Number) ->
+    AuthBy = knm_phone_number:auth_by(Number),
+    AssignedTo = knm_phone_number:assigned_to(Number),
+    Data = knm_phone_number:carrier_data(Number),
+    Id = wh_json:get_string_value(<<"number_id">>, Data),
+    Hosts = case whapps_config:get(?KNM_BW_CONFIG_CAT, <<"endpoints">>) of
+                'undefined' -> [];
+                Endpoint when is_binary(Endpoint) ->
+                    [{'endPoints', [{'host', [wh_util:to_list(Endpoint)]}]}];
+                Endpoints ->
+                    [{'endPoints', [{'host', [wh_util:to_list(E)]} || E <- Endpoints]}]
+            end,
+    OrderNamePrefix = whapps_config:get_binary(?KNM_BW_CONFIG_CAT, <<"order_name_prefix">>, <<"Kazoo">>),
+    OrderName = list_to_binary([OrderNamePrefix, "-", wh_util:to_binary(wh_util:current_tstamp())]),
+    ExtRef = case wh_util:is_empty(AuthBy) of
+                 'true' -> "no_authorizing_account";
+                 'false' -> wh_util:to_list(AuthBy)
+             end,
+    AcquireFor = case wh_util:is_empty(AuthBy) of
+                     'true' -> "no_assigned_account";
+                     'false' -> wh_util:to_list(AssignedTo)
+                 end,
+    Props = [{'orderName', [wh_util:to_list(OrderName)]}
+             ,{'extRefID', [wh_util:to_list(ExtRef)]}
+             ,{'numberIDs', [{'id', [Id]}]}
+             ,{'subscriber', [wh_util:to_list(AcquireFor)]}
+             | Hosts
+            ],
+    case make_numbers_request('basicNumberOrder', Props) of
+        {'error', _R}=Error -> Error;
+        {'ok', Xml} ->
+            Response = xmerl_xpath:string("/numberOrderResponse/numberOrder", Xml),
+            Data = number_order_response_to_json(Response),
+            {'ok', knm_phone_number:set_carrier_data(Number, Data)}
     end.
 
 %%--------------------------------------------------------------------
@@ -144,8 +146,10 @@ acquire_number(Number, 'false') ->
 %% Release a number from the routing table
 %% @end
 %%--------------------------------------------------------------------
--spec disconnect_number(number()) -> number_return().
-disconnect_number(Number) -> {'ok', Number}.
+-spec disconnect_number(knm_phone_number:knm_number()) ->
+                               {'ok', knm_phone_number:knm_number()}.
+disconnect_number(Number) ->
+    {'ok', Number}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -175,7 +179,7 @@ get_number_data(Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec is_number_billable(number()) -> 'true'.
+-spec is_number_billable(knm_phone_number:knm_number()) -> 'true'.
 is_number_billable(_Number) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -195,8 +199,10 @@ should_lookup_cnam() -> 'true'.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec format_resp(wh_proplist()) -> numbers().
--spec format_resp(wh_proplist(), numbers()) -> numbers().
+-spec format_resp(wh_proplist()) ->
+                         knm_phone_number:knm_numbers().
+-spec format_resp(wh_proplist(), knm_phone_number:knm_numbers()) ->
+                         knm_phone_number:knm_numbers().
 format_resp(Resp) ->
     format_resp(Resp, []).
 
@@ -204,16 +210,15 @@ format_resp([], Numbers) -> Numbers;
 format_resp([{Num, JObj}|T], Numbers) ->
     NormalizedNum = knm_converters:normalize(Num),
     NumberDb = knm_converters:to_db(NormalizedNum),
-    Updates = [
-        {fun knm_phone_number:set_number/2, NormalizedNum}
-        ,{fun knm_phone_number:set_number_db/2, NumberDb}
-        ,{fun knm_phone_number:set_module_name/2, wh_util:to_binary(?MODULE)}
-        ,{fun knm_phone_number:set_carrier_data/2, JObj}
-        ,{fun knm_phone_number:set_number_db/2, NumberDb}
-        ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}
-        ,fun knm_phone_number:save/1
-        ,fun(N) -> N end
-    ],
+    Updates = [{fun knm_phone_number:set_number/2, NormalizedNum}
+               ,{fun knm_phone_number:set_number_db/2, NumberDb}
+               ,{fun knm_phone_number:set_module_name/2, wh_util:to_binary(?MODULE)}
+               ,{fun knm_phone_number:set_carrier_data/2, JObj}
+               ,{fun knm_phone_number:set_number_db/2, NumberDb}
+               ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}
+               ,fun knm_phone_number:save/1
+               ,fun wh_util:identity/1
+              ],
     Number = knm_phone_number:setters(knm_phone_number:new(), Updates),
     format_resp(T, [Number|Numbers]).
 

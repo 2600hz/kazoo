@@ -5,28 +5,8 @@
 
 -define(DEFAULT_AUTH_BY, <<"system">>).
 
--record(number, {number :: ne_binary()
-                 ,number_db :: ne_binary()
-                 ,assigned_to :: api_binary()
-                 ,prev_assigned_to :: api_binary()
-                 ,used_by :: api_binary()
-                 ,features = wh_json:new() :: wh_json:object()
-                 ,state :: ne_binary()
-                 ,reserve_history = [] :: ne_binaries()
-                 ,ported_in = 'false' :: boolean()
-                 ,module_name :: ne_binary()
-                 ,carrier_data :: wh_json:object()
-                 ,region :: ne_binary()
-                 ,auth_by = ?DEFAULT_AUTH_BY :: ne_binary()
-                 ,dry_run = 'false' :: boolean()
-                 ,locality :: wh_json:object()
-                 ,storage = [] :: wh_proplist()
-                 ,doc :: wh_json:object()
-                }).
-
--type numbers() :: [number(), ...].
-
--type number_return() :: {'ok', number()} | {'error', _}.
+-type number_return() :: {'ok', knm_phone_number:knm_number()} |
+                         {'error', _}.
 
 -define(PVT_DB_NAME, <<"pvt_db_name">>).
 -define(PVT_ASSIGNED_TO, <<"pvt_assigned_to">>).
@@ -61,7 +41,8 @@
 -define(DASH_KEY, <<"dash_e911">>).
 -define(VITELITY_KEY, <<"vitelity_e911">>).
 
--define(DEFAULT_CARRIER_MODULES, [<<"knm_local">>]).
+-define(LOCAL_CARRIER, <<"knm_local">>).
+-define(DEFAULT_CARRIER_MODULES, [?LOCAL_CARRIER]).
 
 -define(KNM_NUMBER_MANAGER_HRL, 'true').
 -endif.

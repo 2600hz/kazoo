@@ -39,8 +39,8 @@
 %% provision e911 or remove the number depending on the state
 %% @end
 %%--------------------------------------------------------------------
--spec save(number()) -> number_return().
--spec save(number(), ne_binary()) -> number_return().
+-spec save(knm_phone_number:knm_number()) -> number_return().
+-spec save(knm_phone_number:knm_number(), api_binary()) -> number_return().
 save(Number) ->
     State = knm_phone_number:state(Number),
     save(Number, State).
@@ -60,15 +60,17 @@ save(Number, _State) -> delete(Number).
 %% provision e911 or remove the number depending on the state
 %% @end
 %%--------------------------------------------------------------------
--spec delete(number()) -> number_return().
+-spec delete(knm_phone_number:knm_number()) ->
+                    {'ok', knm_phone_number:knm_number()}.
 delete(Number) ->
     case knm_phone_number:feature(Number, ?DASH_KEY) of
         'undefined' -> {'ok', Number};
         _Else ->
-            Num = knm_phone_number:number(Number),
-            lager:debug("removing e911 information from ~s", [Num]),
-            _ = remove_number(Num),
-            {'ok', knm_services:deactivate_feature(Number, ?DASH_KEY)}
+            lager:debug("removing e911 information from ~s"
+                        ,[knm_phone_number:number(Number)]
+                       ),
+            _ = remove_number(Number),
+            knm_services:deactivate_feature(Number, ?DASH_KEY)
     end.
 
 %%%===================================================================
@@ -81,10 +83,10 @@ delete(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_update_dash_e911(number()) ->
-                        number_return()
-                        | {'invalid', _}
-                        | {'multiple_choice', wh_json:object()}.
+-spec maybe_update_dash_e911(knm_phone_number:knm_number()) ->
+                                    number_return() |
+                                    {'invalid', _} |
+                                    {'multiple_choice', wh_json:object()}.
 maybe_update_dash_e911(Number) ->
     Features = knm_phone_number:features(Number),
     CurrentE911 = wh_json:get_ne_value(?DASH_KEY, Features),
@@ -97,23 +99,23 @@ maybe_update_dash_e911(Number) ->
         'true' ->
             lager:debug("dash e911 information has been removed, updating dash"),
             _ = remove_number(Number),
-            {'ok', knm_services:deactivate_feature(Number, ?DASH_KEY)};
+            knm_services:deactivate_feature(Number, ?DASH_KEY);
         'false' when NotChanged  ->
-            {'ok', knm_services:deactivate_feature(Number, ?DASH_KEY)};
+            knm_services:deactivate_feature(Number, ?DASH_KEY);
         'false' ->
             lager:debug("e911 information has been changed: ~s", [wh_json:encode(E911)]),
-            Number1 = knm_services:activate_feature(Number, ?DASH_KEY),
+            {'ok', Number1} = knm_services:activate_feature(Number, ?DASH_KEY),
             case maybe_update_dash_e911(Number, E911, Features) of
                 {'ok', UpdatedFeatures} -> knm_phone_number:set_features(Number1, UpdatedFeatures);
                 Else -> Else
             end
     end.
 
--spec maybe_update_dash_e911(number(), wh_json:object(), wh_json:object()) ->
-                        {'ok', wh_json:object()}
-                        | {'error', _}
-                        | {'invalid', _}
-                        | {'multiple_choice', wh_json:object()}.
+-spec maybe_update_dash_e911(knm_phone_number:knm_number(), wh_json:object(), wh_json:object()) ->
+                                    {'ok', wh_json:object()} |
+                                    {'error', _} |
+                                    {'invalid', _} |
+                                    {'multiple_choice', wh_json:object()}.
 maybe_update_dash_e911(Number, Address, JObj) ->
     Location = json_address_to_xml_location(Address),
     case is_valid_location(Location) of
@@ -154,8 +156,12 @@ maybe_update_dash_e911(Number, Address, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_e911(number(), wh_json:object(), wh_json:object()) -> {'ok', wh_json:object()} | {'error', _}.
--spec update_e911(number(), wh_json:object(), wh_json:object(), boolean()) -> {'ok', wh_json:object()} | {'error', _}.
+-spec update_e911(knm_phone_number:knm_number(), wh_json:object(), wh_json:object()) ->
+                         {'ok', wh_json:object()} |
+                         {'error', _}.
+-spec update_e911(knm_phone_number:knm_number(), wh_json:object(), wh_json:object(), boolean()) ->
+                         {'ok', wh_json:object()} |
+                         {'error', _}.
 update_e911(Number, Address, JObj) ->
     DryRun = knm_phone_number:dry_run(Number),
     update_e911(Number, Address, JObj, DryRun).
@@ -177,7 +183,8 @@ update_e911(Number, Address, JObj, 'false') ->
             provision_geocoded(JObj, E911)
     end.
 
--spec provision_geocoded(wh_json:object(), wh_json:object()) -> {'ok', wh_json:object()}.
+-spec provision_geocoded(wh_json:object(), wh_json:object()) ->
+                                {'ok', wh_json:object()}.
 provision_geocoded(JObj, E911) ->
     lager:debug("added location to dash e911, attempting to provision new location"),
     case provision_location(wh_json:get_value(<<"location_id">>, E911)) of
@@ -273,7 +280,7 @@ provision_location(LocationId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec remove_number(number()) -> api_binary().
+-spec remove_number(knm_phone_number:knm_number()) -> api_binary().
 remove_number(Number) ->
     Num = knm_phone_number:number(Number),
     lager:debug("removing dash e911 number '~s'", [Num]),
@@ -371,7 +378,6 @@ emergency_provisioning_request(Verb, Props) ->
             lager:debug("dash e911 request error: ~p", [E]),
             {'error', 'unreachable'}
     end.
-
 
 %%--------------------------------------------------------------------
 %% @private
