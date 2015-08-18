@@ -50,8 +50,8 @@ find_numbers(Prefix, Quantity, _Options) ->
 %% Acquire a given number from Simwood.com
 %% @end
 %%--------------------------------------------------------------------
--spec acquire_number(number()) -> number_return().
--spec acquire_number(number(), boolean()) -> number_return().
+-spec acquire_number(knm_phone_number:knm_number()) -> number_return().
+-spec acquire_number(knm_phone_number:knm_number(), boolean()) -> number_return().
 
 acquire_number(Number) ->
     acquire_number(Number, knm_phone_number:dry_run(Number)).
@@ -75,7 +75,7 @@ acquire_number(Number, 'false') ->
 %% Return number back to Simwood.com
 %% @end
 %%--------------------------------------------------------------------
--spec disconnect_number(number()) -> number_return().
+-spec disconnect_number(knm_phone_number:knm_number()) -> number_return().
 disconnect_number(Number) ->
     Num =
         case knm_phone_number:number(Number) of
@@ -93,7 +93,7 @@ disconnect_number(Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec is_number_billable(number()) -> 'true'.
+-spec is_number_billable(knm_phone_number:knm_number()) -> 'true'.
 is_number_billable(_Number) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -148,8 +148,10 @@ sw_quantity(_Quantity) -> <<"100">>.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec process_response(wh_json:objects()) -> {'ok', numbers()}.
--spec process_response(wh_json:objects(), numbers()) -> {'ok', numbers()}.
+-spec process_response(wh_json:objects()) ->
+                              {'ok', knm_phone_number:knm_numbers()}.
+-spec process_response(wh_json:objects(), knm_phone_number:knm_numbers()) ->
+                              {'ok', knm_phone_number:knm_numbers()}.
 process_response(JObjs) ->
     process_response(JObjs, []).
 
@@ -158,12 +160,11 @@ process_response([JObj|JObjs], Numbers) ->
     Num = wh_json:get_value(<<"number">>, JObj),
     NormalizedNum = knm_converters:normalize(Num),
     NumberDb = knm_converters:to_db(NormalizedNum),
-    Updates = [
-        {fun knm_phone_number:set_number/2, NormalizedNum}
-        ,{fun knm_phone_number:set_number_db/2, NumberDb}
-        ,{fun knm_phone_number:set_module_name/2, wh_util:to_binary(?MODULE)}
-        ,{fun knm_phone_number:set_carrier_data/2, JObj}
-        ,{fun knm_phone_number:set_number_db/2, NumberDb}
-    ],
+    Updates = [{fun knm_phone_number:set_number/2, NormalizedNum}
+               ,{fun knm_phone_number:set_number_db/2, NumberDb}
+               ,{fun knm_phone_number:set_module_name/2, wh_util:to_binary(?MODULE)}
+               ,{fun knm_phone_number:set_carrier_data/2, JObj}
+               ,{fun knm_phone_number:set_number_db/2, NumberDb}
+              ],
     Number = knm_phone_number:setters(knm_phone_number:new(), Updates),
     process_response(JObjs, [Number|Numbers]).
