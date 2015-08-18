@@ -920,6 +920,7 @@ create_sip_endpoint(Endpoint, Properties, #clid{}=Clid, Call) ->
          ,{<<"To-DID">>, get_to_did(Endpoint, Call)}
          ,{<<"To-IP">>, wh_json:get_value(<<"ip">>, SIPJObj)}
          ,{<<"SIP-Transport">>, get_sip_transport(SIPJObj)}
+         ,{<<"SIP-Interface">>, get_custom_sip_interface(SIPJObj)}
          ,{<<"Route">>, wh_json:get_value(<<"route">>, SIPJObj)}
          ,{<<"Proxy-IP">>, wh_json:get_value(<<"proxy">>, SIPJObj)}
          ,{<<"Forward-IP">>, wh_json:get_value(<<"forward">>, SIPJObj)}
@@ -1045,6 +1046,19 @@ validate_sip_transport(_) -> 'undefined'.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec get_custom_sip_interface(wh_json:object()) -> api_binary().
+get_custom_sip_interface(JObj) ->
+    case wh_json:get_value(<<"custom_sip_interface">>, JObj) of
+        'undefined' ->
+            whapps_config:get(?CF_CONFIG_CAT, <<"custom_sip_interface">>);
+        Else -> Else
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% Creates the whistle API endpoint for a bridge call command. This
 %% endpoint is comprised of the endpoint definition (commonally a
 %% device) and the properties of this endpoint in the callflow.
@@ -1133,6 +1147,7 @@ create_mobile_audio_endpoint(Endpoint, Properties, Call) ->
             Error;
         Route ->
             Codecs = whapps_config:get(?CF_MOBILE_CONFIG_CAT, <<"codecs">>, ?DEFAULT_MOBILE_CODECS),
+            SIPInterface = whapps_config:get_binary(?CF_MOBILE_CONFIG_CAT, <<"custom_sip_interface">>),
             Prop = [{<<"Invite-Format">>, <<"route">>}
                     ,{<<"Ignore-Early-Media">>, <<"true">>}
                     ,{<<"Route">>, Route}
@@ -1143,6 +1158,8 @@ create_mobile_audio_endpoint(Endpoint, Properties, Call) ->
                     ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
                     ,{<<"Codecs">>, Codecs}
                     ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call, wh_json:new())}
+                    ,{<<"SIP-Interface">>, SIPInterface}
+                    ,{<<"Bypass-Media">>, get_bypass_media(Endpoint)}
                    ],
             wh_json:from_list(props:filter_undefined(Prop))
     end.
