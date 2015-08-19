@@ -8,19 +8,17 @@
 %%%-------------------------------------------------------------------
 -module(knm_numbers).
 
--export([
-    get/1, get/2
-    ,create/1
-    ,move/1 ,move/2
-    ,update/1 ,update/2
-    ,delete/1 ,delete/2
-    ,change_state/1 ,change_state/2
-    ,assigned_to_app/1 ,assigned_to_app/2
-    ,buy/2
-]).
+-export([get/1, get/2
+         ,create/1
+         ,move/1 ,move/2
+         ,update/1 ,update/2
+         ,delete/1 ,delete/2
+         ,change_state/1 ,change_state/2
+         ,assigned_to_app/1 ,assigned_to_app/2
+         ,buy/2
+        ]).
 
 -include("knm.hrl").
-
 
 -type numbers_return() :: [{ne_binary(), number_return()}].
 
