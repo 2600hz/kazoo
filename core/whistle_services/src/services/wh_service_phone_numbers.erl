@@ -112,8 +112,8 @@ update_numbers([JObj|JObjs], Services) ->
 update_number_quantities(JObj, Services) ->
     Number = wh_doc:id(JObj),
     ModuleName = wh_json:get_atom_value(?PVT_MODULE_NAME, JObj),
-    case is_number_billable(Number, ModuleName) andalso
-        wnm_util:classify_number(Number)
+    case is_number_billable(Number, ModuleName)
+        andalso wnm_util:classify_number(Number)
     of
         'false' -> Services;
         'undefined' -> Services;
@@ -128,19 +128,23 @@ update_number_quantities(JObj, Services) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_number_billable(ne_binary(), api_atom()) -> boolean().
+-spec is_number_billable(ne_binary(), api_binary() | atom()) -> boolean().
 is_number_billable(DID, 'undefined') ->
-    case catch wnm_number:get(DID) of
-        #number{module_name='undefined'} ->
-            lager:debug("number ~s had no number manager module, not billable", [DID]),
+    case (catch wnm_number:get(DID)) of
+        {'EXIT', _E} ->
+            lager:debug("failed to get ~s: ~p", [DID, _E]),
             'false';
-        #number{module_name=Module} ->
-            is_number_billable(DID, Module);
-        Other ->
-            lager:debug("number ~s is not billable due to number error: ~p", [DID, Other]),
-            'false'
+        Number ->
+            case knm_phone_number:module_name(Number) of
+                'undefined' ->
+                    lager:debug("number ~s had no number manager module, not billable", [DID]),
+                    'false';
+                Module ->
+                    is_number_billable(DID, Module)
+            end
     end;
-is_number_billable(DID, Module) ->
+is_number_billable(DID, M) ->
+    Module = wh_util:to_atom(M, 'true'),
     case catch Module:is_number_billable(DID) of
         'true' ->
             lager:debug("number ~s is billable: ~s", [DID, Module]),
