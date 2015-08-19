@@ -16,6 +16,13 @@
 
 -define(SERVER, ?MODULE).
 
+-define(FEATURE_OUTBOUND_CNAM, <<"outbound_cnam">>).
+-define(FEATURE_INBOUND_CNAM, <<"inbound_cnam">>).
+-define(FEATURE_CNAM, <<"cnam">>).
+
+-define(KEY_DISPLAY_NAME, <<"display_name">>).
+-define(KEY_INBOUND_LOOKUP, <<"inbound_lookup">>).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -46,7 +53,10 @@ save(Number, _State) -> {'ok', Number}.
 -spec delete(knm_phone_number:knm_number()) ->
                     {'ok', knm_phone_number:knm_number()}.
 delete(Number) ->
-    knm_services:deactivate_features(Number, [<<"inbound_cnam">>, <<"outbound_cnam">>, <<"cnam">>]).
+    knm_services:deactivate_features(Number, [?FEATURE_INBOUND_CNAM
+                                              ,?FEATURE_OUTBOUND_CNAM
+                                              ,?FEATURE_CNAM
+                                             ]).
 
 %%%===================================================================
 %%% Internal functions
@@ -62,16 +72,16 @@ delete(Number) ->
 handle_outbound_cnam(Number) ->
     Doc = knm_phone_number:doc(Number),
     Features = knm_phone_number:features(Number),
-    CurrentCNAM = wh_json:get_ne_value([<<"cnam">>, <<"display_name">>], Features),
-    case wh_json:get_ne_value([?PVT_FEATURES, <<"cnam">>, <<"display_name">>], Doc) of
+    CurrentCNAM = wh_json:get_ne_value([?FEATURE_CNAM, ?KEY_DISPLAY_NAME], Features),
+    case wh_json:get_ne_value([?PVT_FEATURES, ?FEATURE_CNAM, ?KEY_DISPLAY_NAME], Doc) of
         'undefined' ->
-            {'ok', Number1} = knm_services:deactivate_feature(Number, <<"outbound_cnam">>),
+            {'ok', Number1} = knm_services:deactivate_feature(Number, ?FEATURE_OUTBOUND_CNAM),
             handle_inbound_cnam(Number1);
         CurrentCNAM ->
-            {'ok', Number1} = knm_services:deactivate_feature(Number, <<"outbound_cnam">>),
+            {'ok', Number1} = knm_services:deactivate_feature(Number, ?FEATURE_OUTBOUND_CNAM),
             handle_inbound_cnam(Number1);
         _Else ->
-            {'ok', Number1} = knm_services:activate_feature(Number, <<"outbound_cnam">>),
+            {'ok', Number1} = knm_services:activate_feature(Number, ?FEATURE_OUTBOUND_CNAM),
             _ = publish_cnam_update(Number1),
             handle_inbound_cnam(Number1)
     end.
@@ -87,9 +97,9 @@ handle_outbound_cnam(Number) ->
 handle_inbound_cnam(Number) ->
     Doc = knm_phone_number:doc(Number),
     {'ok', Number1} =
-        case wh_json:is_true([?PVT_FEATURES, <<"cnam">>, <<"inbound_lookup">>], Doc) of
-            'false' -> knm_services:deactivate_feature(Number, <<"inbound_lookup">>);
-            'true' ->  knm_services:activate_feature(Number, <<"inbound_cnam">>)
+        case wh_json:is_true([?PVT_FEATURES, ?FEATURE_CNAM, ?KEY_INBOUND_LOOKUP], Doc) of
+            'false' -> knm_services:deactivate_feature(Number, ?KEY_INBOUND_LOOKUP);
+            'true' ->  knm_services:activate_feature(Number, ?FEATURE_INBOUND_CNAM)
         end,
     support_depreciated_cnam(Number1).
 
@@ -102,7 +112,7 @@ handle_inbound_cnam(Number) ->
 -spec support_depreciated_cnam(knm_phone_number:knm_number()) ->
                                       {'ok', knm_phone_number:knm_number()}.
 support_depreciated_cnam(Number) ->
-    knm_services:deactivate_feature(Number, <<"cnam">>).
+    knm_services:deactivate_feature(Number, ?FEATURE_CNAM).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -124,7 +134,7 @@ publish_cnam_update(Number, 'false') ->
               ,{<<"Local-Number">>, knm_phone_number:module_name(Number) =:= ?LOCAL_CARRIER}
               ,{<<"Number">>, knm_phone_number:number(Number)}
               ,{<<"Acquired-For">>, knm_phone_number:auth_by(Number)}
-              ,{<<"Cnam">>, wh_json:get_value(<<"cnam">>, Features, wh_json:new())}
+              ,{<<"Cnam">>, wh_json:get_value(?FEATURE_CNAM, Features, wh_json:new())}
               | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
     wapi_notifications:publish_cnam_request(Notify).

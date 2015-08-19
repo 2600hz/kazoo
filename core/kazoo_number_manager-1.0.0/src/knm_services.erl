@@ -20,6 +20,9 @@
 
 -include("knm.hrl").
 
+-define(KEY_NUMBER_ACTIVATION_CHARGES, <<"number_activation_charges">>).
+-define(KEY_TRANSACTIONS, <<"transactions">>).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -53,11 +56,11 @@ activate_feature(Number, Feature, BillingId, Services) ->
             {'error', 'not_enough_credit'};
         'true' ->
             lager:debug("adding feature ~s to ~s", [Feature, knm_phone_number:number(Number)]),
-            Transactions = knm_phone_number:fetch_storage(Number, <<"transactions">>, []),
+            Transactions = knm_phone_number:fetch_storage(Number, ?KEY_TRANSACTIONS, []),
             Transaction = create_transaction(Number, Feature, Units),
             Updates = [{fun knm_phone_number:set_feature/3, [Feature, wh_json:new()]}
                        ,{fun knm_phone_number:store/3, [<<"feature_charges">>, TotalCharges]}
-                       ,{fun knm_phone_number:store/3, [<<"transactions">>, [Transaction|Transactions]]}
+                       ,{fun knm_phone_number:store/3, [?KEY_TRANSACTIONS, [Transaction|Transactions]]}
                       ],
             {'ok', knm_phone_number:setters(Number, Updates)}
     end.
@@ -108,7 +111,7 @@ maybe_update_services(Number, 'false') ->
     _ = wh_services:reconcile(PrevAssignedTo, <<"phone_numbers">>),
 
     Services = fetch(Number),
-    Transactions = knm_phone_number:fetch_storage(Number, <<"transactions">>, []),
+    Transactions = knm_phone_number:fetch_storage(Number, ?KEY_TRANSACTIONS, []),
     _ = wh_services:commit_transactions(Services, Transactions),
 
     Number.
@@ -130,7 +133,10 @@ activate_phone_number(Number) ->
 
 activate_phone_number(Number, BillingId) ->
     {Number1, Services} = fetch_services(Number),
-    Units = wh_service_phone_numbers:phone_number_activation_charge(Number, Services),
+    Units = wh_service_phone_numbers:phone_number_activation_charge(
+              knm_phone_number:number(Number1)
+              ,Services
+             ),
     activate_phone_number(Number1, BillingId, Units).
 
 activate_phone_number(Number, _BillingId, 0) ->
@@ -138,7 +144,7 @@ activate_phone_number(Number, _BillingId, 0) ->
     lager:debug("no activation charge for ~s", [Num]),
     Number;
 activate_phone_number(Number, BillingId, Units) ->
-    Charges = knm_phone_number:fetch_storage(Number, <<"number_activation_charges">>),
+    Charges = knm_phone_number:fetch_storage(Number, ?KEY_NUMBER_ACTIVATION_CHARGES),
     TotalCharges = Charges + Units,
 
     case wh_services:check_bookkeeper(BillingId, TotalCharges) of
@@ -149,10 +155,10 @@ activate_phone_number(Number, BillingId, Units) ->
              ),
             {'error', 'not_enough_credit'};
         'true' ->
-            Transactions = knm_phone_number:fetch_storage(Number, <<"transactions">>, []),
+            Transactions = knm_phone_number:fetch_storage(Number, ?KEY_TRANSACTIONS, []),
             Transaction = create_transaction(Number, Units),
-            Updates = [{fun knm_phone_number:store/3, [<<"number_activation_charges">>, TotalCharges]}
-                       ,{fun knm_phone_number:store/3, [<<"transactions">>, [Transaction|Transactions]]}
+            Updates = [{fun knm_phone_number:store/3, [?KEY_NUMBER_ACTIVATION_CHARGES, TotalCharges]}
+                       ,{fun knm_phone_number:store/3, [?KEY_TRANSACTIONS, [Transaction|Transactions]]}
                       ],
             {'ok', knm_phone_number:setters(Number, Updates)}
     end.

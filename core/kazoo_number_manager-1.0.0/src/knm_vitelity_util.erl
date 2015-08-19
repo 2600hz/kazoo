@@ -67,6 +67,8 @@
                         {'uri', ne_binary()}.
 -type query_options() :: [query_option()].
 
+-export_type([query_options/0]).
+
 -spec api_uri() -> ne_binary().
 api_uri() ->
     ?VITELITY_URI.

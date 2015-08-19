@@ -51,7 +51,9 @@ find_numbers(Number, Quantity, Props) ->
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec check_numbers(ne_binaries(), wh_proplist()) -> {'error', any()} | {'ok', any()}.
+-spec check_numbers(ne_binaries(), wh_proplist()) ->
+                           {'error', _} |
+                           {'ok', wh_json:object()}.
 check_numbers(Numbers, _Props) ->
     FormatedNumbers = [(knm_converters:default()):to_npan(Number) || Number <- Numbers],
     case whapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"phonebook_url">>) of
@@ -213,7 +215,7 @@ get_numbers(Url, Number, Quantity, Props) ->
 -spec format_numbers_resp(wh_json:object()) ->
                                  {'error', 'non_available'} |
                                  {'ok', knm_phone_number:knm_numbers()}.
--spec format_numbers_resp(wh_json:object(), knm_phone_number:knm_numbers()) ->
+-spec format_numbers_resp([{ne_binary(), wh_json:object()}], knm_phone_number:knm_numbers()) ->
                                  knm_phone_number:knm_numbers().
 format_numbers_resp(JObj) ->
     case wh_json:get_value(<<"status">>, JObj) of
@@ -230,17 +232,15 @@ format_numbers_resp([], Numbers) -> Numbers;
 format_numbers_resp([{Num, JObj}|T], Numbers) ->
     NormalizedNum = knm_converters:normalize(Num),
     NumberDb = knm_converters:to_db(NormalizedNum),
-    Updates = [
-        {fun knm_phone_number:set_number/2, NormalizedNum}
-        ,{fun knm_phone_number:set_number_db/2, NumberDb}
-        ,{fun knm_phone_number:set_module_name/2, wh_util:to_binary(?MODULE)}
-        ,{fun knm_phone_number:set_carrier_data/2, JObj}
-        ,{fun knm_phone_number:set_number_db/2, NumberDb}
-        ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}
-    ],
+    Updates = [{fun knm_phone_number:set_number/2, NormalizedNum}
+               ,{fun knm_phone_number:set_number_db/2, NumberDb}
+               ,{fun knm_phone_number:set_module_name/2, wh_util:to_binary(?MODULE)}
+               ,{fun knm_phone_number:set_carrier_data/2, JObj}
+               ,{fun knm_phone_number:set_number_db/2, NumberDb}
+               ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}
+              ],
     Number = knm_phone_number:setters(knm_phone_number:new(), Updates),
     format_numbers_resp(T, [Number|Numbers]).
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -276,20 +276,26 @@ get_blocks(Url, Number, Quantity, Props) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec format_blocks_resp(wh_json:object()) ->  {'error', 'non_available'} | {'ok', wh_json:objects()}.
+-spec format_blocks_resp(wh_json:object()) ->
+                                {'error', 'non_available'} |
+                                {'ok', knm_phone_number:knm_numbers()}.
 format_blocks_resp(JObj) ->
     case wh_json:get_value(<<"status">>, JObj) of
         <<"success">> ->
             Numbers =
                 lists:foldl(
-                    fun(Block, Numbers) ->
-                        StartNumber = wh_json:get_value(<<"start_number">>, Block),
-                        EndNumber = wh_json:get_value(<<"end_number">>, Block),
-                        format_blocks_resp_fold([{StartNumber, Block}, {EndNumber, Block}], Numbers)
-                    end
-                    ,[]
-                    ,wh_json:get_value(<<"data">>, JObj, [])
-                ),
+                  fun(Block, Numbers) ->
+                          StartNumber = wh_json:get_value(<<"start_number">>, Block),
+                          EndNumber = wh_json:get_value(<<"end_number">>, Block),
+                          format_blocks_resp_fold([{StartNumber, Block}
+                                                   ,{EndNumber, Block}
+                                                  ]
+                                                  ,Numbers
+                                                 )
+                  end
+                  ,[]
+                  ,wh_json:get_value(<<"data">>, JObj, [])
+                 ),
             {'ok', Numbers};
         _Error ->
             lager:error("block lookup resp error: ~p", [JObj]),
@@ -301,7 +307,7 @@ format_blocks_resp(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec format_blocks_resp_fold(wh_json:object(), knm_phone_number:knm_numbers()) ->
+-spec format_blocks_resp_fold([{ne_binary(), wh_json:object()}] | [], knm_phone_number:knm_numbers()) ->
                                      knm_phone_number:knm_numbers().
 format_blocks_resp_fold([], Numbers) -> Numbers;
 format_blocks_resp_fold([{Num, JObj}|T], Numbers) ->

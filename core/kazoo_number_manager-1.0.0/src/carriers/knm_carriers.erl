@@ -72,8 +72,12 @@ attempt_find(Mod, NormalizedNumber, Quantity, Opts) ->
 %% force leading +
 %% @end
 %%--------------------------------------------------------------------
--spec check(ne_binaries()) -> wh_json:object().
--spec check(ne_binaries(), wh_proplist()) -> wh_json:object().
+-type checked_numbers() :: [{atom(), {'ok', wh_json:object()} |
+                             {'error', _} |
+                             {'EXIT', _}
+                            }].
+-spec check(ne_binaries()) -> checked_numbers().
+-spec check(ne_binaries(), wh_proplist()) -> checked_numbers().
 check(Numbers) ->
     check(Numbers, []).
 
@@ -81,7 +85,8 @@ check(Numbers, Opts) ->
     FormattedNumbers = [knm_converters:normalize(Num) || Num <- Numbers],
     lager:info("attempting to check ~p ", [FormattedNumbers]),
     [{Module, catch(Module:check_numbers(FormattedNumbers, Opts))}
-     || Module <- ?MODULE:list_modules()].
+     || Module <- ?MODULE:list_modules()
+    ].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -93,8 +98,9 @@ check(Numbers, Opts) ->
 list_modules() ->
     CarrierModules =
         whapps_config:get(?KNM_CONFIG_CAT, <<"carrier_modules">>, ?DEFAULT_CARRIER_MODULES),
-    [Module || M <- CarrierModules,
-               (Module = wh_util:try_load_module(M)) =/= 'false'
+    [Module
+     || M <- CarrierModules,
+        (Module = wh_util:try_load_module(M)) =/= 'false'
     ].
 
 %%--------------------------------------------------------------------

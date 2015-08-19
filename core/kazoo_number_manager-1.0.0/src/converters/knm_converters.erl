@@ -24,31 +24,60 @@
 -define(CONVERTER_MOD, wh_util:to_atom(<<"knm_converter_", (?DEFAULT_CONVERTER)/binary>>, 'true')).
 
 -define(DEFAULT_RECONCILE_REGEX, <<"^\\+?1?\\d{10}$|^\\+[2-9]\\d{7,}$|^011\\d*$|^00\\d*$">>).
--define(DEFAULT_CLASSIFIERS, [{<<"tollfree_us">>, wh_json:from_list([{<<"regex">>, <<"^\\+1((?:800|888|877|866|855)\\d{7})$">>}
-                                                                     ,{<<"friendly_name">>, <<"US TollFree">>}
-                                                                     ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
-                                                                    ])}
-                              ,{<<"toll_us">>, wh_json:from_list([{<<"regex">>, <<"^\\+1(900\\d{7})$">>}
-                                                                  ,{<<"friendly_name">>, <<"US Toll">>}
-                                                                  ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
-                                                                 ])}
-                              ,{<<"emergency">>, wh_json:from_list([{<<"regex">>, <<"^(911)$">>}
-                                                                    ,{<<"friendly_name">>, <<"Emergency Dispatcher">>}
-                                                                   ])}
-                              ,{<<"caribbean">>, wh_json:from_list([{<<"regex">>, <<"^\\+?1((?:684|264|268|242|246|441|284|345|767|809|829|849|473|671|876|664|670|787|939|869|758|784|721|868|649|340)\\d{7})$">>}
-                                                                    ,{<<"friendly_name">>, <<"Caribbean">>}
-                                                                    ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
-                                                                   ])}
-                              ,{<<"did_us">>, wh_json:from_list([{<<"regex">>, <<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$">>}
-                                                                 ,{<<"friendly_name">>, <<"US DID">>}
-                                                                 ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
-                                                                ])}
-                              ,{<<"international">>, wh_json:from_list([{<<"regex">>, <<"^(011\\d*)$|^(00\\d*)$">>}
-                                                                        ,{<<"friendly_name">>, <<"International">>}
-                                                                       ])}
-                              ,{<<"unknown">>, wh_json:from_list([{<<"regex">>, <<"^(.*)$">>}
-                                                                  ,{<<"friendly_name">>, <<"Unknown">>}
-                                                                 ])}
+
+-define(CLASSIFIER_TOLLFREE_US
+        ,wh_json:from_list([{<<"regex">>, <<"^\\+1((?:800|888|877|866|855)\\d{7})$">>}
+                            ,{<<"friendly_name">>, <<"US TollFree">>}
+                            ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
+                           ])
+       ).
+
+-define(CLASSIFIER_TOLLFREE
+        ,wh_json:from_list([{<<"regex">>, <<"^\\+1(900\\d{7})$">>}
+                            ,{<<"friendly_name">>, <<"US Toll">>}
+                            ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
+                           ])
+       ).
+
+-define(CLASSIFIER_EMERGENCY
+        ,wh_json:from_list([{<<"regex">>, <<"^(911)$">>}
+                            ,{<<"friendly_name">>, <<"Emergency Dispatcher">>}
+                           ])
+       ).
+
+-define(CLASSIFIER_CARIBBEAN
+        ,wh_json:from_list([{<<"regex">>, <<"^\\+?1((?:684|264|268|242|246|441|284|345|767|809|829|849|473|671|876|664|670|787|939|869|758|784|721|868|649|340)\\d{7})$">>}
+                            ,{<<"friendly_name">>, <<"Caribbean">>}
+                            ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
+                           ])
+       ).
+
+-define(CLASSIFIER_DID_US
+        ,wh_json:from_list([{<<"regex">>, <<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$">>}
+                            ,{<<"friendly_name">>, <<"US DID">>}
+                            ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
+                           ])
+       ).
+
+-define(CLASSIFIER_INTERNATIONAL
+        ,wh_json:from_list([{<<"regex">>, <<"^(011\\d*)$|^(00\\d*)$">>}
+                            ,{<<"friendly_name">>, <<"International">>}
+                           ])
+       ).
+
+-define(CLASSIFIER_UNKNOWN
+        ,wh_json:from_list([{<<"regex">>, <<"^(.*)$">>}
+                            ,{<<"friendly_name">>, <<"Unknown">>}
+                           ])
+       ).
+
+-define(DEFAULT_CLASSIFIERS, [{<<"tollfree_us">>, ?CLASSIFIER_TOLLFREE_US}
+                              ,{<<"toll_us">>, ?CLASSIFIER_TOLLFREE}
+                              ,{<<"emergency">>, ?CLASSIFIER_EMERGENCY}
+                              ,{<<"caribbean">>, ?CLASSIFIER_CARIBBEAN}
+                              ,{<<"did_us">>, ?CLASSIFIER_DID_US}
+                              ,{<<"international">>, ?CLASSIFIER_INTERNATIONAL}
+                              ,{<<"unknown">>, ?CLASSIFIER_UNKNOWN}
                              ]).
 
 %%--------------------------------------------------------------------
@@ -57,7 +86,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize(ne_binary()) -> ne_binary().
-normalize(Num) ->
+normalize(<<_/binary>> = Num) ->
     (?CONVERTER_MOD):normalize(Num).
 
 %%--------------------------------------------------------------------
@@ -92,7 +121,7 @@ is_1npan(Num) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec to_db(ne_binary()) -> api_binary().
+-spec to_db(<<_:40,_:_*8>>) -> api_binary().
 to_db(<<NumPrefix:5/binary, _/binary>>) ->
     cow_qs:urlencode(<<?KNM_DB_PREFIX/binary, NumPrefix/binary>>);
 to_db(_) ->
