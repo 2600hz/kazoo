@@ -10,11 +10,10 @@
 
 -include("../knm.hrl").
 
--export([
-    normalize/1
-    ,to_npan/1
-    ,to_1npan/1
-]).
+-export([normalize/1
+         ,to_npan/1
+         ,to_1npan/1
+        ]).
 
 -define(DEFAULT_E164_CONVERTERS, [{<<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$">>
                                    ,wh_json:from_list([{<<"prefix">>, <<"+1">>}])
@@ -33,7 +32,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize(ne_binary()) -> ne_binary().
-normalize(Num) ->
+normalize(<<_/binary>> = Num) ->
     to_e164(Num).
 
 %%--------------------------------------------------------------------
@@ -76,7 +75,6 @@ to_e164(Number) ->
     Regexes = wh_json:get_keys(Converters),
     maybe_convert_to_e164(Regexes, Converters, Number).
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -109,4 +107,3 @@ maybe_convert_to_e164([Regex|Regexs], Converters, Number) ->
             Suffix = wh_json:get_binary_value([Regex, <<"suffix">>], Converters, <<>>),
             <<Prefix/binary, Root/binary, Suffix/binary>>
     end.
-

@@ -107,8 +107,8 @@ handle_outbound_cnam(Number, 'false') ->
 try_update_outbound_cnam(Number, NewCNAM) ->
     DID = knm_phone_number:number(Number),
     case
-        wnm_vitelity_util:query_vitelity(
-          wnm_vitelity_util:build_uri(
+        knm_vitelity_util:query_vitelity(
+          knm_vitelity_util:build_uri(
             outbound_cnam_options(DID, NewCNAM)
            )
          )
@@ -131,9 +131,9 @@ outbound_cnam_options(DID, NewCNAM) ->
              ,{'did', (knm_converters:default()):to_npan(DID)}
              ,{'name', NewCNAM}
              ,{'xml', <<"yes">>}
-             | wnm_vitelity_util:default_options()
+             | knm_vitelity_util:default_options()
             ]}
-     ,{'uri', wnm_vitelity_util:api_uri()}
+     ,{'uri', knm_vitelity_util:api_uri()}
     ].
 
 %%--------------------------------------------------------------------
@@ -168,11 +168,11 @@ process_outbound_xml_resp(Number, XML) ->
 -spec process_outbound_resp(knm_phone_number:knm_number(), xml_els()) ->
                                    number_return().
 process_outbound_resp(Number, Children) ->
-    case wnm_vitelity_util:xml_resp_status_msg(Children) of
+    case knm_vitelity_util:xml_resp_status_msg(Children) of
         <<"ok">> ->
             check_outbound_response_tag(Number, Children);
         <<"fail">> ->
-            {'error', wnm_vitelity_util:xml_resp_error_msg(Children)}
+            {'error', knm_vitelity_util:xml_resp_error_msg(Children)}
     end.
 
 %%--------------------------------------------------------------------
@@ -184,7 +184,7 @@ process_outbound_resp(Number, Children) ->
 -spec check_outbound_response_tag(knm_phone_number:knm_number(), xml_els()) ->
                                          number_return().
 check_outbound_response_tag(Number, Children) ->
-    case wnm_vitelity_util:xml_resp_response_msg(Children) of
+    case knm_vitelity_util:xml_resp_response_msg(Children) of
         'undefined' ->
             {'error', 'resp_tag_not_found'};
         <<"ok">> ->
@@ -232,8 +232,8 @@ handle_inbound_cnam(Number, 'false') ->
                                  {'ok', knm_phone_number:knm_number()}.
 remove_inbound_cnam(Number) ->
     DID = knm_phone_number:number(Number),
-    _ = wnm_vitelity_util:query_vitelity(
-          wnm_vitelity_util:build_uri(
+    _ = knm_vitelity_util:query_vitelity(
+          knm_vitelity_util:build_uri(
             remove_inbound_options(DID)
            )
          ),
@@ -250,9 +250,9 @@ remove_inbound_options(Number) ->
     [{'qs', [{'did', (knm_converters:default()):to_npan(Number)}
              ,{'cmd', <<"cnamdisable">>}
              ,{'xml', <<"yes">>}
-             | wnm_vitelity_util:default_options()
+             | knm_vitelity_util:default_options()
             ]}
-     ,{'uri', wnm_vitelity_util:api_uri()}
+     ,{'uri', knm_vitelity_util:api_uri()}
     ].
 
 %%--------------------------------------------------------------------
@@ -265,8 +265,8 @@ remove_inbound_options(Number) ->
 add_inbound_cnam(Number) ->
     DID = knm_phone_number:number(Number),
     case
-        wnm_vitelity_util:query_vitelity(
-          wnm_vitelity_util:build_uri(
+        knm_vitelity_util:query_vitelity(
+          knm_vitelity_util:build_uri(
             inbound_options(DID)
            )
          )
@@ -286,9 +286,9 @@ inbound_options(DID) ->
     [{'qs', [{'did', (knm_converters:default()):to_npan(DID)}
              ,{'cmd', <<"cnamenable">>}
              ,{'xml', <<"yes">>}
-             | wnm_vitelity_util:default_options()
+             | knm_vitelity_util:default_options()
             ]}
-     ,{'uri', wnm_vitelity_util:api_uri()}
+     ,{'uri', knm_vitelity_util:api_uri()}
     ].
 
 %%--------------------------------------------------------------------
@@ -319,11 +319,11 @@ process_xml_content_tag(Number, #xmlElement{name='content'
                                             ,content=Children
                                            }) ->
     Els = kz_xml:elements(Children),
-    case wnm_vitelity_util:xml_resp_status_msg(Els) of
+    case knm_vitelity_util:xml_resp_status_msg(Els) of
         <<"fail">> ->
-            {'error', wnm_vitelity_util:xml_resp_error_msg(Els)};
+            {'error', knm_vitelity_util:xml_resp_error_msg(Els)};
         <<"ok">> ->
-            wnm_number:activate_feature(Number, <<"inbound_cnam">>)
+            knm_services:activate_feature(Number, <<"inbound_cnam">>)
     end.
 
 %%--------------------------------------------------------------------

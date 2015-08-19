@@ -37,8 +37,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) ->
-                          {'ok', wh_json:object()} |
-                          {'error', _}.
+                          {'ok', knm_phone_number:knm_numbers()}.
 find_numbers(Prefix, Quantity, _Options) ->
     URL = list_to_binary([?SW_NUMBER_URL, "/", ?SW_ACCOUNT_ID, <<"/available/standard/">>, sw_quantity(Quantity), "?pattern=", Prefix, "*"]),
     {'ok', Body} = query_simwood(URL, 'get'),
