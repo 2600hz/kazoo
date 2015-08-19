@@ -36,7 +36,6 @@
          ,auth_by/1 ,set_auth_by/2, is_authorized/1
          ,dry_run/1 ,set_dry_run/2
          ,locality/1 ,set_locality/2
-         ,fetch_storage/2 ,fetch_storage/3 ,store/3
          ,doc/1
         ]).
 
@@ -59,7 +58,6 @@
                  ,auth_by = ?DEFAULT_AUTH_BY :: ne_binary()
                  ,dry_run = 'false' :: boolean()
                  ,locality :: wh_json:object()
-                 ,storage = [] :: wh_proplist()
                  ,doc :: wh_json:object()
                 }).
 -type knm_number() :: #number{}.
@@ -455,24 +453,6 @@ locality(#number{locality=Locality}) -> Locality.
 -spec set_locality(knm_number(), wh_json:object()) -> knm_number().
 set_locality(N, JObj) ->
     N#number{locality=JObj}.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec fetch_storage(knm_number(), ne_binary()) -> any().
--spec fetch_storage(knm_number(), ne_binary(), Default) -> any() | Default.
-fetch_storage(Number, Key) ->
-    props:get_value(Key, Number#number.storage).
-
-fetch_storage(Number, Key, Default) ->
-    props:get_value(Key, Number#number.storage, Default).
-
--spec store(knm_number(), ne_binary(), any()) -> knm_number().
-store(N, Key, Data) ->
-    Storage = props:set_value(Key, Data, N#number.storage),
-    N#number{storage=Storage}.
 
 %%--------------------------------------------------------------------
 %% @public
