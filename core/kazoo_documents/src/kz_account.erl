@@ -25,9 +25,11 @@
          ,api_key/1, set_api_key/2
          ,is_superduper_admin/1, set_superduper_admin/2
          ,allow_number_additions/1, set_allow_number_additions/2
+
          ,trial_expiration/1, trial_expiration/2, set_trial_expiration/2
          ,trial_time_left/1, trial_time_left/2
-         ,trial_has_expired/1, is_expired/1
+         ,trial_has_expired/1, trial_has_expired/2
+         ,is_expired/1
          ,is_trial_account/1
          ,is_reseller/1, promote/1, demote/1
          ,reseller_id/1, set_reseller_id/2
@@ -376,8 +378,10 @@ trial_time_left(JObj, Now) ->
 %%--------------------------------------------------------------------
 -spec trial_has_expired(doc()) -> boolean().
 trial_has_expired(JObj) ->
+    trial_has_expired(JObj, wh_util:current_tstamp()).
+trial_has_expired(JObj, Now) ->
     trial_expiration(JObj) =/= 'undefined' andalso
-        trial_time_left(JObj) =< 0.
+        trial_time_left(JObj, Now) =< 0.
 
 %%--------------------------------------------------------------------
 %% @public
