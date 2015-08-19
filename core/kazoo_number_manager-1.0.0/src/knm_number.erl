@@ -21,6 +21,18 @@
 
 -include("knm.hrl").
 
+-record(number, {knm_phone_number :: knm_phone_number:knm_number()
+                 ,services :: wh_services:services()
+                 ,transactions = [] :: wh_transaction:transactions()
+                 ,errors = [] :: term()
+                }).
+-type knm_number() :: #number{}.
+-type knm_numbers() :: [knm_number()].
+
+-export_type([knm_number/0
+              ,knm_numbers/0
+             ]).
+
 -type lookup_option() :: {'pending_port', boolean()} |
                          {'local', boolean()} |
                          {'number', ne_binary()} |
