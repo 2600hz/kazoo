@@ -138,12 +138,11 @@ delete(#number{dry_run='false'}=Number) ->
 %%--------------------------------------------------------------------
 -spec to_public_json(knm_number()) -> wh_json:object().
 to_public_json(Number) ->
-    Remove = [],
-    Format = [{?PVT_USED_BY, <<"used_by">>}
-              ,{?PVT_FEATURES, <<"features">>}
-             ],
-    JObj = wh_json:normalize_jobj(to_json(Number), Remove, Format),
-    wh_json:public_fields(JObj).
+    wh_json:set_values([{<<"used_by">>, used_by(Number)}
+                        ,{<<"features">>, features(Number)}
+                       ]
+                       ,wh_json:public_fields(to_json(Number))
+                      ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -211,26 +210,37 @@ new() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec setters(knm_number(), set_functions()) ->
-                     knm_number() |
-                     number_return().
+                     number_return() |
+                     knm_number().
 setters(Number, Routines) ->
+    try run_setters(Number, Routines) of
+        Result -> Result
+    catch
+        'throw':{'stop', Err} ->
+            Err
+    end.
+
+-spec run_setters(knm_number(), set_functions()) ->
+                         number_return() |
+                         knm_number().
+run_setters(Number, Routines) ->
     lists:foldl(
       fun setters_fold/2
       ,Number
       ,Routines
      ).
 
--type set_function() :: function() |
-                        {function(), term()}.
+-type set_function() :: fun((knm_number()) -> setter_acc()) |
+                        {fun((knm_number(), V) -> setter_acc()), V} |
+                        {fun((knm_number(), K, V) -> setter_acc()), [K | V,...]}.
 -type set_functions() :: [set_function()].
 
--type setter_acc() :: {'ok', knm_number()} |
-                      knm_number() |
-                      {'error', _}.
+-type setter_acc() :: number_return() |
+                      knm_number().
 
 -spec setters_fold(set_function(), setter_acc()) -> setter_acc().
 setters_fold(_, {'error', _R}=Error) ->
-    Error;
+    throw({'stop', Error});
 setters_fold({Fun, [_|_]=Value}, {'ok', Number}) when is_function(Fun) ->
     lager:debug("applying ~p", [Fun]),
     erlang:apply(Fun, [Number|Value]);
@@ -329,7 +339,7 @@ set_features(N, Features) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec feature(knm_number(), ne_binary()) -> api_binary().
+-spec feature(knm_number(), ne_binary()) -> wh_json:json_term() | 'undefined'.
 feature(Number, Feature) ->
     wh_json:get_value(Feature, features(Number)).
 

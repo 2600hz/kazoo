@@ -58,20 +58,25 @@ get(Num, Options) ->
 %%--------------------------------------------------------------------
 -spec create(ne_binary(), wh_proplist()) -> number_return().
 create(Num, Props) ->
+    Updates = create_updaters(Num, Props),
+    knm_phone_number:setters(knm_phone_number:new(), Updates).
+
+-spec create_updaters(ne_binary(), wh_proplist()) ->
+                             knm_phone_number:set_functions().
+create_updaters(<<_/binary>> = Num, Props) when is_list(Props) ->
     NormalizedNum = knm_converters:normalize(Num),
     NumberDb = knm_converters:to_db(NormalizedNum),
-    Updates =
-        props:filter_undefined(
-          [{fun knm_phone_number:set_number/2, NormalizedNum}
-           ,{fun knm_phone_number:set_number_db/2, NumberDb}
-           ,{fun knm_phone_number:set_state/2, props:get_binary_value(<<"state">>, Props, ?NUMBER_STATE_IN_SERVICE)}
-           ,{fun knm_phone_number:set_ported_in/2, props:get_is_true(<<"ported_in">>, Props, 'false')}
-           ,{fun knm_phone_number:set_assigned_to/2, props:get_binary_value(<<"assigned_to">>, Props)}
-           ,{fun knm_phone_number:set_auth_by/2, props:get_binary_value(<<"auth_by">>, Props, ?DEFAULT_AUTH_BY)}
-           ,{fun knm_phone_number:set_dry_run/2, props:get_is_true(<<"dry_run">>, Props, 'false')}
-           ,fun knm_phone_number:save/1
-          ]),
-    knm_phone_number:setters(knm_phone_number:new(), Updates).
+
+    props:filter_undefined(
+      [{fun knm_phone_number:set_number/2, NormalizedNum}
+       ,{fun knm_phone_number:set_number_db/2, NumberDb}
+       ,{fun knm_phone_number:set_state/2, props:get_binary_value(<<"state">>, Props, ?NUMBER_STATE_IN_SERVICE)}
+       ,{fun knm_phone_number:set_ported_in/2, props:is_true(<<"ported_in">>, Props, 'false')}
+       ,{fun knm_phone_number:set_assigned_to/2, props:get_binary_value(<<"assigned_to">>, Props)}
+       ,{fun knm_phone_number:set_auth_by/2, props:get_binary_value(<<"auth_by">>, Props, ?DEFAULT_AUTH_BY)}
+       ,{fun knm_phone_number:set_dry_run/2, props:is_true(<<"dry_run">>, Props, 'false')}
+       ,fun knm_phone_number:save/1
+      ]).
 
 %%--------------------------------------------------------------------
 %% @public
