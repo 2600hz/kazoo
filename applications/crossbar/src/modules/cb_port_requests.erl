@@ -27,9 +27,9 @@
          ,authority/1
         ]).
 
--include_lib("whistle_number_manager/include/wh_number_manager.hrl").
--include_lib("whistle_number_manager/include/wh_port_request.hrl").
 -include("crossbar.hrl").
+-include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
+-include_lib("kazoo_number_manager/include/knm_port_request.hrl").
 
 -define(MY_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".port_requests">>).
 
@@ -55,6 +55,8 @@
        ).
 
 -define(PATH_TOKEN_LOA, <<"loa">>).
+
+-define(WNM_PHONE_NUMBER_DOC, <<"phone_numbers">>).
 
 %%%===================================================================
 %%% API
