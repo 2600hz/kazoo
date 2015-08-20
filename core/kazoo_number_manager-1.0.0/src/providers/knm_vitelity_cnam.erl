@@ -23,10 +23,12 @@
 %% produce notifications if the cnam object changes
 %% @end
 %%--------------------------------------------------------------------
--spec save(knm_phone_number:knm_number()) -> number_return().
--spec save(knm_phone_number:knm_number(), ne_binary()) -> number_return().
+-spec save(knm_number:knm_number()) ->
+                  knm_number_return().
+-spec save(knm_number:knm_number(), ne_binary()) ->
+                  knm_number_return().
 save(Number) ->
-    State = knm_phone_number:state(Number),
+    State = knm_phone_number:state(knm_number:phone_number(Number)),
     save(Number, State).
 
 save(Number, ?NUMBER_STATE_RESERVED) ->
@@ -35,7 +37,8 @@ save(Number, ?NUMBER_STATE_IN_SERVICE) ->
     handle_outbound_cnam(Number);
 save(Number, ?NUMBER_STATE_PORT_IN) ->
     handle_outbound_cnam(Number);
-save(Number, _State) -> {'ok', Number}.
+save(Number, _State) ->
+    {'ok', Number}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -43,10 +46,16 @@ save(Number, _State) -> {'ok', Number}.
 %% This function is called each time a number is deleted
 %% @end
 %%--------------------------------------------------------------------
--spec delete(knm_phone_number:knm_number()) ->
-                    {'ok', knm_phone_number:knm_number()}.
+-spec delete(knm_number:knm_number()) ->
+                    {'ok', knm_number:knm_number()}.
 delete(Number) ->
-    knm_services:deactivate_features(Number, [<<"inbound_cnam">>, <<"outbound_cnam">>, <<"cnam">>]).
+    knm_services:deactivate_features(
+      Number
+      ,[?FEATURE_INBOUND_CNAM
+        ,?FEATURE_OUTBOUND_CNAM
+        ,?FEATURE_CNAM
+       ]
+     ).
 
 %%%===================================================================
 %%% Internal functions
@@ -58,37 +67,41 @@ delete(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_outbound_cnam(knm_phone_number:knm_number()) -> number_return().
--spec handle_outbound_cnam(knm_phone_number:knm_number(), boolean()) -> number_return().
+-spec handle_outbound_cnam(knm_number:knm_number()) -> knm_number_return().
+-spec handle_outbound_cnam(knm_number:knm_number(), boolean()) -> knm_number_return().
 handle_outbound_cnam(Number) ->
-    handle_outbound_cnam(Number, knm_phone_number:dry_run(Number)).
+    handle_outbound_cnam(Number
+                         ,knm_phone_number:dry_run(knm_number:phone_number(Number))
+                        ).
 
 handle_outbound_cnam(Number, 'true') ->
-    Features = knm_phone_number:features(Number),
-    Doc = knm_phone_number:doc(Number),
-    CurrentCNAM = wh_json:get_ne_value([<<"cnam">>, <<"display_name">>], Features),
-    case wh_json:get_ne_value([?PVT_FEATURES, <<"cnam">>, <<"display_name">>], Doc) of
+    PhoneNumber = knm_number:phone_number(Number),
+    Features = knm_phone_number:features(PhoneNumber),
+    Doc = knm_phone_number:doc(PhoneNumber),
+    CurrentCNAM = wh_json:get_ne_value([?FEATURE_CNAM, ?KEY_DISPLAY_NAME], Features),
+    case wh_json:get_ne_value([?PVT_FEATURES, ?FEATURE_CNAM, ?KEY_DISPLAY_NAME], Doc) of
         'undefined' ->
-            {'ok', Number1} = knm_services:deactivate_feature(Number, <<"outbound_cnam">>),
+            {'ok', Number1} = knm_services:deactivate_feature(Number, ?FEATURE_OUTBOUND_CNAM),
             handle_inbound_cnam(Number1);
         CurrentCNAM ->
-            {'ok', Number1} = knm_services:deactivate_feature(Number, <<"outbound_cnam">>),
+            {'ok', Number1} = knm_services:deactivate_feature(Number, ?FEATURE_OUTBOUND_CNAM),
             handle_inbound_cnam(Number1);
         NewCNAM ->
             lager:debug("dry run: cnam display name changed to ~s", [NewCNAM]),
-            {'ok', Number1} = knm_services:activate_feature(Number, <<"outbound_cnam">>),
+            {'ok', Number1} = knm_services:activate_feature(Number, ?FEATURE_OUTBOUND_CNAM),
             handle_inbound_cnam(Number1)
     end;
 handle_outbound_cnam(Number, 'false') ->
-    Features = knm_phone_number:features(Number),
-    Doc = knm_phone_number:doc(Number),
-    CurrentCNAM = wh_json:get_ne_value([<<"cnam">>, <<"display_name">>], Features),
-    case wh_json:get_ne_value([?PVT_FEATURES, <<"cnam">>, <<"display_name">>], Doc) of
+    PhoneNumber = knm_number:phone_number(Number),
+    Features = knm_phone_number:features(PhoneNumber),
+    Doc = knm_phone_number:doc(PhoneNumber),
+    CurrentCNAM = wh_json:get_ne_value([?FEATURE_CNAM, ?KEY_DISPLAY_NAME], Features),
+    case wh_json:get_ne_value([?PVT_FEATURES, ?FEATURE_CNAM, ?KEY_DISPLAY_NAME], Doc) of
         'undefined' ->
-            {'ok', Number1} = knm_services:deactivate_feature(Number, <<"outbound_cnam">>),
+            {'ok', Number1} = knm_services:deactivate_feature(Number, ?FEATURE_OUTBOUND_CNAM),
             handle_inbound_cnam(Number1);
         CurrentCNAM ->
-            {'ok', Number1} = knm_services:deactivate_feature(Number, <<"outbound_cnam">>),
+            {'ok', Number1} = knm_services:deactivate_feature(Number, ?FEATURE_OUTBOUND_CNAM),
             handle_inbound_cnam(Number1);
         NewCNAM ->
             lager:debug("cnam display name changed to ~s, updating Vitelity", [NewCNAM]),
@@ -102,10 +115,10 @@ handle_outbound_cnam(Number, 'false') ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec try_update_outbound_cnam(knm_phone_number:knm_number(), ne_binary()) ->
-                                      number_return().
+-spec try_update_outbound_cnam(knm_number:knm_number(), ne_binary()) ->
+                                      knm_number_return().
 try_update_outbound_cnam(Number, NewCNAM) ->
-    DID = knm_phone_number:number(Number),
+    DID = knm_phone_number:number(knm_number:phone_number(Number)),
     case
         knm_vitelity_util:query_vitelity(
           knm_vitelity_util:build_uri(
@@ -142,8 +155,8 @@ outbound_cnam_options(DID, NewCNAM) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec process_outbound_xml_resp(knm_phone_number:knm_number(), text()) ->
-                                       number_return().
+-spec process_outbound_xml_resp(knm_number:knm_number(), text()) ->
+                                       knm_number_return().
 process_outbound_xml_resp(Number, XML) ->
     try xmerl_scan:string(XML) of
         {#xmlElement{name='content'
@@ -165,8 +178,8 @@ process_outbound_xml_resp(Number, XML) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec process_outbound_resp(knm_phone_number:knm_number(), xml_els()) ->
-                                   number_return().
+-spec process_outbound_resp(knm_number:knm_number(), xml_els()) ->
+                                   knm_number_return().
 process_outbound_resp(Number, Children) ->
     case knm_vitelity_util:xml_resp_status_msg(Children) of
         <<"ok">> ->
@@ -181,14 +194,14 @@ process_outbound_resp(Number, Children) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec check_outbound_response_tag(knm_phone_number:knm_number(), xml_els()) ->
-                                         number_return().
+-spec check_outbound_response_tag(knm_number:knm_number(), xml_els()) ->
+                                         knm_number_return().
 check_outbound_response_tag(Number, Children) ->
     case knm_vitelity_util:xml_resp_response_msg(Children) of
         'undefined' ->
             {'error', 'resp_tag_not_found'};
         <<"ok">> ->
-            {'ok', Number1} = knm_services:activate_feature(Number, <<"outbound_cnam">>),
+            {'ok', Number1} = knm_services:activate_feature(Number, ?FEATURE_OUTBOUND_CNAM),
             _ = publish_cnam_update(Number1),
             {'ok', Number1};
         Msg ->
@@ -202,22 +215,27 @@ check_outbound_response_tag(Number, Children) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_inbound_cnam(knm_phone_number:knm_number()) -> number_return().
--spec handle_inbound_cnam(knm_phone_number:knm_number(), boolean()) -> number_return().
+-spec handle_inbound_cnam(knm_number:knm_number()) ->
+                                 knm_number_return().
+-spec handle_inbound_cnam(knm_number:knm_number(), boolean()) ->
+                                 knm_number_return().
 handle_inbound_cnam(Number) ->
-    handle_inbound_cnam(Number, knm_phone_number:dry_run(Number)).
+    handle_inbound_cnam(
+      Number
+      ,knm_phone_number:dry_run(knm_number:phone_number(Number))
+     ).
 
 handle_inbound_cnam(Number, 'true') ->
-    Doc = knm_phone_number:doc(Number),
-    case wh_json:is_true([?PVT_FEATURES, <<"cnam">>, <<"inbound_lookup">>], Doc) of
+    Doc = knm_phone_number:doc(knm_number:phone_number(Number)),
+    case wh_json:is_true([?PVT_FEATURES, ?FEATURE_CNAM, ?KEY_INBOUND_LOOKUP], Doc) of
         'false' ->
-            knm_services:deactivate_feature(Number, <<"inbound_cnam">>);
+            knm_services:deactivate_feature(Number, ?FEATURE_INBOUND_CNAM);
         'true' ->
-            knm_services:activate_feature(Number, <<"inbound_cnam">>)
+            knm_services:activate_feature(Number, ?FEATURE_INBOUND_CNAM)
     end;
 handle_inbound_cnam(Number, 'false') ->
-    Doc = knm_phone_number:doc(Number),
-    case wh_json:is_true([?PVT_FEATURES, <<"cnam">>, <<"inbound_lookup">>], Doc) of
+    Doc = knm_phone_number:doc(knm_number:phone_number(Number)),
+    case wh_json:is_true([?PVT_FEATURES, ?FEATURE_CNAM, ?KEY_INBOUND_LOOKUP], Doc) of
         'false' -> remove_inbound_cnam(Number);
         'true' -> add_inbound_cnam(Number)
     end.
@@ -228,16 +246,16 @@ handle_inbound_cnam(Number, 'false') ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec remove_inbound_cnam(knm_phone_number:knm_number()) ->
-                                 {'ok', knm_phone_number:knm_number()}.
+-spec remove_inbound_cnam(knm_number:knm_number()) ->
+                                 {'ok', knm_number:knm_number()}.
 remove_inbound_cnam(Number) ->
-    DID = knm_phone_number:number(Number),
+    DID = knm_phone_number:number(knm_number:phone_number(Number)),
     _ = knm_vitelity_util:query_vitelity(
           knm_vitelity_util:build_uri(
             remove_inbound_options(DID)
            )
          ),
-    knm_services:deactivate_feature(Number, <<"inbound_cnam">>).
+    knm_services:deactivate_feature(Number, ?FEATURE_INBOUND_CNAM).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -261,9 +279,9 @@ remove_inbound_options(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec add_inbound_cnam(knm_phone_number:knm_number()) -> number_return().
+-spec add_inbound_cnam(knm_number:knm_number()) -> number_return().
 add_inbound_cnam(Number) ->
-    DID = knm_phone_number:number(Number),
+    DID = knm_phone_number:number(knm_number:phone_number(Number)),
     case
         knm_vitelity_util:query_vitelity(
           knm_vitelity_util:build_uri(
@@ -297,7 +315,8 @@ inbound_options(DID) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec process_xml_resp(knm_phone_number:knm_number(), text()) -> number_return().
+-spec process_xml_resp(knm_number:knm_number(), text()) ->
+                              knm_number_return().
 process_xml_resp(Number, XML) ->
     try xmerl_scan:string(XML) of
         {XmlEl, _} -> process_xml_content_tag(Number, XmlEl)
@@ -313,8 +332,8 @@ process_xml_resp(Number, XML) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec process_xml_content_tag(knm_phone_number:knm_number(), xml_el()) ->
-                                     number_return().
+-spec process_xml_content_tag(knm_number:knm_number(), xml_el()) ->
+                                     knm_number_return().
 process_xml_content_tag(Number, #xmlElement{name='content'
                                             ,content=Children
                                            }) ->
@@ -323,7 +342,7 @@ process_xml_content_tag(Number, #xmlElement{name='content'
         <<"fail">> ->
             {'error', knm_vitelity_util:xml_resp_error_msg(Els)};
         <<"ok">> ->
-            knm_services:activate_feature(Number, <<"inbound_cnam">>)
+            knm_services:activate_feature(Number, ?FEATURE_INBOUND_CNAM)
     end.
 
 %%--------------------------------------------------------------------
@@ -332,15 +351,16 @@ process_xml_content_tag(Number, #xmlElement{name='content'
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec publish_cnam_update(knm_phone_number:knm_number()) -> 'ok'.
+-spec publish_cnam_update(knm_number:knm_number()) -> 'ok'.
 publish_cnam_update(Number) ->
-    Features = knm_phone_number:features(Number),
-    Notify = [{<<"Account-ID">>, knm_phone_number:assigned_to(Number)}
-              ,{<<"Number-State">>, knm_phone_number:state(Number)}
-              ,{<<"Local-Number">>, knm_phone_number:module_name(Number) =:= ?LOCAL_CARRIER}
-              ,{<<"Number">>, knm_phone_number:number(Number)}
-              ,{<<"Acquired-For">>, knm_phone_number:auth_by(Number)}
-              ,{<<"Cnam">>, wh_json:get_value(<<"cnam">>, Features, wh_json:new())}
+    PhoneNumber = knm_number:phone_number(Number),
+    Features = knm_phone_number:features(PhoneNumber),
+    Notify = [{<<"Account-ID">>, knm_phone_number:assigned_to(PhoneNumber)}
+              ,{<<"Number-State">>, knm_phone_number:state(PhoneNumber)}
+              ,{<<"Local-Number">>, knm_phone_number:module_name(PhoneNumber) =:= ?LOCAL_CARRIER}
+              ,{<<"Number">>, knm_phone_number:number(PhoneNumber)}
+              ,{<<"Acquired-For">>, knm_phone_number:auth_by(PhoneNumber)}
+              ,{<<"Cnam">>, wh_json:get_value(?FEATURE_CNAM, Features, wh_json:new())}
               | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
     wapi_notifications:publish_cnam_request(Notify).

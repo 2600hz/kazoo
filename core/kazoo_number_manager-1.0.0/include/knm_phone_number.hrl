@@ -8,6 +8,9 @@
 -type number_return() :: {'ok', knm_phone_number:knm_number()} |
                          {'error', _}.
 
+-type knm_number_return() :: {'ok', knm_number:knm_number()} |
+                             {'error', _}.
+
 -define(PVT_DB_NAME, <<"pvt_db_name">>).
 -define(PVT_ASSIGNED_TO, <<"pvt_assigned_to">>).
 -define(PVT_PREVIOUSLY_ASSIGNED_TO, <<"pvt_previously_assigned_to">>).

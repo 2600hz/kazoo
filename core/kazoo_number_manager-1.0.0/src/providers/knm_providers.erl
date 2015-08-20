@@ -18,18 +18,18 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec save(number()) -> number_return().
-save(Number) ->
-    exec(Number, 'save').
+-spec save(knm_phone_number:knm_number()) -> number_return().
+save(PhoneNumber) ->
+    exec(PhoneNumber, 'save').
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec delete(number()) -> number_return().
-delete(Number) ->
-    exec(Number, 'delete').
+-spec delete(knm_phone_number:knm_number()) -> number_return().
+delete(PhoneNumber) ->
+    exec(PhoneNumber, 'delete').
 
 %%%===================================================================
 %%% Internal functions
@@ -40,21 +40,22 @@ delete(Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec exec(number(), atom()) -> number_return().
--spec exec(number(), atom(), ne_binaries()) -> number_return().
-exec(Number, Action) ->
+-type exec_action() :: 'save' | 'delete'.
+-spec exec(knm_phone_number:knm_number(), exec_action()) -> number_return().
+-spec exec(knm_phone_number:knm_number(), exec_action(), ne_binaries()) -> number_return().
+exec(PhoneNumber, Action) ->
     Providers = whapps_config:get(?KNM_CONFIG_CAT, <<"providers">>, ?DEFAULT_PROVIDER_MODULES),
-    exec(Number, Action, Providers).
+    exec(PhoneNumber, Action, Providers).
 
-exec(Number, _, []) ->
-    {'ok', Number};
-exec(Number, Action, [Provider|Providers]) ->
+exec(PhoneNumber, _, []) ->
+    {'ok', PhoneNumber};
+exec(PhoneNumber, Action, [Provider|Providers]) ->
     case wh_util:try_load_module(<<"knm_", Provider/binary>>) of
         'false' ->
             lager:debug("provider ~s is unknown, skipping", [Provider]),
-            exec(Number, Action, Providers);
+            exec(PhoneNumber, Action, Providers);
         Module ->
-            case erlang:apply(Module, Action, [Number]) of
+            case erlang:apply(Module, Action, [PhoneNumber]) of
                 {'ok', N}->
                     lager:debug("successfully attempted ~s:~s/1", [Module, Action]),
                     exec(N, Action, Providers);

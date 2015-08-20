@@ -25,7 +25,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec reconcile(wh_services:services()) -> wh_services:services().
--spec reconcile(wh_json:objects(), wh_services:services()) -> wh_services:services().
+-spec reconcile(wh_services:services(), wh_json:objects()) -> wh_services:services().
 reconcile(Services) ->
     AccountId = wh_services:account_id(Services),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
@@ -35,13 +35,13 @@ reconcile(Services) ->
             Services;
         {'ok', JObjs} ->
             Docs = [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs],
-            reconcile(Docs, Services)
+            reconcile(Services, Docs)
     end.
 
-reconcile(JObjs, Services) ->
+reconcile(Services, JObjs) ->
     S1 = wh_services:reset_category(?PHONE_NUMBERS, Services),
     S2 = wh_services:reset_category(?NUMBER_SERVICES, S1),
-    update_numbers(JObjs, S2).
+    update_numbers(S2, JObjs).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -64,15 +64,14 @@ feature_activation_charge(Feature, Services) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec phone_number_activation_charge(ne_binary(), wh_services:services()) -> integer().
-phone_number_activation_charge(Number, Services) ->
+-spec phone_number_activation_charge(wh_services:services(), ne_binary()) -> integer().
+phone_number_activation_charge(Services, Number) ->
     case wnm_util:classify_number(Number) of
         'undefined' -> 0;
         Classification ->
             Charge = wh_services:activation_charges(?PHONE_NUMBERS, Classification, Services),
             wht_util:dollars_to_units(Charge)
     end.
-
 
 %%%===================================================================
 %%% Internal functions
@@ -84,22 +83,22 @@ phone_number_activation_charge(Number, Services) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_numbers(wh_json:objects(), wh_services:services()) -> wh_services:services().
-update_numbers([], Services) ->
+-spec update_numbers(wh_services:services(), wh_json:objects()) -> wh_services:services().
+update_numbers(Services, []) ->
     Services;
-update_numbers([JObj|JObjs], Services) ->
+update_numbers(Services, [JObj|JObjs]) ->
     Number = wh_doc:id(JObj),
     case wnm_util:is_reconcilable(Number) of
         'false' -> Services;
         'true' ->
-            Routines = [fun(S) -> update_number_quantities(JObj, S) end
+            Routines = [fun(S) -> update_number_quantities(S, JObj) end
                         ,fun(S) ->
                             Features = wh_json:get_value(?PVT_FEATURES, JObj, wh_json:new()),
                             update_feature_quantities(Features, S)
                          end
                        ],
             UpdatedServices = lists:foldl(fun(F, S) -> F(S) end, Services, Routines),
-            update_numbers(JObjs, UpdatedServices)
+            update_numbers(UpdatedServices, JObjs)
     end.
 
 %%--------------------------------------------------------------------
@@ -108,8 +107,9 @@ update_numbers([JObj|JObjs], Services) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_number_quantities(wh_json:object(), wh_services:services()) -> wh_services:services().
-update_number_quantities(JObj, Services) ->
+-spec update_number_quantities(wh_services:services(), wh_json:object()) ->
+                                      wh_services:services().
+update_number_quantities(Services, JObj) ->
     Number = wh_doc:id(JObj),
     ModuleName = wh_json:get_atom_value(?PVT_MODULE_NAME, JObj),
     case is_number_billable(Number, ModuleName)

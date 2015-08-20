@@ -25,18 +25,19 @@
 %% produce notifications if the porting object changes
 %% @end
 %%--------------------------------------------------------------------
--spec save(knm_phone_number:knm_number()) ->
-                  number_return().
--spec save(knm_phone_number:knm_number(), ne_binary(), ne_binary()) ->
-                  number_return().
+-spec save(knm_number:knm_number()) ->
+                  knm_number_return().
+-spec save(knm_number:knm_number(), ne_binary(), ne_binary()) ->
+                  knm_number_return().
 save(Number) ->
-    CurrentState = knm_phone_number:state(Number),
-    Doc = knm_phone_number:doc(Number),
+    PhoneNumber = knm_number:phone_number(Number),
+    CurrentState = knm_phone_number:state(PhoneNumber),
+    Doc = knm_phone_number:doc(PhoneNumber),
     State = wh_json:get_ne_value(?PVT_STATE, Doc),
     save(Number, CurrentState, State).
 
 save(Number, ?NUMBER_STATE_PORT_IN, ?NUMBER_STATE_IN_SERVICE) ->
-    Features = knm_phone_number:features(Number),
+    Features = knm_phone_number:features(knm_number:phone_number(Number)),
     Port = wh_json:get_ne_value(?PORT_KEY, Features, wh_json:new()),
     _ = publish_ported(Number, Port),
     {'ok', Number};
@@ -51,8 +52,8 @@ save(Number, _CurrentState, _State) ->
 %% This function is called each time a number is deleted
 %% @end
 %%--------------------------------------------------------------------
--spec delete(knm_phone_number:knm_number()) ->
-                    {'ok', knm_phone_number:knm_number()}.
+-spec delete(knm_number:knm_number()) ->
+                    {'ok', knm_number:knm_number()}.
 delete(Number) ->
     knm_services:deactivate_feature(Number, ?PORT_KEY).
 
@@ -62,10 +63,10 @@ delete(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_port_feature(knm_phone_number:knm_number()) ->
-                                {'ok', knm_phone_number:knm_number()}.
+-spec maybe_port_feature(knm_number:knm_number()) ->
+                                {'ok', knm_number:knm_number()}.
 maybe_port_feature(Number) ->
-    Doc = knm_phone_number:doc(Number),
+    Doc = knm_phone_number:doc(knm_number:phone_number(Number)),
     case wh_json:get_ne_value([?PVT_FEATURES, ?PORT_KEY], Doc) of
         'undefined' ->
             knm_services:deactivate_feature(Number, ?PORT_KEY);
@@ -74,17 +75,17 @@ maybe_port_feature(Number) ->
             maybe_port_changed(Number1, Port)
     end.
 
--spec maybe_port_changed(knm_phone_number:knm_number(), wh_json:object()) ->
-                                {'ok', knm_phone_number:knm_number()}.
--spec maybe_port_changed(knm_phone_number:knm_number(), wh_json:object(), boolean()) ->
-                                {'ok', knm_phone_number:knm_number()}.
+-spec maybe_port_changed(knm_number:knm_number(), wh_json:object()) ->
+                                {'ok', knm_number:knm_number()}.
+-spec maybe_port_changed(knm_number:knm_number(), wh_json:object(), boolean()) ->
+                                {'ok', knm_number:knm_number()}.
 maybe_port_changed(Number, Port) ->
-    DryRun = knm_phone_number:dry_run(Number),
+    DryRun = knm_phone_number:dry_run(knm_number:phone_number(Number)),
     maybe_port_changed(Number, Port, DryRun).
 
 maybe_port_changed(Number, _Port, 'true') -> {'ok', Number};
 maybe_port_changed(Number, Port, 'false') ->
-    CurrentPort = knm_phone_number:feature(Number, ?PORT_KEY),
+    CurrentPort = knm_phone_number:feature(knm_number:phone_number(Number), ?PORT_KEY),
     case wh_json:are_identical(CurrentPort, Port) of
         'true' -> {'ok', Number};
         'false' ->
@@ -101,13 +102,14 @@ maybe_port_changed(Number, Port, 'false') ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec publish_port_update(knm_phone_number:knm_number(), wh_json:object()) -> 'ok'.
+-spec publish_port_update(knm_number:knm_number(), wh_json:object()) -> 'ok'.
 publish_port_update(Number, Port) ->
-    Notify = [{<<"Account-ID">>,  knm_phone_number:assigned_to(Number)}
-              ,{<<"Number-State">>, knm_phone_number:state(Number)}
-              ,{<<"Local-Number">>, knm_phone_number:module_name(Number) =:= ?LOCAL_CARRIER}
-              ,{<<"Number">>, knm_phone_number:number(Number)}
-              ,{<<"Authorized-By">>, knm_phone_number:auth_by(Number)}
+    PhoneNumber = knm_number:phone_number(Number),
+    Notify = [{<<"Account-ID">>,  knm_phone_number:assigned_to(PhoneNumber)}
+              ,{<<"Number-State">>, knm_phone_number:state(PhoneNumber)}
+              ,{<<"Local-Number">>, knm_phone_number:module_name(PhoneNumber) =:= ?LOCAL_CARRIER}
+              ,{<<"Number">>, knm_phone_number:number(PhoneNumber)}
+              ,{<<"Authorized-By">>, knm_phone_number:auth_by(PhoneNumber)}
               ,{<<"Port">>, Port}
               | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
@@ -119,13 +121,14 @@ publish_port_update(Number, Port) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec publish_ported(knm_phone_number:knm_number(), wh_json:object()) -> 'ok'.
+-spec publish_ported(knm_number:knm_number(), wh_json:object()) -> 'ok'.
 publish_ported(Number, Port) ->
-    Notify = [{<<"Account-ID">>,  knm_phone_number:assigned_to(Number)}
-              ,{<<"Number-State">>, knm_phone_number:state(Number)}
-              ,{<<"Local-Number">>, knm_phone_number:module_name(Number) =:= ?LOCAL_CARRIER}
-              ,{<<"Number">>, knm_phone_number:number(Number)}
-              ,{<<"Authorized-By">>, knm_phone_number:auth_by(Number)}
+    PhoneNumber = knm_number:phone_number(Number),
+    Notify = [{<<"Account-ID">>,  knm_phone_number:assigned_to(PhoneNumber)}
+              ,{<<"Number-State">>, knm_phone_number:state(PhoneNumber)}
+              ,{<<"Local-Number">>, knm_phone_number:module_name(PhoneNumber) =:= ?LOCAL_CARRIER}
+              ,{<<"Number">>, knm_phone_number:number(PhoneNumber)}
+              ,{<<"Authorized-By">>, knm_phone_number:auth_by(PhoneNumber)}
               ,{<<"Port">>, Port}
               | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
