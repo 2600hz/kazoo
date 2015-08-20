@@ -1,0 +1,13 @@
+{application, ananke,
+ [
+  {description, "Ananke was the personification of destiny, necessity and fate, depicted as holding a spindle in ancient Greek religion. This application to schedule calls on events."},
+  {vsn, "0.0.1"},
+  {modules, []},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { ananke_app, []}},
+  {env, []}
+ ]}.
