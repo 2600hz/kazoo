@@ -17,7 +17,7 @@
 -include("ananke.hrl").
 
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, []).
+-define(CHILDREN, [?WORKER('ananke_listener')]).
 
 %% ===================================================================
 %% API functions
