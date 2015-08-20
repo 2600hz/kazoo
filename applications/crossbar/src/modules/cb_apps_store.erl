@@ -26,7 +26,6 @@
 
 -define(ICON, <<"icon">>).
 -define(SCREENSHOT, <<"screenshot">>).
--define(BLACKLIST, <<"blacklist">>).
 
 %%%===================================================================
 %%% API
@@ -63,8 +62,6 @@ init() ->
 -spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET].
-allowed_methods(?BLACKLIST) ->
-    [?HTTP_GET, ?HTTP_POST];
 allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
 allowed_methods(_, _) ->
@@ -138,10 +135,10 @@ content_types_provided(Context, _, _, _) -> Context.
 authenticate(Context) ->
     authenticate(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
-authenticate(?HTTP_GET, [{<<"apps_store">>,[_Id, ?ICON]}]) ->
+authenticate(?HTTP_GET, [{<<"apps_store">>,[_Id,?ICON]}]) ->
     lager:debug("authenticating request"),
     'true';
-authenticate(?HTTP_GET, [{<<"apps_store">>,[_Id, ?SCREENSHOT, _Number]}]) ->
+authenticate(?HTTP_GET, [{<<"apps_store">>,[_Id,?SCREENSHOT,_Number]}]) ->
     lager:debug("authenticating request"),
     'true';
 authenticate(_Verb, _Nouns) ->
@@ -152,10 +149,10 @@ authenticate(_Verb, _Nouns) ->
 authorize(Context) ->
     authorize(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
-authorize(?HTTP_GET, [{<<"apps_store">>,[_Id, ?ICON]}]) ->
+authorize(?HTTP_GET, [{<<"apps_store">>,[_Id,?ICON]}]) ->
     lager:debug("authorizing request"),
     'true';
-authorize(?HTTP_GET, [{<<"apps_store">>,[_Id, ?SCREENSHOT, _Number]}]) ->
+authorize(?HTTP_GET, [{<<"apps_store">>,[_Id,?SCREENSHOT,_Number]}]) ->
     lager:debug("authorizing request"),
     'true';
 authorize(_Verb, _Nouns) ->
@@ -173,9 +170,6 @@ authorize(_Verb, _Nouns) ->
 validate(Context) ->
     load_apps(Context).
 
-
-validate(Context, ?BLACKLIST) ->
-    validate_req(Context, cb_context:req_verb(Context));
 validate(Context, Id) ->
     validate_app(Context, Id, cb_context:req_verb(Context)).
 
@@ -199,17 +193,13 @@ validate(Context, Id, ?SCREENSHOT, Number) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
-post(Context, ?BLACKLIST) ->
-    ReqData = cb_context:req_data(Context),
-    Blacklist = wh_json:get_value(<<"blacklist">>, ReqData, []),
-    Doc = wh_json:set_value(<<"blacklist">>, Blacklist, cb_context:doc(Context)),
-    crossbar_doc:save(cb_context:set_doc(Context, Doc));
 post(Context, Id) ->
     Context1 = crossbar_doc:save(Context),
     case cb_context:resp_status(Context1) of
         'success' ->
             JObj = cb_context:doc(Context1),
-            RespData = wh_json:get_value(Id, kz_apps_store:apps(JObj)),
+            _ = replicate_account_definition(JObj),
+            RespData = wh_json:get_value([<<"apps">>, Id], JObj, wh_json:new()),
             cb_context:set_resp_data(Context, RespData);
         _Status -> Context1
     end.
@@ -225,7 +215,8 @@ put(Context, Id) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             JObj = cb_context:doc(Context1),
-            RespData = wh_json:get_value(Id, kz_apps_store:apps(JObj)),
+            _ = replicate_account_definition(JObj),
+            RespData = wh_json:get_value([<<"apps">>, Id], JObj, wh_json:new()),
             cb_context:set_resp_data(Context, RespData);
         _Status -> Context1
     end.
@@ -240,6 +231,8 @@ delete(Context, _Id) ->
     Context1 = crossbar_doc:save(Context),
     case cb_context:resp_status(Context1) of
         'success' ->
+            JObj = cb_context:doc(Context1),
+            _ = replicate_account_definition(JObj),
             cb_context:set_resp_data(Context, wh_json:new());
         _Status -> Context1
     end.
@@ -253,17 +246,6 @@ delete(Context, _Id) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec validate_req(cb_context:context(), http_method()) -> cb_context:context().
-validate_req(Context, _Verb) ->
-    AuthAccountId = cb_context:auth_account_id(Context),
-    AccountId = cb_context:account_id(Context),
-    case wh_services:is_reseller(AuthAccountId)
-        andalso wh_util:is_in_account_hierarchy(AuthAccountId, AccountId)
-    of
-        'false' -> cb_context:add_system_error('forbidden', Context);
-        'true' -> load_apps_store(Context)
-    end.
-
 -spec validate_app(cb_context:context(), ne_binary(), http_method()) -> cb_context:context().
 validate_app(Context, Id, ?HTTP_GET) ->
     Context1 = load_app(Context, Id),
@@ -313,7 +295,7 @@ validate_app(Context, Id, ?HTTP_POST) ->
 validate_modification(Context, Id) ->
     Context1 = can_modify(Context, Id),
     case cb_context:resp_status(Context1) of
-        'success' -> load_apps_store(Context1);
+        'success' -> load_account(Context1);
         _ -> Context1
     end.
 
@@ -331,10 +313,10 @@ can_modify(Context, Id) ->
             cb_context:add_system_error('forbidden', wh_json:from_list(Props), Context);
         App ->
             cb_context:store(
-                cb_context:set_resp_status(Context, 'success')
-                ,Id
-                ,App
-            )
+              cb_context:set_resp_status(Context, 'success')
+              ,Id
+              ,App
+             )
     end.
 
 %%--------------------------------------------------------------------
@@ -368,18 +350,7 @@ normalize_apps_result([App|Apps], Acc) ->
     case wh_json:is_true(<<"published">>, App, 'true') of
         'false' -> normalize_apps_result(Apps, Acc);
         'true' ->
-            JObj =
-                wh_json:from_list(
-                  props:filter_undefined(
-                    [{<<"id">>, wh_doc:id(App)}
-                    ,{<<"name">>, wh_json:get_value(<<"name">>, App)}
-                    ,{<<"i18n">>, wh_json:get_value(<<"i18n">>, App)}
-                    ,{<<"tags">>, wh_json:get_value(<<"tags">>, App)}
-                    ,{<<"api_url">>, wh_json:get_value(<<"api_url">>, App)}
-                    ,{<<"source_url">>, wh_json:get_value(<<"source_url">>, App)}
-                    ])
-                 ),
-            normalize_apps_result(Apps, [JObj|Acc])
+            normalize_apps_result(Apps, [wh_json:public_fields(App)|Acc])
     end.
 
 %%--------------------------------------------------------------------
@@ -420,11 +391,7 @@ load_app_from_master_account(Context, AppId) ->
             bad_app_error(Context, AppId)
     end.
 
-%%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec bad_app_error(cb_context:context(), ne_binary()) -> cb_context:context().
 bad_app_error(Context, AppId) ->
     cb_context:add_system_error(
@@ -442,7 +409,7 @@ bad_app_error(Context, AppId) ->
 -spec install(cb_context:context(), ne_binary()) -> cb_context:context().
 install(Context, Id) ->
     Doc = cb_context:doc(Context),
-    Apps = kz_apps_store:apps(Doc),
+    Apps = wh_json:get_value(<<"apps">>, Doc, wh_json:new()),
     case wh_json:get_value(Id, Apps) of
         'undefined' ->
             Data = cb_context:req_data(Context),
@@ -453,7 +420,7 @@ install(Context, Id) ->
                   ,wh_json:set_value(<<"name">>, AppName, Data)
                   ,Apps
                  ),
-            UpdatedDoc = kz_apps_store:set_apps(Doc, UpdatedApps),
+            UpdatedDoc = wh_json:set_value(<<"apps">>, UpdatedApps, Doc),
             cb_context:set_doc(Context, UpdatedDoc);
         _ ->
             crossbar_util:response('error', <<"Application already installed">>, 400, Context)
@@ -469,13 +436,13 @@ install(Context, Id) ->
 -spec uninstall(cb_context:context(), ne_binary()) -> cb_context:context().
 uninstall(Context, Id) ->
     Doc = cb_context:doc(Context),
-    Apps = kz_apps_store:apps(Doc),
+    Apps = wh_json:get_value(<<"apps">>, Doc),
     case wh_json:get_value(Id, Apps) of
         'undefined' ->
             crossbar_util:response('error', <<"Application is not installed">>, 400, Context);
         _ ->
             UpdatedApps = wh_json:delete_key(Id, Apps),
-            UpdatedDoc = kz_apps_store:set_apps(Doc, UpdatedApps),
+            UpdatedDoc = wh_json:set_value(<<"apps">>, UpdatedApps, Doc),
             cb_context:set_doc(Context, UpdatedDoc)
     end.
 
@@ -487,7 +454,7 @@ uninstall(Context, Id) ->
 -spec update(cb_context:context(), ne_binary()) -> cb_context:context().
 update(Context, Id) ->
     Doc = cb_context:doc(Context),
-   Apps = kz_apps_store:apps(Doc),
+    Apps = wh_json:get_value(<<"apps">>, Doc),
     case wh_json:get_value(Id, Apps) of
         'undefined' ->
             crossbar_util:response('error', <<"Application is not installed">>, 400, Context);
@@ -500,7 +467,7 @@ update(Context, Id) ->
                   ,wh_json:set_value(<<"name">>, AppName, Data)
                   ,Apps
                  ),
-            UpdatedDoc = kz_apps_store:set_apps(Doc, UpdatedApps),
+            UpdatedDoc = wh_json:set_value(<<"apps">>, UpdatedApps, Doc),
             cb_context:set_doc(Context, UpdatedDoc)
     end.
 
@@ -560,9 +527,10 @@ get_screenshot(Context, Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec load_apps_store(cb_context:context()) -> cb_context:context().
-load_apps_store(Context) ->
-    crossbar_doc:load(kz_apps_store:id(), Context).
+-spec load_account(cb_context:context()) -> cb_context:context().
+load_account(Context) ->
+    AccountId = cb_context:account_id(Context),
+    crossbar_doc:load(AccountId, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -609,3 +577,21 @@ add_attachment(Context, Id, Attachment, AttachBin) ->
         ,{fun cb_context:add_resp_headers/2, RespHeaders}
        ]
      ).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec replicate_account_definition(wh_json:object()) ->
+                                          {'ok', wh_json:object()} |
+                                          {'error', _}.
+replicate_account_definition(JObj) ->
+    AccountId = wh_doc:id(JObj),
+    case couch_mgr:lookup_doc_rev(?WH_ACCOUNTS_DB, AccountId) of
+        {'ok', Rev} ->
+            couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_doc:set_revision(JObj, Rev));
+        _Else ->
+            couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_doc:delete_revision(JObj))
+    end.
