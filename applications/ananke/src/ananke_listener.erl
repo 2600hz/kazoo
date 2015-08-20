@@ -26,9 +26,10 @@
 -record(state, {}).
 
 %% By convention, we put the options here in macros, but not required.
--define(BINDINGS, []).
+-define(BINDINGS, [{'notifications', [{'restrict_to', ['new_voicemail']}]}]).
 
--define(RESPONDERS, []).
+-define(RESPONDERS, [{'ananke_vm_callback', [{<<"notification">>, <<"voicemail_new">>}]}
+                    ]).
 -define(QUEUE_NAME, <<"ananke_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
