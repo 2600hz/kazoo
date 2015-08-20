@@ -39,10 +39,10 @@
 %% provision e911 or remove the number depending on the state
 %% @end
 %%--------------------------------------------------------------------
--spec save(knm_phone_number:knm_number()) -> number_return().
--spec save(knm_phone_number:knm_number(), api_binary()) -> number_return().
+-spec save(knm_number:knm_number()) -> knm_number_return().
+-spec save(knm_number:knm_number(), api_binary()) -> knm_number_return().
 save(Number) ->
-    State = knm_phone_number:state(Number),
+    State = knm_phone_number:state(knm_number:phone_number(Number)),
     save(Number, State).
 
 save(Number, ?NUMBER_STATE_RESERVED) ->
@@ -51,7 +51,8 @@ save(Number, ?NUMBER_STATE_IN_SERVICE) ->
     maybe_update_dash_e911(Number);
 save(Number, ?NUMBER_STATE_PORT_IN) ->
      maybe_update_dash_e911(Number);
-save(Number, _State) -> delete(Number).
+save(Number, _State) ->
+    delete(Number).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -60,14 +61,14 @@ save(Number, _State) -> delete(Number).
 %% provision e911 or remove the number depending on the state
 %% @end
 %%--------------------------------------------------------------------
--spec delete(knm_phone_number:knm_number()) ->
-                    {'ok', knm_phone_number:knm_number()}.
+-spec delete(knm_number:knm_number()) ->
+                    {'ok', knm_number:knm_number()}.
 delete(Number) ->
-    case knm_phone_number:feature(Number, ?DASH_KEY) of
+    case knm_phone_number:feature(knm_number:phone_number(Number), ?DASH_KEY) of
         'undefined' -> {'ok', Number};
         _Else ->
             lager:debug("removing e911 information from ~s"
-                        ,[knm_phone_number:number(Number)]
+                        ,[knm_phone_number:number(knm_number:phone_number(Number))]
                        ),
             _ = remove_number(Number),
             knm_services:deactivate_feature(Number, ?DASH_KEY)
@@ -83,15 +84,16 @@ delete(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_update_dash_e911(knm_phone_number:knm_number()) ->
-                                    number_return() |
+-spec maybe_update_dash_e911(knm_number:knm_number()) ->
+                                    knm_number_return() |
                                     {'invalid', _} |
                                     {'multiple_choice', wh_json:object()}.
 maybe_update_dash_e911(Number) ->
-    Features = knm_phone_number:features(Number),
+    PhoneNumber = knm_number:phone_number(Number),
+    Features = knm_phone_number:features(PhoneNumber),
     CurrentE911 = wh_json:get_ne_value(?DASH_KEY, Features),
 
-    Doc = knm_phone_number:doc(Number),
+    Doc = knm_phone_number:doc(PhoneNumber),
     E911 = wh_json:get_ne_value([?PVT_FEATURES, ?DASH_KEY], Doc),
 
     NotChanged = wh_json:are_identical(CurrentE911, E911),
@@ -105,13 +107,17 @@ maybe_update_dash_e911(Number) ->
         'false' ->
             lager:debug("e911 information has been changed: ~s", [wh_json:encode(E911)]),
             {'ok', Number1} = knm_services:activate_feature(Number, ?DASH_KEY),
-            case maybe_update_dash_e911(Number, E911, Features) of
-                {'ok', UpdatedFeatures} -> knm_phone_number:set_features(Number1, UpdatedFeatures);
+            case maybe_update_dash_e911(Number1, E911, Features) of
+                {'ok', UpdatedFeatures} ->
+                    knm_number:set_phone_number(
+                      Number1
+                      ,knm_phone_number:set_features(PhoneNumber, UpdatedFeatures)
+                     );
                 Else -> Else
             end
     end.
 
--spec maybe_update_dash_e911(knm_phone_number:knm_number(), wh_json:object(), wh_json:object()) ->
+-spec maybe_update_dash_e911(knm_number:knm_number(), wh_json:object(), wh_json:object()) ->
                                     {'ok', wh_json:object()} |
                                     {'error', _} |
                                     {'invalid', _} |
@@ -156,20 +162,20 @@ maybe_update_dash_e911(Number, Address, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_e911(knm_phone_number:knm_number(), wh_json:object(), wh_json:object()) ->
+-spec update_e911(knm_number:knm_number(), wh_json:object(), wh_json:object()) ->
                          {'ok', wh_json:object()} |
                          {'error', _}.
--spec update_e911(knm_phone_number:knm_number(), wh_json:object(), wh_json:object(), boolean()) ->
+-spec update_e911(knm_number:knm_number(), wh_json:object(), wh_json:object(), boolean()) ->
                          {'ok', wh_json:object()} |
                          {'error', _}.
 update_e911(Number, Address, JObj) ->
-    DryRun = knm_phone_number:dry_run(Number),
+    DryRun = knm_phone_number:dry_run(knm_number:phone_number(Number)),
     update_e911(Number, Address, JObj, DryRun).
 
 update_e911(_Number, Address, JObj, 'true') ->
     {'ok', wh_json:set_value(?DASH_KEY, Address, JObj)};
 update_e911(Number, Address, JObj, 'false') ->
-    Num = knm_phone_number:number(Number),
+    Num = knm_phone_number:number(knm_number:phone_number(Number)),
     Location = json_address_to_xml_location(Address),
     CallerName = wh_json:get_ne_value(<<"caller_name">>, Address, <<"Valued Customer">>),
     case add_location(Num, Location, CallerName) of
@@ -202,14 +208,15 @@ provision_geocoded(JObj, E911) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_valid_location(term()) ->
+-spec is_valid_location([xml_location()]) ->
                                {'geocoded', wh_json:object() | wh_json:objects()} |
                                {'provisioned', wh_json:object() | wh_json:objects()} |
                                {'invalid', binary()} |
                                {'error', binary()}.
 is_valid_location(Location) ->
     case emergency_provisioning_request('validateLocation', Location) of
-        {'error', Reason} -> {'error', wh_util:to_binary(Reason)};
+        {'error', Reason} ->
+            {'error', wh_util:to_binary(Reason)};
         {'ok', Response} ->
             case wh_util:get_xml_value("//Location/status/code/text()", Response) of
                 <<"GEOCODED">> ->
@@ -231,7 +238,7 @@ is_valid_location(Location) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec add_location(ne_binary(), term(), ne_binary()) ->
+-spec add_location(ne_binary(), [xml_location()], ne_binary()) ->
                           {'geocoded', wh_json:object()} |
                           {'provisioned', wh_json:object()} |
                           {'error', binary()}.
@@ -280,9 +287,9 @@ provision_location(LocationId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec remove_number(knm_phone_number:knm_number()) -> api_binary().
+-spec remove_number(knm_number:knm_number()) -> api_binary().
 remove_number(Number) ->
-    Num = knm_phone_number:number(Number),
+    Num = knm_phone_number:number(knm_number:phone_number(Number)),
     lager:debug("removing dash e911 number '~s'", [Num]),
     Props = [{'uri', [wh_util:to_list(<<"tel:", ((knm_converters:default()):to_1npan(Num))/binary>>)]}],
     case emergency_provisioning_request('removeURI', Props) of
@@ -316,7 +323,13 @@ remove_number(Number) ->
                                         'server_error' |
                                         'empty_response' |
                                         'unreachable'.
--spec emergency_provisioning_request(atom(), wh_proplist()) ->
+
+-type request_prop() :: xml_location() |
+                        {'uri', list()} |
+                        {'locationid', list()}.
+-type request_props() :: [request_prop()].
+
+-spec emergency_provisioning_request(atom(), request_props()) ->
                                             {'ok', xml_el()} |
                                             {'error', emergency_provisioning_error()}.
 emergency_provisioning_request(Verb, Props) ->
@@ -385,7 +398,15 @@ emergency_provisioning_request(Verb, Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec json_address_to_xml_location(wh_json:object()) -> wh_proplist().
+-type xml_location_property() :: {'address1', list()} |
+                                 {'address2', list()} |
+                                 {'community', list()} |
+                                 {'state', list()} |
+                                 {'postalcode', list()} |
+                                 {'type', list()}.
+-type xml_location() :: {'location', [xml_location_property()]}.
+
+-spec json_address_to_xml_location(wh_json:object()) -> [xml_location()].
 json_address_to_xml_location(JObj) ->
     Props = [{'address1', [wh_json:get_string_value(<<"street_address">>, JObj)]}
              ,{'address2', [wh_json:get_string_value(<<"extended_address">>, JObj)]}
@@ -402,7 +423,7 @@ json_address_to_xml_location(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec location_xml_to_json_address(term()) -> wh_json:object() | wh_json:objects().
+-spec location_xml_to_json_address(list()) -> wh_json:object() | wh_json:objects().
 location_xml_to_json_address([]) ->
     wh_json:new();
 location_xml_to_json_address([Xml]) ->
