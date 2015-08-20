@@ -24,10 +24,12 @@
 %% provision e911 or remove the number depending on the state
 %% @end
 %%--------------------------------------------------------------------
--spec save(knm_phone_number:knm_number()) -> number_return().
--spec save(knm_phone_number:knm_number(), ne_binary()) -> number_return().
+-spec save(knm_number:knm_number()) ->
+                  knm_number_return().
+-spec save(knm_number:knm_number(), ne_binary()) ->
+                  knm_number_return().
 save(Number) ->
-    State = knm_phone_number:state(Number),
+    State = knm_phone_number:state(knm_number:phone_number(Number)),
     save(Number, State).
 
 save(Number, ?NUMBER_STATE_RESERVED) ->
@@ -36,7 +38,8 @@ save(Number, ?NUMBER_STATE_IN_SERVICE) ->
     maybe_update_e911(Number);
 save(Number, ?NUMBER_STATE_PORT_IN) ->
      maybe_update_e911(Number);
-save(Number, _State) -> delete(Number).
+save(Number, _State) ->
+    delete(Number).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -45,10 +48,10 @@ save(Number, _State) -> delete(Number).
 %% provision e911 or remove the number depending on the state
 %% @end
 %%--------------------------------------------------------------------
--spec delete(knm_phone_number:knm_number()) ->
-                    {'ok', knm_phone_number:knm_number()}.
+-spec delete(knm_number:knm_number()) ->
+                    {'ok', knm_number:knm_number()}.
 delete(Number) ->
-    case knm_phone_number:feature(Number, ?VITELITY_KEY) of
+    case knm_phone_number:feature(knm_number:phone_number(Number), ?VITELITY_KEY) of
         'undefined' -> {'ok', Number};
         _Else ->
             lager:debug("removing e911 information"),
@@ -80,7 +83,7 @@ is_valid_location(Location) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_location(ne_binary() | knm_phone_number:knm_number()) ->
+-spec get_location(ne_binary() | knm_number:knm_number()) ->
                           {'ok', wh_json:object()} |
                           {'error', _}.
 get_location(DID) when is_binary(DID) ->
@@ -92,7 +95,9 @@ get_location(DID) when is_binary(DID) ->
         {'error', _}=E -> E
     end;
 get_location(Number) ->
-    get_location(knm_phone_number:number(Number)).
+    get_location(
+      knm_phone_number:number(knm_number:phone_number(Number))
+     ).
 
 %%%===================================================================
 %%% Internal functions
@@ -104,16 +109,21 @@ get_location(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_update_e911(knm_phone_number:knm_number()) -> number_return().
--spec maybe_update_e911(knm_phone_number:knm_number(), boolean()) -> number_return().
+-spec maybe_update_e911(knm_number:knm_number()) ->
+                               knm_number_return().
+-spec maybe_update_e911(knm_number:knm_number(), boolean()) ->
+                               knm_number_return().
 maybe_update_e911(Number) ->
-    maybe_update_e911(Number, knm_phone_number:dry_run(Number)).
+    maybe_update_e911(Number
+                      ,knm_phone_number:dry_run(knm_number:phone_number(Number))
+                     ).
 
 maybe_update_e911(Number, 'true') ->
-    Features = knm_phone_number:features(Number),
+    PhoneNumber = knm_number:phone_number(Number),
+    Features = knm_phone_number:features(PhoneNumber),
     CurrentE911 = wh_json:get_ne_value(?VITELITY_KEY, Features),
 
-    Doc = knm_phone_number:doc(Number),
+    Doc = knm_phone_number:doc(PhoneNumber),
     E911 = wh_json:get_ne_value([?PVT_FEATURES, ?VITELITY_KEY], Doc),
 
     NotChanged = wh_json:are_identical(CurrentE911, E911),
@@ -129,10 +139,11 @@ maybe_update_e911(Number, 'true') ->
             knm_services:activate_feature(Number, ?VITELITY_KEY)
     end;
 maybe_update_e911(Number, 'false') ->
-    Features = knm_phone_number:features(Number),
+    PhoneNumber = knm_number:phone_number(Number),
+    Features = knm_phone_number:features(PhoneNumber),
     CurrentE911 = wh_json:get_ne_value(?VITELITY_KEY, Features),
 
-    Doc = knm_phone_number:doc(Number),
+    Doc = knm_phone_number:doc(PhoneNumber),
     E911 = wh_json:get_ne_value([?PVT_FEATURES, ?VITELITY_KEY], Doc),
 
     NotChanged = wh_json:are_identical(CurrentE911, E911),
@@ -149,7 +160,12 @@ maybe_update_e911(Number, 'false') ->
             {'ok', Number1} = knm_services:activate_feature(Number, ?VITELITY_KEY),
             case update_e911(Number1, E911) of
                 {'ok', Data} ->
-                    {'ok', knm_phone_number:set_feature(Number1, ?VITELITY_KEY, Data)};
+                    {'ok'
+                     ,knm_phone_number:set_feature(knm_number:phone_number(Number1)
+                                                   ,?VITELITY_KEY
+                                                   ,Data
+                                                  )
+                    };
                 {'error', _R}=Error ->
                     lager:error("vitelity e911 information update failed: ~p", [_R]),
                     Error
@@ -162,9 +178,11 @@ maybe_update_e911(Number, 'false') ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec remove_number(knm_phone_number:knm_number()) -> {'ok', _} | {'error', _}.
+-spec remove_number(knm_number:knm_number()) ->
+                           {'ok', wh_json:object() | ne_binary()} |
+                           {'error', ne_binary()}.
 remove_number(Number) ->
-    DID = knm_phone_number:number(Number),
+    DID = knm_phone_number:number(knm_number:phone_number(Number)),
     case knm_vitelity_util:query_vitelity(
            knm_vitelity_util:build_uri(remove_e911_options(DID))
           )
@@ -213,7 +231,7 @@ get_location_options(DID) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_e911(knm_phone_number:knm_number(), wh_json:object()) ->
+-spec update_e911(knm_number:knm_number(), wh_json:object()) ->
                          {'ok', wh_json:object() | ne_binary()} |
                          {'error', ne_binary()}.
 update_e911(Number, Address) ->
@@ -231,11 +249,12 @@ update_e911(Number, Address) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec e911_options(knm_phone_number:knm_number(), wh_json:object()) ->
+-spec e911_options(knm_number:knm_number(), wh_json:object()) ->
                           knm_vitelity_util:query_options().
 e911_options(Number, AddressJObj) ->
-    AccountId = knm_phone_number:assigned_to(Number),
-    DID = knm_phone_number:number(Number),
+    PhoneNumber = knm_number:phone_number(Number),
+    AccountId = knm_phone_number:assigned_to(PhoneNumber),
+    DID = knm_phone_number:number(PhoneNumber),
     State = knm_vitelity_util:get_short_state(wh_json:get_value(<<"region">>, AddressJObj)),
     {UnitType, UnitNumber} = get_unit(wh_json:get_value(<<"extended_address">>, AddressJObj)),
     [{'qs', props:filter_undefined(

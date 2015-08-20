@@ -18,27 +18,30 @@
          ,assigned_to_app/2 ,assigned_to_app/3
          ,lookup_account/1
          ,buy/2, buy/3
+         ,save/1
         ]).
 
 -export([phone_number/1, set_phone_number/2
-         ,services/1
+         ,services/1, set_services/2
          ,transactions/1
+         ,add_transaction/2
          ,errors/1
+         ,charges/2, set_charges/3
         ]).
 
 -include("knm.hrl").
 
--record(number, {knm_phone_number :: knm_phone_number:knm_number()
-                 ,services :: wh_services:services()
-                 ,transactions = [] :: wh_transaction:transactions()
-                 ,errors = [] :: list()
-                }).
--type knm_number() :: #number{}.
+-record(knm_number, {knm_phone_number :: knm_phone_number:knm_number()
+                     ,services :: wh_services:services()
+                     ,transactions = [] :: wh_transaction:transactions()
+                     ,errors = [] :: list()
+                     ,charges = [] :: [{ne_binary(), integer()}]
+                    }).
+-opaque knm_number() :: #knm_number{}.
 -type knm_numbers() :: [knm_number()].
 
 -export_type([knm_number/0
               ,knm_numbers/0
-              ,knm_number_return/0
              ]).
 
 -type lookup_option() :: {'pending_port', boolean()} |
@@ -62,16 +65,13 @@
 -type lookup_account_return() :: {'ok', ne_binary(), lookup_options()} |
                                  {'error', lookup_error()}.
 
--type knm_number_return() :: {'ok', knm_number()} |
-                             {'error', _}.
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
 -spec new() -> knm_number().
-new() -> #number{}.
+new() -> #knm_number{}.
 
 -spec get(ne_binary()) ->
                  knm_number_return().
@@ -184,6 +184,14 @@ update_phone_number(Number, Routines) ->
               ,Number
              )
     end.
+
+-spec save(knm_number()) -> knm_number_return().
+save(Number) ->
+    _ = knm_services:maybe_update_services(Number),
+    wrap_phone_number_return(
+      knm_phone_number:save(phone_number(Number))
+      ,Number
+     ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -685,15 +693,31 @@ wrap_phone_number_return(PhoneNumber, Number) ->
 
 -spec phone_number(knm_number()) -> knm_phone_number:knm_number().
 -spec set_phone_number(knm_number(), knm_phone_number:knm_number()) -> knm_number().
-phone_number(#number{knm_phone_number=PhoneNumber}) -> PhoneNumber.
+phone_number(#knm_number{knm_phone_number=PhoneNumber}) -> PhoneNumber.
 set_phone_number(Number, PhoneNumber) ->
-    Number#number{knm_phone_number=PhoneNumber}.
+    Number#knm_number{knm_phone_number=PhoneNumber}.
 
 -spec services(knm_number()) -> wh_services:services() | 'undefined'.
-services(#number{services=Services}) -> Services.
+services(#knm_number{services=Services}) -> Services.
+
+-spec set_services(knm_number(), wh_services:services()) -> knm_number().
+set_services(#knm_number{}=Number, Services) ->
+    Number#knm_number{services=Services}.
 
 -spec transactions(knm_number()) -> wh_transaction:transactions().
-transactions(#number{transactions=Transactions}) -> Transactions.
+transactions(#knm_number{transactions=Transactions}) -> Transactions.
+
+-spec add_transaction(knm_number(), wh_transaction:transaction()) -> knm_number().
+add_transaction(#knm_number{transactions=Transactions}=Number, Transaction) ->
+    Number#knm_number{transactions=[Transaction|Transactions]}.
 
 -spec errors(knm_number()) -> list().
-errors(#number{errors=Errors}) -> Errors.
+errors(#knm_number{errors=Errors}) -> Errors.
+
+-spec charges(knm_number(), ne_binary()) -> number().
+-spec set_charges(knm_number(), ne_binary(), number()) -> knm_number().
+charges(#knm_number{charges=Charges}, Key) ->
+    props:get_value(Key, Charges, 0).
+
+set_charges(#knm_number{charges=Charges}=Number, Key, Amount) ->
+    Number#knm_number{charges=props:set_value(Key, Amount, Charges)}.
