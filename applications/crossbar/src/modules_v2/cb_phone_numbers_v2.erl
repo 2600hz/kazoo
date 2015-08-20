@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
-%%%
-%%% Listing of all expected v1 callbacks
 %%%
 %%% @end
 %%% @contributors:
@@ -245,25 +243,23 @@ post(Context, _Number) ->
 put(Context, Num) ->
     ReqJObj = cb_context:req_json(Context),
     DryRun = (not wh_json:is_true(<<"accept_charges">>, ReqJObj)),
-    Options = [
-        {<<"assigned_to">>, cb_context:account_id(Context)}
-        ,{<<"auth_by">>, cb_context:auth_account_id(Context)}
-        ,{<<"dry_run">>, DryRun}
-    ],
+    Options = [{<<"assigned_to">>, cb_context:account_id(Context)}
+               ,{<<"auth_by">>, cb_context:auth_account_id(Context)}
+               ,{<<"dry_run">>, DryRun}
+              ],
     case knm_number:create(Num, Options) of
         {'error', Reason} ->
             error_return(Context, Num, Reason);
         {'ok', Number} ->
-            success_return(Context, Number, DryRun) %TODO
+            success_return(Context, Number, DryRun)
     end.
 
 put(Context, Num, ?ACTIVATE) ->
     ReqJObj = cb_context:req_json(Context),
     DryRun = (not wh_json:is_true(<<"accept_charges">>, ReqJObj)),
-    Options = [
-        {<<"auth_by">>, cb_context:auth_account_id(Context)}
-        ,{<<"dry_run">>, DryRun}
-    ],
+    Options = [{<<"auth_by">>, cb_context:auth_account_id(Context)}
+               ,{<<"dry_run">>, DryRun}
+              ],
     case knm_number:buy(Num, cb_context:account_id(Context), Options) of
         {'error', Reason} ->
             error_return(Context, Num, Reason);
@@ -278,11 +274,9 @@ put(Context, Num, ?ACTIVATE) ->
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, Num) ->
-    Options = [
-        {<<"auth_by">>, cb_context:auth_account_id(Context)}
-    ],
-    % ?NUMBER_STATE_RELEASED
-    case knm_number:change_state(Num, <<"released">>, Options) of
+    Options = [{<<"auth_by">>, cb_context:auth_account_id(Context)}],
+
+    case knm_number:change_state(Num, ?NUMBER_STATE_RELEASED, Options) of
         {'error', Reason} -> error_return(Context, Num, Reason);
         {'ok', _} ->
             cb_context:set_resp_status(Context, 'success')
@@ -696,11 +690,23 @@ error_return(Context, Num, Reason) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec success_return(cb_context:context(), any()) -> cb_context:context().
--spec success_return(cb_context:context(), any(), boolean()) -> cb_context:context().
+-spec success_return(cb_context:context(), knm_number:knm_number()) ->
+                            cb_context:context().
+-spec success_return(cb_context:context(), knm_number:knm_number(), boolean()) ->
+                            cb_context:context().
 success_return(Context, Number) ->
-    Props = [
-        {fun cb_context:set_resp_data/2, knm_phone_number:to_public_json(Number)}
-        ,{fun cb_context:set_resp_status/2, 'success'}
-    ],
-    cb_context:setters(Context, Props).
+    Routines = [{fun cb_context:set_resp_data/2
+                 ,knm_phone_number:to_public_json(knm_number:phone_number(Number))
+                }
+                ,{fun cb_context:set_resp_status/2, 'success'}
+               ],
+    cb_context:setters(Context, Routines).
+
+success_return(Context, Number, 'false') ->
+    success_return(Context, Number);
+success_return(_Context, Number, 'true') ->
+    case knm_number:services(Number) of
+        'undefined' -> wh_json:new();
+        Services ->
+            wh_services:dry_run(Services)
+    end.

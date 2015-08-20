@@ -29,7 +29,9 @@
 
 -include("crossbar.hrl").
 
--include_lib("whistle_number_manager/include/wh_number_manager.hrl").
+-include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
+
+-define(WNM_PHONE_NUMBER_DOC, <<"phone_numbers">>).
 
 -define(PORT_DOCS, <<"docs">>).
 -define(PORT, <<"port">>).
@@ -53,6 +55,10 @@
 
 -define(MAX_TOKENS, whapps_config:get_integer(?PHONE_NUMBERS_CONFIG_CAT, <<"activations_per_day">>, 100)).
 
+-type operation_return() :: {'ok', wh_json:object()} |
+                            {'dry_run', wh_proplist()} |
+                            {atom(), api_object()}.
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -68,7 +74,6 @@ init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.execute.put.phone_numbers">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.post.phone_numbers">>, ?MODULE, 'post'),
     crossbar_bindings:bind(<<"v1_resource.execute.delete.phone_numbers">>, ?MODULE, 'delete').
-
 
 %%--------------------------------------------------------------------
 %% @public
