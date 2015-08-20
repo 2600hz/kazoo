@@ -31,14 +31,15 @@
 -spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) ->
                           {'ok', wh_json:object()} |
                           {'error', 'non_available'}.
-find_numbers(<<"+", _/binary>>=Number, Quantity,Opts) ->
+find_numbers(<<"+", _/binary>>=Number, Quantity, Opts) ->
     AccountId = props:get_value(<<"Account-ID">>, Opts),
     find_numbers_in_account(Number, Quantity, AccountId);
 find_numbers(Number, Quantity, Opts) ->
-    find_numbers(<<"+",Number/binary>>, Quantity,Opts).
+    find_numbers(<<"+",Number/binary>>, Quantity, Opts).
 
 -spec find_numbers_in_account(ne_binary(), pos_integer(), api_binary()) ->
-          {'error', _} | {'ok', wh_json:object()}.
+                                     {'error', _} |
+                                     {'ok', wh_json:object()}.
 find_numbers_in_account(Number, Quantity, AccountId) ->
     case do_find_numbers_in_account(Number, Quantity, AccountId) of
         {'error', 'non_available'}=A ->
@@ -50,7 +51,8 @@ find_numbers_in_account(Number, Quantity, AccountId) ->
     end.
 
 -spec do_find_numbers_in_account(ne_binary(), pos_integer(), api_binary()) ->
-          {'error', _} | {'ok', wh_json:object()}.
+                                        {'error', any()} |
+                                        {'ok', wh_json:object()}.
 do_find_numbers_in_account(Number, Quantity, AccountId) ->
     ViewOptions = [{'startkey', [AccountId, ?NUMBER_STATE_AVAILABLE, Number]}
                    ,{'endkey', [AccountId, ?NUMBER_STATE_AVAILABLE, <<Number/binary, "\ufff0">>]}
@@ -69,10 +71,15 @@ do_find_numbers_in_account(Number, Quantity, AccountId) ->
             E
     end.
 
+-spec format_numbers_resp(wh_json:objects()) ->
+                                 wh_json:objects().
 format_numbers_resp(JObjs) ->
     Numbers = lists:foldl(fun format_numbers_resp_fold/2, [], JObjs),
     wh_json:from_list(Numbers).
 
+-type format_acc() :: wh_json:json_proplist().
+
+-spec format_numbers_resp_fold(wh_json:object(), format_acc()) -> format_acc().
 format_numbers_resp_fold(JObj, Acc) ->
     Doc = wh_json:get_value(<<"doc">>, JObj),
     Id = wh_doc:id(Doc),
@@ -83,7 +90,7 @@ format_numbers_resp_fold(JObj, Acc) ->
               ]),
     [{Id, wh_json:from_list(Props)} | Acc].
 
--spec is_number_billable(wnm_number()) -> 'true' | 'false'.
+-spec is_number_billable(knm_number:knm_number()) -> boolean().
 is_number_billable(_Number) -> 'false'.
 
 %%--------------------------------------------------------------------
@@ -92,18 +99,23 @@ is_number_billable(_Number) -> 'false'.
 %% Acquire a given number from the carrier
 %% @end
 %%--------------------------------------------------------------------
--spec acquire_number(wnm_number()) -> wnm_number().
-acquire_number(#number{dry_run='true'}=Number) -> Number;
-acquire_number(#number{number=Number
-                       ,assign_to=AssignTo
-                       ,state=State
-                      }=N) ->
-    lager:debug("acquiring number ~p in managed provider",[Number]),
-    _ = update_doc(Number,[{?PVT_NUMBER_STATE, State}
-                           ,{<<"pvt_assigned_to">>,AssignTo}
-                          ]),
-    N.
+-spec acquire_number(knm_number:knm_number()) ->
+                            knm_number_return().
+-spec acquire_number(knm_number:knm_number(), boolean()) ->
+                            knm_number_return().
+acquire_number(Number) ->
+    acquire_number(Number, knm_phone_number:dry_run(knm_number:phone_number(Number))).
 
+acquire_number(Number, 'true') -> {'ok', Number};
+acquire_number(Number, 'false') ->
+    PhoneNumber = knm_number:phone_number(Number),
+    Num = knm_phone_number:number(PhoneNumber),
+    AssignTo = knm_phone_number:assigned_to(PhoneNumber),
+    State = knm_phone_number:state(PhoneNumber),
+    lager:debug("acquiring number ~s in managed provider", [Num]),
+    update_doc(Number, [{?PVT_STATE, State}
+                        ,{<<"pvt_assigned_to">>, AssignTo}
+                       ]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -111,31 +123,27 @@ acquire_number(#number{number=Number
 %% Release a number from the routing table
 %% @end
 %%--------------------------------------------------------------------
--spec disconnect_number(wnm_number()) -> wnm_number().
-disconnect_number(#number{number=Number}=N) ->
-    lager:debug("disconnect number ~p in managed provider",[Number]),
-    update_doc(Number, [{?PVT_NUMBER_STATE, ?NUMBER_STATE_AVAILABLE}
+-spec disconnect_number(knm_number:knm_number()) -> knm_number:knm_number().
+disconnect_number(Number) ->
+    Num = knm_phone_number:number(knm_number:phone_number(Number)),
+    lager:debug("disconnect number ~s in managed provider", [Num]),
+    update_doc(Number, [{?PVT_STATE, ?NUMBER_STATE_RELEASED}
                         ,{<<"pvt_assigned_to">>,<<>>}
-                       ]),
+                       ]).
 
-    N#number{state = ?NUMBER_STATE_RELEASED
-             ,reserve_history=ordsets:new()
-             ,hard_delete='true'
-            }.
-
-
--spec generate_numbers(ne_binary(), pos_integer() | ne_binary() , pos_integer() | ne_binary()) -> 'ok'.
-generate_numbers(AccountId, Number, Quantity) when is_binary(Number) orelse is_binary(Quantity) ->
-    generate_numbers(AccountId, wh_util:to_integer(Number), wh_util:to_integer(Quantity));
-generate_numbers(AccountId, Number, Quantity) when Quantity > 0
-                                                   andalso is_integer(Number)
-                                                   andalso is_integer(Quantity) ->
+-spec generate_numbers(ne_binary(), pos_integer() , pos_integer()) -> 'ok'.
+generate_numbers(AccountId, Number, Quantity)
+  when Quantity > 0
+       andalso is_integer(Number)
+       andalso is_integer(Quantity) ->
     save_doc(AccountId, Number),
     generate_numbers(AccountId, Number+1, Quantity-1);
 generate_numbers(_AccountId, _Number, 0) -> 'ok'.
 
--spec import_numbers(ne_binary(), ne_binaries()) -> wh_json:object().
--spec import_numbers(ne_binary(), ne_binaries(), wh_json:object()) -> wh_json:object().
+-spec import_numbers(ne_binary(), ne_binaries()) ->
+                            wh_json:object().
+-spec import_numbers(ne_binary(), ne_binaries(), wh_json:object()) ->
+                            wh_json:object().
 
 import_numbers(_AccountId, Numbers) ->
     import_numbers(_AccountId, Numbers, wh_json:new()).
@@ -146,20 +154,24 @@ import_numbers(AccountId, [Number | Numbers], JObj) ->
                   {'ok', _Doc} ->
                       wh_json:set_value([<<"success">>, Number], wh_json:new(), JObj);
                   {'error', Reason} ->
-                      Error = wh_json:set_values([{<<"reason">>, Reason}
-                                                  ,{<<"message">>, <<"error adding number to couchdb">>}
-                                                 ], wh_json:new()),
-                      wh_json:set_value([<<"errors">>, Number],Error, JObj)
+                      Error = wh_json:from_list([{<<"reason">>, Reason}
+                                                 ,{<<"message">>, <<"error adding number to couchdb">>}
+                                                ]),
+                      wh_json:set_value([<<"errors">>, Number], Error, JObj)
               end,
     import_numbers(AccountId, Numbers, NewJObj).
 
+-spec save_doc(ne_binary(), ne_binary()) ->
+                      {'ok', wh_json:object()} |
+                      {'error', _}.
 save_doc(AccountId, Number) ->
     JObj = wh_json:from_list([{<<"_id">>,<<"+",(wh_util:to_binary(Number))/binary>>}
                               ,{<<"pvt_account_id">>, AccountId}
-                              ,{?PVT_NUMBER_STATE, ?NUMBER_STATE_AVAILABLE}
+                              ,{?PVT_STATE, ?NUMBER_STATE_AVAILABLE}
                               ,{<<"pvt_type">>, <<"number">>}
                              ]),
     save_doc(JObj).
+
 save_doc(JObj) ->
     case couch_mgr:save_doc(?WH_MANAGED, JObj) of
         {'error', 'not_found'} ->
@@ -168,9 +180,22 @@ save_doc(JObj) ->
         R -> R
     end.
 
-update_doc(Number,UpdateProps) ->
-    couch_mgr:update_doc(?WH_MANAGED, Number, UpdateProps).
+-spec update_doc(knm_number:knm_number(), wh_proplist()) ->
+                        knm_number_return().
+update_doc(Number, UpdateProps) ->
+    Doc = knm_phone_number:doc(knm_number:phone_number(Number)),
+    case couch_mgr:update_doc(?WH_MANAGED, Doc, UpdateProps) of
+        {'error', _}=E -> E;
+        {'ok', UpdatedDoc} ->
+            {'ok'
+             ,knm_number:set_phone_number(
+                Number
+                ,knm_phone_number:from_json(UpdatedDoc)
+               )
+            }
+    end.
 
+-spec create_managed_db() -> 'ok'.
 create_managed_db() ->
     _ = couch_mgr:db_create(?WH_MANAGED),
     _ = couch_mgr:revise_doc_from_file(?WH_MANAGED, 'whistle_number_manager', ?MANAGED_VIEW_FILE),

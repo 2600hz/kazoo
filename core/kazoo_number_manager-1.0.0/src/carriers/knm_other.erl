@@ -31,7 +31,7 @@
 %%--------------------------------------------------------------------
 -spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) ->
                           {'error', _} |
-                          {'ok', knm_phone_number:knm_numbers()}.
+                          {'ok', knm_number:knm_numbers()}.
 find_numbers(Number, Quantity, Props) ->
     case whapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"phonebook_url">>) of
         'undefined' -> {'error', 'non_available'};
@@ -83,7 +83,7 @@ check_numbers(Numbers, _Props) ->
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec is_number_billable(knm_phone_number:knm_number()) -> 'true'.
+-spec is_number_billable(knm_number:knm_number()) -> 'true'.
 is_number_billable(_Number) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -92,15 +92,17 @@ is_number_billable(_Number) -> 'true'.
 %% Acquire a given number from the carrier
 %% @end
 %%--------------------------------------------------------------------
--spec acquire_number(knm_phone_number:knm_number()) -> number_return().
--spec acquire_number(knm_phone_number:knm_number(), boolean()) -> number_return().
+-spec acquire_number(knm_number:knm_number()) ->
+                            knm_number_return().
+-spec acquire_number(knm_number:knm_number(), boolean()) ->
+                            knm_number_return().
 
 acquire_number(Number) ->
-    acquire_number(Number, knm_phone_number:dry_run(Number)).
+    acquire_number(Number, knm_phone_number:dry_run(knm_number:phone_number(Number))).
 
 acquire_number(Number, 'true') -> {'ok', Number};
 acquire_number(Number, 'false') ->
-    Num = knm_phone_number:number(Number),
+    Num = knm_phone_number:number(knm_number:phone_number(Number)),
     DefaultCountry = whapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY),
     case whapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"phonebook_url">>) of
         'undefined' ->
@@ -124,7 +126,7 @@ acquire_number(Number, 'false') ->
                 {'error', Reason} ->
                     {'error', Reason};
                 {'ok', "200", _Headers, Body} ->
-                    format_acquire_resp(wh_json:decode(Body), Number);
+                    format_acquire_resp(Number, wh_json:decode(Body));
                 {'ok', _Status, _Headers, Body} ->
                     lager:error("number lookup failed to ~s with ~s: ~s", [Uri, _Status, Body]),
                     {'error', 'lookup_failed'}
@@ -137,7 +139,8 @@ acquire_number(Number, 'false') ->
 %% Release a number from the routing table
 %% @end
 %%--------------------------------------------------------------------
--spec disconnect_number(knm_phone_number:knm_number()) -> knm_phone_number:knm_number().
+-spec disconnect_number(knm_number:knm_number()) ->
+                               knm_number:knm_number().
 disconnect_number(Number) -> Number.
 
 %%--------------------------------------------------------------------
@@ -190,7 +193,7 @@ format_check_numbers_success(Body) ->
 %%--------------------------------------------------------------------
 -spec get_numbers(ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
                          {'error', 'non_available'} |
-                         {'ok', knm_phone_number:knm_numbers()}.
+                         {'ok', knm_number:knm_numbers()}.
 get_numbers(Url, Number, Quantity, Props) ->
     Offset = props:get_binary_value(<<"offset">>, Props, <<"0">>),
     Country = whapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY),
@@ -214,9 +217,9 @@ get_numbers(Url, Number, Quantity, Props) ->
 %%--------------------------------------------------------------------
 -spec format_numbers_resp(wh_json:object()) ->
                                  {'error', 'non_available'} |
-                                 {'ok', knm_phone_number:knm_numbers()}.
--spec format_numbers_resp([{ne_binary(), wh_json:object()}], knm_phone_number:knm_numbers()) ->
-                                 knm_phone_number:knm_numbers().
+                                 {'ok', knm_number:knm_numbers()}.
+-spec format_numbers_resp([{ne_binary(), wh_json:object()}], knm_number:knm_numbers()) ->
+                                 knm_number:knm_numbers().
 format_numbers_resp(JObj) ->
     case wh_json:get_value(<<"status">>, JObj) of
         <<"success">> ->
@@ -239,7 +242,8 @@ format_numbers_resp([{Num, JObj}|T], Numbers) ->
                ,{fun knm_phone_number:set_number_db/2, NumberDb}
                ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}
               ],
-    Number = knm_phone_number:setters(knm_phone_number:new(), Updates),
+    PhoneNumber = knm_phone_number:setters(knm_phone_number:new(), Updates),
+    Number = knm_number:set_phone_number(knm_number:new(), PhoneNumber),
     format_numbers_resp(T, [Number|Numbers]).
 
 %%--------------------------------------------------------------------
@@ -249,7 +253,7 @@ format_numbers_resp([{Num, JObj}|T], Numbers) ->
 %%--------------------------------------------------------------------
 -spec get_blocks(ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
                         {'error', 'non_available'} |
-                        {'ok', knm_phone_number:knm_numbers()}.
+                        {'ok', knm_number:knm_numbers()}.
 get_blocks(Url, Number, Quantity, Props) ->
     Offset = props:get_binary_value(<<"offset">>, Props, <<"0">>),
     Limit = props:get_binary_value(<<"blocks">>, Props, <<"0">>),
@@ -278,7 +282,7 @@ get_blocks(Url, Number, Quantity, Props) ->
 %%--------------------------------------------------------------------
 -spec format_blocks_resp(wh_json:object()) ->
                                 {'error', 'non_available'} |
-                                {'ok', knm_phone_number:knm_numbers()}.
+                                {'ok', knm_number:knm_numbers()}.
 format_blocks_resp(JObj) ->
     case wh_json:get_value(<<"status">>, JObj) of
         <<"success">> ->
@@ -307,8 +311,8 @@ format_blocks_resp(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec format_blocks_resp_fold([{ne_binary(), wh_json:object()}] | [], knm_phone_number:knm_numbers()) ->
-                                     knm_phone_number:knm_numbers().
+-spec format_blocks_resp_fold([{ne_binary(), wh_json:object()}], knm_number:knm_numbers()) ->
+                                     knm_number:knm_numbers().
 format_blocks_resp_fold([], Numbers) -> Numbers;
 format_blocks_resp_fold([{Num, JObj}|T], Numbers) ->
     NormalizedNum = knm_converters:normalize(Num),
@@ -319,7 +323,8 @@ format_blocks_resp_fold([{Num, JObj}|T], Numbers) ->
                ,{fun knm_phone_number:set_carrier_data/2, JObj}
                ,{fun knm_phone_number:set_number_db/2, NumberDb}
               ],
-    Number = knm_phone_number:setters(knm_phone_number:new(), Updates),
+    PhoneNumber = knm_phone_number:setters(knm_phone_number:new(), Updates),
+    Number = knm_number:set_phone_number(knm_number:new(), PhoneNumber),
     format_blocks_resp_fold(T, [Number|Numbers]).
 
 %%--------------------------------------------------------------------
@@ -327,10 +332,10 @@ format_blocks_resp_fold([{Num, JObj}|T], Numbers) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec format_acquire_resp(wh_json:object(), knm_phone_number:knm_number()) ->
-                                 number_return().
-format_acquire_resp(Body, Number) ->
-    Num = knm_phone_number:number(Number),
+-spec format_acquire_resp(knm_number:knm_number(), wh_json:object()) ->
+                                 knm_number_return().
+format_acquire_resp(Number, Body) ->
+    Num = knm_phone_number:number(knm_number:phone_number(Number)),
     JObj = wh_json:get_value([<<"data">>, Num], Body, wh_json:new()),
     case wh_json:get_value(<<"status">>, JObj) of
         <<"success">> ->
@@ -352,13 +357,16 @@ format_acquire_resp(Body, Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_merge_opaque(wh_json:object(), knm_phone_number:knm_number()) ->
-                                knm_phone_number:knm_number().
+-spec maybe_merge_opaque(wh_json:object(), knm_number:knm_number()) ->
+                                knm_number:knm_number().
 maybe_merge_opaque(JObj, Number) ->
     case wh_json:get_ne_value(<<"opaque">>, JObj) of
         'undefined' -> Number;
         Opaque ->
-            knm_phone_number:set_carrier_data(Number, Opaque)
+            knm_number:set_phone_number(
+              Number
+              ,knm_phone_number:set_carrier_data(knm_number:phone_number(Number), Opaque)
+             )
     end.
 
 %%--------------------------------------------------------------------
@@ -366,11 +374,17 @@ maybe_merge_opaque(JObj, Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_merge_locality(wh_json:object(), knm_phone_number:knm_number()) ->
-                                  knm_phone_number:knm_number().
+-spec maybe_merge_locality(wh_json:object(), knm_number:knm_number()) ->
+                                  knm_number:knm_number().
 maybe_merge_locality(JObj, Number) ->
     case wh_json:get_ne_value(<<"locality">>,  JObj) of
         'undefined' -> Number;
         Locality ->
-            knm_phone_number:set_feature(Number, <<"locality">>, Locality)
+            knm_number:set_phone_number(
+              Number
+              ,knm_phone_number:set_feature(knm_number:phone_number(Number)
+                                            ,<<"locality">>
+                                            ,Locality
+                                           )
+             )
     end.
