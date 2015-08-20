@@ -365,6 +365,7 @@ normalize_apps_result(Apps) ->
 
 normalize_apps_result([], Acc) -> Acc;
 normalize_apps_result([App|Apps], Acc) ->
+    io:format("MARKER:cb_apps_store.erl:368 ~p~n", [App]),
     case wh_json:is_true(<<"published">>, App, 'true') of
         'false' -> normalize_apps_result(Apps, Acc);
         'true' ->
@@ -377,6 +378,8 @@ normalize_apps_result([App|Apps], Acc) ->
                     ,{<<"tags">>, wh_json:get_value(<<"tags">>, App)}
                     ,{<<"api_url">>, wh_json:get_value(<<"api_url">>, App)}
                     ,{<<"source_url">>, wh_json:get_value(<<"source_url">>, App)}
+                    ,{<<"users">>, wh_json:get_value(<<"users">>, App)}
+                    ,{<<"allowed_users">>, wh_json:get_value(<<"allowed_users">>, App)}
                     ])
                  ),
             normalize_apps_result(Apps, [JObj|Acc])

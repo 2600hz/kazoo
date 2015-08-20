@@ -12,7 +12,6 @@
 -export([allowed_app/2]).
 -export([is_authorized/3]).
 -export([load_default_apps/0]).
--export([get_apps_store_doc/1]).
 
 -include("crossbar.hrl").
 
@@ -29,7 +28,6 @@ allowed_apps(AccountId) ->
     ServicePlan = wh_services:service_plan_json(AccountId),
     DefaultApps = load_default_apps(),
     Apps = filter_apps(AccountId, DefaultApps),
-
     case has_all_apps_in_service_plan(ServicePlan) of
         'true' -> Apps;
         'false' -> find_enabled_apps(get_plan_apps(ServicePlan), Apps)
@@ -161,12 +159,25 @@ filter_apps(AccountId, Apps, JObj) ->
                 orelse is_blacklisted(App, JObj)
             of
                 'true' -> Acc;
-                'false' -> [App|Acc]
+                'false' ->
+                    [add_permissions(App, JObj)|Acc]
             end
         end
         ,[]
         ,Apps
     ).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec add_permissions(wh_json:object(), wh_json:object()) -> wh_json:object().
+add_permissions(App, JObj) ->
+    AppsPerm = kz_apps_store:apps(JObj),
+    AppPerm = wh_json:get_value(wh_doc:id(App), AppsPerm, wh_json:new()),
+    wh_json:merge_recursive([App, AppPerm]).
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
