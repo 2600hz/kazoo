@@ -93,6 +93,7 @@ migrate_account_data(Account) ->
     _ = migrate_ring_group_callflow(Account),
     _ = cb_vmboxes:migrate(Account),
     _ = cb_lists_v2:maybe_migrate(Account),
+    _ = cb_apps_maintenance:migrate(Account),
     'no_return'.
 
 -spec add_missing_modules(atoms(), atoms()) -> 'no_return'.

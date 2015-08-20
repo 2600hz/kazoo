@@ -350,18 +350,7 @@ normalize_apps_result([App|Apps], Acc) ->
     case wh_json:is_true(<<"published">>, App, 'true') of
         'false' -> normalize_apps_result(Apps, Acc);
         'true' ->
-            JObj =
-                wh_json:from_list(
-                  props:filter_undefined(
-                    [{<<"id">>, wh_doc:id(App)}
-                    ,{<<"name">>, wh_json:get_value(<<"name">>, App)}
-                    ,{<<"i18n">>, wh_json:get_value(<<"i18n">>, App)}
-                    ,{<<"tags">>, wh_json:get_value(<<"tags">>, App)}
-                    ,{<<"api_url">>, wh_json:get_value(<<"api_url">>, App)}
-                    ,{<<"source_url">>, wh_json:get_value(<<"source_url">>, App)}
-                    ])
-                 ),
-            normalize_apps_result(Apps, [JObj|Acc])
+            normalize_apps_result(Apps, [wh_json:public_fields(App)|Acc])
     end.
 
 %%--------------------------------------------------------------------
