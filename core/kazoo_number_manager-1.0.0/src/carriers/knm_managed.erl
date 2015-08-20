@@ -18,7 +18,7 @@
 
 -include("../knm.hrl").
 
--define(WH_MANAGED,<<"numbers%2Fmanaged">>).
+-define(WH_MANAGED, <<"numbers%2Fmanaged">>).
 -define(MANAGED_VIEW_FILE, <<"views/managed.json">>).
 
 %%--------------------------------------------------------------------
@@ -51,7 +51,7 @@ find_numbers_in_account(Number, Quantity, AccountId) ->
     end.
 
 -spec do_find_numbers_in_account(ne_binary(), pos_integer(), api_binary()) ->
-                                        {'error', any()} |
+                                        {'error', _} |
                                         {'ok', wh_json:object()}.
 do_find_numbers_in_account(Number, Quantity, AccountId) ->
     ViewOptions = [{'startkey', [AccountId, ?NUMBER_STATE_AVAILABLE, Number]}
@@ -72,7 +72,7 @@ do_find_numbers_in_account(Number, Quantity, AccountId) ->
     end.
 
 -spec format_numbers_resp(wh_json:objects()) ->
-                                 wh_json:objects().
+                                 wh_json:object().
 format_numbers_resp(JObjs) ->
     Numbers = lists:foldl(fun format_numbers_resp_fold/2, [], JObjs),
     wh_json:from_list(Numbers).
@@ -123,7 +123,7 @@ acquire_number(Number, 'false') ->
 %% Release a number from the routing table
 %% @end
 %%--------------------------------------------------------------------
--spec disconnect_number(knm_number:knm_number()) -> knm_number:knm_number().
+-spec disconnect_number(knm_number:knm_number()) -> knm_number_return().
 disconnect_number(Number) ->
     Num = knm_phone_number:number(knm_number:phone_number(Number)),
     lager:debug("disconnect number ~s in managed provider", [Num]),
@@ -131,14 +131,14 @@ disconnect_number(Number) ->
                         ,{<<"pvt_assigned_to">>,<<>>}
                        ]).
 
--spec generate_numbers(ne_binary(), pos_integer() , pos_integer()) -> 'ok'.
+-spec generate_numbers(ne_binary(), pos_integer(), non_neg_integer()) -> 'ok'.
+generate_numbers(_AccountId, _Number, 0) -> 'ok';
 generate_numbers(AccountId, Number, Quantity)
   when Quantity > 0
        andalso is_integer(Number)
        andalso is_integer(Quantity) ->
     save_doc(AccountId, Number),
-    generate_numbers(AccountId, Number+1, Quantity-1);
-generate_numbers(_AccountId, _Number, 0) -> 'ok'.
+    generate_numbers(AccountId, Number+1, Quantity-1).
 
 -spec import_numbers(ne_binary(), ne_binaries()) ->
                             wh_json:object().
@@ -161,7 +161,7 @@ import_numbers(AccountId, [Number | Numbers], JObj) ->
               end,
     import_numbers(AccountId, Numbers, NewJObj).
 
--spec save_doc(ne_binary(), ne_binary()) ->
+-spec save_doc(ne_binary(), pos_integer() | ne_binary()) ->
                       {'ok', wh_json:object()} |
                       {'error', _}.
 save_doc(AccountId, Number) ->
@@ -184,7 +184,7 @@ save_doc(JObj) ->
                         knm_number_return().
 update_doc(Number, UpdateProps) ->
     Doc = knm_phone_number:doc(knm_number:phone_number(Number)),
-    case couch_mgr:update_doc(?WH_MANAGED, Doc, UpdateProps) of
+    case couch_mgr:update_doc(?WH_MANAGED, wh_doc:id(Doc), UpdateProps) of
         {'error', _}=E -> E;
         {'ok', UpdatedDoc} ->
             {'ok'
