@@ -1,0 +1,27 @@
+{
+    "_id": "fmc_item",
+    "description": "FMC item",
+    "id": "http://json-schema.org/draft-03/schema#",
+    "properties": {
+        "a_number": {
+            "description": "A-Number which processed by FMC app",
+            "required": true,
+            "type": "string"
+        },
+        "account_id": {
+            "description": "Account ID where the internal mobile device should be",
+            "required": true,
+            "type": "string"
+        },
+        "device_id": {
+            "description": "Device ID of the account which will be used as caller",
+            "required": true,
+            "type": "string"
+        },
+        "x_fmc_value": {
+            "description": "Special value received as part of header extracted by regexp (see FMC config)",
+            "required": true,
+            "type": "string"
+        }
+    }
+}
