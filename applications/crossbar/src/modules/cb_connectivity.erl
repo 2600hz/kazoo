@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle client requests for connectivity documents
@@ -154,15 +154,23 @@ registration_update(Context) ->
 track_assignment('post', Context) ->
     OldNums = get_numbers(cb_context:fetch(Context, 'db_doc')),
     NewNums = get_numbers(cb_context:doc(Context)),
-    Assigned = [{Num, <<"trunkstore">>} || Num <- NewNums, not (lists:member(Num, OldNums))],
-    Unassigned = [{Num, <<>>} || Num <- OldNums, not (lists:member(Num, NewNums))],
-    lager:debug("assign ~p, unassign ~p", [Assigned, Unassigned]),
-    wh_number_manager:track_assignment(cb_context:account_id(Context), Assigned ++ Unassigned);
+    Assigned = [{Num, <<"trunkstore">>}
+                || Num <- NewNums,
+                   not (lists:member(Num, OldNums))
+               ],
+    Unassigned = [{Num, <<>>}
+                  || Num <- OldNums,
+                     not (lists:member(Num, NewNums))
+                 ],
+
+    Updates = cb_modules_util:apply_assignment_updates(Assigned ++ Unassigned),
+    cb_modules_util:log_assignment_updates(Updates);
 track_assignment('delete', Context) ->
     Nums = get_numbers(cb_context:doc(Context)),
     Unassigned = [{Num, <<>>} || Num <- Nums],
-    lager:debug("unassign ~p", [Unassigned]),
-    wh_number_manager:track_assignment(cb_context:account_id(Context), Unassigned).
+
+    Updates = cb_modules_util:apply_assignment_updates(Unassigned),
+    cb_modules_util:log_assignment_updates(Updates).
 
 %%--------------------------------------------------------------------
 %% @private
