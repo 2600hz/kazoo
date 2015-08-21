@@ -599,7 +599,7 @@ create_event(EventName, ApplicationName, Props) ->
 specific_call_channel_vars_props(<<"CHANNEL_DESTROY">>, Props) ->
     UUID = get_call_id(Props),
     Vars = ecallmgr_util:custom_channel_vars(Props),
-    case wh_cache:peek_local(?ECALLMGR_CDR_CACHE, UUID) of
+    case wh_cache:peek_local(?ECALLMGR_GROUP_CACHE, UUID) of
         {'ok', CDR} ->
             NewVars = props:set_value(<<?CALL_GROUP_ID>>, CDR, Vars),
             [{<<"Custom-Channel-Vars">>, wh_json:from_list(NewVars)}];
