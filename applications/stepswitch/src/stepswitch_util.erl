@@ -82,7 +82,7 @@ get_outbound_destination(OffnetReq) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec lookup_number(ne_binary()) ->
-                           {'ok', ne_binary(), number_properties()} |
+                           {'ok', ne_binary(), knm_number:number_properties()} |
                            {'error', any()}.
 lookup_number(Number) ->
     Num = wnm_util:normalize_number(Number),
@@ -94,7 +94,7 @@ lookup_number(Number) ->
     end.
 
 -spec fetch_number(ne_binary()) ->
-                          {'ok', ne_binary(), number_properties()} |
+                          {'ok', ne_binary(), knm_number:number_properties()} |
                           {'error', any()}.
 fetch_number(Num) ->
     case wh_number_manager:lookup_account_by_number(Num) of

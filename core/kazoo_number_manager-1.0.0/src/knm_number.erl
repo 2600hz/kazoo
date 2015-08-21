@@ -42,9 +42,10 @@
 
 -export_type([knm_number/0
               ,knm_numbers/0
+              ,number_options/0
              ]).
 
--type lookup_option() :: {'pending_port', boolean()} |
+-type number_option() :: {'pending_port', boolean()} |
                          {'local', boolean()} |
                          {'number', ne_binary()} |
                          {'account_id', ne_binary()} |
@@ -54,7 +55,7 @@
                          {'transfer_media', api_binary()} |
                          {'force_outbound', boolean()}.
 
--type lookup_options() :: [lookup_option()].
+-type number_options() :: [number_option()].
 
 -type lookup_error() :: 'not_reconcilable' |
                         'not_found' |
@@ -62,7 +63,7 @@
                         {'not_in_service', ne_binary()} |
                         {'account_disabled', ne_binary()}.
 
--type lookup_account_return() :: {'ok', ne_binary(), lookup_options()} |
+-type lookup_account_return() :: {'ok', ne_binary(), number_options()} |
                                  {'error', lookup_error()}.
 
 %%--------------------------------------------------------------------

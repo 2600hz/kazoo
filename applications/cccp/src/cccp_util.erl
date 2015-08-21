@@ -20,6 +20,8 @@
 
 -define(DEFAULT_CALLEE_REGEX, <<"^\\+?\\d{7,}$">>).
 
+-define(WNM_PHONE_NUMBER_DOC, <<"phone_numbers">>).
+
 -spec relay_amqp(wh_json:object(), wh_proplist()) -> 'ok'.
 relay_amqp(JObj, Props) ->
     case whapps_call:kvs_fetch('consumer_pid', props:get_value('call', Props)) of

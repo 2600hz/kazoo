@@ -13,7 +13,6 @@
 -export([handle_req/2]).
 
 -include("stepswitch.hrl").
--include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 -include_lib("whistle/include/wapi_offnet_resource.hrl").
 
 %%--------------------------------------------------------------------
