@@ -368,14 +368,14 @@ set_device_classifier_action(Action, Classifier, Uri) ->
 %%--------------------------------------------------------------------
 -spec is_classifier(ne_binary()) -> boolean().
 is_classifier(Classifier) ->
-    Classifiers = wh_json:get_keys(wnm_util:available_classifiers()),
+    Classifiers = wh_json:get_keys(knm_converters:available_classifiers()),
     case lists:member(Classifier, Classifiers) of
+        'true' -> 'true';
         'false' ->
-            io:format("classifier '~s' not among configured classifiers: ~p\n"
+            io:format("classifier '~s' not among configured classifiers: ~p"
                       ,[Classifier, Classifiers]
                      ),
-            'false';
-        'true' -> 'true'
+            'false'
     end.
 
 %%--------------------------------------------------------------------
