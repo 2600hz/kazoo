@@ -16,9 +16,12 @@
          ,change_state/1 ,change_state/2
          ,assigned_to_app/1 ,assigned_to_app/2
          ,buy/2
+         ,free/1
         ]).
 
 -include("knm.hrl").
+
+-define(KNM_PHONE_NUMBERS_DOC, <<"phone_numbers">>).
 
 -type numbers_return() :: [{ne_binary(), number_return()}].
 
@@ -163,6 +166,70 @@ assigned_to_app([{Num, App}|Props], Options, Acc) ->
 -spec buy(ne_binaries(), ne_binary()) -> numbers_return().
 buy(Nums, Account) ->
     [knm_number:buy(Num, Account) || Num <- Nums].
+
+-spec free(ne_binary()) -> 'ok'.
+free(<<__/binary>> = AccountId) ->
+    case couch_mgr:open_cache_doc(
+           wh_util:format_account_id(AccountId, 'encoded')
+           ,?KNM_PHONE_NUMBERS_DOC
+          )
+    of
+        {'ok', JObj} ->
+            free_numbers(AccountId, JObj);
+        {'error', _E} ->
+            lager:debug("failed to open ~s in ~s: ~p"
+                        ,[?KNM_PHONE_NUMBERS_DOC, AccountId, _E]
+                       )
+    end.
+
+-spec free_numbers(ne_binary(), wh_json:object()) -> 'ok'.
+free_numbers(AccountId, JObj) ->
+    lists:foreach(fun(DID) ->
+                          maybe_free_number(AccountId, DID)
+                  end
+                  ,wh_json:public_keys(JObj)
+                 ).
+
+-spec maybe_free_number(ne_binary(), ne_binary()) -> 'ok'.
+maybe_free_number(AccountId, DID) ->
+    case knm_number:get(DID) of
+        {'error', _E} ->
+            lager:debug("failed to release ~s for account ~s: ~p", [DID, AccountId, _E]);
+        {'ok', Number} ->
+            check_to_free_number(AccountId, Number)
+    end.
+
+-spec check_to_free_number(ne_binary(), knm_number:knm_number()) -> 'ok'.
+check_to_free_number(AccountId, Number) ->
+    check_to_free_number(AccountId
+                         ,Number
+                         ,knm_phone_number:assigned_to(knm_number:phone_number(Number))
+                        ).
+
+-spec check_to_free_number(ne_binary(), knm_number:knm_number(), api_binary()) -> 'ok'.
+check_to_free_number(AccountId, Number, AccountId) ->
+    case knm_number:change_state(Number, ?NUMBER_STATE_RELEASED) of
+        {'ok', _} ->
+            lager:debug("released ~s for account ~s"
+                        ,[knm_phone_number:number(knm_number:phone_number(Number))
+                          ,AccountId
+                         ]
+                       );
+        {'error', _E} ->
+            lager:debug("failed to release ~s for account ~s: ~p"
+                        ,[knm_phone_number:number(knm_number:phone_number(Number))
+                          ,AccountId
+                          ,_E
+                         ]
+                       )
+    end;
+check_to_free_number(_AccountId, Number, _OtherAccountId) ->
+    lager:debug("not releasing ~s for account ~s; it is assigned to account ~s"
+                ,[knm_phone_number:number(knm_number:phone_number(Number))
+                  ,_AccountId
+                  ,_OtherAccountId
+                 ]
+               ).
 
 %%%===================================================================
 %%% Internal functions
