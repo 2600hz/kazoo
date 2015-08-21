@@ -10,14 +10,13 @@
 
 -include("../knm.hrl").
 
--export([
-    normalize/1, is_normalized/1
-    ,is_npan/1 ,is_1npan/1
-    ,to_db/1
-    ,is_reconcilable/1
-    ,classify/1, available_classifiers/0
-    ,available_converters/0, default/0
-]).
+-export([normalize/1, is_normalized/1
+         ,is_npan/1 ,is_1npan/1
+         ,to_db/1
+         ,is_reconcilable/1
+         ,classify/1, available_classifiers/0
+         ,available_converters/0, default/0
+        ]).
 
 -define(DEFAULT_CONVERTERS, [<<"regex">>]).
 -define(DEFAULT_CONVERTER, whapps_config:get(?KNM_CONFIG_CAT, <<"converter">>, <<"regex">>)).
