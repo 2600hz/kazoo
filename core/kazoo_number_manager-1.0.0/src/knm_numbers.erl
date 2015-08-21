@@ -187,7 +187,7 @@ free_numbers(AccountId, JObj) ->
     lists:foreach(fun(DID) ->
                           maybe_free_number(AccountId, DID)
                   end
-                  ,wh_json:public_keys(JObj)
+                  ,wh_json:get_public_keys(JObj)
                  ).
 
 -spec maybe_free_number(ne_binary(), ne_binary()) -> 'ok'.
