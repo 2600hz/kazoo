@@ -270,7 +270,7 @@ check_pin(Context) ->
 check_cid(Context) ->
     ReqData = cb_context:req_data(Context),
     CID = wh_json:get_value(<<"cid">>, ReqData),
-    case wnm_util:is_reconcilable(CID) of
+    case knm_converters:is_reconcilable(CID) of
         'false' ->
             cb_context:add_validation_error(
                 <<"cccp">>
