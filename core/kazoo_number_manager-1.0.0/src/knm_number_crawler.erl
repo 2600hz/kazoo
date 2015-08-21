@@ -212,10 +212,11 @@ crawl_number_doc(PhoneNumber) ->
     end,
     Num.
 
--spec run_crawler_funs(knm_number:knm_number(), functions()) -> knm_number:knm_number().
-run_crawler_funs(Number, Fs) ->
-    lists:foldl(fun(F, N) -> F(N) end
-                ,Number
+-spec run_crawler_funs(knm_phone_number:knm_number(), functions()) ->
+                              knm_phone_number:knm_number().
+run_crawler_funs(PhoneNumber, Fs) ->
+    lists:foldl(fun(F, PN) -> F(PN) end
+                ,PhoneNumber
                 ,Fs
                ).
 
