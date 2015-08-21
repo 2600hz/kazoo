@@ -20,10 +20,10 @@ handle_route_req(JObj, Props) ->
     'true' = wapi_route:req_v(JObj),
 
     Call = whapps_call:from_route_req(JObj),
-    CB_Number = wnm_util:normalize_number(whapps_config:get(?CCCP_CONFIG_CAT, <<"cccp_cb_number">>)),
-    CC_Number = wnm_util:normalize_number(whapps_config:get(?CCCP_CONFIG_CAT, <<"cccp_cc_number">>)),
+    CB_Number = knm_converters:normalize(whapps_config:get(?CCCP_CONFIG_CAT, <<"cccp_cb_number">>)),
+    CC_Number = knm_converters:normalize(whapps_config:get(?CCCP_CONFIG_CAT, <<"cccp_cc_number">>)),
 
-    case wnm_util:normalize_number(whapps_call:request_user(Call)) of
+    case knm_converters:normalize(whapps_call:request_user(Call)) of
         CB_Number -> park_call(JObj, Props, Call);
         CC_Number -> park_call(JObj, Props, Call);
         _ -> 'ok'
@@ -63,10 +63,10 @@ handle_config_change(_JObj, _Props) ->
 
 -spec handle_cccp_call(whapps_call:call()) -> 'ok'.
 handle_cccp_call(Call) ->
-    CID = wnm_util:normalize_number(whapps_call:caller_id_number(Call)),
-    CB_Number = wnm_util:normalize_number(whapps_config:get(?CCCP_CONFIG_CAT, <<"cccp_cb_number">>)),
-    CC_Number = wnm_util:normalize_number(whapps_config:get(?CCCP_CONFIG_CAT, <<"cccp_cc_number">>)),
-    case wnm_util:normalize_number(whapps_call:request_user(Call)) of
+    CID = knm_converters:normalize(whapps_call:caller_id_number(Call)),
+    CB_Number = knm_converters:normalize(whapps_config:get(?CCCP_CONFIG_CAT, <<"cccp_cb_number">>)),
+    CC_Number = knm_converters:normalize(whapps_config:get(?CCCP_CONFIG_CAT, <<"cccp_cc_number">>)),
+    case knm_converters:normalize(whapps_call:request_user(Call)) of
         CB_Number ->
             handle_callback(CID, Call);
         CC_Number ->

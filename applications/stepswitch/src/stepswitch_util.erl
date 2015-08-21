@@ -85,7 +85,7 @@ get_outbound_destination(OffnetReq) ->
                            {'ok', ne_binary(), knm_number:number_properties()} |
                            {'error', any()}.
 lookup_number(Number) ->
-    Num = wnm_util:normalize_number(Number),
+    Num = knm_converters:normalize(Number),
     case kz_cache:fetch_local(?STEPSWITCH_CACHE, cache_key_number(Num)) of
         {'ok', {AccountId, Props}} ->
             lager:debug("found number properties in stepswitch cache"),

@@ -412,7 +412,7 @@ get_inbound_destination(JObj) ->
                            {'ok', ne_binary(), wh_proplist()} |
                            {'error', any()}.
 lookup_number(Number) ->
-    Num = wnm_util:normalize_number(Number),
+    Num = knm_converters:normalize(Number),
     case kz_cache:fetch_local(?DOODLE_CACHE, cache_key_number(Num)) of
         {'ok', {AccountId, Props}} ->
             lager:debug("cached number ~s is associated with account ~s", [Num, AccountId]),
@@ -443,7 +443,7 @@ cache_key_number(Number) ->
                         {'ok', ne_binary(), api_binary()} |
                         {'error', any()}.
 lookup_mdn(Number) ->
-    Num = wnm_util:normalize_number(Number),
+    Num = knm_converters:normalize(Number),
     case kz_cache:fetch_local(?DOODLE_CACHE, cache_key_mdn(Num)) of
         {'ok', {Id, OwnerId}} ->
             lager:debug("cached number ~s is associated with ~s/~s", [Num, OwnerId, Id]),
