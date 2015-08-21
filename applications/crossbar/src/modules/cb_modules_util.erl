@@ -29,6 +29,9 @@
          ,take_sync_field/1
 
          ,remove_plaintext_password/1
+
+         ,apply_assignment_updates/1
+         ,log_assignment_updates/1
         ]).
 
 -include("crossbar.hrl").
@@ -576,3 +579,23 @@ remove_plaintext_password(Context) ->
             ], cb_context:doc(Context)
            ),
     cb_context:set_doc(Context, Doc).
+
+-type assignment_updates() :: [{ne_binary(), knm_number:knm_number_return()}].
+
+-spec apply_assignment_updates([{ne_binary(), api_binary()}]) ->
+                                      assignment_updates().
+apply_assignment_updates(Updates) ->
+    [{DID, knm_number:assign_to_app(DID, Assign)}
+     || {DID, Assign} <- Updates
+    ].
+
+-spec log_assignment_updates(assignment_updates()) -> 'ok'.
+log_assignment_updates(Updates) ->
+    _ = [log_assignment_update(Update) || Update <- Updates],
+    'ok'.
+
+-spec log_assignment_update({ne_binary(), knm_number:knm_number_return()}) -> 'ok'.
+log_assignment_update({DID, {'ok', _Number}}) ->
+    lager:debug("successfully updated ~s", [DID]);
+log_assignment_update({DID, {'error', E}}) ->
+    lager:debug("failed to update ~s: ~p", [DID, E]).

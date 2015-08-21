@@ -414,8 +414,8 @@ track_assignment('post', Context) ->
                     Num =/= <<"undefined">>
                 ],
 
-    Updates = apply_assignment_updates(Unassigned ++ Assigned),
-    log_assignment_updates(Updates);
+    Updates = cb_modules_util:apply_assignment_updates(Unassigned ++ Assigned),
+    cb_modules_util:log_assignment_updates(Updates);
 track_assignment('put', Context) ->
     NewNums = wh_json:get_value(<<"numbers">>, cb_context:doc(Context), []),
     Assigned =  [{Num, kzd_callflow:type()}
@@ -423,36 +423,16 @@ track_assignment('put', Context) ->
                     Num =/= <<"undefined">>
                 ],
 
-    Updates = apply_assignment_updates(Assigned),
-    log_assignment_updates(Updates);
+    Updates = cb_modules_util:apply_assignment_updates(Assigned),
+    cb_modules_util:log_assignment_updates(Updates);
 track_assignment('delete', Context) ->
     Nums = wh_json:get_value(<<"numbers">>, cb_context:doc(Context), []),
     Unassigned =  [{Num, <<>>}
                    || Num <- Nums,
                       Num =/= <<"undefined">>
                   ],
-    Updates = apply_assignment_updates(Unassigned),
-    log_assignment_updates(Updates).
-
--type assignment_updates() :: [{ne_binary(), knm_number:knm_number_return()}].
-
--spec apply_assignment_updates([{ne_binary(), api_binary()}]) ->
-                                      assignment_updates().
-apply_assignment_updates(Updates) ->
-    [{DID, knm_number:assign_to_app(DID, Assign)}
-     || {DID, Assign} <- Updates
-    ].
-
--spec log_assignment_updates(assignment_updates()) -> 'ok'.
-log_assignment_updates(Updates) ->
-    _ = [log_assignment_update(Update) || Update <- Updates],
-    'ok'.
-
--spec log_assignment_update({ne_binary(), knm_number:knm_number_return()}) -> 'ok'.
-log_assignment_update({DID, {'ok', _Number}}) ->
-    lager:debug("successfully updated ~s", [DID]);
-log_assignment_update({DID, {'error', E}}) ->
-    lager:debug("failed to update ~s: ~p", [DID, E]).
+    Updates = cb_modules_util:apply_assignment_updates(Unassigned),
+    cb_modules_util:log_assignment_updates(Updates).
 
 %%--------------------------------------------------------------------
 %% @private
