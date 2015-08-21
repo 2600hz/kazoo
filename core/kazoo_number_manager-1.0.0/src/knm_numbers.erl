@@ -23,7 +23,7 @@
 
 -define(KNM_PHONE_NUMBERS_DOC, <<"phone_numbers">>).
 
--type numbers_return() :: [{ne_binary(), number_return()}].
+-type numbers_return() :: [{ne_binary(), knm_number_return()}].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -43,7 +43,6 @@ get([], _Options, Acc) -> Acc;
 get([Num|Nums], Options, Acc) ->
     Return = knm_number:get(Num, Options),
     get(Nums, Options, [{Num, Return}|Acc]).
-
 
 %%--------------------------------------------------------------------
 %% @public
@@ -155,7 +154,7 @@ assigned_to_app(Props, Options) ->
 
 assigned_to_app([], _Options, Acc) -> Acc;
 assigned_to_app([{Num, App}|Props], Options, Acc) ->
-    Return  = knm_number:assigned_to_app(Num, App, Options),
+    Return = knm_number:assign_to_app(Num, App, Options),
     assigned_to_app(Props, Options, [{Num, Return}|Acc]).
 
 %%--------------------------------------------------------------------

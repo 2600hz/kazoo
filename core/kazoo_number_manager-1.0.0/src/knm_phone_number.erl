@@ -66,6 +66,7 @@
 
 -export_type([knm_number/0
               ,knm_numbers/0
+              ,set_function/0
               ,set_functions/0
              ]).
 
