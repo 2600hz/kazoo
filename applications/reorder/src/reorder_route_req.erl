@@ -42,7 +42,7 @@ get_dest_number(JObj) ->
             lager:debug("assuming number is e164, normalizing to ~s", [Number]),
             Number;
         _ ->
-            Number = wnm_util:normalize_number(User),
+            Number = knm_converters:normalize(User),
             lager:debug("converted number to e164: ~s", [Number]),
             Number
     end.

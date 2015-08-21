@@ -347,7 +347,7 @@ validate_external_cid(CIDNum, FromUser, AccountId) ->
 
 -spec validate_from_user(ne_binary(), ne_binary()) -> ne_binary().
 validate_from_user(FromUser, AccountId) ->
-    NormalizedFromUser = wnm_util:normalize_number(FromUser),
+    NormalizedFromUser = knm_converters:normalize(FromUser),
     case wh_number_manager:lookup_account_by_number(NormalizedFromUser) of
         {'ok', AccountId, _} ->
             lager:info("CID Number derived from CID Name, normalized and set to: ~s", [NormalizedFromUser]),

@@ -94,7 +94,7 @@ ensure_valid_caller_id(OutboundCID, AccountId) ->
         kz_datamgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded')
                                  ,?WNM_PHONE_NUMBER_DOC
                                 ),
-    case lists:member(wnm_util:normalize_number(OutboundCID)
+    case lists:member(knm_converters:normalize(OutboundCID)
                       ,wh_json:get_keys(AccountPhoneNumbersList)
                      )
     of

@@ -273,16 +273,16 @@ check_cid(Context) ->
     case knm_converters:is_reconcilable(CID) of
         'false' ->
             cb_context:add_validation_error(
-                <<"cccp">>
-                ,<<"unique">>
-                ,wh_json:from_list([
-                    {<<"message">>, <<"Number is non reconcilable">>}
-                    ,{<<"cause">>, CID}
-                 ])
-                ,Context
-            );
+              <<"cccp">>
+              ,<<"unique">>
+                  ,wh_json:from_list(
+                     [{<<"message">>, <<"Number is non reconcilable">>}
+                      ,{<<"cause">>, CID}
+                     ])
+              ,Context
+             );
         'true' ->
-            ReqData2 = wh_json:set_value(<<"cid">>, wnm_util:normalize_number(CID), ReqData),
+            ReqData2 = wh_json:set_value(<<"cid">>, knm_converters:normalize(CID), ReqData),
             Context2 = cb_context:set_req_data(Context, ReqData2),
             case unique_cid(Context2) of
                 'empty' -> create(Context2);
