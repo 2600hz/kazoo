@@ -203,7 +203,11 @@ post(Context, ?BLACKLIST) ->
     ReqData = cb_context:req_data(Context),
     Blacklist = wh_json:get_value(<<"blacklist">>, ReqData, []),
     Doc = wh_json:set_value(<<"blacklist">>, Blacklist, cb_context:doc(Context)),
-    crossbar_doc:save(cb_context:set_doc(Context, Doc));
+    return_only_blacklist(
+        crossbar_doc:save(
+            cb_context:set_doc(Context, Doc)
+        )
+    );
 post(Context, Id) ->
     Context1 = crossbar_doc:save(Context),
     case cb_context:resp_status(Context1) of
@@ -254,7 +258,19 @@ delete(Context, _Id) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_req(cb_context:context(), http_method()) -> cb_context:context().
-validate_req(Context, _Verb) ->
+validate_req(Context, ?HTTP_POST) ->
+    validate_blacklist(Context);
+validate_req(Context, ?HTTP_GET) ->
+    Context1 = validate_blacklist(Context),
+    return_only_blacklist(Context1).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_blacklist(cb_context:context()) -> cb_context:context().
+validate_blacklist(Context) ->
     AuthAccountId = cb_context:auth_account_id(Context),
     AccountId = cb_context:account_id(Context),
     case wh_services:is_reseller(AuthAccountId)
@@ -262,6 +278,25 @@ validate_req(Context, _Verb) ->
     of
         'false' -> cb_context:add_system_error('forbidden', Context);
         'true' -> load_apps_store(Context)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec return_only_blacklist(cb_context:context()) -> cb_context:context().
+return_only_blacklist(Context) ->
+    case cb_context:resp_status(Context) of
+        'success' ->
+            RespData = cb_context:resp_data(Context),
+            Blacklist = wh_json:get_value(<<"blacklist">>, RespData, []),
+            NewRespData =
+                wh_json:from_list([
+                    {<<"blacklist">>, Blacklist}
+                ]),
+            cb_context:set_resp_data(Context, NewRespData);
+        _ -> Context
     end.
 
 -spec validate_app(cb_context:context(), ne_binary(), http_method()) -> cb_context:context().
