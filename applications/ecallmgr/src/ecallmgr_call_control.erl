@@ -404,7 +404,7 @@ handle_info({'event', [CallId | Props]}, #state{call_id=CallId
                     OtherLeg = wh_json:get_value(<<"other_leg">>, Channel),
                     OtherUUID = props:get_value(<<"Other-Leg-Unique-ID">>, Props),
                     CDR = wh_json:get_value(<<"group_id">>, Channel),
-                    wh_cache:store_local(?ECALLMGR_CDR_CACHE, CallId, CDR),
+                    wh_cache:store_local(?ECALLMGR_GROUP_CACHE, CallId, CDR),
                     ecallmgr_fs_command:set(Node, OtherUUID, ?CCV(<<?CALL_GROUP_ID>>), CDR),
                     ecallmgr_fs_command:set(Node, OtherLeg, ?CCV(<<?CALL_GROUP_ID>>), CDR),                    
                     {'noreply', handle_sofia_replaced(ReplacedBy, State)};
@@ -422,7 +422,7 @@ handle_info({'event', [CallId | Props]}, #state{call_id=CallId
                     case ecallmgr_fs_channel:fetch(UUID) of
                         {'ok', Channel} ->
                             CDR = wh_json:get_value(<<"group_id">>, Channel),
-                            wh_cache:store_local(?ECALLMGR_CDR_CACHE, CallId, CDR),
+                            wh_cache:store_local(?ECALLMGR_GROUP_CACHE, CallId, CDR),
                             ecallmgr_fs_command:set(Node, UUID, ?CCV(<<?CALL_GROUP_ID>>), CDR );
                         _ -> 'ok'
                     end;
