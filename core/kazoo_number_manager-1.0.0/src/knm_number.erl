@@ -1,4 +1,4 @@
-%%-------------------------------------------------------------------
+%-------------------------------------------------------------------
 %%% @copyright (C) 2015, 2600Hz INC
 %%% @doc
 %%%
@@ -11,14 +11,15 @@
 -export([new/0
          ,get/1, get/2
          ,create/2
-         ,move/2 ,move/3
-         ,update/2 ,update/3
-         ,delete/1 ,delete/2
-         ,change_state/2 ,change_state/3
-         ,assigned_to_app/2 ,assigned_to_app/3
+         ,move/2, move/3
+         ,update/2, update/3
+         ,delete/1, delete/2
+         ,change_state/2, change_state/3
+         ,assign_to_app/2, assign_to_app/3
          ,lookup_account/1
          ,buy/2, buy/3
          ,save/1
+         ,reconcile/3
         ]).
 
 -export([phone_number/1, set_phone_number/2
@@ -43,6 +44,7 @@
 -export_type([knm_number/0
               ,knm_numbers/0
               ,number_options/0
+              ,knm_number_return/0
              ]).
 
 -type number_option() :: {'pending_port', boolean()} |
@@ -186,6 +188,11 @@ update_phone_number(Number, Routines) ->
              )
     end.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec save(knm_number()) -> knm_number_return().
 save(Number) ->
     _ = knm_services:maybe_update_services(Number),
@@ -193,6 +200,70 @@ save(Number) ->
       knm_phone_number:save(phone_number(Number))
       ,Number
      ).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec reconcile(ne_binary(), ne_binary(), ne_binary()) ->
+                       knm_number_return().
+reconcile(DID, AssignTo, AuthBy) ->
+    case ?MODULE:get(DID) of
+        {'ok', Number} ->
+            reconcile_number(Number, AssignTo, AuthBy);
+        {'error', 'not_found'} ->
+            create(DID, [{<<"assigned_to">>, AssignTo}
+                         ,{<<"auth_by">>, AuthBy}
+                         ,{<<"state">>, ?NUMBER_STATE_IN_SERVICE}
+                        ]);
+        {'error', _}=E -> E
+    end.
+
+reconcile_number(Number, AssignTo, AuthBy) ->
+    PhoneNumber = ?MODULE:phone_number(Number),
+    Updaters = [{AssignTo
+                 ,knm_phone_number:assigned_to(PhoneNumber)
+                 ,fun knm_phone_number:set_assigned_to/2
+                }
+                ,{AuthBy
+                  ,knm_phone_number:auth_by(PhoneNumber)
+                  ,fun knm_phone_number:set_auth_by/2
+                 }
+                ,{?NUMBER_STATE_IN_SERVICE
+                  ,knm_phone_number:state(PhoneNumber)
+                  ,fun knm_phone_number:set_state/2
+                 }
+               ],
+    case updates_require_save(PhoneNumber, Updaters) of
+        {'true', UpdatedPhoneNumber} ->
+            wrap_phone_number_return(
+              knm_phone_number:save(UpdatedPhoneNumber)
+              ,Number
+             );
+        {'false', _PhoneNumber} ->
+            {'ok', Number}
+    end.
+
+-spec updates_require_save(knm_phone_number:knm_number(), up_req_els()) ->
+                                  up_req_acc().
+updates_require_save(PhoneNumber, Updaters) ->
+    lists:foldl(fun update_requires_save/2
+                ,{'false', PhoneNumber}
+                ,Updaters
+               ).
+
+-type set_fun() :: fun((knm_phone_number:knm_number(), term()) -> knm_phone_number:knm_number()).
+
+-type up_req_el() :: {ne_binary(), api_binary(), set_fun()}.
+-type up_req_els() :: [up_req_el()].
+-type up_req_acc() :: {boolean(), knm_phone_number:knm_number()}.
+
+-spec update_requires_save(up_req_el(), up_req_acc()) -> up_req_acc().
+update_requires_save({V, V, _Fun}, Acc) ->
+    Acc;
+update_requires_save({NewV, _OldV, SetFun}, {_, PhoneNumber}) ->
+    {'true', SetFun(PhoneNumber, NewV)}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -243,16 +314,28 @@ change_state(Number, State, _Options) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec assigned_to_app(ne_binary(), ne_binary()) -> knm_number_return().
--spec assigned_to_app(ne_binary(), ne_binary(), wh_proplist()) -> knm_number_return().
-assigned_to_app(Num, App) ->
-    assigned_to_app(Num, App, knm_phone_number:default_options()).
+-spec assign_to_app(ne_binary(), api_binary()) ->
+                           knm_number_return().
+-spec assign_to_app(ne_binary(), api_binary(), wh_proplist()) ->
+                           knm_number_return().
+assign_to_app(Num, App) ->
+    assign_to_app(Num, App, knm_phone_number:default_options()).
 
-assigned_to_app(Num, App, Options) ->
+assign_to_app(Num, App, Options) ->
     case ?MODULE:get(Num, Options) of
         {'error', _R}=E -> E;
         {'ok', Number} ->
-            UpdatedPhoneNumber = knm_phone_number:set_used_by(phone_number(Number), App),
+            maybe_update_assignment(Number, App)
+    end.
+
+-spec maybe_update_assignment(knm_number:knm_number(), api_binary()) ->
+                                     knm_number_return().
+maybe_update_assignment(Number, NewApp) ->
+    PhoneNumber = knm_number:phone_number(Number),
+    case knm_phone_number:used_by(PhoneNumber) of
+        NewApp -> {'ok', Number};
+        _OldApp ->
+            UpdatedPhoneNumber = knm_phone_number:set_used_by(PhoneNumber, NewApp),
             wrap_phone_number_return(
               knm_phone_number:save(UpdatedPhoneNumber)
               ,Number
@@ -683,6 +766,11 @@ fetch_account_from_ports(NormalizedNum, Error) ->
             Error
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec wrap_phone_number_return(number_return() | knm_phone_number:knm_number()) ->
                                       knm_number_return().
 -spec wrap_phone_number_return(number_return() | knm_phone_number:knm_number(), knm_number()) ->
