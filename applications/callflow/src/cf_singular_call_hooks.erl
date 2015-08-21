@@ -76,15 +76,15 @@ send_init_hook(Call) ->
     lager:debug("===CALL STARTED===", []),
     lager:debug("Event: init", []),
     lager:debug("Call-ID: ~s", [whapps_call:call_id_direct(Call)]),
-    lager:debug("To: ~s", [wnm_util:to_e164(whapps_call:to_user(Call))]),
-    lager:debug("From: ~s", [wnm_util:to_e164(whapps_call:caller_id_number(Call))]),
+    lager:debug("To: ~s", [knm_converters:normalize(whapps_call:to_user(Call))]),
+    lager:debug("From: ~s", [knm_converters:normalize(whapps_call:caller_id_number(Call))]),
     lager:debug("Inception: ~s", [get_inception(Call)]),
     lager:debug("================", []),
 
     Prop = [{<<"Event">>, <<"init">>}
             ,{<<"Call-ID">>, whapps_call:call_id(Call)}
-            ,{<<"To">>, wnm_util:to_e164(whapps_call:to_user(Call))}
-            ,{<<"From">>, wnm_util:to_e164(whapps_call:caller_id_number(Call))}
+            ,{<<"To">>, knm_converters:normalize(whapps_call:to_user(Call))}
+            ,{<<"From">>, knm_converters:normalize(whapps_call:caller_id_number(Call))}
             ,{<<"Inception">>, get_inception(Call)}
             ],
 
@@ -118,8 +118,8 @@ send_end_hook(Call, Event) ->
     lager:debug("===CALL ENDED===", []),
     lager:debug("Event: end", []),
     lager:debug("Call-ID: ~s", [whapps_call:call_id_direct(Call)]),
-    lager:debug("To: ~s", [wnm_util:to_e164(whapps_call:to_user(Call))]),
-    lager:debug("From: ~s", [wnm_util:to_e164(whapps_call:caller_id_number(Call))]),
+    lager:debug("To: ~s", [knm_converters:normalize(whapps_call:to_user(Call))]),
+    lager:debug("From: ~s", [knm_converters:normalize(whapps_call:caller_id_number(Call))]),
     lager:debug("Inception: ~s", [get_inception(Call)]),
     lager:debug("CallDuration: ~s", [wh_json:get_value(<<"Duration-Seconds">>, Event)]),
     lager:debug("HangupReason: ~s", [wh_json:get_value(<<"Hangup-Cause">>, Event)]),
@@ -136,8 +136,8 @@ send_end_hook(Call, Event) ->
 
     Prop = [{<<"Event">>, <<"destroy">>}
             ,{<<"Call-ID">>, CallID}
-            ,{<<"To">>, wnm_util:to_e164(whapps_call:to_user(Call))}
-            ,{<<"From">>, wnm_util:to_e164(whapps_call:caller_id_number(Call))}
+            ,{<<"To">>, knm_converters:normalize(whapps_call:to_user(Call))}
+            ,{<<"From">>, knm_converters:normalize(whapps_call:caller_id_number(Call))}
             ,{<<"Inception">>, get_inception(Call)}
             ,{<<"Duration-Seconds">>, wh_json:get_value(<<"Duration-Seconds">>, Event)}
             ,{<<"Hangup-Cause">>, wh_json:get_value(<<"Hangup-Cause">>, Event)}

@@ -98,7 +98,7 @@ allow_dial(Data, Call, Retries, Interdigit) ->
                                                         ,Call
                                                        ),
 
-    Number = wnm_util:to_e164(Digits),
+    Number = knm_converters:normalize(Digits),
     lager:info("caller is trying to call '~s'", [Number]),
 
     Call1 = maybe_update_caller_id(Data, Call),

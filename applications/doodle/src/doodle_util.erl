@@ -400,7 +400,7 @@ get_inbound_destination(JObj) ->
     Inception = wh_json:get_value(<<"Route-Type">>, JObj, ?DEFAULT_INCEPTION),
     Keys = get_inbound_field(Inception),
     Number = wh_json:get_first_defined(Keys, JObj),
-    {wnm_util:to_e164(Number), Inception}.
+    {knm_converters:normalize(Number), Inception}.
 
 %%--------------------------------------------------------------------
 %% @public

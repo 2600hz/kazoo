@@ -187,7 +187,7 @@ on_successful_validation(Context) ->
         case whapps_account_config:get_global(AccountId, ?MOD_CONFIG_CAT, <<"api_e164_convert_to">>, 'false')
             andalso knm_converters:is_reconcilable(filter_number(ToNum), AccountId)
         of
-            'true' -> wnm_util:to_e164(filter_number(ToNum), AccountId);
+            'true' -> knm_converters:normalize(filter_number(ToNum), AccountId);
             'false' -> ToNum
         end,
     To = <<ToUser/binary, "@", Realm/binary>>,
@@ -197,7 +197,7 @@ on_successful_validation(Context) ->
         case whapps_account_config:get_global(AccountId, ?MOD_CONFIG_CAT, <<"api_e164_convert_from">>, 'false')
             andalso knm_converters:is_reconcilable(filter_number(FromNum), AccountId)
         of
-            'true' -> wnm_util:to_e164(filter_number(FromNum), AccountId);
+            'true' -> knm_converters:normalize(filter_number(FromNum), AccountId);
             'false' -> FromNum
         end,
     From = <<FromUser/binary, "@", Realm/binary>>,

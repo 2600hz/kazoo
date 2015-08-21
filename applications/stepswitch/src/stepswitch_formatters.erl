@@ -296,7 +296,7 @@ match_invite_format(JObj, Key, User, Realm) ->
                                fun((ne_binary()) -> ne_binary()).
 invite_format_fun(JObj) ->
     case wh_json:get_value(<<"Invite-Format">>, JObj) of
-        <<"e164">> -> fun wnm_util:to_e164/1;
+        <<"e164">> -> fun knm_converters:normalize/1;
         <<"1npan">> -> fun wnm_util:to_1npan/1;
         <<"npan">> -> fun wnm_util:to_npan/1
     end.

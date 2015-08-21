@@ -211,7 +211,7 @@ get_inbound_destination(JObj) ->
     {Number, _} = whapps_util:get_destination(JObj, <<"stepswitch">>, <<"inbound_user_field">>),
     case whapps_config:get_is_true(<<"stepswitch">>, <<"assume_inbound_e164">>, 'false') of
         'true' -> assume_e164(Number);
-        'false' -> wnm_util:to_e164(Number)
+        'false' -> knm_converters:normalize(Number)
     end.
 
 -spec assume_e164(ne_binary()) -> ne_binary().

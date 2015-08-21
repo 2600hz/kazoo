@@ -984,7 +984,7 @@ resource_ccvs(JobId) ->
 get_did(JObj) ->
     case wh_json:is_true(<<"bypass_e164">>, JObj, 'false') of
         'true' -> wh_json:get_value(<<"to_number">>, JObj);
-        'false' -> wnm_util:to_e164(wh_json:get_value(<<"to_number">>, JObj))
+        'false' -> knm_converters:normalize(wh_json:get_value(<<"to_number">>, JObj))
     end.
 
 -spec get_proxy_url(ne_binary()) -> ne_binary().

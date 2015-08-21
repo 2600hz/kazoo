@@ -881,7 +881,7 @@ summary_descendants_by_number(Context, Number) ->
                         descendant_keys().
 build_keys(Context, Number) ->
     build_keys_from_account(
-      wnm_util:to_e164(Number)
+      knm_converters:normalize(Number)
       ,props:get_value(<<"accounts">>, cb_context:req_nouns(Context))
      ).
 
@@ -1059,7 +1059,7 @@ successful_validation(Context, _Id) ->
 -spec check_number_portability(api_binary(), ne_binary(), cb_context:context(), ne_binary(), wh_json:object()) ->
                                       cb_context:context().
 check_number_portability(PortId, Number, Context) ->
-    E164 = wnm_util:to_e164(Number),
+    E164 = knm_converters:normalize(Number),
     lager:debug("checking ~s(~s) for portability", [E164, Number]),
     PortOptions = [{'key', E164}],
     case kz_datamgr:get_results(?KZ_PORT_REQUESTS_DB, ?PORT_REQ_NUMBERS, PortOptions) of
