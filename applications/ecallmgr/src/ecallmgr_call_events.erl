@@ -592,7 +592,22 @@ create_event(EventName, ApplicationName, Props) ->
       [{<<"Event-Name">>, EventName}
        |specific_call_event_props(EventName, ApplicationName, Props)
        ++ generic_call_event_props(Props)
+       ++ specific_call_channel_vars_props(EventName, Props)
       ]).
+
+-spec specific_call_channel_vars_props(ne_binary(), wh_proplist()) -> wh_proplist().
+specific_call_channel_vars_props(<<"CHANNEL_DESTROY">>, Props) ->
+    UUID = get_call_id(Props),
+    Vars = ecallmgr_util:custom_channel_vars(Props),
+    case wh_cache:peek_local(?ECALLMGR_CDR_CACHE, UUID) of
+        {'ok', CDR} ->
+            NewVars = props:set_value(<<?CALL_GROUP_ID>>, CDR, Vars),
+            [{<<"Custom-Channel-Vars">>, wh_json:from_list(NewVars)}];
+        _ ->
+            [{<<"Custom-Channel-Vars">>, wh_json:from_list(Vars)}]
+    end;
+specific_call_channel_vars_props(_EventName, Props) ->
+     [{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}].
 
 -spec generic_call_event_props(wh_proplist()) -> wh_proplist().
 generic_call_event_props(Props) ->
@@ -632,7 +647,6 @@ generic_call_event_props(Props) ->
      ,{<<"Raw-Application-Data">>, props:get_value(<<"Application-Data">>, Props)}
      ,{<<"Media-Server">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
      ,{<<"Replaced-By">>, props:get_first_defined([<<"att_xfer_replaced_by">>, ?ACQUIRED_UUID], Props)}
-     ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
      ,{<<"Custom-SIP-Headers">>, wh_json:from_list(ecallmgr_util:custom_sip_headers(Props))}
      ,{<<"From-Tag">>, props:get_value(<<"variable_sip_from_tag">>, Props)}
      ,{<<"To-Tag">>, props:get_value(<<"variable_sip_to_tag">>, Props)}
@@ -675,7 +689,7 @@ publish_event(Props) ->
             ApplicationData = props:get_value(<<"Raw-Application-Data">>, Props, <<>>),
             lager:debug("publishing call event ~s '~s(~s)'", [EventName, ApplicationName, ApplicationData])
     end,
-    wapi_call:publish_event(Props).
+    wh_amqp_worker:cast(Props, fun wapi_call:publish_event/1).
 
 -spec is_masquerade(wh_proplist()) -> boolean().
 is_masquerade(Props) ->
@@ -747,6 +761,7 @@ specific_call_event_props(<<"CHANNEL_DESTROY">>, _, Props) ->
      ,{<<"Ringing-Seconds">>, props:get_value(<<"variable_progresssec">>, Props)}
      ,{<<"User-Agent">>, props:get_value(<<"variable_sip_user_agent">>, Props)}
      ,{<<"Fax-Info">>, maybe_fax_specific(Props)}
+     ,{<<"Channel-Call-State">>, wh_json:from_list(lists:sort(fun({A,_}, {B,_}) -> A =< B end, Props))}
     ];
 specific_call_event_props(<<"RECORD_START">>, _, Props) ->
     [{<<"Application-Name">>, <<"record">>}
@@ -973,11 +988,21 @@ get_fax_ecm_used(Props) ->
         Else -> Else =/= <<"off">>
     end.
 
+-spec get_serialized_history(wh_proplist()) -> binaries().
+get_serialized_history(Props) ->
+    case kzd_freeswitch:transfer_history(Props) of
+        'undefined' -> [];
+        History when is_binary(History) ->
+            ecallmgr_util:unserialize_fs_array(History);
+        History when is_list(History) ->
+            History
+    end.
+
 -spec get_transfer_history(wh_proplist()) -> api_object().
 get_transfer_history(Props) ->
-    SerializedHistory = kzd_freeswitch:transfer_history(Props),
+    SerializedHistory = get_serialized_history(Props),
     case [HistJObj
-          || Trnsf <- ecallmgr_util:unserialize_fs_array(SerializedHistory),
+          || Trnsf <- SerializedHistory,
              (HistJObj = create_trnsf_history_object(binary:split(Trnsf, <<":">>, ['global']))) =/= 'undefined'
          ]
     of
@@ -1005,7 +1030,14 @@ create_trnsf_history_object([Epoch, CallId, <<"bl_xfer">> | Props]) ->
              ,{<<"Extension">>, Exten}
             ],
     {Epoch, wh_json:from_list(Trans)};
-create_trnsf_history_object(_) ->
+create_trnsf_history_object([Epoch, CallId, <<"uuid_br">> , OtherLeg]) ->
+    Trans = [{<<"Call-ID">>, CallId}
+             ,{<<"Type">>, <<"bridge">>}
+             ,{<<"Other-Leg">>, OtherLeg}
+            ],
+    {Epoch, wh_json:from_list(Trans)};
+create_trnsf_history_object(_Params) ->
+    lager:debug("unhandled transfer type : ~p", [_Params]),
     'undefined'.
 
 -spec get_hangup_cause(wh_proplist()) -> api_binary().
