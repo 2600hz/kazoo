@@ -10,7 +10,7 @@
 
 -include("../knm.hrl").
 
--export([normalize/1, normalize/2
+-export([normalize/1, normalize/2, normalize/3
          ,is_normalized/1
          ,is_npan/1 ,is_1npan/1
          ,to_db/1
@@ -86,12 +86,20 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec normalize(ne_binary()) -> ne_binary().
+-spec normalize(ne_binary()) ->
+                       ne_binary().
 normalize(<<_/binary>> = Num) ->
     (?CONVERTER_MOD):normalize(Num).
 
+-spec normalize(ne_binary(), api_binary()) ->
+                       ne_binary().
 normalize(<<_/binary>> = Num, AccountId) ->
     (?CONVERTER_MOD):normalize(Num, AccountId).
+
+-spec normalize(ne_binary(), api_binary(), wh_json:object()) ->
+                       ne_binary().
+normalize(<<_/binary>> = Num, AccountId, DialPlan) ->
+    (?CONVERTER_MOD):normalize(Num, AccountId, DialPlan).
 
 %%--------------------------------------------------------------------
 %% @public
